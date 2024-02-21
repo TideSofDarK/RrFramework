@@ -13,8 +13,18 @@
     }
 
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
+#define FRAME_OVERLAP 2
 
 typedef struct SApp SApp;
+
+typedef struct SFrameData
+{
+    VkCommandPool CommandPool;
+    VkCommandBuffer MainCommandBuffer;
+    VkSemaphore SwapchainSemaphore;
+    VkSemaphore RenderSemaphore;
+    VkFence RenderFence;
+} SFrameData;
 
 typedef struct SVulkanImage
 {
@@ -53,15 +63,23 @@ typedef struct SRenderer
     VkInstance Instance;
     SPhysicalDevice PhysicalDevice;
     VkDevice Device;
+    VkSurfaceKHR Surface;
+    SRendererSwapchain Swapchain;
+
     SRendererQueue GraphicsQueue;
     SRendererQueue TransferQueue;
     SRendererQueue ComputeQueue;
+
     VmaAllocator Allocator;
-    VkSurfaceKHR Surface;
-    SRendererSwapchain Swapchain;
+
     VkDebugUtilsMessengerEXT Messenger;
+
     u32 CommandBufferCount;
+
+    SFrameData Frames[FRAME_OVERLAP];
+    u64 FrameNumber;
 } SRenderer;
 
 void RendererInit(SApp* App);
 void RendererCleanup(SRenderer* Renderer);
+void RendererDraw(SRenderer* Renderer);

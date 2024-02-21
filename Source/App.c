@@ -34,6 +34,8 @@ void RunApp(SApp* App)
                     break;
             }
         }
+
+        RendererDraw(&App->Renderer);
     }
 
     RendererCleanup(&App->Renderer);

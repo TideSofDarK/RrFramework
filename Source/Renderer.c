@@ -1,15 +1,16 @@
+#define VOLK_IMPLEMENTATION
+
 #include "Renderer.h"
 
 #include <SDL_error.h>
 #include <SDL_stdinc.h>
 #include <SDL_log.h>
+#include <math.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <vulkan/vulkan_core.h>
-#define VOLK_IMPLEMENTATION
-#include <volk.h>
+#include "RendererHelpers.h"
 #include <SDL3/SDL_vulkan.h>
 
 #include "App.h"
@@ -42,6 +43,11 @@ static inline SPhysicalDevice EmptyPhysicalDevice()
         .Features = {},
         .MemoryProperties = {}
     };
+}
+
+static SFrameData* GetCurrentFrame(SRenderer* Renderer)
+{
+    return &Renderer->Frames[Renderer->FrameNumber % FRAME_OVERLAP];
 }
 
 static VkBool32 VulkanMessage(
@@ -158,10 +164,31 @@ static void InitDevice(SRenderer* Renderer)
         .pQueuePriorities = QueuePriorities,
     };
 
+    VkPhysicalDeviceVulkan13Features Features13 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .pNext = VK_NULL_HANDLE,
+        .synchronization2 = VK_TRUE,
+        .dynamicRendering = VK_TRUE,
+    };
+
+    VkPhysicalDeviceVulkan12Features Features12 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .pNext = &Features13,
+        .bufferDeviceAddress = VK_TRUE,
+        .descriptorIndexing = VK_TRUE,
+    };
+
+    // VkPhysicalDeviceFeatures2 Features2 = {
+    //     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+    //     .pNext = &float16_int8
+    // };
+    // vkGetPhysicalDeviceFeatures2(Renderer->PhysicalDevice.Handle, &Features2);
+
     const char* SwapchainExtension = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 
     VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = &Features12,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &QueueInfo,
         .enabledExtensionCount = 1,
@@ -368,6 +395,48 @@ static void InitDebugMessenger(SRenderer* Renderer)
     VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Renderer->Instance, &DebugUtilsMessengerCI, nullptr, &Renderer->Messenger));
 }
 
+static void InitCommands(SRenderer* Renderer)
+{
+    VkCommandPoolCreateInfo CommandPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+    };
+
+    for (i32 Index = 0; Index < FRAME_OVERLAP; Index++)
+    {
+        VK_ASSERT(vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, nullptr, &Renderer->Frames[Index].CommandPool));
+
+        VkCommandBufferAllocateInfo cmdAllocInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = VK_NULL_HANDLE,
+            .commandPool = Renderer->Frames[Index].CommandPool,
+            .commandBufferCount = 1,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        };
+
+        VK_ASSERT(vkAllocateCommandBuffers(Renderer->Device, &cmdAllocInfo, &Renderer->Frames[Index].MainCommandBuffer));
+    }
+}
+
+static void InitSyncStructures(SRenderer* Renderer)
+{
+    VkDevice Device = Renderer->Device;
+    SFrameData* Frames = Renderer->Frames;
+
+    VkFenceCreateInfo fenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkSemaphoreCreateInfo semaphoreCreateInfo = GetSemaphoreCreateInfo(0);
+
+    for (i32 Index = 0; Index < FRAME_OVERLAP; Index++)
+    {
+        VK_ASSERT(vkCreateFence(Device, &fenceCreateInfo, nullptr, &Frames[Index].RenderFence));
+
+        VK_ASSERT(vkCreateSemaphore(Device, &semaphoreCreateInfo, nullptr, &Frames[Index].SwapchainSemaphore));
+        VK_ASSERT(vkCreateSemaphore(Device, &semaphoreCreateInfo, nullptr, &Frames[Index].RenderSemaphore));
+    }
+}
+
 void RendererInit(SApp* App)
 {
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
@@ -413,7 +482,7 @@ void RendererInit(SApp* App)
         .pNext = nullptr,
         .pApplicationInfo = &VKAppInfo,
         .enabledExtensionCount = ExtensionCount,
-        .ppEnabledExtensionNames = Extensions
+        .ppEnabledExtensionNames = Extensions,
     };
 
     if (bEnableValidationLayers)
@@ -462,11 +531,27 @@ void RendererInit(SApp* App)
     u32 Width, Height;
     bool bVSync = true;
     CreateSwapchain(Renderer, &Width, &Height, bVSync);
+
+    InitCommands(Renderer);
+
+    InitSyncStructures(Renderer);
 }
 
 void RendererCleanup(SRenderer* Renderer)
 {
+    VkDevice Device = Renderer->Device;
+
     vkDeviceWaitIdle(Renderer->Device);
+
+    for (int Index = 0; Index < FRAME_OVERLAP; Index++)
+    {
+        SFrameData* Frame = &Renderer->Frames[Index];
+        vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, nullptr);
+
+        vkDestroyFence(Device, Frame->RenderFence, nullptr);
+        vkDestroySemaphore(Device, Frame->RenderSemaphore, nullptr);
+        vkDestroySemaphore(Device, Frame->SwapchainSemaphore, nullptr);
+    }
 
     CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
 
@@ -475,4 +560,56 @@ void RendererCleanup(SRenderer* Renderer)
 
     vkDestroyDebugUtilsMessengerEXT(Renderer->Instance, Renderer->Messenger, nullptr);
     vkDestroyInstance(Renderer->Instance, nullptr);
+}
+
+void RendererDraw(SRenderer* Renderer)
+{
+    VkDevice Device = Renderer->Device;
+    SFrameData* CurrentFrame = GetCurrentFrame(Renderer);
+    VK_ASSERT(vkWaitForFences(Device, 1, &CurrentFrame->RenderFence, true, 1000000000));
+    VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence));
+
+    u32 SwapchainImageIndex;
+    VK_ASSERT(vkAcquireNextImageKHR(Device, Renderer->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, nullptr, &SwapchainImageIndex));
+
+    VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;
+    VK_ASSERT(vkResetCommandBuffer(CommandBuffer, 0));
+    VkCommandBufferBeginInfo cmdBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &cmdBeginInfo));
+
+    TransitionImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+    float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
+    VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
+
+    VkImageSubresourceRange ClearRange = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+
+    vkCmdClearColorImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
+
+    TransitionImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    VK_ASSERT(vkEndCommandBuffer(CommandBuffer));
+
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
+
+    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, CurrentFrame->SwapchainSemaphore);
+    VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, CurrentFrame->RenderSemaphore);
+
+    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
+
+    VK_ASSERT(vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, CurrentFrame->RenderFence));
+
+    VkPresentInfoKHR PresentInfo = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = nullptr,
+        .pSwapchains = &Renderer->Swapchain.Handle,
+        .swapchainCount = 1,
+        .pWaitSemaphores = &CurrentFrame->RenderSemaphore,
+        .waitSemaphoreCount = 1,
+        .pImageIndices = &SwapchainImageIndex,
+    };
+
+    VK_ASSERT(vkQueuePresentKHR(Renderer->GraphicsQueue.Handle, &PresentInfo));
+
+    Renderer->FrameNumber++;
 }
