@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core.h"
-#include "renderer.h"
+#include "Core.h"
+#include "Renderer.h"
 
 typedef struct SApp
 {

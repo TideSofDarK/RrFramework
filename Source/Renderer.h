@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <vk_mem_alloc.h>
 
-#include "core.h"
+#include "Core.h"
 
 #define VK_ASSERT(expr)             \
     {                               \

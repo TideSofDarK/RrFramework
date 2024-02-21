@@ -1,18 +1,19 @@
-#include "renderer.h"
+#include "Renderer.h"
 
 #include <SDL_error.h>
 #include <SDL_stdinc.h>
+#include <SDL_log.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <SDL_log.h>
+#include <stdlib.h>
 #include <vulkan/vulkan_core.h>
 #define VOLK_IMPLEMENTATION
 #include <volk.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include "app.h"
+#include "App.h"
 
-static const b32 bEnableValidationLayers = _DEBUG;
+static const b32 bEnableValidationLayers = true;
 
 static inline SRendererSwapchain EmptySwapchain()
 {
