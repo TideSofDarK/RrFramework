@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv)
 {
-    SApp App;
+    SApp App = {};
 
     CreateApp(&App);
     RunApp(&App);

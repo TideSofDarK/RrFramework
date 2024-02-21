@@ -1,6 +1,34 @@
 #pragma once
 
-#include <volk.h>
+#include "RendererTypes.h"
+
+SRendererSwapchain EmptySwapchain()
+{
+    return (SRendererSwapchain){
+        .Handle = VK_NULL_HANDLE,
+        // .VkFormat = ,
+        // .VkColorSpaceKHR ColorSpace,
+        // .SVulkanImage * Images,
+        // .VkExtent2D Extent,
+    };
+}
+
+SRendererQueue EmptyQueue()
+{
+    return (SRendererQueue){
+        .Handle = VK_NULL_HANDLE,
+        .FamilyIndex = UINT32_MAX
+    };
+}
+
+SPhysicalDevice EmptyPhysicalDevice()
+{
+    return (SPhysicalDevice){
+        .Handle = VK_NULL_HANDLE,
+        .Features = {},
+        .MemoryProperties = {}
+    };
+}
 
 VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
 {

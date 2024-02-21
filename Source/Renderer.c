@@ -2,48 +2,31 @@
 
 #include "Renderer.h"
 
-#include <SDL_error.h>
-#include <SDL_stdinc.h>
-#include <SDL_log.h>
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "RendererHelpers.h"
+
+#include <SDL_error.h>
+#include <SDL_stdinc.h>
+#include <SDL_log.h>
 #include <SDL3/SDL_vulkan.h>
 
 #include "App.h"
+#include "RendererHelpers.h"
+
+#define VK_ASSERT(Expr)                                                           \
+    {                                                                             \
+        if (Expr != VK_SUCCESS)                                                   \
+        {                                                                         \
+            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "VK_ASSERT(" #Expr ") failed!"); \
+            abort();                                                              \
+        }                                                                         \
+    }
 
 static const b32 bEnableValidationLayers = true;
-
-static inline SRendererSwapchain EmptySwapchain()
-{
-    return (SRendererSwapchain){
-        .Handle = VK_NULL_HANDLE,
-        // .VkFormat = ,
-        // .VkColorSpaceKHR ColorSpace,
-        // .SVulkanImage * Images,
-        // .VkExtent2D Extent,
-    };
-}
-
-static inline SRendererQueue EmptyQueue()
-{
-    return (SRendererQueue){
-        .Handle = VK_NULL_HANDLE,
-        .FamilyIndex = UINT32_MAX
-    };
-}
-
-static inline SPhysicalDevice EmptyPhysicalDevice()
-{
-    return (SPhysicalDevice){
-        .Handle = VK_NULL_HANDLE,
-        .Features = {},
-        .MemoryProperties = {}
-    };
-}
 
 static SFrameData* GetCurrentFrame(SRenderer* Renderer)
 {
@@ -442,18 +425,7 @@ void RendererInit(SApp* App)
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
     SRenderer* Renderer = &App->Renderer;
-    *Renderer = (SRenderer){
-        .Instance = VK_NULL_HANDLE,
-        .PhysicalDevice = EmptyPhysicalDevice(),
-        .Device = VK_NULL_HANDLE,
-        .GraphicsQueue = EmptyQueue(),
-        .TransferQueue = EmptyQueue(),
-        .ComputeQueue = EmptyQueue(),
-        .Allocator = VK_NULL_HANDLE,
-        .Surface = VK_NULL_HANDLE,
-        .Swapchain = EmptySwapchain(),
-        .Messenger = VK_NULL_HANDLE,
-    };
+    *Renderer = (SRenderer){};
 
     VkApplicationInfo VKAppInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -518,7 +490,10 @@ void RendererInit(SApp* App)
 
     volkLoadInstance(Renderer->Instance);
 
-    InitDebugMessenger(Renderer);
+    if (bEnableValidationLayers)
+    {
+        InitDebugMessenger(Renderer);
+    }
 
     if (SDL_Vulkan_CreateSurface(App->Window, Renderer->Instance, NULL, &Renderer->Surface) != SDL_TRUE)
     {
@@ -558,7 +533,10 @@ void RendererCleanup(SRenderer* Renderer)
     vkDestroySurfaceKHR(Renderer->Instance, Renderer->Surface, nullptr);
     vkDestroyDevice(Renderer->Device, nullptr);
 
-    vkDestroyDebugUtilsMessengerEXT(Renderer->Instance, Renderer->Messenger, nullptr);
+    if (bEnableValidationLayers)
+    {
+        vkDestroyDebugUtilsMessengerEXT(Renderer->Instance, Renderer->Messenger, nullptr);
+    }
     vkDestroyInstance(Renderer->Instance, nullptr);
 }
 
