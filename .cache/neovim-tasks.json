@@ -1,1 +1,0 @@
-{"cmake":{"dap_name":"codelldb","build_type":"Debug","cmd":"cmake","build_dir":"{cwd}\/build\/{os}-{build_type}","args":{"configure":["-D","CMAKE_EXPORT_COMPILE_COMMANDS=1","-G","Ninja"]},"target":"VulkanPlayground"},"cargo":{"dap_name":"lldb"}}
