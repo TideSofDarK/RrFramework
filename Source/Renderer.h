@@ -12,6 +12,8 @@
         assert(expr == VK_SUCCESS); \
     }
 
+#define MAX_SWAPCHAIN_IMAGE_COUNT 8
+
 typedef struct SApp SApp;
 
 typedef struct SVulkanImage
@@ -27,7 +29,8 @@ typedef struct SRendererSwapchain
     VkSwapchainKHR Handle;
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
-    SVulkanImage* Images;
+    SVulkanImage Images[MAX_SWAPCHAIN_IMAGE_COUNT];
+    u32 ImageCount;
     VkExtent2D Extent;
 } SRendererSwapchain;
 
@@ -57,7 +60,8 @@ typedef struct SRenderer
     VkSurfaceKHR Surface;
     SRendererSwapchain Swapchain;
     VkDebugUtilsMessengerEXT Messenger;
+    u32 CommandBufferCount;
 } SRenderer;
 
 void RendererInit(SApp* App);
-void RendererCleanup(SApp* App);
+void RendererCleanup(SRenderer* Renderer);

@@ -36,6 +36,7 @@ void RunApp(SApp* App)
         }
     }
 
-    RendererCleanup(App);
+    RendererCleanup(&App->Renderer);
     SDL_DestroyWindow(App->Window);
+    SDL_Quit();
 }
