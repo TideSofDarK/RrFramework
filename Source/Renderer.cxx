@@ -304,7 +304,7 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, SurfaceFormats));
 
     bool bPreferredFormatFound = false;
-    for (u32 Index = 0; Index < PresentModeCount; Index++)
+    for (u32 Index = 0; Index < FormatCount; Index++)
     {
         VkSurfaceFormatKHR* SurfaceFormat = &SurfaceFormats[Index];
 
@@ -621,6 +621,7 @@ void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window)
     // volkLoadDevice(Renderer->Device);
 
     u32 Width, Height;
+    SDL_GetWindowSizeInPixels(Window, (i32*)&Width, (i32*)&Height);
     bool bVSync = true;
     CreateSwapchain(Renderer, &Width, &Height, bVSync);
 
