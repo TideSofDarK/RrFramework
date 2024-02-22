@@ -47,3 +47,12 @@ typedef struct SPhysicalDevice
     VkPhysicalDeviceFeatures Features;
     VkPhysicalDeviceMemoryProperties MemoryProperties;
 } SPhysicalDevice;
+
+typedef struct SAllocatedImage
+{
+    VkImage Handle;
+    VkImageView View;
+    VmaAllocation Allocation;
+    VkExtent3D Extent;
+    VkFormat Format;
+} SAllocatedImage;

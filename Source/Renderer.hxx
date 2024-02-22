@@ -8,7 +8,6 @@
 
 typedef struct SApp SApp;
 
-
 typedef struct SRenderer
 {
     VkInstance Instance;
@@ -25,12 +24,14 @@ typedef struct SRenderer
 
     VkDebugUtilsMessengerEXT Messenger;
 
-    u32 CommandBufferCount;
-
     SFrameData Frames[FRAME_OVERLAP];
     u64 FrameNumber;
+
+    SAllocatedImage DrawImage;
+    VkExtent2D DrawExtent;
 } SRenderer;
 
-void RendererInit(SApp* App);
-void RendererCleanup(SRenderer* Renderer);
-void RendererDraw(SRenderer* Renderer);
+void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window);
+void Renderer_Cleanup(SRenderer* Renderer);
+void Renderer_Draw(SRenderer* Renderer);
+void Renderer_Resize(SRenderer* Renderer, u32 Width, u32 Height);

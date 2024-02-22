@@ -2,32 +2,41 @@
 
 #include "RendererTypes.hxx"
 
-SRendererSwapchain EmptySwapchain()
+VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
 {
-    return {
-        .Handle = VK_NULL_HANDLE,
-        // .VkFormat = ,
-        // .VkColorSpaceKHR ColorSpace,
-        // .SVulkanImage * Images,
-        // .VkExtent2D Extent,
+    VkImageCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = Format,
+        .extent = Extent,
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = UsageFlags,
     };
+    return Info;
 }
 
-SRendererQueue EmptyQueue()
+VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
 {
-    return {
-        .Handle = VK_NULL_HANDLE,
-        .FamilyIndex = UINT32_MAX
+    VkImageViewCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext = nullptr,
+        .image = Image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = Format,
+        .subresourceRange = {
+            .aspectMask = AspectFlags,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        }
     };
-}
 
-SPhysicalDevice EmptyPhysicalDevice()
-{
-    return {
-        .Handle = VK_NULL_HANDLE,
-        .Features = {},
-        .MemoryProperties = {}
-    };
+    return Info;
 }
 
 VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
@@ -144,4 +153,44 @@ VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, 
     };
 
     return info;
+}
+
+void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+{
+    VkImageBlit2 BlitRegion = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+        .pNext = nullptr,
+
+        .srcSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+
+        .srcOffsets = { {}, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+
+        .dstSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+
+        .dstOffsets = { {}, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+    };
+
+    VkBlitImageInfo2 BlitInfo = {
+        .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+        .pNext = nullptr,
+        .srcImage = Source,
+        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .dstImage = Destination,
+        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .regionCount = 1,
+        .pRegions = &BlitRegion,
+        .filter = VK_FILTER_LINEAR,
+    };
+
+    vkCmdBlitImage2(CommandBuffer, &BlitInfo);
 }

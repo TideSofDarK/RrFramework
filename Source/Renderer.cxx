@@ -11,8 +11,6 @@
 #include <cmath>
 #include <cstring>
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -21,7 +19,6 @@
 #include <SDL_log.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include "App.hxx"
 #include "RendererHelpers.hxx"
 
 #define VK_ASSERT(Expr)                                                                                                              \
@@ -54,7 +51,7 @@ static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDe
         return false;
     }
 
-    auto* Extensions = SDL_stack_alloc(VkExtensionProperties, ExtensionCount);
+    auto* Extensions = StackAlloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &ExtensionCount, Extensions);
 
     bool bSwapchainFound = false;
@@ -78,8 +75,8 @@ static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDe
         return false;
     }
 
-    auto* QueueFamilyProperties = SDL_stack_alloc(VkQueueFamilyProperties, QueueFamilyCount);
-    auto* QueuePresentSupport = SDL_stack_alloc(VkBool32, QueueFamilyCount);
+    auto* QueueFamilyProperties = StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
+    auto* QueuePresentSupport = StackAlloc(VkBool32, QueueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
@@ -112,10 +109,11 @@ static void InitDevice(SRenderer* Renderer)
         abort();
     }
 
-    auto* PhysicalDevices = SDL_stack_alloc(VkPhysicalDevice, PhysicalDeviceCount);
+    auto* PhysicalDevices = StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
     VkPhysicalDeviceProperties PhysicalDeviceProperties = {};
+    b32 bFoundSuitableDevice = false;
     for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         if (CheckPhysicalDevice(Renderer, PhysicalDevices[Index]))
@@ -123,19 +121,20 @@ static void InitDevice(SRenderer* Renderer)
             Renderer->PhysicalDevice.Handle = PhysicalDevices[Index];
             vkGetPhysicalDeviceProperties(PhysicalDevices[Index], &PhysicalDeviceProperties);
             SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", PhysicalDeviceProperties.deviceName);
+            bFoundSuitableDevice = true;
             break;
         }
     }
 
-    if (Renderer->PhysicalDevice.Handle == VK_NULL_HANDLE || Renderer->GraphicsQueue.FamilyIndex == UINT32_MAX)
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not select physical device based on the chosen properties!");
-        abort();
-    }
-    else
+    if (bFoundSuitableDevice)
     {
         vkGetPhysicalDeviceFeatures(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.Features);
         vkGetPhysicalDeviceMemoryProperties(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.MemoryProperties);
+    }
+    else
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not select physical device based on the chosen properties!");
+        abort();
     }
 
     const float QueuePriorities[] = { 1.0f };
@@ -182,15 +181,56 @@ static void InitDevice(SRenderer* Renderer)
     vkGetDeviceQueue(Renderer->Device, Renderer->GraphicsQueue.FamilyIndex, 0, &Renderer->GraphicsQueue.Handle);
 }
 
+static void DestroyAllocatedImage(SRenderer* Renderer, SAllocatedImage* AllocatedImage)
+{
+    if (AllocatedImage->Handle == VK_NULL_HANDLE)
+    {
+        return;
+    }
+    vkDestroyImageView(Renderer->Device, AllocatedImage->View, nullptr);
+    vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
+}
+
+static void CreateDrawImage(SRenderer* Renderer, u32 Width, u32 Height)
+{
+    SAllocatedImage* DrawImage = &Renderer->DrawImage;
+
+    DrawImage->Extent = {
+        Width,
+        Height,
+        1
+    };
+    DrawImage->Format = VK_FORMAT_R16G16B16A16_SFLOAT;
+
+    VkImageUsageFlags DrawImageUsages{};
+    DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    DrawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
+    DrawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    VkImageCreateInfo ImageCreateInfo = GetImageCreateInfo(DrawImage->Format, DrawImageUsages, DrawImage->Extent);
+
+    VmaAllocationCreateInfo AllocationCreateInfo = {
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+    };
+
+    VK_ASSERT(vmaCreateImage(Renderer->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DrawImage->Handle, &DrawImage->Allocation, nullptr));
+
+    VkImageViewCreateInfo ImageViewCreateInfo = GetImageViewCreateInfo(DrawImage->Format, DrawImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    VK_ASSERT(vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, nullptr, &DrawImage->View));
+}
+
 static void CleanupSwapchain(SRenderer* Renderer, VkSwapchainKHR Swapchain)
 {
     for (u32 Index = 0; Index < Renderer->Swapchain.ImageCount; Index++)
     {
         vkDestroyImageView(Renderer->Device, Renderer->Swapchain.Images[Index].View, nullptr);
     }
-    memset(Renderer->Swapchain.Images, 0, sizeof(Renderer->Swapchain.Images));
-    Renderer->Swapchain.ImageCount = 0;
     vkDestroySwapchainKHR(Renderer->Device, Swapchain, nullptr);
+
+    DestroyAllocatedImage(Renderer, &Renderer->DrawImage);
 }
 
 static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool bVSync)
@@ -204,7 +244,7 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, nullptr));
     assert(PresentModeCount > 0);
 
-    auto PresentModes = SDL_stack_alloc(VkPresentModeKHR, PresentModeCount);
+    auto PresentModes = StackAlloc(VkPresentModeKHR, PresentModeCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, PresentModes));
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -225,7 +265,7 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
         }
     }
 
-    u32 DesiredNumberOfSwapchainImages = Renderer->CommandBufferCount = SurfCaps.minImageCount + 1;
+    u32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if ((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))
     {
         DesiredNumberOfSwapchainImages = SurfCaps.maxImageCount;
@@ -260,7 +300,7 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, nullptr));
     assert(FormatCount > 0);
 
-    auto* SurfaceFormats = SDL_stack_alloc(VkSurfaceFormatKHR, FormatCount);
+    auto* SurfaceFormats = StackAlloc(VkSurfaceFormatKHR, FormatCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, SurfaceFormats));
 
     bool bPreferredFormatFound = false;
@@ -338,7 +378,7 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
     assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Renderer->Swapchain.ImageCount = ImageCount;
-    auto Images = SDL_stack_alloc(VkImage, ImageCount);
+    auto Images = StackAlloc(VkImage, ImageCount);
     VK_ASSERT(vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images));
 
     VkImageViewCreateInfo ColorAttachmentView = {
@@ -365,6 +405,8 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
         ColorAttachmentView.image = Images[i];
         VK_ASSERT(vkCreateImageView(Renderer->Device, &ColorAttachmentView, nullptr, &Renderer->Swapchain.Images[i].View));
     }
+
+    CreateDrawImage(Renderer, *Width, *Height);
 }
 
 static VkBool32 VKAPI_PTR DebugMessage(
@@ -409,7 +451,7 @@ static void InitCommands(SRenderer* Renderer)
     {
         VK_ASSERT(vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, nullptr, &Frame.CommandPool));
 
-        VkCommandBufferAllocateInfo cmdAllocInfo = {
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .commandPool = Frame.CommandPool,
@@ -417,7 +459,7 @@ static void InitCommands(SRenderer* Renderer)
             .commandBufferCount = 1,
         };
 
-        VK_ASSERT(vkAllocateCommandBuffers(Renderer->Device, &cmdAllocInfo, &Frame.MainCommandBuffer));
+        VK_ASSERT(vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame.MainCommandBuffer));
     }
 }
 
@@ -438,12 +480,55 @@ static void InitSyncStructures(SRenderer* Renderer)
     }
 }
 
-void RendererInit(SApp* App)
+static void InitAllocator(SRenderer* Renderer)
+{
+    VmaVulkanFunctions VulkanFunctions = {
+        .vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties,
+        .vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties,
+        .vkAllocateMemory = vkAllocateMemory,
+        .vkFreeMemory = vkFreeMemory,
+        .vkMapMemory = vkMapMemory,
+        .vkUnmapMemory = vkUnmapMemory,
+        .vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges,
+        .vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges,
+        .vkBindBufferMemory = vkBindBufferMemory,
+        .vkBindImageMemory = vkBindImageMemory,
+        .vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements,
+        .vkGetImageMemoryRequirements = vkGetImageMemoryRequirements,
+        .vkCreateBuffer = vkCreateBuffer,
+        .vkDestroyBuffer = vkDestroyBuffer,
+        .vkCreateImage = vkCreateImage,
+        .vkDestroyImage = vkDestroyImage,
+        .vkCmdCopyBuffer = vkCmdCopyBuffer,
+        .vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2,
+        .vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2,
+        .vkBindBufferMemory2KHR = vkBindBufferMemory2,
+        .vkBindImageMemory2KHR = vkBindImageMemory2,
+        .vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2,
+    };
+    VmaAllocatorCreateInfo AllocatorInfo = {
+        .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+        .physicalDevice = Renderer->PhysicalDevice.Handle,
+        .device = Renderer->Device,
+        .pVulkanFunctions = &VulkanFunctions,
+        .instance = Renderer->Instance,
+    };
+    VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Renderer->Allocator));
+}
+
+void DrawBackground(SRenderer* Renderer, VkCommandBuffer CommandBuffer)
+{
+    float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
+    VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
+
+    VkImageSubresourceRange ClearRange = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+
+    vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
+}
+
+void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window)
 {
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
-
-    SRenderer* Renderer = &App->Renderer;
-    *Renderer = {};
 
     VkApplicationInfo VKAppInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -455,7 +540,7 @@ void RendererInit(SApp* App)
     u32 ExtensionCount;
     const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&ExtensionCount);
 
-    auto Extensions = SDL_stack_alloc(const char*, ExtensionCount + 1);
+    auto Extensions = StackAlloc(const char*, ExtensionCount + 1);
     for (u32 Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
@@ -481,7 +566,7 @@ void RendererInit(SApp* App)
 
         u32 InstanceLayerCount;
         vkEnumerateInstanceLayerProperties(&InstanceLayerCount, nullptr);
-        auto InstanceLayerProperties = SDL_stack_alloc(VkLayerProperties, InstanceLayerCount);
+        auto InstanceLayerProperties = StackAlloc(VkLayerProperties, InstanceLayerCount);
         vkEnumerateInstanceLayerProperties(&InstanceLayerCount, InstanceLayerProperties);
 
         bool bValidationLayerPresent = false;
@@ -496,12 +581,22 @@ void RendererInit(SApp* App)
         }
         if (!bValidationLayerPresent)
         {
-            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "No %s present!\n", ValidationLayerName);
+            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "No %s present!", ValidationLayerName);
             abort();
         }
 
         VKInstInfo.enabledLayerCount = 1;
         VKInstInfo.ppEnabledLayerNames = &ValidationLayerName;
+
+        // VkValidationFeatureEnableEXT EnabledValidationFeatures[] = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
+        //
+        // VkValidationFeaturesEXT ValidationFeatures = {
+        //     .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
+        //     .enabledValidationFeatureCount = 1,
+        //     .pEnabledValidationFeatures = EnabledValidationFeatures,
+        // };
+        //
+        // VKInstInfo.pNext = &ValidationFeatures;
     }
 
     VK_ASSERT(vkCreateInstance(&VKInstInfo, nullptr, &Renderer->Instance));
@@ -513,13 +608,17 @@ void RendererInit(SApp* App)
         InitDebugMessenger(Renderer);
     }
 
-    if (SDL_Vulkan_CreateSurface(App->Window, Renderer->Instance, nullptr, &Renderer->Surface) != SDL_TRUE)
+    if (SDL_Vulkan_CreateSurface(Window, Renderer->Instance, nullptr, &Renderer->Surface) != SDL_TRUE)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Failed to create Vulkan surface: %s", SDL_GetError());
         abort();
     }
 
     InitDevice(Renderer);
+
+    InitAllocator(Renderer);
+
+    // volkLoadDevice(Renderer->Device);
 
     u32 Width, Height;
     bool bVSync = true;
@@ -530,7 +629,7 @@ void RendererInit(SApp* App)
     InitSyncStructures(Renderer);
 }
 
-void RendererCleanup(SRenderer* Renderer)
+void Renderer_Cleanup(SRenderer* Renderer)
 {
     VkDevice Device = Renderer->Device;
 
@@ -548,6 +647,8 @@ void RendererCleanup(SRenderer* Renderer)
 
     CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
 
+    vmaDestroyAllocator(Renderer->Allocator);
+
     vkDestroySurfaceKHR(Renderer->Instance, Renderer->Surface, nullptr);
     vkDestroyDevice(Renderer->Device, nullptr);
 
@@ -558,31 +659,32 @@ void RendererCleanup(SRenderer* Renderer)
     vkDestroyInstance(Renderer->Instance, nullptr);
 }
 
-void RendererDraw(SRenderer* Renderer)
+void Renderer_Draw(SRenderer* Renderer)
 {
     VkDevice Device = Renderer->Device;
     SFrameData* CurrentFrame = GetCurrentFrame(Renderer);
+    SAllocatedImage* DrawImage = &Renderer->DrawImage;
+    VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;
+
     VK_ASSERT(vkWaitForFences(Device, 1, &CurrentFrame->RenderFence, true, 1000000000));
     VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence));
 
     u32 SwapchainImageIndex;
     VK_ASSERT(vkAcquireNextImageKHR(Device, Renderer->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex));
 
-    VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;
-    VK_ASSERT(vkResetCommandBuffer(CommandBuffer, 0));
-    VkCommandBufferBeginInfo cmdBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &cmdBeginInfo));
+    Renderer->DrawExtent.width = DrawImage->Extent.width;
+    Renderer->DrawExtent.height = DrawImage->Extent.height;
 
-    TransitionImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo));
 
-    float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
-    VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
+    TransitionImage(CommandBuffer, DrawImage->Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    DrawBackground(Renderer, CommandBuffer);
+    TransitionImage(CommandBuffer, DrawImage->Handle, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    VkImageSubresourceRange ClearRange = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
-
-    vkCmdClearColorImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
-
-    TransitionImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    TransitionImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    CopyImageToImage(CommandBuffer, DrawImage->Handle, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, Renderer->DrawExtent, Renderer->Swapchain.Extent);
+    TransitionImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_ASSERT(vkEndCommandBuffer(CommandBuffer));
 
@@ -608,4 +710,11 @@ void RendererDraw(SRenderer* Renderer)
     VK_ASSERT(vkQueuePresentKHR(Renderer->GraphicsQueue.Handle, &PresentInfo));
 
     Renderer->FrameNumber++;
+}
+
+void Renderer_Resize(SRenderer* Renderer, u32 Width, u32 Height)
+{
+    vkDeviceWaitIdle(Renderer->Device);
+
+    CreateSwapchain(Renderer, &Width, &Height, true);
 }
