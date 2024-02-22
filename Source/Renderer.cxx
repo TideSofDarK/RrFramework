@@ -1,49 +1,48 @@
 #define VOLK_IMPLEMENTATION
 
-#include "Renderer.h"
+#define VMA_IMPLEMENTATION
+#define VMA_VULKAN_VERSION 1003000
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 
-#include <assert.h>
-#include <math.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "Renderer.hxx"
+
+#include <cassert>
+#include <cmath>
+#include <cstring>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+
+#include <vulkan/vk_enum_string_helper.h>
 
 #include <SDL_error.h>
 #include <SDL_stdinc.h>
 #include <SDL_log.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include "App.h"
-#include "RendererHelpers.h"
+#include "App.hxx"
+#include "RendererHelpers.hxx"
 
-#define VK_ASSERT(Expr)                                                           \
-    {                                                                             \
-        if (Expr != VK_SUCCESS)                                                   \
-        {                                                                         \
-            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "VK_ASSERT(" #Expr ") failed!"); \
-            abort();                                                              \
-        }                                                                         \
+#define VK_ASSERT(Expr)                                                                                                              \
+    {                                                                                                                                \
+        VkResult Result = Expr;                                                                                                      \
+        if (Result != VK_SUCCESS)                                                                                                    \
+        {                                                                                                                            \
+            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Assertion " #Expr " == VK_SUCCESS failed! Result is %s", string_VkResult(Result)); \
+            abort();                                                                                                                 \
+        }                                                                                                                            \
     }
 
+#ifdef DEBUG
 static const b32 bEnableValidationLayers = true;
+#else
+static const b32 bEnableValidationLayers = false;
+#endif
 
 static SFrameData* GetCurrentFrame(SRenderer* Renderer)
 {
     return &Renderer->Frames[Renderer->FrameNumber % FRAME_OVERLAP];
-}
-
-static VkBool32 VulkanMessage(
-    VkDebugUtilsMessageSeverityFlagBitsEXT Severity,
-    VkDebugUtilsMessageTypeFlagsEXT Types,
-    const VkDebugUtilsMessengerCallbackDataEXT* CallbackData,
-    void* Userdata)
-{
-    if (CallbackData != nullptr)
-    {
-        fprintf(stderr, "%s\n", CallbackData->pMessage);
-    }
-    return true;
 }
 
 static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDevice)
@@ -55,7 +54,7 @@ static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDe
         return false;
     }
 
-    VkExtensionProperties Extensions[ExtensionCount] = {};
+    auto* Extensions = SDL_stack_alloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &ExtensionCount, Extensions);
 
     bool bSwapchainFound = false;
@@ -79,8 +78,8 @@ static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDe
         return false;
     }
 
-    VkQueueFamilyProperties QueueFamilyProperties[QueueFamilyCount];
-    VkBool32 QueuePresentSupport[QueueFamilyCount];
+    auto* QueueFamilyProperties = SDL_stack_alloc(VkQueueFamilyProperties, QueueFamilyCount);
+    auto* QueuePresentSupport = SDL_stack_alloc(VkBool32, QueueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
@@ -113,7 +112,7 @@ static void InitDevice(SRenderer* Renderer)
         abort();
     }
 
-    VkPhysicalDevice PhysicalDevices[PhysicalDeviceCount] = {};
+    auto* PhysicalDevices = SDL_stack_alloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
     VkPhysicalDeviceProperties PhysicalDeviceProperties = {};
@@ -157,8 +156,8 @@ static void InitDevice(SRenderer* Renderer)
     VkPhysicalDeviceVulkan12Features Features12 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
         .pNext = &Features13,
-        .bufferDeviceAddress = VK_TRUE,
         .descriptorIndexing = VK_TRUE,
+        .bufferDeviceAddress = VK_TRUE,
     };
 
     // VkPhysicalDeviceFeatures2 Features2 = {
@@ -205,7 +204,7 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, nullptr));
     assert(PresentModeCount > 0);
 
-    VkPresentModeKHR PresentModes[PresentModeCount] = {};
+    auto PresentModes = SDL_stack_alloc(VkPresentModeKHR, PresentModeCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, PresentModes));
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -258,10 +257,10 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
     Renderer->Swapchain.Extent = SwapchainExtent;
 
     u32 FormatCount;
-    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, NULL));
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, nullptr));
     assert(FormatCount > 0);
 
-    VkSurfaceFormatKHR SurfaceFormats[FormatCount] = {};
+    auto* SurfaceFormats = SDL_stack_alloc(VkSurfaceFormatKHR, FormatCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, SurfaceFormats));
 
     bool bPreferredFormatFound = false;
@@ -291,11 +290,11 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
         VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
         VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
     };
-    for (u32 Index = 0; Index < sizeof(CompositeAlphaFlags) / sizeof(*CompositeAlphaFlags); Index++)
+    for (auto& CompositeAlphaFlag : CompositeAlphaFlags)
     {
-        if (SurfCaps.supportedCompositeAlpha & CompositeAlphaFlags[Index])
+        if (SurfCaps.supportedCompositeAlpha & CompositeAlphaFlag)
         {
-            CompositeAlpha = CompositeAlphaFlags[Index];
+            CompositeAlpha = CompositeAlphaFlag;
             break;
         }
     }
@@ -307,14 +306,14 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
         .imageFormat = Renderer->Swapchain.Format,
         .imageColorSpace = Renderer->Swapchain.ColorSpace,
         .imageExtent = { SwapchainExtent.width, SwapchainExtent.height },
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .preTransform = (VkSurfaceTransformFlagBitsKHR)PreTransform,
         .imageArrayLayers = 1,
+        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .presentMode = SwapchainPresentMode,
-        .oldSwapchain = OldSwapchain,
-        .clipped = VK_TRUE,
+        .preTransform = (VkSurfaceTransformFlagBitsKHR)PreTransform,
         .compositeAlpha = CompositeAlpha,
+        .presentMode = SwapchainPresentMode,
+        .clipped = VK_TRUE,
+        .oldSwapchain = OldSwapchain,
     };
 
     if (SurfCaps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
@@ -335,27 +334,29 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
     }
 
     u32 ImageCount = 0;
-    VK_ASSERT(vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, NULL));
+    VK_ASSERT(vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, nullptr));
     assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Renderer->Swapchain.ImageCount = ImageCount;
-    VkImage Images[ImageCount];
+    auto Images = SDL_stack_alloc(VkImage, ImageCount);
     VK_ASSERT(vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images));
 
     VkImageViewCreateInfo ColorAttachmentView = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = Renderer->Swapchain.Format,
-        .components = (VkComponentMapping){
+        .components = {
             .r = VK_COMPONENT_SWIZZLE_R,
             .g = VK_COMPONENT_SWIZZLE_G,
             .b = VK_COMPONENT_SWIZZLE_B,
             .a = VK_COMPONENT_SWIZZLE_A },
-        .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .subresourceRange.baseMipLevel = 0,
-        .subresourceRange.levelCount = 1,
-        .subresourceRange.baseArrayLayer = 0,
-        .subresourceRange.layerCount = 1,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        }
     };
 
     for (u32 i = 0; i < ImageCount; i++)
@@ -366,13 +367,30 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
     }
 }
 
-static void InitDebugMessenger(SRenderer* Renderer)
+static VkBool32 VKAPI_PTR DebugMessage(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData)
+{
+    if (pCallbackData != nullptr)
+    {
+        const char* format = "{0x%x}% s\n %s ";
+        SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, format,
+            pCallbackData->messageIdNumber,
+            pCallbackData->pMessageIdName,
+            pCallbackData->pMessage);
+    }
+    return VK_FALSE;
+}
+
+static void VKAPI_CALL InitDebugMessenger(SRenderer* Renderer)
 {
     VkDebugUtilsMessengerCreateInfoEXT DebugUtilsMessengerCI = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
         .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
-        .pfnUserCallback = VulkanMessage
+        .pfnUserCallback = static_cast<PFN_vkDebugUtilsMessengerCallbackEXT>(DebugMessage)
     };
 
     VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Renderer->Instance, &DebugUtilsMessengerCI, nullptr, &Renderer->Messenger));
@@ -387,19 +405,19 @@ static void InitCommands(SRenderer* Renderer)
         .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
     };
 
-    for (i32 Index = 0; Index < FRAME_OVERLAP; Index++)
+    for (auto& Frame : Renderer->Frames)
     {
-        VK_ASSERT(vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, nullptr, &Renderer->Frames[Index].CommandPool));
+        VK_ASSERT(vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, nullptr, &Frame.CommandPool));
 
         VkCommandBufferAllocateInfo cmdAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .commandPool = Renderer->Frames[Index].CommandPool,
-            .commandBufferCount = 1,
+            .commandPool = Frame.CommandPool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
         };
 
-        VK_ASSERT(vkAllocateCommandBuffers(Renderer->Device, &cmdAllocInfo, &Renderer->Frames[Index].MainCommandBuffer));
+        VK_ASSERT(vkAllocateCommandBuffers(Renderer->Device, &cmdAllocInfo, &Frame.MainCommandBuffer));
     }
 }
 
@@ -425,7 +443,7 @@ void RendererInit(SApp* App)
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
     SRenderer* Renderer = &App->Renderer;
-    *Renderer = (SRenderer){};
+    *Renderer = {};
 
     VkApplicationInfo VKAppInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -437,7 +455,7 @@ void RendererInit(SApp* App)
     u32 ExtensionCount;
     const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&ExtensionCount);
 
-    const char* Extensions[ExtensionCount + 1] = {};
+    auto Extensions = SDL_stack_alloc(const char*, ExtensionCount + 1);
     for (u32 Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
@@ -463,7 +481,7 @@ void RendererInit(SApp* App)
 
         u32 InstanceLayerCount;
         vkEnumerateInstanceLayerProperties(&InstanceLayerCount, nullptr);
-        VkLayerProperties InstanceLayerProperties[InstanceLayerCount];
+        auto InstanceLayerProperties = SDL_stack_alloc(VkLayerProperties, InstanceLayerCount);
         vkEnumerateInstanceLayerProperties(&InstanceLayerCount, InstanceLayerProperties);
 
         bool bValidationLayerPresent = false;
@@ -486,7 +504,7 @@ void RendererInit(SApp* App)
         VKInstInfo.ppEnabledLayerNames = &ValidationLayerName;
     }
 
-    VK_ASSERT(vkCreateInstance(&VKInstInfo, NULL, &Renderer->Instance));
+    VK_ASSERT(vkCreateInstance(&VKInstInfo, nullptr, &Renderer->Instance));
 
     volkLoadInstance(Renderer->Instance);
 
@@ -495,7 +513,7 @@ void RendererInit(SApp* App)
         InitDebugMessenger(Renderer);
     }
 
-    if (SDL_Vulkan_CreateSurface(App->Window, Renderer->Instance, NULL, &Renderer->Surface) != SDL_TRUE)
+    if (SDL_Vulkan_CreateSurface(App->Window, Renderer->Instance, nullptr, &Renderer->Surface) != SDL_TRUE)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Failed to create Vulkan surface: %s", SDL_GetError());
         abort();
@@ -518,9 +536,9 @@ void RendererCleanup(SRenderer* Renderer)
 
     vkDeviceWaitIdle(Renderer->Device);
 
-    for (int Index = 0; Index < FRAME_OVERLAP; Index++)
+    for (auto& Index : Renderer->Frames)
     {
-        SFrameData* Frame = &Renderer->Frames[Index];
+        SFrameData* Frame = &Index;
         vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, nullptr);
 
         vkDestroyFence(Device, Frame->RenderFence, nullptr);
@@ -548,7 +566,7 @@ void RendererDraw(SRenderer* Renderer)
     VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence));
 
     u32 SwapchainImageIndex;
-    VK_ASSERT(vkAcquireNextImageKHR(Device, Renderer->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, nullptr, &SwapchainImageIndex));
+    VK_ASSERT(vkAcquireNextImageKHR(Device, Renderer->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex));
 
     VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;
     VK_ASSERT(vkResetCommandBuffer(CommandBuffer, 0));
@@ -580,10 +598,10 @@ void RendererDraw(SRenderer* Renderer)
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = nullptr,
-        .pSwapchains = &Renderer->Swapchain.Handle,
-        .swapchainCount = 1,
-        .pWaitSemaphores = &CurrentFrame->RenderSemaphore,
         .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &CurrentFrame->RenderSemaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &Renderer->Swapchain.Handle,
         .pImageIndices = &SwapchainImageIndex,
     };
 

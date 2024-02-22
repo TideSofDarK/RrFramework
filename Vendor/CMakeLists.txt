@@ -34,4 +34,4 @@ target_link_libraries(${PROJECT_NAME}Vendor INTERFACE
         cglm
         cimgui
 )
-target_compile_features(${PROJECT_NAME}Vendor INTERFACE c_std_23 cxx_std_20)
+target_compile_features(${PROJECT_NAME}Vendor INTERFACE c_std_11 cxx_std_20)

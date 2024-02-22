@@ -1,8 +1,9 @@
 #pragma once
 
 #include <volk.h>
+#include <vk_mem_alloc.h>
 
-#include "Core.h"
+#include "Core.hxx"
 
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
 

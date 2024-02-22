@@ -1,10 +1,10 @@
 #pragma once
 
-#include "RendererTypes.h"
+#include "RendererTypes.hxx"
 
 SRendererSwapchain EmptySwapchain()
 {
-    return (SRendererSwapchain){
+    return {
         .Handle = VK_NULL_HANDLE,
         // .VkFormat = ,
         // .VkColorSpaceKHR ColorSpace,
@@ -15,7 +15,7 @@ SRendererSwapchain EmptySwapchain()
 
 SRendererQueue EmptyQueue()
 {
-    return (SRendererQueue){
+    return {
         .Handle = VK_NULL_HANDLE,
         .FamilyIndex = UINT32_MAX
     };
@@ -23,7 +23,7 @@ SRendererQueue EmptyQueue()
 
 SPhysicalDevice EmptyPhysicalDevice()
 {
-    return (SPhysicalDevice){
+    return {
         .Handle = VK_NULL_HANDLE,
         .Features = {},
         .MemoryProperties = {}
@@ -55,8 +55,8 @@ VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Fla
     VkCommandBufferBeginInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext = nullptr,
-        .pInheritanceInfo = nullptr,
         .flags = Flags,
+        .pInheritanceInfo = nullptr,
     };
     return Info;
 }
@@ -89,8 +89,8 @@ void TransitionImage(VkCommandBuffer CommandBuffer, VkImage Image, VkImageLayout
         .oldLayout = CurrentLayout,
         .newLayout = NewLayout,
 
-        .subresourceRange = GetImageSubresourceRange((NewLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),
         .image = Image,
+        .subresourceRange = GetImageSubresourceRange((NewLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),
     };
 
     VkDependencyInfo DepInfo = {
@@ -109,9 +109,9 @@ VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, Vk
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .pNext = nullptr,
         .semaphore = Semaphore,
+        .value = 1,
         .stageMask = StageMask,
         .deviceIndex = 0,
-        .value = 1,
     };
 
     return submitInfo;
@@ -135,12 +135,12 @@ VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, 
     VkSubmitInfo2 info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .pNext = nullptr,
-        .waitSemaphoreInfoCount = WaitSemaphoreInfo == nullptr ? 0 : 1,
+        .waitSemaphoreInfoCount = WaitSemaphoreInfo == nullptr ? 0u : 1u,
         .pWaitSemaphoreInfos = WaitSemaphoreInfo,
-        .signalSemaphoreInfoCount = SignalSemaphoreInfo == nullptr ? 0 : 1,
-        .pSignalSemaphoreInfos = SignalSemaphoreInfo,
         .commandBufferInfoCount = 1,
         .pCommandBufferInfos = CommandBufferSubInfoPtr,
+        .signalSemaphoreInfoCount = SignalSemaphoreInfo == nullptr ? 0u : 1u,
+        .pSignalSemaphoreInfos = SignalSemaphoreInfo,
     };
 
     return info;

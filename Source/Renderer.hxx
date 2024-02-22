@@ -2,7 +2,7 @@
 
 #define VK_NO_PROTOTYPES
 
-#include "RendererTypes.h"
+#include "RendererTypes.hxx"
 
 #define FRAME_OVERLAP 2
 
@@ -21,7 +21,7 @@ typedef struct SRenderer
     SRendererQueue TransferQueue;
     SRendererQueue ComputeQueue;
 
-    // VmaAllocator Allocator;
+    VmaAllocator Allocator;
 
     VkDebugUtilsMessengerEXT Messenger;
 

@@ -13,7 +13,6 @@ typedef signed long long i64;
 typedef float f32;
 typedef double f64;
 typedef int b32;
-typedef _Bool b8;
 
 static_assert(sizeof(u8) == 1, "Expected u8 to be 1 byte.");
 static_assert(sizeof(u16) == 2, "Expected u16 to be 2 bytes.");

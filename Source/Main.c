@@ -1,13 +1,10 @@
 #include <SDL3/SDL_main.h>
 
-#include "App.h"
+void RunApp(void);
 
 int main(int argc, char** argv)
 {
-    SApp App = {};
-
-    CreateApp(&App);
-    RunApp(&App);
+    RunApp();
 
     return 0;
 }
