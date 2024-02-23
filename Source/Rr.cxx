@@ -5,7 +5,7 @@
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 
-#include "Renderer.hxx"
+#include "Rr.hxx"
 
 #include <filesystem> /* @TODO: Remove! */
 #include <cassert>
@@ -20,7 +20,7 @@
 #include <SDL_log.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include "RendererLib.hxx"
+#include "RrLib.hxx"
 
 #ifdef DEBUG
 static const b32 bEnableValidationLayers = true;
@@ -28,12 +28,12 @@ static const b32 bEnableValidationLayers = true;
 static const b32 bEnableValidationLayers = false;
 #endif
 
-static SFrameData* GetCurrentFrame(SRenderer* Renderer)
+static SFrameData* RR_GetCurrentFrame(SRr* Rr)
 {
-    return &Renderer->Frames[Renderer->FrameNumber % FRAME_OVERLAP];
+    return &Rr->Frames[Rr->FrameNumber % FRAME_OVERLAP];
 }
 
-static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDevice)
+static bool RR_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
 {
     u32 ExtensionCount;
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &ExtensionCount, nullptr);
@@ -73,7 +73,7 @@ static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDe
 
     for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
     {
-        vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, Index, Renderer->Surface, &QueuePresentSupport[Index]);
+        vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, Index, Rr->Surface, &QueuePresentSupport[Index]);
 
         if (!QueuePresentSupport[Index])
         {
@@ -82,7 +82,7 @@ static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDe
 
         if ((QueueFamilyProperties[Index].queueCount > 0) && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
         {
-            Renderer->GraphicsQueue.FamilyIndex = Index;
+            Rr->GraphicsQueue.FamilyIndex = Index;
             return true;
         }
     }
@@ -90,10 +90,10 @@ static bool CheckPhysicalDevice(SRenderer* Renderer, VkPhysicalDevice PhysicalDe
     return false;
 }
 
-static void InitDevice(SRenderer* Renderer)
+static void RR_InitDevice(SRr* Rr)
 {
     u32 PhysicalDeviceCount = 0;
-    vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, nullptr);
+    vkEnumeratePhysicalDevices(Rr->Instance, &PhysicalDeviceCount, nullptr);
     if (PhysicalDeviceCount == 0)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "No device with Vulkan support found");
@@ -101,24 +101,24 @@ static void InitDevice(SRenderer* Renderer)
     }
 
     auto* PhysicalDevices = StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
-    vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
+    vkEnumeratePhysicalDevices(Rr->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
-    Renderer->PhysicalDevice.SubgroupProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = nullptr };
+    Rr->PhysicalDevice.SubgroupProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = nullptr };
 
     VkPhysicalDeviceProperties2 PhysicalDeviceProperties = {};
-    PhysicalDeviceProperties.pNext = &Renderer->PhysicalDevice.SubgroupProperties;
+    PhysicalDeviceProperties.pNext = &Rr->PhysicalDevice.SubgroupProperties;
     PhysicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 
     b32 bFoundSuitableDevice = false;
     for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
-        if (CheckPhysicalDevice(Renderer, PhysicalDevices[Index]))
+        if (RR_CheckPhysicalDevice(Rr, PhysicalDevices[Index]))
         {
-            Renderer->PhysicalDevice.Handle = PhysicalDevices[Index];
+            Rr->PhysicalDevice.Handle = PhysicalDevices[Index];
 
-            vkGetPhysicalDeviceFeatures(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.Features);
-            vkGetPhysicalDeviceMemoryProperties(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.MemoryProperties);
-            vkGetPhysicalDeviceProperties2(Renderer->PhysicalDevice.Handle, &PhysicalDeviceProperties);
+            vkGetPhysicalDeviceFeatures(Rr->PhysicalDevice.Handle, &Rr->PhysicalDevice.Features);
+            vkGetPhysicalDeviceMemoryProperties(Rr->PhysicalDevice.Handle, &Rr->PhysicalDevice.MemoryProperties);
+            vkGetPhysicalDeviceProperties2(Rr->PhysicalDevice.Handle, &PhysicalDeviceProperties);
 
             SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", PhysicalDeviceProperties.properties.deviceName);
 
@@ -135,7 +135,7 @@ static void InitDevice(SRenderer* Renderer)
     const float QueuePriorities[] = { 1.0f };
     VkDeviceQueueCreateInfo QueueInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+        .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
         .queueCount = 1,
         .pQueuePriorities = QueuePriorities,
     };
@@ -171,24 +171,24 @@ static void InitDevice(SRenderer* Renderer)
         .ppEnabledExtensionNames = &SwapchainExtension,
     };
 
-    VK_ASSERT(vkCreateDevice(Renderer->PhysicalDevice.Handle, &DeviceCreateInfo, nullptr, &Renderer->Device));
+    VK_ASSERT(vkCreateDevice(Rr->PhysicalDevice.Handle, &DeviceCreateInfo, nullptr, &Rr->Device));
 
-    vkGetDeviceQueue(Renderer->Device, Renderer->GraphicsQueue.FamilyIndex, 0, &Renderer->GraphicsQueue.Handle);
+    vkGetDeviceQueue(Rr->Device, Rr->GraphicsQueue.FamilyIndex, 0, &Rr->GraphicsQueue.Handle);
 }
 
-static void DestroyAllocatedImage(SRenderer* Renderer, SAllocatedImage* AllocatedImage)
+static void RR_DestroyAllocatedImage(SRr* Rr, SAllocatedImage* AllocatedImage)
 {
     if (AllocatedImage->Handle == VK_NULL_HANDLE)
     {
         return;
     }
-    vkDestroyImageView(Renderer->Device, AllocatedImage->View, nullptr);
-    vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
+    vkDestroyImageView(Rr->Device, AllocatedImage->View, nullptr);
+    vmaDestroyImage(Rr->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 }
 
-static void CreateDrawImage(SRenderer* Renderer, u32 Width, u32 Height)
+static void RR_CreateDrawImage(SRr* Rr, u32 Width, u32 Height)
 {
-    SAllocatedImage* DrawImage = &Renderer->DrawImage;
+    SAllocatedImage* DrawImage = &Rr->DrawImage;
 
     DrawImage->Extent = {
         Width,
@@ -210,37 +210,37 @@ static void CreateDrawImage(SRenderer* Renderer, u32 Width, u32 Height)
         .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
     };
 
-    VK_ASSERT(vmaCreateImage(Renderer->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DrawImage->Handle, &DrawImage->Allocation, nullptr));
+    VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DrawImage->Handle, &DrawImage->Allocation, nullptr));
 
     VkImageViewCreateInfo ImageViewCreateInfo = GetImageViewCreateInfo(DrawImage->Format, DrawImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    VK_ASSERT(vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, nullptr, &DrawImage->View));
+    VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, nullptr, &DrawImage->View));
 }
 
-static void CleanupSwapchain(SRenderer* Renderer, VkSwapchainKHR Swapchain)
+static void RR_CleanupSwapchain(SRr* Rr, VkSwapchainKHR Swapchain)
 {
-    for (u32 Index = 0; Index < Renderer->Swapchain.ImageCount; Index++)
+    for (u32 Index = 0; Index < Rr->Swapchain.ImageCount; Index++)
     {
-        vkDestroyImageView(Renderer->Device, Renderer->Swapchain.Images[Index].View, nullptr);
+        vkDestroyImageView(Rr->Device, Rr->Swapchain.Images[Index].View, nullptr);
     }
-    vkDestroySwapchainKHR(Renderer->Device, Swapchain, nullptr);
+    vkDestroySwapchainKHR(Rr->Device, Swapchain, nullptr);
 
-    DestroyAllocatedImage(Renderer, &Renderer->DrawImage);
+    RR_DestroyAllocatedImage(Rr, &Rr->DrawImage);
 }
 
-static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool bVSync)
+static void RR_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
 {
-    VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
+    VkSwapchainKHR OldSwapchain = Rr->Swapchain.Handle;
 
     VkSurfaceCapabilitiesKHR SurfCaps;
-    VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &SurfCaps));
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &SurfCaps));
 
     u32 PresentModeCount;
-    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, nullptr));
+    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, nullptr));
     assert(PresentModeCount > 0);
 
     auto PresentModes = StackAlloc(VkPresentModeKHR, PresentModeCount);
-    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, PresentModes));
+    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, PresentModes));
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
@@ -289,14 +289,14 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
         *Height = SurfCaps.currentExtent.height;
     }
 
-    Renderer->Swapchain.Extent = SwapchainExtent;
+    Rr->Swapchain.Extent = SwapchainExtent;
 
     u32 FormatCount;
-    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, nullptr));
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, nullptr));
     assert(FormatCount > 0);
 
     auto* SurfaceFormats = StackAlloc(VkSurfaceFormatKHR, FormatCount);
-    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, SurfaceFormats));
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, SurfaceFormats));
 
     bool bPreferredFormatFound = false;
     for (u32 Index = 0; Index < FormatCount; Index++)
@@ -305,8 +305,8 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
 
         if (SurfaceFormat->format == VK_FORMAT_B8G8R8A8_UNORM || SurfaceFormat->format == VK_FORMAT_R8G8B8A8_UNORM)
         {
-            Renderer->Swapchain.Format = SurfaceFormat->format;
-            Renderer->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
+            Rr->Swapchain.Format = SurfaceFormat->format;
+            Rr->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
             bPreferredFormatFound = true;
             break;
         }
@@ -336,10 +336,10 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
 
     VkSwapchainCreateInfoKHR SwapchainCI = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .surface = Renderer->Surface,
+        .surface = Rr->Surface,
         .minImageCount = DesiredNumberOfSwapchainImages,
-        .imageFormat = Renderer->Swapchain.Format,
-        .imageColorSpace = Renderer->Swapchain.ColorSpace,
+        .imageFormat = Rr->Swapchain.Format,
+        .imageColorSpace = Rr->Swapchain.ColorSpace,
         .imageExtent = { SwapchainExtent.width, SwapchainExtent.height },
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -361,25 +361,25 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
         SwapchainCI.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    VK_ASSERT(vkCreateSwapchainKHR(Renderer->Device, &SwapchainCI, nullptr, &Renderer->Swapchain.Handle));
+    VK_ASSERT(vkCreateSwapchainKHR(Rr->Device, &SwapchainCI, nullptr, &Rr->Swapchain.Handle));
 
     if (OldSwapchain != VK_NULL_HANDLE)
     {
-        CleanupSwapchain(Renderer, OldSwapchain);
+        RR_CleanupSwapchain(Rr, OldSwapchain);
     }
 
     u32 ImageCount = 0;
-    VK_ASSERT(vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, nullptr));
+    VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, nullptr));
     assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
 
-    Renderer->Swapchain.ImageCount = ImageCount;
+    Rr->Swapchain.ImageCount = ImageCount;
     auto Images = StackAlloc(VkImage, ImageCount);
-    VK_ASSERT(vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images));
+    VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, Images));
 
     VkImageViewCreateInfo ColorAttachmentView = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = Renderer->Swapchain.Format,
+        .format = Rr->Swapchain.Format,
         .components = {
             .r = VK_COMPONENT_SWIZZLE_R,
             .g = VK_COMPONENT_SWIZZLE_G,
@@ -396,12 +396,12 @@ static void CreateSwapchain(SRenderer* Renderer, u32* Width, u32* Height, bool b
 
     for (u32 i = 0; i < ImageCount; i++)
     {
-        Renderer->Swapchain.Images[i].Handle = Images[i];
+        Rr->Swapchain.Images[i].Handle = Images[i];
         ColorAttachmentView.image = Images[i];
-        VK_ASSERT(vkCreateImageView(Renderer->Device, &ColorAttachmentView, nullptr, &Renderer->Swapchain.Images[i].View));
+        VK_ASSERT(vkCreateImageView(Rr->Device, &ColorAttachmentView, nullptr, &Rr->Swapchain.Images[i].View));
     }
 
-    CreateDrawImage(Renderer, *Width, *Height);
+    RR_CreateDrawImage(Rr, *Width, *Height);
 }
 
 static VkBool32 VKAPI_PTR DebugMessage(
@@ -421,7 +421,7 @@ static VkBool32 VKAPI_PTR DebugMessage(
     return VK_FALSE;
 }
 
-static void VKAPI_CALL InitDebugMessenger(SRenderer* Renderer)
+static void VKAPI_CALL RR_InitDebugMessenger(SRr* Rr)
 {
     VkDebugUtilsMessengerCreateInfoEXT DebugUtilsMessengerCI = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -430,21 +430,21 @@ static void VKAPI_CALL InitDebugMessenger(SRenderer* Renderer)
         .pfnUserCallback = static_cast<PFN_vkDebugUtilsMessengerCallbackEXT>(DebugMessage)
     };
 
-    VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Renderer->Instance, &DebugUtilsMessengerCI, nullptr, &Renderer->Messenger));
+    VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Rr->Instance, &DebugUtilsMessengerCI, nullptr, &Rr->Messenger));
 }
 
-static void InitCommands(SRenderer* Renderer)
+static void RR_InitCommands(SRr* Rr)
 {
     VkCommandPoolCreateInfo CommandPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+        .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
     };
 
-    for (auto& Frame : Renderer->Frames)
+    for (auto& Frame : Rr->Frames)
     {
-        VK_ASSERT(vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, nullptr, &Frame.CommandPool));
+        VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, nullptr, &Frame.CommandPool));
 
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -454,14 +454,14 @@ static void InitCommands(SRenderer* Renderer)
             .commandBufferCount = 1,
         };
 
-        VK_ASSERT(vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame.MainCommandBuffer));
+        VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame.MainCommandBuffer));
     }
 }
 
-static void InitSyncStructures(SRenderer* Renderer)
+static void RR_InitSyncStructures(SRr* Rr)
 {
-    VkDevice Device = Renderer->Device;
-    SFrameData* Frames = Renderer->Frames;
+    VkDevice Device = Rr->Device;
+    SFrameData* Frames = Rr->Frames;
 
     VkFenceCreateInfo fenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     VkSemaphoreCreateInfo semaphoreCreateInfo = GetSemaphoreCreateInfo(0);
@@ -475,7 +475,7 @@ static void InitSyncStructures(SRenderer* Renderer)
     }
 }
 
-static void InitAllocator(SRenderer* Renderer)
+static void RR_InitAllocator(SRr* Rr)
 {
     VmaVulkanFunctions VulkanFunctions = {
         .vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties,
@@ -503,53 +503,53 @@ static void InitAllocator(SRenderer* Renderer)
     };
     VmaAllocatorCreateInfo AllocatorInfo = {
         .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
-        .physicalDevice = Renderer->PhysicalDevice.Handle,
-        .device = Renderer->Device,
+        .physicalDevice = Rr->PhysicalDevice.Handle,
+        .device = Rr->Device,
         .pVulkanFunctions = &VulkanFunctions,
-        .instance = Renderer->Instance,
+        .instance = Rr->Instance,
     };
-    VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Renderer->Allocator));
+    VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Rr->Allocator));
 }
 
-static void UpdateDrawImageDescriptors(SRenderer* Renderer, b32 bCreate, b32 bDestroy)
+static void RR_UpdateDrawImageDescriptors(SRr* Rr, b32 bCreate, b32 bDestroy)
 {
-    SDescriptorAllocator* GlobalDescriptorAllocator = &Renderer->GlobalDescriptorAllocator;
+    SDescriptorAllocator* GlobalDescriptorAllocator = &Rr->GlobalDescriptorAllocator;
 
     if (bDestroy)
     {
-        vkDestroyDescriptorSetLayout(Renderer->Device, Renderer->DrawImageDescriptorLayout, nullptr);
+        vkDestroyDescriptorSetLayout(Rr->Device, Rr->DrawImageDescriptorLayout, nullptr);
 
-        DescriptorAllocator_ClearDescriptors(GlobalDescriptorAllocator, Renderer->Device);
+        DescriptorAllocator_ClearDescriptors(GlobalDescriptorAllocator, Rr->Device);
     }
     if (bCreate)
     {
         SDescriptorLayoutBuilder Builder = {};
         DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
-        Renderer->DrawImageDescriptorLayout = DescriptorLayoutBuilder_Build(&Builder, Renderer->Device, VK_SHADER_STAGE_COMPUTE_BIT);
+        Rr->DrawImageDescriptorLayout = DescriptorLayoutBuilder_Build(&Builder, Rr->Device, VK_SHADER_STAGE_COMPUTE_BIT);
 
-        Renderer->DrawImageDescriptors = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Renderer->Device, Renderer->DrawImageDescriptorLayout);
+        Rr->DrawImageDescriptors = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Rr->Device, Rr->DrawImageDescriptorLayout);
 
         VkDescriptorImageInfo DescriptorImageInfo = {
-            .imageView = Renderer->DrawImage.View,
+            .imageView = Rr->DrawImage.View,
             .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
         };
 
         VkWriteDescriptorSet WriteDescriptorSet = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
-            .dstSet = Renderer->DrawImageDescriptors,
+            .dstSet = Rr->DrawImageDescriptors,
             .dstBinding = 0,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
             .pImageInfo = &DescriptorImageInfo,
         };
 
-        vkUpdateDescriptorSets(Renderer->Device, 1, &WriteDescriptorSet, 0, nullptr);
+        vkUpdateDescriptorSets(Rr->Device, 1, &WriteDescriptorSet, 0, nullptr);
     }
 }
 
-static void InitDescriptors(SRenderer* Renderer)
+static void RR_InitDescriptors(SRr* Renderer)
 {
     SDescriptorAllocator* GlobalDescriptorAllocator = &Renderer->GlobalDescriptorAllocator;
 
@@ -561,23 +561,23 @@ static void InitDescriptors(SRenderer* Renderer)
 
     /* */
 
-    UpdateDrawImageDescriptors(Renderer, true, false);
+    RR_UpdateDrawImageDescriptors(Renderer, true, false);
 }
 
-static void InitBackgroundPipelines(SRenderer* Renderer)
+static void RR_InitBackgroundPipelines(SRr* Rr)
 {
     VkPipelineLayoutCreateInfo ComputeLayout = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .setLayoutCount = 1,
-        .pSetLayouts = &Renderer->DrawImageDescriptorLayout,
+        .pSetLayouts = &Rr->DrawImageDescriptorLayout,
     };
 
-    VK_ASSERT(vkCreatePipelineLayout(Renderer->Device, &ComputeLayout, nullptr, &Renderer->GradientPipelineLayout));
+    VK_ASSERT(vkCreatePipelineLayout(Rr->Device, &ComputeLayout, nullptr, &Rr->GradientPipelineLayout));
 
     VkShaderModule ComputeDrawShader;
     std::filesystem::path ShaderPath = std::filesystem::current_path() / "test.comp.spv";
-    if (!LoadShaderModule(ShaderPath.string().c_str(), Renderer->Device, &ComputeDrawShader))
+    if (!LoadShaderModule(ShaderPath.string().c_str(), Rr->Device, &ComputeDrawShader))
     {
         SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, "Error when building the compute shader! Path: %s", ShaderPath.string().c_str());
         abort();
@@ -595,23 +595,23 @@ static void InitBackgroundPipelines(SRenderer* Renderer)
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         .pNext = nullptr,
         .stage = StageCreateInfo,
-        .layout = Renderer->GradientPipelineLayout,
+        .layout = Rr->GradientPipelineLayout,
     };
 
-    VK_ASSERT(vkCreateComputePipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, nullptr, &Renderer->GradientPipeline));
-    vkDestroyShaderModule(Renderer->Device, ComputeDrawShader, nullptr);
+    VK_ASSERT(vkCreateComputePipelines(Rr->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, nullptr, &Rr->GradientPipeline));
+    vkDestroyShaderModule(Rr->Device, ComputeDrawShader, nullptr);
 }
 
-static void InitPipelines(SRenderer* Renderer)
+static void InitPipelines(SRr* Rr)
 {
-    InitBackgroundPipelines(Renderer);
+    RR_InitBackgroundPipelines(Rr);
 }
 
-static void DrawBackground(SRenderer* Renderer, VkCommandBuffer CommandBuffer)
+static void DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
 {
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipeline);
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipelineLayout, 0, 1, &Renderer->DrawImageDescriptors, 0, nullptr);
-    vkCmdDispatch(CommandBuffer, ceil(Renderer->DrawExtent.width / 16.0), ceil(Renderer->DrawExtent.height / 16.0), 1);
+    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipeline);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipelineLayout, 0, 1, &Rr->DrawImageDescriptors, 0, nullptr);
+    vkCmdDispatch(CommandBuffer, ceil(Rr->DrawExtent.width / 16.0), ceil(Rr->DrawExtent.height / 16.0), 1);
 
     // float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
     // VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
@@ -621,7 +621,7 @@ static void DrawBackground(SRenderer* Renderer, VkCommandBuffer CommandBuffer)
     // vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
 }
 
-void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window)
+void RR_Init(SRr* Rr, struct SDL_Window* Window)
 {
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
@@ -694,104 +694,104 @@ void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window)
         VKInstInfo.pNext = &ValidationFeatures;
     }
 
-    VK_ASSERT(vkCreateInstance(&VKInstInfo, nullptr, &Renderer->Instance));
+    VK_ASSERT(vkCreateInstance(&VKInstInfo, nullptr, &Rr->Instance));
 
-    volkLoadInstance(Renderer->Instance);
+    volkLoadInstance(Rr->Instance);
 
     if (bEnableValidationLayers)
     {
-        InitDebugMessenger(Renderer);
+        RR_InitDebugMessenger(Rr);
     }
 
-    if (SDL_Vulkan_CreateSurface(Window, Renderer->Instance, nullptr, &Renderer->Surface) != SDL_TRUE)
+    if (SDL_Vulkan_CreateSurface(Window, Rr->Instance, nullptr, &Rr->Surface) != SDL_TRUE)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Failed to create Vulkan surface: %s", SDL_GetError());
         abort();
     }
 
-    InitDevice(Renderer);
+    RR_InitDevice(Rr);
 
-    InitAllocator(Renderer);
+    RR_InitAllocator(Rr);
 
     // volkLoadDevice(Renderer->Device);
 
     u32 Width, Height;
     SDL_GetWindowSizeInPixels(Window, (i32*)&Width, (i32*)&Height);
     bool bVSync = true;
-    CreateSwapchain(Renderer, &Width, &Height, bVSync);
+    RR_CreateSwapchain(Rr, &Width, &Height, bVSync);
 
-    InitCommands(Renderer);
+    RR_InitCommands(Rr);
 
-    InitSyncStructures(Renderer);
+    RR_InitSyncStructures(Rr);
 
-    InitDescriptors(Renderer);
+    RR_InitDescriptors(Rr);
 
-    InitPipelines(Renderer);
+    InitPipelines(Rr);
 }
 
-void Renderer_Cleanup(SRenderer* Renderer)
+void RR_Cleanup(SRr* Rr)
 {
-    VkDevice Device = Renderer->Device;
+    VkDevice Device = Rr->Device;
 
-    vkDeviceWaitIdle(Renderer->Device);
+    vkDeviceWaitIdle(Rr->Device);
 
-    vkDestroyPipelineLayout(Device, Renderer->GradientPipelineLayout, nullptr);
-    vkDestroyPipeline(Device, Renderer->GradientPipeline, nullptr);
+    vkDestroyPipelineLayout(Device, Rr->GradientPipelineLayout, nullptr);
+    vkDestroyPipeline(Device, Rr->GradientPipeline, nullptr);
 
-    UpdateDrawImageDescriptors(Renderer, false, true);
+    RR_UpdateDrawImageDescriptors(Rr, false, true);
 
-    DescriptorAllocator_DestroyPool(&Renderer->GlobalDescriptorAllocator, Device);
+    DescriptorAllocator_DestroyPool(&Rr->GlobalDescriptorAllocator, Device);
 
-    for (auto& Index : Renderer->Frames)
+    for (auto& Index : Rr->Frames)
     {
         SFrameData* Frame = &Index;
-        vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, nullptr);
+        vkDestroyCommandPool(Rr->Device, Frame->CommandPool, nullptr);
 
         vkDestroyFence(Device, Frame->RenderFence, nullptr);
         vkDestroySemaphore(Device, Frame->RenderSemaphore, nullptr);
         vkDestroySemaphore(Device, Frame->SwapchainSemaphore, nullptr);
     }
 
-    CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
+    RR_CleanupSwapchain(Rr, Rr->Swapchain.Handle);
 
-    vmaDestroyAllocator(Renderer->Allocator);
+    vmaDestroyAllocator(Rr->Allocator);
 
-    vkDestroySurfaceKHR(Renderer->Instance, Renderer->Surface, nullptr);
-    vkDestroyDevice(Renderer->Device, nullptr);
+    vkDestroySurfaceKHR(Rr->Instance, Rr->Surface, nullptr);
+    vkDestroyDevice(Rr->Device, nullptr);
 
     if (bEnableValidationLayers)
     {
-        vkDestroyDebugUtilsMessengerEXT(Renderer->Instance, Renderer->Messenger, nullptr);
+        vkDestroyDebugUtilsMessengerEXT(Rr->Instance, Rr->Messenger, nullptr);
     }
-    vkDestroyInstance(Renderer->Instance, nullptr);
+    vkDestroyInstance(Rr->Instance, nullptr);
 }
 
-void Renderer_Draw(SRenderer* Renderer)
+void RR_Draw(SRr* Rr)
 {
-    VkDevice Device = Renderer->Device;
-    SFrameData* CurrentFrame = GetCurrentFrame(Renderer);
-    SAllocatedImage* DrawImage = &Renderer->DrawImage;
+    VkDevice Device = Rr->Device;
+    SFrameData* CurrentFrame = RR_GetCurrentFrame(Rr);
+    SAllocatedImage* DrawImage = &Rr->DrawImage;
     VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;
 
     VK_ASSERT(vkWaitForFences(Device, 1, &CurrentFrame->RenderFence, true, 1000000000));
     VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence));
 
     u32 SwapchainImageIndex;
-    VK_ASSERT(vkAcquireNextImageKHR(Device, Renderer->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex));
+    VK_ASSERT(vkAcquireNextImageKHR(Device, Rr->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex));
 
-    Renderer->DrawExtent.width = DrawImage->Extent.width;
-    Renderer->DrawExtent.height = DrawImage->Extent.height;
+    Rr->DrawExtent.width = DrawImage->Extent.width;
+    Rr->DrawExtent.height = DrawImage->Extent.height;
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo));
 
     TransitionImage(CommandBuffer, DrawImage->Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    DrawBackground(Renderer, CommandBuffer);
+    DrawBackground(Rr, CommandBuffer);
     TransitionImage(CommandBuffer, DrawImage->Handle, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    TransitionImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    CopyImageToImage(CommandBuffer, DrawImage->Handle, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, Renderer->DrawExtent, Renderer->Swapchain.Extent);
-    TransitionImage(CommandBuffer, Renderer->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    CopyImageToImage(CommandBuffer, DrawImage->Handle, Rr->Swapchain.Images[SwapchainImageIndex].Handle, Rr->DrawExtent, Rr->Swapchain.Extent);
+    TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_ASSERT(vkEndCommandBuffer(CommandBuffer));
 
@@ -802,7 +802,7 @@ void Renderer_Draw(SRenderer* Renderer)
 
     VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
 
-    VK_ASSERT(vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, CurrentFrame->RenderFence));
+    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, CurrentFrame->RenderFence));
 
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -810,20 +810,20 @@ void Renderer_Draw(SRenderer* Renderer)
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &CurrentFrame->RenderSemaphore,
         .swapchainCount = 1,
-        .pSwapchains = &Renderer->Swapchain.Handle,
+        .pSwapchains = &Rr->Swapchain.Handle,
         .pImageIndices = &SwapchainImageIndex,
     };
 
-    VK_ASSERT(vkQueuePresentKHR(Renderer->GraphicsQueue.Handle, &PresentInfo));
+    VK_ASSERT(vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo));
 
-    Renderer->FrameNumber++;
+    Rr->FrameNumber++;
 }
 
-void Renderer_Resize(SRenderer* Renderer, u32 Width, u32 Height)
+void RR_Resize(SRr* Rr, u32 Width, u32 Height)
 {
-    vkDeviceWaitIdle(Renderer->Device);
+    vkDeviceWaitIdle(Rr->Device);
 
-    CreateSwapchain(Renderer, &Width, &Height, true);
+    RR_CreateSwapchain(Rr, &Width, &Height, true);
 
-    UpdateDrawImageDescriptors(Renderer, true, true);
+    RR_UpdateDrawImageDescriptors(Rr, true, true);
 }

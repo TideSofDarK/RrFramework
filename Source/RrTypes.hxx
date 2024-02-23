@@ -34,13 +34,13 @@ typedef struct SRendererSwapchain
     SVulkanImage Images[MAX_SWAPCHAIN_IMAGE_COUNT];
     u32 ImageCount;
     VkExtent2D Extent;
-} SRendererSwapchain;
+} SSwapchain;
 
 typedef struct SRendererQueue
 {
     VkQueue Handle;
     u32 FamilyIndex;
-} SRendererQueue;
+} SQueue;
 
 typedef struct SPhysicalDevice
 {

@@ -24,7 +24,7 @@ add_custom_target(
         DEPENDS ${SPIRV_BINARY_FILES}
 )
 
-add_executable(${PROJECT_NAME} Main.c App.cxx Renderer.cxx)
+add_executable(${PROJECT_NAME} Main.c App.cxx Rr.cxx)
 add_dependencies(${PROJECT_NAME} Shaders)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}Vendor)
 if (WIN32)

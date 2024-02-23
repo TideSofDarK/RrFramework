@@ -1,5 +1,5 @@
 #include "App.hxx"
-#include "Renderer.hxx"
+#include "Rr.hxx"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -21,7 +21,7 @@ extern "C" void RunApp()
         800,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
-    Renderer_Init(&App.Renderer, App.Window);
+    RR_Init(&App.Rr, App.Window);
 
     while (!App.bExit)
     {
@@ -32,7 +32,7 @@ extern "C" void RunApp()
                 case SDL_EVENT_WINDOW_RESIZED:
                     i32 Width, Height;
                     SDL_GetWindowSizeInPixels(App.Window, &Width, &Height);
-                    Renderer_Resize(&App.Renderer, Width, Height);
+                    RR_Resize(&App.Rr, Width, Height);
                     break;
                 case SDL_EVENT_QUIT:
                     App.bExit = true;
@@ -40,10 +40,10 @@ extern "C" void RunApp()
             }
         }
 
-        Renderer_Draw(&App.Renderer);
+        RR_Draw(&App.Rr);
     }
 
-    Renderer_Cleanup(&App.Renderer);
+    RR_Cleanup(&App.Rr);
     SDL_DestroyWindow(App.Window);
     SDL_Quit();
 }

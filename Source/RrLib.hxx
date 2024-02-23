@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererTypes.hxx"
+#include "RrTypes.hxx"
 
 #include <fstream>
 #include <SDL_log.h>

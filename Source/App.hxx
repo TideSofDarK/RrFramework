@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Core.hxx"
-#include "Renderer.hxx"
+#include "Rr.hxx"
 
 typedef struct SApp
 {
     struct SDL_Window* Window;
-    SRenderer Renderer;
+    SRr Rr;
     b32 bExit;
 } SApp;
 
