@@ -683,15 +683,15 @@ void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window)
         VKInstInfo.enabledLayerCount = 1;
         VKInstInfo.ppEnabledLayerNames = &ValidationLayerName;
 
-        // VkValidationFeatureEnableEXT EnabledValidationFeatures[] = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
-        //
-        // VkValidationFeaturesEXT ValidationFeatures = {
-        //     .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
-        //     .enabledValidationFeatureCount = 1,
-        //     .pEnabledValidationFeatures = EnabledValidationFeatures,
-        // };
-        //
-        // VKInstInfo.pNext = &ValidationFeatures;
+        VkValidationFeatureEnableEXT EnabledValidationFeatures[] = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
+
+        VkValidationFeaturesEXT ValidationFeatures = {
+            .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
+            .enabledValidationFeatureCount = 1,
+            .pEnabledValidationFeatures = EnabledValidationFeatures,
+        };
+
+        VKInstInfo.pNext = &ValidationFeatures;
     }
 
     VK_ASSERT(vkCreateInstance(&VKInstInfo, nullptr, &Renderer->Instance));

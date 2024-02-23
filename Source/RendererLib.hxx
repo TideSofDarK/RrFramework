@@ -190,15 +190,35 @@ b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShade
 
 void TransitionImage(VkCommandBuffer CommandBuffer, VkImage Image, VkImageLayout CurrentLayout, VkImageLayout NewLayout)
 {
+    u64 DstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+    if (NewLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+    {
+        DstAccessMask = VkAccessFlags(0);
+    }
+    if (NewLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+    {
+        DstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+    }
+    if (NewLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        DstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    }
+
+    u64 SrcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+    if (CurrentLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        SrcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    }
+
     VkImageMemoryBarrier2 ImageBarrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 
         .pNext = nullptr,
 
-        .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
+        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT, // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .srcAccessMask = SrcAccessMask,
+        .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT, // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .dstAccessMask = DstAccessMask,
 
         .oldLayout = CurrentLayout,
         .newLayout = NewLayout,
