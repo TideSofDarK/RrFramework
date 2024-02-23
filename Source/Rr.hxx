@@ -42,7 +42,7 @@ typedef struct SRr
     SImmediateMode ImmediateMode;
 } SRr;
 
-void RR_Init(SRr* Rr, struct SDL_Window* Window);
-void RR_Cleanup(SRr* Rr);
-void RR_Draw(SRr* Rr);
-void RR_Resize(SRr* Rr, u32 Width, u32 Height);
+void Rr_Init(SRr* Rr, struct SDL_Window* Window);
+void Rr_Cleanup(SRr* Rr);
+void Rr_Draw(SRr* Rr);
+void Rr_Resize(SRr* Rr, u32 Width, u32 Height);

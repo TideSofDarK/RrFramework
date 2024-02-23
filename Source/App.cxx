@@ -21,7 +21,7 @@ extern "C" void RunApp()
         800,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
-    RR_Init(&App.Rr, App.Window);
+    Rr_Init(&App.Rr, App.Window);
 
     while (!App.bExit)
     {
@@ -32,7 +32,7 @@ extern "C" void RunApp()
                 case SDL_EVENT_WINDOW_RESIZED:
                     i32 Width, Height;
                     SDL_GetWindowSizeInPixels(App.Window, &Width, &Height);
-                    RR_Resize(&App.Rr, Width, Height);
+                    Rr_Resize(&App.Rr, Width, Height);
                     break;
                 case SDL_EVENT_QUIT:
                     App.bExit = true;
@@ -40,10 +40,10 @@ extern "C" void RunApp()
             }
         }
 
-        RR_Draw(&App.Rr);
+        Rr_Draw(&App.Rr);
     }
 
-    RR_Cleanup(&App.Rr);
+    Rr_Cleanup(&App.Rr);
     SDL_DestroyWindow(App.Window);
     SDL_Quit();
 }
