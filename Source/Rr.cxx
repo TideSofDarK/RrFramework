@@ -446,16 +446,16 @@ static void Rr_InitCommands(SRr* Rr)
     {
         VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, nullptr, &Frame.CommandPool));
 
-        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .commandPool = Frame.CommandPool,
-            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
-        };
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame.CommandPool, 1);
 
         VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame.MainCommandBuffer));
     }
+
+    /* Immediate Mode Commands */
+
+	VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, nullptr, &Rr->ImmediateMode.CommandPool));
+	VkCommandBufferAllocateInfo cmdAllocInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
+	VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &cmdAllocInfo, &Rr->ImmediateMode.CommandBuffer));
 }
 
 static void Rr_InitSyncStructures(SRr* Rr)
@@ -602,12 +602,12 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
     vkDestroyShaderModule(Rr->Device, ComputeDrawShader, nullptr);
 }
 
-static void InitPipelines(SRr* Rr)
+static void Rr_InitPipelines(SRr* Rr)
 {
     Rr_InitBackgroundPipelines(Rr);
 }
 
-static void DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
+static void Rr_DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
 {
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipeline);
     vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipelineLayout, 0, 1, &Rr->DrawImageDescriptors, 0, nullptr);
@@ -726,7 +726,7 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
 
     Rr_InitDescriptors(Rr);
 
-    InitPipelines(Rr);
+    Rr_InitPipelines(Rr);
 }
 
 void Rr_Cleanup(SRr* Rr)
@@ -734,6 +734,8 @@ void Rr_Cleanup(SRr* Rr)
     VkDevice Device = Rr->Device;
 
     vkDeviceWaitIdle(Rr->Device);
+
+	vkDestroyCommandPool(Rr->Device, Rr->ImmediateMode.CommandPool, nullptr);
 
     vkDestroyPipelineLayout(Device, Rr->GradientPipelineLayout, nullptr);
     vkDestroyPipeline(Device, Rr->GradientPipeline, nullptr);
@@ -786,7 +788,7 @@ void Rr_Draw(SRr* Rr)
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo));
 
     TransitionImage(CommandBuffer, DrawImage->Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-    DrawBackground(Rr, CommandBuffer);
+    Rr_DrawBackground(Rr, CommandBuffer);
     TransitionImage(CommandBuffer, DrawImage->Handle, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);

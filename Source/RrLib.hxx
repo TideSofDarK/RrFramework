@@ -103,7 +103,7 @@ VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlags AspectMask)
 
 VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
 {
-    VkSemaphoreSubmitInfo submitInfo = {
+    VkSemaphoreSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .pNext = nullptr,
         .semaphore = Semaphore,
@@ -112,19 +112,32 @@ VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, Vk
         .deviceIndex = 0,
     };
 
-    return submitInfo;
+    return Info;
 }
 
 VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
 {
-    VkCommandBufferSubmitInfo info = {
+    VkCommandBufferSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .pNext = nullptr,
         .commandBuffer = CommandBuffer,
         .deviceMask = 0,
     };
 
-    return info;
+    return Info;
+}
+
+VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool CommandPool, u32 Count)
+{
+    VkCommandBufferAllocateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .commandPool = CommandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = Count,
+    };
+
+    return Info;
 }
 
 VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, VkSemaphoreSubmitInfo* SignalSemaphoreInfo,
