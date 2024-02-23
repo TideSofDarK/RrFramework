@@ -511,6 +511,44 @@ static void InitAllocator(SRenderer* Renderer)
     VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Renderer->Allocator));
 }
 
+static void UpdateDrawImageDescriptors(SRenderer* Renderer, b32 bCreate, b32 bDestroy)
+{
+    SDescriptorAllocator* GlobalDescriptorAllocator = &Renderer->GlobalDescriptorAllocator;
+
+    if (bDestroy)
+    {
+        vkDestroyDescriptorSetLayout(Renderer->Device, Renderer->DrawImageDescriptorLayout, nullptr);
+
+        DescriptorAllocator_ClearDescriptors(GlobalDescriptorAllocator, Renderer->Device);
+    }
+    if (bCreate)
+    {
+        SDescriptorLayoutBuilder Builder = {};
+        DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+        Renderer->DrawImageDescriptorLayout = DescriptorLayoutBuilder_Build(&Builder, Renderer->Device, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        Renderer->DrawImageDescriptors = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Renderer->Device, Renderer->DrawImageDescriptorLayout);
+
+        VkDescriptorImageInfo DescriptorImageInfo = {
+            .imageView = Renderer->DrawImage.View,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+        };
+
+        VkWriteDescriptorSet WriteDescriptorSet = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = Renderer->DrawImageDescriptors,
+            .dstBinding = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            .pImageInfo = &DescriptorImageInfo,
+        };
+
+        vkUpdateDescriptorSets(Renderer->Device, 1, &WriteDescriptorSet, 0, nullptr);
+    }
+}
+
 static void InitDescriptors(SRenderer* Renderer)
 {
     SDescriptorAllocator* GlobalDescriptorAllocator = &Renderer->GlobalDescriptorAllocator;
@@ -523,29 +561,7 @@ static void InitDescriptors(SRenderer* Renderer)
 
     /* */
 
-    SDescriptorLayoutBuilder Builder = {};
-    DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-
-    Renderer->DrawImageDescriptorLayout = DescriptorLayoutBuilder_Build(&Builder, Renderer->Device, VK_SHADER_STAGE_COMPUTE_BIT);
-
-    Renderer->DrawImageDescriptors = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Renderer->Device, Renderer->DrawImageDescriptorLayout);
-
-    VkDescriptorImageInfo DescriptorImageInfo = {
-        .imageView = Renderer->DrawImage.View,
-        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-    };
-
-    VkWriteDescriptorSet WriteDescriptorSet = {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .pNext = nullptr,
-        .dstSet = Renderer->DrawImageDescriptors,
-        .dstBinding = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &DescriptorImageInfo,
-    };
-
-    vkUpdateDescriptorSets(Renderer->Device, 1, &WriteDescriptorSet, 0, nullptr);
+    UpdateDrawImageDescriptors(Renderer, true, false);
 }
 
 static void InitBackgroundPipelines(SRenderer* Renderer)
@@ -722,9 +738,8 @@ void Renderer_Cleanup(SRenderer* Renderer)
     vkDestroyPipelineLayout(Device, Renderer->GradientPipelineLayout, nullptr);
     vkDestroyPipeline(Device, Renderer->GradientPipeline, nullptr);
 
-    vkDestroyDescriptorSetLayout(Device, Renderer->DrawImageDescriptorLayout, nullptr);
+    UpdateDrawImageDescriptors(Renderer, false, true);
 
-    DescriptorAllocator_ClearDescriptors(&Renderer->GlobalDescriptorAllocator, Device);
     DescriptorAllocator_DestroyPool(&Renderer->GlobalDescriptorAllocator, Device);
 
     for (auto& Index : Renderer->Frames)
@@ -809,4 +824,6 @@ void Renderer_Resize(SRenderer* Renderer, u32 Width, u32 Height)
     vkDeviceWaitIdle(Renderer->Device);
 
     CreateSwapchain(Renderer, &Width, &Height, true);
+
+    UpdateDrawImageDescriptors(Renderer, true, true);
 }

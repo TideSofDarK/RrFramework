@@ -12,14 +12,14 @@ void main()
 
     if (texelCoord.x < size.x && texelCoord.y < size.y)
     {
-        imageStore(image, texelCoord, vec4(texCoord.x, texCoord.y, 0.0f, 1.0f));
-        // vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-        //
-        // if (gl_LocalInvocationID.x != 0 && gl_LocalInvocationID.y != 0)
-        // {
-        //     color.x = float(texelCoord.x) / (size.x);
-        //     color.y = float(texelCoord.y) / (size.y);
-        // }
-        // imageStore(image, texelCoord, color);
+        // imageStore(image, texelCoord, vec4(texCoord.x, texCoord.y, 0.0f, 1.0f));
+        vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+
+        if (gl_LocalInvocationID.x != 0 && gl_LocalInvocationID.y != 0)
+        {
+             color.x = float(texelCoord.x) / (size.x);
+             color.y = float(texelCoord.y) / (size.y);
+        }
+        imageStore(image, texelCoord, color);
     }
 }
