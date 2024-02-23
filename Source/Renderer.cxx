@@ -103,26 +103,30 @@ static void InitDevice(SRenderer* Renderer)
     auto* PhysicalDevices = StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
-    VkPhysicalDeviceProperties PhysicalDeviceProperties = {};
+    Renderer->PhysicalDevice.SubgroupProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = nullptr };
+
+    VkPhysicalDeviceProperties2 PhysicalDeviceProperties = {};
+    PhysicalDeviceProperties.pNext = &Renderer->PhysicalDevice.SubgroupProperties;
+    PhysicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+
     b32 bFoundSuitableDevice = false;
     for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         if (CheckPhysicalDevice(Renderer, PhysicalDevices[Index]))
         {
             Renderer->PhysicalDevice.Handle = PhysicalDevices[Index];
-            vkGetPhysicalDeviceProperties(PhysicalDevices[Index], &PhysicalDeviceProperties);
-            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", PhysicalDeviceProperties.deviceName);
+
+            vkGetPhysicalDeviceFeatures(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.Features);
+            vkGetPhysicalDeviceMemoryProperties(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.MemoryProperties);
+            vkGetPhysicalDeviceProperties2(Renderer->PhysicalDevice.Handle, &PhysicalDeviceProperties);
+
+            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", PhysicalDeviceProperties.properties.deviceName);
+
             bFoundSuitableDevice = true;
             break;
         }
     }
-
-    if (bFoundSuitableDevice)
-    {
-        vkGetPhysicalDeviceFeatures(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.Features);
-        vkGetPhysicalDeviceMemoryProperties(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.MemoryProperties);
-    }
-    else
+    if (!bFoundSuitableDevice)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not select physical device based on the chosen properties!");
         abort();

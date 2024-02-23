@@ -48,6 +48,7 @@ typedef struct SPhysicalDevice
 
     VkPhysicalDeviceFeatures Features;
     VkPhysicalDeviceMemoryProperties MemoryProperties;
+    VkPhysicalDeviceSubgroupProperties SubgroupProperties;
 } SPhysicalDevice;
 
 typedef struct SAllocatedImage
