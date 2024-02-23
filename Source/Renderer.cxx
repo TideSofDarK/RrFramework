@@ -7,6 +7,7 @@
 
 #include "Renderer.hxx"
 
+#include <filesystem> /* @TODO: Remove! */
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -19,17 +20,7 @@
 #include <SDL_log.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include "RendererHelpers.hxx"
-
-#define VK_ASSERT(Expr)                                                                                                              \
-    {                                                                                                                                \
-        VkResult Result = Expr;                                                                                                      \
-        if (Result != VK_SUCCESS)                                                                                                    \
-        {                                                                                                                            \
-            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Assertion " #Expr " == VK_SUCCESS failed! Result is %s", string_VkResult(Result)); \
-            abort();                                                                                                                 \
-        }                                                                                                                            \
-    }
+#include "RendererLib.hxx"
 
 #ifdef DEBUG
 static const b32 bEnableValidationLayers = true;
@@ -516,14 +507,98 @@ static void InitAllocator(SRenderer* Renderer)
     VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Renderer->Allocator));
 }
 
-void DrawBackground(SRenderer* Renderer, VkCommandBuffer CommandBuffer)
+static void InitDescriptors(SRenderer* Renderer)
 {
-    float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
-    VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
+    SDescriptorAllocator* GlobalDescriptorAllocator = &Renderer->GlobalDescriptorAllocator;
 
-    VkImageSubresourceRange ClearRange = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+    SDescriptorPoolSizeRatio sizes[] = {
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 }
+    };
 
-    vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
+    DescriptorAllocator_Init(GlobalDescriptorAllocator, Renderer->Device, 10, sizes, 1);
+
+    /* */
+
+    SDescriptorLayoutBuilder Builder = {};
+    DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+    Renderer->DrawImageDescriptorLayout = DescriptorLayoutBuilder_Build(&Builder, Renderer->Device, VK_SHADER_STAGE_COMPUTE_BIT);
+
+    Renderer->DrawImageDescriptors = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Renderer->Device, Renderer->DrawImageDescriptorLayout);
+
+    VkDescriptorImageInfo DescriptorImageInfo = {
+        .imageView = Renderer->DrawImage.View,
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    VkWriteDescriptorSet WriteDescriptorSet = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext = nullptr,
+        .dstSet = Renderer->DrawImageDescriptors,
+        .dstBinding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &DescriptorImageInfo,
+    };
+
+    vkUpdateDescriptorSets(Renderer->Device, 1, &WriteDescriptorSet, 0, nullptr);
+}
+
+static void InitBackgroundPipelines(SRenderer* Renderer)
+{
+    VkPipelineLayoutCreateInfo ComputeLayout = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext = nullptr,
+        .setLayoutCount = 1,
+        .pSetLayouts = &Renderer->DrawImageDescriptorLayout,
+    };
+
+    VK_ASSERT(vkCreatePipelineLayout(Renderer->Device, &ComputeLayout, nullptr, &Renderer->GradientPipelineLayout));
+
+    VkShaderModule ComputeDrawShader;
+    std::filesystem::path ShaderPath = std::filesystem::current_path() / "test.comp.spv";
+    if (!LoadShaderModule(ShaderPath.string().c_str(), Renderer->Device, &ComputeDrawShader))
+    {
+        SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, "Error when building the compute shader! Path: %s", ShaderPath.string().c_str());
+        abort();
+    }
+
+    VkPipelineShaderStageCreateInfo StageCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+        .module = ComputeDrawShader,
+        .pName = "main",
+    };
+
+    VkComputePipelineCreateInfo PipelineCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .pNext = nullptr,
+        .stage = StageCreateInfo,
+        .layout = Renderer->GradientPipelineLayout,
+    };
+
+    VK_ASSERT(vkCreateComputePipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, nullptr, &Renderer->GradientPipeline));
+    vkDestroyShaderModule(Renderer->Device, ComputeDrawShader, nullptr);
+}
+
+static void InitPipelines(SRenderer* Renderer)
+{
+    InitBackgroundPipelines(Renderer);
+}
+
+static void DrawBackground(SRenderer* Renderer, VkCommandBuffer CommandBuffer)
+{
+    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipeline);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipelineLayout, 0, 1, &Renderer->DrawImageDescriptors, 0, nullptr);
+    vkCmdDispatch(CommandBuffer, ceil(Renderer->DrawExtent.width / 16.0), ceil(Renderer->DrawExtent.height / 16.0), 1);
+
+    // float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
+    // VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
+    //
+    // VkImageSubresourceRange ClearRange = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+    //
+    // vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
 }
 
 void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window)
@@ -628,6 +703,10 @@ void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window)
     InitCommands(Renderer);
 
     InitSyncStructures(Renderer);
+
+    InitDescriptors(Renderer);
+
+    InitPipelines(Renderer);
 }
 
 void Renderer_Cleanup(SRenderer* Renderer)
@@ -635,6 +714,14 @@ void Renderer_Cleanup(SRenderer* Renderer)
     VkDevice Device = Renderer->Device;
 
     vkDeviceWaitIdle(Renderer->Device);
+
+    vkDestroyPipelineLayout(Device, Renderer->GradientPipelineLayout, nullptr);
+    vkDestroyPipeline(Device, Renderer->GradientPipeline, nullptr);
+
+    vkDestroyDescriptorSetLayout(Device, Renderer->DrawImageDescriptorLayout, nullptr);
+
+    DescriptorAllocator_ClearDescriptors(&Renderer->GlobalDescriptorAllocator, Device);
+    DescriptorAllocator_DestroyPool(&Renderer->GlobalDescriptorAllocator, Device);
 
     for (auto& Index : Renderer->Frames)
     {

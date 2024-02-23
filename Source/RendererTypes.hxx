@@ -1,5 +1,7 @@
 #pragma once
 
+#define VK_NO_PROTOTYPES
+
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
@@ -56,3 +58,22 @@ typedef struct SAllocatedImage
     VkExtent3D Extent;
     VkFormat Format;
 } SAllocatedImage;
+
+#define MAX_LAYOUT_BINDINGS 4
+
+typedef struct SDescriptorLayoutBuilder
+{
+    VkDescriptorSetLayoutBinding Bindings[MAX_LAYOUT_BINDINGS];
+    u32 Count;
+} SDescriptorLayoutBuilder;
+
+typedef struct SDescriptorPoolSizeRatio
+{
+    VkDescriptorType Type;
+    f32 Ratio;
+} SDescriptorPoolSizeRatio;
+
+typedef struct SDescriptorAllocator
+{
+    VkDescriptorPool Pool;
+} SDescriptorAllocator;

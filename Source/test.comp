@@ -8,16 +8,18 @@ void main()
 {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(image);
+    vec2 texCoord = vec2(texelCoord) / vec2(size);
 
     if (texelCoord.x < size.x && texelCoord.y < size.y)
     {
-        vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-
-        if (gl_LocalInvocationID.x != 0 && gl_LocalInvocationID.y != 0)
-        {
-            color.x = float(texelCoord.x) / (size.x);
-            color.y = float(texelCoord.y) / (size.y);
-        }
-        imageStore(image, texelCoord, color);
+        imageStore(image, texelCoord, vec4(texCoord.x, texCoord.y, 0.0f, 1.0f));
+        // vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+        //
+        // if (gl_LocalInvocationID.x != 0 && gl_LocalInvocationID.y != 0)
+        // {
+        //     color.x = float(texelCoord.x) / (size.x);
+        //     color.y = float(texelCoord.y) / (size.y);
+        // }
+        // imageStore(image, texelCoord, color);
     }
 }

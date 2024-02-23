@@ -1,7 +1,5 @@
 #pragma once
 
-#define VK_NO_PROTOTYPES
-
 #include "RendererTypes.hxx"
 
 #define FRAME_OVERLAP 2
@@ -27,8 +25,14 @@ typedef struct SRenderer
     SFrameData Frames[FRAME_OVERLAP];
     u64 FrameNumber;
 
+    SDescriptorAllocator GlobalDescriptorAllocator;
+
     SAllocatedImage DrawImage;
     VkExtent2D DrawExtent;
+    VkDescriptorSet DrawImageDescriptors;
+    VkDescriptorSetLayout DrawImageDescriptorLayout;
+	VkPipeline GradientPipeline;
+	VkPipelineLayout GradientPipelineLayout;
 } SRenderer;
 
 void Renderer_Init(SRenderer* Renderer, struct SDL_Window* Window);
