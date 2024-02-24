@@ -236,44 +236,24 @@ b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShade
  * Operations
  * ========== */
 
-void TransitionImage(VkCommandBuffer CommandBuffer, VkImage Image, VkImageLayout CurrentLayout, VkImageLayout NewLayout)
+void TransitionImage(
+    VkCommandBuffer CommandBuffer,
+    VkImage Image,
+    VkPipelineStageFlags2 SrcStageMask,
+    VkAccessFlags2 SrcAccessMask,
+    VkPipelineStageFlags2 DstStageMask,
+    VkAccessFlags2 DstAccessMask,
+    VkImageLayout CurrentLayout,
+    VkImageLayout NewLayout)
 {
-    u64 DstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
-    if (NewLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-    {
-        DstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT;
-    }
-    if (NewLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-    {
-        DstAccessMask = VkAccessFlags(0);
-    }
-    if (NewLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-    {
-        DstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-    }
-    if (NewLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-    {
-        DstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    }
-
-    u64 SrcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-    if (CurrentLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-    {
-        SrcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT;
-    }
-    if (CurrentLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-    {
-        SrcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    }
-
     VkImageMemoryBarrier2 ImageBarrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 
         .pNext = nullptr,
 
-        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .srcStageMask = SrcStageMask,
         .srcAccessMask = SrcAccessMask,
-        .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .dstStageMask = DstStageMask,
         .dstAccessMask = DstAccessMask,
 
         .oldLayout = CurrentLayout,

@@ -851,19 +851,53 @@ void Rr_Draw(SRr* Rr)
     u32 SwapchainImageIndex;
     VK_ASSERT(vkAcquireNextImageKHR(Device, Rr->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex));
 
+    VkImage SwapchainImage = Rr->Swapchain.Images[SwapchainImageIndex].Handle;
+
     Rr->DrawExtent.width = DrawImage->Extent.width;
     Rr->DrawExtent.height = DrawImage->Extent.height;
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo));
 
-    TransitionImage(CommandBuffer, DrawImage->Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    TransitionImage(
+        CommandBuffer,
+        DrawImage->Handle,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_MEMORY_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_MEMORY_WRITE_BIT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_GENERAL);
     Rr_DrawBackground(Rr, CommandBuffer);
-    TransitionImage(CommandBuffer, DrawImage->Handle, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    TransitionImage(
+        CommandBuffer,
+        DrawImage->Handle,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_MEMORY_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_TRANSFER_READ_BIT,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    TransitionImage(
+        CommandBuffer,
+        SwapchainImage,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_MEMORY_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     CopyImageToImage(CommandBuffer, DrawImage->Handle, Rr->Swapchain.Images[SwapchainImageIndex].Handle, Rr->DrawExtent, Rr->Swapchain.Extent);
-    TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    TransitionImage(
+        CommandBuffer,
+        SwapchainImage,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     if (Rr->ImmediateMode.bInit)
     {
@@ -877,7 +911,15 @@ void Rr_Draw(SRr* Rr)
         vkCmdEndRendering(CommandBuffer);
     }
 
-    TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    TransitionImage(
+        CommandBuffer,
+        SwapchainImage,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        0,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_ASSERT(vkEndCommandBuffer(CommandBuffer));
 
