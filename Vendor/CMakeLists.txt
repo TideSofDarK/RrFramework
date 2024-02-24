@@ -22,16 +22,31 @@ CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.275.0")
 set(CGLM_STATIC ON CACHE BOOL "" FORCE)
 CPMAddPackage("gh:recp/cglm#master")
 
-set(IMGUI_STATIC ON CACHE BOOL "" FORCE)
-CPMAddPackage("gh:cimgui/cimgui#master")
+set(IMGUI_TARGET "${PROJECT_NAME}ImGui")
+add_library(${IMGUI_TARGET})
+target_link_libraries(${IMGUI_TARGET} PRIVATE
+        Vulkan::Headers
+        SDL3::SDL3
+)
+target_include_directories(${IMGUI_TARGET} PUBLIC "/" PRIVATE "./imgui/")
+target_sources (${IMGUI_TARGET} PRIVATE
+    imgui/imgui.cpp
+    imgui/imgui_demo.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+    imgui/imgui_impl_sdl3.cpp
+    imgui/imgui_impl_vulkan.cpp)
 
-add_library(${PROJECT_NAME}Vendor INTERFACE)
-target_link_libraries(${PROJECT_NAME}Vendor INTERFACE
+set(VENDOR_TARGET "${PROJECT_NAME}Vendor")
+add_library(${VENDOR_TARGET} INTERFACE)
+target_link_libraries(${VENDOR_TARGET} INTERFACE
         Vulkan::Headers
         volk::volk_headers
         GPUOpen::VulkanMemoryAllocator
         SDL3::SDL3
         cglm
-        cimgui
+        ${IMGUI_TARGET}
 )
-target_compile_features(${PROJECT_NAME}Vendor INTERFACE c_std_11 cxx_std_20)
+target_compile_features(${VENDOR_TARGET} INTERFACE c_std_11 cxx_std_20)
+set(VENDOR_TARGET "${PROJECT_NAME}Vendor" PARENT_SCOPE)

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <SDL_log.h>
 #include <vulkan/vk_enum_string_helper.h>
+#include <vulkan/vulkan_core.h>
 
 #define VK_ASSERT(Expr)                                                                                                              \
     {                                                                                                                                \
@@ -19,6 +20,40 @@
 /* =======================
  * Struct Creation Helpers
  * ======================= */
+
+VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearValue* ClearValue, VkImageLayout Layout)
+{
+    VkRenderingAttachmentInfo Info = {};
+    Info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    Info.pNext = nullptr;
+    Info.imageView = View;
+    Info.imageLayout = Layout;
+    Info.loadOp = ClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+    Info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    if (ClearValue)
+    {
+        Info.clearValue = *ClearValue;
+    }
+
+    return Info;
+}
+
+VkRenderingInfo GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentInfo* ColorAttachment,
+    VkRenderingAttachmentInfo* DepthAttachment)
+{
+    VkRenderingInfo Info = {};
+    Info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    Info.pNext = nullptr;
+
+    Info.renderArea = VkRect2D{ VkOffset2D{ 0, 0 }, RenderExtent };
+    Info.layerCount = 1;
+    Info.colorAttachmentCount = 1;
+    Info.pColorAttachments = ColorAttachment;
+    Info.pDepthAttachment = DepthAttachment;
+    Info.pStencilAttachment = nullptr;
+
+    return Info;
+}
 
 VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
 {
@@ -204,6 +239,10 @@ b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShade
 void TransitionImage(VkCommandBuffer CommandBuffer, VkImage Image, VkImageLayout CurrentLayout, VkImageLayout NewLayout)
 {
     u64 DstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+    if (NewLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    {
+        DstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT;
+    }
     if (NewLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
     {
         DstAccessMask = VkAccessFlags(0);
@@ -218,6 +257,10 @@ void TransitionImage(VkCommandBuffer CommandBuffer, VkImage Image, VkImageLayout
     }
 
     u64 SrcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+    if (CurrentLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    {
+        SrcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT;
+    }
     if (CurrentLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
     {
         SrcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
@@ -228,9 +271,9 @@ void TransitionImage(VkCommandBuffer CommandBuffer, VkImage Image, VkImageLayout
 
         .pNext = nullptr,
 
-        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT, // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         .srcAccessMask = SrcAccessMask,
-        .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT, // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         .dstAccessMask = DstAccessMask,
 
         .oldLayout = CurrentLayout,

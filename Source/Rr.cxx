@@ -15,6 +15,10 @@
 
 #include <vulkan/vk_enum_string_helper.h>
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_sdl3.h>
+#include <imgui/imgui_impl_vulkan.h>
+
 #include <SDL_error.h>
 #include <SDL_stdinc.h>
 #include <SDL_log.h>
@@ -450,12 +454,6 @@ static void Rr_InitCommands(SRr* Rr)
 
         VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame.MainCommandBuffer));
     }
-
-    /* Immediate Mode Commands */
-
-	VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, nullptr, &Rr->ImmediateMode.CommandPool));
-	VkCommandBufferAllocateInfo cmdAllocInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
-	VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &cmdAllocInfo, &Rr->ImmediateMode.CommandBuffer));
 }
 
 static void Rr_InitSyncStructures(SRr* Rr)
@@ -463,15 +461,15 @@ static void Rr_InitSyncStructures(SRr* Rr)
     VkDevice Device = Rr->Device;
     SFrameData* Frames = Rr->Frames;
 
-    VkFenceCreateInfo fenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VkSemaphoreCreateInfo semaphoreCreateInfo = GetSemaphoreCreateInfo(0);
+    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
 
     for (i32 Index = 0; Index < FRAME_OVERLAP; Index++)
     {
-        VK_ASSERT(vkCreateFence(Device, &fenceCreateInfo, nullptr, &Frames[Index].RenderFence));
+        VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, nullptr, &Frames[Index].RenderFence));
 
-        VK_ASSERT(vkCreateSemaphore(Device, &semaphoreCreateInfo, nullptr, &Frames[Index].SwapchainSemaphore));
-        VK_ASSERT(vkCreateSemaphore(Device, &semaphoreCreateInfo, nullptr, &Frames[Index].RenderSemaphore));
+        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, nullptr, &Frames[Index].SwapchainSemaphore));
+        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, nullptr, &Frames[Index].RenderSemaphore));
     }
 }
 
@@ -729,13 +727,83 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
     Rr_InitPipelines(Rr);
 }
 
+void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
+{
+    VkDevice Device = Rr->Device;
+
+    VkCommandPoolCreateInfo CommandPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
+    };
+    VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, nullptr, &Rr->ImmediateMode.CommandPool));
+    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
+    VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Rr->ImmediateMode.CommandBuffer));
+    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, nullptr, &Rr->ImmediateMode.Fence));
+
+    VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
+
+    VkDescriptorPoolCreateInfo PoolCreateInfo = {};
+    PoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    PoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    PoolCreateInfo.maxSets = 1000;
+    PoolCreateInfo.poolSizeCount = (uint32_t)std::size(PoolSizes);
+    PoolCreateInfo.pPoolSizes = PoolSizes;
+
+    VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, nullptr, &Rr->ImmediateMode.DescriptorPool));
+
+    ImGui::CreateContext();
+
+    ImGui_ImplVulkan_LoadFunctions([](const char* FuncName, void*) {
+        return vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
+    });
+    ImGui_ImplSDL3_InitForVulkan(Window);
+
+    ImGui_ImplVulkan_InitInfo InitInfo = {};
+    InitInfo.Instance = Rr->Instance;
+    InitInfo.PhysicalDevice = Rr->PhysicalDevice.Handle;
+    InitInfo.Device = Device;
+    InitInfo.Queue = Rr->GraphicsQueue.Handle;
+    InitInfo.DescriptorPool = Rr->ImmediateMode.DescriptorPool;
+    InitInfo.MinImageCount = 3;
+    InitInfo.ImageCount = 3;
+    InitInfo.UseDynamicRendering = true;
+    InitInfo.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+    InitInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    InitInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &Rr->Swapchain.Format;
+    InitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+    ImGui_ImplVulkan_Init(&InitInfo);
+    ImGui_ImplVulkan_CreateFontsTexture();
+
+    Rr->ImmediateMode.bInit = true;
+}
+
 void Rr_Cleanup(SRr* Rr)
 {
     VkDevice Device = Rr->Device;
 
     vkDeviceWaitIdle(Rr->Device);
 
-	vkDestroyCommandPool(Rr->Device, Rr->ImmediateMode.CommandPool, nullptr);
+    if (Rr->ImmediateMode.bInit)
+    {
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
+        vkDestroyCommandPool(Rr->Device, Rr->ImmediateMode.CommandPool, nullptr);
+        vkDestroyDescriptorPool(Device, Rr->ImmediateMode.DescriptorPool, nullptr);
+    }
 
     vkDestroyPipelineLayout(Device, Rr->GradientPipelineLayout, nullptr);
     vkDestroyPipeline(Device, Rr->GradientPipeline, nullptr);
@@ -743,6 +811,8 @@ void Rr_Cleanup(SRr* Rr)
     Rr_UpdateDrawImageDescriptors(Rr, false, true);
 
     DescriptorAllocator_DestroyPool(&Rr->GlobalDescriptorAllocator, Device);
+
+    vkDestroyFence(Device, Rr->ImmediateMode.Fence, nullptr);
 
     for (auto& Index : Rr->Frames)
     {
@@ -793,7 +863,21 @@ void Rr_Draw(SRr* Rr)
 
     TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     CopyImageToImage(CommandBuffer, DrawImage->Handle, Rr->Swapchain.Images[SwapchainImageIndex].Handle, Rr->DrawExtent, Rr->Swapchain.Extent);
-    TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    if (Rr->ImmediateMode.bInit)
+    {
+        VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo(Rr->Swapchain.Images[SwapchainImageIndex].View, nullptr, VK_IMAGE_LAYOUT_GENERAL);
+        VkRenderingInfo renderInfo = GetRenderingInfo(Rr->Swapchain.Extent, &ColorAttachment, nullptr);
+
+        vkCmdBeginRendering(CommandBuffer, &renderInfo);
+
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), CommandBuffer);
+
+        vkCmdEndRendering(CommandBuffer);
+    }
+
+    TransitionImage(CommandBuffer, Rr->Swapchain.Images[SwapchainImageIndex].Handle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_ASSERT(vkEndCommandBuffer(CommandBuffer));
 
@@ -828,4 +912,27 @@ void Rr_Resize(SRr* Rr, u32 Width, u32 Height)
     Rr_CreateSwapchain(Rr, &Width, &Height, true);
 
     Rr_UpdateDrawImageDescriptors(Rr, true, true);
+}
+
+void Rr_ImmediateSubmit(SRr* Rr, void (*Function)(VkCommandBuffer))
+{
+    VkDevice Device = Rr->Device;
+    VkCommandBuffer CommandBuffer = Rr->ImmediateMode.CommandBuffer;
+
+    VK_ASSERT(vkResetFences(Device, 1, &Rr->ImmediateMode.Fence));
+    VK_ASSERT(vkResetCommandBuffer(CommandBuffer, 0));
+
+    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &BeginInfo));
+
+    Function(CommandBuffer);
+
+    VK_ASSERT(vkEndCommandBuffer(CommandBuffer));
+
+    VkCommandBufferSubmitInfo cmdinfo = GetCommandBufferSubmitInfo(CommandBuffer);
+    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&cmdinfo, nullptr, nullptr);
+
+    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, Rr->ImmediateMode.Fence));
+    VK_ASSERT(vkWaitForFences(Device, 1, &Rr->ImmediateMode.Fence, true, 9999999999));
 }

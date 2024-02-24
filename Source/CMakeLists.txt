@@ -26,7 +26,7 @@ add_custom_target(
 
 add_executable(${PROJECT_NAME} Main.c App.cxx Rr.cxx)
 add_dependencies(${PROJECT_NAME} Shaders)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}Vendor)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${VENDOR_TARGET})
 if (WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE On)
 endif ()
