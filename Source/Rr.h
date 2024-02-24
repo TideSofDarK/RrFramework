@@ -2,9 +2,11 @@
 
 #include <cglm/vec4.h>
 
-#include "RrTypes.hxx"
+#include "RrTypes.h"
 
 #define FRAME_OVERLAP 2
+
+typedef struct SDL_Window SDL_Window;
 
 typedef struct SComputeConstants
 {
@@ -54,8 +56,8 @@ typedef struct SRr
     SImmediateMode ImmediateMode;
 } SRr;
 
-void Rr_Init(SRr* Rr, struct SDL_Window* Window);
-void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window);
+void Rr_Init(SRr* Rr, SDL_Window* Window);
+void Rr_InitImGui(SRr* Rr, SDL_Window* Window);
 void Rr_Cleanup(SRr* Rr);
 void Rr_Draw(SRr* Rr);
 void Rr_Resize(SRr* Rr, u32 Width, u32 Height);

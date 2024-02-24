@@ -1,34 +1,29 @@
 #define VOLK_IMPLEMENTATION
 
-#define VMA_IMPLEMENTATION
-#define VMA_VULKAN_VERSION 1003000
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#include "Rr.h"
 
-#include "Rr.hxx"
-
-#include <filesystem> /* @TODO: Remove! */
-#include <cassert>
-#include <cmath>
-#include <cstring>
-#include <cstdint>
+#include <assert.h>
+#include <math.h>
+#include <string.h>
+#include <stdint.h>
 
 #include <cglm/cglm.h>
 
 #include <vulkan/vk_enum_string_helper.h>
 
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_sdl3.h>
-#include <imgui/imgui_impl_vulkan.h>
+// #include <imgui/imgui.h>
+// #include <imgui/imgui_impl_sdl3.h>
+// #include <imgui/imgui_impl_vulkan.h>
 
 #include <SDL_error.h>
 #include <SDL_stdinc.h>
 #include <SDL_log.h>
+#include <SDL_filesystem.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include "RrLib.hxx"
+#include "RrLib.h"
 
-#ifdef DEBUG
+#ifdef RR_DEBUG
 static const b32 bEnableValidationLayers = true;
 #else
 static const b32 bEnableValidationLayers = false;
@@ -42,14 +37,14 @@ static SFrameData* Rr_GetCurrentFrame(SRr* Rr)
 static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
 {
     u32 ExtensionCount;
-    vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &ExtensionCount, nullptr);
+    vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
     if (ExtensionCount == 0)
     {
         return false;
     }
 
-    auto* Extensions = StackAlloc(VkExtensionProperties, ExtensionCount);
-    vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &ExtensionCount, Extensions);
+    VkExtensionProperties* Extensions = StackAlloc(VkExtensionProperties, ExtensionCount);
+    vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
 
     bool bSwapchainFound = false;
     for (u32 Index = 0; Index < ExtensionCount; Index++)
@@ -66,14 +61,14 @@ static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
     }
 
     u32 QueueFamilyCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, NULL);
     if (QueueFamilyCount == 0)
     {
         return false;
     }
 
-    auto* QueueFamilyProperties = StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
-    auto* QueuePresentSupport = StackAlloc(VkBool32, QueueFamilyCount);
+    VkQueueFamilyProperties* QueueFamilyProperties = StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
+    VkBool32* QueuePresentSupport = StackAlloc(VkBool32, QueueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
@@ -99,21 +94,22 @@ static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
 static void Rr_InitDevice(SRr* Rr)
 {
     u32 PhysicalDeviceCount = 0;
-    vkEnumeratePhysicalDevices(Rr->Instance, &PhysicalDeviceCount, nullptr);
+    vkEnumeratePhysicalDevices(Rr->Instance, &PhysicalDeviceCount, NULL);
     if (PhysicalDeviceCount == 0)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "No device with Vulkan support found");
         abort();
     }
 
-    auto* PhysicalDevices = StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
+    VkPhysicalDevice* PhysicalDevices = StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Rr->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
-    Rr->PhysicalDevice.SubgroupProperties = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = nullptr };
+    Rr->PhysicalDevice.SubgroupProperties = (VkPhysicalDeviceSubgroupProperties){ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = NULL };
 
-    VkPhysicalDeviceProperties2 PhysicalDeviceProperties = {};
-    PhysicalDeviceProperties.pNext = &Rr->PhysicalDevice.SubgroupProperties;
-    PhysicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    VkPhysicalDeviceProperties2 PhysicalDeviceProperties = {
+        .pNext = &Rr->PhysicalDevice.SubgroupProperties,
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+    };
 
     b32 bFoundSuitableDevice = false;
     for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
@@ -177,7 +173,7 @@ static void Rr_InitDevice(SRr* Rr)
         .ppEnabledExtensionNames = &SwapchainExtension,
     };
 
-    VK_ASSERT(vkCreateDevice(Rr->PhysicalDevice.Handle, &DeviceCreateInfo, nullptr, &Rr->Device));
+    VK_ASSERT(vkCreateDevice(Rr->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Rr->Device));
 
     vkGetDeviceQueue(Rr->Device, Rr->GraphicsQueue.FamilyIndex, 0, &Rr->GraphicsQueue.Handle);
 }
@@ -188,7 +184,7 @@ static void Rr_DestroyAllocatedImage(SRr* Rr, SAllocatedImage* AllocatedImage)
     {
         return;
     }
-    vkDestroyImageView(Rr->Device, AllocatedImage->View, nullptr);
+    vkDestroyImageView(Rr->Device, AllocatedImage->View, NULL);
     vmaDestroyImage(Rr->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 }
 
@@ -196,14 +192,14 @@ static void Rr_CreateDrawImage(SRr* Rr, u32 Width, u32 Height)
 {
     SAllocatedImage* DrawImage = &Rr->DrawImage;
 
-    DrawImage->Extent = {
+    DrawImage->Extent = (VkExtent3D){
         Width,
         Height,
         1
     };
     DrawImage->Format = VK_FORMAT_R16G16B16A16_SFLOAT;
 
-    VkImageUsageFlags DrawImageUsages{};
+    VkImageUsageFlags DrawImageUsages = 0;
     DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     DrawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
@@ -213,23 +209,23 @@ static void Rr_CreateDrawImage(SRr* Rr, u32 Width, u32 Height)
 
     VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DrawImage->Handle, &DrawImage->Allocation, nullptr));
+    VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DrawImage->Handle, &DrawImage->Allocation, NULL));
 
     VkImageViewCreateInfo ImageViewCreateInfo = GetImageViewCreateInfo(DrawImage->Format, DrawImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, nullptr, &DrawImage->View));
+    VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &DrawImage->View));
 }
 
 static void Rr_CleanupSwapchain(SRr* Rr, VkSwapchainKHR Swapchain)
 {
     for (u32 Index = 0; Index < Rr->Swapchain.ImageCount; Index++)
     {
-        vkDestroyImageView(Rr->Device, Rr->Swapchain.Images[Index].View, nullptr);
+        vkDestroyImageView(Rr->Device, Rr->Swapchain.Images[Index].View, NULL);
     }
-    vkDestroySwapchainKHR(Rr->Device, Swapchain, nullptr);
+    vkDestroySwapchainKHR(Rr->Device, Swapchain, NULL);
 
     Rr_DestroyAllocatedImage(Rr, &Rr->DrawImage);
 }
@@ -242,10 +238,10 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &SurfCaps));
 
     u32 PresentModeCount;
-    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, nullptr));
+    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, NULL));
     assert(PresentModeCount > 0);
 
-    auto PresentModes = StackAlloc(VkPresentModeKHR, PresentModeCount);
+    VkPresentModeKHR* PresentModes = StackAlloc(VkPresentModeKHR, PresentModeCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, PresentModes));
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -282,7 +278,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
         PreTransform = SurfCaps.currentTransform;
     }
 
-    VkExtent2D SwapchainExtent = {};
+    VkExtent2D SwapchainExtent;
     if (SurfCaps.currentExtent.width == UINT32_MAX)
     {
         SwapchainExtent.width = *Width;
@@ -298,10 +294,10 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     Rr->Swapchain.Extent = SwapchainExtent;
 
     u32 FormatCount;
-    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, nullptr));
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, NULL));
     assert(FormatCount > 0);
 
-    auto* SurfaceFormats = StackAlloc(VkSurfaceFormatKHR, FormatCount);
+    VkSurfaceFormatKHR* SurfaceFormats = StackAlloc(VkSurfaceFormatKHR, FormatCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, SurfaceFormats));
 
     bool bPreferredFormatFound = false;
@@ -331,8 +327,9 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
         VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
         VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
     };
-    for (auto& CompositeAlphaFlag : CompositeAlphaFlags)
+    for (u32 Index = 0; Index < ArraySize(CompositeAlphaFlags); Index++)
     {
+        VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag = CompositeAlphaFlags[Index];
         if (SurfCaps.supportedCompositeAlpha & CompositeAlphaFlag)
         {
             CompositeAlpha = CompositeAlphaFlag;
@@ -367,7 +364,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
         SwapchainCI.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    VK_ASSERT(vkCreateSwapchainKHR(Rr->Device, &SwapchainCI, nullptr, &Rr->Swapchain.Handle));
+    VK_ASSERT(vkCreateSwapchainKHR(Rr->Device, &SwapchainCI, NULL, &Rr->Swapchain.Handle));
 
     if (OldSwapchain != VK_NULL_HANDLE)
     {
@@ -375,11 +372,11 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     }
 
     u32 ImageCount = 0;
-    VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, nullptr));
+    VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, NULL));
     assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Rr->Swapchain.ImageCount = ImageCount;
-    auto Images = StackAlloc(VkImage, ImageCount);
+    VkImage* Images = StackAlloc(VkImage, ImageCount);
     VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, Images));
 
     VkImageViewCreateInfo ColorAttachmentView = {
@@ -404,7 +401,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     {
         Rr->Swapchain.Images[i].Handle = Images[i];
         ColorAttachmentView.image = Images[i];
-        VK_ASSERT(vkCreateImageView(Rr->Device, &ColorAttachmentView, nullptr, &Rr->Swapchain.Images[i].View));
+        VK_ASSERT(vkCreateImageView(Rr->Device, &ColorAttachmentView, NULL, &Rr->Swapchain.Images[i].View));
     }
 
     Rr_CreateDrawImage(Rr, *Width, *Height);
@@ -416,7 +413,7 @@ static VkBool32 VKAPI_PTR DebugMessage(
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
     void* pUserData)
 {
-    if (pCallbackData != nullptr)
+    if (pCallbackData != NULL)
     {
         const char* format = "{0x%x}% s\n %s ";
         SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, format,
@@ -433,10 +430,10 @@ static void VKAPI_CALL Rr_InitDebugMessenger(SRr* Rr)
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
         .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
-        .pfnUserCallback = static_cast<PFN_vkDebugUtilsMessengerCallbackEXT>(DebugMessage)
+        .pfnUserCallback = DebugMessage
     };
 
-    VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Rr->Instance, &DebugUtilsMessengerCI, nullptr, &Rr->Messenger));
+    VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Rr->Instance, &DebugUtilsMessengerCI, NULL, &Rr->Messenger));
 }
 
 static void Rr_InitCommands(SRr* Rr)
@@ -448,13 +445,15 @@ static void Rr_InitCommands(SRr* Rr)
         .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
     };
 
-    for (auto& Frame : Rr->Frames)
+    for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
     {
-        VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, nullptr, &Frame.CommandPool));
+        SFrameData* Frame = &Rr->Frames[Index];
 
-        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame.CommandPool, 1);
+        VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Frame->CommandPool));
 
-        VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame.MainCommandBuffer));
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
+
+        VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer));
     }
 }
 
@@ -468,10 +467,10 @@ static void Rr_InitSyncStructures(SRr* Rr)
 
     for (i32 Index = 0; Index < FRAME_OVERLAP; Index++)
     {
-        VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, nullptr, &Frames[Index].RenderFence));
+        VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Frames[Index].RenderFence));
 
-        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, nullptr, &Frames[Index].SwapchainSemaphore));
-        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, nullptr, &Frames[Index].RenderSemaphore));
+        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frames[Index].SwapchainSemaphore));
+        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frames[Index].RenderSemaphore));
     }
 }
 
@@ -517,13 +516,13 @@ static void Rr_UpdateDrawImageDescriptors(SRr* Rr, b32 bCreate, b32 bDestroy)
 
     if (bDestroy)
     {
-        vkDestroyDescriptorSetLayout(Rr->Device, Rr->DrawImageDescriptorLayout, nullptr);
+        vkDestroyDescriptorSetLayout(Rr->Device, Rr->DrawImageDescriptorLayout, NULL);
 
         DescriptorAllocator_ClearDescriptors(GlobalDescriptorAllocator, Rr->Device);
     }
     if (bCreate)
     {
-        SDescriptorLayoutBuilder Builder = {};
+        SDescriptorLayoutBuilder Builder = {0};
         DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
         Rr->DrawImageDescriptorLayout = DescriptorLayoutBuilder_Build(&Builder, Rr->Device, VK_SHADER_STAGE_COMPUTE_BIT);
@@ -537,7 +536,7 @@ static void Rr_UpdateDrawImageDescriptors(SRr* Rr, b32 bCreate, b32 bDestroy)
 
         VkWriteDescriptorSet WriteDescriptorSet = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
+            .pNext = NULL,
             .dstSet = Rr->DrawImageDescriptors,
             .dstBinding = 0,
             .descriptorCount = 1,
@@ -545,7 +544,7 @@ static void Rr_UpdateDrawImageDescriptors(SRr* Rr, b32 bCreate, b32 bDestroy)
             .pImageInfo = &DescriptorImageInfo,
         };
 
-        vkUpdateDescriptorSets(Rr->Device, 1, &WriteDescriptorSet, 0, nullptr);
+        vkUpdateDescriptorSets(Rr->Device, 1, &WriteDescriptorSet, 0, NULL);
     }
 }
 
@@ -574,26 +573,34 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
 
     VkPipelineLayoutCreateInfo ComputeLayout = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .setLayoutCount = 1,
         .pSetLayouts = &Rr->DrawImageDescriptorLayout,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &PushConstantRange,
     };
 
-    VK_ASSERT(vkCreatePipelineLayout(Rr->Device, &ComputeLayout, nullptr, &Rr->GradientPipelineLayout));
+    VK_ASSERT(vkCreatePipelineLayout(Rr->Device, &ComputeLayout, NULL, &Rr->GradientPipelineLayout));
 
     VkShaderModule ComputeDrawShader;
-    std::filesystem::path ShaderPath = std::filesystem::current_path() / "test.comp.spv";
-    if (!LoadShaderModule(ShaderPath.string().c_str(), Rr->Device, &ComputeDrawShader))
+    const char* ShaderFilename = "/test.comp.spv";
+    char* BasePath = SDL_GetBasePath();
+    u64 BasePathLength = strlen(BasePath);
+    char* ShaderPath = StackAlloc(char, BasePathLength + strlen(ShaderFilename) + 1);
+    strcpy(ShaderPath, BasePath);
+    strcpy(ShaderPath + BasePathLength, ShaderFilename);
+    SDL_free(BasePath);
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Loading shader: %s", ShaderPath);
+    if (!LoadShaderModule(ShaderPath, Rr->Device, &ComputeDrawShader))
     {
-        SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, "Error when building the compute shader! Path: %s", ShaderPath.string().c_str());
+        SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, "Error when building the compute shader! Path: %s", ShaderPath);
         abort();
     }
 
     VkPipelineShaderStageCreateInfo StageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = ComputeDrawShader,
         .pName = "main",
@@ -601,13 +608,13 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
 
     VkComputePipelineCreateInfo PipelineCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .stage = StageCreateInfo,
         .layout = Rr->GradientPipelineLayout,
     };
 
-    VK_ASSERT(vkCreateComputePipelines(Rr->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, nullptr, &Rr->GradientPipeline));
-    vkDestroyShaderModule(Rr->Device, ComputeDrawShader, nullptr);
+    VK_ASSERT(vkCreateComputePipelines(Rr->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, NULL, &Rr->GradientPipeline));
+    vkDestroyShaderModule(Rr->Device, ComputeDrawShader, NULL);
 }
 
 static void Rr_InitPipelines(SRr* Rr)
@@ -618,10 +625,10 @@ static void Rr_InitPipelines(SRr* Rr)
 static void Rr_DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
 {
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipeline);
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipelineLayout, 0, 1, &Rr->DrawImageDescriptors, 0, nullptr);
-    SComputeConstants ComputeConstants = {};
-    glm_vec4_copy(vec4{ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
-    glm_vec4_copy(vec4{ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipelineLayout, 0, 1, &Rr->DrawImageDescriptors, 0, NULL);
+    SComputeConstants ComputeConstants;
+    glm_vec4_copy((vec4){ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
+    glm_vec4_copy((vec4){ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
     vkCmdPushConstants(CommandBuffer, Rr->GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SComputeConstants), &ComputeConstants);
     vkCmdDispatch(CommandBuffer, ceil(Rr->DrawExtent.width / 16.0), ceil(Rr->DrawExtent.height / 16.0), 1);
 
@@ -647,7 +654,7 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
     u32 ExtensionCount;
     const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&ExtensionCount);
 
-    auto Extensions = StackAlloc(const char*, ExtensionCount + 1);
+    const char** Extensions = StackAlloc(const char*, ExtensionCount + 1);
     for (u32 Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
@@ -661,7 +668,7 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
 
     VkInstanceCreateInfo VKInstInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .pApplicationInfo = &VKAppInfo,
         .enabledExtensionCount = ExtensionCount,
         .ppEnabledExtensionNames = Extensions,
@@ -672,8 +679,8 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
         const char* ValidationLayerName = "VK_LAYER_KHRONOS_validation";
 
         u32 InstanceLayerCount;
-        vkEnumerateInstanceLayerProperties(&InstanceLayerCount, nullptr);
-        auto InstanceLayerProperties = StackAlloc(VkLayerProperties, InstanceLayerCount);
+        vkEnumerateInstanceLayerProperties(&InstanceLayerCount, NULL);
+        VkLayerProperties* InstanceLayerProperties = StackAlloc(VkLayerProperties, InstanceLayerCount);
         vkEnumerateInstanceLayerProperties(&InstanceLayerCount, InstanceLayerProperties);
 
         bool bValidationLayerPresent = false;
@@ -706,7 +713,7 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
         VKInstInfo.pNext = &ValidationFeatures;
     }
 
-    VK_ASSERT(vkCreateInstance(&VKInstInfo, nullptr, &Rr->Instance));
+    VK_ASSERT(vkCreateInstance(&VKInstInfo, NULL, &Rr->Instance));
 
     volkLoadInstance(Rr->Instance);
 
@@ -715,7 +722,7 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
         Rr_InitDebugMessenger(Rr);
     }
 
-    if (SDL_Vulkan_CreateSurface(Window, Rr->Instance, nullptr, &Rr->Surface) != SDL_TRUE)
+    if (SDL_Vulkan_CreateSurface(Window, Rr->Instance, NULL, &Rr->Surface) != SDL_TRUE)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Failed to create Vulkan surface: %s", SDL_GetError());
         abort();
@@ -743,66 +750,66 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
 
 void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
 {
-    VkDevice Device = Rr->Device;
-
-    VkCommandPoolCreateInfo CommandPoolInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
-    };
-    VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, nullptr, &Rr->ImmediateMode.CommandPool));
-    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
-    VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Rr->ImmediateMode.CommandBuffer));
-    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, nullptr, &Rr->ImmediateMode.Fence));
-
-    VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
-
-    VkDescriptorPoolCreateInfo PoolCreateInfo = {};
-    PoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    PoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    PoolCreateInfo.maxSets = 1000;
-    PoolCreateInfo.poolSizeCount = (uint32_t)std::size(PoolSizes);
-    PoolCreateInfo.pPoolSizes = PoolSizes;
-
-    VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, nullptr, &Rr->ImmediateMode.DescriptorPool));
-
-    ImGui::CreateContext();
-
-    ImGui_ImplVulkan_LoadFunctions([](const char* FuncName, void*) {
-        return vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
-    });
-    ImGui_ImplSDL3_InitForVulkan(Window);
-
-    ImGui_ImplVulkan_InitInfo InitInfo = {};
-    InitInfo.Instance = Rr->Instance;
-    InitInfo.PhysicalDevice = Rr->PhysicalDevice.Handle;
-    InitInfo.Device = Device;
-    InitInfo.Queue = Rr->GraphicsQueue.Handle;
-    InitInfo.DescriptorPool = Rr->ImmediateMode.DescriptorPool;
-    InitInfo.MinImageCount = 3;
-    InitInfo.ImageCount = 3;
-    InitInfo.UseDynamicRendering = true;
-    InitInfo.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-    InitInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
-    InitInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &Rr->Swapchain.Format;
-    InitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-
-    ImGui_ImplVulkan_Init(&InitInfo);
-    ImGui_ImplVulkan_CreateFontsTexture();
-
-    Rr->ImmediateMode.bInit = true;
+    // VkDevice Device = Rr->Device;
+    //
+    // VkCommandPoolCreateInfo CommandPoolInfo = {
+    //     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    //     .pNext = VK_NULL_HANDLE,
+    //     .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+    //     .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
+    // };
+    // VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Rr->ImmediateMode.CommandPool));
+    // VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
+    // VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Rr->ImmediateMode.CommandBuffer));
+    // VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    // VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Rr->ImmediateMode.Fence));
+    //
+    // VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+    //     { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
+    //
+    // VkDescriptorPoolCreateInfo PoolCreateInfo;
+    // PoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    // PoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    // PoolCreateInfo.maxSets = 1000;
+    // PoolCreateInfo.poolSizeCount = (uint32_t)std::size(PoolSizes);
+    // PoolCreateInfo.pPoolSizes = PoolSizes;
+    //
+    // VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Rr->ImmediateMode.DescriptorPool));
+    //
+    // ImGui::CreateContext();
+    //
+    // ImGui_ImplVulkan_LoadFunctions([](const char* FuncName, void*) {
+    //     return vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
+    // });
+    // ImGui_ImplSDL3_InitForVulkan(Window);
+    //
+    // ImGui_ImplVulkan_InitInfo InitInfo = {};
+    // InitInfo.Instance = Rr->Instance;
+    // InitInfo.PhysicalDevice = Rr->PhysicalDevice.Handle;
+    // InitInfo.Device = Device;
+    // InitInfo.Queue = Rr->GraphicsQueue.Handle;
+    // InitInfo.DescriptorPool = Rr->ImmediateMode.DescriptorPool;
+    // InitInfo.MinImageCount = 3;
+    // InitInfo.ImageCount = 3;
+    // InitInfo.UseDynamicRendering = true;
+    // InitInfo.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+    // InitInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    // InitInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &Rr->Swapchain.Format;
+    // InitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    //
+    // ImGui_ImplVulkan_Init(&InitInfo);
+    // ImGui_ImplVulkan_CreateFontsTexture();
+    //
+    // Rr->ImmediateMode.bInit = true;
 }
 
 void Rr_Cleanup(SRr* Rr)
@@ -813,43 +820,43 @@ void Rr_Cleanup(SRr* Rr)
 
     if (Rr->ImmediateMode.bInit)
     {
-        ImGui_ImplVulkan_Shutdown();
-        ImGui_ImplSDL3_Shutdown();
-        vkDestroyCommandPool(Rr->Device, Rr->ImmediateMode.CommandPool, nullptr);
-        vkDestroyDescriptorPool(Device, Rr->ImmediateMode.DescriptorPool, nullptr);
+        // ImGui_ImplVulkan_Shutdown();
+        // ImGui_ImplSDL3_Shutdown();
+        vkDestroyCommandPool(Rr->Device, Rr->ImmediateMode.CommandPool, NULL);
+        vkDestroyDescriptorPool(Device, Rr->ImmediateMode.DescriptorPool, NULL);
     }
 
-    vkDestroyPipelineLayout(Device, Rr->GradientPipelineLayout, nullptr);
-    vkDestroyPipeline(Device, Rr->GradientPipeline, nullptr);
+    vkDestroyPipelineLayout(Device, Rr->GradientPipelineLayout, NULL);
+    vkDestroyPipeline(Device, Rr->GradientPipeline, NULL);
 
     Rr_UpdateDrawImageDescriptors(Rr, false, true);
 
     DescriptorAllocator_DestroyPool(&Rr->GlobalDescriptorAllocator, Device);
 
-    vkDestroyFence(Device, Rr->ImmediateMode.Fence, nullptr);
+    vkDestroyFence(Device, Rr->ImmediateMode.Fence, NULL);
 
-    for (auto& Index : Rr->Frames)
+    for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
     {
-        SFrameData* Frame = &Index;
-        vkDestroyCommandPool(Rr->Device, Frame->CommandPool, nullptr);
+        SFrameData* Frame = &Rr->Frames[Index];
+        vkDestroyCommandPool(Rr->Device, Frame->CommandPool, NULL);
 
-        vkDestroyFence(Device, Frame->RenderFence, nullptr);
-        vkDestroySemaphore(Device, Frame->RenderSemaphore, nullptr);
-        vkDestroySemaphore(Device, Frame->SwapchainSemaphore, nullptr);
+        vkDestroyFence(Device, Frame->RenderFence, NULL);
+        vkDestroySemaphore(Device, Frame->RenderSemaphore, NULL);
+        vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
     }
 
     Rr_CleanupSwapchain(Rr, Rr->Swapchain.Handle);
 
     vmaDestroyAllocator(Rr->Allocator);
 
-    vkDestroySurfaceKHR(Rr->Instance, Rr->Surface, nullptr);
-    vkDestroyDevice(Rr->Device, nullptr);
+    vkDestroySurfaceKHR(Rr->Instance, Rr->Surface, NULL);
+    vkDestroyDevice(Rr->Device, NULL);
 
     if (bEnableValidationLayers)
     {
-        vkDestroyDebugUtilsMessengerEXT(Rr->Instance, Rr->Messenger, nullptr);
+        vkDestroyDebugUtilsMessengerEXT(Rr->Instance, Rr->Messenger, NULL);
     }
-    vkDestroyInstance(Rr->Instance, nullptr);
+    vkDestroyInstance(Rr->Instance, NULL);
 }
 
 void Rr_Draw(SRr* Rr)
@@ -915,12 +922,12 @@ void Rr_Draw(SRr* Rr)
 
     if (Rr->ImmediateMode.bInit)
     {
-        VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo(Rr->Swapchain.Images[SwapchainImageIndex].View, nullptr, VK_IMAGE_LAYOUT_GENERAL);
-        VkRenderingInfo renderInfo = GetRenderingInfo(Rr->Swapchain.Extent, &ColorAttachment, nullptr);
+        VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo(Rr->Swapchain.Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_GENERAL);
+        VkRenderingInfo renderInfo = GetRenderingInfo(Rr->Swapchain.Extent, &ColorAttachment, NULL);
 
         vkCmdBeginRendering(CommandBuffer, &renderInfo);
 
-        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), CommandBuffer);
+        // ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), CommandBuffer);
 
         vkCmdEndRendering(CommandBuffer);
     }
@@ -948,7 +955,7 @@ void Rr_Draw(SRr* Rr)
 
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .pNext = nullptr,
+        .pNext = NULL,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &CurrentFrame->RenderSemaphore,
         .swapchainCount = 1,

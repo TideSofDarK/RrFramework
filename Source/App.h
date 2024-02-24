@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core.hxx"
-#include "Rr.hxx"
+#include "Core.h"
+#include "Rr.h"
 
 typedef struct SApp
 {
@@ -10,4 +10,4 @@ typedef struct SApp
     b32 bExit;
 } SApp;
 
-extern "C" void RunApp();
+void RunApp(void);

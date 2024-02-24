@@ -1,22 +1,22 @@
-#include "App.hxx"
-#include "Rr.hxx"
+#include "App.h"
+#include "Rr.h"
 
-#include <imgui/imgui_impl_vulkan.h>
-#include <imgui/imgui_impl_sdl3.h>
+// #include <imgui/imgui_impl_vulkan.h>
+// #include <imgui/imgui_impl_sdl3.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <SDL_events.h>
 #include <SDL_video.h>
 
-extern "C" void RunApp()
+void RunApp(void)
 {
-    SApp App = {};
+    SApp App = {0};
 
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
-    SDL_Vulkan_LoadLibrary(nullptr);
+    SDL_Vulkan_LoadLibrary(NULL);
 
     App.Window = SDL_CreateWindow(
         AppTitle,
@@ -25,7 +25,7 @@ extern "C" void RunApp()
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
     Rr_Init(&App.Rr, App.Window);
-    Rr_InitImGui(&App.Rr, App.Window);
+    // Rr_InitImGui(&App.Rr, App.Window);
 
     while (!App.bExit)
     {
@@ -43,16 +43,16 @@ extern "C" void RunApp()
                     break;
             }
 
-            ImGui_ImplSDL3_ProcessEvent(&event);
+            // ImGui_ImplSDL3_ProcessEvent(&event);
         }
 
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-        ImGui::NewFrame();
-
-        ImGui::ShowDemoWindow();
-
-        ImGui::Render();
+        // ImGui_ImplVulkan_NewFrame();
+        // ImGui_ImplSDL3_NewFrame();
+        // ImGui::NewFrame();
+        //
+        // ImGui::ShowDemoWindow();
+        //
+        // ImGui::Render();
 
         Rr_Draw(&App.Rr);
     }

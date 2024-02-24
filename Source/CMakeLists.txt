@@ -24,20 +24,20 @@ add_custom_target(
         DEPENDS ${SPIRV_BINARY_FILES}
 )
 
-add_executable(${PROJECT_NAME} Main.c App.cxx Rr.cxx)
+add_executable(${PROJECT_NAME} Main.c App.c Rr.c Deps.cxx)
 add_dependencies(${PROJECT_NAME} Shaders)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${VENDOR_TARGET})
 if (WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE On)
 endif ()
 
-add_compile_definitions(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:-DDEBUG>")
+add_compile_definitions(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     if (NOT MSVC)
         target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-        if (CLANG)
-            target_compile_options(${PROJECT_NAME} PRIVATE -Wno-c++98-compat -Wno-c++98-compat-pedantic)
-        endif ()
+    endif ()
+    if (CLANG)
+        target_compile_options(${PROJECT_NAME} PRIVATE -Wno-c++98-compat -Wno-c++98-compat-pedantic)
     endif ()
 endif ()

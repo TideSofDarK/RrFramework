@@ -1,8 +1,10 @@
 #pragma once
 
-#include "RrTypes.hxx"
+#include <stdlib.h>
+#include <stdio.h>
 
-#include <fstream>
+#include "RrTypes.h"
+
 #include <SDL_log.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
@@ -21,19 +23,17 @@
  * Struct Creation Helpers
  * ======================= */
 
-VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearValue* ClearValue, VkImageLayout Layout)
+VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearValue* InClearValue, VkImageLayout Layout)
 {
-    VkRenderingAttachmentInfo Info = {};
-    Info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    Info.pNext = nullptr;
-    Info.imageView = View;
-    Info.imageLayout = Layout;
-    Info.loadOp = ClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-    Info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    if (ClearValue)
-    {
-        Info.clearValue = *ClearValue;
-    }
+    VkRenderingAttachmentInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .pNext = NULL,
+        .imageView = View,
+        .imageLayout = Layout,
+        .loadOp = InClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = InClearValue ? *InClearValue : (VkClearValue){ 0 }
+    };
 
     return Info;
 }
@@ -41,16 +41,16 @@ VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearVa
 VkRenderingInfo GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentInfo* ColorAttachment,
     VkRenderingAttachmentInfo* DepthAttachment)
 {
-    VkRenderingInfo Info = {};
+    VkRenderingInfo Info = { 0 };
     Info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    Info.pNext = nullptr;
+    Info.pNext = NULL;
 
-    Info.renderArea = VkRect2D{ VkOffset2D{ 0, 0 }, RenderExtent };
+    Info.renderArea = (VkRect2D){ .offset = (VkOffset2D){ 0, 0 }, .extent = RenderExtent };
     Info.layerCount = 1;
     Info.colorAttachmentCount = 1;
     Info.pColorAttachments = ColorAttachment;
     Info.pDepthAttachment = DepthAttachment;
-    Info.pStencilAttachment = nullptr;
+    Info.pStencilAttachment = NULL;
 
     return Info;
 }
@@ -59,7 +59,7 @@ VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFla
 {
     VkImageCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = Format,
         .extent = Extent,
@@ -76,7 +76,7 @@ VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkI
 {
     VkImageViewCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .image = Image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = Format,
@@ -96,7 +96,7 @@ VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
 {
     VkFenceCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .flags = Flags,
     };
     return Info;
@@ -106,7 +106,7 @@ VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .flags = Flags,
     };
     return Info;
@@ -116,9 +116,9 @@ VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Fla
 {
     VkCommandBufferBeginInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .flags = Flags,
-        .pInheritanceInfo = nullptr,
+        .pInheritanceInfo = NULL,
     };
     return Info;
 }
@@ -140,7 +140,7 @@ VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, Vk
 {
     VkSemaphoreSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .semaphore = Semaphore,
         .value = 1,
         .stageMask = StageMask,
@@ -154,7 +154,7 @@ VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuff
 {
     VkCommandBufferSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .commandBuffer = CommandBuffer,
         .deviceMask = 0,
     };
@@ -180,12 +180,12 @@ VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, 
 {
     VkSubmitInfo2 Info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-        .pNext = nullptr,
-        .waitSemaphoreInfoCount = WaitSemaphoreInfo == nullptr ? 0u : 1u,
+        .pNext = NULL,
+        .waitSemaphoreInfoCount = WaitSemaphoreInfo == NULL ? 0u : 1u,
         .pWaitSemaphoreInfos = WaitSemaphoreInfo,
         .commandBufferInfoCount = 1,
         .pCommandBufferInfos = CommandBufferSubInfoPtr,
-        .signalSemaphoreInfoCount = SignalSemaphoreInfo == nullptr ? 0u : 1u,
+        .signalSemaphoreInfoCount = SignalSemaphoreInfo == NULL ? 0u : 1u,
         .pSignalSemaphoreInfos = SignalSemaphoreInfo,
     };
 
@@ -198,38 +198,39 @@ VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, 
 
 b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShaderModule)
 {
-    std::ifstream File(Path, std::ios::ate | std::ios::binary);
+    FILE* File = fopen(Path, "r");
 
-    if (!File.is_open())
+    if (!File)
     {
-        return false;
+        return FALSE;
     }
 
-    size_t fileSize = (size_t)File.tellg();
+    fseek(File, 0L, SEEK_END);
+    i64 FileSize = (i64)ftell(File);
 
-    u32 BufferSize = fileSize / sizeof(u32);
+    u32 BufferSize = FileSize / sizeof(u32);
     u32* Buffer = StackAlloc(u32, BufferSize);
 
-    File.seekg(0);
-    File.read((char*)Buffer, (i64)fileSize);
-    File.close();
+    rewind(File);
+    fread(Buffer, sizeof(Buffer[0]), FileSize, File);
+    fclose(File);
 
     VkShaderModuleCreateInfo CreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .codeSize = BufferSize * sizeof(u32),
         .pCode = Buffer,
     };
 
     VkShaderModule ShaderModule;
-    if (vkCreateShaderModule(Device, &CreateInfo, nullptr, &ShaderModule) != VK_SUCCESS)
+    if (vkCreateShaderModule(Device, &CreateInfo, NULL, &ShaderModule) != VK_SUCCESS)
     {
-        return false;
+        return FALSE;
     }
 
     *OutShaderModule = ShaderModule;
 
-    return true;
+    return TRUE;
 }
 
 /* ==========
@@ -249,7 +250,7 @@ void TransitionImage(
     VkImageMemoryBarrier2 ImageBarrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 
-        .pNext = nullptr,
+        .pNext = NULL,
 
         .srcStageMask = SrcStageMask,
         .srcAccessMask = SrcAccessMask,
@@ -265,7 +266,7 @@ void TransitionImage(
 
     VkDependencyInfo DepInfo = {
         .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .imageMemoryBarrierCount = 1,
         .pImageMemoryBarriers = &ImageBarrier,
     };
@@ -277,7 +278,7 @@ void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Des
 {
     VkImageBlit2 BlitRegion = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
-        .pNext = nullptr,
+        .pNext = NULL,
 
         .srcSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -286,7 +287,7 @@ void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Des
             .layerCount = 1,
         },
 
-        .srcOffsets = { {}, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+        .srcOffsets = { {0}, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
 
         .dstSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -295,12 +296,12 @@ void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Des
             .layerCount = 1,
         },
 
-        .dstOffsets = { {}, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+        .dstOffsets = { {0}, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
     };
 
     VkBlitImageInfo2 BlitInfo = {
         .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
-        .pNext = nullptr,
+        .pNext = NULL,
         .srcImage = Source,
         .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         .dstImage = Destination,
@@ -323,7 +324,7 @@ void DescriptorLayoutBuilder_Add(SDescriptorLayoutBuilder* Builder, u32 Binding,
     {
         return;
     }
-    Builder->Bindings[Builder->Count] = {
+    Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
         .binding = Binding,
         .descriptorType = Type,
         .descriptorCount = 1,
@@ -333,26 +334,27 @@ void DescriptorLayoutBuilder_Add(SDescriptorLayoutBuilder* Builder, u32 Binding,
 
 void DescriptorLayoutBuilder_Clear(SDescriptorLayoutBuilder* Builder)
 {
-    *Builder = {};
+    *Builder = (SDescriptorLayoutBuilder){ 0 };
 }
 
 VkDescriptorSetLayout DescriptorLayoutBuilder_Build(SDescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
 {
-    for (auto& Binding : Builder->Bindings)
+    for (u32 Index = 0; Index < MAX_LAYOUT_BINDINGS; ++Index)
     {
-        Binding.stageFlags |= ShaderStageFlags;
+        VkDescriptorSetLayoutBinding* Binding = &Builder->Bindings[Index];
+        Binding->stageFlags |= ShaderStageFlags;
     }
 
     VkDescriptorSetLayoutCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .flags = 0,
         .bindingCount = Builder->Count,
         .pBindings = Builder->Bindings,
     };
 
     VkDescriptorSetLayout Set;
-    VK_ASSERT(vkCreateDescriptorSetLayout(Device, &Info, nullptr, &Set));
+    VK_ASSERT(vkCreateDescriptorSetLayout(Device, &Info, NULL, &Set));
 
     return Set;
 }
@@ -366,9 +368,9 @@ void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevic
     VkDescriptorPoolSize* PoolSizes = StackAlloc(VkDescriptorPoolSize, PoolRatioCount);
     for (u32 Index = 0; Index < PoolRatioCount; --Index)
     {
-        PoolSizes[Index] = {
+        PoolSizes[Index] = (VkDescriptorPoolSize){
             .type = poolRatios[Index].Type,
-            .descriptorCount = uint32_t(poolRatios[Index].Ratio * (f32)maxSets),
+            .descriptorCount = (u32)(poolRatios[Index].Ratio * (f32)maxSets),
         };
     }
 
@@ -380,7 +382,7 @@ void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevic
         .pPoolSizes = PoolSizes,
     };
 
-    VK_ASSERT(vkCreateDescriptorPool(device, &PoolCreateInfo, nullptr, &DescriptorAllocator->Pool));
+    VK_ASSERT(vkCreateDescriptorPool(device, &PoolCreateInfo, NULL, &DescriptorAllocator->Pool));
 }
 
 void DescriptorAllocator_ClearDescriptors(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
@@ -390,14 +392,14 @@ void DescriptorAllocator_ClearDescriptors(SDescriptorAllocator* DescriptorAlloca
 
 void DescriptorAllocator_DestroyPool(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
 {
-    vkDestroyDescriptorPool(Device, DescriptorAllocator->Pool, nullptr);
+    vkDestroyDescriptorPool(Device, DescriptorAllocator->Pool, NULL);
 }
 
 VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout layout)
 {
     VkDescriptorSetAllocateInfo AllocateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext = nullptr,
+        .pNext = NULL,
         .descriptorPool = DescriptorAllocator->Pool,
         .descriptorSetCount = 1,
         .pSetLayouts = &layout,

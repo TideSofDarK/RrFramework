@@ -5,7 +5,7 @@
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
-#include "Core.hxx"
+#include "Core.h"
 
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
 
