@@ -913,26 +913,3 @@ void Rr_Resize(SRr* Rr, u32 Width, u32 Height)
 
     Rr_UpdateDrawImageDescriptors(Rr, true, true);
 }
-
-void Rr_ImmediateSubmit(SRr* Rr, void (*Function)(VkCommandBuffer))
-{
-    VkDevice Device = Rr->Device;
-    VkCommandBuffer CommandBuffer = Rr->ImmediateMode.CommandBuffer;
-
-    VK_ASSERT(vkResetFences(Device, 1, &Rr->ImmediateMode.Fence));
-    VK_ASSERT(vkResetCommandBuffer(CommandBuffer, 0));
-
-    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &BeginInfo));
-
-    Function(CommandBuffer);
-
-    VK_ASSERT(vkEndCommandBuffer(CommandBuffer));
-
-    VkCommandBufferSubmitInfo cmdinfo = GetCommandBufferSubmitInfo(CommandBuffer);
-    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&cmdinfo, nullptr, nullptr);
-
-    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, Rr->ImmediateMode.Fence));
-    VK_ASSERT(vkWaitForFences(Device, 1, &Rr->ImmediateMode.Fence, true, 9999999999));
-}

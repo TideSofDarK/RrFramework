@@ -49,4 +49,3 @@ void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window);
 void Rr_Cleanup(SRr* Rr);
 void Rr_Draw(SRr* Rr);
 void Rr_Resize(SRr* Rr, u32 Width, u32 Height);
-void Rr_ImmediateSubmit(SRr* Rr);

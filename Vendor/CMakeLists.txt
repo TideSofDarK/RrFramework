@@ -28,7 +28,7 @@ target_link_libraries(${IMGUI_TARGET} PRIVATE
         Vulkan::Headers
         SDL3::SDL3
 )
-target_include_directories(${IMGUI_TARGET} PUBLIC "/" PRIVATE "./imgui/")
+target_include_directories(${IMGUI_TARGET} PUBLIC "./" PRIVATE "./imgui/")
 target_sources (${IMGUI_TARGET} PRIVATE
     imgui/imgui.cpp
     imgui/imgui_demo.cpp
