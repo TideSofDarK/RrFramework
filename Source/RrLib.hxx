@@ -178,7 +178,7 @@ VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool CommandPo
 VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, VkSemaphoreSubmitInfo* SignalSemaphoreInfo,
     VkSemaphoreSubmitInfo* WaitSemaphoreInfo)
 {
-    VkSubmitInfo2 info = {
+    VkSubmitInfo2 Info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .pNext = nullptr,
         .waitSemaphoreInfoCount = WaitSemaphoreInfo == nullptr ? 0u : 1u,
@@ -189,7 +189,7 @@ VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, 
         .pSignalSemaphoreInfos = SignalSemaphoreInfo,
     };
 
-    return info;
+    return Info;
 }
 
 /* ==============
@@ -232,9 +232,9 @@ b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShade
     return true;
 }
 
-/* =========================
- * Various Command Shortcuts
- * ========================= */
+/* ==========
+ * Operations
+ * ========== */
 
 void TransitionImage(VkCommandBuffer CommandBuffer, VkImage Image, VkImageLayout CurrentLayout, VkImageLayout NewLayout)
 {
