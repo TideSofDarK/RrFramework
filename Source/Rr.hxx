@@ -1,10 +1,20 @@
 #pragma once
 
+#include <cglm/vec4.h>
+
 #include "RrTypes.hxx"
 
 #define FRAME_OVERLAP 2
 
-typedef struct SImmediateMode
+typedef struct SComputeConstants
+{
+    vec4 Vec0;
+    vec4 Vec1;
+    vec4 Vec2;
+    vec4 Vec3;
+} SComputeConstants;
+
+typedef struct SImGui
 {
     b32 bInit;
     VkFence Fence;

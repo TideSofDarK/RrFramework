@@ -13,6 +13,8 @@
 #include <cstring>
 #include <cstdint>
 
+#include <cglm/cglm.h>
+
 #include <vulkan/vk_enum_string_helper.h>
 
 #include <imgui/imgui.h>
@@ -564,11 +566,19 @@ static void Rr_InitDescriptors(SRr* Renderer)
 
 static void Rr_InitBackgroundPipelines(SRr* Rr)
 {
+    VkPushConstantRange PushConstantRange = {
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .offset = 0,
+        .size = sizeof(SComputeConstants),
+    };
+
     VkPipelineLayoutCreateInfo ComputeLayout = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .setLayoutCount = 1,
         .pSetLayouts = &Rr->DrawImageDescriptorLayout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &PushConstantRange,
     };
 
     VK_ASSERT(vkCreatePipelineLayout(Rr->Device, &ComputeLayout, nullptr, &Rr->GradientPipelineLayout));
@@ -609,6 +619,10 @@ static void Rr_DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
 {
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipeline);
     vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipelineLayout, 0, 1, &Rr->DrawImageDescriptors, 0, nullptr);
+    SComputeConstants ComputeConstants = {};
+    glm_vec4_copy(vec4{ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
+    glm_vec4_copy(vec4{ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
+    vkCmdPushConstants(CommandBuffer, Rr->GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SComputeConstants), &ComputeConstants);
     vkCmdDispatch(CommandBuffer, ceil(Rr->DrawExtent.width / 16.0), ceil(Rr->DrawExtent.height / 16.0), 1);
 
     // float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
