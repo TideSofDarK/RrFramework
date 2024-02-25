@@ -24,7 +24,7 @@ add_custom_target(
         DEPENDS ${SPIRV_BINARY_FILES}
 )
 
-add_executable(${PROJECT_NAME} Main.c App.c Rr.c Deps.cxx)
+add_executable(${PROJECT_NAME} Main.c App.c Rr.c)
 add_dependencies(${PROJECT_NAME} Shaders)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${VENDOR_TARGET})
 if (WIN32)
@@ -32,6 +32,8 @@ if (WIN32)
 endif ()
 
 add_compile_definitions(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
+
+target_compile_features(${PROJECT_NAME} PRIVATE c_std_17)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     if (NOT MSVC)

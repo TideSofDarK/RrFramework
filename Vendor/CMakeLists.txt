@@ -25,8 +25,9 @@ CPMAddPackage("gh:recp/cglm#master")
 add_subdirectory("imgui")
 
 set(VENDOR_TARGET "Vendor" CACHE INTERNAL "Project dependencies")
-add_library(${VENDOR_TARGET} INTERFACE)
-target_link_libraries(${VENDOR_TARGET} INTERFACE
+add_library(${VENDOR_TARGET} STATIC)
+target_sources(${VENDOR_TARGET} PRIVATE Vendor.cpp)
+target_link_libraries(${VENDOR_TARGET} PUBLIC
         Vulkan::Headers
         volk::volk_headers
         GPUOpen::VulkanMemoryAllocator
@@ -34,4 +35,4 @@ target_link_libraries(${VENDOR_TARGET} INTERFACE
         cglm
         ${IMGUI_TARGET}
 )
-target_compile_features(${VENDOR_TARGET} INTERFACE c_std_11 cxx_std_20)
+target_compile_features(${VENDOR_TARGET} PRIVATE c_std_99 cxx_std_17)
