@@ -50,8 +50,8 @@ typedef struct SRr
     VkExtent2D DrawExtent;
     VkDescriptorSet DrawImageDescriptors;
     VkDescriptorSetLayout DrawImageDescriptorLayout;
-	VkPipeline GradientPipeline;
-	VkPipelineLayout GradientPipelineLayout;
+    VkPipeline GradientPipeline;
+    VkPipelineLayout GradientPipelineLayout;
 
     SImmediateMode ImmediateMode;
 } SRr;

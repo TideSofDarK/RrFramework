@@ -26,7 +26,7 @@ typedef int b32;
 //_Static_assert(sizeof(f64) == 8, "Expected f64 to be 8 bytes.");
 
 #define StackAlloc(Type, Count) ((Type*)alloca(sizeof(Type) * (Count)))
-#define ArraySize(Array) (sizeof(Array)/sizeof(*(Array)))
+#define ArraySize(Array) (sizeof(Array) / sizeof(*(Array)))
 
 #define TRUE 1
 #define FALSE 0

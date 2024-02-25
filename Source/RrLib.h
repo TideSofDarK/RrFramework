@@ -287,7 +287,7 @@ static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkIm
             .layerCount = 1,
         },
 
-        .srcOffsets = { {0}, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+        .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
 
         .dstSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -296,7 +296,7 @@ static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkIm
             .layerCount = 1,
         },
 
-        .dstOffsets = { {0}, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+        .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
     };
 
     VkBlitImageInfo2 BlitInfo = {
