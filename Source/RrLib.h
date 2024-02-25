@@ -23,7 +23,7 @@
  * Struct Creation Helpers
  * ======================= */
 
-VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearValue* InClearValue, VkImageLayout Layout)
+static VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearValue* InClearValue, VkImageLayout Layout)
 {
     VkRenderingAttachmentInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -38,7 +38,7 @@ VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearVa
     return Info;
 }
 
-VkRenderingInfo GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentInfo* ColorAttachment,
+static VkRenderingInfo GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentInfo* ColorAttachment,
     VkRenderingAttachmentInfo* DepthAttachment)
 {
     VkRenderingInfo Info = { 0 };
@@ -55,7 +55,7 @@ VkRenderingInfo GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentI
     return Info;
 }
 
-VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
+static VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
 {
     VkImageCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -72,7 +72,7 @@ VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFla
     return Info;
 }
 
-VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
+static VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
 {
     VkImageViewCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -92,7 +92,7 @@ VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkI
     return Info;
 }
 
-VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
+static VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
 {
     VkFenceCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -102,7 +102,7 @@ VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
     return Info;
 }
 
-VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
+static VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -112,7 +112,7 @@ VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
     return Info;
 }
 
-VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
+static VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
 {
     VkCommandBufferBeginInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -123,7 +123,7 @@ VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Fla
     return Info;
 }
 
-VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlags AspectMask)
+static VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlags AspectMask)
 {
     VkImageSubresourceRange SubImage = {
         .aspectMask = AspectMask,
@@ -136,7 +136,7 @@ VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlags AspectMask)
     return SubImage;
 }
 
-VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
+static VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
 {
     VkSemaphoreSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -150,7 +150,7 @@ VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, Vk
     return Info;
 }
 
-VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
+static VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
 {
     VkCommandBufferSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -162,7 +162,7 @@ VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuff
     return Info;
 }
 
-VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool CommandPool, u32 Count)
+static VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool CommandPool, u32 Count)
 {
     VkCommandBufferAllocateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -175,7 +175,7 @@ VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool CommandPo
     return Info;
 }
 
-VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, VkSemaphoreSubmitInfo* SignalSemaphoreInfo,
+static VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, VkSemaphoreSubmitInfo* SignalSemaphoreInfo,
     VkSemaphoreSubmitInfo* WaitSemaphoreInfo)
 {
     VkSubmitInfo2 Info = {
@@ -196,7 +196,7 @@ VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, 
  * Shader Loading
  * ============== */
 
-b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShaderModule)
+static b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShaderModule)
 {
     FILE* File = fopen(Path, "r");
 
@@ -206,9 +206,9 @@ b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShade
     }
 
     fseek(File, 0L, SEEK_END);
-    i64 FileSize = (i64)ftell(File);
+    size_t FileSize = (size_t)ftell(File);
 
-    u32 BufferSize = FileSize / sizeof(u32);
+    size_t BufferSize = FileSize / sizeof(u32);
     u32* Buffer = StackAlloc(u32, BufferSize);
 
     rewind(File);
@@ -237,7 +237,7 @@ b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShade
  * Operations
  * ========== */
 
-void TransitionImage(
+static void TransitionImage(
     VkCommandBuffer CommandBuffer,
     VkImage Image,
     VkPipelineStageFlags2 SrcStageMask,
@@ -274,7 +274,7 @@ void TransitionImage(
     vkCmdPipelineBarrier2(CommandBuffer, &DepInfo);
 }
 
-void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
 {
     VkImageBlit2 BlitRegion = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
@@ -318,7 +318,7 @@ void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Des
  * SDescriptorLayoutBuilder
  * ======================== */
 
-void DescriptorLayoutBuilder_Add(SDescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type)
+static void DescriptorLayoutBuilder_Add(SDescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type)
 {
     if (Builder->Count >= MAX_LAYOUT_BINDINGS)
     {
@@ -332,12 +332,12 @@ void DescriptorLayoutBuilder_Add(SDescriptorLayoutBuilder* Builder, u32 Binding,
     Builder->Count++;
 }
 
-void DescriptorLayoutBuilder_Clear(SDescriptorLayoutBuilder* Builder)
+static void DescriptorLayoutBuilder_Clear(SDescriptorLayoutBuilder* Builder)
 {
     *Builder = (SDescriptorLayoutBuilder){ 0 };
 }
 
-VkDescriptorSetLayout DescriptorLayoutBuilder_Build(SDescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
+static VkDescriptorSetLayout DescriptorLayoutBuilder_Build(SDescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
 {
     for (u32 Index = 0; Index < MAX_LAYOUT_BINDINGS; ++Index)
     {
@@ -363,7 +363,7 @@ VkDescriptorSetLayout DescriptorLayoutBuilder_Build(SDescriptorLayoutBuilder* Bu
  * SDescriptorAllocator
  * ==================== */
 
-void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevice device, u32 maxSets, SDescriptorPoolSizeRatio* poolRatios, u32 PoolRatioCount)
+static void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevice device, u32 maxSets, SDescriptorPoolSizeRatio* poolRatios, u32 PoolRatioCount)
 {
     VkDescriptorPoolSize* PoolSizes = StackAlloc(VkDescriptorPoolSize, PoolRatioCount);
     for (u32 Index = 0; Index < PoolRatioCount; --Index)
@@ -385,17 +385,17 @@ void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevic
     VK_ASSERT(vkCreateDescriptorPool(device, &PoolCreateInfo, NULL, &DescriptorAllocator->Pool));
 }
 
-void DescriptorAllocator_ClearDescriptors(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
+static void DescriptorAllocator_ClearDescriptors(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
 {
     VK_ASSERT(vkResetDescriptorPool(Device, DescriptorAllocator->Pool, 0));
 }
 
-void DescriptorAllocator_DestroyPool(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
+static void DescriptorAllocator_DestroyPool(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
 {
     vkDestroyDescriptorPool(Device, DescriptorAllocator->Pool, NULL);
 }
 
-VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout layout)
+static VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout layout)
 {
     VkDescriptorSetAllocateInfo AllocateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,

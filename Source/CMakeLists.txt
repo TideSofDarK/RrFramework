@@ -33,13 +33,13 @@ endif ()
 
 add_compile_definitions(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
 
-target_compile_features(${PROJECT_NAME} PRIVATE c_std_17)
+target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-    if (NOT MSVC)
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
         target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-    endif ()
-    if (CLANG)
-        target_compile_options(${PROJECT_NAME} PRIVATE -Wno-c++98-compat -Wno-c++98-compat-pedantic)
-    endif ()
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+        target_compile_options(${PROJECT_NAME} PRIVATE /W3)
+    endif()
 endif ()
+

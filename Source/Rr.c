@@ -173,7 +173,7 @@ static void Rr_InitDevice(SRr* Rr)
         .ppEnabledExtensionNames = &SwapchainExtension,
     };
 
-    VK_ASSERT(vkCreateDevice(Rr->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Rr->Device));
+    VK_ASSERT(vkCreateDevice(Rr->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Rr->Device))
 
     vkGetDeviceQueue(Rr->Device, Rr->GraphicsQueue.FamilyIndex, 0, &Rr->GraphicsQueue.Handle);
 }
@@ -212,11 +212,11 @@ static void Rr_CreateDrawImage(SRr* Rr, u32 Width, u32 Height)
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DrawImage->Handle, &DrawImage->Allocation, NULL));
+    VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DrawImage->Handle, &DrawImage->Allocation, NULL))
 
     VkImageViewCreateInfo ImageViewCreateInfo = GetImageViewCreateInfo(DrawImage->Format, DrawImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &DrawImage->View));
+    VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &DrawImage->View))
 }
 
 static void Rr_CleanupSwapchain(SRr* Rr, VkSwapchainKHR Swapchain)
@@ -235,14 +235,14 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     VkSwapchainKHR OldSwapchain = Rr->Swapchain.Handle;
 
     VkSurfaceCapabilitiesKHR SurfCaps;
-    VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &SurfCaps));
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &SurfCaps))
 
     u32 PresentModeCount;
-    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, NULL));
+    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, NULL))
     assert(PresentModeCount > 0);
 
     VkPresentModeKHR* PresentModes = StackAlloc(VkPresentModeKHR, PresentModeCount);
-    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, PresentModes));
+    VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, PresentModes))
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
@@ -294,11 +294,11 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     Rr->Swapchain.Extent = SwapchainExtent;
 
     u32 FormatCount;
-    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, NULL));
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, NULL))
     assert(FormatCount > 0);
 
     VkSurfaceFormatKHR* SurfaceFormats = StackAlloc(VkSurfaceFormatKHR, FormatCount);
-    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, SurfaceFormats));
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, SurfaceFormats))
 
     bool bPreferredFormatFound = false;
     for (u32 Index = 0; Index < FormatCount; Index++)
@@ -364,7 +364,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
         SwapchainCI.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    VK_ASSERT(vkCreateSwapchainKHR(Rr->Device, &SwapchainCI, NULL, &Rr->Swapchain.Handle));
+    VK_ASSERT(vkCreateSwapchainKHR(Rr->Device, &SwapchainCI, NULL, &Rr->Swapchain.Handle))
 
     if (OldSwapchain != VK_NULL_HANDLE)
     {
@@ -372,12 +372,12 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     }
 
     u32 ImageCount = 0;
-    VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, NULL));
+    VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, NULL))
     assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Rr->Swapchain.ImageCount = ImageCount;
     VkImage* Images = StackAlloc(VkImage, ImageCount);
-    VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, Images));
+    VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, Images))
 
     VkImageViewCreateInfo ColorAttachmentView = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -401,17 +401,17 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     {
         Rr->Swapchain.Images[i].Handle = Images[i];
         ColorAttachmentView.image = Images[i];
-        VK_ASSERT(vkCreateImageView(Rr->Device, &ColorAttachmentView, NULL, &Rr->Swapchain.Images[i].View));
+        VK_ASSERT(vkCreateImageView(Rr->Device, &ColorAttachmentView, NULL, &Rr->Swapchain.Images[i].View))
     }
 
     Rr_CreateDrawImage(Rr, *Width, *Height);
 }
 
 static VkBool32 VKAPI_PTR DebugMessage(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+    VkDebugUtilsMessageSeverityFlagBitsEXT MessageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT MessageTypes,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData)
+    void* Userdata)
 {
     if (pCallbackData != NULL)
     {
@@ -433,7 +433,7 @@ static void VKAPI_CALL Rr_InitDebugMessenger(SRr* Rr)
         .pfnUserCallback = DebugMessage
     };
 
-    VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Rr->Instance, &DebugUtilsMessengerCI, NULL, &Rr->Messenger));
+    VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Rr->Instance, &DebugUtilsMessengerCI, NULL, &Rr->Messenger))
 }
 
 static void Rr_InitCommands(SRr* Rr)
@@ -449,11 +449,11 @@ static void Rr_InitCommands(SRr* Rr)
     {
         SFrameData* Frame = &Rr->Frames[Index];
 
-        VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Frame->CommandPool));
+        VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Frame->CommandPool))
 
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
 
-        VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer));
+        VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer))
     }
 }
 
@@ -467,10 +467,10 @@ static void Rr_InitSyncStructures(SRr* Rr)
 
     for (i32 Index = 0; Index < FRAME_OVERLAP; Index++)
     {
-        VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Frames[Index].RenderFence));
+        VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Frames[Index].RenderFence))
 
-        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frames[Index].SwapchainSemaphore));
-        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frames[Index].RenderSemaphore));
+        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frames[Index].SwapchainSemaphore))
+        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frames[Index].RenderSemaphore))
     }
 }
 
@@ -507,7 +507,7 @@ static void Rr_InitAllocator(SRr* Rr)
         .pVulkanFunctions = &VulkanFunctions,
         .instance = Rr->Instance,
     };
-    VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Rr->Allocator));
+    VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Rr->Allocator))
 }
 
 static void Rr_UpdateDrawImageDescriptors(SRr* Rr, b32 bCreate, b32 bDestroy)
@@ -580,12 +580,12 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
         .pPushConstantRanges = &PushConstantRange,
     };
 
-    VK_ASSERT(vkCreatePipelineLayout(Rr->Device, &ComputeLayout, NULL, &Rr->GradientPipelineLayout));
+    VK_ASSERT(vkCreatePipelineLayout(Rr->Device, &ComputeLayout, NULL, &Rr->GradientPipelineLayout))
 
     VkShaderModule ComputeDrawShader;
     const char* ShaderFilename = "/test.comp.spv";
     char* BasePath = SDL_GetBasePath();
-    u64 BasePathLength = strlen(BasePath);
+    size_t BasePathLength = strlen(BasePath);
     char* ShaderPath = StackAlloc(char, BasePathLength + strlen(ShaderFilename) + 1);
     strcpy(ShaderPath, BasePath);
     strcpy(ShaderPath + BasePathLength, ShaderFilename);
@@ -613,7 +613,7 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
         .layout = Rr->GradientPipelineLayout,
     };
 
-    VK_ASSERT(vkCreateComputePipelines(Rr->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, NULL, &Rr->GradientPipeline));
+    VK_ASSERT(vkCreateComputePipelines(Rr->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, NULL, &Rr->GradientPipeline))
     vkDestroyShaderModule(Rr->Device, ComputeDrawShader, NULL);
 }
 
@@ -713,7 +713,7 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
         VKInstInfo.pNext = &ValidationFeatures;
     }
 
-    VK_ASSERT(vkCreateInstance(&VKInstInfo, NULL, &Rr->Instance));
+    VK_ASSERT(vkCreateInstance(&VKInstInfo, NULL, &Rr->Instance))
 
     volkLoadInstance(Rr->Instance);
 
@@ -763,11 +763,11 @@ void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
     };
-    VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Rr->ImmediateMode.CommandPool));
+    VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Rr->ImmediateMode.CommandPool))
     VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
-    VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Rr->ImmediateMode.CommandBuffer));
+    VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Rr->ImmediateMode.CommandBuffer))
     VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Rr->ImmediateMode.Fence));
+    VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Rr->ImmediateMode.Fence))
 
     VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
@@ -789,7 +789,7 @@ void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
         .pPoolSizes = PoolSizes,
     };
 
-    VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Rr->ImmediateMode.DescriptorPool));
+    VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Rr->ImmediateMode.DescriptorPool))
 
     igCreateContext(NULL);
 
@@ -871,11 +871,11 @@ void Rr_Draw(SRr* Rr)
     SAllocatedImage* DrawImage = &Rr->DrawImage;
     VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;
 
-    VK_ASSERT(vkWaitForFences(Device, 1, &CurrentFrame->RenderFence, true, 1000000000));
-    VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence));
+    VK_ASSERT(vkWaitForFences(Device, 1, &CurrentFrame->RenderFence, true, 1000000000))
+    VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence))
 
     u32 SwapchainImageIndex;
-    VK_ASSERT(vkAcquireNextImageKHR(Device, Rr->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex));
+    VK_ASSERT(vkAcquireNextImageKHR(Device, Rr->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex))
 
     VkImage SwapchainImage = Rr->Swapchain.Images[SwapchainImageIndex].Handle;
 
@@ -883,7 +883,7 @@ void Rr_Draw(SRr* Rr)
     Rr->DrawExtent.height = DrawImage->Extent.height;
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo));
+    VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo))
 
     TransitionImage(
         CommandBuffer,
@@ -947,7 +947,7 @@ void Rr_Draw(SRr* Rr)
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-    VK_ASSERT(vkEndCommandBuffer(CommandBuffer));
+    VK_ASSERT(vkEndCommandBuffer(CommandBuffer))
 
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
 
@@ -956,7 +956,7 @@ void Rr_Draw(SRr* Rr)
 
     VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
 
-    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, CurrentFrame->RenderFence));
+    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, CurrentFrame->RenderFence))
 
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -968,7 +968,7 @@ void Rr_Draw(SRr* Rr)
         .pImageIndices = &SwapchainImageIndex,
     };
 
-    VK_ASSERT(vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo));
+    VK_ASSERT(vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo))
 
     Rr->FrameNumber++;
 }
