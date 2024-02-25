@@ -11,9 +11,9 @@
 
 #include <vulkan/vk_enum_string_helper.h>
 
-// #include <imgui/imgui.h>
-// #include <imgui/imgui_impl_sdl3.h>
-// #include <imgui/imgui_impl_vulkan.h>
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <imgui/cimgui.h>
+#include <imgui/cimgui_impl.h>
 
 #include <SDL_error.h>
 #include <SDL_stdinc.h>
@@ -522,7 +522,7 @@ static void Rr_UpdateDrawImageDescriptors(SRr* Rr, b32 bCreate, b32 bDestroy)
     }
     if (bCreate)
     {
-        SDescriptorLayoutBuilder Builder = {0};
+        SDescriptorLayoutBuilder Builder = { 0 };
         DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
         Rr->DrawImageDescriptorLayout = DescriptorLayoutBuilder_Build(&Builder, Rr->Device, VK_SHADER_STAGE_COMPUTE_BIT);
@@ -748,68 +748,73 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
     Rr_InitPipelines(Rr);
 }
 
+static PFN_vkVoidFunction Rr_ImGui_LoadFunction(const char* FuncName, void* Userdata)
+{
+    return (PFN_vkVoidFunction)vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
+}
+
 void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
 {
-    // VkDevice Device = Rr->Device;
-    //
-    // VkCommandPoolCreateInfo CommandPoolInfo = {
-    //     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    //     .pNext = VK_NULL_HANDLE,
-    //     .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-    //     .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
-    // };
-    // VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Rr->ImmediateMode.CommandPool));
-    // VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
-    // VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Rr->ImmediateMode.CommandBuffer));
-    // VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    // VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Rr->ImmediateMode.Fence));
-    //
-    // VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-    //     { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
-    //
-    // VkDescriptorPoolCreateInfo PoolCreateInfo;
-    // PoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    // PoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    // PoolCreateInfo.maxSets = 1000;
-    // PoolCreateInfo.poolSizeCount = (uint32_t)std::size(PoolSizes);
-    // PoolCreateInfo.pPoolSizes = PoolSizes;
-    //
-    // VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Rr->ImmediateMode.DescriptorPool));
-    //
-    // ImGui::CreateContext();
-    //
-    // ImGui_ImplVulkan_LoadFunctions([](const char* FuncName, void*) {
-    //     return vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
-    // });
-    // ImGui_ImplSDL3_InitForVulkan(Window);
-    //
-    // ImGui_ImplVulkan_InitInfo InitInfo = {};
-    // InitInfo.Instance = Rr->Instance;
-    // InitInfo.PhysicalDevice = Rr->PhysicalDevice.Handle;
-    // InitInfo.Device = Device;
-    // InitInfo.Queue = Rr->GraphicsQueue.Handle;
-    // InitInfo.DescriptorPool = Rr->ImmediateMode.DescriptorPool;
-    // InitInfo.MinImageCount = 3;
-    // InitInfo.ImageCount = 3;
-    // InitInfo.UseDynamicRendering = true;
-    // InitInfo.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-    // InitInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
-    // InitInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &Rr->Swapchain.Format;
-    // InitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    //
-    // ImGui_ImplVulkan_Init(&InitInfo);
-    // ImGui_ImplVulkan_CreateFontsTexture();
-    //
-    // Rr->ImmediateMode.bInit = true;
+    VkDevice Device = Rr->Device;
+
+    VkCommandPoolCreateInfo CommandPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
+    };
+    VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Rr->ImmediateMode.CommandPool));
+    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
+    VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Rr->ImmediateMode.CommandBuffer));
+    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Rr->ImmediateMode.Fence));
+
+    VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
+
+    VkDescriptorPoolCreateInfo PoolCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 1000,
+        .poolSizeCount = (u32)ArraySize(PoolSizes),
+        .pPoolSizes = PoolSizes,
+    };
+
+    VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Rr->ImmediateMode.DescriptorPool));
+
+    igCreateContext(NULL);
+
+    ImGui_ImplVulkan_LoadFunctions(Rr_ImGui_LoadFunction, NULL);
+    ImGui_ImplSDL3_InitForVulkan(Window);
+
+    ImGui_ImplVulkan_InitInfo InitInfo = {
+        .Instance = Rr->Instance,
+        .PhysicalDevice = Rr->PhysicalDevice.Handle,
+        .Device = Device,
+        .Queue = Rr->GraphicsQueue.Handle,
+        .DescriptorPool = Rr->ImmediateMode.DescriptorPool,
+        .MinImageCount = 3,
+        .ImageCount = 3,
+        .UseDynamicRendering = true,
+        .PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+        .PipelineRenderingCreateInfo.colorAttachmentCount = 1,
+        .PipelineRenderingCreateInfo.pColorAttachmentFormats = &Rr->Swapchain.Format,
+        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+    };
+
+    ImGui_ImplVulkan_Init(&InitInfo);
+    ImGui_ImplVulkan_CreateFontsTexture();
+
+    Rr->ImmediateMode.bInit = true;
 }
 
 void Rr_Cleanup(SRr* Rr)
@@ -820,8 +825,8 @@ void Rr_Cleanup(SRr* Rr)
 
     if (Rr->ImmediateMode.bInit)
     {
-        // ImGui_ImplVulkan_Shutdown();
-        // ImGui_ImplSDL3_Shutdown();
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
         vkDestroyCommandPool(Rr->Device, Rr->ImmediateMode.CommandPool, NULL);
         vkDestroyDescriptorPool(Device, Rr->ImmediateMode.DescriptorPool, NULL);
     }
@@ -927,7 +932,7 @@ void Rr_Draw(SRr* Rr)
 
         vkCmdBeginRendering(CommandBuffer, &renderInfo);
 
-        // ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), CommandBuffer);
+        ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
 
         vkCmdEndRendering(CommandBuffer);
     }

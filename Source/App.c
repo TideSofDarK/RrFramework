@@ -1,8 +1,9 @@
 #include "App.h"
 #include "Rr.h"
 
-// #include <imgui/imgui_impl_vulkan.h>
-// #include <imgui/imgui_impl_sdl3.h>
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <imgui/cimgui.h>
+#include <imgui/cimgui_impl.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -25,7 +26,7 @@ void RunApp(void)
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
     Rr_Init(&App.Rr, App.Window);
-    // Rr_InitImGui(&App.Rr, App.Window);
+    Rr_InitImGui(&App.Rr, App.Window);
 
     while (!App.bExit)
     {
@@ -43,16 +44,16 @@ void RunApp(void)
                     break;
             }
 
-            // ImGui_ImplSDL3_ProcessEvent(&event);
+            ImGui_ImplSDL3_ProcessEvent(&event);
         }
 
-        // ImGui_ImplVulkan_NewFrame();
-        // ImGui_ImplSDL3_NewFrame();
-        // ImGui::NewFrame();
-        //
-        // ImGui::ShowDemoWindow();
-        //
-        // ImGui::Render();
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        igNewFrame();
+
+        igShowDemoWindow(NULL);
+
+        igRender();
 
         Rr_Draw(&App.Rr);
     }
