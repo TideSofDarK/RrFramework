@@ -12,7 +12,7 @@
 
 void RunApp(void)
 {
-    SApp App = {0};
+    SApp App = { 0 };
 
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -35,13 +35,17 @@ void RunApp(void)
             switch (event.type)
             {
                 case SDL_EVENT_WINDOW_RESIZED:
+                {
                     i32 Width, Height;
                     SDL_GetWindowSizeInPixels(App.Window, &Width, &Height);
                     Rr_Resize(&App.Rr, Width, Height);
-                    break;
+                }
+                break;
                 case SDL_EVENT_QUIT:
+                {
                     App.bExit = true;
-                    break;
+                }
+                break;
             }
 
             ImGui_ImplSDL3_ProcessEvent(&event);
