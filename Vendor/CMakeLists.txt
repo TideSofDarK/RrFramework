@@ -1,5 +1,7 @@
 find_package(Vulkan REQUIRED)
 
+add_definitions("-DVK_NO_PROTOTYPES=1")
+
 set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
 set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
 set(SDL_FILE OFF CACHE BOOL "" FORCE)
