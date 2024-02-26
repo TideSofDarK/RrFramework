@@ -16,6 +16,15 @@
 
 typedef struct SDL_Window SDL_Window;
 
+typedef struct STransitionImage
+{
+    VkCommandBuffer CommandBuffer;
+    VkImage Image;
+    VkPipelineStageFlags2 StageMask;
+    VkAccessFlags2 AccessMask;
+    VkImageLayout Layout;
+} STransitionImage;
+
 typedef struct SFrameData
 {
     VkCommandPool CommandPool;

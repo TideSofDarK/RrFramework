@@ -460,6 +460,47 @@ static VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* Descri
     return DescriptorSet;
 }
 
+/* ====================
+ * STransitionImage API
+ * ==================== */
+
+static void TransitionImage_To(
+    STransitionImage* TransitionImage,
+    VkPipelineStageFlags2 DstStageMask,
+    VkAccessFlags2 DstAccessMask,
+    VkImageLayout NewLayout)
+{
+    VkImageMemoryBarrier2 ImageBarrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+
+        .pNext = NULL,
+
+        .srcStageMask = TransitionImage->StageMask,
+        .srcAccessMask = TransitionImage->AccessMask,
+        .dstStageMask = DstStageMask,
+        .dstAccessMask = DstAccessMask,
+
+        .oldLayout = TransitionImage->Layout,
+        .newLayout = NewLayout,
+
+        .image = TransitionImage->Image,
+        .subresourceRange = GetImageSubresourceRange((NewLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),
+    };
+
+    VkDependencyInfo DepInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext = NULL,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &ImageBarrier,
+    };
+
+    vkCmdPipelineBarrier2(TransitionImage->CommandBuffer, &DepInfo);
+
+    TransitionImage->Layout = NewLayout;
+    TransitionImage->StageMask = DstStageMask;
+    TransitionImage->AccessMask = DstAccessMask;
+}
+
 /* =======
  * SRr API
  * ======= */

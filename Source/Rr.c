@@ -922,57 +922,45 @@ void Rr_Draw(SRr* Rr)
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo))
 
-    TransitionImage(
-        CommandBuffer,
-        DrawImage->Handle,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_MEMORY_WRITE_BIT,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_MEMORY_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_GENERAL);
+    STransitionImage DrawImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = DrawImage->Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = 0,
+        .StageMask = VK_PIPELINE_STAGE_2_NONE
+    };
+    TransitionImage_To(&DrawImageTransition,
+                       VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                       VK_ACCESS_2_MEMORY_WRITE_BIT,
+                       VK_IMAGE_LAYOUT_GENERAL);
     Rr_DrawBackground(Rr, CommandBuffer);
-    TransitionImage(
-        CommandBuffer,
-        DrawImage->Handle,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_MEMORY_WRITE_BIT,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_IMAGE_LAYOUT_GENERAL,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
+    TransitionImage_To(&DrawImageTransition,
+                       VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                       VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     Rr_DrawGeometry(Rr, CommandBuffer);
-    TransitionImage(
-        CommandBuffer,
-        DrawImage->Handle,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_READ_BIT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    TransitionImage_To(&DrawImageTransition,
+                       VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                       VK_ACCESS_2_TRANSFER_READ_BIT,
+                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    TransitionImage(
-        CommandBuffer,
-        SwapchainImage,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        0,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    STransitionImage SwapchainImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = DrawImage->Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = 0,
+        .StageMask = VK_PIPELINE_STAGE_2_NONE
+    };
+    TransitionImage_To(&SwapchainImageTransition,
+                       VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                       VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     CopyImageToImage(CommandBuffer, DrawImage->Handle, Rr->Swapchain.Images[SwapchainImageIndex].Handle, Rr->DrawExtent, Rr->Swapchain.Extent);
-    TransitionImage(
-        CommandBuffer,
-        SwapchainImage,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    TransitionImage_To(&SwapchainImageTransition,
+                       VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                       VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     if (Rr->ImmediateMode.bInit)
     {
@@ -986,15 +974,10 @@ void Rr_Draw(SRr* Rr)
         vkCmdEndRendering(CommandBuffer);
     }
 
-    TransitionImage(
-        CommandBuffer,
-        SwapchainImage,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        0,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    TransitionImage_To(&SwapchainImageTransition,
+                       VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                       0,
+                       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_ASSERT(vkEndCommandBuffer(CommandBuffer))
 
