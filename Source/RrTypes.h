@@ -2,12 +2,19 @@
 
 #define VK_NO_PROTOTYPES
 
+#include <cglm/vec4.h>
+
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
 #include "Core.h"
 
+#define MAX_LAYOUT_BINDINGS 4
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
+#define PIPELINE_SHADER_STAGES 2
+#define FRAME_OVERLAP 2
+
+typedef struct SDL_Window SDL_Window;
 
 typedef struct SFrameData
 {
@@ -17,6 +24,20 @@ typedef struct SFrameData
     VkSemaphore RenderSemaphore;
     VkFence RenderFence;
 } SFrameData;
+
+typedef struct SPipelineBuilder
+{
+    VkPipelineShaderStageCreateInfo ShaderStages[PIPELINE_SHADER_STAGES];
+    u32 ShaderStageCount;
+    VkPipelineInputAssemblyStateCreateInfo InputAssembly;
+    VkPipelineRasterizationStateCreateInfo Rasterizer;
+    VkPipelineColorBlendAttachmentState ColorBlendAttachment;
+    VkPipelineMultisampleStateCreateInfo Multisampling;
+    VkPipelineLayout PipelineLayout;
+    VkPipelineDepthStencilStateCreateInfo DepthStencil;
+    VkPipelineRenderingCreateInfo RenderInfo;
+    VkFormat ColorAttachmentFormat;
+} SPipelineBuilder;
 
 typedef struct SVulkanImage
 {
@@ -60,8 +81,6 @@ typedef struct SAllocatedImage
     VkFormat Format;
 } SAllocatedImage;
 
-#define MAX_LAYOUT_BINDINGS 4
-
 typedef struct SDescriptorLayoutBuilder
 {
     VkDescriptorSetLayoutBinding Bindings[MAX_LAYOUT_BINDINGS];
@@ -78,3 +97,54 @@ typedef struct SDescriptorAllocator
 {
     VkDescriptorPool Pool;
 } SDescriptorAllocator;
+
+typedef struct SComputeConstants
+{
+    vec4 Vec0;
+    vec4 Vec1;
+    vec4 Vec2;
+    vec4 Vec3;
+} SComputeConstants;
+
+typedef struct SImGui
+{
+    b32 bInit;
+    VkFence Fence;
+    VkCommandBuffer CommandBuffer;
+    VkCommandPool CommandPool;
+    VkDescriptorPool DescriptorPool;
+} SImmediateMode;
+
+typedef struct SRr
+{
+    VkInstance Instance;
+    SPhysicalDevice PhysicalDevice;
+    VkDevice Device;
+    VkSurfaceKHR Surface;
+    SSwapchain Swapchain;
+
+    SQueue GraphicsQueue;
+    SQueue TransferQueue;
+    SQueue ComputeQueue;
+
+    VmaAllocator Allocator;
+
+    VkDebugUtilsMessengerEXT Messenger;
+
+    SFrameData Frames[FRAME_OVERLAP];
+    u64 FrameNumber;
+
+    SDescriptorAllocator GlobalDescriptorAllocator;
+
+    SAllocatedImage DrawImage;
+    VkExtent2D DrawExtent;
+    VkDescriptorSet DrawImageDescriptors;
+    VkDescriptorSetLayout DrawImageDescriptorLayout;
+    VkPipeline GradientPipeline;
+    VkPipelineLayout GradientPipelineLayout;
+
+    SImmediateMode ImmediateMode;
+
+    VkPipeline TrianglePipeline;
+    VkPipelineLayout TrianglePipelineLayout;
+} SRr;

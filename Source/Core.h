@@ -25,6 +25,14 @@ typedef int b32;
 //_Static_assert(sizeof(f32) == 4, "Expected f32 to be 4 bytes.");
 //_Static_assert(sizeof(f64) == 8, "Expected f64 to be 8 bytes.");
 
+#if defined(_MSC_VER)
+    #define RR_INLINE __forceinline
+#elif __has_attribute(always_inline) || defined(__GNUC__)
+    #define RR_INLINE __attribute__((__always_inline__)) inline
+#else
+    #define RR_INLINE inline
+#endif
+
 #define StackAlloc(Type, Count) ((Type*)alloca(sizeof(Type) * (Count)))
 #define ArraySize(Array) (sizeof(Array) / sizeof(*(Array)))
 

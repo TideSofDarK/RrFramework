@@ -17,8 +17,6 @@
 
 #include <SDL_error.h>
 #include <SDL_stdinc.h>
-#include <SDL_log.h>
-#include <SDL_filesystem.h>
 #include <SDL3/SDL_vulkan.h>
 
 #include "RrLib.h"
@@ -176,16 +174,6 @@ static void Rr_InitDevice(SRr* Rr)
     VK_ASSERT(vkCreateDevice(Rr->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Rr->Device))
 
     vkGetDeviceQueue(Rr->Device, Rr->GraphicsQueue.FamilyIndex, 0, &Rr->GraphicsQueue.Handle);
-}
-
-static void Rr_DestroyAllocatedImage(SRr* Rr, SAllocatedImage* AllocatedImage)
-{
-    if (AllocatedImage->Handle == VK_NULL_HANDLE)
-    {
-        return;
-    }
-    vkDestroyImageView(Rr->Device, AllocatedImage->View, NULL);
-    vmaDestroyImage(Rr->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 }
 
 static void Rr_CreateDrawImage(SRr* Rr, u32 Width, u32 Height)
@@ -583,20 +571,7 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
     VK_ASSERT(vkCreatePipelineLayout(Rr->Device, &ComputeLayout, NULL, &Rr->GradientPipelineLayout))
 
     VkShaderModule ComputeDrawShader;
-    const char* ShaderFilename = "/test.comp.spv";
-    char* BasePath = SDL_GetBasePath();
-    size_t BasePathLength = strlen(BasePath);
-    char* ShaderPath = StackAlloc(char, BasePathLength + strlen(ShaderFilename) + 1);
-    strcpy(ShaderPath, BasePath);
-    strcpy(ShaderPath + BasePathLength, ShaderFilename);
-    SDL_free(BasePath);
-
-    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Loading shader: %s", ShaderPath);
-    if (!LoadShaderModule(ShaderPath, Rr->Device, &ComputeDrawShader))
-    {
-        SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, "Error when building the compute shader! Path: %s", ShaderPath);
-        abort();
-    }
+    LoadShaderModule("test.comp.spv", Rr->Device, &ComputeDrawShader);
 
     VkPipelineShaderStageCreateInfo StageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -617,9 +592,36 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
     vkDestroyShaderModule(Rr->Device, ComputeDrawShader, NULL);
 }
 
+static void Rr_InitTrianglePipeline(SRr* Rr)
+{
+    VkShaderModule VertModule;
+    LoadShaderModule("triangle.vert.spv", Rr->Device, &VertModule);
+
+    VkShaderModule FragModule;
+    LoadShaderModule("triangle.frag.spv", Rr->Device, &FragModule);
+
+    VkPipelineLayoutCreateInfo LayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext = NULL,
+        // .setLayoutCount = 1,
+        // .pSetLayouts = &Rr->DrawImageDescriptorLayout,
+        // .pushConstantRangeCount = 1,
+        // .pPushConstantRanges = &PushConstantRange,
+    };
+    vkCreatePipelineLayout(Rr->Device, &LayoutInfo, NULL, &Rr->TrianglePipelineLayout);
+
+    SPipelineBuilder Builder = GetPipelineBuilder();
+    PipelineBuilder_Default(&Builder, VertModule, FragModule, Rr->DrawImage.Format, VK_FORMAT_UNDEFINED, Rr->TrianglePipelineLayout);
+    Rr->TrianglePipeline = Rr_BuildPipeline(Rr, &Builder);
+
+    vkDestroyShaderModule(Rr->Device, VertModule, NULL);
+    vkDestroyShaderModule(Rr->Device, FragModule, NULL);
+}
+
 static void Rr_InitPipelines(SRr* Rr)
 {
     Rr_InitBackgroundPipelines(Rr);
+    Rr_InitTrianglePipeline(Rr);
 }
 
 static void Rr_DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
@@ -638,6 +640,38 @@ static void Rr_DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
     // VkImageSubresourceRange ClearRange = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
     //
     // vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
+}
+
+static void Rr_DrawGeometry(SRr* Rr, VkCommandBuffer CommandBuffer)
+{
+    VkRenderingAttachmentInfo colorAttachment = GetRenderingAttachmentInfo(Rr->DrawImage.View, NULL, VK_IMAGE_LAYOUT_GENERAL);
+
+    VkRenderingInfo renderInfo = GetRenderingInfo(Rr->DrawExtent, &colorAttachment, NULL);
+    vkCmdBeginRendering(CommandBuffer, &renderInfo);
+
+    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Rr->TrianglePipeline);
+
+    VkViewport viewport = { 0 };
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float)Rr->DrawExtent.width;
+    viewport.height = (float)Rr->DrawExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    vkCmdSetViewport(CommandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor = { 0 };
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent.width = Rr->DrawExtent.width;
+    scissor.extent.height = Rr->DrawExtent.height;
+
+    vkCmdSetScissor(CommandBuffer, 0, 1, &scissor);
+
+    vkCmdDraw(CommandBuffer, 3, 1, 0, 0);
+
+    vkCmdEndRendering(CommandBuffer);
 }
 
 void Rr_Init(SRr* Rr, struct SDL_Window* Window)
@@ -831,6 +865,9 @@ void Rr_Cleanup(SRr* Rr)
         vkDestroyDescriptorPool(Device, Rr->ImmediateMode.DescriptorPool, NULL);
     }
 
+    vkDestroyPipelineLayout(Device, Rr->TrianglePipelineLayout, NULL);
+    vkDestroyPipeline(Device, Rr->TrianglePipeline, NULL);
+
     vkDestroyPipelineLayout(Device, Rr->GradientPipelineLayout, NULL);
     vkDestroyPipeline(Device, Rr->GradientPipeline, NULL);
 
@@ -900,20 +937,32 @@ void Rr_Draw(SRr* Rr)
         DrawImage->Handle,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
         VK_ACCESS_2_MEMORY_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    Rr_DrawGeometry(Rr, CommandBuffer);
+    TransitionImage(
+        CommandBuffer,
+        DrawImage->Handle,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
         VK_ACCESS_2_TRANSFER_READ_BIT,
-        VK_IMAGE_LAYOUT_GENERAL,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     TransitionImage(
         CommandBuffer,
         SwapchainImage,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_MEMORY_WRITE_BIT,
+        0,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
         VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
     CopyImageToImage(CommandBuffer, DrawImage->Handle, Rr->Swapchain.Images[SwapchainImageIndex].Handle, Rr->DrawExtent, Rr->Swapchain.Extent);
     TransitionImage(
         CommandBuffer,

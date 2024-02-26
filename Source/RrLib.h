@@ -6,6 +6,7 @@
 #include "RrTypes.h"
 
 #include <SDL_log.h>
+#include <SDL_filesystem.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
 
@@ -22,6 +23,19 @@
 /* =======================
  * Struct Creation Helpers
  * ======================= */
+
+static VkPipelineShaderStageCreateInfo GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
+{
+    VkPipelineShaderStageCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext = NULL,
+        .pName = "main",
+        .stage = Stage,
+        .module = Module
+    };
+
+    return Info;
+}
 
 static VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearValue* InClearValue, VkImageLayout Layout)
 {
@@ -192,17 +206,46 @@ static VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubIn
     return Info;
 }
 
+static SPipelineBuilder GetPipelineBuilder(void)
+{
+    SPipelineBuilder PipelineBuilder = {
+        .InputAssembly = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO },
+        .Rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO },
+        .ColorBlendAttachment = { 0 },
+        .Multisampling = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .sampleShadingEnable = VK_FALSE,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+            .minSampleShading = 1.0f,
+            .pSampleMask = NULL,
+            .alphaToCoverageEnable = VK_FALSE,
+            .alphaToOneEnable = VK_FALSE },
+        .PipelineLayout = VK_NULL_HANDLE,
+        .DepthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO },
+        .RenderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO, .colorAttachmentCount = 1, .pColorAttachmentFormats = &PipelineBuilder.ColorAttachmentFormat }
+    };
+
+    return PipelineBuilder;
+}
+
 /* ==============
  * Shader Loading
  * ============== */
 
-static b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* OutShaderModule)
+static b32 LoadShaderModule(const char* Filename, VkDevice Device, VkShaderModule* OutShaderModule)
 {
-    FILE* File = fopen(Path, "r");
+    char* BasePath = SDL_GetBasePath();
+    size_t BasePathLength = strlen(BasePath);
+    char* ShaderPath = StackAlloc(char, BasePathLength + strlen(Filename) + 1);
+    strcpy(ShaderPath, BasePath);
+    strcpy(ShaderPath + BasePathLength, Filename);
+    SDL_free(BasePath);
+
+    FILE* File = fopen(ShaderPath, "r");
 
     if (!File)
     {
-        return FALSE;
+        goto ShaderError;
     }
 
     fseek(File, 0L, SEEK_END);
@@ -225,12 +268,18 @@ static b32 LoadShaderModule(const char* Path, VkDevice Device, VkShaderModule* O
     VkShaderModule ShaderModule;
     if (vkCreateShaderModule(Device, &CreateInfo, NULL, &ShaderModule) != VK_SUCCESS)
     {
-        return FALSE;
+        goto ShaderError;
     }
 
     *OutShaderModule = ShaderModule;
 
+    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Loaded shader: %s", ShaderPath);
+
     return TRUE;
+
+ShaderError:
+    SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, "Error when building the shader! Path: %s", ShaderPath);
+    abort();
 }
 
 /* ==========
@@ -409,4 +458,104 @@ static VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* Descri
     VK_ASSERT(vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet));
 
     return DescriptorSet;
+}
+
+/* =======
+ * SRr API
+ * ======= */
+
+static void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule, VkFormat ColorFormat, VkFormat DepthFormat, VkPipelineLayout Layout)
+{
+    PipelineBuilder->PipelineLayout = Layout;
+
+    PipelineBuilder->ShaderStages[0] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
+    PipelineBuilder->ShaderStages[1] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
+    PipelineBuilder->ShaderStageCount = 2;
+
+    PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    PipelineBuilder->InputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    PipelineBuilder->Rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    PipelineBuilder->Rasterizer.lineWidth = 1.0f;
+    PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_NONE;
+    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+    PipelineBuilder->ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    PipelineBuilder->ColorBlendAttachment.blendEnable = VK_FALSE;
+
+    PipelineBuilder->ColorAttachmentFormat = ColorFormat;
+    PipelineBuilder->RenderInfo.depthAttachmentFormat = DepthFormat;
+
+    PipelineBuilder->DepthStencil.depthTestEnable = VK_FALSE;
+    PipelineBuilder->DepthStencil.depthWriteEnable = VK_FALSE;
+    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
+    PipelineBuilder->DepthStencil.depthBoundsTestEnable = VK_FALSE;
+    PipelineBuilder->DepthStencil.stencilTestEnable = VK_FALSE;
+    PipelineBuilder->DepthStencil.front = (VkStencilOpState){ 0 };
+    PipelineBuilder->DepthStencil.back = (VkStencilOpState){ 0 };
+    PipelineBuilder->DepthStencil.minDepthBounds = 0.0f;
+    PipelineBuilder->DepthStencil.maxDepthBounds = 1.0f;
+}
+
+static VkPipeline Rr_BuildPipeline(SRr* Rr, SPipelineBuilder* PipelineBuilder)
+{
+    VkPipelineViewportStateCreateInfo ViewportInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
+
+    VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = 1,
+        .pAttachments = &PipelineBuilder->ColorBlendAttachment
+    };
+
+    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext = NULL
+    };
+
+    VkDynamicState DynamicState[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .pDynamicStates = DynamicState,
+        .dynamicStateCount = ArraySize(DynamicState)
+    };
+
+    VkGraphicsPipelineCreateInfo PipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext = &PipelineBuilder->RenderInfo,
+        .stageCount = PipelineBuilder->ShaderStageCount,
+        .pStages = PipelineBuilder->ShaderStages,
+        .pVertexInputState = &VertexInputInfo,
+        .pInputAssemblyState = &PipelineBuilder->InputAssembly,
+        .pViewportState = &ViewportInfo,
+        .pRasterizationState = &PipelineBuilder->Rasterizer,
+        .pMultisampleState = &PipelineBuilder->Multisampling,
+        .pColorBlendState = &ColorBlendInfo,
+        .pDepthStencilState = &PipelineBuilder->DepthStencil,
+        .layout = PipelineBuilder->PipelineLayout,
+        .pDynamicState = &DynamicStateInfo
+    };
+
+    VkPipeline Pipeline;
+    VK_ASSERT(vkCreateGraphicsPipelines(Rr->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline))
+
+    return Pipeline;
+}
+
+static void Rr_DestroyAllocatedImage(SRr* Rr, SAllocatedImage* AllocatedImage)
+{
+    if (AllocatedImage->Handle == VK_NULL_HANDLE)
+    {
+        return;
+    }
+    vkDestroyImageView(Rr->Device, AllocatedImage->View, NULL);
+    vmaDestroyImage(Rr->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 }
