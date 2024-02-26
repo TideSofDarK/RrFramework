@@ -326,9 +326,48 @@ static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkIm
     vkCmdBlitImage2(CommandBuffer, &BlitInfo);
 }
 
-/* ========================
- * SDescriptorLayoutBuilder
- * ======================== */
+/* ====================
+ * SPipelineBuilder API
+ * ==================== */
+
+static void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule, VkFormat ColorFormat, VkFormat DepthFormat, VkPipelineLayout Layout)
+{
+    PipelineBuilder->PipelineLayout = Layout;
+
+    PipelineBuilder->ShaderStages[0] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
+    PipelineBuilder->ShaderStages[1] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
+    PipelineBuilder->ShaderStageCount = 2;
+
+    PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    PipelineBuilder->InputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    PipelineBuilder->Rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    PipelineBuilder->Rasterizer.lineWidth = 1.0f;
+    PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_NONE;
+    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+    PipelineBuilder->ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    PipelineBuilder->ColorBlendAttachment.blendEnable = VK_FALSE;
+
+    PipelineBuilder->ColorAttachmentFormat = ColorFormat;
+    PipelineBuilder->RenderInfo.pColorAttachmentFormats = &PipelineBuilder->ColorAttachmentFormat;
+    PipelineBuilder->RenderInfo.colorAttachmentCount = 1;
+    PipelineBuilder->RenderInfo.depthAttachmentFormat = DepthFormat;
+
+    PipelineBuilder->DepthStencil.depthTestEnable = VK_FALSE;
+    PipelineBuilder->DepthStencil.depthWriteEnable = VK_FALSE;
+    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
+    PipelineBuilder->DepthStencil.depthBoundsTestEnable = VK_FALSE;
+    PipelineBuilder->DepthStencil.stencilTestEnable = VK_FALSE;
+    PipelineBuilder->DepthStencil.front = (VkStencilOpState){ 0 };
+    PipelineBuilder->DepthStencil.back = (VkStencilOpState){ 0 };
+    PipelineBuilder->DepthStencil.minDepthBounds = 0.0f;
+    PipelineBuilder->DepthStencil.maxDepthBounds = 1.0f;
+}
+
+/* ============================
+ * SDescriptorLayoutBuilder API
+ * ============================ */
 
 static void DescriptorLayoutBuilder_Add(SDescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type)
 {
@@ -468,39 +507,9 @@ static void TransitionImage_To(
  * SRr API
  * ======= */
 
-static void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule, VkFormat ColorFormat, VkFormat DepthFormat, VkPipelineLayout Layout)
+static SFrameData* Rr_GetCurrentFrame(SRr* Rr)
 {
-    PipelineBuilder->PipelineLayout = Layout;
-
-    PipelineBuilder->ShaderStages[0] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
-    PipelineBuilder->ShaderStages[1] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
-    PipelineBuilder->ShaderStageCount = 2;
-
-    PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-    PipelineBuilder->InputAssembly.primitiveRestartEnable = VK_FALSE;
-
-    PipelineBuilder->Rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    PipelineBuilder->Rasterizer.lineWidth = 1.0f;
-    PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_NONE;
-    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-
-    PipelineBuilder->ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    PipelineBuilder->ColorBlendAttachment.blendEnable = VK_FALSE;
-
-    PipelineBuilder->ColorAttachmentFormat = ColorFormat;
-    PipelineBuilder->RenderInfo.pColorAttachmentFormats = &PipelineBuilder->ColorAttachmentFormat;
-    PipelineBuilder->RenderInfo.colorAttachmentCount = 1;
-    PipelineBuilder->RenderInfo.depthAttachmentFormat = DepthFormat;
-
-    PipelineBuilder->DepthStencil.depthTestEnable = VK_FALSE;
-    PipelineBuilder->DepthStencil.depthWriteEnable = VK_FALSE;
-    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
-    PipelineBuilder->DepthStencil.depthBoundsTestEnable = VK_FALSE;
-    PipelineBuilder->DepthStencil.stencilTestEnable = VK_FALSE;
-    PipelineBuilder->DepthStencil.front = (VkStencilOpState){ 0 };
-    PipelineBuilder->DepthStencil.back = (VkStencilOpState){ 0 };
-    PipelineBuilder->DepthStencil.minDepthBounds = 0.0f;
-    PipelineBuilder->DepthStencil.maxDepthBounds = 1.0f;
+    return &Rr->Frames[Rr->FrameNumber % FRAME_OVERLAP];
 }
 
 static VkPipeline Rr_BuildPipeline(SRr* Rr, SPipelineBuilder* PipelineBuilder)

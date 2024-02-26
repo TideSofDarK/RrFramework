@@ -27,11 +27,6 @@ static const b32 bEnableValidationLayers = true;
 static const b32 bEnableValidationLayers = false;
 #endif
 
-static SFrameData* Rr_GetCurrentFrame(SRr* Rr)
-{
-    return &Rr->Frames[Rr->FrameNumber % FRAME_OVERLAP];
-}
-
 static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
 {
     u32 ExtensionCount;

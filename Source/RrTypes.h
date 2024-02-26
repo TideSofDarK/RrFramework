@@ -45,6 +45,7 @@ typedef struct SPipelineBuilder
     VkPipelineLayout PipelineLayout;
     VkPipelineDepthStencilStateCreateInfo DepthStencil;
     VkPipelineRenderingCreateInfo RenderInfo;
+
     VkFormat ColorAttachmentFormat;
 } SPipelineBuilder;
 
