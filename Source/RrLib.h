@@ -222,7 +222,7 @@ static SPipelineBuilder GetPipelineBuilder(void)
             .alphaToOneEnable = VK_FALSE },
         .PipelineLayout = VK_NULL_HANDLE,
         .DepthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO },
-        .RenderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO, .colorAttachmentCount = 1, .pColorAttachmentFormats = &PipelineBuilder.ColorAttachmentFormat }
+        .RenderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO }
     };
 
     return PipelineBuilder;
@@ -285,43 +285,6 @@ ShaderError:
 /* ==========
  * Operations
  * ========== */
-
-static void TransitionImage(
-    VkCommandBuffer CommandBuffer,
-    VkImage Image,
-    VkPipelineStageFlags2 SrcStageMask,
-    VkAccessFlags2 SrcAccessMask,
-    VkPipelineStageFlags2 DstStageMask,
-    VkAccessFlags2 DstAccessMask,
-    VkImageLayout CurrentLayout,
-    VkImageLayout NewLayout)
-{
-    VkImageMemoryBarrier2 ImageBarrier = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-
-        .pNext = NULL,
-
-        .srcStageMask = SrcStageMask,
-        .srcAccessMask = SrcAccessMask,
-        .dstStageMask = DstStageMask,
-        .dstAccessMask = DstAccessMask,
-
-        .oldLayout = CurrentLayout,
-        .newLayout = NewLayout,
-
-        .image = Image,
-        .subresourceRange = GetImageSubresourceRange((NewLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),
-    };
-
-    VkDependencyInfo DepInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .pNext = NULL,
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers = &ImageBarrier,
-    };
-
-    vkCmdPipelineBarrier2(CommandBuffer, &DepInfo);
-}
 
 static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
 {
@@ -525,6 +488,8 @@ static void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderM
     PipelineBuilder->ColorBlendAttachment.blendEnable = VK_FALSE;
 
     PipelineBuilder->ColorAttachmentFormat = ColorFormat;
+    PipelineBuilder->RenderInfo.pColorAttachmentFormats = &PipelineBuilder->ColorAttachmentFormat;
+    PipelineBuilder->RenderInfo.colorAttachmentCount = 1;
     PipelineBuilder->RenderInfo.depthAttachmentFormat = DepthFormat;
 
     PipelineBuilder->DepthStencil.depthTestEnable = VK_FALSE;
