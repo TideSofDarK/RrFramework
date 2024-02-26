@@ -949,7 +949,7 @@ void Rr_Draw(SRr* Rr)
         .Image = SwapchainImage,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .AccessMask = VK_ACCESS_2_NONE,
-        .StageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
     };
     TransitionImage_To(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,

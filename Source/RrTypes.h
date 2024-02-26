@@ -141,7 +141,7 @@ typedef struct SRr
     VkDebugUtilsMessengerEXT Messenger;
 
     SFrameData Frames[FRAME_OVERLAP];
-    u64 FrameNumber;
+    size_t FrameNumber;
 
     SDescriptorAllocator GlobalDescriptorAllocator;
 
