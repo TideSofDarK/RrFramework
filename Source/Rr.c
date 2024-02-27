@@ -1,6 +1,8 @@
 #include "Rr.h"
+#include "RrTypes.h"
 
 #include <assert.h>
+#include <cglm/mat4.h>
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,6 +12,7 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 #include <volk.h>
+#include <vulkan/vulkan_core.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -587,7 +590,7 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
     vkDestroyShaderModule(Rr->Device, ComputeDrawShader, NULL);
 }
 
-static void Rr_InitTrianglePipeline(SRr* Rr)
+static void Rr_InitMeshPipeline(SRr* Rr)
 {
     VkShaderModule VertModule;
     LoadShaderModule("triangle.vert.spv", Rr->Device, &VertModule);
@@ -595,19 +598,24 @@ static void Rr_InitTrianglePipeline(SRr* Rr)
     VkShaderModule FragModule;
     LoadShaderModule("triangle.frag.spv", Rr->Device, &FragModule);
 
+    VkPushConstantRange PushConstantRange = {
+        .offset = 0,
+        .size = sizeof(SPushConstants3D),
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+    };
     VkPipelineLayoutCreateInfo LayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         // .setLayoutCount = 1,
         // .pSetLayouts = &Rr->DrawImageDescriptorLayout,
-        // .pushConstantRangeCount = 1,
-        // .pPushConstantRanges = &PushConstantRange,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &PushConstantRange,
     };
-    vkCreatePipelineLayout(Rr->Device, &LayoutInfo, NULL, &Rr->TrianglePipelineLayout);
+    vkCreatePipelineLayout(Rr->Device, &LayoutInfo, NULL, &Rr->MeshPipelineLayout);
 
     SPipelineBuilder Builder = GetPipelineBuilder();
-    PipelineBuilder_Default(&Builder, VertModule, FragModule, Rr->DrawImage.Format, VK_FORMAT_UNDEFINED, Rr->TrianglePipelineLayout);
-    Rr->TrianglePipeline = Rr_BuildPipeline(Rr, &Builder);
+    PipelineBuilder_Default(&Builder, VertModule, FragModule, Rr->DrawImage.Format, VK_FORMAT_UNDEFINED, Rr->MeshPipelineLayout);
+    Rr->MeshPipeline = Rr_BuildPipeline(Rr, &Builder);
 
     vkDestroyShaderModule(Rr->Device, VertModule, NULL);
     vkDestroyShaderModule(Rr->Device, FragModule, NULL);
@@ -616,7 +624,7 @@ static void Rr_InitTrianglePipeline(SRr* Rr)
 static void Rr_InitPipelines(SRr* Rr)
 {
     Rr_InitBackgroundPipelines(Rr);
-    Rr_InitTrianglePipeline(Rr);
+    Rr_InitMeshPipeline(Rr);
 }
 
 static void Rr_DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
@@ -644,8 +652,6 @@ static void Rr_DrawGeometry(SRr* Rr, VkCommandBuffer CommandBuffer)
     VkRenderingInfo renderInfo = GetRenderingInfo(Rr->DrawExtent, &colorAttachment, NULL);
     vkCmdBeginRendering(CommandBuffer, &renderInfo);
 
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Rr->TrianglePipeline);
-
     VkViewport viewport = { 0 };
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -664,9 +670,92 @@ static void Rr_DrawGeometry(SRr* Rr, VkCommandBuffer CommandBuffer)
 
     vkCmdSetScissor(CommandBuffer, 0, 1, &scissor);
 
-    vkCmdDraw(CommandBuffer, 3, 1, 0, 0);
+    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Rr->MeshPipeline);
+    SPushConstants3D PushConstants = {
+        .VertexBufferAddress = Rr->Mesh.VertexBufferAddress,
+    };
+    glm_mat4_copy(GLM_MAT4_IDENTITY, PushConstants.WorldMat);
+
+    vkCmdPushConstants(CommandBuffer, Rr->MeshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SPushConstants3D), &PushConstants);
+    vkCmdBindIndexBuffer(CommandBuffer, Rr->Mesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(CommandBuffer, 6, 1, 0, 0, 0);
 
     vkCmdEndRendering(CommandBuffer);
+}
+
+static PFN_vkVoidFunction Rr_ImGui_LoadFunction(const char* FuncName, void* Userdata)
+{
+    return (PFN_vkVoidFunction)vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
+}
+
+void Rr_InitImmediateMode(SRr* const Rr)
+{
+    VkDevice Device = Rr->Device;
+    SImmediateMode* ImmediateMode = &Rr->ImmediateMode;
+
+    VkCommandPoolCreateInfo CommandPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
+    };
+    VK_ASSERT(vkCreateCommandPool(Device, &CommandPoolInfo, NULL, &ImmediateMode->CommandPool))
+    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
+    VK_ASSERT(vkAllocateCommandBuffers(Device, &CommandBufferAllocateInfo, &ImmediateMode->CommandBuffer))
+    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence))
+}
+
+void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
+{
+    VkDevice Device = Rr->Device;
+
+    VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
+
+    VkDescriptorPoolCreateInfo PoolCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 1000,
+        .poolSizeCount = (u32)ArraySize(PoolSizes),
+        .pPoolSizes = PoolSizes,
+    };
+
+    VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Rr->ImGui.DescriptorPool))
+
+    igCreateContext(NULL);
+
+    ImGui_ImplVulkan_LoadFunctions(Rr_ImGui_LoadFunction, NULL);
+    ImGui_ImplSDL3_InitForVulkan(Window);
+
+    ImGui_ImplVulkan_InitInfo InitInfo = {
+        .Instance = Rr->Instance,
+        .PhysicalDevice = Rr->PhysicalDevice.Handle,
+        .Device = Device,
+        .Queue = Rr->GraphicsQueue.Handle,
+        .DescriptorPool = Rr->ImGui.DescriptorPool,
+        .MinImageCount = 3,
+        .ImageCount = 3,
+        .UseDynamicRendering = true,
+        .PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+        .PipelineRenderingCreateInfo.colorAttachmentCount = 1,
+        .PipelineRenderingCreateInfo.pColorAttachmentFormats = &Rr->Swapchain.Format,
+        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+    };
+
+    ImGui_ImplVulkan_Init(&InitInfo);
+    ImGui_ImplVulkan_CreateFontsTexture();
+
+    Rr->ImGui.bInit = true;
 }
 
 void Rr_Init(SRr* Rr, struct SDL_Window* Window)
@@ -775,75 +864,28 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
     Rr_InitDescriptors(Rr);
 
     Rr_InitPipelines(Rr);
-}
 
-static PFN_vkVoidFunction Rr_ImGui_LoadFunction(const char* FuncName, void* Userdata)
-{
-    return (PFN_vkVoidFunction)vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
-}
+    Rr_InitImmediateMode(Rr);
 
-void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
-{
-    VkDevice Device = Rr->Device;
-
-    VkCommandPoolCreateInfo CommandPoolInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
+    SVertex Vertices[4] = { 0 };
+    Vertices[0] = (SVertex){
+        .Position = { 0.5f, -0.5f, 0.0f },
+        .Color = { 1.0f, 1.0f, 1.0f, 1.0f }
     };
-    VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Rr->ImmediateMode.CommandPool))
-    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Rr->ImmediateMode.CommandPool, 1);
-    VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Rr->ImmediateMode.CommandBuffer))
-    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Rr->ImmediateMode.Fence))
-
-    VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
-
-    VkDescriptorPoolCreateInfo PoolCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-        .maxSets = 1000,
-        .poolSizeCount = (u32)ArraySize(PoolSizes),
-        .pPoolSizes = PoolSizes,
+    Vertices[1] = (SVertex){
+        .Position = { 0.5f, 0.5f, 0.0f },
+        .Color = { 1.0f, 0.0f, 0.0f, 1.0f }
     };
-
-    VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Rr->ImmediateMode.DescriptorPool))
-
-    igCreateContext(NULL);
-
-    ImGui_ImplVulkan_LoadFunctions(Rr_ImGui_LoadFunction, NULL);
-    ImGui_ImplSDL3_InitForVulkan(Window);
-
-    ImGui_ImplVulkan_InitInfo InitInfo = {
-        .Instance = Rr->Instance,
-        .PhysicalDevice = Rr->PhysicalDevice.Handle,
-        .Device = Device,
-        .Queue = Rr->GraphicsQueue.Handle,
-        .DescriptorPool = Rr->ImmediateMode.DescriptorPool,
-        .MinImageCount = 3,
-        .ImageCount = 3,
-        .UseDynamicRendering = true,
-        .PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
-        .PipelineRenderingCreateInfo.colorAttachmentCount = 1,
-        .PipelineRenderingCreateInfo.pColorAttachmentFormats = &Rr->Swapchain.Format,
-        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+    Vertices[2] = (SVertex){
+        .Position = { -0.5f, -0.5f, 0.0f },
+        .Color = { 0.0f, 1.0f, 0.0f, 1.0f }
     };
-
-    ImGui_ImplVulkan_Init(&InitInfo);
-    ImGui_ImplVulkan_CreateFontsTexture();
-
-    Rr->ImmediateMode.bInit = true;
+    Vertices[3] = (SVertex){
+        .Position = { -0.5f, 0.5f, 0.0f },
+        .Color = { 0.0f, 0.0f, 1.0f, 1.0f }
+    };
+    MeshIndexType Indices[] = { 0, 1, 2, 2, 1, 3 };
+    Rr_UploadMesh(Rr, &Rr->Mesh, Indices, 6, Vertices, 4);
 }
 
 void Rr_Cleanup(SRr* Rr)
@@ -852,16 +894,20 @@ void Rr_Cleanup(SRr* Rr)
 
     vkDeviceWaitIdle(Rr->Device);
 
-    if (Rr->ImmediateMode.bInit)
+    Rr_CleanupMesh(Rr, &Rr->Mesh);
+
+    if (Rr->ImGui.bInit)
     {
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();
-        vkDestroyCommandPool(Rr->Device, Rr->ImmediateMode.CommandPool, NULL);
-        vkDestroyDescriptorPool(Device, Rr->ImmediateMode.DescriptorPool, NULL);
+        vkDestroyDescriptorPool(Device, Rr->ImGui.DescriptorPool, NULL);
     }
 
-    vkDestroyPipelineLayout(Device, Rr->TrianglePipelineLayout, NULL);
-    vkDestroyPipeline(Device, Rr->TrianglePipeline, NULL);
+    vkDestroyCommandPool(Rr->Device, Rr->ImmediateMode.CommandPool, NULL);
+    vkDestroyFence(Device, Rr->ImmediateMode.Fence, NULL);
+
+    vkDestroyPipelineLayout(Device, Rr->MeshPipelineLayout, NULL);
+    vkDestroyPipeline(Device, Rr->MeshPipeline, NULL);
 
     vkDestroyPipelineLayout(Device, Rr->GradientPipelineLayout, NULL);
     vkDestroyPipeline(Device, Rr->GradientPipeline, NULL);
@@ -869,8 +915,6 @@ void Rr_Cleanup(SRr* Rr)
     Rr_UpdateDrawImageDescriptors(Rr, false, true);
 
     DescriptorAllocator_DestroyPool(&Rr->GlobalDescriptorAllocator, Device);
-
-    vkDestroyFence(Device, Rr->ImmediateMode.Fence, NULL);
 
     for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
     {
@@ -957,7 +1001,7 @@ void Rr_Draw(SRr* Rr)
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    if (Rr->ImmediateMode.bInit)
+    if (Rr->ImGui.bInit)
     {
         VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo(Rr->Swapchain.Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         VkRenderingInfo renderInfo = GetRenderingInfo(Rr->Swapchain.Extent, &ColorAttachment, NULL);

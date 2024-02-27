@@ -7,7 +7,9 @@
 
 #include <SDL_log.h>
 #include <SDL_filesystem.h>
+#include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
+#include <volk.h>
 #include <vulkan/vulkan_core.h>
 
 #define VK_ASSERT(Expr)                                                                                                              \
@@ -503,9 +505,129 @@ static void TransitionImage_To(
     TransitionImage->AccessMask = DstAccessMask;
 }
 
+/* ====================
+ * SAllocatedBuffer API
+ * ==================== */
+
+static void AllocatedBuffer_Init(SAllocatedBuffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage)
+{
+    VkBufferCreateInfo BufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = NULL,
+        .size = Size,
+        .usage = UsageFlags
+    };
+
+    VmaAllocationCreateInfo AllocationInfo = {
+        .usage = MemoryUsage,
+        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT
+    };
+
+    VK_ASSERT(vmaCreateBuffer(Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo))
+}
+
+static void AllocatedBuffer_Cleanup(SAllocatedBuffer* Buffer, VmaAllocator Allocator)
+{
+    vmaDestroyBuffer(Allocator, Buffer->Handle, Buffer->Allocation);
+}
+
 /* =======
  * SRr API
  * ======= */
+
+static VkCommandBuffer Rr_BeginImmediate(SRr* Rr)
+{
+    SImmediateMode* ImmediateMode = &Rr->ImmediateMode;
+    VK_ASSERT(vkResetFences(Rr->Device, 1, &ImmediateMode->Fence))
+    VK_ASSERT(vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0))
+
+    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    VK_ASSERT(vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo))
+}
+
+static void Rr_EndImmediate(SRr* Rr)
+{
+    SImmediateMode* ImmediateMode = &Rr->ImmediateMode;
+
+    VK_ASSERT(vkEndCommandBuffer(ImmediateMode->CommandBuffer))
+
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
+    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
+
+    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence))
+    VK_ASSERT(vkWaitForFences(Rr->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX))
+}
+
+static void Rr_UploadMesh(SRr* Rr, SMeshBuffers* MeshBuffers, MeshIndexType* Indices, size_t IndexCount, SVertex* Vertices, size_t VertexCount)
+{
+    size_t VertexBufferSize = sizeof(SVertex) * VertexCount;
+    size_t IndexBufferSize = sizeof(MeshIndexType) * IndexCount;
+
+    AllocatedBuffer_Init(
+        &MeshBuffers->VertexBuffer,
+        Rr->Allocator,
+        VertexBufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+
+    VkBufferDeviceAddressInfo DeviceAddressInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = MeshBuffers->VertexBuffer.Handle
+    };
+    MeshBuffers->VertexBufferAddress = vkGetBufferDeviceAddress(Rr->Device, &DeviceAddressInfo);
+
+    AllocatedBuffer_Init(
+        &MeshBuffers->IndexBuffer,
+        Rr->Allocator,
+        IndexBufferSize,
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+
+    SAllocatedBuffer StagingBuffer = { 0 };
+    AllocatedBuffer_Init(
+        &StagingBuffer,
+        Rr->Allocator,
+        VertexBufferSize + IndexBufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void* StagingData;
+    vmaMapMemory(Rr->Allocator, StagingBuffer.Allocation, &StagingData);
+
+    memcpy((char*)StagingData, (void*)Vertices, VertexBufferSize);
+    memcpy((char*)StagingData + VertexBufferSize, (void*)Indices, IndexBufferSize);
+
+    Rr_BeginImmediate(Rr);
+
+    VkBufferCopy VertexCopy = {
+        .dstOffset = 0,
+        .srcOffset = 0,
+        .size = VertexBufferSize
+    };
+
+    vkCmdCopyBuffer(Rr->ImmediateMode.CommandBuffer, StagingBuffer.Handle, MeshBuffers->VertexBuffer.Handle, 1, &VertexCopy);
+
+    VkBufferCopy IndexCopy = {
+        .dstOffset = 0,
+        .srcOffset = VertexBufferSize,
+        .size = IndexBufferSize
+    };
+
+    vkCmdCopyBuffer(Rr->ImmediateMode.CommandBuffer, StagingBuffer.Handle, MeshBuffers->IndexBuffer.Handle, 1, &IndexCopy);
+
+    Rr_EndImmediate(Rr);
+
+    vmaUnmapMemory(Rr->Allocator, StagingBuffer.Allocation);
+
+    AllocatedBuffer_Cleanup(&StagingBuffer, Rr->Allocator);
+}
+
+static void Rr_CleanupMesh(SRr* const Rr, SMeshBuffers* Mesh)
+{
+    AllocatedBuffer_Cleanup(&Mesh->IndexBuffer, Rr->Allocator);
+    AllocatedBuffer_Cleanup(&Mesh->VertexBuffer, Rr->Allocator);
+}
 
 static SFrameData* Rr_GetCurrentFrame(SRr* Rr)
 {

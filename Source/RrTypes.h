@@ -15,6 +15,34 @@
 
 typedef struct SDL_Window SDL_Window;
 
+typedef u32 MeshIndexType;
+
+typedef struct
+{
+    VkBuffer Handle;
+    VmaAllocationInfo AllocationInfo;
+    VmaAllocation Allocation;
+} SAllocatedBuffer;
+
+typedef struct {
+    vec3 Position;
+    f32 uvX;
+    vec3 Normal;
+    f32 uvY;
+    vec4 Color;
+} SVertex;
+
+typedef struct {
+    SAllocatedBuffer IndexBuffer;
+    SAllocatedBuffer VertexBuffer;
+    VkDeviceAddress VertexBufferAddress;
+} SMeshBuffers;
+
+typedef struct {
+    mat4 WorldMat;
+    VkDeviceAddress VertexBufferAddress;
+} SPushConstants3D;
+
 typedef struct STransitionImage
 {
     VkCommandBuffer CommandBuffer;
@@ -115,13 +143,16 @@ typedef struct SComputeConstants
     vec4 Vec3;
 } SComputeConstants;
 
-typedef struct SImGui
+typedef struct
 {
     b32 bInit;
+    VkDescriptorPool DescriptorPool;
+} SImGui;
+
+typedef struct {
     VkFence Fence;
     VkCommandBuffer CommandBuffer;
     VkCommandPool CommandPool;
-    VkDescriptorPool DescriptorPool;
 } SImmediateMode;
 
 typedef struct SRr
@@ -152,8 +183,12 @@ typedef struct SRr
     VkPipeline GradientPipeline;
     VkPipelineLayout GradientPipelineLayout;
 
+    SImGui ImGui;
+
     SImmediateMode ImmediateMode;
 
-    VkPipeline TrianglePipeline;
-    VkPipelineLayout TrianglePipelineLayout;
+    VkPipeline MeshPipeline;
+    VkPipelineLayout MeshPipelineLayout;
+
+    SMeshBuffers Mesh;
 } SRr;
