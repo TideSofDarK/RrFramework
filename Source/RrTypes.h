@@ -4,7 +4,6 @@
 
 #include <cglm/vec4.h>
 
-#include <volk.h>
 #include <vk_mem_alloc.h>
 
 #include "Core.h"

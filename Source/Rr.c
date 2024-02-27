@@ -1,5 +1,3 @@
-#define VOLK_IMPLEMENTATION
-
 #include "Rr.h"
 
 #include <assert.h>
@@ -10,6 +8,8 @@
 #include <cglm/cglm.h>
 
 #include <vulkan/vk_enum_string_helper.h>
+
+#include <volk.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
