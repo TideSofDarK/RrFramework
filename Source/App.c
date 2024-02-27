@@ -23,10 +23,12 @@ void RunApp(void)
         AppTitle,
         1600,
         800,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
 
     Rr_Init(&App.Rr, App.Window);
     Rr_InitImGui(&App.Rr, App.Window);
+
+    b32 bShown = false;
 
     while (!App.bExit)
     {
@@ -60,6 +62,12 @@ void RunApp(void)
         igRender();
 
         Rr_Draw(&App.Rr);
+
+        if (!bShown)
+        {
+            SDL_ShowWindow(App.Window);
+            bShown = true;
+        }
     }
 
     Rr_Cleanup(&App.Rr);
