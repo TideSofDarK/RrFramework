@@ -28,7 +28,7 @@ void RunApp(void)
     Rr_Init(&App.Rr, App.Window);
     Rr_InitImGui(&App.Rr, App.Window);
 
-    b32 bShown = false;
+    SDL_ShowWindow(App.Window);
 
     while (!App.bExit)
     {
@@ -62,12 +62,6 @@ void RunApp(void)
         igRender();
 
         Rr_Draw(&App.Rr);
-
-        if (!bShown)
-        {
-            SDL_ShowWindow(App.Window);
-            bShown = true;
-        }
     }
 
     Rr_Cleanup(&App.Rr);
