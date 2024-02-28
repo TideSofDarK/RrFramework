@@ -7,8 +7,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#include <cglm/cglm.h>
-
 #include <vulkan/vk_enum_string_helper.h>
 
 #include <volk.h>
@@ -24,12 +22,6 @@
 
 #include "RrLib.h"
 
-#ifdef RR_DEBUG
-static const b32 bEnableValidationLayers = true;
-#else
-static const b32 bEnableValidationLayers = false;
-#endif
-
 static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
 {
     u32 ExtensionCount;
@@ -39,7 +31,7 @@ static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
         return false;
     }
 
-    VkExtensionProperties* Extensions = StackAlloc(VkExtensionProperties, ExtensionCount);
+    VkExtensionProperties* Extensions = SDL_stack_alloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
 
     bool bSwapchainFound = false;
@@ -63,8 +55,8 @@ static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
         return false;
     }
 
-    VkQueueFamilyProperties* QueueFamilyProperties = StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
-    VkBool32* QueuePresentSupport = StackAlloc(VkBool32, QueueFamilyCount);
+    VkQueueFamilyProperties* QueueFamilyProperties = SDL_stack_alloc(VkQueueFamilyProperties, QueueFamilyCount);
+    VkBool32* QueuePresentSupport = SDL_stack_alloc(VkBool32, QueueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
@@ -84,6 +76,10 @@ static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
         }
     }
 
+    SDL_stack_free(QueuePresentSupport);
+    SDL_stack_free(QueueFamilyProperties);
+    SDL_stack_free(Extensions);
+
     return false;
 }
 
@@ -97,7 +93,7 @@ static void Rr_InitDevice(SRr* Rr)
         abort();
     }
 
-    VkPhysicalDevice* PhysicalDevices = StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
+    VkPhysicalDevice* PhysicalDevices = SDL_stack_alloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Rr->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
     Rr->PhysicalDevice.SubgroupProperties = (VkPhysicalDeviceSubgroupProperties){ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = NULL };
@@ -158,20 +154,22 @@ static void Rr_InitDevice(SRr* Rr)
     // };
     // vkGetPhysicalDeviceFeatures2(Renderer->PhysicalDevice.Handle, &Features2);
 
-    const char* SwapchainExtension = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+    const char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
     VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = &Features12,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &QueueInfo,
-        .enabledExtensionCount = 1,
-        .ppEnabledExtensionNames = &SwapchainExtension,
+        .enabledExtensionCount = SDL_arraysize(DeviceExtensions),
+        .ppEnabledExtensionNames = DeviceExtensions,
     };
 
     VK_ASSERT(vkCreateDevice(Rr->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Rr->Device))
 
     vkGetDeviceQueue(Rr->Device, Rr->GraphicsQueue.FamilyIndex, 0, &Rr->GraphicsQueue.Handle);
+
+    SDL_stack_free(PhysicalDevices);
 }
 
 static void Rr_CreateDrawImage(SRr* Rr, u32 Width, u32 Height)
@@ -227,7 +225,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, NULL))
     assert(PresentModeCount > 0);
 
-    VkPresentModeKHR* PresentModes = StackAlloc(VkPresentModeKHR, PresentModeCount);
+    VkPresentModeKHR* PresentModes = SDL_stack_alloc(VkPresentModeKHR, PresentModeCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, PresentModes))
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -247,6 +245,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
             }
         }
     }
+    SDL_stack_free(PresentModes);
 
     u32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if ((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))
@@ -283,7 +282,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, NULL))
     assert(FormatCount > 0);
 
-    VkSurfaceFormatKHR* SurfaceFormats = StackAlloc(VkSurfaceFormatKHR, FormatCount);
+    VkSurfaceFormatKHR* SurfaceFormats = SDL_stack_alloc(VkSurfaceFormatKHR, FormatCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, SurfaceFormats))
 
     bool bPreferredFormatFound = false;
@@ -313,7 +312,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
         VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
         VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
     };
-    for (u32 Index = 0; Index < ArraySize(CompositeAlphaFlags); Index++)
+    for (u32 Index = 0; Index < SDL_arraysize(CompositeAlphaFlags); Index++)
     {
         VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag = CompositeAlphaFlags[Index];
         if (SurfCaps.supportedCompositeAlpha & CompositeAlphaFlag)
@@ -362,7 +361,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Rr->Swapchain.ImageCount = ImageCount;
-    VkImage* Images = StackAlloc(VkImage, ImageCount);
+    VkImage* Images = SDL_stack_alloc(VkImage, ImageCount);
     VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, Images))
 
     VkImageViewCreateInfo ColorAttachmentView = {
@@ -391,35 +390,9 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     }
 
     Rr_CreateDrawImage(Rr, *Width, *Height);
-}
 
-static VkBool32 VKAPI_PTR DebugMessage(
-    VkDebugUtilsMessageSeverityFlagBitsEXT MessageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT MessageTypes,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* Userdata)
-{
-    if (pCallbackData != NULL)
-    {
-        const char* format = "{0x%x}% s\n %s ";
-        SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, format,
-            pCallbackData->messageIdNumber,
-            pCallbackData->pMessageIdName,
-            pCallbackData->pMessage);
-    }
-    return VK_FALSE;
-}
-
-static void VKAPI_CALL Rr_InitDebugMessenger(SRr* Rr)
-{
-    VkDebugUtilsMessengerCreateInfoEXT DebugUtilsMessengerCI = {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-        .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
-        .pfnUserCallback = DebugMessage
-    };
-
-    VK_ASSERT(vkCreateDebugUtilsMessengerEXT(Rr->Instance, &DebugUtilsMessengerCI, NULL, &Rr->Messenger))
+    SDL_stack_free(Images);
+    SDL_stack_free(SurfaceFormats);
 }
 
 static void Rr_InitCommands(SRr* Rr)
@@ -726,7 +699,7 @@ void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .maxSets = 1000,
-        .poolSizeCount = (u32)ArraySize(PoolSizes),
+        .poolSizeCount = (u32)SDL_arraysize(PoolSizes),
         .pPoolSizes = PoolSizes,
     };
 
@@ -765,25 +738,30 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
     VkApplicationInfo VKAppInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = AppTitle,
-        .pEngineName = AppTitle,
+        .pEngineName = "Rr",
         .apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0)
     };
 
-    u32 ExtensionCount;
-    const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&ExtensionCount);
+    /* Gather required extensions. */
+    const char* AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+    u32 AppExtensionCount = SDL_arraysize(AppExtensions);
+    AppExtensionCount = 0; /* Use Vulkan Configurator! */
 
-    const char** Extensions = StackAlloc(const char*, ExtensionCount + 1);
+    u32 SDLExtensionCount;
+    const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
+
+    u32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
+    const char** Extensions = SDL_stack_alloc(const char*, ExtensionCount);
     for (u32 Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
     }
-
-    if (bEnableValidationLayers)
+    for (u32 Index = 0; Index < AppExtensionCount; Index++)
     {
-        Extensions[ExtensionCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
-        ExtensionCount++;
+        Extensions[Index + SDLExtensionCount] = AppExtensions[Index];
     }
 
+    /* Create Vulkan instance. */
     VkInstanceCreateInfo VKInstInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = NULL,
@@ -792,53 +770,9 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
         .ppEnabledExtensionNames = Extensions,
     };
 
-    if (bEnableValidationLayers)
-    {
-        const char* ValidationLayerName = "VK_LAYER_KHRONOS_validation";
-
-        u32 InstanceLayerCount;
-        vkEnumerateInstanceLayerProperties(&InstanceLayerCount, NULL);
-        VkLayerProperties* InstanceLayerProperties = StackAlloc(VkLayerProperties, InstanceLayerCount);
-        vkEnumerateInstanceLayerProperties(&InstanceLayerCount, InstanceLayerProperties);
-
-        bool bValidationLayerPresent = false;
-        for (u32 Index = 0; Index < InstanceLayerCount; Index++)
-        {
-            VkLayerProperties* Layer = &InstanceLayerProperties[Index];
-            if (strcmp(Layer->layerName, ValidationLayerName) == 0)
-            {
-                bValidationLayerPresent = true;
-                break;
-            }
-        }
-        if (!bValidationLayerPresent)
-        {
-            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "No %s present!", ValidationLayerName);
-            abort();
-        }
-
-        VKInstInfo.enabledLayerCount = 1;
-        VKInstInfo.ppEnabledLayerNames = &ValidationLayerName;
-
-        VkValidationFeatureEnableEXT EnabledValidationFeatures[] = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
-
-        VkValidationFeaturesEXT ValidationFeatures = {
-            .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
-            .enabledValidationFeatureCount = 1,
-            .pEnabledValidationFeatures = EnabledValidationFeatures,
-        };
-
-        VKInstInfo.pNext = &ValidationFeatures;
-    }
-
     VK_ASSERT(vkCreateInstance(&VKInstInfo, NULL, &Rr->Instance))
 
     volkLoadInstance(Rr->Instance);
-
-    if (bEnableValidationLayers)
-    {
-        Rr_InitDebugMessenger(Rr);
-    }
 
     if (SDL_Vulkan_CreateSurface(Window, Rr->Instance, NULL, &Rr->Surface) != SDL_TRUE)
     {
@@ -886,6 +820,8 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
     };
     MeshIndexType Indices[] = { 0, 1, 2, 2, 1, 3 };
     Rr_UploadMesh(Rr, &Rr->Mesh, Indices, 6, Vertices, 4);
+
+    SDL_stack_free(Extensions);
 }
 
 void Rr_Cleanup(SRr* Rr)
@@ -933,10 +869,6 @@ void Rr_Cleanup(SRr* Rr)
     vkDestroySurfaceKHR(Rr->Instance, Rr->Surface, NULL);
     vkDestroyDevice(Rr->Device, NULL);
 
-    if (bEnableValidationLayers)
-    {
-        vkDestroyDebugUtilsMessengerEXT(Rr->Instance, Rr->Messenger, NULL);
-    }
     vkDestroyInstance(Rr->Instance, NULL);
 }
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "RrTypes.h"
 
@@ -237,28 +236,29 @@ static SPipelineBuilder GetPipelineBuilder(void)
 static b32 LoadShaderModule(const char* Filename, VkDevice Device, VkShaderModule* OutShaderModule)
 {
     char* BasePath = SDL_GetBasePath();
-    size_t BasePathLength = strlen(BasePath);
-    char* ShaderPath = StackAlloc(char, BasePathLength + strlen(Filename) + 1);
-    strcpy(ShaderPath, BasePath);
-    strcpy(ShaderPath + BasePathLength, Filename);
+    size_t BasePathLength = SDL_strlen(BasePath);
+    size_t ShaderPathLength = BasePathLength + SDL_strlen(Filename) + 1;
+    char* ShaderPath = SDL_stack_alloc(char, ShaderPathLength);
+    SDL_strlcpy(ShaderPath, BasePath, ShaderPathLength);
+    SDL_strlcpy(ShaderPath + BasePathLength, Filename, ShaderPathLength - BasePathLength);
     SDL_free(BasePath);
 
-    FILE* File = fopen(ShaderPath, "r");
+    SDL_RWops* File = SDL_RWFromFile(ShaderPath, "rb");
 
     if (!File)
     {
         goto ShaderError;
     }
 
-    fseek(File, 0L, SEEK_END);
-    size_t FileSize = (size_t)ftell(File);
+    SDL_RWseek(File, 0, SDL_RW_SEEK_END);
+    i64 FileSize = SDL_RWtell(File);
+    SDL_RWseek(File, 0, SDL_RW_SEEK_SET);
 
-    size_t BufferSize = FileSize / sizeof(u32);
-    u32* Buffer = StackAlloc(u32, BufferSize);
+    size_t BufferSize = (u32)FileSize / sizeof(u32);
+    u32* Buffer = SDL_stack_alloc(u32, BufferSize);
 
-    rewind(File);
-    fread(Buffer, sizeof(Buffer[0]), FileSize, File);
-    fclose(File);
+    SDL_RWread(File, Buffer, FileSize);
+    SDL_RWclose( File );
 
     VkShaderModuleCreateInfo CreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -268,7 +268,11 @@ static b32 LoadShaderModule(const char* Filename, VkDevice Device, VkShaderModul
     };
 
     VkShaderModule ShaderModule;
-    if (vkCreateShaderModule(Device, &CreateInfo, NULL, &ShaderModule) != VK_SUCCESS)
+    VkResult Result = vkCreateShaderModule(Device, &CreateInfo, NULL, &ShaderModule);
+    SDL_stack_free(Buffer);
+    SDL_stack_free(ShaderPath);
+
+    if (Result != VK_SUCCESS)
     {
         goto ShaderError;
     }
@@ -418,7 +422,7 @@ static VkDescriptorSetLayout DescriptorLayoutBuilder_Build(SDescriptorLayoutBuil
 
 static void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevice device, u32 maxSets, SDescriptorPoolSizeRatio* poolRatios, u32 PoolRatioCount)
 {
-    VkDescriptorPoolSize* PoolSizes = StackAlloc(VkDescriptorPoolSize, PoolRatioCount);
+    VkDescriptorPoolSize* PoolSizes = SDL_stack_alloc(VkDescriptorPoolSize, PoolRatioCount);
     for (u32 Index = 0; Index < PoolRatioCount; --Index)
     {
         PoolSizes[Index] = (VkDescriptorPoolSize){
@@ -436,6 +440,8 @@ static void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, 
     };
 
     VK_ASSERT(vkCreateDescriptorPool(device, &PoolCreateInfo, NULL, &DescriptorAllocator->Pool));
+
+    SDL_stack_free(PoolSizes);
 }
 
 static void DescriptorAllocator_ClearDescriptors(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
@@ -548,6 +554,8 @@ static VkCommandBuffer Rr_BeginImmediate(SRr* Rr)
     VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_ASSERT(vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo))
+
+    return ImmediateMode->CommandBuffer;
 }
 
 static void Rr_EndImmediate(SRr* Rr)
@@ -664,7 +672,7 @@ static VkPipeline Rr_BuildPipeline(SRr* Rr, SPipelineBuilder* PipelineBuilder)
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .pNext = NULL,
         .pDynamicStates = DynamicState,
-        .dynamicStateCount = ArraySize(DynamicState)
+        .dynamicStateCount = SDL_arraysize(DynamicState)
     };
 
     VkGraphicsPipelineCreateInfo PipelineInfo = {

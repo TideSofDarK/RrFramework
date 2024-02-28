@@ -169,8 +169,6 @@ typedef struct SRr
 
     VmaAllocator Allocator;
 
-    VkDebugUtilsMessengerEXT Messenger;
-
     SFrameData Frames[FRAME_OVERLAP];
     size_t FrameNumber;
 
