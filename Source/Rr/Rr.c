@@ -22,7 +22,7 @@
 
 #include "RrLib.h"
 
-static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
+static bool Rr_CheckPhysicalDevice(SRr* const Rr, VkPhysicalDevice PhysicalDevice)
 {
     u32 ExtensionCount;
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
@@ -83,7 +83,7 @@ static bool Rr_CheckPhysicalDevice(SRr* Rr, VkPhysicalDevice PhysicalDevice)
     return false;
 }
 
-static void Rr_InitDevice(SRr* Rr)
+static void Rr_InitDevice(SRr* const Rr)
 {
     u32 PhysicalDeviceCount = 0;
     vkEnumeratePhysicalDevices(Rr->Instance, &PhysicalDeviceCount, NULL);
@@ -148,12 +148,6 @@ static void Rr_InitDevice(SRr* Rr)
         .bufferDeviceAddress = VK_TRUE,
     };
 
-    // VkPhysicalDeviceFeatures2 Features2 = {
-    //     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-    //     .pNext = &float16_int8
-    // };
-    // vkGetPhysicalDeviceFeatures2(Renderer->PhysicalDevice.Handle, &Features2);
-
     const char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
     VkDeviceCreateInfo DeviceCreateInfo = {
@@ -172,7 +166,7 @@ static void Rr_InitDevice(SRr* Rr)
     SDL_stack_free(PhysicalDevices);
 }
 
-static void Rr_CreateDrawImage(SRr* Rr, u32 Width, u32 Height)
+static void Rr_CreateDrawImage(SRr* const Rr, u32 Width, u32 Height)
 {
     SAllocatedImage* DrawImage = &Rr->DrawImage;
 
@@ -203,7 +197,7 @@ static void Rr_CreateDrawImage(SRr* Rr, u32 Width, u32 Height)
     VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &DrawImage->View))
 }
 
-static void Rr_CleanupSwapchain(SRr* Rr, VkSwapchainKHR Swapchain)
+static void Rr_CleanupSwapchain(SRr* const Rr, VkSwapchainKHR Swapchain)
 {
     for (u32 Index = 0; Index < Rr->Swapchain.ImageCount; Index++)
     {
@@ -214,7 +208,7 @@ static void Rr_CleanupSwapchain(SRr* Rr, VkSwapchainKHR Swapchain)
     Rr_DestroyAllocatedImage(Rr, &Rr->DrawImage);
 }
 
-static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
+static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSync)
 {
     VkSwapchainKHR OldSwapchain = Rr->Swapchain.Handle;
 
@@ -395,7 +389,7 @@ static void Rr_CreateSwapchain(SRr* Rr, u32* Width, u32* Height, bool bVSync)
     SDL_stack_free(SurfaceFormats);
 }
 
-static void Rr_InitCommands(SRr* Rr)
+static void Rr_InitCommands(SRr* const Rr)
 {
     VkCommandPoolCreateInfo CommandPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -416,7 +410,7 @@ static void Rr_InitCommands(SRr* Rr)
     }
 }
 
-static void Rr_InitSyncStructures(SRr* Rr)
+static void Rr_InitSyncStructures(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
     SFrameData* Frames = Rr->Frames;
@@ -433,7 +427,7 @@ static void Rr_InitSyncStructures(SRr* Rr)
     }
 }
 
-static void Rr_InitAllocator(SRr* Rr)
+static void Rr_InitAllocator(SRr* const Rr)
 {
     VmaVulkanFunctions VulkanFunctions = {
         .vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties,
@@ -469,7 +463,7 @@ static void Rr_InitAllocator(SRr* Rr)
     VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Rr->Allocator))
 }
 
-static void Rr_UpdateDrawImageDescriptors(SRr* Rr, b32 bCreate, b32 bDestroy)
+static void Rr_UpdateDrawImageDescriptors(SRr* const Rr, b32 bCreate, b32 bDestroy)
 {
     SDescriptorAllocator* GlobalDescriptorAllocator = &Rr->GlobalDescriptorAllocator;
 
@@ -522,7 +516,7 @@ static void Rr_InitDescriptors(SRr* Renderer)
     Rr_UpdateDrawImageDescriptors(Renderer, true, false);
 }
 
-static void Rr_InitBackgroundPipelines(SRr* Rr)
+static void Rr_InitBackgroundPipelines(SRr* const Rr)
 {
     VkPushConstantRange PushConstantRange = {
         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -563,7 +557,7 @@ static void Rr_InitBackgroundPipelines(SRr* Rr)
     vkDestroyShaderModule(Rr->Device, ComputeDrawShader, NULL);
 }
 
-static void Rr_InitMeshPipeline(SRr* Rr)
+static void Rr_InitMeshPipeline(SRr* const Rr)
 {
     VkShaderModule VertModule;
     LoadShaderModule("triangle.vert.spv", Rr->Device, &VertModule);
@@ -586,7 +580,7 @@ static void Rr_InitMeshPipeline(SRr* Rr)
     };
     vkCreatePipelineLayout(Rr->Device, &LayoutInfo, NULL, &Rr->MeshPipelineLayout);
 
-    SPipelineBuilder Builder = GetPipelineBuilder();
+    SPipelineBuilder Builder;
     PipelineBuilder_Default(&Builder, VertModule, FragModule, Rr->DrawImage.Format, VK_FORMAT_UNDEFINED, Rr->MeshPipelineLayout);
     Rr->MeshPipeline = Rr_BuildPipeline(Rr, &Builder);
 
@@ -594,13 +588,13 @@ static void Rr_InitMeshPipeline(SRr* Rr)
     vkDestroyShaderModule(Rr->Device, FragModule, NULL);
 }
 
-static void Rr_InitPipelines(SRr* Rr)
+static void Rr_InitPipelines(SRr* const Rr)
 {
     Rr_InitBackgroundPipelines(Rr);
     Rr_InitMeshPipeline(Rr);
 }
 
-static void Rr_DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
+static void Rr_DrawBackground(SRr* const Rr, VkCommandBuffer CommandBuffer)
 {
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipeline);
     vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipelineLayout, 0, 1, &Rr->DrawImageDescriptors, 0, NULL);
@@ -618,7 +612,7 @@ static void Rr_DrawBackground(SRr* Rr, VkCommandBuffer CommandBuffer)
     // vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
 }
 
-static void Rr_DrawGeometry(SRr* Rr, VkCommandBuffer CommandBuffer)
+static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
 {
     VkRenderingAttachmentInfo colorAttachment = GetRenderingAttachmentInfo(Rr->DrawImage.View, NULL, VK_IMAGE_LAYOUT_GENERAL);
 
@@ -679,7 +673,7 @@ void Rr_InitImmediateMode(SRr* const Rr)
     VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence))
 }
 
-void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
+void Rr_InitImGui(SRr* const Rr, struct SDL_Window* Window)
 {
     VkDevice Device = Rr->Device;
 
@@ -731,7 +725,7 @@ void Rr_InitImGui(SRr* Rr, struct SDL_Window* Window)
     Rr->ImGui.bInit = true;
 }
 
-void Rr_Init(SRr* Rr, struct SDL_Window* Window)
+void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
 {
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
@@ -824,7 +818,7 @@ void Rr_Init(SRr* Rr, struct SDL_Window* Window)
     SDL_stack_free(Extensions);
 }
 
-void Rr_Cleanup(SRr* Rr)
+void Rr_Cleanup(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
 
@@ -872,7 +866,7 @@ void Rr_Cleanup(SRr* Rr)
     vkDestroyInstance(Rr->Instance, NULL);
 }
 
-void Rr_Draw(SRr* Rr)
+void Rr_Draw(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
     SFrameData* CurrentFrame = Rr_GetCurrentFrame(Rr);
@@ -976,7 +970,7 @@ void Rr_Draw(SRr* Rr)
     Rr->FrameNumber++;
 }
 
-void Rr_Resize(SRr* Rr, u32 Width, u32 Height)
+void Rr_Resize(SRr* const Rr, u32 Width, u32 Height)
 {
     vkDeviceWaitIdle(Rr->Device);
 

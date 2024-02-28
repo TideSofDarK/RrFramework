@@ -6,7 +6,7 @@
 
 #include <vk_mem_alloc.h>
 
-#include "Core.h"
+#include "../Core.h"
 
 #define MAX_LAYOUT_BINDINGS 4
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
