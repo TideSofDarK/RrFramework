@@ -509,19 +509,23 @@ static void TransitionImage_To(
  * SAllocatedBuffer API
  * ==================== */
 
-static void AllocatedBuffer_Init(SAllocatedBuffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage)
+static void AllocatedBuffer_Init(SAllocatedBuffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped)
 {
     VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = NULL,
         .size = Size,
-        .usage = UsageFlags
+        .usage = UsageFlags,
     };
 
     VmaAllocationCreateInfo AllocationInfo = {
         .usage = MemoryUsage,
-        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT
     };
+
+    if (bHostMapped)
+    {
+        AllocationInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    }
 
     VK_ASSERT(vmaCreateBuffer(Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo))
 }
@@ -569,7 +573,8 @@ static void Rr_UploadMesh(SRr* Rr, SMeshBuffers* MeshBuffers, MeshIndexType* Ind
         Rr->Allocator,
         VertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
+        VMA_MEMORY_USAGE_AUTO,
+        false);
 
     VkBufferDeviceAddressInfo DeviceAddressInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -582,7 +587,7 @@ static void Rr_UploadMesh(SRr* Rr, SMeshBuffers* MeshBuffers, MeshIndexType* Ind
         Rr->Allocator,
         IndexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
+        VMA_MEMORY_USAGE_AUTO, false);
 
     SAllocatedBuffer StagingBuffer = { 0 };
     AllocatedBuffer_Init(
@@ -590,10 +595,9 @@ static void Rr_UploadMesh(SRr* Rr, SMeshBuffers* MeshBuffers, MeshIndexType* Ind
         Rr->Allocator,
         VertexBufferSize + IndexBufferSize,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY);
+        VMA_MEMORY_USAGE_AUTO, true);
 
-    void* StagingData;
-    vmaMapMemory(Rr->Allocator, StagingBuffer.Allocation, &StagingData);
+    void* StagingData = StagingBuffer.AllocationInfo.pMappedData;
 
     memcpy((char*)StagingData, (void*)Vertices, VertexBufferSize);
     memcpy((char*)StagingData + VertexBufferSize, (void*)Indices, IndexBufferSize);
@@ -617,8 +621,6 @@ static void Rr_UploadMesh(SRr* Rr, SMeshBuffers* MeshBuffers, MeshIndexType* Ind
     vkCmdCopyBuffer(Rr->ImmediateMode.CommandBuffer, StagingBuffer.Handle, MeshBuffers->IndexBuffer.Handle, 1, &IndexCopy);
 
     Rr_EndImmediate(Rr);
-
-    vmaUnmapMemory(Rr->Allocator, StagingBuffer.Allocation);
 
     AllocatedBuffer_Cleanup(&StagingBuffer, Rr->Allocator);
 }
