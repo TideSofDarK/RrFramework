@@ -259,7 +259,7 @@ static b32 LoadShaderModule(const char* Filename, VkDevice Device, VkShaderModul
     u32* Buffer = SDL_stack_alloc(u32, BufferSize);
 
     SDL_RWread(File, Buffer, FileSize);
-    SDL_RWclose( File );
+    SDL_RWclose(File);
 
     VkShaderModuleCreateInfo CreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -665,7 +665,7 @@ static VkPipeline Rr_BuildPipeline(SRr* Rr, SPipelineBuilder* PipelineBuilder)
 
     VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext = NULL
+        .pNext = NULL,
     };
 
     VkDynamicState DynamicState[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
