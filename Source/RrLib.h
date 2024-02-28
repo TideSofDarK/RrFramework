@@ -5,6 +5,7 @@
 #include "RrTypes.h"
 
 #include <SDL_log.h>
+#include <SDL_rwops.h>
 #include <SDL_filesystem.h>
 #include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
