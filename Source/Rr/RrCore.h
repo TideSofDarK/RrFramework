@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h>
+
 static const char* AppTitle = "VulkanPlayground";
 
 typedef unsigned char u8;

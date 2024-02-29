@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core.h"
 #include "Rr/Rr.h"
 
 typedef struct SApp

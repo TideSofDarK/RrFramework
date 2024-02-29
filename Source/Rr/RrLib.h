@@ -39,7 +39,7 @@ static inline VkPipelineShaderStageCreateInfo GetShaderStageInfo(VkShaderStageFl
     return Info;
 }
 
-static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView View, VkClearValue* InClearValue, VkImageLayout Layout)
+static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImageView View, VkClearValue* InClearValue, VkImageLayout Layout)
 {
     VkRenderingAttachmentInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -49,6 +49,21 @@ static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo(VkImageView V
         .loadOp = InClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .clearValue = InClearValue ? *InClearValue : (VkClearValue){ 0 }
+    };
+
+    return Info;
+}
+
+static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(VkImageView View, VkImageLayout Layout)
+{
+    VkRenderingAttachmentInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .pNext = NULL,
+        .imageView = View,
+        .imageLayout = Layout,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = (VkClearValue){ .depthStencil.depth = 0.0f }
     };
 
     return Info;
@@ -347,12 +362,12 @@ void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule V
     PipelineBuilder->ShaderStages[1] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
     PipelineBuilder->ShaderStageCount = 2;
 
-    PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     PipelineBuilder->InputAssembly.primitiveRestartEnable = VK_FALSE;
 
     PipelineBuilder->Rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     PipelineBuilder->Rasterizer.lineWidth = 1.0f;
-    PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_NONE;
+    PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
     PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
     PipelineBuilder->ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -363,9 +378,9 @@ void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule V
     PipelineBuilder->RenderInfo.colorAttachmentCount = 1;
     PipelineBuilder->RenderInfo.depthAttachmentFormat = DepthFormat;
 
-    PipelineBuilder->DepthStencil.depthTestEnable = VK_FALSE;
-    PipelineBuilder->DepthStencil.depthWriteEnable = VK_FALSE;
-    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
+    PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
+    PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
+    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
     PipelineBuilder->DepthStencil.depthBoundsTestEnable = VK_FALSE;
     PipelineBuilder->DepthStencil.stencilTestEnable = VK_FALSE;
     PipelineBuilder->DepthStencil.front = (VkStencilOpState){ 0 };
@@ -576,13 +591,13 @@ void Rr_EndImmediate(SRr* const Rr)
 
 void Rr_UploadMesh(
     SRr* const Rr,
-    SMeshBuffers* const MeshBuffers,
+    SRrMeshBuffers* const MeshBuffers,
     MeshIndexType const* const Indices,
     size_t IndexCount,
-    SVertex const* const Vertices,
+    SRrVertex const* const Vertices,
     size_t VertexCount)
 {
-    size_t VertexBufferSize = sizeof(SVertex) * VertexCount;
+    size_t VertexBufferSize = sizeof(SRrVertex) * VertexCount;
     size_t IndexBufferSize = sizeof(MeshIndexType) * IndexCount;
 
     AllocatedBuffer_Init(
@@ -642,7 +657,7 @@ void Rr_UploadMesh(
     AllocatedBuffer_Cleanup(&StagingBuffer, Rr->Allocator);
 }
 
-void Rr_CleanupMesh(SRr* const Rr, SMeshBuffers* const Mesh)
+void Rr_CleanupMesh(SRr* const Rr, SRrMeshBuffers* const Mesh)
 {
     AllocatedBuffer_Cleanup(&Mesh->IndexBuffer, Rr->Allocator);
     AllocatedBuffer_Cleanup(&Mesh->VertexBuffer, Rr->Allocator);
@@ -668,7 +683,7 @@ VkPipeline Rr_BuildPipeline(SRr* const Rr, SPipelineBuilder const* const Pipelin
         .logicOpEnable = VK_FALSE,
         .logicOp = VK_LOGIC_OP_COPY,
         .attachmentCount = 1,
-        .pAttachments = &PipelineBuilder->ColorBlendAttachment
+        .pAttachments = &PipelineBuilder->ColorBlendAttachment,
     };
 
     VkPipelineVertexInputStateCreateInfo VertexInputInfo = {

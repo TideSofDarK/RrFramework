@@ -1,16 +1,15 @@
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
+set(SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/")
 file(GLOB_RECURSE GLSL_SOURCE_FILES CONFIGURE_DEPENDS
-        "*.frag"
-        "*.vert"
-        "*.comp"
+        "${SHADER_DIR}*.frag" "${SHADER_DIR}*.vert" "${SHADER_DIR}*.comp"
 )
-set_source_files_properties(Main.c PROPERTIES OBJECT_DEPENDS ${GLSL_SOURCE_FILES})
+set_source_files_properties(AssetDef.c PROPERTIES OBJECT_DEPENDS ${GLSL_SOURCE_FILES})
 
 foreach (GLSL ${GLSL_SOURCE_FILES})
     message(STATUS "BUILDING SHADER")
     get_filename_component(FILE_NAME ${GLSL} NAME)
-    set(SPIRV "${CMAKE_BINARY_DIR}/${FILE_NAME}.spv")
+    set(SPIRV "${SHADER_DIR}/${FILE_NAME}.spv")
     message(STATUS ${GLSL})
     add_custom_command(
             OUTPUT ${SPIRV}
@@ -24,7 +23,7 @@ add_custom_target(
         DEPENDS ${SPIRV_BINARY_FILES}
 )
 
-add_executable(${PROJECT_NAME} Main.c App.c Rr/Rr.c)
+add_executable(${PROJECT_NAME} AssetDef.c Main.c App.c Rr/Rr.c Rr/RrAsset.c Rr/RrArray.c)
 add_dependencies(${PROJECT_NAME} Shaders)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${VENDOR_TARGET})
 if (WIN32)

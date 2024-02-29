@@ -6,7 +6,8 @@
 
 #include <vk_mem_alloc.h>
 
-#include "../Core.h"
+#include "RrCore.h"
+#include "RrAsset.h"
 
 #define MAX_LAYOUT_BINDINGS 4
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
@@ -24,24 +25,28 @@ typedef struct
     VmaAllocation Allocation;
 } SAllocatedBuffer;
 
-typedef struct {
+typedef struct
+{
     vec3 Position;
-    f32 uvX;
+    f32 TexCoordX;
     vec3 Normal;
-    f32 uvY;
+    f32 TexCoordY;
     vec4 Color;
-} SVertex;
+} SRrVertex;
 
-typedef struct {
+typedef struct
+{
     SAllocatedBuffer IndexBuffer;
     SAllocatedBuffer VertexBuffer;
     VkDeviceAddress VertexBufferAddress;
-} SMeshBuffers;
+} SRrMeshBuffers;
 
-typedef struct {
-    mat4 WorldMat;
+typedef struct
+{
+    mat4 View;
+    mat4 Projection;
     VkDeviceAddress VertexBufferAddress;
-} SPushConstants3D;
+} SRrPushConstants3D;
 
 typedef struct STransitionImage
 {
@@ -149,11 +154,21 @@ typedef struct
     VkDescriptorPool DescriptorPool;
 } SImGui;
 
-typedef struct {
+typedef struct
+{
     VkFence Fence;
     VkCommandBuffer CommandBuffer;
     VkCommandPool CommandPool;
 } SImmediateMode;
+
+typedef struct
+{
+    SAllocatedImage ColorImage;
+    SAllocatedImage DepthImage;
+    VkExtent2D Extent;
+    VkDescriptorSet DescriptorSet;
+    VkDescriptorSetLayout DescriptorSetLayout;
+} SRrDrawTarget;
 
 typedef struct SRr
 {
@@ -174,10 +189,8 @@ typedef struct SRr
 
     SDescriptorAllocator GlobalDescriptorAllocator;
 
-    SAllocatedImage DrawImage;
-    VkExtent2D DrawExtent;
-    VkDescriptorSet DrawImageDescriptors;
-    VkDescriptorSetLayout DrawImageDescriptorLayout;
+    SRrDrawTarget DrawTarget;
+
     VkPipeline GradientPipeline;
     VkPipelineLayout GradientPipelineLayout;
 
@@ -188,5 +201,6 @@ typedef struct SRr
     VkPipeline MeshPipeline;
     VkPipelineLayout MeshPipelineLayout;
 
-    SMeshBuffers Mesh;
+    SRrMeshBuffers Mesh;
+    SRrRawMesh RawMesh;
 } SRr;

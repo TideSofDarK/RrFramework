@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <cglm/mat4.h>
+#include <cglm/cam.h>
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
@@ -16,8 +17,9 @@
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
 
-#include <SDL_error.h>
-#include <SDL_stdinc.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_vulkan.h>
 
 #include "RrLib.h"
@@ -166,35 +168,40 @@ static void Rr_InitDevice(SRr* const Rr)
     SDL_stack_free(PhysicalDevices);
 }
 
-static void Rr_CreateDrawImage(SRr* const Rr, u32 Width, u32 Height)
+static void Rr_CreateDrawTarget(SRr* const Rr, u32 Width, u32 Height)
 {
-    SAllocatedImage* DrawImage = &Rr->DrawImage;
+    SAllocatedImage* ColorImage = &Rr->DrawTarget.ColorImage;
+    SAllocatedImage* DepthImage = &Rr->DrawTarget.DepthImage;
 
-    DrawImage->Extent = (VkExtent3D){
+    ColorImage->Extent = DepthImage->Extent = (VkExtent3D){
         Width,
         Height,
         1
     };
-    DrawImage->Format = VK_FORMAT_R16G16B16A16_SFLOAT;
-
-    VkImageUsageFlags DrawImageUsages = 0;
-    DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    DrawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
-    DrawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    VkImageCreateInfo ImageCreateInfo = GetImageCreateInfo(DrawImage->Format, DrawImageUsages, DrawImage->Extent);
 
     VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DrawImage->Handle, &DrawImage->Allocation, NULL))
+    /* Color Image */
+    ColorImage->Format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    VkImageUsageFlags DrawImageUsages = 0;
+    DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    DrawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
+    DrawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    VkImageCreateInfo ImageCreateInfo = GetImageCreateInfo(ColorImage->Format, DrawImageUsages, ColorImage->Extent);
+    VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &ColorImage->Handle, &ColorImage->Allocation, NULL))
+    VkImageViewCreateInfo ImageViewCreateInfo = GetImageViewCreateInfo(ColorImage->Format, ColorImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
+    VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &ColorImage->View))
 
-    VkImageViewCreateInfo ImageViewCreateInfo = GetImageViewCreateInfo(DrawImage->Format, DrawImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
-
-    VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &DrawImage->View))
+    /* Depth Image */
+    DepthImage->Format = VK_FORMAT_D32_SFLOAT;
+    ImageCreateInfo = GetImageCreateInfo(DepthImage->Format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, DepthImage->Extent);
+    VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DepthImage->Handle, &DepthImage->Allocation, NULL))
+    ImageViewCreateInfo = GetImageViewCreateInfo(DepthImage->Format, DepthImage->Handle, VK_IMAGE_ASPECT_DEPTH_BIT);
+    VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &DepthImage->View))
 }
 
 static void Rr_CleanupSwapchain(SRr* const Rr, VkSwapchainKHR Swapchain)
@@ -205,7 +212,8 @@ static void Rr_CleanupSwapchain(SRr* const Rr, VkSwapchainKHR Swapchain)
     }
     vkDestroySwapchainKHR(Rr->Device, Swapchain, NULL);
 
-    Rr_DestroyAllocatedImage(Rr, &Rr->DrawImage);
+    Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.ColorImage);
+    Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.DepthImage);
 }
 
 static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSync)
@@ -383,7 +391,7 @@ static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSy
         VK_ASSERT(vkCreateImageView(Rr->Device, &ColorAttachmentView, NULL, &Rr->Swapchain.Images[i].View))
     }
 
-    Rr_CreateDrawImage(Rr, *Width, *Height);
+    Rr_CreateDrawTarget(Rr, *Width, *Height);
 
     SDL_stack_free(Images);
     SDL_stack_free(SurfaceFormats);
@@ -469,7 +477,7 @@ static void Rr_UpdateDrawImageDescriptors(SRr* const Rr, b32 bCreate, b32 bDestr
 
     if (bDestroy)
     {
-        vkDestroyDescriptorSetLayout(Rr->Device, Rr->DrawImageDescriptorLayout, NULL);
+        vkDestroyDescriptorSetLayout(Rr->Device, Rr->DrawTarget.DescriptorSetLayout, NULL);
 
         DescriptorAllocator_ClearDescriptors(GlobalDescriptorAllocator, Rr->Device);
     }
@@ -478,19 +486,19 @@ static void Rr_UpdateDrawImageDescriptors(SRr* const Rr, b32 bCreate, b32 bDestr
         SDescriptorLayoutBuilder Builder = { 0 };
         DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
-        Rr->DrawImageDescriptorLayout = DescriptorLayoutBuilder_Build(&Builder, Rr->Device, VK_SHADER_STAGE_COMPUTE_BIT);
+        Rr->DrawTarget.DescriptorSetLayout = DescriptorLayoutBuilder_Build(&Builder, Rr->Device, VK_SHADER_STAGE_COMPUTE_BIT);
 
-        Rr->DrawImageDescriptors = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Rr->Device, Rr->DrawImageDescriptorLayout);
+        Rr->DrawTarget.DescriptorSet = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Rr->Device, Rr->DrawTarget.DescriptorSetLayout);
 
         VkDescriptorImageInfo DescriptorImageInfo = {
-            .imageView = Rr->DrawImage.View,
+            .imageView = Rr->DrawTarget.ColorImage.View,
             .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
         };
 
         VkWriteDescriptorSet WriteDescriptorSet = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = NULL,
-            .dstSet = Rr->DrawImageDescriptors,
+            .dstSet = Rr->DrawTarget.DescriptorSet,
             .dstBinding = 0,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -528,7 +536,7 @@ static void Rr_InitBackgroundPipelines(SRr* const Rr)
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         .setLayoutCount = 1,
-        .pSetLayouts = &Rr->DrawImageDescriptorLayout,
+        .pSetLayouts = &Rr->DrawTarget.DescriptorSetLayout,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &PushConstantRange,
     };
@@ -536,7 +544,15 @@ static void Rr_InitBackgroundPipelines(SRr* const Rr)
     VK_ASSERT(vkCreatePipelineLayout(Rr->Device, &ComputeLayout, NULL, &Rr->GradientPipelineLayout))
 
     VkShaderModule ComputeDrawShader;
-    LoadShaderModule("test.comp.spv", Rr->Device, &ComputeDrawShader);
+    SRrAsset TestCOMP;
+    RrAsset_Extern(&TestCOMP, TestCOMP);
+    VK_ASSERT(vkCreateShaderModule(Rr->Device, &(VkShaderModuleCreateInfo){
+                                                   .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                   .pNext = NULL,
+                                                   .codeSize = TestCOMP.Length,
+                                                   .pCode = (u32*)TestCOMP.Data,
+                                               },
+        NULL, &ComputeDrawShader))
 
     VkPipelineShaderStageCreateInfo StageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -560,14 +576,30 @@ static void Rr_InitBackgroundPipelines(SRr* const Rr)
 static void Rr_InitMeshPipeline(SRr* const Rr)
 {
     VkShaderModule VertModule;
-    LoadShaderModule("triangle.vert.spv", Rr->Device, &VertModule);
+    SRrAsset TriangleVERT;
+    RrAsset_Extern(&TriangleVERT, TriangleVERT);
+    VK_ASSERT(vkCreateShaderModule(Rr->Device, &(VkShaderModuleCreateInfo){
+                                                   .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                   .pNext = NULL,
+                                                   .codeSize = TriangleVERT.Length,
+                                                   .pCode = (u32*)TriangleVERT.Data,
+                                               },
+        NULL, &VertModule))
 
     VkShaderModule FragModule;
-    LoadShaderModule("triangle.frag.spv", Rr->Device, &FragModule);
+    SRrAsset TriangleFRAG;
+    RrAsset_Extern(&TriangleFRAG, TriangleFRAG);
+    VK_ASSERT(vkCreateShaderModule(Rr->Device, &(VkShaderModuleCreateInfo){
+                                                   .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                   .pNext = NULL,
+                                                   .codeSize = TriangleFRAG.Length,
+                                                   .pCode = (u32*)TriangleFRAG.Data,
+                                               },
+        NULL, &FragModule))
 
     VkPushConstantRange PushConstantRange = {
         .offset = 0,
-        .size = sizeof(SPushConstants3D),
+        .size = sizeof(SRrPushConstants3D),
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
     };
     VkPipelineLayoutCreateInfo LayoutInfo = {
@@ -581,7 +613,7 @@ static void Rr_InitMeshPipeline(SRr* const Rr)
     vkCreatePipelineLayout(Rr->Device, &LayoutInfo, NULL, &Rr->MeshPipelineLayout);
 
     SPipelineBuilder Builder;
-    PipelineBuilder_Default(&Builder, VertModule, FragModule, Rr->DrawImage.Format, VK_FORMAT_UNDEFINED, Rr->MeshPipelineLayout);
+    PipelineBuilder_Default(&Builder, VertModule, FragModule, Rr->DrawTarget.ColorImage.Format, Rr->DrawTarget.DepthImage.Format, Rr->MeshPipelineLayout);
     Rr->MeshPipeline = Rr_BuildPipeline(Rr, &Builder);
 
     vkDestroyShaderModule(Rr->Device, VertModule, NULL);
@@ -597,12 +629,12 @@ static void Rr_InitPipelines(SRr* const Rr)
 static void Rr_DrawBackground(SRr* const Rr, VkCommandBuffer CommandBuffer)
 {
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipeline);
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipelineLayout, 0, 1, &Rr->DrawImageDescriptors, 0, NULL);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Rr->GradientPipelineLayout, 0, 1, &Rr->DrawTarget.DescriptorSet, 0, NULL);
     SComputeConstants ComputeConstants;
     glm_vec4_copy((vec4){ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
     glm_vec4_copy((vec4){ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
     vkCmdPushConstants(CommandBuffer, Rr->GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SComputeConstants), &ComputeConstants);
-    vkCmdDispatch(CommandBuffer, ceil(Rr->DrawExtent.width / 16.0), ceil(Rr->DrawExtent.height / 16.0), 1);
+    vkCmdDispatch(CommandBuffer, ceil(Rr->DrawTarget.Extent.width / 16.0), ceil(Rr->DrawTarget.Extent.height / 16.0), 1);
 
     // float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
     // VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
@@ -614,38 +646,50 @@ static void Rr_DrawBackground(SRr* const Rr, VkCommandBuffer CommandBuffer)
 
 static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
 {
-    VkRenderingAttachmentInfo colorAttachment = GetRenderingAttachmentInfo(Rr->DrawImage.View, NULL, VK_IMAGE_LAYOUT_GENERAL);
+    VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Rr->DrawTarget.ColorImage.View, NULL, VK_IMAGE_LAYOUT_GENERAL);
+    VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(Rr->DrawTarget.DepthImage.View, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    VkRenderingInfo renderInfo = GetRenderingInfo(Rr->DrawExtent, &colorAttachment, NULL);
+    VkRenderingInfo renderInfo = GetRenderingInfo(Rr->DrawTarget.Extent, &ColorAttachment, &DepthAttachment);
     vkCmdBeginRendering(CommandBuffer, &renderInfo);
 
     VkViewport viewport = { 0 };
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)Rr->DrawExtent.width;
-    viewport.height = (float)Rr->DrawExtent.height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    viewport.width = (float)Rr->DrawTarget.Extent.width;
+    viewport.height = (float)Rr->DrawTarget.Extent.height;
+    viewport.minDepth = 1.0f;
+    viewport.maxDepth = 0.0f;
 
     vkCmdSetViewport(CommandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor = { 0 };
     scissor.offset.x = 0;
     scissor.offset.y = 0;
-    scissor.extent.width = Rr->DrawExtent.width;
-    scissor.extent.height = Rr->DrawExtent.height;
+    scissor.extent.width = Rr->DrawTarget.Extent.width;
+    scissor.extent.height = Rr->DrawTarget.Extent.height;
 
     vkCmdSetScissor(CommandBuffer, 0, 1, &scissor);
 
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Rr->MeshPipeline);
-    SPushConstants3D PushConstants = {
+    SRrPushConstants3D PushConstants = {
         .VertexBufferAddress = Rr->Mesh.VertexBufferAddress,
     };
-    glm_mat4_copy(GLM_MAT4_IDENTITY, PushConstants.WorldMat);
 
-    vkCmdPushConstants(CommandBuffer, Rr->MeshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SPushConstants3D), &PushConstants);
+    u64 Ticks = SDL_GetTicks();
+    float Time = (float)((double)Ticks / 1000.0);
+    float X = SDL_cosf(Time) * 5;
+    float Z = SDL_sinf(Time) * 5;
+    mat4 View;
+    glm_lookat((vec3){ Z, 0.2f, X }, (vec3){ 0, 0.0f, 0 }, (vec3){ 0, 1, 0 }, View);
+    glm_mat4_copy(View, PushConstants.View);
+    mat4 Projection;
+    glm_perspective_rh_no(glm_rad(45.0f), (float)Rr->DrawTarget.Extent.width / (float)Rr->DrawTarget.Extent.height, 1.0f, 1000.0f, Projection);
+    Projection[1][1] *= -1.0f;
+    glm_mat4_copy(Projection, PushConstants.Projection);
+
+    vkCmdPushConstants(CommandBuffer, Rr->MeshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SRrPushConstants3D), &PushConstants);
     vkCmdBindIndexBuffer(CommandBuffer, Rr->Mesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(CommandBuffer, 6, 1, 0, 0, 0);
+    vkCmdDrawIndexed(CommandBuffer, Rr->RawMesh.Indices.Count, 1, 0, 0, 0);
 
     vkCmdEndRendering(CommandBuffer);
 }
@@ -700,6 +744,8 @@ void Rr_InitImGui(SRr* const Rr, struct SDL_Window* Window)
     VK_ASSERT(vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Rr->ImGui.DescriptorPool))
 
     igCreateContext(NULL);
+    ImGuiIO* IO = igGetIO();
+    IO->IniFilename = NULL;
 
     ImGui_ImplVulkan_LoadFunctions(Rr_ImGui_LoadFunction, NULL);
     ImGui_ImplSDL3_InitForVulkan(Window);
@@ -795,26 +841,6 @@ void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
 
     Rr_InitImmediateMode(Rr);
 
-    SVertex Vertices[4] = { 0 };
-    Vertices[0] = (SVertex){
-        .Position = { 0.5f, -0.5f, 0.0f },
-        .Color = { 1.0f, 1.0f, 1.0f, 1.0f }
-    };
-    Vertices[1] = (SVertex){
-        .Position = { 0.5f, 0.5f, 0.0f },
-        .Color = { 1.0f, 0.0f, 0.0f, 1.0f }
-    };
-    Vertices[2] = (SVertex){
-        .Position = { -0.5f, -0.5f, 0.0f },
-        .Color = { 0.0f, 1.0f, 0.0f, 1.0f }
-    };
-    Vertices[3] = (SVertex){
-        .Position = { -0.5f, 0.5f, 0.0f },
-        .Color = { 0.0f, 0.0f, 1.0f, 1.0f }
-    };
-    MeshIndexType Indices[] = { 0, 1, 2, 2, 1, 3 };
-    Rr_UploadMesh(Rr, &Rr->Mesh, Indices, 6, Vertices, 4);
-
     SDL_stack_free(Extensions);
 }
 
@@ -870,7 +896,8 @@ void Rr_Draw(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
     SFrameData* CurrentFrame = Rr_GetCurrentFrame(Rr);
-    SAllocatedImage* DrawImage = &Rr->DrawImage;
+    SAllocatedImage* ColorImage = &Rr->DrawTarget.ColorImage;
+    SAllocatedImage* DepthImage = &Rr->DrawTarget.DepthImage;
     VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;
 
     VK_ASSERT(vkWaitForFences(Device, 1, &CurrentFrame->RenderFence, true, 1000000000))
@@ -881,30 +908,42 @@ void Rr_Draw(SRr* const Rr)
 
     VkImage SwapchainImage = Rr->Swapchain.Images[SwapchainImageIndex].Handle;
 
-    Rr->DrawExtent.width = DrawImage->Extent.width;
-    Rr->DrawExtent.height = DrawImage->Extent.height;
+    Rr->DrawTarget.Extent.width = ColorImage->Extent.width;
+    Rr->DrawTarget.Extent.height = ColorImage->Extent.height;
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo))
 
-    STransitionImage DrawImageTransition = {
+    STransitionImage ColorImageTransition = {
         .CommandBuffer = CommandBuffer,
-        .Image = DrawImage->Handle,
+        .Image = ColorImage->Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .AccessMask = VK_ACCESS_2_NONE,
         .StageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
     };
-    TransitionImage_To(&DrawImageTransition,
+    TransitionImage_To(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
         VK_ACCESS_2_MEMORY_WRITE_BIT,
         VK_IMAGE_LAYOUT_GENERAL);
     Rr_DrawBackground(Rr, CommandBuffer);
-    TransitionImage_To(&DrawImageTransition,
+    TransitionImage_To(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    STransitionImage DepthImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = DepthImage->Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+        .StageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
+    };
+    TransitionImage_To(&DepthImageTransition,
+        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     Rr_DrawGeometry(Rr, CommandBuffer);
-    TransitionImage_To(&DrawImageTransition,
+    TransitionImage_To(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,
         VK_ACCESS_2_TRANSFER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -921,7 +960,7 @@ void Rr_Draw(SRr* const Rr)
         VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    CopyImageToImage(CommandBuffer, DrawImage->Handle, SwapchainImage, Rr->DrawExtent, Rr->Swapchain.Extent);
+    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Rr->DrawTarget.Extent, Rr->Swapchain.Extent);
     TransitionImage_To(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
@@ -929,7 +968,7 @@ void Rr_Draw(SRr* const Rr)
 
     if (Rr->ImGui.bInit)
     {
-        VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo(Rr->Swapchain.Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Rr->Swapchain.Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         VkRenderingInfo renderInfo = GetRenderingInfo(Rr->Swapchain.Extent, &ColorAttachment, NULL);
 
         vkCmdBeginRendering(CommandBuffer, &renderInfo);
@@ -940,7 +979,7 @@ void Rr_Draw(SRr* const Rr)
     }
 
     TransitionImage_To(&SwapchainImageTransition,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
         0,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
@@ -977,4 +1016,10 @@ void Rr_Resize(SRr* const Rr, u32 Width, u32 Height)
     Rr_CreateSwapchain(Rr, &Width, &Height, true);
 
     Rr_UpdateDrawImageDescriptors(Rr, true, true);
+}
+
+void Rr_SetMesh(SRr* const Rr, SRrRawMesh* const RawMesh)
+{
+    Rr->RawMesh = *RawMesh;
+    Rr_UploadMesh(Rr, &Rr->Mesh, RawMesh->Indices.Data, RawMesh->Indices.Count, RawMesh->Vertices.Data, RawMesh->Vertices.Count);
 }

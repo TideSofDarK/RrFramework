@@ -9,12 +9,23 @@
 #include <SDL_events.h>
 #include <SDL_video.h>
 
+#include "Rr/RrAsset.h"
+
 void RunApp(void)
 {
     SApp App = { 0 };
 
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+
+#ifdef RR_DEBUG
+    RrArray_Test();
+#endif
+
+    SRrAsset DoorFrameOBJ;
+    RrAsset_Extern(&DoorFrameOBJ, DoorFrameOBJ);
+
+    SRrRawMesh RawMesh = RrRawMesh_FromOBJAsset(&DoorFrameOBJ);
 
     SDL_Vulkan_LoadLibrary(NULL);
 
@@ -25,6 +36,7 @@ void RunApp(void)
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
 
     Rr_Init(&App.Rr, App.Window);
+    Rr_SetMesh(&App.Rr, &RawMesh);
     Rr_InitImGui(&App.Rr, App.Window);
 
     SDL_ShowWindow(App.Window);
