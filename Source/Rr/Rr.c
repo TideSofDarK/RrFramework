@@ -1,12 +1,12 @@
 #include "Rr.h"
 #include "RrTypes.h"
 
-#include <assert.h>
-#include <cglm/mat4.h>
-#include <cglm/cam.h>
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
+
+#include <cglm/mat4.h>
+#include <cglm/cam.h>
 
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -17,6 +17,7 @@
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
 
+#include <SDL3/SDL.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_stdinc.h>
@@ -225,7 +226,7 @@ static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSy
 
     u32 PresentModeCount;
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, NULL))
-    assert(PresentModeCount > 0);
+    SDL_assert(PresentModeCount > 0);
 
     VkPresentModeKHR* PresentModes = SDL_stack_alloc(VkPresentModeKHR, PresentModeCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, PresentModes))
@@ -282,7 +283,7 @@ static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSy
 
     u32 FormatCount;
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, NULL))
-    assert(FormatCount > 0);
+    SDL_assert(FormatCount > 0);
 
     VkSurfaceFormatKHR* SurfaceFormats = SDL_stack_alloc(VkSurfaceFormatKHR, FormatCount);
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, SurfaceFormats))
@@ -360,7 +361,7 @@ static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSy
 
     u32 ImageCount = 0;
     VK_ASSERT(vkGetSwapchainImagesKHR(Rr->Device, Rr->Swapchain.Handle, &ImageCount, NULL))
-    assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
+    SDL_assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Rr->Swapchain.ImageCount = ImageCount;
     VkImage* Images = SDL_stack_alloc(VkImage, ImageCount);

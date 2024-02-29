@@ -18,7 +18,7 @@
         if (Result != VK_SUCCESS)                                                                                                    \
         {                                                                                                                            \
             SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Assertion " #Expr " == VK_SUCCESS failed! Result is %s", string_VkResult(Result)); \
-            abort();                                                                                                                 \
+            SDL_assert(0);                                                                                                           \
         }                                                                                                                            \
     }
 

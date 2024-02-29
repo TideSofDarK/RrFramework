@@ -33,7 +33,7 @@ void RrArray_Set(SRrArray* Array, size_t Index, void* Data)
     if (Index * Array->ElementSize >= Array->AllocatedSize)
     {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Index %zu is out-of-bounds! AllocationSize is %zu, ElementSize is %zu.", Index, Array->AllocatedSize, Array->ElementSize);
-        abort();
+        SDL_assert(0);
     }
     SDL_memcpy((u8*)Array->Data + (Index * Array->ElementSize), Data, Array->ElementSize);
 }
@@ -71,8 +71,6 @@ void RrArray_Empty(SRrArray* Array, b32 bFreeAllocation)
 
 #ifdef RR_DEBUG
 
-    #include <assert.h>
-
 typedef struct SArrayEntry
 {
     float Color[4];
@@ -84,50 +82,50 @@ void RrArray_Test(void)
     SRrArray TestArray = { 0 };
     RrArray_Reserve(&TestArray, sizeof(SArrayItem), 4);
 
-    assert(TestArray.Count == 0);
-    assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 4);
-    assert(TestArray.ElementSize == sizeof(SArrayItem));
-    assert(TestArray.Data != NULL);
+    SDL_assert(TestArray.Count == 0);
+    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 4);
+    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
+    SDL_assert(TestArray.Data != NULL);
 
     RrArray_Resize(&TestArray, 8);
-    assert(TestArray.Count == 0);
-    assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 8);
-    assert(TestArray.ElementSize == sizeof(SArrayItem));
-    assert(TestArray.Data != NULL);
+    SDL_assert(TestArray.Count == 0);
+    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 8);
+    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
+    SDL_assert(TestArray.Data != NULL);
 
     RrArray_Resize(&TestArray, 1);
-    assert(TestArray.Count == 0);
-    assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 1);
-    assert(TestArray.ElementSize == sizeof(SArrayItem));
-    assert(TestArray.Data != NULL);
+    SDL_assert(TestArray.Count == 0);
+    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 1);
+    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
+    SDL_assert(TestArray.Data != NULL);
 
     RrArray_Emplace(&TestArray, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
-    assert(TestArray.Count == 1);
+    SDL_assert(TestArray.Count == 1);
     SArrayItem* FirstItem = RrArray_Get(&TestArray, 0);
-    assert(FirstItem->Position[0] == 1.0f);
-    assert(FirstItem->Color[2] == 1.0f);
+    SDL_assert(FirstItem->Position[0] == 1.0f);
+    SDL_assert(FirstItem->Color[2] == 1.0f);
 
     RrArray_Push(&TestArray, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
-    assert(TestArray.Count == 2);
-    assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 2);
+    SDL_assert(TestArray.Count == 2);
+    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 2);
     RrArray_Push(&TestArray, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
-    assert(TestArray.Count == 3);
-    assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 4);
+    SDL_assert(TestArray.Count == 3);
+    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 4);
     SArrayItem* ThirdItem = RrArray_Get(&TestArray, 2);
-    assert(ThirdItem->Position[0] == 1.0f);
-    assert(ThirdItem->Color[2] == 1.0f);
+    SDL_assert(ThirdItem->Position[0] == 1.0f);
+    SDL_assert(ThirdItem->Color[2] == 1.0f);
 
     size_t CurrentAllocationSize = TestArray.AllocatedSize;
     RrArray_Empty(&TestArray, FALSE);
-    assert(TestArray.Count == 0);
-    assert(TestArray.AllocatedSize == CurrentAllocationSize);
-    assert(TestArray.ElementSize == sizeof(SArrayItem));
-    assert(TestArray.Data != NULL);
+    SDL_assert(TestArray.Count == 0);
+    SDL_assert(TestArray.AllocatedSize == CurrentAllocationSize);
+    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
+    SDL_assert(TestArray.Data != NULL);
 
     RrArray_Empty(&TestArray, TRUE);
-    assert(TestArray.Count == 0);
-    assert(TestArray.AllocatedSize == 0);
-    assert(TestArray.ElementSize == sizeof(SArrayItem));
-    assert(TestArray.Data == NULL);
+    SDL_assert(TestArray.Count == 0);
+    SDL_assert(TestArray.AllocatedSize == 0);
+    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
+    SDL_assert(TestArray.Data == NULL);
 }
 #endif
