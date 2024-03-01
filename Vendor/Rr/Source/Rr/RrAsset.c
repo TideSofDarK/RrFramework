@@ -53,11 +53,11 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
     RrArray_Init(&ScratchNormals, vec3, 1000);
     RrArray_Init(&ScratchIndices, ivec3, 1000);
 
-    RrArray_Empty(&ScratchPositions, false);
-    RrArray_Empty(&ScratchColors, false);
-    RrArray_Empty(&ScratchTexCoords, false);
-    RrArray_Empty(&ScratchNormals, false);
-    RrArray_Empty(&ScratchIndices, false);
+    RrArray_Empty(ScratchPositions, false);
+    RrArray_Empty(ScratchColors, false);
+    RrArray_Empty(ScratchTexCoords, false);
+    RrArray_Empty(ScratchNormals, false);
+    RrArray_Empty(ScratchIndices, false);
 
     /* Parse OBJ data. */
     SRrRawMesh RawMesh = { 0 };
@@ -136,9 +136,9 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                     glm_ivec3_subs(OBJIndices[Index], 1, OBJIndices[Index]);
 
                     size_t ExistingOBJIndex = SIZE_MAX;
-                    for (size_t I = 0; I < ScratchIndices.Count; I++)
+                    for (size_t I = 0; I < RrArray_Count(ScratchIndices); I++)
                     {
-                        if (glm_ivec3_eqv(OBJIndices[Index], ((ivec3*)ScratchIndices.Data)[I]))
+                        if (glm_ivec3_eqv(OBJIndices[Index], ((ivec3*)ScratchIndices)[I]))
                         {
                             ExistingOBJIndex = I;
                             break;
@@ -146,10 +146,10 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                     }
                     if (ExistingOBJIndex == SIZE_MAX)
                     {
-                        vec3* Position = RrArray_Get(&ScratchPositions, OBJIndices[Index][0]);
-                        vec4* Color = RrArray_Get(&ScratchColors, OBJIndices[Index][0]);
-                        vec2* TexCoord = RrArray_Get(&ScratchTexCoords, OBJIndices[Index][1]);
-                        vec3* Normal = RrArray_Get(&ScratchNormals, OBJIndices[Index][2]);
+                        vec3* Position = RrArray_Get(ScratchPositions, OBJIndices[Index][0]);
+                        vec4* Color = RrArray_Get(ScratchColors, OBJIndices[Index][0]);
+                        vec2* TexCoord = RrArray_Get(ScratchTexCoords, OBJIndices[Index][1]);
+                        vec3* Normal = RrArray_Get(ScratchNormals, OBJIndices[Index][2]);
                         SRrVertex NewVertex = { 0 };
                         glm_vec3_copy(Position[0], NewVertex.Position);
                         glm_vec4_copy(Color[0], NewVertex.Color);
@@ -161,7 +161,7 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                         RrArray_Push(&ScratchIndices, OBJIndices[Index]);
 
                         /** Add freshly added vertex index */
-                        RrArray_Push(&RawMesh.Indices, &(u32){ RawMesh.Vertices.Count - 1 });
+                        RrArray_Push(&RawMesh.Indices, &(u32){ RrArray_Count( RawMesh.Vertices) - 1 });
                     }
                     else
                     {

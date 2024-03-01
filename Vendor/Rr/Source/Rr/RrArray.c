@@ -2,86 +2,107 @@
 
 #include <SDL3/SDL.h>
 
-void RrArray_Reserve(SRrArray* Array, size_t ElementSize, size_t ElementCount, size_t Alignment)
+typedef struct SRrArrayHeader
 {
-    if (Array->Data != NULL)
+    size_t ElementSize;
+    size_t Count;
+    size_t AllocatedSize;
+    size_t Alignment;
+} SRrArrayHeader;
+
+void RrArray_Reserve(SRrArray* Handle, size_t ElementSize, size_t ElementCount, size_t Alignment)
+{
+    size_t request_size = ElementCount * ElementSize + Alignment + sizeof(SRrArrayHeader);
+    char* buf = (char*)(SDL_calloc(1, request_size));
+
+    size_t remainder = ((size_t)buf + sizeof(SRrArrayHeader)) % Alignment;
+    size_t offset = Alignment - remainder;
+    char* ret = buf + (unsigned char)offset + sizeof(SRrArrayHeader);
+
+    *(SRrArrayHeader*)(ret - sizeof(SRrArrayHeader)) = (SRrArrayHeader){
+        .Alignment = Alignment,
+        .AllocatedSize = ElementCount * ElementSize,
+        .ElementSize = ElementSize,
+        .Count = 0
+    };
+
+    *(unsigned char*)(ret - sizeof(SRrArrayHeader) - 1) = offset;
+
+    *Handle = (SRrArray)ret;
+}
+
+void RrArray_Resize(SRrArray* Handle, size_t ElementCount)
+{
+    SRrArray OldHandle = *Handle;
+    SRrArrayHeader* OldHeader = (SRrArrayHeader*)((char*)OldHandle - sizeof(SRrArrayHeader));
+    size_t NewAllocatedSize = OldHeader->ElementSize * ElementCount;
+    *Handle = NULL;
+    RrArray_Reserve(Handle, OldHeader->ElementSize, ElementCount, OldHeader->Alignment);
+    SRrArrayHeader* NewHeader = (SRrArrayHeader*)((char*)(*Handle) - sizeof(SRrArrayHeader));
+    NewHeader->Count = SDL_min(ElementCount, OldHeader->Count);
+    SDL_memcpy(*Handle, OldHandle, SDL_min(OldHeader->AllocatedSize, NewAllocatedSize));
+    RrArray_Empty(OldHandle, TRUE);
+}
+
+void RrArray_Set(SRrArray Handle, size_t Index, void* Data)
+{
+    if (Handle == NULL)
     {
-        Array->ElementSize = ElementSize;
-        if (Array->AllocatedSize < ElementCount * ElementSize)
-        {
-            RrArray_Resize(Array, ElementCount);
-        }
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Attempting to set an element but the Handle is NULL!");
+        exit(0);
+    }
+    SRrArrayHeader* Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    if (Index * Header->ElementSize >= Header->AllocatedSize)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Index %zu is out-of-bounds! AllocationSize is %zu, ElementSize is %zu.", Index, Header->AllocatedSize, Header->ElementSize);
+        exit(0);
     }
     else
     {
-        Array->AllocatedSize = ElementCount * ElementSize;
-        Array->Data = SDL_aligned_alloc(Alignment, Array->AllocatedSize);
-        Array->ElementSize = ElementSize;
-        Array->Count = 0;
+        SDL_memcpy((u8*)Handle + (Index * Header->ElementSize), Data, Header->ElementSize);
     }
 }
 
-void RrArray_Resize(SRrArray* Array, size_t ElementCount)
+void* RrArray_Get(SRrArray Handle, size_t Index)
 {
-    void* OldData = Array->Data;
-    size_t NewAllocatedSize = Array->ElementSize * ElementCount;
-    Array->Data = SDL_aligned_alloc(16, NewAllocatedSize);
-    if (OldData != NULL)
-    {
-        SDL_memcpy(Array->Data, OldData, SDL_min(Array->AllocatedSize, NewAllocatedSize));
-        SDL_aligned_free(OldData);
-    }
-    Array->AllocatedSize = Array->ElementSize * ElementCount;
-    Array->Count = SDL_min(ElementCount, Array->Count);
+    SRrArrayHeader* Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    return (u8*)Handle + (Index * Header->ElementSize);
 }
 
-void RrArray_Set(SRrArray* Array, size_t Index, void* Data)
+void RrArray_Emplace(SRrArray Handle, void* Data)
 {
-    if (Array->Data == NULL)
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Attempting to set an element but the Data is NULL!");
-        SDL_assert(0);
-    }
-    else if (Index * Array->ElementSize >= Array->AllocatedSize)
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Index %zu is out-of-bounds! AllocationSize is %zu, ElementSize is %zu.", Index, Array->AllocatedSize, Array->ElementSize);
-        SDL_assert(0);
-    }
-    else
-    {
-        SDL_memcpy((u8*)Array->Data + (Index * Array->ElementSize), Data, Array->ElementSize);
-    }
+    SRrArrayHeader* Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    RrArray_Set(Handle, Header->Count++, Data);
 }
 
-void* RrArray_Get(SRrArray* Array, size_t Index)
+void RrArray_Push(SRrArray* Handle, void* Data)
 {
-    return (u8*)Array->Data + (Index * Array->ElementSize);
-}
-
-void RrArray_Emplace(SRrArray* Array, void* Data)
-{
-    RrArray_Set(Array, Array->Count++, Data);
-}
-
-void RrArray_Push(SRrArray* Array, void* Data)
-{
-    if (Array->Count * Array->ElementSize >= Array->AllocatedSize)
+    SRrArrayHeader* Header = (SRrArrayHeader*)((char*)(*Handle) - sizeof(SRrArrayHeader));
+    if (Header->Count * Header->ElementSize >= Header->AllocatedSize)
     {
-        RrArray_Resize(Array, Array->Count * 2);
+        RrArray_Resize(Handle, Header->Count * 2);
     }
+    Header = (SRrArrayHeader*)((char*)(*Handle) - sizeof(SRrArrayHeader));
 
-    RrArray_Set(Array, Array->Count++, Data);
+    RrArray_Set(*Handle, Header->Count++, Data);
 }
 
-void RrArray_Empty(SRrArray* Array, b32 bFreeAllocation)
+void RrArray_Empty(SRrArray Handle, b32 bFreeAllocation)
 {
     if (bFreeAllocation)
     {
-        SDL_aligned_free(Array->Data);
-        Array->Data = NULL;
-        Array->AllocatedSize = 0;
+        int offset = *(((u8*)Handle) - 1 - sizeof(SRrArrayHeader));
+        SDL_free((u8*)Handle - sizeof(SRrArrayHeader) - offset);
+        return;
     }
-    Array->Count = 0;
+    SRrArrayHeader* Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    Header->Count = 0;
+}
+
+size_t RrArray_Count(SRrArray Handle)
+{
+    SRrArrayHeader* Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    return Header->Count;
 }
 
 #ifdef RR_DEBUG
@@ -94,53 +115,55 @@ typedef struct SArrayEntry
 
 void RrArray_Test(void)
 {
-    SRrArray TestArray = { 0 };
-    RrArray_Init(&TestArray, SArrayItem, 4);
+    size_t InitialAllocations = SDL_GetNumAllocations();
+    SRrArray Handle = { 0 };
+    RrArray_Init(&Handle, SArrayItem, 4);
+    SRrArrayHeader* Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
 
-    SDL_assert(TestArray.Count == 0);
-    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 4);
-    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
-    SDL_assert(TestArray.Data != NULL);
+    SDL_assert(Header->Count == 0);
+    SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 4);
+    SDL_assert(Header->ElementSize == sizeof(SArrayItem));
 
-    RrArray_Resize(&TestArray, 8);
-    SDL_assert(TestArray.Count == 0);
-    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 8);
-    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
-    SDL_assert(TestArray.Data != NULL);
+    RrArray_Resize(&Handle, 8);
+    Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    SDL_assert(Header->Count == 0);
+    SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 8);
+    SDL_assert(Header->ElementSize == sizeof(SArrayItem));
 
-    RrArray_Resize(&TestArray, 1);
-    SDL_assert(TestArray.Count == 0);
-    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 1);
-    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
-    SDL_assert(TestArray.Data != NULL);
+    RrArray_Resize(&Handle, 1);
+    Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    SDL_assert(Header->Count == 0);
+    SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 1);
+    SDL_assert(Header->ElementSize == sizeof(SArrayItem));
 
-    RrArray_Emplace(&TestArray, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
-    SDL_assert(TestArray.Count == 1);
-    SArrayItem* FirstItem = RrArray_Get(&TestArray, 0);
+    RrArray_Emplace(Handle, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
+    SDL_assert(Header->Count == 1);
+    SArrayItem* FirstItem = RrArray_Get(Handle, 0);
     SDL_assert(FirstItem->Position[0] == 1.0f);
     SDL_assert(FirstItem->Color[2] == 1.0f);
 
-    RrArray_Push(&TestArray, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
-    SDL_assert(TestArray.Count == 2);
-    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 2);
-    RrArray_Push(&TestArray, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
-    SDL_assert(TestArray.Count == 3);
-    SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 4);
-    SArrayItem* ThirdItem = RrArray_Get(&TestArray, 2);
+    RrArray_Push(&Handle, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
+    Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    SDL_assert(Header->Count == 2);
+    SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 2);
+    RrArray_Push(&Handle, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
+    Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    SDL_assert(Header->Count == 3);
+    SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 4);
+    SArrayItem* ThirdItem = RrArray_Get(Handle, 2);
     SDL_assert(ThirdItem->Position[0] == 1.0f);
     SDL_assert(ThirdItem->Color[2] == 1.0f);
 
-    size_t CurrentAllocationSize = TestArray.AllocatedSize;
-    RrArray_Empty(&TestArray, FALSE);
-    SDL_assert(TestArray.Count == 0);
-    SDL_assert(TestArray.AllocatedSize == CurrentAllocationSize);
-    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
-    SDL_assert(TestArray.Data != NULL);
+    size_t CurrentAllocationSize = Header->AllocatedSize;
+    RrArray_Empty(Handle, FALSE);
+    SDL_assert(Header->Count == 0);
+    SDL_assert(Header->AllocatedSize == CurrentAllocationSize);
+    SDL_assert(Header->ElementSize == sizeof(SArrayItem));
 
-    RrArray_Empty(&TestArray, TRUE);
-    SDL_assert(TestArray.Count == 0);
-    SDL_assert(TestArray.AllocatedSize == 0);
-    SDL_assert(TestArray.ElementSize == sizeof(SArrayItem));
-    SDL_assert(TestArray.Data == NULL);
+    RrArray_Empty(Handle, TRUE);
+    //    SDL_assert(Header->Count == 0);
+    //    SDL_assert(Header->AllocatedSize == 0);
+    //    SDL_assert(Header->ElementSize == sizeof(SArrayItem));
+    SDL_assert(InitialAllocations == SDL_GetNumAllocations());
 }
 #endif

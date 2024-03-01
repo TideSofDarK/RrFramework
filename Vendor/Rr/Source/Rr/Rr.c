@@ -690,7 +690,7 @@ static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
 
     vkCmdPushConstants(CommandBuffer, Rr->MeshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SRrPushConstants3D), &PushConstants);
     vkCmdBindIndexBuffer(CommandBuffer, Rr->Mesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(CommandBuffer, Rr->RawMesh.Indices.Count, 1, 0, 0, 0);
+    vkCmdDrawIndexed(CommandBuffer, RrArray_Count(Rr->RawMesh.Indices), 1, 0, 0, 0);
 
     vkCmdEndRendering(CommandBuffer);
 }
@@ -1022,5 +1022,5 @@ void Rr_Resize(SRr* const Rr, u32 Width, u32 Height)
 void Rr_SetMesh(SRr* const Rr, SRrRawMesh* const RawMesh)
 {
     Rr->RawMesh = *RawMesh;
-    Rr_UploadMesh(Rr, &Rr->Mesh, RawMesh->Indices.Data, RawMesh->Indices.Count, RawMesh->Vertices.Data, RawMesh->Vertices.Count);
+    Rr_UploadMesh(Rr, &Rr->Mesh, RawMesh->Indices, RrArray_Count(RawMesh->Indices), RawMesh->Vertices, RrArray_Count(RawMesh->Vertices));
 }
