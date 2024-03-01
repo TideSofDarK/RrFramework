@@ -42,12 +42,15 @@ void RrArray_Set(SRrArray* Array, size_t Index, void* Data)
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Attempting to set an element but the Data is NULL!");
         SDL_assert(0);
     }
-    if (Index * Array->ElementSize >= Array->AllocatedSize)
+    else if (Index * Array->ElementSize >= Array->AllocatedSize)
     {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Index %zu is out-of-bounds! AllocationSize is %zu, ElementSize is %zu.", Index, Array->AllocatedSize, Array->ElementSize);
         SDL_assert(0);
     }
-    SDL_memcpy((u8*)Array->Data + (Index * Array->ElementSize), Data, Array->ElementSize);
+    else
+    {
+        SDL_memcpy((u8*)Array->Data + (Index * Array->ElementSize), Data, Array->ElementSize);
+    }
 }
 
 void* RrArray_Get(SRrArray* Array, size_t Index)
