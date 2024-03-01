@@ -146,9 +146,6 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                     }
                     if (ExistingOBJIndex == SIZE_MAX)
                     {
-                        size_t vInd = OBJIndices[Index][0];
-                        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "%zu", vInd);
-
                         vec3* Position = RrArray_Get(&ScratchPositions, OBJIndices[Index][0]);
                         vec4* Color = RrArray_Get(&ScratchColors, OBJIndices[Index][0]);
                         vec2* TexCoord = RrArray_Get(&ScratchTexCoords, OBJIndices[Index][1]);
