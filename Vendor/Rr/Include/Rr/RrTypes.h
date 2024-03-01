@@ -64,7 +64,7 @@ typedef struct SFrameData
     VkSemaphore SwapchainSemaphore;
     VkSemaphore RenderSemaphore;
     VkFence RenderFence;
-} SFrameData;
+} SRrFrame;
 
 typedef struct SPipelineBuilder
 {
@@ -184,7 +184,7 @@ typedef struct SRr
 
     VmaAllocator Allocator;
 
-    SFrameData Frames[FRAME_OVERLAP];
+    SRrFrame Frames[FRAME_OVERLAP];
     size_t FrameNumber;
 
     SDescriptorAllocator GlobalDescriptorAllocator;

@@ -409,7 +409,7 @@ static void Rr_InitCommands(SRr* const Rr)
 
     for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
     {
-        SFrameData* Frame = &Rr->Frames[Index];
+        SRrFrame* Frame = &Rr->Frames[Index];
 
         VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Frame->CommandPool))
 
@@ -422,7 +422,7 @@ static void Rr_InitCommands(SRr* const Rr)
 static void Rr_InitSyncStructures(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
-    SFrameData* Frames = Rr->Frames;
+    SRrFrame* Frames = Rr->Frames;
 
     VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
@@ -615,6 +615,8 @@ static void Rr_InitMeshPipeline(SRr* const Rr)
 
     SPipelineBuilder Builder;
     PipelineBuilder_Default(&Builder, VertModule, FragModule, Rr->DrawTarget.ColorImage.Format, Rr->DrawTarget.DepthImage.Format, Rr->MeshPipelineLayout);
+    // PipelineBuilder_AlphaBlend(&Builder);
+    PipelineBuilder_Depth(&Builder);
     Rr->MeshPipeline = Rr_BuildPipeline(Rr, &Builder);
 
     vkDestroyShaderModule(Rr->Device, VertModule, NULL);
@@ -875,7 +877,7 @@ void Rr_Cleanup(SRr* const Rr)
 
     for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
     {
-        SFrameData* Frame = &Rr->Frames[Index];
+        SRrFrame* Frame = &Rr->Frames[Index];
         vkDestroyCommandPool(Rr->Device, Frame->CommandPool, NULL);
 
         vkDestroyFence(Device, Frame->RenderFence, NULL);
@@ -896,7 +898,7 @@ void Rr_Cleanup(SRr* const Rr)
 void Rr_Draw(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
-    SFrameData* CurrentFrame = Rr_GetCurrentFrame(Rr);
+    SRrFrame* CurrentFrame = Rr_GetCurrentFrame(Rr);
     SAllocatedImage* ColorImage = &Rr->DrawTarget.ColorImage;
     SAllocatedImage* DepthImage = &Rr->DrawTarget.DepthImage;
     VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;

@@ -5,6 +5,7 @@
 #include "RrTypes.h"
 
 #include <SDL_log.h>
+#include <SDL_assert.h>
 #include <SDL_rwops.h>
 #include <SDL_filesystem.h>
 #include <vk_mem_alloc.h>
@@ -48,7 +49,7 @@ static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImage
         .imageLayout = Layout,
         .loadOp = InClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = InClearValue ? *InClearValue : (VkClearValue){ 0 }
+        .clearValue = InClearValue ? *InClearValue : (VkClearValue){ .color = {0.0f, 0.0f, 0.0f, 1.0f} }
     };
 
     return Info;
@@ -377,7 +378,10 @@ void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule V
     PipelineBuilder->RenderInfo.pColorAttachmentFormats = &PipelineBuilder->ColorAttachmentFormat;
     PipelineBuilder->RenderInfo.colorAttachmentCount = 1;
     PipelineBuilder->RenderInfo.depthAttachmentFormat = DepthFormat;
+}
 
+void PipelineBuilder_Depth(SPipelineBuilder* const PipelineBuilder)
+{
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
@@ -387,6 +391,20 @@ void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule V
     PipelineBuilder->DepthStencil.back = (VkStencilOpState){ 0 };
     PipelineBuilder->DepthStencil.minDepthBounds = 0.0f;
     PipelineBuilder->DepthStencil.maxDepthBounds = 1.0f;
+}
+
+void PipelineBuilder_AlphaBlend(SPipelineBuilder* const PipelineBuilder)
+{
+    PipelineBuilder->ColorBlendAttachment = (VkPipelineColorBlendAttachmentState){
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        .blendEnable = VK_TRUE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_DST_ALPHA,
+        .colorBlendOp = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+        .alphaBlendOp = VK_BLEND_OP_ADD,
+    };
 }
 
 /* ============================
@@ -663,7 +681,7 @@ void Rr_CleanupMesh(SRr* const Rr, SRrMeshBuffers* const Mesh)
     AllocatedBuffer_Cleanup(&Mesh->VertexBuffer, Rr->Allocator);
 }
 
-SFrameData* Rr_GetCurrentFrame(SRr* const Rr)
+SRrFrame* Rr_GetCurrentFrame(SRr* const Rr)
 {
     return &Rr->Frames[Rr->FrameNumber % FRAME_OVERLAP];
 }

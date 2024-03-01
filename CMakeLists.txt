@@ -57,7 +57,7 @@ add_custom_target(
 # Add executable target
 #
 add_executable(${PROJECT_NAME} Source/AssetDef.c Source/Main.c Source/App.c)
-set_source_files_properties(AssetDef.c PROPERTIES OBJECT_DEPENDS ${SPIRV_BINARY_FILES})
+set_source_files_properties(Source/Main.c PROPERTIES OBJECT_DEPENDS "${SPIRV_BINARY_FILES}")
 add_dependencies(${PROJECT_NAME} Shaders)
 target_link_libraries(${PROJECT_NAME} PRIVATE RetroRenderer)
 if (WIN32)
