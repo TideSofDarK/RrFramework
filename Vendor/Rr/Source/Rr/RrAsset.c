@@ -47,11 +47,11 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
     static SRrArray ScratchNormals = { 0 };
     static SRrArray ScratchIndices = { 0 };
 
-    RrArray_Reserve(&ScratchPositions, sizeof(vec3), 1000);
-    RrArray_Reserve(&ScratchColors, sizeof(vec4), 1000);
-    RrArray_Reserve(&ScratchTexCoords, sizeof(vec2), 1000);
-    RrArray_Reserve(&ScratchNormals, sizeof(vec3), 1000);
-    RrArray_Reserve(&ScratchIndices, sizeof(ivec3), 1000);
+    RrArray_Init(&ScratchPositions, vec3, 1000);
+    RrArray_Init(&ScratchColors, vec4, 1000);
+    RrArray_Init(&ScratchTexCoords, vec2, 1000);
+    RrArray_Init(&ScratchNormals, vec3, 1000);
+    RrArray_Init(&ScratchIndices, ivec3, 1000);
 
     RrArray_Empty(&ScratchPositions, false);
     RrArray_Empty(&ScratchColors, false);
@@ -62,8 +62,8 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
     /* Parse OBJ data. */
     SRrRawMesh RawMesh = { 0 };
 
-    RrArray_Reserve(&RawMesh.Vertices, sizeof(SRrVertex), 1);
-    RrArray_Reserve(&RawMesh.Indices, sizeof(u32), 1);
+    RrArray_Init(&RawMesh.Vertices, SRrVertex, 1);
+    RrArray_Init(&RawMesh.Indices, u32, 1);
 
     size_t CurrentIndex = 0;
     char* EndPos;
@@ -146,14 +146,17 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                     }
                     if (ExistingOBJIndex == SIZE_MAX)
                     {
+                        size_t vInd = OBJIndices[Index][0];
+                        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "%zu", vInd);
+
                         vec3* Position = RrArray_Get(&ScratchPositions, OBJIndices[Index][0]);
                         vec4* Color = RrArray_Get(&ScratchColors, OBJIndices[Index][0]);
                         vec2* TexCoord = RrArray_Get(&ScratchTexCoords, OBJIndices[Index][1]);
                         vec3* Normal = RrArray_Get(&ScratchNormals, OBJIndices[Index][2]);
-                        SRrVertex NewVertex;
-                        glm_vec3_copy(*Position, NewVertex.Position);
-                        // glm_vec4_copy(*Color, NewVertex.Color);
-                        glm_vec3_copy(*Normal, NewVertex.Normal);
+                        SRrVertex NewVertex = { 0 };
+                        glm_vec3_copy(Position[0], NewVertex.Position);
+                        glm_vec4_copy(Color[0], NewVertex.Color);
+                        glm_vec3_copy(Normal[0], NewVertex.Normal);
                         NewVertex.TexCoordX = *TexCoord[0];
                         NewVertex.TexCoordY = *TexCoord[1];
                         RrArray_Push(&RawMesh.Vertices, &NewVertex);

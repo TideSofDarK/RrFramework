@@ -29,35 +29,35 @@ typedef struct
 
 // clang-format off
 #ifdef __APPLE__
-#define INCBIN(name, file) \
+#define INCBIN(NAME, ASSET_DIRECTORY, ASSET_FILE) \
     __asm__(".section " INCBIN_SECTION "\n" \
-            ".global " "_incbin" "_" STR(name) "_start\n" \
+            ".global " "_incbin" "_" STR(NAME) "_start\n" \
             ".balign 16\n" \
-            "_incbin" "_" STR(name) "_start:\n" \
-            ".incbin \"" file "\"\n" \
+            "_incbin" "_" STR(NAME) "_start:\n" \
+            ".incbin \"" ASSET_DIRECTORY ASSET_FILE "\"\n" \
             \
-            ".global " "_incbin" "_" STR(name) "_end\n" \
+            ".global " "_incbin" "_" STR(NAME) "_end\n" \
             ".balign 1\n" \
-            "_incbin" "_" STR(name) "_end:\n" \
+            "_incbin" "_" STR(NAME) "_end:\n" \
             ".byte 0\n" \
     ); \
-    extern  __attribute__((aligned(16))) const char incbin ## _ ## name ## _start[]; \
-    extern                               const char incbin ## _ ## name ## _end[];
+    extern  __attribute__((aligned(16))) const char incbin ## _ ## NAME ## _start[]; \
+    extern                               const char incbin ## _ ## NAME ## _end[]
 #else
-#define INCBIN(name, file) \
+#define INCBIN(NAME, ASSET_DIRECTORY, ASSET_FILE) \
     __asm__(".section " INCBIN_SECTION "\n" \
-            ".global " STR(__USER_LABEL_PREFIX__) "incbin_" STR(name) "_start\n" \
+            ".global " STR(__USER_LABEL_PREFIX__) "incbin_" STR(NAME) "_start\n" \
             ".balign 16\n" \
-            STR(__USER_LABEL_PREFIX__)"incbin_" STR(name) "_start:\n" \
-            ".incbin \"" file "\"\n" \
+            STR(__USER_LABEL_PREFIX__)"incbin_" STR(NAME) "_start:\n" \
+            ".incbin \"" ASSET_DIRECTORY ASSET_FILE "\"\n" \
             \
-            ".global " STR(__USER_LABEL_PREFIX__) "incbin_" STR(name) "_end\n" \
+            ".global " STR(__USER_LABEL_PREFIX__) "incbin_" STR(NAME) "_end\n" \
             ".balign 1\n" \
-            STR(__USER_LABEL_PREFIX__)"incbin_" STR(name) "_end:\n" \
+            STR(__USER_LABEL_PREFIX__)"incbin_" STR(NAME) "_end:\n" \
             ".byte 0\n" \
     ); \
-    extern  __attribute__((aligned(16))) const char incbin_ ## name ## _start[]; \
-    extern                               const char incbin_ ## name ## _end[];
+    extern  __attribute__((aligned(16))) const char incbin_ ## NAME ## _start[]; \
+    extern                               const char incbin_ ## NAME ## _end[]
 #endif
 // clang-format on
 
@@ -69,16 +69,15 @@ typedef struct
 
 /* @TODO: cplusplus support! */
 
-#define RR_ASSET_PATH ""
-#define RrAsset_Define(NAME, PATH) \
-    INCBIN(NAME, RR_ASSET_PATH PATH)
+#define RrAsset_Define(NAME, PATH) INCBIN(NAME, STR(RR_ASSET_PATH), PATH)
 
 #define RrAsset_Extern(VAR, NAME)                                               \
     {                                                                           \
         extern __attribute__((aligned(16))) const char incbin_##NAME##_start[]; \
         extern const char incbin_##NAME##_end[];                                \
         (VAR)->Data = incbin_##NAME##_start;                                    \
-        (VAR)->Length = (incbin_##NAME##_end - incbin_##NAME##_start);          \
-    }
+        (VAR)->Length = (size_t)(incbin_##NAME##_end - incbin_##NAME##_start);  \
+    }                                                                           \
+    VAR /* Fuck off clang-format */
 
 SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset);

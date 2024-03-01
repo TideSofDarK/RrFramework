@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL.h>
 
-void RrArray_Reserve(SRrArray* Array, size_t ElementSize, size_t ElementCount)
+void RrArray_Reserve(SRrArray* Array, size_t ElementSize, size_t ElementCount, size_t Alignment)
 {
     if (Array->Data != NULL)
     {
@@ -15,7 +15,7 @@ void RrArray_Reserve(SRrArray* Array, size_t ElementSize, size_t ElementCount)
     else
     {
         Array->AllocatedSize = ElementCount * ElementSize;
-        Array->Data = SDL_malloc(Array->AllocatedSize);
+        Array->Data = SDL_aligned_alloc(Alignment, Array->AllocatedSize);
         Array->ElementSize = ElementSize;
         Array->Count = 0;
     }
@@ -23,13 +23,25 @@ void RrArray_Reserve(SRrArray* Array, size_t ElementSize, size_t ElementCount)
 
 void RrArray_Resize(SRrArray* Array, size_t ElementCount)
 {
-    Array->Data = SDL_realloc(Array->Data, Array->ElementSize * ElementCount);
+    void* OldData = Array->Data;
+    size_t NewAllocatedSize = Array->ElementSize * ElementCount;
+    Array->Data = SDL_aligned_alloc(16, NewAllocatedSize);
+    if (OldData != NULL)
+    {
+        SDL_memcpy(Array->Data, OldData, SDL_min(Array->AllocatedSize, NewAllocatedSize));
+        SDL_aligned_free(OldData);
+    }
     Array->AllocatedSize = Array->ElementSize * ElementCount;
     Array->Count = SDL_min(ElementCount, Array->Count);
 }
 
 void RrArray_Set(SRrArray* Array, size_t Index, void* Data)
 {
+    if (Array->Data == NULL)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Attempting to set an element but the Data is NULL!");
+        SDL_assert(0);
+    }
     if (Index * Array->ElementSize >= Array->AllocatedSize)
     {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Index %zu is out-of-bounds! AllocationSize is %zu, ElementSize is %zu.", Index, Array->AllocatedSize, Array->ElementSize);
@@ -62,7 +74,7 @@ void RrArray_Empty(SRrArray* Array, b32 bFreeAllocation)
 {
     if (bFreeAllocation)
     {
-        SDL_free(Array->Data);
+        SDL_aligned_free(Array->Data);
         Array->Data = NULL;
         Array->AllocatedSize = 0;
     }
@@ -80,7 +92,7 @@ typedef struct SArrayEntry
 void RrArray_Test(void)
 {
     SRrArray TestArray = { 0 };
-    RrArray_Reserve(&TestArray, sizeof(SArrayItem), 4);
+    RrArray_Init(&TestArray, SArrayItem, 4);
 
     SDL_assert(TestArray.Count == 0);
     SDL_assert(TestArray.AllocatedSize == sizeof(SArrayItem) * 4);

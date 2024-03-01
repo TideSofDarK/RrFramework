@@ -35,4 +35,3 @@ target_link_libraries(${VENDOR_TARGET} PUBLIC
         cglm
         ${IMGUI_TARGET}
 )
-target_compile_features(${VENDOR_TARGET} PRIVATE c_std_99 cxx_std_17)

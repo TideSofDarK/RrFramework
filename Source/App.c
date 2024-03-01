@@ -68,7 +68,7 @@ void RunApp(void)
         ImGui_ImplSDL3_NewFrame();
         igNewFrame();
 
-        igShowDemoWindow(NULL);
+        //        igShowDemoWindow(NULL);
 
         igRender();
 
