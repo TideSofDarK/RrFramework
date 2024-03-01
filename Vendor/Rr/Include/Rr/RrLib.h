@@ -63,7 +63,7 @@ static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(VkImage
         .imageLayout = Layout,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = (VkClearValue){ .depthStencil.depth = 0.0f }
+        .clearValue = (VkClearValue){ .depthStencil.depth = 1.0f }
     };
 
     return Info;
@@ -380,7 +380,7 @@ void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule V
 
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
-    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
     PipelineBuilder->DepthStencil.depthBoundsTestEnable = VK_FALSE;
     PipelineBuilder->DepthStencil.stencilTestEnable = VK_FALSE;
     PipelineBuilder->DepthStencil.front = (VkStencilOpState){ 0 };

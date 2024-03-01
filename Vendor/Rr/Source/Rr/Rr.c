@@ -658,8 +658,8 @@ static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
     viewport.y = 0.0f;
     viewport.width = (float)Rr->DrawTarget.Extent.width;
     viewport.height = (float)Rr->DrawTarget.Extent.height;
-    viewport.minDepth = 1.0f;
-    viewport.maxDepth = 0.0f;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
 
     vkCmdSetViewport(CommandBuffer, 0, 1, &viewport);
 
