@@ -50,6 +50,11 @@ void RunApp(void)
         {
             switch (event.type)
             {
+                case SDL_EVENT_WINDOW_RESIZED:
+                {
+                    App.Rr.Swapchain.bShouldResize = true;
+                }
+                break;
                 case SDL_EVENT_QUIT:
                 {
                     App.bExit = true;

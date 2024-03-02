@@ -180,6 +180,9 @@ static void Rr_CreateDrawTarget(SRr* const Rr, u32 Width, u32 Height)
         1
     };
 
+    Rr->DrawTarget.Extent.width = ColorImage->Extent.width;
+    Rr->DrawTarget.Extent.height = ColorImage->Extent.height;
+
     VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -919,9 +922,6 @@ void Rr_Draw(SRr* const Rr)
     VK_ASSERT(Result == VK_SUCCESS);
 
     VkImage SwapchainImage = Rr->Swapchain.Images[SwapchainImageIndex].Handle;
-
-    Rr->DrawTarget.Extent.width = ColorImage->Extent.width;
-    Rr->DrawTarget.Extent.height = ColorImage->Extent.height;
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo))
