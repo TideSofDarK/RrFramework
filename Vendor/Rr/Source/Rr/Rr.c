@@ -687,11 +687,10 @@ static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
     float Z = SDL_sinf(Time) * 5;
     mat4 View;
     glm_lookat((vec3){ Z, 0.2f, X }, (vec3){ 0, 0.0f, 0 }, (vec3){ 0, 1, 0 }, View);
-    glm_mat4_copy(View, PushConstants.View);
     mat4 Projection;
     glm_perspective_rh_no(glm_rad(45.0f), (float)Rr->DrawTarget.Extent.width / (float)Rr->DrawTarget.Extent.height, 1.0f, 1000.0f, Projection);
     Projection[1][1] *= -1.0f;
-    glm_mat4_copy(Projection, PushConstants.Projection);
+    glm_mat4_mul(Projection, View, PushConstants.ViewProjection);
 
     vkCmdPushConstants(CommandBuffer, Rr->MeshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SRrPushConstants3D), &PushConstants);
     vkCmdBindIndexBuffer(CommandBuffer, Rr->Mesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);

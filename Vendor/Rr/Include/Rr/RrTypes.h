@@ -43,8 +43,7 @@ typedef struct
 
 typedef struct
 {
-    mat4 View;
-    mat4 Projection;
+    mat4 ViewProjection;
     VkDeviceAddress VertexBufferAddress;
 } SRrPushConstants3D;
 
