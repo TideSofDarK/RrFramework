@@ -8,5 +8,5 @@ void Rr_Init(SRr* Rr, SDL_Window* Window);
 void Rr_InitImGui(SRr* Rr, SDL_Window* Window);
 void Rr_Cleanup(SRr* Rr);
 void Rr_Draw(SRr* Rr);
-void Rr_Resize(SRr* Rr, u32 Width, u32 Height);
+b32 Rr_NewFrame(SRr* Rr, SDL_Window* Window);
 void Rr_SetMesh(SRr* Rr, SRrRawMesh* RawMesh);

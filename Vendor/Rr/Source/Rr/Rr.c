@@ -217,12 +217,28 @@ static void Rr_CleanupSwapchain(SRr* const Rr, VkSwapchainKHR Swapchain)
     Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.DepthImage);
 }
 
-static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSync)
+static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSync)
 {
     VkSwapchainKHR OldSwapchain = Rr->Swapchain.Handle;
 
     VkSurfaceCapabilitiesKHR SurfCaps;
     VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &SurfCaps))
+
+    if (SurfCaps.currentExtent.width == 0 || SurfCaps.currentExtent.height == 0)
+    {
+        return FALSE;
+    }
+    if (SurfCaps.currentExtent.width == UINT32_MAX)
+    {
+        Rr->Swapchain.Extent.width = *Width;
+        Rr->Swapchain.Extent.height = *Height;
+    }
+    else
+    {
+        Rr->Swapchain.Extent = SurfCaps.currentExtent;
+        *Width = SurfCaps.currentExtent.width;
+        *Height = SurfCaps.currentExtent.height;
+    }
 
     u32 PresentModeCount;
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, NULL))
@@ -265,21 +281,6 @@ static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSy
     {
         PreTransform = SurfCaps.currentTransform;
     }
-
-    VkExtent2D SwapchainExtent;
-    if (SurfCaps.currentExtent.width == UINT32_MAX)
-    {
-        SwapchainExtent.width = *Width;
-        SwapchainExtent.height = *Height;
-    }
-    else
-    {
-        SwapchainExtent = SurfCaps.currentExtent;
-        *Width = SurfCaps.currentExtent.width;
-        *Height = SurfCaps.currentExtent.height;
-    }
-
-    Rr->Swapchain.Extent = SwapchainExtent;
 
     u32 FormatCount;
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &FormatCount, NULL))
@@ -331,7 +332,7 @@ static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSy
         .minImageCount = DesiredNumberOfSwapchainImages,
         .imageFormat = Rr->Swapchain.Format,
         .imageColorSpace = Rr->Swapchain.ColorSpace,
-        .imageExtent = { SwapchainExtent.width, SwapchainExtent.height },
+        .imageExtent = { Rr->Swapchain.Extent.width, Rr->Swapchain.Extent.height },
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -396,6 +397,8 @@ static void Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSy
 
     SDL_stack_free(Images);
     SDL_stack_free(SurfaceFormats);
+
+    return TRUE;
 }
 
 static void Rr_InitCommands(SRr* const Rr)
@@ -898,6 +901,7 @@ void Rr_Cleanup(SRr* const Rr)
 void Rr_Draw(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
+    SSwapchain* Swapchain = &Rr->Swapchain;
     SRrFrame* CurrentFrame = Rr_GetCurrentFrame(Rr);
     SAllocatedImage* ColorImage = &Rr->DrawTarget.ColorImage;
     SAllocatedImage* DepthImage = &Rr->DrawTarget.DepthImage;
@@ -907,7 +911,13 @@ void Rr_Draw(SRr* const Rr)
     VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence))
 
     u32 SwapchainImageIndex;
-    VK_ASSERT(vkAcquireNextImageKHR(Device, Rr->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex))
+    VkResult Result = vkAcquireNextImageKHR(Device, Rr->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
+    if (Result == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        Swapchain->bShouldResize = true;
+        return;
+    }
+    VK_ASSERT(Result == VK_SUCCESS);
 
     VkImage SwapchainImage = Rr->Swapchain.Images[SwapchainImageIndex].Handle;
 
@@ -1007,18 +1017,36 @@ void Rr_Draw(SRr* const Rr)
         .pImageIndices = &SwapchainImageIndex,
     };
 
-    VK_ASSERT(vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo))
+    Result = vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo);
+    if (Result == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        Swapchain->bShouldResize = true;
+    }
 
     Rr->FrameNumber++;
 }
 
-void Rr_Resize(SRr* const Rr, u32 Width, u32 Height)
+b32 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
 {
-    vkDeviceWaitIdle(Rr->Device);
+    if (Rr->Swapchain.bShouldResize)
+    {
+        vkDeviceWaitIdle(Rr->Device);
 
-    Rr_CreateSwapchain(Rr, &Width, &Height, true);
+        i32 Width, Height;
+        SDL_GetWindowSizeInPixels(Window, &Width, &Height);
 
-    Rr_UpdateDrawImageDescriptors(Rr, true, true);
+        if (Width > 0 && Height > 0 && Rr_CreateSwapchain(Rr, (u32*)&Width, (u32*)&Height, TRUE))
+        {
+            Rr_UpdateDrawImageDescriptors(Rr, TRUE, TRUE);
+
+            Rr->Swapchain.bShouldResize = FALSE;
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 void Rr_SetMesh(SRr* const Rr, SRrRawMesh* const RawMesh)

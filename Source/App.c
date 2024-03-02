@@ -1,4 +1,5 @@
 #include "App.h"
+#include "Rr/Rr.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -47,13 +48,6 @@ void RunApp(void)
         {
             switch (event.type)
             {
-                case SDL_EVENT_WINDOW_RESIZED:
-                {
-                    i32 Width, Height;
-                    SDL_GetWindowSizeInPixels(App.Window, &Width, &Height);
-                    Rr_Resize(&App.Rr, Width, Height);
-                }
-                break;
                 case SDL_EVENT_QUIT:
                 {
                     App.bExit = true;
@@ -64,15 +58,18 @@ void RunApp(void)
             ImGui_ImplSDL3_ProcessEvent(&event);
         }
 
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-        igNewFrame();
+        if (Rr_NewFrame(&App.Rr, App.Window))
+        {
+            ImGui_ImplVulkan_NewFrame();
+            ImGui_ImplSDL3_NewFrame();
+            igNewFrame();
 
-        //        igShowDemoWindow(NULL);
+            // igShowDemoWindow(NULL);
 
-        igRender();
+            igRender();
 
-        Rr_Draw(&App.Rr);
+            Rr_Draw(&App.Rr);
+        }
     }
 
     Rr_Cleanup(&App.Rr);

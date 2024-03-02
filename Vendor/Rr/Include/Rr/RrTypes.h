@@ -97,6 +97,7 @@ typedef struct SRendererSwapchain
     SVulkanImage Images[MAX_SWAPCHAIN_IMAGE_COUNT];
     u32 ImageCount;
     VkExtent2D Extent;
+    b32 bShouldResize;
 } SSwapchain;
 
 typedef struct SRendererQueue
