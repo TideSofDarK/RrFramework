@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RrTypes.h"
-#include "RrArray.h"
 #include "RrAsset.h"
 
 void Rr_Init(SRr* Rr, SDL_Window* Window);

@@ -1,9 +1,5 @@
 #pragma once
 
-#include <stddef.h>
-
-static const char* AppTitle = "VulkanPlayground";
-
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
@@ -15,6 +11,7 @@ typedef signed long long i64;
 typedef float f32;
 typedef double f64;
 typedef int b32;
+typedef _Bool b8;
 
-#define TRUE 1
-#define FALSE 0
+#define true 1
+#define false 0

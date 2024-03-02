@@ -48,7 +48,7 @@ void RrArray_Resize(SRrArray* Handle, size_t ElementCount)
     SRrArrayHeader* NewHeader = RrArray_Header(*Handle);
     NewHeader->Count = SDL_min(ElementCount, OldHeader->Count);
     SDL_memcpy(*Handle, OldHandle, SDL_min(OldHeader->AllocatedSize, NewAllocatedSize));
-    RrArray_Empty(OldHandle, TRUE);
+    RrArray_Empty(OldHandle, true);
 }
 
 void RrArray_Set(SRrArray Handle, size_t Index, void* Data)
@@ -162,12 +162,12 @@ void RrArray_Test(void)
     SDL_assert(ThirdItem->Color[2] == 1.0f);
 
     size_t CurrentAllocationSize = Header->AllocatedSize;
-    RrArray_Empty(Handle, FALSE);
+    RrArray_Empty(Handle, false);
     SDL_assert(Header->Count == 0);
     SDL_assert(Header->AllocatedSize == CurrentAllocationSize);
     SDL_assert(Header->ElementSize == sizeof(SArrayItem));
 
-    RrArray_Empty(Handle, TRUE);
+    RrArray_Empty(Handle, true);
     SDL_assert(InitialAllocations == SDL_GetNumAllocations());
 }
 #endif

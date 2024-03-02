@@ -12,6 +12,8 @@
 
 #include "Rr/RrAsset.h"
 
+const char* AppTitle = "VulkanPlayground";
+
 void RunApp(void)
 {
     SApp App = { 0 };

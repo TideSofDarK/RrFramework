@@ -226,7 +226,7 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
 
     if (SurfCaps.currentExtent.width == 0 || SurfCaps.currentExtent.height == 0)
     {
-        return FALSE;
+        return false;
     }
     if (SurfCaps.currentExtent.width == UINT32_MAX)
     {
@@ -398,7 +398,7 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
     SDL_stack_free(Images);
     SDL_stack_free(SurfaceFormats);
 
-    return TRUE;
+    return true;
 }
 
 static void Rr_InitCommands(SRr* const Rr)
@@ -783,7 +783,7 @@ void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
 
     VkApplicationInfo VKAppInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pApplicationName = AppTitle,
+        .pApplicationName = SDL_GetWindowTitle(Window),
         .pEngineName = "Rr",
         .apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0)
     };
@@ -1035,18 +1035,18 @@ b32 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
         i32 Width, Height;
         SDL_GetWindowSizeInPixels(Window, &Width, &Height);
 
-        if (Width > 0 && Height > 0 && Rr_CreateSwapchain(Rr, (u32*)&Width, (u32*)&Height, TRUE))
+        if (Width > 0 && Height > 0 && Rr_CreateSwapchain(Rr, (u32*)&Width, (u32*)&Height, true))
         {
-            Rr_UpdateDrawImageDescriptors(Rr, TRUE, TRUE);
+            Rr_UpdateDrawImageDescriptors(Rr, true, true);
 
-            Rr->Swapchain.bShouldResize = FALSE;
-            return TRUE;
+            Rr->Swapchain.bShouldResize = false;
+            return true;
         }
 
-        return FALSE;
+        return false;
     }
 
-    return TRUE;
+    return true;
 }
 
 void Rr_SetMesh(SRr* const Rr, SRrRawMesh* const RawMesh)

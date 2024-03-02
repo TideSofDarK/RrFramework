@@ -276,7 +276,7 @@ static b32 LoadShaderModule(const char* Filename, VkDevice Device, VkShaderModul
 
     SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Loaded shader: %s", ShaderPath);
 
-    return TRUE;
+    return true;
 
 ShaderError:
     SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, "Error when building the shader! Path: %s", ShaderPath);
