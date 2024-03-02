@@ -1,5 +1,4 @@
 #include "Rr.h"
-#include "RrTypes.h"
 
 #include <math.h>
 #include <string.h>
@@ -7,11 +6,6 @@
 
 #include <cglm/mat4.h>
 #include <cglm/cam.h>
-
-#include <vulkan/vk_enum_string_helper.h>
-
-#include <volk.h>
-#include <vulkan/vulkan_core.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -23,7 +17,9 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_vulkan.h>
 
+#include "RrVulkan.h"
 #include "RrLib.h"
+#include "RrDescriptor.h"
 
 static bool Rr_CheckPhysicalDevice(SRr* const Rr, VkPhysicalDevice PhysicalDevice)
 {
@@ -486,7 +482,7 @@ static void Rr_UpdateDrawImageDescriptors(SRr* const Rr, b32 bCreate, b32 bDestr
     {
         vkDestroyDescriptorSetLayout(Rr->Device, Rr->DrawTarget.DescriptorSetLayout, NULL);
 
-        DescriptorAllocator_ClearDescriptors(GlobalDescriptorAllocator, Rr->Device);
+        DescriptorAllocator_ClearPools(GlobalDescriptorAllocator, Rr->Device);
     }
     if (bCreate)
     {
@@ -520,11 +516,11 @@ static void Rr_InitDescriptors(SRr* Renderer)
 {
     SDescriptorAllocator* GlobalDescriptorAllocator = &Renderer->GlobalDescriptorAllocator;
 
-    SDescriptorPoolSizeRatio sizes[] = {
+    SDescriptorPoolSizeRatio Ratios[] = {
         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 }
     };
 
-    DescriptorAllocator_Init(GlobalDescriptorAllocator, Renderer->Device, 10, sizes, 1);
+    DescriptorAllocator_Init(GlobalDescriptorAllocator, Renderer->Device, 10, Ratios, SDL_arraysize(Ratios));
 
     /* */
 
@@ -878,7 +874,7 @@ void Rr_Cleanup(SRr* const Rr)
 
     Rr_UpdateDrawImageDescriptors(Rr, false, true);
 
-    DescriptorAllocator_DestroyPool(&Rr->GlobalDescriptorAllocator, Device);
+    DescriptorAllocator_DestroyPools(&Rr->GlobalDescriptorAllocator, Device);
 
     for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
     {

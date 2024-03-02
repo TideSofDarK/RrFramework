@@ -8,6 +8,7 @@
 
 #include "RrCore.h"
 #include "RrAsset.h"
+#include "RrDescriptor.h"
 
 #define MAX_LAYOUT_BINDINGS 4
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
@@ -128,17 +129,6 @@ typedef struct SDescriptorLayoutBuilder
     VkDescriptorSetLayoutBinding Bindings[MAX_LAYOUT_BINDINGS];
     u32 Count;
 } SDescriptorLayoutBuilder;
-
-typedef struct SDescriptorPoolSizeRatio
-{
-    VkDescriptorType Type;
-    f32 Ratio;
-} SDescriptorPoolSizeRatio;
-
-typedef struct SDescriptorAllocator
-{
-    VkDescriptorPool Pool;
-} SDescriptorAllocator;
 
 typedef struct SComputeConstants
 {

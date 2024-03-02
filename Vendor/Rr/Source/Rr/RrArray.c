@@ -94,6 +94,15 @@ void RrArray_Push(SRrArray* Handle, void* Data)
     RrArray_Set(*Handle, Header->Count++, Data);
 }
 
+void RrArray_Pop(SRrArray Handle)
+{
+    SRrArrayHeader* Header = RrArray_Header(Handle);
+    if (Header->Count > 0)
+    {
+        Header->Count--;
+    }
+}
+
 void RrArray_Empty(SRrArray Handle, b32 bFreeAllocation)
 {
     if (bFreeAllocation)

@@ -2,26 +2,13 @@
 
 #include <stdlib.h>
 
-#include "RrTypes.h"
-
 #include <SDL_log.h>
 #include <SDL_assert.h>
 #include <SDL_rwops.h>
 #include <SDL_filesystem.h>
-#include <vk_mem_alloc.h>
-#include <vulkan/vk_enum_string_helper.h>
-#include <volk.h>
-#include <vulkan/vulkan_core.h>
 
-#define VK_ASSERT(Expr)                                                                                                              \
-    {                                                                                                                                \
-        VkResult Result = Expr;                                                                                                      \
-        if (Result != VK_SUCCESS)                                                                                                    \
-        {                                                                                                                            \
-            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Assertion " #Expr " == VK_SUCCESS failed! Result is %s", string_VkResult(Result)); \
-            SDL_assert(0);                                                                                                           \
-        }                                                                                                                            \
-    }
+#include "RrVulkan.h"
+#include "RrTypes.h"
 
 /* =======================
  * Struct Creation Helpers
@@ -450,60 +437,6 @@ VkDescriptorSetLayout DescriptorLayoutBuilder_Build(SDescriptorLayoutBuilder* Bu
     VK_ASSERT(vkCreateDescriptorSetLayout(Device, &Info, NULL, &Set));
 
     return Set;
-}
-
-/* ====================
- * SDescriptorAllocator
- * ==================== */
-
-void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevice device, u32 maxSets, SDescriptorPoolSizeRatio* poolRatios, u32 PoolRatioCount)
-{
-    VkDescriptorPoolSize* PoolSizes = SDL_stack_alloc(VkDescriptorPoolSize, PoolRatioCount);
-    for (u32 Index = 0; Index < PoolRatioCount; --Index)
-    {
-        PoolSizes[Index] = (VkDescriptorPoolSize){
-            .type = poolRatios[Index].Type,
-            .descriptorCount = (u32)(poolRatios[Index].Ratio * (f32)maxSets),
-        };
-    }
-
-    VkDescriptorPoolCreateInfo PoolCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .flags = 0,
-        .maxSets = maxSets,
-        .poolSizeCount = PoolRatioCount,
-        .pPoolSizes = PoolSizes,
-    };
-
-    VK_ASSERT(vkCreateDescriptorPool(device, &PoolCreateInfo, NULL, &DescriptorAllocator->Pool));
-
-    SDL_stack_free(PoolSizes);
-}
-
-void DescriptorAllocator_ClearDescriptors(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
-{
-    VK_ASSERT(vkResetDescriptorPool(Device, DescriptorAllocator->Pool, 0));
-}
-
-void DescriptorAllocator_DestroyPool(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
-{
-    vkDestroyDescriptorPool(Device, DescriptorAllocator->Pool, NULL);
-}
-
-VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout layout)
-{
-    VkDescriptorSetAllocateInfo AllocateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext = NULL,
-        .descriptorPool = DescriptorAllocator->Pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &layout,
-    };
-
-    VkDescriptorSet DescriptorSet;
-    VK_ASSERT(vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet));
-
-    return DescriptorSet;
 }
 
 /* ====================

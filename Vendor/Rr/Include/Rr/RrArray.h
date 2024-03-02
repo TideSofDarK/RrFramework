@@ -18,19 +18,21 @@ void RrArray_Emplace(SRrArray Handle, void* Data);
 
 void RrArray_Push(SRrArray* Handle, void* Data);
 
+void RrArray_Pop(SRrArray Handle);
+
 void RrArray_Empty(SRrArray Handle, b32 bFreeAllocation);
 
 size_t RrArray_Count(SRrArray Handle);
 
-#define RrArray_Init(Handle, ElementType, ElementCount)                                    \
-    {                                                                                      \
-        size_t Alignment = 0;                                                              \
-        struct T                                                                           \
-        {                                                                                  \
-            char C;                                                                        \
-            ElementType E;                                                                 \
-        };                                                                                 \
-        RrArray_Reserve(Handle, sizeof(ElementType), ElementCount, offsetof(struct T, E)); \
+#define RrArray_Init(Handle, ElementType, ElementCount)                                             \
+    {                                                                                               \
+        size_t Alignment = 0;                                                                       \
+        struct T                                                                                    \
+        {                                                                                           \
+            char C;                                                                                 \
+            ElementType E;                                                                          \
+        };                                                                                          \
+        RrArray_Reserve((void*)(Handle), sizeof(ElementType), ElementCount, offsetof(struct T, E)); \
     }
 
 #ifdef RR_DEBUG
