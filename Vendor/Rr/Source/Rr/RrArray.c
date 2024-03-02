@@ -1,5 +1,7 @@
 #include "RrArray.h"
 
+#include <stdlib.h>
+
 #include <SDL3/SDL.h>
 
 typedef struct SRrArrayHeader
@@ -54,13 +56,13 @@ void RrArray_Set(SRrArray Handle, size_t Index, void* Data)
     if (Handle == NULL)
     {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Attempting to set an element but the Handle is NULL!");
-        exit(0);
+        abort();
     }
     SRrArrayHeader* Header = RrArray_Header(Handle);
     if (Index * Header->ElementSize >= Header->AllocatedSize)
     {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "RrArray: Index %zu is out-of-bounds! AllocationSize is %zu, ElementSize is %zu.", Index, Header->AllocatedSize, Header->ElementSize);
-        exit(0);
+        abort();
     }
     else
     {
