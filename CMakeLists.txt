@@ -32,19 +32,19 @@ add_subdirectory(Vendor/Rr)
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
 set(SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/")
-file(GLOB_RECURSE GLSL_SOURCE_FILES CONFIGURE_DEPENDS
+file(GLOB GLSL_SOURCE_FILES CONFIGURE_DEPENDS
         "${SHADER_DIR}*.frag" "${SHADER_DIR}*.vert" "${SHADER_DIR}*.comp"
 )
 
 foreach (GLSL ${GLSL_SOURCE_FILES})
-    # message(STATUS "BUILDING SHADER")
     get_filename_component(FILE_NAME ${GLSL} NAME)
     set(SPIRV "${SHADER_DIR}/${FILE_NAME}.spv")
-    # message(STATUS ${GLSL})
     add_custom_command(
+            MAIN_DEPENDENCY ${GLSL}
             OUTPUT ${SPIRV}
             COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.3 ${GLSL} -o ${SPIRV}
-            DEPENDS ${GLSL})
+            DEPENDS ${GLSL}
+            VERBATIM)
     list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach (GLSL)
 
@@ -56,8 +56,8 @@ add_custom_target(
 #
 # Add executable target
 #
+set_source_files_properties(Source/AssetDef.c PROPERTIES OBJECT_DEPENDS "${GLSL_SOURCE_FILES}")
 add_executable(${PROJECT_NAME} Source/AssetDef.c Source/Main.c Source/App.c)
-set_source_files_properties(Source/Main.c PROPERTIES OBJECT_DEPENDS "${SPIRV_BINARY_FILES}")
 add_dependencies(${PROJECT_NAME} Shaders)
 target_link_libraries(${PROJECT_NAME} PRIVATE RetroRenderer)
 if (WIN32)
