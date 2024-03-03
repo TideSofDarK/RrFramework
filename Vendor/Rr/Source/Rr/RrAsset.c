@@ -161,7 +161,7 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                         RrArray_Push(&ScratchIndices, OBJIndices[Index]);
 
                         /** Add freshly added vertex index */
-                        RrArray_Push(&RawMesh.Indices, &(u32){ RrArray_Count( RawMesh.Vertices) - 1 });
+                        RrArray_Push(&RawMesh.Indices, &(u32){ RrArray_Count(RawMesh.Vertices) - 1 });
                     }
                     else
                     {
@@ -178,4 +178,10 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
         CurrentIndex = GetNewLine(Asset->Data, Asset->Length, CurrentIndex) + 1;
     }
     return RawMesh;
+}
+
+void RrRawMesh_Cleanup(SRrRawMesh* RawMesh)
+{
+    RrArray_Empty(RawMesh->Vertices, true);
+    RrArray_Empty(RawMesh->Indices, true);
 }

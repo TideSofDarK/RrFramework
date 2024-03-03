@@ -14,7 +14,7 @@ typedef struct SRrArrayHeader
 
 static inline SRrArrayHeader* RrArray_Header(SRrArray Handle)
 {
-   return (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    return (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
 }
 
 void RrArray_Reserve(SRrArray* Handle, size_t ElementSize, size_t ElementCount, size_t Alignment)

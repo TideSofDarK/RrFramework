@@ -61,7 +61,7 @@ void DescriptorAllocator_ClearPools(SDescriptorAllocator* DescriptorAllocator, V
     RrArray_Empty(DescriptorAllocator->FullPools, false);
 }
 
-void DescriptorAllocator_DestroyPools(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
+void DescriptorAllocator_Cleanup(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
 {
     size_t Count = RrArray_Count(DescriptorAllocator->ReadyPools);
     for (size_t Index = 0; Index < Count; Index++)
@@ -78,6 +78,7 @@ void DescriptorAllocator_DestroyPools(SDescriptorAllocator* DescriptorAllocator,
         vkDestroyDescriptorPool(Device, FullPool, NULL);
     }
     RrArray_Empty(DescriptorAllocator->FullPools, true);
+    RrArray_Empty(DescriptorAllocator->Ratios, true);
 }
 
 VkDescriptorPool DescriptorAllocator_GetPool(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)

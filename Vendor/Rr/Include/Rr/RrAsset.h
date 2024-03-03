@@ -77,7 +77,7 @@ typedef struct
         extern const char incbin_##NAME##_end[];                                \
         (VAR)->Data = incbin_##NAME##_start;                                    \
         (VAR)->Length = (size_t)(incbin_##NAME##_end - incbin_##NAME##_start);  \
-    }                                                                           \
-    VAR /* Fuck off clang-format */
+    }
 
 SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset);
+void RrRawMesh_Cleanup(SRrRawMesh* RawMesh);

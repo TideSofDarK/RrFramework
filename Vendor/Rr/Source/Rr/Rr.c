@@ -176,8 +176,8 @@ static void Rr_CreateDrawTarget(SRr* const Rr, u32 Width, u32 Height)
         1
     };
 
-    Rr->DrawTarget.Extent.width = ColorImage->Extent.width;
-    Rr->DrawTarget.Extent.height = ColorImage->Extent.height;
+    Rr->DrawTarget.ActiveExtent.width = ColorImage->Extent.width;
+    Rr->DrawTarget.ActiveExtent.height = ColorImage->Extent.height;
 
     VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
@@ -204,6 +204,50 @@ static void Rr_CreateDrawTarget(SRr* const Rr, u32 Width, u32 Height)
     VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &DepthImage->View))
 }
 
+static void Rr_CleanupDrawTarget(SRr* const Rr)
+{
+    Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.ColorImage);
+    Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.DepthImage);
+}
+
+static void Rr_UpdateDrawImageDescriptors(SRr* const Rr, b32 bCreate, b32 bDestroy)
+{
+    SDescriptorAllocator* GlobalDescriptorAllocator = &Rr->GlobalDescriptorAllocator;
+
+    if (bDestroy)
+    {
+        vkDestroyDescriptorSetLayout(Rr->Device, Rr->DrawTarget.DescriptorSetLayout, NULL);
+
+        DescriptorAllocator_ClearPools(GlobalDescriptorAllocator, Rr->Device);
+    }
+    if (bCreate)
+    {
+        SDescriptorLayoutBuilder Builder = { 0 };
+        DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+        Rr->DrawTarget.DescriptorSetLayout = DescriptorLayoutBuilder_Build(&Builder, Rr->Device, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        Rr->DrawTarget.DescriptorSet = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Rr->Device, Rr->DrawTarget.DescriptorSetLayout);
+
+        VkDescriptorImageInfo DescriptorImageInfo = {
+            .imageView = Rr->DrawTarget.ColorImage.View,
+            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+        };
+
+        VkWriteDescriptorSet WriteDescriptorSet = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = NULL,
+            .dstSet = Rr->DrawTarget.DescriptorSet,
+            .dstBinding = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            .pImageInfo = &DescriptorImageInfo,
+        };
+
+        vkUpdateDescriptorSets(Rr->Device, 1, &WriteDescriptorSet, 0, NULL);
+    }
+}
+
 static void Rr_CleanupSwapchain(SRr* const Rr, VkSwapchainKHR Swapchain)
 {
     for (u32 Index = 0; Index < Rr->Swapchain.ImageCount; Index++)
@@ -211,9 +255,6 @@ static void Rr_CleanupSwapchain(SRr* const Rr, VkSwapchainKHR Swapchain)
         vkDestroyImageView(Rr->Device, Rr->Swapchain.Images[Index].View, NULL);
     }
     vkDestroySwapchainKHR(Rr->Device, Swapchain, NULL);
-
-    Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.ColorImage);
-    Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.DepthImage);
 }
 
 static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSync)
@@ -264,6 +305,7 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
         }
     }
     SDL_stack_free(PresentModes);
+    // SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
 
     u32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if ((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))
@@ -392,7 +434,16 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
         VK_ASSERT(vkCreateImageView(Rr->Device, &ColorAttachmentView, NULL, &Rr->Swapchain.Images[i].View))
     }
 
-    Rr_CreateDrawTarget(Rr, *Width, *Height);
+    if (*Width > Rr->DrawTarget.ColorImage.Extent.width || *Height > Rr->DrawTarget.ColorImage.Extent.height)
+    {
+        if (Rr->DrawTarget.ColorImage.Handle != VK_NULL_HANDLE)
+        {
+            Rr_CleanupDrawTarget(Rr);
+            Rr_UpdateDrawImageDescriptors(Rr, false, true);
+        }
+        Rr_CreateDrawTarget(Rr, *Width, *Height);
+        Rr_UpdateDrawImageDescriptors(Rr, true, false);
+    }
 
     SDL_stack_free(Images);
     SDL_stack_free(SurfaceFormats);
@@ -474,44 +525,6 @@ static void Rr_InitAllocator(SRr* const Rr)
     VK_ASSERT(vmaCreateAllocator(&AllocatorInfo, &Rr->Allocator))
 }
 
-static void Rr_UpdateDrawImageDescriptors(SRr* const Rr, b32 bCreate, b32 bDestroy)
-{
-    SDescriptorAllocator* GlobalDescriptorAllocator = &Rr->GlobalDescriptorAllocator;
-
-    if (bDestroy)
-    {
-        vkDestroyDescriptorSetLayout(Rr->Device, Rr->DrawTarget.DescriptorSetLayout, NULL);
-
-        DescriptorAllocator_ClearPools(GlobalDescriptorAllocator, Rr->Device);
-    }
-    if (bCreate)
-    {
-        SDescriptorLayoutBuilder Builder = { 0 };
-        DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-
-        Rr->DrawTarget.DescriptorSetLayout = DescriptorLayoutBuilder_Build(&Builder, Rr->Device, VK_SHADER_STAGE_COMPUTE_BIT);
-
-        Rr->DrawTarget.DescriptorSet = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Rr->Device, Rr->DrawTarget.DescriptorSetLayout);
-
-        VkDescriptorImageInfo DescriptorImageInfo = {
-            .imageView = Rr->DrawTarget.ColorImage.View,
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-        };
-
-        VkWriteDescriptorSet WriteDescriptorSet = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = NULL,
-            .dstSet = Rr->DrawTarget.DescriptorSet,
-            .dstBinding = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            .pImageInfo = &DescriptorImageInfo,
-        };
-
-        vkUpdateDescriptorSets(Rr->Device, 1, &WriteDescriptorSet, 0, NULL);
-    }
-}
-
 static void Rr_InitDescriptors(SRr* Renderer)
 {
     SDescriptorAllocator* GlobalDescriptorAllocator = &Renderer->GlobalDescriptorAllocator;
@@ -521,10 +534,6 @@ static void Rr_InitDescriptors(SRr* Renderer)
     };
 
     DescriptorAllocator_Init(GlobalDescriptorAllocator, Renderer->Device, 10, Ratios, SDL_arraysize(Ratios));
-
-    /* */
-
-    Rr_UpdateDrawImageDescriptors(Renderer, true, false);
 }
 
 static void Rr_InitBackgroundPipelines(SRr* const Rr)
@@ -639,7 +648,7 @@ static void Rr_DrawBackground(SRr* const Rr, VkCommandBuffer CommandBuffer)
     glm_vec4_copy((vec4){ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
     glm_vec4_copy((vec4){ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
     vkCmdPushConstants(CommandBuffer, Rr->GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SComputeConstants), &ComputeConstants);
-    vkCmdDispatch(CommandBuffer, ceil(Rr->DrawTarget.Extent.width / 16.0), ceil(Rr->DrawTarget.Extent.height / 16.0), 1);
+    vkCmdDispatch(CommandBuffer, ceil(Rr->DrawTarget.ActiveExtent.width / 16.0), ceil(Rr->DrawTarget.ActiveExtent.height / 16.0), 1);
 
     // float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
     // VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
@@ -654,14 +663,14 @@ static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
     VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Rr->DrawTarget.ColorImage.View, NULL, VK_IMAGE_LAYOUT_GENERAL);
     VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(Rr->DrawTarget.DepthImage.View, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    VkRenderingInfo renderInfo = GetRenderingInfo(Rr->DrawTarget.Extent, &ColorAttachment, &DepthAttachment);
+    VkRenderingInfo renderInfo = GetRenderingInfo(Rr->DrawTarget.ActiveExtent, &ColorAttachment, &DepthAttachment);
     vkCmdBeginRendering(CommandBuffer, &renderInfo);
 
     VkViewport viewport = { 0 };
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)Rr->DrawTarget.Extent.width;
-    viewport.height = (float)Rr->DrawTarget.Extent.height;
+    viewport.width = (float)Rr->DrawTarget.ActiveExtent.width;
+    viewport.height = (float)Rr->DrawTarget.ActiveExtent.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
@@ -670,8 +679,8 @@ static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
     VkRect2D scissor = { 0 };
     scissor.offset.x = 0;
     scissor.offset.y = 0;
-    scissor.extent.width = Rr->DrawTarget.Extent.width;
-    scissor.extent.height = Rr->DrawTarget.Extent.height;
+    scissor.extent.width = Rr->DrawTarget.ActiveExtent.width;
+    scissor.extent.height = Rr->DrawTarget.ActiveExtent.height;
 
     vkCmdSetScissor(CommandBuffer, 0, 1, &scissor);
 
@@ -687,7 +696,7 @@ static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
     mat4 View;
     glm_lookat((vec3){ Z, 0.2f, X }, (vec3){ 0, 0.0f, 0 }, (vec3){ 0, 1, 0 }, View);
     mat4 Projection;
-    glm_perspective_rh_no(glm_rad(45.0f), (float)Rr->DrawTarget.Extent.width / (float)Rr->DrawTarget.Extent.height, 1.0f, 1000.0f, Projection);
+    glm_perspective_rh_no(glm_rad(45.0f), (float)Rr->DrawTarget.ActiveExtent.width / (float)Rr->DrawTarget.ActiveExtent.height, 1.0f, 1000.0f, Projection);
     Projection[1][1] *= -1.0f;
     glm_mat4_mul(Projection, View, PushConstants.ViewProjection);
 
@@ -830,6 +839,8 @@ void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
 
     // volkLoadDevice(Renderer->Device);
 
+    Rr_InitDescriptors(Rr);
+
     u32 Width, Height;
     SDL_GetWindowSizeInPixels(Window, (i32*)&Width, (i32*)&Height);
     bool bVSync = true;
@@ -838,8 +849,6 @@ void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
     Rr_InitCommands(Rr);
 
     Rr_InitSyncStructures(Rr);
-
-    Rr_InitDescriptors(Rr);
 
     Rr_InitPipelines(Rr);
 
@@ -874,7 +883,7 @@ void Rr_Cleanup(SRr* const Rr)
 
     Rr_UpdateDrawImageDescriptors(Rr, false, true);
 
-    DescriptorAllocator_DestroyPools(&Rr->GlobalDescriptorAllocator, Device);
+    DescriptorAllocator_Cleanup(&Rr->GlobalDescriptorAllocator, Device);
 
     for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
     {
@@ -885,6 +894,8 @@ void Rr_Cleanup(SRr* const Rr)
         vkDestroySemaphore(Device, Frame->RenderSemaphore, NULL);
         vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
     }
+
+    Rr_CleanupDrawTarget(Rr);
 
     Rr_CleanupSwapchain(Rr, Rr->Swapchain.Handle);
 
@@ -908,16 +919,24 @@ void Rr_Draw(SRr* const Rr)
     VK_ASSERT(vkWaitForFences(Device, 1, &CurrentFrame->RenderFence, true, 1000000000))
     VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence))
 
+    Rr->DrawTarget.ActiveExtent.width = Swapchain->Extent.width;
+    Rr->DrawTarget.ActiveExtent.height = Swapchain->Extent.height;
+
     u32 SwapchainImageIndex;
-    VkResult Result = vkAcquireNextImageKHR(Device, Rr->Swapchain.Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
+    VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        Swapchain->bShouldResize = true;
+        SDL_AtomicSet(&Swapchain->bShouldResize, true);
         return;
     }
-    VK_ASSERT(Result == VK_SUCCESS);
+    // if (Result == VK_NOT_READY)
+    // {
+    //     return;
+    // }
+    SDL_assert(Result >= 0);
+    // VK_ASSERT(Result);
 
-    VkImage SwapchainImage = Rr->Swapchain.Images[SwapchainImageIndex].Handle;
+    VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo))
@@ -968,7 +987,7 @@ void Rr_Draw(SRr* const Rr)
         VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Rr->DrawTarget.Extent, Rr->Swapchain.Extent);
+    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Rr->DrawTarget.ActiveExtent, Swapchain->Extent);
     TransitionImage_To(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
@@ -976,8 +995,8 @@ void Rr_Draw(SRr* const Rr)
 
     if (Rr->ImGui.bInit)
     {
-        VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Rr->Swapchain.Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        VkRenderingInfo renderInfo = GetRenderingInfo(Rr->Swapchain.Extent, &ColorAttachment, NULL);
+        VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        VkRenderingInfo renderInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachment, NULL);
 
         vkCmdBeginRendering(CommandBuffer, &renderInfo);
 
@@ -1008,14 +1027,14 @@ void Rr_Draw(SRr* const Rr)
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &CurrentFrame->RenderSemaphore,
         .swapchainCount = 1,
-        .pSwapchains = &Rr->Swapchain.Handle,
+        .pSwapchains = &Swapchain->Handle,
         .pImageIndices = &SwapchainImageIndex,
     };
 
     Result = vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        Swapchain->bShouldResize = true;
+        SDL_AtomicSet(&Swapchain->bShouldResize, true);
     }
 
     Rr->FrameNumber++;
@@ -1023,7 +1042,8 @@ void Rr_Draw(SRr* const Rr)
 
 b32 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
 {
-    if (Rr->Swapchain.bShouldResize)
+    b32 bShouldResize = SDL_AtomicGet(&Rr->Swapchain.bShouldResize);
+    if (bShouldResize)
     {
         vkDeviceWaitIdle(Rr->Device);
 
@@ -1032,9 +1052,7 @@ b32 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
 
         if (Width > 0 && Height > 0 && Rr_CreateSwapchain(Rr, (u32*)&Width, (u32*)&Height, true))
         {
-            Rr_UpdateDrawImageDescriptors(Rr, true, true);
-
-            Rr->Swapchain.bShouldResize = false;
+            SDL_AtomicSet(&Rr->Swapchain.bShouldResize, false);
             return true;
         }
 

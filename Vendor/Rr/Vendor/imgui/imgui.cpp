@@ -11854,7 +11854,7 @@ ImRect ImGui::GetPopupAllowedExtentRect(ImGuiWindow* window)
     ImRect r_screen;
     if (window->ViewportAllowPlatformMonitorExtend >= 0)
     {
-        // Extent with be in the frame of reference of the given viewport (so Min is likely to be negative here)
+        // ActiveExtent with be in the frame of reference of the given viewport (so Min is likely to be negative here)
         const ImGuiPlatformMonitor& monitor = g.PlatformIO.Monitors[window->ViewportAllowPlatformMonitorExtend];
         r_screen.Min = monitor.WorkPos;
         r_screen.Max = monitor.WorkPos + monitor.WorkSize;

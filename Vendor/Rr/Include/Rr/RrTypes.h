@@ -10,6 +10,8 @@
 #include "RrAsset.h"
 #include "RrDescriptor.h"
 
+#include <SDL3/SDL_atomic.h>
+
 #define MAX_LAYOUT_BINDINGS 4
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
 #define PIPELINE_SHADER_STAGES 2
@@ -97,7 +99,7 @@ typedef struct SRendererSwapchain
     SVulkanImage Images[MAX_SWAPCHAIN_IMAGE_COUNT];
     u32 ImageCount;
     VkExtent2D Extent;
-    b32 bShouldResize;
+    SDL_AtomicInt bShouldResize;
 } SSwapchain;
 
 typedef struct SRendererQueue
@@ -155,7 +157,7 @@ typedef struct
 {
     SAllocatedImage ColorImage;
     SAllocatedImage DepthImage;
-    VkExtent2D Extent;
+    VkExtent2D ActiveExtent;
     VkDescriptorSet DescriptorSet;
     VkDescriptorSetLayout DescriptorSetLayout;
 } SRrDrawTarget;

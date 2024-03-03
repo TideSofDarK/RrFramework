@@ -1,10 +1,13 @@
 #include <SDL3/SDL_main.h>
 
-void RunApp(void);
+#include <Rr/RrApp.h>
 
 int main(int argc, char** argv)
 {
-    RunApp();
+    SRrAppConfig Config = {
+        .Title = "VulkanPlayground"
+    };
+    RrApp_Run(&Config);
 
     return 0;
 }
