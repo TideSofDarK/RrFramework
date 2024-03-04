@@ -17,10 +17,10 @@
 
 typedef struct SRrApp
 {
-    SDL_Window* Window;
     SDL_AtomicInt bExit;
-    SDL_Semaphore* RenderLoopSemaphore;
-    SDL_Semaphore* RenderInitSemaphore;
+    SDL_Window* Window;
+    SDL_Thread* RenderThread;
+    SDL_Semaphore* RenderThreadSemaphore;
     SRr Rr;
 } SRrApp;
 
@@ -39,7 +39,7 @@ static int RrApp_Render(void* AppPtr)
 
     SDL_ShowWindow(App->Window);
 
-    SDL_PostSemaphore(App->RenderInitSemaphore);
+    SDL_PostSemaphore(App->RenderThreadSemaphore);
 
     while (SDL_AtomicGet(&App->bExit) == false)
     {
@@ -56,7 +56,7 @@ static int RrApp_Render(void* AppPtr)
             Rr_Draw(&App->Rr);
         }
 
-        SDL_PostSemaphore(App->RenderLoopSemaphore);
+        SDL_PostSemaphore(App->RenderThreadSemaphore);
     }
 
     RrRawMesh_Cleanup(&RawMesh);
@@ -86,11 +86,11 @@ static int RrApp_Update(void* AppPtr)
         if (Acc >= 1.0)
         {
             Acc -= 1.0;
-            SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "FPS: %zu", Frames);
+            SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "FPS: %llu", Frames);
             Frames = 0;
         }
         Frames++;
-        SDL_WaitSemaphore(App->RenderLoopSemaphore);
+        SDL_WaitSemaphore(App->RenderThreadSemaphore);
 
         for (SDL_Event Event; SDL_PollEvent(&Event);)
         {
@@ -117,8 +117,6 @@ static int RrApp_Update(void* AppPtr)
 
 void RrApp_Run(SRrAppConfig* Config)
 {
-    SRrApp App = { 0 };
-
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -126,32 +124,25 @@ void RrApp_Run(SRrAppConfig* Config)
     RrArray_Test();
 #endif
 
-    App.RenderLoopSemaphore = SDL_CreateSemaphore(0);
-    App.RenderInitSemaphore = SDL_CreateSemaphore(0);
-
     SDL_Vulkan_LoadLibrary(NULL);
 
-    App.Window = SDL_CreateWindow(
-        Config->Title,
-        1600,
-        800,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+    SRrApp App = {
+        .Window = SDL_CreateWindow(
+            Config->Title,
+            1600,
+            800,
+            SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
+        .RenderThread = SDL_CreateThread(RrApp_Render, "rt", &App),
+        .RenderThreadSemaphore = SDL_CreateSemaphore(0),
+    };
 
-    SDL_Thread* RenderThread = SDL_CreateThread(RrApp_Render, "rt", &App);
-    if (RenderThread == NULL)
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Could not create render thread! %s\n", SDL_GetError());
-        abort();
-    }
-
-    SDL_WaitSemaphore(App.RenderInitSemaphore);
+    SDL_WaitSemaphore(App.RenderThreadSemaphore);
 
     RrApp_Update(&App);
 
-    SDL_WaitThread(RenderThread, NULL);
+    SDL_WaitThread(App.RenderThread, NULL);
 
-    SDL_DestroySemaphore(App.RenderLoopSemaphore);
-    SDL_DestroySemaphore(App.RenderInitSemaphore);
+    SDL_DestroySemaphore(App.RenderThreadSemaphore);
 
     SDL_DestroyWindow(App.Window);
     SDL_Quit();
