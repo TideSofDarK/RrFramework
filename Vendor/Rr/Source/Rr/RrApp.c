@@ -37,6 +37,8 @@ static int RrApp_Render(void* AppPtr)
     Rr_SetMesh(&App->Rr, &RawMesh);
     Rr_InitImGui(&App->Rr, App->Window);
 
+    SDL_ShowWindow(App->Window);
+
     SDL_PostSemaphore(App->RenderInitSemaphore);
 
     while (SDL_AtomicGet(&App->bExit) == false)
@@ -135,7 +137,7 @@ void RrApp_Run(SRrAppConfig* Config)
         800,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
 
-    SDL_Thread* RenderThread = SDL_CreateThread(RrApp_Render, "rt", (void*)&App);
+    SDL_Thread* RenderThread = SDL_CreateThread(RrApp_Render, "rt", &App);
     if (RenderThread == NULL)
     {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Could not create render thread! %s\n", SDL_GetError());
@@ -143,8 +145,6 @@ void RrApp_Run(SRrAppConfig* Config)
     }
 
     SDL_WaitSemaphore(App.RenderInitSemaphore);
-
-    SDL_ShowWindow(App.Window);
 
     RrApp_Update(&App);
 
