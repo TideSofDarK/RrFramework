@@ -14,6 +14,7 @@
 #include <SDL3/SDL_thread.h>
 #include <SDL3/SDL_mutex.h>
 #include <SDL3/SDL_atomic.h>
+#include <SDL3/SDL_platform.h>
 
 typedef struct SRrApp
 {
@@ -37,7 +38,9 @@ static int RrApp_Render(void* AppPtr)
     Rr_SetMesh(&App->Rr, &RawMesh);
     Rr_InitImGui(&App->Rr, App->Window);
 
+#ifdef SDL_PLATFORM_LINUX
     SDL_ShowWindow(App->Window);
+#endif
 
     SDL_PostSemaphore(App->RenderThreadSemaphore);
 
@@ -137,6 +140,11 @@ void RrApp_Run(SRrAppConfig* Config)
     };
 
     SDL_WaitSemaphore(App.RenderThreadSemaphore);
+
+    /* Showing the window from render thread works on Linux, not on Windows. */
+#ifndef SDL_PLATFORM_LINUX
+    SDL_ShowWindow(App.Window);
+#endif
 
     RrApp_Update(&App);
 
