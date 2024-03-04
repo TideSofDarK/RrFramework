@@ -2,22 +2,10 @@
 
 #include <stdlib.h>
 
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_assert.h>
 
-typedef struct SRrArrayHeader
-{
-    size_t ElementSize;
-    size_t Count;
-    size_t AllocatedSize;
-    size_t Alignment;
-} SRrArrayHeader;
-
-static inline SRrArrayHeader* RrArray_Header(SRrArray Handle)
-{
-    return (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
-}
-
-void RrArray_Reserve(SRrArray* Handle, size_t ElementSize, size_t ElementCount, size_t Alignment)
+SRrArray RrArray_Init_Internal(size_t ElementSize, size_t ElementCount, size_t Alignment)
 {
     size_t request_size = ElementCount * ElementSize + Alignment + sizeof(SRrArrayHeader);
     char* Data = (char*)(SDL_calloc(1, request_size));
@@ -35,20 +23,46 @@ void RrArray_Reserve(SRrArray* Handle, size_t ElementSize, size_t ElementCount, 
 
     *(unsigned char*)(NewHandle - sizeof(SRrArrayHeader) - 1) = Offset;
 
-    *Handle = (SRrArray)NewHandle;
+    return NewHandle;
 }
 
-void RrArray_Resize(SRrArray* Handle, size_t ElementCount)
+SRrArray RrArray_Resize_Internal(SRrArray Handle, size_t ElementCount)
 {
-    SRrArray OldHandle = *Handle;
+    SRrArray OldHandle = Handle;
     SRrArrayHeader* OldHeader = RrArray_Header(OldHandle);
     size_t NewAllocatedSize = OldHeader->ElementSize * ElementCount;
-    *Handle = NULL;
-    RrArray_Reserve(Handle, OldHeader->ElementSize, ElementCount, OldHeader->Alignment);
-    SRrArrayHeader* NewHeader = RrArray_Header(*Handle);
+    Handle = RrArray_Init_Internal(OldHeader->ElementSize, ElementCount, OldHeader->Alignment);
+    SRrArrayHeader* NewHeader = RrArray_Header(Handle);
     NewHeader->Count = SDL_min(ElementCount, OldHeader->Count);
-    SDL_memcpy(*Handle, OldHandle, SDL_min(OldHeader->AllocatedSize, NewAllocatedSize));
+    SDL_memcpy(Handle, OldHandle, SDL_min(OldHeader->AllocatedSize, NewAllocatedSize));
     RrArray_Empty(OldHandle, true);
+    return Handle;
+}
+
+void RrArray_Empty_Internal(SRrArray Handle, b32 bFreeAllocation)
+{
+    if (bFreeAllocation)
+    {
+        int Offset = *(((u8*)Handle) - 1 - sizeof(SRrArrayHeader));
+        SDL_free((u8*)Handle - sizeof(SRrArrayHeader) - Offset);
+        return;
+    }
+    SRrArrayHeader* Header = RrArray_Header(Handle);
+    Header->Count = 0;
+}
+
+SRrArray RrArray_Push_Internal(SRrArray Handle, void* Data)
+{
+    SRrArrayHeader* Header = RrArray_Header(Handle);
+    if (Header->Count * Header->ElementSize >= Header->AllocatedSize)
+    {
+        Handle = RrArray_Resize_Internal(Handle, Header->Count * 2);
+    }
+    Header = RrArray_Header(Handle);
+
+    RrArray_Set(Handle, Header->Count++, Data);
+
+    return Handle;
 }
 
 void RrArray_Set(SRrArray Handle, size_t Index, void* Data)
@@ -82,18 +96,6 @@ void RrArray_Emplace(SRrArray Handle, void* Data)
     RrArray_Set(Handle, Header->Count++, Data);
 }
 
-void RrArray_Push(SRrArray* Handle, void* Data)
-{
-    SRrArrayHeader* Header = RrArray_Header(*Handle);
-    if (Header->Count * Header->ElementSize >= Header->AllocatedSize)
-    {
-        RrArray_Resize(Handle, Header->Count * 2);
-    }
-    Header = RrArray_Header(*Handle);
-
-    RrArray_Set(*Handle, Header->Count++, Data);
-}
-
 void RrArray_Pop(SRrArray Handle)
 {
     SRrArrayHeader* Header = RrArray_Header(Handle);
@@ -101,18 +103,6 @@ void RrArray_Pop(SRrArray Handle)
     {
         Header->Count--;
     }
-}
-
-void RrArray_Empty(SRrArray Handle, b32 bFreeAllocation)
-{
-    if (bFreeAllocation)
-    {
-        int Offset = *(((u8*)Handle) - 1 - sizeof(SRrArrayHeader));
-        SDL_free((u8*)Handle - sizeof(SRrArrayHeader) - Offset);
-        return;
-    }
-    SRrArrayHeader* Header = RrArray_Header(Handle);
-    Header->Count = 0;
 }
 
 size_t RrArray_Count(SRrArray Handle)
@@ -133,21 +123,21 @@ void RrArray_Test(void)
 {
     size_t InitialAllocations = SDL_GetNumAllocations();
     SRrArray Handle = { 0 };
-    RrArray_Init(&Handle, SArrayItem, 4);
+    RrArray_Init(Handle, SArrayItem, 4);
     SRrArrayHeader* Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
 
     SDL_assert(Header->Count == 0);
     SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 4);
     SDL_assert(Header->ElementSize == sizeof(SArrayItem));
 
-    RrArray_Resize(&Handle, 8);
-    Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    RrArray_Resize(Handle, 8);
+    Header = RrArray_Header(Handle);
     SDL_assert(Header->Count == 0);
     SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 8);
     SDL_assert(Header->ElementSize == sizeof(SArrayItem));
 
-    RrArray_Resize(&Handle, 1);
-    Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    RrArray_Resize(Handle, 1);
+    Header = RrArray_Header(Handle);
     SDL_assert(Header->Count == 0);
     SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 1);
     SDL_assert(Header->ElementSize == sizeof(SArrayItem));
@@ -158,12 +148,12 @@ void RrArray_Test(void)
     SDL_assert(FirstItem->Position[0] == 1.0f);
     SDL_assert(FirstItem->Color[2] == 1.0f);
 
-    RrArray_Push(&Handle, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
-    Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    RrArray_Push(Handle, &((SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } }));
+    Header = RrArray_Header(Handle);
     SDL_assert(Header->Count == 2);
     SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 2);
-    RrArray_Push(&Handle, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
-    Header = (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    RrArray_Push(Handle, &((SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } }));
+    Header = RrArray_Header(Handle);
     SDL_assert(Header->Count == 3);
     SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 4);
     SArrayItem* ThirdItem = RrArray_Get(Handle, 2);

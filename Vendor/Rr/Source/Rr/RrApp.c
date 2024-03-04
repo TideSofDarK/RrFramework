@@ -52,7 +52,7 @@ static int RrApp_Render(void* AppPtr)
             ImGui_ImplSDL3_NewFrame();
             igNewFrame();
 
-            igShowDemoWindow(NULL);
+            // igShowDemoWindow(NULL);
 
             igRender();
 
@@ -93,7 +93,6 @@ static int RrApp_Update(void* AppPtr)
             Frames = 0;
         }
         Frames++;
-        SDL_WaitSemaphore(App->RenderThreadSemaphore);
 
         for (SDL_Event Event; SDL_PollEvent(&Event);)
         {
@@ -113,6 +112,8 @@ static int RrApp_Update(void* AppPtr)
 
             ImGui_ImplSDL3_ProcessEvent(&Event);
         }
+
+        SDL_WaitSemaphore(App->RenderThreadSemaphore);
     }
 
     return 0;

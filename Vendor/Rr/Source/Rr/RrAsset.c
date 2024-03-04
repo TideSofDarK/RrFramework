@@ -47,11 +47,11 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
     static SRrArray ScratchNormals = { 0 };
     static SRrArray ScratchIndices = { 0 };
 
-    RrArray_Init(&ScratchPositions, vec3, 1000);
-    RrArray_Init(&ScratchColors, vec4, 1000);
-    RrArray_Init(&ScratchTexCoords, vec2, 1000);
-    RrArray_Init(&ScratchNormals, vec3, 1000);
-    RrArray_Init(&ScratchIndices, ivec3, 1000);
+    RrArray_Init(ScratchPositions, vec3, 1000);
+    RrArray_Init(ScratchColors, vec4, 1000);
+    RrArray_Init(ScratchTexCoords, vec2, 1000);
+    RrArray_Init(ScratchNormals, vec3, 1000);
+    RrArray_Init(ScratchIndices, ivec3, 1000);
 
     RrArray_Empty(ScratchPositions, false);
     RrArray_Empty(ScratchColors, false);
@@ -62,8 +62,8 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
     /* Parse OBJ data. */
     SRrRawMesh RawMesh = { 0 };
 
-    RrArray_Init(&RawMesh.Vertices, SRrVertex, 1);
-    RrArray_Init(&RawMesh.Indices, u32, 1);
+    RrArray_Init(RawMesh.Vertices, SRrVertex, 1);
+    RrArray_Init(RawMesh.Indices, u32, 1);
 
     size_t CurrentIndex = 0;
     char* EndPos;
@@ -83,7 +83,7 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                         NewPosition[1] = (float)SDL_strtod(EndPos, &EndPos);
                         NewPosition[2] = (float)SDL_strtod(EndPos, &EndPos);
 
-                        RrArray_Push(&ScratchPositions, &NewPosition);
+                        RrArray_Push(ScratchPositions, &NewPosition);
 
                         if (*EndPos == ' ')
                         {
@@ -92,7 +92,7 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                             NewColor[1] = (float)SDL_strtod(EndPos, &EndPos);
                             NewColor[2] = (float)SDL_strtod(EndPos, &EndPos);
 
-                            RrArray_Push(&ScratchColors, &NewColor);
+                            RrArray_Push(ScratchColors, &NewColor);
                         }
                     }
                     break;
@@ -102,7 +102,7 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                         vec2 NewTexCoord;
                         NewTexCoord[0] = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
                         NewTexCoord[1] = (float)SDL_strtod(EndPos, &EndPos);
-                        RrArray_Push(&ScratchTexCoords, &NewTexCoord);
+                        RrArray_Push(ScratchTexCoords, &NewTexCoord);
                     }
                     break;
                     case 'n':
@@ -112,7 +112,7 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                         NewNormal[0] = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
                         NewNormal[1] = (float)SDL_strtod(EndPos, &EndPos);
                         NewNormal[2] = (float)SDL_strtod(EndPos, &EndPos);
-                        RrArray_Push(&ScratchNormals, &NewNormal);
+                        RrArray_Push(ScratchNormals, &NewNormal);
                     }
                     break;
                 }
@@ -156,16 +156,16 @@ SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset)
                         glm_vec3_copy(Normal[0], NewVertex.Normal);
                         NewVertex.TexCoordX = *TexCoord[0];
                         NewVertex.TexCoordY = *TexCoord[1];
-                        RrArray_Push(&RawMesh.Vertices, &NewVertex);
+                        RrArray_Push(RawMesh.Vertices, &NewVertex);
 
-                        RrArray_Push(&ScratchIndices, OBJIndices[Index]);
+                        RrArray_Push(ScratchIndices, &OBJIndices[Index]);
 
                         /** Add freshly added vertex index */
-                        RrArray_Push(&RawMesh.Indices, &(u32){ RrArray_Count(RawMesh.Vertices) - 1 });
+                        RrArray_Push(RawMesh.Indices, &(u32){ RrArray_Count(RawMesh.Vertices) - 1 });
                     }
                     else
                     {
-                        RrArray_Push(&RawMesh.Indices, &ExistingOBJIndex);
+                        RrArray_Push(RawMesh.Indices, &ExistingOBJIndex);
                     }
                 }
             }
