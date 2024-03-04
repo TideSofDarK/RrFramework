@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include "RrVulkan.h"
+#include "RrArray.h"
 
 VkDescriptorPool DescriptorAllocator_CreatePool(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, size_t SetCount, SDescriptorPoolSizeRatio* Ratios, size_t RatioCount)
 {
@@ -136,4 +137,80 @@ VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* DescriptorAll
 
     RrArray_Push(DescriptorAllocator->ReadyPools, &Pool);
     return DescriptorSet;
+}
+
+void DescriptorWriter_Init(SDescriptorWriter* Writer, size_t Images, size_t Buffers)
+{
+    RrArray_Init(Writer->ImageInfos, VkDescriptorImageInfo, Images);
+    RrArray_Init(Writer->BufferInfos, VkDescriptorBufferInfo, Buffers);
+    RrArray_Init(Writer->Writes, VkWriteDescriptorSet, Images + Buffers);
+    RrArray_Init(Writer->Entries, SDescriptorWriterEntry, Images + Buffers);
+}
+
+void DescriptorWriter_WriteImage(SDescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type)
+{
+    RrArray_Push(Writer->ImageInfos, &((VkDescriptorImageInfo){ .sampler = Sampler, .imageView = View, .imageLayout = Layout }));
+
+    RrArray_Push(Writer->Writes, &((VkWriteDescriptorSet){
+                                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                     .dstBinding = Binding,
+                                     .dstSet = VK_NULL_HANDLE,
+                                     .descriptorCount = 1,
+                                     .descriptorType = Type,
+                                 }));
+
+    RrArray_Push(Writer->Entries, &((SDescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Image, .Index = RrArray_Count(Writer->ImageInfos) - 1 }));
+}
+
+void DescriptorWriter_WriteBuffer(SDescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type)
+{
+    RrArray_Push(Writer->BufferInfos, &((VkDescriptorBufferInfo){ .range = Size, .buffer = Buffer, .offset = Offset }));
+
+    RrArray_Push(Writer->Writes, &((VkWriteDescriptorSet){
+                                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                     .dstBinding = Binding,
+                                     .dstSet = VK_NULL_HANDLE,
+                                     .descriptorCount = 1,
+                                     .descriptorType = Type,
+                                 }));
+
+    RrArray_Push(Writer->Entries, &((SDescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Buffer, .Index = RrArray_Count(Writer->BufferInfos) - 1 }));
+}
+
+void DescriptorWriter_Cleanup(SDescriptorWriter* Writer)
+{
+    RrArray_Empty(Writer->ImageInfos, true);
+    RrArray_Empty(Writer->BufferInfos, true);
+    RrArray_Empty(Writer->Writes, true);
+    RrArray_Empty(Writer->Entries, true);
+}
+
+void DescriptorWriter_Update(SDescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set)
+{
+    size_t WritesCount = RrArray_Count(Writer->Writes);
+    for (size_t Index = 0; Index < WritesCount; ++Index)
+    {
+        SDescriptorWriterEntry* Entry = &Writer->Entries[Index];
+        VkWriteDescriptorSet* Write = &Writer->Writes[Index];
+        Write->dstSet = Set;
+        switch (Entry->Type)
+        {
+            case EDescriptorWriterEntryType_Buffer:
+            {
+                Write->pBufferInfo = &Writer->BufferInfos[Entry->Index];
+            }
+            break;
+            case EDescriptorWriterEntryType_Image:
+            {
+                Write->pImageInfo = &Writer->ImageInfos[Entry->Index];
+            }
+            break;
+            default:
+            {
+            }
+            break;
+        }
+    }
+
+    vkUpdateDescriptorSets(Device, (u32)WritesCount, Writer->Writes, 0, NULL);
 }

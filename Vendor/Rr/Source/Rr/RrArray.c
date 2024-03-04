@@ -107,8 +107,7 @@ void RrArray_Pop(SRrArray Handle)
 
 size_t RrArray_Count(SRrArray Handle)
 {
-    SRrArrayHeader* Header = RrArray_Header(Handle);
-    return Header->Count;
+    return RrArray_Header(Handle)->Count;
 }
 
 #ifdef RR_DEBUG

@@ -6,6 +6,7 @@
 
 #include <cglm/mat4.h>
 #include <cglm/cam.h>
+#include <vulkan/vulkan_core.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -229,22 +230,11 @@ static void Rr_UpdateDrawImageDescriptors(SRr* const Rr, b32 bCreate, b32 bDestr
 
         Rr->DrawTarget.DescriptorSet = DescriptorAllocator_Allocate(GlobalDescriptorAllocator, Rr->Device, Rr->DrawTarget.DescriptorSetLayout);
 
-        VkDescriptorImageInfo DescriptorImageInfo = {
-            .imageView = Rr->DrawTarget.ColorImage.View,
-            .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-        };
-
-        VkWriteDescriptorSet WriteDescriptorSet = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = NULL,
-            .dstSet = Rr->DrawTarget.DescriptorSet,
-            .dstBinding = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            .pImageInfo = &DescriptorImageInfo,
-        };
-
-        vkUpdateDescriptorSets(Rr->Device, 1, &WriteDescriptorSet, 0, NULL);
+        SDescriptorWriter Writer = { 0 };
+        DescriptorWriter_Init(&Writer, 1, 0);
+        DescriptorWriter_WriteImage(&Writer, 0, Rr->DrawTarget.ColorImage.View, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        DescriptorWriter_Update(&Writer, Rr->Device, Rr->DrawTarget.DescriptorSet);
+        DescriptorWriter_Cleanup(&Writer);
     }
 }
 
