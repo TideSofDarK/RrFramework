@@ -37,14 +37,14 @@ void RrArray_Pop(SRrArray Handle);
 
 size_t RrArray_Count(SRrArray Handle);
 
-#define RrArray_Init(Handle, ElementType, ElementCount)                                                \
-    {                                                                                                  \
-        size_t Alignment = 0;                                                                          \
-        struct T                                                                                       \
-        {                                                                                              \
-            char C;                                                                                    \
-            ElementType E;                                                                             \
-        };                                                                                             \
+#define RrArray_Init(Handle, ElementType, ElementCount)                                             \
+    {                                                                                               \
+        size_t Alignment = 0;                                                                       \
+        struct T                                                                                    \
+        {                                                                                           \
+            char C;                                                                                 \
+            ElementType E;                                                                          \
+        };                                                                                          \
         (Handle) = RrArray_Init_Internal(sizeof(ElementType), ElementCount, offsetof(struct T, E)); \
     }
 
