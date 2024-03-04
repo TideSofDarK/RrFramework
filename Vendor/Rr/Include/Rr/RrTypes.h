@@ -21,6 +21,14 @@ typedef struct SDL_Window SDL_Window;
 
 typedef u32 MeshIndexType;
 
+typedef struct SRrSceneData
+{
+    mat4 View;
+    mat4 Proj;
+    mat4 ViewProj;
+    vec4 AmbientColor;
+} SRrSceneData;
+
 typedef struct
 {
     VkBuffer Handle;
@@ -66,6 +74,8 @@ typedef struct SFrameData
     VkSemaphore SwapchainSemaphore;
     VkSemaphore RenderSemaphore;
     VkFence RenderFence;
+    SDescriptorAllocator DescriptorAllocator;
+    SAllocatedBuffer SceneDataBuffer;
 } SRrFrame;
 
 typedef struct SPipelineBuilder
@@ -195,4 +205,7 @@ typedef struct SRr
 
     SRrMeshBuffers Mesh;
     SRrRawMesh RawMesh;
+
+    SRrSceneData SceneData;
+    VkDescriptorSetLayout SceneDataLayout;
 } SRr;

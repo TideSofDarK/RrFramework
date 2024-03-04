@@ -1,4 +1,5 @@
 #include "Rr.h"
+#include "RrTypes.h"
 
 #include <math.h>
 #include <string.h>
@@ -441,28 +442,7 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
     return true;
 }
 
-static void Rr_InitCommands(SRr* const Rr)
-{
-    VkCommandPoolCreateInfo CommandPoolInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
-    };
-
-    for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
-    {
-        SRrFrame* Frame = &Rr->Frames[Index];
-
-        VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Frame->CommandPool))
-
-        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
-
-        VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer))
-    }
-}
-
-static void Rr_InitSyncStructures(SRr* const Rr)
+static void Rr_InitFrames(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
     SRrFrame* Frames = Rr->Frames;
@@ -472,10 +452,37 @@ static void Rr_InitSyncStructures(SRr* const Rr)
 
     for (i32 Index = 0; Index < FRAME_OVERLAP; Index++)
     {
-        VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Frames[Index].RenderFence))
+        SRrFrame* Frame = &Frames[Index];
 
-        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frames[Index].SwapchainSemaphore))
-        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frames[Index].RenderSemaphore))
+        /* Synchronization */
+        VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Frame->RenderFence))
+
+        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frame->SwapchainSemaphore))
+        VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frame->RenderSemaphore))
+
+        /* Descriptors */
+        SDescriptorPoolSizeRatio Ratios[] = {
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 },
+        };
+
+        DescriptorAllocator_Init(&Frame->DescriptorAllocator, Rr->Device, 1000, Ratios, SDL_arraysize(Ratios));
+
+        /* Commands */
+        VkCommandPoolCreateInfo CommandPoolInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext = VK_NULL_HANDLE,
+            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = Rr->GraphicsQueue.FamilyIndex,
+        };
+
+        VK_ASSERT(vkCreateCommandPool(Rr->Device, &CommandPoolInfo, NULL, &Frame->CommandPool))
+
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
+
+        VK_ASSERT(vkAllocateCommandBuffers(Rr->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer))
     }
 }
 
@@ -524,6 +531,10 @@ static void Rr_InitDescriptors(SRr* Renderer)
     };
 
     DescriptorAllocator_Init(GlobalDescriptorAllocator, Renderer->Device, 10, Ratios, SDL_arraysize(Ratios));
+
+    SDescriptorLayoutBuilder Builder = { 0 };
+    DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    Renderer->SceneDataLayout = DescriptorLayoutBuilder_Build(&Builder, Renderer->Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 static void Rr_InitBackgroundPipelines(SRr* const Rr)
@@ -607,8 +618,8 @@ static void Rr_InitMeshPipeline(SRr* const Rr)
     VkPipelineLayoutCreateInfo LayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
-        // .setLayoutCount = 1,
-        // .pSetLayouts = &Rr->DrawImageDescriptorLayout,
+        .setLayoutCount = 1,
+        .pSetLayouts = &Rr->SceneDataLayout,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &PushConstantRange,
     };
@@ -648,7 +659,7 @@ static void Rr_DrawBackground(SRr* const Rr, VkCommandBuffer CommandBuffer)
     // vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
 }
 
-static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
+static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer, VkDescriptorSet SceneDataDescriptorSet)
 {
     VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Rr->DrawTarget.ColorImage.View, NULL, VK_IMAGE_LAYOUT_GENERAL);
     VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(Rr->DrawTarget.DepthImage.View, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
@@ -692,6 +703,7 @@ static void Rr_DrawGeometry(SRr* const Rr, VkCommandBuffer CommandBuffer)
 
     vkCmdPushConstants(CommandBuffer, Rr->MeshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SRrPushConstants3D), &PushConstants);
     vkCmdBindIndexBuffer(CommandBuffer, Rr->Mesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Rr->MeshPipelineLayout, 0, 1, &SceneDataDescriptorSet, 0, NULL);
     vkCmdDrawIndexed(CommandBuffer, RrArray_Count(Rr->RawMesh.Indices), 1, 0, 0, 0);
 
     vkCmdEndRendering(CommandBuffer);
@@ -836,9 +848,7 @@ void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
     bool bVSync = true;
     Rr_CreateSwapchain(Rr, &Width, &Height, bVSync);
 
-    Rr_InitCommands(Rr);
-
-    Rr_InitSyncStructures(Rr);
+    Rr_InitFrames(Rr);
 
     Rr_InitPipelines(Rr);
 
@@ -871,6 +881,8 @@ void Rr_Cleanup(SRr* const Rr)
     vkDestroyPipelineLayout(Device, Rr->GradientPipelineLayout, NULL);
     vkDestroyPipeline(Device, Rr->GradientPipeline, NULL);
 
+    vkDestroyDescriptorSetLayout(Rr->Device, Rr->SceneDataLayout, NULL);
+
     Rr_UpdateDrawImageDescriptors(Rr, false, true);
 
     DescriptorAllocator_Cleanup(&Rr->GlobalDescriptorAllocator, Device);
@@ -883,6 +895,9 @@ void Rr_Cleanup(SRr* const Rr)
         vkDestroyFence(Device, Frame->RenderFence, NULL);
         vkDestroySemaphore(Device, Frame->RenderSemaphore, NULL);
         vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
+
+        DescriptorAllocator_Cleanup(&Frame->DescriptorAllocator, Device);
+        AllocatedBuffer_Cleanup(&Frame->SceneDataBuffer, Rr->Allocator);
     }
 
     Rr_CleanupDrawTarget(Rr);
@@ -901,19 +916,23 @@ void Rr_Draw(SRr* const Rr)
 {
     VkDevice Device = Rr->Device;
     SSwapchain* Swapchain = &Rr->Swapchain;
-    SRrFrame* CurrentFrame = Rr_GetCurrentFrame(Rr);
     SAllocatedImage* ColorImage = &Rr->DrawTarget.ColorImage;
     SAllocatedImage* DepthImage = &Rr->DrawTarget.DepthImage;
-    VkCommandBuffer CommandBuffer = CurrentFrame->MainCommandBuffer;
 
-    VK_ASSERT(vkWaitForFences(Device, 1, &CurrentFrame->RenderFence, true, 1000000000))
-    VK_ASSERT(vkResetFences(Device, 1, &CurrentFrame->RenderFence))
+    SRrFrame* Frame = Rr_GetCurrentFrame(Rr);
+    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+
+    VK_ASSERT(vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000))
+    VK_ASSERT(vkResetFences(Device, 1, &Frame->RenderFence))
+
+    DescriptorAllocator_ClearPools(&Frame->DescriptorAllocator, Device);
+    AllocatedBuffer_Cleanup(&Frame->SceneDataBuffer, Rr->Allocator);
 
     Rr->DrawTarget.ActiveExtent.width = Swapchain->Extent.width;
     Rr->DrawTarget.ActiveExtent.height = Swapchain->Extent.height;
 
     u32 SwapchainImageIndex;
-    VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, CurrentFrame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
+    VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         SDL_AtomicSet(&Swapchain->bShouldResize, true);
@@ -924,7 +943,17 @@ void Rr_Draw(SRr* const Rr)
     //     return;
     // }
     SDL_assert(Result >= 0);
-    // VK_ASSERT(Result);
+
+    AllocatedBuffer_Init(&Frame->SceneDataBuffer, Rr->Allocator, sizeof(SRrSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, true);
+    SRrSceneData* SceneData = (SRrSceneData*)Frame->SceneDataBuffer.AllocationInfo.pMappedData;
+    glm_vec4_copy((vec4){1.0f, 1.0f, 1.0f, 0.5f}, Rr->SceneData.AmbientColor);
+    *SceneData = Rr->SceneData;
+    VkDescriptorSet SceneDataDescriptorSet = DescriptorAllocator_Allocate(&Frame->DescriptorAllocator, Rr->Device, Rr->SceneDataLayout);
+    SDescriptorWriter Writer = { 0 };
+    DescriptorWriter_Init(&Writer, 0, 1);
+    DescriptorWriter_WriteBuffer(&Writer, 0, Frame->SceneDataBuffer.Handle, sizeof(SRrSceneData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    DescriptorWriter_Update(&Writer, Device, SceneDataDescriptorSet);
+    DescriptorWriter_Cleanup(&Writer);
 
     VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
@@ -959,7 +988,7 @@ void Rr_Draw(SRr* const Rr)
         VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
         VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-    Rr_DrawGeometry(Rr, CommandBuffer);
+    Rr_DrawGeometry(Rr, CommandBuffer, SceneDataDescriptorSet);
     TransitionImage_To(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,
         VK_ACCESS_2_TRANSFER_READ_BIT,
@@ -1004,18 +1033,18 @@ void Rr_Draw(SRr* const Rr)
 
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
 
-    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, CurrentFrame->SwapchainSemaphore);
-    VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, CurrentFrame->RenderSemaphore);
+    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
+    VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
 
     VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
 
-    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, CurrentFrame->RenderFence))
+    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence))
 
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = NULL,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &CurrentFrame->RenderSemaphore,
+        .pWaitSemaphores = &Frame->RenderSemaphore,
         .swapchainCount = 1,
         .pSwapchains = &Swapchain->Handle,
         .pImageIndices = &SwapchainImageIndex,

@@ -16,7 +16,13 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
 
-//push constants block
+layout(set = 0, binding = 0) readonly buffer SceneData {
+    mat4 view;
+    mat4 proj;
+    mat4 viewProj;
+    vec4 ambientColor;
+} ub_sceneData;
+
 layout(push_constant) uniform constants
 {
     mat4 viewProjection;

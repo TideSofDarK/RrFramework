@@ -8,6 +8,7 @@
 #include <imgui/cimgui_impl.h>
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_vulkan.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
@@ -24,6 +25,43 @@ typedef struct SRrApp
     SDL_Semaphore* RenderThreadSemaphore;
     SRr Rr;
 } SRrApp;
+
+static void ShowDebugOverlay()
+{
+    static int location = 0;
+    ImGuiIO* io = igGetIO();
+    const ImGuiViewport* viewport = igGetMainViewport();
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+    if (location >= 0)
+    {
+        const float PAD = 10.0f;
+        ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+        ImVec2 work_size = viewport->WorkSize;
+        ImVec2 window_pos, window_pos_pivot;
+        window_pos.x = (location & 1) ? (work_pos.x + work_size.x - PAD) : (work_pos.x + PAD);
+        window_pos.y = (location & 2) ? (work_pos.y + work_size.y - PAD) : (work_pos.y + PAD);
+        window_pos_pivot.x = (location & 1) ? 1.0f : 0.0f;
+        window_pos_pivot.y = (location & 2) ? 1.0f : 0.0f;
+        igSetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+        igSetNextWindowViewport(viewport->ID);
+        window_flags |= ImGuiWindowFlags_NoMove;
+    }
+    igSetNextWindowBgAlpha(0.35f); // Transparent background
+    if (igBegin("Example: Simple overlay", NULL, window_flags))
+    {
+        igText("SDL Allocations: %zu", SDL_GetNumAllocations());
+        igSeparator();
+        if (igIsMousePosValid(NULL))
+        {
+            igText("Mouse Position: (%.1f,%.1f)", io->MousePos.x, io->MousePos.y);
+        }
+        else
+        {
+            igText("Mouse Position: <invalid>");
+        }
+    }
+    igEnd();
+}
 
 static int RrApp_Render(void* AppPtr)
 {
@@ -53,6 +91,7 @@ static int RrApp_Render(void* AppPtr)
             igNewFrame();
 
             // igShowDemoWindow(NULL);
+            ShowDebugOverlay();
 
             igRender();
 
