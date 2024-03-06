@@ -16,7 +16,7 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
 
-layout(set = 0, binding = 0) readonly buffer SceneData {
+layout(set = 0, binding = 0) uniform SceneData {
     mat4 view;
     mat4 proj;
     mat4 viewProj;

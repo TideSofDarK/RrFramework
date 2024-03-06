@@ -110,6 +110,8 @@ typedef struct SRendererSwapchain
     u32 ImageCount;
     VkExtent2D Extent;
     SDL_AtomicInt bShouldResize;
+    b8 bResizing;
+    u64 PresentId;
 } SSwapchain;
 
 typedef struct SRendererQueue

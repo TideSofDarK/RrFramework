@@ -7,7 +7,6 @@
 
 #include <cglm/mat4.h>
 #include <cglm/cam.h>
-#include <vulkan/vulkan_core.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -296,7 +295,7 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
         }
     }
     SDL_stack_free(PresentModes);
-    // SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+    SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     u32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if ((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))
@@ -938,6 +937,10 @@ void Rr_Draw(SRr* const Rr)
         SDL_AtomicSet(&Swapchain->bShouldResize, true);
         return;
     }
+    if (Result == VK_SUBOPTIMAL_KHR)
+    {
+        SDL_AtomicSet(&Swapchain->bShouldResize, true);
+    }
     // if (Result == VK_NOT_READY)
     // {
     //     return;
@@ -1051,7 +1054,7 @@ void Rr_Draw(SRr* const Rr)
     };
 
     Result = vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo);
-    if (Result == VK_ERROR_OUT_OF_DATE_KHR)
+    if (Result == VK_ERROR_OUT_OF_DATE_KHR || Result == VK_SUBOPTIMAL_KHR)
     {
         SDL_AtomicSet(&Swapchain->bShouldResize, true);
     }

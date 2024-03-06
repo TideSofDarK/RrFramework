@@ -26,34 +26,56 @@ typedef struct SRrApp
     SRr Rr;
 } SRrApp;
 
+typedef struct SFrameTime
+{
+    u64 Last;
+    u64 Frames;
+    f64 DeltaTime;
+    f64 Seconds;
+    f64 Acc;
+} SFrameTime;
+
+static void FrameTime_Advance(SFrameTime* FrameTime)
+{
+    u64 Now = SDL_GetTicks();
+    FrameTime->DeltaTime = (f64)(Now - FrameTime->Last) / 1000.0 * 1.0;
+    FrameTime->Seconds += FrameTime->DeltaTime;
+    FrameTime->Acc += FrameTime->DeltaTime;
+    if (FrameTime->Acc >= 1.0)
+    {
+        FrameTime->Acc -= 1.0;
+
+        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "ThreadID: %llu, FPS: %llu", SDL_GetCurrentThreadID(), FrameTime->Frames);
+        FrameTime->Frames = 0;
+    }
+    FrameTime->Last = Now;
+    FrameTime->Frames++;
+}
+
 static void ShowDebugOverlay()
 {
-    static int location = 0;
-    ImGuiIO* io = igGetIO();
-    const ImGuiViewport* viewport = igGetMainViewport();
-    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-    if (location >= 0)
-    {
-        const float PAD = 10.0f;
-        ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
-        ImVec2 work_size = viewport->WorkSize;
-        ImVec2 window_pos, window_pos_pivot;
-        window_pos.x = (location & 1) ? (work_pos.x + work_size.x - PAD) : (work_pos.x + PAD);
-        window_pos.y = (location & 2) ? (work_pos.y + work_size.y - PAD) : (work_pos.y + PAD);
-        window_pos_pivot.x = (location & 1) ? 1.0f : 0.0f;
-        window_pos_pivot.y = (location & 2) ? 1.0f : 0.0f;
-        igSetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-        igSetNextWindowViewport(viewport->ID);
-        window_flags |= ImGuiWindowFlags_NoMove;
-    }
-    igSetNextWindowBgAlpha(0.35f); // Transparent background
-    if (igBegin("Example: Simple overlay", NULL, window_flags))
+    ImGuiIO* IO = igGetIO();
+    const ImGuiViewport* Viewport = igGetMainViewport();
+    ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+    const float Padding = 10.0f;
+    ImVec2 WorkPos = Viewport->WorkPos;
+    ImVec2 WorkSize = Viewport->WorkSize;
+    ImVec2 WindowPos, WindowPosPivot;
+    WindowPos.x = WorkPos.x + Padding;
+    WindowPos.y = WorkPos.y + Padding;
+    WindowPosPivot.x = 0.0f;
+    WindowPosPivot.y = 0.0f;
+    igSetNextWindowPos(WindowPos, ImGuiCond_Always, WindowPosPivot);
+    igSetNextWindowViewport(Viewport->ID);
+    Flags |= ImGuiWindowFlags_NoMove;
+    igSetNextWindowBgAlpha(0.35f);
+    if (igBegin("Debug Overlay", NULL, Flags))
     {
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
         igSeparator();
         if (igIsMousePosValid(NULL))
         {
-            igText("Mouse Position: (%.1f,%.1f)", io->MousePos.x, io->MousePos.y);
+            igText("Mouse Position: (%.1f,%.1f)", IO->MousePos.x, IO->MousePos.y);
         }
         else
         {
@@ -80,10 +102,12 @@ static int RrApp_Render(void* AppPtr)
     SDL_ShowWindow(App->Window);
 #endif
 
-    SDL_PostSemaphore(App->RenderThreadSemaphore);
+    // SDL_PostSemaphore(App->RenderThreadSemaphore);
 
+    SFrameTime FrameTime = {.Last = SDL_GetTicks()};
     while (SDL_AtomicGet(&App->bExit) == false)
     {
+        FrameTime_Advance(&FrameTime);
         if (Rr_NewFrame(&App->Rr, App->Window))
         {
             ImGui_ImplVulkan_NewFrame();
@@ -112,26 +136,10 @@ static int RrApp_Update(void* AppPtr)
 {
     SRrApp* App = (SRrApp*)AppPtr;
 
-    u64 Last = SDL_GetTicks();
-    u64 Now = Last;
-    u64 Frames = 0;
-    f64 DeltaTime = 0;
-    f64 Seconds = 0;
-    f64 Acc = 0;
+    SFrameTime FrameTime = {.Last = SDL_GetTicks()};
     while (SDL_AtomicGet(&App->bExit) == false)
     {
-        Last = Now;
-        Now = SDL_GetTicks();
-        DeltaTime = (f64)(Now - Last) / 1000.0 * 1.0;
-        Seconds += DeltaTime;
-        Acc += DeltaTime;
-        if (Acc >= 1.0)
-        {
-            Acc -= 1.0;
-            SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "FPS: %llu", Frames);
-            Frames = 0;
-        }
-        Frames++;
+        FrameTime_Advance(&FrameTime);
 
         for (SDL_Event Event; SDL_PollEvent(&Event);)
         {
@@ -139,7 +147,7 @@ static int RrApp_Update(void* AppPtr)
             {
                 case SDL_EVENT_WINDOW_RESIZED:
                 {
-                    SDL_AtomicSet(&App->Rr.Swapchain.bShouldResize, true);
+                     SDL_AtomicSet(&App->Rr.Swapchain.bShouldResize, true);
                 }
                 break;
                 case SDL_EVENT_QUIT:
