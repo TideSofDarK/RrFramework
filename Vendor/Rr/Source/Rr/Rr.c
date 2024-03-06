@@ -419,6 +419,8 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
 
     for (u32 i = 0; i < ImageCount; i++)
     {
+        Rr->Swapchain.Images[i].Extent.width = *Width;
+        Rr->Swapchain.Images[i].Extent.height = *Height;
         Rr->Swapchain.Images[i].Handle = Images[i];
         ColorAttachmentView.image = Images[i];
         VK_ASSERT(vkCreateImageView(Rr->Device, &ColorAttachmentView, NULL, &Rr->Swapchain.Images[i].View))
@@ -927,9 +929,6 @@ void Rr_Draw(SRr* const Rr)
     DescriptorAllocator_ClearPools(&Frame->DescriptorAllocator, Device);
     AllocatedBuffer_Cleanup(&Frame->SceneDataBuffer, Rr->Allocator);
 
-    Rr->DrawTarget.ActiveExtent.width = Swapchain->Extent.width;
-    Rr->DrawTarget.ActiveExtent.height = Swapchain->Extent.height;
-
     u32 SwapchainImageIndex;
     VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -947,9 +946,12 @@ void Rr_Draw(SRr* const Rr)
     // }
     SDL_assert(Result >= 0);
 
+    Rr->DrawTarget.ActiveExtent.width = Swapchain->Extent.width;
+    Rr->DrawTarget.ActiveExtent.height = Swapchain->Extent.height;
+
     AllocatedBuffer_Init(&Frame->SceneDataBuffer, Rr->Allocator, sizeof(SRrSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, true);
     SRrSceneData* SceneData = (SRrSceneData*)Frame->SceneDataBuffer.AllocationInfo.pMappedData;
-    glm_vec4_copy((vec4){1.0f, 1.0f, 1.0f, 0.5f}, Rr->SceneData.AmbientColor);
+    glm_vec4_copy((vec4){ 1.0f, 1.0f, 1.0f, 0.5f }, Rr->SceneData.AmbientColor);
     *SceneData = Rr->SceneData;
     VkDescriptorSet SceneDataDescriptorSet = DescriptorAllocator_Allocate(&Frame->DescriptorAllocator, Rr->Device, Rr->SceneDataLayout);
     SDescriptorWriter Writer = { 0 };
@@ -968,7 +970,7 @@ void Rr_Draw(SRr* const Rr)
         .Image = ColorImage->Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .AccessMask = VK_ACCESS_2_NONE,
-        .StageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
+        .StageMask = VK_PIPELINE_STAGE_2_BLIT_BIT
     };
     TransitionImage_To(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -1019,6 +1021,8 @@ void Rr_Draw(SRr* const Rr)
     {
         VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         VkRenderingInfo renderInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachment, NULL);
+
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO, "loop %d %d", Swapchain->Images[SwapchainImageIndex].Extent.width, Swapchain->Images[SwapchainImageIndex].Extent.height);
 
         vkCmdBeginRendering(CommandBuffer, &renderInfo);
 

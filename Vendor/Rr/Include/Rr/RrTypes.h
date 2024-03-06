@@ -95,6 +95,7 @@ typedef struct SPipelineBuilder
 
 typedef struct SVulkanImage
 {
+    VkExtent2D Extent;
     VkImage Handle;
     VkImageView View;
     VkSampler Sampler;
