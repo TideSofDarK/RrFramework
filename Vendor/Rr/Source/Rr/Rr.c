@@ -934,22 +934,22 @@ void Rr_Draw(SRr* const Rr)
     VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        SDL_AtomicSet(&Swapchain->bShouldResize, true);
+        i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
+        RecreateFlags |= ESwapchainRecreateFlags_OutOfDate;
+        SDL_AtomicSet(&Rr->Swapchain.RecreateFlags, RecreateFlags);
         return;
     }
     if (Result == VK_SUBOPTIMAL_KHR)
     {
-        SDL_AtomicSet(&Swapchain->bShouldResize, true);
+        i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
+        RecreateFlags |= ESwapchainRecreateFlags_Suboptimal;
+        SDL_AtomicSet(&Rr->Swapchain.RecreateFlags, RecreateFlags);
     }
-    // if (Result == VK_NOT_READY)
-    // {
-    //     return;
-    // }
     SDL_assert(Result >= 0);
 
     AllocatedBuffer_Init(&Frame->SceneDataBuffer, Rr->Allocator, sizeof(SRrSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, true);
     SRrSceneData* SceneData = (SRrSceneData*)Frame->SceneDataBuffer.AllocationInfo.pMappedData;
-    glm_vec4_copy((vec4){1.0f, 1.0f, 1.0f, 0.5f}, Rr->SceneData.AmbientColor);
+    glm_vec4_copy((vec4){ 1.0f, 1.0f, 1.0f, 0.5f }, Rr->SceneData.AmbientColor);
     *SceneData = Rr->SceneData;
     VkDescriptorSet SceneDataDescriptorSet = DescriptorAllocator_Allocate(&Frame->DescriptorAllocator, Rr->Device, Rr->SceneDataLayout);
     SDescriptorWriter Writer = { 0 };
@@ -1054,29 +1054,35 @@ void Rr_Draw(SRr* const Rr)
     };
 
     Result = vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo);
-    if (Result == VK_ERROR_OUT_OF_DATE_KHR || Result == VK_SUBOPTIMAL_KHR)
+    if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        SDL_AtomicSet(&Swapchain->bShouldResize, true);
+        i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
+        RecreateFlags |= ESwapchainRecreateFlags_OutOfDate;
+        SDL_AtomicSet(&Rr->Swapchain.RecreateFlags, RecreateFlags);
     }
 
     Rr->FrameNumber++;
 }
 
-void Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
+b8 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
 {
-    b32 bShouldResize = SDL_AtomicGet(&Rr->Swapchain.bShouldResize);
-    if (bShouldResize)
+    i32 Width, Height;
+    SDL_GetWindowSizeInPixels(Window, &Width, &Height);
+    i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
+    b32 bShouldResize = RecreateFlags & ESwapchainRecreateFlags_PlatformEvent && (Rr->Swapchain.Extent.width != Width || Rr->Swapchain.Extent.height != Height);
+    if (bShouldResize || (RecreateFlags | ESwapchainRecreateFlags_OutOfDate) || (RecreateFlags | ESwapchainRecreateFlags_Suboptimal))
     {
         vkDeviceWaitIdle(Rr->Device);
 
-        i32 Width, Height;
-        SDL_GetWindowSizeInPixels(Window, &Width, &Height);
-
         if (Width > 0 && Height > 0 && Rr_CreateSwapchain(Rr, (u32*)&Width, (u32*)&Height, true))
         {
-            SDL_AtomicSet(&Rr->Swapchain.bShouldResize, false);
+            SDL_AtomicSet(&Rr->Swapchain.RecreateFlags, 0);
+            return true;
         }
+
+        return false;
     }
+    return Width > 0 && Height > 0;
 }
 
 void Rr_SetMesh(SRr* const Rr, SRrRawMesh* const RawMesh)

@@ -2,6 +2,7 @@
 
 #include "Rr/Rr.h"
 #include "Rr/RrAsset.h"
+#include "RrTypes.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -87,18 +88,19 @@ static void RrApp_Iterate(SRrApp* App)
 {
     FrameTime_Advance(&App->FrameTime);
 
-    Rr_NewFrame(&App->Rr, App->Window);
+    if (Rr_NewFrame(&App->Rr, App->Window))
+    {
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        igNewFrame();
 
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    igNewFrame();
+        igShowDemoWindow(NULL);
+        ShowDebugOverlay();
 
-    igShowDemoWindow(NULL);
-    ShowDebugOverlay();
+        igRender();
 
-    igRender();
-
-    Rr_Draw(&App->Rr);
+        Rr_Draw(&App->Rr);
+    }
 }
 
 static int RrApp_Update(void* AppPtr)
@@ -133,12 +135,16 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 
     switch (Event->type)
     {
+#ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
-            SDL_AtomicSet(&App->Rr.Swapchain.bShouldResize, true);
+            i32 RecreateFlags = SDL_AtomicGet(&App->Rr.Swapchain.RecreateFlags);
+            RecreateFlags |= ESwapchainRecreateFlags_PlatformEvent;
+            SDL_AtomicSet(&App->Rr.Swapchain.RecreateFlags, RecreateFlags);
             RrApp_Iterate(App);
         }
         break;
+#endif
         default:
         {
             ImGui_ImplSDL3_ProcessEvent(Event);

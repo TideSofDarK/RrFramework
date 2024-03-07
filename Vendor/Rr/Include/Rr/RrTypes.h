@@ -102,7 +102,14 @@ typedef struct SVulkanImage
     VkDeviceMemory Memory;
 } SVulkanImage;
 
-typedef struct SRendererSwapchain
+typedef enum ESwapchainRecreateFlags
+{
+    ESwapchainRecreateFlags_OutOfDate = 1 << 0,
+    ESwapchainRecreateFlags_Suboptimal = 1 << 1,
+    ESwapchainRecreateFlags_PlatformEvent = 1 << 2
+} ESwapchainRecreateFlags;
+
+typedef struct SSwapchain
 {
     VkSwapchainKHR Handle;
     VkFormat Format;
@@ -110,9 +117,7 @@ typedef struct SRendererSwapchain
     SVulkanImage Images[MAX_SWAPCHAIN_IMAGE_COUNT];
     u32 ImageCount;
     VkExtent2D Extent;
-    SDL_AtomicInt bShouldResize;
-    b8 bResizing;
-    u64 PresentId;
+    SDL_AtomicInt RecreateFlags;
 } SSwapchain;
 
 typedef struct SRendererQueue
