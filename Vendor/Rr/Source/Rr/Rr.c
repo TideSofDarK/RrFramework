@@ -186,7 +186,7 @@ static void Rr_CreateDrawTarget(SRr* const Rr, u32 Width, u32 Height)
     };
 
     /* Color Image */
-    ColorImage->Format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    ColorImage->Format = VK_FORMAT_R8G8B8A8_UNORM;
     VkImageUsageFlags DrawImageUsages = 0;
     DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -295,7 +295,7 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
         }
     }
     SDL_stack_free(PresentModes);
-    SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+    // SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     u32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if ((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))

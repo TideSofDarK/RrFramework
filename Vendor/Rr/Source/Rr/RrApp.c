@@ -45,7 +45,7 @@ static void FrameTime_Advance(SFrameTime* FrameTime)
     {
         FrameTime->Acc -= 1.0;
 
-        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "ThreadID: %llu, FPS: %llu", SDL_GetCurrentThreadID(), FrameTime->Frames);
+        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "ThreadID: %llu, FPS: %llu", (u64)SDL_GetCurrentThreadID(), FrameTime->Frames);
         FrameTime->Frames = 0;
     }
     FrameTime->Last = Now;
@@ -111,11 +111,13 @@ static int RrApp_Update(void* AppPtr)
     {
         for (SDL_Event Event; SDL_PollEvent(&Event);)
         {
+            ImGui_ImplSDL3_ProcessEvent(&Event);
             switch (Event.type)
             {
                 case SDL_EVENT_QUIT:
                 {
                     SDL_AtomicSet(&App->bExit, true);
+                    return 0;
                 }
                 break;
                 default:
@@ -131,13 +133,13 @@ static int RrApp_Update(void* AppPtr)
 
 static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 {
-    SRrApp* App = (SRrApp*)AppPtr;
-
     switch (Event->type)
     {
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
+
+            SRrApp* App = (SRrApp*)AppPtr;
             i32 RecreateFlags = SDL_AtomicGet(&App->Rr.Swapchain.RecreateFlags);
             RecreateFlags |= ESwapchainRecreateFlags_PlatformEvent;
             SDL_AtomicSet(&App->Rr.Swapchain.RecreateFlags, RecreateFlags);
@@ -147,7 +149,6 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 #endif
         default:
         {
-            ImGui_ImplSDL3_ProcessEvent(Event);
         }
         break;
     }
