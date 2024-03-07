@@ -131,8 +131,6 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 {
     SRrApp* App = (SRrApp*)AppPtr;
 
-    ImGui_ImplSDL3_ProcessEvent(Event);
-
     switch (Event->type)
     {
         case SDL_EVENT_WINDOW_EXPOSED:
@@ -143,6 +141,7 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
         break;
         default:
         {
+            ImGui_ImplSDL3_ProcessEvent(Event);
         }
         break;
     }
@@ -188,6 +187,7 @@ void RrApp_Run(SRrAppConfig* Config)
     RrRawMesh_Cleanup(&RawMesh);
     Rr_Cleanup(&App.Rr);
 
+    SDL_DelEventWatch(RrApp_EventWatch, &App);
     SDL_DestroyWindow(App.Window);
     SDL_Quit();
 }
