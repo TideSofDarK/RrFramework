@@ -1062,7 +1062,7 @@ void Rr_Draw(SRr* const Rr)
     Rr->FrameNumber++;
 }
 
-b32 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
+void Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
 {
     b32 bShouldResize = SDL_AtomicGet(&Rr->Swapchain.bShouldResize);
     if (bShouldResize)
@@ -1075,13 +1075,8 @@ b32 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
         if (Width > 0 && Height > 0 && Rr_CreateSwapchain(Rr, (u32*)&Width, (u32*)&Height, true))
         {
             SDL_AtomicSet(&Rr->Swapchain.bShouldResize, false);
-            return true;
         }
-
-        return false;
     }
-
-    return true;
 }
 
 void Rr_SetMesh(SRr* const Rr, SRrRawMesh* const RawMesh)

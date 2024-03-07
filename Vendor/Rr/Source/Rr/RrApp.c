@@ -30,8 +30,6 @@ typedef struct SRrApp
 {
     SDL_AtomicInt bExit;
     SDL_Window* Window;
-    SDL_Thread* RenderThread;
-    SDL_Semaphore* RenderThreadSemaphore;
     SRr Rr;
     SFrameTime FrameTime;
 } SRrApp;
@@ -89,11 +87,7 @@ static void RrApp_Iterate(SRrApp* App)
 {
     FrameTime_Advance(&App->FrameTime);
 
-
-    if (Rr_NewFrame(&App->Rr, App->Window))
-    {
-
-    }
+    Rr_NewFrame(&App->Rr, App->Window);
 
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
@@ -133,7 +127,7 @@ static int RrApp_Update(void* AppPtr)
     return 0;
 }
 
-static int SDLCALL EventFilter(void* AppPtr, SDL_Event* Event)
+static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 {
     SRrApp* App = (SRrApp*)AppPtr;
 
@@ -141,29 +135,19 @@ static int SDLCALL EventFilter(void* AppPtr, SDL_Event* Event)
 
     switch (Event->type)
     {
-        case SDL_EVENT_WINDOW_RESIZED:
-//        case SDL_EVENT_WINDOW_EXPOSED:
-//        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+        case SDL_EVENT_WINDOW_EXPOSED:
         {
-
-            int w, h;
-            int display_w, display_h;
-            SDL_GetWindowSize(App->Window, &w, &h);
-            if (SDL_GetWindowFlags(App->Window) & SDL_WINDOW_MINIMIZED)
-                w = h = 0;
-            SDL_GetWindowSizeInPixels(App->Window, &display_w, &display_h);
-
             SDL_AtomicSet(&App->Rr.Swapchain.bShouldResize, true);
             RrApp_Iterate(App);
-            return 0;
         }
+        break;
         default:
         {
         }
         break;
     }
 
-    return 1;
+    return 0;
 }
 
 void RrApp_Run(SRrAppConfig* Config)
@@ -183,14 +167,10 @@ void RrApp_Run(SRrAppConfig* Config)
             1600,
             800,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
-        //        .RenderThread = SDL_CreateThread(RrApp_Render, "rt", &App),
-        //        .RenderThreadSemaphore = SDL_CreateSemaphore(0),
         .FrameTime = { .Last = SDL_GetTicks() }
     };
 
-    SDL_SetEventFilter(EventFilter, &App);
-
-    //    SDL_WaitSemaphore(App.RenderThreadSemaphore);
+    SDL_AddEventWatch(RrApp_EventWatch, &App);
 
     SRrAsset DoorFrameOBJ;
     RrAsset_Extern(&DoorFrameOBJ, DoorFrameOBJ);
