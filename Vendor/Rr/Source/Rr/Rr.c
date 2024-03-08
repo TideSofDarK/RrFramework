@@ -22,6 +22,8 @@
 #include "RrLib.h"
 #include "RrDescriptor.h"
 
+RrAsset_Define_Builtin(MartianMonoTTF, "MartianMono.ttf");
+
 static bool Rr_CheckPhysicalDevice(SRr* const Rr, VkPhysicalDevice PhysicalDevice)
 {
     u32 ExtensionCount;
@@ -775,6 +777,20 @@ void Rr_InitImGui(SRr* const Rr, struct SDL_Window* Window)
     };
 
     ImGui_ImplVulkan_Init(&InitInfo);
+
+    /* Init default font. */
+    f32 WindowScale = SDL_GetWindowDisplayScale(Window);
+    ImGuiStyle_ScaleAllSizes(igGetStyle(), WindowScale);
+
+    SRrAsset MartianMonoTTF;
+    RrAsset_Extern(&MartianMonoTTF, MartianMonoTTF);
+
+    /* Don't transfer asset ownership to ImGui, it will crash otherwise! */
+    ImFontConfig* FontConfig = ImFontConfig_ImFontConfig();
+    FontConfig->FontDataOwnedByAtlas = false;
+    ImFontAtlas_AddFontFromMemoryTTF(IO->Fonts, (void*)MartianMonoTTF.Data, (i32)MartianMonoTTF.Length, SDL_floorf(16.0f * WindowScale), FontConfig, NULL);
+    igMemFree(FontConfig);
+
     ImGui_ImplVulkan_CreateFontsTexture();
 
     Rr->ImGui.bInit = true;

@@ -70,6 +70,7 @@ typedef struct
 /* @TODO: cplusplus support! */
 
 #define RrAsset_Define(NAME, PATH) INCBIN(NAME, STR(RR_ASSET_PATH), PATH)
+#define RrAsset_Define_Builtin(NAME, PATH) INCBIN(NAME, STR(RR_BUILTIN_ASSET_PATH), PATH)
 
 #define RrAsset_Extern(VAR, NAME)                                               \
     {                                                                           \
