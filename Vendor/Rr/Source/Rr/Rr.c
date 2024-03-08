@@ -1069,8 +1069,8 @@ b8 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
     i32 Width, Height;
     SDL_GetWindowSizeInPixels(Window, &Width, &Height);
     i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
-    b32 bShouldResize = RecreateFlags & ESwapchainRecreateFlags_PlatformEvent && (Rr->Swapchain.Extent.width != Width || Rr->Swapchain.Extent.height != Height);
-    if (bShouldResize || (RecreateFlags | ESwapchainRecreateFlags_OutOfDate) || (RecreateFlags | ESwapchainRecreateFlags_Suboptimal))
+    b32 bShouldResize = (RecreateFlags & ESwapchainRecreateFlags_PlatformEvent) && (Rr->Swapchain.Extent.width != Width || Rr->Swapchain.Extent.height != Height);
+    if (bShouldResize || (RecreateFlags & ESwapchainRecreateFlags_OutOfDate) || (RecreateFlags & ESwapchainRecreateFlags_Suboptimal))
     {
         vkDeviceWaitIdle(Rr->Device);
 
