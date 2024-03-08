@@ -21,7 +21,7 @@
 typedef struct SFrameTime
 {
     u64 Last;
-    u64 Frames;
+    u64 Ticks;
     f64 DeltaTime;
     f64 Seconds;
     f64 Acc;
@@ -48,11 +48,11 @@ static u64 FrameTime_Advance(SFrameTime* FrameTime)
     {
         FrameTime->Acc -= 1.0;
 
-        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "ThreadID: %llu, FPS: %llu, Time: %llums", (u64)SDL_GetCurrentThreadID(), FrameTime->Frames, DeltaTimeMS);
-        FrameTime->Frames = 0;
+        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "ThreadID: %llu, Ticks: %llu, Time: %llums", (u64)SDL_GetCurrentThreadID(), FrameTime->Ticks, DeltaTimeMS);
+        FrameTime->Ticks = 0;
     }
     FrameTime->Last = Now;
-    FrameTime->Frames++;
+    FrameTime->Ticks++;
     return FrameTime->Interval - DeltaTimeNS;
 }
 
@@ -90,7 +90,11 @@ static void ShowDebugOverlay()
 
 static void RrApp_Iterate(SRrApp* App)
 {
-    SDL_DelayNS(FrameTime_Advance(&App->FrameTime));
+    u64 ToSleepNS = FrameTime_Advance(&App->FrameTime);
+    if (ToSleepNS > 0 && ToSleepNS < 10000000000)
+    {
+        SDL_DelayNS(ToSleepNS);
+    }
 
     if (Rr_NewFrame(&App->Rr, App->Window))
     {
@@ -139,7 +143,7 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 {
     switch (Event->type)
     {
-#ifdef SDL_PLATFORM_WIN32
+// #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
             SRrApp* App = (SRrApp*)AppPtr;
@@ -147,7 +151,7 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
             RrApp_Iterate(App);
         }
         break;
-#endif
+// #endif
         default:
         {
         }
@@ -174,7 +178,7 @@ void RrApp_Run(SRrAppConfig* Config)
             1600,
             800,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
-        .FrameTime = { .Last = SDL_GetTicksNS(), .Interval = 1000000000 / 30 }
+        .FrameTime = { .Last = SDL_GetTicksNS(), .Interval = 16666666 }
     };
 
     SDL_AddEventWatch(RrApp_EventWatch, &App);
