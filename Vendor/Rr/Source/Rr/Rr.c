@@ -878,6 +878,7 @@ void Rr_Cleanup(SRr* const Rr)
     {
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();
+        igDestroyContext(NULL);
         vkDestroyDescriptorPool(Device, Rr->ImGui.DescriptorPool, NULL);
     }
 

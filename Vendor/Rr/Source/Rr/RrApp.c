@@ -22,7 +22,7 @@ typedef struct SFrameTime
 {
     f64 Acc;
     u64 FPSCounter;
-    f64 TargetFramerate;
+    f32 TargetFramerate;
     f64 Clock;
     u64 Frames;
 } SFrameTime;
@@ -98,6 +98,7 @@ static void ShowDebugOverlay(SRrApp* App)
     {
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
         igText("FPS: %d", App->FrameTime.FPSCounter);
+        igSliderFloat("Target FPS", &App->FrameTime.TargetFramerate, 30.0f, 240.0f, "%.2f", ImGuiSliderFlags_None);
         igSeparator();
         if (igIsMousePosValid(NULL))
         {
@@ -202,7 +203,7 @@ void RrApp_Run(SRrAppConfig* Config)
             1600,
             800,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
-        .FrameTime = { .TargetFramerate = 240 }
+        .FrameTime = { .TargetFramerate = 75 }
     };
 
     SDL_AddEventWatch(RrApp_EventWatch, &App);
