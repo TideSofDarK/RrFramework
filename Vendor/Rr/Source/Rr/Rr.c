@@ -1054,8 +1054,8 @@ void Rr_Draw(SRr* const Rr)
 
 b8 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
 {
-    i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.bResizePending);
-    if (RecreateFlags == true)
+    i32 bResizePending = SDL_AtomicGet(&Rr->Swapchain.bResizePending);
+    if (bResizePending == true)
     {
         vkDeviceWaitIdle(Rr->Device);
 

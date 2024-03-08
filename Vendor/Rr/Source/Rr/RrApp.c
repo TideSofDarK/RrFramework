@@ -151,6 +151,13 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
             RrApp_Iterate(App);
         }
         break;
+#else
+        case SDL_EVENT_WINDOW_RESIZED:
+        {
+            SRrApp* App = (SRrApp*)AppPtr;
+            SDL_AtomicSet(&App->Rr.Swapchain.bResizePending, 1);
+        }
+        break;
 #endif
         default:
         {
