@@ -247,7 +247,7 @@ static void Rr_CleanupSwapchain(SRr* const Rr, VkSwapchainKHR Swapchain)
     vkDestroySwapchainKHR(Rr->Device, Swapchain, NULL);
 }
 
-static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSync)
+static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height)
 {
     VkSwapchainKHR OldSwapchain = Rr->Swapchain.Handle;
 
@@ -278,24 +278,19 @@ static b32 Rr_CreateSwapchain(SRr* const Rr, u32* Width, u32* Height, bool bVSyn
     VK_ASSERT(vkGetPhysicalDeviceSurfacePresentModesKHR(Rr->PhysicalDevice.Handle, Rr->Surface, &PresentModeCount, PresentModes))
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-    if (!bVSync)
+    for (u32 Index = 0; Index < PresentModeCount; Index++)
     {
-        for (u32 Index = 0; Index < PresentModeCount; Index++)
+        if (PresentModes[Index] == VK_PRESENT_MODE_MAILBOX_KHR)
         {
-            if (PresentModes[Index] == VK_PRESENT_MODE_MAILBOX_KHR)
-            {
-                SwapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-                break;
-            }
-            if (PresentModes[Index] == VK_PRESENT_MODE_IMMEDIATE_KHR)
-            {
-                SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-            }
+            SwapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+            break;
+        }
+        if (PresentModes[Index] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+        {
+            SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
         }
     }
     SDL_stack_free(PresentModes);
-    // SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     u32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if ((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))
@@ -844,8 +839,7 @@ void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
 
     u32 Width, Height;
     SDL_GetWindowSizeInPixels(Window, (i32*)&Width, (i32*)&Height);
-    bool bVSync = true;
-    Rr_CreateSwapchain(Rr, &Width, &Height, bVSync);
+    Rr_CreateSwapchain(Rr, &Width, &Height);
 
     Rr_InitFrames(Rr);
 
@@ -934,16 +928,12 @@ void Rr_Draw(SRr* const Rr)
     VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
-        RecreateFlags |= ESwapchainRecreateFlags_OutOfDate;
-        SDL_AtomicSet(&Rr->Swapchain.RecreateFlags, RecreateFlags);
+        SDL_AtomicSet(&Rr->Swapchain.bResizePending, 1);
         return;
     }
     if (Result == VK_SUBOPTIMAL_KHR)
     {
-        i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
-        RecreateFlags |= ESwapchainRecreateFlags_Suboptimal;
-        SDL_AtomicSet(&Rr->Swapchain.RecreateFlags, RecreateFlags);
+        SDL_AtomicSet(&Rr->Swapchain.bResizePending, 1);
     }
     SDL_assert(Result >= 0);
 
@@ -1056,9 +1046,7 @@ void Rr_Draw(SRr* const Rr)
     Result = vkQueuePresentKHR(Rr->GraphicsQueue.Handle, &PresentInfo);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
-        RecreateFlags |= ESwapchainRecreateFlags_OutOfDate;
-        SDL_AtomicSet(&Rr->Swapchain.RecreateFlags, RecreateFlags);
+        SDL_AtomicSet(&Rr->Swapchain.bResizePending, 1);
     }
 
     Rr->FrameNumber++;
@@ -1066,23 +1054,25 @@ void Rr_Draw(SRr* const Rr)
 
 b8 Rr_NewFrame(SRr* const Rr, SDL_Window* Window)
 {
-    i32 Width, Height;
-    SDL_GetWindowSizeInPixels(Window, &Width, &Height);
-    i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.RecreateFlags);
-    b32 bShouldResize = (RecreateFlags & ESwapchainRecreateFlags_PlatformEvent) && (Rr->Swapchain.Extent.width != Width || Rr->Swapchain.Extent.height != Height);
-    if (bShouldResize || (RecreateFlags & ESwapchainRecreateFlags_OutOfDate) || (RecreateFlags & ESwapchainRecreateFlags_Suboptimal))
+    i32 RecreateFlags = SDL_AtomicGet(&Rr->Swapchain.bResizePending);
+    if (RecreateFlags == true)
     {
         vkDeviceWaitIdle(Rr->Device);
 
-        if (Width > 0 && Height > 0 && Rr_CreateSwapchain(Rr, (u32*)&Width, (u32*)&Height, true))
+        i32 Width, Height;
+        SDL_GetWindowSizeInPixels(Window, &Width, &Height);
+
+        b8 bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
+
+        if (!bMinimized && Width > 0 && Height > 0 && Rr_CreateSwapchain(Rr, (u32*)&Width, (u32*)&Height))
         {
-            SDL_AtomicSet(&Rr->Swapchain.RecreateFlags, 0);
+            SDL_AtomicSet(&Rr->Swapchain.bResizePending, 0);
             return true;
         }
 
         return false;
     }
-    return Width > 0 && Height > 0;
+    return true;
 }
 
 void Rr_SetMesh(SRr* const Rr, SRrRawMesh* const RawMesh)

@@ -25,6 +25,7 @@ typedef struct SFrameTime
     f64 DeltaTime;
     f64 Seconds;
     f64 Acc;
+    u64 Interval;
 } SFrameTime;
 
 typedef struct SRrApp
@@ -35,21 +36,24 @@ typedef struct SRrApp
     SFrameTime FrameTime;
 } SRrApp;
 
-static void FrameTime_Advance(SFrameTime* FrameTime)
+static u64 FrameTime_Advance(SFrameTime* FrameTime)
 {
-    u64 Now = SDL_GetTicks();
-    FrameTime->DeltaTime = (f64)(Now - FrameTime->Last) / 1000.0 * 1.0;
+    u64 Now = SDL_GetTicksNS();
+    u64 DeltaTimeNS = Now - FrameTime->Last;
+    u64 DeltaTimeMS = DeltaTimeNS / 1000000;
+    FrameTime->DeltaTime = (f64)DeltaTimeMS / 1000.0 * 1.0;
     FrameTime->Seconds += FrameTime->DeltaTime;
     FrameTime->Acc += FrameTime->DeltaTime;
     if (FrameTime->Acc >= 1.0)
     {
         FrameTime->Acc -= 1.0;
 
-        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "ThreadID: %llu, FPS: %llu", (u64)SDL_GetCurrentThreadID(), FrameTime->Frames);
+        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "ThreadID: %llu, FPS: %llu, Time: %llums", (u64)SDL_GetCurrentThreadID(), FrameTime->Frames, DeltaTimeMS);
         FrameTime->Frames = 0;
     }
     FrameTime->Last = Now;
     FrameTime->Frames++;
+    return FrameTime->Interval - DeltaTimeNS;
 }
 
 static void ShowDebugOverlay()
@@ -86,7 +90,7 @@ static void ShowDebugOverlay()
 
 static void RrApp_Iterate(SRrApp* App)
 {
-    FrameTime_Advance(&App->FrameTime);
+    SDL_DelayNS(FrameTime_Advance(&App->FrameTime));
 
     if (Rr_NewFrame(&App->Rr, App->Window))
     {
@@ -138,11 +142,8 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
-
             SRrApp* App = (SRrApp*)AppPtr;
-            i32 RecreateFlags = SDL_AtomicGet(&App->Rr.Swapchain.RecreateFlags);
-            RecreateFlags |= ESwapchainRecreateFlags_PlatformEvent;
-            SDL_AtomicSet(&App->Rr.Swapchain.RecreateFlags, RecreateFlags);
+            SDL_AtomicSet(&App->Rr.Swapchain.bResizePending, 1);
             RrApp_Iterate(App);
         }
         break;
@@ -173,7 +174,7 @@ void RrApp_Run(SRrAppConfig* Config)
             1600,
             800,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
-        .FrameTime = { .Last = SDL_GetTicks() }
+        .FrameTime = { .Last = SDL_GetTicksNS(), .Interval = 1000000000 / 30 }
     };
 
     SDL_AddEventWatch(RrApp_EventWatch, &App);
