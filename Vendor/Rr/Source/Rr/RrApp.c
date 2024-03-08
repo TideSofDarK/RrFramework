@@ -143,7 +143,7 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 {
     switch (Event->type)
     {
-// #ifdef SDL_PLATFORM_WIN32
+#ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
             SRrApp* App = (SRrApp*)AppPtr;
@@ -151,7 +151,7 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
             RrApp_Iterate(App);
         }
         break;
-// #endif
+#endif
         default:
         {
         }
