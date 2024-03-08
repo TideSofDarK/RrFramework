@@ -186,6 +186,13 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
     return 0;
 }
 
+static void RrApp_SetOptimalFramerate(SRrApp* App, SDL_Window* Window)
+{
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
+    const SDL_DisplayMode* Mode = SDL_GetDesktopDisplayMode(DisplayID);
+    App->FrameTime.TargetFramerate = Mode->refresh_rate;
+}
+
 void RrApp_Run(SRrAppConfig* Config)
 {
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
@@ -203,8 +210,9 @@ void RrApp_Run(SRrAppConfig* Config)
             1600,
             800,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
-        .FrameTime = { .TargetFramerate = 75 }
     };
+
+    RrApp_SetOptimalFramerate(&App, App.Window);
 
     SDL_AddEventWatch(RrApp_EventWatch, &App);
 
