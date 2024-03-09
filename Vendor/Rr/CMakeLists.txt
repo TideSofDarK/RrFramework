@@ -3,11 +3,14 @@ project(RetroRenderer LANGUAGES C CXX)
 
 add_subdirectory(Vendor)
 
-set(BUILTIN_ASSET_PATH "Asset/")
-cmake_path(ABSOLUTE_PATH BUILTIN_ASSET_PATH NORMALIZE)
-set(RR_BUILTIN_ASSET_PATH "${BUILTIN_ASSET_PATH}")
+cmake_path(SET RR_BUILTIN_ASSET_PATH "Asset/")
+cmake_path(ABSOLUTE_PATH RR_BUILTIN_ASSET_PATH NORMALIZE)
 
-add_library(${PROJECT_NAME} STATIC Source/Rr/Rr.c Source/Rr/RrArray.c Source/Rr/RrAsset.c Source/Rr/RrDescriptor.c Source/Rr/RrApp.c)
+file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
+    "Source/*.c"
+)
+
+add_library(${PROJECT_NAME} ${RR_SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC Include PRIVATE Include/Rr)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${VENDOR_TARGET})
 target_compile_definitions(${PROJECT_NAME} PUBLIC RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH} RR_ASSET_PATH=${RR_ASSET_PATH} "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")

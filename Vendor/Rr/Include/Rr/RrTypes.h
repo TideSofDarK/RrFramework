@@ -7,6 +7,7 @@
 #include <vk_mem_alloc.h>
 
 #include "RrCore.h"
+#include "RrImage.h"
 #include "RrAsset.h"
 #include "RrDescriptor.h"
 
@@ -127,15 +128,6 @@ typedef struct SPhysicalDevice
     VkPhysicalDeviceMemoryProperties MemoryProperties;
     VkPhysicalDeviceSubgroupProperties SubgroupProperties;
 } SPhysicalDevice;
-
-typedef struct SAllocatedImage
-{
-    VkImage Handle;
-    VkImageView View;
-    VmaAllocation Allocation;
-    VkExtent3D Extent;
-    VkFormat Format;
-} SAllocatedImage;
 
 typedef struct SDescriptorLayoutBuilder
 {

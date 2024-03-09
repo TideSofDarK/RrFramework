@@ -21,9 +21,8 @@ include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 #
 # Setup Rr
 #
-set(ASSET_PATH "Asset/")
-cmake_path(ABSOLUTE_PATH ASSET_PATH NORMALIZE)
-set(RR_ASSET_PATH "${ASSET_PATH}")
+cmake_path(SET RR_ASSET_PATH "Asset/")
+cmake_path(ABSOLUTE_PATH RR_ASSET_PATH NORMALIZE)
 add_subdirectory(Vendor/Rr)
 
 #

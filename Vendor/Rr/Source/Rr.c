@@ -21,6 +21,7 @@
 #include "RrVulkan.h"
 #include "RrLib.h"
 #include "RrDescriptor.h"
+#include "RrImage.h"
 
 RrAsset_Define_Builtin(MartianMonoTTF, "MartianMono.ttf");
 
@@ -188,7 +189,7 @@ static void Rr_CreateDrawTarget(SRr* const Rr, u32 Width, u32 Height)
     };
 
     /* Color Image */
-    ColorImage->Format = VK_FORMAT_R8G8B8A8_UNORM;
+    ColorImage->Format = RR_COLOR_FORMAT;
     VkImageUsageFlags DrawImageUsages = 0;
     DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -200,7 +201,7 @@ static void Rr_CreateDrawTarget(SRr* const Rr, u32 Width, u32 Height)
     VK_ASSERT(vkCreateImageView(Rr->Device, &ImageViewCreateInfo, NULL, &ColorImage->View))
 
     /* Depth Image */
-    DepthImage->Format = VK_FORMAT_D32_SFLOAT;
+    DepthImage->Format = RR_DEPTH_FORMAT;
     ImageCreateInfo = GetImageCreateInfo(DepthImage->Format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, DepthImage->Extent);
     VK_ASSERT(vmaCreateImage(Rr->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DepthImage->Handle, &DepthImage->Allocation, NULL))
     ImageViewCreateInfo = GetImageViewCreateInfo(DepthImage->Format, DepthImage->Handle, VK_IMAGE_ASPECT_DEPTH_BIT);

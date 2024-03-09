@@ -24,7 +24,7 @@ CPMAddPackage("gh:recp/cglm#master")
 
 add_subdirectory("imgui")
 
-set(VENDOR_TARGET "Vendor" CACHE INTERNAL "Project dependencies")
+set(VENDOR_TARGET "Vendor" CACHE INTERNAL "RetroRenderer dependencies")
 add_library(${VENDOR_TARGET} STATIC)
 target_sources(${VENDOR_TARGET} PRIVATE Vendor.cpp)
 target_link_libraries(${VENDOR_TARGET} PUBLIC

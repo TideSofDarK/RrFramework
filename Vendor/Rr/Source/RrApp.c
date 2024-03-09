@@ -49,7 +49,6 @@ typedef struct SRrApp
 static void FrameTime_Advance(SFrameTime* FrameTime)
 {
 #ifdef RR_PERFORMANCE_COUNTER
-    /* Performance Counter */
     {
         FrameTime->PerformanceCounter.Frames++;
         u64 CurrentTime = SDL_GetPerformanceCounter();

@@ -13,10 +13,9 @@
 #define STBI_NO_HDR
 #define STBI_NO_TGA
 #define STBI_NO_FAILURE_STRINGS
-// #define STBI_MALLOC Memory::Malloc
-// #define STBI_REALLOC Memory::Realloc
-// #define STBI_FREE Memory::Free
-
+// #define STBI_MALLOC Rr_Malloc
+// #define STBI_REALLOC Rr_Realloc
+// #define STBI_FREE Rr_Free
 #include <stb/stb_image.h>
 
 #include "RrArray.h"

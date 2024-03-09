@@ -671,13 +671,3 @@ VkPipeline Rr_BuildPipeline(SRr* const Rr, SPipelineBuilder const* const Pipelin
 
     return Pipeline;
 }
-
-void Rr_DestroyAllocatedImage(SRr* const Rr, SAllocatedImage const* const AllocatedImage)
-{
-    if (AllocatedImage->Handle == VK_NULL_HANDLE)
-    {
-        return;
-    }
-    vkDestroyImageView(Rr->Device, AllocatedImage->View, NULL);
-    vmaDestroyImage(Rr->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
-}
