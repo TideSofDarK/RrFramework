@@ -3,6 +3,7 @@
 #include "Rr/Rr.h"
 #include "Rr/RrAsset.h"
 #include "RrTypes.h"
+#include <SDL_timer.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -18,13 +19,23 @@
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_platform.h>
 
+#define RR_PERFORMANCE_COUNTER 1
+
 typedef struct SFrameTime
 {
-    f64 Acc;
-    u64 FPSCounter;
-    f32 TargetFramerate;
-    f64 Clock;
-    u64 Frames;
+#ifdef RR_PERFORMANCE_COUNTER
+    struct
+    {
+        f64 FPS;
+        u64 Frames;
+        u64 StartTime;
+        u64 UpdateFrequency;
+        f64 CountPerSecond;
+    } PerformanceCounter;
+#endif
+
+    u64 TargetFramerate;
+    u64 StartTime;
 } SFrameTime;
 
 typedef struct SRrApp
@@ -37,44 +48,39 @@ typedef struct SRrApp
 
 static void FrameTime_Advance(SFrameTime* FrameTime)
 {
-    f64 NewClock = (f64)SDL_GetTicks();
-    f64 DeltaClock = (NewClock - FrameTime->Clock);
-    f64 DeltaTicks = 1000.0 / FrameTime->TargetFramerate - DeltaClock;
-
-    FrameTime->Acc += DeltaTicks / 1000.0;
-    if (FrameTime->Acc >= 1.0)
+#ifdef RR_PERFORMANCE_COUNTER
+    /* Performance Counter */
     {
-        FrameTime->Acc -= 1.0;
+        FrameTime->PerformanceCounter.Frames++;
+        u64 CurrentTime = SDL_GetPerformanceCounter();
+        if (CurrentTime - FrameTime->PerformanceCounter.StartTime >= FrameTime->PerformanceCounter.UpdateFrequency)
+        {
+            f64 Elapsed = (f64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) / FrameTime->PerformanceCounter.CountPerSecond;
+            FrameTime->PerformanceCounter.FPS = (f64)FrameTime->PerformanceCounter.Frames / Elapsed;
+            FrameTime->PerformanceCounter.StartTime = CurrentTime;
+            FrameTime->PerformanceCounter.Frames = 0;
+        }
+    }
+#endif
 
-        FrameTime->FPSCounter = FrameTime->Frames;
-        FrameTime->Frames = 0;
+    u64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
+    u64 Now = SDL_GetTicksNS();
+    u64 Elapsed = Now - FrameTime->StartTime;
+    if (Elapsed < Interval)
+    {
+        SDL_DelayNS(Interval - Elapsed);
+        Now = SDL_GetTicksNS();
+    }
+
+    Elapsed = Now - FrameTime->StartTime;
+
+    if (!FrameTime->StartTime || Elapsed > SDL_MS_TO_NS(1000))
+    {
+        FrameTime->StartTime = Now;
     }
     else
     {
-        FrameTime->Frames++;
-    }
-
-    if (SDL_floor(DeltaTicks) > 0)
-    {
-        SDL_Delay((u32)DeltaTicks);
-    }
-
-    // FrameTime->Acc += (u64)DeltaTicks;
-    // if (FrameTime->Acc >= 1000)
-    // {
-    //     FrameTime->Acc -= 1000;
-    //
-    //     SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "ThreadID: %llu, Ticks: %llu, Time: %llums", (u64)SDL_GetCurrentThreadID(), FrameTime->Ticks, DeltaTimeMS);
-    //     FrameTime->Ticks = 0;
-    // }
-
-    if (DeltaTicks < -30)
-    {
-        FrameTime->Clock = NewClock - 30;
-    }
-    else
-    {
-        FrameTime->Clock = NewClock + DeltaTicks;
+        FrameTime->StartTime += (Elapsed / Interval) * Interval;
     }
 }
 
@@ -97,8 +103,10 @@ static void ShowDebugOverlay(SRrApp* App)
     if (igBegin("Debug Overlay", NULL, Flags))
     {
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
-        igText("FPS: %d", App->FrameTime.FPSCounter);
-        igSliderFloat("Target FPS", &App->FrameTime.TargetFramerate, 30.0f, 240.0f, "%.2f", ImGuiSliderFlags_None);
+#ifdef RR_PERFORMANCE_COUNTER
+        igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
+#endif
+        igSliderScalar("Target FPS", ImGuiDataType_U64, &App->FrameTime.TargetFramerate, &(u64){ 30 }, &(u64){ 480 }, "%d", ImGuiSliderFlags_None);
         igSeparator();
         if (igIsMousePosValid(NULL))
         {
@@ -186,11 +194,18 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
     return 0;
 }
 
-static void RrApp_SetOptimalFramerate(SRrApp* App, SDL_Window* Window)
+static void InitFrameTime(SFrameTime* const FrameTime, SDL_Window* Window)
 {
+#ifdef RR_PERFORMANCE_COUNTER
+    FrameTime->PerformanceCounter.StartTime = SDL_GetPerformanceCounter();
+    FrameTime->PerformanceCounter.UpdateFrequency = SDL_GetPerformanceFrequency() / 2;
+    FrameTime->PerformanceCounter.CountPerSecond = (f64)SDL_GetPerformanceFrequency();
+#endif
+
     SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
     const SDL_DisplayMode* Mode = SDL_GetDesktopDisplayMode(DisplayID);
-    App->FrameTime.TargetFramerate = Mode->refresh_rate;
+    FrameTime->TargetFramerate = (u64)Mode->refresh_rate;
+    FrameTime->StartTime = SDL_GetTicksNS();
 }
 
 void RrApp_Run(SRrAppConfig* Config)
@@ -212,7 +227,7 @@ void RrApp_Run(SRrAppConfig* Config)
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
     };
 
-    RrApp_SetOptimalFramerate(&App, App.Window);
+    InitFrameTime(&App.FrameTime, App.Window);
 
     SDL_AddEventWatch(RrApp_EventWatch, &App);
 
