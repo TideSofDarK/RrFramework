@@ -1,9 +1,14 @@
 #include "RrImage.h"
 
+#include <stb/stb_image.h>
+
+#include "Rr.h"
 #include "RrAsset.h"
 #include "RrTypes.h"
-#include "RrLib.h"
+#include "RrHelpers.h"
 #include "RrVulkan.h"
+#include "RrBuffer.h"
+#include "RrLib.h"
 
 SAllocatedImage Rr_CreateImage(SRr* const Rr, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped)
 {
@@ -39,16 +44,22 @@ SAllocatedImage Rr_CreateImage(SRr* const Rr, VkExtent3D Extent, VkFormat Format
     return Image;
 }
 
-SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped)
+SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkImageUsageFlags Usage, b8 bMipMapped)
 {
-    size_t DataSize = Extent.width * Extent.height * 4;
+    const i32 DesiredChannels = 4;
+    i32 Channels;
+    VkExtent3D Extent = {.depth=1};
+    stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
+
+    size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
     SAllocatedBuffer Buffer = { 0 };
     AllocatedBuffer_Init(&Buffer, Rr->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
 
-    SDL_memcpy(Buffer.AllocationInfo.pMappedData, Data, DataSize);
+    SDL_memcpy(Buffer.AllocationInfo.pMappedData, ParsedImage, DataSize);
+    stbi_image_free(ParsedImage);
 
-    SAllocatedImage Image = Rr_CreateImage(Rr, Extent, Format, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
+    SAllocatedImage Image = Rr_CreateImage(Rr, Extent, RR_COLOR_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
 
     Rr_BeginImmediate(Rr);
     STransitionImage Transition = {
@@ -70,7 +81,7 @@ SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkExtent3D Ext
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
-        .imageExtent = Extent
+        .imageExtent = Extent,
     };
 
     vkCmdCopyBufferToImage(Rr->ImmediateMode.CommandBuffer, Buffer.Handle, Image.Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
@@ -83,7 +94,7 @@ SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkExtent3D Ext
     return Image;
 }
 
-void Rr_DestroyAllocatedImage(SRr* const Rr, SAllocatedImage* AllocatedImage)
+void Rr_DestroyImage(SRr* const Rr, SAllocatedImage* AllocatedImage)
 {
     if (AllocatedImage->Handle == VK_NULL_HANDLE)
     {

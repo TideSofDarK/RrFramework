@@ -6,8 +6,8 @@
 #include <volk.h>
 #include <vulkan/vk_enum_string_helper.h>
 
-#define RR_DEPTH_FORMAT VK_FORMAT_D32_SFLOAT
-#define RR_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_assert.h>
 
 #define VK_ASSERT(Expr)                                                                                                                  \
     {                                                                                                                                    \

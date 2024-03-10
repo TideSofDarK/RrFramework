@@ -4,6 +4,7 @@
 #include <SDL3/SDL_log.h>
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_STDIO
 #define STBI_NO_JPEG
 #define STBI_NO_GIF
 #define STBI_NO_BMP
@@ -25,6 +26,11 @@
 #include <cglm/ivec3.h>
 
 #include "RrTypes.h"
+
+#define RrAsset_Define_Builtin(NAME, PATH) INCBIN(NAME, STR(RR_BUILTIN_ASSET_PATH), PATH)
+
+RrAsset_Define_Builtin(MartianMonoTTF, "MartianMono.ttf");
+RrAsset_Define_Builtin(NoisePNG, "Noise.png");
 
 static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
 {

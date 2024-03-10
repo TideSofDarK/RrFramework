@@ -13,14 +13,7 @@
 
 #include <SDL3/SDL_atomic.h>
 
-#define MAX_LAYOUT_BINDINGS 4
-#define MAX_SWAPCHAIN_IMAGE_COUNT 8
-#define PIPELINE_SHADER_STAGES 2
-#define FRAME_OVERLAP 2
-
 typedef struct SDL_Window SDL_Window;
-
-typedef u32 MeshIndexType;
 
 typedef struct SRrSceneData
 {
@@ -30,14 +23,23 @@ typedef struct SRrSceneData
     vec4 AmbientColor;
 } SRrSceneData;
 
-typedef struct
+typedef struct SAllocatedBuffer
 {
     VkBuffer Handle;
     VmaAllocationInfo AllocationInfo;
     VmaAllocation Allocation;
 } SAllocatedBuffer;
 
-typedef struct
+typedef struct SAllocatedImage
+{
+    VkImage Handle;
+    VkImageView View;
+    VmaAllocation Allocation;
+    VkExtent3D Extent;
+    VkFormat Format;
+} SAllocatedImage;
+
+typedef struct SRrVertex
 {
     vec3 Position;
     f32 TexCoordX;
@@ -46,7 +48,7 @@ typedef struct
     vec4 Color;
 } SRrVertex;
 
-typedef struct
+typedef struct SRrMeshBuffers
 {
     SAllocatedBuffer IndexBuffer;
     SAllocatedBuffer VertexBuffer;
@@ -143,20 +145,20 @@ typedef struct SComputeConstants
     vec4 Vec3;
 } SComputeConstants;
 
-typedef struct
+typedef struct SImGui
 {
     b32 bInit;
     VkDescriptorPool DescriptorPool;
 } SImGui;
 
-typedef struct
+typedef struct SImmediateMode
 {
     VkFence Fence;
     VkCommandBuffer CommandBuffer;
     VkCommandPool CommandPool;
 } SImmediateMode;
 
-typedef struct
+typedef struct SRrDrawTarget
 {
     SAllocatedImage ColorImage;
     SAllocatedImage DepthImage;
@@ -198,6 +200,9 @@ typedef struct SRr
 
     SRrMeshBuffers Mesh;
     SRrRawMesh RawMesh;
+    SAllocatedImage NoiseImage;
+
+    VkSampler NearestSampler;
 
     SRrSceneData SceneData;
     VkDescriptorSetLayout SceneDataLayout;

@@ -1,0 +1,12 @@
+#pragma once
+
+#include "RrCore.h"
+
+#define MAX_LAYOUT_BINDINGS 4
+#define MAX_SWAPCHAIN_IMAGE_COUNT 8
+#define PIPELINE_SHADER_STAGES 2
+#define FRAME_OVERLAP 2
+#define RR_DEPTH_FORMAT VK_FORMAT_D32_SFLOAT
+#define RR_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
+
+typedef u32 MeshIndexType;

@@ -22,8 +22,10 @@
 #include "RrLib.h"
 #include "RrDescriptor.h"
 #include "RrImage.h"
-
-RrAsset_Define_Builtin(MartianMonoTTF, "MartianMono.ttf");
+#include "RrHelpers.h"
+#include "RrBuffer.h"
+#include "RrMesh.h"
+#include "RrPipelineBuilder.h"
 
 static bool Rr_CheckPhysicalDevice(SRr* const Rr, VkPhysicalDevice PhysicalDevice)
 {
@@ -210,8 +212,8 @@ static void Rr_CreateDrawTarget(SRr* const Rr, u32 Width, u32 Height)
 
 static void Rr_CleanupDrawTarget(SRr* const Rr)
 {
-    Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.ColorImage);
-    Rr_DestroyAllocatedImage(Rr, &Rr->DrawTarget.DepthImage);
+    Rr_DestroyImage(Rr, &Rr->DrawTarget.ColorImage);
+    Rr_DestroyImage(Rr, &Rr->DrawTarget.DepthImage);
 }
 
 static void Rr_UpdateDrawImageDescriptors(SRr* const Rr, b32 bCreate, b32 bDestroy)
@@ -864,6 +866,10 @@ void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
 
     Rr_InitImmediateMode(Rr);
 
+    SRrAsset NoisePNG;
+    RrAsset_Extern(&NoisePNG, NoisePNG);
+    Rr->NoiseImage = Rr_LoadImageRGBA8(&NoisePNG, Rr, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+
     SDL_stack_free(Extensions);
 }
 
@@ -874,6 +880,7 @@ void Rr_Cleanup(SRr* const Rr)
     vkDeviceWaitIdle(Rr->Device);
 
     Rr_CleanupMesh(Rr, &Rr->Mesh);
+    Rr_DestroyImage(Rr, &Rr->NoiseImage);
 
     if (Rr->ImGui.bInit)
     {
@@ -1097,4 +1104,88 @@ void Rr_SetMesh(SRr* const Rr, SRrRawMesh* const RawMesh)
 {
     Rr->RawMesh = *RawMesh;
     Rr_UploadMesh(Rr, &Rr->Mesh, RawMesh->Indices, RrArray_Count(RawMesh->Indices), RawMesh->Vertices, RrArray_Count(RawMesh->Vertices));
+}
+
+VkCommandBuffer Rr_BeginImmediate(SRr* const Rr)
+{
+    SImmediateMode* ImmediateMode = &Rr->ImmediateMode;
+    VK_ASSERT(vkResetFences(Rr->Device, 1, &ImmediateMode->Fence))
+    VK_ASSERT(vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0))
+
+    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    VK_ASSERT(vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo))
+
+    return ImmediateMode->CommandBuffer;
+}
+
+void Rr_EndImmediate(SRr* const Rr)
+{
+    SImmediateMode* ImmediateMode = &Rr->ImmediateMode;
+
+    VK_ASSERT(vkEndCommandBuffer(ImmediateMode->CommandBuffer))
+
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
+    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
+
+    VK_ASSERT(vkQueueSubmit2(Rr->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence))
+    VK_ASSERT(vkWaitForFences(Rr->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX))
+}
+
+SRrFrame* Rr_GetCurrentFrame(SRr* const Rr)
+{
+    return &Rr->Frames[Rr->FrameNumber % FRAME_OVERLAP];
+}
+
+VkPipeline Rr_BuildPipeline(SRr* const Rr, SPipelineBuilder const* const PipelineBuilder)
+{
+    VkPipelineViewportStateCreateInfo ViewportInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
+
+    VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = 1,
+        .pAttachments = &PipelineBuilder->ColorBlendAttachment,
+    };
+
+    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext = NULL,
+    };
+
+    VkDynamicState DynamicState[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .pDynamicStates = DynamicState,
+        .dynamicStateCount = SDL_arraysize(DynamicState)
+    };
+
+    VkGraphicsPipelineCreateInfo PipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext = &PipelineBuilder->RenderInfo,
+        .stageCount = PipelineBuilder->ShaderStageCount,
+        .pStages = PipelineBuilder->ShaderStages,
+        .pVertexInputState = &VertexInputInfo,
+        .pInputAssemblyState = &PipelineBuilder->InputAssembly,
+        .pViewportState = &ViewportInfo,
+        .pRasterizationState = &PipelineBuilder->Rasterizer,
+        .pMultisampleState = &PipelineBuilder->Multisampling,
+        .pColorBlendState = &ColorBlendInfo,
+        .pDepthStencilState = &PipelineBuilder->DepthStencil,
+        .layout = PipelineBuilder->PipelineLayout,
+        .pDynamicState = &DynamicStateInfo
+    };
+
+    VkPipeline Pipeline;
+    VK_ASSERT(vkCreateGraphicsPipelines(Rr->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline))
+
+    return Pipeline;
 }
