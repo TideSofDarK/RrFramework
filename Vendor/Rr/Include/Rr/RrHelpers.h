@@ -2,6 +2,11 @@
 
 #include "RrVulkan.h"
 
+static VkExtent2D GetExtent2D(VkExtent3D Extent)
+{
+    return (VkExtent2D){.height = Extent.height, .width = Extent.width};
+}
+
 /* =======================
  * Struct Creation Helpers
  * ======================= */

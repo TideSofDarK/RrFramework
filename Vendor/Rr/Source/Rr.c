@@ -991,6 +991,11 @@ void Rr_Draw(SRr* const Rr)
         VK_IMAGE_LAYOUT_GENERAL);
     Rr_DrawBackground(Rr, CommandBuffer);
     TransitionImage_To(&ColorImageTransition,
+                       VK_PIPELINE_STAGE_2_BLIT_BIT,
+                       VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    CopyImageToImage(CommandBuffer, Rr->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Rr->NoiseImage.Extent), GetExtent2D(ColorImage->Extent));
+    TransitionImage_To(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
