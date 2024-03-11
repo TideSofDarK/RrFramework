@@ -2,16 +2,22 @@
 
 #include "RrDefines.h"
 
-typedef struct SRr SRr;
-typedef struct SRrMeshBuffers SRrMeshBuffers;
-typedef struct SRrVertex SRrVertex;
+typedef struct Rr_Renderer Rr_Renderer;
+typedef struct Rr_MeshBuffers Rr_MeshBuffers;
+typedef struct Rr_Vertex Rr_Vertex;
+typedef struct Rr_RawMesh Rr_RawMesh;
+typedef struct Rr_Asset Rr_Asset;
 
 void Rr_UploadMesh(
-    SRr* Rr,
-    SRrMeshBuffers* MeshBuffers,
+    Rr_Renderer* Rr,
+    Rr_MeshBuffers* MeshBuffers,
     MeshIndexType const* Indices,
     size_t IndexCount,
-    SRrVertex const* Vertices,
+    Rr_Vertex const* Vertices,
     size_t VertexCount);
 
-void Rr_CleanupMesh(SRr* Rr, SRrMeshBuffers* Mesh);
+void Rr_CleanupMesh(Rr_Renderer* Rr, Rr_MeshBuffers* Mesh);
+
+void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset);
+
+void Rr_FreeRawMesh(Rr_RawMesh* RawMesh);

@@ -3,6 +3,8 @@
 #include "Rr/RrRenderer.h"
 #include "Rr/RrAsset.h"
 #include "RrTypes.h"
+#include "RrMesh.h"
+
 #include <SDL_timer.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
@@ -19,34 +21,7 @@
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_platform.h>
 
-#define RR_PERFORMANCE_COUNTER 1
-
-typedef struct SFrameTime
-{
-#ifdef RR_PERFORMANCE_COUNTER
-    struct
-    {
-        f64 FPS;
-        u64 Frames;
-        u64 StartTime;
-        u64 UpdateFrequency;
-        f64 CountPerSecond;
-    } PerformanceCounter;
-#endif
-
-    u64 TargetFramerate;
-    u64 StartTime;
-} SFrameTime;
-
-typedef struct SRrApp
-{
-    SDL_AtomicInt bExit;
-    SDL_Window* Window;
-    SRr Rr;
-    SFrameTime FrameTime;
-} SRrApp;
-
-static void FrameTime_Advance(SFrameTime* FrameTime)
+static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 {
 #ifdef RR_PERFORMANCE_COUNTER
     {
@@ -83,7 +58,7 @@ static void FrameTime_Advance(SFrameTime* FrameTime)
     }
 }
 
-static void ShowDebugOverlay(SRrApp* App)
+static void ShowDebugOverlay(Rr_App* App)
 {
     ImGuiIO* IO = igGetIO();
     const ImGuiViewport* Viewport = igGetMainViewport();
@@ -119,7 +94,7 @@ static void ShowDebugOverlay(SRrApp* App)
     igEnd();
 }
 
-static void RrApp_Iterate(SRrApp* App)
+static void RrApp_Iterate(Rr_App* App)
 {
     if (Rr_NewFrame(&App->Rr, App->Window))
     {
@@ -140,7 +115,7 @@ static void RrApp_Iterate(SRrApp* App)
 
 static void RrApp_Update(void* AppPtr)
 {
-    SRrApp* App = (SRrApp*)AppPtr;
+    Rr_App* App = (Rr_App*)AppPtr;
 
     while (SDL_AtomicGet(&App->bExit) == false)
     {
@@ -171,7 +146,7 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
-            SRrApp* App = (SRrApp*)AppPtr;
+            Rr_App* App = (Rr_App*)AppPtr;
             SDL_AtomicSet(&App->Rr.Swapchain.bResizePending, 1);
             RrApp_Iterate(App);
         }
@@ -179,7 +154,7 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
 #else
         case SDL_EVENT_WINDOW_RESIZED:
         {
-            SRrApp* App = (SRrApp*)AppPtr;
+            Rr_App* App = (Rr_App*)AppPtr;
             SDL_AtomicSet(&App->Rr.Swapchain.bResizePending, 1);
         }
         break;
@@ -193,7 +168,7 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
     return 0;
 }
 
-static void InitFrameTime(SFrameTime* const FrameTime, SDL_Window* Window)
+static void InitFrameTime(Rr_FrameTime* const FrameTime, SDL_Window* Window)
 {
 #ifdef RR_PERFORMANCE_COUNTER
     FrameTime->PerformanceCounter.StartTime = SDL_GetPerformanceCounter();
@@ -207,18 +182,18 @@ static void InitFrameTime(SFrameTime* const FrameTime, SDL_Window* Window)
     FrameTime->StartTime = SDL_GetTicksNS();
 }
 
-void RrApp_Run(SRrAppConfig* Config)
+void Rr_Run(Rr_AppConfig* Config)
 {
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
 #ifdef RR_DEBUG
-    RrArray_Test();
+    Rr_Array_Test();
 #endif
 
     SDL_Vulkan_LoadLibrary(NULL);
 
-    SRrApp App = {
+    Rr_App App = {
         .Window = SDL_CreateWindow(
             Config->Title,
             1600,
@@ -230,21 +205,22 @@ void RrApp_Run(SRrAppConfig* Config)
 
     SDL_AddEventWatch(RrApp_EventWatch, &App);
 
-    SRrAsset DoorFrameOBJ;
+    Rr_Asset DoorFrameOBJ;
     RrAsset_Extern(&DoorFrameOBJ, DoorFrameOBJ);
 
-    SRrRawMesh RawMesh = RrRawMesh_FromOBJAsset(&DoorFrameOBJ);
+    Rr_RawMesh RawMesh = {0};
+    Rr_ParseOBJ(&RawMesh, &DoorFrameOBJ);
 
-    Rr_Init(&App.Rr, App.Window);
+    Rr_Init(&App);
     Rr_SetMesh(&App.Rr, &RawMesh);
-    Rr_InitImGui(&App.Rr, App.Window);
+    Rr_InitImGui(&App);
 
     SDL_ShowWindow(App.Window);
 
     RrApp_Update(&App);
 
-    RrRawMesh_Cleanup(&RawMesh);
-    Rr_Cleanup(&App.Rr);
+    Rr_FreeRawMesh(&RawMesh);
+    Rr_Cleanup(&App);
 
     SDL_DelEventWatch(RrApp_EventWatch, &App);
     SDL_DestroyWindow(App.Window);

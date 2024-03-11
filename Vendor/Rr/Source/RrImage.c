@@ -1,5 +1,19 @@
 #include "RrImage.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_STDIO
+#define STBI_NO_JPEG
+#define STBI_NO_GIF
+#define STBI_NO_BMP
+#define STBI_NO_PSD
+#define STBI_NO_PIC
+#define STBI_NO_PNM
+#define STBI_NO_HDR
+#define STBI_NO_TGA
+#define STBI_NO_FAILURE_STRINGS
+// #define STBI_MALLOC Rr_Malloc
+// #define STBI_REALLOC Rr_Realloc
+// #define STBI_FREE Rr_Free
 #include <stb/stb_image.h>
 
 #include "RrRenderer.h"
@@ -10,9 +24,9 @@
 #include "RrBuffer.h"
 #include "RrLib.h"
 
-SAllocatedImage Rr_CreateImage(SRr* const Rr, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped)
+Rr_Image Rr_CreateImage(Rr_Renderer* const Rr, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped)
 {
-    SAllocatedImage Image = { 0 };
+    Rr_Image Image = { 0 };
     Image.Format = Format;
     Image.Extent = Extent;
 
@@ -44,7 +58,7 @@ SAllocatedImage Rr_CreateImage(SRr* const Rr, VkExtent3D Extent, VkFormat Format
     return Image;
 }
 
-SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout)
+Rr_Image Rr_LoadImageRGBA8(Rr_Asset* Asset, Rr_Renderer* const Rr, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout)
 {
     const i32 DesiredChannels = 4;
     i32 Channels;
@@ -53,16 +67,16 @@ SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkImageUsageFl
 
     size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
-    SAllocatedBuffer Buffer = { 0 };
+    Rr_Buffer Buffer = { 0 };
     AllocatedBuffer_Init(&Buffer, Rr->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
 
     SDL_memcpy(Buffer.AllocationInfo.pMappedData, ParsedImage, DataSize);
     stbi_image_free(ParsedImage);
 
-    SAllocatedImage Image = Rr_CreateImage(Rr, Extent, RR_COLOR_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
+    Rr_Image Image = Rr_CreateImage(Rr, Extent, RR_COLOR_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
 
     Rr_BeginImmediate(Rr);
-    STransitionImage Transition = {
+    Rr_TransitionImage Transition = {
         .Image = Image.Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .StageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
@@ -94,7 +108,7 @@ SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkImageUsageFl
     return Image;
 }
 
-void Rr_DestroyImage(SRr* const Rr, SAllocatedImage* AllocatedImage)
+void Rr_DestroyImage(Rr_Renderer* const Rr, Rr_Image* AllocatedImage)
 {
     if (AllocatedImage->Handle == VK_NULL_HANDLE)
     {

@@ -4,40 +4,40 @@
 
 #include "RrCore.h"
 
-typedef void* SRrArray;
+typedef void* Rr_Array;
 
-typedef struct SRrArrayHeader
+typedef struct Rr_ArrayHeader
 {
     size_t ElementSize;
     size_t Count;
     size_t AllocatedSize;
     size_t Alignment;
-} SRrArrayHeader;
+} Rr_ArrayHeader;
 
-static inline SRrArrayHeader* RrArray_Header(SRrArray Handle)
+static inline Rr_ArrayHeader* RrArray_Header(Rr_Array Handle)
 {
-    return (SRrArrayHeader*)((char*)Handle - sizeof(SRrArrayHeader));
+    return (Rr_ArrayHeader*)((char*)Handle - sizeof(Rr_ArrayHeader));
 }
 
-SRrArray RrArray_Init_Internal(size_t ElementSize, size_t ElementCount, size_t Alignment);
+Rr_Array Rr_ArrayInit_Internal(size_t ElementSize, size_t ElementCount, size_t Alignment);
 
-SRrArray RrArray_Resize_Internal(SRrArray Handle, size_t ElementCount);
+Rr_Array Rr_ArrayResize_Internal(Rr_Array Handle, size_t ElementCount);
 
-void RrArray_Empty_Internal(SRrArray Handle, b32 bFreeAllocation);
+void Rr_ArrayEmpty_Internal(Rr_Array Handle, b32 bFreeAllocation);
 
-SRrArray RrArray_Push_Internal(SRrArray Handle, void* Data);
+Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, void* Data);
 
-void RrArray_Set(SRrArray Handle, size_t Index, void* Data);
+void Rr_ArraySet(Rr_Array Handle, size_t Index, void* Data);
 
-void* RrArray_Get(SRrArray Handle, size_t Index);
+void* Rr_ArrayGet(Rr_Array Handle, size_t Index);
 
-void RrArray_Emplace(SRrArray Handle, void* Data);
+void Rr_ArrayEmplace(Rr_Array Handle, void* Data);
 
-void RrArray_Pop(SRrArray Handle);
+void Rr_ArrayPop(Rr_Array Handle);
 
-size_t RrArray_Count(SRrArray Handle);
+size_t Rr_ArrayCount(Rr_Array Handle);
 
-#define RrArray_Init(Handle, ElementType, ElementCount)                                             \
+#define Rr_ArrayInit(Handle, ElementType, ElementCount)                                             \
     {                                                                                               \
         size_t Alignment = 0;                                                                       \
         struct T                                                                                    \
@@ -45,25 +45,25 @@ size_t RrArray_Count(SRrArray Handle);
             char C;                                                                                 \
             ElementType E;                                                                          \
         };                                                                                          \
-        (Handle) = RrArray_Init_Internal(sizeof(ElementType), ElementCount, offsetof(struct T, E)); \
+        (Handle) = Rr_ArrayInit_Internal(sizeof(ElementType), ElementCount, offsetof(struct T, E)); \
     }
 
-#define RrArray_Resize(Handle, ElementCount)                      \
+#define Rr_ArrayResize(Handle, ElementCount)                      \
     {                                                             \
-        (Handle) = RrArray_Resize_Internal(Handle, ElementCount); \
+        (Handle) = Rr_ArrayResize_Internal(Handle, ElementCount); \
     }
 
-#define RrArray_Push(Handle, Element)                        \
+#define Rr_ArrayPush(Handle, Element)                        \
     {                                                        \
-        (Handle) = RrArray_Push_Internal((Handle), Element); \
+        (Handle) = Rr_ArrayPush_Internal((Handle), Element); \
     }
 
-#define RrArray_Empty(Handle, bFreeAllocation)           \
+#define Rr_ArrayEmpty(Handle, bFreeAllocation)           \
     {                                                    \
-        RrArray_Empty_Internal(Handle, bFreeAllocation); \
+        Rr_ArrayEmpty_Internal(Handle, bFreeAllocation); \
         (Handle) = (bFreeAllocation) ? NULL : (Handle);  \
     }
 
 #ifdef RR_DEBUG
-void RrArray_Test(void);
+void Rr_Array_Test(void);
 #endif

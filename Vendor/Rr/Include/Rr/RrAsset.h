@@ -3,17 +3,11 @@
 #include "RrCore.h"
 #include "RrArray.h"
 
-typedef struct SRrAsset
+typedef struct Rr_Asset
 {
     const char* Data;
     size_t Length;
-} SRrAsset;
-
-typedef struct SRrRawMesh
-{
-    SRrArray Vertices;
-    SRrArray Indices;
-} SRrRawMesh;
+} Rr_Asset;
 
 #define STR2(x) #x
 #define STR(x) STR2(x)
@@ -78,6 +72,3 @@ typedef struct SRrRawMesh
         (VAR)->Data = incbin_##NAME##_start;                                    \
         (VAR)->Length = (size_t)(incbin_##NAME##_end - incbin_##NAME##_start);  \
     }
-
-SRrRawMesh RrRawMesh_FromOBJAsset(SRrAsset* Asset);
-void RrRawMesh_Cleanup(SRrRawMesh* RawMesh);

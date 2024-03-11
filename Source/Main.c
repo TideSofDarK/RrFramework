@@ -4,10 +4,10 @@
 
 int main(int argc, char** argv)
 {
-    SRrAppConfig Config = {
+    Rr_AppConfig Config = {
         .Title = "VulkanPlayground"
     };
-    RrApp_Run(&Config);
+    Rr_Run(&Config);
 
     return 0;
 }

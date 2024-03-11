@@ -3,10 +3,10 @@
 #include "RrVulkan.h"
 #include "RrDefines.h"
 
-typedef struct SRr SRr;
-typedef struct SRrAsset SRrAsset;
-typedef struct SAllocatedImage SAllocatedImage;
+typedef struct Rr_Renderer Rr_Renderer;
+typedef struct Rr_Asset Rr_Asset;
+typedef struct Rr_Image Rr_Image;
 
-SAllocatedImage Rr_CreateImage(SRr* Rr, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped);
-SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* Rr, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout);
-void Rr_DestroyImage(SRr* Rr, SAllocatedImage* AllocatedImage);
+Rr_Image Rr_CreateImage(Rr_Renderer* Rr, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped);
+Rr_Image Rr_LoadImageRGBA8(Rr_Asset* Asset, Rr_Renderer* Rr, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout);
+void Rr_DestroyImage(Rr_Renderer* Rr, Rr_Image* AllocatedImage);

@@ -1,8 +1,8 @@
 #pragma once
 
-typedef struct SRrAppConfig
+typedef struct Rr_AppConfig
 {
     const char* Title;
-} SRrAppConfig;
+} Rr_AppConfig;
 
-void RrApp_Run(SRrAppConfig* Config);
+void Rr_Run(Rr_AppConfig* Config);

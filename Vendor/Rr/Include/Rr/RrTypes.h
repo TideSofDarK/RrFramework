@@ -15,62 +15,62 @@
 
 typedef struct SDL_Window SDL_Window;
 
-typedef struct SRrSceneData
+typedef struct Rr_SceneData
 {
     mat4 View;
     mat4 Proj;
     mat4 ViewProj;
     vec4 AmbientColor;
-} SRrSceneData;
+} Rr_SceneData;
 
-typedef struct SAllocatedBuffer
+typedef struct Rr_Buffer
 {
     VkBuffer Handle;
     VmaAllocationInfo AllocationInfo;
     VmaAllocation Allocation;
-} SAllocatedBuffer;
+} Rr_Buffer;
 
-typedef struct SAllocatedImage
+typedef struct Rr_Image
 {
     VkImage Handle;
     VkImageView View;
     VmaAllocation Allocation;
     VkExtent3D Extent;
     VkFormat Format;
-} SAllocatedImage;
+} Rr_Image;
 
-typedef struct SRrVertex
+typedef struct Rr_Vertex
 {
     vec3 Position;
     f32 TexCoordX;
     vec3 Normal;
     f32 TexCoordY;
     vec4 Color;
-} SRrVertex;
+} Rr_Vertex;
 
-typedef struct SRrMeshBuffers
+typedef struct Rr_MeshBuffers
 {
-    SAllocatedBuffer IndexBuffer;
-    SAllocatedBuffer VertexBuffer;
+    Rr_Buffer IndexBuffer;
+    Rr_Buffer VertexBuffer;
     VkDeviceAddress VertexBufferAddress;
-} SRrMeshBuffers;
+} Rr_MeshBuffers;
 
-typedef struct
+typedef struct Rr_PushConstants3D
 {
     mat4 ViewProjection;
     VkDeviceAddress VertexBufferAddress;
-} SRrPushConstants3D;
+} Rr_PushConstants3D;
 
-typedef struct STransitionImage
+typedef struct Rr_TransitionImage
 {
     VkCommandBuffer CommandBuffer;
     VkImage Image;
     VkPipelineStageFlags2 StageMask;
     VkAccessFlags2 AccessMask;
     VkImageLayout Layout;
-} STransitionImage;
+} Rr_TransitionImage;
 
-typedef struct SFrameData
+typedef struct Rr_FrameData
 {
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
@@ -78,10 +78,10 @@ typedef struct SFrameData
     VkSemaphore RenderSemaphore;
     VkFence RenderFence;
     SDescriptorAllocator DescriptorAllocator;
-    SAllocatedBuffer SceneDataBuffer;
-} SRrFrame;
+    Rr_Buffer SceneDataBuffer;
+} Rr_FrameData;
 
-typedef struct SPipelineBuilder
+typedef struct Rr_PipelineBuilder
 {
     VkPipelineShaderStageCreateInfo ShaderStages[PIPELINE_SHADER_STAGES];
     u32 ShaderStageCount;
@@ -94,48 +94,48 @@ typedef struct SPipelineBuilder
     VkPipelineRenderingCreateInfo RenderInfo;
 
     VkFormat ColorAttachmentFormat;
-} SPipelineBuilder;
+} Rr_PipelineBuilder;
 
-typedef struct SVulkanImage
+typedef struct Rr_SwapchainImage
 {
     VkExtent2D Extent;
     VkImage Handle;
     VkImageView View;
     VkSampler Sampler;
     VkDeviceMemory Memory;
-} SVulkanImage;
+} Rr_SwapchainImage;
 
-typedef struct SSwapchain
+typedef struct Rr_Swapchain
 {
     VkSwapchainKHR Handle;
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
-    SVulkanImage Images[MAX_SWAPCHAIN_IMAGE_COUNT];
+    Rr_SwapchainImage Images[MAX_SWAPCHAIN_IMAGE_COUNT];
     u32 ImageCount;
     VkExtent2D Extent;
     SDL_AtomicInt bResizePending;
-} SSwapchain;
+} Rr_Swapchain;
 
-typedef struct SRendererQueue
+typedef struct Rr_DeviceQueue
 {
     VkQueue Handle;
     u32 FamilyIndex;
-} SQueue;
+} Rr_DeviceQueue;
 
-typedef struct SPhysicalDevice
+typedef struct Rr_PhysicalDevice
 {
     VkPhysicalDevice Handle;
 
     VkPhysicalDeviceFeatures Features;
     VkPhysicalDeviceMemoryProperties MemoryProperties;
     VkPhysicalDeviceSubgroupProperties SubgroupProperties;
-} SPhysicalDevice;
+} Rr_PhysicalDevice;
 
-typedef struct SDescriptorLayoutBuilder
+typedef struct Rr_DescriptorLayoutBuilder
 {
     VkDescriptorSetLayoutBinding Bindings[MAX_LAYOUT_BINDINGS];
     u32 Count;
-} SDescriptorLayoutBuilder;
+} Rr_DescriptorLayoutBuilder;
 
 typedef struct SComputeConstants
 {
@@ -145,65 +145,96 @@ typedef struct SComputeConstants
     vec4 Vec3;
 } SComputeConstants;
 
-typedef struct SImGui
+typedef struct Rr_ImGui
 {
-    b32 bInit;
     VkDescriptorPool DescriptorPool;
-} SImGui;
+    b8 bInit;
+} Rr_ImGui;
 
-typedef struct SImmediateMode
+typedef struct Rr_ImmediateMode
 {
     VkFence Fence;
     VkCommandBuffer CommandBuffer;
     VkCommandPool CommandPool;
-} SImmediateMode;
+} Rr_ImmediateMode;
 
-typedef struct SRrDrawTarget
+typedef struct Rr_DrawTarget
 {
-    SAllocatedImage ColorImage;
-    SAllocatedImage DepthImage;
+    Rr_Image ColorImage;
+    Rr_Image DepthImage;
     VkExtent2D ActiveExtent;
     VkDescriptorSet DescriptorSet;
     VkDescriptorSetLayout DescriptorSetLayout;
-} SRrDrawTarget;
+} Rr_DrawTarget;
 
-typedef struct SRr
+typedef struct Rr_RawMesh
+{
+    Rr_Array Vertices;
+    Rr_Array Indices;
+} Rr_RawMesh;
+
+typedef struct Rr_Renderer
 {
     VkInstance Instance;
-    SPhysicalDevice PhysicalDevice;
+    Rr_PhysicalDevice PhysicalDevice;
     VkDevice Device;
     VkSurfaceKHR Surface;
-    SSwapchain Swapchain;
+    Rr_Swapchain Swapchain;
 
-    SQueue GraphicsQueue;
-    SQueue TransferQueue;
-    SQueue ComputeQueue;
+    Rr_DeviceQueue GraphicsQueue;
+    Rr_DeviceQueue TransferQueue;
+    Rr_DeviceQueue ComputeQueue;
 
     VmaAllocator Allocator;
 
-    SRrFrame Frames[FRAME_OVERLAP];
+    Rr_FrameData Frames[FRAME_OVERLAP];
     size_t FrameNumber;
 
     SDescriptorAllocator GlobalDescriptorAllocator;
 
-    SRrDrawTarget DrawTarget;
+    Rr_DrawTarget DrawTarget;
 
     VkPipeline GradientPipeline;
     VkPipelineLayout GradientPipelineLayout;
 
-    SImGui ImGui;
+    Rr_ImGui ImGui;
 
-    SImmediateMode ImmediateMode;
+    Rr_ImmediateMode ImmediateMode;
 
     VkPipeline MeshPipeline;
     VkPipelineLayout MeshPipelineLayout;
 
-    SRrMeshBuffers Mesh;
-    SRrRawMesh RawMesh;
-    SAllocatedImage NoiseImage;
+    Rr_MeshBuffers Mesh;
+    Rr_RawMesh RawMesh;
+    Rr_Image NoiseImage;
 
     VkSampler NearestSampler;
 
-    SRrSceneData SceneData;
+    Rr_SceneData SceneData;
     VkDescriptorSetLayout SceneDataLayout;
-} SRr;
+} Rr_Renderer;
+
+typedef struct Rr_FrameTime
+{
+#ifdef RR_PERFORMANCE_COUNTER
+    struct
+    {
+        f64 FPS;
+        u64 Frames;
+        u64 StartTime;
+        u64 UpdateFrequency;
+        f64 CountPerSecond;
+    } PerformanceCounter;
+#endif
+
+    u64 TargetFramerate;
+    u64 StartTime;
+} Rr_FrameTime;
+
+typedef struct Rr_App
+{
+    SDL_AtomicInt bExit;
+    SDL_Window* Window;
+    Rr_Renderer Rr;
+    Rr_FrameTime FrameTime;
+} Rr_App;

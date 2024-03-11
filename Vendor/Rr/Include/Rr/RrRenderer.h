@@ -3,17 +3,17 @@
 #include "RrTypes.h"
 #include "RrAsset.h"
 
-void Rr_Init(SRr* Rr, SDL_Window* Window);
-void Rr_InitImGui(SRr* Rr, SDL_Window* Window);
-void Rr_Cleanup(SRr* Rr);
-void Rr_Draw(SRr* Rr);
-b8 Rr_NewFrame(SRr* Rr, SDL_Window* Window);
+void Rr_Init(Rr_App* App);
+void Rr_InitImGui(Rr_App* App);
+void Rr_Cleanup(Rr_App* App);
+void Rr_Draw(Rr_Renderer* Renderer);
+b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
 
-void Rr_SetMesh(SRr* Rr, SRrRawMesh* RawMesh);
+void Rr_SetMesh(Rr_Renderer* Renderer, Rr_RawMesh* RawMesh);
 
-VkCommandBuffer Rr_BeginImmediate(SRr* Rr);
-void Rr_EndImmediate(SRr* Rr);
+VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
+void Rr_EndImmediate(Rr_Renderer* Renderer);
 
-SRrFrame* Rr_GetCurrentFrame(SRr* Rr);
+Rr_FrameData* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
 
-VkPipeline Rr_BuildPipeline(SRr* Rr, SPipelineBuilder const* PipelineBuilder);
+VkPipeline Rr_BuildPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder const* PipelineBuilder);

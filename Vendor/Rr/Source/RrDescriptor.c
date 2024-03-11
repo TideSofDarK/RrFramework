@@ -8,11 +8,11 @@
 VkDescriptorPool DescriptorAllocator_CreatePool(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, size_t SetCount, SDescriptorPoolSizeRatio* Ratios, size_t RatioCount)
 {
     VkDescriptorPoolSize* PoolSizes = NULL;
-    RrArray_Init(PoolSizes, VkDescriptorPoolSize, RatioCount);
+    Rr_ArrayInit(PoolSizes, VkDescriptorPoolSize, RatioCount);
     for (size_t Index = 0; Index < RatioCount; Index++)
     {
         SDescriptorPoolSizeRatio* Ratio = &Ratios[Index];
-        RrArray_Push(PoolSizes, &((VkDescriptorPoolSize){ .type = Ratio->Type, .descriptorCount = (u32)(Ratio->Ratio * (f32)SetCount) }));
+        Rr_ArrayPush(PoolSizes, &((VkDescriptorPoolSize){ .type = Ratio->Type, .descriptorCount = (u32)(Ratio->Ratio * (f32)SetCount) }));
     }
 
     VkDescriptorPoolCreateInfo Info = {
@@ -30,66 +30,66 @@ VkDescriptorPool DescriptorAllocator_CreatePool(SDescriptorAllocator* Descriptor
 
 void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, size_t MaxSets, SDescriptorPoolSizeRatio* Ratios, size_t RatioCount)
 {
-    RrArray_Init(DescriptorAllocator->Ratios, SDescriptorPoolSizeRatio, RatioCount);
+    Rr_ArrayInit(DescriptorAllocator->Ratios, SDescriptorPoolSizeRatio, RatioCount);
     SDL_memcpy(DescriptorAllocator->Ratios, Ratios, RatioCount * sizeof(SDescriptorPoolSizeRatio));
 
     VkDescriptorPool NewPool = DescriptorAllocator_CreatePool(DescriptorAllocator, Device, MaxSets, Ratios, RatioCount);
-    RrArray_Init(DescriptorAllocator->ReadyPools, VkDescriptorPool, 1);
-    RrArray_Push(DescriptorAllocator->ReadyPools, &NewPool);
+    Rr_ArrayInit(DescriptorAllocator->ReadyPools, VkDescriptorPool, 1);
+    Rr_ArrayPush(DescriptorAllocator->ReadyPools, &NewPool);
 
-    RrArray_Init(DescriptorAllocator->FullPools, VkDescriptorPool, 1);
+    Rr_ArrayInit(DescriptorAllocator->FullPools, VkDescriptorPool, 1);
 
     DescriptorAllocator->SetsPerPool = (size_t)((f32)MaxSets * 1.5f);
 }
 
 void DescriptorAllocator_ClearPools(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
 {
-    size_t Count = RrArray_Count(DescriptorAllocator->ReadyPools);
+    size_t Count = Rr_ArrayCount(DescriptorAllocator->ReadyPools);
     for (size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool ReadyPool = DescriptorAllocator->ReadyPools[Index];
         vkResetDescriptorPool(Device, ReadyPool, 0);
     }
 
-    Count = RrArray_Count(DescriptorAllocator->FullPools);
+    Count = Rr_ArrayCount(DescriptorAllocator->FullPools);
     for (size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool FullPool = DescriptorAllocator->FullPools[Index];
         vkResetDescriptorPool(Device, FullPool, 0);
 
-        RrArray_Push(DescriptorAllocator->ReadyPools, &FullPool);
+        Rr_ArrayPush(DescriptorAllocator->ReadyPools, &FullPool);
     }
-    RrArray_Empty(DescriptorAllocator->FullPools, false);
+    Rr_ArrayEmpty(DescriptorAllocator->FullPools, false);
 }
 
 void DescriptorAllocator_Cleanup(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
 {
-    size_t Count = RrArray_Count(DescriptorAllocator->ReadyPools);
+    size_t Count = Rr_ArrayCount(DescriptorAllocator->ReadyPools);
     for (size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool ReadyPool = DescriptorAllocator->ReadyPools[Index];
         vkDestroyDescriptorPool(Device, ReadyPool, NULL);
     }
-    RrArray_Empty(DescriptorAllocator->ReadyPools, true);
+    Rr_ArrayEmpty(DescriptorAllocator->ReadyPools, true);
 
-    Count = RrArray_Count(DescriptorAllocator->FullPools);
+    Count = Rr_ArrayCount(DescriptorAllocator->FullPools);
     for (size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool FullPool = DescriptorAllocator->FullPools[Index];
         vkDestroyDescriptorPool(Device, FullPool, NULL);
     }
-    RrArray_Empty(DescriptorAllocator->FullPools, true);
-    RrArray_Empty(DescriptorAllocator->Ratios, true);
+    Rr_ArrayEmpty(DescriptorAllocator->FullPools, true);
+    Rr_ArrayEmpty(DescriptorAllocator->Ratios, true);
 }
 
 VkDescriptorPool DescriptorAllocator_GetPool(SDescriptorAllocator* DescriptorAllocator, VkDevice Device)
 {
     VkDescriptorPool NewPool;
-    size_t ReadyCount = RrArray_Count(DescriptorAllocator->ReadyPools);
+    size_t ReadyCount = Rr_ArrayCount(DescriptorAllocator->ReadyPools);
     if (ReadyCount != 0)
     {
         NewPool = DescriptorAllocator->ReadyPools[ReadyCount - 1];
-        RrArray_Pop(DescriptorAllocator->ReadyPools);
+        Rr_ArrayPop(DescriptorAllocator->ReadyPools);
     }
     else
     {
@@ -98,7 +98,7 @@ VkDescriptorPool DescriptorAllocator_GetPool(SDescriptorAllocator* DescriptorAll
             Device,
             DescriptorAllocator->SetsPerPool,
             DescriptorAllocator->Ratios,
-            RrArray_Count(DescriptorAllocator->Ratios));
+            Rr_ArrayCount(DescriptorAllocator->Ratios));
 
         DescriptorAllocator->SetsPerPool = (size_t)((float)DescriptorAllocator->SetsPerPool * 1.5f);
 
@@ -127,7 +127,7 @@ VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* DescriptorAll
 
     if (Result == VK_ERROR_OUT_OF_POOL_MEMORY || Result == VK_ERROR_FRAGMENTED_POOL)
     {
-        RrArray_Push(DescriptorAllocator->FullPools, &Pool);
+        Rr_ArrayPush(DescriptorAllocator->FullPools, &Pool);
 
         Pool = DescriptorAllocator_GetPool(DescriptorAllocator, Device);
         AllocateInfo.descriptorPool = Pool;
@@ -135,23 +135,23 @@ VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* DescriptorAll
         VK_ASSERT(vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet));
     }
 
-    RrArray_Push(DescriptorAllocator->ReadyPools, &Pool);
+    Rr_ArrayPush(DescriptorAllocator->ReadyPools, &Pool);
     return DescriptorSet;
 }
 
 void DescriptorWriter_Init(SDescriptorWriter* Writer, size_t Images, size_t Buffers)
 {
-    RrArray_Init(Writer->ImageInfos, VkDescriptorImageInfo, Images);
-    RrArray_Init(Writer->BufferInfos, VkDescriptorBufferInfo, Buffers);
-    RrArray_Init(Writer->Writes, VkWriteDescriptorSet, Images + Buffers);
-    RrArray_Init(Writer->Entries, SDescriptorWriterEntry, Images + Buffers);
+    Rr_ArrayInit(Writer->ImageInfos, VkDescriptorImageInfo, Images);
+    Rr_ArrayInit(Writer->BufferInfos, VkDescriptorBufferInfo, Buffers);
+    Rr_ArrayInit(Writer->Writes, VkWriteDescriptorSet, Images + Buffers);
+    Rr_ArrayInit(Writer->Entries, SDescriptorWriterEntry, Images + Buffers);
 }
 
 void DescriptorWriter_WriteImage(SDescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type)
 {
-    RrArray_Push(Writer->ImageInfos, &((VkDescriptorImageInfo){ .sampler = Sampler, .imageView = View, .imageLayout = Layout }));
+    Rr_ArrayPush(Writer->ImageInfos, &((VkDescriptorImageInfo){ .sampler = Sampler, .imageView = View, .imageLayout = Layout }));
 
-    RrArray_Push(Writer->Writes, &((VkWriteDescriptorSet){
+    Rr_ArrayPush(Writer->Writes, &((VkWriteDescriptorSet){
                                      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                                      .dstBinding = Binding,
                                      .dstSet = VK_NULL_HANDLE,
@@ -159,14 +159,14 @@ void DescriptorWriter_WriteImage(SDescriptorWriter* Writer, u32 Binding, VkImage
                                      .descriptorType = Type,
                                  }));
 
-    RrArray_Push(Writer->Entries, &((SDescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Image, .Index = RrArray_Count(Writer->ImageInfos) - 1 }));
+    Rr_ArrayPush(Writer->Entries, &((SDescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Image, .Index = Rr_ArrayCount(Writer->ImageInfos) - 1 }));
 }
 
 void DescriptorWriter_WriteBuffer(SDescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type)
 {
-    RrArray_Push(Writer->BufferInfos, &((VkDescriptorBufferInfo){ .range = Size, .buffer = Buffer, .offset = Offset }));
+    Rr_ArrayPush(Writer->BufferInfos, &((VkDescriptorBufferInfo){ .range = Size, .buffer = Buffer, .offset = Offset }));
 
-    RrArray_Push(Writer->Writes, &((VkWriteDescriptorSet){
+    Rr_ArrayPush(Writer->Writes, &((VkWriteDescriptorSet){
                                      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                                      .dstBinding = Binding,
                                      .dstSet = VK_NULL_HANDLE,
@@ -174,20 +174,20 @@ void DescriptorWriter_WriteBuffer(SDescriptorWriter* Writer, u32 Binding, VkBuff
                                      .descriptorType = Type,
                                  }));
 
-    RrArray_Push(Writer->Entries, &((SDescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Buffer, .Index = RrArray_Count(Writer->BufferInfos) - 1 }));
+    Rr_ArrayPush(Writer->Entries, &((SDescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Buffer, .Index = Rr_ArrayCount(Writer->BufferInfos) - 1 }));
 }
 
 void DescriptorWriter_Cleanup(SDescriptorWriter* Writer)
 {
-    RrArray_Empty(Writer->ImageInfos, true);
-    RrArray_Empty(Writer->BufferInfos, true);
-    RrArray_Empty(Writer->Writes, true);
-    RrArray_Empty(Writer->Entries, true);
+    Rr_ArrayEmpty(Writer->ImageInfos, true);
+    Rr_ArrayEmpty(Writer->BufferInfos, true);
+    Rr_ArrayEmpty(Writer->Writes, true);
+    Rr_ArrayEmpty(Writer->Entries, true);
 }
 
 void DescriptorWriter_Update(SDescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set)
 {
-    size_t WritesCount = RrArray_Count(Writer->Writes);
+    size_t WritesCount = Rr_ArrayCount(Writer->Writes);
     for (size_t Index = 0; Index < WritesCount; ++Index)
     {
         SDescriptorWriterEntry* Entry = &Writer->Entries[Index];

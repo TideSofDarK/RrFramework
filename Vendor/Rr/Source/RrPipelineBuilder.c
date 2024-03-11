@@ -3,9 +3,9 @@
 #include "RrTypes.h"
 #include "RrHelpers.h"
 
-void PipelineBuilder_Empty(SPipelineBuilder* PipelineBuilder)
+void PipelineBuilder_Empty(Rr_PipelineBuilder* PipelineBuilder)
 {
-    *PipelineBuilder = (SPipelineBuilder){
+    *PipelineBuilder = (Rr_PipelineBuilder){
         .InputAssembly = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO },
         .Rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO },
         .ColorBlendAttachment = { 0 },
@@ -23,7 +23,7 @@ void PipelineBuilder_Empty(SPipelineBuilder* PipelineBuilder)
     };
 }
 
-void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule, VkFormat ColorFormat, VkFormat DepthFormat, VkPipelineLayout Layout)
+void PipelineBuilder_Default(Rr_PipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule, VkFormat ColorFormat, VkFormat DepthFormat, VkPipelineLayout Layout)
 {
     PipelineBuilder_Empty(PipelineBuilder);
 
@@ -50,7 +50,7 @@ void PipelineBuilder_Default(SPipelineBuilder* PipelineBuilder, VkShaderModule V
     PipelineBuilder->RenderInfo.depthAttachmentFormat = DepthFormat;
 }
 
-void PipelineBuilder_Depth(SPipelineBuilder* const PipelineBuilder)
+void PipelineBuilder_Depth(Rr_PipelineBuilder* const PipelineBuilder)
 {
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
@@ -63,7 +63,7 @@ void PipelineBuilder_Depth(SPipelineBuilder* const PipelineBuilder)
     PipelineBuilder->DepthStencil.maxDepthBounds = 1.0f;
 }
 
-void PipelineBuilder_AlphaBlend(SPipelineBuilder* const PipelineBuilder)
+void PipelineBuilder_AlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
 {
     PipelineBuilder->ColorBlendAttachment = (VkPipelineColorBlendAttachmentState){
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,

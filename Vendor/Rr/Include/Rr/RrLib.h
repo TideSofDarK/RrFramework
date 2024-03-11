@@ -115,10 +115,10 @@ static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkIm
 }
 
 /* ============================
- * SDescriptorLayoutBuilder API
+ * Rr_DescriptorLayoutBuilder API
  * ============================ */
 
-static void DescriptorLayoutBuilder_Add(SDescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type)
+static void DescriptorLayoutBuilder_Add(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type)
 {
     if (Builder->Count >= MAX_LAYOUT_BINDINGS)
     {
@@ -132,12 +132,12 @@ static void DescriptorLayoutBuilder_Add(SDescriptorLayoutBuilder* Builder, u32 B
     Builder->Count++;
 }
 
-static void DescriptorLayoutBuilder_Clear(SDescriptorLayoutBuilder* Builder)
+static void DescriptorLayoutBuilder_Clear(Rr_DescriptorLayoutBuilder* Builder)
 {
-    *Builder = (SDescriptorLayoutBuilder){ 0 };
+    *Builder = (Rr_DescriptorLayoutBuilder){ 0 };
 }
 
-static VkDescriptorSetLayout DescriptorLayoutBuilder_Build(SDescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
+static VkDescriptorSetLayout DescriptorLayoutBuilder_Build(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
 {
     for (u32 Index = 0; Index < MAX_LAYOUT_BINDINGS; ++Index)
     {
@@ -160,11 +160,11 @@ static VkDescriptorSetLayout DescriptorLayoutBuilder_Build(SDescriptorLayoutBuil
 }
 
 /* ====================
- * STransitionImage API
+ * Rr_TransitionImage API
  * ==================== */
 
 static void TransitionImage_To(
-    STransitionImage* TransitionImage,
+    Rr_TransitionImage* TransitionImage,
     VkPipelineStageFlags2 DstStageMask,
     VkAccessFlags2 DstAccessMask,
     VkImageLayout NewLayout)
