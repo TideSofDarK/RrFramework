@@ -2,7 +2,7 @@
 
 #include <stb/stb_image.h>
 
-#include "Rr.h"
+#include "RrRenderer.h"
 #include "RrAsset.h"
 #include "RrTypes.h"
 #include "RrHelpers.h"
@@ -44,7 +44,7 @@ SAllocatedImage Rr_CreateImage(SRr* const Rr, VkExtent3D Extent, VkFormat Format
     return Image;
 }
 
-SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkImageUsageFlags Usage, b8 bMipMapped)
+SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout)
 {
     const i32 DesiredChannels = 4;
     i32 Channels;
@@ -86,7 +86,7 @@ SAllocatedImage Rr_LoadImageRGBA8(SRrAsset* Asset, SRr* const Rr, VkImageUsageFl
 
     vkCmdCopyBufferToImage(Rr->ImmediateMode.CommandBuffer, Buffer.Handle, Image.Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
 
-    TransitionImage_To(&Transition, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    TransitionImage_To(&Transition, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_READ_BIT, InitialLayout);
     Rr_EndImmediate(Rr);
 
     AllocatedBuffer_Cleanup(&Buffer, Rr->Allocator);

@@ -1,4 +1,4 @@
-#include "Rr.h"
+#include "RrRenderer.h"
 #include "RrTypes.h"
 
 #include <math.h>
@@ -868,7 +868,7 @@ void Rr_Init(SRr* const Rr, struct SDL_Window* Window)
 
     SRrAsset NoisePNG;
     RrAsset_Extern(&NoisePNG, NoisePNG);
-    Rr->NoiseImage = Rr_LoadImageRGBA8(&NoisePNG, Rr, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+    Rr->NoiseImage = Rr_LoadImageRGBA8(&NoisePNG, Rr, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     SDL_stack_free(Extensions);
 }
