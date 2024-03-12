@@ -3,7 +3,9 @@
 #include "RrTypes.h"
 #include "RrAsset.h"
 
-void Rr_Init(Rr_App* App);
+typedef struct Rr_AppConfig Rr_AppConfig;
+
+void Rr_Init(Rr_App* App, Rr_AppConfig* Config);
 void Rr_InitImGui(Rr_App* App);
 void Rr_Cleanup(Rr_App* App);
 void Rr_Draw(Rr_Renderer* Renderer);

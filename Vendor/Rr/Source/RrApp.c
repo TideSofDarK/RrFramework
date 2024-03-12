@@ -1,9 +1,6 @@
 #include "RrApp.h"
 
-#include "Rr/RrRenderer.h"
-#include "Rr/RrAsset.h"
-#include "RrTypes.h"
-#include "RrMesh.h"
+#include "RrVulkan.h"
 
 #include <SDL_timer.h>
 
@@ -20,6 +17,11 @@
 #include <SDL3/SDL_mutex.h>
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_platform.h>
+
+#include "RrRenderer.h"
+#include "RrAsset.h"
+#include "RrTypes.h"
+#include "RrMesh.h"
 
 static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 {
@@ -76,6 +78,8 @@ static void ShowDebugOverlay(Rr_App* App)
     igSetNextWindowBgAlpha(0.35f);
     if (igBegin("Debug Overlay", NULL, Flags))
     {
+        igText("Reference Resolution: %dx%d", App->Renderer.DrawTarget.ReferenceResolution.width, App->Renderer.DrawTarget.ReferenceResolution.height);
+        igText("Active Resolution: %dx%d", App->Renderer.DrawTarget.ActiveResolution.width, App->Renderer.DrawTarget.ActiveResolution.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
@@ -94,9 +98,9 @@ static void ShowDebugOverlay(Rr_App* App)
     igEnd();
 }
 
-static void RrApp_Iterate(Rr_App* App)
+static void Iterate(Rr_App* App)
 {
-    if (Rr_NewFrame(&App->Rr, App->Window))
+    if (Rr_NewFrame(&App->Renderer, App->Window))
     {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
@@ -107,39 +111,13 @@ static void RrApp_Iterate(Rr_App* App)
 
         igRender();
 
-        Rr_Draw(&App->Rr);
+        Rr_Draw(&App->Renderer);
     }
 
     FrameTime_Advance(&App->FrameTime);
 }
 
-static void RrApp_Update(void* AppPtr)
-{
-    Rr_App* App = (Rr_App*)AppPtr;
-
-    while (SDL_AtomicGet(&App->bExit) == false)
-    {
-        for (SDL_Event Event; SDL_PollEvent(&Event);)
-        {
-            ImGui_ImplSDL3_ProcessEvent(&Event);
-            switch (Event.type)
-            {
-                case SDL_EVENT_QUIT:
-                {
-                    SDL_AtomicSet(&App->bExit, true);
-                    return;
-                }
-                break;
-                default:
-                    break;
-            }
-        }
-
-        RrApp_Iterate(App);
-    }
-}
-
-static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
+static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
 {
     switch (Event->type)
     {
@@ -147,8 +125,8 @@ static int SDLCALL RrApp_EventWatch(void* AppPtr, SDL_Event* Event)
         case SDL_EVENT_WINDOW_EXPOSED:
         {
             Rr_App* App = (Rr_App*)AppPtr;
-            SDL_AtomicSet(&App->Rr.Swapchain.bResizePending, 1);
-            RrApp_Iterate(App);
+            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
+            Iterate(App);
         }
         break;
 #else
@@ -203,26 +181,41 @@ void Rr_Run(Rr_AppConfig* Config)
 
     InitFrameTime(&App.FrameTime, App.Window);
 
-    SDL_AddEventWatch(RrApp_EventWatch, &App);
+    SDL_AddEventWatch(EventWatch, &App);
 
-    Rr_Asset DoorFrameOBJ;
-    RrAsset_Extern(&DoorFrameOBJ, DoorFrameOBJ);
-
-    Rr_RawMesh RawMesh = {0};
-    Rr_ParseOBJ(&RawMesh, &DoorFrameOBJ);
-
-    Rr_Init(&App);
-    Rr_SetMesh(&App.Rr, &RawMesh);
+    Rr_Init(&App, Config);
     Rr_InitImGui(&App);
+
+    Config->InitFunc(&App);
 
     SDL_ShowWindow(App.Window);
 
-    RrApp_Update(&App);
+    while (SDL_AtomicGet(&App.bExit) == false)
+    {
+        for (SDL_Event Event; SDL_PollEvent(&Event);)
+        {
+            ImGui_ImplSDL3_ProcessEvent(&Event);
+            switch (Event.type)
+            {
+                case SDL_EVENT_QUIT:
+                {
+                    SDL_AtomicSet(&App.bExit, true);
+                    return;
+                }
+                break;
+                default:
+                    break;
+            }
+        }
 
-    Rr_FreeRawMesh(&RawMesh);
+        Config->UpdateFunc(&App);
+        Iterate(&App);
+    }
+
+    Config->CleanupFunc(&App);
     Rr_Cleanup(&App);
 
-    SDL_DelEventWatch(RrApp_EventWatch, &App);
+    SDL_DelEventWatch(EventWatch, &App);
     SDL_DestroyWindow(App.Window);
     SDL_Quit();
 }

@@ -16,7 +16,7 @@ void main()
 {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
 
-    ivec2 size = imageSize(image);
+    ivec2 size = ivec2(PushConstants.data3.x, PushConstants.data3.y);
 
     vec4 topColor = PushConstants.data1;
     vec4 bottomColor = PushConstants.data2;

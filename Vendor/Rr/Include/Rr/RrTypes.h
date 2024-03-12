@@ -160,9 +160,11 @@ typedef struct Rr_ImmediateMode
 
 typedef struct Rr_DrawTarget
 {
+    VkExtent2D ReferenceResolution;
+    VkExtent2D ActiveResolution;
+    i32 Scale;
     Rr_Image ColorImage;
     Rr_Image DepthImage;
-    VkExtent2D ActiveExtent;
     VkDescriptorSet DescriptorSet;
     VkDescriptorSetLayout DescriptorSetLayout;
 } Rr_DrawTarget;
@@ -235,6 +237,6 @@ typedef struct Rr_App
 {
     SDL_AtomicInt bExit;
     SDL_Window* Window;
-    Rr_Renderer Rr;
+    Rr_Renderer Renderer;
     Rr_FrameTime FrameTime;
 } Rr_App;

@@ -56,7 +56,10 @@ add_custom_target(
 # Add executable target
 #
 set_source_files_properties(Source/AssetDef.c PROPERTIES OBJECT_DEPENDS "${GLSL_SOURCE_FILES}")
-add_executable(${PROJECT_NAME} Source/AssetDef.c Source/Main.c)
+file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
+    "Source/*.c"
+)
+add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 add_dependencies(${PROJECT_NAME} Shaders)
 target_link_libraries(${PROJECT_NAME} PRIVATE RetroRenderer)
 if (WIN32)

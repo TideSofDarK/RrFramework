@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <cglm/ivec2.h>
 #include <cglm/mat4.h>
 #include <cglm/cam.h>
 
@@ -18,6 +19,7 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_vulkan.h>
 
+#include "RrApp.h"
 #include "RrVulkan.h"
 #include "RrLib.h"
 #include "RrDescriptor.h"
@@ -26,6 +28,24 @@
 #include "RrBuffer.h"
 #include "RrMesh.h"
 #include "RrPipelineBuilder.h"
+
+static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
+{
+    DrawTarget->ActiveResolution.width = DrawTarget->ReferenceResolution.width;
+    DrawTarget->ActiveResolution.height = DrawTarget->ReferenceResolution.height;
+
+    const i32 MaxAvailableScale = SDL_min(WindowWidth / DrawTarget->ReferenceResolution.width, WindowHeight / DrawTarget->ReferenceResolution.height);
+    if (MaxAvailableScale >= 1)
+    {
+        DrawTarget->ActiveResolution.width += (WindowWidth - MaxAvailableScale * DrawTarget->ReferenceResolution.width) / MaxAvailableScale;
+        DrawTarget->ActiveResolution.height += (WindowHeight - MaxAvailableScale * DrawTarget->ReferenceResolution.height) / MaxAvailableScale;
+
+        DrawTarget->ActiveResolution.width++;
+        DrawTarget->ActiveResolution.height++;
+    }
+
+    DrawTarget->Scale = MaxAvailableScale;
+}
 
 static bool Rr_CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice PhysicalDevice)
 {
@@ -181,9 +201,6 @@ static void Rr_CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Heig
         Height,
         1
     };
-
-    Renderer->DrawTarget.ActiveExtent.width = ColorImage->Extent.width;
-    Renderer->DrawTarget.ActiveExtent.height = ColorImage->Extent.height;
 
     VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
@@ -424,7 +441,10 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
         VK_ASSERT(vkCreateImageView(Renderer->Device, &ColorAttachmentView, NULL, &Renderer->Swapchain.Images[i].View))
     }
 
-    if (*Width > Renderer->DrawTarget.ColorImage.Extent.width || *Height > Renderer->DrawTarget.ColorImage.Extent.height)
+    CalculateDrawTargetResolution(&Renderer->DrawTarget, *Width, *Height);
+
+    if (Renderer->DrawTarget.ActiveResolution.width > Renderer->DrawTarget.ColorImage.Extent.width
+        || Renderer->DrawTarget.ActiveResolution.height > Renderer->DrawTarget.ColorImage.Extent.height)
     {
         if (Renderer->DrawTarget.ColorImage.Handle != VK_NULL_HANDLE)
         {
@@ -559,11 +579,11 @@ static void Rr_InitBackgroundPipelines(Rr_Renderer* const Renderer)
     Rr_Asset TestCOMP;
     RrAsset_Extern(&TestCOMP, TestCOMP);
     VK_ASSERT(vkCreateShaderModule(Renderer->Device, &(VkShaderModuleCreateInfo){
-                                                   .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                                                   .pNext = NULL,
-                                                   .codeSize = TestCOMP.Length,
-                                                   .pCode = (u32*)TestCOMP.Data,
-                                               },
+                                                         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                         .pNext = NULL,
+                                                         .codeSize = TestCOMP.Length,
+                                                         .pCode = (u32*)TestCOMP.Data,
+                                                     },
         NULL, &ComputeDrawShader))
 
     VkPipelineShaderStageCreateInfo StageCreateInfo = {
@@ -591,22 +611,22 @@ static void Rr_InitMeshPipeline(Rr_Renderer* const Renderer)
     Rr_Asset TriangleVERT;
     RrAsset_Extern(&TriangleVERT, TriangleVERT);
     VK_ASSERT(vkCreateShaderModule(Renderer->Device, &(VkShaderModuleCreateInfo){
-                                                   .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                                                   .pNext = NULL,
-                                                   .codeSize = TriangleVERT.Length,
-                                                   .pCode = (u32*)TriangleVERT.Data,
-                                               },
+                                                         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                         .pNext = NULL,
+                                                         .codeSize = TriangleVERT.Length,
+                                                         .pCode = (u32*)TriangleVERT.Data,
+                                                     },
         NULL, &VertModule))
 
     VkShaderModule FragModule;
     Rr_Asset TriangleFRAG;
     RrAsset_Extern(&TriangleFRAG, TriangleFRAG);
     VK_ASSERT(vkCreateShaderModule(Renderer->Device, &(VkShaderModuleCreateInfo){
-                                                   .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                                                   .pNext = NULL,
-                                                   .codeSize = TriangleFRAG.Length,
-                                                   .pCode = (u32*)TriangleFRAG.Data,
-                                               },
+                                                         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                         .pNext = NULL,
+                                                         .codeSize = TriangleFRAG.Length,
+                                                         .pCode = (u32*)TriangleFRAG.Data,
+                                                     },
         NULL, &FragModule))
 
     VkPushConstantRange PushConstantRange = {
@@ -647,8 +667,9 @@ static void Rr_DrawBackground(Rr_Renderer* const Renderer, VkCommandBuffer Comma
     SComputeConstants ComputeConstants;
     glm_vec4_copy((vec4){ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
     glm_vec4_copy((vec4){ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
+    glm_vec4_copy((vec4){ (f32)Renderer->DrawTarget.ActiveResolution.width, (f32)Renderer->DrawTarget.ActiveResolution.height, 0.0f, 1.0f }, ComputeConstants.Vec2);
     vkCmdPushConstants(CommandBuffer, Renderer->GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SComputeConstants), &ComputeConstants);
-    vkCmdDispatch(CommandBuffer, ceil(Renderer->DrawTarget.ActiveExtent.width / 16.0), ceil(Renderer->DrawTarget.ActiveExtent.height / 16.0), 1);
+    vkCmdDispatch(CommandBuffer, ceil(Renderer->DrawTarget.ActiveResolution.width / 16.0), ceil(Renderer->DrawTarget.ActiveResolution.height / 16.0), 1);
 
     // float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
     // VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
@@ -663,14 +684,14 @@ static void Rr_DrawGeometry(Rr_Renderer* const Renderer, VkCommandBuffer Command
     VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Renderer->DrawTarget.ColorImage.View, NULL, VK_IMAGE_LAYOUT_GENERAL);
     VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(Renderer->DrawTarget.DepthImage.View, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    VkRenderingInfo renderInfo = GetRenderingInfo(Renderer->DrawTarget.ActiveExtent, &ColorAttachment, &DepthAttachment);
+    VkRenderingInfo renderInfo = GetRenderingInfo(Renderer->DrawTarget.ActiveResolution, &ColorAttachment, &DepthAttachment);
     vkCmdBeginRendering(CommandBuffer, &renderInfo);
 
     VkViewport viewport = { 0 };
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)Renderer->DrawTarget.ActiveExtent.width;
-    viewport.height = (float)Renderer->DrawTarget.ActiveExtent.height;
+    viewport.width = (float)Renderer->DrawTarget.ActiveResolution.width;
+    viewport.height = (float)Renderer->DrawTarget.ActiveResolution.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
@@ -679,8 +700,8 @@ static void Rr_DrawGeometry(Rr_Renderer* const Renderer, VkCommandBuffer Command
     VkRect2D scissor = { 0 };
     scissor.offset.x = 0;
     scissor.offset.y = 0;
-    scissor.extent.width = Renderer->DrawTarget.ActiveExtent.width;
-    scissor.extent.height = Renderer->DrawTarget.ActiveExtent.height;
+    scissor.extent.width = Renderer->DrawTarget.ActiveResolution.width;
+    scissor.extent.height = Renderer->DrawTarget.ActiveResolution.height;
 
     vkCmdSetScissor(CommandBuffer, 0, 1, &scissor);
 
@@ -696,7 +717,7 @@ static void Rr_DrawGeometry(Rr_Renderer* const Renderer, VkCommandBuffer Command
     mat4 View;
     glm_lookat((vec3){ Z, 0.2f, X }, (vec3){ 0, 0.0f, 0 }, (vec3){ 0, 1, 0 }, View);
     mat4 Projection;
-    glm_perspective_rh_no(glm_rad(45.0f), (float)Renderer->DrawTarget.ActiveExtent.width / (float)Renderer->DrawTarget.ActiveExtent.height, 1.0f, 1000.0f, Projection);
+    glm_perspective_rh_no(glm_rad(45.0f), (float)Renderer->DrawTarget.ActiveResolution.width / (float)Renderer->DrawTarget.ActiveResolution.height, 1.0f, 1000.0f, Projection);
     Projection[1][1] *= -1.0f;
     glm_mat4_mul(Projection, View, PushConstants.ViewProjection);
 
@@ -734,7 +755,7 @@ void Rr_InitImmediateMode(Rr_Renderer* const Renderer)
 void Rr_InitImGui(Rr_App* App)
 {
     SDL_Window* Window = App->Window;
-    Rr_Renderer* Renderer = &App->Rr;
+    Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
     VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
@@ -801,10 +822,13 @@ void Rr_InitImGui(Rr_App* App)
     Renderer->ImGui.bInit = true;
 }
 
-void Rr_Init(Rr_App* App)
+void Rr_Init(Rr_App* App, Rr_AppConfig* Config)
 {
     SDL_Window* Window = App->Window;
-    Rr_Renderer* Renderer = &App->Rr;
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    Renderer->DrawTarget.ReferenceResolution.width = Config->ReferenceResolution[0];
+    Renderer->DrawTarget.ReferenceResolution.height = Config->ReferenceResolution[1];
 
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
@@ -880,7 +904,7 @@ void Rr_Init(Rr_App* App)
 
 void Rr_Cleanup(Rr_App* const App)
 {
-    Rr_Renderer* Renderer = &App->Rr;
+    Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
     vkDeviceWaitIdle(Renderer->Device);
@@ -952,9 +976,6 @@ void Rr_Draw(Rr_Renderer* const Renderer)
     DescriptorAllocator_ClearPools(&Frame->DescriptorAllocator, Device);
     AllocatedBuffer_Cleanup(&Frame->SceneDataBuffer, Renderer->Allocator);
 
-    Renderer->DrawTarget.ActiveExtent.width = Swapchain->Extent.width;
-    Renderer->DrawTarget.ActiveExtent.height = Swapchain->Extent.height;
-
     u32 SwapchainImageIndex;
     VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -997,10 +1018,11 @@ void Rr_Draw(Rr_Renderer* const Renderer)
         VK_IMAGE_LAYOUT_GENERAL);
     Rr_DrawBackground(Renderer, CommandBuffer);
     TransitionImage_To(&ColorImageTransition,
-                       VK_PIPELINE_STAGE_2_BLIT_BIT,
-                       VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), Swapchain->Extent);
+        VK_PIPELINE_STAGE_2_BLIT_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), Renderer->DrawTarget.ActiveResolution);
+    CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), GetExtent2D(Renderer->NoiseImage.Extent));
     TransitionImage_To(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
@@ -1035,7 +1057,7 @@ void Rr_Draw(Rr_Renderer* const Renderer)
         VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveExtent, Swapchain->Extent);
+    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution, Swapchain->Extent);
     TransitionImage_To(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,

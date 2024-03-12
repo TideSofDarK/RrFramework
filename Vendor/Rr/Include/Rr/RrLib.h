@@ -11,65 +11,6 @@
 #include "RrTypes.h"
 #include "RrHelpers.h"
 
-/* ==============
- * Shader Loading
- * ============== */
-
-static b32 LoadShaderModule(const char* Filename, VkDevice Device, VkShaderModule* OutShaderModule)
-{
-    char* BasePath = SDL_GetBasePath();
-    size_t BasePathLength = SDL_strlen(BasePath);
-    size_t ShaderPathLength = BasePathLength + SDL_strlen(Filename) + 1;
-    char* ShaderPath = SDL_stack_alloc(char, ShaderPathLength);
-    SDL_strlcpy(ShaderPath, BasePath, ShaderPathLength);
-    SDL_strlcpy(ShaderPath + BasePathLength, Filename, ShaderPathLength - BasePathLength);
-    SDL_free(BasePath);
-
-    SDL_RWops* File = SDL_RWFromFile(ShaderPath, "rb");
-
-    if (!File)
-    {
-        goto ShaderError;
-    }
-
-    SDL_RWseek(File, 0, SDL_RW_SEEK_END);
-    i64 FileSize = SDL_RWtell(File);
-    SDL_RWseek(File, 0, SDL_RW_SEEK_SET);
-
-    size_t BufferSize = (u32)FileSize / sizeof(u32);
-    u32* Buffer = SDL_stack_alloc(u32, BufferSize);
-
-    SDL_RWread(File, Buffer, FileSize);
-    SDL_RWclose(File);
-
-    VkShaderModuleCreateInfo CreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .pNext = NULL,
-        .codeSize = BufferSize * sizeof(u32),
-        .pCode = Buffer,
-    };
-
-    VkShaderModule ShaderModule;
-    VkResult Result = vkCreateShaderModule(Device, &CreateInfo, NULL, &ShaderModule);
-    SDL_stack_free(Buffer);
-    SDL_stack_free(ShaderPath);
-
-    if (Result != VK_SUCCESS)
-    {
-        goto ShaderError;
-    }
-
-    *OutShaderModule = ShaderModule;
-
-    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Loaded shader: %s", ShaderPath);
-
-    return true;
-
-ShaderError:
-    SDL_LogCritical(SDL_LOG_CATEGORY_VIDEO, "Error when building the shader! Path: %s", ShaderPath);
-    abort();
-}
-
 /* ==========
  * Operations
  * ========== */
@@ -108,7 +49,7 @@ static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkIm
         .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         .regionCount = 1,
         .pRegions = &BlitRegion,
-        .filter = VK_FILTER_LINEAR,
+        .filter = VK_FILTER_NEAREST,
     };
 
     vkCmdBlitImage2(CommandBuffer, &BlitInfo);
