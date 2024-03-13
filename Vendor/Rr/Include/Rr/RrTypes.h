@@ -1,20 +1,22 @@
 #pragma once
 
-#define VK_NO_PROTOTYPES
-
 #include <cglm/vec4.h>
 
+#define VK_NO_PROTOTYPES
 #include <vk_mem_alloc.h>
-
-#include "RrCore.h"
-#include "RrImage.h"
-#include "RrAsset.h"
-#include "RrDescriptor.h"
 
 #include <SDL3/SDL_atomic.h>
 
+#include "RrCore.h"
+#include "RrInput.h"
+#include "RrImage.h"
+#include "RrAsset.h"
+#include "RrDescriptor.h"
+#include "RrDefines.h"
+
 typedef struct SDL_Window SDL_Window;
 
+/* Renderer Types */
 typedef struct Rr_SceneData
 {
     mat4 View;
@@ -61,14 +63,14 @@ typedef struct Rr_PushConstants3D
     VkDeviceAddress VertexBufferAddress;
 } Rr_PushConstants3D;
 
-typedef struct Rr_TransitionImage
+typedef struct Rr_ImageBarrier
 {
     VkCommandBuffer CommandBuffer;
     VkImage Image;
     VkPipelineStageFlags2 StageMask;
     VkAccessFlags2 AccessMask;
     VkImageLayout Layout;
-} Rr_TransitionImage;
+} Rr_ImageBarrier;
 
 typedef struct Rr_FrameData
 {
@@ -237,6 +239,8 @@ typedef struct Rr_App
 {
     SDL_AtomicInt bExit;
     SDL_Window* Window;
+    Rr_InputConfig InputConfig;
+    Rr_InputState InputState;
     Rr_Renderer Renderer;
     Rr_FrameTime FrameTime;
 } Rr_App;

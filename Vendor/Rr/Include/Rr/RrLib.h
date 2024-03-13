@@ -104,8 +104,8 @@ static VkDescriptorSetLayout DescriptorLayoutBuilder_Build(Rr_DescriptorLayoutBu
  * Rr_TransitionImage API
  * ==================== */
 
-static void TransitionImage_To(
-    Rr_TransitionImage* TransitionImage,
+static void Rr_ChainImageBarrier(
+    Rr_ImageBarrier* TransitionImage,
     VkPipelineStageFlags2 DstStageMask,
     VkAccessFlags2 DstAccessMask,
     VkImageLayout NewLayout)

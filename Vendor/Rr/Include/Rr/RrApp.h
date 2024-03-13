@@ -3,11 +3,13 @@
 #include <cglm/ivec2.h>
 
 typedef struct Rr_App Rr_App;
+typedef struct Rr_InputConfig Rr_InputConfig;
 
 typedef struct Rr_AppConfig
 {
     const char* Title;
     ivec2 ReferenceResolution;
+    Rr_InputConfig* InputConfig;
     void (*InitFunc)(Rr_App* App);
     void (*CleanupFunc)(Rr_App* App);
     void (*UpdateFunc)(Rr_App* App);

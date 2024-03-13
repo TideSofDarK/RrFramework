@@ -1,5 +1,4 @@
 #include "RrRenderer.h"
-#include "RrTypes.h"
 
 #include <math.h>
 #include <string.h>
@@ -20,6 +19,7 @@
 #include <SDL3/SDL_vulkan.h>
 
 #include "RrApp.h"
+#include "RrTypes.h"
 #include "RrVulkan.h"
 #include "RrLib.h"
 #include "RrDescriptor.h"
@@ -31,6 +31,7 @@
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
 {
+    SDL_SCANCODE_1;
     DrawTarget->ActiveResolution.width = DrawTarget->ReferenceResolution.width;
     DrawTarget->ActiveResolution.height = DrawTarget->ReferenceResolution.height;
 
@@ -40,8 +41,8 @@ static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 W
         DrawTarget->ActiveResolution.width += (WindowWidth - MaxAvailableScale * DrawTarget->ReferenceResolution.width) / MaxAvailableScale;
         DrawTarget->ActiveResolution.height += (WindowHeight - MaxAvailableScale * DrawTarget->ReferenceResolution.height) / MaxAvailableScale;
 
-        DrawTarget->ActiveResolution.width++;
-        DrawTarget->ActiveResolution.height++;
+//        DrawTarget->ActiveResolution.width++;
+//        DrawTarget->ActiveResolution.height++;
     }
 
     DrawTarget->Scale = MaxAvailableScale;
@@ -1005,60 +1006,67 @@ void Rr_Draw(Rr_Renderer* const Renderer)
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo))
 
-    Rr_TransitionImage ColorImageTransition = {
+    Rr_ImageBarrier ColorImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = ColorImage->Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .AccessMask = VK_ACCESS_2_NONE,
         .StageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
     };
-    TransitionImage_To(&ColorImageTransition,
+    Rr_ChainImageBarrier(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
         VK_ACCESS_2_MEMORY_WRITE_BIT,
         VK_IMAGE_LAYOUT_GENERAL);
     Rr_DrawBackground(Renderer, CommandBuffer);
-    TransitionImage_To(&ColorImageTransition,
+    Rr_ChainImageBarrier(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,
         VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), Renderer->DrawTarget.ActiveResolution);
     CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), GetExtent2D(Renderer->NoiseImage.Extent));
-    TransitionImage_To(&ColorImageTransition,
+    Rr_ChainImageBarrier(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    Rr_TransitionImage DepthImageTransition = {
+    Rr_ImageBarrier DepthImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = DepthImage->Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
         .StageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
     };
-    TransitionImage_To(&DepthImageTransition,
+    Rr_ChainImageBarrier(&DepthImageTransition,
         VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
         VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     Rr_DrawGeometry(Renderer, CommandBuffer, SceneDataDescriptorSet);
-    TransitionImage_To(&ColorImageTransition,
+    Rr_ChainImageBarrier(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,
         VK_ACCESS_2_TRANSFER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    Rr_TransitionImage SwapchainImageTransition = {
+    Rr_ImageBarrier SwapchainImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = SwapchainImage,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .AccessMask = VK_ACCESS_2_NONE,
         .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
     };
-    TransitionImage_To(&SwapchainImageTransition,
+    Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,
         VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution, Swapchain->Extent);
-    TransitionImage_To(&SwapchainImageTransition,
+    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
+        (VkExtent2D){
+            .width = (Renderer->DrawTarget.ActiveResolution.width) * Renderer->DrawTarget.Scale,
+            .height = (Renderer->DrawTarget.ActiveResolution.height) * Renderer->DrawTarget.Scale });
+//    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
+//                     (VkExtent2D){
+//                         .width = Renderer->DrawTarget.ActiveResolution.width,
+//                         .height = Renderer->DrawTarget.ActiveResolution.height});
+    Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -1075,7 +1083,7 @@ void Rr_Draw(Rr_Renderer* const Renderer)
         vkCmdEndRendering(CommandBuffer);
     }
 
-    TransitionImage_To(&SwapchainImageTransition,
+    Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
         0,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);

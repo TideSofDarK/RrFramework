@@ -21,6 +21,7 @@
 #include "RrRenderer.h"
 #include "RrAsset.h"
 #include "RrTypes.h"
+#include "RrInput.h"
 #include "RrMesh.h"
 
 static void FrameTime_Advance(Rr_FrameTime* FrameTime)
@@ -100,6 +101,8 @@ static void ShowDebugOverlay(Rr_App* App)
 
 static void Iterate(Rr_App* App)
 {
+    Rr_UpdateInputState(&App->InputState, &App->InputConfig);
+
     if (Rr_NewFrame(&App->Renderer, App->Window))
     {
         ImGui_ImplVulkan_NewFrame();
@@ -133,7 +136,7 @@ static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
         case SDL_EVENT_WINDOW_RESIZED:
         {
             Rr_App* App = (Rr_App*)AppPtr;
-            SDL_AtomicSet(&App->Rr.Swapchain.bResizePending, 1);
+            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
         }
         break;
 #endif
@@ -177,6 +180,10 @@ void Rr_Run(Rr_AppConfig* Config)
             1600,
             800,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
+        .InputConfig = {
+            .Count = Config->InputConfig->Count,
+            .Mappings = Config->InputConfig->Mappings
+        }
     };
 
     InitFrameTime(&App.FrameTime, App.Window);

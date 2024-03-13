@@ -76,14 +76,14 @@ Rr_Image Rr_LoadImageRGBA8(Rr_Asset* Asset, Rr_Renderer* const Rr, VkImageUsageF
     Rr_Image Image = Rr_CreateImage(Rr, Extent, RR_COLOR_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
 
     Rr_BeginImmediate(Rr);
-    Rr_TransitionImage Transition = {
+    Rr_ImageBarrier Transition = {
         .Image = Image.Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .StageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
         .AccessMask = VK_ACCESS_2_NONE,
         .CommandBuffer = Rr->ImmediateMode.CommandBuffer,
     };
-    TransitionImage_To(&Transition, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     VkBufferImageCopy Copy = {
         .bufferOffset = 0,
@@ -100,7 +100,7 @@ Rr_Image Rr_LoadImageRGBA8(Rr_Asset* Asset, Rr_Renderer* const Rr, VkImageUsageF
 
     vkCmdCopyBufferToImage(Rr->ImmediateMode.CommandBuffer, Buffer.Handle, Image.Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
 
-    TransitionImage_To(&Transition, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_READ_BIT, InitialLayout);
+    Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_READ_BIT, InitialLayout);
     Rr_EndImmediate(Rr);
 
     AllocatedBuffer_Cleanup(&Buffer, Rr->Allocator);

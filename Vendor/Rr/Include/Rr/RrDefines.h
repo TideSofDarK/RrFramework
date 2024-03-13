@@ -2,6 +2,7 @@
 
 #include "RrCore.h"
 
+/* Renderer Defines */
 #define MAX_LAYOUT_BINDINGS 4
 #define MAX_SWAPCHAIN_IMAGE_COUNT 8
 #define PIPELINE_SHADER_STAGES 2
