@@ -31,7 +31,6 @@
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
 {
-    SDL_SCANCODE_1;
     DrawTarget->ActiveResolution.width = DrawTarget->ReferenceResolution.width;
     DrawTarget->ActiveResolution.height = DrawTarget->ReferenceResolution.height;
 
