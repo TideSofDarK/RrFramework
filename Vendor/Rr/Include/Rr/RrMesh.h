@@ -20,4 +20,4 @@ void Rr_CleanupMesh(Rr_Renderer* Rr, Rr_MeshBuffers* Mesh);
 
 void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset);
 
-void Rr_FreeRawMesh(Rr_RawMesh* RawMesh);
+void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh);

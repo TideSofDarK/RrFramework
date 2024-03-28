@@ -61,7 +61,7 @@ static void FrameTime_Advance(Rr_FrameTime* FrameTime)
     }
 }
 
-static void ShowDebugOverlay(Rr_App* App)
+void Rr_DebugOverlay(Rr_App* App)
 {
     ImGuiIO* IO = igGetIO();
     const ImGuiViewport* Viewport = igGetMainViewport();
@@ -99,25 +99,35 @@ static void ShowDebugOverlay(Rr_App* App)
     igEnd();
 }
 
-static void Iterate(Rr_App* App)
+static b8 BeginIterate(Rr_App* App)
 {
-    Rr_UpdateInputState(&App->InputState, &App->InputConfig);
-
     if (Rr_NewFrame(&App->Renderer, App->Window))
     {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         igNewFrame();
 
-        igShowDemoWindow(NULL);
-        ShowDebugOverlay(App);
-
-        igRender();
-
-        Rr_Draw(&App->Renderer);
+        return true;
     }
+    return false;
+}
+
+static void EndIterate(Rr_App* App)
+{
+    igRender();
+    Rr_Draw(&App->Renderer);
 
     FrameTime_Advance(&App->FrameTime);
+}
+
+static void Iterate(Rr_App* App)
+{
+    if (BeginIterate(App))
+    {
+        Rr_UpdateInputState(&App->InputState, &App->InputConfig);
+        App->Config->UpdateFunc(App);
+        EndIterate(App);
+    }
 }
 
 static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
@@ -175,6 +185,7 @@ void Rr_Run(Rr_AppConfig* Config)
     SDL_Vulkan_LoadLibrary(NULL);
 
     Rr_App App = {
+        .Config = Config,
         .Window = SDL_CreateWindow(
             Config->Title,
             1600,
@@ -182,15 +193,14 @@ void Rr_Run(Rr_AppConfig* Config)
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
         .InputConfig = {
             .Count = Config->InputConfig->Count,
-            .Mappings = Config->InputConfig->Mappings
-        }
+            .Mappings = Config->InputConfig->Mappings }
     };
 
     InitFrameTime(&App.FrameTime, App.Window);
 
     SDL_AddEventWatch(EventWatch, &App);
 
-    Rr_Init(&App, Config);
+    Rr_Init(&App);
     Rr_InitImGui(&App);
 
     Config->InitFunc(&App);
@@ -215,7 +225,6 @@ void Rr_Run(Rr_AppConfig* Config)
             }
         }
 
-        Config->UpdateFunc(&App);
         Iterate(&App);
     }
 

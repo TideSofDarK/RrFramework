@@ -16,3 +16,4 @@ typedef struct Rr_AppConfig
 } Rr_AppConfig;
 
 void Rr_Run(Rr_AppConfig* Config);
+void Rr_DebugOverlay(Rr_App* App);

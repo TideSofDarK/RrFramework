@@ -5,5 +5,6 @@
 
 typedef struct Rr_Buffer Rr_Buffer;
 
-void AllocatedBuffer_Init(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped);
-void AllocatedBuffer_Cleanup(Rr_Buffer* Buffer, VmaAllocator Allocator);
+void Rr_InitBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped);
+void Rr_InitMappedBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags);
+void Rr_DestroyBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator);

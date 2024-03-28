@@ -15,6 +15,7 @@
 #include "RrDefines.h"
 
 typedef struct SDL_Window SDL_Window;
+typedef struct Rr_AppConfig Rr_AppConfig;
 
 /* Renderer Types */
 typedef struct Rr_SceneData
@@ -243,4 +244,5 @@ typedef struct Rr_App
     Rr_InputState InputState;
     Rr_Renderer Renderer;
     Rr_FrameTime FrameTime;
+    Rr_AppConfig* Config;
 } Rr_App;

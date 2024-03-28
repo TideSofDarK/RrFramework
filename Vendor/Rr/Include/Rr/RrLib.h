@@ -2,10 +2,7 @@
 
 #include <stdlib.h>
 
-#include <SDL_log.h>
-#include <SDL_assert.h>
-#include <SDL_rwops.h>
-#include <SDL_filesystem.h>
+#include <SDL3/SDL.h>
 
 #include "RrVulkan.h"
 #include "RrTypes.h"

@@ -68,7 +68,7 @@ Rr_Image Rr_LoadImageRGBA8(Rr_Asset* Asset, Rr_Renderer* const Rr, VkImageUsageF
     size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Buffer Buffer = { 0 };
-    AllocatedBuffer_Init(&Buffer, Rr->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
+    Rr_InitBuffer(&Buffer, Rr->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
 
     SDL_memcpy(Buffer.AllocationInfo.pMappedData, ParsedImage, DataSize);
     stbi_image_free(ParsedImage);
@@ -103,7 +103,7 @@ Rr_Image Rr_LoadImageRGBA8(Rr_Asset* Asset, Rr_Renderer* const Rr, VkImageUsageF
     Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_READ_BIT, InitialLayout);
     Rr_EndImmediate(Rr);
 
-    AllocatedBuffer_Cleanup(&Buffer, Rr->Allocator);
+    Rr_DestroyBuffer(&Buffer, Rr->Allocator);
 
     return Image;
 }

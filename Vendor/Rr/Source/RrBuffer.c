@@ -3,7 +3,7 @@
 #include "RrTypes.h"
 #include "RrVulkan.h"
 
-void AllocatedBuffer_Init(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped)
+void Rr_InitBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped)
 {
     VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -24,7 +24,12 @@ void AllocatedBuffer_Init(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size
     VK_ASSERT(vmaCreateBuffer(Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo))
 }
 
-void AllocatedBuffer_Cleanup(Rr_Buffer* Buffer, VmaAllocator Allocator)
+void Rr_InitMappedBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags)
+{
+    Rr_InitBuffer(Buffer, Allocator, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO_PREFER_HOST, true);
+}
+
+void Rr_DestroyBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator)
 {
     vmaDestroyBuffer(Allocator, Buffer->Handle, Buffer->Allocation);
 }

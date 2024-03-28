@@ -28,6 +28,7 @@
 #include "RrBuffer.h"
 #include "RrMesh.h"
 #include "RrPipelineBuilder.h"
+#include "RrPipeline.h"
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
 {
@@ -822,10 +823,11 @@ void Rr_InitImGui(Rr_App* App)
     Renderer->ImGui.bInit = true;
 }
 
-void Rr_Init(Rr_App* App, Rr_AppConfig* Config)
+void Rr_Init(Rr_App* App)
 {
     SDL_Window* Window = App->Window;
     Rr_Renderer* Renderer = &App->Renderer;
+    Rr_AppConfig* Config = App->Config;
 
     Renderer->DrawTarget.ReferenceResolution.width = Config->ReferenceResolution[0];
     Renderer->DrawTarget.ReferenceResolution.height = Config->ReferenceResolution[1];
@@ -945,7 +947,7 @@ void Rr_Cleanup(Rr_App* const App)
         vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
 
         DescriptorAllocator_Cleanup(&Frame->DescriptorAllocator, Device);
-        AllocatedBuffer_Cleanup(&Frame->SceneDataBuffer, Renderer->Allocator);
+        Rr_DestroyBuffer(&Frame->SceneDataBuffer, Renderer->Allocator);
     }
 
     Rr_CleanupDrawTarget(Renderer);
@@ -974,7 +976,7 @@ void Rr_Draw(Rr_Renderer* const Renderer)
     VK_ASSERT(vkResetFences(Device, 1, &Frame->RenderFence))
 
     DescriptorAllocator_ClearPools(&Frame->DescriptorAllocator, Device);
-    AllocatedBuffer_Cleanup(&Frame->SceneDataBuffer, Renderer->Allocator);
+    Rr_DestroyBuffer(&Frame->SceneDataBuffer, Renderer->Allocator);
 
     u32 SwapchainImageIndex;
     VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
@@ -989,7 +991,7 @@ void Rr_Draw(Rr_Renderer* const Renderer)
     }
     SDL_assert(Result >= 0);
 
-    AllocatedBuffer_Init(&Frame->SceneDataBuffer, Renderer->Allocator, sizeof(Rr_SceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, true);
+    Rr_InitMappedBuffer(&Frame->SceneDataBuffer, Renderer->Allocator, sizeof(Rr_SceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     Rr_SceneData* SceneData = (Rr_SceneData*)Frame->SceneDataBuffer.AllocationInfo.pMappedData;
     glm_vec4_copy((vec4){ 1.0f, 1.0f, 1.0f, 0.5f }, Renderer->SceneData.AmbientColor);
     *SceneData = Renderer->SceneData;
@@ -1175,57 +1177,4 @@ void Rr_EndImmediate(Rr_Renderer* const Renderer)
 Rr_FrameData* Rr_GetCurrentFrame(Rr_Renderer* const Renderer)
 {
     return &Renderer->Frames[Renderer->FrameNumber % FRAME_OVERLAP];
-}
-
-VkPipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder const* const PipelineBuilder)
-{
-    VkPipelineViewportStateCreateInfo ViewportInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .viewportCount = 1,
-        .scissorCount = 1,
-    };
-
-    VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .logicOpEnable = VK_FALSE,
-        .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = 1,
-        .pAttachments = &PipelineBuilder->ColorBlendAttachment,
-    };
-
-    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext = NULL,
-    };
-
-    VkDynamicState DynamicState[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-    VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .pDynamicStates = DynamicState,
-        .dynamicStateCount = SDL_arraysize(DynamicState)
-    };
-
-    VkGraphicsPipelineCreateInfo PipelineInfo = {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = &PipelineBuilder->RenderInfo,
-        .stageCount = PipelineBuilder->ShaderStageCount,
-        .pStages = PipelineBuilder->ShaderStages,
-        .pVertexInputState = &VertexInputInfo,
-        .pInputAssemblyState = &PipelineBuilder->InputAssembly,
-        .pViewportState = &ViewportInfo,
-        .pRasterizationState = &PipelineBuilder->Rasterizer,
-        .pMultisampleState = &PipelineBuilder->Multisampling,
-        .pColorBlendState = &ColorBlendInfo,
-        .pDepthStencilState = &PipelineBuilder->DepthStencil,
-        .layout = PipelineBuilder->PipelineLayout,
-        .pDynamicState = &DynamicStateInfo
-    };
-
-    VkPipeline Pipeline;
-    VK_ASSERT(vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline))
-
-    return Pipeline;
 }

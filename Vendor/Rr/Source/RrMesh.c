@@ -22,7 +22,7 @@ void Rr_UploadMesh(
     size_t VertexBufferSize = sizeof(Rr_Vertex) * VertexCount;
     size_t IndexBufferSize = sizeof(MeshIndexType) * IndexCount;
 
-    AllocatedBuffer_Init(
+    Rr_InitBuffer(
         &MeshBuffers->VertexBuffer,
         Rr->Allocator,
         VertexBufferSize,
@@ -36,7 +36,7 @@ void Rr_UploadMesh(
     };
     MeshBuffers->VertexBufferAddress = vkGetBufferDeviceAddress(Rr->Device, &DeviceAddressInfo);
 
-    AllocatedBuffer_Init(
+    Rr_InitBuffer(
         &MeshBuffers->IndexBuffer,
         Rr->Allocator,
         IndexBufferSize,
@@ -44,7 +44,7 @@ void Rr_UploadMesh(
         VMA_MEMORY_USAGE_AUTO, false);
 
     Rr_Buffer StagingBuffer = { 0 };
-    AllocatedBuffer_Init(
+    Rr_InitBuffer(
         &StagingBuffer,
         Rr->Allocator,
         VertexBufferSize + IndexBufferSize,
@@ -76,13 +76,13 @@ void Rr_UploadMesh(
 
     Rr_EndImmediate(Rr);
 
-    AllocatedBuffer_Cleanup(&StagingBuffer, Rr->Allocator);
+    Rr_DestroyBuffer(&StagingBuffer, Rr->Allocator);
 }
 
 void Rr_CleanupMesh(Rr_Renderer* const Rr, Rr_MeshBuffers* const Mesh)
 {
-    AllocatedBuffer_Cleanup(&Mesh->IndexBuffer, Rr->Allocator);
-    AllocatedBuffer_Cleanup(&Mesh->VertexBuffer, Rr->Allocator);
+    Rr_DestroyBuffer(&Mesh->IndexBuffer, Rr->Allocator);
+    Rr_DestroyBuffer(&Mesh->VertexBuffer, Rr->Allocator);
 }
 
 static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
@@ -235,7 +235,7 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
     }
 }
 
-void Rr_FreeRawMesh(Rr_RawMesh* RawMesh)
+void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh)
 {
     Rr_ArrayEmpty(RawMesh->Vertices, true);
     Rr_ArrayEmpty(RawMesh->Indices, true);

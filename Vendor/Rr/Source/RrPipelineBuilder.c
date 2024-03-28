@@ -76,3 +76,56 @@ void PipelineBuilder_AlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
         .alphaBlendOp = VK_BLEND_OP_ADD,
     };
 }
+
+VkPipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder const* const PipelineBuilder)
+{
+    VkPipelineViewportStateCreateInfo ViewportInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
+
+    VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = 1,
+        .pAttachments = &PipelineBuilder->ColorBlendAttachment,
+    };
+
+    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext = NULL,
+    };
+
+    VkDynamicState DynamicState[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .pDynamicStates = DynamicState,
+        .dynamicStateCount = SDL_arraysize(DynamicState)
+    };
+
+    VkGraphicsPipelineCreateInfo PipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext = &PipelineBuilder->RenderInfo,
+        .stageCount = PipelineBuilder->ShaderStageCount,
+        .pStages = PipelineBuilder->ShaderStages,
+        .pVertexInputState = &VertexInputInfo,
+        .pInputAssemblyState = &PipelineBuilder->InputAssembly,
+        .pViewportState = &ViewportInfo,
+        .pRasterizationState = &PipelineBuilder->Rasterizer,
+        .pMultisampleState = &PipelineBuilder->Multisampling,
+        .pColorBlendState = &ColorBlendInfo,
+        .pDepthStencilState = &PipelineBuilder->DepthStencil,
+        .layout = PipelineBuilder->PipelineLayout,
+        .pDynamicState = &DynamicStateInfo
+    };
+
+    VkPipeline Pipeline;
+    VK_ASSERT(vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline))
+
+    return Pipeline;
+}

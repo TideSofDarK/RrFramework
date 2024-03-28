@@ -30,13 +30,13 @@ add_subdirectory(Vendor/Rr)
 #
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
-set(SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/")
+set(SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/Shader/")
 file(GLOB GLSL_SOURCE_FILES CONFIGURE_DEPENDS
-        "${SHADER_DIR}*.frag" "${SHADER_DIR}*.vert" "${SHADER_DIR}*.comp"
+        "${SHADER_DIR}*.glsl"
 )
 
 foreach (GLSL ${GLSL_SOURCE_FILES})
-    get_filename_component(FILE_NAME ${GLSL} NAME)
+    get_filename_component(FILE_NAME ${GLSL} NAME_WLE)
     set(SPIRV "${SHADER_DIR}/${FILE_NAME}.spv")
     add_custom_command(
             MAIN_DEPENDENCY ${GLSL}
