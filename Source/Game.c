@@ -3,6 +3,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
 
+#include <cglm/vec3.h>
 #include <cglm/mat4.h>
 
 #include <SDL3/SDL_scancode.h>

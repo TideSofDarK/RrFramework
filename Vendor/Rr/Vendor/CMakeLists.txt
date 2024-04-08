@@ -17,7 +17,7 @@ set(SDL_VULKAN ON CACHE BOOL "" FORCE)
 CPMAddPackage("gh:libsdl-org/SDL#main")
 
 CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator#master")
-CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.275.0")
+CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.280.0")
 
 set(CGLM_STATIC ON CACHE BOOL "" FORCE)
 CPMAddPackage("gh:recp/cglm#master")
