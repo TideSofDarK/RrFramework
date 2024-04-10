@@ -115,7 +115,7 @@ static b8 BeginIterate(Rr_App* App)
 static void EndIterate(Rr_App* App)
 {
     igRender();
-    Rr_Draw(&App->Renderer);
+    Rr_Draw(App);
 
     FrameTime_Advance(&App->FrameTime);
 }
@@ -228,7 +228,6 @@ void Rr_Run(Rr_AppConfig* Config)
         Iterate(&App);
     }
 
-    Config->CleanupFunc(&App);
     Rr_Cleanup(&App);
 
     SDL_DelEventWatch(EventWatch, &App);

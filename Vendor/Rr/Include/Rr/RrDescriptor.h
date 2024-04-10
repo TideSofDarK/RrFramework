@@ -48,3 +48,9 @@ void DescriptorWriter_WriteImage(SDescriptorWriter* Writer, u32 Binding, VkImage
 void DescriptorWriter_WriteBuffer(SDescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type);
 void DescriptorWriter_Cleanup(SDescriptorWriter* Writer);
 void DescriptorWriter_Update(SDescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
+
+typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
+
+void DescriptorLayoutBuilder_Add(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type);
+void DescriptorLayoutBuilder_Clear(Rr_DescriptorLayoutBuilder* Builder);
+VkDescriptorSetLayout DescriptorLayoutBuilder_Build(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags);

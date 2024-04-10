@@ -29,7 +29,7 @@ Rr_Pipeline Rr_CreatePipeline(Rr_Renderer* Renderer, Rr_PipelineCreateInfo* Info
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         .setLayoutCount = 1,
-        .pSetLayouts = &Renderer->SceneDataLayout,
+        // .pSetLayouts = &Renderer->SceneDataLayout,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &PushConstantRange,
     };
@@ -39,7 +39,7 @@ Rr_Pipeline Rr_CreatePipeline(Rr_Renderer* Renderer, Rr_PipelineCreateInfo* Info
     PipelineBuilder_Default(&Builder, VertModule, FragModule, Renderer->DrawTarget.ColorImage.Format, Renderer->DrawTarget.DepthImage.Format, Renderer->MeshPipelineLayout);
     // PipelineBuilder_AlphaBlend(&Builder);
     PipelineBuilder_Depth(&Builder);
-    Rr_Pipeline Pipeline = {0};
+    Rr_Pipeline Pipeline = { 0 };
     Pipeline.Handle = Rr_BuildPipeline(Renderer, &Builder);
     Renderer->MeshPipeline = Pipeline.Handle;
 

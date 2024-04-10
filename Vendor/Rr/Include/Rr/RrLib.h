@@ -52,51 +52,6 @@ static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkIm
     vkCmdBlitImage2(CommandBuffer, &BlitInfo);
 }
 
-/* ============================
- * Rr_DescriptorLayoutBuilder API
- * ============================ */
-
-static void DescriptorLayoutBuilder_Add(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type)
-{
-    if (Builder->Count >= MAX_LAYOUT_BINDINGS)
-    {
-        return;
-    }
-    Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
-        .binding = Binding,
-        .descriptorType = Type,
-        .descriptorCount = 1,
-    };
-    Builder->Count++;
-}
-
-static void DescriptorLayoutBuilder_Clear(Rr_DescriptorLayoutBuilder* Builder)
-{
-    *Builder = (Rr_DescriptorLayoutBuilder){ 0 };
-}
-
-static VkDescriptorSetLayout DescriptorLayoutBuilder_Build(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
-{
-    for (u32 Index = 0; Index < MAX_LAYOUT_BINDINGS; ++Index)
-    {
-        VkDescriptorSetLayoutBinding* Binding = &Builder->Bindings[Index];
-        Binding->stageFlags |= ShaderStageFlags;
-    }
-
-    VkDescriptorSetLayoutCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .bindingCount = Builder->Count,
-        .pBindings = Builder->Bindings,
-    };
-
-    VkDescriptorSetLayout Set;
-    VK_ASSERT(vkCreateDescriptorSetLayout(Device, &Info, NULL, &Set));
-
-    return Set;
-}
-
 /* ====================
  * Rr_TransitionImage API
  * ==================== */

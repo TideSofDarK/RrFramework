@@ -53,4 +53,3 @@ void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config)
     }
     *State = NewState;
 }
-

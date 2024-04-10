@@ -2,6 +2,8 @@
 
 #include <SDL3/SDL.h>
 
+#include "RrDefines.h"
+#include "RrTypes.h"
 #include "RrVulkan.h"
 #include "RrArray.h"
 
@@ -213,4 +215,49 @@ void DescriptorWriter_Update(SDescriptorWriter* Writer, VkDevice Device, VkDescr
     }
 
     vkUpdateDescriptorSets(Device, (u32)WritesCount, Writer->Writes, 0, NULL);
+}
+
+/* ============================
+ * Rr_DescriptorLayoutBuilder API
+ * ============================ */
+
+void DescriptorLayoutBuilder_Add(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type)
+{
+    if (Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
+    {
+        return;
+    }
+    Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
+        .binding = Binding,
+        .descriptorType = Type,
+        .descriptorCount = 1,
+    };
+    Builder->Count++;
+}
+
+void DescriptorLayoutBuilder_Clear(Rr_DescriptorLayoutBuilder* Builder)
+{
+    *Builder = (Rr_DescriptorLayoutBuilder){ 0 };
+}
+
+VkDescriptorSetLayout DescriptorLayoutBuilder_Build(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
+{
+    for (u32 Index = 0; Index < RR_MAX_LAYOUT_BINDINGS; ++Index)
+    {
+        VkDescriptorSetLayoutBinding* Binding = &Builder->Bindings[Index];
+        Binding->stageFlags |= ShaderStageFlags;
+    }
+
+    VkDescriptorSetLayoutCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .bindingCount = Builder->Count,
+        .pBindings = Builder->Bindings,
+    };
+
+    VkDescriptorSetLayout Set;
+    VK_ASSERT(vkCreateDescriptorSetLayout(Device, &Info, NULL, &Set));
+
+    return Set;
 }

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "RrCore.h"
-#include "RrArray.h"
+#ifndef __cplusplus
+    #include "RrCore.h"
+#endif
+// #include "RrArray.h"
 
 typedef struct Rr_Asset
 {

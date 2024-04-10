@@ -1,10 +1,11 @@
 #pragma once
 
+#include "RrCore.h"
 #include "RrVulkan.h"
 
 static VkExtent2D GetExtent2D(VkExtent3D Extent)
 {
-    return (VkExtent2D){.height = Extent.height, .width = Extent.width};
+    return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
 }
 
 /* =======================

@@ -18,14 +18,6 @@ typedef struct SDL_Window SDL_Window;
 typedef struct Rr_AppConfig Rr_AppConfig;
 
 /* Renderer Types */
-typedef struct Rr_SceneData
-{
-    mat4 View;
-    mat4 Proj;
-    mat4 ViewProj;
-    vec4 AmbientColor;
-} Rr_SceneData;
-
 typedef struct Rr_Buffer
 {
     VkBuffer Handle;
@@ -73,7 +65,9 @@ typedef struct Rr_ImageBarrier
     VkImageLayout Layout;
 } Rr_ImageBarrier;
 
-typedef struct Rr_FrameData
+typedef struct Rr_PerFrameData Rr_PerFrameData;
+
+typedef struct Rr_Frame
 {
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
@@ -81,8 +75,7 @@ typedef struct Rr_FrameData
     VkSemaphore RenderSemaphore;
     VkFence RenderFence;
     SDescriptorAllocator DescriptorAllocator;
-    Rr_Buffer SceneDataBuffer;
-} Rr_FrameData;
+} Rr_Frame;
 
 typedef struct Rr_PipelineBuilder
 {
@@ -136,7 +129,7 @@ typedef struct Rr_PhysicalDevice
 
 typedef struct Rr_DescriptorLayoutBuilder
 {
-    VkDescriptorSetLayoutBinding Bindings[MAX_LAYOUT_BINDINGS];
+    VkDescriptorSetLayoutBinding Bindings[RR_MAX_LAYOUT_BINDINGS];
     u32 Count;
 } Rr_DescriptorLayoutBuilder;
 
@@ -192,7 +185,8 @@ typedef struct Rr_Renderer
 
     VmaAllocator Allocator;
 
-    Rr_FrameData Frames[FRAME_OVERLAP];
+    Rr_PerFrameData* PerFrameDatas;
+    Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
 
     SDescriptorAllocator GlobalDescriptorAllocator;
@@ -214,9 +208,6 @@ typedef struct Rr_Renderer
     Rr_Image NoiseImage;
 
     VkSampler NearestSampler;
-
-    Rr_SceneData SceneData;
-    VkDescriptorSetLayout SceneDataLayout;
 } Rr_Renderer;
 
 typedef struct Rr_FrameTime

@@ -151,7 +151,7 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
                             Rr_ArrayPush(ScratchColors, &NewColor);
                         }
                     }
-                        break;
+                    break;
                     case 't':
                     {
                         CurrentIndex++;
@@ -160,7 +160,7 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
                         NewTexCoord[1] = (float)SDL_strtod(EndPos, &EndPos);
                         Rr_ArrayPush(ScratchTexCoords, &NewTexCoord);
                     }
-                        break;
+                    break;
                     case 'n':
                     {
                         CurrentIndex++;
@@ -170,10 +170,10 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
                         NewNormal[2] = (float)SDL_strtod(EndPos, &EndPos);
                         Rr_ArrayPush(ScratchNormals, &NewNormal);
                     }
-                        break;
+                    break;
                 }
             }
-                break;
+            break;
             case 'f':
             {
                 CurrentIndex++;
@@ -225,11 +225,11 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
                     }
                 }
             }
-                break;
+            break;
             default:
             {
             }
-                break;
+            break;
         }
         CurrentIndex = GetNewLine(Asset->Data, Asset->Length, CurrentIndex) + 1;
     }

@@ -1,4 +1,5 @@
 #include "RrRenderer.h"
+#include "RrDefines.h"
 
 #include <math.h>
 #include <string.h>
@@ -41,8 +42,8 @@ static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 W
         DrawTarget->ActiveResolution.width += (WindowWidth - MaxAvailableScale * DrawTarget->ReferenceResolution.width) / MaxAvailableScale;
         DrawTarget->ActiveResolution.height += (WindowHeight - MaxAvailableScale * DrawTarget->ReferenceResolution.height) / MaxAvailableScale;
 
-//        DrawTarget->ActiveResolution.width++;
-//        DrawTarget->ActiveResolution.height++;
+        //        DrawTarget->ActiveResolution.width++;
+        //        DrawTarget->ActiveResolution.height++;
     }
 
     DrawTarget->Scale = MaxAvailableScale;
@@ -465,14 +466,14 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
 static void Rr_InitFrames(Rr_Renderer* const Renderer)
 {
     VkDevice Device = Renderer->Device;
-    Rr_FrameData* Frames = Renderer->Frames;
+    Rr_Frame* Frames = Renderer->Frames;
 
     VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
 
-    for (i32 Index = 0; Index < FRAME_OVERLAP; Index++)
+    for (i32 Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
-        Rr_FrameData* Frame = &Frames[Index];
+        Rr_Frame* Frame = &Frames[Index];
 
         /* Synchronization */
         VK_ASSERT(vkCreateFence(Device, &FenceCreateInfo, NULL, &Frame->RenderFence))
@@ -551,10 +552,6 @@ static void Rr_InitDescriptors(Rr_Renderer* const Renderer)
     };
 
     DescriptorAllocator_Init(GlobalDescriptorAllocator, Renderer->Device, 10, Ratios, SDL_arraysize(Ratios));
-
-    Rr_DescriptorLayoutBuilder Builder = { 0 };
-    DescriptorLayoutBuilder_Add(&Builder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Renderer->SceneDataLayout = DescriptorLayoutBuilder_Build(&Builder, Renderer->Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 static void Rr_InitBackgroundPipelines(Rr_Renderer* const Renderer)
@@ -638,8 +635,8 @@ static void Rr_InitMeshPipeline(Rr_Renderer* const Renderer)
     VkPipelineLayoutCreateInfo LayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
-        .setLayoutCount = 1,
-        .pSetLayouts = &Renderer->SceneDataLayout,
+        .setLayoutCount = 0,
+        // .pSetLayouts = &Renderer->SceneDataLayout,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &PushConstantRange,
     };
@@ -829,6 +826,8 @@ void Rr_Init(Rr_App* App)
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_AppConfig* Config = App->Config;
 
+    Renderer->PerFrameDatas = SDL_calloc(RR_FRAME_OVERLAP, Config->PerFrameDataSize);
+
     Renderer->DrawTarget.ReferenceResolution.width = Config->ReferenceResolution[0];
     Renderer->DrawTarget.ReferenceResolution.height = Config->ReferenceResolution[1];
 
@@ -899,7 +898,7 @@ void Rr_Init(Rr_App* App)
 
     Rr_Asset NoisePNG;
     RrAsset_Extern(&NoisePNG, NoisePNG);
-    Renderer->NoiseImage = Rr_LoadImageRGBA8(&NoisePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    Renderer->NoiseImage = Rr_LoadPNG(&NoisePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     SDL_stack_free(Extensions);
 }
@@ -910,6 +909,8 @@ void Rr_Cleanup(Rr_App* const App)
     VkDevice Device = Renderer->Device;
 
     vkDeviceWaitIdle(Renderer->Device);
+
+    App->Config->CleanupFunc(App);
 
     Rr_CleanupMesh(Renderer, &Renderer->Mesh);
     Rr_DestroyImage(Renderer, &Renderer->NoiseImage);
@@ -931,15 +932,13 @@ void Rr_Cleanup(Rr_App* const App)
     vkDestroyPipelineLayout(Device, Renderer->GradientPipelineLayout, NULL);
     vkDestroyPipeline(Device, Renderer->GradientPipeline, NULL);
 
-    vkDestroyDescriptorSetLayout(Renderer->Device, Renderer->SceneDataLayout, NULL);
-
     Rr_UpdateDrawImageDescriptors(Renderer, false, true);
 
     DescriptorAllocator_Cleanup(&Renderer->GlobalDescriptorAllocator, Device);
 
-    for (u32 Index = 0; Index < FRAME_OVERLAP; ++Index)
+    for (u32 Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_FrameData* Frame = &Renderer->Frames[Index];
+        Rr_Frame* Frame = &Renderer->Frames[Index];
         vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, NULL);
 
         vkDestroyFence(Device, Frame->RenderFence, NULL);
@@ -947,7 +946,6 @@ void Rr_Cleanup(Rr_App* const App)
         vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
 
         DescriptorAllocator_Cleanup(&Frame->DescriptorAllocator, Device);
-        Rr_DestroyBuffer(&Frame->SceneDataBuffer, Renderer->Allocator);
     }
 
     Rr_CleanupDrawTarget(Renderer);
@@ -962,21 +960,21 @@ void Rr_Cleanup(Rr_App* const App)
     vkDestroyInstance(Renderer->Instance, NULL);
 }
 
-void Rr_Draw(Rr_Renderer* const Renderer)
+void Rr_Draw(Rr_App* const App)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
     Rr_Swapchain* Swapchain = &Renderer->Swapchain;
     Rr_Image* ColorImage = &Renderer->DrawTarget.ColorImage;
     Rr_Image* DepthImage = &Renderer->DrawTarget.DepthImage;
 
-    Rr_FrameData* Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
     VK_ASSERT(vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000))
     VK_ASSERT(vkResetFences(Device, 1, &Frame->RenderFence))
 
     DescriptorAllocator_ClearPools(&Frame->DescriptorAllocator, Device);
-    Rr_DestroyBuffer(&Frame->SceneDataBuffer, Renderer->Allocator);
 
     u32 SwapchainImageIndex;
     VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
@@ -991,62 +989,53 @@ void Rr_Draw(Rr_Renderer* const Renderer)
     }
     SDL_assert(Result >= 0);
 
-    Rr_InitMappedBuffer(&Frame->SceneDataBuffer, Renderer->Allocator, sizeof(Rr_SceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    Rr_SceneData* SceneData = (Rr_SceneData*)Frame->SceneDataBuffer.AllocationInfo.pMappedData;
-    glm_vec4_copy((vec4){ 1.0f, 1.0f, 1.0f, 0.5f }, Renderer->SceneData.AmbientColor);
-    *SceneData = Renderer->SceneData;
-    VkDescriptorSet SceneDataDescriptorSet = DescriptorAllocator_Allocate(&Frame->DescriptorAllocator, Renderer->Device, Renderer->SceneDataLayout);
-    SDescriptorWriter Writer = { 0 };
-    DescriptorWriter_Init(&Writer, 0, 1);
-    DescriptorWriter_WriteBuffer(&Writer, 0, Frame->SceneDataBuffer.Handle, sizeof(Rr_SceneData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    DescriptorWriter_Update(&Writer, Device, SceneDataDescriptorSet);
-    DescriptorWriter_Cleanup(&Writer);
-
     VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_ASSERT(vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo))
 
-    Rr_ImageBarrier ColorImageTransition = {
-        .CommandBuffer = CommandBuffer,
-        .Image = ColorImage->Handle,
-        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_2_NONE,
-        .StageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
-    };
-    Rr_ChainImageBarrier(&ColorImageTransition,
-        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        VK_ACCESS_2_MEMORY_WRITE_BIT,
-        VK_IMAGE_LAYOUT_GENERAL);
-    Rr_DrawBackground(Renderer, CommandBuffer);
-    Rr_ChainImageBarrier(&ColorImageTransition,
-        VK_PIPELINE_STAGE_2_BLIT_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), Renderer->DrawTarget.ActiveResolution);
-    CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), GetExtent2D(Renderer->NoiseImage.Extent));
-    Rr_ChainImageBarrier(&ColorImageTransition,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    App->Config->DrawFunc(App);
 
-    Rr_ImageBarrier DepthImageTransition = {
-        .CommandBuffer = CommandBuffer,
-        .Image = DepthImage->Handle,
-        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-        .StageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
-    };
-    Rr_ChainImageBarrier(&DepthImageTransition,
-        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-    Rr_DrawGeometry(Renderer, CommandBuffer, SceneDataDescriptorSet);
-    Rr_ChainImageBarrier(&ColorImageTransition,
-        VK_PIPELINE_STAGE_2_BLIT_BIT,
-        VK_ACCESS_2_TRANSFER_READ_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
+    // Rr_ImageBarrier ColorImageTransition = {
+    //     .CommandBuffer = CommandBuffer,
+    //     .Image = ColorImage->Handle,
+    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+    //     .AccessMask = VK_ACCESS_2_NONE,
+    //     .StageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
+    // };
+    // Rr_ChainImageBarrier(&ColorImageTransition,
+    //     VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+    //     VK_ACCESS_2_MEMORY_WRITE_BIT,
+    //     VK_IMAGE_LAYOUT_GENERAL);
+    // Rr_DrawBackground(Renderer, CommandBuffer);
+    // Rr_ChainImageBarrier(&ColorImageTransition,
+    //     VK_PIPELINE_STAGE_2_BLIT_BIT,
+    //     VK_ACCESS_2_TRANSFER_WRITE_BIT,
+    //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    // // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), Renderer->DrawTarget.ActiveResolution);
+    // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), GetExtent2D(Renderer->NoiseImage.Extent));
+    // Rr_ChainImageBarrier(&ColorImageTransition,
+    //     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+    //     VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+    //     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    //
+    // Rr_ImageBarrier DepthImageTransition = {
+    //     .CommandBuffer = CommandBuffer,
+    //     .Image = DepthImage->Handle,
+    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+    //     .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+    //     .StageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
+    // };
+    // Rr_ChainImageBarrier(&DepthImageTransition,
+    //     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+    //     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+    //     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    // Rr_DrawGeometry(Renderer, CommandBuffer, SceneDataDescriptorSet);
+    // Rr_ChainImageBarrier(&ColorImageTransition,
+    //     VK_PIPELINE_STAGE_2_BLIT_BIT,
+    //     VK_ACCESS_2_TRANSFER_READ_BIT,
+    //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    //
     Rr_ImageBarrier SwapchainImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = SwapchainImage,
@@ -1054,19 +1043,30 @@ void Rr_Draw(Rr_Renderer* const Renderer)
         .AccessMask = VK_ACCESS_2_NONE,
         .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
     };
+
     Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,
         VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    VkClearColorValue ClearColorValue = {
+        0
+    };
+    VkImageSubresourceRange ImageSubresourceRange;
+    ImageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    ImageSubresourceRange.baseMipLevel = 0;
+    ImageSubresourceRange.levelCount = 1;
+    ImageSubresourceRange.baseArrayLayer = 0;
+    ImageSubresourceRange.layerCount = 1;
+    vkCmdClearColorImage(CommandBuffer, SwapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &ClearColorValue, 1, &ImageSubresourceRange);
 
-    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
-        (VkExtent2D){
-            .width = (Renderer->DrawTarget.ActiveResolution.width) * Renderer->DrawTarget.Scale,
-            .height = (Renderer->DrawTarget.ActiveResolution.height) * Renderer->DrawTarget.Scale });
-//    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
-//                     (VkExtent2D){
-//                         .width = Renderer->DrawTarget.ActiveResolution.width,
-//                         .height = Renderer->DrawTarget.ActiveResolution.height});
+    // CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
+    //     (VkExtent2D){
+    //         .width = (Renderer->DrawTarget.ActiveResolution.width) * Renderer->DrawTarget.Scale,
+    //         .height = (Renderer->DrawTarget.ActiveResolution.height) * Renderer->DrawTarget.Scale });
+    //    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
+    //                     (VkExtent2D){
+    //                         .width = Renderer->DrawTarget.ActiveResolution.width,
+    //                         .height = Renderer->DrawTarget.ActiveResolution.height});
     Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
@@ -1074,10 +1074,10 @@ void Rr_Draw(Rr_Renderer* const Renderer)
 
     if (Renderer->ImGui.bInit)
     {
-        VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        VkRenderingInfo renderInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachment, NULL);
+        VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
 
-        vkCmdBeginRendering(CommandBuffer, &renderInfo);
+        vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
 
         ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
 
@@ -1089,7 +1089,7 @@ void Rr_Draw(Rr_Renderer* const Renderer)
         0,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-    VK_ASSERT(vkEndCommandBuffer(CommandBuffer))
+    vkEndCommandBuffer(CommandBuffer);
 
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
 
@@ -1098,7 +1098,7 @@ void Rr_Draw(Rr_Renderer* const Renderer)
 
     VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
 
-    VK_ASSERT(vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence))
+    vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -1174,7 +1174,7 @@ void Rr_EndImmediate(Rr_Renderer* const Renderer)
     VK_ASSERT(vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX))
 }
 
-Rr_FrameData* Rr_GetCurrentFrame(Rr_Renderer* const Renderer)
+Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* const Renderer)
 {
-    return &Renderer->Frames[Renderer->FrameNumber % FRAME_OVERLAP];
+    return &Renderer->Frames[Renderer->FrameNumber % RR_FRAME_OVERLAP];
 }

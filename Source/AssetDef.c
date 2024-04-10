@@ -8,3 +8,6 @@ RrAsset_Define(TriangleFRAG, "Shader/Uber3D.frag.spv");
 RrAsset_Define(TestCOMP, "Shader/test.comp.spv");
 RrAsset_Define(Uber3DVERT, "Shader/Uber3D.vert.spv");
 RrAsset_Define(Uber3DFRAG, "Shader/Uber3D.frag.spv");
+
+RrAsset_Define(POCColorPNG, "poc_color.png");
+RrAsset_Define(POCDepthEXR, "poc_depth.exr");
