@@ -18,10 +18,10 @@ typedef struct SDescriptorAllocator
     size_t SetsPerPool;
 } SDescriptorAllocator;
 
-void DescriptorAllocator_Init(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, size_t MaxSets, SDescriptorPoolSizeRatio* Ratios, size_t RatioCount);
-VkDescriptorSet DescriptorAllocator_Allocate(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout Layout);
-void DescriptorAllocator_ClearPools(SDescriptorAllocator* DescriptorAllocator, VkDevice Device);
-void DescriptorAllocator_Cleanup(SDescriptorAllocator* DescriptorAllocator, VkDevice Device);
+SDescriptorAllocator Rr_CreateDescriptorAllocator(VkDevice Device, size_t MaxSets, SDescriptorPoolSizeRatio* Ratios, size_t RatioCount);
+VkDescriptorSet Rr_AllocateDescriptorSet(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout Layout);
+void Rr_ResetDescriptorAllocator(SDescriptorAllocator* DescriptorAllocator, VkDevice Device);
+void Rr_DestroyDescriptorAllocator(SDescriptorAllocator* DescriptorAllocator, VkDevice Device);
 
 typedef enum EDescriptorWriterEntryType
 {
@@ -43,14 +43,14 @@ typedef struct SDescriptorWriter
     VkWriteDescriptorSet* Writes;
 } SDescriptorWriter;
 
-void DescriptorWriter_Init(SDescriptorWriter* Writer, size_t Images, size_t Buffers);
-void DescriptorWriter_WriteImage(SDescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type);
-void DescriptorWriter_WriteBuffer(SDescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type);
-void DescriptorWriter_Cleanup(SDescriptorWriter* Writer);
-void DescriptorWriter_Update(SDescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
+void Rr_InitDescriptorWriter(SDescriptorWriter* Writer, size_t Images, size_t Buffers);
+void Rr_WriteDescriptor_Image(SDescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type);
+void Rr_WriteDescriptor_Buffer(SDescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type);
+void Rr_DestroyDescriptorWriter(SDescriptorWriter* Writer);
+void Rr_UpdateDescriptorSet(SDescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
 
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 
-void DescriptorLayoutBuilder_Add(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type);
-void DescriptorLayoutBuilder_Clear(Rr_DescriptorLayoutBuilder* Builder);
-VkDescriptorSetLayout DescriptorLayoutBuilder_Build(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags);
+void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type);
+void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder* Builder);
+VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags);

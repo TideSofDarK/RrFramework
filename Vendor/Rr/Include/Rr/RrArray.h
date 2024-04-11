@@ -58,10 +58,15 @@ size_t Rr_ArrayCount(Rr_Array Handle);
         (Handle) = Rr_ArrayPush_Internal((Handle), Element); \
     }
 
-#define Rr_ArrayEmpty(Handle, bFreeAllocation)           \
-    {                                                    \
-        Rr_ArrayEmpty_Internal(Handle, bFreeAllocation); \
-        (Handle) = (bFreeAllocation) ? NULL : (Handle);  \
+#define Rr_ArrayEmpty(Handle)                  \
+    {                                          \
+        Rr_ArrayEmpty_Internal(Handle, false); \
+    }
+
+#define Rr_ArrayFree(Handle)                  \
+    {                                         \
+        Rr_ArrayEmpty_Internal(Handle, true); \
+        (Handle) = NULL;                      \
     }
 
 #ifdef RR_DEBUG

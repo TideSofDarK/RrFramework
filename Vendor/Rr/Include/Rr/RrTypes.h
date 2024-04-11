@@ -65,8 +65,6 @@ typedef struct Rr_ImageBarrier
     VkImageLayout Layout;
 } Rr_ImageBarrier;
 
-typedef struct Rr_PerFrameData Rr_PerFrameData;
-
 typedef struct Rr_Frame
 {
     VkCommandPool CommandPool;
@@ -185,7 +183,8 @@ typedef struct Rr_Renderer
 
     VmaAllocator Allocator;
 
-    Rr_PerFrameData* PerFrameDatas;
+    void* PerFrameDatas;
+    size_t PerFrameDataSize;
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
 
@@ -199,9 +198,6 @@ typedef struct Rr_Renderer
     Rr_ImGui ImGui;
 
     Rr_ImmediateMode ImmediateMode;
-
-    VkPipeline MeshPipeline;
-    VkPipelineLayout MeshPipelineLayout;
 
     Rr_MeshBuffers Mesh;
     Rr_RawMesh RawMesh;

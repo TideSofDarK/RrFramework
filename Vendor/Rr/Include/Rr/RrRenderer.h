@@ -17,5 +17,6 @@ VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
 void Rr_EndImmediate(Rr_Renderer* Renderer);
 
 Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
+void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer);
 
 VkPipeline Rr_BuildPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder const* PipelineBuilder);

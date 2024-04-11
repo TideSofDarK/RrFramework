@@ -111,11 +111,11 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
     Rr_ArrayInit(ScratchNormals, vec3, 1000);
     Rr_ArrayInit(ScratchIndices, ivec3, 1000);
 
-    Rr_ArrayEmpty(ScratchPositions, false);
-    Rr_ArrayEmpty(ScratchColors, false);
-    Rr_ArrayEmpty(ScratchTexCoords, false);
-    Rr_ArrayEmpty(ScratchNormals, false);
-    Rr_ArrayEmpty(ScratchIndices, false);
+    Rr_ArrayEmpty(ScratchPositions);
+    Rr_ArrayEmpty(ScratchColors);
+    Rr_ArrayEmpty(ScratchTexCoords);
+    Rr_ArrayEmpty(ScratchNormals);
+    Rr_ArrayEmpty(ScratchIndices);
 
     /* Parse OBJ data. */
     Rr_ArrayInit(RawMesh->Vertices, Rr_Vertex, 1);
@@ -237,6 +237,6 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
 
 void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh)
 {
-    Rr_ArrayEmpty(RawMesh->Vertices, true);
-    Rr_ArrayEmpty(RawMesh->Indices, true);
+    Rr_ArrayFree(RawMesh->Vertices);
+    Rr_ArrayFree(RawMesh->Indices);
 }
