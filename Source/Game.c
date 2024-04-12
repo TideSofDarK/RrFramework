@@ -147,7 +147,7 @@ static void Cleanup(Rr_App* App)
 
     for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
-        SFrameData* PerFrameData = &((SFrameData*)Renderer->PerFrameDatas)[Index];
+        SFrameData* PerFrameData = (SFrameData*)Renderer->PerFrameDatas + Index;
 
         Rr_DestroyBuffer(&PerFrameData->ShaderGlobalsBuffer, Renderer->Allocator);
         Rr_DestroyBuffer(&PerFrameData->ObjectDataBuffer, Renderer->Allocator);

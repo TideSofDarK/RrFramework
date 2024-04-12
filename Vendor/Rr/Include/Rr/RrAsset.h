@@ -68,9 +68,11 @@ typedef struct Rr_Asset
 #define RrAsset_Define(NAME, PATH) INCBIN(NAME, STR(RR_ASSET_PATH), PATH)
 
 #define RrAsset_Extern(VAR, NAME)                                               \
+    do                                                                          \
     {                                                                           \
         extern __attribute__((aligned(16))) const char incbin_##NAME##_start[]; \
         extern const char incbin_##NAME##_end[];                                \
         (VAR)->Data = incbin_##NAME##_start;                                    \
         (VAR)->Length = (size_t)(incbin_##NAME##_end - incbin_##NAME##_start);  \
-    }
+    }                                                                           \
+    while (0)

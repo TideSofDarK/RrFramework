@@ -29,7 +29,6 @@ Rr_PipelineBuilder Rr_DefaultPipelineBuilder(VkFormat ColorFormat, VkFormat Dept
     PipelineBuilder.InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     PipelineBuilder.InputAssembly.primitiveRestartEnable = VK_FALSE;
 
-
     PipelineBuilder.ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     PipelineBuilder.ColorBlendAttachment.blendEnable = VK_FALSE;
 

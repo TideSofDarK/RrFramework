@@ -144,7 +144,7 @@ VkDescriptorSet Rr_AllocateDescriptorSet(SDescriptorAllocator* DescriptorAllocat
     return DescriptorSet;
 }
 
- Rr_DescriptorWriter Rr_CreateDescriptorWriter(size_t Images, size_t Buffers)
+Rr_DescriptorWriter Rr_CreateDescriptorWriter(size_t Images, size_t Buffers)
 {
     Rr_DescriptorWriter Writer;
     Rr_ArrayInit(Writer.ImageInfos, VkDescriptorImageInfo, Images);
