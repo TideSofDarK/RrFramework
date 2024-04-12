@@ -66,7 +66,7 @@ Rr_Image Rr_CreateImage(Rr_Renderer* const Rr, VkExtent3D Extent, VkFormat Forma
     return Image;
 }
 
-Rr_Image Rr_LoadPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout)
+Rr_Image Rr_CreateImage_FromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout)
 {
     const i32 DesiredChannels = 4;
     i32 Channels;
@@ -91,7 +91,7 @@ Rr_Image Rr_LoadPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkImageUsageFl
         .AccessMask = VK_ACCESS_2_NONE,
         .CommandBuffer = Renderer->ImmediateMode.CommandBuffer,
     };
-    Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     VkBufferImageCopy Copy = {
         .bufferOffset = 0,
@@ -116,7 +116,7 @@ Rr_Image Rr_LoadPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkImageUsageFl
     return Image;
 }
 
-Rr_Image Rr_LoadEXRDepth(Rr_Asset* Asset, Rr_Renderer* const Renderer)
+Rr_Image Rr_CreateImage_FromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
 {
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
     VkImageLayout InitialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -175,7 +175,7 @@ Rr_Image Rr_LoadEXRDepth(Rr_Asset* Asset, Rr_Renderer* const Renderer)
         .AccessMask = VK_ACCESS_2_NONE,
         .CommandBuffer = Renderer->ImmediateMode.CommandBuffer,
     };
-    Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     VkBufferImageCopy Copy = {
         .bufferOffset = 0,

@@ -8,17 +8,17 @@ typedef struct SDescriptorPoolSizeRatio
 {
     VkDescriptorType Type;
     f32 Ratio;
-} SDescriptorPoolSizeRatio;
+} Rr_DescriptorPoolSizeRatio;
 
 typedef struct SDescriptorAllocator
 {
-    SDescriptorPoolSizeRatio* Ratios;
+    Rr_DescriptorPoolSizeRatio* Ratios;
     VkDescriptorPool* FullPools;
     VkDescriptorPool* ReadyPools;
     size_t SetsPerPool;
 } SDescriptorAllocator;
 
-SDescriptorAllocator Rr_CreateDescriptorAllocator(VkDevice Device, size_t MaxSets, SDescriptorPoolSizeRatio* Ratios, size_t RatioCount);
+SDescriptorAllocator Rr_CreateDescriptorAllocator(VkDevice Device, size_t MaxSets, Rr_DescriptorPoolSizeRatio* Ratios, size_t RatioCount);
 VkDescriptorSet Rr_AllocateDescriptorSet(SDescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout Layout);
 void Rr_ResetDescriptorAllocator(SDescriptorAllocator* DescriptorAllocator, VkDevice Device);
 void Rr_DestroyDescriptorAllocator(SDescriptorAllocator* DescriptorAllocator, VkDevice Device);
@@ -35,19 +35,20 @@ typedef struct SDescriptorWriterEntry
     size_t Index;
 } SDescriptorWriterEntry;
 
-typedef struct SDescriptorWriter
+typedef struct Rr_DescriptorWriter
 {
     VkDescriptorImageInfo* ImageInfos;
     VkDescriptorBufferInfo* BufferInfos;
     SDescriptorWriterEntry* Entries;
     VkWriteDescriptorSet* Writes;
-} SDescriptorWriter;
+} Rr_DescriptorWriter;
 
-void Rr_InitDescriptorWriter(SDescriptorWriter* Writer, size_t Images, size_t Buffers);
-void Rr_WriteDescriptor_Image(SDescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type);
-void Rr_WriteDescriptor_Buffer(SDescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type);
-void Rr_DestroyDescriptorWriter(SDescriptorWriter* Writer);
-void Rr_UpdateDescriptorSet(SDescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
+Rr_DescriptorWriter Rr_CreateDescriptorWriter(size_t Images, size_t Buffers);
+void Rr_WriteDescriptor_Image(Rr_DescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type);
+void Rr_WriteDescriptor_Buffer(Rr_DescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type);
+void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer);
+void Rr_DestroyDescriptorWriter(Rr_DescriptorWriter* Writer);
+void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
 
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 

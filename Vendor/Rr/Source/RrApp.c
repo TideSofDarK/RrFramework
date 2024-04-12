@@ -217,7 +217,7 @@ void Rr_Run(Rr_AppConfig* Config)
                 case SDL_EVENT_QUIT:
                 {
                     SDL_AtomicSet(&App.bExit, true);
-                    return;
+                    break;
                 }
                 break;
                 default:

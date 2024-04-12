@@ -20,23 +20,15 @@ static Rr_PipelineBuilder EmptyPipelineBuilder = {
     .RenderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO }
 };
 
-Rr_PipelineBuilder Rr_DefaultPipelineBuilder(VkShaderModule VertModule, VkShaderModule FragModule, VkFormat ColorFormat, VkFormat DepthFormat, VkPipelineLayout Layout)
+Rr_PipelineBuilder Rr_DefaultPipelineBuilder(VkFormat ColorFormat, VkFormat DepthFormat, VkPipelineLayout Layout)
 {
     Rr_PipelineBuilder PipelineBuilder = EmptyPipelineBuilder;
 
     PipelineBuilder.PipelineLayout = Layout;
 
-    PipelineBuilder.ShaderStages[0] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
-    PipelineBuilder.ShaderStages[1] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
-    PipelineBuilder.ShaderStageCount = 2;
-
     PipelineBuilder.InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     PipelineBuilder.InputAssembly.primitiveRestartEnable = VK_FALSE;
 
-    PipelineBuilder.Rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    PipelineBuilder.Rasterizer.lineWidth = 1.0f;
-    PipelineBuilder.Rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    PipelineBuilder.Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
     PipelineBuilder.ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     PipelineBuilder.ColorBlendAttachment.blendEnable = VK_FALSE;
@@ -49,7 +41,22 @@ Rr_PipelineBuilder Rr_DefaultPipelineBuilder(VkShaderModule VertModule, VkShader
     return PipelineBuilder;
 }
 
-void Rr_EnableDepth(Rr_PipelineBuilder* const PipelineBuilder)
+void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, VkPolygonMode PolygonMode)
+{
+    PipelineBuilder->Rasterizer.polygonMode = PolygonMode;
+    PipelineBuilder->Rasterizer.lineWidth = 1.0f;
+    PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+}
+
+void Rr_EnableShaderStages(Rr_PipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule)
+{
+    PipelineBuilder->ShaderStages[0] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
+    PipelineBuilder->ShaderStages[1] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
+    PipelineBuilder->ShaderStageCount = 2;
+}
+
+void Rr_EnableDepthTest(Rr_PipelineBuilder* const PipelineBuilder)
 {
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;

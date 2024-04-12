@@ -42,8 +42,8 @@ static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 W
         DrawTarget->ActiveResolution.width += (WindowWidth - MaxAvailableScale * DrawTarget->ReferenceResolution.width) / MaxAvailableScale;
         DrawTarget->ActiveResolution.height += (WindowHeight - MaxAvailableScale * DrawTarget->ReferenceResolution.height) / MaxAvailableScale;
 
-        //        DrawTarget->ActiveResolution.width++;
-        //        DrawTarget->ActiveResolution.height++;
+        // DrawTarget->ActiveResolution.width++;
+        // DrawTarget->ActiveResolution.height++;
     }
 
     DrawTarget->Scale = MaxAvailableScale;
@@ -254,8 +254,7 @@ static void Rr_UpdateDrawImageDescriptors(Rr_Renderer* const Renderer, b32 bCrea
 
         Renderer->DrawTarget.DescriptorSet = Rr_AllocateDescriptorSet(GlobalDescriptorAllocator, Renderer->Device, Renderer->DrawTarget.DescriptorSetLayout);
 
-        SDescriptorWriter Writer = { 0 };
-        Rr_InitDescriptorWriter(&Writer, 1, 0);
+        Rr_DescriptorWriter Writer = Rr_CreateDescriptorWriter(1, 0);
         Rr_WriteDescriptor_Image(&Writer, 0, Renderer->DrawTarget.ColorImage.View, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
         Rr_UpdateDescriptorSet(&Writer, Renderer->Device, Renderer->DrawTarget.DescriptorSet);
         Rr_DestroyDescriptorWriter(&Writer);
@@ -482,7 +481,7 @@ static void Rr_InitFrames(Rr_Renderer* const Renderer)
         VK_ASSERT(vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frame->RenderSemaphore))
 
         /* Descriptors */
-        SDescriptorPoolSizeRatio Ratios[] = {
+        Rr_DescriptorPoolSizeRatio Ratios[] = {
             { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
             { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
             { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
@@ -545,7 +544,7 @@ static void Rr_InitAllocator(Rr_Renderer* const Renderer)
 
 static void Rr_InitDescriptors(Rr_Renderer* const Renderer)
 {
-    SDescriptorPoolSizeRatio Ratios[] = {
+    Rr_DescriptorPoolSizeRatio Ratios[] = {
         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 }
     };
 
@@ -832,6 +831,12 @@ void Rr_Init(Rr_App* App)
     Rr_InitAllocator(Renderer);
 
     // volkLoadDevice(Renderer->Device);
+    //
+
+    VkSamplerCreateInfo SamplerInfo = { .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+    SamplerInfo.magFilter = VK_FILTER_NEAREST;
+    SamplerInfo.minFilter = VK_FILTER_NEAREST;
+    vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->NearestSampler);
 
     Rr_InitDescriptors(Renderer);
 
@@ -841,13 +846,11 @@ void Rr_Init(Rr_App* App)
 
     Rr_InitFrames(Renderer);
 
-    // Rr_InitPipelines(Renderer);
-
     Rr_InitImmediateMode(Renderer);
 
     Rr_Asset NoisePNG;
     RrAsset_Extern(&NoisePNG, NoisePNG);
-    Renderer->NoiseImage = Rr_LoadPNG(&NoisePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    Renderer->NoiseImage = Rr_CreateImage_FromPNG(&NoisePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     SDL_stack_free(Extensions);
 }
@@ -861,8 +864,9 @@ void Rr_Cleanup(Rr_App* const App)
 
     App->Config->CleanupFunc(App);
 
-    Rr_CleanupMesh(Renderer, &Renderer->Mesh);
     Rr_DestroyImage(Renderer, &Renderer->NoiseImage);
+
+    vkDestroySampler(Device, Renderer->NearestSampler, NULL);
 
     if (Renderer->ImGui.bInit)
     {
@@ -1086,12 +1090,6 @@ b8 Rr_NewFrame(Rr_Renderer* const Renderer, SDL_Window* Window)
         return false;
     }
     return true;
-}
-
-void Rr_SetMesh(Rr_Renderer* const Renderer, Rr_RawMesh* const RawMesh)
-{
-    Renderer->RawMesh = *RawMesh;
-    Rr_UploadMesh(Renderer, &Renderer->Mesh, RawMesh->Indices, Rr_ArrayCount(RawMesh->Indices), RawMesh->Vertices, Rr_ArrayCount(RawMesh->Vertices));
 }
 
 VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* const Renderer)

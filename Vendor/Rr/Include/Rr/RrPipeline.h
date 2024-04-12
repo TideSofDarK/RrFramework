@@ -8,10 +8,11 @@ typedef struct Rr_Renderer Rr_Renderer;
 
 typedef struct Rr_PipelineCreateInfo
 {
-    Rr_Asset VertexShader;
-    Rr_Asset FragmentShader;
+    Rr_Asset VertexShaderAsset;
+    Rr_Asset FragmentShaderAsset;
     size_t PushConstantsSize;
-    VkDescriptorSetLayout DescriptorSetLayout;
+    VkDescriptorSetLayout* DescriptorSetLayouts;
+    size_t DescriptorSetLayoutCount;
 } Rr_PipelineCreateInfo;
 
 typedef struct Rr_Pipeline

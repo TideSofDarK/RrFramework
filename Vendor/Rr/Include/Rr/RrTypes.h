@@ -199,8 +199,8 @@ typedef struct Rr_Renderer
 
     Rr_ImmediateMode ImmediateMode;
 
-    Rr_MeshBuffers Mesh;
-    Rr_RawMesh RawMesh;
+    // Rr_MeshBuffers Mesh;
+    // Rr_RawMesh RawMesh;
     Rr_Image NoiseImage;
 
     VkSampler NearestSampler;

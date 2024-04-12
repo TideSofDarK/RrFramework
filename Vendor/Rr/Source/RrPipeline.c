@@ -12,13 +12,13 @@ Rr_Pipeline Rr_CreatePipeline(Rr_Renderer* Renderer, Rr_PipelineCreateInfo* Info
         .pNext = NULL,
     };
 
-    ShaderCreateInfo.codeSize = Info->VertexShader.Length;
-    ShaderCreateInfo.pCode = (u32*)Info->VertexShader.Data;
+    ShaderCreateInfo.codeSize = Info->VertexShaderAsset.Length;
+    ShaderCreateInfo.pCode = (u32*)Info->VertexShaderAsset.Data;
     VkShaderModule VertModule;
     vkCreateShaderModule(Renderer->Device, &ShaderCreateInfo, NULL, &VertModule);
 
-    ShaderCreateInfo.codeSize = Info->FragmentShader.Length;
-    ShaderCreateInfo.pCode = (u32*)Info->FragmentShader.Data;
+    ShaderCreateInfo.codeSize = Info->FragmentShaderAsset.Length;
+    ShaderCreateInfo.pCode = (u32*)Info->FragmentShaderAsset.Data;
     VkShaderModule FragModule;
     vkCreateShaderModule(Renderer->Device, &ShaderCreateInfo, NULL, &FragModule);
 
@@ -30,16 +30,18 @@ Rr_Pipeline Rr_CreatePipeline(Rr_Renderer* Renderer, Rr_PipelineCreateInfo* Info
     VkPipelineLayoutCreateInfo LayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
-        .setLayoutCount = 1,
-        .pSetLayouts = &Info->DescriptorSetLayout,
+        .setLayoutCount = Info->DescriptorSetLayoutCount,
+        .pSetLayouts = Info->DescriptorSetLayouts,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &PushConstantRange,
     };
     vkCreatePipelineLayout(Renderer->Device, &LayoutInfo, NULL, &Pipeline.Layout);
 
-    Rr_PipelineBuilder Builder = Rr_DefaultPipelineBuilder(VertModule, FragModule, Renderer->DrawTarget.ColorImage.Format, Renderer->DrawTarget.DepthImage.Format, Pipeline.Layout);
+    Rr_PipelineBuilder Builder = Rr_DefaultPipelineBuilder(RR_COLOR_FORMAT, RR_DEPTH_FORMAT, Pipeline.Layout);
     // PipelineBuilder_AlphaBlend(&Builder);
-    Rr_EnableDepth(&Builder);
+    Rr_EnableRasterizer(&Builder, VK_POLYGON_MODE_FILL);
+    Rr_EnableShaderStages(&Builder, VertModule, FragModule);
+    Rr_EnableDepthTest(&Builder);
     Pipeline.Handle = Rr_BuildPipeline(Renderer, &Builder);
 
     vkDestroyShaderModule(Renderer->Device, VertModule, NULL);

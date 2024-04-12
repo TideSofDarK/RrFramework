@@ -9,14 +9,16 @@ typedef struct Rr_RawMesh Rr_RawMesh;
 typedef struct Rr_Asset Rr_Asset;
 
 void Rr_UploadMesh(
-    Rr_Renderer* Rr,
+    Rr_Renderer* Renderer,
     Rr_MeshBuffers* MeshBuffers,
-    MeshIndexType const* Indices,
+    Rr_MeshIndexType const* Indices,
     size_t IndexCount,
     Rr_Vertex const* Vertices,
     size_t VertexCount);
 
-void Rr_CleanupMesh(Rr_Renderer* Rr, Rr_MeshBuffers* Mesh);
+Rr_MeshBuffers Rr_CreateMesh_FromOBJ(Rr_Renderer* Renderer, Rr_Asset* Asset);
+
+void Rr_DestroyMesh(Rr_Renderer* Renderer, Rr_MeshBuffers* Mesh);
 
 void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset);
 

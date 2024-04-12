@@ -11,8 +11,6 @@ void Rr_Cleanup(Rr_App* App);
 void Rr_Draw(Rr_App* App);
 b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
 
-void Rr_SetMesh(Rr_Renderer* Renderer, Rr_RawMesh* RawMesh);
-
 VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
 void Rr_EndImmediate(Rr_Renderer* Renderer);
 

@@ -1,8 +1,8 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
 
-layout(location = 0) out vec3 outColor;
-layout(location = 1) out vec2 outUV;
+layout(location = 0) out vec4 out_color;
+layout(location = 1) out vec2 out_UV;
 
 struct Vertex {
     vec3 position;
@@ -16,29 +16,29 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
 
-layout(set = 0, binding = 0) uniform SceneData {
+layout(set = 0, binding = 0) uniform ShaderGlobals {
     mat4 view;
     mat4 proj;
     mat4 viewProj;
     vec4 ambientColor;
-} ub_sceneData;
+} ub_shaderGlobals;
 
-layout(push_constant) uniform constants
+layout(set = 1, binding = 0) uniform ObjectData {
+    mat4 model;
+} ub_objectData;
+
+layout(push_constant) uniform PushConstants
 {
     mat4 viewProjection;
     VertexBuffer vertexBuffer;
-} PushConstants;
+} ub_constants;
 
 void main()
 {
-    //load vertex data from device adress
-    Vertex v = PushConstants.vertexBuffer.vertices[gl_VertexIndex];
+    Vertex v = ub_constants.vertexBuffer.vertices[gl_VertexIndex];
 
-    //output data
-    gl_Position = PushConstants.viewProjection * vec4(v.position, 1.0f);
-    // outColor = v.color.xyz;
-    outColor = v.normal;
-    // outColor = vec3(v.uv_x, v.uv_y, 1.0f);
-    outUV.x = v.uv_x;
-    outUV.y = v.uv_y;
+    gl_Position = ub_shaderGlobals.viewProj * ub_objectData.model * vec4(v.position, 1.0f);
+    out_color = v.color;
+    out_UV.x = v.uv_x;
+    out_UV.y = v.uv_y;
 }

@@ -13,4 +13,4 @@
 
 #define RR_PERFORMANCE_COUNTER 1
 
-typedef u32 MeshIndexType;
+typedef u32 Rr_MeshIndexType;
