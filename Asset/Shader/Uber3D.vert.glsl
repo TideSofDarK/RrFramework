@@ -25,17 +25,17 @@ layout(set = 0, binding = 0) uniform ShaderGlobals {
 
 layout(set = 1, binding = 0) uniform ObjectData {
     mat4 model;
+    VertexBuffer vertexBuffer;
 } ub_objectData;
 
-layout(push_constant) uniform PushConstants
-{
-    mat4 viewProjection;
-    VertexBuffer vertexBuffer;
-} ub_constants;
+// layout(push_constant) uniform PushConstants
+// {
+//     VertexBuffer vertexBuffer;
+// } ub_constants;
 
 void main()
 {
-    Vertex v = ub_constants.vertexBuffer.vertices[gl_VertexIndex];
+    Vertex v = ub_objectData.vertexBuffer.vertices[gl_VertexIndex];
 
     gl_Position = ub_shaderGlobals.viewProj * ub_objectData.model * vec4(v.position, 1.0f);
     out_color = v.color;

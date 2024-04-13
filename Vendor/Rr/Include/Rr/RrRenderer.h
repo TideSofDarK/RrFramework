@@ -4,6 +4,7 @@
 #include "RrAsset.h"
 
 typedef struct Rr_AppConfig Rr_AppConfig;
+typedef struct Rr_Pipeline Rr_Pipeline;
 
 void Rr_Init(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);
@@ -18,3 +19,6 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
 void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer);
 
 VkPipeline Rr_BuildPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder const* PipelineBuilder);
+
+void Rr_BeginRendering(Rr_Renderer* Renderer, Rr_Pipeline* Pipeline);
+void Rr_EndRendering(Rr_Renderer* Renderer);

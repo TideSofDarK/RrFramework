@@ -11,3 +11,6 @@ RrAsset_Define(Uber3DFRAG, "Shader/Uber3D.frag.spv");
 
 RrAsset_Define(POCColorPNG, "poc_color.png");
 RrAsset_Define(POCDepthEXR, "poc_depth.exr");
+
+RrAsset_Define(CottagePNG, "Cottage.png");
+RrAsset_Define(CottageOBJ, "Cottage.obj");

@@ -45,6 +45,7 @@ typedef struct Rr_Vertex
 
 typedef struct Rr_MeshBuffers
 {
+    size_t IndexCount;
     Rr_Buffer IndexBuffer;
     Rr_Buffer VertexBuffer;
     VkDeviceAddress VertexBufferAddress;

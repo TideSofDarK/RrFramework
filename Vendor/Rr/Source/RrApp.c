@@ -188,8 +188,8 @@ void Rr_Run(Rr_AppConfig* Config)
         .Config = Config,
         .Window = SDL_CreateWindow(
             Config->Title,
-            1600,
-            800,
+            Config->ReferenceResolution[0],
+            Config->ReferenceResolution[1],
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
         .InputConfig = {
             .Count = Config->InputConfig->Count,

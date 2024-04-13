@@ -32,7 +32,7 @@ Rr_Pipeline Rr_CreatePipeline(Rr_Renderer* Renderer, Rr_PipelineCreateInfo* Info
         .pNext = NULL,
         .setLayoutCount = Info->DescriptorSetLayoutCount,
         .pSetLayouts = Info->DescriptorSetLayouts,
-        .pushConstantRangeCount = 1,
+        .pushConstantRangeCount = Info->PushConstantsSize > 0 ? 1 : 0,
         .pPushConstantRanges = &PushConstantRange,
     };
     vkCreatePipelineLayout(Renderer->Device, &LayoutInfo, NULL, &Pipeline.Layout);

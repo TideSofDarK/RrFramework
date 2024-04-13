@@ -45,7 +45,7 @@ void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, VkPolygonMode Poly
     PipelineBuilder->Rasterizer.polygonMode = PolygonMode;
     PipelineBuilder->Rasterizer.lineWidth = 1.0f;
     PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 }
 
 void Rr_EnableShaderStages(Rr_PipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule)

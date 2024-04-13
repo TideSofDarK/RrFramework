@@ -84,7 +84,8 @@ Rr_MeshBuffers Rr_CreateMesh_FromOBJ(Rr_Renderer* const Renderer, Rr_Asset* Asse
     Rr_MeshBuffers MeshBuffers;
     Rr_RawMesh RawMesh;
     Rr_ParseOBJ(&RawMesh, Asset);
-    Rr_UploadMesh(Renderer, &MeshBuffers, RawMesh.Indices, Rr_ArrayCount(RawMesh.Indices), RawMesh.Vertices, Rr_ArrayCount(RawMesh.Vertices));
+    MeshBuffers.IndexCount = Rr_ArrayCount(RawMesh.Indices);
+    Rr_UploadMesh(Renderer, &MeshBuffers, RawMesh.Indices, MeshBuffers.IndexCount, RawMesh.Vertices, Rr_ArrayCount(RawMesh.Vertices));
     Rr_DestroyRawMesh(&RawMesh);
     return MeshBuffers;
 }
@@ -109,23 +110,17 @@ static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
 void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
 {
     /* Init scratch buffers. */
-    static Rr_Array ScratchPositions = { 0 };
-    static Rr_Array ScratchColors = { 0 };
-    static Rr_Array ScratchTexCoords = { 0 };
-    static Rr_Array ScratchNormals = { 0 };
-    static Rr_Array ScratchIndices = { 0 };
+    Rr_Array ScratchPositions;
+    Rr_Array ScratchColors;
+    Rr_Array ScratchTexCoords;
+    Rr_Array ScratchNormals;
+    Rr_Array ScratchIndices;
 
     Rr_ArrayInit(ScratchPositions, vec3, 1000);
     Rr_ArrayInit(ScratchColors, vec4, 1000);
     Rr_ArrayInit(ScratchTexCoords, vec2, 1000);
     Rr_ArrayInit(ScratchNormals, vec3, 1000);
     Rr_ArrayInit(ScratchIndices, ivec3, 1000);
-
-    Rr_ArrayEmpty(ScratchPositions);
-    Rr_ArrayEmpty(ScratchColors);
-    Rr_ArrayEmpty(ScratchTexCoords);
-    Rr_ArrayEmpty(ScratchNormals);
-    Rr_ArrayEmpty(ScratchIndices);
 
     /* Parse OBJ data. */
     Rr_ArrayInit(RawMesh->Vertices, Rr_Vertex, 1);
@@ -217,11 +212,11 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
                         vec2* TexCoord = Rr_ArrayGet(ScratchTexCoords, OBJIndices[Index][1]);
                         vec3* Normal = Rr_ArrayGet(ScratchNormals, OBJIndices[Index][2]);
                         Rr_Vertex NewVertex = { 0 };
-                        glm_vec3_copy(Position[0], NewVertex.Position);
-                        glm_vec4_copy(Color[0], NewVertex.Color);
-                        glm_vec3_copy(Normal[0], NewVertex.Normal);
-                        NewVertex.TexCoordX = *TexCoord[0];
-                        NewVertex.TexCoordY = *TexCoord[1];
+                        glm_vec3_copy(*Position, NewVertex.Position);
+                        glm_vec4_copy(*Color, NewVertex.Color);
+                        glm_vec3_copy(*Normal, NewVertex.Normal);
+                        NewVertex.TexCoordX = (*TexCoord)[0];
+                        NewVertex.TexCoordY = (*TexCoord)[1];
                         Rr_ArrayPush(RawMesh->Vertices, &NewVertex);
 
                         Rr_ArrayPush(ScratchIndices, &OBJIndices[Index]);
@@ -243,6 +238,12 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
         }
         CurrentIndex = GetNewLine(Asset->Data, Asset->Length, CurrentIndex) + 1;
     }
+
+    Rr_ArrayFree(ScratchPositions);
+    Rr_ArrayFree(ScratchColors);
+    Rr_ArrayFree(ScratchTexCoords);
+    Rr_ArrayFree(ScratchNormals);
+    Rr_ArrayFree(ScratchIndices);
 }
 
 void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh)
