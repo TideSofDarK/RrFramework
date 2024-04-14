@@ -21,7 +21,7 @@ void Rr_InitBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size, VkBuf
         AllocationInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     }
 
-    VK_ASSERT(vmaCreateBuffer(Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo))
+    vmaCreateBuffer(Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo);
 }
 
 void Rr_InitMappedBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags)

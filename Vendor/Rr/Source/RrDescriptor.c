@@ -137,7 +137,7 @@ VkDescriptorSet Rr_AllocateDescriptorSet(SDescriptorAllocator* DescriptorAllocat
         Pool = Rr_GetDescriptorPool(DescriptorAllocator, Device);
         AllocateInfo.descriptorPool = Pool;
 
-        VK_ASSERT(vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet));
+        vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet);
     }
 
     Rr_ArrayPush(DescriptorAllocator->ReadyPools, &Pool);
@@ -266,7 +266,7 @@ VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder* Build
     };
 
     VkDescriptorSetLayout Set;
-    VK_ASSERT(vkCreateDescriptorSetLayout(Device, &Info, NULL, &Set));
+    vkCreateDescriptorSetLayout(Device, &Info, NULL, &Set);
 
     return Set;
 }

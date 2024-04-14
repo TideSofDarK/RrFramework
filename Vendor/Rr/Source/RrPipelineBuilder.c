@@ -33,7 +33,6 @@ Rr_PipelineBuilder Rr_DefaultPipelineBuilder(VkFormat ColorFormat, VkFormat Dept
     PipelineBuilder.ColorBlendAttachment.blendEnable = VK_FALSE;
 
     PipelineBuilder.ColorAttachmentFormat = ColorFormat;
-    PipelineBuilder.RenderInfo.pColorAttachmentFormats = &PipelineBuilder.ColorAttachmentFormat;
     PipelineBuilder.RenderInfo.colorAttachmentCount = 1;
     PipelineBuilder.RenderInfo.depthAttachmentFormat = DepthFormat;
 
@@ -82,7 +81,7 @@ void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
     };
 }
 
-VkPipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder const* const PipelineBuilder)
+VkPipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder* const PipelineBuilder)
 {
     VkPipelineViewportStateCreateInfo ViewportInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -113,6 +112,8 @@ VkPipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder cons
         .dynamicStateCount = SDL_arraysize(DynamicState)
     };
 
+    PipelineBuilder->RenderInfo.pColorAttachmentFormats = &PipelineBuilder->ColorAttachmentFormat;
+
     VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = &PipelineBuilder->RenderInfo,
@@ -130,7 +131,7 @@ VkPipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder cons
     };
 
     VkPipeline Pipeline;
-    VK_ASSERT(vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline))
+    vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline);
 
     return Pipeline;
 }

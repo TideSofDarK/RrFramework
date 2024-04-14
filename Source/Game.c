@@ -128,9 +128,9 @@ static void Init(Rr_App* App)
 
     Rr_Renderer* const Renderer = &App->Renderer;
 
-    //    Rr_Asset POCDepthEXR;
-    //    RrAsset_Extern(&POCDepthEXR, POCDepthEXR);
-    //    SceneDepthImage = Rr_CreateImage_FromEXR(&POCDepthEXR, &App->Renderer);
+    Rr_Asset POCDepthEXR;
+    RrAsset_Extern(&POCDepthEXR, POCDepthEXR);
+    SceneDepthImage = Rr_CreateImage_FromEXR(&POCDepthEXR, &App->Renderer);
     //
     //    Rr_Asset POCColorPNG;
     //    RrAsset_Extern(&POCColorPNG, POCColorPNG);
