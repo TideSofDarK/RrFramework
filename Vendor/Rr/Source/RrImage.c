@@ -215,8 +215,8 @@ void Rr_CopyImageToHost(Rr_Renderer* Renderer, Rr_Image* Image)
     Rr_ImageBarrier SrcTransition = {
         .Image = Image->Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .StageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .StageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
         .CommandBuffer = Renderer->ImmediateMode.CommandBuffer,
     };
     Rr_ChainImageBarrier_Aspect(&SrcTransition, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
