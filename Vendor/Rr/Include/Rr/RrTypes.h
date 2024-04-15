@@ -132,14 +132,6 @@ typedef struct Rr_DescriptorLayoutBuilder
     u32 Count;
 } Rr_DescriptorLayoutBuilder;
 
-typedef struct SComputeConstants
-{
-    vec4 Vec0;
-    vec4 Vec1;
-    vec4 Vec2;
-    vec4 Vec3;
-} SComputeConstants;
-
 typedef struct Rr_ImGui
 {
     VkDescriptorPool DescriptorPool;

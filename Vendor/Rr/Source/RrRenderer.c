@@ -223,7 +223,10 @@ static void Rr_CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Heig
 
     /* Depth Image */
     DepthImage->Format = RR_DEPTH_FORMAT;
-    ImageCreateInfo = GetImageCreateInfo(DepthImage->Format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, DepthImage->Extent);
+    ImageCreateInfo = GetImageCreateInfo(
+        DepthImage->Format,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        DepthImage->Extent);
     vmaCreateImage(Renderer->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DepthImage->Handle, &DepthImage->Allocation, NULL);
     ImageViewCreateInfo = GetImageViewCreateInfo(DepthImage->Format, DepthImage->Handle, VK_IMAGE_ASPECT_DEPTH_BIT);
     vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &DepthImage->View);
@@ -255,7 +258,7 @@ static void Rr_UpdateDrawImageDescriptors(Rr_Renderer* const Renderer, b32 bCrea
         Renderer->DrawTarget.DescriptorSet = Rr_AllocateDescriptorSet(GlobalDescriptorAllocator, Renderer->Device, Renderer->DrawTarget.DescriptorSetLayout);
 
         Rr_DescriptorWriter Writer = Rr_CreateDescriptorWriter(1, 0);
-        Rr_WriteDescriptor_Image(&Writer, 0, Renderer->DrawTarget.ColorImage.View, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        Rr_WriteImageDescriptor(&Writer, 0, Renderer->DrawTarget.ColorImage.View, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
         Rr_UpdateDescriptorSet(&Writer, Renderer->Device, Renderer->DrawTarget.DescriptorSet);
         Rr_DestroyDescriptorWriter(&Writer);
     }
@@ -553,51 +556,51 @@ static void Rr_InitDescriptors(Rr_Renderer* const Renderer)
 
 static void Rr_InitBackgroundPipelines(Rr_Renderer* const Renderer)
 {
-    VkPushConstantRange PushConstantRange = {
-        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-        .offset = 0,
-        .size = sizeof(SComputeConstants),
-    };
-
-    VkPipelineLayoutCreateInfo ComputeLayout = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = NULL,
-        .setLayoutCount = 1,
-        .pSetLayouts = &Renderer->DrawTarget.DescriptorSetLayout,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &PushConstantRange,
-    };
-
-    vkCreatePipelineLayout(Renderer->Device, &ComputeLayout, NULL, &Renderer->GradientPipelineLayout);
-
-    VkShaderModule ComputeDrawShader;
-    Rr_Asset TestCOMP;
-    RrAsset_Extern(&TestCOMP, TestCOMP);
-    vkCreateShaderModule(Renderer->Device, &(VkShaderModuleCreateInfo){
-                                               .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                                               .pNext = NULL,
-                                               .codeSize = TestCOMP.Length,
-                                               .pCode = (u32*)TestCOMP.Data,
-                                           },
-        NULL, &ComputeDrawShader);
-
-    VkPipelineShaderStageCreateInfo StageCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext = NULL,
-        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-        .module = ComputeDrawShader,
-        .pName = "main",
-    };
-
-    VkComputePipelineCreateInfo PipelineCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .pNext = NULL,
-        .stage = StageCreateInfo,
-        .layout = Renderer->GradientPipelineLayout,
-    };
-
-    vkCreateComputePipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, NULL, &Renderer->GradientPipeline);
-    vkDestroyShaderModule(Renderer->Device, ComputeDrawShader, NULL);
+    // VkPushConstantRange PushConstantRange = {
+    //     .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+    //     .offset = 0,
+    //     .size = sizeof(SComputeConstants),
+    // };
+    //
+    // VkPipelineLayoutCreateInfo ComputeLayout = {
+    //     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    //     .pNext = NULL,
+    //     .setLayoutCount = 1,
+    //     .pSetLayouts = &Renderer->DrawTarget.DescriptorSetLayout,
+    //     .pushConstantRangeCount = 1,
+    //     .pPushConstantRanges = &PushConstantRange,
+    // };
+    //
+    // vkCreatePipelineLayout(Renderer->Device, &ComputeLayout, NULL, &Renderer->GradientPipelineLayout);
+    //
+    // VkShaderModule ComputeDrawShader;
+    // Rr_Asset TestCOMP;
+    // RrAsset_Extern(&TestCOMP, TestCOMP);
+    // vkCreateShaderModule(Renderer->Device, &(VkShaderModuleCreateInfo){
+    //                                            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    //                                            .pNext = NULL,
+    //                                            .codeSize = TestCOMP.Length,
+    //                                            .pCode = (u32*)TestCOMP.Data,
+    //                                        },
+    //     NULL, &ComputeDrawShader);
+    //
+    // VkPipelineShaderStageCreateInfo StageCreateInfo = {
+    //     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    //     .pNext = NULL,
+    //     .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+    //     .module = ComputeDrawShader,
+    //     .pName = "main",
+    // };
+    //
+    // VkComputePipelineCreateInfo PipelineCreateInfo = {
+    //     .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+    //     .pNext = NULL,
+    //     .stage = StageCreateInfo,
+    //     .layout = Renderer->GradientPipelineLayout,
+    // };
+    //
+    // vkCreateComputePipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, NULL, &Renderer->GradientPipeline);
+    // vkDestroyShaderModule(Renderer->Device, ComputeDrawShader, NULL);
 }
 
 static void Rr_InitPipelines(Rr_Renderer* const Renderer)
@@ -607,14 +610,14 @@ static void Rr_InitPipelines(Rr_Renderer* const Renderer)
 
 static void Rr_DrawBackground(Rr_Renderer* const Renderer, VkCommandBuffer CommandBuffer)
 {
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipeline);
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipelineLayout, 0, 1, &Renderer->DrawTarget.DescriptorSet, 0, NULL);
-    SComputeConstants ComputeConstants;
-    glm_vec4_copy((vec4){ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
-    glm_vec4_copy((vec4){ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
-    glm_vec4_copy((vec4){ (f32)Renderer->DrawTarget.ActiveResolution.width, (f32)Renderer->DrawTarget.ActiveResolution.height, 0.0f, 1.0f }, ComputeConstants.Vec2);
-    vkCmdPushConstants(CommandBuffer, Renderer->GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SComputeConstants), &ComputeConstants);
-    vkCmdDispatch(CommandBuffer, ceil(Renderer->DrawTarget.ActiveResolution.width / 16.0), ceil(Renderer->DrawTarget.ActiveResolution.height / 16.0), 1);
+    // vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipeline);
+    // vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipelineLayout, 0, 1, &Renderer->DrawTarget.DescriptorSet, 0, NULL);
+    // SComputeConstants ComputeConstants;
+    // glm_vec4_copy((vec4){ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
+    // glm_vec4_copy((vec4){ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
+    // glm_vec4_copy((vec4){ (f32)Renderer->DrawTarget.ActiveResolution.width, (f32)Renderer->DrawTarget.ActiveResolution.height, 0.0f, 1.0f }, ComputeConstants.Vec2);
+    // vkCmdPushConstants(CommandBuffer, Renderer->GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SComputeConstants), &ComputeConstants);
+    // vkCmdDispatch(CommandBuffer, ceil(Renderer->DrawTarget.ActiveResolution.width / 16.0), ceil(Renderer->DrawTarget.ActiveResolution.height / 16.0), 1);
 
     // float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
     // VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
@@ -893,7 +896,7 @@ void Rr_Init(Rr_App* App)
 
     Rr_Asset NoisePNG;
     RrAsset_Extern(&NoisePNG, NoisePNG);
-    Renderer->NoiseImage = Rr_CreateImage_FromPNG(&NoisePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    Renderer->NoiseImage = Rr_CreateImageFromPNG(&NoisePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     SDL_stack_free(Extensions);
 }

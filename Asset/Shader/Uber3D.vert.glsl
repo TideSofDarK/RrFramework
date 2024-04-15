@@ -37,7 +37,7 @@ void main()
 {
     Vertex v = ub_objectData.vertexBuffer.vertices[gl_VertexIndex];
 
-    gl_Position = ub_shaderGlobals.viewProj * ub_objectData.model * vec4(v.position, 1.0f);
+    gl_Position = ub_shaderGlobals.proj * ub_shaderGlobals.view * ub_objectData.model * vec4(v.position, 1.0f);
     out_color = v.color;
     out_UV.x = v.uv_x;
     out_UV.y = v.uv_y;

@@ -20,3 +20,8 @@ void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer);
 
 void Rr_BeginRendering(Rr_Renderer* Renderer, Rr_Pipeline* Pipeline);
 void Rr_EndRendering(Rr_Renderer* Renderer);
+
+static inline float Rr_GetAspectRatio(Rr_Renderer* Renderer)
+{
+    return (float)Renderer->DrawTarget.ActiveResolution.width / (float)Renderer->DrawTarget.ActiveResolution.height;
+}

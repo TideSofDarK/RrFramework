@@ -22,8 +22,7 @@ void Rr_UploadMesh(
     size_t VertexBufferSize = sizeof(Rr_Vertex) * VertexCount;
     size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * IndexCount;
 
-    Rr_InitBuffer(
-        &MeshBuffers->VertexBuffer,
+    MeshBuffers->VertexBuffer = Rr_CreateBuffer(
         Renderer->Allocator,
         VertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
@@ -36,16 +35,13 @@ void Rr_UploadMesh(
     };
     MeshBuffers->VertexBufferAddress = vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
 
-    Rr_InitBuffer(
-        &MeshBuffers->IndexBuffer,
+    MeshBuffers->IndexBuffer = Rr_CreateBuffer(
         Renderer->Allocator,
         IndexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_AUTO, false);
 
-    Rr_Buffer StagingBuffer = { 0 };
-    Rr_InitBuffer(
-        &StagingBuffer,
+    Rr_Buffer StagingBuffer = Rr_CreateBuffer(
         Renderer->Allocator,
         VertexBufferSize + IndexBufferSize,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,

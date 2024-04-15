@@ -150,11 +150,11 @@ Rr_DescriptorWriter Rr_CreateDescriptorWriter(size_t Images, size_t Buffers)
     Rr_ArrayInit(Writer.ImageInfos, VkDescriptorImageInfo, Images);
     Rr_ArrayInit(Writer.BufferInfos, VkDescriptorBufferInfo, Buffers);
     Rr_ArrayInit(Writer.Writes, VkWriteDescriptorSet, Images + Buffers);
-    Rr_ArrayInit(Writer.Entries, SDescriptorWriterEntry, Images + Buffers);
+    Rr_ArrayInit(Writer.Entries, Rr_DescriptorWriterEntry, Images + Buffers);
     return Writer;
 }
 
-void Rr_WriteDescriptor_Image(Rr_DescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type)
+void Rr_WriteImageDescriptor(Rr_DescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type)
 {
     Rr_ArrayPush(Writer->ImageInfos, &((VkDescriptorImageInfo){ .sampler = Sampler, .imageView = View, .imageLayout = Layout }));
 
@@ -166,10 +166,10 @@ void Rr_WriteDescriptor_Image(Rr_DescriptorWriter* Writer, u32 Binding, VkImageV
                                      .descriptorType = Type,
                                  }));
 
-    Rr_ArrayPush(Writer->Entries, &((SDescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Image, .Index = Rr_ArrayCount(Writer->ImageInfos) - 1 }));
+    Rr_ArrayPush(Writer->Entries, &((Rr_DescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Image, .Index = Rr_ArrayCount(Writer->ImageInfos) - 1 }));
 }
 
-void Rr_WriteDescriptor_Buffer(Rr_DescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type)
+void Rr_WriteBufferDescriptor(Rr_DescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type)
 {
     Rr_ArrayPush(Writer->BufferInfos, &((VkDescriptorBufferInfo){ .range = Size, .buffer = Buffer, .offset = Offset }));
 
@@ -181,7 +181,7 @@ void Rr_WriteDescriptor_Buffer(Rr_DescriptorWriter* Writer, u32 Binding, VkBuffe
                                      .descriptorType = Type,
                                  }));
 
-    Rr_ArrayPush(Writer->Entries, &((SDescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Buffer, .Index = Rr_ArrayCount(Writer->BufferInfos) - 1 }));
+    Rr_ArrayPush(Writer->Entries, &((Rr_DescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Buffer, .Index = Rr_ArrayCount(Writer->BufferInfos) - 1 }));
 }
 
 void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer)
@@ -205,7 +205,7 @@ void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDesc
     size_t WritesCount = Rr_ArrayCount(Writer->Writes);
     for (size_t Index = 0; Index < WritesCount; ++Index)
     {
-        SDescriptorWriterEntry* Entry = &Writer->Entries[Index];
+        Rr_DescriptorWriterEntry* Entry = &Writer->Entries[Index];
         VkWriteDescriptorSet* Write = &Writer->Writes[Index];
         Write->dstSet = Set;
         switch (Entry->Type)

@@ -1,5 +1,4 @@
 #include "RrImage.h"
-#include <vulkan/vulkan_core.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
@@ -31,8 +30,9 @@
 #include "RrVulkan.h"
 #include "RrBuffer.h"
 #include "RrLib.h"
+#include "RrMemory.h"
 
-Rr_Image Rr_CreateImage(Rr_Renderer* const Rr, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped)
+static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, VmaAllocationCreateInfo AllocationCreateInfo, b8 bMipMapped)
 {
     Rr_Image Image = { 0 };
     Image.Format = Format;
@@ -45,12 +45,8 @@ Rr_Image Rr_CreateImage(Rr_Renderer* const Rr, VkExtent3D Extent, VkFormat Forma
         Info.mipLevels = (u32)(SDL_floor(SDL_log(SDL_max(Extent.width, Extent.height)))) + 1;
     }
 
-    VmaAllocationCreateInfo AllocationInfo = {
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    };
-
-    vmaCreateImage(Rr->Allocator, &Info, &AllocationInfo, &Image.Handle, &Image.Allocation, NULL);
+    VkResult Result = vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image.Handle, &Image.Allocation, NULL);
+    fprintf(stderr, "%d\n", Result);
 
     VkImageAspectFlags AspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
     if (Format == RR_DEPTH_FORMAT)
@@ -61,12 +57,22 @@ Rr_Image Rr_CreateImage(Rr_Renderer* const Rr, VkExtent3D Extent, VkFormat Forma
     VkImageViewCreateInfo ViewInfo = GetImageViewCreateInfo(Image.Format, Image.Handle, AspectFlag);
     ViewInfo.subresourceRange.levelCount = Info.mipLevels;
 
-    vkCreateImageView(Rr->Device, &ViewInfo, NULL, &Image.View);
+    vkCreateImageView(Renderer->Device, &ViewInfo, NULL, &Image.View);
 
     return Image;
 }
 
-Rr_Image Rr_CreateImage_FromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout)
+Rr_Image Rr_CreateImage(Rr_Renderer* const Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped)
+{
+    VmaAllocationCreateInfo AllocationCreateInfo = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    };
+
+    return Rr_CreateImage_Internal(Renderer, Extent, Format, Usage, AllocationCreateInfo, bMipMapped);
+}
+
+Rr_Image Rr_CreateImageFromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout)
 {
     const i32 DesiredChannels = 4;
     i32 Channels;
@@ -75,8 +81,7 @@ Rr_Image Rr_CreateImage_FromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, Vk
 
     size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
-    Rr_Buffer Buffer = { 0 };
-    Rr_InitBuffer(&Buffer, Renderer->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
+    Rr_Buffer Buffer = Rr_CreateBuffer(Renderer->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
 
     SDL_memcpy(Buffer.AllocationInfo.pMappedData, ParsedImage, DataSize);
     stbi_image_free(ParsedImage);
@@ -116,7 +121,7 @@ Rr_Image Rr_CreateImage_FromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, Vk
     return Image;
 }
 
-Rr_Image Rr_CreateImage_FromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
+Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
 {
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
     VkImageLayout InitialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -153,15 +158,11 @@ Rr_Image Rr_CreateImage_FromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
         abort();
     }
 
-    // FreeEXRHeader(&Header);
-    // FreeEXRImage(&Image);
-
     VkExtent3D Extent = { .width = Image.width, .height = Image.height, .depth = 1 };
 
     size_t DataSize = Extent.width * Extent.height * sizeof(f32);
 
-    Rr_Buffer Buffer = { 0 };
-    Rr_InitBuffer(&Buffer, Renderer->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
+    Rr_Buffer Buffer = Rr_CreateBuffer(Renderer->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
 
     SDL_memcpy(Buffer.AllocationInfo.pMappedData, Image.images[1], DataSize);
 
@@ -197,7 +198,55 @@ Rr_Image Rr_CreateImage_FromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
 
     Rr_DestroyBuffer(&Buffer, Renderer->Allocator);
 
+    FreeEXRHeader(&Header);
+    FreeEXRImage(&Image);
+
     return DepthImage;
+}
+
+void Rr_CopyImageToHost(Rr_Renderer* Renderer, Rr_Image* Image)
+{
+    VmaAllocationInfo AllocationInfo;
+    vmaGetAllocationInfo(Renderer->Allocator, Image->Allocation, &AllocationInfo);
+
+    Rr_Buffer Buffer = Rr_CreateMappedBuffer(Renderer->Allocator, AllocationInfo.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+
+    Rr_BeginImmediate(Renderer);
+    Rr_ImageBarrier SrcTransition = {
+        .Image = Image->Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .StageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .CommandBuffer = Renderer->ImmediateMode.CommandBuffer,
+    };
+    Rr_ChainImageBarrier_Aspect(&SrcTransition, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+    VkBufferImageCopy Copy = {
+        .imageExtent = Image->Extent,
+        .imageSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+
+    vkCmdCopyImageToBuffer(
+        Renderer->ImmediateMode.CommandBuffer,
+        Image->Handle,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        Buffer.Handle,
+        1,
+        &Copy);
+
+    Rr_EndImmediate(Renderer);
+
+    for (int Index = Image->Extent.width * Image->Extent.height / 2; Index < Image->Extent.width * (Image->Extent.height / 2 + 1); ++Index)
+    {
+        fprintf(stderr, "%f\n", ((float*)Buffer.AllocationInfo.pMappedData)[Index]);
+    }
+
+    Rr_DestroyBuffer(&Buffer, Renderer->Allocator);
 }
 
 void Rr_DestroyImage(Rr_Renderer* const Renderer, Rr_Image* AllocatedImage)

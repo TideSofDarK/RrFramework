@@ -33,19 +33,19 @@ typedef struct SDescriptorWriterEntry
 {
     EDescriptorWriterEntryType Type;
     size_t Index;
-} SDescriptorWriterEntry;
+} Rr_DescriptorWriterEntry;
 
 typedef struct Rr_DescriptorWriter
 {
     VkDescriptorImageInfo* ImageInfos;
     VkDescriptorBufferInfo* BufferInfos;
-    SDescriptorWriterEntry* Entries;
+    Rr_DescriptorWriterEntry* Entries;
     VkWriteDescriptorSet* Writes;
 } Rr_DescriptorWriter;
 
 Rr_DescriptorWriter Rr_CreateDescriptorWriter(size_t Images, size_t Buffers);
-void Rr_WriteDescriptor_Image(Rr_DescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type);
-void Rr_WriteDescriptor_Buffer(Rr_DescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type);
+void Rr_WriteImageDescriptor(Rr_DescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type);
+void Rr_WriteBufferDescriptor(Rr_DescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type);
 void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer);
 void Rr_DestroyDescriptorWriter(Rr_DescriptorWriter* Writer);
 void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);

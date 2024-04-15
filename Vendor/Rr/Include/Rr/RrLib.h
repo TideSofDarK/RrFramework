@@ -56,11 +56,12 @@ static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkIm
  * Rr_TransitionImage API
  * ==================== */
 
-static void Rr_ChainImageBarrier(
+static void Rr_ChainImageBarrier_Aspect(
     Rr_ImageBarrier* TransitionImage,
     VkPipelineStageFlags2 DstStageMask,
     VkAccessFlags2 DstAccessMask,
-    VkImageLayout NewLayout)
+    VkImageLayout NewLayout,
+    VkImageAspectFlagBits Aspect)
 {
     VkImageMemoryBarrier2 ImageBarrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -76,7 +77,7 @@ static void Rr_ChainImageBarrier(
         .newLayout = NewLayout,
 
         .image = TransitionImage->Image,
-        .subresourceRange = GetImageSubresourceRange((NewLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT),
+        .subresourceRange = GetImageSubresourceRange(Aspect),
     };
 
     VkDependencyInfo DepInfo = {
@@ -91,4 +92,18 @@ static void Rr_ChainImageBarrier(
     TransitionImage->Layout = NewLayout;
     TransitionImage->StageMask = DstStageMask;
     TransitionImage->AccessMask = DstAccessMask;
+}
+
+static void Rr_ChainImageBarrier(
+    Rr_ImageBarrier* TransitionImage,
+    VkPipelineStageFlags2 DstStageMask,
+    VkAccessFlags2 DstAccessMask,
+    VkImageLayout NewLayout)
+{
+    Rr_ChainImageBarrier_Aspect(
+        TransitionImage,
+        DstStageMask,
+        DstAccessMask,
+        NewLayout,
+        (NewLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT);
 }

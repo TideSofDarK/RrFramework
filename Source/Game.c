@@ -3,6 +3,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
 
+#include <cglm/cam.h>
 #include <cglm/vec3.h>
 #include <cglm/mat4.h>
 #include <cglm/euler.h>
@@ -49,6 +50,7 @@ typedef enum EInputAction
     EIA_DOWN,
     EIA_LEFT,
     EIA_RIGHT,
+    EIA_FULLSCREEN,
     EIA_COUNT,
 } EInputAction;
 
@@ -75,6 +77,7 @@ static void InitInputMappings(void)
     InputMappings[EIA_DOWN].Primary = SDL_SCANCODE_S;
     InputMappings[EIA_LEFT].Primary = SDL_SCANCODE_A;
     InputMappings[EIA_RIGHT].Primary = SDL_SCANCODE_D;
+    InputMappings[EIA_FULLSCREEN].Primary = SDL_SCANCODE_F11;
 }
 
 static void InitUber3DPipeline(Rr_Renderer* const Renderer)
@@ -116,7 +119,7 @@ static void InitGlobals(Rr_Renderer* const Renderer)
     //
     glm_lookat_rh((vec3){ 0, 2, 3.5 }, (vec3){ 0, 0, 0 }, (vec3){ 0.0f, -1.0f, 0.0f }, ShaderGlobals.View);
 
-    glm_perspective_rh_no(glm_rad(40.0f), (float)Renderer->DrawTarget.ActiveResolution.width / (float)Renderer->DrawTarget.ActiveResolution.height, 0.1f, 100.0f, ShaderGlobals.Proj);
+    glm_perspective_rh_no(glm_rad(40.0f), Rr_GetAspectRatio(Renderer), 0.1f, 100.0f, ShaderGlobals.Proj);
 
     glm_mat4_mul(ShaderGlobals.Proj, ShaderGlobals.View, ShaderGlobals.ViewProj);
 }
@@ -130,7 +133,7 @@ static void Init(Rr_App* App)
 
     Rr_Asset POCDepthEXR;
     RrAsset_Extern(&POCDepthEXR, POCDepthEXR);
-    SceneDepthImage = Rr_CreateImage_FromEXR(&POCDepthEXR, &App->Renderer);
+    SceneDepthImage = Rr_CreateImageFromEXR(&POCDepthEXR, &App->Renderer);
     //
     //    Rr_Asset POCColorPNG;
     //    RrAsset_Extern(&POCColorPNG, POCColorPNG);
@@ -146,7 +149,7 @@ static void Init(Rr_App* App)
 
     Rr_Asset CottagePNG;
     RrAsset_Extern(&CottagePNG, CottagePNG);
-    CottageTexture = Rr_CreateImage_FromPNG(&CottagePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    CottageTexture = Rr_CreateImageFromPNG(&CottagePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     InitUber3DPipeline(Renderer);
     InitGlobals(Renderer);
@@ -183,7 +186,17 @@ static void Update(Rr_App* App)
     Rr_KeyState Up = Rr_GetKeyState(App->InputState, EIA_UP);
     if (Up == RR_KEYSTATE_PRESSED)
     {
-        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO, "%d", Up);
+        Rr_Renderer* Renderer = &App->Renderer;
+        Rr_CopyImageToHost(Renderer, &Renderer->DrawTarget.DepthImage);
+        // VmaAllocationInfo AllocationInfo;
+        // vmaGetAllocationInfo(Renderer->Allocator, DepthShot.Allocation, &AllocationInfo);
+        // Rr_DestroyImage(Renderer, &DepthShot);
+        // SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO, "%d", Up);
+    }
+
+    if (Rr_GetKeyState(App->InputState, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
+    {
+        Rr_ToggleFullscreen(App);
     }
 
     igShowDemoWindow(NULL);
@@ -195,19 +208,23 @@ static void Draw(Rr_App* const App)
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-    SFrameData* PerFrameData = (SFrameData*)Rr_GetCurrentFrameData(Renderer);
+    SFrameData* FrameData = (SFrameData*)Rr_GetCurrentFrameData(Renderer);
     VkDevice Device = Renderer->Device;
 
-    Rr_DestroyBuffer(&PerFrameData->ShaderGlobalsBuffer, Renderer->Allocator);
-    Rr_InitMappedBuffer(&PerFrameData->ShaderGlobalsBuffer, Renderer->Allocator, sizeof(SUber3DGlobals), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    Rr_DestroyBuffer(&FrameData->ShaderGlobalsBuffer, Renderer->Allocator);
+    FrameData->ShaderGlobalsBuffer = Rr_CreateMappedBuffer(Renderer->Allocator, sizeof(SUber3DGlobals), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
+    // glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
+
+    glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
 
     SDL_memcpy(
-        PerFrameData->ShaderGlobalsBuffer.AllocationInfo.pMappedData,
+        FrameData->ShaderGlobalsBuffer.AllocationInfo.pMappedData,
         &ShaderGlobals,
         sizeof(SUber3DGlobals));
 
-    Rr_DestroyBuffer(&PerFrameData->ObjectDataBuffer, Renderer->Allocator);
-    Rr_InitMappedBuffer(&PerFrameData->ObjectDataBuffer, Renderer->Allocator, sizeof(SUber3DObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    Rr_DestroyBuffer(&FrameData->ObjectDataBuffer, Renderer->Allocator);
+    FrameData->ObjectDataBuffer = Rr_CreateMappedBuffer(Renderer->Allocator, sizeof(SUber3DObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
     SUber3DObject Uber3DObject;
     u64 Ticks = SDL_GetTicks();
@@ -217,20 +234,20 @@ static void Draw(Rr_App* const App)
     // glm_mat4_identity(Uber3DObject.Model);
     Uber3DObject.VertexBufferAddress = CottageMesh.VertexBufferAddress;
     SDL_memcpy(
-        PerFrameData->ObjectDataBuffer.AllocationInfo.pMappedData,
+        FrameData->ObjectDataBuffer.AllocationInfo.pMappedData,
         &Uber3DObject,
         sizeof(SUber3DObject));
 
     VkDescriptorSet SceneDataDescriptorSet = Rr_AllocateDescriptorSet(&Frame->DescriptorAllocator, Renderer->Device, ShaderGlobalsLayout);
     Rr_DescriptorWriter Writer = Rr_CreateDescriptorWriter(1, 1);
-    Rr_WriteDescriptor_Buffer(&Writer, 0, PerFrameData->ShaderGlobalsBuffer.Handle, sizeof(SUber3DGlobals), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_WriteDescriptor_Image(&Writer, 1, SceneDepthImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    Rr_WriteBufferDescriptor(&Writer, 0, FrameData->ShaderGlobalsBuffer.Handle, sizeof(SUber3DGlobals), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    Rr_WriteImageDescriptor(&Writer, 1, SceneDepthImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     Rr_UpdateDescriptorSet(&Writer, Device, SceneDataDescriptorSet);
     Rr_ResetDescriptorWriter(&Writer);
 
     VkDescriptorSet ObjectDataDescriptorSet = Rr_AllocateDescriptorSet(&Frame->DescriptorAllocator, Renderer->Device, ObjectDataLayout);
-    Rr_WriteDescriptor_Buffer(&Writer, 0, PerFrameData->ObjectDataBuffer.Handle, sizeof(SUber3DObject), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_WriteDescriptor_Image(&Writer, 1, CottageTexture.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    Rr_WriteBufferDescriptor(&Writer, 0, FrameData->ObjectDataBuffer.Handle, sizeof(SUber3DObject), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    Rr_WriteImageDescriptor(&Writer, 1, CottageTexture.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     Rr_UpdateDescriptorSet(&Writer, Device, ObjectDataDescriptorSet);
     Rr_DestroyDescriptorWriter(&Writer);
 

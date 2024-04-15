@@ -234,3 +234,13 @@ void Rr_Run(Rr_AppConfig* Config)
     SDL_DestroyWindow(App.Window);
     SDL_Quit();
 }
+
+static b8 Rr_IsAnyFullscreen(SDL_Window* Window)
+{
+    return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
+}
+
+void Rr_ToggleFullscreen(Rr_App* App)
+{
+    SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
+}
