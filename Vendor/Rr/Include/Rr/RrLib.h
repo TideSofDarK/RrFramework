@@ -12,28 +12,60 @@
  * Operations
  * ========== */
 
-static void CopyImageToImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+static void Rr_BlitPrerenderedDepth(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
 {
     VkImageBlit2 BlitRegion = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
         .pNext = NULL,
+        .srcSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+        .dstSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+    };
 
+    VkBlitImageInfo2 BlitInfo = {
+        .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+        .pNext = NULL,
+        .srcImage = Source,
+        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .dstImage = Destination,
+        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .regionCount = 1,
+        .pRegions = &BlitRegion,
+        .filter = VK_FILTER_NEAREST,
+    };
+
+    vkCmdBlitImage2(CommandBuffer, &BlitInfo);
+}
+
+static void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+{
+    VkImageBlit2 BlitRegion = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+        .pNext = NULL,
         .srcSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .mipLevel = 0,
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
-
         .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
-
         .dstSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .mipLevel = 0,
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
-
         .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
     };
 

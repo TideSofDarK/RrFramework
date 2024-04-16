@@ -1,4 +1,6 @@
 #include "RrImage.h"
+#include "RrArray.h"
+#include <stdlib.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
@@ -46,7 +48,6 @@ static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D 
     }
 
     VkResult Result = vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image.Handle, &Image.Allocation, NULL);
-    fprintf(stderr, "%d\n", Result);
 
     VkImageAspectFlags AspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
     if (Format == RR_DEPTH_FORMAT)
@@ -124,7 +125,6 @@ Rr_Image Rr_CreateImageFromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkI
 Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
 {
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-    VkImageLayout InitialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     int Result;
     const char* Error;
@@ -158,13 +158,98 @@ Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
         abort();
     }
 
+    /* Normalize depth. */
+    const float Near = 0.1f;
+    const float Far = 100.0f;
+    float MinDepth = FLT_MAX;
+    float MaxDepth = FLT_MIN;
+    for (int Index = 0; Index < Image.width * Image.height; Index++)
+    {
+        float* const Current = ((float*)Image.images[0]) + Index;
+        if (*Current > Far)
+        {
+//            *Current = 1.0f;
+            continue;
+        }
+        MinDepth = SDL_min(*Current, MinDepth);
+        MaxDepth = SDL_max(*Current, MaxDepth);
+//         *Current = 1.0f - ((*Current - Near) / (Far - Near));
+        // if (*Current >= Far)
+        // {
+        //     *Current = 1.0f;
+        // }
+        // if (*Current <= Near)
+        // {
+        //     *Current = Near;
+        // }
+//         *Current = ((2.0f * Near) / *Current - Far - Near / (Far - Near)) * -1.0f;
+
+//         *Current = (2.0f * Near) / (Far + Near - *Current * (Far - Near));
+        // *Current /= 99.9f;
+        //
+        // *Current = *Current / 99.9f;
+        // *Current = 1.0f - (*Current - 1.0f);
+        // *Current = (float)rand() / (float)(RAND_MAX / 1.0f);
+        // *Current = SDL_clamp(*Current, 0.0f, 1.0f);
+        // *Current = *Current / 99.9f;
+        // fprintf(stderr, "%f\n", *Current);
+        // *Current = (2.0f * Near) / (Far + Near - *Current * (Far - Near));
+    }
+
+    for (int Index = 0; Index < Image.width * Image.height; Index++)
+    {
+        float* const Current = ((float*)Image.images[0]) + Index;
+        if (*Current > Far)
+        {
+            *Current = 1.0f;
+            continue;
+        }
+        const float shit = *Current;
+        *Current =(-(((Near + Far) * shit - (2.0f * Near)) / ((Near - Far) * shit)));
+
+        //        *Current = *Current / MaxDepth;
+//        MinDepth = SDL_min(*Current, MinDepth);
+//        MaxDepth = SDL_max(*Current, MaxDepth);
+//        *Current =  *Current / (MaxDepth) * (MaxDepth - MinDepth);
+//        *Current = ((*Current) / (MaxDepth - MinDepth));
+        // if (*Current >= Far)
+        // {
+        //     *Current = 1.0f;
+        // }
+        // if (*Current <= Near)
+        // {
+        //     *Current = Near;
+        // }
+        //         *Current = ((2.0f * Near) / *Current - Far - Near / (Far - Near)) * -1.0f;
+//        *Current = (*(((float*)Image.images[0]) + Index) * *(((float*)Image.images[1]) + Index) * *(((float*)Image.images[2]) + Index)) / 3.0f;
+//                 *Current = 1.0f - ( 1.0f+ (2.0f * Near) / (Far + Near - *Current * (Far - Near)));
+//                         *Current = 1.0 + (2.0f * MinDepth) / (MaxDepth + MinDepth - *Current * (MaxDepth - MinDepth));
+        // *Current /= 99.9f;
+        //
+        // *Current = *Current / 99.9f;
+        // *Current = 1.0f - (*Current - 1.0f);
+        // *Current = (float)rand() / (float)(RAND_MAX / 1.0f);
+        // *Current = SDL_clamp(*Current, 0.0f, 1.0f);
+        // *Current = *Current / 99.9f;
+        // fprintf(stderr, "%f\n", *Current);
+        // *Current = (2.0f * Near) / (Far + Near - *Current * (Far - Near));
+    }
+
+    for (int Index = 0; Index < Image.width; Index++)
+    {
+        float* const Current0 = ((float*)Image.images[0]) + Index;
+//        float* const Current1 = ((float*)Image.images[1]) + Index;
+//        float* const Current2 = ((float*)Image.images[2]) + Index;
+        fprintf(stderr, "%f\n", *Current0);
+    }
+
     VkExtent3D Extent = { .width = Image.width, .height = Image.height, .depth = 1 };
 
     size_t DataSize = Extent.width * Extent.height * sizeof(f32);
 
     Rr_Buffer Buffer = Rr_CreateBuffer(Renderer->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
 
-    SDL_memcpy(Buffer.AllocationInfo.pMappedData, Image.images[1], DataSize);
+    SDL_memcpy(Buffer.AllocationInfo.pMappedData, Image.images[0], DataSize);
 
     Rr_Image DepthImage = Rr_CreateImage(Renderer, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 
@@ -176,14 +261,19 @@ Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
         .AccessMask = VK_ACCESS_2_NONE,
         .CommandBuffer = Renderer->ImmediateMode.CommandBuffer,
     };
-    Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    Rr_ChainImageBarrier_Aspect(
+        &Transition,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_ASPECT_DEPTH_BIT);
 
     VkBufferImageCopy Copy = {
         .bufferOffset = 0,
         .bufferRowLength = 0,
         .bufferImageHeight = 0,
         .imageSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
             .mipLevel = 0,
             .baseArrayLayer = 0,
             .layerCount = 1,
@@ -193,7 +283,12 @@ Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
 
     vkCmdCopyBufferToImage(Renderer->ImmediateMode.CommandBuffer, Buffer.Handle, DepthImage.Handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
 
-    Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_READ_BIT, InitialLayout);
+    Rr_ChainImageBarrier_Aspect(
+        &Transition,
+        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        VK_ACCESS_2_TRANSFER_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VK_IMAGE_ASPECT_DEPTH_BIT);
     Rr_EndImmediate(Renderer);
 
     Rr_DestroyBuffer(&Buffer, Renderer->Allocator);
@@ -202,6 +297,61 @@ Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
     FreeEXRImage(&Image);
 
     return DepthImage;
+}
+
+static void Rr_SaveDepthToFile(Rr_Renderer* Renderer, Rr_Buffer* HostMappedBuffer, size_t Width, size_t Height)
+{
+    EXRHeader Header;
+    InitEXRHeader(&Header);
+
+    EXRImage Image;
+    InitEXRImage(&Image);
+
+    Image.num_channels = 1;
+
+    float* Data;
+    Rr_ArrayInit(Data, float, HostMappedBuffer->AllocationInfo.size);
+    SDL_memcpy(Data, HostMappedBuffer->AllocationInfo.pMappedData, HostMappedBuffer->AllocationInfo.size);
+    for (int Index = 0; Index < Width; Index++)
+    {
+//         float Near = 0.1f;
+//         float Far = 100.0f;
+//         Data[Index] = (2.0f * Near) / (Far + Near - Data[Index] * (Far - Near));
+        fprintf(stderr, "%f\n", Data[Index]);
+    }
+    // u8** images = (u8**)&HostMappedBuffer->AllocationInfo.pMappedData;
+
+    u8* Images[1] = { (u8*)Data };
+
+    Image.images = Images;
+    Image.width = (int)Width;
+    Image.height = (int)Height;
+
+    Header.num_channels = 1;
+    Header.channels = (EXRChannelInfo*)malloc(sizeof(EXRChannelInfo) * Header.num_channels);
+    strncpy(Header.channels[0].name, "R", 255);
+    Header.channels[0].name[strlen("R")] = '\0';
+
+    Header.pixel_types = (int*)malloc(sizeof(int) * Header.num_channels);
+    Header.requested_pixel_types = (int*)malloc(sizeof(int) * Header.num_channels);
+    Header.pixel_types[0] = TINYEXR_PIXELTYPE_FLOAT;
+    Header.requested_pixel_types[0] = TINYEXR_PIXELTYPE_FLOAT;
+
+    const char* Error = NULL;
+    int ret = SaveEXRImageToFile(&Image, &Header, "depth.exr", &Error);
+    if (ret != TINYEXR_SUCCESS)
+    {
+        fprintf(stderr, "Save EXR err: %s\n", Error);
+        FreeEXRErrorMessage(Error);
+        abort();
+    }
+    printf("Saved exr file. [ %s ] \n", "depth.exr");
+
+    free(Header.channels);
+    free(Header.pixel_types);
+    free(Header.requested_pixel_types);
+
+    Rr_ArrayFree(Data);
 }
 
 void Rr_CopyImageToHost(Rr_Renderer* Renderer, Rr_Image* Image)
@@ -241,10 +391,12 @@ void Rr_CopyImageToHost(Rr_Renderer* Renderer, Rr_Image* Image)
 
     Rr_EndImmediate(Renderer);
 
-    for (int Index = Image->Extent.width * Image->Extent.height / 2; Index < Image->Extent.width * (Image->Extent.height / 2 + 1); ++Index)
-    {
-        fprintf(stderr, "%f\n", ((float*)Buffer.AllocationInfo.pMappedData)[Index]);
-    }
+    // for (int Index = Image->Extent.width * Image->Extent.height / 2; Index < Image->Extent.width * (Image->Extent.height / 2 + 1); ++Index)
+    // {
+    //     fprintf(stderr, "%f\n", ((float*)Buffer.AllocationInfo.pMappedData)[Index]);
+    // }
+
+    Rr_SaveDepthToFile(Renderer, &Buffer, Image->Extent.width, Image->Extent.height);
 
     Rr_DestroyBuffer(&Buffer, Renderer->Allocator);
 }

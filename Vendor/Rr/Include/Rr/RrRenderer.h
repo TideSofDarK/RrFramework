@@ -18,7 +18,14 @@ void Rr_EndImmediate(Rr_Renderer* Renderer);
 Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
 void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer);
 
-void Rr_BeginRendering(Rr_Renderer* Renderer, Rr_Pipeline* Pipeline);
+typedef struct Rr_BeginRenderingInfo
+{
+    Rr_Pipeline* Pipeline;
+    Rr_Image* InitialColor;
+    Rr_Image* InitialDepth;
+} Rr_BeginRenderingInfo;
+
+void Rr_BeginRendering(Rr_Renderer* Renderer, Rr_BeginRenderingInfo* Info);
 void Rr_EndRendering(Rr_Renderer* Renderer);
 
 static inline float Rr_GetAspectRatio(Rr_Renderer* Renderer)

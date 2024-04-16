@@ -25,7 +25,7 @@ static inline VkPipelineShaderStageCreateInfo GetShaderStageInfo(VkShaderStageFl
     return Info;
 }
 
-static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImageView View, VkClearValue* InClearValue, VkImageLayout Layout)
+static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImageView View, VkImageLayout Layout, VkClearValue* InClearValue)
 {
     VkRenderingAttachmentInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -40,15 +40,15 @@ static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImage
     return Info;
 }
 
-static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(VkImageView View, VkImageLayout Layout)
+static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(VkImageView View, VkImageLayout Layout, b8 bClear)
 {
     VkRenderingAttachmentInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
         .pNext = NULL,
         .imageView = View,
         .imageLayout = Layout,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .loadOp = bClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         .clearValue = (VkClearValue){ .depthStencil.depth = 1.0f }
     };
 
@@ -58,16 +58,16 @@ static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(VkImage
 static inline VkRenderingInfo GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentInfo* ColorAttachment,
     VkRenderingAttachmentInfo* DepthAttachment)
 {
-    VkRenderingInfo Info = { 0 };
-    Info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    Info.pNext = NULL;
-
-    Info.renderArea = (VkRect2D){ .offset = (VkOffset2D){ 0, 0 }, .extent = RenderExtent };
-    Info.layerCount = 1;
-    Info.colorAttachmentCount = 1;
-    Info.pColorAttachments = ColorAttachment;
-    Info.pDepthAttachment = DepthAttachment;
-    Info.pStencilAttachment = NULL;
+    VkRenderingInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .pNext = NULL,
+        .renderArea = (VkRect2D){ .offset = (VkOffset2D){ 0, 0 }, .extent = RenderExtent },
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = ColorAttachment,
+        .pDepthAttachment = DepthAttachment,
+        .pStencilAttachment = NULL,
+    };
 
     return Info;
 }

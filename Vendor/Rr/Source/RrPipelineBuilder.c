@@ -2,6 +2,7 @@
 
 #include "RrTypes.h"
 #include "RrHelpers.h"
+#include <vulkan/vulkan_core.h>
 
 static Rr_PipelineBuilder EmptyPipelineBuilder = {
     .InputAssembly = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO },
@@ -44,7 +45,10 @@ void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, VkPolygonMode Poly
     PipelineBuilder->Rasterizer.polygonMode = PolygonMode;
     PipelineBuilder->Rasterizer.lineWidth = 1.0f;
     PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    PipelineBuilder->Rasterizer.depthBiasEnable = VK_TRUE;
+    PipelineBuilder->Rasterizer.depthBiasConstantFactor = 10.1f;
+    PipelineBuilder->Rasterizer.depthBiasSlopeFactor = 1.0f;
 }
 
 void Rr_EnableShaderStages(Rr_PipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule)
@@ -59,12 +63,12 @@ void Rr_EnableDepthTest(Rr_PipelineBuilder* const PipelineBuilder)
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-    PipelineBuilder->DepthStencil.depthBoundsTestEnable = VK_FALSE;
-    PipelineBuilder->DepthStencil.stencilTestEnable = VK_FALSE;
-    PipelineBuilder->DepthStencil.front = (VkStencilOpState){ 0 };
-    PipelineBuilder->DepthStencil.back = (VkStencilOpState){ 0 };
-    PipelineBuilder->DepthStencil.minDepthBounds = 0.0f;
-    PipelineBuilder->DepthStencil.maxDepthBounds = 1.0f;
+//    PipelineBuilder->DepthStencil.depthBoundsTestEnable = VK_FALSE;
+//    PipelineBuilder->DepthStencil.stencilTestEnable = VK_FALSE;
+//    PipelineBuilder->DepthStencil.front = (VkStencilOpState){ 0 };
+//    PipelineBuilder->DepthStencil.back = (VkStencilOpState){ 0 };
+//    PipelineBuilder->DepthStencil.minDepthBounds = 0.0f;
+//    PipelineBuilder->DepthStencil.maxDepthBounds = 1.0f;
 }
 
 void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)

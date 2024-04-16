@@ -3,6 +3,8 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
 
+#define CGLM_FORCE_DEPTH_ZERO_TO_ONE
+//#define CGLM_FORCE_LEFT_HANDED
 #include <cglm/cam.h>
 #include <cglm/vec3.h>
 #include <cglm/mat4.h>
@@ -11,6 +13,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_scancode.h>
 
+#include <Rr/RrUtil.h>
 #include <Rr/RrDefines.h>
 #include <Rr/RrImage.h>
 #include <Rr/RrApp.h>
@@ -28,6 +31,8 @@ typedef struct SFrameData
 {
     Rr_Buffer ShaderGlobalsBuffer;
     Rr_Buffer ObjectDataBuffer;
+
+    Rr_Buffer TestStorageBuffer;
 } SFrameData;
 
 typedef struct SUber3DGlobals
@@ -42,7 +47,15 @@ typedef struct SUber3DObject
 {
     mat4 Model;
     VkDeviceAddress VertexBufferAddress;
+    float PaddingA;
+
 } SUber3DObject;
+
+typedef struct SUber3DPushConstants
+{
+    VkDeviceAddress PerObjectBufferAddress;
+    u32 ObjectIndex;
+} SUber3DPushConstants;
 
 typedef enum EInputAction
 {
@@ -51,6 +64,8 @@ typedef enum EInputAction
     EIA_LEFT,
     EIA_RIGHT,
     EIA_FULLSCREEN,
+    EIA_DEBUGOVERLAY,
+    EIA_TEST,
     EIA_COUNT,
 } EInputAction;
 
@@ -61,7 +76,7 @@ static SUber3DGlobals ShaderGlobals;
 static VkDescriptorSetLayout ShaderGlobalsLayout;
 static VkDescriptorSetLayout ObjectDataLayout;
 
-static Rr_MeshBuffers MonkeyMesh = { 0 };
+static Rr_MeshBuffers MonkeyMesh;
 
 static Rr_Pipeline Uber3DPipeline = { 0 };
 
@@ -71,6 +86,9 @@ static Rr_Image SceneColorImage;
 static Rr_MeshBuffers CottageMesh = { 0 };
 static Rr_Image CottageTexture;
 
+static Rr_MeshBuffers PocMesh;
+static Rr_Image PocDiffuseImage;
+
 static void InitInputMappings(void)
 {
     InputMappings[EIA_UP].Primary = SDL_SCANCODE_W;
@@ -78,6 +96,8 @@ static void InitInputMappings(void)
     InputMappings[EIA_LEFT].Primary = SDL_SCANCODE_A;
     InputMappings[EIA_RIGHT].Primary = SDL_SCANCODE_D;
     InputMappings[EIA_FULLSCREEN].Primary = SDL_SCANCODE_F11;
+    InputMappings[EIA_DEBUGOVERLAY].Primary = SDL_SCANCODE_F1;
+    InputMappings[EIA_TEST].Primary = SDL_SCANCODE_F2;
 }
 
 static void InitUber3DPipeline(Rr_Renderer* const Renderer)
@@ -86,6 +106,7 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     Rr_DescriptorLayoutBuilder Builder = { 0 };
     Rr_AddDescriptor(&Builder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     Rr_AddDescriptor(&Builder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    Rr_AddDescriptor(&Builder, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     ShaderGlobalsLayout = Rr_BuildDescriptorLayout(&Builder, Renderer->Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
     Rr_ClearDescriptors(&Builder);
@@ -99,7 +120,7 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     Rr_PipelineCreateInfo PipelineCreateInfo = {
         .DescriptorSetLayouts = DescriptorSetLayouts,
         .DescriptorSetLayoutCount = SDL_arraysize(DescriptorSetLayouts),
-        .PushConstantsSize = 0
+        .PushConstantsSize = sizeof(SUber3DPushConstants)
     };
 
     RrAsset_Extern(&PipelineCreateInfo.VertexShaderAsset, Uber3DVERT);
@@ -113,15 +134,18 @@ static void InitGlobals(Rr_Renderer* const Renderer)
     glm_vec4_copy((vec4){ 1.0f, 1.0f, 1.0f, 0.5f }, ShaderGlobals.AmbientColor);
 
     // glm_euler_xyz((vec3){ glm_rad(63.5593f), glm_rad(0.0f), glm_rad(46.6919f) }, ShaderGlobals.View);
-    // ShaderGlobals.View[0][3] = 7.35889f;
-    // ShaderGlobals.View[1][3] = -6.92579f;
-    // ShaderGlobals.View[2][3] = 4.95831f;
+    // glm_euler_xyz((vec3){ glm_rad(10.0f), glm_rad(0.0f),  glm_rad(0.0f) }, ShaderGlobals.View);
+    // ShaderGlobals.View[3][0] = 7.35889f;
+    // ShaderGlobals.View[3][1] = 4.95831f;
+    // ShaderGlobals.View[3][2] = -6.92579f;
     //
-    glm_lookat_rh((vec3){ 0, 2, 3.5 }, (vec3){ 0, 0, 0 }, (vec3){ 0.0f, -1.0f, 0.0f }, ShaderGlobals.View);
+    // glm_lookat_rh((vec3){ 0, 2, 3.5 }, (vec3){ 0, 0, 0 }, (vec3){ 0.0f, -1.0f, 0.0f }, ShaderGlobals.View);
+    // glm_lookat_rh((vec3){ 7.35889f, 4.95831f, -6.92579f }, (vec3){ 0, 0, 0 }, (vec3){ 0.0f, -1.0f, 0.0f }, ShaderGlobals.View);
 
-    glm_perspective_rh_no(glm_rad(40.0f), Rr_GetAspectRatio(Renderer), 0.1f, 100.0f, ShaderGlobals.Proj);
+    // float VerticalFoV = 2.0f * atanf((tanf(glm_rad(40.0f)/2.0f) * (9.0f/16.0f)));
+    glm_perspective(Rr_GetVerticalFoV(glm_rad(40.0f)), Rr_GetAspectRatio(Renderer), 0.1f, 100.0f, ShaderGlobals.Proj);
 
-    glm_mat4_mul(ShaderGlobals.Proj, ShaderGlobals.View, ShaderGlobals.ViewProj);
+    // glm_mat4_mul(ShaderGlobals.Proj, ShaderGlobals.View, ShaderGlobals.ViewProj);
 }
 
 static void Init(Rr_App* App)
@@ -134,10 +158,10 @@ static void Init(Rr_App* App)
     Rr_Asset POCDepthEXR;
     RrAsset_Extern(&POCDepthEXR, POCDepthEXR);
     SceneDepthImage = Rr_CreateImageFromEXR(&POCDepthEXR, &App->Renderer);
-    //
-    //    Rr_Asset POCColorPNG;
-    //    RrAsset_Extern(&POCColorPNG, POCColorPNG);
-    //    SceneColorImage = Rr_CreateImage_FromPNG(&POCColorPNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    Rr_Asset POCColorPNG;
+    RrAsset_Extern(&POCColorPNG, POCColorPNG);
+    SceneColorImage = Rr_CreateImageFromPNG(&POCColorPNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     //
     //    Rr_Asset DoorFrameOBJ;
     //    RrAsset_Extern(&DoorFrameOBJ, DoorFrameOBJ);
@@ -150,6 +174,18 @@ static void Init(Rr_App* App)
     Rr_Asset CottagePNG;
     RrAsset_Extern(&CottagePNG, CottagePNG);
     CottageTexture = Rr_CreateImageFromPNG(&CottagePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    Rr_Asset PocMeshOBJ;
+    RrAsset_Extern(&PocMeshOBJ, PocMeshOBJ);
+    PocMesh = Rr_CreateMesh_FromOBJ(Renderer, &PocMeshOBJ);
+
+    Rr_Asset PocDiffusePNG;
+    RrAsset_Extern(&PocDiffusePNG, PocDiffusePNG);
+    PocDiffuseImage = Rr_CreateImageFromPNG(&PocDiffusePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    Rr_Asset MonkeyOBJ;
+    RrAsset_Extern(&MonkeyOBJ, DoorFrameOBJ);
+    MonkeyMesh = Rr_CreateMesh_FromOBJ(Renderer, &MonkeyOBJ);
 
     InitUber3DPipeline(Renderer);
     InitGlobals(Renderer);
@@ -176,9 +212,12 @@ static void Cleanup(Rr_App* App)
 
     Rr_DestroyImage(Renderer, &SceneDepthImage);
     Rr_DestroyImage(Renderer, &SceneColorImage);
+    Rr_DestroyImage(Renderer, &CottageTexture);
+    Rr_DestroyImage(Renderer, &PocDiffuseImage);
+
     Rr_DestroyMesh(Renderer, &MonkeyMesh);
     Rr_DestroyMesh(Renderer, &CottageMesh);
-    Rr_DestroyImage(Renderer, &CottageTexture);
+    Rr_DestroyMesh(Renderer, &PocMesh);
 }
 
 static void Update(Rr_App* App)
@@ -199,8 +238,31 @@ static void Update(Rr_App* App)
         Rr_ToggleFullscreen(App);
     }
 
-    igShowDemoWindow(NULL);
-    Rr_DebugOverlay(App);
+    igBegin("RotTest", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+    static vec3 CameraPos = { -7.35889f, -4.95831f, -6.92579f };
+    static vec3 CameraEuler = { 90.0f - 63.5593f, -46.6919f, 0.0f };
+    igSliderFloat3("CameraPos", CameraPos, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat3("CameraRot", CameraEuler, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
+
+    mat4 Temp;
+    glm_mat4_identity(Temp);
+    glm_vec3_copy(CameraPos, Temp[3]);
+
+    mat4 Temp2;
+    glm_euler_xyz((vec3){ glm_rad(CameraEuler[0]), glm_rad(CameraEuler[1]), glm_rad(CameraEuler[2]) }, Temp2);
+
+    glm_mat4_mul(Temp2, Temp, ShaderGlobals.View);
+    igEnd();
+
+    static b8 bShowDebugOverlay = false;
+    if (Rr_GetKeyState(App->InputState, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
+    {
+        bShowDebugOverlay = !bShowDebugOverlay;
+    }
+    if (bShowDebugOverlay)
+    {
+        Rr_DebugOverlay(App);
+    }
 }
 
 static void Draw(Rr_App* const App)
@@ -211,10 +273,22 @@ static void Draw(Rr_App* const App)
     SFrameData* FrameData = (SFrameData*)Rr_GetCurrentFrameData(Renderer);
     VkDevice Device = Renderer->Device;
 
+    /* Test Storage */
+    if (FrameData->TestStorageBuffer.Handle == VK_NULL_HANDLE)
+    {
+        FrameData->TestStorageBuffer = Rr_CreateBuffer(Renderer->Allocator, sizeof(float) * 960 * 540, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, false);
+    }
+    else
+    {
+        if (Rr_GetKeyState(App->InputState, EIA_TEST) == RR_KEYSTATE_PRESSED)
+        {
+            Rr_CopyBufferToHost(Renderer, &FrameData->TestStorageBuffer);
+        }
+    }
+
+    /* Shader Globals */
     Rr_DestroyBuffer(&FrameData->ShaderGlobalsBuffer, Renderer->Allocator);
     FrameData->ShaderGlobalsBuffer = Rr_CreateMappedBuffer(Renderer->Allocator, sizeof(SUber3DGlobals), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-    // glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
 
     glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
 
@@ -223,35 +297,59 @@ static void Draw(Rr_App* const App)
         &ShaderGlobals,
         sizeof(SUber3DGlobals));
 
-    Rr_DestroyBuffer(&FrameData->ObjectDataBuffer, Renderer->Allocator);
-    FrameData->ObjectDataBuffer = Rr_CreateMappedBuffer(Renderer->Allocator, sizeof(SUber3DObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    /* Per Object Data */
+    const size_t MaxObjects = 10;
+    SUber3DObject Objects[MaxObjects];
 
-    SUber3DObject Uber3DObject;
+    Rr_DestroyBuffer(&FrameData->ObjectDataBuffer, Renderer->Allocator);
+    FrameData->ObjectDataBuffer = Rr_CreateMappedBuffer(
+        Renderer->Allocator,
+        sizeof(SUber3DObject) * MaxObjects,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR);
+
+    /* Object 0: Scene */
+    glm_mat4_identity(Objects[0].Model);
+    Objects[0].VertexBufferAddress = PocMesh.VertexBufferAddress;
+
+    /* Object 1: Monkey */
     u64 Ticks = SDL_GetTicks();
-    float Time = (float)((double)Ticks / 1000.0);
-    //    Time = 0.0f;
-    glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Uber3DObject.Model);
+    float Time = (float)((double)Ticks / 1000.0 * 2);
+    {
+        mat4 Transform;
+        glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
+        glm_mat4_identity(Objects[1].Model);
+        Objects[1].Model[3][2] = 4.0f;
+        glm_mat4_mul(Transform, Objects[1].Model, Objects[1].Model);
+    }
     // glm_mat4_identity(Uber3DObject.Model);
-    Uber3DObject.VertexBufferAddress = CottageMesh.VertexBufferAddress;
+    Objects[1].VertexBufferAddress = MonkeyMesh.VertexBufferAddress;
+
     SDL_memcpy(
         FrameData->ObjectDataBuffer.AllocationInfo.pMappedData,
-        &Uber3DObject,
-        sizeof(SUber3DObject));
+        Objects,
+        sizeof(SUber3DObject) * MaxObjects);
 
     VkDescriptorSet SceneDataDescriptorSet = Rr_AllocateDescriptorSet(&Frame->DescriptorAllocator, Renderer->Device, ShaderGlobalsLayout);
     Rr_DescriptorWriter Writer = Rr_CreateDescriptorWriter(1, 1);
     Rr_WriteBufferDescriptor(&Writer, 0, FrameData->ShaderGlobalsBuffer.Handle, sizeof(SUber3DGlobals), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_WriteImageDescriptor(&Writer, 1, SceneDepthImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    Rr_WriteImageDescriptor(&Writer, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    Rr_WriteBufferDescriptor(&Writer, 2, FrameData->TestStorageBuffer.Handle, sizeof(float) * 960 * 540, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     Rr_UpdateDescriptorSet(&Writer, Device, SceneDataDescriptorSet);
     Rr_ResetDescriptorWriter(&Writer);
 
     VkDescriptorSet ObjectDataDescriptorSet = Rr_AllocateDescriptorSet(&Frame->DescriptorAllocator, Renderer->Device, ObjectDataLayout);
     Rr_WriteBufferDescriptor(&Writer, 0, FrameData->ObjectDataBuffer.Handle, sizeof(SUber3DObject), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_WriteImageDescriptor(&Writer, 1, CottageTexture.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    Rr_WriteImageDescriptor(&Writer, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     Rr_UpdateDescriptorSet(&Writer, Device, ObjectDataDescriptorSet);
     Rr_DestroyDescriptorWriter(&Writer);
 
-    Rr_BeginRendering(Renderer, &Uber3DPipeline);
+    /* Rendering */
+    Rr_BeginRenderingInfo BeginRenderingInfo = {
+        .Pipeline = &Uber3DPipeline,
+//        .InitialDepth = &SceneDepthImage,
+//        .InitialColor = &SceneColorImage
+    };
+    Rr_BeginRendering(Renderer, &BeginRenderingInfo);
 
     VkDescriptorSet DescriptorSets[] = { SceneDataDescriptorSet, ObjectDataDescriptorSet };
     vkCmdBindDescriptorSets(
@@ -262,9 +360,30 @@ static void Draw(Rr_App* const App)
         2,
         DescriptorSets,
         0, NULL);
-    //
-    vkCmdBindIndexBuffer(CommandBuffer, CottageMesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(CommandBuffer, CottageMesh.IndexCount, 1, 0, 0, 0);
+
+     vkCmdPushConstants(
+         CommandBuffer,
+         Uber3DPipeline.Layout,
+         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+         0,
+         sizeof(SUber3DPushConstants),
+         &(SUber3DPushConstants){
+             .ObjectIndex = 0,
+             .PerObjectBufferAddress = Rr_GetBufferAddress(Renderer, &FrameData->ObjectDataBuffer) });
+     vkCmdBindIndexBuffer(CommandBuffer, PocMesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+     vkCmdDrawIndexed(CommandBuffer, PocMesh.IndexCount, 1, 0, 0, 0);
+
+//    vkCmdPushConstants(
+//        CommandBuffer,
+//        Uber3DPipeline.Layout,
+//        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+//        0,
+//        sizeof(SUber3DPushConstants),
+//        &(SUber3DPushConstants){
+//            .ObjectIndex = 1,
+//            .PerObjectBufferAddress = Rr_GetBufferAddress(Renderer, &FrameData->ObjectDataBuffer) });
+//    vkCmdBindIndexBuffer(CommandBuffer, MonkeyMesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+//    vkCmdDrawIndexed(CommandBuffer, MonkeyMesh.IndexCount, 1, 0, 0, 0);
 
     Rr_EndRendering(Renderer);
 }

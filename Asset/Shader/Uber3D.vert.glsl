@@ -3,6 +3,8 @@
 
 layout(location = 0) out vec4 out_color;
 layout(location = 1) out vec2 out_UV;
+layout(location = 2) out vec3 out_normal;
+layout(location = 3) out vec4 out_test;
 
 struct Vertex {
     vec3 position;
@@ -16,29 +18,45 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
 
-layout(set = 0, binding = 0) uniform ShaderGlobals {
+struct SUber3DObject {
+    mat4 model;
+    VertexBuffer vertexBuffer;
+    float paddingA;
+};
+
+layout(buffer_reference, std430) readonly buffer PerObjectBuffer {
+    SUber3DObject objects[];
+};
+
+layout(set = 0, binding = 0) uniform Uber3DGlobals {
     mat4 view;
     mat4 proj;
     mat4 viewProj;
     vec4 ambientColor;
 } ub_shaderGlobals;
 
-layout(set = 1, binding = 0) uniform ObjectData {
-    mat4 model;
-    VertexBuffer vertexBuffer;
-} ub_objectData;
+layout(set = 1, binding = 0) uniform Uber3DObject {
+    PerObjectBuffer perObjectBuffer;
+} ub_perObjectBuffer;
 
-// layout(push_constant) uniform PushConstants
-// {
-//     VertexBuffer vertexBuffer;
-// } ub_constants;
+layout(push_constant) uniform Uber3DPushConstants
+{
+    PerObjectBuffer perObjectBuffer;
+    uint ObjectIndex;
+} ub_constants;
 
 void main()
 {
-    Vertex v = ub_objectData.vertexBuffer.vertices[gl_VertexIndex];
+    SUber3DObject object = ub_constants.perObjectBuffer.objects[ub_constants.ObjectIndex];
+    Vertex v = object.vertexBuffer.vertices[gl_VertexIndex];
 
-    gl_Position = ub_shaderGlobals.proj * ub_shaderGlobals.view * ub_objectData.model * vec4(v.position, 1.0f);
+    gl_Position = ub_shaderGlobals.proj * ub_shaderGlobals.view * object.model * vec4(v.position, 1.0f);
+//    gl_Position.z = (gl_Position.z + gl_Position.w) / 2.0;
+//    gl_Position.z = (gl_Position.z * gl_Position.w);
+
     out_color = v.color;
     out_UV.x = v.uv_x;
     out_UV.y = v.uv_y;
+    out_normal = (ub_shaderGlobals.view * object.model * vec4(v.normal, 0.0f)).rgb;
+    out_test = gl_Position;
 }

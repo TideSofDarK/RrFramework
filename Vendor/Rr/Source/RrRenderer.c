@@ -8,6 +8,7 @@
 #include <cglm/ivec2.h>
 #include <cglm/mat4.h>
 #include <cglm/cam.h>
+#include <vulkan/vulkan_core.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -485,10 +486,10 @@ static void Rr_InitFrames(Rr_Renderer* const Renderer)
 
         /* Descriptors */
         Rr_DescriptorPoolSizeRatio Ratios[] = {
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
         };
 
         Frame->DescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 1000, Ratios, SDL_arraysize(Ratios));
@@ -627,25 +628,85 @@ static void Rr_DrawBackground(Rr_Renderer* const Renderer, VkCommandBuffer Comma
     // vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
 }
 
-void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_Pipeline* const Pipeline)
+void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const Info)
 {
+    if (Info->Pipeline == NULL)
+    {
+        return;
+    }
+
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+    VkExtent2D ActiveResolution = Renderer->DrawTarget.ActiveResolution;
+
+    Rr_ImageBarrier ColorImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = Renderer->DrawTarget.ColorImage.Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
+        .StageMask = VK_PIPELINE_STAGE_2_BLIT_BIT
+    };
+    if (Info->InitialColor != NULL)
+    {
+        Rr_ChainImageBarrier_Aspect(&ColorImageTransition,
+            VK_PIPELINE_STAGE_2_BLIT_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_ASPECT_COLOR_BIT);
+        Rr_BlitColorImage(CommandBuffer, Info->InitialColor->Handle, Renderer->DrawTarget.ColorImage.Handle,
+            (VkExtent2D){ .width = Info->InitialColor->Extent.width, .height = Info->InitialColor->Extent.height },
+            (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
+    }
+    Rr_ChainImageBarrier_Aspect(&ColorImageTransition,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_ASPECT_COLOR_BIT);
+
+    Rr_ImageBarrier DepthImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = Renderer->DrawTarget.DepthImage.Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+        .StageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
+    };
+    if (Info->InitialDepth != NULL)
+    {
+        Rr_ChainImageBarrier_Aspect(&DepthImageTransition,
+            VK_PIPELINE_STAGE_2_BLIT_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
+        Rr_BlitPrerenderedDepth(CommandBuffer, Info->InitialDepth->Handle, Renderer->DrawTarget.DepthImage.Handle,
+            (VkExtent2D){ .width = Info->InitialDepth->Extent.width, .height = Info->InitialDepth->Extent.height },
+            (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
+    }
+    Rr_ChainImageBarrier_Aspect(&DepthImageTransition,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_ASPECT_DEPTH_BIT);
 
     VkClearValue ClearColorValue = {
         0
     };
-    VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Renderer->DrawTarget.ColorImage.View, &ClearColorValue, VK_IMAGE_LAYOUT_GENERAL);
-    VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(Renderer->DrawTarget.DepthImage.View, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(
+        Renderer->DrawTarget.ColorImage.View,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        Info->InitialColor == NULL ? &ClearColorValue : NULL);
+    VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(
+        Renderer->DrawTarget.DepthImage.View,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        Info->InitialDepth == NULL);
 
-    VkRenderingInfo renderInfo = GetRenderingInfo(Renderer->DrawTarget.ActiveResolution, &ColorAttachment, &DepthAttachment);
-    vkCmdBeginRendering(CommandBuffer, &renderInfo);
+    VkRenderingInfo RenderingInfo = GetRenderingInfo(ActiveResolution, &ColorAttachment, &DepthAttachment);
+    vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
 
     VkViewport Viewport = { 0 };
     Viewport.x = 0.0f;
-    Viewport.y = 0.0f;
-    Viewport.width = (float)Renderer->DrawTarget.ActiveResolution.width;
-    Viewport.height = (float)Renderer->DrawTarget.ActiveResolution.height;
+    Viewport.y = (float)ActiveResolution.height; /* Flipped */
+    Viewport.width = (float)ActiveResolution.width;
+    Viewport.height = -(float)ActiveResolution.height; /* FLipped */
     Viewport.minDepth = 0.0f;
     Viewport.maxDepth = 1.0f;
 
@@ -654,12 +715,12 @@ void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_Pipeline* const Pipeline)
     VkRect2D Scissor = { 0 };
     Scissor.offset.x = 0;
     Scissor.offset.y = 0;
-    Scissor.extent.width = Renderer->DrawTarget.ActiveResolution.width;
-    Scissor.extent.height = Renderer->DrawTarget.ActiveResolution.height;
+    Scissor.extent.width = ActiveResolution.width;
+    Scissor.extent.height = ActiveResolution.height;
 
     vkCmdSetScissor(CommandBuffer, 0, 1, &Scissor);
 
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline->Handle);
+    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Info->Pipeline->Handle);
 }
 
 void Rr_EndRendering(Rr_Renderer* const Renderer)
@@ -990,29 +1051,17 @@ void Rr_Draw(Rr_App* const App)
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
-    Rr_ImageBarrier ColorImageTransition = {
-        .CommandBuffer = CommandBuffer,
-        .Image = ColorImage->Handle,
-        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_2_NONE,
-        .StageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
-    };
-    Rr_ChainImageBarrier(&ColorImageTransition,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    Rr_ImageBarrier DepthImageTransition = {
-        .CommandBuffer = CommandBuffer,
-        .Image = DepthImage->Handle,
-        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-        .StageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
-    };
-    Rr_ChainImageBarrier(&DepthImageTransition,
-        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    // Rr_ImageBarrier DepthImageTransition = {
+    //     .CommandBuffer = CommandBuffer,
+    //     .Image = DepthImage->Handle,
+    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+    //     .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+    //     .StageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
+    // };
+    // Rr_ChainImageBarrier(&DepthImageTransition,
+    //     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+    //     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+    //     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
     App->Config->DrawFunc(App);
 
@@ -1051,6 +1100,14 @@ void Rr_Draw(Rr_App* const App)
     //     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
     //     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     // Rr_DrawGeometry(Renderer, CommandBuffer, SceneDataDescriptorSet);
+    //
+    Rr_ImageBarrier ColorImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = ColorImage->Handle,
+        .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .AccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+    };
     Rr_ChainImageBarrier(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,
         VK_ACCESS_2_TRANSFER_READ_BIT,
@@ -1083,7 +1140,7 @@ void Rr_Draw(Rr_App* const App)
         VK_ACCESS_2_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    CopyImageToImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
+    Rr_BlitColorImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
         (VkExtent2D){
             .width = (Renderer->DrawTarget.ActiveResolution.width) * Renderer->DrawTarget.Scale,
             .height = (Renderer->DrawTarget.ActiveResolution.height) * Renderer->DrawTarget.Scale });
@@ -1098,7 +1155,7 @@ void Rr_Draw(Rr_App* const App)
 
     if (Renderer->ImGui.bInit)
     {
-        VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, NULL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
         VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
 
         vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
