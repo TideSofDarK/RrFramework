@@ -5,10 +5,12 @@
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_assert.h>
 
+#include "RrMemory.h"
+
 Rr_Array Rr_ArrayInit_Internal(size_t ElementSize, size_t ElementCount, size_t Alignment)
 {
     size_t request_size = ElementCount * ElementSize + Alignment + sizeof(Rr_ArrayHeader);
-    char* Data = (char*)(SDL_calloc(1, request_size));
+    char* Data = (char*)(Rr_Calloc(1, request_size));
 
     size_t Remainder = ((size_t)Data + sizeof(Rr_ArrayHeader)) % Alignment;
     size_t Offset = Alignment - Remainder;
@@ -44,7 +46,7 @@ void Rr_ArrayEmpty_Internal(Rr_Array Handle, b32 bFreeAllocation)
     if (bFreeAllocation)
     {
         int Offset = *(((u8*)Handle) - 1 - sizeof(Rr_ArrayHeader));
-        SDL_free((u8*)Handle - sizeof(Rr_ArrayHeader) - Offset);
+        Rr_Free((u8*)Handle - sizeof(Rr_ArrayHeader) - Offset);
         return;
     }
     Rr_ArrayHeader* Header = RrArray_Header(Handle);

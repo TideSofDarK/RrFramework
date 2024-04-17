@@ -4,10 +4,9 @@
 #include "RrDefines.h"
 #include "RrHelpers.h"
 #include "RrVulkan.h"
-#include "RrArray.h"
 #include "RrTypes.h"
 
-Rr_PipelineBuilder Rr_DefaultPipelineBuilder()
+Rr_PipelineBuilder Rr_DefaultPipelineBuilder(void)
 {
     Rr_PipelineBuilder PipelineBuilder = {
         .InputAssembly = {

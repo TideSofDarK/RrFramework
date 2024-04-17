@@ -20,7 +20,7 @@ typedef enum Rr_PolygonMode {
     RR_POLYGON_MODE_LINE
 } Rr_PolygonMode;
 
-Rr_PipelineBuilder Rr_DefaultPipelineBuilder();
+Rr_PipelineBuilder Rr_DefaultPipelineBuilder(void);
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 void Rr_EnablePushConstants(Rr_PipelineBuilder* PipelineBuilder, size_t Size);
