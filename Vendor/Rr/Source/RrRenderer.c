@@ -29,7 +29,6 @@
 #include "RrHelpers.h"
 #include "RrBuffer.h"
 #include "RrMesh.h"
-#include "RrPipelineBuilder.h"
 #include "RrPipeline.h"
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
@@ -254,7 +253,7 @@ static void Rr_UpdateDrawImageDescriptors(Rr_Renderer* const Renderer, b32 bCrea
         Rr_DescriptorLayoutBuilder Builder = { 0 };
         Rr_AddDescriptor(&Builder, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
-        Renderer->DrawTarget.DescriptorSetLayout = Rr_BuildDescriptorLayout(&Builder, Renderer->Device, VK_SHADER_STAGE_COMPUTE_BIT);
+        Renderer->DrawTarget.DescriptorSetLayout = Rr_BuildDescriptorLayout(&Builder, Renderer->Device, VK_SHADER_STAGE_COMPUTE_BIT).Layout;
 
         Renderer->DrawTarget.DescriptorSet = Rr_AllocateDescriptorSet(GlobalDescriptorAllocator, Renderer->Device, Renderer->DrawTarget.DescriptorSetLayout);
 

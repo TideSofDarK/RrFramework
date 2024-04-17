@@ -79,16 +79,18 @@ typedef struct Rr_Frame
 typedef struct Rr_PipelineBuilder
 {
     VkPipelineShaderStageCreateInfo ShaderStages[PIPELINE_SHADER_STAGES];
-    u32 ShaderStageCount;
     VkPipelineInputAssemblyStateCreateInfo InputAssembly;
     VkPipelineRasterizationStateCreateInfo Rasterizer;
+    VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
     VkPipelineColorBlendAttachmentState ColorBlendAttachments[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
     VkPipelineMultisampleStateCreateInfo Multisampling;
-    VkPipelineLayout PipelineLayout;
     VkPipelineDepthStencilStateCreateInfo DepthStencil;
     VkPipelineRenderingCreateInfo RenderInfo;
-
-    VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
+    // VkShaderModuleCreateInfo VertexModuleCreateInfo;
+    // VkShaderModuleCreateInfo FragmentModuleCreateInfo;
+    Rr_Asset VertexShaderSPV;
+    Rr_Asset FragmentShaderSPV;
+    size_t PushConstantsSize;
 } Rr_PipelineBuilder;
 
 typedef struct Rr_SwapchainImage

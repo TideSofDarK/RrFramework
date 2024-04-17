@@ -4,7 +4,14 @@
 #include "RrCore.h"
 #include "RrArray.h"
 
-typedef struct SDescriptorPoolSizeRatio
+typedef struct Rr_Renderer Rr_Renderer;
+
+typedef struct Rr_DescriptorSetLayout
+{
+    VkDescriptorSetLayout Layout;
+} Rr_DescriptorSetLayout;
+
+typedef struct Rr_DescriptorPoolSizeRatio
 {
     VkDescriptorType Type;
     f32 Ratio;
@@ -54,4 +61,5 @@ typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 
 void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type);
 void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder* Builder);
-VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags);
+Rr_DescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags);
+void Rr_DestroyDescriptorSetLayout(Rr_Renderer* Renderer, Rr_DescriptorSetLayout* DescriptorSetLayout);

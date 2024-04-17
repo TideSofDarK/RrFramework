@@ -249,7 +249,7 @@ void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder* Builder)
     *Builder = (Rr_DescriptorLayoutBuilder){ 0 };
 }
 
-VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
+Rr_DescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags)
 {
     for (u32 Index = 0; Index < RR_MAX_LAYOUT_BINDINGS; ++Index)
     {
@@ -265,8 +265,13 @@ VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder* Build
         .pBindings = Builder->Bindings,
     };
 
-    VkDescriptorSetLayout Set;
-    vkCreateDescriptorSetLayout(Device, &Info, NULL, &Set);
+    Rr_DescriptorSetLayout DescriptorSetLayout;
+    vkCreateDescriptorSetLayout(Device, &Info, NULL, &DescriptorSetLayout.Layout);
 
-    return Set;
+    return DescriptorSetLayout;
+}
+
+void Rr_DestroyDescriptorSetLayout(Rr_Renderer* Renderer, Rr_DescriptorSetLayout* DescriptorSetLayout)
+{
+    vkDestroyDescriptorSetLayout(Renderer->Device, DescriptorSetLayout->Layout, NULL);
 }

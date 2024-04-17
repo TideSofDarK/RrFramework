@@ -73,8 +73,8 @@ static Rr_InputMapping InputMappings[RR_MAX_INPUT_MAPPINGS] = { 0 };
 
 static SUber3DGlobals ShaderGlobals;
 
-static VkDescriptorSetLayout ShaderGlobalsLayout;
-static VkDescriptorSetLayout ObjectDataLayout;
+static Rr_DescriptorSetLayout ShaderGlobalsLayout;
+static Rr_DescriptorSetLayout ObjectDataLayout;
 
 static Rr_MeshBuffers MonkeyMesh;
 
@@ -102,31 +102,30 @@ static void InitInputMappings(void)
 
 static void InitUber3DPipeline(Rr_Renderer* const Renderer)
 {
-    /* Layout */
-    Rr_DescriptorLayoutBuilder Builder = { 0 };
-    Rr_AddDescriptor(&Builder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_AddDescriptor(&Builder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    //    Rr_AddDescriptor(&Builder, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-    ShaderGlobalsLayout = Rr_BuildDescriptorLayout(&Builder, Renderer->Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = {0};
+    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    Rr_AddDescriptor(&DescriptorLayoutBuilder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    ShaderGlobalsLayout = Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, Renderer->Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
-    Rr_ClearDescriptors(&Builder);
-    Rr_AddDescriptor(&Builder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_AddDescriptor(&Builder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    ObjectDataLayout = Rr_BuildDescriptorLayout(&Builder, Renderer->Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    Rr_ClearDescriptors(&DescriptorLayoutBuilder);
+    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    Rr_AddDescriptor(&DescriptorLayoutBuilder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    ObjectDataLayout = Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, Renderer->Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
-    VkDescriptorSetLayout DescriptorSetLayouts[] = { ShaderGlobalsLayout, ObjectDataLayout };
+    Rr_DescriptorSetLayout DescriptorSetLayouts[] = { ShaderGlobalsLayout, ObjectDataLayout };
 
     /* Pipeline */
-    Rr_PipelineCreateInfo PipelineCreateInfo = {
-        .DescriptorSetLayouts = DescriptorSetLayouts,
-        .DescriptorSetLayoutCount = SDL_arraysize(DescriptorSetLayouts),
-        .PushConstantsSize = sizeof(SUber3DPushConstants)
-    };
+    Rr_Asset VertexShaderSPV, FragmentShaderSPV;
+    RrAsset_Extern(&VertexShaderSPV, Uber3DVERT);
+    RrAsset_Extern(&FragmentShaderSPV, Uber3DFRAG);
 
-    RrAsset_Extern(&PipelineCreateInfo.VertexShaderAsset, Uber3DVERT);
-    RrAsset_Extern(&PipelineCreateInfo.FragmentShaderAsset, Uber3DFRAG);
-
-    Uber3DPipeline = Rr_CreatePipeline(Renderer, &PipelineCreateInfo);
+    Rr_PipelineBuilder Builder = Rr_DefaultPipelineBuilder();
+    Rr_EnableVertexStage(&Builder, &VertexShaderSPV);
+    Rr_EnableFragmentStage(&Builder, &FragmentShaderSPV);
+    Rr_EnablePushConstants(&Builder, sizeof(SUber3DPushConstants));
+    Rr_EnableDepthTest(&Builder);
+    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
+    Uber3DPipeline = Rr_BuildPipeline(Renderer, &Builder, DescriptorSetLayouts, SDL_arraysize(DescriptorSetLayouts));
 }
 
 static void InitGlobals(Rr_Renderer* const Renderer)
@@ -184,11 +183,6 @@ static void Cleanup(Rr_App* App)
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
-    Rr_DestroyPipeline(Renderer, &Uber3DPipeline);
-
-    vkDestroyDescriptorSetLayout(Device, ShaderGlobalsLayout, NULL);
-    vkDestroyDescriptorSetLayout(Device, ObjectDataLayout, NULL);
-
     for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         SFrameData* PerFrameData = (SFrameData*)Renderer->PerFrameDatas + Index;
@@ -206,6 +200,11 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyMesh(Renderer, &MonkeyMesh);
     Rr_DestroyMesh(Renderer, &CottageMesh);
     Rr_DestroyMesh(Renderer, &PocMesh);
+
+    Rr_DestroyPipeline(Renderer, &Uber3DPipeline);
+
+    Rr_DestroyDescriptorSetLayout(Renderer, &ShaderGlobalsLayout);
+    Rr_DestroyDescriptorSetLayout(Renderer, &ObjectDataLayout);
 }
 
 static void Update(Rr_App* App)
@@ -299,7 +298,7 @@ static void Draw(Rr_App* const App)
         Objects,
         sizeof(SUber3DObject) * MaxObjects);
 
-    VkDescriptorSet SceneDataDescriptorSet = Rr_AllocateDescriptorSet(&Frame->DescriptorAllocator, Renderer->Device, ShaderGlobalsLayout);
+    VkDescriptorSet SceneDataDescriptorSet = Rr_AllocateDescriptorSet(&Frame->DescriptorAllocator, Renderer->Device, ShaderGlobalsLayout.Layout);
     Rr_DescriptorWriter Writer = Rr_CreateDescriptorWriter(1, 1);
     Rr_WriteBufferDescriptor(&Writer, 0, FrameData->ShaderGlobalsBuffer.Handle, sizeof(SUber3DGlobals), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     Rr_WriteImageDescriptor(&Writer, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -307,7 +306,7 @@ static void Draw(Rr_App* const App)
     Rr_UpdateDescriptorSet(&Writer, Device, SceneDataDescriptorSet);
     Rr_ResetDescriptorWriter(&Writer);
 
-    VkDescriptorSet ObjectDataDescriptorSet = Rr_AllocateDescriptorSet(&Frame->DescriptorAllocator, Renderer->Device, ObjectDataLayout);
+    VkDescriptorSet ObjectDataDescriptorSet = Rr_AllocateDescriptorSet(&Frame->DescriptorAllocator, Renderer->Device, ObjectDataLayout.Layout);
     Rr_WriteBufferDescriptor(&Writer, 0, FrameData->ObjectDataBuffer.Handle, sizeof(SUber3DObject), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     Rr_WriteImageDescriptor(&Writer, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     Rr_UpdateDescriptorSet(&Writer, Device, ObjectDataDescriptorSet);
