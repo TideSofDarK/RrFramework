@@ -7,7 +7,7 @@
 static Rr_PipelineBuilder EmptyPipelineBuilder = {
     .InputAssembly = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO },
     .Rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO },
-    .ColorBlendAttachment = { 0 },
+    .ColorBlendAttachments = { 0 },
     .Multisampling = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .sampleShadingEnable = VK_FALSE,
@@ -30,14 +30,21 @@ Rr_PipelineBuilder Rr_DefaultPipelineBuilder(VkFormat ColorFormat, VkFormat Dept
     PipelineBuilder.InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     PipelineBuilder.InputAssembly.primitiveRestartEnable = VK_FALSE;
 
-    PipelineBuilder.ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    PipelineBuilder.ColorBlendAttachment.blendEnable = VK_FALSE;
+    PipelineBuilder.ColorBlendAttachments[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    PipelineBuilder.ColorBlendAttachments[0].blendEnable = VK_FALSE;
 
-    PipelineBuilder.ColorAttachmentFormat = ColorFormat;
+    PipelineBuilder.ColorAttachmentFormats[0] = ColorFormat;
     PipelineBuilder.RenderInfo.colorAttachmentCount = 1;
     PipelineBuilder.RenderInfo.depthAttachmentFormat = DepthFormat;
 
     return PipelineBuilder;
+}
+
+void Rr_EnableAdditionalColorAttachment(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format)
+{
+    PipelineBuilder->ColorAttachmentFormats[1] = Format;
+
+    PipelineBuilder->RenderInfo.colorAttachmentCount = 2;
 }
 
 void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, VkPolygonMode PolygonMode)
@@ -46,9 +53,6 @@ void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, VkPolygonMode Poly
     PipelineBuilder->Rasterizer.lineWidth = 1.0f;
     PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
     PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    PipelineBuilder->Rasterizer.depthBiasEnable = VK_TRUE;
-    PipelineBuilder->Rasterizer.depthBiasConstantFactor = 10.1f;
-    PipelineBuilder->Rasterizer.depthBiasSlopeFactor = 1.0f;
 }
 
 void Rr_EnableShaderStages(Rr_PipelineBuilder* PipelineBuilder, VkShaderModule VertModule, VkShaderModule FragModule)
@@ -62,18 +66,12 @@ void Rr_EnableDepthTest(Rr_PipelineBuilder* const PipelineBuilder)
 {
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
-    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-//    PipelineBuilder->DepthStencil.depthBoundsTestEnable = VK_FALSE;
-//    PipelineBuilder->DepthStencil.stencilTestEnable = VK_FALSE;
-//    PipelineBuilder->DepthStencil.front = (VkStencilOpState){ 0 };
-//    PipelineBuilder->DepthStencil.back = (VkStencilOpState){ 0 };
-//    PipelineBuilder->DepthStencil.minDepthBounds = 0.0f;
-//    PipelineBuilder->DepthStencil.maxDepthBounds = 1.0f;
+    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 }
 
 void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
 {
-    PipelineBuilder->ColorBlendAttachment = (VkPipelineColorBlendAttachmentState){
+    PipelineBuilder->ColorBlendAttachments[0] = (VkPipelineColorBlendAttachmentState){
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
         .blendEnable = VK_TRUE,
         .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
@@ -94,13 +92,17 @@ VkPipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder* con
         .scissorCount = 1,
     };
 
+    if (PipelineBuilder->RenderInfo.colorAttachmentCount > 1)
+    {
+        PipelineBuilder->ColorBlendAttachments[1] = PipelineBuilder->ColorBlendAttachments[0];
+    }
     VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .pNext = NULL,
         .logicOpEnable = VK_FALSE,
         .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = 1,
-        .pAttachments = &PipelineBuilder->ColorBlendAttachment,
+        .attachmentCount = PipelineBuilder->RenderInfo.colorAttachmentCount,
+        .pAttachments = PipelineBuilder->ColorBlendAttachments,
     };
 
     VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
@@ -116,7 +118,7 @@ VkPipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder* con
         .dynamicStateCount = SDL_arraysize(DynamicState)
     };
 
-    PipelineBuilder->RenderInfo.pColorAttachmentFormats = &PipelineBuilder->ColorAttachmentFormat;
+    PipelineBuilder->RenderInfo.pColorAttachmentFormats = PipelineBuilder->ColorAttachmentFormats;
 
     VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,

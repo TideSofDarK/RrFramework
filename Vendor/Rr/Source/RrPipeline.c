@@ -39,6 +39,7 @@ Rr_Pipeline Rr_CreatePipeline(Rr_Renderer* Renderer, Rr_PipelineCreateInfo* Info
 
     Rr_PipelineBuilder Builder = Rr_DefaultPipelineBuilder(RR_COLOR_FORMAT, RR_DEPTH_FORMAT, Pipeline.Layout);
     // PipelineBuilder_AlphaBlend(&Builder);
+    // Rr_EnableAdditionalColorAttachment(&Builder, VK_FORMAT_R32_SFLOAT);
     Rr_EnableRasterizer(&Builder, VK_POLYGON_MODE_FILL);
     Rr_EnableShaderStages(&Builder, VertModule, FragModule);
     Rr_EnableDepthTest(&Builder);

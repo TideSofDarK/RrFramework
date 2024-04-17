@@ -26,6 +26,23 @@ add_subdirectory("imgui")
 
 set(VENDOR_TARGET "Vendor" CACHE INTERNAL "RetroRenderer dependencies")
 add_library(${VENDOR_TARGET} STATIC)
+target_compile_definitions(${VENDOR_TARGET} PUBLIC
+        TINYEXR_USE_MINIZ=0
+        TINYEXR_USE_STB_ZLIB=1
+)
+target_compile_definitions(${VENDOR_TARGET} PRIVATE
+        STBI_NO_STDIO
+        STBI_NO_JPEG
+        STBI_NO_GIF
+        STBI_NO_BMP
+        STBI_NO_PSD
+        STBI_NO_PIC
+        STBI_NO_PNM
+        STBI_NO_HDR
+        STBI_NO_TGA
+        STBI_NO_FAILURE_STRINGS
+)
+
 target_sources(${VENDOR_TARGET} PRIVATE Vendor.cpp)
 target_link_libraries(${VENDOR_TARGET} PUBLIC
         Vulkan::Headers

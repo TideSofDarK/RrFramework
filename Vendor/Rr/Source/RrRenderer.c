@@ -690,23 +690,42 @@ void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const
     VkClearValue ClearColorValue = {
         0
     };
-    VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(
+    VkRenderingAttachmentInfo ColorAttachments[2] = { GetRenderingAttachmentInfo_Color(
         Renderer->DrawTarget.ColorImage.View,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        Info->InitialColor == NULL ? &ClearColorValue : NULL);
+        Info->InitialColor == NULL ? &ClearColorValue : NULL) };
+    if (Info->AdditionalAttachment != NULL)
+    {
+        ColorAttachments[1] = GetRenderingAttachmentInfo_Color(
+            Info->AdditionalAttachment->View,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            &ClearColorValue);
+    }
+
     VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(
         Renderer->DrawTarget.DepthImage.View,
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         Info->InitialDepth == NULL);
 
-    VkRenderingInfo RenderingInfo = GetRenderingInfo(ActiveResolution, &ColorAttachment, &DepthAttachment);
+    VkRenderingInfo RenderingInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .pNext = NULL,
+        .renderArea = (VkRect2D){ .offset = (VkOffset2D){ 0, 0 }, .extent = ActiveResolution },
+        .layerCount = 1,
+        .colorAttachmentCount = Info->AdditionalAttachment != NULL ? 2 : 1,
+        .pColorAttachments = ColorAttachments,
+        .pDepthAttachment = &DepthAttachment,
+        .pStencilAttachment = NULL,
+    };
+    //    VkRenderingInfo RenderingInfo = GetRenderingInfo(ActiveResolution, &ColorAttachment, &DepthAttachment);
+
     vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
 
     VkViewport Viewport = { 0 };
     Viewport.x = 0.0f;
-    Viewport.y = (float)ActiveResolution.height; /* Flipped */
+    Viewport.y = 0.0f;
     Viewport.width = (float)ActiveResolution.width;
-    Viewport.height = -(float)ActiveResolution.height; /* FLipped */
+    Viewport.height = (float)ActiveResolution.height;
     Viewport.minDepth = 0.0f;
     Viewport.maxDepth = 1.0f;
 

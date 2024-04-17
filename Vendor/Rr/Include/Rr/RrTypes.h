@@ -82,13 +82,13 @@ typedef struct Rr_PipelineBuilder
     u32 ShaderStageCount;
     VkPipelineInputAssemblyStateCreateInfo InputAssembly;
     VkPipelineRasterizationStateCreateInfo Rasterizer;
-    VkPipelineColorBlendAttachmentState ColorBlendAttachment;
+    VkPipelineColorBlendAttachmentState ColorBlendAttachments[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
     VkPipelineMultisampleStateCreateInfo Multisampling;
     VkPipelineLayout PipelineLayout;
     VkPipelineDepthStencilStateCreateInfo DepthStencil;
     VkPipelineRenderingCreateInfo RenderInfo;
 
-    VkFormat ColorAttachmentFormat;
+    VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
 } Rr_PipelineBuilder;
 
 typedef struct Rr_SwapchainImage

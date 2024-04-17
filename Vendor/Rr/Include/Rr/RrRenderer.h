@@ -23,6 +23,7 @@ typedef struct Rr_BeginRenderingInfo
     Rr_Pipeline* Pipeline;
     Rr_Image* InitialColor;
     Rr_Image* InitialDepth;
+    Rr_Image* AdditionalAttachment;
 } Rr_BeginRenderingInfo;
 
 void Rr_BeginRendering(Rr_Renderer* Renderer, Rr_BeginRenderingInfo* Info);

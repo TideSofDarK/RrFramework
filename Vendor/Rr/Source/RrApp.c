@@ -198,6 +198,8 @@ void Rr_Run(Rr_AppConfig* Config)
 
     InitFrameTime(&App.FrameTime, App.Window);
 
+    SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
+
     SDL_AddEventWatch(EventWatch, &App);
 
     Rr_Init(&App);
@@ -214,6 +216,14 @@ void Rr_Run(Rr_AppConfig* Config)
             ImGui_ImplSDL3_ProcessEvent(&Event);
             switch (Event.type)
             {
+                case SDL_EVENT_DROP_FILE:
+                {
+                    if (Config->FileDroppedFunc != NULL)
+                    {
+                        Config->FileDroppedFunc(&App, Event.drop.data);
+                    }
+                    break;
+                }
                 case SDL_EVENT_QUIT:
                 {
                     SDL_AtomicSet(&App.bExit, true);
