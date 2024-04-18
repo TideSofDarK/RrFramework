@@ -30,6 +30,7 @@
 #include "RrBuffer.h"
 #include "RrMesh.h"
 #include "RrPipeline.h"
+#include "RrMemory.h"
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
 {
@@ -58,7 +59,7 @@ static bool Rr_CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice
         return false;
     }
 
-    VkExtensionProperties* Extensions = SDL_stack_alloc(VkExtensionProperties, ExtensionCount);
+    VkExtensionProperties* Extensions = Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
 
     bool bSwapchainFound = false;
@@ -82,8 +83,8 @@ static bool Rr_CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice
         return false;
     }
 
-    VkQueueFamilyProperties* QueueFamilyProperties = SDL_stack_alloc(VkQueueFamilyProperties, QueueFamilyCount);
-    VkBool32* QueuePresentSupport = SDL_stack_alloc(VkBool32, QueueFamilyCount);
+    VkQueueFamilyProperties* QueueFamilyProperties = Rr_StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
+    VkBool32* QueuePresentSupport = Rr_StackAlloc(VkBool32, QueueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
@@ -103,9 +104,9 @@ static bool Rr_CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice
         }
     }
 
-    SDL_stack_free(QueuePresentSupport);
-    SDL_stack_free(QueueFamilyProperties);
-    SDL_stack_free(Extensions);
+    Rr_StackFree(QueuePresentSupport);
+    Rr_StackFree(QueueFamilyProperties);
+    Rr_StackFree(Extensions);
 
     return false;
 }
@@ -120,7 +121,7 @@ static void Rr_InitDevice(Rr_Renderer* const Renderer)
         abort();
     }
 
-    VkPhysicalDevice* PhysicalDevices = SDL_stack_alloc(VkPhysicalDevice, PhysicalDeviceCount);
+    VkPhysicalDevice* PhysicalDevices = Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
     Renderer->PhysicalDevice.SubgroupProperties = (VkPhysicalDeviceSubgroupProperties){ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = NULL };
@@ -190,7 +191,7 @@ static void Rr_InitDevice(Rr_Renderer* const Renderer)
 
     vkGetDeviceQueue(Renderer->Device, Renderer->GraphicsQueue.FamilyIndex, 0, &Renderer->GraphicsQueue.Handle);
 
-    SDL_stack_free(PhysicalDevices);
+    Rr_StackFree(PhysicalDevices);
 }
 
 static void Rr_CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
@@ -300,7 +301,7 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
     vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, NULL);
     SDL_assert(PresentModeCount > 0);
 
-    VkPresentModeKHR* PresentModes = SDL_stack_alloc(VkPresentModeKHR, PresentModeCount);
+    VkPresentModeKHR* PresentModes = Rr_StackAlloc(VkPresentModeKHR, PresentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, PresentModes);
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -316,7 +317,7 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
             SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
         }
     }
-    SDL_stack_free(PresentModes);
+    Rr_StackFree(PresentModes);
 
     u32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if ((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))
@@ -338,7 +339,7 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
     vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, NULL);
     SDL_assert(FormatCount > 0);
 
-    VkSurfaceFormatKHR* SurfaceFormats = SDL_stack_alloc(VkSurfaceFormatKHR, FormatCount);
+    VkSurfaceFormatKHR* SurfaceFormats = Rr_StackAlloc(VkSurfaceFormatKHR, FormatCount);
     vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, SurfaceFormats);
 
     bool bPreferredFormatFound = false;
@@ -417,7 +418,7 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
     SDL_assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Renderer->Swapchain.ImageCount = ImageCount;
-    VkImage* Images = SDL_stack_alloc(VkImage, ImageCount);
+    VkImage* Images = Rr_StackAlloc(VkImage, ImageCount);
     vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images);
 
     VkImageViewCreateInfo ColorAttachmentView = {
@@ -459,8 +460,8 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
         Rr_UpdateDrawImageDescriptors(Renderer, true, false);
     }
 
-    SDL_stack_free(Images);
-    SDL_stack_free(SurfaceFormats);
+    Rr_StackFree(Images);
+    Rr_StackFree(SurfaceFormats);
 
     return true;
 }
@@ -899,7 +900,7 @@ void Rr_Init(Rr_App* App)
     Rr_AppConfig* Config = App->Config;
 
     Renderer->PerFrameDataSize = Config->PerFrameDataSize;
-    Renderer->PerFrameDatas = SDL_calloc(RR_FRAME_OVERLAP, Config->PerFrameDataSize);
+    Renderer->PerFrameDatas = Rr_Calloc(RR_FRAME_OVERLAP, Config->PerFrameDataSize);
 
     Renderer->DrawTarget.ReferenceResolution.width = Config->ReferenceResolution[0];
     Renderer->DrawTarget.ReferenceResolution.height = Config->ReferenceResolution[1];
@@ -922,7 +923,7 @@ void Rr_Init(Rr_App* App)
     const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
 
     u32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
-    const char** Extensions = SDL_stack_alloc(const char*, ExtensionCount);
+    const char** Extensions = Rr_StackAlloc(const char*, ExtensionCount);
     for (u32 Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
@@ -977,7 +978,7 @@ void Rr_Init(Rr_App* App)
     RrAsset_Extern(&NoisePNG, NoisePNG);
     Renderer->NoiseImage = Rr_CreateImageFromPNG(&NoisePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    SDL_stack_free(Extensions);
+    Rr_StackFree(Extensions);
 }
 
 void Rr_Cleanup(Rr_App* const App)

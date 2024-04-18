@@ -1,11 +1,13 @@
 #include "RrImage.h"
 
+#include "RrMemory.h"
+
 #include <stdlib.h>
 
 #define STB_IMAGE_IMPLEMENTATION
-// #define STBI_MALLOC Rr_Malloc
-// #define STBI_REALLOC Rr_Realloc
-// #define STBI_FREE Rr_Free
+#define STBI_MALLOC Rr_Malloc
+#define STBI_REALLOC Rr_Realloc
+#define STBI_FREE Rr_Free
 #include <stb/stb_image.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -20,8 +22,6 @@
 #include "RrVulkan.h"
 #include "RrBuffer.h"
 #include "RrLib.h"
-#include "RrArray.h"
-#include "RrMemory.h"
 
 static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, VmaAllocationCreateInfo AllocationCreateInfo, b8 bMipMapped)
 {
