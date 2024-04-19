@@ -155,7 +155,7 @@ Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
     const float FTimesNear = Far * Near;
     for (int Index = 0; Index < Image.width * Image.height; Index++)
     {
-        float* const Current = ((float*)Image.images[1]) + Index;
+        float* const Current = ((float*)Image.images[0]) + Index;
         const float ZReciprocal = 1.0f / *Current;
         const float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
         *Current = (Depth + 1.0f) / 2.0f;
@@ -167,7 +167,7 @@ Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
 
     Rr_Buffer Buffer = Rr_CreateBuffer(Renderer->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
 
-    SDL_memcpy(Buffer.AllocationInfo.pMappedData, Image.images[1], DataSize);
+    SDL_memcpy(Buffer.AllocationInfo.pMappedData, Image.images[0], DataSize);
 
     Rr_Image DepthImage = Rr_CreateImage(Renderer, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 

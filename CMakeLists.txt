@@ -31,8 +31,9 @@ add_subdirectory(Vendor/Rr)
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
 set(SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/Shader/")
-file(GLOB GLSL_SOURCE_FILES CONFIGURE_DEPENDS
-        "${SHADER_DIR}*.glsl"
+set(GLSL_SOURCE_FILES
+        ${SHADER_DIR}Uber3D.vert.glsl
+        ${SHADER_DIR}Uber3D.frag.glsl
 )
 
 foreach (GLSL ${GLSL_SOURCE_FILES})
@@ -57,7 +58,7 @@ add_custom_target(
 #
 set_source_files_properties(Source/AssetDef.c PROPERTIES OBJECT_DEPENDS "${GLSL_SOURCE_FILES}")
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
-    "Source/*.c"
+        "Source/*.c"
 )
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 add_dependencies(${PROJECT_NAME} Shaders)

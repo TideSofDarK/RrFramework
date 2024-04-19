@@ -1,21 +1,11 @@
-#version 450
-#extension GL_EXT_buffer_reference : require
+#version 460
+#extension GL_ARB_shading_language_include : require
+
+#include "Shared.glsl"
 
 layout(location = 0) out vec4 out_color;
 layout(location = 1) out vec2 out_UV;
 layout(location = 2) out vec3 out_normal;
-
-struct Vertex {
-    vec3 position;
-    float uv_x;
-    vec3 normal;
-    float uv_y;
-    vec4 color;
-};
-
-layout(buffer_reference, std430) readonly buffer VertexBuffer {
-    Vertex vertices[];
-};
 
 struct SUber3DObject {
     mat4 model;
@@ -27,7 +17,7 @@ layout(buffer_reference, std430) readonly buffer PerObjectBuffer {
     SUber3DObject objects[];
 };
 
-layout(set = 0, binding = 0) uniform Uber3DGlobals {
+layout(set = RR_UBER3D_SET_GLOBALS, binding = 0) uniform Uber3DGlobals {
     mat4 view;
     mat4 intermediate;
     mat4 proj;
