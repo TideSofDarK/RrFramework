@@ -1,12 +1,13 @@
 #include "RrPipeline.h"
 
 #include "RrMemory.h"
+#include "RrBuffer.h"
 #include "RrDefines.h"
 #include "RrHelpers.h"
 #include "RrVulkan.h"
 #include "RrTypes.h"
 
-Rr_PipelineBuilder Rr_DefaultPipelineBuilder(void)
+Rr_PipelineBuilder Rr_GenericPipelineBuilder(void)
 {
     Rr_PipelineBuilder PipelineBuilder = {
         .InputAssembly = {
@@ -42,11 +43,6 @@ void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsse
 void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
 {
     PipelineBuilder->FragmentShaderSPV = *SPVAsset;
-}
-
-void Rr_EnablePushConstants(Rr_PipelineBuilder* PipelineBuilder, size_t Size)
-{
-    PipelineBuilder->PushConstantsSize = Size;
 }
 
 void Rr_EnableAdditionalColorAttachment(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format)
@@ -97,7 +93,7 @@ void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
     };
 }
 
-Rr_Pipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder* const PipelineBuilder, Rr_DescriptorSetLayout* DescriptorSetLayouts, size_t DescriptorSetLayoutCount)
+Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* PipelineBuilder)
 {
     Rr_Pipeline Pipeline = { 0 };
 
@@ -167,28 +163,6 @@ Rr_Pipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder* co
     }
     PipelineBuilder->RenderInfo.pColorAttachmentFormats = PipelineBuilder->ColorAttachmentFormats;
 
-    /* Create layout. */
-    VkPushConstantRange PushConstantRange = {
-        .offset = 0,
-        .size = PipelineBuilder->PushConstantsSize,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-    };
-
-    VkDescriptorSetLayout* DescriptorSetLayoutsVK = Rr_StackAlloc(VkDescriptorSetLayout, DescriptorSetLayoutCount);
-    for (int Index = 0; Index < DescriptorSetLayoutCount; ++Index)
-    {
-        DescriptorSetLayoutsVK[Index] = DescriptorSetLayouts[Index].Layout;
-    }
-    VkPipelineLayoutCreateInfo LayoutInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = NULL,
-        .setLayoutCount = DescriptorSetLayoutCount,
-        .pSetLayouts = DescriptorSetLayoutsVK,
-        .pushConstantRangeCount = PipelineBuilder->PushConstantsSize > 0 ? 1 : 0,
-        .pPushConstantRanges = &PushConstantRange,
-    };
-    vkCreatePipelineLayout(Renderer->Device, &LayoutInfo, NULL, &Pipeline.Layout);
-
     /* Create pipeline. */
     VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -202,11 +176,13 @@ Rr_Pipeline Rr_BuildPipeline(Rr_Renderer* const Renderer, Rr_PipelineBuilder* co
         .pMultisampleState = &PipelineBuilder->Multisampling,
         .pColorBlendState = &ColorBlendInfo,
         .pDepthStencilState = &PipelineBuilder->DepthStencil,
-        .layout = Pipeline.Layout,
+        .layout = Renderer->GenericPipelineLayout,
         .pDynamicState = &DynamicStateInfo
     };
 
     vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline.Handle);
+
+    Pipeline.Layout = Renderer->GenericPipelineLayout;
 
     if (VertModule != VK_NULL_HANDLE)
     {
@@ -227,6 +203,38 @@ void Rr_DestroyPipeline(Rr_Renderer* Renderer, Rr_Pipeline* Pipeline)
 {
     VkDevice Device = Renderer->Device;
 
-    vkDestroyPipelineLayout(Device, Pipeline->Layout, NULL);
+//    vkDestroyPipelineLayout(Device, Pipeline->Layout, NULL);
     vkDestroyPipeline(Device, Pipeline->Handle, NULL);
+}
+
+Rr_GenericPipelineBuffers Rr_CreateGenericPipelineBuffers(Rr_Renderer* Renderer, size_t GlobalSize, size_t MaterialSize)
+{
+    Rr_GenericPipelineBuffers Buffers;
+
+    Buffers.Globals = Rr_CreateBuffer(
+        Renderer->Allocator,
+        GlobalSize,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false);
+    Buffers.Material = Rr_CreateBuffer(
+        Renderer->Allocator,
+        MaterialSize,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false);
+    const size_t DrawBufferSize = 1 << 20;
+    Buffers.Draw = Rr_CreateMappedBuffer(
+        Renderer->Allocator,
+        DrawBufferSize,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+
+    return Buffers;
+}
+
+void Rr_DestroyGenericPipelineBuffers(Rr_Renderer* Renderer, Rr_GenericPipelineBuffers* GenericPipelineBuffers)
+{
+    Rr_DestroyBuffer(&GenericPipelineBuffers->Draw, Renderer->Allocator);
+    Rr_DestroyBuffer(&GenericPipelineBuffers->Material, Renderer->Allocator);
+    Rr_DestroyBuffer(&GenericPipelineBuffers->Globals, Renderer->Allocator);
 }

@@ -6,6 +6,7 @@
 #include "RrVulkan.h"
 #include "RrRenderer.h"
 #include "RrLib.h"
+#include "RrUtil.h"
 
 Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped)
 {
@@ -91,4 +92,78 @@ Rr_Buffer Rr_CopyBufferToHost(Rr_Renderer* const Renderer, Rr_Buffer* Buffer)
     //    Rr_SaveDepthToFile(Renderer, &Buffer, Image->Extent.width, Image->Extent.height);
 
     Rr_DestroyBuffer(&HostMappedBuffer, Renderer->Allocator);
+}
+
+void Rr_UploadToDeviceBuffer(
+    Rr_Renderer* Renderer,
+    VkCommandBuffer CommandBuffer,
+    Rr_StagingBuffer* StagingBuffer,
+    Rr_Buffer* DstBuffer,
+    const void* Data,
+    size_t Size)
+{
+    if (StagingBuffer->CurrentOffset + Size > RR_STAGING_BUFFER_SIZE)
+    {
+        return;
+    }
+    size_t Offset = StagingBuffer->CurrentOffset;
+    SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + Offset, Data, Size);
+    StagingBuffer->CurrentOffset = Rr_Align(Offset + Size, RR_MIN_BUFFER_ALIGNMENT);
+
+    VkBufferMemoryBarrier2 BufferBarrier = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+        .pNext = NULL,
+        .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
+        .srcAccessMask = VK_ACCESS_2_NONE,
+        .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .size = VK_WHOLE_SIZE,
+        .offset = 0,
+        .buffer = DstBuffer->Handle,
+    };
+
+    VkDependencyInfo DepInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext = NULL,
+        .bufferMemoryBarrierCount = 1,
+        .pBufferMemoryBarriers = &BufferBarrier,
+    };
+
+    vkCmdPipelineBarrier2(CommandBuffer, &DepInfo);
+
+    VkBufferCopy Copy = {
+        .dstOffset = 0,
+        .size = Size,
+        .srcOffset = Offset
+    };
+
+    vkCmdCopyBuffer(
+        CommandBuffer,
+        StagingBuffer->Buffer.Handle,
+        DstBuffer->Handle,
+        1,
+        &Copy);
+
+    BufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+    BufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+    BufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+    BufferBarrier.dstAccessMask = VK_ACCESS_2_UNIFORM_READ_BIT,
+
+    vkCmdPipelineBarrier2(CommandBuffer, &DepInfo);
+}
+
+void Rr_UploadToMappedBuffer(
+    Rr_Renderer* Renderer,
+    Rr_Buffer* DstBuffer,
+    const void* Data,
+    size_t Size,
+    size_t* DstOffset)
+{
+    const size_t AlignedSize = Rr_Align(Size, RR_MIN_BUFFER_ALIGNMENT);
+    if (*DstOffset + AlignedSize < DstBuffer->AllocationInfo.size)
+    {
+        SDL_memcpy(DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
+        *DstOffset += Size;
+        *DstOffset = Rr_Align(*DstOffset, RR_MIN_BUFFER_ALIGNMENT);
+    }
 }

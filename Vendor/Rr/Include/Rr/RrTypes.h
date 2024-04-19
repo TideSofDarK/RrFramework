@@ -25,6 +25,12 @@ typedef struct Rr_Buffer
     VmaAllocation Allocation;
 } Rr_Buffer;
 
+typedef struct Rr_StagingBuffer
+{
+    Rr_Buffer Buffer;
+    size_t CurrentOffset;
+} Rr_StagingBuffer;
+
 typedef struct Rr_Image
 {
     VkImage Handle;
@@ -73,7 +79,8 @@ typedef struct Rr_Frame
     VkSemaphore SwapchainSemaphore;
     VkSemaphore RenderSemaphore;
     VkFence RenderFence;
-    SDescriptorAllocator DescriptorAllocator;
+    Rr_DescriptorAllocator DescriptorAllocator;
+    Rr_StagingBuffer StagingBuffer;
 } Rr_Frame;
 
 typedef struct Rr_PipelineBuilder
@@ -166,39 +173,37 @@ typedef struct Rr_RawMesh
 
 typedef struct Rr_Renderer
 {
+    /* Essentials */
     VkInstance Instance;
     Rr_PhysicalDevice PhysicalDevice;
     VkDevice Device;
     VkSurfaceKHR Surface;
     Rr_Swapchain Swapchain;
 
+    /* Queues */
     Rr_DeviceQueue GraphicsQueue;
     Rr_DeviceQueue TransferQueue;
     Rr_DeviceQueue ComputeQueue;
 
     VmaAllocator Allocator;
 
+    /* Frame Data */
     void* PerFrameDatas;
     size_t PerFrameDataSize;
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
 
-    SDescriptorAllocator GlobalDescriptorAllocator;
+    Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
     Rr_DrawTarget DrawTarget;
-
-    VkPipeline GradientPipeline;
-    VkPipelineLayout GradientPipelineLayout;
-
     Rr_ImGui ImGui;
-
     Rr_ImmediateMode ImmediateMode;
 
-    // Rr_MeshBuffers Mesh;
-    // Rr_RawMesh RawMesh;
-    Rr_Image NoiseImage;
-
     VkSampler NearestSampler;
+
+    /* Generic Pipeline Layout */
+    VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
+    VkPipelineLayout GenericPipelineLayout;
 } Rr_Renderer;
 
 typedef struct Rr_FrameTime
