@@ -23,4 +23,8 @@ void main()
     color = vec3(1.0f, 1.0f, 1.0f);
     color *= -dot(in_normal, vec3(0.0, 0.0, -1.0));
     out_color = vec4(color, 1.0f);
+
+    vec2 uv = in_uv;
+    uv.y = 1.0 - uv.y;
+    out_color = vec4(texture(u_texture[0], uv).rgb, 1.0);
 }

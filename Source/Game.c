@@ -285,14 +285,13 @@ static void Draw(Rr_App* const App)
     Draw2.VertexBufferAddress = CottageMesh.VertexBufferAddress;
 
     Rr_DrawMeshInfo DrawMeshInfo2 = {
-        .Material = &MonkeyMaterial,
+        .Material = &CottageMaterial,
         .MeshBuffers = &CottageMesh,
         .DrawData = &Draw2
     };
 
     Rr_DrawMesh(&RenderingContext, &DrawMeshInfo);
     Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
-
 
     Rr_EndRendering(&RenderingContext);
 }
