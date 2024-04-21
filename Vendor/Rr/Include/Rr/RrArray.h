@@ -25,11 +25,9 @@ Rr_Array Rr_ArrayResize_Internal(Rr_Array Handle, size_t ElementCount);
 
 void Rr_ArrayEmpty_Internal(Rr_Array Handle, b32 bFreeAllocation);
 
-Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, void* Data);
+Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, const void* Data);
 
-void Rr_ArraySet(Rr_Array Handle, size_t Index, void* Data);
-
-void* Rr_ArrayGet(Rr_Array Handle, size_t Index);
+void Rr_ArraySet(Rr_Array Handle, size_t Index, const void* Data);
 
 void Rr_ArrayEmplace(Rr_Array Handle, void* Data);
 
@@ -40,7 +38,6 @@ size_t Rr_ArrayCount(Rr_Array Handle);
 #define Rr_ArrayInit(Handle, ElementType, ElementCount)                                             \
     do                                                                                              \
     {                                                                                               \
-        size_t Alignment = 0;                                                                       \
         struct T                                                                                    \
         {                                                                                           \
             char C;                                                                                 \

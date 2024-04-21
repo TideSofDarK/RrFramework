@@ -106,11 +106,11 @@ static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
 void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
 {
     /* Init scratch buffers. */
-    Rr_Array ScratchPositions;
-    Rr_Array ScratchColors;
-    Rr_Array ScratchTexCoords;
-    Rr_Array ScratchNormals;
-    Rr_Array ScratchIndices;
+    vec3* ScratchPositions;
+    vec4* ScratchColors;
+    vec2* ScratchTexCoords;
+    vec3* ScratchNormals;
+    ivec3* ScratchIndices;
 
     Rr_ArrayInit(ScratchPositions, vec3, 1000);
     Rr_ArrayInit(ScratchColors, vec4, 1000);
@@ -203,10 +203,10 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
                     }
                     if (ExistingOBJIndex == SIZE_MAX)
                     {
-                        vec3* Position = Rr_ArrayGet(ScratchPositions, OBJIndices[Index][0]);
-                        vec4* Color = Rr_ArrayGet(ScratchColors, OBJIndices[Index][0]);
-                        vec2* TexCoord = Rr_ArrayGet(ScratchTexCoords, OBJIndices[Index][1]);
-                        vec3* Normal = Rr_ArrayGet(ScratchNormals, OBJIndices[Index][2]);
+                        vec3* Position = &ScratchPositions[OBJIndices[Index][0]];
+                        vec4* Color = &ScratchColors[OBJIndices[Index][0]];
+                        vec2* TexCoord = &ScratchTexCoords[OBJIndices[Index][1]];
+                        vec3* Normal = &ScratchNormals[OBJIndices[Index][2]];
                         Rr_Vertex NewVertex = { 0 };
                         glm_vec3_copy(*Position, NewVertex.Position);
                         glm_vec4_copy(*Color, NewVertex.Color);

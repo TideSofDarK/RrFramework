@@ -22,7 +22,7 @@ void Rr_UploadToDeviceBuffer(
     Rr_Buffer* DstBuffer,
     const void* Data,
     size_t Size);
-void Rr_UploadToMappedBuffer(
+void Rr_CopyToMappedBuffer(
     Rr_Renderer* Renderer,
     Rr_Buffer* DstBuffer,
     const void* Data,

@@ -53,7 +53,7 @@ void Rr_ArrayEmpty_Internal(Rr_Array Handle, b32 bFreeAllocation)
     Header->Count = 0;
 }
 
-Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, void* Data)
+Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, const void* Data)
 {
     Rr_ArrayHeader* Header = RrArray_Header(Handle);
     if (Header->Count * Header->ElementSize >= Header->AllocatedSize)
@@ -67,7 +67,7 @@ Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, void* Data)
     return Handle;
 }
 
-void Rr_ArraySet(Rr_Array Handle, size_t Index, void* Data)
+void Rr_ArraySet(Rr_Array Handle, size_t Index, const void* Data)
 {
     if (Handle == NULL)
     {
@@ -84,12 +84,6 @@ void Rr_ArraySet(Rr_Array Handle, size_t Index, void* Data)
     {
         SDL_memcpy((u8*)Handle + (Index * Header->ElementSize), Data, Header->ElementSize);
     }
-}
-
-void* Rr_ArrayGet(Rr_Array Handle, size_t Index)
-{
-    Rr_ArrayHeader* Header = RrArray_Header(Handle);
-    return (u8*)Handle + (Index * Header->ElementSize);
 }
 
 void Rr_ArrayEmplace(Rr_Array Handle, void* Data)
@@ -145,7 +139,7 @@ void Rr_Array_Test(void)
 
     Rr_ArrayEmplace(Handle, &(SArrayItem){ .Color = { 1.0f, 1.0f, 1.0f, 1.0f }, .Position = { 1.0f, 1.0f, 1.0f } });
     SDL_assert(Header->Count == 1);
-    SArrayItem* FirstItem = Rr_ArrayGet(Handle, 0);
+    SArrayItem* FirstItem = (SArrayItem*)Handle;
     SDL_assert(FirstItem->Position[0] == 1.0f);
     SDL_assert(FirstItem->Color[2] == 1.0f);
 
@@ -157,7 +151,7 @@ void Rr_Array_Test(void)
     Header = RrArray_Header(Handle);
     SDL_assert(Header->Count == 3);
     SDL_assert(Header->AllocatedSize == sizeof(SArrayItem) * 4);
-    SArrayItem* ThirdItem = Rr_ArrayGet(Handle, 2);
+    SArrayItem* ThirdItem = (SArrayItem*)Handle + 2;
     SDL_assert(ThirdItem->Position[0] == 1.0f);
     SDL_assert(ThirdItem->Color[2] == 1.0f);
 

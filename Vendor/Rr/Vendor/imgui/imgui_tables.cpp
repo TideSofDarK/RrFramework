@@ -1352,7 +1352,7 @@ void    ImGui::EndTable()
         inner_window->DrawList->PopClipRect();
     inner_window->ClipRect = inner_window->DrawList->_ClipRectStack.back();
 
-    // Draw borders
+    // DrawBuffer borders
     if ((flags & ImGuiTableFlags_Borders) != 0)
         TableDrawBorders(table);
 
@@ -1920,7 +1920,7 @@ void ImGui::TableEndRow(ImGuiTable* table)
             table->DrawSplitter->SetCurrentChannel(window->DrawList, TABLE_DRAW_CHANNEL_BG0);
         }
 
-        // Draw row background
+        // DrawBuffer row background
         // We soft/cpu clip this so all backgrounds and borders can share the same clipping rectangle
         if (bg_col0 || bg_col1)
         {
@@ -1932,7 +1932,7 @@ void ImGui::TableEndRow(ImGuiTable* table)
                 window->DrawList->AddRectFilled(row_rect.Min, row_rect.Max, bg_col1);
         }
 
-        // Draw cell background color
+        // DrawBuffer cell background color
         if (draw_cell_bg_color)
         {
             ImGuiTableCellData* cell_data_end = &table->RowCellData[table->RowCellDataCurrent];
@@ -1949,11 +1949,11 @@ void ImGui::TableEndRow(ImGuiTable* table)
             }
         }
 
-        // Draw top border
+        // DrawBuffer top border
         if (top_border_col && bg_y1 >= table->BgClipRect.Min.y && bg_y1 < table->BgClipRect.Max.y)
             window->DrawList->AddLine(ImVec2(table->BorderX1, bg_y1), ImVec2(table->BorderX2, bg_y1), top_border_col, border_size);
 
-        // Draw bottom border at the row unfreezing mark (always strong)
+        // DrawBuffer bottom border at the row unfreezing mark (always strong)
         if (draw_strong_bottom_border && bg_y2 >= table->BgClipRect.Min.y && bg_y2 < table->BgClipRect.Max.y)
             window->DrawList->AddLine(ImVec2(table->BorderX1, bg_y2), ImVec2(table->BorderX2, bg_y2), table->BorderColorStrong, border_size);
     }
@@ -2389,7 +2389,7 @@ void ImGui::TablePopBackgroundChannel()
 //   channels, while simplifying per-row/per-cell overhead. It will be empty and discarded when merged.
 // - We allocate 1 or 2 background draw channels. This is because we know TablePushBackgroundChannel() is only used for
 //   horizontal spanning. If we allowed vertical spanning we'd need one background draw channel per merge group (1-4).
-// Draw channel allocation (before merging):
+// DrawBuffer channel allocation (before merging):
 // - NoClip                       --> 2+D+1 channels: bg0/1 + bg2 + foreground (same clip rect == always 1 draw call)
 // - Clip                         --> 2+D+N channels
 // - FreezeRows                   --> 2+D+N*2 (unless scrolling value is zero)
@@ -2656,7 +2656,7 @@ void ImGui::TableDrawBorders(ImGuiTable* table)
     table->DrawSplitter->SetCurrentChannel(inner_drawlist, TABLE_DRAW_CHANNEL_BG0);
     inner_drawlist->PushClipRect(table->Bg0ClipRectForDrawCmd.Min, table->Bg0ClipRectForDrawCmd.Max, false);
 
-    // Draw inner border and resizing feedback
+    // DrawBuffer inner border and resizing feedback
     ImGuiTableInstanceData* table_instance = TableGetInstanceData(table, table->InstanceCurrent);
     const float border_size = TABLE_BORDER_SIZE;
     const float draw_y1 = ImMax(table->InnerRect.Min.y, (table->FreezeRowsCount >= 1 ? table->InnerRect.Min.y : table->WorkRect.Min.y) + table->AngledHeadersHeight) + ((table->Flags & ImGuiTableFlags_BordersOuterH) ? 1.0f : 0.0f);
@@ -2685,7 +2685,7 @@ void ImGui::TableDrawBorders(ImGuiTable* table)
             if (column->MaxX <= column->ClipRect.Min.x) // FIXME-TABLE FIXME-STYLE: Assume BorderSize==1, this is problematic if we want to increase the border size..
                 continue;
 
-            // Draw in outer window so right-most column won't be clipped
+            // DrawBuffer in outer window so right-most column won't be clipped
             // Always draw full height border when being resized/hovered, or on the delimitation of frozen column scrolling.
             float draw_y2 = (is_hovered || is_resized || is_frozen_separator || (table->Flags & (ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_NoBordersInBodyUntilResize)) == 0) ? draw_y2_body : draw_y2_head;
             if (draw_y2 > draw_y1)
@@ -2693,7 +2693,7 @@ void ImGui::TableDrawBorders(ImGuiTable* table)
         }
     }
 
-    // Draw outer border
+    // DrawBuffer outer border
     // FIXME: could use AddRect or explicit VLine/HLine helper?
     if (table->Flags & ImGuiTableFlags_BordersOuter)
     {
@@ -2721,7 +2721,7 @@ void ImGui::TableDrawBorders(ImGuiTable* table)
     }
     if ((table->Flags & ImGuiTableFlags_BordersInnerH) && table->RowPosY2 < table->OuterRect.Max.y)
     {
-        // Draw bottom-most row border between it is above outer border.
+        // DrawBuffer bottom-most row border between it is above outer border.
         const float border_y = table->RowPosY2;
         if (border_y >= table->BgClipRect.Min.y && border_y < table->BgClipRect.Max.y)
             inner_drawlist->AddLine(ImVec2(table->BorderX1, border_y), ImVec2(table->BorderX2, border_y), table->BorderColorLight, border_size);
@@ -3213,7 +3213,7 @@ void ImGui::TableAngledHeadersRowEx(float angle, float max_label_width)
         if (table_instance->HoveredRowLast == 0 && table->HoveredColumnBorder == -1 && (g.ActiveId == 0 || g.ActiveId == row_id || (table->IsActiveIdInTable || g.DragDropActive)))
             highlight_column_n = table->HoveredColumnBody;
 
-    // Draw background and labels in first pass, then all borders.
+    // DrawBuffer background and labels in first pass, then all borders.
     float max_x = 0.0f;
     ImVec2 padding = g.Style.CellPadding; // We will always use swapped component
     for (int pass = 0; pass < 2; pass++)
@@ -3233,13 +3233,13 @@ void ImGui::TableAngledHeadersRowEx(float angle, float max_label_width)
             bg_shape[3] = bg_shape[0] + header_angled_vector;
             if (pass == 0)
             {
-                // Draw shape
+                // DrawBuffer shape
                 draw_list->AddQuadFilled(bg_shape[0], bg_shape[1], bg_shape[2], bg_shape[3], GetColorU32(ImGuiCol_TableHeaderBg));
                 if (column_n == highlight_column_n)
                     draw_list->AddQuadFilled(bg_shape[0], bg_shape[1], bg_shape[2], bg_shape[3], GetColorU32(ImGuiCol_Header)); // Highlight on hover
                 max_x = ImMax(max_x, bg_shape[3].x);
 
-                // Draw label
+                // DrawBuffer label
                 // - First draw at an offset where RenderTextXXX() function won't meddle with applying current ClipRect, then transform to final offset.
                 // - Handle multiple lines manually, as we want each lines to follow on the horizontal border, rather than see a whole block rotated.
                 const char* label_name = TableGetColumnName(table, column_n);
@@ -3279,7 +3279,7 @@ void ImGui::TableAngledHeadersRowEx(float angle, float max_label_width)
             }
             if (pass == 1)
             {
-                // Draw border
+                // DrawBuffer border
                 draw_list->AddLine(bg_shape[0], bg_shape[3], TableGetColumnBorderCol(table, order_n, column_n));
             }
         }
@@ -4300,7 +4300,7 @@ void ImGui::EndColumns()
     if (!(flags & ImGuiOldColumnFlags_GrowParentContentsSize))
         window->DC.CursorMaxPos.x = columns->HostCursorMaxPosX;  // Restore cursor max pos, as columns don't grow parent
 
-    // Draw columns borders and handle resize
+    // DrawBuffer columns borders and handle resize
     // The IsBeingResized flag ensure we preserve pre-resize columns width so back-and-forth are not lossy
     bool is_being_resized = false;
     if (!(flags & ImGuiOldColumnFlags_NoBorder) && !window->SkipItems)
@@ -4329,7 +4329,7 @@ void ImGui::EndColumns()
                     dragging_column = n;
             }
 
-            // Draw column
+            // DrawBuffer column
             const ImU32 col = GetColorU32(held ? ImGuiCol_SeparatorActive : hovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator);
             const float xi = IM_TRUNC(x);
             window->DrawList->AddLine(ImVec2(xi, y1 + 1.0f), ImVec2(xi, y2), col);

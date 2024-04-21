@@ -5163,9 +5163,9 @@ static void ImGui::RenderDimmedBackgroundBehindWindow(ImGuiWindow* window, ImU32
     ImGuiViewportP* viewport = window->Viewport;
     ImRect viewport_rect = viewport->GetMainRect();
 
-    // Draw behind window by moving the draw command at the FRONT of the draw list
+    // DrawBuffer behind window by moving the draw command at the FRONT of the draw list
     {
-        // Draw list have been trimmed already, hence the explicit recreation of a draw command if missing.
+        // DrawBuffer list have been trimmed already, hence the explicit recreation of a draw command if missing.
         // FIXME: This is creating complication, might be simpler if we could inject a drawlist in drawdata at a given position and not attempt to manipulate ImDrawCmd order.
         ImDrawList* draw_list = window->RootWindowDockTree->DrawList;
         draw_list->ChannelsMerge();
@@ -5181,7 +5181,7 @@ static void ImGui::RenderDimmedBackgroundBehindWindow(ImGuiWindow* window, ImU32
         draw_list->PopClipRect();
     }
 
-    // Draw over sibling docking nodes in a same docking tree
+    // DrawBuffer over sibling docking nodes in a same docking tree
     if (window->RootWindow->DockIsActive)
     {
         ImDrawList* draw_list = FindFrontMostVisibleChildWindow(window->RootWindowDockTree)->DrawList;
@@ -5227,21 +5227,21 @@ static void ImGui::RenderDimmedBackgrounds()
     ImGuiViewport* viewports_already_dimmed[2] = { NULL, NULL };
     if (dim_bg_for_modal)
     {
-        // Draw dimming behind modal or a begin stack child, whichever comes first in draw order.
+        // DrawBuffer dimming behind modal or a begin stack child, whichever comes first in draw order.
         ImGuiWindow* dim_behind_window = FindBottomMostVisibleWindowWithinBeginStack(modal_window);
         RenderDimmedBackgroundBehindWindow(dim_behind_window, GetColorU32(modal_window->DC.ModalDimBgColor, g.DimBgRatio));
         viewports_already_dimmed[0] = modal_window->Viewport;
     }
     else if (dim_bg_for_window_list)
     {
-        // Draw dimming behind CTRL+Tab target window and behind CTRL+Tab UI window
+        // DrawBuffer dimming behind CTRL+Tab target window and behind CTRL+Tab UI window
         RenderDimmedBackgroundBehindWindow(g.NavWindowingTargetAnim, GetColorU32(ImGuiCol_NavWindowingDimBg, g.DimBgRatio));
         if (g.NavWindowingListWindow != NULL && g.NavWindowingListWindow->Viewport && g.NavWindowingListWindow->Viewport != g.NavWindowingTargetAnim->Viewport)
             RenderDimmedBackgroundBehindWindow(g.NavWindowingListWindow, GetColorU32(ImGuiCol_NavWindowingDimBg, g.DimBgRatio));
         viewports_already_dimmed[0] = g.NavWindowingTargetAnim->Viewport;
         viewports_already_dimmed[1] = g.NavWindowingListWindow ? g.NavWindowingListWindow->Viewport : NULL;
 
-        // Draw border around CTRL+Tab target window
+        // DrawBuffer border around CTRL+Tab target window
         ImGuiWindow* window = g.NavWindowingTargetAnim;
         ImGuiViewport* viewport = window->Viewport;
         float distance = g.FontSize;
@@ -5257,7 +5257,7 @@ static void ImGui::RenderDimmedBackgrounds()
         window->DrawList->PopClipRect();
     }
 
-    // Draw dimming background on _other_ viewports than the ones our windows are in
+    // DrawBuffer dimming background on _other_ viewports than the ones our windows are in
     for (ImGuiViewportP* viewport : g.Viewports)
     {
         if (viewport == viewports_already_dimmed[0] || viewport == viewports_already_dimmed[1])
@@ -5390,7 +5390,7 @@ void ImGui::Render()
             AddDrawListToDrawDataEx(&viewport->DrawDataP, viewport->DrawDataBuilder.Layers[0], GetBackgroundDrawList(viewport));
     }
 
-    // Draw modal/window whitening backgrounds
+    // DrawBuffer modal/window whitening backgrounds
     RenderDimmedBackgrounds();
 
     // Add ImDrawList to render
@@ -5407,7 +5407,7 @@ void ImGui::Render()
         if (windows_to_render_top_most[n] && IsWindowActiveAndVisible(windows_to_render_top_most[n])) // NavWindowingTarget is always temporarily displayed as the top-most window
             AddRootWindowToDrawData(windows_to_render_top_most[n]);
 
-    // Draw software mouse cursor if requested by io.MouseDrawCursor flag
+    // DrawBuffer software mouse cursor if requested by io.MouseDrawCursor flag
     if (g.IO.MouseDrawCursor && g.MouseCursor != ImGuiMouseCursor_None)
         RenderMouseCursor(g.IO.MousePos, g.Style.MouseCursorScale, g.MouseCursor, IM_COL32_WHITE, IM_COL32_BLACK, IM_COL32(0, 0, 0, 48));
 
@@ -6440,8 +6440,8 @@ static void ImGui::RenderWindowOuterBorders(ImGuiWindow* window)
     }
 }
 
-// Draw background and borders
-// Draw and handle scrollbars
+// DrawBuffer background and borders
+// DrawBuffer and handle scrollbars
 void ImGui::RenderWindowDecorations(ImGuiWindow* window, const ImRect& title_bar_rect, bool title_bar_is_highlight, bool handle_borders_and_resize_grips, int resize_grip_count, const ImU32 resize_grip_col[4], float resize_grip_draw_size)
 {
     ImGuiContext& g = *GImGui;
@@ -6452,7 +6452,7 @@ void ImGui::RenderWindowDecorations(ImGuiWindow* window, const ImRect& title_bar
     IM_ASSERT(window->BeginCount == 0);
     window->SkipItems = false;
 
-    // Draw window + handle manual resize
+    // DrawBuffer window + handle manual resize
     // As we highlight the title bar when want_focus is set, multiple reappearing windows will have their title bar highlighted on their reappearing frame.
     const float window_rounding = window->WindowRounding;
     const float window_border_size = window->WindowBorderSize;
@@ -15844,7 +15844,7 @@ void ImGui::DockContextNewFrameUpdateDocking(ImGuiContext* ctx)
 
 void ImGui::DockContextEndFrame(ImGuiContext* ctx)
 {
-    // Draw backgrounds of node missing their window
+    // DrawBuffer backgrounds of node missing their window
     ImGuiContext& g = *ctx;
     ImGuiDockContext* dc = &g.DockContext;
     for (int n = 0; n < dc->Nodes.Data.Size; n++)
@@ -17070,7 +17070,7 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
         PopStyleColor(3);
     }
 
-    // Draw empty node background (currently can only be the Central Node)
+    // DrawBuffer empty node background (currently can only be the Central Node)
     if (host_window && node->IsEmpty() && node->IsVisible)
     {
         host_window->DrawList->ChannelsSetCurrent(DOCKING_HOST_DRAW_CHANNEL_BG);
@@ -17080,7 +17080,7 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
         node->IsBgDrawnThisFrame = true;
     }
 
-    // Draw whole dockspace background if ImGuiDockNodeFlags_PassthruCentralNode if set.
+    // DrawBuffer whole dockspace background if ImGuiDockNodeFlags_PassthruCentralNode if set.
     // We need to draw a background at the root level if requested by ImGuiDockNodeFlags_PassthruCentralNode, but we will only know the correct pos/size
     // _after_ processing the resizing splitters. So we are using the DrawList channel splitting facility to submit drawing primitives out of order!
     const bool render_dockspace_bg = node->IsRootNode() && host_window && (node_flags & ImGuiDockNodeFlags_PassthruCentralNode) != 0;
@@ -17093,7 +17093,7 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
             host_window->DrawList->AddRectFilled(node->Pos, node->Pos + node->Size, GetColorU32(ImGuiCol_WindowBg), 0.0f);
     }
 
-    // Draw and populate Tab Bar
+    // DrawBuffer and populate Tab Bar
     if (host_window)
         host_window->DrawList->ChannelsSetCurrent(DOCKING_HOST_DRAW_CHANNEL_FG);
     if (host_window && node->Windows.Size > 0)
@@ -17111,7 +17111,7 @@ static void ImGui::DockNodeUpdate(ImGuiDockNode* node)
     else if (node->Windows.Size > 0)
         node->SelectedTabId = node->Windows[0]->TabId;
 
-    // Draw payload drop target
+    // DrawBuffer payload drop target
     if (host_window && node->IsVisible)
         if (node->IsRootNode() && (g.MovingWindow == NULL || g.MovingWindow->RootWindowDockTree != host_window))
             BeginDockableDragDropTarget(host_window);
@@ -17807,7 +17807,7 @@ static void ImGui::DockNodePreviewDockRender(ImGuiWindow* host_window, ImGuiDock
     if (host_window->Viewport != root_payload->Viewport && !is_transparent_payload)
         overlay_draw_lists[overlay_draw_lists_count++] = GetForegroundDrawList(root_payload->Viewport);
 
-    // Draw main preview rectangle
+    // DrawBuffer main preview rectangle
     const ImU32 overlay_col_main = GetColorU32(ImGuiCol_DockingPreview, is_transparent_payload ? 0.60f : 0.40f);
     const ImU32 overlay_col_drop = GetColorU32(ImGuiCol_DockingPreview, is_transparent_payload ? 0.90f : 0.70f);
     const ImU32 overlay_col_drop_hovered = GetColorU32(ImGuiCol_DockingPreview, is_transparent_payload ? 1.20f : 1.00f);
@@ -17844,7 +17844,7 @@ static void ImGui::DockNodePreviewDockRender(ImGuiWindow* host_window, ImGuiDock
             tab_pos.x += g.Style.ItemInnerSpacing.x + TabItemCalcSize(host_window).x; // Account for slight offset which will be added when changing from title bar to tab bar
         }
 
-        // Draw tab shape/label preview (payload may be a loose window or a host window carrying multiple tabbed windows)
+        // DrawBuffer tab shape/label preview (payload may be a loose window or a host window carrying multiple tabbed windows)
         if (root_payload->DockNodeAsHost)
             IM_ASSERT(root_payload->DockNodeAsHost->Windows.Size <= root_payload->DockNodeAsHost->TabBar->Tabs.Size);
         ImGuiTabBar* tab_bar_with_payload = root_payload->DockNodeAsHost ? root_payload->DockNodeAsHost->TabBar : NULL;
@@ -19193,7 +19193,7 @@ void ImGui::BeginDockableDragDropTarget(ImGuiWindow* window)
             if (split_data == &split_outer)
                 split_inner.IsDropAllowed = false;
 
-            // Draw inner then outer, so that previewed tab (in inner data) will be behind the outer drop boxes
+            // DrawBuffer inner then outer, so that previewed tab (in inner data) will be behind the outer drop boxes
             DockNodePreviewDockRender(window, node, payload_window, &split_inner);
             DockNodePreviewDockRender(window, node, payload_window, &split_outer);
 
@@ -19661,7 +19661,7 @@ static void RenderViewportsThumbnails()
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
 
-    // Draw monitor and calculate their boundaries
+    // DrawBuffer monitor and calculate their boundaries
     float SCALE = 1.0f / 8.0f;
     ImRect bb_full(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
     for (ImGuiPlatformMonitor& monitor : g.PlatformIO.Monitors)
@@ -19675,7 +19675,7 @@ static void RenderViewportsThumbnails()
         window->DrawList->AddRectFilled(monitor_draw_bb.Min, monitor_draw_bb.Max, ImGui::GetColorU32(ImGuiCol_Border, 0.10f), 4.0f);
     }
 
-    // Draw viewports
+    // DrawBuffer viewports
     for (ImGuiViewportP* viewport : g.Viewports)
     {
         ImRect viewport_draw_bb(off + (viewport->Pos) * SCALE, off + (viewport->Pos + viewport->Size) * SCALE);
@@ -19691,7 +19691,7 @@ static int IMGUI_CDECL ViewportComparerByLastFocusedStampCount(const void* lhs, 
     return b->LastFocusedStampCount - a->LastFocusedStampCount;
 }
 
-// Draw an arbitrary US keyboard layout to visualize translated keys
+// DrawBuffer an arbitrary US keyboard layout to visualize translated keys
 void ImGui::DebugRenderKeyboardPreview(ImDrawList* draw_list)
 {
     const float scale = ImGui::GetFontSize() / 13.0f;
@@ -20774,7 +20774,7 @@ void ImGui::DebugNodeDrawCmdShowMeshAndBoundingBox(ImDrawList* out_draw_list, co
 {
     IM_ASSERT(show_mesh || show_aabb);
 
-    // Draw wire-frame version of all triangles
+    // DrawBuffer wire-frame version of all triangles
     ImRect clip_rect = draw_cmd->ClipRect;
     ImRect vtxs_rect(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
     ImDrawListFlags backup_flags = out_draw_list->Flags;
@@ -20790,7 +20790,7 @@ void ImGui::DebugNodeDrawCmdShowMeshAndBoundingBox(ImDrawList* out_draw_list, co
         if (show_mesh)
             out_draw_list->AddPolyline(triangle, 3, IM_COL32(255, 255, 0, 255), ImDrawFlags_Closed, 1.0f); // In yellow: mesh triangles
     }
-    // Draw bounding boxes
+    // DrawBuffer bounding boxes
     if (show_aabb)
     {
         out_draw_list->AddRect(ImTrunc(clip_rect.Min), ImTrunc(clip_rect.Max), IM_COL32(255, 0, 255, 255)); // In pink: clipping rectangle submitted to GPU
@@ -20863,7 +20863,7 @@ void ImGui::DebugNodeFont(ImFont* font)
             if (!TreeNode((void*)(intptr_t)base, "U+%04X..U+%04X (%d %s)", base, base + 255, count, count > 1 ? "glyphs" : "glyph"))
                 continue;
 
-            // Draw a 16x16 grid of glyphs
+            // DrawBuffer a 16x16 grid of glyphs
             ImVec2 base_pos = GetCursorScreenPos();
             for (unsigned int n = 0; n < 256; n++)
             {
@@ -21223,7 +21223,7 @@ void ImGui::ShowDebugLogWindow(bool* p_open)
 // [SECTION] OTHER DEBUG TOOLS (ITEM PICKER, ID STACK TOOL)
 //-----------------------------------------------------------------------------
 
-// Draw a small cross at current CursorPos in current window's DrawList
+// DrawBuffer a small cross at current CursorPos in current window's DrawList
 void ImGui::DebugDrawCursorPos(ImU32 col)
 {
     ImGuiContext& g = *GImGui;
@@ -21233,7 +21233,7 @@ void ImGui::DebugDrawCursorPos(ImU32 col)
     window->DrawList->AddLine(ImVec2(pos.x - 3.0f, pos.y), ImVec2(pos.x + 4.0f, pos.y), col, 1.0f);
 }
 
-// Draw a 10px wide rectangle around CurposPos.x using Line Y1/Y2 in current window's DrawList
+// DrawBuffer a 10px wide rectangle around CurposPos.x using Line Y1/Y2 in current window's DrawList
 void ImGui::DebugDrawLineExtents(ImU32 col)
 {
     ImGuiContext& g = *GImGui;
@@ -21246,7 +21246,7 @@ void ImGui::DebugDrawLineExtents(ImU32 col)
     window->DrawList->AddLine(ImVec2(curr_x - 5.0f, line_y2), ImVec2(curr_x + 5.0f, line_y2), col, 1.0f);
 }
 
-// Draw last item rect in ForegroundDrawList (so it is always visible)
+// DrawBuffer last item rect in ForegroundDrawList (so it is always visible)
 void ImGui::DebugDrawItemRect(ImU32 col)
 {
     ImGuiContext& g = *GImGui;

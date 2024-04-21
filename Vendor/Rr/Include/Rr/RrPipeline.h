@@ -21,6 +21,16 @@ typedef struct Rr_Pipeline
 {
     VkPipeline Handle;
     VkPipelineLayout Layout;
+
+    Rr_GenericPipelineBuffers Buffers[RR_FRAME_OVERLAP];
+
+    size_t GlobalsSize;
+    size_t MaterialSize;
+    size_t DrawSize;
+
+//    void* DrawData;
+//    Rr_Material** MaterialsArray;
+//    Rr_DrawMeshInfo** MaterialDrawListArrays;
 } Rr_Pipeline;
 
 typedef enum Rr_PolygonMode {
@@ -38,5 +48,5 @@ void Rr_EnableAlphaBlend(Rr_PipelineBuilder* PipelineBuilder);
 Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* PipelineBuilder);
 void Rr_DestroyPipeline(Rr_Renderer* Renderer, Rr_Pipeline* Pipeline);
 
-Rr_GenericPipelineBuffers Rr_CreateGenericPipelineBuffers(Rr_Renderer* Renderer, size_t GlobalSize, size_t MaterialSize);
+Rr_GenericPipelineBuffers Rr_CreateGenericPipelineBuffers(Rr_Renderer* Renderer, size_t GlobalSize, size_t MaterialSize, size_t DrawSize);
 void Rr_DestroyGenericPipelineBuffers(Rr_Renderer* Renderer, Rr_GenericPipelineBuffers* GenericPipelineBuffers);

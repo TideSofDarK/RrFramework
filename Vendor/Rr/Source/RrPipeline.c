@@ -95,7 +95,11 @@ void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
 
 Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* PipelineBuilder)
 {
-    Rr_Pipeline Pipeline = { 0 };
+    Rr_Pipeline Pipeline = {
+        .GlobalsSize = PipelineBuilder->GlobalsSize,
+        .MaterialSize = PipelineBuilder->MaterialSize,
+        .DrawSize = PipelineBuilder->DrawSize,
+    };
 
     /* Create shader modules. */
     int ShaderStageCount = 0;
@@ -196,6 +200,11 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
 
     Rr_StackFree(DescriptorSetLayoutsVK);
 
+    for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
+    {
+        Pipeline.Buffers[Index] = Rr_CreateGenericPipelineBuffers(Renderer, Pipeline.GlobalsSize, Pipeline.MaterialSize, Pipeline.DrawSize);
+    }
+
     return Pipeline;
 }
 
@@ -203,17 +212,22 @@ void Rr_DestroyPipeline(Rr_Renderer* Renderer, Rr_Pipeline* Pipeline)
 {
     VkDevice Device = Renderer->Device;
 
-//    vkDestroyPipelineLayout(Device, Pipeline->Layout, NULL);
+    for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
+    {
+        Rr_DestroyGenericPipelineBuffers(Renderer, &Pipeline->Buffers[Index]);
+    }
     vkDestroyPipeline(Device, Pipeline->Handle, NULL);
 }
 
-Rr_GenericPipelineBuffers Rr_CreateGenericPipelineBuffers(Rr_Renderer* Renderer, size_t GlobalSize, size_t MaterialSize)
+Rr_GenericPipelineBuffers Rr_CreateGenericPipelineBuffers(Rr_Renderer* Renderer, size_t GlobalsSize, size_t MaterialSize, size_t DrawSize)
 {
+    VkDevice Device = Renderer->Device;
     Rr_GenericPipelineBuffers Buffers;
 
+    /* Buffers */
     Buffers.Globals = Rr_CreateBuffer(
         Renderer->Allocator,
-        GlobalSize,
+        GlobalsSize,
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         false);

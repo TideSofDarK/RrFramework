@@ -21,6 +21,7 @@
 #include <SDL3/SDL_vulkan.h>
 
 #include "RrApp.h"
+#include "RrArray.h"
 #include "RrTypes.h"
 #include "RrVulkan.h"
 #include "RrLib.h"
@@ -31,6 +32,8 @@
 #include "RrMesh.h"
 #include "RrPipeline.h"
 #include "RrMemory.h"
+#include "RrUtil.h"
+#include "RrMaterial.h"
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
 {
@@ -137,7 +140,7 @@ static void Rr_InitDevice(Rr_Renderer* const Renderer)
 
     Renderer->PhysicalDevice.SubgroupProperties = (VkPhysicalDeviceSubgroupProperties){ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = NULL };
 
-    VkPhysicalDeviceProperties2 PhysicalDeviceProperties = {
+    Renderer->PhysicalDevice.Properties = (VkPhysicalDeviceProperties2){
         .pNext = &Renderer->PhysicalDevice.SubgroupProperties,
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
     };
@@ -155,9 +158,9 @@ static void Rr_InitDevice(Rr_Renderer* const Renderer)
                 continue;
             }
             vkGetPhysicalDeviceMemoryProperties(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.MemoryProperties);
-            vkGetPhysicalDeviceProperties2(Renderer->PhysicalDevice.Handle, &PhysicalDeviceProperties);
+            vkGetPhysicalDeviceProperties2(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.Properties);
 
-            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", PhysicalDeviceProperties.properties.deviceName);
+            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", Renderer->PhysicalDevice.Properties.properties.deviceName);
 
             bFoundSuitableDevice = true;
             break;
@@ -580,90 +583,150 @@ static void Rr_InitDescriptors(Rr_Renderer* const Renderer)
     Renderer->GlobalDescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios));
 }
 
-static void Rr_InitBackgroundPipelines(Rr_Renderer* const Renderer)
+Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const Info)
 {
-    // VkPushConstantRange PushConstantRange = {
-    //     .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-    //     .offset = 0,
-    //     .size = sizeof(SComputeConstants),
-    // };
-    //
-    // VkPipelineLayoutCreateInfo ComputeLayout = {
-    //     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-    //     .pNext = NULL,
-    //     .setLayoutCount = 1,
-    //     .pSetLayouts = &Renderer->DrawTarget.DescriptorSetLayout,
-    //     .pushConstantRangeCount = 1,
-    //     .pPushConstantRanges = &PushConstantRange,
-    // };
-    //
-    // vkCreatePipelineLayout(Renderer->Device, &ComputeLayout, NULL, &Renderer->GradientPipelineLayout);
-    //
-    // VkShaderModule ComputeDrawShader;
-    // Rr_Asset TestCOMP;
-    // RrAsset_Extern(&TestCOMP, TestCOMP);
-    // vkCreateShaderModule(Renderer->Device, &(VkShaderModuleCreateInfo){
-    //                                            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-    //                                            .pNext = NULL,
-    //                                            .codeSize = TestCOMP.Length,
-    //                                            .pCode = (u32*)TestCOMP.Data,
-    //                                        },
-    //     NULL, &ComputeDrawShader);
-    //
-    // VkPipelineShaderStageCreateInfo StageCreateInfo = {
-    //     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-    //     .pNext = NULL,
-    //     .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-    //     .module = ComputeDrawShader,
-    //     .pName = "main",
-    // };
-    //
-    // VkComputePipelineCreateInfo PipelineCreateInfo = {
-    //     .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-    //     .pNext = NULL,
-    //     .stage = StageCreateInfo,
-    //     .layout = Renderer->GradientPipelineLayout,
-    // };
-    //
-    // vkCreateComputePipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, NULL, &Renderer->GradientPipeline);
-    // vkDestroyShaderModule(Renderer->Device, ComputeDrawShader, NULL);
-}
-
-static void Rr_InitPipelines(Rr_Renderer* const Renderer)
-{
-    Rr_InitBackgroundPipelines(Renderer);
-}
-
-static void Rr_DrawBackground(Rr_Renderer* const Renderer, VkCommandBuffer CommandBuffer)
-{
-    // vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipeline);
-    // vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Renderer->GradientPipelineLayout, 0, 1, &Renderer->DrawTarget.DescriptorSet, 0, NULL);
-    // SComputeConstants ComputeConstants;
-    // glm_vec4_copy((vec4){ 1.0f, 0.0f, 0.0f, 1.0f }, ComputeConstants.Vec0);
-    // glm_vec4_copy((vec4){ 0.0f, 1.0f, 0.0f, 1.0f }, ComputeConstants.Vec1);
-    // glm_vec4_copy((vec4){ (f32)Renderer->DrawTarget.ActiveResolution.width, (f32)Renderer->DrawTarget.ActiveResolution.height, 0.0f, 1.0f }, ComputeConstants.Vec2);
-    // vkCmdPushConstants(CommandBuffer, Renderer->GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SComputeConstants), &ComputeConstants);
-    // vkCmdDispatch(CommandBuffer, ceil(Renderer->DrawTarget.ActiveResolution.width / 16.0), ceil(Renderer->DrawTarget.ActiveResolution.height / 16.0), 1);
-
-    // float Flash = fabsf(sinf((float)Renderer->FrameNumber / 240.0f));
-    // VkClearColorValue ClearValue = { { 0.0f, 0.0f, Flash, 1.0f } };
-    //
-    // VkImageSubresourceRange ClearRange = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
-    //
-    // vkCmdClearColorImage(CommandBuffer, Renderer->DrawImage.Handle, VK_IMAGE_LAYOUT_GENERAL, &ClearValue, 1, &ClearRange);
-}
-
-void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const Info)
-{
+    Rr_RenderingContext RenderingContext = { 0 };
     if (Info->Pipeline == NULL)
     {
-        return;
+        abort();
     }
 
+    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    RenderingContext.CommandBuffer = Frame->MainCommandBuffer;
+    RenderingContext.Renderer = Renderer;
+    RenderingContext.Info = Info;
+    Rr_ArrayInit(RenderingContext.DrawMeshArray, Rr_DrawMeshInfo, 16);
+
+    return RenderingContext;
+}
+
+void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, Rr_DrawMeshInfo* Info)
+{
+    Rr_ArrayPush(RenderingContext->DrawMeshArray, Info);
+}
+
+void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
+{
+    Rr_Renderer* Renderer = RenderingContext->Renderer;
+    size_t CurrentFrameIndex = Rr_GetCurrentFrameIndex(Renderer);
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
     VkExtent2D ActiveResolution = Renderer->DrawTarget.ActiveResolution;
 
+    Rr_Pipeline* Pipeline = RenderingContext->Info->Pipeline;
+    Rr_GenericPipelineBuffers* PipelineBuffers = &Pipeline->Buffers[CurrentFrameIndex];
+
+    Rr_BeginRenderingInfo* Info = RenderingContext->Info;
+
+    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1);
+
+    const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+
+    /* Upload globals data. */
+    Rr_UploadToDeviceBuffer(
+        Renderer,
+        CommandBuffer,
+        &Frame->StagingBuffer,
+        &PipelineBuffers->Globals,
+        RenderingContext->Info->GlobalsData,
+        Pipeline->GlobalsSize);
+
+    /* Allocate, write and bind globals descriptor set. */
+    VkDescriptorSet GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
+        &Frame->DescriptorAllocator,
+        Renderer->Device,
+        Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS]);
+    Rr_WriteBufferDescriptor(
+        &DescriptorWriter,
+        0,
+        PipelineBuffers->Globals.Handle,
+        Pipeline->GlobalsSize,
+        0,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+//    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, GlobalsDescriptorSet);
+    Rr_ResetDescriptorWriter(&DescriptorWriter);
+
+    vkCmdBindDescriptorSets(
+        CommandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+       Pipeline->Layout,
+        0,
+        1,
+        &GlobalsDescriptorSet,
+        0,
+        NULL);
+
+    /* Generate draw lists. */
+    size_t DrawMeshCount = Rr_ArrayCount(RenderingContext->DrawMeshArray);
+    size_t DrawSize = Pipeline->DrawSize;
+    size_t DrawSizeAligned = Rr_Align(DrawSize, Alignment);
+    void* DrawData = Rr_Malloc(DrawSizeAligned * DrawMeshCount);
+
+    Rr_Material** MaterialsArray;
+    Rr_ArrayInit(MaterialsArray, Rr_Material*, DrawMeshCount);
+
+    size_t** DrawMeshIndicesArrays;
+    Rr_ArrayInit(DrawMeshIndicesArrays, size_t*, DrawMeshCount);
+
+    size_t CurrentDrawMaterialIndex;
+    for (size_t DrawMeshIndex = 0; DrawMeshIndex < DrawMeshCount; ++DrawMeshIndex)
+    {
+        Rr_DrawMeshInfo* DrawMeshInfo = &RenderingContext->DrawMeshArray[DrawMeshIndex];
+
+        SDL_memcpy(DrawData + (DrawMeshIndex * DrawSizeAligned), DrawMeshInfo->DrawData, DrawSize);
+
+        bool bMaterialFound = false;
+        for (size_t MaterialIndex = 0; MaterialIndex < Rr_ArrayCount(MaterialsArray); ++MaterialIndex)
+        {
+            if (MaterialsArray[MaterialIndex] == DrawMeshInfo->Material)
+            {
+                bMaterialFound = true;
+                CurrentDrawMaterialIndex = MaterialIndex;
+                break;
+            }
+        }
+        if (!bMaterialFound)
+        {
+            Rr_ArrayPush(MaterialsArray, &DrawMeshInfo->Material);
+            size_t MaterialIndex = Rr_ArrayCount(MaterialsArray) - 1;
+            CurrentDrawMaterialIndex = MaterialIndex;
+        }
+        if (CurrentDrawMaterialIndex >= Rr_ArrayCount(DrawMeshIndicesArrays))
+        {
+            size_t* DrawMeshIndicesArray;
+            Rr_ArrayInit(DrawMeshIndicesArray, size_t, 2);
+            Rr_ArrayPush(DrawMeshIndicesArrays, &DrawMeshIndicesArray);
+        }
+        size_t* DrawMeshIndicesArray = DrawMeshIndicesArrays[CurrentDrawMaterialIndex];
+        Rr_ArrayPush(DrawMeshIndicesArray, &DrawMeshIndex);
+    }
+
+    /* Upload per-draw-call data. */
+    size_t DrawOffset = 0;
+    Rr_CopyToMappedBuffer(
+        Renderer,
+        &PipelineBuffers->Draw,
+        DrawData,
+        DrawSizeAligned * DrawMeshCount,
+        &DrawOffset);
+
+    /* Allocate and write draw descriptor set. */
+    VkDescriptorSet DrawDescriptorSet = Rr_AllocateDescriptorSet(
+        &Frame->DescriptorAllocator,
+        Renderer->Device,
+        Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW]);
+    Rr_WriteBufferDescriptor(
+        &DescriptorWriter,
+        0,
+        PipelineBuffers->Draw.Handle,
+        Pipeline->DrawSize,
+        0,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, DrawDescriptorSet);
+    Rr_ResetDescriptorWriter(&DescriptorWriter);
+
+    /* Render Loop */
     Rr_ImageBarrier ColorImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = Renderer->DrawTarget.ColorImage.Handle,
@@ -674,19 +737,19 @@ void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const
     if (Info->InitialColor != NULL)
     {
         Rr_ChainImageBarrier_Aspect(&ColorImageTransition,
-            VK_PIPELINE_STAGE_2_BLIT_BIT,
-            VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_ASPECT_COLOR_BIT);
+                                    VK_PIPELINE_STAGE_2_BLIT_BIT,
+                                    VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                    VK_IMAGE_ASPECT_COLOR_BIT);
         Rr_BlitColorImage(CommandBuffer, Info->InitialColor->Handle, Renderer->DrawTarget.ColorImage.Handle,
-            (VkExtent2D){ .width = Info->InitialColor->Extent.width, .height = Info->InitialColor->Extent.height },
-            (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
+                          (VkExtent2D){ .width = Info->InitialColor->Extent.width, .height = Info->InitialColor->Extent.height },
+                          (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
     }
     Rr_ChainImageBarrier_Aspect(&ColorImageTransition,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_ASPECT_COLOR_BIT);
+                                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                VK_IMAGE_ASPECT_COLOR_BIT);
 
     Rr_ImageBarrier DepthImageTransition = {
         .CommandBuffer = CommandBuffer,
@@ -698,19 +761,19 @@ void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const
     if (Info->InitialDepth != NULL)
     {
         Rr_ChainImageBarrier_Aspect(&DepthImageTransition,
-            VK_PIPELINE_STAGE_2_BLIT_BIT,
-            VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_ASPECT_DEPTH_BIT);
+                                    VK_PIPELINE_STAGE_2_BLIT_BIT,
+                                    VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                    VK_IMAGE_ASPECT_DEPTH_BIT);
         Rr_BlitPrerenderedDepth(CommandBuffer, Info->InitialDepth->Handle, Renderer->DrawTarget.DepthImage.Handle,
-            (VkExtent2D){ .width = Info->InitialDepth->Extent.width, .height = Info->InitialDepth->Extent.height },
-            (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
+                                (VkExtent2D){ .width = Info->InitialDepth->Extent.width, .height = Info->InitialDepth->Extent.height },
+                                (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
     }
     Rr_ChainImageBarrier_Aspect(&DepthImageTransition,
-        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
-        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_ASPECT_DEPTH_BIT);
+                                VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+                                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+                                VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                                VK_IMAGE_ASPECT_DEPTH_BIT);
 
     VkClearValue ClearColorValue = {
         0
@@ -742,7 +805,6 @@ void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const
         .pDepthAttachment = &DepthAttachment,
         .pStencilAttachment = NULL,
     };
-    //    VkRenderingInfo RenderingInfo = GetRenderingInfo(ActiveResolution, &ColorAttachment, &DepthAttachment);
 
     vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
 
@@ -764,65 +826,84 @@ void Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const
 
     vkCmdSetScissor(CommandBuffer, 0, 1, &Scissor);
 
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Info->Pipeline->Handle);
-}
+    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline->Handle);
 
-void Rr_EndRendering(Rr_Renderer* const Renderer)
-{
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+    for (size_t MaterialIndex = 0; MaterialIndex < Rr_ArrayCount(MaterialsArray); ++MaterialIndex)
+    {
+        Rr_Material* Material = MaterialsArray[MaterialIndex];
+
+        VkDescriptorSet MaterialDescriptorSet = Rr_AllocateDescriptorSet(
+            &Frame->DescriptorAllocator,
+            Renderer->Device,
+            Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL]);
+        Rr_WriteBufferDescriptor(
+            &DescriptorWriter,
+            0,
+            Material->Buffer.Handle,
+            Pipeline->MaterialSize,
+            0,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        for (size_t TextureIndex = 0; TextureIndex < Material->TextureCount; ++TextureIndex)
+        {
+             Rr_WriteImageDescriptorAt(
+                &DescriptorWriter,
+                1,
+                TextureIndex,
+                Material->Textures[TextureIndex]->View,
+                Renderer->NearestSampler,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        }
+        Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, MaterialDescriptorSet);
+        Rr_ResetDescriptorWriter(&DescriptorWriter);
+
+        vkCmdBindDescriptorSets(
+            CommandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            Pipeline->Layout,
+            1,
+            1,
+            &MaterialDescriptorSet,
+            0,
+            NULL);
+
+        size_t* Indices = DrawMeshIndicesArrays[MaterialIndex];
+        size_t IndexCount = Rr_ArrayCount(Indices);
+        for (size_t DrawIndex = 0; DrawIndex < IndexCount; ++DrawIndex)
+        {
+            size_t DrawMeshIndex = Indices[DrawIndex];
+            Rr_DrawMeshInfo* DrawMeshInfo = &RenderingContext->DrawMeshArray[DrawMeshIndex];
+
+            u32 Offset = DrawMeshIndex * DrawSizeAligned;
+            vkCmdBindDescriptorSets(
+                CommandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                Pipeline->Layout,
+                2,
+                1,
+                &DrawDescriptorSet,
+                1,
+                &Offset);
+//            vkCmdPushConstants(
+//                CommandBuffer,
+//                Pipeline->Layout,
+//                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+//                0,
+//                128,
+//                &(SUber3DPushConstants){ 0 });
+            vkCmdBindIndexBuffer(CommandBuffer, DrawMeshInfo->MeshBuffers->IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(CommandBuffer, DrawMeshInfo->MeshBuffers->IndexCount, 1, 0, 0, 0);
+        }
+        Rr_ArrayFree(Indices);
+    }
 
     vkCmdEndRendering(CommandBuffer);
-}
 
-static void Rr_DrawGeometry(Rr_Renderer* const Renderer, VkCommandBuffer CommandBuffer, VkDescriptorSet SceneDataDescriptorSet)
-{
-    // VkRenderingAttachmentInfo ColorAttachment = GetRenderingAttachmentInfo_Color(Renderer->DrawTarget.ColorImage.View, NULL, VK_IMAGE_LAYOUT_GENERAL);
-    // VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(Renderer->DrawTarget.DepthImage.View, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-    //
-    // VkRenderingInfo renderInfo = GetRenderingInfo(Renderer->DrawTarget.ActiveResolution, &ColorAttachment, &DepthAttachment);
-    // vkCmdBeginRendering(CommandBuffer, &renderInfo);
-    //
-    // VkViewport viewport = { 0 };
-    // viewport.x = 0.0f;
-    // viewport.y = 0.0f;
-    // viewport.width = (float)Renderer->DrawTarget.ActiveResolution.width;
-    // viewport.height = (float)Renderer->DrawTarget.ActiveResolution.height;
-    // viewport.minDepth = 0.0f;
-    // viewport.maxDepth = 1.0f;
-    //
-    // vkCmdSetViewport(CommandBuffer, 0, 1, &viewport);
-    //
-    // VkRect2D scissor = { 0 };
-    // scissor.offset.x = 0;
-    // scissor.offset.y = 0;
-    // scissor.extent.width = Renderer->DrawTarget.ActiveResolution.width;
-    // scissor.extent.height = Renderer->DrawTarget.ActiveResolution.height;
-    //
-    // vkCmdSetScissor(CommandBuffer, 0, 1, &scissor);
-    //
-    // vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Renderer->MeshPipeline);
-    // Rr_PushConstants3D PushConstants = {
-    //     .VertexBufferAddress = Renderer->Mesh.VertexBufferAddress,
-    // };
-    //
-    // u64 Ticks = SDL_GetTicks();
-    // float Time = (float)((double)Ticks / 1000.0);
-    // float X = SDL_cosf(Time) * 5;
-    // float Z = SDL_sinf(Time) * 5;
-    // mat4 View;
-    // glm_lookat((vec3){ Z, 0.2f, X }, (vec3){ 0, 0.0f, 0 }, (vec3){ 0, 1, 0 }, View);
-    // mat4 Projection;
-    // glm_perspective_rh_no(glm_rad(45.0f), (float)Renderer->DrawTarget.ActiveResolution.width / (float)Renderer->DrawTarget.ActiveResolution.height, 1.0f, 1000.0f, Projection);
-    // Projection[1][1] *= -1.0f;
-    // glm_mat4_mul(Projection, View, PushConstants.ViewProjection);
-    //
-    // vkCmdPushConstants(CommandBuffer, Renderer->MeshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Rr_PushConstants3D), &PushConstants);
-    // vkCmdBindIndexBuffer(CommandBuffer, Renderer->Mesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-    // vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Renderer->MeshPipelineLayout, 0, 1, &SceneDataDescriptorSet, 0, NULL);
-    // vkCmdDrawIndexed(CommandBuffer, Rr_ArrayCount(Renderer->RawMesh.Indices), 1, 0, 0, 0);
-    //
-    // vkCmdEndRendering(CommandBuffer);
+    Rr_Free(DrawData);
+    Rr_ArrayFree(MaterialsArray);
+    Rr_ArrayFree(RenderingContext->DrawMeshArray);
+    Rr_ArrayFree(DrawMeshIndicesArrays);
+    Rr_DestroyDescriptorWriter(&DescriptorWriter);
 }
 
 static PFN_vkVoidFunction Rr_ImGui_LoadFunction(const char* FuncName, void* Userdata)
@@ -1342,6 +1423,11 @@ void Rr_EndImmediate(Rr_Renderer* const Renderer)
 
     vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
+}
+
+size_t Rr_GetCurrentFrameIndex(Rr_Renderer* Renderer)
+{
+   return Renderer->FrameNumber % RR_FRAME_OVERLAP;
 }
 
 Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* const Renderer)

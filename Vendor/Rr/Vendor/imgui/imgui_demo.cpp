@@ -1134,7 +1134,7 @@ static void ShowDemoWindowWidgets()
                 else
                     ImGui::Text("aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh");
 
-                // Draw actual text bounding box, following by marker of our expected limit (should not overlap!)
+                // DrawBuffer actual text bounding box, following by marker of our expected limit (should not overlap!)
                 draw_list->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(255, 255, 0, 255));
                 draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(255, 0, 255, 255));
                 ImGui::PopTextWrapPos();
@@ -5314,7 +5314,7 @@ static void ShowDemoWindowTables()
                     ImGui::PushItemWidth(-FLT_MIN); // Right-aligned
                 }
 
-                // Draw our contents
+                // DrawBuffer our contents
                 static float dummy_f = 0.0f;
                 ImGui::PushID(row);
                 ImGui::TableSetColumnIndex(0);
@@ -5411,8 +5411,8 @@ static void ShowDemoWindowTables()
                 ImGui::TableSetupColumn(column_names[n], column_flags);
             ImGui::TableSetupScrollFreeze(frozen_cols, frozen_rows);
 
-            ImGui::TableAngledHeadersRow(); // Draw angled headers for all columns with the ImGuiTableColumnFlags_AngledHeader flag.
-            ImGui::TableHeadersRow();       // Draw remaining headers and allow access to context-menu and other functions.
+            ImGui::TableAngledHeadersRow(); // DrawBuffer angled headers for all columns with the ImGuiTableColumnFlags_AngledHeader flag.
+            ImGui::TableHeadersRow();       // DrawBuffer remaining headers and allow access to context-menu and other functions.
             for (int row = 0; row < rows_count; row++)
             {
                 ImGui::PushID(row);
@@ -5811,7 +5811,7 @@ static void ShowDemoWindowTables()
 
                 ImGui::DragInt("items_count", &items_count, 0.1f, 0, 9999);
                 ImGui::Combo("items_type (first column)", &contents_type, contents_type_names, IM_ARRAYSIZE(contents_type_names));
-                //filter.Draw("filter");
+                //filter.DrawBuffer("filter");
                 ImGui::TreePop();
             }
 
@@ -6393,7 +6393,7 @@ static void ShowDemoWindowInputs()
 
             ImGui::Button("Drag Me");
             if (ImGui::IsItemActive())
-                ImGui::GetForegroundDrawList()->AddLine(io.MouseClickedPos[0], io.MousePos, ImGui::GetColorU32(ImGuiCol_Button), 4.0f); // Draw a line between the button and the mouse cursor
+                ImGui::GetForegroundDrawList()->AddLine(io.MouseClickedPos[0], io.MousePos, ImGui::GetColorU32(ImGuiCol_Button), 4.0f); // DrawBuffer a line between the button and the mouse cursor
 
             // Drag operations gets "unlocked" when the mouse has moved past a certain threshold
             // (the default threshold is stored in io.MouseDragThreshold). You can request a lower or higher
@@ -7438,7 +7438,7 @@ static void ShowExampleAppConsole(bool* p_open)
 // Usage:
 //  static ExampleAppLog my_log;
 //  my_log.AddLog("Hello %d world\n", 123);
-//  my_log.Draw("title");
+//  my_log.DrawBuffer("title");
 struct ExampleAppLog
 {
     ImGuiTextBuffer     Buf;
@@ -7569,7 +7569,7 @@ static void ShowExampleAppLog(bool* p_open)
 
     // For the demo: add a debug button _BEFORE_ the normal log window contents
     // We take advantage of a rarely used feature: multiple calls to Begin()/End() are appending to the _same_ window.
-    // Most of the contents of the window will be added by the log.Draw() call.
+    // Most of the contents of the window will be added by the log.DrawBuffer() call.
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin("Example: Log", p_open);
     IMGUI_DEMO_MARKER("Examples/Log");
@@ -8089,7 +8089,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             ImGui::PushItemWidth(-ImGui::GetFontSize() * 15);
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-            // Draw gradients
+            // DrawBuffer gradients
             // (note that those are currently exacerbating our sRGB/Linear issues)
             // Calling ImGui::GetColorU32() multiplies the given colors by the current Style Alpha, but you may pass the IM_COL32() directly as well..
             ImGui::Text("Gradients");
@@ -8111,7 +8111,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
                 ImGui::InvisibleButton("##gradient2", gradient_size);
             }
 
-            // Draw a bunch of primitives
+            // DrawBuffer a bunch of primitives
             ImGui::Text("All primitives");
             static float sz = 36.0f;
             static float thickness = 3.0f;
@@ -8243,7 +8243,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             if (canvas_sz.y < 50.0f) canvas_sz.y = 50.0f;
             ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
 
-            // Draw border and background color
+            // DrawBuffer border and background color
             ImGuiIO& io = ImGui::GetIO();
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
@@ -8293,7 +8293,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
                 ImGui::EndPopup();
             }
 
-            // Draw grid + all lines in the canvas
+            // DrawBuffer grid + all lines in the canvas
             draw_list->PushClipRect(canvas_p0, canvas_p1, true);
             if (opt_enable_grid)
             {
@@ -8314,9 +8314,9 @@ static void ShowExampleAppCustomRendering(bool* p_open)
         {
             static bool draw_bg = true;
             static bool draw_fg = true;
-            ImGui::Checkbox("Draw in Background draw list", &draw_bg);
+            ImGui::Checkbox("DrawBuffer in Background draw list", &draw_bg);
             ImGui::SameLine(); HelpMarker("The Background draw list will be rendered below every Dear ImGui windows.");
-            ImGui::Checkbox("Draw in Foreground draw list", &draw_fg);
+            ImGui::Checkbox("DrawBuffer in Foreground draw list", &draw_fg);
             ImGui::SameLine(); HelpMarker("The Foreground draw list will be rendered over every Dear ImGui windows.");
             ImVec2 window_pos = ImGui::GetWindowPos();
             ImVec2 window_size = ImGui::GetWindowSize();
@@ -8331,7 +8331,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
         // Demonstrate out-of-order rendering via channels splitting
         // We use functions in ImDrawList as each draw list contains a convenience splitter,
         // but you can also instantiate your own ImDrawListSplitter if you need to nest them.
-        if (ImGui::BeginTabItem("Draw Channels"))
+        if (ImGui::BeginTabItem("DrawBuffer Channels"))
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             {

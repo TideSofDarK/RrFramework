@@ -98,6 +98,9 @@ typedef struct Rr_PipelineBuilder
     Rr_Asset VertexShaderSPV;
     Rr_Asset FragmentShaderSPV;
     size_t PushConstantsSize;
+    size_t GlobalsSize;
+    size_t MaterialSize;
+    size_t DrawSize;
 } Rr_PipelineBuilder;
 
 typedef struct Rr_SwapchainImage
@@ -131,6 +134,7 @@ typedef struct Rr_PhysicalDevice
     VkPhysicalDevice Handle;
 
     VkPhysicalDeviceFeatures Features;
+    VkPhysicalDeviceProperties2 Properties;
     VkPhysicalDeviceMemoryProperties MemoryProperties;
     VkPhysicalDeviceSubgroupProperties SubgroupProperties;
 } Rr_PhysicalDevice;

@@ -25,14 +25,14 @@
 #include <Rr/RrInput.h>
 #include <Rr/RrDescriptor.h>
 #include <Rr/RrPipeline.h>
+#include <Rr/RrMaterial.h>
 
 #include "Render.h"
 #include "DevTools.h"
 
 typedef struct SFrameData
 {
-    Rr_GenericPipelineBuffers Uber3DBuffers;
-
+    float Reserved;
 } SFrameData;
 
 typedef struct SUber3DGlobals
@@ -84,9 +84,13 @@ static Rr_Image SceneColorImage;
 
 static Rr_MeshBuffers CottageMesh = { 0 };
 static Rr_Image CottageTexture;
+static Rr_Material CottageMaterial;
 
 static Rr_MeshBuffers PocMesh;
 static Rr_Image PocDiffuseImage;
+
+static Rr_Material MonkeyMaterial;
+// static Rr_Image MonkeyImage;
 
 static void InitInputMappings(void)
 {
@@ -106,18 +110,14 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     RrAsset_Extern(&FragmentShaderSPV, Uber3DFRAG);
 
     Rr_PipelineBuilder Builder = Rr_GenericPipelineBuilder();
+    Builder.GlobalsSize = sizeof(SUber3DGlobals);
+    Builder.MaterialSize = sizeof(SUber3DMaterial);
+    Builder.DrawSize = sizeof(SUber3DDraw);
     Rr_EnableVertexStage(&Builder, &VertexShaderSPV);
     Rr_EnableFragmentStage(&Builder, &FragmentShaderSPV);
     Rr_EnableDepthTest(&Builder);
     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
     Uber3DPipeline = Rr_BuildGenericPipeline(Renderer, &Builder);
-
-    for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
-    {
-        SFrameData* PerFrameData = (SFrameData*)Renderer->PerFrameDatas + Index;
-
-        PerFrameData->Uber3DBuffers = Rr_CreateGenericPipelineBuffers(Renderer, sizeof(SUber3DGlobals), sizeof(SUber3DMaterial));
-    }
 }
 
 static void InitGlobals(Rr_Renderer* const Renderer)
@@ -130,6 +130,7 @@ static void InitGlobals(Rr_Renderer* const Renderer)
 
 static void Init(Rr_App* App)
 {
+    Rr_Array_Test();
     InitInputMappings();
 
     Rr_Renderer* const Renderer = &App->Renderer;
@@ -168,6 +169,10 @@ static void Init(Rr_App* App)
 
     InitUber3DPipeline(Renderer);
     InitGlobals(Renderer);
+
+    MonkeyMaterial = Rr_CreateMaterial(Renderer, NULL, 0);
+    Rr_Image* CottageTextures[1] = {&CottageTexture};
+    CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
 }
 
 static void Cleanup(Rr_App* App)
@@ -178,10 +183,11 @@ static void Cleanup(Rr_App* App)
     for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         SFrameData* PerFrameData = (SFrameData*)Renderer->PerFrameDatas + Index;
-
-        Rr_DestroyGenericPipelineBuffers(Renderer, &PerFrameData->Uber3DBuffers);
     }
     SDL_free(Renderer->PerFrameDatas);
+
+    Rr_DestroyMaterial(Renderer, &MonkeyMaterial);
+    Rr_DestroyMaterial(Renderer, &CottageMaterial);
 
     Rr_DestroyImage(Renderer, &SceneDepthImage);
     Rr_DestroyImage(Renderer, &SceneColorImage);
@@ -238,122 +244,57 @@ static void Draw(Rr_App* const App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-    SFrameData* FrameData = (SFrameData*)Rr_GetCurrentFrameData(Renderer);
-    VkDevice Device = Renderer->Device;
 
-    /* Globals Buffer */
     glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
-
-    Rr_UploadToDeviceBuffer(
-        Renderer,
-        CommandBuffer,
-        &Frame->StagingBuffer,
-        &FrameData->Uber3DBuffers.Globals,
-        &ShaderGlobals,
-        sizeof(SUber3DGlobals));
-
-    /* Material Buffer */
-    SUber3DMaterial Material;
-    Rr_UploadToDeviceBuffer(
-        Renderer,
-        CommandBuffer,
-        &Frame->StagingBuffer,
-        &FrameData->Uber3DBuffers.Material,
-        &Material,
-        sizeof(SUber3DMaterial));
-
-    /* Descriptor Sets */
-    VkDescriptorSet GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS]);
-    Rr_DescriptorWriter Writer = Rr_CreateDescriptorWriter(1, 1);
-    Rr_WriteBufferDescriptor(&Writer, 0, FrameData->Uber3DBuffers.Globals.Handle, sizeof(SUber3DGlobals), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_WriteImageDescriptor(&Writer, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    Rr_UpdateDescriptorSet(&Writer, Device, GlobalsDescriptorSet);
-    Rr_ResetDescriptorWriter(&Writer);
-
-    VkDescriptorSet MaterialDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL]);
-    Rr_WriteBufferDescriptor(&Writer, 0, FrameData->Uber3DBuffers.Material.Handle, sizeof(SUber3DMaterial), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_WriteImageDescriptor(&Writer, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    Rr_UpdateDescriptorSet(&Writer, Device, MaterialDescriptorSet);
-    Rr_ResetDescriptorWriter(&Writer);
-
-    VkDescriptorSet DrawDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW]);
-    Rr_WriteBufferDescriptor(&Writer, 0, FrameData->Uber3DBuffers.Draw.Handle, sizeof(SUber3DDraw), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-    Rr_UpdateDescriptorSet(&Writer, Device, DrawDescriptorSet);
-    Rr_DestroyDescriptorWriter(&Writer);
 
     /* Rendering */
     Rr_BeginRenderingInfo BeginRenderingInfo = {
         .Pipeline = &Uber3DPipeline,
         .InitialDepth = &SceneDepthImage,
         .InitialColor = &SceneColorImage,
+        .GlobalsData = &ShaderGlobals
     };
-    Rr_BeginRendering(Renderer, &BeginRenderingInfo);
+    Rr_RenderingContext RenderingContext = Rr_BeginRendering(Renderer, &BeginRenderingInfo);
 
-    VkDescriptorSet DescriptorSets[] = { GlobalsDescriptorSet, MaterialDescriptorSet };
-    vkCmdBindDescriptorSets(
-        CommandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        Uber3DPipeline.Layout,
-        0,
-        2,
-        DescriptorSets,
-        0,
-        NULL);
+    u64 Ticks = SDL_GetTicks();
+    float Time = (float)((double)Ticks / 1000.0 * 2);
+    SUber3DDraw Draw;
+    mat4 Transform;
+    glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
+    glm_mat4_identity(Draw.Model);
+    glm_scale_uni(Draw.Model, 0.5f);
+    Draw.Model[3][1] = 0.5f;
+    Draw.Model[3][2] = 3.5f;
+    glm_mat4_mul(Transform, Draw.Model, Draw.Model);
+    Draw.VertexBufferAddress = MonkeyMesh.VertexBufferAddress;
 
-    size_t DrawOffset = 0;
-    size_t NextDrawOffset = 0;
+    Rr_DrawMeshInfo DrawMeshInfo = {
+        .Material = &MonkeyMaterial,
+        .MeshBuffers = &MonkeyMesh,
+        .DrawData = &Draw
+    };
 
-    {
-        u64 Ticks = SDL_GetTicks();
-        float Time = (float)((double)Ticks / 1000.0 * 2);
-        SUber3DDraw Draw;
-        mat4 Transform;
-        glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
-        glm_mat4_identity(Draw.Model);
-        glm_scale_uni(Draw.Model, 0.5f);
-        Draw.Model[3][1] = 0.5f;
-        Draw.Model[3][2] = 3.5f;
-        glm_mat4_mul(Transform, Draw.Model, Draw.Model);
-        Draw.VertexBufferAddress = MonkeyMesh.VertexBufferAddress;
+    SUber3DDraw Draw2;
+    glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
+    glm_mat4_identity(Draw2.Model);
+    glm_scale_uni(Draw2.Model, 0.5f);
+    glm_mat4_mul(Transform, Draw2.Model, Draw2.Model);
+    Draw2.Model[3][0] = 3.5f;
+    Draw2.Model[3][1] = 0.5f;
+    Draw2.Model[3][2] = 3.5f;
+    Draw2.VertexBufferAddress = CottageMesh.VertexBufferAddress;
 
-        Rr_UploadToMappedBuffer(
-            Renderer,
-            &FrameData->Uber3DBuffers.Draw,
-            &Draw,
-            sizeof(SUber3DDraw),
-            &NextDrawOffset);
-    }
-    vkCmdBindDescriptorSets(
-        CommandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        Uber3DPipeline.Layout,
-        2,
-        1,
-        &DrawDescriptorSet,
-        1,
-        (u32*)&DrawOffset);
-    vkCmdPushConstants(
-        CommandBuffer,
-        Uber3DPipeline.Layout,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        0,
-        sizeof(SUber3DPushConstants),
-        &(SUber3DPushConstants){ 0 });
-    vkCmdBindIndexBuffer(CommandBuffer, MonkeyMesh.IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(CommandBuffer, MonkeyMesh.IndexCount, 1, 0, 0, 0);
-    DrawOffset = NextDrawOffset;
+    Rr_DrawMeshInfo DrawMeshInfo2 = {
+        .Material = &MonkeyMaterial,
+        .MeshBuffers = &CottageMesh,
+        .DrawData = &Draw2
+    };
 
-    Rr_EndRendering(Renderer);
+    Rr_DrawMesh(&RenderingContext, &DrawMeshInfo);
+    Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
+
+
+    Rr_EndRendering(&RenderingContext);
 }
 
 static void OnFileDropped(Rr_App* App, const char* Path)

@@ -106,9 +106,10 @@ void Rr_UploadToDeviceBuffer(
     {
         return;
     }
+    const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     size_t Offset = StagingBuffer->CurrentOffset;
     SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + Offset, Data, Size);
-    StagingBuffer->CurrentOffset = Rr_Align(Offset + Size, RR_MIN_BUFFER_ALIGNMENT);
+    StagingBuffer->CurrentOffset = Rr_Align(Offset + Size, Alignment);
 
     VkBufferMemoryBarrier2 BufferBarrier = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
@@ -122,16 +123,16 @@ void Rr_UploadToDeviceBuffer(
         .buffer = DstBuffer->Handle,
     };
 
-    VkDependencyInfo DepInfo = {
+    VkDependencyInfo DependencyInfo = {
         .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
         .pNext = NULL,
         .bufferMemoryBarrierCount = 1,
         .pBufferMemoryBarriers = &BufferBarrier,
     };
 
-    vkCmdPipelineBarrier2(CommandBuffer, &DepInfo);
+    vkCmdPipelineBarrier2(CommandBuffer, &DependencyInfo);
 
-    VkBufferCopy Copy = {
+    VkBufferCopy BufferCopy = {
         .dstOffset = 0,
         .size = Size,
         .srcOffset = Offset
@@ -142,28 +143,29 @@ void Rr_UploadToDeviceBuffer(
         StagingBuffer->Buffer.Handle,
         DstBuffer->Handle,
         1,
-        &Copy);
+        &BufferCopy);
 
     BufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
     BufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-    BufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+    BufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
     BufferBarrier.dstAccessMask = VK_ACCESS_2_UNIFORM_READ_BIT,
 
-    vkCmdPipelineBarrier2(CommandBuffer, &DepInfo);
+    vkCmdPipelineBarrier2(CommandBuffer, &DependencyInfo);
 }
 
-void Rr_UploadToMappedBuffer(
+void Rr_CopyToMappedBuffer(
     Rr_Renderer* Renderer,
     Rr_Buffer* DstBuffer,
     const void* Data,
     size_t Size,
     size_t* DstOffset)
 {
-    const size_t AlignedSize = Rr_Align(Size, RR_MIN_BUFFER_ALIGNMENT);
+    const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+    const size_t AlignedSize = Rr_Align(Size, Alignment);
     if (*DstOffset + AlignedSize < DstBuffer->AllocationInfo.size)
     {
         SDL_memcpy(DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
         *DstOffset += Size;
-        *DstOffset = Rr_Align(*DstOffset, RR_MIN_BUFFER_ALIGNMENT);
+        *DstOffset = Rr_Align(*DstOffset, Alignment);
     }
 }
