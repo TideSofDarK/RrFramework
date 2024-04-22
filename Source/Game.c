@@ -40,7 +40,10 @@ typedef struct SUber3DGlobals
     mat4 View;
     mat4 Intermediate;
     mat4 Proj;
-    vec4 AmbientColor;
+    vec4 AmbientLightColor;
+    vec4 DirectionalLightDirection;
+    vec4 DirectionalLightColor;
+    vec4 DirectionalLightIntensity;
 } SUber3DGlobals;
 
 typedef struct SUber3DMaterial
@@ -122,7 +125,9 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
 
 static void InitGlobals(Rr_Renderer* const Renderer)
 {
-    glm_vec4_copy((vec4){ 1.0f, 1.0f, 1.0f, 0.5f }, ShaderGlobals.AmbientColor);
+    glm_vec4_copy((vec4){ 0.1f, 0.1f, 0.1f, 1.0f }, ShaderGlobals.AmbientLightColor);
+    glm_vec4_copy((vec4){ 1.0f, 0.95f, 0.93f, 1.0f }, ShaderGlobals.DirectionalLightColor);
+    glm_vec4_copy((vec4){ 1.0f, 1.0f, 1.0f, 1.0f }, ShaderGlobals.DirectionalLightIntensity);
 
     Rr_Perspective(ShaderGlobals.Proj, 0.7643276f, Rr_GetAspectRatio(Renderer));
     Rr_VulkanMatrix(ShaderGlobals.Intermediate);
@@ -218,8 +223,13 @@ static void Update(Rr_App* App)
     igBegin("RotTest", NULL, ImGuiWindowFlags_AlwaysAutoResize);
     static vec3 CameraPos = { -7.35889f, -4.0f, -6.92579f };
     static vec3 CameraEuler = { 90.0f - 63.5593f, -46.6919f, 0.0f };
+    static vec3 LightDir = { 3.0f, 3.0f, 3.0f };
     igSliderFloat3("CameraPos", CameraPos, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat3("CameraRot", CameraEuler, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat3("LightDir", LightDir, -3.0f, 3.0f, "%f", ImGuiSliderFlags_None);
+
+    glm_vec3_copy(LightDir, ShaderGlobals.DirectionalLightDirection);
+    glm_vec3_normalize(ShaderGlobals.DirectionalLightDirection);
 
     mat4 Temp;
     glm_mat4_identity(Temp);

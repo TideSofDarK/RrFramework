@@ -13,3 +13,9 @@ struct Vertex {
 layout(buffer_reference, std430) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
+
+vec3 processNormal(vec3 normal, mat4 model)
+{
+    mat3 normalMatrix = mat3(transpose(inverse(model)));
+    return normalMatrix * normal;
+}

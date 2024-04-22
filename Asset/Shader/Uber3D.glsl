@@ -5,7 +5,10 @@ layout(set = 0, binding = 0) uniform Globals {
     mat4 view;
     mat4 intermediate;
     mat4 proj;
-    vec4 ambientColor;
+    vec4 ambientLightColor;
+    vec4 directionalLightDirection;
+    vec4 directionalLightColor;
+    vec4 directionalLightIntensity;
 } u_globals;
 layout(set = 0, binding = 1) uniform sampler2D u_prerenderedDepth;
 

@@ -142,7 +142,7 @@ static inline VkCommandBufferBeginInfo Rr_GetCommandBufferBeginInfo(VkCommandBuf
 
 static inline VkImageSubresourceRange Rr_GetImageSubresourceRange(VkImageAspectFlags AspectMask)
 {
-    VkImageSubresourceRange SubImage = {
+    VkImageSubresourceRange ImageSubresourceRange = {
         .aspectMask = AspectMask,
         .baseMipLevel = 0,
         .levelCount = VK_REMAINING_MIP_LEVELS,
@@ -150,7 +150,7 @@ static inline VkImageSubresourceRange Rr_GetImageSubresourceRange(VkImageAspectF
         .layerCount = VK_REMAINING_ARRAY_LAYERS,
     };
 
-    return SubImage;
+    return ImageSubresourceRange;
 }
 
 static inline VkSemaphoreSubmitInfo Rr_GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
