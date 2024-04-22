@@ -229,7 +229,31 @@ Rr_Image Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    Rr_Image Image = Rr_CreateImage_Internal(Renderer, Extent, VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, AllocationCreateInfo, false);
+    Rr_Image Image = Rr_CreateImage_Internal(
+        Renderer,
+        Extent,
+        RR_COLOR_FORMAT,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        AllocationCreateInfo,
+        false);
+
+    return Image;
+}
+
+Rr_Image Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
+{
+    VmaAllocationCreateInfo AllocationCreateInfo = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    };
+
+    Rr_Image Image = Rr_CreateImage_Internal(
+        Renderer,
+        Extent,
+        RR_DEPTH_FORMAT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        AllocationCreateInfo,
+        false);
 
     return Image;
 }

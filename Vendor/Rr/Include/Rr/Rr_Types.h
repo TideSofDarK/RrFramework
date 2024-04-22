@@ -48,7 +48,7 @@ typedef struct Rr_Swapchain
     VkSwapchainKHR Handle;
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
-    Rr_SwapchainImage Images[MAX_SWAPCHAIN_IMAGE_COUNT];
+    Rr_SwapchainImage Images[RR_MAX_SWAPCHAIN_IMAGE_COUNT];
     u32 ImageCount;
     VkExtent2D Extent;
     SDL_AtomicInt bResizePending;

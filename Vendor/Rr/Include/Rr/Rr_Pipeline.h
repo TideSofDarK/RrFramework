@@ -41,7 +41,7 @@ typedef enum Rr_PolygonMode
 
 typedef struct Rr_PipelineBuilder
 {
-    VkPipelineShaderStageCreateInfo ShaderStages[PIPELINE_SHADER_STAGES];
+    VkPipelineShaderStageCreateInfo ShaderStages[RR_PIPELINE_SHADER_STAGES];
     VkPipelineInputAssemblyStateCreateInfo InputAssembly;
     VkPipelineRasterizationStateCreateInfo Rasterizer;
     VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];

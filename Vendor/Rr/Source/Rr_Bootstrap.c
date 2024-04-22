@@ -201,41 +201,14 @@ static void Rr_InitDevice(Rr_Renderer* const Renderer)
 
 static void Rr_CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
 {
-    Rr_Image* ColorImage = &Renderer->DrawTarget.ColorImage;
-    Rr_Image* DepthImage = &Renderer->DrawTarget.DepthImage;
-
-    ColorImage->Extent = DepthImage->Extent = (VkExtent3D){
+    VkExtent3D Extent = (VkExtent3D){
         Width,
         Height,
         1
     };
 
-    VmaAllocationCreateInfo AllocationCreateInfo = {
-        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    };
-
-    /* Color Image */
-    ColorImage->Format = RR_COLOR_FORMAT;
-    VkImageUsageFlags DrawImageUsages = 0;
-    DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    DrawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
-    DrawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    VkImageCreateInfo ImageCreateInfo = Rr_GetImageCreateInfo(ColorImage->Format, DrawImageUsages, ColorImage->Extent);
-    vmaCreateImage(Renderer->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &ColorImage->Handle, &ColorImage->Allocation, NULL);
-    VkImageViewCreateInfo ImageViewCreateInfo = Rr_GetImageViewCreateInfo(ColorImage->Format, ColorImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
-    vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &ColorImage->View);
-
-    /* Depth Image */
-    DepthImage->Format = RR_DEPTH_FORMAT;
-    ImageCreateInfo = Rr_GetImageCreateInfo(
-        DepthImage->Format,
-        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        DepthImage->Extent);
-    vmaCreateImage(Renderer->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DepthImage->Handle, &DepthImage->Allocation, NULL);
-    ImageViewCreateInfo = Rr_GetImageViewCreateInfo(DepthImage->Format, DepthImage->Handle, VK_IMAGE_ASPECT_DEPTH_BIT);
-    vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &DepthImage->View);
+    Renderer->DrawTarget.ColorImage = Rr_CreateColorAttachmentImage(Renderer, Extent);
+    Renderer->DrawTarget.DepthImage = Rr_CreateDepthAttachmentImage(Renderer, Extent);
 }
 
 static void Rr_CleanupDrawTarget(Rr_Renderer* const Renderer)
@@ -394,7 +367,7 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
 
     u32 ImageCount = 0;
     vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, NULL);
-    SDL_assert(ImageCount <= MAX_SWAPCHAIN_IMAGE_COUNT);
+    SDL_assert(ImageCount <= RR_MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Renderer->Swapchain.ImageCount = ImageCount;
     VkImage* Images = Rr_StackAlloc(VkImage, ImageCount);

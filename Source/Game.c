@@ -130,7 +130,9 @@ static void InitGlobals(Rr_Renderer* const Renderer)
 
 static void Init(Rr_App* App)
 {
+#if RR_DEBUG
     Rr_Array_Test();
+#endif
     InitInputMappings();
 
     Rr_Renderer* const Renderer = &App->Renderer;
