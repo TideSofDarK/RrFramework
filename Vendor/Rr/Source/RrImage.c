@@ -111,7 +111,7 @@ Rr_Image Rr_CreateImageFromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkI
     return Image;
 }
 
-Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
+Rr_Image Rr_CreateDepthImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
 {
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 

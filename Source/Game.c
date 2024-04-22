@@ -137,7 +137,7 @@ static void Init(Rr_App* App)
 
     Rr_Asset POCDepthEXR;
     RrAsset_Extern(&POCDepthEXR, POCDepthEXR);
-    SceneDepthImage = Rr_CreateImageFromEXR(&POCDepthEXR, &App->Renderer);
+    SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, &App->Renderer);
 
     Rr_Asset POCColorPNG;
     RrAsset_Extern(&POCColorPNG, POCColorPNG);
