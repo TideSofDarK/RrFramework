@@ -90,8 +90,6 @@ typedef struct Rr_DrawTarget
     i32 Scale;
     Rr_Image ColorImage;
     Rr_Image DepthImage;
-    VkDescriptorSet DescriptorSet;
-    VkDescriptorSetLayout DescriptorSetLayout;
 } Rr_DrawTarget;
 
 typedef struct Rr_Renderer

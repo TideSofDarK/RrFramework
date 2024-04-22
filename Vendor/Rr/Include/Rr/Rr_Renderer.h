@@ -18,10 +18,6 @@ b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
 VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
 void Rr_EndImmediate(Rr_Renderer* Renderer);
 
-size_t Rr_GetCurrentFrameIndex(Rr_Renderer* Renderer);
-Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
-void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer);
-
 /* Rendering */
 typedef struct Rr_BeginRenderingInfo
 {
@@ -51,4 +47,19 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 static inline float Rr_GetAspectRatio(Rr_Renderer* Renderer)
 {
     return (float)Renderer->DrawTarget.ActiveResolution.width / (float)Renderer->DrawTarget.ActiveResolution.height;
+}
+
+static inline size_t Rr_GetCurrentFrameIndex(Rr_Renderer* Renderer)
+{
+    return Renderer->FrameNumber % RR_FRAME_OVERLAP;
+}
+
+static inline Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* const Renderer)
+{
+    return &Renderer->Frames[Renderer->FrameNumber % RR_FRAME_OVERLAP];
+}
+
+static inline void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer)
+{
+    return Renderer->PerFrameDatas + (Renderer->FrameNumber % RR_FRAME_OVERLAP) * Renderer->PerFrameDataSize;
 }
