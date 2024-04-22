@@ -11,7 +11,6 @@
 #include "Rr_Defines.h"
 #include "Rr_Input.h"
 #include "Rr_App.h"
-#include "Rr_Array.h"
 #include "Rr_Types.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Image.h"
@@ -20,8 +19,6 @@
 #include "Rr_Mesh.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Memory.h"
-#include "Rr_Util.h"
-#include "Rr_Material.h"
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
 {

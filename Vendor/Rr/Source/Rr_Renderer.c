@@ -13,13 +13,9 @@
 #include <imgui/cimgui_impl.h>
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_error.h>
-#include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_stdinc.h>
-#include <SDL3/SDL_vulkan.h>
 
 #include "Rr_Defines.h"
-#include "Rr_Input.h"
 #include "Rr_App.h"
 #include "Rr_Array.h"
 #include "Rr_Types.h"

@@ -1,7 +1,5 @@
 #include "Rr_App.h"
 
-#include "Rr_Vulkan.h"
-
 #include <SDL_timer.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS

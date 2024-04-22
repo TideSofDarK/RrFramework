@@ -1,7 +1,5 @@
 #include "Rr_Material.h"
 
-#include <SDL3/SDL.h>
-
 Rr_Material Rr_CreateMaterial(Rr_Renderer* Renderer, Rr_Image** Textures, size_t TextureCount)
 {
     Rr_Material Material = {
