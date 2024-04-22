@@ -1,6 +1,5 @@
 #include "RrImage.h"
 #include "RrMemory.h"
-         "
 
 #include <stdlib.h>
 
