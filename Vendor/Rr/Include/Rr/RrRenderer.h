@@ -6,6 +6,8 @@
 typedef struct Rr_AppConfig Rr_AppConfig;
 typedef struct Rr_Pipeline Rr_Pipeline;
 typedef struct Rr_Material Rr_Material;
+typedef struct Rr_App Rr_App;
+typedef struct Rr_MeshBuffers Rr_MeshBuffers;
 
 void Rr_Init(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);

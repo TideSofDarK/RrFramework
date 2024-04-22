@@ -5,7 +5,6 @@
 #include "RrTypes.h"
 #include "RrVulkan.h"
 #include "RrRenderer.h"
-#include "RrLib.h"
 #include "RrUtil.h"
 
 Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped)
@@ -52,7 +51,7 @@ VkDeviceAddress Rr_GetBufferAddress(Rr_Renderer* const Renderer, Rr_Buffer* cons
     return vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
 }
 
-Rr_Buffer Rr_CopyBufferToHost(Rr_Renderer* const Renderer, Rr_Buffer* Buffer)
+void Rr_CopyBufferToHost(Rr_Renderer* const Renderer, Rr_Buffer* Buffer)
 {
     VmaAllocationInfo AllocationInfo;
     vmaGetAllocationInfo(Renderer->Allocator, Buffer->Allocation, &AllocationInfo);

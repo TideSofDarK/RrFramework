@@ -2,8 +2,41 @@
 
 #include <cglm/ivec2.h>
 
-typedef struct Rr_App Rr_App;
+#include <SDL3/SDL_atomic.h>
+
+#include "RrTypes.h"
+#include "RrInput.h"
+
 typedef struct Rr_InputConfig Rr_InputConfig;
+typedef struct SDL_Window SDL_Window;
+
+typedef struct Rr_FrameTime
+{
+#ifdef RR_PERFORMANCE_COUNTER
+    struct
+    {
+        f64 FPS;
+        u64 Frames;
+        u64 StartTime;
+        u64 UpdateFrequency;
+        f64 CountPerSecond;
+    } PerformanceCounter;
+#endif
+
+    u64 TargetFramerate;
+    u64 StartTime;
+} Rr_FrameTime;
+
+typedef struct Rr_App
+{
+    SDL_AtomicInt bExit;
+    SDL_Window* Window;
+    Rr_InputConfig InputConfig;
+    Rr_InputState InputState;
+    Rr_Renderer Renderer;
+    Rr_FrameTime FrameTime;
+    Rr_AppConfig* Config;
+} Rr_App;
 
 typedef struct Rr_AppConfig
 {

@@ -2,6 +2,7 @@
 
 #include "RrVulkan.h"
 #include "RrCore.h"
+#include "RrDefines.h"
 #include "RrArray.h"
 
 typedef struct Rr_Renderer Rr_Renderer;
@@ -58,7 +59,11 @@ void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer);
 void Rr_DestroyDescriptorWriter(Rr_DescriptorWriter* Writer);
 void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
 
-typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
+typedef struct Rr_DescriptorLayoutBuilder
+{
+    VkDescriptorSetLayoutBinding Bindings[RR_MAX_LAYOUT_BINDINGS];
+    u32 Count;
+} Rr_DescriptorLayoutBuilder;
 
 void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type);
 void Rr_AddDescriptorArray(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, u32 Count, VkDescriptorType Type);

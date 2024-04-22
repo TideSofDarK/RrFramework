@@ -1,8 +1,10 @@
 #include "RrImage.h"
-
 #include "RrMemory.h"
+         "
 
 #include <stdlib.h>
+
+#include <SDL3/SDL.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_MALLOC Rr_Malloc
@@ -21,7 +23,6 @@
 #include "RrHelpers.h"
 #include "RrVulkan.h"
 #include "RrBuffer.h"
-#include "RrLib.h"
 
 static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, VmaAllocationCreateInfo AllocationCreateInfo, b8 bMipMapped)
 {
@@ -157,8 +158,13 @@ Rr_Image Rr_CreateImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer)
     {
         float* const Current = ((float*)Image.images[0]) + Index;
         const float ZReciprocal = 1.0f / *Current;
-        const float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
-        *Current = (Depth + 1.0f) / 2.0f;
+        float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
+        Depth = (Depth + 1.0f) / 2.0f;
+        if (Depth > 1.0f)
+        {
+            Depth = 1.0f;
+        }
+        *Current = Depth;
     }
 
     VkExtent3D Extent = { .width = Image.width, .height = Image.height, .depth = 1 };
@@ -226,22 +232,6 @@ Rr_Image Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
 
     Rr_Image Image = Rr_CreateImage_Internal(Renderer, Extent, VK_FORMAT_R32_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, AllocationCreateInfo, false);
 
-    //    Rr_BeginImmediate(Renderer);
-    //    Rr_ImageBarrier Transition = {
-    //        .Image = DepthImage.Handle,
-    //        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //        .StageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-    //        .AccessMask = VK_ACCESS_2_NONE,
-    //        .CommandBuffer = Renderer->ImmediateMode.CommandBuffer,
-    //    };
-    //    Rr_ChainImageBarrier_Aspect(
-    //        &Transition,
-    //        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-    //        VK_ACCESS_2_TRANSFER_WRITE_BIT,
-    //        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //        VK_IMAGE_ASPECT_DEPTH_BIT);
-    //    Rr_EndImmediate(Renderer);
-
     return Image;
 }
 
@@ -253,4 +243,57 @@ void Rr_DestroyImage(Rr_Renderer* const Renderer, Rr_Image* AllocatedImage)
     }
     vkDestroyImageView(Renderer->Device, AllocatedImage->View, NULL);
     vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
+}
+
+void Rr_ChainImageBarrier_Aspect(
+    Rr_ImageBarrier* TransitionImage,
+    VkPipelineStageFlags2 DstStageMask,
+    VkAccessFlags2 DstAccessMask,
+    VkImageLayout NewLayout,
+    VkImageAspectFlagBits Aspect)
+{
+    VkImageMemoryBarrier2 ImageBarrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+
+        .pNext = NULL,
+
+        .srcStageMask = TransitionImage->StageMask,
+        .srcAccessMask = TransitionImage->AccessMask,
+        .dstStageMask = DstStageMask,
+        .dstAccessMask = DstAccessMask,
+
+        .oldLayout = TransitionImage->Layout,
+        .newLayout = NewLayout,
+
+        .image = TransitionImage->Image,
+        .subresourceRange = GetImageSubresourceRange(Aspect),
+    };
+
+    VkDependencyInfo DepInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext = NULL,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &ImageBarrier,
+    };
+
+    vkCmdPipelineBarrier2(TransitionImage->CommandBuffer, &DepInfo);
+
+    TransitionImage->Layout = NewLayout;
+    TransitionImage->StageMask = DstStageMask;
+    TransitionImage->AccessMask = DstAccessMask;
+}
+
+void Rr_ChainImageBarrier(
+
+    Rr_ImageBarrier* TransitionImage,
+    VkPipelineStageFlags2 DstStageMask,
+    VkAccessFlags2 DstAccessMask,
+    VkImageLayout NewLayout)
+{
+    Rr_ChainImageBarrier_Aspect(
+        TransitionImage,
+        DstStageMask,
+        DstAccessMask,
+        NewLayout,
+        (NewLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT);
 }

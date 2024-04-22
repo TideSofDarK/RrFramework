@@ -1,12 +1,12 @@
 #pragma once
 
-#include "RrTypes.h"
+// #include "RrTypes.h"
+#include "RrBuffer.h"
 #include "RrAsset.h"
 #include "RrCore.h"
-#include "RrVulkan.h"
+// #include "RrVulkan.h"
 
 typedef struct Rr_Renderer Rr_Renderer;
-typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
 
@@ -28,15 +28,36 @@ typedef struct Rr_Pipeline
     size_t MaterialSize;
     size_t DrawSize;
 
-//    void* DrawData;
-//    Rr_Material** MaterialsArray;
-//    Rr_DrawMeshInfo** MaterialDrawListArrays;
+    //    void* DrawData;
+    //    Rr_Material** MaterialsArray;
+    //    Rr_DrawMeshInfo** MaterialDrawListArrays;
 } Rr_Pipeline;
 
-typedef enum Rr_PolygonMode {
+typedef enum Rr_PolygonMode
+{
     RR_POLYGON_MODE_FILL,
     RR_POLYGON_MODE_LINE
 } Rr_PolygonMode;
+
+typedef struct Rr_PipelineBuilder
+{
+    VkPipelineShaderStageCreateInfo ShaderStages[PIPELINE_SHADER_STAGES];
+    VkPipelineInputAssemblyStateCreateInfo InputAssembly;
+    VkPipelineRasterizationStateCreateInfo Rasterizer;
+    VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
+    VkPipelineColorBlendAttachmentState ColorBlendAttachments[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
+    VkPipelineMultisampleStateCreateInfo Multisampling;
+    VkPipelineDepthStencilStateCreateInfo DepthStencil;
+    VkPipelineRenderingCreateInfo RenderInfo;
+    // VkShaderModuleCreateInfo VertexModuleCreateInfo;
+    // VkShaderModuleCreateInfo FragmentModuleCreateInfo;
+    Rr_Asset VertexShaderSPV;
+    Rr_Asset FragmentShaderSPV;
+    size_t PushConstantsSize;
+    size_t GlobalsSize;
+    size_t MaterialSize;
+    size_t DrawSize;
+} Rr_PipelineBuilder;
 
 Rr_PipelineBuilder Rr_GenericPipelineBuilder(void);
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);

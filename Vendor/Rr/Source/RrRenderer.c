@@ -1,5 +1,4 @@
 #include "RrRenderer.h"
-#include "RrDefines.h"
 
 #include <math.h>
 #include <string.h>
@@ -8,7 +7,6 @@
 #include <cglm/ivec2.h>
 #include <cglm/mat4.h>
 #include <cglm/cam.h>
-#include <vulkan/vulkan_core.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -20,11 +18,12 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_vulkan.h>
 
+#include "RrDefines.h"
+#include "RrInput.h"
 #include "RrApp.h"
 #include "RrArray.h"
 #include "RrTypes.h"
 #include "RrVulkan.h"
-#include "RrLib.h"
 #include "RrDescriptor.h"
 #include "RrImage.h"
 #include "RrHelpers.h"
@@ -583,6 +582,78 @@ static void Rr_InitDescriptors(Rr_Renderer* const Renderer)
     Renderer->GlobalDescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios));
 }
 
+static void Rr_BlitPrerenderedDepth(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+{
+    VkImageBlit2 BlitRegion = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+        .pNext = NULL,
+        .srcSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+        .dstSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+    };
+
+    VkBlitImageInfo2 BlitInfo = {
+        .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+        .pNext = NULL,
+        .srcImage = Source,
+        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .dstImage = Destination,
+        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .regionCount = 1,
+        .pRegions = &BlitRegion,
+        .filter = VK_FILTER_NEAREST,
+    };
+
+    vkCmdBlitImage2(CommandBuffer, &BlitInfo);
+}
+
+static void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+{
+    VkImageBlit2 BlitRegion = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+        .pNext = NULL,
+        .srcSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+        .dstSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+    };
+
+    VkBlitImageInfo2 BlitInfo = {
+        .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+        .pNext = NULL,
+        .srcImage = Source,
+        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .dstImage = Destination,
+        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .regionCount = 1,
+        .pRegions = &BlitRegion,
+        .filter = VK_FILTER_NEAREST,
+    };
+
+    vkCmdBlitImage2(CommandBuffer, &BlitInfo);
+}
+
 Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRenderingInfo* const Info)
 {
     Rr_RenderingContext RenderingContext = { 0 };
@@ -643,14 +714,14 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         Pipeline->GlobalsSize,
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-//    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, GlobalsDescriptorSet);
     Rr_ResetDescriptorWriter(&DescriptorWriter);
 
     vkCmdBindDescriptorSets(
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-       Pipeline->Layout,
+        Pipeline->Layout,
         0,
         1,
         &GlobalsDescriptorSet,
@@ -737,19 +808,19 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     if (Info->InitialColor != NULL)
     {
         Rr_ChainImageBarrier_Aspect(&ColorImageTransition,
-                                    VK_PIPELINE_STAGE_2_BLIT_BIT,
-                                    VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
-                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                    VK_IMAGE_ASPECT_COLOR_BIT);
+            VK_PIPELINE_STAGE_2_BLIT_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_ASPECT_COLOR_BIT);
         Rr_BlitColorImage(CommandBuffer, Info->InitialColor->Handle, Renderer->DrawTarget.ColorImage.Handle,
-                          (VkExtent2D){ .width = Info->InitialColor->Extent.width, .height = Info->InitialColor->Extent.height },
-                          (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
+            (VkExtent2D){ .width = Info->InitialColor->Extent.width, .height = Info->InitialColor->Extent.height },
+            (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
     }
     Rr_ChainImageBarrier_Aspect(&ColorImageTransition,
-                                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                VK_IMAGE_ASPECT_COLOR_BIT);
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_ASPECT_COLOR_BIT);
 
     Rr_ImageBarrier DepthImageTransition = {
         .CommandBuffer = CommandBuffer,
@@ -761,19 +832,19 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     if (Info->InitialDepth != NULL)
     {
         Rr_ChainImageBarrier_Aspect(&DepthImageTransition,
-                                    VK_PIPELINE_STAGE_2_BLIT_BIT,
-                                    VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
-                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                    VK_IMAGE_ASPECT_DEPTH_BIT);
+            VK_PIPELINE_STAGE_2_BLIT_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT);
         Rr_BlitPrerenderedDepth(CommandBuffer, Info->InitialDepth->Handle, Renderer->DrawTarget.DepthImage.Handle,
-                                (VkExtent2D){ .width = Info->InitialDepth->Extent.width, .height = Info->InitialDepth->Extent.height },
-                                (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
+            (VkExtent2D){ .width = Info->InitialDepth->Extent.width, .height = Info->InitialDepth->Extent.height },
+            (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
     }
     Rr_ChainImageBarrier_Aspect(&DepthImageTransition,
-                                VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
-                                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-                                VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-                                VK_IMAGE_ASPECT_DEPTH_BIT);
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_ASPECT_DEPTH_BIT);
 
     VkClearValue ClearColorValue = {
         0
@@ -845,7 +916,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         for (size_t TextureIndex = 0; TextureIndex < Material->TextureCount; ++TextureIndex)
         {
-             Rr_WriteImageDescriptorAt(
+            Rr_WriteImageDescriptorAt(
                 &DescriptorWriter,
                 1,
                 TextureIndex,
@@ -884,13 +955,13 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
                 &DrawDescriptorSet,
                 1,
                 &Offset);
-//            vkCmdPushConstants(
-//                CommandBuffer,
-//                Pipeline->Layout,
-//                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-//                0,
-//                128,
-//                &(SUber3DPushConstants){ 0 });
+            //            vkCmdPushConstants(
+            //                CommandBuffer,
+            //                Pipeline->Layout,
+            //                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            //                0,
+            //                128,
+            //                &(SUber3DPushConstants){ 0 });
             vkCmdBindIndexBuffer(CommandBuffer, DrawMeshInfo->MeshBuffers->IndexBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(CommandBuffer, DrawMeshInfo->MeshBuffers->IndexCount, 1, 0, 0, 0);
         }
@@ -1427,7 +1498,7 @@ void Rr_EndImmediate(Rr_Renderer* const Renderer)
 
 size_t Rr_GetCurrentFrameIndex(Rr_Renderer* Renderer)
 {
-   return Renderer->FrameNumber % RR_FRAME_OVERLAP;
+    return Renderer->FrameNumber % RR_FRAME_OVERLAP;
 }
 
 Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* const Renderer)

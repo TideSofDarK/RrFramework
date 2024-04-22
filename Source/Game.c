@@ -4,7 +4,7 @@
 #include <imgui/cimgui.h>
 
 #define CGLM_FORCE_DEPTH_ZERO_TO_ONE
-// #define CGLM_FORCE_LEFT_HANDED
+#define CGLM_FORCE_LEFT_HANDED
 #include <cglm/cam.h>
 #include <cglm/vec3.h>
 #include <cglm/mat4.h>
@@ -171,7 +171,7 @@ static void Init(Rr_App* App)
     InitGlobals(Renderer);
 
     MonkeyMaterial = Rr_CreateMaterial(Renderer, NULL, 0);
-    Rr_Image* CottageTextures[1] = {&CottageTexture};
+    Rr_Image* CottageTextures[1] = { &CottageTexture };
     CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
 }
 
@@ -243,7 +243,6 @@ static void Update(Rr_App* App)
 static void Draw(Rr_App* const App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
     glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
 
