@@ -1,4 +1,4 @@
-#include "RrRenderer.h"
+#include "Rr_Renderer.h"
 
 #include <math.h>
 #include <string.h>
@@ -18,21 +18,21 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include "RrDefines.h"
-#include "RrInput.h"
-#include "RrApp.h"
-#include "RrArray.h"
-#include "RrTypes.h"
-#include "RrVulkan.h"
-#include "RrDescriptor.h"
-#include "RrImage.h"
-#include "RrHelpers.h"
-#include "RrBuffer.h"
-#include "RrMesh.h"
-#include "RrPipeline.h"
-#include "RrMemory.h"
-#include "RrUtil.h"
-#include "RrMaterial.h"
+#include "Rr_Defines.h"
+#include "Rr_Input.h"
+#include "Rr_App.h"
+#include "Rr_Array.h"
+#include "Rr_Types.h"
+#include "Rr_Vulkan.h"
+#include "Rr_Descriptor.h"
+#include "Rr_Image.h"
+#include "Rr_Helpers.h"
+#include "Rr_Buffer.h"
+#include "Rr_Mesh.h"
+#include "Rr_Pipeline.h"
+#include "Rr_Memory.h"
+#include "Rr_Util.h"
+#include "Rr_Material.h"
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
 {
@@ -239,19 +239,19 @@ static void Rr_CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Heig
     DrawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     DrawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
     DrawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    VkImageCreateInfo ImageCreateInfo = GetImageCreateInfo(ColorImage->Format, DrawImageUsages, ColorImage->Extent);
+    VkImageCreateInfo ImageCreateInfo = Rr_GetImageCreateInfo(ColorImage->Format, DrawImageUsages, ColorImage->Extent);
     vmaCreateImage(Renderer->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &ColorImage->Handle, &ColorImage->Allocation, NULL);
-    VkImageViewCreateInfo ImageViewCreateInfo = GetImageViewCreateInfo(ColorImage->Format, ColorImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
+    VkImageViewCreateInfo ImageViewCreateInfo = Rr_GetImageViewCreateInfo(ColorImage->Format, ColorImage->Handle, VK_IMAGE_ASPECT_COLOR_BIT);
     vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &ColorImage->View);
 
     /* Depth Image */
     DepthImage->Format = RR_DEPTH_FORMAT;
-    ImageCreateInfo = GetImageCreateInfo(
+    ImageCreateInfo = Rr_GetImageCreateInfo(
         DepthImage->Format,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         DepthImage->Extent);
     vmaCreateImage(Renderer->Allocator, &ImageCreateInfo, &AllocationCreateInfo, &DepthImage->Handle, &DepthImage->Allocation, NULL);
-    ImageViewCreateInfo = GetImageViewCreateInfo(DepthImage->Format, DepthImage->Handle, VK_IMAGE_ASPECT_DEPTH_BIT);
+    ImageViewCreateInfo = Rr_GetImageViewCreateInfo(DepthImage->Format, DepthImage->Handle, VK_IMAGE_ASPECT_DEPTH_BIT);
     vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &DepthImage->View);
 }
 
@@ -493,8 +493,8 @@ static void Rr_InitFrames(Rr_Renderer* const Renderer)
     VkDevice Device = Renderer->Device;
     Rr_Frame* Frames = Renderer->Frames;
 
-    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
+    VkFenceCreateInfo FenceCreateInfo = Rr_GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkSemaphoreCreateInfo SemaphoreCreateInfo = Rr_GetSemaphoreCreateInfo(0);
 
     for (i32 Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
@@ -531,7 +531,7 @@ static void Rr_InitFrames(Rr_Renderer* const Renderer)
 
         vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, NULL, &Frame->CommandPool);
 
-        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = Rr_GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
 
         vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer);
     }
@@ -849,19 +849,19 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     VkClearValue ClearColorValue = {
         0
     };
-    VkRenderingAttachmentInfo ColorAttachments[2] = { GetRenderingAttachmentInfo_Color(
+    VkRenderingAttachmentInfo ColorAttachments[2] = { Rr_GetRenderingAttachmentInfo_Color(
         Renderer->DrawTarget.ColorImage.View,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         Info->InitialColor == NULL ? &ClearColorValue : NULL) };
     if (Info->AdditionalAttachment != NULL)
     {
-        ColorAttachments[1] = GetRenderingAttachmentInfo_Color(
+        ColorAttachments[1] = Rr_GetRenderingAttachmentInfo_Color(
             Info->AdditionalAttachment->View,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             &ClearColorValue);
     }
 
-    VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(
+    VkRenderingAttachmentInfo DepthAttachment = Rr_GetRenderingAttachmentInfo_Depth(
         Renderer->DrawTarget.DepthImage.View,
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         Info->InitialDepth == NULL);
@@ -1064,9 +1064,9 @@ void Rr_InitImmediateMode(Rr_Renderer* const Renderer)
         .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
     };
     vkCreateCommandPool(Device, &CommandPoolInfo, NULL, &ImmediateMode->CommandPool);
-    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
+    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = Rr_GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
     vkAllocateCommandBuffers(Device, &CommandBufferAllocateInfo, &ImmediateMode->CommandBuffer);
-    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkFenceCreateInfo FenceCreateInfo = Rr_GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence);
 }
 
@@ -1295,7 +1295,7 @@ void Rr_Draw(Rr_App* const App)
 
     VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
-    VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo CommandBufferBeginInfo = Rr_GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
     // Rr_ImageBarrier DepthImageTransition = {
@@ -1328,8 +1328,8 @@ void Rr_Draw(Rr_App* const App)
     //     VK_PIPELINE_STAGE_2_BLIT_BIT,
     //     VK_ACCESS_2_TRANSFER_WRITE_BIT,
     //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    // // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), Renderer->DrawTarget.ActiveResolution);
-    // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), GetExtent2D(Renderer->NoiseImage.Extent));
+    // // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, Rr_GetExtent2D(Renderer->NoiseImage.Extent), Renderer->DrawTarget.ActiveResolution);
+    // CopyImageToImage(CommandBuffer, Renderer->NoiseImage.Handle, ColorImage->Handle, GetExtent2D(Renderer->NoiseImage.Extent), Rr_GetExtent2D(Renderer->NoiseImage.Extent));
     // Rr_ChainImageBarrier(&ColorImageTransition,
     //     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
     //     VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
@@ -1402,8 +1402,8 @@ void Rr_Draw(Rr_App* const App)
 
     if (Renderer->ImGui.bInit)
     {
-        VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
-        VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
+        VkRenderingAttachmentInfo ColorAttachmentInfo = Rr_GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
+        VkRenderingInfo RenderingInfo = Rr_GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
 
         vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
 
@@ -1419,12 +1419,12 @@ void Rr_Draw(Rr_App* const App)
 
     vkEndCommandBuffer(CommandBuffer);
 
-    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = Rr_GetCommandBufferSubmitInfo(CommandBuffer);
 
-    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
-    VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
+    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = Rr_GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
+    VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = Rr_GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
 
-    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
+    VkSubmitInfo2 SubmitInfo = Rr_GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
 
     vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
@@ -1476,7 +1476,7 @@ VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* const Renderer)
     vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
     vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
 
-    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo BeginInfo = Rr_GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
 
@@ -1489,8 +1489,8 @@ void Rr_EndImmediate(Rr_Renderer* const Renderer)
 
     vkEndCommandBuffer(ImmediateMode->CommandBuffer);
 
-    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
-    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = Rr_GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
+    VkSubmitInfo2 SubmitInfo = Rr_GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
 
     vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);

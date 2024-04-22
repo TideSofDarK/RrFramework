@@ -1,9 +1,9 @@
 #pragma once
 
-#include "RrVulkan.h"
-#include "RrCore.h"
-#include "RrDefines.h"
-#include "RrArray.h"
+#include "Rr_Vulkan.h"
+#include "Rr_Core.h"
+#include "Rr_Defines.h"
+#include "Rr_Array.h"
 
 typedef struct Rr_Renderer Rr_Renderer;
 

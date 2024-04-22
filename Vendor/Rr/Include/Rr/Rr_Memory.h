@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RrDefines.h"
+#include "Rr_Defines.h"
 
 #ifndef RR_DISABLE_ALLOCA
     #define Rr_StackAlloc(Type, Count) (Type*)alloca(sizeof(Type) * (Count))

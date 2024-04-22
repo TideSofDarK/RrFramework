@@ -4,8 +4,8 @@
 
 #include <SDL3/SDL_atomic.h>
 
-#include "RrTypes.h"
-#include "RrInput.h"
+#include "Rr_Types.h"
+#include "Rr_Input.h"
 
 typedef struct Rr_InputConfig Rr_InputConfig;
 typedef struct SDL_Window SDL_Window;

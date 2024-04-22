@@ -1,11 +1,11 @@
-#include "RrArray.h"
+#include "Rr_Array.h"
 
 #include <stdlib.h>
 
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_assert.h>
 
-#include "RrMemory.h"
+#include "Rr_Memory.h"
 
 Rr_Array Rr_ArrayInit_Internal(size_t ElementSize, size_t ElementCount, size_t Alignment)
 {

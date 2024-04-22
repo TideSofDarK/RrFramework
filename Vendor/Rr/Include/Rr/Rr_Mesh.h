@@ -1,8 +1,8 @@
 #pragma once
 
-#include "RrArray.h"
-#include "RrDefines.h"
-#include "RrBuffer.h"
+#include "Rr_Array.h"
+#include "Rr_Defines.h"
+#include "Rr_Buffer.h"
 
 typedef struct Rr_Renderer Rr_Renderer;
 typedef struct Rr_Vertex Rr_Vertex;

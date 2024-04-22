@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef __cplusplus
-    #include "RrCore.h"
+    #include "Rr_Core.h"
 #endif
 // #include "RrArray.h"
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RrTypes.h"
-#include "RrAsset.h"
+#include "Rr_Types.h"
+#include "Rr_Asset.h"
 
 typedef struct Rr_AppConfig Rr_AppConfig;
 typedef struct Rr_Pipeline Rr_Pipeline;

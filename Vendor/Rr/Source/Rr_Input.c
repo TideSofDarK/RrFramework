@@ -1,9 +1,9 @@
-#include "RrInput.h"
+#include "Rr_Input.h"
 
 #include <SDL3/SDL.h>
 
-#include "RrCore.h"
-#include "RrTypes.h"
+#include "Rr_Core.h"
+#include "Rr_Types.h"
 
 Rr_InputState UpdateKeyState(Rr_KeyState OldKeyState, const u8* KeyboardState, const u8 Scancode)
 {

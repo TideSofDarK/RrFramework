@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "RrCore.h"
+#include "Rr_Core.h"
 
 typedef void* Rr_Array;
 

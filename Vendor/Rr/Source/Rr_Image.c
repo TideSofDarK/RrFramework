@@ -1,5 +1,5 @@
-#include "RrImage.h"
-#include "RrMemory.h"
+#include "Rr_Image.h"
+#include "Rr_Memory.h"
 
 #include <stdlib.h>
 
@@ -16,12 +16,12 @@
 
 #include <tinyexr/tinyexr.h>
 
-#include "RrRenderer.h"
-#include "RrAsset.h"
-#include "RrTypes.h"
-#include "RrHelpers.h"
-#include "RrVulkan.h"
-#include "RrBuffer.h"
+#include "Rr_Renderer.h"
+#include "Rr_Asset.h"
+#include "Rr_Types.h"
+#include "Rr_Helpers.h"
+#include "Rr_Vulkan.h"
+#include "Rr_Buffer.h"
 
 static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, VmaAllocationCreateInfo AllocationCreateInfo, b8 bMipMapped)
 {
@@ -29,7 +29,7 @@ static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D 
     Image.Format = Format;
     Image.Extent = Extent;
 
-    VkImageCreateInfo Info = GetImageCreateInfo(Image.Format, Usage, Image.Extent);
+    VkImageCreateInfo Info = Rr_GetImageCreateInfo(Image.Format, Usage, Image.Extent);
 
     if (bMipMapped)
     {
@@ -44,7 +44,7 @@ static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D 
         AspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
-    VkImageViewCreateInfo ViewInfo = GetImageViewCreateInfo(Image.Format, Image.Handle, AspectFlag);
+    VkImageViewCreateInfo ViewInfo = Rr_GetImageViewCreateInfo(Image.Format, Image.Handle, AspectFlag);
     ViewInfo.subresourceRange.levelCount = Info.mipLevels;
 
     vkCreateImageView(Renderer->Device, &ViewInfo, NULL, &Image.View);
@@ -265,7 +265,7 @@ void Rr_ChainImageBarrier_Aspect(
         .newLayout = NewLayout,
 
         .image = TransitionImage->Image,
-        .subresourceRange = GetImageSubresourceRange(Aspect),
+        .subresourceRange = Rr_GetImageSubresourceRange(Aspect),
     };
 
     VkDependencyInfo DepInfo = {

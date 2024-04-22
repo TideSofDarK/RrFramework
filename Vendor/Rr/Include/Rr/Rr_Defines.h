@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RrCore.h"
+#include "Rr_Core.h"
 
 /* Renderer Defines */
 #define RR_MAX_LAYOUT_BINDINGS 4

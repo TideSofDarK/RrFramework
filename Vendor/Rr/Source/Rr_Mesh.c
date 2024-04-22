@@ -1,15 +1,15 @@
-#include "RrMesh.h"
+#include "Rr_Mesh.h"
 
 #include <cglm/vec2.h>
 #include <cglm/vec3.h>
 #include <cglm/vec4.h>
 #include <cglm/ivec3.h>
 
-#include "RrTypes.h"
-#include "RrArray.h"
-#include "RrRenderer.h"
-#include "RrVulkan.h"
-#include "RrBuffer.h"
+#include "Rr_Types.h"
+#include "Rr_Array.h"
+#include "Rr_Renderer.h"
+#include "Rr_Vulkan.h"
+#include "Rr_Buffer.h"
 
 void Rr_UploadMesh(
     Rr_Renderer* const Renderer,

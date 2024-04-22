@@ -4,12 +4,12 @@
 
 #include <SDL3/SDL_atomic.h>
 
-#include "RrVulkan.h"
-#include "RrBuffer.h"
-#include "RrCore.h"
-#include "RrImage.h"
-#include "RrDescriptor.h"
-#include "RrDefines.h"
+#include "Rr_Vulkan.h"
+#include "Rr_Buffer.h"
+#include "Rr_Core.h"
+#include "Rr_Image.h"
+#include "Rr_Descriptor.h"
+#include "Rr_Defines.h"
 
 typedef struct SDL_Window SDL_Window;
 typedef struct Rr_AppConfig Rr_AppConfig;

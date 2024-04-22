@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RrDefines.h"
-#include "RrVulkan.h"
+#include "Rr_Defines.h"
+#include "Rr_Vulkan.h"
 
 typedef struct Rr_Renderer Rr_Renderer;
 

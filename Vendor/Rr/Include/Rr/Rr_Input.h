@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RrCore.h"
+#include "Rr_Core.h"
 
 #define RR_MAX_INPUT_MAPPINGS 16
 
