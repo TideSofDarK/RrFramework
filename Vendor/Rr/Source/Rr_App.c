@@ -18,7 +18,6 @@
 
 #include "Rr_Renderer.h"
 #include "Rr_Asset.h"
-#include "Rr_Types.h"
 #include "Rr_Input.h"
 #include "Rr_Mesh.h"
 
@@ -200,7 +199,7 @@ void Rr_Run(Rr_AppConfig* Config)
 
     SDL_AddEventWatch(EventWatch, &App);
 
-    Rr_Init(&App);
+    Rr_CreateRenderer(&App);
     Rr_InitImGui(&App);
 
     Config->InitFunc(&App);
@@ -236,7 +235,7 @@ void Rr_Run(Rr_AppConfig* Config)
         Iterate(&App);
     }
 
-    Rr_Cleanup(&App);
+    Rr_DestroyRenderer(&App);
 
     SDL_DelEventWatch(EventWatch, &App);
     SDL_DestroyWindow(App.Window);

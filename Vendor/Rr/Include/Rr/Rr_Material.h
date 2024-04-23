@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Rr_Vulkan.h"
-#include "Rr_Types.h"
 #include "Rr_Defines.h"
 #include "Rr_Buffer.h"
+
+typedef struct Rr_Renderer Rr_Renderer;
+typedef struct Rr_Image Rr_Image;
 
 typedef struct Rr_Material
 {

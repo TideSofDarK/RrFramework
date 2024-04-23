@@ -18,7 +18,6 @@
 
 #include "Rr_Renderer.h"
 #include "Rr_Asset.h"
-#include "Rr_Types.h"
 #include "Rr_Helpers.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
@@ -29,7 +28,7 @@ static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D 
     Image.Format = Format;
     Image.Extent = Extent;
 
-    VkImageCreateInfo Info = Rr_GetImageCreateInfo(Image.Format, Usage, Image.Extent);
+    VkImageCreateInfo Info = GetImageCreateInfo(Image.Format, Usage, Image.Extent);
 
     if (bMipMapped)
     {
@@ -44,7 +43,7 @@ static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D 
         AspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
-    VkImageViewCreateInfo ViewInfo = Rr_GetImageViewCreateInfo(Image.Format, Image.Handle, AspectFlag);
+    VkImageViewCreateInfo ViewInfo = GetImageViewCreateInfo(Image.Format, Image.Handle, AspectFlag);
     ViewInfo.subresourceRange.levelCount = Info.mipLevels;
 
     vkCreateImageView(Renderer->Device, &ViewInfo, NULL, &Image.View);
@@ -289,7 +288,7 @@ void Rr_ChainImageBarrier_Aspect(
         .newLayout = NewLayout,
 
         .image = TransitionImage->Image,
-        .subresourceRange = Rr_GetImageSubresourceRange(Aspect),
+        .subresourceRange = GetImageSubresourceRange(Aspect),
     };
 
     VkDependencyInfo DepInfo = {

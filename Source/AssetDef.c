@@ -1,18 +1,23 @@
 #include "Rr/Rr_Asset.h"
 
-RrAsset_Define(DoorFrameOBJ, "DoorFrame.obj");
+Rr_DefineAsset(DoorFrameOBJ, "DoorFrame.obj");
 
-RrAsset_Define(TriangleVERT, "Shader/Uber3D.vert.spv");
-RrAsset_Define(TriangleFRAG, "Shader/Uber3D.frag.spv");
+Rr_DefineAsset(TriangleVERT, "Shader/Uber3D.vert.spv");
+Rr_DefineAsset(TriangleFRAG, "Shader/Uber3D.frag.spv");
 
-RrAsset_Define(Uber3DVERT, "Shader/Uber3D.vert.spv");
-RrAsset_Define(Uber3DFRAG, "Shader/Uber3D.frag.spv");
+Rr_DefineAsset(Uber3DVERT, "Shader/Uber3D.vert.spv");
+Rr_DefineAsset(Uber3DFRAG, "Shader/Uber3D.frag.spv");
 
-RrAsset_Define(POCColorPNG, "poc_color.png");
-RrAsset_Define(POCDepthEXR, "poc_depth.exr");
+Rr_DefineAsset(POCColorPNG, "poc_color.png");
+Rr_DefineAsset(POCDepthEXR, "poc_depth.exr");
 
-RrAsset_Define(CottagePNG, "Cottage.png");
-RrAsset_Define(CottageOBJ, "Cottage.obj");
+Rr_DefineAsset(CottagePNG, "Cottage.png");
+Rr_DefineAsset(CottageOBJ, "Cottage.obj");
 
-RrAsset_Define(PocDiffusePNG, "poc_diffuse.png");
-RrAsset_Define(PocMeshOBJ, "poc_mesh.obj");
+Rr_DefineAsset(PocDiffusePNG, "poc_diffuse.png");
+Rr_DefineAsset(PocMeshOBJ, "poc_mesh.obj");
+
+Rr_DefineAsset(MarbleDiffusePNG, "MarbleDiffuse.png");
+Rr_DefineAsset(MarbleNormalPNG, "MarbleNormal.png");
+Rr_DefineAsset(MarbleSpecularPNG, "MarbleSpecular.png");
+Rr_DefineAsset(MarbleOBJ, "Marble.obj");

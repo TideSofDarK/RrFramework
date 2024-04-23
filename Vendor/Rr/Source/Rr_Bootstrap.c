@@ -11,7 +11,6 @@
 #include "Rr_Defines.h"
 #include "Rr_Input.h"
 #include "Rr_App.h"
-#include "Rr_Types.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Image.h"
 #include "Rr_Helpers.h"
@@ -19,6 +18,7 @@
 #include "Rr_Mesh.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Memory.h"
+#include "Rr_Text.h"
 
 static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
 {
@@ -35,7 +35,7 @@ static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 W
     DrawTarget->Scale = MaxAvailableScale;
 }
 
-static bool Rr_CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice PhysicalDevice)
+static bool CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice PhysicalDevice)
 {
     u32 ExtensionCount;
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
@@ -107,7 +107,7 @@ static bool Rr_CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice
     return false;
 }
 
-static void Rr_InitDevice(Rr_Renderer* const Renderer)
+static void InitDevice(Rr_Renderer* const Renderer)
 {
     u32 PhysicalDeviceCount = 0;
     vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, NULL);
@@ -130,7 +130,7 @@ static void Rr_InitDevice(Rr_Renderer* const Renderer)
     b32 bFoundSuitableDevice = false;
     for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
-        if (Rr_CheckPhysicalDevice(Renderer, PhysicalDevices[Index]))
+        if (CheckPhysicalDevice(Renderer, PhysicalDevices[Index]))
         {
             Renderer->PhysicalDevice.Handle = PhysicalDevices[Index];
 
@@ -199,7 +199,7 @@ static void Rr_InitDevice(Rr_Renderer* const Renderer)
     Rr_StackFree(PhysicalDevices);
 }
 
-static void Rr_CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
+static void CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
 {
     VkExtent3D Extent = (VkExtent3D){
         Width,
@@ -211,13 +211,13 @@ static void Rr_CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Heig
     Renderer->DrawTarget.DepthImage = Rr_CreateDepthAttachmentImage(Renderer, Extent);
 }
 
-static void Rr_CleanupDrawTarget(Rr_Renderer* const Renderer)
+static void CleanupDrawTarget(Rr_Renderer* const Renderer)
 {
     Rr_DestroyImage(Renderer, &Renderer->DrawTarget.ColorImage);
     Rr_DestroyImage(Renderer, &Renderer->DrawTarget.DepthImage);
 }
 
-static void Rr_CleanupSwapchain(Rr_Renderer* const Renderer, VkSwapchainKHR Swapchain)
+static void CleanupSwapchain(Rr_Renderer* const Renderer, VkSwapchainKHR Swapchain)
 {
     for (u32 Index = 0; Index < Renderer->Swapchain.ImageCount; Index++)
     {
@@ -226,7 +226,7 @@ static void Rr_CleanupSwapchain(Rr_Renderer* const Renderer, VkSwapchainKHR Swap
     vkDestroySwapchainKHR(Renderer->Device, Swapchain, NULL);
 }
 
-static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
+static b32 CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
 {
     VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
 
@@ -362,7 +362,7 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
 
     if (OldSwapchain != VK_NULL_HANDLE)
     {
-        Rr_CleanupSwapchain(Renderer, OldSwapchain);
+        CleanupSwapchain(Renderer, OldSwapchain);
     }
 
     u32 ImageCount = 0;
@@ -405,9 +405,9 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
     {
         if (Renderer->DrawTarget.ColorImage.Handle != VK_NULL_HANDLE)
         {
-            Rr_CleanupDrawTarget(Renderer);
+            CleanupDrawTarget(Renderer);
         }
-        Rr_CreateDrawTarget(Renderer, *Width, *Height);
+        CreateDrawTarget(Renderer, *Width, *Height);
     }
 
     Rr_StackFree(Images);
@@ -416,13 +416,13 @@ static b32 Rr_CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Heig
     return true;
 }
 
-static void Rr_InitFrames(Rr_Renderer* const Renderer)
+static void InitFrames(Rr_Renderer* const Renderer)
 {
     VkDevice Device = Renderer->Device;
     Rr_Frame* Frames = Renderer->Frames;
 
-    VkFenceCreateInfo FenceCreateInfo = Rr_GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VkSemaphoreCreateInfo SemaphoreCreateInfo = Rr_GetSemaphoreCreateInfo(0);
+    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
 
     for (i32 Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
@@ -459,13 +459,13 @@ static void Rr_InitFrames(Rr_Renderer* const Renderer)
 
         vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, NULL, &Frame->CommandPool);
 
-        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = Rr_GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
 
         vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer);
     }
 }
 
-static void Rr_InitAllocator(Rr_Renderer* const Renderer)
+static void InitAllocator(Rr_Renderer* const Renderer)
 {
     VmaVulkanFunctions VulkanFunctions = {
         .vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties,
@@ -501,7 +501,7 @@ static void Rr_InitAllocator(Rr_Renderer* const Renderer)
     vmaCreateAllocator(&AllocatorInfo, &Renderer->Allocator);
 }
 
-static void Rr_InitDescriptors(Rr_Renderer* const Renderer)
+static void InitDescriptors(Rr_Renderer* const Renderer)
 {
     Rr_DescriptorPoolSizeRatio Ratios[] = {
         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 }
@@ -510,7 +510,7 @@ static void Rr_InitDescriptors(Rr_Renderer* const Renderer)
     Renderer->GlobalDescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios));
 }
 
-static PFN_vkVoidFunction Rr_ImGui_LoadFunction(const char* FuncName, void* Userdata)
+static PFN_vkVoidFunction LoadVulkanFunction(const char* FuncName, void* Userdata)
 {
     return (PFN_vkVoidFunction)vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
 }
@@ -547,7 +547,7 @@ void Rr_InitImGui(Rr_App* App)
     ImGuiIO* IO = igGetIO();
     IO->IniFilename = NULL;
 
-    ImGui_ImplVulkan_LoadFunctions(Rr_ImGui_LoadFunction, NULL);
+    ImGui_ImplVulkan_LoadFunctions(LoadVulkanFunction, NULL);
     ImGui_ImplSDL3_InitForVulkan(Window);
 
     ImGui_ImplVulkan_InitInfo InitInfo = {
@@ -571,8 +571,7 @@ void Rr_InitImGui(Rr_App* App)
     f32 WindowScale = SDL_GetWindowDisplayScale(Window);
     ImGuiStyle_ScaleAllSizes(igGetStyle(), WindowScale);
 
-    Rr_Asset MartianMonoTTF;
-    RrAsset_Extern(&MartianMonoTTF, MartianMonoTTF);
+    Rr_ExternAsset(MartianMonoTTF);
 
     /* Don't transfer asset ownership to ImGui, it will crash otherwise! */
     ImFontConfig* FontConfig = ImFontConfig_ImFontConfig();
@@ -585,7 +584,7 @@ void Rr_InitImGui(Rr_App* App)
     Renderer->ImGui.bInit = true;
 }
 
-static void Rr_InitImmediateMode(Rr_Renderer* const Renderer)
+static void InitImmediateMode(Rr_Renderer* const Renderer)
 {
     VkDevice Device = Renderer->Device;
     Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
@@ -597,13 +596,13 @@ static void Rr_InitImmediateMode(Rr_Renderer* const Renderer)
         .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
     };
     vkCreateCommandPool(Device, &CommandPoolInfo, NULL, &ImmediateMode->CommandPool);
-    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = Rr_GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
+    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
     vkAllocateCommandBuffers(Device, &CommandBufferAllocateInfo, &ImmediateMode->CommandBuffer);
-    VkFenceCreateInfo FenceCreateInfo = Rr_GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence);
 }
 
-static void Rr_InitGenericPipelineLayout(Rr_Renderer* const Renderer)
+static void InitGenericPipelineLayout(Rr_Renderer* const Renderer)
 {
     VkDevice Device = Renderer->Device;
 
@@ -652,7 +651,7 @@ static void Rr_InitGenericPipelineLayout(Rr_Renderer* const Renderer)
     vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &Renderer->GenericPipelineLayout);
 }
 
-void Rr_Init(Rr_App* App)
+void Rr_CreateRenderer(Rr_App* App)
 {
     SDL_Window* Window = App->Window;
     Rr_Renderer* Renderer = &App->Renderer;
@@ -711,9 +710,9 @@ void Rr_Init(Rr_App* App)
         abort();
     }
 
-    Rr_InitDevice(Renderer);
+    InitDevice(Renderer);
 
-    Rr_InitAllocator(Renderer);
+    InitAllocator(Renderer);
 
     // volkLoadDevice(Renderer->Device);
     //
@@ -723,22 +722,24 @@ void Rr_Init(Rr_App* App)
     SamplerInfo.minFilter = VK_FILTER_NEAREST;
     vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->NearestSampler);
 
-    Rr_InitDescriptors(Renderer);
+    InitDescriptors(Renderer);
 
     u32 Width, Height;
     SDL_GetWindowSizeInPixels(Window, (i32*)&Width, (i32*)&Height);
-    Rr_CreateSwapchain(Renderer, &Width, &Height);
+    CreateSwapchain(Renderer, &Width, &Height);
 
-    Rr_InitFrames(Renderer);
+    InitFrames(Renderer);
 
-    Rr_InitImmediateMode(Renderer);
+    InitImmediateMode(Renderer);
 
-    Rr_InitGenericPipelineLayout(Renderer);
+    InitGenericPipelineLayout(Renderer);
+
+    Rr_InitText(Renderer);
 
     Rr_StackFree(Extensions);
 }
 
-b8 Rr_NewFrame(Rr_Renderer* const Renderer, SDL_Window* Window)
+b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
 {
     i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
     if (bResizePending == true)
@@ -750,7 +751,7 @@ b8 Rr_NewFrame(Rr_Renderer* const Renderer, SDL_Window* Window)
 
         b8 bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
 
-        if (!bMinimized && Width > 0 && Height > 0 && Rr_CreateSwapchain(Renderer, (u32*)&Width, (u32*)&Height))
+        if (!bMinimized && Width > 0 && Height > 0 && CreateSwapchain(Renderer, (u32*)&Width, (u32*)&Height))
         {
             SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 0);
             return true;
@@ -761,33 +762,33 @@ b8 Rr_NewFrame(Rr_Renderer* const Renderer, SDL_Window* Window)
     return true;
 }
 
-VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* const Renderer)
+VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer)
 {
     Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
     vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
     vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
 
-    VkCommandBufferBeginInfo BeginInfo = Rr_GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
 
     return ImmediateMode->CommandBuffer;
 }
 
-void Rr_EndImmediate(Rr_Renderer* const Renderer)
+void Rr_EndImmediate(Rr_Renderer* Renderer)
 {
     Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
 
     vkEndCommandBuffer(ImmediateMode->CommandBuffer);
 
-    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = Rr_GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
-    VkSubmitInfo2 SubmitInfo = Rr_GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
+    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
 
     vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }
 
-void Rr_Cleanup(Rr_App* const App)
+void Rr_DestroyRenderer(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
@@ -832,9 +833,9 @@ void Rr_Cleanup(Rr_App* const App)
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
     }
 
-    Rr_CleanupDrawTarget(Renderer);
+    CleanupDrawTarget(Renderer);
 
-    Rr_CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
+    CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
 
     vmaDestroyAllocator(Renderer->Allocator);
 

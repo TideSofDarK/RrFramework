@@ -28,6 +28,7 @@ void main()
     vec3 viewDir = normalize(in_viewPosition - in_position);
     float specularAlpha = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = 0.5f * specularAlpha * lightColor;
+     specular *= 0.0f;
 
     vec3 color = texture(u_texture[0], uv).rgb * (u_globals.ambientLightColor.xyz + diffuseColor + specular);
     out_color = vec4(color, 1.0f);

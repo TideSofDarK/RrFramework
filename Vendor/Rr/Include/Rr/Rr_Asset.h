@@ -1,9 +1,6 @@
 #pragma once
 
-#ifndef __cplusplus
-    #include "Rr_Core.h"
-#endif
-// #include "RrArray.h"
+#include "Rr_Core.h"
 
 typedef struct Rr_Asset
 {
@@ -65,14 +62,16 @@ typedef struct Rr_Asset
 
 /* @TODO: cplusplus support! */
 
-#define RrAsset_Define(NAME, PATH) INCBIN(NAME, STR(RR_ASSET_PATH), PATH)
+#define Rr_DefineAsset(NAME, PATH) INCBIN(NAME, STR(RR_ASSET_PATH), PATH)
 
-#define RrAsset_Extern(VAR, NAME)                                               \
+#define Rr_ExternAssetAs(VAR, NAME)                                               \
     do                                                                          \
     {                                                                           \
         extern __attribute__((aligned(16))) const char incbin_##NAME##_start[]; \
         extern const char incbin_##NAME##_end[];                                \
-        (VAR)->Data = incbin_##NAME##_start;                                    \
-        (VAR)->Length = (size_t)(incbin_##NAME##_end - incbin_##NAME##_start);  \
+        (&VAR)->Data = incbin_##NAME##_start;                                    \
+        (&VAR)->Length = (size_t)(incbin_##NAME##_end - incbin_##NAME##_start);  \
     }                                                                           \
     while (0)
+
+#define Rr_ExternAsset(NAME) Rr_Asset NAME; Rr_ExternAssetAs(NAME, NAME)

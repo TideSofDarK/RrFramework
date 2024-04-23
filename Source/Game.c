@@ -19,7 +19,6 @@
 #include <Rr/Rr_Image.h>
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Buffer.h>
-#include <Rr/Rr_Types.h>
 #include <Rr/Rr_Mesh.h>
 #include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_Input.h>
@@ -78,8 +77,6 @@ static Rr_InputMapping InputMappings[RR_MAX_INPUT_MAPPINGS] = { 0 };
 
 static SUber3DGlobals ShaderGlobals;
 
-static Rr_MeshBuffers MonkeyMesh;
-
 static Rr_Pipeline Uber3DPipeline = { 0 };
 
 static Rr_Image SceneDepthImage;
@@ -92,8 +89,11 @@ static Rr_Material CottageMaterial;
 static Rr_MeshBuffers PocMesh;
 static Rr_Image PocDiffuseImage;
 
-static Rr_Material MonkeyMaterial;
-// static Rr_Image MonkeyImage;
+static Rr_Material MarbleMaterial;
+static Rr_Image MarbleDiffuse;
+static Rr_Image MarbleNormal;
+static Rr_Image MarbleSpecular;
+static Rr_MeshBuffers MarbleMesh;
 
 static void InitInputMappings(void)
 {
@@ -108,16 +108,15 @@ static void InitInputMappings(void)
 
 static void InitUber3DPipeline(Rr_Renderer* const Renderer)
 {
-    Rr_Asset VertexShaderSPV, FragmentShaderSPV;
-    RrAsset_Extern(&VertexShaderSPV, Uber3DVERT);
-    RrAsset_Extern(&FragmentShaderSPV, Uber3DFRAG);
+    Rr_ExternAsset(Uber3DVERT);
+    Rr_ExternAsset(Uber3DFRAG);
 
     Rr_PipelineBuilder Builder = Rr_GenericPipelineBuilder();
     Builder.GlobalsSize = sizeof(SUber3DGlobals);
     Builder.MaterialSize = sizeof(SUber3DMaterial);
     Builder.DrawSize = sizeof(SUber3DDraw);
-    Rr_EnableVertexStage(&Builder, &VertexShaderSPV);
-    Rr_EnableFragmentStage(&Builder, &FragmentShaderSPV);
+    Rr_EnableVertexStage(&Builder, &Uber3DVERT);
+    Rr_EnableFragmentStage(&Builder, &Uber3DFRAG);
     Rr_EnableDepthTest(&Builder);
     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
     Uber3DPipeline = Rr_BuildGenericPipeline(Renderer, &Builder);
@@ -142,44 +141,46 @@ static void Init(Rr_App* App)
 
     Rr_Renderer* const Renderer = &App->Renderer;
 
-    Rr_Asset POCDepthEXR;
-    RrAsset_Extern(&POCDepthEXR, POCDepthEXR);
+    Rr_ExternAsset(POCDepthEXR);
     SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, &App->Renderer);
 
-    Rr_Asset POCColorPNG;
-    RrAsset_Extern(&POCColorPNG, POCColorPNG);
+    Rr_ExternAsset(POCColorPNG);
     SceneColorImage = Rr_CreateImageFromPNG(&POCColorPNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     //
     //    Rr_Asset DoorFrameOBJ;
-    //    RrAsset_Extern(&DoorFrameOBJ, DoorFrameOBJ);
+    //    Rr_ExternAssetAs(&DoorFrameOBJ, DoorFrameOBJ);
     //    MonkeyMesh = Rr_CreateMesh_FromOBJ(Renderer, &DoorFrameOBJ);
 
-    Rr_Asset CottageOBJ;
-    RrAsset_Extern(&CottageOBJ, CottageOBJ);
+    Rr_ExternAsset(CottageOBJ);
     CottageMesh = Rr_CreateMesh_FromOBJ(Renderer, &CottageOBJ);
 
-    Rr_Asset CottagePNG;
-    RrAsset_Extern(&CottagePNG, CottagePNG);
+    Rr_ExternAsset(CottagePNG);
     CottageTexture = Rr_CreateImageFromPNG(&CottagePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    Rr_Asset PocMeshOBJ;
-    RrAsset_Extern(&PocMeshOBJ, PocMeshOBJ);
+    Rr_ExternAsset(PocMeshOBJ);
     PocMesh = Rr_CreateMesh_FromOBJ(Renderer, &PocMeshOBJ);
 
-    Rr_Asset PocDiffusePNG;
-    RrAsset_Extern(&PocDiffusePNG, PocDiffusePNG);
+    Rr_ExternAsset(PocDiffusePNG);
     PocDiffuseImage = Rr_CreateImageFromPNG(&PocDiffusePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    Rr_Asset MonkeyOBJ;
-    RrAsset_Extern(&MonkeyOBJ, DoorFrameOBJ);
-    MonkeyMesh = Rr_CreateMesh_FromOBJ(Renderer, &MonkeyOBJ);
 
     InitUber3DPipeline(Renderer);
     InitGlobals(Renderer);
 
-    MonkeyMaterial = Rr_CreateMaterial(Renderer, NULL, 0);
     Rr_Image* CottageTextures[1] = { &CottageTexture };
     CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
+
+    /* Marble */
+    Rr_ExternAsset(MarbleOBJ);
+    MarbleMesh = Rr_CreateMesh_FromOBJ(Renderer, &MarbleOBJ);
+
+    Rr_ExternAsset(MarbleDiffusePNG);
+    MarbleDiffuse = Rr_CreateImageFromPNG(&MarbleDiffusePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    Rr_ExternAsset(MarbleSpecularPNG);
+    MarbleSpecular = Rr_CreateImageFromPNG(&MarbleSpecularPNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
+    MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 }
 
 static void Cleanup(Rr_App* App)
@@ -193,17 +194,19 @@ static void Cleanup(Rr_App* App)
     }
     SDL_free(Renderer->PerFrameDatas);
 
-    Rr_DestroyMaterial(Renderer, &MonkeyMaterial);
     Rr_DestroyMaterial(Renderer, &CottageMaterial);
+    Rr_DestroyMaterial(Renderer, &MarbleMaterial);
 
     Rr_DestroyImage(Renderer, &SceneDepthImage);
     Rr_DestroyImage(Renderer, &SceneColorImage);
     Rr_DestroyImage(Renderer, &CottageTexture);
     Rr_DestroyImage(Renderer, &PocDiffuseImage);
+    Rr_DestroyImage(Renderer, &MarbleDiffuse);
+    Rr_DestroyImage(Renderer, &MarbleSpecular);
 
-    Rr_DestroyMesh(Renderer, &MonkeyMesh);
     Rr_DestroyMesh(Renderer, &CottageMesh);
     Rr_DestroyMesh(Renderer, &PocMesh);
+    Rr_DestroyMesh(Renderer, &MarbleMesh);
 
     Rr_DestroyPipeline(Renderer, &Uber3DPipeline);
 }
@@ -223,13 +226,14 @@ static void Update(Rr_App* App)
     igBegin("RotTest", NULL, ImGuiWindowFlags_AlwaysAutoResize);
     static vec3 CameraPos = { -7.35889f, -4.0f, -6.92579f };
     static vec3 CameraEuler = { 90.0f - 63.5593f, -46.6919f, 0.0f };
-    static vec3 LightDir = { 3.0f, 3.0f, 3.0f };
+    static vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
     igSliderFloat3("CameraPos", CameraPos, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat3("CameraRot", CameraEuler, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat3("LightDir", LightDir, -3.0f, 3.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat3("LightDir", LightDirEuler, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
 
-    glm_vec3_copy(LightDir, ShaderGlobals.DirectionalLightDirection);
-    glm_vec3_normalize(ShaderGlobals.DirectionalLightDirection);
+    mat4 LightDirTemp;
+    glm_euler_xyz((vec3){ glm_rad(LightDirEuler[0]), glm_rad(LightDirEuler[1]), glm_rad(LightDirEuler[2]) }, LightDirTemp);
+    glm_vec3_copy(LightDirTemp[2], ShaderGlobals.DirectionalLightDirection);
 
     mat4 Temp;
     glm_mat4_identity(Temp);
@@ -261,34 +265,34 @@ static void Draw(Rr_App* const App)
     /* Rendering */
     Rr_BeginRenderingInfo BeginRenderingInfo = {
         .Pipeline = &Uber3DPipeline,
-        .InitialDepth = &SceneDepthImage,
-        .InitialColor = &SceneColorImage,
+//        .InitialDepth = &SceneDepthImage,
+//        .InitialColor = &SceneColorImage,
         .GlobalsData = &ShaderGlobals
     };
     Rr_RenderingContext RenderingContext = Rr_BeginRendering(Renderer, &BeginRenderingInfo);
 
     u64 Ticks = SDL_GetTicks();
     float Time = (float)((double)Ticks / 1000.0 * 2);
-    SUber3DDraw Draw;
+    // SUber3DDraw Draw;
     mat4 Transform;
-    glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
-    glm_mat4_identity(Draw.Model);
-    glm_scale_uni(Draw.Model, 0.5f);
-    Draw.Model[3][1] = 0.5f;
-    Draw.Model[3][2] = 3.5f;
-    glm_mat4_mul(Transform, Draw.Model, Draw.Model);
-    Draw.VertexBufferAddress = MonkeyMesh.VertexBufferAddress;
-
-    Rr_DrawMeshInfo DrawMeshInfo = {
-        .Material = &MonkeyMaterial,
-        .MeshBuffers = &MonkeyMesh,
-        .DrawData = &Draw
-    };
-
+    // glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
+    // glm_mat4_identity(Draw.Model);
+    // glm_scale_uni(Draw.Model, 0.5f);
+    // Draw.Model[3][1] = 0.5f;
+    // Draw.Model[3][2] = 3.5f;
+    // glm_mat4_mul(Transform, Draw.Model, Draw.Model);
+    // Draw.VertexBufferAddress = MonkeyMesh.VertexBufferAddress;
+    //
+    // Rr_DrawMeshInfo DrawMeshInfo = {
+    //     .Material = &MonkeyMaterial,
+    //     .MeshBuffers = &MonkeyMesh,
+    //     .DrawData = &Draw
+    // };
+    //
     SUber3DDraw Draw2;
     glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
     glm_mat4_identity(Draw2.Model);
-    glm_scale_uni(Draw2.Model, 0.5f);
+    glm_scale_uni(Draw2.Model, 0.75f);
     glm_mat4_mul(Transform, Draw2.Model, Draw2.Model);
     Draw2.Model[3][0] = 3.5f;
     Draw2.Model[3][1] = 0.5f;
@@ -300,9 +304,20 @@ static void Draw(Rr_App* const App)
         .MeshBuffers = &CottageMesh,
         .DrawData = &Draw2
     };
-
-    Rr_DrawMesh(&RenderingContext, &DrawMeshInfo);
+    //
+    // Rr_DrawMesh(&RenderingContext, &DrawMeshInfo);
     Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
+    //
+    SUber3DDraw MarbleDraw;
+    glm_mat4_identity(MarbleDraw.Model);
+    MarbleDraw.Model[3][1] = 0.1f;
+    MarbleDraw.VertexBufferAddress = MarbleMesh.VertexBufferAddress;
+    Rr_DrawMeshInfo DrawMarbleInfo = {
+        .MeshBuffers = &MarbleMesh,
+        .Material = &MarbleMaterial,
+        .DrawData = &MarbleDraw
+    };
+    Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
 
     Rr_EndRendering(&RenderingContext);
 }

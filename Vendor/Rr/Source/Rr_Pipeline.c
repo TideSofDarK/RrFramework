@@ -1,11 +1,13 @@
 #include "Rr_Pipeline.h"
 
+#include <SDL3/SDL_stdinc.h>
+
 #include "Rr_Memory.h"
 #include "Rr_Buffer.h"
 #include "Rr_Defines.h"
 #include "Rr_Helpers.h"
 #include "Rr_Vulkan.h"
-#include "Rr_Types.h"
+#include "Rr_Renderer.h"
 
 Rr_PipelineBuilder Rr_GenericPipelineBuilder(void)
 {
@@ -114,7 +116,7 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
             .codeSize = PipelineBuilder->VertexShaderSPV.Length
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
-        PipelineBuilder->ShaderStages[ShaderStageCount] = Rr_GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
+        PipelineBuilder->ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
         ShaderStageCount++;
     }
 
@@ -128,7 +130,7 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
             .codeSize = PipelineBuilder->FragmentShaderSPV.Length
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
-        PipelineBuilder->ShaderStages[ShaderStageCount] = Rr_GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
+        PipelineBuilder->ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
         ShaderStageCount++;
     }
 

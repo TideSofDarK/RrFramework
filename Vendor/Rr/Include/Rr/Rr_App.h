@@ -2,10 +2,8 @@
 
 #include <cglm/ivec2.h>
 
-#include <SDL3/SDL_atomic.h>
-
-#include "Rr_Types.h"
 #include "Rr_Input.h"
+#include "Rr_Renderer.h"
 
 typedef struct Rr_InputConfig Rr_InputConfig;
 typedef struct SDL_Window SDL_Window;

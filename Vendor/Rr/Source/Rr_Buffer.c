@@ -2,7 +2,8 @@
 
 #include <stdio.h>
 
-#include "Rr_Types.h"
+#include <SDL3/SDL_log.h>
+
 #include "Rr_Vulkan.h"
 #include "Rr_Renderer.h"
 #include "Rr_Util.h"
@@ -103,7 +104,13 @@ void Rr_UploadToDeviceBuffer(
 {
     if (StagingBuffer->CurrentOffset + Size > RR_STAGING_BUFFER_SIZE)
     {
-        return;
+        SDL_LogError(
+            SDL_LOG_CATEGORY_VIDEO,
+            "Exceeding staging buffer size! Current offset is %zu, allocation size is %zu and total staging buffer size is %zu.",
+            StagingBuffer->CurrentOffset,
+            Size,
+            StagingBuffer->Buffer.AllocationInfo.size);
+        abort();
     }
     const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     size_t Offset = StagingBuffer->CurrentOffset;
@@ -144,10 +151,10 @@ void Rr_UploadToDeviceBuffer(
         1,
         &BufferCopy);
 
-    BufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-    BufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-    BufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
-    BufferBarrier.dstAccessMask = VK_ACCESS_2_UNIFORM_READ_BIT,
+    BufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    BufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    BufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+    BufferBarrier.dstAccessMask = VK_ACCESS_2_UNIFORM_READ_BIT;
 
     vkCmdPipelineBarrier2(CommandBuffer, &DependencyInfo);
 }

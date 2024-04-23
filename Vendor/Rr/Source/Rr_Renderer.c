@@ -18,7 +18,6 @@
 #include "Rr_Defines.h"
 #include "Rr_App.h"
 #include "Rr_Array.h"
-#include "Rr_Types.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Image.h"
@@ -297,19 +296,19 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     VkClearValue ClearColorValue = {
         0
     };
-    VkRenderingAttachmentInfo ColorAttachments[2] = { Rr_GetRenderingAttachmentInfo_Color(
+    VkRenderingAttachmentInfo ColorAttachments[2] = { GetRenderingAttachmentInfo_Color(
         Renderer->DrawTarget.ColorImage.View,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         Info->InitialColor == NULL ? &ClearColorValue : NULL) };
     if (Info->AdditionalAttachment != NULL)
     {
-        ColorAttachments[1] = Rr_GetRenderingAttachmentInfo_Color(
+        ColorAttachments[1] = GetRenderingAttachmentInfo_Color(
             Info->AdditionalAttachment->View,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             &ClearColorValue);
     }
 
-    VkRenderingAttachmentInfo DepthAttachment = Rr_GetRenderingAttachmentInfo_Depth(
+    VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(
         Renderer->DrawTarget.DepthImage.View,
         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         Info->InitialDepth == NULL);
@@ -434,10 +433,13 @@ void Rr_Draw(Rr_App* const App)
     Rr_Image* DepthImage = &Renderer->DrawTarget.DepthImage;
 
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
     vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
+
+    Frame->StagingBuffer.CurrentOffset = 0;
+
+    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
     Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
@@ -456,7 +458,7 @@ void Rr_Draw(Rr_App* const App)
 
     VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
-    VkCommandBufferBeginInfo CommandBufferBeginInfo = Rr_GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
     App->Config->DrawFunc(App);
@@ -515,8 +517,8 @@ void Rr_Draw(Rr_App* const App)
 
     if (Renderer->ImGui.bInit)
     {
-        VkRenderingAttachmentInfo ColorAttachmentInfo = Rr_GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
-        VkRenderingInfo RenderingInfo = Rr_GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
+        VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
+        VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
 
         vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
 
@@ -532,12 +534,12 @@ void Rr_Draw(Rr_App* const App)
 
     vkEndCommandBuffer(CommandBuffer);
 
-    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = Rr_GetCommandBufferSubmitInfo(CommandBuffer);
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
 
-    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = Rr_GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
-    VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = Rr_GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
+    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
+    VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
 
-    VkSubmitInfo2 SubmitInfo = Rr_GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
+    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
 
     vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 

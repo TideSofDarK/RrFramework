@@ -3,7 +3,7 @@
 #include "Rr_Core.h"
 #include "Rr_Vulkan.h"
 
-static inline VkExtent2D Rr_GetExtent2D(VkExtent3D Extent)
+static inline VkExtent2D GetExtent2D(VkExtent3D Extent)
 {
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
 }
@@ -12,7 +12,7 @@ static inline VkExtent2D Rr_GetExtent2D(VkExtent3D Extent)
  * Struct Creation Helpers
  * ======================= */
 
-static inline VkPipelineShaderStageCreateInfo Rr_GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
+static inline VkPipelineShaderStageCreateInfo GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
 {
     VkPipelineShaderStageCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -25,7 +25,7 @@ static inline VkPipelineShaderStageCreateInfo Rr_GetShaderStageInfo(VkShaderStag
     return Info;
 }
 
-static inline VkRenderingAttachmentInfo Rr_GetRenderingAttachmentInfo_Color(VkImageView View, VkImageLayout Layout, VkClearValue* InClearValue)
+static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImageView View, VkImageLayout Layout, VkClearValue* InClearValue)
 {
     VkRenderingAttachmentInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -40,7 +40,7 @@ static inline VkRenderingAttachmentInfo Rr_GetRenderingAttachmentInfo_Color(VkIm
     return Info;
 }
 
-static inline VkRenderingAttachmentInfo Rr_GetRenderingAttachmentInfo_Depth(VkImageView View, VkImageLayout Layout, b8 bClear)
+static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(VkImageView View, VkImageLayout Layout, b8 bClear)
 {
     VkRenderingAttachmentInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -55,7 +55,7 @@ static inline VkRenderingAttachmentInfo Rr_GetRenderingAttachmentInfo_Depth(VkIm
     return Info;
 }
 
-static inline VkRenderingInfo Rr_GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentInfo* ColorAttachment,
+static inline VkRenderingInfo GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentInfo* ColorAttachment,
     VkRenderingAttachmentInfo* DepthAttachment)
 {
     VkRenderingInfo Info = {
@@ -72,7 +72,7 @@ static inline VkRenderingInfo Rr_GetRenderingInfo(VkExtent2D RenderExtent, VkRen
     return Info;
 }
 
-static inline VkImageCreateInfo Rr_GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
+static inline VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
 {
     VkImageCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -89,7 +89,7 @@ static inline VkImageCreateInfo Rr_GetImageCreateInfo(VkFormat Format, VkImageUs
     return Info;
 }
 
-static inline VkImageViewCreateInfo Rr_GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
+static inline VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
 {
     VkImageViewCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -109,7 +109,7 @@ static inline VkImageViewCreateInfo Rr_GetImageViewCreateInfo(VkFormat Format, V
     return Info;
 }
 
-static inline VkFenceCreateInfo Rr_GetFenceCreateInfo(VkFenceCreateFlags Flags)
+static inline VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
 {
     VkFenceCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -119,7 +119,7 @@ static inline VkFenceCreateInfo Rr_GetFenceCreateInfo(VkFenceCreateFlags Flags)
     return Info;
 }
 
-static inline VkSemaphoreCreateInfo Rr_GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
+static inline VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -129,7 +129,7 @@ static inline VkSemaphoreCreateInfo Rr_GetSemaphoreCreateInfo(VkSemaphoreCreateF
     return Info;
 }
 
-static inline VkCommandBufferBeginInfo Rr_GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
+static inline VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
 {
     VkCommandBufferBeginInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -140,7 +140,7 @@ static inline VkCommandBufferBeginInfo Rr_GetCommandBufferBeginInfo(VkCommandBuf
     return Info;
 }
 
-static inline VkImageSubresourceRange Rr_GetImageSubresourceRange(VkImageAspectFlags AspectMask)
+static inline VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlags AspectMask)
 {
     VkImageSubresourceRange ImageSubresourceRange = {
         .aspectMask = AspectMask,
@@ -153,7 +153,7 @@ static inline VkImageSubresourceRange Rr_GetImageSubresourceRange(VkImageAspectF
     return ImageSubresourceRange;
 }
 
-static inline VkSemaphoreSubmitInfo Rr_GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
+static inline VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
 {
     VkSemaphoreSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -167,7 +167,7 @@ static inline VkSemaphoreSubmitInfo Rr_GetSemaphoreSubmitInfo(VkPipelineStageFla
     return Info;
 }
 
-static inline VkCommandBufferSubmitInfo Rr_GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
+static inline VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
 {
     VkCommandBufferSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -179,7 +179,7 @@ static inline VkCommandBufferSubmitInfo Rr_GetCommandBufferSubmitInfo(VkCommandB
     return Info;
 }
 
-static inline VkCommandBufferAllocateInfo Rr_GetCommandBufferAllocateInfo(VkCommandPool CommandPool, u32 Count)
+static inline VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool CommandPool, u32 Count)
 {
     VkCommandBufferAllocateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -192,7 +192,7 @@ static inline VkCommandBufferAllocateInfo Rr_GetCommandBufferAllocateInfo(VkComm
     return Info;
 }
 
-static inline VkSubmitInfo2 Rr_GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, VkSemaphoreSubmitInfo* SignalSemaphoreInfo,
+static inline VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, VkSemaphoreSubmitInfo* SignalSemaphoreInfo,
     VkSemaphoreSubmitInfo* WaitSemaphoreInfo)
 {
     VkSubmitInfo2 Info = {

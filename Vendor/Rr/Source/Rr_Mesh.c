@@ -4,7 +4,8 @@
 #include <cglm/vec4.h>
 #include <cglm/ivec3.h>
 
-#include "Rr_Types.h"
+#include <SDL_stdinc.h>
+
 #include "Rr_Array.h"
 #include "Rr_Renderer.h"
 #include "Rr_Vulkan.h"
@@ -48,8 +49,8 @@ void Rr_UploadMesh(
 
     void* StagingData = StagingBuffer.AllocationInfo.pMappedData;
 
-    memcpy((char*)StagingData, (void*)Vertices, VertexBufferSize);
-    memcpy((char*)StagingData + VertexBufferSize, (void*)Indices, IndexBufferSize);
+    SDL_memcpy((char*)StagingData, (void*)Vertices, VertexBufferSize);
+    SDL_memcpy((char*)StagingData + VertexBufferSize, (void*)Indices, IndexBufferSize);
 
     Rr_BeginImmediate(Renderer);
 
