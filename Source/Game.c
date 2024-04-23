@@ -267,8 +267,8 @@ static void Draw(Rr_App* const App)
     /* Rendering */
     Rr_BeginRenderingInfo BeginRenderingInfo = {
         .Pipeline = &Uber3DPipeline,
-//        .InitialDepth = &SceneDepthImage,
-//        .InitialColor = &SceneColorImage,
+        //        .InitialDepth = &SceneDepthImage,
+        //        .InitialColor = &SceneColorImage,
         .GlobalsData = &ShaderGlobals
     };
     Rr_RenderingContext RenderingContext = Rr_BeginRendering(Renderer, &BeginRenderingInfo);
@@ -320,6 +320,7 @@ static void Draw(Rr_App* const App)
         .DrawData = &MarbleDraw
     };
     Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
+    Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = "Test String!!", .Position = { 50.0f, 50.0f } });
 
     Rr_EndRendering(&RenderingContext);
 }

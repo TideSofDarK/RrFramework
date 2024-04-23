@@ -1,4 +1,5 @@
 #include "Rr_Renderer.h"
+#include "Rr_Text.h"
 
 #include <math.h>
 #include <string.h>
@@ -114,6 +115,7 @@ Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRende
     RenderingContext.Renderer = Renderer;
     RenderingContext.Info = Info;
     Rr_ArrayInit(RenderingContext.DrawMeshArray, Rr_DrawMeshInfo, 16);
+    Rr_ArrayInit(RenderingContext.DrawTextArray, Rr_DrawTextInfo, 16);
 
     return RenderingContext;
 }
@@ -121,6 +123,11 @@ Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRende
 void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, Rr_DrawMeshInfo* Info)
 {
     Rr_ArrayPush(RenderingContext->DrawMeshArray, Info);
+}
+
+void Rr_DrawText(Rr_RenderingContext* RenderingContext, Rr_DrawTextInfo* Info)
+{
+    Rr_ArrayPush(RenderingContext->DrawTextArray, Info);
 }
 
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
@@ -344,6 +351,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
 
     vkCmdSetScissor(CommandBuffer, 0, 1, &Scissor);
 
+    /* Generic Rendering */
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline->Handle);
 
     for (size_t MaterialIndex = 0; MaterialIndex < Rr_ArrayCount(MaterialsArray); ++MaterialIndex)
@@ -415,12 +423,66 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         Rr_ArrayFree(Indices);
     }
 
+    /* Text Rendering */
+    Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
+    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Handle);
+    vkCmdBindVertexBuffers(
+        CommandBuffer,
+        0,
+        1,
+        &TextPipeline->QuadBuffer.Handle,
+        &(VkDeviceSize){ 0 });
+    VkDescriptorSet TextGlobalsDescriptorSet = Rr_AllocateDescriptorSet(
+        &Frame->DescriptorAllocator,
+        Renderer->Device,
+        TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS]);
+    Rr_WriteBufferDescriptor(
+        &DescriptorWriter,
+        0,
+        TextPipeline->GlobalsBuffers[Rr_GetCurrentFrameIndex(Renderer)].Handle,
+        TextPipeline->GlobalsSize,
+        0,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    Rr_WriteImageDescriptor(
+        &DescriptorWriter,
+        1,
+        Renderer->BuiltinFont.Atlas.View,
+        Renderer->NearestSampler,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextGlobalsDescriptorSet);
+    Rr_ResetDescriptorWriter(&DescriptorWriter);
+    size_t TextCount = Rr_ArrayCount(RenderingContext->DrawTextArray);
+    for (size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
+    {
+        Rr_DrawTextInfo* DrawTextInfo = &RenderingContext->DrawTextArray[TextIndex];
+        struct Rr_TextPushConstants {
+            vec2 PositionScreenSpace;
+            vec2 ReservedA;
+            vec4 ReservedB;
+            vec4 ReservedC;
+            vec4 ReservedD;
+            mat4 ReservedE;
+        } TextPushConstants;
+        TextPushConstants.PositionScreenSpace[0] = DrawTextInfo->Position[0];
+        TextPushConstants.PositionScreenSpace[1] = DrawTextInfo->Position[1];
+        vkCmdPushConstants(
+            CommandBuffer,
+            TextPipeline->Layout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0,
+            128,
+            &TextPushConstants);
+        vkCmdDraw(CommandBuffer, 12, 1, 0, 0);
+    }
+
     vkCmdEndRendering(CommandBuffer);
 
     Rr_Free(DrawData);
     Rr_ArrayFree(MaterialsArray);
-    Rr_ArrayFree(RenderingContext->DrawMeshArray);
     Rr_ArrayFree(DrawMeshIndicesArrays);
+    Rr_ArrayFree(RenderingContext->DrawTextArray);
+    Rr_ArrayFree(RenderingContext->DrawMeshArray);
     Rr_DestroyDescriptorWriter(&DescriptorWriter);
 }
 

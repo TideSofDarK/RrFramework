@@ -1,6 +1,7 @@
 #include "Rr_Pipeline.h"
 
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_log.h>
 
 #include "Rr_Memory.h"
 #include "Rr_Buffer.h"
@@ -35,6 +36,38 @@ Rr_PipelineBuilder Rr_GetPipelineBuilder(void)
     };
 
     return PipelineBuilder;
+}
+
+void Rr_EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format)
+{
+    if (PipelineBuilder->CurrentVertexInputAttribute + 1 >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Exceeding max allowed number of vertex attributes for a pipeline!");
+        abort();
+    }
+
+    PipelineBuilder->VertexInputAttributes[PipelineBuilder->CurrentVertexInputAttribute] = (VkVertexInputAttributeDescription){
+        .binding = 0,
+        .location = PipelineBuilder->CurrentVertexInputAttribute,
+        .format = Format,
+        .offset = PipelineBuilder->VertexInputStride,
+    };
+
+    if (Format == VK_FORMAT_R32G32_SFLOAT)
+    {
+        PipelineBuilder->VertexInputStride += sizeof(f32) * 2;
+    }
+    else if (Format == VK_FORMAT_R32G32B32_SFLOAT)
+    {
+        PipelineBuilder->VertexInputStride += sizeof(f32) * 3;
+    }
+    else
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Unknown vertex input format!");
+        abort();
+    }
+
+    PipelineBuilder->CurrentVertexInputAttribute++;
 }
 
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
@@ -152,6 +185,18 @@ VkPipeline Rr_BuildPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = NULL,
     };
+    VkVertexInputBindingDescription VertexInputBindingDescription = {
+        .binding = 0,
+        .stride = PipelineBuilder->VertexInputStride,
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    };
+    if (PipelineBuilder->CurrentVertexInputAttribute > 0)
+    {
+        VertexInputInfo.vertexBindingDescriptionCount = 1;
+        VertexInputInfo.vertexAttributeDescriptionCount = PipelineBuilder->CurrentVertexInputAttribute;
+        VertexInputInfo.pVertexBindingDescriptions = &VertexInputBindingDescription;
+        VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->VertexInputAttributes;
+    }
 
     VkDynamicState DynamicState[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
     VkPipelineDynamicStateCreateInfo DynamicStateInfo = {

@@ -129,7 +129,7 @@ typedef struct Rr_Renderer
 
     /* Text Rendering */
     Rr_TextPipeline TextPipeline;
-    // builtin font?
+    Rr_Font BuiltinFont;
 
     /* Generic Pipeline Layout */
     VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
@@ -160,15 +160,22 @@ typedef struct Rr_DrawMeshInfo
     Rr_MeshBuffers* MeshBuffers;
     const void* DrawData;
 } Rr_DrawMeshInfo;
+typedef struct Rr_DrawTextInfo
+{
+    const char* String;
+    vec2 Position;
+} Rr_DrawTextInfo;
 typedef struct Rr_RenderingContext
 {
     Rr_BeginRenderingInfo* Info;
     Rr_Renderer* Renderer;
     VkCommandBuffer CommandBuffer;
     Rr_DrawMeshInfo* DrawMeshArray;
+    Rr_DrawTextInfo* DrawTextArray;
 } Rr_RenderingContext;
 Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* Renderer, Rr_BeginRenderingInfo* Info);
 void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, Rr_DrawMeshInfo* Info);
+void Rr_DrawText(Rr_RenderingContext* RenderingContext, Rr_DrawTextInfo* Info);
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 
 static inline float Rr_GetAspectRatio(Rr_Renderer* Renderer)

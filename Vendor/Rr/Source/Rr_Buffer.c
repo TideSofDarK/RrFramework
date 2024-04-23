@@ -52,45 +52,31 @@ VkDeviceAddress Rr_GetBufferAddress(Rr_Renderer* const Renderer, Rr_Buffer* cons
     return vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
 }
 
-void Rr_CopyBufferToHost(Rr_Renderer* const Renderer, Rr_Buffer* Buffer)
+void Rr_UploadToDeviceBufferImmediate(
+    Rr_Renderer* Renderer,
+    Rr_Buffer* DstBuffer,
+    const void* Data,
+    size_t Size)
 {
-    VmaAllocationInfo AllocationInfo;
-    vmaGetAllocationInfo(Renderer->Allocator, Buffer->Allocation, &AllocationInfo);
-
-    Rr_Buffer HostMappedBuffer = Rr_CreateMappedBuffer(Renderer->Allocator, AllocationInfo.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-
     Rr_BeginImmediate(Renderer);
-    //    Rr_ImageBarrier SrcTransition = {
-    //        .Image = Image->Handle,
-    //        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //        .StageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-    //        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-    //        .CommandBuffer = Renderer->ImmediateMode.CommandBuffer,
-    //    };
-    //    Rr_ChainImageBarrier_Aspect(&SrcTransition, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
-    //
-    VkBufferCopy Copy = {
+    VkCommandBuffer CommandBuffer = Renderer->ImmediateMode.CommandBuffer;
+    Rr_Buffer HostMappedBuffer = Rr_CreateMappedBuffer(
+        Renderer->Allocator,
+        Size,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    SDL_memcpy(HostMappedBuffer.AllocationInfo.pMappedData, Data, Size);
+    VkBufferCopy BufferCopy = {
         .dstOffset = 0,
-        .size = AllocationInfo.size,
+        .size = Size,
         .srcOffset = 0
     };
-
     vkCmdCopyBuffer(
-        Renderer->ImmediateMode.CommandBuffer,
-        Buffer->Handle,
+        CommandBuffer,
         HostMappedBuffer.Handle,
+        DstBuffer->Handle,
         1,
-        &Copy);
-
+        &BufferCopy);
     Rr_EndImmediate(Renderer);
-
-    for (int Index = 0; Index < 960; ++Index)
-    {
-        fprintf(stderr, "%f\n", ((float*)HostMappedBuffer.AllocationInfo.pMappedData)[Index]);
-    }
-
-    //    Rr_SaveDepthToFile(Renderer, &Buffer, Image->Extent.width, Image->Extent.height);
-
     Rr_DestroyBuffer(&HostMappedBuffer, Renderer->Allocator);
 }
 

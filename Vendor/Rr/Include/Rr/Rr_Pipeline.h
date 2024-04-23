@@ -4,6 +4,10 @@
 #include "Rr_Asset.h"
 #include "Rr_Core.h"
 
+#define RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES 5
+#define RR_PIPELINE_SHADER_STAGES 2
+#define RR_PIPELINE_MAX_COLOR_ATTACHMENTS 2
+
 typedef struct Rr_Renderer Rr_Renderer;
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
@@ -34,6 +38,9 @@ typedef enum Rr_PolygonMode
 
 typedef struct Rr_PipelineBuilder
 {
+    VkVertexInputAttributeDescription VertexInputAttributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
+    u32 VertexInputStride;
+    u32 CurrentVertexInputAttribute;
     VkPipelineInputAssemblyStateCreateInfo InputAssembly;
     VkPipelineRasterizationStateCreateInfo Rasterizer;
     VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
@@ -47,6 +54,7 @@ typedef struct Rr_PipelineBuilder
 } Rr_PipelineBuilder;
 
 Rr_PipelineBuilder Rr_GetPipelineBuilder(void);
+void Rr_EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format);
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 void Rr_EnableAdditionalColorAttachment(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format);

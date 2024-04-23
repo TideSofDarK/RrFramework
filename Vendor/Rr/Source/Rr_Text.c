@@ -1,15 +1,16 @@
 #include "Rr_Text.h"
 
+#include "Rr_Image.h"
 #include "Rr_Renderer.h"
 #include "Rr_Asset.h"
 
-static void InitBuiltinFont(Rr_Renderer* Renderer)
+typedef struct Rr_TextGlobals
 {
-    Rr_ExternAsset(BuiltinFontPNG);
-    Rr_ExternAsset(BuiltinFontJSON);
-}
+    f32 ScreenSize;
+    f32 AtlasSize;
+} Rr_TextGlobals;
 
-static void InitGenericPipelineLayout(Rr_Renderer* Renderer)
+void Rr_CreateTextRenderer(Rr_Renderer* Renderer)
 {
     VkDevice Device = Renderer->Device;
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
@@ -50,13 +51,53 @@ static void InitGenericPipelineLayout(Rr_Renderer* Renderer)
     vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &TextPipeline->Layout);
 
     /* Pipeline */
+    Rr_ExternAsset(BuiltinTextVERT);
+    Rr_ExternAsset(BuiltinTextFRAG);
 
-}
+    Rr_PipelineBuilder Builder = Rr_GetPipelineBuilder();
+    Rr_EnableVertexInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
+    Rr_EnableVertexStage(&Builder, &BuiltinTextVERT);
+    Rr_EnableFragmentStage(&Builder, &BuiltinTextFRAG);
+    Rr_EnableAlphaBlend(&Builder);
+    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
+    TextPipeline->Handle = Rr_BuildPipeline(
+        Renderer,
+        &Builder,
+        TextPipeline->Layout);
 
-void Rr_CreateTextRenderer(Rr_Renderer* Renderer)
-{
-    InitBuiltinFont(Renderer);
-    InitGenericPipelineLayout(Renderer);
+    /* Quad Buffer */
+    f32 Quad[12] = {
+        0.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, 0.0f,
+        0.0f, 0.0f
+    };
+    TextPipeline->QuadBuffer = Rr_CreateBuffer(
+        Renderer->Allocator,
+        sizeof(Quad),
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false);
+    Rr_UploadToDeviceBufferImmediate(Renderer, &TextPipeline->QuadBuffer, Quad, sizeof(Quad));
+
+    /* Globals Buffers */
+    TextPipeline->GlobalsSize = sizeof(Rr_TextGlobals);
+    for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    {
+        TextPipeline->GlobalsBuffers[Index] = Rr_CreateBuffer(
+            Renderer->Allocator,
+            sizeof(Rr_TextGlobals),
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+            false);
+    }
+
+    /* Builtin Font */
+    Rr_ExternAsset(BuiltinFontPNG);
+    Rr_ExternAsset(BuiltinFontJSON);
+    Renderer->BuiltinFont = Rr_CreateFont(Renderer, &BuiltinFontPNG, &BuiltinFontJSON);
 }
 
 void Rr_DestroyTextRenderer(Rr_Renderer* Renderer)
@@ -69,4 +110,27 @@ void Rr_DestroyTextRenderer(Rr_Renderer* Renderer)
     {
         vkDestroyDescriptorSetLayout(Device, TextPipeline->DescriptorSetLayouts[Index], NULL);
     }
+    for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    {
+        Rr_DestroyBuffer(&TextPipeline->GlobalsBuffers[Index], Renderer->Allocator);
+    }
+    Rr_DestroyBuffer(&TextPipeline->QuadBuffer, Renderer->Allocator);
+    Rr_DestroyFont(Renderer, &Renderer->BuiltinFont);
+}
+
+Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
+{
+    return (Rr_Font){
+        .Atlas = Rr_CreateImageFromPNG(
+            FontPNG,
+            Renderer,
+            VK_IMAGE_USAGE_SAMPLED_BIT,
+            false,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    };
+}
+
+void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
+{
+    Rr_DestroyImage(Renderer, &Font->Atlas);
 }
