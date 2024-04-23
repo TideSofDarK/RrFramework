@@ -104,6 +104,7 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
     };
 
     /* Create shader modules. */
+    VkPipelineShaderStageCreateInfo ShaderStages[RR_PIPELINE_SHADER_STAGES];
     int ShaderStageCount = 0;
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
@@ -116,7 +117,7 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
             .codeSize = PipelineBuilder->VertexShaderSPV.Length
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
-        PipelineBuilder->ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
+        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
         ShaderStageCount++;
     }
 
@@ -130,7 +131,7 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
             .codeSize = PipelineBuilder->FragmentShaderSPV.Length
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
-        PipelineBuilder->ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
+        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
         ShaderStageCount++;
     }
 
@@ -174,7 +175,7 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = &PipelineBuilder->RenderInfo,
         .stageCount = ShaderStageCount,
-        .pStages = PipelineBuilder->ShaderStages,
+        .pStages = ShaderStages,
         .pVertexInputState = &VertexInputInfo,
         .pInputAssemblyState = &PipelineBuilder->InputAssembly,
         .pViewportState = &ViewportInfo,

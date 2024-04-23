@@ -10,6 +10,7 @@
 #include "Rr_Descriptor.h"
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
+#include "Rr_Text.h"
 
 typedef struct SDL_Window SDL_Window;
 typedef struct Rr_AppConfig Rr_AppConfig;
@@ -126,11 +127,14 @@ typedef struct Rr_Renderer
 
     VkSampler NearestSampler;
 
+    /* Text Rendering */
+    Rr_TextPipeline TextPipeline;
+    // builtin font?
+
     /* Generic Pipeline Layout */
     VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
     VkPipelineLayout GenericPipelineLayout;
 } Rr_Renderer;
-
 
 void Rr_CreateRenderer(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);

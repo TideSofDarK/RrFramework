@@ -1,10 +1,8 @@
 #pragma once
 
-// #include "RrTypes.h"
 #include "Rr_Buffer.h"
 #include "Rr_Asset.h"
 #include "Rr_Core.h"
-// #include "RrVulkan.h"
 
 typedef struct Rr_Renderer Rr_Renderer;
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
@@ -27,10 +25,6 @@ typedef struct Rr_Pipeline
     size_t GlobalsSize;
     size_t MaterialSize;
     size_t DrawSize;
-
-    //    void* DrawData;
-    //    Rr_Material** MaterialsArray;
-    //    Rr_DrawMeshInfo** MaterialDrawListArrays;
 } Rr_Pipeline;
 
 typedef enum Rr_PolygonMode
@@ -41,7 +35,7 @@ typedef enum Rr_PolygonMode
 
 typedef struct Rr_PipelineBuilder
 {
-    VkPipelineShaderStageCreateInfo ShaderStages[RR_PIPELINE_SHADER_STAGES];
+//    VkPipelineShaderStageCreateInfo ShaderStages[RR_PIPELINE_SHADER_STAGES];
     VkPipelineInputAssemblyStateCreateInfo InputAssembly;
     VkPipelineRasterizationStateCreateInfo Rasterizer;
     VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
@@ -49,8 +43,6 @@ typedef struct Rr_PipelineBuilder
     VkPipelineMultisampleStateCreateInfo Multisampling;
     VkPipelineDepthStencilStateCreateInfo DepthStencil;
     VkPipelineRenderingCreateInfo RenderInfo;
-    // VkShaderModuleCreateInfo VertexModuleCreateInfo;
-    // VkShaderModuleCreateInfo FragmentModuleCreateInfo;
     Rr_Asset VertexShaderSPV;
     Rr_Asset FragmentShaderSPV;
     size_t PushConstantsSize;

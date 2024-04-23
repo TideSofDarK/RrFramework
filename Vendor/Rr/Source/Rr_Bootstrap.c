@@ -734,7 +734,7 @@ void Rr_CreateRenderer(Rr_App* App)
 
     InitGenericPipelineLayout(Renderer);
 
-    Rr_InitText(Renderer);
+    Rr_CreateTextRenderer(Renderer);
 
     Rr_StackFree(Extensions);
 }
@@ -809,6 +809,8 @@ void Rr_DestroyRenderer(Rr_App* App)
 
     vkDestroyCommandPool(Renderer->Device, Renderer->ImmediateMode.CommandPool, NULL);
     vkDestroyFence(Device, Renderer->ImmediateMode.Fence, NULL);
+
+    Rr_DestroyTextRenderer(Renderer);
 
     /* Generic Pipeline Layout */
     vkDestroyPipelineLayout(Device, Renderer->GenericPipelineLayout, NULL);
