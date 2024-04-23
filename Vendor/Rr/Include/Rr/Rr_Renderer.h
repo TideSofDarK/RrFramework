@@ -14,7 +14,7 @@
 
 typedef struct SDL_Window SDL_Window;
 typedef struct Rr_AppConfig Rr_AppConfig;
-typedef struct Rr_Pipeline Rr_Pipeline;
+typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_Material Rr_Material;
 typedef struct Rr_App Rr_App;
 typedef struct Rr_MeshBuffers Rr_MeshBuffers;
@@ -148,7 +148,7 @@ void Rr_EndImmediate(Rr_Renderer* Renderer);
 /* Rendering */
 typedef struct Rr_BeginRenderingInfo
 {
-    Rr_Pipeline* Pipeline;
+    Rr_GenericPipeline* Pipeline;
     Rr_Image* InitialColor;
     Rr_Image* InitialDepth;
     Rr_Image* AdditionalAttachment;

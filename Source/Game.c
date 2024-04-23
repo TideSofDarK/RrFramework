@@ -77,7 +77,7 @@ static Rr_InputMapping InputMappings[RR_MAX_INPUT_MAPPINGS] = { 0 };
 
 static SUber3DGlobals ShaderGlobals;
 
-static Rr_Pipeline Uber3DPipeline = { 0 };
+static Rr_GenericPipeline Uber3DPipeline = { 0 };
 
 static Rr_Image SceneDepthImage;
 static Rr_Image SceneColorImage;
@@ -111,15 +111,17 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     Rr_ExternAsset(Uber3DVERT);
     Rr_ExternAsset(Uber3DFRAG);
 
-    Rr_PipelineBuilder Builder = Rr_GenericPipelineBuilder();
-    Builder.GlobalsSize = sizeof(SUber3DGlobals);
-    Builder.MaterialSize = sizeof(SUber3DMaterial);
-    Builder.DrawSize = sizeof(SUber3DDraw);
+    Rr_PipelineBuilder Builder = Rr_GetPipelineBuilder();
     Rr_EnableVertexStage(&Builder, &Uber3DVERT);
     Rr_EnableFragmentStage(&Builder, &Uber3DFRAG);
     Rr_EnableDepthTest(&Builder);
     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
-    Uber3DPipeline = Rr_BuildGenericPipeline(Renderer, &Builder);
+    Uber3DPipeline = Rr_BuildGenericPipeline(
+        Renderer,
+        &Builder,
+        sizeof(SUber3DGlobals),
+        sizeof(SUber3DMaterial),
+        sizeof(SUber3DDraw));
 }
 
 static void InitGlobals(Rr_Renderer* const Renderer)
@@ -208,7 +210,7 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyMesh(Renderer, &PocMesh);
     Rr_DestroyMesh(Renderer, &MarbleMesh);
 
-    Rr_DestroyPipeline(Renderer, &Uber3DPipeline);
+    Rr_DestroyGenericPipeline(Renderer, &Uber3DPipeline);
 }
 
 static void Update(Rr_App* App)

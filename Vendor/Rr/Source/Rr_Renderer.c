@@ -131,7 +131,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
     VkExtent2D ActiveResolution = Renderer->DrawTarget.ActiveResolution;
 
-    Rr_Pipeline* Pipeline = RenderingContext->Info->Pipeline;
+    Rr_GenericPipeline* Pipeline = RenderingContext->Info->Pipeline;
     Rr_GenericPipelineBuffers* PipelineBuffers = &Pipeline->Buffers[CurrentFrameIndex];
 
     Rr_BeginRenderingInfo* Info = RenderingContext->Info;
@@ -168,7 +168,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     vkCmdBindDescriptorSets(
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        Pipeline->Layout,
+        Renderer->GenericPipelineLayout,
         0,
         1,
         &GlobalsDescriptorSet,
@@ -378,7 +378,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         vkCmdBindDescriptorSets(
             CommandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            Pipeline->Layout,
+            Renderer->GenericPipelineLayout,
             1,
             1,
             &MaterialDescriptorSet,
@@ -396,7 +396,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             vkCmdBindDescriptorSets(
                 CommandBuffer,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                Pipeline->Layout,
+                Renderer->GenericPipelineLayout,
                 2,
                 1,
                 &DrawDescriptorSet,

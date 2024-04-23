@@ -9,7 +9,7 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Renderer.h"
 
-Rr_PipelineBuilder Rr_GenericPipelineBuilder(void)
+Rr_PipelineBuilder Rr_GetPipelineBuilder(void)
 {
     Rr_PipelineBuilder PipelineBuilder = {
         .InputAssembly = {
@@ -95,14 +95,11 @@ void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
     };
 }
 
-Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* PipelineBuilder)
+VkPipeline Rr_BuildPipeline(
+    Rr_Renderer* Renderer,
+    Rr_PipelineBuilder* PipelineBuilder,
+    VkPipelineLayout PipelineLayout)
 {
-    Rr_Pipeline Pipeline = {
-        .GlobalsSize = PipelineBuilder->GlobalsSize,
-        .MaterialSize = PipelineBuilder->MaterialSize,
-        .DrawSize = PipelineBuilder->DrawSize,
-    };
-
     /* Create shader modules. */
     VkPipelineShaderStageCreateInfo ShaderStages[RR_PIPELINE_SHADER_STAGES];
     int ShaderStageCount = 0;
@@ -187,9 +184,8 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
         .pDynamicState = &DynamicStateInfo
     };
 
-    vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline.Handle);
-
-    Pipeline.Layout = Renderer->GenericPipelineLayout;
+    VkPipeline Pipeline;
+    vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline);
 
     if (VertModule != VK_NULL_HANDLE)
     {
@@ -201,7 +197,21 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
         vkDestroyShaderModule(Renderer->Device, FragModule, NULL);
     }
 
-    Rr_StackFree(DescriptorSetLayoutsVK);
+    return Pipeline;
+}
+
+Rr_GenericPipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* PipelineBuilder,
+    size_t GlobalsSize,
+    size_t MaterialSize,
+    size_t DrawSize)
+{
+    Rr_GenericPipeline Pipeline = {
+        .GlobalsSize = GlobalsSize,
+        .MaterialSize = MaterialSize,
+        .DrawSize = DrawSize,
+    };
+
+    Pipeline.Handle = Rr_BuildPipeline(Renderer, PipelineBuilder, Renderer->GenericPipelineLayout);
 
     for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
@@ -211,7 +221,7 @@ Rr_Pipeline Rr_BuildGenericPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* P
     return Pipeline;
 }
 
-void Rr_DestroyPipeline(Rr_Renderer* Renderer, Rr_Pipeline* Pipeline)
+void Rr_DestroyGenericPipeline(Rr_Renderer* Renderer, Rr_GenericPipeline* Pipeline)
 {
     VkDevice Device = Renderer->Device;
 
@@ -224,7 +234,6 @@ void Rr_DestroyPipeline(Rr_Renderer* Renderer, Rr_Pipeline* Pipeline)
 
 Rr_GenericPipelineBuffers Rr_CreateGenericPipelineBuffers(Rr_Renderer* Renderer, size_t GlobalsSize, size_t MaterialSize, size_t DrawSize)
 {
-    VkDevice Device = Renderer->Device;
     Rr_GenericPipelineBuffers Buffers;
 
     /* Buffers */
