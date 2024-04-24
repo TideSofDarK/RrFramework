@@ -38,9 +38,13 @@ typedef enum Rr_PolygonMode
 
 typedef struct Rr_PipelineBuilder
 {
-    VkVertexInputAttributeDescription VertexInputAttributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
-    u32 VertexInputStride;
+    struct
+    {
+        u32 VertexInputStride;
+    } VertexInput[2];
+    VkVertexInputAttributeDescription Attributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
     u32 CurrentVertexInputAttribute;
+
     VkPipelineInputAssemblyStateCreateInfo InputAssembly;
     VkPipelineRasterizationStateCreateInfo Rasterizer;
     VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
@@ -54,7 +58,8 @@ typedef struct Rr_PipelineBuilder
 } Rr_PipelineBuilder;
 
 Rr_PipelineBuilder Rr_GetPipelineBuilder(void);
-void Rr_EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format);
+void Rr_EnablePerVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format);
+void Rr_EnablePerInstanceInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format);
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 void Rr_EnableAdditionalColorAttachment(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format);

@@ -22,6 +22,7 @@ Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlag
 Rr_Buffer Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size);
 Rr_Buffer Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size);
 Rr_Buffer Rr_CreateMappedBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags);
+Rr_Buffer Rr_CreateMappedVertexBuffer(Rr_Renderer* Renderer, size_t Size);
 /* @TODO: pass Rr_Renderer* instead! */
 void Rr_DestroyBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator);
 VkDeviceAddress Rr_GetBufferAddress(Rr_Renderer* Renderer, Rr_Buffer* Buffer);
@@ -31,14 +32,14 @@ void Rr_UploadToDeviceBufferImmediate(
     Rr_Buffer* DstBuffer,
     const void* Data,
     size_t Size);
-void Rr_UploadToDeviceUniformBuffer(
+void Rr_CopyToDeviceUniformBuffer(
     Rr_Renderer* Renderer,
     VkCommandBuffer CommandBuffer,
     Rr_StagingBuffer* StagingBuffer,
     Rr_Buffer* DstBuffer,
     const void* Data,
     size_t Size);
-void Rr_CopyToMappedBuffer(
+void Rr_CopyToMappedUniformBuffer(
     Rr_Renderer* Renderer,
     Rr_Buffer* DstBuffer,
     const void* Data,

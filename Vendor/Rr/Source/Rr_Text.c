@@ -54,7 +54,8 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     Rr_ExternAsset(BuiltinTextFRAG);
 
     Rr_PipelineBuilder Builder = Rr_GetPipelineBuilder();
-    Rr_EnableVertexInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
+    Rr_EnablePerVertexInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
+    Rr_EnablePerInstanceInputAttribute(&Builder, VK_FORMAT_R32_UINT);
     Rr_EnableVertexStage(&Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(&Builder, &BuiltinTextFRAG);
     Rr_EnableAlphaBlend(&Builder);
@@ -79,12 +80,16 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
         sizeof(Quad));
     Rr_UploadToDeviceBufferImmediate(Renderer, &TextPipeline->QuadBuffer, Quad, sizeof(Quad));
 
-    /* Globals Buffers */
+    /* Buffers */
     for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         TextPipeline->GlobalsBuffers[Index] = Rr_CreateDeviceUniformBuffer(
             Renderer,
             sizeof(Rr_TextGlobalsLayout));
+
+        TextPipeline->TextBuffers[Index] = Rr_CreateMappedVertexBuffer(
+            Renderer,
+            RR_TEXT_BUFFER_SIZE);
     }
 
     /* Builtin Font */
@@ -106,6 +111,7 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
     for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_DestroyBuffer(&TextPipeline->GlobalsBuffers[Index], Renderer->Allocator);
+        Rr_DestroyBuffer(&TextPipeline->TextBuffers[Index], Renderer->Allocator);
     }
     Rr_DestroyBuffer(&TextPipeline->QuadBuffer, Renderer->Allocator);
     Rr_DestroyFont(Renderer, &Renderer->BuiltinFont);

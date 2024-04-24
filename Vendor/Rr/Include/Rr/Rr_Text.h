@@ -8,6 +8,8 @@
 #include "Rr_Defines.h"
 #include "Rr_Image.h"
 
+#define RR_TEXT_BUFFER_SIZE (1024 * 1024)
+
 typedef struct Rr_Renderer Rr_Renderer;
 
 typedef enum Rr_TextPipelineDescriptorSet
@@ -69,6 +71,7 @@ typedef struct Rr_TextPipeline
     VkPipelineLayout Layout;
     Rr_Buffer QuadBuffer;
     Rr_Buffer GlobalsBuffers[RR_FRAME_OVERLAP];
+    Rr_Buffer TextBuffers[RR_FRAME_OVERLAP];
 } Rr_TextPipeline;
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer);

@@ -38,7 +38,7 @@ Rr_PipelineBuilder Rr_GetPipelineBuilder(void)
     return PipelineBuilder;
 }
 
-void Rr_EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format)
+static inline void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format, size_t Index)
 {
     if (PipelineBuilder->CurrentVertexInputAttribute + 1 >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
@@ -46,20 +46,26 @@ void Rr_EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat
         abort();
     }
 
-    PipelineBuilder->VertexInputAttributes[PipelineBuilder->CurrentVertexInputAttribute] = (VkVertexInputAttributeDescription){
-        .binding = 0,
-        .location = PipelineBuilder->CurrentVertexInputAttribute,
+    size_t Current = PipelineBuilder->CurrentVertexInputAttribute;
+
+    PipelineBuilder->Attributes[Current] = (VkVertexInputAttributeDescription){
+        .binding = Index,
+        .location = Current,
         .format = Format,
-        .offset = PipelineBuilder->VertexInputStride,
+        .offset = PipelineBuilder->VertexInput[Index].VertexInputStride,
     };
 
-    if (Format == VK_FORMAT_R32G32_SFLOAT)
+    if (Format == VK_FORMAT_R32_UINT)
     {
-        PipelineBuilder->VertexInputStride += sizeof(f32) * 2;
+        PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(u32);
+    }
+    else if (Format == VK_FORMAT_R32G32_SFLOAT)
+    {
+        PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(f32) * 2;
     }
     else if (Format == VK_FORMAT_R32G32B32_SFLOAT)
     {
-        PipelineBuilder->VertexInputStride += sizeof(f32) * 3;
+        PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(f32) * 3;
     }
     else
     {
@@ -68,6 +74,16 @@ void Rr_EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat
     }
 
     PipelineBuilder->CurrentVertexInputAttribute++;
+}
+
+void Rr_EnablePerVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format)
+{
+    EnableVertexInputAttribute(PipelineBuilder, Format, 0);
+}
+
+void Rr_EnablePerInstanceInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format)
+{
+    EnableVertexInputAttribute(PipelineBuilder, Format, 1);
 }
 
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
@@ -181,29 +197,38 @@ VkPipeline Rr_BuildPipeline(
         .pAttachments = PipelineBuilder->ColorBlendAttachments,
     };
 
+    /* Vertex Input */
     VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = NULL,
     };
-    VkVertexInputBindingDescription VertexInputBindingDescription = {
-        .binding = 0,
-        .stride = PipelineBuilder->VertexInputStride,
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    VkVertexInputBindingDescription VertexInputBindingDescriptions[2] = {
+        {
+            .binding = 0,
+            .stride = PipelineBuilder->VertexInput[0].VertexInputStride,
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        },
+        {
+            .binding = 1,
+            .stride = PipelineBuilder->VertexInput[1].VertexInputStride,
+            .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
+        }
     };
     if (PipelineBuilder->CurrentVertexInputAttribute > 0)
     {
-        VertexInputInfo.vertexBindingDescriptionCount = 1;
+        VertexInputInfo.vertexBindingDescriptionCount = 2;
         VertexInputInfo.vertexAttributeDescriptionCount = PipelineBuilder->CurrentVertexInputAttribute;
-        VertexInputInfo.pVertexBindingDescriptions = &VertexInputBindingDescription;
-        VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->VertexInputAttributes;
+        VertexInputInfo.pVertexBindingDescriptions = VertexInputBindingDescriptions;
+        VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->Attributes;
     }
 
-    VkDynamicState DynamicState[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    /* Dynamic States */
+    VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
     VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .pNext = NULL,
-        .pDynamicStates = DynamicState,
-        .dynamicStateCount = SDL_arraysize(DynamicState)
+        .pDynamicStates = DynamicStates,
+        .dynamicStateCount = SDL_arraysize(DynamicStates)
     };
 
     if (PipelineBuilder->RenderInfo.colorAttachmentCount > 1)

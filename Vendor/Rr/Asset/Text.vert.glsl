@@ -2,8 +2,9 @@
 #extension GL_ARB_shading_language_include : require
 
 layout(location = 0) in vec2 in_position;
+layout(location = 1) in uint in_glyphIndex;
 
-layout(location = 1) out vec2 out_uv;
+layout(location = 2) out vec2 out_uv;
 
 #include "Text.glsl"
 
@@ -19,7 +20,7 @@ void main()
 
     gl_Position = vec4(basePosition, 0.0f, 1.0f);
 
-    Glyph glyph = u_font.glyphs[65];
+    Glyph glyph = u_font.glyphs[in_glyphIndex];
 
     out_uv.x = glyph.normalizedX + (glyph.normalizedWidth * in_position.x);
     out_uv.y = glyph.normalizedY + glyph.normalizedHeight - (glyph.normalizedHeight * in_position.y);

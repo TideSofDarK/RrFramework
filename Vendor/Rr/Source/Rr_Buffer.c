@@ -57,7 +57,15 @@ Rr_Buffer Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size)
 
 Rr_Buffer Rr_CreateMappedBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags)
 {
-    return Rr_CreateBuffer(Allocator, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO_PREFER_HOST, true);
+    return Rr_CreateBuffer(Allocator, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, true);
+}
+
+Rr_Buffer Rr_CreateMappedVertexBuffer(Rr_Renderer* Renderer, size_t Size)
+{
+    return Rr_CreateMappedBuffer(
+        Renderer->Allocator,
+        Size,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 }
 
 void Rr_DestroyBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator)
@@ -101,7 +109,7 @@ void Rr_UploadToDeviceBufferImmediate(
     Rr_DestroyBuffer(&HostMappedBuffer, Renderer->Allocator);
 }
 
-void Rr_UploadToDeviceUniformBuffer(
+void Rr_CopyToDeviceUniformBuffer(
     Rr_Renderer* Renderer,
     VkCommandBuffer CommandBuffer,
     Rr_StagingBuffer* StagingBuffer,
@@ -166,7 +174,7 @@ void Rr_UploadToDeviceUniformBuffer(
     vkCmdPipelineBarrier2(CommandBuffer, &DependencyInfo);
 }
 
-void Rr_CopyToMappedBuffer(
+void Rr_CopyToMappedUniformBuffer(
     Rr_Renderer* Renderer,
     Rr_Buffer* DstBuffer,
     const void* Data,
