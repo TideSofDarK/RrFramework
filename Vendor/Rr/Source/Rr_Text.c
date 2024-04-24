@@ -1,16 +1,11 @@
 #include "Rr_Text.h"
 
+#include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Renderer.h"
 #include "Rr_Asset.h"
 
-typedef struct Rr_TextGlobals
-{
-    f32 ScreenSize;
-    f32 AtlasSize;
-} Rr_TextGlobals;
-
-void Rr_CreateTextRenderer(Rr_Renderer* Renderer)
+void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 {
     VkDevice Device = Renderer->Device;
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
@@ -18,7 +13,6 @@ void Rr_CreateTextRenderer(Rr_Renderer* Renderer)
     /* Descriptor Set Layouts */
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
     Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_AddDescriptor(&DescriptorLayoutBuilder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS] =
         Rr_BuildDescriptorLayout(
             &DescriptorLayoutBuilder,
@@ -27,7 +21,8 @@ void Rr_CreateTextRenderer(Rr_Renderer* Renderer)
 
     Rr_ClearDescriptors(&DescriptorLayoutBuilder);
     Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_CUSTOM] =
+    Rr_AddDescriptor(&DescriptorLayoutBuilder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT] =
         Rr_BuildDescriptorLayout(
             &DescriptorLayoutBuilder,
             Device,
@@ -59,7 +54,8 @@ void Rr_CreateTextRenderer(Rr_Renderer* Renderer)
     Rr_EnableVertexStage(&Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(&Builder, &BuiltinTextFRAG);
     Rr_EnableAlphaBlend(&Builder);
-    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
+     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
+//    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
     TextPipeline->Handle = Rr_BuildPipeline(
         Renderer,
         &Builder,
@@ -83,12 +79,11 @@ void Rr_CreateTextRenderer(Rr_Renderer* Renderer)
     Rr_UploadToDeviceBufferImmediate(Renderer, &TextPipeline->QuadBuffer, Quad, sizeof(Quad));
 
     /* Globals Buffers */
-    TextPipeline->GlobalsSize = sizeof(Rr_TextGlobals);
     for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         TextPipeline->GlobalsBuffers[Index] = Rr_CreateBuffer(
             Renderer->Allocator,
-            sizeof(Rr_TextGlobals),
+            sizeof(Rr_TextGlobalsLayout),
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
             false);
@@ -100,7 +95,7 @@ void Rr_CreateTextRenderer(Rr_Renderer* Renderer)
     Renderer->BuiltinFont = Rr_CreateFont(Renderer, &BuiltinFontPNG, &BuiltinFontJSON);
 }
 
-void Rr_DestroyTextRenderer(Rr_Renderer* Renderer)
+void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
 {
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
     VkDevice Device = Renderer->Device;
@@ -120,17 +115,37 @@ void Rr_DestroyTextRenderer(Rr_Renderer* Renderer)
 
 Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
 {
+    Rr_Image Atlas = Rr_CreateImageFromPNG(
+        FontPNG,
+        Renderer,
+        VK_IMAGE_USAGE_SAMPLED_BIT,
+        false,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    Rr_Buffer Buffer = Rr_CreateBuffer(
+        Renderer->Allocator,
+        sizeof(Rr_TextFontLayout),
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false);
+    Rr_TextFontLayout TextFontData = {
+        .Reserved = { 0.0f, 1.0f, 0.0f },
+        .AtlasSize = (f32)Atlas.Extent.width
+    };
+    Rr_UploadToDeviceBufferImmediate(
+        Renderer,
+        &Buffer,
+        &TextFontData,
+        sizeof(Rr_TextFontLayout));
+
     return (Rr_Font){
-        .Atlas = Rr_CreateImageFromPNG(
-            FontPNG,
-            Renderer,
-            VK_IMAGE_USAGE_SAMPLED_BIT,
-            false,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+        .Buffer = Buffer,
+        .Atlas = Atlas
     };
 }
 
 void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
 {
     Rr_DestroyImage(Renderer, &Font->Atlas);
+    Rr_DestroyBuffer(&Font->Buffer, Renderer->Allocator);
 }

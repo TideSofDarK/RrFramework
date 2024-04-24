@@ -16,7 +16,7 @@ Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlag
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = NULL,
         .size = Size,
-        .usage = UsageFlags,
+        .usage = UsageFlags | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
     };
 
     VmaAllocationCreateInfo AllocationInfo = {

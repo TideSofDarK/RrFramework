@@ -199,7 +199,7 @@ static void InitDevice(Rr_Renderer* const Renderer)
     Rr_StackFree(PhysicalDevices);
 }
 
-static void CreateDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
+static void InitDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
 {
     VkExtent3D Extent = (VkExtent3D){
         Width,
@@ -226,7 +226,7 @@ static void CleanupSwapchain(Rr_Renderer* const Renderer, VkSwapchainKHR Swapcha
     vkDestroySwapchainKHR(Renderer->Device, Swapchain, NULL);
 }
 
-static b32 CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
+static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
 {
     VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
 
@@ -407,7 +407,7 @@ static b32 CreateSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
         {
             CleanupDrawTarget(Renderer);
         }
-        CreateDrawTarget(Renderer, *Width, *Height);
+        InitDrawTarget(Renderer, *Width, *Height);
     }
 
     Rr_StackFree(Images);
@@ -651,7 +651,26 @@ static void InitGenericPipelineLayout(Rr_Renderer* const Renderer)
     vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &Renderer->GenericPipelineLayout);
 }
 
-void Rr_CreateRenderer(Rr_App* App)
+static void InitSamplers(Rr_Renderer* Renderer)
+{
+    VkSamplerCreateInfo SamplerInfo = { .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+
+    SamplerInfo.magFilter = VK_FILTER_NEAREST;
+    SamplerInfo.minFilter = VK_FILTER_NEAREST;
+    vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->NearestSampler);
+
+    SamplerInfo.magFilter = VK_FILTER_LINEAR;
+    SamplerInfo.minFilter = VK_FILTER_LINEAR;
+    vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->LinearSampler);
+}
+
+static void CleanupSamplers(Rr_Renderer* Renderer)
+{
+    vkDestroySampler(Renderer->Device, Renderer->NearestSampler, NULL);
+    vkDestroySampler(Renderer->Device, Renderer->LinearSampler, NULL);
+}
+
+void Rr_InitRenderer(Rr_App* App)
 {
     SDL_Window* Window = App->Window;
     Rr_Renderer* Renderer = &App->Renderer;
@@ -717,16 +736,13 @@ void Rr_CreateRenderer(Rr_App* App)
     // volkLoadDevice(Renderer->Device);
     //
 
-    VkSamplerCreateInfo SamplerInfo = { .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-    SamplerInfo.magFilter = VK_FILTER_NEAREST;
-    SamplerInfo.minFilter = VK_FILTER_NEAREST;
-    vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->NearestSampler);
+    InitSamplers(Renderer);
 
     InitDescriptors(Renderer);
 
     u32 Width, Height;
     SDL_GetWindowSizeInPixels(Window, (i32*)&Width, (i32*)&Height);
-    CreateSwapchain(Renderer, &Width, &Height);
+    InitSwapchain(Renderer, &Width, &Height);
 
     InitFrames(Renderer);
 
@@ -734,7 +750,7 @@ void Rr_CreateRenderer(Rr_App* App)
 
     InitGenericPipelineLayout(Renderer);
 
-    Rr_CreateTextRenderer(Renderer);
+    Rr_InitTextRenderer(Renderer);
 
     Rr_StackFree(Extensions);
 }
@@ -751,7 +767,7 @@ b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
 
         b8 bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
 
-        if (!bMinimized && Width > 0 && Height > 0 && CreateSwapchain(Renderer, (u32*)&Width, (u32*)&Height))
+        if (!bMinimized && Width > 0 && Height > 0 && InitSwapchain(Renderer, (u32*)&Width, (u32*)&Height))
         {
             SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 0);
             return true;
@@ -788,7 +804,7 @@ void Rr_EndImmediate(Rr_Renderer* Renderer)
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }
 
-void Rr_DestroyRenderer(Rr_App* App)
+void Rr_CleanupRenderer(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
@@ -796,8 +812,6 @@ void Rr_DestroyRenderer(Rr_App* App)
     vkDeviceWaitIdle(Renderer->Device);
 
     App->Config->CleanupFunc(App);
-
-    vkDestroySampler(Device, Renderer->NearestSampler, NULL);
 
     if (Renderer->ImGui.bInit)
     {
@@ -810,7 +824,7 @@ void Rr_DestroyRenderer(Rr_App* App)
     vkDestroyCommandPool(Renderer->Device, Renderer->ImmediateMode.CommandPool, NULL);
     vkDestroyFence(Device, Renderer->ImmediateMode.Fence, NULL);
 
-    Rr_DestroyTextRenderer(Renderer);
+    Rr_CleanupTextRenderer(Renderer);
 
     /* Generic Pipeline Layout */
     vkDestroyPipelineLayout(Device, Renderer->GenericPipelineLayout, NULL);
@@ -836,6 +850,8 @@ void Rr_DestroyRenderer(Rr_App* App)
     }
 
     CleanupDrawTarget(Renderer);
+
+    CleanupSamplers(Renderer);
 
     CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
 

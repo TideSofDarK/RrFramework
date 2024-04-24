@@ -125,7 +125,9 @@ typedef struct Rr_Renderer
     Rr_ImGui ImGui;
     Rr_ImmediateMode ImmediateMode;
 
+    /* Texture Samplers */
     VkSampler NearestSampler;
+    VkSampler LinearSampler;
 
     /* Text Rendering */
     Rr_TextPipeline TextPipeline;
@@ -136,9 +138,9 @@ typedef struct Rr_Renderer
     VkPipelineLayout GenericPipelineLayout;
 } Rr_Renderer;
 
-void Rr_CreateRenderer(Rr_App* App);
+void Rr_InitRenderer(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);
-void Rr_DestroyRenderer(Rr_App* App);
+void Rr_CleanupRenderer(Rr_App* App);
 void Rr_Draw(Rr_App* App);
 b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
 
@@ -162,6 +164,7 @@ typedef struct Rr_DrawMeshInfo
 } Rr_DrawMeshInfo;
 typedef struct Rr_DrawTextInfo
 {
+    Rr_Font* Font;
     const char* String;
     vec2 Position;
 } Rr_DrawTextInfo;

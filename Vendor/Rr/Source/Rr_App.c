@@ -199,7 +199,7 @@ void Rr_Run(Rr_AppConfig* Config)
 
     SDL_AddEventWatch(EventWatch, &App);
 
-    Rr_CreateRenderer(&App);
+    Rr_InitRenderer(&App);
     Rr_InitImGui(&App);
 
     Config->InitFunc(&App);
@@ -235,7 +235,7 @@ void Rr_Run(Rr_AppConfig* Config)
         Iterate(&App);
     }
 
-    Rr_DestroyRenderer(&App);
+    Rr_CleanupRenderer(&App);
 
     SDL_DelEventWatch(EventWatch, &App);
     SDL_DestroyWindow(App.Window);

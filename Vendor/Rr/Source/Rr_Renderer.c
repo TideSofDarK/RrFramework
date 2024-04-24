@@ -128,6 +128,11 @@ void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, Rr_DrawMeshInfo* Info)
 void Rr_DrawText(Rr_RenderingContext* RenderingContext, Rr_DrawTextInfo* Info)
 {
     Rr_ArrayPush(RenderingContext->DrawTextArray, Info);
+    Rr_Font** Font = &RenderingContext->DrawTextArray[Rr_ArrayCount(RenderingContext->DrawTextArray) - 1].Font;
+    if (*Font == NULL)
+    {
+        *Font = &RenderingContext->Renderer->BuiltinFont;
+    }
 }
 
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
@@ -250,6 +255,20 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
     Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, DrawDescriptorSet);
     Rr_ResetDescriptorWriter(&DescriptorWriter);
+
+    /* Upload Text Rendering Globals */
+    Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
+    Rr_TextGlobalsLayout TextGlobalsData = {
+        .Reserved = {0.0f, 0.0f},
+        .ScreenSize = { (f32)ActiveResolution.width, (f32)ActiveResolution.height }
+    };
+    Rr_UploadToDeviceBuffer(
+        Renderer,
+        CommandBuffer,
+        &Frame->StagingBuffer,
+        &TextPipeline->GlobalsBuffers[CurrentFrameIndex],
+        &TextGlobalsData,
+        sizeof(Rr_TextGlobalsLayout));
 
     /* Render Loop */
     Rr_ImageBarrier ColorImageTransition = {
@@ -424,7 +443,6 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     }
 
     /* Text Rendering */
-    Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Handle);
     vkCmdBindVertexBuffers(
         CommandBuffer,
@@ -439,31 +457,58 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     Rr_WriteBufferDescriptor(
         &DescriptorWriter,
         0,
-        TextPipeline->GlobalsBuffers[Rr_GetCurrentFrameIndex(Renderer)].Handle,
-        TextPipeline->GlobalsSize,
+        TextPipeline->GlobalsBuffers[CurrentFrameIndex].Handle,
+        sizeof(Rr_TextGlobalsLayout),
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_WriteImageDescriptor(
-        &DescriptorWriter,
-        1,
-        Renderer->BuiltinFont.Atlas.View,
-        Renderer->NearestSampler,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextGlobalsDescriptorSet);
     Rr_ResetDescriptorWriter(&DescriptorWriter);
+    vkCmdBindDescriptorSets(
+        CommandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        TextPipeline->Layout,
+        0,
+        1,
+        &TextGlobalsDescriptorSet,
+        0,
+        NULL);
     size_t TextCount = Rr_ArrayCount(RenderingContext->DrawTextArray);
     for (size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
     {
         Rr_DrawTextInfo* DrawTextInfo = &RenderingContext->DrawTextArray[TextIndex];
-        struct Rr_TextPushConstants {
-            vec2 PositionScreenSpace;
-            vec2 ReservedA;
-            vec4 ReservedB;
-            vec4 ReservedC;
-            vec4 ReservedD;
-            mat4 ReservedE;
-        } TextPushConstants;
+
+        VkDescriptorSet TextFontDescriptorSet = Rr_AllocateDescriptorSet(
+            &Frame->DescriptorAllocator,
+            Renderer->Device,
+            TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT]);
+        Rr_WriteBufferDescriptor(
+            &DescriptorWriter,
+            0,
+            DrawTextInfo->Font->Buffer.Handle,
+            sizeof(Rr_TextFontLayout),
+            0,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        Rr_WriteImageDescriptor(
+            &DescriptorWriter,
+            1,
+            DrawTextInfo->Font->Atlas.View,
+            Renderer->LinearSampler,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextFontDescriptorSet);
+        Rr_ResetDescriptorWriter(&DescriptorWriter);
+
+        vkCmdBindDescriptorSets(
+            CommandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            TextPipeline->Layout,
+            1,
+            1,
+            &TextFontDescriptorSet,
+            0,
+            NULL);
+
+        Rr_TextPushConstants TextPushConstants;
         TextPushConstants.PositionScreenSpace[0] = DrawTextInfo->Position[0];
         TextPushConstants.PositionScreenSpace[1] = DrawTextInfo->Position[1];
         vkCmdPushConstants(
