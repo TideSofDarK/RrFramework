@@ -36,7 +36,8 @@ typedef struct Rr_TextGlobalsLayout
 
 typedef struct Rr_TextFontLayout
 {
-    vec2 Reserved;
+    float Size;
+    float DistanceRange;
     vec2 AtlasSize;
     Rr_Glyph Glyphs[128];
 } Rr_TextFontLayout;

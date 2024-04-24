@@ -15,7 +15,8 @@ layout(set = 0, binding = 0) uniform Globals {
 
 /* Set 1 */
 layout(set = 1, binding = 0) uniform Font {
-    vec2 reserved;
+    float size;
+    float distanceRange;
     vec2 atlasSize;
     Glyph glyphs[128];
 } u_font;

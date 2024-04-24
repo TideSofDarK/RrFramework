@@ -138,7 +138,8 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
     cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
 
     Rr_TextFontLayout TextFontData = {
-        .Reserved = { 0.0f, 1.0f },
+        .Size = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
+        .DistanceRange = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "distanceRange")),
         .AtlasSize = {
             (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "width")),
             (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "height")),
