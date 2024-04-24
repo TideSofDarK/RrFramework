@@ -225,7 +225,7 @@ VkPipeline Rr_BuildPipeline(
         .pMultisampleState = &PipelineBuilder->Multisampling,
         .pColorBlendState = &ColorBlendInfo,
         .pDepthStencilState = &PipelineBuilder->DepthStencil,
-        .layout = Renderer->GenericPipelineLayout,
+        .layout = PipelineLayout,
         .pDynamicState = &DynamicStateInfo
     };
 
