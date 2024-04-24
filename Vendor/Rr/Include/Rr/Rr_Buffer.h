@@ -19,6 +19,8 @@ typedef struct Rr_StagingBuffer
 } Rr_StagingBuffer;
 
 Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped);
+Rr_Buffer Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size);
+Rr_Buffer Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size);
 Rr_Buffer Rr_CreateMappedBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags);
 /* @TODO: pass Rr_Renderer* instead! */
 void Rr_DestroyBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator);
@@ -29,7 +31,7 @@ void Rr_UploadToDeviceBufferImmediate(
     Rr_Buffer* DstBuffer,
     const void* Data,
     size_t Size);
-void Rr_UploadToDeviceBuffer(
+void Rr_UploadToDeviceUniformBuffer(
     Rr_Renderer* Renderer,
     VkCommandBuffer CommandBuffer,
     Rr_StagingBuffer* StagingBuffer,

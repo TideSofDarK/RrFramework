@@ -282,18 +282,12 @@ Rr_GenericPipelineBuffers Rr_CreateGenericPipelineBuffers(Rr_Renderer* Renderer,
     Rr_GenericPipelineBuffers Buffers;
 
     /* Buffers */
-    Buffers.Globals = Rr_CreateBuffer(
-        Renderer->Allocator,
-        GlobalsSize,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false);
-    Buffers.Material = Rr_CreateBuffer(
-        Renderer->Allocator,
-        MaterialSize,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false);
+    Buffers.Globals = Rr_CreateDeviceUniformBuffer(
+        Renderer,
+        GlobalsSize);
+    Buffers.Material = Rr_CreateDeviceUniformBuffer(
+        Renderer,
+        MaterialSize);
     const size_t DrawBufferSize = 1 << 20;
     Buffers.Draw = Rr_CreateMappedBuffer(
         Renderer->Allocator,

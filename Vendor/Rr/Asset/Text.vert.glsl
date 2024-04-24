@@ -9,10 +9,15 @@ layout(location = 1) out vec2 out_uv;
 
 void main()
 {
-    float aspect = u_globals.screenSize.x / u_globals.screenSize.y;
-    vec2 position = vec2(in_position);
-    // position.x /= aspect;
-    gl_Position = vec4(position, 0.0f, 1.0f);
+    const float size = 32.0f;
+    vec2 basePosition = u_constants.positionScreenSpace;
+    basePosition += in_position * size;
+    basePosition.x += 48.0f * gl_InstanceIndex;
+    basePosition /= u_globals.screenSize;
+    basePosition *= 2.0f;
+    basePosition -= 1.0f;
+
+    gl_Position = vec4(basePosition, 0.0f, 1.0f);
 
     out_uv.x = 0.0f;
     out_uv.y = 0.0f;

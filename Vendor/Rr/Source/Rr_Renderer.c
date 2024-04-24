@@ -153,7 +153,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
 
     /* Upload globals data. */
-    Rr_UploadToDeviceBuffer(
+    Rr_UploadToDeviceUniformBuffer(
         Renderer,
         CommandBuffer,
         &Frame->StagingBuffer,
@@ -262,13 +262,34 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         .Reserved = {0.0f, 0.0f},
         .ScreenSize = { (f32)ActiveResolution.width, (f32)ActiveResolution.height }
     };
-    Rr_UploadToDeviceBuffer(
+    Rr_UploadToDeviceUniformBuffer(
         Renderer,
         CommandBuffer,
         &Frame->StagingBuffer,
         &TextPipeline->GlobalsBuffers[CurrentFrameIndex],
         &TextGlobalsData,
         sizeof(Rr_TextGlobalsLayout));
+
+
+//    VkBufferMemoryBarrier2 BufferBarrier = {
+//        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+//        .pNext = NULL,
+//        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+//        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+//        .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT,
+//        .dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT,
+//        .size = VK_WHOLE_SIZE,
+//        .offset = 0,
+//        .buffer = TextPipeline->QuadBuffer.Handle,
+//    };
+//    VkDependencyInfo DependencyInfo = {
+//        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+//        .pNext = NULL,
+//        .bufferMemoryBarrierCount = 1,
+//        .pBufferMemoryBarriers = &BufferBarrier,
+//    };
+//
+//    vkCmdPipelineBarrier2(CommandBuffer, &DependencyInfo);
 
     /* Render Loop */
     Rr_ImageBarrier ColorImageTransition = {
@@ -467,7 +488,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         TextPipeline->Layout,
-        0,
+        RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS,
         1,
         &TextGlobalsDescriptorSet,
         0,
@@ -502,7 +523,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             CommandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             TextPipeline->Layout,
-            1,
+            RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT,
             1,
             &TextFontDescriptorSet,
             0,
@@ -518,7 +539,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             0,
             128,
             &TextPushConstants);
-        vkCmdDraw(CommandBuffer, 12, 1, 0, 0);
+        vkCmdDraw(CommandBuffer, 12, SDL_strlen(DrawTextInfo->String), 0, 0);
     }
 
     vkCmdEndRendering(CommandBuffer);

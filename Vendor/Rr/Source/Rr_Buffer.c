@@ -33,6 +33,28 @@ Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlag
     return Buffer;
 }
 
+Rr_Buffer Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size)
+{
+    Size = SDL_max(Size, 64);
+    return Rr_CreateBuffer(
+        Renderer->Allocator,
+        Size,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false);
+}
+
+Rr_Buffer Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size)
+{
+    // Size = SDL_max(Size, 128);
+    return Rr_CreateBuffer(
+        Renderer->Allocator,
+        Size,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false);
+}
+
 Rr_Buffer Rr_CreateMappedBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags)
 {
     return Rr_CreateBuffer(Allocator, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO_PREFER_HOST, true);
@@ -58,8 +80,7 @@ void Rr_UploadToDeviceBufferImmediate(
     const void* Data,
     size_t Size)
 {
-    Rr_BeginImmediate(Renderer);
-    VkCommandBuffer CommandBuffer = Renderer->ImmediateMode.CommandBuffer;
+    VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
     Rr_Buffer HostMappedBuffer = Rr_CreateMappedBuffer(
         Renderer->Allocator,
         Size,
@@ -80,7 +101,7 @@ void Rr_UploadToDeviceBufferImmediate(
     Rr_DestroyBuffer(&HostMappedBuffer, Renderer->Allocator);
 }
 
-void Rr_UploadToDeviceBuffer(
+void Rr_UploadToDeviceUniformBuffer(
     Rr_Renderer* Renderer,
     VkCommandBuffer CommandBuffer,
     Rr_StagingBuffer* StagingBuffer,
@@ -110,7 +131,7 @@ void Rr_UploadToDeviceBuffer(
         .srcAccessMask = VK_ACCESS_2_NONE,
         .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
         .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        .size = VK_WHOLE_SIZE,
+        .size = Size,
         .offset = 0,
         .buffer = DstBuffer->Handle,
     };
@@ -139,7 +160,7 @@ void Rr_UploadToDeviceBuffer(
 
     BufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     BufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    BufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+    BufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
     BufferBarrier.dstAccessMask = VK_ACCESS_2_UNIFORM_READ_BIT;
 
     vkCmdPipelineBarrier2(CommandBuffer, &DependencyInfo);

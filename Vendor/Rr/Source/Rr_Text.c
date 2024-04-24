@@ -54,8 +54,8 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     Rr_EnableVertexStage(&Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(&Builder, &BuiltinTextFRAG);
     Rr_EnableAlphaBlend(&Builder);
-     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
-//    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
+//     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
+    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
     TextPipeline->Handle = Rr_BuildPipeline(
         Renderer,
         &Builder,
@@ -70,23 +70,17 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
         1.0f, 0.0f,
         0.0f, 0.0f
     };
-    TextPipeline->QuadBuffer = Rr_CreateBuffer(
-        Renderer->Allocator,
-        sizeof(Quad),
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false);
+    TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(
+        Renderer,
+        sizeof(Quad));
     Rr_UploadToDeviceBufferImmediate(Renderer, &TextPipeline->QuadBuffer, Quad, sizeof(Quad));
 
     /* Globals Buffers */
     for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        TextPipeline->GlobalsBuffers[Index] = Rr_CreateBuffer(
-            Renderer->Allocator,
-            sizeof(Rr_TextGlobalsLayout),
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-            false);
+        TextPipeline->GlobalsBuffers[Index] = Rr_CreateDeviceUniformBuffer(
+            Renderer,
+            sizeof(Rr_TextGlobalsLayout));
     }
 
     /* Builtin Font */

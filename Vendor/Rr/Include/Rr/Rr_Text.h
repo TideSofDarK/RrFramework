@@ -21,6 +21,7 @@ typedef struct Rr_TextGlobalsLayout
 {
     vec2 Reserved;
     vec2 ScreenSize;
+    vec4 Reserved2;
 } Rr_TextGlobalsLayout;
 
 typedef struct Rr_TextFontLayout
