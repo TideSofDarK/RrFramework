@@ -17,6 +17,7 @@ layout(set = 0, binding = 0) uniform Globals {
 layout(set = 1, binding = 0) uniform Font {
     vec3 reserved;
     float atlasSize;
+    Glyph glyphs[128];
 } u_font;
 layout(set = 1, binding = 1) uniform sampler2D u_fontAtlas;
 

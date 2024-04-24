@@ -9,5 +9,5 @@ layout(location = 0) out vec4 out_color;
 
 void main()
 {
-    out_color = vec4(u_font.reserved, 0.5f);
+    out_color = vec4(texture(u_fontAtlas, vec2(in_uv.x, 1.0f - in_uv.y)).rgb, 0.5f);
 }

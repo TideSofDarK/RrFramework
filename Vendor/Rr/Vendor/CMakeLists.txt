@@ -43,7 +43,7 @@ target_compile_definitions(${VENDOR_TARGET} PRIVATE
         STBI_NO_FAILURE_STRINGS
 )
 
-target_sources(${VENDOR_TARGET} PRIVATE Vendor.cpp)
+target_sources(${VENDOR_TARGET} PRIVATE Vendor.cpp cjson/cJSON.c)
 target_link_libraries(${VENDOR_TARGET} PUBLIC
         Vulkan::Headers
         volk::volk_headers

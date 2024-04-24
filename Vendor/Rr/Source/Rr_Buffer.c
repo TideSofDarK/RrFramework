@@ -35,7 +35,7 @@ Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlag
 
 Rr_Buffer Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size)
 {
-    Size = SDL_max(Size, 64);
+    Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
         Renderer->Allocator,
         Size,

@@ -19,6 +19,8 @@ void main()
 
     gl_Position = vec4(basePosition, 0.0f, 1.0f);
 
-    out_uv.x = 0.0f;
-    out_uv.y = 0.0f;
+    Glyph glyph = u_font.glyphs[65];
+
+    out_uv.x = glyph.normalizedX + (glyph.normalizedWidth * in_position.x);
+    out_uv.y = glyph.normalizedY + glyph.normalizedHeight - (glyph.normalizedHeight * in_position.y);
 }

@@ -1,5 +1,9 @@
 #include "Rr_Text.h"
 
+#include <SDL_log.h>
+
+#include <cJSON/cJSON.h>
+
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Renderer.h"
@@ -54,8 +58,8 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     Rr_EnableVertexStage(&Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(&Builder, &BuiltinTextFRAG);
     Rr_EnableAlphaBlend(&Builder);
-//     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
-    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
+    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
+    // Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
     TextPipeline->Handle = Rr_BuildPipeline(
         Renderer,
         &Builder,
@@ -122,10 +126,58 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         false);
+
+    cJSON* FontDataJSON = cJSON_ParseWithLength(FontJSON->Data, FontJSON->Length);
+
+    cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
+
     Rr_TextFontLayout TextFontData = {
-        .Reserved = { 0.0f, 1.0f, 0.0f },
-        .AtlasSize = (f32)Atlas.Extent.width
+        .Reserved = { 0.0f, 1.0f },
+        .AtlasSize = {
+            (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "width")),
+            (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "height")),
+        }
     };
+
+    cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
+
+    size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
+    for (int GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
+    {
+        cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, GlyphIndex);
+
+        size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
+
+        cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
+
+        float AtlasBounds[4] = {};
+
+        if (cJSON_IsObject(AtlasBoundsJSON))
+        {
+            AtlasBounds[0] = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "left"));
+            AtlasBounds[1] = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "bottom"));
+            AtlasBounds[2] = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "right"));
+            AtlasBounds[3] = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "top"));
+        }
+
+        TextFontData.Glyphs[Unicode] = (Rr_Glyph){
+            .NormalizedWidth = (AtlasBounds[2] - AtlasBounds[0]) / TextFontData.AtlasSize[0],
+            .NormalizedHeight = (AtlasBounds[3] - AtlasBounds[1]) / TextFontData.AtlasSize[1],
+            .NormalizedX = AtlasBounds[0] / TextFontData.AtlasSize[0],
+            .NormalizedY = AtlasBounds[1] / TextFontData.AtlasSize[1],
+        };
+
+        // SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "%f %f %f %f\n",
+        //     TextFontData.Glyphs[Unicode].NormalizedWidth,
+        //     TextFontData.Glyphs[Unicode].NormalizedHeight,
+        //     TextFontData.Glyphs[Unicode].NormalizedX,
+        //     TextFontData.Glyphs[Unicode].NormalizedY);
+    }
+
+    // SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "%d\n", cJSON_GetArraySize(GlyphsJSON));
+
+    cJSON_Delete(FontDataJSON);
+
     Rr_UploadToDeviceBufferImmediate(
         Renderer,
         &Buffer,

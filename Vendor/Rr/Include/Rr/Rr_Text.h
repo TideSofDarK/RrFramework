@@ -17,6 +17,14 @@ typedef enum Rr_TextPipelineDescriptorSet
     RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT,
 } Rr_TextPipelineDescriptorSet;
 
+typedef struct Rr_Glyph
+{
+    float NormalizedWidth;
+    float NormalizedHeight;
+    float NormalizedX;
+    float NormalizedY;
+} Rr_Glyph;
+
 typedef struct Rr_TextGlobalsLayout
 {
     vec2 Reserved;
@@ -26,9 +34,17 @@ typedef struct Rr_TextGlobalsLayout
 
 typedef struct Rr_TextFontLayout
 {
-    vec3 Reserved;
-    f32 AtlasSize;
+    vec2 Reserved;
+    vec2 AtlasSize;
+    Rr_Glyph Glyphs[128];
 } Rr_TextFontLayout;
+
+// typedef struct Rr_TextStringLayout
+// {
+//     vec2 Reserved;
+//     vec2 AtlasSize;
+//     Rr_Glyph Glyphs[128];
+// } Rr_TextStringLayout;
 
 typedef struct Rr_TextPushConstants
 {
