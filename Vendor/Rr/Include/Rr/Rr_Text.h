@@ -21,25 +21,30 @@ typedef enum Rr_TextPipelineDescriptorSet
 
 typedef struct Rr_Glyph
 {
-    float NormalizedWidth;
-    float NormalizedHeight;
-    float NormalizedX;
-    float NormalizedY;
+    u32 AtlasXY;
+    u32 AtlasWH;
+    f32 Advance;
+    f32 Reserved;
+    f32 Left;
+    f32 Bottom;
+    f32 Right;
+    f32 Top;
 } Rr_Glyph;
 
 typedef struct Rr_TextGlobalsLayout
 {
-    vec2 Reserved;
+    float Time;
+    float Reserved;
     vec2 ScreenSize;
     vec4 Reserved2;
 } Rr_TextGlobalsLayout;
 
 typedef struct Rr_TextFontLayout
 {
-    float Size;
+    float Advance;
     float DistanceRange;
     vec2 AtlasSize;
-    Rr_Glyph Glyphs[128];
+    Rr_Glyph Glyphs[2048];
 } Rr_TextFontLayout;
 
 // typedef struct Rr_TextStringLayout

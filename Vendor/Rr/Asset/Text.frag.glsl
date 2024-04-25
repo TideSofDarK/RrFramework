@@ -22,13 +22,9 @@ void main()
 {
     vec2 uv = vec2(in_uv.x, 1.0f - in_uv.y);
     vec2 dxdy = fwidth(uv) * textureSize(u_fontAtlas, 0);
-    float v_weight = 0.0f;
-    // float dist = getDistance(uv) + min(v_weight, 0.5 – 1.0 / 2.0) - 0.5;
-    float dist = getDistance(uv) + min(v_weight, 0.5f - 1.0f / u_font.distanceRange) - 0.5f;
+    float weight = 0.0f;
+    float dist = getDistance(uv) + min(weight, 0.5f - 1.0f / u_font.distanceRange) - 0.5f;
     float opacity = clamp(dist * u_font.distanceRange / length(dxdy) + 0.5, 0.0, 1.0);
 
-    // outScreen = vec4(v_rgba.rgb, opacity * v_rgba.a);
-
     out_color = vec4(vec3(1.0f), opacity);
-    // out_color = vec4(texture(u_fontAtlas, vec2(in_uv.x, 1.0f - in_uv.y)).rgb, 0.5f);
 }

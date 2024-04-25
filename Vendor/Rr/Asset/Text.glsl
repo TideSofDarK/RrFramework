@@ -1,24 +1,29 @@
 #include "Shared.glsl"
 
 struct Glyph {
-    float normalizedWidth;
-    float normalizedHeight;
-    float normalizedX;
-    float normalizedY;
+    uint atlasXY;
+    uint atlasWH;
+    float advance;
+    float reserved;
+    float left;
+    float bottom;
+    float right;
+    float top;
 };
 
 /* Set 0 */
 layout(set = 0, binding = 0) uniform Globals {
-    vec2 reserved;
+    float time;
+    float reserved;
     vec2 screenSize;
 } u_globals;
 
 /* Set 1 */
 layout(set = 1, binding = 0) uniform Font {
-    float size;
+    float advance;
     float distanceRange;
     vec2 atlasSize;
-    Glyph glyphs[128];
+    Glyph glyphs[2048];
 } u_font;
 layout(set = 1, binding = 1) uniform sampler2D u_fontAtlas;
 

@@ -257,9 +257,12 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     Rr_ResetDescriptorWriter(&DescriptorWriter);
 
     /* Upload Text Rendering Globals */
+    u64 Ticks = SDL_GetTicks();
+    float Time = (float)((double)Ticks / 1000.0);
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
     Rr_TextGlobalsLayout TextGlobalsData = {
-        .Reserved = { 0.0f, 0.0f },
+        .Reserved = 0.0f,
+        .Time = Time,
         .ScreenSize = { (f32)ActiveResolution.width, (f32)ActiveResolution.height }
     };
     Rr_CopyToDeviceUniformBuffer(
@@ -269,26 +272,6 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         &TextPipeline->GlobalsBuffers[CurrentFrameIndex],
         &TextGlobalsData,
         sizeof(Rr_TextGlobalsLayout));
-
-    //    VkBufferMemoryBarrier2 BufferBarrier = {
-    //        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-    //        .pNext = NULL,
-    //        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-    //        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-    //        .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT,
-    //        .dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT,
-    //        .size = VK_WHOLE_SIZE,
-    //        .offset = 0,
-    //        .buffer = TextPipeline->QuadBuffer.Handle,
-    //    };
-    //    VkDependencyInfo DependencyInfo = {
-    //        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-    //        .pNext = NULL,
-    //        .bufferMemoryBarrierCount = 1,
-    //        .pBufferMemoryBarriers = &BufferBarrier,
-    //    };
-    //
-    //    vkCmdPipelineBarrier2(CommandBuffer, &DependencyInfo);
 
     /* Render Loop */
     Rr_ImageBarrier ColorImageTransition = {

@@ -186,7 +186,7 @@ static void Init(Rr_App* App)
     Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 
-    TestString = Rr_CreateString("Test String!!");
+    TestString = Rr_CreateString("A quick brown fox @#$");
 }
 
 static void Cleanup(Rr_App* App)
