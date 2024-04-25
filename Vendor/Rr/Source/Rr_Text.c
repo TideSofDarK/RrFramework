@@ -8,6 +8,7 @@
 #include "Rr_Image.h"
 #include "Rr_Renderer.h"
 #include "Rr_Asset.h"
+#include "Rr_Memory.h"
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 {
@@ -201,4 +202,77 @@ void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
 {
     Rr_DestroyImage(Renderer, &Font->Atlas);
     Rr_DestroyBuffer(&Font->Buffer, Renderer->Allocator);
+}
+
+Rr_String Rr_CreateString(const char* CString)
+{
+    static u32 Buffer[2048] = {};
+
+    const u8 Ready = 128;
+    const u8 Two = 192;
+    const u8 Three = 224;
+    const u8 Four = 240;
+    const u8 Five = 248;
+
+    size_t SourceLength = SDL_strlen(CString);
+
+    u8 Carry = 0;
+    size_t FinalIndex = 0;
+    u32 FinalCharacter = 0;
+    for (size_t SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
+    {
+        if (Carry > 0)
+        {
+            Carry--;
+            FinalCharacter |= (u8)((~Two & CString[SourceIndex]) << (Carry * 6));
+
+            if (Carry == 0)
+            {
+                Buffer[FinalIndex] = FinalCharacter;
+                FinalIndex++;
+            }
+        }
+        else
+        {
+            if ((CString[SourceIndex] & Four) == Four)
+            {
+                FinalCharacter = (u8)(~Five & CString[SourceIndex]);
+                FinalCharacter <<= 3 * 6;
+                Carry = 3;
+                continue;
+            }
+            else if ((CString[SourceIndex] & Three) == Three)
+            {
+                FinalCharacter = (u8)(~Four & CString[SourceIndex]);
+                FinalCharacter <<= 2 * 6;
+                Carry = 2;
+                continue;
+            }
+            else if ((CString[SourceIndex] & Two) == Two)
+            {
+                FinalCharacter = (u8)(~Three & CString[SourceIndex]);
+                FinalCharacter <<= 1 * 6;
+                Carry = 1;
+                continue;
+            }
+            else
+            {
+                Buffer[FinalIndex] = CString[SourceIndex] & ~Ready;
+                FinalIndex++;
+            }
+        }
+    }
+
+    const u32* Data = (u32*)Rr_Malloc(sizeof(u32) * FinalIndex);
+    SDL_memcpy((void*)Data, Buffer, sizeof(u32) * FinalIndex);
+
+    return (Rr_String){
+        .Data = Data,
+        .Length = FinalIndex
+    };
+}
+
+void Rr_DestroyString(Rr_String* String)
+{
+    Rr_Free((void*)String->Data);
 }

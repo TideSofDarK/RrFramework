@@ -80,3 +80,12 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer);
 
 Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON);
 void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font);
+
+typedef struct Rr_String
+{
+    size_t Length;
+    const u32* Data;
+} Rr_String;
+
+Rr_String Rr_CreateString(const char* CString);
+void Rr_DestroyString(Rr_String* String);

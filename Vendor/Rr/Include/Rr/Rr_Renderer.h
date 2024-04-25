@@ -165,7 +165,7 @@ typedef struct Rr_DrawMeshInfo
 typedef struct Rr_DrawTextInfo
 {
     Rr_Font* Font;
-    const char* String;
+    Rr_String* String;
     vec2 Position;
 } Rr_DrawTextInfo;
 typedef struct Rr_RenderingContext

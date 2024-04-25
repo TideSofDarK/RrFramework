@@ -541,12 +541,8 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             128,
             &TextPushConstants);
         /* Upload and bind text data. */
-        size_t TextLength = SDL_strlen(DrawTextInfo->String);
-        for (int CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
-        {
-            u32* CurrentChar = TextData + TextDataOffset + CharacterIndex;
-            *CurrentChar = (u32)DrawTextInfo->String[CharacterIndex];
-        }
+        size_t TextLength = DrawTextInfo->String->Length;
+        SDL_memcpy(TextData + TextDataOffset, DrawTextInfo->String->Data, TextLength * sizeof(u32));
         vkCmdBindVertexBuffers(
             CommandBuffer,
             1,
@@ -556,7 +552,6 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         TextDataOffset += TextLength;
         vkCmdDraw(CommandBuffer, 12, TextLength, 0, 0);
     }
-
     SDL_memcpy(TextPipeline->TextBuffers[CurrentFrameIndex].AllocationInfo.pMappedData, TextData, TextDataOffset * sizeof(u32));
 
     vkCmdEndRendering(CommandBuffer);

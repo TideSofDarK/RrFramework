@@ -95,6 +95,8 @@ static Rr_Image MarbleNormal;
 static Rr_Image MarbleSpecular;
 static Rr_MeshBuffers MarbleMesh;
 
+static Rr_String TestString;
+
 static void InitInputMappings(void)
 {
     InputMappings[EIA_UP].Primary = SDL_SCANCODE_W;
@@ -183,6 +185,8 @@ static void Init(Rr_App* App)
 
     Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
+
+    TestString = Rr_CreateString("Test String!!");
 }
 
 static void Cleanup(Rr_App* App)
@@ -211,6 +215,8 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyMesh(Renderer, &MarbleMesh);
 
     Rr_DestroyGenericPipeline(Renderer, &Uber3DPipeline);
+
+    Rr_DestroyString(&TestString);
 }
 
 static void Update(Rr_App* App)
@@ -320,7 +326,7 @@ static void Draw(Rr_App* const App)
         .DrawData = &MarbleDraw
     };
     Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
-    Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = "Test String!!", .Position = { 50.0f, 50.0f } });
+    Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });
 
     Rr_EndRendering(&RenderingContext);
 }
