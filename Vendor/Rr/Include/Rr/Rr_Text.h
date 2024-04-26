@@ -23,13 +23,15 @@ typedef struct Rr_Glyph
 {
     u32 AtlasXY;
     u32 AtlasWH;
-    f32 Advance;
-    f32 Reserved;
-    f32 Left;
-    f32 Bottom;
-    f32 Right;
-    f32 Top;
+    u32 PlaneLB;
+    u32 PlaneRT;
 } Rr_Glyph;
+
+typedef struct Rr_TextPerInstanceVertexInput
+{
+    vec2 Advance;
+    u32 Unicode;
+} Rr_TextPerInstanceVertexInput;
 
 typedef struct Rr_TextGlobalsLayout
 {
@@ -68,6 +70,8 @@ typedef struct Rr_Font
 {
     Rr_Image Atlas;
     Rr_Buffer Buffer;
+    f32 Advances[2048];
+    f32 LineHeight;
 } Rr_Font;
 
 typedef struct Rr_TextPipeline

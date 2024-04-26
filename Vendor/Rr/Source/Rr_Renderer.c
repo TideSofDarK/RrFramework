@@ -477,7 +477,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         NULL);
     size_t TextDataOffset = 0;
     size_t TextCount = Rr_ArrayCount(RenderingContext->DrawTextArray);
-    u32* TextData = (u32*)Rr_Malloc(RR_TEXT_BUFFER_SIZE);
+    Rr_TextPerInstanceVertexInput* TextData = (Rr_TextPerInstanceVertexInput*)Rr_Malloc(RR_TEXT_BUFFER_SIZE);
     for (size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
     {
         Rr_DrawTextInfo* DrawTextInfo = &RenderingContext->DrawTextArray[TextIndex];
@@ -525,17 +525,48 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             &TextPushConstants);
         /* Upload and bind text data. */
         size_t TextLength = DrawTextInfo->String->Length;
-        SDL_memcpy(TextData + TextDataOffset, DrawTextInfo->String->Data, TextLength * sizeof(u32));
+        size_t FinalTextLength = 0;
+        vec2 AccumulatedAdvance = {};
+        for (size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
+        {
+            u32 Unicode = DrawTextInfo->String->Data[CharacterIndex];
+            Rr_TextPerInstanceVertexInput* Input = &TextData[TextDataOffset + FinalTextLength];
+
+            if (Unicode == '\n')
+            {
+                AccumulatedAdvance[1] += DrawTextInfo->Font->LineHeight;
+                AccumulatedAdvance[0] = 0.0f;
+                continue;
+            }
+            else if (Unicode == ' ')
+            {
+                f32 Advance = DrawTextInfo->Font->Advances[Unicode];
+                AccumulatedAdvance[0] += Advance;
+                continue;
+            }
+            else
+            {
+                *Input = (Rr_TextPerInstanceVertexInput){
+                    .Unicode = Unicode,
+                    .Advance = {
+                        AccumulatedAdvance[0],
+                        AccumulatedAdvance[1] }
+                };
+                FinalTextLength++;
+                f32 Advance = DrawTextInfo->Font->Advances[Unicode];
+                AccumulatedAdvance[0] += Advance;
+            }
+        }
         vkCmdBindVertexBuffers(
             CommandBuffer,
             1,
             1,
             &TextPipeline->TextBuffers[CurrentFrameIndex].Handle,
-            &(VkDeviceSize){ TextDataOffset * sizeof(u32) });
-        TextDataOffset += TextLength;
-        vkCmdDraw(CommandBuffer, 12, TextLength, 0, 0);
+            &(VkDeviceSize){ TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput) });
+        TextDataOffset += FinalTextLength;
+        vkCmdDraw(CommandBuffer, 12, FinalTextLength, 0, 0);
     }
-    SDL_memcpy(TextPipeline->TextBuffers[CurrentFrameIndex].AllocationInfo.pMappedData, TextData, TextDataOffset * sizeof(u32));
+    SDL_memcpy(TextPipeline->TextBuffers[CurrentFrameIndex].AllocationInfo.pMappedData, TextData, TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput));
 
     vkCmdEndRendering(CommandBuffer);
 

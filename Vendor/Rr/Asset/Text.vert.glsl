@@ -2,7 +2,8 @@
 #extension GL_ARB_shading_language_include : require
 
 layout(location = 0) in vec2 in_position;
-layout(location = 1) in uint in_glyphIndex;
+layout(location = 1) in vec2 in_advance;
+layout(location = 2) in uint in_glyphIndex;
 
 layout(location = 2) out vec2 out_uv;
 
@@ -20,19 +21,23 @@ void main()
     float normalizedAtlasW = (float(((glyph.atlasWH & ~mask) >> 16))) / atlasSize.x;
     float normalizedAtlasH = (float((glyph.atlasWH & mask))) / atlasSize.y;
 
-    vec2 glyphPosition = vec2(0.0f);
-    glyphPosition.x += (1.0f - in_position.x) * glyph.left;
-    glyphPosition.x += (in_position.x) * (glyph.right);
+    vec2 planeLB = unpackHalf2x16(glyph.planeLB);
+    vec2 planeRT = unpackHalf2x16(glyph.planeRT);
 
-    glyphPosition.y += (1.0f - in_position.y) * (1.0f - glyph.top);
-    glyphPosition.y += (in_position.y) * ((1.0f - glyph.bottom));
+    vec2 glyphPosition = vec2(0.0f);
+    glyphPosition.x += (1.0f - in_position.x) * planeLB.x;
+    glyphPosition.x += (in_position.x) * planeRT.x;
+
+    glyphPosition.y += (1.0f - in_position.y) * (1.0f - planeRT.y);
+    glyphPosition.y += (in_position.y) * (1.0f - planeLB.y);
 
     const float size = 32.0f;
     const float lineHeight = 1.2f;
     const float glyphAspect = normalizedAtlasW / normalizedAtlasH;
     vec2 basePosition = u_constants.positionScreenSpace;
     basePosition += glyphPosition * vec2(size, size);
-    basePosition.x += size * glyph.advance * gl_InstanceIndex;
+    basePosition.x += size * in_advance.x;
+    basePosition.y += size * in_advance.y;
     basePosition /= u_globals.screenSize;
     basePosition *= 2.0f;
     basePosition -= 1.0f;

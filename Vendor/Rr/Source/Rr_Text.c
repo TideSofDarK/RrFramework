@@ -9,6 +9,7 @@
 #include "Rr_Renderer.h"
 #include "Rr_Asset.h"
 #include "Rr_Memory.h"
+#include "Rr_Util.h"
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 {
@@ -56,6 +57,7 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 
     Rr_PipelineBuilder Builder = Rr_GetPipelineBuilder();
     Rr_EnablePerVertexInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
+    Rr_EnablePerInstanceInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
     Rr_EnablePerInstanceInputAttribute(&Builder, VK_FORMAT_R32_UINT);
     Rr_EnableVertexStage(&Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(&Builder, &BuiltinTextFRAG);
@@ -82,13 +84,13 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     Rr_UploadToDeviceBufferImmediate(Renderer, &TextPipeline->QuadBuffer, Quad, sizeof(Quad));
 
     /* Buffers */
-    for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    for (int FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
     {
-        TextPipeline->GlobalsBuffers[Index] = Rr_CreateDeviceUniformBuffer(
+        TextPipeline->GlobalsBuffers[FrameIndex] = Rr_CreateDeviceUniformBuffer(
             Renderer,
             sizeof(Rr_TextGlobalsLayout));
 
-        TextPipeline->TextBuffers[Index] = Rr_CreateMappedVertexBuffer(
+        TextPipeline->TextBuffers[FrameIndex] = Rr_CreateMappedVertexBuffer(
             Renderer,
             RR_TEXT_BUFFER_SIZE);
     }
@@ -137,13 +139,20 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
     cJSON* FontDataJSON = cJSON_ParseWithLength(FontJSON->Data, FontJSON->Length);
 
     cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
+    cJSON* MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
 
     Rr_TextFontLayout TextFontData = {
         .DistanceRange = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "distanceRange")),
         .AtlasSize = {
             (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "width")),
             (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "height")),
-        }
+        },
+    };
+
+    Rr_Font Font = {
+        .Buffer = Buffer,
+        .Atlas = Atlas,
+        .LineHeight = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight"))
     };
 
     cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
@@ -166,7 +175,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
         }
 
         cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
-        f32 PlaneBounds[4] = {};
+        vec4 PlaneBounds = {};
         if (cJSON_IsObject(PlaneBoundsJSON))
         {
             PlaneBounds[0] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
@@ -175,24 +184,19 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
             PlaneBounds[3] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
         }
 
+        Font.Advances[Unicode] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance"));
+
+        u32 PlaneLB;
+        u32 PlaneRT;
+
+        Rr_PackVec4(PlaneBounds, &PlaneLB, &PlaneRT);
+
         TextFontData.Glyphs[Unicode] = (Rr_Glyph){
-            .Advance = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance")),
             .AtlasXY = ((u32)AtlasBounds[0] << 16) | (u32)AtlasBounds[1],
             .AtlasWH = ((u32)(AtlasBounds[2] - AtlasBounds[0]) << 16) | (u32)(AtlasBounds[3] - AtlasBounds[1]),
-            .Left = PlaneBounds[0],
-            .Bottom = PlaneBounds[1],
-            .Right = PlaneBounds[2],
-            .Top = PlaneBounds[3]
+            .PlaneLB = PlaneLB,
+            .PlaneRT = PlaneRT
         };
-
-//        TextFontData.Glyphs[Unicode] = (Rr_Glyph){
-//            .NormalizedWidth = (AtlasBounds[2] - AtlasBounds[0]) / TextFontData.AtlasSize[0],
-//            .NormalizedHeight = (AtlasBounds[3] - AtlasBounds[1]) / TextFontData.AtlasSize[1],
-//            .NormalizedX = AtlasBounds[0] / TextFontData.AtlasSize[0],
-//            .NormalizedY = AtlasBounds[1] / TextFontData.AtlasSize[1],
-//        };
-
-//        TextFontData.Advance = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance"));
     }
 
     cJSON_Delete(FontDataJSON);
@@ -203,10 +207,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
         &TextFontData,
         sizeof(Rr_TextFontLayout));
 
-    return (Rr_Font){
-        .Buffer = Buffer,
-        .Atlas = Atlas
-    };
+    return Font;
 }
 
 void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)

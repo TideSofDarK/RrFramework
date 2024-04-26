@@ -3,12 +3,8 @@
 struct Glyph {
     uint atlasXY;
     uint atlasWH;
-    float advance;
-    float reserved;
-    float left;
-    float bottom;
-    float right;
-    float top;
+    uint planeLB;
+    uint planeRT;
 };
 
 /* Set 0 */

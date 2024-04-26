@@ -96,6 +96,7 @@ static Rr_Image MarbleSpecular;
 static Rr_MeshBuffers MarbleMesh;
 
 static Rr_String TestString;
+static Rr_String DebugString;
 
 static void InitInputMappings(void)
 {
@@ -186,7 +187,8 @@ static void Init(Rr_App* App)
     Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 
-    TestString = Rr_CreateString("A quick brown fox @#$");
+    TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
+    DebugString = Rr_CreateString("Doddododododod");
 }
 
 static void Cleanup(Rr_App* App)
@@ -217,6 +219,7 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyGenericPipeline(Renderer, &Uber3DPipeline);
 
     Rr_DestroyString(&TestString);
+    Rr_DestroyString(&DebugString);
 }
 
 static void Update(Rr_App* App)
@@ -327,6 +330,7 @@ static void Draw(Rr_App* const App)
     };
     Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
     Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });
+    Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &DebugString, .Position = { 450.0f, 54.0f } });
 
     Rr_EndRendering(&RenderingContext);
 }
