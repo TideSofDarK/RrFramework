@@ -152,7 +152,8 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
     Rr_Font Font = {
         .Buffer = Buffer,
         .Atlas = Atlas,
-        .LineHeight = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight"))
+        .LineHeight = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
+        .DefaultSize = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size"))
     };
 
     cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");

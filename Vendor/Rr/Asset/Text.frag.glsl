@@ -2,6 +2,7 @@
 #extension GL_ARB_shading_language_include : require
 
 layout(location = 2) in vec2 in_uv;
+layout(location = 3) in vec3 in_color;
 
 layout(location = 0) out vec4 out_color;
 
@@ -26,5 +27,5 @@ void main()
     float dist = getDistance(uv) + min(weight, 0.5f - 1.0f / u_font.distanceRange) - 0.5f;
     float opacity = clamp(dist * u_font.distanceRange / length(dxdy) + 0.5, 0.0, 1.0);
 
-    out_color = vec4(vec3(1.0f), opacity);
+    out_color = vec4(in_color, opacity);
 }

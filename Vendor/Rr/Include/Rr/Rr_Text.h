@@ -9,6 +9,8 @@
 #include "Rr_Image.h"
 
 #define RR_TEXT_BUFFER_SIZE (1024 * 1024)
+#define RR_TEXT_DEFAULT_SIZE (0.0f)
+#define RR_TEXT_MAX_COLORS 8
 
 typedef struct Rr_Renderer Rr_Renderer;
 
@@ -38,7 +40,7 @@ typedef struct Rr_TextGlobalsLayout
     float Time;
     float Reserved;
     vec2 ScreenSize;
-    vec4 Reserved2;
+    vec4 Pallete[RR_TEXT_MAX_COLORS];
 } Rr_TextGlobalsLayout;
 
 typedef struct Rr_TextFontLayout
@@ -59,7 +61,8 @@ typedef struct Rr_TextFontLayout
 typedef struct Rr_TextPushConstants
 {
     vec2 PositionScreenSpace;
-    vec2 ReservedA;
+    f32 Size;
+    f32 ReservedA;
     vec4 ReservedB;
     vec4 ReservedC;
     vec4 ReservedD;
@@ -72,6 +75,7 @@ typedef struct Rr_Font
     Rr_Buffer Buffer;
     f32 Advances[2048];
     f32 LineHeight;
+    f32 DefaultSize;
 } Rr_Font;
 
 typedef struct Rr_TextPipeline

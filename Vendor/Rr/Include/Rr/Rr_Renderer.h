@@ -167,6 +167,7 @@ typedef struct Rr_DrawTextInfo
     Rr_Font* Font;
     Rr_String* String;
     vec2 Position;
+    f32 Size;
 } Rr_DrawTextInfo;
 typedef struct Rr_RenderingContext
 {

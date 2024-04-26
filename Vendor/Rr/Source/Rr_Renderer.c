@@ -128,10 +128,14 @@ void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, Rr_DrawMeshInfo* Info)
 void Rr_DrawText(Rr_RenderingContext* RenderingContext, Rr_DrawTextInfo* Info)
 {
     Rr_ArrayPush(RenderingContext->DrawTextArray, Info);
-    Rr_Font** Font = &RenderingContext->DrawTextArray[Rr_ArrayCount(RenderingContext->DrawTextArray) - 1].Font;
-    if (*Font == NULL)
+    Rr_DrawTextInfo* NewInfo = &RenderingContext->DrawTextArray[Rr_ArrayCount(RenderingContext->DrawTextArray) - 1];
+    if (NewInfo->Font == NULL)
     {
-        *Font = &RenderingContext->Renderer->BuiltinFont;
+        NewInfo->Font = &RenderingContext->Renderer->BuiltinFont;
+    }
+    if (NewInfo->Size == RR_TEXT_DEFAULT_SIZE)
+    {
+        NewInfo->Size = NewInfo->Font->DefaultSize;
     }
 }
 
@@ -263,7 +267,8 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     Rr_TextGlobalsLayout TextGlobalsData = {
         .Reserved = 0.0f,
         .Time = Time,
-        .ScreenSize = { (f32)ActiveResolution.width, (f32)ActiveResolution.height }
+        .ScreenSize = { (f32)ActiveResolution.width, (f32)ActiveResolution.height },
+        .Pallete = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
     };
     Rr_CopyToDeviceUniformBuffer(
         Renderer,
@@ -516,6 +521,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         Rr_TextPushConstants TextPushConstants;
         TextPushConstants.PositionScreenSpace[0] = DrawTextInfo->Position[0];
         TextPushConstants.PositionScreenSpace[1] = DrawTextInfo->Position[1];
+        TextPushConstants.Size = DrawTextInfo->Size;
         vkCmdPushConstants(
             CommandBuffer,
             TextPipeline->Layout,
@@ -526,12 +532,50 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         /* Upload and bind text data. */
         size_t TextLength = DrawTextInfo->String->Length;
         size_t FinalTextLength = 0;
+        u32 PalleteIndex = 0;
+        bool bCodePending = false;
+        bool bPalleteIndexPending = false;
         vec2 AccumulatedAdvance = {};
         for (size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
         {
             u32 Unicode = DrawTextInfo->String->Data[CharacterIndex];
-            Rr_TextPerInstanceVertexInput* Input = &TextData[TextDataOffset + FinalTextLength];
 
+            if (bCodePending)
+            {
+                if (bPalleteIndexPending)
+                {
+                    if (Unicode >= '0' && Unicode <= '7')
+                    {
+                        PalleteIndex = Unicode - '0';
+                        bPalleteIndexPending = false;
+                        bCodePending = false;
+                        continue;
+                    }
+                    else
+                    {
+                        bPalleteIndexPending = false;
+                        bCodePending = false;
+                        PalleteIndex = 0;
+                    }
+                }
+                else if (Unicode == 'c')
+                {
+                    bPalleteIndexPending = true;
+                    continue;
+                }
+                else
+                {
+                    Unicode = '$';
+                    CharacterIndex--;
+                    bCodePending = false;
+                }
+            }
+            else if (Unicode == '$')
+            {
+                bCodePending = true;
+                continue;
+            }
+            Rr_TextPerInstanceVertexInput* Input = &TextData[TextDataOffset + FinalTextLength];
             if (Unicode == '\n')
             {
                 AccumulatedAdvance[1] += DrawTextInfo->Font->LineHeight;
@@ -546,8 +590,11 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             }
             else
             {
+                const u32 GlyphIndexMask = ~0xFFE00000;
+                u32 GlyphPack = GlyphIndexMask & Unicode;
+                GlyphPack |= PalleteIndex << 28;
                 *Input = (Rr_TextPerInstanceVertexInput){
-                    .Unicode = Unicode,
+                    .Unicode = GlyphPack,
                     .Advance = {
                         AccumulatedAdvance[0],
                         AccumulatedAdvance[1] }

@@ -6,12 +6,18 @@ layout(location = 1) in vec2 in_advance;
 layout(location = 2) in uint in_glyphIndex;
 
 layout(location = 2) out vec2 out_uv;
+layout(location = 3) out vec3 out_color;
 
 #include "Text.glsl"
 
 void main()
 {
-    Glyph glyph = u_font.glyphs[in_glyphIndex];
+    const uint glyphIndexMask = ~0xFFE00000;
+    const uint glyphColorMask = 0xF0000000;
+    uint glyphIndex = in_glyphIndex & glyphIndexMask;
+    uint glyphData = (in_glyphIndex & glyphColorMask) >> 28;
+    out_color = u_globals.palette[glyphData].rgb;
+    Glyph glyph = u_font.glyphs[glyphIndex];
 
     vec2 atlasSize = textureSize(u_fontAtlas, 0);
 
@@ -31,13 +37,12 @@ void main()
     glyphPosition.y += (1.0f - in_position.y) * (1.0f - planeRT.y);
     glyphPosition.y += (in_position.y) * (1.0f - planeLB.y);
 
-    const float size = 32.0f;
-    const float lineHeight = 1.2f;
-    const float glyphAspect = normalizedAtlasW / normalizedAtlasH;
+    float size = u_constants.size;
+    // size += abs(cos((u_globals.time * 10.0f))) * 16.0f;
+
     vec2 basePosition = u_constants.positionScreenSpace;
-    basePosition += glyphPosition * vec2(size, size);
-    basePosition.x += size * in_advance.x;
-    basePosition.y += size * in_advance.y;
+    basePosition += glyphPosition * vec2(size);
+    basePosition += in_advance * size;
     basePosition /= u_globals.screenSize;
     basePosition *= 2.0f;
     basePosition -= 1.0f;

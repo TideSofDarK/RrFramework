@@ -12,6 +12,7 @@ layout(set = 0, binding = 0) uniform Globals {
     float time;
     float reserved;
     vec2 screenSize;
+    vec4 palette[8];
 } u_globals;
 
 /* Set 1 */
@@ -27,4 +28,5 @@ layout(set = 1, binding = 1) uniform sampler2D u_fontAtlas;
 layout(push_constant) uniform Constants
 {
     vec2 positionScreenSpace;
+    float size;
 } u_constants;

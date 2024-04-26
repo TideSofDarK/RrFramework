@@ -188,7 +188,7 @@ static void Init(Rr_App* App)
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 
     TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
-    DebugString = Rr_CreateString("Doddododododod");
+    DebugString = Rr_CreateString("$c3Colored $c1text$c2");
 }
 
 static void Cleanup(Rr_App* App)
@@ -330,7 +330,7 @@ static void Draw(Rr_App* const App)
     };
     Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
     Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });
-    Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &DebugString, .Position = { 450.0f, 54.0f } });
+    Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &DebugString, .Position = { 450.0f, 54.0f }, .Size = 64.0f });
 
     Rr_EndRendering(&RenderingContext);
 }
