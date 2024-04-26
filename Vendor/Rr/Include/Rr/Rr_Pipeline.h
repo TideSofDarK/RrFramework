@@ -58,6 +58,7 @@ typedef struct Rr_PipelineBuilder
 } Rr_PipelineBuilder;
 
 Rr_PipelineBuilder Rr_GetPipelineBuilder(void);
+void Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder);
 void Rr_EnablePerVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format);
 void Rr_EnablePerInstanceInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format);
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);

@@ -564,7 +564,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             &TextPipeline->TextBuffers[CurrentFrameIndex].Handle,
             &(VkDeviceSize){ TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput) });
         TextDataOffset += FinalTextLength;
-        vkCmdDraw(CommandBuffer, 12, FinalTextLength, 0, 0);
+        vkCmdDraw(CommandBuffer, 4, FinalTextLength, 0, 0);
     }
     SDL_memcpy(TextPipeline->TextBuffers[CurrentFrameIndex].AllocationInfo.pMappedData, TextData, TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput));
 

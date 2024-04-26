@@ -38,6 +38,11 @@ Rr_PipelineBuilder Rr_GetPipelineBuilder(void)
     return PipelineBuilder;
 }
 
+void Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder)
+{
+    PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+}
+
 static inline void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format, size_t Index)
 {
     if (PipelineBuilder->CurrentVertexInputAttribute + 1 >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)

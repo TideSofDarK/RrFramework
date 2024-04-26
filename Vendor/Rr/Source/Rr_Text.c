@@ -6,6 +6,7 @@
 
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
+#include "Rr_Pipeline.h"
 #include "Rr_Renderer.h"
 #include "Rr_Asset.h"
 #include "Rr_Memory.h"
@@ -56,6 +57,7 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     Rr_ExternAsset(BuiltinTextFRAG);
 
     Rr_PipelineBuilder Builder = Rr_GetPipelineBuilder();
+    Rr_EnableTriangleFan(&Builder);
     Rr_EnablePerVertexInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
     Rr_EnablePerInstanceInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
     Rr_EnablePerInstanceInputAttribute(&Builder, VK_FORMAT_R32_UINT);
@@ -70,13 +72,11 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
         TextPipeline->Layout);
 
     /* Quad Buffer */
-    f32 Quad[12] = {
+    f32 Quad[8] = {
         0.0f, 0.0f,
         0.0f, 1.0f,
         1.0f, 1.0f,
-        1.0f, 1.0f,
         1.0f, 0.0f,
-        0.0f, 0.0f
     };
     TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(
         Renderer,
