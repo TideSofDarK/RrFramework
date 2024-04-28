@@ -29,4 +29,5 @@ layout(push_constant) uniform Constants
 {
     vec2 positionScreenSpace;
     float size;
+    uint flags;
 } u_constants;

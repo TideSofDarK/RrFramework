@@ -75,7 +75,7 @@ void Rr_UploadMesh(
     Rr_DestroyBuffer(&StagingBuffer, Renderer->Allocator);
 }
 
-Rr_MeshBuffers Rr_CreateMesh_FromOBJ(Rr_Renderer* const Renderer, Rr_Asset* Asset)
+Rr_MeshBuffers Rr_CreateMeshFromOBJ(Rr_Renderer* const Renderer, Rr_Asset* Asset)
 {
     Rr_MeshBuffers MeshBuffers;
     Rr_RawMesh RawMesh;

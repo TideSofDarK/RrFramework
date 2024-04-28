@@ -30,7 +30,7 @@ void Rr_UploadMesh(
     Rr_Vertex const* Vertices,
     size_t VertexCount);
 
-Rr_MeshBuffers Rr_CreateMesh_FromOBJ(Rr_Renderer* Renderer, Rr_Asset* Asset);
+Rr_MeshBuffers Rr_CreateMeshFromOBJ(Rr_Renderer* Renderer, Rr_Asset* Asset);
 
 void Rr_DestroyMesh(Rr_Renderer* Renderer, Rr_MeshBuffers* Mesh);
 

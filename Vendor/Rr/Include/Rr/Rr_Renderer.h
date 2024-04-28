@@ -12,6 +12,11 @@
 #include "Rr_Image.h"
 #include "Rr_Text.h"
 
+typedef enum Rr_DrawTextFlags
+{
+    RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
+} Rr_DrawTextFlags;
+
 typedef struct SDL_Window SDL_Window;
 typedef struct Rr_AppConfig Rr_AppConfig;
 typedef struct Rr_GenericPipeline Rr_GenericPipeline;
@@ -95,6 +100,7 @@ typedef struct Rr_DrawTarget
     i32 Scale;
     Rr_Image ColorImage;
     Rr_Image DepthImage;
+    VkFramebuffer Framebuffer;
 } Rr_DrawTarget;
 
 typedef struct Rr_Renderer
@@ -122,6 +128,8 @@ typedef struct Rr_Renderer
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
     Rr_DrawTarget DrawTarget;
+    VkRenderPass RenderPass;
+
     Rr_ImGui ImGui;
     Rr_ImmediateMode ImmediateMode;
 
@@ -168,6 +176,7 @@ typedef struct Rr_DrawTextInfo
     Rr_String* String;
     vec2 Position;
     f32 Size;
+    Rr_DrawTextFlags Flags;
 } Rr_DrawTextInfo;
 typedef struct Rr_RenderingContext
 {

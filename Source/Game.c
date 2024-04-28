@@ -29,6 +29,8 @@
 #include "Render.h"
 #include "DevTools.h"
 
+#include <SDL_thread.h>
+
 typedef struct SFrameData
 {
     float Reserved;
@@ -97,6 +99,11 @@ static Rr_MeshBuffers MarbleMesh;
 
 static Rr_String TestString;
 static Rr_String DebugString;
+static Rr_String LoadingString;
+
+static SDL_Thread* LoadingThread;
+static SDL_Semaphore* LoadingSemaphore;
+static bool bLoaded = false;
 
 static void InitInputMappings(void)
 {
@@ -137,6 +144,24 @@ static void InitGlobals(Rr_Renderer* const Renderer)
     Rr_VulkanMatrix(ShaderGlobals.Intermediate);
 }
 
+static void Load(Rr_Renderer* Renderer)
+{
+    /* Marble */
+    Rr_ExternAsset(MarbleOBJ);
+    MarbleMesh = Rr_CreateMeshFromOBJ(Renderer, &MarbleOBJ);
+
+    Rr_ExternAsset(MarbleDiffusePNG);
+    MarbleDiffuse = Rr_CreateImageFromPNG(&MarbleDiffusePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    Rr_ExternAsset(MarbleSpecularPNG);
+    MarbleSpecular = Rr_CreateImageFromPNG(&MarbleSpecularPNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
+    MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
+
+    SDL_PostSemaphore(LoadingSemaphore);
+}
+
 static void Init(Rr_App* App)
 {
 #if RR_DEBUG
@@ -145,6 +170,9 @@ static void Init(Rr_App* App)
     InitInputMappings();
 
     Rr_Renderer* const Renderer = &App->Renderer;
+
+    LoadingThread = SDL_CreateThread(Load, "lt", Renderer);
+    LoadingSemaphore = SDL_CreateSemaphore(0);
 
     Rr_ExternAsset(POCDepthEXR);
     SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, &App->Renderer);
@@ -157,13 +185,13 @@ static void Init(Rr_App* App)
     //    MonkeyMesh = Rr_CreateMesh_FromOBJ(Renderer, &DoorFrameOBJ);
 
     Rr_ExternAsset(CottageOBJ);
-    CottageMesh = Rr_CreateMesh_FromOBJ(Renderer, &CottageOBJ);
+    CottageMesh = Rr_CreateMeshFromOBJ(Renderer, &CottageOBJ);
 
     Rr_ExternAsset(CottagePNG);
     CottageTexture = Rr_CreateImageFromPNG(&CottagePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     Rr_ExternAsset(PocMeshOBJ);
-    PocMesh = Rr_CreateMesh_FromOBJ(Renderer, &PocMeshOBJ);
+    PocMesh = Rr_CreateMeshFromOBJ(Renderer, &PocMeshOBJ);
 
     Rr_ExternAsset(PocDiffusePNG);
     PocDiffuseImage = Rr_CreateImageFromPNG(&PocDiffusePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -174,21 +202,9 @@ static void Init(Rr_App* App)
     Rr_Image* CottageTextures[1] = { &CottageTexture };
     CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
 
-    /* Marble */
-    Rr_ExternAsset(MarbleOBJ);
-    MarbleMesh = Rr_CreateMesh_FromOBJ(Renderer, &MarbleOBJ);
-
-    Rr_ExternAsset(MarbleDiffusePNG);
-    MarbleDiffuse = Rr_CreateImageFromPNG(&MarbleDiffusePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    Rr_ExternAsset(MarbleSpecularPNG);
-    MarbleSpecular = Rr_CreateImageFromPNG(&MarbleSpecularPNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
-    MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
-
     TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
     DebugString = Rr_CreateString("$c3Colored $c1text$c2");
+    LoadingString = Rr_CreateString("Loading...");
 }
 
 static void Cleanup(Rr_App* App)
@@ -220,6 +236,9 @@ static void Cleanup(Rr_App* App)
 
     Rr_DestroyString(&TestString);
     Rr_DestroyString(&DebugString);
+    Rr_DestroyString(&LoadingString);
+
+    SDL_DestroySemaphore(LoadingSemaphore);
 }
 
 static void Update(Rr_App* App)
@@ -264,6 +283,13 @@ static void Update(Rr_App* App)
     if (bShowDebugOverlay)
     {
         Rr_DebugOverlay(App);
+    }
+
+    if (!bLoaded && SDL_TryWaitSemaphore(LoadingSemaphore) == 0)
+    {
+        bLoaded = true;
+        SDL_LogInfo(SDL_LOG_CATEGORY_TEST, "Load completed!");
+        SDL_DetachThread(LoadingThread);
     }
 }
 
@@ -318,17 +344,25 @@ static void Draw(Rr_App* const App)
     //
     // Rr_DrawMesh(&RenderingContext, &DrawMeshInfo);
     Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
-    //
-    SUber3DDraw MarbleDraw;
-    glm_mat4_identity(MarbleDraw.Model);
-    MarbleDraw.Model[3][1] = 0.1f;
-    MarbleDraw.VertexBufferAddress = MarbleMesh.VertexBufferAddress;
-    Rr_DrawMeshInfo DrawMarbleInfo = {
-        .MeshBuffers = &MarbleMesh,
-        .Material = &MarbleMaterial,
-        .DrawData = &MarbleDraw
-    };
-    Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
+
+    if (bLoaded)
+    {
+        SUber3DDraw MarbleDraw;
+        glm_mat4_identity(MarbleDraw.Model);
+        MarbleDraw.Model[3][1] = 0.1f;
+        MarbleDraw.VertexBufferAddress = MarbleMesh.VertexBufferAddress;
+        Rr_DrawMeshInfo DrawMarbleInfo = {
+            .MeshBuffers = &MarbleMesh,
+            .Material = &MarbleMaterial,
+            .DrawData = &MarbleDraw
+        };
+        Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
+    }
+    else
+    {
+        Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &LoadingString, .Position = { 25.0f, 540.0f - 25 - 32.0f }, .Size = 32.0f, .Flags = RR_DRAW_TEXT_FLAGS_ANIMATION_BIT });
+    }
+
     Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });
     Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &DebugString, .Position = { 450.0f, 54.0f }, .Size = 64.0f });
 

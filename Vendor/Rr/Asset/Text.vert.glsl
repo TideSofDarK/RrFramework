@@ -49,7 +49,8 @@ void main()
 
     gl_Position = vec4(basePosition, 0.0f, 1.0f);
 
-    // gl_Position.y += cos((u_globals.time * 10.0f) + float(gl_InstanceIndex) * 1.5f) / 64.0f;
+    float animationMask = step(1.0f, float(u_constants.flags & 1));
+    gl_Position.y -= animationMask * cos((u_globals.time * 10.0f) + float(gl_InstanceIndex) * 1.5f) / 64.0f;
 
     out_uv.x = normalizedAtlasX + (normalizedAtlasW * in_position.x);
     out_uv.y = normalizedAtlasY + (normalizedAtlasH * (1.0f - in_position.y));

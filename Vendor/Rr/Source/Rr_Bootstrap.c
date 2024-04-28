@@ -201,18 +201,36 @@ static void InitDevice(Rr_Renderer* const Renderer)
 
 static void InitDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
 {
+    Rr_DrawTarget* DrawTarget = &Renderer->DrawTarget;
+
     VkExtent3D Extent = (VkExtent3D){
         Width,
         Height,
         1
     };
 
-    Renderer->DrawTarget.ColorImage = Rr_CreateColorAttachmentImage(Renderer, Extent);
-    Renderer->DrawTarget.DepthImage = Rr_CreateDepthAttachmentImage(Renderer, Extent);
+    DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(Renderer, Extent);
+    DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(Renderer, Extent);
+
+    VkImageView Attachments[2] = {DrawTarget->ColorImage.View, DrawTarget->DepthImage.View};
+
+    VkFramebufferCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .renderPass = Renderer->RenderPass,
+        .height = Height,
+        .width = Width,
+        .layers = 1,
+        .attachmentCount = 2,
+        .pAttachments = Attachments
+    };
+    vkCreateFramebuffer(Renderer->Device, &Info, NULL, &DrawTarget->Framebuffer);
 }
 
 static void CleanupDrawTarget(Rr_Renderer* const Renderer)
 {
+    vkDestroyFramebuffer(Renderer->Device, Renderer->DrawTarget.Framebuffer, NULL);
     Rr_DestroyImage(Renderer, &Renderer->DrawTarget.ColorImage);
     Rr_DestroyImage(Renderer, &Renderer->DrawTarget.DepthImage);
 }
@@ -522,16 +540,16 @@ void Rr_InitImGui(Rr_App* App)
     VkDevice Device = Renderer->Device;
 
     VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
 
     VkDescriptorPoolCreateInfo PoolCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -670,6 +688,82 @@ static void CleanupSamplers(Rr_Renderer* Renderer)
     vkDestroySampler(Renderer->Device, Renderer->LinearSampler, NULL);
 }
 
+static void InitRenderPass(Rr_Renderer* Renderer)
+{
+    VkAttachmentDescription ColorAttachment = {
+        .samples = 1,
+        .format = RR_COLOR_FORMAT,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .flags = 0,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_NONE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE
+    };
+
+    VkAttachmentDescription DepthAttachment = {
+        .samples = 1,
+        .format = RR_DEPTH_FORMAT,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .flags = 0,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_NONE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE
+    };
+
+    VkAttachmentDescription Attachments[2] = {ColorAttachment, DepthAttachment};
+
+    VkAttachmentReference ColorAttachmentRef = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    };
+
+    VkAttachmentReference DepthAttachmentRef = {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    };
+
+    VkSubpassDescription SubpassDescription = {
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &ColorAttachmentRef,
+        .pDepthStencilAttachment = &DepthAttachmentRef,
+        .pResolveAttachments = NULL,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = NULL,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = NULL
+    };
+
+    VkSubpassDependency Dependency = {
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+    };
+
+    VkRenderPassCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = 0,
+        .attachmentCount = 2,
+        .pAttachments = Attachments,
+        .subpassCount = 1,
+        .pSubpasses = &SubpassDescription,
+        .dependencyCount = 1,
+        .pDependencies = &Dependency
+    };
+
+    vkCreateRenderPass(Renderer->Device, &Info, NULL, &Renderer->RenderPass);
+}
+
+static void CleanupRenderPass(Rr_Renderer* Renderer)
+{
+    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPass, NULL);
+}
+
 void Rr_InitRenderer(Rr_App* App)
 {
     SDL_Window* Window = App->Window;
@@ -737,6 +831,8 @@ void Rr_InitRenderer(Rr_App* App)
     //
 
     InitSamplers(Renderer);
+
+    InitRenderPass(Renderer);
 
     InitDescriptors(Renderer);
 
@@ -850,6 +946,8 @@ void Rr_CleanupRenderer(Rr_App* App)
     }
 
     CleanupDrawTarget(Renderer);
+
+    CleanupRenderPass(Renderer);
 
     CleanupSamplers(Renderer);
 

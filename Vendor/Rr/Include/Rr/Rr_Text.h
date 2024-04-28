@@ -62,7 +62,7 @@ typedef struct Rr_TextPushConstants
 {
     vec2 PositionScreenSpace;
     f32 Size;
-    f32 ReservedA;
+    u32 Flags;
     vec4 ReservedB;
     vec4 ReservedC;
     vec4 ReservedD;
