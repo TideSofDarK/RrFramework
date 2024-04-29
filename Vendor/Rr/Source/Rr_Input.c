@@ -4,10 +4,10 @@
 
 #include "Rr_Core.h"
 
-Rr_InputState UpdateKeyState(Rr_KeyState OldKeyState, const u8* KeyboardState, const u8 Scancode)
+Rr_InputState UpdateKeyState(const Rr_KeyState OldKeyState, const u8* KeyboardState, const u8 Scancode)
 {
-    b8 bCurrentlyPressed = KeyboardState[Scancode] == 1;
-    b8 bWasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
+    const b8 bCurrentlyPressed = KeyboardState[Scancode] == 1;
+    const b8 bWasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
     if (bCurrentlyPressed)
     {
         if (bWasPressed)
@@ -32,21 +32,21 @@ Rr_InputState UpdateKeyState(Rr_KeyState OldKeyState, const u8* KeyboardState, c
     }
 }
 
-Rr_KeyState Rr_GetKeyState(Rr_InputState State, u32 Key)
+Rr_KeyState Rr_GetKeyState(const Rr_InputState State, const u32 Key)
 {
     return (State >> (2 * Key)) & 3;
 }
 
-void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config)
+void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config)
 {
     Rr_InputState NewState = *State;
     const u8* KeyboardState = SDL_GetKeyboardState(NULL);
     for (size_t Index = 0; Index < Config->Count; Index++)
     {
-        Rr_InputMapping* Mapping = &Config->Mappings[Index];
+        const Rr_InputMapping* Mapping = &Config->Mappings[Index];
 
-        Rr_InputState OldKeyState = Rr_GetKeyState(NewState, Index);
-        Rr_InputState NewKeyState = UpdateKeyState(OldKeyState, KeyboardState, Mapping->Primary);
+        const Rr_InputState OldKeyState = Rr_GetKeyState(NewState, Index);
+        const Rr_InputState NewKeyState = UpdateKeyState(OldKeyState, KeyboardState, Mapping->Primary);
         NewState = NewState & ~(3 << (2 * Index));
         NewState = NewState | (NewKeyState << (2 * Index));
     }

@@ -91,8 +91,8 @@ typedef struct Rr_TextPipeline
 void Rr_InitTextRenderer(Rr_Renderer* Renderer);
 void Rr_CleanupTextRenderer(Rr_Renderer* Renderer);
 
-Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON);
-void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font);
+Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, const Rr_Asset* FontPNG, const Rr_Asset* FontJSON);
+void Rr_DestroyFont(const Rr_Renderer* Renderer, const Rr_Font* Font);
 
 typedef struct Rr_String
 {
@@ -101,4 +101,4 @@ typedef struct Rr_String
 } Rr_String;
 
 Rr_String Rr_CreateString(const char* CString);
-void Rr_DestroyString(Rr_String* String);
+void Rr_DestroyString(const Rr_String* String);

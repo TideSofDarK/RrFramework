@@ -8,11 +8,11 @@
 #include "Rr_Renderer.h"
 #include "Rr_Util.h"
 
-Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped)
+Rr_Buffer Rr_CreateBuffer(const Rr_Renderer* Renderer, const size_t Size, const VkBufferUsageFlags UsageFlags, const VmaMemoryUsage MemoryUsage, const b32 bHostMapped)
 {
     Rr_Buffer Buffer;
 
-    VkBufferCreateInfo BufferInfo = {
+    const VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = NULL,
         .size = Size,
@@ -28,54 +28,54 @@ Rr_Buffer Rr_CreateBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlag
         AllocationInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     }
 
-    vmaCreateBuffer(Allocator, &BufferInfo, &AllocationInfo, &Buffer.Handle, &Buffer.Allocation, &Buffer.AllocationInfo);
+    vmaCreateBuffer(Renderer->Allocator, &BufferInfo, &AllocationInfo, &Buffer.Handle, &Buffer.Allocation, &Buffer.AllocationInfo);
 
     return Buffer;
 }
 
-Rr_Buffer Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size)
+Rr_Buffer Rr_CreateDeviceVertexBuffer(const Rr_Renderer* Renderer, size_t Size)
 {
     Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
-        Renderer->Allocator,
+        Renderer,
         Size,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         false);
 }
 
-Rr_Buffer Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size)
+Rr_Buffer Rr_CreateDeviceUniformBuffer(const Rr_Renderer* Renderer, const size_t Size)
 {
     // Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
-        Renderer->Allocator,
+        Renderer,
         Size,
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         false);
 }
 
-Rr_Buffer Rr_CreateMappedBuffer(VmaAllocator Allocator, size_t Size, VkBufferUsageFlags UsageFlags)
+Rr_Buffer Rr_CreateMappedBuffer(const Rr_Renderer* Renderer, const size_t Size, const VkBufferUsageFlags UsageFlags)
 {
-    return Rr_CreateBuffer(Allocator, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, true);
+    return Rr_CreateBuffer(Renderer, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, true);
 }
 
-Rr_Buffer Rr_CreateMappedVertexBuffer(Rr_Renderer* Renderer, size_t Size)
+Rr_Buffer Rr_CreateMappedVertexBuffer(const Rr_Renderer* Renderer, const size_t Size)
 {
     return Rr_CreateMappedBuffer(
-        Renderer->Allocator,
+        Renderer,
         Size,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 }
 
-void Rr_DestroyBuffer(Rr_Buffer* Buffer, VmaAllocator Allocator)
+void Rr_DestroyBuffer(const Rr_Renderer* Renderer, const Rr_Buffer* Buffer)
 {
-    vmaDestroyBuffer(Allocator, Buffer->Handle, Buffer->Allocation);
+    vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
 }
 
-VkDeviceAddress Rr_GetBufferAddress(Rr_Renderer* const Renderer, Rr_Buffer* const Buffer)
+VkDeviceAddress Rr_GetBufferAddress(const Rr_Renderer* const Renderer, const Rr_Buffer* const Buffer)
 {
-    VkBufferDeviceAddressInfo DeviceAddressInfo = {
+    const VkBufferDeviceAddressInfo DeviceAddressInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
         .buffer = Buffer->Handle
     };
@@ -83,18 +83,18 @@ VkDeviceAddress Rr_GetBufferAddress(Rr_Renderer* const Renderer, Rr_Buffer* cons
 }
 
 void Rr_UploadToDeviceBufferImmediate(
-    Rr_Renderer* Renderer,
-    Rr_Buffer* DstBuffer,
+    const Rr_Renderer* Renderer,
+    const Rr_Buffer* DstBuffer,
     const void* Data,
-    size_t Size)
+    const size_t Size)
 {
-    VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
+    const VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
     Rr_Buffer HostMappedBuffer = Rr_CreateMappedBuffer(
-        Renderer->Allocator,
+        Renderer,
         Size,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     SDL_memcpy(HostMappedBuffer.AllocationInfo.pMappedData, Data, Size);
-    VkBufferCopy BufferCopy = {
+    const VkBufferCopy BufferCopy = {
         .dstOffset = 0,
         .size = Size,
         .srcOffset = 0
@@ -106,16 +106,16 @@ void Rr_UploadToDeviceBufferImmediate(
         1,
         &BufferCopy);
     Rr_EndImmediate(Renderer);
-    Rr_DestroyBuffer(&HostMappedBuffer, Renderer->Allocator);
+    Rr_DestroyBuffer(Renderer, &HostMappedBuffer);
 }
 
 void Rr_CopyToDeviceUniformBuffer(
-    Rr_Renderer* Renderer,
-    VkCommandBuffer CommandBuffer,
+    const Rr_Renderer* Renderer,
+    const VkCommandBuffer CommandBuffer,
     Rr_StagingBuffer* StagingBuffer,
-    Rr_Buffer* DstBuffer,
+    const Rr_Buffer* DstBuffer,
     const void* Data,
-    size_t Size)
+    const size_t Size)
 {
     if (StagingBuffer->CurrentOffset + Size > RR_STAGING_BUFFER_SIZE)
     {
@@ -128,7 +128,7 @@ void Rr_CopyToDeviceUniformBuffer(
         abort();
     }
     const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
-    size_t Offset = StagingBuffer->CurrentOffset;
+    const size_t Offset = StagingBuffer->CurrentOffset;
     SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + Offset, Data, Size);
     StagingBuffer->CurrentOffset = Rr_Align(Offset + Size, Alignment);
 
@@ -144,7 +144,7 @@ void Rr_CopyToDeviceUniformBuffer(
         .buffer = DstBuffer->Handle,
     };
 
-    VkDependencyInfo DependencyInfo = {
+    const VkDependencyInfo DependencyInfo = {
         .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
         .pNext = NULL,
         .bufferMemoryBarrierCount = 1,
@@ -153,7 +153,7 @@ void Rr_CopyToDeviceUniformBuffer(
 
     vkCmdPipelineBarrier2(CommandBuffer, &DependencyInfo);
 
-    VkBufferCopy BufferCopy = {
+    const VkBufferCopy BufferCopy = {
         .dstOffset = 0,
         .size = Size,
         .srcOffset = Offset
@@ -175,10 +175,10 @@ void Rr_CopyToDeviceUniformBuffer(
 }
 
 void Rr_CopyToMappedUniformBuffer(
-    Rr_Renderer* Renderer,
-    Rr_Buffer* DstBuffer,
+    const Rr_Renderer* Renderer,
+    const Rr_Buffer* DstBuffer,
     const void* Data,
-    size_t Size,
+    const size_t Size,
     size_t* DstOffset)
 {
     const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;

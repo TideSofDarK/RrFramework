@@ -30,6 +30,7 @@
 #include "DevTools.h"
 
 #include <SDL_thread.h>
+#include <Rr/Rr_Load.h>
 
 typedef struct SFrameData
 {
@@ -101,8 +102,6 @@ static Rr_String TestString;
 static Rr_String DebugString;
 static Rr_String LoadingString;
 
-static SDL_Thread* LoadingThread;
-static SDL_Semaphore* LoadingSemaphore;
 static bool bLoaded = false;
 
 static void InitInputMappings(void)
@@ -144,22 +143,24 @@ static void InitGlobals(Rr_Renderer* const Renderer)
     Rr_VulkanMatrix(ShaderGlobals.Intermediate);
 }
 
-static void Load(Rr_Renderer* Renderer)
+static void OnLoadingComplete(Rr_Renderer* Renderer, u32 Status)
 {
-    /* Marble */
-    Rr_ExternAsset(MarbleOBJ);
-    MarbleMesh = Rr_CreateMeshFromOBJ(Renderer, &MarbleOBJ);
-
-    Rr_ExternAsset(MarbleDiffusePNG);
-    MarbleDiffuse = Rr_CreateImageFromPNG(&MarbleDiffusePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    Rr_ExternAsset(MarbleSpecularPNG);
-    MarbleSpecular = Rr_CreateImageFromPNG(&MarbleSpecularPNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
     Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 
-    SDL_PostSemaphore(LoadingSemaphore);
+    bLoaded = true;
+    /* Marble */
+    // Rr_ExternAsset(MarbleOBJ);
+    // MarbleMesh = Rr_CreateMeshFromOBJ(Renderer, &MarbleOBJ);
+    //
+    // Rr_ExternAsset(MarbleDiffusePNG);
+    // MarbleDiffuse = Rr_CreateImageFromPNG(&MarbleDiffusePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    //
+    // Rr_ExternAsset(MarbleSpecularPNG);
+    // MarbleSpecular = Rr_CreateImageFromPNG(&MarbleSpecularPNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    //
+    //
+    // SDL_PostSemaphore(LoadingSemaphore);
 }
 
 static void Init(Rr_App* App)
@@ -171,14 +172,20 @@ static void Init(Rr_App* App)
 
     Rr_Renderer* const Renderer = &App->Renderer;
 
-    LoadingThread = SDL_CreateThread(Load, "lt", Renderer);
-    LoadingSemaphore = SDL_CreateSemaphore(0);
+    Rr_ExternAsset(MarbleOBJ);
+    Rr_ExternAsset(MarbleDiffusePNG);
+    Rr_ExternAsset(MarbleSpecularPNG);
+    Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(Renderer, 8);
+    Rr_LoadRGBA8FromPNG(LoadingContext, &MarbleDiffusePNG, &MarbleDiffuse);
+    Rr_LoadRGBA8FromPNG(LoadingContext, &MarbleSpecularPNG, &MarbleSpecular);
+    Rr_LoadMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
+    Rr_Load(LoadingContext, OnLoadingComplete);
 
     Rr_ExternAsset(POCDepthEXR);
-    SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, &App->Renderer);
+    SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
 
     Rr_ExternAsset(POCColorPNG);
-    SceneColorImage = Rr_CreateImageFromPNG(&POCColorPNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    SceneColorImage = Rr_CreateImageFromPNG(Renderer, &POCColorPNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     //
     //    Rr_Asset DoorFrameOBJ;
     //    Rr_ExternAssetAs(&DoorFrameOBJ, DoorFrameOBJ);
@@ -188,13 +195,13 @@ static void Init(Rr_App* App)
     CottageMesh = Rr_CreateMeshFromOBJ(Renderer, &CottageOBJ);
 
     Rr_ExternAsset(CottagePNG);
-    CottageTexture = Rr_CreateImageFromPNG(&CottagePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    CottageTexture = Rr_CreateImageFromPNG(Renderer, &CottagePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     Rr_ExternAsset(PocMeshOBJ);
     PocMesh = Rr_CreateMeshFromOBJ(Renderer, &PocMeshOBJ);
 
     Rr_ExternAsset(PocDiffusePNG);
-    PocDiffuseImage = Rr_CreateImageFromPNG(&PocDiffusePNG, &App->Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    PocDiffuseImage = Rr_CreateImageFromPNG(Renderer, &PocDiffusePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     InitUber3DPipeline(Renderer);
     InitGlobals(Renderer);
@@ -237,8 +244,6 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyString(&TestString);
     Rr_DestroyString(&DebugString);
     Rr_DestroyString(&LoadingString);
-
-    SDL_DestroySemaphore(LoadingSemaphore);
 }
 
 static void Update(Rr_App* App)
@@ -283,13 +288,6 @@ static void Update(Rr_App* App)
     if (bShowDebugOverlay)
     {
         Rr_DebugOverlay(App);
-    }
-
-    if (!bLoaded && SDL_TryWaitSemaphore(LoadingSemaphore) == 0)
-    {
-        bLoaded = true;
-        SDL_LogInfo(SDL_LOG_CATEGORY_TEST, "Load completed!");
-        SDL_DetachThread(LoadingThread);
     }
 }
 

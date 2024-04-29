@@ -22,7 +22,7 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 
-static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, VmaAllocationCreateInfo AllocationCreateInfo, b8 bMipMapped)
+static Rr_Image Rr_CreateImage_Internal(const Rr_Renderer* Renderer, const VkExtent3D Extent, const VkFormat Format, const VkImageUsageFlags Usage, const VmaAllocationCreateInfo AllocationCreateInfo, const b8 bMipMapped)
 {
     Rr_Image Image = { 0 };
     Image.Format = Format;
@@ -35,7 +35,7 @@ static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D 
         Info.mipLevels = (u32)(SDL_floor(SDL_log(SDL_max(Extent.width, Extent.height)))) + 1;
     }
 
-    VkResult Result = vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image.Handle, &Image.Allocation, NULL);
+    vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image.Handle, &Image.Allocation, NULL);
 
     VkImageAspectFlags AspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
     if (Format == RR_DEPTH_FORMAT)
@@ -51,9 +51,9 @@ static Rr_Image Rr_CreateImage_Internal(Rr_Renderer* const Renderer, VkExtent3D 
     return Image;
 }
 
-Rr_Image Rr_CreateImage(Rr_Renderer* const Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped)
+Rr_Image Rr_CreateImage(const Rr_Renderer* Renderer, const VkExtent3D Extent, const VkFormat Format, const VkImageUsageFlags Usage, const b8 bMipMapped)
 {
-    VmaAllocationCreateInfo AllocationCreateInfo = {
+    const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
@@ -61,21 +61,21 @@ Rr_Image Rr_CreateImage(Rr_Renderer* const Renderer, VkExtent3D Extent, VkFormat
     return Rr_CreateImage_Internal(Renderer, Extent, Format, Usage, AllocationCreateInfo, bMipMapped);
 }
 
-Rr_Image Rr_CreateImageFromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout)
+Rr_Image Rr_CreateImageFromPNG(const Rr_Renderer* Renderer, const Rr_Asset* Asset, const VkImageUsageFlags Usage, const b8 bMipMapped, const VkImageLayout InitialLayout)
 {
     const i32 DesiredChannels = 4;
     i32 Channels;
     VkExtent3D Extent = { .depth = 1 };
     stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
 
-    size_t DataSize = Extent.width * Extent.height * DesiredChannels;
+    const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
-    Rr_Buffer Buffer = Rr_CreateBuffer(Renderer->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
+    Rr_Buffer Buffer = Rr_CreateMappedBuffer(Renderer, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
     SDL_memcpy(Buffer.AllocationInfo.pMappedData, ParsedImage, DataSize);
     stbi_image_free(ParsedImage);
 
-    Rr_Image Image = Rr_CreateImage(Renderer, Extent, RR_COLOR_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
+    const Rr_Image Image = Rr_CreateImage(Renderer, Extent, RR_COLOR_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
 
     Rr_BeginImmediate(Renderer);
     Rr_ImageBarrier Transition = {
@@ -87,7 +87,7 @@ Rr_Image Rr_CreateImageFromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkI
     };
     Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    VkBufferImageCopy Copy = {
+    const VkBufferImageCopy Copy = {
         .bufferOffset = 0,
         .bufferRowLength = 0,
         .bufferImageHeight = 0,
@@ -105,7 +105,7 @@ Rr_Image Rr_CreateImageFromPNG(Rr_Asset* Asset, Rr_Renderer* const Renderer, VkI
     Rr_ChainImageBarrier(&Transition, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_READ_BIT, InitialLayout);
     Rr_EndImmediate(Renderer);
 
-    Rr_DestroyBuffer(&Buffer, Renderer->Allocator);
+    Rr_DestroyBuffer(Renderer, &Buffer);
 
     return Image;
 }
@@ -169,7 +169,7 @@ Rr_Image Rr_CreateDepthImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer
 
     size_t DataSize = Extent.width * Extent.height * sizeof(f32);
 
-    Rr_Buffer Buffer = Rr_CreateBuffer(Renderer->Allocator, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
+    Rr_Buffer Buffer = Rr_CreateBuffer(Renderer, DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, true);
 
     SDL_memcpy(Buffer.AllocationInfo.pMappedData, Image.images[0], DataSize);
 
@@ -213,7 +213,7 @@ Rr_Image Rr_CreateDepthImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer
         VK_IMAGE_ASPECT_DEPTH_BIT);
     Rr_EndImmediate(Renderer);
 
-    Rr_DestroyBuffer(&Buffer, Renderer->Allocator);
+    Rr_DestroyBuffer(Renderer, &Buffer);
 
     FreeEXRHeader(&Header);
     FreeEXRImage(&Image);
@@ -221,14 +221,14 @@ Rr_Image Rr_CreateDepthImageFromEXR(Rr_Asset* Asset, Rr_Renderer* const Renderer
     return DepthImage;
 }
 
-Rr_Image Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
+Rr_Image Rr_CreateColorAttachmentImage(const Rr_Renderer* Renderer, const VkExtent3D Extent)
 {
-    VmaAllocationCreateInfo AllocationCreateInfo = {
+    const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    Rr_Image Image = Rr_CreateImage_Internal(
+    const Rr_Image Image = Rr_CreateImage_Internal(
         Renderer,
         Extent,
         RR_COLOR_FORMAT,
@@ -239,14 +239,14 @@ Rr_Image Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
     return Image;
 }
 
-Rr_Image Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
+Rr_Image Rr_CreateDepthAttachmentImage(const Rr_Renderer* Renderer, const VkExtent3D Extent)
 {
-    VmaAllocationCreateInfo AllocationCreateInfo = {
+    const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    Rr_Image Image = Rr_CreateImage_Internal(
+    const Rr_Image Image = Rr_CreateImage_Internal(
         Renderer,
         Extent,
         RR_DEPTH_FORMAT,
@@ -257,7 +257,7 @@ Rr_Image Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
     return Image;
 }
 
-void Rr_DestroyImage(Rr_Renderer* const Renderer, Rr_Image* AllocatedImage)
+void Rr_DestroyImage(const Rr_Renderer* const Renderer, const Rr_Image* AllocatedImage)
 {
     if (AllocatedImage->Handle == VK_NULL_HANDLE)
     {
@@ -269,10 +269,10 @@ void Rr_DestroyImage(Rr_Renderer* const Renderer, Rr_Image* AllocatedImage)
 
 void Rr_ChainImageBarrier_Aspect(
     Rr_ImageBarrier* TransitionImage,
-    VkPipelineStageFlags2 DstStageMask,
-    VkAccessFlags2 DstAccessMask,
-    VkImageLayout NewLayout,
-    VkImageAspectFlagBits Aspect)
+    const VkPipelineStageFlags2 DstStageMask,
+    const VkAccessFlags2 DstAccessMask,
+    const VkImageLayout NewLayout,
+    const VkImageAspectFlagBits Aspect)
 {
     VkImageMemoryBarrier2 ImageBarrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -291,7 +291,7 @@ void Rr_ChainImageBarrier_Aspect(
         .subresourceRange = GetImageSubresourceRange(Aspect),
     };
 
-    VkDependencyInfo DepInfo = {
+    const VkDependencyInfo DepInfo = {
         .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
         .pNext = NULL,
         .imageMemoryBarrierCount = 1,
@@ -308,14 +308,14 @@ void Rr_ChainImageBarrier_Aspect(
 void Rr_ChainImageBarrier(
 
     Rr_ImageBarrier* TransitionImage,
-    VkPipelineStageFlags2 DstStageMask,
-    VkAccessFlags2 DstAccessMask,
-    VkImageLayout NewLayout)
+    const VkPipelineStageFlags2 DstStageMask,
+    const VkAccessFlags2 DstAccessMask,
+    const VkImageLayout NewLayout)
 {
     Rr_ChainImageBarrier_Aspect(
         TransitionImage,
         DstStageMask,
         DstAccessMask,
         NewLayout,
-        (NewLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT);
+        (NewLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT);
 }

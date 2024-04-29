@@ -95,9 +95,6 @@ typedef struct Rr_ImmediateMode
 
 typedef struct Rr_DrawTarget
 {
-    VkExtent2D ReferenceResolution;
-    VkExtent2D ActiveResolution;
-    i32 Scale;
     Rr_Image ColorImage;
     Rr_Image DepthImage;
     VkFramebuffer Framebuffer;
@@ -114,8 +111,14 @@ typedef struct Rr_Renderer
 
     /* Queues */
     Rr_DeviceQueue GraphicsQueue;
-    Rr_DeviceQueue TransferQueue;
-    Rr_DeviceQueue ComputeQueue;
+
+    /* Transfer */
+    struct
+    {
+        VkCommandPool CommandPool;
+        VkQueue Handle;
+        u32 FamilyIndex;
+    } Transfer;
 
     VmaAllocator Allocator;
 
@@ -127,7 +130,11 @@ typedef struct Rr_Renderer
 
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
-    Rr_DrawTarget DrawTarget;
+    VkExtent2D ReferenceResolution;
+    VkExtent2D ActiveResolution;
+    i32 Scale;
+    Rr_DrawTarget DrawTargets[RR_FRAME_OVERLAP];
+
     VkRenderPass RenderPass;
 
     Rr_ImGui ImGui;
@@ -152,8 +159,8 @@ void Rr_CleanupRenderer(Rr_App* App);
 void Rr_Draw(Rr_App* App);
 b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
 
-VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
-void Rr_EndImmediate(Rr_Renderer* Renderer);
+VkCommandBuffer Rr_BeginImmediate(const Rr_Renderer* Renderer);
+void Rr_EndImmediate(const Rr_Renderer* Renderer);
 
 /* Rendering */
 typedef struct Rr_BeginRenderingInfo
@@ -187,26 +194,26 @@ typedef struct Rr_RenderingContext
     Rr_DrawTextInfo* DrawTextArray;
 } Rr_RenderingContext;
 Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* Renderer, Rr_BeginRenderingInfo* Info);
-void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, Rr_DrawMeshInfo* Info);
-void Rr_DrawText(Rr_RenderingContext* RenderingContext, Rr_DrawTextInfo* Info);
+void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, const Rr_DrawMeshInfo* Info);
+void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info);
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 
-static inline float Rr_GetAspectRatio(Rr_Renderer* Renderer)
+static float Rr_GetAspectRatio(const Rr_Renderer* Renderer)
 {
-    return (float)Renderer->DrawTarget.ActiveResolution.width / (float)Renderer->DrawTarget.ActiveResolution.height;
+    return (float)Renderer->ActiveResolution.width / (float)Renderer->ActiveResolution.height;
 }
 
-static inline size_t Rr_GetCurrentFrameIndex(Rr_Renderer* Renderer)
+static size_t Rr_GetCurrentFrameIndex(const Rr_Renderer* Renderer)
 {
     return Renderer->FrameNumber % RR_FRAME_OVERLAP;
 }
 
-static inline Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* const Renderer)
+static Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* const Renderer)
 {
     return &Renderer->Frames[Renderer->FrameNumber % RR_FRAME_OVERLAP];
 }
 
-static inline void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer)
+static void* Rr_GetCurrentFrameData(const Rr_Renderer* Renderer)
 {
     return (char*)Renderer->PerFrameDatas + (Renderer->FrameNumber % RR_FRAME_OVERLAP) * Renderer->PerFrameDataSize;
 }

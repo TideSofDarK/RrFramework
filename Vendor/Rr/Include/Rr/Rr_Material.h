@@ -14,5 +14,5 @@ typedef struct Rr_Material
     size_t TextureCount;
 } Rr_Material;
 
-Rr_Material Rr_CreateMaterial(Rr_Renderer* Renderer, Rr_Image** Textures, size_t TextureCount);
-void Rr_DestroyMaterial(Rr_Renderer* Renderer, Rr_Material* Material);
+Rr_Material Rr_CreateMaterial(const Rr_Renderer* Renderer, Rr_Image** Textures, size_t TextureCount);
+void Rr_DestroyMaterial(const Rr_Renderer* Renderer, const Rr_Material* Material);

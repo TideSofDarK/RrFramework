@@ -26,5 +26,5 @@ typedef struct Rr_InputConfig
     size_t Count;
 } Rr_InputConfig;
 
-void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config);
+void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config);
 Rr_KeyState Rr_GetKeyState(Rr_InputState State, u32 Key);

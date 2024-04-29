@@ -30,7 +30,7 @@
 #include "Rr_Util.h"
 #include "Rr_Material.h"
 
-static void Rr_BlitPrerenderedDepth(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+static void Rr_BlitPrerenderedDepth(const VkCommandBuffer CommandBuffer, const VkImage Source, const VkImage Destination, const VkExtent2D SrcSize, const VkExtent2D DstSize)
 {
     VkImageBlit2 BlitRegion = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
@@ -51,7 +51,7 @@ static void Rr_BlitPrerenderedDepth(VkCommandBuffer CommandBuffer, VkImage Sourc
         .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
     };
 
-    VkBlitImageInfo2 BlitInfo = {
+    const VkBlitImageInfo2 BlitInfo = {
         .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
         .pNext = NULL,
         .srcImage = Source,
@@ -66,7 +66,7 @@ static void Rr_BlitPrerenderedDepth(VkCommandBuffer CommandBuffer, VkImage Sourc
     vkCmdBlitImage2(CommandBuffer, &BlitInfo);
 }
 
-static void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+static void Rr_BlitColorImage(const VkCommandBuffer CommandBuffer, const VkImage Source, const VkImage Destination, const VkExtent2D SrcSize, const VkExtent2D DstSize)
 {
     VkImageBlit2 BlitRegion = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
@@ -87,7 +87,7 @@ static void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkI
         .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
     };
 
-    VkBlitImageInfo2 BlitInfo = {
+    const VkBlitImageInfo2 BlitInfo = {
         .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
         .pNext = NULL,
         .srcImage = Source,
@@ -110,7 +110,7 @@ Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRende
         abort();
     }
 
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    const Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     RenderingContext.CommandBuffer = Frame->MainCommandBuffer;
     RenderingContext.Renderer = Renderer;
     RenderingContext.Info = Info;
@@ -120,12 +120,12 @@ Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRende
     return RenderingContext;
 }
 
-void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, Rr_DrawMeshInfo* Info)
+void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, const Rr_DrawMeshInfo* Info)
 {
     Rr_ArrayPush(RenderingContext->DrawMeshArray, Info);
 }
 
-void Rr_DrawText(Rr_RenderingContext* RenderingContext, Rr_DrawTextInfo* Info)
+void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info)
 {
     Rr_ArrayPush(RenderingContext->DrawTextArray, Info);
     Rr_DrawTextInfo* NewInfo = &RenderingContext->DrawTextArray[Rr_ArrayCount(RenderingContext->DrawTextArray) - 1];
@@ -145,7 +145,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     size_t CurrentFrameIndex = Rr_GetCurrentFrameIndex(Renderer);
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-    VkExtent2D ActiveResolution = Renderer->DrawTarget.ActiveResolution;
+    VkExtent2D ActiveResolution = Renderer->ActiveResolution;
 
     Rr_GenericPipeline* Pipeline = RenderingContext->Info->Pipeline;
     Rr_GenericPipelineBuffers* PipelineBuffers = &Pipeline->Buffers[CurrentFrameIndex];
@@ -366,7 +366,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
-        .framebuffer = Renderer->DrawTarget.Framebuffer,
+        .framebuffer = Renderer->DrawTargets[CurrentFrameIndex].Framebuffer,
         .renderArea = (VkRect2D){ 0.0f, 0.0f, ActiveResolution.width, ActiveResolution.height },
         .renderPass = Renderer->RenderPass,
         .clearValueCount = 2,
@@ -645,19 +645,19 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
 void Rr_Draw(Rr_App* const App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
+    const VkDevice Device = Renderer->Device;
     Rr_Swapchain* Swapchain = &Renderer->Swapchain;
-    Rr_Image* ColorImage = &Renderer->DrawTarget.ColorImage;
-    Rr_Image* DepthImage = &Renderer->DrawTarget.DepthImage;
-
+    const size_t FrameIndex = Rr_GetCurrentFrameIndex(Renderer);
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    const Rr_Image* ColorImage = &Renderer->DrawTargets[FrameIndex].ColorImage;
+    const Rr_Image* DepthImage = &Renderer->DrawTargets[FrameIndex].DepthImage;
 
     vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
 
     Frame->StagingBuffer.CurrentOffset = 0;
 
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+    const VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
     Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
@@ -674,9 +674,9 @@ void Rr_Draw(Rr_App* const App)
     }
     SDL_assert(Result >= 0);
 
-    VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
+    const VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
-    VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    const VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
     // Rr_ImageBarrier ColorImageTransition = {
@@ -690,6 +690,18 @@ void Rr_Draw(Rr_App* const App)
     //     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
     //     VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
     //     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    // Rr_ImageBarrier DepthImageTransition = {
+    //     .CommandBuffer = CommandBuffer,
+    //     .Image = DepthImage->Handle,
+    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+    //     .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+    //     .StageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+    // };
+    // Rr_ChainImageBarrier(&DepthImageTransition,
+    //     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+    //     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+    //     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     App->Config->DrawFunc(App);
 
@@ -730,37 +742,42 @@ void Rr_Draw(Rr_App* const App)
     //         .baseArrayLayer = 0,
     //         .layerCount = 1,
     //     });
-    // Rr_ChainImageBarrier(&SwapchainImageTransition,
-    //     VK_PIPELINE_STAGE_2_BLIT_BIT,
-    //     VK_ACCESS_2_TRANSFER_WRITE_BIT,
-    //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    Rr_ChainImageBarrier(&SwapchainImageTransition,
+        VK_PIPELINE_STAGE_2_BLIT_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     //
-    Rr_BlitColorImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->DrawTarget.ActiveResolution,
+    Rr_BlitColorImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->ActiveResolution,
         (VkExtent2D){
-            .width = (Renderer->DrawTarget.ActiveResolution.width) * Renderer->DrawTarget.Scale,
-            .height = (Renderer->DrawTarget.ActiveResolution.height) * Renderer->DrawTarget.Scale });
+            .width = (Renderer->ActiveResolution.width) * Renderer->Scale,
+            .height = (Renderer->ActiveResolution.height) * Renderer->Scale });
 
-    if (Renderer->ImGui.bInit)
-    {
-        Rr_ChainImageBarrier(&SwapchainImageTransition,
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-        VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
-        VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
-
-        vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
-
-        ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
-
-        vkCmdEndRendering(CommandBuffer);
-    }
+    // if (Renderer->ImGui.bInit)
+    // {
+    //     Rr_ChainImageBarrier(&SwapchainImageTransition,
+    //         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+    //         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+    //         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    //
+    //     VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
+    //     VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
+    //
+    //     vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
+    //
+    //     ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
+    //
+    //     vkCmdEndRendering(CommandBuffer);
+    // }
 
     Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
         0,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    // Rr_ChainImageBarrier(&ColorImageTransition,
+    //     VK_PIPELINE_STAGE_2_BLIT_BIT,
+    //     VK_ACCESS_2_TRANSFER_READ_BIT,
+    //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     vkEndCommandBuffer(CommandBuffer);
 
@@ -769,11 +786,11 @@ void Rr_Draw(Rr_App* const App)
     VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
     VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
 
-    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
+    const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
 
     vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
-    VkPresentInfoKHR PresentInfo = {
+    const VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = NULL,
         .waitSemaphoreCount = 1,

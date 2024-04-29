@@ -23,17 +23,18 @@ typedef struct Rr_MeshBuffers
 } Rr_MeshBuffers;
 
 void Rr_UploadMesh(
-    Rr_Renderer* Renderer,
+    const Rr_Renderer* Renderer,
+    VkCommandBuffer CommandBuffer,
     Rr_MeshBuffers* MeshBuffers,
     Rr_MeshIndexType const* Indices,
     size_t IndexCount,
     Rr_Vertex const* Vertices,
     size_t VertexCount);
 
-Rr_MeshBuffers Rr_CreateMeshFromOBJ(Rr_Renderer* Renderer, Rr_Asset* Asset);
+Rr_MeshBuffers Rr_CreateMeshFromOBJ(const Rr_Renderer* Renderer, VkCommandBuffer CommandBuffer, const Rr_Asset* Asset);
 
-void Rr_DestroyMesh(Rr_Renderer* Renderer, Rr_MeshBuffers* Mesh);
+void Rr_DestroyMesh(const Rr_Renderer* Renderer, const Rr_MeshBuffers* Mesh);
 
-void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset);
+void Rr_ParseOBJ(Rr_RawMesh* RawMesh, const Rr_Asset* Asset);
 
 void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh);

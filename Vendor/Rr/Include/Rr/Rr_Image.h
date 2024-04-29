@@ -15,12 +15,12 @@ typedef struct Rr_Image
     VkFormat Format;
 } Rr_Image;
 
-Rr_Image Rr_CreateImage(Rr_Renderer* Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped);
-Rr_Image Rr_CreateImageFromPNG(Rr_Asset* Asset, Rr_Renderer* Renderer, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout);
+Rr_Image Rr_CreateImage(const Rr_Renderer* Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped);
+Rr_Image Rr_CreateImageFromPNG(const Rr_Renderer* Renderer, const Rr_Asset* Asset, VkImageUsageFlags Usage, b8 bMipMapped, VkImageLayout InitialLayout);
 Rr_Image Rr_CreateDepthImageFromEXR(Rr_Asset* Asset, Rr_Renderer* constRenderer);
-Rr_Image Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent);
-Rr_Image Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent);
-void Rr_DestroyImage(Rr_Renderer* Renderer, Rr_Image* AllocatedImage);
+Rr_Image Rr_CreateColorAttachmentImage(const Rr_Renderer* Renderer, VkExtent3D Extent);
+Rr_Image Rr_CreateDepthAttachmentImage(const Rr_Renderer* Renderer, VkExtent3D Extent);
+void Rr_DestroyImage(const Rr_Renderer* Renderer, const Rr_Image* AllocatedImage);
 
 typedef struct Rr_ImageBarrier
 {

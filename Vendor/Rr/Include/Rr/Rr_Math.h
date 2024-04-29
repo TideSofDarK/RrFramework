@@ -2,12 +2,12 @@
 
 #include <cglm/mat4.h>
 
-static inline float Rr_GetVerticalFoV(float HorizontalFoV, float Aspect)
+static float Rr_GetVerticalFoV(const float HorizontalFoV, const float Aspect)
 {
     return 2.0f * atanf((tanf(HorizontalFoV / 2.0f) * Aspect));
 }
 
-static inline void Rr_Perspective(mat4 Out, float HorizontalFoV, float Aspect)
+static void Rr_Perspective(mat4 Out, const float HorizontalFoV, const float Aspect)
 {
     glm_mat4_zero(Out);
     const float FoV = Rr_GetVerticalFoV(HorizontalFoV, 1.0f / Aspect);
@@ -20,7 +20,7 @@ static inline void Rr_Perspective(mat4 Out, float HorizontalFoV, float Aspect)
     Out[2][3] = 1.0f;
 }
 
-static inline void Rr_VulkanMatrix(mat4 Out)
+static void Rr_VulkanMatrix(mat4 Out)
 {
     glm_mat4_zero(Out);
     Out[0][0] = 1.0f;

@@ -104,7 +104,7 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
 {
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
-    VkDevice Device = Renderer->Device;
+    const VkDevice Device = Renderer->Device;
     vkDestroyPipeline(Device, TextPipeline->Handle, NULL);
     vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
     for (int Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT; ++Index)
@@ -113,24 +113,24 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
     }
     for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_DestroyBuffer(&TextPipeline->GlobalsBuffers[Index], Renderer->Allocator);
-        Rr_DestroyBuffer(&TextPipeline->TextBuffers[Index], Renderer->Allocator);
+        Rr_DestroyBuffer(Renderer, &TextPipeline->GlobalsBuffers[Index]);
+        Rr_DestroyBuffer(Renderer, &TextPipeline->TextBuffers[Index]);
     }
-    Rr_DestroyBuffer(&TextPipeline->QuadBuffer, Renderer->Allocator);
+    Rr_DestroyBuffer(Renderer, &TextPipeline->QuadBuffer);
     Rr_DestroyFont(Renderer, &Renderer->BuiltinFont);
 }
 
-Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
+Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, const Rr_Asset* FontPNG, const Rr_Asset* FontJSON)
 {
-    Rr_Image Atlas = Rr_CreateImageFromPNG(
-        FontPNG,
+    const Rr_Image Atlas = Rr_CreateImageFromPNG(
         Renderer,
+        FontPNG,
         VK_IMAGE_USAGE_SAMPLED_BIT,
         false,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     Rr_Buffer Buffer = Rr_CreateBuffer(
-        Renderer->Allocator,
+        Renderer,
         sizeof(Rr_TextFontLayout),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -138,8 +138,8 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
 
     cJSON* FontDataJSON = cJSON_ParseWithLength(FontJSON->Data, FontJSON->Length);
 
-    cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
-    cJSON* MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
+    const cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
+    const cJSON* MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
 
     Rr_TextFontLayout TextFontData = {
         .DistanceRange = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "distanceRange")),
@@ -156,16 +156,16 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
         .DefaultSize = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size"))
     };
 
-    cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
+    const cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
 
-    size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
+    const size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
     for (int GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
-        cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, GlyphIndex);
+        const cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, GlyphIndex);
 
-        size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
+        const size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
 
-        cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
+        const cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
         u16 AtlasBounds[4] = {};
         if (cJSON_IsObject(AtlasBoundsJSON))
         {
@@ -175,7 +175,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
             AtlasBounds[3] = (u16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "top"));
         }
 
-        cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
+        const cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
         vec4 PlaneBounds = {};
         if (cJSON_IsObject(PlaneBoundsJSON))
         {
@@ -211,10 +211,10 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
     return Font;
 }
 
-void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
+void Rr_DestroyFont(const Rr_Renderer* Renderer, const Rr_Font* Font)
 {
     Rr_DestroyImage(Renderer, &Font->Atlas);
-    Rr_DestroyBuffer(&Font->Buffer, Renderer->Allocator);
+    Rr_DestroyBuffer(Renderer, &Font->Buffer);
 }
 
 Rr_String Rr_CreateString(const char* CString)
@@ -227,7 +227,7 @@ Rr_String Rr_CreateString(const char* CString)
     const u8 Four = 240;
     const u8 Five = 248;
 
-    size_t SourceLength = SDL_strlen(CString);
+    const size_t SourceLength = SDL_strlen(CString);
 
     u8 Carry = 0;
     size_t FinalIndex = 0;
@@ -285,7 +285,7 @@ Rr_String Rr_CreateString(const char* CString)
     };
 }
 
-void Rr_DestroyString(Rr_String* String)
+void Rr_DestroyString(const Rr_String* String)
 {
     Rr_Free((void*)String->Data);
 }

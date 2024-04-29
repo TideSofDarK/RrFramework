@@ -26,10 +26,10 @@ static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 #ifdef RR_PERFORMANCE_COUNTER
     {
         FrameTime->PerformanceCounter.Frames++;
-        u64 CurrentTime = SDL_GetPerformanceCounter();
+        const u64 CurrentTime = SDL_GetPerformanceCounter();
         if (CurrentTime - FrameTime->PerformanceCounter.StartTime >= FrameTime->PerformanceCounter.UpdateFrequency)
         {
-            f64 Elapsed = (f64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) / FrameTime->PerformanceCounter.CountPerSecond;
+            const f64 Elapsed = (f64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) / FrameTime->PerformanceCounter.CountPerSecond;
             FrameTime->PerformanceCounter.FPS = (f64)FrameTime->PerformanceCounter.Frames / Elapsed;
             FrameTime->PerformanceCounter.StartTime = CurrentTime;
             FrameTime->PerformanceCounter.Frames = 0;
@@ -37,7 +37,7 @@ static void FrameTime_Advance(Rr_FrameTime* FrameTime)
     }
 #endif
 
-    u64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
+    const u64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
     u64 Now = SDL_GetTicksNS();
     u64 Elapsed = Now - FrameTime->StartTime;
     if (Elapsed < Interval)
@@ -60,11 +60,11 @@ static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 
 void Rr_DebugOverlay(Rr_App* App)
 {
-    ImGuiIO* IO = igGetIO();
+    const ImGuiIO* IO = igGetIO();
     const ImGuiViewport* Viewport = igGetMainViewport();
     ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
     const float Padding = 10.0f;
-    ImVec2 WorkPos = Viewport->WorkPos;
+    const ImVec2 WorkPos = Viewport->WorkPos;
     ImVec2 WindowPos, WindowPosPivot;
     WindowPos.x = WorkPos.x + Padding;
     WindowPos.y = WorkPos.y + Padding;
@@ -76,8 +76,8 @@ void Rr_DebugOverlay(Rr_App* App)
     igSetNextWindowBgAlpha(0.35f);
     if (igBegin("Debug Overlay", NULL, Flags))
     {
-        igText("Reference Resolution: %dx%d", App->Renderer.DrawTarget.ReferenceResolution.width, App->Renderer.DrawTarget.ReferenceResolution.height);
-        igText("Active Resolution: %dx%d", App->Renderer.DrawTarget.ActiveResolution.width, App->Renderer.DrawTarget.ActiveResolution.height);
+        igText("Reference Resolution: %dx%d", App->Renderer.ReferenceResolution.width, App->Renderer.ReferenceResolution.height);
+        igText("Active Resolution: %dx%d", App->Renderer.ActiveResolution.width, App->Renderer.ActiveResolution.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
@@ -127,7 +127,7 @@ static void Iterate(Rr_App* App)
     }
 }
 
-static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
+static int SDLCALL EventWatch(void* AppPtr, const SDL_Event* Event)
 {
     switch (Event->type)
     {
@@ -164,7 +164,7 @@ static void InitFrameTime(Rr_FrameTime* const FrameTime, SDL_Window* Window)
     FrameTime->PerformanceCounter.CountPerSecond = (f64)SDL_GetPerformanceFrequency();
 #endif
 
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
+    const SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
     const SDL_DisplayMode* Mode = SDL_GetDesktopDisplayMode(DisplayID);
     FrameTime->TargetFramerate = (u64)Mode->refresh_rate;
     FrameTime->StartTime = SDL_GetTicksNS();
@@ -197,7 +197,7 @@ void Rr_Run(Rr_AppConfig* Config)
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
 
-    SDL_AddEventWatch(EventWatch, &App);
+    SDL_AddEventWatch((SDL_EventFilter)EventWatch, &App);
 
     Rr_InitRenderer(&App);
     Rr_InitImGui(&App);
@@ -237,7 +237,7 @@ void Rr_Run(Rr_AppConfig* Config)
 
     Rr_CleanupRenderer(&App);
 
-    SDL_DelEventWatch(EventWatch, &App);
+    SDL_DelEventWatch((SDL_EventFilter)EventWatch, &App);
     SDL_DestroyWindow(App.Window);
     SDL_Quit();
 }
@@ -247,7 +247,7 @@ static b8 Rr_IsAnyFullscreen(SDL_Window* Window)
     return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
-void Rr_ToggleFullscreen(Rr_App* App)
+void Rr_ToggleFullscreen(const Rr_App* App)
 {
     SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
 }

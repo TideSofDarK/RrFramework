@@ -20,22 +20,22 @@
 #include "Rr_Memory.h"
 #include "Rr_Text.h"
 
-static void CalculateDrawTargetResolution(Rr_DrawTarget* const DrawTarget, u32 WindowWidth, u32 WindowHeight)
+static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
 {
-    DrawTarget->ActiveResolution.width = DrawTarget->ReferenceResolution.width;
-    DrawTarget->ActiveResolution.height = DrawTarget->ReferenceResolution.height;
+    Renderer->ActiveResolution.width = Renderer->ReferenceResolution.width;
+    Renderer->ActiveResolution.height = Renderer->ReferenceResolution.height;
 
-    const i32 MaxAvailableScale = SDL_min(WindowWidth / DrawTarget->ReferenceResolution.width, WindowHeight / DrawTarget->ReferenceResolution.height);
+    const i32 MaxAvailableScale = SDL_min(WindowWidth / Renderer->ReferenceResolution.width, WindowHeight / Renderer->ReferenceResolution.height);
     if (MaxAvailableScale >= 1)
     {
-        DrawTarget->ActiveResolution.width += (WindowWidth - MaxAvailableScale * DrawTarget->ReferenceResolution.width) / MaxAvailableScale;
-        DrawTarget->ActiveResolution.height += (WindowHeight - MaxAvailableScale * DrawTarget->ReferenceResolution.height) / MaxAvailableScale;
+        Renderer->ActiveResolution.width += (WindowWidth - MaxAvailableScale * Renderer->ReferenceResolution.width) / MaxAvailableScale;
+        Renderer->ActiveResolution.height += (WindowHeight - MaxAvailableScale * Renderer->ReferenceResolution.height) / MaxAvailableScale;
     }
 
-    DrawTarget->Scale = MaxAvailableScale;
+    Renderer->Scale = MaxAvailableScale;
 }
 
-static bool CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice PhysicalDevice)
+static bool CheckPhysicalDevice(Rr_Renderer* const Renderer, const VkPhysicalDevice PhysicalDevice)
 {
     u32 ExtensionCount;
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
@@ -84,27 +84,44 @@ static bool CheckPhysicalDevice(Rr_Renderer* const Renderer, VkPhysicalDevice Ph
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
+    u32 GraphicsQueueFamilyIndex = ~0;
+    u32 TransferQueueFamilyIndex = ~0;
+
     for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
     {
         vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, Index, Renderer->Surface, &QueuePresentSupport[Index]);
+        if (QueuePresentSupport[Index]
+            && QueueFamilyProperties[Index].queueCount > 0
+            && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+        {
+            GraphicsQueueFamilyIndex = Index;
+            break;
+        }
+    }
 
-        if (!QueuePresentSupport[Index])
+    for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
+    {
+        if (Index == GraphicsQueueFamilyIndex)
         {
             continue;
         }
 
-        if ((QueueFamilyProperties[Index].queueCount > 0) && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+        if (QueueFamilyProperties[Index].queueCount > 0
+            && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_TRANSFER_BIT))
         {
-            Renderer->GraphicsQueue.FamilyIndex = Index;
-            return true;
+            TransferQueueFamilyIndex = Index;
+            break;
         }
     }
+
+    Renderer->GraphicsQueue.FamilyIndex = GraphicsQueueFamilyIndex;
+    Renderer->Transfer.FamilyIndex = TransferQueueFamilyIndex;
 
     Rr_StackFree(QueuePresentSupport);
     Rr_StackFree(QueueFamilyProperties);
     Rr_StackFree(Extensions);
 
-    return false;
+    return GraphicsQueueFamilyIndex != ~0 && TransferQueueFamilyIndex != ~0;
 }
 
 static void InitDevice(Rr_Renderer* const Renderer)
@@ -155,11 +172,19 @@ static void InitDevice(Rr_Renderer* const Renderer)
     }
 
     const float QueuePriorities[] = { 1.0f };
-    VkDeviceQueueCreateInfo QueueInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-        .queueCount = 1,
-        .pQueuePriorities = QueuePriorities,
+    VkDeviceQueueCreateInfo QueueInfos[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+            .queueCount = 1,
+            .pQueuePriorities = QueuePriorities,
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = Renderer->Transfer.FamilyIndex,
+            .queueCount = 1,
+            .pQueuePriorities = QueuePriorities,
+        }
     };
 
     VkPhysicalDeviceVulkan13Features Features13 = {
@@ -183,11 +208,11 @@ static void InitDevice(Rr_Renderer* const Renderer)
 
     const char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-    VkDeviceCreateInfo DeviceCreateInfo = {
+    const VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = &Features12,
-        .queueCreateInfoCount = 1,
-        .pQueueCreateInfos = &QueueInfo,
+        .queueCreateInfoCount = SDL_arraysize(QueueInfos),
+        .pQueueCreateInfos = QueueInfos,
         .enabledExtensionCount = SDL_arraysize(DeviceExtensions),
         .ppEnabledExtensionNames = DeviceExtensions,
     };
@@ -195,15 +220,14 @@ static void InitDevice(Rr_Renderer* const Renderer)
     vkCreateDevice(Renderer->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Renderer->Device);
 
     vkGetDeviceQueue(Renderer->Device, Renderer->GraphicsQueue.FamilyIndex, 0, &Renderer->GraphicsQueue.Handle);
+    vkGetDeviceQueue(Renderer->Device, Renderer->Transfer.FamilyIndex, 0, &Renderer->Transfer.Handle);
 
     Rr_StackFree(PhysicalDevices);
 }
 
-static void InitDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
+static void InitDrawTarget(Rr_Renderer* const Renderer, Rr_DrawTarget* DrawTarget, const u32 Width, const u32 Height)
 {
-    Rr_DrawTarget* DrawTarget = &Renderer->DrawTarget;
-
-    VkExtent3D Extent = (VkExtent3D){
+    const VkExtent3D Extent = (VkExtent3D){
         Width,
         Height,
         1
@@ -212,9 +236,9 @@ static void InitDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
     DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(Renderer, Extent);
     DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(Renderer, Extent);
 
-    VkImageView Attachments[2] = {DrawTarget->ColorImage.View, DrawTarget->DepthImage.View};
+    VkImageView Attachments[2] = { DrawTarget->ColorImage.View, DrawTarget->DepthImage.View };
 
-    VkFramebufferCreateInfo Info = {
+    const VkFramebufferCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
@@ -228,14 +252,14 @@ static void InitDrawTarget(Rr_Renderer* const Renderer, u32 Width, u32 Height)
     vkCreateFramebuffer(Renderer->Device, &Info, NULL, &DrawTarget->Framebuffer);
 }
 
-static void CleanupDrawTarget(Rr_Renderer* const Renderer)
+static void CleanupDrawTarget(const Rr_Renderer* const Renderer, const Rr_DrawTarget* DrawTarget)
 {
-    vkDestroyFramebuffer(Renderer->Device, Renderer->DrawTarget.Framebuffer, NULL);
-    Rr_DestroyImage(Renderer, &Renderer->DrawTarget.ColorImage);
-    Rr_DestroyImage(Renderer, &Renderer->DrawTarget.DepthImage);
+    vkDestroyFramebuffer(Renderer->Device, DrawTarget->Framebuffer, NULL);
+    Rr_DestroyImage(Renderer, &DrawTarget->ColorImage);
+    Rr_DestroyImage(Renderer, &DrawTarget->DepthImage);
 }
 
-static void CleanupSwapchain(Rr_Renderer* const Renderer, VkSwapchainKHR Swapchain)
+static void CleanupSwapchain(const Rr_Renderer* const Renderer, const VkSwapchainKHR Swapchain)
 {
     for (u32 Index = 0; Index < Renderer->Swapchain.ImageCount; Index++)
     {
@@ -246,7 +270,7 @@ static void CleanupSwapchain(Rr_Renderer* const Renderer, VkSwapchainKHR Swapcha
 
 static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
 {
-    VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
+    const VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
 
     VkSurfaceCapabilitiesKHR SurfCaps;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &SurfCaps);
@@ -315,7 +339,7 @@ static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
     bool bPreferredFormatFound = false;
     for (u32 Index = 0; Index < FormatCount; Index++)
     {
-        VkSurfaceFormatKHR* SurfaceFormat = &SurfaceFormats[Index];
+        const VkSurfaceFormatKHR* SurfaceFormat = &SurfaceFormats[Index];
 
         if (SurfaceFormat->format == VK_FORMAT_B8G8R8A8_UNORM || SurfaceFormat->format == VK_FORMAT_R8G8B8A8_UNORM)
         {
@@ -333,7 +357,7 @@ static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
     }
 
     VkCompositeAlphaFlagBitsKHR CompositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    VkCompositeAlphaFlagBitsKHR CompositeAlphaFlags[] = {
+    const VkCompositeAlphaFlagBitsKHR CompositeAlphaFlags[] = {
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
         VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
@@ -341,7 +365,7 @@ static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
     };
     for (u32 Index = 0; Index < SDL_arraysize(CompositeAlphaFlags); Index++)
     {
-        VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag = CompositeAlphaFlags[Index];
+        const VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag = CompositeAlphaFlags[Index];
         if (SurfCaps.supportedCompositeAlpha & CompositeAlphaFlag)
         {
             CompositeAlpha = CompositeAlphaFlag;
@@ -416,16 +440,26 @@ static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
         vkCreateImageView(Renderer->Device, &ColorAttachmentView, NULL, &Renderer->Swapchain.Images[i].View);
     }
 
-    CalculateDrawTargetResolution(&Renderer->DrawTarget, *Width, *Height);
-
-    if (Renderer->DrawTarget.ActiveResolution.width > Renderer->DrawTarget.ColorImage.Extent.width
-        || Renderer->DrawTarget.ActiveResolution.height > Renderer->DrawTarget.ColorImage.Extent.height)
+    CalculateDrawTargetResolution(Renderer, *Width, *Height);
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        if (Renderer->DrawTarget.ColorImage.Handle != VK_NULL_HANDLE)
+        Rr_DrawTarget* DrawTarget = &Renderer->DrawTargets[Index];
+
+        if (DrawTarget->ColorImage.Handle != VK_NULL_HANDLE)
         {
-            CleanupDrawTarget(Renderer);
+            CleanupDrawTarget(Renderer, DrawTarget);
         }
-        InitDrawTarget(Renderer, *Width, *Height);
+        InitDrawTarget(Renderer, DrawTarget, *Width, *Height);
+
+        // if (Renderer->DrawTarget.ActiveResolution.width > Renderer->DrawTarget.ColorImage.Extent.width
+        //     || Renderer->DrawTarget.ActiveResolution.height > Renderer->DrawTarget.ColorImage.Extent.height)
+        // {
+        //     if (Renderer->DrawTarget.ColorImage.Handle != VK_NULL_HANDLE)
+        //     {
+        //         CleanupDrawTarget(Renderer);
+        //     }
+        //     InitDrawTarget(Renderer, *Width, *Height);
+        // }
     }
 
     Rr_StackFree(Images);
@@ -436,18 +470,18 @@ static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
 
 static void InitFrames(Rr_Renderer* const Renderer)
 {
-    VkDevice Device = Renderer->Device;
+    const VkDevice Device = Renderer->Device;
     Rr_Frame* Frames = Renderer->Frames;
 
-    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
+    const VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    const VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
 
     for (i32 Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         Rr_Frame* Frame = &Frames[Index];
 
         Frame->StagingBuffer = (Rr_StagingBuffer){
-            .Buffer = Rr_CreateMappedBuffer(Renderer->Allocator, RR_STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+            .Buffer = Rr_CreateMappedBuffer(Renderer, RR_STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
         };
 
         /* Synchronization */
@@ -509,7 +543,7 @@ static void InitAllocator(Rr_Renderer* const Renderer)
         .vkBindImageMemory2KHR = vkBindImageMemory2,
         .vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2,
     };
-    VmaAllocatorCreateInfo AllocatorInfo = {
+    const VmaAllocatorCreateInfo AllocatorInfo = {
         .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
         .physicalDevice = Renderer->PhysicalDevice.Handle,
         .device = Renderer->Device,
@@ -537,7 +571,7 @@ void Rr_InitImGui(Rr_App* App)
 {
     SDL_Window* Window = App->Window;
     Rr_Renderer* Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
+    const VkDevice Device = Renderer->Device;
 
     VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
@@ -551,7 +585,7 @@ void Rr_InitImGui(Rr_App* App)
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
         { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
 
-    VkDescriptorPoolCreateInfo PoolCreateInfo = {
+    const VkDescriptorPoolCreateInfo PoolCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .maxSets = 1000,
@@ -586,7 +620,7 @@ void Rr_InitImGui(Rr_App* App)
     ImGui_ImplVulkan_Init(&InitInfo);
 
     /* Init default font. */
-    f32 WindowScale = SDL_GetWindowDisplayScale(Window);
+    const f32 WindowScale = SDL_GetWindowDisplayScale(Window);
     ImGuiStyle_ScaleAllSizes(igGetStyle(), WindowScale);
 
     Rr_ExternAsset(MartianMonoTTF);
@@ -604,25 +638,25 @@ void Rr_InitImGui(Rr_App* App)
 
 static void InitImmediateMode(Rr_Renderer* const Renderer)
 {
-    VkDevice Device = Renderer->Device;
+    const VkDevice Device = Renderer->Device;
     Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
 
-    VkCommandPoolCreateInfo CommandPoolInfo = {
+    const VkCommandPoolCreateInfo CommandPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
     };
     vkCreateCommandPool(Device, &CommandPoolInfo, NULL, &ImmediateMode->CommandPool);
-    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
+    const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
     vkAllocateCommandBuffers(Device, &CommandBufferAllocateInfo, &ImmediateMode->CommandBuffer);
-    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    const VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence);
 }
 
 static void InitGenericPipelineLayout(Rr_Renderer* const Renderer)
 {
-    VkDevice Device = Renderer->Device;
+    const VkDevice Device = Renderer->Device;
 
     /* Descriptor Set Layouts */
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
@@ -658,7 +692,7 @@ static void InitGenericPipelineLayout(Rr_Renderer* const Renderer)
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
     };
 
-    VkPipelineLayoutCreateInfo LayoutInfo = {
+    const VkPipelineLayoutCreateInfo LayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         .setLayoutCount = RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT,
@@ -682,7 +716,7 @@ static void InitSamplers(Rr_Renderer* Renderer)
     vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->LinearSampler);
 }
 
-static void CleanupSamplers(Rr_Renderer* Renderer)
+static void CleanupSamplers(const Rr_Renderer* Renderer)
 {
     vkDestroySampler(Renderer->Device, Renderer->NearestSampler, NULL);
     vkDestroySampler(Renderer->Device, Renderer->LinearSampler, NULL);
@@ -690,7 +724,7 @@ static void CleanupSamplers(Rr_Renderer* Renderer)
 
 static void InitRenderPass(Rr_Renderer* Renderer)
 {
-    VkAttachmentDescription ColorAttachment = {
+    const VkAttachmentDescription ColorAttachment = {
         .samples = 1,
         .format = RR_COLOR_FORMAT,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -702,7 +736,7 @@ static void InitRenderPass(Rr_Renderer* Renderer)
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE
     };
 
-    VkAttachmentDescription DepthAttachment = {
+    const VkAttachmentDescription DepthAttachment = {
         .samples = 1,
         .format = RR_DEPTH_FORMAT,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -714,7 +748,7 @@ static void InitRenderPass(Rr_Renderer* Renderer)
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE
     };
 
-    VkAttachmentDescription Attachments[2] = {ColorAttachment, DepthAttachment};
+    VkAttachmentDescription Attachments[2] = { ColorAttachment, DepthAttachment };
 
     VkAttachmentReference ColorAttachmentRef = {
         .attachment = 0,
@@ -739,12 +773,14 @@ static void InitRenderPass(Rr_Renderer* Renderer)
         .pPreserveAttachments = NULL
     };
 
-    VkSubpassDependency Dependency = {
-        .srcSubpass = VK_SUBPASS_EXTERNAL,
-        .dstSubpass = 0,
+    VkSubpassDependency Dependencies[] = {
+        {
+            .srcSubpass = 0,
+            .dstSubpass = VK_SUBPASS_EXTERNAL,
+        }
     };
 
-    VkRenderPassCreateInfo Info = {
+    const VkRenderPassCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = 0,
@@ -753,28 +789,41 @@ static void InitRenderPass(Rr_Renderer* Renderer)
         .subpassCount = 1,
         .pSubpasses = &SubpassDescription,
         .dependencyCount = 1,
-        .pDependencies = &Dependency
+        .pDependencies = Dependencies
     };
 
     vkCreateRenderPass(Renderer->Device, &Info, NULL, &Renderer->RenderPass);
 }
 
-static void CleanupRenderPass(Rr_Renderer* Renderer)
+static void CleanupRenderPass(const Rr_Renderer* Renderer)
 {
     vkDestroyRenderPass(Renderer->Device, Renderer->RenderPass, NULL);
+}
+
+static void InitTransfer(Rr_Renderer* Renderer)
+{
+    VkCommandPoolCreateInfo CommandPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .queueFamilyIndex = Renderer->Transfer.FamilyIndex,
+    };
+
+    vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, NULL, &Renderer->Transfer.CommandPool);
+
 }
 
 void Rr_InitRenderer(Rr_App* App)
 {
     SDL_Window* Window = App->Window;
     Rr_Renderer* Renderer = &App->Renderer;
-    Rr_AppConfig* Config = App->Config;
+    const Rr_AppConfig* Config = App->Config;
 
     Renderer->PerFrameDataSize = Config->PerFrameDataSize;
     Renderer->PerFrameDatas = Rr_Calloc(RR_FRAME_OVERLAP, Config->PerFrameDataSize);
 
-    Renderer->DrawTarget.ReferenceResolution.width = Config->ReferenceResolution[0];
-    Renderer->DrawTarget.ReferenceResolution.height = Config->ReferenceResolution[1];
+    Renderer->ReferenceResolution.width = Config->ReferenceResolution[0];
+    Renderer->ReferenceResolution.height = Config->ReferenceResolution[1];
 
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
@@ -793,7 +842,7 @@ void Rr_InitRenderer(Rr_App* App)
     u32 SDLExtensionCount;
     const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
 
-    u32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
+    const u32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
     const char** Extensions = Rr_StackAlloc(const char*, ExtensionCount);
     for (u32 Index = 0; Index < ExtensionCount; Index++)
     {
@@ -805,7 +854,7 @@ void Rr_InitRenderer(Rr_App* App)
     }
 
     /* Create Vulkan instance. */
-    VkInstanceCreateInfo VKInstInfo = {
+    const VkInstanceCreateInfo VKInstInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = NULL,
         .pApplicationInfo = &VKAppInfo,
@@ -824,16 +873,14 @@ void Rr_InitRenderer(Rr_App* App)
     }
 
     InitDevice(Renderer);
-
     InitAllocator(Renderer);
 
     // volkLoadDevice(Renderer->Device);
     //
 
+    InitTransfer(Renderer);
     InitSamplers(Renderer);
-
     InitRenderPass(Renderer);
-
     InitDescriptors(Renderer);
 
     u32 Width, Height;
@@ -841,9 +888,7 @@ void Rr_InitRenderer(Rr_App* App)
     InitSwapchain(Renderer, &Width, &Height);
 
     InitFrames(Renderer);
-
     InitImmediateMode(Renderer);
-
     InitGenericPipelineLayout(Renderer);
 
     Rr_InitTextRenderer(Renderer);
@@ -853,7 +898,7 @@ void Rr_InitRenderer(Rr_App* App)
 
 b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
 {
-    i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
+    const i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
     if (bResizePending == true)
     {
         vkDeviceWaitIdle(Renderer->Device);
@@ -861,7 +906,7 @@ b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
         i32 Width, Height;
         SDL_GetWindowSizeInPixels(Window, &Width, &Height);
 
-        b8 bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
+        const b8 bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
 
         if (!bMinimized && Width > 0 && Height > 0 && InitSwapchain(Renderer, (u32*)&Width, (u32*)&Height))
         {
@@ -874,27 +919,27 @@ b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
     return true;
 }
 
-VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer)
+VkCommandBuffer Rr_BeginImmediate(const Rr_Renderer* Renderer)
 {
-    Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
+    const Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
     vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
     vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
 
-    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    const VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
 
     return ImmediateMode->CommandBuffer;
 }
 
-void Rr_EndImmediate(Rr_Renderer* Renderer)
+void Rr_EndImmediate(const Rr_Renderer* Renderer)
 {
-    Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
+    const Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
 
     vkEndCommandBuffer(ImmediateMode->CommandBuffer);
 
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
-    VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
+    const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
 
     vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
@@ -903,7 +948,7 @@ void Rr_EndImmediate(Rr_Renderer* Renderer)
 void Rr_CleanupRenderer(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
+    const VkDevice Device = Renderer->Device;
 
     vkDeviceWaitIdle(Renderer->Device);
 
@@ -940,12 +985,12 @@ void Rr_CleanupRenderer(Rr_App* App)
         vkDestroySemaphore(Device, Frame->RenderSemaphore, NULL);
         vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
 
-        Rr_DestroyBuffer(&Frame->StagingBuffer.Buffer, Renderer->Allocator);
+        Rr_DestroyBuffer(Renderer, &Frame->StagingBuffer.Buffer);
 
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
-    }
 
-    CleanupDrawTarget(Renderer);
+        CleanupDrawTarget(Renderer, &Renderer->DrawTargets[Index]);
+    }
 
     CleanupRenderPass(Renderer);
 

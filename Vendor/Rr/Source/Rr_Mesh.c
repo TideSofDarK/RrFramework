@@ -12,37 +12,38 @@
 #include "Rr_Buffer.h"
 
 void Rr_UploadMesh(
-    Rr_Renderer* const Renderer,
+    const Rr_Renderer* const Renderer,
+    VkCommandBuffer CommandBuffer,
     Rr_MeshBuffers* const MeshBuffers,
     Rr_MeshIndexType const* const Indices,
-    size_t IndexCount,
+    const size_t IndexCount,
     Rr_Vertex const* const Vertices,
-    size_t VertexCount)
+    const size_t VertexCount)
 {
-    size_t VertexBufferSize = sizeof(Rr_Vertex) * VertexCount;
-    size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * IndexCount;
+    const size_t VertexBufferSize = sizeof(Rr_Vertex) * VertexCount;
+    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * IndexCount;
 
     MeshBuffers->VertexBuffer = Rr_CreateBuffer(
-        Renderer->Allocator,
+        Renderer,
         VertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VMA_MEMORY_USAGE_AUTO,
         false);
 
-    VkBufferDeviceAddressInfo DeviceAddressInfo = {
+    const VkBufferDeviceAddressInfo DeviceAddressInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
         .buffer = MeshBuffers->VertexBuffer.Handle
     };
     MeshBuffers->VertexBufferAddress = vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
 
     MeshBuffers->IndexBuffer = Rr_CreateBuffer(
-        Renderer->Allocator,
+        Renderer,
         IndexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_AUTO, false);
 
     Rr_Buffer StagingBuffer = Rr_CreateBuffer(
-        Renderer->Allocator,
+        Renderer,
         VertexBufferSize + IndexBufferSize,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VMA_MEMORY_USAGE_AUTO, true);
@@ -54,7 +55,7 @@ void Rr_UploadMesh(
 
     Rr_BeginImmediate(Renderer);
 
-    VkBufferCopy VertexCopy = {
+    const VkBufferCopy VertexCopy = {
         .dstOffset = 0,
         .srcOffset = 0,
         .size = VertexBufferSize
@@ -62,7 +63,7 @@ void Rr_UploadMesh(
 
     vkCmdCopyBuffer(Renderer->ImmediateMode.CommandBuffer, StagingBuffer.Handle, MeshBuffers->VertexBuffer.Handle, 1, &VertexCopy);
 
-    VkBufferCopy IndexCopy = {
+    const VkBufferCopy IndexCopy = {
         .dstOffset = 0,
         .srcOffset = VertexBufferSize,
         .size = IndexBufferSize
@@ -72,27 +73,27 @@ void Rr_UploadMesh(
 
     Rr_EndImmediate(Renderer);
 
-    Rr_DestroyBuffer(&StagingBuffer, Renderer->Allocator);
+    Rr_DestroyBuffer(Renderer, &StagingBuffer);
 }
 
-Rr_MeshBuffers Rr_CreateMeshFromOBJ(Rr_Renderer* const Renderer, Rr_Asset* Asset)
+Rr_MeshBuffers Rr_CreateMeshFromOBJ(const Rr_Renderer* const Renderer, VkCommandBuffer CommandBuffer, const Rr_Asset* Asset)
 {
     Rr_MeshBuffers MeshBuffers;
     Rr_RawMesh RawMesh;
     Rr_ParseOBJ(&RawMesh, Asset);
     MeshBuffers.IndexCount = Rr_ArrayCount(RawMesh.Indices);
-    Rr_UploadMesh(Renderer, &MeshBuffers, RawMesh.Indices, MeshBuffers.IndexCount, RawMesh.Vertices, Rr_ArrayCount(RawMesh.Vertices));
+    Rr_UploadMesh(Renderer, CommandBuffer, &MeshBuffers, RawMesh.Indices, MeshBuffers.IndexCount, RawMesh.Vertices, Rr_ArrayCount(RawMesh.Vertices));
     Rr_DestroyRawMesh(&RawMesh);
     return MeshBuffers;
 }
 
-void Rr_DestroyMesh(Rr_Renderer* const Renderer, Rr_MeshBuffers* const Mesh)
+void Rr_DestroyMesh(const Rr_Renderer* Renderer, const Rr_MeshBuffers* Mesh)
 {
-    Rr_DestroyBuffer(&Mesh->IndexBuffer, Renderer->Allocator);
-    Rr_DestroyBuffer(&Mesh->VertexBuffer, Renderer->Allocator);
+    Rr_DestroyBuffer(Renderer, &Mesh->IndexBuffer);
+    Rr_DestroyBuffer(Renderer, &Mesh->VertexBuffer);
 }
 
-static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
+static size_t GetNewLine(const char* Data, const size_t Length, size_t CurrentIndex)
 {
     CurrentIndex++;
     while (CurrentIndex < Length && Data[CurrentIndex] != '\n')
@@ -103,7 +104,7 @@ static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
     return CurrentIndex;
 }
 
-void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
+void Rr_ParseOBJ(Rr_RawMesh* RawMesh, const Rr_Asset* Asset)
 {
     /* Init scratch buffers. */
     vec3* ScratchPositions;
@@ -205,7 +206,7 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
                     {
                         vec3* Position = &ScratchPositions[OBJIndices[Index][0]];
                         vec4* Color = &ScratchColors[OBJIndices[Index][0]];
-                        vec2* TexCoord = &ScratchTexCoords[OBJIndices[Index][1]];
+                        const vec2* TexCoord = &ScratchTexCoords[OBJIndices[Index][1]];
                         vec3* Normal = &ScratchNormals[OBJIndices[Index][2]];
                         Rr_Vertex NewVertex = { 0 };
                         glm_vec3_copy(*Position, NewVertex.Position);

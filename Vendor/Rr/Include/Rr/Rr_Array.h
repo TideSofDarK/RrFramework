@@ -14,7 +14,7 @@ typedef struct Rr_ArrayHeader
     size_t Alignment;
 } Rr_ArrayHeader;
 
-static inline Rr_ArrayHeader* RrArray_Header(Rr_Array Handle)
+static Rr_ArrayHeader* RrArray_Header(Rr_Array Handle)
 {
     return (Rr_ArrayHeader*)(Handle)-1;
 }
@@ -29,7 +29,7 @@ Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, const void* Data);
 
 void Rr_ArraySet(Rr_Array Handle, size_t Index, const void* Data);
 
-void Rr_ArrayEmplace(Rr_Array Handle, void* Data);
+void Rr_ArrayEmplace(Rr_Array Handle, const void* Data);
 
 void Rr_ArrayPop(Rr_Array Handle);
 

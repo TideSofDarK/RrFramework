@@ -26,7 +26,7 @@ typedef struct Rr_DescriptorAllocator
     size_t SetsPerPool;
 } Rr_DescriptorAllocator;
 
-Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(VkDevice Device, size_t MaxSets, Rr_DescriptorPoolSizeRatio* Ratios, size_t RatioCount);
+Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(VkDevice Device, size_t MaxSets, const Rr_DescriptorPoolSizeRatio* Ratios, size_t RatioCount);
 VkDescriptorSet Rr_AllocateDescriptorSet(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout Layout);
 void Rr_ResetDescriptorAllocator(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device);
 void Rr_DestroyDescriptorAllocator(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device);
@@ -55,9 +55,9 @@ Rr_DescriptorWriter Rr_CreateDescriptorWriter(size_t Images, size_t Buffers);
 void Rr_WriteImageDescriptor(Rr_DescriptorWriter* Writer, u32 Binding, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type);
 void Rr_WriteImageDescriptorAt(Rr_DescriptorWriter* Writer, u32 Binding, u32 Index, VkImageView View, VkSampler Sampler, VkImageLayout Layout, VkDescriptorType Type);
 void Rr_WriteBufferDescriptor(Rr_DescriptorWriter* Writer, u32 Binding, VkBuffer Buffer, size_t Size, size_t Offset, VkDescriptorType Type);
-void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer);
+void Rr_ResetDescriptorWriter(const Rr_DescriptorWriter* Writer);
 void Rr_DestroyDescriptorWriter(Rr_DescriptorWriter* Writer);
-void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
+void Rr_UpdateDescriptorSet(const Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
 
 typedef struct Rr_DescriptorLayoutBuilder
 {
