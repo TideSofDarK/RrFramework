@@ -25,6 +25,16 @@ Rr_Buffer Rr_CreateMappedBuffer(const Rr_Renderer* Renderer, size_t Size, VkBuff
 Rr_Buffer Rr_CreateMappedVertexBuffer(const Rr_Renderer* Renderer, size_t Size);
 void Rr_DestroyBuffer(const Rr_Renderer* Renderer, const Rr_Buffer* Buffer);
 VkDeviceAddress Rr_GetBufferAddress(const Rr_Renderer* Renderer, const Rr_Buffer* Buffer);
+void Rr_UploadBuffer(
+    const Rr_Renderer* Renderer,
+    Rr_StagingBuffer* StagingBuffer,
+    const VkCommandBuffer GraphicsCommandBuffer,
+    const VkCommandBuffer TransferCommandBuffer,
+    VkBuffer Buffer,
+    VkPipelineStageFlags DstStageMask,
+    VkAccessFlags DstAccessMask,
+    const void* Data,
+    const size_t DataLength);
 
 void Rr_UploadToDeviceBufferImmediate(
     const Rr_Renderer* Renderer,
@@ -44,3 +54,6 @@ void Rr_CopyToMappedUniformBuffer(
     const void* Data,
     size_t Size,
     size_t* DstOffset);
+
+Rr_StagingBuffer Rr_CreateStagingBuffer(const Rr_Renderer* Renderer, size_t Size);
+void Rr_DestroyStagingBuffer(const Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer);

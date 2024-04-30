@@ -788,7 +788,9 @@ void Rr_Draw(Rr_App* const App)
 
     const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
 
-    vkQueueSubmit2(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
+    SDL_LockMutex(Renderer->Graphics.Mutex);
+    vkQueueSubmit2(Renderer->Graphics.Handle, 1, &SubmitInfo, Frame->RenderFence);
+    SDL_UnlockMutex(Renderer->Graphics.Mutex);
 
     const VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -800,7 +802,7 @@ void Rr_Draw(Rr_App* const App)
         .pImageIndices = &SwapchainImageIndex,
     };
 
-    Result = vkQueuePresentKHR(Renderer->GraphicsQueue.Handle, &PresentInfo);
+    Result = vkQueuePresentKHR(Renderer->Graphics.Handle, &PresentInfo);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 1);

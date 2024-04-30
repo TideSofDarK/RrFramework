@@ -12,6 +12,8 @@
 #include "Rr_Memory.h"
 #include "Rr_Util.h"
 
+#include <Rr_Load.h>
+
 void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 {
     VkDevice Device = Renderer->Device;
@@ -122,12 +124,10 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
 
 Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, const Rr_Asset* FontPNG, const Rr_Asset* FontJSON)
 {
-    const Rr_Image Atlas = Rr_CreateImageFromPNG(
-        Renderer,
-        FontPNG,
-        VK_IMAGE_USAGE_SAMPLED_BIT,
-        false,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    Rr_Image Atlas;
+    Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(Renderer, 1);
+    Rr_LoadColorImageFromPNG(LoadingContext, FontPNG, &Atlas);
+    Rr_LoadImmediate(LoadingContext);
 
     Rr_Buffer Buffer = Rr_CreateBuffer(
         Renderer,

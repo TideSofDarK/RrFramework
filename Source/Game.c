@@ -82,8 +82,8 @@ static SUber3DGlobals ShaderGlobals;
 
 static Rr_GenericPipeline Uber3DPipeline = { 0 };
 
-static Rr_Image SceneDepthImage;
-static Rr_Image SceneColorImage;
+// static Rr_Image SceneDepthImage;
+// static Rr_Image SceneColorImage;
 
 static Rr_MeshBuffers CottageMesh = { 0 };
 static Rr_Image CottageTexture;
@@ -148,19 +148,10 @@ static void OnLoadingComplete(Rr_Renderer* Renderer, u32 Status)
     Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 
+    Rr_Image* CottageTextures[1] = { &CottageTexture };
+    CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
+
     bLoaded = true;
-    /* Marble */
-    // Rr_ExternAsset(MarbleOBJ);
-    // MarbleMesh = Rr_CreateMeshFromOBJ(Renderer, &MarbleOBJ);
-    //
-    // Rr_ExternAsset(MarbleDiffusePNG);
-    // MarbleDiffuse = Rr_CreateImageFromPNG(&MarbleDiffusePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    //
-    // Rr_ExternAsset(MarbleSpecularPNG);
-    // MarbleSpecular = Rr_CreateImageFromPNG(&MarbleSpecularPNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    //
-    //
-    // SDL_PostSemaphore(LoadingSemaphore);
 }
 
 static void Init(Rr_App* App)
@@ -172,42 +163,38 @@ static void Init(Rr_App* App)
 
     Rr_Renderer* const Renderer = &App->Renderer;
 
-    Rr_ExternAsset(MarbleOBJ);
     Rr_ExternAsset(MarbleDiffusePNG);
     Rr_ExternAsset(MarbleSpecularPNG);
+    Rr_ExternAsset(MarbleOBJ);
+    Rr_ExternAsset(CottagePNG);
+    Rr_ExternAsset(CottageOBJ);
+
     Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(Renderer, 8);
-    Rr_LoadRGBA8FromPNG(LoadingContext, &MarbleDiffusePNG, &MarbleDiffuse);
-    Rr_LoadRGBA8FromPNG(LoadingContext, &MarbleSpecularPNG, &MarbleSpecular);
+    Rr_LoadColorImageFromPNG(LoadingContext, &MarbleDiffusePNG, &MarbleDiffuse);
+    Rr_LoadColorImageFromPNG(LoadingContext, &MarbleSpecularPNG, &MarbleSpecular);
     Rr_LoadMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
-    Rr_Load(LoadingContext, OnLoadingComplete);
+    Rr_LoadColorImageFromPNG(LoadingContext, &CottagePNG, &CottageTexture);
+    Rr_LoadMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
+    Rr_LoadAsync(LoadingContext, OnLoadingComplete);
 
-    Rr_ExternAsset(POCDepthEXR);
-    SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
-
-    Rr_ExternAsset(POCColorPNG);
-    SceneColorImage = Rr_CreateImageFromPNG(Renderer, &POCColorPNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    // Rr_ExternAsset(POCDepthEXR);
+    // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
+    //
+    // Rr_ExternAsset(POCColorPNG);
+    // SceneColorImage = Rr_CreateImageFromPNG(Renderer, &POCColorPNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     //
     //    Rr_Asset DoorFrameOBJ;
     //    Rr_ExternAssetAs(&DoorFrameOBJ, DoorFrameOBJ);
     //    MonkeyMesh = Rr_CreateMesh_FromOBJ(Renderer, &DoorFrameOBJ);
 
-    Rr_ExternAsset(CottageOBJ);
-    CottageMesh = Rr_CreateMeshFromOBJ(Renderer, &CottageOBJ);
-
-    Rr_ExternAsset(CottagePNG);
-    CottageTexture = Rr_CreateImageFromPNG(Renderer, &CottagePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    Rr_ExternAsset(PocMeshOBJ);
-    PocMesh = Rr_CreateMeshFromOBJ(Renderer, &PocMeshOBJ);
-
-    Rr_ExternAsset(PocDiffusePNG);
-    PocDiffuseImage = Rr_CreateImageFromPNG(Renderer, &PocDiffusePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    // Rr_ExternAsset(PocMeshOBJ);
+    // PocMesh = Rr_CreateMeshFromOBJ(Renderer, &PocMeshOBJ);
+    //
+    // Rr_ExternAsset(PocDiffusePNG);
+    // PocDiffuseImage = Rr_CreateImageFromPNG(Renderer, &PocDiffusePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     InitUber3DPipeline(Renderer);
     InitGlobals(Renderer);
-
-    Rr_Image* CottageTextures[1] = { &CottageTexture };
-    CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
 
     TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
     DebugString = Rr_CreateString("$c3Colored $c1text$c2");
@@ -228,8 +215,8 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyMaterial(Renderer, &CottageMaterial);
     Rr_DestroyMaterial(Renderer, &MarbleMaterial);
 
-    Rr_DestroyImage(Renderer, &SceneDepthImage);
-    Rr_DestroyImage(Renderer, &SceneColorImage);
+    // Rr_DestroyImage(Renderer, &SceneDepthImage);
+    // Rr_DestroyImage(Renderer, &SceneColorImage);
     Rr_DestroyImage(Renderer, &CottageTexture);
     Rr_DestroyImage(Renderer, &PocDiffuseImage);
     Rr_DestroyImage(Renderer, &MarbleDiffuse);
@@ -306,45 +293,30 @@ static void Draw(Rr_App* const App)
     };
     Rr_RenderingContext RenderingContext = Rr_BeginRendering(Renderer, &BeginRenderingInfo);
 
-    u64 Ticks = SDL_GetTicks();
-    float Time = (float)((double)Ticks / 1000.0 * 2);
-    // SUber3DDraw Draw;
-    mat4 Transform;
-    // glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
-    // glm_mat4_identity(Draw.Model);
-    // glm_scale_uni(Draw.Model, 0.5f);
-    // Draw.Model[3][1] = 0.5f;
-    // Draw.Model[3][2] = 3.5f;
-    // glm_mat4_mul(Transform, Draw.Model, Draw.Model);
-    // Draw.VertexBufferAddress = MonkeyMesh.VertexBufferAddress;
-    //
-    // Rr_DrawMeshInfo DrawMeshInfo = {
-    //     .Material = &MonkeyMaterial,
-    //     .MeshBuffers = &MonkeyMesh,
-    //     .DrawData = &Draw
-    // };
-    //
-    SUber3DDraw Draw2;
-    glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
-    glm_mat4_identity(Draw2.Model);
-    glm_scale_uni(Draw2.Model, 0.75f);
-    glm_mat4_mul(Transform, Draw2.Model, Draw2.Model);
-    Draw2.Model[3][0] = 3.5f;
-    Draw2.Model[3][1] = 0.5f;
-    Draw2.Model[3][2] = 3.5f;
-    Draw2.VertexBufferAddress = CottageMesh.VertexBufferAddress;
-
-    Rr_DrawMeshInfo DrawMeshInfo2 = {
-        .Material = &CottageMaterial,
-        .MeshBuffers = &CottageMesh,
-        .DrawData = &Draw2
-    };
-    //
-    // Rr_DrawMesh(&RenderingContext, &DrawMeshInfo);
-    Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
+    const u64 Ticks = SDL_GetTicks();
+    const float Time = ((double)Ticks / 1000.0 * 2);
 
     if (bLoaded)
     {
+        mat4 Transform;
+        SUber3DDraw Draw2;
+        glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
+        glm_mat4_identity(Draw2.Model);
+        glm_scale_uni(Draw2.Model, 0.75f);
+        glm_mat4_mul(Transform, Draw2.Model, Draw2.Model);
+        Draw2.Model[3][0] = 3.5f;
+        Draw2.Model[3][1] = 0.5f;
+        Draw2.Model[3][2] = 3.5f;
+        Draw2.VertexBufferAddress = CottageMesh.VertexBufferAddress;
+
+        Rr_DrawMeshInfo DrawMeshInfo2 = {
+            .Material = &CottageMaterial,
+            .MeshBuffers = &CottageMesh,
+            .DrawData = &Draw2
+        };
+
+        Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
+
         SUber3DDraw MarbleDraw;
         glm_mat4_identity(MarbleDraw.Model);
         MarbleDraw.Model[3][1] = 0.1f;

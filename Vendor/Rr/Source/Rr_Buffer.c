@@ -8,7 +8,12 @@
 #include "Rr_Renderer.h"
 #include "Rr_Util.h"
 
-Rr_Buffer Rr_CreateBuffer(const Rr_Renderer* Renderer, const size_t Size, const VkBufferUsageFlags UsageFlags, const VmaMemoryUsage MemoryUsage, const b32 bHostMapped)
+Rr_Buffer Rr_CreateBuffer(
+    const Rr_Renderer* Renderer,
+    const size_t Size,
+    const VkBufferUsageFlags UsageFlags,
+    const VmaMemoryUsage MemoryUsage,
+    const b32 bHostMapped)
 {
     Rr_Buffer Buffer;
 
@@ -80,6 +85,117 @@ VkDeviceAddress Rr_GetBufferAddress(const Rr_Renderer* const Renderer, const Rr_
         .buffer = Buffer->Handle
     };
     return vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
+}
+
+void Rr_UploadBuffer(
+    const Rr_Renderer* Renderer,
+    Rr_StagingBuffer* StagingBuffer,
+    const VkCommandBuffer GraphicsCommandBuffer,
+    const VkCommandBuffer TransferCommandBuffer,
+    VkBuffer Buffer,
+    VkPipelineStageFlags DstStageMask,
+    VkAccessFlags DstAccessMask,
+    const void* Data,
+    const size_t DataLength)
+{
+    const size_t BufferOffset = StagingBuffer->CurrentOffset;
+    SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
+    StagingBuffer->CurrentOffset += DataLength;
+
+    vkCmdPipelineBarrier(
+        TransferCommandBuffer,
+        0,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0,
+        NULL,
+        1,
+        &(VkBufferMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+            .pNext = NULL,
+            .buffer = Buffer,
+            .offset = 0,
+            .size = DataLength,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        },
+        0,
+        NULL);
+
+    const VkBufferCopy Copy = {
+        .size = DataLength,
+        .srcOffset = BufferOffset,
+        .dstOffset = 0
+    };
+
+    vkCmdCopyBuffer(TransferCommandBuffer, StagingBuffer->Buffer.Handle, Buffer, 1, &Copy);
+
+    if (GraphicsCommandBuffer == TransferCommandBuffer)
+    {
+        vkCmdPipelineBarrier(
+            TransferCommandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            DstStageMask,
+            0,
+            0,
+            NULL,
+            1,
+            &(VkBufferMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .buffer = Buffer,
+                .offset = 0,
+                .size = DataLength,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = DstAccessMask,
+            },
+            0,
+            NULL);
+    }
+    else
+    {
+        vkCmdPipelineBarrier(
+            TransferCommandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0,
+            0,
+            NULL,
+            1,
+            &(VkBufferMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .buffer = Buffer,
+                .offset = 0,
+                .size = DataLength,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = 0,
+                .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex },
+            0,
+            NULL);
+
+        vkCmdPipelineBarrier(
+            GraphicsCommandBuffer,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            DstStageMask,
+            0,
+            0,
+            NULL,
+            1,
+            &(VkBufferMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .buffer = Buffer,
+                .offset = 0,
+                .size = DataLength,
+                .srcAccessMask = 0,
+                .dstAccessMask = DstAccessMask,
+                .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex },
+            0,
+            NULL);
+    }
 }
 
 void Rr_UploadToDeviceBufferImmediate(
@@ -189,4 +305,17 @@ void Rr_CopyToMappedUniformBuffer(
         *DstOffset += Size;
         *DstOffset = Rr_Align(*DstOffset, Alignment);
     }
+}
+
+Rr_StagingBuffer Rr_CreateStagingBuffer(const Rr_Renderer* Renderer, size_t Size)
+{
+    return (Rr_StagingBuffer){
+        .CurrentOffset = 0,
+        .Buffer = Rr_CreateMappedBuffer(Renderer, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+    };
+}
+
+void Rr_DestroyStagingBuffer(const Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer)
+{
+    Rr_DestroyBuffer(Renderer, &StagingBuffer->Buffer);
 }

@@ -11,79 +11,65 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 
-void Rr_UploadMesh(
+Rr_MeshBuffers Rr_CreateMeshFromOBJ(
     const Rr_Renderer* const Renderer,
-    VkCommandBuffer CommandBuffer,
-    Rr_MeshBuffers* const MeshBuffers,
-    Rr_MeshIndexType const* const Indices,
-    const size_t IndexCount,
-    Rr_Vertex const* const Vertices,
-    const size_t VertexCount)
-{
-    const size_t VertexBufferSize = sizeof(Rr_Vertex) * VertexCount;
-    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * IndexCount;
-
-    MeshBuffers->VertexBuffer = Rr_CreateBuffer(
-        Renderer,
-        VertexBufferSize,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        false);
-
-    const VkBufferDeviceAddressInfo DeviceAddressInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = MeshBuffers->VertexBuffer.Handle
-    };
-    MeshBuffers->VertexBufferAddress = vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
-
-    MeshBuffers->IndexBuffer = Rr_CreateBuffer(
-        Renderer,
-        IndexBufferSize,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_AUTO, false);
-
-    Rr_Buffer StagingBuffer = Rr_CreateBuffer(
-        Renderer,
-        VertexBufferSize + IndexBufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_AUTO, true);
-
-    void* StagingData = StagingBuffer.AllocationInfo.pMappedData;
-
-    SDL_memcpy((char*)StagingData, (void*)Vertices, VertexBufferSize);
-    SDL_memcpy((char*)StagingData + VertexBufferSize, (void*)Indices, IndexBufferSize);
-
-    Rr_BeginImmediate(Renderer);
-
-    const VkBufferCopy VertexCopy = {
-        .dstOffset = 0,
-        .srcOffset = 0,
-        .size = VertexBufferSize
-    };
-
-    vkCmdCopyBuffer(Renderer->ImmediateMode.CommandBuffer, StagingBuffer.Handle, MeshBuffers->VertexBuffer.Handle, 1, &VertexCopy);
-
-    const VkBufferCopy IndexCopy = {
-        .dstOffset = 0,
-        .srcOffset = VertexBufferSize,
-        .size = IndexBufferSize
-    };
-
-    vkCmdCopyBuffer(Renderer->ImmediateMode.CommandBuffer, StagingBuffer.Handle, MeshBuffers->IndexBuffer.Handle, 1, &IndexCopy);
-
-    Rr_EndImmediate(Renderer);
-
-    Rr_DestroyBuffer(Renderer, &StagingBuffer);
-}
-
-Rr_MeshBuffers Rr_CreateMeshFromOBJ(const Rr_Renderer* const Renderer, VkCommandBuffer CommandBuffer, const Rr_Asset* Asset)
+    const VkCommandBuffer GraphicsCommandBuffer,
+    const VkCommandBuffer TransferCommandBuffer,
+    Rr_StagingBuffer* StagingBuffer,
+    const Rr_Asset* Asset)
 {
     Rr_MeshBuffers MeshBuffers;
     Rr_RawMesh RawMesh;
     Rr_ParseOBJ(&RawMesh, Asset);
     MeshBuffers.IndexCount = Rr_ArrayCount(RawMesh.Indices);
-    Rr_UploadMesh(Renderer, CommandBuffer, &MeshBuffers, RawMesh.Indices, MeshBuffers.IndexCount, RawMesh.Vertices, Rr_ArrayCount(RawMesh.Vertices));
+
+    const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh.Vertices);
+    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * MeshBuffers.IndexCount;
+
+    MeshBuffers.VertexBuffer = Rr_CreateBuffer(
+        Renderer,
+        VertexBufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        false);
+
+    MeshBuffers.IndexBuffer = Rr_CreateBuffer(
+        Renderer,
+        IndexBufferSize,
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        false);
+
+    const VkBufferDeviceAddressInfo DeviceAddressInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = MeshBuffers.VertexBuffer.Handle
+    };
+    MeshBuffers.VertexBufferAddress = vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
+
+    Rr_UploadBuffer(
+        Renderer,
+        StagingBuffer,
+        GraphicsCommandBuffer,
+        TransferCommandBuffer,
+        MeshBuffers.VertexBuffer.Handle,
+        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
+        RawMesh.Vertices,
+        VertexBufferSize);
+
+    Rr_UploadBuffer(
+        Renderer,
+        StagingBuffer,
+        GraphicsCommandBuffer,
+        TransferCommandBuffer,
+        MeshBuffers.IndexBuffer.Handle,
+        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
+        RawMesh.Indices,
+        IndexBufferSize);
+
     Rr_DestroyRawMesh(&RawMesh);
+
     return MeshBuffers;
 }
 
@@ -91,6 +77,20 @@ void Rr_DestroyMesh(const Rr_Renderer* Renderer, const Rr_MeshBuffers* Mesh)
 {
     Rr_DestroyBuffer(Renderer, &Mesh->IndexBuffer);
     Rr_DestroyBuffer(Renderer, &Mesh->VertexBuffer);
+}
+
+size_t Rr_GetMeshBuffersSizeOBJ(const Rr_Asset* Asset)
+{
+    Rr_RawMesh RawMesh;
+    Rr_ParseOBJ(&RawMesh, Asset);
+
+    const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh.Vertices);
+    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_ArrayCount(RawMesh.Indices);
+    const size_t TotalSize = VertexBufferSize + IndexBufferSize;
+
+    Rr_DestroyRawMesh(&RawMesh);
+
+    return TotalSize;
 }
 
 static size_t GetNewLine(const char* Data, const size_t Length, size_t CurrentIndex)

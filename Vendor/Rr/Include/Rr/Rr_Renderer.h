@@ -18,6 +18,7 @@ typedef enum Rr_DrawTextFlags
 } Rr_DrawTextFlags;
 
 typedef struct SDL_Window SDL_Window;
+typedef struct SDL_Mutex SDL_Mutex;
 typedef struct Rr_AppConfig Rr_AppConfig;
 typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_Material Rr_Material;
@@ -110,12 +111,19 @@ typedef struct Rr_Renderer
     Rr_Swapchain Swapchain;
 
     /* Queues */
-    Rr_DeviceQueue GraphicsQueue;
+    u32 bUnifiedQueue;
 
-    /* Transfer */
     struct
     {
-        VkCommandPool CommandPool;
+        SDL_Mutex* Mutex;
+        VkCommandPool TransientCommandPool;
+        VkQueue Handle;
+        u32 FamilyIndex;
+    } Graphics;
+
+    struct
+    {
+        VkCommandPool TransientCommandPool;
         VkQueue Handle;
         u32 FamilyIndex;
     } Transfer;

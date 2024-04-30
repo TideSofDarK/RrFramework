@@ -26,11 +26,15 @@ typedef struct Rr_LoadTask
 
 typedef struct Rr_LoadingContext
 {
+    u32 bImmediate;
+    Rr_LoadStatus Status;
     Rr_Renderer* Renderer;
     Rr_LoadTask* Tasks;
     SDL_Thread* Thread;
     SDL_Semaphore* Semaphore;
     Rr_LoadingCallback Callback;
+    VkSemaphore TransferSemaphore;
+    VkFence ReadyFence;
 } Rr_LoadingContext;
 
 Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t InitialTaskCount)
@@ -44,7 +48,7 @@ Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t I
     return LoadingContext;
 }
 
-void Rr_LoadRGBA8FromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_Image* OutImage)
+void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_Image* OutImage)
 {
     const Rr_LoadTask Task = {
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
@@ -68,12 +72,72 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
 {
     const Rr_Renderer* Renderer = LoadingContext->Renderer;
 
-    /* Allocate command buffer. */
-    VkCommandBuffer CommandBuffer;
-    const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Transfer.CommandPool, 1);
-    vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &CommandBuffer);
+    /* Select command buffers. */
+    VkCommandBuffer GraphicsCommandBuffer = VK_NULL_HANDLE;
+    VkCommandBuffer TransferCommandBuffer = VK_NULL_HANDLE;
+
+    if (LoadingContext->bImmediate)
+    {
+        GraphicsCommandBuffer = TransferCommandBuffer = Rr_BeginImmediate(Renderer);
+    }
+    else
+    {
+        const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Graphics.TransientCommandPool, 1);
+        vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &GraphicsCommandBuffer);
+        vkBeginCommandBuffer(
+            GraphicsCommandBuffer,
+            &(VkCommandBufferBeginInfo){
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                .pNext = NULL,
+                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                .pInheritanceInfo = NULL });
+
+        if (Renderer->bUnifiedQueue)
+        {
+            TransferCommandBuffer = GraphicsCommandBuffer;
+        }
+        else
+        {
+            const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Transfer.TransientCommandPool, 1);
+            vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
+            vkBeginCommandBuffer(
+                TransferCommandBuffer,
+                &(VkCommandBufferBeginInfo){
+                    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                    .pNext = NULL,
+                    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                    .pInheritanceInfo = NULL });
+        }
+    }
 
     const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
+    size_t StagingBufferSize = 0;
+
+    /* First pass: calculate staging buffer size. */
+    for (size_t Index = 0; Index < TaskCount; ++Index)
+    {
+        Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
+        switch (Task->LoadType)
+        {
+            case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
+            {
+                StagingBufferSize += Rr_GetImageSizePNG(&Task->Asset);
+            }
+            break;
+            case RR_LOAD_TYPE_MESH_FROM_OBJ:
+            {
+                StagingBufferSize += Rr_GetMeshBuffersSizeOBJ(&Task->Asset);
+            }
+            break;
+            default:
+                break;
+        }
+    }
+
+    /* Create appropriate staging buffer. */
+    Rr_StagingBuffer StagingBuffer = Rr_CreateStagingBuffer(Renderer, StagingBufferSize);
+
+    /* Second pass: record command buffers. */
     for (size_t Index = 0; Index < TaskCount; ++Index)
     {
         Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
@@ -83,6 +147,9 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
             {
                 *(Rr_Image*)Task->Out = Rr_CreateImageFromPNG(
                     Renderer,
+                    GraphicsCommandBuffer,
+                    TransferCommandBuffer,
+                    &StagingBuffer,
                     &Task->Asset,
                     VK_IMAGE_USAGE_SAMPLED_BIT,
                     false,
@@ -91,7 +158,12 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
             break;
             case RR_LOAD_TYPE_MESH_FROM_OBJ:
             {
-                *(Rr_MeshBuffers*)Task->Out = Rr_CreateMeshFromOBJ(Renderer, CommandBuffer, &Task->Asset);
+                *(Rr_MeshBuffers*)Task->Out = Rr_CreateMeshFromOBJ(
+                    Renderer,
+                    GraphicsCommandBuffer,
+                    TransferCommandBuffer,
+                    &StagingBuffer,
+                    &Task->Asset);
             }
             break;
             default:
@@ -100,28 +172,111 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
         SDL_PostSemaphore(LoadingContext->Semaphore);
     }
 
-    VkSubmitInfo SubmitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext = NULL,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &CommandBuffer,
-        .pSignalSemaphores = NULL,
-        .pWaitSemaphores = NULL,
-        .signalSemaphoreCount = 0,
-        .waitSemaphoreCount = 0,
-        .pWaitDstStageMask = 0
-    };
+    /* Done recording; finally submit it. */
+    if (LoadingContext->bImmediate)
+    {
+        Rr_EndImmediate(Renderer);
+    }
+    else
+    {
+        vkCreateFence(
+            Renderer->Device,
+            &(VkFenceCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+            },
+            NULL,
+            &LoadingContext->ReadyFence);
+        vkEndCommandBuffer(GraphicsCommandBuffer);
 
-    vkQueueSubmit(Renderer->Transfer.Handle, 1, &SubmitInfo, VK_NULL_HANDLE);
+        if (Renderer->bUnifiedQueue)
+        {
+            SDL_LockMutex(Renderer->Graphics.Mutex);
+            vkQueueSubmit(
+                Renderer->Graphics.Handle,
+                1,
+                &(VkSubmitInfo){
+                    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                    .pNext = NULL,
+                    .commandBufferCount = 1,
+                    .pCommandBuffers = &GraphicsCommandBuffer,
+                    .pSignalSemaphores = NULL,
+                    .pWaitSemaphores = NULL,
+                    .signalSemaphoreCount = 0,
+                    .waitSemaphoreCount = 0,
+                    .pWaitDstStageMask = 0 },
+                LoadingContext->ReadyFence);
+            SDL_UnlockMutex(Renderer->Graphics.Mutex);
+        }
+        else
+        {
+            vkEndCommandBuffer(TransferCommandBuffer);
 
-    vkFreeCommandBuffers(Renderer->Device, Renderer->Transfer.CommandPool, 1, &CommandBuffer);
+            vkCreateSemaphore(
+                Renderer->Device,
+                &(VkSemaphoreCreateInfo){
+                    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                    .pNext = NULL,
+                    .flags = 0,
+                },
+                NULL,
+                &LoadingContext->TransferSemaphore);
+
+            vkQueueSubmit(
+                Renderer->Transfer.Handle,
+                1,
+                &(VkSubmitInfo){
+                    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                    .pNext = NULL,
+                    .commandBufferCount = 1,
+                    .pCommandBuffers = &TransferCommandBuffer,
+                    .signalSemaphoreCount = 1,
+                    .pSignalSemaphores = &LoadingContext->TransferSemaphore,
+                    .waitSemaphoreCount = 0,
+                    .pWaitSemaphores = NULL,
+                    .pWaitDstStageMask = 0 },
+                VK_NULL_HANDLE);
+
+            SDL_LockMutex(Renderer->Graphics.Mutex);
+            vkQueueSubmit(
+                Renderer->Graphics.Handle,
+                1,
+                &(VkSubmitInfo){
+                    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                    .pNext = NULL,
+                    .commandBufferCount = 1,
+                    .pCommandBuffers = &GraphicsCommandBuffer,
+                    .signalSemaphoreCount = 0,
+                    .pSignalSemaphores = NULL,
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores = &LoadingContext->TransferSemaphore,
+                    .pWaitDstStageMask = 0 },
+                LoadingContext->ReadyFence);
+            SDL_UnlockMutex(Renderer->Graphics.Mutex);
+        }
+
+        vkWaitForFences(Renderer->Device, 1, &LoadingContext->ReadyFence, true, UINT64_MAX);
+
+        vkFreeCommandBuffers(Renderer->Device, Renderer->Graphics.TransientCommandPool, 1, &GraphicsCommandBuffer);
+
+        vkDestroyFence(Renderer->Device, LoadingContext->ReadyFence, NULL);
+        if (Renderer->bUnifiedQueue)
+        {
+        }
+        else
+        {
+            vkFreeCommandBuffers(Renderer->Device, Renderer->Transfer.TransientCommandPool, 1, &TransferCommandBuffer);
+            vkDestroySemaphore(Renderer->Device, LoadingContext->TransferSemaphore, NULL);
+        }
+
+        SDL_DetachThread(LoadingContext->Thread);
+        SDL_DestroySemaphore(LoadingContext->Semaphore);
+    }
 
     Rr_ArrayFree(LoadingContext->Tasks);
 
-    LoadingContext->Callback(LoadingContext->Renderer, 0);
-
-    SDL_DetachThread(LoadingContext->Thread);
-    SDL_DestroySemaphore(LoadingContext->Semaphore);
+    LoadingContext->Callback(LoadingContext->Renderer, LoadingContext->Status);
 
     Rr_Free(LoadingContext);
 
@@ -139,7 +294,7 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
     // MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 }
 
-void Rr_Load(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback LoadingCallback)
+void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback LoadingCallback)
 {
     const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
     if (TaskCount == 0)
@@ -150,6 +305,19 @@ void Rr_Load(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback Loading
     LoadingContext->Semaphore = SDL_CreateSemaphore(TaskCount);
     LoadingContext->Callback = LoadingCallback;
     LoadingContext->Thread = SDL_CreateThread((SDL_ThreadFunction)Load, "lt", LoadingContext);
+}
+
+Rr_LoadStatus Rr_LoadImmediate(Rr_LoadingContext* LoadingContext)
+{
+    const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
+    if (TaskCount == 0)
+    {
+        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "Submitted Rr_LoadingContext has task count of 0!");
+        return RR_LOAD_STATUS_NO_TASKS;
+    }
+    LoadingContext->bImmediate = true;
+    Load(LoadingContext);
+    return LoadingContext->Status;
 }
 
 f32 Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext)
