@@ -16,8 +16,8 @@ typedef struct Rr_Image
     VkFormat Format;
 } Rr_Image;
 
-size_t Rr_GetImageSizePNG(Rr_Asset* Asset);
-size_t Rr_GetImageSizeEXR(Rr_Asset* Asset);
+size_t Rr_GetImageSizePNG(const Rr_Asset* Asset);
+size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset);
 
 void Rr_UploadImage(
     const Rr_Renderer* Renderer,

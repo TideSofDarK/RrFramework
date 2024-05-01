@@ -188,7 +188,7 @@ Rr_Image Rr_CreateImage(const Rr_Renderer* Renderer, const VkExtent3D Extent, co
     return Rr_CreateImage_Internal(Renderer, Extent, Format, Usage, AllocationCreateInfo, bMipMapped);
 }
 
-size_t Rr_GetImageSizePNG(Rr_Asset* Asset)
+size_t Rr_GetImageSizePNG(const Rr_Asset* Asset)
 {
     const i32 DesiredChannels = 4;
     i32 Width;
@@ -199,7 +199,7 @@ size_t Rr_GetImageSizePNG(Rr_Asset* Asset)
     return Width * Height * DesiredChannels;
 }
 
-size_t Rr_GetImageSizeEXR(Rr_Asset* Asset)
+size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset)
 {
     return 0;
 }

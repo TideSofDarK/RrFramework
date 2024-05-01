@@ -35,6 +35,8 @@ typedef struct Rr_LoadingContext
     Rr_LoadingCallback Callback;
     VkSemaphore TransferSemaphore;
     VkFence ReadyFence;
+    VkCommandBuffer GraphicsCommandBuffer;
+    VkCommandBuffer TransferCommandBuffer;
 } Rr_LoadingContext;
 
 Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t InitialTaskCount)
@@ -71,6 +73,142 @@ void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
+static void BeginAsyncLoad(Rr_LoadingContext* LoadingContext)
+{
+    const Rr_Renderer* Renderer = LoadingContext->Renderer;
+
+    const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Graphics.TransientCommandPool, 1);
+    vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &LoadingContext->GraphicsCommandBuffer);
+    vkBeginCommandBuffer(
+        LoadingContext->GraphicsCommandBuffer,
+        &(VkCommandBufferBeginInfo){
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext = NULL,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            .pInheritanceInfo = NULL });
+
+    if (Renderer->bUnifiedQueue)
+    {
+        LoadingContext->TransferCommandBuffer = LoadingContext->GraphicsCommandBuffer;
+    }
+    else
+    {
+        const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Transfer.TransientCommandPool, 1);
+        vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &LoadingContext->TransferCommandBuffer);
+        vkBeginCommandBuffer(
+            LoadingContext->TransferCommandBuffer,
+            &(VkCommandBufferBeginInfo){
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                .pNext = NULL,
+                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                .pInheritanceInfo = NULL });
+    }
+}
+
+static void EndAsyncLoad(Rr_LoadingContext* LoadingContext)
+{
+    const Rr_Renderer* Renderer = LoadingContext->Renderer;
+
+    vkCreateFence(
+        Renderer->Device,
+        &(VkFenceCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+        },
+        NULL,
+        &LoadingContext->ReadyFence);
+    vkEndCommandBuffer(LoadingContext->GraphicsCommandBuffer);
+
+    if (Renderer->bUnifiedQueue)
+    {
+        SDL_LockMutex(Renderer->Graphics.Mutex);
+        vkQueueSubmit(
+            Renderer->Graphics.Handle,
+            1,
+            &(VkSubmitInfo){
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                .pNext = NULL,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &LoadingContext->GraphicsCommandBuffer,
+                .pSignalSemaphores = NULL,
+                .pWaitSemaphores = NULL,
+                .signalSemaphoreCount = 0,
+                .waitSemaphoreCount = 0,
+                .pWaitDstStageMask = 0 },
+            LoadingContext->ReadyFence);
+        SDL_UnlockMutex(Renderer->Graphics.Mutex);
+    }
+    else
+    {
+        vkEndCommandBuffer(LoadingContext->TransferCommandBuffer);
+
+        vkCreateSemaphore(
+            Renderer->Device,
+            &(VkSemaphoreCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+            },
+            NULL,
+            &LoadingContext->TransferSemaphore);
+
+        vkQueueSubmit(
+            Renderer->Transfer.Handle,
+            1,
+            &(VkSubmitInfo){
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                .pNext = NULL,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &LoadingContext->TransferCommandBuffer,
+                .signalSemaphoreCount = 1,
+                .pSignalSemaphores = &LoadingContext->TransferSemaphore,
+                .waitSemaphoreCount = 0,
+                .pWaitSemaphores = NULL,
+                .pWaitDstStageMask = 0 },
+            VK_NULL_HANDLE);
+
+        SDL_LockMutex(Renderer->Graphics.Mutex);
+        const VkPipelineStageFlagBits WaitStages[] = {
+            VK_PIPELINE_STAGE_TRANSFER_BIT
+            | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+            | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
+            | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+        };
+        vkQueueSubmit(
+            Renderer->Graphics.Handle,
+            1,
+            &(VkSubmitInfo){
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                .pNext = NULL,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &LoadingContext->GraphicsCommandBuffer,
+                .signalSemaphoreCount = 0,
+                .pSignalSemaphores = NULL,
+                .waitSemaphoreCount = 1,
+                .pWaitSemaphores = &LoadingContext->TransferSemaphore,
+                .pWaitDstStageMask = WaitStages },
+            LoadingContext->ReadyFence);
+        SDL_UnlockMutex(Renderer->Graphics.Mutex);
+    }
+
+    vkWaitForFences(Renderer->Device, 1, &LoadingContext->ReadyFence, true, UINT64_MAX);
+
+    vkFreeCommandBuffers(Renderer->Device, Renderer->Graphics.TransientCommandPool, 1, &LoadingContext->GraphicsCommandBuffer);
+
+    vkDestroyFence(Renderer->Device, LoadingContext->ReadyFence, NULL);
+
+    if (!Renderer->bUnifiedQueue)
+    {
+        vkFreeCommandBuffers(Renderer->Device, Renderer->Transfer.TransientCommandPool, 1, &LoadingContext->TransferCommandBuffer);
+        vkDestroySemaphore(Renderer->Device, LoadingContext->TransferSemaphore, NULL);
+    }
+
+    SDL_DetachThread(LoadingContext->Thread);
+    SDL_DestroySemaphore(LoadingContext->Semaphore);
+}
+
 static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
 {
     const Rr_Renderer* Renderer = LoadingContext->Renderer;
@@ -78,41 +216,13 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
     LoadingContext->Status = RR_LOAD_STATUS_LOADING;
 
     /* Select command buffers. */
-    VkCommandBuffer GraphicsCommandBuffer = VK_NULL_HANDLE;
-    VkCommandBuffer TransferCommandBuffer = VK_NULL_HANDLE;
-
     if (LoadingContext->bImmediate)
     {
-        GraphicsCommandBuffer = TransferCommandBuffer = Rr_BeginImmediate(Renderer);
+        LoadingContext->GraphicsCommandBuffer = LoadingContext->TransferCommandBuffer = Rr_BeginImmediate(Renderer);
     }
     else
     {
-        const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Graphics.TransientCommandPool, 1);
-        vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &GraphicsCommandBuffer);
-        vkBeginCommandBuffer(
-            GraphicsCommandBuffer,
-            &(VkCommandBufferBeginInfo){
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                .pNext = NULL,
-                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                .pInheritanceInfo = NULL });
-
-        if (Renderer->bUnifiedQueue)
-        {
-            TransferCommandBuffer = GraphicsCommandBuffer;
-        }
-        else
-        {
-            const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Transfer.TransientCommandPool, 1);
-            vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
-            vkBeginCommandBuffer(
-                TransferCommandBuffer,
-                &(VkCommandBufferBeginInfo){
-                    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                    .pNext = NULL,
-                    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                    .pInheritanceInfo = NULL });
-        }
+        BeginAsyncLoad(LoadingContext);
     }
 
     const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
@@ -121,7 +231,7 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
     /* First pass: calculate staging buffer size. */
     for (size_t Index = 0; Index < TaskCount; ++Index)
     {
-        Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
+        const Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
         switch (Task->LoadType)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
@@ -145,15 +255,15 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
     /* Second pass: record command buffers. */
     for (size_t Index = 0; Index < TaskCount; ++Index)
     {
-        Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
+        const Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
         switch (Task->LoadType)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
                 *(Rr_Image*)Task->Out = Rr_CreateImageFromPNG(
                     Renderer,
-                    GraphicsCommandBuffer,
-                    TransferCommandBuffer,
+                    LoadingContext->GraphicsCommandBuffer,
+                    LoadingContext->TransferCommandBuffer,
                     &StagingBuffer,
                     &Task->Asset,
                     VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -165,8 +275,8 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
             {
                 *(Rr_MeshBuffers*)Task->Out = Rr_CreateMeshFromOBJ(
                     Renderer,
-                    GraphicsCommandBuffer,
-                    TransferCommandBuffer,
+                    LoadingContext->GraphicsCommandBuffer,
+                    LoadingContext->TransferCommandBuffer,
                     &StagingBuffer,
                     &Task->Asset);
             }
@@ -188,102 +298,7 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
     }
     else
     {
-        vkCreateFence(
-            Renderer->Device,
-            &(VkFenceCreateInfo){
-                .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-                .pNext = NULL,
-                .flags = 0,
-            },
-            NULL,
-            &LoadingContext->ReadyFence);
-        vkEndCommandBuffer(GraphicsCommandBuffer);
-
-        if (Renderer->bUnifiedQueue)
-        {
-            SDL_LockMutex(Renderer->Graphics.Mutex);
-            vkQueueSubmit(
-                Renderer->Graphics.Handle,
-                1,
-                &(VkSubmitInfo){
-                    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                    .pNext = NULL,
-                    .commandBufferCount = 1,
-                    .pCommandBuffers = &GraphicsCommandBuffer,
-                    .pSignalSemaphores = NULL,
-                    .pWaitSemaphores = NULL,
-                    .signalSemaphoreCount = 0,
-                    .waitSemaphoreCount = 0,
-                    .pWaitDstStageMask = 0 },
-                LoadingContext->ReadyFence);
-            SDL_UnlockMutex(Renderer->Graphics.Mutex);
-        }
-        else
-        {
-            vkEndCommandBuffer(TransferCommandBuffer);
-
-            vkCreateSemaphore(
-                Renderer->Device,
-                &(VkSemaphoreCreateInfo){
-                    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-                    .pNext = NULL,
-                    .flags = 0,
-                },
-                NULL,
-                &LoadingContext->TransferSemaphore);
-
-            vkQueueSubmit(
-                Renderer->Transfer.Handle,
-                1,
-                &(VkSubmitInfo){
-                    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                    .pNext = NULL,
-                    .commandBufferCount = 1,
-                    .pCommandBuffers = &TransferCommandBuffer,
-                    .signalSemaphoreCount = 1,
-                    .pSignalSemaphores = &LoadingContext->TransferSemaphore,
-                    .waitSemaphoreCount = 0,
-                    .pWaitSemaphores = NULL,
-                    .pWaitDstStageMask = 0 },
-                VK_NULL_HANDLE);
-
-            SDL_LockMutex(Renderer->Graphics.Mutex);
-            VkPipelineStageFlagBits WaitStages[] = {
-                VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-            };
-            vkQueueSubmit(
-                Renderer->Graphics.Handle,
-                1,
-                &(VkSubmitInfo){
-                    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                    .pNext = NULL,
-                    .commandBufferCount = 1,
-                    .pCommandBuffers = &GraphicsCommandBuffer,
-                    .signalSemaphoreCount = 0,
-                    .pSignalSemaphores = NULL,
-                    .waitSemaphoreCount = 1,
-                    .pWaitSemaphores = &LoadingContext->TransferSemaphore,
-                    .pWaitDstStageMask = WaitStages },
-                LoadingContext->ReadyFence);
-            SDL_UnlockMutex(Renderer->Graphics.Mutex);
-        }
-
-        vkWaitForFences(Renderer->Device, 1, &LoadingContext->ReadyFence, true, UINT64_MAX);
-
-        vkFreeCommandBuffers(Renderer->Device, Renderer->Graphics.TransientCommandPool, 1, &GraphicsCommandBuffer);
-
-        vkDestroyFence(Renderer->Device, LoadingContext->ReadyFence, NULL);
-        if (Renderer->bUnifiedQueue)
-        {
-        }
-        else
-        {
-            vkFreeCommandBuffers(Renderer->Device, Renderer->Transfer.TransientCommandPool, 1, &TransferCommandBuffer);
-            vkDestroySemaphore(Renderer->Device, LoadingContext->TransferSemaphore, NULL);
-        }
-
-        SDL_DetachThread(LoadingContext->Thread);
-        SDL_DestroySemaphore(LoadingContext->Semaphore);
+        EndAsyncLoad(LoadingContext);
     }
 
     LoadingContext->Status = RR_LOAD_STATUS_READY;
@@ -297,19 +312,6 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
     }
 
     Rr_Free(LoadingContext);
-
-    // /* Marble */
-    // Rr_ExternAsset(MarbleOBJ);
-    // MarbleMesh = Rr_CreateMeshFromOBJ(Renderer, &MarbleOBJ);
-    //
-    // Rr_ExternAsset(MarbleDiffusePNG);
-    // MarbleDiffuse = Rr_CreateImageFromPNG(&MarbleDiffusePNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    //
-    // Rr_ExternAsset(MarbleSpecularPNG);
-    // MarbleSpecular = Rr_CreateImageFromPNG(&MarbleSpecularPNG, Renderer, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    //
-    // Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
-    // MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 }
 
 void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback LoadingCallback)
