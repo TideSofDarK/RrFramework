@@ -256,7 +256,7 @@ Rr_Image Rr_CreateColorImageFromPNG(
 
 Rr_Image Rr_CreateDepthImageFromEXR(
     const Rr_Renderer* Renderer,
-    const Rr_UploadContext* UploadContext,
+    Rr_UploadContext* UploadContext,
     const Rr_Asset* Asset)
 {
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;

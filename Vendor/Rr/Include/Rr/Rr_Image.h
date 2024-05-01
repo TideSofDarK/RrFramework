@@ -42,7 +42,7 @@ Rr_Image Rr_CreateColorImageFromPNG(
     VkImageLayout InitialLayout);
 Rr_Image Rr_CreateDepthImageFromEXR(
     const Rr_Renderer* Renderer,
-    const Rr_UploadContext* UploadContext,
+    Rr_UploadContext* UploadContext,
     const Rr_Asset* Asset);
 Rr_Image Rr_CreateColorAttachmentImage(const Rr_Renderer* Renderer, VkExtent3D Extent);
 Rr_Image Rr_CreateDepthAttachmentImage(const Rr_Renderer* Renderer, VkExtent3D Extent);
