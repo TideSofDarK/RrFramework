@@ -21,12 +21,11 @@
 #include "Rr_Helpers.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
+#include "Rr_Load.h"
 
 void Rr_UploadImage(
     const Rr_Renderer* Renderer,
-    Rr_StagingBuffer* StagingBuffer,
-    const VkCommandBuffer GraphicsCommandBuffer,
-    const VkCommandBuffer TransferCommandBuffer,
+    Rr_UploadContext* UploadContext,
     VkImage Image,
     VkExtent3D Extent,
     VkImageAspectFlags Aspect,
@@ -36,6 +35,10 @@ void Rr_UploadImage(
     const void* ImageData,
     const size_t ImageDataLength)
 {
+    Rr_StagingBuffer* StagingBuffer = &UploadContext->StagingBuffer;
+    const VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
+    const VkCommandBuffer GraphicsCommandBuffer = UploadContext->GraphicsCommandBuffer;
+
     const size_t BufferOffset = StagingBuffer->CurrentOffset;
     SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
     StagingBuffer->CurrentOffset += ImageDataLength;
@@ -80,7 +83,7 @@ void Rr_UploadImage(
 
     vkCmdCopyBufferToImage(TransferCommandBuffer, StagingBuffer->Buffer.Handle, Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
 
-    if (GraphicsCommandBuffer == TransferCommandBuffer)
+    if (UploadContext->bUnifiedQueue)
     {
         vkCmdPipelineBarrier(
             TransferCommandBuffer,
@@ -153,7 +156,7 @@ void Rr_UploadImage(
     }
 }
 
-static Rr_Image Rr_CreateImage_Internal(
+static Rr_Image CreateImage(
     const Rr_Renderer* Renderer,
     const VkExtent3D Extent,
     const VkFormat Format,
@@ -195,7 +198,7 @@ Rr_Image Rr_CreateImage(const Rr_Renderer* Renderer, const VkExtent3D Extent, co
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    return Rr_CreateImage_Internal(Renderer, Extent, Format, Usage, AllocationCreateInfo, bMipMapped);
+    return CreateImage(Renderer, Extent, Format, Usage, AllocationCreateInfo, bMipMapped);
 }
 
 size_t Rr_GetImageSizePNG(const Rr_Asset* Asset)
@@ -216,9 +219,7 @@ size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset)
 
 Rr_Image Rr_CreateColorImageFromPNG(
     const Rr_Renderer* Renderer,
-    VkCommandBuffer GraphicsCommandBuffer,
-    VkCommandBuffer TransferCommandBuffer,
-    Rr_StagingBuffer* StagingBuffer,
+    Rr_UploadContext* UploadContext,
     const Rr_Asset* Asset,
     VkImageUsageFlags Usage,
     b8 bMipMapped,
@@ -238,13 +239,11 @@ Rr_Image Rr_CreateColorImageFromPNG(
         bMipMapped);
 
     Rr_UploadImage(Renderer,
-        StagingBuffer,
-        GraphicsCommandBuffer,
-        TransferCommandBuffer,
+        UploadContext,
         ColorImage.Handle,
         Extent,
         VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_ACCESS_SHADER_READ_BIT,
         InitialLayout,
         ParsedImage,
@@ -257,9 +256,7 @@ Rr_Image Rr_CreateColorImageFromPNG(
 
 Rr_Image Rr_CreateDepthImageFromEXR(
     const Rr_Renderer* Renderer,
-    VkCommandBuffer GraphicsCommandBuffer,
-    VkCommandBuffer TransferCommandBuffer,
-    Rr_StagingBuffer* StagingBuffer,
+    const Rr_UploadContext* UploadContext,
     const Rr_Asset* Asset)
 {
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -322,9 +319,7 @@ Rr_Image Rr_CreateDepthImageFromEXR(
     const Rr_Image DepthImage = Rr_CreateImage(Renderer, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 
     Rr_UploadImage(Renderer,
-        StagingBuffer,
-        GraphicsCommandBuffer,
-        TransferCommandBuffer,
+        UploadContext,
         DepthImage.Handle,
         Extent,
         VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -347,7 +342,7 @@ Rr_Image Rr_CreateColorAttachmentImage(const Rr_Renderer* Renderer, const VkExte
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    const Rr_Image Image = Rr_CreateImage_Internal(
+    const Rr_Image Image = CreateImage(
         Renderer,
         Extent,
         RR_COLOR_FORMAT,
@@ -365,7 +360,7 @@ Rr_Image Rr_CreateDepthAttachmentImage(const Rr_Renderer* Renderer, const VkExte
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    const Rr_Image Image = Rr_CreateImage_Internal(
+    const Rr_Image Image = CreateImage(
         Renderer,
         Extent,
         RR_DEPTH_FORMAT,

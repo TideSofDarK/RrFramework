@@ -1,12 +1,24 @@
 #pragma once
 
 #include "Rr_Defines.h"
+#include "Rr_Vulkan.h"
+#include "Rr_Buffer.h"
 
 typedef struct Rr_LoadingContext Rr_LoadingContext;
 typedef struct Rr_Asset Rr_Asset;
 typedef struct Rr_Image Rr_Image;
 typedef struct Rr_MeshBuffers Rr_MeshBuffers;
-typedef struct Rr_Renderer Rr_Renderer;
+
+typedef struct Rr_UploadContext
+{
+    Rr_StagingBuffer StagingBuffer;
+    VkCommandBuffer TransferCommandBuffer;
+    VkCommandBuffer GraphicsCommandBuffer;
+    u32 bUnifiedQueue;
+} Rr_UploadContext;
+
+Rr_UploadContext Rr_CreateUploadContext(const Rr_Renderer* Renderer, size_t StagingBufferSize, u32 bUnifiedQueue);
+void Rr_Upload(const Rr_Renderer* Renderer, Rr_UploadContext* UploadContext);
 
 typedef enum Rr_LoadStatus
 {

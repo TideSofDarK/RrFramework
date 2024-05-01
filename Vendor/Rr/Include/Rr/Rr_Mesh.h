@@ -24,9 +24,7 @@ typedef struct Rr_MeshBuffers
 
 Rr_MeshBuffers Rr_CreateMeshFromOBJ(
     const Rr_Renderer* const Renderer,
-    const VkCommandBuffer GraphicsCommandBuffer,
-    const VkCommandBuffer TransferCommandBuffer,
-    Rr_StagingBuffer* StagingBuffer,
+    Rr_UploadContext* UploadContext,
     const Rr_Asset* Asset);
 
 void Rr_DestroyMesh(const Rr_Renderer* Renderer, const Rr_MeshBuffers* Mesh);

@@ -4,6 +4,7 @@
 #include "Rr_Vulkan.h"
 
 typedef struct Rr_Renderer Rr_Renderer;
+typedef struct Rr_UploadContext Rr_UploadContext;
 
 typedef struct Rr_Buffer
 {
@@ -18,7 +19,12 @@ typedef struct Rr_StagingBuffer
     size_t CurrentOffset;
 } Rr_StagingBuffer;
 
-Rr_Buffer Rr_CreateBuffer(const Rr_Renderer* Renderer, size_t Size, VkBufferUsageFlags UsageFlags, VmaMemoryUsage MemoryUsage, b32 bHostMapped);
+Rr_Buffer Rr_CreateBuffer(
+    const Rr_Renderer* Renderer,
+    size_t Size,
+    VkBufferUsageFlags UsageFlags,
+    VmaMemoryUsage MemoryUsage,
+    b32 bHostMapped);
 Rr_Buffer Rr_CreateDeviceVertexBuffer(const Rr_Renderer* Renderer, size_t Size);
 Rr_Buffer Rr_CreateDeviceUniformBuffer(const Rr_Renderer* Renderer, size_t Size);
 Rr_Buffer Rr_CreateMappedBuffer(const Rr_Renderer* Renderer, size_t Size, VkBufferUsageFlags UsageFlags);
@@ -27,9 +33,7 @@ void Rr_DestroyBuffer(const Rr_Renderer* Renderer, const Rr_Buffer* Buffer);
 VkDeviceAddress Rr_GetBufferAddress(const Rr_Renderer* Renderer, const Rr_Buffer* Buffer);
 void Rr_UploadBuffer(
     const Rr_Renderer* Renderer,
-    Rr_StagingBuffer* StagingBuffer,
-    const VkCommandBuffer GraphicsCommandBuffer,
-    const VkCommandBuffer TransferCommandBuffer,
+    Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,

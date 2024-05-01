@@ -7,6 +7,7 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Renderer.h"
 #include "Rr_Util.h"
+#include "Rr_Load.h"
 
 Rr_Buffer Rr_CreateBuffer(
     const Rr_Renderer* Renderer,
@@ -89,15 +90,17 @@ VkDeviceAddress Rr_GetBufferAddress(const Rr_Renderer* const Renderer, const Rr_
 
 void Rr_UploadBuffer(
     const Rr_Renderer* Renderer,
-    Rr_StagingBuffer* StagingBuffer,
-    const VkCommandBuffer GraphicsCommandBuffer,
-    const VkCommandBuffer TransferCommandBuffer,
+    Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     const void* Data,
     const size_t DataLength)
 {
+    Rr_StagingBuffer* StagingBuffer = &UploadContext->StagingBuffer;
+    const VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
+    const VkCommandBuffer GraphicsCommandBuffer = UploadContext->GraphicsCommandBuffer;
+
     const size_t BufferOffset = StagingBuffer->CurrentOffset;
     SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
     StagingBuffer->CurrentOffset += DataLength;

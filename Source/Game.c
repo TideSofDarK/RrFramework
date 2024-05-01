@@ -173,8 +173,8 @@ static void Init(Rr_App* App)
     Rr_LoadColorImageFromPNG(LoadingContext, &MarbleDiffusePNG, &MarbleDiffuse);
     Rr_LoadColorImageFromPNG(LoadingContext, &MarbleSpecularPNG, &MarbleSpecular);
     Rr_LoadMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
-    // Rr_LoadColorImageFromPNG(LoadingContext, &CottagePNG, &CottageTexture);
-    // Rr_LoadMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
+    Rr_LoadColorImageFromPNG(LoadingContext, &CottagePNG, &CottageTexture);
+    Rr_LoadMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
     Rr_LoadAsync(LoadingContext, (Rr_LoadingCallback)OnLoadingComplete);
 
     // Rr_ExternAsset(POCDepthEXR);
@@ -300,23 +300,23 @@ static void Draw(Rr_App* const App)
     {
         mat4 Transform;
 
-        // SUber3DDraw CottageDraw;
-        // glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
-        // glm_mat4_identity(CottageDraw.Model);
-        // glm_scale_uni(CottageDraw.Model, 0.75f);
-        // glm_mat4_mul(Transform, CottageDraw.Model, CottageDraw.Model);
-        // CottageDraw.Model[3][0] = 3.5f;
-        // CottageDraw.Model[3][1] = 0.5f;
-        // CottageDraw.Model[3][2] = 3.5f;
-        // CottageDraw.VertexBufferAddress = CottageMesh.VertexBufferAddress;
-        //
-        // Rr_DrawMeshInfo DrawMeshInfo2 = {
-        //     .Material = &CottageMaterial,
-        //     .MeshBuffers = &CottageMesh,
-        //     .DrawData = &CottageDraw
-        // };
-        //
-        // Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
+        SUber3DDraw CottageDraw;
+        glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
+        glm_mat4_identity(CottageDraw.Model);
+        glm_scale_uni(CottageDraw.Model, 0.75f);
+        glm_mat4_mul(Transform, CottageDraw.Model, CottageDraw.Model);
+        CottageDraw.Model[3][0] = 3.5f;
+        CottageDraw.Model[3][1] = 0.5f;
+        CottageDraw.Model[3][2] = 3.5f;
+        CottageDraw.VertexBufferAddress = CottageMesh.VertexBufferAddress;
+
+        Rr_DrawMeshInfo DrawMeshInfo2 = {
+            .Material = &CottageMaterial,
+            .MeshBuffers = &CottageMesh,
+            .DrawData = &CottageDraw
+        };
+
+        Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
 
         SUber3DDraw MarbleDraw;
         glm_mat4_identity(MarbleDraw.Model);

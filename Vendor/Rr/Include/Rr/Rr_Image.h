@@ -6,6 +6,7 @@
 typedef struct Rr_Renderer Rr_Renderer;
 typedef struct Rr_Asset Rr_Asset;
 typedef struct Rr_StagingBuffer Rr_StagingBuffer;
+typedef struct Rr_UploadContext Rr_UploadContext;
 
 typedef struct Rr_Image
 {
@@ -21,9 +22,7 @@ size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset);
 
 void Rr_UploadImage(
     const Rr_Renderer* Renderer,
-    Rr_StagingBuffer* StagingBuffer,
-    const VkCommandBuffer GraphicsCommandBuffer,
-    const VkCommandBuffer TransferCommandBuffer,
+    Rr_UploadContext* UploadContext,
     VkImage Image,
     VkExtent3D Extent,
     VkImageAspectFlags Aspect,
@@ -36,18 +35,14 @@ void Rr_UploadImage(
 Rr_Image Rr_CreateImage(const Rr_Renderer* Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped);
 Rr_Image Rr_CreateColorImageFromPNG(
     const Rr_Renderer* Renderer,
-    VkCommandBuffer GraphicsCommandBuffer,
-    VkCommandBuffer TransferCommandBuffer,
-    Rr_StagingBuffer* StagingBuffer,
+    Rr_UploadContext* UploadContext,
     const Rr_Asset* Asset,
     VkImageUsageFlags Usage,
     b8 bMipMapped,
     VkImageLayout InitialLayout);
 Rr_Image Rr_CreateDepthImageFromEXR(
     const Rr_Renderer* Renderer,
-    VkCommandBuffer GraphicsCommandBuffer,
-    VkCommandBuffer TransferCommandBuffer,
-    Rr_StagingBuffer* StagingBuffer,
+    const Rr_UploadContext* UploadContext,
     const Rr_Asset* Asset);
 Rr_Image Rr_CreateColorAttachmentImage(const Rr_Renderer* Renderer, VkExtent3D Extent);
 Rr_Image Rr_CreateDepthAttachmentImage(const Rr_Renderer* Renderer, VkExtent3D Extent);
