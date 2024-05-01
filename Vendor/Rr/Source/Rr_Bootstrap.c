@@ -240,6 +240,8 @@ static void InitDevice(Rr_Renderer* const Renderer)
         vkGetDeviceQueue(Renderer->Device, Renderer->Transfer.FamilyIndex, 0, &Renderer->Transfer.Queue);
     }
 
+    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Unified Queue Mode: %s", Renderer->bUnifiedQueue ? "true" : "false");
+
     Renderer->Graphics.Mutex = SDL_CreateMutex();
     Rr_ArrayInit(Renderer->Graphics.TransientSemaphoresArray, VkSemaphore, 2);
 
@@ -804,6 +806,10 @@ static void InitRenderPass(Rr_Renderer* Renderer)
         {
             .srcSubpass = 0,
             .dstSubpass = VK_SUBPASS_EXTERNAL,
+        },
+        {
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
         }
     };
 
@@ -815,7 +821,7 @@ static void InitRenderPass(Rr_Renderer* Renderer)
         .pAttachments = Attachments,
         .subpassCount = 1,
         .pSubpasses = &SubpassDescription,
-        .dependencyCount = 1,
+        .dependencyCount = 0,
         .pDependencies = Dependencies
     };
 

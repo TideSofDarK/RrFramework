@@ -367,7 +367,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .framebuffer = Renderer->DrawTargets[CurrentFrameIndex].Framebuffer,
-        .renderArea = (VkRect2D){ 0.0f, 0.0f, ActiveResolution.width, ActiveResolution.height },
+        .renderArea = (VkRect2D){ 0, 0, ActiveResolution.width, ActiveResolution.height },
         .renderPass = Renderer->RenderPass,
         .clearValueCount = 2,
         .pClearValues = ClearColorValues
@@ -679,39 +679,39 @@ void Rr_Draw(Rr_App* const App)
     const VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
-    // Rr_ImageBarrier ColorImageTransition = {
-    //     .CommandBuffer = CommandBuffer,
-    //     .Image = ColorImage->Handle,
-    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //     .AccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-    //     .StageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-    // };
-    // Rr_ChainImageBarrier(&ColorImageTransition,
-    //     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-    //     VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-    //     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    // Rr_ImageBarrier DepthImageTransition = {
-    //     .CommandBuffer = CommandBuffer,
-    //     .Image = DepthImage->Handle,
-    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //     .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-    //     .StageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-    // };
-    // Rr_ChainImageBarrier(&DepthImageTransition,
-    //     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-    //     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-    //     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-    App->Config->DrawFunc(App);
-
     Rr_ImageBarrier ColorImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = ColorImage->Handle,
-        .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .AccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        .StageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
     };
+    Rr_ChainImageBarrier(&ColorImageTransition,
+        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    Rr_ImageBarrier DepthImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = DepthImage->Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .StageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+    };
+    Rr_ChainImageBarrier(&DepthImageTransition,
+        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    App->Config->DrawFunc(App);
+
+    // Rr_ImageBarrier ColorImageTransition = {
+    //     .CommandBuffer = CommandBuffer,
+    //     .Image = ColorImage->Handle,
+    //     .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    //     .AccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+    //     .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+    // };
     Rr_ChainImageBarrier(&ColorImageTransition,
         VK_PIPELINE_STAGE_2_BLIT_BIT,
         VK_ACCESS_2_TRANSFER_READ_BIT,

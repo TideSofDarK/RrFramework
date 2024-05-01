@@ -176,16 +176,16 @@ static void EndAsyncLoad(Rr_LoadingContext* LoadingContext)
             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT
         };
 
-        VkSemaphore TransientSemaphore;
-        vkCreateSemaphore(
-            Renderer->Device,
-            &(VkSemaphoreCreateInfo){
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-                .pNext = NULL,
-                .flags = 0,
-            },
-            NULL,
-            &TransientSemaphore);
+        // VkSemaphore TransientSemaphore;
+        // vkCreateSemaphore(
+        //     Renderer->Device,
+        //     &(VkSemaphoreCreateInfo){
+        //         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        //         .pNext = NULL,
+        //         .flags = 0,
+        //     },
+        //     NULL,
+        //     &TransientSemaphore);
 
         vkQueueSubmit(
             Renderer->Graphics.Queue,
@@ -195,8 +195,8 @@ static void EndAsyncLoad(Rr_LoadingContext* LoadingContext)
                 .pNext = NULL,
                 .commandBufferCount = 1,
                 .pCommandBuffers = &LoadingContext->GraphicsCommandBuffer,
-                .signalSemaphoreCount = 1,
-                .pSignalSemaphores = &TransientSemaphore,
+                .signalSemaphoreCount = 0,
+                .pSignalSemaphores = NULL,
                 .waitSemaphoreCount = 1,
                 .pWaitSemaphores = &LoadingContext->TransferSemaphore,
                 .pWaitDstStageMask = WaitStages },
