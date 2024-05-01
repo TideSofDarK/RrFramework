@@ -11,6 +11,8 @@ typedef struct Rr_Renderer Rr_Renderer;
 typedef enum Rr_LoadStatus
 {
     RR_LOAD_STATUS_READY,
+    RR_LOAD_STATUS_PENDING,
+    RR_LOAD_STATUS_LOADING,
     RR_LOAD_STATUS_NO_TASKS
 } Rr_LoadStatus;
 

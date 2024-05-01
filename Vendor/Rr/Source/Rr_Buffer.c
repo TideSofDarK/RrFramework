@@ -111,7 +111,7 @@ void Rr_UploadBuffer(
         NULL,
         1,
         &(VkBufferMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
             .pNext = NULL,
             .buffer = Buffer,
             .offset = 0,
@@ -141,7 +141,7 @@ void Rr_UploadBuffer(
             NULL,
             1,
             &(VkBufferMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
                 .buffer = Buffer,
                 .offset = 0,
@@ -163,7 +163,7 @@ void Rr_UploadBuffer(
             NULL,
             1,
             &(VkBufferMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
                 .buffer = Buffer,
                 .offset = 0,
@@ -184,7 +184,7 @@ void Rr_UploadBuffer(
             NULL,
             1,
             &(VkBufferMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
                 .buffer = Buffer,
                 .offset = 0,

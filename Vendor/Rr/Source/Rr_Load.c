@@ -41,7 +41,10 @@ Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t I
 {
     Rr_LoadingContext* LoadingContext = Rr_Calloc(1, sizeof(Rr_LoadingContext));
 
-    LoadingContext->Renderer = Renderer;
+    *LoadingContext = (Rr_LoadingContext){
+        .Renderer = Renderer,
+        .Status = RR_LOAD_STATUS_PENDING
+    };
 
     Rr_ArrayInit(LoadingContext->Tasks, Rr_LoadTask, InitialTaskCount);
 
@@ -71,6 +74,8 @@ void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset
 static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
 {
     const Rr_Renderer* Renderer = LoadingContext->Renderer;
+
+    LoadingContext->Status = RR_LOAD_STATUS_LOADING;
 
     /* Select command buffers. */
     VkCommandBuffer GraphicsCommandBuffer = VK_NULL_HANDLE;
@@ -169,7 +174,11 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
             default:
                 break;
         }
-        SDL_PostSemaphore(LoadingContext->Semaphore);
+
+        if (!LoadingContext->bImmediate)
+        {
+            SDL_PostSemaphore(LoadingContext->Semaphore);
+        }
     }
 
     /* Done recording; finally submit it. */
@@ -239,6 +248,9 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
                 VK_NULL_HANDLE);
 
             SDL_LockMutex(Renderer->Graphics.Mutex);
+            VkPipelineStageFlagBits WaitStages[] = {
+                VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+            };
             vkQueueSubmit(
                 Renderer->Graphics.Handle,
                 1,
@@ -251,7 +263,7 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
                     .pSignalSemaphores = NULL,
                     .waitSemaphoreCount = 1,
                     .pWaitSemaphores = &LoadingContext->TransferSemaphore,
-                    .pWaitDstStageMask = 0 },
+                    .pWaitDstStageMask = WaitStages },
                 LoadingContext->ReadyFence);
             SDL_UnlockMutex(Renderer->Graphics.Mutex);
         }
@@ -274,9 +286,15 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
         SDL_DestroySemaphore(LoadingContext->Semaphore);
     }
 
+    LoadingContext->Status = RR_LOAD_STATUS_READY;
+
+    Rr_DestroyStagingBuffer(Renderer, &StagingBuffer);
     Rr_ArrayFree(LoadingContext->Tasks);
 
-    LoadingContext->Callback(LoadingContext->Renderer, LoadingContext->Status);
+    if (LoadingContext->Callback != NULL)
+    {
+        LoadingContext->Callback(LoadingContext->Renderer, LoadingContext->Status);
+    }
 
     Rr_Free(LoadingContext);
 
