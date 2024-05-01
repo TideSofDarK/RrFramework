@@ -99,18 +99,23 @@ static bool CheckPhysicalDevice(Rr_Renderer* const Renderer, const VkPhysicalDev
         }
     }
 
-    for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
-    {
-        if (Index == GraphicsQueueFamilyIndex)
-        {
-            continue;
-        }
+    const u32 bForceUnifiedQueue = RR_FORCE_UNIFIED_QUEUE;
 
-        if (QueueFamilyProperties[Index].queueCount > 0
-            && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_TRANSFER_BIT))
+    if (!bForceUnifiedQueue)
+    {
+        for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
         {
-            TransferQueueFamilyIndex = Index;
-            break;
+            if (Index == GraphicsQueueFamilyIndex)
+            {
+                continue;
+            }
+
+            if (QueueFamilyProperties[Index].queueCount > 0
+                && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_TRANSFER_BIT))
+            {
+                TransferQueueFamilyIndex = Index;
+                break;
+            }
         }
     }
 
@@ -221,7 +226,7 @@ static void InitDevice(Rr_Renderer* const Renderer)
     const VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = &Features12,
-        .queueCreateInfoCount = SDL_arraysize(QueueInfos),
+        .queueCreateInfoCount = Renderer->bUnifiedQueue ? 1 : 2,
         .pQueueCreateInfos = QueueInfos,
         .enabledExtensionCount = SDL_arraysize(DeviceExtensions),
         .ppEnabledExtensionNames = DeviceExtensions,
@@ -229,10 +234,14 @@ static void InitDevice(Rr_Renderer* const Renderer)
 
     vkCreateDevice(Renderer->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Renderer->Device);
 
-    vkGetDeviceQueue(Renderer->Device, Renderer->Graphics.FamilyIndex, 0, &Renderer->Graphics.Handle);
-    vkGetDeviceQueue(Renderer->Device, Renderer->Transfer.FamilyIndex, 0, &Renderer->Transfer.Handle);
+    vkGetDeviceQueue(Renderer->Device, Renderer->Graphics.FamilyIndex, 0, &Renderer->Graphics.Queue);
+    if (!Renderer->bUnifiedQueue)
+    {
+        vkGetDeviceQueue(Renderer->Device, Renderer->Transfer.FamilyIndex, 0, &Renderer->Transfer.Queue);
+    }
 
     Renderer->Graphics.Mutex = SDL_CreateMutex();
+    Rr_ArrayInit(Renderer->Graphics.TransientSemaphoresArray, VkSemaphore, 2);
 
     Rr_StackFree(PhysicalDevices);
 }
@@ -618,7 +627,7 @@ void Rr_InitImGui(Rr_App* App)
         .Instance = Renderer->Instance,
         .PhysicalDevice = Renderer->PhysicalDevice.Handle,
         .Device = Device,
-        .Queue = Renderer->Graphics.Handle,
+        .Queue = Renderer->Graphics.Queue,
         .DescriptorPool = Renderer->ImGui.DescriptorPool,
         .MinImageCount = 3,
         .ImageCount = 3,
@@ -977,7 +986,7 @@ void Rr_EndImmediate(const Rr_Renderer* Renderer)
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
     const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
 
-    vkQueueSubmit2(Renderer->Graphics.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
+    vkQueueSubmit2(Renderer->Graphics.Queue, 1, &SubmitInfo, ImmediateMode->Fence);
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }
 
@@ -1024,6 +1033,11 @@ void Rr_CleanupRenderer(Rr_App* App)
         CleanupDrawTarget(Renderer, &Renderer->DrawTargets[Index]);
     }
 
+    for (int SemaphoreIndex = 0; SemaphoreIndex < Rr_ArrayCount(Renderer->Graphics.TransientSemaphoresArray); ++SemaphoreIndex)
+    {
+        vkDestroySemaphore(Device, Renderer->Graphics.TransientSemaphoresArray[SemaphoreIndex], NULL);
+    }
+    Rr_ArrayFree(Renderer->Graphics.TransientSemaphoresArray);
     SDL_DestroyMutex(Renderer->Graphics.Mutex);
 
     CleanupTransientCommandPools(Renderer);

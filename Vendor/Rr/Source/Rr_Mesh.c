@@ -63,8 +63,8 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
         GraphicsCommandBuffer,
         TransferCommandBuffer,
         MeshBuffers.IndexBuffer.Handle,
-        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
-        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+        VK_ACCESS_INDEX_READ_BIT,
         RawMesh.Indices,
         IndexBufferSize);
 

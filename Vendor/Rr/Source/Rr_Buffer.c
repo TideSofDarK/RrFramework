@@ -10,7 +10,7 @@
 
 Rr_Buffer Rr_CreateBuffer(
     const Rr_Renderer* Renderer,
-    const size_t Size,
+    size_t Size,
     const VkBufferUsageFlags UsageFlags,
     const VmaMemoryUsage MemoryUsage,
     const b32 bHostMapped)
@@ -118,6 +118,8 @@ void Rr_UploadBuffer(
             .size = DataLength,
             .srcAccessMask = 0,
             .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         },
         0,
         NULL);
@@ -148,6 +150,8 @@ void Rr_UploadBuffer(
                 .size = DataLength,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = DstAccessMask,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             },
             0,
             NULL);

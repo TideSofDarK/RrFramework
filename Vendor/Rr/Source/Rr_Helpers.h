@@ -85,6 +85,7 @@ static inline VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsage
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = UsageFlags,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
     return Info;
 }

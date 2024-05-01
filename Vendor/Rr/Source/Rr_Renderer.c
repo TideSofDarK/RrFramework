@@ -781,15 +781,33 @@ void Rr_Draw(Rr_App* const App)
 
     vkEndCommandBuffer(CommandBuffer);
 
+    SDL_LockMutex(Renderer->Graphics.Mutex);
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
-
-    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
     VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
 
-    const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, &SignalSemaphoreSubmitInfo, &WaitSemaphoreSubmitInfo);
+    const size_t TransientSemaphoresCount = Rr_ArrayCount(Renderer->Graphics.TransientSemaphoresArray);
+    const size_t WaitCount = TransientSemaphoresCount + 1;
+    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfos[WaitCount];
+    for (int SemaphoreIndex = 0; SemaphoreIndex < Rr_ArrayCount(Renderer->Graphics.TransientSemaphoresArray); ++SemaphoreIndex)
+    {
+        WaitSemaphoreSubmitInfos[SemaphoreIndex] = GetSemaphoreSubmitInfo(
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            Renderer->Graphics.TransientSemaphoresArray[SemaphoreIndex]);
+    }
+    WaitSemaphoreSubmitInfos[TransientSemaphoresCount] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
+    Rr_ArrayEmpty(Renderer->Graphics.TransientSemaphoresArray);
 
-    SDL_LockMutex(Renderer->Graphics.Mutex);
-    vkQueueSubmit2(Renderer->Graphics.Handle, 1, &SubmitInfo, Frame->RenderFence);
+    const VkSubmitInfo2 SubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext = NULL,
+        .waitSemaphoreInfoCount = WaitCount,
+        .pWaitSemaphoreInfos = WaitSemaphoreSubmitInfos,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &CommandBufferSubmitInfo,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos = &SignalSemaphoreSubmitInfo,
+    };
+    vkQueueSubmit2(Renderer->Graphics.Queue, 1, &SubmitInfo, Frame->RenderFence);
     SDL_UnlockMutex(Renderer->Graphics.Mutex);
 
     const VkPresentInfoKHR PresentInfo = {
@@ -802,7 +820,7 @@ void Rr_Draw(Rr_App* const App)
         .pImageIndices = &SwapchainImageIndex,
     };
 
-    Result = vkQueuePresentKHR(Renderer->Graphics.Handle, &PresentInfo);
+    Result = vkQueuePresentKHR(Renderer->Graphics.Queue, &PresentInfo);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 1);

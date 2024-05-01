@@ -3,6 +3,7 @@
 #include "Rr_Core.h"
 
 /* Renderer Defines */
+#define RR_FORCE_UNIFIED_QUEUE 0
 #define RR_MAX_LAYOUT_BINDINGS 4
 #define RR_MAX_SWAPCHAIN_IMAGE_COUNT 8
 #define RR_FRAME_OVERLAP 2

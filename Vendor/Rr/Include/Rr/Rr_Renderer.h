@@ -116,15 +116,16 @@ typedef struct Rr_Renderer
     struct
     {
         SDL_Mutex* Mutex;
+        VkSemaphore* TransientSemaphoresArray;
         VkCommandPool TransientCommandPool;
-        VkQueue Handle;
+        VkQueue Queue;
         u32 FamilyIndex;
     } Graphics;
 
     struct
     {
         VkCommandPool TransientCommandPool;
-        VkQueue Handle;
+        VkQueue Queue;
         u32 FamilyIndex;
     } Transfer;
 

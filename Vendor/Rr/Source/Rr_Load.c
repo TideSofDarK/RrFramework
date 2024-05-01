@@ -107,7 +107,7 @@ static void BeginAsyncLoad(Rr_LoadingContext* LoadingContext)
 
 static void EndAsyncLoad(Rr_LoadingContext* LoadingContext)
 {
-    const Rr_Renderer* Renderer = LoadingContext->Renderer;
+    Rr_Renderer* Renderer = LoadingContext->Renderer;
 
     vkCreateFence(
         Renderer->Device,
@@ -118,13 +118,14 @@ static void EndAsyncLoad(Rr_LoadingContext* LoadingContext)
         },
         NULL,
         &LoadingContext->ReadyFence);
-    vkEndCommandBuffer(LoadingContext->GraphicsCommandBuffer);
 
     if (Renderer->bUnifiedQueue)
     {
+        vkEndCommandBuffer(LoadingContext->GraphicsCommandBuffer);
+
         SDL_LockMutex(Renderer->Graphics.Mutex);
         vkQueueSubmit(
-            Renderer->Graphics.Handle,
+            Renderer->Graphics.Queue,
             1,
             &(VkSubmitInfo){
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -154,7 +155,7 @@ static void EndAsyncLoad(Rr_LoadingContext* LoadingContext)
             &LoadingContext->TransferSemaphore);
 
         vkQueueSubmit(
-            Renderer->Transfer.Handle,
+            Renderer->Transfer.Queue,
             1,
             &(VkSubmitInfo){
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -168,28 +169,39 @@ static void EndAsyncLoad(Rr_LoadingContext* LoadingContext)
                 .pWaitDstStageMask = 0 },
             VK_NULL_HANDLE);
 
+        vkEndCommandBuffer(LoadingContext->GraphicsCommandBuffer);
+
         SDL_LockMutex(Renderer->Graphics.Mutex);
         const VkPipelineStageFlagBits WaitStages[] = {
-            VK_PIPELINE_STAGE_TRANSFER_BIT
-            | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-            | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-            | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
-            | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT
         };
+
+        VkSemaphore TransientSemaphore;
+        vkCreateSemaphore(
+            Renderer->Device,
+            &(VkSemaphoreCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+            },
+            NULL,
+            &TransientSemaphore);
+
         vkQueueSubmit(
-            Renderer->Graphics.Handle,
+            Renderer->Graphics.Queue,
             1,
             &(VkSubmitInfo){
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                 .pNext = NULL,
                 .commandBufferCount = 1,
                 .pCommandBuffers = &LoadingContext->GraphicsCommandBuffer,
-                .signalSemaphoreCount = 0,
-                .pSignalSemaphores = NULL,
+                .signalSemaphoreCount = 1,
+                .pSignalSemaphores = &TransientSemaphore,
                 .waitSemaphoreCount = 1,
                 .pWaitSemaphores = &LoadingContext->TransferSemaphore,
                 .pWaitDstStageMask = WaitStages },
             LoadingContext->ReadyFence);
+        // Rr_ArrayPush(Renderer->Graphics.TransientSemaphoresArray, &TransientSemaphore);
         SDL_UnlockMutex(Renderer->Graphics.Mutex);
     }
 

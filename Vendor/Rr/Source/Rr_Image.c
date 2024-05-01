@@ -40,9 +40,11 @@ void Rr_UploadImage(
     SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
     StagingBuffer->CurrentOffset += ImageDataLength;
 
+    const VkImageSubresourceRange SubresourceRange = GetImageSubresourceRange(Aspect);
+
     vkCmdPipelineBarrier(
         TransferCommandBuffer,
-        0,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         0,
         0,
@@ -56,10 +58,12 @@ void Rr_UploadImage(
             .image = Image,
             .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            .subresourceRange = GetImageSubresourceRange(Aspect),
+            .subresourceRange = SubresourceRange,
             .srcAccessMask = 0,
-            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT
-    });
+            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        });
 
     const VkBufferImageCopy Copy = {
         .bufferOffset = BufferOffset,
@@ -94,10 +98,12 @@ void Rr_UploadImage(
                 .image = Image,
                 .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .newLayout = DstLayout,
-                .subresourceRange = GetImageSubresourceRange(Aspect),
+                .subresourceRange = SubresourceRange,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = DstAccessMask,
-        });
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            });
     }
     else
     {
@@ -117,12 +123,11 @@ void Rr_UploadImage(
                 .image = Image,
                 .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .newLayout = DstLayout,
-                .subresourceRange = GetImageSubresourceRange(Aspect),
+                .subresourceRange = SubresourceRange,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = 0,
                 .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex
-        });
+                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex });
 
         vkCmdPipelineBarrier(
             GraphicsCommandBuffer,
@@ -140,16 +145,21 @@ void Rr_UploadImage(
                 .image = Image,
                 .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .newLayout = DstLayout,
-                .subresourceRange = GetImageSubresourceRange(Aspect),
+                .subresourceRange = SubresourceRange,
                 .srcAccessMask = 0,
                 .dstAccessMask = DstAccessMask,
                 .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex
-        });
+                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex });
     }
 }
 
-static Rr_Image Rr_CreateImage_Internal(const Rr_Renderer* Renderer, const VkExtent3D Extent, const VkFormat Format, const VkImageUsageFlags Usage, const VmaAllocationCreateInfo AllocationCreateInfo, const b8 bMipMapped)
+static Rr_Image Rr_CreateImage_Internal(
+    const Rr_Renderer* Renderer,
+    const VkExtent3D Extent,
+    const VkFormat Format,
+    const VkImageUsageFlags Usage,
+    const VmaAllocationCreateInfo AllocationCreateInfo,
+    const b8 bMipMapped)
 {
     Rr_Image Image = { 0 };
     Image.Format = Format;
@@ -223,17 +233,17 @@ Rr_Image Rr_CreateImageFromPNG(
     const Rr_Image Image = Rr_CreateImage(Renderer, Extent, RR_COLOR_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
 
     Rr_UploadImage(Renderer,
-            StagingBuffer,
-            GraphicsCommandBuffer,
-            TransferCommandBuffer,
-            Image.Handle,
-            Extent,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_SHADER_READ_BIT,
-            InitialLayout,
-            ParsedImage,
-            DataSize);
+        StagingBuffer,
+        GraphicsCommandBuffer,
+        TransferCommandBuffer,
+        Image.Handle,
+        Extent,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        InitialLayout,
+        ParsedImage,
+        DataSize);
 
     stbi_image_free(ParsedImage);
 
@@ -307,17 +317,17 @@ Rr_Image Rr_CreateDepthImageFromEXR(
     const Rr_Image DepthImage = Rr_CreateImage(Renderer, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 
     Rr_UploadImage(Renderer,
-            StagingBuffer,
-            GraphicsCommandBuffer,
-            TransferCommandBuffer,
-            DepthImage.Handle,
-            Extent,
-            VK_IMAGE_ASPECT_DEPTH_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_ACCESS_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            Image.images[0],
-            DataSize);
+        StagingBuffer,
+        GraphicsCommandBuffer,
+        TransferCommandBuffer,
+        DepthImage.Handle,
+        Extent,
+        VK_IMAGE_ASPECT_DEPTH_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        Image.images[0],
+        DataSize);
 
     FreeEXRHeader(&Header);
     FreeEXRImage(&Image);
