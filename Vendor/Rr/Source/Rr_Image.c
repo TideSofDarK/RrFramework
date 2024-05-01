@@ -214,7 +214,7 @@ size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset)
     return 0;
 }
 
-Rr_Image Rr_CreateImageFromPNG(
+Rr_Image Rr_CreateColorImageFromPNG(
     const Rr_Renderer* Renderer,
     VkCommandBuffer GraphicsCommandBuffer,
     VkCommandBuffer TransferCommandBuffer,
@@ -230,13 +230,18 @@ Rr_Image Rr_CreateImageFromPNG(
     stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
     const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
-    const Rr_Image Image = Rr_CreateImage(Renderer, Extent, RR_COLOR_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, bMipMapped);
+    const Rr_Image ColorImage = Rr_CreateImage(
+        Renderer,
+        Extent,
+        RR_COLOR_FORMAT,
+        Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        bMipMapped);
 
     Rr_UploadImage(Renderer,
         StagingBuffer,
         GraphicsCommandBuffer,
         TransferCommandBuffer,
-        Image.Handle,
+        ColorImage.Handle,
         Extent,
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -247,7 +252,7 @@ Rr_Image Rr_CreateImageFromPNG(
 
     stbi_image_free(ParsedImage);
 
-    return Image;
+    return ColorImage;
 }
 
 Rr_Image Rr_CreateDepthImageFromEXR(

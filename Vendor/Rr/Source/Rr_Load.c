@@ -272,7 +272,7 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
-                *(Rr_Image*)Task->Out = Rr_CreateImageFromPNG(
+                *(Rr_Image*)Task->Out = Rr_CreateColorImageFromPNG(
                     Renderer,
                     LoadingContext->GraphicsCommandBuffer,
                     LoadingContext->TransferCommandBuffer,

@@ -34,7 +34,7 @@ void Rr_UploadImage(
     const size_t ImageDataLength);
 
 Rr_Image Rr_CreateImage(const Rr_Renderer* Renderer, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, b8 bMipMapped);
-Rr_Image Rr_CreateImageFromPNG(
+Rr_Image Rr_CreateColorImageFromPNG(
     const Rr_Renderer* Renderer,
     VkCommandBuffer GraphicsCommandBuffer,
     VkCommandBuffer TransferCommandBuffer,
