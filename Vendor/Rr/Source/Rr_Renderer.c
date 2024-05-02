@@ -808,7 +808,6 @@ void Rr_Draw(Rr_App* const App)
         .pSignalSemaphoreInfos = &SignalSemaphoreSubmitInfo,
     };
     vkQueueSubmit2(Renderer->Graphics.Queue, 1, &SubmitInfo, Frame->RenderFence);
-    SDL_UnlockMutex(Renderer->Graphics.Mutex);
 
     const VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -821,6 +820,7 @@ void Rr_Draw(Rr_App* const App)
     };
 
     Result = vkQueuePresentKHR(Renderer->Graphics.Queue, &PresentInfo);
+    SDL_UnlockMutex(Renderer->Graphics.Mutex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 1);
