@@ -779,28 +779,66 @@ void Rr_Draw(Rr_App* const App)
     //     VK_ACCESS_2_TRANSFER_READ_BIT,
     //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    vkEndCommandBuffer(CommandBuffer);
-
     SDL_LockMutex(Renderer->Graphics.Mutex);
+
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
     VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
 
-    const size_t TransientSemaphoresCount = Rr_ArrayCount(Renderer->Graphics.TransientSemaphoresArray);
-    const size_t WaitCount = TransientSemaphoresCount + 1;
-    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfos[WaitCount];
-    for (int SemaphoreIndex = 0; SemaphoreIndex < Rr_ArrayCount(Renderer->Graphics.TransientSemaphoresArray); ++SemaphoreIndex)
+    size_t PendingLoadsCount = Rr_ArrayCount(Renderer->Graphics.PendingLoads);
+    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfos[PendingLoadsCount + 1];
+    WaitSemaphoreSubmitInfos[0] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
+    size_t CurrentIndex = 1;
+
+    u32 bEmptyPendingLoads = true;
+    for (size_t Index = 0; Index < Rr_ArrayCount(Renderer->Graphics.PendingLoads); ++Index)
     {
-        WaitSemaphoreSubmitInfos[SemaphoreIndex] = GetSemaphoreSubmitInfo(
+        Rr_PendingLoad* PendingLoad = &Renderer->Graphics.PendingLoads[Index];
+        if (PendingLoad->bCallbackCalled)
+        {
+            vkDestroySemaphore(Device, PendingLoad->Semaphore, NULL);
+            PendingLoad->Semaphore = VK_NULL_HANDLE;
+            continue;
+        }
+        bEmptyPendingLoads = false;
+        if (PendingLoad->bBarriersSubmitted)
+        {
+            PendingLoad->LoadingCallback(Renderer, PendingLoad->Userdata);
+            PendingLoad->bCallbackCalled = true;
+            continue;
+        }
+        vkCmdPipelineBarrier(
+            CommandBuffer,
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            Renderer->Graphics.TransientSemaphoresArray[SemaphoreIndex]);
+            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
+                | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+                | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            0,
+            NULL,
+            Rr_ArrayCount(PendingLoad->Barriers.BufferMemoryBarriersArray),
+            PendingLoad->Barriers.BufferMemoryBarriersArray,
+            Rr_ArrayCount(PendingLoad->Barriers.ImageMemoryBarriersArray),
+            PendingLoad->Barriers.ImageMemoryBarriersArray);
+
+        Rr_ArrayFree(PendingLoad->Barriers.BufferMemoryBarriersArray);
+        Rr_ArrayFree(PendingLoad->Barriers.ImageMemoryBarriersArray);
+
+        PendingLoad->bBarriersSubmitted = true;
+
+        WaitSemaphoreSubmitInfos[CurrentIndex] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, PendingLoad->Semaphore);
+        CurrentIndex++;
     }
-    WaitSemaphoreSubmitInfos[TransientSemaphoresCount] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
-    Rr_ArrayEmpty(Renderer->Graphics.TransientSemaphoresArray);
+    if (bEmptyPendingLoads)
+    {
+        Rr_ArrayEmpty(Renderer->Graphics.PendingLoads);
+    }
+
+    vkEndCommandBuffer(CommandBuffer);
 
     const VkSubmitInfo2 SubmitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
         .pNext = NULL,
-        .waitSemaphoreInfoCount = WaitCount,
+        .waitSemaphoreInfoCount = CurrentIndex,
         .pWaitSemaphoreInfos = WaitSemaphoreSubmitInfos,
         .commandBufferInfoCount = 1,
         .pCommandBufferInfos = &CommandBufferSubmitInfo,

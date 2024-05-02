@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL_thread.h>
 #include <SDL_log.h>
+#include <SDL3/SDL.h>
 
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
@@ -24,77 +25,57 @@ typedef struct Rr_LoadTask
     void* Out;
 } Rr_LoadTask;
 
-typedef struct Rr_LoadingContext
-{
-    u32 bAsync;
-    Rr_LoadStatus Status;
-    Rr_Renderer* Renderer;
-    Rr_LoadTask* Tasks;
-    SDL_Thread* Thread;
-    SDL_Semaphore* Semaphore;
-    Rr_LoadingCallback Callback;
-} Rr_LoadingContext;
-
 static Rr_UploadContext CreateUploadContext(
     const Rr_Renderer* Renderer,
     const VkCommandBuffer TransferCommandBuffer,
-    const VkCommandBuffer GraphicsCommandBuffer,
     const u32 bUnifiedQueue,
     const size_t StagingBufferSize)
 {
     return (Rr_UploadContext){
         .bUnifiedQueue = bUnifiedQueue,
         .StagingBuffer = Rr_CreateStagingBuffer(Renderer, StagingBufferSize),
-        .GraphicsCommandBuffer = GraphicsCommandBuffer,
         .TransferCommandBuffer = TransferCommandBuffer,
     };
 }
 
-Rr_UploadContext Rr_CreateUploadContext(const Rr_Renderer* Renderer, size_t StagingBufferSize, u32 bUnifiedQueue)
+Rr_UploadContext Rr_CreateUploadContext(
+    const Rr_Renderer* Renderer,
+    const size_t ImageCount,
+    const size_t BufferCount,
+    const size_t StagingBufferSize,
+    const u32 bUnifiedQueue)
 {
-    VkCommandBuffer GraphicsCommandBuffer;
     VkCommandBuffer TransferCommandBuffer;
+    const VkCommandPool CommandPool = bUnifiedQueue ? Renderer->Graphics.TransientCommandPool : Renderer->Transfer.TransientCommandPool;
 
-    const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Graphics.TransientCommandPool, 1);
-    vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &GraphicsCommandBuffer);
+    const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(CommandPool, 1);
+    vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
     vkBeginCommandBuffer(
-        GraphicsCommandBuffer,
+        TransferCommandBuffer,
         &(VkCommandBufferBeginInfo){
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .pNext = NULL,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
             .pInheritanceInfo = NULL });
 
-    if (bUnifiedQueue)
-    {
-        TransferCommandBuffer = GraphicsCommandBuffer;
-    }
-    else
-    {
-        const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Renderer->Transfer.TransientCommandPool, 1);
-        vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
-        vkBeginCommandBuffer(
-            TransferCommandBuffer,
-            &(VkCommandBufferBeginInfo){
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                .pNext = NULL,
-                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                .pInheritanceInfo = NULL });
-    }
-
-    return CreateUploadContext(
+    Rr_UploadContext UploadContext = CreateUploadContext(
         Renderer,
         TransferCommandBuffer,
-        GraphicsCommandBuffer,
         bUnifiedQueue,
         StagingBufferSize);
+
+    if (!bUnifiedQueue)
+    {
+        Rr_ArrayInit(UploadContext.AcquireBarriers.ImageMemoryBarriersArray, VkImageMemoryBarrier, ImageCount);
+        Rr_ArrayInit(UploadContext.AcquireBarriers.BufferMemoryBarriersArray, VkBufferMemoryBarrier, BufferCount);
+    }
+
+    return UploadContext;
 }
 
-void Rr_Upload(const Rr_Renderer* Renderer, Rr_UploadContext* UploadContext)
+void Rr_Upload(Rr_Renderer* Renderer, Rr_UploadContext* UploadContext, Rr_LoadingCallback LoadingCallback, const void* Userdata)
 {
     VkFence Fence;
-    VkSemaphore TransferSemaphore;
-
     vkCreateFence(
         Renderer->Device,
         &(VkFenceCreateInfo){
@@ -105,7 +86,7 @@ void Rr_Upload(const Rr_Renderer* Renderer, Rr_UploadContext* UploadContext)
         NULL,
         &Fence);
 
-    vkEndCommandBuffer(UploadContext->GraphicsCommandBuffer);
+    vkEndCommandBuffer(UploadContext->TransferCommandBuffer);
 
     if (UploadContext->bUnifiedQueue)
     {
@@ -117,7 +98,7 @@ void Rr_Upload(const Rr_Renderer* Renderer, Rr_UploadContext* UploadContext)
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                 .pNext = NULL,
                 .commandBufferCount = 1,
-                .pCommandBuffers = &UploadContext->GraphicsCommandBuffer,
+                .pCommandBuffers = &UploadContext->TransferCommandBuffer,
                 .pSignalSemaphores = NULL,
                 .pWaitSemaphores = NULL,
                 .signalSemaphoreCount = 0,
@@ -128,8 +109,7 @@ void Rr_Upload(const Rr_Renderer* Renderer, Rr_UploadContext* UploadContext)
     }
     else
     {
-        vkEndCommandBuffer(UploadContext->TransferCommandBuffer);
-
+        VkSemaphore TransferSemaphore;
         vkCreateSemaphore(
             Renderer->Device,
             &(VkSemaphoreCreateInfo){
@@ -153,46 +133,30 @@ void Rr_Upload(const Rr_Renderer* Renderer, Rr_UploadContext* UploadContext)
                 .waitSemaphoreCount = 0,
                 .pWaitSemaphores = NULL,
                 .pWaitDstStageMask = 0 },
-            VK_NULL_HANDLE);
+            Fence);
 
         SDL_LockMutex(Renderer->Graphics.Mutex);
-        const VkPipelineStageFlags WaitStages[] = {
-            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT
+        const Rr_PendingLoad PendingLoad = {
+            .Barriers = UploadContext->AcquireBarriers, /* Transfering ownership! */
+            .bBarriersSubmitted = false,
+            .LoadingCallback = LoadingCallback,
+            .Userdata = Userdata,
+            .Semaphore = TransferSemaphore
         };
-
-        vkQueueSubmit(
-            Renderer->Graphics.Queue,
-            1,
-            &(VkSubmitInfo){
-                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                .pNext = NULL,
-                .commandBufferCount = 1,
-                .pCommandBuffers = &UploadContext->GraphicsCommandBuffer,
-                .signalSemaphoreCount = 0,
-                .pSignalSemaphores = NULL,
-                .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &TransferSemaphore,
-                .pWaitDstStageMask = WaitStages },
-            Fence);
+        Rr_ArrayPush(Renderer->Graphics.PendingLoads, &PendingLoad);
         SDL_UnlockMutex(Renderer->Graphics.Mutex);
+        // SDL_Delay(1000);
     }
 
     vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
     vkDestroyFence(Renderer->Device, Fence, NULL);
+
+    const VkCommandPool CommandPool = UploadContext->bUnifiedQueue ? Renderer->Graphics.TransientCommandPool : Renderer->Transfer.TransientCommandPool;
     vkFreeCommandBuffers(
         Renderer->Device,
-        Renderer->Graphics.TransientCommandPool,
+        CommandPool,
         1,
-        &UploadContext->GraphicsCommandBuffer);
-    if (!UploadContext->bUnifiedQueue)
-    {
-        vkFreeCommandBuffers(
-            Renderer->Device,
-            Renderer->Transfer.TransientCommandPool,
-            1,
-            &UploadContext->TransferCommandBuffer);
-        vkDestroySemaphore(Renderer->Device, TransferSemaphore, NULL);
-    }
+        &UploadContext->TransferCommandBuffer);
 
     Rr_DestroyStagingBuffer(Renderer, &UploadContext->StagingBuffer);
 }
@@ -233,12 +197,15 @@ void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset
 
 static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
 {
-    const Rr_Renderer* Renderer = LoadingContext->Renderer;
+    Rr_Renderer* Renderer = LoadingContext->Renderer;
 
     LoadingContext->Status = RR_LOAD_STATUS_LOADING;
 
     const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
     size_t StagingBufferSize = 0;
+
+    size_t ImageCount = 0;
+    size_t BufferCount = 0;
 
     /* First pass: calculate staging buffer size. */
     for (size_t Index = 0; Index < TaskCount; ++Index)
@@ -249,11 +216,14 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
                 StagingBufferSize += Rr_GetImageSizePNG(&Task->Asset);
+                ImageCount++;
             }
             break;
             case RR_LOAD_TYPE_MESH_FROM_OBJ:
             {
                 StagingBufferSize += Rr_GetMeshBuffersSizeOBJ(&Task->Asset);
+                BufferCount++;
+                BufferCount++;
             }
             break;
             default:
@@ -264,6 +234,8 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
     /* Create appropriate upload context. */
     Rr_UploadContext UploadContext = Rr_CreateUploadContext(
         Renderer,
+        ImageCount,
+        BufferCount,
         StagingBufferSize,
         Renderer->bUnifiedQueue || !LoadingContext->bAsync);
 
@@ -303,7 +275,7 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
     }
 
     /* Done recording; finally submit it. */
-    Rr_Upload(Renderer, &UploadContext);
+    Rr_Upload(Renderer, &UploadContext, LoadingContext->LoadingCallback, LoadingContext->Userdata);
 
     if (LoadingContext->Semaphore)
     {
@@ -312,16 +284,11 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
 
     LoadingContext->Status = RR_LOAD_STATUS_READY;
 
-    if (LoadingContext->Callback != NULL)
-    {
-        LoadingContext->Callback(LoadingContext->Renderer, LoadingContext->Status);
-    }
-
     Rr_ArrayFree(LoadingContext->Tasks);
     Rr_Free(LoadingContext);
 }
 
-void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback LoadingCallback)
+void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback LoadingCallback, const void* Userdata)
 {
     const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
     if (TaskCount == 0)
@@ -330,7 +297,8 @@ void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback Lo
         return;
     }
     LoadingContext->Semaphore = SDL_CreateSemaphore(TaskCount);
-    LoadingContext->Callback = LoadingCallback;
+    LoadingContext->LoadingCallback = LoadingCallback;
+    LoadingContext->Userdata = Userdata;
     LoadingContext->bAsync = true;
     LoadingContext->Thread = SDL_CreateThread((SDL_ThreadFunction)Load, "lt", LoadingContext);
     SDL_DetachThread(LoadingContext->Thread);

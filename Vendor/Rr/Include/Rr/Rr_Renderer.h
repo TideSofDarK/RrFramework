@@ -11,6 +11,7 @@
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Text.h"
+#include "Rr_Load.h"
 
 typedef enum Rr_DrawTextFlags
 {
@@ -24,6 +25,8 @@ typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_Material Rr_Material;
 typedef struct Rr_App Rr_App;
 typedef struct Rr_MeshBuffers Rr_MeshBuffers;
+typedef struct Rr_LoadingContext Rr_LoadingContext;
+typedef struct Rr_PendingLoad Rr_PendingLoad;
 
 typedef struct Rr_Vertex
 {
@@ -116,7 +119,7 @@ typedef struct Rr_Renderer
     struct
     {
         SDL_Mutex* Mutex;
-        VkSemaphore* TransientSemaphoresArray;
+        Rr_PendingLoad* PendingLoads;
         VkCommandPool TransientCommandPool;
         VkQueue Queue;
         u32 FamilyIndex;

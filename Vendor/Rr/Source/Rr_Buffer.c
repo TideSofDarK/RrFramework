@@ -99,7 +99,6 @@ void Rr_UploadBuffer(
 {
     Rr_StagingBuffer* StagingBuffer = &UploadContext->StagingBuffer;
     const VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
-    const VkCommandBuffer GraphicsCommandBuffer = UploadContext->GraphicsCommandBuffer;
 
     const size_t BufferOffset = StagingBuffer->CurrentOffset;
     SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
@@ -135,7 +134,7 @@ void Rr_UploadBuffer(
 
     vkCmdCopyBuffer(TransferCommandBuffer, StagingBuffer->Buffer.Handle, Buffer, 1, &Copy);
 
-    if (GraphicsCommandBuffer == TransferCommandBuffer)
+    if (UploadContext->bUnifiedQueue)
     {
         vkCmdPipelineBarrier(
             TransferCommandBuffer,
@@ -182,15 +181,7 @@ void Rr_UploadBuffer(
             0,
             NULL);
 
-        vkCmdPipelineBarrier(
-            GraphicsCommandBuffer,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            DstStageMask,
-            0,
-            0,
-            NULL,
-            1,
-            &(VkBufferMemoryBarrier){
+        const VkBufferMemoryBarrier AcquireBarrier = {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
                 .buffer = Buffer,
@@ -199,9 +190,8 @@ void Rr_UploadBuffer(
                 .srcAccessMask = 0,
                 .dstAccessMask = DstAccessMask,
                 .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex },
-            0,
-            NULL);
+                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex };
+        Rr_ArrayPush(UploadContext->AcquireBarriers.BufferMemoryBarriersArray, &AcquireBarrier);
     }
 }
 

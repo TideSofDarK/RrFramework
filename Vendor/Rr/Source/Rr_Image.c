@@ -37,7 +37,6 @@ void Rr_UploadImage(
 {
     Rr_StagingBuffer* StagingBuffer = &UploadContext->StagingBuffer;
     const VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
-    const VkCommandBuffer GraphicsCommandBuffer = UploadContext->GraphicsCommandBuffer;
 
     const size_t BufferOffset = StagingBuffer->CurrentOffset;
     SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
@@ -132,27 +131,19 @@ void Rr_UploadImage(
                 .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
                 .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex });
 
-        vkCmdPipelineBarrier(
-            GraphicsCommandBuffer,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            DstStageMask,
-            0,
-            0,
-            NULL,
-            0,
-            NULL,
-            1,
-            &(VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = Image,
-                .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .newLayout = DstLayout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = 0,
-                .dstAccessMask = DstAccessMask,
-                .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex });
+        const VkImageMemoryBarrier AcquireBarrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = NULL,
+            .image = Image,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout = DstLayout,
+            .subresourceRange = SubresourceRange,
+            .srcAccessMask = 0,
+            .dstAccessMask = DstAccessMask,
+            .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
+            .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex
+        };
+        Rr_ArrayPush(UploadContext->AcquireBarriers.ImageMemoryBarriersArray, &AcquireBarrier);
     }
 }
 

@@ -19,6 +19,7 @@
 #include "Rr_Pipeline.h"
 #include "Rr_Memory.h"
 #include "Rr_Text.h"
+#include "Rr_Load.h"
 
 static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
 {
@@ -243,7 +244,8 @@ static void InitDevice(Rr_Renderer* const Renderer)
     SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Unified Queue Mode: %s", Renderer->bUnifiedQueue ? "true" : "false");
 
     Renderer->Graphics.Mutex = SDL_CreateMutex();
-    Rr_ArrayInit(Renderer->Graphics.TransientSemaphoresArray, VkSemaphore, 2);
+
+    Rr_ArrayInit(Renderer->Graphics.PendingLoads, Rr_PendingLoad, 1);
 
     Rr_StackFree(PhysicalDevices);
 }
@@ -1039,11 +1041,14 @@ void Rr_CleanupRenderer(Rr_App* App)
         CleanupDrawTarget(Renderer, &Renderer->DrawTargets[Index]);
     }
 
-    for (int SemaphoreIndex = 0; SemaphoreIndex < Rr_ArrayCount(Renderer->Graphics.TransientSemaphoresArray); ++SemaphoreIndex)
+    for (size_t Index = 0; Index < Rr_ArrayCount(Renderer->Graphics.PendingLoads); ++Index)
     {
-        vkDestroySemaphore(Device, Renderer->Graphics.TransientSemaphoresArray[SemaphoreIndex], NULL);
+        Rr_PendingLoad* PendingLoad = &Renderer->Graphics.PendingLoads[Index];
+
+        vkDestroySemaphore(Device, PendingLoad->Semaphore, NULL);
     }
-    Rr_ArrayFree(Renderer->Graphics.TransientSemaphoresArray);
+    Rr_ArrayFree(Renderer->Graphics.PendingLoads);
+
     SDL_DestroyMutex(Renderer->Graphics.Mutex);
 
     CleanupTransientCommandPools(Renderer);

@@ -143,8 +143,10 @@ static void InitGlobals(Rr_Renderer* const Renderer)
     Rr_VulkanMatrix(ShaderGlobals.Intermediate);
 }
 
-static void OnLoadingComplete(Rr_Renderer* Renderer, u32 Status)
+static void OnLoadingComplete(Rr_Renderer* Renderer, const void* Userdata)
 {
+    assert(Userdata == Renderer);
+
     Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 
@@ -175,7 +177,7 @@ static void Init(Rr_App* App)
     Rr_LoadMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
     Rr_LoadColorImageFromPNG(LoadingContext, &CottagePNG, &CottageTexture);
     Rr_LoadMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
-    Rr_LoadAsync(LoadingContext, (Rr_LoadingCallback)OnLoadingComplete);
+    Rr_LoadAsync(LoadingContext, (Rr_LoadingCallback)OnLoadingComplete, Renderer);
 
     // Rr_ExternAsset(POCDepthEXR);
     // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
