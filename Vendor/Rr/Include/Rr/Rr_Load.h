@@ -43,8 +43,6 @@ typedef struct Rr_PendingLoad
     Rr_LoadingCallback LoadingCallback;
     const void* Userdata;
     VkSemaphore Semaphore;
-    u32 bBarriersSubmitted;
-    u32 bCallbackCalled;
 } Rr_PendingLoad;
 
 typedef struct Rr_LoadingContext

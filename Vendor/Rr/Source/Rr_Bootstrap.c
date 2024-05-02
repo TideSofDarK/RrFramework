@@ -123,15 +123,15 @@ static bool CheckPhysicalDevice(Rr_Renderer* const Renderer, const VkPhysicalDev
     if (TransferQueueFamilyIndex == ~0)
     {
         Renderer->bUnifiedQueue = true;
-        Renderer->Transfer.FamilyIndex = GraphicsQueueFamilyIndex;
+        Renderer->TransferQueue.FamilyIndex = GraphicsQueueFamilyIndex;
     }
     else
     {
         Renderer->bUnifiedQueue = false;
-        Renderer->Transfer.FamilyIndex = TransferQueueFamilyIndex;
+        Renderer->TransferQueue.FamilyIndex = TransferQueueFamilyIndex;
     }
 
-    Renderer->Graphics.FamilyIndex = GraphicsQueueFamilyIndex;
+    Renderer->UnifiedQueue.FamilyIndex = GraphicsQueueFamilyIndex;
 
     Rr_StackFree(QueuePresentSupport);
     Rr_StackFree(QueueFamilyProperties);
@@ -191,13 +191,13 @@ static void InitDevice(Rr_Renderer* const Renderer)
     VkDeviceQueueCreateInfo QueueInfos[] = {
         {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = Renderer->Graphics.FamilyIndex,
+            .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
             .queueCount = 1,
             .pQueuePriorities = QueuePriorities,
         },
         {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = Renderer->Transfer.FamilyIndex,
+            .queueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
             .queueCount = 1,
             .pQueuePriorities = QueuePriorities,
         }
@@ -235,17 +235,17 @@ static void InitDevice(Rr_Renderer* const Renderer)
 
     vkCreateDevice(Renderer->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Renderer->Device);
 
-    vkGetDeviceQueue(Renderer->Device, Renderer->Graphics.FamilyIndex, 0, &Renderer->Graphics.Queue);
+    vkGetDeviceQueue(Renderer->Device, Renderer->UnifiedQueue.FamilyIndex, 0, &Renderer->UnifiedQueue.Handle);
     if (!Renderer->bUnifiedQueue)
     {
-        vkGetDeviceQueue(Renderer->Device, Renderer->Transfer.FamilyIndex, 0, &Renderer->Transfer.Queue);
+        vkGetDeviceQueue(Renderer->Device, Renderer->TransferQueue.FamilyIndex, 0, &Renderer->TransferQueue.Handle);
     }
 
     SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Unified Queue Mode: %s", Renderer->bUnifiedQueue ? "true" : "false");
 
-    Renderer->Graphics.Mutex = SDL_CreateMutex();
+    Renderer->UnifiedQueue.Mutex = SDL_CreateMutex();
 
-    Rr_ArrayInit(Renderer->Graphics.PendingLoads, Rr_PendingLoad, 1);
+    Rr_ArrayInit(Renderer->UnifiedQueue.PendingLoads, Rr_PendingLoad, 1);
 
     Rr_StackFree(PhysicalDevices);
 }
@@ -515,6 +515,8 @@ static void InitFrames(Rr_Renderer* const Renderer)
         vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frame->SwapchainSemaphore);
         vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frame->RenderSemaphore);
 
+        Rr_ArrayInit(Frame->RetiredSemaphoresArray, VkSemaphore, 1);
+
         /* Descriptors */
         Rr_DescriptorPoolSizeRatio Ratios[] = {
             { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
@@ -531,7 +533,7 @@ static void InitFrames(Rr_Renderer* const Renderer)
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = Renderer->Graphics.FamilyIndex,
+            .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
         };
 
         vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, NULL, &Frame->CommandPool);
@@ -539,6 +541,26 @@ static void InitFrames(Rr_Renderer* const Renderer)
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
 
         vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer);
+    }
+}
+
+static void CleanupFrames(Rr_Renderer* Renderer)
+{
+    const VkDevice Device = Renderer->Device;
+
+    for (u32 Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    {
+        Rr_Frame* Frame = &Renderer->Frames[Index];
+        vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, NULL);
+
+        vkDestroyFence(Device, Frame->RenderFence, NULL);
+        vkDestroySemaphore(Device, Frame->RenderSemaphore, NULL);
+        vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
+
+        Rr_DestroyBuffer(Renderer, &Frame->StagingBuffer.Buffer);
+        Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
+
+        CleanupDrawTarget(Renderer, &Renderer->DrawTargets[Index]);
     }
 }
 
@@ -631,7 +653,7 @@ void Rr_InitImGui(Rr_App* App)
         .Instance = Renderer->Instance,
         .PhysicalDevice = Renderer->PhysicalDevice.Handle,
         .Device = Device,
-        .Queue = Renderer->Graphics.Queue,
+        .Queue = Renderer->UnifiedQueue.Handle,
         .DescriptorPool = Renderer->ImGui.DescriptorPool,
         .MinImageCount = 3,
         .ImageCount = 3,
@@ -670,7 +692,7 @@ static void InitImmediateMode(Rr_Renderer* const Renderer)
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = Renderer->Graphics.FamilyIndex,
+        .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
     };
     vkCreateCommandPool(Device, &CommandPoolInfo, NULL, &ImmediateMode->CommandPool);
     const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
@@ -843,10 +865,10 @@ static void InitTransientCommandPools(Rr_Renderer* Renderer)
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            .queueFamilyIndex = Renderer->Graphics.FamilyIndex,
+            .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
         },
         NULL,
-        &Renderer->Graphics.TransientCommandPool);
+        &Renderer->UnifiedQueue.TransientCommandPool);
 
     vkCreateCommandPool(
         Renderer->Device,
@@ -854,16 +876,16 @@ static void InitTransientCommandPools(Rr_Renderer* Renderer)
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            .queueFamilyIndex = Renderer->Transfer.FamilyIndex,
+            .queueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
         },
         NULL,
-        &Renderer->Transfer.TransientCommandPool);
+        &Renderer->TransferQueue.TransientCommandPool);
 }
 
 static void CleanupTransientCommandPools(Rr_Renderer* Renderer)
 {
-    vkDestroyCommandPool(Renderer->Device, Renderer->Graphics.TransientCommandPool, NULL);
-    vkDestroyCommandPool(Renderer->Device, Renderer->Transfer.TransientCommandPool, NULL);
+    vkDestroyCommandPool(Renderer->Device, Renderer->UnifiedQueue.TransientCommandPool, NULL);
+    vkDestroyCommandPool(Renderer->Device, Renderer->TransferQueue.TransientCommandPool, NULL);
 }
 
 void Rr_InitRenderer(Rr_App* App)
@@ -994,7 +1016,7 @@ void Rr_EndImmediate(const Rr_Renderer* Renderer)
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
     const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
 
-    vkQueueSubmit2(Renderer->Graphics.Queue, 1, &SubmitInfo, ImmediateMode->Fence);
+    vkQueueSubmit2(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }
 
@@ -1026,30 +1048,17 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     Rr_DestroyDescriptorAllocator(&Renderer->GlobalDescriptorAllocator, Device);
 
-    for (u32 Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    CleanupFrames(Renderer);
+
+    for (size_t Index = 0; Index < Rr_ArrayCount(Renderer->UnifiedQueue.PendingLoads); ++Index)
     {
-        Rr_Frame* Frame = &Renderer->Frames[Index];
-        vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, NULL);
-
-        vkDestroyFence(Device, Frame->RenderFence, NULL);
-        vkDestroySemaphore(Device, Frame->RenderSemaphore, NULL);
-        vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
-
-        Rr_DestroyBuffer(Renderer, &Frame->StagingBuffer.Buffer);
-        Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
-
-        CleanupDrawTarget(Renderer, &Renderer->DrawTargets[Index]);
-    }
-
-    for (size_t Index = 0; Index < Rr_ArrayCount(Renderer->Graphics.PendingLoads); ++Index)
-    {
-        Rr_PendingLoad* PendingLoad = &Renderer->Graphics.PendingLoads[Index];
+        Rr_PendingLoad* PendingLoad = &Renderer->UnifiedQueue.PendingLoads[Index];
 
         vkDestroySemaphore(Device, PendingLoad->Semaphore, NULL);
     }
-    Rr_ArrayFree(Renderer->Graphics.PendingLoads);
+    Rr_ArrayFree(Renderer->UnifiedQueue.PendingLoads);
 
-    SDL_DestroyMutex(Renderer->Graphics.Mutex);
+    SDL_DestroyMutex(Renderer->UnifiedQueue.Mutex);
 
     CleanupTransientCommandPools(Renderer);
     CleanupImmediateMode(Renderer);

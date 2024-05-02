@@ -128,8 +128,8 @@ void Rr_UploadImage(
                 .subresourceRange = SubresourceRange,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = 0,
-                .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex });
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex });
 
         const VkImageMemoryBarrier AcquireBarrier = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -140,8 +140,8 @@ void Rr_UploadImage(
             .subresourceRange = SubresourceRange,
             .srcAccessMask = 0,
             .dstAccessMask = DstAccessMask,
-            .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
-            .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex
+            .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+            .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
         };
         Rr_ArrayPush(UploadContext->AcquireBarriers.ImageMemoryBarriersArray, &AcquireBarrier);
     }

@@ -206,7 +206,6 @@ static void Init(Rr_App* App)
 static void Cleanup(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
 
     for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {

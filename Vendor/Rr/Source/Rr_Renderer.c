@@ -679,6 +679,50 @@ void Rr_Draw(Rr_App* const App)
     const VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
+    /* Process pending loads to acquire images/buffers.
+     * Generate wait semaphore input. */
+    SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
+    const size_t PendingLoadsCount = Rr_ArrayCount(Renderer->UnifiedQueue.PendingLoads);
+    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfos[PendingLoadsCount + 1];
+    WaitSemaphoreSubmitInfos[0] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
+    size_t CurrentIndex = 1;
+
+    for (size_t Index = 0; Index < Rr_ArrayCount(Frame->RetiredSemaphoresArray); ++Index)
+    {
+        vkDestroySemaphore(Device, Frame->RetiredSemaphoresArray[Index], NULL);
+    }
+    Rr_ArrayEmpty(Frame->RetiredSemaphoresArray);
+
+    for (size_t Index = 0; Index < PendingLoadsCount; ++Index)
+    {
+        Rr_PendingLoad* PendingLoad = &Renderer->UnifiedQueue.PendingLoads[Index];
+
+        PendingLoad->LoadingCallback(Renderer, PendingLoad->Userdata);
+
+        vkCmdPipelineBarrier(
+            CommandBuffer,
+            0,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            0,
+            0,
+            NULL,
+            Rr_ArrayCount(PendingLoad->Barriers.BufferMemoryBarriersArray),
+            PendingLoad->Barriers.BufferMemoryBarriersArray,
+            Rr_ArrayCount(PendingLoad->Barriers.ImageMemoryBarriersArray),
+            PendingLoad->Barriers.ImageMemoryBarriersArray);
+
+        Rr_ArrayFree(PendingLoad->Barriers.BufferMemoryBarriersArray);
+        Rr_ArrayFree(PendingLoad->Barriers.ImageMemoryBarriersArray);
+
+        WaitSemaphoreSubmitInfos[CurrentIndex] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, PendingLoad->Semaphore);
+        CurrentIndex++;
+
+        Rr_ArrayPush(Frame->RetiredSemaphoresArray, &PendingLoad->Semaphore);
+    }
+    Rr_ArrayEmpty(Renderer->UnifiedQueue.PendingLoads);
+    SDL_UnlockMutex(Renderer->UnifiedQueue.Mutex);
+
+    /* Rendering */
     Rr_ImageBarrier ColorImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = ColorImage->Handle,
@@ -779,59 +823,8 @@ void Rr_Draw(Rr_App* const App)
     //     VK_ACCESS_2_TRANSFER_READ_BIT,
     //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    SDL_LockMutex(Renderer->Graphics.Mutex);
-
     VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
     VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
-
-    size_t PendingLoadsCount = Rr_ArrayCount(Renderer->Graphics.PendingLoads);
-    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfos[PendingLoadsCount + 1];
-    WaitSemaphoreSubmitInfos[0] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
-    size_t CurrentIndex = 1;
-
-    u32 bEmptyPendingLoads = true;
-    for (size_t Index = 0; Index < Rr_ArrayCount(Renderer->Graphics.PendingLoads); ++Index)
-    {
-        Rr_PendingLoad* PendingLoad = &Renderer->Graphics.PendingLoads[Index];
-        if (PendingLoad->bCallbackCalled)
-        {
-            vkDestroySemaphore(Device, PendingLoad->Semaphore, NULL);
-            PendingLoad->Semaphore = VK_NULL_HANDLE;
-            continue;
-        }
-        bEmptyPendingLoads = false;
-        if (PendingLoad->bBarriersSubmitted)
-        {
-            PendingLoad->LoadingCallback(Renderer, PendingLoad->Userdata);
-            PendingLoad->bCallbackCalled = true;
-            continue;
-        }
-        vkCmdPipelineBarrier(
-            CommandBuffer,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
-                | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-                | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            0,
-            0,
-            NULL,
-            Rr_ArrayCount(PendingLoad->Barriers.BufferMemoryBarriersArray),
-            PendingLoad->Barriers.BufferMemoryBarriersArray,
-            Rr_ArrayCount(PendingLoad->Barriers.ImageMemoryBarriersArray),
-            PendingLoad->Barriers.ImageMemoryBarriersArray);
-
-        Rr_ArrayFree(PendingLoad->Barriers.BufferMemoryBarriersArray);
-        Rr_ArrayFree(PendingLoad->Barriers.ImageMemoryBarriersArray);
-
-        PendingLoad->bBarriersSubmitted = true;
-
-        WaitSemaphoreSubmitInfos[CurrentIndex] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, PendingLoad->Semaphore);
-        CurrentIndex++;
-    }
-    if (bEmptyPendingLoads)
-    {
-        Rr_ArrayEmpty(Renderer->Graphics.PendingLoads);
-    }
 
     vkEndCommandBuffer(CommandBuffer);
 
@@ -845,7 +838,8 @@ void Rr_Draw(Rr_App* const App)
         .signalSemaphoreInfoCount = 1,
         .pSignalSemaphoreInfos = &SignalSemaphoreSubmitInfo,
     };
-    vkQueueSubmit2(Renderer->Graphics.Queue, 1, &SubmitInfo, Frame->RenderFence);
+    SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
+    vkQueueSubmit2(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
     const VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -857,8 +851,8 @@ void Rr_Draw(Rr_App* const App)
         .pImageIndices = &SwapchainImageIndex,
     };
 
-    Result = vkQueuePresentKHR(Renderer->Graphics.Queue, &PresentInfo);
-    SDL_UnlockMutex(Renderer->Graphics.Mutex);
+    Result = vkQueuePresentKHR(Renderer->UnifiedQueue.Handle, &PresentInfo);
+    SDL_UnlockMutex(Renderer->UnifiedQueue.Mutex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 1);

@@ -176,8 +176,8 @@ void Rr_UploadBuffer(
                 .size = DataLength,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = 0,
-                .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex },
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex },
             0,
             NULL);
 
@@ -189,8 +189,8 @@ void Rr_UploadBuffer(
                 .size = DataLength,
                 .srcAccessMask = 0,
                 .dstAccessMask = DstAccessMask,
-                .srcQueueFamilyIndex = Renderer->Transfer.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->Graphics.FamilyIndex };
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex };
         Rr_ArrayPush(UploadContext->AcquireBarriers.BufferMemoryBarriersArray, &AcquireBarrier);
     }
 }

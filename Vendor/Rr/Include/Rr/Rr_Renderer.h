@@ -46,6 +46,7 @@ typedef struct Rr_Frame
     VkFence RenderFence;
     Rr_DescriptorAllocator DescriptorAllocator;
     Rr_StagingBuffer StagingBuffer;
+    VkSemaphore* RetiredSemaphoresArray;
 } Rr_Frame;
 
 typedef struct Rr_SwapchainImage
@@ -67,12 +68,6 @@ typedef struct Rr_Swapchain
     VkExtent2D Extent;
     SDL_AtomicInt bResizePending;
 } Rr_Swapchain;
-
-typedef struct Rr_DeviceQueue
-{
-    VkQueue Handle;
-    u32 FamilyIndex;
-} Rr_DeviceQueue;
 
 typedef struct Rr_PhysicalDevice
 {
@@ -121,16 +116,16 @@ typedef struct Rr_Renderer
         SDL_Mutex* Mutex;
         Rr_PendingLoad* PendingLoads;
         VkCommandPool TransientCommandPool;
-        VkQueue Queue;
+        VkQueue Handle;
         u32 FamilyIndex;
-    } Graphics;
+    } UnifiedQueue;
 
     struct
     {
         VkCommandPool TransientCommandPool;
-        VkQueue Queue;
+        VkQueue Handle;
         u32 FamilyIndex;
-    } Transfer;
+    } TransferQueue;
 
     VmaAllocator Allocator;
 

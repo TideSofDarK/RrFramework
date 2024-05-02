@@ -46,7 +46,7 @@ Rr_UploadContext Rr_CreateUploadContext(
     const u32 bUnifiedQueue)
 {
     VkCommandBuffer TransferCommandBuffer;
-    const VkCommandPool CommandPool = bUnifiedQueue ? Renderer->Graphics.TransientCommandPool : Renderer->Transfer.TransientCommandPool;
+    const VkCommandPool CommandPool = bUnifiedQueue ? Renderer->UnifiedQueue.TransientCommandPool : Renderer->TransferQueue.TransientCommandPool;
 
     const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(CommandPool, 1);
     vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
@@ -90,9 +90,9 @@ void Rr_Upload(Rr_Renderer* Renderer, Rr_UploadContext* UploadContext, Rr_Loadin
 
     if (UploadContext->bUnifiedQueue)
     {
-        SDL_LockMutex(Renderer->Graphics.Mutex);
+        SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
         vkQueueSubmit(
-            Renderer->Graphics.Queue,
+            Renderer->UnifiedQueue.Handle,
             1,
             &(VkSubmitInfo){
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -105,7 +105,7 @@ void Rr_Upload(Rr_Renderer* Renderer, Rr_UploadContext* UploadContext, Rr_Loadin
                 .waitSemaphoreCount = 0,
                 .pWaitDstStageMask = 0 },
             Fence);
-        SDL_UnlockMutex(Renderer->Graphics.Mutex);
+        SDL_UnlockMutex(Renderer->UnifiedQueue.Mutex);
     }
     else
     {
@@ -121,7 +121,7 @@ void Rr_Upload(Rr_Renderer* Renderer, Rr_UploadContext* UploadContext, Rr_Loadin
             &TransferSemaphore);
 
         vkQueueSubmit(
-            Renderer->Transfer.Queue,
+            Renderer->TransferQueue.Handle,
             1,
             &(VkSubmitInfo){
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -135,23 +135,26 @@ void Rr_Upload(Rr_Renderer* Renderer, Rr_UploadContext* UploadContext, Rr_Loadin
                 .pWaitDstStageMask = 0 },
             Fence);
 
-        SDL_LockMutex(Renderer->Graphics.Mutex);
+        SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
         const Rr_PendingLoad PendingLoad = {
             .Barriers = UploadContext->AcquireBarriers, /* Transfering ownership! */
-            .bBarriersSubmitted = false,
             .LoadingCallback = LoadingCallback,
             .Userdata = Userdata,
-            .Semaphore = TransferSemaphore
+            .Semaphore = TransferSemaphore /* Transfering ownership! */
         };
-        Rr_ArrayPush(Renderer->Graphics.PendingLoads, &PendingLoad);
-        SDL_UnlockMutex(Renderer->Graphics.Mutex);
-        // SDL_Delay(1000);
+        Rr_ArrayPush(Renderer->UnifiedQueue.PendingLoads, &PendingLoad);
+        SDL_UnlockMutex(Renderer->UnifiedQueue.Mutex);
     }
 
     vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
     vkDestroyFence(Renderer->Device, Fence, NULL);
 
-    const VkCommandPool CommandPool = UploadContext->bUnifiedQueue ? Renderer->Graphics.TransientCommandPool : Renderer->Transfer.TransientCommandPool;
+    if (UploadContext->bUnifiedQueue && LoadingCallback)
+    {
+        LoadingCallback(Renderer, Userdata);
+    }
+
+    const VkCommandPool CommandPool = UploadContext->bUnifiedQueue ? Renderer->UnifiedQueue.TransientCommandPool : Renderer->TransferQueue.TransientCommandPool;
     vkFreeCommandBuffers(
         Renderer->Device,
         CommandPool,
