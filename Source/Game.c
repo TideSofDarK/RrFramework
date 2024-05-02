@@ -145,8 +145,6 @@ static void InitGlobals(Rr_Renderer* const Renderer)
 
 static void OnLoadingComplete(Rr_Renderer* Renderer, const void* Userdata)
 {
-    assert(Userdata == Renderer);
-
     Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 
@@ -329,14 +327,14 @@ static void Draw(Rr_App* const App)
             .DrawData = &MarbleDraw
         };
         Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
-    }
-    // else
-    // {
-        Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &LoadingString, .Position = { 25.0f, 540.0f - 25 - 32.0f }, .Size = 32.0f, .Flags = RR_DRAW_TEXT_FLAGS_ANIMATION_BIT });
-    // }
 
-    Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });
-    Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &DebugString, .Position = { 450.0f, 54.0f }, .Size = 28.0f });
+        Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });
+        Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &DebugString, .Position = { 450.0f, 54.0f }, .Size = 28.0f });
+    }
+    else
+    {
+        Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &LoadingString, .Position = { 25.0f, 540.0f - 25 - 32.0f }, .Size = 32.0f, .Flags = RR_DRAW_TEXT_FLAGS_ANIMATION_BIT });
+    }
 
     Rr_EndRendering(&RenderingContext);
 }

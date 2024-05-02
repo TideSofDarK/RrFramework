@@ -67,7 +67,7 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     Rr_EnableFragmentStage(&Builder, &BuiltinTextFRAG);
     Rr_EnableAlphaBlend(&Builder);
     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
-//     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
+    //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
     TextPipeline->Handle = Rr_BuildPipeline(
         Renderer,
         &Builder,
@@ -75,10 +75,14 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 
     /* Quad Buffer */
     f32 Quad[8] = {
-        0.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f,
-        1.0f, 0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f,
+        0.0f,
     };
     TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(
         Renderer,

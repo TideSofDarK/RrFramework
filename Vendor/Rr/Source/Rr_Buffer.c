@@ -182,15 +182,16 @@ void Rr_UploadBuffer(
             NULL);
 
         const VkBufferMemoryBarrier AcquireBarrier = {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                .pNext = NULL,
-                .buffer = Buffer,
-                .offset = 0,
-                .size = DataLength,
-                .srcAccessMask = 0,
-                .dstAccessMask = DstAccessMask,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex };
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .pNext = NULL,
+            .buffer = Buffer,
+            .offset = 0,
+            .size = DataLength,
+            .srcAccessMask = 0,
+            .dstAccessMask = DstAccessMask,
+            .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+            .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
+        };
         Rr_ArrayPush(UploadContext->AcquireBarriers.BufferMemoryBarriersArray, &AcquireBarrier);
     }
 }
