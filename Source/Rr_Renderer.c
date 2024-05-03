@@ -131,7 +131,8 @@ void Rr_DrawMesh(
         .MeshBuffers = MeshBuffers,
         .DrawData = {}
     };
-    SDL_memcpy(DrawMeshInfo.DrawData, DrawData, RR_PIPELINE_MAX_DRAW_SIZE);
+    const size_t DrawDataSize = SDL_min(RenderingContext->Info->Pipeline->DrawSize, RR_PIPELINE_MAX_DRAW_SIZE);
+    SDL_memcpy(DrawMeshInfo.DrawData, DrawData, DrawDataSize);
     Rr_ArrayPush(RenderingContext->DrawMeshArray, &DrawMeshInfo);
 }
 
