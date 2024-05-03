@@ -175,7 +175,7 @@ static void Init(Rr_App* App)
     Rr_LoadMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
     Rr_LoadColorImageFromPNG(LoadingContext, &CottagePNG, &CottageTexture);
     Rr_LoadMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
-    Rr_LoadAsync(LoadingContext, (Rr_LoadingCallback)OnLoadingComplete, Renderer);
+    Rr_LoadAsync(LoadingContext, OnLoadingComplete, Renderer);
 
     // Rr_ExternAsset(POCDepthEXR);
     // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);

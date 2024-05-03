@@ -198,8 +198,9 @@ void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
-static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
+static int SDLCALL Load(void* Data)
 {
+    Rr_LoadingContext* LoadingContext = Data;
     Rr_Renderer* Renderer = LoadingContext->Renderer;
 
     LoadingContext->Status = RR_LOAD_STATUS_LOADING;
@@ -289,6 +290,8 @@ static void SDLCALL Load(Rr_LoadingContext* LoadingContext)
 
     Rr_ArrayFree(LoadingContext->Tasks);
     Rr_Free(LoadingContext);
+
+    return 0;
 }
 
 void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback LoadingCallback, const void* Userdata)
@@ -303,7 +306,7 @@ void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback Lo
     LoadingContext->LoadingCallback = LoadingCallback;
     LoadingContext->Userdata = Userdata;
     LoadingContext->bAsync = true;
-    LoadingContext->Thread = SDL_CreateThread((SDL_ThreadFunction)Load, "lt", LoadingContext);
+    LoadingContext->Thread = SDL_CreateThread(Load, "lt", LoadingContext);
     SDL_DetachThread(LoadingContext->Thread);
 }
 
@@ -316,7 +319,7 @@ Rr_LoadStatus Rr_LoadImmediate(Rr_LoadingContext* LoadingContext)
         return RR_LOAD_STATUS_NO_TASKS;
     }
     Load(LoadingContext);
-    return LoadingContext->Status;
+    return RR_LOAD_STATUS_READY;
 }
 
 f32 Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext)

@@ -128,7 +128,7 @@ static void Iterate(Rr_App* App)
     }
 }
 
-static int SDLCALL EventWatch(void* AppPtr, const SDL_Event* Event)
+static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
 {
     switch (Event->type)
     {
@@ -199,7 +199,7 @@ void Rr_Run(Rr_AppConfig* Config)
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
 
-    SDL_AddEventWatch((SDL_EventFilter)EventWatch, App);
+    SDL_AddEventWatch(EventWatch, App);
 
     Rr_InitRenderer(App);
     Rr_InitImGui(App);
