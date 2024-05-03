@@ -1,4 +1,5 @@
 #include "Rr_App.h"
+#include "Rr_Vulkan.h"
 
 #include <SDL_timer.h>
 
@@ -11,8 +12,6 @@
 #include <SDL3/SDL_vulkan.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
-#include <SDL3/SDL_thread.h>
-#include <SDL3/SDL_mutex.h>
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_platform.h>
 
@@ -21,6 +20,7 @@
 #include "Rr_Input.h"
 #include "Rr_Mesh.h"
 #include "Rr_Memory.h"
+#include "Rr_Types.h"
 
 static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 {
@@ -77,8 +77,8 @@ void Rr_DebugOverlay(Rr_App* App)
     igSetNextWindowBgAlpha(0.35f);
     if (igBegin("Debug Overlay", NULL, Flags))
     {
-        igText("Reference Resolution: %dx%d", App->Renderer.ReferenceResolution.width, App->Renderer.ReferenceResolution.height);
-        igText("Active Resolution: %dx%d", App->Renderer.ActiveResolution.width, App->Renderer.ActiveResolution.height);
+        igText("Reference Resolution: %dx%d", App->Renderer->ReferenceResolution.width, App->Renderer->ReferenceResolution.height);
+        igText("Active Resolution: %dx%d", App->Renderer->ActiveResolution.width, App->Renderer->ActiveResolution.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
@@ -99,7 +99,7 @@ void Rr_DebugOverlay(Rr_App* App)
 
 static b8 BeginIterate(Rr_App* App)
 {
-    if (Rr_NewFrame(&App->Renderer, App->Window))
+    if (Rr_NewFrame(App->Renderer, App->Window))
     {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
@@ -136,7 +136,7 @@ static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
         case SDL_EVENT_WINDOW_EXPOSED:
         {
             Rr_App* App = (Rr_App*)AppPtr;
-            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
+            SDL_AtomicSet(&App->Renderer->Swapchain.bResizePending, 1);
             Iterate(App);
         }
         break;
@@ -252,7 +252,12 @@ static b8 Rr_IsAnyFullscreen(SDL_Window* Window)
     return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
-void Rr_ToggleFullscreen(const Rr_App* App)
+void Rr_ToggleFullscreen(Rr_App* App)
 {
     SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
+}
+
+Rr_Renderer* Rr_GetRenderer(Rr_App* App)
+{
+    return App->Renderer;
 }

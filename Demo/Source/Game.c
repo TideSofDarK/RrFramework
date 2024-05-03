@@ -15,22 +15,16 @@
 #include <SDL3/SDL_scancode.h>
 
 #include <Rr/Rr_Math.h>
-#include <Rr/Rr_Defines.h>
 #include <Rr/Rr_Image.h>
 #include <Rr/Rr_App.h>
-#include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Mesh.h>
 #include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_Input.h>
-#include <Rr/Rr_Descriptor.h>
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Material.h>
-
-#include "Render.h"
-#include "DevTools.h"
-
-#include <SDL_thread.h>
 #include <Rr/Rr_Load.h>
+
+#include "DevTools.h"
 
 typedef struct SFrameData
 {
@@ -76,16 +70,16 @@ typedef enum EInputAction
     EIA_COUNT,
 } EInputAction;
 
-static Rr_InputMapping InputMappings[RR_MAX_INPUT_MAPPINGS] = { 0 };
+static Rr_InputMapping InputMappings[RR_MAX_INPUT_MAPPINGS];
 
 static SUber3DGlobals ShaderGlobals;
 
-static Rr_GenericPipeline Uber3DPipeline = { 0 };
+static Rr_GenericPipeline* Uber3DPipeline;
 
 // static Rr_Image SceneDepthImage;
 // static Rr_Image SceneColorImage;
 
-static Rr_MeshBuffers CottageMesh = { 0 };
+static Rr_MeshBuffers CottageMesh;
 static Rr_Image CottageTexture;
 static Rr_Material CottageMaterial;
 
@@ -120,14 +114,14 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     Rr_ExternAsset(Uber3DVERT);
     Rr_ExternAsset(Uber3DFRAG);
 
-    Rr_PipelineBuilder Builder = Rr_GetPipelineBuilder();
-    Rr_EnableVertexStage(&Builder, &Uber3DVERT);
-    Rr_EnableFragmentStage(&Builder, &Uber3DFRAG);
-    Rr_EnableDepthTest(&Builder);
-    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
+    Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+    Rr_EnableVertexStage(Builder, &Uber3DVERT);
+    Rr_EnableFragmentStage(Builder, &Uber3DFRAG);
+    Rr_EnableDepthTest(Builder);
+    Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     Uber3DPipeline = Rr_BuildGenericPipeline(
         Renderer,
-        &Builder,
+        Builder,
         sizeof(SUber3DGlobals),
         sizeof(SUber3DMaterial),
         sizeof(SUber3DDraw));
@@ -161,7 +155,7 @@ static void Init(Rr_App* App)
 #endif
     InitInputMappings();
 
-    Rr_Renderer* const Renderer = &App->Renderer;
+    Rr_Renderer* Renderer = Rr_GetRenderer(App);
 
     Rr_ExternAsset(MarbleDiffusePNG);
     Rr_ExternAsset(MarbleSpecularPNG);
@@ -203,13 +197,13 @@ static void Init(Rr_App* App)
 
 static void Cleanup(Rr_App* App)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer* Renderer = Rr_GetRenderer(App);
 
-    for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
-    {
-        SFrameData* PerFrameData = (SFrameData*)Renderer->PerFrameDatas + Index;
-    }
-    SDL_free(Renderer->PerFrameDatas);
+    //    for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
+    //    {
+    //        SFrameData* PerFrameData = (SFrameData*)Renderer->PerFrameDatas + Index;
+    //    }
+    //    SDL_free(Renderer->PerFrameDatas);
 
     Rr_DestroyMaterial(Renderer, &CottageMaterial);
     Rr_DestroyMaterial(Renderer, &MarbleMaterial);
@@ -225,7 +219,7 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyMesh(Renderer, &PocMesh);
     Rr_DestroyMesh(Renderer, &MarbleMesh);
 
-    Rr_DestroyGenericPipeline(Renderer, &Uber3DPipeline);
+    Rr_DestroyGenericPipeline(Renderer, Uber3DPipeline);
 
     Rr_DestroyString(&TestString);
     Rr_DestroyString(&DebugString);
@@ -234,12 +228,14 @@ static void Cleanup(Rr_App* App)
 
 static void Update(Rr_App* App)
 {
-    Rr_KeyState Up = Rr_GetKeyState(App->InputState, EIA_UP);
+    Rr_InputState InputState = Rr_GetInputState(App);
+
+    Rr_KeyState Up = Rr_GetKeyState(InputState, EIA_UP);
     if (Up == RR_KEYSTATE_PRESSED)
     {
     }
 
-    if (Rr_GetKeyState(App->InputState, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
+    if (Rr_GetKeyState(InputState, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
     {
         Rr_ToggleFullscreen(App);
     }
@@ -267,7 +263,7 @@ static void Update(Rr_App* App)
     igEnd();
 
     static b8 bShowDebugOverlay = false;
-    if (Rr_GetKeyState(App->InputState, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
+    if (Rr_GetKeyState(InputState, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
     {
         bShowDebugOverlay = !bShowDebugOverlay;
     }
@@ -279,13 +275,13 @@ static void Update(Rr_App* App)
 
 static void Draw(Rr_App* const App)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer* Renderer = Rr_GetRenderer(App);
 
     glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
 
     /* Rendering */
     Rr_BeginRenderingInfo BeginRenderingInfo = {
-        .Pipeline = &Uber3DPipeline,
+        .Pipeline = Uber3DPipeline,
         //        .InitialDepth = &SceneDepthImage,
         //        .InitialColor = &SceneColorImage,
         .GlobalsData = &ShaderGlobals
@@ -293,7 +289,7 @@ static void Draw(Rr_App* const App)
     Rr_RenderingContext RenderingContext = Rr_BeginRendering(Renderer, &BeginRenderingInfo);
 
     const u64 Ticks = SDL_GetTicks();
-    const float Time = ((double)Ticks / 1000.0 * 2);
+    const float Time = (float)((double)Ticks / 1000.0 * 2);
 
     if (bLoaded)
     {

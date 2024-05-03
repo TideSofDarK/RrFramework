@@ -10,11 +10,12 @@
 #include "Rr_Renderer.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
+#include "Rr_Types.h"
 
 Rr_MeshBuffers Rr_CreateMeshFromOBJ(
-    const Rr_Renderer* const Renderer,
+    Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
-    const Rr_Asset* Asset)
+    Rr_Asset* Asset)
 {
     Rr_MeshBuffers MeshBuffers;
     Rr_RawMesh RawMesh;
@@ -40,14 +41,14 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
 
     const VkBufferDeviceAddressInfo DeviceAddressInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = MeshBuffers.VertexBuffer.Handle
+        .buffer = MeshBuffers.VertexBuffer->Handle
     };
     MeshBuffers.VertexBufferAddress = vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
 
     Rr_UploadBuffer(
         Renderer,
         UploadContext,
-        MeshBuffers.VertexBuffer.Handle,
+        MeshBuffers.VertexBuffer->Handle,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
         RawMesh.Vertices,
@@ -56,7 +57,7 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
     Rr_UploadBuffer(
         Renderer,
         UploadContext,
-        MeshBuffers.IndexBuffer.Handle,
+        MeshBuffers.IndexBuffer->Handle,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         VK_ACCESS_INDEX_READ_BIT,
         RawMesh.Indices,
@@ -67,13 +68,13 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
     return MeshBuffers;
 }
 
-void Rr_DestroyMesh(const Rr_Renderer* Renderer, const Rr_MeshBuffers* Mesh)
+void Rr_DestroyMesh(Rr_Renderer* Renderer, Rr_MeshBuffers* Mesh)
 {
-    Rr_DestroyBuffer(Renderer, &Mesh->IndexBuffer);
-    Rr_DestroyBuffer(Renderer, &Mesh->VertexBuffer);
+    Rr_DestroyBuffer(Renderer, Mesh->IndexBuffer);
+    Rr_DestroyBuffer(Renderer, Mesh->VertexBuffer);
 }
 
-size_t Rr_GetMeshBuffersSizeOBJ(const Rr_Asset* Asset)
+size_t Rr_GetMeshBuffersSizeOBJ(Rr_Asset* Asset)
 {
     Rr_RawMesh RawMesh;
     Rr_ParseOBJ(&RawMesh, Asset);
@@ -98,7 +99,7 @@ static size_t GetNewLine(const char* Data, const size_t Length, size_t CurrentIn
     return CurrentIndex;
 }
 
-void Rr_ParseOBJ(Rr_RawMesh* RawMesh, const Rr_Asset* Asset)
+void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
 {
     /* Init scratch buffers. */
     vec3* ScratchPositions;

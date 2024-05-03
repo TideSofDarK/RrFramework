@@ -41,7 +41,7 @@ Rr_Array Rr_ArrayResize_Internal(Rr_Array Handle, const size_t ElementCount)
     return Handle;
 }
 
-void Rr_ArrayEmpty_Internal(const Rr_Array Handle, const b32 bFreeAllocation)
+void Rr_ArrayEmpty_Internal(Rr_Array Handle, const b32 bFreeAllocation)
 {
     if (bFreeAllocation)
     {
@@ -67,7 +67,7 @@ Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, const void* Data)
     return Handle;
 }
 
-void Rr_ArraySet(const Rr_Array Handle, const size_t Index, const void* Data)
+void Rr_ArraySet(Rr_Array Handle, const size_t Index, const void* Data)
 {
     if (Handle == NULL)
     {
@@ -86,13 +86,13 @@ void Rr_ArraySet(const Rr_Array Handle, const size_t Index, const void* Data)
     }
 }
 
-void Rr_ArrayEmplace(const Rr_Array Handle, const void* Data)
+void Rr_ArrayEmplace(Rr_Array Handle, const void* Data)
 {
     Rr_ArrayHeader* Header = RrArray_Header(Handle);
     Rr_ArraySet(Handle, Header->Count++, Data);
 }
 
-void Rr_ArrayPop(const Rr_Array Handle)
+void Rr_ArrayPop(Rr_Array Handle)
 {
     Rr_ArrayHeader* Header = RrArray_Header(Handle);
     if (Header->Count > 0)
@@ -101,7 +101,7 @@ void Rr_ArrayPop(const Rr_Array Handle)
     }
 }
 
-size_t Rr_ArrayCount(const Rr_Array Handle)
+size_t Rr_ArrayCount(Rr_Array Handle)
 {
     return RrArray_Header(Handle)->Count;
 }
@@ -162,6 +162,6 @@ void Rr_Array_Test(void)
     SDL_assert(Header->ElementSize == sizeof(SArrayItem));
 
     Rr_ArrayFree(Handle);
-    SDL_assert(InitialAllocations == SDL_GetNumAllocations());
+    SDL_assert(InitialAllocations == (size_t)SDL_GetNumAllocations());
 }
 #endif

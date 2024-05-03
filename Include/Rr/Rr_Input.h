@@ -4,6 +4,7 @@
 
 #define RR_MAX_INPUT_MAPPINGS 16
 
+typedef struct Rr_App Rr_App;
 typedef u32 Rr_InputState;
 
 typedef enum Rr_KeyState
@@ -27,4 +28,5 @@ typedef struct Rr_InputConfig
 } Rr_InputConfig;
 
 void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config);
+Rr_InputState Rr_GetInputState(Rr_App* App);
 Rr_KeyState Rr_GetKeyState(Rr_InputState State, u32 Key);

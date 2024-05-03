@@ -13,6 +13,7 @@
 #define RR_TEXT_MAX_COLORS 8
 
 typedef struct Rr_Renderer Rr_Renderer;
+typedef struct Rr_Buffer Rr_Buffer;
 
 typedef enum Rr_TextPipelineDescriptorSet
 {
@@ -72,7 +73,7 @@ typedef struct Rr_TextPushConstants
 typedef struct Rr_Font
 {
     Rr_Image Atlas;
-    Rr_Buffer Buffer;
+    Rr_Buffer* Buffer;
     f32 Advances[2048];
     f32 LineHeight;
     f32 DefaultSize;
@@ -83,16 +84,16 @@ typedef struct Rr_TextPipeline
     VkDescriptorSetLayout DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT];
     VkPipeline Handle;
     VkPipelineLayout Layout;
-    Rr_Buffer QuadBuffer;
-    Rr_Buffer GlobalsBuffers[RR_FRAME_OVERLAP];
-    Rr_Buffer TextBuffers[RR_FRAME_OVERLAP];
+    Rr_Buffer* QuadBuffer;
+    Rr_Buffer* GlobalsBuffers[RR_FRAME_OVERLAP];
+    Rr_Buffer* TextBuffers[RR_FRAME_OVERLAP];
 } Rr_TextPipeline;
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer);
 void Rr_CleanupTextRenderer(Rr_Renderer* Renderer);
 
-Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, const Rr_Asset* FontPNG, const Rr_Asset* FontJSON);
-void Rr_DestroyFont(const Rr_Renderer* Renderer, const Rr_Font* Font);
+Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON);
+void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font);
 
 typedef struct Rr_String
 {

@@ -4,7 +4,7 @@
 
 #include "Rr_Renderer.h"
 
-Rr_Material Rr_CreateMaterial(const Rr_Renderer* Renderer, Rr_Image** Textures, size_t TextureCount)
+Rr_Material Rr_CreateMaterial(Rr_Renderer* Renderer, Rr_Image** Textures, size_t TextureCount)
 {
     Rr_Material Material = {
         .TextureCount = TextureCount,
@@ -12,7 +12,7 @@ Rr_Material Rr_CreateMaterial(const Rr_Renderer* Renderer, Rr_Image** Textures, 
     };
 
     TextureCount = SDL_min(TextureCount, RR_MAX_TEXTURES_PER_MATERIAL);
-    for (int Index = 0; Index < TextureCount; ++Index)
+    for (size_t Index = 0; Index < TextureCount; ++Index)
     {
         Material.Textures[Index] = Textures[Index];
     }
@@ -20,7 +20,7 @@ Rr_Material Rr_CreateMaterial(const Rr_Renderer* Renderer, Rr_Image** Textures, 
     return Material;
 }
 
-void Rr_DestroyMaterial(const Rr_Renderer* Renderer, const Rr_Material* Material)
+void Rr_DestroyMaterial(Rr_Renderer* Renderer, Rr_Material* Material)
 {
-    Rr_DestroyBuffer(Renderer, &Material->Buffer);
+    Rr_DestroyBuffer(Renderer, Material->Buffer);
 }

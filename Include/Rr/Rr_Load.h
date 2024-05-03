@@ -1,9 +1,13 @@
 #pragma once
 
 #include "Rr_Defines.h"
-#include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 #include "Rr_Renderer.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 typedef struct Rr_LoadingContext Rr_LoadingContext;
 typedef struct Rr_Asset Rr_Asset;
@@ -23,42 +27,8 @@ typedef enum Rr_LoadStatus
 
 typedef void (*Rr_LoadingCallback)(Rr_Renderer* Renderer, const void* Userdata);
 
-typedef struct Rr_AcquireBarriers
-{
-    VkImageMemoryBarrier* ImageMemoryBarriersArray;
-    VkBufferMemoryBarrier* BufferMemoryBarriersArray;
-} Rr_AcquireBarriers;
-
-typedef struct Rr_UploadContext
-{
-    Rr_StagingBuffer StagingBuffer;
-    VkCommandBuffer TransferCommandBuffer;
-    Rr_AcquireBarriers AcquireBarriers;
-    u32 bUnifiedQueue;
-} Rr_UploadContext;
-
-typedef struct Rr_PendingLoad
-{
-    Rr_AcquireBarriers Barriers;
-    Rr_LoadingCallback LoadingCallback;
-    const void* Userdata;
-    VkSemaphore Semaphore;
-} Rr_PendingLoad;
-
-typedef struct Rr_LoadingContext
-{
-    u32 bAsync;
-    Rr_LoadStatus Status;
-    Rr_Renderer* Renderer;
-    Rr_LoadTask* Tasks;
-    SDL_Thread* Thread;
-    SDL_Semaphore* Semaphore;
-    Rr_LoadingCallback LoadingCallback;
-    const void* Userdata;
-} Rr_LoadingContext;
-
 Rr_UploadContext Rr_CreateUploadContext(
-    const Rr_Renderer* Renderer,
+    Rr_Renderer* Renderer,
     size_t ImageCount,
     size_t BufferCount,
     size_t StagingBufferSize,
@@ -71,3 +41,7 @@ void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset
 void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, Rr_LoadingCallback LoadingCallback, const void* Userdata);
 Rr_LoadStatus Rr_LoadImmediate(Rr_LoadingContext* LoadingContext);
 f32 Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext);
+
+#ifdef __cplusplus
+}
+#endif

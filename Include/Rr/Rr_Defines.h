@@ -2,9 +2,15 @@
 
 #include "Rr_Core.h"
 
-/* Renderer Defines */
+/* Renderer Configuration */
 #define RR_FORCE_UNIFIED_QUEUE 0
 #define RR_PERFORMANCE_COUNTER 1
+
+/* Pipelines */
+#define RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES 5
+#define RR_PIPELINE_SHADER_STAGES 2
+#define RR_PIPELINE_MAX_COLOR_ATTACHMENTS 2
+#define RR_PIPELINE_MAX_DRAW_SIZE 128
 
 #define RR_MAX_LAYOUT_BINDINGS 4
 #define RR_MAX_SWAPCHAIN_IMAGE_COUNT 8

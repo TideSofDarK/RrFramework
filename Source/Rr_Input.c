@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include "Rr_Core.h"
+#include "Rr_Types.h"
 
 Rr_InputState UpdateKeyState(const Rr_KeyState OldKeyState, const u8* KeyboardState, const u8 Scancode)
 {
@@ -32,11 +33,6 @@ Rr_InputState UpdateKeyState(const Rr_KeyState OldKeyState, const u8* KeyboardSt
     }
 }
 
-Rr_KeyState Rr_GetKeyState(const Rr_InputState State, const u32 Key)
-{
-    return (State >> (2 * Key)) & 3;
-}
-
 void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config)
 {
     Rr_InputState NewState = *State;
@@ -52,3 +48,15 @@ void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config)
     }
     *State = NewState;
 }
+
+Rr_InputState Rr_GetInputState(Rr_App* App)
+{
+    return App->InputState;
+}
+
+Rr_KeyState Rr_GetKeyState(const Rr_InputState State, const u32 Key)
+{
+    return (State >> (2 * Key)) & 3;
+}
+
+

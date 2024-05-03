@@ -7,12 +7,14 @@
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Pipeline.h"
+#include "Rr_Pipeline_Internal.h"
 #include "Rr_Renderer.h"
 #include "Rr_Asset.h"
 #include "Rr_Memory.h"
 #include "Rr_Util.h"
-
-#include <Rr_Load.h>
+#include "Rr_Load.h"
+#include "Rr_Types.h"
+#include "Rr_Descriptor.h"
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 {
@@ -58,19 +60,19 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     Rr_ExternAsset(BuiltinTextVERT);
     Rr_ExternAsset(BuiltinTextFRAG);
 
-    Rr_PipelineBuilder Builder = Rr_GetPipelineBuilder();
-    Rr_EnableTriangleFan(&Builder);
-    Rr_EnablePerVertexInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
-    Rr_EnablePerInstanceInputAttribute(&Builder, VK_FORMAT_R32G32_SFLOAT);
-    Rr_EnablePerInstanceInputAttribute(&Builder, VK_FORMAT_R32_UINT);
-    Rr_EnableVertexStage(&Builder, &BuiltinTextVERT);
-    Rr_EnableFragmentStage(&Builder, &BuiltinTextFRAG);
-    Rr_EnableAlphaBlend(&Builder);
-    Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_FILL);
+    Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+    Rr_EnableTriangleFan(Builder);
+    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32G32_SFLOAT);
+    Rr_EnablePerInstanceInputAttribute(Builder, VK_FORMAT_R32G32_SFLOAT);
+    Rr_EnablePerInstanceInputAttribute(Builder, VK_FORMAT_R32_UINT);
+    Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
+    Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
+    Rr_EnableAlphaBlend(Builder);
+    Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
     TextPipeline->Handle = Rr_BuildPipeline(
         Renderer,
-        &Builder,
+        Builder,
         TextPipeline->Layout);
 
     /* Quad Buffer */
@@ -87,7 +89,7 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(
         Renderer,
         sizeof(Quad));
-    Rr_UploadToDeviceBufferImmediate(Renderer, &TextPipeline->QuadBuffer, Quad, sizeof(Quad));
+    Rr_UploadToDeviceBufferImmediate(Renderer, TextPipeline->QuadBuffer, Quad, sizeof(Quad));
 
     /* Buffers */
     for (int FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
@@ -110,7 +112,7 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
 {
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
-    const VkDevice Device = Renderer->Device;
+    VkDevice Device = Renderer->Device;
     vkDestroyPipeline(Device, TextPipeline->Handle, NULL);
     vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
     for (int Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT; ++Index)
@@ -119,21 +121,21 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
     }
     for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_DestroyBuffer(Renderer, &TextPipeline->GlobalsBuffers[Index]);
-        Rr_DestroyBuffer(Renderer, &TextPipeline->TextBuffers[Index]);
+        Rr_DestroyBuffer(Renderer, TextPipeline->GlobalsBuffers[Index]);
+        Rr_DestroyBuffer(Renderer, TextPipeline->TextBuffers[Index]);
     }
-    Rr_DestroyBuffer(Renderer, &TextPipeline->QuadBuffer);
+    Rr_DestroyBuffer(Renderer, TextPipeline->QuadBuffer);
     Rr_DestroyFont(Renderer, &Renderer->BuiltinFont);
 }
 
-Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, const Rr_Asset* FontPNG, const Rr_Asset* FontJSON)
+Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
 {
     Rr_Image Atlas;
     Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(Renderer, 1);
     Rr_LoadColorImageFromPNG(LoadingContext, FontPNG, &Atlas);
     Rr_LoadImmediate(LoadingContext);
 
-    Rr_Buffer Buffer = Rr_CreateBuffer(
+    Rr_Buffer* Buffer = Rr_CreateBuffer(
         Renderer,
         sizeof(Rr_TextFontLayout),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -163,14 +165,14 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, const Rr_Asset* FontPNG, const Rr_A
     const cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
 
     const size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
-    for (int GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
+    for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
         const cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, GlyphIndex);
 
         const size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
 
         const cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
-        u16 AtlasBounds[4] = {};
+        u16 AtlasBounds[4] = {0};
         if (cJSON_IsObject(AtlasBoundsJSON))
         {
             AtlasBounds[0] = (u16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "left"));
@@ -180,7 +182,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, const Rr_Asset* FontPNG, const Rr_A
         }
 
         const cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
-        vec4 PlaneBounds = {};
+        vec4 PlaneBounds = {0};
         if (cJSON_IsObject(PlaneBoundsJSON))
         {
             PlaneBounds[0] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
@@ -208,22 +210,22 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, const Rr_Asset* FontPNG, const Rr_A
 
     Rr_UploadToDeviceBufferImmediate(
         Renderer,
-        &Buffer,
+        Buffer,
         &TextFontData,
         sizeof(Rr_TextFontLayout));
 
     return Font;
 }
 
-void Rr_DestroyFont(const Rr_Renderer* Renderer, const Rr_Font* Font)
+void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
 {
     Rr_DestroyImage(Renderer, &Font->Atlas);
-    Rr_DestroyBuffer(Renderer, &Font->Buffer);
+    Rr_DestroyBuffer(Renderer, Font->Buffer);
 }
 
 Rr_String Rr_CreateString(const char* CString)
 {
-    static u32 Buffer[2048] = {};
+    static u32 Buffer[2048] = {0};
 
     const u8 Ready = 128;
     const u8 Two = 192;

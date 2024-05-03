@@ -34,7 +34,7 @@ static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImage
         .imageLayout = Layout,
         .loadOp = InClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = InClearValue ? *InClearValue : (VkClearValue){ .color = { 0.0f, 0.0f, 0.0f, 1.0f } }
+        .clearValue = InClearValue ? *InClearValue : (VkClearValue){ .color = { {0.0f, 0.0f, 0.0f, 1.0f} } }
     };
 
     return Info;

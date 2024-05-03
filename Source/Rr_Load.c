@@ -11,6 +11,7 @@
 #include "Rr_Asset.h"
 #include "Rr_Helpers.h"
 #include "Rr_Mesh.h"
+#include "Rr_Types.h"
 
 typedef enum Rr_LoadType
 {
@@ -26,10 +27,10 @@ typedef struct Rr_LoadTask
 } Rr_LoadTask;
 
 static Rr_UploadContext CreateUploadContext(
-    const Rr_Renderer* Renderer,
-    const VkCommandBuffer TransferCommandBuffer,
-    const u32 bUnifiedQueue,
-    const size_t StagingBufferSize)
+    Rr_Renderer* Renderer,
+    VkCommandBuffer TransferCommandBuffer,
+    u32 bUnifiedQueue,
+    size_t StagingBufferSize)
 {
     return (Rr_UploadContext){
         .bUnifiedQueue = bUnifiedQueue,
@@ -39,16 +40,16 @@ static Rr_UploadContext CreateUploadContext(
 }
 
 Rr_UploadContext Rr_CreateUploadContext(
-    const Rr_Renderer* Renderer,
-    const size_t ImageCount,
-    const size_t BufferCount,
-    const size_t StagingBufferSize,
-    const u32 bUnifiedQueue)
+    Rr_Renderer* Renderer,
+    size_t ImageCount,
+    size_t BufferCount,
+    size_t StagingBufferSize,
+    u32 bUnifiedQueue)
 {
     VkCommandBuffer TransferCommandBuffer;
-    const VkCommandPool CommandPool = bUnifiedQueue ? Renderer->UnifiedQueue.TransientCommandPool : Renderer->TransferQueue.TransientCommandPool;
+    VkCommandPool CommandPool = bUnifiedQueue ? Renderer->UnifiedQueue.TransientCommandPool : Renderer->TransferQueue.TransientCommandPool;
 
-    const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(CommandPool, 1);
+    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(CommandPool, 1);
     vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
     vkBeginCommandBuffer(
         TransferCommandBuffer,
@@ -154,14 +155,14 @@ void Rr_Upload(Rr_Renderer* Renderer, Rr_UploadContext* UploadContext, Rr_Loadin
         LoadingCallback(Renderer, Userdata);
     }
 
-    const VkCommandPool CommandPool = UploadContext->bUnifiedQueue ? Renderer->UnifiedQueue.TransientCommandPool : Renderer->TransferQueue.TransientCommandPool;
+    VkCommandPool CommandPool = UploadContext->bUnifiedQueue ? Renderer->UnifiedQueue.TransientCommandPool : Renderer->TransferQueue.TransientCommandPool;
     vkFreeCommandBuffers(
         Renderer->Device,
         CommandPool,
         1,
         &UploadContext->TransferCommandBuffer);
 
-    Rr_DestroyStagingBuffer(Renderer, &UploadContext->StagingBuffer);
+    Rr_DestroyStagingBuffer(Renderer, UploadContext->StagingBuffer);
 }
 
 Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t InitialTaskCount)
@@ -214,7 +215,7 @@ static int SDLCALL Load(void* Data)
     /* First pass: calculate staging buffer size. */
     for (size_t Index = 0; Index < TaskCount; ++Index)
     {
-        const Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
+        Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
         switch (Task->LoadType)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
@@ -246,7 +247,7 @@ static int SDLCALL Load(void* Data)
     /* Second pass: record command buffers. */
     for (size_t Index = 0; Index < TaskCount; ++Index)
     {
-        const Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
+        Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
         switch (Task->LoadType)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:

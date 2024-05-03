@@ -7,16 +7,18 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Renderer.h"
 #include "Rr_Util.h"
-#include "Rr_Load.h"
+#include "Rr_Types.h"
+#include "Rr_Memory.h"
+#include "Rr_Array.h"
 
-Rr_Buffer Rr_CreateBuffer(
-    const Rr_Renderer* Renderer,
+Rr_Buffer* Rr_CreateBuffer(
+    Rr_Renderer* Renderer,
     size_t Size,
-    const VkBufferUsageFlags UsageFlags,
-    const VmaMemoryUsage MemoryUsage,
-    const b32 bHostMapped)
+    VkBufferUsageFlags UsageFlags,
+    VmaMemoryUsage MemoryUsage,
+    b32 bHostMapped)
 {
-    Rr_Buffer Buffer;
+    Rr_Buffer* Buffer = Rr_Calloc(1, sizeof(Rr_Buffer));
 
     const VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -34,12 +36,12 @@ Rr_Buffer Rr_CreateBuffer(
         AllocationInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     }
 
-    vmaCreateBuffer(Renderer->Allocator, &BufferInfo, &AllocationInfo, &Buffer.Handle, &Buffer.Allocation, &Buffer.AllocationInfo);
+    vmaCreateBuffer(Renderer->Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo);
 
     return Buffer;
 }
 
-Rr_Buffer Rr_CreateDeviceVertexBuffer(const Rr_Renderer* Renderer, size_t Size)
+Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size)
 {
     Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
@@ -50,7 +52,7 @@ Rr_Buffer Rr_CreateDeviceVertexBuffer(const Rr_Renderer* Renderer, size_t Size)
         false);
 }
 
-Rr_Buffer Rr_CreateDeviceUniformBuffer(const Rr_Renderer* Renderer, const size_t Size)
+Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size)
 {
     // Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
@@ -61,12 +63,12 @@ Rr_Buffer Rr_CreateDeviceUniformBuffer(const Rr_Renderer* Renderer, const size_t
         false);
 }
 
-Rr_Buffer Rr_CreateMappedBuffer(const Rr_Renderer* Renderer, const size_t Size, const VkBufferUsageFlags UsageFlags)
+Rr_Buffer* Rr_CreateMappedBuffer(Rr_Renderer* Renderer, size_t Size, VkBufferUsageFlags UsageFlags)
 {
     return Rr_CreateBuffer(Renderer, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, true);
 }
 
-Rr_Buffer Rr_CreateMappedVertexBuffer(const Rr_Renderer* Renderer, const size_t Size)
+Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_Renderer* Renderer, size_t Size)
 {
     return Rr_CreateMappedBuffer(
         Renderer,
@@ -74,34 +76,32 @@ Rr_Buffer Rr_CreateMappedVertexBuffer(const Rr_Renderer* Renderer, const size_t 
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 }
 
-void Rr_DestroyBuffer(const Rr_Renderer* Renderer, const Rr_Buffer* Buffer)
+void Rr_DestroyBuffer(Rr_Renderer* Renderer, Rr_Buffer* Buffer)
 {
-    vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
-}
+    if (Buffer == NULL)
+    {
+        return;
+    }
 
-VkDeviceAddress Rr_GetBufferAddress(const Rr_Renderer* const Renderer, const Rr_Buffer* const Buffer)
-{
-    const VkBufferDeviceAddressInfo DeviceAddressInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = Buffer->Handle
-    };
-    return vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
+    vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
+
+    Rr_Free(Buffer);
 }
 
 void Rr_UploadBuffer(
-    const Rr_Renderer* Renderer,
+    Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     const void* Data,
-    const size_t DataLength)
+    size_t DataLength)
 {
-    Rr_StagingBuffer* StagingBuffer = &UploadContext->StagingBuffer;
-    const VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
+    Rr_StagingBuffer* StagingBuffer = UploadContext->StagingBuffer;
+    VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
     const size_t BufferOffset = StagingBuffer->CurrentOffset;
-    SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
+    SDL_memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
     StagingBuffer->CurrentOffset += DataLength;
 
     vkCmdPipelineBarrier(
@@ -132,7 +132,7 @@ void Rr_UploadBuffer(
         .dstOffset = 0
     };
 
-    vkCmdCopyBuffer(TransferCommandBuffer, StagingBuffer->Buffer.Handle, Buffer, 1, &Copy);
+    vkCmdCopyBuffer(TransferCommandBuffer, StagingBuffer->Buffer->Handle, Buffer, 1, &Copy);
 
     if (UploadContext->bUnifiedQueue)
     {
@@ -197,17 +197,17 @@ void Rr_UploadBuffer(
 }
 
 void Rr_UploadToDeviceBufferImmediate(
-    const Rr_Renderer* Renderer,
-    const Rr_Buffer* DstBuffer,
+    Rr_Renderer* Renderer,
+    Rr_Buffer* DstBuffer,
     const void* Data,
-    const size_t Size)
+    size_t Size)
 {
-    const VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
-    Rr_Buffer HostMappedBuffer = Rr_CreateMappedBuffer(
+    VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
+    Rr_Buffer* HostMappedBuffer = Rr_CreateMappedBuffer(
         Renderer,
         Size,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-    SDL_memcpy(HostMappedBuffer.AllocationInfo.pMappedData, Data, Size);
+    SDL_memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data, Size);
     const VkBufferCopy BufferCopy = {
         .dstOffset = 0,
         .size = Size,
@@ -215,21 +215,21 @@ void Rr_UploadToDeviceBufferImmediate(
     };
     vkCmdCopyBuffer(
         CommandBuffer,
-        HostMappedBuffer.Handle,
+        HostMappedBuffer->Handle,
         DstBuffer->Handle,
         1,
         &BufferCopy);
     Rr_EndImmediate(Renderer);
-    Rr_DestroyBuffer(Renderer, &HostMappedBuffer);
+    Rr_DestroyBuffer(Renderer, HostMappedBuffer);
 }
 
 void Rr_CopyToDeviceUniformBuffer(
-    const Rr_Renderer* Renderer,
-    const VkCommandBuffer CommandBuffer,
+    Rr_Renderer* Renderer,
+    VkCommandBuffer CommandBuffer,
     Rr_StagingBuffer* StagingBuffer,
-    const Rr_Buffer* DstBuffer,
+    Rr_Buffer* DstBuffer,
     const void* Data,
-    const size_t Size)
+    size_t Size)
 {
     if (StagingBuffer->CurrentOffset + Size > RR_STAGING_BUFFER_SIZE)
     {
@@ -238,12 +238,12 @@ void Rr_CopyToDeviceUniformBuffer(
             "Exceeding staging buffer size! Current offset is %zu, allocation size is %zu and total staging buffer size is %zu.",
             StagingBuffer->CurrentOffset,
             Size,
-            StagingBuffer->Buffer.AllocationInfo.size);
+            StagingBuffer->Buffer->AllocationInfo.size);
         abort();
     }
     const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     const size_t Offset = StagingBuffer->CurrentOffset;
-    SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + Offset, Data, Size);
+    SDL_memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + Offset, Data, Size);
     StagingBuffer->CurrentOffset = Rr_Align(Offset + Size, Alignment);
 
     VkBufferMemoryBarrier2 BufferBarrier = {
@@ -275,7 +275,7 @@ void Rr_CopyToDeviceUniformBuffer(
 
     vkCmdCopyBuffer(
         CommandBuffer,
-        StagingBuffer->Buffer.Handle,
+        StagingBuffer->Buffer->Handle,
         DstBuffer->Handle,
         1,
         &BufferCopy);
@@ -289,31 +289,33 @@ void Rr_CopyToDeviceUniformBuffer(
 }
 
 void Rr_CopyToMappedUniformBuffer(
-    const Rr_Renderer* Renderer,
-    const Rr_Buffer* DstBuffer,
+    Rr_Renderer* Renderer,
+    Rr_Buffer* DstBuffer,
     const void* Data,
-    const size_t Size,
+    size_t Size,
     size_t* DstOffset)
 {
     const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     const size_t AlignedSize = Rr_Align(Size, Alignment);
     if (*DstOffset + AlignedSize < DstBuffer->AllocationInfo.size)
     {
-        SDL_memcpy(DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
+        SDL_memcpy((char*)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
         *DstOffset += Size;
         *DstOffset = Rr_Align(*DstOffset, Alignment);
     }
 }
 
-Rr_StagingBuffer Rr_CreateStagingBuffer(const Rr_Renderer* Renderer, size_t Size)
+Rr_StagingBuffer* Rr_CreateStagingBuffer(Rr_Renderer* Renderer, size_t Size)
 {
-    return (Rr_StagingBuffer){
+    Rr_StagingBuffer* StagingBuffer = Rr_Calloc(1, sizeof(Rr_StagingBuffer));
+    *StagingBuffer = (Rr_StagingBuffer){
         .CurrentOffset = 0,
         .Buffer = Rr_CreateMappedBuffer(Renderer, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
     };
+    return StagingBuffer;
 }
 
-void Rr_DestroyStagingBuffer(const Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer)
+void Rr_DestroyStagingBuffer(Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer)
 {
-    Rr_DestroyBuffer(Renderer, &StagingBuffer->Buffer);
+    Rr_DestroyBuffer(Renderer, StagingBuffer->Buffer);
 }

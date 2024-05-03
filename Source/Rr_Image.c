@@ -22,6 +22,9 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 #include "Rr_Load.h"
+#include "Rr_Types.h"
+#include "Rr_Buffer.h"
+#include "Rr_Array.h"
 
 void Rr_UploadImage(
     const Rr_Renderer* Renderer,
@@ -35,11 +38,11 @@ void Rr_UploadImage(
     const void* ImageData,
     const size_t ImageDataLength)
 {
-    Rr_StagingBuffer* StagingBuffer = &UploadContext->StagingBuffer;
-    const VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
+    Rr_StagingBuffer* StagingBuffer = UploadContext->StagingBuffer;
+    VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
     const size_t BufferOffset = StagingBuffer->CurrentOffset;
-    SDL_memcpy(StagingBuffer->Buffer.AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
+    SDL_memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
     StagingBuffer->CurrentOffset += ImageDataLength;
 
     const VkImageSubresourceRange SubresourceRange = GetImageSubresourceRange(Aspect);
@@ -80,7 +83,7 @@ void Rr_UploadImage(
         .imageExtent = Extent,
     };
 
-    vkCmdCopyBufferToImage(TransferCommandBuffer, StagingBuffer->Buffer.Handle, Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
+    vkCmdCopyBufferToImage(TransferCommandBuffer, StagingBuffer->Buffer->Handle, Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
 
     if (UploadContext->bUnifiedQueue)
     {
@@ -198,7 +201,7 @@ size_t Rr_GetImageSizePNG(const Rr_Asset* Asset)
     i32 Width;
     i32 Height;
     i32 Channels;
-    stbi_info_from_memory((stbi_uc*)Asset->Data, Asset->Length, &Width, &Height, &Channels);
+    stbi_info_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, &Width, &Height, &Channels);
 
     return Width * Height * DesiredChannels;
 }
@@ -219,7 +222,7 @@ Rr_Image Rr_CreateColorImageFromPNG(
     const i32 DesiredChannels = 4;
     i32 Channels;
     VkExtent3D Extent = { .depth = 1 };
-    stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
+    stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
     const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
     const Rr_Image ColorImage = Rr_CreateImage(
