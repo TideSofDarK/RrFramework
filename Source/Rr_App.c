@@ -20,6 +20,7 @@
 #include "Rr_Asset.h"
 #include "Rr_Input.h"
 #include "Rr_Mesh.h"
+#include "Rr_Memory.h"
 
 static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 {
@@ -181,7 +182,8 @@ void Rr_Run(Rr_AppConfig* Config)
 
     SDL_Vulkan_LoadLibrary(NULL);
 
-    Rr_App App = {
+    Rr_App* App = Rr_Calloc(1, sizeof(Rr_App));
+    *App = (Rr_App){
         .Config = Config,
         .Window = SDL_CreateWindow(
             Config->Title,
@@ -193,20 +195,20 @@ void Rr_Run(Rr_AppConfig* Config)
             .Mappings = Config->InputConfig->Mappings }
     };
 
-    InitFrameTime(&App.FrameTime, App.Window);
+    InitFrameTime(&App->FrameTime, App->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
 
-    SDL_AddEventWatch((SDL_EventFilter)EventWatch, &App);
+    SDL_AddEventWatch((SDL_EventFilter)EventWatch, App);
 
-    Rr_InitRenderer(&App);
-    Rr_InitImGui(&App);
+    Rr_InitRenderer(App);
+    Rr_InitImGui(App);
 
-    Config->InitFunc(&App);
+    Config->InitFunc(App);
 
-    SDL_ShowWindow(App.Window);
+    SDL_ShowWindow(App->Window);
 
-    while (SDL_AtomicGet(&App.bExit) == false)
+    while (SDL_AtomicGet(&App->bExit) == false)
     {
         for (SDL_Event Event; SDL_PollEvent(&Event);)
         {
@@ -217,13 +219,13 @@ void Rr_Run(Rr_AppConfig* Config)
                 {
                     if (Config->FileDroppedFunc != NULL)
                     {
-                        Config->FileDroppedFunc(&App, Event.drop.data);
+                        Config->FileDroppedFunc(App, Event.drop.data);
                     }
                     break;
                 }
                 case SDL_EVENT_QUIT:
                 {
-                    SDL_AtomicSet(&App.bExit, true);
+                    SDL_AtomicSet(&App->bExit, true);
                     break;
                 }
                 break;
@@ -232,13 +234,16 @@ void Rr_Run(Rr_AppConfig* Config)
             }
         }
 
-        Iterate(&App);
+        Iterate(App);
     }
 
-    Rr_CleanupRenderer(&App);
+    Rr_CleanupRenderer(App);
 
-    SDL_DelEventWatch((SDL_EventFilter)EventWatch, &App);
-    SDL_DestroyWindow(App.Window);
+    SDL_DelEventWatch((SDL_EventFilter)EventWatch, App);
+    SDL_DestroyWindow(App->Window);
+
+    Rr_Free(App);
+
     SDL_Quit();
 }
 

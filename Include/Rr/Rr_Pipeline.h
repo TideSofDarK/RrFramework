@@ -7,6 +7,7 @@
 #define RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES 5
 #define RR_PIPELINE_SHADER_STAGES 2
 #define RR_PIPELINE_MAX_COLOR_ATTACHMENTS 2
+#define RR_PIPELINE_MAX_DRAW_SIZE 128
 
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;

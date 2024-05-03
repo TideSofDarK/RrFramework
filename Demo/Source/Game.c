@@ -308,25 +308,13 @@ static void Draw(Rr_App* const App)
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
         CottageDraw.VertexBufferAddress = CottageMesh.VertexBufferAddress;
-
-        Rr_DrawMeshInfo DrawMeshInfo2 = {
-            .Material = &CottageMaterial,
-            .MeshBuffers = &CottageMesh,
-            .DrawData = &CottageDraw
-        };
-
-        Rr_DrawMesh(&RenderingContext, &DrawMeshInfo2);
+        Rr_DrawMesh(&RenderingContext, &CottageMaterial, &CottageMesh, &CottageDraw);
 
         SUber3DDraw MarbleDraw;
         glm_mat4_identity(MarbleDraw.Model);
         MarbleDraw.Model[3][1] = 0.1f;
         MarbleDraw.VertexBufferAddress = MarbleMesh.VertexBufferAddress;
-        Rr_DrawMeshInfo DrawMarbleInfo = {
-            .MeshBuffers = &MarbleMesh,
-            .Material = &MarbleMaterial,
-            .DrawData = &MarbleDraw
-        };
-        Rr_DrawMesh(&RenderingContext, &DrawMarbleInfo);
+        Rr_DrawMesh(&RenderingContext, &MarbleMaterial, &MarbleMesh, &MarbleDraw);
 
         Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });
         Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &DebugString, .Position = { 450.0f, 54.0f }, .Size = 28.0f });

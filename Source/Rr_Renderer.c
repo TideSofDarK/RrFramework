@@ -120,9 +120,19 @@ Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRende
     return RenderingContext;
 }
 
-void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, const Rr_DrawMeshInfo* Info)
+void Rr_DrawMesh(
+    Rr_RenderingContext* RenderingContext,
+    const Rr_Material* Material,
+    const Rr_MeshBuffers* MeshBuffers,
+    const void* DrawData)
 {
-    Rr_ArrayPush(RenderingContext->DrawMeshArray, Info);
+    const Rr_DrawMeshInfo DrawMeshInfo = {
+        .Material = Material,
+        .MeshBuffers = MeshBuffers,
+        .DrawData = {}
+    };
+    SDL_memcpy(DrawMeshInfo.DrawData, DrawData, RR_PIPELINE_MAX_DRAW_SIZE);
+    Rr_ArrayPush(RenderingContext->DrawMeshArray, &DrawMeshInfo);
 }
 
 void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info)

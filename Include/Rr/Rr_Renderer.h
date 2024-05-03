@@ -180,9 +180,9 @@ typedef struct Rr_BeginRenderingInfo
 } Rr_BeginRenderingInfo;
 typedef struct Rr_DrawMeshInfo
 {
-    Rr_Material* Material;
-    Rr_MeshBuffers* MeshBuffers;
-    const void* DrawData;
+    const Rr_Material* Material;
+    const Rr_MeshBuffers* MeshBuffers;
+    char DrawData[RR_PIPELINE_MAX_DRAW_SIZE];
 } Rr_DrawMeshInfo;
 typedef struct Rr_DrawTextInfo
 {
@@ -201,7 +201,11 @@ typedef struct Rr_RenderingContext
     Rr_DrawTextInfo* DrawTextArray;
 } Rr_RenderingContext;
 Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* Renderer, Rr_BeginRenderingInfo* Info);
-void Rr_DrawMesh(Rr_RenderingContext* RenderingContext, const Rr_DrawMeshInfo* Info);
+void Rr_DrawMesh(
+    Rr_RenderingContext* RenderingContext,
+    const Rr_Material* Material,
+    const Rr_MeshBuffers* MeshBuffers,
+    const void* DrawData);
 void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info);
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 
