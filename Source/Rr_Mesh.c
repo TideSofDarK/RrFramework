@@ -28,7 +28,7 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
     MeshBuffers.VertexBuffer = Rr_CreateBuffer(
         Renderer,
         VertexBufferSize,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
         false);
 
@@ -38,12 +38,6 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
         false);
-
-    const VkBufferDeviceAddressInfo DeviceAddressInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = MeshBuffers.VertexBuffer->Handle
-    };
-    MeshBuffers.VertexBufferAddress = vkGetBufferDeviceAddress(Renderer->Device, &DeviceAddressInfo);
 
     Rr_UploadBuffer(
         Renderer,

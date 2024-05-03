@@ -50,7 +50,6 @@ typedef struct SUber3DMaterial
 typedef struct SUber3DDraw
 {
     mat4 Model;
-    VkDeviceAddress VertexBufferAddress;
 } SUber3DDraw;
 
 typedef struct SUber3DPushConstants
@@ -115,6 +114,11 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     Rr_ExternAsset(Uber3DFRAG);
 
     Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32G32B32_SFLOAT);
+    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32_SFLOAT);
+    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32G32B32_SFLOAT);
+    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32_SFLOAT);
+    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32G32B32A32_SFLOAT);
     Rr_EnableVertexStage(Builder, &Uber3DVERT);
     Rr_EnableFragmentStage(Builder, &Uber3DFRAG);
     Rr_EnableDepthTest(Builder);
@@ -303,13 +307,11 @@ static void Draw(Rr_App* const App)
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
-        CottageDraw.VertexBufferAddress = CottageMesh.VertexBufferAddress;
         Rr_DrawMesh(&RenderingContext, &CottageMaterial, &CottageMesh, &CottageDraw);
 
         SUber3DDraw MarbleDraw;
         glm_mat4_identity(MarbleDraw.Model);
         MarbleDraw.Model[3][1] = 0.1f;
-        MarbleDraw.VertexBufferAddress = MarbleMesh.VertexBufferAddress;
         Rr_DrawMesh(&RenderingContext, &MarbleMaterial, &MarbleMesh, &MarbleDraw);
 
         Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });

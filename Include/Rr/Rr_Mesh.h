@@ -8,8 +8,6 @@ typedef struct Rr_Vertex Rr_Vertex;
 typedef struct Rr_Asset Rr_Asset;
 typedef struct Rr_Buffer Rr_Buffer;
 typedef struct Rr_UploadContext Rr_UploadContext;
-/* @TODO: Get rid of. */
-typedef unsigned long long VkDeviceAddress;
 
 typedef struct Rr_RawMesh
 {
@@ -22,7 +20,6 @@ typedef struct Rr_MeshBuffers
     size_t IndexCount;
     Rr_Buffer* IndexBuffer;
     Rr_Buffer* VertexBuffer;
-    VkDeviceAddress VertexBufferAddress;
 } Rr_MeshBuffers;
 
 Rr_MeshBuffers Rr_CreateMeshFromOBJ(

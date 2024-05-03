@@ -1,26 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 project(RrFramework LANGUAGES C CXX)
 
-#
-# Setup warnings and sanitizers
-#
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-    if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
-        add_compile_options(-Wall -Wextra -Wpedantic)
-
-        if (ENABLE_SANITIZERS)
-            add_compile_options(-fsanitize=address,undefined)
-            add_link_options(-fsanitize=address,undefined)
-        endif ()
-    elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
-        add_compile_options(/W3)
-
-        if (ENABLE_SANITIZERS)
-            target_compile_options(/fsanitize=address)
-        endif ()
-    endif ()
-endif ()
-
 set(BUILD_SHARED_LIBS OFF)
 
 file(
@@ -41,15 +21,15 @@ cmake_path(ABSOLUTE_PATH RR_BUILTIN_ASSET_PATH NORMALIZE)
 #
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
-set(SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/")
+set(RR_SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/")
 file(GLOB_RECURSE RR_GLSL_SOURCES CONFIGURE_DEPENDS
-        "Source/*.vert.glsl"
-        "Source/*.frag.glsl"
+        "${RR_SHADER_DIR}*.vert.glsl"
+        "${RR_SHADER_DIR}*.frag.glsl"
 )
 
 foreach (GLSL ${RR_GLSL_SOURCES})
     get_filename_component(FILE_NAME ${GLSL} NAME_WLE)
-    set(SPIRV "${SHADER_DIR}/${FILE_NAME}.spv")
+    set(SPIRV "${RR_SHADER_DIR}/${FILE_NAME}.spv")
     add_custom_command(
             MAIN_DEPENDENCY ${GLSL}
             OUTPUT ${SPIRV}

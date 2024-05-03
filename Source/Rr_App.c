@@ -144,7 +144,7 @@ static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
         case SDL_EVENT_WINDOW_RESIZED:
         {
             Rr_App* App = (Rr_App*)AppPtr;
-            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
+            SDL_AtomicSet(&App->Renderer->Swapchain.bResizePending, 1);
         }
         break;
 #endif

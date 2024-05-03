@@ -5,6 +5,26 @@ cmake_minimum_required(VERSION 3.26)
 project(RrDemo LANGUAGES C CXX)
 
 #
+# Setup warnings and sanitizers
+#
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+        add_compile_options(-Wall -Wextra -Wpedantic)
+
+        if (ENABLE_SANITIZERS)
+            add_compile_options(-fsanitize=address,undefined)
+            add_link_options(-fsanitize=address,undefined)
+        endif ()
+    elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+        add_compile_options(/W3)
+
+        if (ENABLE_SANITIZERS)
+            target_compile_options(/fsanitize=address)
+        endif ()
+    endif ()
+endif ()
+
+#
 # Setup Rr
 #
 cmake_path(SET RR_ASSET_PATH "Asset/")

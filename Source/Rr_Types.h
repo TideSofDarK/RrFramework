@@ -46,6 +46,8 @@ typedef struct Rr_PipelineBuilder
     } VertexInput[2];
     VkVertexInputAttributeDescription Attributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
     u32 CurrentVertexInputAttribute;
+    u32 bHasPerVertexBinding;
+    u32 bHasPerInstanceBinding;
 
     VkPipelineInputAssemblyStateCreateInfo InputAssembly;
     VkPipelineRasterizationStateCreateInfo Rasterizer;

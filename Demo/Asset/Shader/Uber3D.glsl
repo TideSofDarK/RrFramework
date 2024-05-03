@@ -21,7 +21,6 @@ layout(set = 1, binding = 1) uniform sampler2D u_texture[];
 /* Set 2 */
 layout(set = 2, binding = 0) uniform Draw {
     mat4 model;
-    VertexBuffer vertexBuffer;
 } u_draw;
 
 layout(push_constant) uniform Constants

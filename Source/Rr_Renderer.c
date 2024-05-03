@@ -474,6 +474,12 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             //                0,
             //                128,
             //                &(SUber3DPushConstants){ 0 });
+            vkCmdBindVertexBuffers(
+                CommandBuffer,
+                0,
+                1,
+                &DrawMeshInfo->MeshBuffers->VertexBuffer->Handle,
+                &(VkDeviceSize){ 0 });
             vkCmdBindIndexBuffer(
                 CommandBuffer,
                 DrawMeshInfo->MeshBuffers->IndexBuffer->Handle,

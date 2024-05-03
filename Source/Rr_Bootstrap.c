@@ -214,7 +214,6 @@ static void InitDevice(Rr_Renderer* const Renderer)
     VkPhysicalDeviceVulkan12Features Features12 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
         .pNext = &Features13,
-        .bufferDeviceAddress = VK_TRUE,
         /* Descriptor Indexing */
         .descriptorIndexing = VK_TRUE,
         .descriptorBindingPartiallyBound = VK_TRUE,
@@ -590,7 +589,7 @@ static void InitAllocator(Rr_Renderer* const Renderer)
         .vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2,
     };
     const VmaAllocatorCreateInfo AllocatorInfo = {
-        .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+        .flags = 0,
         .physicalDevice = Renderer->PhysicalDevice.Handle,
         .device = Renderer->Device,
         .pVulkanFunctions = &VulkanFunctions,

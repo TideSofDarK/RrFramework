@@ -48,7 +48,7 @@ void Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder)
 
 static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, const VkFormat Format, const size_t Index)
 {
-    if (PipelineBuilder->CurrentVertexInputAttribute + 1 >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
+    if (PipelineBuilder->CurrentVertexInputAttribute + 1 > RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Exceeding max allowed number of vertex attributes for a pipeline!");
         abort();
@@ -63,7 +63,7 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, cons
         .offset = PipelineBuilder->VertexInput[Index].VertexInputStride,
     };
 
-    if (Format == VK_FORMAT_R32_UINT)
+    if (Format == VK_FORMAT_R32_UINT || Format == VK_FORMAT_R32_SFLOAT)
     {
         PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(u32);
     }
@@ -74,6 +74,10 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, cons
     else if (Format == VK_FORMAT_R32G32B32_SFLOAT)
     {
         PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(f32) * 3;
+    }
+    else if (Format == VK_FORMAT_R32G32B32A32_SFLOAT)
+    {
+        PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(f32) * 4;
     }
     else
     {
@@ -87,11 +91,13 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, cons
 void Rr_EnablePerVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, const VkFormat Format)
 {
     EnableVertexInputAttribute(PipelineBuilder, Format, 0);
+    PipelineBuilder->bHasPerVertexBinding = true;
 }
 
 void Rr_EnablePerInstanceInputAttribute(Rr_PipelineBuilder* PipelineBuilder, const VkFormat Format)
 {
     EnableVertexInputAttribute(PipelineBuilder, Format, 1);
+    PipelineBuilder->bHasPerInstanceBinding = true;
 }
 
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, const Rr_Asset* SPVAsset)
@@ -224,7 +230,14 @@ VkPipeline Rr_BuildPipeline(
     };
     if (PipelineBuilder->CurrentVertexInputAttribute > 0)
     {
-        VertexInputInfo.vertexBindingDescriptionCount = 2;
+        if (PipelineBuilder->bHasPerVertexBinding)
+        {
+            VertexInputInfo.vertexBindingDescriptionCount++;
+        }
+        if (PipelineBuilder->bHasPerInstanceBinding)
+        {
+            VertexInputInfo.vertexBindingDescriptionCount++;
+        }
         VertexInputInfo.vertexAttributeDescriptionCount = PipelineBuilder->CurrentVertexInputAttribute;
         VertexInputInfo.pVertexBindingDescriptions = VertexInputBindingDescriptions;
         VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->Attributes;
@@ -335,7 +348,7 @@ Rr_GenericPipelineBuffers* Rr_CreateGenericPipelineBuffers(
     Buffers->Draw = Rr_CreateMappedBuffer(
         Renderer,
         DrawBufferSize,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
     return Buffers;
 }
