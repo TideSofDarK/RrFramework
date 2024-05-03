@@ -58,5 +58,3 @@ Rr_KeyState Rr_GetKeyState(const Rr_InputState State, const u32 Key)
 {
     return (State >> (2 * Key)) & 3;
 }
-
-

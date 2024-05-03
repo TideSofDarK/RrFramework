@@ -114,15 +114,15 @@ typedef struct Rr_DescriptorAllocator
     size_t SetsPerPool;
 } Rr_DescriptorAllocator;
 
-typedef enum EDescriptorWriterEntryType
+typedef enum Rr_DescriptorWriterEntryType
 {
-    EDescriptorWriterEntryType_Buffer,
-    EDescriptorWriterEntryType_Image
-} EDescriptorWriterEntryType;
+    RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER,
+    RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE
+} Rr_DescriptorWriterEntryType;
 
 typedef struct Rr_DescriptorWriterEntry
 {
-    EDescriptorWriterEntryType Type;
+    Rr_DescriptorWriterEntryType Type;
     size_t Index;
 } Rr_DescriptorWriterEntry;
 

@@ -172,7 +172,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
         const size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
 
         const cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
-        u16 AtlasBounds[4] = {0};
+        u16 AtlasBounds[4] = { 0 };
         if (cJSON_IsObject(AtlasBoundsJSON))
         {
             AtlasBounds[0] = (u16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "left"));
@@ -182,7 +182,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
         }
 
         const cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
-        vec4 PlaneBounds = {0};
+        vec4 PlaneBounds = { 0 };
         if (cJSON_IsObject(PlaneBoundsJSON))
         {
             PlaneBounds[0] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
@@ -225,7 +225,7 @@ void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
 
 Rr_String Rr_CreateString(const char* CString)
 {
-    static u32 Buffer[2048] = {0};
+    static u32 Buffer[2048] = { 0 };
 
     const u8 Ready = 128;
     const u8 Two = 192;

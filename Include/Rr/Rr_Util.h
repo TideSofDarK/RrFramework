@@ -95,7 +95,8 @@ static inline u16 Rr_FloatToHalf(u32 x)
 
 static inline void Rr_PackVec4(vec4 From, u32* OutA, u32* OutB)
 {
-    typedef union PackHelper {
+    typedef union PackHelper
+    {
         u32 UnsignedIntegerValue;
         f32 FloatValue;
     } PackHelper;

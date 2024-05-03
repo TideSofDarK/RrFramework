@@ -190,7 +190,7 @@ void Rr_WriteImageDescriptorAt(
 
     Rr_ArrayPush(Writer->Writes, &((VkWriteDescriptorSet){ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstBinding = Binding, .dstSet = VK_NULL_HANDLE, .descriptorCount = 1, .descriptorType = Type, .dstArrayElement = Index }));
 
-    Rr_ArrayPush(Writer->Entries, &((Rr_DescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Image, .Index = Rr_ArrayCount(Writer->ImageInfos) - 1 }));
+    Rr_ArrayPush(Writer->Entries, &((Rr_DescriptorWriterEntry){ .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE, .Index = Rr_ArrayCount(Writer->ImageInfos) - 1 }));
 }
 
 void Rr_WriteBufferDescriptor(
@@ -211,7 +211,7 @@ void Rr_WriteBufferDescriptor(
                                      .descriptorType = Type,
                                  }));
 
-    Rr_ArrayPush(Writer->Entries, &((Rr_DescriptorWriterEntry){ .Type = EDescriptorWriterEntryType_Buffer, .Index = Rr_ArrayCount(Writer->BufferInfos) - 1 }));
+    Rr_ArrayPush(Writer->Entries, &((Rr_DescriptorWriterEntry){ .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER, .Index = Rr_ArrayCount(Writer->BufferInfos) - 1 }));
 }
 
 void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer)
@@ -240,12 +240,12 @@ void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDesc
         Write->dstSet = Set;
         switch (Entry->Type)
         {
-            case EDescriptorWriterEntryType_Buffer:
+            case RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER:
             {
                 Write->pBufferInfo = &Writer->BufferInfos[Entry->Index];
             }
             break;
-            case EDescriptorWriterEntryType_Image:
+            case RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE:
             {
                 Write->pImageInfo = &Writer->ImageInfos[Entry->Index];
             }

@@ -1,14 +1,15 @@
 #pragma once
 
-#include "Rr_Buffer.h"
 #include "Rr_Asset.h"
 #include "Rr_Core.h"
+#include "Rr_Vulkan.h"
 
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
 typedef struct Rr_GenericPipelineBuffers Rr_GenericPipelineBuffers;
 typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
+typedef struct Rr_Renderer Rr_Renderer;
 
 typedef enum Rr_PolygonMode
 {

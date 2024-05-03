@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Rr_Defines.h"
-#include "Rr_Buffer.h"
 #include "Rr_Renderer.h"
 
 #ifdef __cplusplus
