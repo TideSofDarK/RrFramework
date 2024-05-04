@@ -3,11 +3,11 @@
 #include <SDL3/SDL_log.h>
 
 #include "Rr_Vulkan.h"
-#include "Rr_Renderer.h"
 #include "Rr_Util.h"
 #include "Rr_Types.h"
 #include "Rr_Memory.h"
 #include "Rr_Array.h"
+#include "Rr_Renderer_Internal.h"
 
 Rr_Buffer* Rr_CreateBuffer(
     Rr_Renderer* Renderer,

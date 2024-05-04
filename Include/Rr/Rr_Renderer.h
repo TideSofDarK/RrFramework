@@ -31,9 +31,6 @@ void Rr_CleanupRenderer(Rr_App* App);
 void Rr_Draw(Rr_App* App);
 b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
 
-VkCommandBuffer Rr_BeginImmediate(const Rr_Renderer* Renderer);
-void Rr_EndImmediate(const Rr_Renderer* Renderer);
-
 /* Rendering */
 typedef struct Rr_BeginRenderingInfo
 {
@@ -61,7 +58,6 @@ typedef struct Rr_RenderingContext
 {
     Rr_BeginRenderingInfo* Info;
     Rr_Renderer* Renderer;
-    VkCommandBuffer CommandBuffer;
     Rr_DrawMeshInfo* DrawMeshArray;
     Rr_DrawTextInfo* DrawTextArray;
 } Rr_RenderingContext;

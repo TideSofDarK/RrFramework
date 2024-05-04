@@ -2,7 +2,6 @@
 
 #include <cglm/vec3.h>
 
-#include "Rr_Vulkan.h"
 #include "Rr_Defines.h"
 #include "Rr_Image.h"
 
@@ -12,6 +11,7 @@ typedef struct Rr_Buffer Rr_Buffer;
 #define RR_TEXT_BUFFER_SIZE (1024 * 1024)
 #define RR_TEXT_DEFAULT_SIZE (0.0f)
 #define RR_TEXT_MAX_COLORS 8
+#define RR_TEXT_MAX_GLYPHS 2048
 
 typedef enum Rr_TextPipelineDescriptorSet
 {
@@ -47,15 +47,8 @@ typedef struct Rr_TextFontLayout
     float Advance;
     float DistanceRange;
     vec2 AtlasSize;
-    Rr_Glyph Glyphs[2048];
+    Rr_Glyph Glyphs[RR_TEXT_MAX_GLYPHS];
 } Rr_TextFontLayout;
-
-// typedef struct Rr_TextStringLayout
-// {
-//     vec2 Reserved;
-//     vec2 AtlasSize;
-//     Rr_Glyph Glyphs[128];
-// } Rr_TextStringLayout;
 
 typedef struct Rr_TextPushConstants
 {
@@ -72,20 +65,10 @@ typedef struct Rr_Font
 {
     Rr_Image* Atlas;
     Rr_Buffer* Buffer;
-    f32 Advances[2048];
+    f32 Advances[RR_TEXT_MAX_GLYPHS];
     f32 LineHeight;
     f32 DefaultSize;
 } Rr_Font;
-
-typedef struct Rr_TextPipeline
-{
-    VkDescriptorSetLayout DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT];
-    VkPipeline Handle;
-    VkPipelineLayout Layout;
-    Rr_Buffer* QuadBuffer;
-    Rr_Buffer* GlobalsBuffers[RR_FRAME_OVERLAP];
-    Rr_Buffer* TextBuffers[RR_FRAME_OVERLAP];
-} Rr_TextPipeline;
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer);
 void Rr_CleanupTextRenderer(Rr_Renderer* Renderer);

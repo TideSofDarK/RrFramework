@@ -1,4 +1,5 @@
 #include "Rr_Text.h"
+#include "Rr_Text_Internal.h"
 
 #include <SDL_log.h>
 

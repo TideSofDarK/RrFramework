@@ -6,6 +6,7 @@
 #include "Rr_Input.h"
 #include "Rr_Asset.h"
 #include "Rr_Load.h"
+#include "Rr_Text_Internal.h"
 
 typedef struct Rr_Buffer
 {

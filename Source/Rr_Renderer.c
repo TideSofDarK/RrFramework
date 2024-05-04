@@ -1,4 +1,5 @@
 #include "Rr_Renderer.h"
+#include "Rr_Renderer_Internal.h"
 
 #include <string.h>
 
@@ -111,7 +112,6 @@ Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRende
     }
 
     const Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    RenderingContext.CommandBuffer = Frame->MainCommandBuffer;
     RenderingContext.Renderer = Renderer;
     RenderingContext.Info = Info;
     Rr_ArrayInit(RenderingContext.DrawMeshArray, Rr_DrawMeshInfo, 16);
