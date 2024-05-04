@@ -2,8 +2,6 @@
 #include "Rr_Image_Internal.h"
 #include "Rr_Memory.h"
 
-#include <stdlib.h>
-
 #include <SDL3/SDL.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -17,14 +15,11 @@
 
 #include <tinyexr/tinyexr.h>
 
-#include "Rr_Renderer.h"
 #include "Rr_Asset.h"
 #include "Rr_Helpers.h"
 #include "Rr_Vulkan.h"
-#include "Rr_Buffer.h"
 #include "Rr_Load.h"
 #include "Rr_Types.h"
-#include "Rr_Buffer.h"
 #include "Rr_Array.h"
 
 void Rr_UploadImage(

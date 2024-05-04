@@ -1,31 +1,24 @@
 #include "Rr_Renderer.h"
-#include "Rr_Text.h"
 
-#include <math.h>
 #include <string.h>
-#include <stdint.h>
 
 #include <cglm/ivec2.h>
-#include <cglm/mat4.h>
-#include <cglm/cam.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
-#include <imgui/cimgui_impl.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_stdinc.h>
 
+#include "Rr_Text.h"
 #include "Rr_Defines.h"
 #include "Rr_App.h"
 #include "Rr_Array.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Descriptor.h"
-#include "Rr_Image.h"
 #include "Rr_Helpers.h"
 #include "Rr_Buffer.h"
 #include "Rr_Mesh.h"
-#include "Rr_Pipeline.h"
 #include "Rr_Memory.h"
 #include "Rr_Util.h"
 #include "Rr_Material.h"

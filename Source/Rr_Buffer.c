@@ -1,7 +1,5 @@
 #include "Rr_Buffer.h"
 
-#include <stdio.h>
-
 #include <SDL3/SDL_log.h>
 
 #include "Rr_Vulkan.h"
