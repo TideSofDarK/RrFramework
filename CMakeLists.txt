@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.26)
+
+#
+# Setup project
+#
 project(RrFramework LANGUAGES C CXX)
 
 set(BUILD_SHARED_LIBS OFF)
@@ -11,10 +15,37 @@ file(
 )
 include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 
-add_subdirectory(Vendor)
-
 cmake_path(SET RR_BUILTIN_ASSET_PATH "Asset/")
 cmake_path(ABSOLUTE_PATH RR_BUILTIN_ASSET_PATH NORMALIZE)
+
+#
+# Dependencies
+#
+find_package(Vulkan REQUIRED)
+
+set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
+set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+set(SDL_FILE OFF CACHE BOOL "" FORCE)
+set(SDL_FILESYSTEM OFF CACHE BOOL "" FORCE)
+set(SDL_MISC OFF CACHE BOOL "" FORCE)
+set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
+set(SDL_3DNOW OFF CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
+set(SDL_VULKAN ON CACHE BOOL "" FORCE)
+CPMAddPackage("gh:libsdl-org/SDL#main")
+
+CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator#master")
+CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.280.0")
+
+set(CGLM_STATIC ON CACHE BOOL "" FORCE)
+CPMAddPackage("gh:recp/cglm#master")
+
+add_subdirectory("Vendor/imgui/")
 
 #
 # Compile shaders
@@ -53,9 +84,35 @@ file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
 )
 add_library(${PROJECT_NAME} ${RR_SOURCES})
 add_dependencies(${PROJECT_NAME} RrBuiltinShaders)
+target_sources(${PROJECT_NAME} PRIVATE Vendor/Vendor.cpp Vendor/cJSON/cJSON.c)
 target_include_directories(${PROJECT_NAME} PUBLIC Include PRIVATE Include/Rr)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${VENDOR_TARGET})
-target_compile_definitions(${PROJECT_NAME} PUBLIC RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH} "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
+target_link_libraries(${PROJECT_NAME} PRIVATE
+        Vulkan::Headers
+        volk::volk_headers
+        GPUOpen::VulkanMemoryAllocator
+)
+target_link_libraries(${PROJECT_NAME} PUBLIC
+        SDL3::SDL3
+        cglm
+        ${IMGUI_TARGET}
+)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        TINYEXR_USE_MINIZ=0
+        TINYEXR_USE_STB_ZLIB=1
+        STBI_NO_STDIO
+        STBI_NO_JPEG
+        STBI_NO_GIF
+        STBI_NO_BMP
+        STBI_NO_PSD
+        STBI_NO_PIC
+        STBI_NO_PNM
+        STBI_NO_HDR
+        STBI_NO_TGA
+        STBI_NO_FAILURE_STRINGS
+)
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+    RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}
+    "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_11 cxx_std_17)
 
 add_subdirectory(Demo)
