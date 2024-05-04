@@ -1,4 +1,4 @@
-#include "Game.h"
+#include "Game.hxx"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -24,7 +24,7 @@
 #include <Rr/Rr_Material.h>
 #include <Rr/Rr_Load.h>
 
-#include "DevTools.h"
+#include "DevTools.hxx"
 
 typedef struct SFrameData
 {
@@ -114,16 +114,16 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     Rr_ExternAsset(Uber3DFRAG);
 
     Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
-    Rr_EnablePerVertexInputAttributes(
-        Builder,
-        &(Rr_VertexInput){
-            .Attributes = {
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 0 },
-                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 1 },
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 2 },
-                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 3 },
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC4, .Location = 4 },
-            } });
+    Rr_VertexInput VertexInput = {
+        .Attributes = {
+            { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 0 },
+            { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 1 },
+            { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 2 },
+            { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 3 },
+            { .Type = RR_VERTEX_INPUT_TYPE_VEC4, .Location = 4 },
+        }
+    };
+    Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
     Rr_EnableVertexStage(Builder, &Uber3DVERT);
     Rr_EnableFragmentStage(Builder, &Uber3DFRAG);
     Rr_EnableDepthTest(Builder);
@@ -271,7 +271,7 @@ static void Update(Rr_App* App)
     glm_mat4_mul(Temp2, Temp, ShaderGlobals.View);
     igEnd();
 
-    static b8 bShowDebugOverlay = false;
+    static bool bShowDebugOverlay = false;
     if (Rr_GetKeyState(InputState, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
     {
         bShowDebugOverlay = !bShowDebugOverlay;
@@ -298,7 +298,7 @@ static void Draw(Rr_App* const App)
     Rr_RenderingContext RenderingContext = Rr_BeginRendering(Renderer, &BeginRenderingInfo);
 
     const u64 Ticks = SDL_GetTicks();
-    const float Time = (float)((double)Ticks / 1000.0 * 2);
+    const f32 Time = (float)((double)Ticks / 1000.0 * 2);
 
     if (bLoaded)
     {
@@ -319,12 +319,18 @@ static void Draw(Rr_App* const App)
         MarbleDraw.Model[3][1] = 0.1f;
         Rr_DrawMesh(&RenderingContext, &MarbleMaterial, &MarbleMesh, &MarbleDraw);
 
-        Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &TestString, .Position = { 50.0f, 50.0f } });
-        Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &DebugString, .Position = { 450.0f, 54.0f }, .Size = 28.0f });
+        Rr_DrawDefaultText(&RenderingContext, &TestString, vec2{ 50.0f, 50.0f });
+        Rr_DrawCustomText(&RenderingContext, nullptr, &DebugString, vec2{ 450.0f, 54.0f }, 28.0f, RR_DRAW_TEXT_FLAGS_NONE_BIT);
     }
     else
     {
-        Rr_DrawText(&RenderingContext, &(Rr_DrawTextInfo){ .String = &LoadingString, .Position = { 25.0f, 540.0f - 25 - 32.0f }, .Size = 32.0f, .Flags = RR_DRAW_TEXT_FLAGS_ANIMATION_BIT });
+        Rr_DrawCustomText(
+            &RenderingContext,
+            nullptr,
+            &LoadingString,
+            vec2{ 25.0f, 540.0f - 25 - 32.0f },
+            32.0f,
+            RR_DRAW_TEXT_FLAGS_ANIMATION_BIT);
     }
 
     Rr_EndRendering(&RenderingContext);
@@ -335,14 +341,16 @@ static void OnFileDropped(Rr_App* App, const char* Path)
     HandleFileDrop(Path);
 }
 
-void RunGame(void)
+void RunGame()
 {
+    Rr_InputConfig InputConfig = {
+        .Mappings = InputMappings,
+        .Count = EIA_COUNT
+    };
     Rr_AppConfig Config = {
         .Title = "VulkanPlayground",
         .ReferenceResolution = { 1920 / 2, 1080 / 2 },
-        .InputConfig = &(Rr_InputConfig){
-            .Mappings = InputMappings,
-            .Count = EIA_COUNT },
+        .InputConfig = &InputConfig,
         .PerFrameDataSize = sizeof(SFrameData),
         .InitFunc = Init,
         .CleanupFunc = Cleanup,

@@ -2,6 +2,11 @@
 
 #include <cglm/mat4.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 static float Rr_GetVerticalFoV(const float HorizontalFoV, const float Aspect)
 {
     return 2.0f * atanf((tanf(HorizontalFoV / 2.0f) * Aspect));
@@ -28,3 +33,7 @@ static void Rr_VulkanMatrix(mat4 Out)
     Out[2][2] = -1.0f;
     Out[3][3] = 1.0f;
 }
+
+#ifdef __cplusplus
+}
+#endif

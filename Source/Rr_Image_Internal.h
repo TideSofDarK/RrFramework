@@ -8,13 +8,13 @@ Rr_Image* Rr_CreateImage(
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
-    b8 bMipMapped);
+    bool bMipMapped);
 Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset,
     VkImageUsageFlags Usage,
-    b8 bMipMapped,
+    bool bMipMapped,
     VkImageLayout InitialLayout);
 Rr_Image* Rr_CreateDepthImageFromEXR(
     Rr_Renderer* Renderer,

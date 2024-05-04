@@ -4,6 +4,11 @@
 
 #include "Rr_Input.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef struct Rr_InputConfig Rr_InputConfig;
 typedef struct Rr_Renderer Rr_Renderer;
 typedef struct Rr_AppConfig Rr_AppConfig;
@@ -28,3 +33,7 @@ void Rr_Run(Rr_AppConfig* Config);
 void Rr_DebugOverlay(Rr_App* App);
 void Rr_ToggleFullscreen(Rr_App* App);
 Rr_Renderer* Rr_GetRenderer(Rr_App* App);
+
+#ifdef __cplusplus
+}
+#endif

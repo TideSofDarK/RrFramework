@@ -195,7 +195,7 @@ typedef struct Rr_PhysicalDevice
 typedef struct Rr_ImGui
 {
     VkDescriptorPool DescriptorPool;
-    b8 bInit;
+    bool bInitiated;
 } Rr_ImGui;
 
 typedef struct Rr_ImmediateMode

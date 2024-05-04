@@ -3,6 +3,11 @@
 #include "Rr_Asset.h"
 #include "Rr_Defines.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
 typedef struct Rr_GenericPipelineBuffers Rr_GenericPipelineBuffers;
@@ -22,8 +27,8 @@ typedef enum Rr_VertexInputType
 
 typedef struct Rr_VertexInputAttribute
 {
-    u32 Location;
     Rr_VertexInputType Type;
+    u32 Location;
 } Rr_VertexInputAttribute;
 
 typedef struct Rr_VertexInput
@@ -61,3 +66,7 @@ Rr_GenericPipelineBuffers* Rr_CreateGenericPipelineBuffers(
     size_t MaterialSize,
     size_t DrawSize);
 void Rr_DestroyGenericPipelineBuffers(Rr_Renderer* Renderer, Rr_GenericPipelineBuffers* GenericPipelineBuffers);
+
+#ifdef __cplusplus
+}
+#endif

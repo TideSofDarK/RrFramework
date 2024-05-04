@@ -7,8 +7,8 @@
 
 Rr_InputState UpdateKeyState(const Rr_KeyState OldKeyState, const u8* KeyboardState, const u8 Scancode)
 {
-    const b8 bCurrentlyPressed = KeyboardState[Scancode] == 1;
-    const b8 bWasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
+    const bool bCurrentlyPressed = KeyboardState[Scancode] == 1;
+    const bool bWasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
     if (bCurrentlyPressed)
     {
         if (bWasPressed)

@@ -6,6 +6,11 @@
 
 #include "Rr_Defines.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 static inline size_t Rr_Align(size_t Value, size_t Alignment)
 {
     return (Value + Alignment - 1) & ~(Alignment - 1);
@@ -114,3 +119,7 @@ static inline void Rr_PackVec4(vec4 From, u32* OutA, u32* OutB)
     *OutA = (u32)HalfValues[0] | ((u32)HalfValues[1] << 16);
     *OutB = (u32)HalfValues[2] | ((u32)HalfValues[3] << 16);
 }
+
+#ifdef __cplusplus
+}
+#endif

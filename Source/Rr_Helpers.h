@@ -40,7 +40,10 @@ static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImage
     return Info;
 }
 
-static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(VkImageView View, VkImageLayout Layout, b8 bClear)
+static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(
+    VkImageView View,
+    VkImageLayout Layout,
+    bool bClear)
 {
     VkRenderingAttachmentInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -55,7 +58,9 @@ static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(VkImage
     return Info;
 }
 
-static inline VkRenderingInfo GetRenderingInfo(VkExtent2D RenderExtent, VkRenderingAttachmentInfo* ColorAttachment,
+static inline VkRenderingInfo GetRenderingInfo(
+    VkExtent2D RenderExtent,
+    VkRenderingAttachmentInfo* ColorAttachment,
     VkRenderingAttachmentInfo* DepthAttachment)
 {
     VkRenderingInfo Info = {

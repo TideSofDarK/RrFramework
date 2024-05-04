@@ -97,7 +97,7 @@ void Rr_DebugOverlay(Rr_App* App)
     igEnd();
 }
 
-static b8 BeginIterate(Rr_App* App)
+static bool BeginIterate(Rr_App* App)
 {
     if (Rr_NewFrame(App->Renderer, App->Window))
     {
@@ -247,7 +247,7 @@ void Rr_Run(Rr_AppConfig* Config)
     SDL_Quit();
 }
 
-static b8 Rr_IsAnyFullscreen(SDL_Window* Window)
+static bool Rr_IsAnyFullscreen(SDL_Window* Window)
 {
     return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
 }

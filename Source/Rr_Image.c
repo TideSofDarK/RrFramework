@@ -147,12 +147,12 @@ void Rr_UploadImage(
 }
 
 static Rr_Image* CreateImage(
-    const Rr_Renderer* Renderer,
-    const VkExtent3D Extent,
-    const VkFormat Format,
-    const VkImageUsageFlags Usage,
-    const VmaAllocationCreateInfo AllocationCreateInfo,
-    const b8 bMipMapped)
+    Rr_Renderer* Renderer,
+    VkExtent3D Extent,
+    VkFormat Format,
+    VkImageUsageFlags Usage,
+    VmaAllocationCreateInfo AllocationCreateInfo,
+    bool bMipMapped)
 {
     Rr_Image* Image = Rr_Calloc(1, sizeof(Rr_Image));
     Image->Format = Format;
@@ -186,7 +186,7 @@ Rr_Image* Rr_CreateImage(
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
-    b8 bMipMapped)
+    bool bMipMapped)
 {
     const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -217,7 +217,7 @@ Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset,
     VkImageUsageFlags Usage,
-    b8 bMipMapped,
+    bool bMipMapped,
     VkImageLayout InitialLayout)
 {
     const i32 DesiredChannels = 4;

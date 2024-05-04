@@ -136,7 +136,7 @@ void Rr_DrawMesh(
     Rr_ArrayPush(RenderingContext->DrawMeshArray, &DrawMeshInfo);
 }
 
-void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info)
+static void DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info)
 {
     Rr_ArrayPush(RenderingContext->DrawTextArray, Info);
     Rr_DrawTextInfo* NewInfo = &RenderingContext->DrawTextArray[Rr_ArrayCount(RenderingContext->DrawTextArray) - 1];
@@ -148,6 +148,35 @@ void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* I
     {
         NewInfo->Size = NewInfo->Font->DefaultSize;
     }
+}
+
+void Rr_DrawCustomText(
+    Rr_RenderingContext* RenderingContext,
+    Rr_Font* Font,
+    Rr_String* String,
+    vec2 Position,
+    f32 Size,
+    Rr_DrawTextFlags Flags)
+{
+    DrawText(
+        RenderingContext,
+        &(Rr_DrawTextInfo){
+            .Font = Font,
+            .String = String,
+            .Position = { Position[0], Position[1] },
+            .Size = Size,
+            .Flags = Flags });
+}
+
+void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, vec2 Position)
+{
+    DrawText(
+        RenderingContext,
+        &(Rr_DrawTextInfo){
+            .String = String,
+            .Position = { Position[0], Position[1] },
+            .Size = 32.0f,
+            .Flags = 0 });
 }
 
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
@@ -815,7 +844,7 @@ void Rr_Draw(Rr_App* App)
             .width = (Renderer->ActiveResolution.width) * Renderer->Scale,
             .height = (Renderer->ActiveResolution.height) * Renderer->Scale });
 
-    // if (Renderer->ImGui.bInit)
+    // if (Renderer->ImGui.bInitiated)
     // {
     //     Rr_ChainImageBarrier(&SwapchainImageTransition,
     //         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,

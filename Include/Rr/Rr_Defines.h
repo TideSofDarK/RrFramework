@@ -2,6 +2,11 @@
 
 #include "Rr_Core.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* Renderer Configuration */
 #define RR_FORCE_UNIFIED_QUEUE 0
 #define RR_PERFORMANCE_COUNTER 1
@@ -32,3 +37,7 @@ typedef enum Rr_GenericDescriptorSetLayout
 
 /* @TODO: Make a header shared with GLSL! */
 #define RR_MAX_TEXTURES_PER_MATERIAL 4
+
+#ifdef __cplusplus
+}
+#endif

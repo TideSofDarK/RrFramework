@@ -1,7 +1,6 @@
-#include "DevTools.h"
+#include "DevTools.hxx"
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
 
 #include <SDL3/SDL.h>
 

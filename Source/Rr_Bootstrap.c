@@ -50,7 +50,7 @@ static bool CheckPhysicalDevice(Rr_Renderer* Renderer, VkPhysicalDevice Physical
         "VK_KHR_swapchain"
     };
 
-    b8 FoundExtensions[] = { 0, 0 };
+    bool FoundExtensions[] = { 0, 0 };
 
     VkExtensionProperties* Extensions = Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
@@ -677,7 +677,7 @@ void Rr_InitImGui(Rr_App* App)
 
     ImGui_ImplVulkan_CreateFontsTexture();
 
-    Renderer->ImGui.bInit = true;
+    Renderer->ImGui.bInitiated = true;
 }
 
 static void InitImmediateMode(Rr_Renderer* const Renderer)
@@ -970,7 +970,7 @@ void Rr_InitRenderer(Rr_App* App)
     Rr_StackFree(Extensions);
 }
 
-b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
+bool Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
 {
     const i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
     if (bResizePending == true)
@@ -980,7 +980,7 @@ b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
         i32 Width, Height;
         SDL_GetWindowSizeInPixels(Window, &Width, &Height);
 
-        const b8 bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
+        const bool bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
 
         if (!bMinimized && Width > 0 && Height > 0 && InitSwapchain(Renderer, (u32*)&Width, (u32*)&Height))
         {
@@ -1028,7 +1028,7 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     App->Config->CleanupFunc(App);
 
-    if (Renderer->ImGui.bInit)
+    if (Renderer->ImGui.bInitiated)
     {
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();

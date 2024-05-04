@@ -2,13 +2,13 @@
 # Setup project
 #
 cmake_minimum_required(VERSION 3.26)
-project(RrDemo LANGUAGES C CXX)
+project(RrDemo LANGUAGES CXX)
 
 #
 # Setup warnings and sanitizers
 #
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-    if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
         add_compile_options(-Wall -Wextra -Wpedantic)
 
         if (ENABLE_SANITIZERS)
@@ -25,11 +25,10 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 endif ()
 
 #
-# Setup Rr
+# Setup RrFramework
 #
 cmake_path(SET RR_ASSET_PATH "Asset/")
 cmake_path(ABSOLUTE_PATH RR_ASSET_PATH NORMALIZE)
-#add_subdirectory(../Vendor/Rr)
 
 #
 # Compile shaders
@@ -62,15 +61,15 @@ add_custom_target(
 #
 # Add executable target
 #
-set_source_files_properties(Source/AssetDef.c PROPERTIES OBJECT_DEPENDS "${RR_DEMO_GLSL_SOURCES}")
+set_source_files_properties(Source/AssetDef.cxx PROPERTIES OBJECT_DEPENDS "${RR_DEMO_GLSL_SOURCES}")
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
-        "Source/*.c"
+        "Source/*.cxx"
 )
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 add_dependencies(${PROJECT_NAME} RrDemoShaders)
 target_compile_definitions(${PROJECT_NAME} PUBLIC RR_ASSET_PATH=${RR_ASSET_PATH})
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
-target_compile_features(${PROJECT_NAME} PRIVATE c_std_17 cxx_std_17)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 if (WIN32)
     if (MINGW)
         set(CMAKE_EXE_LINKER_FLAGS "-static")

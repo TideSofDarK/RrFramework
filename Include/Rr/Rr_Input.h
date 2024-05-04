@@ -2,6 +2,11 @@
 
 #include "Rr_Core.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #define RR_MAX_INPUT_MAPPINGS 16
 
 typedef struct Rr_App Rr_App;
@@ -30,3 +35,7 @@ typedef struct Rr_InputConfig
 void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config);
 Rr_InputState Rr_GetInputState(Rr_App* App);
 Rr_KeyState Rr_GetKeyState(Rr_InputState State, u32 Key);
+
+#ifdef __cplusplus
+}
+#endif

@@ -9,8 +9,14 @@
 #include "Rr_Text.h"
 #include "Rr_Load.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef enum Rr_DrawTextFlags
 {
+    RR_DRAW_TEXT_FLAGS_NONE_BIT = 0,
     RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
 } Rr_DrawTextFlags;
 
@@ -29,7 +35,7 @@ void Rr_InitRenderer(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);
 void Rr_CleanupRenderer(Rr_App* App);
 void Rr_Draw(Rr_App* App);
-b8 Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
+bool Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
 
 /* Rendering */
 typedef struct Rr_BeginRenderingInfo
@@ -67,10 +73,21 @@ void Rr_DrawMesh(
     const Rr_Material* Material,
     const Rr_MeshBuffers* MeshBuffers,
     const void* DrawData);
-void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info);
+void Rr_DrawCustomText(
+    Rr_RenderingContext* RenderingContext,
+    Rr_Font* Font,
+    Rr_String* String,
+    vec2 Position,
+    f32 Size,
+    Rr_DrawTextFlags Flags);
+void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, vec2 Position);
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 
 float Rr_GetAspectRatio(Rr_Renderer* Renderer);
 size_t Rr_GetCurrentFrameIndex(Rr_Renderer* Renderer);
 Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
 void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer);
+
+#ifdef __cplusplus
+}
+#endif

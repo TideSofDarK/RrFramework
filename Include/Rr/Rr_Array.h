@@ -4,6 +4,11 @@
 
 #include "Rr_Core.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef void* Rr_Array;
 
 typedef struct Rr_ArrayHeader
@@ -78,4 +83,8 @@ size_t Rr_ArrayCount(Rr_Array Handle);
 
 #ifdef RR_DEBUG
 void Rr_Array_Test(void);
+#endif
+
+#ifdef __cplusplus
+}
 #endif

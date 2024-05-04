@@ -5,6 +5,11 @@
 #include "Rr_Defines.h"
 #include "Rr_Image.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef struct Rr_Renderer Rr_Renderer;
 typedef struct Rr_Buffer Rr_Buffer;
 
@@ -84,3 +89,7 @@ typedef struct Rr_String
 
 Rr_String Rr_CreateString(const char* CString);
 void Rr_DestroyString(const Rr_String* String);
+
+#ifdef __cplusplus
+}
+#endif

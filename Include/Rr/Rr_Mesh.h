@@ -3,6 +3,11 @@
 #include "Rr_Array.h"
 #include "Rr_Defines.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef struct Rr_Renderer Rr_Renderer;
 typedef struct Rr_Vertex Rr_Vertex;
 typedef struct Rr_Asset Rr_Asset;
@@ -34,3 +39,7 @@ size_t Rr_GetMeshBuffersSizeOBJ(Rr_Asset* Asset);
 void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset);
 
 void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh);
+
+#ifdef __cplusplus
+}
+#endif
