@@ -1,4 +1,5 @@
 #include "Rr_Image.h"
+#include "Rr_Image_Internal.h"
 #include "Rr_Memory.h"
 
 #include <stdlib.h>
@@ -150,7 +151,7 @@ void Rr_UploadImage(
     }
 }
 
-static Rr_Image CreateImage(
+static Rr_Image* CreateImage(
     const Rr_Renderer* Renderer,
     const VkExtent3D Extent,
     const VkFormat Format,
@@ -158,18 +159,18 @@ static Rr_Image CreateImage(
     const VmaAllocationCreateInfo AllocationCreateInfo,
     const b8 bMipMapped)
 {
-    Rr_Image Image = { 0 };
-    Image.Format = Format;
-    Image.Extent = Extent;
+    Rr_Image* Image = Rr_Calloc(1, sizeof(Rr_Image));
+    Image->Format = Format;
+    Image->Extent = Extent;
 
-    VkImageCreateInfo Info = GetImageCreateInfo(Image.Format, Usage, Image.Extent);
+    VkImageCreateInfo Info = GetImageCreateInfo(Image->Format, Usage, Image->Extent);
 
     if (bMipMapped)
     {
         Info.mipLevels = (u32)(SDL_floor(SDL_log(SDL_max(Extent.width, Extent.height)))) + 1;
     }
 
-    vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image.Handle, &Image.Allocation, NULL);
+    vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image->Handle, &Image->Allocation, NULL);
 
     VkImageAspectFlags AspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
     if (Format == RR_DEPTH_FORMAT)
@@ -177,15 +178,20 @@ static Rr_Image CreateImage(
         AspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
-    VkImageViewCreateInfo ViewInfo = GetImageViewCreateInfo(Image.Format, Image.Handle, AspectFlag);
+    VkImageViewCreateInfo ViewInfo = GetImageViewCreateInfo(Image->Format, Image->Handle, AspectFlag);
     ViewInfo.subresourceRange.levelCount = Info.mipLevels;
 
-    vkCreateImageView(Renderer->Device, &ViewInfo, NULL, &Image.View);
+    vkCreateImageView(Renderer->Device, &ViewInfo, NULL, &Image->View);
 
     return Image;
 }
 
-Rr_Image Rr_CreateImage(const Rr_Renderer* Renderer, const VkExtent3D Extent, const VkFormat Format, const VkImageUsageFlags Usage, const b8 bMipMapped)
+Rr_Image* Rr_CreateImage(
+    Rr_Renderer* Renderer,
+    VkExtent3D Extent,
+    VkFormat Format,
+    VkImageUsageFlags Usage,
+    b8 bMipMapped)
 {
     const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -211,10 +217,10 @@ size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset)
     return 0;
 }
 
-Rr_Image Rr_CreateColorImageFromPNG(
-    const Rr_Renderer* Renderer,
+Rr_Image* Rr_CreateColorImageFromPNG(
+    Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
-    const Rr_Asset* Asset,
+    Rr_Asset* Asset,
     VkImageUsageFlags Usage,
     b8 bMipMapped,
     VkImageLayout InitialLayout)
@@ -225,7 +231,7 @@ Rr_Image Rr_CreateColorImageFromPNG(
     stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
     const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
-    const Rr_Image ColorImage = Rr_CreateImage(
+    Rr_Image* ColorImage = Rr_CreateImage(
         Renderer,
         Extent,
         RR_COLOR_FORMAT,
@@ -234,7 +240,7 @@ Rr_Image Rr_CreateColorImageFromPNG(
 
     Rr_UploadImage(Renderer,
         UploadContext,
-        ColorImage.Handle,
+        ColorImage->Handle,
         Extent,
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -248,10 +254,10 @@ Rr_Image Rr_CreateColorImageFromPNG(
     return ColorImage;
 }
 
-Rr_Image Rr_CreateDepthImageFromEXR(
-    const Rr_Renderer* Renderer,
+Rr_Image* Rr_CreateDepthImageFromEXR(
+    Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
-    const Rr_Asset* Asset)
+    Rr_Asset* Asset)
 {
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
@@ -310,11 +316,11 @@ Rr_Image Rr_CreateDepthImageFromEXR(
 
     const size_t DataSize = Extent.width * Extent.height * sizeof(f32);
 
-    const Rr_Image DepthImage = Rr_CreateImage(Renderer, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
+    Rr_Image* DepthImage = Rr_CreateImage(Renderer, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 
     Rr_UploadImage(Renderer,
         UploadContext,
-        DepthImage.Handle,
+        DepthImage->Handle,
         Extent,
         VK_IMAGE_ASPECT_DEPTH_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -329,50 +335,48 @@ Rr_Image Rr_CreateDepthImageFromEXR(
     return DepthImage;
 }
 
-Rr_Image Rr_CreateColorAttachmentImage(const Rr_Renderer* Renderer, const VkExtent3D Extent)
+Rr_Image* Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
 {
     const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    const Rr_Image Image = CreateImage(
+    return CreateImage(
         Renderer,
         Extent,
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         AllocationCreateInfo,
         false);
-
-    return Image;
 }
 
-Rr_Image Rr_CreateDepthAttachmentImage(const Rr_Renderer* Renderer, const VkExtent3D Extent)
+Rr_Image* Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
 {
     const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    const Rr_Image Image = CreateImage(
+    return CreateImage(
         Renderer,
         Extent,
         RR_DEPTH_FORMAT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         AllocationCreateInfo,
         false);
-
-    return Image;
 }
 
-void Rr_DestroyImage(const Rr_Renderer* const Renderer, const Rr_Image* AllocatedImage)
+void Rr_DestroyImage(Rr_Renderer* Renderer, Rr_Image* AllocatedImage)
 {
-    if (AllocatedImage->Handle == VK_NULL_HANDLE)
+    if (AllocatedImage == NULL)
     {
         return;
     }
     vkDestroyImageView(Renderer->Device, AllocatedImage->View, NULL);
     vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
+
+    Rr_Free(AllocatedImage);
 }
 
 void Rr_ChainImageBarrier_Aspect(

@@ -21,6 +21,7 @@
 #include "Rr_Text.h"
 #include "Rr_Load.h"
 #include "Rr_Types.h"
+#include "Rr_Image_Internal.h"
 
 static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
 {
@@ -261,7 +262,7 @@ static void InitDrawTarget(Rr_Renderer* const Renderer, Rr_DrawTarget* DrawTarge
     DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(Renderer, Extent);
     DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(Renderer, Extent);
 
-    VkImageView Attachments[2] = { DrawTarget->ColorImage.View, DrawTarget->DepthImage.View };
+    VkImageView Attachments[2] = { DrawTarget->ColorImage->View, DrawTarget->DepthImage->View };
 
     const VkFramebufferCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -280,8 +281,8 @@ static void InitDrawTarget(Rr_Renderer* const Renderer, Rr_DrawTarget* DrawTarge
 static void CleanupDrawTarget(Rr_Renderer* Renderer, Rr_DrawTarget* DrawTarget)
 {
     vkDestroyFramebuffer(Renderer->Device, DrawTarget->Framebuffer, NULL);
-    Rr_DestroyImage(Renderer, &DrawTarget->ColorImage);
-    Rr_DestroyImage(Renderer, &DrawTarget->DepthImage);
+    Rr_DestroyImage(Renderer, DrawTarget->ColorImage);
+    Rr_DestroyImage(Renderer, DrawTarget->DepthImage);
 }
 
 static void CleanupSwapchain(Rr_Renderer* Renderer, VkSwapchainKHR Swapchain)
@@ -470,7 +471,7 @@ static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
     {
         Rr_DrawTarget* DrawTarget = &Renderer->DrawTargets[Index];
 
-        if (DrawTarget->ColorImage.Handle != VK_NULL_HANDLE)
+        if (DrawTarget->ColorImage != NULL)
         {
             CleanupDrawTarget(Renderer, DrawTarget);
         }

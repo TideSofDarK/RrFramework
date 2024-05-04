@@ -70,7 +70,7 @@ typedef struct Rr_TextPushConstants
 
 typedef struct Rr_Font
 {
-    Rr_Image Atlas;
+    Rr_Image* Atlas;
     Rr_Buffer* Buffer;
     f32 Advances[2048];
     f32 LineHeight;

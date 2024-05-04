@@ -12,6 +12,7 @@
 #include "Rr_Helpers.h"
 #include "Rr_Mesh.h"
 #include "Rr_Types.h"
+#include "Rr_Image_Internal.h"
 
 typedef enum Rr_LoadType
 {
@@ -23,7 +24,7 @@ typedef struct Rr_LoadTask
 {
     Rr_LoadType LoadType;
     Rr_Asset Asset;
-    void* Out;
+    void** Out;
 } Rr_LoadTask;
 
 static Rr_UploadContext CreateUploadContext(
@@ -179,12 +180,12 @@ Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t I
     return LoadingContext;
 }
 
-void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_Image* OutImage)
+void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_Image** OutImage)
 {
     const Rr_LoadTask Task = {
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
         .Asset = *Asset,
-        .Out = OutImage
+        .Out = (void**)OutImage
     };
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
@@ -252,7 +253,7 @@ static int SDLCALL Load(void* Data)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
-                *(Rr_Image*)Task->Out = Rr_CreateColorImageFromPNG(
+                *(Rr_Image**)Task->Out = Rr_CreateColorImageFromPNG(
                     Renderer,
                     &UploadContext,
                     &Task->Asset,

@@ -131,6 +131,15 @@ typedef struct Rr_DescriptorWriter
     VkWriteDescriptorSet* Writes;
 } Rr_DescriptorWriter;
 
+typedef struct Rr_Image
+{
+    VkImage Handle;
+    VkImageView View;
+    VmaAllocation Allocation;
+    VkExtent3D Extent;
+    VkFormat Format;
+} Rr_Image;
+
 typedef struct Rr_Frame
 {
     VkCommandPool CommandPool;
@@ -197,8 +206,8 @@ typedef struct Rr_ImmediateMode
 
 typedef struct Rr_DrawTarget
 {
-    Rr_Image ColorImage;
-    Rr_Image DepthImage;
+    Rr_Image* ColorImage;
+    Rr_Image* DepthImage;
     VkFramebuffer Framebuffer;
 } Rr_DrawTarget;
 

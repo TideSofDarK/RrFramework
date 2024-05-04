@@ -79,16 +79,16 @@ static Rr_GenericPipeline* Uber3DPipeline;
 // static Rr_Image SceneColorImage;
 
 static Rr_MeshBuffers CottageMesh;
-static Rr_Image CottageTexture;
+static Rr_Image* CottageTexture;
 static Rr_Material CottageMaterial;
 
 static Rr_MeshBuffers PocMesh;
-static Rr_Image PocDiffuseImage;
+static Rr_Image* PocDiffuseImage;
 
 static Rr_Material MarbleMaterial;
-static Rr_Image MarbleDiffuse;
-static Rr_Image MarbleNormal;
-static Rr_Image MarbleSpecular;
+static Rr_Image* MarbleDiffuse;
+static Rr_Image* MarbleNormal;
+static Rr_Image* MarbleSpecular;
 static Rr_MeshBuffers MarbleMesh;
 
 static Rr_String TestString;
@@ -148,10 +148,10 @@ static void InitGlobals(Rr_Renderer* const Renderer)
 
 static void OnLoadingComplete(Rr_Renderer* Renderer, const void* Userdata)
 {
-    Rr_Image* MarbleTextures[2] = { &MarbleDiffuse, &MarbleSpecular };
+    Rr_Image* MarbleTextures[2] = { MarbleDiffuse, MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
 
-    Rr_Image* CottageTextures[1] = { &CottageTexture };
+    Rr_Image* CottageTextures[1] = { CottageTexture };
     CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
 
     bLoaded = true;
@@ -219,10 +219,10 @@ static void Cleanup(Rr_App* App)
 
     // Rr_DestroyImage(Renderer, &SceneDepthImage);
     // Rr_DestroyImage(Renderer, &SceneColorImage);
-    Rr_DestroyImage(Renderer, &CottageTexture);
-    Rr_DestroyImage(Renderer, &PocDiffuseImage);
-    Rr_DestroyImage(Renderer, &MarbleDiffuse);
-    Rr_DestroyImage(Renderer, &MarbleSpecular);
+    Rr_DestroyImage(Renderer, CottageTexture);
+    Rr_DestroyImage(Renderer, PocDiffuseImage);
+    Rr_DestroyImage(Renderer, MarbleDiffuse);
+    Rr_DestroyImage(Renderer, MarbleSpecular);
 
     Rr_DestroyMesh(Renderer, &CottageMesh);
     Rr_DestroyMesh(Renderer, &PocMesh);

@@ -15,7 +15,6 @@
 #include "Rr_Load.h"
 #include "Rr_Types.h"
 #include "Rr_Descriptor.h"
-#include "Rr_Pipeline.h"
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 {
@@ -141,7 +140,7 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
 
 Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
 {
-    Rr_Image Atlas;
+    Rr_Image* Atlas;
     Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(Renderer, 1);
     Rr_LoadColorImageFromPNG(LoadingContext, FontPNG, &Atlas);
     Rr_LoadImmediate(LoadingContext);
@@ -178,7 +177,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
     const size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
     for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
-        const cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, GlyphIndex);
+        const cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (i32)GlyphIndex);
 
         const size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
 
@@ -230,7 +229,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
 
 void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
 {
-    Rr_DestroyImage(Renderer, &Font->Atlas);
+    Rr_DestroyImage(Renderer, Font->Atlas);
     Rr_DestroyBuffer(Renderer, Font->Buffer);
 }
 

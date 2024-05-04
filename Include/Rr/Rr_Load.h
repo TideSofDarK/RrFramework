@@ -35,7 +35,7 @@ Rr_UploadContext Rr_CreateUploadContext(
 void Rr_Upload(Rr_Renderer* Renderer, Rr_UploadContext* UploadContext, Rr_LoadingCallback LoadingCallback, const void* Userdata);
 
 Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, size_t InitialTaskCount);
-void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_Image* OutImage);
+void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_Image** OutImage);
 void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_MeshBuffers* OutMeshBuffers);
 void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, Rr_LoadingCallback LoadingCallback, const void* Userdata);
 Rr_LoadStatus Rr_LoadImmediate(Rr_LoadingContext* LoadingContext);

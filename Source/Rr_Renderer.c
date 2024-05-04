@@ -30,6 +30,7 @@
 #include "Rr_Util.h"
 #include "Rr_Material.h"
 #include "Rr_Types.h"
+#include "Rr_Image_Internal.h"
 
 static void Rr_BlitPrerenderedDepth(
     VkCommandBuffer CommandBuffer,
@@ -541,7 +542,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         Rr_WriteImageDescriptor(
             &DescriptorWriter,
             1,
-            DrawTextInfo->Font->Atlas.View,
+            DrawTextInfo->Font->Atlas->View,
             Renderer->LinearSampler,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -674,8 +675,8 @@ void Rr_Draw(Rr_App* App)
     Rr_Swapchain* Swapchain = &Renderer->Swapchain;
     const size_t FrameIndex = Rr_GetCurrentFrameIndex(Renderer);
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    const Rr_Image* ColorImage = &Renderer->DrawTargets[FrameIndex].ColorImage;
-    const Rr_Image* DepthImage = &Renderer->DrawTargets[FrameIndex].DepthImage;
+    Rr_Image* ColorImage = Renderer->DrawTargets[FrameIndex].ColorImage;
+    Rr_Image* DepthImage = Renderer->DrawTargets[FrameIndex].DepthImage;
 
     vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
