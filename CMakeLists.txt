@@ -113,6 +113,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}
     "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
-target_compile_features(${PROJECT_NAME} PRIVATE c_std_11 cxx_std_17)
+target_compile_features(${PROJECT_NAME} PRIVATE c_std_99 cxx_std_17)
 
 add_subdirectory(Demo)
