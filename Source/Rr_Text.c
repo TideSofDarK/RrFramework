@@ -15,6 +15,7 @@
 #include "Rr_Load.h"
 #include "Rr_Types.h"
 #include "Rr_Descriptor.h"
+#include "Rr_Pipeline.h"
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 {
@@ -62,9 +63,19 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 
     Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
     Rr_EnableTriangleFan(Builder);
-    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32G32_SFLOAT);
-    Rr_EnablePerInstanceInputAttribute(Builder, VK_FORMAT_R32G32_SFLOAT);
-    Rr_EnablePerInstanceInputAttribute(Builder, VK_FORMAT_R32_UINT);
+    Rr_EnablePerVertexInputAttributes(
+        Builder,
+        &(Rr_VertexInput){
+            .Attributes = {
+                { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 0 },
+            } });
+    Rr_EnablePerInstanceInputAttributes(
+        Builder,
+        &(Rr_VertexInput){
+            .Attributes = {
+                { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 1 },
+                { .Type = RR_VERTEX_INPUT_TYPE_UINT, .Location = 2 },
+            } });
     Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
     Rr_EnableAlphaBlend(Builder);

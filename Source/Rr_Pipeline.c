@@ -11,6 +11,13 @@
 #include "Rr_Renderer.h"
 #include "Rr_Types.h"
 #include "Rr_Memory.h"
+#include "Rr_Vulkan.h"
+
+enum Rr_VertexInputBinding
+{
+    RR_VERTEX_INPUT_BINDING_PER_VERTEX,
+    RR_VERTEX_INPUT_BINDING_PER_INSTANCE
+};
 
 Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void)
 {
@@ -46,58 +53,85 @@ void Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder)
     PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
 }
 
-static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, const VkFormat Format, const size_t Index)
+static VkFormat GetVulkanFormat(Rr_VertexInputType Type)
 {
-    if (PipelineBuilder->CurrentVertexInputAttribute + 1 > RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
+    switch (Type)
+    {
+        case RR_VERTEX_INPUT_TYPE_FLOAT:
+            return VK_FORMAT_R32_SFLOAT;
+        case RR_VERTEX_INPUT_TYPE_UINT:
+            return VK_FORMAT_R32_UINT;
+        case RR_VERTEX_INPUT_TYPE_VEC2:
+            return VK_FORMAT_R32G32_SFLOAT;
+        case RR_VERTEX_INPUT_TYPE_VEC3:
+            return VK_FORMAT_R32G32B32_SFLOAT;
+        case RR_VERTEX_INPUT_TYPE_VEC4:
+            return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case RR_VERTEX_INPUT_TYPE_NONE:
+        default:
+            return VK_FORMAT_UNDEFINED;
+    }
+}
+
+static size_t GetVertexInputSize(Rr_VertexInputType Type)
+{
+    switch (Type)
+    {
+        case RR_VERTEX_INPUT_TYPE_FLOAT:
+            return sizeof(f32);
+        case RR_VERTEX_INPUT_TYPE_UINT:
+            return sizeof(u32);
+        case RR_VERTEX_INPUT_TYPE_VEC2:
+            return sizeof(f32) * 2;
+        case RR_VERTEX_INPUT_TYPE_VEC3:
+            return sizeof(f32) * 3;
+        case RR_VERTEX_INPUT_TYPE_VEC4:
+            return sizeof(f32) * 4;
+        case RR_VERTEX_INPUT_TYPE_NONE:
+        default:
+            return 0;
+    }
+}
+
+static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInputAttribute Attribute, size_t Binding)
+{
+    VkFormat Format = GetVulkanFormat(Attribute.Type);
+    if (Format == VK_FORMAT_UNDEFINED)
+    {
+        return;
+    }
+
+    const size_t Location = Attribute.Location;
+    if (Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Exceeding max allowed number of vertex attributes for a pipeline!");
         abort();
     }
 
-    const size_t Current = PipelineBuilder->CurrentVertexInputAttribute;
-
-    PipelineBuilder->Attributes[Current] = (VkVertexInputAttributeDescription){
-        .binding = Index,
-        .location = Current,
+    PipelineBuilder->Attributes[Location] = (VkVertexInputAttributeDescription){
+        .binding = Binding,
+        .location = Location,
         .format = Format,
-        .offset = PipelineBuilder->VertexInput[Index].VertexInputStride,
+        .offset = PipelineBuilder->VertexInput[Binding].VertexInputStride,
     };
 
-    if (Format == VK_FORMAT_R32_UINT || Format == VK_FORMAT_R32_SFLOAT)
-    {
-        PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(u32);
-    }
-    else if (Format == VK_FORMAT_R32G32_SFLOAT)
-    {
-        PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(f32) * 2;
-    }
-    else if (Format == VK_FORMAT_R32G32B32_SFLOAT)
-    {
-        PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(f32) * 3;
-    }
-    else if (Format == VK_FORMAT_R32G32B32A32_SFLOAT)
-    {
-        PipelineBuilder->VertexInput[Index].VertexInputStride += sizeof(f32) * 4;
-    }
-    else
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Unknown vertex input format!");
-        abort();
-    }
-
-    PipelineBuilder->CurrentVertexInputAttribute++;
+    PipelineBuilder->VertexInput[Binding].VertexInputStride += GetVertexInputSize(Attribute.Type);
 }
 
-void Rr_EnablePerVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, const VkFormat Format)
+void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
 {
-    EnableVertexInputAttribute(PipelineBuilder, Format, 0);
-    PipelineBuilder->bHasPerVertexBinding = true;
+    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    {
+        EnableVertexInputAttribute(PipelineBuilder, VertexInput->Attributes[Index], RR_VERTEX_INPUT_BINDING_PER_VERTEX);
+    }
 }
 
-void Rr_EnablePerInstanceInputAttribute(Rr_PipelineBuilder* PipelineBuilder, const VkFormat Format)
+void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
 {
-    EnableVertexInputAttribute(PipelineBuilder, Format, 1);
-    PipelineBuilder->bHasPerInstanceBinding = true;
+    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    {
+        EnableVertexInputAttribute(PipelineBuilder, VertexInput->Attributes[Index], RR_VERTEX_INPUT_BINDING_PER_INSTANCE);
+    }
 }
 
 void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, const Rr_Asset* SPVAsset)
@@ -228,17 +262,31 @@ VkPipeline Rr_BuildPipeline(
             .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
         }
     };
-    if (PipelineBuilder->CurrentVertexInputAttribute > 0)
+
+    u32 AttributeCount = 0;
+    bool bHasPerVertexBinding = false;
+    bool bHasPerInstanceBinding = false;
+    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
-        if (PipelineBuilder->bHasPerVertexBinding)
+        if (PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
+        {
+            break;
+        }
+        AttributeCount++;
+        bHasPerVertexBinding = bHasPerVertexBinding || PipelineBuilder->Attributes[Index].binding == 0;
+        bHasPerInstanceBinding = bHasPerInstanceBinding || PipelineBuilder->Attributes[Index].binding == 1;
+    }
+    if (AttributeCount > 0)
+    {
+        if (bHasPerVertexBinding)
         {
             VertexInputInfo.vertexBindingDescriptionCount++;
         }
-        if (PipelineBuilder->bHasPerInstanceBinding)
+        if (bHasPerInstanceBinding)
         {
             VertexInputInfo.vertexBindingDescriptionCount++;
         }
-        VertexInputInfo.vertexAttributeDescriptionCount = PipelineBuilder->CurrentVertexInputAttribute;
+        VertexInputInfo.vertexAttributeDescriptionCount = AttributeCount;
         VertexInputInfo.pVertexBindingDescriptions = VertexInputBindingDescriptions;
         VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->Attributes;
     }

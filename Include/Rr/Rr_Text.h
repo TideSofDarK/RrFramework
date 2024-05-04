@@ -3,16 +3,15 @@
 #include <cglm/vec3.h>
 
 #include "Rr_Vulkan.h"
-#include "Rr_Pipeline.h"
 #include "Rr_Defines.h"
 #include "Rr_Image.h"
+
+typedef struct Rr_Renderer Rr_Renderer;
+typedef struct Rr_Buffer Rr_Buffer;
 
 #define RR_TEXT_BUFFER_SIZE (1024 * 1024)
 #define RR_TEXT_DEFAULT_SIZE (0.0f)
 #define RR_TEXT_MAX_COLORS 8
-
-typedef struct Rr_Renderer Rr_Renderer;
-typedef struct Rr_Buffer Rr_Buffer;
 
 typedef enum Rr_TextPipelineDescriptorSet
 {

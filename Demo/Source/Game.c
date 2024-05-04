@@ -114,11 +114,16 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     Rr_ExternAsset(Uber3DFRAG);
 
     Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
-    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32G32B32_SFLOAT);
-    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32_SFLOAT);
-    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32G32B32_SFLOAT);
-    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32_SFLOAT);
-    Rr_EnablePerVertexInputAttribute(Builder, VK_FORMAT_R32G32B32A32_SFLOAT);
+    Rr_EnablePerVertexInputAttributes(
+        Builder,
+        &(Rr_VertexInput){
+            .Attributes = {
+                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 0 },
+                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 1 },
+                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 2 },
+                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 3 },
+                { .Type = RR_VERTEX_INPUT_TYPE_VEC4, .Location = 4 },
+            } });
     Rr_EnableVertexStage(Builder, &Uber3DVERT);
     Rr_EnableFragmentStage(Builder, &Uber3DFRAG);
     Rr_EnableDepthTest(Builder);
