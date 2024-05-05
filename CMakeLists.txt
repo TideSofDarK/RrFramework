@@ -111,9 +111,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         STBI_NO_TGA
         STBI_NO_FAILURE_STRINGS
 )
-target_compile_definitions(${PROJECT_NAME} PUBLIC
+target_compile_definitions(${PROJECT_NAME} PRIVATE
     RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}
     "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
-target_compile_features(${PROJECT_NAME} PRIVATE c_std_99 cxx_std_17)
+target_compile_features(${PROJECT_NAME} PRIVATE c_std_99 cxx_std_11)
 
 add_subdirectory(Demo)

@@ -7,6 +7,10 @@
 #include "Rr_Asset.h"
 #include "Rr_Load.h"
 #include "Rr_Text_Internal.h"
+#include "Rr_Load_Internal.h"
+
+typedef struct SDL_Semaphore SDL_Semaphore;
+typedef struct SDL_Thread SDL_Thread;
 
 typedef struct Rr_Buffer
 {
@@ -59,20 +63,6 @@ typedef struct Rr_PipelineBuilder
     size_t PushConstantsSize;
 } Rr_PipelineBuilder;
 
-typedef struct Rr_AcquireBarriers
-{
-    VkImageMemoryBarrier* ImageMemoryBarriersArray;
-    VkBufferMemoryBarrier* BufferMemoryBarriersArray;
-} Rr_AcquireBarriers;
-
-typedef struct Rr_UploadContext
-{
-    Rr_StagingBuffer* StagingBuffer;
-    VkCommandBuffer TransferCommandBuffer;
-    Rr_AcquireBarriers AcquireBarriers;
-    u32 bUnifiedQueue;
-} Rr_UploadContext;
-
 typedef struct Rr_PendingLoad
 {
     Rr_AcquireBarriers Barriers;
@@ -83,7 +73,7 @@ typedef struct Rr_PendingLoad
 
 typedef struct Rr_LoadingContext
 {
-    u32 bAsync;
+    bool bAsync;
     Rr_LoadStatus Status;
     Rr_Renderer* Renderer;
     Rr_LoadTask* Tasks;

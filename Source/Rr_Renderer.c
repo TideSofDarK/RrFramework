@@ -162,7 +162,7 @@ void Rr_DrawCustomText(
         RenderingContext,
         &(Rr_DrawTextInfo){
             .Font = Font,
-            .String = String,
+            .String = *String,
             .Position = { Position[0], Position[1] },
             .Size = Size,
             .Flags = Flags });
@@ -173,7 +173,7 @@ void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String
     DrawText(
         RenderingContext,
         &(Rr_DrawTextInfo){
-            .String = String,
+            .String = *String,
             .Position = { Position[0], Position[1] },
             .Size = 32.0f,
             .Flags = 0 });
@@ -192,13 +192,15 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
 
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1);
 
-    const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+    Rr_UploadContext UploadContext = {
+        .StagingBuffer = Frame->StagingBuffer,
+        .TransferCommandBuffer = CommandBuffer
+    };
 
     /* Upload globals data. */
-    Rr_CopyToDeviceUniformBuffer(
+    Rr_UploadToUniformBuffer(
         Renderer,
-        CommandBuffer,
-        Frame->StagingBuffer,
+        &UploadContext,
         PipelineBuffers->Globals,
         RenderingContext->Info->GlobalsData,
         Pipeline->GlobalsSize);
@@ -230,6 +232,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         NULL);
 
     /* Generate draw lists. */
+    const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     size_t DrawMeshCount = Rr_ArrayCount(RenderingContext->DrawMeshArray);
     size_t DrawSize = Pipeline->DrawSize;
     size_t DrawSizeAligned = Rr_Align(DrawSize, Alignment);
@@ -308,10 +311,9 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         .ScreenSize = { (f32)ActiveResolution.width, (f32)ActiveResolution.height },
         .Pallete = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
     };
-    Rr_CopyToDeviceUniformBuffer(
+    Rr_UploadToUniformBuffer(
         Renderer,
-        CommandBuffer,
-        Frame->StagingBuffer,
+        &UploadContext,
         TextPipeline->GlobalsBuffers[CurrentFrameIndex],
         &TextGlobalsData,
         sizeof(Rr_TextGlobalsLayout));
@@ -594,7 +596,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             128,
             &TextPushConstants);
         /* Upload and bind text data. */
-        size_t TextLength = DrawTextInfo->String->Length;
+        size_t TextLength = DrawTextInfo->String.Length;
         size_t FinalTextLength = 0;
         u32 PalleteIndex = 0;
         bool bCodePending = false;
@@ -602,7 +604,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         vec2 AccumulatedAdvance = { 0 };
         for (size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
         {
-            u32 Unicode = DrawTextInfo->String->Data[CharacterIndex];
+            u32 Unicode = DrawTextInfo->String.Data[CharacterIndex];
 
             if (bCodePending)
             {

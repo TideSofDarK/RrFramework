@@ -81,7 +81,7 @@ void Rr_UploadImage(
 
     vkCmdCopyBufferToImage(TransferCommandBuffer, StagingBuffer->Buffer->Handle, Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
 
-    if (UploadContext->bUnifiedQueue)
+    if (!UploadContext->bUseAcquireBarriers)
     {
         vkCmdPipelineBarrier(
             TransferCommandBuffer,

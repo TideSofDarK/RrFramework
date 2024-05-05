@@ -304,5 +304,6 @@ Rr_String Rr_CreateString(const char* CString)
 
 void Rr_DestroyString(const Rr_String* String)
 {
-    Rr_Free((void*)String->Data);
+    if (String->Data != NULL)
+        Rr_Free((void*)String->Data);
 }

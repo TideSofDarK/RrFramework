@@ -1,5 +1,8 @@
 #include "Game.hxx"
 
+#include <string>
+#include <format>
+
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
 
@@ -93,7 +96,7 @@ static Rr_MeshBuffers MarbleMesh;
 
 static Rr_String TestString;
 static Rr_String DebugString;
-static Rr_String LoadingString;
+static Rr_LoadingContext* LoadingContext;
 
 static bool bLoaded = false;
 
@@ -155,6 +158,8 @@ static void OnLoadingComplete(Rr_Renderer* Renderer, const void* Userdata)
     CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
 
     bLoaded = true;
+
+    LoadingContext = nullptr;
 }
 
 static void Init(Rr_App* App)
@@ -172,7 +177,7 @@ static void Init(Rr_App* App)
     Rr_ExternAsset(CottagePNG);
     Rr_ExternAsset(CottageOBJ);
 
-    Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(Renderer, 8);
+    LoadingContext = Rr_CreateLoadingContext(Renderer, 8);
     Rr_LoadColorImageFromPNG(LoadingContext, &MarbleDiffusePNG, &MarbleDiffuse);
     Rr_LoadColorImageFromPNG(LoadingContext, &MarbleSpecularPNG, &MarbleSpecular);
     Rr_LoadMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
@@ -201,7 +206,6 @@ static void Init(Rr_App* App)
 
     TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
     DebugString = Rr_CreateString("$c3Colored $c1text$c2");
-    LoadingString = Rr_CreateString("Loading...");
 }
 
 static void Cleanup(Rr_App* App)
@@ -232,7 +236,6 @@ static void Cleanup(Rr_App* App)
 
     Rr_DestroyString(&TestString);
     Rr_DestroyString(&DebugString);
-    Rr_DestroyString(&LoadingString);
 }
 
 static void Update(Rr_App* App)
@@ -300,6 +303,17 @@ static void Draw(Rr_App* const App)
     const u64 Ticks = SDL_GetTicks();
     const f32 Time = (float)((double)Ticks / 1000.0 * 2);
 
+    std::string LoadingString;
+    Rr_String RrLoadingString = {};
+    if (LoadingContext != nullptr)
+    {
+        u32 Current, Total;
+        Rr_GetLoadProgress(LoadingContext, &Current, &Total);
+        LoadingString = std::format("Loading: {}/{}\n", Current, Total);
+
+        RrLoadingString = Rr_CreateString(LoadingString.c_str());
+    }
+
     if (bLoaded)
     {
         mat4 Transform;
@@ -320,20 +334,28 @@ static void Draw(Rr_App* const App)
         Rr_DrawMesh(&RenderingContext, &MarbleMaterial, &MarbleMesh, &MarbleDraw);
 
         Rr_DrawDefaultText(&RenderingContext, &TestString, vec2{ 50.0f, 50.0f });
-        Rr_DrawCustomText(&RenderingContext, nullptr, &DebugString, vec2{ 450.0f, 54.0f }, 28.0f, RR_DRAW_TEXT_FLAGS_NONE_BIT);
+        Rr_DrawCustomText(
+            &RenderingContext,
+            nullptr,
+            &DebugString,
+            vec2{ 450.0f, 54.0f },
+            28.0f,
+            RR_DRAW_TEXT_FLAGS_NONE_BIT);
     }
     else
     {
         Rr_DrawCustomText(
             &RenderingContext,
             nullptr,
-            &LoadingString,
+            &RrLoadingString,
             vec2{ 25.0f, 540.0f - 25 - 32.0f },
             32.0f,
             RR_DRAW_TEXT_FLAGS_ANIMATION_BIT);
     }
 
     Rr_EndRendering(&RenderingContext);
+
+    Rr_DestroyString(&RrLoadingString);
 }
 
 static void OnFileDropped(Rr_App* App, const char* Path)
