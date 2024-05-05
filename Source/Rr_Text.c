@@ -308,7 +308,7 @@ static u32* UTF8ToUTF32(
     {
         Data = (u32*)Rr_Malloc(sizeof(u32) * FinalIndex);
     }
-    else if (OldLength <= FinalIndex)
+    else if (OldLength >= FinalIndex)
     {
         Data = OutOldBuffer;
     }
@@ -335,19 +335,19 @@ Rr_String Rr_CreateString(const char* CString)
 Rr_String Rr_CreateEmptyString(size_t Length)
 {
     return (Rr_String){
-        .Length = 2048,
+        .Length = Length,
         .Data = (u32*)Rr_Calloc(Length, sizeof(u32))
     };
 }
 
-void Rr_SetString(Rr_String* String, const char* Data, size_t DataLength)
+void Rr_SetString(Rr_String* String, const char* CString, size_t OptionalLength)
 {
     if (String == NULL)
     {
         return;
     }
 
-    String->Data = UTF8ToUTF32(Data, DataLength, String->Data, String->Length, &String->Length);
+    String->Data = UTF8ToUTF32(CString, OptionalLength, String->Data, String->Length, &String->Length);
 }
 
 void Rr_DestroyString(const Rr_String* String)

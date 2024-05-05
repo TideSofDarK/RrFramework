@@ -89,7 +89,7 @@ typedef struct Rr_String
 
 Rr_String Rr_CreateString(const char* CString);
 Rr_String Rr_CreateEmptyString(size_t Length);
-void Rr_SetString(Rr_String* String, const char* Data, size_t DataLength);
+void Rr_SetString(Rr_String* String, const char* CString, size_t OptionalLength);
 void Rr_DestroyString(const Rr_String* String);
 
 #ifdef __cplusplus

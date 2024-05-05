@@ -29,11 +29,6 @@
 
 #include "DevTools.hxx"
 
-typedef struct SFrameData
-{
-    float Reserved;
-} SFrameData;
-
 typedef struct SUber3DGlobals
 {
     mat4 View;
@@ -217,12 +212,6 @@ static void Cleanup(Rr_App* App)
 {
     Rr_Renderer* Renderer = Rr_GetRenderer(App);
 
-    //    for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
-    //    {
-    //        SFrameData* PerFrameData = (SFrameData*)Renderer->PerFrameDatas + Index;
-    //    }
-    //    SDL_free(Renderer->PerFrameDatas);
-
     Rr_DestroyMaterial(Renderer, &CottageMaterial);
     Rr_DestroyMaterial(Renderer, &MarbleMaterial);
 
@@ -379,7 +368,6 @@ void RunGame()
         .Title = "VulkanPlayground",
         .ReferenceResolution = { 1920 / 2, 1080 / 2 },
         .InputConfig = &InputConfig,
-        .PerFrameDataSize = sizeof(SFrameData),
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
         .UpdateFunc = Update,

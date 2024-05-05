@@ -927,7 +927,28 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer)
     return &Renderer->Frames[Renderer->FrameNumber % RR_FRAME_OVERLAP];
 }
 
-void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer)
+VkCommandBuffer Rr_BeginImmediate(const Rr_Renderer* Renderer)
 {
-    return (char*)Renderer->PerFrameDatas + (Renderer->FrameNumber % RR_FRAME_OVERLAP) * Renderer->PerFrameDataSize;
+    const Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
+    vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
+    vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
+
+    const VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
+
+    return ImmediateMode->CommandBuffer;
+}
+
+void Rr_EndImmediate(const Rr_Renderer* Renderer)
+{
+    const Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
+
+    vkEndCommandBuffer(ImmediateMode->CommandBuffer);
+
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
+    const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
+
+    vkQueueSubmit2(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
+    vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }

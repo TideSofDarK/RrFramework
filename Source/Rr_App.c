@@ -15,7 +15,7 @@
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_platform.h>
 
-#include "Rr_Renderer.h"
+#include "Rr_Renderer_Internal.h"
 #include "Rr_Asset.h"
 #include "Rr_Input.h"
 #include "Rr_Mesh.h"

@@ -893,9 +893,6 @@ void Rr_InitRenderer(Rr_App* App)
     SDL_Window* Window = App->Window;
     const Rr_AppConfig* Config = App->Config;
 
-    Renderer->PerFrameDataSize = Config->PerFrameDataSize;
-    Renderer->PerFrameDatas = Rr_Calloc(RR_FRAME_OVERLAP, Config->PerFrameDataSize);
-
     Renderer->ReferenceResolution.width = Config->ReferenceResolution[0];
     Renderer->ReferenceResolution.height = Config->ReferenceResolution[1];
 
@@ -928,7 +925,7 @@ void Rr_InitRenderer(Rr_App* App)
     }
 
     /* Create Vulkan instance. */
-    const VkInstanceCreateInfo VKInstInfo = {
+    const VkInstanceCreateInfo InstanceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = NULL,
         .pApplicationInfo = &VKAppInfo,
@@ -936,7 +933,7 @@ void Rr_InitRenderer(Rr_App* App)
         .ppEnabledExtensionNames = Extensions,
     };
 
-    vkCreateInstance(&VKInstInfo, NULL, &Renderer->Instance);
+    vkCreateInstance(&InstanceCreateInfo, NULL, &Renderer->Instance);
 
     volkLoadInstance(Renderer->Instance);
 
@@ -991,32 +988,6 @@ bool Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
         return false;
     }
     return true;
-}
-
-VkCommandBuffer Rr_BeginImmediate(const Rr_Renderer* Renderer)
-{
-    const Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
-    vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
-    vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
-
-    const VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
-
-    return ImmediateMode->CommandBuffer;
-}
-
-void Rr_EndImmediate(const Rr_Renderer* Renderer)
-{
-    const Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
-
-    vkEndCommandBuffer(ImmediateMode->CommandBuffer);
-
-    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
-    const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
-
-    vkQueueSubmit2(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
-    vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }
 
 void Rr_CleanupRenderer(Rr_App* App)

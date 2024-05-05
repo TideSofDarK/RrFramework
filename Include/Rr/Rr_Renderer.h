@@ -14,12 +14,6 @@ extern "C"
 {
 #endif
 
-typedef enum Rr_DrawTextFlags
-{
-    RR_DRAW_TEXT_FLAGS_NONE_BIT = 0,
-    RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
-} Rr_DrawTextFlags;
-
 typedef struct SDL_Window SDL_Window;
 typedef struct SDL_Mutex SDL_Mutex;
 typedef struct Rr_AppConfig Rr_AppConfig;
@@ -31,11 +25,11 @@ typedef struct Rr_LoadingContext Rr_LoadingContext;
 typedef struct Rr_PendingLoad Rr_PendingLoad;
 typedef struct Rr_Frame Rr_Frame;
 
-void Rr_InitRenderer(Rr_App* App);
-void Rr_InitImGui(Rr_App* App);
-void Rr_CleanupRenderer(Rr_App* App);
-void Rr_Draw(Rr_App* App);
-bool Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window);
+typedef enum Rr_DrawTextFlags
+{
+    RR_DRAW_TEXT_FLAGS_NONE_BIT = 0,
+    RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
+} Rr_DrawTextFlags;
 
 /* Rendering */
 typedef struct Rr_BeginRenderingInfo
@@ -84,9 +78,6 @@ void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 
 float Rr_GetAspectRatio(Rr_Renderer* Renderer);
-size_t Rr_GetCurrentFrameIndex(Rr_Renderer* Renderer);
-Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
-void* Rr_GetCurrentFrameData(Rr_Renderer* Renderer);
 
 #ifdef __cplusplus
 }

@@ -248,9 +248,7 @@ typedef struct Rr_Renderer
 
     VmaAllocator Allocator;
 
-    /* Frame Data */
-    void* PerFrameDatas;
-    size_t PerFrameDataSize;
+    /* Frames */
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
 
