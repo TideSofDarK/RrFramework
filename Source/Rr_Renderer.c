@@ -778,24 +778,24 @@ void Rr_Draw(Rr_App* App)
         .CommandBuffer = CommandBuffer,
         .Image = ColorImage->Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        .StageMask = VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        .AccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
     Rr_ChainImageBarrier(&ColorImageTransition,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     Rr_ImageBarrier DepthImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = DepthImage->Handle,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-        .StageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
+        .AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .StageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
     };
     Rr_ChainImageBarrier(&DepthImageTransition,
-        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
-        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     App->Config->DrawFunc(App);
@@ -808,16 +808,16 @@ void Rr_Draw(Rr_App* App)
     //     .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
     // };
     Rr_ChainImageBarrier(&ColorImageTransition,
-        VK_PIPELINE_STAGE_2_BLIT_BIT,
-        VK_ACCESS_2_TRANSFER_READ_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     Rr_ImageBarrier SwapchainImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = SwapchainImage,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_2_NONE,
-        .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+        .AccessMask = VK_ACCESS_NONE,
+        .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
     //
     // Rr_ChainImageBarrier(&SwapchainImageTransition,
@@ -838,8 +838,8 @@ void Rr_Draw(Rr_App* App)
     //         .layerCount = 1,
     //     });
     Rr_ChainImageBarrier(&SwapchainImageTransition,
-        VK_PIPELINE_STAGE_2_BLIT_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     //
     Rr_BlitColorImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->ActiveResolution,
@@ -850,8 +850,8 @@ void Rr_Draw(Rr_App* App)
     if (Renderer->ImGui.bInitiated)
     {
         Rr_ChainImageBarrier(&SwapchainImageTransition,
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
@@ -865,7 +865,7 @@ void Rr_Draw(Rr_App* App)
     }
 
     Rr_ChainImageBarrier(&SwapchainImageTransition,
-        VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 

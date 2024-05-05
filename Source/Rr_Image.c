@@ -376,36 +376,31 @@ void Rr_DestroyImage(Rr_Renderer* Renderer, Rr_Image* AllocatedImage)
 
 void Rr_ChainImageBarrier_Aspect(
     Rr_ImageBarrier* TransitionImage,
-    const VkPipelineStageFlags2 DstStageMask,
-    const VkAccessFlags2 DstAccessMask,
-    const VkImageLayout NewLayout,
-    const VkImageAspectFlagBits Aspect)
+    VkPipelineStageFlags DstStageMask,
+    VkAccessFlags DstAccessMask,
+    VkImageLayout NewLayout,
+    VkImageAspectFlagBits Aspect)
 {
-    VkImageMemoryBarrier2 ImageBarrier = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-
-        .pNext = NULL,
-
-        .srcStageMask = TransitionImage->StageMask,
-        .srcAccessMask = TransitionImage->AccessMask,
-        .dstStageMask = DstStageMask,
-        .dstAccessMask = DstAccessMask,
-
-        .oldLayout = TransitionImage->Layout,
-        .newLayout = NewLayout,
-
-        .image = TransitionImage->Image,
-        .subresourceRange = GetImageSubresourceRange(Aspect),
-    };
-
-    const VkDependencyInfo DepInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .pNext = NULL,
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers = &ImageBarrier,
-    };
-
-    vkCmdPipelineBarrier2(TransitionImage->CommandBuffer, &DepInfo);
+    vkCmdPipelineBarrier(
+        TransitionImage->CommandBuffer,
+        TransitionImage->StageMask,
+        DstStageMask,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = NULL,
+            .image = TransitionImage->Image,
+            .oldLayout = TransitionImage->Layout,
+            .newLayout = NewLayout,
+            .subresourceRange = GetImageSubresourceRange(Aspect),
+            .srcAccessMask = TransitionImage->AccessMask,
+            .dstAccessMask = DstAccessMask,
+        });
 
     TransitionImage->Layout = NewLayout;
     TransitionImage->StageMask = DstStageMask;
@@ -415,9 +410,9 @@ void Rr_ChainImageBarrier_Aspect(
 void Rr_ChainImageBarrier(
 
     Rr_ImageBarrier* TransitionImage,
-    const VkPipelineStageFlags2 DstStageMask,
-    const VkAccessFlags2 DstAccessMask,
-    const VkImageLayout NewLayout)
+    VkPipelineStageFlags DstStageMask,
+    VkAccessFlags DstAccessMask,
+    VkImageLayout NewLayout)
 {
     Rr_ChainImageBarrier_Aspect(
         TransitionImage,
