@@ -6,6 +6,8 @@
 #include "Rr_Input.h"
 #include "Rr_Asset.h"
 #include "Rr_Load.h"
+#include "Rr_Array.h"
+#include "Rr_Descriptor.h"
 #include "Rr_Text_Internal.h"
 #include "Rr_Load_Internal.h"
 
@@ -121,6 +123,19 @@ typedef struct Rr_DescriptorWriter
     Rr_DescriptorWriterEntry* Entries;
     VkWriteDescriptorSet* Writes;
 } Rr_DescriptorWriter;
+
+typedef struct Rr_RawMesh
+{
+    Rr_Array Vertices;
+    Rr_Array Indices;
+} Rr_RawMesh;
+
+typedef struct Rr_MeshBuffers
+{
+    size_t IndexCount;
+    Rr_Buffer* IndexBuffer;
+    Rr_Buffer* VertexBuffer;
+} Rr_MeshBuffers;
 
 typedef struct Rr_Image
 {

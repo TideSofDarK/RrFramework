@@ -24,7 +24,9 @@ typedef int b32;
 #endif
 
 #ifndef __cplusplus
+#ifndef __bool_true_false_are_defined
 #define bool u32
 #define true 1
 #define false 0
+#endif
 #endif

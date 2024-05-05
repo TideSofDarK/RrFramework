@@ -39,12 +39,12 @@ void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset*
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
-void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_MeshBuffers* OutMeshBuffers)
+void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_MeshBuffers** OutMeshBuffers)
 {
     const Rr_LoadTask Task = {
         .LoadType = RR_LOAD_TYPE_MESH_FROM_OBJ,
         .Asset = *Asset,
-        .Out = OutMeshBuffers
+        .Out = (void**)OutMeshBuffers
     };
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
@@ -134,7 +134,7 @@ static int SDLCALL Load(void* Data)
             break;
             case RR_LOAD_TYPE_MESH_FROM_OBJ:
             {
-                *(Rr_MeshBuffers*)Task->Out = Rr_CreateMeshFromOBJ(
+                *(Rr_MeshBuffers**)Task->Out = Rr_CreateMeshFromOBJ(
                     Renderer,
                     &UploadContext,
                     &Task->Asset);

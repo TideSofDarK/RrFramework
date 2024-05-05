@@ -7,6 +7,14 @@ typedef struct Rr_DescriptorAllocator Rr_DescriptorAllocator;
 typedef struct Rr_DescriptorWriter Rr_DescriptorWriter;
 typedef struct Rr_DescriptorPoolSizeRatio Rr_DescriptorPoolSizeRatio;
 
+typedef enum Rr_GenericDescriptorSetLayout
+{
+    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS,
+    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL,
+    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW,
+    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT,
+} Rr_GenericDescriptorSetLayout;
+
 Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(VkDevice Device, size_t MaxSets, Rr_DescriptorPoolSizeRatio* Ratios, size_t RatioCount);
 VkDescriptorSet Rr_AllocateDescriptorSet(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout Layout);
 void Rr_ResetDescriptorAllocator(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device);

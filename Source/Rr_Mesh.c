@@ -11,28 +11,29 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 #include "Rr_Types.h"
+#include "Rr_Memory.h"
 
-Rr_MeshBuffers Rr_CreateMeshFromOBJ(
+Rr_MeshBuffers* Rr_CreateMeshFromOBJ(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset)
 {
-    Rr_MeshBuffers MeshBuffers;
+    Rr_MeshBuffers* MeshBuffers = Rr_Calloc(1, sizeof(Rr_MeshBuffers));
     Rr_RawMesh RawMesh;
     Rr_ParseOBJ(&RawMesh, Asset);
-    MeshBuffers.IndexCount = Rr_ArrayCount(RawMesh.Indices);
+    MeshBuffers->IndexCount = Rr_ArrayCount(RawMesh.Indices);
 
     const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh.Vertices);
-    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * MeshBuffers.IndexCount;
+    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * MeshBuffers->IndexCount;
 
-    MeshBuffers.VertexBuffer = Rr_CreateBuffer(
+    MeshBuffers->VertexBuffer = Rr_CreateBuffer(
         Renderer,
         VertexBufferSize,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
         false);
 
-    MeshBuffers.IndexBuffer = Rr_CreateBuffer(
+    MeshBuffers->IndexBuffer = Rr_CreateBuffer(
         Renderer,
         IndexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -42,7 +43,7 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
     Rr_UploadBuffer(
         Renderer,
         UploadContext,
-        MeshBuffers.VertexBuffer->Handle,
+        MeshBuffers->VertexBuffer->Handle,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
         RawMesh.Vertices,
@@ -51,7 +52,7 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
     Rr_UploadBuffer(
         Renderer,
         UploadContext,
-        MeshBuffers.IndexBuffer->Handle,
+        MeshBuffers->IndexBuffer->Handle,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         VK_ACCESS_INDEX_READ_BIT,
         RawMesh.Indices,
@@ -64,8 +65,12 @@ Rr_MeshBuffers Rr_CreateMeshFromOBJ(
 
 void Rr_DestroyMesh(Rr_Renderer* Renderer, Rr_MeshBuffers* Mesh)
 {
+    if (Mesh == NULL) return;
+
     Rr_DestroyBuffer(Renderer, Mesh->IndexBuffer);
     Rr_DestroyBuffer(Renderer, Mesh->VertexBuffer);
+
+    Rr_Free(Mesh);
 }
 
 size_t Rr_GetMeshBuffersSizeOBJ(Rr_Asset* Asset)

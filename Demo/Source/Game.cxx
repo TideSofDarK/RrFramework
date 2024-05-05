@@ -81,18 +81,18 @@ static Rr_GenericPipeline* Uber3DPipeline;
 // static Rr_Image SceneDepthImage;
 // static Rr_Image SceneColorImage;
 
-static Rr_MeshBuffers CottageMesh;
+static Rr_MeshBuffers* CottageMesh;
 static Rr_Image* CottageTexture;
 static Rr_Material CottageMaterial;
 
-static Rr_MeshBuffers PocMesh;
+static Rr_MeshBuffers* PocMesh;
 static Rr_Image* PocDiffuseImage;
 
 static Rr_Material MarbleMaterial;
 static Rr_Image* MarbleDiffuse;
 static Rr_Image* MarbleNormal;
 static Rr_Image* MarbleSpecular;
-static Rr_MeshBuffers MarbleMesh;
+static Rr_MeshBuffers* MarbleMesh;
 
 static Rr_String TestString;
 static Rr_String DebugString;
@@ -141,9 +141,12 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
 
 static void InitGlobals(Rr_Renderer* const Renderer)
 {
-    glm_vec4_copy((vec4){ 0.1f, 0.1f, 0.1f, 1.0f }, ShaderGlobals.AmbientLightColor);
-    glm_vec4_copy((vec4){ 1.0f, 0.95f, 0.93f, 1.0f }, ShaderGlobals.DirectionalLightColor);
-    glm_vec4_copy((vec4){ 1.0f, 1.0f, 1.0f, 1.0f }, ShaderGlobals.DirectionalLightIntensity);
+    vec4 a{ 0.1f, 0.1f, 0.1f, 1.0f };
+    vec4 b{ 1.0f, 0.95f, 0.93f, 1.0f };
+    vec4 c{ 1.0f, 1.0f, 1.0f, 1.0f };
+    glm_vec4_copy(a, ShaderGlobals.AmbientLightColor);
+    glm_vec4_copy(b, ShaderGlobals.DirectionalLightColor);
+    glm_vec4_copy(c, ShaderGlobals.DirectionalLightIntensity);
 
     Rr_Perspective(ShaderGlobals.Proj, 0.7643276f, Rr_GetAspectRatio(Renderer));
     Rr_VulkanMatrix(ShaderGlobals.Intermediate);
@@ -228,9 +231,9 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyImage(Renderer, MarbleDiffuse);
     Rr_DestroyImage(Renderer, MarbleSpecular);
 
-    Rr_DestroyMesh(Renderer, &CottageMesh);
-    Rr_DestroyMesh(Renderer, &PocMesh);
-    Rr_DestroyMesh(Renderer, &MarbleMesh);
+    Rr_DestroyMesh(Renderer, CottageMesh);
+    Rr_DestroyMesh(Renderer, PocMesh);
+    Rr_DestroyMesh(Renderer, MarbleMesh);
 
     Rr_DestroyGenericPipeline(Renderer, Uber3DPipeline);
 
@@ -261,7 +264,8 @@ static void Update(Rr_App* App)
     igSliderFloat3("LightDir", LightDirEuler, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
 
     mat4 LightDirTemp;
-    glm_euler_xyz((vec3){ glm_rad(LightDirEuler[0]), glm_rad(LightDirEuler[1]), glm_rad(LightDirEuler[2]) }, LightDirTemp);
+    vec3 LightRotation = { glm_rad(LightDirEuler[0]), glm_rad(LightDirEuler[1]), glm_rad(LightDirEuler[2]) };
+    glm_euler_xyz(LightRotation, LightDirTemp);
     glm_vec3_copy(LightDirTemp[2], ShaderGlobals.DirectionalLightDirection);
 
     mat4 Temp;
@@ -269,7 +273,8 @@ static void Update(Rr_App* App)
     glm_vec3_copy(CameraPos, Temp[3]);
 
     mat4 Temp2;
-    glm_euler_xyz((vec3){ glm_rad(CameraEuler[0]), glm_rad(CameraEuler[1]), glm_rad(CameraEuler[2]) }, Temp2);
+    vec3 CameraRotation = { glm_rad(CameraEuler[0]), glm_rad(CameraEuler[1]), glm_rad(CameraEuler[2]) };
+    glm_euler_xyz(CameraRotation, Temp2);
 
     glm_mat4_mul(Temp2, Temp, ShaderGlobals.View);
     igEnd();
@@ -292,12 +297,9 @@ static void Draw(Rr_App* const App)
     glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
 
     /* Rendering */
-    Rr_BeginRenderingInfo BeginRenderingInfo = {
-        .Pipeline = Uber3DPipeline,
-        //        .InitialDepth = &SceneDepthImage,
-        //        .InitialColor = &SceneColorImage,
-        .GlobalsData = &ShaderGlobals
-    };
+    Rr_BeginRenderingInfo BeginRenderingInfo = {};
+    BeginRenderingInfo.Pipeline = Uber3DPipeline;
+    BeginRenderingInfo.GlobalsData = &ShaderGlobals;
     Rr_RenderingContext RenderingContext = Rr_BeginRendering(Renderer, &BeginRenderingInfo);
 
     const u64 Ticks = SDL_GetTicks();
@@ -319,36 +321,41 @@ static void Draw(Rr_App* const App)
         mat4 Transform;
 
         SUber3DDraw CottageDraw;
-        glm_euler_xyz((vec3){ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f }, Transform);
+        vec3 CottageRotation{ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f };
+        glm_euler_xyz(CottageRotation, Transform);
         glm_mat4_identity(CottageDraw.Model);
         glm_scale_uni(CottageDraw.Model, 0.75f);
         glm_mat4_mul(Transform, CottageDraw.Model, CottageDraw.Model);
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
-        Rr_DrawMesh(&RenderingContext, &CottageMaterial, &CottageMesh, &CottageDraw);
+        Rr_DrawMesh(&RenderingContext, &CottageMaterial, CottageMesh, &CottageDraw);
 
         SUber3DDraw MarbleDraw;
         glm_mat4_identity(MarbleDraw.Model);
         MarbleDraw.Model[3][1] = 0.1f;
-        Rr_DrawMesh(&RenderingContext, &MarbleMaterial, &MarbleMesh, &MarbleDraw);
+        Rr_DrawMesh(&RenderingContext, &MarbleMaterial, MarbleMesh, &MarbleDraw);
 
-        Rr_DrawDefaultText(&RenderingContext, &TestString, vec2{ 50.0f, 50.0f });
+        vec2 TestStringPosition{ 50.0f, 50.0f };
+        Rr_DrawDefaultText(&RenderingContext, &TestString, TestStringPosition);
+
+        vec2 DebugStringPosition{ 450.0f, 54.0f };
         Rr_DrawCustomText(
             &RenderingContext,
             nullptr,
             &DebugString,
-            vec2{ 450.0f, 54.0f },
+            DebugStringPosition,
             28.0f,
             RR_DRAW_TEXT_FLAGS_NONE_BIT);
     }
     else
     {
+        vec2 LoadingStringPosition = { 25.0f, 540.0f - 25 - 32.0f };
         Rr_DrawCustomText(
             &RenderingContext,
             nullptr,
             &RrLoadingString,
-            vec2{ 25.0f, 540.0f - 25 - 32.0f },
+            LoadingStringPosition,
             32.0f,
             RR_DRAW_TEXT_FLAGS_ANIMATION_BIT);
     }

@@ -27,14 +27,6 @@ extern "C"
 
 typedef u32 Rr_MeshIndexType;
 
-typedef enum Rr_GenericDescriptorSetLayout
-{
-    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS,
-    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL,
-    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW,
-    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT,
-} Rr_GenericDescriptorSetLayout;
-
 /* @TODO: Make a header shared with GLSL! */
 #define RR_MAX_TEXTURES_PER_MATERIAL 4
 
