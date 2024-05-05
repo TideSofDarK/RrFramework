@@ -150,9 +150,9 @@ static int SDLCALL Load(void* Data)
         }
     }
 
-    SDL_Delay(300);
-
     vkEndCommandBuffer(TransferCommandBuffer);
+
+    SDL_Delay(300);
 
     /* Done recording; finally submit it. */
     VkFence Fence;

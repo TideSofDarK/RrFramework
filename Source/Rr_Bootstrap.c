@@ -467,7 +467,7 @@ static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
     CalculateDrawTargetResolution(Renderer, *Width, *Height);
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_DrawTarget* DrawTarget = &Renderer->DrawTargets[Index];
+        Rr_DrawTarget* DrawTarget = &Renderer->Frames[Index].DrawTargets;
 
         if (DrawTarget->ColorImage != NULL)
         {
@@ -557,7 +557,7 @@ static void CleanupFrames(Rr_Renderer* Renderer)
         Rr_DestroyBuffer(Renderer, Frame->StagingBuffer->Buffer);
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
-        CleanupDrawTarget(Renderer, &Renderer->DrawTargets[Index]);
+        CleanupDrawTarget(Renderer, &Frame->DrawTargets);
     }
 }
 

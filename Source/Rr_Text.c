@@ -234,7 +234,12 @@ void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
     Rr_DestroyBuffer(Renderer, Font->Buffer);
 }
 
-Rr_String Rr_CreateString(const char* CString)
+static u32* UTF8ToUTF32(
+    const char* CString,
+    size_t OptionalLength,
+    u32* OutOldBuffer,
+    size_t OldLength,
+    size_t* OutNewLength)
 {
     static u32 Buffer[2048] = { 0 };
 
@@ -244,7 +249,12 @@ Rr_String Rr_CreateString(const char* CString)
     const u8 Four = 240;
     const u8 Five = 248;
 
-    const size_t SourceLength = SDL_strlen(CString);
+    size_t SourceLength = OptionalLength > 0 ? OptionalLength : SDL_strlen(CString);
+    if (SourceLength > 2048)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Exceeding max string length!");
+        abort();
+    }
 
     u8 Carry = 0;
     size_t FinalIndex = 0;
@@ -293,17 +303,57 @@ Rr_String Rr_CreateString(const char* CString)
         }
     }
 
-    const u32* Data = (u32*)Rr_Malloc(sizeof(u32) * FinalIndex);
+    u32* Data;
+    if (OutOldBuffer == NULL)
+    {
+        Data = (u32*)Rr_Malloc(sizeof(u32) * FinalIndex);
+    }
+    else if (OldLength <= FinalIndex)
+    {
+        Data = OutOldBuffer;
+    }
+    else
+    {
+        Data = (u32*)Rr_Realloc(OutOldBuffer, sizeof(u32) * FinalIndex);
+    }
+
     SDL_memcpy((void*)Data, Buffer, sizeof(u32) * FinalIndex);
 
+    *OutNewLength = FinalIndex;
+
+    return Data;
+}
+
+Rr_String Rr_CreateString(const char* CString)
+{
+    Rr_String String;
+    String.Data = UTF8ToUTF32(CString, 0, NULL, 0, &String.Length);
+
+    return String;
+}
+
+Rr_String Rr_CreateEmptyString(size_t Length)
+{
     return (Rr_String){
-        .Data = Data,
-        .Length = FinalIndex
+        .Length = 2048,
+        .Data = (u32*)Rr_Calloc(Length, sizeof(u32))
     };
+}
+
+void Rr_SetString(Rr_String* String, const char* Data, size_t DataLength)
+{
+    if (String == NULL)
+    {
+        return;
+    }
+
+    String->Data = UTF8ToUTF32(Data, DataLength, String->Data, String->Length, &String->Length);
 }
 
 void Rr_DestroyString(const Rr_String* String)
 {
     if (String->Data != NULL)
+    {
         Rr_Free((void*)String->Data);
+    }
 }

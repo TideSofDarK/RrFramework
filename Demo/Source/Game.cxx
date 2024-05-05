@@ -94,6 +94,7 @@ static Rr_Image* MarbleNormal;
 static Rr_Image* MarbleSpecular;
 static Rr_MeshBuffers* MarbleMesh;
 
+static Rr_String LoadingString;
 static Rr_String TestString;
 static Rr_String DebugString;
 static Rr_LoadingContext* LoadingContext;
@@ -209,6 +210,7 @@ static void Init(Rr_App* App)
 
     TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
     DebugString = Rr_CreateString("$c3Colored $c1text$c2");
+    LoadingString = Rr_CreateEmptyString(128);
 }
 
 static void Cleanup(Rr_App* App)
@@ -239,6 +241,7 @@ static void Cleanup(Rr_App* App)
 
     Rr_DestroyString(&TestString);
     Rr_DestroyString(&DebugString);
+    Rr_DestroyString(&LoadingString);
 }
 
 static void Update(Rr_App* App)
@@ -305,15 +308,13 @@ static void Draw(Rr_App* const App)
     const u64 Ticks = SDL_GetTicks();
     const f32 Time = (float)((double)Ticks / 1000.0 * 2);
 
-    std::string LoadingString;
-    Rr_String RrLoadingString = {};
     if (LoadingContext != nullptr)
     {
         u32 Current, Total;
         Rr_GetLoadProgress(LoadingContext, &Current, &Total);
-        LoadingString = std::format("Loading: {}/{}\n", Current, Total);
 
-        RrLoadingString = Rr_CreateString(LoadingString.c_str());
+        std::string Formatted = std::format("Loading: {}/{}\n", Current, Total);
+        Rr_SetString(&LoadingString, Formatted.c_str(), Formatted.length());
     }
 
     if (bLoaded)
@@ -354,15 +355,13 @@ static void Draw(Rr_App* const App)
         Rr_DrawCustomText(
             &RenderingContext,
             nullptr,
-            &RrLoadingString,
+            &LoadingString,
             LoadingStringPosition,
             32.0f,
             RR_DRAW_TEXT_FLAGS_ANIMATION_BIT);
     }
 
     Rr_EndRendering(&RenderingContext);
-
-    Rr_DestroyString(&RrLoadingString);
 }
 
 static void OnFileDropped(Rr_App* App, const char* Path)

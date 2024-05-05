@@ -7,6 +7,7 @@
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
+#include <imgui/cimgui_impl.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_stdinc.h>
@@ -406,7 +407,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
-        .framebuffer = Renderer->DrawTargets[CurrentFrameIndex].Framebuffer,
+        .framebuffer = Renderer->Frames[CurrentFrameIndex].DrawTargets.Framebuffer,
         .renderArea = (VkRect2D){ { 0, 0 }, { ActiveResolution.width, ActiveResolution.height } },
         .renderPass = Renderer->RenderPass,
         .clearValueCount = 2,
@@ -699,8 +700,8 @@ void Rr_Draw(Rr_App* App)
     Rr_Swapchain* Swapchain = &Renderer->Swapchain;
     const size_t FrameIndex = Rr_GetCurrentFrameIndex(Renderer);
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_Image* ColorImage = Renderer->DrawTargets[FrameIndex].ColorImage;
-    Rr_Image* DepthImage = Renderer->DrawTargets[FrameIndex].DepthImage;
+    Rr_Image* ColorImage = Frame->DrawTargets.ColorImage;
+    Rr_Image* DepthImage = Frame->DrawTargets.DepthImage;
 
     vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
@@ -846,22 +847,22 @@ void Rr_Draw(Rr_App* App)
             .width = (Renderer->ActiveResolution.width) * Renderer->Scale,
             .height = (Renderer->ActiveResolution.height) * Renderer->Scale });
 
-    // if (Renderer->ImGui.bInitiated)
-    // {
-    //     Rr_ChainImageBarrier(&SwapchainImageTransition,
-    //         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-    //         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-    //         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    //
-    //     VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
-    //     VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
-    //
-    //     vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
-    //
-    //     ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
-    //
-    //     vkCmdEndRendering(CommandBuffer);
-    // }
+    if (Renderer->ImGui.bInitiated)
+    {
+        Rr_ChainImageBarrier(&SwapchainImageTransition,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
+        VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
+
+        vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
+
+        ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
+
+        vkCmdEndRendering(CommandBuffer);
+    }
 
     Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,

@@ -146,18 +146,6 @@ typedef struct Rr_Image
     VkFormat Format;
 } Rr_Image;
 
-typedef struct Rr_Frame
-{
-    VkCommandPool CommandPool;
-    VkCommandBuffer MainCommandBuffer;
-    VkSemaphore SwapchainSemaphore;
-    VkSemaphore RenderSemaphore;
-    VkFence RenderFence;
-    Rr_DescriptorAllocator DescriptorAllocator;
-    Rr_StagingBuffer* StagingBuffer;
-    VkSemaphore* RetiredSemaphoresArray;
-} Rr_Frame;
-
 typedef struct Rr_Vertex
 {
     vec3 Position;
@@ -217,6 +205,19 @@ typedef struct Rr_DrawTarget
     VkFramebuffer Framebuffer;
 } Rr_DrawTarget;
 
+typedef struct Rr_Frame
+{
+    VkCommandPool CommandPool;
+    VkCommandBuffer MainCommandBuffer;
+    VkSemaphore SwapchainSemaphore;
+    VkSemaphore RenderSemaphore;
+    VkFence RenderFence;
+    Rr_DescriptorAllocator DescriptorAllocator;
+    Rr_StagingBuffer* StagingBuffer;
+    VkSemaphore* RetiredSemaphoresArray;
+    Rr_DrawTarget DrawTargets;
+} Rr_Frame;
+
 typedef struct Rr_Renderer
 {
     /* Essentials */
@@ -258,7 +259,6 @@ typedef struct Rr_Renderer
     VkExtent2D ReferenceResolution;
     VkExtent2D ActiveResolution;
     i32 Scale;
-    Rr_DrawTarget DrawTargets[RR_FRAME_OVERLAP];
 
     VkRenderPass RenderPass;
 
