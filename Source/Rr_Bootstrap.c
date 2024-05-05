@@ -206,7 +206,6 @@ static void InitDevice(Rr_Renderer* const Renderer)
     VkPhysicalDeviceVulkan13Features Features13 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
         .pNext = VK_NULL_HANDLE,
-        .synchronization2 = VK_TRUE,
         .dynamicRendering = VK_TRUE,
     };
 

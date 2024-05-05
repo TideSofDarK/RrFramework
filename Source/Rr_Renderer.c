@@ -698,7 +698,6 @@ void Rr_Draw(Rr_App* App)
     Rr_Renderer* Renderer = App->Renderer;
     VkDevice Device = Renderer->Device;
     Rr_Swapchain* Swapchain = &Renderer->Swapchain;
-    const size_t FrameIndex = Rr_GetCurrentFrameIndex(Renderer);
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     Rr_Image* ColorImage = Frame->DrawTargets.ColorImage;
     Rr_Image* DepthImage = Frame->DrawTargets.DepthImage;
@@ -727,16 +726,18 @@ void Rr_Draw(Rr_App* App)
 
     VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
-    const VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
     /* Process pending loads to acquire images/buffers.
      * Generate wait semaphore input. */
     SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
     const size_t PendingLoadsCount = Rr_ArrayCount(Renderer->UnifiedQueue.PendingLoads);
-    VkSemaphoreSubmitInfo WaitSemaphoreSubmitInfos[PendingLoadsCount + 1];
-    WaitSemaphoreSubmitInfos[0] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, Frame->SwapchainSemaphore);
-    size_t CurrentIndex = 1;
+    VkSemaphore WaitSemaphores[PendingLoadsCount + 1];
+    VkPipelineStageFlags WaitDstStages[PendingLoadsCount + 1];
+    WaitSemaphores[0] = Frame->SwapchainSemaphore;
+    WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    size_t WaitSemaphoreIndex = 1;
 
     for (size_t Index = 0; Index < Rr_ArrayCount(Frame->RetiredSemaphoresArray); ++Index)
     {
@@ -752,7 +753,7 @@ void Rr_Draw(Rr_App* App)
 
         vkCmdPipelineBarrier(
             CommandBuffer,
-            0,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
             0,
             0,
@@ -765,8 +766,9 @@ void Rr_Draw(Rr_App* App)
         Rr_ArrayFree(PendingLoad->Barriers.BufferMemoryBarriersArray);
         Rr_ArrayFree(PendingLoad->Barriers.ImageMemoryBarriersArray);
 
-        WaitSemaphoreSubmitInfos[CurrentIndex] = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, PendingLoad->Semaphore);
-        CurrentIndex++;
+        WaitSemaphores[WaitSemaphoreIndex] = PendingLoad->Semaphore;
+        WaitDstStages[WaitSemaphoreIndex] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+        WaitSemaphoreIndex++;
 
         Rr_ArrayPush(Frame->RetiredSemaphoresArray, &PendingLoad->Semaphore);
     }
@@ -874,23 +876,22 @@ void Rr_Draw(Rr_App* App)
     //     VK_ACCESS_2_TRANSFER_READ_BIT,
     //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(CommandBuffer);
-    VkSemaphoreSubmitInfo SignalSemaphoreSubmitInfo = GetSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, Frame->RenderSemaphore);
-
     vkEndCommandBuffer(CommandBuffer);
 
-    const VkSubmitInfo2 SubmitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+    VkSubmitInfo SubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = NULL,
-        .waitSemaphoreInfoCount = CurrentIndex,
-        .pWaitSemaphoreInfos = WaitSemaphoreSubmitInfos,
-        .commandBufferInfoCount = 1,
-        .pCommandBufferInfos = &CommandBufferSubmitInfo,
-        .signalSemaphoreInfoCount = 1,
-        .pSignalSemaphoreInfos = &SignalSemaphoreSubmitInfo,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &CommandBuffer,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &Frame->RenderSemaphore,
+        .waitSemaphoreCount = WaitSemaphoreIndex,
+        .pWaitSemaphores = WaitSemaphores,
+        .pWaitDstStageMask = WaitDstStages
     };
+
     SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
-    vkQueueSubmit2(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
+    vkQueueSubmit(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
     const VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -927,28 +928,37 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer)
     return &Renderer->Frames[Renderer->FrameNumber % RR_FRAME_OVERLAP];
 }
 
-VkCommandBuffer Rr_BeginImmediate(const Rr_Renderer* Renderer)
+VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer)
 {
-    const Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
+    Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
     vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
     vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
 
-    const VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
 
     return ImmediateMode->CommandBuffer;
 }
 
-void Rr_EndImmediate(const Rr_Renderer* Renderer)
+void Rr_EndImmediate(Rr_Renderer* Renderer)
 {
-    const Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
+    Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
 
     vkEndCommandBuffer(ImmediateMode->CommandBuffer);
 
-    VkCommandBufferSubmitInfo CommandBufferSubmitInfo = GetCommandBufferSubmitInfo(ImmediateMode->CommandBuffer);
-    const VkSubmitInfo2 SubmitInfo = GetSubmitInfo(&CommandBufferSubmitInfo, NULL, NULL);
+    VkSubmitInfo SubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = NULL,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &ImmediateMode->CommandBuffer,
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores = NULL,
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = NULL,
+        .pWaitDstStageMask = NULL
+    };
 
-    vkQueueSubmit2(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
+    vkQueueSubmit(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }
