@@ -81,10 +81,11 @@ add_custom_target(
 set_source_files_properties(Source/Rr_AssetDef.c PROPERTIES OBJECT_DEPENDS "${RR_GLSL_SOURCES}")
 file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
         "Source/*.c"
+        "Source/*.cpp"
 )
 add_library(${PROJECT_NAME} ${RR_SOURCES})
 add_dependencies(${PROJECT_NAME} RrBuiltinShaders)
-target_sources(${PROJECT_NAME} PRIVATE Vendor/Vendor.cpp Vendor/cJSON/cJSON.c)
+target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 target_include_directories(${PROJECT_NAME} PUBLIC Include PRIVATE Include/Rr)
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Vulkan::Headers
