@@ -1,14 +1,14 @@
 #include "Rr_Pipeline.h"
 
-#include <SDL3/SDL_stdinc.h>
-#include <SDL3/SDL_log.h>
-
 #include "Rr_Buffer.h"
 #include "Rr_Defines.h"
 #include "Rr_Helpers.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
+
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_log.h>
 
 enum Rr_VertexInputBinding
 {

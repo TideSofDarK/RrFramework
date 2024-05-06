@@ -1,11 +1,10 @@
 #include "Rr_Descriptor.h"
 
-#include <SDL3/SDL_stdinc.h>
-
 #include "Rr_Defines.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Array.h"
-#include "Rr_App.h"
+
+#include <SDL3/SDL_stdinc.h>
 
 static VkDescriptorPool CreateDescriptorPool(
     VkDevice Device,

@@ -1,16 +1,5 @@
 #include "Rr_Renderer.h"
 
-#include <string.h>
-
-#include <cglm/ivec2.h>
-
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include <imgui/cimgui.h>
-#include <imgui/cimgui_impl.h>
-
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_stdinc.h>
-
 #include "Rr_Text.h"
 #include "Rr_Defines.h"
 #include "Rr_App.h"
@@ -26,6 +15,17 @@
 #include "Rr_Image.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Load.h"
+
+#include <cglm/ivec2.h>
+
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <imgui/cimgui.h>
+#include <imgui/cimgui_impl.h>
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_stdinc.h>
+
+#include <string.h>
 
 static void Rr_BlitPrerenderedDepth(
     VkCommandBuffer CommandBuffer,

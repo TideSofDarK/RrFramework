@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stddef.h>
-
 #include "Rr_Core.h"
 
 #ifdef __cplusplus

@@ -1,10 +1,10 @@
 #include "Rr_Material.h"
 
-#include <SDL3/SDL_stdinc.h>
-
 #include "Rr_Renderer.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
+
+#include <SDL3/SDL_stdinc.h>
 
 Rr_Material* Rr_CreateMaterial(Rr_Renderer* Renderer, Rr_Image** Textures, size_t TextureCount)
 {

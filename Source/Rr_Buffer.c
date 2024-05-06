@@ -1,13 +1,13 @@
 #include "Rr_Buffer.h"
 
-#include <SDL3/SDL_log.h>
-
 #include "Rr_Vulkan.h"
 #include "Rr_Util.h"
 #include "Rr_Memory.h"
 #include "Rr_Array.h"
 #include "Rr_Renderer.h"
 #include "Rr_Load.h"
+
+#include <SDL3/SDL_log.h>
 
 void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,

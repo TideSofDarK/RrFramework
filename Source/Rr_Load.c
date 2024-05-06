@@ -1,9 +1,5 @@
 #include "Rr_Load.h"
 
-#include <SDL3/SDL_thread.h>
-#include <SDL_log.h>
-#include <SDL3/SDL.h>
-
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
 #include "Rr_Array.h"
@@ -12,6 +8,8 @@
 #include "Rr_Helpers.h"
 #include "Rr_Mesh.h"
 #include "Rr_Buffer.h"
+
+#include <SDL3/SDL.h>
 
 Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t InitialTaskCount)
 {

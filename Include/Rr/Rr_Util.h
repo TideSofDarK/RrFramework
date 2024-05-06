@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Rr_Defines.h"
+
 #include <cglm/ivec2.h>
 #include <cglm/vec2.h>
 #include <cglm/vec4.h>
 
-#include "Rr_Defines.h"
+#include <SDL3/SDL.h>
 
 #ifdef __cplusplus
 extern "C"

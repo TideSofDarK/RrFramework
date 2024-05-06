@@ -1,11 +1,11 @@
 #include "Rr_App.h"
+
 #include "Rr_Vulkan.h"
-
-#include <SDL_timer.h>
-
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include <imgui/cimgui.h>
-#include <imgui/cimgui_impl.h>
+#include "Rr_Asset.h"
+#include "Rr_Input.h"
+#include "Rr_Mesh.h"
+#include "Rr_Memory.h"
+#include "Rr_Renderer.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_stdinc.h>
@@ -14,12 +14,11 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_platform.h>
+#include <SDL3/SDL_timer.h>
 
-#include "Rr_Asset.h"
-#include "Rr_Input.h"
-#include "Rr_Mesh.h"
-#include "Rr_Memory.h"
-#include "Rr_Renderer.h"
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <imgui/cimgui.h>
+#include <imgui/cimgui_impl.h>
 
 static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 {

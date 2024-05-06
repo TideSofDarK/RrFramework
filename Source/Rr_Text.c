@@ -1,9 +1,5 @@
 #include "Rr_Text.h"
 
-#include <SDL_log.h>
-
-#include <cJSON/cJSON.h>
-
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Pipeline.h"
@@ -13,6 +9,10 @@
 #include "Rr_Util.h"
 #include "Rr_Load.h"
 #include "Rr_Descriptor.h"
+
+#include <SDL_log.h>
+
+#include <cJSON/cJSON.h>
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer)
 {

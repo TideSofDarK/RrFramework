@@ -1,16 +1,15 @@
 #include "Rr_Mesh.h"
 
+#include "Rr_Array.h"
+#include "Rr_Vulkan.h"
+#include "Rr_Buffer.h"
+#include "Rr_Memory.h"
+
 #include <cglm/vec3.h>
 #include <cglm/vec4.h>
 #include <cglm/ivec3.h>
 
 #include <SDL_stdinc.h>
-
-#include "Rr_Array.h"
-#include "Rr_Vulkan.h"
-#include "Rr_Buffer.h"
-#include "Rr_Memory.h"
-#include "Rr_App.h"
 
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_Renderer* Renderer,

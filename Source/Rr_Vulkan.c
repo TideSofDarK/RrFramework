@@ -1,13 +1,6 @@
 #include "Rr_Renderer.h"
+
 #include "Rr_Vulkan.h"
-
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
-
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include <imgui/cimgui.h>
-#include <imgui/cimgui_impl.h>
-
 #include "Rr_Defines.h"
 #include "Rr_App.h"
 #include "Rr_Descriptor.h"
@@ -18,6 +11,13 @@
 #include "Rr_Memory.h"
 #include "Rr_Text.h"
 #include "Rr_Load.h"
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
+
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <imgui/cimgui.h>
+#include <imgui/cimgui_impl.h>
 
 static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
 {

@@ -1,10 +1,10 @@
 #include "Rr_String.h"
 
-#include <stdlib.h>
+#include "Rr_Memory.h"
 
 #include <SDL3/SDL.h>
 
-#include "Rr_Memory.h"
+#include <stdlib.h>
 
 static u32* UTF8ToUTF32(
     const char* CString,
