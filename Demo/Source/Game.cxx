@@ -1,7 +1,6 @@
 #include "Game.hxx"
 
-#include <string>
-#include <format>
+#include "DevTools.hxx"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -19,7 +18,8 @@
 
 #include <Rr/Rr_Framework.h>
 
-#include "DevTools.hxx"
+#include <string>
+#include <format>
 
 typedef struct SUber3DGlobals
 {
