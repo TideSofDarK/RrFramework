@@ -25,8 +25,6 @@ extern "C"
 #define RR_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
 #define RR_STAGING_BUFFER_SIZE ((1 << 20) * 16)
 
-typedef u32 Rr_MeshIndexType;
-
 /* @TODO: Make a header shared with GLSL! */
 #define RR_MAX_TEXTURES_PER_MATERIAL 4
 

@@ -14,6 +14,8 @@
 typedef struct SDL_Semaphore SDL_Semaphore;
 typedef struct SDL_Thread SDL_Thread;
 
+typedef u32 Rr_MeshIndexType;
+
 typedef struct Rr_Buffer
 {
     VkBuffer Handle;

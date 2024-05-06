@@ -1,10 +1,14 @@
 #pragma once
 
-#include <stddef.h>
-
-#ifdef __cplusplus
-extern "C"
-{
+#ifndef __cplusplus
+    #include <stddef.h>
+    #ifndef __bool_true_false_are_defined
+        #define bool u32
+        #define true 1
+        #define false 0
+    #endif
+#else
+    #include <cstddef>
 #endif
 
 typedef unsigned char u8;
@@ -18,15 +22,3 @@ typedef signed long long i64;
 typedef float f32;
 typedef double f64;
 typedef int b32;
-
-#ifdef __cplusplus
-}
-#endif
-
-#ifndef __cplusplus
-#ifndef __bool_true_false_are_defined
-#define bool u32
-#define true 1
-#define false 0
-#endif
-#endif
