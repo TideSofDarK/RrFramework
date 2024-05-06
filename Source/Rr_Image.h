@@ -1,7 +1,16 @@
 #pragma once
 
+#include "Rr_Framework.h"
 #include "Rr_Vulkan.h"
-#include "Rr_Types.h"
+
+struct Rr_Image
+{
+    VkImage Handle;
+    VkImageView View;
+    VmaAllocation Allocation;
+    VkExtent3D Extent;
+    VkFormat Format;
+};
 
 Rr_Image* Rr_CreateImage(
     Rr_Renderer* Renderer,
@@ -43,3 +52,8 @@ void Rr_ChainImageBarrier(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     VkImageLayout NewLayout);
+
+size_t Rr_GetImageSizePNG(const Rr_Asset* Asset);
+size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset);
+
+

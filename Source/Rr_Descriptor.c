@@ -5,7 +5,6 @@
 #include "Rr_Defines.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Array.h"
-#include "Rr_Types.h"
 
 static VkDescriptorPool CreateDescriptorPool(
     VkDevice Device,

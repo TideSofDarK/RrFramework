@@ -1,17 +1,9 @@
 #include "Rr_Image.h"
-#include "Rr_Image_Internal.h"
 #include "Rr_Memory.h"
 
 #include <SDL3/SDL.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#define STBI_MALLOC Rr_Malloc
-#define STBI_REALLOC Rr_Realloc
-#define STBI_FREE Rr_Free
 #include <stb/stb_image.h>
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb/stb_image_write.h>
 
 #include <tinyexr/tinyexr.h>
 
@@ -19,9 +11,8 @@
 #include "Rr_Helpers.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Load.h"
-#include "Rr_Types.h"
 #include "Rr_Array.h"
-#include "Rr_Load_Internal.h"
+#include "Rr_Buffer.h"
 
 void Rr_UploadImage(
     const Rr_Renderer* Renderer,

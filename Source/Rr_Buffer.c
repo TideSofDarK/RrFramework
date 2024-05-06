@@ -4,11 +4,10 @@
 
 #include "Rr_Vulkan.h"
 #include "Rr_Util.h"
-#include "Rr_Types.h"
 #include "Rr_Memory.h"
 #include "Rr_Array.h"
-#include "Rr_Renderer_Internal.h"
-#include "Rr_Load_Internal.h"
+#include "Rr_Renderer.h"
+#include "Rr_Load.h"
 
 void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,

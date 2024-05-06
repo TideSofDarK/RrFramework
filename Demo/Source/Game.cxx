@@ -17,15 +17,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_scancode.h>
 
-#include <Rr/Rr_Math.h>
-#include <Rr/Rr_Image.h>
-#include <Rr/Rr_App.h>
-#include <Rr/Rr_Mesh.h>
-#include <Rr/Rr_Renderer.h>
-#include <Rr/Rr_Input.h>
-#include <Rr/Rr_Pipeline.h>
-#include <Rr/Rr_Material.h>
-#include <Rr/Rr_Load.h>
+#include <Rr/Rr_Framework.h>
 
 #include "DevTools.hxx"
 
@@ -78,12 +70,12 @@ static Rr_GenericPipeline* Uber3DPipeline;
 
 static Rr_StaticMesh* CottageMesh;
 static Rr_Image* CottageTexture;
-static Rr_Material CottageMaterial;
+static Rr_Material* CottageMaterial;
 
 static Rr_StaticMesh* PocMesh;
 static Rr_Image* PocDiffuseImage;
 
-static Rr_Material MarbleMaterial;
+static Rr_Material* MarbleMaterial;
 static Rr_Image* MarbleDiffuse;
 static Rr_Image* MarbleNormal;
 static Rr_Image* MarbleSpecular;
@@ -212,8 +204,8 @@ static void Cleanup(Rr_App* App)
 {
     Rr_Renderer* Renderer = Rr_GetRenderer(App);
 
-    Rr_DestroyMaterial(Renderer, &CottageMaterial);
-    Rr_DestroyMaterial(Renderer, &MarbleMaterial);
+    Rr_DestroyMaterial(Renderer, CottageMaterial);
+    Rr_DestroyMaterial(Renderer, MarbleMaterial);
 
     // Rr_DestroyImage(Renderer, &SceneDepthImage);
     // Rr_DestroyImage(Renderer, &SceneColorImage);
@@ -282,7 +274,7 @@ static void Update(Rr_App* App)
     }
 }
 
-static void Draw(Rr_App* const App)
+static void Draw(Rr_App* App)
 {
     Rr_Renderer* Renderer = Rr_GetRenderer(App);
 
@@ -319,12 +311,12 @@ static void Draw(Rr_App* const App)
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
-        Rr_DrawStaticMesh(&RenderingContext, &CottageMaterial, CottageMesh, &CottageDraw);
+        Rr_DrawStaticMesh(&RenderingContext, CottageMaterial, CottageMesh, &CottageDraw);
 
         SUber3DDraw MarbleDraw;
         glm_mat4_identity(MarbleDraw.Model);
         MarbleDraw.Model[3][1] = 0.1f;
-        Rr_DrawStaticMesh(&RenderingContext, &MarbleMaterial, MarbleMesh, &MarbleDraw);
+        Rr_DrawStaticMesh(&RenderingContext, MarbleMaterial, MarbleMesh, &MarbleDraw);
 
         vec2 TestStringPosition{ 50.0f, 50.0f };
         Rr_DrawDefaultText(&RenderingContext, &TestString, TestStringPosition);

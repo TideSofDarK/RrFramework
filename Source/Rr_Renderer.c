@@ -1,5 +1,4 @@
 #include "Rr_Renderer.h"
-#include "Rr_Renderer_Internal.h"
 
 #include <string.h>
 
@@ -24,9 +23,9 @@
 #include "Rr_Memory.h"
 #include "Rr_Util.h"
 #include "Rr_Material.h"
-#include "Rr_Types.h"
-#include "Rr_Image_Internal.h"
-#include "Rr_Load_Internal.h"
+#include "Rr_Image.h"
+#include "Rr_Pipeline.h"
+#include "Rr_Load.h"
 
 static void Rr_BlitPrerenderedDepth(
     VkCommandBuffer CommandBuffer,

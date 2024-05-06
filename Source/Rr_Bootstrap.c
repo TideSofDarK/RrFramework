@@ -15,12 +15,9 @@
 #include "Rr_Helpers.h"
 #include "Rr_Buffer.h"
 #include "Rr_Mesh.h"
-#include "Rr_Pipeline.h"
 #include "Rr_Memory.h"
 #include "Rr_Text.h"
-#include "Rr_Types.h"
-#include "Rr_Image_Internal.h"
-#include "Rr_Load_Internal.h"
+#include "Rr_Load.h"
 
 static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
 {

@@ -21,3 +21,13 @@ void Rr_Free(void* Ptr)
 {
     SDL_free(Ptr);
 }
+
+void* Rr_AlignedAlloc(size_t Alignment, size_t Bytes)
+{
+    return SDL_aligned_alloc(Alignment, Bytes);
+}
+
+void Rr_AlignedFree(void* Ptr)
+{
+    SDL_aligned_free(Ptr);
+}

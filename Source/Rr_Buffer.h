@@ -3,6 +3,19 @@
 #include "Rr_Framework.h"
 #include "Rr_Vulkan.h"
 
+struct Rr_Buffer
+{
+    VkBuffer Handle;
+    VmaAllocationInfo AllocationInfo;
+    VmaAllocation Allocation;
+};
+
+struct Rr_StagingBuffer
+{
+    Rr_Buffer* Buffer;
+    size_t CurrentOffset;
+};
+
 void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,

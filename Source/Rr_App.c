@@ -15,12 +15,11 @@
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_platform.h>
 
-#include "Rr_Renderer_Internal.h"
 #include "Rr_Asset.h"
 #include "Rr_Input.h"
 #include "Rr_Mesh.h"
 #include "Rr_Memory.h"
-#include "Rr_Types.h"
+#include "Rr_Renderer.h"
 
 static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 {

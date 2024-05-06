@@ -1,8 +1,14 @@
 #pragma once
 
+#include <SDL3/SDL.h>
+
 #include "Rr_Framework.h"
-#include "Rr_Asset.h"
-#include "Rr_Vulkan.h"
+#include "Rr_Renderer.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 typedef struct Rr_AcquireBarriers
 {
@@ -38,3 +44,19 @@ struct Rr_PendingLoad
     const void* Userdata;
     VkSemaphore Semaphore;
 };
+
+struct Rr_LoadingContext
+{
+    bool bAsync;
+    Rr_LoadStatus Status;
+    Rr_Renderer* Renderer;
+    Rr_LoadTask* Tasks;
+    SDL_Thread* Thread;
+    SDL_Semaphore* Semaphore;
+    Rr_LoadingCallback LoadingCallback;
+    const void* Userdata;
+};
+
+#ifdef __cplusplus
+}
+#endif

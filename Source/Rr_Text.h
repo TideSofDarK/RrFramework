@@ -3,12 +3,8 @@
 #include <cglm/vec3.h>
 
 #include "Rr_Framework.h"
+#include "Rr_Vulkan.h"
 #include "Rr_Image.h"
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
 
 #define RR_TEXT_BUFFER_SIZE (1024 * 1024)
 #define RR_TEXT_DEFAULT_SIZE (0.0f)
@@ -63,14 +59,24 @@ typedef struct Rr_TextPushConstants
     mat4 ReservedE;
 } Rr_TextPushConstants;
 
-typedef struct Rr_Font
+struct Rr_Font
 {
     Rr_Image* Atlas;
     Rr_Buffer* Buffer;
     f32 Advances[RR_TEXT_MAX_GLYPHS];
     f32 LineHeight;
     f32 DefaultSize;
-} Rr_Font;
+};
+
+typedef struct Rr_TextPipeline
+{
+    VkDescriptorSetLayout DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT];
+    VkPipeline Handle;
+    VkPipelineLayout Layout;
+    Rr_Buffer* QuadBuffer;
+    Rr_Buffer* GlobalsBuffers[RR_FRAME_OVERLAP];
+    Rr_Buffer* TextBuffers[RR_FRAME_OVERLAP];
+} Rr_TextPipeline;
 
 void Rr_InitTextRenderer(Rr_Renderer* Renderer);
 void Rr_CleanupTextRenderer(Rr_Renderer* Renderer);
@@ -78,17 +84,4 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer);
 Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON);
 void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font);
 
-typedef struct Rr_String
-{
-    size_t Length;
-    u32* Data;
-} Rr_String;
 
-Rr_String Rr_CreateString(const char* CString);
-Rr_String Rr_CreateEmptyString(size_t Length);
-void Rr_SetString(Rr_String* String, const char* CString, size_t OptionalLength);
-void Rr_DestroyString(const Rr_String* String);
-
-#ifdef __cplusplus
-}
-#endif
