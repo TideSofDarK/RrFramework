@@ -1,5 +1,7 @@
 #include "Rr_String.h"
 
+#include <stdlib.h>
+
 #include <SDL3/SDL.h>
 
 #include "Rr_Memory.h"
