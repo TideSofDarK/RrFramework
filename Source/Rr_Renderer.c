@@ -121,15 +121,15 @@ Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* const Renderer, Rr_BeginRende
     return RenderingContext;
 }
 
-void Rr_DrawMesh(
+void Rr_DrawStaticMesh(
     Rr_RenderingContext* RenderingContext,
-    const Rr_Material* Material,
-    const Rr_MeshBuffers* MeshBuffers,
+    Rr_Material* Material,
+    Rr_StaticMesh* StaticMesh,
     const void* DrawData)
 {
     Rr_DrawMeshInfo DrawMeshInfo = {
         .Material = Material,
-        .MeshBuffers = MeshBuffers,
+        .StaticMesh = StaticMesh,
         .DrawData = { 0 }
     };
     const size_t DrawDataSize = SDL_min(RenderingContext->Info->Pipeline->DrawSize, RR_PIPELINE_MAX_DRAW_SIZE);
@@ -504,14 +504,14 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
                 CommandBuffer,
                 0,
                 1,
-                &DrawMeshInfo->MeshBuffers->VertexBuffer->Handle,
+                &DrawMeshInfo->StaticMesh->VertexBuffer->Handle,
                 &(VkDeviceSize){ 0 });
             vkCmdBindIndexBuffer(
                 CommandBuffer,
-                DrawMeshInfo->MeshBuffers->IndexBuffer->Handle,
+                DrawMeshInfo->StaticMesh->IndexBuffer->Handle,
                 0,
                 VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexed(CommandBuffer, DrawMeshInfo->MeshBuffers->IndexCount, 1, 0, 0, 0);
+            vkCmdDrawIndexed(CommandBuffer, DrawMeshInfo->StaticMesh->IndexCount, 1, 0, 0, 0);
         }
         Rr_ArrayFree(Indices);
     }

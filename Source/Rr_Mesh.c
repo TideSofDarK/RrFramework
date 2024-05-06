@@ -7,33 +7,31 @@
 #include <SDL_stdinc.h>
 
 #include "Rr_Array.h"
-#include "Rr_Renderer.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 #include "Rr_Types.h"
 #include "Rr_Memory.h"
 
-Rr_MeshBuffers* Rr_CreateMeshFromOBJ(
+Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset)
 {
-    Rr_MeshBuffers* MeshBuffers = Rr_Calloc(1, sizeof(Rr_MeshBuffers));
-    Rr_RawMesh RawMesh;
-    Rr_ParseOBJ(&RawMesh, Asset);
-    MeshBuffers->IndexCount = Rr_ArrayCount(RawMesh.Indices);
+    Rr_StaticMesh* StaticMesh = Rr_Calloc(1, sizeof(Rr_StaticMesh));
+    Rr_RawMesh* RawMesh = Rr_CreateRawMeshOBJ(Asset);
+    StaticMesh->IndexCount = Rr_ArrayCount(RawMesh->Indices);
 
-    const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh.Vertices);
-    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * MeshBuffers->IndexCount;
+    const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh->Vertices);
+    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * StaticMesh->IndexCount;
 
-    MeshBuffers->VertexBuffer = Rr_CreateBuffer(
+    StaticMesh->VertexBuffer = Rr_CreateBuffer(
         Renderer,
         VertexBufferSize,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
         false);
 
-    MeshBuffers->IndexBuffer = Rr_CreateBuffer(
+    StaticMesh->IndexBuffer = Rr_CreateBuffer(
         Renderer,
         IndexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -43,27 +41,27 @@ Rr_MeshBuffers* Rr_CreateMeshFromOBJ(
     Rr_UploadBuffer(
         Renderer,
         UploadContext,
-        MeshBuffers->VertexBuffer->Handle,
+        StaticMesh->VertexBuffer->Handle,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
-        RawMesh.Vertices,
+        RawMesh->Vertices,
         VertexBufferSize);
 
     Rr_UploadBuffer(
         Renderer,
         UploadContext,
-        MeshBuffers->IndexBuffer->Handle,
+        StaticMesh->IndexBuffer->Handle,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         VK_ACCESS_INDEX_READ_BIT,
-        RawMesh.Indices,
+        RawMesh->Indices,
         IndexBufferSize);
 
-    Rr_DestroyRawMesh(&RawMesh);
+    Rr_DestroyRawMesh(RawMesh);
 
-    return MeshBuffers;
+    return StaticMesh;
 }
 
-void Rr_DestroyMesh(Rr_Renderer* Renderer, Rr_MeshBuffers* Mesh)
+void Rr_DestroyStaticMesh(Rr_Renderer* Renderer, Rr_StaticMesh* Mesh)
 {
     if (Mesh == NULL) return;
 
@@ -73,21 +71,20 @@ void Rr_DestroyMesh(Rr_Renderer* Renderer, Rr_MeshBuffers* Mesh)
     Rr_Free(Mesh);
 }
 
-size_t Rr_GetMeshBuffersSizeOBJ(Rr_Asset* Asset)
+size_t Rr_GetStaticMeshSizeOBJ(Rr_Asset* Asset)
 {
-    Rr_RawMesh RawMesh;
-    Rr_ParseOBJ(&RawMesh, Asset);
+    Rr_RawMesh* RawMesh = Rr_CreateRawMeshOBJ(Asset);
 
-    const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh.Vertices);
-    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_ArrayCount(RawMesh.Indices);
-    const size_t TotalSize = VertexBufferSize + IndexBufferSize;
+    size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh->Vertices);
+    size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_ArrayCount(RawMesh->Indices);
+    size_t TotalSize = VertexBufferSize + IndexBufferSize;
 
-    Rr_DestroyRawMesh(&RawMesh);
+    Rr_DestroyRawMesh(RawMesh);
 
     return TotalSize;
 }
 
-static size_t GetNewLine(const char* Data, const size_t Length, size_t CurrentIndex)
+static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
 {
     CurrentIndex++;
     while (CurrentIndex < Length && Data[CurrentIndex] != '\n')
@@ -98,7 +95,7 @@ static size_t GetNewLine(const char* Data, const size_t Length, size_t CurrentIn
     return CurrentIndex;
 }
 
-void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
+Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset)
 {
     /* Init scratch buffers. */
     vec3* ScratchPositions;
@@ -114,6 +111,7 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
     Rr_ArrayInit(ScratchIndices, ivec3, 1000);
 
     /* Parse OBJ data. */
+    Rr_RawMesh* RawMesh = Rr_Calloc(1, sizeof(Rr_RawMesh));
     Rr_ArrayInit(RawMesh->Vertices, Rr_Vertex, 1);
     Rr_ArrayInit(RawMesh->Indices, u32, 1);
 
@@ -235,10 +233,14 @@ void Rr_ParseOBJ(Rr_RawMesh* RawMesh, Rr_Asset* Asset)
     Rr_ArrayFree(ScratchTexCoords);
     Rr_ArrayFree(ScratchNormals);
     Rr_ArrayFree(ScratchIndices);
+
+    return RawMesh;
 }
 
 void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh)
 {
     Rr_ArrayFree(RawMesh->Vertices);
     Rr_ArrayFree(RawMesh->Indices);
+
+    Rr_Free(RawMesh);
 }

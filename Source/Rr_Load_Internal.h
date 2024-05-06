@@ -24,7 +24,7 @@ typedef struct Rr_UploadContext
 typedef enum Rr_LoadType
 {
     RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
-    RR_LOAD_TYPE_MESH_FROM_OBJ,
+    RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
 } Rr_LoadType;
 
 typedef struct Rr_LoadTask

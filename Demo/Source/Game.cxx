@@ -76,18 +76,18 @@ static Rr_GenericPipeline* Uber3DPipeline;
 // static Rr_Image SceneDepthImage;
 // static Rr_Image SceneColorImage;
 
-static Rr_MeshBuffers* CottageMesh;
+static Rr_StaticMesh* CottageMesh;
 static Rr_Image* CottageTexture;
 static Rr_Material CottageMaterial;
 
-static Rr_MeshBuffers* PocMesh;
+static Rr_StaticMesh* PocMesh;
 static Rr_Image* PocDiffuseImage;
 
 static Rr_Material MarbleMaterial;
 static Rr_Image* MarbleDiffuse;
 static Rr_Image* MarbleNormal;
 static Rr_Image* MarbleSpecular;
-static Rr_MeshBuffers* MarbleMesh;
+static Rr_StaticMesh* MarbleMesh;
 
 static Rr_String LoadingString;
 static Rr_String TestString;
@@ -222,9 +222,9 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyImage(Renderer, MarbleDiffuse);
     Rr_DestroyImage(Renderer, MarbleSpecular);
 
-    Rr_DestroyMesh(Renderer, CottageMesh);
-    Rr_DestroyMesh(Renderer, PocMesh);
-    Rr_DestroyMesh(Renderer, MarbleMesh);
+    Rr_DestroyStaticMesh(Renderer, CottageMesh);
+    Rr_DestroyStaticMesh(Renderer, PocMesh);
+    Rr_DestroyStaticMesh(Renderer, MarbleMesh);
 
     Rr_DestroyGenericPipeline(Renderer, Uber3DPipeline);
 
@@ -319,12 +319,12 @@ static void Draw(Rr_App* const App)
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
-        Rr_DrawMesh(&RenderingContext, &CottageMaterial, CottageMesh, &CottageDraw);
+        Rr_DrawStaticMesh(&RenderingContext, &CottageMaterial, CottageMesh, &CottageDraw);
 
         SUber3DDraw MarbleDraw;
         glm_mat4_identity(MarbleDraw.Model);
         MarbleDraw.Model[3][1] = 0.1f;
-        Rr_DrawMesh(&RenderingContext, &MarbleMaterial, MarbleMesh, &MarbleDraw);
+        Rr_DrawStaticMesh(&RenderingContext, &MarbleMaterial, MarbleMesh, &MarbleDraw);
 
         vec2 TestStringPosition{ 50.0f, 50.0f };
         Rr_DrawDefaultText(&RenderingContext, &TestString, TestStringPosition);

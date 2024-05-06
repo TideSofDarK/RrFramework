@@ -130,12 +130,12 @@ typedef struct Rr_RawMesh
     Rr_Array Indices;
 } Rr_RawMesh;
 
-typedef struct Rr_MeshBuffers
+typedef struct Rr_StaticMesh
 {
     size_t IndexCount;
     Rr_Buffer* IndexBuffer;
     Rr_Buffer* VertexBuffer;
-} Rr_MeshBuffers;
+} Rr_StaticMesh;
 
 typedef struct Rr_Image
 {

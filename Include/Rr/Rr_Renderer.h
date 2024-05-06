@@ -20,7 +20,7 @@ typedef struct Rr_AppConfig Rr_AppConfig;
 typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_Material Rr_Material;
 typedef struct Rr_App Rr_App;
-typedef struct Rr_MeshBuffers Rr_MeshBuffers;
+typedef struct Rr_StaticMesh Rr_StaticMesh;
 typedef struct Rr_LoadingContext Rr_LoadingContext;
 typedef struct Rr_PendingLoad Rr_PendingLoad;
 typedef struct Rr_Frame Rr_Frame;
@@ -43,7 +43,7 @@ typedef struct Rr_BeginRenderingInfo
 typedef struct Rr_DrawMeshInfo
 {
     const Rr_Material* Material;
-    const Rr_MeshBuffers* MeshBuffers;
+    const Rr_StaticMesh* StaticMesh;
     char DrawData[RR_PIPELINE_MAX_DRAW_SIZE];
 } Rr_DrawMeshInfo;
 typedef struct Rr_DrawTextInfo
@@ -62,10 +62,10 @@ typedef struct Rr_RenderingContext
     Rr_DrawTextInfo* DrawTextArray;
 } Rr_RenderingContext;
 Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* Renderer, Rr_BeginRenderingInfo* Info);
-void Rr_DrawMesh(
+void Rr_DrawStaticMesh(
     Rr_RenderingContext* RenderingContext,
-    const Rr_Material* Material,
-    const Rr_MeshBuffers* MeshBuffers,
+    Rr_Material* Material,
+    Rr_StaticMesh* StaticMesh,
     const void* DrawData);
 void Rr_DrawCustomText(
     Rr_RenderingContext* RenderingContext,

@@ -11,7 +11,7 @@ extern "C"
 typedef struct Rr_LoadingContext Rr_LoadingContext;
 typedef struct Rr_Asset Rr_Asset;
 typedef struct Rr_Image Rr_Image;
-typedef struct Rr_MeshBuffers Rr_MeshBuffers;
+typedef struct Rr_StaticMesh Rr_StaticMesh;
 typedef struct Rr_LoadTask Rr_LoadTask;
 
 typedef enum Rr_LoadStatus
@@ -26,7 +26,7 @@ typedef void (*Rr_LoadingCallback)(Rr_Renderer* Renderer, const void* Userdata);
 
 Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, size_t InitialTaskCount);
 void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_Image** OutImage);
-void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_MeshBuffers** OutMeshBuffers);
+void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_StaticMesh** OutStaticMesh);
 void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, Rr_LoadingCallback LoadingCallback, const void* Userdata);
 Rr_LoadStatus Rr_LoadImmediate(Rr_LoadingContext* LoadingContext);
 void Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal);

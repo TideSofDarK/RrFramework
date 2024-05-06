@@ -39,12 +39,12 @@ void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset*
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
-void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_MeshBuffers** OutMeshBuffers)
+void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_StaticMesh** OutStaticMesh)
 {
     const Rr_LoadTask Task = {
-        .LoadType = RR_LOAD_TYPE_MESH_FROM_OBJ,
+        .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
         .Asset = *Asset,
-        .Out = (void**)OutMeshBuffers
+        .Out = (void**)OutStaticMesh
     };
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
@@ -74,9 +74,9 @@ static int SDLCALL Load(void* Data)
                 ImageCount++;
             }
             break;
-            case RR_LOAD_TYPE_MESH_FROM_OBJ:
+            case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
-                StagingBufferSize += Rr_GetMeshBuffersSizeOBJ(&Task->Asset);
+                StagingBufferSize += Rr_GetStaticMeshSizeOBJ(&Task->Asset);
                 BufferCount++;
                 BufferCount++;
             }
@@ -132,9 +132,9 @@ static int SDLCALL Load(void* Data)
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             }
             break;
-            case RR_LOAD_TYPE_MESH_FROM_OBJ:
+            case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
-                *(Rr_MeshBuffers**)Task->Out = Rr_CreateMeshFromOBJ(
+                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshFromOBJ(
                     Renderer,
                     &UploadContext,
                     &Task->Asset);
