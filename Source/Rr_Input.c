@@ -49,11 +49,6 @@ void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config)
     *State = NewState;
 }
 
-Rr_InputState Rr_GetInputState(Rr_App* App)
-{
-    return App->InputState;
-}
-
 Rr_KeyState Rr_GetKeyState(const Rr_InputState State, const u32 Key)
 {
     return (State >> (2 * Key)) & 3;

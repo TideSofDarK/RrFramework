@@ -259,3 +259,8 @@ Rr_Renderer* Rr_GetRenderer(Rr_App* App)
 {
     return App->Renderer;
 }
+
+Rr_InputState Rr_GetInputState(Rr_App* App)
+{
+    return App->InputState;
+}

@@ -4,6 +4,7 @@
 #include "Rr_String.h"
 #include "Rr_Asset.h"
 #include "Rr_Math.h"
+#include "Rr_Input.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -183,6 +184,7 @@ void Rr_Run(Rr_AppConfig* Config);
 void Rr_DebugOverlay(Rr_App* App);
 void Rr_ToggleFullscreen(Rr_App* App);
 Rr_Renderer* Rr_GetRenderer(Rr_App* App);
+Rr_InputState Rr_GetInputState(Rr_App* App);
 
 #ifdef __cplusplus
 }
