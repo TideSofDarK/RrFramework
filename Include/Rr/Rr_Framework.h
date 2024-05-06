@@ -33,7 +33,6 @@ typedef struct Rr_Asset Rr_Asset;
 typedef struct Rr_Frame Rr_Frame;
 typedef struct Rr_Font Rr_Font;
 typedef struct Rr_Renderer Rr_Renderer;
-typedef struct Rr_InputConfig Rr_InputConfig;
 typedef struct Rr_AppConfig Rr_AppConfig;
 typedef struct Rr_App Rr_App;
 
