@@ -33,8 +33,8 @@ typedef struct Rr_Frame Rr_Frame;
 typedef struct Rr_Font Rr_Font;
 typedef struct Rr_Renderer Rr_Renderer;
 typedef struct Rr_InputConfig Rr_InputConfig;
-typedef struct SDL_Window SDL_Window;
-typedef struct SDL_Mutex SDL_Mutex;
+typedef struct Rr_AppConfig Rr_AppConfig;
+typedef struct Rr_App Rr_App;
 
 /* Pipeline */
 typedef enum Rr_VertexInputType
@@ -166,9 +166,6 @@ Rr_LoadStatus Rr_LoadImmediate(Rr_LoadingContext* LoadingContext);
 void Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal);
 
 /* App */
-typedef struct Rr_AppConfig Rr_AppConfig;
-typedef struct Rr_App Rr_App;
-
 struct Rr_AppConfig
 {
     const char* Title;

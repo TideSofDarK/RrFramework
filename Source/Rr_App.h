@@ -5,6 +5,9 @@
 #include "Rr_Framework.h"
 #include "Rr_Input.h"
 
+typedef struct SDL_Window SDL_Window;
+typedef struct SDL_Mutex SDL_Mutex;
+
 typedef struct Rr_FrameTime
 {
 #ifdef RR_PERFORMANCE_COUNTER
