@@ -217,7 +217,7 @@ typedef struct Rr_Frame
     Rr_DescriptorAllocator DescriptorAllocator;
     Rr_StagingBuffer* StagingBuffer;
     VkSemaphore* RetiredSemaphoresArray;
-    Rr_DrawTarget DrawTargets;
+    Rr_DrawTarget DrawTarget;
 } Rr_Frame;
 
 typedef struct Rr_Renderer

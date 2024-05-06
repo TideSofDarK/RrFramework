@@ -407,7 +407,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
-        .framebuffer = Renderer->Frames[CurrentFrameIndex].DrawTargets.Framebuffer,
+        .framebuffer = Renderer->Frames[CurrentFrameIndex].DrawTarget.Framebuffer,
         .renderArea = (VkRect2D){ { 0, 0 }, { ActiveResolution.width, ActiveResolution.height } },
         .renderPass = Renderer->RenderPass,
         .clearValueCount = 2,
@@ -699,8 +699,8 @@ void Rr_Draw(Rr_App* App)
     VkDevice Device = Renderer->Device;
     Rr_Swapchain* Swapchain = &Renderer->Swapchain;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_Image* ColorImage = Frame->DrawTargets.ColorImage;
-    Rr_Image* DepthImage = Frame->DrawTargets.DepthImage;
+    Rr_Image* ColorImage = Frame->DrawTarget.ColorImage;
+    Rr_Image* DepthImage = Frame->DrawTarget.DepthImage;
 
     vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
