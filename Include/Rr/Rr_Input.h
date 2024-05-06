@@ -31,8 +31,8 @@ struct Rr_InputConfig
     size_t Count;
 };
 
-void Rr_UpdateInputState(Rr_InputState* State, const struct Rr_InputConfig* Config);
-Rr_InputState Rr_GetInputState(struct Rr_App* App);
+void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config);
+Rr_InputState Rr_GetInputState(Rr_App* App);
 Rr_KeyState Rr_GetKeyState(Rr_InputState State, u32 Key);
 
 #ifdef __cplusplus

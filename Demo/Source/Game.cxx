@@ -17,6 +17,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_scancode.h>
 
+#include <Rr/Rr_Input.h>
 #include <Rr/Rr_Framework.h>
 
 #include "DevTools.hxx"

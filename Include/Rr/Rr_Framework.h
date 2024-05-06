@@ -3,7 +3,6 @@
 #include "Rr_Defines.h"
 #include "Rr_String.h"
 #include "Rr_Asset.h"
-#include "Rr_Input.h"
 #include "Rr_Math.h"
 
 #ifdef __cplusplus

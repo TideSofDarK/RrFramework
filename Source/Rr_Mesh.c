@@ -10,6 +10,7 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
+#include "Rr_App.h"
 
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_Renderer* Renderer,
