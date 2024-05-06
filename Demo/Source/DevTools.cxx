@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 
 #include <tinyexr/tinyexr.h>
+#include <cstdlib>
 
 void HandleFileDrop(const char* Path)
 {

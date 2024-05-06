@@ -13,6 +13,8 @@ void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
+    VkPipelineStageFlags SrcStageMask,
+    VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     const void* Data,
@@ -46,7 +48,7 @@ void Rr_UploadBufferAligned(
 
     vkCmdPipelineBarrier(
         TransferCommandBuffer,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        SrcStageMask,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         0,
         0,
@@ -58,7 +60,7 @@ void Rr_UploadBufferAligned(
             .buffer = Buffer,
             .offset = 0,
             .size = DataLength,
-            .srcAccessMask = 0,
+            .srcAccessMask = SrcAccessMask,
             .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -140,12 +142,14 @@ void Rr_UploadBuffer(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
+    VkPipelineStageFlags SrcStageMask,
+    VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     const void* Data,
     size_t DataLength)
 {
-    Rr_UploadBufferAligned(Renderer, UploadContext, Buffer, DstStageMask, DstAccessMask, Data, DataLength, 0);
+    Rr_UploadBufferAligned(Renderer, UploadContext, Buffer, SrcStageMask, SrcAccessMask, DstStageMask, DstAccessMask, Data, DataLength, 0);
 }
 
 void Rr_UploadToDeviceBufferImmediate(
@@ -187,6 +191,8 @@ void Rr_UploadToUniformBuffer(
         Renderer,
         UploadContext,
         DstBuffer->Handle,
+        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_UNIFORM_READ_BIT,
         VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_UNIFORM_READ_BIT,
         Data,

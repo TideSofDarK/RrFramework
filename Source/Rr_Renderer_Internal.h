@@ -1,9 +1,7 @@
 #pragma once
 
 #include "Rr_Vulkan.h"
-
-typedef struct Rr_Renderer Rr_Renderer;
-typedef struct Rr_Frame Rr_Frame;
+#include "Rr_Framework.h"
 
 void Rr_InitRenderer(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);

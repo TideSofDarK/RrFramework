@@ -1,18 +1,12 @@
 #pragma once
 
 #include "Rr_Array.h"
-#include "Rr_Defines.h"
+#include "Rr_Framework.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-typedef struct Rr_Renderer Rr_Renderer;
-typedef struct Rr_Asset Rr_Asset;
-typedef struct Rr_UploadContext Rr_UploadContext;
-typedef struct Rr_StaticMesh Rr_StaticMesh;
-typedef struct Rr_RawMesh Rr_RawMesh;
 
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_Renderer* Renderer,

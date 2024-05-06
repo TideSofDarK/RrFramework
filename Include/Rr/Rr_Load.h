@@ -1,18 +1,12 @@
 #pragma once
 
-#include "Rr_Defines.h"
+#include "Rr_Framework.h"
 #include "Rr_Renderer.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-typedef struct Rr_LoadingContext Rr_LoadingContext;
-typedef struct Rr_Asset Rr_Asset;
-typedef struct Rr_Image Rr_Image;
-typedef struct Rr_StaticMesh Rr_StaticMesh;
-typedef struct Rr_LoadTask Rr_LoadTask;
 
 typedef enum Rr_LoadStatus
 {

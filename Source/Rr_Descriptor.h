@@ -1,11 +1,7 @@
 #pragma once
 
-#include "Rr_Defines.h"
 #include "Rr_Vulkan.h"
-
-typedef struct Rr_DescriptorAllocator Rr_DescriptorAllocator;
-typedef struct Rr_DescriptorWriter Rr_DescriptorWriter;
-typedef struct Rr_DescriptorPoolSizeRatio Rr_DescriptorPoolSizeRatio;
+#include "Rr_Framework.h"
 
 typedef enum Rr_GenericDescriptorSetLayout
 {
@@ -47,11 +43,11 @@ void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer);
 void Rr_DestroyDescriptorWriter(Rr_DescriptorWriter* Writer);
 void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
 
-typedef struct Rr_DescriptorLayoutBuilder
+struct Rr_DescriptorLayoutBuilder
 {
     VkDescriptorSetLayoutBinding Bindings[RR_MAX_LAYOUT_BINDINGS];
     u32 Count;
-} Rr_DescriptorLayoutBuilder;
+};
 
 void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type);
 void Rr_AddDescriptorArray(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, u32 Count, VkDescriptorType Type);

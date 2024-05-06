@@ -16,27 +16,27 @@ typedef struct SDL_Thread SDL_Thread;
 
 typedef u32 Rr_MeshIndexType;
 
-typedef struct Rr_Buffer
+struct Rr_Buffer
 {
     VkBuffer Handle;
     VmaAllocationInfo AllocationInfo;
     VmaAllocation Allocation;
-} Rr_Buffer;
+};
 
-typedef struct Rr_StagingBuffer
+struct Rr_StagingBuffer
 {
     Rr_Buffer* Buffer;
     size_t CurrentOffset;
-} Rr_StagingBuffer;
+};
 
-typedef struct Rr_GenericPipelineBuffers
+struct Rr_GenericPipelineBuffers
 {
     Rr_Buffer* Globals;
     Rr_Buffer* Material;
     Rr_Buffer* Draw;
-} Rr_GenericPipelineBuffers;
+};
 
-typedef struct Rr_GenericPipeline
+struct Rr_GenericPipeline
 {
     VkPipeline Handle;
 
@@ -45,9 +45,9 @@ typedef struct Rr_GenericPipeline
     size_t GlobalsSize;
     size_t MaterialSize;
     size_t DrawSize;
-} Rr_GenericPipeline;
+};
 
-typedef struct Rr_PipelineBuilder
+struct Rr_PipelineBuilder
 {
     struct
     {
@@ -65,17 +65,17 @@ typedef struct Rr_PipelineBuilder
     Rr_Asset VertexShaderSPV;
     Rr_Asset FragmentShaderSPV;
     size_t PushConstantsSize;
-} Rr_PipelineBuilder;
+};
 
-typedef struct Rr_PendingLoad
+struct Rr_PendingLoad
 {
     Rr_AcquireBarriers Barriers;
     Rr_LoadingCallback LoadingCallback;
     const void* Userdata;
     VkSemaphore Semaphore;
-} Rr_PendingLoad;
+};
 
-typedef struct Rr_LoadingContext
+struct Rr_LoadingContext
 {
     bool bAsync;
     Rr_LoadStatus Status;
@@ -85,26 +85,26 @@ typedef struct Rr_LoadingContext
     SDL_Semaphore* Semaphore;
     Rr_LoadingCallback LoadingCallback;
     const void* Userdata;
-} Rr_LoadingContext;
+};
 
-typedef struct Rr_DescriptorSetLayout
+struct Rr_DescriptorSetLayout
 {
     VkDescriptorSetLayout Layout;
-} Rr_DescriptorSetLayout;
+};
 
-typedef struct Rr_DescriptorPoolSizeRatio
+struct Rr_DescriptorPoolSizeRatio
 {
     VkDescriptorType Type;
     f32 Ratio;
-} Rr_DescriptorPoolSizeRatio;
+};
 
-typedef struct Rr_DescriptorAllocator
+struct Rr_DescriptorAllocator
 {
     Rr_DescriptorPoolSizeRatio* Ratios;
     VkDescriptorPool* FullPools;
     VkDescriptorPool* ReadyPools;
     size_t SetsPerPool;
-} Rr_DescriptorAllocator;
+};
 
 typedef enum Rr_DescriptorWriterEntryType
 {
@@ -118,35 +118,35 @@ typedef struct Rr_DescriptorWriterEntry
     size_t Index;
 } Rr_DescriptorWriterEntry;
 
-typedef struct Rr_DescriptorWriter
+struct Rr_DescriptorWriter
 {
     VkDescriptorImageInfo* ImageInfos;
     VkDescriptorBufferInfo* BufferInfos;
     Rr_DescriptorWriterEntry* Entries;
     VkWriteDescriptorSet* Writes;
-} Rr_DescriptorWriter;
+};
 
-typedef struct Rr_RawMesh
+struct Rr_RawMesh
 {
     Rr_Array Vertices;
     Rr_Array Indices;
-} Rr_RawMesh;
+};
 
-typedef struct Rr_StaticMesh
+struct Rr_StaticMesh
 {
     size_t IndexCount;
     Rr_Buffer* IndexBuffer;
     Rr_Buffer* VertexBuffer;
-} Rr_StaticMesh;
+};
 
-typedef struct Rr_Image
+struct Rr_Image
 {
     VkImage Handle;
     VkImageView View;
     VmaAllocation Allocation;
     VkExtent3D Extent;
     VkFormat Format;
-} Rr_Image;
+};
 
 typedef struct Rr_Vertex
 {
@@ -207,7 +207,7 @@ typedef struct Rr_DrawTarget
     VkFramebuffer Framebuffer;
 } Rr_DrawTarget;
 
-typedef struct Rr_Frame
+struct Rr_Frame
 {
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
@@ -218,9 +218,9 @@ typedef struct Rr_Frame
     Rr_StagingBuffer* StagingBuffer;
     VkSemaphore* RetiredSemaphoresArray;
     Rr_DrawTarget DrawTarget;
-} Rr_Frame;
+};
 
-typedef struct Rr_Renderer
+struct Rr_Renderer
 {
     /* Essentials */
     VkInstance Instance;
@@ -276,7 +276,7 @@ typedef struct Rr_Renderer
     /* Generic Pipeline Layout */
     VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
     VkPipelineLayout GenericPipelineLayout;
-} Rr_Renderer;
+};
 
 typedef struct Rr_FrameTime
 {
@@ -295,7 +295,7 @@ typedef struct Rr_FrameTime
     u64 StartTime;
 } Rr_FrameTime;
 
-typedef struct Rr_App
+struct Rr_App
 {
     SDL_AtomicInt bExit;
     SDL_Window* Window;
@@ -304,4 +304,4 @@ typedef struct Rr_App
     Rr_Renderer* Renderer;
     Rr_FrameTime FrameTime;
     Rr_AppConfig* Config;
-} Rr_App;
+};

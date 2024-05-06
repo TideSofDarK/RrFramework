@@ -13,11 +13,11 @@ extern "C"
 {
 #endif
 
-typedef struct Rr_Asset
+struct Rr_Asset
 {
     const char* Data;
     size_t Length;
-} Rr_Asset;
+};
 
 #define STR2(x) #x
 #define STR(x) STR2(x)

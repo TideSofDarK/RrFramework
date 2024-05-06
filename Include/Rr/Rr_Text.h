@@ -2,16 +2,13 @@
 
 #include <cglm/vec3.h>
 
-#include "Rr_Defines.h"
+#include "Rr_Framework.h"
 #include "Rr_Image.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-typedef struct Rr_Renderer Rr_Renderer;
-typedef struct Rr_Buffer Rr_Buffer;
 
 #define RR_TEXT_BUFFER_SIZE (1024 * 1024)
 #define RR_TEXT_DEFAULT_SIZE (0.0f)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rr_Core.h"
+#include "Rr_Framework.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -9,7 +9,6 @@ extern "C"
 
 #define RR_MAX_INPUT_MAPPINGS 16
 
-typedef struct Rr_App Rr_App;
 typedef u32 Rr_InputState;
 
 typedef enum Rr_KeyState
@@ -26,11 +25,11 @@ typedef struct Rr_InputMapping
     i32 Secondary;
 } Rr_InputMapping;
 
-typedef struct Rr_InputConfig
+struct Rr_InputConfig
 {
     Rr_InputMapping* Mappings;
     size_t Count;
-} Rr_InputConfig;
+};
 
 void Rr_UpdateInputState(Rr_InputState* State, const Rr_InputConfig* Config);
 Rr_InputState Rr_GetInputState(Rr_App* App);

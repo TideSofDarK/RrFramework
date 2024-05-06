@@ -1,17 +1,14 @@
 #pragma once
 
-#include "Rr_Defines.h"
+#include "Rr_Framework.h"
 #include "Rr_Vulkan.h"
-
-typedef struct Rr_Renderer Rr_Renderer;
-typedef struct Rr_UploadContext Rr_UploadContext;
-typedef struct Rr_Buffer Rr_Buffer;
-typedef struct Rr_StagingBuffer Rr_StagingBuffer;
 
 void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
+    VkPipelineStageFlags SrcStageMask,
+    VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     const void* Data,
@@ -21,6 +18,8 @@ void Rr_UploadBuffer(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
+    VkPipelineStageFlags SrcStageMask,
+    VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     const void* Data,

@@ -8,22 +8,12 @@
 #include "Rr_Image.h"
 #include "Rr_Text.h"
 #include "Rr_Load.h"
+#include "Rr_Framework.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-typedef struct SDL_Window SDL_Window;
-typedef struct SDL_Mutex SDL_Mutex;
-typedef struct Rr_AppConfig Rr_AppConfig;
-typedef struct Rr_GenericPipeline Rr_GenericPipeline;
-typedef struct Rr_Material Rr_Material;
-typedef struct Rr_App Rr_App;
-typedef struct Rr_StaticMesh Rr_StaticMesh;
-typedef struct Rr_LoadingContext Rr_LoadingContext;
-typedef struct Rr_PendingLoad Rr_PendingLoad;
-typedef struct Rr_Frame Rr_Frame;
 
 typedef enum Rr_DrawTextFlags
 {
