@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.26)
 #
 project(RrFramework LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
 
 set(BUILD_SHARED_LIBS OFF)
 
@@ -115,6 +116,5 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}
         "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
-target_compile_features(${PROJECT_NAME} PRIVATE c_std_99 cxx_std_11)
 
 add_subdirectory(Demo)

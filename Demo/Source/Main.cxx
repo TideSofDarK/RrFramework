@@ -2,18 +2,9 @@
 
 #include "Game.hxx"
 
-static void RrDemo()
+extern "C" int main(int argc, char* argv[])
 {
     RunGame();
-}
-
-#ifdef __cplusplus
-extern "C"
-#endif
-    int
-    main(int argc, char* argv[])
-{
-    RrDemo();
 
     return 0;
 }

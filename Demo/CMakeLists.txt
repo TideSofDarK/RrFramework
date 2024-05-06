@@ -3,6 +3,7 @@
 #
 cmake_minimum_required(VERSION 3.26)
 project(RrDemo LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
 
 #
 # Setup warnings and sanitizers
@@ -69,7 +70,6 @@ add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 add_dependencies(${PROJECT_NAME} RrDemoShaders)
 target_compile_definitions(${PROJECT_NAME} PUBLIC RR_ASSET_PATH=${RR_ASSET_PATH})
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 if (WIN32)
     if (MINGW)
         set(CMAKE_EXE_LINKER_FLAGS "-static")
