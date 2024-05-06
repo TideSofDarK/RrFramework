@@ -160,7 +160,7 @@ static void InitDevice(Rr_Renderer* const Renderer)
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
     };
 
-    b32 bFoundSuitableDevice = false;
+    bool bFoundSuitableDevice = false;
     for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         if (CheckPhysicalDevice(Renderer, PhysicalDevices[Index]))
@@ -291,7 +291,7 @@ static void CleanupSwapchain(Rr_Renderer* Renderer, VkSwapchainKHR Swapchain)
     vkDestroySwapchainKHR(Renderer->Device, Swapchain, NULL);
 }
 
-static b32 InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
+static bool InitSwapchain(Rr_Renderer* const Renderer, u32* Width, u32* Height)
 {
     VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
 

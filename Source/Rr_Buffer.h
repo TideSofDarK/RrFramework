@@ -48,7 +48,7 @@ Rr_Buffer* Rr_CreateBuffer(
     size_t Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
-    b32 bHostMapped);
+    bool bHostMapped);
 Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size);
 Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size);
 Rr_Buffer* Rr_CreateMappedBuffer(Rr_Renderer* Renderer, size_t Size, VkBufferUsageFlags UsageFlags);

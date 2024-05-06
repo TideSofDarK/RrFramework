@@ -63,7 +63,10 @@ Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
 
 void Rr_DestroyStaticMesh(Rr_Renderer* Renderer, Rr_StaticMesh* Mesh)
 {
-    if (Mesh == NULL) return;
+    if (Mesh == NULL)
+    {
+        return;
+    }
 
     Rr_DestroyBuffer(Renderer, Mesh->IndexBuffer);
     Rr_DestroyBuffer(Renderer, Mesh->VertexBuffer);

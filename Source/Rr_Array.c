@@ -41,7 +41,7 @@ Rr_Array Rr_ArrayResize_Internal(Rr_Array Handle, const size_t ElementCount)
     return Handle;
 }
 
-void Rr_ArrayEmpty_Internal(Rr_Array Handle, const b32 bFreeAllocation)
+void Rr_ArrayEmpty_Internal(Rr_Array Handle, bool bFreeAllocation)
 {
     if (bFreeAllocation)
     {

@@ -2,11 +2,7 @@
 
 #ifndef __cplusplus
     #include <stddef.h>
-    #ifndef __bool_true_false_are_defined
-        #define bool u32
-        #define true 1
-        #define false 0
-    #endif
+    #include <stdbool.h>
 #else
     #include <cstddef>
 #endif
@@ -21,4 +17,3 @@ typedef signed int i32;
 typedef signed long long i64;
 typedef float f32;
 typedef double f64;
-typedef int b32;

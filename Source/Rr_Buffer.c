@@ -216,7 +216,7 @@ Rr_Buffer* Rr_CreateBuffer(
     size_t Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
-    b32 bHostMapped)
+    bool bHostMapped)
 {
     Rr_Buffer* Buffer = Rr_Calloc(1, sizeof(Rr_Buffer));
 

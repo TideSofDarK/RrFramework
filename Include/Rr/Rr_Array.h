@@ -28,7 +28,7 @@ Rr_Array Rr_ArrayInit_Internal(size_t ElementSize, size_t ElementCount, size_t A
 
 Rr_Array Rr_ArrayResize_Internal(Rr_Array Handle, size_t ElementCount);
 
-void Rr_ArrayEmpty_Internal(Rr_Array Handle, b32 bFreeAllocation);
+void Rr_ArrayEmpty_Internal(Rr_Array Handle, bool bFreeAllocation);
 
 Rr_Array Rr_ArrayPush_Internal(Rr_Array Handle, const void* Data);
 
