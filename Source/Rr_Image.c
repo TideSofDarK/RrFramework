@@ -21,6 +21,7 @@
 #include "Rr_Load.h"
 #include "Rr_Types.h"
 #include "Rr_Array.h"
+#include "Rr_Load_Internal.h"
 
 void Rr_UploadImage(
     const Rr_Renderer* Renderer,

@@ -30,3 +30,11 @@ struct Rr_LoadTask
     Rr_Asset Asset;
     void** Out;
 };
+
+struct Rr_PendingLoad
+{
+    Rr_AcquireBarriers Barriers;
+    Rr_LoadingCallback LoadingCallback;
+    const void* Userdata;
+    VkSemaphore Semaphore;
+};

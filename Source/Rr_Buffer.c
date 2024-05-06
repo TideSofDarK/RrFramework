@@ -8,6 +8,7 @@
 #include "Rr_Memory.h"
 #include "Rr_Array.h"
 #include "Rr_Renderer_Internal.h"
+#include "Rr_Load_Internal.h"
 
 void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,

@@ -26,6 +26,7 @@
 #include "Rr_Material.h"
 #include "Rr_Types.h"
 #include "Rr_Image_Internal.h"
+#include "Rr_Load_Internal.h"
 
 static void Rr_BlitPrerenderedDepth(
     VkCommandBuffer CommandBuffer,

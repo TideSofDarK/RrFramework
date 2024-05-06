@@ -1,15 +1,13 @@
 #pragma once
 
 #include "Rr_Vulkan.h"
-#include "Rr_Buffer.h"
-#include "Rr_Defines.h"
+#include "Rr_Framework.h"
 #include "Rr_Input.h"
 #include "Rr_Asset.h"
 #include "Rr_Load.h"
 #include "Rr_Array.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Text_Internal.h"
-#include "Rr_Load_Internal.h"
 
 typedef struct SDL_Semaphore SDL_Semaphore;
 typedef struct SDL_Thread SDL_Thread;
@@ -65,14 +63,6 @@ struct Rr_PipelineBuilder
     Rr_Asset VertexShaderSPV;
     Rr_Asset FragmentShaderSPV;
     size_t PushConstantsSize;
-};
-
-struct Rr_PendingLoad
-{
-    Rr_AcquireBarriers Barriers;
-    Rr_LoadingCallback LoadingCallback;
-    const void* Userdata;
-    VkSemaphore Semaphore;
 };
 
 struct Rr_LoadingContext

@@ -20,6 +20,7 @@
 #include "Rr_Text.h"
 #include "Rr_Types.h"
 #include "Rr_Image_Internal.h"
+#include "Rr_Load_Internal.h"
 
 static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
 {

@@ -14,6 +14,7 @@
 #include "Rr_Mesh.h"
 #include "Rr_Types.h"
 #include "Rr_Image_Internal.h"
+#include "Rr_Buffer.h"
 
 Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t InitialTaskCount)
 {
