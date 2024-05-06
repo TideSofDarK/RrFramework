@@ -30,6 +30,7 @@ static VkDescriptorPool CreateDescriptorPool(
 
     VkDescriptorPool NewPool;
     vkCreateDescriptorPool(Device, &Info, NULL, &NewPool);
+    Rr_ArrayFree(PoolSizes);
     return NewPool;
 }
 

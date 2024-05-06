@@ -551,10 +551,12 @@ static void CleanupFrames(Rr_Renderer* Renderer)
         vkDestroySemaphore(Device, Frame->RenderSemaphore, NULL);
         vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
 
-        Rr_DestroyBuffer(Renderer, Frame->StagingBuffer->Buffer);
+        Rr_DestroyStagingBuffer(Renderer, Frame->StagingBuffer);
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
         CleanupDrawTarget(Renderer, &Frame->DrawTarget);
+
+        Rr_ArrayFree(Frame->RetiredSemaphoresArray);
     }
 }
 

@@ -307,4 +307,6 @@ Rr_StagingBuffer* Rr_CreateStagingBuffer(Rr_Renderer* Renderer, size_t Size)
 void Rr_DestroyStagingBuffer(Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer)
 {
     Rr_DestroyBuffer(Renderer, StagingBuffer->Buffer);
+
+    Rr_Free(StagingBuffer);
 }
