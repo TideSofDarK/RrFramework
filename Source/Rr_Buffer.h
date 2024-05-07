@@ -1,20 +1,20 @@
 #pragma once
 
-#include "Rr_Framework.h"
+#include "Rr_Renderer.h"
 #include "Rr_Vulkan.h"
 
-struct Rr_Buffer
+typedef struct Rr_Buffer
 {
     VkBuffer Handle;
     VmaAllocationInfo AllocationInfo;
     VmaAllocation Allocation;
-};
+} Rr_Buffer;
 
-struct Rr_StagingBuffer
+typedef struct Rr_StagingBuffer
 {
     Rr_Buffer* Buffer;
     size_t CurrentOffset;
-};
+} Rr_StagingBuffer;
 
 void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,

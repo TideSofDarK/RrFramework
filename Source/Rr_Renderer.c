@@ -6,15 +6,11 @@
 #include "Rr_Array.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Descriptor.h"
-#include "Rr_Helpers.h"
 #include "Rr_Buffer.h"
-#include "Rr_Mesh.h"
 #include "Rr_Memory.h"
 #include "Rr_Util.h"
-#include "Rr_Material.h"
-#include "Rr_Image.h"
-#include "Rr_Pipeline.h"
-#include "Rr_Load.h"
+#include "Rr_Types.h"
+#include "Rr_Barrier.h"
 
 #include <cglm/ivec2.h>
 
@@ -143,7 +139,7 @@ static void DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInf
     Rr_DrawTextInfo* NewInfo = &RenderingContext->DrawTextArray[Rr_ArrayCount(RenderingContext->DrawTextArray) - 1];
     if (NewInfo->Font == NULL)
     {
-        NewInfo->Font = &RenderingContext->Renderer->BuiltinFont;
+        NewInfo->Font = RenderingContext->Renderer->BuiltinFont;
     }
     if (NewInfo->Size == RR_TEXT_DEFAULT_SIZE)
     {
@@ -928,37 +924,4 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer)
     return &Renderer->Frames[Renderer->FrameNumber % RR_FRAME_OVERLAP];
 }
 
-VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer)
-{
-    Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
-    vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
-    vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
 
-    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
-
-    return ImmediateMode->CommandBuffer;
-}
-
-void Rr_EndImmediate(Rr_Renderer* Renderer)
-{
-    Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
-
-    vkEndCommandBuffer(ImmediateMode->CommandBuffer);
-
-    VkSubmitInfo SubmitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext = NULL,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &ImmediateMode->CommandBuffer,
-        .signalSemaphoreCount = 0,
-        .pSignalSemaphores = NULL,
-        .waitSemaphoreCount = 0,
-        .pWaitSemaphores = NULL,
-        .pWaitDstStageMask = NULL
-    };
-
-    vkQueueSubmit(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
-    vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
-}

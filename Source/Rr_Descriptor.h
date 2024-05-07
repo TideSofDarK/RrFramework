@@ -1,26 +1,26 @@
 #pragma once
 
+#include "Rr_Defines.h"
 #include "Rr_Vulkan.h"
-#include "Rr_Framework.h"
 
-struct Rr_DescriptorSetLayout
+typedef struct Rr_DescriptorSetLayout
 {
     VkDescriptorSetLayout Layout;
-};
+} Rr_DescriptorSetLayout;
 
-struct Rr_DescriptorPoolSizeRatio
+typedef struct Rr_DescriptorPoolSizeRatio
 {
     VkDescriptorType Type;
     f32 Ratio;
-};
+} Rr_DescriptorPoolSizeRatio;
 
-struct Rr_DescriptorAllocator
+typedef struct Rr_DescriptorAllocator
 {
     Rr_DescriptorPoolSizeRatio* Ratios;
     VkDescriptorPool* FullPools;
     VkDescriptorPool* ReadyPools;
     size_t SetsPerPool;
-};
+} Rr_DescriptorAllocator;
 
 typedef enum Rr_DescriptorWriterEntryType
 {
@@ -34,13 +34,13 @@ typedef struct Rr_DescriptorWriterEntry
     size_t Index;
 } Rr_DescriptorWriterEntry;
 
-struct Rr_DescriptorWriter
+typedef struct Rr_DescriptorWriter
 {
     VkDescriptorImageInfo* ImageInfos;
     VkDescriptorBufferInfo* BufferInfos;
     Rr_DescriptorWriterEntry* Entries;
     VkWriteDescriptorSet* Writes;
-};
+} Rr_DescriptorWriter;
 
 typedef enum Rr_GenericDescriptorSetLayout
 {
@@ -82,11 +82,11 @@ void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer);
 void Rr_DestroyDescriptorWriter(Rr_DescriptorWriter* Writer);
 void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
 
-struct Rr_DescriptorLayoutBuilder
+typedef struct Rr_DescriptorLayoutBuilder
 {
     VkDescriptorSetLayoutBinding Bindings[RR_MAX_LAYOUT_BINDINGS];
     u32 Count;
-};
+} Rr_DescriptorLayoutBuilder;
 
 void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescriptorType Type);
 void Rr_AddDescriptorArray(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, u32 Count, VkDescriptorType Type);

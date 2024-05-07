@@ -5,12 +5,13 @@
 #include "Rr_App.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Image.h"
-#include "Rr_Helpers.h"
 #include "Rr_Buffer.h"
 #include "Rr_Mesh.h"
 #include "Rr_Memory.h"
 #include "Rr_Text.h"
 #include "Rr_Load.h"
+#include "Rr_Array.h"
+#include "Rr_Types.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -248,14 +249,8 @@ static void InitDevice(Rr_Renderer* const Renderer)
 
 static void InitDrawTarget(Rr_Renderer* const Renderer, Rr_DrawTarget* DrawTarget, const u32 Width, const u32 Height)
 {
-    const VkExtent3D Extent = (VkExtent3D){
-        Width,
-        Height,
-        1
-    };
-
-    DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(Renderer, Extent);
-    DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(Renderer, Extent);
+    DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(Renderer, Width, Height);
+    DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(Renderer, Width, Height);
 
     VkImageView Attachments[2] = { DrawTarget->ColorImage->View, DrawTarget->DepthImage->View };
 
@@ -966,7 +961,7 @@ void Rr_InitRenderer(Rr_App* App)
     Rr_StackFree(Extensions);
 }
 
-bool Rr_NewFrame(Rr_Renderer* Renderer, SDL_Window* Window)
+bool Rr_NewFrame(Rr_Renderer* Renderer, void* Window)
 {
     const i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
     if (bResizePending == true)
@@ -1043,4 +1038,39 @@ void Rr_CleanupRenderer(Rr_App* App)
     vkDestroyInstance(Renderer->Instance, NULL);
 
     Rr_Free(Renderer);
+}
+
+VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer)
+{
+    Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
+    vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
+    vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
+
+    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
+
+    return ImmediateMode->CommandBuffer;
+}
+
+void Rr_EndImmediate(Rr_Renderer* Renderer)
+{
+    Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
+
+    vkEndCommandBuffer(ImmediateMode->CommandBuffer);
+
+    VkSubmitInfo SubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = NULL,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &ImmediateMode->CommandBuffer,
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores = NULL,
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = NULL,
+        .pWaitDstStageMask = NULL
+    };
+
+    vkQueueSubmit(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
+    vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }

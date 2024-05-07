@@ -4,6 +4,7 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
+#include "Rr_Types.h"
 
 #include <cglm/vec3.h>
 #include <cglm/vec4.h>

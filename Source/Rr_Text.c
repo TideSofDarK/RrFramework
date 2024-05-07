@@ -9,6 +9,7 @@
 #include "Rr_Util.h"
 #include "Rr_Load.h"
 #include "Rr_Descriptor.h"
+#include "Rr_Types.h"
 
 #include <SDL_log.h>
 
@@ -133,10 +134,10 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
         Rr_DestroyBuffer(Renderer, TextPipeline->TextBuffers[Index]);
     }
     Rr_DestroyBuffer(Renderer, TextPipeline->QuadBuffer);
-    Rr_DestroyFont(Renderer, &Renderer->BuiltinFont);
+    Rr_DestroyFont(Renderer, Renderer->BuiltinFont);
 }
 
-Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
+Rr_Font* Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
 {
     Rr_Image* Atlas;
     Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(Renderer, 1);
@@ -163,7 +164,8 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
         },
     };
 
-    Rr_Font Font = {
+    Rr_Font* Font = Rr_Calloc(1, sizeof(Rr_Font));
+    *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
         .LineHeight = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
@@ -199,7 +201,7 @@ Rr_Font Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJS
             PlaneBounds[3] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
         }
 
-        Font.Advances[Unicode] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance"));
+        Font->Advances[Unicode] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance"));
 
         u32 PlaneLB;
         u32 PlaneRT;
@@ -229,4 +231,6 @@ void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
 {
     Rr_DestroyImage(Renderer, Font->Atlas);
     Rr_DestroyBuffer(Renderer, Font->Buffer);
+
+    Rr_Free(Font);
 }

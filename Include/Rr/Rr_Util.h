@@ -6,12 +6,7 @@
 #include <cglm/vec2.h>
 #include <cglm/vec4.h>
 
-#include <SDL3/SDL.h>
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#include <SDL3/SDL_stdinc.h>
 
 static inline size_t Rr_Align(size_t Value, size_t Alignment)
 {
@@ -78,7 +73,7 @@ static inline u16 Rr_FloatToHalf(u32 x)
         }
 
         uint32_t T = Significand & Mask(13);
-        if (Bit(12) < T || Bit(12) == T && (Significand & Bit(13)))
+        if (Bit(12) < T || (Bit(12) == T && (Significand & Bit(13))))
         {
             Significand += Bit(13);
         }
@@ -121,7 +116,3 @@ static inline void Rr_PackVec4(vec4 From, u32* OutA, u32* OutB)
     *OutA = (u32)HalfValues[0] | ((u32)HalfValues[1] << 16);
     *OutB = (u32)HalfValues[2] | ((u32)HalfValues[3] << 16);
 }
-
-#ifdef __cplusplus
-}
-#endif

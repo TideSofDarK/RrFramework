@@ -2,10 +2,10 @@
 
 #include "Rr_Buffer.h"
 #include "Rr_Defines.h"
-#include "Rr_Helpers.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
+#include "Rr_Types.h"
 
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_log.h>
@@ -15,6 +15,156 @@ enum Rr_VertexInputBinding
     RR_VERTEX_INPUT_BINDING_PER_VERTEX,
     RR_VERTEX_INPUT_BINDING_PER_INSTANCE
 };
+
+VkPipeline Rr_BuildPipeline(
+    Rr_Renderer* Renderer,
+    Rr_PipelineBuilder* PipelineBuilder,
+    VkPipelineLayout PipelineLayout)
+{
+    /* Create shader modules. */
+    VkPipelineShaderStageCreateInfo ShaderStages[RR_PIPELINE_SHADER_STAGES];
+    int ShaderStageCount = 0;
+
+    VkShaderModule VertModule = VK_NULL_HANDLE;
+    if (PipelineBuilder->VertexShaderSPV.Data != NULL)
+    {
+        const VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .pNext = VK_NULL_HANDLE,
+            .pCode = (u32*)PipelineBuilder->VertexShaderSPV.Data,
+            .codeSize = PipelineBuilder->VertexShaderSPV.Length
+        };
+        vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
+        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
+        ShaderStageCount++;
+    }
+
+    VkShaderModule FragModule = VK_NULL_HANDLE;
+    if (PipelineBuilder->FragmentShaderSPV.Data != NULL)
+    {
+        const VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .pNext = VK_NULL_HANDLE,
+            .pCode = (u32*)PipelineBuilder->FragmentShaderSPV.Data,
+            .codeSize = PipelineBuilder->FragmentShaderSPV.Length
+        };
+        vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
+        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
+        ShaderStageCount++;
+    }
+
+    VkPipelineViewportStateCreateInfo ViewportInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
+
+    VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = PipelineBuilder->RenderInfo.colorAttachmentCount,
+        .pAttachments = PipelineBuilder->ColorBlendAttachments,
+    };
+
+    /* Vertex Input */
+    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext = NULL,
+    };
+    const VkVertexInputBindingDescription VertexInputBindingDescriptions[2] = {
+        {
+            .binding = 0,
+            .stride = PipelineBuilder->VertexInput[0].VertexInputStride,
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        },
+        {
+            .binding = 1,
+            .stride = PipelineBuilder->VertexInput[1].VertexInputStride,
+            .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
+        }
+    };
+
+    u32 AttributeCount = 0;
+    bool bHasPerVertexBinding = false;
+    bool bHasPerInstanceBinding = false;
+    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    {
+        if (PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
+        {
+            break;
+        }
+        AttributeCount++;
+        bHasPerVertexBinding = bHasPerVertexBinding || PipelineBuilder->Attributes[Index].binding == 0;
+        bHasPerInstanceBinding = bHasPerInstanceBinding || PipelineBuilder->Attributes[Index].binding == 1;
+    }
+    if (AttributeCount > 0)
+    {
+        if (bHasPerVertexBinding)
+        {
+            VertexInputInfo.vertexBindingDescriptionCount++;
+        }
+        if (bHasPerInstanceBinding)
+        {
+            VertexInputInfo.vertexBindingDescriptionCount++;
+        }
+        VertexInputInfo.vertexAttributeDescriptionCount = AttributeCount;
+        VertexInputInfo.pVertexBindingDescriptions = VertexInputBindingDescriptions;
+        VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->Attributes;
+    }
+
+    /* Dynamic States */
+    VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .pDynamicStates = DynamicStates,
+        .dynamicStateCount = SDL_arraysize(DynamicStates)
+    };
+
+    if (PipelineBuilder->RenderInfo.colorAttachmentCount > 1)
+    {
+        PipelineBuilder->ColorBlendAttachments[1] = PipelineBuilder->ColorBlendAttachments[0];
+    }
+    PipelineBuilder->RenderInfo.pColorAttachmentFormats = PipelineBuilder->ColorAttachmentFormats;
+
+    /* Create pipeline. */
+    const VkGraphicsPipelineCreateInfo PipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext = &PipelineBuilder->RenderInfo,
+        .stageCount = ShaderStageCount,
+        .pStages = ShaderStages,
+        .pVertexInputState = &VertexInputInfo,
+        .pInputAssemblyState = &PipelineBuilder->InputAssembly,
+        .pViewportState = &ViewportInfo,
+        .pRasterizationState = &PipelineBuilder->Rasterizer,
+        .pMultisampleState = &PipelineBuilder->Multisampling,
+        .pColorBlendState = &ColorBlendInfo,
+        .pDepthStencilState = &PipelineBuilder->DepthStencil,
+        .layout = PipelineLayout,
+        .pDynamicState = &DynamicStateInfo,
+        .renderPass = Renderer->RenderPass
+    };
+
+    VkPipeline Pipeline;
+    vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline);
+
+    if (VertModule != VK_NULL_HANDLE)
+    {
+        vkDestroyShaderModule(Renderer->Device, VertModule, NULL);
+    }
+
+    if (FragModule != VK_NULL_HANDLE)
+    {
+        vkDestroyShaderModule(Renderer->Device, FragModule, NULL);
+    }
+
+    Rr_Free(PipelineBuilder);
+
+    return Pipeline;
+}
 
 Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void)
 {
@@ -189,154 +339,37 @@ void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
     };
 }
 
-VkPipeline Rr_BuildPipeline(
+static Rr_GenericPipelineBuffers* Rr_CreateGenericPipelineBuffers(
     Rr_Renderer* Renderer,
-    Rr_PipelineBuilder* PipelineBuilder,
-    VkPipelineLayout PipelineLayout)
+    size_t GlobalsSize,
+    size_t MaterialSize,
+    size_t DrawSize)
 {
-    /* Create shader modules. */
-    VkPipelineShaderStageCreateInfo ShaderStages[RR_PIPELINE_SHADER_STAGES];
-    int ShaderStageCount = 0;
+    Rr_GenericPipelineBuffers* Buffers = Rr_Calloc(1, sizeof(Rr_GenericPipelineBuffers));
 
-    VkShaderModule VertModule = VK_NULL_HANDLE;
-    if (PipelineBuilder->VertexShaderSPV.Data != NULL)
-    {
-        const VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .pCode = (u32*)PipelineBuilder->VertexShaderSPV.Data,
-            .codeSize = PipelineBuilder->VertexShaderSPV.Length
-        };
-        vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
-        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
-        ShaderStageCount++;
-    }
+    /* Buffers */
+    Buffers->Globals = Rr_CreateDeviceUniformBuffer(
+        Renderer,
+        GlobalsSize);
+    Buffers->Material = Rr_CreateDeviceUniformBuffer(
+        Renderer,
+        MaterialSize);
+    const size_t DrawBufferSize = 1 << 20;
+    Buffers->Draw = Rr_CreateMappedBuffer(
+        Renderer,
+        DrawBufferSize,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
-    VkShaderModule FragModule = VK_NULL_HANDLE;
-    if (PipelineBuilder->FragmentShaderSPV.Data != NULL)
-    {
-        const VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .pCode = (u32*)PipelineBuilder->FragmentShaderSPV.Data,
-            .codeSize = PipelineBuilder->FragmentShaderSPV.Length
-        };
-        vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
-        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
-        ShaderStageCount++;
-    }
+    return Buffers;
+}
 
-    VkPipelineViewportStateCreateInfo ViewportInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .viewportCount = 1,
-        .scissorCount = 1,
-    };
+static void Rr_DestroyGenericPipelineBuffers(Rr_Renderer* Renderer, Rr_GenericPipelineBuffers* GenericPipelineBuffers)
+{
+    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Draw);
+    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Material);
+    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Globals);
 
-    VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .logicOpEnable = VK_FALSE,
-        .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = PipelineBuilder->RenderInfo.colorAttachmentCount,
-        .pAttachments = PipelineBuilder->ColorBlendAttachments,
-    };
-
-    /* Vertex Input */
-    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext = NULL,
-    };
-    const VkVertexInputBindingDescription VertexInputBindingDescriptions[2] = {
-        {
-            .binding = 0,
-            .stride = PipelineBuilder->VertexInput[0].VertexInputStride,
-            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-        },
-        {
-            .binding = 1,
-            .stride = PipelineBuilder->VertexInput[1].VertexInputStride,
-            .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
-        }
-    };
-
-    u32 AttributeCount = 0;
-    bool bHasPerVertexBinding = false;
-    bool bHasPerInstanceBinding = false;
-    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
-    {
-        if (PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
-        {
-            break;
-        }
-        AttributeCount++;
-        bHasPerVertexBinding = bHasPerVertexBinding || PipelineBuilder->Attributes[Index].binding == 0;
-        bHasPerInstanceBinding = bHasPerInstanceBinding || PipelineBuilder->Attributes[Index].binding == 1;
-    }
-    if (AttributeCount > 0)
-    {
-        if (bHasPerVertexBinding)
-        {
-            VertexInputInfo.vertexBindingDescriptionCount++;
-        }
-        if (bHasPerInstanceBinding)
-        {
-            VertexInputInfo.vertexBindingDescriptionCount++;
-        }
-        VertexInputInfo.vertexAttributeDescriptionCount = AttributeCount;
-        VertexInputInfo.pVertexBindingDescriptions = VertexInputBindingDescriptions;
-        VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->Attributes;
-    }
-
-    /* Dynamic States */
-    VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-    VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .pDynamicStates = DynamicStates,
-        .dynamicStateCount = SDL_arraysize(DynamicStates)
-    };
-
-    if (PipelineBuilder->RenderInfo.colorAttachmentCount > 1)
-    {
-        PipelineBuilder->ColorBlendAttachments[1] = PipelineBuilder->ColorBlendAttachments[0];
-    }
-    PipelineBuilder->RenderInfo.pColorAttachmentFormats = PipelineBuilder->ColorAttachmentFormats;
-
-    /* Create pipeline. */
-    const VkGraphicsPipelineCreateInfo PipelineInfo = {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = &PipelineBuilder->RenderInfo,
-        .stageCount = ShaderStageCount,
-        .pStages = ShaderStages,
-        .pVertexInputState = &VertexInputInfo,
-        .pInputAssemblyState = &PipelineBuilder->InputAssembly,
-        .pViewportState = &ViewportInfo,
-        .pRasterizationState = &PipelineBuilder->Rasterizer,
-        .pMultisampleState = &PipelineBuilder->Multisampling,
-        .pColorBlendState = &ColorBlendInfo,
-        .pDepthStencilState = &PipelineBuilder->DepthStencil,
-        .layout = PipelineLayout,
-        .pDynamicState = &DynamicStateInfo,
-        .renderPass = Renderer->RenderPass
-    };
-
-    VkPipeline Pipeline;
-    vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline);
-
-    if (VertModule != VK_NULL_HANDLE)
-    {
-        vkDestroyShaderModule(Renderer->Device, VertModule, NULL);
-    }
-
-    if (FragModule != VK_NULL_HANDLE)
-    {
-        vkDestroyShaderModule(Renderer->Device, FragModule, NULL);
-    }
-
-    Rr_Free(PipelineBuilder);
-
-    return Pipeline;
+    Rr_Free(GenericPipelineBuffers);
 }
 
 Rr_GenericPipeline* Rr_BuildGenericPipeline(
@@ -372,37 +405,4 @@ void Rr_DestroyGenericPipeline(Rr_Renderer* Renderer, Rr_GenericPipeline* Pipeli
         Rr_DestroyGenericPipelineBuffers(Renderer, Pipeline->Buffers[Index]);
     }
     vkDestroyPipeline(Device, Pipeline->Handle, NULL);
-}
-
-Rr_GenericPipelineBuffers* Rr_CreateGenericPipelineBuffers(
-    Rr_Renderer* Renderer,
-    size_t GlobalsSize,
-    size_t MaterialSize,
-    size_t DrawSize)
-{
-    Rr_GenericPipelineBuffers* Buffers = Rr_Calloc(1, sizeof(Rr_GenericPipelineBuffers));
-
-    /* Buffers */
-    Buffers->Globals = Rr_CreateDeviceUniformBuffer(
-        Renderer,
-        GlobalsSize);
-    Buffers->Material = Rr_CreateDeviceUniformBuffer(
-        Renderer,
-        MaterialSize);
-    const size_t DrawBufferSize = 1 << 20;
-    Buffers->Draw = Rr_CreateMappedBuffer(
-        Renderer,
-        DrawBufferSize,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-    return Buffers;
-}
-
-void Rr_DestroyGenericPipelineBuffers(Rr_Renderer* Renderer, Rr_GenericPipelineBuffers* GenericPipelineBuffers)
-{
-    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Draw);
-    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Material);
-    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Globals);
-
-    Rr_Free(GenericPipelineBuffers);
 }

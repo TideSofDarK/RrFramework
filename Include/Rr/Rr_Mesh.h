@@ -1,7 +1,18 @@
 #pragma once
 
-#include "Rr_Array.h"
-#include "Rr_Framework.h"
+typedef struct Rr_StaticMesh Rr_StaticMesh;
+typedef struct Rr_RawMesh Rr_RawMesh;
+
+#include "Rr_Asset.h"
+#include "Rr_Load.h"
+
+#include <cglm/vec3.h>
+#include <cglm/vec4.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 typedef u32 Rr_MeshIndexType;
 
@@ -14,25 +25,18 @@ typedef struct Rr_Vertex
     vec4 Color;
 } Rr_Vertex;
 
-struct Rr_RawMesh
-{
-    Rr_Array Vertices;
-    Rr_Array Indices;
-};
-
-struct Rr_StaticMesh
-{
-    size_t IndexCount;
-    Rr_Buffer* IndexBuffer;
-    Rr_Buffer* VertexBuffer;
-};
-
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset);
 
+void Rr_DestroyStaticMesh(Rr_Renderer* Renderer, Rr_StaticMesh* Mesh);
+
 size_t Rr_GetStaticMeshSizeOBJ(Rr_Asset* Asset);
 
 Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset);
 void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh);
+
+#ifdef __cplusplus
+}
+#endif

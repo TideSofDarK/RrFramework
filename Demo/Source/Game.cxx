@@ -16,7 +16,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_scancode.h>
 
-#include <Rr/Rr_Framework.h>
+#include <Rr/Rr.h>
 
 #include <string>
 #include <format>

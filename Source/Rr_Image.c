@@ -2,11 +2,10 @@
 
 #include "Rr_Memory.h"
 #include "Rr_Asset.h"
-#include "Rr_Helpers.h"
 #include "Rr_Vulkan.h"
-#include "Rr_Load.h"
 #include "Rr_Array.h"
 #include "Rr_Buffer.h"
+#include "Rr_Types.h"
 
 #include <SDL3/SDL.h>
 
@@ -173,7 +172,7 @@ static Rr_Image* CreateImage(
     return Image;
 }
 
-Rr_Image* Rr_CreateImage(
+static Rr_Image* Rr_CreateImage(
     Rr_Renderer* Renderer,
     VkExtent3D Extent,
     VkFormat Format,
@@ -208,9 +207,7 @@ Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset,
-    VkImageUsageFlags Usage,
-    bool bMipMapped,
-    VkImageLayout InitialLayout)
+    bool bMipMapped)
 {
     const i32 DesiredChannels = 4;
     i32 Channels;
@@ -222,7 +219,7 @@ Rr_Image* Rr_CreateColorImageFromPNG(
         Renderer,
         Extent,
         RR_COLOR_FORMAT,
-        Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         bMipMapped);
 
     Rr_UploadImage(Renderer,
@@ -232,7 +229,7 @@ Rr_Image* Rr_CreateColorImageFromPNG(
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_ACCESS_SHADER_READ_BIT,
-        InitialLayout,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         ParsedImage,
         DataSize);
 
@@ -322,7 +319,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     return DepthImage;
 }
 
-Rr_Image* Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
+Rr_Image* Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, u32 Width, u32 Height)
 {
     const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -331,14 +328,14 @@ Rr_Image* Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent
 
     return CreateImage(
         Renderer,
-        Extent,
+        (VkExtent3D){ Width, Height, 1 },
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         AllocationCreateInfo,
         false);
 }
 
-Rr_Image* Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent)
+Rr_Image* Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, u32 Width, u32 Height)
 {
     const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -347,7 +344,7 @@ Rr_Image* Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, VkExtent3D Extent
 
     return CreateImage(
         Renderer,
-        Extent,
+        (VkExtent3D){ Width, Height, 1 },
         RR_DEPTH_FORMAT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         AllocationCreateInfo,
@@ -364,52 +361,4 @@ void Rr_DestroyImage(Rr_Renderer* Renderer, Rr_Image* AllocatedImage)
     vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 
     Rr_Free(AllocatedImage);
-}
-
-void Rr_ChainImageBarrier_Aspect(
-    Rr_ImageBarrier* TransitionImage,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
-    VkImageLayout NewLayout,
-    VkImageAspectFlagBits Aspect)
-{
-    vkCmdPipelineBarrier(
-        TransitionImage->CommandBuffer,
-        TransitionImage->StageMask,
-        DstStageMask,
-        0,
-        0,
-        NULL,
-        0,
-        NULL,
-        1,
-        &(VkImageMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = NULL,
-            .image = TransitionImage->Image,
-            .oldLayout = TransitionImage->Layout,
-            .newLayout = NewLayout,
-            .subresourceRange = GetImageSubresourceRange(Aspect),
-            .srcAccessMask = TransitionImage->AccessMask,
-            .dstAccessMask = DstAccessMask,
-        });
-
-    TransitionImage->Layout = NewLayout;
-    TransitionImage->StageMask = DstStageMask;
-    TransitionImage->AccessMask = DstAccessMask;
-}
-
-void Rr_ChainImageBarrier(
-
-    Rr_ImageBarrier* TransitionImage,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
-    VkImageLayout NewLayout)
-{
-    Rr_ChainImageBarrier_Aspect(
-        TransitionImage,
-        DstStageMask,
-        DstAccessMask,
-        NewLayout,
-        (NewLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT);
 }

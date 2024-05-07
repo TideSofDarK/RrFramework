@@ -3,6 +3,7 @@
 #include "Rr_Renderer.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
+#include "Rr_Types.h"
 
 #include <SDL3/SDL_stdinc.h>
 

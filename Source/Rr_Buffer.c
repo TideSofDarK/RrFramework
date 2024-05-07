@@ -5,7 +5,7 @@
 #include "Rr_Memory.h"
 #include "Rr_Array.h"
 #include "Rr_Renderer.h"
-#include "Rr_Load.h"
+#include "Rr_Types.h"
 
 #include <SDL3/SDL_log.h>
 

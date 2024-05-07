@@ -5,11 +5,36 @@
 #include "Rr_Array.h"
 #include "Rr_Image.h"
 #include "Rr_Asset.h"
-#include "Rr_Helpers.h"
 #include "Rr_Mesh.h"
 #include "Rr_Buffer.h"
+#include "Rr_Types.h"
 
 #include <SDL3/SDL.h>
+
+typedef enum Rr_LoadType
+{
+    RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
+    RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
+} Rr_LoadType;
+
+typedef struct Rr_LoadTask
+{
+    Rr_LoadType LoadType;
+    Rr_Asset Asset;
+    void** Out;
+} Rr_LoadTask;
+
+struct Rr_LoadingContext
+{
+    bool bAsync;
+    Rr_LoadStatus Status;
+    Rr_Renderer* Renderer;
+    Rr_LoadTask* Tasks;
+    SDL_Thread* Thread;
+    SDL_Semaphore* Semaphore;
+    Rr_LoadingCallback LoadingCallback;
+    const void* Userdata;
+};
 
 Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t InitialTaskCount)
 {
@@ -123,9 +148,7 @@ static int SDLCALL Load(void* Data)
                     Renderer,
                     &UploadContext,
                     &Task->Asset,
-                    VK_IMAGE_USAGE_SAMPLED_BIT,
-                    false,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    false);
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
