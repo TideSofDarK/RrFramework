@@ -15,8 +15,9 @@
 
 #include <cJSON/cJSON.h>
 
-void Rr_InitTextRenderer(Rr_Renderer* Renderer)
+void Rr_InitTextRenderer(Rr_App* App)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
 
@@ -115,11 +116,12 @@ void Rr_InitTextRenderer(Rr_Renderer* Renderer)
     /* Builtin Font */
     Rr_ExternAsset(BuiltinFontPNG);
     Rr_ExternAsset(BuiltinFontJSON);
-    Renderer->BuiltinFont = Rr_CreateFont(Renderer, &BuiltinFontPNG, &BuiltinFontJSON);
+    Renderer->BuiltinFont = Rr_CreateFont(App, &BuiltinFontPNG, &BuiltinFontJSON);
 }
 
-void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
+void Rr_CleanupTextRenderer(Rr_App* App)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
     VkDevice Device = Renderer->Device;
     vkDestroyPipeline(Device, TextPipeline->Handle, NULL);
@@ -134,13 +136,14 @@ void Rr_CleanupTextRenderer(Rr_Renderer* Renderer)
         Rr_DestroyBuffer(Renderer, TextPipeline->TextBuffers[Index]);
     }
     Rr_DestroyBuffer(Renderer, TextPipeline->QuadBuffer);
-    Rr_DestroyFont(Renderer, Renderer->BuiltinFont);
+    Rr_DestroyFont(App, Renderer->BuiltinFont);
 }
 
-Rr_Font* Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
+Rr_Font* Rr_CreateFont(Rr_App* App, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
     Rr_Image* Atlas;
-    Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(Renderer, 1);
+    Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(App, 1);
     Rr_LoadColorImageFromPNG(LoadingContext, FontPNG, &Atlas);
     Rr_LoadImmediate(LoadingContext);
 
@@ -227,9 +230,11 @@ Rr_Font* Rr_CreateFont(Rr_Renderer* Renderer, Rr_Asset* FontPNG, Rr_Asset* FontJ
     return Font;
 }
 
-void Rr_DestroyFont(Rr_Renderer* Renderer, Rr_Font* Font)
+void Rr_DestroyFont(Rr_App* App, Rr_Font* Font)
 {
-    Rr_DestroyImage(Renderer, Font->Atlas);
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    Rr_DestroyImage(App, Font->Atlas);
     Rr_DestroyBuffer(Renderer, Font->Buffer);
 
     Rr_Free(Font);

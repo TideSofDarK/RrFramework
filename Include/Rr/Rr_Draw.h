@@ -1,20 +1,13 @@
 #pragma once
 
-typedef struct Rr_Frame Rr_Frame;
-typedef struct Rr_Renderer Rr_Renderer;
+typedef struct Rr_RenderingContext Rr_RenderingContext;
 
 #include "Rr_App.h"
-#include "Rr_Image.h"
-#include "Rr_Mesh.h"
-#include "Rr_Material.h"
-#include "Rr_Pipeline.h"
 #include "Rr_String.h"
 #include "Rr_Text.h"
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#include "Rr_Pipeline.h"
+#include "Rr_Material.h"
+#include "Rr_Image.h"
 
 typedef enum Rr_DrawTextFlags
 {
@@ -38,29 +31,19 @@ typedef struct Rr_DrawMeshInfo
     char DrawData[RR_PIPELINE_MAX_DRAW_SIZE];
 } Rr_DrawMeshInfo;
 
-typedef struct Rr_DrawTextInfo
+#ifdef __cplusplus
+extern "C"
 {
-    Rr_Font* Font;
-    Rr_String String;
-    vec2 Position;
-    f32 Size;
-    Rr_DrawTextFlags Flags;
-} Rr_DrawTextInfo;
+#endif
 
-typedef struct Rr_RenderingContext
-{
-    Rr_BeginRenderingInfo* Info;
-    Rr_Renderer* Renderer;
-    Rr_DrawMeshInfo* DrawMeshArray;
-    Rr_DrawTextInfo* DrawTextArray;
-} Rr_RenderingContext;
+Rr_RenderingContext* Rr_BeginRendering(Rr_App* App, Rr_BeginRenderingInfo* Info);
 
-Rr_RenderingContext Rr_BeginRendering(Rr_Renderer* Renderer, Rr_BeginRenderingInfo* Info);
 void Rr_DrawStaticMesh(
     Rr_RenderingContext* RenderingContext,
     Rr_Material* Material,
     Rr_StaticMesh* StaticMesh,
     const void* DrawData);
+
 void Rr_DrawCustomText(
     Rr_RenderingContext* RenderingContext,
     Rr_Font* Font,
@@ -68,10 +51,10 @@ void Rr_DrawCustomText(
     vec2 Position,
     f32 Size,
     Rr_DrawTextFlags Flags);
-void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, vec2 Position);
-void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 
-float Rr_GetAspectRatio(Rr_Renderer* Renderer);
+void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, vec2 Position);
+
+void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 
 #ifdef __cplusplus
 }

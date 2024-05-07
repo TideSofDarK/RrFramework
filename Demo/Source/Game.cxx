@@ -99,7 +99,7 @@ static void InitInputMappings(void)
     InputMappings[EIA_TEST].Primary = SDL_SCANCODE_F2;
 }
 
-static void InitUber3DPipeline(Rr_Renderer* const Renderer)
+static void InitUber3DPipeline(Rr_App* App)
 {
     Rr_ExternAsset(Uber3DVERT);
     Rr_ExternAsset(Uber3DFRAG);
@@ -120,14 +120,14 @@ static void InitUber3DPipeline(Rr_Renderer* const Renderer)
     Rr_EnableDepthTest(Builder);
     Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     Uber3DPipeline = Rr_BuildGenericPipeline(
-        Renderer,
+        App,
         Builder,
         sizeof(SUber3DGlobals),
         sizeof(SUber3DMaterial),
         sizeof(SUber3DDraw));
 }
 
-static void InitGlobals(Rr_Renderer* const Renderer)
+static void InitGlobals(Rr_App* App)
 {
     vec4 a{ 0.1f, 0.1f, 0.1f, 1.0f };
     vec4 b{ 1.0f, 0.95f, 0.93f, 1.0f };
@@ -136,17 +136,17 @@ static void InitGlobals(Rr_Renderer* const Renderer)
     glm_vec4_copy(b, ShaderGlobals.DirectionalLightColor);
     glm_vec4_copy(c, ShaderGlobals.DirectionalLightIntensity);
 
-    Rr_Perspective(ShaderGlobals.Proj, 0.7643276f, Rr_GetAspectRatio(Renderer));
+    Rr_Perspective(ShaderGlobals.Proj, 0.7643276f, Rr_GetAspectRatio(App));
     Rr_VulkanMatrix(ShaderGlobals.Intermediate);
 }
 
-static void OnLoadingComplete(Rr_Renderer* Renderer, const void* Userdata)
+static void OnLoadingComplete(Rr_App* App, const void* Userdata)
 {
     Rr_Image* MarbleTextures[2] = { MarbleDiffuse, MarbleSpecular };
-    MarbleMaterial = Rr_CreateMaterial(Renderer, MarbleTextures, 2);
+    MarbleMaterial = Rr_CreateMaterial(App, MarbleTextures, 2);
 
     Rr_Image* CottageTextures[1] = { CottageTexture };
-    CottageMaterial = Rr_CreateMaterial(Renderer, CottageTextures, 1);
+    CottageMaterial = Rr_CreateMaterial(App, CottageTextures, 1);
 
     bLoaded = true;
 
@@ -160,21 +160,19 @@ static void Init(Rr_App* App)
 #endif
     InitInputMappings();
 
-    Rr_Renderer* Renderer = Rr_GetRenderer(App);
-
     Rr_ExternAsset(MarbleDiffusePNG);
     Rr_ExternAsset(MarbleSpecularPNG);
     Rr_ExternAsset(MarbleOBJ);
     Rr_ExternAsset(CottagePNG);
     Rr_ExternAsset(CottageOBJ);
 
-    LoadingContext = Rr_CreateLoadingContext(Renderer, 8);
+    LoadingContext = Rr_CreateLoadingContext(App, 8);
     Rr_LoadColorImageFromPNG(LoadingContext, &MarbleDiffusePNG, &MarbleDiffuse);
     Rr_LoadColorImageFromPNG(LoadingContext, &MarbleSpecularPNG, &MarbleSpecular);
     Rr_LoadMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
     Rr_LoadColorImageFromPNG(LoadingContext, &CottagePNG, &CottageTexture);
     Rr_LoadMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
-    Rr_LoadAsync(LoadingContext, OnLoadingComplete, Renderer);
+    Rr_LoadAsync(LoadingContext, OnLoadingComplete, App);
 
     // Rr_ExternAsset(POCDepthEXR);
     // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
@@ -192,8 +190,8 @@ static void Init(Rr_App* App)
     // Rr_ExternAsset(PocDiffusePNG);
     // PocDiffuseImage = Rr_CreateImageFromPNG(Renderer, &PocDiffusePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    InitUber3DPipeline(Renderer);
-    InitGlobals(Renderer);
+    InitUber3DPipeline(App);
+    InitGlobals(App);
 
     TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
     DebugString = Rr_CreateString("$c3Colored $c1text$c2");
@@ -202,23 +200,21 @@ static void Init(Rr_App* App)
 
 static void Cleanup(Rr_App* App)
 {
-    Rr_Renderer* Renderer = Rr_GetRenderer(App);
+    Rr_DestroyMaterial(App, CottageMaterial);
+    Rr_DestroyMaterial(App, MarbleMaterial);
 
-    Rr_DestroyMaterial(Renderer, CottageMaterial);
-    Rr_DestroyMaterial(Renderer, MarbleMaterial);
+    // Rr_DestroyImage(App, &SceneDepthImage);
+    // Rr_DestroyImage(App, &SceneColorImage);
+    Rr_DestroyImage(App, CottageTexture);
+    Rr_DestroyImage(App, PocDiffuseImage);
+    Rr_DestroyImage(App, MarbleDiffuse);
+    Rr_DestroyImage(App, MarbleSpecular);
 
-    // Rr_DestroyImage(Renderer, &SceneDepthImage);
-    // Rr_DestroyImage(Renderer, &SceneColorImage);
-    Rr_DestroyImage(Renderer, CottageTexture);
-    Rr_DestroyImage(Renderer, PocDiffuseImage);
-    Rr_DestroyImage(Renderer, MarbleDiffuse);
-    Rr_DestroyImage(Renderer, MarbleSpecular);
+    Rr_DestroyStaticMesh(App, CottageMesh);
+    Rr_DestroyStaticMesh(App, PocMesh);
+    Rr_DestroyStaticMesh(App, MarbleMesh);
 
-    Rr_DestroyStaticMesh(Renderer, CottageMesh);
-    Rr_DestroyStaticMesh(Renderer, PocMesh);
-    Rr_DestroyStaticMesh(Renderer, MarbleMesh);
-
-    Rr_DestroyGenericPipeline(Renderer, Uber3DPipeline);
+    Rr_DestroyGenericPipeline(App, Uber3DPipeline);
 
     Rr_DestroyString(&TestString);
     Rr_DestroyString(&DebugString);
@@ -276,15 +272,13 @@ static void Update(Rr_App* App)
 
 static void Draw(Rr_App* App)
 {
-    Rr_Renderer* Renderer = Rr_GetRenderer(App);
-
-    glm_perspective_resize(Rr_GetAspectRatio(Renderer), ShaderGlobals.Proj);
+    glm_perspective_resize(Rr_GetAspectRatio(App), ShaderGlobals.Proj);
 
     /* Rendering */
     Rr_BeginRenderingInfo BeginRenderingInfo = {};
     BeginRenderingInfo.Pipeline = Uber3DPipeline;
     BeginRenderingInfo.GlobalsData = &ShaderGlobals;
-    Rr_RenderingContext RenderingContext = Rr_BeginRendering(Renderer, &BeginRenderingInfo);
+    Rr_RenderingContext* RenderingContext = Rr_BeginRendering(App, &BeginRenderingInfo);
 
     const u64 Ticks = SDL_GetTicks();
     const f32 Time = (float)((double)Ticks / 1000.0 * 2);
@@ -311,19 +305,19 @@ static void Draw(Rr_App* App)
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
-        Rr_DrawStaticMesh(&RenderingContext, CottageMaterial, CottageMesh, &CottageDraw);
+        Rr_DrawStaticMesh(RenderingContext, CottageMaterial, CottageMesh, &CottageDraw);
 
         SUber3DDraw MarbleDraw;
         glm_mat4_identity(MarbleDraw.Model);
         MarbleDraw.Model[3][1] = 0.1f;
-        Rr_DrawStaticMesh(&RenderingContext, MarbleMaterial, MarbleMesh, &MarbleDraw);
+        Rr_DrawStaticMesh(RenderingContext, MarbleMaterial, MarbleMesh, &MarbleDraw);
 
         vec2 TestStringPosition{ 50.0f, 50.0f };
-        Rr_DrawDefaultText(&RenderingContext, &TestString, TestStringPosition);
+        Rr_DrawDefaultText(RenderingContext, &TestString, TestStringPosition);
 
         vec2 DebugStringPosition{ 450.0f, 54.0f };
         Rr_DrawCustomText(
-            &RenderingContext,
+            RenderingContext,
             nullptr,
             &DebugString,
             DebugStringPosition,
@@ -334,7 +328,7 @@ static void Draw(Rr_App* App)
     {
         vec2 LoadingStringPosition = { 25.0f, 540.0f - 25 - 32.0f };
         Rr_DrawCustomText(
-            &RenderingContext,
+            RenderingContext,
             nullptr,
             &LoadingString,
             LoadingStringPosition,
@@ -342,7 +336,7 @@ static void Draw(Rr_App* App)
             RR_DRAW_TEXT_FLAGS_ANIMATION_BIT);
     }
 
-    Rr_EndRendering(&RenderingContext);
+    Rr_EndRendering(RenderingContext);
 }
 
 static void OnFileDropped(Rr_App* App, const char* Path)

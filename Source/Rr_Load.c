@@ -28,7 +28,7 @@ struct Rr_LoadingContext
 {
     bool bAsync;
     Rr_LoadStatus Status;
-    Rr_Renderer* Renderer;
+    Rr_App* App;
     Rr_LoadTask* Tasks;
     SDL_Thread* Thread;
     SDL_Semaphore* Semaphore;
@@ -36,12 +36,12 @@ struct Rr_LoadingContext
     const void* Userdata;
 };
 
-Rr_LoadingContext* Rr_CreateLoadingContext(Rr_Renderer* Renderer, const size_t InitialTaskCount)
+Rr_LoadingContext* Rr_CreateLoadingContext(Rr_App* App, const size_t InitialTaskCount)
 {
     Rr_LoadingContext* LoadingContext = Rr_Calloc(1, sizeof(Rr_LoadingContext));
 
     *LoadingContext = (Rr_LoadingContext){
-        .Renderer = Renderer,
+        .App = App,
         .Status = RR_LOAD_STATUS_PENDING
     };
 
@@ -73,7 +73,8 @@ void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset
 static int SDLCALL Load(void* Data)
 {
     Rr_LoadingContext* LoadingContext = Data;
-    Rr_Renderer* Renderer = LoadingContext->Renderer;
+    Rr_App* App = LoadingContext->App;
+    Rr_Renderer* Renderer = &App->Renderer;
 
     LoadingContext->Status = RR_LOAD_STATUS_LOADING;
 
@@ -145,7 +146,7 @@ static int SDLCALL Load(void* Data)
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
                 *(Rr_Image**)Task->Out = Rr_CreateColorImageFromPNG(
-                    Renderer,
+                    App,
                     &UploadContext,
                     &Task->Asset,
                     false);
@@ -154,7 +155,7 @@ static int SDLCALL Load(void* Data)
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
                 *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshFromOBJ(
-                    Renderer,
+                    App,
                     &UploadContext,
                     &Task->Asset);
             }
@@ -248,7 +249,7 @@ static int SDLCALL Load(void* Data)
 
     if (!bUseAcquireBarriers && LoadingContext->LoadingCallback)
     {
-        LoadingContext->LoadingCallback(Renderer, LoadingContext->Userdata);
+        LoadingContext->LoadingCallback(App, LoadingContext->Userdata);
     }
 
     vkFreeCommandBuffers(
@@ -272,7 +273,10 @@ static int SDLCALL Load(void* Data)
     return 0;
 }
 
-void Rr_LoadAsync(Rr_LoadingContext* LoadingContext, const Rr_LoadingCallback LoadingCallback, const void* Userdata)
+void Rr_LoadAsync(
+    Rr_LoadingContext* LoadingContext,
+    const Rr_LoadingCallback LoadingCallback,
+    const void* Userdata)
 {
     const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
     if (TaskCount == 0)

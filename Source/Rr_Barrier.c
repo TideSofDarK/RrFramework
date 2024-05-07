@@ -34,7 +34,6 @@ void Rr_ChainImageBarrier_Aspect(
 }
 
 void Rr_ChainImageBarrier(
-
     Rr_ImageBarrier* TransitionImage,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,

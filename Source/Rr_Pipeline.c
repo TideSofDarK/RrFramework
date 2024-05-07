@@ -373,12 +373,13 @@ static void Rr_DestroyGenericPipelineBuffers(Rr_Renderer* Renderer, Rr_GenericPi
 }
 
 Rr_GenericPipeline* Rr_BuildGenericPipeline(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_PipelineBuilder* PipelineBuilder,
     size_t GlobalsSize,
     size_t MaterialSize,
     size_t DrawSize)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
     Rr_GenericPipeline* Pipeline = Rr_Calloc(1, sizeof(Rr_GenericPipeline));
     *Pipeline = (Rr_GenericPipeline){
         .GlobalsSize = GlobalsSize,
@@ -396,8 +397,9 @@ Rr_GenericPipeline* Rr_BuildGenericPipeline(
     return Pipeline;
 }
 
-void Rr_DestroyGenericPipeline(Rr_Renderer* Renderer, Rr_GenericPipeline* Pipeline)
+void Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
     for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)

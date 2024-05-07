@@ -6,6 +6,7 @@
 #include "Rr_Array.h"
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
+#include "Rr_Draw.h"
 
 #include <SDL3/SDL.h>
 
@@ -235,6 +236,26 @@ typedef struct Rr_TextPipeline
 } Rr_TextPipeline;
 
 /**
+ * Draw
+ */
+typedef struct Rr_DrawTextInfo
+{
+    Rr_Font* Font;
+    Rr_String String;
+    vec2 Position;
+    f32 Size;
+    Rr_DrawTextFlags Flags;
+} Rr_DrawTextInfo;
+
+struct Rr_RenderingContext
+{
+    Rr_BeginRenderingInfo* Info;
+    Rr_Renderer* Renderer;
+    Rr_DrawMeshInfo* DrawMeshArray;
+    Rr_DrawTextInfo* DrawTextArray;
+};
+
+/**
  * Renderer
  */
 struct Rr_Renderer
@@ -270,6 +291,7 @@ struct Rr_Renderer
     /* Frames */
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
+    size_t CurrentFrameIndex;
 
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
@@ -314,11 +336,11 @@ typedef struct Rr_FrameTime
 
 struct Rr_App
 {
-    SDL_AtomicInt bExit;
-    SDL_Window* Window;
+    Rr_Renderer Renderer;
+    Rr_AppConfig* Config;
     Rr_InputConfig InputConfig;
     Rr_InputState InputState;
-    Rr_Renderer* Renderer;
     Rr_FrameTime FrameTime;
-    Rr_AppConfig* Config;
+    SDL_Window* Window;
+    SDL_AtomicInt bExit;
 };

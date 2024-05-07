@@ -1,33 +1,13 @@
 #pragma once
 
+#include "Rr_Defines.h"
+
 #define VK_NO_PROTOTYPES
 
 #include <vk_mem_alloc.h>
 #include <volk.h>
 #include <vulkan/vk_enum_string_helper.h>
 
-#include "Rr_App.h"
-
-void Rr_InitRenderer(Rr_App* App);
-void Rr_InitImGui(Rr_App* App);
-void Rr_CleanupRenderer(Rr_App* App);
-void Rr_Draw(Rr_App* App);
-bool Rr_NewFrame(Rr_Renderer* Renderer, void* Window);
-
-size_t Rr_GetCurrentFrameIndex(Rr_Renderer* Renderer);
-Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
-
-VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
-void Rr_EndImmediate(Rr_Renderer* Renderer);
-
-VkPipeline Rr_BuildPipeline(
-    Rr_Renderer* Renderer,
-    Rr_PipelineBuilder* PipelineBuilder,
-    VkPipelineLayout PipelineLayout);
-
-/**
- * Various Vulkan utilities
- */
 static inline VkExtent2D GetExtent2D(VkExtent3D Extent)
 {
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };

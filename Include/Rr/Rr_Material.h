@@ -9,8 +9,8 @@ extern "C"
 {
 #endif
 
-Rr_Material* Rr_CreateMaterial(Rr_Renderer* Renderer, Rr_Image** Textures, size_t TextureCount);
-void Rr_DestroyMaterial(Rr_Renderer* Renderer, Rr_Material* Material);
+Rr_Material* Rr_CreateMaterial(Rr_App* App, Rr_Image** Textures, size_t TextureCount);
+void Rr_DestroyMaterial(Rr_App* App, Rr_Material* Material);
 
 #ifdef __cplusplus
 }

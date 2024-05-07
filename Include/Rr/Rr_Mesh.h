@@ -5,6 +5,7 @@ typedef struct Rr_RawMesh Rr_RawMesh;
 
 #include "Rr_Asset.h"
 #include "Rr_Load.h"
+#include "Rr_App.h"
 
 #include <cglm/vec3.h>
 #include <cglm/vec4.h>
@@ -26,11 +27,11 @@ typedef struct Rr_Vertex
 } Rr_Vertex;
 
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset);
 
-void Rr_DestroyStaticMesh(Rr_Renderer* Renderer, Rr_StaticMesh* Mesh);
+void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh);
 
 size_t Rr_GetStaticMeshSizeOBJ(Rr_Asset* Asset);
 

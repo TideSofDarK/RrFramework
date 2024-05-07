@@ -13,10 +13,11 @@
 #include <SDL_stdinc.h>
 
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
     Rr_StaticMesh* StaticMesh = Rr_Calloc(1, sizeof(Rr_StaticMesh));
     Rr_RawMesh* RawMesh = Rr_CreateRawMeshOBJ(Asset);
     StaticMesh->IndexCount = Rr_ArrayCount(RawMesh->Indices);
@@ -65,12 +66,14 @@ Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     return StaticMesh;
 }
 
-void Rr_DestroyStaticMesh(Rr_Renderer* Renderer, Rr_StaticMesh* Mesh)
+void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh)
 {
     if (Mesh == NULL)
     {
         return;
     }
+
+    Rr_Renderer* Renderer = &App->Renderer;
 
     Rr_DestroyBuffer(Renderer, Mesh->IndexBuffer);
     Rr_DestroyBuffer(Renderer, Mesh->VertexBuffer);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Rr_Input.h"
-#include "Rr_Renderer.h"
 
 #include <cglm/ivec2.h>
 
@@ -28,7 +27,7 @@ typedef struct Rr_AppConfig
 void Rr_Run(Rr_AppConfig* Config);
 void Rr_DebugOverlay(Rr_App* App);
 void Rr_ToggleFullscreen(Rr_App* App);
-Rr_Renderer* Rr_GetRenderer(Rr_App* App);
+float Rr_GetAspectRatio(Rr_App* App);
 Rr_InputState Rr_GetInputState(Rr_App* App);
 
 #ifdef __cplusplus

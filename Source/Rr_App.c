@@ -74,8 +74,8 @@ void Rr_DebugOverlay(Rr_App* App)
     igSetNextWindowBgAlpha(0.35f);
     if (igBegin("Debug Overlay", NULL, Flags))
     {
-        igText("Reference Resolution: %dx%d", App->Renderer->ReferenceResolution.width, App->Renderer->ReferenceResolution.height);
-        igText("Active Resolution: %dx%d", App->Renderer->ActiveResolution.width, App->Renderer->ActiveResolution.height);
+        igText("Reference Resolution: %dx%d", App->Renderer.ReferenceResolution.width, App->Renderer.ReferenceResolution.height);
+        igText("Active Resolution: %dx%d", App->Renderer.ActiveResolution.width, App->Renderer.ActiveResolution.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
@@ -96,7 +96,7 @@ void Rr_DebugOverlay(Rr_App* App)
 
 static bool BeginIterate(Rr_App* App)
 {
-    if (Rr_NewFrame(App->Renderer, App->Window))
+    if (Rr_NewFrame(App, App->Window))
     {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
@@ -133,7 +133,7 @@ static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
         case SDL_EVENT_WINDOW_EXPOSED:
         {
             Rr_App* App = (Rr_App*)AppPtr;
-            SDL_AtomicSet(&App->Renderer->Swapchain.bResizePending, 1);
+            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
             Iterate(App);
         }
         break;
@@ -254,12 +254,13 @@ void Rr_ToggleFullscreen(Rr_App* App)
     SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
 }
 
-Rr_Renderer* Rr_GetRenderer(Rr_App* App)
-{
-    return App->Renderer;
-}
-
 Rr_InputState Rr_GetInputState(Rr_App* App)
 {
     return App->InputState;
+}
+
+f32 Rr_GetAspectRatio(Rr_App* App)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+    return (float)Renderer->ActiveResolution.width / (float)Renderer->ActiveResolution.height;
 }

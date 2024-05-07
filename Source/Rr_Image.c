@@ -14,7 +14,7 @@
 #include <tinyexr/tinyexr.h>
 
 void Rr_UploadImage(
-    const Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_UploadContext* UploadContext,
     VkImage Image,
     VkExtent3D Extent,
@@ -25,6 +25,8 @@ void Rr_UploadImage(
     const void* ImageData,
     const size_t ImageDataLength)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
+
     Rr_StagingBuffer* StagingBuffer = UploadContext->StagingBuffer;
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
@@ -138,13 +140,15 @@ void Rr_UploadImage(
 }
 
 static Rr_Image* CreateImage(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
     VmaAllocationCreateInfo AllocationCreateInfo,
     bool bMipMapped)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
+
     Rr_Image* Image = Rr_Calloc(1, sizeof(Rr_Image));
     Image->Format = Format;
     Image->Extent = Extent;
@@ -173,7 +177,7 @@ static Rr_Image* CreateImage(
 }
 
 static Rr_Image* Rr_CreateImage(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
@@ -184,7 +188,7 @@ static Rr_Image* Rr_CreateImage(
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
-    return CreateImage(Renderer, Extent, Format, Usage, AllocationCreateInfo, bMipMapped);
+    return CreateImage(App, Extent, Format, Usage, AllocationCreateInfo, bMipMapped);
 }
 
 size_t Rr_GetImageSizePNG(const Rr_Asset* Asset)
@@ -204,11 +208,13 @@ size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset)
 }
 
 Rr_Image* Rr_CreateColorImageFromPNG(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset,
     bool bMipMapped)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
+
     const i32 DesiredChannels = 4;
     i32 Channels;
     VkExtent3D Extent = { .depth = 1 };
@@ -216,13 +222,13 @@ Rr_Image* Rr_CreateColorImageFromPNG(
     const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Image* ColorImage = Rr_CreateImage(
-        Renderer,
+        App,
         Extent,
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         bMipMapped);
 
-    Rr_UploadImage(Renderer,
+    Rr_UploadImage(App,
         UploadContext,
         ColorImage->Handle,
         Extent,
@@ -239,10 +245,11 @@ Rr_Image* Rr_CreateColorImageFromPNG(
 }
 
 Rr_Image* Rr_CreateDepthImageFromEXR(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
     int Result;
@@ -300,9 +307,9 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
 
     const size_t DataSize = Extent.width * Extent.height * sizeof(f32);
 
-    Rr_Image* DepthImage = Rr_CreateImage(Renderer, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
+    Rr_Image* DepthImage = Rr_CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 
-    Rr_UploadImage(Renderer,
+    Rr_UploadImage(App,
         UploadContext,
         DepthImage->Handle,
         Extent,
@@ -319,15 +326,17 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     return DepthImage;
 }
 
-Rr_Image* Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, u32 Width, u32 Height)
+Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Height)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
+
     const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
     return CreateImage(
-        Renderer,
+        App,
         (VkExtent3D){ Width, Height, 1 },
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -335,15 +344,17 @@ Rr_Image* Rr_CreateColorAttachmentImage(Rr_Renderer* Renderer, u32 Width, u32 He
         false);
 }
 
-Rr_Image* Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, u32 Width, u32 Height)
+Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
+
     const VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
 
     return CreateImage(
-        Renderer,
+        App,
         (VkExtent3D){ Width, Height, 1 },
         RR_DEPTH_FORMAT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -351,12 +362,15 @@ Rr_Image* Rr_CreateDepthAttachmentImage(Rr_Renderer* Renderer, u32 Width, u32 He
         false);
 }
 
-void Rr_DestroyImage(Rr_Renderer* Renderer, Rr_Image* AllocatedImage)
+void Rr_DestroyImage(Rr_App* App, Rr_Image* AllocatedImage)
 {
     if (AllocatedImage == NULL)
     {
         return;
     }
+
+    Rr_Renderer* Renderer = &App->Renderer;
+
     vkDestroyImageView(Renderer->Device, AllocatedImage->View, NULL);
     vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 

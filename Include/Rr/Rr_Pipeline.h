@@ -5,7 +5,7 @@ typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
 
 #include "Rr_Asset.h"
-#include "Rr_Renderer.h"
+#include "Rr_App.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -50,12 +50,12 @@ void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, Rr_PolygonMode Pol
 void Rr_EnableDepthTest(Rr_PipelineBuilder* PipelineBuilder);
 void Rr_EnableAlphaBlend(Rr_PipelineBuilder* PipelineBuilder);
 Rr_GenericPipeline* Rr_BuildGenericPipeline(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_PipelineBuilder* PipelineBuilder,
     size_t GlobalsSize,
     size_t MaterialSize,
     size_t DrawSize);
-void Rr_DestroyGenericPipeline(Rr_Renderer* Renderer, Rr_GenericPipeline* Pipeline);
+void Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline);
 
 #ifdef __cplusplus
 }

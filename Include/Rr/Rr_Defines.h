@@ -3,7 +3,7 @@
 #include "Rr_Core.h"
 
 /* Renderer Configuration */
-#define RR_FORCE_UNIFIED_QUEUE 0
+#define RR_FORCE_UNIFIED_QUEUE 1
 #define RR_PERFORMANCE_COUNTER 1
 
 /* Pipelines */
