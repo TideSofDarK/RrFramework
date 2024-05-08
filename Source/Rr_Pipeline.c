@@ -339,39 +339,6 @@ void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
     };
 }
 
-static Rr_GenericPipelineBuffers* Rr_CreateGenericPipelineBuffers(
-    Rr_Renderer* Renderer,
-    size_t GlobalsSize,
-    size_t MaterialSize,
-    size_t DrawSize)
-{
-    Rr_GenericPipelineBuffers* Buffers = Rr_Calloc(1, sizeof(Rr_GenericPipelineBuffers));
-
-    /* Buffers */
-    Buffers->Globals = Rr_CreateDeviceUniformBuffer(
-        Renderer,
-        GlobalsSize);
-    Buffers->Material = Rr_CreateDeviceUniformBuffer(
-        Renderer,
-        MaterialSize);
-    const size_t DrawBufferSize = 1 << 20;
-    Buffers->Draw = Rr_CreateMappedBuffer(
-        Renderer,
-        DrawBufferSize,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-    return Buffers;
-}
-
-static void Rr_DestroyGenericPipelineBuffers(Rr_Renderer* Renderer, Rr_GenericPipelineBuffers* GenericPipelineBuffers)
-{
-    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Draw);
-    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Material);
-    Rr_DestroyBuffer(Renderer, GenericPipelineBuffers->Globals);
-
-    Rr_Free(GenericPipelineBuffers);
-}
-
 Rr_GenericPipeline* Rr_BuildGenericPipeline(
     Rr_App* App,
     Rr_PipelineBuilder* PipelineBuilder,
@@ -389,11 +356,6 @@ Rr_GenericPipeline* Rr_BuildGenericPipeline(
 
     Pipeline->Handle = Rr_BuildPipeline(Renderer, PipelineBuilder, Renderer->GenericPipelineLayout);
 
-    for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
-    {
-        Pipeline->Buffers[Index] = Rr_CreateGenericPipelineBuffers(Renderer, Pipeline->GlobalsSize, Pipeline->MaterialSize, Pipeline->DrawSize);
-    }
-
     return Pipeline;
 }
 
@@ -402,9 +364,7 @@ void Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
-    for (int Index = 0; Index < RR_FRAME_OVERLAP; Index++)
-    {
-        Rr_DestroyGenericPipelineBuffers(Renderer, Pipeline->Buffers[Index]);
-    }
     vkDestroyPipeline(Device, Pipeline->Handle, NULL);
+
+    Rr_Free(Pipeline);
 }

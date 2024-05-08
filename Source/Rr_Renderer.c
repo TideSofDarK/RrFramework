@@ -262,6 +262,8 @@ static void InitDevice(Rr_App* App)
             SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", Renderer->PhysicalDevice.Properties.properties.deviceName);
 
             bFoundSuitableDevice = true;
+
+            Renderer->UniformAlignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
             break;
         }
     }
@@ -589,8 +591,6 @@ static void InitFrames(Rr_App* App)
     {
         Rr_Frame* Frame = &Frames[Index];
 
-        Frame->StagingBuffer = Rr_CreateStagingBuffer(Renderer, RR_STAGING_BUFFER_SIZE);
-
         /* Synchronization */
         vkCreateFence(Device, &FenceCreateInfo, NULL, &Frame->RenderFence);
 
@@ -623,6 +623,11 @@ static void InitFrames(Rr_App* App)
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
 
         vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer);
+
+        /* Buffers */
+        Frame->StagingBuffer = Rr_CreateStagingBuffer(Renderer, RR_STAGING_BUFFER_SIZE);
+        Frame->Buffers.Draw = Rr_CreateMappedBuffer(Renderer, 66560, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        Frame->Buffers.Common = Rr_CreateDeviceUniformBuffer(Renderer, 66560);
     }
 }
 
@@ -646,6 +651,9 @@ static void CleanupFrames(Rr_App* App)
         CleanupDrawTarget(App, &Frame->DrawTarget);
 
         Rr_ArrayFree(Frame->RetiredSemaphoresArray);
+
+        Rr_DestroyBuffer(Renderer, Frame->Buffers.Draw);
+        Rr_DestroyBuffer(Renderer, Frame->Buffers.Common);
     }
 }
 

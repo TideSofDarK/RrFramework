@@ -111,34 +111,12 @@ typedef struct Rr_DrawTarget
     VkFramebuffer Framebuffer;
 } Rr_DrawTarget;
 
-struct Rr_Frame
-{
-    VkCommandPool CommandPool;
-    VkCommandBuffer MainCommandBuffer;
-    VkSemaphore SwapchainSemaphore;
-    VkSemaphore RenderSemaphore;
-    VkFence RenderFence;
-    Rr_DescriptorAllocator DescriptorAllocator;
-    Rr_StagingBuffer* StagingBuffer;
-    VkSemaphore* RetiredSemaphoresArray;
-    Rr_DrawTarget DrawTarget;
-};
-
 /**
  * Pipeline
  */
-struct Rr_GenericPipelineBuffers
-{
-    Rr_Buffer* Globals;
-    Rr_Buffer* Material;
-    Rr_Buffer* Draw;
-};
-
 struct Rr_GenericPipeline
 {
     VkPipeline Handle;
-
-    Rr_GenericPipelineBuffers* Buffers[RR_FRAME_OVERLAP];
 
     size_t GlobalsSize;
     size_t MaterialSize;
@@ -238,6 +216,13 @@ typedef struct Rr_TextPipeline
 /**
  * Draw
  */
+typedef struct Rr_DrawMeshInfo
+{
+    Rr_Material* Material;
+    Rr_StaticMesh* StaticMesh;
+    u32 OffsetIntoDrawBuffer;
+} Rr_DrawMeshInfo;
+
 typedef struct Rr_DrawTextInfo
 {
     Rr_Font* Font;
@@ -253,19 +238,46 @@ struct Rr_RenderingContext
     Rr_Renderer* Renderer;
     Rr_DrawMeshInfo* DrawMeshArray;
     Rr_DrawTextInfo* DrawTextArray;
+    Rr_Buffer* CommonBuffer;
+    size_t CommonBufferOffset;
+    Rr_Buffer* DrawBuffer;
+    size_t DrawBufferOffset;
 };
 
 /**
  * Renderer
  */
+struct Rr_Frame
+{
+    VkCommandPool CommandPool;
+    VkCommandBuffer MainCommandBuffer;
+    VkSemaphore SwapchainSemaphore;
+    VkSemaphore RenderSemaphore;
+    VkFence RenderFence;
+    Rr_DescriptorAllocator DescriptorAllocator;
+    Rr_StagingBuffer* StagingBuffer;
+    VkSemaphore* RetiredSemaphoresArray;
+    Rr_DrawTarget DrawTarget;
+    struct
+    {
+        Rr_Buffer* Common;
+        Rr_Buffer* Draw;
+    } Buffers;
+};
+
 struct Rr_Renderer
 {
-    /* Essentials */
+    /* Vulkan Instance */
     VkInstance Instance;
-    Rr_PhysicalDevice PhysicalDevice;
-    VkDevice Device;
+
+    /* Presentation */
     VkSurfaceKHR Surface;
     Rr_Swapchain Swapchain;
+
+    /* Device */
+    Rr_PhysicalDevice PhysicalDevice;
+    VkDevice Device;
+    VkDeviceSize UniformAlignment;
 
     /* Queues */
     u32 bUnifiedQueue;

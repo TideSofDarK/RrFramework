@@ -186,7 +186,7 @@ void Rr_UploadToUniformBuffer(
     const void* Data,
     size_t DataLength)
 {
-    const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+    const u32 Alignment = Renderer->UniformAlignment;
     Rr_UploadBufferAligned(
         Renderer,
         UploadContext,
@@ -209,11 +209,21 @@ void Rr_CopyToMappedUniformBuffer(
 {
     const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     const size_t AlignedSize = Rr_Align(Size, Alignment);
-    if (*DstOffset + AlignedSize < DstBuffer->AllocationInfo.size)
+    if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
         SDL_memcpy((char*)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
         *DstOffset += Size;
         *DstOffset = Rr_Align(*DstOffset, Alignment);
+    }
+    else
+    {
+        SDL_LogError(
+            SDL_LOG_CATEGORY_VIDEO,
+            "Exceeding buffer size! Current offset is %zu, allocation size is %zu and total  buffer size is %zu.",
+            *DstOffset,
+            AlignedSize,
+            DstBuffer->AllocationInfo.size);
+        abort();
     }
 }
 

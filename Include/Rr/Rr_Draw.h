@@ -24,13 +24,6 @@ typedef struct Rr_BeginRenderingInfo
     const void* GlobalsData;
 } Rr_BeginRenderingInfo;
 
-typedef struct Rr_DrawMeshInfo
-{
-    const Rr_Material* Material;
-    const Rr_StaticMesh* StaticMesh;
-    char DrawData[RR_PIPELINE_MAX_DRAW_SIZE];
-} Rr_DrawMeshInfo;
-
 #ifdef __cplusplus
 extern "C"
 {

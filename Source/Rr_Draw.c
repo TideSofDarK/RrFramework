@@ -7,7 +7,7 @@
 #include "Rr_Memory.h"
 #include "Rr_Util.h"
 
-Rr_RenderingContext* Rr_BeginRendering(Rr_App* App, Rr_BeginRenderingInfo* const Info)
+Rr_RenderingContext* Rr_BeginRendering(Rr_App* App, Rr_BeginRenderingInfo* Info)
 {
     if (Info->Pipeline == NULL)
     {
@@ -20,6 +20,8 @@ Rr_RenderingContext* Rr_BeginRendering(Rr_App* App, Rr_BeginRenderingInfo* const
     const Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     RenderingContext->Renderer = Renderer;
     RenderingContext->Info = Info;
+    RenderingContext->DrawBuffer = Frame->Buffers.Draw;
+    RenderingContext->CommonBuffer = Frame->Buffers.Common;
     Rr_ArrayInit(RenderingContext->DrawMeshArray, Rr_DrawMeshInfo, 16);
     Rr_ArrayInit(RenderingContext->DrawTextArray, Rr_DrawTextInfo, 16);
 
@@ -35,10 +37,10 @@ void Rr_DrawStaticMesh(
     Rr_DrawMeshInfo DrawMeshInfo = {
         .Material = Material,
         .StaticMesh = StaticMesh,
-        .DrawData = { 0 }
+        .OffsetIntoDrawBuffer = RenderingContext->DrawBufferOffset
     };
     const size_t DrawDataSize = SDL_min(RenderingContext->Info->Pipeline->DrawSize, RR_PIPELINE_MAX_DRAW_SIZE);
-    SDL_memcpy(DrawMeshInfo.DrawData, DrawData, DrawDataSize);
+    Rr_CopyToMappedUniformBuffer(RenderingContext->Renderer, RenderingContext->DrawBuffer, DrawData, DrawDataSize, &RenderingContext->DrawBufferOffset);
     Rr_ArrayPush(RenderingContext->DrawMeshArray, &DrawMeshInfo);
 }
 
@@ -94,7 +96,6 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     VkExtent2D ActiveResolution = Renderer->ActiveResolution;
 
     Rr_GenericPipeline* Pipeline = RenderingContext->Info->Pipeline;
-    Rr_GenericPipelineBuffers* PipelineBuffers = Pipeline->Buffers[CurrentFrameIndex];
 
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1);
 
@@ -107,7 +108,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     Rr_UploadToUniformBuffer(
         Renderer,
         &UploadContext,
-        PipelineBuffers->Globals,
+        RenderingContext->CommonBuffer,
         RenderingContext->Info->GlobalsData,
         Pipeline->GlobalsSize);
 
@@ -119,7 +120,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     Rr_WriteBufferDescriptor(
         &DescriptorWriter,
         0,
-        PipelineBuffers->Globals->Handle,
+        RenderingContext->CommonBuffer->Handle,
         Pipeline->GlobalsSize,
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -131,18 +132,15 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         Renderer->GenericPipelineLayout,
-        0,
+        RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS,
         1,
         &GlobalsDescriptorSet,
         0,
         NULL);
 
     /* Generate draw lists. */
-    const u32 Alignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+    const u32 Alignment = Renderer->UniformAlignment;
     size_t DrawMeshCount = Rr_ArrayCount(RenderingContext->DrawMeshArray);
-    size_t DrawSize = Pipeline->DrawSize;
-    size_t DrawSizeAligned = Rr_Align(DrawSize, Alignment);
-    void* DrawData = Rr_Malloc(DrawSizeAligned * DrawMeshCount);
 
     Rr_Material** MaterialsArray;
     Rr_ArrayInit(MaterialsArray, Rr_Material*, DrawMeshCount);
@@ -154,8 +152,6 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     for (size_t DrawMeshIndex = 0; DrawMeshIndex < DrawMeshCount; ++DrawMeshIndex)
     {
         Rr_DrawMeshInfo* DrawMeshInfo = &RenderingContext->DrawMeshArray[DrawMeshIndex];
-
-        SDL_memcpy((char*)DrawData + (DrawMeshIndex * DrawSizeAligned), DrawMeshInfo->DrawData, DrawSize);
 
         bool bMaterialFound = false;
         for (size_t MaterialIndex = 0; MaterialIndex < Rr_ArrayCount(MaterialsArray); ++MaterialIndex)
@@ -183,15 +179,6 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         Rr_ArrayPush(DrawMeshIndicesArray, &DrawMeshIndex);
     }
 
-    /* Upload per-draw-call data. */
-    size_t DrawOffset = 0;
-    Rr_CopyToMappedUniformBuffer(
-        Renderer,
-        PipelineBuffers->Draw,
-        DrawData,
-        DrawSizeAligned * DrawMeshCount,
-        &DrawOffset);
-
     /* Allocate and write draw descriptor set. */
     VkDescriptorSet DrawDescriptorSet = Rr_AllocateDescriptorSet(
         &Frame->DescriptorAllocator,
@@ -200,7 +187,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
     Rr_WriteBufferDescriptor(
         &DescriptorWriter,
         0,
-        PipelineBuffers->Draw->Handle,
+        RenderingContext->DrawBuffer->Handle,
         Pipeline->DrawSize,
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
@@ -375,7 +362,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             CommandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             Renderer->GenericPipelineLayout,
-            1,
+            RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL,
             1,
             &MaterialDescriptorSet,
             0,
@@ -388,16 +375,15 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             size_t DrawMeshIndex = Indices[DrawIndex];
             Rr_DrawMeshInfo* DrawMeshInfo = &RenderingContext->DrawMeshArray[DrawMeshIndex];
 
-            u32 Offset = DrawMeshIndex * DrawSizeAligned;
             vkCmdBindDescriptorSets(
                 CommandBuffer,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 Renderer->GenericPipelineLayout,
-                2,
+                RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW,
                 1,
                 &DrawDescriptorSet,
                 1,
-                &Offset);
+                &DrawMeshInfo->OffsetIntoDrawBuffer);
             //            vkCmdPushConstants(
             //                CommandBuffer,
             //                Pipeline->Layout,
@@ -589,7 +575,6 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
 
     vkCmdEndRenderPass(CommandBuffer);
 
-    Rr_Free(DrawData);
     Rr_Free(TextData);
     Rr_ArrayFree(MaterialsArray);
     Rr_ArrayFree(DrawMeshIndicesArrays);

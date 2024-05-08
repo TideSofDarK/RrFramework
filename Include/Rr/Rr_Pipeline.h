@@ -1,6 +1,5 @@
 #pragma once
 
-typedef struct Rr_GenericPipelineBuffers Rr_GenericPipelineBuffers;
 typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
 
