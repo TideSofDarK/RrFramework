@@ -1,6 +1,6 @@
 #include "Rr_Input.h"
 
-#include "Rr_Core.h"
+#include "Rr_Defines.h"
 
 #include <SDL3/SDL.h>
 

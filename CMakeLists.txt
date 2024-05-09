@@ -112,6 +112,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         STBI_NO_HDR
         STBI_NO_TGA
         STBI_NO_FAILURE_STRINGS
+        VK_NO_PROTOTYPES
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}

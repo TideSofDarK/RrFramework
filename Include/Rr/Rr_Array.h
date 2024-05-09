@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rr_Core.h"
+#include "Rr_Defines.h"
 
 #ifdef __cplusplus
 extern "C"

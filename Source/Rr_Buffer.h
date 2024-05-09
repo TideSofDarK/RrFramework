@@ -2,6 +2,7 @@
 
 #include "Rr_Renderer.h"
 #include "Rr_Vulkan.h"
+#include "Rr_Load.h"
 
 typedef struct Rr_Buffer
 {

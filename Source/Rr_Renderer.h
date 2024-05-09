@@ -4,13 +4,9 @@ typedef struct Rr_Frame Rr_Frame;
 typedef struct Rr_Renderer Rr_Renderer;
 
 #include "Rr_App.h"
-#include "Rr_Image.h"
-#include "Rr_Mesh.h"
-#include "Rr_Material.h"
 #include "Rr_Pipeline.h"
-#include "Rr_String.h"
-#include "Rr_Text.h"
-#include "Rr_Vulkan.h"
+
+#include <volk.h>
 
 void Rr_InitRenderer(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);
@@ -27,8 +23,4 @@ VkPipeline Rr_BuildPipeline(
     Rr_Renderer* Renderer,
     Rr_PipelineBuilder* PipelineBuilder,
     VkPipelineLayout PipelineLayout);
-
-
-
-
 

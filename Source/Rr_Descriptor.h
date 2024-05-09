@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Rr_Defines.h"
-#include "Rr_Vulkan.h"
+
+#include <volk.h>
 
 typedef struct Rr_DescriptorSetLayout
 {

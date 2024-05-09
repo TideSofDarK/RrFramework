@@ -1,5 +1,7 @@
 #include "Rr_Barrier.h"
 
+#include "Rr_Vulkan.h"
+
 void Rr_ChainImageBarrier_Aspect(
     Rr_ImageBarrier* TransitionImage,
     VkPipelineStageFlags DstStageMask,

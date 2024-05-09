@@ -8,7 +8,6 @@
 #include "Rr_Descriptor.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
-#include "Rr_Util.h"
 #include "Rr_Types.h"
 #include "Rr_Barrier.h"
 
