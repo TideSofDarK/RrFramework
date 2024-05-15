@@ -7,6 +7,7 @@
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Draw.h"
+#include "Rr_Math.h"
 
 #include <SDL3/SDL.h>
 
@@ -163,7 +164,7 @@ typedef struct Rr_Glyph
 
 typedef struct Rr_TextPerInstanceVertexInput
 {
-    vec2 Advance;
+    Rr_Vec2 Advance;
     u32 Unicode;
 } Rr_TextPerInstanceVertexInput;
 
@@ -171,27 +172,27 @@ typedef struct Rr_TextGlobalsLayout
 {
     float Time;
     float Reserved;
-    vec2 ScreenSize;
-    vec4 Pallete[RR_TEXT_MAX_COLORS];
+    Rr_Vec2 ScreenSize;
+    Rr_Vec4 Pallete[RR_TEXT_MAX_COLORS];
 } Rr_TextGlobalsLayout;
 
 typedef struct Rr_TextFontLayout
 {
     float Advance;
     float DistanceRange;
-    vec2 AtlasSize;
+    Rr_Vec2 AtlasSize;
     Rr_Glyph Glyphs[RR_TEXT_MAX_GLYPHS];
 } Rr_TextFontLayout;
 
 typedef struct Rr_TextPushConstants
 {
-    vec2 PositionScreenSpace;
+    Rr_Vec2 PositionScreenSpace;
     f32 Size;
     u32 Flags;
-    vec4 ReservedB;
-    vec4 ReservedC;
-    vec4 ReservedD;
-    mat4 ReservedE;
+    Rr_Vec4 ReservedB;
+    Rr_Vec4 ReservedC;
+    Rr_Vec4 ReservedD;
+    Rr_Mat4 ReservedE;
 } Rr_TextPushConstants;
 
 struct Rr_Font
@@ -227,7 +228,7 @@ typedef struct Rr_DrawTextInfo
 {
     Rr_Font* Font;
     Rr_String String;
-    vec2 Position;
+    Rr_Vec2 Position;
     f32 Size;
     Rr_DrawTextFlags Flags;
 } Rr_DrawTextInfo;

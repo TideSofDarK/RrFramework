@@ -195,13 +195,13 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
         }
 
         const cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
-        vec4 PlaneBounds = { 0 };
+        Rr_Vec4 PlaneBounds = { 0 };
         if (cJSON_IsObject(PlaneBoundsJSON))
         {
-            PlaneBounds[0] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
-            PlaneBounds[1] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "bottom"));
-            PlaneBounds[2] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "right"));
-            PlaneBounds[3] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
+            PlaneBounds.X = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
+            PlaneBounds.Y = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "bottom"));
+            PlaneBounds.Z = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "right"));
+            PlaneBounds.W = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
         }
 
         Font->Advances[Unicode] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance"));

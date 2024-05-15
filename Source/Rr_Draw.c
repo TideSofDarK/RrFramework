@@ -62,7 +62,7 @@ void Rr_DrawCustomText(
     Rr_RenderingContext* RenderingContext,
     Rr_Font* Font,
     Rr_String* String,
-    vec2 Position,
+    Rr_Vec2 Position,
     f32 Size,
     Rr_DrawTextFlags Flags)
 {
@@ -71,18 +71,18 @@ void Rr_DrawCustomText(
         &(Rr_DrawTextInfo){
             .Font = Font,
             .String = *String,
-            .Position = { Position[0], Position[1] },
+            .Position = Position,
             .Size = Size,
             .Flags = Flags });
 }
 
-void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, vec2 Position)
+void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, Rr_Vec2 Position)
 {
     DrawText(
         RenderingContext,
         &(Rr_DrawTextInfo){
             .String = *String,
-            .Position = { Position[0], Position[1] },
+            .Position = Position,
             .Size = 32.0f,
             .Flags = 0 });
 }
@@ -476,8 +476,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             NULL);
 
         Rr_TextPushConstants TextPushConstants;
-        TextPushConstants.PositionScreenSpace[0] = DrawTextInfo->Position[0];
-        TextPushConstants.PositionScreenSpace[1] = DrawTextInfo->Position[1];
+        TextPushConstants.PositionScreenSpace = DrawTextInfo->Position;
         TextPushConstants.Size = DrawTextInfo->Size;
         TextPushConstants.Flags = DrawTextInfo->Flags;
         vkCmdPushConstants(
@@ -493,7 +492,7 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
         u32 PalleteIndex = 0;
         bool bCodePending = false;
         bool bPalleteIndexPending = false;
-        vec2 AccumulatedAdvance = { 0 };
+        Rr_Vec2 AccumulatedAdvance = { 0 };
         for (size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
         {
             u32 Unicode = DrawTextInfo->String.Data[CharacterIndex];
@@ -536,14 +535,14 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
             Rr_TextPerInstanceVertexInput* Input = &TextData[TextDataOffset + FinalTextLength];
             if (Unicode == '\n')
             {
-                AccumulatedAdvance[1] += DrawTextInfo->Font->LineHeight;
-                AccumulatedAdvance[0] = 0.0f;
+                AccumulatedAdvance.Y += DrawTextInfo->Font->LineHeight;
+                AccumulatedAdvance.X = 0.0f;
                 continue;
             }
             else if (Unicode == ' ')
             {
                 f32 Advance = DrawTextInfo->Font->Advances[Unicode];
-                AccumulatedAdvance[0] += Advance;
+                AccumulatedAdvance.X += Advance;
                 continue;
             }
             else
@@ -553,13 +552,11 @@ void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
                 GlyphPack |= PalleteIndex << 28;
                 *Input = (Rr_TextPerInstanceVertexInput){
                     .Unicode = GlyphPack,
-                    .Advance = {
-                        AccumulatedAdvance[0],
-                        AccumulatedAdvance[1] }
+                    .Advance = AccumulatedAdvance
                 };
                 FinalTextLength++;
                 f32 Advance = DrawTextInfo->Font->Advances[Unicode];
-                AccumulatedAdvance[0] += Advance;
+                AccumulatedAdvance.X += Advance;
             }
         }
         vkCmdBindVertexBuffers(

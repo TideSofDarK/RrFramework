@@ -5,14 +5,6 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
 
-#define CGLM_FORCE_DEPTH_ZERO_TO_ONE
-#define CGLM_FORCE_LEFT_HANDED
-#include <cglm/cam.h>
-#include <cglm/vec3.h>
-#include <cglm/mat4.h>
-#include <cglm/euler.h>
-#include <cglm/cglm.h>
-
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_scancode.h>
 
@@ -23,28 +15,28 @@
 
 typedef struct SUber3DGlobals
 {
-    mat4 View;
-    mat4 Intermediate;
-    mat4 Proj;
-    vec4 AmbientLightColor;
-    vec4 DirectionalLightDirection;
-    vec4 DirectionalLightColor;
-    vec4 DirectionalLightIntensity;
+    Rr_Mat4 View;
+    Rr_Mat4 Intermediate;
+    Rr_Mat4 Proj;
+    Rr_Vec4 AmbientLightColor;
+    Rr_Vec4 DirectionalLightDirection;
+    Rr_Vec4 DirectionalLightColor;
+    Rr_Vec4 DirectionalLightIntensity;
 } SUber3DGlobals;
 
 typedef struct SUber3DMaterial
 {
-    vec3 Emissive;
+    Rr_Vec3 Emissive;
 } SUber3DMaterial;
 
 typedef struct SUber3DDraw
 {
-    mat4 Model;
+    Rr_Mat4 Model;
 } SUber3DDraw;
 
 typedef struct SUber3DPushConstants
 {
-    mat4 Reserved;
+    Rr_Mat4 Reserved;
 } SUber3DPushConstants;
 
 typedef enum EInputAction
@@ -129,15 +121,12 @@ static void InitUber3DPipeline(Rr_App* App)
 
 static void InitGlobals(Rr_App* App)
 {
-    vec4 a{ 0.1f, 0.1f, 0.1f, 1.0f };
-    vec4 b{ 1.0f, 0.95f, 0.93f, 1.0f };
-    vec4 c{ 1.0f, 1.0f, 1.0f, 1.0f };
-    glm_vec4_copy(a, ShaderGlobals.AmbientLightColor);
-    glm_vec4_copy(b, ShaderGlobals.DirectionalLightColor);
-    glm_vec4_copy(c, ShaderGlobals.DirectionalLightIntensity);
+    ShaderGlobals.AmbientLightColor = { 0.1f, 0.1f, 0.1f, 1.0f };
+    ShaderGlobals.DirectionalLightColor = { 1.0f, 0.95f, 0.93f, 1.0f };
+    ShaderGlobals.DirectionalLightIntensity = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-    Rr_Perspective(ShaderGlobals.Proj, 0.7643276f, Rr_GetAspectRatio(App));
-    Rr_VulkanMatrix(ShaderGlobals.Intermediate);
+    ShaderGlobals.Proj = Rr_Perspective(0.7643276f, Rr_GetAspectRatio(App));
+    ShaderGlobals.Intermediate = Rr_VulkanMatrix();
 }
 
 static void OnLoadingComplete(Rr_App* App, const void* Userdata)
@@ -236,27 +225,18 @@ static void Update(Rr_App* App)
     }
 
     igBegin("RotTest", NULL, ImGuiWindowFlags_AlwaysAutoResize);
-    static vec3 CameraPos = { -7.35889f, -4.0f, -6.92579f };
-    static vec3 CameraEuler = { 90.0f - 63.5593f, -46.6919f, 0.0f };
-    static vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
-    igSliderFloat3("CameraPos", CameraPos, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat3("CameraRot", CameraEuler, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat3("LightDir", LightDirEuler, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+    static Rr_Vec3 CameraPos = { -7.35889f, -4.0f, -6.92579f };
+    static Rr_Vec3 CameraEuler = { 90.0f - 63.5593f, -46.6919f, 0.0f };
+    static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
+    igSliderFloat3("CameraPos", CameraPos.Elements, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat3("CameraRot", CameraEuler.Elements, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
 
-    mat4 LightDirTemp;
-    vec3 LightRotation = { glm_rad(LightDirEuler[0]), glm_rad(LightDirEuler[1]), glm_rad(LightDirEuler[2]) };
-    glm_euler_xyz(LightRotation, LightDirTemp);
-    glm_vec3_copy(LightDirTemp[2], ShaderGlobals.DirectionalLightDirection);
+    Rr_Vec3 LightRotation = LightDirEuler * Rr_DegToRad;
+    ShaderGlobals.DirectionalLightDirection = Rr_EulerXYZ(LightRotation).Columns[2];
 
-    mat4 Temp;
-    glm_mat4_identity(Temp);
-    glm_vec3_copy(CameraPos, Temp[3]);
-
-    mat4 Temp2;
-    vec3 CameraRotation = { glm_rad(CameraEuler[0]), glm_rad(CameraEuler[1]), glm_rad(CameraEuler[2]) };
-    glm_euler_xyz(CameraRotation, Temp2);
-
-    glm_mat4_mul(Temp2, Temp, ShaderGlobals.View);
+    Rr_Vec3 CameraRotation = CameraEuler * Rr_DegToRad;
+    ShaderGlobals.View = Rr_EulerXYZ(CameraRotation) * Rr_Translate(CameraPos);
     igEnd();
 
     static bool bShowDebugOverlay = false;
@@ -272,7 +252,7 @@ static void Update(Rr_App* App)
 
 static void Draw(Rr_App* App)
 {
-    glm_perspective_resize(Rr_GetAspectRatio(App), ShaderGlobals.Proj);
+    Rr_PerspectiveResize(Rr_GetAspectRatio(App), &ShaderGlobals.Proj);
 
     /* Rendering */
     Rr_BeginRenderingInfo BeginRenderingInfo = {};
@@ -281,7 +261,7 @@ static void Draw(Rr_App* App)
     Rr_RenderingContext* RenderingContext = Rr_BeginRendering(App, &BeginRenderingInfo);
 
     const u64 Ticks = SDL_GetTicks();
-    const f32 Time = (float)((double)Ticks / 1000.0 * 2);
+    const f32 Time = (f32)((f64)Ticks / 1000.0 * 2);
 
     if (LoadingContext != nullptr)
     {
@@ -294,44 +274,37 @@ static void Draw(Rr_App* App)
 
     if (bLoaded)
     {
-        mat4 Transform;
-
-        SUber3DDraw CottageDraw;
-        vec3 CottageRotation{ 0.0f, SDL_fmodf(Time, SDL_PI_F * 2.0f), 0.0f };
-        glm_euler_xyz(CottageRotation, Transform);
-        glm_mat4_identity(CottageDraw.Model);
-        glm_scale_uni(CottageDraw.Model, 0.75f);
-        glm_mat4_mul(Transform, CottageDraw.Model, CottageDraw.Model);
+        SUber3DDraw CottageDraw = { 0 };
+        CottageDraw.Model =
+            Rr_Scale({ 0.75f, 0.75f, 0.75f })
+            * Rr_Rotate_LH(SDL_fmodf(Time, SDL_PI_F * 2.0f), { 0.0f, 1.0f, 0.0f })
+            * Rr_Translate({ 3.5f, 0.5f, 3.5f });
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
         Rr_DrawStaticMesh(RenderingContext, CottageMaterial, CottageMesh, &CottageDraw);
 
-        SUber3DDraw MarbleDraw;
-        glm_mat4_identity(MarbleDraw.Model);
-        MarbleDraw.Model[3][1] = 0.1f;
+        SUber3DDraw MarbleDraw = { 0 };
+        MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
         Rr_DrawStaticMesh(RenderingContext, MarbleMaterial, MarbleMesh, &MarbleDraw);
 
-        vec2 TestStringPosition{ 50.0f, 50.0f };
-        Rr_DrawDefaultText(RenderingContext, &TestString, TestStringPosition);
+        Rr_DrawDefaultText(RenderingContext, &TestString, { 50.0f, 50.0f });
 
-        vec2 DebugStringPosition{ 450.0f, 54.0f };
         Rr_DrawCustomText(
             RenderingContext,
             nullptr,
             &DebugString,
-            DebugStringPosition,
+            { 450.0f, 54.0f },
             28.0f,
             RR_DRAW_TEXT_FLAGS_NONE_BIT);
     }
     else
     {
-        vec2 LoadingStringPosition = { 25.0f, 540.0f - 25 - 32.0f };
         Rr_DrawCustomText(
             RenderingContext,
             nullptr,
             &LoadingString,
-            LoadingStringPosition,
+            { 25.0f, 540.0f - 25 - 32.0f },
             32.0f,
             RR_DRAW_TEXT_FLAGS_ANIMATION_BIT);
     }

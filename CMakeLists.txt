@@ -44,9 +44,6 @@ CPMAddPackage("gh:libsdl-org/SDL#main")
 CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator#master")
 CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.280.0")
 
-set(CGLM_STATIC ON CACHE BOOL "" FORCE)
-CPMAddPackage("gh:recp/cglm#master")
-
 add_subdirectory("Vendor/imgui/")
 
 #
@@ -96,7 +93,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
         SDL3::SDL3
-        cglm
         ${IMGUI_TARGET}
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE

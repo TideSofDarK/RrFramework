@@ -2,10 +2,6 @@
 
 #include "Rr_Defines.h"
 
-#include <cglm/ivec2.h>
-#include <cglm/vec2.h>
-#include <cglm/vec4.h>
-
 #include <SDL3/SDL_stdinc.h>
 
 static inline size_t Rr_Align(size_t Value, size_t Alignment)
@@ -95,7 +91,7 @@ static inline u16 Rr_FloatToHalf(u32 x)
 #undef Mask
 }
 
-static inline void Rr_PackVec4(vec4 From, u32* OutA, u32* OutB)
+static inline void Rr_PackVec4(Rr_Vec4 From, u32* OutA, u32* OutB)
 {
     typedef union PackHelper
     {
@@ -105,7 +101,7 @@ static inline void Rr_PackVec4(vec4 From, u32* OutA, u32* OutB)
 
     PackHelper Helper[4];
 
-    SDL_memcpy(Helper, From, sizeof(vec4));
+    SDL_memcpy(Helper, From.Elements, sizeof(Rr_Vec4));
 
     u16 HalfValues[4];
     HalfValues[0] = Rr_FloatToHalf(Helper[0].UnsignedIntegerValue);

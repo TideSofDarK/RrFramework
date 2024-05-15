@@ -11,8 +11,6 @@
 #include "Rr_Types.h"
 #include "Rr_Barrier.h"
 
-#include <cglm/ivec2.h>
-
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
@@ -1005,8 +1003,8 @@ void Rr_InitRenderer(Rr_App* App)
     SDL_Window* Window = App->Window;
     const Rr_AppConfig* Config = App->Config;
 
-    Renderer->ReferenceResolution.width = Config->ReferenceResolution[0];
-    Renderer->ReferenceResolution.height = Config->ReferenceResolution[1];
+    Renderer->ReferenceResolution.width = Config->ReferenceResolution.X;
+    Renderer->ReferenceResolution.height = Config->ReferenceResolution.Y;
 
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 

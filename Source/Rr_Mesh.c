@@ -6,10 +6,6 @@
 #include "Rr_Memory.h"
 #include "Rr_Types.h"
 
-#include <cglm/vec3.h>
-#include <cglm/vec4.h>
-#include <cglm/ivec3.h>
-
 #include <SDL_stdinc.h>
 
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
@@ -108,17 +104,17 @@ static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
 Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset)
 {
     /* Init scratch buffers. */
-    vec3* ScratchPositions;
-    vec4* ScratchColors;
-    vec2* ScratchTexCoords;
-    vec3* ScratchNormals;
-    ivec3* ScratchIndices;
+    Rr_Vec3* ScratchPositions;
+    Rr_Vec4* ScratchColors;
+    Rr_Vec2* ScratchTexCoords;
+    Rr_Vec3* ScratchNormals;
+    Rr_IntVec3* ScratchIndices;
 
-    Rr_ArrayInit(ScratchPositions, vec3, 1000);
-    Rr_ArrayInit(ScratchColors, vec4, 1000);
-    Rr_ArrayInit(ScratchTexCoords, vec2, 1000);
-    Rr_ArrayInit(ScratchNormals, vec3, 1000);
-    Rr_ArrayInit(ScratchIndices, ivec3, 1000);
+    Rr_ArrayInit(ScratchPositions, Rr_Vec3, 1000);
+    Rr_ArrayInit(ScratchColors, Rr_Vec4, 1000);
+    Rr_ArrayInit(ScratchTexCoords, Rr_Vec2, 1000);
+    Rr_ArrayInit(ScratchNormals, Rr_Vec3, 1000);
+    Rr_ArrayInit(ScratchIndices, Rr_IntVec3, 1000);
 
     /* Parse OBJ data. */
     Rr_RawMesh* RawMesh = Rr_Calloc(1, sizeof(Rr_RawMesh));
@@ -138,19 +134,19 @@ Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset)
                 {
                     case ' ':
                     {
-                        vec3 NewPosition;
-                        NewPosition[0] = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
-                        NewPosition[1] = (float)SDL_strtod(EndPos, &EndPos);
-                        NewPosition[2] = (float)SDL_strtod(EndPos, &EndPos);
+                        Rr_Vec3 NewPosition;
+                        NewPosition.X = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
+                        NewPosition.Y = (float)SDL_strtod(EndPos, &EndPos);
+                        NewPosition.Z = (float)SDL_strtod(EndPos, &EndPos);
 
                         Rr_ArrayPush(ScratchPositions, &NewPosition);
 
                         if (*EndPos == ' ')
                         {
-                            vec4 NewColor = { 0 };
-                            NewColor[0] = (float)SDL_strtod(EndPos, &EndPos);
-                            NewColor[1] = (float)SDL_strtod(EndPos, &EndPos);
-                            NewColor[2] = (float)SDL_strtod(EndPos, &EndPos);
+                            Rr_Vec4 NewColor = { 0 };
+                            NewColor.X = (float)SDL_strtod(EndPos, &EndPos);
+                            NewColor.Y = (float)SDL_strtod(EndPos, &EndPos);
+                            NewColor.Z = (float)SDL_strtod(EndPos, &EndPos);
 
                             Rr_ArrayPush(ScratchColors, &NewColor);
                         }
@@ -159,19 +155,19 @@ Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset)
                     case 't':
                     {
                         CurrentIndex++;
-                        vec2 NewTexCoord;
-                        NewTexCoord[0] = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
-                        NewTexCoord[1] = (float)SDL_strtod(EndPos, &EndPos);
+                        Rr_Vec2 NewTexCoord;
+                        NewTexCoord.X = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
+                        NewTexCoord.Y = (float)SDL_strtod(EndPos, &EndPos);
                         Rr_ArrayPush(ScratchTexCoords, &NewTexCoord);
                     }
                     break;
                     case 'n':
                     {
                         CurrentIndex++;
-                        vec3 NewNormal;
-                        NewNormal[0] = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
-                        NewNormal[1] = (float)SDL_strtod(EndPos, &EndPos);
-                        NewNormal[2] = (float)SDL_strtod(EndPos, &EndPos);
+                        Rr_Vec3 NewNormal;
+                        NewNormal.X = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
+                        NewNormal.Y = (float)SDL_strtod(EndPos, &EndPos);
+                        NewNormal.Z = (float)SDL_strtod(EndPos, &EndPos);
                         Rr_ArrayPush(ScratchNormals, &NewNormal);
                     }
                     break;
@@ -181,24 +177,26 @@ Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset)
             case 'f':
             {
                 CurrentIndex++;
-                ivec3 OBJIndices[3] = { 0 };
-                OBJIndices[0][0] = (i32)SDL_strtoul(Asset->Data + CurrentIndex, &EndPos, 10);
-                OBJIndices[0][1] = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[0][2] = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[1][0] = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[1][1] = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[1][2] = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[2][0] = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[2][1] = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[2][2] = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                Rr_IntVec3 OBJIndices[3] = { 0 };
+                OBJIndices[0].X = (i32)SDL_strtoul(Asset->Data + CurrentIndex, &EndPos, 10);
+                OBJIndices[0].Y = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[0].Z = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[1].X = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[1].Y = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[1].Z = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[2].X = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[2].Y = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[2].Z = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
                 for (size_t Index = 0; Index < 3; Index++)
                 {
-                    glm_ivec3_subs(OBJIndices[Index], 1, OBJIndices[Index]);
+                    OBJIndices[Index].X--;
+                    OBJIndices[Index].Y--;
+                    OBJIndices[Index].Z--;
 
                     size_t ExistingOBJIndex = SIZE_MAX;
                     for (size_t I = 0; I < Rr_ArrayCount(ScratchIndices); I++)
                     {
-                        if (glm_ivec3_eqv(OBJIndices[Index], ((ivec3*)ScratchIndices)[I]))
+                        if (Rr_EqIV3(OBJIndices[Index], ScratchIndices[I]))
                         {
                             ExistingOBJIndex = I;
                             break;
@@ -206,16 +204,13 @@ Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset)
                     }
                     if (ExistingOBJIndex == SIZE_MAX)
                     {
-                        vec3* Position = &ScratchPositions[OBJIndices[Index][0]];
-                        vec4* Color = &ScratchColors[OBJIndices[Index][0]];
-                        const vec2* TexCoord = &ScratchTexCoords[OBJIndices[Index][1]];
-                        vec3* Normal = &ScratchNormals[OBJIndices[Index][2]];
+                        const Rr_Vec2* TexCoord = &ScratchTexCoords[OBJIndices[Index].Y];
                         Rr_Vertex NewVertex = { 0 };
-                        glm_vec3_copy(*Position, NewVertex.Position);
-                        glm_vec4_copy(*Color, NewVertex.Color);
-                        glm_vec3_copy(*Normal, NewVertex.Normal);
-                        NewVertex.TexCoordX = (*TexCoord)[0];
-                        NewVertex.TexCoordY = (*TexCoord)[1];
+                        NewVertex.Position = ScratchPositions[OBJIndices[Index].X];
+                        NewVertex.Color = ScratchColors[OBJIndices[Index].X];
+                        NewVertex.Normal = ScratchNormals[OBJIndices[Index].Z];
+                        NewVertex.TexCoordX = (*TexCoord).X;
+                        NewVertex.TexCoordY = (*TexCoord).Y;
                         Rr_ArrayPush(RawMesh->Vertices, &NewVertex);
 
                         Rr_ArrayPush(ScratchIndices, &OBJIndices[Index]);

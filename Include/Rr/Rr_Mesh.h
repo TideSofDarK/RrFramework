@@ -2,9 +2,7 @@
 
 #include "Rr_Asset.h"
 #include "Rr_App.h"
-
-#include <cglm/vec3.h>
-#include <cglm/vec4.h>
+#include "Rr_Math.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -20,11 +18,11 @@ typedef u32 Rr_MeshIndexType;
 
 typedef struct Rr_Vertex
 {
-    vec3 Position;
+    Rr_Vec3 Position;
     f32 TexCoordX;
-    vec3 Normal;
+    Rr_Vec3 Normal;
     f32 TexCoordY;
-    vec4 Color;
+    Rr_Vec4 Color;
 } Rr_Vertex;
 
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(

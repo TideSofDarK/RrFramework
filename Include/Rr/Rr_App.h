@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Rr_Input.h"
-
-#include <cglm/ivec2.h>
+#include "Rr_Math.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -14,7 +13,7 @@ typedef struct Rr_App Rr_App;
 typedef struct Rr_AppConfig
 {
     const char* Title;
-    ivec2 ReferenceResolution;
+    Rr_IntVec2 ReferenceResolution;
     Rr_InputConfig* InputConfig;
     void (*InitFunc)(Rr_App* App);
     void (*CleanupFunc)(Rr_App* App);

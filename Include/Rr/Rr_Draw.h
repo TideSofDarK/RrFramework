@@ -42,11 +42,11 @@ void Rr_DrawCustomText(
     Rr_RenderingContext* RenderingContext,
     Rr_Font* Font,
     Rr_String* String,
-    vec2 Position,
+    Rr_Vec2 Position,
     f32 Size,
     Rr_DrawTextFlags Flags);
 
-void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, vec2 Position);
+void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, Rr_Vec2 Position);
 
 void Rr_EndRendering(Rr_RenderingContext* RenderingContext);
 
