@@ -8,6 +8,8 @@
 
 #include <SDL_stdinc.h>
 
+#include <cgltf/cgltf.h>
+
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
@@ -238,6 +240,21 @@ Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset)
     Rr_ArrayFree(ScratchTexCoords);
     Rr_ArrayFree(ScratchNormals);
     Rr_ArrayFree(ScratchIndices);
+
+    return RawMesh;
+}
+
+Rr_RawMesh* Rr_CreateRawMeshGLTF(const Rr_Asset* Asset)
+{
+    Rr_RawMesh* RawMesh = Rr_Calloc(1, sizeof(Rr_RawMesh));
+
+    cgltf_options Options = { 0 };
+    cgltf_data* Data = NULL;
+    cgltf_result Result = cgltf_parse(&Options, Asset->Data, Asset->Length, &Data);
+    if (Result == cgltf_result_success)
+    {
+        cgltf_free(Data);
+    }
 
     return RawMesh;
 }

@@ -35,6 +35,7 @@ void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh);
 size_t Rr_GetStaticMeshSizeOBJ(Rr_Asset* Asset);
 
 Rr_RawMesh* Rr_CreateRawMeshOBJ(Rr_Asset* Asset);
+Rr_RawMesh* Rr_CreateRawMeshGLTF(const Rr_Asset* Asset);
 void Rr_DestroyRawMesh(Rr_RawMesh* RawMesh);
 
 #ifdef __cplusplus

@@ -21,3 +21,5 @@ Rr_DefineAsset(MarbleDiffusePNG, "MarbleDiffuse.png");
 Rr_DefineAsset(MarbleNormalPNG, "MarbleNormal.png");
 Rr_DefineAsset(MarbleSpecularPNG, "MarbleSpecular.png");
 Rr_DefineAsset(MarbleOBJ, "Marble.obj");
+
+Rr_DefineAsset(AvocadoGLB, "Avocado.glb");

@@ -149,6 +149,9 @@ static void Init(Rr_App* App)
 #endif
     InitInputMappings();
 
+    Rr_ExternAsset(AvocadoGLB);
+    Rr_CreateRawMeshGLTF(&AvocadoGLB);
+
     Rr_ExternAsset(MarbleDiffusePNG);
     Rr_ExternAsset(MarbleSpecularPNG);
     Rr_ExternAsset(MarbleOBJ);
