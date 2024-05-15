@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 20)
 #
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-        add_compile_options(-Wall -Wextra -Wpedantic)
+        add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
         if (ENABLE_SANITIZERS)
             add_compile_options(-fsanitize=address,undefined)
