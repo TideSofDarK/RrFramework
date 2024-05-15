@@ -1,10 +1,6 @@
 #pragma once
 
-typedef struct Rr_StaticMesh Rr_StaticMesh;
-typedef struct Rr_RawMesh Rr_RawMesh;
-
 #include "Rr_Asset.h"
-#include "Rr_Load.h"
 #include "Rr_App.h"
 
 #include <cglm/vec3.h>
@@ -14,6 +10,11 @@ typedef struct Rr_RawMesh Rr_RawMesh;
 extern "C"
 {
 #endif
+
+struct Rr_UploadContext;
+
+typedef struct Rr_StaticMesh Rr_StaticMesh;
+typedef struct Rr_RawMesh Rr_RawMesh;
 
 typedef u32 Rr_MeshIndexType;
 
@@ -28,7 +29,7 @@ typedef struct Rr_Vertex
 
 Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_App* App,
-    Rr_UploadContext* UploadContext,
+    struct Rr_UploadContext* UploadContext,
     Rr_Asset* Asset);
 
 void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh);

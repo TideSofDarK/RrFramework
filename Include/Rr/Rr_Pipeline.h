@@ -1,8 +1,5 @@
 #pragma once
 
-typedef struct Rr_GenericPipeline Rr_GenericPipeline;
-typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
-
 #include "Rr_Asset.h"
 #include "Rr_App.h"
 
@@ -10,6 +7,9 @@ typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
 extern "C"
 {
 #endif
+
+typedef struct Rr_GenericPipeline Rr_GenericPipeline;
+typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
 
 typedef enum Rr_VertexInputType
 {

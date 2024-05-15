@@ -1,7 +1,5 @@
 #pragma once
 
-typedef struct Rr_Font Rr_Font;
-
 #include "Rr_Asset.h"
 #include "Rr_App.h"
 
@@ -9,6 +7,8 @@ typedef struct Rr_Font Rr_Font;
 extern "C"
 {
 #endif
+
+typedef struct Rr_Font Rr_Font;
 
 #define RR_TEXT_BUFFER_SIZE (1024 * 1024)
 #define RR_TEXT_MAX_COLORS 8

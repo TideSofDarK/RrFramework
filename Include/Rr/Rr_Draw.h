@@ -8,6 +8,7 @@ typedef struct Rr_RenderingContext Rr_RenderingContext;
 #include "Rr_Pipeline.h"
 #include "Rr_Material.h"
 #include "Rr_Image.h"
+#include "Rr_Mesh.h"
 
 typedef enum Rr_DrawTextFlags
 {
