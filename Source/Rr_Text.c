@@ -11,8 +11,6 @@
 #include "Rr_Descriptor.h"
 #include "Rr_Types.h"
 
-#include <SDL_log.h>
-
 #include <cJSON/cJSON.h>
 
 void Rr_InitTextRenderer(Rr_App* App)
@@ -167,12 +165,13 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
         },
     };
 
-    Rr_Font* Font = Rr_Calloc(1, sizeof(Rr_Font));
+    Rr_Font* Font = Rr_CreateObject(Renderer);
     *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
         .LineHeight = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
-        .DefaultSize = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size"))
+        .DefaultSize = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
+        .Advances = Rr_Calloc(RR_TEXT_MAX_GLYPHS, sizeof(f32))
     };
 
     const cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
@@ -234,8 +233,10 @@ void Rr_DestroyFont(Rr_App* App, Rr_Font* Font)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
+    Rr_Free(Font->Advances);
+
     Rr_DestroyImage(App, Font->Atlas);
     Rr_DestroyBuffer(Renderer, Font->Buffer);
 
-    Rr_Free(Font);
+    Rr_DestroyObject(Renderer, Font);
 }

@@ -347,7 +347,7 @@ Rr_GenericPipeline* Rr_BuildGenericPipeline(
     size_t DrawSize)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    Rr_GenericPipeline* Pipeline = Rr_Calloc(1, sizeof(Rr_GenericPipeline));
+    Rr_GenericPipeline* Pipeline = Rr_CreateObject(Renderer);
     *Pipeline = (Rr_GenericPipeline){
         .GlobalsSize = GlobalsSize,
         .MaterialSize = MaterialSize,
@@ -366,5 +366,5 @@ void Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
 
     vkDestroyPipeline(Device, Pipeline->Handle, NULL);
 
-    Rr_Free(Pipeline);
+    Rr_DestroyObject(Renderer, Pipeline);
 }

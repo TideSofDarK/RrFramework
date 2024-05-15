@@ -21,6 +21,7 @@ typedef double f64;
 /* Renderer Configuration */
 #define RR_FORCE_UNIFIED_QUEUE 1
 #define RR_PERFORMANCE_COUNTER 1
+#define RR_MAX_OBJECTS 128
 
 /* Pipelines */
 #define RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES 5

@@ -1,6 +1,5 @@
 #include "Rr_Image.h"
 
-#include "Rr_Memory.h"
 #include "Rr_Asset.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Array.h"
@@ -13,7 +12,48 @@
 
 #include <tinyexr/tinyexr.h>
 
-void Rr_UploadImage(
+static Rr_Image* CreateImage(
+    Rr_App* App,
+    VkExtent3D Extent,
+    VkFormat Format,
+    VkImageUsageFlags Usage,
+    bool bMipMapped)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    Rr_Image* Image = Rr_CreateObject(Renderer);
+    Image->Format = Format;
+    Image->Extent = Extent;
+
+    VkImageCreateInfo Info = GetImageCreateInfo(Image->Format, Usage, Image->Extent);
+
+    if (bMipMapped)
+    {
+        Info.mipLevels = (u32)(SDL_floor(SDL_log(SDL_max(Extent.width, Extent.height)))) + 1;
+    }
+
+    const VmaAllocationCreateInfo AllocationCreateInfo = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    };
+
+    vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image->Handle, &Image->Allocation, NULL);
+
+    VkImageAspectFlags AspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
+    if (Format == RR_DEPTH_FORMAT)
+    {
+        AspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+
+    VkImageViewCreateInfo ViewInfo = GetImageViewCreateInfo(Image->Format, Image->Handle, AspectFlag);
+    ViewInfo.subresourceRange.levelCount = Info.mipLevels;
+
+    vkCreateImageView(Renderer->Device, &ViewInfo, NULL, &Image->View);
+
+    return Image;
+}
+
+static void UploadImage(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     VkImage Image,
@@ -139,58 +179,6 @@ void Rr_UploadImage(
     }
 }
 
-static Rr_Image* CreateImage(
-    Rr_App* App,
-    VkExtent3D Extent,
-    VkFormat Format,
-    VkImageUsageFlags Usage,
-    VmaAllocationCreateInfo AllocationCreateInfo,
-    bool bMipMapped)
-{
-    Rr_Renderer* Renderer = &App->Renderer;
-
-    Rr_Image* Image = Rr_Calloc(1, sizeof(Rr_Image));
-    Image->Format = Format;
-    Image->Extent = Extent;
-
-    VkImageCreateInfo Info = GetImageCreateInfo(Image->Format, Usage, Image->Extent);
-
-    if (bMipMapped)
-    {
-        Info.mipLevels = (u32)(SDL_floor(SDL_log(SDL_max(Extent.width, Extent.height)))) + 1;
-    }
-
-    vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image->Handle, &Image->Allocation, NULL);
-
-    VkImageAspectFlags AspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
-    if (Format == RR_DEPTH_FORMAT)
-    {
-        AspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
-    }
-
-    VkImageViewCreateInfo ViewInfo = GetImageViewCreateInfo(Image->Format, Image->Handle, AspectFlag);
-    ViewInfo.subresourceRange.levelCount = Info.mipLevels;
-
-    vkCreateImageView(Renderer->Device, &ViewInfo, NULL, &Image->View);
-
-    return Image;
-}
-
-static Rr_Image* Rr_CreateImage(
-    Rr_App* App,
-    VkExtent3D Extent,
-    VkFormat Format,
-    VkImageUsageFlags Usage,
-    bool bMipMapped)
-{
-    const VmaAllocationCreateInfo AllocationCreateInfo = {
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    };
-
-    return CreateImage(App, Extent, Format, Usage, AllocationCreateInfo, bMipMapped);
-}
-
 size_t Rr_GetImageSizePNG(const Rr_Asset* Asset)
 {
     const i32 DesiredChannels = 4;
@@ -213,22 +201,20 @@ Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_Asset* Asset,
     bool bMipMapped)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-
     const i32 DesiredChannels = 4;
     i32 Channels;
     VkExtent3D Extent = { .depth = 1 };
     stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
     const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
-    Rr_Image* ColorImage = Rr_CreateImage(
+    Rr_Image* ColorImage = CreateImage(
         App,
         Extent,
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         bMipMapped);
 
-    Rr_UploadImage(App,
+    UploadImage(App,
         UploadContext,
         ColorImage->Handle,
         Extent,
@@ -249,7 +235,6 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     Rr_UploadContext* UploadContext,
     Rr_Asset* Asset)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
     int Result;
@@ -307,9 +292,9 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
 
     const size_t DataSize = Extent.width * Extent.height * sizeof(f32);
 
-    Rr_Image* DepthImage = Rr_CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
+    Rr_Image* DepthImage = CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 
-    Rr_UploadImage(App,
+    UploadImage(App,
         UploadContext,
         DepthImage->Handle,
         Extent,
@@ -328,37 +313,21 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
 
 Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Height)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-
-    const VmaAllocationCreateInfo AllocationCreateInfo = {
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    };
-
     return CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        AllocationCreateInfo,
         false);
 }
 
 Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-
-    const VmaAllocationCreateInfo AllocationCreateInfo = {
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    };
-
     return CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
         RR_DEPTH_FORMAT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        AllocationCreateInfo,
         false);
 }
 
@@ -374,5 +343,5 @@ void Rr_DestroyImage(Rr_App* App, Rr_Image* AllocatedImage)
     vkDestroyImageView(Renderer->Device, AllocatedImage->View, NULL);
     vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 
-    Rr_Free(AllocatedImage);
+    Rr_DestroyObject(Renderer, AllocatedImage);
 }

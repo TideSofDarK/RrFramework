@@ -14,7 +14,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_Asset* Asset)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    Rr_StaticMesh* StaticMesh = Rr_Calloc(1, sizeof(Rr_StaticMesh));
+    Rr_StaticMesh* StaticMesh = Rr_CreateObject(Renderer);
     Rr_RawMesh* RawMesh = Rr_CreateRawMeshOBJ(Asset);
     StaticMesh->IndexCount = Rr_ArrayCount(RawMesh->Indices);
 
@@ -74,7 +74,7 @@ void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh)
     Rr_DestroyBuffer(Renderer, Mesh->IndexBuffer);
     Rr_DestroyBuffer(Renderer, Mesh->VertexBuffer);
 
-    Rr_Free(Mesh);
+    Rr_DestroyObject(Renderer, Mesh);
 }
 
 size_t Rr_GetStaticMeshSizeOBJ(Rr_Asset* Asset)

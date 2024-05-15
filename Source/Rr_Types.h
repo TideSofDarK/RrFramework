@@ -199,7 +199,7 @@ struct Rr_Font
 {
     Rr_Image* Atlas;
     Rr_Buffer* Buffer;
-    f32 Advances[RR_TEXT_MAX_GLYPHS];
+    f32* Advances;
     f32 LineHeight;
     f32 DefaultSize;
 };
@@ -329,13 +329,9 @@ struct Rr_Renderer
     VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
     VkPipelineLayout GenericPipelineLayout;
 
-    /* Objects */
+    /* Object Storage */
     void* Storage;
-    Rr_Buffer* Buffers;
-    Rr_StaticMesh* StaticMeshes;
-    Rr_Image* Images;
-    Rr_Font* Fonts;
-    Rr_Material* Materials;
+    void* NextObject;
 };
 
 typedef struct Rr_FrameTime

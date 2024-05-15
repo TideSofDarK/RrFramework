@@ -9,6 +9,100 @@
 
 #include <SDL3/SDL_log.h>
 
+Rr_Buffer* Rr_CreateBuffer(
+    Rr_Renderer* Renderer,
+    size_t Size,
+    VkBufferUsageFlags UsageFlags,
+    VmaMemoryUsage MemoryUsage,
+    bool bHostMapped)
+{
+    Rr_Buffer* Buffer = Rr_CreateObject(Renderer);
+
+    const VkBufferCreateInfo BufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = NULL,
+        .size = Size,
+        .usage = UsageFlags | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+    };
+
+    VmaAllocationCreateInfo AllocationInfo = {
+        .usage = MemoryUsage,
+    };
+
+    if (bHostMapped)
+    {
+        AllocationInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    }
+
+    vmaCreateBuffer(Renderer->Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo);
+
+    return Buffer;
+}
+
+Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size)
+{
+    Size = SDL_max(Size, 128);
+    return Rr_CreateBuffer(
+        Renderer,
+        Size,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false);
+}
+
+Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size)
+{
+    // Size = SDL_max(Size, 128);
+    return Rr_CreateBuffer(
+        Renderer,
+        Size,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false);
+}
+
+Rr_Buffer* Rr_CreateMappedBuffer(Rr_Renderer* Renderer, size_t Size, VkBufferUsageFlags UsageFlags)
+{
+    return Rr_CreateBuffer(Renderer, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, true);
+}
+
+Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_Renderer* Renderer, size_t Size)
+{
+    return Rr_CreateMappedBuffer(
+        Renderer,
+        Size,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+}
+
+void Rr_DestroyBuffer(Rr_Renderer* Renderer, Rr_Buffer* Buffer)
+{
+    if (Buffer == NULL)
+    {
+        return;
+    }
+
+    vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
+
+    Rr_DestroyObject(Renderer, Buffer);
+}
+
+Rr_StagingBuffer* Rr_CreateStagingBuffer(Rr_Renderer* Renderer, size_t Size)
+{
+    Rr_StagingBuffer* StagingBuffer = Rr_Calloc(1, sizeof(Rr_StagingBuffer));
+    *StagingBuffer = (Rr_StagingBuffer){
+        .CurrentOffset = 0,
+        .Buffer = Rr_CreateMappedBuffer(Renderer, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+    };
+    return StagingBuffer;
+}
+
+void Rr_DestroyStagingBuffer(Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer)
+{
+    Rr_DestroyBuffer(Renderer, StagingBuffer->Buffer);
+
+    Rr_Free(StagingBuffer);
+}
+
 void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
@@ -227,96 +321,3 @@ void Rr_CopyToMappedUniformBuffer(
     }
 }
 
-Rr_Buffer* Rr_CreateBuffer(
-    Rr_Renderer* Renderer,
-    size_t Size,
-    VkBufferUsageFlags UsageFlags,
-    VmaMemoryUsage MemoryUsage,
-    bool bHostMapped)
-{
-    Rr_Buffer* Buffer = Rr_Calloc(1, sizeof(Rr_Buffer));
-
-    const VkBufferCreateInfo BufferInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .size = Size,
-        .usage = UsageFlags | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-    };
-
-    VmaAllocationCreateInfo AllocationInfo = {
-        .usage = MemoryUsage,
-    };
-
-    if (bHostMapped)
-    {
-        AllocationInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-    }
-
-    vmaCreateBuffer(Renderer->Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo);
-
-    return Buffer;
-}
-
-Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size)
-{
-    Size = SDL_max(Size, 128);
-    return Rr_CreateBuffer(
-        Renderer,
-        Size,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false);
-}
-
-Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size)
-{
-    // Size = SDL_max(Size, 128);
-    return Rr_CreateBuffer(
-        Renderer,
-        Size,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false);
-}
-
-Rr_Buffer* Rr_CreateMappedBuffer(Rr_Renderer* Renderer, size_t Size, VkBufferUsageFlags UsageFlags)
-{
-    return Rr_CreateBuffer(Renderer, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, true);
-}
-
-Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_Renderer* Renderer, size_t Size)
-{
-    return Rr_CreateMappedBuffer(
-        Renderer,
-        Size,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-}
-
-void Rr_DestroyBuffer(Rr_Renderer* Renderer, Rr_Buffer* Buffer)
-{
-    if (Buffer == NULL)
-    {
-        return;
-    }
-
-    vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
-
-    Rr_Free(Buffer);
-}
-
-Rr_StagingBuffer* Rr_CreateStagingBuffer(Rr_Renderer* Renderer, size_t Size)
-{
-    Rr_StagingBuffer* StagingBuffer = Rr_Calloc(1, sizeof(Rr_StagingBuffer));
-    *StagingBuffer = (Rr_StagingBuffer){
-        .CurrentOffset = 0,
-        .Buffer = Rr_CreateMappedBuffer(Renderer, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-    };
-    return StagingBuffer;
-}
-
-void Rr_DestroyStagingBuffer(Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer)
-{
-    Rr_DestroyBuffer(Renderer, StagingBuffer->Buffer);
-
-    Rr_Free(StagingBuffer);
-}

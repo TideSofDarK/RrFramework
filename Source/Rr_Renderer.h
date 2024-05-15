@@ -8,6 +8,15 @@
 typedef struct Rr_Frame Rr_Frame;
 typedef struct Rr_Renderer Rr_Renderer;
 
+typedef enum Rr_HandleType {
+    RR_HANDLE_TYPE_BUFFER,
+    RR_HANDLE_TYPE_STATIC_MESH,
+    RR_HANDLE_TYPE_IMAGE,
+    RR_HANDLE_TYPE_FONT,
+    RR_HANDLE_TYPE_MATERIAL,
+    RR_HANDLE_TYPE_COUNT,
+} Rr_HandleType;
+
 void Rr_InitRenderer(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);
 void Rr_CleanupRenderer(Rr_App* App);
@@ -18,6 +27,9 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
 
 VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
 void Rr_EndImmediate(Rr_Renderer* Renderer);
+
+void* Rr_CreateObject(Rr_Renderer* Renderer);
+void Rr_DestroyObject(Rr_Renderer* Renderer, void* Object);
 
 VkPipeline Rr_BuildPipeline(
     Rr_Renderer* Renderer,

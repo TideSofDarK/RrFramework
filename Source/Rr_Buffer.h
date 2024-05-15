@@ -17,6 +17,21 @@ typedef struct Rr_StagingBuffer
     size_t CurrentOffset;
 } Rr_StagingBuffer;
 
+Rr_Buffer* Rr_CreateBuffer(
+    Rr_Renderer* Renderer,
+    size_t Size,
+    VkBufferUsageFlags UsageFlags,
+    VmaMemoryUsage MemoryUsage,
+    bool bHostMapped);
+Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size);
+Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size);
+Rr_Buffer* Rr_CreateMappedBuffer(Rr_Renderer* Renderer, size_t Size, VkBufferUsageFlags UsageFlags);
+Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_Renderer* Renderer, size_t Size);
+void Rr_DestroyBuffer(Rr_Renderer* Renderer, Rr_Buffer* Buffer);
+
+Rr_StagingBuffer* Rr_CreateStagingBuffer(Rr_Renderer* Renderer, size_t Size);
+void Rr_DestroyStagingBuffer(Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer);
+
 void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,
     Rr_UploadContext* UploadContext,
@@ -55,18 +70,3 @@ void Rr_CopyToMappedUniformBuffer(
     const void* Data,
     size_t Size,
     size_t* DstOffset);
-
-Rr_Buffer* Rr_CreateBuffer(
-    Rr_Renderer* Renderer,
-    size_t Size,
-    VkBufferUsageFlags UsageFlags,
-    VmaMemoryUsage MemoryUsage,
-    bool bHostMapped);
-Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_Renderer* Renderer, size_t Size);
-Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_Renderer* Renderer, size_t Size);
-Rr_Buffer* Rr_CreateMappedBuffer(Rr_Renderer* Renderer, size_t Size, VkBufferUsageFlags UsageFlags);
-Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_Renderer* Renderer, size_t Size);
-void Rr_DestroyBuffer(Rr_Renderer* Renderer, Rr_Buffer* Buffer);
-
-Rr_StagingBuffer* Rr_CreateStagingBuffer(Rr_Renderer* Renderer, size_t Size);
-void Rr_DestroyStagingBuffer(Rr_Renderer* Renderer, Rr_StagingBuffer* StagingBuffer);

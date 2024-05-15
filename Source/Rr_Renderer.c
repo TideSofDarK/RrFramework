@@ -19,7 +19,16 @@
 #include <SDL3/SDL_vulkan.h>
 #include <SDL3/SDL_stdinc.h>
 
-#include <string.h>
+typedef union Rr_Object
+{
+    Rr_Buffer Buffer;
+    Rr_StaticMesh StaticMesh;
+    Rr_Image Image;
+    Rr_Font Font;
+    Rr_Material Material;
+    Rr_GenericPipeline GenericPipeline;
+    void* Next;
+} Rr_Object;
 
 static void Rr_BlitPrerenderedDepth(
     VkCommandBuffer CommandBuffer,
@@ -715,16 +724,16 @@ void Rr_InitImGui(Rr_App* App)
     VkDevice Device = Renderer->Device;
 
     VkDescriptorPoolSize PoolSizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-                                         { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
 
     const VkDescriptorPoolCreateInfo PoolCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -997,6 +1006,21 @@ static void CleanupTransientCommandPools(Rr_Renderer* Renderer)
     vkDestroyCommandPool(Renderer->Device, Renderer->TransferQueue.TransientCommandPool, NULL);
 }
 
+static void InitObjectStorage(Rr_App* App)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    Renderer->Storage = Rr_Calloc(RR_MAX_OBJECTS, sizeof(Rr_Object));
+    Renderer->NextObject = Renderer->Storage;
+}
+
+static void CleanupObjectStorage(Rr_App* App)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    Rr_Free(Renderer->Storage);
+}
+
 void Rr_InitRenderer(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
@@ -1055,6 +1079,8 @@ void Rr_InitRenderer(Rr_App* App)
 
     InitDevice(App);
     InitAllocator(App);
+
+    InitObjectStorage(App);
 
     // volkLoadDevice(Renderer->Device);
     //
@@ -1146,6 +1172,8 @@ void Rr_CleanupRenderer(Rr_App* App)
     CleanupRenderPass(App);
     CleanupSamplers(App);
     CleanupSwapchain(App, Renderer->Swapchain.Handle);
+
+    CleanupObjectStorage(App);
 
     vmaDestroyAllocator(Renderer->Allocator);
 
@@ -1416,4 +1444,23 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer)
     return &Renderer->Frames[Renderer->CurrentFrameIndex];
 }
 
+void* Rr_CreateObject(Rr_Renderer* Renderer)
+{
+    Rr_Object* NewObject = (Rr_Object*)Renderer->NextObject;
+    if (NewObject->Next == NULL)
+    {
+        Renderer->NextObject = NewObject + 1;
+    }
+    else
+    {
+        Renderer->NextObject = NewObject->Next;
+    }
+    return NewObject;
+}
 
+void Rr_DestroyObject(Rr_Renderer* Renderer, void* Object)
+{
+    Rr_Object* DestroyedObject = (Rr_Object*)Object;
+    DestroyedObject->Next = Renderer->NextObject;
+    Renderer->NextObject = DestroyedObject;
+}
