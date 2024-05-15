@@ -328,6 +328,14 @@ struct Rr_Renderer
     /* Generic Pipeline Layout */
     VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
     VkPipelineLayout GenericPipelineLayout;
+
+    /* Objects */
+    void* Storage;
+    Rr_Buffer* Buffers;
+    Rr_StaticMesh* StaticMeshes;
+    Rr_Image* Images;
+    Rr_Font* Fonts;
+    Rr_Material* Materials;
 };
 
 typedef struct Rr_FrameTime

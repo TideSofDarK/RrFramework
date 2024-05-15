@@ -1,12 +1,12 @@
 #pragma once
 
-typedef struct Rr_Frame Rr_Frame;
-typedef struct Rr_Renderer Rr_Renderer;
-
 #include "Rr_App.h"
 #include "Rr_Pipeline.h"
 
 #include <volk.h>
+
+typedef struct Rr_Frame Rr_Frame;
+typedef struct Rr_Renderer Rr_Renderer;
 
 void Rr_InitRenderer(Rr_App* App);
 void Rr_InitImGui(Rr_App* App);
