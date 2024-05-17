@@ -170,7 +170,7 @@ static void InitFrameTime(Rr_FrameTime* const FrameTime, SDL_Window* Window)
 
 void Rr_Run(Rr_AppConfig* Config)
 {
-    SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
+    SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
 #ifdef RR_DEBUG
