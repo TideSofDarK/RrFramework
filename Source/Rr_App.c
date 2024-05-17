@@ -1,19 +1,12 @@
 #include "Rr_App.h"
 
-#include "Rr_Vulkan.h"
 #include "Rr_Input.h"
 #include "Rr_Memory.h"
 #include "Rr_Types.h"
 #include "Rr_Array.h"
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_vulkan.h>
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_video.h>
-#include <SDL3/SDL_atomic.h>
-#include <SDL3/SDL_platform.h>
-#include <SDL3/SDL_timer.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
