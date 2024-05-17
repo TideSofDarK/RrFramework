@@ -1078,13 +1078,9 @@ void Rr_InitRenderer(Rr_App* App)
     }
 
     InitDevice(App);
+    volkLoadDevice(Renderer->Device);
     InitAllocator(App);
-
     InitObjectStorage(App);
-
-    // volkLoadDevice(Renderer->Device);
-    //
-
     InitTransientCommandPools(App);
     InitSamplers(App);
     InitRenderPass(App);
@@ -1097,7 +1093,6 @@ void Rr_InitRenderer(Rr_App* App)
     InitFrames(App);
     InitImmediateMode(App);
     InitGenericPipelineLayout(App);
-
     Rr_InitTextRenderer(App);
 
     Rr_StackFree(Extensions);

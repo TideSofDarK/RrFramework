@@ -2,8 +2,7 @@
 
 #include "DevTools.hxx"
 
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include <imgui/cimgui.h>
+#include <imgui/imgui.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_scancode.h>
@@ -82,7 +81,7 @@ static Rr_LoadingContext* LoadingContext;
 
 static bool bLoaded = false;
 
-static void InitInputMappings(void)
+static void InitInputMappings()
 {
     InputMappings[EIA_UP].Primary = SDL_SCANCODE_W;
     InputMappings[EIA_DOWN].Primary = SDL_SCANCODE_S;
@@ -229,20 +228,20 @@ static void Update(Rr_App* App)
         Rr_ToggleFullscreen(App);
     }
 
-    igBegin("RotTest", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("RotTest", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     static Rr_Vec3 CameraPos = { -7.35889f, -4.0f, -6.92579f };
     static Rr_Vec3 CameraEuler = { 90.0f - 63.5593f, -46.6919f, 0.0f };
     static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
-    igSliderFloat3("CameraPos", CameraPos.Elements, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat3("CameraRot", CameraEuler.Elements, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+    ImGui::SliderFloat3("CameraPos", CameraPos.Elements, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
+    ImGui::SliderFloat3("CameraRot", CameraEuler.Elements, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
+    ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
 
     Rr_Vec3 LightRotation = LightDirEuler * Rr_DegToRad;
     ShaderGlobals.DirectionalLightDirection = Rr_EulerXYZ(LightRotation).Columns[2];
 
     Rr_Vec3 CameraRotation = CameraEuler * Rr_DegToRad;
     ShaderGlobals.View = Rr_EulerXYZ(CameraRotation) * Rr_Translate(CameraPos);
-    igEnd();
+    ImGui::End();
 
     static bool bShowDebugOverlay = false;
     if (Rr_GetKeyState(InputState, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
@@ -281,8 +280,7 @@ static void Draw(Rr_App* App)
     {
         SUber3DDraw CottageDraw = { 0 };
         CottageDraw.Model =
-            // Rr_Scale({ 0.75f, 0.75f, 0.75f })
-            Rr_Scale({ 50, 50, 50 })
+            Rr_Scale({ 0.75f, 0.75f, 0.75f })
             * Rr_Rotate_LH(SDL_fmodf(Time, SDL_PI_F * 2.0f), { 0.0f, 1.0f, 0.0f })
             * Rr_Translate({ 3.5f, 0.5f, 3.5f });
         CottageDraw.Model[3][0] = 3.5f;
