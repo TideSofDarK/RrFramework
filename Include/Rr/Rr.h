@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Rr_Defines.h"
-#include "Rr_Memory.h"
 #include "Rr_Asset.h"
 #include "Rr_Image.h"
 #include "Rr_Mesh.h"
