@@ -60,9 +60,20 @@ add_custom_target(
 )
 
 #
+# Assets
+#
+file(GLOB_RECURSE RR_DEMO_ASSETS CONFIGURE_DEPENDS
+        "${RR_ASSET_PATH}*.png"
+        "${RR_ASSET_PATH}*.exr"
+        "${RR_ASSET_PATH}*.glb"
+        "${SHADER_DIR}Uber3D.vert.glsl"
+        "${SHADER_DIR}Uber3D.frag.glsl"
+)
+
+#
 # Add executable target
 #
-set_source_files_properties(Source/AssetDef.cxx PROPERTIES OBJECT_DEPENDS "${RR_DEMO_GLSL_SOURCES}")
+set_source_files_properties(Source/AssetDef.cxx PROPERTIES OBJECT_DEPENDS "${RR_DEMO_ASSETS}")
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
         "Source/*.cxx"
 )

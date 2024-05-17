@@ -33,12 +33,6 @@ typedef struct Rr_PendingLoad
     VkSemaphore Semaphore;
 } Rr_PendingLoad;
 
-struct Rr_RawMesh
-{
-    Rr_Array Vertices;
-    Rr_Array Indices;
-};
-
 struct Rr_StaticMesh
 {
     size_t IndexCount;

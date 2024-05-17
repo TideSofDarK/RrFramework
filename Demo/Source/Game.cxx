@@ -73,6 +73,8 @@ static Rr_Image* MarbleNormal;
 static Rr_Image* MarbleSpecular;
 static Rr_StaticMesh* MarbleMesh;
 
+static Rr_StaticMesh* AvocadoMesh;
+
 static Rr_String LoadingString;
 static Rr_String TestString;
 static Rr_String DebugString;
@@ -150,8 +152,6 @@ static void Init(Rr_App* App)
     InitInputMappings();
 
     Rr_ExternAsset(AvocadoGLB);
-    Rr_CreateRawMeshGLTF(&AvocadoGLB);
-
     Rr_ExternAsset(MarbleDiffusePNG);
     Rr_ExternAsset(MarbleSpecularPNG);
     Rr_ExternAsset(MarbleOBJ);
@@ -159,11 +159,12 @@ static void Init(Rr_App* App)
     Rr_ExternAsset(CottageOBJ);
 
     LoadingContext = Rr_CreateLoadingContext(App, 8);
+    Rr_LoadStaticMeshFromGLTF(LoadingContext, &AvocadoGLB, &AvocadoMesh);
     Rr_LoadColorImageFromPNG(LoadingContext, &MarbleDiffusePNG, &MarbleDiffuse);
     Rr_LoadColorImageFromPNG(LoadingContext, &MarbleSpecularPNG, &MarbleSpecular);
-    Rr_LoadMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
+    Rr_LoadStaticMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
     Rr_LoadColorImageFromPNG(LoadingContext, &CottagePNG, &CottageTexture);
-    Rr_LoadMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
+    Rr_LoadStaticMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
     Rr_LoadAsync(LoadingContext, OnLoadingComplete, App);
 
     // Rr_ExternAsset(POCDepthEXR);
@@ -205,6 +206,7 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyStaticMesh(App, CottageMesh);
     Rr_DestroyStaticMesh(App, PocMesh);
     Rr_DestroyStaticMesh(App, MarbleMesh);
+    Rr_DestroyStaticMesh(App, AvocadoMesh);
 
     Rr_DestroyGenericPipeline(App, Uber3DPipeline);
 
@@ -279,13 +281,14 @@ static void Draw(Rr_App* App)
     {
         SUber3DDraw CottageDraw = { 0 };
         CottageDraw.Model =
-            Rr_Scale({ 0.75f, 0.75f, 0.75f })
+            // Rr_Scale({ 0.75f, 0.75f, 0.75f })
+            Rr_Scale({ 50, 50, 50 })
             * Rr_Rotate_LH(SDL_fmodf(Time, SDL_PI_F * 2.0f), { 0.0f, 1.0f, 0.0f })
             * Rr_Translate({ 3.5f, 0.5f, 3.5f });
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
-        Rr_DrawStaticMesh(RenderingContext, CottageMaterial, CottageMesh, &CottageDraw);
+        Rr_DrawStaticMesh(RenderingContext, CottageMaterial, AvocadoMesh, &CottageDraw);
 
         SUber3DDraw MarbleDraw = { 0 };
         MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });

@@ -15,6 +15,7 @@ typedef enum Rr_LoadType
 {
     RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
     RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
+    RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
 } Rr_LoadType;
 
 typedef struct Rr_LoadTask
@@ -60,10 +61,20 @@ void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset*
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
-void Rr_LoadMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_StaticMesh** OutStaticMesh)
+void Rr_LoadStaticMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, struct Rr_StaticMesh** OutStaticMesh)
 {
     const Rr_LoadTask Task = {
         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
+        .Asset = *Asset,
+        .Out = (void**)OutStaticMesh
+    };
+    Rr_ArrayPush(LoadingContext->Tasks, &Task);
+}
+
+void Rr_LoadStaticMeshFromGLTF(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, struct Rr_StaticMesh** OutStaticMesh)
+{
+    const Rr_LoadTask Task = {
+        .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
         .Asset = *Asset,
         .Out = (void**)OutStaticMesh
     };
@@ -99,6 +110,13 @@ static int SDLCALL Load(void* Data)
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
                 StagingBufferSize += Rr_GetStaticMeshSizeOBJ(&Task->Asset);
+                BufferCount++;
+                BufferCount++;
+            }
+            break;
+            case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
+            {
+                StagingBufferSize += Rr_GetStaticMeshSizeGLTF(&Task->Asset);
                 BufferCount++;
                 BufferCount++;
             }
@@ -155,6 +173,14 @@ static int SDLCALL Load(void* Data)
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
                 *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshFromOBJ(
+                    App,
+                    &UploadContext,
+                    &Task->Asset);
+            }
+            break;
+            case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
+            {
+                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshFromGLTF(
                     App,
                     &UploadContext,
                     &Task->Asset);
