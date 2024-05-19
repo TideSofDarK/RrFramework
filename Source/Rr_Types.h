@@ -33,11 +33,25 @@ typedef struct Rr_PendingLoad
     VkSemaphore Semaphore;
 } Rr_PendingLoad;
 
-struct Rr_StaticMesh
+struct Rr_MeshBuffers
 {
-    size_t IndexCount;
     Rr_Buffer* IndexBuffer;
     Rr_Buffer* VertexBuffer;
+};
+
+/* Material at index 0 is matched with primitive at index 0 etc... */
+struct Rr_StaticMesh
+{
+    Rr_MeshBuffers MeshBuffers[RR_MESH_MAX_PRIMITIVES];
+    Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
+    size_t MeshBuffersCount;
+    size_t MaterialCount;
+};
+
+struct Rr_SkeletalMesh
+{
+    Rr_Material* Material;
+    Rr_MeshBuffers* MeshBuffers;
 };
 
 struct Rr_Image

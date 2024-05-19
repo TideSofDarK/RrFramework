@@ -5,33 +5,128 @@
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
 #include "Rr_Types.h"
+#include "Rr_Material.h"
 
 #include <SDL_stdinc.h>
 
 #include <cgltf/cgltf.h>
 
-Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
-    Rr_Asset* Asset)
+static cgltf_mesh* ParseGLTFMesh(const Rr_Asset* Asset, size_t MeshIndex, cgltf_data** OutData)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_StaticMesh* StaticMesh = Rr_CreateObject(Renderer);
-    Rr_RawMesh RawMesh;
-    Rr_ParseRawMeshOBJ(&RawMesh, Asset);
-    StaticMesh->IndexCount = Rr_ArrayCount(RawMesh.Indices);
+    cgltf_options Options = { 0 };
+    cgltf_data* Data = NULL;
+    cgltf_result Result = cgltf_parse(&Options, Asset->Data, Asset->Length, &Data);
+    if (Result != cgltf_result_success)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "Error loading glTF asset!");
+        abort();
+    }
 
-    const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh.Vertices);
-    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * StaticMesh->IndexCount;
+    cgltf_mesh* Mesh = Data->meshes + MeshIndex;
 
-    StaticMesh->VertexBuffer = Rr_CreateBuffer(
+    if (MeshIndex + 1 > Data->meshes_count || Mesh->primitives_count < 1)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "Mesh contains no geometry!");
+        abort();
+    }
+
+    if (Data->meshes->primitives_count > RR_MESH_MAX_PRIMITIVES)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "Exceeding max mesh primitives count!");
+        abort();
+    }
+
+    *OutData = Data;
+
+    return Mesh;
+}
+
+static void GLTFPrimitiveToRawMesh(cgltf_primitive* Primitive, Rr_RawMesh* RawMesh)
+{
+    size_t VertexCount = Primitive->attributes->data->count;
+    size_t IndexCount = Primitive->indices->count;
+
+    Rr_ArrayInit(RawMesh->Vertices, Rr_Vertex, VertexCount);
+    Rr_ArrayInit(RawMesh->Indices, Rr_MeshIndexType, IndexCount);
+
+    void* IndexData = Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
+    if (Primitive->indices->component_type == cgltf_component_type_r_16u)
+    {
+        u16* Indices = (u16*)IndexData;
+        for (size_t Index = 0; Index < IndexCount; ++Index)
+        {
+            u32 Converted = *(Indices + Index);
+            Rr_ArrayPush(RawMesh->Indices, &Converted);
+        }
+    }
+    else
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "Unsupported index type!");
+        abort();
+    }
+
+    for (size_t VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
+    {
+        Rr_Vertex NewVertex;
+
+        for (size_t AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+        {
+            cgltf_attribute* Attribute = Primitive->attributes + AttributeIndex;
+            cgltf_accessor* Accessor = Attribute->data;
+            void* AttributeData = Accessor->buffer_view->buffer->data + Accessor->buffer_view->offset;
+            switch (Attribute->type)
+            {
+                case cgltf_attribute_type_position:
+                {
+                    Rr_Vec3* Position = AttributeData + Accessor->stride * VertexIndex;
+                    NewVertex.Position = *Position;
+                }
+                break;
+                case cgltf_attribute_type_normal:
+                {
+                    Rr_Vec3* Normal = AttributeData + Accessor->stride * VertexIndex;
+                    NewVertex.Normal = *Normal;
+                }
+                break;
+                case cgltf_attribute_type_tangent:
+                {
+                    Rr_Vec3* Tangent = AttributeData + Accessor->stride * VertexIndex;
+                    NewVertex.Color.RGB = *Tangent;
+                }
+                break;
+                case cgltf_attribute_type_texcoord:
+                {
+                    Rr_Vec2* TexCoord = AttributeData + Accessor->stride * VertexIndex;
+                    NewVertex.TexCoordX = TexCoord->X;
+                    NewVertex.TexCoordY = TexCoord->Y;
+                }
+                break;
+                default:
+                    break;
+            }
+        }
+
+        Rr_ArrayPush(RawMesh->Vertices, &NewVertex);
+    }
+}
+
+static void InitAndUploadMeshBuffers(
+    Rr_Renderer* Renderer,
+    Rr_UploadContext* UploadContext,
+    Rr_RawMesh* RawMesh,
+    Rr_MeshBuffers* MeshBuffers)
+{
+    const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh->Vertices);
+    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_ArrayCount(RawMesh->Indices);
+
+    MeshBuffers->VertexBuffer = Rr_CreateBuffer(
         Renderer,
         VertexBufferSize,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
         false);
 
-    StaticMesh->IndexBuffer = Rr_CreateBuffer(
+    MeshBuffers->IndexBuffer = Rr_CreateBuffer(
         Renderer,
         IndexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -41,104 +136,141 @@ Rr_StaticMesh* Rr_CreateStaticMeshFromOBJ(
     Rr_UploadBuffer(
         Renderer,
         UploadContext,
-        StaticMesh->VertexBuffer->Handle,
+        MeshBuffers->VertexBuffer->Handle,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         0,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
-        RawMesh.Vertices,
+        RawMesh->Vertices,
         VertexBufferSize);
 
     Rr_UploadBuffer(
         Renderer,
         UploadContext,
-        StaticMesh->IndexBuffer->Handle,
+        MeshBuffers->IndexBuffer->Handle,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         0,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         VK_ACCESS_INDEX_READ_BIT,
-        RawMesh.Indices,
+        RawMesh->Indices,
         IndexBufferSize);
-
-    Rr_FreeRawMesh(&RawMesh);
-
-    return StaticMesh;
 }
 
-Rr_StaticMesh* Rr_CreateStaticMeshFromGLTF(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
-    Rr_Asset* Asset)
+void Rr_DestroyMeshBuffers(Rr_App* App, Rr_MeshBuffers* MeshBuffers)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_StaticMesh* StaticMesh = Rr_CreateObject(Renderer);
-    Rr_RawMesh RawMesh;
-    Rr_ParseRawMeshGLTF(&RawMesh, Asset);
-    StaticMesh->IndexCount = Rr_ArrayCount(RawMesh.Indices);
-
-    const size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh.Vertices);
-    const size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * StaticMesh->IndexCount;
-
-    StaticMesh->VertexBuffer = Rr_CreateBuffer(
-        Renderer,
-        VertexBufferSize,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        false);
-
-    StaticMesh->IndexBuffer = Rr_CreateBuffer(
-        Renderer,
-        IndexBufferSize,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        false);
-
-    Rr_UploadBuffer(
-        Renderer,
-        UploadContext,
-        StaticMesh->VertexBuffer->Handle,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        0,
-        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
-        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
-        RawMesh.Vertices,
-        VertexBufferSize);
-
-    Rr_UploadBuffer(
-        Renderer,
-        UploadContext,
-        StaticMesh->IndexBuffer->Handle,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        0,
-        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-        VK_ACCESS_INDEX_READ_BIT,
-        RawMesh.Indices,
-        IndexBufferSize);
-
-    Rr_FreeRawMesh(&RawMesh);
-
-    return StaticMesh;
-}
-
-void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh)
-{
-    if (Mesh == NULL)
+    if (MeshBuffers == NULL)
     {
         return;
     }
 
     Rr_Renderer* Renderer = &App->Renderer;
 
-    Rr_DestroyBuffer(Renderer, Mesh->IndexBuffer);
-    Rr_DestroyBuffer(Renderer, Mesh->VertexBuffer);
+    Rr_DestroyBuffer(Renderer, MeshBuffers->IndexBuffer);
+    Rr_DestroyBuffer(Renderer, MeshBuffers->VertexBuffer);
+}
 
-    Rr_DestroyObject(Renderer, Mesh);
+Rr_StaticMesh* Rr_CreateStaticMesh(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    Rr_RawMesh* RawMeshes,
+    size_t RawMeshCount,
+    Rr_Material** Material,
+    size_t MaterialCount)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_StaticMesh* StaticMesh = Rr_CreateObject(Renderer);
+
+    for (size_t Index = 0; Index < RawMeshCount; ++Index)
+    {
+        InitAndUploadMeshBuffers(Renderer, UploadContext, RawMeshes + Index, StaticMesh->MeshBuffers + Index);
+    }
+
+    for (size_t Index = 0; Index < MaterialCount; ++Index)
+    {
+        StaticMesh->Materials[Index] = Material[Index];
+    }
+
+    return StaticMesh;
+}
+
+Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    const Rr_Asset* Asset,
+    size_t MeshIndex)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+    cgltf_data* Data = NULL;
+    cgltf_options Options = { 0 };
+    cgltf_mesh* Mesh = ParseGLTFMesh(Asset, MeshIndex, &Data);
+    cgltf_load_buffers(&Options, Data, NULL);
+
+    Rr_RawMesh RawMeshes[Mesh->primitives_count];
+
+    for (size_t Index = 0; Index > Mesh->primitives_count; ++Index)
+    {
+        cgltf_primitive* Primitive = Mesh->primitives + Index;
+
+        GLTFPrimitiveToRawMesh(Primitive, &RawMeshes[Index]);
+    }
+
+    /* @TODO: Parse glTF materials. */
+
+    Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(App, UploadContext, RawMeshes, Mesh->primitives_count, NULL, 0);
+
+    for (size_t Index = 0; Index > Mesh->primitives_count; ++Index)
+    {
+        Rr_FreeRawMesh(&RawMeshes[Index]);
+    }
+
+    cgltf_free(Data);
+
+    return StaticMesh;
+}
+
+Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    const Rr_Asset* Asset)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    Rr_RawMesh RawMesh = { 0 };
+    Rr_ParseRawMeshOBJ(Asset, &RawMesh);
+
+    Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1, NULL, 0);
+
+    Rr_FreeRawMesh(&RawMesh);
+
+    return StaticMesh;
+}
+
+void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* StaticMesh)
+{
+    if (StaticMesh == NULL)
+    {
+        return;
+    }
+
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    for (size_t Index = 0; Index < StaticMesh->MeshBuffersCount; ++Index)
+    {
+        Rr_DestroyMeshBuffers(App, &StaticMesh->MeshBuffers[Index]);
+    }
+
+    for (size_t Index = 0; Index < StaticMesh->MaterialCount; ++Index)
+    {
+        Rr_DestroyMaterial(App, StaticMesh->Materials[Index]);
+    }
+
+    Rr_DestroyObject(Renderer, StaticMesh);
 }
 
 size_t Rr_GetStaticMeshSizeOBJ(const Rr_Asset* Asset)
 {
     Rr_RawMesh RawMesh;
-    Rr_ParseRawMeshOBJ(&RawMesh, Asset);
+    Rr_ParseRawMeshOBJ(Asset, &RawMesh);
 
     size_t VertexBufferSize = sizeof(Rr_Vertex) * Rr_ArrayCount(RawMesh.Vertices);
     size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_ArrayCount(RawMesh.Indices);
@@ -148,25 +280,21 @@ size_t Rr_GetStaticMeshSizeOBJ(const Rr_Asset* Asset)
     return VertexBufferSize + IndexBufferSize;
 }
 
-size_t Rr_GetStaticMeshSizeGLTF(const Rr_Asset* Asset)
+size_t Rr_GetStaticMeshSizeGLTF(const Rr_Asset* Asset, size_t MeshIndex)
 {
-    cgltf_options Options = { 0 };
     cgltf_data* Data = NULL;
-    cgltf_result Result = cgltf_parse(&Options, Asset->Data, Asset->Length, &Data);
-    if (Result != cgltf_result_success)
+    cgltf_mesh* Mesh = ParseGLTFMesh(Asset, MeshIndex, &Data);
+
+    size_t VertexBufferSize = 0;
+    size_t IndexBufferSize = 0;
+
+    for (size_t Index = 0; Index > Mesh->primitives_count; ++Index)
     {
-        abort();
+        cgltf_primitive* Primitive = Mesh->primitives + Index;
+
+        VertexBufferSize += sizeof(Rr_Vertex) * Primitive->attributes->data->count;
+        IndexBufferSize += sizeof(Rr_MeshIndexType) * Primitive->indices->count;
     }
-
-    if (Data->meshes_count < 1 || Data->meshes->primitives_count != 1)
-    {
-        abort();
-    }
-
-    cgltf_primitive* Primitive = Data->meshes->primitives;
-
-    size_t VertexBufferSize = sizeof(Rr_Vertex) * Primitive->attributes->data->count;
-    size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->indices->count;
 
     cgltf_free(Data);
 
@@ -184,7 +312,15 @@ static size_t GetNewLine(const char* Data, size_t Length, size_t CurrentIndex)
     return CurrentIndex;
 }
 
-void Rr_ParseRawMeshOBJ(Rr_RawMesh* RawMesh, const Rr_Asset* Asset)
+Rr_RawMesh Rr_AllocateRawMesh(size_t IndexCount, size_t VertexCount)
+{
+    Rr_RawMesh RawMesh = { 0 };
+    Rr_ArrayInit(RawMesh.Vertices, Rr_Vertex, VertexCount);
+    Rr_ArrayInit(RawMesh.Indices, Rr_MeshIndexType, IndexCount);
+    return RawMesh;
+}
+
+void Rr_ParseRawMeshOBJ(const Rr_Asset* Asset, Rr_RawMesh* RawMesh)
 {
     /* Init scratch buffers. */
     Rr_Vec3* ScratchPositions;
@@ -320,100 +456,6 @@ void Rr_ParseRawMeshOBJ(Rr_RawMesh* RawMesh, const Rr_Asset* Asset)
     Rr_ArrayFree(ScratchTexCoords);
     Rr_ArrayFree(ScratchNormals);
     Rr_ArrayFree(ScratchIndices);
-}
-
-void Rr_ParseRawMeshGLTF(Rr_RawMesh* RawMesh, const Rr_Asset* Asset)
-{
-    cgltf_options Options = { 0 };
-    cgltf_data* Data = NULL;
-    cgltf_result Result = cgltf_parse(&Options, Asset->Data, Asset->Length, &Data);
-    if (Result != cgltf_result_success)
-    {
-        abort();
-    }
-
-    Result = cgltf_load_buffers(&Options, Data, NULL);
-    if (Result != cgltf_result_success)
-    {
-        abort();
-    }
-
-    /* Select primitive. */
-    if (Data->meshes_count < 1 || Data->meshes->primitives_count != 1)
-    {
-        goto cleanup;
-    }
-
-    cgltf_primitive* Primitive = Data->meshes->primitives;
-
-    size_t VertexCount = Primitive->attributes->data->count;
-    size_t IndexCount = Primitive->indices->count;
-
-    Rr_ArrayInit(RawMesh->Vertices, Rr_Vertex, VertexCount);
-    Rr_ArrayInit(RawMesh->Indices, Rr_MeshIndexType, IndexCount);
-
-    void* IndexData = Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
-    if (Primitive->indices->component_type == cgltf_component_type_r_16u)
-    {
-        u16* Indices = (u16*)IndexData;
-        for (size_t Index = 0; Index < IndexCount; ++Index)
-        {
-            u32 Converted = *(Indices + Index);
-            Rr_ArrayPush(RawMesh->Indices, &Converted);
-        }
-    }
-    else
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "Unsupported index type!");
-        goto cleanup;
-    }
-
-    for (size_t VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
-    {
-        Rr_Vertex NewVertex;
-
-        for (size_t AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
-        {
-            cgltf_attribute* Attribute = Primitive->attributes + AttributeIndex;
-            cgltf_accessor* Accessor = Attribute->data;
-            void* AttributeData = Accessor->buffer_view->buffer->data + Accessor->buffer_view->offset;
-            switch (Attribute->type)
-            {
-                case cgltf_attribute_type_position:
-                {
-                    Rr_Vec3* Position = AttributeData + Accessor->stride * VertexIndex;
-                    NewVertex.Position = *Position;
-                }
-                break;
-                case cgltf_attribute_type_normal:
-                {
-                    Rr_Vec3* Normal = AttributeData + Accessor->stride * VertexIndex;
-                    NewVertex.Normal = *Normal;
-                }
-                break;
-                case cgltf_attribute_type_tangent:
-                {
-                    Rr_Vec3* Tangent = AttributeData + Accessor->stride * VertexIndex;
-                    NewVertex.Color.RGB = *Tangent;
-                }
-                break;
-                case cgltf_attribute_type_texcoord:
-                {
-                    Rr_Vec2* TexCoord = AttributeData + Accessor->stride * VertexIndex;
-                    NewVertex.TexCoordX = TexCoord->X;
-                    NewVertex.TexCoordY = TexCoord->Y;
-                }
-                break;
-                default:
-                    break;
-            }
-        }
-
-        Rr_ArrayPush(RawMesh->Vertices, &NewVertex);
-    }
-
-cleanup:
-    cgltf_free(Data);
 }
 
 void Rr_FreeRawMesh(Rr_RawMesh* RawMesh)

@@ -18,10 +18,21 @@ typedef enum Rr_LoadType
     RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
 } Rr_LoadType;
 
+typedef struct
+{
+    size_t MeshIndex;
+} Rr_MeshGLTFOptions;
+
+typedef union
+{
+    Rr_MeshGLTFOptions MeshGLTF;
+} Rr_LoadTaskOptions;
+
 typedef struct Rr_LoadTask
 {
     Rr_LoadType LoadType;
     Rr_Asset Asset;
+    Rr_LoadTaskOptions Options;
     void** Out;
 } Rr_LoadTask;
 
@@ -71,12 +82,14 @@ void Rr_LoadStaticMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset*
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
-void Rr_LoadStaticMeshFromGLTF(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, struct Rr_StaticMesh** OutStaticMesh)
+void Rr_LoadStaticMeshFromGLTF(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, size_t MeshIndex, struct Rr_StaticMesh** OutStaticMesh)
 {
     const Rr_LoadTask Task = {
         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
         .Asset = *Asset,
-        .Out = (void**)OutStaticMesh
+        .Out = (void**)OutStaticMesh,
+        .Options = (Rr_MeshGLTFOptions){
+            .MeshIndex = MeshIndex }
     };
     Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
@@ -110,15 +123,14 @@ static int SDLCALL Load(void* Data)
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
                 StagingBufferSize += Rr_GetStaticMeshSizeOBJ(&Task->Asset);
-                BufferCount++;
-                BufferCount++;
+                BufferCount += 2;
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
             {
-                StagingBufferSize += Rr_GetStaticMeshSizeGLTF(&Task->Asset);
-                BufferCount++;
-                BufferCount++;
+                Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
+                StagingBufferSize += Rr_GetStaticMeshSizeGLTF(&Task->Asset, Options.MeshIndex);
+                BufferCount += 2;
             }
             break;
             default:
@@ -172,7 +184,7 @@ static int SDLCALL Load(void* Data)
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
-                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshFromOBJ(
+                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshOBJ(
                     App,
                     &UploadContext,
                     &Task->Asset);
@@ -180,10 +192,12 @@ static int SDLCALL Load(void* Data)
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
             {
-                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshFromGLTF(
+                Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
+                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshGLTF(
                     App,
                     &UploadContext,
-                    &Task->Asset);
+                    &Task->Asset,
+                    Options.MeshIndex);
             }
             break;
             default:
