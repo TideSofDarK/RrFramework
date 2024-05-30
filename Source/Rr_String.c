@@ -8,10 +8,10 @@
 
 static u32* UTF8ToUTF32(
     const char* CString,
-    size_t OptionalLength,
+    usize OptionalLength,
     u32* OutOldBuffer,
-    size_t OldLength,
-    size_t* OutNewLength)
+    usize OldLength,
+    usize* OutNewLength)
 {
     static u32 Buffer[2048] = { 0 };
 
@@ -21,7 +21,7 @@ static u32* UTF8ToUTF32(
     const u8 Four = 240;
     const u8 Five = 248;
 
-    size_t SourceLength = OptionalLength > 0 ? OptionalLength : SDL_strlen(CString);
+    usize SourceLength = OptionalLength > 0 ? OptionalLength : SDL_strlen(CString);
     if (SourceLength > 2048)
     {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Exceeding max string length!");
@@ -29,9 +29,9 @@ static u32* UTF8ToUTF32(
     }
 
     u8 Carry = 0;
-    size_t FinalIndex = 0;
+    usize FinalIndex = 0;
     u32 FinalCharacter = 0;
-    for (size_t SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
+    for (usize SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
     {
         if (Carry > 0)
         {
@@ -104,7 +104,7 @@ Rr_String Rr_CreateString(const char* CString)
     return String;
 }
 
-Rr_String Rr_CreateEmptyString(size_t Length)
+Rr_String Rr_CreateEmptyString(usize Length)
 {
     return (Rr_String){
         .Length = Length,
@@ -112,7 +112,7 @@ Rr_String Rr_CreateEmptyString(size_t Length)
     };
 }
 
-void Rr_SetString(Rr_String* String, const char* CString, size_t OptionalLength)
+void Rr_SetString(Rr_String* String, const char* CString, usize OptionalLength)
 {
     if (String == NULL)
     {

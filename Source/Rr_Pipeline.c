@@ -1,11 +1,11 @@
 #include "Rr_Pipeline.h"
 
-#include "Rr_Buffer.h"
 #include "Rr_Defines.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
 #include "Rr_Types.h"
+#include "Rr_Object.h"
 
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_log.h>
@@ -22,7 +22,7 @@ VkPipeline Rr_BuildPipeline(
     VkPipelineLayout PipelineLayout)
 {
     /* Create shader modules. */
-    VkPipelineShaderStageCreateInfo ShaderStages[RR_PIPELINE_SHADER_STAGES];
+    VkPipelineShaderStageCreateInfo* ShaderStages = Rr_StackAlloc(VkPipelineShaderStageCreateInfo, RR_PIPELINE_SHADER_STAGES);
     int ShaderStageCount = 0;
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
@@ -90,7 +90,7 @@ VkPipeline Rr_BuildPipeline(
     u32 AttributeCount = 0;
     bool bHasPerVertexBinding = false;
     bool bHasPerInstanceBinding = false;
-    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    for (usize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         if (PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
         {
@@ -162,6 +162,7 @@ VkPipeline Rr_BuildPipeline(
     }
 
     Rr_Free(PipelineBuilder);
+    Rr_StackFree(ShaderStages);
 
     return Pipeline;
 }
@@ -220,7 +221,7 @@ static VkFormat GetVulkanFormat(Rr_VertexInputType Type)
     }
 }
 
-static size_t GetVertexInputSize(Rr_VertexInputType Type)
+static usize GetVertexInputSize(Rr_VertexInputType Type)
 {
     switch (Type)
     {
@@ -240,7 +241,7 @@ static size_t GetVertexInputSize(Rr_VertexInputType Type)
     }
 }
 
-static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInputAttribute Attribute, size_t Binding)
+static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInputAttribute Attribute, usize Binding)
 {
     VkFormat Format = GetVulkanFormat(Attribute.Type);
     if (Format == VK_FORMAT_UNDEFINED)
@@ -248,7 +249,7 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_V
         return;
     }
 
-    const size_t Location = Attribute.Location;
+    const usize Location = Attribute.Location;
     if (Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Exceeding max allowed number of vertex attributes for a pipeline!");
@@ -267,7 +268,7 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_V
 
 void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
 {
-    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    for (usize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         EnableVertexInputAttribute(PipelineBuilder, VertexInput->Attributes[Index], RR_VERTEX_INPUT_BINDING_PER_VERTEX);
     }
@@ -275,7 +276,7 @@ void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_V
 
 void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
 {
-    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    for (usize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         EnableVertexInputAttribute(PipelineBuilder, VertexInput->Attributes[Index], RR_VERTEX_INPUT_BINDING_PER_INSTANCE);
     }
@@ -342,19 +343,18 @@ void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
 Rr_GenericPipeline* Rr_BuildGenericPipeline(
     Rr_App* App,
     Rr_PipelineBuilder* PipelineBuilder,
-    size_t GlobalsSize,
-    size_t MaterialSize,
-    size_t DrawSize)
+    Rr_GenericPipelineSizes Sizes)
 {
+    SDL_assert(Sizes.Globals < RR_PIPELINE_MAX_GLOBALS_SIZE);
+    SDL_assert(Sizes.Material < RR_PIPELINE_MAX_MATERIAL_SIZE);
+    SDL_assert(Sizes.Draw < RR_PIPELINE_MAX_DRAW_SIZE);
+
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_GenericPipeline* Pipeline = Rr_CreateObject(Renderer);
     *Pipeline = (Rr_GenericPipeline){
-        .GlobalsSize = GlobalsSize,
-        .MaterialSize = MaterialSize,
-        .DrawSize = DrawSize,
+        .Handle = Rr_BuildPipeline(Renderer, PipelineBuilder, Renderer->GenericPipelineLayout),
+        .Sizes = Sizes
     };
-
-    Pipeline->Handle = Rr_BuildPipeline(Renderer, PipelineBuilder, Renderer->GenericPipelineLayout);
 
     return Pipeline;
 }
@@ -367,4 +367,9 @@ void Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
     vkDestroyPipeline(Device, Pipeline->Handle, NULL);
 
     Rr_DestroyObject(Renderer, Pipeline);
+}
+
+Rr_GenericPipelineSizes Rr_GetGenericPipelineSizes(Rr_GenericPipeline* Pipeline)
+{
+    return Pipeline->Sizes;
 }

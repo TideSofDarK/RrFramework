@@ -8,6 +8,9 @@ extern "C"
 {
 #endif
 
+struct Rr_Arena;
+struct Rr_ArenaScratch;
+
 typedef struct Rr_App Rr_App;
 
 typedef struct Rr_AppConfig
@@ -17,8 +20,7 @@ typedef struct Rr_AppConfig
     Rr_InputConfig* InputConfig;
     void (*InitFunc)(Rr_App* App);
     void (*CleanupFunc)(Rr_App* App);
-    void (*UpdateFunc)(Rr_App* App);
-    void (*DrawFunc)(Rr_App* App);
+    void (*IterateFunc)(Rr_App* App);
 
     void (*FileDroppedFunc)(Rr_App* App, const char* Path);
 } Rr_AppConfig;

@@ -1,15 +1,17 @@
 #include "Rr_Renderer.h"
 
+#include "Rr_Draw.h"
 #include "Rr_Text.h"
 #include "Rr_Defines.h"
 #include "Rr_App.h"
-#include "Rr_Array.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
 #include "Rr_Types.h"
 #include "Rr_Barrier.h"
+#include "Rr_Object.h"
+#include "Rr_Rendering.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -18,94 +20,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <SDL3/SDL_stdinc.h>
-
-typedef union Rr_Object
-{
-    Rr_Buffer Buffer;
-    Rr_StaticMesh StaticMesh;
-    Rr_Image Image;
-    Rr_Font Font;
-    Rr_Material Material;
-    Rr_GenericPipeline GenericPipeline;
-    void* Next;
-} Rr_Object;
-
-static void Rr_BlitPrerenderedDepth(
-    VkCommandBuffer CommandBuffer,
-    VkImage Source,
-    VkImage Destination,
-    VkExtent2D SrcSize,
-    VkExtent2D DstSize)
-{
-    VkImageBlit2 BlitRegion = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
-        .pNext = NULL,
-        .srcSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
-        .dstSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
-    };
-
-    const VkBlitImageInfo2 BlitInfo = {
-        .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
-        .pNext = NULL,
-        .srcImage = Source,
-        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        .dstImage = Destination,
-        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        .regionCount = 1,
-        .pRegions = &BlitRegion,
-        .filter = VK_FILTER_NEAREST,
-    };
-
-    vkCmdBlitImage2(CommandBuffer, &BlitInfo);
-}
-
-static void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
-{
-    VkImageBlit2 BlitRegion = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
-        .pNext = NULL,
-        .srcSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
-        .dstSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
-    };
-
-    const VkBlitImageInfo2 BlitInfo = {
-        .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
-        .pNext = NULL,
-        .srcImage = Source,
-        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        .dstImage = Destination,
-        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        .regionCount = 1,
-        .pRegions = &BlitRegion,
-        .filter = VK_FILTER_NEAREST,
-    };
-
-    vkCmdBlitImage2(CommandBuffer, &BlitInfo);
-}
 
 static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
 {
@@ -120,255 +34,6 @@ static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32
     }
 
     Renderer->Scale = MaxAvailableScale;
-}
-
-static bool CheckPhysicalDevice(Rr_App* App, VkPhysicalDevice PhysicalDevice)
-{
-    Rr_Renderer* Renderer = &App->Renderer;
-
-    u32 ExtensionCount;
-    vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
-    if (ExtensionCount == 0)
-    {
-        return false;
-    }
-
-    const char* TargetExtensions[] = {
-        "VK_EXT_descriptor_indexing",
-        "VK_KHR_swapchain"
-    };
-
-    bool FoundExtensions[] = { 0, 0 };
-
-    VkExtensionProperties* Extensions = Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
-    vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
-
-    for (u32 Index = 0; Index < ExtensionCount; Index++)
-    {
-        for (u32 TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
-        {
-            if (strcmp(Extensions[Index].extensionName, TargetExtensions[TargetIndex]) == 0)
-            {
-                FoundExtensions[TargetIndex] = true;
-            }
-        }
-    }
-    for (u32 TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
-    {
-        if (!FoundExtensions[TargetIndex])
-        {
-            return false;
-        }
-    }
-
-    u32 QueueFamilyCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, NULL);
-    if (QueueFamilyCount == 0)
-    {
-        return false;
-    }
-
-    VkQueueFamilyProperties* QueueFamilyProperties = Rr_StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
-    VkBool32* QueuePresentSupport = Rr_StackAlloc(VkBool32, QueueFamilyCount);
-
-    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
-
-    u32 GraphicsQueueFamilyIndex = ~0U;
-    u32 TransferQueueFamilyIndex = ~0U;
-
-    for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
-    {
-        vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, Index, Renderer->Surface, &QueuePresentSupport[Index]);
-        if (QueuePresentSupport[Index]
-            && QueueFamilyProperties[Index].queueCount > 0
-            && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
-        {
-            GraphicsQueueFamilyIndex = Index;
-            break;
-        }
-    }
-
-    const u32 bForceUnifiedQueue = RR_FORCE_UNIFIED_QUEUE;
-
-    if (!bForceUnifiedQueue)
-    {
-        for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
-        {
-            if (Index == GraphicsQueueFamilyIndex)
-            {
-                continue;
-            }
-
-            if (QueueFamilyProperties[Index].queueCount > 0
-                && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_TRANSFER_BIT))
-            {
-                TransferQueueFamilyIndex = Index;
-                break;
-            }
-        }
-    }
-
-    if (TransferQueueFamilyIndex == ~0U)
-    {
-        Renderer->bUnifiedQueue = true;
-        Renderer->TransferQueue.FamilyIndex = GraphicsQueueFamilyIndex;
-    }
-    else
-    {
-        Renderer->bUnifiedQueue = false;
-        Renderer->TransferQueue.FamilyIndex = TransferQueueFamilyIndex;
-    }
-
-    Renderer->UnifiedQueue.FamilyIndex = GraphicsQueueFamilyIndex;
-
-    Rr_StackFree(QueuePresentSupport);
-    Rr_StackFree(QueueFamilyProperties);
-    Rr_StackFree(Extensions);
-
-    return GraphicsQueueFamilyIndex != ~0U;
-}
-
-static void InitDevice(Rr_App* App)
-{
-    Rr_Renderer* Renderer = &App->Renderer;
-
-    u32 PhysicalDeviceCount = 0;
-    vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, NULL);
-    if (PhysicalDeviceCount == 0)
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "No device with Vulkan support found");
-        abort();
-    }
-
-    VkPhysicalDevice* PhysicalDevices = Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
-    vkEnumeratePhysicalDevices(Renderer->Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
-
-    Renderer->PhysicalDevice.SubgroupProperties = (VkPhysicalDeviceSubgroupProperties){ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = NULL };
-
-    Renderer->PhysicalDevice.Properties = (VkPhysicalDeviceProperties2){
-        .pNext = &Renderer->PhysicalDevice.SubgroupProperties,
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-    };
-
-    bool bFoundSuitableDevice = false;
-    for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
-    {
-        if (CheckPhysicalDevice(App, PhysicalDevices[Index]))
-        {
-            Renderer->PhysicalDevice.Handle = PhysicalDevices[Index];
-
-            vkGetPhysicalDeviceFeatures(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.Features);
-            if (!Renderer->PhysicalDevice.Features.shaderSampledImageArrayDynamicIndexing)
-            {
-                continue;
-            }
-            vkGetPhysicalDeviceMemoryProperties(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.MemoryProperties);
-            vkGetPhysicalDeviceProperties2(Renderer->PhysicalDevice.Handle, &Renderer->PhysicalDevice.Properties);
-
-            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", Renderer->PhysicalDevice.Properties.properties.deviceName);
-
-            bFoundSuitableDevice = true;
-
-            Renderer->UniformAlignment = Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
-            break;
-        }
-    }
-    if (!bFoundSuitableDevice)
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not select physical device based on the chosen properties!");
-        abort();
-    }
-
-    const float QueuePriorities[] = { 1.0f };
-    VkDeviceQueueCreateInfo QueueInfos[] = {
-        {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
-            .queueCount = 1,
-            .pQueuePriorities = QueuePriorities,
-        },
-        {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-            .queueCount = 1,
-            .pQueuePriorities = QueuePriorities,
-        }
-    };
-
-    VkPhysicalDeviceVulkan13Features Features13 = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .pNext = VK_NULL_HANDLE,
-        .dynamicRendering = VK_TRUE,
-    };
-
-    VkPhysicalDeviceVulkan12Features Features12 = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .pNext = &Features13,
-        /* Descriptor Indexing */
-        .descriptorIndexing = VK_TRUE,
-        .descriptorBindingPartiallyBound = VK_TRUE,
-        .descriptorBindingVariableDescriptorCount = VK_TRUE,
-        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
-        .runtimeDescriptorArray = VK_TRUE,
-    };
-
-    const char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-
-    const VkDeviceCreateInfo DeviceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &Features12,
-        .queueCreateInfoCount = Renderer->bUnifiedQueue ? 1 : 2,
-        .pQueueCreateInfos = QueueInfos,
-        .enabledExtensionCount = SDL_arraysize(DeviceExtensions),
-        .ppEnabledExtensionNames = DeviceExtensions,
-    };
-
-    vkCreateDevice(Renderer->PhysicalDevice.Handle, &DeviceCreateInfo, NULL, &Renderer->Device);
-
-    vkGetDeviceQueue(Renderer->Device, Renderer->UnifiedQueue.FamilyIndex, 0, &Renderer->UnifiedQueue.Handle);
-    if (!Renderer->bUnifiedQueue)
-    {
-        vkGetDeviceQueue(Renderer->Device, Renderer->TransferQueue.FamilyIndex, 0, &Renderer->TransferQueue.Handle);
-    }
-
-    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Unified Queue Mode: %s", Renderer->bUnifiedQueue ? "true" : "false");
-
-    Renderer->UnifiedQueue.Mutex = SDL_CreateMutex();
-
-    Rr_ArrayInit(Renderer->UnifiedQueue.PendingLoads, Rr_PendingLoad, 1);
-
-    Rr_StackFree(PhysicalDevices);
-}
-
-static void InitDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget, const u32 Width, const u32 Height)
-{
-    Rr_Renderer* Renderer = &App->Renderer;
-
-    DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(App, Width, Height);
-    DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
-
-    VkImageView Attachments[2] = { DrawTarget->ColorImage->View, DrawTarget->DepthImage->View };
-
-    const VkFramebufferCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .renderPass = Renderer->RenderPass,
-        .height = Height,
-        .width = Width,
-        .layers = 1,
-        .attachmentCount = 2,
-        .pAttachments = Attachments
-    };
-    vkCreateFramebuffer(Renderer->Device, &Info, NULL, &DrawTarget->Framebuffer);
-}
-
-static void CleanupDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget)
-{
-    Rr_Renderer* Renderer = &App->Renderer;
-    vkDestroyFramebuffer(Renderer->Device, DrawTarget->Framebuffer, NULL);
-    Rr_DestroyImage(App, DrawTarget->ColorImage);
-    Rr_DestroyImage(App, DrawTarget->DepthImage);
 }
 
 static void CleanupSwapchain(Rr_App* App, VkSwapchainKHR Swapchain)
@@ -557,26 +222,11 @@ static bool InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     }
 
     CalculateDrawTargetResolution(Renderer, *Width, *Height);
-    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    if (Renderer->DrawTarget != NULL)
     {
-        Rr_DrawTarget* DrawTarget = &Renderer->Frames[Index].DrawTarget;
-
-        if (DrawTarget->ColorImage != NULL)
-        {
-            CleanupDrawTarget(App, DrawTarget);
-        }
-        InitDrawTarget(App, DrawTarget, *Width, *Height);
-
-        // if (Renderer->DrawTarget.ActiveResolution.width > Renderer->DrawTarget.ColorImage.Extent.width
-        //     || Renderer->DrawTarget.ActiveResolution.height > Renderer->DrawTarget.ColorImage.Extent.height)
-        // {
-        //     if (Renderer->DrawTarget.ColorImage.Handle != VK_NULL_HANDLE)
-        //     {
-        //         CleanupDrawTarget(Renderer);
-        //     }
-        //     InitDrawTarget(Renderer, *Width, *Height);
-        // }
+        Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
     }
+    Renderer->DrawTarget = Rr_CreateDrawTarget(App, *Width, *Height);
 
     Rr_StackFree(Images);
     Rr_StackFree(SurfaceFormats);
@@ -593,19 +243,15 @@ static void InitFrames(Rr_App* App)
     const VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     const VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
 
-    for (i32 Index = 0; Index < RR_FRAME_OVERLAP; Index++)
+    for (usize Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         Rr_Frame* Frame = &Frames[Index];
+        SDL_zerop(Frame);
 
-        /* Synchronization */
         vkCreateFence(Device, &FenceCreateInfo, NULL, &Frame->RenderFence);
-
         vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frame->SwapchainSemaphore);
         vkCreateSemaphore(Device, &SemaphoreCreateInfo, NULL, &Frame->RenderSemaphore);
 
-        Rr_ArrayInit(Frame->RetiredSemaphoresArray, VkSemaphore, 1);
-
-        /* Descriptors */
         Rr_DescriptorPoolSizeRatio Ratios[] = {
             { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
             { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
@@ -613,27 +259,23 @@ static void InitFrames(Rr_App* App)
             { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
             { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
         };
+        Frame->DescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 1000, Ratios, SDL_arraysize(Ratios), &App->PermanentArena);
 
-        Frame->DescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 1000, Ratios, SDL_arraysize(Ratios));
-
-        /* Commands */
         VkCommandPoolCreateInfo CommandPoolInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
             .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
         };
-
         vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, NULL, &Frame->CommandPool);
-
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
-
         vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer);
 
-        /* Buffers */
-        Frame->StagingBuffer = Rr_CreateStagingBuffer(Renderer, RR_STAGING_BUFFER_SIZE);
-        Frame->Buffers.Draw = Rr_CreateMappedBuffer(Renderer, 66560, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-        Frame->Buffers.Common = Rr_CreateDeviceUniformBuffer(Renderer, 66560);
+        Frame->StagingBuffer.Buffer = Rr_CreateMappedBuffer(Renderer, RR_STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        Frame->DrawBuffer.Buffer = Rr_CreateMappedBuffer(Renderer, 66560, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        Frame->CommonBuffer.Buffer = Rr_CreateDeviceUniformBuffer(Renderer, 66560);
+
+        Frame->Arena = Rr_CreateArena(RR_PER_FRAME_ARENA_SIZE);
     }
 }
 
@@ -642,7 +284,7 @@ static void CleanupFrames(Rr_App* App)
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
-    for (u32 Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    for (usize Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_Frame* Frame = &Renderer->Frames[Index];
         vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, NULL);
@@ -651,15 +293,31 @@ static void CleanupFrames(Rr_App* App)
         vkDestroySemaphore(Device, Frame->RenderSemaphore, NULL);
         vkDestroySemaphore(Device, Frame->SwapchainSemaphore, NULL);
 
-        Rr_DestroyStagingBuffer(Renderer, Frame->StagingBuffer);
+        for (usize LoadIndex = 0; LoadIndex < Rr_SliceLength(&Frame->PendingLoadsSlice); ++LoadIndex)
+        {
+            if (!Frame->PendingLoadsSlice.Data[LoadIndex].Semaphore)
+            {
+                continue;
+            }
+            vkDestroySemaphore(Device, Frame->PendingLoadsSlice.Data[LoadIndex].Semaphore, NULL);
+        }
+
+        for (usize SemaphoreIndex = 0; SemaphoreIndex < Rr_SliceLength(&Frame->RetiredSemaphoresSlice); ++SemaphoreIndex)
+        {
+            if (!Frame->RetiredSemaphoresSlice.Data[SemaphoreIndex])
+            {
+                continue;
+            }
+            vkDestroySemaphore(Device, Frame->RetiredSemaphoresSlice.Data[SemaphoreIndex], NULL);
+        }
+
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
-        CleanupDrawTarget(App, &Frame->DrawTarget);
+        Rr_DestroyBuffer(Renderer, Frame->StagingBuffer.Buffer);
+        Rr_DestroyBuffer(Renderer, Frame->DrawBuffer.Buffer);
+        Rr_DestroyBuffer(Renderer, Frame->CommonBuffer.Buffer);
 
-        Rr_ArrayFree(Frame->RetiredSemaphoresArray);
-
-        Rr_DestroyBuffer(Renderer, Frame->Buffers.Draw);
-        Rr_DestroyBuffer(Renderer, Frame->Buffers.Common);
+        Rr_DestroyArena(&Frame->Arena);
     }
 }
 
@@ -709,7 +367,7 @@ static void InitDescriptors(Rr_App* App)
         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 }
     };
 
-    Renderer->GlobalDescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios));
+    Renderer->GlobalDescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios), &App->PermanentArena);
 }
 
 static PFN_vkVoidFunction LoadVulkanFunction(const char* FuncName, void* Userdata)
@@ -1010,7 +668,7 @@ static void InitObjectStorage(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    Renderer->Storage = Rr_Calloc(RR_MAX_OBJECTS, sizeof(Rr_Object));
+    Renderer->Storage = Rr_Calloc(1, Rr_CalculateObjectStorageSize(RR_MAX_OBJECTS));
     Renderer->NextObject = Renderer->Storage;
 }
 
@@ -1077,7 +735,21 @@ void Rr_InitRenderer(Rr_App* App)
         abort();
     }
 
-    InitDevice(App);
+    Renderer->PhysicalDevice = Rr_CreatePhysicalDevice(
+        Renderer->Instance,
+        Renderer->Surface,
+        &Renderer->UnifiedQueue.FamilyIndex,
+        &Renderer->TransferQueue.FamilyIndex);
+    Rr_InitDeviceAndQueues(
+        Renderer->PhysicalDevice.Handle,
+        Renderer->UnifiedQueue.FamilyIndex,
+        Renderer->TransferQueue.FamilyIndex,
+        &Renderer->Device,
+        &Renderer->UnifiedQueue.Handle,
+        &Renderer->TransferQueue.Handle
+    );
+    Renderer->UnifiedQueueMutex = SDL_CreateMutex();
+
     volkLoadDevice(Renderer->Device);
     InitAllocator(App);
     InitObjectStorage(App);
@@ -1101,6 +773,7 @@ void Rr_InitRenderer(Rr_App* App)
 bool Rr_NewFrame(Rr_App* App, void* Window)
 {
     Rr_Renderer* Renderer = &App->Renderer;
+
     const i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
     if (bResizePending == true)
     {
@@ -1152,15 +825,9 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     CleanupFrames(App);
 
-    for (size_t Index = 0; Index < Rr_ArrayCount(Renderer->UnifiedQueue.PendingLoads); ++Index)
-    {
-        Rr_PendingLoad* PendingLoad = &Renderer->UnifiedQueue.PendingLoads[Index];
+    Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
 
-        vkDestroySemaphore(Device, PendingLoad->Semaphore, NULL);
-    }
-    Rr_ArrayFree(Renderer->UnifiedQueue.PendingLoads);
-
-    SDL_DestroyMutex(Renderer->UnifiedQueue.Mutex);
+    SDL_DestroyMutex(Renderer->UnifiedQueueMutex);
 
     CleanupTransientCommandPools(Renderer);
     CleanupImmediateMode(App);
@@ -1213,24 +880,30 @@ void Rr_EndImmediate(Rr_Renderer* Renderer)
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }
 
+static void Rr_ResetFrameResources(Rr_Renderer* Renderer)
+{
+    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+
+    Frame->StagingBuffer.Offset = 0;
+    Frame->DrawBuffer.Offset = 0;
+    Frame->CommonBuffer.Offset = 0;
+    Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Renderer->Device);
+}
+
 void Rr_Draw(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
     Rr_Swapchain* Swapchain = &Renderer->Swapchain;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_Image* ColorImage = Frame->DrawTarget.ColorImage;
-    Rr_Image* DepthImage = Frame->DrawTarget.DepthImage;
 
     vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
 
-    Frame->StagingBuffer->CurrentOffset = 0;
+    /* @TODO: Move to per frame arena reset? */
+    Rr_ResetFrameResources(Renderer);
 
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-
-    Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Device);
-
+    /* Acquire swapchain image. */
     u32 SwapchainImageIndex;
     VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -1246,28 +919,32 @@ void Rr_Draw(Rr_App* App)
 
     VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
+    /* Begin main command buffer. */
+    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
     /* Process pending loads to acquire images/buffers.
      * Generate wait semaphore input. */
-    SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
-    const size_t PendingLoadsCount = Rr_ArrayCount(Renderer->UnifiedQueue.PendingLoads);
+    SDL_LockMutex(Renderer->UnifiedQueueMutex);
+
+    const usize PendingLoadsCount = Rr_SliceLength(&Frame->PendingLoadsSlice);
     VkSemaphore WaitSemaphores[PendingLoadsCount + 1];
     VkPipelineStageFlags WaitDstStages[PendingLoadsCount + 1];
     WaitSemaphores[0] = Frame->SwapchainSemaphore;
     WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    size_t WaitSemaphoreIndex = 1;
+    usize WaitSemaphoreIndex = 1;
 
-    for (size_t Index = 0; Index < Rr_ArrayCount(Frame->RetiredSemaphoresArray); ++Index)
+    for (usize Index = 0; Index < Rr_SliceLength(&Frame->RetiredSemaphoresSlice); ++Index)
     {
-        vkDestroySemaphore(Device, Frame->RetiredSemaphoresArray[Index], NULL);
+        vkDestroySemaphore(Device, Frame->RetiredSemaphoresSlice.Data[Index], NULL);
     }
-    Rr_ArrayEmpty(Frame->RetiredSemaphoresArray);
+    Rr_SliceClear(&Frame->RetiredSemaphoresSlice);
 
-    for (size_t Index = 0; Index < PendingLoadsCount; ++Index)
+    for (usize Index = 0; Index < PendingLoadsCount; ++Index)
     {
-        Rr_PendingLoad* PendingLoad = &Renderer->UnifiedQueue.PendingLoads[Index];
+        Rr_PendingLoad* PendingLoad = &Frame->PendingLoadsSlice.Data[Index];
+        Rr_AcquireBarriers* Barriers = &PendingLoad->Barriers;
 
         PendingLoad->LoadingCallback(App, PendingLoad->Userdata);
 
@@ -1278,24 +955,25 @@ void Rr_Draw(Rr_App* App)
             0,
             0,
             NULL,
-            Rr_ArrayCount(PendingLoad->Barriers.BufferMemoryBarriersArray),
-            PendingLoad->Barriers.BufferMemoryBarriersArray,
-            Rr_ArrayCount(PendingLoad->Barriers.ImageMemoryBarriersArray),
-            PendingLoad->Barriers.ImageMemoryBarriersArray);
-
-        Rr_ArrayFree(PendingLoad->Barriers.BufferMemoryBarriersArray);
-        Rr_ArrayFree(PendingLoad->Barriers.ImageMemoryBarriersArray);
+            Barriers->BufferMemoryBarrierCount,
+            Barriers->BufferMemoryBarriers,
+            Barriers->ImageMemoryBarrierCount,
+            Barriers->ImageMemoryBarriers);
 
         WaitSemaphores[WaitSemaphoreIndex] = PendingLoad->Semaphore;
         WaitDstStages[WaitSemaphoreIndex] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
         WaitSemaphoreIndex++;
 
-        Rr_ArrayPush(Frame->RetiredSemaphoresArray, &PendingLoad->Semaphore);
+        *Rr_SlicePush(&Frame->RetiredSemaphoresSlice, &Frame->Arena) = PendingLoad->Semaphore;
     }
-    Rr_ArrayEmpty(Renderer->UnifiedQueue.PendingLoads);
-    SDL_UnlockMutex(Renderer->UnifiedQueue.Mutex);
+    Rr_SliceClear(&Frame->PendingLoadsSlice);
+
+    SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
 
     /* Rendering */
+    Rr_Image* ColorImage = Renderer->DrawTarget->ColorImage;
+    Rr_Image* DepthImage = Renderer->DrawTarget->DepthImage;
+
     Rr_ImageBarrier ColorImageTransition = {
         .CommandBuffer = CommandBuffer,
         .Image = ColorImage->Handle,
@@ -1320,7 +998,12 @@ void Rr_Draw(Rr_App* App)
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    App->Config->DrawFunc(App);
+    /* Flush Rendering Contexts */
+    for (usize Index = 0; Index < Frame->RenderingContextsSlice.Length; ++Index)
+    {
+        Rr_FlushRenderingContext(&Frame->RenderingContextsSlice.Data[Index]);
+    }
+    Rr_SliceClear(&Frame->RenderingContextsSlice);
 
     // Rr_ImageBarrier ColorImageTransition = {
     //     .CommandBuffer = CommandBuffer,
@@ -1410,7 +1093,8 @@ void Rr_Draw(Rr_App* App)
         .pWaitDstStageMask = WaitDstStages
     };
 
-    SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
+    SDL_LockMutex(Renderer->UnifiedQueueMutex);
+
     vkQueueSubmit(Renderer->UnifiedQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
     const VkPresentInfoKHR PresentInfo = {
@@ -1424,14 +1108,17 @@ void Rr_Draw(Rr_App* App)
     };
 
     Result = vkQueuePresentKHR(Renderer->UnifiedQueue.Handle, &PresentInfo);
-    SDL_UnlockMutex(Renderer->UnifiedQueue.Mutex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 1);
     }
 
+    Rr_ResetArena(&Frame->Arena);
+
     Renderer->FrameNumber++;
     Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
+
+    SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
 }
 
 Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer)
@@ -1439,23 +1126,17 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer)
     return &Renderer->Frames[Renderer->CurrentFrameIndex];
 }
 
-void* Rr_CreateObject(Rr_Renderer* Renderer)
+Rr_ArenaScratch Rr_GetFrameScratch(Rr_Renderer* Renderer)
 {
-    Rr_Object* NewObject = (Rr_Object*)Renderer->NextObject;
-    if (NewObject->Next == NULL)
-    {
-        Renderer->NextObject = NewObject + 1;
-    }
-    else
-    {
-        Renderer->NextObject = NewObject->Next;
-    }
-    return NewObject;
+    return Rr_CreateArenaScratch(&Rr_GetCurrentFrame(Renderer)->Arena);
 }
 
-void Rr_DestroyObject(Rr_Renderer* Renderer, void* Object)
+bool Rr_IsUnifiedQueue(Rr_Renderer* Renderer)
 {
-    Rr_Object* DestroyedObject = (Rr_Object*)Object;
-    DestroyedObject->Next = Renderer->NextObject;
-    Renderer->NextObject = DestroyedObject;
+    return Renderer->TransferQueue.FamilyIndex == Renderer->UnifiedQueue.FamilyIndex;
+}
+
+VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer* Renderer)
+{
+    return Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
 }

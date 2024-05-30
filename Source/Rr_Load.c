@@ -2,144 +2,90 @@
 
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
-#include "Rr_Array.h"
-#include "Rr_Image.h"
 #include "Rr_Asset.h"
-#include "Rr_Mesh.h"
+#include "Rr_MeshTools.h"
+#include "Rr_ImageTools.h"
 #include "Rr_Buffer.h"
 #include "Rr_Types.h"
 
 #include <SDL3/SDL.h>
 
-typedef enum Rr_LoadType
+Rr_LoadTask Rr_LoadColorImageFromPNG(const Rr_Asset* Asset, Rr_Image** OutImage)
 {
-    RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
-    RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
-    RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
-} Rr_LoadType;
-
-typedef struct
-{
-    size_t MeshIndex;
-} Rr_MeshGLTFOptions;
-
-typedef union
-{
-    Rr_MeshGLTFOptions MeshGLTF;
-} Rr_LoadTaskOptions;
-
-typedef struct Rr_LoadTask
-{
-    Rr_LoadType LoadType;
-    Rr_Asset Asset;
-    Rr_LoadTaskOptions Options;
-    void** Out;
-} Rr_LoadTask;
-
-struct Rr_LoadingContext
-{
-    bool bAsync;
-    Rr_LoadStatus Status;
-    Rr_App* App;
-    Rr_LoadTask* Tasks;
-    SDL_Thread* Thread;
-    SDL_Semaphore* Semaphore;
-    Rr_LoadingCallback LoadingCallback;
-    const void* Userdata;
-};
-
-Rr_LoadingContext* Rr_CreateLoadingContext(Rr_App* App, const size_t InitialTaskCount)
-{
-    Rr_LoadingContext* LoadingContext = Rr_Calloc(1, sizeof(Rr_LoadingContext));
-
-    *LoadingContext = (Rr_LoadingContext){
-        .App = App,
-        .Status = RR_LOAD_STATUS_PENDING
-    };
-
-    Rr_ArrayInit(LoadingContext->Tasks, Rr_LoadTask, InitialTaskCount);
-
-    return LoadingContext;
-}
-
-void Rr_LoadColorImageFromPNG(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, Rr_Image** OutImage)
-{
-    const Rr_LoadTask Task = {
+    return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
         .Asset = *Asset,
         .Out = (void**)OutImage
     };
-    Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
-void Rr_LoadStaticMeshFromOBJ(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, struct Rr_StaticMesh** OutStaticMesh)
+Rr_LoadTask Rr_LoadStaticMeshFromOBJ(const Rr_Asset* Asset, struct Rr_StaticMesh** OutStaticMesh)
 {
-    const Rr_LoadTask Task = {
+    return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
         .Asset = *Asset,
         .Out = (void**)OutStaticMesh
     };
-    Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
-void Rr_LoadStaticMeshFromGLTF(Rr_LoadingContext* LoadingContext, const Rr_Asset* Asset, size_t MeshIndex, struct Rr_StaticMesh** OutStaticMesh)
+Rr_LoadTask Rr_LoadStaticMeshFromGLTF(const Rr_Asset* Asset, usize MeshIndex, struct Rr_StaticMesh** OutStaticMesh)
 {
-    const Rr_LoadTask Task = {
+    return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
         .Asset = *Asset,
         .Out = (void**)OutStaticMesh,
         .Options = (Rr_MeshGLTFOptions){
             .MeshIndex = MeshIndex }
     };
-    Rr_ArrayPush(LoadingContext->Tasks, &Task);
 }
 
-static int SDLCALL Load(void* Data)
+Rr_LoadResult Rr_Load(
+    Rr_LoadingContext* LoadingContext)
 {
-    Rr_LoadingContext* LoadingContext = Data;
     Rr_App* App = LoadingContext->App;
     Rr_Renderer* Renderer = &App->Renderer;
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
-    LoadingContext->Status = RR_LOAD_STATUS_LOADING;
+    const usize TaskCount = LoadingContext->TaskCount;
+    Rr_LoadTask* Tasks = LoadingContext->Tasks;
 
-    const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
-    size_t StagingBufferSize = 0;
+    usize StagingBufferSize = 0;
 
-    size_t ImageCount = 0;
-    size_t BufferCount = 0;
+    usize ImageCount = 0;
+    usize BufferCount = 0;
 
     /* First pass: calculate staging buffer size. */
-    for (size_t Index = 0; Index < TaskCount; ++Index)
+    for (usize Index = 0; Index < TaskCount; ++Index)
     {
-        Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
+        Rr_LoadTask* Task = &Tasks[Index];
         switch (Task->LoadType)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
-                StagingBufferSize += Rr_GetImageSizePNG(&Task->Asset);
+                StagingBufferSize += Rr_GetImageSizePNG(&Task->Asset, Scratch.Arena);
                 ImageCount++;
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
-                StagingBufferSize += Rr_GetStaticMeshSizeOBJ(&Task->Asset);
+                StagingBufferSize += Rr_GetStaticMeshSizeOBJ(&Task->Asset, Scratch.Arena);
                 BufferCount += 2;
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
             {
                 Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
-                StagingBufferSize += Rr_GetStaticMeshSizeGLTF(&Task->Asset, Options.MeshIndex);
+                StagingBufferSize += Rr_GetStaticMeshSizeGLTF(&Task->Asset, Options.MeshIndex, Scratch.Arena);
                 BufferCount += 2;
             }
             break;
             default:
-                break;
+                return RR_LOAD_RESULT_WRONG_LOAD_TYPE;
         }
     }
 
     /* Create appropriate upload context. */
-    bool bUseAcquireBarriers = !Renderer->bUnifiedQueue && LoadingContext->bAsync;
+    bool bUseAcquireBarriers = !Rr_IsUnifiedQueue(Renderer) && LoadingContext->bAsync;
     VkCommandBuffer TransferCommandBuffer;
     VkCommandPool CommandPool = bUseAcquireBarriers
         ? Renderer->TransferQueue.TransientCommandPool
@@ -157,20 +103,23 @@ static int SDLCALL Load(void* Data)
 
     Rr_UploadContext UploadContext = {
         .TransferCommandBuffer = TransferCommandBuffer,
-        .StagingBuffer = Rr_CreateStagingBuffer(Renderer, StagingBufferSize),
+        //        .StagingBuffer = Rr_CreateStagingBuffer(Renderer, StagingBufferSize),
+        .StagingBuffer = {
+            .Buffer = Rr_CreateMappedBuffer(Renderer, StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) }
     };
     if (bUseAcquireBarriers)
     {
         UploadContext.bUseAcquireBarriers = true;
-        /* @TODO: Dynamic allocation. */
-        Rr_ArrayInit(UploadContext.AcquireBarriers.ImageMemoryBarriersArray, VkImageMemoryBarrier, ImageCount);
-        Rr_ArrayInit(UploadContext.AcquireBarriers.BufferMemoryBarriersArray, VkBufferMemoryBarrier, BufferCount);
+        UploadContext.AcquireBarriers = (Rr_AcquireBarriers){
+            .BufferMemoryBarriers = Rr_ArenaAllocCount(Scratch.Arena, sizeof(VkBufferMemoryBarrier), BufferCount),
+            .ImageMemoryBarriers = Rr_ArenaAllocCount(Scratch.Arena, sizeof(VkImageMemoryBarrier), ImageCount),
+        };
     }
 
     /* Second pass: record command buffers. */
-    for (size_t Index = 0; Index < TaskCount; ++Index)
+    for (usize Index = 0; Index < TaskCount; ++Index)
     {
-        Rr_LoadTask* Task = &LoadingContext->Tasks[Index];
+        Rr_LoadTask* Task = &Tasks[Index];
         switch (Task->LoadType)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
@@ -179,7 +128,8 @@ static int SDLCALL Load(void* Data)
                     App,
                     &UploadContext,
                     &Task->Asset,
-                    false);
+                    false,
+                    Scratch.Arena);
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
@@ -187,7 +137,8 @@ static int SDLCALL Load(void* Data)
                 *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshOBJ(
                     App,
                     &UploadContext,
-                    &Task->Asset);
+                    &Task->Asset,
+                    Scratch.Arena);
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
@@ -197,11 +148,12 @@ static int SDLCALL Load(void* Data)
                     App,
                     &UploadContext,
                     &Task->Asset,
-                    Options.MeshIndex);
+                    Options.MeshIndex,
+                    Scratch.Arena);
             }
             break;
             default:
-                break;
+                return RR_LOAD_RESULT_WRONG_LOAD_TYPE;
         }
 
         if (LoadingContext->Semaphore)
@@ -228,7 +180,7 @@ static int SDLCALL Load(void* Data)
 
     if (!bUseAcquireBarriers)
     {
-        SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
+        SDL_LockMutex(Renderer->UnifiedQueueMutex);
         vkQueueSubmit(
             Renderer->UnifiedQueue.Handle,
             1,
@@ -243,7 +195,7 @@ static int SDLCALL Load(void* Data)
                 .waitSemaphoreCount = 0,
                 .pWaitDstStageMask = 0 },
             Fence);
-        SDL_UnlockMutex(Renderer->UnifiedQueue.Mutex);
+        SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
     }
     else
     {
@@ -273,15 +225,32 @@ static int SDLCALL Load(void* Data)
                 .pWaitDstStageMask = 0 },
             Fence);
 
-        SDL_LockMutex(Renderer->UnifiedQueue.Mutex);
-        const Rr_PendingLoad PendingLoad = {
-            .Barriers = UploadContext.AcquireBarriers, /* Transferring ownership! */
+        SDL_LockMutex(Renderer->UnifiedQueueMutex);
+
+        Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+        Rr_PendingLoad* PendingLoad = Rr_SlicePush(&Frame->PendingLoadsSlice, &Frame->Arena);
+        *PendingLoad = (Rr_PendingLoad){
+            .Barriers = {
+                .BufferMemoryBarrierCount = BufferCount,
+                .ImageMemoryBarrierCount = ImageCount },
             .LoadingCallback = LoadingContext->LoadingCallback,
             .Userdata = LoadingContext->Userdata,
-            .Semaphore = TransferSemaphore /* Transferring ownership! */
+            .Semaphore = TransferSemaphore
         };
-        Rr_ArrayPush(Renderer->UnifiedQueue.PendingLoads, &PendingLoad);
-        SDL_UnlockMutex(Renderer->UnifiedQueue.Mutex);
+
+        PendingLoad->Barriers.BufferMemoryBarriers = Rr_ArenaAllocCount(&Frame->Arena, sizeof(VkBufferMemoryBarrier), BufferCount);
+        SDL_memcpy(
+            PendingLoad->Barriers.BufferMemoryBarriers,
+            UploadContext.AcquireBarriers.BufferMemoryBarriers,
+            BufferCount * sizeof(VkBufferMemoryBarrier));
+
+        PendingLoad->Barriers.ImageMemoryBarriers = Rr_ArenaAllocCount(&Frame->Arena, sizeof(VkImageMemoryBarrier), ImageCount);
+        SDL_memcpy(
+            PendingLoad->Barriers.ImageMemoryBarriers,
+            UploadContext.AcquireBarriers.ImageMemoryBarriers,
+            ImageCount * sizeof(VkImageMemoryBarrier));
+
+        SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
     }
 
     vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
@@ -298,50 +267,71 @@ static int SDLCALL Load(void* Data)
         1,
         &TransferCommandBuffer);
 
-    Rr_DestroyStagingBuffer(Renderer, UploadContext.StagingBuffer);
+    Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffer.Buffer);
 
     if (LoadingContext->Semaphore)
     {
         SDL_DestroySemaphore(LoadingContext->Semaphore);
     }
 
-    LoadingContext->Status = RR_LOAD_STATUS_READY;
+    Rr_DestroyArenaScratch(Scratch);
 
-    Rr_ArrayFree(LoadingContext->Tasks);
-    Rr_Free(LoadingContext);
-
-    return 0;
+    return RR_LOAD_RESULT_READY;
 }
 
-void Rr_LoadAsync(
-    Rr_LoadingContext* LoadingContext,
-    const Rr_LoadingCallback LoadingCallback,
+Rr_LoadingContext* Rr_LoadAsync(
+    Rr_App* App,
+    Rr_LoadTask* Tasks,
+    usize TaskCount,
+    Rr_LoadingCallback LoadingCallback,
     const void* Userdata)
 {
-    const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
     if (TaskCount == 0)
     {
-        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "Submitted Rr_LoadingContext has task count of 0!");
-        return;
+        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "Submitted zero tasks to load procedure!");
+        return NULL;
     }
-    LoadingContext->Semaphore = SDL_CreateSemaphore(0);
-    LoadingContext->LoadingCallback = LoadingCallback;
-    LoadingContext->Userdata = Userdata;
-    LoadingContext->bAsync = true;
-    LoadingContext->Thread = SDL_CreateThread(Load, "lt", LoadingContext);
-    SDL_DetachThread(LoadingContext->Thread);
+
+    usize AllocationSize = sizeof(Rr_LoadTask) * TaskCount + sizeof(Rr_LoadingContext);
+    AllocationSize = Rr_Align(AllocationSize, RR_SAFE_ALIGNMENT);
+
+    Rr_LoadingThread* LoadingThread = &App->LoadingThread;
+    SDL_LockMutex(LoadingThread->Mutex);
+    Rr_LoadTask* NewTasks = Rr_ArenaAllocCount(&LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
+    SDL_memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
+    Rr_LoadingContext* LoadingContext = Rr_SlicePush(&LoadingThread->LoadingContextsSlice, &LoadingThread->Arena);
+    *LoadingContext = (Rr_LoadingContext){
+        .Semaphore = SDL_CreateSemaphore(0),
+        .LoadingCallback = LoadingCallback,
+        .Userdata = Userdata,
+        .bAsync = true,
+        .App = App,
+        .Tasks = NewTasks,
+        .TaskCount = TaskCount
+    };
+    SDL_PostSemaphore(LoadingThread->Semaphore);
+    SDL_UnlockMutex(LoadingThread->Mutex);
+
+    /* @TODO: Create better handle! */
+    return LoadingContext;
 }
 
-Rr_LoadStatus Rr_LoadImmediate(Rr_LoadingContext* LoadingContext)
+Rr_LoadResult Rr_LoadImmediate(
+    Rr_App* App,
+    Rr_LoadTask* Tasks,
+    usize TaskCount)
 {
-    const size_t TaskCount = Rr_ArrayCount(LoadingContext->Tasks);
-    if (TaskCount == 0)
+    if (Tasks == 0)
     {
-        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "Submitted Rr_LoadingContext has task count of 0!");
-        return RR_LOAD_STATUS_NO_TASKS;
+        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "Submitted zero tasks to load procedure!");
+        return RR_LOAD_RESULT_NO_TASKS;
     }
-    Load(LoadingContext);
-    return RR_LOAD_STATUS_READY;
+    Rr_LoadingContext LoadingContext = {
+        .App = App,
+        .Tasks = Tasks,
+        .TaskCount = TaskCount,
+    };
+    return Rr_Load(&LoadingContext);
 }
 
 void Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal)
@@ -352,6 +342,6 @@ void Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext, u32* OutCurrent
     }
     if (OutTotal != NULL)
     {
-        *OutTotal = Rr_ArrayCount(LoadingContext->Tasks);
+        *OutTotal = LoadingContext->TaskCount;
     }
 }

@@ -1,6 +1,7 @@
 #include "Game.hxx"
 
 #include "DevTools.hxx"
+#include "Rr/Rr_Draw.h"
 
 #include <imgui/imgui.h>
 
@@ -11,6 +12,8 @@
 
 #include <string>
 #include <format>
+#include <vector>
+#include <array>
 
 typedef struct SUber3DGlobals
 {
@@ -115,9 +118,9 @@ static void InitUber3DPipeline(Rr_App* App)
     Uber3DPipeline = Rr_BuildGenericPipeline(
         App,
         Builder,
-        sizeof(SUber3DGlobals),
-        sizeof(SUber3DMaterial),
-        sizeof(SUber3DDraw));
+        { sizeof(SUber3DGlobals),
+            sizeof(SUber3DMaterial),
+            sizeof(SUber3DDraw) });
 }
 
 static void InitGlobals(Rr_App* App)
@@ -133,10 +136,10 @@ static void InitGlobals(Rr_App* App)
 static void OnLoadingComplete(Rr_App* App, const void* Userdata)
 {
     Rr_Image* MarbleTextures[2] = { MarbleDiffuse, MarbleSpecular };
-    MarbleMaterial = Rr_CreateMaterial(App, MarbleTextures, 2);
+    MarbleMaterial = Rr_CreateMaterial(App, Uber3DPipeline, MarbleTextures, 2);
 
     Rr_Image* CottageTextures[1] = { CottageTexture };
-    CottageMaterial = Rr_CreateMaterial(App, CottageTextures, 1);
+    CottageMaterial = Rr_CreateMaterial(App, Uber3DPipeline, CottageTextures, 1);
 
     bLoaded = true;
 
@@ -157,14 +160,15 @@ static void Init(Rr_App* App)
     Rr_ExternAsset(CottagePNG);
     Rr_ExternAsset(CottageOBJ);
 
-    LoadingContext = Rr_CreateLoadingContext(App, 8);
-    Rr_LoadStaticMeshFromGLTF(LoadingContext, &AvocadoGLB, &AvocadoMesh);
-    Rr_LoadColorImageFromPNG(LoadingContext, &MarbleDiffusePNG, &MarbleDiffuse);
-    Rr_LoadColorImageFromPNG(LoadingContext, &MarbleSpecularPNG, &MarbleSpecular);
-    Rr_LoadStaticMeshFromOBJ(LoadingContext, &MarbleOBJ, &MarbleMesh);
-    Rr_LoadColorImageFromPNG(LoadingContext, &CottagePNG, &CottageTexture);
-    Rr_LoadStaticMeshFromOBJ(LoadingContext, &CottageOBJ, &CottageMesh);
-    Rr_LoadAsync(LoadingContext, OnLoadingComplete, App);
+    std::array LoadTasks = {
+        Rr_LoadStaticMeshFromGLTF(&AvocadoGLB, 0, &AvocadoMesh),
+        Rr_LoadColorImageFromPNG(&MarbleDiffusePNG, &MarbleDiffuse),
+        Rr_LoadColorImageFromPNG(&MarbleSpecularPNG, &MarbleSpecular),
+        Rr_LoadStaticMeshFromOBJ(&MarbleOBJ, &MarbleMesh),
+        Rr_LoadColorImageFromPNG(&CottagePNG, &CottageTexture),
+        Rr_LoadStaticMeshFromOBJ(&CottageOBJ, &CottageMesh),
+    };
+    LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);
 
     // Rr_ExternAsset(POCDepthEXR);
     // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
@@ -214,7 +218,7 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyString(&LoadingString);
 }
 
-static void Update(Rr_App* App)
+static void Iterate(Rr_App* App)
 {
     Rr_InputState InputState = Rr_GetInputState(App);
 
@@ -252,29 +256,20 @@ static void Update(Rr_App* App)
     {
         Rr_DebugOverlay(App);
     }
-}
 
-static void Draw(Rr_App* App)
-{
     Rr_PerspectiveResize(Rr_GetAspectRatio(App), &ShaderGlobals.Proj);
 
     /* Rendering */
-    Rr_BeginRenderingInfo BeginRenderingInfo = {};
-    BeginRenderingInfo.Pipeline = Uber3DPipeline;
-    BeginRenderingInfo.GlobalsData = &ShaderGlobals;
-    Rr_RenderingContext* RenderingContext = Rr_BeginRendering(App, &BeginRenderingInfo);
+    Rr_DrawContextInfo BeginRenderingInfo = {
+        .DrawTarget = Rr_GetMainDrawTarget(App),
+        .InitialColor = nullptr,
+        .InitialDepth = nullptr,
+        .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline)
+    };
+    Rr_RenderingContext* RenderingContext = Rr_CreateDrawContext(App, &BeginRenderingInfo, (byte*)&ShaderGlobals);
 
     const u64 Ticks = SDL_GetTicks();
     const f32 Time = (f32)((f64)Ticks / 1000.0 * 2);
-
-    if (LoadingContext != nullptr)
-    {
-        u32 Current, Total;
-        Rr_GetLoadProgress(LoadingContext, &Current, &Total);
-
-        std::string Formatted = std::format("Loading: {}/{}\n", Current, Total);
-        Rr_SetString(&LoadingString, Formatted.c_str(), Formatted.length());
-    }
 
     if (bLoaded)
     {
@@ -286,11 +281,11 @@ static void Draw(Rr_App* App)
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
-        Rr_DrawStaticMesh(RenderingContext, CottageMaterial, AvocadoMesh, &CottageDraw);
+        Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
 
         SUber3DDraw MarbleDraw = { 0 };
         MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
-        Rr_DrawStaticMesh(RenderingContext, MarbleMaterial, MarbleMesh, &MarbleDraw);
+        Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &MarbleMaterial, 1, MarbleMesh, Rr_MakeData(MarbleDraw));
 
         Rr_DrawDefaultText(RenderingContext, &TestString, { 50.0f, 50.0f });
 
@@ -304,6 +299,15 @@ static void Draw(Rr_App* App)
     }
     else
     {
+        if (LoadingContext != nullptr)
+        {
+            u32 Current, Total;
+            Rr_GetLoadProgress(LoadingContext, &Current, &Total);
+
+            std::string Formatted = std::format("Loading: {}/{}\n", Current, Total);
+            Rr_SetString(&LoadingString, Formatted.c_str(), Formatted.length());
+        }
+
         Rr_DrawCustomText(
             RenderingContext,
             nullptr,
@@ -312,8 +316,6 @@ static void Draw(Rr_App* App)
             32.0f,
             RR_DRAW_TEXT_FLAGS_ANIMATION_BIT);
     }
-
-    Rr_EndRendering(RenderingContext);
 }
 
 static void OnFileDropped(Rr_App* App, const char* Path)
@@ -328,14 +330,12 @@ void RunGame()
         .Count = EIA_COUNT
     };
     Rr_AppConfig Config = {
-        .Title = "VulkanPlayground",
+        .Title = "RrDemo",
         .ReferenceResolution = { 1920 / 2, 1080 / 2 },
         .InputConfig = &InputConfig,
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
-        .UpdateFunc = Update,
-        .DrawFunc = Draw,
-
+        .IterateFunc = Iterate,
         .FileDroppedFunc = OnFileDropped
     };
     Rr_Run(&Config);

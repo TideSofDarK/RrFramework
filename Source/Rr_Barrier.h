@@ -11,13 +11,13 @@ typedef struct Rr_ImageBarrier
     VkImageLayout Layout;
 } Rr_ImageBarrier;
 
-void Rr_ChainImageBarrier_Aspect(
+extern void Rr_ChainImageBarrier_Aspect(
     Rr_ImageBarrier* TransitionImage,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     VkImageLayout NewLayout,
     VkImageAspectFlagBits Aspect);
-void Rr_ChainImageBarrier(
+extern void Rr_ChainImageBarrier(
     Rr_ImageBarrier* TransitionImage,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,

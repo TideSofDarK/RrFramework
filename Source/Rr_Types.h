@@ -1,9 +1,10 @@
 #pragma once
 
 #include "Rr_Defines.h"
+#include "Rr_Memory.h"
+#include "Rr_Pipeline.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Text.h"
-#include "Rr_Array.h"
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Draw.h"
@@ -11,15 +12,18 @@
 
 #include <SDL3/SDL.h>
 
-typedef struct Rr_AcquireBarriers
+typedef struct Rr_AcquireBarriers Rr_AcquireBarriers;
+struct Rr_AcquireBarriers
 {
-    VkImageMemoryBarrier* ImageMemoryBarriersArray;
-    VkBufferMemoryBarrier* BufferMemoryBarriersArray;
-} Rr_AcquireBarriers;
+    usize ImageMemoryBarrierCount;
+    usize BufferMemoryBarrierCount;
+    VkImageMemoryBarrier* ImageMemoryBarriers;
+    VkBufferMemoryBarrier* BufferMemoryBarriers;
+};
 
 struct Rr_UploadContext
 {
-    Rr_StagingBuffer* StagingBuffer;
+    Rr_WriteBuffer StagingBuffer;
     VkCommandBuffer TransferCommandBuffer;
     Rr_AcquireBarriers AcquireBarriers;
     bool bUseAcquireBarriers;
@@ -33,25 +37,28 @@ typedef struct Rr_PendingLoad
     VkSemaphore Semaphore;
 } Rr_PendingLoad;
 
-struct Rr_MeshBuffers
+struct Rr_Primitive
 {
     Rr_Buffer* IndexBuffer;
     Rr_Buffer* VertexBuffer;
+    u32 IndexCount;
 };
 
 /* Material at index 0 is matched with primitive at index 0 etc... */
 struct Rr_StaticMesh
 {
-    Rr_MeshBuffers MeshBuffers[RR_MESH_MAX_PRIMITIVES];
+    Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
     Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
-    size_t MeshBuffersCount;
-    size_t MaterialCount;
+    u8 PrimitiveCount;
+    u8 MaterialCount;
 };
 
 struct Rr_SkeletalMesh
 {
-    Rr_Material* Material;
-    Rr_MeshBuffers* MeshBuffers;
+    Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
+    Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
+    u8 PrimitiveCount;
+    u8 MaterialCount;
 };
 
 struct Rr_Image
@@ -65,6 +72,7 @@ struct Rr_Image
 
 struct Rr_Material
 {
+    Rr_GenericPipeline* GenericPipeline;
     Rr_Buffer* Buffer;
     Rr_Image* Textures[RR_MAX_TEXTURES_PER_MATERIAL];
     size_t TextureCount;
@@ -90,35 +98,26 @@ typedef struct Rr_Swapchain
     SDL_AtomicInt bResizePending;
 } Rr_Swapchain;
 
-typedef struct Rr_PhysicalDevice
-{
-    VkPhysicalDevice Handle;
-
-    VkPhysicalDeviceFeatures Features;
-    VkPhysicalDeviceProperties2 Properties;
-    VkPhysicalDeviceMemoryProperties MemoryProperties;
-    VkPhysicalDeviceSubgroupProperties SubgroupProperties;
-} Rr_PhysicalDevice;
-
 typedef struct Rr_ImGui
 {
     VkDescriptorPool DescriptorPool;
     bool bInitiated;
 } Rr_ImGui;
 
-typedef struct Rr_ImmediateMode
+typedef struct Rr_ImmediateMode Rr_ImmediateMode;
+struct Rr_ImmediateMode
 {
     VkFence Fence;
     VkCommandBuffer CommandBuffer;
     VkCommandPool CommandPool;
-} Rr_ImmediateMode;
+};
 
-typedef struct Rr_DrawTarget
+struct Rr_DrawTarget
 {
     Rr_Image* ColorImage;
     Rr_Image* DepthImage;
     VkFramebuffer Framebuffer;
-} Rr_DrawTarget;
+};
 
 /**
  * Pipeline
@@ -126,10 +125,7 @@ typedef struct Rr_DrawTarget
 struct Rr_GenericPipeline
 {
     VkPipeline Handle;
-
-    size_t GlobalsSize;
-    size_t MaterialSize;
-    size_t DrawSize;
+    Rr_GenericPipelineSizes Sizes;
 };
 
 struct Rr_PipelineBuilder
@@ -149,7 +145,7 @@ struct Rr_PipelineBuilder
     VkPipelineRenderingCreateInfo RenderInfo;
     Rr_Asset VertexShaderSPV;
     Rr_Asset FragmentShaderSPV;
-    size_t PushConstantsSize;
+    usize PushConstantsSize;
 };
 
 /**
@@ -181,7 +177,7 @@ typedef struct Rr_TextGlobalsLayout
     float Time;
     float Reserved;
     Rr_Vec2 ScreenSize;
-    Rr_Vec4 Pallete[RR_TEXT_MAX_COLORS];
+    Rr_Vec4 Palette[RR_TEXT_MAX_COLORS];
 } Rr_TextGlobalsLayout;
 
 typedef struct Rr_TextFontLayout
@@ -225,32 +221,36 @@ typedef struct Rr_TextPipeline
 /**
  * Draw
  */
-typedef struct Rr_DrawMeshInfo
+typedef struct Rr_DrawPrimitiveInfo Rr_DrawPrimitiveInfo;
+struct Rr_DrawPrimitiveInfo
 {
     Rr_Material* Material;
-    Rr_StaticMesh* StaticMesh;
+    Rr_Primitive* Primitive;
     u32 OffsetIntoDrawBuffer;
-} Rr_DrawMeshInfo;
+};
 
-typedef struct Rr_DrawTextInfo
+typedef struct Rr_DrawTextInfo Rr_DrawTextInfo;
+struct Rr_DrawTextInfo
 {
     Rr_Font* Font;
     Rr_String String;
     Rr_Vec2 Position;
     f32 Size;
     Rr_DrawTextFlags Flags;
-} Rr_DrawTextInfo;
+};
 
+typedef Rr_SliceType(Rr_DrawTextInfo) Rr_DrawTextSlice;
+typedef Rr_SliceType(Rr_DrawPrimitiveInfo) Rr_DrawPrimitiveSlice;
+
+/* @TODO: Separate generic and builtin stuff! */
 struct Rr_RenderingContext
 {
-    Rr_BeginRenderingInfo* Info;
     Rr_Renderer* Renderer;
-    Rr_DrawMeshInfo* DrawMeshArray;
-    Rr_DrawTextInfo* DrawTextArray;
-    Rr_Buffer* CommonBuffer;
-    size_t CommonBufferOffset;
-    Rr_Buffer* DrawBuffer;
-    size_t DrawBufferOffset;
+    Rr_DrawContextInfo Info;
+    Rr_DrawTextSlice DrawTextSlice;
+    Rr_DrawPrimitiveSlice PrimitivesSlice;
+    byte GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
+    Rr_Arena* Arena;
 };
 
 /**
@@ -258,20 +258,22 @@ struct Rr_RenderingContext
  */
 struct Rr_Frame
 {
+    Rr_Arena Arena;
+
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
     VkSemaphore SwapchainSemaphore;
     VkSemaphore RenderSemaphore;
     VkFence RenderFence;
+
     Rr_DescriptorAllocator DescriptorAllocator;
-    Rr_StagingBuffer* StagingBuffer;
-    VkSemaphore* RetiredSemaphoresArray;
-    Rr_DrawTarget DrawTarget;
-    struct
-    {
-        Rr_Buffer* Common;
-        Rr_Buffer* Draw;
-    } Buffers;
+    Rr_WriteBuffer StagingBuffer;
+    Rr_WriteBuffer CommonBuffer;
+    Rr_WriteBuffer DrawBuffer;
+
+    Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;
+    Rr_SliceType(Rr_RenderingContext) RenderingContextsSlice;
+    Rr_SliceType(VkSemaphore) RetiredSemaphoresSlice;
 };
 
 struct Rr_Renderer
@@ -286,26 +288,12 @@ struct Rr_Renderer
     /* Device */
     Rr_PhysicalDevice PhysicalDevice;
     VkDevice Device;
-    VkDeviceSize UniformAlignment;
 
     /* Queues */
-    u32 bUnifiedQueue;
-
-    struct
-    {
-        SDL_Mutex* Mutex;
-        Rr_PendingLoad* PendingLoads;
-        VkCommandPool TransientCommandPool;
-        VkQueue Handle;
-        u32 FamilyIndex;
-    } UnifiedQueue;
-
-    struct
-    {
-        VkCommandPool TransientCommandPool;
-        VkQueue Handle;
-        u32 FamilyIndex;
-    } TransferQueue;
+    // bool bUnifiedQueue;
+    Rr_Queue UnifiedQueue;
+    Rr_Queue TransferQueue;
+    SDL_Mutex* UnifiedQueueMutex;
 
     VmaAllocator Allocator;
 
@@ -325,6 +313,9 @@ struct Rr_Renderer
     Rr_ImGui ImGui;
     Rr_ImmediateMode ImmediateMode;
 
+    /* Main Draw Target */
+    Rr_DrawTarget* DrawTarget;
+
     /* Texture Samplers */
     VkSampler NearestSampler;
     VkSampler LinearSampler;
@@ -340,8 +331,32 @@ struct Rr_Renderer
     /* Object Storage */
     void* Storage;
     void* NextObject;
+    size_t ObjectCount;
 };
 
+/* Load */
+typedef struct Rr_LoadingThread Rr_LoadingThread;
+struct Rr_LoadingThread
+{
+    Rr_Arena Arena;
+    Rr_SliceType(Rr_LoadingContext) LoadingContextsSlice;
+    SDL_Thread* Handle;
+    SDL_Semaphore* Semaphore;
+    SDL_Mutex* Mutex;
+};
+
+struct Rr_LoadingContext
+{
+    Rr_App* App;
+    bool bAsync;
+    SDL_Semaphore* Semaphore;
+    Rr_LoadingCallback LoadingCallback;
+    const void* Userdata;
+    Rr_LoadTask* Tasks;
+    usize TaskCount;
+};
+
+/* App */
 typedef struct Rr_FrameTime
 {
 #ifdef RR_PERFORMANCE_COUNTER
@@ -366,6 +381,9 @@ struct Rr_App
     Rr_InputConfig InputConfig;
     Rr_InputState InputState;
     Rr_FrameTime FrameTime;
+    Rr_LoadingThread LoadingThread;
+    Rr_Arena PermanentArena;
+    SDL_TLSID ScratchArenaTLS;
     SDL_Window* Window;
     SDL_AtomicInt bExit;
 };

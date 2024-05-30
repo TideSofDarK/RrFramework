@@ -3,7 +3,6 @@
 #include "Rr_Input.h"
 #include "Rr_Memory.h"
 #include "Rr_Types.h"
-#include "Rr_Array.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -70,6 +69,7 @@ void Rr_DebugOverlay(Rr_App* App)
         igText("Reference Resolution: %dx%d", App->Renderer.ReferenceResolution.width, App->Renderer.ReferenceResolution.height);
         igText("Active Resolution: %dx%d", App->Renderer.ActiveResolution.width, App->Renderer.ActiveResolution.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
+        igText("RrFramework Objects: %zu", App->Renderer.ObjectCount);
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
 #endif
@@ -87,35 +87,23 @@ void Rr_DebugOverlay(Rr_App* App)
     igEnd();
 }
 
-static bool BeginIterate(Rr_App* App)
-{
-    if (Rr_NewFrame(App, App->Window))
-    {
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-        igNewFrame();
-
-        return true;
-    }
-    return false;
-}
-
-static void EndIterate(Rr_App* App)
-{
-    igRender();
-    Rr_Draw(App);
-
-    FrameTime_Advance(&App->FrameTime);
-}
-
 static void Iterate(Rr_App* App)
 {
-    if (BeginIterate(App))
+    Rr_UpdateInputState(&App->InputState, &App->InputConfig);
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    igNewFrame();
+
+    App->Config->IterateFunc(App);
+
+    if (Rr_NewFrame(App, App->Window))
     {
-        Rr_UpdateInputState(&App->InputState, &App->InputConfig);
-        App->Config->UpdateFunc(App);
-        EndIterate(App);
+        igRender();
+        Rr_Draw(App);
     }
+
+    FrameTime_Advance(&App->FrameTime);
 }
 
 static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
@@ -125,9 +113,9 @@ static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
-            Rr_App* App = (Rr_App*)AppPtr;
-            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
-            Iterate(App);
+//            Rr_App* App = (Rr_App*)AppPtr;
+//            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
+//            Iterate(App);
         }
         break;
 #else
@@ -161,18 +149,57 @@ static void InitFrameTime(Rr_FrameTime* const FrameTime, SDL_Window* Window)
     FrameTime->StartTime = SDL_GetTicksNS();
 }
 
+static int SDLCALL LoadingThreadProc(void* Data)
+{
+    Rr_App* App = Data;
+    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_LoadingThread* LoadingThread = &App->LoadingThread;
+
+    usize CurrentLoadingContextIndex = 0;
+
+    while (SDL_AtomicGet(&App->bExit) == false)
+    {
+        if (SDL_WaitSemaphoreTimeout(LoadingThread->Semaphore, 500))
+        {
+            if (LoadingThread->LoadingContextsSlice.Length == 0)
+            {
+                continue;
+            }
+
+            Rr_Load(&LoadingThread->LoadingContextsSlice.Data[CurrentLoadingContextIndex]);
+            CurrentLoadingContextIndex++;
+
+            SDL_LockMutex(LoadingThread->Mutex);
+            if (CurrentLoadingContextIndex >= LoadingThread->LoadingContextsSlice.Length)
+            {
+                Rr_ResetArena(&LoadingThread->Arena);
+                CurrentLoadingContextIndex = 0;
+                Rr_SliceClear(&LoadingThread->LoadingContextsSlice);
+            }
+            SDL_UnlockMutex(LoadingThread->Mutex);
+        }
+    }
+
+    SDL_CleanupTLS();
+
+    return EXIT_SUCCESS;
+}
+
+static void Rr_InitLoadingThread(Rr_App* App)
+{
+    App->LoadingThread = (Rr_LoadingThread){ .Semaphore = SDL_CreateSemaphore(0), .Mutex = SDL_CreateMutex(), .Arena = Rr_CreateArena(RR_LOADING_THREAD_ARENA_SIZE) };
+    App->LoadingThread.Handle = SDL_CreateThread(LoadingThreadProc, "lt", App);
+}
+
 void Rr_Run(Rr_AppConfig* Config)
 {
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
-#ifdef RR_DEBUG
-    Rr_Array_Test();
-#endif
-
     SDL_Vulkan_LoadLibrary(NULL);
 
-    Rr_App* App = Rr_Calloc(1, sizeof(Rr_App));
+    Rr_App* App = Rr_StackAlloc(Rr_App, 1);
+    SDL_zerop(App);
     *App = (Rr_App){
         .Config = Config,
         .Window = SDL_CreateWindow(
@@ -182,8 +209,12 @@ void Rr_Run(Rr_AppConfig* Config)
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
         .InputConfig = {
             .Count = Config->InputConfig->Count,
-            .Mappings = Config->InputConfig->Mappings }
+            .Mappings = Config->InputConfig->Mappings },
+        .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
+        .ScratchArenaTLS = SDL_CreateTLS()
     };
+
+    Rr_InitLoadingThread(App);
 
     InitFrameTime(&App->FrameTime, App->Window);
 
@@ -227,12 +258,17 @@ void Rr_Run(Rr_AppConfig* Config)
         Iterate(App);
     }
 
+    SDL_WaitThread(App->LoadingThread.Handle, NULL);
+    SDL_DestroySemaphore(App->LoadingThread.Semaphore);
+    SDL_DestroyMutex(App->LoadingThread.Mutex);
+
     Rr_CleanupRenderer(App);
+
+    Rr_DestroyArena(&App->PermanentArena);
+    SDL_CleanupTLS();
 
     SDL_DelEventWatch((SDL_EventFilter)EventWatch, App);
     SDL_DestroyWindow(App->Window);
-
-    Rr_Free(App);
 
     SDL_Quit();
 }

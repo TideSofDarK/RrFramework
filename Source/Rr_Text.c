@@ -10,6 +10,7 @@
 #include "Rr_Load.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Types.h"
+#include "Rr_Object.h"
 
 #include <cJSON/cJSON.h>
 
@@ -141,9 +142,8 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Image* Atlas;
-    Rr_LoadingContext* LoadingContext = Rr_CreateLoadingContext(App, 1);
-    Rr_LoadColorImageFromPNG(LoadingContext, FontPNG, &Atlas);
-    Rr_LoadImmediate(LoadingContext);
+    Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNG, &Atlas);
+    Rr_LoadImmediate(App, &ImageLoadTask, 1);
 
     Rr_Buffer* Buffer = Rr_CreateBuffer(
         Renderer,

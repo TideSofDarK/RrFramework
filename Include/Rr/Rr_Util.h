@@ -4,11 +4,6 @@
 
 #include <SDL3/SDL_stdinc.h>
 
-static inline size_t Rr_Align(size_t Value, size_t Alignment)
-{
-    return (Value + Alignment - 1) & ~(Alignment - 1);
-}
-
 static inline u16 Rr_FloatToHalf(u32 x)
 {
 #define Bit(N) ((uint32_t)1 << (N))

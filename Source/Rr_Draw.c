@@ -2,52 +2,75 @@
 
 #include "Rr_Vulkan.h"
 #include "Rr_Types.h"
-#include "Rr_Array.h"
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
-#include "Rr_Util.h"
+#include "Rr_Object.h"
+#include "Rr_ImageTools.h"
 
-Rr_RenderingContext* Rr_BeginRendering(Rr_App* App, Rr_BeginRenderingInfo* Info)
+Rr_RenderingContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData)
 {
-    if (Info->Pipeline == NULL)
-    {
-        abort();
-    }
-
     Rr_Renderer* Renderer = &App->Renderer;
-    Rr_RenderingContext* RenderingContext = Rr_Calloc(1, sizeof(Rr_RenderingContext));
+    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
-    const Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    RenderingContext->Renderer = Renderer;
-    RenderingContext->Info = Info;
-    RenderingContext->DrawBuffer = Frame->Buffers.Draw;
-    RenderingContext->CommonBuffer = Frame->Buffers.Common;
-    Rr_ArrayInit(RenderingContext->DrawMeshArray, Rr_DrawMeshInfo, 16);
-    Rr_ArrayInit(RenderingContext->DrawTextArray, Rr_DrawTextInfo, 16);
+    Rr_RenderingContext* RenderingContext = Rr_SlicePush(&Frame->RenderingContextsSlice, &Frame->Arena);
+    *RenderingContext = (Rr_RenderingContext){
+        .Arena = &Frame->Arena,
+        .Renderer = Renderer,
+        .Info = *Info,
+    };
+    SDL_memcpy(RenderingContext->GlobalsData, GlobalsData, Info->Sizes.Globals);
 
     return RenderingContext;
 }
 
 void Rr_DrawStaticMesh(
     Rr_RenderingContext* RenderingContext,
-    Rr_Material* Material,
     Rr_StaticMesh* StaticMesh,
-    const void* DrawData)
+    Rr_Data DrawData)
 {
-    Rr_DrawMeshInfo DrawMeshInfo = {
-        .Material = Material,
-        .StaticMesh = StaticMesh,
-        .OffsetIntoDrawBuffer = RenderingContext->DrawBufferOffset
-    };
-    const size_t DrawDataSize = SDL_min(RenderingContext->Info->Pipeline->DrawSize, RR_PIPELINE_MAX_DRAW_SIZE);
-    Rr_CopyToMappedUniformBuffer(RenderingContext->Renderer, RenderingContext->DrawBuffer, DrawData, DrawDataSize, &RenderingContext->DrawBufferOffset);
-    Rr_ArrayPush(RenderingContext->DrawMeshArray, &DrawMeshInfo);
+    Rr_Renderer* Renderer = RenderingContext->Renderer;
+    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    VkDeviceSize Offset = Frame->DrawBuffer.Offset;
+
+    for (usize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
+    {
+        *Rr_SlicePush(&RenderingContext->PrimitivesSlice, RenderingContext->Arena) = (Rr_DrawPrimitiveInfo){
+            .OffsetIntoDrawBuffer = Offset,
+            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+            .Material = StaticMesh->Materials[PrimitiveIndex]
+        };
+    }
+
+    Rr_CopyToMappedUniformBuffer(RenderingContext->Renderer, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
 }
 
-static void DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info)
+void Rr_DrawStaticMeshOverrideMaterials(
+    Rr_RenderingContext* RenderingContext,
+    Rr_Material** OverrideMaterials,
+    usize OverrideMaterialCount,
+    Rr_StaticMesh* StaticMesh,
+    Rr_Data DrawData)
 {
-    Rr_ArrayPush(RenderingContext->DrawTextArray, Info);
-    Rr_DrawTextInfo* NewInfo = &RenderingContext->DrawTextArray[Rr_ArrayCount(RenderingContext->DrawTextArray) - 1];
+    Rr_Renderer* Renderer = RenderingContext->Renderer;
+    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    VkDeviceSize Offset = Frame->DrawBuffer.Offset;
+
+    for (usize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
+    {
+        *Rr_SlicePush(&RenderingContext->PrimitivesSlice, RenderingContext->Arena) = (Rr_DrawPrimitiveInfo){
+            .OffsetIntoDrawBuffer = Offset,
+            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+            .Material = PrimitiveIndex < OverrideMaterialCount ? OverrideMaterials[PrimitiveIndex] : NULL
+        };
+    }
+
+    Rr_CopyToMappedUniformBuffer(RenderingContext->Renderer, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
+}
+
+static void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info)
+{
+    Rr_DrawTextInfo* NewInfo = Rr_SlicePush(&RenderingContext->DrawTextSlice, RenderingContext->Arena);
+    *NewInfo = *Info;
     if (NewInfo->Font == NULL)
     {
         NewInfo->Font = RenderingContext->Renderer->BuiltinFont;
@@ -66,7 +89,7 @@ void Rr_DrawCustomText(
     f32 Size,
     Rr_DrawTextFlags Flags)
 {
-    DrawText(
+    Rr_DrawText(
         RenderingContext,
         &(Rr_DrawTextInfo){
             .Font = Font,
@@ -78,7 +101,7 @@ void Rr_DrawCustomText(
 
 void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, Rr_Vec2 Position)
 {
-    DrawText(
+    Rr_DrawText(
         RenderingContext,
         &(Rr_DrawTextInfo){
             .String = *String,
@@ -87,496 +110,44 @@ void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String
             .Flags = 0 });
 }
 
-void Rr_EndRendering(Rr_RenderingContext* RenderingContext)
+Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height)
 {
-    Rr_Renderer* Renderer = RenderingContext->Renderer;
-    size_t CurrentFrameIndex = Renderer->CurrentFrameIndex;
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-    VkExtent2D ActiveResolution = Renderer->ActiveResolution;
+    Rr_Renderer* Renderer = &App->Renderer;
 
-    Rr_GenericPipeline* Pipeline = RenderingContext->Info->Pipeline;
+    Rr_DrawTarget* DrawTarget = Rr_CreateObject(Renderer);
 
-    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1);
+    DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(App, Width, Height);
+    DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
 
-    Rr_UploadContext UploadContext = {
-        .StagingBuffer = Frame->StagingBuffer,
-        .TransferCommandBuffer = CommandBuffer
-    };
+    VkImageView Attachments[2] = { DrawTarget->ColorImage->View, DrawTarget->DepthImage->View };
 
-    /* Upload globals data. */
-    Rr_UploadToUniformBuffer(
-        Renderer,
-        &UploadContext,
-        RenderingContext->CommonBuffer,
-        RenderingContext->Info->GlobalsData,
-        Pipeline->GlobalsSize);
-
-    /* Allocate, write and bind globals descriptor set. */
-    VkDescriptorSet GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS]);
-    Rr_WriteBufferDescriptor(
-        &DescriptorWriter,
-        0,
-        RenderingContext->CommonBuffer->Handle,
-        Pipeline->GlobalsSize,
-        0,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, GlobalsDescriptorSet);
-    Rr_ResetDescriptorWriter(&DescriptorWriter);
-
-    vkCmdBindDescriptorSets(
-        CommandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        Renderer->GenericPipelineLayout,
-        RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS,
-        1,
-        &GlobalsDescriptorSet,
-        0,
-        NULL);
-
-    /* Generate draw lists. */
-    const u32 Alignment = Renderer->UniformAlignment;
-    size_t DrawMeshCount = Rr_ArrayCount(RenderingContext->DrawMeshArray);
-
-    Rr_Material** MaterialsArray;
-    Rr_ArrayInit(MaterialsArray, Rr_Material*, DrawMeshCount);
-
-    size_t** DrawMeshIndicesArrays;
-    Rr_ArrayInit(DrawMeshIndicesArrays, size_t*, DrawMeshCount);
-
-    size_t CurrentDrawMaterialIndex;
-    for (size_t DrawMeshIndex = 0; DrawMeshIndex < DrawMeshCount; ++DrawMeshIndex)
-    {
-        Rr_DrawMeshInfo* DrawMeshInfo = &RenderingContext->DrawMeshArray[DrawMeshIndex];
-
-        bool bMaterialFound = false;
-        for (size_t MaterialIndex = 0; MaterialIndex < Rr_ArrayCount(MaterialsArray); ++MaterialIndex)
-        {
-            if (MaterialsArray[MaterialIndex] == DrawMeshInfo->Material)
-            {
-                bMaterialFound = true;
-                CurrentDrawMaterialIndex = MaterialIndex;
-                break;
-            }
-        }
-        if (!bMaterialFound)
-        {
-            Rr_ArrayPush(MaterialsArray, &DrawMeshInfo->Material);
-            size_t MaterialIndex = Rr_ArrayCount(MaterialsArray) - 1;
-            CurrentDrawMaterialIndex = MaterialIndex;
-        }
-        if (CurrentDrawMaterialIndex >= Rr_ArrayCount(DrawMeshIndicesArrays))
-        {
-            size_t* DrawMeshIndicesArray;
-            Rr_ArrayInit(DrawMeshIndicesArray, size_t, 2);
-            Rr_ArrayPush(DrawMeshIndicesArrays, &DrawMeshIndicesArray);
-        }
-        size_t* DrawMeshIndicesArray = DrawMeshIndicesArrays[CurrentDrawMaterialIndex];
-        Rr_ArrayPush(DrawMeshIndicesArray, &DrawMeshIndex);
-    }
-
-    /* Allocate and write draw descriptor set. */
-    VkDescriptorSet DrawDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW]);
-    Rr_WriteBufferDescriptor(
-        &DescriptorWriter,
-        0,
-        RenderingContext->DrawBuffer->Handle,
-        Pipeline->DrawSize,
-        0,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, DrawDescriptorSet);
-    Rr_ResetDescriptorWriter(&DescriptorWriter);
-
-    /* Upload Text Rendering Globals */
-    u64 Ticks = SDL_GetTicks();
-    float Time = (float)((double)Ticks / 1000.0);
-    Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
-    Rr_TextGlobalsLayout TextGlobalsData = {
-        .Reserved = 0.0f,
-        .Time = Time,
-        .ScreenSize = { (f32)ActiveResolution.width, (f32)ActiveResolution.height },
-        .Pallete = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
-    };
-    Rr_UploadToUniformBuffer(
-        Renderer,
-        &UploadContext,
-        TextPipeline->GlobalsBuffers[CurrentFrameIndex],
-        &TextGlobalsData,
-        sizeof(Rr_TextGlobalsLayout));
-
-    /* Render Loop */
-    // Rr_ImageBarrier ColorImageTransition = {
-    //     .CommandBuffer = CommandBuffer,
-    //     .Image = Renderer->DrawTarget.ColorImage.Handle,
-    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //     .AccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
-    //     .StageMask = VK_PIPELINE_STAGE_2_BLIT_BIT
-    // };
-    // if (Info->InitialColor != NULL)
-    // {
-    //     Rr_ChainImageBarrier_Aspect(&ColorImageTransition,
-    //         VK_PIPELINE_STAGE_2_BLIT_BIT,
-    //         VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
-    //         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //         VK_IMAGE_ASPECT_COLOR_BIT);
-    //     Rr_BlitColorImage(CommandBuffer, Info->InitialColor->Handle, Renderer->DrawTarget.ColorImage.Handle,
-    //         (VkExtent2D){ .width = Info->InitialColor->Extent.width, .height = Info->InitialColor->Extent.height },
-    //         (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
-    // }
-    // Rr_ChainImageBarrier_Aspect(&ColorImageTransition,
-    //     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-    //     VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-    //     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    //     VK_IMAGE_ASPECT_COLOR_BIT);
-    //
-    // Rr_ImageBarrier DepthImageTransition = {
-    //     .CommandBuffer = CommandBuffer,
-    //     .Image = Renderer->DrawTarget.DepthImage.Handle,
-    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //     .AccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-    //     .StageMask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
-    // };
-    // if (Info->InitialDepth != NULL)
-    // {
-    //     Rr_ChainImageBarrier_Aspect(&DepthImageTransition,
-    //         VK_PIPELINE_STAGE_2_BLIT_BIT,
-    //         VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
-    //         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //         VK_IMAGE_ASPECT_DEPTH_BIT);
-    //     Rr_BlitPrerenderedDepth(CommandBuffer, Info->InitialDepth->Handle, Renderer->DrawTarget.DepthImage.Handle,
-    //         (VkExtent2D){ .width = Info->InitialDepth->Extent.width, .height = Info->InitialDepth->Extent.height },
-    //         (VkExtent2D){ .width = ActiveResolution.width, .height = ActiveResolution.height });
-    // }
-    // Rr_ChainImageBarrier_Aspect(&DepthImageTransition,
-    //     VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
-    //     VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-    //     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-    //     VK_IMAGE_ASPECT_DEPTH_BIT);
-
-    // VkClearValue ClearColorValue = {
-    //     0
-    // };
-    // VkRenderingAttachmentInfo ColorAttachments[2] = { GetRenderingAttachmentInfo_Color(
-    //     Renderer->DrawTarget.ColorImage.View,
-    //     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    //     Info->InitialColor == NULL ? &ClearColorValue : NULL) };
-    // if (Info->AdditionalAttachment != NULL)
-    // {
-    //     ColorAttachments[1] = GetRenderingAttachmentInfo_Color(
-    //         Info->AdditionalAttachment->View,
-    //         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    //         &ClearColorValue);
-    // }
-    //
-    // VkRenderingAttachmentInfo DepthAttachment = GetRenderingAttachmentInfo_Depth(
-    //     Renderer->DrawTarget.DepthImage.View,
-    //     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-    //     Info->InitialDepth == NULL);
-
-    // VkRenderingInfo RenderingInfo = {
-    //     .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-    //     .pNext = NULL,
-    //     .renderArea = (VkRect2D){ .offset = (VkOffset2D){ 0, 0 }, .extent = ActiveResolution },
-    //     .layerCount = 1,
-    //     .colorAttachmentCount = Info->AdditionalAttachment != NULL ? 2 : 1,
-    //     .pColorAttachments = ColorAttachments,
-    //     .pDepthAttachment = &DepthAttachment,
-    //     .pStencilAttachment = NULL,
-    // };
-
-    // vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
-
-    VkClearValue ClearColorValues[2] = {
-        (VkClearValue){ 0 }, (VkClearValue){ .depthStencil.depth = 1.0f }
-    };
-    VkRenderPassBeginInfo RenderPassBeginInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+    const VkFramebufferCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .pNext = NULL,
-        .framebuffer = Renderer->Frames[CurrentFrameIndex].DrawTarget.Framebuffer,
-        .renderArea = (VkRect2D){ { 0, 0 }, { ActiveResolution.width, ActiveResolution.height } },
+        .flags = 0,
         .renderPass = Renderer->RenderPass,
-        .clearValueCount = 2,
-        .pClearValues = ClearColorValues
+        .height = Height,
+        .width = Width,
+        .layers = 1,
+        .attachmentCount = 2,
+        .pAttachments = Attachments
     };
+    vkCreateFramebuffer(Renderer->Device, &Info, NULL, &DrawTarget->Framebuffer);
 
-    vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    return DrawTarget;
+}
 
-    VkViewport Viewport = { 0 };
-    Viewport.x = 0.0f;
-    Viewport.y = 0.0f;
-    Viewport.width = (float)ActiveResolution.width;
-    Viewport.height = (float)ActiveResolution.height;
-    Viewport.minDepth = 0.0f;
-    Viewport.maxDepth = 1.0f;
+void Rr_DestroyDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+    vkDestroyFramebuffer(Renderer->Device, DrawTarget->Framebuffer, NULL);
+    Rr_DestroyImage(App, DrawTarget->ColorImage);
+    Rr_DestroyImage(App, DrawTarget->DepthImage);
 
-    vkCmdSetViewport(CommandBuffer, 0, 1, &Viewport);
+    Rr_DestroyObject(Renderer, DrawTarget);
+}
 
-    VkRect2D Scissor = { 0 };
-    Scissor.offset.x = 0;
-    Scissor.offset.y = 0;
-    Scissor.extent.width = ActiveResolution.width;
-    Scissor.extent.height = ActiveResolution.height;
-
-    vkCmdSetScissor(CommandBuffer, 0, 1, &Scissor);
-
-    /* Generic Rendering */
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline->Handle);
-
-    for (size_t MaterialIndex = 0; MaterialIndex < Rr_ArrayCount(MaterialsArray); ++MaterialIndex)
-    {
-        Rr_Material* Material = MaterialsArray[MaterialIndex];
-
-        VkDescriptorSet MaterialDescriptorSet = Rr_AllocateDescriptorSet(
-            &Frame->DescriptorAllocator,
-            Renderer->Device,
-            Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL]);
-        Rr_WriteBufferDescriptor(
-            &DescriptorWriter,
-            0,
-            Material->Buffer->Handle,
-            Pipeline->MaterialSize,
-            0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        for (size_t TextureIndex = 0; TextureIndex < Material->TextureCount; ++TextureIndex)
-        {
-            Rr_WriteImageDescriptorAt(
-                &DescriptorWriter,
-                1,
-                TextureIndex,
-                Material->Textures[TextureIndex]->View,
-                Renderer->NearestSampler,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        }
-        Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, MaterialDescriptorSet);
-        Rr_ResetDescriptorWriter(&DescriptorWriter);
-
-        vkCmdBindDescriptorSets(
-            CommandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            Renderer->GenericPipelineLayout,
-            RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL,
-            1,
-            &MaterialDescriptorSet,
-            0,
-            NULL);
-
-        size_t* Indices = DrawMeshIndicesArrays[MaterialIndex];
-        size_t IndexCount = Rr_ArrayCount(Indices);
-        for (size_t DrawIndex = 0; DrawIndex < IndexCount; ++DrawIndex)
-        {
-            size_t DrawMeshIndex = Indices[DrawIndex];
-            Rr_DrawMeshInfo* DrawMeshInfo = &RenderingContext->DrawMeshArray[DrawMeshIndex];
-
-            vkCmdBindDescriptorSets(
-                CommandBuffer,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                Renderer->GenericPipelineLayout,
-                RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW,
-                1,
-                &DrawDescriptorSet,
-                1,
-                &DrawMeshInfo->OffsetIntoDrawBuffer);
-            //            vkCmdPushConstants(
-            //                CommandBuffer,
-            //                Pipeline->Layout,
-            //                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            //                0,
-            //                128,
-            //                &(SUber3DPushConstants){ 0 });
-            vkCmdBindVertexBuffers(
-                CommandBuffer,
-                0,
-                1,
-                &DrawMeshInfo->StaticMesh->VertexBuffer->Handle,
-                &(VkDeviceSize){ 0 });
-            vkCmdBindIndexBuffer(
-                CommandBuffer,
-                DrawMeshInfo->StaticMesh->IndexBuffer->Handle,
-                0,
-                VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexed(CommandBuffer, DrawMeshInfo->StaticMesh->IndexCount, 1, 0, 0, 0);
-        }
-        Rr_ArrayFree(Indices);
-    }
-
-    /* Text Rendering */
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Handle);
-    vkCmdBindVertexBuffers(
-        CommandBuffer,
-        0,
-        1,
-        &TextPipeline->QuadBuffer->Handle,
-        &(VkDeviceSize){ 0 });
-    VkDescriptorSet TextGlobalsDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS]);
-    Rr_WriteBufferDescriptor(
-        &DescriptorWriter,
-        0,
-        TextPipeline->GlobalsBuffers[CurrentFrameIndex]->Handle,
-        sizeof(Rr_TextGlobalsLayout),
-        0,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextGlobalsDescriptorSet);
-    Rr_ResetDescriptorWriter(&DescriptorWriter);
-    vkCmdBindDescriptorSets(
-        CommandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        TextPipeline->Layout,
-        RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS,
-        1,
-        &TextGlobalsDescriptorSet,
-        0,
-        NULL);
-    size_t TextDataOffset = 0;
-    size_t TextCount = Rr_ArrayCount(RenderingContext->DrawTextArray);
-    Rr_TextPerInstanceVertexInput* TextData = (Rr_TextPerInstanceVertexInput*)Rr_Malloc(RR_TEXT_BUFFER_SIZE);
-    for (size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
-    {
-        Rr_DrawTextInfo* DrawTextInfo = &RenderingContext->DrawTextArray[TextIndex];
-
-        VkDescriptorSet TextFontDescriptorSet = Rr_AllocateDescriptorSet(
-            &Frame->DescriptorAllocator,
-            Renderer->Device,
-            TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT]);
-        Rr_WriteBufferDescriptor(
-            &DescriptorWriter,
-            0,
-            DrawTextInfo->Font->Buffer->Handle,
-            sizeof(Rr_TextFontLayout),
-            0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        Rr_WriteImageDescriptor(
-            &DescriptorWriter,
-            1,
-            DrawTextInfo->Font->Atlas->View,
-            Renderer->LinearSampler,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextFontDescriptorSet);
-        Rr_ResetDescriptorWriter(&DescriptorWriter);
-
-        vkCmdBindDescriptorSets(
-            CommandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            TextPipeline->Layout,
-            RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT,
-            1,
-            &TextFontDescriptorSet,
-            0,
-            NULL);
-
-        Rr_TextPushConstants TextPushConstants;
-        TextPushConstants.PositionScreenSpace = DrawTextInfo->Position;
-        TextPushConstants.Size = DrawTextInfo->Size;
-        TextPushConstants.Flags = DrawTextInfo->Flags;
-        vkCmdPushConstants(
-            CommandBuffer,
-            TextPipeline->Layout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            128,
-            &TextPushConstants);
-        /* Upload and bind text data. */
-        size_t TextLength = DrawTextInfo->String.Length;
-        size_t FinalTextLength = 0;
-        u32 PalleteIndex = 0;
-        bool bCodePending = false;
-        bool bPalleteIndexPending = false;
-        Rr_Vec2 AccumulatedAdvance = { 0 };
-        for (size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
-        {
-            u32 Unicode = DrawTextInfo->String.Data[CharacterIndex];
-
-            if (bCodePending)
-            {
-                if (bPalleteIndexPending)
-                {
-                    if (Unicode >= '0' && Unicode <= '7')
-                    {
-                        PalleteIndex = Unicode - '0';
-                        bPalleteIndexPending = false;
-                        bCodePending = false;
-                        continue;
-                    }
-                    else
-                    {
-                        bPalleteIndexPending = false;
-                        bCodePending = false;
-                        PalleteIndex = 0;
-                    }
-                }
-                else if (Unicode == 'c')
-                {
-                    bPalleteIndexPending = true;
-                    continue;
-                }
-                else
-                {
-                    Unicode = '$';
-                    CharacterIndex--;
-                    bCodePending = false;
-                }
-            }
-            else if (Unicode == '$')
-            {
-                bCodePending = true;
-                continue;
-            }
-            Rr_TextPerInstanceVertexInput* Input = &TextData[TextDataOffset + FinalTextLength];
-            if (Unicode == '\n')
-            {
-                AccumulatedAdvance.Y += DrawTextInfo->Font->LineHeight;
-                AccumulatedAdvance.X = 0.0f;
-                continue;
-            }
-            else if (Unicode == ' ')
-            {
-                f32 Advance = DrawTextInfo->Font->Advances[Unicode];
-                AccumulatedAdvance.X += Advance;
-                continue;
-            }
-            else
-            {
-                const u32 GlyphIndexMask = ~0xFFE00000;
-                u32 GlyphPack = GlyphIndexMask & Unicode;
-                GlyphPack |= PalleteIndex << 28;
-                *Input = (Rr_TextPerInstanceVertexInput){
-                    .Unicode = GlyphPack,
-                    .Advance = AccumulatedAdvance
-                };
-                FinalTextLength++;
-                f32 Advance = DrawTextInfo->Font->Advances[Unicode];
-                AccumulatedAdvance.X += Advance;
-            }
-        }
-        vkCmdBindVertexBuffers(
-            CommandBuffer,
-            1,
-            1,
-            &TextPipeline->TextBuffers[CurrentFrameIndex]->Handle,
-            &(VkDeviceSize){ TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput) });
-        TextDataOffset += FinalTextLength;
-        vkCmdDraw(CommandBuffer, 4, FinalTextLength, 0, 0);
-    }
-    SDL_memcpy(TextPipeline->TextBuffers[CurrentFrameIndex]->AllocationInfo.pMappedData, TextData, TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput));
-
-    vkCmdEndRenderPass(CommandBuffer);
-
-    Rr_Free(TextData);
-    Rr_ArrayFree(MaterialsArray);
-    Rr_ArrayFree(DrawMeshIndicesArrays);
-    Rr_ArrayFree(RenderingContext->DrawTextArray);
-    Rr_ArrayFree(RenderingContext->DrawMeshArray);
-    Rr_DestroyDescriptorWriter(&DescriptorWriter);
-    Rr_Free(RenderingContext);
+Rr_DrawTarget* Rr_GetMainDrawTarget(Rr_App* App)
+{
+    return App->Renderer.DrawTarget;
 }
