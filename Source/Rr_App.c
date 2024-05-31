@@ -113,9 +113,9 @@ static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
-            //            Rr_App* App = (Rr_App*)AppPtr;
-            //            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
-            //            Iterate(App);
+            Rr_App* App = (Rr_App*)AppPtr;
+            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
+            Iterate(App);
         }
         break;
 #else

@@ -312,7 +312,7 @@ struct Rr_Renderer
     Rr_ImmediateMode ImmediateMode;
 
     /* Retired Semaphores */
-    Rr_SliceType(VkSemaphore) RetiredSemaphoresSlice;
+    Rr_SliceType(struct Rr_RetiredSemaphore { VkSemaphore Semaphore; usize FrameIndex; }) RetiredSemaphoresSlice;
 
     /* Pending Loads */
     Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;
