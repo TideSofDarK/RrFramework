@@ -115,7 +115,7 @@ DEF_QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive) /* NOLINT */
 static void Rr_RenderGeneric(
     Rr_Renderer* Renderer,
     Rr_GenericRenderingContext* GenericRenderingContext,
-    Rr_DrawPrimitiveSlice DrawPrimitivesSlice,
+    Rr_DrawPrimitivesSlice DrawPrimitivesSlice,
     VkCommandBuffer CommandBuffer,
     Rr_Arena* Arena)
 {
@@ -293,7 +293,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
 static void Rr_RenderText(
     Rr_Renderer* Renderer,
     Rr_TextRenderingContext* TextRenderingContext,
-    Rr_DrawTextSlice DrawTextSlice,
+    Rr_DrawTextsSlice DrawTextSlice,
     VkCommandBuffer CommandBuffer,
     Rr_Arena* Arena)
 {
@@ -460,11 +460,12 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_FlushRenderingContext(Rr_RenderingContext* RenderingContext)
+void Rr_FlushRenderingContext(Rr_DrawContext* RenderingContext, Rr_Arena* Arena)
 {
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
     Rr_Renderer* Renderer = RenderingContext->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_ArenaScratch Scratch = Rr_GetFrameScratch(Renderer);
 
     Rr_DrawTarget* DrawTarget = RenderingContext->Info.DrawTarget;
     u32 Width = DrawTarget->ColorImage->Extent.width;
@@ -525,13 +526,13 @@ void Rr_FlushRenderingContext(Rr_RenderingContext* RenderingContext)
     Rr_RenderGeneric(
         Renderer,
         &GenericRenderingContext,
-        RenderingContext->PrimitivesSlice,
+        RenderingContext->DrawPrimitivesSlice,
         CommandBuffer,
         Scratch.Arena);
     Rr_RenderText(
         Renderer,
         &TextRenderingContext,
-        RenderingContext->DrawTextSlice,
+        RenderingContext->DrawTextsSlice,
         CommandBuffer,
         Scratch.Arena);
 

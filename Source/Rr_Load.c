@@ -225,10 +225,11 @@ Rr_LoadResult Rr_Load(
                 .pWaitDstStageMask = 0 },
             Fence);
 
-        SDL_LockMutex(Renderer->UnifiedQueueMutex);
-
         Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-        Rr_PendingLoad* PendingLoad = Rr_SlicePush(&Frame->PendingLoadsSlice, &Frame->Arena);
+
+        SDL_LockMutex(App->SyncArena.Mutex);
+
+        Rr_PendingLoad* PendingLoad = Rr_SlicePush(&Renderer->PendingLoadsSlice, &App->SyncArena.Arena);
         *PendingLoad = (Rr_PendingLoad){
             .Barriers = {
                 .BufferMemoryBarrierCount = BufferCount,
@@ -250,7 +251,7 @@ Rr_LoadResult Rr_Load(
             UploadContext.AcquireBarriers.ImageMemoryBarriers,
             ImageCount * sizeof(VkImageMemoryBarrier));
 
-        SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
+        SDL_UnlockMutex(App->SyncArena.Mutex);
     }
 
     vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);

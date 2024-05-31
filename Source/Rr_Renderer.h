@@ -6,6 +6,8 @@
 
 #include <volk.h>
 
+#define RR_MAX_PENDING_LOADS
+
 typedef struct Rr_Frame Rr_Frame;
 typedef struct Rr_Renderer Rr_Renderer;
 
@@ -33,6 +35,5 @@ extern VkPipeline Rr_BuildPipeline(
     VkPipelineLayout PipelineLayout);
 
 extern Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
-extern Rr_ArenaScratch Rr_GetFrameScratch(Rr_Renderer* Renderer);
 extern bool Rr_IsUnifiedQueue(Rr_Renderer* Renderer);
 extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer* Renderer);

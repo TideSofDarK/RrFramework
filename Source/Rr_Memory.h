@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SDL3/SDL_mutex.h>
+
 #include "Rr_Defines.h"
 
 #ifdef __cplusplus
@@ -70,6 +72,20 @@ struct Rr_ArenaScratch
 extern Rr_ArenaScratch Rr_CreateArenaScratch(Rr_Arena* Arena);
 extern void Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch);
 extern Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena* Conflict);
+
+/*
+ * Sync Arena
+ */
+
+typedef struct Rr_SyncArena Rr_SyncArena;
+struct Rr_SyncArena
+{
+    SDL_Mutex* Mutex;
+    Rr_Arena Arena;
+};
+
+extern Rr_SyncArena Rr_CreateSyncArena(usize Size);
+extern void Rr_DestroySyncArena(Rr_SyncArena* Arena);
 
 /*
  * Dynamic Slice

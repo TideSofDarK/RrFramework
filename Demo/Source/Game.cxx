@@ -266,7 +266,7 @@ static void Iterate(Rr_App* App)
         .InitialDepth = nullptr,
         .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline)
     };
-    Rr_RenderingContext* RenderingContext = Rr_CreateDrawContext(App, &BeginRenderingInfo, (byte*)&ShaderGlobals);
+    Rr_DrawContext* RenderingContext = Rr_CreateDrawContext(App, &BeginRenderingInfo, (byte*)&ShaderGlobals);
 
     const u64 Ticks = SDL_GetTicks();
     const f32 Time = (f32)((f64)Ticks / 1000.0 * 2);

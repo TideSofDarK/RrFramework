@@ -131,6 +131,20 @@ void* Rr_ArenaAlloc(Rr_Arena* Arena, usize Size, usize Align, usize Count)
     return memset(p, 0, Count * Size);
 }
 
+Rr_SyncArena Rr_CreateSyncArena(usize Size)
+{
+    return (Rr_SyncArena){
+        .Mutex = SDL_CreateMutex(),
+        .Arena = Rr_CreateArena(Size)
+    };
+}
+
+void Rr_DestroySyncArena(Rr_SyncArena* Arena)
+{
+    SDL_DestroyMutex(Arena->Mutex);
+    Rr_DestroyArena(&Arena->Arena);
+}
+
 void Rr_SliceGrow(void* Slice, usize Size, Rr_Arena* Arena)
 {
     if (Arena == NULL)

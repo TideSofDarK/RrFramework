@@ -7,13 +7,13 @@
 #include "Rr_Object.h"
 #include "Rr_ImageTools.h"
 
-Rr_RenderingContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData)
+Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_RenderingContext* RenderingContext = Rr_SlicePush(&Frame->RenderingContextsSlice, &Frame->Arena);
-    *RenderingContext = (Rr_RenderingContext){
+    Rr_DrawContext* RenderingContext = Rr_SlicePush(&Frame->DrawContextsSlice, &Frame->Arena);
+    *RenderingContext = (Rr_DrawContext){
         .Arena = &Frame->Arena,
         .Renderer = Renderer,
         .Info = *Info,
@@ -24,52 +24,52 @@ Rr_RenderingContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info,
 }
 
 void Rr_DrawStaticMesh(
-    Rr_RenderingContext* RenderingContext,
+    Rr_DrawContext* DrawContext,
     Rr_StaticMesh* StaticMesh,
     Rr_Data DrawData)
 {
-    Rr_Renderer* Renderer = RenderingContext->Renderer;
+    Rr_Renderer* Renderer = DrawContext->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
     for (usize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
     {
-        *Rr_SlicePush(&RenderingContext->PrimitivesSlice, RenderingContext->Arena) = (Rr_DrawPrimitiveInfo){
+        *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) = (Rr_DrawPrimitiveInfo){
             .OffsetIntoDrawBuffer = Offset,
             .Primitive = StaticMesh->Primitives[PrimitiveIndex],
             .Material = StaticMesh->Materials[PrimitiveIndex]
         };
     }
 
-    Rr_CopyToMappedUniformBuffer(RenderingContext->Renderer, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
+    Rr_CopyToMappedUniformBuffer(DrawContext->Renderer, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
 }
 
 void Rr_DrawStaticMeshOverrideMaterials(
-    Rr_RenderingContext* RenderingContext,
+    Rr_DrawContext* DrawContext,
     Rr_Material** OverrideMaterials,
     usize OverrideMaterialCount,
     Rr_StaticMesh* StaticMesh,
     Rr_Data DrawData)
 {
-    Rr_Renderer* Renderer = RenderingContext->Renderer;
+    Rr_Renderer* Renderer = DrawContext->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
     for (usize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
     {
-        *Rr_SlicePush(&RenderingContext->PrimitivesSlice, RenderingContext->Arena) = (Rr_DrawPrimitiveInfo){
+        *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) = (Rr_DrawPrimitiveInfo){
             .OffsetIntoDrawBuffer = Offset,
             .Primitive = StaticMesh->Primitives[PrimitiveIndex],
             .Material = PrimitiveIndex < OverrideMaterialCount ? OverrideMaterials[PrimitiveIndex] : NULL
         };
     }
 
-    Rr_CopyToMappedUniformBuffer(RenderingContext->Renderer, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
+    Rr_CopyToMappedUniformBuffer(DrawContext->Renderer, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
 }
 
-static void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawTextInfo* Info)
+static void Rr_DrawText(Rr_DrawContext* RenderingContext, const Rr_DrawTextInfo* Info)
 {
-    Rr_DrawTextInfo* NewInfo = Rr_SlicePush(&RenderingContext->DrawTextSlice, RenderingContext->Arena);
+    Rr_DrawTextInfo* NewInfo = Rr_SlicePush(&RenderingContext->DrawTextsSlice, RenderingContext->Arena);
     *NewInfo = *Info;
     if (NewInfo->Font == NULL)
     {
@@ -82,7 +82,7 @@ static void Rr_DrawText(Rr_RenderingContext* RenderingContext, const Rr_DrawText
 }
 
 void Rr_DrawCustomText(
-    Rr_RenderingContext* RenderingContext,
+    Rr_DrawContext* DrawContext,
     Rr_Font* Font,
     Rr_String* String,
     Rr_Vec2 Position,
@@ -90,7 +90,7 @@ void Rr_DrawCustomText(
     Rr_DrawTextFlags Flags)
 {
     Rr_DrawText(
-        RenderingContext,
+        DrawContext,
         &(Rr_DrawTextInfo){
             .Font = Font,
             .String = *String,
@@ -99,10 +99,10 @@ void Rr_DrawCustomText(
             .Flags = Flags });
 }
 
-void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, Rr_Vec2 Position)
+void Rr_DrawDefaultText(Rr_DrawContext* DrawContext, Rr_String* String, Rr_Vec2 Position)
 {
     Rr_DrawText(
-        RenderingContext,
+        DrawContext,
         &(Rr_DrawTextInfo){
             .String = *String,
             .Position = Position,

@@ -14,7 +14,7 @@ extern "C"
 #endif
 
 typedef struct Rr_DrawTarget Rr_DrawTarget;
-typedef struct Rr_RenderingContext Rr_RenderingContext;
+typedef struct Rr_DrawContext Rr_DrawContext;
 
 typedef struct Rr_Data Rr_Data;
 struct Rr_Data
@@ -40,29 +40,29 @@ struct Rr_DrawContextInfo
     Rr_GenericPipelineSizes Sizes;
 };
 
-Rr_RenderingContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData);
+Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData);
 
 void Rr_DrawStaticMesh(
-    Rr_RenderingContext* RenderingContext,
+    Rr_DrawContext* DrawContext,
     Rr_StaticMesh* StaticMesh,
     Rr_Data DrawData);
 
 void Rr_DrawStaticMeshOverrideMaterials(
-    Rr_RenderingContext* RenderingContext,
+    Rr_DrawContext* DrawContext,
     Rr_Material** OverrideMaterials,
     usize OverrideMaterialCount,
     Rr_StaticMesh* StaticMesh,
     Rr_Data DrawData);
 
 void Rr_DrawCustomText(
-    Rr_RenderingContext* RenderingContext,
+    Rr_DrawContext* DrawContext,
     Rr_Font* Font,
     Rr_String* String,
     Rr_Vec2 Position,
     f32 Size,
     Rr_DrawTextFlags Flags);
 
-void Rr_DrawDefaultText(Rr_RenderingContext* RenderingContext, Rr_String* String, Rr_Vec2 Position);
+void Rr_DrawDefaultText(Rr_DrawContext* DrawContext, Rr_String* String, Rr_Vec2 Position);
 
 Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height);
 void Rr_DestroyDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget);

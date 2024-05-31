@@ -239,16 +239,16 @@ struct Rr_DrawTextInfo
     Rr_DrawTextFlags Flags;
 };
 
-typedef Rr_SliceType(Rr_DrawTextInfo) Rr_DrawTextSlice;
-typedef Rr_SliceType(Rr_DrawPrimitiveInfo) Rr_DrawPrimitiveSlice;
+typedef Rr_SliceType(Rr_DrawTextInfo) Rr_DrawTextsSlice;
+typedef Rr_SliceType(Rr_DrawPrimitiveInfo) Rr_DrawPrimitivesSlice;
 
 /* @TODO: Separate generic and builtin stuff! */
-struct Rr_RenderingContext
+struct Rr_DrawContext
 {
     Rr_Renderer* Renderer;
     Rr_DrawContextInfo Info;
-    Rr_DrawTextSlice DrawTextSlice;
-    Rr_DrawPrimitiveSlice PrimitivesSlice;
+    Rr_DrawTextsSlice DrawTextsSlice;
+    Rr_DrawPrimitivesSlice DrawPrimitivesSlice;
     byte GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
     Rr_Arena* Arena;
 };
@@ -258,8 +258,6 @@ struct Rr_RenderingContext
  */
 struct Rr_Frame
 {
-    Rr_Arena Arena;
-
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
     VkSemaphore SwapchainSemaphore;
@@ -271,9 +269,9 @@ struct Rr_Frame
     Rr_WriteBuffer CommonBuffer;
     Rr_WriteBuffer DrawBuffer;
 
-    Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;
-    Rr_SliceType(Rr_RenderingContext) RenderingContextsSlice;
-    Rr_SliceType(VkSemaphore) RetiredSemaphoresSlice;
+    Rr_SliceType(Rr_DrawContext) DrawContextsSlice;
+
+    Rr_Arena Arena;
 };
 
 struct Rr_Renderer
@@ -312,6 +310,12 @@ struct Rr_Renderer
 
     Rr_ImGui ImGui;
     Rr_ImmediateMode ImmediateMode;
+
+    /* Retired Semaphores */
+    Rr_SliceType(VkSemaphore) RetiredSemaphoresSlice;
+
+    /* Pending Loads */
+    Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;
 
     /* Main Draw Target */
     Rr_DrawTarget* DrawTarget;
@@ -383,6 +387,7 @@ struct Rr_App
     Rr_FrameTime FrameTime;
     Rr_LoadingThread LoadingThread;
     Rr_Arena PermanentArena;
+    Rr_SyncArena SyncArena;
     SDL_TLSID ScratchArenaTLS;
     SDL_Window* Window;
     SDL_AtomicInt bExit;

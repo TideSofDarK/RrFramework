@@ -30,7 +30,8 @@ typedef uintptr_t usize;
 
 /* Arenas */
 #define RR_PER_FRAME_ARENA_SIZE (1024 * 1024 * 16)
-#define RR_PERMANENT_ARENA_SIZE (1024 * 1024 * 32)
+#define RR_PERMANENT_ARENA_SIZE (1024 * 1024)
+#define RR_SYNC_ARENA_SIZE (1024 * 1024)
 #define RR_LOADING_THREAD_ARENA_SIZE (1024 * 1024)
 
 /* Misc */

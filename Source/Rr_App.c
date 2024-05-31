@@ -113,9 +113,9 @@ static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
-//            Rr_App* App = (Rr_App*)AppPtr;
-//            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
-//            Iterate(App);
+            //            Rr_App* App = (Rr_App*)AppPtr;
+            //            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
+            //            Iterate(App);
         }
         break;
 #else
@@ -211,6 +211,7 @@ void Rr_Run(Rr_AppConfig* Config)
             .Count = Config->InputConfig->Count,
             .Mappings = Config->InputConfig->Mappings },
         .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
+        .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
         .ScratchArenaTLS = SDL_CreateTLS()
     };
 
@@ -265,6 +266,7 @@ void Rr_Run(Rr_AppConfig* Config)
     Rr_CleanupRenderer(App);
 
     Rr_DestroyArena(&App->PermanentArena);
+    Rr_DestroySyncArena(&App->SyncArena);
     SDL_CleanupTLS();
 
     SDL_DelEventWatch((SDL_EventFilter)EventWatch, App);
