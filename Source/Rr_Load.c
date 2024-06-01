@@ -239,13 +239,13 @@ Rr_LoadResult Rr_Load(
             .Semaphore = TransferSemaphore
         };
 
-        PendingLoad->Barriers.BufferMemoryBarriers = Rr_ArenaAllocCount(&Frame->Arena, sizeof(VkBufferMemoryBarrier), BufferCount);
+        PendingLoad->Barriers.BufferMemoryBarriers = Rr_ArenaAllocCount(&App->SyncArena.Arena, sizeof(VkBufferMemoryBarrier), BufferCount);
         SDL_memcpy(
             PendingLoad->Barriers.BufferMemoryBarriers,
             UploadContext.AcquireBarriers.BufferMemoryBarriers,
             BufferCount * sizeof(VkBufferMemoryBarrier));
 
-        PendingLoad->Barriers.ImageMemoryBarriers = Rr_ArenaAllocCount(&Frame->Arena, sizeof(VkImageMemoryBarrier), ImageCount);
+        PendingLoad->Barriers.ImageMemoryBarriers = Rr_ArenaAllocCount(&App->SyncArena.Arena, sizeof(VkImageMemoryBarrier), ImageCount);
         SDL_memcpy(
             PendingLoad->Barriers.ImageMemoryBarriers,
             UploadContext.AcquireBarriers.ImageMemoryBarriers,
