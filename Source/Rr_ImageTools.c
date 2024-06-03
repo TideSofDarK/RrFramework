@@ -150,7 +150,7 @@ static void UploadImage(
                 .srcAccessMask = DstAccessMask,
                 .dstAccessMask = 0,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex
             };
         UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
 
@@ -165,7 +165,7 @@ static void UploadImage(
                 .srcAccessMask = 0,
                 .dstAccessMask = DstAccessMask,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex
             };
         UploadContext->AcquireBarriers.ImageMemoryBarrierCount++;
     }

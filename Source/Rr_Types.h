@@ -295,10 +295,10 @@ struct Rr_Renderer
     VkDevice Device;
 
     /* Queues */
-    // bool bUnifiedQueue;
-    Rr_Queue UnifiedQueue;
+    Rr_Queue GraphicsQueue;
+    SDL_Mutex* GraphicsQueueMutex;
+
     Rr_Queue TransferQueue;
-    SDL_Mutex* UnifiedQueueMutex;
 
     VmaAllocator Allocator;
 

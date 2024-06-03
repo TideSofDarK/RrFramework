@@ -36,5 +36,5 @@ extern VkPipeline Rr_BuildPipeline(
     VkPipelineLayout PipelineLayout);
 
 extern Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
-extern bool Rr_IsUnifiedQueue(Rr_Renderer* Renderer);
+extern bool Rr_IsUsingTransferQueue(Rr_Renderer* Renderer);
 extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer* Renderer);

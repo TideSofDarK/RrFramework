@@ -163,10 +163,10 @@ static int SDLCALL Rr_LoadingThreadProc(void* Data)
                                               .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                               .pNext = VK_NULL_HANDLE,
                                               .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                                              .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
+                                              .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
                                           },
         NULL, &LoadCommandPools.GraphicsCommandPool);
-    if (!Rr_IsUnifiedQueue(Renderer))
+    if (!Rr_IsUsingTransferQueue(Renderer))
     {
         vkCreateCommandPool(Renderer->Device, &(VkCommandPoolCreateInfo){
                                                   .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,

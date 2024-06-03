@@ -206,10 +206,10 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadCo
     {
         vkEndCommandBuffer(TransferCommandBuffer);
 
-        SDL_LockMutex(Renderer->UnifiedQueueMutex);
+        SDL_LockMutex(Renderer->GraphicsQueueMutex);
 
         vkQueueSubmit(
-            Renderer->UnifiedQueue.Handle,
+            Renderer->GraphicsQueue.Handle,
             1,
             &(VkSubmitInfo){
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -223,7 +223,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadCo
                 .pWaitDstStageMask = 0 },
             LoadCommandPools.Fence);
 
-        SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
+        SDL_UnlockMutex(Renderer->GraphicsQueueMutex);
     }
     else
     {
@@ -287,10 +287,10 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadCo
 
             VkPipelineStageFlags WaitDstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
-            SDL_LockMutex(Renderer->UnifiedQueueMutex);
+            SDL_LockMutex(Renderer->GraphicsQueueMutex);
 
             vkQueueSubmit(
-                Renderer->UnifiedQueue.Handle,
+                Renderer->GraphicsQueue.Handle,
                 1,
                 &(VkSubmitInfo){
                     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -304,7 +304,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadCo
                     .pWaitDstStageMask = &WaitDstStageMask },
                 LoadCommandPools.Fence);
 
-            SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
+            SDL_UnlockMutex(Renderer->GraphicsQueueMutex);
         }
     }
 
@@ -354,7 +354,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(
     usize StagingBufferSize = Rr_CalculateLoadSize(Tasks, TaskCount, &ImageCount, &BufferCount, Scratch.Arena);
 
     VkCommandBuffer TransferCommandBuffer;
-    VkCommandPool CommandPool = Renderer->UnifiedQueue.TransientCommandPool;
+    VkCommandPool CommandPool = Renderer->GraphicsQueue.TransientCommandPool;
 
     VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(CommandPool, 1);
     vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
@@ -387,10 +387,10 @@ Rr_LoadResult Rr_LoadImmediate_Internal(
 
     vkEndCommandBuffer(TransferCommandBuffer);
 
-    SDL_LockMutex(Renderer->UnifiedQueueMutex);
+    SDL_LockMutex(Renderer->GraphicsQueueMutex);
 
     vkQueueSubmit(
-        Renderer->UnifiedQueue.Handle,
+        Renderer->GraphicsQueue.Handle,
         1,
         &(VkSubmitInfo){
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -404,7 +404,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(
             .pWaitDstStageMask = 0 },
         Fence);
 
-    SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
+    SDL_UnlockMutex(Renderer->GraphicsQueueMutex);
 
     vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
     vkDestroyFence(Renderer->Device, Fence, NULL);

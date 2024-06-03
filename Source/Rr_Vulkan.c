@@ -8,7 +8,7 @@
 static bool CheckPhysicalDevice(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
-    u32* OutUnifiedQueueFamilyIndex,
+    u32* OutGraphicsQueueFamilyIndex,
     u32* OutTransferQueueFamilyIndex)
 {
     u32 ExtensionCount;
@@ -78,9 +78,9 @@ static bool CheckPhysicalDevice(
         return false;
     }
 
-    const u32 bForceUnifiedQueue = RR_FORCE_UNIFIED_QUEUE;
+    const u32 bForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
 
-    if (!bForceUnifiedQueue)
+    if (!bForceDisableTransferQueue)
     {
         for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
         {
@@ -98,7 +98,7 @@ static bool CheckPhysicalDevice(
         }
     }
 
-    *OutUnifiedQueueFamilyIndex = GraphicsQueueFamilyIndex;
+    *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
     *OutTransferQueueFamilyIndex = TransferQueueFamilyIndex == ~0U ? GraphicsQueueFamilyIndex : TransferQueueFamilyIndex;
 
     Rr_StackFree(QueuePresentSupport);
@@ -111,7 +111,7 @@ static bool CheckPhysicalDevice(
 Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
-    u32* OutUnifiedQueueFamilyIndex,
+    u32* OutGraphicsQueueFamilyIndex,
     u32* OutTransferQueueFamilyIndex)
 {
     Rr_PhysicalDevice PhysicalDevice = { 0 };
@@ -134,7 +134,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
     };
 
-    bool bUnifiedQueue = false;
+    bool bUseTransferQueue = false;
     bool bFoundSuitableDevice = false;
     for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
@@ -142,10 +142,10 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
         if (CheckPhysicalDevice(
                 PhysicalDeviceHandle,
                 Surface,
-                OutUnifiedQueueFamilyIndex,
+                OutGraphicsQueueFamilyIndex,
                 OutTransferQueueFamilyIndex))
         {
-            bUnifiedQueue = *OutUnifiedQueueFamilyIndex == *OutTransferQueueFamilyIndex;
+            bUseTransferQueue = *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
             vkGetPhysicalDeviceFeatures(PhysicalDeviceHandle, &PhysicalDevice.Features);
             vkGetPhysicalDeviceMemoryProperties(PhysicalDeviceHandle, &PhysicalDevice.MemoryProperties);
@@ -164,7 +164,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
         abort();
     }
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Unified Queue Mode: %s", bUnifiedQueue ? "true" : "false");
+    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Unified Queue Mode: %s", !bUseTransferQueue ? "true" : "false");
 
     Rr_StackFree(PhysicalDevices);
 
@@ -173,18 +173,18 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
 
 void Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
-    u32 UnifiedQueueFamilyIndex,
+    u32 GraphicsQueueFamilyIndex,
     u32 TransferQueueFamilyIndex,
     VkDevice* OutDevice,
-    VkQueue* OutUnifiedQueue,
+    VkQueue* OutGraphicsQueue,
     VkQueue* OutTransferQueue)
 {
-    bool bUnifiedQueue = UnifiedQueueFamilyIndex == TransferQueueFamilyIndex;
+    bool bUseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
     const float QueuePriorities[] = { 1.0f };
     VkDeviceQueueCreateInfo QueueInfos[] = {
         {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = UnifiedQueueFamilyIndex,
+            .queueFamilyIndex = GraphicsQueueFamilyIndex,
             .queueCount = 1,
             .pQueuePriorities = QueuePriorities,
         },
@@ -212,7 +212,7 @@ void Rr_InitDeviceAndQueues(
     const VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = &Features12,
-        .queueCreateInfoCount = bUnifiedQueue ? 1 : 2,
+        .queueCreateInfoCount = bUseTransferQueue ? 2 : 1,
         .pQueueCreateInfos = QueueInfos,
         .enabledExtensionCount = SDL_arraysize(DeviceExtensions),
         .ppEnabledExtensionNames = DeviceExtensions,
@@ -220,8 +220,8 @@ void Rr_InitDeviceAndQueues(
 
     vkCreateDevice(PhysicalDevice, &DeviceCreateInfo, NULL, OutDevice);
 
-    vkGetDeviceQueue(*OutDevice, UnifiedQueueFamilyIndex, 0, OutUnifiedQueue);
-    if (!bUnifiedQueue)
+    vkGetDeviceQueue(*OutDevice, GraphicsQueueFamilyIndex, 0, OutGraphicsQueue);
+    if (bUseTransferQueue)
     {
         vkGetDeviceQueue(*OutDevice, TransferQueueFamilyIndex, 0, OutTransferQueue);
     }

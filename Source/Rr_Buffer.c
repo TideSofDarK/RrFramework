@@ -189,7 +189,7 @@ void Rr_UploadBufferAligned(
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = 0,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex
             };
         UploadContext->ReleaseBarriers.BufferMemoryBarrierCount++;
 
@@ -203,7 +203,7 @@ void Rr_UploadBufferAligned(
                 .srcAccessMask = 0,
                 .dstAccessMask = DstAccessMask,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex
             };
         UploadContext->AcquireBarriers.BufferMemoryBarrierCount++;
     }

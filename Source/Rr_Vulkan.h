@@ -28,15 +28,15 @@ struct Rr_PhysicalDevice
 extern Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
-    u32* OutUnifiedQueueFamilyIndex,
+    u32* OutGraphicsQueueFamilyIndex,
     u32* OutTransferQueueFamilyIndex);
 
 extern void Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
-    u32 UnifiedQueueFamilyIndex,
+    u32 GraphicsQueueFamilyIndex,
     u32 TransferQueueFamilyIndex,
     VkDevice* OutDevice,
-    VkQueue* OutUnifiedQueue,
+    VkQueue* OutGraphicsQueue,
     VkQueue* OutTransferQueue);
 
 static inline VkExtent2D GetExtent2D(VkExtent3D Extent)

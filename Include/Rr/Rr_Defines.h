@@ -24,7 +24,7 @@ typedef intptr_t size;
 typedef uintptr_t usize;
 
 /* Renderer Configuration */
-#define RR_FORCE_UNIFIED_QUEUE 0
+#define RR_FORCE_DISABLE_TRANSFER_QUEUE 0
 #define RR_PERFORMANCE_COUNTER 1
 #define RR_MAX_OBJECTS 128
 
@@ -37,7 +37,7 @@ typedef uintptr_t usize;
 /* Misc */
 #define RR_MAX_LAYOUT_BINDINGS 4
 #define RR_MAX_SWAPCHAIN_IMAGE_COUNT 8
-#define RR_FRAME_OVERLAP 3
+#define RR_FRAME_OVERLAP 2
 #define RR_DEPTH_FORMAT VK_FORMAT_D32_SFLOAT
 #define RR_PRERENDERED_DEPTH_FORMAT VK_FORMAT_D32_SFLOAT
 #define RR_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
