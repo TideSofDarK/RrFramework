@@ -39,22 +39,16 @@ Rr_LoadTask Rr_LoadStaticMeshFromGLTF(const Rr_Asset* Asset, usize MeshIndex, st
     };
 }
 
-Rr_LoadResult Rr_Load(
-    Rr_LoadingContext* LoadingContext)
+static usize Rr_CalculateLoadSize(
+    Rr_LoadTask* Tasks,
+    usize TaskCount,
+    usize* OutImageCount,
+    usize* OutBufferCount,
+    Rr_Arena* Arena)
 {
-    Rr_App* App = LoadingContext->App;
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
-
-    const usize TaskCount = LoadingContext->TaskCount;
-    Rr_LoadTask* Tasks = LoadingContext->Tasks;
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
     usize StagingBufferSize = 0;
-
-    usize ImageCount = 0;
-    usize BufferCount = 0;
-
-    /* First pass: calculate staging buffer size. */
     for (usize Index = 0; Index < TaskCount; ++Index)
     {
         Rr_LoadTask* Task = &Tasks[Index];
@@ -63,36 +57,117 @@ Rr_LoadResult Rr_Load(
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
                 StagingBufferSize += Rr_GetImageSizePNG(&Task->Asset, Scratch.Arena);
-                ImageCount++;
+                *OutImageCount += 1;
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
                 StagingBufferSize += Rr_GetStaticMeshSizeOBJ(&Task->Asset, Scratch.Arena);
-                BufferCount += 2;
+                *OutBufferCount += 2;
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
             {
                 Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
                 StagingBufferSize += Rr_GetStaticMeshSizeGLTF(&Task->Asset, Options.MeshIndex, Scratch.Arena);
-                BufferCount += 2;
+                *OutBufferCount += 2;
             }
             break;
             default:
-                return RR_LOAD_RESULT_WRONG_LOAD_TYPE;
+            {
+                abort();
+            }
         }
     }
 
-    /* Create appropriate upload context. */
-    bool bUseAcquireBarriers = !Rr_IsUnifiedQueue(Renderer) && LoadingContext->bAsync;
-    VkCommandBuffer TransferCommandBuffer;
-    VkCommandPool CommandPool = bUseAcquireBarriers
-        ? Renderer->TransferQueue.TransientCommandPool
-        : Renderer->UnifiedQueue.TransientCommandPool;
+    Rr_DestroyArenaScratch(Scratch);
 
-    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(CommandPool, 1);
-    vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
+    return StagingBufferSize;
+}
+
+static void Rr_LoadResourcesFromTasks(
+    Rr_App* App,
+    Rr_LoadTask* Tasks,
+    usize TaskCount,
+    Rr_UploadContext* UploadContext,
+    SDL_Semaphore* Semaphore,
+    Rr_Arena* Arena)
+{
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
+    for (usize Index = 0; Index < TaskCount; ++Index)
+    {
+        Rr_LoadTask* Task = &Tasks[Index];
+        switch (Task->LoadType)
+        {
+            case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
+            {
+                *(Rr_Image**)Task->Out = Rr_CreateColorImageFromPNG(
+                    App,
+                    UploadContext,
+                    &Task->Asset,
+                    false,
+                    Scratch.Arena);
+            }
+            break;
+            case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
+            {
+                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshOBJ(
+                    App,
+                    UploadContext,
+                    &Task->Asset,
+                    Scratch.Arena);
+            }
+            break;
+            case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
+            {
+                Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
+                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshGLTF(
+                    App,
+                    UploadContext,
+                    &Task->Asset,
+                    Options.MeshIndex,
+                    Scratch.Arena);
+            }
+            break;
+            default:
+            {
+                abort();
+            }
+        }
+
+        if (Semaphore)
+        {
+            SDL_PostSemaphore(Semaphore);
+        }
+    }
+
+    Rr_DestroyArenaScratch(Scratch);
+}
+
+Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadCommandPools LoadCommandPools)
+{
+    Rr_App* App = LoadingContext->App;
+    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
+    const usize TaskCount = LoadingContext->TaskCount;
+    Rr_LoadTask* Tasks = LoadingContext->Tasks;
+
+    usize ImageCount = 0;
+    usize BufferCount = 0;
+    usize StagingBufferSize = Rr_CalculateLoadSize(Tasks, TaskCount, &ImageCount, &BufferCount, Scratch.Arena);
+
+    /* Create appropriate upload context. */
+    bool bUseTransferQueue = LoadCommandPools.TransferCommandPool;
+    VkCommandPool CommandPool = bUseTransferQueue ? LoadCommandPools.TransferCommandPool : LoadCommandPools.GraphicsCommandPool;
+
+    VkCommandBuffer TransferCommandBuffer;
+    {
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(CommandPool, 1);
+        vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
+    }
+
     vkBeginCommandBuffer(
         TransferCommandBuffer,
         &(VkCommandBufferBeginInfo){
@@ -106,7 +181,8 @@ Rr_LoadResult Rr_Load(
         .StagingBuffer = {
             .Buffer = Rr_CreateMappedBuffer(Renderer, StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) }
     };
-    if (bUseAcquireBarriers)
+
+    if (bUseTransferQueue)
     {
         UploadContext.bUseAcquireBarriers = true;
         UploadContext.AcquireBarriers = (Rr_AcquireBarriers){
@@ -119,71 +195,19 @@ Rr_LoadResult Rr_Load(
         };
     }
 
-    /* Second pass: record command buffers. */
-    for (usize Index = 0; Index < TaskCount; ++Index)
-    {
-        Rr_LoadTask* Task = &Tasks[Index];
-        switch (Task->LoadType)
-        {
-            case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
-            {
-                *(Rr_Image**)Task->Out = Rr_CreateColorImageFromPNG(
-                    App,
-                    &UploadContext,
-                    &Task->Asset,
-                    false,
-                    Scratch.Arena);
-            }
-            break;
-            case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
-            {
-                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshOBJ(
-                    App,
-                    &UploadContext,
-                    &Task->Asset,
-                    Scratch.Arena);
-            }
-            break;
-            case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
-            {
-                Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
-                *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshGLTF(
-                    App,
-                    &UploadContext,
-                    &Task->Asset,
-                    Options.MeshIndex,
-                    Scratch.Arena);
-            }
-            break;
-            default:
-                return RR_LOAD_RESULT_WRONG_LOAD_TYPE;
-        }
+    Rr_LoadResourcesFromTasks(App, Tasks, TaskCount, &UploadContext, LoadingContext->Semaphore, Scratch.Arena);
 
-        if (LoadingContext->Semaphore)
-        {
-            SDL_PostSemaphore(LoadingContext->Semaphore);
-        }
+    if (LoadingContext->bAsync)
+    {
+        SDL_Delay(300);
     }
 
-    SDL_Delay(300);
-
-    /* Done recording; finally submit it. */
-    VkFence Fence;
-    vkCreateFence(
-        Renderer->Device,
-        &(VkFenceCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = NULL,
-            .flags = 0,
-        },
-        NULL,
-        &Fence);
-
-    if (!bUseAcquireBarriers)
+    if (!bUseTransferQueue)
     {
         vkEndCommandBuffer(TransferCommandBuffer);
 
         SDL_LockMutex(Renderer->UnifiedQueueMutex);
+
         vkQueueSubmit(
             Renderer->UnifiedQueue.Handle,
             1,
@@ -197,7 +221,8 @@ Rr_LoadResult Rr_Load(
                 .signalSemaphoreCount = 0,
                 .waitSemaphoreCount = 0,
                 .pWaitDstStageMask = 0 },
-            Fence);
+            LoadCommandPools.Fence);
+
         SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
     }
     else
@@ -216,17 +241,6 @@ Rr_LoadResult Rr_Load(
 
         vkEndCommandBuffer(TransferCommandBuffer);
 
-        VkSemaphore TransferSemaphore;
-        vkCreateSemaphore(
-            Renderer->Device,
-            &(VkSemaphoreCreateInfo){
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-                .pNext = NULL,
-                .flags = 0,
-            },
-            NULL,
-            &TransferSemaphore);
-
         vkQueueSubmit(
             Renderer->TransferQueue.Handle,
             1,
@@ -236,61 +250,172 @@ Rr_LoadResult Rr_Load(
                 .commandBufferCount = 1,
                 .pCommandBuffers = &TransferCommandBuffer,
                 .signalSemaphoreCount = 1,
-                .pSignalSemaphores = &TransferSemaphore,
+                .pSignalSemaphores = &LoadCommandPools.Semaphore,
                 .waitSemaphoreCount = 0,
                 .pWaitSemaphores = NULL,
                 .pWaitDstStageMask = 0 },
-            Fence);
+            VK_NULL_HANDLE);
 
-        Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+        /* Push acquire barriers to graphics queue. */
+        {
+            VkCommandBuffer GraphicsCommandBuffer = VK_NULL_HANDLE;
 
+            VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(LoadCommandPools.GraphicsCommandPool, 1);
+            vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &GraphicsCommandBuffer);
+
+            vkBeginCommandBuffer(
+                GraphicsCommandBuffer,
+                &(VkCommandBufferBeginInfo){
+                    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                    .pNext = NULL,
+                    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                    .pInheritanceInfo = NULL });
+
+            vkCmdPipelineBarrier(
+                GraphicsCommandBuffer,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                0,
+                0,
+                NULL,
+                UploadContext.AcquireBarriers.BufferMemoryBarrierCount,
+                UploadContext.AcquireBarriers.BufferMemoryBarriers,
+                UploadContext.AcquireBarriers.ImageMemoryBarrierCount,
+                UploadContext.AcquireBarriers.ImageMemoryBarriers);
+
+            vkEndCommandBuffer(GraphicsCommandBuffer);
+
+            VkPipelineStageFlags WaitDstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
+            SDL_LockMutex(Renderer->UnifiedQueueMutex);
+
+            vkQueueSubmit(
+                Renderer->UnifiedQueue.Handle,
+                1,
+                &(VkSubmitInfo){
+                    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                    .pNext = NULL,
+                    .commandBufferCount = 1,
+                    .pCommandBuffers = &GraphicsCommandBuffer,
+                    .signalSemaphoreCount = 0,
+                    .pSignalSemaphores = NULL,
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores = &LoadCommandPools.Semaphore,
+                    .pWaitDstStageMask = &WaitDstStageMask },
+                LoadCommandPools.Fence);
+
+            SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
+        }
+    }
+
+    vkWaitForFences(Renderer->Device, 1, &LoadCommandPools.Fence, true, UINT64_MAX);
+
+    Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffer.Buffer);
+
+    if (LoadingContext->bAsync)
+    {
         SDL_LockMutex(App->SyncArena.Mutex);
 
         Rr_PendingLoad* PendingLoad = Rr_SlicePush(&Renderer->PendingLoadsSlice, &App->SyncArena.Arena);
         *PendingLoad = (Rr_PendingLoad){
-            .Barriers = {
-                .BufferMemoryBarrierCount = BufferCount,
-                .ImageMemoryBarrierCount = ImageCount },
             .LoadingCallback = LoadingContext->LoadingCallback,
             .Userdata = LoadingContext->Userdata,
-            .Semaphore = TransferSemaphore
         };
-
-        PendingLoad->Barriers.BufferMemoryBarriers = Rr_ArenaAllocCount(&App->SyncArena.Arena, sizeof(VkBufferMemoryBarrier), BufferCount);
-        SDL_memcpy(
-            PendingLoad->Barriers.BufferMemoryBarriers,
-            UploadContext.AcquireBarriers.BufferMemoryBarriers,
-            BufferCount * sizeof(VkBufferMemoryBarrier));
-
-        PendingLoad->Barriers.ImageMemoryBarriers = Rr_ArenaAllocCount(&App->SyncArena.Arena, sizeof(VkImageMemoryBarrier), ImageCount);
-        SDL_memcpy(
-            PendingLoad->Barriers.ImageMemoryBarriers,
-            UploadContext.AcquireBarriers.ImageMemoryBarriers,
-            ImageCount * sizeof(VkImageMemoryBarrier));
 
         SDL_UnlockMutex(App->SyncArena.Mutex);
     }
+    else
+    {
+        LoadingContext->LoadingCallback(App, LoadingContext->Userdata);
+    }
+
+    if (LoadingContext->Semaphore)
+    {
+        SDL_DestroySemaphore(LoadingContext->Semaphore);
+    }
+
+    Rr_DestroyArenaScratch(Scratch);
+
+    return RR_LOAD_RESULT_READY;
+}
+
+Rr_LoadResult Rr_LoadImmediate_Internal(
+    Rr_LoadingContext* LoadingContext)
+{
+    Rr_App* App = LoadingContext->App;
+    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
+    const usize TaskCount = LoadingContext->TaskCount;
+    Rr_LoadTask* Tasks = LoadingContext->Tasks;
+
+    usize ImageCount = 0;
+    usize BufferCount = 0;
+    usize StagingBufferSize = Rr_CalculateLoadSize(Tasks, TaskCount, &ImageCount, &BufferCount, Scratch.Arena);
+
+    VkCommandBuffer TransferCommandBuffer;
+    VkCommandPool CommandPool = Renderer->UnifiedQueue.TransientCommandPool;
+
+    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(CommandPool, 1);
+    vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
+    vkBeginCommandBuffer(
+        TransferCommandBuffer,
+        &(VkCommandBufferBeginInfo){
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext = NULL,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            .pInheritanceInfo = NULL });
+
+    Rr_UploadContext UploadContext = {
+        .TransferCommandBuffer = TransferCommandBuffer,
+        .StagingBuffer = {
+            .Buffer = Rr_CreateMappedBuffer(Renderer, StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) }
+    };
+
+    Rr_LoadResourcesFromTasks(App, Tasks, TaskCount, &UploadContext, LoadingContext->Semaphore, Scratch.Arena);
+
+    VkFence Fence;
+    vkCreateFence(
+        Renderer->Device,
+        &(VkFenceCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+        },
+        NULL,
+        &Fence);
+
+    vkEndCommandBuffer(TransferCommandBuffer);
+
+    SDL_LockMutex(Renderer->UnifiedQueueMutex);
+
+    vkQueueSubmit(
+        Renderer->UnifiedQueue.Handle,
+        1,
+        &(VkSubmitInfo){
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .pNext = NULL,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &TransferCommandBuffer,
+            .pSignalSemaphores = NULL,
+            .pWaitSemaphores = NULL,
+            .signalSemaphoreCount = 0,
+            .waitSemaphoreCount = 0,
+            .pWaitDstStageMask = 0 },
+        Fence);
+
+    SDL_UnlockMutex(Renderer->UnifiedQueueMutex);
 
     vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
     vkDestroyFence(Renderer->Device, Fence, NULL);
 
-    if (!bUseAcquireBarriers && LoadingContext->LoadingCallback)
-    {
-        LoadingContext->LoadingCallback(App, LoadingContext->Userdata);
-    }
+    Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffer.Buffer);
 
     vkFreeCommandBuffers(
         Renderer->Device,
         CommandPool,
         1,
         &TransferCommandBuffer);
-
-    Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffer.Buffer);
-
-    if (LoadingContext->Semaphore)
-    {
-        SDL_DestroySemaphore(LoadingContext->Semaphore);
-    }
 
     Rr_DestroyArenaScratch(Scratch);
 
@@ -349,7 +474,7 @@ Rr_LoadResult Rr_LoadImmediate(
         .Tasks = Tasks,
         .TaskCount = TaskCount,
     };
-    return Rr_Load(&LoadingContext);
+    return Rr_LoadImmediate_Internal(&LoadingContext);
 }
 
 void Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal)

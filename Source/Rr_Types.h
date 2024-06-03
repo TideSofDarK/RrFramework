@@ -30,12 +30,18 @@ struct Rr_UploadContext
     bool bUseAcquireBarriers;
 };
 
+struct Rr_LoadCommandPools
+{
+    VkCommandPool GraphicsCommandPool;
+    VkCommandPool TransferCommandPool;
+    VkFence Fence;
+    VkSemaphore Semaphore;
+};
+
 typedef struct Rr_PendingLoad
 {
-    Rr_AcquireBarriers Barriers;
     Rr_LoadingCallback LoadingCallback;
     const void* Userdata;
-    VkSemaphore Semaphore;
 } Rr_PendingLoad;
 
 struct Rr_Primitive

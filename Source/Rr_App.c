@@ -95,6 +95,8 @@ static void Iterate(Rr_App* App)
     ImGui_ImplSDL3_NewFrame();
     igNewFrame();
 
+    Rr_ProcessPendingLoads(App);
+
     App->Config->IterateFunc(App);
 
     if (Rr_NewFrame(App, App->Window))
@@ -149,11 +151,49 @@ static void InitFrameTime(Rr_FrameTime* const FrameTime, SDL_Window* Window)
     FrameTime->StartTime = SDL_GetTicksNS();
 }
 
-static int SDLCALL LoadingThreadProc(void* Data)
+static int SDLCALL Rr_LoadingThreadProc(void* Data)
 {
     Rr_App* App = Data;
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_LoadingThread* LoadingThread = &App->LoadingThread;
+
+    Rr_LoadCommandPools LoadCommandPools = { 0 };
+
+    vkCreateCommandPool(Renderer->Device, &(VkCommandPoolCreateInfo){
+                                              .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                                              .pNext = VK_NULL_HANDLE,
+                                              .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                                              .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
+                                          },
+        NULL, &LoadCommandPools.GraphicsCommandPool);
+    if (!Rr_IsUnifiedQueue(Renderer))
+    {
+        vkCreateCommandPool(Renderer->Device, &(VkCommandPoolCreateInfo){
+                                                  .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                                                  .pNext = VK_NULL_HANDLE,
+                                                  .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                                                  .queueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                                              },
+            NULL, &LoadCommandPools.TransferCommandPool);
+    }
+    vkCreateFence(
+        Renderer->Device,
+        &(VkFenceCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+        },
+        NULL,
+        &LoadCommandPools.Fence);
+    vkCreateSemaphore(
+        Renderer->Device,
+        &(VkSemaphoreCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+        },
+        NULL,
+        &LoadCommandPools.Semaphore);
 
     usize CurrentLoadingContextIndex = 0;
 
@@ -166,8 +206,15 @@ static int SDLCALL LoadingThreadProc(void* Data)
                 continue;
             }
 
-            Rr_Load(&LoadingThread->LoadingContextsSlice.Data[CurrentLoadingContextIndex]);
+            Rr_LoadAsync_Internal(&LoadingThread->LoadingContextsSlice.Data[CurrentLoadingContextIndex], LoadCommandPools);
             CurrentLoadingContextIndex++;
+
+            vkResetCommandPool(Renderer->Device, LoadCommandPools.GraphicsCommandPool, 0);
+            if (LoadCommandPools.TransferCommandPool != VK_NULL_HANDLE)
+            {
+                vkResetCommandPool(Renderer->Device, LoadCommandPools.TransferCommandPool, 0);
+            }
+            vkResetFences(Renderer->Device, 1, &LoadCommandPools.Fence);
 
             SDL_LockMutex(LoadingThread->Mutex);
             if (CurrentLoadingContextIndex >= LoadingThread->LoadingContextsSlice.Length)
@@ -180,6 +227,14 @@ static int SDLCALL LoadingThreadProc(void* Data)
         }
     }
 
+    vkDestroyCommandPool(Renderer->Device, LoadCommandPools.GraphicsCommandPool, NULL);
+    if (LoadCommandPools.TransferCommandPool != VK_NULL_HANDLE)
+    {
+        vkDestroyCommandPool(Renderer->Device, LoadCommandPools.TransferCommandPool, NULL);
+    }
+    vkDestroyFence(Renderer->Device, LoadCommandPools.Fence, NULL);
+    vkDestroySemaphore(Renderer->Device, LoadCommandPools.Semaphore, NULL);
+
     SDL_CleanupTLS();
 
     return EXIT_SUCCESS;
@@ -188,7 +243,7 @@ static int SDLCALL LoadingThreadProc(void* Data)
 static void Rr_InitLoadingThread(Rr_App* App)
 {
     App->LoadingThread = (Rr_LoadingThread){ .Semaphore = SDL_CreateSemaphore(0), .Mutex = SDL_CreateMutex(), .Arena = Rr_CreateArena(RR_LOADING_THREAD_ARENA_SIZE) };
-    App->LoadingThread.Handle = SDL_CreateThread(LoadingThreadProc, "lt", App);
+    App->LoadingThread.Handle = SDL_CreateThread(Rr_LoadingThreadProc, "lt", App);
 }
 
 void Rr_Run(Rr_AppConfig* Config)
@@ -215,8 +270,6 @@ void Rr_Run(Rr_AppConfig* Config)
         .ScratchArenaTLS = SDL_CreateTLS()
     };
 
-    Rr_InitLoadingThread(App);
-
     InitFrameTime(&App->FrameTime, App->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
@@ -224,6 +277,7 @@ void Rr_Run(Rr_AppConfig* Config)
     SDL_AddEventWatch(EventWatch, App);
 
     Rr_InitRenderer(App);
+    Rr_InitLoadingThread(App);
     Rr_InitImGui(App);
 
     Config->InitFunc(App);

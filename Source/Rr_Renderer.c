@@ -434,16 +434,16 @@ static void InitImmediateMode(Rr_App* App)
     VkDevice Device = Renderer->Device;
     Rr_ImmediateMode* ImmediateMode = &Renderer->ImmediateMode;
 
-    const VkCommandPoolCreateInfo CommandPoolInfo = {
+    VkCommandPoolCreateInfo CommandPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex,
     };
     vkCreateCommandPool(Device, &CommandPoolInfo, NULL, &ImmediateMode->CommandPool);
-    const VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
+    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
     vkAllocateCommandBuffers(Device, &CommandBufferAllocateInfo, &ImmediateMode->CommandBuffer);
-    const VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence);
 }
 
@@ -828,24 +828,6 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     CleanupFrames(App);
 
-    for (usize LoadIndex = 0; LoadIndex < Rr_SliceLength(&Renderer->PendingLoadsSlice); ++LoadIndex)
-    {
-        if (!Renderer->PendingLoadsSlice.Data[LoadIndex].Semaphore)
-        {
-            continue;
-        }
-        vkDestroySemaphore(Device, Renderer->PendingLoadsSlice.Data[LoadIndex].Semaphore, NULL);
-    }
-
-    for (usize SemaphoreIndex = 0; SemaphoreIndex < Rr_SliceLength(&Renderer->RetiredSemaphoresSlice); ++SemaphoreIndex)
-    {
-        if (!Renderer->RetiredSemaphoresSlice.Data[SemaphoreIndex].Semaphore)
-        {
-            continue;
-        }
-        vkDestroySemaphore(Device, Renderer->RetiredSemaphoresSlice.Data[SemaphoreIndex].Semaphore, NULL);
-    }
-
     Rr_DestroyImage(App, Renderer->NullTexture);
 
     Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
@@ -912,86 +894,21 @@ static void Rr_ResetFrameResources(Rr_Frame* Frame)
     Rr_ResetArena(&Frame->Arena);
 }
 
-static usize Rr_ProcessPendingLoads(
-    Rr_App* App,
-    VkCommandBuffer CommandBuffer,
-    Rr_Arena* Arena,
-    VkSemaphore** Semaphores,
-    VkPipelineStageFlags** Stages)
+void Rr_ProcessPendingLoads(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
-    usize FrameIndex = Renderer->CurrentFrameIndex;
-
-    usize WaitSemaphoreIndex = 1;
 
     if (SDL_TryLockMutex(App->SyncArena.Mutex) == 0)
     {
-        usize RetiredSemaphoresCount = Rr_SliceLength(&Renderer->RetiredSemaphoresSlice);
-        usize PendingLoadsCount = Rr_SliceLength(&Renderer->PendingLoadsSlice);
-
-        if (RetiredSemaphoresCount == 0 && PendingLoadsCount == 0)
+        for (usize Index = 0; Index < Rr_SliceLength(&Renderer->PendingLoadsSlice); ++Index)
         {
-            Rr_ResetArena(&App->SyncArena.Arena);
+            Rr_PendingLoad* PendingLoad = &Renderer->PendingLoadsSlice.Data[Index];
+            PendingLoad->LoadingCallback(App, PendingLoad->Userdata);
         }
-        else
-        {
-            /* @TODO: Ugly! */
-            bool bEmpty = true;
-            for (usize Index = 0; Index < RetiredSemaphoresCount; ++Index)
-            {
-                if (Renderer->RetiredSemaphoresSlice.Data[Index].FrameIndex == FrameIndex && Renderer->RetiredSemaphoresSlice.Data[Index].Semaphore != VK_NULL_HANDLE)
-                {
-                    vkDestroySemaphore(Device, Renderer->RetiredSemaphoresSlice.Data[Index].Semaphore, NULL);
-                    Renderer->RetiredSemaphoresSlice.Data[Index].Semaphore = VK_NULL_HANDLE;
-                }
-                else
-                {
-                    bEmpty = false;
-                }
-            }
-            if (bEmpty)
-            {
-                Rr_SliceEmpty(&Renderer->RetiredSemaphoresSlice);
-            }
-
-            *Semaphores = Rr_ArenaAllocCount(Arena, sizeof(VkSemaphore), PendingLoadsCount + 1);
-            *Stages = Rr_ArenaAllocCount(Arena, sizeof(VkPipelineStageFlags), PendingLoadsCount + 1);
-
-            for (usize Index = 0; Index < PendingLoadsCount; ++Index)
-            {
-                Rr_PendingLoad* PendingLoad = &Renderer->PendingLoadsSlice.Data[Index];
-                Rr_AcquireBarriers* Barriers = &PendingLoad->Barriers;
-
-                PendingLoad->LoadingCallback(App, PendingLoad->Userdata);
-
-                vkCmdPipelineBarrier(
-                    CommandBuffer,
-                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                    VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                    0,
-                    0,
-                    NULL,
-                    Barriers->BufferMemoryBarrierCount,
-                    Barriers->BufferMemoryBarriers,
-                    Barriers->ImageMemoryBarrierCount,
-                    Barriers->ImageMemoryBarriers);
-
-                (*Semaphores)[WaitSemaphoreIndex] = PendingLoad->Semaphore;
-                (*Stages)[WaitSemaphoreIndex] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-                WaitSemaphoreIndex++;
-
-                *Rr_SlicePush(&Renderer->RetiredSemaphoresSlice, &App->SyncArena.Arena) = (struct Rr_RetiredSemaphore){
-                    .Semaphore = PendingLoad->Semaphore, .FrameIndex = FrameIndex
-                };
-            }
-            Rr_SliceEmpty(&Renderer->PendingLoadsSlice);
-        }
+        Rr_SliceEmpty(&Renderer->PendingLoadsSlice);
 
         SDL_UnlockMutex(App->SyncArena.Mutex);
     }
-
-    return WaitSemaphoreIndex;
 }
 
 void Rr_Draw(Rr_App* App)
@@ -1028,11 +945,12 @@ void Rr_Draw(Rr_App* App)
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
+    /* @TODO: Move. */
     /* Process pending loads to acquire images/buffers.
      * Generate wait semaphore input. */
     VkSemaphore* WaitSemaphores = Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkSemaphore));
     VkPipelineStageFlags* WaitDstStages = Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkPipelineStageFlags));
-    usize WaitSemaphoreIndex = Rr_ProcessPendingLoads(App, CommandBuffer, Scratch.Arena, &WaitSemaphores, &WaitDstStages);
+    usize WaitSemaphoreIndex = 1;
     WaitSemaphores[0] = Frame->SwapchainSemaphore;
     WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 

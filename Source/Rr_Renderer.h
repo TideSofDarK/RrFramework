@@ -23,6 +23,7 @@ typedef enum Rr_HandleType {
 extern void Rr_InitRenderer(Rr_App* App);
 extern void Rr_InitImGui(Rr_App* App);
 extern void Rr_CleanupRenderer(Rr_App* App);
+extern void Rr_ProcessPendingLoads(Rr_App* App);
 extern void Rr_Draw(Rr_App* App);
 extern bool Rr_NewFrame(Rr_App* App, void* Window);
 
