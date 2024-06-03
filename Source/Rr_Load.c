@@ -103,7 +103,6 @@ Rr_LoadResult Rr_Load(
 
     Rr_UploadContext UploadContext = {
         .TransferCommandBuffer = TransferCommandBuffer,
-        //        .StagingBuffer = Rr_CreateStagingBuffer(Renderer, StagingBufferSize),
         .StagingBuffer = {
             .Buffer = Rr_CreateMappedBuffer(Renderer, StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) }
     };
@@ -111,6 +110,10 @@ Rr_LoadResult Rr_Load(
     {
         UploadContext.bUseAcquireBarriers = true;
         UploadContext.AcquireBarriers = (Rr_AcquireBarriers){
+            .BufferMemoryBarriers = Rr_ArenaAllocCount(Scratch.Arena, sizeof(VkBufferMemoryBarrier), BufferCount),
+            .ImageMemoryBarriers = Rr_ArenaAllocCount(Scratch.Arena, sizeof(VkImageMemoryBarrier), ImageCount),
+        };
+        UploadContext.ReleaseBarriers = (Rr_AcquireBarriers){
             .BufferMemoryBarriers = Rr_ArenaAllocCount(Scratch.Arena, sizeof(VkBufferMemoryBarrier), BufferCount),
             .ImageMemoryBarriers = Rr_ArenaAllocCount(Scratch.Arena, sizeof(VkImageMemoryBarrier), ImageCount),
         };
@@ -162,8 +165,6 @@ Rr_LoadResult Rr_Load(
         }
     }
 
-    vkEndCommandBuffer(TransferCommandBuffer);
-
     SDL_Delay(300);
 
     /* Done recording; finally submit it. */
@@ -180,6 +181,8 @@ Rr_LoadResult Rr_Load(
 
     if (!bUseAcquireBarriers)
     {
+        vkEndCommandBuffer(TransferCommandBuffer);
+
         SDL_LockMutex(Renderer->UnifiedQueueMutex);
         vkQueueSubmit(
             Renderer->UnifiedQueue.Handle,
@@ -199,6 +202,20 @@ Rr_LoadResult Rr_Load(
     }
     else
     {
+        vkCmdPipelineBarrier(
+            TransferCommandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0,
+            0,
+            NULL,
+            UploadContext.ReleaseBarriers.BufferMemoryBarrierCount,
+            UploadContext.ReleaseBarriers.BufferMemoryBarriers,
+            UploadContext.ReleaseBarriers.ImageMemoryBarrierCount,
+            UploadContext.ReleaseBarriers.ImageMemoryBarriers);
+
+        vkEndCommandBuffer(TransferCommandBuffer);
+
         VkSemaphore TransferSemaphore;
         vkCreateSemaphore(
             Renderer->Device,

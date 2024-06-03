@@ -171,13 +171,14 @@ static void Rr_RenderGeneric(
                 0,
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                 Scratch.Arena);
-            for (usize TextureIndex = 0; TextureIndex < BoundMaterial->TextureCount; ++TextureIndex)
+            for (usize TextureIndex = 0; TextureIndex < RR_MAX_TEXTURES_PER_MATERIAL; ++TextureIndex)
             {
+                VkImageView ImageView = TextureIndex < BoundMaterial->TextureCount ? BoundMaterial->Textures[TextureIndex]->View : Renderer->NullTexture->View;
                 Rr_WriteImageDescriptorAt(
                     &DescriptorWriter,
                     1,
                     TextureIndex,
-                    BoundMaterial->Textures[TextureIndex]->View,
+                    ImageView,
                     Renderer->NearestSampler,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,

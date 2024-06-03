@@ -5,8 +5,16 @@
 #include "Rr_Asset.h"
 #include "Rr_Memory.h"
 
+#include <volk.h>
+
 struct Rr_UploadContext;
 
+extern Rr_Image* Rr_CreateImage(
+    Rr_App* App,
+    VkExtent3D Extent,
+    VkFormat Format,
+    VkImageUsageFlags Usage,
+    bool bMipMapped);
 extern Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,

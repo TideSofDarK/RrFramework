@@ -179,15 +179,8 @@ void Rr_UploadBufferAligned(
     }
     else
     {
-        vkCmdPipelineBarrier(
-            TransferCommandBuffer,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-            0,
-            0,
-            NULL,
-            1,
-            &(VkBufferMemoryBarrier){
+        UploadContext->ReleaseBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
+            (VkBufferMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
                 .buffer = Buffer,
@@ -196,9 +189,9 @@ void Rr_UploadBufferAligned(
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = 0,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex },
-            0,
-            NULL);
+                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
+            };
+        UploadContext->ReleaseBarriers.BufferMemoryBarrierCount++;
 
         UploadContext->AcquireBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
             (VkBufferMemoryBarrier){

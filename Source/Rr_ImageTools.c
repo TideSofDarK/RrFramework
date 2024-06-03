@@ -12,7 +12,7 @@
 
 #include <tinyexr/tinyexr.h>
 
-static Rr_Image* CreateImage(
+Rr_Image* Rr_CreateImage(
     Rr_App* App,
     VkExtent3D Extent,
     VkFormat Format,
@@ -141,17 +141,8 @@ static void UploadImage(
     }
     else
     {
-        vkCmdPipelineBarrier(
-            TransferCommandBuffer,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-            0,
-            0,
-            NULL,
-            0,
-            NULL,
-            1,
-            &(VkImageMemoryBarrier){
+        UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
+            (VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
                 .image = Image,
@@ -161,7 +152,9 @@ static void UploadImage(
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = 0,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex });
+                .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
+            };
+        UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
 
         UploadContext->AcquireBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
             (VkImageMemoryBarrier){
@@ -209,7 +202,7 @@ Rr_Image* Rr_CreateColorImageFromPNG(
     stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
     const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
-    Rr_Image* ColorImage = CreateImage(
+    Rr_Image* ColorImage = Rr_CreateImage(
         App,
         Extent,
         RR_COLOR_FORMAT,
@@ -295,7 +288,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
 
     const size_t DataSize = Extent.width * Extent.height * sizeof(f32);
 
-    Rr_Image* DepthImage = CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
+    Rr_Image* DepthImage = Rr_CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 
     UploadImage(App,
         UploadContext,
@@ -316,7 +309,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
 
 Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Height)
 {
-    return CreateImage(
+    return Rr_CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
         RR_COLOR_FORMAT,
@@ -326,7 +319,7 @@ Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Height)
 
 Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height)
 {
-    return CreateImage(
+    return Rr_CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
         RR_DEPTH_FORMAT,

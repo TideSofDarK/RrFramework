@@ -148,10 +148,6 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
             bUnifiedQueue = *OutUnifiedQueueFamilyIndex == *OutTransferQueueFamilyIndex;
 
             vkGetPhysicalDeviceFeatures(PhysicalDeviceHandle, &PhysicalDevice.Features);
-            if (!PhysicalDevice.Features.shaderSampledImageArrayDynamicIndexing)
-            {
-                continue;
-            }
             vkGetPhysicalDeviceMemoryProperties(PhysicalDeviceHandle, &PhysicalDevice.MemoryProperties);
             vkGetPhysicalDeviceProperties2(PhysicalDeviceHandle, &PhysicalDevice.Properties);
 
@@ -209,12 +205,6 @@ void Rr_InitDeviceAndQueues(
     VkPhysicalDeviceVulkan12Features Features12 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
         .pNext = &Features13,
-        /* Descriptor Indexing */
-        .descriptorIndexing = VK_TRUE,
-        .descriptorBindingPartiallyBound = VK_TRUE,
-        .descriptorBindingVariableDescriptorCount = VK_TRUE,
-        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
-        .runtimeDescriptorArray = VK_TRUE,
     };
 
     const char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };

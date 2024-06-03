@@ -25,6 +25,7 @@ struct Rr_UploadContext
 {
     Rr_WriteBuffer StagingBuffer;
     VkCommandBuffer TransferCommandBuffer;
+    Rr_AcquireBarriers ReleaseBarriers;
     Rr_AcquireBarriers AcquireBarriers;
     bool bUseAcquireBarriers;
 };
@@ -310,6 +311,8 @@ struct Rr_Renderer
 
     Rr_ImGui ImGui;
     Rr_ImmediateMode ImmediateMode;
+
+    Rr_Image* NullTexture;
 
     /* Retired Semaphores */
     Rr_SliceType(struct Rr_RetiredSemaphore { VkSemaphore Semaphore; usize FrameIndex; }) RetiredSemaphoresSlice;

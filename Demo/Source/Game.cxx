@@ -161,11 +161,11 @@ static void Init(Rr_App* App)
     Rr_ExternAsset(CottageOBJ);
 
     std::array LoadTasks = {
-        Rr_LoadStaticMeshFromGLTF(&AvocadoGLB, 0, &AvocadoMesh),
         Rr_LoadColorImageFromPNG(&MarbleDiffusePNG, &MarbleDiffuse),
         Rr_LoadColorImageFromPNG(&MarbleSpecularPNG, &MarbleSpecular),
-        Rr_LoadStaticMeshFromOBJ(&MarbleOBJ, &MarbleMesh),
         Rr_LoadColorImageFromPNG(&CottagePNG, &CottageTexture),
+        Rr_LoadStaticMeshFromGLTF(&AvocadoGLB, 0, &AvocadoMesh),
+        Rr_LoadStaticMeshFromOBJ(&MarbleOBJ, &MarbleMesh),
         Rr_LoadStaticMeshFromOBJ(&CottageOBJ, &CottageMesh),
     };
     LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);

@@ -16,7 +16,7 @@ layout(set = 0, binding = 1) uniform sampler2D u_prerenderedDepth;
 layout(set = 1, binding = 0) uniform Material {
     vec3 emissive;
 } u_material;
-layout(set = 1, binding = 1) uniform sampler2D u_texture[];
+layout(set = 1, binding = 1) uniform sampler2D u_texture[4];
 
 /* Set 2 */
 layout(set = 2, binding = 0) uniform Draw {

@@ -300,11 +300,11 @@ VkDescriptorSetLayout Rr_BuildDescriptorLayout(
         VkDescriptorSetLayoutBinding* Binding = &Builder->Bindings[Index];
         Binding->stageFlags |= ShaderStageFlags;
 
-        if (Binding->descriptorCount > 1)
-        {
-            BindingFlags[Index] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-        }
-        else
+//        if (Binding->descriptorCount > 1)
+//        {
+//            BindingFlags[Index] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+//        }
+//        else
         {
             BindingFlags[Index] = 0;
         }

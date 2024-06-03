@@ -12,6 +12,7 @@
 #include "Rr_Barrier.h"
 #include "Rr_Object.h"
 #include "Rr_Rendering.h"
+#include "Rr_ImageTools.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -661,8 +662,24 @@ static void CleanupObjectStorage(Rr_App* App)
     Rr_Free(Renderer->Storage);
 }
 
-static void Rr_InitPendingLoads(Rr_App* App)
+static void Rr_InitNullTexture(Rr_App* App)
 {
+    Rr_Renderer* Renderer = &App->Renderer;
+    Renderer->NullTexture = Rr_CreateImage(App, (VkExtent3D){.width = 1, .height = 1, .depth = 1}, RR_COLOR_FORMAT, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+
+    VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
+    Rr_ImageBarrier Barrier = {
+        .CommandBuffer = CommandBuffer,
+        .Image = Renderer->NullTexture->Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = 0,
+        .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+    };
+    Rr_ChainImageBarrier(&Barrier,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         VK_ACCESS_SHADER_READ_BIT,
+                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    Rr_EndImmediate(Renderer);
 }
 
 void Rr_InitRenderer(Rr_App* App)
@@ -750,6 +767,7 @@ void Rr_InitRenderer(Rr_App* App)
     InitFrames(App);
     InitImmediateMode(App);
     InitGenericPipelineLayout(App);
+    Rr_InitNullTexture(App);
     Rr_InitTextRenderer(App);
 
     Rr_StackFree(Extensions);
@@ -827,6 +845,8 @@ void Rr_CleanupRenderer(Rr_App* App)
         }
         vkDestroySemaphore(Device, Renderer->RetiredSemaphoresSlice.Data[SemaphoreIndex].Semaphore, NULL);
     }
+
+    Rr_DestroyImage(App, Renderer->NullTexture);
 
     Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
 
@@ -948,7 +968,7 @@ static usize Rr_ProcessPendingLoads(
                 vkCmdPipelineBarrier(
                     CommandBuffer,
                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                     0,
                     0,
                     NULL,
