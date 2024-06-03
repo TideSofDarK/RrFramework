@@ -204,7 +204,7 @@ Rr_LoadResult Rr_Load(
     {
         vkCmdPipelineBarrier(
             TransferCommandBuffer,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
             0,
             0,

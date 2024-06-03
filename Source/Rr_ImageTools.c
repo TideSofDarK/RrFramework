@@ -114,42 +114,40 @@ static void UploadImage(
 
     vkCmdCopyBufferToImage(TransferCommandBuffer, StagingBuffer->Buffer->Handle, Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
 
-    if (!UploadContext->bUseAcquireBarriers)
-    {
-        vkCmdPipelineBarrier(
-            TransferCommandBuffer,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            DstStageMask,
-            0,
-            0,
-            NULL,
-            0,
-            NULL,
-            1,
-            &(VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = Image,
-                .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .newLayout = DstLayout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = DstAccessMask,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            });
-    }
-    else
+    vkCmdPipelineBarrier(
+        TransferCommandBuffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        DstStageMask,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = NULL,
+            .image = Image,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout = DstLayout,
+            .subresourceRange = SubresourceRange,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = DstAccessMask,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        });
+
+    if (UploadContext->bUseAcquireBarriers)
     {
         UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
             (VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
                 .image = Image,
-                .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .oldLayout = DstLayout,
                 .newLayout = DstLayout,
                 .subresourceRange = SubresourceRange,
-                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .srcAccessMask = DstAccessMask,
                 .dstAccessMask = 0,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
                 .dstQueueFamilyIndex = Renderer->UnifiedQueue.FamilyIndex
@@ -161,7 +159,7 @@ static void UploadImage(
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
                 .image = Image,
-                .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .oldLayout = DstLayout,
                 .newLayout = DstLayout,
                 .subresourceRange = SubresourceRange,
                 .srcAccessMask = 0,
@@ -326,4 +324,3 @@ Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height)
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         false);
 }
-
