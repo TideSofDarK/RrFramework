@@ -1,5 +1,6 @@
 #include "Rr_App.h"
 
+#include "Rr_Load_Internal.h"
 #include "Rr_Input.h"
 #include "Rr_Memory.h"
 #include "Rr_Types.h"
@@ -151,101 +152,6 @@ static void InitFrameTime(Rr_FrameTime* const FrameTime, SDL_Window* Window)
     FrameTime->StartTime = SDL_GetTicksNS();
 }
 
-static int SDLCALL Rr_LoadingThreadProc(void* Data)
-{
-    Rr_App* App = Data;
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_LoadingThread* LoadingThread = &App->LoadingThread;
-
-    Rr_LoadCommandPools LoadCommandPools = { 0 };
-
-    vkCreateCommandPool(Renderer->Device, &(VkCommandPoolCreateInfo){
-                                              .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                                              .pNext = VK_NULL_HANDLE,
-                                              .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                                              .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-                                          },
-        NULL, &LoadCommandPools.GraphicsCommandPool);
-    if (!Rr_IsUsingTransferQueue(Renderer))
-    {
-        vkCreateCommandPool(Renderer->Device, &(VkCommandPoolCreateInfo){
-                                                  .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                                                  .pNext = VK_NULL_HANDLE,
-                                                  .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                                                  .queueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                                              },
-            NULL, &LoadCommandPools.TransferCommandPool);
-    }
-    vkCreateFence(
-        Renderer->Device,
-        &(VkFenceCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = NULL,
-            .flags = 0,
-        },
-        NULL,
-        &LoadCommandPools.Fence);
-    vkCreateSemaphore(
-        Renderer->Device,
-        &(VkSemaphoreCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = NULL,
-            .flags = 0,
-        },
-        NULL,
-        &LoadCommandPools.Semaphore);
-
-    usize CurrentLoadingContextIndex = 0;
-
-    while (SDL_AtomicGet(&App->bExit) == false)
-    {
-        if (SDL_WaitSemaphoreTimeout(LoadingThread->Semaphore, 500))
-        {
-            if (LoadingThread->LoadingContextsSlice.Length == 0)
-            {
-                continue;
-            }
-
-            Rr_LoadAsync_Internal(&LoadingThread->LoadingContextsSlice.Data[CurrentLoadingContextIndex], LoadCommandPools);
-            CurrentLoadingContextIndex++;
-
-            vkResetCommandPool(Renderer->Device, LoadCommandPools.GraphicsCommandPool, 0);
-            if (LoadCommandPools.TransferCommandPool != VK_NULL_HANDLE)
-            {
-                vkResetCommandPool(Renderer->Device, LoadCommandPools.TransferCommandPool, 0);
-            }
-            vkResetFences(Renderer->Device, 1, &LoadCommandPools.Fence);
-
-            SDL_LockMutex(LoadingThread->Mutex);
-            if (CurrentLoadingContextIndex >= LoadingThread->LoadingContextsSlice.Length)
-            {
-                Rr_ResetArena(&LoadingThread->Arena);
-                CurrentLoadingContextIndex = 0;
-                Rr_SliceClear(&LoadingThread->LoadingContextsSlice);
-            }
-            SDL_UnlockMutex(LoadingThread->Mutex);
-        }
-    }
-
-    vkDestroyCommandPool(Renderer->Device, LoadCommandPools.GraphicsCommandPool, NULL);
-    if (LoadCommandPools.TransferCommandPool != VK_NULL_HANDLE)
-    {
-        vkDestroyCommandPool(Renderer->Device, LoadCommandPools.TransferCommandPool, NULL);
-    }
-    vkDestroyFence(Renderer->Device, LoadCommandPools.Fence, NULL);
-    vkDestroySemaphore(Renderer->Device, LoadCommandPools.Semaphore, NULL);
-
-    SDL_CleanupTLS();
-
-    return EXIT_SUCCESS;
-}
-
-static void Rr_InitLoadingThread(Rr_App* App)
-{
-    App->LoadingThread = (Rr_LoadingThread){ .Semaphore = SDL_CreateSemaphore(0), .Mutex = SDL_CreateMutex(), .Arena = Rr_CreateArena(RR_LOADING_THREAD_ARENA_SIZE) };
-    App->LoadingThread.Handle = SDL_CreateThread(Rr_LoadingThreadProc, "lt", App);
-}
-
 void Rr_Run(Rr_AppConfig* Config)
 {
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
@@ -313,14 +219,12 @@ void Rr_Run(Rr_AppConfig* Config)
         Iterate(App);
     }
 
-    SDL_WaitThread(App->LoadingThread.Handle, NULL);
-    SDL_DestroySemaphore(App->LoadingThread.Semaphore);
-    SDL_DestroyMutex(App->LoadingThread.Mutex);
-
+    Rr_CleanupLoadingThread(App);
     Rr_CleanupRenderer(App);
 
     Rr_DestroyArena(&App->PermanentArena);
     Rr_DestroySyncArena(&App->SyncArena);
+
     SDL_CleanupTLS();
 
     SDL_DelEventWatch((SDL_EventFilter)EventWatch, App);

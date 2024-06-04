@@ -4,6 +4,8 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Load.h"
 
+struct Rr_UploadContext;
+
 typedef struct Rr_Buffer Rr_Buffer;
 struct Rr_Buffer
 {
@@ -33,7 +35,7 @@ struct Rr_WriteBuffer
 
 extern void Rr_UploadBufferAligned(
     Rr_Renderer* Renderer,
-    Rr_UploadContext* UploadContext,
+    struct Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
     VkPipelineStageFlags SrcStageMask,
     VkAccessFlags SrcAccessMask,
@@ -44,7 +46,7 @@ extern void Rr_UploadBufferAligned(
     usize Alignment);
 extern void Rr_UploadBuffer(
     Rr_Renderer* Renderer,
-    Rr_UploadContext* UploadContext,
+    struct Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
     VkPipelineStageFlags SrcStageMask,
     VkAccessFlags SrcAccessMask,
@@ -59,7 +61,7 @@ extern void Rr_UploadToDeviceBufferImmediate(
     usize Size);
 extern void Rr_UploadToUniformBuffer(
     Rr_Renderer* Renderer,
-    Rr_UploadContext* UploadContext,
+    struct Rr_UploadContext* UploadContext,
     Rr_Buffer* DstBuffer,
     const void* Data,
     usize DataLength);

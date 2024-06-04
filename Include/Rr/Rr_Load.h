@@ -13,8 +13,6 @@ struct Rr_Image;
 struct Rr_StaticMesh;
 
 typedef struct Rr_LoadingContext Rr_LoadingContext;
-typedef struct Rr_UploadContext Rr_UploadContext;
-typedef struct Rr_LoadCommandPools Rr_LoadCommandPools;
 
 typedef enum Rr_LoadResult
 {
@@ -61,8 +59,6 @@ extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
     size_t MeshIndex,
     struct Rr_StaticMesh** OutStaticMesh);
 
-extern Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadCommandPools LoadCommandPools);
-extern Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext* LoadingContext);
 extern Rr_LoadingContext* Rr_LoadAsync(
     Rr_App* App,
     Rr_LoadTask* LoadTasks,

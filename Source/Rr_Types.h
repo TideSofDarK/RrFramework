@@ -9,40 +9,11 @@
 #include "Rr_Descriptor.h"
 #include "Rr_Draw.h"
 #include "Rr_Math.h"
+#include "Rr_Load_Internal.h"
 
 #include <SDL3/SDL.h>
 
-typedef struct Rr_AcquireBarriers Rr_AcquireBarriers;
-struct Rr_AcquireBarriers
-{
-    usize ImageMemoryBarrierCount;
-    usize BufferMemoryBarrierCount;
-    VkImageMemoryBarrier* ImageMemoryBarriers;
-    VkBufferMemoryBarrier* BufferMemoryBarriers;
-};
 
-struct Rr_UploadContext
-{
-    Rr_WriteBuffer StagingBuffer;
-    VkCommandBuffer TransferCommandBuffer;
-    Rr_AcquireBarriers ReleaseBarriers;
-    Rr_AcquireBarriers AcquireBarriers;
-    bool bUseAcquireBarriers;
-};
-
-struct Rr_LoadCommandPools
-{
-    VkCommandPool GraphicsCommandPool;
-    VkCommandPool TransferCommandPool;
-    VkFence Fence;
-    VkSemaphore Semaphore;
-};
-
-typedef struct Rr_PendingLoad
-{
-    Rr_LoadingCallback LoadingCallback;
-    const void* Userdata;
-} Rr_PendingLoad;
 
 struct Rr_Primitive
 {
@@ -345,28 +316,6 @@ struct Rr_Renderer
     void* Storage;
     void* NextObject;
     size_t ObjectCount;
-};
-
-/* Load */
-typedef struct Rr_LoadingThread Rr_LoadingThread;
-struct Rr_LoadingThread
-{
-    Rr_Arena Arena;
-    Rr_SliceType(Rr_LoadingContext) LoadingContextsSlice;
-    SDL_Thread* Handle;
-    SDL_Semaphore* Semaphore;
-    SDL_Mutex* Mutex;
-};
-
-struct Rr_LoadingContext
-{
-    Rr_App* App;
-    bool bAsync;
-    SDL_Semaphore* Semaphore;
-    Rr_LoadingCallback LoadingCallback;
-    const void* Userdata;
-    Rr_LoadTask* Tasks;
-    usize TaskCount;
 };
 
 /* App */
