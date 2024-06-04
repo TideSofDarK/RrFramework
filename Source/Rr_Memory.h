@@ -116,7 +116,7 @@ extern void Rr_SliceResize(void* Slice, usize Size, usize Count, Rr_Arena* Arena
             ? Rr_SliceResize((Slice), sizeof(*(Slice)->Data), (ElementCount), (Arena)) \
             : (void)0)
 
-#define Rr_SliceClear(Slice) (Slice)->Length = 0, (Slice)->Capacity = 0, (Slice)->Data = NULL
+//#define Rr_SliceClear(Slice) (Slice)->Length = 0, (Slice)->Capacity = 0, (Slice)->Data = NULL
 
 #define Rr_SliceEmpty(Slice) (Slice)->Length = 0
 
