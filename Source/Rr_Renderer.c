@@ -694,7 +694,7 @@ void Rr_InitRenderer(Rr_App* App)
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = SDL_GetWindowTitle(Window),
         .pEngineName = "Rr_Renderer",
-        .apiVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
+        .apiVersion = VK_MAKE_API_VERSION(0, 1, 1, 0),
     };
 
     /* Gather required extensions. */

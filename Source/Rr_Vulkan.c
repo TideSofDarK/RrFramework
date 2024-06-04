@@ -5,7 +5,9 @@
 
 #include <SDL3/SDL.h>
 
-static bool CheckPhysicalDevice(
+#include <stdlib.h>
+
+static bool Rr_CheckPhysicalDevice(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
     u32* OutGraphicsQueueFamilyIndex,
@@ -138,7 +140,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
-        if (CheckPhysicalDevice(
+        if (Rr_CheckPhysicalDevice(
                 PhysicalDeviceHandle,
                 Surface,
                 OutGraphicsQueueFamilyIndex,

@@ -9,6 +9,8 @@
 
 #include <qsort/qsort-inline.h>
 
+#include <limits.h>
+
 typedef struct Rr_GenericRenderingContext Rr_GenericRenderingContext;
 struct Rr_GenericRenderingContext
 {
