@@ -22,7 +22,7 @@
 #include <SDL3/SDL_vulkan.h>
 #include <SDL3/SDL_stdinc.h>
 
-static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
+static void Rr_CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
 {
     Renderer->ActiveResolution.width = Renderer->ReferenceResolution.width;
     Renderer->ActiveResolution.height = Renderer->ReferenceResolution.height;
@@ -37,7 +37,7 @@ static void CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32
     Renderer->Scale = MaxAvailableScale;
 }
 
-static void CleanupSwapchain(Rr_App* App, VkSwapchainKHR Swapchain)
+static void Rr_CleanupSwapchain(Rr_App* App, VkSwapchainKHR Swapchain)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -48,7 +48,7 @@ static void CleanupSwapchain(Rr_App* App, VkSwapchainKHR Swapchain)
     vkDestroySwapchainKHR(Renderer->Device, Swapchain, NULL);
 }
 
-static bool InitSwapchain(Rr_App* App, u32* Width, u32* Height)
+static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -186,7 +186,7 @@ static bool InitSwapchain(Rr_App* App, u32* Width, u32* Height)
 
     if (OldSwapchain != VK_NULL_HANDLE)
     {
-        CleanupSwapchain(App, OldSwapchain);
+        Rr_CleanupSwapchain(App, OldSwapchain);
     }
 
     u32 ImageCount = 0;
@@ -222,7 +222,7 @@ static bool InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         vkCreateImageView(Renderer->Device, &ColorAttachmentView, NULL, &Renderer->Swapchain.Images[i].View);
     }
 
-    CalculateDrawTargetResolution(Renderer, *Width, *Height);
+    Rr_CalculateDrawTargetResolution(Renderer, *Width, *Height);
     if (Renderer->DrawTarget != NULL)
     {
         Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
@@ -235,7 +235,7 @@ static bool InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     return true;
 }
 
-static void InitFrames(Rr_App* App)
+static void Rr_InitFrames(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
@@ -280,7 +280,7 @@ static void InitFrames(Rr_App* App)
     }
 }
 
-static void CleanupFrames(Rr_App* App)
+static void Rr_CleanupFrames(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
@@ -304,7 +304,7 @@ static void CleanupFrames(Rr_App* App)
     }
 }
 
-static void InitAllocator(Rr_App* App)
+static void Rr_InitVMA(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -342,7 +342,7 @@ static void InitAllocator(Rr_App* App)
     vmaCreateAllocator(&AllocatorInfo, &Renderer->Allocator);
 }
 
-static void InitDescriptors(Rr_App* App)
+static void Rr_InitDescriptors(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -353,7 +353,7 @@ static void InitDescriptors(Rr_App* App)
     Renderer->GlobalDescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios), &App->PermanentArena);
 }
 
-static PFN_vkVoidFunction LoadVulkanFunction(const char* FuncName, void* Userdata)
+static PFN_vkVoidFunction Rr_LoadVulkanFunction(const char* FuncName, void* Userdata)
 {
     return (PFN_vkVoidFunction)vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
 }
@@ -390,35 +390,32 @@ void Rr_InitImGui(Rr_App* App)
     ImGuiIO* IO = igGetIO();
     IO->IniFilename = NULL;
 
-    ImGui_ImplVulkan_LoadFunctions(LoadVulkanFunction, NULL);
+    ImGui_ImplVulkan_LoadFunctions(Rr_LoadVulkanFunction, NULL);
     ImGui_ImplSDL3_InitForVulkan(Window);
 
     ImGui_ImplVulkan_InitInfo InitInfo = {
         .Instance = Renderer->Instance,
         .PhysicalDevice = Renderer->PhysicalDevice.Handle,
         .Device = Device,
+        .QueueFamily = Renderer->GraphicsQueue.FamilyIndex,
         .Queue = Renderer->GraphicsQueue.Handle,
         .DescriptorPool = Renderer->ImGui.DescriptorPool,
         .MinImageCount = 3,
         .ImageCount = 3,
-        .UseDynamicRendering = true,
-        .PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
-        .PipelineRenderingCreateInfo.colorAttachmentCount = 1,
-        .PipelineRenderingCreateInfo.pColorAttachmentFormats = &Renderer->Swapchain.Format,
+        .UseDynamicRendering = false,
         .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+        .RenderPass = Renderer->RenderPassNoClear
     };
 
     ImGui_ImplVulkan_Init(&InitInfo);
 
-    /* Init default font. */
     const f32 WindowScale = SDL_GetWindowDisplayScale(Window);
     ImGuiStyle_ScaleAllSizes(igGetStyle(), WindowScale);
 
+    /* Init default font. */
     Rr_ExternAsset(MartianMonoTTF);
-
-    /* Don't transfer asset ownership to ImGui, it will crash otherwise! */
     ImFontConfig* FontConfig = ImFontConfig_ImFontConfig();
-    FontConfig->FontDataOwnedByAtlas = false;
+    FontConfig->FontDataOwnedByAtlas = false; /* Don't transfer asset ownership to ImGui, it will crash otherwise! */
     ImFontAtlas_AddFontFromMemoryTTF(IO->Fonts, (void*)MartianMonoTTF.Data, (i32)MartianMonoTTF.Length, SDL_floorf(16.0f * WindowScale), FontConfig, NULL);
     igMemFree(FontConfig);
 
@@ -427,7 +424,7 @@ void Rr_InitImGui(Rr_App* App)
     Renderer->ImGui.bInitiated = true;
 }
 
-static void InitImmediateMode(Rr_App* App)
+static void Rr_InitImmediateMode(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -447,7 +444,7 @@ static void InitImmediateMode(Rr_App* App)
     vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence);
 }
 
-static void CleanupImmediateMode(Rr_App* App)
+static void Rr_CleanupImmediateMode(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -455,7 +452,7 @@ static void CleanupImmediateMode(Rr_App* App)
     vkDestroyFence(Renderer->Device, Renderer->ImmediateMode.Fence, NULL);
 }
 
-static void InitGenericPipelineLayout(Rr_App* App)
+static void Rr_InitGenericPipelineLayout(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
@@ -505,7 +502,7 @@ static void InitGenericPipelineLayout(Rr_App* App)
     vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &Renderer->GenericPipelineLayout);
 }
 
-static void InitSamplers(Rr_App* App)
+static void Rr_InitSamplers(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -520,7 +517,7 @@ static void InitSamplers(Rr_App* App)
     vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->LinearSampler);
 }
 
-static void CleanupSamplers(Rr_App* App)
+static void Rr_CleanupSamplers(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -528,35 +525,28 @@ static void CleanupSamplers(Rr_App* App)
     vkDestroySampler(Renderer->Device, Renderer->LinearSampler, NULL);
 }
 
-static void InitRenderPass(Rr_App* App)
+static void Rr_InitRenderPass(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    const VkAttachmentDescription ColorAttachment = {
-        .samples = 1,
-        .format = RR_COLOR_FORMAT,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .flags = 0,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_NONE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE
+    VkAttachmentDescription Attachments[2] = {
+        (VkAttachmentDescription){
+            .samples = 1,
+            .format = RR_COLOR_FORMAT,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .flags = 0,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE },
+        (VkAttachmentDescription){
+            .samples = 1,
+            .format = RR_DEPTH_FORMAT,
+            .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .flags = 0,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE }
     };
-
-    const VkAttachmentDescription DepthAttachment = {
-        .samples = 1,
-        .format = RR_DEPTH_FORMAT,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        .flags = 0,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_NONE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE
-    };
-
-    VkAttachmentDescription Attachments[2] = { ColorAttachment, DepthAttachment };
 
     VkAttachmentReference ColorAttachmentRef = {
         .attachment = 0,
@@ -592,7 +582,7 @@ static void InitRenderPass(Rr_App* App)
         }
     };
 
-    const VkRenderPassCreateInfo Info = {
+    VkRenderPassCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = 0,
@@ -605,16 +595,23 @@ static void InitRenderPass(Rr_App* App)
     };
 
     vkCreateRenderPass(Renderer->Device, &Info, NULL, &Renderer->RenderPass);
+
+    Attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    Attachments[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    Attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    Attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    vkCreateRenderPass(Renderer->Device, &Info, NULL, &Renderer->RenderPassNoClear);
 }
 
-static void CleanupRenderPass(Rr_App* App)
+static void Rr_CleanupRenderPass(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
     vkDestroyRenderPass(Renderer->Device, Renderer->RenderPass, NULL);
+    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPassNoClear, NULL);
 }
 
-static void InitTransientCommandPools(Rr_App* App)
+static void Rr_InitTransientCommandPools(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -641,13 +638,13 @@ static void InitTransientCommandPools(Rr_App* App)
         &Renderer->TransferQueue.TransientCommandPool);
 }
 
-static void CleanupTransientCommandPools(Rr_Renderer* Renderer)
+static void Rr_CleanupTransientCommandPools(Rr_Renderer* Renderer)
 {
     vkDestroyCommandPool(Renderer->Device, Renderer->GraphicsQueue.TransientCommandPool, NULL);
     vkDestroyCommandPool(Renderer->Device, Renderer->TransferQueue.TransientCommandPool, NULL);
 }
 
-static void InitObjectStorage(Rr_App* App)
+static void Rr_InitObjectStorage(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -655,7 +652,7 @@ static void InitObjectStorage(Rr_App* App)
     Renderer->NextObject = Renderer->Storage;
 }
 
-static void CleanupObjectStorage(Rr_App* App)
+static void Rr_CleanupObjectStorage(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -665,7 +662,7 @@ static void CleanupObjectStorage(Rr_App* App)
 static void Rr_InitNullTexture(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    Renderer->NullTexture = Rr_CreateImage(App, (VkExtent3D){.width = 1, .height = 1, .depth = 1}, RR_COLOR_FORMAT, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+    Renderer->NullTexture = Rr_CreateImage(App, (VkExtent3D){ .width = 1, .height = 1, .depth = 1 }, RR_COLOR_FORMAT, VK_IMAGE_USAGE_SAMPLED_BIT, false);
 
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
     Rr_ImageBarrier Barrier = {
@@ -676,9 +673,9 @@ static void Rr_InitNullTexture(Rr_App* App)
         .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
     };
     Rr_ChainImageBarrier(&Barrier,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         VK_ACCESS_SHADER_READ_BIT,
-                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     Rr_EndImmediate(Renderer);
 }
 
@@ -697,7 +694,7 @@ void Rr_InitRenderer(Rr_App* App)
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = SDL_GetWindowTitle(Window),
         .pEngineName = "Rr_Renderer",
-        .apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0)
+        .apiVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
     };
 
     /* Gather required extensions. */
@@ -753,20 +750,21 @@ void Rr_InitRenderer(Rr_App* App)
     Renderer->GraphicsQueueMutex = SDL_CreateMutex();
 
     volkLoadDevice(Renderer->Device);
-    InitAllocator(App);
-    InitObjectStorage(App);
-    InitTransientCommandPools(App);
-    InitSamplers(App);
-    InitRenderPass(App);
-    InitDescriptors(App);
+
+    Rr_InitVMA(App);
+    Rr_InitObjectStorage(App);
+    Rr_InitTransientCommandPools(App);
+    Rr_InitSamplers(App);
+    Rr_InitRenderPass(App);
+    Rr_InitDescriptors(App);
 
     u32 Width, Height;
     SDL_GetWindowSizeInPixels(Window, (i32*)&Width, (i32*)&Height);
-    InitSwapchain(App, &Width, &Height);
+    Rr_InitSwapchain(App, &Width, &Height);
 
-    InitFrames(App);
-    InitImmediateMode(App);
-    InitGenericPipelineLayout(App);
+    Rr_InitFrames(App);
+    Rr_InitImmediateMode(App);
+    Rr_InitGenericPipelineLayout(App);
     Rr_InitNullTexture(App);
     Rr_InitTextRenderer(App);
 
@@ -787,7 +785,7 @@ bool Rr_NewFrame(Rr_App* App, void* Window)
 
         const bool bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
 
-        if (!bMinimized && Width > 0 && Height > 0 && InitSwapchain(App, (u32*)&Width, (u32*)&Height))
+        if (!bMinimized && Width > 0 && Height > 0 && Rr_InitSwapchain(App, (u32*)&Width, (u32*)&Height))
         {
             SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 0);
             return true;
@@ -826,7 +824,7 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     Rr_DestroyDescriptorAllocator(&Renderer->GlobalDescriptorAllocator, Device);
 
-    CleanupFrames(App);
+    Rr_CleanupFrames(App);
 
     Rr_DestroyImage(App, Renderer->NullTexture);
 
@@ -834,13 +832,13 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     SDL_DestroyMutex(Renderer->GraphicsQueueMutex);
 
-    CleanupTransientCommandPools(Renderer);
-    CleanupImmediateMode(App);
-    CleanupRenderPass(App);
-    CleanupSamplers(App);
-    CleanupSwapchain(App, Renderer->Swapchain.Handle);
+    Rr_CleanupTransientCommandPools(Renderer);
+    Rr_CleanupImmediateMode(App);
+    Rr_CleanupRenderPass(App);
+    Rr_CleanupSamplers(App);
+    Rr_CleanupSwapchain(App, Renderer->Swapchain.Handle);
 
-    CleanupObjectStorage(App);
+    Rr_CleanupObjectStorage(App);
 
     vmaDestroyAllocator(Renderer->Allocator);
 
@@ -965,10 +963,6 @@ void Rr_Draw(Rr_App* App)
         .AccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
-    Rr_ChainImageBarrier(&ColorImageTransition,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     Rr_ImageBarrier DepthImageTransition = {
         .CommandBuffer = CommandBuffer,
@@ -977,6 +971,12 @@ void Rr_Draw(Rr_App* App)
         .AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         .StageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
     };
+
+    Rr_ChainImageBarrier(&ColorImageTransition,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
     Rr_ChainImageBarrier(&DepthImageTransition,
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
@@ -989,13 +989,27 @@ void Rr_Draw(Rr_App* App)
     }
     Rr_SliceClear(&Frame->DrawContextsSlice);
 
-    // Rr_ImageBarrier ColorImageTransition = {
-    //     .CommandBuffer = CommandBuffer,
-    //     .Image = ColorImage->Handle,
-    //     .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    //     .AccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-    //     .StageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
-    // };
+    /* Render Dear ImGui if needed. */
+    Rr_ImGui* ImGui = &Renderer->ImGui;
+    if (ImGui->bInitiated)
+    {
+        VkRenderPassBeginInfo rp_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = Renderer->RenderPassNoClear,
+            .framebuffer = Renderer->DrawTarget->Framebuffer,
+            .renderArea.extent.width = Renderer->DrawTarget->ColorImage->Extent.width,
+            .renderArea.extent.height = Renderer->DrawTarget->ColorImage->Extent.height,
+            .clearValueCount = 0,
+            .pClearValues = NULL,
+        };
+        vkCmdBeginRenderPass(CommandBuffer, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
+
+        ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
+
+        vkCmdEndRenderPass(CommandBuffer);
+    }
+
+    /* Blit primary draw target to swapchain image. */
     Rr_ChainImageBarrier(&ColorImageTransition,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_READ_BIT,
@@ -1008,50 +1022,16 @@ void Rr_Draw(Rr_App* App)
         .AccessMask = VK_ACCESS_NONE,
         .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
-    //
-    // Rr_ChainImageBarrier(&SwapchainImageTransition,
-    //     VK_PIPELINE_STAGE_2_CLEAR_BIT,
-    //     VK_ACCESS_2_TRANSFER_WRITE_BIT,
-    //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    // vkCmdClearColorImage(
-    //     CommandBuffer,
-    //     SwapchainImage,
-    //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //     &(VkClearColorValue){},
-    //     1,
-    //     &(VkImageSubresourceRange){
-    //         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-    //         .baseMipLevel = 0,
-    //         .levelCount = 1,
-    //         .baseArrayLayer = 0,
-    //         .layerCount = 1,
-    //     });
+
     Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    //
+
     Rr_BlitColorImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->ActiveResolution,
         (VkExtent2D){
             .width = (Renderer->ActiveResolution.width) * Renderer->Scale,
             .height = (Renderer->ActiveResolution.height) * Renderer->Scale });
-
-    if (Renderer->ImGui.bInitiated)
-    {
-        Rr_ChainImageBarrier(&SwapchainImageTransition,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-        VkRenderingAttachmentInfo ColorAttachmentInfo = GetRenderingAttachmentInfo_Color(Swapchain->Images[SwapchainImageIndex].View, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, NULL);
-        VkRenderingInfo RenderingInfo = GetRenderingInfo(Swapchain->Extent, &ColorAttachmentInfo, NULL);
-
-        vkCmdBeginRendering(CommandBuffer, &RenderingInfo);
-
-        ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
-
-        vkCmdEndRendering(CommandBuffer);
-    }
 
     Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,

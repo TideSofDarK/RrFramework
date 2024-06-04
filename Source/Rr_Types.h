@@ -120,7 +120,6 @@ struct Rr_PipelineBuilder
     VkPipelineColorBlendAttachmentState ColorBlendAttachments[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
     VkPipelineMultisampleStateCreateInfo Multisampling;
     VkPipelineDepthStencilStateCreateInfo DepthStencil;
-    VkPipelineRenderingCreateInfo RenderInfo;
     Rr_Asset VertexShaderSPV;
     Rr_Asset FragmentShaderSPV;
     usize PushConstantsSize;
@@ -285,6 +284,7 @@ struct Rr_Renderer
     i32 Scale;
 
     VkRenderPass RenderPass;
+    VkRenderPass RenderPassNoClear;
 
     Rr_ImGui ImGui;
     Rr_ImmediateMode ImmediateMode;

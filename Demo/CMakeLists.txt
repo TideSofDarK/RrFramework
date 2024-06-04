@@ -48,7 +48,7 @@ foreach (GLSL ${RR_DEMO_GLSL_SOURCES})
     add_custom_command(
             MAIN_DEPENDENCY ${GLSL}
             OUTPUT ${SPIRV}
-            COMMAND ${GLSL_VALIDATOR} -gVS --target-env vulkan1.3 ${GLSL} -o ${SPIRV}
+            COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.0 ${GLSL} -o ${SPIRV}
             DEPENDS ${GLSL}
             VERBATIM)
     list(APPEND RR_DEMO_SPIRV_BINARIES ${SPIRV})

@@ -65,7 +65,7 @@ VkPipeline Rr_BuildPipeline(
         .pNext = NULL,
         .logicOpEnable = VK_FALSE,
         .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = PipelineBuilder->RenderInfo.colorAttachmentCount,
+        .attachmentCount = 1,
         .pAttachments = PipelineBuilder->ColorBlendAttachments,
     };
 
@@ -124,16 +124,10 @@ VkPipeline Rr_BuildPipeline(
         .dynamicStateCount = SDL_arraysize(DynamicStates)
     };
 
-    if (PipelineBuilder->RenderInfo.colorAttachmentCount > 1)
-    {
-        PipelineBuilder->ColorBlendAttachments[1] = PipelineBuilder->ColorBlendAttachments[0];
-    }
-    PipelineBuilder->RenderInfo.pColorAttachmentFormats = PipelineBuilder->ColorAttachmentFormats;
-
     /* Create pipeline. */
     const VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = &PipelineBuilder->RenderInfo,
+        .pNext = NULL,
         .stageCount = ShaderStageCount,
         .pStages = ShaderStages,
         .pVertexInputState = &VertexInputInfo,
@@ -186,11 +180,6 @@ Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void)
         .Rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO },
         .Multisampling = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO, .sampleShadingEnable = VK_FALSE, .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT, .minSampleShading = 1.0f, .pSampleMask = NULL, .alphaToCoverageEnable = VK_FALSE, .alphaToOneEnable = VK_FALSE },
         .DepthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO },
-        .RenderInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-            .colorAttachmentCount = 1,
-            .depthAttachmentFormat = RR_DEPTH_FORMAT,
-        },
     };
 
     return PipelineBuilder;
@@ -295,8 +284,6 @@ void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, const Rr_Asset*
 void Rr_EnableAdditionalColorAttachment(Rr_PipelineBuilder* PipelineBuilder, const VkFormat Format)
 {
     PipelineBuilder->ColorAttachmentFormats[1] = Format;
-
-    PipelineBuilder->RenderInfo.colorAttachmentCount = 2;
 }
 
 void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, const Rr_PolygonMode PolygonMode)

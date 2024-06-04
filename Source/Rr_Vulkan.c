@@ -19,7 +19,6 @@ static bool CheckPhysicalDevice(
     }
 
     const char* TargetExtensions[] = {
-        "VK_EXT_descriptor_indexing",
         "VK_KHR_swapchain"
     };
 
@@ -196,22 +195,11 @@ void Rr_InitDeviceAndQueues(
         }
     };
 
-    VkPhysicalDeviceVulkan13Features Features13 = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .pNext = VK_NULL_HANDLE,
-        .dynamicRendering = VK_TRUE,
-    };
-
-    VkPhysicalDeviceVulkan12Features Features12 = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .pNext = &Features13,
-    };
-
     const char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
     const VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &Features12,
+        .pNext = NULL,
         .queueCreateInfoCount = bUseTransferQueue ? 2 : 1,
         .pQueueCreateInfos = QueueInfos,
         .enabledExtensionCount = SDL_arraysize(DeviceExtensions),
@@ -225,4 +213,78 @@ void Rr_InitDeviceAndQueues(
     {
         vkGetDeviceQueue(*OutDevice, TransferQueueFamilyIndex, 0, OutTransferQueue);
     }
+}
+
+void Rr_BlitPrerenderedDepth(
+    VkCommandBuffer CommandBuffer,
+    VkImage Source,
+    VkImage Destination,
+    VkExtent2D SrcSize,
+    VkExtent2D DstSize)
+{
+    // VkImageBlit2 BlitRegion = {
+    //     .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+    //     .pNext = NULL,
+    //     .srcSubresource = {
+    //         .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+    //         .mipLevel = 0,
+    //         .baseArrayLayer = 0,
+    //         .layerCount = 1,
+    //     },
+    //     .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+    //     .dstSubresource = {
+    //         .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+    //         .mipLevel = 0,
+    //         .baseArrayLayer = 0,
+    //         .layerCount = 1,
+    //     },
+    //     .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+    // };
+    //
+    // const VkBlitImageInfo2 BlitInfo = {
+    //     .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+    //     .pNext = NULL,
+    //     .srcImage = Source,
+    //     .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    //     .dstImage = Destination,
+    //     .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    //     .regionCount = 1,
+    //     .pRegions = &BlitRegion,
+    //     .filter = VK_FILTER_NEAREST,
+    // };
+    //
+    // vkCmdBlitImage2(CommandBuffer, &BlitInfo);
+
+    abort();
+}
+
+void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+{
+    VkImageBlit ImageBlit = {
+        .srcSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+        .dstSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+
+    };
+
+    vkCmdBlitImage(
+        CommandBuffer,
+        Source,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        Destination,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &ImageBlit,
+        VK_FILTER_NEAREST);
 }

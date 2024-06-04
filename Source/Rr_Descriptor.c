@@ -262,6 +262,7 @@ void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder* Builder, u32 Binding, VkDescri
         .binding = Binding,
         .descriptorType = Type,
         .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
     };
     Builder->Count++;
 }
@@ -280,6 +281,7 @@ void Rr_AddDescriptorArray(
         .binding = Binding,
         .descriptorType = Type,
         .descriptorCount = Count,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
     };
     Builder->Count++;
 }
@@ -294,31 +296,8 @@ VkDescriptorSetLayout Rr_BuildDescriptorLayout(
     VkDevice Device,
     VkShaderStageFlags ShaderStageFlags)
 {
-    VkDescriptorBindingFlags BindingFlags[Builder->Count];
-    for (u32 Index = 0; Index < Builder->Count; ++Index)
-    {
-        VkDescriptorSetLayoutBinding* Binding = &Builder->Bindings[Index];
-        Binding->stageFlags |= ShaderStageFlags;
-
-//        if (Binding->descriptorCount > 1)
-//        {
-//            BindingFlags[Index] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-//        }
-//        else
-        {
-            BindingFlags[Index] = 0;
-        }
-    }
-
-    VkDescriptorSetLayoutBindingFlagsCreateInfo BindingFlagsInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-        .bindingCount = Builder->Count,
-        .pBindingFlags = BindingFlags
-    };
-
     const VkDescriptorSetLayoutCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext = &BindingFlagsInfo,
         .flags = 0,
         .bindingCount = Builder->Count,
         .pBindings = Builder->Bindings,
