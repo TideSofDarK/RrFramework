@@ -399,21 +399,21 @@ static Rr_LoadAsyncContext Rr_CreateLoadAsyncContext(Rr_Renderer* Renderer)
     Rr_LoadAsyncContext LoadAsyncContext = { 0 };
 
     vkCreateCommandPool(Renderer->Device, &(VkCommandPoolCreateInfo){
-                            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                            .pNext = VK_NULL_HANDLE,
-                            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                            .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-                        },
-                        NULL, &LoadAsyncContext.GraphicsCommandPool);
+                                              .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                                              .pNext = VK_NULL_HANDLE,
+                                              .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                                              .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+                                          },
+        NULL, &LoadAsyncContext.GraphicsCommandPool);
     if (!Rr_IsUsingTransferQueue(Renderer))
     {
         vkCreateCommandPool(Renderer->Device, &(VkCommandPoolCreateInfo){
-                                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                                .pNext = VK_NULL_HANDLE,
-                                .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                                .queueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                            },
-                            NULL, &LoadAsyncContext.TransferCommandPool);
+                                                  .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                                                  .pNext = VK_NULL_HANDLE,
+                                                  .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                                                  .queueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                                              },
+            NULL, &LoadAsyncContext.TransferCommandPool);
     }
     vkCreateFence(
         Renderer->Device,
@@ -458,34 +458,38 @@ static int SDLCALL Rr_LoadingThreadProc(void* Data)
 
     usize CurrentLoadingContextIndex = 0;
 
-    while (SDL_AtomicGet(&App->bExit) == false)
+    while (true)
     {
-        if (SDL_WaitSemaphoreTimeout(LoadingThread->Semaphore, 500))
+        SDL_WaitSemaphore(LoadingThread->Semaphore);
+
+        if (SDL_AtomicGet(&App->bExit) == true)
         {
-            if (LoadingThread->LoadingContextsSlice.Length == 0)
-            {
-                continue;
-            }
-
-            Rr_LoadAsync_Internal(&LoadingThread->LoadingContextsSlice.Data[CurrentLoadingContextIndex], LoadAsyncContext);
-            CurrentLoadingContextIndex++;
-
-            vkResetCommandPool(Renderer->Device, LoadAsyncContext.GraphicsCommandPool, 0);
-            if (LoadAsyncContext.TransferCommandPool != VK_NULL_HANDLE)
-            {
-                vkResetCommandPool(Renderer->Device, LoadAsyncContext.TransferCommandPool, 0);
-            }
-            vkResetFences(Renderer->Device, 1, &LoadAsyncContext.Fence);
-
-            SDL_LockMutex(LoadingThread->Mutex);
-            if (CurrentLoadingContextIndex >= LoadingThread->LoadingContextsSlice.Length)
-            {
-                Rr_ResetArena(&LoadingThread->Arena);
-                CurrentLoadingContextIndex = 0;
-                Rr_SliceClear(&LoadingThread->LoadingContextsSlice);
-            }
-            SDL_UnlockMutex(LoadingThread->Mutex);
+            break;
         }
+
+        if (LoadingThread->LoadingContextsSlice.Length == 0)
+        {
+            continue;
+        }
+
+        Rr_LoadAsync_Internal(&LoadingThread->LoadingContextsSlice.Data[CurrentLoadingContextIndex], LoadAsyncContext);
+        CurrentLoadingContextIndex++;
+
+        vkResetCommandPool(Renderer->Device, LoadAsyncContext.GraphicsCommandPool, 0);
+        if (LoadAsyncContext.TransferCommandPool != VK_NULL_HANDLE)
+        {
+            vkResetCommandPool(Renderer->Device, LoadAsyncContext.TransferCommandPool, 0);
+        }
+        vkResetFences(Renderer->Device, 1, &LoadAsyncContext.Fence);
+
+        SDL_LockMutex(LoadingThread->Mutex);
+        if (CurrentLoadingContextIndex >= LoadingThread->LoadingContextsSlice.Length)
+        {
+            Rr_ResetArena(&LoadingThread->Arena);
+            CurrentLoadingContextIndex = 0;
+            Rr_SliceClear(&LoadingThread->LoadingContextsSlice);
+        }
+        SDL_UnlockMutex(LoadingThread->Mutex);
     }
 
     Rr_DestroyLoadAsyncContext(Renderer, &LoadAsyncContext);
@@ -510,6 +514,7 @@ void Rr_InitLoadingThread(Rr_App* App)
 void Rr_CleanupLoadingThread(Rr_App* App)
 {
     Rr_LoadingThread* LoadingThread = &App->LoadingThread;
+    SDL_PostSemaphore(LoadingThread->Semaphore);
     SDL_WaitThread(LoadingThread->Handle, NULL);
     SDL_DestroySemaphore(LoadingThread->Semaphore);
     SDL_DestroyMutex(LoadingThread->Mutex);
