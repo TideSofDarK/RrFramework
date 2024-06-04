@@ -261,7 +261,7 @@ static void Iterate(Rr_App* App)
 
     /* Rendering */
     Rr_DrawContextInfo BeginRenderingInfo = {
-        .DrawTarget = NULL,
+        .DrawTarget = nullptr,
         .InitialColor = nullptr,
         .InitialDepth = nullptr,
         .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline)
