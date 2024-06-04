@@ -5,6 +5,7 @@
 #include "Rr_Load.h"
 #include "Rr_Renderer.h"
 #include "Rr_Types.h"
+#include "Rr_UploadContext.h"
 
 #include <qsort/qsort-inline.h>
 

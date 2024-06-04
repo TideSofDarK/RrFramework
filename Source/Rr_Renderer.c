@@ -12,7 +12,7 @@
 #include "Rr_Barrier.h"
 #include "Rr_Object.h"
 #include "Rr_Rendering.h"
-#include "Rr_ImageTools.h"
+#include "Rr_Image_Internal.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>

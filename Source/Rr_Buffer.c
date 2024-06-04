@@ -6,6 +6,7 @@
 #include "Rr_Renderer.h"
 #include "Rr_Types.h"
 #include "Rr_Object.h"
+#include "Rr_UploadContext.h"
 
 #include <SDL3/SDL_log.h>
 

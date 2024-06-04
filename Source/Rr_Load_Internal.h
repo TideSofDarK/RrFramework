@@ -2,35 +2,17 @@
 
 #include "Rr_Vulkan.h"
 #include "Rr_Memory.h"
-#include "Rr_Buffer.h"
 #include "Rr_Load.h"
 
 #include <SDL3/SDL_thread.h>
+
+struct Rr_UploadContext;
 
 typedef struct Rr_PendingLoad Rr_PendingLoad;
 struct Rr_PendingLoad
 {
     Rr_LoadingCallback LoadingCallback;
     const void* Userdata;
-};
-
-typedef struct Rr_AcquireBarriers Rr_AcquireBarriers;
-struct Rr_AcquireBarriers
-{
-    usize ImageMemoryBarrierCount;
-    usize BufferMemoryBarrierCount;
-    VkImageMemoryBarrier* ImageMemoryBarriers;
-    VkBufferMemoryBarrier* BufferMemoryBarriers;
-};
-
-typedef struct Rr_UploadContext Rr_UploadContext;
-struct Rr_UploadContext
-{
-    Rr_WriteBuffer StagingBuffer;
-    VkCommandBuffer TransferCommandBuffer;
-    Rr_AcquireBarriers ReleaseBarriers;
-    Rr_AcquireBarriers AcquireBarriers;
-    bool bUseAcquireBarriers;
 };
 
 typedef struct Rr_LoadingThread Rr_LoadingThread;

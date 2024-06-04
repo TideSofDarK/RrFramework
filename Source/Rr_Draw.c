@@ -5,7 +5,7 @@
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
 #include "Rr_Object.h"
-#include "Rr_ImageTools.h"
+#include "Rr_Image_Internal.h"
 
 Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData)
 {

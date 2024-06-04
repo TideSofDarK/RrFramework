@@ -1,4 +1,4 @@
-#include "Rr_MeshTools.h"
+#include "Rr_Mesh_Internal.h"
 
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
@@ -6,6 +6,7 @@
 #include "Rr_Types.h"
 #include "Rr_Material.h"
 #include "Rr_Object.h"
+#include "Rr_UploadContext.h"
 
 #include <SDL3/SDL_stdinc.h>
 
