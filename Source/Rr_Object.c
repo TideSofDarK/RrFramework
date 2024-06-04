@@ -58,4 +58,3 @@ usize Rr_CalculateObjectStorageSize(usize Count)
 {
     return sizeof(Rr_Object) * Count;
 }
-

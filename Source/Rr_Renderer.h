@@ -11,7 +11,8 @@
 typedef struct Rr_Frame Rr_Frame;
 typedef struct Rr_Renderer Rr_Renderer;
 
-typedef enum Rr_HandleType {
+typedef enum Rr_HandleType
+{
     RR_HANDLE_TYPE_BUFFER,
     RR_HANDLE_TYPE_STATIC_MESH,
     RR_HANDLE_TYPE_IMAGE,

@@ -45,4 +45,3 @@ typedef uintptr_t usize;
 
 #define Rr_Align(Num, Alignment) (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 #define RR_SAFE_ALIGNMENT 16
-
