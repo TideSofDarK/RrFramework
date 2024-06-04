@@ -37,8 +37,8 @@ struct Rr_LoadingContext
     usize TaskCount;
 };
 
-typedef struct Rr_LoadCommandPools Rr_LoadCommandPools;
-struct Rr_LoadCommandPools
+typedef struct Rr_LoadAsyncContext Rr_LoadAsyncContext;
+struct Rr_LoadAsyncContext
 {
     VkCommandPool GraphicsCommandPool;
     VkCommandPool TransferCommandPool;
@@ -46,7 +46,7 @@ struct Rr_LoadCommandPools
     VkSemaphore Semaphore;
 };
 
-extern Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadCommandPools LoadCommandPools);
+extern Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext LoadAsyncContext);
 extern Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext* LoadingContext);
 
 extern void Rr_InitLoadingThread(Rr_App* App);
