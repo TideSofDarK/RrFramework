@@ -482,15 +482,14 @@ static int SDLCALL Rr_LoadingThreadProc(void* Data)
         }
         vkResetFences(Renderer->Device, 1, &LoadAsyncContext.Fence);
 
-        SDL_LockMutex(App->SyncArena.Mutex);
-
+        SDL_LockMutex(LoadingThread->Mutex);
         if (CurrentLoadingContextIndex >= LoadingThread->LoadingContextsSlice.Length)
         {
+            Rr_ResetArena(&LoadingThread->Arena);
             CurrentLoadingContextIndex = 0;
-            Rr_SliceEmpty(&LoadingThread->LoadingContextsSlice);
+            Rr_SliceClear(&LoadingThread->LoadingContextsSlice);
         }
-
-        SDL_UnlockMutex(App->SyncArena.Mutex);
+        SDL_UnlockMutex(LoadingThread->Mutex);
     }
 
     Rr_DestroyLoadAsyncContext(Renderer, &LoadAsyncContext);
@@ -507,6 +506,7 @@ void Rr_InitLoadingThread(Rr_App* App)
     App->LoadingThread = (Rr_LoadingThread){
         .Semaphore = SDL_CreateSemaphore(0),
         .Mutex = SDL_CreateMutex(),
+        .Arena = Rr_CreateArena(RR_LOADING_THREAD_ARENA_SIZE)
     };
     App->LoadingThread.Handle = SDL_CreateThread(Rr_LoadingThreadProc, "lt", App);
 }
@@ -518,4 +518,5 @@ void Rr_CleanupLoadingThread(Rr_App* App)
     SDL_WaitThread(LoadingThread->Handle, NULL);
     SDL_DestroySemaphore(LoadingThread->Semaphore);
     SDL_DestroyMutex(LoadingThread->Mutex);
+    Rr_DestroyArena(&LoadingThread->Arena);
 }
