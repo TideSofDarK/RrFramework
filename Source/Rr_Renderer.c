@@ -665,21 +665,6 @@ static void Rr_CleanupTransientCommandPools(Rr_Renderer* Renderer)
     vkDestroyCommandPool(Renderer->Device, Renderer->TransferQueue.TransientCommandPool, NULL);
 }
 
-static void Rr_InitObjectStorage(Rr_App* App)
-{
-    Rr_Renderer* Renderer = &App->Renderer;
-
-    Renderer->Storage = Rr_Calloc(1, Rr_CalculateObjectStorageSize(RR_MAX_OBJECTS));
-    Renderer->NextObject = Renderer->Storage;
-}
-
-static void Rr_CleanupObjectStorage(Rr_App* App)
-{
-    Rr_Renderer* Renderer = &App->Renderer;
-
-    Rr_Free(Renderer->Storage);
-}
-
 static void Rr_InitNullTexture(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
@@ -767,10 +752,11 @@ void Rr_InitRenderer(Rr_App* App)
         &Renderer->TransferQueue.Handle);
     Renderer->GraphicsQueueMutex = SDL_CreateMutex();
 
+    Renderer->ObjectStorage = Rr_CreateObjectStorage();
+
     volkLoadDevice(Renderer->Device);
 
     Rr_InitVMA(App);
-    Rr_InitObjectStorage(App);
     Rr_InitTransientCommandPools(App);
     Rr_InitSamplers(App);
     Rr_InitRenderPass(App);
@@ -856,7 +842,7 @@ void Rr_CleanupRenderer(Rr_App* App)
     Rr_CleanupSamplers(App);
     Rr_CleanupSwapchain(App, Renderer->Swapchain.Handle);
 
-    Rr_CleanupObjectStorage(App);
+    Rr_DestroyObjectStorage(&Renderer->ObjectStorage);
 
     vmaDestroyAllocator(Renderer->Allocator);
 

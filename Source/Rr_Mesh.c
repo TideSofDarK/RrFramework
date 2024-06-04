@@ -24,5 +24,5 @@ void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* StaticMesh)
         Rr_DestroyMaterial(App, StaticMesh->Materials[Index]);
     }
 
-    Rr_DestroyObject(Renderer, StaticMesh);
+    Rr_DestroyObject(&Renderer->ObjectStorage, StaticMesh);
 }

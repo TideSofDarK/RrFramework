@@ -1,8 +1,6 @@
 #include "Rr_Buffer.h"
 
 #include "Rr_Vulkan.h"
-#include "Rr_Util.h"
-#include "Rr_Memory.h"
 #include "Rr_Renderer.h"
 #include "Rr_Types.h"
 #include "Rr_Object.h"
@@ -17,7 +15,7 @@ Rr_Buffer* Rr_CreateBuffer(
     VmaMemoryUsage MemoryUsage,
     bool bHostMapped)
 {
-    Rr_Buffer* Buffer = Rr_CreateObject(Renderer);
+    Rr_Buffer* Buffer = Rr_CreateObject(&Renderer->ObjectStorage);
 
     const VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -84,7 +82,7 @@ void Rr_DestroyBuffer(Rr_Renderer* Renderer, Rr_Buffer* Buffer)
 
     vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
 
-    Rr_DestroyObject(Renderer, Buffer);
+    Rr_DestroyObject(&Renderer->ObjectStorage, Buffer);
 }
 
 void Rr_UploadBufferAligned(

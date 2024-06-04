@@ -69,7 +69,7 @@ void Rr_DebugOverlay(Rr_App* App)
     {
         igText("Swapchain Size: %dx%d", App->Renderer.SwapchainSize.width, App->Renderer.SwapchainSize.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
-        igText("RrFramework Objects: %zu", App->Renderer.ObjectCount);
+        igText("RrFramework Objects: %zu", App->Renderer.ObjectStorage.ObjectCount);
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
 #endif

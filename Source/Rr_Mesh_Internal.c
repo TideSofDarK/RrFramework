@@ -3,12 +3,12 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
-#include "Rr_Types.h"
 #include "Rr_Material.h"
 #include "Rr_Object.h"
 #include "Rr_UploadContext.h"
+#include "Rr_Types.h"
 
-#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL.h>
 
 #include <cgltf/cgltf.h>
 
@@ -269,7 +269,7 @@ Rr_Primitive* Rr_CreatePrimitive(
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    Rr_Primitive* Primitive = Rr_CreateObject(&App->Renderer);
+    Rr_Primitive* Primitive = Rr_CreateObject(&App->Renderer.ObjectStorage);
 
     Primitive->IndexCount = Rr_SliceLength(&RawMesh->IndicesSlice);
 
@@ -327,7 +327,7 @@ void Rr_DestroyPrimitive(Rr_App* App, Rr_Primitive* Primitive)
     Rr_DestroyBuffer(Renderer, Primitive->IndexBuffer);
     Rr_DestroyBuffer(Renderer, Primitive->VertexBuffer);
 
-    Rr_DestroyObject(Renderer, Primitive);
+    Rr_DestroyObject(&Renderer->ObjectStorage, Primitive);
 }
 
 Rr_StaticMesh* Rr_CreateStaticMesh(
@@ -339,7 +339,7 @@ Rr_StaticMesh* Rr_CreateStaticMesh(
     usize MaterialCount)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    Rr_StaticMesh* StaticMesh = Rr_CreateObject(Renderer);
+    Rr_StaticMesh* StaticMesh = Rr_CreateObject(&Renderer->ObjectStorage);
 
     for (usize Index = 0; Index < RawMeshCount; ++Index)
     {

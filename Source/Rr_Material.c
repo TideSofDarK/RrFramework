@@ -3,7 +3,6 @@
 #include "Rr_App.h"
 #include "Rr_Renderer.h"
 #include "Rr_Buffer.h"
-#include "Rr_Memory.h"
 #include "Rr_Types.h"
 #include "Rr_Object.h"
 
@@ -11,7 +10,7 @@
 
 Rr_Material* Rr_CreateMaterial(Rr_App* App, Rr_GenericPipeline* GenericPipeline, Rr_Image** Textures, usize TextureCount)
 {
-    Rr_Material* Material = Rr_CreateObject(&App->Renderer);
+    Rr_Material* Material = Rr_CreateObject(&App->Renderer.ObjectStorage);
     *Material = (Rr_Material){
         .GenericPipeline = GenericPipeline,
         .TextureCount = TextureCount,
@@ -36,5 +35,5 @@ void Rr_DestroyMaterial(Rr_App* App, Rr_Material* Material)
 
     Rr_DestroyBuffer(&App->Renderer, Material->Buffer);
 
-    Rr_DestroyObject(&App->Renderer, Material);
+    Rr_DestroyObject(&App->Renderer.ObjectStorage, Material);
 }

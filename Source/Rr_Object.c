@@ -1,7 +1,6 @@
 #include "Rr_Object.h"
 
 #include "Rr_Types.h"
-#include "Rr_Renderer.h"
 
 /* @TODO: Make bValid field! */
 union Rr_Object
@@ -18,30 +17,45 @@ union Rr_Object
     void* Next;
 };
 
-void* Rr_CreateObject(Rr_Renderer* Renderer)
+Rr_ObjectStorage Rr_CreateObjectStorage()
 {
-    Rr_Object* NewObject = (Rr_Object*)Renderer->NextObject;
+    Rr_ObjectStorage ObjectStorage = { 0 };
+    ObjectStorage.Storage = Rr_Calloc(1, Rr_CalculateObjectStorageSize(RR_MAX_OBJECTS));
+    ObjectStorage.NextObject = ObjectStorage.Storage;
+
+    return ObjectStorage;
+}
+
+void Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage)
+{
+    Rr_Free(Storage->Storage);
+}
+
+void* Rr_CreateObject(Rr_ObjectStorage* Storage)
+{
+    Rr_Object* NewObject = (Rr_Object*)Storage->NextObject;
     if (NewObject->Next == NULL)
     {
-        Renderer->NextObject = NewObject + 1;
+        Storage->NextObject = NewObject + 1;
     }
     else
     {
-        Renderer->NextObject = NewObject->Next;
+        Storage->NextObject = NewObject->Next;
     }
-    Renderer->ObjectCount++;
+    Storage->ObjectCount++;
     return NewObject;
 }
 
-void Rr_DestroyObject(Rr_Renderer* Renderer, void* Object)
+void Rr_DestroyObject(Rr_ObjectStorage* Storage, void* Object)
 {
     Rr_Object* DestroyedObject = (Rr_Object*)Object;
-    DestroyedObject->Next = Renderer->NextObject;
-    Renderer->NextObject = DestroyedObject;
-    Renderer->ObjectCount--;
+    DestroyedObject->Next = Storage->NextObject;
+    Storage->NextObject = DestroyedObject;
+    Storage->ObjectCount--;
 }
 
 usize Rr_CalculateObjectStorageSize(usize Count)
 {
     return sizeof(Rr_Object) * Count;
 }
+

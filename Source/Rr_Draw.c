@@ -114,7 +114,7 @@ Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    Rr_DrawTarget* DrawTarget = Rr_CreateObject(Renderer);
+    Rr_DrawTarget* DrawTarget = Rr_CreateObject(&Renderer->ObjectStorage);
 
     DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(App, Width, Height);
     DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
@@ -144,7 +144,7 @@ void Rr_DestroyDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget)
     Rr_DestroyImage(App, DrawTarget->ColorImage);
     Rr_DestroyImage(App, DrawTarget->DepthImage);
 
-    Rr_DestroyObject(Renderer, DrawTarget);
+    Rr_DestroyObject(&Renderer->ObjectStorage, DrawTarget);
 }
 
 Rr_DrawTarget* Rr_GetMainDrawTarget(Rr_App* App)

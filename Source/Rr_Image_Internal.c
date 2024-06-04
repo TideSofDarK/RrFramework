@@ -22,7 +22,7 @@ Rr_Image* Rr_CreateImage(
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    Rr_Image* Image = Rr_CreateObject(Renderer);
+    Rr_Image* Image = Rr_CreateObject(&Renderer->ObjectStorage);
     Image->Format = Format;
     Image->Extent = Extent;
 

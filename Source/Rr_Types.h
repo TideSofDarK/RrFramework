@@ -9,11 +9,10 @@
 #include "Rr_Descriptor.h"
 #include "Rr_Draw.h"
 #include "Rr_Math.h"
+#include "Rr_Object.h"
 #include "Rr_Load_Internal.h"
 
 #include <SDL3/SDL.h>
-
-
 
 struct Rr_Primitive
 {
@@ -310,9 +309,7 @@ struct Rr_Renderer
     VkPipelineLayout GenericPipelineLayout;
 
     /* Object Storage */
-    void* Storage;
-    void* NextObject;
-    size_t ObjectCount;
+    Rr_ObjectStorage ObjectStorage;
 };
 
 /* App */

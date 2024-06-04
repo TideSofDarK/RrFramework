@@ -16,5 +16,5 @@ void Rr_DestroyImage(Rr_App* App, Rr_Image* AllocatedImage)
     vkDestroyImageView(Renderer->Device, AllocatedImage->View, NULL);
     vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 
-    Rr_DestroyObject(Renderer, AllocatedImage);
+    Rr_DestroyObject(&Renderer->ObjectStorage, AllocatedImage);
 }
