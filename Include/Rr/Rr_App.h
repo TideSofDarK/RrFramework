@@ -16,7 +16,6 @@ typedef struct Rr_App Rr_App;
 typedef struct Rr_AppConfig
 {
     const char* Title;
-    Rr_IntVec2 ReferenceResolution;
     Rr_InputConfig* InputConfig;
     void (*InitFunc)(Rr_App* App);
     void (*CleanupFunc)(Rr_App* App);

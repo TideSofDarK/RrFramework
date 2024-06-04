@@ -464,16 +464,23 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_FlushRenderingContext(Rr_DrawContext* RenderingContext, Rr_Arena* Arena)
+void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_Renderer* Renderer = RenderingContext->Renderer;
+    Rr_Renderer* Renderer = DrawContext->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawTarget* DrawTarget = RenderingContext->Info.DrawTarget;
-    u32 Width = DrawTarget->ColorImage->Extent.width;
-    u32 Height = DrawTarget->ColorImage->Extent.height;
+    if (DrawContext->Info.DrawTarget == NULL)
+    {
+        DrawContext->Info.DrawTarget = Renderer->DrawTarget;
+        DrawContext->Info.Viewport.Width = (i32)Renderer->SwapchainSize.width;
+        DrawContext->Info.Viewport.Height = (i32)Renderer->SwapchainSize.height;
+    }
+
+    Rr_DrawTarget* DrawTarget = DrawContext->Info.DrawTarget;
+    u32 Width = DrawContext->Info.Viewport.Width;
+    u32 Height = DrawContext->Info.Viewport.Height;
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
@@ -487,12 +494,12 @@ void Rr_FlushRenderingContext(Rr_DrawContext* RenderingContext, Rr_Arena* Arena)
         &UploadContext,
         Frame->CommonBuffer.Buffer,
         Frame->DrawBuffer.Buffer,
-        &RenderingContext->Info.Sizes,
-        RenderingContext->GlobalsData,
+        &DrawContext->Info.Sizes,
+        DrawContext->GlobalsData,
         Scratch.Arena);
     Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(Renderer,
         &UploadContext,
-        GetExtent2D(DrawTarget->ColorImage->Extent),
+        (VkExtent2D){ .width = Width, .height = Height },
         Scratch.Arena);
 
     /* Begin render pass. */
@@ -530,13 +537,13 @@ void Rr_FlushRenderingContext(Rr_DrawContext* RenderingContext, Rr_Arena* Arena)
     Rr_RenderGeneric(
         Renderer,
         &GenericRenderingContext,
-        RenderingContext->DrawPrimitivesSlice,
+        DrawContext->DrawPrimitivesSlice,
         CommandBuffer,
         Scratch.Arena);
     Rr_RenderText(
         Renderer,
         &TextRenderingContext,
-        RenderingContext->DrawTextsSlice,
+        DrawContext->DrawTextsSlice,
         CommandBuffer,
         Scratch.Arena);
 

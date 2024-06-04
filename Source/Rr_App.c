@@ -67,8 +67,7 @@ void Rr_DebugOverlay(Rr_App* App)
     igSetNextWindowBgAlpha(0.35f);
     if (igBegin("Debug Overlay", NULL, Flags))
     {
-        igText("Reference Resolution: %dx%d", App->Renderer.ReferenceResolution.width, App->Renderer.ReferenceResolution.height);
-        igText("Active Resolution: %dx%d", App->Renderer.ActiveResolution.width, App->Renderer.ActiveResolution.height);
+        igText("Swapchain Size: %dx%d", App->Renderer.SwapchainSize.width, App->Renderer.SwapchainSize.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
         igText("RrFramework Objects: %zu", App->Renderer.ObjectCount);
 #ifdef RR_PERFORMANCE_COUNTER
@@ -109,7 +108,7 @@ static void Iterate(Rr_App* App)
     FrameTime_Advance(&App->FrameTime);
 }
 
-static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
+static int SDLCALL Rr_EventWatch(void* AppPtr, SDL_Event* Event)
 {
     switch (Event->type)
     {
@@ -138,7 +137,7 @@ static int SDLCALL EventWatch(void* AppPtr, SDL_Event* Event)
     return 0;
 }
 
-static void InitFrameTime(Rr_FrameTime* const FrameTime, SDL_Window* Window)
+static void Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
 {
 #ifdef RR_PERFORMANCE_COUNTER
     FrameTime->PerformanceCounter.StartTime = SDL_GetPerformanceCounter();
@@ -152,6 +151,21 @@ static void InitFrameTime(Rr_FrameTime* const FrameTime, SDL_Window* Window)
     FrameTime->StartTime = SDL_GetTicksNS();
 }
 
+Rr_IntVec2 Rr_GetDefaultWindowSize()
+{
+    SDL_DisplayID DisplayID = SDL_GetPrimaryDisplay();
+
+    SDL_Rect UsableBounds;
+    SDL_GetDisplayUsableBounds(DisplayID, &UsableBounds);
+
+    const f32 ScaleFactor = 0.75f;
+
+    return (Rr_IntVec2){
+        .Width = (i32)((f32)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
+        .Height = (i32)((f32)(UsableBounds.h - UsableBounds.y) * ScaleFactor)
+    };
+}
+
 void Rr_Run(Rr_AppConfig* Config)
 {
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
@@ -159,14 +173,16 @@ void Rr_Run(Rr_AppConfig* Config)
 
     SDL_Vulkan_LoadLibrary(NULL);
 
+    Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
+
     Rr_App* App = Rr_StackAlloc(Rr_App, 1);
     SDL_zerop(App);
     *App = (Rr_App){
         .Config = Config,
         .Window = SDL_CreateWindow(
             Config->Title,
-            Config->ReferenceResolution.X,
-            Config->ReferenceResolution.Y,
+            WindowSize.Width,
+            WindowSize.Height,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
         .InputConfig = {
             .Count = Config->InputConfig->Count,
@@ -176,11 +192,11 @@ void Rr_Run(Rr_AppConfig* Config)
         .ScratchArenaTLS = SDL_CreateTLS()
     };
 
-    InitFrameTime(&App->FrameTime, App->Window);
+    Rr_InitFrameTime(&App->FrameTime, App->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
 
-    SDL_AddEventWatch(EventWatch, App);
+    SDL_AddEventWatch(Rr_EventWatch, App);
 
     Rr_InitRenderer(App);
     Rr_InitLoadingThread(App);
@@ -210,7 +226,6 @@ void Rr_Run(Rr_AppConfig* Config)
                     SDL_AtomicSet(&App->bExit, true);
                     break;
                 }
-                break;
                 default:
                     break;
             }
@@ -227,7 +242,7 @@ void Rr_Run(Rr_AppConfig* Config)
 
     SDL_CleanupTLS();
 
-    SDL_DelEventWatch((SDL_EventFilter)EventWatch, App);
+    SDL_DelEventWatch((SDL_EventFilter)Rr_EventWatch, App);
     SDL_DestroyWindow(App->Window);
 
     SDL_Quit();
@@ -251,5 +266,5 @@ Rr_InputState Rr_GetInputState(Rr_App* App)
 f32 Rr_GetAspectRatio(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    return (float)Renderer->ActiveResolution.width / (float)Renderer->ActiveResolution.height;
+    return (float)Renderer->SwapchainSize.width / (float)Renderer->SwapchainSize.height;
 }

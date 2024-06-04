@@ -259,6 +259,7 @@ struct Rr_Renderer
     /* Presentation */
     VkSurfaceKHR Surface;
     Rr_Swapchain Swapchain;
+    VkExtent2D SwapchainSize;
 
     /* Device */
     Rr_PhysicalDevice PhysicalDevice;
@@ -278,10 +279,6 @@ struct Rr_Renderer
     size_t CurrentFrameIndex;
 
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
-
-    VkExtent2D ReferenceResolution;
-    VkExtent2D ActiveResolution;
-    i32 Scale;
 
     VkRenderPass RenderPass;
     VkRenderPass RenderPassNoClear;

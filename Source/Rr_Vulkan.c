@@ -21,10 +21,10 @@ static bool Rr_CheckPhysicalDevice(
     }
 
     const char* TargetExtensions[] = {
-        "VK_KHR_swapchain"
+        "VK_KHR_swapchain",
     };
 
-    bool FoundExtensions[] = { 0, 0 };
+    bool FoundExtensions[] = { 0 };
 
     VkExtensionProperties* Extensions = Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);

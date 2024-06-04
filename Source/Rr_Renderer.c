@@ -22,20 +22,20 @@
 #include <SDL3/SDL_vulkan.h>
 #include <SDL3/SDL_stdinc.h>
 
-static void Rr_CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
-{
-    Renderer->ActiveResolution.width = Renderer->ReferenceResolution.width;
-    Renderer->ActiveResolution.height = Renderer->ReferenceResolution.height;
-
-    const i32 MaxAvailableScale = SDL_min(WindowWidth / Renderer->ReferenceResolution.width, WindowHeight / Renderer->ReferenceResolution.height);
-    if (MaxAvailableScale >= 1)
-    {
-        Renderer->ActiveResolution.width += (WindowWidth - MaxAvailableScale * Renderer->ReferenceResolution.width) / MaxAvailableScale;
-        Renderer->ActiveResolution.height += (WindowHeight - MaxAvailableScale * Renderer->ReferenceResolution.height) / MaxAvailableScale;
-    }
-
-    Renderer->Scale = MaxAvailableScale;
-}
+// static void Rr_CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
+// {
+//     Renderer->ActiveResolution.width = Renderer->ReferenceResolution.width;
+//     Renderer->ActiveResolution.height = Renderer->ReferenceResolution.height;
+//
+//     const i32 MaxAvailableScale = SDL_min(WindowWidth / Renderer->ReferenceResolution.width, WindowHeight / Renderer->ReferenceResolution.height);
+//     if (MaxAvailableScale >= 1)
+//     {
+//         Renderer->ActiveResolution.width += (WindowWidth - MaxAvailableScale * Renderer->ReferenceResolution.width) / MaxAvailableScale;
+//         Renderer->ActiveResolution.height += (WindowHeight - MaxAvailableScale * Renderer->ReferenceResolution.height) / MaxAvailableScale;
+//     }
+//
+//     Renderer->Scale = MaxAvailableScale;
+// }
 
 static void Rr_CleanupSwapchain(Rr_App* App, VkSwapchainKHR Swapchain)
 {
@@ -222,12 +222,33 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         vkCreateImageView(Renderer->Device, &ColorAttachmentView, NULL, &Renderer->Swapchain.Images[i].View);
     }
 
-    Rr_CalculateDrawTargetResolution(Renderer, *Width, *Height);
+    bool bDrawTargetDirty = true;
     if (Renderer->DrawTarget != NULL)
     {
-        Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
+        VkExtent3D Extent = Renderer->DrawTarget->ColorImage->Extent;
+        if (*Width < Extent.width || *Height < Extent.height)
+        {
+            bDrawTargetDirty = false;
+        }
+        else
+        {
+            Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
+        }
     }
-    Renderer->DrawTarget = Rr_CreateDrawTarget(App, *Width, *Height);
+    if (bDrawTargetDirty)
+    {
+        SDL_DisplayID DisplayID = SDL_GetPrimaryDisplay();
+        SDL_Rect DisplayBounds;
+        SDL_GetDisplayBounds(DisplayID, &DisplayBounds);
+
+        u32 DrawTargetWidth = SDL_max(DisplayBounds.w, *Width);
+        u32 DrawTargetHeight = SDL_max(DisplayBounds.h, *Height);
+        Renderer->DrawTarget = Rr_CreateDrawTarget(App, DrawTargetWidth, DrawTargetHeight);
+
+        SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Creating primary draw target with size %dx%d", DrawTargetWidth, DrawTargetHeight);
+    }
+
+    Renderer->SwapchainSize = (VkExtent2D){ .width = *Width, .height = *Height };
 
     Rr_StackFree(Images);
     Rr_StackFree(SurfaceFormats);
@@ -685,16 +706,13 @@ void Rr_InitRenderer(Rr_App* App)
     SDL_Window* Window = App->Window;
     const Rr_AppConfig* Config = App->Config;
 
-    Renderer->ReferenceResolution.width = Config->ReferenceResolution.X;
-    Renderer->ReferenceResolution.height = Config->ReferenceResolution.Y;
-
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
     VkApplicationInfo VKAppInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = SDL_GetWindowTitle(Window),
         .pEngineName = "Rr_Renderer",
-        .apiVersion = VK_MAKE_API_VERSION(0, 1, 1, 0),
+        .apiVersion = VK_MAKE_API_VERSION(0, 1, 2, 0),
     };
 
     /* Gather required extensions. */
@@ -943,15 +961,6 @@ void Rr_Draw(Rr_App* App)
     VkCommandBufferBeginInfo CommandBufferBeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
-    /* @TODO: Move. */
-    /* Process pending loads to acquire images/buffers.
-     * Generate wait semaphore input. */
-    VkSemaphore* WaitSemaphores = Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkSemaphore));
-    VkPipelineStageFlags* WaitDstStages = Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkPipelineStageFlags));
-    usize WaitSemaphoreIndex = 1;
-    WaitSemaphores[0] = Frame->SwapchainSemaphore;
-    WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
     /* Rendering */
     Rr_Image* ColorImage = Renderer->DrawTarget->ColorImage;
     Rr_Image* DepthImage = Renderer->DrawTarget->DepthImage;
@@ -1028,23 +1037,26 @@ void Rr_Draw(Rr_App* App)
         VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    Rr_BlitColorImage(CommandBuffer, ColorImage->Handle, SwapchainImage, Renderer->ActiveResolution,
-        (VkExtent2D){
-            .width = (Renderer->ActiveResolution.width) * Renderer->Scale,
-            .height = (Renderer->ActiveResolution.height) * Renderer->Scale });
+    Rr_BlitColorImage(
+        CommandBuffer,
+        ColorImage->Handle,
+        SwapchainImage,
+        Renderer->SwapchainSize,
+        Renderer->SwapchainSize);
 
     Rr_ChainImageBarrier(&SwapchainImageTransition,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-    // Rr_ChainImageBarrier(&ColorImageTransition,
-    //     VK_PIPELINE_STAGE_2_BLIT_BIT,
-    //     VK_ACCESS_2_TRANSFER_READ_BIT,
-    //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
     vkEndCommandBuffer(CommandBuffer);
 
+    /* Submit frame command buffer and queue present. */
+    VkSemaphore* WaitSemaphores = Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkSemaphore));
+    VkPipelineStageFlags* WaitDstStages = Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkPipelineStageFlags));
+    usize WaitSemaphoreIndex = 1;
+    WaitSemaphores[0] = Frame->SwapchainSemaphore;
+    WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo SubmitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = NULL,
@@ -1082,8 +1094,8 @@ void Rr_Draw(Rr_App* App)
 
     SDL_UnlockMutex(Renderer->GraphicsQueueMutex);
 
+    /* Cleanup resources. */
     Rr_ResetFrameResources(Frame);
-
     Rr_DestroyArenaScratch(Scratch);
 }
 

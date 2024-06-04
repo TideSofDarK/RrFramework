@@ -261,7 +261,7 @@ static void Iterate(Rr_App* App)
 
     /* Rendering */
     Rr_DrawContextInfo BeginRenderingInfo = {
-        .DrawTarget = Rr_GetMainDrawTarget(App),
+        .DrawTarget = NULL,
         .InitialColor = nullptr,
         .InitialDepth = nullptr,
         .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline)
@@ -331,7 +331,6 @@ void RunGame()
     };
     Rr_AppConfig Config = {
         .Title = "RrDemo",
-        .ReferenceResolution = { 1920 / 2, 1080 / 2 },
         .InputConfig = &InputConfig,
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
