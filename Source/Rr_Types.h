@@ -10,42 +10,11 @@
 #include "Rr_Draw.h"
 #include "Rr_Math.h"
 #include "Rr_Object.h"
+#include "Rr_Mesh_Internal.h"
+#include "Rr_Image_Internal.h"
 #include "Rr_Load_Internal.h"
 
 #include <SDL3/SDL.h>
-
-struct Rr_Primitive
-{
-    Rr_Buffer* IndexBuffer;
-    Rr_Buffer* VertexBuffer;
-    u32 IndexCount;
-};
-
-/* Material at index 0 is matched with primitive at index 0 etc... */
-struct Rr_StaticMesh
-{
-    Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
-    Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
-    u8 PrimitiveCount;
-    u8 MaterialCount;
-};
-
-struct Rr_SkeletalMesh
-{
-    Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
-    Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
-    u8 PrimitiveCount;
-    u8 MaterialCount;
-};
-
-struct Rr_Image
-{
-    VkImage Handle;
-    VkImageView View;
-    VmaAllocation Allocation;
-    VkExtent3D Extent;
-    VkFormat Format;
-};
 
 struct Rr_Material
 {

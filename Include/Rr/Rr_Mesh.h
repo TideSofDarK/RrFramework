@@ -11,7 +11,6 @@ extern "C"
 
 #define RR_MESH_MAX_PRIMITIVES 4
 
-typedef struct Rr_Primitive Rr_Primitive;
 typedef struct Rr_StaticMesh Rr_StaticMesh;
 typedef struct Rr_SkeletalMesh Rr_SkeletalMesh;
 

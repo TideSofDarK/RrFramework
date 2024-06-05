@@ -5,12 +5,37 @@
 
 struct Rr_UploadContext;
 struct Rr_Material;
+struct Rr_Buffer;
+
+typedef struct Rr_Primitive Rr_Primitive;
+struct Rr_Primitive
+{
+    struct Rr_Buffer* IndexBuffer;
+    struct Rr_Buffer* VertexBuffer;
+    u32 IndexCount;
+};
 
 typedef struct
 {
     Rr_SliceType(Rr_Vertex) VerticesSlice;
     Rr_SliceType(Rr_MeshIndexType) IndicesSlice;
 } Rr_RawMesh;
+
+struct Rr_StaticMesh
+{
+    Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
+    struct Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
+    u8 PrimitiveCount;
+    u8 MaterialCount;
+};
+
+struct Rr_SkeletalMesh
+{
+    Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
+    struct Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
+    u8 PrimitiveCount;
+    u8 MaterialCount;
+};
 
 extern Rr_Primitive* Rr_CreatePrimitive(
     Rr_App* App,

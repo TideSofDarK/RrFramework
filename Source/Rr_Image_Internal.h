@@ -7,7 +7,18 @@
 
 #include <volk.h>
 
+#include <vma/vk_mem_alloc.h>
+
 struct Rr_UploadContext;
+
+struct Rr_Image
+{
+    VkImage Handle;
+    VkImageView View;
+    VmaAllocation Allocation;
+    VkExtent3D Extent;
+    VkFormat Format;
+};
 
 extern Rr_Image* Rr_CreateImage(
     Rr_App* App,
