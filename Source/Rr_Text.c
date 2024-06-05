@@ -11,6 +11,7 @@
 #include "Rr_Descriptor.h"
 #include "Rr_Types.h"
 #include "Rr_Object.h"
+#include "Rr_BuiltinAssets.inc"
 
 #include <cJSON/cJSON.h>
 
@@ -56,8 +57,8 @@ void Rr_InitTextRenderer(Rr_App* App)
     vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &TextPipeline->Layout);
 
     /* Pipeline */
-    Rr_ExternAsset(BuiltinTextVERT);
-    Rr_ExternAsset(BuiltinTextFRAG);
+    Rr_Asset BuiltinTextVERT = Rr_LoadAsset(RR_BUILTIN_TEXT_VERT_SPV);
+    Rr_Asset BuiltinTextFRAG = Rr_LoadAsset(RR_BUILTIN_TEXT_FRAG_SPV);
 
     Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
     Rr_EnableTriangleFan(Builder);
@@ -113,8 +114,8 @@ void Rr_InitTextRenderer(Rr_App* App)
     }
 
     /* Builtin Font */
-    Rr_ExternAsset(BuiltinFontPNG);
-    Rr_ExternAsset(BuiltinFontJSON);
+    Rr_Asset BuiltinFontPNG = Rr_LoadAsset(RR_BUILTIN_IOSEVKA_PNG);
+    Rr_Asset BuiltinFontJSON = Rr_LoadAsset(RR_BUILTIN_IOSEVKA_JSON);
     Renderer->BuiltinFont = Rr_CreateFont(App, &BuiltinFontPNG, &BuiltinFontJSON);
 }
 

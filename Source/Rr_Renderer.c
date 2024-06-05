@@ -13,6 +13,7 @@
 #include "Rr_Object.h"
 #include "Rr_Rendering.h"
 #include "Rr_Image_Internal.h"
+#include "Rr_BuiltinAssets.inc"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -434,7 +435,7 @@ void Rr_InitImGui(Rr_App* App)
     ImGuiStyle_ScaleAllSizes(igGetStyle(), WindowScale);
 
     /* Init default font. */
-    Rr_ExternAsset(MartianMonoTTF);
+    Rr_Asset MartianMonoTTF = Rr_LoadAsset(RR_BUILTIN_MARTIANMONO_TTF);
     ImFontConfig* FontConfig = ImFontConfig_ImFontConfig();
     FontConfig->FontDataOwnedByAtlas = false; /* Don't transfer asset ownership to ImGui, it will crash otherwise! */
     ImFontAtlas_AddFontFromMemoryTTF(IO->Fonts, (void*)MartianMonoTTF.Data, (i32)MartianMonoTTF.Length, SDL_floorf(16.0f * WindowScale), FontConfig, NULL);

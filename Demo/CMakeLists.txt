@@ -32,34 +32,6 @@ cmake_path(SET RR_ASSET_PATH "Asset/")
 cmake_path(ABSOLUTE_PATH RR_ASSET_PATH NORMALIZE)
 
 #
-# Compile shaders
-#
-find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
-
-set(SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/Shader/")
-set(RR_DEMO_GLSL_SOURCES
-        ${SHADER_DIR}Uber3D.vert.glsl
-        ${SHADER_DIR}Uber3D.frag.glsl
-)
-
-foreach (GLSL ${RR_DEMO_GLSL_SOURCES})
-    get_filename_component(FILE_NAME ${GLSL} NAME_WLE)
-    set(SPIRV "${SHADER_DIR}/${FILE_NAME}.spv")
-    add_custom_command(
-            MAIN_DEPENDENCY ${GLSL}
-            OUTPUT ${SPIRV}
-            COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.0 ${GLSL} -o ${SPIRV}
-            DEPENDS ${GLSL}
-            VERBATIM)
-    list(APPEND RR_DEMO_SPIRV_BINARIES ${SPIRV})
-endforeach (GLSL)
-
-add_custom_target(
-        RrDemoShaders
-        DEPENDS ${RR_DEMO_SPIRV_BINARIES}
-)
-
-#
 # Assets
 #
 file(GLOB_RECURSE RR_DEMO_ASSETS CONFIGURE_DEPENDS
@@ -73,12 +45,11 @@ file(GLOB_RECURSE RR_DEMO_ASSETS CONFIGURE_DEPENDS
 #
 # Add executable target
 #
-set_source_files_properties(Source/AssetDef.cxx PROPERTIES OBJECT_DEPENDS "${RR_DEMO_ASSETS}")
+#set_source_files_properties(Source/AssetDef.cxx PROPERTIES OBJECT_DEPENDS "${RR_DEMO_ASSETS}")
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
         "Source/*.cxx"
 )
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
-add_dependencies(${PROJECT_NAME} RrDemoShaders)
 target_compile_definitions(${PROJECT_NAME} PUBLIC RR_ASSET_PATH=${RR_ASSET_PATH})
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
 if (WIN32)
@@ -87,3 +58,18 @@ if (WIN32)
     endif ()
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE On)
 endif ()
+file(GLOB_RECURSE RR_DEMO_BUILTIN_ASSETS CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.obj"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.exr"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.glb"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.vert.glsl"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.frag.glsl"
+)
+rr_embed_assets(
+        ${PROJECT_NAME}
+        "RrDemoBuiltinAssets"
+        "DEMO_ASSET_"
+        "DemoAssets"
+        "${RR_DEMO_BUILTIN_ASSETS}")

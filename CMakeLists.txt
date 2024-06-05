@@ -48,43 +48,92 @@ CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.283.0")
 add_subdirectory("Vendor/imgui/")
 
 #
-# Compile shaders
+# Embed Function
 #
-find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
+if (CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND CMAKE_C_SIMULATE_ID STREQUAL "")
+    set(RR_USE_RC 1)
+    add_compile_definitions("RR_USE_RC=1")
+else ()
+    set(RR_USE_RC 0)
+endif ()
+set(RrAssetCounter 100 CACHE INTERNAL "Asset Counter")
+function(rr_embed_assets TargetName AssetsTargetName IdentifierPrefix HeaderName AssetsList)
+    set(ResultFilePath "${CMAKE_CURRENT_BINARY_DIR}/AssetHeaders/${HeaderName}.inc")
 
-set(RR_SHADER_DIR "${PROJECT_SOURCE_DIR}/Asset/")
-file(GLOB_RECURSE RR_GLSL_SOURCES CONFIGURE_DEPENDS
-        "${RR_SHADER_DIR}*.vert.glsl"
-        "${RR_SHADER_DIR}*.frag.glsl"
-)
+    set(FinalAssetsList "")
 
-foreach (GLSL ${RR_GLSL_SOURCES})
-    get_filename_component(FILE_NAME ${GLSL} NAME_WLE)
-    set(SPIRV "${RR_SHADER_DIR}/${FILE_NAME}.spv")
+    # Compile shaders
+    set(SPIRVBinaries "")
+    foreach (AssetPath ${AssetsList})
+        get_filename_component(AssetExtension ${AssetPath} EXT)
+        if ((AssetExtension STREQUAL ".vert.glsl") OR (AssetExtension STREQUAL ".frag.glsl"))
+            get_filename_component(AssetNameWLE ${AssetPath} NAME_WLE)
+            set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${AssetNameWLE}.spv")
+            add_custom_command(
+                    MAIN_DEPENDENCY ${AssetPath}
+                    OUTPUT ${SPIRV}
+                    COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.0 ${AssetPath} -o ${SPIRV}
+                    DEPENDS ${AssetPath}
+                    VERBATIM)
+            list(APPEND SPIRVBinaries ${SPIRV})
+            set(AssetPath ${SPIRV})
+        endif ()
+        list(APPEND FinalAssetsList "${AssetPath}")
+    endforeach (AssetPath)
+
+    set(AssetsList "${FinalAssetsList}")
+
+    list(LENGTH AssetsList AssetsLength)
+    MATH(EXPR RrAssetCounter "${RrAssetCounter}+${AssetsLength}")
+
     add_custom_command(
-            MAIN_DEPENDENCY ${GLSL}
-            OUTPUT ${SPIRV}
-            COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.0 ${GLSL} -o ${SPIRV}
-            DEPENDS ${GLSL}
-            VERBATIM)
-    list(APPEND RR_SPIRV_BINARIES ${SPIRV})
-endforeach (GLSL)
+            OUTPUT
+            "${ResultFilePath}"
+            COMMAND ${CMAKE_COMMAND}
+            "-DResultFilePath=${ResultFilePath}"
+            "-DAssetsList=${AssetsList}"
+            "-DIdentifierPrefix=${IdentifierPrefix}"
+            "-DAssetCounter=${RrAssetCounter}"
+            -P ${RrFramework_SOURCE_DIR}/CMake/EmbedAssets.cmake
+            DEPENDS
+            ${AssetsList}
+            VERBATIM
+    )
 
-add_custom_target(
-        RrBuiltinShaders
-        DEPENDS ${RR_SPIRV_BINARIES}
-)
+    add_custom_target(
+            ${AssetsTargetName}
+            DEPENDS
+            "${ResultFilePath}"
+    )
+
+    set_source_files_properties("${ResultFilePath}" PROPERTIES OBJECT_DEPENDS "${AssetsList}")
+    set_source_files_properties("${ResultFilePath}" PROPERTIES HEADER_FILE_ONLY NO)
+
+    if (RR_USE_RC)
+        set_source_files_properties("${ResultFilePath}" PROPERTIES LANGUAGE RC)
+    else ()
+        set_source_files_properties("${ResultFilePath}" PROPERTIES LANGUAGE C)
+        set_source_files_properties(
+                "${ResultFilePath}"
+                PROPERTIES
+                COMPILE_DEFINITIONS "RR_DEFINE_ASSETS=1"
+        )
+    endif ()
+
+    target_sources(${TargetName} PUBLIC "${ResultFilePath}")
+    target_include_directories(${TargetName} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/AssetHeaders/")
+    add_dependencies(${TargetName} ${AssetsTargetName})
+endfunction()
 
 #
 # Add library
 #
-set_source_files_properties(Source/Rr_AssetDef.c PROPERTIES OBJECT_DEPENDS "${RR_GLSL_SOURCES}")
+#set_source_files_properties(Source/Rr_AssetDef.c PROPERTIES OBJECT_DEPENDS "${RR_GLSL_SOURCES}")
 file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
         "Source/*.c"
         "Source/*.cpp"
 )
-add_library(${PROJECT_NAME} ${RR_SOURCES})
-add_dependencies(${PROJECT_NAME} RrBuiltinShaders)
+add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 target_include_directories(${PROJECT_NAME} PUBLIC Include PRIVATE Include/Rr)
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -114,5 +163,18 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}
         "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
+file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.ttf"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.vert.glsl"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.frag.glsl"
+)
+rr_embed_assets(
+        ${PROJECT_NAME}
+        "RrBuiltinAssets"
+        "RR_BUILTIN_"
+        "Rr_BuiltinAssets"
+        "${RR_BUILTIN_ASSETS}")
 
 add_subdirectory(Demo)

@@ -1,7 +1,7 @@
 #include "Game.hxx"
 
 #include "DevTools.hxx"
-#include "Rr/Rr_Draw.h"
+#include "DemoAssets.inc"
 
 #include <imgui/imgui.h>
 
@@ -12,7 +12,6 @@
 
 #include <string>
 #include <format>
-#include <vector>
 #include <array>
 
 typedef struct SUber3DGlobals
@@ -97,8 +96,8 @@ static void InitInputMappings()
 
 static void InitUber3DPipeline(Rr_App* App)
 {
-    Rr_ExternAsset(Uber3DVERT);
-    Rr_ExternAsset(Uber3DFRAG);
+    Rr_Asset Uber3DVERT = Rr_LoadAsset(DEMO_ASSET_UBER3D_VERT_SPV);
+    Rr_Asset Uber3DFRAG = Rr_LoadAsset(DEMO_ASSET_UBER3D_FRAG_SPV);
 
     Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
     Rr_VertexInput VertexInput = {
@@ -153,12 +152,12 @@ static void Init(Rr_App* App)
 #endif
     InitInputMappings();
 
-    Rr_ExternAsset(AvocadoGLB);
-    Rr_ExternAsset(MarbleDiffusePNG);
-    Rr_ExternAsset(MarbleSpecularPNG);
-    Rr_ExternAsset(MarbleOBJ);
-    Rr_ExternAsset(CottagePNG);
-    Rr_ExternAsset(CottageOBJ);
+    Rr_Asset AvocadoGLB = Rr_LoadAsset(DEMO_ASSET_AVOCADO_GLB);
+    Rr_Asset MarbleDiffusePNG = Rr_LoadAsset(DEMO_ASSET_MARBLEDIFFUSE_PNG);
+    Rr_Asset MarbleSpecularPNG = Rr_LoadAsset(DEMO_ASSET_MARBLESPECULAR_PNG);
+    Rr_Asset MarbleOBJ = Rr_LoadAsset(DEMO_ASSET_MARBLE_OBJ);
+    Rr_Asset CottagePNG = Rr_LoadAsset(DEMO_ASSET_COTTAGE_PNG);
+    Rr_Asset CottageOBJ = Rr_LoadAsset(DEMO_ASSET_COTTAGE_OBJ);
 
     std::array LoadTasks = {
         Rr_LoadColorImageFromPNG(&MarbleDiffusePNG, &MarbleDiffuse),

@@ -53,7 +53,7 @@ static Rr_RawMesh CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_
     Rr_SliceReserve(&RawMesh.VerticesSlice, VertexCount, Arena);
     Rr_SliceReserve(&RawMesh.IndicesSlice, IndexCount, Arena);
 
-    void* IndexData = Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
+    byte* IndexData = (byte*)Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
     if (Primitive->indices->component_type == cgltf_component_type_r_16u)
     {
         u16* Indices = (u16*)IndexData;
@@ -77,30 +77,30 @@ static Rr_RawMesh CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_
         {
             cgltf_attribute* Attribute = Primitive->attributes + AttributeIndex;
             cgltf_accessor* Accessor = Attribute->data;
-            void* AttributeData = Accessor->buffer_view->buffer->data + Accessor->buffer_view->offset;
+            byte* AttributeData = (byte*)Accessor->buffer_view->buffer->data + Accessor->buffer_view->offset;
             switch (Attribute->type)
             {
                 case cgltf_attribute_type_position:
                 {
-                    Rr_Vec3* Position = AttributeData + Accessor->stride * VertexIndex;
+                    Rr_Vec3* Position = (Rr_Vec3*)(AttributeData + Accessor->stride * VertexIndex);
                     NewVertex.Position = *Position;
                 }
                 break;
                 case cgltf_attribute_type_normal:
                 {
-                    Rr_Vec3* Normal = AttributeData + Accessor->stride * VertexIndex;
+                    Rr_Vec3* Normal = (Rr_Vec3*)(AttributeData + Accessor->stride * VertexIndex);
                     NewVertex.Normal = *Normal;
                 }
                 break;
                 case cgltf_attribute_type_tangent:
                 {
-                    Rr_Vec3* Tangent = AttributeData + Accessor->stride * VertexIndex;
+                    Rr_Vec3* Tangent = (Rr_Vec3*)(AttributeData + Accessor->stride * VertexIndex);
                     NewVertex.Color.RGB = *Tangent;
                 }
                 break;
                 case cgltf_attribute_type_texcoord:
                 {
-                    Rr_Vec2* TexCoord = AttributeData + Accessor->stride * VertexIndex;
+                    Rr_Vec2* TexCoord = (Rr_Vec2*)(AttributeData + Accessor->stride * VertexIndex);
                     NewVertex.TexCoordX = TexCoord->X;
                     NewVertex.TexCoordY = TexCoord->Y;
                 }
@@ -373,7 +373,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     cgltf_mesh* Mesh = ParseGLTFMesh(Asset, MeshIndex, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
 
-    Rr_RawMesh RawMeshes[Mesh->primitives_count];
+    Rr_RawMesh* RawMeshes = Rr_StackAlloc(Rr_RawMesh, Mesh->primitives_count);
 
     for (usize Index = 0; Index < Mesh->primitives_count; ++Index)
     {
@@ -390,6 +390,8 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     cgltf_free(Data);
 
     Rr_DestroyArenaScratch(Scratch);
+
+    Rr_StackFree(RawMeshes);
 
     return StaticMesh;
 }
