@@ -75,7 +75,7 @@ typedef struct Rr_AssetRef
         const Rr_AssetRef NAME = { \
             .Start = incbin ## _ ## NAME ## _start, \
             .End = incbin ## _ ## NAME ## _end, \
-        };
+        }
     #else
     #define INCBIN(NAME, ABSOLUTE_PATH) \
         __asm__(".section " INCBIN_SECTION "\n" \
@@ -94,59 +94,9 @@ typedef struct Rr_AssetRef
         const Rr_AssetRef NAME = { \
             .Start = incbin_ ## NAME ## _start, \
             .End = incbin_ ## NAME ## _end, \
-        };
+        }
     #endif
 // clang-format on
-
-
-    #ifdef __cplusplus
-    #else
-    #endif
-
-//    #ifdef __cplusplus
-//        #ifdef __clang__
-//            #define RR_EXTERN_OR_INLINE extern
-//        #else
-//            #define RR_EXTERN_OR_INLINE inline
-//        #endif
-//
-//        #define Rr_DefineAsset(NAME, PATH)                                                         \
-//            INCBIN(NAME, STR(RR_ASSET_PATH), PATH);                                                \
-//            RR_EXTERN_OR_INLINE const Rr_Asset incbin_##NAME##_cpp                                 \
-//            {                                                                                      \
-//                &(incbin_##NAME##_start[0]), (size_t)(incbin_##NAME##_end - incbin_##NAME##_start) \
-//            }
-//
-//        #define RR_ASSET_EXTERN extern "C"
-//    #else
-//        #define Rr_DefineAsset(NAME, PATH) INCBIN(NAME, STR(RR_ASSET_PATH), PATH)
-//    #endif
-//
-//    #define Rr_ExternAssetAs(VAR, NAME)                                             \
-//        do                                                                          \
-//        {                                                                           \
-//            extern __attribute__((aligned(16))) const char incbin_##NAME##_start[]; \
-//            extern const char incbin_##NAME##_end[];                                \
-//            (&VAR)->Data = incbin_##NAME##_start;                                   \
-//            (&VAR)->Length = (size_t)(incbin_##NAME##_end - incbin_##NAME##_start); \
-//        }                                                                           \
-//        while (0)
-//
-//    #ifdef __cplusplus
-//        #define Rr_ExternAsset(NAME)                          \
-//            const Rr_Asset NAME{};                            \
-//            do                                                \
-//            {                                                 \
-//                extern const Rr_Asset incbin_##NAME##_cpp;    \
-//                Rr_Asset& Temp = const_cast<Rr_Asset&>(NAME); \
-//                Temp = incbin_##NAME##_cpp;                   \
-//            }                                                 \
-//            while (0)
-//    #else
-//        #define Rr_ExternAsset(NAME) \
-//            Rr_Asset NAME;           \
-//            Rr_ExternAssetAs(NAME, NAME)
-//    #endif
 
 #endif
 
