@@ -227,7 +227,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     if (Renderer->DrawTarget != NULL)
     {
         VkExtent3D Extent = Renderer->DrawTarget->ColorImage->Extent;
-        if (*Width < Extent.width || *Height < Extent.height)
+        if (*Width <= Extent.width || *Height <= Extent.height)
         {
             bDrawTargetDirty = false;
         }
