@@ -46,7 +46,6 @@ foreach (AssetPath ${AssetsList})
             "#endif\n"
             "\n"
     )
-    MATH(EXPR AssetCounter "${AssetCounter}+1")
 endforeach (AssetPath)
 file(
         APPEND "${ResultFilePath}"
