@@ -1,5 +1,3 @@
-find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
-
 file(
         WRITE "${ASSET_HEADER_PATH}"
         "#ifndef RC_INVOKED\n"

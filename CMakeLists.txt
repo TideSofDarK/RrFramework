@@ -50,6 +50,8 @@ add_subdirectory("Vendor/imgui/")
 #
 # Embed Function
 #
+find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
+
 if (CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND CMAKE_C_SIMULATE_ID STREQUAL "")
     set(RR_USE_RC 1)
     add_compile_definitions("RR_USE_RC=1")
@@ -65,10 +67,10 @@ function(rr_embed_assets TARGET_NAME ASSETS_TARGET_NAME IDENTIFIER_PREFIX HEADER
     # Compile shaders
     set(SPIRVBinaries "")
     foreach (ASSET_PATH ${ASSETS_LIST})
-        get_filename_component(AssetExtension ${ASSET_PATH} EXT)
-        if ((AssetExtension STREQUAL ".vert.glsl") OR (AssetExtension STREQUAL ".frag.glsl"))
-            get_filename_component(AssetNameWLE ${ASSET_PATH} NAME_WLE)
-            set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${AssetNameWLE}.spv")
+        get_filename_component(ASSET_EXTENSION ${ASSET_PATH} EXT)
+        if ((ASSET_EXTENSION STREQUAL ".vert.glsl") OR (ASSET_EXTENSION STREQUAL ".frag.glsl"))
+            get_filename_component(ASSET_NAME_WLE ${ASSET_PATH} NAME_WLE)
+            set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${ASSET_NAME_WLE}.spv")
             add_custom_command(
                     MAIN_DEPENDENCY ${ASSET_PATH}
                     OUTPUT ${SPIRV}

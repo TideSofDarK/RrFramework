@@ -45,7 +45,6 @@ file(GLOB_RECURSE RR_DEMO_ASSETS CONFIGURE_DEPENDS
 #
 # Add executable target
 #
-#set_source_files_properties(Source/AssetDef.cxx PROPERTIES OBJECT_DEPENDS "${RR_DEMO_ASSETS}")
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
         "Source/*.cxx"
 )
