@@ -39,6 +39,20 @@ extern void Rr_InitDeviceAndQueues(
     VkQueue* OutGraphicsQueue,
     VkQueue* OutTransferQueue);
 
+extern void Rr_BlitDepthImage(
+    VkCommandBuffer CommandBuffer,
+    VkImage Source,
+    VkImage Destination,
+    VkExtent2D SrcSize,
+    VkExtent2D DstSize);
+
+extern void Rr_BlitColorImage(
+    VkCommandBuffer CommandBuffer,
+    VkImage Source,
+    VkImage Destination,
+    VkExtent2D SrcSize,
+    VkExtent2D DstSize);
+
 static inline VkExtent2D GetExtent2D(VkExtent3D Extent)
 {
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
@@ -52,58 +66,6 @@ static inline VkPipelineShaderStageCreateInfo GetShaderStageInfo(VkShaderStageFl
         .pName = "main",
         .stage = Stage,
         .module = Module
-    };
-
-    return Info;
-}
-
-static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Color(VkImageView View, VkImageLayout Layout, VkClearValue* InClearValue)
-{
-    VkRenderingAttachmentInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .pNext = NULL,
-        .imageView = View,
-        .imageLayout = Layout,
-        .loadOp = InClearValue ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = InClearValue ? *InClearValue : (VkClearValue){ .color = { { 0.0f, 0.0f, 0.0f, 1.0f } } }
-    };
-
-    return Info;
-}
-
-static inline VkRenderingAttachmentInfo GetRenderingAttachmentInfo_Depth(
-    VkImageView View,
-    VkImageLayout Layout,
-    bool bClear)
-{
-    VkRenderingAttachmentInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .pNext = NULL,
-        .imageView = View,
-        .imageLayout = Layout,
-        .loadOp = bClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
-        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .clearValue = (VkClearValue){ .depthStencil.depth = 1.0f }
-    };
-
-    return Info;
-}
-
-static inline VkRenderingInfo GetRenderingInfo(
-    VkExtent2D RenderExtent,
-    VkRenderingAttachmentInfo* ColorAttachment,
-    VkRenderingAttachmentInfo* DepthAttachment)
-{
-    VkRenderingInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .pNext = NULL,
-        .renderArea = (VkRect2D){ .offset = (VkOffset2D){ 0, 0 }, .extent = RenderExtent },
-        .layerCount = 1,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = ColorAttachment,
-        .pDepthAttachment = DepthAttachment,
-        .pStencilAttachment = NULL,
     };
 
     return Info;
@@ -229,34 +191,3 @@ static inline VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommand
 
     return Info;
 }
-
-static inline VkSubmitInfo2 GetSubmitInfo(VkCommandBufferSubmitInfo* CommandBufferSubInfoPtr, VkSemaphoreSubmitInfo* SignalSemaphoreInfo,
-    VkSemaphoreSubmitInfo* WaitSemaphoreInfo)
-{
-    VkSubmitInfo2 Info = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-        .pNext = NULL,
-        .waitSemaphoreInfoCount = WaitSemaphoreInfo == NULL ? 0u : 1u,
-        .pWaitSemaphoreInfos = WaitSemaphoreInfo,
-        .commandBufferInfoCount = 1,
-        .pCommandBufferInfos = CommandBufferSubInfoPtr,
-        .signalSemaphoreInfoCount = SignalSemaphoreInfo == NULL ? 0u : 1u,
-        .pSignalSemaphoreInfos = SignalSemaphoreInfo,
-    };
-
-    return Info;
-}
-
-extern void Rr_BlitPrerenderedDepth(
-    VkCommandBuffer CommandBuffer,
-    VkImage Source,
-    VkImage Destination,
-    VkExtent2D SrcSize,
-    VkExtent2D DstSize);
-
-extern void Rr_BlitColorImage(
-    VkCommandBuffer CommandBuffer,
-    VkImage Source,
-    VkImage Destination,
-    VkExtent2D SrcSize,
-    VkExtent2D DstSize);
