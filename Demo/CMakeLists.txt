@@ -26,12 +26,6 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 endif ()
 
 #
-# Setup RrFramework
-#
-cmake_path(SET RR_ASSET_PATH "Asset/")
-cmake_path(ABSOLUTE_PATH RR_ASSET_PATH NORMALIZE)
-
-#
 # Assets
 #
 file(GLOB_RECURSE RR_DEMO_ASSETS CONFIGURE_DEPENDS
