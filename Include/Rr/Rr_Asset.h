@@ -27,9 +27,7 @@ struct Rr_Asset
     HGLOBAL Memory;
 };
 
-typedef int Rr_AssetRef;
-
-    #define Rr_MakeAssetRef(ResourceID) ResourceID
+typedef const char* Rr_AssetRef;
 
 #else
 

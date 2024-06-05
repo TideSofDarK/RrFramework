@@ -15,15 +15,15 @@ foreach (AssetPath ${AssetsList})
     get_filename_component(AssetName ${AssetPath} NAME)
     string(MAKE_C_IDENTIFIER "${AssetName}" AssetIdentifier)
     string(TOUPPER "${AssetIdentifier}" AssetIdentifier)
+    set(FinalIdentifier "${IdentifierPrefix}${AssetIdentifier}")
     file(
             APPEND "${ResultFilePath}"
-            "#define ${IdentifierPrefix}${AssetIdentifier} ${AssetCounter}\n"
+            "#define ${FinalIdentifier} \"${FinalIdentifier}_ID\"\n"
             "#if defined(RC_INVOKED)\n"
-            "${IdentifierPrefix}${AssetIdentifier} RRDATA \"${AssetAbsolutePath}\"\n"
+            "${FinalIdentifier}_ID RRDATA \"${AssetAbsolutePath}\"\n"
             "#endif\n"
             "\n"
     )
-    MATH(EXPR AssetCounter "${AssetCounter}+1")
 endforeach (AssetPath)
 file(
         APPEND "${ResultFilePath}"

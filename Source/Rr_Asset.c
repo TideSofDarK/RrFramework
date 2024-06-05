@@ -5,7 +5,7 @@
 Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
     Rr_Asset Asset;
-    Asset.Resource = FindResource(NULL, MAKEINTRESOURCEA(AssetRef), "RRDATA");
+    Asset.Resource = FindResource(NULL, AssetRef, "RRDATA");
     Asset.Memory = LoadResource(NULL, Asset.Resource);
     Asset.Length = SizeofResource(NULL, Asset.Resource);
     Asset.Data = (byte*)LockResource(Asset.Memory);

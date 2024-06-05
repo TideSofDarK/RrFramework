@@ -56,7 +56,6 @@ if (CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND CMAKE_C_SIMULATE_ID STREQUAL "")
 else ()
     set(RR_USE_RC 0)
 endif ()
-set(RrAssetCounter 100 CACHE INTERNAL "Asset Counter")
 function(rr_embed_assets TargetName AssetsTargetName IdentifierPrefix HeaderName AssetsList)
     set(ResultFilePath "${CMAKE_CURRENT_BINARY_DIR}/AssetHeaders/${HeaderName}.inc")
 
@@ -93,7 +92,6 @@ function(rr_embed_assets TargetName AssetsTargetName IdentifierPrefix HeaderName
             "-DResultFilePath=${ResultFilePath}"
             "-DAssetsList=${AssetsList}"
             "-DIdentifierPrefix=${IdentifierPrefix}"
-            "-DAssetCounter=${RrAssetCounter}"
             -P ${RrFramework_SOURCE_DIR}/CMake/EmbedAssets.cmake
             DEPENDS
             ${AssetsList}
