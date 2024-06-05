@@ -56,71 +56,69 @@ if (CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND CMAKE_C_SIMULATE_ID STREQUAL "")
 else ()
     set(RR_USE_RC 0)
 endif ()
-function(rr_embed_assets TargetName AssetsTargetName IdentifierPrefix HeaderName AssetsList)
-    set(ResultFilePath "${CMAKE_CURRENT_BINARY_DIR}/AssetHeaders/${HeaderName}.inc")
 
-    set(FinalAssetsList "")
+function(rr_embed_assets TARGET_NAME ASSETS_TARGET_NAME IDENTIFIER_PREFIX HEADER_NAME ASSETS_LIST)
+    set(ASSET_HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/AssetHeaders/${HEADER_NAME}.inc")
+
+    set(ASSETS_LIST_FINAL "")
 
     # Compile shaders
     set(SPIRVBinaries "")
-    foreach (AssetPath ${AssetsList})
-        get_filename_component(AssetExtension ${AssetPath} EXT)
+    foreach (ASSET_PATH ${ASSETS_LIST})
+        get_filename_component(AssetExtension ${ASSET_PATH} EXT)
         if ((AssetExtension STREQUAL ".vert.glsl") OR (AssetExtension STREQUAL ".frag.glsl"))
-            get_filename_component(AssetNameWLE ${AssetPath} NAME_WLE)
+            get_filename_component(AssetNameWLE ${ASSET_PATH} NAME_WLE)
             set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${AssetNameWLE}.spv")
             add_custom_command(
-                    MAIN_DEPENDENCY ${AssetPath}
+                    MAIN_DEPENDENCY ${ASSET_PATH}
                     OUTPUT ${SPIRV}
-                    COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.0 ${AssetPath} -o ${SPIRV}
-                    DEPENDS ${AssetPath}
+                    COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.0 ${ASSET_PATH} -o ${SPIRV}
+                    DEPENDS ${ASSET_PATH}
                     VERBATIM)
             list(APPEND SPIRVBinaries ${SPIRV})
-            set(AssetPath ${SPIRV})
+            set(ASSET_PATH ${SPIRV})
         endif ()
-        list(APPEND FinalAssetsList "${AssetPath}")
-    endforeach (AssetPath)
+        list(APPEND ASSETS_LIST_FINAL "${ASSET_PATH}")
+    endforeach (ASSET_PATH)
 
-    set(AssetsList "${FinalAssetsList}")
-
-    list(LENGTH AssetsList AssetsLength)
-    MATH(EXPR RrAssetCounter "${RrAssetCounter}+${AssetsLength}")
+    set(ASSETS_LIST "${ASSETS_LIST_FINAL}")
 
     add_custom_command(
             OUTPUT
-            "${ResultFilePath}"
+            "${ASSET_HEADER_PATH}"
             COMMAND ${CMAKE_COMMAND}
-            "-DResultFilePath=${ResultFilePath}"
-            "-DAssetsList=${AssetsList}"
-            "-DIdentifierPrefix=${IdentifierPrefix}"
+            "-DASSET_HEADER_PATH=${ASSET_HEADER_PATH}"
+            "-DASSETS_LIST=${ASSETS_LIST}"
+            "-DIDENTIFIER_PREFIX=${IDENTIFIER_PREFIX}"
             -P ${RrFramework_SOURCE_DIR}/CMake/EmbedAssets.cmake
             DEPENDS
-            ${AssetsList}
+            ${ASSETS_LIST}
             VERBATIM
     )
 
     add_custom_target(
-            ${AssetsTargetName}
+            ${ASSETS_TARGET_NAME}
             DEPENDS
-            "${ResultFilePath}"
+            "${ASSET_HEADER_PATH}"
     )
 
-    set_source_files_properties("${ResultFilePath}" PROPERTIES OBJECT_DEPENDS "${AssetsList}")
-    set_source_files_properties("${ResultFilePath}" PROPERTIES HEADER_FILE_ONLY NO)
+    set_source_files_properties("${ASSET_HEADER_PATH}" PROPERTIES OBJECT_DEPENDS "${ASSETS_LIST}")
+    set_source_files_properties("${ASSET_HEADER_PATH}" PROPERTIES HEADER_FILE_ONLY NO)
 
     if (RR_USE_RC)
-        set_source_files_properties("${ResultFilePath}" PROPERTIES LANGUAGE RC)
+        set_source_files_properties("${ASSET_HEADER_PATH}" PROPERTIES LANGUAGE RC)
     else ()
-        set_source_files_properties("${ResultFilePath}" PROPERTIES LANGUAGE C)
+        set_source_files_properties("${ASSET_HEADER_PATH}" PROPERTIES LANGUAGE C)
         set_source_files_properties(
-                "${ResultFilePath}"
+                "${ASSET_HEADER_PATH}"
                 PROPERTIES
                 COMPILE_DEFINITIONS "RR_DEFINE_ASSETS=1"
         )
     endif ()
 
-    target_sources(${TargetName} PUBLIC "${ResultFilePath}")
-    target_include_directories(${TargetName} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/AssetHeaders/")
-    add_dependencies(${TargetName} ${AssetsTargetName})
+    target_sources(${TARGET_NAME} PUBLIC "${ASSET_HEADER_PATH}")
+    target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/AssetHeaders/")
+    add_dependencies(${TARGET_NAME} ${ASSETS_TARGET_NAME})
 endfunction()
 
 #

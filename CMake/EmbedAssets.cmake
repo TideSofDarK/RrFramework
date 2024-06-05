@@ -1,7 +1,7 @@
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
 file(
-        WRITE "${ResultFilePath}"
+        WRITE "${ASSET_HEADER_PATH}"
         "#ifndef RC_INVOKED\n"
         "#include <Rr/Rr_Asset.h>\n"
         "#endif\n"
@@ -9,45 +9,45 @@ file(
         "#if defined(RR_USE_RC)\n"
         "\n"
 )
-foreach (AssetPath ${AssetsList})
-    cmake_path(ABSOLUTE_PATH AssetPath NORMALIZE OUTPUT_VARIABLE AssetAbsolutePath)
+foreach (ASSET_PATH ${ASSETS_LIST})
+    cmake_path(ABSOLUTE_PATH ASSET_PATH NORMALIZE OUTPUT_VARIABLE AssetAbsolutePath)
 
-    get_filename_component(AssetName ${AssetPath} NAME)
-    string(MAKE_C_IDENTIFIER "${AssetName}" AssetIdentifier)
-    string(TOUPPER "${AssetIdentifier}" AssetIdentifier)
-    set(FinalIdentifier "${IdentifierPrefix}${AssetIdentifier}")
+    get_filename_component(ASSET_NAME ${ASSET_PATH} NAME)
+    string(MAKE_C_IDENTIFIER "${ASSET_NAME}" ASSET_IDENTIFIER)
+    string(TOUPPER "${ASSET_IDENTIFIER}" ASSET_IDENTIFIER)
+    set(ASSET_FINAL_IDENTIFIER "${IDENTIFIER_PREFIX}${ASSET_IDENTIFIER}")
     file(
-            APPEND "${ResultFilePath}"
-            "#define ${FinalIdentifier} \"${FinalIdentifier}_ID\"\n"
+            APPEND "${ASSET_HEADER_PATH}"
+            "#define ${ASSET_FINAL_IDENTIFIER} \"${ASSET_FINAL_IDENTIFIER}_ID\"\n"
             "#if defined(RC_INVOKED)\n"
-            "${FinalIdentifier}_ID RRDATA \"${AssetAbsolutePath}\"\n"
+            "${ASSET_FINAL_IDENTIFIER}_ID RRDATA \"${AssetAbsolutePath}\"\n"
             "#endif\n"
             "\n"
     )
-endforeach (AssetPath)
+endforeach (ASSET_PATH)
 file(
-        APPEND "${ResultFilePath}"
+        APPEND "${ASSET_HEADER_PATH}"
         "#else\n"
         "\n"
 )
-foreach (AssetPath ${AssetsList})
-    cmake_path(ABSOLUTE_PATH AssetPath NORMALIZE OUTPUT_VARIABLE AssetAbsolutePath)
+foreach (ASSET_PATH ${ASSETS_LIST})
+    cmake_path(ABSOLUTE_PATH ASSET_PATH NORMALIZE OUTPUT_VARIABLE AssetAbsolutePath)
 
-    get_filename_component(AssetName ${AssetPath} NAME)
-    string(MAKE_C_IDENTIFIER "${AssetName}" AssetIdentifier)
-    string(TOUPPER "${AssetIdentifier}" AssetIdentifier)
-    set(FinalIdentifier "${IdentifierPrefix}${AssetIdentifier}")
+    get_filename_component(ASSET_NAME ${ASSET_PATH} NAME)
+    string(MAKE_C_IDENTIFIER "${ASSET_NAME}" ASSET_IDENTIFIER)
+    string(TOUPPER "${ASSET_IDENTIFIER}" ASSET_IDENTIFIER)
+    set(ASSET_FINAL_IDENTIFIER "${IDENTIFIER_PREFIX}${ASSET_IDENTIFIER}")
     file(
-            APPEND "${ResultFilePath}"
+            APPEND "${ASSET_HEADER_PATH}"
             "#if defined(RR_DEFINE_ASSETS)\n"
-            "INCBIN(${FinalIdentifier}, \"${AssetAbsolutePath}\");\n"
+            "INCBIN(${ASSET_FINAL_IDENTIFIER}, \"${AssetAbsolutePath}\");\n"
             "#else\n"
-            "RR_ASSET_EXTERN const Rr_AssetRef ${FinalIdentifier};\n"
+            "RR_ASSET_EXTERN const Rr_AssetRef ${ASSET_FINAL_IDENTIFIER};\n"
             "#endif\n"
             "\n"
     )
-endforeach (AssetPath)
+endforeach (ASSET_PATH)
 file(
-        APPEND "${ResultFilePath}"
+        APPEND "${ASSET_HEADER_PATH}"
         "#endif\n"
 )
