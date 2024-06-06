@@ -496,7 +496,7 @@ static int SDLCALL Rr_LoadingThreadProc(void* Data)
 
     SDL_CleanupTLS();
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 void Rr_InitLoadingThread(Rr_App* App)

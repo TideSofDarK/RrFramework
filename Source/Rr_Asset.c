@@ -2,13 +2,16 @@
 
 #if defined(RR_USE_RC)
 
+#include "Windows.h"
+
 Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
+    HRSRC Resource =  FindResource(NULL, AssetRef, "RRDATA");
+    HGLOBAL Memory = LoadResource(NULL, Resource);
+
     Rr_Asset Asset;
-    Asset.Resource = FindResource(NULL, AssetRef, "RRDATA");
-    Asset.Memory = LoadResource(NULL, Asset.Resource);
-    Asset.Length = SizeofResource(NULL, Asset.Resource);
-    Asset.Data = (byte*)LockResource(Asset.Memory);
+    Asset.Length = SizeofResource(NULL, Resource);
+    Asset.Data = (byte*)LockResource(Memory);
     return Asset;
 }
 

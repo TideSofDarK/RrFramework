@@ -14,29 +14,17 @@ extern "C"
 #endif
 
 typedef struct Rr_Asset Rr_Asset;
-
-#if defined(RR_USE_RC)
-
-    #include "Windows.h"
-
 struct Rr_Asset
 {
     const byte* Data;
     usize Length;
-    HRSRC Resource;
-    HGLOBAL Memory;
 };
+
+#if defined(RR_USE_RC)
 
 typedef const char* Rr_AssetRef;
 
 #else
-
-struct Rr_Asset
-{
-    const char* Data;
-    const char* End;
-    usize Length;
-};
 
 typedef struct Rr_AssetRef
 {

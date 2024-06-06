@@ -273,7 +273,8 @@ static void Iterate(Rr_App* App)
         CottageDraw.Model[3][0] = 3.5f;
         CottageDraw.Model[3][1] = 0.5f;
         CottageDraw.Model[3][2] = 3.5f;
-        Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
+        // Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
+        Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &CottageMaterial, 1, AvocadoMesh, Rr_MakeData(CottageDraw));
 
         SUber3DDraw MarbleDraw = { 0 };
         MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
