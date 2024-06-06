@@ -41,7 +41,7 @@ typedef union
 typedef struct Rr_LoadTask
 {
     Rr_LoadType LoadType;
-    Rr_Asset Asset;
+    Rr_AssetRef AssetRef;
     Rr_LoadTaskOptions Options;
     void** Out;
 } Rr_LoadTask;
@@ -49,26 +49,26 @@ typedef struct Rr_LoadTask
 typedef void (*Rr_LoadingCallback)(Rr_App* App, const void* Userdata);
 
 extern Rr_LoadTask Rr_LoadColorImageFromPNG(
-    const Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     struct Rr_Image** OutImage);
 extern Rr_LoadTask Rr_LoadStaticMeshFromOBJ(
-    const Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     struct Rr_StaticMesh** OutStaticMesh);
 extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
-    const Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     size_t MeshIndex,
     struct Rr_StaticMesh** OutStaticMesh);
 
 extern Rr_LoadingContext* Rr_LoadAsync(
     Rr_App* App,
-    Rr_LoadTask* LoadTasks,
-    usize LoadTasksCount,
+    Rr_LoadTask* Tasks,
+    usize TaskCount,
     Rr_LoadingCallback LoadingCallback,
     const void* Userdata);
 extern Rr_LoadResult Rr_LoadImmediate(
     Rr_App* App,
-    Rr_LoadTask* LoadTasks,
-    usize LoadTasksCount);
+    Rr_LoadTask* Tasks,
+    usize TaskCount);
 extern void Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal);
 
 #ifdef __cplusplus

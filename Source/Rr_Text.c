@@ -114,9 +114,7 @@ void Rr_InitTextRenderer(Rr_App* App)
     }
 
     /* Builtin Font */
-    Rr_Asset BuiltinFontPNG = Rr_LoadAsset(RR_BUILTIN_IOSEVKA_PNG);
-    Rr_Asset BuiltinFontJSON = Rr_LoadAsset(RR_BUILTIN_IOSEVKA_JSON);
-    Renderer->BuiltinFont = Rr_CreateFont(App, &BuiltinFontPNG, &BuiltinFontJSON);
+    Renderer->BuiltinFont = Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
 }
 
 void Rr_CleanupTextRenderer(Rr_App* App)
@@ -139,11 +137,11 @@ void Rr_CleanupTextRenderer(Rr_App* App)
     Rr_DestroyFont(App, Renderer->BuiltinFont);
 }
 
-Rr_Font* Rr_CreateFont(Rr_App* App, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
+Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Image* Atlas;
-    Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNG, &Atlas);
+    Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNGRef, &Atlas);
     Rr_LoadImmediate(App, &ImageLoadTask, 1);
 
     Rr_Buffer* Buffer = Rr_CreateBuffer(
@@ -153,7 +151,9 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_Asset* FontPNG, Rr_Asset* FontJSON)
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         false);
 
-    cJSON* FontDataJSON = cJSON_ParseWithLength(FontJSON->Data, FontJSON->Length);
+    Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
+
+    cJSON* FontDataJSON = cJSON_ParseWithLength(FontJSON.Data, FontJSON.Length);
 
     const cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
     const cJSON* MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");

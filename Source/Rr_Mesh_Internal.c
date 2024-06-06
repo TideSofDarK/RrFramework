@@ -1,5 +1,6 @@
 #include "Rr_Mesh_Internal.h"
 
+#include "Rr_Asset.h"
 #include "Rr_Vulkan.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
@@ -362,15 +363,17 @@ Rr_StaticMesh* Rr_CreateStaticMesh(
 Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    const Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     usize MeshIndex,
     Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
     cgltf_data* Data = NULL;
     cgltf_options Options = { 0 };
-    cgltf_mesh* Mesh = ParseGLTFMesh(Asset, MeshIndex, &Data);
+    cgltf_mesh* Mesh = ParseGLTFMesh(&Asset, MeshIndex, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
 
     Rr_RawMesh* RawMeshes = Rr_StackAlloc(Rr_RawMesh, Mesh->primitives_count);
@@ -399,12 +402,14 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
 Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    const Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_RawMesh RawMesh = CreateRawMeshFromOBJ(Asset, Scratch.Arena);
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
+    Rr_RawMesh RawMesh = CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
     Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1, NULL, 0);
 
@@ -413,11 +418,13 @@ Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
     return StaticMesh;
 }
 
-usize Rr_GetStaticMeshSizeOBJ(const Rr_Asset* Asset, Rr_Arena* Arena)
+usize Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_RawMesh RawMesh = CreateRawMeshFromOBJ(Asset, Scratch.Arena);
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
+    Rr_RawMesh RawMesh = CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
     usize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh.VerticesSlice);
     usize IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_SliceLength(&RawMesh.IndicesSlice);
@@ -427,10 +434,12 @@ usize Rr_GetStaticMeshSizeOBJ(const Rr_Asset* Asset, Rr_Arena* Arena)
     return VertexBufferSize + IndexBufferSize;
 }
 
-usize Rr_GetStaticMeshSizeGLTF(const Rr_Asset* Asset, usize MeshIndex, Rr_Arena* Arena)
+usize Rr_GetStaticMeshSizeGLTF(Rr_AssetRef AssetRef, usize MeshIndex, Rr_Arena* Arena)
 {
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
     cgltf_data* Data = NULL;
-    cgltf_mesh* Mesh = ParseGLTFMesh(Asset, MeshIndex, &Data);
+    cgltf_mesh* Mesh = ParseGLTFMesh(&Asset, MeshIndex, &Data);
 
     usize VertexBufferSize = 0;
     usize IndexBufferSize = 0;

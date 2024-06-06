@@ -471,13 +471,6 @@ void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
     Rr_Renderer* Renderer = DrawContext->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
-    if (DrawContext->Info.DrawTarget == NULL)
-    {
-        DrawContext->Info.DrawTarget = Renderer->DrawTarget;
-        DrawContext->Info.Viewport.Width = (i32)Renderer->SwapchainSize.width;
-        DrawContext->Info.Viewport.Height = (i32)Renderer->SwapchainSize.height;
-    }
-
     Rr_DrawTarget* DrawTarget = DrawContext->Info.DrawTarget;
     u32 Width = DrawContext->Info.Viewport.Width;
     u32 Height = DrawContext->Info.Viewport.Height;

@@ -12,15 +12,23 @@ Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, cons
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawContext* RenderingContext = Rr_SlicePush(&Frame->DrawContextsSlice, &Frame->Arena);
-    *RenderingContext = (Rr_DrawContext){
+    Rr_DrawContext* DrawContext = Rr_SlicePush(&Frame->DrawContextsSlice, &Frame->Arena);
+    *DrawContext = (Rr_DrawContext){
         .Arena = &Frame->Arena,
         .Renderer = Renderer,
         .Info = *Info,
     };
-    SDL_memcpy(RenderingContext->GlobalsData, GlobalsData, Info->Sizes.Globals);
 
-    return RenderingContext;
+    if (DrawContext->Info.DrawTarget == NULL)
+    {
+        DrawContext->Info.DrawTarget = Renderer->DrawTarget;
+        DrawContext->Info.Viewport.Width = (i32)Renderer->SwapchainSize.width;
+        DrawContext->Info.Viewport.Height = (i32)Renderer->SwapchainSize.height;
+    }
+
+    SDL_memcpy(DrawContext->GlobalsData, GlobalsData, Info->Sizes.Globals);
+
+    return DrawContext;
 }
 
 void Rr_DrawStaticMesh(

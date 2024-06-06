@@ -5,29 +5,29 @@
 
 #include <SDL3/SDL.h>
 
-Rr_LoadTask Rr_LoadColorImageFromPNG(const Rr_Asset* Asset, Rr_Image** OutImage)
+Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image** OutImage)
 {
     return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
-        .Asset = *Asset,
+        .AssetRef = AssetRef,
         .Out = (void**)OutImage
     };
 }
 
-Rr_LoadTask Rr_LoadStaticMeshFromOBJ(const Rr_Asset* Asset, struct Rr_StaticMesh** OutStaticMesh)
+Rr_LoadTask Rr_LoadStaticMeshFromOBJ(Rr_AssetRef AssetRef, struct Rr_StaticMesh** OutStaticMesh)
 {
     return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
-        .Asset = *Asset,
+        .AssetRef = AssetRef,
         .Out = (void**)OutStaticMesh
     };
 }
 
-Rr_LoadTask Rr_LoadStaticMeshFromGLTF(const Rr_Asset* Asset, usize MeshIndex, struct Rr_StaticMesh** OutStaticMesh)
+Rr_LoadTask Rr_LoadStaticMeshFromGLTF(Rr_AssetRef AssetRef, usize MeshIndex, struct Rr_StaticMesh** OutStaticMesh)
 {
     return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
-        .Asset = *Asset,
+        .AssetRef = AssetRef,
         .Out = (void**)OutStaticMesh,
         .Options = (Rr_MeshGLTFOptions){
             .MeshIndex = MeshIndex }

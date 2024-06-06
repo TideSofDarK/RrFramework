@@ -28,20 +28,20 @@ static usize Rr_CalculateLoadSize(
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
-                StagingBufferSize += Rr_GetImageSizePNG(&Task->Asset, Scratch.Arena);
+                StagingBufferSize += Rr_GetImageSizePNG(Task->AssetRef, Scratch.Arena);
                 *OutImageCount += 1;
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
-                StagingBufferSize += Rr_GetStaticMeshSizeOBJ(&Task->Asset, Scratch.Arena);
+                StagingBufferSize += Rr_GetStaticMeshSizeOBJ(Task->AssetRef, Scratch.Arena);
                 *OutBufferCount += 2;
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
             {
                 Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
-                StagingBufferSize += Rr_GetStaticMeshSizeGLTF(&Task->Asset, Options.MeshIndex, Scratch.Arena);
+                StagingBufferSize += Rr_GetStaticMeshSizeGLTF(Task->AssetRef, Options.MeshIndex, Scratch.Arena);
                 *OutBufferCount += 2;
             }
             break;
@@ -77,7 +77,7 @@ static void Rr_LoadResourcesFromTasks(
                 *(Rr_Image**)Task->Out = Rr_CreateColorImageFromPNG(
                     App,
                     UploadContext,
-                    &Task->Asset,
+                    Task->AssetRef,
                     false,
                     Scratch.Arena);
             }
@@ -87,7 +87,7 @@ static void Rr_LoadResourcesFromTasks(
                 *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshOBJ(
                     App,
                     UploadContext,
-                    &Task->Asset,
+                    Task->AssetRef,
                     Scratch.Arena);
             }
             break;
@@ -97,7 +97,7 @@ static void Rr_LoadResourcesFromTasks(
                 *(Rr_StaticMesh**)Task->Out = Rr_CreateStaticMeshGLTF(
                     App,
                     UploadContext,
-                    &Task->Asset,
+                    Task->AssetRef,
                     Options.MeshIndex,
                     Scratch.Arena);
             }

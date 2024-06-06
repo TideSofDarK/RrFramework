@@ -29,16 +29,16 @@ extern Rr_Image* Rr_CreateImage(
 extern Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
-    Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     bool bMipMapped,
     Rr_Arena* Arena);
 extern Rr_Image* Rr_CreateDepthImageFromEXR(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
-    Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     Rr_Arena* Arena);
 extern Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Height);
 extern Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height);
 
-extern size_t Rr_GetImageSizePNG(const Rr_Asset* Asset, Rr_Arena* Arena);
-extern size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset, Rr_Arena* Arena);
+extern size_t Rr_GetImageSizePNG(Rr_AssetRef Asset, Rr_Arena* Arena);
+extern size_t Rr_GetImageSizeEXR(Rr_AssetRef Asset, Rr_Arena* Arena);

@@ -172,18 +172,20 @@ static void UploadImage(
     }
 }
 
-size_t Rr_GetImageSizePNG(const Rr_Asset* Asset, Rr_Arena* Arena)
+size_t Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena* Arena)
 {
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
     const i32 DesiredChannels = 4;
     i32 Width;
     i32 Height;
     i32 Channels;
-    stbi_info_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, &Width, &Height, &Channels);
+    stbi_info_from_memory((stbi_uc*)Asset.Data, (i32)Asset.Length, &Width, &Height, &Channels);
 
     return Width * Height * DesiredChannels;
 }
 
-size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset, Rr_Arena* Arena)
+size_t Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena)
 {
     return 0;
 }
@@ -191,14 +193,16 @@ size_t Rr_GetImageSizeEXR(const Rr_Asset* Asset, Rr_Arena* Arena)
 Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     bool bMipMapped,
     Rr_Arena* Arena)
 {
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
     const i32 DesiredChannels = 4;
     i32 Channels;
     VkExtent3D Extent = { .depth = 1 };
-    stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset->Data, (i32)Asset->Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
+    stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset.Data, (i32)Asset.Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
     const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Image* ColorImage = Rr_CreateImage(
@@ -227,16 +231,18 @@ Rr_Image* Rr_CreateColorImageFromPNG(
 Rr_Image* Rr_CreateDepthImageFromEXR(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    Rr_Asset* Asset,
+    Rr_AssetRef AssetRef,
     Rr_Arena* Arena)
 {
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
     int Result;
     const char* Error;
 
     EXRVersion Version;
-    Result = ParseEXRVersionFromMemory(&Version, (const unsigned char*)Asset->Data, Asset->Length);
+    Result = ParseEXRVersionFromMemory(&Version, (const unsigned char*)Asset.Data, Asset.Length);
     if (Result != 0)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file!");
@@ -244,7 +250,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     }
 
     EXRHeader Header;
-    Result = ParseEXRHeaderFromMemory(&Header, &Version, (const unsigned char*)Asset->Data, Asset->Length, &Error);
+    Result = ParseEXRHeaderFromMemory(&Header, &Version, (const unsigned char*)Asset.Data, Asset.Length, &Error);
     if (Result != 0)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file: %s", Error);
@@ -255,7 +261,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     EXRImage Image;
     InitEXRImage(&Image);
 
-    Result = LoadEXRImageFromMemory(&Image, &Header, (const unsigned char*)Asset->Data, Asset->Length, &Error);
+    Result = LoadEXRImageFromMemory(&Image, &Header, (const unsigned char*)Asset.Data, Asset.Length, &Error);
     if (Result != 0)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file: %s", Error);

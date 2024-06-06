@@ -152,20 +152,13 @@ static void Init(Rr_App* App)
 #endif
     InitInputMappings();
 
-    Rr_Asset AvocadoGLB = Rr_LoadAsset(DEMO_ASSET_AVOCADO_GLB);
-    Rr_Asset MarbleDiffusePNG = Rr_LoadAsset(DEMO_ASSET_MARBLEDIFFUSE_PNG);
-    Rr_Asset MarbleSpecularPNG = Rr_LoadAsset(DEMO_ASSET_MARBLESPECULAR_PNG);
-    Rr_Asset MarbleOBJ = Rr_LoadAsset(DEMO_ASSET_MARBLE_OBJ);
-    Rr_Asset CottagePNG = Rr_LoadAsset(DEMO_ASSET_COTTAGE_PNG);
-    Rr_Asset CottageOBJ = Rr_LoadAsset(DEMO_ASSET_COTTAGE_OBJ);
-
     std::array LoadTasks = {
-        Rr_LoadColorImageFromPNG(&MarbleDiffusePNG, &MarbleDiffuse),
-        Rr_LoadColorImageFromPNG(&MarbleSpecularPNG, &MarbleSpecular),
-        Rr_LoadColorImageFromPNG(&CottagePNG, &CottageTexture),
-        Rr_LoadStaticMeshFromGLTF(&AvocadoGLB, 0, &AvocadoMesh),
-        Rr_LoadStaticMeshFromOBJ(&MarbleOBJ, &MarbleMesh),
-        Rr_LoadStaticMeshFromOBJ(&CottageOBJ, &CottageMesh),
+        Rr_LoadColorImageFromPNG(DEMO_ASSET_MARBLEDIFFUSE_PNG, &MarbleDiffuse),
+        Rr_LoadColorImageFromPNG(DEMO_ASSET_MARBLESPECULAR_PNG, &MarbleSpecular),
+        Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGE_PNG, &CottageTexture),
+        Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, 0, &AvocadoMesh),
+        Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_MARBLE_OBJ, &MarbleMesh),
+        Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
     };
     LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);
 
