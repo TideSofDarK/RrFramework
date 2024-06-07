@@ -98,6 +98,7 @@ static void Rr_LoadResourcesFromTasks(
                     App,
                     UploadContext,
                     Task->AssetRef,
+                    &Options.Loader,
                     Options.MeshIndex,
                     Scratch.Arena);
             }
@@ -453,6 +454,8 @@ static int SDLCALL Rr_LoadingThreadProc(void* Data)
     Rr_App* App = Data;
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_LoadingThread* LoadingThread = &App->LoadingThread;
+
+    Rr_InitThreadScratch(RR_LOADING_THREAD_SCRATCH_SIZE);
 
     Rr_LoadAsyncContext LoadAsyncContext = Rr_CreateLoadAsyncContext(Renderer);
 

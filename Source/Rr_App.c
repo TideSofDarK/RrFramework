@@ -192,6 +192,10 @@ void Rr_Run(Rr_AppConfig* Config)
         .ScratchArenaTLS = SDL_CreateTLS()
     };
 
+    Rr_SetScratchTLS(&App->ScratchArenaTLS);
+
+    Rr_InitThreadScratch(RR_SCRATCH_ARENA_SIZE);
+
     Rr_InitFrameTime(&App->FrameTime, App->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);

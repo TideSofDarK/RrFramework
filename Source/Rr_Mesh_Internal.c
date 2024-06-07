@@ -13,11 +13,29 @@
 
 #include <cgltf/cgltf.h>
 
-static cgltf_mesh* ParseGLTFMesh(const Rr_Asset* Asset, usize MeshIndex, cgltf_data** OutData)
+static void* Rr_CGLTFArenaAlloc(void* Arena, cgltf_size Size)
 {
-    cgltf_options Options = { 0 };
+    return Rr_ArenaAllocOne((Rr_Arena*)Arena, Size);
+}
+
+static void Rr_CGLTFArenaFree(void* Arena, void* Ptr)
+{
+    /* no-op */
+}
+
+static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena* Arena)
+{
+    return (cgltf_memory_options){
+        .alloc_func = Rr_CGLTFArenaAlloc,
+        .free_func = Rr_CGLTFArenaFree,
+        .user_data = Arena
+    };
+}
+
+static cgltf_mesh* Rr_ParseGLTFMesh(const Rr_Asset* Asset, usize MeshIndex, cgltf_options* Options, cgltf_data** OutData)
+{
     cgltf_data* Data = NULL;
-    cgltf_result Result = cgltf_parse(&Options, Asset->Data, Asset->Length, &Data);
+    cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Length, &Data);
     if (Result != cgltf_result_success)
     {
         SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "[glTF] Error loading glTF asset!");
@@ -43,7 +61,7 @@ static cgltf_mesh* ParseGLTFMesh(const Rr_Asset* Asset, usize MeshIndex, cgltf_d
     return Mesh;
 }
 
-static Rr_RawMesh CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
+static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -119,7 +137,7 @@ static Rr_RawMesh CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_
     return RawMesh;
 }
 
-static usize GetNewLine(const char* Data, usize Length, usize CurrentIndex)
+static usize Rr_GetNewLine(const char* Data, usize Length, usize CurrentIndex)
 {
     CurrentIndex++;
     while (CurrentIndex < Length && Data[CurrentIndex] != '\n')
@@ -130,7 +148,7 @@ static usize GetNewLine(const char* Data, usize Length, usize CurrentIndex)
     return CurrentIndex;
 }
 
-static Rr_RawMesh CreateRawMeshFromOBJ(
+static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
     const Rr_Asset* Asset,
     Rr_Arena* Arena)
 {
@@ -255,7 +273,7 @@ static Rr_RawMesh CreateRawMeshFromOBJ(
             }
             break;
         }
-        CurrentIndex = GetNewLine(Asset->Data, Asset->Length, CurrentIndex) + 1;
+        CurrentIndex = Rr_GetNewLine(Asset->Data, Asset->Length, CurrentIndex) + 1;
     }
 
     Rr_DestroyArenaScratch(Scratch);
@@ -364,6 +382,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
+    Rr_GLTFLoader* Loader,
     usize MeshIndex,
     Rr_Arena* Arena)
 {
@@ -372,8 +391,8 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
     cgltf_data* Data = NULL;
-    cgltf_options Options = { 0 };
-    cgltf_mesh* Mesh = ParseGLTFMesh(&Asset, MeshIndex, &Data);
+    cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
+    cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
 
     Rr_RawMesh* RawMeshes = Rr_StackAlloc(Rr_RawMesh, Mesh->primitives_count);
@@ -383,7 +402,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
         cgltf_primitive* Primitive = Mesh->primitives + Index;
 
         Rr_RawMesh* RawMesh = RawMeshes + Index;
-        *RawMesh = CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);
+        *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);
     }
 
     /* @TODO: Parse glTF materials. */
@@ -409,7 +428,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    Rr_RawMesh RawMesh = CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
+    Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
     Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1, NULL, 0);
 
@@ -424,7 +443,7 @@ usize Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena)
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    Rr_RawMesh RawMesh = CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
+    Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
     usize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh.VerticesSlice);
     usize IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_SliceLength(&RawMesh.IndicesSlice);
@@ -436,10 +455,13 @@ usize Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena)
 
 usize Rr_GetStaticMeshSizeGLTF(Rr_AssetRef AssetRef, usize MeshIndex, Rr_Arena* Arena)
 {
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
     cgltf_data* Data = NULL;
-    cgltf_mesh* Mesh = ParseGLTFMesh(&Asset, MeshIndex, &Data);
+    cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
+    cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
 
     usize VertexBufferSize = 0;
     usize IndexBufferSize = 0;
@@ -453,6 +475,8 @@ usize Rr_GetStaticMeshSizeGLTF(Rr_AssetRef AssetRef, usize MeshIndex, Rr_Arena* 
     }
 
     cgltf_free(Data);
+
+    Rr_DestroyArenaScratch(Scratch);
 
     return VertexBufferSize + IndexBufferSize;
 }

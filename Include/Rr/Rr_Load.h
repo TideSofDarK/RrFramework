@@ -28,10 +28,20 @@ typedef enum Rr_LoadType
     RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
 } Rr_LoadType;
 
-typedef struct
+typedef struct Rr_GLTFLoader Rr_GLTFLoader;
+struct Rr_GLTFLoader
 {
+    struct Rr_GenericPipeline* GenericPipeline;
+    u8 BaseTexture;
+    u8 NormalTexture;
+    u8 SpecularTexture;
+};
+
+typedef struct Rr_MeshGLTFOptions Rr_MeshGLTFOptions;
+struct Rr_MeshGLTFOptions {
     usize MeshIndex;
-} Rr_MeshGLTFOptions;
+    Rr_GLTFLoader Loader;
+};
 
 typedef union
 {
@@ -56,6 +66,7 @@ extern Rr_LoadTask Rr_LoadStaticMeshFromOBJ(
     struct Rr_StaticMesh** OutStaticMesh);
 extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
     Rr_AssetRef AssetRef,
+    Rr_GLTFLoader* Loader,
     size_t MeshIndex,
     struct Rr_StaticMesh** OutStaticMesh);
 

@@ -6,6 +6,7 @@
 struct Rr_UploadContext;
 struct Rr_Material;
 struct Rr_Buffer;
+struct Rr_GLTFLoader;
 
 typedef struct Rr_Primitive Rr_Primitive;
 struct Rr_Primitive
@@ -15,11 +16,12 @@ struct Rr_Primitive
     u32 IndexCount;
 };
 
-typedef struct
+typedef struct Rr_RawMesh Rr_RawMesh;
+struct Rr_RawMesh
 {
     Rr_SliceType(Rr_Vertex) VerticesSlice;
     Rr_SliceType(Rr_MeshIndexType) IndicesSlice;
-} Rr_RawMesh;
+};
 
 struct Rr_StaticMesh
 {
@@ -54,7 +56,8 @@ extern Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
-    size_t MeshIndex,
+    struct Rr_GLTFLoader* Loader,
+    usize MeshIndex,
     Rr_Arena* Arena);
 extern Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
     Rr_App* App,

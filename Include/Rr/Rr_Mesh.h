@@ -16,14 +16,15 @@ typedef struct Rr_SkeletalMesh Rr_SkeletalMesh;
 
 typedef u32 Rr_MeshIndexType;
 
-typedef struct
+typedef struct Rr_Vertex Rr_Vertex;
+struct Rr_Vertex
 {
     Rr_Vec3 Position;
     f32 TexCoordX;
     Rr_Vec3 Normal;
     f32 TexCoordY;
     Rr_Vec4 Color;
-} Rr_Vertex;
+};
 
 extern void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh);
 

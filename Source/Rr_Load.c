@@ -23,14 +23,19 @@ Rr_LoadTask Rr_LoadStaticMeshFromOBJ(Rr_AssetRef AssetRef, struct Rr_StaticMesh*
     };
 }
 
-Rr_LoadTask Rr_LoadStaticMeshFromGLTF(Rr_AssetRef AssetRef, usize MeshIndex, struct Rr_StaticMesh** OutStaticMesh)
+Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
+    Rr_AssetRef AssetRef,
+    Rr_GLTFLoader* Loader,
+    usize MeshIndex,
+    struct Rr_StaticMesh** OutStaticMesh)
 {
     return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
         .AssetRef = AssetRef,
         .Out = (void**)OutStaticMesh,
         .Options = (Rr_MeshGLTFOptions){
-            .MeshIndex = MeshIndex }
+            .MeshIndex = MeshIndex,
+            .Loader = *Loader }
     };
 }
 

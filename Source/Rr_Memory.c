@@ -71,7 +71,7 @@ void Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch)
     Scratch.Arena->Current = Scratch.Position;
 }
 
-static void SDLCALL CleanupScratchArena(void* ScratchArena)
+static void SDLCALL Rr_CleanupScratchArena(void* ScratchArena)
 {
     Rr_Arena* Arenas = ScratchArena;
     for (usize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
@@ -81,23 +81,36 @@ static void SDLCALL CleanupScratchArena(void* ScratchArena)
     Rr_Free(ScratchArena);
 }
 
-Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena* Conflict)
+static SDL_TLSID ScratchArenaTLS;
+
+void Rr_SetScratchTLS(void* TLSID)
 {
-    static SDL_TLSID ScratchArenaTLS;
+    ScratchArenaTLS = *((SDL_TLSID*)TLSID);
+}
+
+void Rr_InitThreadScratch(usize Size)
+{
     if (ScratchArenaTLS == 0)
     {
-        ScratchArenaTLS = SDL_CreateTLS();
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "ScratchArenaTLS is not set!");
+        abort();
+    }
+    Rr_Arena* Arena = Rr_Calloc(RR_SCRATCH_ARENA_COUNT_PER_THREAD, sizeof(Rr_Arena));
+    for (usize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
+    {
+        Arena[Index] = Rr_CreateArena(Size);
+    }
+    SDL_SetTLS(ScratchArenaTLS, Arena, Rr_CleanupScratchArena);
+}
+
+Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena* Conflict)
+{
+    if (ScratchArenaTLS == 0)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "ScratchArenaTLS is not set!");
+        abort();
     }
     Rr_Arena* Arena = (Rr_Arena*)SDL_GetTLS(ScratchArenaTLS);
-    if (Arena == NULL)
-    {
-        Arena = Rr_Calloc(RR_SCRATCH_ARENA_COUNT_PER_THREAD, sizeof(Rr_Arena));
-        for (usize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
-        {
-            Arena[Index] = Rr_CreateArena(RR_SCRATCH_ARENA_SIZE);
-        }
-        SDL_SetTLS(ScratchArenaTLS, Arena, CleanupScratchArena);
-    }
     if (Conflict == NULL)
     {
         return Rr_CreateArenaScratch(Arena);

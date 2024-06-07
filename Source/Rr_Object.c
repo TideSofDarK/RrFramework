@@ -1,6 +1,7 @@
 #include "Rr_Object.h"
 
 #include "Rr_Types.h"
+#include "Rr_Mesh_Internal.h"
 
 /* @TODO: Make bValid field! */
 union Rr_Object

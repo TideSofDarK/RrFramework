@@ -43,7 +43,7 @@ extern void Rr_AlignedFree(void* Ptr);
  */
 
 #define RR_SCRATCH_ARENA_COUNT_PER_THREAD 2
-#define RR_SCRATCH_ARENA_SIZE (1024 * 1024 * 32)
+#define RR_SCRATCH_ARENA_SIZE (1024 * 1024 * 4)
 
 typedef struct Rr_Arena Rr_Arena;
 struct Rr_Arena
@@ -71,6 +71,9 @@ struct Rr_ArenaScratch
 
 extern Rr_ArenaScratch Rr_CreateArenaScratch(Rr_Arena* Arena);
 extern void Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch);
+
+extern void Rr_SetScratchTLS(void* TLSID);
+extern void Rr_InitThreadScratch(usize Size);
 extern Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena* Conflict);
 
 /*

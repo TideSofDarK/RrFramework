@@ -33,7 +33,7 @@ typedef uintptr_t usize;
 #define RR_MAX_OBJECTS 128
 
 /* Arenas */
-#define RR_PER_FRAME_ARENA_SIZE (1024 * 1024 * 16)
+#define RR_PER_FRAME_ARENA_SIZE (1024 * 1024 * 8)
 #define RR_PERMANENT_ARENA_SIZE (1024 * 1024)
 #define RR_SYNC_ARENA_SIZE (1024 * 1024)
 #define RR_LOADING_THREAD_ARENA_SIZE (1024 * 1024)

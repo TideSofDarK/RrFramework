@@ -8,6 +8,8 @@
 
 struct Rr_UploadContext;
 
+#define RR_LOADING_THREAD_SCRATCH_SIZE (1024 * 1024 * 32)
+
 typedef struct Rr_PendingLoad Rr_PendingLoad;
 struct Rr_PendingLoad
 {

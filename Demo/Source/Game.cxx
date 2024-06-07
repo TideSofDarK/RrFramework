@@ -152,11 +152,20 @@ static void Init(Rr_App* App)
 #endif
     InitInputMappings();
 
+    InitUber3DPipeline(App);
+    InitGlobals(App);
+
+    Rr_GLTFLoader GLTFLoader = {};
+    GLTFLoader.GenericPipeline = Uber3DPipeline;
+    GLTFLoader.BaseTexture = 0;
+    GLTFLoader.NormalTexture = 1;
+    GLTFLoader.SpecularTexture = 2;
+
     std::array LoadTasks = {
         Rr_LoadColorImageFromPNG(DEMO_ASSET_MARBLEDIFFUSE_PNG, &MarbleDiffuse),
         Rr_LoadColorImageFromPNG(DEMO_ASSET_MARBLESPECULAR_PNG, &MarbleSpecular),
         Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGE_PNG, &CottageTexture),
-        Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, 0, &AvocadoMesh),
+        Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &GLTFLoader, 0, &AvocadoMesh),
         Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_MARBLE_OBJ, &MarbleMesh),
         Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
     };
@@ -177,9 +186,6 @@ static void Init(Rr_App* App)
     //
     // Rr_ExternAsset(PocDiffusePNG);
     // PocDiffuseImage = Rr_CreateImageFromPNG(Renderer, &PocDiffusePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    InitUber3DPipeline(App);
-    InitGlobals(App);
 
     TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
     DebugString = Rr_CreateString("$c3Colored $c1text$c2");
