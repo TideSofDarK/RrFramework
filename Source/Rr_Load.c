@@ -64,7 +64,6 @@ Rr_LoadingContext* Rr_LoadAsync(
         .Semaphore = SDL_CreateSemaphore(0),
         .LoadingCallback = LoadingCallback,
         .Userdata = Userdata,
-        .bAsync = true,
         .App = App,
         .Tasks = NewTasks,
         .TaskCount = TaskCount

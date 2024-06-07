@@ -26,6 +26,12 @@ extern Rr_Image* Rr_CreateImage(
     VkFormat Format,
     VkImageUsageFlags Usage,
     bool bMipMapped);
+extern Rr_Image* Rr_CreateColorImageFromPNGMemory(
+    Rr_App* App,
+    struct Rr_UploadContext* UploadContext,
+    const byte* Data,
+    usize DataSize,
+    bool bMipMapped);
 extern Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,

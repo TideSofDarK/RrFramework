@@ -31,7 +31,6 @@ struct Rr_LoadingThread
 struct Rr_LoadingContext
 {
     Rr_App* App;
-    bool bAsync;
     SDL_Semaphore* Semaphore;
     Rr_LoadingCallback LoadingCallback;
     const void* Userdata;

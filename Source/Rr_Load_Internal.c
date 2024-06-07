@@ -170,10 +170,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
 
     Rr_LoadResourcesFromTasks(App, Tasks, TaskCount, &UploadContext, LoadingContext->Semaphore, Scratch.Arena);
 
-    if (LoadingContext->bAsync)
-    {
-        SDL_Delay(300);
-    }
+    SDL_Delay(300);
 
     if (!bUseTransferQueue)
     {
@@ -285,22 +282,15 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
 
     Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffer.Buffer);
 
-    if (LoadingContext->bAsync)
-    {
-        SDL_LockMutex(App->SyncArena.Mutex);
+    SDL_LockMutex(App->SyncArena.Mutex);
 
-        Rr_PendingLoad* PendingLoad = Rr_SlicePush(&Renderer->PendingLoadsSlice, &App->SyncArena.Arena);
-        *PendingLoad = (Rr_PendingLoad){
-            .LoadingCallback = LoadingContext->LoadingCallback,
-            .Userdata = LoadingContext->Userdata,
-        };
+    Rr_PendingLoad* PendingLoad = Rr_SlicePush(&Renderer->PendingLoadsSlice, &App->SyncArena.Arena);
+    *PendingLoad = (Rr_PendingLoad){
+        .LoadingCallback = LoadingContext->LoadingCallback,
+        .Userdata = LoadingContext->Userdata,
+    };
 
-        SDL_UnlockMutex(App->SyncArena.Mutex);
-    }
-    else
-    {
-        LoadingContext->LoadingCallback(App, LoadingContext->Userdata);
-    }
+    SDL_UnlockMutex(App->SyncArena.Mutex);
 
     if (LoadingContext->Semaphore)
     {

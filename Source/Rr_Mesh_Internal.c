@@ -378,6 +378,9 @@ Rr_StaticMesh* Rr_CreateStaticMesh(
     return StaticMesh;
 }
 
+
+#include <stb/stb_image.h>
+
 Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
@@ -400,6 +403,28 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     for (usize Index = 0; Index < Mesh->primitives_count; ++Index)
     {
         cgltf_primitive* Primitive = Mesh->primitives + Index;
+
+        if (Loader != NULL && Primitive->material != NULL)
+        {
+            cgltf_material* CGLTFMaterial = Primitive->material;
+            if (CGLTFMaterial->has_pbr_metallic_roughness)
+            {
+                cgltf_texture* BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
+                if (BaseColorTexture)
+                {
+                    if (SDL_strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+                    {
+                        const byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
+                        usize PNGSize = BaseColorTexture->image->buffer_view->size;
+                    }
+                    else
+                    {
+                        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "Unsupported texture format!");
+                        abort();
+                    }
+                }
+            }
+        }
 
         Rr_RawMesh* RawMesh = RawMeshes + Index;
         *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);

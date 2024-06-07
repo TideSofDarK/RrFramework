@@ -190,20 +190,24 @@ size_t Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena)
     return 0;
 }
 
-Rr_Image* Rr_CreateColorImageFromPNG(
+Rr_Image* Rr_CreateColorImageFromPNGMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    Rr_AssetRef AssetRef,
-    bool bMipMapped,
-    Rr_Arena* Arena)
+    const byte* Data,
+    usize DataSize,
+    bool bMipMapped)
 {
-    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-
     const i32 DesiredChannels = 4;
     i32 Channels;
     VkExtent3D Extent = { .depth = 1 };
-    stbi_uc* ParsedImage = stbi_load_from_memory((stbi_uc*)Asset.Data, (i32)Asset.Length, (i32*)&Extent.width, (i32*)&Extent.height, &Channels, DesiredChannels);
-    const size_t DataSize = Extent.width * Extent.height * DesiredChannels;
+    stbi_uc* ParsedImage = stbi_load_from_memory(
+        (stbi_uc*)Data,
+        (i32)DataSize,
+        (i32*)&Extent.width,
+        (i32*)&Extent.height,
+        &Channels,
+        DesiredChannels);
+    const size_t ParsedSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Image* ColorImage = Rr_CreateImage(
         App,
@@ -221,11 +225,28 @@ Rr_Image* Rr_CreateColorImageFromPNG(
         VK_ACCESS_SHADER_READ_BIT,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         ParsedImage,
-        DataSize);
+        ParsedSize);
 
     stbi_image_free(ParsedImage);
 
     return ColorImage;
+}
+
+Rr_Image* Rr_CreateColorImageFromPNG(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    Rr_AssetRef AssetRef,
+    bool bMipMapped,
+    Rr_Arena* Arena)
+{
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
+    return Rr_CreateColorImageFromPNGMemory(
+        App,
+        UploadContext,
+        Asset.Data,
+        Asset.Length,
+        bMipMapped);
 }
 
 Rr_Image* Rr_CreateDepthImageFromEXR(
