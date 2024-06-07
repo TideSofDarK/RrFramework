@@ -38,7 +38,8 @@ struct Rr_GLTFLoader
 };
 
 typedef struct Rr_MeshGLTFOptions Rr_MeshGLTFOptions;
-struct Rr_MeshGLTFOptions {
+struct Rr_MeshGLTFOptions
+{
     usize MeshIndex;
     Rr_GLTFLoader Loader;
 };

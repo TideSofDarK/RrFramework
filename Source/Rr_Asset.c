@@ -2,11 +2,11 @@
 
 #if defined(RR_USE_RC)
 
-#include "Windows.h"
+    #include "Windows.h"
 
 Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
-    HRSRC Resource =  FindResource(NULL, AssetRef, "RRDATA");
+    HRSRC Resource = FindResource(NULL, AssetRef, "RRDATA");
     HGLOBAL Memory = LoadResource(NULL, Resource);
 
     Rr_Asset Asset;

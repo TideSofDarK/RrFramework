@@ -379,7 +379,6 @@ Rr_StaticMesh* Rr_CreateStaticMesh(
     return StaticMesh;
 }
 
-
 #include <stb/stb_image.h>
 
 Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
@@ -401,7 +400,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
 
     Rr_RawMesh* RawMeshes = Rr_StackAlloc(Rr_RawMesh, Mesh->primitives_count);
 
-    Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES] = {0};
+    Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES] = { 0 };
 
     for (usize Index = 0; Index < Mesh->primitives_count; ++Index)
     {
@@ -409,7 +408,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
 
         if (Loader != NULL && Primitive->material != NULL)
         {
-            Rr_Image* Textures[RR_MAX_TEXTURES_PER_MATERIAL] = {0};
+            Rr_Image* Textures[RR_MAX_TEXTURES_PER_MATERIAL] = { 0 };
 
             cgltf_material* CGLTFMaterial = Primitive->material;
             if (CGLTFMaterial->has_pbr_metallic_roughness)
