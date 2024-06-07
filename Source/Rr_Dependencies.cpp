@@ -15,6 +15,7 @@
 #include <tinyexr/tinyexr.h>
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_STDIO 1
 #define STBI_MALLOC Rr_Malloc
 #define STBI_REALLOC Rr_Realloc
 #define STBI_FREE Rr_Free

@@ -172,22 +172,33 @@ static void UploadImage(
     }
 }
 
-size_t Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena* Arena)
+void Rr_GetImageSizePNGMemory(
+    const byte* Data,
+    usize DataSize,
+    Rr_Arena* Arena,
+    struct Rr_LoadSize* OutLoadSize)
 {
-    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-
     const i32 DesiredChannels = 4;
     i32 Width;
     i32 Height;
     i32 Channels;
-    stbi_info_from_memory((stbi_uc*)Asset.Data, (i32)Asset.Length, &Width, &Height, &Channels);
+    stbi_info_from_memory((stbi_uc*)Data, (i32)DataSize, &Width, &Height, &Channels);
 
-    return Width * Height * DesiredChannels;
+    OutLoadSize->StagingBufferSize += Width * Height * DesiredChannels;
+    OutLoadSize->ImageCount += 1;
 }
 
-size_t Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena)
+void Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize)
 {
-    return 0;
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
+    Rr_GetImageSizePNGMemory(Asset.Data, Asset.Length, Arena, OutLoadSize);
+}
+
+void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize)
+{
+    OutLoadSize->StagingBufferSize += 0;
+    OutLoadSize->ImageCount += 1;
 }
 
 Rr_Image* Rr_CreateColorImageFromPNGMemory(

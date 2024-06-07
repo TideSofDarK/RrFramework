@@ -7,6 +7,7 @@
 #include "Rr_Material.h"
 #include "Rr_Object.h"
 #include "Rr_UploadContext.h"
+#include "Rr_Image_Internal.h"
 #include "Rr_Types.h"
 
 #include <SDL3/SDL.h>
@@ -393,12 +394,14 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    cgltf_data* Data = NULL;
     cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
+    cgltf_data* Data = NULL;
     cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
 
     Rr_RawMesh* RawMeshes = Rr_StackAlloc(Rr_RawMesh, Mesh->primitives_count);
+
+    Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES] = {0};
 
     for (usize Index = 0; Index < Mesh->primitives_count; ++Index)
     {
@@ -406,6 +409,8 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
 
         if (Loader != NULL && Primitive->material != NULL)
         {
+            Rr_Image* Textures[RR_MAX_TEXTURES_PER_MATERIAL] = {0};
+
             cgltf_material* CGLTFMaterial = Primitive->material;
             if (CGLTFMaterial->has_pbr_metallic_roughness)
             {
@@ -416,6 +421,13 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
                     {
                         const byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
                         usize PNGSize = BaseColorTexture->image->buffer_view->size;
+
+                        Textures[Loader->BaseTexture] = Rr_CreateColorImageFromPNGMemory(
+                            App,
+                            UploadContext,
+                            PNGData,
+                            PNGSize,
+                            false);
                     }
                     else
                     {
@@ -424,15 +436,20 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
                     }
                 }
             }
+
+            Materials[Index] = Rr_CreateMaterial(
+                App,
+                Loader->GenericPipeline,
+                Textures,
+                RR_MAX_TEXTURES_PER_MATERIAL);
+            Materials[Index]->bOwning = true;
         }
 
         Rr_RawMesh* RawMesh = RawMeshes + Index;
         *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);
     }
 
-    /* @TODO: Parse glTF materials. */
-
-    Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(App, UploadContext, RawMeshes, Mesh->primitives_count, NULL, 0);
+    Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(App, UploadContext, RawMeshes, Mesh->primitives_count, Materials, RR_MESH_MAX_PRIMITIVES);
 
     cgltf_free(Data);
 
@@ -462,7 +479,10 @@ Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
     return StaticMesh;
 }
 
-usize Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena)
+void Rr_GetStaticMeshSizeOBJ(
+    Rr_AssetRef AssetRef,
+    Rr_Arena* Arena,
+    Rr_LoadSize* OutLoadSize)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -473,20 +493,27 @@ usize Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena)
     usize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh.VerticesSlice);
     usize IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_SliceLength(&RawMesh.IndicesSlice);
 
-    Rr_DestroyArenaScratch(Scratch);
+    OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
+    OutLoadSize->BufferCount += 2;
 
-    return VertexBufferSize + IndexBufferSize;
+    Rr_DestroyArenaScratch(Scratch);
 }
 
-usize Rr_GetStaticMeshSizeGLTF(Rr_AssetRef AssetRef, usize MeshIndex, Rr_Arena* Arena)
+void Rr_GetStaticMeshSizeGLTF(
+    Rr_AssetRef AssetRef,
+    Rr_GLTFLoader* Loader,
+    usize MeshIndex,
+    Rr_Arena* Arena,
+    Rr_LoadSize* OutLoadSize)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    cgltf_data* Data = NULL;
     cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
+    cgltf_data* Data = NULL;
     cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
+    cgltf_load_buffers(&Options, Data, NULL);
 
     usize VertexBufferSize = 0;
     usize IndexBufferSize = 0;
@@ -497,11 +524,31 @@ usize Rr_GetStaticMeshSizeGLTF(Rr_AssetRef AssetRef, usize MeshIndex, Rr_Arena* 
 
         VertexBufferSize += sizeof(Rr_Vertex) * Primitive->attributes->data->count;
         IndexBufferSize += sizeof(Rr_MeshIndexType) * Primitive->indices->count;
+
+        if (Loader != NULL && Primitive->material != NULL)
+        {
+            cgltf_material* CGLTFMaterial = Primitive->material;
+            if (CGLTFMaterial->has_pbr_metallic_roughness)
+            {
+                cgltf_texture* BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
+                if (BaseColorTexture)
+                {
+                    if (SDL_strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+                    {
+                        const byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
+                        usize PNGSize = BaseColorTexture->image->buffer_view->size;
+
+                        Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+                    }
+                }
+            }
+        }
     }
 
     cgltf_free(Data);
 
-    Rr_DestroyArenaScratch(Scratch);
+    OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
+    OutLoadSize->BufferCount += 2;
 
-    return VertexBufferSize + IndexBufferSize;
+    Rr_DestroyArenaScratch(Scratch);
 }

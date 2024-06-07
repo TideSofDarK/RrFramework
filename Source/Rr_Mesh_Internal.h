@@ -3,6 +3,7 @@
 #include "Rr_Mesh.h"
 #include "Rr_Memory.h"
 
+struct Rr_LoadSize;
 struct Rr_UploadContext;
 struct Rr_Material;
 struct Rr_Buffer;
@@ -27,16 +28,16 @@ struct Rr_StaticMesh
 {
     Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
     struct Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
-    u8 PrimitiveCount;
-    u8 MaterialCount;
+    u8 PrimitiveCount : 4;
+    u8 MaterialCount : 4;
 };
 
 struct Rr_SkeletalMesh
 {
     Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
     struct Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
-    u8 PrimitiveCount;
-    u8 MaterialCount;
+    u8 PrimitiveCount : 4;
+    u8 MaterialCount : 4;
 };
 
 extern Rr_Primitive* Rr_CreatePrimitive(
@@ -65,5 +66,14 @@ extern Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
     Rr_AssetRef AssetRef,
     Rr_Arena* Arena);
 
-extern size_t Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena);
-extern size_t Rr_GetStaticMeshSizeGLTF(Rr_AssetRef AssetRef, size_t MeshIndex, Rr_Arena* Arena);
+extern void Rr_GetStaticMeshSizeOBJ(
+    Rr_AssetRef AssetRef,
+    Rr_Arena* Arena,
+    struct Rr_LoadSize* OutLoadSize);
+
+extern void Rr_GetStaticMeshSizeGLTF(
+    Rr_AssetRef AssetRef,
+    struct Rr_GLTFLoader* Loader,
+    usize MeshIndex,
+    Rr_Arena* Arena,
+    struct Rr_LoadSize* OutLoadSize);

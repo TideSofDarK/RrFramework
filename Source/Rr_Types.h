@@ -16,24 +16,35 @@
 
 #include <SDL3/SDL.h>
 
+typedef struct Rr_LoadSize Rr_LoadSize;
+struct Rr_LoadSize
+{
+    usize StagingBufferSize;
+    usize BufferCount;
+    usize ImageCount;
+};
+
 struct Rr_Material
 {
     Rr_GenericPipeline* GenericPipeline;
     Rr_Buffer* Buffer;
     Rr_Image* Textures[RR_MAX_TEXTURES_PER_MATERIAL];
-    size_t TextureCount;
+    usize TextureCount;
+    u8 bOwning;
 };
 
-typedef struct Rr_SwapchainImage
+typedef struct Rr_SwapchainImage Rr_SwapchainImage;
+struct Rr_SwapchainImage
 {
     VkExtent2D Extent;
     VkImage Handle;
     VkImageView View;
     VkSampler Sampler;
     VkDeviceMemory Memory;
-} Rr_SwapchainImage;
+};
 
-typedef struct Rr_Swapchain
+typedef struct Rr_Swapchain Rr_Swapchain;
+struct Rr_Swapchain
 {
     VkSwapchainKHR Handle;
     VkFormat Format;
@@ -42,13 +53,14 @@ typedef struct Rr_Swapchain
     u32 ImageCount;
     VkExtent2D Extent;
     SDL_AtomicInt bResizePending;
-} Rr_Swapchain;
+};
 
-typedef struct Rr_ImGui
+typedef struct Rr_ImGui Rr_ImGui;
+struct Rr_ImGui
 {
     VkDescriptorPool DescriptorPool;
     bool bInitiated;
-} Rr_ImGui;
+};
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
 struct Rr_ImmediateMode

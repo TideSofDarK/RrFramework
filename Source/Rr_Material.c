@@ -1,6 +1,5 @@
 #include "Rr_Material.h"
 
-#include "Rr_App.h"
 #include "Rr_Renderer.h"
 #include "Rr_Buffer.h"
 #include "Rr_Types.h"
@@ -14,7 +13,12 @@ Rr_Material* Rr_CreateMaterial(Rr_App* App, Rr_GenericPipeline* GenericPipeline,
     *Material = (Rr_Material){
         .GenericPipeline = GenericPipeline,
         .TextureCount = TextureCount,
-        .Buffer = Rr_CreateBuffer(&App->Renderer, 128, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, false)
+        .Buffer = Rr_CreateBuffer(
+            &App->Renderer,
+            GenericPipeline->Sizes.Material,
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VMA_MEMORY_USAGE_AUTO,
+            false)
     };
 
     TextureCount = SDL_min(TextureCount, RR_MAX_TEXTURES_PER_MATERIAL);
@@ -31,6 +35,14 @@ void Rr_DestroyMaterial(Rr_App* App, Rr_Material* Material)
     if (Material == NULL)
     {
         return;
+    }
+
+    if (Material->bOwning)
+    {
+        for (usize TextureIndex = 0; TextureIndex < Material->TextureCount; ++TextureIndex)
+        {
+            Rr_DestroyImage(App, Material->Textures[TextureIndex]);
+        }
     }
 
     Rr_DestroyBuffer(&App->Renderer, Material->Buffer);

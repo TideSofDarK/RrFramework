@@ -194,7 +194,7 @@ void Rr_Run(Rr_AppConfig* Config)
 
     Rr_SetScratchTLS(&App->ScratchArenaTLS);
 
-    Rr_InitThreadScratch(RR_SCRATCH_ARENA_SIZE);
+    Rr_InitThreadScratch(RR_MAIN_THREAD_SCRATCH_ARENA_SIZE);
 
     Rr_InitFrameTime(&App->FrameTime, App->Window);
 

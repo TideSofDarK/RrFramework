@@ -176,7 +176,15 @@ static void Rr_RenderGeneric(
                 Scratch.Arena);
             for (usize TextureIndex = 0; TextureIndex < RR_MAX_TEXTURES_PER_MATERIAL; ++TextureIndex)
             {
-                VkImageView ImageView = TextureIndex < BoundMaterial->TextureCount ? BoundMaterial->Textures[TextureIndex]->View : Renderer->NullTexture->View;
+                VkImageView ImageView = VK_NULL_HANDLE;
+                if (BoundMaterial->TextureCount > TextureIndex && BoundMaterial->Textures[TextureIndex] != NULL)
+                {
+                    ImageView = BoundMaterial->Textures[TextureIndex]->View;
+                }
+                else
+                {
+                    ImageView = Renderer->NullTexture->View;
+                }
                 Rr_WriteImageDescriptorAt(
                     &DescriptorWriter,
                     1,

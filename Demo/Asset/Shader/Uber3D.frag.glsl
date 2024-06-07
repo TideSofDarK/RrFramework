@@ -30,6 +30,7 @@ void main()
     vec3 specular = 0.5f * specularAlpha * lightColor;
      specular *= 0.0f;
 
-    vec3 color = texture(u_texture[0], uv).rgb * (u_globals.ambientLightColor.xyz + diffuseColor + specular);
+    vec2 cuv = vec2(uv.x, 1.0 - uv.y);
+    vec3 color = texture(u_texture[0], cuv).rgb * (u_globals.ambientLightColor.xyz + diffuseColor + specular);
     out_color = vec4(color, 1.0f);
 }

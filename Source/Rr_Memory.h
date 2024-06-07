@@ -43,7 +43,6 @@ extern void Rr_AlignedFree(void* Ptr);
  */
 
 #define RR_SCRATCH_ARENA_COUNT_PER_THREAD 2
-#define RR_SCRATCH_ARENA_SIZE (1024 * 1024 * 4)
 
 typedef struct Rr_Arena Rr_Arena;
 struct Rr_Arena

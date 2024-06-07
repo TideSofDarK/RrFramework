@@ -9,6 +9,7 @@
 
 #include <vma/vk_mem_alloc.h>
 
+struct Rr_LoadSize;
 struct Rr_UploadContext;
 
 struct Rr_Image
@@ -46,5 +47,16 @@ extern Rr_Image* Rr_CreateDepthImageFromEXR(
 extern Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Height);
 extern Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height);
 
-extern size_t Rr_GetImageSizePNG(Rr_AssetRef Asset, Rr_Arena* Arena);
-extern size_t Rr_GetImageSizeEXR(Rr_AssetRef Asset, Rr_Arena* Arena);
+extern void Rr_GetImageSizePNGMemory(
+    const byte* Data,
+    usize DataSize,
+    Rr_Arena* Arena,
+    struct Rr_LoadSize* OutLoadSize);
+extern void Rr_GetImageSizePNG(
+    Rr_AssetRef Asset,
+    Rr_Arena* Arena,
+    struct Rr_LoadSize* OutLoadSize);
+extern void Rr_GetImageSizeEXR(
+    Rr_AssetRef Asset,
+    Rr_Arena* Arena,
+    struct Rr_LoadSize* OutLoadSize);
