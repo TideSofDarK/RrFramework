@@ -22,7 +22,7 @@ struct Rr_Vertex
     f32 TexCoordX;
     Rr_Vec3 Normal;
     f32 TexCoordY;
-    Rr_Vec4 Color;
+    Rr_Vec4 Tangent;
 };
 
 extern void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh);

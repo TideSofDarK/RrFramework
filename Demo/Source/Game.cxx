@@ -128,10 +128,6 @@ static Rr_Material* CottageMaterial;
 static Rr_StaticMesh* PocMesh;
 static Rr_Image* PocDiffuseImage;
 
-static Rr_Material* MarbleMaterial;
-static Rr_Image* MarbleDiffuse;
-static Rr_Image* MarbleNormal;
-static Rr_Image* MarbleSpecular;
 static Rr_StaticMesh* MarbleMesh;
 
 static Rr_StaticMesh* AvocadoMesh;
@@ -194,9 +190,6 @@ static void InitGlobals(Rr_App* App)
 
 static void OnLoadingComplete(Rr_App* App, void* Userdata)
 {
-    Rr_Image* MarbleTextures[2] = { MarbleDiffuse, MarbleSpecular };
-    MarbleMaterial = Rr_CreateMaterial(App, Uber3DPipeline, MarbleTextures, 2);
-
     Rr_Image* CottageTextures[1] = { CottageTexture };
     CottageMaterial = Rr_CreateMaterial(App, Uber3DPipeline, CottageTextures, 1);
 
@@ -222,11 +215,9 @@ static void Init(Rr_App* App)
     GLTFLoader.SpecularTexture = 2;
 
     std::array LoadTasks = {
-        Rr_LoadColorImageFromPNG(DEMO_ASSET_MARBLEDIFFUSE_PNG, &MarbleDiffuse),
-        Rr_LoadColorImageFromPNG(DEMO_ASSET_MARBLESPECULAR_PNG, &MarbleSpecular),
         Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGE_PNG, &CottageTexture),
         Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &GLTFLoader, 0, &AvocadoMesh),
-        Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_MARBLE_OBJ, &MarbleMesh),
+        Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &GLTFLoader, 0, &MarbleMesh),
         Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
     };
     LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);
@@ -255,14 +246,11 @@ static void Init(Rr_App* App)
 static void Cleanup(Rr_App* App)
 {
     Rr_DestroyMaterial(App, CottageMaterial);
-    Rr_DestroyMaterial(App, MarbleMaterial);
 
     // Rr_DestroyImage(App, &SceneDepthImage);
     // Rr_DestroyImage(App, &SceneColorImage);
     Rr_DestroyImage(App, CottageTexture);
     Rr_DestroyImage(App, PocDiffuseImage);
-    Rr_DestroyImage(App, MarbleDiffuse);
-    Rr_DestroyImage(App, MarbleSpecular);
 
     Rr_DestroyStaticMesh(App, CottageMesh);
     Rr_DestroyStaticMesh(App, PocMesh);
@@ -296,8 +284,7 @@ static void Iterate(Rr_App* App)
 
     static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
     ImGui::SliderFloat2("CameraPitchYaw", &Camera.Pitch, -360.0f, 360.0f, "%f", ImGuiSliderFlags_None);
-    // ImGui::SliderFloat3("CameraPos", CameraPos.Elements, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
-    // ImGui::SliderFloat3("CameraRot", Camera.CameraEuler.Elements, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
+    ImGui::SliderFloat3("CameraPos", Camera.Position.Elements, -100.0f, 100.0f, "%.3f", ImGuiSliderFlags_None);
     ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
 
     Rr_Vec3 LightRotation = LightDirEuler * Rr_DegToRad;
@@ -369,20 +356,23 @@ static void Iterate(Rr_App* App)
     if (bLoaded)
     {
         SUber3DDraw CottageDraw = { 0 };
-        CottageDraw.Model =
+        CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
+        CottageDraw.Model[3][1] = 0.1f;
+        Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
+
+        SUber3DDraw AvocadoDraw = { 0 };
+        AvocadoDraw.Model =
             Rr_Scale({ 0.75f, 0.75f, 0.75f })
             * Rr_Rotate_LH(SDL_fmodf(Time, SDL_PI_F * 2.0f), { 0.0f, 1.0f, 0.0f })
             * Rr_Translate({ 3.5f, 0.5f, 3.5f });
-        CottageDraw.Model[3][0] = 3.5f;
-        CottageDraw.Model[3][1] = 0.5f;
-        CottageDraw.Model[3][2] = 3.5f;
-        // Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
-
-        Rr_DrawStaticMesh(RenderingContext, AvocadoMesh, Rr_MakeData(CottageDraw));
+        AvocadoDraw.Model[3][0] = 3.5f;
+        AvocadoDraw.Model[3][1] = 0.5f;
+        AvocadoDraw.Model[3][2] = 3.5f;
+        Rr_DrawStaticMesh(RenderingContext, AvocadoMesh, Rr_MakeData(AvocadoDraw));
 
         SUber3DDraw MarbleDraw = { 0 };
         MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
-        Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &MarbleMaterial, 1, MarbleMesh, Rr_MakeData(MarbleDraw));
+        Rr_DrawStaticMesh(RenderingContext, MarbleMesh, Rr_MakeData(MarbleDraw));
 
         Rr_DrawDefaultText(RenderingContext, &TestString, { 50.0f, 50.0f });
 

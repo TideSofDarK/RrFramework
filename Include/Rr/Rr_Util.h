@@ -6,7 +6,7 @@
 
 static inline f32 Rr_WrapMax(f32 X, f32 Max)
 {
-    return fmod(Max + fmod(X, Max), Max);
+    return fmodf(Max + fmodf(X, Max), Max);
 }
 
 static inline f32 Rr_WrapMinMax(f32 X, f32 Min, f32 Max)

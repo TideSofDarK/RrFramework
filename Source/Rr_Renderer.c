@@ -430,7 +430,7 @@ void Rr_InitImGui(Rr_App* App)
     Rr_Asset MartianMonoTTF = Rr_LoadAsset(RR_BUILTIN_MARTIANMONO_TTF);
     ImFontConfig* FontConfig = ImFontConfig_ImFontConfig();
     FontConfig->FontDataOwnedByAtlas = false; /* Don't transfer asset ownership to ImGui, it will crash otherwise! */
-    ImFontAtlas_AddFontFromMemoryTTF(IO->Fonts, (void*)MartianMonoTTF.Data, (i32)MartianMonoTTF.Length, SDL_floorf(16.0f * WindowScale), FontConfig, NULL);
+    ImFontAtlas_AddFontFromMemoryTTF(IO->Fonts, (void*)MartianMonoTTF.Data, (i32)MartianMonoTTF.Length, SDL_floorf(14.0f * WindowScale), FontConfig, NULL);
     igMemFree(FontConfig);
 
     ImGui_ImplVulkan_CreateFontsTexture();

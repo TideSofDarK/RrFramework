@@ -88,7 +88,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
 
     for (usize VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
     {
-        Rr_Vertex NewVertex;
+        Rr_Vertex NewVertex = { 0 };
 
         for (usize AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
         {
@@ -112,7 +112,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
                 case cgltf_attribute_type_tangent:
                 {
                     Rr_Vec3* Tangent = (Rr_Vec3*)(AttributeData + Accessor->stride * VertexIndex);
-                    NewVertex.Color.RGB = *Tangent;
+                    NewVertex.Tangent.RGB = *Tangent;
                 }
                 break;
                 case cgltf_attribute_type_texcoord:
@@ -133,17 +133,6 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
     Rr_DestroyArenaScratch(Scratch);
 
     return RawMesh;
-}
-
-static usize Rr_GetNewLine(char* Data, usize Length, usize CurrentIndex)
-{
-    CurrentIndex++;
-    while (CurrentIndex < Length && Data[CurrentIndex] != '\n')
-    {
-        CurrentIndex++;
-    }
-
-    return CurrentIndex;
 }
 
 static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
@@ -251,7 +240,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
                         // NewVertex.Color = ScratchColors.Data[OBJIndices[Index].X];
                         NewVertex.Normal = ScratchNormals.Data[OBJIndices[Index].Z];
                         NewVertex.TexCoordX = (*TexCoord).X;
-                        NewVertex.TexCoordY = (*TexCoord).Y;
+                        NewVertex.TexCoordY = 1.0f - (*TexCoord).Y;
                         *Rr_SlicePush(&RawMesh.VerticesSlice, Arena) = NewVertex;
 
                         *Rr_SlicePush(&ScratchIndices, Scratch.Arena) = OBJIndices[Index];
@@ -271,7 +260,8 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
             }
             break;
         }
-        CurrentIndex = Rr_GetNewLine(Asset->Data, Asset->Length, CurrentIndex) + 1;
+
+        CurrentIndex += strcspn(Asset->Data + CurrentIndex, "\n") + 1;
     }
 
     Rr_DestroyArenaScratch(Scratch);
@@ -445,11 +435,22 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
                             PNGSize,
                             false);
                     }
-                    else
-                    {
-                        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "Unsupported texture format!");
-                        abort();
-                    }
+                }
+            }
+            if (CGLTFMaterial->normal_texture.texture != NULL)
+            {
+                cgltf_texture* NormalTexture = CGLTFMaterial->normal_texture.texture;
+                if (SDL_strcmp(NormalTexture->image->mime_type, "image/png") == 0)
+                {
+                    byte* PNGData = (byte*)NormalTexture->image->buffer_view->buffer->data + NormalTexture->image->buffer_view->offset;
+                    usize PNGSize = NormalTexture->image->buffer_view->size;
+
+                    Textures[Loader->NormalTexture] = Rr_CreateColorImageFromPNGMemory(
+                        App,
+                        UploadContext,
+                        PNGData,
+                        PNGSize,
+                        false);
                 }
             }
 
@@ -556,6 +557,17 @@ void Rr_GetStaticMeshSizeGLTF(
 
                         Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
                     }
+                }
+            }
+            if (CGLTFMaterial->normal_texture.texture != NULL)
+            {
+                cgltf_texture* NormalTexture = CGLTFMaterial->normal_texture.texture;
+                if (SDL_strcmp(NormalTexture->image->mime_type, "image/png") == 0)
+                {
+                    byte* PNGData = (byte*)NormalTexture->image->buffer_view->buffer->data + NormalTexture->image->buffer_view->offset;
+                    usize PNGSize = NormalTexture->image->buffer_view->size;
+
+                    Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
                 }
             }
         }

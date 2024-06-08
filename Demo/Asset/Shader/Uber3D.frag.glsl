@@ -6,6 +6,7 @@ layout(location = 1) in vec2 in_uv;
 layout(location = 2) in vec3 in_normal;
 layout(location = 3) in vec3 in_position;
 layout(location = 4) in vec3 in_viewPosition;
+layout(location = 5) in mat3 in_tbn;
 
 layout(location = 0) out vec4 out_color;
 
@@ -14,12 +15,14 @@ layout(location = 0) out vec4 out_color;
 void main()
 {
     vec2 uv = in_uv;
-    uv.y = 1.0 - uv.y;
 
     vec3 lightDir = u_globals.directionalLightDirection.xyz;
     vec3 lightColor = u_globals.directionalLightColor.xyz;
 
-    vec3 normal = normalize(in_normal);
+    vec3 normal = texture(u_texture[1], uv).rgb;
+    normal = normal * 2.0 - 1.0;
+    normal = normalize(in_tbn * normal);
+
     float diffuseAlpha = max(dot(normal, lightDir), 0.0);
     vec3 diffuseColor = lightColor * diffuseAlpha;
 
@@ -28,9 +31,8 @@ void main()
     vec3 viewDir = normalize(in_viewPosition - in_position);
     float specularAlpha = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = 0.5f * specularAlpha * lightColor;
-     specular *= 0.0f;
+    specular *= 0.0f;
 
-    vec2 cuv = vec2(uv.x, 1.0 - uv.y);
-    vec3 color = texture(u_texture[0], cuv).rgb * (u_globals.ambientLightColor.xyz + diffuseColor + specular);
+    vec3 color = texture(u_texture[0], uv).rgb * (u_globals.ambientLightColor.xyz + diffuseColor + specular);
     out_color = vec4(color, 1.0f);
 }
