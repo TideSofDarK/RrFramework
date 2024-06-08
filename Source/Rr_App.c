@@ -87,7 +87,7 @@ void Rr_DebugOverlay(Rr_App* App)
     }
     igEnd();
 }
-#include <float.h>
+
 static void Iterate(Rr_App* App)
 {
     App->FrameTime.DeltaSeconds = (f32)((f64)(SDL_GetTicksNS() - App->FrameTime.Last) / (f64)SDL_NS_PER_SECOND);
