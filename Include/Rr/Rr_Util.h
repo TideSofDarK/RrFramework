@@ -4,6 +4,16 @@
 
 #include <SDL3/SDL_stdinc.h>
 
+static inline f32 Rr_WrapMax(f32 X, f32 Max)
+{
+    return fmod(Max + fmod(X, Max), Max);
+}
+
+static inline f32 Rr_WrapMinMax(f32 X, f32 Min, f32 Max)
+{
+    return Min + Rr_WrapMax(X - Min, Max - Min);
+}
+
 static inline u16 Rr_FloatToHalf(u32 x)
 {
 #define Bit(N) ((uint32_t)1 << (N))

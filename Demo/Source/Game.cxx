@@ -14,7 +14,7 @@
 #include <format>
 #include <array>
 
-typedef struct SUber3DGlobals
+struct SUber3DGlobals
 {
     Rr_Mat4 View;
     Rr_Mat4 Intermediate;
@@ -23,24 +23,24 @@ typedef struct SUber3DGlobals
     Rr_Vec4 DirectionalLightDirection;
     Rr_Vec4 DirectionalLightColor;
     Rr_Vec4 DirectionalLightIntensity;
-} SUber3DGlobals;
+};
 
-typedef struct SUber3DMaterial
+struct SUber3DMaterial
 {
     Rr_Vec3 Emissive;
-} SUber3DMaterial;
+};
 
-typedef struct SUber3DDraw
+struct SUber3DDraw
 {
     Rr_Mat4 Model;
-} SUber3DDraw;
+};
 
-typedef struct SUber3DPushConstants
+struct SUber3DPushConstants
 {
     Rr_Mat4 Reserved;
-} SUber3DPushConstants;
+};
 
-typedef enum EInputAction
+enum EInputAction
 {
     EIA_UP,
     EIA_DOWN,
@@ -50,7 +50,67 @@ typedef enum EInputAction
     EIA_DEBUGOVERLAY,
     EIA_TEST,
     EIA_COUNT,
-} EInputAction;
+};
+
+struct SEntity
+{
+};
+
+struct SCamera
+{
+    f32 Pitch;
+    f32 Yaw;
+    Rr_Vec3 Position;
+    Rr_Mat4 ViewMatrix;
+
+    Rr_Vec3 GetForwardVector()
+    {
+        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
+    }
+
+    Rr_Vec3 GetRightVector()
+    {
+        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
+    }
+
+    [[nodiscard]] Rr_Mat4 GetViewMatrix()
+    {
+        f32 CosPitch = cos(Pitch * Rr_DegToRad);
+        f32 SinPitch = sin(Pitch * Rr_DegToRad);
+        f32 CosYaw = cos(Yaw * Rr_DegToRad);
+        f32 SinYaw = sin(Yaw * Rr_DegToRad);
+
+        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
+        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
+        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
+
+        ViewMatrix = {
+            XAxis.X,
+            YAxis.X,
+            ZAxis.X,
+            0.0f,
+            XAxis.Y,
+            YAxis.Y,
+            ZAxis.Y,
+            0.0f,
+            XAxis.Z,
+            YAxis.Z,
+            ZAxis.Z,
+            0.0f,
+            -Rr_Dot(XAxis, Position),
+            -Rr_Dot(YAxis, Position),
+            -Rr_Dot(ZAxis, Position),
+            1.0f,
+        };
+
+        return ViewMatrix;
+    }
+};
+
+struct SScene
+{
+    SCamera Camera;
+};
 
 static Rr_InputMapping InputMappings[RR_MAX_INPUT_MAPPINGS];
 
@@ -227,37 +287,57 @@ static void Iterate(Rr_App* App)
     }
 
     ImGui::Begin("RotTest", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    static Rr_Vec3 CameraPos = { -7.35889f, -4.0f, -6.92579f };
-    static Rr_Vec3 CameraEuler = { 90.0f - 63.5593f, -46.6919f, 0.0f };
+
+    static SCamera Camera = {
+        .Pitch = 90.0f - 63.5593f,
+        .Yaw = -46.6919f,
+        .Position = { -7.35889f, 4.0f, -6.92579f }
+    };
+
     static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
-    //    ImGui::SliderFloat3("CameraPos", CameraPos.Elements, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
-    ImGui::SliderFloat3("CameraRot", CameraEuler.Elements, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
+    ImGui::SliderFloat2("CameraPitchYaw", &Camera.Pitch, -360.0f, 360.0f, "%f", ImGuiSliderFlags_None);
+    // ImGui::SliderFloat3("CameraPos", CameraPos.Elements, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
+    // ImGui::SliderFloat3("CameraRot", Camera.CameraEuler.Elements, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
     ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
 
     Rr_Vec3 LightRotation = LightDirEuler * Rr_DegToRad;
     ShaderGlobals.DirectionalLightDirection = Rr_EulerXYZ(LightRotation).Columns[2];
 
-    Rr_Vec3 CameraRotation = CameraEuler * Rr_DegToRad;
-    Rr_Mat4 InvCameraRotation = Rr_InvGeneral(Rr_EulerXYZ(CameraRotation));
-    Rr_Vec3 CameraForward = Rr_Norm(InvCameraRotation.Columns[2].XYZ);
-    Rr_Vec3 CameraLeft = Rr_Norm(InvCameraRotation.Columns[0].XYZ);
+    Rr_Vec3 CameraForward = Camera.GetForwardVector();
+    Rr_Vec3 CameraLeft = Camera.GetRightVector();
+    constexpr f32 CameraSpeed = 10.0f;
     if (Rr_GetKeyState(InputState, EIA_UP) == RR_KEYSTATE_HELD)
     {
-        CameraPos += CameraForward * DeltaTime;
+        Camera.Position -= CameraForward * DeltaTime * CameraSpeed;
     }
     if (Rr_GetKeyState(InputState, EIA_LEFT) == RR_KEYSTATE_HELD)
     {
-        CameraPos += CameraLeft * DeltaTime;
+        Camera.Position -= CameraLeft * DeltaTime * CameraSpeed;
     }
     if (Rr_GetKeyState(InputState, EIA_DOWN) == RR_KEYSTATE_HELD)
     {
-        CameraPos -= CameraForward * DeltaTime;
+        Camera.Position += CameraForward * DeltaTime * CameraSpeed;
     }
     if (Rr_GetKeyState(InputState, EIA_RIGHT) == RR_KEYSTATE_HELD)
     {
-        CameraPos -= CameraLeft * DeltaTime;
+        Camera.Position += CameraLeft * DeltaTime * CameraSpeed;
     }
-    ShaderGlobals.View = Rr_EulerXYZ(CameraRotation) * Rr_Translate(CameraPos);
+
+    static f32 MouseX, MouseXOld;
+    static f32 MouseY, MouseYOld;
+    SDL_MouseButtonFlags MouseState = SDL_GetMouseState(&MouseX, &MouseY);
+    if (MouseState & SDL_BUTTON_RMASK)
+    {
+        constexpr f32 Sensitivity = 50.0f;
+        f32 DeltaX = MouseXOld - MouseX;
+        f32 DeltaY = MouseYOld - MouseY;
+        Camera.Yaw = Rr_WrapMax(Camera.Yaw + (DeltaX * DeltaTime * Sensitivity), 360.0f);
+        Camera.Pitch = Rr_WrapMinMax(Camera.Pitch + (DeltaY * DeltaTime * Sensitivity), -90.0f, 90.0f);
+    }
+    MouseXOld = MouseX;
+    MouseYOld = MouseY;
+
+    ShaderGlobals.View = Camera.GetViewMatrix();
 
     ImGui::End();
 

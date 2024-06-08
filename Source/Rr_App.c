@@ -203,6 +203,8 @@ void Rr_Run(Rr_AppConfig* Config)
     Rr_InitFrameTime(&App->FrameTime, App->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
+    SDL_SetEventEnabled(SDL_EVENT_MOUSE_BUTTON_DOWN, true);
+    SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true);
 
     SDL_AddEventWatch(Rr_EventWatch, App);
 
