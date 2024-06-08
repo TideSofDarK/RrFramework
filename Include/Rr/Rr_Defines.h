@@ -9,11 +9,7 @@
     #include <cstdint>
 #endif
 
-#if defined(_MSC_VER) && !defined(__clang__)
-typedef unsigned char byte;
-#else
 typedef char byte;
-#endif
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
