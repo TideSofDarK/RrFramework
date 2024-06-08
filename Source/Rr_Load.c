@@ -4,6 +4,7 @@
 #include "Rr_Mesh.h"
 #include "Rr_Image.h"
 #include "Rr_App.h"
+#include "Rr_Log.h"
 
 #include <SDL3/SDL.h>
 
@@ -153,8 +154,7 @@ Rr_LoadingContext* Rr_LoadAsync(
 {
     if (TaskCount == 0)
     {
-        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "Submitted zero tasks to load procedure!");
-        return NULL;
+        Rr_LogAbort("Submitted zero tasks to load procedure!");
     }
 
     usize AllocationSize = sizeof(Rr_LoadTask) * TaskCount + sizeof(Rr_LoadingContext);
@@ -187,8 +187,7 @@ Rr_LoadResult Rr_LoadImmediate(
 {
     if (Tasks == 0)
     {
-        SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "Submitted zero tasks to load procedure!");
-        return RR_LOAD_RESULT_NO_TASKS;
+        Rr_LogAbort("Submitted zero tasks to load procedure!");
     }
     Rr_LoadingContext LoadingContext = {
         .App = App,

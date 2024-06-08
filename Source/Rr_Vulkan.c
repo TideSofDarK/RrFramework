@@ -1,6 +1,7 @@
 #include "Rr_Vulkan.h"
 
 #include "Rr_Memory.h"
+#include "Rr_Log.h"
 
 #include <SDL3/SDL.h>
 
@@ -120,8 +121,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, NULL);
     if (PhysicalDeviceCount == 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "No device with Vulkan support found");
-        abort();
+        Rr_LogAbort("No device with Vulkan support found");
     }
 
     VkPhysicalDevice* PhysicalDevices = Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
@@ -151,7 +151,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
             vkGetPhysicalDeviceMemoryProperties(PhysicalDeviceHandle, &PhysicalDevice.MemoryProperties);
             vkGetPhysicalDeviceProperties2(PhysicalDeviceHandle, &PhysicalDevice.Properties);
 
-            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Selected GPU: %s", PhysicalDevice.Properties.properties.deviceName);
+            Rr_LogVulkan("Selected GPU: %s", PhysicalDevice.Properties.properties.deviceName);
 
             PhysicalDevice.Handle = PhysicalDeviceHandle;
             bFoundSuitableDevice = true;
@@ -160,11 +160,10 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     }
     if (!bFoundSuitableDevice)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not select physical device based on the chosen properties!");
-        abort();
+        Rr_LogAbort("Could not select physical device based on the chosen properties!");
     }
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Unified Queue Mode: %s", !bUseTransferQueue ? "true" : "false");
+    Rr_LogVulkan("Unified Queue Mode: %s", !bUseTransferQueue ? "true" : "false");
 
     Rr_StackFree(PhysicalDevices);
 

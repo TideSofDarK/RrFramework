@@ -1,8 +1,7 @@
 #include "Rr_Memory.h"
+#include "Rr_Log.h"
 
-#include <SDL3/SDL.h>
-
-#include <stdlib.h>
+#include <SDL3/SDL_thread.h>
 
 void* Rr_Malloc(usize Bytes)
 {
@@ -92,8 +91,7 @@ void Rr_InitThreadScratch(usize Size)
 {
     if (ScratchArenaTLS == 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "ScratchArenaTLS is not set!");
-        abort();
+        Rr_LogAbort("ScratchArenaTLS is not set!");
     }
     Rr_Arena* Arena = Rr_Calloc(RR_SCRATCH_ARENA_COUNT_PER_THREAD, sizeof(Rr_Arena));
     for (usize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
@@ -107,8 +105,7 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena* Conflict)
 {
     if (ScratchArenaTLS == 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "ScratchArenaTLS is not set!");
-        abort();
+        Rr_LogAbort("ScratchArenaTLS is not set!");
     }
     Rr_Arena* Arena = (Rr_Arena*)SDL_GetTLS(ScratchArenaTLS);
     if (Conflict == NULL)
@@ -126,8 +123,9 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena* Conflict)
         }
     }
 
-    SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Couldn't find appropriate arena for a scratch!");
-    abort();
+    Rr_LogAbort("Couldn't find appropriate arena for a scratch!");
+
+    return (Rr_ArenaScratch){ 0 };
 }
 
 void* Rr_ArenaAlloc(Rr_Arena* Arena, usize Size, usize Align, usize Count)
@@ -136,8 +134,7 @@ void* Rr_ArenaAlloc(Rr_Arena* Arena, usize Size, usize Align, usize Count)
     size Available = (Arena->End - Arena->Current) - (size)Padding;
     if (Available < 0 || Count > Available / Size)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Running out of arena memory!");
-        abort();
+        Rr_LogAbort("Running out of arena memory!");
     }
     byte* p = Arena->Current + Padding;
     Arena->Current += Padding + Count * Size;
@@ -162,8 +159,7 @@ void Rr_SliceGrow(void* Slice, usize Size, Rr_Arena* Arena)
 {
     if (Arena == NULL)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Attempt to grow a slice but Arena is NULL!");
-        abort();
+        Rr_LogAbort("Attempt to grow a slice but Arena is NULL!");
     }
 
     Rr_SliceType(void) Replica;
@@ -187,8 +183,7 @@ void Rr_SliceResize(void* Slice, usize Size, usize Count, Rr_Arena* Arena)
 {
     if (Arena == NULL)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Attempt to grow a slice but Arena is NULL!");
-        abort();
+        Rr_LogAbort("Attempt to grow a slice but Arena is NULL!");
     }
 
     Rr_SliceType(void) Replica;

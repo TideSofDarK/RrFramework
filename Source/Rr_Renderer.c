@@ -7,6 +7,7 @@
 #include "Rr_Image.h"
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
+#include "Rr_Log.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -127,8 +128,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
 
     if (!bPreferredFormatFound)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "No preferred surface format found!");
-        abort();
+        Rr_LogAbort("No preferred surface format found!");
     }
 
     VkCompositeAlphaFlagBitsKHR CompositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -238,7 +238,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         u32 DrawTargetHeight = SDL_max(DisplayBounds.h, *Height);
         Renderer->DrawTarget = Rr_CreateDrawTarget(App, DrawTargetWidth, DrawTargetHeight);
 
-        SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Creating primary draw target with size %dx%d", DrawTargetWidth, DrawTargetHeight);
+        Rr_LogVulkan("Creating primary draw target with size %dx%d", DrawTargetWidth, DrawTargetHeight);
     }
 
     Renderer->SwapchainSize = (VkExtent2D){ .width = *Width, .height = *Height };
@@ -727,8 +727,7 @@ void Rr_InitRenderer(Rr_App* App)
 
     if (SDL_Vulkan_CreateSurface(Window, Renderer->Instance, NULL, &Renderer->Surface) != SDL_TRUE)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Failed to create Vulkan surface: %s", SDL_GetError());
-        abort();
+        Rr_LogAbort("Failed to create Vulkan surface: %s", SDL_GetError());
     }
 
     Renderer->PhysicalDevice = Rr_CreatePhysicalDevice(

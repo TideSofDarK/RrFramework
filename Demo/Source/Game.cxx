@@ -61,14 +61,14 @@ struct SCamera
     f32 Pitch;
     f32 Yaw;
     Rr_Vec3 Position;
-    Rr_Mat4 ViewMatrix;
+    Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
 
-    Rr_Vec3 GetForwardVector() const
+    [[nodiscard]] Rr_Vec3 GetForwardVector() const
     {
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
     }
 
-    Rr_Vec3 GetRightVector() const
+    [[nodiscard]] Rr_Vec3 GetRightVector() const
     {
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
     }
@@ -346,7 +346,8 @@ static void Iterate(Rr_App* App)
         .DrawTarget = nullptr,
         .InitialColor = nullptr,
         .InitialDepth = nullptr,
-        .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline)
+        .Viewport = {},
+        .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline),
     };
     Rr_DrawContext* RenderingContext = Rr_CreateDrawContext(App, &BeginRenderingInfo, (byte*)&ShaderGlobals);
 

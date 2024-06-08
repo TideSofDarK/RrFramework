@@ -1,10 +1,7 @@
 #include "Rr/Rr_String.h"
 
 #include "Rr_Memory.h"
-
-#include <SDL3/SDL.h>
-
-#include <stdlib.h>
+#include "Rr_Log.h"
 
 static u32* Rr_UTF8ToUTF32(
     str CString,
@@ -24,8 +21,7 @@ static u32* Rr_UTF8ToUTF32(
     usize SourceLength = OptionalLength > 0 ? OptionalLength : strlen(CString);
     if (SourceLength > 2048)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Exceeding max string length!");
-        abort();
+        Rr_LogAbort("Exceeding max string length!");
     }
 
     u8 Carry = 0;

@@ -1,9 +1,8 @@
 #include "Rr_Pipeline.h"
 
 #include "Rr_App.h"
+#include "Rr_Log.h"
 
-#include <SDL3/SDL_stdinc.h>
-#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_assert.h>
 
 enum Rr_VertexInputBinding
@@ -237,8 +236,7 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_V
     usize Location = Attribute.Location;
     if (Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Exceeding max allowed number of vertex attributes for a pipeline!");
-        abort();
+        Rr_LogAbort("Exceeding max allowed number of vertex attributes for a pipeline!");
     }
 
     PipelineBuilder->Attributes[Location] = (VkVertexInputAttributeDescription){

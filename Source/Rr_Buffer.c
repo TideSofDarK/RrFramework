@@ -2,6 +2,7 @@
 
 #include "Rr_UploadContext.h"
 #include "Rr_App.h"
+#include "Rr_Log.h"
 
 #include <SDL3/SDL_log.h>
 
@@ -101,13 +102,11 @@ void Rr_UploadBufferAligned(
     Rr_WriteBuffer* StagingBuffer = &UploadContext->StagingBuffer;
     if (StagingBuffer->Offset + DataLength > StagingBuffer->Buffer->AllocationInfo.size)
     {
-        SDL_LogError(
-            SDL_LOG_CATEGORY_VIDEO,
+        Rr_LogAbort(
             "Exceeding staging buffer size! Current offset is %zu, allocation size is %zu and total staging buffer size is %zu.",
             (usize)StagingBuffer->Offset,
             (usize)DataLength,
             (usize)StagingBuffer->Buffer->AllocationInfo.size);
-        abort();
     }
 
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
@@ -288,12 +287,10 @@ void Rr_CopyToMappedUniformBuffer(
     }
     else
     {
-        SDL_LogError(
-            SDL_LOG_CATEGORY_VIDEO,
+        Rr_LogAbort(
             "Exceeding buffer size! Current offset is %zu, allocation size is %zu and total  buffer size is %zu.",
             *DstOffset,
             AlignedSize,
             DstBuffer->AllocationInfo.size);
-        abort();
     }
 }

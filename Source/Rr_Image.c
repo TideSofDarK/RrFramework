@@ -2,6 +2,7 @@
 
 #include "Rr_UploadContext.h"
 #include "Rr_App.h"
+#include "Rr_Log.h"
 
 #include <SDL3/SDL.h>
 
@@ -288,17 +289,15 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     Result = ParseEXRVersionFromMemory(&Version, (unsigned char*)Asset.Data, Asset.Length);
     if (Result != 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file!");
-        abort();
+        Rr_LogAbort("Error opening EXR file!");
     }
 
     EXRHeader Header;
     Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char*)Asset.Data, Asset.Length, &Error);
     if (Result != 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file: %s", Error);
-        FreeEXRErrorMessage(Error);
-        abort();
+        Rr_LogAbort("Error opening EXR file: %s", Error);
+        // FreeEXRErrorMessage(Error);
     }
 
     EXRImage Image;
@@ -307,10 +306,9 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char*)Asset.Data, Asset.Length, &Error);
     if (Result != 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file: %s", Error);
-        FreeEXRHeader(&Header);
-        FreeEXRErrorMessage(Error);
-        abort();
+        Rr_LogAbort("Error opening EXR file: %s", Error);
+        // FreeEXRHeader(&Header);
+        // FreeEXRErrorMessage(Error);
     }
 
     /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */

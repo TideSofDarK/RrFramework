@@ -4,6 +4,7 @@
 #include "Rr_Image.h"
 #include "Rr_App.h"
 #include "Rr_Material.h"
+#include "Rr_Log.h"
 
 #include <SDL3/SDL.h>
 
@@ -36,22 +37,19 @@ static cgltf_mesh* Rr_ParseGLTFMesh(Rr_Asset* Asset, usize MeshIndex, cgltf_opti
     cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Length, &Data);
     if (Result != cgltf_result_success)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "[glTF] Error loading glTF asset!");
-        abort();
+        Rr_LogAbort("Error loading glTF asset!");
     }
 
     cgltf_mesh* Mesh = Data->meshes + MeshIndex;
 
     if (MeshIndex + 1 > Data->meshes_count || Mesh->primitives_count < 1)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "[glTF] Mesh contains no geometry!");
-        abort();
+        Rr_LogAbort("Mesh contains no geometry!");
     }
 
     if (Data->meshes->primitives_count > RR_MESH_MAX_PRIMITIVES)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "[glTF] Exceeding max mesh primitives count!");
-        abort();
+        Rr_LogAbort("Exceeding max mesh primitives count!");
     }
 
     *OutData = Data;
@@ -82,8 +80,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
     }
     else
     {
-        SDL_LogError(SDL_LOG_CATEGORY_CUSTOM, "Unsupported index type!");
-        abort();
+        Rr_LogAbort("Unsupported index type!");
     }
 
     for (usize VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
