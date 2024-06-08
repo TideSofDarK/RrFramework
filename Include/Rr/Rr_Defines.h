@@ -26,6 +26,7 @@ typedef float f32;
 typedef double f64;
 typedef intptr_t size;
 typedef uintptr_t usize;
+typedef const char* str;
 
 /* Renderer Configuration */
 #define RR_FORCE_DISABLE_TRANSFER_QUEUE 0

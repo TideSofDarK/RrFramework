@@ -149,7 +149,7 @@ Rr_LoadingContext* Rr_LoadAsync(
     Rr_LoadTask* Tasks,
     usize TaskCount,
     Rr_LoadingCallback LoadingCallback,
-    const void* Userdata)
+    void* Userdata)
 {
     if (TaskCount == 0)
     {
@@ -198,7 +198,7 @@ Rr_LoadResult Rr_LoadImmediate(
     return Rr_LoadImmediate_Internal(&LoadingContext);
 }
 
-void Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal)
+void Rr_GetLoadProgress(Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal)
 {
     if (OutCurrent != NULL)
     {
@@ -216,7 +216,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
-    const usize TaskCount = LoadingContext->TaskCount;
+    usize TaskCount = LoadingContext->TaskCount;
     Rr_LoadTask* Tasks = LoadingContext->Tasks;
 
     Rr_LoadSize LoadSize = Rr_CalculateLoadSize(Tasks, TaskCount, Scratch.Arena);
@@ -399,7 +399,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
-    const usize TaskCount = LoadingContext->TaskCount;
+    usize TaskCount = LoadingContext->TaskCount;
     Rr_LoadTask* Tasks = LoadingContext->Tasks;
 
     Rr_LoadSize LoadSize = Rr_CalculateLoadSize(Tasks, TaskCount, Scratch.Arena);

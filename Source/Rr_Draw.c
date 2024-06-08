@@ -5,7 +5,7 @@
 #include "Rr_Mesh.h"
 #include "Rr_Material.h"
 
-Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData)
+Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, byte* GlobalsData)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
@@ -73,7 +73,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_CopyToMappedUniformBuffer(DrawContext->App, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
 }
 
-static void Rr_DrawText(Rr_DrawContext* RenderingContext, const Rr_DrawTextInfo* Info)
+static void Rr_DrawText(Rr_DrawContext* RenderingContext, Rr_DrawTextInfo* Info)
 {
     Rr_DrawTextInfo* NewInfo = Rr_SlicePush(&RenderingContext->DrawTextsSlice, RenderingContext->Arena);
     *NewInfo = *Info;
@@ -127,7 +127,7 @@ Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height)
 
     VkImageView Attachments[2] = { DrawTarget->ColorImage->View, DrawTarget->DepthImage->View };
 
-    const VkFramebufferCreateInfo Info = {
+    VkFramebufferCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,

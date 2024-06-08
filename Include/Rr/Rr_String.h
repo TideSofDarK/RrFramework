@@ -13,10 +13,10 @@ typedef struct Rr_String
     u32* Data;
 } Rr_String;
 
-Rr_String Rr_CreateString(const char* CString);
+Rr_String Rr_CreateString(str CString);
 Rr_String Rr_CreateEmptyString(usize Length);
-void Rr_SetString(Rr_String* String, const char* CString, usize OptionalLength);
-void Rr_DestroyString(const Rr_String* String);
+void Rr_SetString(Rr_String* String, str CString, usize OptionalLength);
+void Rr_DestroyString(Rr_String* String);
 
 #ifdef __cplusplus
 }

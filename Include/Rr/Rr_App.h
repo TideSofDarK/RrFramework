@@ -14,13 +14,13 @@ typedef struct Rr_App Rr_App;
 
 typedef struct Rr_AppConfig
 {
-    const char* Title;
+    str Title;
     Rr_InputConfig* InputConfig;
     void (*InitFunc)(Rr_App* App);
     void (*CleanupFunc)(Rr_App* App);
     void (*IterateFunc)(Rr_App* App);
 
-    void (*FileDroppedFunc)(Rr_App* App, const char* Path);
+    void (*FileDroppedFunc)(Rr_App* App, str Path);
 } Rr_AppConfig;
 
 void Rr_Run(Rr_AppConfig* Config);

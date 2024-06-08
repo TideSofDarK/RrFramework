@@ -30,7 +30,7 @@ static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena* Arena)
     };
 }
 
-static cgltf_mesh* Rr_ParseGLTFMesh(const Rr_Asset* Asset, usize MeshIndex, cgltf_options* Options, cgltf_data** OutData)
+static cgltf_mesh* Rr_ParseGLTFMesh(Rr_Asset* Asset, usize MeshIndex, cgltf_options* Options, cgltf_data** OutData)
 {
     cgltf_data* Data = NULL;
     cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Length, &Data);
@@ -135,7 +135,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
     return RawMesh;
 }
 
-static usize Rr_GetNewLine(const char* Data, usize Length, usize CurrentIndex)
+static usize Rr_GetNewLine(char* Data, usize Length, usize CurrentIndex)
 {
     CurrentIndex++;
     while (CurrentIndex < Length && Data[CurrentIndex] != '\n')
@@ -147,7 +147,7 @@ static usize Rr_GetNewLine(const char* Data, usize Length, usize CurrentIndex)
 }
 
 static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
-    const Rr_Asset* Asset,
+    Rr_Asset* Asset,
     Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
@@ -245,7 +245,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
                     }
                     if (ExistingOBJIndex == SIZE_MAX)
                     {
-                        const Rr_Vec2* TexCoord = &ScratchTexCoords.Data[OBJIndices[Index].Y];
+                        Rr_Vec2* TexCoord = &ScratchTexCoords.Data[OBJIndices[Index].Y];
                         Rr_Vertex NewVertex = { 0 };
                         NewVertex.Position = ScratchPositions.Data[OBJIndices[Index].X];
                         // NewVertex.Color = ScratchColors.Data[OBJIndices[Index].X];
@@ -290,8 +290,8 @@ Rr_Primitive* Rr_CreatePrimitive(
 
     Primitive->IndexCount = Rr_SliceLength(&RawMesh->IndicesSlice);
 
-    const usize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh->VerticesSlice);
-    const usize IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
+    usize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh->VerticesSlice);
+    usize IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
 
     Primitive->VertexBuffer = Rr_CreateBuffer(
         App,
@@ -435,7 +435,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
                 {
                     if (SDL_strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
                     {
-                        const byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
+                        byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
                         usize PNGSize = BaseColorTexture->image->buffer_view->size;
 
                         Textures[Loader->BaseTexture] = Rr_CreateColorImageFromPNGMemory(
@@ -551,7 +551,7 @@ void Rr_GetStaticMeshSizeGLTF(
                 {
                     if (SDL_strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
                     {
-                        const byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
+                        byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
                         usize PNGSize = BaseColorTexture->image->buffer_view->size;
 
                         Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);

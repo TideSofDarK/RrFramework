@@ -13,11 +13,11 @@ static VkDescriptorPool CreateDescriptorPool(
     VkDescriptorPoolSize* PoolSizes = Rr_StackAlloc(VkDescriptorPoolSize, RatioCount);
     for (usize Index = 0; Index < RatioCount; Index++)
     {
-        const Rr_DescriptorPoolSizeRatio* Ratio = &Ratios[Index];
+        Rr_DescriptorPoolSizeRatio* Ratio = &Ratios[Index];
         PoolSizes[Index] = (VkDescriptorPoolSize){ .type = Ratio->Type, .descriptorCount = (u32)(Ratio->Ratio * (f32)SetCount) };
     }
 
-    const VkDescriptorPoolCreateInfo Info = {
+    VkDescriptorPoolCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = 0,
         .maxSets = SetCount,
@@ -96,7 +96,7 @@ void Rr_DestroyDescriptorAllocator(Rr_DescriptorAllocator* DescriptorAllocator, 
 VkDescriptorPool Rr_GetDescriptorPool(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device)
 {
     VkDescriptorPool NewPool;
-    const usize ReadyCount = Rr_SliceLength(&DescriptorAllocator->ReadyPools);
+    usize ReadyCount = Rr_SliceLength(&DescriptorAllocator->ReadyPools);
     if (ReadyCount != 0)
     {
         NewPool = DescriptorAllocator->ReadyPools.Data[ReadyCount - 1];
@@ -136,7 +136,7 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
     };
 
     VkDescriptorSet DescriptorSet;
-    const VkResult Result = vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet);
+    VkResult Result = vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet);
 
     if (Result == VK_ERROR_OUT_OF_POOL_MEMORY || Result == VK_ERROR_FRAGMENTED_POOL)
     {
@@ -223,10 +223,10 @@ void Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer)
 
 void Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set)
 {
-    const usize WritesCount = Rr_SliceLength(&Writer->Writes);
+    usize WritesCount = Rr_SliceLength(&Writer->Writes);
     for (usize Index = 0; Index < WritesCount; ++Index)
     {
-        const Rr_DescriptorWriterEntry* Entry = &Writer->Entries.Data[Index];
+        Rr_DescriptorWriterEntry* Entry = &Writer->Entries.Data[Index];
         VkWriteDescriptorSet* Write = &Writer->Writes.Data[Index];
         Write->dstSet = Set;
         switch (Entry->Type)
@@ -295,7 +295,7 @@ VkDescriptorSetLayout Rr_BuildDescriptorLayout(
     VkDevice Device,
     VkShaderStageFlags ShaderStageFlags)
 {
-    const VkDescriptorSetLayoutCreateInfo Info = {
+    VkDescriptorSetLayoutCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .flags = 0,
         .bindingCount = Builder->Count,

@@ -19,7 +19,7 @@ static bool Rr_CheckPhysicalDevice(
         return false;
     }
 
-    const char* TargetExtensions[] = {
+    char* TargetExtensions[] = {
         "VK_KHR_swapchain",
     };
 
@@ -78,7 +78,7 @@ static bool Rr_CheckPhysicalDevice(
         return false;
     }
 
-    const u32 bForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
+    u32 bForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
 
     if (!bForceDisableTransferQueue)
     {
@@ -180,7 +180,7 @@ void Rr_InitDeviceAndQueues(
     VkQueue* OutTransferQueue)
 {
     bool bUseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
-    const float QueuePriorities[] = { 1.0f };
+    float QueuePriorities[] = { 1.0f };
     VkDeviceQueueCreateInfo QueueInfos[] = {
         {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -196,9 +196,9 @@ void Rr_InitDeviceAndQueues(
         }
     };
 
-    const char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-    const VkDeviceCreateInfo DeviceCreateInfo = {
+    VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = NULL,
         .queueCreateInfoCount = bUseTransferQueue ? 2 : 1,
@@ -242,7 +242,7 @@ void Rr_BlitPrerenderedDepth(
     //     .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
     // };
     //
-    // const VkBlitImageInfo2 BlitInfo = {
+    //  VkBlitImageInfo2 BlitInfo = {
     //     .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
     //     .pNext = NULL,
     //     .srcImage = Source,

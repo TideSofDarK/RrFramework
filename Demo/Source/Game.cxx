@@ -132,7 +132,7 @@ static void InitGlobals(Rr_App* App)
     ShaderGlobals.Intermediate = Rr_VulkanMatrix();
 }
 
-static void OnLoadingComplete(Rr_App* App, const void* Userdata)
+static void OnLoadingComplete(Rr_App* App, void* Userdata)
 {
     Rr_Image* MarbleTextures[2] = { MarbleDiffuse, MarbleSpecular };
     MarbleMaterial = Rr_CreateMaterial(App, Uber3DPipeline, MarbleTextures, 2);

@@ -24,7 +24,7 @@ VkPipeline Rr_BuildPipeline(
     VkShaderModule VertModule = VK_NULL_HANDLE;
     if (PipelineBuilder->VertexShaderSPV.Data != NULL)
     {
-        const VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
+        VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .pCode = (u32*)PipelineBuilder->VertexShaderSPV.Data,
@@ -38,7 +38,7 @@ VkPipeline Rr_BuildPipeline(
     VkShaderModule FragModule = VK_NULL_HANDLE;
     if (PipelineBuilder->FragmentShaderSPV.Data != NULL)
     {
-        const VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
+        VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .pCode = (u32*)PipelineBuilder->FragmentShaderSPV.Data,
@@ -70,7 +70,7 @@ VkPipeline Rr_BuildPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = NULL,
     };
-    const VkVertexInputBindingDescription VertexInputBindingDescriptions[2] = {
+    VkVertexInputBindingDescription VertexInputBindingDescriptions[2] = {
         {
             .binding = 0,
             .stride = PipelineBuilder->VertexInput[0].VertexInputStride,
@@ -121,7 +121,7 @@ VkPipeline Rr_BuildPipeline(
     };
 
     /* Create pipeline. */
-    const VkGraphicsPipelineCreateInfo PipelineInfo = {
+    VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = NULL,
         .stageCount = ShaderStageCount,
@@ -234,7 +234,7 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_V
         return;
     }
 
-    const usize Location = Attribute.Location;
+    usize Location = Attribute.Location;
     if (Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Exceeding max allowed number of vertex attributes for a pipeline!");
@@ -267,22 +267,22 @@ void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr
     }
 }
 
-void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, const Rr_Asset* SPVAsset)
+void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
 {
     PipelineBuilder->VertexShaderSPV = *SPVAsset;
 }
 
-void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, const Rr_Asset* SPVAsset)
+void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
 {
     PipelineBuilder->FragmentShaderSPV = *SPVAsset;
 }
 
-void Rr_EnableAdditionalColorAttachment(Rr_PipelineBuilder* PipelineBuilder, const VkFormat Format)
+void Rr_EnableAdditionalColorAttachment(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format)
 {
     PipelineBuilder->ColorAttachmentFormats[1] = Format;
 }
 
-void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, const Rr_PolygonMode PolygonMode)
+void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, Rr_PolygonMode PolygonMode)
 {
     switch (PolygonMode)
     {
@@ -302,14 +302,14 @@ void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, const Rr_PolygonMo
     PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 }
 
-void Rr_EnableDepthTest(Rr_PipelineBuilder* const PipelineBuilder)
+void Rr_EnableDepthTest(Rr_PipelineBuilder* PipelineBuilder)
 {
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 }
 
-void Rr_EnableAlphaBlend(Rr_PipelineBuilder* const PipelineBuilder)
+void Rr_EnableAlphaBlend(Rr_PipelineBuilder* PipelineBuilder)
 {
     PipelineBuilder->ColorBlendAttachments[0] = (VkPipelineColorBlendAttachmentState){
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,

@@ -19,7 +19,7 @@ typedef struct Rr_PendingLoad Rr_PendingLoad;
 struct Rr_PendingLoad
 {
     Rr_LoadingCallback LoadingCallback;
-    const void* Userdata;
+    void* Userdata;
 };
 
 typedef struct Rr_LoadingThread Rr_LoadingThread;
@@ -38,7 +38,7 @@ struct Rr_LoadingContext
     struct Rr_App* App;
     SDL_Semaphore* Semaphore;
     Rr_LoadingCallback LoadingCallback;
-    const void* Userdata;
+    void* Userdata;
     Rr_LoadTask* Tasks;
     usize TaskCount;
 };

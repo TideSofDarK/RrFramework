@@ -16,20 +16,20 @@ extern "C"
 typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset
 {
-    const byte* Data;
+    byte* Data;
     usize Length;
 };
 
 #if defined(RR_USE_RC)
 
-typedef const char* Rr_AssetRef;
+typedef str Rr_AssetRef;
 
 #else
 
 typedef struct Rr_AssetRef
 {
-    const char* Start;
-    const char* End;
+    char* Start;
+    char* End;
 } Rr_AssetRef;
 
     #define STR2(x) #x
@@ -58,9 +58,9 @@ typedef struct Rr_AssetRef
                 "_incbin" "_" STR(NAME) "_end:\n" \
                 ".byte 0\n" \
         ); \
-        RR_ASSET_EXTERN  __attribute__((aligned(16))) const char incbin ## _ ## NAME ## _start[]; \
-        RR_ASSET_EXTERN                               const char incbin ## _ ## NAME ## _end[]; \
-        const Rr_AssetRef NAME = { \
+        RR_ASSET_EXTERN  __attribute__((aligned(16)))  char incbin ## _ ## NAME ## _start[]; \
+        RR_ASSET_EXTERN                                char incbin ## _ ## NAME ## _end[]; \
+         Rr_AssetRef NAME = { \
             .Start = incbin ## _ ## NAME ## _start, \
             .End = incbin ## _ ## NAME ## _end, \
         }
@@ -77,9 +77,9 @@ typedef struct Rr_AssetRef
                 STR(__USER_LABEL_PREFIX__)"incbin_" STR(NAME) "_end:\n" \
                 ".byte 0\n" \
         ); \
-        RR_ASSET_EXTERN  __attribute__((aligned(16))) const char incbin_ ## NAME ## _start[]; \
-        RR_ASSET_EXTERN                               const char incbin_ ## NAME ## _end[];   \
-        const Rr_AssetRef NAME = { \
+        RR_ASSET_EXTERN  __attribute__((aligned(16)))  char incbin_ ## NAME ## _start[]; \
+        RR_ASSET_EXTERN                                char incbin_ ## NAME ## _end[];   \
+         Rr_AssetRef NAME = { \
             .Start = incbin_ ## NAME ## _start, \
             .End = incbin_ ## NAME ## _end, \
         }

@@ -148,8 +148,8 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
 
     cJSON* FontDataJSON = cJSON_ParseWithLength(FontJSON.Data, FontJSON.Length);
 
-    const cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
-    const cJSON* MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
+    cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
+    cJSON* MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
 
     Rr_TextFontLayout TextFontData = {
         .DistanceRange = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "distanceRange")),
@@ -168,16 +168,16 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
         .Advances = Rr_Calloc(RR_TEXT_MAX_GLYPHS, sizeof(f32))
     };
 
-    const cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
+    cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
 
-    const size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
+    size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
     for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
-        const cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (i32)GlyphIndex);
+        cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (i32)GlyphIndex);
 
-        const size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
+        size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
 
-        const cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
+        cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
         u16 AtlasBounds[4] = { 0 };
         if (cJSON_IsObject(AtlasBoundsJSON))
         {
@@ -187,7 +187,7 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
             AtlasBounds[3] = (u16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "top"));
         }
 
-        const cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
+        cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
         Rr_Vec4 PlaneBounds = { 0 };
         if (cJSON_IsObject(PlaneBoundsJSON))
         {

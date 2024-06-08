@@ -28,7 +28,7 @@ extern Rr_Image* Rr_CreateImage(
 extern Rr_Image* Rr_CreateColorImageFromPNGMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    const byte* Data,
+    byte* Data,
     usize DataSize,
     bool bMipMapped);
 extern Rr_Image* Rr_CreateColorImageFromPNG(
@@ -46,7 +46,7 @@ extern Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Heigh
 extern Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height);
 
 extern void Rr_GetImageSizePNGMemory(
-    const byte* Data,
+    byte* Data,
     usize DataSize,
     Rr_Arena* Arena,
     Rr_LoadSize* OutLoadSize);

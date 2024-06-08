@@ -15,12 +15,12 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 
-// static void Rr_CalculateDrawTargetResolution(Rr_Renderer* const Renderer, const u32 WindowWidth, const u32 WindowHeight)
+// static void Rr_CalculateDrawTargetResolution(Rr_Renderer*  Renderer,  u32 WindowWidth,  u32 WindowHeight)
 // {
 //     Renderer->ActiveResolution.width = Renderer->ReferenceResolution.width;
 //     Renderer->ActiveResolution.height = Renderer->ReferenceResolution.height;
 //
-//     const i32 MaxAvailableScale = SDL_min(WindowWidth / Renderer->ReferenceResolution.width, WindowHeight / Renderer->ReferenceResolution.height);
+//      i32 MaxAvailableScale = SDL_min(WindowWidth / Renderer->ReferenceResolution.width, WindowHeight / Renderer->ReferenceResolution.height);
 //     if (MaxAvailableScale >= 1)
 //     {
 //         Renderer->ActiveResolution.width += (WindowWidth - MaxAvailableScale * Renderer->ReferenceResolution.width) / MaxAvailableScale;
@@ -114,7 +114,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     bool bPreferredFormatFound = false;
     for (u32 Index = 0; Index < FormatCount; Index++)
     {
-        const VkSurfaceFormatKHR* SurfaceFormat = &SurfaceFormats[Index];
+        VkSurfaceFormatKHR* SurfaceFormat = &SurfaceFormats[Index];
 
         if (SurfaceFormat->format == VK_FORMAT_B8G8R8A8_UNORM || SurfaceFormat->format == VK_FORMAT_R8G8B8A8_UNORM)
         {
@@ -132,7 +132,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     }
 
     VkCompositeAlphaFlagBitsKHR CompositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    const VkCompositeAlphaFlagBitsKHR CompositeAlphaFlags[] = {
+    VkCompositeAlphaFlagBitsKHR CompositeAlphaFlags[] = {
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
         VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
@@ -140,7 +140,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     };
     for (u32 Index = 0; Index < SDL_arraysize(CompositeAlphaFlags); Index++)
     {
-        const VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag = CompositeAlphaFlags[Index];
+        VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag = CompositeAlphaFlags[Index];
         if (SurfCaps.supportedCompositeAlpha & CompositeAlphaFlag)
         {
             CompositeAlpha = CompositeAlphaFlag;
@@ -255,8 +255,8 @@ static void Rr_InitFrames(Rr_App* App)
     VkDevice Device = Renderer->Device;
     Rr_Frame* Frames = Renderer->Frames;
 
-    const VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    const VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
+    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
 
     for (usize Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
@@ -346,7 +346,7 @@ static void Rr_InitVMA(Rr_App* App)
         .vkBindImageMemory2KHR = vkBindImageMemory2,
         .vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2,
     };
-    const VmaAllocatorCreateInfo AllocatorInfo = {
+    VmaAllocatorCreateInfo AllocatorInfo = {
         .flags = 0,
         .physicalDevice = Renderer->PhysicalDevice.Handle,
         .device = Renderer->Device,
@@ -367,7 +367,7 @@ static void Rr_InitDescriptors(Rr_App* App)
     Renderer->GlobalDescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios), &App->PermanentArena);
 }
 
-static PFN_vkVoidFunction Rr_LoadVulkanFunction(const char* FuncName, void* Userdata)
+static PFN_vkVoidFunction Rr_LoadVulkanFunction(str FuncName, void* Userdata)
 {
     return (PFN_vkVoidFunction)vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
 }
@@ -390,7 +390,7 @@ void Rr_InitImGui(Rr_App* App)
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
         { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
 
-    const VkDescriptorPoolCreateInfo PoolCreateInfo = {
+    VkDescriptorPoolCreateInfo PoolCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .maxSets = 1000,
@@ -423,7 +423,7 @@ void Rr_InitImGui(Rr_App* App)
 
     ImGui_ImplVulkan_Init(&InitInfo);
 
-    const f32 WindowScale = SDL_GetWindowDisplayScale(Window);
+    f32 WindowScale = SDL_GetWindowDisplayScale(Window);
     ImGuiStyle_ScaleAllSizes(igGetStyle(), WindowScale);
 
     /* Init default font. */
@@ -505,7 +505,7 @@ static void Rr_InitGenericPipelineLayout(Rr_App* App)
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
     };
 
-    const VkPipelineLayoutCreateInfo LayoutInfo = {
+    VkPipelineLayoutCreateInfo LayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         .setLayoutCount = RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT,
@@ -682,7 +682,7 @@ void Rr_InitRenderer(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     SDL_Window* Window = App->Window;
-    const Rr_AppConfig* Config = App->Config;
+    Rr_AppConfig* Config = App->Config;
 
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
@@ -694,15 +694,15 @@ void Rr_InitRenderer(Rr_App* App)
     };
 
     /* Gather required extensions. */
-    const char* AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+    char* AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
     u32 AppExtensionCount = SDL_arraysize(AppExtensions);
     AppExtensionCount = 0; /* Use Vulkan Configurator! */
 
     u32 SDLExtensionCount;
-    const char* const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
+    str const * SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
 
-    const u32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
-    const char** Extensions = Rr_StackAlloc(const char*, ExtensionCount);
+    u32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
+    str* Extensions = Rr_StackAlloc(str, ExtensionCount);
     for (u32 Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
@@ -713,7 +713,7 @@ void Rr_InitRenderer(Rr_App* App)
     }
 
     /* Create Vulkan instance. */
-    const VkInstanceCreateInfo InstanceCreateInfo = {
+    VkInstanceCreateInfo InstanceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = NULL,
         .pApplicationInfo = &VKAppInfo,
@@ -772,7 +772,7 @@ bool Rr_NewFrame(Rr_App* App, void* Window)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    const i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
+    i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
     if (bResizePending == true)
     {
         vkDeviceWaitIdle(Renderer->Device);
@@ -780,7 +780,7 @@ bool Rr_NewFrame(Rr_App* App, void* Window)
         i32 Width, Height;
         SDL_GetWindowSizeInPixels(Window, &Width, &Height);
 
-        const bool bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
+        bool bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
 
         if (!bMinimized && Width > 0 && Height > 0 && Rr_InitSwapchain(App, (u32*)&Width, (u32*)&Height))
         {
@@ -1052,7 +1052,7 @@ void Rr_Draw(Rr_App* App)
 
     vkQueueSubmit(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
-    const VkPresentInfoKHR PresentInfo = {
+    VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = NULL,
         .waitSemaphoreCount = 1,

@@ -56,7 +56,7 @@ struct Rr_LoadTask
     void** Out;
 };
 
-typedef void (*Rr_LoadingCallback)(Rr_App* App, const void* Userdata);
+typedef void (*Rr_LoadingCallback)(Rr_App* App, void* Userdata);
 
 extern Rr_LoadTask Rr_LoadColorImageFromPNG(
     Rr_AssetRef AssetRef,
@@ -75,12 +75,12 @@ extern Rr_LoadingContext* Rr_LoadAsync(
     Rr_LoadTask* Tasks,
     usize TaskCount,
     Rr_LoadingCallback LoadingCallback,
-    const void* Userdata);
+    void* Userdata);
 extern Rr_LoadResult Rr_LoadImmediate(
     Rr_App* App,
     Rr_LoadTask* Tasks,
     usize TaskCount);
-extern void Rr_GetLoadProgress(const Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal);
+extern void Rr_GetLoadProgress(Rr_LoadingContext* LoadingContext, u32* OutCurrent, u32* OutTotal);
 
 #ifdef __cplusplus
 }

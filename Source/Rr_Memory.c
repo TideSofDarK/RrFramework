@@ -4,17 +4,17 @@
 
 #include <stdlib.h>
 
-void* Rr_Malloc(const usize Bytes)
+void* Rr_Malloc(usize Bytes)
 {
     return SDL_malloc(Bytes);
 }
 
-void* Rr_Calloc(const usize Num, const usize Bytes)
+void* Rr_Calloc(usize Num, usize Bytes)
 {
     return SDL_calloc(Num, Bytes);
 }
 
-void* Rr_Realloc(void* Ptr, const usize Bytes)
+void* Rr_Realloc(void* Ptr, usize Bytes)
 {
     return SDL_realloc(Ptr, Bytes);
 }

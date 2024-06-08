@@ -14,7 +14,7 @@ Rr_Buffer* Rr_CreateBuffer(
 {
     Rr_Buffer* Buffer = Rr_CreateObject(&App->Renderer.ObjectStorage);
 
-    const VkBufferCreateInfo BufferInfo = {
+    VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = NULL,
         .size = Size,
@@ -92,7 +92,7 @@ void Rr_UploadBufferAligned(
     VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
-    const void* Data,
+    void* Data,
     usize DataLength,
     usize Alignment)
 {
@@ -112,7 +112,7 @@ void Rr_UploadBufferAligned(
 
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
-    const usize BufferOffset = StagingBuffer->Offset;
+    usize BufferOffset = StagingBuffer->Offset;
     SDL_memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
     if (Alignment == 0)
     {
@@ -145,7 +145,7 @@ void Rr_UploadBufferAligned(
         0,
         NULL);
 
-    const VkBufferCopy Copy = {
+    VkBufferCopy Copy = {
         .size = DataLength,
         .srcOffset = BufferOffset,
         .dstOffset = 0
@@ -217,7 +217,7 @@ void Rr_UploadBuffer(
     VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
-    const void* Data,
+    void* Data,
     usize DataLength)
 {
     Rr_UploadBufferAligned(App, UploadContext, Buffer, SrcStageMask, SrcAccessMask, DstStageMask, DstAccessMask, Data, DataLength, 0);
@@ -226,7 +226,7 @@ void Rr_UploadBuffer(
 void Rr_UploadToDeviceBufferImmediate(
     Rr_App* App,
     Rr_Buffer* DstBuffer,
-    const void* Data,
+    void* Data,
     usize Size)
 {
     Rr_Renderer* Renderer = &App->Renderer;
@@ -236,7 +236,7 @@ void Rr_UploadToDeviceBufferImmediate(
         Size,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     SDL_memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data, Size);
-    const VkBufferCopy BufferCopy = {
+    VkBufferCopy BufferCopy = {
         .dstOffset = 0,
         .size = Size,
         .srcOffset = 0
@@ -255,7 +255,7 @@ void Rr_UploadToUniformBuffer(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Buffer* DstBuffer,
-    const void* Data,
+    void* Data,
     usize DataLength)
 {
     Rr_UploadBufferAligned(
@@ -274,12 +274,12 @@ void Rr_UploadToUniformBuffer(
 void Rr_CopyToMappedUniformBuffer(
     Rr_App* App,
     Rr_Buffer* DstBuffer,
-    const void* Data,
+    void* Data,
     usize Size,
     usize* DstOffset)
 {
-    const u32 Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
-    const usize AlignedSize = Rr_Align(Size, Alignment);
+    u32 Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+    usize AlignedSize = Rr_Align(Size, Alignment);
     if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
         SDL_memcpy((char*)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);

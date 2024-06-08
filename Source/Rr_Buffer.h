@@ -40,7 +40,7 @@ extern void Rr_UploadBufferAligned(
     VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
-    const void* Data,
+    void* Data,
     usize DataLength,
     usize Alignment);
 extern void Rr_UploadBuffer(
@@ -51,22 +51,22 @@ extern void Rr_UploadBuffer(
     VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
-    const void* Data,
+    void* Data,
     usize DataLength);
 extern void Rr_UploadToDeviceBufferImmediate(
     Rr_App* App,
     Rr_Buffer* DstBuffer,
-    const void* Data,
+    void* Data,
     usize Size);
 extern void Rr_UploadToUniformBuffer(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_Buffer* DstBuffer,
-    const void* Data,
+    void* Data,
     usize DataLength);
 extern void Rr_CopyToMappedUniformBuffer(
     Rr_App* App,
     Rr_Buffer* DstBuffer,
-    const void* Data,
+    void* Data,
     usize Size,
     usize* DstOffset);

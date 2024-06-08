@@ -16,10 +16,10 @@ static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 #ifdef RR_PERFORMANCE_COUNTER
     {
         FrameTime->PerformanceCounter.Frames++;
-        const u64 CurrentTime = SDL_GetPerformanceCounter();
+        u64 CurrentTime = SDL_GetPerformanceCounter();
         if (CurrentTime - FrameTime->PerformanceCounter.StartTime >= FrameTime->PerformanceCounter.UpdateFrequency)
         {
-            const f64 Elapsed = (f64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) / FrameTime->PerformanceCounter.CountPerSecond;
+            f64 Elapsed = (f64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) / FrameTime->PerformanceCounter.CountPerSecond;
             FrameTime->PerformanceCounter.FPS = (f64)FrameTime->PerformanceCounter.Frames / Elapsed;
             FrameTime->PerformanceCounter.StartTime = CurrentTime;
             FrameTime->PerformanceCounter.Frames = 0;
@@ -27,7 +27,7 @@ static void FrameTime_Advance(Rr_FrameTime* FrameTime)
     }
 #endif
 
-    const u64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
+    u64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
     u64 Now = SDL_GetTicksNS();
     u64 Elapsed = Now - FrameTime->StartTime;
     if (Elapsed < Interval)
@@ -50,11 +50,11 @@ static void FrameTime_Advance(Rr_FrameTime* FrameTime)
 
 void Rr_DebugOverlay(Rr_App* App)
 {
-    const ImGuiIO* IO = igGetIO();
-    const ImGuiViewport* Viewport = igGetMainViewport();
+    ImGuiIO* IO = igGetIO();
+    ImGuiViewport* Viewport = igGetMainViewport();
     ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-    const float Padding = 10.0f;
-    const ImVec2 WorkPos = Viewport->WorkPos;
+    float Padding = 10.0f;
+    ImVec2 WorkPos = Viewport->WorkPos;
     ImVec2 WindowPos, WindowPosPivot;
     WindowPos.x = WorkPos.x + Padding;
     WindowPos.y = WorkPos.y + Padding;
@@ -144,7 +144,7 @@ static void Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
     FrameTime->PerformanceCounter.CountPerSecond = (f64)SDL_GetPerformanceFrequency();
 #endif
 
-    const SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
     const SDL_DisplayMode* Mode = SDL_GetDesktopDisplayMode(DisplayID);
     FrameTime->TargetFramerate = (u64)Mode->refresh_rate;
     FrameTime->StartTime = SDL_GetTicksNS();
@@ -157,7 +157,7 @@ Rr_IntVec2 Rr_GetDefaultWindowSize()
     SDL_Rect UsableBounds;
     SDL_GetDisplayUsableBounds(DisplayID, &UsableBounds);
 
-    const f32 ScaleFactor = 0.75f;
+    f32 ScaleFactor = 0.75f;
 
     return (Rr_IntVec2){
         .Width = (i32)((f32)(UsableBounds.w - UsableBounds.x) * ScaleFactor),

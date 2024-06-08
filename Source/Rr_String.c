@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 static u32* UTF8ToUTF32(
-    const char* CString,
+    str CString,
     usize OptionalLength,
     u32* OutOldBuffer,
     usize OldLength,
@@ -15,11 +15,11 @@ static u32* UTF8ToUTF32(
 {
     static u32 Buffer[2048] = { 0 };
 
-    const u8 Ready = 128;
-    const u8 Two = 192;
-    const u8 Three = 224;
-    const u8 Four = 240;
-    const u8 Five = 248;
+    u8 Ready = 128;
+    u8 Two = 192;
+    u8 Three = 224;
+    u8 Four = 240;
+    u8 Five = 248;
 
     usize SourceLength = OptionalLength > 0 ? OptionalLength : SDL_strlen(CString);
     if (SourceLength > 2048)
@@ -96,7 +96,7 @@ static u32* UTF8ToUTF32(
     return Data;
 }
 
-Rr_String Rr_CreateString(const char* CString)
+Rr_String Rr_CreateString(str CString)
 {
     Rr_String String;
     String.Data = UTF8ToUTF32(CString, 0, NULL, 0, &String.Length);
@@ -112,7 +112,7 @@ Rr_String Rr_CreateEmptyString(usize Length)
     };
 }
 
-void Rr_SetString(Rr_String* String, const char* CString, usize OptionalLength)
+void Rr_SetString(Rr_String* String, str CString, usize OptionalLength)
 {
     if (String == NULL)
     {
@@ -122,7 +122,7 @@ void Rr_SetString(Rr_String* String, const char* CString, usize OptionalLength)
     String->Data = UTF8ToUTF32(CString, OptionalLength, String->Data, String->Length, &String->Length);
 }
 
-void Rr_DestroyString(const Rr_String* String)
+void Rr_DestroyString(Rr_String* String)
 {
     if (String->Data != NULL)
     {

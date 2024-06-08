@@ -29,7 +29,7 @@ Rr_Image* Rr_CreateImage(
         Info.mipLevels = (u32)(SDL_floor(SDL_log(SDL_max(Extent.width, Extent.height)))) + 1;
     }
 
-    const VmaAllocationCreateInfo AllocationCreateInfo = {
+    VmaAllocationCreateInfo AllocationCreateInfo = {
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
@@ -74,19 +74,19 @@ static void UploadImage(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     VkImageLayout DstLayout,
-    const void* ImageData,
-    const size_t ImageDataLength)
+    void* ImageData,
+    size_t ImageDataLength)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
     Rr_WriteBuffer* StagingBuffer = &UploadContext->StagingBuffer;
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
-    const size_t BufferOffset = StagingBuffer->Offset;
+    size_t BufferOffset = StagingBuffer->Offset;
     SDL_memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
     StagingBuffer->Offset += ImageDataLength;
 
-    const VkImageSubresourceRange SubresourceRange = GetImageSubresourceRange(Aspect);
+    VkImageSubresourceRange SubresourceRange = GetImageSubresourceRange(Aspect);
 
     vkCmdPipelineBarrier(
         TransferCommandBuffer,
@@ -111,7 +111,7 @@ static void UploadImage(
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         });
 
-    const VkBufferImageCopy Copy = {
+    VkBufferImageCopy Copy = {
         .bufferOffset = BufferOffset,
         .bufferRowLength = 0,
         .bufferImageHeight = 0,
@@ -184,12 +184,12 @@ static void UploadImage(
 }
 
 void Rr_GetImageSizePNGMemory(
-    const byte* Data,
+    byte* Data,
     usize DataSize,
     Rr_Arena* Arena,
     struct Rr_LoadSize* OutLoadSize)
 {
-    const i32 DesiredChannels = 4;
+    i32 DesiredChannels = 4;
     i32 Width;
     i32 Height;
     i32 Channels;
@@ -215,11 +215,11 @@ void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutL
 Rr_Image* Rr_CreateColorImageFromPNGMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    const byte* Data,
+    byte* Data,
     usize DataSize,
     bool bMipMapped)
 {
-    const i32 DesiredChannels = 4;
+    i32 DesiredChannels = 4;
     i32 Channels;
     VkExtent3D Extent = { .depth = 1 };
     stbi_uc* ParsedImage = stbi_load_from_memory(
@@ -229,7 +229,7 @@ Rr_Image* Rr_CreateColorImageFromPNGMemory(
         (i32*)&Extent.height,
         &Channels,
         DesiredChannels);
-    const size_t ParsedSize = Extent.width * Extent.height * DesiredChannels;
+    size_t ParsedSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Image* ColorImage = Rr_CreateImage(
         App,
@@ -282,10 +282,10 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
     int Result;
-    const char* Error;
+    char* Error;
 
     EXRVersion Version;
-    Result = ParseEXRVersionFromMemory(&Version, (const unsigned char*)Asset.Data, Asset.Length);
+    Result = ParseEXRVersionFromMemory(&Version, (unsigned char*)Asset.Data, Asset.Length);
     if (Result != 0)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file!");
@@ -293,7 +293,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     }
 
     EXRHeader Header;
-    Result = ParseEXRHeaderFromMemory(&Header, &Version, (const unsigned char*)Asset.Data, Asset.Length, &Error);
+    Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char*)Asset.Data, Asset.Length, &Error);
     if (Result != 0)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file: %s", Error);
@@ -304,7 +304,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     EXRImage Image;
     InitEXRImage(&Image);
 
-    Result = LoadEXRImageFromMemory(&Image, &Header, (const unsigned char*)Asset.Data, Asset.Length, &Error);
+    Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char*)Asset.Data, Asset.Length, &Error);
     if (Result != 0)
     {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file: %s", Error);
@@ -314,15 +314,15 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     }
 
     /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
-    const float Near = 0.5f;
-    const float Far = 50.0f;
-    const float FarPlusNear = Far + Near;
-    const float FarMinusNear = Far - Near;
-    const float FTimesNear = Far * Near;
+    float Near = 0.5f;
+    float Far = 50.0f;
+    float FarPlusNear = Far + Near;
+    float FarMinusNear = Far - Near;
+    float FTimesNear = Far * Near;
     for (int Index = 0; Index < Image.width * Image.height; Index++)
     {
-        float* const Current = ((float*)Image.images[0]) + Index;
-        const float ZReciprocal = 1.0f / *Current;
+        float* Current = ((float*)Image.images[0]) + Index;
+        float ZReciprocal = 1.0f / *Current;
         float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
         Depth = (Depth + 1.0f) / 2.0f;
         if (Depth > 1.0f)
@@ -332,9 +332,9 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
         *Current = Depth;
     }
 
-    const VkExtent3D Extent = { .width = Image.width, .height = Image.height, .depth = 1 };
+    VkExtent3D Extent = { .width = Image.width, .height = Image.height, .depth = 1 };
 
-    const size_t DataSize = Extent.width * Extent.height * sizeof(f32);
+    size_t DataSize = Extent.width * Extent.height * sizeof(f32);
 
     Rr_Image* DepthImage = Rr_CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
 

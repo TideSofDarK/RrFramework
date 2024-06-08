@@ -20,7 +20,7 @@ typedef struct Rr_DrawContext Rr_DrawContext;
 typedef struct Rr_Data Rr_Data;
 struct Rr_Data
 {
-    const void* Data;
+    void* Data;
     usize Size;
 };
 
@@ -48,7 +48,7 @@ struct Rr_DrawContextInfo
 extern Rr_DrawContext* Rr_CreateDrawContext(
     Rr_App* App,
     Rr_DrawContextInfo* Info,
-    const byte* GlobalsData);
+    byte* GlobalsData);
 
 extern void Rr_DrawStaticMesh(
     Rr_DrawContext* DrawContext,

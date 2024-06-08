@@ -35,7 +35,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_Buffer* GlobalsBuffer,
     Rr_Buffer* DrawBuffer,
     Rr_GenericPipelineSizes* Sizes,
-    const byte* GlobalsData,
+    byte* GlobalsData,
     Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
@@ -97,7 +97,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     return Context;
 }
 
-SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(const Rr_DrawPrimitiveInfo* A, const Rr_DrawPrimitiveInfo* B)
+SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo* A, Rr_DrawPrimitiveInfo* B)
 {
     if (A->Material->GenericPipeline != B->Material->GenericPipeline)
     {
@@ -453,7 +453,7 @@ static void Rr_RenderText(
             }
             else
             {
-                const u32 GlyphIndexMask = ~0xFFE00000;
+                u32 GlyphIndexMask = ~0xFFE00000;
                 u32 GlyphPack = GlyphIndexMask & Unicode;
                 GlyphPack |= PalleteIndex << 28;
                 *Input = (Rr_TextPerInstanceVertexInput){
