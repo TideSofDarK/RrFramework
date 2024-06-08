@@ -276,7 +276,7 @@ void Rr_CopyToMappedUniformBuffer(
     Rr_Buffer* DstBuffer,
     void* Data,
     usize Size,
-    usize* DstOffset)
+    VkDeviceSize* DstOffset)
 {
     u32 Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     usize AlignedSize = Rr_Align(Size, Alignment);

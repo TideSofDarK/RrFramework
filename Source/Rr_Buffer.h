@@ -69,4 +69,4 @@ extern void Rr_CopyToMappedUniformBuffer(
     Rr_Buffer* DstBuffer,
     void* Data,
     usize Size,
-    usize* DstOffset);
+    VkDeviceSize* DstOffset);

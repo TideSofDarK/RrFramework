@@ -4,7 +4,7 @@
 
 #include <SDL3/SDL.h>
 
-Rr_InputState UpdateKeyState(Rr_KeyState OldKeyState, u8* KeyboardState, u8 Scancode)
+static Rr_InputState Rr_UpdateKeyState(Rr_KeyState OldKeyState, const u8* KeyboardState, u8 Scancode)
 {
     bool bCurrentlyPressed = KeyboardState[Scancode] == 1;
     bool bWasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
@@ -35,13 +35,13 @@ Rr_InputState UpdateKeyState(Rr_KeyState OldKeyState, u8* KeyboardState, u8 Scan
 void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config)
 {
     Rr_InputState NewState = *State;
-    u8* KeyboardState = SDL_GetKeyboardState(NULL);
+    const u8* KeyboardState = SDL_GetKeyboardState(NULL);
     for (size_t Index = 0; Index < Config->Count; Index++)
     {
         Rr_InputMapping* Mapping = &Config->Mappings[Index];
 
         Rr_InputState OldKeyState = Rr_GetKeyState(NewState, Index);
-        Rr_InputState NewKeyState = UpdateKeyState(OldKeyState, KeyboardState, Mapping->Primary);
+        Rr_InputState NewKeyState = Rr_UpdateKeyState(OldKeyState, KeyboardState, Mapping->Primary);
         NewState = NewState & ~(3 << (2 * Index));
         NewState = NewState | (NewKeyState << (2 * Index));
     }
