@@ -113,7 +113,7 @@ void Rr_UploadBufferAligned(
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
     usize BufferOffset = StagingBuffer->Offset;
-    SDL_memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
+    memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
     if (Alignment == 0)
     {
         StagingBuffer->Offset += DataLength;
@@ -235,7 +235,7 @@ void Rr_UploadToDeviceBufferImmediate(
         App,
         Size,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-    SDL_memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data, Size);
+    memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data, Size);
     VkBufferCopy BufferCopy = {
         .dstOffset = 0,
         .size = Size,
@@ -282,7 +282,7 @@ void Rr_CopyToMappedUniformBuffer(
     usize AlignedSize = Rr_Align(Size, Alignment);
     if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
-        SDL_memcpy((char*)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
+        memcpy((char*)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
         *DstOffset += Size;
         *DstOffset = Rr_Align(*DstOffset, Alignment);
     }

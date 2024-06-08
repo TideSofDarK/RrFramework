@@ -24,7 +24,7 @@ Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, byte
         DrawContext->Info.Viewport.Height = (i32)Renderer->SwapchainSize.height;
     }
 
-    SDL_memcpy(DrawContext->GlobalsData, GlobalsData, Info->Sizes.Globals);
+    memcpy(DrawContext->GlobalsData, GlobalsData, Info->Sizes.Globals);
 
     return DrawContext;
 }

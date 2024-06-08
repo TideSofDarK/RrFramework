@@ -163,7 +163,7 @@ Rr_LoadingContext* Rr_LoadAsync(
     Rr_LoadingThread* LoadingThread = &App->LoadingThread;
     SDL_LockMutex(LoadingThread->Mutex);
     Rr_LoadTask* NewTasks = Rr_ArenaAllocCount(&LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
-    SDL_memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
+    memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
     Rr_LoadingContext* LoadingContext = Rr_SlicePush(&LoadingThread->LoadingContextsSlice, &LoadingThread->Arena);
     *LoadingContext = (Rr_LoadingContext){
         .Semaphore = SDL_CreateSemaphore(0),

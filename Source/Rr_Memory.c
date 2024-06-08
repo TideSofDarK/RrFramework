@@ -167,7 +167,7 @@ void Rr_SliceGrow(void* Slice, usize Size, Rr_Arena* Arena)
     }
 
     Rr_SliceType(void) Replica;
-    SDL_memcpy(&Replica, Slice, sizeof(Replica));
+    memcpy(&Replica, Slice, sizeof(Replica));
 
     void* Data = NULL;
     Replica.Capacity = Replica.Capacity ? Replica.Capacity : 1;
@@ -176,11 +176,11 @@ void Rr_SliceGrow(void* Slice, usize Size, Rr_Arena* Arena)
 
     if (Replica.Length)
     {
-        SDL_memcpy(Data, Replica.Data, Size * Replica.Length);
+        memcpy(Data, Replica.Data, Size * Replica.Length);
     }
     Replica.Data = Data;
 
-    SDL_memcpy(Slice, &Replica, sizeof(Replica));
+    memcpy(Slice, &Replica, sizeof(Replica));
 }
 
 void Rr_SliceResize(void* Slice, usize Size, usize Count, Rr_Arena* Arena)
@@ -192,7 +192,7 @@ void Rr_SliceResize(void* Slice, usize Size, usize Count, Rr_Arena* Arena)
     }
 
     Rr_SliceType(void) Replica;
-    SDL_memcpy(&Replica, Slice, sizeof(Replica));
+    memcpy(&Replica, Slice, sizeof(Replica));
 
     void* Data = NULL;
 
@@ -201,9 +201,9 @@ void Rr_SliceResize(void* Slice, usize Size, usize Count, Rr_Arena* Arena)
 
     if (Replica.Length)
     {
-        SDL_memcpy(Data, Replica.Data, Size * Replica.Length);
+        memcpy(Data, Replica.Data, Size * Replica.Length);
     }
     Replica.Data = Data;
 
-    SDL_memcpy(Slice, &Replica, sizeof(Replica));
+    memcpy(Slice, &Replica, sizeof(Replica));
 }

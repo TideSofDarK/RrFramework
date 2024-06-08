@@ -63,12 +63,12 @@ struct SCamera
     Rr_Vec3 Position;
     Rr_Mat4 ViewMatrix;
 
-    Rr_Vec3 GetForwardVector()
+    Rr_Vec3 GetForwardVector() const
     {
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
     }
 
-    Rr_Vec3 GetRightVector()
+    Rr_Vec3 GetRightVector() const
     {
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
     }
@@ -363,7 +363,7 @@ static void Iterate(Rr_App* App)
         SUber3DDraw AvocadoDraw = { 0 };
         AvocadoDraw.Model =
             Rr_Scale({ 0.75f, 0.75f, 0.75f })
-            * Rr_Rotate_LH(SDL_fmodf(Time, SDL_PI_F * 2.0f), { 0.0f, 1.0f, 0.0f })
+            * Rr_Rotate_LH(fmodf(Time, SDL_PI_F * 2.0f), { 0.0f, 1.0f, 0.0f })
             * Rr_Translate({ 3.5f, 0.5f, 3.5f });
         AvocadoDraw.Model[3][0] = 3.5f;
         AvocadoDraw.Model[3][1] = 0.5f;

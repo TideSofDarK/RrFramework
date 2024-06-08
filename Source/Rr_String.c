@@ -6,7 +6,7 @@
 
 #include <stdlib.h>
 
-static u32* UTF8ToUTF32(
+static u32* Rr_UTF8ToUTF32(
     str CString,
     usize OptionalLength,
     u32* OutOldBuffer,
@@ -21,7 +21,7 @@ static u32* UTF8ToUTF32(
     u8 Four = 240;
     u8 Five = 248;
 
-    usize SourceLength = OptionalLength > 0 ? OptionalLength : SDL_strlen(CString);
+    usize SourceLength = OptionalLength > 0 ? OptionalLength : strlen(CString);
     if (SourceLength > 2048)
     {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Exceeding max string length!");
@@ -89,7 +89,7 @@ static u32* UTF8ToUTF32(
         Data = (u32*)Rr_Realloc(OutOldBuffer, sizeof(u32) * FinalIndex);
     }
 
-    SDL_memcpy((void*)Data, Buffer, sizeof(u32) * FinalIndex);
+    memcpy((void*)Data, Buffer, sizeof(u32) * FinalIndex);
 
     *OutNewLength = FinalIndex;
 
@@ -99,7 +99,7 @@ static u32* UTF8ToUTF32(
 Rr_String Rr_CreateString(str CString)
 {
     Rr_String String;
-    String.Data = UTF8ToUTF32(CString, 0, NULL, 0, &String.Length);
+    String.Data = Rr_UTF8ToUTF32(CString, 0, NULL, 0, &String.Length);
 
     return String;
 }
@@ -119,7 +119,7 @@ void Rr_SetString(Rr_String* String, str CString, usize OptionalLength)
         return;
     }
 
-    String->Data = UTF8ToUTF32(CString, OptionalLength, String->Data, String->Length, &String->Length);
+    String->Data = Rr_UTF8ToUTF32(CString, OptionalLength, String->Data, String->Length, &String->Length);
 }
 
 void Rr_DestroyString(Rr_String* String)

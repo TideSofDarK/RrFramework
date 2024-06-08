@@ -423,7 +423,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
                 cgltf_texture* BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
                 if (BaseColorTexture)
                 {
-                    if (SDL_strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+                    if (strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
                     {
                         byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
                         usize PNGSize = BaseColorTexture->image->buffer_view->size;
@@ -440,7 +440,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
             if (CGLTFMaterial->normal_texture.texture != NULL)
             {
                 cgltf_texture* NormalTexture = CGLTFMaterial->normal_texture.texture;
-                if (SDL_strcmp(NormalTexture->image->mime_type, "image/png") == 0)
+                if (strcmp(NormalTexture->image->mime_type, "image/png") == 0)
                 {
                     byte* PNGData = (byte*)NormalTexture->image->buffer_view->buffer->data + NormalTexture->image->buffer_view->offset;
                     usize PNGSize = NormalTexture->image->buffer_view->size;
@@ -550,7 +550,7 @@ void Rr_GetStaticMeshSizeGLTF(
                 cgltf_texture* BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
                 if (BaseColorTexture)
                 {
-                    if (SDL_strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+                    if (strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
                     {
                         byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
                         usize PNGSize = BaseColorTexture->image->buffer_view->size;
@@ -562,7 +562,7 @@ void Rr_GetStaticMeshSizeGLTF(
             if (CGLTFMaterial->normal_texture.texture != NULL)
             {
                 cgltf_texture* NormalTexture = CGLTFMaterial->normal_texture.texture;
-                if (SDL_strcmp(NormalTexture->image->mime_type, "image/png") == 0)
+                if (strcmp(NormalTexture->image->mime_type, "image/png") == 0)
                 {
                     byte* PNGData = (byte*)NormalTexture->image->buffer_view->buffer->data + NormalTexture->image->buffer_view->offset;
                     usize PNGSize = NormalTexture->image->buffer_view->size;

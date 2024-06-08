@@ -26,7 +26,7 @@ Rr_Image* Rr_CreateImage(
 
     if (bMipMapped)
     {
-        Info.mipLevels = (u32)(SDL_floor(SDL_log(SDL_max(Extent.width, Extent.height)))) + 1;
+        Info.mipLevels = (u32)(floorf(logf(SDL_max(Extent.width, Extent.height)))) + 1;
     }
 
     VmaAllocationCreateInfo AllocationCreateInfo = {
@@ -83,7 +83,7 @@ static void UploadImage(
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
     size_t BufferOffset = StagingBuffer->Offset;
-    SDL_memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
+    memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
     StagingBuffer->Offset += ImageDataLength;
 
     VkImageSubresourceRange SubresourceRange = GetImageSubresourceRange(Aspect);

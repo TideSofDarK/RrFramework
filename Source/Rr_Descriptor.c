@@ -4,7 +4,7 @@
 
 #include <SDL3/SDL_stdinc.h>
 
-static VkDescriptorPool CreateDescriptorPool(
+static VkDescriptorPool Rr_CreateDescriptorPool(
     VkDevice Device,
     usize SetCount,
     Rr_DescriptorPoolSizeRatio* Ratios,
@@ -40,9 +40,9 @@ Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
     Rr_DescriptorAllocator DescriptorAllocator = { 0 };
     DescriptorAllocator.Arena = Arena;
     Rr_SliceReserve(&DescriptorAllocator.Ratios, RatioCount, Arena);
-    SDL_memcpy(DescriptorAllocator.Ratios.Data, Ratios, RatioCount * sizeof(Rr_DescriptorPoolSizeRatio));
+    memcpy(DescriptorAllocator.Ratios.Data, Ratios, RatioCount * sizeof(Rr_DescriptorPoolSizeRatio));
 
-    VkDescriptorPool NewPool = CreateDescriptorPool(Device, MaxSets, Ratios, RatioCount);
+    VkDescriptorPool NewPool = Rr_CreateDescriptorPool(Device, MaxSets, Ratios, RatioCount);
     Rr_SliceReserve(&DescriptorAllocator.ReadyPools, 1, Arena);
     *Rr_SlicePush(&DescriptorAllocator.ReadyPools, Arena) = NewPool;
 
@@ -104,7 +104,7 @@ VkDescriptorPool Rr_GetDescriptorPool(Rr_DescriptorAllocator* DescriptorAllocato
     }
     else
     {
-        NewPool = CreateDescriptorPool(
+        NewPool = Rr_CreateDescriptorPool(
             Device,
             DescriptorAllocator->SetsPerPool,
             DescriptorAllocator->Ratios.Data,
