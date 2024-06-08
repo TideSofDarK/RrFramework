@@ -1,11 +1,11 @@
 #include "Rr_Rendering.h"
 
 #include "Rr_UploadContext.h"
-#include "Rr_Mesh_Internal.h"
-#include "Rr_Material_Internal.h"
-#include "Rr_Image_Internal.h"
-#include "Rr_Pipeline_Internal.h"
-#include "Rr_App_Internal.h"
+#include "Rr_Mesh.h"
+#include "Rr_Material.h"
+#include "Rr_Image.h"
+#include "Rr_Pipeline.h"
+#include "Rr_App.h"
 
 #include <qsort/qsort-inline.h>
 

@@ -1,7 +1,8 @@
-#include "Rr_Text_Internal.h"
+#include "Rr_Text.h"
 
-#include "Rr_Util.h"
-#include "Rr_App_Internal.h"
+#include "Rr/Rr_Util.h"
+#include "Rr_App.h"
+#include "Rr_Image.h"
 #include "Rr_BuiltinAssets.inc"
 
 #include <cJSON/cJSON.h>

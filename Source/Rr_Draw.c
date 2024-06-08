@@ -1,8 +1,8 @@
-#include "Rr_Draw_Internal.h"
+#include "Rr_Draw.h"
 
-#include "Rr_App_Internal.h"
-#include "Rr_Image_Internal.h"
-#include "Rr_Mesh_Internal.h"
+#include "Rr_App.h"
+#include "Rr_Image.h"
+#include "Rr_Mesh.h"
 
 Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData)
 {

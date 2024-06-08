@@ -1,23 +1,17 @@
 #pragma once
 
-#include "Rr_App.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Memory.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Buffer.h"
 #include "Rr_Object.h"
-#include "Rr_Draw_Internal.h"
-#include "Rr_Load_Internal.h"
-#include "Rr_Text_Internal.h"
+#include "Rr_Draw.h"
+#include "Rr_Load.h"
+#include "Rr_Text.h"
 
 #include <volk.h>
 
 #include <SDL3/SDL_atomic.h>
-
-#define RR_MAX_PENDING_LOADS
-
-typedef struct Rr_Frame Rr_Frame;
-typedef struct Rr_Renderer Rr_Renderer;
 
 typedef enum Rr_HandleType
 {
@@ -66,6 +60,7 @@ struct Rr_ImmediateMode
     VkCommandPool CommandPool;
 };
 
+typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
     VkCommandPool CommandPool;
@@ -84,6 +79,7 @@ struct Rr_Frame
     Rr_Arena Arena;
 };
 
+typedef struct Rr_Renderer Rr_Renderer;
 struct Rr_Renderer
 {
     /* Vulkan Instance */

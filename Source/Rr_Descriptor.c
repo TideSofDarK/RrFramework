@@ -1,6 +1,5 @@
 #include "Rr_Descriptor.h"
 
-#include "Rr_Defines.h"
 #include "Rr_Memory.h"
 
 #include <SDL3/SDL_stdinc.h>

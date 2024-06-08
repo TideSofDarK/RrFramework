@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Rr_Defines.h"
-#include "Rr_Text.h"
+#include "Rr/Rr_Text.h"
 
 #include <volk.h>
 

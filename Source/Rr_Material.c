@@ -1,7 +1,7 @@
-#include "Rr_Material_Internal.h"
+#include "Rr_Material.h"
 
-#include "Rr_App_Internal.h"
-#include "Rr_Pipeline_Internal.h"
+#include "Rr_App.h"
+#include "Rr_Pipeline.h"
 
 #include <SDL3/SDL_stdinc.h>
 

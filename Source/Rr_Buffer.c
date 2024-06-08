@@ -1,7 +1,7 @@
 #include "Rr_Buffer.h"
 
 #include "Rr_UploadContext.h"
-#include "Rr_App_Internal.h"
+#include "Rr_App.h"
 
 #include <SDL3/SDL_log.h>
 

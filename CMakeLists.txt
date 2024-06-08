@@ -124,7 +124,7 @@ file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
 )
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
-target_include_directories(${PROJECT_NAME} PUBLIC Include PRIVATE Include/Rr)
+target_include_directories(${PROJECT_NAME} PUBLIC Include)
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Vulkan::Headers
         volk::volk_headers

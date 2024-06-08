@@ -2,8 +2,8 @@
 
 #include "Rr_Barrier.h"
 #include "Rr_Rendering.h"
-#include "Rr_Image_Internal.h"
-#include "Rr_App_Internal.h"
+#include "Rr_Image.h"
+#include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS

@@ -1,8 +1,8 @@
-#include "Rr_App_Internal.h"
+#include "Rr_App.h"
 
-#include "Rr_Input.h"
+#include "Rr/Rr_Input.h"
 #include "Rr_Memory.h"
-#include "Rr_Load_Internal.h"
+#include "Rr_Load.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
