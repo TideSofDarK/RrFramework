@@ -1,12 +1,13 @@
 #pragma once
 
-#include "Rr_App.h"
-#include "Rr_String.h"
-#include "Rr_Text.h"
-#include "Rr_Pipeline.h"
-#include "Rr_Material.h"
-#include "Rr_Image.h"
-#include "Rr_Mesh.h"
+#include "Rr/Rr_Math.h"
+#include "Rr/Rr_Pipeline.h"
+#include "Rr/Rr_String.h"
+#include "Rr/Rr_App.h"
+#include "Rr/Rr_Mesh.h"
+#include "Rr/Rr_Image.h"
+#include "Rr/Rr_Text.h"
+#include "Rr/Rr_Material.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -44,7 +45,10 @@ struct Rr_DrawContextInfo
     Rr_GenericPipelineSizes Sizes;
 };
 
-extern Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData);
+extern Rr_DrawContext* Rr_CreateDrawContext(
+    Rr_App* App,
+    Rr_DrawContextInfo* Info,
+    const byte* GlobalsData);
 
 extern void Rr_DrawStaticMesh(
     Rr_DrawContext* DrawContext,
@@ -66,7 +70,10 @@ extern void Rr_DrawCustomText(
     f32 Size,
     Rr_DrawTextFlags Flags);
 
-extern void Rr_DrawDefaultText(Rr_DrawContext* DrawContext, Rr_String* String, Rr_Vec2 Position);
+extern void Rr_DrawDefaultText(
+    Rr_DrawContext* DrawContext,
+    Rr_String* String,
+    Rr_Vec2 Position);
 
 extern Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height);
 extern void Rr_DestroyDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget);

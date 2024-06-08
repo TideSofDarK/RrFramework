@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Rr_Asset.h"
-#include "Rr_App.h"
+#include "Rr/Rr_App.h"
 #include "Rr_Math.h"
 
 #ifdef __cplusplus

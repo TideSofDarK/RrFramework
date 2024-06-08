@@ -3,6 +3,7 @@
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Mesh.h"
+#include "Rr_Material.h"
 
 Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData)
 {

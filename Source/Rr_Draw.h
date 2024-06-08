@@ -1,24 +1,22 @@
 #pragma once
 
 #include "Rr/Rr_Draw.h"
+#include "Rr/Rr_String.h"
 #include "Rr_Memory.h"
 
 #include <volk.h>
 
-struct Rr_App;
-struct Rr_Primitive;
-
 struct Rr_DrawTarget
 {
-    Rr_Image* ColorImage;
-    Rr_Image* DepthImage;
+    struct Rr_Image* ColorImage;
+    struct Rr_Image* DepthImage;
     VkFramebuffer Framebuffer;
 };
 
 typedef struct Rr_DrawPrimitiveInfo Rr_DrawPrimitiveInfo;
 struct Rr_DrawPrimitiveInfo
 {
-    Rr_Material* Material;
+    struct Rr_Material* Material;
     struct Rr_Primitive* Primitive;
     u32 OffsetIntoDrawBuffer;
 };
@@ -26,7 +24,7 @@ struct Rr_DrawPrimitiveInfo
 typedef struct Rr_DrawTextInfo Rr_DrawTextInfo;
 struct Rr_DrawTextInfo
 {
-    Rr_Font* Font;
+    struct Rr_Font* Font;
     Rr_String String;
     Rr_Vec2 Position;
     f32 Size;

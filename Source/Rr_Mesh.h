@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Rr/Rr_Mesh.h"
+#include "Rr/Rr_Asset.h"
 #include "Rr_Memory.h"
 
 struct Rr_LoadSize;
@@ -41,27 +42,27 @@ struct Rr_SkeletalMesh
 };
 
 extern Rr_Primitive* Rr_CreatePrimitive(
-    Rr_App* App,
+    struct Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_RawMesh* RawMesh);
-extern void Rr_DestroyPrimitive(Rr_App* App, Rr_Primitive* Primitive);
+extern void Rr_DestroyPrimitive(struct Rr_App* App, Rr_Primitive* Primitive);
 
 extern Rr_StaticMesh* Rr_CreateStaticMesh(
-    Rr_App* App,
+    struct Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_RawMesh* RawMeshes,
     size_t RawMeshCount,
     struct Rr_Material** Materials,
     size_t MaterialCount);
 extern Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
-    Rr_App* App,
+    struct Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
     struct Rr_GLTFLoader* Loader,
     usize MeshIndex,
     Rr_Arena* Arena);
 extern Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
-    Rr_App* App,
+    struct Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
     Rr_Arena* Arena);

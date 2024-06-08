@@ -1,16 +1,14 @@
 #pragma once
 
-#include "Rr_Defines.h"
-#include "Rr_App.h"
-#include "Rr_Asset.h"
+#include "Rr/Rr_App.h"
+#include "Rr/Rr_Asset.h"
+#include "Rr/Rr_Mesh.h"
+#include "Rr/Rr_Image.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-struct Rr_Image;
-struct Rr_StaticMesh;
 
 typedef struct Rr_LoadingContext Rr_LoadingContext;
 
@@ -49,27 +47,28 @@ typedef union
     Rr_MeshGLTFOptions MeshGLTF;
 } Rr_LoadTaskOptions;
 
-typedef struct Rr_LoadTask
+typedef struct Rr_LoadTask Rr_LoadTask;
+struct Rr_LoadTask
 {
     Rr_LoadType LoadType;
     Rr_AssetRef AssetRef;
     Rr_LoadTaskOptions Options;
     void** Out;
-} Rr_LoadTask;
+};
 
 typedef void (*Rr_LoadingCallback)(Rr_App* App, const void* Userdata);
 
 extern Rr_LoadTask Rr_LoadColorImageFromPNG(
     Rr_AssetRef AssetRef,
-    struct Rr_Image** OutImage);
+    Rr_Image** OutImage);
 extern Rr_LoadTask Rr_LoadStaticMeshFromOBJ(
     Rr_AssetRef AssetRef,
-    struct Rr_StaticMesh** OutStaticMesh);
+    Rr_StaticMesh** OutStaticMesh);
 extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
     Rr_AssetRef AssetRef,
     Rr_GLTFLoader* Loader,
     size_t MeshIndex,
-    struct Rr_StaticMesh** OutStaticMesh);
+    Rr_StaticMesh** OutStaticMesh);
 
 extern Rr_LoadingContext* Rr_LoadAsync(
     Rr_App* App,

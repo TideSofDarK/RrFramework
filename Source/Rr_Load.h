@@ -7,8 +7,6 @@
 
 #include <volk.h>
 
-struct Rr_UploadContext;
-
 typedef struct Rr_LoadSize Rr_LoadSize;
 struct Rr_LoadSize
 {
@@ -37,7 +35,7 @@ struct Rr_LoadingThread
 // typedef struct Rr_LoadingContext Rr_LoadingContext;
 struct Rr_LoadingContext
 {
-    Rr_App* App;
+    struct Rr_App* App;
     SDL_Semaphore* Semaphore;
     Rr_LoadingCallback LoadingCallback;
     const void* Userdata;

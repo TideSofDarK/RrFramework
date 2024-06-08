@@ -3,7 +3,6 @@
 #include "Rr_Vulkan.h"
 #include "Rr_Load.h"
 
-struct Rr_App;
 struct Rr_UploadContext;
 
 typedef struct Rr_Buffer Rr_Buffer;

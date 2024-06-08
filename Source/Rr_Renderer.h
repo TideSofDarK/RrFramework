@@ -4,14 +4,11 @@
 #include "Rr_Buffer.h"
 #include "Rr_Object.h"
 #include "Rr_Text.h"
+#include "Rr_Pipeline.h"
 
 #include <volk.h>
 
 #include <SDL3/SDL_atomic.h>
-
-struct Rr_Image;
-struct Rr_DrawTarget;
-struct Rr_PipelineBuilder;
 
 typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
@@ -144,7 +141,7 @@ extern void Rr_EndImmediate(Rr_Renderer* Renderer);
 
 extern VkPipeline Rr_BuildPipeline(
     Rr_Renderer* Renderer,
-    struct Rr_PipelineBuilder* PipelineBuilder,
+    Rr_PipelineBuilder* PipelineBuilder,
     VkPipelineLayout PipelineLayout);
 
 extern Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);

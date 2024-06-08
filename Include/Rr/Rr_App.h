@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Rr_Input.h"
-#include "Rr_Math.h"
 
 #ifdef __cplusplus
 extern "C"
