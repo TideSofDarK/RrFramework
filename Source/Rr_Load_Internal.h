@@ -8,6 +8,14 @@
 
 struct Rr_UploadContext;
 
+typedef struct Rr_LoadSize Rr_LoadSize;
+struct Rr_LoadSize
+{
+    usize StagingBufferSize;
+    usize BufferCount;
+    usize ImageCount;
+};
+
 typedef struct Rr_PendingLoad Rr_PendingLoad;
 struct Rr_PendingLoad
 {

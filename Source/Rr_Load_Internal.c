@@ -1,13 +1,13 @@
 #include "Rr_Load_Internal.h"
 
-#include "Rr_Mesh_Internal.h"
-#include "Rr_Image_Internal.h"
 #include "Rr_UploadContext.h"
 #include "Rr_Load.h"
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
 #include "Rr_Buffer.h"
-#include "Rr_Types.h"
+#include "Rr_Mesh_Internal.h"
+#include "Rr_Image_Internal.h"
+#include "Rr_App_Internal.h"
 
 #include <SDL3/SDL.h>
 
@@ -146,7 +146,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
     Rr_UploadContext UploadContext = {
         .TransferCommandBuffer = TransferCommandBuffer,
         .StagingBuffer = {
-            .Buffer = Rr_CreateMappedBuffer(Renderer, LoadSize.StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) }
+            .Buffer = Rr_CreateMappedBuffer(App, LoadSize.StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) }
     };
 
     if (bUseTransferQueue)
@@ -274,7 +274,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
 
     vkWaitForFences(Renderer->Device, 1, &LoadAsyncContext.Fence, true, UINT64_MAX);
 
-    Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffer.Buffer);
+    Rr_DestroyBuffer(App, UploadContext.StagingBuffer.Buffer);
 
     SDL_LockMutex(App->SyncArena.Mutex);
 
@@ -324,7 +324,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(
     Rr_UploadContext UploadContext = {
         .TransferCommandBuffer = TransferCommandBuffer,
         .StagingBuffer = {
-            .Buffer = Rr_CreateMappedBuffer(Renderer, LoadSize.StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) }
+            .Buffer = Rr_CreateMappedBuffer(App, LoadSize.StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) }
     };
 
     Rr_LoadResourcesFromTasks(App, Tasks, TaskCount, &UploadContext, LoadingContext->Semaphore, Scratch.Arena);
@@ -364,7 +364,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(
     vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
     vkDestroyFence(Renderer->Device, Fence, NULL);
 
-    Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffer.Buffer);
+    Rr_DestroyBuffer(App, UploadContext.StagingBuffer.Buffer);
 
     vkFreeCommandBuffers(
         Renderer->Device,

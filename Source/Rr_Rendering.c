@@ -2,12 +2,17 @@
 
 #include "Rr_Vulkan.h"
 #include "Rr_Memory.h"
-#include "Rr_Load.h"
 #include "Rr_Renderer.h"
-#include "Rr_Types.h"
 #include "Rr_UploadContext.h"
+#include "Rr_Mesh_Internal.h"
+#include "Rr_Material_Internal.h"
+#include "Rr_Image_Internal.h"
+#include "Rr_Pipeline_Internal.h"
+#include "Rr_App_Internal.h"
 
 #include <qsort/qsort-inline.h>
+
+#include <SDL3/SDL.h>
 
 #include <limits.h>
 
@@ -27,7 +32,7 @@ struct Rr_TextRenderingContext
 };
 
 static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Buffer* GlobalsBuffer,
     Rr_Buffer* DrawBuffer,
@@ -36,6 +41,8 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
+    Rr_Renderer* Renderer = &App->Renderer;
 
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
@@ -48,7 +55,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     /* Upload globals data. */
     /* @TODO: Make these take a Rr_WriteBuffer instead! */
     Rr_UploadToUniformBuffer(
-        Renderer,
+        App,
         UploadContext,
         GlobalsBuffer,
         GlobalsData,
@@ -253,12 +260,14 @@ static void Rr_RenderGeneric(
 }
 
 static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
-    Rr_Renderer* Renderer,
+    Rr_App* App,
     Rr_UploadContext* UploadContext,
     VkExtent2D ActiveResolution,
     Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
+    Rr_Renderer* Renderer = &App->Renderer;
 
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
@@ -276,7 +285,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
         .Palette = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
     };
     Rr_UploadToUniformBuffer(
-        Renderer,
+        App,
         UploadContext,
         TextPipeline->GlobalsBuffers[Renderer->CurrentFrameIndex],
         &TextGlobalsData,
@@ -476,7 +485,8 @@ void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_Renderer* Renderer = DrawContext->Renderer;
+    Rr_App* App = DrawContext->App;
+    Rr_Renderer* Renderer = &App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_DrawTarget* DrawTarget = DrawContext->Info.DrawTarget;
@@ -491,14 +501,14 @@ void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
     };
 
     Rr_GenericRenderingContext GenericRenderingContext = Rr_MakeGenericRenderingContext(
-        Renderer,
+        App,
         &UploadContext,
         Frame->CommonBuffer.Buffer,
         Frame->DrawBuffer.Buffer,
         &DrawContext->Info.Sizes,
         DrawContext->GlobalsData,
         Scratch.Arena);
-    Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(Renderer,
+    Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(App,
         &UploadContext,
         (VkExtent2D){ .width = Width, .height = Height },
         Scratch.Arena);

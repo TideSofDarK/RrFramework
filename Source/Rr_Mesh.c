@@ -1,9 +1,8 @@
-#include "Rr_Mesh.h"
-
-#include "Rr_Types.h"
-#include "Rr_Object.h"
 #include "Rr_Mesh_Internal.h"
+
+#include "Rr_Object.h"
 #include "Rr_Material.h"
+#include "Rr_App_Internal.h"
 
 void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* StaticMesh)
 {

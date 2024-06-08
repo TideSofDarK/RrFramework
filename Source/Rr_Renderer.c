@@ -8,10 +8,10 @@
 #include "Rr_Descriptor.h"
 #include "Rr_Buffer.h"
 #include "Rr_Memory.h"
-#include "Rr_Types.h"
 #include "Rr_Barrier.h"
 #include "Rr_Object.h"
 #include "Rr_Rendering.h"
+#include "Rr_App_Internal.h"
 #include "Rr_Image_Internal.h"
 #include "Rr_BuiltinAssets.inc"
 
@@ -294,9 +294,9 @@ static void Rr_InitFrames(Rr_App* App)
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
         vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer);
 
-        Frame->StagingBuffer.Buffer = Rr_CreateMappedBuffer(Renderer, RR_STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        Frame->DrawBuffer.Buffer = Rr_CreateMappedBuffer(Renderer, 66560, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-        Frame->CommonBuffer.Buffer = Rr_CreateDeviceUniformBuffer(Renderer, 66560);
+        Frame->StagingBuffer.Buffer = Rr_CreateMappedBuffer(App, RR_STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        Frame->DrawBuffer.Buffer = Rr_CreateMappedBuffer(App, 66560, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        Frame->CommonBuffer.Buffer = Rr_CreateDeviceUniformBuffer(App, 66560);
 
         Frame->Arena = Rr_CreateArena(RR_PER_FRAME_ARENA_SIZE);
     }
@@ -318,9 +318,9 @@ static void Rr_CleanupFrames(Rr_App* App)
 
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
-        Rr_DestroyBuffer(Renderer, Frame->StagingBuffer.Buffer);
-        Rr_DestroyBuffer(Renderer, Frame->DrawBuffer.Buffer);
-        Rr_DestroyBuffer(Renderer, Frame->CommonBuffer.Buffer);
+        Rr_DestroyBuffer(App, Frame->StagingBuffer.Buffer);
+        Rr_DestroyBuffer(App, Frame->DrawBuffer.Buffer);
+        Rr_DestroyBuffer(App, Frame->CommonBuffer.Buffer);
 
         Rr_DestroyArena(&Frame->Arena);
     }

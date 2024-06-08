@@ -1,7 +1,12 @@
 #include "Rr_Object.h"
 
-#include "Rr_Types.h"
+#include "Rr_Buffer.h"
+#include "Rr_Image_Internal.h"
 #include "Rr_Mesh_Internal.h"
+#include "Rr_Draw_Internal.h"
+#include "Rr_Text_Internal.h"
+#include "Rr_Pipeline_Internal.h"
+#include "Rr_Material_Internal.h"
 
 /* @TODO: Make bValid field! */
 union Rr_Object

@@ -1,9 +1,9 @@
-#include "Rr_Material.h"
+#include "Rr_Material_Internal.h"
 
 #include "Rr_Renderer.h"
 #include "Rr_Buffer.h"
-#include "Rr_Types.h"
-#include "Rr_Object.h"
+#include "Rr_App_Internal.h"
+#include "Rr_Pipeline_Internal.h"
 
 #include <SDL3/SDL_stdinc.h>
 
@@ -14,7 +14,7 @@ Rr_Material* Rr_CreateMaterial(Rr_App* App, Rr_GenericPipeline* GenericPipeline,
         .GenericPipeline = GenericPipeline,
         .TextureCount = TextureCount,
         .Buffer = Rr_CreateBuffer(
-            &App->Renderer,
+            App,
             GenericPipeline->Sizes.Material,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VMA_MEMORY_USAGE_AUTO,
@@ -45,7 +45,7 @@ void Rr_DestroyMaterial(Rr_App* App, Rr_Material* Material)
         }
     }
 
-    Rr_DestroyBuffer(&App->Renderer, Material->Buffer);
+    Rr_DestroyBuffer(App, Material->Buffer);
 
     Rr_DestroyObject(&App->Renderer.ObjectStorage, Material);
 }

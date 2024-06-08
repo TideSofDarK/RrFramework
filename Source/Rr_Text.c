@@ -1,4 +1,4 @@
-#include "Rr_Text.h"
+#include "Rr_Text_Internal.h"
 
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
@@ -9,8 +9,8 @@
 #include "Rr_Util.h"
 #include "Rr_Load.h"
 #include "Rr_Descriptor.h"
-#include "Rr_Types.h"
 #include "Rr_Object.h"
+#include "Rr_App_Internal.h"
 #include "Rr_BuiltinAssets.inc"
 
 #include <cJSON/cJSON.h>
@@ -97,19 +97,19 @@ void Rr_InitTextRenderer(Rr_App* App)
         0.0f,
     };
     TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(
-        Renderer,
+        App,
         sizeof(Quad));
-    Rr_UploadToDeviceBufferImmediate(Renderer, TextPipeline->QuadBuffer, Quad, sizeof(Quad));
+    Rr_UploadToDeviceBufferImmediate(App, TextPipeline->QuadBuffer, Quad, sizeof(Quad));
 
     /* Buffers */
     for (int FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
     {
         TextPipeline->GlobalsBuffers[FrameIndex] = Rr_CreateDeviceUniformBuffer(
-            Renderer,
+            App,
             sizeof(Rr_TextGlobalsLayout));
 
         TextPipeline->TextBuffers[FrameIndex] = Rr_CreateMappedVertexBuffer(
-            Renderer,
+            App,
             RR_TEXT_BUFFER_SIZE);
     }
 
@@ -130,10 +130,10 @@ void Rr_CleanupTextRenderer(Rr_App* App)
     }
     for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_DestroyBuffer(Renderer, TextPipeline->GlobalsBuffers[Index]);
-        Rr_DestroyBuffer(Renderer, TextPipeline->TextBuffers[Index]);
+        Rr_DestroyBuffer(App, TextPipeline->GlobalsBuffers[Index]);
+        Rr_DestroyBuffer(App, TextPipeline->TextBuffers[Index]);
     }
-    Rr_DestroyBuffer(Renderer, TextPipeline->QuadBuffer);
+    Rr_DestroyBuffer(App, TextPipeline->QuadBuffer);
     Rr_DestroyFont(App, Renderer->BuiltinFont);
 }
 
@@ -145,7 +145,7 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
     Rr_LoadImmediate(App, &ImageLoadTask, 1);
 
     Rr_Buffer* Buffer = Rr_CreateBuffer(
-        Renderer,
+        App,
         sizeof(Rr_TextFontLayout),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -222,7 +222,7 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
     cJSON_Delete(FontDataJSON);
 
     Rr_UploadToDeviceBufferImmediate(
-        Renderer,
+        App,
         Buffer,
         &TextFontData,
         sizeof(Rr_TextFontLayout));
@@ -237,7 +237,7 @@ void Rr_DestroyFont(Rr_App* App, Rr_Font* Font)
     Rr_Free(Font->Advances);
 
     Rr_DestroyImage(App, Font->Atlas);
-    Rr_DestroyBuffer(Renderer, Font->Buffer);
+    Rr_DestroyBuffer(App, Font->Buffer);
 
     Rr_DestroyObject(&Renderer->ObjectStorage, Font);
 }

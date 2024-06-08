@@ -8,7 +8,9 @@
 #include "Rr_Object.h"
 #include "Rr_UploadContext.h"
 #include "Rr_Image_Internal.h"
-#include "Rr_Types.h"
+#include "Rr_Load_Internal.h"
+#include "Rr_App_Internal.h"
+#include "Rr_Material_Internal.h"
 
 #include <SDL3/SDL.h>
 
@@ -297,21 +299,21 @@ Rr_Primitive* Rr_CreatePrimitive(
     const usize IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
 
     Primitive->VertexBuffer = Rr_CreateBuffer(
-        Renderer,
+        App,
         VertexBufferSize,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
         false);
 
     Primitive->IndexBuffer = Rr_CreateBuffer(
-        Renderer,
+        App,
         IndexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
         false);
 
     Rr_UploadBuffer(
-        Renderer,
+        App,
         UploadContext,
         Primitive->VertexBuffer->Handle,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -322,7 +324,7 @@ Rr_Primitive* Rr_CreatePrimitive(
         VertexBufferSize);
 
     Rr_UploadBuffer(
-        Renderer,
+        App,
         UploadContext,
         Primitive->IndexBuffer->Handle,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -344,8 +346,8 @@ void Rr_DestroyPrimitive(Rr_App* App, Rr_Primitive* Primitive)
 
     Rr_Renderer* Renderer = &App->Renderer;
 
-    Rr_DestroyBuffer(Renderer, Primitive->IndexBuffer);
-    Rr_DestroyBuffer(Renderer, Primitive->VertexBuffer);
+    Rr_DestroyBuffer(App, Primitive->IndexBuffer);
+    Rr_DestroyBuffer(App, Primitive->VertexBuffer);
 
     Rr_DestroyObject(&Renderer->ObjectStorage, Primitive);
 }

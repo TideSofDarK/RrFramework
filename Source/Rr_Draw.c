@@ -1,11 +1,12 @@
-#include "Rr_Draw.h"
+#include "Rr_Draw_Internal.h"
 
 #include "Rr_Vulkan.h"
-#include "Rr_Types.h"
 #include "Rr_Renderer.h"
 #include "Rr_Memory.h"
 #include "Rr_Object.h"
+#include "Rr_App_Internal.h"
 #include "Rr_Image_Internal.h"
+#include "Rr_Mesh_Internal.h"
 
 Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, const byte* GlobalsData)
 {
@@ -15,7 +16,7 @@ Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, cons
     Rr_DrawContext* DrawContext = Rr_SlicePush(&Frame->DrawContextsSlice, &Frame->Arena);
     *DrawContext = (Rr_DrawContext){
         .Arena = &Frame->Arena,
-        .Renderer = Renderer,
+        .App = App,
         .Info = *Info,
     };
 
@@ -36,7 +37,7 @@ void Rr_DrawStaticMesh(
     Rr_StaticMesh* StaticMesh,
     Rr_Data DrawData)
 {
-    Rr_Renderer* Renderer = DrawContext->Renderer;
+    Rr_Renderer* Renderer = &DrawContext->App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
@@ -49,7 +50,7 @@ void Rr_DrawStaticMesh(
         };
     }
 
-    Rr_CopyToMappedUniformBuffer(DrawContext->Renderer, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
+    Rr_CopyToMappedUniformBuffer(DrawContext->App, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
 }
 
 void Rr_DrawStaticMeshOverrideMaterials(
@@ -59,7 +60,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_StaticMesh* StaticMesh,
     Rr_Data DrawData)
 {
-    Rr_Renderer* Renderer = DrawContext->Renderer;
+    Rr_Renderer* Renderer = &DrawContext->App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
@@ -72,7 +73,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
         };
     }
 
-    Rr_CopyToMappedUniformBuffer(DrawContext->Renderer, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
+    Rr_CopyToMappedUniformBuffer(DrawContext->App, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
 }
 
 static void Rr_DrawText(Rr_DrawContext* RenderingContext, const Rr_DrawTextInfo* Info)
@@ -81,7 +82,7 @@ static void Rr_DrawText(Rr_DrawContext* RenderingContext, const Rr_DrawTextInfo*
     *NewInfo = *Info;
     if (NewInfo->Font == NULL)
     {
-        NewInfo->Font = RenderingContext->Renderer->BuiltinFont;
+        NewInfo->Font = RenderingContext->App->Renderer.BuiltinFont;
     }
     if (NewInfo->Size == 0.0f)
     {
