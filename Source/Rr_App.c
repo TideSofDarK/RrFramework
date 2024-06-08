@@ -11,7 +11,7 @@
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
 
-static void FrameTime_Advance(Rr_FrameTime* FrameTime)
+static void Rr_AdvanceFrameTime(Rr_FrameTime* FrameTime)
 {
 #ifdef RR_PERFORMANCE_COUNTER
     {
@@ -30,6 +30,7 @@ static void FrameTime_Advance(Rr_FrameTime* FrameTime)
     u64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
     u64 Now = SDL_GetTicksNS();
     u64 Elapsed = Now - FrameTime->StartTime;
+
     if (Elapsed < Interval)
     {
         SDL_DelayNS(Interval - Elapsed);
@@ -88,6 +89,10 @@ void Rr_DebugOverlay(Rr_App* App)
 
 static void Iterate(Rr_App* App)
 {
+    static u64 Now = 0;
+    App->FrameTime.DeltaSeconds = (f32)((f64)(SDL_GetTicksNS() - Now) / 1000000.0) / 1000.0f;
+    Now = SDL_GetTicksNS();
+
     Rr_UpdateInputState(&App->InputState, &App->InputConfig);
 
     ImGui_ImplVulkan_NewFrame();
@@ -104,7 +109,7 @@ static void Iterate(Rr_App* App)
         Rr_Draw(App);
     }
 
-    FrameTime_Advance(&App->FrameTime);
+    Rr_AdvanceFrameTime(&App->FrameTime);
 }
 
 static int SDLCALL Rr_EventWatch(void* AppPtr, SDL_Event* Event)
@@ -270,4 +275,9 @@ f32 Rr_GetAspectRatio(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     return (float)Renderer->SwapchainSize.width / (float)Renderer->SwapchainSize.height;
+}
+
+f32 Rr_GetDeltaTime(Rr_App* App)
+{
+    return App->FrameTime.DeltaSeconds;
 }

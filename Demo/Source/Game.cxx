@@ -219,11 +219,7 @@ static void Cleanup(Rr_App* App)
 static void Iterate(Rr_App* App)
 {
     Rr_InputState InputState = Rr_GetInputState(App);
-
-    Rr_KeyState Up = Rr_GetKeyState(InputState, EIA_UP);
-    if (Up == RR_KEYSTATE_PRESSED)
-    {
-    }
+    f32 DeltaTime = Rr_GetDeltaTime(App);
 
     if (Rr_GetKeyState(InputState, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
     {
@@ -234,7 +230,7 @@ static void Iterate(Rr_App* App)
     static Rr_Vec3 CameraPos = { -7.35889f, -4.0f, -6.92579f };
     static Rr_Vec3 CameraEuler = { 90.0f - 63.5593f, -46.6919f, 0.0f };
     static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
-    ImGui::SliderFloat3("CameraPos", CameraPos.Elements, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
+    //    ImGui::SliderFloat3("CameraPos", CameraPos.Elements, -8.0f, 8.0f, "%f", ImGuiSliderFlags_None);
     ImGui::SliderFloat3("CameraRot", CameraEuler.Elements, -190.0f, 190.0f, "%f", ImGuiSliderFlags_None);
     ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
 
@@ -242,7 +238,27 @@ static void Iterate(Rr_App* App)
     ShaderGlobals.DirectionalLightDirection = Rr_EulerXYZ(LightRotation).Columns[2];
 
     Rr_Vec3 CameraRotation = CameraEuler * Rr_DegToRad;
+    Rr_Mat4 InvCameraRotation = Rr_InvGeneral(Rr_EulerXYZ(CameraRotation));
+    Rr_Vec3 CameraForward = Rr_Norm(InvCameraRotation.Columns[2].XYZ);
+    Rr_Vec3 CameraLeft = Rr_Norm(InvCameraRotation.Columns[0].XYZ);
+    if (Rr_GetKeyState(InputState, EIA_UP) == RR_KEYSTATE_HELD)
+    {
+        CameraPos += CameraForward * DeltaTime;
+    }
+    if (Rr_GetKeyState(InputState, EIA_LEFT) == RR_KEYSTATE_HELD)
+    {
+        CameraPos += CameraLeft * DeltaTime;
+    }
+    if (Rr_GetKeyState(InputState, EIA_DOWN) == RR_KEYSTATE_HELD)
+    {
+        CameraPos -= CameraForward * DeltaTime;
+    }
+    if (Rr_GetKeyState(InputState, EIA_RIGHT) == RR_KEYSTATE_HELD)
+    {
+        CameraPos -= CameraLeft * DeltaTime;
+    }
     ShaderGlobals.View = Rr_EulerXYZ(CameraRotation) * Rr_Translate(CameraPos);
+
     ImGui::End();
 
     static bool bShowDebugOverlay = false;

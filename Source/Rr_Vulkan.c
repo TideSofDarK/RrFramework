@@ -196,7 +196,7 @@ void Rr_InitDeviceAndQueues(
         }
     };
 
-    char* DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    str DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
     VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,

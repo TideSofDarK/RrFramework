@@ -23,6 +23,7 @@ struct Rr_FrameTime
 
     u64 TargetFramerate;
     u64 StartTime;
+    f32 DeltaSeconds;
 };
 
 struct Rr_App

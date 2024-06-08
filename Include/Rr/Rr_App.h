@@ -26,7 +26,8 @@ typedef struct Rr_AppConfig
 void Rr_Run(Rr_AppConfig* Config);
 void Rr_DebugOverlay(Rr_App* App);
 void Rr_ToggleFullscreen(Rr_App* App);
-float Rr_GetAspectRatio(Rr_App* App);
+f32 Rr_GetAspectRatio(Rr_App* App);
+f32 Rr_GetDeltaTime(Rr_App* App);
 Rr_InputState Rr_GetInputState(Rr_App* App);
 
 #ifdef __cplusplus

@@ -282,7 +282,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
     int Result;
-    char* Error;
+    str Error;
 
     EXRVersion Version;
     Result = ParseEXRVersionFromMemory(&Version, (unsigned char*)Asset.Data, Asset.Length);
