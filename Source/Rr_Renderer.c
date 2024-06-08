@@ -1,6 +1,7 @@
 #include "Rr_Renderer.h"
 
 #include "Rr_Barrier.h"
+#include "Rr_Draw.h"
 #include "Rr_Rendering.h"
 #include "Rr_Image.h"
 #include "Rr_App.h"

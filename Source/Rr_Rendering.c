@@ -2,6 +2,7 @@
 
 #include "Rr_UploadContext.h"
 #include "Rr_Mesh.h"
+#include "Rr_Draw.h"
 #include "Rr_Material.h"
 #include "Rr_Image.h"
 #include "Rr_Pipeline.h"

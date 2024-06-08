@@ -1,27 +1,17 @@
 #pragma once
 
-#include "Rr_Pipeline.h"
-#include "Rr_Memory.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Buffer.h"
 #include "Rr_Object.h"
-#include "Rr_Draw.h"
-#include "Rr_Load.h"
 #include "Rr_Text.h"
 
 #include <volk.h>
 
 #include <SDL3/SDL_atomic.h>
 
-typedef enum Rr_HandleType
-{
-    RR_HANDLE_TYPE_BUFFER,
-    RR_HANDLE_TYPE_STATIC_MESH,
-    RR_HANDLE_TYPE_IMAGE,
-    RR_HANDLE_TYPE_FONT,
-    RR_HANDLE_TYPE_MATERIAL,
-    RR_HANDLE_TYPE_COUNT,
-} Rr_HandleType;
+struct Rr_Image;
+struct Rr_DrawTarget;
+struct Rr_PipelineBuilder;
 
 typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
@@ -74,7 +64,7 @@ struct Rr_Frame
     Rr_WriteBuffer CommonBuffer;
     Rr_WriteBuffer DrawBuffer;
 
-    Rr_SliceType(Rr_DrawContext) DrawContextsSlice;
+    Rr_SliceType(struct Rr_DrawContext) DrawContextsSlice;
 
     Rr_Arena Arena;
 };
@@ -115,7 +105,7 @@ struct Rr_Renderer
     Rr_ImGui ImGui;
     Rr_ImmediateMode ImmediateMode;
 
-    Rr_Image* NullTexture;
+    struct Rr_Image* NullTexture;
 
     /* Retired Semaphores */
     Rr_SliceType(struct Rr_RetiredSemaphore { VkSemaphore Semaphore; usize FrameIndex; }) RetiredSemaphoresSlice;
@@ -124,7 +114,7 @@ struct Rr_Renderer
     Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;
 
     /* Main Draw Target */
-    Rr_DrawTarget* DrawTarget;
+    struct Rr_DrawTarget* DrawTarget;
 
     /* Texture Samplers */
     VkSampler NearestSampler;
@@ -154,7 +144,7 @@ extern void Rr_EndImmediate(Rr_Renderer* Renderer);
 
 extern VkPipeline Rr_BuildPipeline(
     Rr_Renderer* Renderer,
-    Rr_PipelineBuilder* PipelineBuilder,
+    struct Rr_PipelineBuilder* PipelineBuilder,
     VkPipelineLayout PipelineLayout);
 
 extern Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);

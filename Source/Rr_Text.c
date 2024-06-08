@@ -2,6 +2,7 @@
 
 #include "Rr/Rr_Util.h"
 #include "Rr_App.h"
+#include "Rr_Pipeline.h"
 #include "Rr_Image.h"
 #include "Rr_BuiltinAssets.inc"
 
