@@ -3,6 +3,7 @@
 #include "Rr/Rr_Input.h"
 #include "Rr_Memory.h"
 #include "Rr_Load.h"
+#include "Rr_Object.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -69,7 +70,7 @@ void Rr_DebugOverlay(Rr_App* App)
     {
         igText("Swapchain Size: %dx%d", App->Renderer.SwapchainSize.width, App->Renderer.SwapchainSize.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
-        igText("RrFramework Objects: %zu", App->Renderer.ObjectStorage.ObjectCount);
+        igText("RrFramework Objects: %zu", App->ObjectStorage.ObjectCount);
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
 #endif
@@ -86,12 +87,11 @@ void Rr_DebugOverlay(Rr_App* App)
     }
     igEnd();
 }
-
+#include <float.h>
 static void Iterate(Rr_App* App)
 {
-    static u64 Now = 0;
-    App->FrameTime.DeltaSeconds = (f32)((f64)(SDL_GetTicksNS() - Now) / 1000000.0) / 1000.0f;
-    Now = SDL_GetTicksNS();
+    App->FrameTime.DeltaSeconds = (f32)((f64)(SDL_GetTicksNS() - App->FrameTime.Last) / (f64)SDL_NS_PER_SECOND);
+    App->FrameTime.Last = SDL_GetTicksNS();
 
     Rr_UpdateInputState(&App->InputState, &App->InputConfig);
 
@@ -193,7 +193,8 @@ void Rr_Run(Rr_AppConfig* Config)
             .Mappings = Config->InputConfig->Mappings },
         .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
         .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
-        .ScratchArenaTLS = SDL_CreateTLS()
+        .ScratchArenaTLS = SDL_CreateTLS(),
+        .ObjectStorage = Rr_CreateObjectStorage()
     };
 
     Rr_SetScratchTLS(&App->ScratchArenaTLS);
@@ -246,6 +247,8 @@ void Rr_Run(Rr_AppConfig* Config)
 
     Rr_CleanupLoadingThread(App);
     Rr_CleanupRenderer(App);
+
+    Rr_DestroyObjectStorage(&App->ObjectStorage);
 
     Rr_DestroyArena(&App->PermanentArena);
     Rr_DestroySyncArena(&App->SyncArena);

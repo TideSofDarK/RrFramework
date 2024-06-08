@@ -18,7 +18,7 @@ Rr_Image* Rr_CreateImage(
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    Rr_Image* Image = Rr_CreateObject(&Renderer->ObjectStorage);
+    Rr_Image* Image = Rr_CreateObject(&App->ObjectStorage);
     Image->Format = Format;
     Image->Extent = Extent;
 
@@ -62,7 +62,7 @@ void Rr_DestroyImage(Rr_App* App, Rr_Image* AllocatedImage)
     vkDestroyImageView(Renderer->Device, AllocatedImage->View, NULL);
     vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
 
-    Rr_DestroyObject(&Renderer->ObjectStorage, AllocatedImage);
+    Rr_DestroyObject(&App->ObjectStorage, AllocatedImage);
 }
 
 static void UploadImage(

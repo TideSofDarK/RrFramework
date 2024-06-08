@@ -745,8 +745,6 @@ void Rr_InitRenderer(Rr_App* App)
         &Renderer->TransferQueue.Handle);
     Renderer->GraphicsQueueMutex = SDL_CreateMutex();
 
-    Renderer->ObjectStorage = Rr_CreateObjectStorage();
-
     volkLoadDevice(Renderer->Device);
 
     Rr_InitVMA(App);
@@ -834,8 +832,6 @@ void Rr_CleanupRenderer(Rr_App* App)
     Rr_CleanupRenderPass(App);
     Rr_CleanupSamplers(App);
     Rr_CleanupSwapchain(App, Renderer->Swapchain.Handle);
-
-    Rr_DestroyObjectStorage(&Renderer->ObjectStorage);
 
     vmaDestroyAllocator(Renderer->Allocator);
 

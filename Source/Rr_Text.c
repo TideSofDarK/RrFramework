@@ -159,7 +159,7 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
         },
     };
 
-    Rr_Font* Font = Rr_CreateObject(&Renderer->ObjectStorage);
+    Rr_Font* Font = Rr_CreateObject(&App->ObjectStorage);
     *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
@@ -232,5 +232,5 @@ void Rr_DestroyFont(Rr_App* App, Rr_Font* Font)
     Rr_DestroyImage(App, Font->Atlas);
     Rr_DestroyBuffer(App, Font->Buffer);
 
-    Rr_DestroyObject(&Renderer->ObjectStorage, Font);
+    Rr_DestroyObject(&App->ObjectStorage, Font);
 }

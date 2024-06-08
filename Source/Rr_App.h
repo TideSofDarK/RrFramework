@@ -2,6 +2,7 @@
 
 #include "Rr/Rr_App.h"
 #include "Rr_Renderer.h"
+#include "Rr_Object.h"
 #include "Rr_Load.h"
 
 #include <SDL3/SDL_thread.h>
@@ -23,6 +24,8 @@ struct Rr_FrameTime
 
     u64 TargetFramerate;
     u64 StartTime;
+
+    u64 Last;
     f32 DeltaSeconds;
 };
 
@@ -36,6 +39,7 @@ struct Rr_App
     Rr_LoadingThread LoadingThread;
     Rr_Arena PermanentArena;
     Rr_SyncArena SyncArena;
+    Rr_ObjectStorage ObjectStorage;
     SDL_TLSID ScratchArenaTLS;
     SDL_Window* Window;
     SDL_AtomicInt bExit;

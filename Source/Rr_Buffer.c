@@ -12,7 +12,7 @@ Rr_Buffer* Rr_CreateBuffer(
     VmaMemoryUsage MemoryUsage,
     bool bHostMapped)
 {
-    Rr_Buffer* Buffer = Rr_CreateObject(&App->Renderer.ObjectStorage);
+    Rr_Buffer* Buffer = Rr_CreateObject(&App->ObjectStorage);
 
     VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -81,7 +81,7 @@ void Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer)
 
     vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
 
-    Rr_DestroyObject(&Renderer->ObjectStorage, Buffer);
+    Rr_DestroyObject(&App->ObjectStorage, Buffer);
 }
 
 void Rr_UploadBufferAligned(

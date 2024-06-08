@@ -2,7 +2,6 @@
 
 #include "Rr_Descriptor.h"
 #include "Rr_Buffer.h"
-#include "Rr_Object.h"
 #include "Rr_Text.h"
 #include "Rr_Pipeline.h"
 
@@ -124,9 +123,6 @@ struct Rr_Renderer
     /* Generic Pipeline Layout */
     VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
     VkPipelineLayout GenericPipelineLayout;
-
-    /* Object Storage */
-    Rr_ObjectStorage ObjectStorage;
 };
 
 extern void Rr_InitRenderer(Rr_App* App);

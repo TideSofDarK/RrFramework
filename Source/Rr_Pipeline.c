@@ -333,7 +333,7 @@ Rr_GenericPipeline* Rr_BuildGenericPipeline(
     SDL_assert(Sizes.Draw < RR_PIPELINE_MAX_DRAW_SIZE);
 
     Rr_Renderer* Renderer = &App->Renderer;
-    Rr_GenericPipeline* Pipeline = Rr_CreateObject(&Renderer->ObjectStorage);
+    Rr_GenericPipeline* Pipeline = Rr_CreateObject(&App->ObjectStorage);
     *Pipeline = (Rr_GenericPipeline){
         .Handle = Rr_BuildPipeline(Renderer, PipelineBuilder, Renderer->GenericPipelineLayout),
         .Sizes = Sizes
@@ -349,7 +349,7 @@ void Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
 
     vkDestroyPipeline(Device, Pipeline->Handle, NULL);
 
-    Rr_DestroyObject(&Renderer->ObjectStorage, Pipeline);
+    Rr_DestroyObject(&App->ObjectStorage, Pipeline);
 }
 
 Rr_GenericPipelineSizes Rr_GetGenericPipelineSizes(Rr_GenericPipeline* Pipeline)
