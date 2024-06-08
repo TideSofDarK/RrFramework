@@ -188,7 +188,7 @@ static void InitGlobals(Rr_App* App)
     ShaderGlobals.DirectionalLightColor = { 1.0f, 0.95f, 0.93f, 1.0f };
     ShaderGlobals.DirectionalLightIntensity = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-    ShaderGlobals.Proj = Rr_Perspective(0.7643276f, Rr_GetAspectRatio(App));
+    ShaderGlobals.Proj = Rr_Perspective_LH_ZO(0.7643276f, Rr_GetAspectRatio(App), 0.5f, 50.0f);
     ShaderGlobals.Intermediate = Rr_VulkanMatrix();
 }
 
@@ -323,19 +323,20 @@ static void Iterate(Rr_App* App)
         Camera.Position += CameraLeft * DeltaTime * CameraSpeed;
     }
 
-    static f32 MouseX, MouseXOld;
-    static f32 MouseY, MouseYOld;
-    SDL_MouseButtonFlags MouseState = SDL_GetMouseState(&MouseX, &MouseY);
+    f32 DeltaX;
+    f32 DeltaY;
+    SDL_MouseButtonFlags MouseState = SDL_GetRelativeMouseState(&DeltaX, &DeltaY);
     if (MouseState & SDL_BUTTON_RMASK)
     {
+        SDL_SetRelativeMouseMode(SDL_TRUE);
         constexpr f32 Sensitivity = 50.0f;
-        f32 DeltaX = MouseXOld - MouseX;
-        f32 DeltaY = MouseYOld - MouseY;
-        Camera.Yaw = Rr_WrapMax(Camera.Yaw + (DeltaX * DeltaTime * Sensitivity), 360.0f);
-        Camera.Pitch = Rr_WrapMinMax(Camera.Pitch + (DeltaY * DeltaTime * Sensitivity), -90.0f, 90.0f);
+        Camera.Yaw = Rr_WrapMax(Camera.Yaw - (DeltaX * DeltaTime * Sensitivity), 360.0f);
+        Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (DeltaY * DeltaTime * Sensitivity), -90.0f, 90.0f);
     }
-    MouseXOld = MouseX;
-    MouseYOld = MouseY;
+    else
+    {
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+    }
 
     ShaderGlobals.View = Camera.GetViewMatrix();
 

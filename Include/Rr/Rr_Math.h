@@ -633,20 +633,6 @@ static inline float Rr_GetVerticalFoV(const float HorizontalFoV, const float Asp
     return 2.0f * atanf((tanf(HorizontalFoV / 2.0f) * Aspect));
 }
 
-static inline Rr_Mat4 Rr_Perspective(const float HorizontalFoV, const float Aspect)
-{
-    Rr_Mat4 Out = { 0 };
-    const float FoV = Rr_GetVerticalFoV(HorizontalFoV, 1.0f / Aspect);
-    const float Far = 50.0f;
-    const float Near = 0.5f;
-    Out.Elements[0][0] = (1.0f / Aspect) / tanf(FoV / 2.0f);
-    Out.Elements[1][1] = 1.0f / tanf(FoV / 2.0f);
-    Out.Elements[2][2] = Far / (Far - Near);
-    Out.Elements[3][2] = -((Near * Far) / (Far - Near));
-    Out.Elements[2][3] = 1.0f;
-    return Out;
-}
-
 static inline void Rr_PerspectiveResize(float Aspect, Rr_Mat4* Proj)
 {
     if (Proj->Elements[0][0] == 0.0f)
@@ -667,19 +653,19 @@ static inline Rr_Mat4 Rr_VulkanMatrix()
     return Out;
 }
 
-static Rr_Mat4 Rr_EulerXYZ(Rr_Vec3 angles)
+static inline Rr_Mat4 Rr_EulerXYZ(Rr_Vec3 Angles)
 {
     float CosX, CosY, CosZ,
         SinX, SinY, SinZ, CosZSinX, CosXCosZ, SinYSinZ;
 
     Rr_Mat4 Out;
 
-    SinX = Rr_SinF(angles.X);
-    CosX = Rr_CosF(angles.X);
-    SinY = Rr_SinF(angles.Y);
-    CosY = Rr_CosF(angles.Y);
-    SinZ = Rr_SinF(angles.Z);
-    CosZ = Rr_CosF(angles.Z);
+    SinX = Rr_SinF(Angles.X);
+    CosX = Rr_CosF(Angles.X);
+    SinY = Rr_SinF(Angles.Y);
+    CosY = Rr_CosF(Angles.Y);
+    SinZ = Rr_SinF(Angles.Z);
+    CosZ = Rr_CosF(Angles.Z);
 
     CosZSinX = CosZ * SinX;
     CosXCosZ = CosX * CosZ;
