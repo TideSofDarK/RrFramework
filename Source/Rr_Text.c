@@ -1,15 +1,6 @@
 #include "Rr_Text_Internal.h"
 
-#include "Rr_Buffer.h"
-#include "Rr_Image.h"
-#include "Rr_Pipeline.h"
-#include "Rr_Renderer.h"
-#include "Rr_Asset.h"
-#include "Rr_Memory.h"
 #include "Rr_Util.h"
-#include "Rr_Load.h"
-#include "Rr_Descriptor.h"
-#include "Rr_Object.h"
 #include "Rr_App_Internal.h"
 #include "Rr_BuiltinAssets.inc"
 

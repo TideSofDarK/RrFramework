@@ -1,10 +1,11 @@
 #pragma once
 
-#include "Rr_Vulkan.h"
 #include "Rr_Memory.h"
 #include "Rr_Load.h"
 
 #include <SDL3/SDL_thread.h>
+
+#include <volk.h>
 
 struct Rr_UploadContext;
 

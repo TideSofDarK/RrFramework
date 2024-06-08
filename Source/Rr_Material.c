@@ -1,7 +1,5 @@
 #include "Rr_Material_Internal.h"
 
-#include "Rr_Renderer.h"
-#include "Rr_Buffer.h"
 #include "Rr_App_Internal.h"
 #include "Rr_Pipeline_Internal.h"
 

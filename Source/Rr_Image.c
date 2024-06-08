@@ -1,7 +1,6 @@
-#include "Rr_Image.h"
+#include "Rr_Image_Internal.h"
 
 #include "Rr_App_Internal.h"
-#include "Rr_Image_Internal.h"
 
 void Rr_DestroyImage(Rr_App* App, Rr_Image* AllocatedImage)
 {
