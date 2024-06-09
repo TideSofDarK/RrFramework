@@ -9,7 +9,6 @@
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Log.h"
-#include <SDL3/SDL_atomic.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
