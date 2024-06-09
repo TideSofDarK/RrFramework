@@ -194,8 +194,8 @@ static void InitGlobals(Rr_App* App)
 
 static void OnLoadingComplete(Rr_App* App, void* Userdata)
 {
-    std::array CottageTextures = { CottageDiffuse, Rr_GetDummyNormalTexture(App) };
-    // std::array CottageTextures = { CottageDiffuse, CottageNormal };
+    // std::array CottageTextures = { CottageDiffuse, Rr_GetDummyNormalTexture(App) };
+    std::array CottageTextures = { CottageDiffuse, CottageNormal };
     CottageMaterial = Rr_CreateMaterial(App, Uber3DPipeline, CottageTextures.data(), CottageTextures.size());
 
     bLoaded = true;
