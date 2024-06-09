@@ -15,20 +15,21 @@ typedef struct Rr_App Rr_App;
 typedef struct Rr_AppConfig
 {
     str Title;
-    Rr_InputConfig* InputConfig;
     void (*InitFunc)(Rr_App* App);
     void (*CleanupFunc)(Rr_App* App);
     void (*IterateFunc)(Rr_App* App);
-
     void (*FileDroppedFunc)(Rr_App* App, str Path);
 } Rr_AppConfig;
 
-void Rr_Run(Rr_AppConfig* Config);
-void Rr_DebugOverlay(Rr_App* App);
-void Rr_ToggleFullscreen(Rr_App* App);
-f32 Rr_GetAspectRatio(Rr_App* App);
-f32 Rr_GetDeltaTime(Rr_App* App);
-Rr_InputState Rr_GetInputState(Rr_App* App);
+extern void Rr_Run(Rr_AppConfig* Config);
+extern void Rr_DebugOverlay(Rr_App* App);
+extern void Rr_ToggleFullscreen(Rr_App* App);
+extern f32 Rr_GetAspectRatio(Rr_App* App);
+extern f32 Rr_GetDeltaTime(Rr_App* App);
+extern void Rr_SetInputConfig(Rr_App* App, Rr_InputConfig* InputConfig);
+extern Rr_InputState Rr_GetInputState(Rr_App* App);
+extern void Rr_SetUserData(Rr_App* App, void* UserData);
+extern void* Rr_GetUserData(Rr_App* App);
 
 #ifdef __cplusplus
 }

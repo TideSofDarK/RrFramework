@@ -43,4 +43,5 @@ struct Rr_App
     SDL_TLSID ScratchArenaTLS;
     SDL_Window* Window;
     SDL_AtomicInt bExit;
+    void* UserData;
 };

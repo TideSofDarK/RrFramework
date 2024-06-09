@@ -188,9 +188,6 @@ void Rr_Run(Rr_AppConfig* Config)
             WindowSize.Width,
             WindowSize.Height,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
-        .InputConfig = {
-            .Count = Config->InputConfig->Count,
-            .Mappings = Config->InputConfig->Mappings },
         .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
         .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
         .ScratchArenaTLS = SDL_CreateTLS(),
@@ -271,6 +268,11 @@ void Rr_ToggleFullscreen(Rr_App* App)
     SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
 }
 
+void Rr_SetInputConfig(Rr_App* App, Rr_InputConfig* InputConfig)
+{
+    App->InputConfig = *InputConfig;
+}
+
 Rr_InputState Rr_GetInputState(Rr_App* App)
 {
     return App->InputState;
@@ -285,4 +287,14 @@ f32 Rr_GetAspectRatio(Rr_App* App)
 f32 Rr_GetDeltaTime(Rr_App* App)
 {
     return App->FrameTime.DeltaSeconds;
+}
+
+void Rr_SetUserData(Rr_App* App, void* UserData)
+{
+    App->UserData = UserData;
+}
+
+void* Rr_GetUserData(Rr_App* App)
+{
+    return App->UserData;
 }
