@@ -194,7 +194,6 @@ static void InitGlobals(Rr_App* App)
 
 static void OnLoadingComplete(Rr_App* App, void* Userdata)
 {
-    // std::array CottageTextures = { CottageDiffuse, Rr_GetDummyNormalTexture(App) };
     std::array CottageTextures = { CottageDiffuse, CottageNormal };
     CottageMaterial = Rr_CreateMaterial(App, Uber3DPipeline, CottageTextures.data(), CottageTextures.size());
 
@@ -352,14 +351,14 @@ static void Iterate(Rr_App* App)
     Rr_PerspectiveResize(Rr_GetAspectRatio(App), &ShaderGlobals.Proj);
 
     /* Rendering */
-    Rr_DrawContextInfo BeginRenderingInfo = {
+    Rr_DrawContextInfo DrawContextInfo = {
         .DrawTarget = nullptr,
         .InitialColor = nullptr,
         .InitialDepth = nullptr,
         .Viewport = {},
         .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline),
     };
-    Rr_DrawContext* RenderingContext = Rr_CreateDrawContext(App, &BeginRenderingInfo, (byte*)&ShaderGlobals);
+    Rr_DrawContext* DrawContext = Rr_CreateDrawContext(App, &DrawContextInfo, (byte*)&ShaderGlobals);
 
     const u64 Ticks = SDL_GetTicks();
     const f32 Time = (f32)((f64)Ticks / 1000.0 * 2);
@@ -369,12 +368,12 @@ static void Iterate(Rr_App* App)
         SUber3DDraw ArrowDraw = { 0 };
         ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
         ArrowDraw.Model[3][1] = 5.0f;
-        Rr_DrawStaticMesh(RenderingContext, ArrowMesh, Rr_MakeData(ArrowDraw));
+        Rr_DrawStaticMesh(DrawContext, ArrowMesh, Rr_MakeData(ArrowDraw));
 
         SUber3DDraw CottageDraw = { 0 };
         CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
         CottageDraw.Model[3][1] = 0.1f;
-        Rr_DrawStaticMeshOverrideMaterials(RenderingContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
+        Rr_DrawStaticMeshOverrideMaterials(DrawContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
 
         SUber3DDraw AvocadoDraw = { 0 };
         AvocadoDraw.Model =
@@ -384,16 +383,16 @@ static void Iterate(Rr_App* App)
         AvocadoDraw.Model[3][0] = 3.5f;
         AvocadoDraw.Model[3][1] = 0.5f;
         AvocadoDraw.Model[3][2] = 3.5f;
-        Rr_DrawStaticMesh(RenderingContext, AvocadoMesh, Rr_MakeData(AvocadoDraw));
+        Rr_DrawStaticMesh(DrawContext, AvocadoMesh, Rr_MakeData(AvocadoDraw));
 
         SUber3DDraw MarbleDraw = { 0 };
         MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
-        Rr_DrawStaticMesh(RenderingContext, MarbleMesh, Rr_MakeData(MarbleDraw));
+        Rr_DrawStaticMesh(DrawContext, MarbleMesh, Rr_MakeData(MarbleDraw));
 
-        Rr_DrawDefaultText(RenderingContext, &TestString, { 50.0f, 50.0f });
+        Rr_DrawDefaultText(DrawContext, &TestString, { 50.0f, 50.0f });
 
         Rr_DrawCustomText(
-            RenderingContext,
+            DrawContext,
             nullptr,
             &DebugString,
             { 450.0f, 54.0f },
@@ -412,7 +411,7 @@ static void Iterate(Rr_App* App)
         }
 
         Rr_DrawCustomText(
-            RenderingContext,
+            DrawContext,
             nullptr,
             &LoadingString,
             { 25.0f, 540.0f - 25 - 32.0f },
