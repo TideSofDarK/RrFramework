@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDL3/SDL_mutex.h>
+#include <SDL3/SDL_thread.h>
 
 #include "Rr/Rr_Defines.h"
 
@@ -82,7 +82,7 @@ extern Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena* Conflict);
 typedef struct Rr_SyncArena Rr_SyncArena;
 struct Rr_SyncArena
 {
-    SDL_Mutex* Mutex;
+    SDL_SpinLock Lock;
     Rr_Arena Arena;
 };
 

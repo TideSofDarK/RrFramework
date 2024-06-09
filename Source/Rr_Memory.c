@@ -1,6 +1,7 @@
 #include "Rr_Memory.h"
 #include "Rr_Log.h"
 
+#include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_thread.h>
 
 void* Rr_Malloc(usize Bytes)
@@ -144,14 +145,12 @@ void* Rr_ArenaAlloc(Rr_Arena* Arena, usize Size, usize Align, usize Count)
 Rr_SyncArena Rr_CreateSyncArena(usize Size)
 {
     return (Rr_SyncArena){
-        .Mutex = SDL_CreateMutex(),
         .Arena = Rr_CreateArena(Size)
     };
 }
 
 void Rr_DestroySyncArena(Rr_SyncArena* Arena)
 {
-    SDL_DestroyMutex(Arena->Mutex);
     Rr_DestroyArena(&Arena->Arena);
 }
 

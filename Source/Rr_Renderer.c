@@ -9,6 +9,7 @@
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Log.h"
+#include <SDL3/SDL_atomic.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -888,7 +889,7 @@ void Rr_ProcessPendingLoads(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    if (SDL_TryLockMutex(App->SyncArena.Mutex) == 0)
+    if (SDL_TryLockSpinlock(&App->SyncArena.Lock))
     {
         for (usize Index = 0; Index < Rr_SliceLength(&Renderer->PendingLoadsSlice); ++Index)
         {
@@ -897,7 +898,7 @@ void Rr_ProcessPendingLoads(Rr_App* App)
         }
         Rr_SliceEmpty(&Renderer->PendingLoadsSlice);
 
-        SDL_UnlockMutex(App->SyncArena.Mutex);
+        SDL_UnlockSpinlock(&App->SyncArena.Lock);
     }
 }
 

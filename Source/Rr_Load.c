@@ -7,6 +7,7 @@
 #include "Rr_Log.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_atomic.h>
 
 static Rr_LoadSize Rr_CalculateLoadSize(
     Rr_LoadTask* Tasks,
@@ -371,7 +372,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
 
     Rr_DestroyBuffer(App, UploadContext.StagingBuffer.Buffer);
 
-    SDL_LockMutex(App->SyncArena.Mutex);
+    SDL_LockSpinlock(&App->SyncArena.Lock);
 
     Rr_PendingLoad* PendingLoad = Rr_SlicePush(&Renderer->PendingLoadsSlice, &App->SyncArena.Arena);
     *PendingLoad = (Rr_PendingLoad){
@@ -379,7 +380,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
         .Userdata = LoadingContext->Userdata,
     };
 
-    SDL_UnlockMutex(App->SyncArena.Mutex);
+    SDL_UnlockSpinlock(&App->SyncArena.Lock);
 
     if (LoadingContext->Semaphore)
     {
