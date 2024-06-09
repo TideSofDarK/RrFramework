@@ -95,3 +95,4 @@ extern Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
 #endif
 
 // #undef RR_ASSET_EXTERN
+

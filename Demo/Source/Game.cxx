@@ -58,9 +58,9 @@ struct SEntity
 
 struct SCamera
 {
-    f32 Pitch;
-    f32 Yaw;
-    Rr_Vec3 Position;
+    f32 Pitch{};
+    f32 Yaw{};
+    Rr_Vec3 Position{};
     Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
 
     [[nodiscard]] Rr_Vec3 GetForwardVector() const
@@ -120,6 +120,8 @@ static Rr_GenericPipeline* Uber3DPipeline;
 
 // static Rr_Image SceneDepthImage;
 // static Rr_Image SceneColorImage;
+
+static Rr_StaticMesh* ArrowMesh;
 
 static Rr_StaticMesh* CottageMesh;
 static Rr_Image* CottageTexture;
@@ -218,6 +220,7 @@ static void Init(Rr_App* App)
         Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGE_PNG, &CottageTexture),
         Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &GLTFLoader, 0, &AvocadoMesh),
         Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &GLTFLoader, 0, &MarbleMesh),
+        Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &GLTFLoader, 0, &ArrowMesh),
         Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
     };
     LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);
@@ -256,6 +259,7 @@ static void Cleanup(Rr_App* App)
     Rr_DestroyStaticMesh(App, PocMesh);
     Rr_DestroyStaticMesh(App, MarbleMesh);
     Rr_DestroyStaticMesh(App, AvocadoMesh);
+    Rr_DestroyStaticMesh(App, ArrowMesh);
 
     Rr_DestroyGenericPipeline(App, Uber3DPipeline);
 
@@ -356,6 +360,11 @@ static void Iterate(Rr_App* App)
 
     if (bLoaded)
     {
+        SUber3DDraw ArrowDraw = { 0 };
+        ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
+        ArrowDraw.Model[3][1] = 5.0f;
+        Rr_DrawStaticMesh(RenderingContext, ArrowMesh, Rr_MakeData(ArrowDraw));
+
         SUber3DDraw CottageDraw = { 0 };
         CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
         CottageDraw.Model[3][1] = 0.1f;
