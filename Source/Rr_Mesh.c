@@ -1,5 +1,6 @@
 #include "Rr_Mesh.h"
 
+#include "Rr/Rr_Mesh.h"
 #include "Rr_UploadContext.h"
 #include "Rr_Image.h"
 #include "Rr_App.h"
@@ -109,7 +110,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
                 case cgltf_attribute_type_tangent:
                 {
                     Rr_Vec3* Tangent = (Rr_Vec3*)(AttributeData + Accessor->stride * VertexIndex);
-                    NewVertex.Tangent.RGB = *Tangent;
+                    NewVertex.Tangent = *Tangent;
                 }
                 break;
                 case cgltf_attribute_type_texcoord:
@@ -130,6 +131,44 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
     Rr_DestroyArenaScratch(Scratch);
 
     return RawMesh;
+}
+
+static void Rr_CalculateTangents(usize IndexCount, const Rr_MeshIndexType* Indices, Rr_Vertex* OutVertices)
+{
+    for (u32 Index = 3; Index < IndexCount; Index += 3)
+    {
+        u32 V0Index = Indices[Index - 3];
+        u32 V1Index = Indices[Index - 2];
+        u32 V2Index = Indices[Index - 1];
+
+        Rr_Vertex* Vertex0 = &OutVertices[V0Index];
+        Rr_Vertex* Vertex1 = &OutVertices[V1Index];
+        Rr_Vertex* Vertex2 = &OutVertices[V2Index];
+
+        Rr_Vec3 Tangent = Rr_V3(0.0f, 0.0f, 0.0f);
+        Rr_Vec3 Edge0 = Rr_SubV3(Vertex1->Position, Vertex0->Position);
+        Rr_Vec3 Edge1 = Rr_SubV3(Vertex2->Position, Vertex0->Position);
+        Rr_Vec2 DeltaUV0 = { Vertex1->TexCoordX - Vertex0->TexCoordX, Vertex1->TexCoordY - Vertex0->TexCoordY };
+        Rr_Vec2 DeltaUV1 = { Vertex2->TexCoordX - Vertex0->TexCoordX, Vertex2->TexCoordY - Vertex0->TexCoordY };
+
+        f32 Denominator = DeltaUV0.X * DeltaUV1.Y - DeltaUV1.X * DeltaUV0.Y;
+        if (fabsf(Denominator) <= 0.0000001f)
+        {
+            Tangent = Rr_SubV3(Vertex1->Position, Vertex2->Position);
+        }
+        else
+        {
+            f32 F = 1.0f / Denominator;
+
+            Tangent.X = F * (DeltaUV1.Y * Edge0.X - DeltaUV0.Y * Edge1.X);
+            Tangent.Y = F * (DeltaUV1.Y * Edge0.Y - DeltaUV0.Y * Edge1.Y);
+            Tangent.Z = F * (DeltaUV1.Y * Edge0.Z - DeltaUV0.Y * Edge1.Z);
+        }
+
+        Vertex0->Tangent = Rr_AddV3(Vertex0->Tangent, Tangent);
+        Vertex1->Tangent = Rr_AddV3(Vertex1->Tangent, Tangent);
+        Vertex2->Tangent = Rr_AddV3(Vertex2->Tangent, Tangent);
+    }
 }
 
 static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
@@ -237,6 +276,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
                         // NewVertex.Color = ScratchColors.Data[OBJIndices[Index].X];
                         NewVertex.Normal = ScratchNormals.Data[OBJIndices[Index].Z];
                         NewVertex.TexCoordX = (*TexCoord).X;
+                        // NewVertex.TexCoordY = (*TexCoord).Y;
                         NewVertex.TexCoordY = 1.0f - (*TexCoord).Y;
                         *Rr_SlicePush(&RawMesh.VerticesSlice, Arena) = NewVertex;
 
@@ -260,6 +300,8 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
 
         CurrentIndex += strcspn(Asset->Data + CurrentIndex, "\n") + 1;
     }
+
+    Rr_CalculateTangents(RawMesh.IndicesSlice.Length, RawMesh.IndicesSlice.Data, RawMesh.VerticesSlice.Data);
 
     Rr_DestroyArenaScratch(Scratch);
 

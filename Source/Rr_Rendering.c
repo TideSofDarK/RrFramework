@@ -188,7 +188,7 @@ static void Rr_RenderGeneric(
                 }
                 else
                 {
-                    ImageView = Renderer->NullTexture->View;
+                    ImageView = Renderer->NullTextures.White->View;
                 }
                 Rr_WriteImageDescriptorAt(
                     &DescriptorWriter,

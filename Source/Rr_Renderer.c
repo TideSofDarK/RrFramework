@@ -2,6 +2,7 @@
 
 #include "Rr/Rr_Material.h"
 #include "Rr_Barrier.h"
+#include "Rr_Buffer.h"
 #include "Rr_Draw.h"
 #include "Rr_Rendering.h"
 #include "Rr_Image.h"
@@ -658,24 +659,22 @@ static void Rr_CleanupTransientCommandPools(Rr_Renderer* Renderer)
     vkDestroyCommandPool(Renderer->Device, Renderer->TransferQueue.TransientCommandPool, NULL);
 }
 
-static void Rr_InitNullTexture(Rr_App* App)
+static void Rr_InitNullTextures(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    Renderer->NullTexture = Rr_CreateImage(App, (VkExtent3D){ .width = 1, .height = 1, .depth = 1 }, RR_COLOR_FORMAT, VK_IMAGE_USAGE_SAMPLED_BIT, false);
 
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
-    Rr_ImageBarrier Barrier = {
-        .CommandBuffer = CommandBuffer,
-        .Image = Renderer->NullTexture->Handle,
-        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = 0,
-        .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+    Rr_UploadContext UploadContext = {
+        .StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(App, 256, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) },
+        .TransferCommandBuffer = CommandBuffer
     };
-    Rr_ChainImageBarrier(&Barrier,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    u32 WhiteData = 0xffffffff;
+    Renderer->NullTextures.White = Rr_CreateColorImageFromMemory(App, &UploadContext, (byte*)&WhiteData, 1, 1, false);
+    u32 NormalData = 0xffff8888;
+    Renderer->NullTextures.Normal = Rr_CreateColorImageFromMemory(App, &UploadContext, (byte*)&NormalData, 1, 1, false);
     Rr_EndImmediate(Renderer);
+
+    Rr_DestroyBuffer(App, UploadContext.StagingBuffer.Buffer);
 }
 
 void Rr_InitRenderer(Rr_App* App)
@@ -699,7 +698,7 @@ void Rr_InitRenderer(Rr_App* App)
     AppExtensionCount = 0; /* Use Vulkan Configurator! */
 
     u32 SDLExtensionCount;
-    str const * SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
+    str const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
 
     u32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
     str* Extensions = Rr_StackAlloc(str, ExtensionCount);
@@ -759,7 +758,7 @@ void Rr_InitRenderer(Rr_App* App)
     Rr_InitFrames(App);
     Rr_InitImmediateMode(App);
     Rr_InitGenericPipelineLayout(App);
-    Rr_InitNullTexture(App);
+    Rr_InitNullTextures(App);
     Rr_InitTextRenderer(App);
 
     Rr_StackFree(Extensions);
@@ -820,7 +819,8 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     Rr_CleanupFrames(App);
 
-    Rr_DestroyImage(App, Renderer->NullTexture);
+    Rr_DestroyImage(App, Renderer->NullTextures.White);
+    Rr_DestroyImage(App, Renderer->NullTextures.Normal);
 
     Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
 

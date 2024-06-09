@@ -101,7 +101,11 @@ struct Rr_Renderer
     Rr_ImGui ImGui;
     Rr_ImmediateMode ImmediateMode;
 
-    struct Rr_Image* NullTexture;
+    /* Null Textures */
+    struct {
+        Rr_Image* White;
+        Rr_Image* Normal;
+    } NullTextures;
 
     /* Retired Semaphores */
     Rr_SliceType(struct Rr_RetiredSemaphore { VkSemaphore Semaphore; usize FrameIndex; }) RetiredSemaphoresSlice;

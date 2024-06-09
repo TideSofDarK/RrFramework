@@ -213,6 +213,39 @@ void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutL
     OutLoadSize->ImageCount += 1;
 }
 
+Rr_Image* Rr_CreateColorImageFromMemory(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    byte* Data,
+    u32 Width,
+    u32 Height,
+    bool bMipMapped)
+{
+    i32 DesiredChannels = 4;
+    VkExtent3D Extent = { .width = Width, .height = Height, .depth = 1 };
+    usize DataSize = Extent.width * Extent.height * DesiredChannels;
+
+    Rr_Image* ColorImage = Rr_CreateImage(
+        App,
+        Extent,
+        RR_COLOR_FORMAT,
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        bMipMapped);
+
+    UploadImage(App,
+        UploadContext,
+        ColorImage->Handle,
+        Extent,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        Data,
+        DataSize);
+
+    return ColorImage;
+}
+
 Rr_Image* Rr_CreateColorImageFromPNGMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
@@ -371,4 +404,14 @@ Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height)
         RR_DEPTH_FORMAT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         false);
+}
+
+Rr_Image* Rr_GetDummyColorTexture(Rr_App* App)
+{
+    return App->Renderer.NullTextures.White;
+}
+
+Rr_Image* Rr_GetDummyNormalTexture(Rr_App* App)
+{
+    return App->Renderer.NullTextures.Normal;
 }

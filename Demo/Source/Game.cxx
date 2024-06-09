@@ -2,6 +2,7 @@
 
 #include "DevTools.hxx"
 #include "DemoAssets.inc"
+#include "Rr/Rr_Image.h"
 
 #include <imgui/imgui.h>
 
@@ -124,7 +125,8 @@ static Rr_GenericPipeline* Uber3DPipeline;
 static Rr_StaticMesh* ArrowMesh;
 
 static Rr_StaticMesh* CottageMesh;
-static Rr_Image* CottageTexture;
+static Rr_Image* CottageDiffuse;
+static Rr_Image* CottageNormal;
 static Rr_Material* CottageMaterial;
 
 static Rr_StaticMesh* PocMesh;
@@ -182,7 +184,7 @@ static void InitUber3DPipeline(Rr_App* App)
 
 static void InitGlobals(Rr_App* App)
 {
-    ShaderGlobals.AmbientLightColor = { 0.1f, 0.1f, 0.1f, 1.0f };
+    ShaderGlobals.AmbientLightColor = { 0.01f, 0.01f, 0.01f, 1.0f };
     ShaderGlobals.DirectionalLightColor = { 1.0f, 0.95f, 0.93f, 1.0f };
     ShaderGlobals.DirectionalLightIntensity = { 1.0f, 1.0f, 1.0f, 1.0f };
 
@@ -192,8 +194,9 @@ static void InitGlobals(Rr_App* App)
 
 static void OnLoadingComplete(Rr_App* App, void* Userdata)
 {
-    Rr_Image* CottageTextures[1] = { CottageTexture };
-    CottageMaterial = Rr_CreateMaterial(App, Uber3DPipeline, CottageTextures, 1);
+    std::array CottageTextures = { CottageDiffuse, Rr_GetDummyNormalTexture(App) };
+    // std::array CottageTextures = { CottageDiffuse, CottageNormal };
+    CottageMaterial = Rr_CreateMaterial(App, Uber3DPipeline, CottageTextures.data(), CottageTextures.size());
 
     bLoaded = true;
 
@@ -217,7 +220,8 @@ static void Init(Rr_App* App)
     GLTFLoader.SpecularTexture = 2;
 
     std::array LoadTasks = {
-        Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGE_PNG, &CottageTexture),
+        Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
+        Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
         Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &GLTFLoader, 0, &AvocadoMesh),
         Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &GLTFLoader, 0, &MarbleMesh),
         Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &GLTFLoader, 0, &ArrowMesh),
@@ -252,7 +256,8 @@ static void Cleanup(Rr_App* App)
 
     // Rr_DestroyImage(App, &SceneDepthImage);
     // Rr_DestroyImage(App, &SceneColorImage);
-    Rr_DestroyImage(App, CottageTexture);
+    Rr_DestroyImage(App, CottageDiffuse);
+    Rr_DestroyImage(App, CottageNormal);
     Rr_DestroyImage(App, PocDiffuseImage);
 
     Rr_DestroyStaticMesh(App, CottageMesh);
@@ -286,7 +291,8 @@ static void Iterate(Rr_App* App)
         .Position = { -7.35889f, 4.0f, -6.92579f }
     };
 
-    static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
+    // static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
+    static Rr_Vec3 LightDirEuler = { -100.0f, 18.0f, 3.16371f };
     ImGui::SliderFloat2("CameraPitchYaw", &Camera.Pitch, -360.0f, 360.0f, "%f", ImGuiSliderFlags_None);
     ImGui::SliderFloat3("CameraPos", Camera.Position.Elements, -100.0f, 100.0f, "%.3f", ImGuiSliderFlags_None);
     ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);

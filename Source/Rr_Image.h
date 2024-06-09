@@ -25,6 +25,13 @@ extern Rr_Image* Rr_CreateImage(
     VkFormat Format,
     VkImageUsageFlags Usage,
     bool bMipMapped);
+extern Rr_Image* Rr_CreateColorImageFromMemory(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    byte* Data,
+    u32 Width,
+    u32 Height,
+    bool bMipMapped);
 extern Rr_Image* Rr_CreateColorImageFromPNGMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
