@@ -2,9 +2,6 @@
 
 #include "DevTools.hxx"
 #include "DemoAssets.inc"
-#include "Rr/Rr_App.h"
-#include "Rr/Rr_Image.h"
-#include "Rr/Rr_Pipeline.h"
 
 #include <imgui/imgui.h>
 
@@ -59,29 +56,53 @@ struct SEntity
 {
 };
 
-struct SUnlitPipeline
+template <typename TGlobals, typename TMaterial, typename TDraw>
+struct TPipeline
 {
-    struct SGlobals
-    {
-        Rr_Mat4 View;
-        Rr_Mat4 Intermediate;
-        Rr_Mat4 Proj;
-    };
+protected:
+    Rr_App* App;
 
-    struct SMaterial
-    {
-        Rr_Vec3 Emissive;
-    };
-
-    struct SDraw
-    {
-        Rr_Mat4 Model;
-    };
+public:
+    using SGlobals = TGlobals;
+    using SMaterial = TMaterial;
+    using SDraw = TDraw;
 
     Rr_GenericPipeline* GenericPipeline{};
     Rr_GLTFLoader GLTFLoader{};
 
-    void Init(Rr_App* App)
+    explicit TPipeline(Rr_App* App)
+        : App(App)
+    {
+    }
+
+    ~TPipeline()
+    {
+        Rr_DestroyGenericPipeline(App, GenericPipeline);
+    }
+};
+
+struct SUnlitGlobals
+{
+    Rr_Mat4 View;
+    Rr_Mat4 Intermediate;
+    Rr_Mat4 Proj;
+};
+
+struct SUnlitMaterial
+{
+    Rr_Vec3 Emissive;
+};
+
+struct SUnlitDraw
+{
+    Rr_Mat4 Model;
+};
+
+struct SUnlitPipeline : public TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
+{
+public:
+    explicit SUnlitPipeline(Rr_App* App)
+        : TPipeline(App)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_VERT_SPV);
         Rr_Asset FragmentShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_FRAG_SPV);
@@ -112,11 +133,6 @@ struct SUnlitPipeline
         GLTFLoader.BaseTexture = 0;
         GLTFLoader.NormalTexture = 1;
         GLTFLoader.SpecularTexture = 2;
-    }
-
-    void Cleanup(Rr_App* App) const
-    {
-        Rr_DestroyGenericPipeline(App, GenericPipeline);
     }
 };
 
@@ -280,76 +296,6 @@ public:
         Game->OnLoadingComplete();
     }
 
-    void Init()
-    {
-        InitInputMappings();
-
-        InitUber3DPipeline();
-        UnlitPipeline.Init(App);
-
-        InitGlobals();
-
-        Rr_GLTFLoader GLTFLoader = {};
-        GLTFLoader.GenericPipeline = Uber3DPipeline;
-        GLTFLoader.BaseTexture = 0;
-        GLTFLoader.NormalTexture = 1;
-        GLTFLoader.SpecularTexture = 2;
-
-        std::array LoadTasks = {
-            Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
-            Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &GLTFLoader, 0, &AvocadoMesh),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &GLTFLoader, 0, &MarbleMesh),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitPipeline.GLTFLoader, 0, &ArrowMesh),
-            Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
-        };
-        LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);
-
-        // Rr_ExternAsset(POCDepthEXR);
-        // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
-        //
-        // Rr_ExternAsset(POCColorPNG);
-        // SceneColorImage = Rr_CreateImageFromPNG(Renderer, &POCColorPNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-        //
-        //    Rr_Asset DoorFrameOBJ;
-        //    Rr_ExternAssetAs(&DoorFrameOBJ, DoorFrameOBJ);
-        //    MonkeyMesh = Rr_CreateMesh_FromOBJ(Renderer, &DoorFrameOBJ);
-
-        // Rr_ExternAsset(PocMeshOBJ);
-        // PocMesh = Rr_CreateMeshFromOBJ(Renderer, &PocMeshOBJ);
-        //
-        // Rr_ExternAsset(PocDiffusePNG);
-        // PocDiffuseImage = Rr_CreateImageFromPNG(Renderer, &PocDiffusePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
-        DebugString = Rr_CreateString("$c3Colored $c1text$c2");
-        LoadingString = Rr_CreateEmptyString(128);
-    }
-
-    void Cleanup()
-    {
-        Rr_DestroyMaterial(App, CottageMaterial);
-
-        // Rr_DestroyImage(App, &SceneDepthImage);
-        // Rr_DestroyImage(App, &SceneColorImage);
-        Rr_DestroyImage(App, CottageDiffuse);
-        Rr_DestroyImage(App, CottageNormal);
-        Rr_DestroyImage(App, PocDiffuseImage);
-
-        Rr_DestroyStaticMesh(App, CottageMesh);
-        Rr_DestroyStaticMesh(App, PocMesh);
-        Rr_DestroyStaticMesh(App, MarbleMesh);
-        Rr_DestroyStaticMesh(App, AvocadoMesh);
-        Rr_DestroyStaticMesh(App, ArrowMesh);
-
-        Rr_DestroyGenericPipeline(App, Uber3DPipeline);
-        UnlitPipeline.Cleanup(App);
-
-        Rr_DestroyString(&TestString);
-        Rr_DestroyString(&DebugString);
-        Rr_DestroyString(&LoadingString);
-    }
-
     void Iterate()
     {
         Rr_InputState InputState = Rr_GetInputState(App);
@@ -499,16 +445,80 @@ public:
     }
 
     explicit SGame(Rr_App* App)
-        : App(App)
+        : App(App), UnlitPipeline(App)
     {
-        Rr_SetUserData(App, this);
+        InitInputMappings();
+
+        InitUber3DPipeline();
+
+        InitGlobals();
+
+        Rr_GLTFLoader GLTFLoader = {};
+        GLTFLoader.GenericPipeline = Uber3DPipeline;
+        GLTFLoader.BaseTexture = 0;
+        GLTFLoader.NormalTexture = 1;
+        GLTFLoader.SpecularTexture = 2;
+
+        std::array LoadTasks = {
+            Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
+            Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &GLTFLoader, 0, &AvocadoMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &GLTFLoader, 0, &MarbleMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitPipeline.GLTFLoader, 0, &ArrowMesh),
+            Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
+        };
+        LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);
+
+        // Rr_ExternAsset(POCDepthEXR);
+        // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
+        //
+        // Rr_ExternAsset(POCColorPNG);
+        // SceneColorImage = Rr_CreateImageFromPNG(Renderer, &POCColorPNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        //
+        //    Rr_Asset DoorFrameOBJ;
+        //    Rr_ExternAssetAs(&DoorFrameOBJ, DoorFrameOBJ);
+        //    MonkeyMesh = Rr_CreateMesh_FromOBJ(Renderer, &DoorFrameOBJ);
+
+        // Rr_ExternAsset(PocMeshOBJ);
+        // PocMesh = Rr_CreateMeshFromOBJ(Renderer, &PocMeshOBJ);
+        //
+        // Rr_ExternAsset(PocDiffusePNG);
+        // PocDiffuseImage = Rr_CreateImageFromPNG(Renderer, &PocDiffusePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
+        DebugString = Rr_CreateString("$c3Colored $c1text$c2");
+        LoadingString = Rr_CreateEmptyString(128);
+    }
+
+    ~SGame()
+    {
+        Rr_DestroyMaterial(App, CottageMaterial);
+
+        // Rr_DestroyImage(App, &SceneDepthImage);
+        // Rr_DestroyImage(App, &SceneColorImage);
+        Rr_DestroyImage(App, CottageDiffuse);
+        Rr_DestroyImage(App, CottageNormal);
+        Rr_DestroyImage(App, PocDiffuseImage);
+
+        Rr_DestroyStaticMesh(App, CottageMesh);
+        Rr_DestroyStaticMesh(App, PocMesh);
+        Rr_DestroyStaticMesh(App, MarbleMesh);
+        Rr_DestroyStaticMesh(App, AvocadoMesh);
+        Rr_DestroyStaticMesh(App, ArrowMesh);
+
+        Rr_DestroyGenericPipeline(App, Uber3DPipeline);
+
+        Rr_DestroyString(&TestString);
+        Rr_DestroyString(&DebugString);
+        Rr_DestroyString(&LoadingString);
     }
 };
 
 static void Init(Rr_App* App)
 {
     auto* Game = new SGame(App);
-    Game->Init();
+
+    Rr_SetUserData(App, Game);
 }
 
 static void Iterate(Rr_App* App)
@@ -519,8 +529,7 @@ static void Iterate(Rr_App* App)
 
 static void Cleanup(Rr_App* App)
 {
-    auto* Game = reinterpret_cast<SGame*>(Rr_GetUserData(App));
-    Game->Cleanup();
+    delete reinterpret_cast<SGame*>(Rr_GetUserData(App));
 }
 
 static void OnFileDropped(Rr_App* App, const char* Path)
