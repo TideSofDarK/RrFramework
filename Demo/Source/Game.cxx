@@ -25,21 +25,6 @@ struct SUber3DGlobals
     Rr_Vec4 DirectionalLightIntensity;
 };
 
-struct SUber3DMaterial
-{
-    Rr_Vec3 Emissive;
-};
-
-struct SUber3DDraw
-{
-    Rr_Mat4 Model;
-};
-
-struct SUber3DPushConstants
-{
-    Rr_Mat4 Reserved;
-};
-
 enum EInputAction
 {
     EIA_UP,
@@ -79,6 +64,11 @@ public:
     {
         Rr_DestroyGenericPipeline(App, GenericPipeline);
     }
+
+    TPipeline(TPipeline&& Rhs) = delete;
+    TPipeline& operator=(TPipeline&& Rhs) = delete;
+    TPipeline(const TPipeline& Rhs) = delete;
+    TPipeline& operator=(const TPipeline& Rhs) = delete;
 };
 
 struct SUnlitGlobals
@@ -120,6 +110,59 @@ public:
         Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
         Rr_EnableVertexStage(Builder, &VertexShader);
         Rr_EnableFragmentStage(Builder, &FragmentShader);
+        Rr_EnableDepthTest(Builder);
+        Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
+        GenericPipeline = Rr_BuildGenericPipeline(
+            App,
+            Builder,
+            { sizeof(SGlobals),
+                sizeof(SMaterial),
+                sizeof(SDraw) });
+
+        GLTFLoader.GenericPipeline = GenericPipeline;
+        GLTFLoader.BaseTexture = 0;
+        GLTFLoader.NormalTexture = 1;
+        GLTFLoader.SpecularTexture = 2;
+    }
+};
+
+struct SUber3DMaterial
+{
+    Rr_Vec3 Emissive;
+};
+
+struct SUber3DDraw
+{
+    Rr_Mat4 Model;
+};
+
+struct SUber3DPushConstants
+{
+    Rr_Mat4 Reserved;
+};
+
+struct SUber3DPipeline : public TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
+{
+public:
+    explicit SUber3DPipeline(Rr_App* App)
+        : TPipeline(App)
+    {
+        Rr_Asset Uber3DVERT = Rr_LoadAsset(DEMO_ASSET_UBER3D_VERT_SPV);
+        Rr_Asset Uber3DFRAG = Rr_LoadAsset(DEMO_ASSET_UBER3D_FRAG_SPV);
+
+        Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+        Rr_VertexInput VertexInput = {
+            .Attributes = {
+                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 0 },
+                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 1 },
+                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 2 },
+                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 3 },
+                { .Type = RR_VERTEX_INPUT_TYPE_VEC4, .Location = 4 },
+            }
+        };
+        Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
+        Rr_EnableVertexStage(Builder, &Uber3DVERT);
+        Rr_EnableFragmentStage(Builder, &Uber3DFRAG);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
         GenericPipeline = Rr_BuildGenericPipeline(
@@ -196,7 +239,7 @@ private:
 
     SUber3DGlobals ShaderGlobals{};
 
-    Rr_GenericPipeline* Uber3DPipeline{};
+    SUber3DPipeline Uber3DPipeline;
     SUnlitPipeline UnlitPipeline;
 
     // Rr_Image SceneDepthImage;
@@ -244,30 +287,6 @@ public:
 
     void InitUber3DPipeline()
     {
-        Rr_Asset Uber3DVERT = Rr_LoadAsset(DEMO_ASSET_UBER3D_VERT_SPV);
-        Rr_Asset Uber3DFRAG = Rr_LoadAsset(DEMO_ASSET_UBER3D_FRAG_SPV);
-
-        Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
-        Rr_VertexInput VertexInput = {
-            .Attributes = {
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 0 },
-                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 1 },
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 2 },
-                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 3 },
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC4, .Location = 4 },
-            }
-        };
-        Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
-        Rr_EnableVertexStage(Builder, &Uber3DVERT);
-        Rr_EnableFragmentStage(Builder, &Uber3DFRAG);
-        Rr_EnableDepthTest(Builder);
-        Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-        Uber3DPipeline = Rr_BuildGenericPipeline(
-            App,
-            Builder,
-            { sizeof(SUber3DGlobals),
-                sizeof(SUber3DMaterial),
-                sizeof(SUber3DDraw) });
     }
 
     void InitGlobals()
@@ -283,7 +302,7 @@ public:
     void OnLoadingComplete()
     {
         std::array CottageTextures = { CottageDiffuse, CottageNormal };
-        CottageMaterial = Rr_CreateMaterial(App, Uber3DPipeline, CottageTextures.data(), CottageTextures.size());
+        CottageMaterial = Rr_CreateMaterial(App, Uber3DPipeline.GenericPipeline, CottageTextures.data(), CottageTextures.size());
 
         bLoaded = true;
 
@@ -380,7 +399,7 @@ public:
             .InitialColor = nullptr,
             .InitialDepth = nullptr,
             .Viewport = {},
-            .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline),
+            .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline.GenericPipeline),
         };
         Rr_DrawContext* DrawContext = Rr_CreateDrawContext(App, &DrawContextInfo, (byte*)&ShaderGlobals);
 
@@ -445,7 +464,7 @@ public:
     }
 
     explicit SGame(Rr_App* App)
-        : App(App), UnlitPipeline(App)
+        : App(App), Uber3DPipeline(App), UnlitPipeline(App)
     {
         InitInputMappings();
 
@@ -453,17 +472,11 @@ public:
 
         InitGlobals();
 
-        Rr_GLTFLoader GLTFLoader = {};
-        GLTFLoader.GenericPipeline = Uber3DPipeline;
-        GLTFLoader.BaseTexture = 0;
-        GLTFLoader.NormalTexture = 1;
-        GLTFLoader.SpecularTexture = 2;
-
         std::array LoadTasks = {
             Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
             Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &GLTFLoader, 0, &AvocadoMesh),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &GLTFLoader, 0, &MarbleMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &Uber3DPipeline.GLTFLoader, 0, &AvocadoMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &Uber3DPipeline.GLTFLoader, 0, &MarbleMesh),
             Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitPipeline.GLTFLoader, 0, &ArrowMesh),
             Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
         };
@@ -505,8 +518,6 @@ public:
         Rr_DestroyStaticMesh(App, MarbleMesh);
         Rr_DestroyStaticMesh(App, AvocadoMesh);
         Rr_DestroyStaticMesh(App, ArrowMesh);
-
-        Rr_DestroyGenericPipeline(App, Uber3DPipeline);
 
         Rr_DestroyString(&TestString);
         Rr_DestroyString(&DebugString);
