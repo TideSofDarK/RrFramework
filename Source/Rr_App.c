@@ -304,9 +304,14 @@ f32 Rr_GetAspectRatio(Rr_App* App)
     return (float)Renderer->SwapchainSize.width / (float)Renderer->SwapchainSize.height;
 }
 
-f32 Rr_GetDeltaTime(Rr_App* App)
+f64 Rr_GetDeltaSeconds(Rr_App* App)
 {
     return App->FrameTime.DeltaSeconds;
+}
+
+f64 Rr_GetTimeSeconds(Rr_App* App)
+{
+    return (f64)SDL_GetTicks() / 1000.0;
 }
 
 void Rr_SetUserData(Rr_App* App, void* UserData)
@@ -317,4 +322,9 @@ void Rr_SetUserData(Rr_App* App, void* UserData)
 void* Rr_GetUserData(Rr_App* App)
 {
     return App->UserData;
+}
+
+void Rr_SetRelativeMouseMode(bool bRelative)
+{
+    SDL_SetRelativeMouseMode(bRelative ? SDL_TRUE : SDL_FALSE);
 }

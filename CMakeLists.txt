@@ -134,12 +134,12 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 target_include_directories(${PROJECT_NAME} PUBLIC Include)
 target_link_libraries(${PROJECT_NAME} PRIVATE
+        SDL3::SDL3
         Vulkan::Headers
         volk::volk_headers
         GPUOpen::VulkanMemoryAllocator
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
-        SDL3::SDL3
         ${IMGUI_TARGET}
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE

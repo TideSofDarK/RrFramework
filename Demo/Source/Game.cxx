@@ -6,9 +6,6 @@
 
 #include <imgui/imgui.h>
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_scancode.h>
-
 #include <Rr/Rr.h>
 
 #include <string>
@@ -272,13 +269,13 @@ private:
 public:
     void InitInputMappings()
     {
-        InputMappings[EIA_UP].Primary = SDL_SCANCODE_W;
-        InputMappings[EIA_DOWN].Primary = SDL_SCANCODE_S;
-        InputMappings[EIA_LEFT].Primary = SDL_SCANCODE_A;
-        InputMappings[EIA_RIGHT].Primary = SDL_SCANCODE_D;
-        InputMappings[EIA_FULLSCREEN].Primary = SDL_SCANCODE_F11;
-        InputMappings[EIA_DEBUGOVERLAY].Primary = SDL_SCANCODE_F1;
-        InputMappings[EIA_TEST].Primary = SDL_SCANCODE_F2;
+        InputMappings[EIA_UP].Primary = RR_SCANCODE_W;
+        InputMappings[EIA_DOWN].Primary = RR_SCANCODE_S;
+        InputMappings[EIA_LEFT].Primary = RR_SCANCODE_A;
+        InputMappings[EIA_RIGHT].Primary = RR_SCANCODE_D;
+        InputMappings[EIA_FULLSCREEN].Primary = RR_SCANCODE_F11;
+        InputMappings[EIA_DEBUGOVERLAY].Primary = RR_SCANCODE_F1;
+        InputMappings[EIA_TEST].Primary = RR_SCANCODE_F2;
 
         Rr_InputConfig InputConfig = {
             .Mappings = InputMappings,
@@ -319,7 +316,7 @@ public:
         Rr_InputState InputState = Rr_GetInputState(App);
         Rr_KeyStates Keys = InputState.Keys;
 
-        f32 DeltaTime = Rr_GetDeltaTime(App);
+        f32 DeltaTime = static_cast<f32>(Rr_GetDeltaSeconds(App));
 
         if (Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
         {
@@ -363,16 +360,16 @@ public:
             Camera.Position += CameraLeft * DeltaTime * CameraSpeed;
         }
 
-        if (InputState.MouseState & SDL_BUTTON_RMASK)
+        if (InputState.MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
         {
-            SDL_SetRelativeMouseMode(SDL_TRUE);
-            constexpr f32 Sensitivity = 0.12f;
+            Rr_SetRelativeMouseMode(true);
+            constexpr f32 Sensitivity = 0.2f;
             Camera.Yaw = Rr_WrapMax(Camera.Yaw - (InputState.MousePositionDelta.X *  Sensitivity), 360.0f);
             Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (InputState.MousePositionDelta.Y *  Sensitivity), -90.0f, 90.0f);
         }
         else
         {
-            SDL_SetRelativeMouseMode(SDL_FALSE);
+            Rr_SetRelativeMouseMode(false);
         }
 
         ShaderGlobals.View = Camera.GetViewMatrix();
@@ -401,8 +398,7 @@ public:
         };
         Rr_DrawContext* DrawContext = Rr_CreateDrawContext(App, &DrawContextInfo, (byte*)&ShaderGlobals);
 
-        const u64 Ticks = SDL_GetTicks();
-        const f32 Time = (f32)((f64)Ticks / 1000.0 * 2);
+        const f32 Time = static_cast<f32>((Rr_GetTimeSeconds(App) * 2.0));
 
         if (bLoaded)
         {
@@ -419,7 +415,7 @@ public:
             SUber3DDraw AvocadoDraw = { 0 };
             AvocadoDraw.Model =
                 Rr_Scale({ 0.75f, 0.75f, 0.75f })
-                * Rr_Rotate_LH(fmodf(Time, SDL_PI_F * 2.0f), { 0.0f, 1.0f, 0.0f })
+                * Rr_Rotate_LH(fmodf(Time, Rr_PI * 2.0f), { 0.0f, 1.0f, 0.0f })
                 * Rr_Translate({ 3.5f, 0.5f, 3.5f });
             AvocadoDraw.Model[3][0] = 3.5f;
             AvocadoDraw.Model[3][1] = 0.5f;

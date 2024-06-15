@@ -47,8 +47,7 @@ void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config)
     }
     State->Keys = NewKeys;
 
-    SDL_GetMouseState(&State->MousePositionDelta.X, &State->MousePositionDelta.Y);
-    State->MousePositionDelta = Rr_SubV2(State->MousePositionDelta, State->MousePosition);
+    SDL_GetRelativeMouseState(&State->MousePositionDelta.X, &State->MousePositionDelta.Y);
     State->MouseState = SDL_GetMouseState(&State->MousePosition.X, &State->MousePosition.Y);
 }
 

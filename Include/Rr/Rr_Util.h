@@ -2,7 +2,11 @@
 
 #include "Rr_Defines.h"
 
-#include <SDL3/SDL_stdinc.h>
+#ifdef __cplusplus
+    #include <cstring>
+#else
+    #include <string.h>
+#endif
 
 static inline f32 Rr_WrapMax(f32 X, f32 Max)
 {
@@ -106,7 +110,7 @@ static inline void Rr_PackVec4(Rr_Vec4 From, u32* OutA, u32* OutB)
 
     PackHelper Helper[4];
 
-    SDL_memcpy(Helper, From.Elements, sizeof(Rr_Vec4));
+    memcpy(Helper, From.Elements, sizeof(Rr_Vec4));
 
     u16 HalfValues[4];
     HalfValues[0] = Rr_FloatToHalf(Helper[0].UnsignedIntegerValue);
