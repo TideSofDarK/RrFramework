@@ -101,7 +101,7 @@ static void Iterate(Rr_App* App)
 
     Rr_ProcessPendingLoads(App);
 
-    App->Config->IterateFunc(App);
+    App->Config->IterateFunc(App, App->UserData);
 
     if (Rr_NewFrame(App, App->Window))
     {
@@ -191,7 +191,8 @@ void Rr_Run(Rr_AppConfig* Config)
         .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
         .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
         .ScratchArenaTLS = SDL_CreateTLS(),
-        .ObjectStorage = Rr_CreateObjectStorage()
+        .ObjectStorage = Rr_CreateObjectStorage(),
+        .UserData = Config->UserData
     };
 
     Rr_SetScratchTLS(&App->ScratchArenaTLS);
@@ -210,7 +211,7 @@ void Rr_Run(Rr_AppConfig* Config)
     Rr_InitLoadingThread(App);
     Rr_InitImGui(App);
 
-    Config->InitFunc(App);
+    Config->InitFunc(App, App->UserData);
 
     SDL_ShowWindow(App->Window);
 
@@ -287,14 +288,4 @@ f32 Rr_GetAspectRatio(Rr_App* App)
 f32 Rr_GetDeltaTime(Rr_App* App)
 {
     return App->FrameTime.DeltaSeconds;
-}
-
-void Rr_SetUserData(Rr_App* App, void* UserData)
-{
-    App->UserData = UserData;
-}
-
-void* Rr_GetUserData(Rr_App* App)
-{
-    return App->UserData;
 }

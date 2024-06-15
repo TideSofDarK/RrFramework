@@ -308,9 +308,9 @@ public:
         LoadingContext = nullptr;
     }
 
-    static void OnLoadingComplete(Rr_App* App, void* Userdata)
+    static void OnLoadingComplete(Rr_App* App, void* UserData)
     {
-        auto* Game = reinterpret_cast<SGame*>(Rr_GetUserData(App));
+        auto* Game = reinterpret_cast<SGame*>(UserData);
         Game->OnLoadingComplete();
     }
 
@@ -477,7 +477,7 @@ public:
             Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitPipeline.GLTFLoader, 0, &ArrowMesh),
             Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
         };
-        LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);
+        LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
 
         ShadowMap = Rr_CreateDrawTargetDepthOnly(App, 1024, 1024);
 
@@ -526,22 +526,19 @@ public:
     }
 };
 
-static void Init(Rr_App* App)
+static void Init(Rr_App* App, void* UserData)
 {
-    auto* Game = new SGame(App);
-
-    Rr_SetUserData(App, Game);
+    new (UserData) SGame(App);
 }
 
-static void Iterate(Rr_App* App)
+static void Iterate(Rr_App* App, void* UserData)
 {
-    auto* Game = reinterpret_cast<SGame*>(Rr_GetUserData(App));
-    Game->Iterate();
+    reinterpret_cast<SGame*>(UserData)->Iterate();
 }
 
-static void Cleanup(Rr_App* App)
+static void Cleanup(Rr_App* App, void* UserData)
 {
-    delete reinterpret_cast<SGame*>(Rr_GetUserData(App));
+    reinterpret_cast<SGame*>(UserData)->~SGame();
 }
 
 static void OnFileDropped(Rr_App* App, const char* Path)
@@ -551,12 +548,14 @@ static void OnFileDropped(Rr_App* App, const char* Path)
 
 void RunGame()
 {
+    std::byte Game[sizeof(SGame)];
     Rr_AppConfig Config = {
         .Title = "RrDemo",
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
         .IterateFunc = Iterate,
         .FileDroppedFunc = OnFileDropped,
+        .UserData = Game
     };
     Rr_Run(&Config);
 }

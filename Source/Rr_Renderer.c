@@ -905,7 +905,7 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     vkDeviceWaitIdle(Renderer->Device);
 
-    App->Config->CleanupFunc(App);
+    App->Config->CleanupFunc(App, App->UserData);
 
     if (Renderer->ImGui.bInitiated)
     {
