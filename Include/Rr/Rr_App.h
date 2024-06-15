@@ -26,9 +26,11 @@ extern void Rr_Run(Rr_AppConfig* Config);
 extern void Rr_DebugOverlay(Rr_App* App);
 extern void Rr_ToggleFullscreen(Rr_App* App);
 extern f32 Rr_GetAspectRatio(Rr_App* App);
-extern f32 Rr_GetDeltaTime(Rr_App* App);
+extern f64 Rr_GetDeltaSeconds(Rr_App* App);
+extern f64 Rr_GetTimeSeconds(Rr_App* App);
 extern void Rr_SetInputConfig(Rr_App* App, Rr_InputConfig* InputConfig);
 extern Rr_InputState Rr_GetInputState(Rr_App* App);
+extern void Rr_SetRelativeMouseMode(bool bRelative);
 
 #ifdef __cplusplus
 }

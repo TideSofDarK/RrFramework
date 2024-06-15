@@ -2,8 +2,6 @@
 
 #include <cstdio>
 
-#include <SDL3/SDL.h>
-
 #include <tinyexr/tinyexr.h>
 #include <cstdlib>
 
@@ -16,7 +14,6 @@ void HandleFileDrop(const char* Path)
     Result = ParseEXRVersionFromFile(&Version, Path);
     if (Result != 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file!");
         abort();
     }
 
@@ -24,7 +21,6 @@ void HandleFileDrop(const char* Path)
     Result = ParseEXRHeaderFromFile(&Header, &Version, Path, &Error);
     if (Result != 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file: %s", Error);
         FreeEXRErrorMessage(Error);
         abort();
     }
@@ -35,7 +31,6 @@ void HandleFileDrop(const char* Path)
     Result = LoadEXRImageFromFile(&Image, &Header, Path, &Error);
     if (Result != 0)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Error opening EXR file: %s", Error);
         FreeEXRHeader(&Header);
         FreeEXRErrorMessage(Error);
         abort();

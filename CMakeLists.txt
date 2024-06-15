@@ -4,8 +4,6 @@ cmake_minimum_required(VERSION 3.26)
 # Setup project
 #
 project(RrFramework LANGUAGES C CXX)
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 11)
 
 set(BUILD_SHARED_LIBS OFF)
 
@@ -131,15 +129,17 @@ file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
         "Source/*.cpp"
 )
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
+target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 target_include_directories(${PROJECT_NAME} PUBLIC Include)
 target_link_libraries(${PROJECT_NAME} PRIVATE
+        SDL3::SDL3
         Vulkan::Headers
         volk::volk_headers
         GPUOpen::VulkanMemoryAllocator
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
-        SDL3::SDL3
         ${IMGUI_TARGET}
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
