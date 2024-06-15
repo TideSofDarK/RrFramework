@@ -1,9 +1,9 @@
+cmake_minimum_required(VERSION 3.26)
+
 #
 # Setup project
 #
-cmake_minimum_required(VERSION 3.26)
 project(RrDemo LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 20)
 
 #
 # Setup warnings and sanitizers
@@ -43,6 +43,7 @@ file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
         "Source/*.cxx"
 )
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_compile_definitions(${PROJECT_NAME} PUBLIC RR_ASSET_PATH=${RR_ASSET_PATH})
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
 if (WIN32)
