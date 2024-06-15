@@ -266,7 +266,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
     {
         vkEndCommandBuffer(TransferCommandBuffer);
 
-        SDL_LockMutex(Renderer->GraphicsQueueMutex);
+        SDL_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 
         vkQueueSubmit(
             Renderer->GraphicsQueue.Handle,
@@ -283,7 +283,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
                 .pWaitDstStageMask = 0 },
             LoadAsyncContext.Fence);
 
-        SDL_UnlockMutex(Renderer->GraphicsQueueMutex);
+        SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
     }
     else
     {
@@ -347,7 +347,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
 
             VkPipelineStageFlags WaitDstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
-            SDL_LockMutex(Renderer->GraphicsQueueMutex);
+            SDL_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 
             vkQueueSubmit(
                 Renderer->GraphicsQueue.Handle,
@@ -364,7 +364,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAs
                     .pWaitDstStageMask = &WaitDstStageMask },
                 LoadAsyncContext.Fence);
 
-            SDL_UnlockMutex(Renderer->GraphicsQueueMutex);
+            SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
         }
     }
 
@@ -438,7 +438,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(
 
     vkEndCommandBuffer(TransferCommandBuffer);
 
-    SDL_LockMutex(Renderer->GraphicsQueueMutex);
+    SDL_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     vkQueueSubmit(
         Renderer->GraphicsQueue.Handle,
@@ -455,7 +455,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(
             .pWaitDstStageMask = 0 },
         Fence);
 
-    SDL_UnlockMutex(Renderer->GraphicsQueueMutex);
+    SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
     vkDestroyFence(Renderer->Device, Fence, NULL);

@@ -82,9 +82,8 @@ struct Rr_Renderer
 
     /* Queues */
     Rr_Queue GraphicsQueue;
-    SDL_Mutex* GraphicsQueueMutex;
-
     Rr_Queue TransferQueue;
+    // Rr_Queue ComputeQueue;
 
     /* Vulkan Memory Allocator */
     VmaAllocator Allocator;

@@ -9,6 +9,7 @@
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Log.h"
+#include <SDL3/SDL_atomic.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -850,7 +851,6 @@ void Rr_InitRenderer(Rr_App* App)
         &Renderer->Device,
         &Renderer->GraphicsQueue.Handle,
         &Renderer->TransferQueue.Handle);
-    Renderer->GraphicsQueueMutex = SDL_CreateMutex();
 
     volkLoadDevice(Renderer->Device);
 
@@ -932,8 +932,6 @@ void Rr_CleanupRenderer(Rr_App* App)
     Rr_DestroyImage(App, Renderer->NullTextures.Normal);
 
     Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
-
-    SDL_DestroyMutex(Renderer->GraphicsQueueMutex);
 
     Rr_CleanupTransientCommandPools(Renderer);
     Rr_CleanupImmediateMode(App);
@@ -1152,7 +1150,7 @@ void Rr_Draw(Rr_App* App)
         .pWaitDstStageMask = WaitDstStages
     };
 
-    SDL_LockMutex(Renderer->GraphicsQueueMutex);
+    SDL_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     vkQueueSubmit(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
@@ -1175,7 +1173,7 @@ void Rr_Draw(Rr_App* App)
     Renderer->FrameNumber++;
     Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
 
-    SDL_UnlockMutex(Renderer->GraphicsQueueMutex);
+    SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     /* Cleanup resources. */
     Rr_ResetFrameResources(Frame);

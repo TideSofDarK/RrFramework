@@ -6,12 +6,15 @@
 #include <volk.h>
 #include <vulkan/vk_enum_string_helper.h>
 
+#include <SDL3/SDL_thread.h>
+
 typedef struct Rr_Queue Rr_Queue;
 struct Rr_Queue
 {
     VkCommandPool TransientCommandPool;
     VkQueue Handle;
     u32 FamilyIndex;
+    SDL_SpinLock Lock;
 };
 
 typedef struct Rr_PhysicalDevice Rr_PhysicalDevice;
