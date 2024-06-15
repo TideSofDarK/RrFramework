@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Rr_Defines.h"
+#include "Rr_Math.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -9,7 +10,16 @@ extern "C"
 
 #define RR_MAX_INPUT_MAPPINGS 16
 
-typedef u32 Rr_InputState;
+typedef u32 Rr_KeyStates;
+
+typedef struct Rr_InputState Rr_InputState;
+struct Rr_InputState
+{
+    Rr_KeyStates Keys;
+    Rr_Vec2 MousePosition;
+    Rr_Vec2 MousePositionDelta;
+    u32 MouseState;
+};
 
 typedef enum Rr_KeyState
 {
@@ -32,7 +42,7 @@ typedef struct Rr_InputConfig
 } Rr_InputConfig;
 
 void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config);
-Rr_KeyState Rr_GetKeyState(Rr_InputState State, u32 Key);
+Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, u32 Key);
 
 #ifdef __cplusplus
 }

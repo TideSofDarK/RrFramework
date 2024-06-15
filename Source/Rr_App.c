@@ -170,6 +170,7 @@ static void Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
     const SDL_DisplayMode* Mode = SDL_GetDesktopDisplayMode(DisplayID);
     FrameTime->TargetFramerate = (u64)Mode->refresh_rate;
     FrameTime->StartTime = SDL_GetTicksNS();
+    FrameTime->bSimulateVSync = true;
 
     FrameTime->Now = SDL_GetPerformanceCounter();
 }

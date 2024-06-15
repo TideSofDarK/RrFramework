@@ -317,9 +317,11 @@ public:
     void Iterate()
     {
         Rr_InputState InputState = Rr_GetInputState(App);
+        Rr_KeyStates Keys = InputState.Keys;
+
         f32 DeltaTime = Rr_GetDeltaTime(App);
 
-        if (Rr_GetKeyState(InputState, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
+        if (Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
         {
             Rr_ToggleFullscreen(App);
         }
@@ -344,32 +346,29 @@ public:
         Rr_Vec3 CameraForward = Camera.GetForwardVector();
         Rr_Vec3 CameraLeft = Camera.GetRightVector();
         constexpr f32 CameraSpeed = 0.1f;
-        if (Rr_GetKeyState(InputState, EIA_UP) == RR_KEYSTATE_HELD)
+        if (Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
         {
             Camera.Position -= CameraForward * DeltaTime * CameraSpeed;
         }
-        if (Rr_GetKeyState(InputState, EIA_LEFT) == RR_KEYSTATE_HELD)
+        if (Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
         {
             Camera.Position -= CameraLeft * DeltaTime * CameraSpeed;
         }
-        if (Rr_GetKeyState(InputState, EIA_DOWN) == RR_KEYSTATE_HELD)
+        if (Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
         {
             Camera.Position += CameraForward * DeltaTime * CameraSpeed;
         }
-        if (Rr_GetKeyState(InputState, EIA_RIGHT) == RR_KEYSTATE_HELD)
+        if (Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
         {
             Camera.Position += CameraLeft * DeltaTime * CameraSpeed;
         }
 
-        f32 DeltaX;
-        f32 DeltaY;
-        SDL_MouseButtonFlags MouseState = SDL_GetRelativeMouseState(&DeltaX, &DeltaY);
-        if (MouseState & SDL_BUTTON_RMASK)
+        if (InputState.MouseState & SDL_BUTTON_RMASK)
         {
             SDL_SetRelativeMouseMode(SDL_TRUE);
             constexpr f32 Sensitivity = 0.12f;
-            Camera.Yaw = Rr_WrapMax(Camera.Yaw - (DeltaX * DeltaTime * Sensitivity), 360.0f);
-            Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (DeltaY * DeltaTime * Sensitivity), -90.0f, 90.0f);
+            Camera.Yaw = Rr_WrapMax(Camera.Yaw - (InputState.MousePositionDelta.X *  Sensitivity), 360.0f);
+            Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (InputState.MousePositionDelta.Y *  Sensitivity), -90.0f, 90.0f);
         }
         else
         {
@@ -381,7 +380,7 @@ public:
         ImGui::End();
 
         static bool bShowDebugOverlay = false;
-        if (Rr_GetKeyState(InputState, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
+        if (Rr_GetKeyState(Keys, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
         {
             bShowDebugOverlay = !bShowDebugOverlay;
         }
