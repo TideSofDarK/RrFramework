@@ -131,11 +131,37 @@ Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height)
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .renderPass = Renderer->RenderPass,
+        .renderPass = Renderer->RenderPasses.ColorDepth,
         .height = Height,
         .width = Width,
         .layers = 1,
         .attachmentCount = 2,
+        .pAttachments = Attachments
+    };
+    vkCreateFramebuffer(Renderer->Device, &Info, NULL, &DrawTarget->Framebuffer);
+
+    return DrawTarget;
+}
+
+Rr_DrawTarget* Rr_CreateDrawTargetDepthOnly(Rr_App* App, u32 Width, u32 Height)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    Rr_DrawTarget* DrawTarget = Rr_CreateObject(&App->ObjectStorage);
+
+    DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
+
+    VkImageView Attachments[1] = { DrawTarget->DepthImage->View };
+
+    VkFramebufferCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .renderPass = Renderer->RenderPasses.Depth,
+        .height = Height,
+        .width = Width,
+        .layers = 1,
+        .attachmentCount = SDL_arraysize(Attachments),
         .pAttachments = Attachments
     };
     vkCreateFramebuffer(Renderer->Device, &Info, NULL, &DrawTarget->Framebuffer);

@@ -49,6 +49,7 @@ void* Rr_CreateObject(Rr_ObjectStorage* Storage)
         Storage->NextObject = NewObject->Next;
     }
     Storage->ObjectCount++;
+    SDL_zerop(NewObject);
     return NewObject;
 }
 

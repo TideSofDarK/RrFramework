@@ -134,7 +134,7 @@ VkPipeline Rr_BuildPipeline(
         .pDepthStencilState = &PipelineBuilder->DepthStencil,
         .layout = PipelineLayout,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = Renderer->RenderPass
+        .renderPass = Renderer->RenderPasses.ColorDepth
     };
 
     VkPipeline Pipeline;

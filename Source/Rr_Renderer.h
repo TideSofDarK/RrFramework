@@ -86,23 +86,34 @@ struct Rr_Renderer
 
     Rr_Queue TransferQueue;
 
+    /* Vulkan Memory Allocator */
     VmaAllocator Allocator;
 
     /* Frames */
     Rr_Frame Frames[RR_FRAME_OVERLAP];
-    size_t FrameNumber;
-    size_t CurrentFrameIndex;
+    usize FrameNumber;
+    usize CurrentFrameIndex;
 
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
-    VkRenderPass RenderPass;
-    VkRenderPass RenderPassNoClear;
+    /* Render Passes */
+    struct
+    {
+        VkRenderPass ColorDepth;
+        VkRenderPass ColorDepthLoad;
+        VkRenderPass Depth;
+        VkRenderPass DepthLoad;
+    } RenderPasses;
 
+    /* Dear ImGui */
     Rr_ImGui ImGui;
+
+    /* Immediate Command Pool/Buffer */
     Rr_ImmediateMode ImmediateMode;
 
     /* Null Textures */
-    struct {
+    struct
+    {
         Rr_Image* White;
         Rr_Image* Normal;
     } NullTextures;

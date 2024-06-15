@@ -419,7 +419,7 @@ void Rr_InitImGui(Rr_App* App)
         .ImageCount = 3,
         .UseDynamicRendering = false,
         .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
-        .RenderPass = Renderer->RenderPassNoClear
+        .RenderPass = Renderer->RenderPasses.ColorDepthLoad
     };
 
     ImGui_ImplVulkan_Init(&InitInfo);
@@ -540,7 +540,7 @@ static void Rr_CleanupSamplers(Rr_App* App)
     vkDestroySampler(Renderer->Device, Renderer->LinearSampler, NULL);
 }
 
-static void Rr_InitRenderPass(Rr_App* App)
+static VkRenderPass Rr_CreateRenderPassColorDepth(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -586,44 +586,152 @@ static void Rr_InitRenderPass(Rr_App* App)
         .pPreserveAttachments = NULL
     };
 
-    VkSubpassDependency Dependencies[] = {
-        {
-            .srcSubpass = 0,
-            .dstSubpass = VK_SUBPASS_EXTERNAL,
-        },
-        {
-            .srcSubpass = VK_SUBPASS_EXTERNAL,
-            .dstSubpass = 0,
-        }
+    VkRenderPassCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = 0,
+        .attachmentCount = SDL_arraysize(Attachments),
+        .pAttachments = Attachments,
+        .subpassCount = 1,
+        .pSubpasses = &SubpassDescription,
+        .dependencyCount = 0,
+        .pDependencies = NULL
+    };
+
+    VkRenderPass RenderPass;
+    vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
+    return RenderPass;
+}
+
+static VkRenderPass Rr_CreateRenderPassColorDepthLoad(Rr_App* App)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    VkAttachmentDescription Attachments[2] = {
+        (VkAttachmentDescription){
+            .samples = 1,
+            .format = RR_COLOR_FORMAT,
+            .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .flags = 0,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE },
+        (VkAttachmentDescription){
+            .samples = 1,
+            .format = RR_DEPTH_FORMAT,
+            .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .flags = 0,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE }
+    };
+
+    VkAttachmentReference ColorAttachmentRef = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    };
+
+    VkAttachmentReference DepthAttachmentRef = {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    };
+
+    VkSubpassDescription SubpassDescription = {
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &ColorAttachmentRef,
+        .pDepthStencilAttachment = &DepthAttachmentRef,
+        .pResolveAttachments = NULL,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = NULL,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = NULL
     };
 
     VkRenderPassCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = 0,
-        .attachmentCount = 2,
+        .attachmentCount = SDL_arraysize(Attachments),
         .pAttachments = Attachments,
         .subpassCount = 1,
         .pSubpasses = &SubpassDescription,
         .dependencyCount = 0,
-        .pDependencies = Dependencies
+        .pDependencies = NULL
     };
 
-    vkCreateRenderPass(Renderer->Device, &Info, NULL, &Renderer->RenderPass);
+    VkRenderPass RenderPass;
+    vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
+    return RenderPass;
+}
 
-    Attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    Attachments[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    Attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    Attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    vkCreateRenderPass(Renderer->Device, &Info, NULL, &Renderer->RenderPassNoClear);
+static VkRenderPass Rr_CreateRenderPassDepth(Rr_App* App)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    VkAttachmentDescription Attachments[1] = {
+        (VkAttachmentDescription){
+            .samples = 1,
+            .format = RR_DEPTH_FORMAT,
+            .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .flags = 0,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE }
+    };
+
+    VkAttachmentReference DepthAttachmentRef = {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    };
+
+    VkSubpassDescription SubpassDescription = {
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 0,
+        .pColorAttachments = NULL,
+        .pDepthStencilAttachment = &DepthAttachmentRef,
+        .pResolveAttachments = NULL,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = NULL,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = NULL
+    };
+
+    VkRenderPassCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = 0,
+        .attachmentCount = SDL_arraysize(Attachments),
+        .pAttachments = Attachments,
+        .subpassCount = 1,
+        .pSubpasses = &SubpassDescription,
+        .dependencyCount = 0,
+        .pDependencies = NULL
+    };
+
+    VkRenderPass RenderPass;
+    vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
+    return RenderPass;
+}
+
+static void Rr_InitRenderPass(Rr_App* App)
+{
+    Rr_Renderer* Renderer = &App->Renderer;
+
+    Renderer->RenderPasses.ColorDepth = Rr_CreateRenderPassColorDepth(App);
+    Renderer->RenderPasses.ColorDepthLoad = Rr_CreateRenderPassColorDepthLoad(App);
+    Renderer->RenderPasses.Depth = Rr_CreateRenderPassDepth(App);
 }
 
 static void Rr_CleanupRenderPass(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPass, NULL);
-    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPassNoClear, NULL);
+    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPasses.ColorDepth, NULL);
+    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPasses.ColorDepthLoad, NULL);
+    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPasses.Depth, NULL);
 }
 
 static void Rr_InitTransientCommandPools(Rr_App* App)
@@ -978,7 +1086,7 @@ void Rr_Draw(Rr_App* App)
     {
         VkRenderPassBeginInfo rp_info = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = Renderer->RenderPassNoClear,
+            .renderPass = Renderer->RenderPasses.ColorDepthLoad,
             .framebuffer = Renderer->DrawTarget->Framebuffer,
             .renderArea.extent.width = Renderer->DrawTarget->ColorImage->Extent.width,
             .renderArea.extent.height = Renderer->DrawTarget->ColorImage->Extent.height,

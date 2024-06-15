@@ -520,7 +520,7 @@ void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
         .pNext = NULL,
         .framebuffer = DrawTarget->Framebuffer,
         .renderArea = (VkRect2D){ { 0, 0 }, { Width, Height } },
-        .renderPass = Renderer->RenderPass,
+        .renderPass = Renderer->RenderPasses.ColorDepth,
         .clearValueCount = 2,
         .pClearValues = ClearColorValues
     };
