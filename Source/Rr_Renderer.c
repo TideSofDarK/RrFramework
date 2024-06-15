@@ -1154,6 +1154,8 @@ void Rr_Draw(Rr_App* App)
 
     vkQueueSubmit(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
+    SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
+
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = NULL,
@@ -1172,8 +1174,6 @@ void Rr_Draw(Rr_App* App)
 
     Renderer->FrameNumber++;
     Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
-
-    SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     /* Cleanup resources. */
     Rr_ResetFrameResources(Frame);

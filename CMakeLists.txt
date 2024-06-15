@@ -143,6 +143,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
         ${IMGUI_TARGET}
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+        SDL_DYNAMIC_API=0
         TINYEXR_USE_MINIZ=0
         TINYEXR_USE_STB_ZLIB=1
         STBI_NO_STDIO
