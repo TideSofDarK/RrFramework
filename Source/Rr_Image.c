@@ -169,19 +169,19 @@ Rr_Image* Rr_CreateImage(
     return Image;
 }
 
-void Rr_DestroyImage(Rr_App* App, Rr_Image* AllocatedImage)
+void Rr_DestroyImage(Rr_App* App, Rr_Image* Image)
 {
-    if (AllocatedImage == NULL)
+    if (Image == NULL)
     {
         return;
     }
 
     Rr_Renderer* Renderer = &App->Renderer;
 
-    vkDestroyImageView(Renderer->Device, AllocatedImage->View, NULL);
-    vmaDestroyImage(Renderer->Allocator, AllocatedImage->Handle, AllocatedImage->Allocation);
+    vkDestroyImageView(Renderer->Device, Image->View, NULL);
+    vmaDestroyImage(Renderer->Allocator, Image->Handle, Image->Allocation);
 
-    Rr_DestroyObject(&App->ObjectStorage, AllocatedImage);
+    Rr_DestroyObject(&App->ObjectStorage, Image);
 }
 
 void Rr_GetImageSizePNGMemory(

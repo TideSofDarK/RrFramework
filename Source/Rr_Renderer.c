@@ -682,7 +682,7 @@ static VkRenderPass Rr_CreateRenderPassDepth(Rr_App* App)
     };
 
     VkAttachmentReference DepthAttachmentRef = {
-        .attachment = 1,
+        .attachment = 0,
         .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     };
 
@@ -716,7 +716,7 @@ static VkRenderPass Rr_CreateRenderPassDepth(Rr_App* App)
     return RenderPass;
 }
 
-static void Rr_InitRenderPass(Rr_App* App)
+static void Rr_InitRenderPasses(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -725,7 +725,7 @@ static void Rr_InitRenderPass(Rr_App* App)
     Renderer->RenderPasses.Depth = Rr_CreateRenderPassDepth(App);
 }
 
-static void Rr_CleanupRenderPass(Rr_App* App)
+static void Rr_CleanupRenderPasses(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -734,6 +734,7 @@ static void Rr_CleanupRenderPass(Rr_App* App)
     vkDestroyRenderPass(Renderer->Device, Renderer->RenderPasses.Depth, NULL);
 }
 
+/* @TODO: Move to queue initialization? */
 static void Rr_InitTransientCommandPools(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
@@ -801,7 +802,7 @@ void Rr_InitRenderer(Rr_App* App)
     };
 
     /* Gather required extensions. */
-    char* AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+    str AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
     u32 AppExtensionCount = SDL_arraysize(AppExtensions);
     AppExtensionCount = 0; /* Use Vulkan Configurator! */
 
@@ -856,7 +857,7 @@ void Rr_InitRenderer(Rr_App* App)
     Rr_InitVMA(App);
     Rr_InitTransientCommandPools(App);
     Rr_InitSamplers(App);
-    Rr_InitRenderPass(App);
+    Rr_InitRenderPasses(App);
     Rr_InitDescriptors(App);
 
     u32 Width, Height;
@@ -936,7 +937,7 @@ void Rr_CleanupRenderer(Rr_App* App)
 
     Rr_CleanupTransientCommandPools(Renderer);
     Rr_CleanupImmediateMode(App);
-    Rr_CleanupRenderPass(App);
+    Rr_CleanupRenderPasses(App);
     Rr_CleanupSamplers(App);
     Rr_CleanupSwapchain(App, Renderer->Swapchain.Handle);
 

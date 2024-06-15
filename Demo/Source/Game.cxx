@@ -2,6 +2,7 @@
 
 #include "DevTools.hxx"
 #include "DemoAssets.inc"
+#include "Rr/Rr_Draw.h"
 
 #include <imgui/imgui.h>
 
@@ -264,6 +265,8 @@ private:
     Rr_String DebugString{};
     Rr_LoadingContext* LoadingContext{};
 
+    Rr_DrawTarget* ShadowMap{};
+
     bool bLoaded = false;
 
 public:
@@ -283,10 +286,6 @@ public:
         };
 
         Rr_SetInputConfig(App, &InputConfig);
-    }
-
-    void InitUber3DPipeline()
-    {
     }
 
     void InitGlobals()
@@ -468,8 +467,6 @@ public:
     {
         InitInputMappings();
 
-        InitUber3DPipeline();
-
         InitGlobals();
 
         std::array LoadTasks = {
@@ -481,6 +478,8 @@ public:
             Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
         };
         LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, App);
+
+        ShadowMap = Rr_CreateDrawTargetDepthOnly(App, 1024, 1024);
 
         // Rr_ExternAsset(POCDepthEXR);
         // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
@@ -522,6 +521,8 @@ public:
         Rr_DestroyString(&TestString);
         Rr_DestroyString(&DebugString);
         Rr_DestroyString(&LoadingString);
+
+        Rr_DestroyDrawTarget(App, ShadowMap);
     }
 };
 
