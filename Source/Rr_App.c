@@ -12,22 +12,28 @@
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
 
-static void Rr_AdvanceFrameTime(Rr_FrameTime* FrameTime)
+static void Rr_CalculateDeltaTime(Rr_FrameTime* FrameTime)
 {
-#ifdef RR_PERFORMANCE_COUNTER
-    {
-        FrameTime->PerformanceCounter.Frames++;
-        u64 CurrentTime = SDL_GetPerformanceCounter();
-        if (CurrentTime - FrameTime->PerformanceCounter.StartTime >= FrameTime->PerformanceCounter.UpdateFrequency)
-        {
-            f64 Elapsed = (f64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) / FrameTime->PerformanceCounter.CountPerSecond;
-            FrameTime->PerformanceCounter.FPS = (f64)FrameTime->PerformanceCounter.Frames / Elapsed;
-            FrameTime->PerformanceCounter.StartTime = CurrentTime;
-            FrameTime->PerformanceCounter.Frames = 0;
-        }
-    }
-#endif
+    FrameTime->Last = FrameTime->Now;
+    FrameTime->Now = SDL_GetPerformanceCounter();
+    FrameTime->DeltaSeconds = ((f64)(FrameTime->Now - FrameTime->Last) * 1000.0) / (f64)SDL_GetPerformanceFrequency();
+}
 
+static void Rr_CalculateFPS(Rr_FrameTime* FrameTime)
+{
+    FrameTime->PerformanceCounter.Frames++;
+    u64 CurrentTime = SDL_GetPerformanceCounter();
+    if (CurrentTime - FrameTime->PerformanceCounter.StartTime >= FrameTime->PerformanceCounter.UpdateFrequency)
+    {
+        f64 Elapsed = (f64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) / FrameTime->PerformanceCounter.CountPerSecond;
+        FrameTime->PerformanceCounter.FPS = (f64)FrameTime->PerformanceCounter.Frames / Elapsed;
+        FrameTime->PerformanceCounter.StartTime = CurrentTime;
+        FrameTime->PerformanceCounter.Frames = 0;
+    }
+}
+
+static void Rr_SimulateVSync(Rr_FrameTime* FrameTime)
+{
     u64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
     u64 Now = SDL_GetTicksNS();
     u64 Elapsed = Now - FrameTime->StartTime;
@@ -65,16 +71,21 @@ void Rr_DebugOverlay(Rr_App* App)
     igSetNextWindowPos(WindowPos, ImGuiCond_Always, WindowPosPivot);
     igSetNextWindowViewport(Viewport->ID);
     Flags |= ImGuiWindowFlags_NoMove;
-    igSetNextWindowBgAlpha(0.35f);
+    igSetNextWindowBgAlpha(0.95f);
     if (igBegin("Debug Overlay", NULL, Flags))
     {
         igText("Swapchain Size: %dx%d", App->Renderer.SwapchainSize.width, App->Renderer.SwapchainSize.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
         igText("RrFramework Objects: %zu", App->ObjectStorage.ObjectCount);
+        igSeparator();
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
 #endif
-        igSliderScalar("Target FPS", ImGuiDataType_U64, &App->FrameTime.TargetFramerate, &(u64){ 30 }, &(u64){ 480 }, "%d", ImGuiSliderFlags_None);
+        igCheckbox("Simulate VSync", &App->FrameTime.bSimulateVSync);
+        if (App->FrameTime.bSimulateVSync)
+        {
+            igSliderScalar("Target FPS", ImGuiDataType_U64, &App->FrameTime.TargetFramerate, &(u64){ 30 }, &(u64){ 480 }, "%d", ImGuiSliderFlags_None);
+        }
         igSeparator();
         if (igIsMousePosValid(NULL))
         {
@@ -90,8 +101,7 @@ void Rr_DebugOverlay(Rr_App* App)
 
 static void Iterate(Rr_App* App)
 {
-    App->FrameTime.DeltaSeconds = (f32)((f64)(SDL_GetTicksNS() - App->FrameTime.Last) / (f64)SDL_NS_PER_SECOND);
-    App->FrameTime.Last = SDL_GetTicksNS();
+    Rr_CalculateDeltaTime(&App->FrameTime);
 
     Rr_UpdateInputState(&App->InputState, &App->InputConfig);
 
@@ -109,7 +119,14 @@ static void Iterate(Rr_App* App)
         Rr_Draw(App);
     }
 
-    Rr_AdvanceFrameTime(&App->FrameTime);
+#ifdef RR_PERFORMANCE_COUNTER
+    Rr_CalculateFPS(&App->FrameTime);
+#endif
+
+    if (App->FrameTime.bSimulateVSync)
+    {
+        Rr_SimulateVSync(&App->FrameTime);
+    }
 }
 
 static int SDLCALL Rr_EventWatch(void* AppPtr, SDL_Event* Event)
@@ -153,6 +170,8 @@ static void Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
     const SDL_DisplayMode* Mode = SDL_GetDesktopDisplayMode(DisplayID);
     FrameTime->TargetFramerate = (u64)Mode->refresh_rate;
     FrameTime->StartTime = SDL_GetTicksNS();
+
+    FrameTime->Now = SDL_GetPerformanceCounter();
 }
 
 Rr_IntVec2 Rr_GetDefaultWindowSize()

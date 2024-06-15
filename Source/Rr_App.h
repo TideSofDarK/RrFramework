@@ -22,11 +22,15 @@ struct Rr_FrameTime
     } PerformanceCounter;
 #endif
 
+    /* VSync Simulation */
     u64 TargetFramerate;
     u64 StartTime;
+    bool bSimulateVSync;
 
+    /* Delta Time Calculation */
     u64 Last;
-    f32 DeltaSeconds;
+    u64 Now;
+    f64 DeltaSeconds;
 };
 
 struct Rr_App

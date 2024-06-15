@@ -343,7 +343,7 @@ public:
 
         Rr_Vec3 CameraForward = Camera.GetForwardVector();
         Rr_Vec3 CameraLeft = Camera.GetRightVector();
-        constexpr f32 CameraSpeed = 10.0f;
+        constexpr f32 CameraSpeed = 0.1f;
         if (Rr_GetKeyState(InputState, EIA_UP) == RR_KEYSTATE_HELD)
         {
             Camera.Position -= CameraForward * DeltaTime * CameraSpeed;
@@ -367,7 +367,7 @@ public:
         if (MouseState & SDL_BUTTON_RMASK)
         {
             SDL_SetRelativeMouseMode(SDL_TRUE);
-            constexpr f32 Sensitivity = 50.0f;
+            constexpr f32 Sensitivity = 0.12f;
             Camera.Yaw = Rr_WrapMax(Camera.Yaw - (DeltaX * DeltaTime * Sensitivity), 360.0f);
             Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (DeltaY * DeltaTime * Sensitivity), -90.0f, 90.0f);
         }
