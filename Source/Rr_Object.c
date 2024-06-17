@@ -34,11 +34,18 @@ Rr_ObjectStorage Rr_CreateObjectStorage()
 
 void Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage)
 {
+    SDL_LockSpinlock(&Storage->Lock);
+
     Rr_Free(Storage->Storage);
+    Storage->Storage = NULL;
+
+    SDL_UnlockSpinlock(&Storage->Lock);
 }
 
 void* Rr_CreateObject(Rr_ObjectStorage* Storage)
 {
+    SDL_LockSpinlock(&Storage->Lock);
+
     Rr_Object* NewObject = (Rr_Object*)Storage->NextObject;
     if (NewObject->Next == NULL)
     {
@@ -49,16 +56,23 @@ void* Rr_CreateObject(Rr_ObjectStorage* Storage)
         Storage->NextObject = NewObject->Next;
     }
     Storage->ObjectCount++;
+
+    SDL_UnlockSpinlock(&Storage->Lock);
+
     SDL_zerop(NewObject);
     return NewObject;
 }
 
 void Rr_DestroyObject(Rr_ObjectStorage* Storage, void* Object)
 {
+    SDL_LockSpinlock(&Storage->Lock);
+
     Rr_Object* DestroyedObject = (Rr_Object*)Object;
     DestroyedObject->Next = Storage->NextObject;
     Storage->NextObject = DestroyedObject;
     Storage->ObjectCount--;
+
+    SDL_UnlockSpinlock(&Storage->Lock);
 }
 
 usize Rr_CalculateObjectStorageSize(usize Count)
