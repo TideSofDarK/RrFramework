@@ -18,7 +18,7 @@ VkPipeline Rr_BuildPipeline(
 {
     /* Create shader modules. */
     VkPipelineShaderStageCreateInfo* ShaderStages = Rr_StackAlloc(VkPipelineShaderStageCreateInfo, RR_PIPELINE_SHADER_STAGES);
-    int ShaderStageCount = 0;
+    u32 ShaderStageCount = 0;
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
     if (PipelineBuilder->VertexShaderSPV.Data != NULL)
@@ -60,7 +60,7 @@ VkPipeline Rr_BuildPipeline(
         .pNext = NULL,
         .logicOpEnable = VK_FALSE,
         .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = 1,
+        .attachmentCount = PipelineBuilder->ColorAttachmentCount,
         .pAttachments = PipelineBuilder->ColorBlendAttachments,
     };
 
@@ -119,6 +119,21 @@ VkPipeline Rr_BuildPipeline(
         .dynamicStateCount = SDL_arraysize(DynamicStates)
     };
 
+    /* Select render pass. */
+    VkRenderPass RenderPass = VK_NULL_HANDLE;
+    switch (PipelineBuilder->ColorAttachmentCount)
+    {
+        case 0:
+            RenderPass = Renderer->RenderPasses.Depth;
+            break;
+        case 1:
+            RenderPass = Renderer->RenderPasses.ColorDepth;
+            break;
+        default:
+            Rr_LogAbort("Unsupported color attachment count!");
+            break;
+    }
+
     /* Create pipeline. */
     VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -134,7 +149,7 @@ VkPipeline Rr_BuildPipeline(
         .pDepthStencilState = &PipelineBuilder->DepthStencil,
         .layout = PipelineLayout,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = Renderer->RenderPasses.ColorDepth
+        .renderPass = RenderPass
     };
 
     VkPipeline Pipeline;
@@ -165,13 +180,6 @@ Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void)
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
             .primitiveRestartEnable = VK_FALSE,
         },
-        .ColorAttachmentFormats = { RR_COLOR_FORMAT },
-        .ColorBlendAttachments = {
-            (VkPipelineColorBlendAttachmentState){
-                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-                .blendEnable = VK_FALSE,
-            },
-        },
         .Rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO },
         .Multisampling = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO, .sampleShadingEnable = VK_FALSE, .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT, .minSampleShading = 1.0f, .pSampleMask = NULL, .alphaToCoverageEnable = VK_FALSE, .alphaToOneEnable = VK_FALSE },
         .DepthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO },
@@ -180,12 +188,38 @@ Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void)
     return PipelineBuilder;
 }
 
+void Rr_EnableColorAttachment(Rr_PipelineBuilder* PipelineBuilder, bool bEnableAlphaBlend)
+{
+    PipelineBuilder->ColorAttachmentFormats[PipelineBuilder->ColorAttachmentCount] = RR_COLOR_FORMAT;
+    if (bEnableAlphaBlend)
+    {
+        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] = (VkPipelineColorBlendAttachmentState){
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+            .blendEnable = VK_TRUE,
+            .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .colorBlendOp = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .alphaBlendOp = VK_BLEND_OP_ADD,
+        };
+    }
+    else
+    {
+        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] = (VkPipelineColorBlendAttachmentState){
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+            .blendEnable = VK_FALSE,
+        };
+    }
+    PipelineBuilder->ColorAttachmentCount++;
+}
+
 void Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder)
 {
     PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
 }
 
-static VkFormat GetVulkanFormat(Rr_VertexInputType Type)
+static VkFormat Rr_GetVulkanFormat(Rr_VertexInputType Type)
 {
     switch (Type)
     {
@@ -205,7 +239,7 @@ static VkFormat GetVulkanFormat(Rr_VertexInputType Type)
     }
 }
 
-static usize GetVertexInputSize(Rr_VertexInputType Type)
+static usize Rr_GetVertexInputSize(Rr_VertexInputType Type)
 {
     switch (Type)
     {
@@ -227,7 +261,7 @@ static usize GetVertexInputSize(Rr_VertexInputType Type)
 
 static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInputAttribute Attribute, usize Binding)
 {
-    VkFormat Format = GetVulkanFormat(Attribute.Type);
+    VkFormat Format = Rr_GetVulkanFormat(Attribute.Type);
     if (Format == VK_FORMAT_UNDEFINED)
     {
         return;
@@ -246,7 +280,7 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_V
         .offset = PipelineBuilder->VertexInput[Binding].VertexInputStride,
     };
 
-    PipelineBuilder->VertexInput[Binding].VertexInputStride += GetVertexInputSize(Attribute.Type);
+    PipelineBuilder->VertexInput[Binding].VertexInputStride += Rr_GetVertexInputSize(Attribute.Type);
 }
 
 void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
@@ -273,11 +307,6 @@ void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsse
 void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
 {
     PipelineBuilder->FragmentShaderSPV = *SPVAsset;
-}
-
-void Rr_EnableAdditionalColorAttachment(Rr_PipelineBuilder* PipelineBuilder, VkFormat Format)
-{
-    PipelineBuilder->ColorAttachmentFormats[1] = Format;
 }
 
 void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, Rr_PolygonMode PolygonMode)
@@ -307,20 +336,6 @@ void Rr_EnableDepthTest(Rr_PipelineBuilder* PipelineBuilder)
     PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 }
 
-void Rr_EnableAlphaBlend(Rr_PipelineBuilder* PipelineBuilder)
-{
-    PipelineBuilder->ColorBlendAttachments[0] = (VkPipelineColorBlendAttachmentState){
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-        .blendEnable = VK_TRUE,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .colorBlendOp = VK_BLEND_OP_ADD,
-        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-        .alphaBlendOp = VK_BLEND_OP_ADD,
-    };
-}
-
 Rr_GenericPipeline* Rr_BuildGenericPipeline(
     Rr_App* App,
     Rr_PipelineBuilder* PipelineBuilder,
@@ -331,6 +346,18 @@ Rr_GenericPipeline* Rr_BuildGenericPipeline(
     SDL_assert(Sizes.Draw < RR_PIPELINE_MAX_DRAW_SIZE);
 
     Rr_Renderer* Renderer = &App->Renderer;
+
+    Rr_VertexInput VertexInput = {
+        .Attributes = {
+            { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 0 },
+            { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 1 },
+            { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 2 },
+            { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 3 },
+            { .Type = RR_VERTEX_INPUT_TYPE_VEC4, .Location = 4 },
+        }
+    };
+    Rr_EnablePerVertexInputAttributes(PipelineBuilder, &VertexInput);
+
     Rr_GenericPipeline* Pipeline = Rr_CreateObject(&App->ObjectStorage);
     *Pipeline = (Rr_GenericPipeline){
         .Handle = Rr_BuildPipeline(Renderer, PipelineBuilder, Renderer->GenericPipelineLayout),

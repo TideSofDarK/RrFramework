@@ -1,6 +1,6 @@
 #include "Rr_Text.h"
 
-#include "Rr/Rr_Util.h"
+#include "Rr/Rr_Utility.h"
 #include "Rr_App.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Image.h"
@@ -70,7 +70,7 @@ void Rr_InitTextRenderer(Rr_App* App)
             } });
     Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
-    Rr_EnableAlphaBlend(Builder);
+    Rr_EnableColorAttachment(Builder, true);
     Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
     TextPipeline->Handle = Rr_BuildPipeline(

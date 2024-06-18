@@ -41,7 +41,7 @@ struct Rr_DrawContextInfo
     Rr_DrawTarget* DrawTarget;
     Rr_Image* InitialColor;
     Rr_Image* InitialDepth;
-    Rr_IntVec2 Viewport;
+    Rr_IntVec4 Viewport;
     Rr_GenericPipelineSizes Sizes;
 };
 

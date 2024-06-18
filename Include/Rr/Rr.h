@@ -12,5 +12,5 @@
 #include "Rr_String.h"
 #include "Rr_Text.h"
 #include "Rr_App.h"
-#include "Rr_Util.h"
+#include "Rr_Utility.h"
 #include "Rr_Math.h"

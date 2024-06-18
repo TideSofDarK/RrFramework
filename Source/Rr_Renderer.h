@@ -149,11 +149,6 @@ extern bool Rr_NewFrame(Rr_App* App, void* Window);
 extern VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
 extern void Rr_EndImmediate(Rr_Renderer* Renderer);
 
-extern VkPipeline Rr_BuildPipeline(
-    Rr_Renderer* Renderer,
-    Rr_PipelineBuilder* PipelineBuilder,
-    VkPipelineLayout PipelineLayout);
-
 extern Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
 extern bool Rr_IsUsingTransferQueue(Rr_Renderer* Renderer);
 extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer* Renderer);

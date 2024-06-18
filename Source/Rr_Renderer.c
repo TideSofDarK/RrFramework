@@ -1075,7 +1075,7 @@ void Rr_Draw(Rr_App* App)
     /* Flush Rendering Contexts */
     for (usize Index = 0; Index < Frame->DrawContextsSlice.Length; ++Index)
     {
-        Rr_FlushRenderingContext(&Frame->DrawContextsSlice.Data[Index], Scratch.Arena);
+        Rr_FlushDrawContext(&Frame->DrawContextsSlice.Data[Index], Scratch.Arena);
     }
     Rr_SliceClear(&Frame->DrawContextsSlice);
 

@@ -75,7 +75,7 @@ typedef enum Rr_Scancode
     RR_SCANCODE_RIGHT = 79,
     RR_SCANCODE_LEFT = 80,
     RR_SCANCODE_DOWN = 81,
-    RR_SCANCODE_UP = 82,
+    RR_SCANCODE_UP = 82
 } Rr_Scancode;
 
 typedef enum Rr_MouseButton

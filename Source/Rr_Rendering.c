@@ -479,7 +479,7 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
+void Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -488,8 +488,11 @@ void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_DrawTarget* DrawTarget = DrawContext->Info.DrawTarget;
-    u32 Width = DrawContext->Info.Viewport.Width;
-    u32 Height = DrawContext->Info.Viewport.Height;
+
+    Rr_IntVec4 Viewport = DrawContext->Info.Viewport;
+
+    u32 Width = Viewport.Width - Viewport.X;
+    u32 Height = Viewport.Height - Viewport.Y;
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
@@ -519,7 +522,7 @@ void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .framebuffer = DrawTarget->Framebuffer,
-        .renderArea = (VkRect2D){ { 0, 0 }, { Width, Height } },
+        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
         .renderPass = Renderer->RenderPasses.ColorDepth,
         .clearValueCount = 2,
         .pClearValues = ClearColorValues
@@ -527,21 +530,21 @@ void Rr_FlushRenderingContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
     vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     /* Set dynamic states. */
-    VkViewport Viewport = { 0 };
-    Viewport.x = 0.0f;
-    Viewport.y = 0.0f;
-    Viewport.width = (float)Width;
-    Viewport.height = (float)Height;
-    Viewport.minDepth = 0.0f;
-    Viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(CommandBuffer, 0, 1, &Viewport);
+    vkCmdSetViewport(CommandBuffer, 0, 1, &(VkViewport){
+                                              .x = (f32)Viewport.X,
+                                              .y = (f32)Viewport.Y,
+                                              .width = (f32)Viewport.Width,
+                                              .height = (f32)Viewport.Height,
+                                              .minDepth = 0.0f,
+                                              .maxDepth = 1.0f,
+                                          });
 
-    VkRect2D Scissor = { 0 };
-    Scissor.offset.x = 0;
-    Scissor.offset.y = 0;
-    Scissor.extent.width = Width;
-    Scissor.extent.height = Height;
-    vkCmdSetScissor(CommandBuffer, 0, 1, &Scissor);
+    vkCmdSetScissor(CommandBuffer, 0, 1, &(VkRect2D){
+                                             .offset.x = Viewport.X,
+                                             .offset.y = Viewport.Y,
+                                             .extent.width = Viewport.Width,
+                                             .extent.height = Viewport.Height,
+                                         });
 
     Rr_RenderGeneric(
         Renderer,

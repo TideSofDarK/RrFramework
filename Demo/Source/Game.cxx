@@ -50,10 +50,9 @@ public:
     using SDraw = TDraw;
 
     Rr_GenericPipeline* GenericPipeline{};
-    Rr_GLTFLoader GLTFLoader{};
 
-    explicit TPipeline(Rr_App* App)
-        : App(App)
+    explicit TPipeline(Rr_App* InApp)
+        : App(InApp)
     {
     }
 
@@ -66,6 +65,49 @@ public:
     TPipeline& operator=(TPipeline&& Rhs) = delete;
     TPipeline(const TPipeline& Rhs) = delete;
     TPipeline& operator=(const TPipeline& Rhs) = delete;
+
+    [[nodiscard]] Rr_GenericPipelineSizes Sizes() const
+    {
+        return Rr_GetGenericPipelineSizes(GenericPipeline);
+    }
+};
+
+struct SShadowPassGlobals
+{
+    Rr_Mat4 View;
+    Rr_Mat4 Intermediate;
+    Rr_Mat4 Proj;
+};
+
+struct SShadowPassMaterial
+{
+    Rr_Vec3 Emissive;
+};
+
+struct SShadowDraw
+{
+    Rr_Mat4 Model;
+};
+
+struct SShadowPassPipeline : public TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowDraw>
+{
+public:
+    explicit SShadowPassPipeline(Rr_App* InApp)
+        : TPipeline(InApp)
+    {
+        Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_SHADOWPASS_VERT_SPV);
+
+        Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+        Rr_EnableVertexStage(Builder, &VertexShader);
+        Rr_EnableDepthTest(Builder);
+        Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
+        GenericPipeline = Rr_BuildGenericPipeline(
+            App,
+            Builder,
+            { sizeof(SGlobals),
+                sizeof(SMaterial),
+                sizeof(SDraw) });
+    }
 };
 
 struct SUnlitGlobals
@@ -88,25 +130,17 @@ struct SUnlitDraw
 struct SUnlitPipeline : public TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
 {
 public:
-    explicit SUnlitPipeline(Rr_App* App)
-        : TPipeline(App)
+    explicit SUnlitPipeline(Rr_App* InApp)
+        : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_VERT_SPV);
         Rr_Asset FragmentShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_FRAG_SPV);
 
         Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
-        Rr_VertexInput VertexInput = {
-            .Attributes = {
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 0 },
-                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 1 },
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 2 },
-                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 3 },
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC4, .Location = 4 },
-            }
-        };
-        Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
+
         Rr_EnableVertexStage(Builder, &VertexShader);
         Rr_EnableFragmentStage(Builder, &FragmentShader);
+        Rr_EnableColorAttachment(Builder, false);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
         GenericPipeline = Rr_BuildGenericPipeline(
@@ -115,11 +149,6 @@ public:
             { sizeof(SGlobals),
                 sizeof(SMaterial),
                 sizeof(SDraw) });
-
-        GLTFLoader.GenericPipeline = GenericPipeline;
-        GLTFLoader.BaseTexture = 0;
-        GLTFLoader.NormalTexture = 1;
-        GLTFLoader.SpecularTexture = 2;
     }
 };
 
@@ -141,25 +170,16 @@ struct SUber3DPushConstants
 struct SUber3DPipeline : public TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
 {
 public:
-    explicit SUber3DPipeline(Rr_App* App)
-        : TPipeline(App)
+    explicit SUber3DPipeline(Rr_App* InApp)
+        : TPipeline(InApp)
     {
         Rr_Asset Uber3DVERT = Rr_LoadAsset(DEMO_ASSET_UBER3D_VERT_SPV);
         Rr_Asset Uber3DFRAG = Rr_LoadAsset(DEMO_ASSET_UBER3D_FRAG_SPV);
 
         Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
-        Rr_VertexInput VertexInput = {
-            .Attributes = {
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 0 },
-                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 1 },
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC3, .Location = 2 },
-                { .Type = RR_VERTEX_INPUT_TYPE_FLOAT, .Location = 3 },
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC4, .Location = 4 },
-            }
-        };
-        Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
         Rr_EnableVertexStage(Builder, &Uber3DVERT);
         Rr_EnableFragmentStage(Builder, &Uber3DFRAG);
+        Rr_EnableColorAttachment(Builder, false);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
         GenericPipeline = Rr_BuildGenericPipeline(
@@ -168,11 +188,6 @@ public:
             { sizeof(SGlobals),
                 sizeof(SMaterial),
                 sizeof(SDraw) });
-
-        GLTFLoader.GenericPipeline = GenericPipeline;
-        GLTFLoader.BaseTexture = 0;
-        GLTFLoader.NormalTexture = 1;
-        GLTFLoader.SpecularTexture = 2;
     }
 };
 
@@ -232,12 +247,13 @@ struct SGame
 private:
     Rr_App* App{};
 
-    Rr_InputMapping InputMappings[RR_MAX_INPUT_MAPPINGS]{};
+    std::array<Rr_InputMapping, EIA_COUNT> InputMappings{};
 
     SUber3DGlobals ShaderGlobals{};
 
     SUber3DPipeline Uber3DPipeline;
     SUnlitPipeline UnlitPipeline;
+    SShadowPassPipeline ShadowPassPipeline;
 
     // Rr_Image SceneDepthImage;
     // Rr_Image SceneColorImage;
@@ -263,6 +279,9 @@ private:
 
     Rr_DrawTarget* ShadowMap{};
 
+    Rr_GLTFLoader UnlitGLTFLoader;
+    Rr_GLTFLoader Uber3DGLTFLoader;
+
     bool bLoaded = false;
 
 public:
@@ -277,8 +296,8 @@ public:
         InputMappings[EIA_TEST].Primary = RR_SCANCODE_F2;
 
         Rr_InputConfig InputConfig = {
-            .Mappings = InputMappings,
-            .Count = EIA_COUNT
+            .Mappings = InputMappings.data(),
+            .Count = InputMappings.size()
         };
 
         Rr_SetInputConfig(App, &InputConfig);
@@ -363,8 +382,8 @@ public:
         {
             Rr_SetRelativeMouseMode(true);
             constexpr f32 Sensitivity = 0.2f;
-            Camera.Yaw = Rr_WrapMax(Camera.Yaw - (InputState.MousePositionDelta.X *  Sensitivity), 360.0f);
-            Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (InputState.MousePositionDelta.Y *  Sensitivity), -90.0f, 90.0f);
+            Camera.Yaw = Rr_WrapMax(Camera.Yaw - (InputState.MousePositionDelta.X * Sensitivity), 360.0f);
+            Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (InputState.MousePositionDelta.Y * Sensitivity), -90.0f, 90.0f);
         }
         else
         {
@@ -393,9 +412,9 @@ public:
             .InitialColor = nullptr,
             .InitialDepth = nullptr,
             .Viewport = {},
-            .Sizes = Rr_GetGenericPipelineSizes(Uber3DPipeline.GenericPipeline),
+            .Sizes = Uber3DPipeline.Sizes(),
         };
-        Rr_DrawContext* DrawContext = Rr_CreateDrawContext(App, &DrawContextInfo, (byte*)&ShaderGlobals);
+        Rr_DrawContext* DrawContext = Rr_CreateDrawContext(App, &DrawContextInfo, reinterpret_cast<byte*>(&ShaderGlobals));
 
         const f32 Time = static_cast<f32>((Rr_GetTimeSeconds(App) * 2.0));
 
@@ -414,7 +433,7 @@ public:
             SUber3DDraw AvocadoDraw = { 0 };
             AvocadoDraw.Model =
                 Rr_Scale({ 0.75f, 0.75f, 0.75f })
-                * Rr_Rotate_LH(fmodf(Time, Rr_PI * 2.0f), { 0.0f, 1.0f, 0.0f })
+                * Rr_Rotate_LH(fmodf(Time, RR_PI32 * 2.0f), { 0.0f, 1.0f, 0.0f })
                 * Rr_Translate({ 3.5f, 0.5f, 3.5f });
             AvocadoDraw.Model[3][0] = 3.5f;
             AvocadoDraw.Model[3][1] = 0.5f;
@@ -434,6 +453,20 @@ public:
                 { 450.0f, 54.0f },
                 28.0f,
                 RR_DRAW_TEXT_FLAGS_NONE_BIT);
+
+            /* Shadow Pass */
+            // Rr_DrawContextInfo ShadowPassContextInfo = {
+            //     .DrawTarget = ShadowMap,
+            //     .InitialColor = nullptr,
+            //     .InitialDepth = nullptr,
+            //     .Viewport = { 1024, 1024 },
+            //     .Sizes = ShadowPassPipeline.Sizes(),
+            // };
+            // Rr_DrawContext* ShadowPassContext = Rr_CreateDrawContext(App, &ShadowPassContextInfo, reinterpret_cast<byte*>(&ShaderGlobals));
+            // Rr_DrawStaticMesh(ShadowPassContext, ArrowMesh, Rr_MakeData(ArrowDraw));
+            // Rr_DrawStaticMeshOverrideMaterials(ShadowPassContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
+            // Rr_DrawStaticMesh(ShadowPassContext, AvocadoMesh, Rr_MakeData(AvocadoDraw));
+            // Rr_DrawStaticMesh(ShadowPassContext, MarbleMesh, Rr_MakeData(MarbleDraw));
         }
         else
         {
@@ -456,8 +489,23 @@ public:
         }
     }
 
-    explicit SGame(Rr_App* App)
-        : App(App), Uber3DPipeline(App), UnlitPipeline(App)
+    explicit SGame(Rr_App* InApp)
+        : App(InApp)
+        , Uber3DPipeline(App)
+        , UnlitPipeline(App)
+        , ShadowPassPipeline(App)
+        , UnlitGLTFLoader({
+              .GenericPipeline = UnlitPipeline.GenericPipeline,
+              .BaseTexture = 0,
+              .NormalTexture = 1,
+              .SpecularTexture = 2,
+          })
+        , Uber3DGLTFLoader({
+              .GenericPipeline = Uber3DPipeline.GenericPipeline,
+              .BaseTexture = 0,
+              .NormalTexture = 1,
+              .SpecularTexture = 2,
+          })
     {
         InitInputMappings();
 
@@ -466,30 +514,14 @@ public:
         std::array LoadTasks = {
             Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
             Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &Uber3DPipeline.GLTFLoader, 0, &AvocadoMesh),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &Uber3DPipeline.GLTFLoader, 0, &MarbleMesh),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitPipeline.GLTFLoader, 0, &ArrowMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &Uber3DGLTFLoader, 0, &AvocadoMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &Uber3DGLTFLoader, 0, &MarbleMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitGLTFLoader, 0, &ArrowMesh),
             Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
         };
         LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
 
         ShadowMap = Rr_CreateDrawTargetDepthOnly(App, 1024, 1024);
-
-        // Rr_ExternAsset(POCDepthEXR);
-        // SceneDepthImage = Rr_CreateDepthImageFromEXR(&POCDepthEXR, Renderer);
-        //
-        // Rr_ExternAsset(POCColorPNG);
-        // SceneColorImage = Rr_CreateImageFromPNG(Renderer, &POCColorPNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-        //
-        //    Rr_Asset DoorFrameOBJ;
-        //    Rr_ExternAssetAs(&DoorFrameOBJ, DoorFrameOBJ);
-        //    MonkeyMesh = Rr_CreateMesh_FromOBJ(Renderer, &DoorFrameOBJ);
-
-        // Rr_ExternAsset(PocMeshOBJ);
-        // PocMesh = Rr_CreateMeshFromOBJ(Renderer, &PocMeshOBJ);
-        //
-        // Rr_ExternAsset(PocDiffusePNG);
-        // PocDiffuseImage = Rr_CreateImageFromPNG(Renderer, &PocDiffusePNG, VK_IMAGE_USAGE_SAMPLED_BIT, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
         DebugString = Rr_CreateString("$c3Colored $c1text$c2");

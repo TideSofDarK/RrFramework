@@ -46,5 +46,16 @@ typedef const char* str;
 #define RR_COLOR_FORMAT VK_FORMAT_R8G8B8A8_UNORM
 #define RR_STAGING_BUFFER_SIZE ((1 << 20) * 16)
 
-#define Rr_Align(Num, Alignment) (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 #define RR_SAFE_ALIGNMENT 16
+
+#define Rr_Align(Num, Alignment) (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
+
+#ifdef __cplusplus
+    #define Rr_ReinterpretCast(Type, Expression) reinterpret_cast<Type>(Expression)
+    #define Rr_StaticCast(Type, Expression) static_cast<Type>(Expression)
+    #define Rr_ConstCast(Type, Expression) const_cast<Type>(Expression)
+#else
+    #define Rr_ReinterpretCast(Type, Expression) ((Type)(Expression))
+    #define Rr_StaticCast(Type, Expression) ((Type)(Expression))
+    #define Rr_ConstCast(Type, Expression) ((Type)(Expression))
+#endif

@@ -1,100 +1,6 @@
-/*
-  HandmadeMath.h v2.0.0
+#pragma once
 
-  This is a single header file with a bunch of useful types and functions for
-  games and graphics. Consider it a lightweight alternative to GLM that works
-  both C and C++.
-
-  =============================================================================
-  CONFIG
-  =============================================================================
-
-  By default, all angles in Handmade Math are specified in radians. However, it
-  can be configured to use degrees or turns instead. Use one of the following
-  defines to specify the default unit for angles:
-
-    #define RR_MATH_USE_RADIANS
-    #define RR_MATH_USE_DEGREES
-    #define RR_MATH_USE_TURNS
-
-  Regardless of the default angle, you can use the following functions to
-  specify an angle in a particular unit:
-
-    Rr_AngleRad(radians)
-    Rr_AngleDeg(degrees)
-    Rr_AngleTurn(turns)
-
-  The definitions of these functions change depending on the default unit.
-
-  -----------------------------------------------------------------------------
-
-  Handmade Math ships with SSE (SIMD) implementations of several common
-  operations. To disable the use of SSE intrinsics, you must define
-  RR_MATH_NO_SSE before including this file:
-
-    #define RR_MATH_NO_SSE
-    #include "HandmadeMath.h"
-
-  -----------------------------------------------------------------------------
-
-  To use Handmade Math without the C runtime library, you must provide your own
-  implementations of basic math functions. Otherwise, HandmadeMath.h will use
-  the runtime library implementation of these functions.
-
-  Define RR_MATH_PROVIDE_MATH_FUNCTIONS and provide your own
-  implementations of Rr_SINF, Rr_COSF, Rr_TANF, Rr_ACOSF, and Rr_SQRTF
-  before including HandmadeMath.h, like so:
-
-    #define RR_MATH_PROVIDE_MATH_FUNCTIONS
-    #define Rr_SINF MySinF
-    #define Rr_COSF MyCosF
-    #define Rr_TANF MyTanF
-    #define Rr_ACOSF MyACosF
-    #define Rr_SQRTF MySqrtF
-    #include "HandmadeMath.h"
-
-  By default, it is assumed that your math functions take radians. To use
-  different units, you must define Rr_ANGLE_USER_TO_INTERNAL and
-  Rr_ANGLE_INTERNAL_TO_USER. For example, if you want to use degrees in your
-  code but your math functions use turns:
-
-    #define Rr_ANGLE_USER_TO_INTERNAL(a) ((a)*Rr_DegToTurn)
-    #define Rr_ANGLE_INTERNAL_TO_USER(a) ((a)*Rr_TurnToDeg)
-
-  =============================================================================
-
-  LICENSE
-
-  This software is in the public domain. Where that dedication is not
-  recognized, you are granted a perpetual, irrevocable license to copy,
-  distribute, and modify this file as you see fit.
-
-  =============================================================================
-
-  CREDITS
-
-  Originally written by Zakary Strange.
-
-  Functionality:
-   Zakary Strange (strangezak@protonmail.com && @strangezak)
-   Matt Mascarenhas (@miblo_)
-   Aleph
-   FieryDrake (@fierydrake)
-   Gingerbill (@TheGingerBill)
-   Ben Visness (@bvisness)
-   Trinton Bullard (@Peliex_Dev)
-   @AntonDan
-   Logan Forman (@dev_dwarf)
-
-  Fixes:
-   Jeroen van Rijn (@J_vanRijn)
-   Kiljacken (@Kiljacken)
-   Insofaras (@insofaras)
-   Daniel Gibson (@DanielGibson)
-*/
-
-#ifndef RR_MATH_H
-#define RR_MATH_H
+#include "Rr_Defines.h"
 
 // Dummy macros for when test framework is not present.
 #ifndef COVERAGE
@@ -175,18 +81,19 @@ extern "C"
     #define RR_MATH_USE_RADIANS
 #endif
 
-#define Rr_PI 3.14159265358979323846
-#define Rr_PI32 3.14159265359f
-#define Rr_DEG180 180.0
-#define Rr_DEG18032 180.0f
-#define Rr_TURNHALF 0.5
-#define Rr_TURNHALF32 0.5f
-#define Rr_RadToDeg ((float)(Rr_DEG180 / Rr_PI))
-#define Rr_RadToTurn ((float)(Rr_TURNHALF / Rr_PI))
-#define Rr_DegToRad ((float)(Rr_PI / Rr_DEG180))
-#define Rr_DegToTurn ((float)(Rr_TURNHALF / Rr_DEG180))
-#define Rr_TurnToRad ((float)(Rr_PI / Rr_TURNHALF))
-#define Rr_TurnToDeg ((float)(Rr_DEG180 / Rr_TURNHALF))
+#define RR_PI 3.14159265358979323846
+#define RR_PI32 3.14159265359f
+#define RR_DEG180 180.0
+#define RR_DEG18032 180.0f
+#define RR_TURNHALF 0.5
+#define RR_TURNHALF32 0.5f
+
+#define Rr_RadToDeg (Rr_StaticCast(float, RR_DEG180 / RR_PI))
+#define Rr_RadToTurn (Rr_StaticCast(float, RR_TURNHALF / RR_PI))
+#define Rr_DegToRad (Rr_StaticCast(float, RR_PI / RR_DEG180))
+#define Rr_DegToTurn (Rr_StaticCast(float, RR_TURNHALF / RR_DEG180))
+#define Rr_TurnToRad (Rr_StaticCast(float, RR_PI / RR_TURNHALF))
+#define Rr_TurnToDeg (Rr_StaticCast(float, RR_DEG180 / RR_TURNHALF))
 
 #if defined(RR_MATH_USE_RADIANS)
     #define Rr_AngleRad(a) (a)
@@ -454,6 +361,84 @@ typedef union Rr_IntVec3
     inline const int& operator[](int Index) const { return Elements[Index]; }
 #endif
 } Rr_IntVec3;
+
+typedef union Rr_IntVec4
+{
+    struct
+    {
+        union
+        {
+            Rr_IntVec3 XYZ;
+            struct
+            {
+                struct
+                {
+                    int X, Y;
+                };
+                union
+                {
+                    int Z;
+                    int Width;
+                };
+            };
+        };
+
+        union
+        {
+            int W;
+            int Height;
+        };
+    };
+    struct
+    {
+        union
+        {
+            Rr_IntVec3 RGB;
+            struct
+            {
+                int R, G, B;
+            };
+        };
+
+        int A;
+    };
+
+    struct
+    {
+        Rr_IntVec2 XY;
+        int _Ignored0;
+        int _Ignored1;
+    };
+
+    struct
+    {
+        int _Ignored2;
+        Rr_IntVec2 YZ;
+        int _Ignored3;
+    };
+
+    struct
+    {
+        int _Ignored4;
+        int _Ignored5;
+        Rr_IntVec2 ZW;
+    };
+
+    int Elements[4];
+
+#ifdef RR_MATH__USE_SSE
+    __m128i SSE;
+#endif
+
+#ifdef RR_MATH__USE_NEON
+    int32x4_t NEON;
+#endif
+
+#ifdef __cplusplus
+    inline int& operator[](int Index) { return Elements[Index]; }
+    inline const int& operator[](int Index) const { return Elements[Index]; }
+#endif
+} Rr_IntVec4;
 
 typedef union Rr_Mat2
 {
@@ -4070,5 +4055,3 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 #if defined(__GNUC__) || defined(__clang__)
     #pragma GCC diagnostic pop
 #endif
-
-#endif /* RR_MATH_H */

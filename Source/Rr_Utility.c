@@ -1,24 +1,19 @@
-#pragma once
+#include "Rr/Rr_Utility.h"
 
-#include "Rr_Defines.h"
+#include <math.h>
+#include <string.h>
 
-#ifdef __cplusplus
-    #include <cstring>
-#else
-    #include <string.h>
-#endif
-
-static inline f32 Rr_WrapMax(f32 X, f32 Max)
+f32 Rr_WrapMax(f32 X, f32 Max)
 {
     return fmodf(Max + fmodf(X, Max), Max);
 }
 
-static inline f32 Rr_WrapMinMax(f32 X, f32 Min, f32 Max)
+f32 Rr_WrapMinMax(f32 X, f32 Min, f32 Max)
 {
     return Min + Rr_WrapMax(X - Min, Max - Min);
 }
 
-static inline u16 Rr_FloatToHalf(u32 x)
+u16 Rr_FloatToHalf(u32 x)
 {
 #define Bit(N) ((uint32_t)1 << (N))
 #define Mask(N) (((uint32_t)1 << (N)) - 1)
@@ -100,7 +95,7 @@ static inline u16 Rr_FloatToHalf(u32 x)
 #undef Mask
 }
 
-static inline void Rr_PackVec4(Rr_Vec4 From, u32* OutA, u32* OutB)
+void Rr_PackVec4(Rr_Vec4 From, u32* OutA, u32* OutB)
 {
     typedef union PackHelper
     {

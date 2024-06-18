@@ -46,7 +46,8 @@ InsertBraces: true
 IndentExternBlock: NoIndent
 NamespaceIndentation: All
 PointerAlignment: Left
-SortIncludes: false
+PackConstructorInitializers: Never
+SortIncludes: Never
 SpaceBeforeCaseColon: false
 TabWidth: 4
 UseTab: Never
