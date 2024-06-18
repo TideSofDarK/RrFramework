@@ -177,27 +177,31 @@ Rr_UploadBufferAligned(
     else
     {
         UploadContext->ReleaseBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
-            (VkBufferMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                                     .pNext = NULL,
-                                     .buffer = Buffer,
-                                     .offset = 0,
-                                     .size = DataLength,
-                                     .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                                     .dstAccessMask = 0,
-                                     .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                                     .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex };
+            (VkBufferMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .pNext = NULL,
+                .buffer = Buffer,
+                .offset = 0,
+                .size = DataLength,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = 0,
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+            };
         UploadContext->ReleaseBarriers.BufferMemoryBarrierCount++;
 
         UploadContext->AcquireBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
-            (VkBufferMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                                     .pNext = NULL,
-                                     .buffer = Buffer,
-                                     .offset = 0,
-                                     .size = DataLength,
-                                     .srcAccessMask = 0,
-                                     .dstAccessMask = DstAccessMask,
-                                     .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                                     .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex };
+            (VkBufferMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .pNext = NULL,
+                .buffer = Buffer,
+                .offset = 0,
+                .size = DataLength,
+                .srcAccessMask = 0,
+                .dstAccessMask = DstAccessMask,
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+            };
         UploadContext->AcquireBarriers.BufferMemoryBarrierCount++;
     }
 }
@@ -259,7 +263,7 @@ Rr_CopyToMappedUniformBuffer(Rr_App* App, Rr_Buffer* DstBuffer, void* Data, Rr_U
     Rr_USize AlignedSize = Rr_Align(Size, Alignment);
     if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
-        memcpy((char*)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
+        memcpy((Rr_Byte*)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);
         *DstOffset += Size;
         *DstOffset = Rr_Align(*DstOffset, Alignment);
     }

@@ -144,12 +144,14 @@ Rr_LoadAsync(Rr_App* App, Rr_LoadTask* Tasks, Rr_USize TaskCount, Rr_LoadingCall
     Rr_LoadTask* NewTasks = Rr_ArenaAllocCount(&LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
     Rr_LoadingContext* LoadingContext = Rr_SlicePush(&LoadingThread->LoadingContextsSlice, &LoadingThread->Arena);
-    *LoadingContext = (Rr_LoadingContext){ .Semaphore = SDL_CreateSemaphore(0),
-                                           .LoadingCallback = LoadingCallback,
-                                           .Userdata = Userdata,
-                                           .App = App,
-                                           .Tasks = NewTasks,
-                                           .TaskCount = TaskCount };
+    *LoadingContext = (Rr_LoadingContext){
+        .Semaphore = SDL_CreateSemaphore(0),
+        .LoadingCallback = LoadingCallback,
+        .Userdata = Userdata,
+        .App = App,
+        .Tasks = NewTasks,
+        .TaskCount = TaskCount,
+    };
     SDL_PostSemaphore(LoadingThread->Semaphore);
     SDL_UnlockMutex(LoadingThread->Mutex);
 
@@ -210,15 +212,18 @@ Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext Loa
 
     vkBeginCommandBuffer(
         TransferCommandBuffer,
-        &(VkCommandBufferBeginInfo){ .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                     .pNext = NULL,
-                                     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                                     .pInheritanceInfo = NULL });
+        &(VkCommandBufferBeginInfo){
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext = NULL,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            .pInheritanceInfo = NULL,
+        });
 
-    Rr_UploadContext UploadContext = { .TransferCommandBuffer = TransferCommandBuffer,
-                                       .StagingBuffer = {
-                                           .Buffer = Rr_CreateMappedBuffer(
-                                               App, LoadSize.StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) } };
+    Rr_UploadContext UploadContext = {
+        .TransferCommandBuffer = TransferCommandBuffer,
+        .StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(
+                               App, LoadSize.StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) },
+    };
 
     if (bUseTransferQueue)
     {
@@ -248,15 +253,17 @@ Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext Loa
         vkQueueSubmit(
             Renderer->GraphicsQueue.Handle,
             1,
-            &(VkSubmitInfo){ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                             .pNext = NULL,
-                             .commandBufferCount = 1,
-                             .pCommandBuffers = &TransferCommandBuffer,
-                             .pSignalSemaphores = NULL,
-                             .pWaitSemaphores = NULL,
-                             .signalSemaphoreCount = 0,
-                             .waitSemaphoreCount = 0,
-                             .pWaitDstStageMask = 0 },
+            &(VkSubmitInfo){
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                .pNext = NULL,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &TransferCommandBuffer,
+                .pSignalSemaphores = NULL,
+                .pWaitSemaphores = NULL,
+                .signalSemaphoreCount = 0,
+                .waitSemaphoreCount = 0,
+                .pWaitDstStageMask = 0,
+            },
             LoadAsyncContext.Fence);
 
         SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
@@ -280,15 +287,17 @@ Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext Loa
         vkQueueSubmit(
             Renderer->TransferQueue.Handle,
             1,
-            &(VkSubmitInfo){ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                             .pNext = NULL,
-                             .commandBufferCount = 1,
-                             .pCommandBuffers = &TransferCommandBuffer,
-                             .signalSemaphoreCount = 1,
-                             .pSignalSemaphores = &LoadAsyncContext.Semaphore,
-                             .waitSemaphoreCount = 0,
-                             .pWaitSemaphores = NULL,
-                             .pWaitDstStageMask = 0 },
+            &(VkSubmitInfo){
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                .pNext = NULL,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &TransferCommandBuffer,
+                .signalSemaphoreCount = 1,
+                .pSignalSemaphores = &LoadAsyncContext.Semaphore,
+                .waitSemaphoreCount = 0,
+                .pWaitSemaphores = NULL,
+                .pWaitDstStageMask = 0,
+            },
             VK_NULL_HANDLE);
 
         /* Push acquire barriers to graphics queue. */
@@ -301,10 +310,12 @@ Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext Loa
 
             vkBeginCommandBuffer(
                 GraphicsCommandBuffer,
-                &(VkCommandBufferBeginInfo){ .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                             .pNext = NULL,
-                                             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                                             .pInheritanceInfo = NULL });
+                &(VkCommandBufferBeginInfo){
+                    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                    .pNext = NULL,
+                    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                    .pInheritanceInfo = NULL,
+                });
 
             vkCmdPipelineBarrier(
                 GraphicsCommandBuffer,
@@ -327,15 +338,17 @@ Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext Loa
             vkQueueSubmit(
                 Renderer->GraphicsQueue.Handle,
                 1,
-                &(VkSubmitInfo){ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                 .pNext = NULL,
-                                 .commandBufferCount = 1,
-                                 .pCommandBuffers = &GraphicsCommandBuffer,
-                                 .signalSemaphoreCount = 0,
-                                 .pSignalSemaphores = NULL,
-                                 .waitSemaphoreCount = 1,
-                                 .pWaitSemaphores = &LoadAsyncContext.Semaphore,
-                                 .pWaitDstStageMask = &WaitDstStageMask },
+                &(VkSubmitInfo){
+                    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                    .pNext = NULL,
+                    .commandBufferCount = 1,
+                    .pCommandBuffers = &GraphicsCommandBuffer,
+                    .signalSemaphoreCount = 0,
+                    .pSignalSemaphores = NULL,
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores = &LoadAsyncContext.Semaphore,
+                    .pWaitDstStageMask = &WaitDstStageMask,
+                },
                 LoadAsyncContext.Fence);
 
             SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
@@ -385,15 +398,18 @@ Rr_LoadImmediate_Internal(Rr_LoadingContext* LoadingContext)
     vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
     vkBeginCommandBuffer(
         TransferCommandBuffer,
-        &(VkCommandBufferBeginInfo){ .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                     .pNext = NULL,
-                                     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                                     .pInheritanceInfo = NULL });
+        &(VkCommandBufferBeginInfo){
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext = NULL,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            .pInheritanceInfo = NULL,
+        });
 
-    Rr_UploadContext UploadContext = { .TransferCommandBuffer = TransferCommandBuffer,
-                                       .StagingBuffer = {
-                                           .Buffer = Rr_CreateMappedBuffer(
-                                               App, LoadSize.StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) } };
+    Rr_UploadContext UploadContext = {
+        .TransferCommandBuffer = TransferCommandBuffer,
+        .StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(
+                               App, LoadSize.StagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) },
+    };
 
     Rr_LoadResourcesFromTasks(App, Tasks, TaskCount, &UploadContext, LoadingContext->Semaphore, Scratch.Arena);
 
@@ -415,15 +431,17 @@ Rr_LoadImmediate_Internal(Rr_LoadingContext* LoadingContext)
     vkQueueSubmit(
         Renderer->GraphicsQueue.Handle,
         1,
-        &(VkSubmitInfo){ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                         .pNext = NULL,
-                         .commandBufferCount = 1,
-                         .pCommandBuffers = &TransferCommandBuffer,
-                         .pSignalSemaphores = NULL,
-                         .pWaitSemaphores = NULL,
-                         .signalSemaphoreCount = 0,
-                         .waitSemaphoreCount = 0,
-                         .pWaitDstStageMask = 0 },
+        &(VkSubmitInfo){
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .pNext = NULL,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &TransferCommandBuffer,
+            .pSignalSemaphores = NULL,
+            .pWaitSemaphores = NULL,
+            .signalSemaphoreCount = 0,
+            .waitSemaphoreCount = 0,
+            .pWaitDstStageMask = 0,
+        },
         Fence);
 
     SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);

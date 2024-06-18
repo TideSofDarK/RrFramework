@@ -48,6 +48,7 @@ IndentCaseLabels: true
 IndentPPDirectives: BeforeHash
 IndentWidth: 4
 InsertBraces: true
+InsertTrailingCommas: Wrapped
 IndentExternBlock: NoIndent
 NamespaceIndentation: All
 PointerAlignment: Left

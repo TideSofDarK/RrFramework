@@ -99,29 +99,33 @@ Rr_UploadImage(
     if (UploadContext->bUseAcquireBarriers)
     {
         UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-            (VkImageMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                    .pNext = NULL,
-                                    .image = Image,
-                                    .oldLayout = DstLayout,
-                                    .newLayout = DstLayout,
-                                    .subresourceRange = SubresourceRange,
-                                    .srcAccessMask = DstAccessMask,
-                                    .dstAccessMask = 0,
-                                    .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                                    .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex };
+            (VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .image = Image,
+                .oldLayout = DstLayout,
+                .newLayout = DstLayout,
+                .subresourceRange = SubresourceRange,
+                .srcAccessMask = DstAccessMask,
+                .dstAccessMask = 0,
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+            };
         UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
 
         UploadContext->AcquireBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-            (VkImageMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                    .pNext = NULL,
-                                    .image = Image,
-                                    .oldLayout = DstLayout,
-                                    .newLayout = DstLayout,
-                                    .subresourceRange = SubresourceRange,
-                                    .srcAccessMask = 0,
-                                    .dstAccessMask = DstAccessMask,
-                                    .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                                    .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex };
+            (VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .image = Image,
+                .oldLayout = DstLayout,
+                .newLayout = DstLayout,
+                .subresourceRange = SubresourceRange,
+                .srcAccessMask = 0,
+                .dstAccessMask = DstAccessMask,
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+            };
         UploadContext->AcquireBarriers.ImageMemoryBarrierCount++;
     }
 }
@@ -455,6 +459,6 @@ Rr_ChainImageBarrier(
         DstStageMask,
         DstAccessMask,
         NewLayout,
-        (NewLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT
-                                                                        : VK_IMAGE_ASPECT_COLOR_BIT);
+        NewLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ? VK_IMAGE_ASPECT_DEPTH_BIT
+                                                                      : VK_IMAGE_ASPECT_COLOR_BIT);
 }

@@ -562,47 +562,60 @@ Rr_CreateRenderPassColorDepth(Rr_App* App)
     Rr_Renderer* Renderer = &App->Renderer;
 
     VkAttachmentDescription Attachments[2] = {
-        (VkAttachmentDescription){ .samples = 1,
-                                  .format = RR_COLOR_FORMAT,
-                                  .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                  .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                  .flags = 0,
-                                  .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                  .storeOp = VK_ATTACHMENT_STORE_OP_STORE },
-        (VkAttachmentDescription){ .samples = 1,
-                                  .format = RR_DEPTH_FORMAT,
-                                  .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                  .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                  .flags = 0,
-                                  .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                  .storeOp = VK_ATTACHMENT_STORE_OP_STORE }
+        {
+         .samples = 1,
+         .format = RR_COLOR_FORMAT,
+         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+         .flags = 0,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+         },
+        {
+         .samples = 1,
+         .format = RR_DEPTH_FORMAT,
+         .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+         .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+         .flags = 0,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+         },
     };
 
-    VkAttachmentReference ColorAttachmentRef = { .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+    VkAttachmentReference ColorAttachmentRef = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    };
 
-    VkAttachmentReference DepthAttachmentRef = { .attachment = 1,
-                                                 .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+    VkAttachmentReference DepthAttachmentRef = {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
 
-    VkSubpassDescription SubpassDescription = { .flags = 0,
-                                                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                .colorAttachmentCount = 1,
-                                                .pColorAttachments = &ColorAttachmentRef,
-                                                .pDepthStencilAttachment = &DepthAttachmentRef,
-                                                .pResolveAttachments = NULL,
-                                                .inputAttachmentCount = 0,
-                                                .pInputAttachments = NULL,
-                                                .preserveAttachmentCount = 0,
-                                                .pPreserveAttachments = NULL };
+    VkSubpassDescription SubpassDescription = {
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &ColorAttachmentRef,
+        .pDepthStencilAttachment = &DepthAttachmentRef,
+        .pResolveAttachments = NULL,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = NULL,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = NULL,
+    };
 
-    VkRenderPassCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                    .pNext = VK_NULL_HANDLE,
-                                    .flags = 0,
-                                    .attachmentCount = SDL_arraysize(Attachments),
-                                    .pAttachments = Attachments,
-                                    .subpassCount = 1,
-                                    .pSubpasses = &SubpassDescription,
-                                    .dependencyCount = 0,
-                                    .pDependencies = NULL };
+    VkRenderPassCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = 0,
+        .attachmentCount = SDL_arraysize(Attachments),
+        .pAttachments = Attachments,
+        .subpassCount = 1,
+        .pSubpasses = &SubpassDescription,
+        .dependencyCount = 0,
+        .pDependencies = NULL,
+    };
 
     VkRenderPass RenderPass;
     vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
@@ -615,47 +628,60 @@ Rr_CreateRenderPassColorDepthLoad(Rr_App* App)
     Rr_Renderer* Renderer = &App->Renderer;
 
     VkAttachmentDescription Attachments[2] = {
-        (VkAttachmentDescription){ .samples = 1,
-                                  .format = RR_COLOR_FORMAT,
-                                  .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                  .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                  .flags = 0,
-                                  .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-                                  .storeOp = VK_ATTACHMENT_STORE_OP_STORE     },
-        (VkAttachmentDescription){ .samples = 1,
-                                  .format = RR_DEPTH_FORMAT,
-                                  .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                  .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                  .flags = 0,
-                                  .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                  .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE }
+        {
+         .samples = 1,
+         .format = RR_COLOR_FORMAT,
+         .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+         .flags = 0,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+         },
+        {
+         .samples = 1,
+         .format = RR_DEPTH_FORMAT,
+         .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+         .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+         .flags = 0,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+         .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+         }
     };
 
-    VkAttachmentReference ColorAttachmentRef = { .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+    VkAttachmentReference ColorAttachmentRef = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    };
 
-    VkAttachmentReference DepthAttachmentRef = { .attachment = 1,
-                                                 .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+    VkAttachmentReference DepthAttachmentRef = {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
 
-    VkSubpassDescription SubpassDescription = { .flags = 0,
-                                                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                .colorAttachmentCount = 1,
-                                                .pColorAttachments = &ColorAttachmentRef,
-                                                .pDepthStencilAttachment = &DepthAttachmentRef,
-                                                .pResolveAttachments = NULL,
-                                                .inputAttachmentCount = 0,
-                                                .pInputAttachments = NULL,
-                                                .preserveAttachmentCount = 0,
-                                                .pPreserveAttachments = NULL };
+    VkSubpassDescription SubpassDescription = {
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &ColorAttachmentRef,
+        .pDepthStencilAttachment = &DepthAttachmentRef,
+        .pResolveAttachments = NULL,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = NULL,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = NULL,
+    };
 
-    VkRenderPassCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                    .pNext = VK_NULL_HANDLE,
-                                    .flags = 0,
-                                    .attachmentCount = SDL_arraysize(Attachments),
-                                    .pAttachments = Attachments,
-                                    .subpassCount = 1,
-                                    .pSubpasses = &SubpassDescription,
-                                    .dependencyCount = 0,
-                                    .pDependencies = NULL };
+    VkRenderPassCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = 0,
+        .attachmentCount = SDL_arraysize(Attachments),
+        .pAttachments = Attachments,
+        .subpassCount = 1,
+        .pSubpasses = &SubpassDescription,
+        .dependencyCount = 0,
+        .pDependencies = NULL,
+    };
 
     VkRenderPass RenderPass;
     vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
@@ -668,38 +694,46 @@ Rr_CreateRenderPassDepth(Rr_App* App)
     Rr_Renderer* Renderer = &App->Renderer;
 
     VkAttachmentDescription Attachments[1] = {
-        (VkAttachmentDescription){ .samples = 1,
-                                  .format = RR_DEPTH_FORMAT,
-                                  .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                  .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                  .flags = 0,
-                                  .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                  .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE }
+        {
+         .samples = 1,
+         .format = RR_DEPTH_FORMAT,
+         .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+         .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+         .flags = 0,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+         .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+         },
     };
 
-    VkAttachmentReference DepthAttachmentRef = { .attachment = 0,
-                                                 .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+    VkAttachmentReference DepthAttachmentRef = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
 
-    VkSubpassDescription SubpassDescription = { .flags = 0,
-                                                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                .colorAttachmentCount = 0,
-                                                .pColorAttachments = NULL,
-                                                .pDepthStencilAttachment = &DepthAttachmentRef,
-                                                .pResolveAttachments = NULL,
-                                                .inputAttachmentCount = 0,
-                                                .pInputAttachments = NULL,
-                                                .preserveAttachmentCount = 0,
-                                                .pPreserveAttachments = NULL };
+    VkSubpassDescription SubpassDescription = {
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 0,
+        .pColorAttachments = NULL,
+        .pDepthStencilAttachment = &DepthAttachmentRef,
+        .pResolveAttachments = NULL,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = NULL,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = NULL,
+    };
 
-    VkRenderPassCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                    .pNext = VK_NULL_HANDLE,
-                                    .flags = 0,
-                                    .attachmentCount = SDL_arraysize(Attachments),
-                                    .pAttachments = Attachments,
-                                    .subpassCount = 1,
-                                    .pSubpasses = &SubpassDescription,
-                                    .dependencyCount = 0,
-                                    .pDependencies = NULL };
+    VkRenderPassCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = 0,
+        .attachmentCount = SDL_arraysize(Attachments),
+        .pAttachments = Attachments,
+        .subpassCount = 1,
+        .pSubpasses = &SubpassDescription,
+        .dependencyCount = 0,
+        .pDependencies = NULL,
+    };
 
     VkRenderPass RenderPass;
     vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
@@ -768,9 +802,10 @@ Rr_InitNullTextures(Rr_App* App)
     Rr_Renderer* Renderer = &App->Renderer;
 
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
-    Rr_UploadContext UploadContext = { .StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(
-                                                              App, 256, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) },
-                                       .TransferCommandBuffer = CommandBuffer };
+    Rr_UploadContext UploadContext = {
+        .StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(App, 256, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) },
+        .TransferCommandBuffer = CommandBuffer,
+    };
     Rr_U32 WhiteData = 0xffffffff;
     Renderer->NullTextures.White =
         Rr_CreateColorImageFromMemory(App, &UploadContext, (Rr_Byte*)&WhiteData, 1, 1, RR_FALSE);
@@ -966,15 +1001,17 @@ Rr_EndImmediate(Rr_Renderer* Renderer)
 
     vkEndCommandBuffer(ImmediateMode->CommandBuffer);
 
-    VkSubmitInfo SubmitInfo = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                .pNext = NULL,
-                                .commandBufferCount = 1,
-                                .pCommandBuffers = &ImmediateMode->CommandBuffer,
-                                .signalSemaphoreCount = 0,
-                                .pSignalSemaphores = NULL,
-                                .waitSemaphoreCount = 0,
-                                .pWaitSemaphores = NULL,
-                                .pWaitDstStageMask = NULL };
+    VkSubmitInfo SubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = NULL,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &ImmediateMode->CommandBuffer,
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores = NULL,
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = NULL,
+        .pWaitDstStageMask = NULL,
+    };
 
     vkQueueSubmit(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
     vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, RR_TRUE, UINT64_MAX);
@@ -1049,21 +1086,22 @@ Rr_Draw(Rr_App* App)
     Rr_Image* ColorImage = Renderer->DrawTarget->ColorImage;
     Rr_Image* DepthImage = Renderer->DrawTarget->DepthImage;
 
-    Rr_ImageBarrier ColorImageTransition = { .CommandBuffer = CommandBuffer,
-                                             .Image = ColorImage->Handle,
-                                             .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                             .AccessMask = VK_ACCESS_TRANSFER_READ_BIT
-                                                 | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                                                 | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT
-                                                 | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    Rr_ImageBarrier ColorImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = ColorImage->Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask =
+            VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    };
 
-    Rr_ImageBarrier DepthImageTransition = { .CommandBuffer = CommandBuffer,
-                                             .Image = DepthImage->Handle,
-                                             .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                             .AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                                                 | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                                             .StageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT };
+    Rr_ImageBarrier DepthImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = DepthImage->Handle,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .StageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+    };
 
     Rr_ChainImageBarrier(
         &ColorImageTransition,
@@ -1111,11 +1149,13 @@ Rr_Draw(Rr_App* App)
         VK_ACCESS_TRANSFER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    Rr_ImageBarrier SwapchainImageTransition = { .CommandBuffer = CommandBuffer,
-                                                 .Image = SwapchainImage,
-                                                 .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                                 .AccessMask = VK_ACCESS_NONE,
-                                                 .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    Rr_ImageBarrier SwapchainImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = SwapchainImage,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = VK_ACCESS_NONE,
+        .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    };
 
     Rr_ChainImageBarrier(
         &SwapchainImageTransition,
@@ -1137,15 +1177,17 @@ Rr_Draw(Rr_App* App)
     Rr_USize WaitSemaphoreIndex = 1;
     WaitSemaphores[0] = Frame->SwapchainSemaphore;
     WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    VkSubmitInfo SubmitInfo = { .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                .pNext = NULL,
-                                .commandBufferCount = 1,
-                                .pCommandBuffers = &CommandBuffer,
-                                .signalSemaphoreCount = 1,
-                                .pSignalSemaphores = &Frame->RenderSemaphore,
-                                .waitSemaphoreCount = WaitSemaphoreIndex,
-                                .pWaitSemaphores = WaitSemaphores,
-                                .pWaitDstStageMask = WaitDstStages };
+    VkSubmitInfo SubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = NULL,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &CommandBuffer,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &Frame->RenderSemaphore,
+        .waitSemaphoreCount = WaitSemaphoreIndex,
+        .pWaitSemaphores = WaitSemaphores,
+        .pWaitDstStageMask = WaitDstStages,
+    };
 
     SDL_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 

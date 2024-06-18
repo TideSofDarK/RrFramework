@@ -129,9 +129,10 @@ Rr_CreatePhysicalDevice(
     VkPhysicalDevice* PhysicalDevices = Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
-    PhysicalDevice.SubgroupProperties =
-        (VkPhysicalDeviceSubgroupProperties){ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
-                                              .pNext = NULL };
+    PhysicalDevice.SubgroupProperties = (VkPhysicalDeviceSubgroupProperties){
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+        .pNext = NULL,
+    };
 
     PhysicalDevice.Properties = (VkPhysicalDeviceProperties2){
         .pNext = &PhysicalDevice.SubgroupProperties,
@@ -284,7 +285,6 @@ Rr_BlitColorImage(
             .layerCount = 1,
         },
         .dstOffsets = { { 0 }, { (Rr_I32)DstSize.width, (Rr_I32)DstSize.height, 1 } },
-
     };
 
     vkCmdBlitImage(
