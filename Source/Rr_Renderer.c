@@ -1188,7 +1188,7 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer)
 
 Rr_Bool Rr_IsUsingTransferQueue(Rr_Renderer* Renderer)
 {
-    return Renderer->TransferQueue.FamilyIndex == Renderer->GraphicsQueue.FamilyIndex;
+    return Renderer->TransferQueue.Handle != VK_NULL_HANDLE;
 }
 
 VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer* Renderer)

@@ -136,7 +136,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
 
     Rr_Bool bUseTransferQueue = RR_FALSE;
     Rr_Bool bFoundSuitableDevice = RR_FALSE;
-    for (Rr_U32 Index = 0; Index < PhysicalDeviceCount; Index++)
+    for (Rr_U32 Index = 1; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
         if (Rr_CheckPhysicalDevice(

@@ -484,7 +484,7 @@ static Rr_LoadAsyncContext Rr_CreateLoadAsyncContext(Rr_Renderer* Renderer)
                                               .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
                                           },
         NULL, &LoadAsyncContext.GraphicsCommandPool);
-    if (!Rr_IsUsingTransferQueue(Renderer))
+    if (Rr_IsUsingTransferQueue(Renderer))
     {
         vkCreateCommandPool(Renderer->Device, &(VkCommandPoolCreateInfo){
                                                   .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
