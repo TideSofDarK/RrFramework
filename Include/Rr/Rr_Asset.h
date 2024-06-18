@@ -88,7 +88,8 @@ typedef struct Rr_AssetRef
 
 #endif
 
-extern Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
+extern Rr_Asset
+Rr_LoadAsset(Rr_AssetRef AssetRef);
 
 #ifdef __cplusplus
 }

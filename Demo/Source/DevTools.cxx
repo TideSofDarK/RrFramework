@@ -5,7 +5,8 @@
 #include <tinyexr/tinyexr.h>
 #include <cstdlib>
 
-void HandleFileDrop(const char* Path)
+void
+HandleFileDrop(const char* Path)
 {
     //    int Result;
     //    const char* Error;
