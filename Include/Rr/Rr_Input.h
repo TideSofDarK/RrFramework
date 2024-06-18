@@ -119,8 +119,8 @@ typedef enum Rr_KeyState
 
 typedef struct Rr_InputMapping
 {
-    Rr_I32 Primary;
-    Rr_I32 Secondary;
+    Rr_Scancode Primary;
+    Rr_Scancode Secondary;
 } Rr_InputMapping;
 
 typedef struct Rr_InputConfig
