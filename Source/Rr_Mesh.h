@@ -41,38 +41,42 @@ struct Rr_SkeletalMesh
     Rr_U8 MaterialCount : 4;
 };
 
-extern Rr_Primitive* Rr_CreatePrimitive(
-    struct Rr_App* App,
-    struct Rr_UploadContext* UploadContext,
-    Rr_RawMesh* RawMesh);
-extern void Rr_DestroyPrimitive(struct Rr_App* App, Rr_Primitive* Primitive);
+extern Rr_Primitive*
+Rr_CreatePrimitive(struct Rr_App* App, struct Rr_UploadContext* UploadContext, Rr_RawMesh* RawMesh);
 
-extern Rr_StaticMesh* Rr_CreateStaticMesh(
+extern void
+Rr_DestroyPrimitive(struct Rr_App* App, Rr_Primitive* Primitive);
+
+extern Rr_StaticMesh*
+Rr_CreateStaticMesh(
     struct Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_RawMesh* RawMeshes,
     size_t RawMeshCount,
     struct Rr_Material** Materials,
     size_t MaterialCount);
-extern Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
+
+extern Rr_StaticMesh*
+Rr_CreateStaticMeshGLTF(
     struct Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
     struct Rr_GLTFLoader* Loader,
     Rr_USize MeshIndex,
     Rr_Arena* Arena);
-extern Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
+
+extern Rr_StaticMesh*
+Rr_CreateStaticMeshOBJ(
     struct Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
     Rr_Arena* Arena);
 
-extern void Rr_GetStaticMeshSizeOBJ(
-    Rr_AssetRef AssetRef,
-    Rr_Arena* Arena,
-    struct Rr_LoadSize* OutLoadSize);
+extern void
+Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena, struct Rr_LoadSize* OutLoadSize);
 
-extern void Rr_GetStaticMeshSizeGLTF(
+extern void
+Rr_GetStaticMeshSizeGLTF(
     Rr_AssetRef AssetRef,
     struct Rr_GLTFLoader* Loader,
     Rr_USize MeshIndex,

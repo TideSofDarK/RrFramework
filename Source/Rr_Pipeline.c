@@ -11,24 +11,21 @@ enum Rr_VertexInputBinding
     RR_VERTEX_INPUT_BINDING_PER_INSTANCE
 };
 
-VkPipeline Rr_BuildPipeline(
-    Rr_Renderer* Renderer,
-    Rr_PipelineBuilder* PipelineBuilder,
-    VkPipelineLayout PipelineLayout)
+VkPipeline
+Rr_BuildPipeline(Rr_Renderer* Renderer, Rr_PipelineBuilder* PipelineBuilder, VkPipelineLayout PipelineLayout)
 {
     /* Create shader modules. */
-    VkPipelineShaderStageCreateInfo* ShaderStages = Rr_StackAlloc(VkPipelineShaderStageCreateInfo, RR_PIPELINE_SHADER_STAGES);
+    VkPipelineShaderStageCreateInfo* ShaderStages =
+        Rr_StackAlloc(VkPipelineShaderStageCreateInfo, RR_PIPELINE_SHADER_STAGES);
     Rr_U32 ShaderStageCount = 0;
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
     if (PipelineBuilder->VertexShaderSPV.Data != NULL)
     {
-        VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .pCode = (Rr_U32*)PipelineBuilder->VertexShaderSPV.Data,
-            .codeSize = PipelineBuilder->VertexShaderSPV.Length
-        };
+        VkShaderModuleCreateInfo ShaderModuleCreateInfo = { .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                            .pNext = VK_NULL_HANDLE,
+                                                            .pCode = (Rr_U32*)PipelineBuilder->VertexShaderSPV.Data,
+                                                            .codeSize = PipelineBuilder->VertexShaderSPV.Length };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
         ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
         ShaderStageCount++;
@@ -37,12 +34,10 @@ VkPipeline Rr_BuildPipeline(
     VkShaderModule FragModule = VK_NULL_HANDLE;
     if (PipelineBuilder->FragmentShaderSPV.Data != NULL)
     {
-        VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .pCode = (Rr_U32*)PipelineBuilder->FragmentShaderSPV.Data,
-            .codeSize = PipelineBuilder->FragmentShaderSPV.Length
-        };
+        VkShaderModuleCreateInfo ShaderModuleCreateInfo = { .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                            .pNext = VK_NULL_HANDLE,
+                                                            .pCode = (Rr_U32*)PipelineBuilder->FragmentShaderSPV.Data,
+                                                            .codeSize = PipelineBuilder->FragmentShaderSPV.Length };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
         ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
         ShaderStageCount++;
@@ -71,15 +66,15 @@ VkPipeline Rr_BuildPipeline(
     };
     VkVertexInputBindingDescription VertexInputBindingDescriptions[2] = {
         {
-            .binding = 0,
-            .stride = PipelineBuilder->VertexInput[0].VertexInputStride,
-            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-        },
+         .binding = 0,
+         .stride = PipelineBuilder->VertexInput[0].VertexInputStride,
+         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+         },
         {
-            .binding = 1,
-            .stride = PipelineBuilder->VertexInput[1].VertexInputStride,
-            .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
-        }
+         .binding = 1,
+         .stride = PipelineBuilder->VertexInput[1].VertexInputStride,
+         .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
+         }
     };
 
     Rr_U32 AttributeCount = 0;
@@ -112,12 +107,10 @@ VkPipeline Rr_BuildPipeline(
 
     /* Dynamic States */
     VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-    VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .pDynamicStates = DynamicStates,
-        .dynamicStateCount = SDL_arraysize(DynamicStates)
-    };
+    VkPipelineDynamicStateCreateInfo DynamicStateInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+                                                          .pNext = NULL,
+                                                          .pDynamicStates = DynamicStates,
+                                                          .dynamicStateCount = SDL_arraysize(DynamicStates) };
 
     /* Select render pass. */
     VkRenderPass RenderPass = VK_NULL_HANDLE;
@@ -135,22 +128,20 @@ VkPipeline Rr_BuildPipeline(
     }
 
     /* Create pipeline. */
-    VkGraphicsPipelineCreateInfo PipelineInfo = {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = NULL,
-        .stageCount = ShaderStageCount,
-        .pStages = ShaderStages,
-        .pVertexInputState = &VertexInputInfo,
-        .pInputAssemblyState = &PipelineBuilder->InputAssembly,
-        .pViewportState = &ViewportInfo,
-        .pRasterizationState = &PipelineBuilder->Rasterizer,
-        .pMultisampleState = &PipelineBuilder->Multisampling,
-        .pColorBlendState = &ColorBlendInfo,
-        .pDepthStencilState = &PipelineBuilder->DepthStencil,
-        .layout = PipelineLayout,
-        .pDynamicState = &DynamicStateInfo,
-        .renderPass = RenderPass
-    };
+    VkGraphicsPipelineCreateInfo PipelineInfo = { .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+                                                  .pNext = NULL,
+                                                  .stageCount = ShaderStageCount,
+                                                  .pStages = ShaderStages,
+                                                  .pVertexInputState = &VertexInputInfo,
+                                                  .pInputAssemblyState = &PipelineBuilder->InputAssembly,
+                                                  .pViewportState = &ViewportInfo,
+                                                  .pRasterizationState = &PipelineBuilder->Rasterizer,
+                                                  .pMultisampleState = &PipelineBuilder->Multisampling,
+                                                  .pColorBlendState = &ColorBlendInfo,
+                                                  .pDepthStencilState = &PipelineBuilder->DepthStencil,
+                                                  .layout = PipelineLayout,
+                                                  .pDynamicState = &DynamicStateInfo,
+                                                  .renderPass = RenderPass };
 
     VkPipeline Pipeline;
     vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline);
@@ -171,7 +162,8 @@ VkPipeline Rr_BuildPipeline(
     return Pipeline;
 }
 
-Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void)
+Rr_PipelineBuilder*
+Rr_CreatePipelineBuilder(void)
 {
     Rr_PipelineBuilder* PipelineBuilder = Rr_Calloc(1, sizeof(Rr_PipelineBuilder));
     *PipelineBuilder = (Rr_PipelineBuilder){
@@ -188,38 +180,45 @@ Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void)
     return PipelineBuilder;
 }
 
-void Rr_EnableColorAttachment(Rr_PipelineBuilder* PipelineBuilder, Rr_Bool bEnableAlphaBlend)
+void
+Rr_EnableColorAttachment(Rr_PipelineBuilder* PipelineBuilder, Rr_Bool bEnableAlphaBlend)
 {
     PipelineBuilder->ColorAttachmentFormats[PipelineBuilder->ColorAttachmentCount] = RR_COLOR_FORMAT;
     if (bEnableAlphaBlend)
     {
-        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] = (VkPipelineColorBlendAttachmentState){
-            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-            .blendEnable = VK_TRUE,
-            .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-            .colorBlendOp = VK_BLEND_OP_ADD,
-            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-            .alphaBlendOp = VK_BLEND_OP_ADD,
-        };
+        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
+            (VkPipelineColorBlendAttachmentState){
+                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
+                    | VK_COLOR_COMPONENT_A_BIT,
+                .blendEnable = VK_TRUE,
+                .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+                .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                .colorBlendOp = VK_BLEND_OP_ADD,
+                .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+                .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+                .alphaBlendOp = VK_BLEND_OP_ADD,
+            };
     }
     else
     {
-        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] = (VkPipelineColorBlendAttachmentState){
-            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-            .blendEnable = VK_FALSE,
-        };
+        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
+            (VkPipelineColorBlendAttachmentState){
+                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
+                    | VK_COLOR_COMPONENT_A_BIT,
+                .blendEnable = VK_FALSE,
+            };
     }
     PipelineBuilder->ColorAttachmentCount++;
 }
 
-void Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder)
+void
+Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder)
 {
     PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
 }
 
-static VkFormat Rr_GetVulkanFormat(Rr_VertexInputType Type)
+static VkFormat
+Rr_GetVulkanFormat(Rr_VertexInputType Type)
 {
     switch (Type)
     {
@@ -239,7 +238,8 @@ static VkFormat Rr_GetVulkanFormat(Rr_VertexInputType Type)
     }
 }
 
-static Rr_USize Rr_GetVertexInputSize(Rr_VertexInputType Type)
+static Rr_USize
+Rr_GetVertexInputSize(Rr_VertexInputType Type)
 {
     switch (Type)
     {
@@ -259,7 +259,8 @@ static Rr_USize Rr_GetVertexInputSize(Rr_VertexInputType Type)
     }
 }
 
-static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInputAttribute Attribute, Rr_USize Binding)
+static void
+EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInputAttribute Attribute, Rr_USize Binding)
 {
     VkFormat Format = Rr_GetVulkanFormat(Attribute.Type);
     if (Format == VK_FORMAT_UNDEFINED)
@@ -283,7 +284,8 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_V
     PipelineBuilder->VertexInput[Binding].VertexInputStride += Rr_GetVertexInputSize(Attribute.Type);
 }
 
-void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
+void
+Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
 {
     for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
@@ -291,25 +293,30 @@ void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_V
     }
 }
 
-void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
+void
+Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
 {
     for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
-        EnableVertexInputAttribute(PipelineBuilder, VertexInput->Attributes[Index], RR_VERTEX_INPUT_BINDING_PER_INSTANCE);
+        EnableVertexInputAttribute(
+            PipelineBuilder, VertexInput->Attributes[Index], RR_VERTEX_INPUT_BINDING_PER_INSTANCE);
     }
 }
 
-void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
+void
+Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
 {
     PipelineBuilder->VertexShaderSPV = *SPVAsset;
 }
 
-void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
+void
+Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
 {
     PipelineBuilder->FragmentShaderSPV = *SPVAsset;
 }
 
-void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, Rr_PolygonMode PolygonMode)
+void
+Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, Rr_PolygonMode PolygonMode)
 {
     switch (PolygonMode)
     {
@@ -329,17 +336,16 @@ void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, Rr_PolygonMode Pol
     PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 }
 
-void Rr_EnableDepthTest(Rr_PipelineBuilder* PipelineBuilder)
+void
+Rr_EnableDepthTest(Rr_PipelineBuilder* PipelineBuilder)
 {
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 }
 
-Rr_GenericPipeline* Rr_BuildGenericPipeline(
-    Rr_App* App,
-    Rr_PipelineBuilder* PipelineBuilder,
-    Rr_GenericPipelineSizes Sizes)
+Rr_GenericPipeline*
+Rr_BuildGenericPipeline(Rr_App* App, Rr_PipelineBuilder* PipelineBuilder, Rr_GenericPipelineSizes Sizes)
 {
     SDL_assert(Sizes.Globals < RR_PIPELINE_MAX_GLOBALS_SIZE);
     SDL_assert(Sizes.Material < RR_PIPELINE_MAX_MATERIAL_SIZE);
@@ -359,15 +365,15 @@ Rr_GenericPipeline* Rr_BuildGenericPipeline(
     Rr_EnablePerVertexInputAttributes(PipelineBuilder, &VertexInput);
 
     Rr_GenericPipeline* Pipeline = Rr_CreateObject(&App->ObjectStorage);
-    *Pipeline = (Rr_GenericPipeline){
-        .Handle = Rr_BuildPipeline(Renderer, PipelineBuilder, Renderer->GenericPipelineLayout),
-        .Sizes = Sizes
-    };
+    *Pipeline =
+        (Rr_GenericPipeline){ .Handle = Rr_BuildPipeline(Renderer, PipelineBuilder, Renderer->GenericPipelineLayout),
+                              .Sizes = Sizes };
 
     return Pipeline;
 }
 
-void Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
+void
+Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
@@ -377,7 +383,8 @@ void Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
     Rr_DestroyObject(&App->ObjectStorage, Pipeline);
 }
 
-Rr_GenericPipelineSizes Rr_GetGenericPipelineSizes(Rr_GenericPipeline* Pipeline)
+Rr_GenericPipelineSizes
+Rr_GetGenericPipelineSizes(Rr_GenericPipeline* Pipeline)
 {
     return Pipeline->Sizes;
 }

@@ -52,8 +52,14 @@ struct Rr_LoadAsyncContext
     VkSemaphore Semaphore;
 };
 
-extern Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext LoadAsyncContext);
-extern Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext* LoadingContext);
+extern Rr_LoadResult
+Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext LoadAsyncContext);
 
-extern void Rr_InitLoadingThread(Rr_App* App);
-extern void Rr_CleanupLoadingThread(Rr_App* App);
+extern Rr_LoadResult
+Rr_LoadImmediate_Internal(Rr_LoadingContext* LoadingContext);
+
+extern void
+Rr_InitLoadingThread(Rr_App* App);
+
+extern void
+Rr_CleanupLoadingThread(Rr_App* App);

@@ -43,22 +43,27 @@ typedef enum Rr_VertexInputType
     RR_VERTEX_INPUT_TYPE_VEC4,
 } Rr_VertexInputType;
 
-typedef struct Rr_VertexInputAttribute
+typedef struct Rr_VertexInputAttribute Rr_VertexInputAttribute;
+struct Rr_VertexInputAttribute
 {
     Rr_VertexInputType Type;
     Rr_U32 Location;
-} Rr_VertexInputAttribute;
+};
 
-typedef struct Rr_VertexInput
+typedef struct Rr_VertexInput Rr_VertexInput;
+struct Rr_VertexInput
 {
     Rr_VertexInputAttribute Attributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
-} Rr_VertexInput;
+};
 
-extern void Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder);
-extern void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput);
-extern void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput);
+extern void
+Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder);
 
-extern VkPipeline Rr_BuildPipeline(
-    struct Rr_Renderer* Renderer,
-    Rr_PipelineBuilder* PipelineBuilder,
-    VkPipelineLayout PipelineLayout);
+extern void
+Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput);
+
+extern void
+Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput);
+
+extern VkPipeline
+Rr_BuildPipeline(struct Rr_Renderer* Renderer, Rr_PipelineBuilder* PipelineBuilder, VkPipelineLayout PipelineLayout);

@@ -23,7 +23,8 @@ union Rr_Object
     void* Next;
 };
 
-Rr_ObjectStorage Rr_CreateObjectStorage()
+Rr_ObjectStorage
+Rr_CreateObjectStorage()
 {
     Rr_ObjectStorage ObjectStorage = { 0 };
     ObjectStorage.Storage = Rr_Calloc(1, Rr_CalculateObjectStorageSize(RR_MAX_OBJECTS));
@@ -32,7 +33,8 @@ Rr_ObjectStorage Rr_CreateObjectStorage()
     return ObjectStorage;
 }
 
-void Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage)
+void
+Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
@@ -42,7 +44,8 @@ void Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage)
     SDL_UnlockSpinlock(&Storage->Lock);
 }
 
-void* Rr_CreateObject(Rr_ObjectStorage* Storage)
+void*
+Rr_CreateObject(Rr_ObjectStorage* Storage)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
@@ -63,7 +66,8 @@ void* Rr_CreateObject(Rr_ObjectStorage* Storage)
     return NewObject;
 }
 
-void Rr_DestroyObject(Rr_ObjectStorage* Storage, void* Object)
+void
+Rr_DestroyObject(Rr_ObjectStorage* Storage, void* Object)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
@@ -75,7 +79,8 @@ void Rr_DestroyObject(Rr_ObjectStorage* Storage, void* Object)
     SDL_UnlockSpinlock(&Storage->Lock);
 }
 
-Rr_USize Rr_CalculateObjectStorageSize(Rr_USize Count)
+Rr_USize
+Rr_CalculateObjectStorageSize(Rr_USize Count)
 {
     return sizeof(Rr_Object) * Count;
 }

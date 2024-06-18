@@ -5,7 +5,8 @@
     #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
 
-Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
+Rr_Asset
+Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
     HRSRC Resource = FindResource(NULL, AssetRef, "RRDATA");
     HGLOBAL Memory = LoadResource(NULL, Resource);
@@ -18,12 +19,10 @@ Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 
 #else
 
-Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
+Rr_Asset
+Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
-    Rr_Asset Asset = {
-        .Data = AssetRef.Start,
-        .Length = (Rr_USize)(AssetRef.End - AssetRef.Start)
-    };
+    Rr_Asset Asset = { .Data = AssetRef.Start, .Length = (Rr_USize)(AssetRef.End - AssetRef.Start) };
     return Asset;
 }
 

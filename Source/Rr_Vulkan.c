@@ -7,8 +7,11 @@
 
 #include <stdlib.h>
 
-static Rr_Bool Rr_CheckPhysicalDevice(
-    VkPhysicalDevice PhysicalDevice, VkSurfaceKHR Surface, Rr_U32* OutGraphicsQueueFamilyIndex,
+static Rr_Bool
+Rr_CheckPhysicalDevice(
+    VkPhysicalDevice PhysicalDevice,
+    VkSurfaceKHR Surface,
+    Rr_U32* OutGraphicsQueueFamilyIndex,
     Rr_U32* OutTransferQueueFamilyIndex)
 {
     Rr_U32 ExtensionCount;
@@ -107,8 +110,12 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     return RR_TRUE;
 }
 
-Rr_PhysicalDevice Rr_CreatePhysicalDevice(
-    VkInstance Instance, VkSurfaceKHR Surface, Rr_U32* OutGraphicsQueueFamilyIndex, Rr_U32* OutTransferQueueFamilyIndex)
+Rr_PhysicalDevice
+Rr_CreatePhysicalDevice(
+    VkInstance Instance,
+    VkSurfaceKHR Surface,
+    Rr_U32* OutGraphicsQueueFamilyIndex,
+    Rr_U32* OutTransferQueueFamilyIndex)
 {
     Rr_PhysicalDevice PhysicalDevice = { 0 };
 
@@ -164,9 +171,14 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     return PhysicalDevice;
 }
 
-void Rr_InitDeviceAndQueues(
-    VkPhysicalDevice PhysicalDevice, Rr_U32 GraphicsQueueFamilyIndex, Rr_U32 TransferQueueFamilyIndex,
-    VkDevice* OutDevice, VkQueue* OutGraphicsQueue, VkQueue* OutTransferQueue)
+void
+Rr_InitDeviceAndQueues(
+    VkPhysicalDevice PhysicalDevice,
+    Rr_U32 GraphicsQueueFamilyIndex,
+    Rr_U32 TransferQueueFamilyIndex,
+    VkDevice* OutDevice,
+    VkQueue* OutGraphicsQueue,
+    VkQueue* OutTransferQueue)
 {
     Rr_Bool bUseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
     Rr_F32 QueuePriorities[] = { 1.0f };
@@ -205,8 +217,13 @@ void Rr_InitDeviceAndQueues(
     }
 }
 
-void Rr_BlitPrerenderedDepth(
-    VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+void
+Rr_BlitPrerenderedDepth(
+    VkCommandBuffer CommandBuffer,
+    VkImage Source,
+    VkImage Destination,
+    VkExtent2D SrcSize,
+    VkExtent2D DstSize)
 {
     // VkImageBlit2 BlitRegion = {
     //     .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
@@ -244,8 +261,13 @@ void Rr_BlitPrerenderedDepth(
     abort();
 }
 
-void Rr_BlitColorImage(
-    VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+void
+Rr_BlitColorImage(
+    VkCommandBuffer CommandBuffer,
+    VkImage Source,
+    VkImage Destination,
+    VkExtent2D SrcSize,
+    VkExtent2D DstSize)
 {
     VkImageBlit ImageBlit = {
         .srcSubresource = {
@@ -266,6 +288,12 @@ void Rr_BlitColorImage(
     };
 
     vkCmdBlitImage(
-        CommandBuffer, Source, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1, &ImageBlit, VK_FILTER_NEAREST);
+        CommandBuffer,
+        Source,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        Destination,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &ImageBlit,
+        VK_FILTER_NEAREST);
 }

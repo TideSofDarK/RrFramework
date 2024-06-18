@@ -28,13 +28,15 @@ struct Rr_PhysicalDevice
     VkPhysicalDeviceSubgroupProperties SubgroupProperties;
 };
 
-extern Rr_PhysicalDevice Rr_CreatePhysicalDevice(
+extern Rr_PhysicalDevice
+Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
     Rr_U32* OutGraphicsQueueFamilyIndex,
     Rr_U32* OutTransferQueueFamilyIndex);
 
-extern void Rr_InitDeviceAndQueues(
+extern void
+Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
     Rr_U32 GraphicsQueueFamilyIndex,
     Rr_U32 TransferQueueFamilyIndex,
@@ -42,39 +44,42 @@ extern void Rr_InitDeviceAndQueues(
     VkQueue* OutGraphicsQueue,
     VkQueue* OutTransferQueue);
 
-extern void Rr_BlitDepthImage(
+extern void
+Rr_BlitDepthImage(
     VkCommandBuffer CommandBuffer,
     VkImage Source,
     VkImage Destination,
     VkExtent2D SrcSize,
     VkExtent2D DstSize);
 
-extern void Rr_BlitColorImage(
+extern void
+Rr_BlitColorImage(
     VkCommandBuffer CommandBuffer,
     VkImage Source,
     VkImage Destination,
     VkExtent2D SrcSize,
     VkExtent2D DstSize);
 
-static inline VkExtent2D GetExtent2D(VkExtent3D Extent)
+static inline VkExtent2D
+GetExtent2D(VkExtent3D Extent)
 {
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
 }
 
-static inline VkPipelineShaderStageCreateInfo GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
+static inline VkPipelineShaderStageCreateInfo
+GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
 {
-    VkPipelineShaderStageCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext = NULL,
-        .pName = "main",
-        .stage = Stage,
-        .module = Module
-    };
+    VkPipelineShaderStageCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                             .pNext = NULL,
+                                             .pName = "main",
+                                             .stage = Stage,
+                                             .module = Module };
 
     return Info;
 }
 
-static inline VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
+static inline VkImageCreateInfo
+GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
 {
     VkImageCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -92,7 +97,8 @@ static inline VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsage
     return Info;
 }
 
-static inline VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
+static inline VkImageViewCreateInfo
+GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
 {
     VkImageViewCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -112,7 +118,8 @@ static inline VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkIm
     return Info;
 }
 
-static inline VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
+static inline VkFenceCreateInfo
+GetFenceCreateInfo(VkFenceCreateFlags Flags)
 {
     VkFenceCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -122,7 +129,8 @@ static inline VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
     return Info;
 }
 
-static inline VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
+static inline VkSemaphoreCreateInfo
+GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -132,7 +140,8 @@ static inline VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlag
     return Info;
 }
 
-static inline VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
+static inline VkCommandBufferBeginInfo
+GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
 {
     VkCommandBufferBeginInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -143,7 +152,8 @@ static inline VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBuffer
     return Info;
 }
 
-static inline VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlags AspectMask)
+static inline VkImageSubresourceRange
+GetImageSubresourceRange(VkImageAspectFlags AspectMask)
 {
     VkImageSubresourceRange ImageSubresourceRange = {
         .aspectMask = AspectMask,
@@ -156,7 +166,8 @@ static inline VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlag
     return ImageSubresourceRange;
 }
 
-static inline VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
+static inline VkSemaphoreSubmitInfo
+GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
 {
     VkSemaphoreSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -170,7 +181,8 @@ static inline VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2
     return Info;
 }
 
-static inline VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
+static inline VkCommandBufferSubmitInfo
+GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
 {
     VkCommandBufferSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -182,7 +194,8 @@ static inline VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuff
     return Info;
 }
 
-static inline VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool CommandPool, Rr_U32 Count)
+static inline VkCommandBufferAllocateInfo
+GetCommandBufferAllocateInfo(VkCommandPool CommandPool, Rr_U32 Count)
 {
     VkCommandBufferAllocateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,

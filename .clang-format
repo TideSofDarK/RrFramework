@@ -54,6 +54,6 @@ PointerAlignment: Left
 PackConstructorInitializers: Never
 SortIncludes: Never
 SpaceBeforeCaseColon: false
-SeparateDefinitionBlocks: Always
+SeparateDefinitionBlocks: Leave
 TabWidth: 4
 UseTab: Never

@@ -142,16 +142,35 @@ struct Rr_Renderer
     VkPipelineLayout GenericPipelineLayout;
 };
 
-extern void Rr_InitRenderer(Rr_App* App);
-extern void Rr_InitImGui(Rr_App* App);
-extern void Rr_CleanupRenderer(Rr_App* App);
-extern void Rr_ProcessPendingLoads(Rr_App* App);
-extern void Rr_Draw(Rr_App* App);
-extern Rr_Bool Rr_NewFrame(Rr_App* App, void* Window);
+extern void
+Rr_InitRenderer(Rr_App* App);
 
-extern VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
-extern void Rr_EndImmediate(Rr_Renderer* Renderer);
+extern void
+Rr_InitImGui(Rr_App* App);
 
-extern Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
-extern Rr_Bool Rr_IsUsingTransferQueue(Rr_Renderer* Renderer);
-extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer* Renderer);
+extern void
+Rr_CleanupRenderer(Rr_App* App);
+
+extern void
+Rr_ProcessPendingLoads(Rr_App* App);
+
+extern void
+Rr_Draw(Rr_App* App);
+
+extern Rr_Bool
+Rr_NewFrame(Rr_App* App, void* Window);
+
+extern VkCommandBuffer
+Rr_BeginImmediate(Rr_Renderer* Renderer);
+
+extern void
+Rr_EndImmediate(Rr_Renderer* Renderer);
+
+extern Rr_Frame*
+Rr_GetCurrentFrame(Rr_Renderer* Renderer);
+
+extern Rr_Bool
+Rr_IsUsingTransferQueue(Rr_Renderer* Renderer);
+
+extern VkDeviceSize
+Rr_GetUniformAlignment(Rr_Renderer* Renderer);

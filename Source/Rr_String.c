@@ -3,7 +3,8 @@
 #include "Rr_Memory.h"
 #include "Rr_Log.h"
 
-static Rr_U32* Rr_UTF8ToUTF32(
+static Rr_U32*
+Rr_UTF8ToUTF32(
     Rr_CString CString,
     Rr_USize OptionalLength,
     Rr_U32* OutOldBuffer,
@@ -92,7 +93,8 @@ static Rr_U32* Rr_UTF8ToUTF32(
     return Data;
 }
 
-Rr_String Rr_CreateString(Rr_CString CString)
+Rr_String
+Rr_CreateString(Rr_CString CString)
 {
     Rr_String String;
     String.Data = Rr_UTF8ToUTF32(CString, 0, NULL, 0, &String.Length);
@@ -100,15 +102,14 @@ Rr_String Rr_CreateString(Rr_CString CString)
     return String;
 }
 
-Rr_String Rr_CreateEmptyString(Rr_USize Length)
+Rr_String
+Rr_CreateEmptyString(Rr_USize Length)
 {
-    return (Rr_String){
-        .Length = Length,
-        .Data = (Rr_U32*)Rr_Calloc(Length, sizeof(Rr_U32))
-    };
+    return (Rr_String){ .Length = Length, .Data = (Rr_U32*)Rr_Calloc(Length, sizeof(Rr_U32)) };
 }
 
-void Rr_SetString(Rr_String* String, Rr_CString CString, Rr_USize OptionalLength)
+void
+Rr_SetString(Rr_String* String, Rr_CString CString, Rr_USize OptionalLength)
 {
     if (String == NULL)
     {
@@ -118,7 +119,8 @@ void Rr_SetString(Rr_String* String, Rr_CString CString, Rr_USize OptionalLength
     String->Data = Rr_UTF8ToUTF32(CString, OptionalLength, String->Data, String->Length, &String->Length);
 }
 
-void Rr_DestroyString(Rr_String* String)
+void
+Rr_DestroyString(Rr_String* String)
 {
     if (String->Data != NULL)
     {

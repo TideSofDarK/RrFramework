@@ -6,7 +6,8 @@
 
 #include <SDL3/SDL_log.h>
 
-Rr_Buffer* Rr_CreateBuffer(
+Rr_Buffer*
+Rr_CreateBuffer(
     Rr_App* App,
     Rr_USize Size,
     VkBufferUsageFlags UsageFlags,
@@ -28,50 +29,50 @@ Rr_Buffer* Rr_CreateBuffer(
 
     if (bHostMapped)
     {
-        AllocationInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        AllocationInfo.flags =
+            VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     }
 
-    vmaCreateBuffer(App->Renderer.Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, &Buffer->AllocationInfo);
+    vmaCreateBuffer(
+        App->Renderer.Allocator,
+        &BufferInfo,
+        &AllocationInfo,
+        &Buffer->Handle,
+        &Buffer->Allocation,
+        &Buffer->AllocationInfo);
 
     return Buffer;
 }
 
-Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_App* App, Rr_USize Size)
+Rr_Buffer*
+Rr_CreateDeviceVertexBuffer(Rr_App* App, Rr_USize Size)
 {
     Size = SDL_max(Size, 128);
-    return Rr_CreateBuffer(
-        App,
-        Size,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        RR_FALSE);
+    return Rr_CreateBuffer(App, Size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, RR_FALSE);
 }
 
-Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size)
+Rr_Buffer*
+Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size)
 {
     // Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
-        App,
-        Size,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        RR_FALSE);
+        App, Size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, RR_FALSE);
 }
 
-Rr_Buffer* Rr_CreateMappedBuffer(Rr_App* App, Rr_USize Size, VkBufferUsageFlags UsageFlags)
+Rr_Buffer*
+Rr_CreateMappedBuffer(Rr_App* App, Rr_USize Size, VkBufferUsageFlags UsageFlags)
 {
     return Rr_CreateBuffer(App, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, RR_TRUE);
 }
 
-Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_App* App, Rr_USize Size)
+Rr_Buffer*
+Rr_CreateMappedVertexBuffer(Rr_App* App, Rr_USize Size)
 {
-    return Rr_CreateMappedBuffer(
-        App,
-        Size,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    return Rr_CreateMappedBuffer(App, Size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 }
 
-void Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer)
+void
+Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer)
 {
     if (Buffer == NULL)
     {
@@ -85,7 +86,8 @@ void Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer)
     Rr_DestroyObject(&App->ObjectStorage, Buffer);
 }
 
-void Rr_UploadBufferAligned(
+void
+Rr_UploadBufferAligned(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
@@ -105,14 +107,14 @@ void Rr_UploadBufferAligned(
         Rr_LogAbort(
             "Exceeding staging buffer size! Current offset is %zu, allocation size is %zu and total staging buffer size is %zu.",
             (Rr_USize)StagingBuffer->Offset,
-            (Rr_USize)DataLength,
+            DataLength,
             (Rr_USize)StagingBuffer->Buffer->AllocationInfo.size);
     }
 
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
     Rr_USize BufferOffset = StagingBuffer->Offset;
-    memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
+    memcpy((Rr_Byte*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
     if (Alignment == 0)
     {
         StagingBuffer->Offset += DataLength;
@@ -144,11 +146,7 @@ void Rr_UploadBufferAligned(
         0,
         NULL);
 
-    VkBufferCopy Copy = {
-        .size = DataLength,
-        .srcOffset = BufferOffset,
-        .dstOffset = 0
-    };
+    VkBufferCopy Copy = { .size = DataLength, .srcOffset = BufferOffset, .dstOffset = 0 };
 
     vkCmdCopyBuffer(TransferCommandBuffer, StagingBuffer->Buffer->Handle, Buffer, 1, &Copy);
 
@@ -179,36 +177,33 @@ void Rr_UploadBufferAligned(
     else
     {
         UploadContext->ReleaseBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
-            (VkBufferMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                .pNext = NULL,
-                .buffer = Buffer,
-                .offset = 0,
-                .size = DataLength,
-                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = 0,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex
-            };
+            (VkBufferMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                                     .pNext = NULL,
+                                     .buffer = Buffer,
+                                     .offset = 0,
+                                     .size = DataLength,
+                                     .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                                     .dstAccessMask = 0,
+                                     .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                                     .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex };
         UploadContext->ReleaseBarriers.BufferMemoryBarrierCount++;
 
         UploadContext->AcquireBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
-            (VkBufferMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                .pNext = NULL,
-                .buffer = Buffer,
-                .offset = 0,
-                .size = DataLength,
-                .srcAccessMask = 0,
-                .dstAccessMask = DstAccessMask,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex
-            };
+            (VkBufferMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                                     .pNext = NULL,
+                                     .buffer = Buffer,
+                                     .offset = 0,
+                                     .size = DataLength,
+                                     .srcAccessMask = 0,
+                                     .dstAccessMask = DstAccessMask,
+                                     .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                                     .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex };
         UploadContext->AcquireBarriers.BufferMemoryBarrierCount++;
     }
 }
 
-void Rr_UploadBuffer(
+void
+Rr_UploadBuffer(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
@@ -219,38 +214,25 @@ void Rr_UploadBuffer(
     void* Data,
     Rr_USize DataLength)
 {
-    Rr_UploadBufferAligned(App, UploadContext, Buffer, SrcStageMask, SrcAccessMask, DstStageMask, DstAccessMask, Data, DataLength, 0);
+    Rr_UploadBufferAligned(
+        App, UploadContext, Buffer, SrcStageMask, SrcAccessMask, DstStageMask, DstAccessMask, Data, DataLength, 0);
 }
 
-void Rr_UploadToDeviceBufferImmediate(
-    Rr_App* App,
-    Rr_Buffer* DstBuffer,
-    void* Data,
-    Rr_USize Size)
+void
+Rr_UploadToDeviceBufferImmediate(Rr_App* App, Rr_Buffer* DstBuffer, void* Data, Rr_USize Size)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
-    Rr_Buffer* HostMappedBuffer = Rr_CreateMappedBuffer(
-        App,
-        Size,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    Rr_Buffer* HostMappedBuffer = Rr_CreateMappedBuffer(App, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data, Size);
-    VkBufferCopy BufferCopy = {
-        .dstOffset = 0,
-        .size = Size,
-        .srcOffset = 0
-    };
-    vkCmdCopyBuffer(
-        CommandBuffer,
-        HostMappedBuffer->Handle,
-        DstBuffer->Handle,
-        1,
-        &BufferCopy);
+    VkBufferCopy BufferCopy = { .dstOffset = 0, .size = Size, .srcOffset = 0 };
+    vkCmdCopyBuffer(CommandBuffer, HostMappedBuffer->Handle, DstBuffer->Handle, 1, &BufferCopy);
     Rr_EndImmediate(Renderer);
     Rr_DestroyBuffer(App, HostMappedBuffer);
 }
 
-void Rr_UploadToUniformBuffer(
+void
+Rr_UploadToUniformBuffer(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Buffer* DstBuffer,
@@ -270,12 +252,8 @@ void Rr_UploadToUniformBuffer(
         Rr_GetUniformAlignment(&App->Renderer));
 }
 
-void Rr_CopyToMappedUniformBuffer(
-    Rr_App* App,
-    Rr_Buffer* DstBuffer,
-    void* Data,
-    Rr_USize Size,
-    VkDeviceSize* DstOffset)
+void
+Rr_CopyToMappedUniformBuffer(Rr_App* App, Rr_Buffer* DstBuffer, void* Data, Rr_USize Size, VkDeviceSize* DstOffset)
 {
     Rr_U32 Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     Rr_USize AlignedSize = Rr_Align(Size, Alignment);

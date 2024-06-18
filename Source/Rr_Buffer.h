@@ -13,17 +13,28 @@ struct Rr_Buffer
     VmaAllocation Allocation;
 };
 
-extern Rr_Buffer* Rr_CreateBuffer(
+extern Rr_Buffer*
+Rr_CreateBuffer(
     Rr_App* App,
     Rr_USize Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
     Rr_Bool bHostMapped);
-extern Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_App* App, Rr_USize Size);
-extern Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size);
-extern Rr_Buffer* Rr_CreateMappedBuffer(Rr_App* App, Rr_USize Size, VkBufferUsageFlags UsageFlags);
-extern Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_App* App, Rr_USize Size);
-extern void Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer);
+
+extern Rr_Buffer*
+Rr_CreateDeviceVertexBuffer(Rr_App* App, Rr_USize Size);
+
+extern Rr_Buffer*
+Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size);
+
+extern Rr_Buffer*
+Rr_CreateMappedBuffer(Rr_App* App, Rr_USize Size, VkBufferUsageFlags UsageFlags);
+
+extern Rr_Buffer*
+Rr_CreateMappedVertexBuffer(Rr_App* App, Rr_USize Size);
+
+extern void
+Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer);
 
 typedef struct Rr_WriteBuffer Rr_WriteBuffer;
 struct Rr_WriteBuffer
@@ -32,7 +43,8 @@ struct Rr_WriteBuffer
     VkDeviceSize Offset;
 };
 
-extern void Rr_UploadBufferAligned(
+extern void
+Rr_UploadBufferAligned(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
@@ -43,7 +55,9 @@ extern void Rr_UploadBufferAligned(
     void* Data,
     Rr_USize DataLength,
     Rr_USize Alignment);
-extern void Rr_UploadBuffer(
+
+extern void
+Rr_UploadBuffer(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     VkBuffer Buffer,
@@ -53,20 +67,17 @@ extern void Rr_UploadBuffer(
     VkAccessFlags DstAccessMask,
     void* Data,
     Rr_USize DataLength);
-extern void Rr_UploadToDeviceBufferImmediate(
-    Rr_App* App,
-    Rr_Buffer* DstBuffer,
-    void* Data,
-    Rr_USize Size);
-extern void Rr_UploadToUniformBuffer(
+
+extern void
+Rr_UploadToDeviceBufferImmediate(Rr_App* App, Rr_Buffer* DstBuffer, void* Data, Rr_USize Size);
+
+extern void
+Rr_UploadToUniformBuffer(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_Buffer* DstBuffer,
     void* Data,
     Rr_USize DataLength);
-extern void Rr_CopyToMappedUniformBuffer(
-    Rr_App* App,
-    Rr_Buffer* DstBuffer,
-    void* Data,
-    Rr_USize Size,
-    VkDeviceSize* DstOffset);
+
+extern void
+Rr_CopyToMappedUniformBuffer(Rr_App* App, Rr_Buffer* DstBuffer, void* Data, Rr_USize Size, VkDeviceSize* DstOffset);

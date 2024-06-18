@@ -478,9 +478,6 @@ Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
 
     Rr_IntVec4 Viewport = DrawContext->Info.Viewport;
 
-    Rr_U32 Width = Viewport.Width - Viewport.X;
-    Rr_U32 Height = Viewport.Height - Viewport.Y;
-
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
     Rr_UploadContext UploadContext = { .StagingBuffer = Frame->StagingBuffer, .TransferCommandBuffer = CommandBuffer };
@@ -494,7 +491,7 @@ Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
         DrawContext->GlobalsData,
         Scratch.Arena);
     Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(
-        App, &UploadContext, (VkExtent2D){ .width = Width, .height = Height }, Scratch.Arena);
+        App, &UploadContext, (VkExtent2D){ .width = Viewport.Width, .height = Viewport.Height }, Scratch.Arena);
 
     /* Begin render pass. */
     VkClearValue ClearColorValues[2] = { (VkClearValue){ 0 }, (VkClearValue){ .depthStencil.depth = 1.0f } };

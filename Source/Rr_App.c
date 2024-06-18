@@ -12,27 +12,32 @@
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
 
-static void Rr_CalculateDeltaTime(Rr_FrameTime* FrameTime)
+static void
+Rr_CalculateDeltaTime(Rr_FrameTime* FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
     FrameTime->Now = SDL_GetPerformanceCounter();
-    FrameTime->DeltaSeconds = ((Rr_F64)(FrameTime->Now - FrameTime->Last) * 1000.0) / (Rr_F64)SDL_GetPerformanceFrequency();
+    FrameTime->DeltaSeconds =
+        ((Rr_F64)(FrameTime->Now - FrameTime->Last) * 1000.0) / (Rr_F64)SDL_GetPerformanceFrequency();
 }
 
-static void Rr_CalculateFPS(Rr_FrameTime* FrameTime)
+static void
+Rr_CalculateFPS(Rr_FrameTime* FrameTime)
 {
     FrameTime->PerformanceCounter.Frames++;
     Rr_U64 CurrentTime = SDL_GetPerformanceCounter();
     if (CurrentTime - FrameTime->PerformanceCounter.StartTime >= FrameTime->PerformanceCounter.UpdateFrequency)
     {
-        Rr_F64 Elapsed = (Rr_F64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) / FrameTime->PerformanceCounter.CountPerSecond;
+        Rr_F64 Elapsed = (Rr_F64)(CurrentTime - FrameTime->PerformanceCounter.StartTime)
+            / FrameTime->PerformanceCounter.CountPerSecond;
         FrameTime->PerformanceCounter.FPS = (Rr_F64)FrameTime->PerformanceCounter.Frames / Elapsed;
         FrameTime->PerformanceCounter.StartTime = CurrentTime;
         FrameTime->PerformanceCounter.Frames = 0;
     }
 }
 
-static void Rr_SimulateVSync(Rr_FrameTime* FrameTime)
+static void
+Rr_SimulateVSync(Rr_FrameTime* FrameTime)
 {
     Rr_U64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
     Rr_U64 Now = SDL_GetTicksNS();
@@ -56,11 +61,14 @@ static void Rr_SimulateVSync(Rr_FrameTime* FrameTime)
     }
 }
 
-void Rr_DebugOverlay(Rr_App* App)
+void
+Rr_DebugOverlay(Rr_App* App)
 {
     ImGuiIO* IO = igGetIO();
     ImGuiViewport* Viewport = igGetMainViewport();
-    ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+    ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking
+        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing
+        | ImGuiWindowFlags_NoNav;
     Rr_F32 Padding = 10.0f;
     ImVec2 WorkPos = Viewport->WorkPos;
     ImVec2 WindowPos, WindowPosPivot;
@@ -84,7 +92,14 @@ void Rr_DebugOverlay(Rr_App* App)
         igCheckbox("Simulate VSync", (_Bool*)&App->FrameTime.bSimulateVSync);
         if (App->FrameTime.bSimulateVSync)
         {
-            igSliderScalar("Target FPS", ImGuiDataType_U64, &App->FrameTime.TargetFramerate, &(Rr_U64){ 30 }, &(Rr_U64){ 480 }, "%d", ImGuiSliderFlags_None);
+            igSliderScalar(
+                "Target FPS",
+                ImGuiDataType_U64,
+                &App->FrameTime.TargetFramerate,
+                &(Rr_U64){ 30 },
+                &(Rr_U64){ 480 },
+                "%d",
+                ImGuiSliderFlags_None);
         }
         igSeparator();
         if (igIsMousePosValid(NULL))
@@ -99,7 +114,8 @@ void Rr_DebugOverlay(Rr_App* App)
     igEnd();
 }
 
-static void Iterate(Rr_App* App)
+static void
+Iterate(Rr_App* App)
 {
     Rr_CalculateDeltaTime(&App->FrameTime);
 
@@ -129,7 +145,8 @@ static void Iterate(Rr_App* App)
     }
 }
 
-static int SDLCALL Rr_EventWatch(void* AppPtr, SDL_Event* Event)
+static int SDLCALL
+Rr_EventWatch(void* AppPtr, SDL_Event* Event)
 {
     switch (Event->type)
     {
@@ -158,7 +175,8 @@ static int SDLCALL Rr_EventWatch(void* AppPtr, SDL_Event* Event)
     return 0;
 }
 
-static void Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
+static void
+Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
 {
 #ifdef RR_PERFORMANCE_COUNTER
     FrameTime->PerformanceCounter.StartTime = SDL_GetPerformanceCounter();
@@ -175,7 +193,8 @@ static void Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
     FrameTime->Now = SDL_GetPerformanceCounter();
 }
 
-Rr_IntVec2 Rr_GetDefaultWindowSize()
+Rr_IntVec2
+Rr_GetDefaultWindowSize()
 {
     SDL_DisplayID DisplayID = SDL_GetPrimaryDisplay();
 
@@ -184,13 +203,12 @@ Rr_IntVec2 Rr_GetDefaultWindowSize()
 
     Rr_F32 ScaleFactor = 0.75f;
 
-    return (Rr_IntVec2){
-        .Width = (Rr_I32)((Rr_F32)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
-        .Height = (Rr_I32)((Rr_F32)(UsableBounds.h - UsableBounds.y) * ScaleFactor)
-    };
+    return (Rr_IntVec2){ .Width = (Rr_I32)((Rr_F32)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
+                         .Height = (Rr_I32)((Rr_F32)(UsableBounds.h - UsableBounds.y) * ScaleFactor) };
 }
 
-void Rr_Run(Rr_AppConfig* Config)
+void
+Rr_Run(Rr_AppConfig* Config)
 {
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -201,19 +219,17 @@ void Rr_Run(Rr_AppConfig* Config)
 
     Rr_App* App = Rr_StackAlloc(Rr_App, 1);
     SDL_zerop(App);
-    *App = (Rr_App){
-        .Config = Config,
-        .Window = SDL_CreateWindow(
-            Config->Title,
-            WindowSize.Width,
-            WindowSize.Height,
-            SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
-        .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
-        .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
-        .ScratchArenaTLS = SDL_CreateTLS(),
-        .ObjectStorage = Rr_CreateObjectStorage(),
-        .UserData = Config->UserData
-    };
+    *App = (Rr_App){ .Config = Config,
+                     .Window = SDL_CreateWindow(
+                         Config->Title,
+                         WindowSize.Width,
+                         WindowSize.Height,
+                         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
+                     .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
+                     .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
+                     .ScratchArenaTLS = SDL_CreateTLS(),
+                     .ObjectStorage = Rr_CreateObjectStorage(),
+                     .UserData = Config->UserData };
 
     Rr_SetScratchTLS(&App->ScratchArenaTLS);
 
@@ -279,43 +295,51 @@ void Rr_Run(Rr_AppConfig* Config)
     SDL_Quit();
 }
 
-static bool Rr_IsAnyFullscreen(SDL_Window* Window)
+static bool
+Rr_IsAnyFullscreen(SDL_Window* Window)
 {
     return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
-void Rr_ToggleFullscreen(Rr_App* App)
+void
+Rr_ToggleFullscreen(Rr_App* App)
 {
     SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
 }
 
-void Rr_SetInputConfig(Rr_App* App, Rr_InputConfig* InputConfig)
+void
+Rr_SetInputConfig(Rr_App* App, Rr_InputConfig* InputConfig)
 {
     App->InputConfig = *InputConfig;
 }
 
-Rr_InputState Rr_GetInputState(Rr_App* App)
+Rr_InputState
+Rr_GetInputState(Rr_App* App)
 {
     return App->InputState;
 }
 
-Rr_F32 Rr_GetAspectRatio(Rr_App* App)
+Rr_F32
+Rr_GetAspectRatio(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     return (Rr_F32)Renderer->SwapchainSize.width / (Rr_F32)Renderer->SwapchainSize.height;
 }
 
-Rr_F64 Rr_GetDeltaSeconds(Rr_App* App)
+Rr_F64
+Rr_GetDeltaSeconds(Rr_App* App)
 {
     return App->FrameTime.DeltaSeconds;
 }
 
-Rr_F64 Rr_GetTimeSeconds(Rr_App* App)
+Rr_F64
+Rr_GetTimeSeconds(Rr_App* App)
 {
     return (Rr_F64)SDL_GetTicks() / 1000.0;
 }
 
-void Rr_SetRelativeMouseMode(Rr_Bool bRelative)
+void
+Rr_SetRelativeMouseMode(Rr_Bool bRelative)
 {
     SDL_SetRelativeMouseMode(bRelative ? SDL_TRUE : SDL_FALSE);
 }
