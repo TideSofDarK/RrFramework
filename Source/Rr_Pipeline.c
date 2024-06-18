@@ -29,7 +29,7 @@ Rr_BuildPipeline(
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .pCode = (Rr_U32*)PipelineBuilder->VertexShaderSPV.Data,
-            .codeSize = PipelineBuilder->VertexShaderSPV.Length
+            .codeSize = PipelineBuilder->VertexShaderSPV.Length,
         };
         vkCreateShaderModule(
             Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
@@ -45,7 +45,7 @@ Rr_BuildPipeline(
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .pCode = (Rr_U32*)PipelineBuilder->FragmentShaderSPV.Data,
-            .codeSize = PipelineBuilder->FragmentShaderSPV.Length
+            .codeSize = PipelineBuilder->FragmentShaderSPV.Length,
         };
         vkCreateShaderModule(
             Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
@@ -75,7 +75,7 @@ Rr_BuildPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = NULL,
     };
-    VkVertexInputBindingDescription VertexInputBindingDescriptions[2] = {
+    VkVertexInputBindingDescription VertexInputBindingDescriptions[] = {
         {
          .binding = 0,
          .stride = PipelineBuilder->VertexInput[0].VertexInputStride,
@@ -128,7 +128,7 @@ Rr_BuildPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .pNext = NULL,
         .pDynamicStates = DynamicStates,
-        .dynamicStateCount = SDL_arraysize(DynamicStates)
+        .dynamicStateCount = SDL_arraysize(DynamicStates),
     };
 
     /* Select render pass. */
@@ -161,7 +161,7 @@ Rr_BuildPipeline(
         .pDepthStencilState = &PipelineBuilder->DepthStencil,
         .layout = PipelineLayout,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = RenderPass
+        .renderPass = RenderPass,
     };
 
     VkPipeline Pipeline;
@@ -195,9 +195,21 @@ Rr_CreatePipelineBuilder(void)
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
             .primitiveRestartEnable = VK_FALSE,
         },
-        .Rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO },
-        .Multisampling = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO, .sampleShadingEnable = VK_FALSE, .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT, .minSampleShading = 1.0f, .pSampleMask = NULL, .alphaToCoverageEnable = VK_FALSE, .alphaToOneEnable = VK_FALSE },
-        .DepthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO },
+        .Rasterizer = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        },
+        .Multisampling = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .sampleShadingEnable = VK_FALSE,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+            .minSampleShading = 1.0f,
+            .pSampleMask = NULL,
+            .alphaToCoverageEnable = VK_FALSE,
+            .alphaToOneEnable = VK_FALSE,
+        },
+        .DepthStencil = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        },
     };
 
     return PipelineBuilder;

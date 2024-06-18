@@ -83,13 +83,13 @@ Rr_DrawStaticMeshOverrideMaterials(
          ++PrimitiveIndex)
     {
         *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
-            (Rr_DrawPrimitiveInfo){ .OffsetIntoDrawBuffer = Offset,
-                                    .Primitive =
-                                        StaticMesh->Primitives[PrimitiveIndex],
-                                    .Material =
-                                        PrimitiveIndex < OverrideMaterialCount
-                                        ? OverrideMaterials[PrimitiveIndex]
-                                        : NULL };
+            (Rr_DrawPrimitiveInfo){
+                .OffsetIntoDrawBuffer = Offset,
+                .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+                .Material = PrimitiveIndex < OverrideMaterialCount
+                    ? OverrideMaterials[PrimitiveIndex]
+                    : NULL,
+            };
     }
 
     Rr_CopyToMappedUniformBuffer(
@@ -209,8 +209,15 @@ Rr_CreateDrawTargetDepthOnly(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 void
 Rr_DestroyDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget)
 {
+    if (DrawTarget == NULL)
+    {
+        return;
+    }
+
     Rr_Renderer* Renderer = &App->Renderer;
+
     vkDestroyFramebuffer(Renderer->Device, DrawTarget->Framebuffer, NULL);
+
     Rr_DestroyImage(App, DrawTarget->ColorImage);
     Rr_DestroyImage(App, DrawTarget->DepthImage);
 
