@@ -29,10 +29,7 @@ Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, Rr_B
     return DrawContext;
 }
 
-void Rr_DrawStaticMesh(
-    Rr_DrawContext* DrawContext,
-    Rr_StaticMesh* StaticMesh,
-    Rr_Data DrawData)
+void Rr_DrawStaticMesh(Rr_DrawContext* DrawContext, Rr_StaticMesh* StaticMesh, Rr_Data DrawData)
 {
     Rr_Renderer* Renderer = &DrawContext->App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
@@ -40,22 +37,19 @@ void Rr_DrawStaticMesh(
 
     for (Rr_USize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
     {
-        *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) = (Rr_DrawPrimitiveInfo){
-            .OffsetIntoDrawBuffer = Offset,
-            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
-            .Material = StaticMesh->Materials[PrimitiveIndex]
-        };
+        *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
+            (Rr_DrawPrimitiveInfo){ .OffsetIntoDrawBuffer = Offset,
+                                    .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+                                    .Material = StaticMesh->Materials[PrimitiveIndex] };
     }
 
-    Rr_CopyToMappedUniformBuffer(DrawContext->App, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
+    Rr_CopyToMappedUniformBuffer(
+        DrawContext->App, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
 }
 
 void Rr_DrawStaticMeshOverrideMaterials(
-    Rr_DrawContext* DrawContext,
-    Rr_Material** OverrideMaterials,
-    Rr_USize OverrideMaterialCount,
-    Rr_StaticMesh* StaticMesh,
-    Rr_Data DrawData)
+    Rr_DrawContext* DrawContext, Rr_Material** OverrideMaterials, Rr_USize OverrideMaterialCount,
+    Rr_StaticMesh* StaticMesh, Rr_Data DrawData)
 {
     Rr_Renderer* Renderer = &DrawContext->App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
@@ -70,7 +64,8 @@ void Rr_DrawStaticMeshOverrideMaterials(
         };
     }
 
-    Rr_CopyToMappedUniformBuffer(DrawContext->App, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
+    Rr_CopyToMappedUniformBuffer(
+        DrawContext->App, Frame->DrawBuffer.Buffer, DrawData.Data, DrawData.Size, &Frame->DrawBuffer.Offset);
 }
 
 static void Rr_DrawText(Rr_DrawContext* RenderingContext, Rr_DrawTextInfo* Info)
@@ -88,32 +83,17 @@ static void Rr_DrawText(Rr_DrawContext* RenderingContext, Rr_DrawTextInfo* Info)
 }
 
 void Rr_DrawCustomText(
-    Rr_DrawContext* DrawContext,
-    Rr_Font* Font,
-    Rr_String* String,
-    Rr_Vec2 Position,
-    Rr_F32 Size,
+    Rr_DrawContext* DrawContext, Rr_Font* Font, Rr_String* String, Rr_Vec2 Position, Rr_F32 Size,
     Rr_DrawTextFlags Flags)
 {
     Rr_DrawText(
         DrawContext,
-        &(Rr_DrawTextInfo){
-            .Font = Font,
-            .String = *String,
-            .Position = Position,
-            .Size = Size,
-            .Flags = Flags });
+        &(Rr_DrawTextInfo){ .Font = Font, .String = *String, .Position = Position, .Size = Size, .Flags = Flags });
 }
 
 void Rr_DrawDefaultText(Rr_DrawContext* DrawContext, Rr_String* String, Rr_Vec2 Position)
 {
-    Rr_DrawText(
-        DrawContext,
-        &(Rr_DrawTextInfo){
-            .String = *String,
-            .Position = Position,
-            .Size = 32.0f,
-            .Flags = 0 });
+    Rr_DrawText(DrawContext, &(Rr_DrawTextInfo){ .String = *String, .Position = Position, .Size = 32.0f, .Flags = 0 });
 }
 
 Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
@@ -127,17 +107,15 @@ Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 
     VkImageView Attachments[2] = { DrawTarget->ColorImage->View, DrawTarget->DepthImage->View };
 
-    VkFramebufferCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .renderPass = Renderer->RenderPasses.ColorDepth,
-        .height = Height,
-        .width = Width,
-        .layers = 1,
-        .attachmentCount = 2,
-        .pAttachments = Attachments
-    };
+    VkFramebufferCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                                     .pNext = NULL,
+                                     .flags = 0,
+                                     .renderPass = Renderer->RenderPasses.ColorDepth,
+                                     .height = Height,
+                                     .width = Width,
+                                     .layers = 1,
+                                     .attachmentCount = 2,
+                                     .pAttachments = Attachments };
     vkCreateFramebuffer(Renderer->Device, &Info, NULL, &DrawTarget->Framebuffer);
 
     return DrawTarget;
@@ -153,17 +131,15 @@ Rr_DrawTarget* Rr_CreateDrawTargetDepthOnly(Rr_App* App, Rr_U32 Width, Rr_U32 He
 
     VkImageView Attachments[1] = { DrawTarget->DepthImage->View };
 
-    VkFramebufferCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .renderPass = Renderer->RenderPasses.Depth,
-        .height = Height,
-        .width = Width,
-        .layers = 1,
-        .attachmentCount = SDL_arraysize(Attachments),
-        .pAttachments = Attachments
-    };
+    VkFramebufferCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                                     .pNext = NULL,
+                                     .flags = 0,
+                                     .renderPass = Renderer->RenderPasses.Depth,
+                                     .height = Height,
+                                     .width = Width,
+                                     .layers = 1,
+                                     .attachmentCount = SDL_arraysize(Attachments),
+                                     .pAttachments = Attachments };
     vkCreateFramebuffer(Renderer->Device, &Info, NULL, &DrawTarget->Framebuffer);
 
     return DrawTarget;

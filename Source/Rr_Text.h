@@ -31,16 +31,16 @@ typedef struct Rr_TextPerInstanceVertexInput
 
 typedef struct Rr_TextGlobalsLayout
 {
-    float Time;
-    float Reserved;
+    Rr_F32 Time;
+    Rr_F32 Reserved;
     Rr_Vec2 ScreenSize;
     Rr_Vec4 Palette[RR_TEXT_MAX_COLORS];
 } Rr_TextGlobalsLayout;
 
 typedef struct Rr_TextFontLayout
 {
-    float Advance;
-    float DistanceRange;
+    Rr_F32 Advance;
+    Rr_F32 DistanceRange;
     Rr_Vec2 AtlasSize;
     Rr_Glyph Glyphs[RR_TEXT_MAX_GLYPHS];
 } Rr_TextFontLayout;

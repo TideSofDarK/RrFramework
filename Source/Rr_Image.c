@@ -10,7 +10,8 @@
 
 #include <tinyexr/tinyexr.h>
 
-static void Rr_UploadImage(
+static void
+Rr_UploadImage(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     VkImage Image,
@@ -69,7 +70,8 @@ static void Rr_UploadImage(
         .imageExtent = Extent,
     };
 
-    vkCmdCopyBufferToImage(TransferCommandBuffer, StagingBuffer->Buffer->Handle, Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
+    vkCmdCopyBufferToImage(
+        TransferCommandBuffer, StagingBuffer->Buffer->Handle, Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Copy);
 
     vkCmdPipelineBarrier(
         TransferCommandBuffer,
@@ -97,43 +99,35 @@ static void Rr_UploadImage(
     if (UploadContext->bUseAcquireBarriers)
     {
         UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-            (VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = Image,
-                .oldLayout = DstLayout,
-                .newLayout = DstLayout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = DstAccessMask,
-                .dstAccessMask = 0,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex
-            };
+            (VkImageMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                    .pNext = NULL,
+                                    .image = Image,
+                                    .oldLayout = DstLayout,
+                                    .newLayout = DstLayout,
+                                    .subresourceRange = SubresourceRange,
+                                    .srcAccessMask = DstAccessMask,
+                                    .dstAccessMask = 0,
+                                    .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                                    .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex };
         UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
 
         UploadContext->AcquireBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-            (VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = Image,
-                .oldLayout = DstLayout,
-                .newLayout = DstLayout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = 0,
-                .dstAccessMask = DstAccessMask,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex
-            };
+            (VkImageMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                    .pNext = NULL,
+                                    .image = Image,
+                                    .oldLayout = DstLayout,
+                                    .newLayout = DstLayout,
+                                    .subresourceRange = SubresourceRange,
+                                    .srcAccessMask = 0,
+                                    .dstAccessMask = DstAccessMask,
+                                    .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                                    .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex };
         UploadContext->AcquireBarriers.ImageMemoryBarrierCount++;
     }
 }
 
-Rr_Image* Rr_CreateImage(
-    Rr_App* App,
-    VkExtent3D Extent,
-    VkFormat Format,
-    VkImageUsageFlags Usage,
-    Rr_Bool bMipMapped)
+Rr_Image*
+Rr_CreateImage(Rr_App* App, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, Rr_Bool bMipMapped)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -148,10 +142,8 @@ Rr_Image* Rr_CreateImage(
         Info.mipLevels = (Rr_U32)(floorf(logf(SDL_max(Extent.width, Extent.height)))) + 1;
     }
 
-    VmaAllocationCreateInfo AllocationCreateInfo = {
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    };
+    VmaAllocationCreateInfo AllocationCreateInfo = { .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+                                                     .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
 
     vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image->Handle, &Image->Allocation, NULL);
 
@@ -169,7 +161,8 @@ Rr_Image* Rr_CreateImage(
     return Image;
 }
 
-void Rr_DestroyImage(Rr_App* App, Rr_Image* Image)
+void
+Rr_DestroyImage(Rr_App* App, Rr_Image* Image)
 {
     if (Image == NULL)
     {
@@ -184,11 +177,8 @@ void Rr_DestroyImage(Rr_App* App, Rr_Image* Image)
     Rr_DestroyObject(&App->ObjectStorage, Image);
 }
 
-void Rr_GetImageSizePNGMemory(
-    Rr_Byte* Data,
-    Rr_USize DataSize,
-    Rr_Arena* Arena,
-    struct Rr_LoadSize* OutLoadSize)
+void
+Rr_GetImageSizePNGMemory(Rr_Byte* Data, Rr_USize DataSize, Rr_Arena* Arena, struct Rr_LoadSize* OutLoadSize)
 {
     Rr_I32 DesiredChannels = 4;
     Rr_I32 Width;
@@ -200,20 +190,23 @@ void Rr_GetImageSizePNGMemory(
     OutLoadSize->ImageCount += 1;
 }
 
-void Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize)
+void
+Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize)
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
     Rr_GetImageSizePNGMemory(Asset.Data, Asset.Length, Arena, OutLoadSize);
 }
 
-void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize)
+void
+Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize)
 {
     OutLoadSize->StagingBufferSize += 0;
     OutLoadSize->ImageCount += 1;
 }
 
-Rr_Image* Rr_CreateColorImageFromMemory(
+Rr_Image*
+Rr_CreateColorImageFromMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Byte* Data,
@@ -232,7 +225,8 @@ Rr_Image* Rr_CreateColorImageFromMemory(
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         bMipMapped);
 
-    Rr_UploadImage(App,
+    Rr_UploadImage(
+        App,
         UploadContext,
         ColorImage->Handle,
         Extent,
@@ -246,7 +240,8 @@ Rr_Image* Rr_CreateColorImageFromMemory(
     return ColorImage;
 }
 
-Rr_Image* Rr_CreateColorImageFromPNGMemory(
+Rr_Image*
+Rr_CreateColorImageFromPNGMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Byte* Data,
@@ -257,12 +252,7 @@ Rr_Image* Rr_CreateColorImageFromPNGMemory(
     Rr_I32 Channels;
     VkExtent3D Extent = { .depth = 1 };
     stbi_uc* ParsedImage = stbi_load_from_memory(
-        (stbi_uc*)Data,
-        (Rr_I32)DataSize,
-        (Rr_I32*)&Extent.width,
-        (Rr_I32*)&Extent.height,
-        &Channels,
-        DesiredChannels);
+        (stbi_uc*)Data, (Rr_I32)DataSize, (Rr_I32*)&Extent.width, (Rr_I32*)&Extent.height, &Channels, DesiredChannels);
     size_t ParsedSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Image* ColorImage = Rr_CreateImage(
@@ -272,7 +262,8 @@ Rr_Image* Rr_CreateColorImageFromPNGMemory(
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         bMipMapped);
 
-    Rr_UploadImage(App,
+    Rr_UploadImage(
+        App,
         UploadContext,
         ColorImage->Handle,
         Extent,
@@ -288,7 +279,8 @@ Rr_Image* Rr_CreateColorImageFromPNGMemory(
     return ColorImage;
 }
 
-Rr_Image* Rr_CreateColorImageFromPNG(
+Rr_Image*
+Rr_CreateColorImageFromPNG(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
@@ -297,29 +289,20 @@ Rr_Image* Rr_CreateColorImageFromPNG(
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    return Rr_CreateColorImageFromPNGMemory(
-        App,
-        UploadContext,
-        Asset.Data,
-        Asset.Length,
-        bMipMapped);
+    return Rr_CreateColorImageFromPNGMemory(App, UploadContext, Asset.Data, Asset.Length, bMipMapped);
 }
 
-Rr_Image* Rr_CreateDepthImageFromEXR(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
-    Rr_AssetRef AssetRef,
-    Rr_Arena* Arena)
+Rr_Image*
+Rr_CreateDepthImageFromEXR(Rr_App* App, Rr_UploadContext* UploadContext, Rr_AssetRef AssetRef, Rr_Arena* Arena)
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    int Result;
     Rr_CString Error;
 
     EXRVersion Version;
-    Result = ParseEXRVersionFromMemory(&Version, (unsigned char*)Asset.Data, Asset.Length);
+    Rr_I32 Result = ParseEXRVersionFromMemory(&Version, (unsigned char*)Asset.Data, Asset.Length);
     if (Result != 0)
     {
         Rr_LogAbort("Error opening EXR file!");
@@ -345,16 +328,16 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     }
 
     /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
-    float Near = 0.5f;
-    float Far = 50.0f;
-    float FarPlusNear = Far + Near;
-    float FarMinusNear = Far - Near;
-    float FTimesNear = Far * Near;
-    for (int Index = 0; Index < Image.width * Image.height; Index++)
+    Rr_F32 Near = 0.5f;
+    Rr_F32 Far = 50.0f;
+    Rr_F32 FarPlusNear = Far + Near;
+    Rr_F32 FarMinusNear = Far - Near;
+    Rr_F32 FTimesNear = Far * Near;
+    for (Rr_I32 Index = 0; Index < Image.width * Image.height; Index++)
     {
-        float* Current = ((float*)Image.images[0]) + Index;
-        float ZReciprocal = 1.0f / *Current;
-        float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
+        Rr_F32* Current = ((Rr_F32*)Image.images[0]) + Index;
+        Rr_F32 ZReciprocal = 1.0f / *Current;
+        Rr_F32 Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
         Depth = (Depth + 1.0f) / 2.0f;
         if (Depth > 1.0f)
         {
@@ -367,9 +350,15 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
 
     size_t DataSize = Extent.width * Extent.height * sizeof(Rr_F32);
 
-    Rr_Image* DepthImage = Rr_CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, RR_FALSE);
+    Rr_Image* DepthImage = Rr_CreateImage(
+        App,
+        Extent,
+        RR_PRERENDERED_DEPTH_FORMAT,
+        Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        RR_FALSE);
 
-    Rr_UploadImage(App,
+    Rr_UploadImage(
+        App,
         UploadContext,
         DepthImage->Handle,
         Extent,
@@ -386,7 +375,8 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     return DepthImage;
 }
 
-Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
+Rr_Image*
+Rr_CreateColorAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 {
     return Rr_CreateImage(
         App,
@@ -396,7 +386,8 @@ Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height
         RR_FALSE);
 }
 
-Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
+Rr_Image*
+Rr_CreateDepthAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 {
     return Rr_CreateImage(
         App,
@@ -406,12 +397,14 @@ Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height
         RR_FALSE);
 }
 
-Rr_Image* Rr_GetDummyColorTexture(Rr_App* App)
+Rr_Image*
+Rr_GetDummyColorTexture(Rr_App* App)
 {
     return App->Renderer.NullTextures.White;
 }
 
-Rr_Image* Rr_GetDummyNormalTexture(Rr_App* App)
+Rr_Image*
+Rr_GetDummyNormalTexture(Rr_App* App)
 {
     return App->Renderer.NullTextures.Normal;
 }

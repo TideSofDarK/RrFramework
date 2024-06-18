@@ -15,6 +15,7 @@
 #include <limits.h>
 
 typedef struct Rr_GenericRenderingContext Rr_GenericRenderingContext;
+
 struct Rr_GenericRenderingContext
 {
     Rr_GenericPipelineSizes Sizes;
@@ -23,13 +24,15 @@ struct Rr_GenericRenderingContext
 };
 
 typedef struct Rr_TextRenderingContext Rr_TextRenderingContext;
+
 struct Rr_TextRenderingContext
 {
     VkDescriptorSet GlobalsDescriptorSet;
     VkDescriptorSet FontDescriptorSet;
 };
 
-static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
+static Rr_GenericRenderingContext
+Rr_MakeGenericRenderingContext(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_Buffer* GlobalsBuffer,
@@ -46,18 +49,11 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
 
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1, Scratch.Arena);
 
-    Rr_GenericRenderingContext Context = {
-        .Sizes = *Sizes
-    };
+    Rr_GenericRenderingContext Context = { .Sizes = *Sizes };
 
     /* Upload globals data. */
     /* @TODO: Make these take a Rr_WriteBuffer instead! */
-    Rr_UploadToUniformBuffer(
-        App,
-        UploadContext,
-        GlobalsBuffer,
-        GlobalsData,
-        Sizes->Globals);
+    Rr_UploadToUniformBuffer(App, UploadContext, GlobalsBuffer, GlobalsData, Sizes->Globals);
 
     /* Allocate, write and bind globals descriptor set. */
     Context.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
@@ -72,7 +68,8 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         Scratch.Arena);
-    //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View, Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View, Renderer->NearestSampler,
+    //    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, Context.GlobalsDescriptorSet);
     Rr_ResetDescriptorWriter(&DescriptorWriter);
 
@@ -97,7 +94,8 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     return Context;
 }
 
-SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo* A, Rr_DrawPrimitiveInfo* B)
+SDL_FORCE_INLINE int
+Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo* A, Rr_DrawPrimitiveInfo* B)
 {
     if (A->Material->GenericPipeline != B->Material->GenericPipeline)
     {
@@ -120,7 +118,8 @@ SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo* A, Rr_DrawPri
 
 DEF_QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive) /* NOLINT */
 
-static void Rr_RenderGeneric(
+static void
+Rr_RenderGeneric(
     Rr_Renderer* Renderer,
     Rr_GenericRenderingContext* GenericRenderingContext,
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice,
@@ -218,17 +217,8 @@ static void Rr_RenderGeneric(
         {
             BoundPrimitive = Info->Primitive;
 
-            vkCmdBindVertexBuffers(
-                CommandBuffer,
-                0,
-                1,
-                &BoundPrimitive->VertexBuffer->Handle,
-                &(VkDeviceSize){ 0 });
-            vkCmdBindIndexBuffer(
-                CommandBuffer,
-                BoundPrimitive->IndexBuffer->Handle,
-                0,
-                VK_INDEX_TYPE_UINT32);
+            vkCmdBindVertexBuffers(CommandBuffer, 0, 1, &BoundPrimitive->VertexBuffer->Handle, &(VkDeviceSize){ 0 });
+            vkCmdBindIndexBuffer(CommandBuffer, BoundPrimitive->IndexBuffer->Handle, 0, VK_INDEX_TYPE_UINT32);
         }
 
         if (BoundDrawOffset != Info->OffsetIntoDrawBuffer)
@@ -257,11 +247,8 @@ static void Rr_RenderGeneric(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
-    VkExtent2D ActiveResolution,
-    Rr_Arena* Arena)
+static Rr_TextRenderingContext
+Rr_MakeTextRenderingContext(Rr_App* App, Rr_UploadContext* UploadContext, VkExtent2D ActiveResolution, Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -274,13 +261,16 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     Rr_TextRenderingContext TextRenderingContext = { 0 };
 
     Rr_U64 Ticks = SDL_GetTicks();
-    float Time = (float)((double)Ticks / 1000.0);
+    Rr_F32 Time = (Rr_F32)((Rr_F64)Ticks / 1000.0);
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
     Rr_TextGlobalsLayout TextGlobalsData = {
         .Reserved = 0.0f,
         .Time = Time,
         .ScreenSize = { (Rr_F32)ActiveResolution.width, (Rr_F32)ActiveResolution.height },
-        .Palette = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+        .Palette = { { 1.0f, 1.0f, 1.0f, 1.0f },
+                       { 1.0f, 0.0f, 0.0f, 1.0f },
+                       { 0.0f, 1.0f, 0.0f, 1.0f },
+                       { 0.0f, 0.0f, 1.0f, 1.0f } }
     };
     Rr_UploadToUniformBuffer(
         App,
@@ -309,7 +299,8 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     return TextRenderingContext;
 }
 
-static void Rr_RenderText(
+static void
+Rr_RenderText(
     Rr_Renderer* Renderer,
     Rr_TextRenderingContext* TextRenderingContext,
     Rr_DrawTextsSlice DrawTextSlice,
@@ -324,12 +315,7 @@ static void Rr_RenderText(
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(1, 1, Scratch.Arena);
 
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Handle);
-    vkCmdBindVertexBuffers(
-        CommandBuffer,
-        0,
-        1,
-        &TextPipeline->QuadBuffer->Handle,
-        &(VkDeviceSize){ 0 });
+    vkCmdBindVertexBuffers(CommandBuffer, 0, 1, &TextPipeline->QuadBuffer->Handle, &(VkDeviceSize){ 0 });
     vkCmdBindDescriptorSets(
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -456,10 +442,7 @@ static void Rr_RenderText(
                 Rr_U32 GlyphIndexMask = ~0xFFE00000;
                 Rr_U32 GlyphPack = GlyphIndexMask & Unicode;
                 GlyphPack |= PalleteIndex << 28;
-                *Input = (Rr_TextPerInstanceVertexInput){
-                    .Unicode = GlyphPack,
-                    .Advance = AccumulatedAdvance
-                };
+                *Input = (Rr_TextPerInstanceVertexInput){ .Unicode = GlyphPack, .Advance = AccumulatedAdvance };
                 FinalTextLength++;
                 Rr_F32 Advance = DrawTextInfo->Font->Advances[Unicode];
                 AccumulatedAdvance.X += Advance;
@@ -474,12 +457,16 @@ static void Rr_RenderText(
         TextDataOffset += FinalTextLength;
         vkCmdDraw(CommandBuffer, 4, FinalTextLength, 0, 0);
     }
-    SDL_memcpy(TextPipeline->TextBuffers[Renderer->CurrentFrameIndex]->AllocationInfo.pMappedData, TextData, TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput));
+    SDL_memcpy(
+        TextPipeline->TextBuffers[Renderer->CurrentFrameIndex]->AllocationInfo.pMappedData,
+        TextData,
+        TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput));
 
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
+void
+Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -496,10 +483,7 @@ void Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
-    Rr_UploadContext UploadContext = {
-        .StagingBuffer = Frame->StagingBuffer,
-        .TransferCommandBuffer = CommandBuffer
-    };
+    Rr_UploadContext UploadContext = { .StagingBuffer = Frame->StagingBuffer, .TransferCommandBuffer = CommandBuffer };
 
     Rr_GenericRenderingContext GenericRenderingContext = Rr_MakeGenericRenderingContext(
         App,
@@ -509,15 +493,11 @@ void Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
         &DrawContext->Info.Sizes,
         DrawContext->GlobalsData,
         Scratch.Arena);
-    Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(App,
-        &UploadContext,
-        (VkExtent2D){ .width = Width, .height = Height },
-        Scratch.Arena);
+    Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(
+        App, &UploadContext, (VkExtent2D){ .width = Width, .height = Height }, Scratch.Arena);
 
     /* Begin render pass. */
-    VkClearValue ClearColorValues[2] = {
-        (VkClearValue){ 0 }, (VkClearValue){ .depthStencil.depth = 1.0f }
-    };
+    VkClearValue ClearColorValues[2] = { (VkClearValue){ 0 }, (VkClearValue){ .depthStencil.depth = 1.0f } };
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
@@ -530,34 +510,33 @@ void Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
     vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     /* Set dynamic states. */
-    vkCmdSetViewport(CommandBuffer, 0, 1, &(VkViewport){
-                                              .x = (Rr_F32)Viewport.X,
-                                              .y = (Rr_F32)Viewport.Y,
-                                              .width = (Rr_F32)Viewport.Width,
-                                              .height = (Rr_F32)Viewport.Height,
-                                              .minDepth = 0.0f,
-                                              .maxDepth = 1.0f,
-                                          });
+    vkCmdSetViewport(
+        CommandBuffer,
+        0,
+        1,
+        &(VkViewport){
+            .x = (Rr_F32)Viewport.X,
+            .y = (Rr_F32)Viewport.Y,
+            .width = (Rr_F32)Viewport.Width,
+            .height = (Rr_F32)Viewport.Height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        });
 
-    vkCmdSetScissor(CommandBuffer, 0, 1, &(VkRect2D){
-                                             .offset.x = Viewport.X,
-                                             .offset.y = Viewport.Y,
-                                             .extent.width = Viewport.Width,
-                                             .extent.height = Viewport.Height,
-                                         });
+    vkCmdSetScissor(
+        CommandBuffer,
+        0,
+        1,
+        &(VkRect2D){
+            .offset.x = Viewport.X,
+            .offset.y = Viewport.Y,
+            .extent.width = Viewport.Width,
+            .extent.height = Viewport.Height,
+        });
 
     Rr_RenderGeneric(
-        Renderer,
-        &GenericRenderingContext,
-        DrawContext->DrawPrimitivesSlice,
-        CommandBuffer,
-        Scratch.Arena);
-    Rr_RenderText(
-        Renderer,
-        &TextRenderingContext,
-        DrawContext->DrawTextsSlice,
-        CommandBuffer,
-        Scratch.Arena);
+        Renderer, &GenericRenderingContext, DrawContext->DrawPrimitivesSlice, CommandBuffer, Scratch.Arena);
+    Rr_RenderText(Renderer, &TextRenderingContext, DrawContext->DrawTextsSlice, CommandBuffer, Scratch.Arena);
 
     vkCmdEndRenderPass(CommandBuffer);
 

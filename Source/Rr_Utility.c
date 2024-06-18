@@ -3,23 +3,26 @@
 #include <math.h>
 #include <string.h>
 
-Rr_F32 Rr_WrapMax(Rr_F32 X, Rr_F32 Max)
+Rr_F32
+Rr_WrapMax(Rr_F32 X, Rr_F32 Max)
 {
     return fmodf(Max + fmodf(X, Max), Max);
 }
 
-Rr_F32 Rr_WrapMinMax(Rr_F32 X, Rr_F32 Min, Rr_F32 Max)
+Rr_F32
+Rr_WrapMinMax(Rr_F32 X, Rr_F32 Min, Rr_F32 Max)
 {
     return Min + Rr_WrapMax(X - Min, Max - Min);
 }
 
-Rr_U16 Rr_FloatToHalf(Rr_U32 x)
+Rr_U16
+Rr_FloatToHalf(Rr_U32 X)
 {
 #define Bit(N) ((uint32_t)1 << (N))
 #define Mask(N) (((uint32_t)1 << (N)) - 1)
-    uint32_t SignBit = x >> 31;
-    uint32_t ExponentField = x >> 23 & Mask(8);
-    uint32_t SignificandField = x & Mask(23);
+    Rr_U32 SignBit = X >> 31;
+    Rr_U32 ExponentField = X >> 23 & Mask(8);
+    Rr_U32 SignificandField = X & Mask(23);
 
     if (ExponentField == Mask(8))
     {
@@ -44,7 +47,7 @@ Rr_U16 Rr_FloatToHalf(Rr_U32 x)
     }
     else
     {
-        int Exponent = (int)ExponentField - 127 + 15;
+        Rr_I32 Exponent = (Rr_I32)ExponentField - 127 + 15;
 
         if (Exponent < -11)
         {
@@ -95,7 +98,8 @@ Rr_U16 Rr_FloatToHalf(Rr_U32 x)
 #undef Mask
 }
 
-void Rr_PackVec4(Rr_Vec4 From, Rr_U32* OutA, Rr_U32* OutB)
+void
+Rr_PackVec4(Rr_Vec4 From, Rr_U32* OutA, Rr_U32* OutB)
 {
     typedef union PackHelper
     {

@@ -110,7 +110,7 @@ VkDescriptorPool Rr_GetDescriptorPool(Rr_DescriptorAllocator* DescriptorAllocato
             DescriptorAllocator->Ratios.Data,
             Rr_SliceLength(&DescriptorAllocator->Ratios));
 
-        DescriptorAllocator->SetsPerPool = (Rr_USize)((float)DescriptorAllocator->SetsPerPool * 1.5f);
+        DescriptorAllocator->SetsPerPool = (Rr_USize)((Rr_F32)DescriptorAllocator->SetsPerPool * 1.5f);
 
         if (DescriptorAllocator->SetsPerPool > 4096)
         {

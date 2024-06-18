@@ -8,7 +8,8 @@
 
 #include <cJSON/cJSON.h>
 
-void Rr_InitTextRenderer(Rr_App* App)
+void
+Rr_InitTextRenderer(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
@@ -17,27 +18,19 @@ void Rr_InitTextRenderer(Rr_App* App)
     /* Descriptor Set Layouts */
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
     Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS] =
-        Rr_BuildDescriptorLayout(
-            &DescriptorLayoutBuilder,
-            Device,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS] = Rr_BuildDescriptorLayout(
+        &DescriptorLayoutBuilder, Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
     Rr_ClearDescriptors(&DescriptorLayoutBuilder);
     Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     Rr_AddDescriptor(&DescriptorLayoutBuilder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT] =
-        Rr_BuildDescriptorLayout(
-            &DescriptorLayoutBuilder,
-            Device,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT] = Rr_BuildDescriptorLayout(
+        &DescriptorLayoutBuilder, Device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
     /* Pipeline Layout */
-    VkPushConstantRange PushConstantRange = {
-        .offset = 0,
-        .size = 128,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-    };
+    VkPushConstantRange PushConstantRange = { .offset = 0,
+                                              .size = 128,
+                                              .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
 
     VkPipelineLayoutCreateInfo LayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -59,69 +52,56 @@ void Rr_InitTextRenderer(Rr_App* App)
         Builder,
         &(Rr_VertexInput){
             .Attributes = {
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 0 },
-            } });
+                           { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 0 },
+                           }
+    });
     Rr_EnablePerInstanceInputAttributes(
         Builder,
         &(Rr_VertexInput){
             .Attributes = {
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 1 },
-                { .Type = RR_VERTEX_INPUT_TYPE_UINT, .Location = 2 },
-            } });
+                           { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 1 },
+                           { .Type = RR_VERTEX_INPUT_TYPE_UINT, .Location = 2 },
+                           }
+    });
     Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
     Rr_EnableColorAttachment(Builder, RR_TRUE);
     Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
-    TextPipeline->Handle = Rr_BuildPipeline(
-        Renderer,
-        Builder,
-        TextPipeline->Layout);
+    TextPipeline->Handle = Rr_BuildPipeline(Renderer, Builder, TextPipeline->Layout);
 
     /* Quad Buffer */
     Rr_F32 Quad[8] = {
-        0.0f,
-        0.0f,
-        0.0f,
-        1.0f,
-        1.0f,
-        1.0f,
-        1.0f,
-        0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
     };
-    TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(
-        App,
-        sizeof(Quad));
+    TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(App, sizeof(Quad));
     Rr_UploadToDeviceBufferImmediate(App, TextPipeline->QuadBuffer, Quad, sizeof(Quad));
 
     /* Buffers */
-    for (int FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
+    for (Rr_USize FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
     {
-        TextPipeline->GlobalsBuffers[FrameIndex] = Rr_CreateDeviceUniformBuffer(
-            App,
-            sizeof(Rr_TextGlobalsLayout));
+        TextPipeline->GlobalsBuffers[FrameIndex] = Rr_CreateDeviceUniformBuffer(App, sizeof(Rr_TextGlobalsLayout));
 
-        TextPipeline->TextBuffers[FrameIndex] = Rr_CreateMappedVertexBuffer(
-            App,
-            RR_TEXT_BUFFER_SIZE);
+        TextPipeline->TextBuffers[FrameIndex] = Rr_CreateMappedVertexBuffer(App, RR_TEXT_BUFFER_SIZE);
     }
 
     /* Builtin Font */
     Renderer->BuiltinFont = Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
 }
 
-void Rr_CleanupTextRenderer(Rr_App* App)
+void
+Rr_CleanupTextRenderer(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
     VkDevice Device = Renderer->Device;
     vkDestroyPipeline(Device, TextPipeline->Handle, NULL);
     vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
-    for (int Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT; ++Index)
+    for (Rr_USize Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT; ++Index)
     {
         vkDestroyDescriptorSetLayout(Device, TextPipeline->DescriptorSetLayouts[Index], NULL);
     }
-    for (int Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    for (Rr_USize Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_DestroyBuffer(App, TextPipeline->GlobalsBuffers[Index]);
         Rr_DestroyBuffer(App, TextPipeline->TextBuffers[Index]);
@@ -130,7 +110,8 @@ void Rr_CleanupTextRenderer(Rr_App* App)
     Rr_DestroyFont(App, Renderer->BuiltinFont);
 }
 
-Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
+Rr_Font*
+Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Image* Atlas;
@@ -160,13 +141,11 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
     };
 
     Rr_Font* Font = Rr_CreateObject(&App->ObjectStorage);
-    *Font = (Rr_Font){
-        .Buffer = Buffer,
-        .Atlas = Atlas,
-        .LineHeight = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
-        .DefaultSize = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
-        .Advances = Rr_Calloc(RR_TEXT_MAX_GLYPHS, sizeof(Rr_F32))
-    };
+    *Font = (Rr_Font){ .Buffer = Buffer,
+                       .Atlas = Atlas,
+                       .LineHeight = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
+                       .DefaultSize = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
+                       .Advances = Rr_Calloc(RR_TEXT_MAX_GLYPHS, sizeof(Rr_F32)) };
 
     cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
 
@@ -204,26 +183,22 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
 
         Rr_PackVec4(PlaneBounds, &PlaneLB, &PlaneRT);
 
-        TextFontData.Glyphs[Unicode] = (Rr_Glyph){
-            .AtlasXY = ((Rr_U32)AtlasBounds[0] << 16) | (Rr_U32)AtlasBounds[1],
-            .AtlasWH = ((Rr_U32)(AtlasBounds[2] - AtlasBounds[0]) << 16) | (Rr_U32)(AtlasBounds[3] - AtlasBounds[1]),
-            .PlaneLB = PlaneLB,
-            .PlaneRT = PlaneRT
-        };
+        TextFontData.Glyphs[Unicode] = (Rr_Glyph){ .AtlasXY = ((Rr_U32)AtlasBounds[0] << 16) | (Rr_U32)AtlasBounds[1],
+                                                   .AtlasWH = ((Rr_U32)(AtlasBounds[2] - AtlasBounds[0]) << 16)
+                                                       | (Rr_U32)(AtlasBounds[3] - AtlasBounds[1]),
+                                                   .PlaneLB = PlaneLB,
+                                                   .PlaneRT = PlaneRT };
     }
 
     cJSON_Delete(FontDataJSON);
 
-    Rr_UploadToDeviceBufferImmediate(
-        App,
-        Buffer,
-        &TextFontData,
-        sizeof(Rr_TextFontLayout));
+    Rr_UploadToDeviceBufferImmediate(App, Buffer, &TextFontData, sizeof(Rr_TextFontLayout));
 
     return Font;
 }
 
-void Rr_DestroyFont(Rr_App* App, Rr_Font* Font)
+void
+Rr_DestroyFont(Rr_App* App, Rr_Font* Font)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 

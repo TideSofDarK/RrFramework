@@ -2,7 +2,7 @@ Language: Cpp
 BasedOnStyle: LLVM
 
 AccessModifierOffset: -4
-AlignAfterOpenBracket: DontAlign
+AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Left
 AlignOperands: DontAlign
@@ -11,6 +11,9 @@ AllowShortBlocksOnASingleLine: Empty
 AllowShortEnumsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortLambdasOnASingleLine: All
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignArrayOfStructures: Left
+BreakBeforeBraces: Custom
 BraceWrapping:
   AfterCaseLabel: true
   AfterClass: true
@@ -27,13 +30,15 @@ BraceWrapping:
   BeforeLambdaBody: false
   BeforeWhile: true
   IndentBraces: false
+AlwaysBreakAfterReturnType: All
 BreakBeforeBinaryOperators: NonAssignment
-BreakBeforeBraces: Custom
 BreakInheritanceList: AfterColon
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeComma
 BreakStringLiterals: false
-ColumnLimit: 0
+BinPackParameters: false
+BinPackArguments: false
+ColumnLimit: 120
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 Cpp11BracedListStyle: false
 EmptyLineBeforeAccessModifier: LogicalBlock
@@ -49,5 +54,6 @@ PointerAlignment: Left
 PackConstructorInitializers: Never
 SortIncludes: Never
 SpaceBeforeCaseColon: false
+SeparateDefinitionBlocks: Always
 TabWidth: 4
 UseTab: Never

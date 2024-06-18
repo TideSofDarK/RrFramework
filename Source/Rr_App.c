@@ -61,7 +61,7 @@ void Rr_DebugOverlay(Rr_App* App)
     ImGuiIO* IO = igGetIO();
     ImGuiViewport* Viewport = igGetMainViewport();
     ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-    float Padding = 10.0f;
+    Rr_F32 Padding = 10.0f;
     ImVec2 WorkPos = Viewport->WorkPos;
     ImVec2 WindowPos, WindowPosPivot;
     WindowPos.x = WorkPos.x + Padding;
@@ -302,7 +302,7 @@ Rr_InputState Rr_GetInputState(Rr_App* App)
 Rr_F32 Rr_GetAspectRatio(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    return (float)Renderer->SwapchainSize.width / (float)Renderer->SwapchainSize.height;
+    return (Rr_F32)Renderer->SwapchainSize.width / (Rr_F32)Renderer->SwapchainSize.height;
 }
 
 Rr_F64 Rr_GetDeltaSeconds(Rr_App* App)

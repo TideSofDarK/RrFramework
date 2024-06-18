@@ -118,7 +118,10 @@ struct Rr_Renderer
     } NullTextures;
 
     /* Retired Semaphores */
-    Rr_SliceType(struct Rr_RetiredSemaphore { VkSemaphore Semaphore; Rr_USize FrameIndex; }) RetiredSemaphoresSlice;
+    Rr_SliceType(struct Rr_RetiredSemaphore {
+        VkSemaphore Semaphore;
+        Rr_USize FrameIndex;
+    }) RetiredSemaphoresSlice;
 
     /* Pending Loads */
     Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;

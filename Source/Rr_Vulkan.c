@@ -8,9 +8,7 @@
 #include <stdlib.h>
 
 static Rr_Bool Rr_CheckPhysicalDevice(
-    VkPhysicalDevice PhysicalDevice,
-    VkSurfaceKHR Surface,
-    Rr_U32* OutGraphicsQueueFamilyIndex,
+    VkPhysicalDevice PhysicalDevice, VkSurfaceKHR Surface, Rr_U32* OutGraphicsQueueFamilyIndex,
     Rr_U32* OutTransferQueueFamilyIndex)
 {
     Rr_U32 ExtensionCount;
@@ -20,7 +18,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
         return RR_FALSE;
     }
 
-    char* TargetExtensions[] = {
+    Rr_Byte* TargetExtensions[] = {
         "VK_KHR_swapchain",
     };
 
@@ -65,8 +63,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     for (Rr_U32 Index = 0; Index < QueueFamilyCount; ++Index)
     {
         vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, Index, Surface, &QueuePresentSupport[Index]);
-        if (QueuePresentSupport[Index]
-            && QueueFamilyProperties[Index].queueCount > 0
+        if (QueuePresentSupport[Index] && QueueFamilyProperties[Index].queueCount > 0
             && (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
         {
             GraphicsQueueFamilyIndex = Index;
@@ -79,7 +76,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
         return RR_FALSE;
     }
 
-    Rr_U32 bForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
+    Rr_Bool bForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
 
     if (!bForceDisableTransferQueue)
     {
@@ -100,7 +97,8 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     }
 
     *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
-    *OutTransferQueueFamilyIndex = TransferQueueFamilyIndex == ~0U ? GraphicsQueueFamilyIndex : TransferQueueFamilyIndex;
+    *OutTransferQueueFamilyIndex =
+        TransferQueueFamilyIndex == ~0U ? GraphicsQueueFamilyIndex : TransferQueueFamilyIndex;
 
     Rr_StackFree(QueuePresentSupport);
     Rr_StackFree(QueueFamilyProperties);
@@ -110,10 +108,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
 }
 
 Rr_PhysicalDevice Rr_CreatePhysicalDevice(
-    VkInstance Instance,
-    VkSurfaceKHR Surface,
-    Rr_U32* OutGraphicsQueueFamilyIndex,
-    Rr_U32* OutTransferQueueFamilyIndex)
+    VkInstance Instance, VkSurfaceKHR Surface, Rr_U32* OutGraphicsQueueFamilyIndex, Rr_U32* OutTransferQueueFamilyIndex)
 {
     Rr_PhysicalDevice PhysicalDevice = { 0 };
 
@@ -127,7 +122,9 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     VkPhysicalDevice* PhysicalDevices = Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
-    PhysicalDevice.SubgroupProperties = (VkPhysicalDeviceSubgroupProperties){ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES, .pNext = NULL };
+    PhysicalDevice.SubgroupProperties =
+        (VkPhysicalDeviceSubgroupProperties){ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+                                              .pNext = NULL };
 
     PhysicalDevice.Properties = (VkPhysicalDeviceProperties2){
         .pNext = &PhysicalDevice.SubgroupProperties,
@@ -136,14 +133,11 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
 
     Rr_Bool bUseTransferQueue = RR_FALSE;
     Rr_Bool bFoundSuitableDevice = RR_FALSE;
-    for (Rr_U32 Index = 1; Index < PhysicalDeviceCount; Index++)
+    for (Rr_U32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
         if (Rr_CheckPhysicalDevice(
-                PhysicalDeviceHandle,
-                Surface,
-                OutGraphicsQueueFamilyIndex,
-                OutTransferQueueFamilyIndex))
+                PhysicalDeviceHandle, Surface, OutGraphicsQueueFamilyIndex, OutTransferQueueFamilyIndex))
         {
             bUseTransferQueue = *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
@@ -171,28 +165,24 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
 }
 
 void Rr_InitDeviceAndQueues(
-    VkPhysicalDevice PhysicalDevice,
-    Rr_U32 GraphicsQueueFamilyIndex,
-    Rr_U32 TransferQueueFamilyIndex,
-    VkDevice* OutDevice,
-    VkQueue* OutGraphicsQueue,
-    VkQueue* OutTransferQueue)
+    VkPhysicalDevice PhysicalDevice, Rr_U32 GraphicsQueueFamilyIndex, Rr_U32 TransferQueueFamilyIndex,
+    VkDevice* OutDevice, VkQueue* OutGraphicsQueue, VkQueue* OutTransferQueue)
 {
     Rr_Bool bUseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
-    float QueuePriorities[] = { 1.0f };
+    Rr_F32 QueuePriorities[] = { 1.0f };
     VkDeviceQueueCreateInfo QueueInfos[] = {
         {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = GraphicsQueueFamilyIndex,
-            .queueCount = 1,
-            .pQueuePriorities = QueuePriorities,
-        },
+         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+         .queueFamilyIndex = GraphicsQueueFamilyIndex,
+         .queueCount = 1,
+         .pQueuePriorities = QueuePriorities,
+         },
         {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = TransferQueueFamilyIndex,
-            .queueCount = 1,
-            .pQueuePriorities = QueuePriorities,
-        }
+         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+         .queueFamilyIndex = TransferQueueFamilyIndex,
+         .queueCount = 1,
+         .pQueuePriorities = QueuePriorities,
+         }
     };
 
     Rr_CString DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -216,11 +206,7 @@ void Rr_InitDeviceAndQueues(
 }
 
 void Rr_BlitPrerenderedDepth(
-    VkCommandBuffer CommandBuffer,
-    VkImage Source,
-    VkImage Destination,
-    VkExtent2D SrcSize,
-    VkExtent2D DstSize)
+    VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
 {
     // VkImageBlit2 BlitRegion = {
     //     .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
@@ -258,7 +244,8 @@ void Rr_BlitPrerenderedDepth(
     abort();
 }
 
-void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
+void Rr_BlitColorImage(
+    VkCommandBuffer CommandBuffer, VkImage Source, VkImage Destination, VkExtent2D SrcSize, VkExtent2D DstSize)
 {
     VkImageBlit ImageBlit = {
         .srcSubresource = {
@@ -279,12 +266,6 @@ void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage De
     };
 
     vkCmdBlitImage(
-        CommandBuffer,
-        Source,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        Destination,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &ImageBlit,
-        VK_FILTER_NEAREST);
+        CommandBuffer, Source, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &ImageBlit, VK_FILTER_NEAREST);
 }
