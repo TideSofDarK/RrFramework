@@ -193,8 +193,8 @@ public:
 
 struct SCamera
 {
-    f32 Pitch{};
-    f32 Yaw{};
+    Rr_F32 Pitch{};
+    Rr_F32 Yaw{};
     Rr_Vec3 Position{};
     Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
 
@@ -210,10 +210,10 @@ struct SCamera
 
     [[nodiscard]] Rr_Mat4 GetViewMatrix()
     {
-        f32 CosPitch = cos(Pitch * Rr_DegToRad);
-        f32 SinPitch = sin(Pitch * Rr_DegToRad);
-        f32 CosYaw = cos(Yaw * Rr_DegToRad);
-        f32 SinYaw = sin(Yaw * Rr_DegToRad);
+        Rr_F32 CosPitch = cos(Pitch * Rr_DegToRad);
+        Rr_F32 SinPitch = sin(Pitch * Rr_DegToRad);
+        Rr_F32 CosYaw = cos(Yaw * Rr_DegToRad);
+        Rr_F32 SinYaw = sin(Yaw * Rr_DegToRad);
 
         Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
         Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
@@ -334,7 +334,7 @@ public:
         Rr_InputState InputState = Rr_GetInputState(App);
         Rr_KeyStates Keys = InputState.Keys;
 
-        f32 DeltaTime = static_cast<f32>(Rr_GetDeltaSeconds(App));
+        auto DeltaTime = static_cast<Rr_F32>(Rr_GetDeltaSeconds(App));
 
         if (Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
         {
@@ -360,7 +360,7 @@ public:
 
         Rr_Vec3 CameraForward = Camera.GetForwardVector();
         Rr_Vec3 CameraLeft = Camera.GetRightVector();
-        constexpr f32 CameraSpeed = 0.1f;
+        constexpr Rr_F32 CameraSpeed = 0.1f;
         if (Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
         {
             Camera.Position -= CameraForward * DeltaTime * CameraSpeed;
@@ -381,7 +381,7 @@ public:
         if (InputState.MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
         {
             Rr_SetRelativeMouseMode(true);
-            constexpr f32 Sensitivity = 0.2f;
+            constexpr Rr_F32 Sensitivity = 0.2f;
             Camera.Yaw = Rr_WrapMax(Camera.Yaw - (InputState.MousePositionDelta.X * Sensitivity), 360.0f);
             Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (InputState.MousePositionDelta.Y * Sensitivity), -90.0f, 90.0f);
         }
@@ -414,9 +414,9 @@ public:
             .Viewport = {},
             .Sizes = Uber3DPipeline.Sizes(),
         };
-        Rr_DrawContext* DrawContext = Rr_CreateDrawContext(App, &DrawContextInfo, reinterpret_cast<byte*>(&ShaderGlobals));
+        Rr_DrawContext* DrawContext = Rr_CreateDrawContext(App, &DrawContextInfo, reinterpret_cast<Rr_Byte*>(&ShaderGlobals));
 
-        const f32 Time = static_cast<f32>((Rr_GetTimeSeconds(App) * 2.0));
+        const auto Time = static_cast<Rr_F32>((Rr_GetTimeSeconds(App) * 2.0));
 
         if (bLoaded)
         {
@@ -472,7 +472,7 @@ public:
         {
             if (LoadingContext != nullptr)
             {
-                u32 Current, Total;
+                Rr_U32 Current, Total;
                 Rr_GetLoadProgress(LoadingContext, &Current, &Total);
 
                 std::string Formatted = std::format("Loading: {}/{}\n", Current, Total);

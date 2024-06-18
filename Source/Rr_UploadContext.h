@@ -6,8 +6,8 @@
 typedef struct Rr_AcquireBarriers Rr_AcquireBarriers;
 struct Rr_AcquireBarriers
 {
-    usize ImageMemoryBarrierCount;
-    usize BufferMemoryBarrierCount;
+    Rr_USize ImageMemoryBarrierCount;
+    Rr_USize BufferMemoryBarrierCount;
     VkImageMemoryBarrier* ImageMemoryBarriers;
     VkBufferMemoryBarrier* BufferMemoryBarriers;
 };
@@ -19,5 +19,5 @@ struct Rr_UploadContext
     VkCommandBuffer TransferCommandBuffer;
     Rr_AcquireBarriers ReleaseBarriers;
     Rr_AcquireBarriers AcquireBarriers;
-    bool bUseAcquireBarriers;
+    Rr_Bool bUseAcquireBarriers;
 };

@@ -26,7 +26,7 @@ struct Rr_Swapchain
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
     Rr_SwapchainImage Images[RR_MAX_SWAPCHAIN_IMAGE_COUNT];
-    u32 ImageCount;
+    Rr_U32 ImageCount;
     VkExtent2D Extent;
     SDL_AtomicInt bResizePending;
 };
@@ -35,7 +35,7 @@ typedef struct Rr_ImGui Rr_ImGui;
 struct Rr_ImGui
 {
     VkDescriptorPool DescriptorPool;
-    bool bInitiated;
+    Rr_Bool bInitiated;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
@@ -90,8 +90,8 @@ struct Rr_Renderer
 
     /* Frames */
     Rr_Frame Frames[RR_FRAME_OVERLAP];
-    usize FrameNumber;
-    usize CurrentFrameIndex;
+    Rr_USize FrameNumber;
+    Rr_USize CurrentFrameIndex;
 
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
@@ -118,7 +118,7 @@ struct Rr_Renderer
     } NullTextures;
 
     /* Retired Semaphores */
-    Rr_SliceType(struct Rr_RetiredSemaphore { VkSemaphore Semaphore; usize FrameIndex; }) RetiredSemaphoresSlice;
+    Rr_SliceType(struct Rr_RetiredSemaphore { VkSemaphore Semaphore; Rr_USize FrameIndex; }) RetiredSemaphoresSlice;
 
     /* Pending Loads */
     Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;
@@ -144,11 +144,11 @@ extern void Rr_InitImGui(Rr_App* App);
 extern void Rr_CleanupRenderer(Rr_App* App);
 extern void Rr_ProcessPendingLoads(Rr_App* App);
 extern void Rr_Draw(Rr_App* App);
-extern bool Rr_NewFrame(Rr_App* App, void* Window);
+extern Rr_Bool Rr_NewFrame(Rr_App* App, void* Window);
 
 extern VkCommandBuffer Rr_BeginImmediate(Rr_Renderer* Renderer);
 extern void Rr_EndImmediate(Rr_Renderer* Renderer);
 
 extern Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer);
-extern bool Rr_IsUsingTransferQueue(Rr_Renderer* Renderer);
+extern Rr_Bool Rr_IsUsingTransferQueue(Rr_Renderer* Renderer);
 extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer* Renderer);

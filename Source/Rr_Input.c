@@ -4,10 +4,10 @@
 
 #include <SDL3/SDL.h>
 
-static Rr_KeyState Rr_UpdateKeyState(Rr_KeyState OldKeyState, const u8* KeyboardState, u8 Scancode)
+static Rr_KeyState Rr_UpdateKeyState(Rr_KeyState OldKeyState, const Rr_U8* KeyboardState, Rr_U8 Scancode)
 {
-    bool bCurrentlyPressed = KeyboardState[Scancode] == 1;
-    bool bWasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
+    Rr_Bool bCurrentlyPressed = KeyboardState[Scancode] == 1;
+    Rr_Bool bWasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
     if (bCurrentlyPressed)
     {
         if (bWasPressed)
@@ -35,8 +35,8 @@ static Rr_KeyState Rr_UpdateKeyState(Rr_KeyState OldKeyState, const u8* Keyboard
 void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config)
 {
     Rr_KeyStates NewKeys = State->Keys;
-    const u8* KeyboardState = SDL_GetKeyboardState(NULL);
-    for (usize Index = 0; Index < Config->Count; Index++)
+    const Rr_U8* KeyboardState = SDL_GetKeyboardState(NULL);
+    for (Rr_USize Index = 0; Index < Config->Count; Index++)
     {
         Rr_InputMapping* Mapping = &Config->Mappings[Index];
 
@@ -51,7 +51,7 @@ void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config)
     State->MouseState = SDL_GetMouseState(&State->MousePosition.X, &State->MousePosition.Y);
 }
 
-Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, u32 Key)
+Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, Rr_U32 Key)
 {
     return (Keys >> (2 * Key)) & 3;
 }

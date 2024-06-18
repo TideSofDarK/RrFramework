@@ -10,6 +10,6 @@ struct Rr_Material
     struct Rr_GenericPipeline* GenericPipeline;
     struct Rr_Buffer* Buffer;
     Rr_Image* Textures[RR_MAX_TEXTURES_PER_MATERIAL];
-    usize TextureCount;
-    u8 bOwning;
+    Rr_USize TextureCount;
+    Rr_U8 bOwning;
 };

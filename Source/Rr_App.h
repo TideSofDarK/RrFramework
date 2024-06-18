@@ -14,23 +14,23 @@ struct Rr_FrameTime
 #ifdef RR_PERFORMANCE_COUNTER
     struct
     {
-        f64 FPS;
-        u64 Frames;
-        u64 StartTime;
-        u64 UpdateFrequency;
-        f64 CountPerSecond;
+        Rr_F64 FPS;
+        Rr_U64 Frames;
+        Rr_U64 StartTime;
+        Rr_U64 UpdateFrequency;
+        Rr_F64 CountPerSecond;
     } PerformanceCounter;
 #endif
 
     /* VSync Simulation */
-    u64 TargetFramerate;
-    u64 StartTime;
-    bool bSimulateVSync;
+    Rr_U64 TargetFramerate;
+    Rr_U64 StartTime;
+    Rr_Bool bSimulateVSync;
 
     /* Delta Time Calculation */
-    u64 Last;
-    u64 Now;
-    f64 DeltaSeconds;
+    Rr_U64 Last;
+    Rr_U64 Now;
+    Rr_F64 DeltaSeconds;
 };
 
 struct Rr_App

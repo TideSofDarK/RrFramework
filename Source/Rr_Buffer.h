@@ -15,14 +15,14 @@ struct Rr_Buffer
 
 extern Rr_Buffer* Rr_CreateBuffer(
     Rr_App* App,
-    usize Size,
+    Rr_USize Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
-    bool bHostMapped);
-extern Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_App* App, usize Size);
-extern Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_App* App, usize Size);
-extern Rr_Buffer* Rr_CreateMappedBuffer(Rr_App* App, usize Size, VkBufferUsageFlags UsageFlags);
-extern Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_App* App, usize Size);
+    Rr_Bool bHostMapped);
+extern Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_App* App, Rr_USize Size);
+extern Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size);
+extern Rr_Buffer* Rr_CreateMappedBuffer(Rr_App* App, Rr_USize Size, VkBufferUsageFlags UsageFlags);
+extern Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_App* App, Rr_USize Size);
 extern void Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer);
 
 typedef struct Rr_WriteBuffer Rr_WriteBuffer;
@@ -41,8 +41,8 @@ extern void Rr_UploadBufferAligned(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     void* Data,
-    usize DataLength,
-    usize Alignment);
+    Rr_USize DataLength,
+    Rr_USize Alignment);
 extern void Rr_UploadBuffer(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
@@ -52,21 +52,21 @@ extern void Rr_UploadBuffer(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     void* Data,
-    usize DataLength);
+    Rr_USize DataLength);
 extern void Rr_UploadToDeviceBufferImmediate(
     Rr_App* App,
     Rr_Buffer* DstBuffer,
     void* Data,
-    usize Size);
+    Rr_USize Size);
 extern void Rr_UploadToUniformBuffer(
     Rr_App* App,
     struct Rr_UploadContext* UploadContext,
     Rr_Buffer* DstBuffer,
     void* Data,
-    usize DataLength);
+    Rr_USize DataLength);
 extern void Rr_CopyToMappedUniformBuffer(
     Rr_App* App,
     Rr_Buffer* DstBuffer,
     void* Data,
-    usize Size,
+    Rr_USize Size,
     VkDeviceSize* DstOffset);

@@ -18,7 +18,7 @@ VkPipeline Rr_BuildPipeline(
 {
     /* Create shader modules. */
     VkPipelineShaderStageCreateInfo* ShaderStages = Rr_StackAlloc(VkPipelineShaderStageCreateInfo, RR_PIPELINE_SHADER_STAGES);
-    u32 ShaderStageCount = 0;
+    Rr_U32 ShaderStageCount = 0;
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
     if (PipelineBuilder->VertexShaderSPV.Data != NULL)
@@ -26,7 +26,7 @@ VkPipeline Rr_BuildPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (u32*)PipelineBuilder->VertexShaderSPV.Data,
+            .pCode = (Rr_U32*)PipelineBuilder->VertexShaderSPV.Data,
             .codeSize = PipelineBuilder->VertexShaderSPV.Length
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
@@ -40,7 +40,7 @@ VkPipeline Rr_BuildPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (u32*)PipelineBuilder->FragmentShaderSPV.Data,
+            .pCode = (Rr_U32*)PipelineBuilder->FragmentShaderSPV.Data,
             .codeSize = PipelineBuilder->FragmentShaderSPV.Length
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
@@ -82,10 +82,10 @@ VkPipeline Rr_BuildPipeline(
         }
     };
 
-    u32 AttributeCount = 0;
-    bool bHasPerVertexBinding = false;
-    bool bHasPerInstanceBinding = false;
-    for (usize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    Rr_U32 AttributeCount = 0;
+    Rr_Bool bHasPerVertexBinding = RR_FALSE;
+    Rr_Bool bHasPerInstanceBinding = RR_FALSE;
+    for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         if (PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
         {
@@ -188,7 +188,7 @@ Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void)
     return PipelineBuilder;
 }
 
-void Rr_EnableColorAttachment(Rr_PipelineBuilder* PipelineBuilder, bool bEnableAlphaBlend)
+void Rr_EnableColorAttachment(Rr_PipelineBuilder* PipelineBuilder, Rr_Bool bEnableAlphaBlend)
 {
     PipelineBuilder->ColorAttachmentFormats[PipelineBuilder->ColorAttachmentCount] = RR_COLOR_FORMAT;
     if (bEnableAlphaBlend)
@@ -239,27 +239,27 @@ static VkFormat Rr_GetVulkanFormat(Rr_VertexInputType Type)
     }
 }
 
-static usize Rr_GetVertexInputSize(Rr_VertexInputType Type)
+static Rr_USize Rr_GetVertexInputSize(Rr_VertexInputType Type)
 {
     switch (Type)
     {
         case RR_VERTEX_INPUT_TYPE_FLOAT:
-            return sizeof(f32);
+            return sizeof(Rr_F32);
         case RR_VERTEX_INPUT_TYPE_UINT:
-            return sizeof(u32);
+            return sizeof(Rr_U32);
         case RR_VERTEX_INPUT_TYPE_VEC2:
-            return sizeof(f32) * 2;
+            return sizeof(Rr_F32) * 2;
         case RR_VERTEX_INPUT_TYPE_VEC3:
-            return sizeof(f32) * 3;
+            return sizeof(Rr_F32) * 3;
         case RR_VERTEX_INPUT_TYPE_VEC4:
-            return sizeof(f32) * 4;
+            return sizeof(Rr_F32) * 4;
         case RR_VERTEX_INPUT_TYPE_NONE:
         default:
             return 0;
     }
 }
 
-static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInputAttribute Attribute, usize Binding)
+static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInputAttribute Attribute, Rr_USize Binding)
 {
     VkFormat Format = Rr_GetVulkanFormat(Attribute.Type);
     if (Format == VK_FORMAT_UNDEFINED)
@@ -267,7 +267,7 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_V
         return;
     }
 
-    usize Location = Attribute.Location;
+    Rr_USize Location = Attribute.Location;
     if (Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
         Rr_LogAbort("Exceeding max allowed number of vertex attributes for a pipeline!");
@@ -285,7 +285,7 @@ static void EnableVertexInputAttribute(Rr_PipelineBuilder* PipelineBuilder, Rr_V
 
 void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
 {
-    for (usize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         EnableVertexInputAttribute(PipelineBuilder, VertexInput->Attributes[Index], RR_VERTEX_INPUT_BINDING_PER_VERTEX);
     }
@@ -293,7 +293,7 @@ void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_V
 
 void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder* PipelineBuilder, Rr_VertexInput* VertexInput)
 {
-    for (usize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
+    for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         EnableVertexInputAttribute(PipelineBuilder, VertexInput->Attributes[Index], RR_VERTEX_INPUT_BINDING_PER_INSTANCE);
     }

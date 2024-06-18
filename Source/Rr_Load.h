@@ -10,9 +10,9 @@
 typedef struct Rr_LoadSize Rr_LoadSize;
 struct Rr_LoadSize
 {
-    usize StagingBufferSize;
-    usize BufferCount;
-    usize ImageCount;
+    Rr_USize StagingBufferSize;
+    Rr_USize BufferCount;
+    Rr_USize ImageCount;
 };
 
 typedef struct Rr_PendingLoad Rr_PendingLoad;
@@ -40,7 +40,7 @@ struct Rr_LoadingContext
     Rr_LoadingCallback LoadingCallback;
     void* Userdata;
     Rr_LoadTask* Tasks;
-    usize TaskCount;
+    Rr_USize TaskCount;
 };
 
 typedef struct Rr_LoadAsyncContext Rr_LoadAsyncContext;

@@ -3,26 +3,29 @@
 #ifndef __cplusplus
     #include <stddef.h>
     #include <stdint.h>
-    #include <stdbool.h>
 #else
     #include <cstddef>
     #include <cstdint>
 #endif
 
-typedef char byte;
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-typedef float f32;
-typedef double f64;
-typedef intptr_t size;
-typedef uintptr_t usize;
-typedef const char* str;
+typedef char Rr_Byte;
+typedef uint8_t Rr_U8;
+typedef uint16_t Rr_U16;
+typedef uint32_t Rr_U32;
+typedef uint64_t Rr_U64;
+typedef int8_t Rr_I8;
+typedef int16_t Rr_I16;
+typedef int32_t Rr_I32;
+typedef int64_t Rr_I64;
+typedef float Rr_F32;
+typedef double Rr_F64;
+typedef intptr_t Rr_ISize;
+typedef uintptr_t Rr_USize;
+typedef const char* Rr_CString;
+
+typedef Rr_I32 Rr_Bool;
+#define RR_FALSE 0
+#define RR_TRUE 1
 
 /* Renderer Configuration */
 #define RR_FORCE_DISABLE_TRANSFER_QUEUE 0

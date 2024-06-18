@@ -13,17 +13,17 @@ extern "C"
 typedef struct Rr_StaticMesh Rr_StaticMesh;
 typedef struct Rr_SkeletalMesh Rr_SkeletalMesh;
 
-typedef u32 Rr_MeshIndexType;
+typedef Rr_U32 Rr_MeshIndexType;
 
 typedef struct Rr_Vertex Rr_Vertex;
 struct Rr_Vertex
 {
     Rr_Vec3 Position;
-    f32 TexCoordX;
+    Rr_F32 TexCoordX;
     Rr_Vec3 Normal;
-    f32 TexCoordY;
+    Rr_F32 TexCoordY;
     Rr_Vec3 Tangent;
-    f32 Reserved;
+    Rr_F32 Reserved;
 };
 
 extern void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh);

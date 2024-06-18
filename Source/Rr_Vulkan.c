@@ -7,51 +7,51 @@
 
 #include <stdlib.h>
 
-static bool Rr_CheckPhysicalDevice(
+static Rr_Bool Rr_CheckPhysicalDevice(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
-    u32* OutGraphicsQueueFamilyIndex,
-    u32* OutTransferQueueFamilyIndex)
+    Rr_U32* OutGraphicsQueueFamilyIndex,
+    Rr_U32* OutTransferQueueFamilyIndex)
 {
-    u32 ExtensionCount;
+    Rr_U32 ExtensionCount;
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
     if (ExtensionCount == 0)
     {
-        return false;
+        return RR_FALSE;
     }
 
     char* TargetExtensions[] = {
         "VK_KHR_swapchain",
     };
 
-    bool FoundExtensions[] = { 0 };
+    Rr_Bool FoundExtensions[] = { 0 };
 
     VkExtensionProperties* Extensions = Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
 
-    for (u32 Index = 0; Index < ExtensionCount; Index++)
+    for (Rr_U32 Index = 0; Index < ExtensionCount; Index++)
     {
-        for (u32 TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
+        for (Rr_U32 TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
         {
             if (strcmp(Extensions[Index].extensionName, TargetExtensions[TargetIndex]) == 0)
             {
-                FoundExtensions[TargetIndex] = true;
+                FoundExtensions[TargetIndex] = RR_TRUE;
             }
         }
     }
-    for (u32 TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
+    for (Rr_U32 TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
     {
         if (!FoundExtensions[TargetIndex])
         {
-            return false;
+            return RR_FALSE;
         }
     }
 
-    u32 QueueFamilyCount;
+    Rr_U32 QueueFamilyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, NULL);
     if (QueueFamilyCount == 0)
     {
-        return false;
+        return RR_FALSE;
     }
 
     VkQueueFamilyProperties* QueueFamilyProperties = Rr_StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
@@ -59,10 +59,10 @@ static bool Rr_CheckPhysicalDevice(
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
-    u32 GraphicsQueueFamilyIndex = ~0U;
-    u32 TransferQueueFamilyIndex = ~0U;
+    Rr_U32 GraphicsQueueFamilyIndex = ~0U;
+    Rr_U32 TransferQueueFamilyIndex = ~0U;
 
-    for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
+    for (Rr_U32 Index = 0; Index < QueueFamilyCount; ++Index)
     {
         vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, Index, Surface, &QueuePresentSupport[Index]);
         if (QueuePresentSupport[Index]
@@ -76,14 +76,14 @@ static bool Rr_CheckPhysicalDevice(
 
     if (GraphicsQueueFamilyIndex == ~0U)
     {
-        return false;
+        return RR_FALSE;
     }
 
-    u32 bForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
+    Rr_U32 bForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
 
     if (!bForceDisableTransferQueue)
     {
-        for (u32 Index = 0; Index < QueueFamilyCount; ++Index)
+        for (Rr_U32 Index = 0; Index < QueueFamilyCount; ++Index)
         {
             if (Index == GraphicsQueueFamilyIndex)
             {
@@ -106,18 +106,18 @@ static bool Rr_CheckPhysicalDevice(
     Rr_StackFree(QueueFamilyProperties);
     Rr_StackFree(Extensions);
 
-    return true;
+    return RR_TRUE;
 }
 
 Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
-    u32* OutGraphicsQueueFamilyIndex,
-    u32* OutTransferQueueFamilyIndex)
+    Rr_U32* OutGraphicsQueueFamilyIndex,
+    Rr_U32* OutTransferQueueFamilyIndex)
 {
     Rr_PhysicalDevice PhysicalDevice = { 0 };
 
-    u32 PhysicalDeviceCount = 0;
+    Rr_U32 PhysicalDeviceCount = 0;
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, NULL);
     if (PhysicalDeviceCount == 0)
     {
@@ -134,9 +134,9 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
     };
 
-    bool bUseTransferQueue = false;
-    bool bFoundSuitableDevice = false;
-    for (u32 Index = 0; Index < PhysicalDeviceCount; Index++)
+    Rr_Bool bUseTransferQueue = RR_FALSE;
+    Rr_Bool bFoundSuitableDevice = RR_FALSE;
+    for (Rr_U32 Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
         if (Rr_CheckPhysicalDevice(
@@ -154,7 +154,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
             Rr_LogVulkan("Selected GPU: %s", PhysicalDevice.Properties.properties.deviceName);
 
             PhysicalDevice.Handle = PhysicalDeviceHandle;
-            bFoundSuitableDevice = true;
+            bFoundSuitableDevice = RR_TRUE;
             break;
         }
     }
@@ -163,7 +163,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
         Rr_LogAbort("Could not select physical device based on the chosen properties!");
     }
 
-    Rr_LogVulkan("Unified Queue Mode: %s", !bUseTransferQueue ? "true" : "false");
+    Rr_LogVulkan("Unified Queue Mode: %s", !bUseTransferQueue ? "RR_TRUE" : "RR_FALSE");
 
     Rr_StackFree(PhysicalDevices);
 
@@ -172,13 +172,13 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
 
 void Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
-    u32 GraphicsQueueFamilyIndex,
-    u32 TransferQueueFamilyIndex,
+    Rr_U32 GraphicsQueueFamilyIndex,
+    Rr_U32 TransferQueueFamilyIndex,
     VkDevice* OutDevice,
     VkQueue* OutGraphicsQueue,
     VkQueue* OutTransferQueue)
 {
-    bool bUseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
+    Rr_Bool bUseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
     float QueuePriorities[] = { 1.0f };
     VkDeviceQueueCreateInfo QueueInfos[] = {
         {
@@ -195,7 +195,7 @@ void Rr_InitDeviceAndQueues(
         }
     };
 
-    str DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    Rr_CString DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
     VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -267,14 +267,14 @@ void Rr_BlitColorImage(VkCommandBuffer CommandBuffer, VkImage Source, VkImage De
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
-        .srcOffsets = { { 0 }, { (i32)SrcSize.width, (i32)SrcSize.height, 1 } },
+        .srcOffsets = { { 0 }, { (Rr_I32)SrcSize.width, (Rr_I32)SrcSize.height, 1 } },
         .dstSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .mipLevel = 0,
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
-        .dstOffsets = { { 0 }, { (i32)DstSize.width, (i32)DstSize.height, 1 } },
+        .dstOffsets = { { 0 }, { (Rr_I32)DstSize.width, (Rr_I32)DstSize.height, 1 } },
 
     };
 

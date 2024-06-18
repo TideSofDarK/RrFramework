@@ -21,7 +21,7 @@ typedef struct Rr_Data Rr_Data;
 struct Rr_Data
 {
     void* Data;
-    usize Size;
+    Rr_USize Size;
 };
 
 #define Rr_MakeData(Struct)       \
@@ -48,7 +48,7 @@ struct Rr_DrawContextInfo
 extern Rr_DrawContext* Rr_CreateDrawContext(
     Rr_App* App,
     Rr_DrawContextInfo* Info,
-    byte* GlobalsData);
+    Rr_Byte* GlobalsData);
 
 extern void Rr_DrawStaticMesh(
     Rr_DrawContext* DrawContext,
@@ -57,7 +57,7 @@ extern void Rr_DrawStaticMesh(
 extern void Rr_DrawStaticMeshOverrideMaterials(
     Rr_DrawContext* DrawContext,
     Rr_Material** OverrideMaterials,
-    usize OverrideMaterialCount,
+    Rr_USize OverrideMaterialCount,
     Rr_StaticMesh* StaticMesh,
     Rr_Data DrawData);
 extern void Rr_DrawCustomText(
@@ -65,15 +65,15 @@ extern void Rr_DrawCustomText(
     Rr_Font* Font,
     Rr_String* String,
     Rr_Vec2 Position,
-    f32 Size,
+    Rr_F32 Size,
     Rr_DrawTextFlags Flags);
 extern void Rr_DrawDefaultText(
     Rr_DrawContext* DrawContext,
     Rr_String* String,
     Rr_Vec2 Position);
 
-extern Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height);
-extern Rr_DrawTarget* Rr_CreateDrawTargetDepthOnly(Rr_App* App, u32 Width, u32 Height);
+extern Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, Rr_U32 Width, Rr_U32 Height);
+extern Rr_DrawTarget* Rr_CreateDrawTargetDepthOnly(Rr_App* App, Rr_U32 Width, Rr_U32 Height);
 extern void Rr_DestroyDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget);
 extern Rr_DrawTarget* Rr_GetMainDrawTarget(Rr_App* App);
 

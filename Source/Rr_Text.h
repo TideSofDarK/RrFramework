@@ -17,16 +17,16 @@ typedef enum Rr_TextPipelineDescriptorSet
 
 typedef struct Rr_Glyph
 {
-    u32 AtlasXY;
-    u32 AtlasWH;
-    u32 PlaneLB;
-    u32 PlaneRT;
+    Rr_U32 AtlasXY;
+    Rr_U32 AtlasWH;
+    Rr_U32 PlaneLB;
+    Rr_U32 PlaneRT;
 } Rr_Glyph;
 
 typedef struct Rr_TextPerInstanceVertexInput
 {
     Rr_Vec2 Advance;
-    u32 Unicode;
+    Rr_U32 Unicode;
 } Rr_TextPerInstanceVertexInput;
 
 typedef struct Rr_TextGlobalsLayout
@@ -48,8 +48,8 @@ typedef struct Rr_TextFontLayout
 typedef struct Rr_TextPushConstants
 {
     Rr_Vec2 PositionScreenSpace;
-    f32 Size;
-    u32 Flags;
+    Rr_F32 Size;
+    Rr_U32 Flags;
     Rr_Vec4 ReservedB;
     Rr_Vec4 ReservedC;
     Rr_Vec4 ReservedD;
@@ -60,9 +60,9 @@ struct Rr_Font
 {
     struct Rr_Image* Atlas;
     struct Rr_Buffer* Buffer;
-    f32* Advances;
-    f32 LineHeight;
-    f32 DefaultSize;
+    Rr_F32* Advances;
+    Rr_F32 LineHeight;
+    Rr_F32 DefaultSize;
 };
 
 typedef struct Rr_TextPipeline

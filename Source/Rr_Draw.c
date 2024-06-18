@@ -5,7 +5,7 @@
 #include "Rr_Mesh.h"
 #include "Rr_Material.h"
 
-Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, byte* GlobalsData)
+Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, Rr_Byte* GlobalsData)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
@@ -20,8 +20,8 @@ Rr_DrawContext* Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, byte
     if (DrawContext->Info.DrawTarget == NULL)
     {
         DrawContext->Info.DrawTarget = Renderer->DrawTarget;
-        DrawContext->Info.Viewport.Width = (i32)Renderer->SwapchainSize.width;
-        DrawContext->Info.Viewport.Height = (i32)Renderer->SwapchainSize.height;
+        DrawContext->Info.Viewport.Width = (Rr_I32)Renderer->SwapchainSize.width;
+        DrawContext->Info.Viewport.Height = (Rr_I32)Renderer->SwapchainSize.height;
     }
 
     memcpy(DrawContext->GlobalsData, GlobalsData, Info->Sizes.Globals);
@@ -38,7 +38,7 @@ void Rr_DrawStaticMesh(
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
-    for (usize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
+    for (Rr_USize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
     {
         *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) = (Rr_DrawPrimitiveInfo){
             .OffsetIntoDrawBuffer = Offset,
@@ -53,7 +53,7 @@ void Rr_DrawStaticMesh(
 void Rr_DrawStaticMeshOverrideMaterials(
     Rr_DrawContext* DrawContext,
     Rr_Material** OverrideMaterials,
-    usize OverrideMaterialCount,
+    Rr_USize OverrideMaterialCount,
     Rr_StaticMesh* StaticMesh,
     Rr_Data DrawData)
 {
@@ -61,7 +61,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
-    for (usize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
+    for (Rr_USize PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
     {
         *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) = (Rr_DrawPrimitiveInfo){
             .OffsetIntoDrawBuffer = Offset,
@@ -92,7 +92,7 @@ void Rr_DrawCustomText(
     Rr_Font* Font,
     Rr_String* String,
     Rr_Vec2 Position,
-    f32 Size,
+    Rr_F32 Size,
     Rr_DrawTextFlags Flags)
 {
     Rr_DrawText(
@@ -116,7 +116,7 @@ void Rr_DrawDefaultText(Rr_DrawContext* DrawContext, Rr_String* String, Rr_Vec2 
             .Flags = 0 });
 }
 
-Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height)
+Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -143,7 +143,7 @@ Rr_DrawTarget* Rr_CreateDrawTarget(Rr_App* App, u32 Width, u32 Height)
     return DrawTarget;
 }
 
-Rr_DrawTarget* Rr_CreateDrawTargetDepthOnly(Rr_App* App, u32 Width, u32 Height)
+Rr_DrawTarget* Rr_CreateDrawTargetDepthOnly(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 

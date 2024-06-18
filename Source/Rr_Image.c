@@ -28,7 +28,7 @@ static void Rr_UploadImage(
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
     size_t BufferOffset = StagingBuffer->Offset;
-    memcpy((byte*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
+    memcpy((Rr_Byte*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
     StagingBuffer->Offset += ImageDataLength;
 
     VkImageSubresourceRange SubresourceRange = GetImageSubresourceRange(Aspect);
@@ -133,7 +133,7 @@ Rr_Image* Rr_CreateImage(
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
-    bool bMipMapped)
+    Rr_Bool bMipMapped)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -145,7 +145,7 @@ Rr_Image* Rr_CreateImage(
 
     if (bMipMapped)
     {
-        Info.mipLevels = (u32)(floorf(logf(SDL_max(Extent.width, Extent.height)))) + 1;
+        Info.mipLevels = (Rr_U32)(floorf(logf(SDL_max(Extent.width, Extent.height)))) + 1;
     }
 
     VmaAllocationCreateInfo AllocationCreateInfo = {
@@ -185,16 +185,16 @@ void Rr_DestroyImage(Rr_App* App, Rr_Image* Image)
 }
 
 void Rr_GetImageSizePNGMemory(
-    byte* Data,
-    usize DataSize,
+    Rr_Byte* Data,
+    Rr_USize DataSize,
     Rr_Arena* Arena,
     struct Rr_LoadSize* OutLoadSize)
 {
-    i32 DesiredChannels = 4;
-    i32 Width;
-    i32 Height;
-    i32 Channels;
-    stbi_info_from_memory((stbi_uc*)Data, (i32)DataSize, &Width, &Height, &Channels);
+    Rr_I32 DesiredChannels = 4;
+    Rr_I32 Width;
+    Rr_I32 Height;
+    Rr_I32 Channels;
+    stbi_info_from_memory((stbi_uc*)Data, (Rr_I32)DataSize, &Width, &Height, &Channels);
 
     OutLoadSize->StagingBufferSize += Width * Height * DesiredChannels;
     OutLoadSize->ImageCount += 1;
@@ -216,14 +216,14 @@ void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutL
 Rr_Image* Rr_CreateColorImageFromMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    byte* Data,
-    u32 Width,
-    u32 Height,
-    bool bMipMapped)
+    Rr_Byte* Data,
+    Rr_U32 Width,
+    Rr_U32 Height,
+    Rr_Bool bMipMapped)
 {
-    i32 DesiredChannels = 4;
+    Rr_I32 DesiredChannels = 4;
     VkExtent3D Extent = { .width = Width, .height = Height, .depth = 1 };
-    usize DataSize = Extent.width * Extent.height * DesiredChannels;
+    Rr_USize DataSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Image* ColorImage = Rr_CreateImage(
         App,
@@ -249,18 +249,18 @@ Rr_Image* Rr_CreateColorImageFromMemory(
 Rr_Image* Rr_CreateColorImageFromPNGMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    byte* Data,
-    usize DataSize,
-    bool bMipMapped)
+    Rr_Byte* Data,
+    Rr_USize DataSize,
+    Rr_Bool bMipMapped)
 {
-    i32 DesiredChannels = 4;
-    i32 Channels;
+    Rr_I32 DesiredChannels = 4;
+    Rr_I32 Channels;
     VkExtent3D Extent = { .depth = 1 };
     stbi_uc* ParsedImage = stbi_load_from_memory(
         (stbi_uc*)Data,
-        (i32)DataSize,
-        (i32*)&Extent.width,
-        (i32*)&Extent.height,
+        (Rr_I32)DataSize,
+        (Rr_I32*)&Extent.width,
+        (Rr_I32*)&Extent.height,
         &Channels,
         DesiredChannels);
     size_t ParsedSize = Extent.width * Extent.height * DesiredChannels;
@@ -292,7 +292,7 @@ Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
-    bool bMipMapped,
+    Rr_Bool bMipMapped,
     Rr_Arena* Arena)
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
@@ -316,7 +316,7 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
     int Result;
-    str Error;
+    Rr_CString Error;
 
     EXRVersion Version;
     Result = ParseEXRVersionFromMemory(&Version, (unsigned char*)Asset.Data, Asset.Length);
@@ -365,9 +365,9 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
 
     VkExtent3D Extent = { .width = Image.width, .height = Image.height, .depth = 1 };
 
-    size_t DataSize = Extent.width * Extent.height * sizeof(f32);
+    size_t DataSize = Extent.width * Extent.height * sizeof(Rr_F32);
 
-    Rr_Image* DepthImage = Rr_CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, false);
+    Rr_Image* DepthImage = Rr_CreateImage(App, Extent, RR_PRERENDERED_DEPTH_FORMAT, Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, RR_FALSE);
 
     Rr_UploadImage(App,
         UploadContext,
@@ -386,24 +386,24 @@ Rr_Image* Rr_CreateDepthImageFromEXR(
     return DepthImage;
 }
 
-Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Height)
+Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 {
     return Rr_CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        false);
+        RR_FALSE);
 }
 
-Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height)
+Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 {
     return Rr_CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
         RR_DEPTH_FORMAT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        false);
+        RR_FALSE);
 }
 
 Rr_Image* Rr_GetDummyColorTexture(Rr_App* App)

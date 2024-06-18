@@ -12,7 +12,7 @@ Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 
     Rr_Asset Asset;
     Asset.Length = SizeofResource(NULL, Resource);
-    Asset.Data = (byte*)LockResource(Memory);
+    Asset.Data = (Rr_Byte*)LockResource(Memory);
     return Asset;
 }
 
@@ -22,7 +22,7 @@ Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
     Rr_Asset Asset = {
         .Data = AssetRef.Start,
-        .Length = (usize)(AssetRef.End - AssetRef.Start)
+        .Length = (Rr_USize)(AssetRef.End - AssetRef.Start)
     };
     return Asset;
 }

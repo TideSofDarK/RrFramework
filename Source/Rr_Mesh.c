@@ -32,7 +32,7 @@ static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena* Arena)
     };
 }
 
-static cgltf_mesh* Rr_ParseGLTFMesh(Rr_Asset* Asset, usize MeshIndex, cgltf_options* Options, cgltf_data** OutData)
+static cgltf_mesh* Rr_ParseGLTFMesh(Rr_Asset* Asset, Rr_USize MeshIndex, cgltf_options* Options, cgltf_data** OutData)
 {
     cgltf_data* Data = NULL;
     cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Length, &Data);
@@ -62,20 +62,20 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    usize VertexCount = Primitive->attributes->data->count;
-    usize IndexCount = Primitive->indices->count;
+    Rr_USize VertexCount = Primitive->attributes->data->count;
+    Rr_USize IndexCount = Primitive->indices->count;
 
     Rr_RawMesh RawMesh = { 0 };
     Rr_SliceReserve(&RawMesh.VerticesSlice, VertexCount, Arena);
     Rr_SliceReserve(&RawMesh.IndicesSlice, IndexCount, Arena);
 
-    byte* IndexData = (byte*)Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
+    Rr_Byte* IndexData = (Rr_Byte*)Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
     if (Primitive->indices->component_type == cgltf_component_type_r_16u)
     {
-        u16* Indices = (u16*)IndexData;
-        for (usize Index = 0; Index < IndexCount; ++Index)
+        Rr_U16* Indices = (Rr_U16*)IndexData;
+        for (Rr_USize Index = 0; Index < IndexCount; ++Index)
         {
-            u32 Converted = *(Indices + Index);
+            Rr_U32 Converted = *(Indices + Index);
             *Rr_SlicePush(&RawMesh.IndicesSlice, NULL) = Converted;
         }
     }
@@ -84,15 +84,15 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
         Rr_LogAbort("Unsupported index type!");
     }
 
-    for (usize VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
+    for (Rr_USize VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
     {
         Rr_Vertex NewVertex = { 0 };
 
-        for (usize AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+        for (Rr_USize AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
         {
             cgltf_attribute* Attribute = Primitive->attributes + AttributeIndex;
             cgltf_accessor* Accessor = Attribute->data;
-            byte* AttributeData = (byte*)Accessor->buffer_view->buffer->data + Accessor->buffer_view->offset;
+            Rr_Byte* AttributeData = (Rr_Byte*)Accessor->buffer_view->buffer->data + Accessor->buffer_view->offset;
             switch (Attribute->type)
             {
                 case cgltf_attribute_type_position:
@@ -133,13 +133,13 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, 
     return RawMesh;
 }
 
-static void Rr_CalculateTangents(usize IndexCount, const Rr_MeshIndexType* Indices, Rr_Vertex* OutVertices)
+static void Rr_CalculateTangents(Rr_USize IndexCount, const Rr_MeshIndexType* Indices, Rr_Vertex* OutVertices)
 {
-    for (u32 Index = 3; Index < IndexCount; Index += 3)
+    for (Rr_U32 Index = 3; Index < IndexCount; Index += 3)
     {
-        u32 V0Index = Indices[Index - 3];
-        u32 V1Index = Indices[Index - 2];
-        u32 V2Index = Indices[Index - 1];
+        Rr_U32 V0Index = Indices[Index - 3];
+        Rr_U32 V1Index = Indices[Index - 2];
+        Rr_U32 V2Index = Indices[Index - 1];
 
         Rr_Vertex* Vertex0 = &OutVertices[V0Index];
         Rr_Vertex* Vertex1 = &OutVertices[V1Index];
@@ -151,14 +151,14 @@ static void Rr_CalculateTangents(usize IndexCount, const Rr_MeshIndexType* Indic
         Rr_Vec2 DeltaUV0 = { Vertex1->TexCoordX - Vertex0->TexCoordX, Vertex1->TexCoordY - Vertex0->TexCoordY };
         Rr_Vec2 DeltaUV1 = { Vertex2->TexCoordX - Vertex0->TexCoordX, Vertex2->TexCoordY - Vertex0->TexCoordY };
 
-        f32 Denominator = DeltaUV0.X * DeltaUV1.Y - DeltaUV1.X * DeltaUV0.Y;
+        Rr_F32 Denominator = DeltaUV0.X * DeltaUV1.Y - DeltaUV1.X * DeltaUV0.Y;
         if (fabsf(Denominator) <= 0.0000001f)
         {
             Tangent = Rr_SubV3(Vertex1->Position, Vertex2->Position);
         }
         else
         {
-            f32 F = 1.0f / Denominator;
+            Rr_F32 F = 1.0f / Denominator;
 
             Tangent.X = F * (DeltaUV1.Y * Edge0.X - DeltaUV0.Y * Edge1.X);
             Tangent.Y = F * (DeltaUV1.Y * Edge0.Y - DeltaUV0.Y * Edge1.Y);
@@ -185,8 +185,8 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
 
     Rr_RawMesh RawMesh = { 0 };
 
-    usize CurrentIndex = 0;
-    byte* EndPos;
+    Rr_USize CurrentIndex = 0;
+    Rr_Byte* EndPos;
     while (CurrentIndex < Asset->Length)
     {
         switch (Asset->Data[CurrentIndex])
@@ -244,23 +244,23 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(
             {
                 CurrentIndex++;
                 Rr_IntVec3 OBJIndices[3] = { 0 };
-                OBJIndices[0].X = (i32)SDL_strtoul(Asset->Data + CurrentIndex, &EndPos, 10);
-                OBJIndices[0].Y = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[0].Z = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[1].X = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[1].Y = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[1].Z = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[2].X = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[2].Y = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                OBJIndices[2].Z = (i32)SDL_strtoul(EndPos + 1, &EndPos, 0);
-                for (usize Index = 0; Index < 3; Index++)
+                OBJIndices[0].X = (Rr_I32)SDL_strtoul(Asset->Data + CurrentIndex, &EndPos, 10);
+                OBJIndices[0].Y = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[0].Z = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[1].X = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[1].Y = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[1].Z = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[2].X = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[2].Y = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                OBJIndices[2].Z = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
+                for (Rr_USize Index = 0; Index < 3; Index++)
                 {
                     OBJIndices[Index].X--;
                     OBJIndices[Index].Y--;
                     OBJIndices[Index].Z--;
 
-                    usize ExistingOBJIndex = SIZE_MAX;
-                    for (usize I = 0; I < Rr_SliceLength(&ScratchIndices); I++)
+                    Rr_USize ExistingOBJIndex = SIZE_MAX;
+                    for (Rr_USize I = 0; I < Rr_SliceLength(&ScratchIndices); I++)
                     {
                         if (Rr_EqIV3(OBJIndices[Index], ScratchIndices.Data[I]))
                         {
@@ -319,22 +319,22 @@ Rr_Primitive* Rr_CreatePrimitive(
 
     Primitive->IndexCount = Rr_SliceLength(&RawMesh->IndicesSlice);
 
-    usize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh->VerticesSlice);
-    usize IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
+    Rr_USize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh->VerticesSlice);
+    Rr_USize IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
 
     Primitive->VertexBuffer = Rr_CreateBuffer(
         App,
         VertexBufferSize,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
-        false);
+        RR_FALSE);
 
     Primitive->IndexBuffer = Rr_CreateBuffer(
         App,
         IndexBufferSize,
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO,
-        false);
+        RR_FALSE);
 
     Rr_UploadBuffer(
         App,
@@ -378,14 +378,14 @@ Rr_StaticMesh* Rr_CreateStaticMesh(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_RawMesh* RawMeshes,
-    usize RawMeshCount,
+    Rr_USize RawMeshCount,
     Rr_Material** Materials,
-    usize MaterialCount)
+    Rr_USize MaterialCount)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     Rr_StaticMesh* StaticMesh = Rr_CreateObject(&App->ObjectStorage);
 
-    for (usize Index = 0; Index < RawMeshCount; ++Index)
+    for (Rr_USize Index = 0; Index < RawMeshCount; ++Index)
     {
         StaticMesh->Primitives[Index] = Rr_CreatePrimitive(App, UploadContext, RawMeshes + Index);
     }
@@ -393,7 +393,7 @@ Rr_StaticMesh* Rr_CreateStaticMesh(
 
     if (Materials != NULL)
     {
-        for (usize Index = 0; Index < MaterialCount; ++Index)
+        for (Rr_USize Index = 0; Index < MaterialCount; ++Index)
         {
             StaticMesh->Materials[Index] = Materials[Index];
         }
@@ -412,12 +412,12 @@ void Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* StaticMesh)
 
     Rr_Renderer* Renderer = &App->Renderer;
 
-    for (usize Index = 0; Index < StaticMesh->PrimitiveCount; ++Index)
+    for (Rr_USize Index = 0; Index < StaticMesh->PrimitiveCount; ++Index)
     {
         Rr_DestroyPrimitive(App, StaticMesh->Primitives[Index]);
     }
 
-    for (usize Index = 0; Index < StaticMesh->MaterialCount; ++Index)
+    for (Rr_USize Index = 0; Index < StaticMesh->MaterialCount; ++Index)
     {
         Rr_DestroyMaterial(App, StaticMesh->Materials[Index]);
     }
@@ -430,7 +430,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
     Rr_GLTFLoader* Loader,
-    usize MeshIndex,
+    Rr_USize MeshIndex,
     Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
@@ -446,7 +446,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
 
     Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES] = { 0 };
 
-    for (usize Index = 0; Index < Mesh->primitives_count; ++Index)
+    for (Rr_USize Index = 0; Index < Mesh->primitives_count; ++Index)
     {
         cgltf_primitive* Primitive = Mesh->primitives + Index;
 
@@ -462,15 +462,15 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
                 {
                     if (strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
                     {
-                        byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
-                        usize PNGSize = BaseColorTexture->image->buffer_view->size;
+                        Rr_Byte* PNGData = (Rr_Byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
+                        Rr_USize PNGSize = BaseColorTexture->image->buffer_view->size;
 
                         Textures[Loader->BaseTexture] = Rr_CreateColorImageFromPNGMemory(
                             App,
                             UploadContext,
                             PNGData,
                             PNGSize,
-                            false);
+                            RR_FALSE);
                     }
                 }
             }
@@ -479,15 +479,15 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
                 cgltf_texture* NormalTexture = CGLTFMaterial->normal_texture.texture;
                 if (strcmp(NormalTexture->image->mime_type, "image/png") == 0)
                 {
-                    byte* PNGData = (byte*)NormalTexture->image->buffer_view->buffer->data + NormalTexture->image->buffer_view->offset;
-                    usize PNGSize = NormalTexture->image->buffer_view->size;
+                    Rr_Byte* PNGData = (Rr_Byte*)NormalTexture->image->buffer_view->buffer->data + NormalTexture->image->buffer_view->offset;
+                    Rr_USize PNGSize = NormalTexture->image->buffer_view->size;
 
                     Textures[Loader->NormalTexture] = Rr_CreateColorImageFromPNGMemory(
                         App,
                         UploadContext,
                         PNGData,
                         PNGSize,
-                        false);
+                        RR_FALSE);
                 }
             }
 
@@ -496,7 +496,7 @@ Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
                 Loader->GenericPipeline,
                 Textures,
                 RR_MAX_TEXTURES_PER_MATERIAL);
-            Materials[Index]->bOwning = true;
+            Materials[Index]->bOwning = RR_TRUE;
         }
 
         Rr_RawMesh* RawMesh = RawMeshes + Index;
@@ -544,8 +544,8 @@ void Rr_GetStaticMeshSizeOBJ(
 
     Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
-    usize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh.VerticesSlice);
-    usize IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_SliceLength(&RawMesh.IndicesSlice);
+    Rr_USize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh.VerticesSlice);
+    Rr_USize IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_SliceLength(&RawMesh.IndicesSlice);
 
     OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
     OutLoadSize->BufferCount += 2;
@@ -556,7 +556,7 @@ void Rr_GetStaticMeshSizeOBJ(
 void Rr_GetStaticMeshSizeGLTF(
     Rr_AssetRef AssetRef,
     Rr_GLTFLoader* Loader,
-    usize MeshIndex,
+    Rr_USize MeshIndex,
     Rr_Arena* Arena,
     Rr_LoadSize* OutLoadSize)
 {
@@ -569,10 +569,10 @@ void Rr_GetStaticMeshSizeGLTF(
     cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
 
-    usize VertexBufferSize = 0;
-    usize IndexBufferSize = 0;
+    Rr_USize VertexBufferSize = 0;
+    Rr_USize IndexBufferSize = 0;
 
-    for (usize Index = 0; Index < Mesh->primitives_count; ++Index)
+    for (Rr_USize Index = 0; Index < Mesh->primitives_count; ++Index)
     {
         cgltf_primitive* Primitive = Mesh->primitives + Index;
 
@@ -589,8 +589,8 @@ void Rr_GetStaticMeshSizeGLTF(
                 {
                     if (strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
                     {
-                        byte* PNGData = (byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
-                        usize PNGSize = BaseColorTexture->image->buffer_view->size;
+                        Rr_Byte* PNGData = (Rr_Byte*)BaseColorTexture->image->buffer_view->buffer->data + BaseColorTexture->image->buffer_view->offset;
+                        Rr_USize PNGSize = BaseColorTexture->image->buffer_view->size;
 
                         Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
                     }
@@ -601,8 +601,8 @@ void Rr_GetStaticMeshSizeGLTF(
                 cgltf_texture* NormalTexture = CGLTFMaterial->normal_texture.texture;
                 if (strcmp(NormalTexture->image->mime_type, "image/png") == 0)
                 {
-                    byte* PNGData = (byte*)NormalTexture->image->buffer_view->buffer->data + NormalTexture->image->buffer_view->offset;
-                    usize PNGSize = NormalTexture->image->buffer_view->size;
+                    Rr_Byte* PNGData = (Rr_Byte*)NormalTexture->image->buffer_view->buffer->data + NormalTexture->image->buffer_view->offset;
+                    Rr_USize PNGSize = NormalTexture->image->buffer_view->size;
 
                     Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
                 }

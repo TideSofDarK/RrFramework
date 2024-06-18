@@ -9,6 +9,7 @@
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Log.h"
+
 #include <SDL3/SDL_atomic.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
@@ -37,14 +38,14 @@ static void Rr_CleanupSwapchain(Rr_App* App, VkSwapchainKHR Swapchain)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    for (u32 Index = 0; Index < Renderer->Swapchain.ImageCount; Index++)
+    for (Rr_U32 Index = 0; Index < Renderer->Swapchain.ImageCount; Index++)
     {
         vkDestroyImageView(Renderer->Device, Renderer->Swapchain.Images[Index].View, NULL);
     }
     vkDestroySwapchainKHR(Renderer->Device, Swapchain, NULL);
 }
 
-static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
+static Rr_Bool Rr_InitSwapchain(Rr_App* App, Rr_U32* Width, Rr_U32* Height)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -55,7 +56,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
 
     if (SurfCaps.currentExtent.width == 0 || SurfCaps.currentExtent.height == 0)
     {
-        return false;
+        return RR_FALSE;
     }
     if (SurfCaps.currentExtent.width == UINT32_MAX)
     {
@@ -69,7 +70,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         *Height = SurfCaps.currentExtent.height;
     }
 
-    u32 PresentModeCount;
+    Rr_U32 PresentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, NULL);
     SDL_assert(PresentModeCount > 0);
 
@@ -77,7 +78,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     vkGetPhysicalDeviceSurfacePresentModesKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &PresentModeCount, PresentModes);
 
     VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-    for (u32 Index = 0; Index < PresentModeCount; Index++)
+    for (Rr_U32 Index = 0; Index < PresentModeCount; Index++)
     {
         if (PresentModes[Index] == VK_PRESENT_MODE_MAILBOX_KHR)
         {
@@ -91,7 +92,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     }
     Rr_StackFree(PresentModes);
 
-    u32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
+    Rr_U32 DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if ((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))
     {
         DesiredNumberOfSwapchainImages = SurfCaps.maxImageCount;
@@ -107,15 +108,15 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         PreTransform = SurfCaps.currentTransform;
     }
 
-    u32 FormatCount;
+    Rr_U32 FormatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, NULL);
     SDL_assert(FormatCount > 0);
 
     VkSurfaceFormatKHR* SurfaceFormats = Rr_StackAlloc(VkSurfaceFormatKHR, FormatCount);
     vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, SurfaceFormats);
 
-    bool bPreferredFormatFound = false;
-    for (u32 Index = 0; Index < FormatCount; Index++)
+    Rr_Bool bPreferredFormatFound = RR_FALSE;
+    for (Rr_U32 Index = 0; Index < FormatCount; Index++)
     {
         VkSurfaceFormatKHR* SurfaceFormat = &SurfaceFormats[Index];
 
@@ -123,7 +124,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         {
             Renderer->Swapchain.Format = SurfaceFormat->format;
             Renderer->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
-            bPreferredFormatFound = true;
+            bPreferredFormatFound = RR_TRUE;
             break;
         }
     }
@@ -140,7 +141,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
         VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
     };
-    for (u32 Index = 0; Index < SDL_arraysize(CompositeAlphaFlags); Index++)
+    for (Rr_U32 Index = 0; Index < SDL_arraysize(CompositeAlphaFlags); Index++)
     {
         VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag = CompositeAlphaFlags[Index];
         if (SurfCaps.supportedCompositeAlpha & CompositeAlphaFlag)
@@ -184,7 +185,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         Rr_CleanupSwapchain(App, OldSwapchain);
     }
 
-    u32 ImageCount = 0;
+    Rr_U32 ImageCount = 0;
     vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, NULL);
     SDL_assert(ImageCount <= RR_MAX_SWAPCHAIN_IMAGE_COUNT);
 
@@ -210,20 +211,20 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         }
     };
 
-    for (u32 i = 0; i < ImageCount; i++)
+    for (Rr_U32 i = 0; i < ImageCount; i++)
     {
         Renderer->Swapchain.Images[i].Handle = Images[i];
         ColorAttachmentView.image = Images[i];
         vkCreateImageView(Renderer->Device, &ColorAttachmentView, NULL, &Renderer->Swapchain.Images[i].View);
     }
 
-    bool bDrawTargetDirty = true;
+    Rr_Bool bDrawTargetDirty = RR_TRUE;
     if (Renderer->DrawTarget != NULL)
     {
         VkExtent3D Extent = Renderer->DrawTarget->ColorImage->Extent;
         if (*Width <= Extent.width || *Height <= Extent.height)
         {
-            bDrawTargetDirty = false;
+            bDrawTargetDirty = RR_FALSE;
         }
         else
         {
@@ -236,8 +237,8 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
         SDL_Rect DisplayBounds;
         SDL_GetDisplayBounds(DisplayID, &DisplayBounds);
 
-        u32 DrawTargetWidth = SDL_max(DisplayBounds.w, *Width);
-        u32 DrawTargetHeight = SDL_max(DisplayBounds.h, *Height);
+        Rr_U32 DrawTargetWidth = SDL_max(DisplayBounds.w, *Width);
+        Rr_U32 DrawTargetHeight = SDL_max(DisplayBounds.h, *Height);
         Renderer->DrawTarget = Rr_CreateDrawTarget(App, DrawTargetWidth, DrawTargetHeight);
 
         Rr_LogVulkan("Creating primary draw target with size %dx%d", DrawTargetWidth, DrawTargetHeight);
@@ -248,7 +249,7 @@ static bool Rr_InitSwapchain(Rr_App* App, u32* Width, u32* Height)
     Rr_StackFree(Images);
     Rr_StackFree(SurfaceFormats);
 
-    return true;
+    return RR_TRUE;
 }
 
 static void Rr_InitFrames(Rr_App* App)
@@ -260,7 +261,7 @@ static void Rr_InitFrames(Rr_App* App)
     VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
 
-    for (usize Index = 0; Index < RR_FRAME_OVERLAP; Index++)
+    for (Rr_USize Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         Rr_Frame* Frame = &Frames[Index];
         SDL_zerop(Frame);
@@ -301,7 +302,7 @@ static void Rr_CleanupFrames(Rr_App* App)
     Rr_Renderer* Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
-    for (usize Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    for (Rr_USize Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_Frame* Frame = &Renderer->Frames[Index];
         vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, NULL);
@@ -369,7 +370,7 @@ static void Rr_InitDescriptors(Rr_App* App)
     Renderer->GlobalDescriptorAllocator = Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios), &App->PermanentArena);
 }
 
-static PFN_vkVoidFunction Rr_LoadVulkanFunction(str FuncName, void* Userdata)
+static PFN_vkVoidFunction Rr_LoadVulkanFunction(Rr_CString FuncName, void* UserData)
 {
     return (PFN_vkVoidFunction)vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
 }
@@ -396,7 +397,7 @@ void Rr_InitImGui(Rr_App* App)
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .maxSets = 1000,
-        .poolSizeCount = (u32)SDL_arraysize(PoolSizes),
+        .poolSizeCount = (Rr_U32)SDL_arraysize(PoolSizes),
         .pPoolSizes = PoolSizes,
     };
 
@@ -418,26 +419,26 @@ void Rr_InitImGui(Rr_App* App)
         .DescriptorPool = Renderer->ImGui.DescriptorPool,
         .MinImageCount = 3,
         .ImageCount = 3,
-        .UseDynamicRendering = false,
+        .UseDynamicRendering = RR_FALSE,
         .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
         .RenderPass = Renderer->RenderPasses.ColorDepthLoad
     };
 
     ImGui_ImplVulkan_Init(&InitInfo);
 
-    f32 WindowScale = SDL_GetWindowDisplayScale(Window);
+    Rr_F32 WindowScale = SDL_GetWindowDisplayScale(Window);
     ImGuiStyle_ScaleAllSizes(igGetStyle(), WindowScale);
 
     /* Init default font. */
     Rr_Asset MartianMonoTTF = Rr_LoadAsset(RR_BUILTIN_MARTIANMONO_TTF);
     ImFontConfig* FontConfig = ImFontConfig_ImFontConfig();
-    FontConfig->FontDataOwnedByAtlas = false; /* Don't transfer asset ownership to ImGui, it will crash otherwise! */
-    ImFontAtlas_AddFontFromMemoryTTF(IO->Fonts, (void*)MartianMonoTTF.Data, (i32)MartianMonoTTF.Length, SDL_floorf(14.0f * WindowScale), FontConfig, NULL);
+    FontConfig->FontDataOwnedByAtlas = RR_FALSE; /* Don't transfer asset ownership to ImGui, it will crash otherwise! */
+    ImFontAtlas_AddFontFromMemoryTTF(IO->Fonts, (void*)MartianMonoTTF.Data, (Rr_I32)MartianMonoTTF.Length, SDL_floorf(14.0f * WindowScale), FontConfig, NULL);
     igMemFree(FontConfig);
 
     ImGui_ImplVulkan_CreateFontsTexture();
 
-    Renderer->ImGui.bInitiated = true;
+    Renderer->ImGui.bInitiated = RR_TRUE;
 }
 
 static void Rr_InitImmediateMode(Rr_App* App)
@@ -778,10 +779,10 @@ static void Rr_InitNullTextures(Rr_App* App)
         .StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(App, 256, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) },
         .TransferCommandBuffer = CommandBuffer
     };
-    u32 WhiteData = 0xffffffff;
-    Renderer->NullTextures.White = Rr_CreateColorImageFromMemory(App, &UploadContext, (byte*)&WhiteData, 1, 1, false);
-    u32 NormalData = 0xffff8888;
-    Renderer->NullTextures.Normal = Rr_CreateColorImageFromMemory(App, &UploadContext, (byte*)&NormalData, 1, 1, false);
+    Rr_U32 WhiteData = 0xffffffff;
+    Renderer->NullTextures.White = Rr_CreateColorImageFromMemory(App, &UploadContext, (Rr_Byte*)&WhiteData, 1, 1, RR_FALSE);
+    Rr_U32 NormalData = 0xffff8888;
+    Renderer->NullTextures.Normal = Rr_CreateColorImageFromMemory(App, &UploadContext, (Rr_Byte*)&NormalData, 1, 1, RR_FALSE);
     Rr_EndImmediate(Renderer);
 
     Rr_DestroyBuffer(App, UploadContext.StagingBuffer.Buffer);
@@ -803,20 +804,20 @@ void Rr_InitRenderer(Rr_App* App)
     };
 
     /* Gather required extensions. */
-    str AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
-    u32 AppExtensionCount = SDL_arraysize(AppExtensions);
+    Rr_CString AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+    Rr_U32 AppExtensionCount = SDL_arraysize(AppExtensions);
     AppExtensionCount = 0; /* Use Vulkan Configurator! */
 
-    u32 SDLExtensionCount;
-    str const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
+    Rr_U32 SDLExtensionCount;
+    Rr_CString const* SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
 
-    u32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
-    str* Extensions = Rr_StackAlloc(str, ExtensionCount);
-    for (u32 Index = 0; Index < ExtensionCount; Index++)
+    Rr_U32 ExtensionCount = SDLExtensionCount + AppExtensionCount;
+    Rr_CString* Extensions = Rr_StackAlloc(Rr_CString, ExtensionCount);
+    for (Rr_U32 Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
     }
-    for (u32 Index = 0; Index < AppExtensionCount; Index++)
+    for (Rr_U32 Index = 0; Index < AppExtensionCount; Index++)
     {
         Extensions[Index + SDLExtensionCount] = AppExtensions[Index];
     }
@@ -860,8 +861,8 @@ void Rr_InitRenderer(Rr_App* App)
     Rr_InitRenderPasses(App);
     Rr_InitDescriptors(App);
 
-    u32 Width, Height;
-    SDL_GetWindowSizeInPixels(Window, (i32*)&Width, (i32*)&Height);
+    Rr_U32 Width, Height;
+    SDL_GetWindowSizeInPixels(Window, (Rr_I32*)&Width, (Rr_I32*)&Height);
     Rr_InitSwapchain(App, &Width, &Height);
 
     Rr_InitFrames(App);
@@ -873,29 +874,29 @@ void Rr_InitRenderer(Rr_App* App)
     Rr_StackFree(Extensions);
 }
 
-bool Rr_NewFrame(Rr_App* App, void* Window)
+Rr_Bool Rr_NewFrame(Rr_App* App, void* Window)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
-    i32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
-    if (bResizePending == true)
+    Rr_I32 bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
+    if (bResizePending == RR_TRUE)
     {
         vkDeviceWaitIdle(Renderer->Device);
 
-        i32 Width, Height;
+        Rr_I32 Width, Height;
         SDL_GetWindowSizeInPixels(Window, &Width, &Height);
 
-        bool bMinimized = SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
+        Rr_Bool bMinimized = (Rr_Bool)(SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED);
 
-        if (!bMinimized && Width > 0 && Height > 0 && Rr_InitSwapchain(App, (u32*)&Width, (u32*)&Height))
+        if (!bMinimized && Width > 0 && Height > 0 && Rr_InitSwapchain(App, (Rr_U32*)&Width, (Rr_U32*)&Height))
         {
             SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 0);
-            return true;
+            return RR_TRUE;
         }
 
-        return false;
+        return RR_FALSE;
     }
-    return true;
+    return RR_TRUE;
 }
 
 void Rr_CleanupRenderer(Rr_App* App)
@@ -979,7 +980,7 @@ void Rr_EndImmediate(Rr_Renderer* Renderer)
     };
 
     vkQueueSubmit(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
-    vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
+    vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, RR_TRUE, UINT64_MAX);
 }
 
 static void Rr_ResetFrameResources(Rr_Frame* Frame)
@@ -997,7 +998,7 @@ void Rr_ProcessPendingLoads(Rr_App* App)
 
     if (SDL_TryLockSpinlock(&App->SyncArena.Lock))
     {
-        for (usize Index = 0; Index < Rr_SliceLength(&Renderer->PendingLoadsSlice); ++Index)
+        for (Rr_USize Index = 0; Index < Rr_SliceLength(&Renderer->PendingLoadsSlice); ++Index)
         {
             Rr_PendingLoad* PendingLoad = &Renderer->PendingLoadsSlice.Data[Index];
             PendingLoad->LoadingCallback(App, PendingLoad->Userdata);
@@ -1016,13 +1017,13 @@ void Rr_Draw(Rr_App* App)
     Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
-    vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
+    vkWaitForFences(Device, 1, &Frame->RenderFence, RR_TRUE, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
 
     Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Renderer->Device);
 
     /* Acquire swapchain image. */
-    u32 SwapchainImageIndex;
+    Rr_U32 SwapchainImageIndex;
     VkResult Result = vkAcquireNextImageKHR(Device, Swapchain->Handle, 1000000000, Frame->SwapchainSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
@@ -1073,7 +1074,7 @@ void Rr_Draw(Rr_App* App)
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     /* Flush Rendering Contexts */
-    for (usize Index = 0; Index < Frame->DrawContextsSlice.Length; ++Index)
+    for (Rr_USize Index = 0; Index < Frame->DrawContextsSlice.Length; ++Index)
     {
         Rr_FlushDrawContext(&Frame->DrawContextsSlice.Data[Index], Scratch.Arena);
     }
@@ -1135,7 +1136,7 @@ void Rr_Draw(Rr_App* App)
     /* Submit frame command buffer and queue present. */
     VkSemaphore* WaitSemaphores = Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkSemaphore));
     VkPipelineStageFlags* WaitDstStages = Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkPipelineStageFlags));
-    usize WaitSemaphoreIndex = 1;
+    Rr_USize WaitSemaphoreIndex = 1;
     WaitSemaphores[0] = Frame->SwapchainSemaphore;
     WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo SubmitInfo = {
@@ -1185,7 +1186,7 @@ Rr_Frame* Rr_GetCurrentFrame(Rr_Renderer* Renderer)
     return &Renderer->Frames[Renderer->CurrentFrameIndex];
 }
 
-bool Rr_IsUsingTransferQueue(Rr_Renderer* Renderer)
+Rr_Bool Rr_IsUsingTransferQueue(Rr_Renderer* Renderer)
 {
     return Renderer->TransferQueue.FamilyIndex == Renderer->GraphicsQueue.FamilyIndex;
 }

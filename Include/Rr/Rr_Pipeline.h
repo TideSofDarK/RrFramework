@@ -21,9 +21,9 @@ typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
 typedef struct Rr_GenericPipelineSizes Rr_GenericPipelineSizes;
 struct Rr_GenericPipelineSizes
 {
-    usize Globals;
-    usize Material;
-    usize Draw;
+    Rr_USize Globals;
+    Rr_USize Material;
+    Rr_USize Draw;
 };
 
 typedef enum Rr_PolygonMode
@@ -33,7 +33,7 @@ typedef enum Rr_PolygonMode
 } Rr_PolygonMode;
 
 extern Rr_PipelineBuilder* Rr_CreatePipelineBuilder(void);
-extern void Rr_EnableColorAttachment(Rr_PipelineBuilder* PipelineBuilder, bool bEnableAlphaBlend);
+extern void Rr_EnableColorAttachment(Rr_PipelineBuilder* PipelineBuilder, Rr_Bool bEnableAlphaBlend);
 extern void Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 extern void Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 extern void Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, Rr_PolygonMode PolygonMode);

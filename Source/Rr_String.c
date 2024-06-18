@@ -3,36 +3,36 @@
 #include "Rr_Memory.h"
 #include "Rr_Log.h"
 
-static u32* Rr_UTF8ToUTF32(
-    str CString,
-    usize OptionalLength,
-    u32* OutOldBuffer,
-    usize OldLength,
-    usize* OutNewLength)
+static Rr_U32* Rr_UTF8ToUTF32(
+    Rr_CString CString,
+    Rr_USize OptionalLength,
+    Rr_U32* OutOldBuffer,
+    Rr_USize OldLength,
+    Rr_USize* OutNewLength)
 {
-    static u32 Buffer[2048] = { 0 };
+    static Rr_U32 Buffer[2048] = { 0 };
 
-    u8 Ready = 128;
-    u8 Two = 192;
-    u8 Three = 224;
-    u8 Four = 240;
-    u8 Five = 248;
+    Rr_U8 Ready = 128;
+    Rr_U8 Two = 192;
+    Rr_U8 Three = 224;
+    Rr_U8 Four = 240;
+    Rr_U8 Five = 248;
 
-    usize SourceLength = OptionalLength > 0 ? OptionalLength : strlen(CString);
+    Rr_USize SourceLength = OptionalLength > 0 ? OptionalLength : strlen(CString);
     if (SourceLength > 2048)
     {
         Rr_LogAbort("Exceeding max string length!");
     }
 
-    u8 Carry = 0;
-    usize FinalIndex = 0;
-    u32 FinalCharacter = 0;
-    for (usize SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
+    Rr_U8 Carry = 0;
+    Rr_USize FinalIndex = 0;
+    Rr_U32 FinalCharacter = 0;
+    for (Rr_USize SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
     {
         if (Carry > 0)
         {
             Carry--;
-            FinalCharacter |= (u8)((~Two & CString[SourceIndex]) << (Carry * 6));
+            FinalCharacter |= (Rr_U8)((~Two & CString[SourceIndex]) << (Carry * 6));
 
             if (Carry == 0)
             {
@@ -44,21 +44,21 @@ static u32* Rr_UTF8ToUTF32(
         {
             if ((CString[SourceIndex] & Four) == Four)
             {
-                FinalCharacter = (u8)(~Five & CString[SourceIndex]);
+                FinalCharacter = (Rr_U8)(~Five & CString[SourceIndex]);
                 FinalCharacter <<= 3 * 6;
                 Carry = 3;
                 continue;
             }
             else if ((CString[SourceIndex] & Three) == Three)
             {
-                FinalCharacter = (u8)(~Four & CString[SourceIndex]);
+                FinalCharacter = (Rr_U8)(~Four & CString[SourceIndex]);
                 FinalCharacter <<= 2 * 6;
                 Carry = 2;
                 continue;
             }
             else if ((CString[SourceIndex] & Two) == Two)
             {
-                FinalCharacter = (u8)(~Three & CString[SourceIndex]);
+                FinalCharacter = (Rr_U8)(~Three & CString[SourceIndex]);
                 FinalCharacter <<= 1 * 6;
                 Carry = 1;
                 continue;
@@ -71,10 +71,10 @@ static u32* Rr_UTF8ToUTF32(
         }
     }
 
-    u32* Data;
+    Rr_U32* Data;
     if (OutOldBuffer == NULL)
     {
-        Data = (u32*)Rr_Malloc(sizeof(u32) * FinalIndex);
+        Data = (Rr_U32*)Rr_Malloc(sizeof(Rr_U32) * FinalIndex);
     }
     else if (OldLength >= FinalIndex)
     {
@@ -82,17 +82,17 @@ static u32* Rr_UTF8ToUTF32(
     }
     else
     {
-        Data = (u32*)Rr_Realloc(OutOldBuffer, sizeof(u32) * FinalIndex);
+        Data = (Rr_U32*)Rr_Realloc(OutOldBuffer, sizeof(Rr_U32) * FinalIndex);
     }
 
-    memcpy((void*)Data, Buffer, sizeof(u32) * FinalIndex);
+    memcpy((void*)Data, Buffer, sizeof(Rr_U32) * FinalIndex);
 
     *OutNewLength = FinalIndex;
 
     return Data;
 }
 
-Rr_String Rr_CreateString(str CString)
+Rr_String Rr_CreateString(Rr_CString CString)
 {
     Rr_String String;
     String.Data = Rr_UTF8ToUTF32(CString, 0, NULL, 0, &String.Length);
@@ -100,15 +100,15 @@ Rr_String Rr_CreateString(str CString)
     return String;
 }
 
-Rr_String Rr_CreateEmptyString(usize Length)
+Rr_String Rr_CreateEmptyString(Rr_USize Length)
 {
     return (Rr_String){
         .Length = Length,
-        .Data = (u32*)Rr_Calloc(Length, sizeof(u32))
+        .Data = (Rr_U32*)Rr_Calloc(Length, sizeof(Rr_U32))
     };
 }
 
-void Rr_SetString(Rr_String* String, str CString, usize OptionalLength)
+void Rr_SetString(Rr_String* String, Rr_CString CString, Rr_USize OptionalLength)
 {
     if (String == NULL)
     {

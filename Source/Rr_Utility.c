@@ -3,17 +3,17 @@
 #include <math.h>
 #include <string.h>
 
-f32 Rr_WrapMax(f32 X, f32 Max)
+Rr_F32 Rr_WrapMax(Rr_F32 X, Rr_F32 Max)
 {
     return fmodf(Max + fmodf(X, Max), Max);
 }
 
-f32 Rr_WrapMinMax(f32 X, f32 Min, f32 Max)
+Rr_F32 Rr_WrapMinMax(Rr_F32 X, Rr_F32 Min, Rr_F32 Max)
 {
     return Min + Rr_WrapMax(X - Min, Max - Min);
 }
 
-u16 Rr_FloatToHalf(u32 x)
+Rr_U16 Rr_FloatToHalf(Rr_U32 x)
 {
 #define Bit(N) ((uint32_t)1 << (N))
 #define Mask(N) (((uint32_t)1 << (N)) - 1)
@@ -95,24 +95,24 @@ u16 Rr_FloatToHalf(u32 x)
 #undef Mask
 }
 
-void Rr_PackVec4(Rr_Vec4 From, u32* OutA, u32* OutB)
+void Rr_PackVec4(Rr_Vec4 From, Rr_U32* OutA, Rr_U32* OutB)
 {
     typedef union PackHelper
     {
-        u32 UnsignedIntegerValue;
-        f32 FloatValue;
+        Rr_U32 UnsignedIntegerValue;
+        Rr_F32 FloatValue;
     } PackHelper;
 
     PackHelper Helper[4];
 
     memcpy(Helper, From.Elements, sizeof(Rr_Vec4));
 
-    u16 HalfValues[4];
+    Rr_U16 HalfValues[4];
     HalfValues[0] = Rr_FloatToHalf(Helper[0].UnsignedIntegerValue);
     HalfValues[1] = Rr_FloatToHalf(Helper[1].UnsignedIntegerValue);
     HalfValues[2] = Rr_FloatToHalf(Helper[2].UnsignedIntegerValue);
     HalfValues[3] = Rr_FloatToHalf(Helper[3].UnsignedIntegerValue);
 
-    *OutA = (u32)HalfValues[0] | ((u32)HalfValues[1] << 16);
-    *OutB = (u32)HalfValues[2] | ((u32)HalfValues[3] << 16);
+    *OutA = (Rr_U32)HalfValues[0] | ((Rr_U32)HalfValues[1] << 16);
+    *OutB = (Rr_U32)HalfValues[2] | ((Rr_U32)HalfValues[3] << 16);
 }

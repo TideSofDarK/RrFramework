@@ -22,4 +22,4 @@ extern void Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage);
 
 extern void* Rr_CreateObject(Rr_ObjectStorage* Storage);
 extern void Rr_DestroyObject(Rr_ObjectStorage* Storage, void* Object);
-extern usize Rr_CalculateObjectStorageSize(usize Count);
+extern Rr_USize Rr_CalculateObjectStorageSize(Rr_USize Count);

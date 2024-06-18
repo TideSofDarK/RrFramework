@@ -70,7 +70,7 @@ void Rr_InitTextRenderer(Rr_App* App)
             } });
     Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
-    Rr_EnableColorAttachment(Builder, true);
+    Rr_EnableColorAttachment(Builder, RR_TRUE);
     Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
     TextPipeline->Handle = Rr_BuildPipeline(
@@ -79,7 +79,7 @@ void Rr_InitTextRenderer(Rr_App* App)
         TextPipeline->Layout);
 
     /* Quad Buffer */
-    f32 Quad[8] = {
+    Rr_F32 Quad[8] = {
         0.0f,
         0.0f,
         0.0f,
@@ -142,7 +142,7 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
         sizeof(Rr_TextFontLayout),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false);
+        RR_FALSE);
 
     Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
 
@@ -152,10 +152,10 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
     cJSON* MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
 
     Rr_TextFontLayout TextFontData = {
-        .DistanceRange = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "distanceRange")),
+        .DistanceRange = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "distanceRange")),
         .AtlasSize = {
-            (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "width")),
-            (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "height")),
+            (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "width")),
+            (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "height")),
         },
     };
 
@@ -163,9 +163,9 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
     *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
-        .LineHeight = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
-        .DefaultSize = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
-        .Advances = Rr_Calloc(RR_TEXT_MAX_GLYPHS, sizeof(f32))
+        .LineHeight = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
+        .DefaultSize = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
+        .Advances = Rr_Calloc(RR_TEXT_MAX_GLYPHS, sizeof(Rr_F32))
     };
 
     cJSON* GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
@@ -173,40 +173,40 @@ Rr_Font* Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
     size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
     for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
-        cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (i32)GlyphIndex);
+        cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (Rr_I32)GlyphIndex);
 
         size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
 
         cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
-        u16 AtlasBounds[4] = { 0 };
+        Rr_U16 AtlasBounds[4] = { 0 };
         if (cJSON_IsObject(AtlasBoundsJSON))
         {
-            AtlasBounds[0] = (u16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "left"));
-            AtlasBounds[1] = (u16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "bottom"));
-            AtlasBounds[2] = (u16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "right"));
-            AtlasBounds[3] = (u16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "top"));
+            AtlasBounds[0] = (Rr_U16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "left"));
+            AtlasBounds[1] = (Rr_U16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "bottom"));
+            AtlasBounds[2] = (Rr_U16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "right"));
+            AtlasBounds[3] = (Rr_U16)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "top"));
         }
 
         cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
         Rr_Vec4 PlaneBounds = { 0 };
         if (cJSON_IsObject(PlaneBoundsJSON))
         {
-            PlaneBounds.X = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
-            PlaneBounds.Y = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "bottom"));
-            PlaneBounds.Z = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "right"));
-            PlaneBounds.W = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
+            PlaneBounds.X = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
+            PlaneBounds.Y = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "bottom"));
+            PlaneBounds.Z = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "right"));
+            PlaneBounds.W = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
         }
 
-        Font->Advances[Unicode] = (f32)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance"));
+        Font->Advances[Unicode] = (Rr_F32)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance"));
 
-        u32 PlaneLB;
-        u32 PlaneRT;
+        Rr_U32 PlaneLB;
+        Rr_U32 PlaneRT;
 
         Rr_PackVec4(PlaneBounds, &PlaneLB, &PlaneRT);
 
         TextFontData.Glyphs[Unicode] = (Rr_Glyph){
-            .AtlasXY = ((u32)AtlasBounds[0] << 16) | (u32)AtlasBounds[1],
-            .AtlasWH = ((u32)(AtlasBounds[2] - AtlasBounds[0]) << 16) | (u32)(AtlasBounds[3] - AtlasBounds[1]),
+            .AtlasXY = ((Rr_U32)AtlasBounds[0] << 16) | (Rr_U32)AtlasBounds[1],
+            .AtlasWH = ((Rr_U32)(AtlasBounds[2] - AtlasBounds[0]) << 16) | (Rr_U32)(AtlasBounds[3] - AtlasBounds[1]),
             .PlaneLB = PlaneLB,
             .PlaneRT = PlaneRT
         };

@@ -24,37 +24,37 @@ extern Rr_Image* Rr_CreateImage(
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
-    bool bMipMapped);
+    Rr_Bool bMipMapped);
 extern Rr_Image* Rr_CreateColorImageFromMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    byte* Data,
-    u32 Width,
-    u32 Height,
-    bool bMipMapped);
+    Rr_Byte* Data,
+    Rr_U32 Width,
+    Rr_U32 Height,
+    Rr_Bool bMipMapped);
 extern Rr_Image* Rr_CreateColorImageFromPNGMemory(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
-    byte* Data,
-    usize DataSize,
-    bool bMipMapped);
+    Rr_Byte* Data,
+    Rr_USize DataSize,
+    Rr_Bool bMipMapped);
 extern Rr_Image* Rr_CreateColorImageFromPNG(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
-    bool bMipMapped,
+    Rr_Bool bMipMapped,
     Rr_Arena* Arena);
 extern Rr_Image* Rr_CreateDepthImageFromEXR(
     Rr_App* App,
     Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
     Rr_Arena* Arena);
-extern Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, u32 Width, u32 Height);
-extern Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, u32 Width, u32 Height);
+extern Rr_Image* Rr_CreateColorAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height);
+extern Rr_Image* Rr_CreateDepthAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height);
 
 extern void Rr_GetImageSizePNGMemory(
-    byte* Data,
-    usize DataSize,
+    Rr_Byte* Data,
+    Rr_USize DataSize,
     Rr_Arena* Arena,
     Rr_LoadSize* OutLoadSize);
 extern void Rr_GetImageSizePNG(

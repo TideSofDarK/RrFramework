@@ -7,11 +7,11 @@ extern "C"
 {
 #endif
 
-extern f32 Rr_WrapMax(f32 X, f32 Max);
-extern f32 Rr_WrapMinMax(f32 X, f32 Min, f32 Max);
+extern Rr_F32 Rr_WrapMax(Rr_F32 X, Rr_F32 Max);
+extern Rr_F32 Rr_WrapMinMax(Rr_F32 X, Rr_F32 Min, Rr_F32 Max);
 
-extern u16 Rr_FloatToHalf(u32 X);
-extern void Rr_PackVec4(Rr_Vec4 From, u32* OutA, u32* OutB);
+extern Rr_U16 Rr_FloatToHalf(Rr_U32 X);
+extern void Rr_PackVec4(Rr_Vec4 From, Rr_U32* OutA, Rr_U32* OutB);
 
 #ifdef __cplusplus
 }

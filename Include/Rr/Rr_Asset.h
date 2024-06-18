@@ -16,13 +16,13 @@ extern "C"
 typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset
 {
-    byte* Data;
-    usize Length;
+    Rr_Byte* Data;
+    Rr_USize Length;
 };
 
 #if defined(RR_USE_RC)
 
-typedef str Rr_AssetRef;
+typedef Rr_CString Rr_AssetRef;
 
 #else
 
@@ -95,4 +95,3 @@ extern Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
 #endif
 
 // #undef RR_ASSET_EXTERN
-

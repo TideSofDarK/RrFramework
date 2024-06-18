@@ -5,7 +5,7 @@
 
 #include <SDL3/SDL_stdinc.h>
 
-Rr_Material* Rr_CreateMaterial(Rr_App* App, Rr_GenericPipeline* GenericPipeline, Rr_Image** Textures, usize TextureCount)
+Rr_Material* Rr_CreateMaterial(Rr_App* App, Rr_GenericPipeline* GenericPipeline, Rr_Image** Textures, Rr_USize TextureCount)
 {
     Rr_Material* Material = Rr_CreateObject(&App->ObjectStorage);
     *Material = (Rr_Material){
@@ -16,11 +16,11 @@ Rr_Material* Rr_CreateMaterial(Rr_App* App, Rr_GenericPipeline* GenericPipeline,
             GenericPipeline->Sizes.Material,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VMA_MEMORY_USAGE_AUTO,
-            false)
+            RR_FALSE)
     };
 
     TextureCount = SDL_min(TextureCount, RR_MAX_TEXTURES_PER_MATERIAL);
-    for (usize Index = 0; Index < TextureCount; ++Index)
+    for (Rr_USize Index = 0; Index < TextureCount; ++Index)
     {
         Material->Textures[Index] = Textures[Index];
     }
@@ -37,7 +37,7 @@ void Rr_DestroyMaterial(Rr_App* App, Rr_Material* Material)
 
     if (Material->bOwning)
     {
-        for (usize TextureIndex = 0; TextureIndex < Material->TextureCount; ++TextureIndex)
+        for (Rr_USize TextureIndex = 0; TextureIndex < Material->TextureCount; ++TextureIndex)
         {
             Rr_DestroyImage(App, Material->Textures[TextureIndex]);
         }

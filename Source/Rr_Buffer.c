@@ -8,10 +8,10 @@
 
 Rr_Buffer* Rr_CreateBuffer(
     Rr_App* App,
-    usize Size,
+    Rr_USize Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
-    bool bHostMapped)
+    Rr_Bool bHostMapped)
 {
     Rr_Buffer* Buffer = Rr_CreateObject(&App->ObjectStorage);
 
@@ -36,7 +36,7 @@ Rr_Buffer* Rr_CreateBuffer(
     return Buffer;
 }
 
-Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_App* App, usize Size)
+Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_App* App, Rr_USize Size)
 {
     Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
@@ -44,10 +44,10 @@ Rr_Buffer* Rr_CreateDeviceVertexBuffer(Rr_App* App, usize Size)
         Size,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false);
+        RR_FALSE);
 }
 
-Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_App* App, usize Size)
+Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size)
 {
     // Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
@@ -55,15 +55,15 @@ Rr_Buffer* Rr_CreateDeviceUniformBuffer(Rr_App* App, usize Size)
         Size,
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false);
+        RR_FALSE);
 }
 
-Rr_Buffer* Rr_CreateMappedBuffer(Rr_App* App, usize Size, VkBufferUsageFlags UsageFlags)
+Rr_Buffer* Rr_CreateMappedBuffer(Rr_App* App, Rr_USize Size, VkBufferUsageFlags UsageFlags)
 {
-    return Rr_CreateBuffer(App, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, true);
+    return Rr_CreateBuffer(App, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, RR_TRUE);
 }
 
-Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_App* App, usize Size)
+Rr_Buffer* Rr_CreateMappedVertexBuffer(Rr_App* App, Rr_USize Size)
 {
     return Rr_CreateMappedBuffer(
         App,
@@ -94,8 +94,8 @@ void Rr_UploadBufferAligned(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     void* Data,
-    usize DataLength,
-    usize Alignment)
+    Rr_USize DataLength,
+    Rr_USize Alignment)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -104,14 +104,14 @@ void Rr_UploadBufferAligned(
     {
         Rr_LogAbort(
             "Exceeding staging buffer size! Current offset is %zu, allocation size is %zu and total staging buffer size is %zu.",
-            (usize)StagingBuffer->Offset,
-            (usize)DataLength,
-            (usize)StagingBuffer->Buffer->AllocationInfo.size);
+            (Rr_USize)StagingBuffer->Offset,
+            (Rr_USize)DataLength,
+            (Rr_USize)StagingBuffer->Buffer->AllocationInfo.size);
     }
 
     VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
-    usize BufferOffset = StagingBuffer->Offset;
+    Rr_USize BufferOffset = StagingBuffer->Offset;
     memcpy((char*)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, Data, DataLength);
     if (Alignment == 0)
     {
@@ -217,7 +217,7 @@ void Rr_UploadBuffer(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     void* Data,
-    usize DataLength)
+    Rr_USize DataLength)
 {
     Rr_UploadBufferAligned(App, UploadContext, Buffer, SrcStageMask, SrcAccessMask, DstStageMask, DstAccessMask, Data, DataLength, 0);
 }
@@ -226,7 +226,7 @@ void Rr_UploadToDeviceBufferImmediate(
     Rr_App* App,
     Rr_Buffer* DstBuffer,
     void* Data,
-    usize Size)
+    Rr_USize Size)
 {
     Rr_Renderer* Renderer = &App->Renderer;
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
@@ -255,7 +255,7 @@ void Rr_UploadToUniformBuffer(
     Rr_UploadContext* UploadContext,
     Rr_Buffer* DstBuffer,
     void* Data,
-    usize DataLength)
+    Rr_USize DataLength)
 {
     Rr_UploadBufferAligned(
         App,
@@ -274,11 +274,11 @@ void Rr_CopyToMappedUniformBuffer(
     Rr_App* App,
     Rr_Buffer* DstBuffer,
     void* Data,
-    usize Size,
+    Rr_USize Size,
     VkDeviceSize* DstOffset)
 {
-    u32 Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
-    usize AlignedSize = Rr_Align(Size, Alignment);
+    Rr_U32 Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+    Rr_USize AlignedSize = Rr_Align(Size, Alignment);
     if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
         memcpy((char*)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data, Size);

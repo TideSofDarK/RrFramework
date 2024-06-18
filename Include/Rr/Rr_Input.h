@@ -98,7 +98,7 @@ typedef enum Rr_MouseButtonMask
     RR_MOUSE_BUTTON_X2_MASK = RR_MOUSE_BUTTON_MASK(RR_MOUSE_BUTTON_X2)
 } Rr_MouseButtonMask;
 
-typedef u32 Rr_KeyStates;
+typedef Rr_U32 Rr_KeyStates;
 
 typedef struct Rr_InputState Rr_InputState;
 struct Rr_InputState
@@ -119,8 +119,8 @@ typedef enum Rr_KeyState
 
 typedef struct Rr_InputMapping
 {
-    i32 Primary;
-    i32 Secondary;
+    Rr_I32 Primary;
+    Rr_I32 Secondary;
 } Rr_InputMapping;
 
 typedef struct Rr_InputConfig
@@ -130,7 +130,7 @@ typedef struct Rr_InputConfig
 } Rr_InputConfig;
 
 void Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config);
-Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, u32 Key);
+Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, Rr_U32 Key);
 
 #ifdef __cplusplus
 }

@@ -35,7 +35,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_Buffer* GlobalsBuffer,
     Rr_Buffer* DrawBuffer,
     Rr_GenericPipelineSizes* Sizes,
-    byte* GlobalsData,
+    Rr_Byte* GlobalsData,
     Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
@@ -136,7 +136,7 @@ static void Rr_RenderGeneric(
     Rr_GenericPipeline* BoundPipeline = NULL;
     Rr_Material* BoundMaterial = NULL;
     Rr_Primitive* BoundPrimitive = NULL;
-    u32 BoundDrawOffset = UINT_MAX;
+    Rr_U32 BoundDrawOffset = UINT_MAX;
 
     /* @TODO: Sort indices instead! */
     QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive)
@@ -152,7 +152,7 @@ static void Rr_RenderGeneric(
         0,
         NULL);
 
-    for (usize Index = 0; Index < DrawPrimitivesSlice.Length; ++Index)
+    for (Rr_USize Index = 0; Index < DrawPrimitivesSlice.Length; ++Index)
     {
         Rr_DrawPrimitiveInfo* Info = DrawPrimitivesSlice.Data + Index;
 
@@ -179,7 +179,7 @@ static void Rr_RenderGeneric(
                 0,
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                 Scratch.Arena);
-            for (usize TextureIndex = 0; TextureIndex < RR_MAX_TEXTURES_PER_MATERIAL; ++TextureIndex)
+            for (Rr_USize TextureIndex = 0; TextureIndex < RR_MAX_TEXTURES_PER_MATERIAL; ++TextureIndex)
             {
                 VkImageView ImageView = VK_NULL_HANDLE;
                 if (BoundMaterial->TextureCount > TextureIndex && BoundMaterial->Textures[TextureIndex] != NULL)
@@ -273,13 +273,13 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
 
     Rr_TextRenderingContext TextRenderingContext = { 0 };
 
-    u64 Ticks = SDL_GetTicks();
+    Rr_U64 Ticks = SDL_GetTicks();
     float Time = (float)((double)Ticks / 1000.0);
     Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
     Rr_TextGlobalsLayout TextGlobalsData = {
         .Reserved = 0.0f,
         .Time = Time,
-        .ScreenSize = { (f32)ActiveResolution.width, (f32)ActiveResolution.height },
+        .ScreenSize = { (Rr_F32)ActiveResolution.width, (Rr_F32)ActiveResolution.height },
         .Palette = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
     };
     Rr_UploadToUniformBuffer(
@@ -340,11 +340,11 @@ static void Rr_RenderText(
         0,
         NULL);
 
-    usize TextDataOffset = 0;
-    usize TextCount = Rr_SliceLength(&DrawTextSlice);
+    Rr_USize TextDataOffset = 0;
+    Rr_USize TextCount = Rr_SliceLength(&DrawTextSlice);
     //    Rr_TextPerInstanceVertexInput* TextData = (Rr_TextPerInstanceVertexInput*)Rr_Malloc(RR_TEXT_BUFFER_SIZE);
     Rr_TextPerInstanceVertexInput* TextData = Rr_ArenaAllocOne(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
-    for (usize TextIndex = 0; TextIndex < TextCount; ++TextIndex)
+    for (Rr_USize TextIndex = 0; TextIndex < TextCount; ++TextIndex)
     {
         Rr_DrawTextInfo* DrawTextInfo = &DrawTextSlice.Data[TextIndex];
 
@@ -393,15 +393,15 @@ static void Rr_RenderText(
             128,
             &TextPushConstants);
         /* Upload and bind text data. */
-        usize TextLength = DrawTextInfo->String.Length;
-        usize FinalTextLength = 0;
-        u32 PalleteIndex = 0;
-        bool bCodePending = false;
-        bool bPalleteIndexPending = false;
+        Rr_USize TextLength = DrawTextInfo->String.Length;
+        Rr_USize FinalTextLength = 0;
+        Rr_U32 PalleteIndex = 0;
+        Rr_Bool bCodePending = RR_FALSE;
+        Rr_Bool bPalleteIndexPending = RR_FALSE;
         Rr_Vec2 AccumulatedAdvance = { 0 };
-        for (usize CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
+        for (Rr_USize CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
         {
-            u32 Unicode = DrawTextInfo->String.Data[CharacterIndex];
+            Rr_U32 Unicode = DrawTextInfo->String.Data[CharacterIndex];
 
             if (bCodePending)
             {
@@ -410,32 +410,32 @@ static void Rr_RenderText(
                     if (Unicode >= '0' && Unicode <= '7')
                     {
                         PalleteIndex = Unicode - '0';
-                        bPalleteIndexPending = false;
-                        bCodePending = false;
+                        bPalleteIndexPending = RR_FALSE;
+                        bCodePending = RR_FALSE;
                         continue;
                     }
                     else
                     {
-                        bPalleteIndexPending = false;
-                        bCodePending = false;
+                        bPalleteIndexPending = RR_FALSE;
+                        bCodePending = RR_FALSE;
                         PalleteIndex = 0;
                     }
                 }
                 else if (Unicode == 'c')
                 {
-                    bPalleteIndexPending = true;
+                    bPalleteIndexPending = RR_TRUE;
                     continue;
                 }
                 else
                 {
                     Unicode = '$';
                     CharacterIndex--;
-                    bCodePending = false;
+                    bCodePending = RR_FALSE;
                 }
             }
             else if (Unicode == '$')
             {
-                bCodePending = true;
+                bCodePending = RR_TRUE;
                 continue;
             }
             Rr_TextPerInstanceVertexInput* Input = &TextData[TextDataOffset + FinalTextLength];
@@ -447,21 +447,21 @@ static void Rr_RenderText(
             }
             else if (Unicode == ' ')
             {
-                f32 Advance = DrawTextInfo->Font->Advances[Unicode];
+                Rr_F32 Advance = DrawTextInfo->Font->Advances[Unicode];
                 AccumulatedAdvance.X += Advance;
                 continue;
             }
             else
             {
-                u32 GlyphIndexMask = ~0xFFE00000;
-                u32 GlyphPack = GlyphIndexMask & Unicode;
+                Rr_U32 GlyphIndexMask = ~0xFFE00000;
+                Rr_U32 GlyphPack = GlyphIndexMask & Unicode;
                 GlyphPack |= PalleteIndex << 28;
                 *Input = (Rr_TextPerInstanceVertexInput){
                     .Unicode = GlyphPack,
                     .Advance = AccumulatedAdvance
                 };
                 FinalTextLength++;
-                f32 Advance = DrawTextInfo->Font->Advances[Unicode];
+                Rr_F32 Advance = DrawTextInfo->Font->Advances[Unicode];
                 AccumulatedAdvance.X += Advance;
             }
         }
@@ -491,8 +491,8 @@ void Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
 
     Rr_IntVec4 Viewport = DrawContext->Info.Viewport;
 
-    u32 Width = Viewport.Width - Viewport.X;
-    u32 Height = Viewport.Height - Viewport.Y;
+    Rr_U32 Width = Viewport.Width - Viewport.X;
+    Rr_U32 Height = Viewport.Height - Viewport.Y;
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
@@ -531,10 +531,10 @@ void Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
 
     /* Set dynamic states. */
     vkCmdSetViewport(CommandBuffer, 0, 1, &(VkViewport){
-                                              .x = (f32)Viewport.X,
-                                              .y = (f32)Viewport.Y,
-                                              .width = (f32)Viewport.Width,
-                                              .height = (f32)Viewport.Height,
+                                              .x = (Rr_F32)Viewport.X,
+                                              .y = (Rr_F32)Viewport.Y,
+                                              .width = (Rr_F32)Viewport.Width,
+                                              .height = (Rr_F32)Viewport.Height,
                                               .minDepth = 0.0f,
                                               .maxDepth = 1.0f,
                                           });

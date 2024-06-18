@@ -15,7 +15,7 @@ struct Rr_Primitive
 {
     struct Rr_Buffer* IndexBuffer;
     struct Rr_Buffer* VertexBuffer;
-    u32 IndexCount;
+    Rr_U32 IndexCount;
 };
 
 typedef struct Rr_RawMesh Rr_RawMesh;
@@ -29,16 +29,16 @@ struct Rr_StaticMesh
 {
     Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
     struct Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
-    u8 PrimitiveCount : 4;
-    u8 MaterialCount : 4;
+    Rr_U8 PrimitiveCount : 4;
+    Rr_U8 MaterialCount : 4;
 };
 
 struct Rr_SkeletalMesh
 {
     Rr_Primitive* Primitives[RR_MESH_MAX_PRIMITIVES];
     struct Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES];
-    u8 PrimitiveCount : 4;
-    u8 MaterialCount : 4;
+    Rr_U8 PrimitiveCount : 4;
+    Rr_U8 MaterialCount : 4;
 };
 
 extern Rr_Primitive* Rr_CreatePrimitive(
@@ -59,7 +59,7 @@ extern Rr_StaticMesh* Rr_CreateStaticMeshGLTF(
     struct Rr_UploadContext* UploadContext,
     Rr_AssetRef AssetRef,
     struct Rr_GLTFLoader* Loader,
-    usize MeshIndex,
+    Rr_USize MeshIndex,
     Rr_Arena* Arena);
 extern Rr_StaticMesh* Rr_CreateStaticMeshOBJ(
     struct Rr_App* App,
@@ -75,6 +75,6 @@ extern void Rr_GetStaticMeshSizeOBJ(
 extern void Rr_GetStaticMeshSizeGLTF(
     Rr_AssetRef AssetRef,
     struct Rr_GLTFLoader* Loader,
-    usize MeshIndex,
+    Rr_USize MeshIndex,
     Rr_Arena* Arena,
     struct Rr_LoadSize* OutLoadSize);
