@@ -22,7 +22,10 @@ Rr_LoadAsset(Rr_AssetRef AssetRef)
 Rr_Asset
 Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
-    Rr_Asset Asset = { .Data = AssetRef.Start, .Length = (Rr_USize)(AssetRef.End - AssetRef.Start) };
+    Rr_Asset Asset = {
+        .Data = AssetRef.Start,
+        .Length = (Rr_USize)(AssetRef.End - AssetRef.Start),
+    };
     return Asset;
 }
 

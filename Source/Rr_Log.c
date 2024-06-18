@@ -16,7 +16,8 @@ Rr_LogAbort(Rr_CString Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    SDL_LogMessageV(RR_LOG_CATEGORY_GENERAL, SDL_LOG_PRIORITY_CRITICAL, Format, Args);
+    SDL_LogMessageV(
+        RR_LOG_CATEGORY_GENERAL, SDL_LOG_PRIORITY_CRITICAL, Format, Args);
     va_end(Args);
     abort();
 }
@@ -26,7 +27,8 @@ Rr_LogVulkan(Rr_CString Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    SDL_LogMessageV(RR_LOG_CATEGORY_VULKAN, SDL_LOG_PRIORITY_INFO, Format, Args);
+    SDL_LogMessageV(
+        RR_LOG_CATEGORY_VULKAN, SDL_LOG_PRIORITY_INFO, Format, Args);
     va_end(Args);
 }
 
@@ -35,6 +37,7 @@ Rr_LogMemory(Rr_CString Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    SDL_LogMessageV(RR_LOG_CATEGORY_MEMORY, SDL_LOG_PRIORITY_INFO, Format, Args);
+    SDL_LogMessageV(
+        RR_LOG_CATEGORY_MEMORY, SDL_LOG_PRIORITY_INFO, Format, Args);
     va_end(Args);
 }

@@ -60,7 +60,7 @@ typedef struct Rr_AssetRef
         ); \
         RR_ASSET_EXTERN  __attribute__((aligned(16)))  char incbin ## _ ## NAME ## _start[]; \
         RR_ASSET_EXTERN                                char incbin ## _ ## NAME ## _end[]; \
-         Rr_AssetRef NAME = { \
+        Rr_AssetRef NAME = { \
             .Start = incbin ## _ ## NAME ## _start, \
             .End = incbin ## _ ## NAME ## _end, \
         }
@@ -79,7 +79,7 @@ typedef struct Rr_AssetRef
         ); \
         RR_ASSET_EXTERN  __attribute__((aligned(16)))  char incbin_ ## NAME ## _start[]; \
         RR_ASSET_EXTERN                                char incbin_ ## NAME ## _end[];   \
-         Rr_AssetRef NAME = { \
+        Rr_AssetRef NAME = { \
             .Start = incbin_ ## NAME ## _start, \
             .End = incbin_ ## NAME ## _end, \
         }

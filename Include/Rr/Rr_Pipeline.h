@@ -36,7 +36,9 @@ extern Rr_PipelineBuilder*
 Rr_CreatePipelineBuilder(void);
 
 extern void
-Rr_EnableColorAttachment(Rr_PipelineBuilder* PipelineBuilder, Rr_Bool bEnableAlphaBlend);
+Rr_EnableColorAttachment(
+    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_Bool bEnableAlphaBlend);
 
 extern void
 Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
@@ -45,13 +47,18 @@ extern void
 Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
 
 extern void
-Rr_EnableRasterizer(Rr_PipelineBuilder* PipelineBuilder, Rr_PolygonMode PolygonMode);
+Rr_EnableRasterizer(
+    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_PolygonMode PolygonMode);
 
 extern void
 Rr_EnableDepthTest(Rr_PipelineBuilder* PipelineBuilder);
 
 extern Rr_GenericPipeline*
-Rr_BuildGenericPipeline(Rr_App* App, Rr_PipelineBuilder* PipelineBuilder, Rr_GenericPipelineSizes Sizes);
+Rr_BuildGenericPipeline(
+    Rr_App* App,
+    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_GenericPipelineSizes Sizes);
 
 extern void
 Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline);

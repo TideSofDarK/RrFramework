@@ -38,7 +38,8 @@ struct SEntity
 {
 };
 
-template <typename TGlobals, typename TMaterial, typename TDraw> struct TPipeline
+template <typename TGlobals, typename TMaterial, typename TDraw>
+struct TPipeline
 {
 protected:
     Rr_App* App;
@@ -93,7 +94,8 @@ struct SShadowDraw
     Rr_Mat4 Model;
 };
 
-struct SShadowPassPipeline : TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowDraw>
+struct SShadowPassPipeline :
+    TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowDraw>
 {
     explicit
     SShadowPassPipeline(Rr_App* InApp)
@@ -149,7 +151,14 @@ struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
         Rr_EnableColorAttachment(Builder, false);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-        GenericPipeline = Rr_BuildGenericPipeline(App, Builder, { sizeof(SGlobals), sizeof(SMaterial), sizeof(SDraw) });
+        GenericPipeline = Rr_BuildGenericPipeline(
+            App,
+            Builder,
+            {
+                sizeof(SGlobals),
+                sizeof(SMaterial),
+                sizeof(SDraw),
+            });
     }
 };
 
@@ -183,7 +192,14 @@ struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
         Rr_EnableColorAttachment(Builder, false);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-        GenericPipeline = Rr_BuildGenericPipeline(App, Builder, { sizeof(SGlobals), sizeof(SMaterial), sizeof(SDraw) });
+        GenericPipeline = Rr_BuildGenericPipeline(
+            App,
+            Builder,
+            {
+                sizeof(SGlobals),
+                sizeof(SMaterial),
+                sizeof(SDraw),
+            });
     }
 };
 
@@ -295,7 +311,10 @@ public:
         InputMappings[EIA_DEBUGOVERLAY].Primary = RR_SCANCODE_F1;
         InputMappings[EIA_TEST].Primary = RR_SCANCODE_F2;
 
-        Rr_InputConfig InputConfig = { .Mappings = InputMappings.data(), .Count = InputMappings.size() };
+        Rr_InputConfig InputConfig = {
+            .Mappings = InputMappings.data(),
+            .Count = InputMappings.size(),
+        };
 
         Rr_SetInputConfig(App, &InputConfig);
     }
@@ -307,7 +326,8 @@ public:
         ShaderGlobals.DirectionalLightColor = { 1.0f, 0.95f, 0.93f, 1.0f };
         ShaderGlobals.DirectionalLightIntensity = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-        ShaderGlobals.Proj = Rr_Perspective_LH_ZO(0.7643276f, Rr_GetAspectRatio(App), 0.5f, 50.0f);
+        ShaderGlobals.Proj = Rr_Perspective_LH_ZO(
+            0.7643276f, Rr_GetAspectRatio(App), 0.5f, 50.0f);
         ShaderGlobals.Intermediate = Rr_VulkanMatrix();
     }
 
@@ -315,8 +335,11 @@ public:
     OnLoadingComplete()
     {
         std::array CottageTextures = { CottageDiffuse, CottageNormal };
-        CottageMaterial =
-            Rr_CreateMaterial(App, Uber3DPipeline.GenericPipeline, CottageTextures.data(), CottageTextures.size());
+        CottageMaterial = Rr_CreateMaterial(
+            App,
+            Uber3DPipeline.GenericPipeline,
+            CottageTextures.data(),
+            CottageTextures.size());
 
         bLoaded = true;
 
@@ -333,7 +356,8 @@ public:
     void
     Iterate()
     {
-        auto [Keys, MousePosition, MousePositionDelta, MouseState] = Rr_GetInputState(App);
+        auto [Keys, MousePosition, MousePositionDelta, MouseState] =
+            Rr_GetInputState(App);
 
         auto DeltaTime = static_cast<Rr_F32>(Rr_GetDeltaSeconds(App));
 
@@ -345,17 +369,39 @@ public:
         ImGui::Begin("RotTest", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
         static SCamera Camera = {
-            .Pitch = 90.0f - 63.5593f, .Yaw = -46.6919f, .Position = { -7.35889f, 4.0f, -6.92579f }
+            .Pitch = 90.0f - 63.5593f,
+            .Yaw = -46.6919f,
+            .Position = { -7.35889f, 4.0f, -6.92579f }
         };
 
-        // static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f };
+        // static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f
+        // };
         static Rr_Vec3 LightDirEuler = { -100.0f, 18.0f, 3.16371f };
-        ImGui::SliderFloat2("CameraPitchYaw", &Camera.Pitch, -360.0f, 360.0f, "%f", ImGuiSliderFlags_None);
-        ImGui::SliderFloat3("CameraPos", Camera.Position.Elements, -100.0f, 100.0f, "%.3f", ImGuiSliderFlags_None);
-        ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+        ImGui::SliderFloat2(
+            "CameraPitchYaw",
+            &Camera.Pitch,
+            -360.0f,
+            360.0f,
+            "%f",
+            ImGuiSliderFlags_None);
+        ImGui::SliderFloat3(
+            "CameraPos",
+            Camera.Position.Elements,
+            -100.0f,
+            100.0f,
+            "%.3f",
+            ImGuiSliderFlags_None);
+        ImGui::SliderFloat3(
+            "LightDir",
+            LightDirEuler.Elements,
+            -100.0f,
+            100.0f,
+            "%f",
+            ImGuiSliderFlags_None);
 
         Rr_Vec3 LightRotation = LightDirEuler * Rr_DegToRad;
-        ShaderGlobals.DirectionalLightDirection = Rr_EulerXYZ(LightRotation).Columns[2];
+        ShaderGlobals.DirectionalLightDirection =
+            Rr_EulerXYZ(LightRotation).Columns[2];
 
         Rr_Vec3 CameraForward = Camera.GetForwardVector();
         Rr_Vec3 CameraLeft = Camera.GetRightVector();
@@ -381,8 +427,12 @@ public:
         {
             Rr_SetRelativeMouseMode(true);
             constexpr Rr_F32 Sensitivity = 0.2f;
-            Camera.Yaw = Rr_WrapMax(Camera.Yaw - (MousePositionDelta.X * Sensitivity), 360.0f);
-            Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (MousePositionDelta.Y * Sensitivity), -90.0f, 90.0f);
+            Camera.Yaw = Rr_WrapMax(
+                Camera.Yaw - (MousePositionDelta.X * Sensitivity), 360.0f);
+            Camera.Pitch = Rr_WrapMinMax(
+                Camera.Pitch - (MousePositionDelta.Y * Sensitivity),
+                -90.0f,
+                90.0f);
         }
         else
         {
@@ -413,8 +463,8 @@ public:
             .Viewport = {},
             .Sizes = Uber3DPipeline.Sizes(),
         };
-        Rr_DrawContext* DrawContext =
-            Rr_CreateDrawContext(App, &DrawContextInfo, reinterpret_cast<Rr_Byte*>(&ShaderGlobals));
+        Rr_DrawContext* DrawContext = Rr_CreateDrawContext(
+            App, &DrawContextInfo, reinterpret_cast<Rr_Byte*>(&ShaderGlobals));
 
         const auto Time = static_cast<Rr_F32>((Rr_GetTimeSeconds(App) * 2.0));
 
@@ -428,15 +478,23 @@ public:
             SUber3DDraw CottageDraw = { 0 };
             CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
             CottageDraw.Model[3][1] = 0.1f;
-            Rr_DrawStaticMeshOverrideMaterials(DrawContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
+            Rr_DrawStaticMeshOverrideMaterials(
+                DrawContext,
+                &CottageMaterial,
+                1,
+                CottageMesh,
+                Rr_MakeData(CottageDraw));
 
             SUber3DDraw AvocadoDraw = { 0 };
             AvocadoDraw.Model = Rr_Scale({ 0.75f, 0.75f, 0.75f })
-                * Rr_Rotate_LH(fmodf(Time, RR_PI32 * 2.0f), { 0.0f, 1.0f, 0.0f }) * Rr_Translate({ 3.5f, 0.5f, 3.5f });
+                * Rr_Rotate_LH(fmodf(Time, RR_PI32 * 2.0f),
+                               { 0.0f, 1.0f, 0.0f })
+                * Rr_Translate({ 3.5f, 0.5f, 3.5f });
             AvocadoDraw.Model[3][0] = 3.5f;
             AvocadoDraw.Model[3][1] = 0.5f;
             AvocadoDraw.Model[3][2] = 3.5f;
-            Rr_DrawStaticMesh(DrawContext, AvocadoMesh, Rr_MakeData(AvocadoDraw));
+            Rr_DrawStaticMesh(
+                DrawContext, AvocadoMesh, Rr_MakeData(AvocadoDraw));
 
             SUber3DDraw MarbleDraw = { 0 };
             MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
@@ -445,7 +503,12 @@ public:
             Rr_DrawDefaultText(DrawContext, &TestString, { 50.0f, 50.0f });
 
             Rr_DrawCustomText(
-                DrawContext, nullptr, &DebugString, { 450.0f, 54.0f }, 28.0f, RR_DRAW_TEXT_FLAGS_NONE_BIT);
+                DrawContext,
+                nullptr,
+                &DebugString,
+                { 450.0f, 54.0f },
+                28.0f,
+                RR_DRAW_TEXT_FLAGS_NONE_BIT);
 
             /* Shadow Pass */
             // Rr_DrawContextInfo ShadowPassContextInfo = {
@@ -456,12 +519,15 @@ public:
             //     .Sizes = ShadowPassPipeline.Sizes(),
             // };
             // Rr_DrawContext* ShadowPassContext =
-            //     Rr_CreateDrawContext(App, &ShadowPassContextInfo, reinterpret_cast<Rr_Byte*>(&ShaderGlobals));
-            // Rr_DrawStaticMesh(ShadowPassContext, ArrowMesh, Rr_MakeData(ArrowDraw));
-            // Rr_DrawStaticMeshOverrideMaterials(
-            //     ShadowPassContext, &CottageMaterial, 1, CottageMesh, Rr_MakeData(CottageDraw));
-            // Rr_DrawStaticMesh(ShadowPassContext, AvocadoMesh, Rr_MakeData(AvocadoDraw));
-            // Rr_DrawStaticMesh(ShadowPassContext, MarbleMesh, Rr_MakeData(MarbleDraw));
+            //     Rr_CreateDrawContext(App, &ShadowPassContextInfo,
+            //     reinterpret_cast<Rr_Byte*>(&ShaderGlobals));
+            // Rr_DrawStaticMesh(ShadowPassContext, ArrowMesh,
+            // Rr_MakeData(ArrowDraw)); Rr_DrawStaticMeshOverrideMaterials(
+            //     ShadowPassContext, &CottageMaterial, 1, CottageMesh,
+            //     Rr_MakeData(CottageDraw));
+            // Rr_DrawStaticMesh(ShadowPassContext, AvocadoMesh,
+            // Rr_MakeData(AvocadoDraw)); Rr_DrawStaticMesh(ShadowPassContext,
+            // MarbleMesh, Rr_MakeData(MarbleDraw));
         }
         else
         {
@@ -470,8 +536,10 @@ public:
                 Rr_U32 Current, Total;
                 Rr_GetLoadProgress(LoadingContext, &Current, &Total);
 
-                std::string Formatted = std::format("Загружайу: {}/{}\n", Current, Total);
-                Rr_SetString(&LoadingString, Formatted.c_str(), Formatted.length());
+                std::string Formatted =
+                    std::format("Загружайу: {}/{}\n", Current, Total);
+                Rr_SetString(
+                    &LoadingString, Formatted.c_str(), Formatted.length());
             }
 
             Rr_DrawCustomText(
@@ -508,18 +576,25 @@ public:
         InitGlobals();
 
         std::array LoadTasks = {
-            Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
-            Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &Uber3DGLTFLoader, 0, &AvocadoMesh),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &Uber3DGLTFLoader, 0, &MarbleMesh),
-            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitGLTFLoader, 0, &ArrowMesh),
+            Rr_LoadColorImageFromPNG(
+                DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
+            Rr_LoadColorImageFromPNG(
+                DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
+            Rr_LoadStaticMeshFromGLTF(
+                DEMO_ASSET_AVOCADO_GLB, &Uber3DGLTFLoader, 0, &AvocadoMesh),
+            Rr_LoadStaticMeshFromGLTF(
+                DEMO_ASSET_MARBLE_GLB, &Uber3DGLTFLoader, 0, &MarbleMesh),
+            Rr_LoadStaticMeshFromGLTF(
+                DEMO_ASSET_ARROW_GLB, &UnlitGLTFLoader, 0, &ArrowMesh),
             Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
         };
-        LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
+        LoadingContext = Rr_LoadAsync(
+            App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
 
         ShadowMap = Rr_CreateDrawTargetDepthOnly(App, 1024, 1024);
 
-        TestString = Rr_CreateString("A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
+        TestString = Rr_CreateString(
+            "A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
         DebugString = Rr_CreateString("$c3Colored $c1text$c2");
         LoadingString = Rr_CreateEmptyString(128);
     }

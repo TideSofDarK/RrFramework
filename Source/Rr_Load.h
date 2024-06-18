@@ -53,7 +53,9 @@ struct Rr_LoadAsyncContext
 };
 
 extern Rr_LoadResult
-Rr_LoadAsync_Internal(Rr_LoadingContext* LoadingContext, Rr_LoadAsyncContext LoadAsyncContext);
+Rr_LoadAsync_Internal(
+    Rr_LoadingContext* LoadingContext,
+    Rr_LoadAsyncContext LoadAsyncContext);
 
 extern Rr_LoadResult
 Rr_LoadImmediate_Internal(Rr_LoadingContext* LoadingContext);

@@ -46,10 +46,16 @@ struct Rr_DrawContextInfo
 };
 
 extern Rr_DrawContext*
-Rr_CreateDrawContext(Rr_App* App, Rr_DrawContextInfo* Info, Rr_Byte* GlobalsData);
+Rr_CreateDrawContext(
+    Rr_App* App,
+    Rr_DrawContextInfo* Info,
+    Rr_Byte* GlobalsData);
 
 extern void
-Rr_DrawStaticMesh(Rr_DrawContext* DrawContext, Rr_StaticMesh* StaticMesh, Rr_Data DrawData);
+Rr_DrawStaticMesh(
+    Rr_DrawContext* DrawContext,
+    Rr_StaticMesh* StaticMesh,
+    Rr_Data DrawData);
 
 extern void
 Rr_DrawStaticMeshOverrideMaterials(
@@ -69,7 +75,10 @@ Rr_DrawCustomText(
     Rr_DrawTextFlags Flags);
 
 extern void
-Rr_DrawDefaultText(Rr_DrawContext* DrawContext, Rr_String* String, Rr_Vec2 Position);
+Rr_DrawDefaultText(
+    Rr_DrawContext* DrawContext,
+    Rr_String* String,
+    Rr_Vec2 Position);
 
 extern Rr_DrawTarget*
 Rr_CreateDrawTarget(Rr_App* App, Rr_U32 Width, Rr_U32 Height);

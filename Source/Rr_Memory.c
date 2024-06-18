@@ -44,7 +44,9 @@ Rr_Arena
 Rr_CreateArena(Rr_USize Size)
 {
     Rr_Byte* Allocation = Rr_Malloc(Size);
-    return (Rr_Arena){ .Allocation = Allocation, .Current = Allocation, .End = Allocation + Size };
+    return (Rr_Arena){ .Allocation = Allocation,
+                       .Current = Allocation,
+                       .End = Allocation + Size };
 }
 
 void
@@ -101,7 +103,8 @@ Rr_InitThreadScratch(Rr_USize Size)
     {
         Rr_LogAbort("ScratchArenaTLS is not set!");
     }
-    Rr_Arena* Arena = Rr_Calloc(RR_SCRATCH_ARENA_COUNT_PER_THREAD, sizeof(Rr_Arena));
+    Rr_Arena* Arena =
+        Rr_Calloc(RR_SCRATCH_ARENA_COUNT_PER_THREAD, sizeof(Rr_Arena));
     for (Rr_USize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
     {
         Arena[Index] = Rr_CreateArena(Size);
@@ -123,7 +126,8 @@ Rr_GetArenaScratch(Rr_Arena* Conflict)
     }
     else
     {
-        for (Rr_USize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
+        for (Rr_USize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
+             ++Index)
         {
             if (Arena + Index != Conflict)
             {

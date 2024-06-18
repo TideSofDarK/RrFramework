@@ -17,8 +17,8 @@ Rr_CalculateDeltaTime(Rr_FrameTime* FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
     FrameTime->Now = SDL_GetPerformanceCounter();
-    FrameTime->DeltaSeconds =
-        ((Rr_F64)(FrameTime->Now - FrameTime->Last) * 1000.0) / (Rr_F64)SDL_GetPerformanceFrequency();
+    FrameTime->DeltaSeconds = (Rr_F64)(FrameTime->Now - FrameTime->Last)
+        * 1000.0 / (Rr_F64)SDL_GetPerformanceFrequency();
 }
 
 static void
@@ -26,11 +26,14 @@ Rr_CalculateFPS(Rr_FrameTime* FrameTime)
 {
     FrameTime->PerformanceCounter.Frames++;
     Rr_U64 CurrentTime = SDL_GetPerformanceCounter();
-    if (CurrentTime - FrameTime->PerformanceCounter.StartTime >= FrameTime->PerformanceCounter.UpdateFrequency)
+    if (CurrentTime - FrameTime->PerformanceCounter.StartTime
+        >= FrameTime->PerformanceCounter.UpdateFrequency)
     {
-        Rr_F64 Elapsed = (Rr_F64)(CurrentTime - FrameTime->PerformanceCounter.StartTime)
+        Rr_F64 Elapsed =
+            (Rr_F64)(CurrentTime - FrameTime->PerformanceCounter.StartTime)
             / FrameTime->PerformanceCounter.CountPerSecond;
-        FrameTime->PerformanceCounter.FPS = (Rr_F64)FrameTime->PerformanceCounter.Frames / Elapsed;
+        FrameTime->PerformanceCounter.FPS =
+            (Rr_F64)FrameTime->PerformanceCounter.Frames / Elapsed;
         FrameTime->PerformanceCounter.StartTime = CurrentTime;
         FrameTime->PerformanceCounter.Frames = 0;
     }
@@ -66,8 +69,9 @@ Rr_DebugOverlay(Rr_App* App)
 {
     ImGuiIO* IO = igGetIO();
     ImGuiViewport* Viewport = igGetMainViewport();
-    ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking
-        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing
+    ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration
+        | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize
+        | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing
         | ImGuiWindowFlags_NoNav;
     Rr_F32 Padding = 10.0f;
     ImVec2 WorkPos = Viewport->WorkPos;
@@ -82,7 +86,10 @@ Rr_DebugOverlay(Rr_App* App)
     igSetNextWindowBgAlpha(0.95f);
     if (igBegin("Debug Overlay", NULL, Flags))
     {
-        igText("Swapchain Size: %dx%d", App->Renderer.SwapchainSize.width, App->Renderer.SwapchainSize.height);
+        igText(
+            "Swapchain Size: %dx%d",
+            App->Renderer.SwapchainSize.width,
+            App->Renderer.SwapchainSize.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
         igText("RrFramework Objects: %zu", App->ObjectStorage.ObjectCount);
         igSeparator();
@@ -104,7 +111,8 @@ Rr_DebugOverlay(Rr_App* App)
         igSeparator();
         if (igIsMousePosValid(NULL))
         {
-            igText("Mouse Position: (%.1f,%.1f)", IO->MousePos.x, IO->MousePos.y);
+            igText(
+                "Mouse Position: (%.1f,%.1f)", IO->MousePos.x, IO->MousePos.y);
         }
         else
         {
@@ -180,8 +188,10 @@ Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
 {
 #ifdef RR_PERFORMANCE_COUNTER
     FrameTime->PerformanceCounter.StartTime = SDL_GetPerformanceCounter();
-    FrameTime->PerformanceCounter.UpdateFrequency = SDL_GetPerformanceFrequency() / 2;
-    FrameTime->PerformanceCounter.CountPerSecond = (Rr_F64)SDL_GetPerformanceFrequency();
+    FrameTime->PerformanceCounter.UpdateFrequency =
+        SDL_GetPerformanceFrequency() / 2;
+    FrameTime->PerformanceCounter.CountPerSecond =
+        (Rr_F64)SDL_GetPerformanceFrequency();
 #endif
 
     SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
@@ -203,8 +213,12 @@ Rr_GetDefaultWindowSize()
 
     Rr_F32 ScaleFactor = 0.75f;
 
-    return (Rr_IntVec2){ .Width = (Rr_I32)((Rr_F32)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
-                         .Height = (Rr_I32)((Rr_F32)(UsableBounds.h - UsableBounds.y) * ScaleFactor) };
+    return (Rr_IntVec2){
+        .Width =
+            (Rr_I32)((Rr_F32)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
+        .Height =
+            (Rr_I32)((Rr_F32)(UsableBounds.h - UsableBounds.y) * ScaleFactor)
+    };
 }
 
 void
@@ -224,7 +238,8 @@ Rr_Run(Rr_AppConfig* Config)
                          Config->Title,
                          WindowSize.Width,
                          WindowSize.Height,
-                         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
+                         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
+                             | SDL_WINDOW_HIDDEN),
                      .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
                      .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
                      .ScratchArenaTLS = SDL_CreateTLS(),
@@ -323,7 +338,8 @@ Rr_F32
 Rr_GetAspectRatio(Rr_App* App)
 {
     Rr_Renderer* Renderer = &App->Renderer;
-    return (Rr_F32)Renderer->SwapchainSize.width / (Rr_F32)Renderer->SwapchainSize.height;
+    return (Rr_F32)Renderer->SwapchainSize.width
+        / (Rr_F32)Renderer->SwapchainSize.height;
 }
 
 Rr_F64

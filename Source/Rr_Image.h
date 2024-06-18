@@ -6,8 +6,6 @@
 #include "Rr_Memory.h"
 #include "Rr_UploadContext.h"
 
-#include <volk.h>
-
 #include <vma/vk_mem_alloc.h>
 
 struct Rr_Image
@@ -20,7 +18,12 @@ struct Rr_Image
 };
 
 extern Rr_Image*
-Rr_CreateImage(Rr_App* App, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, Rr_Bool bMipMapped);
+Rr_CreateImage(
+    Rr_App* App,
+    VkExtent3D Extent,
+    VkFormat Format,
+    VkImageUsageFlags Usage,
+    Rr_Bool bMipMapped);
 
 extern Rr_Image*
 Rr_CreateColorImageFromMemory(
@@ -48,7 +51,11 @@ Rr_CreateColorImageFromPNG(
     Rr_Arena* Arena);
 
 extern Rr_Image*
-Rr_CreateDepthImageFromEXR(Rr_App* App, Rr_UploadContext* UploadContext, Rr_AssetRef AssetRef, Rr_Arena* Arena);
+Rr_CreateDepthImageFromEXR(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    Rr_AssetRef AssetRef,
+    Rr_Arena* Arena);
 
 extern Rr_Image*
 Rr_CreateColorAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height);
@@ -57,13 +64,23 @@ extern Rr_Image*
 Rr_CreateDepthAttachmentImage(Rr_App* App, Rr_U32 Width, Rr_U32 Height);
 
 extern void
-Rr_GetImageSizePNGMemory(Rr_Byte* Data, Rr_USize DataSize, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize);
+Rr_GetImageSizePNGMemory(
+    Rr_Byte* Data,
+    Rr_USize DataSize,
+    Rr_Arena* Arena,
+    Rr_LoadSize* OutLoadSize);
 
 extern void
-Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize);
+Rr_GetImageSizePNG(
+    Rr_AssetRef AssetRef,
+    Rr_Arena* Arena,
+    Rr_LoadSize* OutLoadSize);
 
 extern void
-Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize);
+Rr_GetImageSizeEXR(
+    Rr_AssetRef AssetRef,
+    Rr_Arena* Arena,
+    Rr_LoadSize* OutLoadSize);
 
 typedef struct Rr_ImageBarrier Rr_ImageBarrier;
 struct Rr_ImageBarrier

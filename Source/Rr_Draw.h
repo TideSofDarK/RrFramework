@@ -8,15 +8,15 @@
 
 struct Rr_DrawTarget
 {
-    struct Rr_Image* ColorImage;
-    struct Rr_Image* DepthImage;
+    Rr_Image* ColorImage;
+    Rr_Image* DepthImage;
     VkFramebuffer Framebuffer;
 };
 
 typedef struct Rr_DrawPrimitiveInfo Rr_DrawPrimitiveInfo;
 struct Rr_DrawPrimitiveInfo
 {
-    struct Rr_Material* Material;
+    Rr_Material* Material;
     struct Rr_Primitive* Primitive;
     Rr_U32 OffsetIntoDrawBuffer;
 };
@@ -24,7 +24,7 @@ struct Rr_DrawPrimitiveInfo
 typedef struct Rr_DrawTextInfo Rr_DrawTextInfo;
 struct Rr_DrawTextInfo
 {
-    struct Rr_Font* Font;
+    Rr_Font* Font;
     Rr_String String;
     Rr_Vec2 Position;
     Rr_F32 Size;
@@ -37,7 +37,7 @@ typedef Rr_SliceType(Rr_DrawPrimitiveInfo) Rr_DrawPrimitivesSlice;
 /* @TODO: Separate generic and builtin stuff! */
 struct Rr_DrawContext
 {
-    struct Rr_App* App;
+    Rr_App* App;
     Rr_DrawContextInfo Info;
     Rr_DrawTextsSlice DrawTextsSlice;
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice;

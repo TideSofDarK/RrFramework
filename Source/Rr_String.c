@@ -19,7 +19,8 @@ Rr_UTF8ToUTF32(
     Rr_U8 Four = 240;
     Rr_U8 Five = 248;
 
-    Rr_USize SourceLength = OptionalLength > 0 ? OptionalLength : strlen(CString);
+    Rr_USize SourceLength =
+        OptionalLength > 0 ? OptionalLength : strlen(CString);
     if (SourceLength > 2048)
     {
         Rr_LogAbort("Exceeding max string length!");
@@ -33,7 +34,8 @@ Rr_UTF8ToUTF32(
         if (Carry > 0)
         {
             Carry--;
-            FinalCharacter |= (Rr_U8)((~Two & CString[SourceIndex]) << (Carry * 6));
+            FinalCharacter |=
+                (Rr_U8)((~Two & CString[SourceIndex]) << (Carry * 6));
 
             if (Carry == 0)
             {
@@ -105,7 +107,8 @@ Rr_CreateString(Rr_CString CString)
 Rr_String
 Rr_CreateEmptyString(Rr_USize Length)
 {
-    return (Rr_String){ .Length = Length, .Data = (Rr_U32*)Rr_Calloc(Length, sizeof(Rr_U32)) };
+    return (Rr_String){ .Length = Length,
+                        .Data = (Rr_U32*)Rr_Calloc(Length, sizeof(Rr_U32)) };
 }
 
 void
@@ -116,7 +119,8 @@ Rr_SetString(Rr_String* String, Rr_CString CString, Rr_USize OptionalLength)
         return;
     }
 
-    String->Data = Rr_UTF8ToUTF32(CString, OptionalLength, String->Data, String->Length, &String->Length);
+    String->Data = Rr_UTF8ToUTF32(
+        CString, OptionalLength, String->Data, String->Length, &String->Length);
 }
 
 void

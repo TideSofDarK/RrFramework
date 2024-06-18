@@ -61,16 +61,26 @@ Rr_CreateDescriptorAllocator(
     Rr_Arena* Arena);
 
 extern VkDescriptorSet
-Rr_AllocateDescriptorSet(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device, VkDescriptorSetLayout Layout);
+Rr_AllocateDescriptorSet(
+    Rr_DescriptorAllocator* DescriptorAllocator,
+    VkDevice Device,
+    VkDescriptorSetLayout Layout);
 
 extern void
-Rr_ResetDescriptorAllocator(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device);
+Rr_ResetDescriptorAllocator(
+    Rr_DescriptorAllocator* DescriptorAllocator,
+    VkDevice Device);
 
 extern void
-Rr_DestroyDescriptorAllocator(Rr_DescriptorAllocator* DescriptorAllocator, VkDevice Device);
+Rr_DestroyDescriptorAllocator(
+    Rr_DescriptorAllocator* DescriptorAllocator,
+    VkDevice Device);
 
 extern Rr_DescriptorWriter
-Rr_CreateDescriptorWriter(Rr_USize Images, Rr_USize Buffers, struct Rr_Arena* Arena);
+Rr_CreateDescriptorWriter(
+    Rr_USize Images,
+    Rr_USize Buffers,
+    struct Rr_Arena* Arena);
 
 extern void
 Rr_WriteImageDescriptor(
@@ -107,7 +117,10 @@ extern void
 Rr_ResetDescriptorWriter(Rr_DescriptorWriter* Writer);
 
 extern void
-Rr_UpdateDescriptorSet(Rr_DescriptorWriter* Writer, VkDevice Device, VkDescriptorSet Set);
+Rr_UpdateDescriptorSet(
+    Rr_DescriptorWriter* Writer,
+    VkDevice Device,
+    VkDescriptorSet Set);
 
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 struct Rr_DescriptorLayoutBuilder
@@ -117,13 +130,23 @@ struct Rr_DescriptorLayoutBuilder
 };
 
 extern void
-Rr_AddDescriptor(Rr_DescriptorLayoutBuilder* Builder, Rr_U32 Binding, VkDescriptorType Type);
+Rr_AddDescriptor(
+    Rr_DescriptorLayoutBuilder* Builder,
+    Rr_U32 Binding,
+    VkDescriptorType Type);
 
 extern void
-Rr_AddDescriptorArray(Rr_DescriptorLayoutBuilder* Builder, Rr_U32 Binding, Rr_U32 Count, VkDescriptorType Type);
+Rr_AddDescriptorArray(
+    Rr_DescriptorLayoutBuilder* Builder,
+    Rr_U32 Binding,
+    Rr_U32 Count,
+    VkDescriptorType Type);
 
 extern void
 Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder* Builder);
 
 extern VkDescriptorSetLayout
-Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder* Builder, VkDevice Device, VkShaderStageFlags ShaderStageFlags);
+Rr_BuildDescriptorLayout(
+    Rr_DescriptorLayoutBuilder* Builder,
+    VkDevice Device,
+    VkShaderStageFlags ShaderStageFlags);

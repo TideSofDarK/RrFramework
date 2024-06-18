@@ -15,7 +15,11 @@ extern "C"
 typedef struct Rr_Material Rr_Material;
 
 Rr_Material*
-Rr_CreateMaterial(Rr_App* App, Rr_GenericPipeline* GenericPipeline, Rr_Image** Textures, Rr_USize TextureCount);
+Rr_CreateMaterial(
+    Rr_App* App,
+    Rr_GenericPipeline* GenericPipeline,
+    Rr_Image** Textures,
+    Rr_USize TextureCount);
 
 void
 Rr_DestroyMaterial(Rr_App* App, Rr_Material* Material);

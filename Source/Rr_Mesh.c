@@ -28,15 +28,21 @@ Rr_CGLTFArenaFree(void* Arena, void* Ptr)
 static cgltf_memory_options
 Rr_GetCGLTFMemoryOptions(Rr_Arena* Arena)
 {
-    return (
-        cgltf_memory_options){ .alloc_func = Rr_CGLTFArenaAlloc, .free_func = Rr_CGLTFArenaFree, .user_data = Arena };
+    return (cgltf_memory_options){ .alloc_func = Rr_CGLTFArenaAlloc,
+                                   .free_func = Rr_CGLTFArenaFree,
+                                   .user_data = Arena };
 }
 
 static cgltf_mesh*
-Rr_ParseGLTFMesh(Rr_Asset* Asset, Rr_USize MeshIndex, cgltf_options* Options, cgltf_data** OutData)
+Rr_ParseGLTFMesh(
+    Rr_Asset* Asset,
+    Rr_USize MeshIndex,
+    cgltf_options* Options,
+    cgltf_data** OutData)
 {
     cgltf_data* Data = NULL;
-    cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Length, &Data);
+    cgltf_result Result =
+        cgltf_parse(Options, Asset->Data, Asset->Length, &Data);
     if (Result != cgltf_result_success)
     {
         Rr_LogAbort("Error loading glTF asset!");
@@ -71,8 +77,8 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
     Rr_SliceReserve(&RawMesh.VerticesSlice, VertexCount, Arena);
     Rr_SliceReserve(&RawMesh.IndicesSlice, IndexCount, Arena);
 
-    Rr_Byte* IndexData =
-        (Rr_Byte*)Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
+    Rr_Byte* IndexData = (Rr_Byte*)Primitive->indices->buffer_view->buffer->data
+        + Primitive->indices->buffer_view->offset;
     if (Primitive->indices->component_type == cgltf_component_type_r_16u)
     {
         Rr_U16* Indices = (Rr_U16*)IndexData;
@@ -91,34 +97,46 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
     {
         Rr_Vertex NewVertex = { 0 };
 
-        for (Rr_USize AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+        for (Rr_USize AttributeIndex = 0;
+             AttributeIndex < Primitive->attributes_count;
+             ++AttributeIndex)
         {
             cgltf_attribute* Attribute = Primitive->attributes + AttributeIndex;
             cgltf_accessor* Accessor = Attribute->data;
-            Rr_Byte* AttributeData = (Rr_Byte*)Accessor->buffer_view->buffer->data + Accessor->buffer_view->offset;
+            Rr_Byte* AttributeData =
+                (Rr_Byte*)Accessor->buffer_view->buffer->data
+                + Accessor->buffer_view->offset;
             switch (Attribute->type)
             {
                 case cgltf_attribute_type_position:
                 {
-                    Rr_Vec3* Position = (Rr_Vec3*)(AttributeData + Accessor->stride * VertexIndex);
+                    Rr_Vec3* Position =
+                        (Rr_Vec3*)(AttributeData
+                                   + Accessor->stride * VertexIndex);
                     NewVertex.Position = *Position;
                 }
                 break;
                 case cgltf_attribute_type_normal:
                 {
-                    Rr_Vec3* Normal = (Rr_Vec3*)(AttributeData + Accessor->stride * VertexIndex);
+                    Rr_Vec3* Normal =
+                        (Rr_Vec3*)(AttributeData
+                                   + Accessor->stride * VertexIndex);
                     NewVertex.Normal = *Normal;
                 }
                 break;
                 case cgltf_attribute_type_tangent:
                 {
-                    Rr_Vec3* Tangent = (Rr_Vec3*)(AttributeData + Accessor->stride * VertexIndex);
+                    Rr_Vec3* Tangent =
+                        (Rr_Vec3*)(AttributeData
+                                   + Accessor->stride * VertexIndex);
                     NewVertex.Tangent = *Tangent;
                 }
                 break;
                 case cgltf_attribute_type_texcoord:
                 {
-                    Rr_Vec2* TexCoord = (Rr_Vec2*)(AttributeData + Accessor->stride * VertexIndex);
+                    Rr_Vec2* TexCoord =
+                        (Rr_Vec2*)(AttributeData
+                                   + Accessor->stride * VertexIndex);
                     NewVertex.TexCoordX = TexCoord->X;
                     NewVertex.TexCoordY = TexCoord->Y;
                 }
@@ -137,7 +155,10 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
 }
 
 static void
-Rr_CalculateTangents(Rr_USize IndexCount, const Rr_MeshIndexType* Indices, Rr_Vertex* OutVertices)
+Rr_CalculateTangents(
+    Rr_USize IndexCount,
+    const Rr_MeshIndexType* Indices,
+    Rr_Vertex* OutVertices)
 {
     for (Rr_U32 Index = 3; Index < IndexCount; Index += 3)
     {
@@ -152,8 +173,10 @@ Rr_CalculateTangents(Rr_USize IndexCount, const Rr_MeshIndexType* Indices, Rr_Ve
         Rr_Vec3 Tangent = Rr_V3(0.0f, 0.0f, 0.0f);
         Rr_Vec3 Edge0 = Rr_SubV3(Vertex1->Position, Vertex0->Position);
         Rr_Vec3 Edge1 = Rr_SubV3(Vertex2->Position, Vertex0->Position);
-        Rr_Vec2 DeltaUV0 = { Vertex1->TexCoordX - Vertex0->TexCoordX, Vertex1->TexCoordY - Vertex0->TexCoordY };
-        Rr_Vec2 DeltaUV1 = { Vertex2->TexCoordX - Vertex0->TexCoordX, Vertex2->TexCoordY - Vertex0->TexCoordY };
+        Rr_Vec2 DeltaUV0 = { Vertex1->TexCoordX - Vertex0->TexCoordX,
+                             Vertex1->TexCoordY - Vertex0->TexCoordY };
+        Rr_Vec2 DeltaUV1 = { Vertex2->TexCoordX - Vertex0->TexCoordX,
+                             Vertex2->TexCoordY - Vertex0->TexCoordY };
 
         Rr_F32 Denominator = DeltaUV0.X * DeltaUV1.Y - DeltaUV1.X * DeltaUV0.Y;
         if (fabsf(Denominator) <= 0.0000001f)
@@ -202,11 +225,13 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
                     case ' ':
                     {
                         Rr_Vec3 NewPosition;
-                        NewPosition.X = (Rr_F32)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
+                        NewPosition.X = (Rr_F32)SDL_strtod(
+                            Asset->Data + CurrentIndex, &EndPos);
                         NewPosition.Y = (Rr_F32)SDL_strtod(EndPos, &EndPos);
                         NewPosition.Z = (Rr_F32)SDL_strtod(EndPos, &EndPos);
 
-                        *Rr_SlicePush(&ScratchPositions, Scratch.Arena) = NewPosition;
+                        *Rr_SlicePush(&ScratchPositions, Scratch.Arena) =
+                            NewPosition;
 
                         if (*EndPos == ' ')
                         {
@@ -215,7 +240,8 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
                             NewColor.Y = (Rr_F32)SDL_strtod(EndPos, &EndPos);
                             NewColor.Z = (Rr_F32)SDL_strtod(EndPos, &EndPos);
 
-                            *Rr_SlicePush(&ScratchColors, Scratch.Arena) = NewColor;
+                            *Rr_SlicePush(&ScratchColors, Scratch.Arena) =
+                                NewColor;
                         }
                     }
                     break;
@@ -223,21 +249,25 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
                     {
                         CurrentIndex++;
                         Rr_Vec2 NewTexCoord;
-                        NewTexCoord.X = (Rr_F32)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
+                        NewTexCoord.X = (Rr_F32)SDL_strtod(
+                            Asset->Data + CurrentIndex, &EndPos);
                         NewTexCoord.Y = (Rr_F32)SDL_strtod(EndPos, &EndPos);
 
-                        *Rr_SlicePush(&ScratchTexCoords, Scratch.Arena) = NewTexCoord;
+                        *Rr_SlicePush(&ScratchTexCoords, Scratch.Arena) =
+                            NewTexCoord;
                     }
                     break;
                     case 'n':
                     {
                         CurrentIndex++;
                         Rr_Vec3 NewNormal;
-                        NewNormal.X = (Rr_F32)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
+                        NewNormal.X = (Rr_F32)SDL_strtod(
+                            Asset->Data + CurrentIndex, &EndPos);
                         NewNormal.Y = (Rr_F32)SDL_strtod(EndPos, &EndPos);
                         NewNormal.Z = (Rr_F32)SDL_strtod(EndPos, &EndPos);
 
-                        *Rr_SlicePush(&ScratchNormals, Scratch.Arena) = NewNormal;
+                        *Rr_SlicePush(&ScratchNormals, Scratch.Arena) =
+                            NewNormal;
                     }
                     break;
                 }
@@ -247,7 +277,8 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
             {
                 CurrentIndex++;
                 Rr_IntVec3 OBJIndices[3] = { 0 };
-                OBJIndices[0].X = (Rr_I32)SDL_strtoul(Asset->Data + CurrentIndex, &EndPos, 10);
+                OBJIndices[0].X = (Rr_I32)SDL_strtoul(
+                    Asset->Data + CurrentIndex, &EndPos, 10);
                 OBJIndices[0].Y = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
                 OBJIndices[0].Z = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
                 OBJIndices[1].X = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
@@ -263,7 +294,8 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
                     OBJIndices[Index].Z--;
 
                     Rr_USize ExistingOBJIndex = SIZE_MAX;
-                    for (Rr_USize I = 0; I < Rr_SliceLength(&ScratchIndices); I++)
+                    for (Rr_USize I = 0; I < Rr_SliceLength(&ScratchIndices);
+                         I++)
                     {
                         if (Rr_EqIV3(OBJIndices[Index], ScratchIndices.Data[I]))
                         {
@@ -273,25 +305,34 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
                     }
                     if (ExistingOBJIndex == SIZE_MAX)
                     {
-                        Rr_Vec2* TexCoord = &ScratchTexCoords.Data[OBJIndices[Index].Y];
+                        Rr_Vec2* TexCoord =
+                            &ScratchTexCoords.Data[OBJIndices[Index].Y];
                         Rr_Vertex NewVertex = { 0 };
-                        NewVertex.Position = ScratchPositions.Data[OBJIndices[Index].X];
-                        // NewVertex.Color = ScratchColors.Data[OBJIndices[Index].X];
-                        NewVertex.Normal = ScratchNormals.Data[OBJIndices[Index].Z];
+                        NewVertex.Position =
+                            ScratchPositions.Data[OBJIndices[Index].X];
+                        // NewVertex.Color =
+                        // ScratchColors.Data[OBJIndices[Index].X];
+                        NewVertex.Normal =
+                            ScratchNormals.Data[OBJIndices[Index].Z];
                         NewVertex.TexCoordX = (*TexCoord).X;
                         // NewVertex.TexCoordY = (*TexCoord).Y;
                         NewVertex.TexCoordY = 1.0f - (*TexCoord).Y;
-                        *Rr_SlicePush(&RawMesh.VerticesSlice, Arena) = NewVertex;
+                        *Rr_SlicePush(&RawMesh.VerticesSlice, Arena) =
+                            NewVertex;
 
-                        *Rr_SlicePush(&ScratchIndices, Scratch.Arena) = OBJIndices[Index];
+                        *Rr_SlicePush(&ScratchIndices, Scratch.Arena) =
+                            OBJIndices[Index];
 
                         /* Add freshly added vertex index */
                         *Rr_SlicePush(&RawMesh.IndicesSlice, Arena) =
-                            (Rr_MeshIndexType){ Rr_SliceLength(&RawMesh.VerticesSlice) - 1 };
+                            (Rr_MeshIndexType){
+                                Rr_SliceLength(&RawMesh.VerticesSlice) - 1
+                            };
                     }
                     else
                     {
-                        *Rr_SlicePush(&RawMesh.IndicesSlice, Arena) = ExistingOBJIndex;
+                        *Rr_SlicePush(&RawMesh.IndicesSlice, Arena) =
+                            ExistingOBJIndex;
                     }
                 }
             }
@@ -305,7 +346,10 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
         CurrentIndex += strcspn(Asset->Data + CurrentIndex, "\n") + 1;
     }
 
-    Rr_CalculateTangents(RawMesh.IndicesSlice.Length, RawMesh.IndicesSlice.Data, RawMesh.VerticesSlice.Data);
+    Rr_CalculateTangents(
+        RawMesh.IndicesSlice.Length,
+        RawMesh.IndicesSlice.Data,
+        RawMesh.VerticesSlice.Data);
 
     Rr_DestroyArenaScratch(Scratch);
 
@@ -313,7 +357,10 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
 }
 
 Rr_Primitive*
-Rr_CreatePrimitive(Rr_App* App, Rr_UploadContext* UploadContext, Rr_RawMesh* RawMesh)
+Rr_CreatePrimitive(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    Rr_RawMesh* RawMesh)
 {
     Rr_Renderer* Renderer = &App->Renderer;
 
@@ -321,14 +368,23 @@ Rr_CreatePrimitive(Rr_App* App, Rr_UploadContext* UploadContext, Rr_RawMesh* Raw
 
     Primitive->IndexCount = Rr_SliceLength(&RawMesh->IndicesSlice);
 
-    Rr_USize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh->VerticesSlice);
+    Rr_USize VertexBufferSize =
+        sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh->VerticesSlice);
     Rr_USize IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
 
-    Primitive->VertexBuffer =
-        Rr_CreateBuffer(App, VertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, RR_FALSE);
+    Primitive->VertexBuffer = Rr_CreateBuffer(
+        App,
+        VertexBufferSize,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        RR_FALSE);
 
-    Primitive->IndexBuffer =
-        Rr_CreateBuffer(App, IndexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, RR_FALSE);
+    Primitive->IndexBuffer = Rr_CreateBuffer(
+        App,
+        IndexBufferSize,
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        RR_FALSE);
 
     Rr_UploadBuffer(
         App,
@@ -336,7 +392,8 @@ Rr_CreatePrimitive(Rr_App* App, Rr_UploadContext* UploadContext, Rr_RawMesh* Raw
         Primitive->VertexBuffer->Handle,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         0,
-        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
+            | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
         RawMesh->VerticesSlice.Data,
         VertexBufferSize);
@@ -383,7 +440,8 @@ Rr_CreateStaticMesh(
 
     for (Rr_USize Index = 0; Index < RawMeshCount; ++Index)
     {
-        StaticMesh->Primitives[Index] = Rr_CreatePrimitive(App, UploadContext, RawMeshes + Index);
+        StaticMesh->Primitives[Index] =
+            Rr_CreatePrimitive(App, UploadContext, RawMeshes + Index);
     }
     StaticMesh->PrimitiveCount = RawMeshCount;
 
@@ -435,7 +493,8 @@ Rr_CreateStaticMeshGLTF(
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
+    cgltf_options Options = { .memory =
+                                  Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
     cgltf_data* Data = NULL;
     cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
@@ -455,35 +514,49 @@ Rr_CreateStaticMeshGLTF(
             cgltf_material* CGLTFMaterial = Primitive->material;
             if (CGLTFMaterial->has_pbr_metallic_roughness)
             {
-                cgltf_texture* BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
+                cgltf_texture* BaseColorTexture =
+                    CGLTFMaterial->pbr_metallic_roughness.base_color_texture
+                        .texture;
                 if (BaseColorTexture)
                 {
-                    if (strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+                    if (strcmp(BaseColorTexture->image->mime_type, "image/png")
+                        == 0)
                     {
-                        Rr_Byte* PNGData = (Rr_Byte*)BaseColorTexture->image->buffer_view->buffer->data
+                        Rr_Byte* PNGData = (Rr_Byte*)BaseColorTexture->image
+                                               ->buffer_view->buffer->data
                             + BaseColorTexture->image->buffer_view->offset;
-                        Rr_USize PNGSize = BaseColorTexture->image->buffer_view->size;
+                        Rr_USize PNGSize =
+                            BaseColorTexture->image->buffer_view->size;
 
                         Textures[Loader->BaseTexture] =
-                            Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, RR_FALSE);
+                            Rr_CreateColorImageFromPNGMemory(
+                                App, UploadContext, PNGData, PNGSize, RR_FALSE);
                     }
                 }
             }
             if (CGLTFMaterial->normal_texture.texture != NULL)
             {
-                cgltf_texture* NormalTexture = CGLTFMaterial->normal_texture.texture;
+                cgltf_texture* NormalTexture =
+                    CGLTFMaterial->normal_texture.texture;
                 if (strcmp(NormalTexture->image->mime_type, "image/png") == 0)
                 {
-                    Rr_Byte* PNGData = (Rr_Byte*)NormalTexture->image->buffer_view->buffer->data
+                    Rr_Byte* PNGData =
+                        (Rr_Byte*)
+                            NormalTexture->image->buffer_view->buffer->data
                         + NormalTexture->image->buffer_view->offset;
                     Rr_USize PNGSize = NormalTexture->image->buffer_view->size;
 
                     Textures[Loader->NormalTexture] =
-                        Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, RR_FALSE);
+                        Rr_CreateColorImageFromPNGMemory(
+                            App, UploadContext, PNGData, PNGSize, RR_FALSE);
                 }
             }
 
-            Materials[Index] = Rr_CreateMaterial(App, Loader->GenericPipeline, Textures, RR_MAX_TEXTURES_PER_MATERIAL);
+            Materials[Index] = Rr_CreateMaterial(
+                App,
+                Loader->GenericPipeline,
+                Textures,
+                RR_MAX_TEXTURES_PER_MATERIAL);
             Materials[Index]->bOwning = RR_TRUE;
         }
 
@@ -491,8 +564,13 @@ Rr_CreateStaticMeshGLTF(
         *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);
     }
 
-    Rr_StaticMesh* StaticMesh =
-        Rr_CreateStaticMesh(App, UploadContext, RawMeshes, Mesh->primitives_count, Materials, RR_MESH_MAX_PRIMITIVES);
+    Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(
+        App,
+        UploadContext,
+        RawMeshes,
+        Mesh->primitives_count,
+        Materials,
+        RR_MESH_MAX_PRIMITIVES);
 
     cgltf_free(Data);
 
@@ -504,7 +582,11 @@ Rr_CreateStaticMeshGLTF(
 }
 
 Rr_StaticMesh*
-Rr_CreateStaticMeshOBJ(Rr_App* App, Rr_UploadContext* UploadContext, Rr_AssetRef AssetRef, Rr_Arena* Arena)
+Rr_CreateStaticMeshOBJ(
+    Rr_App* App,
+    Rr_UploadContext* UploadContext,
+    Rr_AssetRef AssetRef,
+    Rr_Arena* Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -512,7 +594,8 @@ Rr_CreateStaticMeshOBJ(Rr_App* App, Rr_UploadContext* UploadContext, Rr_AssetRef
 
     Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
-    Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1, NULL, 0);
+    Rr_StaticMesh* StaticMesh =
+        Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1, NULL, 0);
 
     Rr_DestroyArenaScratch(Scratch);
 
@@ -520,7 +603,10 @@ Rr_CreateStaticMeshOBJ(Rr_App* App, Rr_UploadContext* UploadContext, Rr_AssetRef
 }
 
 void
-Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutLoadSize)
+Rr_GetStaticMeshSizeOBJ(
+    Rr_AssetRef AssetRef,
+    Rr_Arena* Arena,
+    Rr_LoadSize* OutLoadSize)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -528,8 +614,10 @@ Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena, Rr_LoadSize* OutL
 
     Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
-    Rr_USize VertexBufferSize = sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh.VerticesSlice);
-    Rr_USize IndexBufferSize = sizeof(Rr_MeshIndexType) * Rr_SliceLength(&RawMesh.IndicesSlice);
+    Rr_USize VertexBufferSize =
+        sizeof(Rr_Vertex) * Rr_SliceLength(&RawMesh.VerticesSlice);
+    Rr_USize IndexBufferSize =
+        sizeof(Rr_MeshIndexType) * Rr_SliceLength(&RawMesh.IndicesSlice);
 
     OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
     OutLoadSize->BufferCount += 2;
@@ -549,7 +637,8 @@ Rr_GetStaticMeshSizeGLTF(
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
+    cgltf_options Options = { .memory =
+                                  Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
     cgltf_data* Data = NULL;
     cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
@@ -561,7 +650,8 @@ Rr_GetStaticMeshSizeGLTF(
     {
         cgltf_primitive* Primitive = Mesh->primitives + Index;
 
-        VertexBufferSize += sizeof(Rr_Vertex) * Primitive->attributes->data->count;
+        VertexBufferSize +=
+            sizeof(Rr_Vertex) * Primitive->attributes->data->count;
         IndexBufferSize += sizeof(Rr_MeshIndexType) * Primitive->indices->count;
 
         if (Loader != NULL && Primitive->material != NULL)
@@ -569,29 +659,39 @@ Rr_GetStaticMeshSizeGLTF(
             cgltf_material* CGLTFMaterial = Primitive->material;
             if (CGLTFMaterial->has_pbr_metallic_roughness)
             {
-                cgltf_texture* BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
+                cgltf_texture* BaseColorTexture =
+                    CGLTFMaterial->pbr_metallic_roughness.base_color_texture
+                        .texture;
                 if (BaseColorTexture)
                 {
-                    if (strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+                    if (strcmp(BaseColorTexture->image->mime_type, "image/png")
+                        == 0)
                     {
-                        Rr_Byte* PNGData = (Rr_Byte*)BaseColorTexture->image->buffer_view->buffer->data
+                        Rr_Byte* PNGData = (Rr_Byte*)BaseColorTexture->image
+                                               ->buffer_view->buffer->data
                             + BaseColorTexture->image->buffer_view->offset;
-                        Rr_USize PNGSize = BaseColorTexture->image->buffer_view->size;
+                        Rr_USize PNGSize =
+                            BaseColorTexture->image->buffer_view->size;
 
-                        Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+                        Rr_GetImageSizePNGMemory(
+                            PNGData, PNGSize, Scratch.Arena, OutLoadSize);
                     }
                 }
             }
             if (CGLTFMaterial->normal_texture.texture != NULL)
             {
-                cgltf_texture* NormalTexture = CGLTFMaterial->normal_texture.texture;
+                cgltf_texture* NormalTexture =
+                    CGLTFMaterial->normal_texture.texture;
                 if (strcmp(NormalTexture->image->mime_type, "image/png") == 0)
                 {
-                    Rr_Byte* PNGData = (Rr_Byte*)NormalTexture->image->buffer_view->buffer->data
+                    Rr_Byte* PNGData =
+                        (Rr_Byte*)
+                            NormalTexture->image->buffer_view->buffer->data
                         + NormalTexture->image->buffer_view->offset;
                     Rr_USize PNGSize = NormalTexture->image->buffer_view->size;
 
-                    Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+                    Rr_GetImageSizePNGMemory(
+                        PNGData, PNGSize, Scratch.Arena, OutLoadSize);
                 }
             }
         }

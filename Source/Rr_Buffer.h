@@ -28,7 +28,10 @@ extern Rr_Buffer*
 Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size);
 
 extern Rr_Buffer*
-Rr_CreateMappedBuffer(Rr_App* App, Rr_USize Size, VkBufferUsageFlags UsageFlags);
+Rr_CreateMappedBuffer(
+    Rr_App* App,
+    Rr_USize Size,
+    VkBufferUsageFlags UsageFlags);
 
 extern Rr_Buffer*
 Rr_CreateMappedVertexBuffer(Rr_App* App, Rr_USize Size);
@@ -69,7 +72,11 @@ Rr_UploadBuffer(
     Rr_USize DataLength);
 
 extern void
-Rr_UploadToDeviceBufferImmediate(Rr_App* App, Rr_Buffer* DstBuffer, void* Data, Rr_USize Size);
+Rr_UploadToDeviceBufferImmediate(
+    Rr_App* App,
+    Rr_Buffer* DstBuffer,
+    void* Data,
+    Rr_USize Size);
 
 extern void
 Rr_UploadToUniformBuffer(
@@ -80,4 +87,9 @@ Rr_UploadToUniformBuffer(
     Rr_USize DataLength);
 
 extern void
-Rr_CopyToMappedUniformBuffer(Rr_App* App, Rr_Buffer* DstBuffer, void* Data, Rr_USize Size, VkDeviceSize* DstOffset);
+Rr_CopyToMappedUniformBuffer(
+    Rr_App* App,
+    Rr_Buffer* DstBuffer,
+    void* Data,
+    Rr_USize Size,
+    VkDeviceSize* DstOffset);

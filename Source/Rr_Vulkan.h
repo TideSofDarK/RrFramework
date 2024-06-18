@@ -69,17 +69,22 @@ GetExtent2D(VkExtent3D Extent)
 static inline VkPipelineShaderStageCreateInfo
 GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
 {
-    VkPipelineShaderStageCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                                             .pNext = NULL,
-                                             .pName = "main",
-                                             .stage = Stage,
-                                             .module = Module };
+    VkPipelineShaderStageCreateInfo Info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext = NULL,
+        .pName = "main",
+        .stage = Stage,
+        .module = Module
+    };
 
     return Info;
 }
 
 static inline VkImageCreateInfo
-GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
+GetImageCreateInfo(
+    VkFormat Format,
+    VkImageUsageFlags UsageFlags,
+    VkExtent3D Extent)
 {
     VkImageCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -98,7 +103,10 @@ GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Ext
 }
 
 static inline VkImageViewCreateInfo
-GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
+GetImageViewCreateInfo(
+    VkFormat Format,
+    VkImage Image,
+    VkImageAspectFlags AspectFlags)
 {
     VkImageViewCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,

@@ -42,7 +42,10 @@ struct Rr_SkeletalMesh
 };
 
 extern Rr_Primitive*
-Rr_CreatePrimitive(struct Rr_App* App, struct Rr_UploadContext* UploadContext, Rr_RawMesh* RawMesh);
+Rr_CreatePrimitive(
+    struct Rr_App* App,
+    struct Rr_UploadContext* UploadContext,
+    Rr_RawMesh* RawMesh);
 
 extern void
 Rr_DestroyPrimitive(struct Rr_App* App, Rr_Primitive* Primitive);
@@ -73,7 +76,10 @@ Rr_CreateStaticMeshOBJ(
     Rr_Arena* Arena);
 
 extern void
-Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena* Arena, struct Rr_LoadSize* OutLoadSize);
+Rr_GetStaticMeshSizeOBJ(
+    Rr_AssetRef AssetRef,
+    Rr_Arena* Arena,
+    struct Rr_LoadSize* OutLoadSize);
 
 extern void
 Rr_GetStaticMeshSizeGLTF(

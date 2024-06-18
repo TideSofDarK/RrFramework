@@ -27,7 +27,8 @@ Rr_ObjectStorage
 Rr_CreateObjectStorage()
 {
     Rr_ObjectStorage ObjectStorage = { 0 };
-    ObjectStorage.Storage = Rr_Calloc(1, Rr_CalculateObjectStorageSize(RR_MAX_OBJECTS));
+    ObjectStorage.Storage =
+        Rr_Calloc(1, Rr_CalculateObjectStorageSize(RR_MAX_OBJECTS));
     ObjectStorage.NextObject = ObjectStorage.Storage;
 
     return ObjectStorage;
