@@ -475,7 +475,7 @@ public:
                 Rr_U32 Current, Total;
                 Rr_GetLoadProgress(LoadingContext, &Current, &Total);
 
-                std::string Formatted = std::format("Loading: {}/{}\n", Current, Total);
+                std::string Formatted = std::format("Загружайу: {}/{}\n", Current, Total);
                 Rr_SetString(&LoadingString, Formatted.c_str(), Formatted.length());
             }
 
