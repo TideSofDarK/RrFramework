@@ -9,8 +9,10 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_atomic.h>
 
-static Rr_LoadSize
-Rr_CalculateLoadSize(Rr_LoadTask *Tasks, Rr_USize TaskCount, Rr_Arena *Arena)
+static Rr_LoadSize Rr_CalculateLoadSize(
+    Rr_LoadTask *Tasks,
+    Rr_USize TaskCount,
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -189,8 +191,10 @@ Rr_LoadingContext *Rr_LoadAsync(
     return LoadingContext;
 }
 
-Rr_LoadResult
-Rr_LoadImmediate(Rr_App *App, Rr_LoadTask *Tasks, Rr_USize TaskCount)
+Rr_LoadResult Rr_LoadImmediate(
+    Rr_App *App,
+    Rr_LoadTask *Tasks,
+    Rr_USize TaskCount)
 {
     if (Tasks == 0)
     {

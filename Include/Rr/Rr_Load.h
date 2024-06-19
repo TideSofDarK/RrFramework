@@ -57,11 +57,13 @@ struct Rr_LoadTask
 
 typedef void (*Rr_LoadingCallback)(Rr_App *App, void *Userdata);
 
-extern Rr_LoadTask
-Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage);
+extern Rr_LoadTask Rr_LoadColorImageFromPNG(
+    Rr_AssetRef AssetRef,
+    Rr_Image **OutImage);
 
-extern Rr_LoadTask
-Rr_LoadStaticMeshFromOBJ(Rr_AssetRef AssetRef, Rr_StaticMesh **OutStaticMesh);
+extern Rr_LoadTask Rr_LoadStaticMeshFromOBJ(
+    Rr_AssetRef AssetRef,
+    Rr_StaticMesh **OutStaticMesh);
 
 extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
     Rr_AssetRef AssetRef,
@@ -76,8 +78,10 @@ extern Rr_LoadingContext *Rr_LoadAsync(
     Rr_LoadingCallback LoadingCallback,
     void *Userdata);
 
-extern Rr_LoadResult
-Rr_LoadImmediate(Rr_App *App, Rr_LoadTask *Tasks, Rr_USize TaskCount);
+extern Rr_LoadResult Rr_LoadImmediate(
+    Rr_App *App,
+    Rr_LoadTask *Tasks,
+    Rr_USize TaskCount);
 
 extern void Rr_GetLoadProgress(
     Rr_LoadingContext *LoadingContext,

@@ -18,7 +18,9 @@ static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
     return Rr_ArenaAllocOne((Rr_Arena *)Arena, Size);
 }
 
-static void Rr_CGLTFArenaFree(void *Arena, void *Ptr) { /* no-op */ }
+static void Rr_CGLTFArenaFree(void *Arena, void *Ptr)
+{ /* no-op */
+}
 
 static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
 {
@@ -58,8 +60,9 @@ static cgltf_mesh *Rr_ParseGLTFMesh(
     return Mesh;
 }
 
-static Rr_RawMesh
-Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
+static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(
+    cgltf_primitive *Primitive,
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 

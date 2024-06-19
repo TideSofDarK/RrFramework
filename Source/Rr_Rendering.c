@@ -108,8 +108,9 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     return Context;
 }
 
-SDL_FORCE_INLINE int
-Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo *A, Rr_DrawPrimitiveInfo *B)
+SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(
+    Rr_DrawPrimitiveInfo *A,
+    Rr_DrawPrimitiveInfo *B)
 {
     if (A->Material->GenericPipeline != B->Material->GenericPipeline)
     {

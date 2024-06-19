@@ -175,8 +175,10 @@ Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
     return DrawTarget;
 }
 
-Rr_DrawTarget *
-Rr_CreateDrawTargetDepthOnly(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
+Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(
+    Rr_App *App,
+    Rr_U32 Width,
+    Rr_U32 Height)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 

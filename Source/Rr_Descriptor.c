@@ -173,8 +173,10 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
     return DescriptorSet;
 }
 
-Rr_DescriptorWriter
-Rr_CreateDescriptorWriter(Rr_USize Images, Rr_USize Buffers, Rr_Arena *Arena)
+Rr_DescriptorWriter Rr_CreateDescriptorWriter(
+    Rr_USize Images,
+    Rr_USize Buffers,
+    Rr_Arena *Arena)
 {
     Rr_DescriptorWriter Writer = { 0 };
     Rr_SliceReserve(&Writer.ImageInfos, Images, Arena);
