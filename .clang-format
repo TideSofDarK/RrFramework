@@ -51,7 +51,7 @@ InsertBraces: true
 InsertTrailingCommas: Wrapped
 IndentExternBlock: NoIndent
 NamespaceIndentation: All
-PointerAlignment: Left
+PointerAlignment: Right
 PackConstructorInitializers: Never
 SortIncludes: Never
 SpaceBeforeCaseColon: false

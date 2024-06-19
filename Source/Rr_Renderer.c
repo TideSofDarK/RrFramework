@@ -225,20 +225,24 @@ Rr_InitSwapchain(Rr_App* App, Rr_U32* Width, Rr_U32* Height)
     vkGetSwapchainImagesKHR(
         Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images);
 
-    VkImageViewCreateInfo ColorAttachmentView = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                                                  .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                                                  .format = Renderer->Swapchain.Format,
-                                                  .components = { .r = VK_COMPONENT_SWIZZLE_R,
-                                                                  .g = VK_COMPONENT_SWIZZLE_G,
-                                                                  .b = VK_COMPONENT_SWIZZLE_B,
-                                                                  .a = VK_COMPONENT_SWIZZLE_A },
-                                                  .subresourceRange = {
-                                                      .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                                      .baseMipLevel = 0,
-                                                      .levelCount = 1,
-                                                      .baseArrayLayer = 0,
-                                                      .layerCount = 1,
-                                                  } };
+    VkImageViewCreateInfo ColorAttachmentView = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = Renderer->Swapchain.Format,
+        .components = {
+            .r = VK_COMPONENT_SWIZZLE_R,
+            .g = VK_COMPONENT_SWIZZLE_G,
+            .b = VK_COMPONENT_SWIZZLE_B,
+            .a = VK_COMPONENT_SWIZZLE_A,
+        },
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
 
     for (Rr_U32 i = 0; i < ImageCount; i++)
     {
