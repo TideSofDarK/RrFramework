@@ -32,17 +32,17 @@ extern Rr_PhysicalDevice
 Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
-    Rr_U32* OutGraphicsQueueFamilyIndex,
-    Rr_U32* OutTransferQueueFamilyIndex);
+    Rr_U32 *OutGraphicsQueueFamilyIndex,
+    Rr_U32 *OutTransferQueueFamilyIndex);
 
 extern void
 Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
     Rr_U32 GraphicsQueueFamilyIndex,
     Rr_U32 TransferQueueFamilyIndex,
-    VkDevice* OutDevice,
-    VkQueue* OutGraphicsQueue,
-    VkQueue* OutTransferQueue);
+    VkDevice *OutDevice,
+    VkQueue *OutGraphicsQueue,
+    VkQueue *OutTransferQueue);
 
 extern void
 Rr_BlitDepthImage(

@@ -6,15 +6,15 @@
 
 #include <SDL3/SDL_log.h>
 
-Rr_Buffer*
+Rr_Buffer *
 Rr_CreateBuffer(
-    Rr_App* App,
+    Rr_App *App,
     Rr_USize Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
     Rr_Bool bHostMapped)
 {
-    Rr_Buffer* Buffer = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Buffer *Buffer = Rr_CreateObject(&App->ObjectStorage);
 
     VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -44,8 +44,8 @@ Rr_CreateBuffer(
     return Buffer;
 }
 
-Rr_Buffer*
-Rr_CreateDeviceVertexBuffer(Rr_App* App, Rr_USize Size)
+Rr_Buffer *
+Rr_CreateDeviceVertexBuffer(Rr_App *App, Rr_USize Size)
 {
     Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
@@ -56,8 +56,8 @@ Rr_CreateDeviceVertexBuffer(Rr_App* App, Rr_USize Size)
         RR_FALSE);
 }
 
-Rr_Buffer*
-Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size)
+Rr_Buffer *
+Rr_CreateDeviceUniformBuffer(Rr_App *App, Rr_USize Size)
 {
     // Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
@@ -68,28 +68,28 @@ Rr_CreateDeviceUniformBuffer(Rr_App* App, Rr_USize Size)
         RR_FALSE);
 }
 
-Rr_Buffer*
-Rr_CreateMappedBuffer(Rr_App* App, Rr_USize Size, VkBufferUsageFlags UsageFlags)
+Rr_Buffer *
+Rr_CreateMappedBuffer(Rr_App *App, Rr_USize Size, VkBufferUsageFlags UsageFlags)
 {
     return Rr_CreateBuffer(
         App, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, RR_TRUE);
 }
 
-Rr_Buffer*
-Rr_CreateMappedVertexBuffer(Rr_App* App, Rr_USize Size)
+Rr_Buffer *
+Rr_CreateMappedVertexBuffer(Rr_App *App, Rr_USize Size)
 {
     return Rr_CreateMappedBuffer(App, Size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 }
 
 void
-Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer)
+Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer)
 {
     if (Buffer == NULL)
     {
         return;
     }
 
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
     vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
 
@@ -98,20 +98,20 @@ Rr_DestroyBuffer(Rr_App* App, Rr_Buffer* Buffer)
 
 void
 Rr_UploadBufferAligned(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
     VkBuffer Buffer,
     VkPipelineStageFlags SrcStageMask,
     VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
-    void* Data,
+    void *Data,
     Rr_USize DataLength,
     Rr_USize Alignment)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_WriteBuffer* StagingBuffer = &UploadContext->StagingBuffer;
+    Rr_WriteBuffer *StagingBuffer = &UploadContext->StagingBuffer;
     if (StagingBuffer->Offset + DataLength
         > StagingBuffer->Buffer->AllocationInfo.size)
     {
@@ -127,7 +127,7 @@ Rr_UploadBufferAligned(
 
     Rr_USize BufferOffset = StagingBuffer->Offset;
     memcpy(
-        (Rr_Byte*)StagingBuffer->Buffer->AllocationInfo.pMappedData
+        (Rr_Byte *)StagingBuffer->Buffer->AllocationInfo.pMappedData
             + BufferOffset,
         Data,
         DataLength);
@@ -229,14 +229,14 @@ Rr_UploadBufferAligned(
 
 void
 Rr_UploadBuffer(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
     VkBuffer Buffer,
     VkPipelineStageFlags SrcStageMask,
     VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
-    void* Data,
+    void *Data,
     Rr_USize DataLength)
 {
     Rr_UploadBufferAligned(
@@ -254,14 +254,14 @@ Rr_UploadBuffer(
 
 void
 Rr_UploadToDeviceBufferImmediate(
-    Rr_App* App,
-    Rr_Buffer* DstBuffer,
-    void* Data,
+    Rr_App *App,
+    Rr_Buffer *DstBuffer,
+    void *Data,
     Rr_USize Size)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
-    Rr_Buffer* HostMappedBuffer =
+    Rr_Buffer *HostMappedBuffer =
         Rr_CreateMappedBuffer(App, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data, Size);
     VkBufferCopy BufferCopy = { .dstOffset = 0, .size = Size, .srcOffset = 0 };
@@ -277,10 +277,10 @@ Rr_UploadToDeviceBufferImmediate(
 
 void
 Rr_UploadToUniformBuffer(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
-    Rr_Buffer* DstBuffer,
-    void* Data,
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
+    Rr_Buffer *DstBuffer,
+    void *Data,
     Rr_USize DataLength)
 {
     Rr_UploadBufferAligned(
@@ -300,11 +300,11 @@ Rr_UploadToUniformBuffer(
 
 void
 Rr_CopyToMappedUniformBuffer(
-    Rr_App* App,
-    Rr_Buffer* DstBuffer,
-    void* Data,
+    Rr_App *App,
+    Rr_Buffer *DstBuffer,
+    void *Data,
     Rr_USize Size,
-    VkDeviceSize* DstOffset)
+    VkDeviceSize *DstOffset)
 {
     Rr_U32 Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits
                            .minUniformBufferOffsetAlignment;
@@ -312,7 +312,7 @@ Rr_CopyToMappedUniformBuffer(
     if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
         memcpy(
-            (Rr_Byte*)DstBuffer->AllocationInfo.pMappedData + *DstOffset,
+            (Rr_Byte *)DstBuffer->AllocationInfo.pMappedData + *DstOffset,
             Data,
             Size);
         *DstOffset += Size;

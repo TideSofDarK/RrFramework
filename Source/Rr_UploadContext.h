@@ -8,8 +8,8 @@ struct Rr_AcquireBarriers
 {
     Rr_USize ImageMemoryBarrierCount;
     Rr_USize BufferMemoryBarrierCount;
-    VkImageMemoryBarrier* ImageMemoryBarriers;
-    VkBufferMemoryBarrier* BufferMemoryBarriers;
+    VkImageMemoryBarrier *ImageMemoryBarriers;
+    VkBufferMemoryBarrier *BufferMemoryBarriers;
 };
 
 typedef struct Rr_UploadContext Rr_UploadContext;

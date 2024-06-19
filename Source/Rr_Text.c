@@ -9,11 +9,11 @@
 #include <cJSON/cJSON.h>
 
 void
-Rr_InitTextRenderer(Rr_App* App)
+Rr_InitTextRenderer(Rr_App *App)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
-    Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
+    Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
 
     /* Descriptor Set Layouts */
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
@@ -58,7 +58,7 @@ Rr_InitTextRenderer(Rr_App* App)
     Rr_Asset BuiltinTextVERT = Rr_LoadAsset(RR_BUILTIN_TEXT_VERT_SPV);
     Rr_Asset BuiltinTextFRAG = Rr_LoadAsset(RR_BUILTIN_TEXT_FRAG_SPV);
 
-    Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+    Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder();
     Rr_EnableTriangleFan(Builder);
     Rr_EnablePerVertexInputAttributes(
         Builder,
@@ -107,10 +107,10 @@ Rr_InitTextRenderer(Rr_App* App)
 }
 
 void
-Rr_CleanupTextRenderer(Rr_App* App)
+Rr_CleanupTextRenderer(Rr_App *App)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
     VkDevice Device = Renderer->Device;
     vkDestroyPipeline(Device, TextPipeline->Handle, NULL);
     vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
@@ -129,15 +129,15 @@ Rr_CleanupTextRenderer(Rr_App* App)
     Rr_DestroyFont(App, Renderer->BuiltinFont);
 }
 
-Rr_Font*
-Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
+Rr_Font *
+Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_Image* Atlas;
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Image *Atlas;
     Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNGRef, &Atlas);
     Rr_LoadImmediate(App, &ImageLoadTask, 1);
 
-    Rr_Buffer* Buffer = Rr_CreateBuffer(
+    Rr_Buffer *Buffer = Rr_CreateBuffer(
         App,
         sizeof(Rr_TextFontLayout),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -146,10 +146,10 @@ Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
 
     Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
 
-    cJSON* FontDataJSON = cJSON_ParseWithLength(FontJSON.Data, FontJSON.Length);
+    cJSON *FontDataJSON = cJSON_ParseWithLength(FontJSON.Data, FontJSON.Length);
 
-    cJSON* AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
-    cJSON* MetricsJSON =
+    cJSON *AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
+    cJSON *MetricsJSON =
         cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
 
     Rr_TextFontLayout TextFontData = {
@@ -160,7 +160,7 @@ Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
         },
     };
 
-    Rr_Font* Font = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Font *Font = Rr_CreateObject(&App->ObjectStorage);
     *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
@@ -171,18 +171,18 @@ Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
         .Advances = Rr_Calloc(RR_TEXT_MAX_GLYPHS, sizeof(Rr_F32)),
     };
 
-    cJSON* GlyphsJSON =
+    cJSON *GlyphsJSON =
         cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
 
     size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
     for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
-        cJSON* GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (Rr_I32)GlyphIndex);
+        cJSON *GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (Rr_I32)GlyphIndex);
 
         size_t Unicode = (size_t)cJSON_GetNumberValue(
             cJSON_GetObjectItem(GlyphJSON, "unicode"));
 
-        cJSON* AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
+        cJSON *AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
         Rr_U16 AtlasBounds[4] = { 0 };
         if (cJSON_IsObject(AtlasBoundsJSON))
         {
@@ -196,7 +196,7 @@ Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
                 cJSON_GetObjectItem(AtlasBoundsJSON, "top"));
         }
 
-        cJSON* PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
+        cJSON *PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
         Rr_Vec4 PlaneBounds = { 0 };
         if (cJSON_IsObject(PlaneBoundsJSON))
         {
@@ -236,9 +236,9 @@ Rr_CreateFont(Rr_App* App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
 }
 
 void
-Rr_DestroyFont(Rr_App* App, Rr_Font* Font)
+Rr_DestroyFont(Rr_App *App, Rr_Font *Font)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_Free(Font->Advances);
 

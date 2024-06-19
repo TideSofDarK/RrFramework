@@ -3,13 +3,13 @@
 #include "Rr_Memory.h"
 #include "Rr_Log.h"
 
-static Rr_U32*
+static Rr_U32 *
 Rr_UTF8ToUTF32(
     Rr_CString CString,
     Rr_USize OptionalLength,
-    Rr_U32* OutOldBuffer,
+    Rr_U32 *OutOldBuffer,
     Rr_USize OldLength,
-    Rr_USize* OutNewLength)
+    Rr_USize *OutNewLength)
 {
     static Rr_U32 Buffer[2048] = { 0 };
 
@@ -74,10 +74,10 @@ Rr_UTF8ToUTF32(
         }
     }
 
-    Rr_U32* Data;
+    Rr_U32 *Data;
     if (OutOldBuffer == NULL)
     {
-        Data = (Rr_U32*)Rr_Malloc(sizeof(Rr_U32) * FinalIndex);
+        Data = (Rr_U32 *)Rr_Malloc(sizeof(Rr_U32) * FinalIndex);
     }
     else if (OldLength >= FinalIndex)
     {
@@ -85,10 +85,10 @@ Rr_UTF8ToUTF32(
     }
     else
     {
-        Data = (Rr_U32*)Rr_Realloc(OutOldBuffer, sizeof(Rr_U32) * FinalIndex);
+        Data = (Rr_U32 *)Rr_Realloc(OutOldBuffer, sizeof(Rr_U32) * FinalIndex);
     }
 
-    memcpy((void*)Data, Buffer, sizeof(Rr_U32) * FinalIndex);
+    memcpy((void *)Data, Buffer, sizeof(Rr_U32) * FinalIndex);
 
     *OutNewLength = FinalIndex;
 
@@ -108,11 +108,11 @@ Rr_String
 Rr_CreateEmptyString(Rr_USize Length)
 {
     return (Rr_String){ .Length = Length,
-                        .Data = (Rr_U32*)Rr_Calloc(Length, sizeof(Rr_U32)) };
+                        .Data = (Rr_U32 *)Rr_Calloc(Length, sizeof(Rr_U32)) };
 }
 
 void
-Rr_SetString(Rr_String* String, Rr_CString CString, Rr_USize OptionalLength)
+Rr_SetString(Rr_String *String, Rr_CString CString, Rr_USize OptionalLength)
 {
     if (String == NULL)
     {
@@ -124,10 +124,10 @@ Rr_SetString(Rr_String* String, Rr_CString CString, Rr_USize OptionalLength)
 }
 
 void
-Rr_DestroyString(Rr_String* String)
+Rr_DestroyString(Rr_String *String)
 {
     if (String->Data != NULL)
     {
-        Rr_Free((void*)String->Data);
+        Rr_Free((void *)String->Data);
     }
 }

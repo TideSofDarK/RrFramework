@@ -10,9 +10,9 @@ struct Rr_Buffer;
 
 struct Rr_Font
 {
-    struct Rr_Image* Atlas;
-    struct Rr_Buffer* Buffer;
-    Rr_F32* Advances;
+    struct Rr_Image *Atlas;
+    struct Rr_Buffer *Buffer;
+    Rr_F32 *Advances;
     Rr_F32 LineHeight;
     Rr_F32 DefaultSize;
 };
@@ -77,7 +77,7 @@ struct Rr_TextPipeline
         DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT];
     VkPipeline Handle;
     VkPipelineLayout Layout;
-    struct Rr_Buffer* QuadBuffer;
-    struct Rr_Buffer* GlobalsBuffers[RR_FRAME_OVERLAP];
-    struct Rr_Buffer* TextBuffers[RR_FRAME_OVERLAP];
+    struct Rr_Buffer *QuadBuffer;
+    struct Rr_Buffer *GlobalsBuffers[RR_FRAME_OVERLAP];
+    struct Rr_Buffer *TextBuffers[RR_FRAME_OVERLAP];
 };

@@ -32,39 +32,39 @@ typedef enum Rr_PolygonMode
     RR_POLYGON_MODE_LINE
 } Rr_PolygonMode;
 
-extern Rr_PipelineBuilder*
+extern Rr_PipelineBuilder *
 Rr_CreatePipelineBuilder(void);
 
 extern void
 Rr_EnableColorAttachment(
-    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_PipelineBuilder *PipelineBuilder,
     Rr_Bool bEnableAlphaBlend);
 
 extern void
-Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
+Rr_EnableVertexStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset);
 
 extern void
-Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset);
+Rr_EnableFragmentStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset);
 
 extern void
 Rr_EnableRasterizer(
-    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_PipelineBuilder *PipelineBuilder,
     Rr_PolygonMode PolygonMode);
 
 extern void
-Rr_EnableDepthTest(Rr_PipelineBuilder* PipelineBuilder);
+Rr_EnableDepthTest(Rr_PipelineBuilder *PipelineBuilder);
 
-extern Rr_GenericPipeline*
+extern Rr_GenericPipeline *
 Rr_BuildGenericPipeline(
-    Rr_App* App,
-    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_App *App,
+    Rr_PipelineBuilder *PipelineBuilder,
     Rr_GenericPipelineSizes Sizes);
 
 extern void
-Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline);
+Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *Pipeline);
 
 extern Rr_GenericPipelineSizes
-Rr_GetGenericPipelineSizes(Rr_GenericPipeline* Pipeline);
+Rr_GetGenericPipelineSizes(Rr_GenericPipeline *Pipeline);
 
 #ifdef __cplusplus
 }

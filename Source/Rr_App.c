@@ -13,7 +13,7 @@
 #include <imgui/cimgui_impl.h>
 
 static void
-Rr_CalculateDeltaTime(Rr_FrameTime* FrameTime)
+Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
     FrameTime->Now = SDL_GetPerformanceCounter();
@@ -22,7 +22,7 @@ Rr_CalculateDeltaTime(Rr_FrameTime* FrameTime)
 }
 
 static void
-Rr_CalculateFPS(Rr_FrameTime* FrameTime)
+Rr_CalculateFPS(Rr_FrameTime *FrameTime)
 {
     FrameTime->PerformanceCounter.Frames++;
     Rr_U64 CurrentTime = SDL_GetPerformanceCounter();
@@ -40,7 +40,7 @@ Rr_CalculateFPS(Rr_FrameTime* FrameTime)
 }
 
 static void
-Rr_SimulateVSync(Rr_FrameTime* FrameTime)
+Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 {
     Rr_U64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
     Rr_U64 Now = SDL_GetTicksNS();
@@ -65,10 +65,10 @@ Rr_SimulateVSync(Rr_FrameTime* FrameTime)
 }
 
 void
-Rr_DebugOverlay(Rr_App* App)
+Rr_DebugOverlay(Rr_App *App)
 {
-    ImGuiIO* IO = igGetIO();
-    ImGuiViewport* Viewport = igGetMainViewport();
+    ImGuiIO *IO = igGetIO();
+    ImGuiViewport *Viewport = igGetMainViewport();
     ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration
         | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize
         | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing
@@ -96,7 +96,7 @@ Rr_DebugOverlay(Rr_App* App)
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
 #endif
-        igCheckbox("Simulate VSync", (_Bool*)&App->FrameTime.bSimulateVSync);
+        igCheckbox("Simulate VSync", (_Bool *)&App->FrameTime.bSimulateVSync);
         if (App->FrameTime.bSimulateVSync)
         {
             igSliderScalar(
@@ -123,7 +123,7 @@ Rr_DebugOverlay(Rr_App* App)
 }
 
 static void
-Iterate(Rr_App* App)
+Iterate(Rr_App *App)
 {
     Rr_CalculateDeltaTime(&App->FrameTime);
 
@@ -154,14 +154,14 @@ Iterate(Rr_App* App)
 }
 
 static int SDLCALL
-Rr_EventWatch(void* AppPtr, SDL_Event* Event)
+Rr_EventWatch(void *AppPtr, SDL_Event *Event)
 {
     switch (Event->type)
     {
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
-            Rr_App* App = (Rr_App*)AppPtr;
+            Rr_App *App = (Rr_App *)AppPtr;
             SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
             Iterate(App);
         }
@@ -169,7 +169,7 @@ Rr_EventWatch(void* AppPtr, SDL_Event* Event)
 #else
         case SDL_EVENT_WINDOW_RESIZED:
         {
-            Rr_App* App = (Rr_App*)AppPtr;
+            Rr_App *App = (Rr_App *)AppPtr;
             SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
         }
         break;
@@ -184,7 +184,7 @@ Rr_EventWatch(void* AppPtr, SDL_Event* Event)
 }
 
 static void
-Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
+Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
 {
 #ifdef RR_PERFORMANCE_COUNTER
     FrameTime->PerformanceCounter.StartTime = SDL_GetPerformanceCounter();
@@ -195,7 +195,7 @@ Rr_InitFrameTime(Rr_FrameTime* FrameTime, SDL_Window* Window)
 #endif
 
     SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
-    const SDL_DisplayMode* Mode = SDL_GetDesktopDisplayMode(DisplayID);
+    const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
     FrameTime->TargetFramerate = (Rr_U64)Mode->refresh_rate;
     FrameTime->StartTime = SDL_GetTicksNS();
     FrameTime->bSimulateVSync = true;
@@ -222,7 +222,7 @@ Rr_GetDefaultWindowSize()
 }
 
 void
-Rr_Run(Rr_AppConfig* Config)
+Rr_Run(Rr_AppConfig *Config)
 {
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -231,7 +231,7 @@ Rr_Run(Rr_AppConfig* Config)
 
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
 
-    Rr_App* App = Rr_StackAlloc(Rr_App, 1);
+    Rr_App *App = Rr_StackAlloc(Rr_App, 1);
     SDL_zerop(App);
     *App = (Rr_App){ .Config = Config,
                      .Window = SDL_CreateWindow(
@@ -311,45 +311,45 @@ Rr_Run(Rr_AppConfig* Config)
 }
 
 static bool
-Rr_IsAnyFullscreen(SDL_Window* Window)
+Rr_IsAnyFullscreen(SDL_Window *Window)
 {
     return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
 void
-Rr_ToggleFullscreen(Rr_App* App)
+Rr_ToggleFullscreen(Rr_App *App)
 {
     SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
 }
 
 void
-Rr_SetInputConfig(Rr_App* App, Rr_InputConfig* InputConfig)
+Rr_SetInputConfig(Rr_App *App, Rr_InputConfig *InputConfig)
 {
     App->InputConfig = *InputConfig;
 }
 
 Rr_InputState
-Rr_GetInputState(Rr_App* App)
+Rr_GetInputState(Rr_App *App)
 {
     return App->InputState;
 }
 
 Rr_F32
-Rr_GetAspectRatio(Rr_App* App)
+Rr_GetAspectRatio(Rr_App *App)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
     return (Rr_F32)Renderer->SwapchainSize.width
         / (Rr_F32)Renderer->SwapchainSize.height;
 }
 
 Rr_F64
-Rr_GetDeltaSeconds(Rr_App* App)
+Rr_GetDeltaSeconds(Rr_App *App)
 {
     return App->FrameTime.DeltaSeconds;
 }
 
 Rr_F64
-Rr_GetTimeSeconds(Rr_App* App)
+Rr_GetTimeSeconds(Rr_App *App)
 {
     return (Rr_F64)SDL_GetTicks() / 1000.0;
 }

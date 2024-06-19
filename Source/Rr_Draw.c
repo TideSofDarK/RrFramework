@@ -5,16 +5,16 @@
 #include "Rr_Mesh.h"
 #include "Rr_Material.h"
 
-Rr_DrawContext*
+Rr_DrawContext *
 Rr_CreateDrawContext(
-    Rr_App* App,
-    Rr_DrawContextInfo* Info,
-    Rr_Byte* GlobalsData)
+    Rr_App *App,
+    Rr_DrawContextInfo *Info,
+    Rr_Byte *GlobalsData)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawContext* DrawContext =
+    Rr_DrawContext *DrawContext =
         Rr_SlicePush(&Frame->DrawContextsSlice, &Frame->Arena);
     *DrawContext = (Rr_DrawContext){
         .Arena = &Frame->Arena,
@@ -38,12 +38,12 @@ Rr_CreateDrawContext(
 
 void
 Rr_DrawStaticMesh(
-    Rr_DrawContext* DrawContext,
-    Rr_StaticMesh* StaticMesh,
+    Rr_DrawContext *DrawContext,
+    Rr_StaticMesh *StaticMesh,
     Rr_Data DrawData)
 {
-    Rr_Renderer* Renderer = &DrawContext->App->Renderer;
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Renderer *Renderer = &DrawContext->App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
     for (Rr_USize PrimitiveIndex = 0;
@@ -68,14 +68,14 @@ Rr_DrawStaticMesh(
 
 void
 Rr_DrawStaticMeshOverrideMaterials(
-    Rr_DrawContext* DrawContext,
-    Rr_Material** OverrideMaterials,
+    Rr_DrawContext *DrawContext,
+    Rr_Material **OverrideMaterials,
     Rr_USize OverrideMaterialCount,
-    Rr_StaticMesh* StaticMesh,
+    Rr_StaticMesh *StaticMesh,
     Rr_Data DrawData)
 {
-    Rr_Renderer* Renderer = &DrawContext->App->Renderer;
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Renderer *Renderer = &DrawContext->App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
     for (Rr_USize PrimitiveIndex = 0;
@@ -101,9 +101,9 @@ Rr_DrawStaticMeshOverrideMaterials(
 }
 
 static void
-Rr_DrawText(Rr_DrawContext* RenderingContext, Rr_DrawTextInfo* Info)
+Rr_DrawText(Rr_DrawContext *RenderingContext, Rr_DrawTextInfo *Info)
 {
-    Rr_DrawTextInfo* NewInfo = Rr_SlicePush(
+    Rr_DrawTextInfo *NewInfo = Rr_SlicePush(
         &RenderingContext->DrawTextsSlice, RenderingContext->Arena);
     *NewInfo = *Info;
     if (NewInfo->Font == NULL)
@@ -118,9 +118,9 @@ Rr_DrawText(Rr_DrawContext* RenderingContext, Rr_DrawTextInfo* Info)
 
 void
 Rr_DrawCustomText(
-    Rr_DrawContext* DrawContext,
-    Rr_Font* Font,
-    Rr_String* String,
+    Rr_DrawContext *DrawContext,
+    Rr_Font *Font,
+    Rr_String *String,
     Rr_Vec2 Position,
     Rr_F32 Size,
     Rr_DrawTextFlags Flags)
@@ -136,8 +136,8 @@ Rr_DrawCustomText(
 
 void
 Rr_DrawDefaultText(
-    Rr_DrawContext* DrawContext,
-    Rr_String* String,
+    Rr_DrawContext *DrawContext,
+    Rr_String *String,
     Rr_Vec2 Position)
 {
     Rr_DrawText(
@@ -148,12 +148,12 @@ Rr_DrawDefaultText(
                             .Flags = 0 });
 }
 
-Rr_DrawTarget*
-Rr_CreateDrawTarget(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
+Rr_DrawTarget *
+Rr_CreateDrawTarget(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_DrawTarget* DrawTarget = Rr_CreateObject(&App->ObjectStorage);
+    Rr_DrawTarget *DrawTarget = Rr_CreateObject(&App->ObjectStorage);
 
     DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(App, Width, Height);
     DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
@@ -178,12 +178,12 @@ Rr_CreateDrawTarget(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
     return DrawTarget;
 }
 
-Rr_DrawTarget*
-Rr_CreateDrawTargetDepthOnly(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
+Rr_DrawTarget *
+Rr_CreateDrawTargetDepthOnly(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_DrawTarget* DrawTarget = Rr_CreateObject(&App->ObjectStorage);
+    Rr_DrawTarget *DrawTarget = Rr_CreateObject(&App->ObjectStorage);
 
     DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
 
@@ -207,14 +207,14 @@ Rr_CreateDrawTargetDepthOnly(Rr_App* App, Rr_U32 Width, Rr_U32 Height)
 }
 
 void
-Rr_DestroyDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget)
+Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget)
 {
     if (DrawTarget == NULL)
     {
         return;
     }
 
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
     vkDestroyFramebuffer(Renderer->Device, DrawTarget->Framebuffer, NULL);
 
@@ -224,8 +224,8 @@ Rr_DestroyDrawTarget(Rr_App* App, Rr_DrawTarget* DrawTarget)
     Rr_DestroyObject(&App->ObjectStorage, DrawTarget);
 }
 
-Rr_DrawTarget*
-Rr_GetMainDrawTarget(Rr_App* App)
+Rr_DrawTarget *
+Rr_GetMainDrawTarget(Rr_App *App)
 {
     return App->Renderer.DrawTarget;
 }

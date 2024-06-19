@@ -16,7 +16,7 @@ extern "C"
 typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset
 {
-    Rr_Byte* Data;
+    Rr_Byte *Data;
     Rr_USize Length;
 };
 
@@ -28,8 +28,8 @@ typedef Rr_CString Rr_AssetRef;
 
 typedef struct Rr_AssetRef
 {
-    char* Start;
-    char* End;
+    Rr_Byte *Start;
+    Rr_Byte *End;
 } Rr_AssetRef;
 
     #define STR2(x) #x

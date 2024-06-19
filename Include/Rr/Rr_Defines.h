@@ -21,7 +21,7 @@ typedef float Rr_F32;
 typedef double Rr_F64;
 typedef intptr_t Rr_ISize;
 typedef uintptr_t Rr_USize;
-typedef const char* Rr_CString;
+typedef const char *Rr_CString;
 
 typedef Rr_I32 Rr_Bool;
 #define RR_FALSE 0

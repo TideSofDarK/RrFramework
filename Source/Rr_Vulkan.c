@@ -11,8 +11,8 @@ static Rr_Bool
 Rr_CheckPhysicalDevice(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
-    Rr_U32* OutGraphicsQueueFamilyIndex,
-    Rr_U32* OutTransferQueueFamilyIndex)
+    Rr_U32 *OutGraphicsQueueFamilyIndex,
+    Rr_U32 *OutTransferQueueFamilyIndex)
 {
     Rr_U32 ExtensionCount;
     vkEnumerateDeviceExtensionProperties(
@@ -22,13 +22,13 @@ Rr_CheckPhysicalDevice(
         return RR_FALSE;
     }
 
-    Rr_Byte* TargetExtensions[] = {
+    Rr_Byte *TargetExtensions[] = {
         "VK_KHR_swapchain",
     };
 
     Rr_Bool FoundExtensions[] = { 0 };
 
-    VkExtensionProperties* Extensions =
+    VkExtensionProperties *Extensions =
         Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(
         PhysicalDevice, NULL, &ExtensionCount, Extensions);
@@ -65,9 +65,9 @@ Rr_CheckPhysicalDevice(
         return RR_FALSE;
     }
 
-    VkQueueFamilyProperties* QueueFamilyProperties =
+    VkQueueFamilyProperties *QueueFamilyProperties =
         Rr_StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
-    VkBool32* QueuePresentSupport = Rr_StackAlloc(VkBool32, QueueFamilyCount);
+    VkBool32 *QueuePresentSupport = Rr_StackAlloc(VkBool32, QueueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(
         PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
@@ -131,8 +131,8 @@ Rr_PhysicalDevice
 Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
-    Rr_U32* OutGraphicsQueueFamilyIndex,
-    Rr_U32* OutTransferQueueFamilyIndex)
+    Rr_U32 *OutGraphicsQueueFamilyIndex,
+    Rr_U32 *OutTransferQueueFamilyIndex)
 {
     Rr_PhysicalDevice PhysicalDevice = { 0 };
 
@@ -143,7 +143,7 @@ Rr_CreatePhysicalDevice(
         Rr_LogAbort("No device with Vulkan support found");
     }
 
-    VkPhysicalDevice* PhysicalDevices =
+    VkPhysicalDevice *PhysicalDevices =
         Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(
         Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
@@ -207,9 +207,9 @@ Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
     Rr_U32 GraphicsQueueFamilyIndex,
     Rr_U32 TransferQueueFamilyIndex,
-    VkDevice* OutDevice,
-    VkQueue* OutGraphicsQueue,
-    VkQueue* OutTransferQueue)
+    VkDevice *OutDevice,
+    VkQueue *OutGraphicsQueue,
+    VkQueue *OutTransferQueue)
 {
     Rr_Bool bUseTransferQueue =
         GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;

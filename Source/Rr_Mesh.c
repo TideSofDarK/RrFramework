@@ -13,34 +13,34 @@
 
 #include <cgltf/cgltf.h>
 
-static void*
-Rr_CGLTFArenaAlloc(void* Arena, cgltf_size Size)
+static void *
+Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 {
-    return Rr_ArenaAllocOne((Rr_Arena*)Arena, Size);
+    return Rr_ArenaAllocOne((Rr_Arena *)Arena, Size);
 }
 
 static void
-Rr_CGLTFArenaFree(void* Arena, void* Ptr)
+Rr_CGLTFArenaFree(void *Arena, void *Ptr)
 {
     /* no-op */
 }
 
 static cgltf_memory_options
-Rr_GetCGLTFMemoryOptions(Rr_Arena* Arena)
+Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
 {
     return (cgltf_memory_options){ .alloc_func = Rr_CGLTFArenaAlloc,
                                    .free_func = Rr_CGLTFArenaFree,
                                    .user_data = Arena };
 }
 
-static cgltf_mesh*
+static cgltf_mesh *
 Rr_ParseGLTFMesh(
-    Rr_Asset* Asset,
+    Rr_Asset *Asset,
     Rr_USize MeshIndex,
-    cgltf_options* Options,
-    cgltf_data** OutData)
+    cgltf_options *Options,
+    cgltf_data **OutData)
 {
-    cgltf_data* Data = NULL;
+    cgltf_data *Data = NULL;
     cgltf_result Result =
         cgltf_parse(Options, Asset->Data, Asset->Length, &Data);
     if (Result != cgltf_result_success)
@@ -48,7 +48,7 @@ Rr_ParseGLTFMesh(
         Rr_LogAbort("Error loading glTF asset!");
     }
 
-    cgltf_mesh* Mesh = Data->meshes + MeshIndex;
+    cgltf_mesh *Mesh = Data->meshes + MeshIndex;
 
     if (MeshIndex + 1 > Data->meshes_count || Mesh->primitives_count < 1)
     {
@@ -66,7 +66,7 @@ Rr_ParseGLTFMesh(
 }
 
 static Rr_RawMesh
-Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
+Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -77,11 +77,12 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
     Rr_SliceReserve(&RawMesh.VerticesSlice, VertexCount, Arena);
     Rr_SliceReserve(&RawMesh.IndicesSlice, IndexCount, Arena);
 
-    Rr_Byte* IndexData = (Rr_Byte*)Primitive->indices->buffer_view->buffer->data
+    Rr_Byte *IndexData =
+        (Rr_Byte *)Primitive->indices->buffer_view->buffer->data
         + Primitive->indices->buffer_view->offset;
     if (Primitive->indices->component_type == cgltf_component_type_r_16u)
     {
-        Rr_U16* Indices = (Rr_U16*)IndexData;
+        Rr_U16 *Indices = (Rr_U16 *)IndexData;
         for (Rr_USize Index = 0; Index < IndexCount; ++Index)
         {
             Rr_U32 Converted = *(Indices + Index);
@@ -101,42 +102,42 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
              AttributeIndex < Primitive->attributes_count;
              ++AttributeIndex)
         {
-            cgltf_attribute* Attribute = Primitive->attributes + AttributeIndex;
-            cgltf_accessor* Accessor = Attribute->data;
-            Rr_Byte* AttributeData =
-                (Rr_Byte*)Accessor->buffer_view->buffer->data
+            cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
+            cgltf_accessor *Accessor = Attribute->data;
+            Rr_Byte *AttributeData =
+                (Rr_Byte *)Accessor->buffer_view->buffer->data
                 + Accessor->buffer_view->offset;
             switch (Attribute->type)
             {
                 case cgltf_attribute_type_position:
                 {
-                    Rr_Vec3* Position =
-                        (Rr_Vec3*)(AttributeData
-                                   + Accessor->stride * VertexIndex);
+                    Rr_Vec3 *Position =
+                        (Rr_Vec3 *)(AttributeData
+                                    + Accessor->stride * VertexIndex);
                     NewVertex.Position = *Position;
                 }
                 break;
                 case cgltf_attribute_type_normal:
                 {
-                    Rr_Vec3* Normal =
-                        (Rr_Vec3*)(AttributeData
-                                   + Accessor->stride * VertexIndex);
+                    Rr_Vec3 *Normal =
+                        (Rr_Vec3 *)(AttributeData
+                                    + Accessor->stride * VertexIndex);
                     NewVertex.Normal = *Normal;
                 }
                 break;
                 case cgltf_attribute_type_tangent:
                 {
-                    Rr_Vec3* Tangent =
-                        (Rr_Vec3*)(AttributeData
-                                   + Accessor->stride * VertexIndex);
+                    Rr_Vec3 *Tangent =
+                        (Rr_Vec3 *)(AttributeData
+                                    + Accessor->stride * VertexIndex);
                     NewVertex.Tangent = *Tangent;
                 }
                 break;
                 case cgltf_attribute_type_texcoord:
                 {
-                    Rr_Vec2* TexCoord =
-                        (Rr_Vec2*)(AttributeData
-                                   + Accessor->stride * VertexIndex);
+                    Rr_Vec2 *TexCoord =
+                        (Rr_Vec2 *)(AttributeData
+                                    + Accessor->stride * VertexIndex);
                     NewVertex.TexCoordX = TexCoord->X;
                     NewVertex.TexCoordY = TexCoord->Y;
                 }
@@ -157,8 +158,8 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive* Primitive, Rr_Arena* Arena)
 static void
 Rr_CalculateTangents(
     Rr_USize IndexCount,
-    const Rr_MeshIndexType* Indices,
-    Rr_Vertex* OutVertices)
+    const Rr_MeshIndexType *Indices,
+    Rr_Vertex *OutVertices)
 {
     for (Rr_U32 Index = 3; Index < IndexCount; Index += 3)
     {
@@ -166,9 +167,9 @@ Rr_CalculateTangents(
         Rr_U32 V1Index = Indices[Index - 2];
         Rr_U32 V2Index = Indices[Index - 1];
 
-        Rr_Vertex* Vertex0 = &OutVertices[V0Index];
-        Rr_Vertex* Vertex1 = &OutVertices[V1Index];
-        Rr_Vertex* Vertex2 = &OutVertices[V2Index];
+        Rr_Vertex *Vertex0 = &OutVertices[V0Index];
+        Rr_Vertex *Vertex1 = &OutVertices[V1Index];
+        Rr_Vertex *Vertex2 = &OutVertices[V2Index];
 
         Rr_Vec3 Tangent = Rr_V3(0.0f, 0.0f, 0.0f);
         Rr_Vec3 Edge0 = Rr_SubV3(Vertex1->Position, Vertex0->Position);
@@ -199,7 +200,7 @@ Rr_CalculateTangents(
 }
 
 static Rr_RawMesh
-Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
+Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -212,7 +213,7 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
     Rr_RawMesh RawMesh = { 0 };
 
     Rr_USize CurrentIndex = 0;
-    Rr_Byte* EndPos;
+    Rr_Byte *EndPos;
     while (CurrentIndex < Asset->Length)
     {
         switch (Asset->Data[CurrentIndex])
@@ -305,7 +306,7 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
                     }
                     if (ExistingOBJIndex == SIZE_MAX)
                     {
-                        Rr_Vec2* TexCoord =
+                        Rr_Vec2 *TexCoord =
                             &ScratchTexCoords.Data[OBJIndices[Index].Y];
                         Rr_Vertex NewVertex = { 0 };
                         NewVertex.Position =
@@ -356,15 +357,15 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset* Asset, Rr_Arena* Arena)
     return RawMesh;
 }
 
-Rr_Primitive*
+Rr_Primitive *
 Rr_CreatePrimitive(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
-    Rr_RawMesh* RawMesh)
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
+    Rr_RawMesh *RawMesh)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Primitive* Primitive = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Primitive *Primitive = Rr_CreateObject(&App->ObjectStorage);
 
     Primitive->IndexCount = Rr_SliceLength(&RawMesh->IndicesSlice);
 
@@ -413,7 +414,7 @@ Rr_CreatePrimitive(
 }
 
 void
-Rr_DestroyPrimitive(Rr_App* App, Rr_Primitive* Primitive)
+Rr_DestroyPrimitive(Rr_App *App, Rr_Primitive *Primitive)
 {
     if (Primitive == NULL)
     {
@@ -426,17 +427,17 @@ Rr_DestroyPrimitive(Rr_App* App, Rr_Primitive* Primitive)
     Rr_DestroyObject(&App->ObjectStorage, Primitive);
 }
 
-Rr_StaticMesh*
+Rr_StaticMesh *
 Rr_CreateStaticMesh(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
-    Rr_RawMesh* RawMeshes,
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
+    Rr_RawMesh *RawMeshes,
     Rr_USize RawMeshCount,
-    Rr_Material** Materials,
+    Rr_Material **Materials,
     Rr_USize MaterialCount)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_StaticMesh* StaticMesh = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_StaticMesh *StaticMesh = Rr_CreateObject(&App->ObjectStorage);
 
     for (Rr_USize Index = 0; Index < RawMeshCount; ++Index)
     {
@@ -458,14 +459,14 @@ Rr_CreateStaticMesh(
 }
 
 void
-Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* StaticMesh)
+Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *StaticMesh)
 {
     if (StaticMesh == NULL)
     {
         return;
     }
 
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
     for (Rr_USize Index = 0; Index < StaticMesh->PrimitiveCount; ++Index)
     {
@@ -480,14 +481,14 @@ Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* StaticMesh)
     Rr_DestroyObject(&App->ObjectStorage, StaticMesh);
 }
 
-Rr_StaticMesh*
+Rr_StaticMesh *
 Rr_CreateStaticMeshGLTF(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
-    Rr_GLTFLoader* Loader,
+    Rr_GLTFLoader *Loader,
     Rr_USize MeshIndex,
-    Rr_Arena* Arena)
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -495,26 +496,26 @@ Rr_CreateStaticMeshGLTF(
 
     cgltf_options Options = { .memory =
                                   Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
-    cgltf_data* Data = NULL;
-    cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
+    cgltf_data *Data = NULL;
+    cgltf_mesh *Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
 
-    Rr_RawMesh* RawMeshes = Rr_StackAlloc(Rr_RawMesh, Mesh->primitives_count);
+    Rr_RawMesh *RawMeshes = Rr_StackAlloc(Rr_RawMesh, Mesh->primitives_count);
 
-    Rr_Material* Materials[RR_MESH_MAX_PRIMITIVES] = { 0 };
+    Rr_Material *Materials[RR_MESH_MAX_PRIMITIVES] = { 0 };
 
     for (Rr_USize Index = 0; Index < Mesh->primitives_count; ++Index)
     {
-        cgltf_primitive* Primitive = Mesh->primitives + Index;
+        cgltf_primitive *Primitive = Mesh->primitives + Index;
 
         if (Loader != NULL && Primitive->material != NULL)
         {
-            Rr_Image* Textures[RR_MAX_TEXTURES_PER_MATERIAL] = { 0 };
+            Rr_Image *Textures[RR_MAX_TEXTURES_PER_MATERIAL] = { 0 };
 
-            cgltf_material* CGLTFMaterial = Primitive->material;
+            cgltf_material *CGLTFMaterial = Primitive->material;
             if (CGLTFMaterial->has_pbr_metallic_roughness)
             {
-                cgltf_texture* BaseColorTexture =
+                cgltf_texture *BaseColorTexture =
                     CGLTFMaterial->pbr_metallic_roughness.base_color_texture
                         .texture;
                 if (BaseColorTexture)
@@ -522,7 +523,7 @@ Rr_CreateStaticMeshGLTF(
                     if (strcmp(BaseColorTexture->image->mime_type, "image/png")
                         == 0)
                     {
-                        Rr_Byte* PNGData = (Rr_Byte*)BaseColorTexture->image
+                        Rr_Byte *PNGData = (Rr_Byte *)BaseColorTexture->image
                                                ->buffer_view->buffer->data
                             + BaseColorTexture->image->buffer_view->offset;
                         Rr_USize PNGSize =
@@ -536,12 +537,12 @@ Rr_CreateStaticMeshGLTF(
             }
             if (CGLTFMaterial->normal_texture.texture != NULL)
             {
-                cgltf_texture* NormalTexture =
+                cgltf_texture *NormalTexture =
                     CGLTFMaterial->normal_texture.texture;
                 if (strcmp(NormalTexture->image->mime_type, "image/png") == 0)
                 {
-                    Rr_Byte* PNGData =
-                        (Rr_Byte*)
+                    Rr_Byte *PNGData =
+                        (Rr_Byte *)
                             NormalTexture->image->buffer_view->buffer->data
                         + NormalTexture->image->buffer_view->offset;
                     Rr_USize PNGSize = NormalTexture->image->buffer_view->size;
@@ -560,11 +561,11 @@ Rr_CreateStaticMeshGLTF(
             Materials[Index]->bOwning = RR_TRUE;
         }
 
-        Rr_RawMesh* RawMesh = RawMeshes + Index;
+        Rr_RawMesh *RawMesh = RawMeshes + Index;
         *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);
     }
 
-    Rr_StaticMesh* StaticMesh = Rr_CreateStaticMesh(
+    Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(
         App,
         UploadContext,
         RawMeshes,
@@ -581,12 +582,12 @@ Rr_CreateStaticMeshGLTF(
     return StaticMesh;
 }
 
-Rr_StaticMesh*
+Rr_StaticMesh *
 Rr_CreateStaticMeshOBJ(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
-    Rr_Arena* Arena)
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -594,7 +595,7 @@ Rr_CreateStaticMeshOBJ(
 
     Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
-    Rr_StaticMesh* StaticMesh =
+    Rr_StaticMesh *StaticMesh =
         Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1, NULL, 0);
 
     Rr_DestroyArenaScratch(Scratch);
@@ -605,8 +606,8 @@ Rr_CreateStaticMeshOBJ(
 void
 Rr_GetStaticMeshSizeOBJ(
     Rr_AssetRef AssetRef,
-    Rr_Arena* Arena,
-    Rr_LoadSize* OutLoadSize)
+    Rr_Arena *Arena,
+    Rr_LoadSize *OutLoadSize)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -628,10 +629,10 @@ Rr_GetStaticMeshSizeOBJ(
 void
 Rr_GetStaticMeshSizeGLTF(
     Rr_AssetRef AssetRef,
-    Rr_GLTFLoader* Loader,
+    Rr_GLTFLoader *Loader,
     Rr_USize MeshIndex,
-    Rr_Arena* Arena,
-    Rr_LoadSize* OutLoadSize)
+    Rr_Arena *Arena,
+    Rr_LoadSize *OutLoadSize)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -639,8 +640,8 @@ Rr_GetStaticMeshSizeGLTF(
 
     cgltf_options Options = { .memory =
                                   Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
-    cgltf_data* Data = NULL;
-    cgltf_mesh* Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
+    cgltf_data *Data = NULL;
+    cgltf_mesh *Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
 
     Rr_USize VertexBufferSize = 0;
@@ -648,7 +649,7 @@ Rr_GetStaticMeshSizeGLTF(
 
     for (Rr_USize Index = 0; Index < Mesh->primitives_count; ++Index)
     {
-        cgltf_primitive* Primitive = Mesh->primitives + Index;
+        cgltf_primitive *Primitive = Mesh->primitives + Index;
 
         VertexBufferSize +=
             sizeof(Rr_Vertex) * Primitive->attributes->data->count;
@@ -656,10 +657,10 @@ Rr_GetStaticMeshSizeGLTF(
 
         if (Loader != NULL && Primitive->material != NULL)
         {
-            cgltf_material* CGLTFMaterial = Primitive->material;
+            cgltf_material *CGLTFMaterial = Primitive->material;
             if (CGLTFMaterial->has_pbr_metallic_roughness)
             {
-                cgltf_texture* BaseColorTexture =
+                cgltf_texture *BaseColorTexture =
                     CGLTFMaterial->pbr_metallic_roughness.base_color_texture
                         .texture;
                 if (BaseColorTexture)
@@ -667,7 +668,7 @@ Rr_GetStaticMeshSizeGLTF(
                     if (strcmp(BaseColorTexture->image->mime_type, "image/png")
                         == 0)
                     {
-                        Rr_Byte* PNGData = (Rr_Byte*)BaseColorTexture->image
+                        Rr_Byte *PNGData = (Rr_Byte *)BaseColorTexture->image
                                                ->buffer_view->buffer->data
                             + BaseColorTexture->image->buffer_view->offset;
                         Rr_USize PNGSize =
@@ -680,12 +681,12 @@ Rr_GetStaticMeshSizeGLTF(
             }
             if (CGLTFMaterial->normal_texture.texture != NULL)
             {
-                cgltf_texture* NormalTexture =
+                cgltf_texture *NormalTexture =
                     CGLTFMaterial->normal_texture.texture;
                 if (strcmp(NormalTexture->image->mime_type, "image/png") == 0)
                 {
-                    Rr_Byte* PNGData =
-                        (Rr_Byte*)
+                    Rr_Byte *PNGData =
+                        (Rr_Byte *)
                             NormalTexture->image->buffer_view->buffer->data
                         + NormalTexture->image->buffer_view->offset;
                     Rr_USize PNGSize = NormalTexture->image->buffer_view->size;

@@ -171,12 +171,12 @@ typedef union Rr_Vec2
     Rr_F32 Elements[2];
 
 #ifdef __cplusplus
-    inline Rr_F32&
+    inline Rr_F32 &
     operator[](Rr_I32 Index)
     {
         return Elements[Index];
     }
-    inline const Rr_F32&
+    inline const Rr_F32 &
     operator[](Rr_I32 Index) const
     {
         return Elements[Index];
@@ -228,12 +228,12 @@ typedef union Rr_Vec3
     Rr_F32 Elements[3];
 
 #ifdef __cplusplus
-    inline Rr_F32&
+    inline Rr_F32 &
     operator[](Rr_I32 Index)
     {
         return Elements[Index];
     }
-    inline const Rr_F32&
+    inline const Rr_F32 &
     operator[](Rr_I32 Index) const
     {
         return Elements[Index];
@@ -302,12 +302,12 @@ typedef union Rr_Vec4
 #endif
 
 #ifdef __cplusplus
-    inline Rr_F32&
+    inline Rr_F32 &
     operator[](Rr_I32 Index)
     {
         return Elements[Index];
     }
-    inline const Rr_F32&
+    inline const Rr_F32 &
     operator[](Rr_I32 Index) const
     {
         return Elements[Index];
@@ -340,12 +340,12 @@ typedef union Rr_IntVec2
     Rr_I32 Elements[2];
 
 #ifdef __cplusplus
-    inline Rr_I32&
+    inline Rr_I32 &
     operator[](Rr_I32 Index)
     {
         return Elements[Index];
     }
-    inline const Rr_I32&
+    inline const Rr_I32 &
     operator[](Rr_I32 Index) const
     {
         return Elements[Index];
@@ -397,12 +397,12 @@ typedef union Rr_IntVec3
     Rr_I32 Elements[3];
 
 #ifdef __cplusplus
-    inline Rr_I32&
+    inline Rr_I32 &
     operator[](Rr_I32 Index)
     {
         return Elements[Index];
     }
-    inline const Rr_I32&
+    inline const Rr_I32 &
     operator[](Rr_I32 Index) const
     {
         return Elements[Index];
@@ -475,12 +475,12 @@ typedef union Rr_IntVec4
     Rr_I32 Elements[4];
 
 #ifdef __cplusplus
-    inline Rr_I32&
+    inline Rr_I32 &
     operator[](Rr_I32 Index)
     {
         return Elements[Index];
     }
-    inline const Rr_I32&
+    inline const Rr_I32 &
     operator[](Rr_I32 Index) const
     {
         return Elements[Index];
@@ -494,12 +494,12 @@ typedef union Rr_Mat2
     Rr_Vec2 Columns[2];
 
 #ifdef __cplusplus
-    inline Rr_Vec2&
+    inline Rr_Vec2 &
     operator[](Rr_I32 Index)
     {
         return Columns[Index];
     }
-    inline const Rr_Vec2&
+    inline const Rr_Vec2 &
     operator[](Rr_I32 Index) const
     {
         return Columns[Index];
@@ -513,12 +513,12 @@ typedef union Rr_Mat3
     Rr_Vec3 Columns[3];
 
 #ifdef __cplusplus
-    inline Rr_Vec3&
+    inline Rr_Vec3 &
     operator[](Rr_I32 Index)
     {
         return Columns[Index];
     }
-    inline const Rr_Vec3&
+    inline const Rr_Vec3 &
     operator[](Rr_I32 Index) const
     {
         return Columns[Index];
@@ -532,12 +532,12 @@ typedef union Rr_Mat4
     Rr_Vec4 Columns[4];
 
 #ifdef __cplusplus
-    inline Rr_Vec4&
+    inline Rr_Vec4 &
     operator[](Rr_I32 Index)
     {
         return Columns[Index];
     }
-    inline const Rr_Vec4&
+    inline const Rr_Vec4 &
     operator[](Rr_I32 Index) const
     {
         return Columns[Index];
@@ -699,7 +699,7 @@ Rr_GetVerticalFoV(const Rr_F32 HorizontalFoV, const Rr_F32 Aspect)
 }
 
 static inline void
-Rr_PerspectiveResize(Rr_F32 Aspect, Rr_Mat4* Proj)
+Rr_PerspectiveResize(Rr_F32 Aspect, Rr_Mat4 *Proj)
 {
     if (Proj->Elements[0][0] == 0.0f)
     {
@@ -1830,7 +1830,7 @@ Rr_TransposeM4(Rr_Mat4 Matrix)
         Result.Columns[2].SSE,
         Result.Columns[3].SSE);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4x4_t Transposed = vld4q_f32((Rr_F32*)Matrix.Columns);
+    Rr_F3232x4x4_t Transposed = vld4q_f32((Rr_F32 *)Matrix.Columns);
     Result.Columns[0].NEON = Transposed.val[0];
     Result.Columns[1].NEON = Transposed.val[1];
     Result.Columns[2].NEON = Transposed.val[2];
@@ -4069,256 +4069,256 @@ operator/(Rr_Quat Left, Rr_F32 Right)
 }
 
 COVERAGE(Rr_AddV2Assign, 1)
-static inline Rr_Vec2&
-operator+=(Rr_Vec2& Left, Rr_Vec2 Right)
+static inline Rr_Vec2 &
+operator+=(Rr_Vec2 &Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_AddV2Assign);
     return Left = Left + Right;
 }
 
 COVERAGE(Rr_AddV3Assign, 1)
-static inline Rr_Vec3&
-operator+=(Rr_Vec3& Left, Rr_Vec3 Right)
+static inline Rr_Vec3 &
+operator+=(Rr_Vec3 &Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_AddV3Assign);
     return Left = Left + Right;
 }
 
 COVERAGE(Rr_AddV4Assign, 1)
-static inline Rr_Vec4&
-operator+=(Rr_Vec4& Left, Rr_Vec4 Right)
+static inline Rr_Vec4 &
+operator+=(Rr_Vec4 &Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_AddV4Assign);
     return Left = Left + Right;
 }
 
 COVERAGE(Rr_AddM2Assign, 1)
-static inline Rr_Mat2&
-operator+=(Rr_Mat2& Left, Rr_Mat2 Right)
+static inline Rr_Mat2 &
+operator+=(Rr_Mat2 &Left, Rr_Mat2 Right)
 {
     ASSERT_COVERED(Rr_AddM2Assign);
     return Left = Left + Right;
 }
 
 COVERAGE(Rr_AddM3Assign, 1)
-static inline Rr_Mat3&
-operator+=(Rr_Mat3& Left, Rr_Mat3 Right)
+static inline Rr_Mat3 &
+operator+=(Rr_Mat3 &Left, Rr_Mat3 Right)
 {
     ASSERT_COVERED(Rr_AddM3Assign);
     return Left = Left + Right;
 }
 
 COVERAGE(Rr_AddM4Assign, 1)
-static inline Rr_Mat4&
-operator+=(Rr_Mat4& Left, Rr_Mat4 Right)
+static inline Rr_Mat4 &
+operator+=(Rr_Mat4 &Left, Rr_Mat4 Right)
 {
     ASSERT_COVERED(Rr_AddM4Assign);
     return Left = Left + Right;
 }
 
 COVERAGE(Rr_AddQAssign, 1)
-static inline Rr_Quat&
-operator+=(Rr_Quat& Left, Rr_Quat Right)
+static inline Rr_Quat &
+operator+=(Rr_Quat &Left, Rr_Quat Right)
 {
     ASSERT_COVERED(Rr_AddQAssign);
     return Left = Left + Right;
 }
 
 COVERAGE(Rr_SubV2Assign, 1)
-static inline Rr_Vec2&
-operator-=(Rr_Vec2& Left, Rr_Vec2 Right)
+static inline Rr_Vec2 &
+operator-=(Rr_Vec2 &Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_SubV2Assign);
     return Left = Left - Right;
 }
 
 COVERAGE(Rr_SubV3Assign, 1)
-static inline Rr_Vec3&
-operator-=(Rr_Vec3& Left, Rr_Vec3 Right)
+static inline Rr_Vec3 &
+operator-=(Rr_Vec3 &Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_SubV3Assign);
     return Left = Left - Right;
 }
 
 COVERAGE(Rr_SubV4Assign, 1)
-static inline Rr_Vec4&
-operator-=(Rr_Vec4& Left, Rr_Vec4 Right)
+static inline Rr_Vec4 &
+operator-=(Rr_Vec4 &Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_SubV4Assign);
     return Left = Left - Right;
 }
 
 COVERAGE(Rr_SubM2Assign, 1)
-static inline Rr_Mat2&
-operator-=(Rr_Mat2& Left, Rr_Mat2 Right)
+static inline Rr_Mat2 &
+operator-=(Rr_Mat2 &Left, Rr_Mat2 Right)
 {
     ASSERT_COVERED(Rr_SubM2Assign);
     return Left = Left - Right;
 }
 
 COVERAGE(Rr_SubM3Assign, 1)
-static inline Rr_Mat3&
-operator-=(Rr_Mat3& Left, Rr_Mat3 Right)
+static inline Rr_Mat3 &
+operator-=(Rr_Mat3 &Left, Rr_Mat3 Right)
 {
     ASSERT_COVERED(Rr_SubM3Assign);
     return Left = Left - Right;
 }
 
 COVERAGE(Rr_SubM4Assign, 1)
-static inline Rr_Mat4&
-operator-=(Rr_Mat4& Left, Rr_Mat4 Right)
+static inline Rr_Mat4 &
+operator-=(Rr_Mat4 &Left, Rr_Mat4 Right)
 {
     ASSERT_COVERED(Rr_SubM4Assign);
     return Left = Left - Right;
 }
 
 COVERAGE(Rr_SubQAssign, 1)
-static inline Rr_Quat&
-operator-=(Rr_Quat& Left, Rr_Quat Right)
+static inline Rr_Quat &
+operator-=(Rr_Quat &Left, Rr_Quat Right)
 {
     ASSERT_COVERED(Rr_SubQAssign);
     return Left = Left - Right;
 }
 
 COVERAGE(Rr_MulV2Assign, 1)
-static inline Rr_Vec2&
-operator*=(Rr_Vec2& Left, Rr_Vec2 Right)
+static inline Rr_Vec2 &
+operator*=(Rr_Vec2 &Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_MulV2Assign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulV3Assign, 1)
-static inline Rr_Vec3&
-operator*=(Rr_Vec3& Left, Rr_Vec3 Right)
+static inline Rr_Vec3 &
+operator*=(Rr_Vec3 &Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_MulV3Assign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulV4Assign, 1)
-static inline Rr_Vec4&
-operator*=(Rr_Vec4& Left, Rr_Vec4 Right)
+static inline Rr_Vec4 &
+operator*=(Rr_Vec4 &Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_MulV4Assign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulV2FAssign, 1)
-static inline Rr_Vec2&
-operator*=(Rr_Vec2& Left, Rr_F32 Right)
+static inline Rr_Vec2 &
+operator*=(Rr_Vec2 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_MulV2FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulV3FAssign, 1)
-static inline Rr_Vec3&
-operator*=(Rr_Vec3& Left, Rr_F32 Right)
+static inline Rr_Vec3 &
+operator*=(Rr_Vec3 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_MulV3FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulV4FAssign, 1)
-static inline Rr_Vec4&
-operator*=(Rr_Vec4& Left, Rr_F32 Right)
+static inline Rr_Vec4 &
+operator*=(Rr_Vec4 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_MulV4FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulM2FAssign, 1)
-static inline Rr_Mat2&
-operator*=(Rr_Mat2& Left, Rr_F32 Right)
+static inline Rr_Mat2 &
+operator*=(Rr_Mat2 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_MulM2FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulM3FAssign, 1)
-static inline Rr_Mat3&
-operator*=(Rr_Mat3& Left, Rr_F32 Right)
+static inline Rr_Mat3 &
+operator*=(Rr_Mat3 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_MulM3FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulM4FAssign, 1)
-static inline Rr_Mat4&
-operator*=(Rr_Mat4& Left, Rr_F32 Right)
+static inline Rr_Mat4 &
+operator*=(Rr_Mat4 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_MulM4FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulQFAssign, 1)
-static inline Rr_Quat&
-operator*=(Rr_Quat& Left, Rr_F32 Right)
+static inline Rr_Quat &
+operator*=(Rr_Quat &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_MulQFAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_DivV2Assign, 1)
-static inline Rr_Vec2&
-operator/=(Rr_Vec2& Left, Rr_Vec2 Right)
+static inline Rr_Vec2 &
+operator/=(Rr_Vec2 &Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_DivV2Assign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivV3Assign, 1)
-static inline Rr_Vec3&
-operator/=(Rr_Vec3& Left, Rr_Vec3 Right)
+static inline Rr_Vec3 &
+operator/=(Rr_Vec3 &Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_DivV3Assign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivV4Assign, 1)
-static inline Rr_Vec4&
-operator/=(Rr_Vec4& Left, Rr_Vec4 Right)
+static inline Rr_Vec4 &
+operator/=(Rr_Vec4 &Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_DivV4Assign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivV2FAssign, 1)
-static inline Rr_Vec2&
-operator/=(Rr_Vec2& Left, Rr_F32 Right)
+static inline Rr_Vec2 &
+operator/=(Rr_Vec2 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_DivV2FAssign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivV3FAssign, 1)
-static inline Rr_Vec3&
-operator/=(Rr_Vec3& Left, Rr_F32 Right)
+static inline Rr_Vec3 &
+operator/=(Rr_Vec3 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_DivV3FAssign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivV4FAssign, 1)
-static inline Rr_Vec4&
-operator/=(Rr_Vec4& Left, Rr_F32 Right)
+static inline Rr_Vec4 &
+operator/=(Rr_Vec4 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_DivV4FAssign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivM4FAssign, 1)
-static inline Rr_Mat4&
-operator/=(Rr_Mat4& Left, Rr_F32 Right)
+static inline Rr_Mat4 &
+operator/=(Rr_Mat4 &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_DivM4FAssign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivQFAssign, 1)
-static inline Rr_Quat&
-operator/=(Rr_Quat& Left, Rr_F32 Right)
+static inline Rr_Quat &
+operator/=(Rr_Quat &Left, Rr_F32 Right)
 {
     ASSERT_COVERED(Rr_DivQFAssign);
     return Left = Left / Right;

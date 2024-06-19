@@ -5,14 +5,14 @@
 
 #include <SDL3/SDL_stdinc.h>
 
-Rr_Material*
+Rr_Material *
 Rr_CreateMaterial(
-    Rr_App* App,
-    Rr_GenericPipeline* GenericPipeline,
-    Rr_Image** Textures,
+    Rr_App *App,
+    Rr_GenericPipeline *GenericPipeline,
+    Rr_Image **Textures,
     Rr_USize TextureCount)
 {
-    Rr_Material* Material = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Material *Material = Rr_CreateObject(&App->ObjectStorage);
     *Material = (Rr_Material){
         .GenericPipeline = GenericPipeline,
         .TextureCount = TextureCount,
@@ -34,7 +34,7 @@ Rr_CreateMaterial(
 }
 
 void
-Rr_DestroyMaterial(Rr_App* App, Rr_Material* Material)
+Rr_DestroyMaterial(Rr_App *App, Rr_Material *Material)
 {
     if (Material == NULL)
     {

@@ -59,20 +59,20 @@ struct Rr_VertexInput
 };
 
 extern void
-Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder);
+Rr_EnableTriangleFan(Rr_PipelineBuilder *PipelineBuilder);
 
 extern void
 Rr_EnablePerVertexInputAttributes(
-    Rr_PipelineBuilder* PipelineBuilder,
-    Rr_VertexInput* VertexInput);
+    Rr_PipelineBuilder *PipelineBuilder,
+    Rr_VertexInput *VertexInput);
 
 extern void
 Rr_EnablePerInstanceInputAttributes(
-    Rr_PipelineBuilder* PipelineBuilder,
-    Rr_VertexInput* VertexInput);
+    Rr_PipelineBuilder *PipelineBuilder,
+    Rr_VertexInput *VertexInput);
 
 extern VkPipeline
 Rr_BuildPipeline(
-    struct Rr_Renderer* Renderer,
-    Rr_PipelineBuilder* PipelineBuilder,
+    struct Rr_Renderer *Renderer,
+    Rr_PipelineBuilder *PipelineBuilder,
     VkPipelineLayout PipelineLayout);

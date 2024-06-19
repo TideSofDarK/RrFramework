@@ -13,12 +13,12 @@ enum Rr_VertexInputBinding
 
 VkPipeline
 Rr_BuildPipeline(
-    Rr_Renderer* Renderer,
-    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_Renderer *Renderer,
+    Rr_PipelineBuilder *PipelineBuilder,
     VkPipelineLayout PipelineLayout)
 {
     /* Create shader modules. */
-    VkPipelineShaderStageCreateInfo* ShaderStages = Rr_StackAlloc(
+    VkPipelineShaderStageCreateInfo *ShaderStages = Rr_StackAlloc(
         VkPipelineShaderStageCreateInfo, RR_PIPELINE_SHADER_STAGES);
     Rr_U32 ShaderStageCount = 0;
 
@@ -28,7 +28,7 @@ Rr_BuildPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (Rr_U32*)PipelineBuilder->VertexShaderSPV.Data,
+            .pCode = (Rr_U32 *)PipelineBuilder->VertexShaderSPV.Data,
             .codeSize = PipelineBuilder->VertexShaderSPV.Length,
         };
         vkCreateShaderModule(
@@ -44,7 +44,7 @@ Rr_BuildPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (Rr_U32*)PipelineBuilder->FragmentShaderSPV.Data,
+            .pCode = (Rr_U32 *)PipelineBuilder->FragmentShaderSPV.Data,
             .codeSize = PipelineBuilder->FragmentShaderSPV.Length,
         };
         vkCreateShaderModule(
@@ -184,10 +184,10 @@ Rr_BuildPipeline(
     return Pipeline;
 }
 
-Rr_PipelineBuilder*
+Rr_PipelineBuilder *
 Rr_CreatePipelineBuilder(void)
 {
-    Rr_PipelineBuilder* PipelineBuilder =
+    Rr_PipelineBuilder *PipelineBuilder =
         Rr_Calloc(1, sizeof(Rr_PipelineBuilder));
     *PipelineBuilder = (Rr_PipelineBuilder){
         .InputAssembly = {
@@ -217,7 +217,7 @@ Rr_CreatePipelineBuilder(void)
 
 void
 Rr_EnableColorAttachment(
-    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_PipelineBuilder *PipelineBuilder,
     Rr_Bool bEnableAlphaBlend)
 {
     PipelineBuilder
@@ -255,7 +255,7 @@ Rr_EnableColorAttachment(
 }
 
 void
-Rr_EnableTriangleFan(Rr_PipelineBuilder* PipelineBuilder)
+Rr_EnableTriangleFan(Rr_PipelineBuilder *PipelineBuilder)
 {
     PipelineBuilder->InputAssembly.topology =
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
@@ -305,7 +305,7 @@ Rr_GetVertexInputSize(Rr_VertexInputType Type)
 
 static void
 EnableVertexInputAttribute(
-    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_PipelineBuilder *PipelineBuilder,
     Rr_VertexInputAttribute Attribute,
     Rr_USize Binding)
 {
@@ -335,8 +335,8 @@ EnableVertexInputAttribute(
 
 void
 Rr_EnablePerVertexInputAttributes(
-    Rr_PipelineBuilder* PipelineBuilder,
-    Rr_VertexInput* VertexInput)
+    Rr_PipelineBuilder *PipelineBuilder,
+    Rr_VertexInput *VertexInput)
 {
     for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
          ++Index)
@@ -350,8 +350,8 @@ Rr_EnablePerVertexInputAttributes(
 
 void
 Rr_EnablePerInstanceInputAttributes(
-    Rr_PipelineBuilder* PipelineBuilder,
-    Rr_VertexInput* VertexInput)
+    Rr_PipelineBuilder *PipelineBuilder,
+    Rr_VertexInput *VertexInput)
 {
     for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
          ++Index)
@@ -364,20 +364,20 @@ Rr_EnablePerInstanceInputAttributes(
 }
 
 void
-Rr_EnableVertexStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
+Rr_EnableVertexStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset)
 {
     PipelineBuilder->VertexShaderSPV = *SPVAsset;
 }
 
 void
-Rr_EnableFragmentStage(Rr_PipelineBuilder* PipelineBuilder, Rr_Asset* SPVAsset)
+Rr_EnableFragmentStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset)
 {
     PipelineBuilder->FragmentShaderSPV = *SPVAsset;
 }
 
 void
 Rr_EnableRasterizer(
-    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_PipelineBuilder *PipelineBuilder,
     Rr_PolygonMode PolygonMode)
 {
     switch (PolygonMode)
@@ -399,24 +399,24 @@ Rr_EnableRasterizer(
 }
 
 void
-Rr_EnableDepthTest(Rr_PipelineBuilder* PipelineBuilder)
+Rr_EnableDepthTest(Rr_PipelineBuilder *PipelineBuilder)
 {
     PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
     PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 }
 
-Rr_GenericPipeline*
+Rr_GenericPipeline *
 Rr_BuildGenericPipeline(
-    Rr_App* App,
-    Rr_PipelineBuilder* PipelineBuilder,
+    Rr_App *App,
+    Rr_PipelineBuilder *PipelineBuilder,
     Rr_GenericPipelineSizes Sizes)
 {
     SDL_assert(Sizes.Globals < RR_PIPELINE_MAX_GLOBALS_SIZE);
     SDL_assert(Sizes.Material < RR_PIPELINE_MAX_MATERIAL_SIZE);
     SDL_assert(Sizes.Draw < RR_PIPELINE_MAX_DRAW_SIZE);
 
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_VertexInput VertexInput = {
         .Attributes = {
@@ -429,7 +429,7 @@ Rr_BuildGenericPipeline(
     };
     Rr_EnablePerVertexInputAttributes(PipelineBuilder, &VertexInput);
 
-    Rr_GenericPipeline* Pipeline = Rr_CreateObject(&App->ObjectStorage);
+    Rr_GenericPipeline *Pipeline = Rr_CreateObject(&App->ObjectStorage);
     *Pipeline = (Rr_GenericPipeline){
         .Handle = Rr_BuildPipeline(
             Renderer, PipelineBuilder, Renderer->GenericPipelineLayout),
@@ -440,9 +440,9 @@ Rr_BuildGenericPipeline(
 }
 
 void
-Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
+Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *Pipeline)
 {
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
     vkDestroyPipeline(Device, Pipeline->Handle, NULL);
@@ -451,7 +451,7 @@ Rr_DestroyGenericPipeline(Rr_App* App, Rr_GenericPipeline* Pipeline)
 }
 
 Rr_GenericPipelineSizes
-Rr_GetGenericPipelineSizes(Rr_GenericPipeline* Pipeline)
+Rr_GetGenericPipelineSizes(Rr_GenericPipeline *Pipeline)
 {
     return Pipeline->Sizes;
 }

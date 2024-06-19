@@ -14,14 +14,14 @@ extern "C"
  */
 
 #ifndef RR_DISABLE_ALLOCA
-    #define Rr_StackAlloc(Type, Count) (Type*)alloca(sizeof(Type) * (Count))
+    #define Rr_StackAlloc(Type, Count) (Type *)alloca(sizeof(Type) * (Count))
     #define Rr_StackFree(Data) \
         do                     \
         {                      \
         }                      \
         while (0)
 #else
-    #define Rr_StackAlloc(Type, Count) (Type*)Rr_Calloc((Count), sizeof(Type))
+    #define Rr_StackAlloc(Type, Count) (Type *)Rr_Calloc((Count), sizeof(Type))
     #define Rr_StackFree(Data) \
         do                     \
         {                      \
@@ -30,23 +30,23 @@ extern "C"
         while (0)
 #endif
 
-extern void*
+extern void *
 Rr_Malloc(Rr_USize Bytes);
 
-extern void*
+extern void *
 Rr_Calloc(Rr_USize Num, Rr_USize Bytes);
 
-extern void*
-Rr_Realloc(void* Ptr, Rr_USize Bytes);
+extern void *
+Rr_Realloc(void *Ptr, Rr_USize Bytes);
 
 extern void
-Rr_Free(void* Ptr);
+Rr_Free(void *Ptr);
 
-extern void*
+extern void *
 Rr_AlignedAlloc(Rr_USize Alignment, Rr_USize Bytes);
 
 extern void
-Rr_AlignedFree(void* Ptr);
+Rr_AlignedFree(void *Ptr);
 
 /*
  * Arena
@@ -57,22 +57,22 @@ Rr_AlignedFree(void* Ptr);
 typedef struct Rr_Arena Rr_Arena;
 struct Rr_Arena
 {
-    Rr_Byte* Allocation;
-    Rr_Byte* Current;
-    Rr_Byte* End;
+    Rr_Byte *Allocation;
+    Rr_Byte *Current;
+    Rr_Byte *End;
 };
 
 extern Rr_Arena
 Rr_CreateArena(Rr_USize Size);
 
 extern void
-Rr_ResetArena(Rr_Arena* Arena);
+Rr_ResetArena(Rr_Arena *Arena);
 
 extern void
-Rr_DestroyArena(Rr_Arena* Arena);
+Rr_DestroyArena(Rr_Arena *Arena);
 
-extern void*
-Rr_ArenaAlloc(Rr_Arena* Arena, Rr_USize Size, Rr_USize Align, Rr_USize Count);
+extern void *
+Rr_ArenaAlloc(Rr_Arena *Arena, Rr_USize Size, Rr_USize Align, Rr_USize Count);
 
 #define Rr_ArenaAllocOne(Arena, Size) \
     Rr_ArenaAlloc(Arena, Size, RR_SAFE_ALIGNMENT, 1)
@@ -82,24 +82,24 @@ Rr_ArenaAlloc(Rr_Arena* Arena, Rr_USize Size, Rr_USize Align, Rr_USize Count);
 typedef struct Rr_ArenaScratch Rr_ArenaScratch;
 struct Rr_ArenaScratch
 {
-    Rr_Arena* Arena;
-    Rr_Byte* Position;
+    Rr_Arena *Arena;
+    Rr_Byte *Position;
 };
 
 extern Rr_ArenaScratch
-Rr_CreateArenaScratch(Rr_Arena* Arena);
+Rr_CreateArenaScratch(Rr_Arena *Arena);
 
 extern void
 Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch);
 
 extern void
-Rr_SetScratchTLS(void* TLSID);
+Rr_SetScratchTLS(void *TLSID);
 
 extern void
 Rr_InitThreadScratch(Rr_USize Size);
 
 extern Rr_ArenaScratch
-Rr_GetArenaScratch(Rr_Arena* Conflict);
+Rr_GetArenaScratch(Rr_Arena *Conflict);
 
 /*
  * Sync Arena
@@ -116,22 +116,22 @@ extern Rr_SyncArena
 Rr_CreateSyncArena(Rr_USize Size);
 
 extern void
-Rr_DestroySyncArena(Rr_SyncArena* Arena);
+Rr_DestroySyncArena(Rr_SyncArena *Arena);
 
 /*
  * Dynamic Slice
  */
 
 extern void
-Rr_SliceGrow(void* Slice, Rr_USize Size, Rr_Arena* Arena);
+Rr_SliceGrow(void *Slice, Rr_USize Size, Rr_Arena *Arena);
 
 extern void
-Rr_SliceResize(void* Slice, Rr_USize Size, Rr_USize Count, Rr_Arena* Arena);
+Rr_SliceResize(void *Slice, Rr_USize Size, Rr_USize Count, Rr_Arena *Arena);
 
 #define Rr_SliceType(Type) \
     struct                 \
     {                      \
-        Type* Data;        \
+        Type *Data;        \
         Rr_USize Length;   \
         Rr_USize Capacity; \
     }

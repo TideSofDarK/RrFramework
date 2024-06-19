@@ -42,33 +42,28 @@ template <typename TGlobals, typename TMaterial, typename TDraw>
 struct TPipeline
 {
 protected:
-    Rr_App* App;
+    Rr_App *App;
 
 public:
     using SGlobals = TGlobals;
     using SMaterial = TMaterial;
     using SDraw = TDraw;
 
-    Rr_GenericPipeline* GenericPipeline{};
+    Rr_GenericPipeline *GenericPipeline{};
 
-    explicit
-    TPipeline(Rr_App* InApp)
+    explicit TPipeline(Rr_App *InApp)
         : App(InApp)
     {
     }
 
-    ~
-    TPipeline()
-    {
-        Rr_DestroyGenericPipeline(App, GenericPipeline);
-    }
+    ~TPipeline() { Rr_DestroyGenericPipeline(App, GenericPipeline); }
 
-    TPipeline(TPipeline&& Rhs) = delete;
-    TPipeline&
-    operator=(TPipeline&& Rhs) = delete;
-    TPipeline(const TPipeline& Rhs) = delete;
-    TPipeline&
-    operator=(const TPipeline& Rhs) = delete;
+    TPipeline(TPipeline &&Rhs) = delete;
+    TPipeline &
+    operator=(TPipeline &&Rhs) = delete;
+    TPipeline(const TPipeline &Rhs) = delete;
+    TPipeline &
+    operator=(const TPipeline &Rhs) = delete;
 
     [[nodiscard]] Rr_GenericPipelineSizes
     Sizes() const
@@ -97,13 +92,12 @@ struct SShadowDraw
 struct SShadowPassPipeline :
     TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowDraw>
 {
-    explicit
-    SShadowPassPipeline(Rr_App* InApp)
+    explicit SShadowPassPipeline(Rr_App *InApp)
         : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_SHADOWPASS_VERT_SPV);
 
-        Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+        Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder();
         Rr_EnableVertexStage(Builder, &VertexShader);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
@@ -137,14 +131,13 @@ struct SUnlitDraw
 
 struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
 {
-    explicit
-    SUnlitPipeline(Rr_App* InApp)
+    explicit SUnlitPipeline(Rr_App *InApp)
         : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_VERT_SPV);
         Rr_Asset FragmentShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_FRAG_SPV);
 
-        Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+        Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder();
 
         Rr_EnableVertexStage(Builder, &VertexShader);
         Rr_EnableFragmentStage(Builder, &FragmentShader);
@@ -179,14 +172,13 @@ struct SUber3DPushConstants
 
 struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
 {
-    explicit
-    SUber3DPipeline(Rr_App* InApp)
+    explicit SUber3DPipeline(Rr_App *InApp)
         : TPipeline(InApp)
     {
         Rr_Asset Uber3DVERT = Rr_LoadAsset(DEMO_ASSET_UBER3D_VERT_SPV);
         Rr_Asset Uber3DFRAG = Rr_LoadAsset(DEMO_ASSET_UBER3D_FRAG_SPV);
 
-        Rr_PipelineBuilder* Builder = Rr_CreatePipelineBuilder();
+        Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder();
         Rr_EnableVertexStage(Builder, &Uber3DVERT);
         Rr_EnableFragmentStage(Builder, &Uber3DFRAG);
         Rr_EnableColorAttachment(Builder, false);
@@ -260,7 +252,7 @@ struct SCamera
 struct SGame
 {
 private:
-    Rr_App* App{};
+    Rr_App *App{};
 
     std::array<Rr_InputMapping, EIA_COUNT> InputMappings{};
 
@@ -273,26 +265,26 @@ private:
     // Rr_Image SceneDepthImage;
     // Rr_Image SceneColorImage;
 
-    Rr_StaticMesh* ArrowMesh{};
+    Rr_StaticMesh *ArrowMesh{};
 
-    Rr_StaticMesh* CottageMesh{};
-    Rr_Image* CottageDiffuse{};
-    Rr_Image* CottageNormal{};
-    Rr_Material* CottageMaterial{};
+    Rr_StaticMesh *CottageMesh{};
+    Rr_Image *CottageDiffuse{};
+    Rr_Image *CottageNormal{};
+    Rr_Material *CottageMaterial{};
 
-    Rr_StaticMesh* PocMesh{};
-    Rr_Image* PocDiffuseImage{};
+    Rr_StaticMesh *PocMesh{};
+    Rr_Image *PocDiffuseImage{};
 
-    Rr_StaticMesh* MarbleMesh{};
+    Rr_StaticMesh *MarbleMesh{};
 
-    Rr_StaticMesh* AvocadoMesh{};
+    Rr_StaticMesh *AvocadoMesh{};
 
     Rr_String LoadingString{};
     Rr_String TestString{};
     Rr_String DebugString{};
-    Rr_LoadingContext* LoadingContext{};
+    Rr_LoadingContext *LoadingContext{};
 
-    Rr_DrawTarget* ShadowMap{};
+    Rr_DrawTarget *ShadowMap{};
 
     Rr_GLTFLoader UnlitGLTFLoader;
     Rr_GLTFLoader Uber3DGLTFLoader;
@@ -347,9 +339,9 @@ public:
     }
 
     static void
-    OnLoadingComplete(Rr_App* App, void* UserData)
+    OnLoadingComplete(Rr_App *App, void *UserData)
     {
-        auto* Game = static_cast<SGame*>(UserData);
+        auto *Game = static_cast<SGame *>(UserData);
         Game->OnLoadingComplete();
     }
 
@@ -463,8 +455,8 @@ public:
             .Viewport = {},
             .Sizes = Uber3DPipeline.Sizes(),
         };
-        Rr_DrawContext* DrawContext = Rr_CreateDrawContext(
-            App, &DrawContextInfo, reinterpret_cast<Rr_Byte*>(&ShaderGlobals));
+        Rr_DrawContext *DrawContext = Rr_CreateDrawContext(
+            App, &DrawContextInfo, reinterpret_cast<Rr_Byte *>(&ShaderGlobals));
 
         const auto Time = static_cast<Rr_F32>((Rr_GetTimeSeconds(App) * 2.0));
 
@@ -552,8 +544,7 @@ public:
         }
     }
 
-    explicit
-    SGame(Rr_App* InApp)
+    explicit SGame(Rr_App *InApp)
         : App(InApp)
         , Uber3DPipeline(App)
         , UnlitPipeline(App)
@@ -599,8 +590,7 @@ public:
         LoadingString = Rr_CreateEmptyString(128);
     }
 
-    ~
-    SGame()
+    ~SGame()
     {
         Rr_DestroyMaterial(App, CottageMaterial);
 
@@ -625,25 +615,25 @@ public:
 };
 
 static void
-Init(Rr_App* App, void* UserData)
+Init(Rr_App *App, void *UserData)
 {
     new (UserData) SGame(App);
 }
 
 static void
-Iterate(Rr_App* App, void* UserData)
+Iterate(Rr_App *App, void *UserData)
 {
-    static_cast<SGame*>(UserData)->Iterate();
+    static_cast<SGame *>(UserData)->Iterate();
 }
 
 static void
-Cleanup(Rr_App* App, void* UserData)
+Cleanup(Rr_App *App, void *UserData)
 {
-    static_cast<SGame*>(UserData)->~SGame();
+    static_cast<SGame *>(UserData)->~SGame();
 }
 
 static void
-OnFileDropped(Rr_App* App, const char* Path)
+OnFileDropped(Rr_App *App, const char *Path)
 {
     HandleFileDrop(Path);
 }

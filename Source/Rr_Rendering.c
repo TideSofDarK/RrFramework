@@ -31,19 +31,19 @@ struct Rr_TextRenderingContext
 
 static Rr_GenericRenderingContext
 Rr_MakeGenericRenderingContext(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
-    Rr_Buffer* GlobalsBuffer,
-    Rr_Buffer* DrawBuffer,
-    Rr_GenericPipelineSizes* Sizes,
-    Rr_Byte* GlobalsData,
-    Rr_Arena* Arena)
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
+    Rr_Buffer *GlobalsBuffer,
+    Rr_Buffer *DrawBuffer,
+    Rr_GenericPipelineSizes *Sizes,
+    Rr_Byte *GlobalsData,
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(
         RR_MAX_TEXTURES_PER_MATERIAL, 1, Scratch.Arena);
@@ -100,7 +100,7 @@ Rr_MakeGenericRenderingContext(
 }
 
 SDL_FORCE_INLINE int
-Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo* A, Rr_DrawPrimitiveInfo* B)
+Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo *A, Rr_DrawPrimitiveInfo *B)
 {
     if (A->Material->GenericPipeline != B->Material->GenericPipeline)
     {
@@ -127,22 +127,22 @@ DEF_QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive) /* NOLINT */
 
 static void
 Rr_RenderGeneric(
-    Rr_Renderer* Renderer,
-    Rr_GenericRenderingContext* GenericRenderingContext,
+    Rr_Renderer *Renderer,
+    Rr_GenericRenderingContext *GenericRenderingContext,
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice,
     VkCommandBuffer CommandBuffer,
-    Rr_Arena* Arena)
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(
         RR_MAX_TEXTURES_PER_MATERIAL, 1, Scratch.Arena);
 
-    Rr_GenericPipeline* BoundPipeline = NULL;
-    Rr_Material* BoundMaterial = NULL;
-    Rr_Primitive* BoundPrimitive = NULL;
+    Rr_GenericPipeline *BoundPipeline = NULL;
+    Rr_Material *BoundMaterial = NULL;
+    Rr_Primitive *BoundPrimitive = NULL;
     Rr_U32 BoundDrawOffset = UINT_MAX;
 
     /* @TODO: Sort indices instead! */
@@ -161,7 +161,7 @@ Rr_RenderGeneric(
 
     for (Rr_USize Index = 0; Index < DrawPrimitivesSlice.Length; ++Index)
     {
-        Rr_DrawPrimitiveInfo* Info = DrawPrimitivesSlice.Data + Index;
+        Rr_DrawPrimitiveInfo *Info = DrawPrimitivesSlice.Data + Index;
 
         if (BoundPipeline != Info->Material->GenericPipeline)
         {
@@ -274,16 +274,16 @@ Rr_RenderGeneric(
 
 static Rr_TextRenderingContext
 Rr_MakeTextRenderingContext(
-    Rr_App* App,
-    Rr_UploadContext* UploadContext,
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
     VkExtent2D ActiveResolution,
-    Rr_Arena* Arena)
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_Renderer* Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_DescriptorWriter DescriptorWriter =
         Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
@@ -292,7 +292,7 @@ Rr_MakeTextRenderingContext(
 
     Rr_U64 Ticks = SDL_GetTicks();
     Rr_F32 Time = (Rr_F32)((Rr_F64)Ticks / 1000.0);
-    Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
+    Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
     Rr_TextGlobalsLayout TextGlobalsData = {
         .Reserved = 0.0f,
         .Time = Time,
@@ -336,16 +336,16 @@ Rr_MakeTextRenderingContext(
 
 static void
 Rr_RenderText(
-    Rr_Renderer* Renderer,
-    Rr_TextRenderingContext* TextRenderingContext,
+    Rr_Renderer *Renderer,
+    Rr_TextRenderingContext *TextRenderingContext,
     Rr_DrawTextsSlice DrawTextSlice,
     VkCommandBuffer CommandBuffer,
-    Rr_Arena* Arena)
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_TextPipeline* TextPipeline = &Renderer->TextPipeline;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
 
     Rr_DescriptorWriter DescriptorWriter =
         Rr_CreateDescriptorWriter(1, 1, Scratch.Arena);
@@ -372,11 +372,11 @@ Rr_RenderText(
     Rr_USize TextCount = Rr_SliceLength(&DrawTextSlice);
     //    Rr_TextPerInstanceVertexInput* TextData =
     //    (Rr_TextPerInstanceVertexInput*)Rr_Malloc(RR_TEXT_BUFFER_SIZE);
-    Rr_TextPerInstanceVertexInput* TextData =
+    Rr_TextPerInstanceVertexInput *TextData =
         Rr_ArenaAllocOne(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
     for (Rr_USize TextIndex = 0; TextIndex < TextCount; ++TextIndex)
     {
-        Rr_DrawTextInfo* DrawTextInfo = &DrawTextSlice.Data[TextIndex];
+        Rr_DrawTextInfo *DrawTextInfo = &DrawTextSlice.Data[TextIndex];
 
         VkDescriptorSet TextFontDescriptorSet = Rr_AllocateDescriptorSet(
             &Frame->DescriptorAllocator,
@@ -471,7 +471,7 @@ Rr_RenderText(
                 bCodePending = RR_TRUE;
                 continue;
             }
-            Rr_TextPerInstanceVertexInput* Input =
+            Rr_TextPerInstanceVertexInput *Input =
                 &TextData[TextDataOffset + FinalTextLength];
             if (Unicode == '\n')
             {
@@ -518,15 +518,15 @@ Rr_RenderText(
 }
 
 void
-Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena)
+Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_App* App = DrawContext->App;
-    Rr_Renderer* Renderer = &App->Renderer;
-    Rr_Frame* Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_App *App = DrawContext->App;
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawTarget* DrawTarget = DrawContext->Info.DrawTarget;
+    Rr_DrawTarget *DrawTarget = DrawContext->Info.DrawTarget;
 
     Rr_IntVec4 Viewport = DrawContext->Info.Viewport;
 

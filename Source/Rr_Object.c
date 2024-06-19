@@ -20,7 +20,7 @@ union Rr_Object
     Rr_Material Material;
     Rr_GenericPipeline GenericPipeline;
     Rr_DrawTarget DrawTarget;
-    void* Next;
+    void *Next;
 };
 
 Rr_ObjectStorage
@@ -35,7 +35,7 @@ Rr_CreateObjectStorage()
 }
 
 void
-Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage)
+Rr_DestroyObjectStorage(Rr_ObjectStorage *Storage)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
@@ -45,12 +45,12 @@ Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage)
     SDL_UnlockSpinlock(&Storage->Lock);
 }
 
-void*
-Rr_CreateObject(Rr_ObjectStorage* Storage)
+void *
+Rr_CreateObject(Rr_ObjectStorage *Storage)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
-    Rr_Object* NewObject = (Rr_Object*)Storage->NextObject;
+    Rr_Object *NewObject = (Rr_Object *)Storage->NextObject;
     if (NewObject->Next == NULL)
     {
         Storage->NextObject = NewObject + 1;
@@ -68,11 +68,11 @@ Rr_CreateObject(Rr_ObjectStorage* Storage)
 }
 
 void
-Rr_DestroyObject(Rr_ObjectStorage* Storage, void* Object)
+Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
-    Rr_Object* DestroyedObject = (Rr_Object*)Object;
+    Rr_Object *DestroyedObject = (Rr_Object *)Object;
     DestroyedObject->Next = Storage->NextObject;
     Storage->NextObject = DestroyedObject;
     Storage->ObjectCount--;

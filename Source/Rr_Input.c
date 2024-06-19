@@ -7,7 +7,7 @@
 static Rr_KeyState
 Rr_UpdateKeyState(
     Rr_KeyState OldKeyState,
-    const Rr_U8* KeyboardState,
+    const Rr_U8 *KeyboardState,
     Rr_U8 Scancode)
 {
     Rr_Bool bCurrentlyPressed = KeyboardState[Scancode] == 1;
@@ -38,13 +38,13 @@ Rr_UpdateKeyState(
 }
 
 void
-Rr_UpdateInputState(Rr_InputState* State, Rr_InputConfig* Config)
+Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
 {
     Rr_KeyStates NewKeys = State->Keys;
-    const Rr_U8* KeyboardState = SDL_GetKeyboardState(NULL);
+    const Rr_U8 *KeyboardState = SDL_GetKeyboardState(NULL);
     for (Rr_USize Index = 0; Index < Config->Count; Index++)
     {
-        Rr_InputMapping* Mapping = &Config->Mappings[Index];
+        Rr_InputMapping *Mapping = &Config->Mappings[Index];
 
         Rr_KeyState OldKeyState = Rr_GetKeyState(NewKeys, Index);
         Rr_KeyState NewKeyState =

@@ -99,7 +99,7 @@ Rr_FloatToHalf(Rr_U32 X)
 }
 
 void
-Rr_PackVec4(Rr_Vec4 From, Rr_U32* OutA, Rr_U32* OutB)
+Rr_PackVec4(Rr_Vec4 From, Rr_U32 *OutA, Rr_U32 *OutB)
 {
     typedef union PackHelper
     {

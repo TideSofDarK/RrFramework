@@ -11,8 +11,8 @@ typedef union Rr_Object Rr_Object;
 typedef struct Rr_ObjectStorage Rr_ObjectStorage;
 struct Rr_ObjectStorage
 {
-    void* Storage;
-    void* NextObject;
+    void *Storage;
+    void *NextObject;
     size_t ObjectCount;
     SDL_SpinLock Lock;
 };
@@ -21,13 +21,13 @@ extern Rr_ObjectStorage
 Rr_CreateObjectStorage();
 
 extern void
-Rr_DestroyObjectStorage(Rr_ObjectStorage* Storage);
+Rr_DestroyObjectStorage(Rr_ObjectStorage *Storage);
 
-extern void*
-Rr_CreateObject(Rr_ObjectStorage* Storage);
+extern void *
+Rr_CreateObject(Rr_ObjectStorage *Storage);
 
 extern void
-Rr_DestroyObject(Rr_ObjectStorage* Storage, void* Object);
+Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object);
 
 extern Rr_USize
 Rr_CalculateObjectStorageSize(Rr_USize Count);

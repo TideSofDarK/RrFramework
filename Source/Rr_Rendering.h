@@ -4,4 +4,4 @@
 #include "Rr_Memory.h"
 
 extern void
-Rr_FlushDrawContext(Rr_DrawContext* DrawContext, Rr_Arena* Arena);
+Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena);

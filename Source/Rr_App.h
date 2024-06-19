@@ -36,7 +36,7 @@ struct Rr_FrameTime
 struct Rr_App
 {
     Rr_Renderer Renderer;
-    Rr_AppConfig* Config;
+    Rr_AppConfig *Config;
     Rr_InputConfig InputConfig;
     Rr_InputState InputState;
     Rr_FrameTime FrameTime;
@@ -45,7 +45,7 @@ struct Rr_App
     Rr_SyncArena SyncArena;
     Rr_ObjectStorage ObjectStorage;
     SDL_TLSID ScratchArenaTLS;
-    SDL_Window* Window;
+    SDL_Window *Window;
     SDL_AtomicInt bExit;
-    void* UserData;
+    void *UserData;
 };

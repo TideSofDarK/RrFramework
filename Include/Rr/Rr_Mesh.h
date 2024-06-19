@@ -27,7 +27,7 @@ struct Rr_Vertex
 };
 
 extern void
-Rr_DestroyStaticMesh(Rr_App* App, Rr_StaticMesh* Mesh);
+Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *Mesh);
 
 #ifdef __cplusplus
 }

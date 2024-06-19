@@ -113,8 +113,8 @@ struct Rr_Renderer
     /* Null Textures */
     struct
     {
-        Rr_Image* White;
-        Rr_Image* Normal;
+        Rr_Image *White;
+        Rr_Image *Normal;
     } NullTextures;
 
     /* Retired Semaphores */
@@ -127,7 +127,7 @@ struct Rr_Renderer
     Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;
 
     /* Main Draw Target */
-    struct Rr_DrawTarget* DrawTarget;
+    struct Rr_DrawTarget *DrawTarget;
 
     /* Texture Samplers */
     VkSampler NearestSampler;
@@ -135,7 +135,7 @@ struct Rr_Renderer
 
     /* Text Rendering */
     Rr_TextPipeline TextPipeline;
-    Rr_Font* BuiltinFont;
+    Rr_Font *BuiltinFont;
 
     /* Generic Pipeline Layout */
     VkDescriptorSetLayout
@@ -144,34 +144,34 @@ struct Rr_Renderer
 };
 
 extern void
-Rr_InitRenderer(Rr_App* App);
+Rr_InitRenderer(Rr_App *App);
 
 extern void
-Rr_InitImGui(Rr_App* App);
+Rr_InitImGui(Rr_App *App);
 
 extern void
-Rr_CleanupRenderer(Rr_App* App);
+Rr_CleanupRenderer(Rr_App *App);
 
 extern void
-Rr_ProcessPendingLoads(Rr_App* App);
+Rr_ProcessPendingLoads(Rr_App *App);
 
 extern void
-Rr_Draw(Rr_App* App);
+Rr_Draw(Rr_App *App);
 
 extern Rr_Bool
-Rr_NewFrame(Rr_App* App, void* Window);
+Rr_NewFrame(Rr_App *App, void *Window);
 
 extern VkCommandBuffer
-Rr_BeginImmediate(Rr_Renderer* Renderer);
+Rr_BeginImmediate(Rr_Renderer *Renderer);
 
 extern void
-Rr_EndImmediate(Rr_Renderer* Renderer);
+Rr_EndImmediate(Rr_Renderer *Renderer);
 
-extern Rr_Frame*
-Rr_GetCurrentFrame(Rr_Renderer* Renderer);
+extern Rr_Frame *
+Rr_GetCurrentFrame(Rr_Renderer *Renderer);
 
 extern Rr_Bool
-Rr_IsUsingTransferQueue(Rr_Renderer* Renderer);
+Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
 
 extern VkDeviceSize
-Rr_GetUniformAlignment(Rr_Renderer* Renderer);
+Rr_GetUniformAlignment(Rr_Renderer *Renderer);
