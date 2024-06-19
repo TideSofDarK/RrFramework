@@ -310,7 +310,7 @@ static Rr_USize Rr_GetVertexInputSize(Rr_VertexInputType Type)
     }
 }
 
-static void EnableVertexInputAttribute(
+static void Rr_EnableVertexInputAttribute(
     Rr_PipelineBuilder *PipelineBuilder,
     Rr_VertexInputAttribute Attribute,
     Rr_USize Binding)
@@ -346,7 +346,7 @@ void Rr_EnablePerVertexInputAttributes(
     for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
          ++Index)
     {
-        EnableVertexInputAttribute(
+        Rr_EnableVertexInputAttribute(
             PipelineBuilder,
             VertexInput->Attributes[Index],
             RR_VERTEX_INPUT_BINDING_PER_VERTEX);
@@ -360,7 +360,7 @@ void Rr_EnablePerInstanceInputAttributes(
     for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
          ++Index)
     {
-        EnableVertexInputAttribute(
+        Rr_EnableVertexInputAttribute(
             PipelineBuilder,
             VertexInput->Attributes[Index],
             RR_VERTEX_INPUT_BINDING_PER_INSTANCE);
