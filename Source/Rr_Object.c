@@ -1,12 +1,12 @@
 #include "Rr_Object.h"
 
 #include "Rr_Buffer.h"
-#include "Rr_Image.h"
-#include "Rr_Mesh.h"
 #include "Rr_Draw.h"
-#include "Rr_Text.h"
-#include "Rr_Pipeline.h"
+#include "Rr_Image.h"
 #include "Rr_Material.h"
+#include "Rr_Mesh.h"
+#include "Rr_Pipeline.h"
+#include "Rr_Text.h"
 
 /* @TODO: Make bValid field! */
 union Rr_Object
@@ -23,8 +23,7 @@ union Rr_Object
     void *Next;
 };
 
-Rr_ObjectStorage
-Rr_CreateObjectStorage()
+Rr_ObjectStorage Rr_CreateObjectStorage()
 {
     Rr_ObjectStorage ObjectStorage = { 0 };
     ObjectStorage.Storage =
@@ -34,8 +33,7 @@ Rr_CreateObjectStorage()
     return ObjectStorage;
 }
 
-void
-Rr_DestroyObjectStorage(Rr_ObjectStorage *Storage)
+void Rr_DestroyObjectStorage(Rr_ObjectStorage *Storage)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
@@ -45,8 +43,7 @@ Rr_DestroyObjectStorage(Rr_ObjectStorage *Storage)
     SDL_UnlockSpinlock(&Storage->Lock);
 }
 
-void *
-Rr_CreateObject(Rr_ObjectStorage *Storage)
+void *Rr_CreateObject(Rr_ObjectStorage *Storage)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
@@ -67,8 +64,7 @@ Rr_CreateObject(Rr_ObjectStorage *Storage)
     return NewObject;
 }
 
-void
-Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object)
+void Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object)
 {
     SDL_LockSpinlock(&Storage->Lock);
 
@@ -80,8 +76,7 @@ Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object)
     SDL_UnlockSpinlock(&Storage->Lock);
 }
 
-Rr_USize
-Rr_CalculateObjectStorageSize(Rr_USize Count)
+Rr_USize Rr_CalculateObjectStorageSize(Rr_USize Count)
 {
     return sizeof(Rr_Object) * Count;
 }

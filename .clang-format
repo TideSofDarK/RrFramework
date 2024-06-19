@@ -1,18 +1,27 @@
-Language: Cpp
-BasedOnStyle: LLVM
-
-AccessModifierOffset: -4
+---
 AlignAfterOpenBracket: AlwaysBreak
-AlignConsecutiveDeclarations: false
-AlignEscapedNewlines: Left
-AlignOperands: DontAlign
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveAssignments: None
+AlignConsecutiveBitFields: None
+AlignConsecutiveDeclarations: None
+AlignEscapedNewlines: Right
+AlignOperands: Align
 AlignTrailingComments: true
-AllowShortBlocksOnASingleLine: Empty
-AllowShortEnumsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: Inline
-AllowShortLambdasOnASingleLine: All
+
+AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
-AlignArrayOfStructures: Left
+AllowShortEnumsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: MultiLine
+
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterCaseLabel: true
@@ -24,37 +33,47 @@ BraceWrapping:
   AfterObjCDeclaration: true
   AfterStruct: true
   AfterUnion: true
-  AfterExternBlock: true
-  BeforeCatch: true
+  AfterExternBlock: false
   BeforeElse: true
-  BeforeLambdaBody: false
   BeforeWhile: true
   IndentBraces: false
-AlwaysBreakAfterReturnType: All
-BreakBeforeBinaryOperators: NonAssignment
-BreakInheritanceList: AfterColon
-BreakBeforeTernaryOperators: true
-BreakConstructorInitializers: BeforeComma
-BreakStringLiterals: false
-BinPackParameters: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
 BinPackArguments: false
-ColumnLimit: 80
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
+BinPackParameters: false
+
 Cpp11BracedListStyle: false
-EmptyLineBeforeAccessModifier: LogicalBlock
-FixNamespaceComments: false
-IndentCaseBlocks: false
-IndentCaseLabels: true
-IndentPPDirectives: BeforeHash
+
+# Never format includes
+IncludeBlocks: Preserve
+# clang-format version 4.0 through 12.0:
+#SortIncludes: false
+# clang-format version 13.0+:
+#SortIncludes: Never
+
+ColumnLimit: 80
+
 IndentWidth: 4
-InsertBraces: true
-InsertTrailingCommas: Wrapped
+ContinuationIndentWidth: 4
+IndentCaseLabels: true
+IndentCaseBlocks: false
+IndentGotoLabels: true
+IndentPPDirectives: None
 IndentExternBlock: NoIndent
-NamespaceIndentation: All
+
 PointerAlignment: Right
-PackConstructorInitializers: Never
-SortIncludes: Never
+SpaceAfterCStyleCast: false
+SpacesInCStyleCastParentheses: false
+SpacesInConditionalStatement: false
+SpacesInContainerLiterals: true
+SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
-SeparateDefinitionBlocks: Leave
-TabWidth: 4
+SpaceBeforeParens: ControlStatements
+SpaceAroundPointerQualifiers: Default
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false
+
+UseCRLF: false
 UseTab: Never
+
+---

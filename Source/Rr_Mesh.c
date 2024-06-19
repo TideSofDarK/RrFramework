@@ -1,11 +1,11 @@
 #include "Rr_Mesh.h"
 
 #include "Rr/Rr_Mesh.h"
-#include "Rr_UploadContext.h"
-#include "Rr_Image.h"
 #include "Rr_App.h"
-#include "Rr_Material.h"
+#include "Rr_Image.h"
 #include "Rr_Log.h"
+#include "Rr_Material.h"
+#include "Rr_UploadContext.h"
 
 #include <SDL3/SDL.h>
 
@@ -13,28 +13,21 @@
 
 #include <cgltf/cgltf.h>
 
-static void *
-Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
+static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 {
     return Rr_ArenaAllocOne((Rr_Arena *)Arena, Size);
 }
 
-static void
-Rr_CGLTFArenaFree(void *Arena, void *Ptr)
-{
-    /* no-op */
-}
+static void Rr_CGLTFArenaFree(void *Arena, void *Ptr) { /* no-op */ }
 
-static cgltf_memory_options
-Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
+static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
 {
     return (cgltf_memory_options){ .alloc_func = Rr_CGLTFArenaAlloc,
                                    .free_func = Rr_CGLTFArenaFree,
                                    .user_data = Arena };
 }
 
-static cgltf_mesh *
-Rr_ParseGLTFMesh(
+static cgltf_mesh *Rr_ParseGLTFMesh(
     Rr_Asset *Asset,
     Rr_USize MeshIndex,
     cgltf_options *Options,
@@ -78,8 +71,8 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
     Rr_SliceReserve(&RawMesh.IndicesSlice, IndexCount, Arena);
 
     Rr_Byte *IndexData =
-        (Rr_Byte *)Primitive->indices->buffer_view->buffer->data
-        + Primitive->indices->buffer_view->offset;
+        (Rr_Byte *)Primitive->indices->buffer_view->buffer->data +
+        Primitive->indices->buffer_view->offset;
     if (Primitive->indices->component_type == cgltf_component_type_r_16u)
     {
         Rr_U16 *Indices = (Rr_U16 *)IndexData;
@@ -105,39 +98,39 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
             cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
             cgltf_accessor *Accessor = Attribute->data;
             Rr_Byte *AttributeData =
-                (Rr_Byte *)Accessor->buffer_view->buffer->data
-                + Accessor->buffer_view->offset;
+                (Rr_Byte *)Accessor->buffer_view->buffer->data +
+                Accessor->buffer_view->offset;
             switch (Attribute->type)
             {
                 case cgltf_attribute_type_position:
                 {
                     Rr_Vec3 *Position =
-                        (Rr_Vec3 *)(AttributeData
-                                    + Accessor->stride * VertexIndex);
+                        (Rr_Vec3 *)(AttributeData +
+                                    Accessor->stride * VertexIndex);
                     NewVertex.Position = *Position;
                 }
                 break;
                 case cgltf_attribute_type_normal:
                 {
                     Rr_Vec3 *Normal =
-                        (Rr_Vec3 *)(AttributeData
-                                    + Accessor->stride * VertexIndex);
+                        (Rr_Vec3 *)(AttributeData +
+                                    Accessor->stride * VertexIndex);
                     NewVertex.Normal = *Normal;
                 }
                 break;
                 case cgltf_attribute_type_tangent:
                 {
                     Rr_Vec3 *Tangent =
-                        (Rr_Vec3 *)(AttributeData
-                                    + Accessor->stride * VertexIndex);
+                        (Rr_Vec3 *)(AttributeData +
+                                    Accessor->stride * VertexIndex);
                     NewVertex.Tangent = *Tangent;
                 }
                 break;
                 case cgltf_attribute_type_texcoord:
                 {
                     Rr_Vec2 *TexCoord =
-                        (Rr_Vec2 *)(AttributeData
-                                    + Accessor->stride * VertexIndex);
+                        (Rr_Vec2 *)(AttributeData +
+                                    Accessor->stride * VertexIndex);
                     NewVertex.TexCoordX = TexCoord->X;
                     NewVertex.TexCoordY = TexCoord->Y;
                 }
@@ -155,8 +148,7 @@ Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
     return RawMesh;
 }
 
-static void
-Rr_CalculateTangents(
+static void Rr_CalculateTangents(
     Rr_USize IndexCount,
     const Rr_MeshIndexType *Indices,
     Rr_Vertex *OutVertices)
@@ -199,8 +191,7 @@ Rr_CalculateTangents(
     }
 }
 
-static Rr_RawMesh
-Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
+static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -227,7 +218,8 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                     {
                         Rr_Vec3 NewPosition;
                         NewPosition.X = (Rr_F32)SDL_strtod(
-                            Asset->Data + CurrentIndex, &EndPos);
+                            Asset->Data + CurrentIndex,
+                            &EndPos);
                         NewPosition.Y = (Rr_F32)SDL_strtod(EndPos, &EndPos);
                         NewPosition.Z = (Rr_F32)SDL_strtod(EndPos, &EndPos);
 
@@ -251,7 +243,8 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                         CurrentIndex++;
                         Rr_Vec2 NewTexCoord;
                         NewTexCoord.X = (Rr_F32)SDL_strtod(
-                            Asset->Data + CurrentIndex, &EndPos);
+                            Asset->Data + CurrentIndex,
+                            &EndPos);
                         NewTexCoord.Y = (Rr_F32)SDL_strtod(EndPos, &EndPos);
 
                         *Rr_SlicePush(&ScratchTexCoords, Scratch.Arena) =
@@ -263,7 +256,8 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                         CurrentIndex++;
                         Rr_Vec3 NewNormal;
                         NewNormal.X = (Rr_F32)SDL_strtod(
-                            Asset->Data + CurrentIndex, &EndPos);
+                            Asset->Data + CurrentIndex,
+                            &EndPos);
                         NewNormal.Y = (Rr_F32)SDL_strtod(EndPos, &EndPos);
                         NewNormal.Z = (Rr_F32)SDL_strtod(EndPos, &EndPos);
 
@@ -278,8 +272,8 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
             {
                 CurrentIndex++;
                 Rr_IntVec3 OBJIndices[3] = { 0 };
-                OBJIndices[0].X = (Rr_I32)SDL_strtoul(
-                    Asset->Data + CurrentIndex, &EndPos, 10);
+                OBJIndices[0].X = (Rr_I32)
+                    SDL_strtoul(Asset->Data + CurrentIndex, &EndPos, 10);
                 OBJIndices[0].Y = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
                 OBJIndices[0].Z = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
                 OBJIndices[1].X = (Rr_I32)SDL_strtoul(EndPos + 1, &EndPos, 0);
@@ -357,8 +351,7 @@ Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
     return RawMesh;
 }
 
-Rr_Primitive *
-Rr_CreatePrimitive(
+Rr_Primitive *Rr_CreatePrimitive(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_RawMesh *RawMesh)
@@ -393,8 +386,8 @@ Rr_CreatePrimitive(
         Primitive->VertexBuffer->Handle,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         0,
-        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
-            | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+            VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
         RawMesh->VerticesSlice.Data,
         VertexBufferSize);
@@ -413,8 +406,7 @@ Rr_CreatePrimitive(
     return Primitive;
 }
 
-void
-Rr_DestroyPrimitive(Rr_App *App, Rr_Primitive *Primitive)
+void Rr_DestroyPrimitive(Rr_App *App, Rr_Primitive *Primitive)
 {
     if (Primitive == NULL)
     {
@@ -427,8 +419,7 @@ Rr_DestroyPrimitive(Rr_App *App, Rr_Primitive *Primitive)
     Rr_DestroyObject(&App->ObjectStorage, Primitive);
 }
 
-Rr_StaticMesh *
-Rr_CreateStaticMesh(
+Rr_StaticMesh *Rr_CreateStaticMesh(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_RawMesh *RawMeshes,
@@ -458,8 +449,7 @@ Rr_CreateStaticMesh(
     return StaticMesh;
 }
 
-void
-Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *StaticMesh)
+void Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *StaticMesh)
 {
     if (StaticMesh == NULL)
     {
@@ -481,8 +471,7 @@ Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *StaticMesh)
     Rr_DestroyObject(&App->ObjectStorage, StaticMesh);
 }
 
-Rr_StaticMesh *
-Rr_CreateStaticMeshGLTF(
+Rr_StaticMesh *Rr_CreateStaticMeshGLTF(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
@@ -520,18 +509,24 @@ Rr_CreateStaticMeshGLTF(
                         .texture;
                 if (BaseColorTexture)
                 {
-                    if (strcmp(BaseColorTexture->image->mime_type, "image/png")
-                        == 0)
+                    if (strcmp(
+                            BaseColorTexture->image->mime_type,
+                            "image/png") == 0)
                     {
-                        Rr_Byte *PNGData = (Rr_Byte *)BaseColorTexture->image
-                                               ->buffer_view->buffer->data
-                            + BaseColorTexture->image->buffer_view->offset;
+                        Rr_Byte *PNGData =
+                            (Rr_Byte *)BaseColorTexture->image->buffer_view
+                                ->buffer->data +
+                            BaseColorTexture->image->buffer_view->offset;
                         Rr_USize PNGSize =
                             BaseColorTexture->image->buffer_view->size;
 
                         Textures[Loader->BaseTexture] =
                             Rr_CreateColorImageFromPNGMemory(
-                                App, UploadContext, PNGData, PNGSize, RR_FALSE);
+                                App,
+                                UploadContext,
+                                PNGData,
+                                PNGSize,
+                                RR_FALSE);
                     }
                 }
             }
@@ -543,13 +538,17 @@ Rr_CreateStaticMeshGLTF(
                 {
                     Rr_Byte *PNGData =
                         (Rr_Byte *)
-                            NormalTexture->image->buffer_view->buffer->data
-                        + NormalTexture->image->buffer_view->offset;
+                            NormalTexture->image->buffer_view->buffer->data +
+                        NormalTexture->image->buffer_view->offset;
                     Rr_USize PNGSize = NormalTexture->image->buffer_view->size;
 
                     Textures[Loader->NormalTexture] =
                         Rr_CreateColorImageFromPNGMemory(
-                            App, UploadContext, PNGData, PNGSize, RR_FALSE);
+                            App,
+                            UploadContext,
+                            PNGData,
+                            PNGSize,
+                            RR_FALSE);
                 }
             }
 
@@ -582,8 +581,7 @@ Rr_CreateStaticMeshGLTF(
     return StaticMesh;
 }
 
-Rr_StaticMesh *
-Rr_CreateStaticMeshOBJ(
+Rr_StaticMesh *Rr_CreateStaticMeshOBJ(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
@@ -603,8 +601,7 @@ Rr_CreateStaticMeshOBJ(
     return StaticMesh;
 }
 
-void
-Rr_GetStaticMeshSizeOBJ(
+void Rr_GetStaticMeshSizeOBJ(
     Rr_AssetRef AssetRef,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize)
@@ -626,8 +623,7 @@ Rr_GetStaticMeshSizeOBJ(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void
-Rr_GetStaticMeshSizeGLTF(
+void Rr_GetStaticMeshSizeGLTF(
     Rr_AssetRef AssetRef,
     Rr_GLTFLoader *Loader,
     Rr_USize MeshIndex,
@@ -665,17 +661,22 @@ Rr_GetStaticMeshSizeGLTF(
                         .texture;
                 if (BaseColorTexture)
                 {
-                    if (strcmp(BaseColorTexture->image->mime_type, "image/png")
-                        == 0)
+                    if (strcmp(
+                            BaseColorTexture->image->mime_type,
+                            "image/png") == 0)
                     {
-                        Rr_Byte *PNGData = (Rr_Byte *)BaseColorTexture->image
-                                               ->buffer_view->buffer->data
-                            + BaseColorTexture->image->buffer_view->offset;
+                        Rr_Byte *PNGData =
+                            (Rr_Byte *)BaseColorTexture->image->buffer_view
+                                ->buffer->data +
+                            BaseColorTexture->image->buffer_view->offset;
                         Rr_USize PNGSize =
                             BaseColorTexture->image->buffer_view->size;
 
                         Rr_GetImageSizePNGMemory(
-                            PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+                            PNGData,
+                            PNGSize,
+                            Scratch.Arena,
+                            OutLoadSize);
                     }
                 }
             }
@@ -687,12 +688,15 @@ Rr_GetStaticMeshSizeGLTF(
                 {
                     Rr_Byte *PNGData =
                         (Rr_Byte *)
-                            NormalTexture->image->buffer_view->buffer->data
-                        + NormalTexture->image->buffer_view->offset;
+                            NormalTexture->image->buffer_view->buffer->data +
+                        NormalTexture->image->buffer_view->offset;
                     Rr_USize PNGSize = NormalTexture->image->buffer_view->size;
 
                     Rr_GetImageSizePNGMemory(
-                        PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+                        PNGData,
+                        PNGSize,
+                        Scratch.Arena,
+                        OutLoadSize);
                 }
             }
         }

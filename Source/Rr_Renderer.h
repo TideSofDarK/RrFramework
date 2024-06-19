@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Rr_Descriptor.h"
 #include "Rr_Buffer.h"
-#include "Rr_Text.h"
+#include "Rr_Descriptor.h"
 #include "Rr_Pipeline.h"
+#include "Rr_Text.h"
 
 #include <volk.h>
 
@@ -143,35 +143,24 @@ struct Rr_Renderer
     VkPipelineLayout GenericPipelineLayout;
 };
 
-extern void
-Rr_InitRenderer(Rr_App *App);
+extern void Rr_InitRenderer(Rr_App *App);
 
-extern void
-Rr_InitImGui(Rr_App *App);
+extern void Rr_InitImGui(Rr_App *App);
 
-extern void
-Rr_CleanupRenderer(Rr_App *App);
+extern void Rr_CleanupRenderer(Rr_App *App);
 
-extern void
-Rr_ProcessPendingLoads(Rr_App *App);
+extern void Rr_ProcessPendingLoads(Rr_App *App);
 
-extern void
-Rr_Draw(Rr_App *App);
+extern void Rr_Draw(Rr_App *App);
 
-extern Rr_Bool
-Rr_NewFrame(Rr_App *App, void *Window);
+extern Rr_Bool Rr_NewFrame(Rr_App *App, void *Window);
 
-extern VkCommandBuffer
-Rr_BeginImmediate(Rr_Renderer *Renderer);
+extern VkCommandBuffer Rr_BeginImmediate(Rr_Renderer *Renderer);
 
-extern void
-Rr_EndImmediate(Rr_Renderer *Renderer);
+extern void Rr_EndImmediate(Rr_Renderer *Renderer);
 
-extern Rr_Frame *
-Rr_GetCurrentFrame(Rr_Renderer *Renderer);
+extern Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer);
 
-extern Rr_Bool
-Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
+extern Rr_Bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
 
-extern VkDeviceSize
-Rr_GetUniformAlignment(Rr_Renderer *Renderer);
+extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer);

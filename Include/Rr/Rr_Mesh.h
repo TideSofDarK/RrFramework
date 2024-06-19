@@ -4,8 +4,7 @@
 #include "Rr_Math.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define RR_MESH_MAX_PRIMITIVES 4
@@ -26,8 +25,7 @@ struct Rr_Vertex
     Rr_F32 Reserved;
 };
 
-extern void
-Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *Mesh);
+extern void Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *Mesh);
 
 #ifdef __cplusplus
 }

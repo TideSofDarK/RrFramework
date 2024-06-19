@@ -1,8 +1,8 @@
 #include "Rr_Image.h"
 
-#include "Rr_UploadContext.h"
 #include "Rr_App.h"
 #include "Rr_Log.h"
+#include "Rr_UploadContext.h"
 
 #include <SDL3/SDL.h>
 
@@ -10,8 +10,7 @@
 
 #include <tinyexr/tinyexr.h>
 
-static void
-Rr_UploadImage(
+static void Rr_UploadImage(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     VkImage Image,
@@ -31,8 +30,8 @@ Rr_UploadImage(
 
     VkDeviceSize BufferOffset = StagingBuffer->Offset;
     memcpy(
-        (Rr_Byte *)StagingBuffer->Buffer->AllocationInfo.pMappedData
-            + BufferOffset,
+        (Rr_Byte *)StagingBuffer->Buffer->AllocationInfo.pMappedData +
+            BufferOffset,
         ImageData,
         ImageDataLength);
     StagingBuffer->Offset += ImageDataLength;
@@ -142,8 +141,7 @@ Rr_UploadImage(
     }
 }
 
-Rr_Image *
-Rr_CreateImage(
+Rr_Image *Rr_CreateImage(
     Rr_App *App,
     VkExtent3D Extent,
     VkFormat Format,
@@ -193,8 +191,7 @@ Rr_CreateImage(
     return Image;
 }
 
-void
-Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
+void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
 {
     if (Image == NULL)
     {
@@ -209,8 +206,7 @@ Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
     Rr_DestroyObject(&App->ObjectStorage, Image);
 }
 
-void
-Rr_GetImageSizePNGMemory(
+void Rr_GetImageSizePNGMemory(
     Rr_Byte *Data,
     Rr_USize DataSize,
     Rr_Arena *Arena,
@@ -221,14 +217,17 @@ Rr_GetImageSizePNGMemory(
     Rr_I32 Height;
     Rr_I32 Channels;
     stbi_info_from_memory(
-        (stbi_uc *)Data, (Rr_I32)DataSize, &Width, &Height, &Channels);
+        (stbi_uc *)Data,
+        (Rr_I32)DataSize,
+        &Width,
+        &Height,
+        &Channels);
 
     OutLoadSize->StagingBufferSize += Width * Height * DesiredChannels;
     OutLoadSize->ImageCount += 1;
 }
 
-void
-Rr_GetImageSizePNG(
+void Rr_GetImageSizePNG(
     Rr_AssetRef AssetRef,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize)
@@ -238,8 +237,7 @@ Rr_GetImageSizePNG(
     Rr_GetImageSizePNGMemory(Asset.Data, Asset.Length, Arena, OutLoadSize);
 }
 
-void
-Rr_GetImageSizeEXR(
+void Rr_GetImageSizeEXR(
     Rr_AssetRef AssetRef,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize)
@@ -248,8 +246,7 @@ Rr_GetImageSizeEXR(
     OutLoadSize->ImageCount += 1;
 }
 
-Rr_Image *
-Rr_CreateColorImageFromMemory(
+Rr_Image *Rr_CreateColorImageFromMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_Byte *Data,
@@ -265,8 +262,8 @@ Rr_CreateColorImageFromMemory(
         App,
         Extent,
         RR_COLOR_FORMAT,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+            VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         bMipMapped);
 
     Rr_UploadImage(
@@ -284,8 +281,7 @@ Rr_CreateColorImageFromMemory(
     return ColorImage;
 }
 
-Rr_Image *
-Rr_CreateColorImageFromPNGMemory(
+Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_Byte *Data,
@@ -308,8 +304,8 @@ Rr_CreateColorImageFromPNGMemory(
         App,
         Extent,
         RR_COLOR_FORMAT,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+            VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         bMipMapped);
 
     Rr_UploadImage(
@@ -329,8 +325,7 @@ Rr_CreateColorImageFromPNGMemory(
     return ColorImage;
 }
 
-Rr_Image *
-Rr_CreateColorImageFromPNG(
+Rr_Image *Rr_CreateColorImageFromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
@@ -340,11 +335,14 @@ Rr_CreateColorImageFromPNG(
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
     return Rr_CreateColorImageFromPNGMemory(
-        App, UploadContext, Asset.Data, Asset.Length, bMipMapped);
+        App,
+        UploadContext,
+        Asset.Data,
+        Asset.Length,
+        bMipMapped);
 }
 
-Rr_Image *
-Rr_CreateDepthImageFromEXR(
+Rr_Image *Rr_CreateDepthImageFromEXR(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
@@ -358,7 +356,9 @@ Rr_CreateDepthImageFromEXR(
 
     EXRVersion Version;
     Rr_I32 Result = ParseEXRVersionFromMemory(
-        &Version, (unsigned char *)Asset.Data, Asset.Length);
+        &Version,
+        (unsigned char *)Asset.Data,
+        Asset.Length);
     if (Result != 0)
     {
         Rr_LogAbort("Error opening EXR file!");
@@ -366,7 +366,11 @@ Rr_CreateDepthImageFromEXR(
 
     EXRHeader Header;
     Result = ParseEXRHeaderFromMemory(
-        &Header, &Version, (unsigned char *)Asset.Data, Asset.Length, &Error);
+        &Header,
+        &Version,
+        (unsigned char *)Asset.Data,
+        Asset.Length,
+        &Error);
     if (Result != 0)
     {
         Rr_LogAbort("Error opening EXR file: %s", Error);
@@ -377,7 +381,11 @@ Rr_CreateDepthImageFromEXR(
     InitEXRImage(&Image);
 
     Result = LoadEXRImageFromMemory(
-        &Image, &Header, (unsigned char *)Asset.Data, Asset.Length, &Error);
+        &Image,
+        &Header,
+        (unsigned char *)Asset.Data,
+        Asset.Length,
+        &Error);
     if (Result != 0)
     {
         Rr_LogAbort("Error opening EXR file: %s", Error);
@@ -395,8 +403,8 @@ Rr_CreateDepthImageFromEXR(
     {
         Rr_F32 *Current = ((Rr_F32 *)Image.images[0]) + Index;
         Rr_F32 ZReciprocal = 1.0f / *Current;
-        Rr_F32 Depth = FarPlusNear / FarMinusNear
-            + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
+        Rr_F32 Depth = FarPlusNear / FarMinusNear +
+                       ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
         Depth = (Depth + 1.0f) / 2.0f;
         if (Depth > 1.0f)
         {
@@ -415,8 +423,8 @@ Rr_CreateDepthImageFromEXR(
         App,
         Extent,
         RR_PRERENDERED_DEPTH_FORMAT,
-        Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+            VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         RR_FALSE);
 
     Rr_UploadImage(
@@ -444,8 +452,8 @@ Rr_CreateColorAttachmentImage(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
         App,
         (VkExtent3D){ Width, Height, 1 },
         RR_COLOR_FORMAT,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-            | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         RR_FALSE);
 }
 
@@ -456,25 +464,22 @@ Rr_CreateDepthAttachmentImage(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
         App,
         (VkExtent3D){ Width, Height, 1 },
         RR_DEPTH_FORMAT,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+            VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         RR_FALSE);
 }
 
-Rr_Image *
-Rr_GetDummyColorTexture(Rr_App *App)
+Rr_Image *Rr_GetDummyColorTexture(Rr_App *App)
 {
     return App->Renderer.NullTextures.White;
 }
 
-Rr_Image *
-Rr_GetDummyNormalTexture(Rr_App *App)
+Rr_Image *Rr_GetDummyNormalTexture(Rr_App *App)
 {
     return App->Renderer.NullTextures.Normal;
 }
 
-void
-Rr_ChainImageBarrier_Aspect(
+void Rr_ChainImageBarrier_Aspect(
     Rr_ImageBarrier *TransitionImage,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
@@ -507,8 +512,7 @@ Rr_ChainImageBarrier_Aspect(
     TransitionImage->AccessMask = DstAccessMask;
 }
 
-void
-Rr_ChainImageBarrier(
+void Rr_ChainImageBarrier(
     Rr_ImageBarrier *TransitionImage,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,

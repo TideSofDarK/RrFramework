@@ -1,17 +1,16 @@
 #pragma once
 
+#include "Rr/Rr_App.h"
+#include "Rr/Rr_Image.h"
+#include "Rr/Rr_Material.h"
 #include "Rr/Rr_Math.h"
+#include "Rr/Rr_Mesh.h"
 #include "Rr/Rr_Pipeline.h"
 #include "Rr/Rr_String.h"
-#include "Rr/Rr_App.h"
-#include "Rr/Rr_Mesh.h"
-#include "Rr/Rr_Image.h"
 #include "Rr/Rr_Text.h"
-#include "Rr/Rr_Material.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 typedef struct Rr_DrawTarget Rr_DrawTarget;
@@ -24,9 +23,9 @@ struct Rr_Data
     Rr_USize Size;
 };
 
-#define Rr_MakeData(Struct)       \
-    {                             \
-        &(Struct), sizeof(Struct) \
+#define Rr_MakeData(Struct)                                                    \
+    {                                                                          \
+        &(Struct), sizeof(Struct)                                              \
     }
 
 typedef enum Rr_DrawTextFlags
@@ -45,28 +44,24 @@ struct Rr_DrawContextInfo
     Rr_GenericPipelineSizes Sizes;
 };
 
-extern Rr_DrawContext *
-Rr_CreateDrawContext(
+extern Rr_DrawContext *Rr_CreateDrawContext(
     Rr_App *App,
     Rr_DrawContextInfo *Info,
     Rr_Byte *GlobalsData);
 
-extern void
-Rr_DrawStaticMesh(
+extern void Rr_DrawStaticMesh(
     Rr_DrawContext *DrawContext,
     Rr_StaticMesh *StaticMesh,
     Rr_Data DrawData);
 
-extern void
-Rr_DrawStaticMeshOverrideMaterials(
+extern void Rr_DrawStaticMeshOverrideMaterials(
     Rr_DrawContext *DrawContext,
     Rr_Material **OverrideMaterials,
     Rr_USize OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data DrawData);
 
-extern void
-Rr_DrawCustomText(
+extern void Rr_DrawCustomText(
     Rr_DrawContext *DrawContext,
     Rr_Font *Font,
     Rr_String *String,
@@ -74,8 +69,7 @@ Rr_DrawCustomText(
     Rr_F32 Size,
     Rr_DrawTextFlags Flags);
 
-extern void
-Rr_DrawDefaultText(
+extern void Rr_DrawDefaultText(
     Rr_DrawContext *DrawContext,
     Rr_String *String,
     Rr_Vec2 Position);
@@ -86,11 +80,9 @@ Rr_CreateDrawTarget(Rr_App *App, Rr_U32 Width, Rr_U32 Height);
 extern Rr_DrawTarget *
 Rr_CreateDrawTargetDepthOnly(Rr_App *App, Rr_U32 Width, Rr_U32 Height);
 
-extern void
-Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget);
+extern void Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget);
 
-extern Rr_DrawTarget *
-Rr_GetMainDrawTarget(Rr_App *App);
+extern Rr_DrawTarget *Rr_GetMainDrawTarget(Rr_App *App);
 
 #ifdef __cplusplus
 }

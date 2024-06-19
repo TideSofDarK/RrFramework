@@ -1,15 +1,15 @@
 #include "Game.hxx"
 
-#include "DevTools.hxx"
 #include "DemoAssets.inc"
+#include "DevTools.hxx"
 
 #include <imgui/imgui.h>
 
 #include <Rr/Rr.h>
 
-#include <string>
-#include <format>
 #include <array>
+#include <format>
+#include <string>
 
 struct SUber3DGlobals
 {
@@ -41,32 +41,26 @@ struct SEntity
 template <typename TGlobals, typename TMaterial, typename TDraw>
 struct TPipeline
 {
-protected:
+  protected:
     Rr_App *App;
 
-public:
+  public:
     using SGlobals = TGlobals;
     using SMaterial = TMaterial;
     using SDraw = TDraw;
 
     Rr_GenericPipeline *GenericPipeline{};
 
-    explicit TPipeline(Rr_App *InApp)
-        : App(InApp)
-    {
-    }
+    explicit TPipeline(Rr_App *InApp) : App(InApp) {}
 
     ~TPipeline() { Rr_DestroyGenericPipeline(App, GenericPipeline); }
 
     TPipeline(TPipeline &&Rhs) = delete;
-    TPipeline &
-    operator=(TPipeline &&Rhs) = delete;
+    TPipeline &operator=(TPipeline &&Rhs) = delete;
     TPipeline(const TPipeline &Rhs) = delete;
-    TPipeline &
-    operator=(const TPipeline &Rhs) = delete;
+    TPipeline &operator=(const TPipeline &Rhs) = delete;
 
-    [[nodiscard]] Rr_GenericPipelineSizes
-    Sizes() const
+    [[nodiscard]] Rr_GenericPipelineSizes Sizes() const
     {
         return Rr_GetGenericPipelineSizes(GenericPipeline);
     }
@@ -89,11 +83,10 @@ struct SShadowDraw
     Rr_Mat4 Model;
 };
 
-struct SShadowPassPipeline :
-    TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowDraw>
+struct SShadowPassPipeline
+    : TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowDraw>
 {
-    explicit SShadowPassPipeline(Rr_App *InApp)
-        : TPipeline(InApp)
+    explicit SShadowPassPipeline(Rr_App *InApp) : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_SHADOWPASS_VERT_SPV);
 
@@ -131,8 +124,7 @@ struct SUnlitDraw
 
 struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
 {
-    explicit SUnlitPipeline(Rr_App *InApp)
-        : TPipeline(InApp)
+    explicit SUnlitPipeline(Rr_App *InApp) : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_VERT_SPV);
         Rr_Asset FragmentShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_FRAG_SPV);
@@ -172,8 +164,7 @@ struct SUber3DPushConstants
 
 struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
 {
-    explicit SUber3DPipeline(Rr_App *InApp)
-        : TPipeline(InApp)
+    explicit SUber3DPipeline(Rr_App *InApp) : TPipeline(InApp)
     {
         Rr_Asset Uber3DVERT = Rr_LoadAsset(DEMO_ASSET_UBER3D_VERT_SPV);
         Rr_Asset Uber3DFRAG = Rr_LoadAsset(DEMO_ASSET_UBER3D_FRAG_SPV);
@@ -202,20 +193,17 @@ struct SCamera
     Rr_Vec3 Position{};
     Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
 
-    [[nodiscard]] Rr_Vec3
-    GetForwardVector() const
+    [[nodiscard]] Rr_Vec3 GetForwardVector() const
     {
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
     }
 
-    [[nodiscard]] Rr_Vec3
-    GetRightVector() const
+    [[nodiscard]] Rr_Vec3 GetRightVector() const
     {
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
     }
 
-    [[nodiscard]] Rr_Mat4
-    GetViewMatrix()
+    [[nodiscard]] Rr_Mat4 GetViewMatrix()
     {
         Rr_F32 CosPitch = cos(Pitch * Rr_DegToRad);
         Rr_F32 SinPitch = sin(Pitch * Rr_DegToRad);
@@ -251,7 +239,7 @@ struct SCamera
 
 struct SGame
 {
-private:
+  private:
     Rr_App *App{};
 
     std::array<Rr_InputMapping, EIA_COUNT> InputMappings{};
@@ -291,9 +279,8 @@ private:
 
     bool bLoaded = false;
 
-public:
-    void
-    InitInputMappings()
+  public:
+    void InitInputMappings()
     {
         InputMappings[EIA_UP].Primary = RR_SCANCODE_W;
         InputMappings[EIA_DOWN].Primary = RR_SCANCODE_S;
@@ -311,20 +298,21 @@ public:
         Rr_SetInputConfig(App, &InputConfig);
     }
 
-    void
-    InitGlobals()
+    void InitGlobals()
     {
         ShaderGlobals.AmbientLightColor = { 0.01f, 0.01f, 0.01f, 1.0f };
         ShaderGlobals.DirectionalLightColor = { 1.0f, 0.95f, 0.93f, 1.0f };
         ShaderGlobals.DirectionalLightIntensity = { 1.0f, 1.0f, 1.0f, 1.0f };
 
         ShaderGlobals.Proj = Rr_Perspective_LH_ZO(
-            0.7643276f, Rr_GetAspectRatio(App), 0.5f, 50.0f);
+            0.7643276f,
+            Rr_GetAspectRatio(App),
+            0.5f,
+            50.0f);
         ShaderGlobals.Intermediate = Rr_VulkanMatrix();
     }
 
-    void
-    OnLoadingComplete()
+    void OnLoadingComplete()
     {
         std::array CottageTextures = { CottageDiffuse, CottageNormal };
         CottageMaterial = Rr_CreateMaterial(
@@ -338,15 +326,13 @@ public:
         LoadingContext = nullptr;
     }
 
-    static void
-    OnLoadingComplete(Rr_App *App, void *UserData)
+    static void OnLoadingComplete(Rr_App *App, void *UserData)
     {
         auto *Game = static_cast<SGame *>(UserData);
         Game->OnLoadingComplete();
     }
 
-    void
-    Iterate()
+    void Iterate()
     {
         auto [Keys, MousePosition, MousePositionDelta, MouseState] =
             Rr_GetInputState(App);
@@ -363,7 +349,7 @@ public:
         static SCamera Camera = {
             .Pitch = 90.0f - 63.5593f,
             .Yaw = -46.6919f,
-            .Position = { -7.35889f, 4.0f, -6.92579f }
+            .Position = { -7.35889f, 4.0f, -6.92579f },
         };
 
         // static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f
@@ -420,7 +406,8 @@ public:
             Rr_SetRelativeMouseMode(true);
             constexpr Rr_F32 Sensitivity = 0.2f;
             Camera.Yaw = Rr_WrapMax(
-                Camera.Yaw - (MousePositionDelta.X * Sensitivity), 360.0f);
+                Camera.Yaw - (MousePositionDelta.X * Sensitivity),
+                360.0f);
             Camera.Pitch = Rr_WrapMinMax(
                 Camera.Pitch - (MousePositionDelta.Y * Sensitivity),
                 -90.0f,
@@ -456,7 +443,9 @@ public:
             .Sizes = Uber3DPipeline.Sizes(),
         };
         Rr_DrawContext *DrawContext = Rr_CreateDrawContext(
-            App, &DrawContextInfo, reinterpret_cast<Rr_Byte *>(&ShaderGlobals));
+            App,
+            &DrawContextInfo,
+            reinterpret_cast<Rr_Byte *>(&ShaderGlobals));
 
         const auto Time = static_cast<Rr_F32>((Rr_GetTimeSeconds(App) * 2.0));
 
@@ -478,15 +467,18 @@ public:
                 Rr_MakeData(CottageDraw));
 
             SUber3DDraw AvocadoDraw = { 0 };
-            AvocadoDraw.Model = Rr_Scale({ 0.75f, 0.75f, 0.75f })
-                * Rr_Rotate_LH(fmodf(Time, RR_PI32 * 2.0f),
-                               { 0.0f, 1.0f, 0.0f })
-                * Rr_Translate({ 3.5f, 0.5f, 3.5f });
+            AvocadoDraw.Model = Rr_Scale({ 0.75f, 0.75f, 0.75f }) *
+                                Rr_Rotate_LH(
+                                    fmodf(Time, RR_PI32 * 2.0f),
+                                    { 0.0f, 1.0f, 0.0f }) *
+                                Rr_Translate({ 3.5f, 0.5f, 3.5f });
             AvocadoDraw.Model[3][0] = 3.5f;
             AvocadoDraw.Model[3][1] = 0.5f;
             AvocadoDraw.Model[3][2] = 3.5f;
             Rr_DrawStaticMesh(
-                DrawContext, AvocadoMesh, Rr_MakeData(AvocadoDraw));
+                DrawContext,
+                AvocadoMesh,
+                Rr_MakeData(AvocadoDraw));
 
             SUber3DDraw MarbleDraw = { 0 };
             MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
@@ -531,7 +523,9 @@ public:
                 std::string Formatted =
                     std::format("Загружайу: {}/{}\n", Current, Total);
                 Rr_SetString(
-                    &LoadingString, Formatted.c_str(), Formatted.length());
+                    &LoadingString,
+                    Formatted.c_str(),
+                    Formatted.length());
             }
 
             Rr_DrawCustomText(
@@ -545,17 +539,15 @@ public:
     }
 
     explicit SGame(Rr_App *InApp)
-        : App(InApp)
-        , Uber3DPipeline(App)
-        , UnlitPipeline(App)
-        , ShadowPassPipeline(App)
-        , UnlitGLTFLoader({
+        : App(InApp), Uber3DPipeline(App), UnlitPipeline(App),
+          ShadowPassPipeline(App),
+          UnlitGLTFLoader({
               .GenericPipeline = UnlitPipeline.GenericPipeline,
               .BaseTexture = 0,
               .NormalTexture = 1,
               .SpecularTexture = 2,
-          })
-        , Uber3DGLTFLoader({
+          }),
+          Uber3DGLTFLoader({
               .GenericPipeline = Uber3DPipeline.GenericPipeline,
               .BaseTexture = 0,
               .NormalTexture = 1,
@@ -568,24 +560,39 @@ public:
 
         std::array LoadTasks = {
             Rr_LoadColorImageFromPNG(
-                DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
+                DEMO_ASSET_COTTAGEDIFFUSE_PNG,
+                &CottageDiffuse),
             Rr_LoadColorImageFromPNG(
-                DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
+                DEMO_ASSET_COTTAGENORMAL_PNG,
+                &CottageNormal),
             Rr_LoadStaticMeshFromGLTF(
-                DEMO_ASSET_AVOCADO_GLB, &Uber3DGLTFLoader, 0, &AvocadoMesh),
+                DEMO_ASSET_AVOCADO_GLB,
+                &Uber3DGLTFLoader,
+                0,
+                &AvocadoMesh),
             Rr_LoadStaticMeshFromGLTF(
-                DEMO_ASSET_MARBLE_GLB, &Uber3DGLTFLoader, 0, &MarbleMesh),
+                DEMO_ASSET_MARBLE_GLB,
+                &Uber3DGLTFLoader,
+                0,
+                &MarbleMesh),
             Rr_LoadStaticMeshFromGLTF(
-                DEMO_ASSET_ARROW_GLB, &UnlitGLTFLoader, 0, &ArrowMesh),
+                DEMO_ASSET_ARROW_GLB,
+                &UnlitGLTFLoader,
+                0,
+                &ArrowMesh),
             Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
         };
         LoadingContext = Rr_LoadAsync(
-            App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
+            App,
+            LoadTasks.data(),
+            LoadTasks.size(),
+            OnLoadingComplete,
+            this);
 
         ShadowMap = Rr_CreateDrawTargetDepthOnly(App, 1024, 1024);
 
-        TestString = Rr_CreateString(
-            "A quick brown fox @#$ \nNew line test...\n\nA couple of new lines...");
+        TestString = Rr_CreateString("A quick brown fox @#$ \nNew line "
+                                     "test...\n\nA couple of new lines...");
         DebugString = Rr_CreateString("$c3Colored $c1text$c2");
         LoadingString = Rr_CreateEmptyString(128);
     }
@@ -614,32 +621,24 @@ public:
     }
 };
 
-static void
-Init(Rr_App *App, void *UserData)
-{
-    new (UserData) SGame(App);
-}
+static void Init(Rr_App *App, void *UserData) { new (UserData) SGame(App); }
 
-static void
-Iterate(Rr_App *App, void *UserData)
+static void Iterate(Rr_App *App, void *UserData)
 {
     static_cast<SGame *>(UserData)->Iterate();
 }
 
-static void
-Cleanup(Rr_App *App, void *UserData)
+static void Cleanup(Rr_App *App, void *UserData)
 {
     static_cast<SGame *>(UserData)->~SGame();
 }
 
-static void
-OnFileDropped(Rr_App *App, const char *Path)
+static void OnFileDropped(Rr_App *App, const char *Path)
 {
     HandleFileDrop(Path);
 }
 
-void
-RunGame()
+void RunGame()
 {
     std::byte Game[sizeof(SGame)];
     Rr_AppConfig Config = { .Title = "RrDemo",

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Rr/Rr_Image.h"
-#include "Rr/Rr_Asset.h"
 #include "Rr/Rr_App.h"
+#include "Rr/Rr_Asset.h"
+#include "Rr/Rr_Image.h"
 #include "Rr_Memory.h"
 #include "Rr_UploadContext.h"
 
@@ -17,16 +17,14 @@ struct Rr_Image
     VkFormat Format;
 };
 
-extern Rr_Image *
-Rr_CreateImage(
+extern Rr_Image *Rr_CreateImage(
     Rr_App *App,
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
     Rr_Bool bMipMapped);
 
-extern Rr_Image *
-Rr_CreateColorImageFromMemory(
+extern Rr_Image *Rr_CreateColorImageFromMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_Byte *Data,
@@ -34,24 +32,21 @@ Rr_CreateColorImageFromMemory(
     Rr_U32 Height,
     Rr_Bool bMipMapped);
 
-extern Rr_Image *
-Rr_CreateColorImageFromPNGMemory(
+extern Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_Byte *Data,
     Rr_USize DataSize,
     Rr_Bool bMipMapped);
 
-extern Rr_Image *
-Rr_CreateColorImageFromPNG(
+extern Rr_Image *Rr_CreateColorImageFromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
     Rr_Bool bMipMapped,
     Rr_Arena *Arena);
 
-extern Rr_Image *
-Rr_CreateDepthImageFromEXR(
+extern Rr_Image *Rr_CreateDepthImageFromEXR(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
@@ -63,21 +58,18 @@ Rr_CreateColorAttachmentImage(Rr_App *App, Rr_U32 Width, Rr_U32 Height);
 extern Rr_Image *
 Rr_CreateDepthAttachmentImage(Rr_App *App, Rr_U32 Width, Rr_U32 Height);
 
-extern void
-Rr_GetImageSizePNGMemory(
+extern void Rr_GetImageSizePNGMemory(
     Rr_Byte *Data,
     Rr_USize DataSize,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize);
 
-extern void
-Rr_GetImageSizePNG(
+extern void Rr_GetImageSizePNG(
     Rr_AssetRef AssetRef,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize);
 
-extern void
-Rr_GetImageSizeEXR(
+extern void Rr_GetImageSizeEXR(
     Rr_AssetRef AssetRef,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize);
@@ -92,16 +84,14 @@ struct Rr_ImageBarrier
     VkImageLayout Layout;
 };
 
-extern void
-Rr_ChainImageBarrier_Aspect(
+extern void Rr_ChainImageBarrier_Aspect(
     Rr_ImageBarrier *TransitionImage,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     VkImageLayout NewLayout,
     VkImageAspectFlagBits Aspect);
 
-extern void
-Rr_ChainImageBarrier(
+extern void Rr_ChainImageBarrier(
     Rr_ImageBarrier *TransitionImage,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,

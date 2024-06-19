@@ -1,10 +1,10 @@
 #include "Rr_Load.h"
 
-#include "Rr_UploadContext.h"
-#include "Rr_Mesh.h"
-#include "Rr_Image.h"
 #include "Rr_App.h"
+#include "Rr_Image.h"
 #include "Rr_Log.h"
+#include "Rr_Mesh.h"
+#include "Rr_UploadContext.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_atomic.h>
@@ -29,7 +29,9 @@ Rr_CalculateLoadSize(Rr_LoadTask *Tasks, Rr_USize TaskCount, Rr_Arena *Arena)
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
                 Rr_GetStaticMeshSizeOBJ(
-                    Task->AssetRef, Scratch.Arena, &LoadSize);
+                    Task->AssetRef,
+                    Scratch.Arena,
+                    &LoadSize);
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
@@ -55,8 +57,7 @@ Rr_CalculateLoadSize(Rr_LoadTask *Tasks, Rr_USize TaskCount, Rr_Arena *Arena)
     return LoadSize;
 }
 
-static void
-Rr_LoadResourcesFromTasks(
+static void Rr_LoadResourcesFromTasks(
     Rr_App *App,
     Rr_LoadTask *Tasks,
     Rr_USize TaskCount,
@@ -84,7 +85,10 @@ Rr_LoadResourcesFromTasks(
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
             {
                 *(Rr_StaticMesh **)Task->Out = Rr_CreateStaticMeshOBJ(
-                    App, UploadContext, Task->AssetRef, Scratch.Arena);
+                    App,
+                    UploadContext,
+                    Task->AssetRef,
+                    Scratch.Arena);
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
@@ -114,16 +118,14 @@ Rr_LoadResourcesFromTasks(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-Rr_LoadTask
-Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage)
+Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage)
 {
     return (Rr_LoadTask){ .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
                           .AssetRef = AssetRef,
                           .Out = (void **)OutImage };
 }
 
-Rr_LoadTask
-Rr_LoadStaticMeshFromOBJ(
+Rr_LoadTask Rr_LoadStaticMeshFromOBJ(
     Rr_AssetRef AssetRef,
     struct Rr_StaticMesh **OutStaticMesh)
 {
@@ -132,24 +134,21 @@ Rr_LoadStaticMeshFromOBJ(
                           .Out = (void **)OutStaticMesh };
 }
 
-Rr_LoadTask
-Rr_LoadStaticMeshFromGLTF(
+Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
     Rr_AssetRef AssetRef,
     Rr_GLTFLoader *Loader,
     Rr_USize MeshIndex,
     struct Rr_StaticMesh **OutStaticMesh)
 {
-    return (Rr_LoadTask){
-        .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
-        .AssetRef = AssetRef,
-        .Out = (void **)OutStaticMesh,
-        .Options =
-            (Rr_MeshGLTFOptions){ .MeshIndex = MeshIndex, .Loader = *Loader }
-    };
+    return (Rr_LoadTask){ .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
+                          .AssetRef = AssetRef,
+                          .Out = (void **)OutStaticMesh,
+                          .Options =
+                              (Rr_MeshGLTFOptions){ .MeshIndex = MeshIndex,
+                                                    .Loader = *Loader } };
 }
 
-Rr_LoadingContext *
-Rr_LoadAsync(
+Rr_LoadingContext *Rr_LoadAsync(
     Rr_App *App,
     Rr_LoadTask *Tasks,
     Rr_USize TaskCount,
@@ -168,10 +167,13 @@ Rr_LoadAsync(
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
     SDL_LockMutex(LoadingThread->Mutex);
     Rr_LoadTask *NewTasks = Rr_ArenaAllocCount(
-        &LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
+        &LoadingThread->Arena,
+        sizeof(Rr_LoadTask),
+        TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
     Rr_LoadingContext *LoadingContext = Rr_SlicePush(
-        &LoadingThread->LoadingContextsSlice, &LoadingThread->Arena);
+        &LoadingThread->LoadingContextsSlice,
+        &LoadingThread->Arena);
     *LoadingContext = (Rr_LoadingContext){
         .Semaphore = SDL_CreateSemaphore(0),
         .LoadingCallback = LoadingCallback,
@@ -202,8 +204,7 @@ Rr_LoadImmediate(Rr_App *App, Rr_LoadTask *Tasks, Rr_USize TaskCount)
     return Rr_LoadImmediate_Internal(&LoadingContext);
 }
 
-void
-Rr_GetLoadProgress(
+void Rr_GetLoadProgress(
     Rr_LoadingContext *LoadingContext,
     Rr_U32 *OutCurrent,
     Rr_U32 *OutTotal)
@@ -218,8 +219,7 @@ Rr_GetLoadProgress(
     }
 }
 
-Rr_LoadResult
-Rr_LoadAsync_Internal(
+Rr_LoadResult Rr_LoadAsync_Internal(
     Rr_LoadingContext *LoadingContext,
     Rr_LoadAsyncContext LoadAsyncContext)
 {
@@ -236,8 +236,8 @@ Rr_LoadAsync_Internal(
     /* Create appropriate upload context. */
     Rr_Bool bUseTransferQueue = Rr_IsUsingTransferQueue(Renderer);
     VkCommandPool CommandPool = bUseTransferQueue
-        ? LoadAsyncContext.TransferCommandPool
-        : LoadAsyncContext.GraphicsCommandPool;
+                                    ? LoadAsyncContext.TransferCommandPool
+                                    : LoadAsyncContext.GraphicsCommandPool;
 
     VkCommandBuffer TransferCommandBuffer;
     {
@@ -363,7 +363,8 @@ Rr_LoadAsync_Internal(
 
             VkCommandBufferAllocateInfo CommandBufferAllocateInfo =
                 GetCommandBufferAllocateInfo(
-                    LoadAsyncContext.GraphicsCommandPool, 1);
+                    LoadAsyncContext.GraphicsCommandPool,
+                    1);
             vkAllocateCommandBuffers(
                 Renderer->Device,
                 &CommandBufferAllocateInfo,
@@ -381,8 +382,8 @@ Rr_LoadAsync_Internal(
             vkCmdPipelineBarrier(
                 GraphicsCommandBuffer,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
-                    | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                 0,
                 0,
                 NULL,
@@ -419,7 +420,11 @@ Rr_LoadAsync_Internal(
     }
 
     vkWaitForFences(
-        Renderer->Device, 1, &LoadAsyncContext.Fence, RR_TRUE, UINT64_MAX);
+        Renderer->Device,
+        1,
+        &LoadAsyncContext.Fence,
+        RR_TRUE,
+        UINT64_MAX);
 
     Rr_DestroyBuffer(App, UploadContext.StagingBuffer.Buffer);
 
@@ -444,8 +449,7 @@ Rr_LoadAsync_Internal(
     return RR_LOAD_RESULT_READY;
 }
 
-Rr_LoadResult
-Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext)
+Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext)
 {
     Rr_App *App = LoadingContext->App;
     Rr_Renderer *Renderer = &App->Renderer;
@@ -463,7 +467,9 @@ Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext)
     VkCommandBufferAllocateInfo CommandBufferAllocateInfo =
         GetCommandBufferAllocateInfo(CommandPool, 1);
     vkAllocateCommandBuffers(
-        Renderer->Device, &CommandBufferAllocateInfo, &TransferCommandBuffer);
+        Renderer->Device,
+        &CommandBufferAllocateInfo,
+        &TransferCommandBuffer);
     vkBeginCommandBuffer(
         TransferCommandBuffer,
         &(VkCommandBufferBeginInfo){
@@ -528,15 +534,17 @@ Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext)
     Rr_DestroyBuffer(App, UploadContext.StagingBuffer.Buffer);
 
     vkFreeCommandBuffers(
-        Renderer->Device, CommandPool, 1, &TransferCommandBuffer);
+        Renderer->Device,
+        CommandPool,
+        1,
+        &TransferCommandBuffer);
 
     Rr_DestroyArenaScratch(Scratch);
 
     return RR_LOAD_RESULT_READY;
 }
 
-static Rr_LoadAsyncContext
-Rr_CreateLoadAsyncContext(Rr_Renderer *Renderer)
+static Rr_LoadAsyncContext Rr_CreateLoadAsyncContext(Rr_Renderer *Renderer)
 {
     Rr_LoadAsyncContext LoadAsyncContext = { 0 };
 
@@ -585,24 +593,26 @@ Rr_CreateLoadAsyncContext(Rr_Renderer *Renderer)
     return LoadAsyncContext;
 }
 
-static void
-Rr_DestroyLoadAsyncContext(
+static void Rr_DestroyLoadAsyncContext(
     Rr_Renderer *Renderer,
     Rr_LoadAsyncContext *LoadAsyncContext)
 {
     vkDestroyCommandPool(
-        Renderer->Device, LoadAsyncContext->GraphicsCommandPool, NULL);
+        Renderer->Device,
+        LoadAsyncContext->GraphicsCommandPool,
+        NULL);
     if (LoadAsyncContext->TransferCommandPool != VK_NULL_HANDLE)
     {
         vkDestroyCommandPool(
-            Renderer->Device, LoadAsyncContext->TransferCommandPool, NULL);
+            Renderer->Device,
+            LoadAsyncContext->TransferCommandPool,
+            NULL);
     }
     vkDestroyFence(Renderer->Device, LoadAsyncContext->Fence, NULL);
     vkDestroySemaphore(Renderer->Device, LoadAsyncContext->Semaphore, NULL);
 }
 
-static int SDLCALL
-Rr_LoadingThreadProc(void *Data)
+static int SDLCALL Rr_LoadingThreadProc(void *Data)
 {
     Rr_App *App = Data;
     Rr_Renderer *Renderer = &App->Renderer;
@@ -635,17 +645,21 @@ Rr_LoadingThreadProc(void *Data)
         CurrentLoadingContextIndex++;
 
         vkResetCommandPool(
-            Renderer->Device, LoadAsyncContext.GraphicsCommandPool, 0);
+            Renderer->Device,
+            LoadAsyncContext.GraphicsCommandPool,
+            0);
         if (LoadAsyncContext.TransferCommandPool != VK_NULL_HANDLE)
         {
             vkResetCommandPool(
-                Renderer->Device, LoadAsyncContext.TransferCommandPool, 0);
+                Renderer->Device,
+                LoadAsyncContext.TransferCommandPool,
+                0);
         }
         vkResetFences(Renderer->Device, 1, &LoadAsyncContext.Fence);
 
         SDL_LockMutex(LoadingThread->Mutex);
-        if (CurrentLoadingContextIndex
-            >= LoadingThread->LoadingContextsSlice.Length)
+        if (CurrentLoadingContextIndex >=
+            LoadingThread->LoadingContextsSlice.Length)
         {
             Rr_ResetArena(&LoadingThread->Arena);
             CurrentLoadingContextIndex = 0;
@@ -661,8 +675,7 @@ Rr_LoadingThreadProc(void *Data)
     return 0;
 }
 
-void
-Rr_InitLoadingThread(Rr_App *App)
+void Rr_InitLoadingThread(Rr_App *App)
 {
     SDL_assert(App->LoadingThread.Handle == NULL);
 
@@ -675,8 +688,7 @@ Rr_InitLoadingThread(Rr_App *App)
         SDL_CreateThread(Rr_LoadingThreadProc, "lt", App);
 }
 
-void
-Rr_CleanupLoadingThread(Rr_App *App)
+void Rr_CleanupLoadingThread(Rr_App *App)
 {
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
     SDL_PostSemaphore(LoadingThread->Semaphore);

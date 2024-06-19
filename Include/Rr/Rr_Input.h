@@ -4,8 +4,7 @@
 #include "Rr_Math.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define RR_MAX_INPUT_MAPPINGS 16
@@ -131,10 +130,8 @@ struct Rr_InputConfig
     size_t Count;
 };
 
-void
-Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config);
-Rr_KeyState
-Rr_GetKeyState(Rr_KeyStates Keys, Rr_U32 Key);
+void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config);
+Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, Rr_U32 Key);
 
 #ifdef __cplusplus
 }

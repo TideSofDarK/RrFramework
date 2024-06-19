@@ -3,14 +3,13 @@
 #include "Rr_Defines.h"
 
 #ifdef __cplusplus
-    #define RR_ASSET_EXTERN extern "C"
+#define RR_ASSET_EXTERN extern "C"
 #else
-    #define RR_ASSET_EXTERN extern
+#define RR_ASSET_EXTERN extern
 #endif
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 typedef struct Rr_Asset Rr_Asset;
@@ -32,17 +31,17 @@ typedef struct Rr_AssetRef
     Rr_Byte *End;
 } Rr_AssetRef;
 
-    #define STR2(x) #x
-    #define STR(x) STR2(x)
+#define STR2(x) #x
+#define STR(x)  STR2(x)
 
-    #ifdef _WIN32
-        #define INCBIN_SECTION ".rdata, \"dr\""
-    #elif defined(__APPLE__)
-        #define INCBIN_SECTION "__TEXT,__const"
-    // #define INCBIN_SECTION ".const_data"
-    #else
-        #define INCBIN_SECTION ".rodata"
-    #endif
+#ifdef _WIN32
+#define INCBIN_SECTION ".rdata, \"dr\""
+#elif defined(__APPLE__)
+#define INCBIN_SECTION "__TEXT,__const"
+// #define INCBIN_SECTION ".const_data"
+#else
+#define INCBIN_SECTION ".rodata"
+#endif
 
 // clang-format off
     #ifdef __APPLE__
@@ -88,8 +87,7 @@ typedef struct Rr_AssetRef
 
 #endif
 
-extern Rr_Asset
-Rr_LoadAsset(Rr_AssetRef AssetRef);
+extern Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
 
 #ifdef __cplusplus
 }

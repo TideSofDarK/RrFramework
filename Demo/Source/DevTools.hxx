@@ -1,4 +1,3 @@
 #pragma once
 
-extern void
-HandleFileDrop(const char* Path);
+extern void HandleFileDrop(const char *Path);

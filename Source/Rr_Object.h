@@ -17,17 +17,12 @@ struct Rr_ObjectStorage
     SDL_SpinLock Lock;
 };
 
-extern Rr_ObjectStorage
-Rr_CreateObjectStorage();
+extern Rr_ObjectStorage Rr_CreateObjectStorage();
 
-extern void
-Rr_DestroyObjectStorage(Rr_ObjectStorage *Storage);
+extern void Rr_DestroyObjectStorage(Rr_ObjectStorage *Storage);
 
-extern void *
-Rr_CreateObject(Rr_ObjectStorage *Storage);
+extern void *Rr_CreateObject(Rr_ObjectStorage *Storage);
 
-extern void
-Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object);
+extern void Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object);
 
-extern Rr_USize
-Rr_CalculateObjectStorageSize(Rr_USize Count);
+extern Rr_USize Rr_CalculateObjectStorageSize(Rr_USize Count);

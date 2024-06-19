@@ -5,8 +5,7 @@
 
 #include <SDL3/SDL_stdinc.h>
 
-Rr_Material *
-Rr_CreateMaterial(
+Rr_Material *Rr_CreateMaterial(
     Rr_App *App,
     Rr_GenericPipeline *GenericPipeline,
     Rr_Image **Textures,
@@ -33,8 +32,7 @@ Rr_CreateMaterial(
     return Material;
 }
 
-void
-Rr_DestroyMaterial(Rr_App *App, Rr_Material *Material)
+void Rr_DestroyMaterial(Rr_App *App, Rr_Material *Material)
 {
     if (Material == NULL)
     {

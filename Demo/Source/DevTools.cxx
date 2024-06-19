@@ -2,11 +2,10 @@
 
 #include <cstdio>
 
-#include <tinyexr/tinyexr.h>
 #include <cstdlib>
+#include <tinyexr/tinyexr.h>
 
-void
-HandleFileDrop(const char* Path)
+void HandleFileDrop(const char *Path)
 {
     //    int Result;
     //    const char* Error;
@@ -41,8 +40,8 @@ HandleFileDrop(const char* Path)
     //    {
     //        for (int Channel = 0; Channel < Header.num_channels; Channel++)
     //        {
-    //            float* const Current = ((float*)Image.images[Channel]) + Index;
-    //            fprintf(stderr, "%.10f      ", *Current);
+    //            float* const Current = ((float*)Image.images[Channel]) +
+    //            Index; fprintf(stderr, "%.10f      ", *Current);
     //        }
     //        fprintf(stderr, "\n");
     //    }

@@ -4,8 +4,7 @@
 
 #include <SDL3/SDL.h>
 
-static Rr_KeyState
-Rr_UpdateKeyState(
+static Rr_KeyState Rr_UpdateKeyState(
     Rr_KeyState OldKeyState,
     const Rr_U8 *KeyboardState,
     Rr_U8 Scancode)
@@ -37,8 +36,7 @@ Rr_UpdateKeyState(
     }
 }
 
-void
-Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
+void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
 {
     Rr_KeyStates NewKeys = State->Keys;
     const Rr_U8 *KeyboardState = SDL_GetKeyboardState(NULL);
@@ -55,13 +53,13 @@ Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
     State->Keys = NewKeys;
 
     SDL_GetRelativeMouseState(
-        &State->MousePositionDelta.X, &State->MousePositionDelta.Y);
+        &State->MousePositionDelta.X,
+        &State->MousePositionDelta.Y);
     State->MouseState =
         SDL_GetMouseState(&State->MousePosition.X, &State->MousePosition.Y);
 }
 
-Rr_KeyState
-Rr_GetKeyState(Rr_KeyStates Keys, Rr_U32 Key)
+Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, Rr_U32 Key)
 {
     return (Keys >> (2 * Key)) & 3;
 }

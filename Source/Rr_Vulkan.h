@@ -28,15 +28,13 @@ struct Rr_PhysicalDevice
     VkPhysicalDeviceSubgroupProperties SubgroupProperties;
 };
 
-extern Rr_PhysicalDevice
-Rr_CreatePhysicalDevice(
+extern Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
     Rr_U32 *OutGraphicsQueueFamilyIndex,
     Rr_U32 *OutTransferQueueFamilyIndex);
 
-extern void
-Rr_InitDeviceAndQueues(
+extern void Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
     Rr_U32 GraphicsQueueFamilyIndex,
     Rr_U32 TransferQueueFamilyIndex,
@@ -44,24 +42,21 @@ Rr_InitDeviceAndQueues(
     VkQueue *OutGraphicsQueue,
     VkQueue *OutTransferQueue);
 
-extern void
-Rr_BlitDepthImage(
+extern void Rr_BlitDepthImage(
     VkCommandBuffer CommandBuffer,
     VkImage Source,
     VkImage Destination,
     VkExtent2D SrcSize,
     VkExtent2D DstSize);
 
-extern void
-Rr_BlitColorImage(
+extern void Rr_BlitColorImage(
     VkCommandBuffer CommandBuffer,
     VkImage Source,
     VkImage Destination,
     VkExtent2D SrcSize,
     VkExtent2D DstSize);
 
-static inline VkExtent2D
-GetExtent2D(VkExtent3D Extent)
+static inline VkExtent2D GetExtent2D(VkExtent3D Extent)
 {
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
 }
@@ -80,8 +75,7 @@ GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
     return Info;
 }
 
-static inline VkImageCreateInfo
-GetImageCreateInfo(
+static inline VkImageCreateInfo GetImageCreateInfo(
     VkFormat Format,
     VkImageUsageFlags UsageFlags,
     VkExtent3D Extent)
@@ -102,32 +96,29 @@ GetImageCreateInfo(
     return Info;
 }
 
-static inline VkImageViewCreateInfo
-GetImageViewCreateInfo(
+static inline VkImageViewCreateInfo GetImageViewCreateInfo(
     VkFormat Format,
     VkImage Image,
     VkImageAspectFlags AspectFlags)
 {
-    VkImageViewCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .pNext = NULL,
-        .image = Image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = Format,
-        .subresourceRange = {
-            .aspectMask = AspectFlags,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        }
-    };
+    VkImageViewCreateInfo Info = { .sType =
+                                       VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                                   .pNext = NULL,
+                                   .image = Image,
+                                   .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                                   .format = Format,
+                                   .subresourceRange = {
+                                       .aspectMask = AspectFlags,
+                                       .baseMipLevel = 0,
+                                       .levelCount = 1,
+                                       .baseArrayLayer = 0,
+                                       .layerCount = 1,
+                                   } };
 
     return Info;
 }
 
-static inline VkFenceCreateInfo
-GetFenceCreateInfo(VkFenceCreateFlags Flags)
+static inline VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
 {
     VkFenceCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
