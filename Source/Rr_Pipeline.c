@@ -421,26 +421,40 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
 
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_VertexInput VertexInput = { .Attributes = {
-                                       { .Type = RR_VERTEX_INPUT_TYPE_VEC3,
-                                         .Location = 0 },
-                                       { .Type = RR_VERTEX_INPUT_TYPE_FLOAT,
-                                         .Location = 1 },
-                                       { .Type = RR_VERTEX_INPUT_TYPE_VEC3,
-                                         .Location = 2 },
-                                       { .Type = RR_VERTEX_INPUT_TYPE_FLOAT,
-                                         .Location = 3 },
-                                       { .Type = RR_VERTEX_INPUT_TYPE_VEC4,
-                                         .Location = 4 },
-                                   } };
+    Rr_VertexInput VertexInput = {
+        .Attributes = {
+            {
+                .Type = RR_VERTEX_INPUT_TYPE_VEC3,
+                .Location = 0,
+            },
+            {
+                .Type = RR_VERTEX_INPUT_TYPE_FLOAT,
+                .Location = 1,
+            },
+            {
+                .Type = RR_VERTEX_INPUT_TYPE_VEC3,
+                .Location = 2,
+            },
+            {
+                .Type = RR_VERTEX_INPUT_TYPE_FLOAT,
+                .Location = 3,
+            },
+            {
+                .Type = RR_VERTEX_INPUT_TYPE_VEC4,
+                .Location = 4,
+            },
+        },
+    };
     Rr_EnablePerVertexInputAttributes(PipelineBuilder, &VertexInput);
 
     Rr_GenericPipeline *Pipeline = Rr_CreateObject(&App->ObjectStorage);
-    *Pipeline = (Rr_GenericPipeline){ .Handle = Rr_BuildPipeline(
-                                          Renderer,
-                                          PipelineBuilder,
-                                          Renderer->GenericPipelineLayout),
-                                      .Sizes = Sizes };
+    *Pipeline = (Rr_GenericPipeline){
+        .Handle = Rr_BuildPipeline(
+            Renderer,
+            PipelineBuilder,
+            Renderer->GenericPipelineLayout),
+        .Sizes = Sizes,
+    };
 
     return Pipeline;
 }
