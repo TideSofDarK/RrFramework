@@ -51,7 +51,10 @@ struct TPipeline
 
     Rr_GenericPipeline *GenericPipeline{};
 
-    explicit TPipeline(Rr_App *InApp) : App(InApp) {}
+    explicit TPipeline(Rr_App *InApp)
+        : App(InApp)
+    {
+    }
 
     ~TPipeline() { Rr_DestroyGenericPipeline(App, GenericPipeline); }
 
@@ -86,7 +89,8 @@ struct SShadowDraw
 struct SShadowPassPipeline
     : TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowDraw>
 {
-    explicit SShadowPassPipeline(Rr_App *InApp) : TPipeline(InApp)
+    explicit SShadowPassPipeline(Rr_App *InApp)
+        : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_SHADOWPASS_VERT_SPV);
 
@@ -124,7 +128,8 @@ struct SUnlitDraw
 
 struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
 {
-    explicit SUnlitPipeline(Rr_App *InApp) : TPipeline(InApp)
+    explicit SUnlitPipeline(Rr_App *InApp)
+        : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_VERT_SPV);
         Rr_Asset FragmentShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_FRAG_SPV);
@@ -164,7 +169,8 @@ struct SUber3DPushConstants
 
 struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
 {
-    explicit SUber3DPipeline(Rr_App *InApp) : TPipeline(InApp)
+    explicit SUber3DPipeline(Rr_App *InApp)
+        : TPipeline(InApp)
     {
         Rr_Asset Uber3DVERT = Rr_LoadAsset(DEMO_ASSET_UBER3D_VERT_SPV);
         Rr_Asset Uber3DFRAG = Rr_LoadAsset(DEMO_ASSET_UBER3D_FRAG_SPV);
@@ -539,7 +545,9 @@ struct SGame
     }
 
     explicit SGame(Rr_App *InApp)
-        : App(InApp), Uber3DPipeline(App), UnlitPipeline(App),
+        : App(InApp),
+          Uber3DPipeline(App),
+          UnlitPipeline(App),
           ShadowPassPipeline(App),
           UnlitGLTFLoader({
               .GenericPipeline = UnlitPipeline.GenericPipeline,
