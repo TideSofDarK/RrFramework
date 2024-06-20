@@ -61,8 +61,9 @@ static inline VkExtent2D GetExtent2D(VkExtent3D Extent)
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
 }
 
-static inline VkPipelineShaderStageCreateInfo
-GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
+static inline VkPipelineShaderStageCreateInfo GetShaderStageInfo(
+    VkShaderStageFlagBits Stage,
+    VkShaderModule Module)
 {
     VkPipelineShaderStageCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -128,8 +129,8 @@ static inline VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
     return Info;
 }
 
-static inline VkSemaphoreCreateInfo
-GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
+static inline VkSemaphoreCreateInfo GetSemaphoreCreateInfo(
+    VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -139,8 +140,8 @@ GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
     return Info;
 }
 
-static inline VkCommandBufferBeginInfo
-GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
+static inline VkCommandBufferBeginInfo GetCommandBufferBeginInfo(
+    VkCommandBufferUsageFlags Flags)
 {
     VkCommandBufferBeginInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -151,8 +152,8 @@ GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
     return Info;
 }
 
-static inline VkImageSubresourceRange
-GetImageSubresourceRange(VkImageAspectFlags AspectMask)
+static inline VkImageSubresourceRange GetImageSubresourceRange(
+    VkImageAspectFlags AspectMask)
 {
     VkImageSubresourceRange ImageSubresourceRange = {
         .aspectMask = AspectMask,
@@ -165,8 +166,9 @@ GetImageSubresourceRange(VkImageAspectFlags AspectMask)
     return ImageSubresourceRange;
 }
 
-static inline VkSemaphoreSubmitInfo
-GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
+static inline VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(
+    VkPipelineStageFlags2 StageMask,
+    VkSemaphore Semaphore)
 {
     VkSemaphoreSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -180,8 +182,8 @@ GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
     return Info;
 }
 
-static inline VkCommandBufferSubmitInfo
-GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
+static inline VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(
+    VkCommandBuffer CommandBuffer)
 {
     VkCommandBufferSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -193,8 +195,9 @@ GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
     return Info;
 }
 
-static inline VkCommandBufferAllocateInfo
-GetCommandBufferAllocateInfo(VkCommandPool CommandPool, Rr_U32 Count)
+static inline VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(
+    VkCommandPool CommandPool,
+    Rr_U32 Count)
 {
     VkCommandBufferAllocateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,

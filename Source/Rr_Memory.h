@@ -61,8 +61,11 @@ extern void Rr_ResetArena(Rr_Arena *Arena);
 
 extern void Rr_DestroyArena(Rr_Arena *Arena);
 
-extern void *
-Rr_ArenaAlloc(Rr_Arena *Arena, Rr_USize Size, Rr_USize Align, Rr_USize Count);
+extern void *Rr_ArenaAlloc(
+    Rr_Arena *Arena,
+    Rr_USize Size,
+    Rr_USize Align,
+    Rr_USize Count);
 
 #define Rr_ArenaAllocOne(Arena, Size)                                          \
     Rr_ArenaAlloc(Arena, Size, RR_SAFE_ALIGNMENT, 1)
@@ -107,8 +110,11 @@ extern void Rr_DestroySyncArena(Rr_SyncArena *Arena);
 
 extern void Rr_SliceGrow(void *Slice, Rr_USize Size, Rr_Arena *Arena);
 
-extern void
-Rr_SliceResize(void *Slice, Rr_USize Size, Rr_USize Count, Rr_Arena *Arena);
+extern void Rr_SliceResize(
+    void *Slice,
+    Rr_USize Size,
+    Rr_USize Count,
+    Rr_Arena *Arena);
 
 #define Rr_SliceType(Type)                                                     \
     struct                                                                     \

@@ -17,8 +17,10 @@ void Rr_InitTextRenderer(Rr_App *App);
 
 void Rr_CleanupTextRenderer(Rr_App *App);
 
-Rr_Font *
-Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef);
+Rr_Font *Rr_CreateFont(
+    Rr_App *App,
+    Rr_AssetRef FontPNGRef,
+    Rr_AssetRef FontJSONRef);
 
 void Rr_DestroyFont(Rr_App *App, Rr_Font *Font);
 
