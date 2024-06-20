@@ -461,8 +461,9 @@ static void Rr_InitDescriptors(Rr_App *App)
         &App->PermanentArena);
 }
 
-static PFN_vkVoidFunction
-Rr_LoadVulkanFunction(Rr_CString FuncName, void *UserData)
+static PFN_vkVoidFunction Rr_LoadVulkanFunction(
+    Rr_CString FuncName,
+    void *UserData)
 {
     return (PFN_vkVoidFunction)vkGetInstanceProcAddr(
         volkGetLoadedInstance(),

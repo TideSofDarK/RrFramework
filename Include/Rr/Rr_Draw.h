@@ -74,11 +74,15 @@ extern void Rr_DrawDefaultText(
     Rr_String *String,
     Rr_Vec2 Position);
 
-extern Rr_DrawTarget *
-Rr_CreateDrawTarget(Rr_App *App, Rr_U32 Width, Rr_U32 Height);
+extern Rr_DrawTarget *Rr_CreateDrawTarget(
+    Rr_App *App,
+    Rr_U32 Width,
+    Rr_U32 Height);
 
-extern Rr_DrawTarget *
-Rr_CreateDrawTargetDepthOnly(Rr_App *App, Rr_U32 Width, Rr_U32 Height);
+extern Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(
+    Rr_App *App,
+    Rr_U32 Width,
+    Rr_U32 Height);
 
 extern void Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget);
 

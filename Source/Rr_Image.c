@@ -210,7 +210,7 @@ void Rr_GetImageSizePNGMemory(
     Rr_Byte *Data,
     Rr_USize DataSize,
     Rr_Arena *Arena,
-    struct Rr_LoadSize *OutLoadSize)
+    Rr_LoadSize *OutLoadSize)
 {
     Rr_I32 DesiredChannels = 4;
     Rr_I32 Width;
@@ -401,7 +401,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     Rr_F32 FTimesNear = Far * Near;
     for (Rr_I32 Index = 0; Index < Image.width * Image.height; Index++)
     {
-        Rr_F32 *Current = ((Rr_F32 *)Image.images[0]) + Index;
+        Rr_F32 *Current = (Rr_F32 *)Image.images[0] + Index;
         Rr_F32 ZReciprocal = 1.0f / *Current;
         Rr_F32 Depth = FarPlusNear / FarMinusNear +
                        ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
@@ -413,11 +413,13 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
         *Current = Depth;
     }
 
-    VkExtent3D Extent = { .width = Image.width,
-                          .height = Image.height,
-                          .depth = 1 };
+    VkExtent3D Extent = {
+        .width = Image.width,
+        .height = Image.height,
+        .depth = 1,
+    };
 
-    size_t DataSize = Extent.width * Extent.height * sizeof(Rr_F32);
+    Rr_USize DataSize = Extent.width * Extent.height * sizeof(Rr_F32);
 
     Rr_Image *DepthImage = Rr_CreateImage(
         App,
@@ -445,8 +447,10 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     return DepthImage;
 }
 
-Rr_Image *
-Rr_CreateColorAttachmentImage(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
+Rr_Image *Rr_CreateColorAttachmentImage(
+    Rr_App *App,
+    Rr_U32 Width,
+    Rr_U32 Height)
 {
     return Rr_CreateImage(
         App,
@@ -457,8 +461,10 @@ Rr_CreateColorAttachmentImage(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
         RR_FALSE);
 }
 
-Rr_Image *
-Rr_CreateDepthAttachmentImage(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
+Rr_Image *Rr_CreateDepthAttachmentImage(
+    Rr_App *App,
+    Rr_U32 Width,
+    Rr_U32 Height)
 {
     return Rr_CreateImage(
         App,

@@ -86,7 +86,7 @@ typedef enum Rr_MouseButton
     RR_MOUSE_BUTTON_X2 = 5
 } Rr_MouseButton;
 
-#define RR_MOUSE_BUTTON_MASK(X) (1u << ((X) - 1))
+#define RR_MOUSE_BUTTON_MASK(X) (1u << ((X)-1))
 
 typedef enum Rr_MouseButtonMask
 {

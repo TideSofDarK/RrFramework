@@ -105,8 +105,11 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
     return (Rr_ArenaScratch){ 0 };
 }
 
-void *
-Rr_ArenaAlloc(Rr_Arena *Arena, Rr_USize Size, Rr_USize Align, Rr_USize Count)
+void *Rr_ArenaAlloc(
+    Rr_Arena *Arena,
+    Rr_USize Size,
+    Rr_USize Align,
+    Rr_USize Count)
 {
     Rr_USize Padding = -(Rr_USize)Arena->Current & (Align - 1);
     Rr_ISize Available = (Arena->End - Arena->Current) - (Rr_ISize)Padding;

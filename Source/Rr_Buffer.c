@@ -66,8 +66,10 @@ Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, Rr_USize Size)
         RR_FALSE);
 }
 
-Rr_Buffer *
-Rr_CreateMappedBuffer(Rr_App *App, Rr_USize Size, VkBufferUsageFlags UsageFlags)
+Rr_Buffer *Rr_CreateMappedBuffer(
+    Rr_App *App,
+    Rr_USize Size,
+    VkBufferUsageFlags UsageFlags)
 {
     return Rr_CreateBuffer(
         App,
