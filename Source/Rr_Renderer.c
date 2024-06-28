@@ -1027,7 +1027,7 @@ void Rr_InitRenderer(Rr_App *App)
             Window,
             Renderer->Instance,
             NULL,
-            &Renderer->Surface) != SDL_TRUE)
+            &Renderer->Surface) != 0)
     {
         Rr_LogAbort("Failed to create Vulkan surface: %s", SDL_GetError());
     }
