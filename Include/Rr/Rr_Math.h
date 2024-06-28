@@ -637,8 +637,9 @@ static inline Rr_F32 Rr_InvSqrtF(Rr_F32 Float)
  * RrFramework functions
  */
 
-static inline Rr_F32
-Rr_GetVerticalFoV(const Rr_F32 HorizontalFoV, const Rr_F32 Aspect)
+static inline Rr_F32 Rr_GetVerticalFoV(
+    const Rr_F32 HorizontalFoV,
+    const Rr_F32 Aspect)
 {
     return 2.0f * atanf((tanf(HorizontalFoV / 2.0f) * Aspect));
 }
@@ -2055,8 +2056,11 @@ static inline Rr_Mat4 Rr_InvOrthographic(Rr_Mat4 OrthoMatrix)
 }
 
 COVERAGE(Rr_Perspective_RH_NO, 1)
-static inline Rr_Mat4
-Rr_Perspective_RH_NO(Rr_F32 FOV, Rr_F32 AspectRatio, Rr_F32 Near, Rr_F32 Far)
+static inline Rr_Mat4 Rr_Perspective_RH_NO(
+    Rr_F32 FOV,
+    Rr_F32 AspectRatio,
+    Rr_F32 Near,
+    Rr_F32 Far)
 {
     ASSERT_COVERED(Rr_Perspective_RH_NO);
 
@@ -2077,8 +2081,11 @@ Rr_Perspective_RH_NO(Rr_F32 FOV, Rr_F32 AspectRatio, Rr_F32 Near, Rr_F32 Far)
 }
 
 COVERAGE(Rr_Perspective_RH_ZO, 1)
-static inline Rr_Mat4
-Rr_Perspective_RH_ZO(Rr_F32 FOV, Rr_F32 AspectRatio, Rr_F32 Near, Rr_F32 Far)
+static inline Rr_Mat4 Rr_Perspective_RH_ZO(
+    Rr_F32 FOV,
+    Rr_F32 AspectRatio,
+    Rr_F32 Near,
+    Rr_F32 Far)
 {
     ASSERT_COVERED(Rr_Perspective_RH_ZO);
 
@@ -2099,8 +2106,11 @@ Rr_Perspective_RH_ZO(Rr_F32 FOV, Rr_F32 AspectRatio, Rr_F32 Near, Rr_F32 Far)
 }
 
 COVERAGE(Rr_Perspective_LH_NO, 1)
-static inline Rr_Mat4
-Rr_Perspective_LH_NO(Rr_F32 FOV, Rr_F32 AspectRatio, Rr_F32 Near, Rr_F32 Far)
+static inline Rr_Mat4 Rr_Perspective_LH_NO(
+    Rr_F32 FOV,
+    Rr_F32 AspectRatio,
+    Rr_F32 Near,
+    Rr_F32 Far)
 {
     ASSERT_COVERED(Rr_Perspective_LH_NO);
 
@@ -2112,8 +2122,11 @@ Rr_Perspective_LH_NO(Rr_F32 FOV, Rr_F32 AspectRatio, Rr_F32 Near, Rr_F32 Far)
 }
 
 COVERAGE(Rr_Perspective_LH_ZO, 1)
-static inline Rr_Mat4
-Rr_Perspective_LH_ZO(Rr_F32 FOV, Rr_F32 AspectRatio, Rr_F32 Near, Rr_F32 Far)
+static inline Rr_Mat4 Rr_Perspective_LH_ZO(
+    Rr_F32 FOV,
+    Rr_F32 AspectRatio,
+    Rr_F32 Near,
+    Rr_F32 Far)
 {
     ASSERT_COVERED(Rr_Perspective_LH_ZO);
 
@@ -2611,8 +2624,11 @@ static inline Rr_Quat Rr_NormQ(Rr_Quat Quat)
     return Result;
 }
 
-static inline Rr_Quat
-_Rr_MixQ(Rr_Quat Left, Rr_F32 MixLeft, Rr_Quat Right, Rr_F32 MixRight)
+static inline Rr_Quat _Rr_MixQ(
+    Rr_Quat Left,
+    Rr_F32 MixLeft,
+    Rr_Quat Right,
+    Rr_F32 MixRight)
 {
     Rr_Quat Result;
 
@@ -2931,8 +2947,10 @@ static inline Rr_Vec3 Rr_RotateV3Q(Rr_Vec3 V, Rr_Quat Q)
 }
 
 COVERAGE(Rr_RotateV3AxisAngle_LH, 1)
-static inline Rr_Vec3
-Rr_RotateV3AxisAngle_LH(Rr_Vec3 V, Rr_Vec3 Axis, Rr_F32 Angle)
+static inline Rr_Vec3 Rr_RotateV3AxisAngle_LH(
+    Rr_Vec3 V,
+    Rr_Vec3 Axis,
+    Rr_F32 Angle)
 {
     ASSERT_COVERED(Rr_RotateV3AxisAngle_LH);
 
@@ -2940,8 +2958,10 @@ Rr_RotateV3AxisAngle_LH(Rr_Vec3 V, Rr_Vec3 Axis, Rr_F32 Angle)
 }
 
 COVERAGE(Rr_RotateV3AxisAngle_RH, 1)
-static inline Rr_Vec3
-Rr_RotateV3AxisAngle_RH(Rr_Vec3 V, Rr_Vec3 Axis, Rr_F32 Angle)
+static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
+    Rr_Vec3 V,
+    Rr_Vec3 Axis,
+    Rr_F32 Angle)
 {
     ASSERT_COVERED(Rr_RotateV3AxisAngle_RH);
 

@@ -37,11 +37,13 @@ extern void Rr_EnableColorAttachment(
     Rr_PipelineBuilder *PipelineBuilder,
     Rr_Bool bEnableAlphaBlend);
 
-extern void
-Rr_EnableVertexStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset);
+extern void Rr_EnableVertexStage(
+    Rr_PipelineBuilder *PipelineBuilder,
+    Rr_Asset *SPVAsset);
 
-extern void
-Rr_EnableFragmentStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset);
+extern void Rr_EnableFragmentStage(
+    Rr_PipelineBuilder *PipelineBuilder,
+    Rr_Asset *SPVAsset);
 
 extern void Rr_EnableRasterizer(
     Rr_PipelineBuilder *PipelineBuilder,
@@ -54,11 +56,12 @@ extern Rr_GenericPipeline *Rr_BuildGenericPipeline(
     Rr_PipelineBuilder *PipelineBuilder,
     Rr_GenericPipelineSizes Sizes);
 
-extern void
-Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *Pipeline);
+extern void Rr_DestroyGenericPipeline(
+    Rr_App *App,
+    Rr_GenericPipeline *Pipeline);
 
-extern Rr_GenericPipelineSizes
-Rr_GetGenericPipelineSizes(Rr_GenericPipeline *Pipeline);
+extern Rr_GenericPipelineSizes Rr_GetGenericPipelineSizes(
+    Rr_GenericPipeline *Pipeline);
 
 #ifdef __cplusplus
 }

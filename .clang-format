@@ -62,6 +62,8 @@ IndentGotoLabels: true
 IndentPPDirectives: None
 IndentExternBlock: NoIndent
 
+PackConstructorInitializers: Never
+
 PointerAlignment: Right
 SpaceAfterCStyleCast: false
 SpacesInCStyleCastParentheses: false
