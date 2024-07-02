@@ -8,7 +8,7 @@
 Rr_DrawContext *Rr_CreateDrawContext(
     Rr_App *App,
     Rr_DrawContextInfo *Info,
-    Rr_Byte *GlobalsData)
+    char *GlobalsData)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -25,9 +25,9 @@ Rr_DrawContext *Rr_CreateDrawContext(
     {
         DrawContext->Info.DrawTarget = Renderer->DrawTarget;
         DrawContext->Info.Viewport.Width =
-            (Rr_I32)Renderer->SwapchainSize.width;
+            (int32_t)Renderer->SwapchainSize.width;
         DrawContext->Info.Viewport.Height =
-            (Rr_I32)Renderer->SwapchainSize.height;
+            (int32_t)Renderer->SwapchainSize.height;
     }
 
     memcpy(DrawContext->GlobalsData, GlobalsData, Info->Sizes.Globals);
@@ -44,7 +44,7 @@ void Rr_DrawStaticMesh(
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
-    for (Rr_USize PrimitiveIndex = 0;
+    for (uintptr_t PrimitiveIndex = 0;
          PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
@@ -67,7 +67,7 @@ void Rr_DrawStaticMesh(
 void Rr_DrawStaticMeshOverrideMaterials(
     Rr_DrawContext *DrawContext,
     Rr_Material **OverrideMaterials,
-    Rr_USize OverrideMaterialCount,
+    uintptr_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data DrawData)
 {
@@ -75,7 +75,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
-    for (Rr_USize PrimitiveIndex = 0;
+    for (uintptr_t PrimitiveIndex = 0;
          PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
@@ -118,7 +118,7 @@ void Rr_DrawCustomText(
     Rr_Font *Font,
     Rr_String *String,
     Rr_Vec2 Position,
-    Rr_F32 Size,
+    float Size,
     Rr_DrawTextFlags Flags)
 {
     Rr_DrawText(
@@ -143,7 +143,7 @@ void Rr_DrawDefaultText(
                             .Flags = 0 });
 }
 
-Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
+Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -177,8 +177,8 @@ Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, Rr_U32 Width, Rr_U32 Height)
 
 Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(
     Rr_App *App,
-    Rr_U32 Width,
-    Rr_U32 Height)
+    uint32_t Width,
+    uint32_t Height)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 

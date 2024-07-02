@@ -11,14 +11,14 @@
 
 static Rr_LoadSize Rr_CalculateLoadSize(
     Rr_LoadTask *Tasks,
-    Rr_USize TaskCount,
+    uintptr_t TaskCount,
     Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
     Rr_LoadSize LoadSize = { 0 };
 
-    for (Rr_USize Index = 0; Index < TaskCount; ++Index)
+    for (uintptr_t Index = 0; Index < TaskCount; ++Index)
     {
         Rr_LoadTask *Task = &Tasks[Index];
         switch (Task->LoadType)
@@ -62,14 +62,14 @@ static Rr_LoadSize Rr_CalculateLoadSize(
 static void Rr_LoadResourcesFromTasks(
     Rr_App *App,
     Rr_LoadTask *Tasks,
-    Rr_USize TaskCount,
+    uintptr_t TaskCount,
     Rr_UploadContext *UploadContext,
     SDL_Semaphore *Semaphore,
     Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    for (Rr_USize Index = 0; Index < TaskCount; ++Index)
+    for (uintptr_t Index = 0; Index < TaskCount; ++Index)
     {
         Rr_LoadTask *Task = &Tasks[Index];
         switch (Task->LoadType)
@@ -139,7 +139,7 @@ Rr_LoadTask Rr_LoadStaticMeshFromOBJ(
 Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
     Rr_AssetRef AssetRef,
     Rr_GLTFLoader *Loader,
-    Rr_USize MeshIndex,
+    uintptr_t MeshIndex,
     struct Rr_StaticMesh **OutStaticMesh)
 {
     return (Rr_LoadTask){ .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
@@ -153,7 +153,7 @@ Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
 Rr_LoadingContext *Rr_LoadAsync(
     Rr_App *App,
     Rr_LoadTask *Tasks,
-    Rr_USize TaskCount,
+    uintptr_t TaskCount,
     Rr_LoadingCallback LoadingCallback,
     void *Userdata)
 {
@@ -162,7 +162,7 @@ Rr_LoadingContext *Rr_LoadAsync(
         Rr_LogAbort("Submitted zero tasks to load procedure!");
     }
 
-    Rr_USize AllocationSize =
+    uintptr_t AllocationSize =
         sizeof(Rr_LoadTask) * TaskCount + sizeof(Rr_LoadingContext);
     AllocationSize = Rr_Align(AllocationSize, RR_SAFE_ALIGNMENT);
 
@@ -194,7 +194,7 @@ Rr_LoadingContext *Rr_LoadAsync(
 Rr_LoadResult Rr_LoadImmediate(
     Rr_App *App,
     Rr_LoadTask *Tasks,
-    Rr_USize TaskCount)
+    uintptr_t TaskCount)
 {
     if (Tasks == 0)
     {
@@ -210,8 +210,8 @@ Rr_LoadResult Rr_LoadImmediate(
 
 void Rr_GetLoadProgress(
     Rr_LoadingContext *LoadingContext,
-    Rr_U32 *OutCurrent,
-    Rr_U32 *OutTotal)
+    uint32_t *OutCurrent,
+    uint32_t *OutTotal)
 {
     if (OutCurrent != NULL)
     {
@@ -231,7 +231,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
-    Rr_USize TaskCount = LoadingContext->TaskCount;
+    uintptr_t TaskCount = LoadingContext->TaskCount;
     Rr_LoadTask *Tasks = LoadingContext->Tasks;
 
     Rr_LoadSize LoadSize =
@@ -459,7 +459,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext)
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
-    Rr_USize TaskCount = LoadingContext->TaskCount;
+    uintptr_t TaskCount = LoadingContext->TaskCount;
     Rr_LoadTask *Tasks = LoadingContext->Tasks;
 
     Rr_LoadSize LoadSize =
@@ -626,7 +626,7 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
 
     Rr_LoadAsyncContext LoadAsyncContext = Rr_CreateLoadAsyncContext(Renderer);
 
-    Rr_USize CurrentLoadingContextIndex = 0;
+    uintptr_t CurrentLoadingContextIndex = 0;
 
     while (RR_TRUE)
     {

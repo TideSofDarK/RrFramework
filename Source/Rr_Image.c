@@ -20,7 +20,7 @@ static void Rr_UploadImage(
     VkAccessFlags DstAccessMask,
     VkImageLayout DstLayout,
     void *ImageData,
-    Rr_USize ImageDataLength)
+    uintptr_t ImageDataLength)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -30,7 +30,7 @@ static void Rr_UploadImage(
 
     VkDeviceSize BufferOffset = StagingBuffer->Offset;
     memcpy(
-        (Rr_Byte *)StagingBuffer->Buffer->AllocationInfo.pMappedData +
+        (char *)StagingBuffer->Buffer->AllocationInfo.pMappedData +
             BufferOffset,
         ImageData,
         ImageDataLength);
@@ -160,7 +160,7 @@ Rr_Image *Rr_CreateImage(
     if (bMipMapped)
     {
         Info.mipLevels =
-            (Rr_U32)(floorf(logf(SDL_max(Extent.width, Extent.height)))) + 1;
+            (uint32_t)(floorf(logf(SDL_max(Extent.width, Extent.height)))) + 1;
     }
 
     VmaAllocationCreateInfo AllocationCreateInfo = {
@@ -207,18 +207,18 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
 }
 
 void Rr_GetImageSizePNGMemory(
-    Rr_Byte *Data,
-    Rr_USize DataSize,
+    char *Data,
+    uintptr_t DataSize,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize)
 {
-    Rr_I32 DesiredChannels = 4;
-    Rr_I32 Width;
-    Rr_I32 Height;
-    Rr_I32 Channels;
+    int32_t DesiredChannels = 4;
+    int32_t Width;
+    int32_t Height;
+    int32_t Channels;
     stbi_info_from_memory(
         (stbi_uc *)Data,
-        (Rr_I32)DataSize,
+        (int32_t)DataSize,
         &Width,
         &Height,
         &Channels);
@@ -249,14 +249,14 @@ void Rr_GetImageSizeEXR(
 Rr_Image *Rr_CreateColorImageFromMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
-    Rr_Byte *Data,
-    Rr_U32 Width,
-    Rr_U32 Height,
+    char *Data,
+    uint32_t Width,
+    uint32_t Height,
     Rr_Bool bMipMapped)
 {
-    Rr_I32 DesiredChannels = 4;
+    int32_t DesiredChannels = 4;
     VkExtent3D Extent = { .width = Width, .height = Height, .depth = 1 };
-    Rr_USize DataSize = Extent.width * Extent.height * DesiredChannels;
+    uintptr_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
@@ -284,18 +284,18 @@ Rr_Image *Rr_CreateColorImageFromMemory(
 Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
-    Rr_Byte *Data,
-    Rr_USize DataSize,
+    char *Data,
+    uintptr_t DataSize,
     Rr_Bool bMipMapped)
 {
-    Rr_I32 DesiredChannels = 4;
-    Rr_I32 Channels;
+    int32_t DesiredChannels = 4;
+    int32_t Channels;
     VkExtent3D Extent = { .depth = 1 };
     stbi_uc *ParsedImage = stbi_load_from_memory(
         (stbi_uc *)Data,
-        (Rr_I32)DataSize,
-        (Rr_I32 *)&Extent.width,
-        (Rr_I32 *)&Extent.height,
+        (int32_t)DataSize,
+        (int32_t *)&Extent.width,
+        (int32_t *)&Extent.height,
         &Channels,
         DesiredChannels);
     size_t ParsedSize = Extent.width * Extent.height * DesiredChannels;
@@ -352,10 +352,10 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
 
     VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    Rr_CString Error;
+    const char *Error;
 
     EXRVersion Version;
-    Rr_I32 Result = ParseEXRVersionFromMemory(
+    int32_t Result = ParseEXRVersionFromMemory(
         &Version,
         (unsigned char *)Asset.Data,
         Asset.Length);
@@ -394,17 +394,17 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     }
 
     /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
-    Rr_F32 Near = 0.5f;
-    Rr_F32 Far = 50.0f;
-    Rr_F32 FarPlusNear = Far + Near;
-    Rr_F32 FarMinusNear = Far - Near;
-    Rr_F32 FTimesNear = Far * Near;
-    for (Rr_I32 Index = 0; Index < Image.width * Image.height; Index++)
+    float Near = 0.5f;
+    float Far = 50.0f;
+    float FarPlusNear = Far + Near;
+    float FarMinusNear = Far - Near;
+    float FTimesNear = Far * Near;
+    for (int32_t Index = 0; Index < Image.width * Image.height; Index++)
     {
-        Rr_F32 *Current = (Rr_F32 *)Image.images[0] + Index;
-        Rr_F32 ZReciprocal = 1.0f / *Current;
-        Rr_F32 Depth = FarPlusNear / FarMinusNear +
-                       ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
+        float *Current = (float *)Image.images[0] + Index;
+        float ZReciprocal = 1.0f / *Current;
+        float Depth = FarPlusNear / FarMinusNear +
+                      ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
         Depth = (Depth + 1.0f) / 2.0f;
         if (Depth > 1.0f)
         {
@@ -419,7 +419,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
         .depth = 1,
     };
 
-    Rr_USize DataSize = Extent.width * Extent.height * sizeof(Rr_F32);
+    uintptr_t DataSize = Extent.width * Extent.height * sizeof(float);
 
     Rr_Image *DepthImage = Rr_CreateImage(
         App,
@@ -449,8 +449,8 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
 
 Rr_Image *Rr_CreateColorAttachmentImage(
     Rr_App *App,
-    Rr_U32 Width,
-    Rr_U32 Height)
+    uint32_t Width,
+    uint32_t Height)
 {
     return Rr_CreateImage(
         App,
@@ -463,8 +463,8 @@ Rr_Image *Rr_CreateColorAttachmentImage(
 
 Rr_Image *Rr_CreateDepthAttachmentImage(
     Rr_App *App,
-    Rr_U32 Width,
-    Rr_U32 Height)
+    uint32_t Width,
+    uint32_t Height)
 {
     return Rr_CreateImage(
         App,

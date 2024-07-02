@@ -3,23 +3,20 @@
 #include <math.h>
 #include <string.h>
 
-Rr_F32 Rr_WrapMax(Rr_F32 X, Rr_F32 Max)
-{
-    return fmodf(Max + fmodf(X, Max), Max);
-}
+float Rr_WrapMax(float X, float Max) { return fmodf(Max + fmodf(X, Max), Max); }
 
-Rr_F32 Rr_WrapMinMax(Rr_F32 X, Rr_F32 Min, Rr_F32 Max)
+float Rr_WrapMinMax(float X, float Min, float Max)
 {
     return Min + Rr_WrapMax(X - Min, Max - Min);
 }
 
-Rr_U16 Rr_FloatToHalf(Rr_U32 X)
+uint16_t Rr_FloatToHalf(uint32_t X)
 {
 #define Bit(N)  ((uint32_t)1 << (N))
 #define Mask(N) (((uint32_t)1 << (N)) - 1)
-    Rr_U32 SignBit = X >> 31;
-    Rr_U32 ExponentField = X >> 23 & Mask(8);
-    Rr_U32 SignificandField = X & Mask(23);
+    uint32_t SignBit = X >> 31;
+    uint32_t ExponentField = X >> 23 & Mask(8);
+    uint32_t SignificandField = X & Mask(23);
 
     if (ExponentField == Mask(8))
     {
@@ -44,7 +41,7 @@ Rr_U16 Rr_FloatToHalf(Rr_U32 X)
     }
     else
     {
-        Rr_I32 Exponent = (Rr_I32)ExponentField - 127 + 15;
+        int32_t Exponent = (int32_t)ExponentField - 127 + 15;
 
         if (Exponent < -11)
         {
@@ -95,24 +92,24 @@ Rr_U16 Rr_FloatToHalf(Rr_U32 X)
 #undef Mask
 }
 
-void Rr_PackVec4(Rr_Vec4 From, Rr_U32 *OutA, Rr_U32 *OutB)
+void Rr_PackVec4(Rr_Vec4 From, uint32_t *OutA, uint32_t *OutB)
 {
     typedef union PackHelper
     {
-        Rr_U32 UnsignedIntegerValue;
-        Rr_F32 FloatValue;
+        uint32_t UnsignedIntegerValue;
+        float FloatValue;
     } PackHelper;
 
     PackHelper Helper[4];
 
     memcpy(Helper, From.Elements, sizeof(Rr_Vec4));
 
-    Rr_U16 HalfValues[4];
+    uint16_t HalfValues[4];
     HalfValues[0] = Rr_FloatToHalf(Helper[0].UnsignedIntegerValue);
     HalfValues[1] = Rr_FloatToHalf(Helper[1].UnsignedIntegerValue);
     HalfValues[2] = Rr_FloatToHalf(Helper[2].UnsignedIntegerValue);
     HalfValues[3] = Rr_FloatToHalf(Helper[3].UnsignedIntegerValue);
 
-    *OutA = (Rr_U32)HalfValues[0] | ((Rr_U32)HalfValues[1] << 16);
-    *OutB = (Rr_U32)HalfValues[2] | ((Rr_U32)HalfValues[3] << 16);
+    *OutA = (uint32_t)HalfValues[0] | ((uint32_t)HalfValues[1] << 16);
+    *OutB = (uint32_t)HalfValues[2] | ((uint32_t)HalfValues[3] << 16);
 }

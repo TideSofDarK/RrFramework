@@ -20,9 +20,9 @@ typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
 typedef struct Rr_GenericPipelineSizes Rr_GenericPipelineSizes;
 struct Rr_GenericPipelineSizes
 {
-    Rr_USize Globals;
-    Rr_USize Material;
-    Rr_USize Draw;
+    uintptr_t Globals;
+    uintptr_t Material;
+    uintptr_t Draw;
 };
 
 typedef enum Rr_PolygonMode

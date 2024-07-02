@@ -16,22 +16,22 @@ static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
     FrameTime->Now = SDL_GetPerformanceCounter();
-    FrameTime->DeltaSeconds = (Rr_F64)(FrameTime->Now - FrameTime->Last) *
-                              1000.0 / (Rr_F64)SDL_GetPerformanceFrequency();
+    FrameTime->DeltaSeconds = (double)(FrameTime->Now - FrameTime->Last) *
+                              1000.0 / (double)SDL_GetPerformanceFrequency();
 }
 
 static void Rr_CalculateFPS(Rr_FrameTime *FrameTime)
 {
     FrameTime->PerformanceCounter.Frames++;
-    Rr_U64 CurrentTime = SDL_GetPerformanceCounter();
+    uint64_t CurrentTime = SDL_GetPerformanceCounter();
     if (CurrentTime - FrameTime->PerformanceCounter.StartTime >=
         FrameTime->PerformanceCounter.UpdateFrequency)
     {
-        Rr_F64 Elapsed =
-            (Rr_F64)(CurrentTime - FrameTime->PerformanceCounter.StartTime) /
+        double Elapsed =
+            (double)(CurrentTime - FrameTime->PerformanceCounter.StartTime) /
             FrameTime->PerformanceCounter.CountPerSecond;
         FrameTime->PerformanceCounter.FPS =
-            (Rr_F64)FrameTime->PerformanceCounter.Frames / Elapsed;
+            (double)FrameTime->PerformanceCounter.Frames / Elapsed;
         FrameTime->PerformanceCounter.StartTime = CurrentTime;
         FrameTime->PerformanceCounter.Frames = 0;
     }
@@ -39,9 +39,9 @@ static void Rr_CalculateFPS(Rr_FrameTime *FrameTime)
 
 static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 {
-    Rr_U64 Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
-    Rr_U64 Now = SDL_GetTicksNS();
-    Rr_U64 Elapsed = Now - FrameTime->StartTime;
+    uint64_t Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
+    uint64_t Now = SDL_GetTicksNS();
+    uint64_t Elapsed = Now - FrameTime->StartTime;
 
     if (Elapsed < Interval)
     {
@@ -69,7 +69,7 @@ void Rr_DebugOverlay(Rr_App *App)
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
         ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-    Rr_F32 Padding = 10.0f;
+    float Padding = 10.0f;
     ImVec2 WorkPos = Viewport->WorkPos;
     ImVec2 WindowPos, WindowPosPivot;
     WindowPos.x = WorkPos.x + Padding;
@@ -99,8 +99,8 @@ void Rr_DebugOverlay(Rr_App *App)
                 "Target FPS",
                 ImGuiDataType_U64,
                 &App->FrameTime.TargetFramerate,
-                &(Rr_U64){ 30 },
-                &(Rr_U64){ 480 },
+                &(uint64_t){ 30 },
+                &(uint64_t){ 480 },
                 "%d",
                 ImGuiSliderFlags_None);
         }
@@ -186,12 +186,12 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
     FrameTime->PerformanceCounter.UpdateFrequency =
         SDL_GetPerformanceFrequency() / 2;
     FrameTime->PerformanceCounter.CountPerSecond =
-        (Rr_F64)SDL_GetPerformanceFrequency();
+        (double)SDL_GetPerformanceFrequency();
 #endif
 
     SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
-    FrameTime->TargetFramerate = (Rr_U64)Mode->refresh_rate;
+    FrameTime->TargetFramerate = (uint64_t)Mode->refresh_rate;
     FrameTime->StartTime = SDL_GetTicksNS();
     FrameTime->bSimulateVSync = true;
 
@@ -205,13 +205,13 @@ Rr_IntVec2 Rr_GetDefaultWindowSize()
     SDL_Rect UsableBounds;
     SDL_GetDisplayUsableBounds(DisplayID, &UsableBounds);
 
-    Rr_F32 ScaleFactor = 0.75f;
+    float ScaleFactor = 0.75f;
 
     return (Rr_IntVec2){
         .Width =
-            (Rr_I32)((Rr_F32)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
+            (int32_t)((float)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
         .Height =
-            (Rr_I32)((Rr_F32)(UsableBounds.h - UsableBounds.y) * ScaleFactor)
+            (int32_t)((float)(UsableBounds.h - UsableBounds.y) * ScaleFactor)
     };
 }
 
@@ -320,18 +320,18 @@ void Rr_SetInputConfig(Rr_App *App, Rr_InputConfig *InputConfig)
 
 Rr_InputState Rr_GetInputState(Rr_App *App) { return App->InputState; }
 
-Rr_F32 Rr_GetAspectRatio(Rr_App *App)
+float Rr_GetAspectRatio(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
-    return (Rr_F32)Renderer->SwapchainSize.width /
-           (Rr_F32)Renderer->SwapchainSize.height;
+    return (float)Renderer->SwapchainSize.width /
+           (float)Renderer->SwapchainSize.height;
 }
 
-Rr_F64 Rr_GetDeltaSeconds(Rr_App *App) { return App->FrameTime.DeltaSeconds; }
+double Rr_GetDeltaSeconds(Rr_App *App) { return App->FrameTime.DeltaSeconds; }
 
-Rr_F64 Rr_GetTimeSeconds(Rr_App *App)
+double Rr_GetTimeSeconds(Rr_App *App)
 {
-    return (Rr_F64)SDL_GetTicks() / 1000.0;
+    return (double)SDL_GetTicks() / 1000.0;
 }
 
 void Rr_SetRelativeMouseMode(Rr_Bool bRelative)

@@ -13,7 +13,7 @@ struct Rr_Queue
 {
     VkCommandPool TransientCommandPool;
     VkQueue Handle;
-    Rr_U32 FamilyIndex;
+    uint32_t FamilyIndex;
     SDL_SpinLock Lock;
 };
 
@@ -31,13 +31,13 @@ struct Rr_PhysicalDevice
 extern Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
-    Rr_U32 *OutGraphicsQueueFamilyIndex,
-    Rr_U32 *OutTransferQueueFamilyIndex);
+    uint32_t *OutGraphicsQueueFamilyIndex,
+    uint32_t *OutTransferQueueFamilyIndex);
 
 extern void Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
-    Rr_U32 GraphicsQueueFamilyIndex,
-    Rr_U32 TransferQueueFamilyIndex,
+    uint32_t GraphicsQueueFamilyIndex,
+    uint32_t TransferQueueFamilyIndex,
     VkDevice *OutDevice,
     VkQueue *OutGraphicsQueue,
     VkQueue *OutTransferQueue);
@@ -197,7 +197,7 @@ static inline VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(
 
 static inline VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(
     VkCommandPool CommandPool,
-    Rr_U32 Count)
+    uint32_t Count)
 {
     VkCommandBufferAllocateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,

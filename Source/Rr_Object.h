@@ -25,4 +25,4 @@ extern void *Rr_CreateObject(Rr_ObjectStorage *Storage);
 
 extern void Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object);
 
-extern Rr_USize Rr_CalculateObjectStorageSize(Rr_USize Count);
+extern uintptr_t Rr_CalculateObjectStorageSize(uintptr_t Count);

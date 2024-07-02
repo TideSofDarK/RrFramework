@@ -8,7 +8,7 @@
 
 Rr_Buffer *Rr_CreateBuffer(
     Rr_App *App,
-    Rr_USize Size,
+    uintptr_t Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
     Rr_Bool bHostMapped)
@@ -44,7 +44,7 @@ Rr_Buffer *Rr_CreateBuffer(
     return Buffer;
 }
 
-Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, Rr_USize Size)
+Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, uintptr_t Size)
 {
     Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
@@ -55,7 +55,7 @@ Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, Rr_USize Size)
         RR_FALSE);
 }
 
-Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, Rr_USize Size)
+Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, uintptr_t Size)
 {
     // Size = SDL_max(Size, 128);
     return Rr_CreateBuffer(
@@ -68,7 +68,7 @@ Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, Rr_USize Size)
 
 Rr_Buffer *Rr_CreateMappedBuffer(
     Rr_App *App,
-    Rr_USize Size,
+    uintptr_t Size,
     VkBufferUsageFlags UsageFlags)
 {
     return Rr_CreateBuffer(
@@ -79,7 +79,7 @@ Rr_Buffer *Rr_CreateMappedBuffer(
         RR_TRUE);
 }
 
-Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, Rr_USize Size)
+Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, uintptr_t Size)
 {
     return Rr_CreateMappedBuffer(App, Size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 }
@@ -107,8 +107,8 @@ void Rr_UploadBufferAligned(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     void *Data,
-    Rr_USize DataLength,
-    Rr_USize Alignment)
+    uintptr_t DataLength,
+    uintptr_t Alignment)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -119,17 +119,17 @@ void Rr_UploadBufferAligned(
         Rr_LogAbort(
             "Exceeding staging buffer size! Current offset is %zu, allocation "
             "size is %zu and total staging buffer size is %zu.",
-            (Rr_USize)StagingBuffer->Offset,
+            (uintptr_t)StagingBuffer->Offset,
             DataLength,
-            (Rr_USize)StagingBuffer->Buffer->AllocationInfo.size);
+            (uintptr_t)StagingBuffer->Buffer->AllocationInfo.size);
     }
 
     VkCommandBuffer TransferCommandBuffer =
         UploadContext->TransferCommandBuffer;
 
-    Rr_USize BufferOffset = StagingBuffer->Offset;
+    uintptr_t BufferOffset = StagingBuffer->Offset;
     memcpy(
-        (Rr_Byte *)StagingBuffer->Buffer->AllocationInfo.pMappedData +
+        (char *)StagingBuffer->Buffer->AllocationInfo.pMappedData +
             BufferOffset,
         Data,
         DataLength);
@@ -242,7 +242,7 @@ void Rr_UploadBuffer(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     void *Data,
-    Rr_USize DataLength)
+    uintptr_t DataLength)
 {
     Rr_UploadBufferAligned(
         App,
@@ -261,7 +261,7 @@ void Rr_UploadToDeviceBufferImmediate(
     Rr_App *App,
     Rr_Buffer *DstBuffer,
     void *Data,
-    Rr_USize Size)
+    uintptr_t Size)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
@@ -284,7 +284,7 @@ void Rr_UploadToUniformBuffer(
     Rr_UploadContext *UploadContext,
     Rr_Buffer *DstBuffer,
     void *Data,
-    Rr_USize DataLength)
+    uintptr_t DataLength)
 {
     Rr_UploadBufferAligned(
         App,
@@ -305,16 +305,16 @@ void Rr_CopyToMappedUniformBuffer(
     Rr_App *App,
     Rr_Buffer *DstBuffer,
     void *Data,
-    Rr_USize Size,
+    uintptr_t Size,
     VkDeviceSize *DstOffset)
 {
-    Rr_U32 Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits
-                           .minUniformBufferOffsetAlignment;
-    Rr_USize AlignedSize = Rr_Align(Size, Alignment);
+    uint32_t Alignment = App->Renderer.PhysicalDevice.Properties.properties
+                             .limits.minUniformBufferOffsetAlignment;
+    uintptr_t AlignedSize = Rr_Align(Size, Alignment);
     if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
         memcpy(
-            (Rr_Byte *)DstBuffer->AllocationInfo.pMappedData + *DstOffset,
+            (char *)DstBuffer->AllocationInfo.pMappedData + *DstOffset,
             Data,
             Size);
         *DstOffset += Size;

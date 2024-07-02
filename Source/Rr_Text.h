@@ -12,9 +12,9 @@ struct Rr_Font
 {
     struct Rr_Image *Atlas;
     struct Rr_Buffer *Buffer;
-    Rr_F32 *Advances;
-    Rr_F32 LineHeight;
-    Rr_F32 DefaultSize;
+    float *Advances;
+    float LineHeight;
+    float DefaultSize;
 };
 
 typedef enum Rr_TextPipelineDescriptorSet
@@ -27,24 +27,24 @@ typedef enum Rr_TextPipelineDescriptorSet
 typedef struct Rr_Glyph Rr_Glyph;
 struct Rr_Glyph
 {
-    Rr_U32 AtlasXY;
-    Rr_U32 AtlasWH;
-    Rr_U32 PlaneLB;
-    Rr_U32 PlaneRT;
+    uint32_t AtlasXY;
+    uint32_t AtlasWH;
+    uint32_t PlaneLB;
+    uint32_t PlaneRT;
 };
 
 typedef struct Rr_TextPerInstanceVertexInput Rr_TextPerInstanceVertexInput;
 struct Rr_TextPerInstanceVertexInput
 {
     Rr_Vec2 Advance;
-    Rr_U32 Unicode;
+    uint32_t Unicode;
 };
 
 typedef struct Rr_TextGlobalsLayout Rr_TextGlobalsLayout;
 struct Rr_TextGlobalsLayout
 {
-    Rr_F32 Time;
-    Rr_F32 Reserved;
+    float Time;
+    float Reserved;
     Rr_Vec2 ScreenSize;
     Rr_Vec4 Palette[RR_TEXT_MAX_COLORS];
 };
@@ -52,8 +52,8 @@ struct Rr_TextGlobalsLayout
 typedef struct Rr_TextFontLayout Rr_TextFontLayout;
 struct Rr_TextFontLayout
 {
-    Rr_F32 Advance;
-    Rr_F32 DistanceRange;
+    float Advance;
+    float DistanceRange;
     Rr_Vec2 AtlasSize;
     Rr_Glyph Glyphs[RR_TEXT_MAX_GLYPHS];
 };
@@ -62,8 +62,8 @@ typedef struct Rr_TextPushConstants Rr_TextPushConstants;
 struct Rr_TextPushConstants
 {
     Rr_Vec2 PositionScreenSpace;
-    Rr_F32 Size;
-    Rr_U32 Flags;
+    float Size;
+    uint32_t Flags;
     Rr_Vec4 ReservedB;
     Rr_Vec4 ReservedC;
     Rr_Vec4 ReservedD;

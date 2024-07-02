@@ -29,15 +29,15 @@ typedef struct Rr_GLTFLoader Rr_GLTFLoader;
 struct Rr_GLTFLoader
 {
     struct Rr_GenericPipeline *GenericPipeline;
-    Rr_U8 BaseTexture;
-    Rr_U8 NormalTexture;
-    Rr_U8 SpecularTexture;
+    uint8_t BaseTexture;
+    uint8_t NormalTexture;
+    uint8_t SpecularTexture;
 };
 
 typedef struct Rr_MeshGLTFOptions Rr_MeshGLTFOptions;
 struct Rr_MeshGLTFOptions
 {
-    Rr_USize MeshIndex;
+    uintptr_t MeshIndex;
     Rr_GLTFLoader Loader;
 };
 
@@ -74,19 +74,19 @@ extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
 extern Rr_LoadingContext *Rr_LoadAsync(
     Rr_App *App,
     Rr_LoadTask *Tasks,
-    Rr_USize TaskCount,
+    uintptr_t TaskCount,
     Rr_LoadingCallback LoadingCallback,
     void *Userdata);
 
 extern Rr_LoadResult Rr_LoadImmediate(
     Rr_App *App,
     Rr_LoadTask *Tasks,
-    Rr_USize TaskCount);
+    uintptr_t TaskCount);
 
 extern void Rr_GetLoadProgress(
     Rr_LoadingContext *LoadingContext,
-    Rr_U32 *OutCurrent,
-    Rr_U32 *OutTotal);
+    uint32_t *OutCurrent,
+    uint32_t *OutTotal);
 
 #ifdef __cplusplus
 }

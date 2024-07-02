@@ -61,6 +61,8 @@ IndentCaseBlocks: false
 IndentGotoLabels: true
 IndentPPDirectives: None
 IndentExternBlock: NoIndent
+IndentAccessModifiers: false
+AccessModifierOffset: -4
 
 PackConstructorInitializers: Never
 

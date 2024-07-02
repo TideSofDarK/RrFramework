@@ -1,15 +1,15 @@
 #include "Rr_Memory.h"
 
+#define VOLK_IMPLEMENTATION
+#include <volk.h>
+
 #define VMA_IMPLEMENTATION
-#define VMA_VULKAN_VERSION           1003000
+#define VMA_VULKAN_VERSION           1002000
 #define VMA_STATIC_VULKAN_FUNCTIONS  0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #define VMA_SYSTEM_ALIGNED_MALLOC    Rr_AlignedAlloc
 #define VMA_SYSTEM_ALIGNED_FREE      Rr_AlignedFree
 #include <vk_mem_alloc.h>
-
-#define VOLK_IMPLEMENTATION
-#include <volk.h>
 
 #define TINYEXR_IMPLEMENTATION
 #include <tinyexr/tinyexr.h>

@@ -3,38 +3,38 @@
 #include "Rr_Log.h"
 #include "Rr_Memory.h"
 
-static Rr_U32 *Rr_UTF8ToUTF32(
-    Rr_CString CString,
-    Rr_USize OptionalLength,
-    Rr_U32 *OutOldBuffer,
-    Rr_USize OldLength,
-    Rr_USize *OutNewLength)
+static uint32_t *Rr_UTF8ToUTF32(
+    const char *CString,
+    uintptr_t OptionalLength,
+    uint32_t *OutOldBuffer,
+    uintptr_t OldLength,
+    uintptr_t *OutNewLength)
 {
-    static Rr_U32 Buffer[2048] = { 0 };
+    static uint32_t Buffer[2048] = { 0 };
 
-    Rr_U8 Ready = 128;
-    Rr_U8 Two = 192;
-    Rr_U8 Three = 224;
-    Rr_U8 Four = 240;
-    Rr_U8 Five = 248;
+    uint8_t Ready = 128;
+    uint8_t Two = 192;
+    uint8_t Three = 224;
+    uint8_t Four = 240;
+    uint8_t Five = 248;
 
-    Rr_USize SourceLength =
+    uintptr_t SourceLength =
         OptionalLength > 0 ? OptionalLength : strlen(CString);
     if (SourceLength > 2048)
     {
         Rr_LogAbort("Exceeding max string length!");
     }
 
-    Rr_U8 Carry = 0;
-    Rr_USize FinalIndex = 0;
-    Rr_U32 FinalCharacter = 0;
-    for (Rr_USize SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
+    uint8_t Carry = 0;
+    uintptr_t FinalIndex = 0;
+    uint32_t FinalCharacter = 0;
+    for (uintptr_t SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
     {
         if (Carry > 0)
         {
             Carry--;
             FinalCharacter |=
-                (Rr_U8)((~Two & CString[SourceIndex]) << (Carry * 6));
+                (uint8_t)((~Two & CString[SourceIndex]) << (Carry * 6));
 
             if (Carry == 0)
             {
@@ -46,21 +46,21 @@ static Rr_U32 *Rr_UTF8ToUTF32(
         {
             if ((CString[SourceIndex] & Four) == Four)
             {
-                FinalCharacter = (Rr_U8)(~Five & CString[SourceIndex]);
+                FinalCharacter = (uint8_t)(~Five & CString[SourceIndex]);
                 FinalCharacter <<= 3 * 6;
                 Carry = 3;
                 continue;
             }
             else if ((CString[SourceIndex] & Three) == Three)
             {
-                FinalCharacter = (Rr_U8)(~Four & CString[SourceIndex]);
+                FinalCharacter = (uint8_t)(~Four & CString[SourceIndex]);
                 FinalCharacter <<= 2 * 6;
                 Carry = 2;
                 continue;
             }
             else if ((CString[SourceIndex] & Two) == Two)
             {
-                FinalCharacter = (Rr_U8)(~Three & CString[SourceIndex]);
+                FinalCharacter = (uint8_t)(~Three & CString[SourceIndex]);
                 FinalCharacter <<= 1 * 6;
                 Carry = 1;
                 continue;
@@ -73,10 +73,10 @@ static Rr_U32 *Rr_UTF8ToUTF32(
         }
     }
 
-    Rr_U32 *Data;
+    uint32_t *Data;
     if (OutOldBuffer == NULL)
     {
-        Data = (Rr_U32 *)Rr_Malloc(sizeof(Rr_U32) * FinalIndex);
+        Data = (uint32_t *)Rr_Malloc(sizeof(uint32_t) * FinalIndex);
     }
     else if (OldLength >= FinalIndex)
     {
@@ -84,17 +84,18 @@ static Rr_U32 *Rr_UTF8ToUTF32(
     }
     else
     {
-        Data = (Rr_U32 *)Rr_Realloc(OutOldBuffer, sizeof(Rr_U32) * FinalIndex);
+        Data =
+            (uint32_t *)Rr_Realloc(OutOldBuffer, sizeof(uint32_t) * FinalIndex);
     }
 
-    memcpy((void *)Data, Buffer, sizeof(Rr_U32) * FinalIndex);
+    memcpy((void *)Data, Buffer, sizeof(uint32_t) * FinalIndex);
 
     *OutNewLength = FinalIndex;
 
     return Data;
 }
 
-Rr_String Rr_CreateString(Rr_CString CString)
+Rr_String Rr_CreateString(const char *CString)
 {
     Rr_String String;
     String.Data = Rr_UTF8ToUTF32(CString, 0, NULL, 0, &String.Length);
@@ -102,16 +103,17 @@ Rr_String Rr_CreateString(Rr_CString CString)
     return String;
 }
 
-Rr_String Rr_CreateEmptyString(Rr_USize Length)
+Rr_String Rr_CreateEmptyString(uintptr_t Length)
 {
     return (Rr_String){ .Length = Length,
-                        .Data = (Rr_U32 *)Rr_Calloc(Length, sizeof(Rr_U32)) };
+                        .Data =
+                            (uint32_t *)Rr_Calloc(Length, sizeof(uint32_t)) };
 }
 
 void Rr_SetString(
     Rr_String *String,
-    Rr_CString CString,
-    Rr_USize OptionalLength)
+    const char *CString,
+    uintptr_t OptionalLength)
 {
     if (String == NULL)
     {

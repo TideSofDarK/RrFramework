@@ -11,7 +11,7 @@ enum
     RR_LOG_CATEGORY_MEMORY,
 };
 
-void Rr_LogAbort(Rr_CString Format, ...)
+void Rr_LogAbort(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
@@ -24,7 +24,7 @@ void Rr_LogAbort(Rr_CString Format, ...)
     abort();
 }
 
-void Rr_LogVulkan(Rr_CString Format, ...)
+void Rr_LogVulkan(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
@@ -36,7 +36,7 @@ void Rr_LogVulkan(Rr_CString Format, ...)
     va_end(Args);
 }
 
-void Rr_LogMemory(Rr_CString Format, ...)
+void Rr_LogMemory(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);

@@ -8,22 +8,7 @@
 #include <cstdint>
 #endif
 
-typedef char Rr_Byte;
-typedef uint8_t Rr_U8;
-typedef uint16_t Rr_U16;
-typedef uint32_t Rr_U32;
-typedef uint64_t Rr_U64;
-typedef int8_t Rr_I8;
-typedef int16_t Rr_I16;
-typedef int32_t Rr_I32;
-typedef int64_t Rr_I64;
-typedef float Rr_F32;
-typedef double Rr_F64;
-typedef intptr_t Rr_ISize;
-typedef uintptr_t Rr_USize;
-typedef const char *Rr_CString;
-
-typedef Rr_I32 Rr_Bool;
+typedef int32_t Rr_Bool;
 #define RR_FALSE 0
 #define RR_TRUE  1
 

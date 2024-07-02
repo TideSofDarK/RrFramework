@@ -6,8 +6,8 @@
 typedef struct Rr_AcquireBarriers Rr_AcquireBarriers;
 struct Rr_AcquireBarriers
 {
-    Rr_USize ImageMemoryBarrierCount;
-    Rr_USize BufferMemoryBarrierCount;
+    uintptr_t ImageMemoryBarrierCount;
+    uintptr_t BufferMemoryBarrierCount;
     VkImageMemoryBarrier *ImageMemoryBarriers;
     VkBufferMemoryBarrier *BufferMemoryBarriers;
 };

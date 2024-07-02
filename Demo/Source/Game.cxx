@@ -41,10 +41,10 @@ struct SEntity
 template <typename TGlobals, typename TMaterial, typename TDraw>
 struct TPipeline
 {
-  protected:
+protected:
     Rr_App *App;
 
-  public:
+public:
     using SGlobals = TGlobals;
     using SMaterial = TMaterial;
     using SDraw = TDraw;
@@ -194,8 +194,8 @@ struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
 
 struct SCamera
 {
-    Rr_F32 Pitch{};
-    Rr_F32 Yaw{};
+    float Pitch{};
+    float Yaw{};
     Rr_Vec3 Position{};
     Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
 
@@ -211,10 +211,10 @@ struct SCamera
 
     [[nodiscard]] Rr_Mat4 GetViewMatrix()
     {
-        Rr_F32 CosPitch = cos(Pitch * Rr_DegToRad);
-        Rr_F32 SinPitch = sin(Pitch * Rr_DegToRad);
-        Rr_F32 CosYaw = cos(Yaw * Rr_DegToRad);
-        Rr_F32 SinYaw = sin(Yaw * Rr_DegToRad);
+        float CosPitch = cos(Pitch * Rr_DegToRad);
+        float SinPitch = sin(Pitch * Rr_DegToRad);
+        float CosYaw = cos(Yaw * Rr_DegToRad);
+        float SinYaw = sin(Yaw * Rr_DegToRad);
 
         Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
         Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
@@ -245,7 +245,7 @@ struct SCamera
 
 struct SGame
 {
-  private:
+private:
     Rr_App *App{};
 
     std::array<Rr_InputMapping, EIA_COUNT> InputMappings{};
@@ -285,7 +285,7 @@ struct SGame
 
     bool bLoaded = false;
 
-  public:
+public:
     void InitInputMappings()
     {
         InputMappings[EIA_UP].Primary = RR_SCANCODE_W;
@@ -343,7 +343,7 @@ struct SGame
         auto [Keys, MousePosition, MousePositionDelta, MouseState] =
             Rr_GetInputState(App);
 
-        auto DeltaTime = static_cast<Rr_F32>(Rr_GetDeltaSeconds(App));
+        auto DeltaTime = static_cast<float>(Rr_GetDeltaSeconds(App));
 
         if (Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
         {
@@ -389,7 +389,7 @@ struct SGame
 
         Rr_Vec3 CameraForward = Camera.GetForwardVector();
         Rr_Vec3 CameraLeft = Camera.GetRightVector();
-        constexpr Rr_F32 CameraSpeed = 0.1f;
+        constexpr float CameraSpeed = 0.1f;
         if (Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
         {
             Camera.Position -= CameraForward * DeltaTime * CameraSpeed;
@@ -410,7 +410,7 @@ struct SGame
         if (MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
         {
             Rr_SetRelativeMouseMode(true);
-            constexpr Rr_F32 Sensitivity = 0.2f;
+            constexpr float Sensitivity = 0.2f;
             Camera.Yaw = Rr_WrapMax(
                 Camera.Yaw - (MousePositionDelta.X * Sensitivity),
                 360.0f);
@@ -451,9 +451,9 @@ struct SGame
         Rr_DrawContext *DrawContext = Rr_CreateDrawContext(
             App,
             &DrawContextInfo,
-            reinterpret_cast<Rr_Byte *>(&ShaderGlobals));
+            reinterpret_cast<char *>(&ShaderGlobals));
 
-        const auto Time = static_cast<Rr_F32>((Rr_GetTimeSeconds(App) * 2.0));
+        const auto Time = static_cast<float>((Rr_GetTimeSeconds(App) * 2.0));
 
         if (bLoaded)
         {
@@ -510,7 +510,7 @@ struct SGame
             // };
             // Rr_DrawContext* ShadowPassContext =
             //     Rr_CreateDrawContext(App, &ShadowPassContextInfo,
-            //     reinterpret_cast<Rr_Byte*>(&ShaderGlobals));
+            //     reinterpret_cast<char*>(&ShaderGlobals));
             // Rr_DrawStaticMesh(ShadowPassContext, ArrowMesh,
             // Rr_MakeData(ArrowDraw)); Rr_DrawStaticMeshOverrideMaterials(
             //     ShadowPassContext, &CottageMaterial, 1, CottageMesh,
@@ -523,7 +523,7 @@ struct SGame
         {
             if (LoadingContext != nullptr)
             {
-                Rr_U32 Current, Total;
+                uint32_t Current, Total;
                 Rr_GetLoadProgress(LoadingContext, &Current, &Total);
 
                 std::string Formatted =

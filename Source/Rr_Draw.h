@@ -18,7 +18,7 @@ struct Rr_DrawPrimitiveInfo
 {
     Rr_Material *Material;
     struct Rr_Primitive *Primitive;
-    Rr_U32 OffsetIntoDrawBuffer;
+    uint32_t OffsetIntoDrawBuffer;
 };
 
 typedef struct Rr_DrawTextInfo Rr_DrawTextInfo;
@@ -27,7 +27,7 @@ struct Rr_DrawTextInfo
     Rr_Font *Font;
     Rr_String String;
     Rr_Vec2 Position;
-    Rr_F32 Size;
+    float Size;
     Rr_DrawTextFlags Flags;
 };
 
@@ -41,6 +41,6 @@ struct Rr_DrawContext
     Rr_DrawContextInfo Info;
     Rr_DrawTextsSlice DrawTextsSlice;
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice;
-    Rr_Byte GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
+    char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
     Rr_Arena *Arena;
 };

@@ -16,7 +16,7 @@ struct Rr_PipelineBuilder
 {
     struct
     {
-        Rr_U32 VertexInputStride;
+        uint32_t VertexInputStride;
     } VertexInput[2];
     VkVertexInputAttributeDescription
         Attributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
@@ -30,9 +30,9 @@ struct Rr_PipelineBuilder
     VkPipelineDepthStencilStateCreateInfo DepthStencil;
     Rr_Asset VertexShaderSPV;
     Rr_Asset FragmentShaderSPV;
-    Rr_USize PushConstantsSize;
+    uintptr_t PushConstantsSize;
 
-    Rr_USize ColorAttachmentCount;
+    uintptr_t ColorAttachmentCount;
 };
 
 typedef enum Rr_VertexInputType
@@ -49,7 +49,7 @@ typedef struct Rr_VertexInputAttribute Rr_VertexInputAttribute;
 struct Rr_VertexInputAttribute
 {
     Rr_VertexInputType Type;
-    Rr_U32 Location;
+    uint32_t Location;
 };
 
 typedef struct Rr_VertexInput Rr_VertexInput;

@@ -15,21 +15,21 @@ struct Rr_Buffer
 
 extern Rr_Buffer *Rr_CreateBuffer(
     Rr_App *App,
-    Rr_USize Size,
+    uintptr_t Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
     Rr_Bool bHostMapped);
 
-extern Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, Rr_USize Size);
+extern Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, uintptr_t Size);
 
-extern Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, Rr_USize Size);
+extern Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, uintptr_t Size);
 
 extern Rr_Buffer *Rr_CreateMappedBuffer(
     Rr_App *App,
-    Rr_USize Size,
+    uintptr_t Size,
     VkBufferUsageFlags UsageFlags);
 
-extern Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, Rr_USize Size);
+extern Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, uintptr_t Size);
 
 extern void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer);
 
@@ -49,8 +49,8 @@ extern void Rr_UploadBufferAligned(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     void *Data,
-    Rr_USize DataLength,
-    Rr_USize Alignment);
+    uintptr_t DataLength,
+    uintptr_t Alignment);
 
 extern void Rr_UploadBuffer(
     Rr_App *App,
@@ -61,24 +61,24 @@ extern void Rr_UploadBuffer(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     void *Data,
-    Rr_USize DataLength);
+    uintptr_t DataLength);
 
 extern void Rr_UploadToDeviceBufferImmediate(
     Rr_App *App,
     Rr_Buffer *DstBuffer,
     void *Data,
-    Rr_USize Size);
+    uintptr_t Size);
 
 extern void Rr_UploadToUniformBuffer(
     Rr_App *App,
     struct Rr_UploadContext *UploadContext,
     Rr_Buffer *DstBuffer,
     void *Data,
-    Rr_USize DataLength);
+    uintptr_t DataLength);
 
 extern void Rr_CopyToMappedUniformBuffer(
     Rr_App *App,
     Rr_Buffer *DstBuffer,
     void *Data,
-    Rr_USize Size,
+    uintptr_t Size,
     VkDeviceSize *DstOffset);

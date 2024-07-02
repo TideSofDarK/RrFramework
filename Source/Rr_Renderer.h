@@ -26,7 +26,7 @@ struct Rr_Swapchain
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
     Rr_SwapchainImage Images[RR_MAX_SWAPCHAIN_IMAGE_COUNT];
-    Rr_U32 ImageCount;
+    uint32_t ImageCount;
     VkExtent2D Extent;
     SDL_AtomicInt bResizePending;
 };
@@ -90,8 +90,8 @@ struct Rr_Renderer
 
     /* Frames */
     Rr_Frame Frames[RR_FRAME_OVERLAP];
-    Rr_USize FrameNumber;
-    Rr_USize CurrentFrameIndex;
+    uintptr_t FrameNumber;
+    uintptr_t CurrentFrameIndex;
 
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
@@ -120,7 +120,7 @@ struct Rr_Renderer
     /* Retired Semaphores */
     Rr_SliceType(struct Rr_RetiredSemaphore {
         VkSemaphore Semaphore;
-        Rr_USize FrameIndex;
+        uintptr_t FrameIndex;
     }) RetiredSemaphoresSlice;
 
     /* Pending Loads */

@@ -9,7 +9,7 @@ typedef struct Rr_DescriptorPoolSizeRatio Rr_DescriptorPoolSizeRatio;
 struct Rr_DescriptorPoolSizeRatio
 {
     VkDescriptorType Type;
-    Rr_F32 Ratio;
+    float Ratio;
 };
 
 typedef struct Rr_DescriptorAllocator Rr_DescriptorAllocator;
@@ -19,7 +19,7 @@ struct Rr_DescriptorAllocator
     Rr_SliceType(Rr_DescriptorPoolSizeRatio) Ratios;
     Rr_SliceType(VkDescriptorPool) FullPools;
     Rr_SliceType(VkDescriptorPool) ReadyPools;
-    Rr_USize SetsPerPool;
+    uintptr_t SetsPerPool;
 };
 
 typedef enum Rr_DescriptorWriterEntryType
@@ -32,7 +32,7 @@ typedef struct Rr_DescriptorWriterEntry Rr_DescriptorWriterEntry;
 struct Rr_DescriptorWriterEntry
 {
     Rr_DescriptorWriterEntryType Type;
-    Rr_USize Index;
+    uintptr_t Index;
 };
 
 typedef struct Rr_DescriptorWriter Rr_DescriptorWriter;
@@ -54,9 +54,9 @@ typedef enum Rr_GenericDescriptorSetLayout
 
 extern Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
     VkDevice Device,
-    Rr_USize MaxSets,
+    uintptr_t MaxSets,
     Rr_DescriptorPoolSizeRatio *Ratios,
-    Rr_USize RatioCount,
+    uintptr_t RatioCount,
     Rr_Arena *Arena);
 
 extern VkDescriptorSet Rr_AllocateDescriptorSet(
@@ -73,13 +73,13 @@ extern void Rr_DestroyDescriptorAllocator(
     VkDevice Device);
 
 extern Rr_DescriptorWriter Rr_CreateDescriptorWriter(
-    Rr_USize Images,
-    Rr_USize Buffers,
+    uintptr_t Images,
+    uintptr_t Buffers,
     struct Rr_Arena *Arena);
 
 extern void Rr_WriteImageDescriptor(
     Rr_DescriptorWriter *Writer,
-    Rr_U32 Binding,
+    uint32_t Binding,
     VkImageView View,
     VkSampler Sampler,
     VkImageLayout Layout,
@@ -88,8 +88,8 @@ extern void Rr_WriteImageDescriptor(
 
 extern void Rr_WriteImageDescriptorAt(
     Rr_DescriptorWriter *Writer,
-    Rr_U32 Binding,
-    Rr_U32 Index,
+    uint32_t Binding,
+    uint32_t Index,
     VkImageView View,
     VkSampler Sampler,
     VkImageLayout Layout,
@@ -98,10 +98,10 @@ extern void Rr_WriteImageDescriptorAt(
 
 extern void Rr_WriteBufferDescriptor(
     Rr_DescriptorWriter *Writer,
-    Rr_U32 Binding,
+    uint32_t Binding,
     VkBuffer Buffer,
-    Rr_USize Size,
-    Rr_USize Offset,
+    uintptr_t Size,
+    uintptr_t Offset,
     VkDescriptorType Type,
     struct Rr_Arena *Arena);
 
@@ -116,18 +116,18 @@ typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 struct Rr_DescriptorLayoutBuilder
 {
     VkDescriptorSetLayoutBinding Bindings[RR_MAX_LAYOUT_BINDINGS];
-    Rr_U32 Count;
+    uint32_t Count;
 };
 
 extern void Rr_AddDescriptor(
     Rr_DescriptorLayoutBuilder *Builder,
-    Rr_U32 Binding,
+    uint32_t Binding,
     VkDescriptorType Type);
 
 extern void Rr_AddDescriptorArray(
     Rr_DescriptorLayoutBuilder *Builder,
-    Rr_U32 Binding,
-    Rr_U32 Count,
+    uint32_t Binding,
+    uint32_t Count,
     VkDescriptorType Type);
 
 extern void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder *Builder);

@@ -95,12 +95,12 @@ extern "C" {
 #define RR_TURNHALF   0.5
 #define RR_TURNHALF32 0.5f
 
-#define Rr_RadToDeg  (Rr_StaticCast(Rr_F32, RR_DEG180 / RR_PI))
-#define Rr_RadToTurn (Rr_StaticCast(Rr_F32, RR_TURNHALF / RR_PI))
-#define Rr_DegToRad  (Rr_StaticCast(Rr_F32, RR_PI / RR_DEG180))
-#define Rr_DegToTurn (Rr_StaticCast(Rr_F32, RR_TURNHALF / RR_DEG180))
-#define Rr_TurnToRad (Rr_StaticCast(Rr_F32, RR_PI / RR_TURNHALF))
-#define Rr_TurnToDeg (Rr_StaticCast(Rr_F32, RR_DEG180 / RR_TURNHALF))
+#define Rr_RadToDeg  (Rr_StaticCast(float, RR_DEG180 / RR_PI))
+#define Rr_RadToTurn (Rr_StaticCast(float, RR_TURNHALF / RR_PI))
+#define Rr_DegToRad  (Rr_StaticCast(float, RR_PI / RR_DEG180))
+#define Rr_DegToTurn (Rr_StaticCast(float, RR_TURNHALF / RR_DEG180))
+#define Rr_TurnToRad (Rr_StaticCast(float, RR_PI / RR_TURNHALF))
+#define Rr_TurnToDeg (Rr_StaticCast(float, RR_DEG180 / RR_TURNHALF))
 
 #if defined(RR_MATH_USE_RADIANS)
 #define Rr_AngleRad(a)  (a)
@@ -149,29 +149,29 @@ typedef union Rr_Vec2
 {
     struct
     {
-        Rr_F32 X, Y;
+        float X, Y;
     };
 
     struct
     {
-        Rr_F32 U, V;
+        float U, V;
     };
 
     struct
     {
-        Rr_F32 Left, Right;
+        float Left, Right;
     };
 
     struct
     {
-        Rr_F32 Width, Height;
+        float Width, Height;
     };
 
-    Rr_F32 Elements[2];
+    float Elements[2];
 
 #ifdef __cplusplus
-    inline Rr_F32 &operator[](Rr_I32 Index) { return Elements[Index]; }
-    inline const Rr_F32 &operator[](Rr_I32 Index) const
+    inline float &operator[](int32_t Index) { return Elements[Index]; }
+    inline const float &operator[](int32_t Index) const
     {
         return Elements[Index];
     }
@@ -182,48 +182,48 @@ typedef union Rr_Vec3
 {
     struct
     {
-        Rr_F32 X, Y, Z;
+        float X, Y, Z;
     };
 
     struct
     {
-        Rr_F32 U, V, W;
+        float U, V, W;
     };
 
     struct
     {
-        Rr_F32 R, G, B;
+        float R, G, B;
     };
 
     struct
     {
         Rr_Vec2 XY;
-        Rr_F32 _Ignored0;
+        float _Ignored0;
     };
 
     struct
     {
-        Rr_F32 _Ignored1;
+        float _Ignored1;
         Rr_Vec2 YZ;
     };
 
     struct
     {
         Rr_Vec2 UV;
-        Rr_F32 _Ignored2;
+        float _Ignored2;
     };
 
     struct
     {
-        Rr_F32 _Ignored3;
+        float _Ignored3;
         Rr_Vec2 VW;
     };
 
-    Rr_F32 Elements[3];
+    float Elements[3];
 
 #ifdef __cplusplus
-    inline Rr_F32 &operator[](Rr_I32 Index) { return Elements[Index]; }
-    inline const Rr_F32 &operator[](Rr_I32 Index) const
+    inline float &operator[](int32_t Index) { return Elements[Index]; }
+    inline const float &operator[](int32_t Index) const
     {
         return Elements[Index];
     }
@@ -239,11 +239,11 @@ typedef union Rr_Vec4
             Rr_Vec3 XYZ;
             struct
             {
-                Rr_F32 X, Y, Z;
+                float X, Y, Z;
             };
         };
 
-        Rr_F32 W;
+        float W;
     };
     struct
     {
@@ -252,47 +252,47 @@ typedef union Rr_Vec4
             Rr_Vec3 RGB;
             struct
             {
-                Rr_F32 R, G, B;
+                float R, G, B;
             };
         };
 
-        Rr_F32 A;
+        float A;
     };
 
     struct
     {
         Rr_Vec2 XY;
-        Rr_F32 _Ignored0;
-        Rr_F32 _Ignored1;
+        float _Ignored0;
+        float _Ignored1;
     };
 
     struct
     {
-        Rr_F32 _Ignored2;
+        float _Ignored2;
         Rr_Vec2 YZ;
-        Rr_F32 _Ignored3;
+        float _Ignored3;
     };
 
     struct
     {
-        Rr_F32 _Ignored4;
-        Rr_F32 _Ignored5;
+        float _Ignored4;
+        float _Ignored5;
         Rr_Vec2 ZW;
     };
 
-    Rr_F32 Elements[4];
+    float Elements[4];
 
 #ifdef RR_MATH__USE_SSE
     __m128 SSE;
 #endif
 
 #ifdef RR_MATH__USE_NEON
-    Rr_F3232x4_t NEON;
+    float32x4_t NEON;
 #endif
 
 #ifdef __cplusplus
-    inline Rr_F32 &operator[](Rr_I32 Index) { return Elements[Index]; }
-    inline const Rr_F32 &operator[](Rr_I32 Index) const
+    inline float &operator[](int32_t Index) { return Elements[Index]; }
+    inline const float &operator[](int32_t Index) const
     {
         return Elements[Index];
     }
@@ -303,29 +303,29 @@ typedef union Rr_IntVec2
 {
     struct
     {
-        Rr_I32 X, Y;
+        int32_t X, Y;
     };
 
     struct
     {
-        Rr_I32 U, V;
+        int32_t U, V;
     };
 
     struct
     {
-        Rr_I32 Left, Right;
+        int32_t Left, Right;
     };
 
     struct
     {
-        Rr_I32 Width, Height;
+        int32_t Width, Height;
     };
 
-    Rr_I32 Elements[2];
+    int32_t Elements[2];
 
 #ifdef __cplusplus
-    inline Rr_I32 &operator[](Rr_I32 Index) { return Elements[Index]; }
-    inline const Rr_I32 &operator[](Rr_I32 Index) const
+    inline int32_t &operator[](int32_t Index) { return Elements[Index]; }
+    inline const int32_t &operator[](int32_t Index) const
     {
         return Elements[Index];
     }
@@ -336,48 +336,48 @@ typedef union Rr_IntVec3
 {
     struct
     {
-        Rr_I32 X, Y, Z;
+        int32_t X, Y, Z;
     };
 
     struct
     {
-        Rr_I32 U, V, W;
+        int32_t U, V, W;
     };
 
     struct
     {
-        Rr_I32 R, G, B;
+        int32_t R, G, B;
     };
 
     struct
     {
         Rr_IntVec2 XY;
-        Rr_I32 _Ignored0;
+        int32_t _Ignored0;
     };
 
     struct
     {
-        Rr_I32 _Ignored1;
+        int32_t _Ignored1;
         Rr_Vec2 YZ;
     };
 
     struct
     {
         Rr_IntVec2 UV;
-        Rr_I32 _Ignored2;
+        int32_t _Ignored2;
     };
 
     struct
     {
-        Rr_I32 _Ignored3;
+        int32_t _Ignored3;
         Rr_IntVec2 VW;
     };
 
-    Rr_I32 Elements[3];
+    int32_t Elements[3];
 
 #ifdef __cplusplus
-    inline Rr_I32 &operator[](Rr_I32 Index) { return Elements[Index]; }
-    inline const Rr_I32 &operator[](Rr_I32 Index) const
+    inline int32_t &operator[](int32_t Index) { return Elements[Index]; }
+    inline const int32_t &operator[](int32_t Index) const
     {
         return Elements[Index];
     }
@@ -395,20 +395,20 @@ typedef union Rr_IntVec4
             {
                 struct
                 {
-                    Rr_I32 X, Y;
+                    int32_t X, Y;
                 };
                 union
                 {
-                    Rr_I32 Z;
-                    Rr_I32 Width;
+                    int32_t Z;
+                    int32_t Width;
                 };
             };
         };
 
         union
         {
-            Rr_I32 W;
-            Rr_I32 Height;
+            int32_t W;
+            int32_t Height;
         };
     };
     struct
@@ -418,39 +418,39 @@ typedef union Rr_IntVec4
             Rr_IntVec3 RGB;
             struct
             {
-                Rr_I32 R, G, B;
+                int32_t R, G, B;
             };
         };
 
-        Rr_I32 A;
+        int32_t A;
     };
 
     struct
     {
         Rr_IntVec2 XY;
-        Rr_I32 _Ignored0;
-        Rr_I32 _Ignored1;
+        int32_t _Ignored0;
+        int32_t _Ignored1;
     };
 
     struct
     {
-        Rr_I32 _Ignored2;
+        int32_t _Ignored2;
         Rr_IntVec2 YZ;
-        Rr_I32 _Ignored3;
+        int32_t _Ignored3;
     };
 
     struct
     {
-        Rr_I32 _Ignored4;
-        Rr_I32 _Ignored5;
+        int32_t _Ignored4;
+        int32_t _Ignored5;
         Rr_IntVec2 ZW;
     };
 
-    Rr_I32 Elements[4];
+    int32_t Elements[4];
 
 #ifdef __cplusplus
-    inline Rr_I32 &operator[](Rr_I32 Index) { return Elements[Index]; }
-    inline const Rr_I32 &operator[](Rr_I32 Index) const
+    inline int32_t &operator[](int32_t Index) { return Elements[Index]; }
+    inline const int32_t &operator[](int32_t Index) const
     {
         return Elements[Index];
     }
@@ -459,12 +459,12 @@ typedef union Rr_IntVec4
 
 typedef union Rr_Mat2
 {
-    Rr_F32 Elements[2][2];
+    float Elements[2][2];
     Rr_Vec2 Columns[2];
 
 #ifdef __cplusplus
-    inline Rr_Vec2 &operator[](Rr_I32 Index) { return Columns[Index]; }
-    inline const Rr_Vec2 &operator[](Rr_I32 Index) const
+    inline Rr_Vec2 &operator[](int32_t Index) { return Columns[Index]; }
+    inline const Rr_Vec2 &operator[](int32_t Index) const
     {
         return Columns[Index];
     }
@@ -473,12 +473,12 @@ typedef union Rr_Mat2
 
 typedef union Rr_Mat3
 {
-    Rr_F32 Elements[3][3];
+    float Elements[3][3];
     Rr_Vec3 Columns[3];
 
 #ifdef __cplusplus
-    inline Rr_Vec3 &operator[](Rr_I32 Index) { return Columns[Index]; }
-    inline const Rr_Vec3 &operator[](Rr_I32 Index) const
+    inline Rr_Vec3 &operator[](int32_t Index) { return Columns[Index]; }
+    inline const Rr_Vec3 &operator[](int32_t Index) const
     {
         return Columns[Index];
     }
@@ -487,12 +487,12 @@ typedef union Rr_Mat3
 
 typedef union Rr_Mat4
 {
-    Rr_F32 Elements[4][4];
+    float Elements[4][4];
     Rr_Vec4 Columns[4];
 
 #ifdef __cplusplus
-    inline Rr_Vec4 &operator[](Rr_I32 Index) { return Columns[Index]; }
-    inline const Rr_Vec4 &operator[](Rr_I32 Index) const
+    inline Rr_Vec4 &operator[](int32_t Index) { return Columns[Index]; }
+    inline const Rr_Vec4 &operator[](int32_t Index) const
     {
         return Columns[Index];
     }
@@ -508,60 +508,60 @@ typedef union Rr_Quat
             Rr_Vec3 XYZ;
             struct
             {
-                Rr_F32 X, Y, Z;
+                float X, Y, Z;
             };
         };
 
-        Rr_F32 W;
+        float W;
     };
 
-    Rr_F32 Elements[4];
+    float Elements[4];
 
 #ifdef RR_MATH__USE_SSE
     __m128 SSE;
 #endif
 #ifdef RR_MATH__USE_NEON
-    Rr_F3232x4_t NEON;
+    float32x4_t NEON;
 #endif
 } Rr_Quat;
 
 /*
  * Angle unit conversion functions
  */
-static inline Rr_F32 Rr_ToRad(Rr_F32 Angle)
+static inline float Rr_ToRad(float Angle)
 {
 #if defined(RR_MATH_USE_RADIANS)
-    Rr_F32 Result = Angle;
+    float Result = Angle;
 #elif defined(RR_MATH_USE_DEGREES)
-    Rr_F32 Result = Angle * Rr_DegToRad;
+    float Result = Angle * Rr_DegToRad;
 #elif defined(RR_MATH_USE_TURNS)
-    Rr_F32 Result = Angle * Rr_TurnToRad;
+    float Result = Angle * Rr_TurnToRad;
 #endif
 
     return Result;
 }
 
-static inline Rr_F32 Rr_ToDeg(Rr_F32 Angle)
+static inline float Rr_ToDeg(float Angle)
 {
 #if defined(RR_MATH_USE_RADIANS)
-    Rr_F32 Result = Angle * Rr_RadToDeg;
+    float Result = Angle * Rr_RadToDeg;
 #elif defined(RR_MATH_USE_DEGREES)
-    Rr_F32 Result = Angle;
+    float Result = Angle;
 #elif defined(RR_MATH_USE_TURNS)
-    Rr_F32 Result = Angle * Rr_TurnToDeg;
+    float Result = Angle * Rr_TurnToDeg;
 #endif
 
     return Result;
 }
 
-static inline Rr_F32 Rr_ToTurn(Rr_F32 Angle)
+static inline float Rr_ToTurn(float Angle)
 {
 #if defined(RR_MATH_USE_RADIANS)
-    Rr_F32 Result = Angle * Rr_RadToTurn;
+    float Result = Angle * Rr_RadToTurn;
 #elif defined(RR_MATH_USE_DEGREES)
-    Rr_F32 Result = Angle * Rr_DegToTurn;
+    float Result = Angle * Rr_DegToTurn;
 #elif defined(RR_MATH_USE_TURNS)
-    Rr_F32 Result = Angle;
+    float Result = Angle;
 #endif
 
     return Result;
@@ -572,47 +572,47 @@ static inline Rr_F32 Rr_ToTurn(Rr_F32 Angle)
  */
 
 COVERAGE(Rr_SinF, 1)
-static inline Rr_F32 Rr_SinF(Rr_F32 Angle)
+static inline float Rr_SinF(float Angle)
 {
     ASSERT_COVERED(Rr_SinF);
     return Rr_SINF(Rr_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
 COVERAGE(Rr_CosF, 1)
-static inline Rr_F32 Rr_CosF(Rr_F32 Angle)
+static inline float Rr_CosF(float Angle)
 {
     ASSERT_COVERED(Rr_CosF);
     return Rr_COSF(Rr_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
 COVERAGE(Rr_TanF, 1)
-static inline Rr_F32 Rr_TanF(Rr_F32 Angle)
+static inline float Rr_TanF(float Angle)
 {
     ASSERT_COVERED(Rr_TanF);
     return Rr_TANF(Rr_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
 COVERAGE(Rr_ACosF, 1)
-static inline Rr_F32 Rr_ACosF(Rr_F32 Arg)
+static inline float Rr_ACosF(float Arg)
 {
     ASSERT_COVERED(Rr_ACosF);
     return Rr_ANGLE_INTERNAL_TO_USER(Rr_ACOSF(Arg));
 }
 
 COVERAGE(Rr_SqrtF, 1)
-static inline Rr_F32 Rr_SqrtF(Rr_F32 Float)
+static inline float Rr_SqrtF(float Float)
 {
     ASSERT_COVERED(Rr_SqrtF);
 
-    Rr_F32 Result;
+    float Result;
 
 #ifdef RR_MATH__USE_SSE
     __m128 In = _mm_set_ss(Float);
     __m128 Out = _mm_sqrt_ss(In);
     Result = _mm_cvtss_f32(Out);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t In = vdupq_n_f32(Float);
-    Rr_F3232x4_t Out = vsqrtq_f32(In);
+    float32x4_t In = vdupq_n_f32(Float);
+    float32x4_t Out = vsqrtq_f32(In);
     Result = vgetq_lane_f32(Out, 0);
 #else
     Result = Rr_SQRTF(Float);
@@ -622,11 +622,11 @@ static inline Rr_F32 Rr_SqrtF(Rr_F32 Float)
 }
 
 COVERAGE(Rr_InvSqrtF, 1)
-static inline Rr_F32 Rr_InvSqrtF(Rr_F32 Float)
+static inline float Rr_InvSqrtF(float Float)
 {
     ASSERT_COVERED(Rr_InvSqrtF);
 
-    Rr_F32 Result;
+    float Result;
 
     Result = 1.0f / Rr_SqrtF(Float);
 
@@ -637,14 +637,14 @@ static inline Rr_F32 Rr_InvSqrtF(Rr_F32 Float)
  * RrFramework functions
  */
 
-static inline Rr_F32 Rr_GetVerticalFoV(
-    const Rr_F32 HorizontalFoV,
-    const Rr_F32 Aspect)
+static inline float Rr_GetVerticalFoV(
+    const float HorizontalFoV,
+    const float Aspect)
 {
     return 2.0f * atanf((tanf(HorizontalFoV / 2.0f) * Aspect));
 }
 
-static inline void Rr_PerspectiveResize(Rr_F32 Aspect, Rr_Mat4 *Proj)
+static inline void Rr_PerspectiveResize(float Aspect, Rr_Mat4 *Proj)
 {
     if (Proj->Elements[0][0] == 0.0f)
     {
@@ -666,7 +666,7 @@ static inline Rr_Mat4 Rr_VulkanMatrix()
 
 static inline Rr_Mat4 Rr_EulerXYZ(Rr_Vec3 Angles)
 {
-    Rr_F32 CosX, CosY, CosZ, SinX, SinY, SinZ, CosZSinX, CosXCosZ, SinYSinZ;
+    float CosX, CosY, CosZ, SinX, SinY, SinZ, CosZSinX, CosXCosZ, SinYSinZ;
 
     Rr_Mat4 Out;
 
@@ -706,18 +706,18 @@ static inline Rr_Mat4 Rr_EulerXYZ(Rr_Vec3 Angles)
  */
 
 COVERAGE(Rr_Lerp, 1)
-static inline Rr_F32 Rr_Lerp(Rr_F32 A, Rr_F32 Time, Rr_F32 B)
+static inline float Rr_Lerp(float A, float Time, float B)
 {
     ASSERT_COVERED(Rr_Lerp);
     return (1.0f - Time) * A + Time * B;
 }
 
 COVERAGE(Rr_Clamp, 1)
-static inline Rr_F32 Rr_Clamp(Rr_F32 Min, Rr_F32 Value, Rr_F32 Max)
+static inline float Rr_Clamp(float Min, float Value, float Max)
 {
     ASSERT_COVERED(Rr_Clamp);
 
-    Rr_F32 Result = Value;
+    float Result = Value;
 
     if (Result < Min)
     {
@@ -737,7 +737,7 @@ static inline Rr_F32 Rr_Clamp(Rr_F32 Min, Rr_F32 Value, Rr_F32 Max)
  */
 
 COVERAGE(Rr_V2, 1)
-static inline Rr_Vec2 Rr_V2(Rr_F32 X, Rr_F32 Y)
+static inline Rr_Vec2 Rr_V2(float X, float Y)
 {
     ASSERT_COVERED(Rr_V2);
 
@@ -749,7 +749,7 @@ static inline Rr_Vec2 Rr_V2(Rr_F32 X, Rr_F32 Y)
 }
 
 COVERAGE(Rr_V3, 1)
-static inline Rr_Vec3 Rr_V3(Rr_F32 X, Rr_F32 Y, Rr_F32 Z)
+static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
 {
     ASSERT_COVERED(Rr_V3);
 
@@ -762,7 +762,7 @@ static inline Rr_Vec3 Rr_V3(Rr_F32 X, Rr_F32 Y, Rr_F32 Z)
 }
 
 COVERAGE(Rr_V4, 1)
-static inline Rr_Vec4 Rr_V4(Rr_F32 X, Rr_F32 Y, Rr_F32 Z, Rr_F32 W)
+static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
 {
     ASSERT_COVERED(Rr_V4);
 
@@ -771,7 +771,7 @@ static inline Rr_Vec4 Rr_V4(Rr_F32 X, Rr_F32 Y, Rr_F32 Z, Rr_F32 W)
 #ifdef RR_MATH__USE_SSE
     Result.SSE = _mm_setr_ps(X, Y, Z, W);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t v = { X, Y, Z, W };
+    float32x4_t v = { X, Y, Z, W };
     Result.NEON = v;
 #else
     Result.X = X;
@@ -784,7 +784,7 @@ static inline Rr_Vec4 Rr_V4(Rr_F32 X, Rr_F32 Y, Rr_F32 Z, Rr_F32 W)
 }
 
 COVERAGE(Rr_V4V, 1)
-static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, Rr_F32 W)
+static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, float W)
 {
     ASSERT_COVERED(Rr_V4V);
 
@@ -793,7 +793,7 @@ static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, Rr_F32 W)
 #ifdef RR_MATH__USE_SSE
     Result.SSE = _mm_setr_ps(Vector.X, Vector.Y, Vector.Z, W);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t v = { Vector.X, Vector.Y, Vector.Z, W };
+    float32x4_t v = { Vector.X, Vector.Y, Vector.Z, W };
     Result.NEON = v;
 #else
     Result.XYZ = Vector;
@@ -912,7 +912,7 @@ static inline Rr_Vec2 Rr_MulV2(Rr_Vec2 Left, Rr_Vec2 Right)
 }
 
 COVERAGE(Rr_MulV2F, 1)
-static inline Rr_Vec2 Rr_MulV2F(Rr_Vec2 Left, Rr_F32 Right)
+static inline Rr_Vec2 Rr_MulV2F(Rr_Vec2 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV2F);
 
@@ -937,7 +937,7 @@ static inline Rr_Vec3 Rr_MulV3(Rr_Vec3 Left, Rr_Vec3 Right)
 }
 
 COVERAGE(Rr_MulV3F, 1)
-static inline Rr_Vec3 Rr_MulV3F(Rr_Vec3 Left, Rr_F32 Right)
+static inline Rr_Vec3 Rr_MulV3F(Rr_Vec3 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV3F);
 
@@ -971,7 +971,7 @@ static inline Rr_Vec4 Rr_MulV4(Rr_Vec4 Left, Rr_Vec4 Right)
 }
 
 COVERAGE(Rr_MulV4F, 1)
-static inline Rr_Vec4 Rr_MulV4F(Rr_Vec4 Left, Rr_F32 Right)
+static inline Rr_Vec4 Rr_MulV4F(Rr_Vec4 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV4F);
 
@@ -1005,7 +1005,7 @@ static inline Rr_Vec2 Rr_DivV2(Rr_Vec2 Left, Rr_Vec2 Right)
 }
 
 COVERAGE(Rr_DivV2F, 1)
-static inline Rr_Vec2 Rr_DivV2F(Rr_Vec2 Left, Rr_F32 Right)
+static inline Rr_Vec2 Rr_DivV2F(Rr_Vec2 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV2F);
 
@@ -1030,7 +1030,7 @@ static inline Rr_Vec3 Rr_DivV3(Rr_Vec3 Left, Rr_Vec3 Right)
 }
 
 COVERAGE(Rr_DivV3F, 1)
-static inline Rr_Vec3 Rr_DivV3F(Rr_Vec3 Left, Rr_F32 Right)
+static inline Rr_Vec3 Rr_DivV3F(Rr_Vec3 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV3F);
 
@@ -1064,7 +1064,7 @@ static inline Rr_Vec4 Rr_DivV4(Rr_Vec4 Left, Rr_Vec4 Right)
 }
 
 COVERAGE(Rr_DivV4F, 1)
-static inline Rr_Vec4 Rr_DivV4F(Rr_Vec4 Left, Rr_F32 Right)
+static inline Rr_Vec4 Rr_DivV4F(Rr_Vec4 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV4F);
 
@@ -1074,7 +1074,7 @@ static inline Rr_Vec4 Rr_DivV4F(Rr_Vec4 Left, Rr_F32 Right)
     __m128 Scalar = _mm_set1_ps(Right);
     Result.SSE = _mm_div_ps(Left.SSE, Scalar);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t Scalar = vdupq_n_f32(Right);
+    float32x4_t Scalar = vdupq_n_f32(Right);
     Result.NEON = vdivq_f32(Left.NEON, Scalar);
 #else
     Result.X = Left.X / Right;
@@ -1114,25 +1114,25 @@ static inline Rr_Bool Rr_EqIV3(Rr_IntVec3 Left, Rr_IntVec3 Right)
 }
 
 COVERAGE(Rr_DotV2, 1)
-static inline Rr_F32 Rr_DotV2(Rr_Vec2 Left, Rr_Vec2 Right)
+static inline float Rr_DotV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_DotV2);
     return (Left.X * Right.X) + (Left.Y * Right.Y);
 }
 
 COVERAGE(Rr_DotV3, 1)
-static inline Rr_F32 Rr_DotV3(Rr_Vec3 Left, Rr_Vec3 Right)
+static inline float Rr_DotV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_DotV3);
     return (Left.X * Right.X) + (Left.Y * Right.Y) + (Left.Z * Right.Z);
 }
 
 COVERAGE(Rr_DotV4, 1)
-static inline Rr_F32 Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
+static inline float Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_DotV4);
 
-    Rr_F32 Result;
+    float Result;
 
     // NOTE(zak): IN the future if we wanna check what version SSE is support
     // we can use _mm_dp_ps (4.3) but for now we will use the old way.
@@ -1148,10 +1148,10 @@ static inline Rr_F32 Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
     SSEResultOne = _mm_add_ps(SSEResultOne, SSEResultTwo);
     _mm_store_ss(&Result, SSEResultOne);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t NEONMultiplyResult = vmulq_f32(Left.NEON, Right.NEON);
-    Rr_F3232x4_t NEONHalfAdd =
+    float32x4_t NEONMultiplyResult = vmulq_f32(Left.NEON, Right.NEON);
+    float32x4_t NEONHalfAdd =
         vpaddq_f32(NEONMultiplyResult, NEONMultiplyResult);
-    Rr_F3232x4_t NEONFullAdd = vpaddq_f32(NEONHalfAdd, NEONHalfAdd);
+    float32x4_t NEONFullAdd = vpaddq_f32(NEONHalfAdd, NEONHalfAdd);
     Result = vgetq_lane_f32(NEONFullAdd, 0);
 #else
     Result = ((Left.X * Right.X) + (Left.Z * Right.Z)) +
@@ -1179,42 +1179,42 @@ static inline Rr_Vec3 Rr_Cross(Rr_Vec3 Left, Rr_Vec3 Right)
  */
 
 COVERAGE(Rr_LenSqrV2, 1)
-static inline Rr_F32 Rr_LenSqrV2(Rr_Vec2 A)
+static inline float Rr_LenSqrV2(Rr_Vec2 A)
 {
     ASSERT_COVERED(Rr_LenSqrV2);
     return Rr_DotV2(A, A);
 }
 
 COVERAGE(Rr_LenSqrV3, 1)
-static inline Rr_F32 Rr_LenSqrV3(Rr_Vec3 A)
+static inline float Rr_LenSqrV3(Rr_Vec3 A)
 {
     ASSERT_COVERED(Rr_LenSqrV3);
     return Rr_DotV3(A, A);
 }
 
 COVERAGE(Rr_LenSqrV4, 1)
-static inline Rr_F32 Rr_LenSqrV4(Rr_Vec4 A)
+static inline float Rr_LenSqrV4(Rr_Vec4 A)
 {
     ASSERT_COVERED(Rr_LenSqrV4);
     return Rr_DotV4(A, A);
 }
 
 COVERAGE(Rr_LenV2, 1)
-static inline Rr_F32 Rr_LenV2(Rr_Vec2 A)
+static inline float Rr_LenV2(Rr_Vec2 A)
 {
     ASSERT_COVERED(Rr_LenV2);
     return Rr_SqrtF(Rr_LenSqrV2(A));
 }
 
 COVERAGE(Rr_LenV3, 1)
-static inline Rr_F32 Rr_LenV3(Rr_Vec3 A)
+static inline float Rr_LenV3(Rr_Vec3 A)
 {
     ASSERT_COVERED(Rr_LenV3);
     return Rr_SqrtF(Rr_LenSqrV3(A));
 }
 
 COVERAGE(Rr_LenV4, 1)
-static inline Rr_F32 Rr_LenV4(Rr_Vec4 A)
+static inline float Rr_LenV4(Rr_Vec4 A)
 {
     ASSERT_COVERED(Rr_LenV4);
     return Rr_SqrtF(Rr_LenSqrV4(A));
@@ -1246,21 +1246,21 @@ static inline Rr_Vec4 Rr_NormV4(Rr_Vec4 A)
  */
 
 COVERAGE(Rr_LerpV2, 1)
-static inline Rr_Vec2 Rr_LerpV2(Rr_Vec2 A, Rr_F32 Time, Rr_Vec2 B)
+static inline Rr_Vec2 Rr_LerpV2(Rr_Vec2 A, float Time, Rr_Vec2 B)
 {
     ASSERT_COVERED(Rr_LerpV2);
     return Rr_AddV2(Rr_MulV2F(A, 1.0f - Time), Rr_MulV2F(B, Time));
 }
 
 COVERAGE(Rr_LerpV3, 1)
-static inline Rr_Vec3 Rr_LerpV3(Rr_Vec3 A, Rr_F32 Time, Rr_Vec3 B)
+static inline Rr_Vec3 Rr_LerpV3(Rr_Vec3 A, float Time, Rr_Vec3 B)
 {
     ASSERT_COVERED(Rr_LerpV3);
     return Rr_AddV3(Rr_MulV3F(A, 1.0f - Time), Rr_MulV3F(B, Time));
 }
 
 COVERAGE(Rr_LerpV4, 1)
-static inline Rr_Vec4 Rr_LerpV4(Rr_Vec4 A, Rr_F32 Time, Rr_Vec4 B)
+static inline Rr_Vec4 Rr_LerpV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
 {
     ASSERT_COVERED(Rr_LerpV4);
     return Rr_AddV4(Rr_MulV4F(A, 1.0f - Time), Rr_MulV4F(B, Time));
@@ -1341,7 +1341,7 @@ static inline Rr_Mat2 Rr_M2(void)
 }
 
 COVERAGE(Rr_M2D, 1)
-static inline Rr_Mat2 Rr_M2D(Rr_F32 Diagonal)
+static inline Rr_Mat2 Rr_M2D(float Diagonal)
 {
     ASSERT_COVERED(Rr_M2D);
 
@@ -1424,7 +1424,7 @@ static inline Rr_Mat2 Rr_MulM2(Rr_Mat2 Left, Rr_Mat2 Right)
 }
 
 COVERAGE(Rr_MulM2F, 1)
-static inline Rr_Mat2 Rr_MulM2F(Rr_Mat2 Matrix, Rr_F32 Scalar)
+static inline Rr_Mat2 Rr_MulM2F(Rr_Mat2 Matrix, float Scalar)
 {
     ASSERT_COVERED(Rr_MulM2F);
 
@@ -1439,7 +1439,7 @@ static inline Rr_Mat2 Rr_MulM2F(Rr_Mat2 Matrix, Rr_F32 Scalar)
 }
 
 COVERAGE(Rr_DivM2F, 1)
-static inline Rr_Mat2 Rr_DivM2F(Rr_Mat2 Matrix, Rr_F32 Scalar)
+static inline Rr_Mat2 Rr_DivM2F(Rr_Mat2 Matrix, float Scalar)
 {
     ASSERT_COVERED(Rr_DivM2F);
 
@@ -1454,7 +1454,7 @@ static inline Rr_Mat2 Rr_DivM2F(Rr_Mat2 Matrix, Rr_F32 Scalar)
 }
 
 COVERAGE(Rr_DeterminantM2, 1)
-static inline Rr_F32 Rr_DeterminantM2(Rr_Mat2 Matrix)
+static inline float Rr_DeterminantM2(Rr_Mat2 Matrix)
 {
     ASSERT_COVERED(Rr_DeterminantM2);
     return Matrix.Elements[0][0] * Matrix.Elements[1][1] -
@@ -1467,7 +1467,7 @@ static inline Rr_Mat2 Rr_InvGeneralM2(Rr_Mat2 Matrix)
     ASSERT_COVERED(Rr_InvGeneralM2);
 
     Rr_Mat2 Result;
-    Rr_F32 InvDeterminant = 1.0f / Rr_DeterminantM2(Matrix);
+    float InvDeterminant = 1.0f / Rr_DeterminantM2(Matrix);
     Result.Elements[0][0] = InvDeterminant * +Matrix.Elements[1][1];
     Result.Elements[1][1] = InvDeterminant * +Matrix.Elements[0][0];
     Result.Elements[0][1] = InvDeterminant * -Matrix.Elements[0][1];
@@ -1489,7 +1489,7 @@ static inline Rr_Mat3 Rr_M3(void)
 }
 
 COVERAGE(Rr_M3D, 1)
-static inline Rr_Mat3 Rr_M3D(Rr_F32 Diagonal)
+static inline Rr_Mat3 Rr_M3D(float Diagonal)
 {
     ASSERT_COVERED(Rr_M3D);
 
@@ -1594,7 +1594,7 @@ static inline Rr_Mat3 Rr_MulM3(Rr_Mat3 Left, Rr_Mat3 Right)
 }
 
 COVERAGE(Rr_MulM3F, 1)
-static inline Rr_Mat3 Rr_MulM3F(Rr_Mat3 Matrix, Rr_F32 Scalar)
+static inline Rr_Mat3 Rr_MulM3F(Rr_Mat3 Matrix, float Scalar)
 {
     ASSERT_COVERED(Rr_MulM3F);
 
@@ -1614,7 +1614,7 @@ static inline Rr_Mat3 Rr_MulM3F(Rr_Mat3 Matrix, Rr_F32 Scalar)
 }
 
 COVERAGE(Rr_DivM3, 1)
-static inline Rr_Mat3 Rr_DivM3F(Rr_Mat3 Matrix, Rr_F32 Scalar)
+static inline Rr_Mat3 Rr_DivM3F(Rr_Mat3 Matrix, float Scalar)
 {
     ASSERT_COVERED(Rr_DivM3);
 
@@ -1634,7 +1634,7 @@ static inline Rr_Mat3 Rr_DivM3F(Rr_Mat3 Matrix, Rr_F32 Scalar)
 }
 
 COVERAGE(Rr_DeterminantM3, 1)
-static inline Rr_F32 Rr_DeterminantM3(Rr_Mat3 Matrix)
+static inline float Rr_DeterminantM3(Rr_Mat3 Matrix)
 {
     ASSERT_COVERED(Rr_DeterminantM3);
 
@@ -1656,7 +1656,7 @@ static inline Rr_Mat3 Rr_InvGeneralM3(Rr_Mat3 Matrix)
     Cross.Columns[1] = Rr_Cross(Matrix.Columns[2], Matrix.Columns[0]);
     Cross.Columns[2] = Rr_Cross(Matrix.Columns[0], Matrix.Columns[1]);
 
-    Rr_F32 InvDeterminant =
+    float InvDeterminant =
         1.0f / Rr_DotV3(Cross.Columns[2], Matrix.Columns[2]);
 
     Rr_Mat3 Result;
@@ -1680,7 +1680,7 @@ static inline Rr_Mat4 Rr_M4(void)
 }
 
 COVERAGE(Rr_M4D, 1)
-static inline Rr_Mat4 Rr_M4D(Rr_F32 Diagonal)
+static inline Rr_Mat4 Rr_M4D(float Diagonal)
 {
     ASSERT_COVERED(Rr_M4D);
 
@@ -1707,7 +1707,7 @@ static inline Rr_Mat4 Rr_TransposeM4(Rr_Mat4 Matrix)
         Result.Columns[2].SSE,
         Result.Columns[3].SSE);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4x4_t Transposed = vld4q_f32((Rr_F32 *)Matrix.Columns);
+    float32x4x4_t Transposed = vld4q_f32((float *)Matrix.Columns);
     Result.Columns[0].NEON = Transposed.val[0];
     Result.Columns[1].NEON = Transposed.val[1];
     Result.Columns[2].NEON = Transposed.val[2];
@@ -1779,7 +1779,7 @@ static inline Rr_Mat4 Rr_MulM4(Rr_Mat4 Left, Rr_Mat4 Right)
 }
 
 COVERAGE(Rr_MulM4F, 1)
-static inline Rr_Mat4 Rr_MulM4F(Rr_Mat4 Matrix, Rr_F32 Scalar)
+static inline Rr_Mat4 Rr_MulM4F(Rr_Mat4 Matrix, float Scalar)
 {
     ASSERT_COVERED(Rr_MulM4F);
 
@@ -1826,7 +1826,7 @@ static inline Rr_Vec4 Rr_MulM4V4(Rr_Mat4 Matrix, Rr_Vec4 Vector)
 }
 
 COVERAGE(Rr_DivM4F, 1)
-static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, Rr_F32 Scalar)
+static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, float Scalar)
 {
     ASSERT_COVERED(Rr_DivM4F);
 
@@ -1839,7 +1839,7 @@ static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, Rr_F32 Scalar)
     Result.Columns[2].SSE = _mm_div_ps(Matrix.Columns[2].SSE, SSEScalar);
     Result.Columns[3].SSE = _mm_div_ps(Matrix.Columns[3].SSE, SSEScalar);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t NEONScalar = vdupq_n_f32(Scalar);
+    float32x4_t NEONScalar = vdupq_n_f32(Scalar);
     Result.Columns[0].NEON = vdivq_f32(Matrix.Columns[0].NEON, NEONScalar);
     Result.Columns[1].NEON = vdivq_f32(Matrix.Columns[1].NEON, NEONScalar);
     Result.Columns[2].NEON = vdivq_f32(Matrix.Columns[2].NEON, NEONScalar);
@@ -1867,7 +1867,7 @@ static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, Rr_F32 Scalar)
 }
 
 COVERAGE(Rr_DeterminantM4, 1)
-static inline Rr_F32 Rr_DeterminantM4(Rr_Mat4 Matrix)
+static inline float Rr_DeterminantM4(Rr_Mat4 Matrix)
 {
     ASSERT_COVERED(Rr_DeterminantM4);
 
@@ -1899,7 +1899,7 @@ static inline Rr_Mat4 Rr_InvGeneralM4(Rr_Mat4 Matrix)
         Rr_MulV3F(Matrix.Columns[2].XYZ, Matrix.Columns[3].W),
         Rr_MulV3F(Matrix.Columns[3].XYZ, Matrix.Columns[2].W));
 
-    Rr_F32 InvDeterminant = 1.0f / (Rr_DotV3(C01, B32) + Rr_DotV3(C23, B10));
+    float InvDeterminant = 1.0f / (Rr_DotV3(C01, B32) + Rr_DotV3(C23, B10));
     C01 = Rr_MulV3F(C01, InvDeterminant);
     C23 = Rr_MulV3F(C23, InvDeterminant);
     B10 = Rr_MulV3F(B10, InvDeterminant);
@@ -1940,12 +1940,12 @@ COVERAGE(Rr_Orthographic_RH_NO, 1)
 // coordinates of their respective clipping planes. Near and Far specify the
 // distances to the near and far clipping planes.
 static inline Rr_Mat4 Rr_Orthographic_RH_NO(
-    Rr_F32 Left,
-    Rr_F32 Right,
-    Rr_F32 Bottom,
-    Rr_F32 Top,
-    Rr_F32 Near,
-    Rr_F32 Far)
+    float Left,
+    float Right,
+    float Bottom,
+    float Top,
+    float Near,
+    float Far)
 {
     ASSERT_COVERED(Rr_Orthographic_RH_NO);
 
@@ -1969,12 +1969,12 @@ COVERAGE(Rr_Orthographic_RH_ZO, 1)
 // coordinates of their respective clipping planes. Near and Far specify the
 // distances to the near and far clipping planes.
 static inline Rr_Mat4 Rr_Orthographic_RH_ZO(
-    Rr_F32 Left,
-    Rr_F32 Right,
-    Rr_F32 Bottom,
-    Rr_F32 Top,
-    Rr_F32 Near,
-    Rr_F32 Far)
+    float Left,
+    float Right,
+    float Bottom,
+    float Top,
+    float Near,
+    float Far)
 {
     ASSERT_COVERED(Rr_Orthographic_RH_ZO);
 
@@ -1998,12 +1998,12 @@ COVERAGE(Rr_Orthographic_LH_NO, 1)
 // coordinates of their respective clipping planes. Near and Far specify the
 // distances to the near and far clipping planes.
 static inline Rr_Mat4 Rr_Orthographic_LH_NO(
-    Rr_F32 Left,
-    Rr_F32 Right,
-    Rr_F32 Bottom,
-    Rr_F32 Top,
-    Rr_F32 Near,
-    Rr_F32 Far)
+    float Left,
+    float Right,
+    float Bottom,
+    float Top,
+    float Near,
+    float Far)
 {
     ASSERT_COVERED(Rr_Orthographic_LH_NO);
 
@@ -2019,12 +2019,12 @@ COVERAGE(Rr_Orthographic_LH_ZO, 1)
 // coordinates of their respective clipping planes. Near and Far specify the
 // distances to the near and far clipping planes.
 static inline Rr_Mat4 Rr_Orthographic_LH_ZO(
-    Rr_F32 Left,
-    Rr_F32 Right,
-    Rr_F32 Bottom,
-    Rr_F32 Top,
-    Rr_F32 Near,
-    Rr_F32 Far)
+    float Left,
+    float Right,
+    float Bottom,
+    float Top,
+    float Near,
+    float Far)
 {
     ASSERT_COVERED(Rr_Orthographic_LH_ZO);
 
@@ -2057,10 +2057,10 @@ static inline Rr_Mat4 Rr_InvOrthographic(Rr_Mat4 OrthoMatrix)
 
 COVERAGE(Rr_Perspective_RH_NO, 1)
 static inline Rr_Mat4 Rr_Perspective_RH_NO(
-    Rr_F32 FOV,
-    Rr_F32 AspectRatio,
-    Rr_F32 Near,
-    Rr_F32 Far)
+    float FOV,
+    float AspectRatio,
+    float Near,
+    float Far)
 {
     ASSERT_COVERED(Rr_Perspective_RH_NO);
 
@@ -2069,7 +2069,7 @@ static inline Rr_Mat4 Rr_Perspective_RH_NO(
     // See
     // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
 
-    Rr_F32 Cotangent = 1.0f / Rr_TanF(FOV / 2.0f);
+    float Cotangent = 1.0f / Rr_TanF(FOV / 2.0f);
     Result.Elements[0][0] = Cotangent / AspectRatio;
     Result.Elements[1][1] = Cotangent;
     Result.Elements[2][3] = -1.0f;
@@ -2082,10 +2082,10 @@ static inline Rr_Mat4 Rr_Perspective_RH_NO(
 
 COVERAGE(Rr_Perspective_RH_ZO, 1)
 static inline Rr_Mat4 Rr_Perspective_RH_ZO(
-    Rr_F32 FOV,
-    Rr_F32 AspectRatio,
-    Rr_F32 Near,
-    Rr_F32 Far)
+    float FOV,
+    float AspectRatio,
+    float Near,
+    float Far)
 {
     ASSERT_COVERED(Rr_Perspective_RH_ZO);
 
@@ -2094,7 +2094,7 @@ static inline Rr_Mat4 Rr_Perspective_RH_ZO(
     // See
     // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
 
-    Rr_F32 Cotangent = 1.0f / Rr_TanF(FOV / 2.0f);
+    float Cotangent = 1.0f / Rr_TanF(FOV / 2.0f);
     Result.Elements[0][0] = Cotangent / AspectRatio;
     Result.Elements[1][1] = Cotangent;
     Result.Elements[2][3] = -1.0f;
@@ -2107,10 +2107,10 @@ static inline Rr_Mat4 Rr_Perspective_RH_ZO(
 
 COVERAGE(Rr_Perspective_LH_NO, 1)
 static inline Rr_Mat4 Rr_Perspective_LH_NO(
-    Rr_F32 FOV,
-    Rr_F32 AspectRatio,
-    Rr_F32 Near,
-    Rr_F32 Far)
+    float FOV,
+    float AspectRatio,
+    float Near,
+    float Far)
 {
     ASSERT_COVERED(Rr_Perspective_LH_NO);
 
@@ -2123,10 +2123,10 @@ static inline Rr_Mat4 Rr_Perspective_LH_NO(
 
 COVERAGE(Rr_Perspective_LH_ZO, 1)
 static inline Rr_Mat4 Rr_Perspective_LH_ZO(
-    Rr_F32 FOV,
-    Rr_F32 AspectRatio,
-    Rr_F32 Near,
-    Rr_F32 Far)
+    float FOV,
+    float AspectRatio,
+    float Near,
+    float Far)
 {
     ASSERT_COVERED(Rr_Perspective_LH_ZO);
 
@@ -2200,7 +2200,7 @@ static inline Rr_Mat4 Rr_InvTranslate(Rr_Mat4 TranslationMatrix)
 }
 
 COVERAGE(Rr_Rotate_RH, 1)
-static inline Rr_Mat4 Rr_Rotate_RH(Rr_F32 Angle, Rr_Vec3 Axis)
+static inline Rr_Mat4 Rr_Rotate_RH(float Angle, Rr_Vec3 Axis)
 {
     ASSERT_COVERED(Rr_Rotate_RH);
 
@@ -2208,9 +2208,9 @@ static inline Rr_Mat4 Rr_Rotate_RH(Rr_F32 Angle, Rr_Vec3 Axis)
 
     Axis = Rr_NormV3(Axis);
 
-    Rr_F32 SinTheta = Rr_SinF(Angle);
-    Rr_F32 CosTheta = Rr_CosF(Angle);
-    Rr_F32 CosValue = 1.0f - CosTheta;
+    float SinTheta = Rr_SinF(Angle);
+    float CosTheta = Rr_CosF(Angle);
+    float CosValue = 1.0f - CosTheta;
 
     Result.Elements[0][0] = (Axis.X * Axis.X * CosValue) + CosTheta;
     Result.Elements[0][1] = (Axis.X * Axis.Y * CosValue) + (Axis.Z * SinTheta);
@@ -2228,7 +2228,7 @@ static inline Rr_Mat4 Rr_Rotate_RH(Rr_F32 Angle, Rr_Vec3 Axis)
 }
 
 COVERAGE(Rr_Rotate_LH, 1)
-static inline Rr_Mat4 Rr_Rotate_LH(Rr_F32 Angle, Rr_Vec3 Axis)
+static inline Rr_Mat4 Rr_Rotate_LH(float Angle, Rr_Vec3 Axis)
 {
     ASSERT_COVERED(Rr_Rotate_LH);
     /* NOTE(lcf): Matrix will be inverse/transpose of RH. */
@@ -2354,7 +2354,7 @@ static inline Rr_Mat4 Rr_InvLookAt(Rr_Mat4 Matrix)
  */
 
 COVERAGE(Rr_Q, 1)
-static inline Rr_Quat Rr_Q(Rr_F32 X, Rr_F32 Y, Rr_F32 Z, Rr_F32 W)
+static inline Rr_Quat Rr_Q(float X, float Y, float Z, float W)
 {
     ASSERT_COVERED(Rr_Q);
 
@@ -2363,7 +2363,7 @@ static inline Rr_Quat Rr_Q(Rr_F32 X, Rr_F32 Y, Rr_F32 Z, Rr_F32 W)
 #ifdef RR_MATH__USE_SSE
     Result.SSE = _mm_setr_ps(X, Y, Z, W);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t v = { X, Y, Z, W };
+    float32x4_t v = { X, Y, Z, W };
     Result.NEON = v;
 #else
     Result.X = X;
@@ -2476,21 +2476,21 @@ static inline Rr_Quat Rr_MulQ(Rr_Quat Left, Rr_Quat Right)
     Result.SSE =
         _mm_add_ps(SSEResultThree, _mm_mul_ps(SSEResultTwo, SSEResultOne));
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t Right1032 = vrev64q_f32(Right.NEON);
-    Rr_F3232x4_t Right3210 =
+    float32x4_t Right1032 = vrev64q_f32(Right.NEON);
+    float32x4_t Right3210 =
         vcombine_f32(vget_high_f32(Right1032), vget_low_f32(Right1032));
-    Rr_F3232x4_t Right2301 = vrev64q_f32(Right3210);
+    float32x4_t Right2301 = vrev64q_f32(Right3210);
 
-    Rr_F3232x4_t FirstSign = { 1.0f, -1.0f, 1.0f, -1.0f };
+    float32x4_t FirstSign = { 1.0f, -1.0f, 1.0f, -1.0f };
     Result.NEON = vmulq_f32(
         Right3210,
         vmulq_f32(vdupq_laneq_f32(Left.NEON, 0), FirstSign));
-    Rr_F3232x4_t SecondSign = { 1.0f, 1.0f, -1.0f, -1.0f };
+    float32x4_t SecondSign = { 1.0f, 1.0f, -1.0f, -1.0f };
     Result.NEON = vfmaq_f32(
         Result.NEON,
         Right2301,
         vmulq_f32(vdupq_laneq_f32(Left.NEON, 1), SecondSign));
-    Rr_F3232x4_t ThirdSign = { -1.0f, 1.0f, 1.0f, -1.0f };
+    float32x4_t ThirdSign = { -1.0f, 1.0f, 1.0f, -1.0f };
     Result.NEON = vfmaq_f32(
         Result.NEON,
         Right1032,
@@ -2523,7 +2523,7 @@ static inline Rr_Quat Rr_MulQ(Rr_Quat Left, Rr_Quat Right)
 }
 
 COVERAGE(Rr_MulQF, 1)
-static inline Rr_Quat Rr_MulQF(Rr_Quat Left, Rr_F32 Multiplicative)
+static inline Rr_Quat Rr_MulQF(Rr_Quat Left, float Multiplicative)
 {
     ASSERT_COVERED(Rr_MulQF);
 
@@ -2545,7 +2545,7 @@ static inline Rr_Quat Rr_MulQF(Rr_Quat Left, Rr_F32 Multiplicative)
 }
 
 COVERAGE(Rr_DivQF, 1)
-static inline Rr_Quat Rr_DivQF(Rr_Quat Left, Rr_F32 Divnd)
+static inline Rr_Quat Rr_DivQF(Rr_Quat Left, float Divnd)
 {
     ASSERT_COVERED(Rr_DivQF);
 
@@ -2555,7 +2555,7 @@ static inline Rr_Quat Rr_DivQF(Rr_Quat Left, Rr_F32 Divnd)
     __m128 Scalar = _mm_set1_ps(Divnd);
     Result.SSE = _mm_div_ps(Left.SSE, Scalar);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t Scalar = vdupq_n_f32(Divnd);
+    float32x4_t Scalar = vdupq_n_f32(Divnd);
     Result.NEON = vdivq_f32(Left.NEON, Scalar);
 #else
     Result.X = Left.X / Divnd;
@@ -2568,11 +2568,11 @@ static inline Rr_Quat Rr_DivQF(Rr_Quat Left, Rr_F32 Divnd)
 }
 
 COVERAGE(Rr_DotQ, 1)
-static inline Rr_F32 Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
+static inline float Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
 {
     ASSERT_COVERED(Rr_DotQ);
 
-    Rr_F32 Result;
+    float Result;
 
 #ifdef RR_MATH__USE_SSE
     __m128 SSEResultOne = _mm_mul_ps(Left.SSE, Right.SSE);
@@ -2584,10 +2584,10 @@ static inline Rr_F32 Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
     SSEResultOne = _mm_add_ps(SSEResultOne, SSEResultTwo);
     _mm_store_ss(&Result, SSEResultOne);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t NEONMultiplyResult = vmulq_f32(Left.NEON, Right.NEON);
-    Rr_F3232x4_t NEONHalfAdd =
+    float32x4_t NEONMultiplyResult = vmulq_f32(Left.NEON, Right.NEON);
+    float32x4_t NEONHalfAdd =
         vpaddq_f32(NEONMultiplyResult, NEONMultiplyResult);
-    Rr_F3232x4_t NEONFullAdd = vpaddq_f32(NEONHalfAdd, NEONHalfAdd);
+    float32x4_t NEONFullAdd = vpaddq_f32(NEONHalfAdd, NEONHalfAdd);
     Result = vgetq_lane_f32(NEONFullAdd, 0);
 #else
     Result = ((Left.X * Right.X) + (Left.Z * Right.Z)) +
@@ -2626,9 +2626,9 @@ static inline Rr_Quat Rr_NormQ(Rr_Quat Quat)
 
 static inline Rr_Quat _Rr_MixQ(
     Rr_Quat Left,
-    Rr_F32 MixLeft,
+    float MixLeft,
     Rr_Quat Right,
-    Rr_F32 MixRight)
+    float MixRight)
 {
     Rr_Quat Result;
 
@@ -2639,8 +2639,8 @@ static inline Rr_Quat _Rr_MixQ(
     __m128 SSEResultTwo = _mm_mul_ps(Right.SSE, ScalarRight);
     Result.SSE = _mm_add_ps(SSEResultOne, SSEResultTwo);
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t ScaledLeft = vmulq_n_f32(Left.NEON, MixLeft);
-    Rr_F3232x4_t ScaledRight = vmulq_n_f32(Right.NEON, MixRight);
+    float32x4_t ScaledLeft = vmulq_n_f32(Left.NEON, MixLeft);
+    float32x4_t ScaledRight = vmulq_n_f32(Right.NEON, MixRight);
     Result.NEON = vaddq_f32(ScaledLeft, ScaledRight);
 #else
     Result.X = Left.X * MixLeft + Right.X * MixRight;
@@ -2653,7 +2653,7 @@ static inline Rr_Quat _Rr_MixQ(
 }
 
 COVERAGE(Rr_NLerp, 1)
-static inline Rr_Quat Rr_NLerp(Rr_Quat Left, Rr_F32 Time, Rr_Quat Right)
+static inline Rr_Quat Rr_NLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 {
     ASSERT_COVERED(Rr_NLerp);
 
@@ -2664,13 +2664,13 @@ static inline Rr_Quat Rr_NLerp(Rr_Quat Left, Rr_F32 Time, Rr_Quat Right)
 }
 
 COVERAGE(Rr_SLerp, 1)
-static inline Rr_Quat Rr_SLerp(Rr_Quat Left, Rr_F32 Time, Rr_Quat Right)
+static inline Rr_Quat Rr_SLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 {
     ASSERT_COVERED(Rr_SLerp);
 
     Rr_Quat Result;
 
-    Rr_F32 Cos_Theta = Rr_DotQ(Left, Right);
+    float Cos_Theta = Rr_DotQ(Left, Right);
 
     if (Cos_Theta < 0.0f)
     { /* NOTE(lcf): Take shortest path on Hyper-sphere */
@@ -2686,9 +2686,9 @@ static inline Rr_Quat Rr_SLerp(Rr_Quat Left, Rr_F32 Time, Rr_Quat Right)
     }
     else
     {
-        Rr_F32 Angle = Rr_ACosF(Cos_Theta);
-        Rr_F32 MixLeft = Rr_SinF((1.0f - Time) * Angle);
-        Rr_F32 MixRight = Rr_SinF(Time * Angle);
+        float Angle = Rr_ACosF(Cos_Theta);
+        float MixLeft = Rr_SinF((1.0f - Time) * Angle);
+        float MixRight = Rr_SinF(Time * Angle);
 
         Result = _Rr_MixQ(Left, MixLeft, Right, MixRight);
         Result = Rr_NormQ(Result);
@@ -2706,7 +2706,7 @@ static inline Rr_Mat4 Rr_QToM4(Rr_Quat Left)
 
     Rr_Quat NormalizedQ = Rr_NormQ(Left);
 
-    Rr_F32 XX, YY, ZZ, XY, XZ, YZ, WX, WY, WZ;
+    float XX, YY, ZZ, XY, XZ, YZ, WX, WY, WZ;
 
     XX = NormalizedQ.X * NormalizedQ.X;
     YY = NormalizedQ.Y * NormalizedQ.Y;
@@ -2758,7 +2758,7 @@ static inline Rr_Mat4 Rr_QToM4(Rr_Quat Left)
 COVERAGE(Rr_M4ToQ_RH, 4)
 static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
 {
-    Rr_F32 T;
+    float T;
     Rr_Quat Q;
 
     if (M.Elements[2][2] < 0.0f)
@@ -2820,7 +2820,7 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
 COVERAGE(Rr_M4ToQ_LH, 4)
 static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
 {
-    Rr_F32 T;
+    float T;
     Rr_Quat Q;
 
     if (M.Elements[2][2] < 0.0f)
@@ -2880,14 +2880,14 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
 }
 
 COVERAGE(Rr_QFromAxisAngle_RH, 1)
-static inline Rr_Quat Rr_QFromAxisAngle_RH(Rr_Vec3 Axis, Rr_F32 Angle)
+static inline Rr_Quat Rr_QFromAxisAngle_RH(Rr_Vec3 Axis, float Angle)
 {
     ASSERT_COVERED(Rr_QFromAxisAngle_RH);
 
     Rr_Quat Result;
 
     Rr_Vec3 AxisNormalized = Rr_NormV3(Axis);
-    Rr_F32 SineOfRotation = Rr_SinF(Angle / 2.0f);
+    float SineOfRotation = Rr_SinF(Angle / 2.0f);
 
     Result.XYZ = Rr_MulV3F(AxisNormalized, SineOfRotation);
     Result.W = Rr_CosF(Angle / 2.0f);
@@ -2896,7 +2896,7 @@ static inline Rr_Quat Rr_QFromAxisAngle_RH(Rr_Vec3 Axis, Rr_F32 Angle)
 }
 
 COVERAGE(Rr_QFromAxisAngle_LH, 1)
-static inline Rr_Quat Rr_QFromAxisAngle_LH(Rr_Vec3 Axis, Rr_F32 Angle)
+static inline Rr_Quat Rr_QFromAxisAngle_LH(Rr_Vec3 Axis, float Angle)
 {
     ASSERT_COVERED(Rr_QFromAxisAngle_LH);
 
@@ -2925,12 +2925,12 @@ static inline Rr_Quat Rr_QFromVecPair(Rr_Vec3 Left, Rr_Vec3 Right)
 }
 
 COVERAGE(Rr_RotateV2, 1)
-static inline Rr_Vec2 Rr_RotateV2(Rr_Vec2 V, Rr_F32 Angle)
+static inline Rr_Vec2 Rr_RotateV2(Rr_Vec2 V, float Angle)
 {
     ASSERT_COVERED(Rr_RotateV2)
 
-    Rr_F32 sinA = Rr_SinF(Angle);
-    Rr_F32 cosA = Rr_CosF(Angle);
+    float sinA = Rr_SinF(Angle);
+    float cosA = Rr_CosF(Angle);
 
     return Rr_V2(V.X * cosA - V.Y * sinA, V.X * sinA + V.Y * cosA);
 }
@@ -2950,7 +2950,7 @@ COVERAGE(Rr_RotateV3AxisAngle_LH, 1)
 static inline Rr_Vec3 Rr_RotateV3AxisAngle_LH(
     Rr_Vec3 V,
     Rr_Vec3 Axis,
-    Rr_F32 Angle)
+    float Angle)
 {
     ASSERT_COVERED(Rr_RotateV3AxisAngle_LH);
 
@@ -2961,7 +2961,7 @@ COVERAGE(Rr_RotateV3AxisAngle_RH, 1)
 static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
     Rr_Vec3 V,
     Rr_Vec3 Axis,
-    Rr_F32 Angle)
+    float Angle)
 {
     ASSERT_COVERED(Rr_RotateV3AxisAngle_RH);
 
@@ -2975,42 +2975,42 @@ static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
 #ifdef __cplusplus
 
 COVERAGE(Rr_LenV2CPP, 1)
-static inline Rr_F32 Rr_Len(Rr_Vec2 A)
+static inline float Rr_Len(Rr_Vec2 A)
 {
     ASSERT_COVERED(Rr_LenV2CPP);
     return Rr_LenV2(A);
 }
 
 COVERAGE(Rr_LenV3CPP, 1)
-static inline Rr_F32 Rr_Len(Rr_Vec3 A)
+static inline float Rr_Len(Rr_Vec3 A)
 {
     ASSERT_COVERED(Rr_LenV3CPP);
     return Rr_LenV3(A);
 }
 
 COVERAGE(Rr_LenV4CPP, 1)
-static inline Rr_F32 Rr_Len(Rr_Vec4 A)
+static inline float Rr_Len(Rr_Vec4 A)
 {
     ASSERT_COVERED(Rr_LenV4CPP);
     return Rr_LenV4(A);
 }
 
 COVERAGE(Rr_LenSqrV2CPP, 1)
-static inline Rr_F32 Rr_LenSqr(Rr_Vec2 A)
+static inline float Rr_LenSqr(Rr_Vec2 A)
 {
     ASSERT_COVERED(Rr_LenSqrV2CPP);
     return Rr_LenSqrV2(A);
 }
 
 COVERAGE(Rr_LenSqrV3CPP, 1)
-static inline Rr_F32 Rr_LenSqr(Rr_Vec3 A)
+static inline float Rr_LenSqr(Rr_Vec3 A)
 {
     ASSERT_COVERED(Rr_LenSqrV3CPP);
     return Rr_LenSqrV3(A);
 }
 
 COVERAGE(Rr_LenSqrV4CPP, 1)
-static inline Rr_F32 Rr_LenSqr(Rr_Vec4 A)
+static inline float Rr_LenSqr(Rr_Vec4 A)
 {
     ASSERT_COVERED(Rr_LenSqrV4CPP);
     return Rr_LenSqrV4(A);
@@ -3045,42 +3045,42 @@ static inline Rr_Quat Rr_Norm(Rr_Quat A)
 }
 
 COVERAGE(Rr_DotV2CPP, 1)
-static inline Rr_F32 Rr_Dot(Rr_Vec2 Left, Rr_Vec2 VecTwo)
+static inline float Rr_Dot(Rr_Vec2 Left, Rr_Vec2 VecTwo)
 {
     ASSERT_COVERED(Rr_DotV2CPP);
     return Rr_DotV2(Left, VecTwo);
 }
 
 COVERAGE(Rr_DotV3CPP, 1)
-static inline Rr_F32 Rr_Dot(Rr_Vec3 Left, Rr_Vec3 VecTwo)
+static inline float Rr_Dot(Rr_Vec3 Left, Rr_Vec3 VecTwo)
 {
     ASSERT_COVERED(Rr_DotV3CPP);
     return Rr_DotV3(Left, VecTwo);
 }
 
 COVERAGE(Rr_DotV4CPP, 1)
-static inline Rr_F32 Rr_Dot(Rr_Vec4 Left, Rr_Vec4 VecTwo)
+static inline float Rr_Dot(Rr_Vec4 Left, Rr_Vec4 VecTwo)
 {
     ASSERT_COVERED(Rr_DotV4CPP);
     return Rr_DotV4(Left, VecTwo);
 }
 
 COVERAGE(Rr_LerpV2CPP, 1)
-static inline Rr_Vec2 Rr_Lerp(Rr_Vec2 Left, Rr_F32 Time, Rr_Vec2 Right)
+static inline Rr_Vec2 Rr_Lerp(Rr_Vec2 Left, float Time, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_LerpV2CPP);
     return Rr_LerpV2(Left, Time, Right);
 }
 
 COVERAGE(Rr_LerpV3CPP, 1)
-static inline Rr_Vec3 Rr_Lerp(Rr_Vec3 Left, Rr_F32 Time, Rr_Vec3 Right)
+static inline Rr_Vec3 Rr_Lerp(Rr_Vec3 Left, float Time, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_LerpV3CPP);
     return Rr_LerpV3(Left, Time, Right);
 }
 
 COVERAGE(Rr_LerpV4CPP, 1)
-static inline Rr_Vec4 Rr_Lerp(Rr_Vec4 Left, Rr_F32 Time, Rr_Vec4 Right)
+static inline Rr_Vec4 Rr_Lerp(Rr_Vec4 Left, float Time, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_LerpV4CPP);
     return Rr_LerpV4(Left, Time, Right);
@@ -3108,21 +3108,21 @@ static inline Rr_Mat4 Rr_Transpose(Rr_Mat4 Matrix)
 }
 
 COVERAGE(Rr_DeterminantM2CPP, 1)
-static inline Rr_F32 Rr_Determinant(Rr_Mat2 Matrix)
+static inline float Rr_Determinant(Rr_Mat2 Matrix)
 {
     ASSERT_COVERED(Rr_DeterminantM2CPP);
     return Rr_DeterminantM2(Matrix);
 }
 
 COVERAGE(Rr_DeterminantM3CPP, 1)
-static inline Rr_F32 Rr_Determinant(Rr_Mat3 Matrix)
+static inline float Rr_Determinant(Rr_Mat3 Matrix)
 {
     ASSERT_COVERED(Rr_DeterminantM3CPP);
     return Rr_DeterminantM3(Matrix);
 }
 
 COVERAGE(Rr_DeterminantM4CPP, 1)
-static inline Rr_F32 Rr_Determinant(Rr_Mat4 Matrix)
+static inline float Rr_Determinant(Rr_Mat4 Matrix)
 {
     ASSERT_COVERED(Rr_DeterminantM4CPP);
     return Rr_DeterminantM4(Matrix);
@@ -3150,7 +3150,7 @@ static inline Rr_Mat4 Rr_InvGeneral(Rr_Mat4 Matrix)
 }
 
 COVERAGE(Rr_DotQCPP, 1)
-static inline Rr_F32 Rr_Dot(Rr_Quat QuatOne, Rr_Quat QuatTwo)
+static inline float Rr_Dot(Rr_Quat QuatOne, Rr_Quat QuatTwo)
 {
     ASSERT_COVERED(Rr_DotQCPP);
     return Rr_DotQ(QuatOne, QuatTwo);
@@ -3262,7 +3262,7 @@ static inline Rr_Vec2 Rr_Mul(Rr_Vec2 Left, Rr_Vec2 Right)
 }
 
 COVERAGE(Rr_MulV2FCPP, 1)
-static inline Rr_Vec2 Rr_Mul(Rr_Vec2 Left, Rr_F32 Right)
+static inline Rr_Vec2 Rr_Mul(Rr_Vec2 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV2FCPP);
     return Rr_MulV2F(Left, Right);
@@ -3276,7 +3276,7 @@ static inline Rr_Vec3 Rr_Mul(Rr_Vec3 Left, Rr_Vec3 Right)
 }
 
 COVERAGE(Rr_MulV3FCPP, 1)
-static inline Rr_Vec3 Rr_Mul(Rr_Vec3 Left, Rr_F32 Right)
+static inline Rr_Vec3 Rr_Mul(Rr_Vec3 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV3FCPP);
     return Rr_MulV3F(Left, Right);
@@ -3290,7 +3290,7 @@ static inline Rr_Vec4 Rr_Mul(Rr_Vec4 Left, Rr_Vec4 Right)
 }
 
 COVERAGE(Rr_MulV4FCPP, 1)
-static inline Rr_Vec4 Rr_Mul(Rr_Vec4 Left, Rr_F32 Right)
+static inline Rr_Vec4 Rr_Mul(Rr_Vec4 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV4FCPP);
     return Rr_MulV4F(Left, Right);
@@ -3318,21 +3318,21 @@ static inline Rr_Mat4 Rr_Mul(Rr_Mat4 Left, Rr_Mat4 Right)
 }
 
 COVERAGE(Rr_MulM2FCPP, 1)
-static inline Rr_Mat2 Rr_Mul(Rr_Mat2 Left, Rr_F32 Right)
+static inline Rr_Mat2 Rr_Mul(Rr_Mat2 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM2FCPP);
     return Rr_MulM2F(Left, Right);
 }
 
 COVERAGE(Rr_MulM3FCPP, 1)
-static inline Rr_Mat3 Rr_Mul(Rr_Mat3 Left, Rr_F32 Right)
+static inline Rr_Mat3 Rr_Mul(Rr_Mat3 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM3FCPP);
     return Rr_MulM3F(Left, Right);
 }
 
 COVERAGE(Rr_MulM4FCPP, 1)
-static inline Rr_Mat4 Rr_Mul(Rr_Mat4 Left, Rr_F32 Right)
+static inline Rr_Mat4 Rr_Mul(Rr_Mat4 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM4FCPP);
     return Rr_MulM4F(Left, Right);
@@ -3367,7 +3367,7 @@ static inline Rr_Quat Rr_Mul(Rr_Quat Left, Rr_Quat Right)
 }
 
 COVERAGE(Rr_MulQFCPP, 1)
-static inline Rr_Quat Rr_Mul(Rr_Quat Left, Rr_F32 Right)
+static inline Rr_Quat Rr_Mul(Rr_Quat Left, float Right)
 {
     ASSERT_COVERED(Rr_MulQFCPP);
     return Rr_MulQF(Left, Right);
@@ -3381,7 +3381,7 @@ static inline Rr_Vec2 Rr_Div(Rr_Vec2 Left, Rr_Vec2 Right)
 }
 
 COVERAGE(Rr_DivV2FCPP, 1)
-static inline Rr_Vec2 Rr_Div(Rr_Vec2 Left, Rr_F32 Right)
+static inline Rr_Vec2 Rr_Div(Rr_Vec2 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV2FCPP);
     return Rr_DivV2F(Left, Right);
@@ -3395,7 +3395,7 @@ static inline Rr_Vec3 Rr_Div(Rr_Vec3 Left, Rr_Vec3 Right)
 }
 
 COVERAGE(Rr_DivV3FCPP, 1)
-static inline Rr_Vec3 Rr_Div(Rr_Vec3 Left, Rr_F32 Right)
+static inline Rr_Vec3 Rr_Div(Rr_Vec3 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV3FCPP);
     return Rr_DivV3F(Left, Right);
@@ -3409,35 +3409,35 @@ static inline Rr_Vec4 Rr_Div(Rr_Vec4 Left, Rr_Vec4 Right)
 }
 
 COVERAGE(Rr_DivV4FCPP, 1)
-static inline Rr_Vec4 Rr_Div(Rr_Vec4 Left, Rr_F32 Right)
+static inline Rr_Vec4 Rr_Div(Rr_Vec4 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV4FCPP);
     return Rr_DivV4F(Left, Right);
 }
 
 COVERAGE(Rr_DivM2FCPP, 1)
-static inline Rr_Mat2 Rr_Div(Rr_Mat2 Left, Rr_F32 Right)
+static inline Rr_Mat2 Rr_Div(Rr_Mat2 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivM2FCPP);
     return Rr_DivM2F(Left, Right);
 }
 
 COVERAGE(Rr_DivM3FCPP, 1)
-static inline Rr_Mat3 Rr_Div(Rr_Mat3 Left, Rr_F32 Right)
+static inline Rr_Mat3 Rr_Div(Rr_Mat3 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivM3FCPP);
     return Rr_DivM3F(Left, Right);
 }
 
 COVERAGE(Rr_DivM4FCPP, 1)
-static inline Rr_Mat4 Rr_Div(Rr_Mat4 Left, Rr_F32 Right)
+static inline Rr_Mat4 Rr_Div(Rr_Mat4 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivM4FCPP);
     return Rr_DivM4F(Left, Right);
 }
 
 COVERAGE(Rr_DivQFCPP, 1)
-static inline Rr_Quat Rr_Div(Rr_Quat Left, Rr_F32 Right)
+static inline Rr_Quat Rr_Div(Rr_Quat Left, float Right)
 {
     ASSERT_COVERED(Rr_DivQFCPP);
     return Rr_DivQF(Left, Right);
@@ -3612,98 +3612,98 @@ static inline Rr_Quat operator*(Rr_Quat Left, Rr_Quat Right)
 }
 
 COVERAGE(Rr_MulV2FOp, 1)
-static inline Rr_Vec2 operator*(Rr_Vec2 Left, Rr_F32 Right)
+static inline Rr_Vec2 operator*(Rr_Vec2 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV2FOp);
     return Rr_MulV2F(Left, Right);
 }
 
 COVERAGE(Rr_MulV3FOp, 1)
-static inline Rr_Vec3 operator*(Rr_Vec3 Left, Rr_F32 Right)
+static inline Rr_Vec3 operator*(Rr_Vec3 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV3FOp);
     return Rr_MulV3F(Left, Right);
 }
 
 COVERAGE(Rr_MulV4FOp, 1)
-static inline Rr_Vec4 operator*(Rr_Vec4 Left, Rr_F32 Right)
+static inline Rr_Vec4 operator*(Rr_Vec4 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV4FOp);
     return Rr_MulV4F(Left, Right);
 }
 
 COVERAGE(Rr_MulM2FOp, 1)
-static inline Rr_Mat2 operator*(Rr_Mat2 Left, Rr_F32 Right)
+static inline Rr_Mat2 operator*(Rr_Mat2 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM2FOp);
     return Rr_MulM2F(Left, Right);
 }
 
 COVERAGE(Rr_MulM3FOp, 1)
-static inline Rr_Mat3 operator*(Rr_Mat3 Left, Rr_F32 Right)
+static inline Rr_Mat3 operator*(Rr_Mat3 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM3FOp);
     return Rr_MulM3F(Left, Right);
 }
 
 COVERAGE(Rr_MulM4FOp, 1)
-static inline Rr_Mat4 operator*(Rr_Mat4 Left, Rr_F32 Right)
+static inline Rr_Mat4 operator*(Rr_Mat4 Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM4FOp);
     return Rr_MulM4F(Left, Right);
 }
 
 COVERAGE(Rr_MulQFOp, 1)
-static inline Rr_Quat operator*(Rr_Quat Left, Rr_F32 Right)
+static inline Rr_Quat operator*(Rr_Quat Left, float Right)
 {
     ASSERT_COVERED(Rr_MulQFOp);
     return Rr_MulQF(Left, Right);
 }
 
 COVERAGE(Rr_MulV2FOpLeft, 1)
-static inline Rr_Vec2 operator*(Rr_F32 Left, Rr_Vec2 Right)
+static inline Rr_Vec2 operator*(float Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_MulV2FOpLeft);
     return Rr_MulV2F(Right, Left);
 }
 
 COVERAGE(Rr_MulV3FOpLeft, 1)
-static inline Rr_Vec3 operator*(Rr_F32 Left, Rr_Vec3 Right)
+static inline Rr_Vec3 operator*(float Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_MulV3FOpLeft);
     return Rr_MulV3F(Right, Left);
 }
 
 COVERAGE(Rr_MulV4FOpLeft, 1)
-static inline Rr_Vec4 operator*(Rr_F32 Left, Rr_Vec4 Right)
+static inline Rr_Vec4 operator*(float Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_MulV4FOpLeft);
     return Rr_MulV4F(Right, Left);
 }
 
 COVERAGE(Rr_MulM2FOpLeft, 1)
-static inline Rr_Mat2 operator*(Rr_F32 Left, Rr_Mat2 Right)
+static inline Rr_Mat2 operator*(float Left, Rr_Mat2 Right)
 {
     ASSERT_COVERED(Rr_MulM2FOpLeft);
     return Rr_MulM2F(Right, Left);
 }
 
 COVERAGE(Rr_MulM3FOpLeft, 1)
-static inline Rr_Mat3 operator*(Rr_F32 Left, Rr_Mat3 Right)
+static inline Rr_Mat3 operator*(float Left, Rr_Mat3 Right)
 {
     ASSERT_COVERED(Rr_MulM3FOpLeft);
     return Rr_MulM3F(Right, Left);
 }
 
 COVERAGE(Rr_MulM4FOpLeft, 1)
-static inline Rr_Mat4 operator*(Rr_F32 Left, Rr_Mat4 Right)
+static inline Rr_Mat4 operator*(float Left, Rr_Mat4 Right)
 {
     ASSERT_COVERED(Rr_MulM4FOpLeft);
     return Rr_MulM4F(Right, Left);
 }
 
 COVERAGE(Rr_MulQFOpLeft, 1)
-static inline Rr_Quat operator*(Rr_F32 Left, Rr_Quat Right)
+static inline Rr_Quat operator*(float Left, Rr_Quat Right)
 {
     ASSERT_COVERED(Rr_MulQFOpLeft);
     return Rr_MulQF(Right, Left);
@@ -3752,49 +3752,49 @@ static inline Rr_Vec4 operator/(Rr_Vec4 Left, Rr_Vec4 Right)
 }
 
 COVERAGE(Rr_DivV2FOp, 1)
-static inline Rr_Vec2 operator/(Rr_Vec2 Left, Rr_F32 Right)
+static inline Rr_Vec2 operator/(Rr_Vec2 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV2FOp);
     return Rr_DivV2F(Left, Right);
 }
 
 COVERAGE(Rr_DivV3FOp, 1)
-static inline Rr_Vec3 operator/(Rr_Vec3 Left, Rr_F32 Right)
+static inline Rr_Vec3 operator/(Rr_Vec3 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV3FOp);
     return Rr_DivV3F(Left, Right);
 }
 
 COVERAGE(Rr_DivV4FOp, 1)
-static inline Rr_Vec4 operator/(Rr_Vec4 Left, Rr_F32 Right)
+static inline Rr_Vec4 operator/(Rr_Vec4 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV4FOp);
     return Rr_DivV4F(Left, Right);
 }
 
 COVERAGE(Rr_DivM4FOp, 1)
-static inline Rr_Mat4 operator/(Rr_Mat4 Left, Rr_F32 Right)
+static inline Rr_Mat4 operator/(Rr_Mat4 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivM4FOp);
     return Rr_DivM4F(Left, Right);
 }
 
 COVERAGE(Rr_DivM3FOp, 1)
-static inline Rr_Mat3 operator/(Rr_Mat3 Left, Rr_F32 Right)
+static inline Rr_Mat3 operator/(Rr_Mat3 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivM3FOp);
     return Rr_DivM3F(Left, Right);
 }
 
 COVERAGE(Rr_DivM2FOp, 1)
-static inline Rr_Mat2 operator/(Rr_Mat2 Left, Rr_F32 Right)
+static inline Rr_Mat2 operator/(Rr_Mat2 Left, float Right)
 {
     ASSERT_COVERED(Rr_DivM2FOp);
     return Rr_DivM2F(Left, Right);
 }
 
 COVERAGE(Rr_DivQFOp, 1)
-static inline Rr_Quat operator/(Rr_Quat Left, Rr_F32 Right)
+static inline Rr_Quat operator/(Rr_Quat Left, float Right)
 {
     ASSERT_COVERED(Rr_DivQFOp);
     return Rr_DivQF(Left, Right);
@@ -3920,49 +3920,49 @@ static inline Rr_Vec4 &operator*=(Rr_Vec4 &Left, Rr_Vec4 Right)
 }
 
 COVERAGE(Rr_MulV2FAssign, 1)
-static inline Rr_Vec2 &operator*=(Rr_Vec2 &Left, Rr_F32 Right)
+static inline Rr_Vec2 &operator*=(Rr_Vec2 &Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV2FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulV3FAssign, 1)
-static inline Rr_Vec3 &operator*=(Rr_Vec3 &Left, Rr_F32 Right)
+static inline Rr_Vec3 &operator*=(Rr_Vec3 &Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV3FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulV4FAssign, 1)
-static inline Rr_Vec4 &operator*=(Rr_Vec4 &Left, Rr_F32 Right)
+static inline Rr_Vec4 &operator*=(Rr_Vec4 &Left, float Right)
 {
     ASSERT_COVERED(Rr_MulV4FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulM2FAssign, 1)
-static inline Rr_Mat2 &operator*=(Rr_Mat2 &Left, Rr_F32 Right)
+static inline Rr_Mat2 &operator*=(Rr_Mat2 &Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM2FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulM3FAssign, 1)
-static inline Rr_Mat3 &operator*=(Rr_Mat3 &Left, Rr_F32 Right)
+static inline Rr_Mat3 &operator*=(Rr_Mat3 &Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM3FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulM4FAssign, 1)
-static inline Rr_Mat4 &operator*=(Rr_Mat4 &Left, Rr_F32 Right)
+static inline Rr_Mat4 &operator*=(Rr_Mat4 &Left, float Right)
 {
     ASSERT_COVERED(Rr_MulM4FAssign);
     return Left = Left * Right;
 }
 
 COVERAGE(Rr_MulQFAssign, 1)
-static inline Rr_Quat &operator*=(Rr_Quat &Left, Rr_F32 Right)
+static inline Rr_Quat &operator*=(Rr_Quat &Left, float Right)
 {
     ASSERT_COVERED(Rr_MulQFAssign);
     return Left = Left * Right;
@@ -3990,35 +3990,35 @@ static inline Rr_Vec4 &operator/=(Rr_Vec4 &Left, Rr_Vec4 Right)
 }
 
 COVERAGE(Rr_DivV2FAssign, 1)
-static inline Rr_Vec2 &operator/=(Rr_Vec2 &Left, Rr_F32 Right)
+static inline Rr_Vec2 &operator/=(Rr_Vec2 &Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV2FAssign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivV3FAssign, 1)
-static inline Rr_Vec3 &operator/=(Rr_Vec3 &Left, Rr_F32 Right)
+static inline Rr_Vec3 &operator/=(Rr_Vec3 &Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV3FAssign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivV4FAssign, 1)
-static inline Rr_Vec4 &operator/=(Rr_Vec4 &Left, Rr_F32 Right)
+static inline Rr_Vec4 &operator/=(Rr_Vec4 &Left, float Right)
 {
     ASSERT_COVERED(Rr_DivV4FAssign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivM4FAssign, 1)
-static inline Rr_Mat4 &operator/=(Rr_Mat4 &Left, Rr_F32 Right)
+static inline Rr_Mat4 &operator/=(Rr_Mat4 &Left, float Right)
 {
     ASSERT_COVERED(Rr_DivM4FAssign);
     return Left = Left / Right;
 }
 
 COVERAGE(Rr_DivQFAssign, 1)
-static inline Rr_Quat &operator/=(Rr_Quat &Left, Rr_F32 Right)
+static inline Rr_Quat &operator/=(Rr_Quat &Left, float Right)
 {
     ASSERT_COVERED(Rr_DivQFAssign);
     return Left = Left / Right;
@@ -4100,7 +4100,7 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 #if RR_MATH__USE_SSE
     Result.SSE = _mm_xor_ps(In.SSE, _mm_set1_ps(-0.0f));
 #elif defined(RR_MATH__USE_NEON)
-    Rr_F3232x4_t Zero = vdupq_n_f32(0.0f);
+    float32x4_t Zero = vdupq_n_f32(0.0f);
     Result.NEON = vsubq_f32(Zero, In.NEON);
 #else
     Result.X = -In.X;
@@ -4140,7 +4140,7 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 #define Rr_Mul(A, B)                                                           \
     _Generic(                                                                  \
         (B),                                                                   \
-        Rr_F32: _Generic(                                                      \
+        float: _Generic(                                                      \
             (A),                                                               \
             Rr_Vec2: Rr_MulV2F,                                                \
             Rr_Vec3: Rr_MulV3F,                                                \
@@ -4165,7 +4165,7 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 #define Rr_Div(A, B)                                                           \
     _Generic(                                                                  \
         (B),                                                                   \
-        Rr_F32: _Generic(                                                      \
+        float: _Generic(                                                      \
             (A),                                                               \
             Rr_Mat2: Rr_DivM2F,                                                \
             Rr_Mat3: Rr_DivM3F,                                                \
@@ -4203,7 +4203,7 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 #define Rr_Lerp(A, T, B)                                                       \
     _Generic(                                                                  \
         (A),                                                                   \
-        Rr_F32: Rr_Lerp,                                                       \
+        float: Rr_Lerp,                                                       \
         Rr_Vec2: Rr_LerpV2,                                                    \
         Rr_Vec3: Rr_LerpV3,                                                    \
         Rr_Vec4: Rr_LerpV4)(A, T, B)

@@ -20,7 +20,7 @@ VkPipeline Rr_BuildPipeline(
     VkPipelineShaderStageCreateInfo *ShaderStages = Rr_StackAlloc(
         VkPipelineShaderStageCreateInfo,
         RR_PIPELINE_SHADER_STAGES);
-    Rr_U32 ShaderStageCount = 0;
+    uint32_t ShaderStageCount = 0;
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
     if (PipelineBuilder->VertexShaderSPV.Data != NULL)
@@ -28,7 +28,7 @@ VkPipeline Rr_BuildPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (Rr_U32 *)PipelineBuilder->VertexShaderSPV.Data,
+            .pCode = (uint32_t *)PipelineBuilder->VertexShaderSPV.Data,
             .codeSize = PipelineBuilder->VertexShaderSPV.Length,
         };
         vkCreateShaderModule(
@@ -47,7 +47,7 @@ VkPipeline Rr_BuildPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (Rr_U32 *)PipelineBuilder->FragmentShaderSPV.Data,
+            .pCode = (uint32_t *)PipelineBuilder->FragmentShaderSPV.Data,
             .codeSize = PipelineBuilder->FragmentShaderSPV.Length,
         };
         vkCreateShaderModule(
@@ -94,10 +94,10 @@ VkPipeline Rr_BuildPipeline(
         }
     };
 
-    Rr_U32 AttributeCount = 0;
+    uint32_t AttributeCount = 0;
     Rr_Bool bHasPerVertexBinding = RR_FALSE;
     Rr_Bool bHasPerInstanceBinding = RR_FALSE;
-    for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
+    for (uintptr_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
          ++Index)
     {
         if (PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
@@ -290,20 +290,20 @@ static VkFormat Rr_GetVulkanFormat(Rr_VertexInputType Type)
     }
 }
 
-static Rr_USize Rr_GetVertexInputSize(Rr_VertexInputType Type)
+static uintptr_t Rr_GetVertexInputSize(Rr_VertexInputType Type)
 {
     switch (Type)
     {
         case RR_VERTEX_INPUT_TYPE_FLOAT:
-            return sizeof(Rr_F32);
+            return sizeof(float);
         case RR_VERTEX_INPUT_TYPE_UINT:
-            return sizeof(Rr_U32);
+            return sizeof(uint32_t);
         case RR_VERTEX_INPUT_TYPE_VEC2:
-            return sizeof(Rr_F32) * 2;
+            return sizeof(float) * 2;
         case RR_VERTEX_INPUT_TYPE_VEC3:
-            return sizeof(Rr_F32) * 3;
+            return sizeof(float) * 3;
         case RR_VERTEX_INPUT_TYPE_VEC4:
-            return sizeof(Rr_F32) * 4;
+            return sizeof(float) * 4;
         case RR_VERTEX_INPUT_TYPE_NONE:
         default:
             return 0;
@@ -313,7 +313,7 @@ static Rr_USize Rr_GetVertexInputSize(Rr_VertexInputType Type)
 static void Rr_EnableVertexInputAttribute(
     Rr_PipelineBuilder *PipelineBuilder,
     Rr_VertexInputAttribute Attribute,
-    Rr_USize Binding)
+    uintptr_t Binding)
 {
     VkFormat Format = Rr_GetVulkanFormat(Attribute.Type);
     if (Format == VK_FORMAT_UNDEFINED)
@@ -321,7 +321,7 @@ static void Rr_EnableVertexInputAttribute(
         return;
     }
 
-    Rr_USize Location = Attribute.Location;
+    uintptr_t Location = Attribute.Location;
     if (Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
         Rr_LogAbort("Exceeding max allowed number of vertex attributes for a "
@@ -343,7 +343,7 @@ void Rr_EnablePerVertexInputAttributes(
     Rr_PipelineBuilder *PipelineBuilder,
     Rr_VertexInput *VertexInput)
 {
-    for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
+    for (uintptr_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
          ++Index)
     {
         Rr_EnableVertexInputAttribute(
@@ -357,7 +357,7 @@ void Rr_EnablePerInstanceInputAttributes(
     Rr_PipelineBuilder *PipelineBuilder,
     Rr_VertexInput *VertexInput)
 {
-    for (Rr_USize Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
+    for (uintptr_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
          ++Index)
     {
         Rr_EnableVertexInputAttribute(

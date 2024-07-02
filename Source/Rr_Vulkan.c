@@ -10,10 +10,10 @@
 static Rr_Bool Rr_CheckPhysicalDevice(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
-    Rr_U32 *OutGraphicsQueueFamilyIndex,
-    Rr_U32 *OutTransferQueueFamilyIndex)
+    uint32_t *OutGraphicsQueueFamilyIndex,
+    uint32_t *OutTransferQueueFamilyIndex)
 {
-    Rr_U32 ExtensionCount;
+    uint32_t ExtensionCount;
     vkEnumerateDeviceExtensionProperties(
         PhysicalDevice,
         NULL,
@@ -24,7 +24,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
         return RR_FALSE;
     }
 
-    Rr_Byte *TargetExtensions[] = {
+    char *TargetExtensions[] = {
         "VK_KHR_swapchain",
     };
 
@@ -38,9 +38,9 @@ static Rr_Bool Rr_CheckPhysicalDevice(
         &ExtensionCount,
         Extensions);
 
-    for (Rr_U32 Index = 0; Index < ExtensionCount; Index++)
+    for (uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
-        for (Rr_U32 TargetIndex = 0;
+        for (uint32_t TargetIndex = 0;
              TargetIndex < SDL_arraysize(TargetExtensions);
              ++TargetIndex)
         {
@@ -52,7 +52,8 @@ static Rr_Bool Rr_CheckPhysicalDevice(
             }
         }
     }
-    for (Rr_U32 TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions);
+    for (uint32_t TargetIndex = 0;
+         TargetIndex < SDL_arraysize(TargetExtensions);
          ++TargetIndex)
     {
         if (!FoundExtensions[TargetIndex])
@@ -61,7 +62,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
         }
     }
 
-    Rr_U32 QueueFamilyCount;
+    uint32_t QueueFamilyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(
         PhysicalDevice,
         &QueueFamilyCount,
@@ -80,10 +81,10 @@ static Rr_Bool Rr_CheckPhysicalDevice(
         &QueueFamilyCount,
         QueueFamilyProperties);
 
-    Rr_U32 GraphicsQueueFamilyIndex = ~0U;
-    Rr_U32 TransferQueueFamilyIndex = ~0U;
+    uint32_t GraphicsQueueFamilyIndex = ~0U;
+    uint32_t TransferQueueFamilyIndex = ~0U;
 
-    for (Rr_U32 Index = 0; Index < QueueFamilyCount; ++Index)
+    for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
     {
         vkGetPhysicalDeviceSurfaceSupportKHR(
             PhysicalDevice,
@@ -108,7 +109,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
 
     if (!bForceDisableTransferQueue)
     {
-        for (Rr_U32 Index = 0; Index < QueueFamilyCount; ++Index)
+        for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
         {
             if (Index == GraphicsQueueFamilyIndex)
             {
@@ -140,12 +141,12 @@ static Rr_Bool Rr_CheckPhysicalDevice(
 Rr_PhysicalDevice Rr_CreatePhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
-    Rr_U32 *OutGraphicsQueueFamilyIndex,
-    Rr_U32 *OutTransferQueueFamilyIndex)
+    uint32_t *OutGraphicsQueueFamilyIndex,
+    uint32_t *OutTransferQueueFamilyIndex)
 {
     Rr_PhysicalDevice PhysicalDevice = { 0 };
 
-    Rr_U32 PhysicalDeviceCount = 0;
+    uint32_t PhysicalDeviceCount = 0;
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, NULL);
     if (PhysicalDeviceCount == 0)
     {
@@ -171,7 +172,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
 
     Rr_Bool bUseTransferQueue = RR_FALSE;
     Rr_Bool bFoundSuitableDevice = RR_FALSE;
-    for (Rr_U32 Index = 0; Index < PhysicalDeviceCount; Index++)
+    for (uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
         if (Rr_CheckPhysicalDevice(
@@ -219,15 +220,15 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
 
 void Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
-    Rr_U32 GraphicsQueueFamilyIndex,
-    Rr_U32 TransferQueueFamilyIndex,
+    uint32_t GraphicsQueueFamilyIndex,
+    uint32_t TransferQueueFamilyIndex,
     VkDevice *OutDevice,
     VkQueue *OutGraphicsQueue,
     VkQueue *OutTransferQueue)
 {
     Rr_Bool bUseTransferQueue =
         GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
-    Rr_F32 QueuePriorities[] = { 1.0f };
+    float QueuePriorities[] = { 1.0f };
     VkDeviceQueueCreateInfo QueueInfos[] = {
         {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -243,7 +244,7 @@ void Rr_InitDeviceAndQueues(
         }
     };
 
-    Rr_CString DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    const char *DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
     VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -327,7 +328,7 @@ void Rr_BlitColorImage(
         },
         .srcOffsets = {
             { 0 },
-            { (Rr_I32)SrcSize.width, (Rr_I32)SrcSize.height, 1, },
+            { (int32_t)SrcSize.width, (int32_t)SrcSize.height, 1, },
         },
         .dstSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -337,7 +338,7 @@ void Rr_BlitColorImage(
         },
         .dstOffsets = {
             { 0 },
-            { (Rr_I32)DstSize.width, (Rr_I32)DstSize.height, 1, },
+            { (int32_t)DstSize.width, (int32_t)DstSize.height, 1, },
         },
     };
 

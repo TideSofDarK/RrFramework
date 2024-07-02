@@ -6,8 +6,8 @@
 
 static Rr_KeyState Rr_UpdateKeyState(
     Rr_KeyState OldKeyState,
-    const Rr_U8 *KeyboardState,
-    Rr_U8 Scancode)
+    const uint8_t *KeyboardState,
+    uint8_t Scancode)
 {
     Rr_Bool bCurrentlyPressed = KeyboardState[Scancode] == 1;
     Rr_Bool bWasPressed =
@@ -39,8 +39,8 @@ static Rr_KeyState Rr_UpdateKeyState(
 void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
 {
     Rr_KeyStates NewKeys = State->Keys;
-    const Rr_U8 *KeyboardState = SDL_GetKeyboardState(NULL);
-    for (Rr_USize Index = 0; Index < Config->Count; Index++)
+    const uint8_t *KeyboardState = SDL_GetKeyboardState(NULL);
+    for (uintptr_t Index = 0; Index < Config->Count; Index++)
     {
         Rr_InputMapping *Mapping = &Config->Mappings[Index];
 
@@ -59,7 +59,7 @@ void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
         SDL_GetMouseState(&State->MousePosition.X, &State->MousePosition.Y);
 }
 
-Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, Rr_U32 Key)
+Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, uint32_t Key)
 {
     return (Keys >> (2 * Key)) & 3;
 }

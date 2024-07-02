@@ -15,20 +15,20 @@ extern "C" {
 typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset
 {
-    Rr_Byte *Data;
-    Rr_USize Length;
+    char *Data;
+    uintptr_t Length;
 };
 
 #if defined(RR_USE_RC)
 
-typedef Rr_CString Rr_AssetRef;
+typedef const char * Rr_AssetRef;
 
 #else
 
 typedef struct Rr_AssetRef
 {
-    Rr_Byte *Start;
-    Rr_Byte *End;
+    char *Start;
+    char *End;
 } Rr_AssetRef;
 
 #define STR2(x) #x

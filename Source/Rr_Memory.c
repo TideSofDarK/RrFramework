@@ -4,24 +4,27 @@
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_thread.h>
 
-void *Rr_Malloc(Rr_USize Bytes) { return SDL_malloc(Bytes); }
+void *Rr_Malloc(uintptr_t Bytes) { return SDL_malloc(Bytes); }
 
-void *Rr_Calloc(Rr_USize Num, Rr_USize Bytes) { return SDL_calloc(Num, Bytes); }
+void *Rr_Calloc(uintptr_t Num, uintptr_t Bytes)
+{
+    return SDL_calloc(Num, Bytes);
+}
 
-void *Rr_Realloc(void *Ptr, Rr_USize Bytes) { return SDL_realloc(Ptr, Bytes); }
+void *Rr_Realloc(void *Ptr, uintptr_t Bytes) { return SDL_realloc(Ptr, Bytes); }
 
 void Rr_Free(void *Ptr) { SDL_free(Ptr); }
 
-void *Rr_AlignedAlloc(Rr_USize Alignment, Rr_USize Bytes)
+void *Rr_AlignedAlloc(uintptr_t Alignment, uintptr_t Bytes)
 {
     return SDL_aligned_alloc(Alignment, Bytes);
 }
 
 void Rr_AlignedFree(void *Ptr) { SDL_aligned_free(Ptr); }
 
-Rr_Arena Rr_CreateArena(Rr_USize Size)
+Rr_Arena Rr_CreateArena(uintptr_t Size)
 {
-    Rr_Byte *Allocation = Rr_Malloc(Size);
+    char *Allocation = Rr_Malloc(Size);
     return (Rr_Arena){ .Allocation = Allocation,
                        .Current = Allocation,
                        .End = Allocation + Size };
@@ -51,7 +54,8 @@ void Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch)
 static void SDLCALL Rr_CleanupScratchArena(void *ScratchArena)
 {
     Rr_Arena *Arenas = ScratchArena;
-    for (Rr_USize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
+    for (uintptr_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
+         ++Index)
     {
         Rr_DestroyArena(Arenas + Index);
     }
@@ -62,7 +66,7 @@ static SDL_TLSID ScratchArenaTLS;
 
 void Rr_SetScratchTLS(void *TLSID) { ScratchArenaTLS = *((SDL_TLSID *)TLSID); }
 
-void Rr_InitThreadScratch(Rr_USize Size)
+void Rr_InitThreadScratch(uintptr_t Size)
 {
     if (ScratchArenaTLS == 0)
     {
@@ -70,7 +74,8 @@ void Rr_InitThreadScratch(Rr_USize Size)
     }
     Rr_Arena *Arena =
         Rr_Calloc(RR_SCRATCH_ARENA_COUNT_PER_THREAD, sizeof(Rr_Arena));
-    for (Rr_USize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
+    for (uintptr_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
+         ++Index)
     {
         Arena[Index] = Rr_CreateArena(Size);
     }
@@ -90,7 +95,7 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
     }
     else
     {
-        for (Rr_USize Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
+        for (uintptr_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
              ++Index)
         {
             if (Arena + Index != Conflict)
@@ -107,22 +112,22 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
 
 void *Rr_ArenaAlloc(
     Rr_Arena *Arena,
-    Rr_USize Size,
-    Rr_USize Align,
-    Rr_USize Count)
+    uintptr_t Size,
+    uintptr_t Align,
+    uintptr_t Count)
 {
-    Rr_USize Padding = -(Rr_USize)Arena->Current & (Align - 1);
-    Rr_ISize Available = (Arena->End - Arena->Current) - (Rr_ISize)Padding;
+    uintptr_t Padding = -(uintptr_t)Arena->Current & (Align - 1);
+    intptr_t Available = (Arena->End - Arena->Current) - (intptr_t)Padding;
     if (Available < 0 || Count > Available / Size)
     {
         Rr_LogAbort("Running out of arena memory!");
     }
-    Rr_Byte *p = Arena->Current + Padding;
+    char *p = Arena->Current + Padding;
     Arena->Current += Padding + Count * Size;
     return memset(p, 0, Count * Size);
 }
 
-Rr_SyncArena Rr_CreateSyncArena(Rr_USize Size)
+Rr_SyncArena Rr_CreateSyncArena(uintptr_t Size)
 {
     return (Rr_SyncArena){ .Arena = Rr_CreateArena(Size) };
 }
@@ -132,7 +137,7 @@ void Rr_DestroySyncArena(Rr_SyncArena *Arena)
     Rr_DestroyArena(&Arena->Arena);
 }
 
-void Rr_SliceGrow(void *Slice, Rr_USize Size, Rr_Arena *Arena)
+void Rr_SliceGrow(void *Slice, uintptr_t Size, Rr_Arena *Arena)
 {
     if (Arena == NULL)
     {
@@ -156,7 +161,11 @@ void Rr_SliceGrow(void *Slice, Rr_USize Size, Rr_Arena *Arena)
     memcpy(Slice, &Replica, sizeof(Replica));
 }
 
-void Rr_SliceResize(void *Slice, Rr_USize Size, Rr_USize Count, Rr_Arena *Arena)
+void Rr_SliceResize(
+    void *Slice,
+    uintptr_t Size,
+    uintptr_t Count,
+    Rr_Arena *Arena)
 {
     if (Arena == NULL)
     {
