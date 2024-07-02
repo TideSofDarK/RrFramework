@@ -65,6 +65,7 @@ IndentAccessModifiers: false
 AccessModifierOffset: -4
 
 PackConstructorInitializers: Never
+BreakConstructorInitializers: AfterColon
 
 PointerAlignment: Right
 SpaceAfterCStyleCast: false
