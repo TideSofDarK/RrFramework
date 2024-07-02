@@ -238,7 +238,7 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         &ImageCount,
         Images);
 
-    VkImageViewCreateInfo ColorAttachmentView = {
+    VkImageViewCreateInfo ImageViewCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = Renderer->Swapchain.Format,
@@ -260,10 +260,10 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     for (uint32_t i = 0; i < ImageCount; i++)
     {
         Renderer->Swapchain.Images[i].Handle = Images[i];
-        ColorAttachmentView.image = Images[i];
+        ImageViewCreateInfo.image = Images[i];
         vkCreateImageView(
             Renderer->Device,
-            &ColorAttachmentView,
+            &ImageViewCreateInfo,
             NULL,
             &Renderer->Swapchain.Images[i].View);
     }
