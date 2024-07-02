@@ -3,7 +3,7 @@
 #if defined(RR_USE_RC)
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <Windows.h>
 
 Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
