@@ -21,7 +21,7 @@ struct Rr_Asset
 
 #if defined(RR_USE_RC)
 
-typedef const char * Rr_AssetRef;
+typedef const char *Rr_AssetRef;
 
 #else
 

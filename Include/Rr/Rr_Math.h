@@ -22,7 +22,7 @@
    => only use "#ifdef RR_MATH__USE_SSE" to check for SSE support below this
    block! */
 #ifndef RR_MATH_NO_SIMD
-#ifdef _MSC_VER /* MSVC supports SSE in amd64 mode or _M_IX86_FP >= 1 (2       \
+#ifdef _MSC_VER /* MSVC supports SSE in amd64 mode or _M_IX86_FP >= 1 (2 \
                    means SSE2) */
 #if defined(_M_AMD64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 1)
 #define RR_MATH__USE_SSE 1
@@ -41,8 +41,8 @@
 /* NEON Supported */
 #endif /* #ifndef RR_MATH_NO_SIMD */
 
-#if (                                                                          \
-    !defined(__cplusplus) && defined(__STDC_VERSION__) &&                      \
+#if (                                                     \
+    !defined(__cplusplus) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 201112L)
 #define RR_MATH__USE_C11_GENERICS 1
 #endif
@@ -83,7 +83,7 @@
 extern "C" {
 #endif
 
-#if !defined(RR_MATH_USE_DEGREES) && !defined(RR_MATH_USE_TURNS) &&            \
+#if !defined(RR_MATH_USE_DEGREES) && !defined(RR_MATH_USE_TURNS) && \
     !defined(RR_MATH_USE_RADIANS)
 #define RR_MATH_USE_RADIANS
 #endif
@@ -1656,8 +1656,7 @@ static inline Rr_Mat3 Rr_InvGeneralM3(Rr_Mat3 Matrix)
     Cross.Columns[1] = Rr_Cross(Matrix.Columns[2], Matrix.Columns[0]);
     Cross.Columns[2] = Rr_Cross(Matrix.Columns[0], Matrix.Columns[1]);
 
-    float InvDeterminant =
-        1.0f / Rr_DotV3(Cross.Columns[2], Matrix.Columns[2]);
+    float InvDeterminant = 1.0f / Rr_DotV3(Cross.Columns[2], Matrix.Columns[2]);
 
     Rr_Mat3 Result;
     Result.Columns[0] = Rr_MulV3F(Cross.Columns[0], InvDeterminant);
@@ -4115,121 +4114,121 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 #endif /* __cplusplus*/
 
 #ifdef RR_MATH__USE_C11_GENERICS
-#define Rr_Add(A, B)                                                           \
-    _Generic(                                                                  \
-        (A),                                                                   \
-        Rr_Vec2: Rr_AddV2,                                                     \
-        Rr_Vec3: Rr_AddV3,                                                     \
-        Rr_Vec4: Rr_AddV4,                                                     \
-        Rr_Mat2: Rr_AddM2,                                                     \
-        Rr_Mat3: Rr_AddM3,                                                     \
-        Rr_Mat4: Rr_AddM4,                                                     \
+#define Rr_Add(A, B)       \
+    _Generic(              \
+        (A),               \
+        Rr_Vec2: Rr_AddV2, \
+        Rr_Vec3: Rr_AddV3, \
+        Rr_Vec4: Rr_AddV4, \
+        Rr_Mat2: Rr_AddM2, \
+        Rr_Mat3: Rr_AddM3, \
+        Rr_Mat4: Rr_AddM4, \
         Rr_Quat: Rr_AddQ)(A, B)
 
-#define Rr_Sub(A, B)                                                           \
-    _Generic(                                                                  \
-        (A),                                                                   \
-        Rr_Vec2: Rr_SubV2,                                                     \
-        Rr_Vec3: Rr_SubV3,                                                     \
-        Rr_Vec4: Rr_SubV4,                                                     \
-        Rr_Mat2: Rr_SubM2,                                                     \
-        Rr_Mat3: Rr_SubM3,                                                     \
-        Rr_Mat4: Rr_SubM4,                                                     \
+#define Rr_Sub(A, B)       \
+    _Generic(              \
+        (A),               \
+        Rr_Vec2: Rr_SubV2, \
+        Rr_Vec3: Rr_SubV3, \
+        Rr_Vec4: Rr_SubV4, \
+        Rr_Mat2: Rr_SubM2, \
+        Rr_Mat3: Rr_SubM3, \
+        Rr_Mat4: Rr_SubM4, \
         Rr_Quat: Rr_SubQ)(A, B)
 
-#define Rr_Mul(A, B)                                                           \
-    _Generic(                                                                  \
-        (B),                                                                   \
-        float: _Generic(                                                      \
-            (A),                                                               \
-            Rr_Vec2: Rr_MulV2F,                                                \
-            Rr_Vec3: Rr_MulV3F,                                                \
-            Rr_Vec4: Rr_MulV4F,                                                \
-            Rr_Mat2: Rr_MulM2F,                                                \
-            Rr_Mat3: Rr_MulM3F,                                                \
-            Rr_Mat4: Rr_MulM4F,                                                \
-            Rr_Quat: Rr_MulQF),                                                \
-        Rr_Mat2: Rr_MulM2,                                                     \
-        Rr_Mat3: Rr_MulM3,                                                     \
-        Rr_Mat4: Rr_MulM4,                                                     \
-        Rr_Quat: Rr_MulQ,                                                      \
-        default: _Generic(                                                     \
-            (A),                                                               \
-            Rr_Vec2: Rr_MulV2,                                                 \
-            Rr_Vec3: Rr_MulV3,                                                 \
-            Rr_Vec4: Rr_MulV4,                                                 \
-            Rr_Mat2: Rr_MulM2V2,                                               \
-            Rr_Mat3: Rr_MulM3V3,                                               \
+#define Rr_Mul(A, B)             \
+    _Generic(                    \
+        (B),                     \
+        float: _Generic(         \
+            (A),                 \
+            Rr_Vec2: Rr_MulV2F,  \
+            Rr_Vec3: Rr_MulV3F,  \
+            Rr_Vec4: Rr_MulV4F,  \
+            Rr_Mat2: Rr_MulM2F,  \
+            Rr_Mat3: Rr_MulM3F,  \
+            Rr_Mat4: Rr_MulM4F,  \
+            Rr_Quat: Rr_MulQF),  \
+        Rr_Mat2: Rr_MulM2,       \
+        Rr_Mat3: Rr_MulM3,       \
+        Rr_Mat4: Rr_MulM4,       \
+        Rr_Quat: Rr_MulQ,        \
+        default: _Generic(       \
+            (A),                 \
+            Rr_Vec2: Rr_MulV2,   \
+            Rr_Vec3: Rr_MulV3,   \
+            Rr_Vec4: Rr_MulV4,   \
+            Rr_Mat2: Rr_MulM2V2, \
+            Rr_Mat3: Rr_MulM3V3, \
             Rr_Mat4: Rr_MulM4V4))(A, B)
 
-#define Rr_Div(A, B)                                                           \
-    _Generic(                                                                  \
-        (B),                                                                   \
-        float: _Generic(                                                      \
-            (A),                                                               \
-            Rr_Mat2: Rr_DivM2F,                                                \
-            Rr_Mat3: Rr_DivM3F,                                                \
-            Rr_Mat4: Rr_DivM4F,                                                \
-            Rr_Vec2: Rr_DivV2F,                                                \
-            Rr_Vec3: Rr_DivV3F,                                                \
-            Rr_Vec4: Rr_DivV4F,                                                \
-            Rr_Quat: Rr_DivQF),                                                \
-        Rr_Mat2: Rr_DivM2,                                                     \
-        Rr_Mat3: Rr_DivM3,                                                     \
-        Rr_Mat4: Rr_DivM4,                                                     \
-        Rr_Quat: Rr_DivQ,                                                      \
-        default: _Generic(                                                     \
-            (A),                                                               \
-            Rr_Vec2: Rr_DivV2,                                                 \
-            Rr_Vec3: Rr_DivV3,                                                 \
+#define Rr_Div(A, B)            \
+    _Generic(                   \
+        (B),                    \
+        float: _Generic(        \
+            (A),                \
+            Rr_Mat2: Rr_DivM2F, \
+            Rr_Mat3: Rr_DivM3F, \
+            Rr_Mat4: Rr_DivM4F, \
+            Rr_Vec2: Rr_DivV2F, \
+            Rr_Vec3: Rr_DivV3F, \
+            Rr_Vec4: Rr_DivV4F, \
+            Rr_Quat: Rr_DivQF), \
+        Rr_Mat2: Rr_DivM2,      \
+        Rr_Mat3: Rr_DivM3,      \
+        Rr_Mat4: Rr_DivM4,      \
+        Rr_Quat: Rr_DivQ,       \
+        default: _Generic(      \
+            (A),                \
+            Rr_Vec2: Rr_DivV2,  \
+            Rr_Vec3: Rr_DivV3,  \
             Rr_Vec4: Rr_DivV4))(A, B)
 
-#define Rr_Len(A)                                                              \
+#define Rr_Len(A) \
     _Generic((A), Rr_Vec2: Rr_LenV2, Rr_Vec3: Rr_LenV3, Rr_Vec4: Rr_LenV4)(A)
 
-#define Rr_LenSqr(A)                                                           \
-    _Generic(                                                                  \
-        (A),                                                                   \
-        Rr_Vec2: Rr_LenSqrV2,                                                  \
-        Rr_Vec3: Rr_LenSqrV3,                                                  \
+#define Rr_LenSqr(A)          \
+    _Generic(                 \
+        (A),                  \
+        Rr_Vec2: Rr_LenSqrV2, \
+        Rr_Vec3: Rr_LenSqrV3, \
         Rr_Vec4: Rr_LenSqrV4)(A)
 
-#define Rr_Norm(A)                                                             \
+#define Rr_Norm(A) \
     _Generic((A), Rr_Vec2: Rr_NormV2, Rr_Vec3: Rr_NormV3, Rr_Vec4: Rr_NormV4)(A)
 
-#define Rr_Dot(A, B)                                                           \
+#define Rr_Dot(A, B) \
     _Generic((A), Rr_Vec2: Rr_DotV2, Rr_Vec3: Rr_DotV3, Rr_Vec4: Rr_DotV4)(A, B)
 
-#define Rr_Lerp(A, T, B)                                                       \
-    _Generic(                                                                  \
-        (A),                                                                   \
-        float: Rr_Lerp,                                                       \
-        Rr_Vec2: Rr_LerpV2,                                                    \
-        Rr_Vec3: Rr_LerpV3,                                                    \
+#define Rr_Lerp(A, T, B)    \
+    _Generic(               \
+        (A),                \
+        float: Rr_Lerp,     \
+        Rr_Vec2: Rr_LerpV2, \
+        Rr_Vec3: Rr_LerpV3, \
         Rr_Vec4: Rr_LerpV4)(A, T, B)
 
-#define Rr_Eq(A, B)                                                            \
+#define Rr_Eq(A, B) \
     _Generic((A), Rr_Vec2: Rr_EqV2, Rr_Vec3: Rr_EqV3, Rr_Vec4: Rr_EqV4)(A, B)
 
-#define Rr_Transpose(M)                                                        \
-    _Generic(                                                                  \
-        (M),                                                                   \
-        Rr_Mat2: Rr_TransposeM2,                                               \
-        Rr_Mat3: Rr_TransposeM3,                                               \
+#define Rr_Transpose(M)          \
+    _Generic(                    \
+        (M),                     \
+        Rr_Mat2: Rr_TransposeM2, \
+        Rr_Mat3: Rr_TransposeM3, \
         Rr_Mat4: Rr_TransposeM4)(M)
 
-#define Rr_Determinant(M)                                                      \
-    _Generic(                                                                  \
-        (M),                                                                   \
-        Rr_Mat2: Rr_DeterminantM2,                                             \
-        Rr_Mat3: Rr_DeterminantM3,                                             \
+#define Rr_Determinant(M)          \
+    _Generic(                      \
+        (M),                       \
+        Rr_Mat2: Rr_DeterminantM2, \
+        Rr_Mat3: Rr_DeterminantM3, \
         Rr_Mat4: Rr_DeterminantM4)(M)
 
-#define Rr_InvGeneral(M)                                                       \
-    _Generic(                                                                  \
-        (M),                                                                   \
-        Rr_Mat2: Rr_InvGeneralM2,                                              \
-        Rr_Mat3: Rr_InvGeneralM3,                                              \
+#define Rr_InvGeneral(M)          \
+    _Generic(                     \
+        (M),                      \
+        Rr_Mat2: Rr_InvGeneralM2, \
+        Rr_Mat3: Rr_InvGeneralM3, \
         Rr_Mat4: Rr_InvGeneralM4)(M)
 
 #endif

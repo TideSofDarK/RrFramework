@@ -23,9 +23,9 @@ struct Rr_Data
     uintptr_t Size;
 };
 
-#define Rr_MakeData(Struct)                                                    \
-    {                                                                          \
-        &(Struct), sizeof(Struct)                                              \
+#define Rr_MakeData(Struct)       \
+    {                             \
+        &(Struct), sizeof(Struct) \
     }
 
 typedef enum Rr_DrawTextFlags
