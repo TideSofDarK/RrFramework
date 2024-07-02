@@ -9,8 +9,6 @@
 #include "Rr_Log.h"
 #include "Rr_Rendering.h"
 
-#include <SDL3/SDL_atomic.h>
-
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
