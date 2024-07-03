@@ -44,8 +44,7 @@ void Rr_DrawStaticMesh(
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
-    for (uintptr_t PrimitiveIndex = 0;
-         PrimitiveIndex < StaticMesh->PrimitiveCount;
+    for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
         *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
@@ -67,7 +66,7 @@ void Rr_DrawStaticMesh(
 void Rr_DrawStaticMeshOverrideMaterials(
     Rr_DrawContext *DrawContext,
     Rr_Material **OverrideMaterials,
-    uintptr_t OverrideMaterialCount,
+    size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data DrawData)
 {
@@ -75,8 +74,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->DrawBuffer.Offset;
 
-    for (uintptr_t PrimitiveIndex = 0;
-         PrimitiveIndex < StaticMesh->PrimitiveCount;
+    for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
         *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =

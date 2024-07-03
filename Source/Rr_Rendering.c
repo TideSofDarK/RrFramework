@@ -170,7 +170,7 @@ static void Rr_RenderGeneric(
         0,
         NULL);
 
-    for (uintptr_t Index = 0; Index < DrawPrimitivesSlice.Length; ++Index)
+    for (size_t Index = 0; Index < DrawPrimitivesSlice.Length; ++Index)
     {
         Rr_DrawPrimitiveInfo *Info = DrawPrimitivesSlice.Data + Index;
 
@@ -201,7 +201,7 @@ static void Rr_RenderGeneric(
                 0,
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                 Scratch.Arena);
-            for (uintptr_t TextureIndex = 0;
+            for (size_t TextureIndex = 0;
                  TextureIndex < RR_MAX_TEXTURES_PER_MATERIAL;
                  ++TextureIndex)
             {
@@ -381,13 +381,13 @@ static void Rr_RenderText(
         0,
         NULL);
 
-    uintptr_t TextDataOffset = 0;
-    uintptr_t TextCount = Rr_SliceLength(&DrawTextSlice);
+    size_t TextDataOffset = 0;
+    size_t TextCount = Rr_SliceLength(&DrawTextSlice);
     //    Rr_TextPerInstanceVertexInput* TextData =
     //    (Rr_TextPerInstanceVertexInput*)Rr_Malloc(RR_TEXT_BUFFER_SIZE);
     Rr_TextPerInstanceVertexInput *TextData =
         Rr_ArenaAllocOne(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
-    for (uintptr_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
+    for (size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
     {
         Rr_DrawTextInfo *DrawTextInfo = &DrawTextSlice.Data[TextIndex];
 
@@ -440,13 +440,13 @@ static void Rr_RenderText(
             128,
             &TextPushConstants);
         /* Upload and bind text data. */
-        uintptr_t TextLength = DrawTextInfo->String.Length;
-        uintptr_t FinalTextLength = 0;
+        size_t TextLength = DrawTextInfo->String.Length;
+        size_t FinalTextLength = 0;
         uint32_t PalleteIndex = 0;
         Rr_Bool bCodePending = RR_FALSE;
         Rr_Bool bPalleteIndexPending = RR_FALSE;
         Rr_Vec2 AccumulatedAdvance = { 0 };
-        for (uintptr_t CharacterIndex = 0; CharacterIndex < TextLength;
+        for (size_t CharacterIndex = 0; CharacterIndex < TextLength;
              ++CharacterIndex)
         {
             uint32_t Unicode = DrawTextInfo->String.Data[CharacterIndex];

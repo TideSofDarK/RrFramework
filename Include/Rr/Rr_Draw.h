@@ -20,7 +20,7 @@ typedef struct Rr_Data Rr_Data;
 struct Rr_Data
 {
     void *Data;
-    uintptr_t Size;
+    size_t Size;
 };
 
 #define Rr_MakeData(Struct)       \
@@ -57,7 +57,7 @@ extern void Rr_DrawStaticMesh(
 extern void Rr_DrawStaticMeshOverrideMaterials(
     Rr_DrawContext *DrawContext,
     Rr_Material **OverrideMaterials,
-    uintptr_t OverrideMaterialCount,
+    size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data DrawData);
 

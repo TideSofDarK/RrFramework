@@ -61,7 +61,7 @@ extern Rr_StaticMesh *Rr_CreateStaticMeshGLTF(
     struct Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
     struct Rr_GLTFLoader *Loader,
-    uintptr_t MeshIndex,
+    size_t MeshIndex,
     Rr_Arena *Arena);
 
 extern Rr_StaticMesh *Rr_CreateStaticMeshOBJ(
@@ -78,6 +78,6 @@ extern void Rr_GetStaticMeshSizeOBJ(
 extern void Rr_GetStaticMeshSizeGLTF(
     Rr_AssetRef AssetRef,
     struct Rr_GLTFLoader *Loader,
-    uintptr_t MeshIndex,
+    size_t MeshIndex,
     Rr_Arena *Arena,
     struct Rr_LoadSize *OutLoadSize);

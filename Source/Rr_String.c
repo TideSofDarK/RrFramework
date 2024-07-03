@@ -5,10 +5,10 @@
 
 static uint32_t *Rr_UTF8ToUTF32(
     const char *CString,
-    uintptr_t OptionalLength,
+    size_t OptionalLength,
     uint32_t *OutOldBuffer,
-    uintptr_t OldLength,
-    uintptr_t *OutNewLength)
+    size_t OldLength,
+    size_t *OutNewLength)
 {
     static uint32_t Buffer[2048] = { 0 };
 
@@ -18,17 +18,16 @@ static uint32_t *Rr_UTF8ToUTF32(
     uint8_t Four = 240;
     uint8_t Five = 248;
 
-    uintptr_t SourceLength =
-        OptionalLength > 0 ? OptionalLength : strlen(CString);
+    size_t SourceLength = OptionalLength > 0 ? OptionalLength : strlen(CString);
     if (SourceLength > 2048)
     {
         Rr_LogAbort("Exceeding max string length!");
     }
 
     uint8_t Carry = 0;
-    uintptr_t FinalIndex = 0;
+    size_t FinalIndex = 0;
     uint32_t FinalCharacter = 0;
-    for (uintptr_t SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
+    for (size_t SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
     {
         if (Carry > 0)
         {
@@ -103,17 +102,14 @@ Rr_String Rr_CreateString(const char *CString)
     return String;
 }
 
-Rr_String Rr_CreateEmptyString(uintptr_t Length)
+Rr_String Rr_CreateEmptyString(size_t Length)
 {
     return (Rr_String){ .Length = Length,
                         .Data =
                             (uint32_t *)Rr_Calloc(Length, sizeof(uint32_t)) };
 }
 
-void Rr_SetString(
-    Rr_String *String,
-    const char *CString,
-    uintptr_t OptionalLength)
+void Rr_SetString(Rr_String *String, const char *CString, size_t OptionalLength)
 {
     if (String == NULL)
     {

@@ -90,8 +90,8 @@ struct Rr_Renderer
 
     /* Frames */
     Rr_Frame Frames[RR_FRAME_OVERLAP];
-    uintptr_t FrameNumber;
-    uintptr_t CurrentFrameIndex;
+    size_t FrameNumber;
+    size_t CurrentFrameIndex;
 
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
@@ -120,7 +120,7 @@ struct Rr_Renderer
     /* Retired Semaphores */
     Rr_SliceType(struct Rr_RetiredSemaphore {
         VkSemaphore Semaphore;
-        uintptr_t FrameIndex;
+        size_t FrameIndex;
     }) RetiredSemaphoresSlice;
 
     /* Pending Loads */

@@ -76,7 +76,7 @@ void Rr_DestroyObject(Rr_ObjectStorage *Storage, void *Object)
     SDL_UnlockSpinlock(&Storage->Lock);
 }
 
-uintptr_t Rr_CalculateObjectStorageSize(uintptr_t Count)
+size_t Rr_CalculateObjectStorageSize(size_t Count)
 {
     return sizeof(Rr_Object) * Count;
 }

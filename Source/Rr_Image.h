@@ -36,7 +36,7 @@ extern Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     char *Data,
-    uintptr_t DataSize,
+    size_t DataSize,
     Rr_Bool bMipMapped);
 
 extern Rr_Image *Rr_CreateColorImageFromPNG(
@@ -64,7 +64,7 @@ extern Rr_Image *Rr_CreateDepthAttachmentImage(
 
 extern void Rr_GetImageSizePNGMemory(
     char *Data,
-    uintptr_t DataSize,
+    size_t DataSize,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize);
 

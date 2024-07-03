@@ -9,7 +9,7 @@ Rr_Material *Rr_CreateMaterial(
     Rr_App *App,
     Rr_GenericPipeline *GenericPipeline,
     Rr_Image **Textures,
-    uintptr_t TextureCount)
+    size_t TextureCount)
 {
     Rr_Material *Material = Rr_CreateObject(&App->ObjectStorage);
     *Material = (Rr_Material){
@@ -24,7 +24,7 @@ Rr_Material *Rr_CreateMaterial(
     };
 
     TextureCount = SDL_min(TextureCount, RR_MAX_TEXTURES_PER_MATERIAL);
-    for (uintptr_t Index = 0; Index < TextureCount; ++Index)
+    for (size_t Index = 0; Index < TextureCount; ++Index)
     {
         Material->Textures[Index] = Textures[Index];
     }
@@ -41,7 +41,7 @@ void Rr_DestroyMaterial(Rr_App *App, Rr_Material *Material)
 
     if (Material->bOwning)
     {
-        for (uintptr_t TextureIndex = 0; TextureIndex < Material->TextureCount;
+        for (size_t TextureIndex = 0; TextureIndex < Material->TextureCount;
              ++TextureIndex)
         {
             Rr_DestroyImage(App, Material->Textures[TextureIndex]);

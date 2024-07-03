@@ -37,7 +37,7 @@ struct Rr_GLTFLoader
 typedef struct Rr_MeshGLTFOptions Rr_MeshGLTFOptions;
 struct Rr_MeshGLTFOptions
 {
-    uintptr_t MeshIndex;
+    size_t MeshIndex;
     Rr_GLTFLoader Loader;
 };
 
@@ -74,14 +74,14 @@ extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
 extern Rr_LoadingContext *Rr_LoadAsync(
     Rr_App *App,
     Rr_LoadTask *Tasks,
-    uintptr_t TaskCount,
+    size_t TaskCount,
     Rr_LoadingCallback LoadingCallback,
     void *Userdata);
 
 extern Rr_LoadResult Rr_LoadImmediate(
     Rr_App *App,
     Rr_LoadTask *Tasks,
-    uintptr_t TaskCount);
+    size_t TaskCount);
 
 extern void Rr_GetLoadProgress(
     Rr_LoadingContext *LoadingContext,

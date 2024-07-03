@@ -17,7 +17,7 @@ Rr_Material *Rr_CreateMaterial(
     Rr_App *App,
     Rr_GenericPipeline *GenericPipeline,
     Rr_Image **Textures,
-    uintptr_t TextureCount);
+    size_t TextureCount);
 
 void Rr_DestroyMaterial(Rr_App *App, Rr_Material *Material);
 

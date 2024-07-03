@@ -317,7 +317,7 @@ static void Rr_InitFrames(Rr_App *App)
         GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
 
-    for (uintptr_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         Rr_Frame *Frame = &Frames[Index];
         SDL_zerop(Frame);
@@ -385,7 +385,7 @@ static void Rr_CleanupFrames(Rr_App *App)
     Rr_Renderer *Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
 
-    for (uintptr_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_Frame *Frame = &Renderer->Frames[Index];
         vkDestroyCommandPool(Renderer->Device, Frame->CommandPool, NULL);
@@ -1113,7 +1113,7 @@ void Rr_CleanupRenderer(Rr_App *App)
 
     /* Generic Pipeline Layout */
     vkDestroyPipelineLayout(Device, Renderer->GenericPipelineLayout, NULL);
-    for (uintptr_t Index = 0; Index < RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT;
+    for (size_t Index = 0; Index < RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT;
          ++Index)
     {
         vkDestroyDescriptorSetLayout(
@@ -1205,7 +1205,7 @@ void Rr_ProcessPendingLoads(Rr_App *App)
 
     if (SDL_TryLockSpinlock(&App->SyncArena.Lock))
     {
-        for (uintptr_t Index = 0;
+        for (size_t Index = 0;
              Index < Rr_SliceLength(&Renderer->PendingLoadsSlice);
              ++Index)
         {
@@ -1299,7 +1299,7 @@ void Rr_Draw(Rr_App *App)
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     /* Flush Rendering Contexts */
-    for (uintptr_t Index = 0; Index < Frame->DrawContextsSlice.Length; ++Index)
+    for (size_t Index = 0; Index < Frame->DrawContextsSlice.Length; ++Index)
     {
         Rr_FlushDrawContext(
             &Frame->DrawContextsSlice.Data[Index],
@@ -1376,7 +1376,7 @@ void Rr_Draw(Rr_App *App)
         Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkSemaphore));
     VkPipelineStageFlags *WaitDstStages =
         Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkPipelineStageFlags));
-    uintptr_t WaitSemaphoreIndex = 1;
+    size_t WaitSemaphoreIndex = 1;
     WaitSemaphores[0] = Frame->SwapchainSemaphore;
     WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo SubmitInfo = {

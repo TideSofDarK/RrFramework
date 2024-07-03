@@ -40,7 +40,7 @@ void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
 {
     Rr_KeyStates NewKeys = State->Keys;
     const uint8_t *KeyboardState = SDL_GetKeyboardState(NULL);
-    for (uintptr_t Index = 0; Index < Config->Count; Index++)
+    for (size_t Index = 0; Index < Config->Count; Index++)
     {
         Rr_InputMapping *Mapping = &Config->Mappings[Index];
 

@@ -29,15 +29,15 @@ extern "C" {
     while (0)
 #endif
 
-extern void *Rr_Malloc(uintptr_t Bytes);
+extern void *Rr_Malloc(size_t Bytes);
 
-extern void *Rr_Calloc(uintptr_t Num, uintptr_t Bytes);
+extern void *Rr_Calloc(size_t Num, size_t Bytes);
 
-extern void *Rr_Realloc(void *Ptr, uintptr_t Bytes);
+extern void *Rr_Realloc(void *Ptr, size_t Bytes);
 
 extern void Rr_Free(void *Ptr);
 
-extern void *Rr_AlignedAlloc(uintptr_t Alignment, uintptr_t Bytes);
+extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
 
 extern void Rr_AlignedFree(void *Ptr);
 
@@ -55,7 +55,7 @@ struct Rr_Arena
     char *End;
 };
 
-extern Rr_Arena Rr_CreateArena(uintptr_t Size);
+extern Rr_Arena Rr_CreateArena(size_t Size);
 
 extern void Rr_ResetArena(Rr_Arena *Arena);
 
@@ -63,9 +63,9 @@ extern void Rr_DestroyArena(Rr_Arena *Arena);
 
 extern void *Rr_ArenaAlloc(
     Rr_Arena *Arena,
-    uintptr_t Size,
-    uintptr_t Align,
-    uintptr_t Count);
+    size_t Size,
+    size_t Align,
+    size_t Count);
 
 #define Rr_ArenaAllocOne(Arena, Size) \
     Rr_ArenaAlloc(Arena, Size, RR_SAFE_ALIGNMENT, 1)
@@ -85,7 +85,7 @@ extern void Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch);
 
 extern void Rr_SetScratchTLS(void *TLSID);
 
-extern void Rr_InitThreadScratch(uintptr_t Size);
+extern void Rr_InitThreadScratch(size_t Size);
 
 extern Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict);
 
@@ -100,7 +100,7 @@ struct Rr_SyncArena
     Rr_Arena Arena;
 };
 
-extern Rr_SyncArena Rr_CreateSyncArena(uintptr_t Size);
+extern Rr_SyncArena Rr_CreateSyncArena(size_t Size);
 
 extern void Rr_DestroySyncArena(Rr_SyncArena *Arena);
 
@@ -108,20 +108,20 @@ extern void Rr_DestroySyncArena(Rr_SyncArena *Arena);
  * Dynamic Slice
  */
 
-extern void Rr_SliceGrow(void *Slice, uintptr_t Size, Rr_Arena *Arena);
+extern void Rr_SliceGrow(void *Slice, size_t Size, Rr_Arena *Arena);
 
 extern void Rr_SliceResize(
     void *Slice,
-    uintptr_t Size,
-    uintptr_t Count,
+    size_t Size,
+    size_t Count,
     Rr_Arena *Arena);
 
-#define Rr_SliceType(Type)  \
-    struct                  \
-    {                       \
-        Type *Data;         \
-        uintptr_t Length;   \
-        uintptr_t Capacity; \
+#define Rr_SliceType(Type) \
+    struct                 \
+    {                      \
+        Type *Data;        \
+        size_t Length;     \
+        size_t Capacity;   \
     }
 
 #define Rr_SlicePush(Slice, Arena)                                          \

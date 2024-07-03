@@ -30,9 +30,9 @@ struct Rr_PipelineBuilder
     VkPipelineDepthStencilStateCreateInfo DepthStencil;
     Rr_Asset VertexShaderSPV;
     Rr_Asset FragmentShaderSPV;
-    uintptr_t PushConstantsSize;
+    size_t PushConstantsSize;
 
-    uintptr_t ColorAttachmentCount;
+    size_t ColorAttachmentCount;
 };
 
 typedef enum Rr_VertexInputType

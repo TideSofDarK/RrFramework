@@ -98,7 +98,7 @@ void Rr_InitTextRenderer(Rr_App *App)
         sizeof(Quad));
 
     /* Buffers */
-    for (uintptr_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
+    for (size_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
     {
         TextPipeline->GlobalsBuffers[FrameIndex] =
             Rr_CreateDeviceUniformBuffer(App, sizeof(Rr_TextGlobalsLayout));
@@ -119,7 +119,7 @@ void Rr_CleanupTextRenderer(Rr_App *App)
     VkDevice Device = Renderer->Device;
     vkDestroyPipeline(Device, TextPipeline->Handle, NULL);
     vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
-    for (uintptr_t Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT;
+    for (size_t Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT;
          ++Index)
     {
         vkDestroyDescriptorSetLayout(
@@ -127,7 +127,7 @@ void Rr_CleanupTextRenderer(Rr_App *App)
             TextPipeline->DescriptorSetLayouts[Index],
             NULL);
     }
-    for (uintptr_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_DestroyBuffer(App, TextPipeline->GlobalsBuffers[Index]);
         Rr_DestroyBuffer(App, TextPipeline->TextBuffers[Index]);

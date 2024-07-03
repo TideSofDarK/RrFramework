@@ -16,7 +16,7 @@ typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset
 {
     char *Data;
-    uintptr_t Length;
+    size_t Length;
 };
 
 #if defined(RR_USE_RC)

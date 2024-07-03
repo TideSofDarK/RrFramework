@@ -20,7 +20,7 @@ static void Rr_UploadImage(
     VkAccessFlags DstAccessMask,
     VkImageLayout DstLayout,
     void *ImageData,
-    uintptr_t ImageDataLength)
+    size_t ImageDataLength)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -208,7 +208,7 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
 
 void Rr_GetImageSizePNGMemory(
     char *Data,
-    uintptr_t DataSize,
+    size_t DataSize,
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize)
 {
@@ -256,7 +256,7 @@ Rr_Image *Rr_CreateColorImageFromMemory(
 {
     int32_t DesiredChannels = 4;
     VkExtent3D Extent = { .width = Width, .height = Height, .depth = 1 };
-    uintptr_t DataSize = Extent.width * Extent.height * DesiredChannels;
+    size_t DataSize = Extent.width * Extent.height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
@@ -285,7 +285,7 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     char *Data,
-    uintptr_t DataSize,
+    size_t DataSize,
     Rr_Bool bMipMapped)
 {
     int32_t DesiredChannels = 4;
@@ -419,7 +419,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
         .depth = 1,
     };
 
-    uintptr_t DataSize = Extent.width * Extent.height * sizeof(float);
+    size_t DataSize = Extent.width * Extent.height * sizeof(float);
 
     Rr_Image *DepthImage = Rr_CreateImage(
         App,

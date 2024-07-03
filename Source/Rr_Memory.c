@@ -4,25 +4,22 @@
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_thread.h>
 
-void *Rr_Malloc(uintptr_t Bytes) { return SDL_malloc(Bytes); }
+void *Rr_Malloc(size_t Bytes) { return SDL_malloc(Bytes); }
 
-void *Rr_Calloc(uintptr_t Num, uintptr_t Bytes)
-{
-    return SDL_calloc(Num, Bytes);
-}
+void *Rr_Calloc(size_t Num, size_t Bytes) { return SDL_calloc(Num, Bytes); }
 
-void *Rr_Realloc(void *Ptr, uintptr_t Bytes) { return SDL_realloc(Ptr, Bytes); }
+void *Rr_Realloc(void *Ptr, size_t Bytes) { return SDL_realloc(Ptr, Bytes); }
 
 void Rr_Free(void *Ptr) { SDL_free(Ptr); }
 
-void *Rr_AlignedAlloc(uintptr_t Alignment, uintptr_t Bytes)
+void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes)
 {
     return SDL_aligned_alloc(Alignment, Bytes);
 }
 
 void Rr_AlignedFree(void *Ptr) { SDL_aligned_free(Ptr); }
 
-Rr_Arena Rr_CreateArena(uintptr_t Size)
+Rr_Arena Rr_CreateArena(size_t Size)
 {
     char *Allocation = Rr_Malloc(Size);
     return (Rr_Arena){ .Allocation = Allocation,
@@ -54,8 +51,7 @@ void Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch)
 static void SDLCALL Rr_CleanupScratchArena(void *ScratchArena)
 {
     Rr_Arena *Arenas = ScratchArena;
-    for (uintptr_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
-         ++Index)
+    for (size_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
     {
         Rr_DestroyArena(Arenas + Index);
     }
@@ -66,7 +62,7 @@ static SDL_TLSID ScratchArenaTLS;
 
 void Rr_SetScratchTLS(void *TLSID) { ScratchArenaTLS = *((SDL_TLSID *)TLSID); }
 
-void Rr_InitThreadScratch(uintptr_t Size)
+void Rr_InitThreadScratch(size_t Size)
 {
     if (ScratchArenaTLS == 0)
     {
@@ -74,8 +70,7 @@ void Rr_InitThreadScratch(uintptr_t Size)
     }
     Rr_Arena *Arena =
         Rr_Calloc(RR_SCRATCH_ARENA_COUNT_PER_THREAD, sizeof(Rr_Arena));
-    for (uintptr_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
-         ++Index)
+    for (size_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD; ++Index)
     {
         Arena[Index] = Rr_CreateArena(Size);
     }
@@ -95,7 +90,7 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
     }
     else
     {
-        for (uintptr_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
+        for (size_t Index = 0; Index < RR_SCRATCH_ARENA_COUNT_PER_THREAD;
              ++Index)
         {
             if (Arena + Index != Conflict)
@@ -110,11 +105,7 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
     return (Rr_ArenaScratch){ 0 };
 }
 
-void *Rr_ArenaAlloc(
-    Rr_Arena *Arena,
-    uintptr_t Size,
-    uintptr_t Align,
-    uintptr_t Count)
+void *Rr_ArenaAlloc(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
 {
     uintptr_t Padding = -(uintptr_t)Arena->Current & (Align - 1);
     intptr_t Available = (Arena->End - Arena->Current) - (intptr_t)Padding;
@@ -127,7 +118,7 @@ void *Rr_ArenaAlloc(
     return memset(p, 0, Count * Size);
 }
 
-Rr_SyncArena Rr_CreateSyncArena(uintptr_t Size)
+Rr_SyncArena Rr_CreateSyncArena(size_t Size)
 {
     return (Rr_SyncArena){ .Arena = Rr_CreateArena(Size) };
 }
@@ -137,7 +128,7 @@ void Rr_DestroySyncArena(Rr_SyncArena *Arena)
     Rr_DestroyArena(&Arena->Arena);
 }
 
-void Rr_SliceGrow(void *Slice, uintptr_t Size, Rr_Arena *Arena)
+void Rr_SliceGrow(void *Slice, size_t Size, Rr_Arena *Arena)
 {
     if (Arena == NULL)
     {
@@ -161,11 +152,7 @@ void Rr_SliceGrow(void *Slice, uintptr_t Size, Rr_Arena *Arena)
     memcpy(Slice, &Replica, sizeof(Replica));
 }
 
-void Rr_SliceResize(
-    void *Slice,
-    uintptr_t Size,
-    uintptr_t Count,
-    Rr_Arena *Arena)
+void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
 {
     if (Arena == NULL)
     {
