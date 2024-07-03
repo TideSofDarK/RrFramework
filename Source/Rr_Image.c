@@ -160,7 +160,7 @@ Rr_Image *Rr_CreateImage(
     if (bMipMapped)
     {
         Info.mipLevels =
-            (uint32_t)(floorf(logf(SDL_max(Extent.width, Extent.height)))) + 1;
+            (uint32_t)floorf(logf(SDL_max(Extent.width, Extent.height))) + 1;
     }
 
     VmaAllocationCreateInfo AllocationCreateInfo = {

@@ -7,6 +7,7 @@
 
 struct Rr_Image;
 struct Rr_Buffer;
+struct Rr_Pipeline;
 
 struct Rr_Font
 {
@@ -75,7 +76,7 @@ struct Rr_TextPipeline
 {
     VkDescriptorSetLayout
         DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT];
-    VkPipeline Handle;
+    struct Rr_Pipeline *Pipeline;
     VkPipelineLayout Layout;
     struct Rr_Buffer *QuadBuffer;
     struct Rr_Buffer *GlobalsBuffers[RR_FRAME_OVERLAP];

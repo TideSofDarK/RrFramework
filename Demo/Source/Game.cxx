@@ -62,11 +62,6 @@ public:
     TPipeline &operator=(TPipeline &&Rhs) = delete;
     TPipeline(const TPipeline &Rhs) = delete;
     TPipeline &operator=(const TPipeline &Rhs) = delete;
-
-    [[nodiscard]] Rr_GenericPipelineSizes Sizes() const
-    {
-        return Rr_GetGenericPipelineSizes(GenericPipeline);
-    }
 };
 
 struct SShadowPassGlobals
@@ -101,11 +96,9 @@ struct SShadowPassPipeline
         GenericPipeline = Rr_BuildGenericPipeline(
             App,
             Builder,
-            {
-                sizeof(SGlobals),
-                sizeof(SMaterial),
-                sizeof(SDraw),
-            });
+            sizeof(SGlobals),
+            sizeof(SMaterial),
+            sizeof(SDraw));
     }
 };
 
@@ -144,11 +137,9 @@ struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
         GenericPipeline = Rr_BuildGenericPipeline(
             App,
             Builder,
-            {
-                sizeof(SGlobals),
-                sizeof(SMaterial),
-                sizeof(SDraw),
-            });
+            sizeof(SGlobals),
+            sizeof(SMaterial),
+            sizeof(SDraw));
     }
 };
 
@@ -184,11 +175,9 @@ struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
         GenericPipeline = Rr_BuildGenericPipeline(
             App,
             Builder,
-            {
-                sizeof(SGlobals),
-                sizeof(SMaterial),
-                sizeof(SDraw),
-            });
+            sizeof(SGlobals),
+            sizeof(SMaterial),
+            sizeof(SDraw));
     }
 };
 
@@ -446,7 +435,8 @@ public:
             .InitialColor = nullptr,
             .InitialDepth = nullptr,
             .Viewport = {},
-            .Sizes = Uber3DPipeline.Sizes(),
+            .BasePipeline = Uber3DPipeline.GenericPipeline,
+            .bTextRendering = true
         };
         Rr_DrawContext *DrawContext = Rr_CreateDrawContext(
             App,
@@ -501,23 +491,36 @@ public:
                 RR_DRAW_TEXT_FLAGS_NONE_BIT);
 
             /* Shadow Pass */
-            // Rr_DrawContextInfo ShadowPassContextInfo = {
-            //     .DrawTarget = ShadowMap,
-            //     .InitialColor = nullptr,
-            //     .InitialDepth = nullptr,
-            //     .Viewport = { 1024, 1024 },
-            //     .Sizes = ShadowPassPipeline.Sizes(),
-            // };
-            // Rr_DrawContext* ShadowPassContext =
-            //     Rr_CreateDrawContext(App, &ShadowPassContextInfo,
-            //     reinterpret_cast<char*>(&ShaderGlobals));
-            // Rr_DrawStaticMesh(ShadowPassContext, ArrowMesh,
-            // Rr_MakeData(ArrowDraw)); Rr_DrawStaticMeshOverrideMaterials(
-            //     ShadowPassContext, &CottageMaterial, 1, CottageMesh,
-            //     Rr_MakeData(CottageDraw));
-            // Rr_DrawStaticMesh(ShadowPassContext, AvocadoMesh,
-            // Rr_MakeData(AvocadoDraw)); Rr_DrawStaticMesh(ShadowPassContext,
-            // MarbleMesh, Rr_MakeData(MarbleDraw));
+            Rr_DrawContextInfo ShadowPassContextInfo = {
+                .DrawTarget = ShadowMap,
+                .InitialColor = nullptr,
+                .InitialDepth = nullptr,
+                .Viewport = { 0, 0, 1024, 1024 },
+                .BasePipeline = ShadowPassPipeline.GenericPipeline,
+            };
+
+            Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(
+                App,
+                &ShadowPassContextInfo,
+                reinterpret_cast<char *>(&ShaderGlobals));
+            Rr_DrawStaticMesh(
+                ShadowPassContext,
+                ArrowMesh,
+                Rr_MakeData(ArrowDraw));
+            Rr_DrawStaticMeshOverrideMaterials(
+                ShadowPassContext,
+                &CottageMaterial,
+                1,
+                CottageMesh,
+                Rr_MakeData(CottageDraw));
+            Rr_DrawStaticMesh(
+                ShadowPassContext,
+                AvocadoMesh,
+                Rr_MakeData(AvocadoDraw));
+            Rr_DrawStaticMesh(
+                ShadowPassContext,
+                MarbleMesh,
+                Rr_MakeData(MarbleDraw));
         }
         else
         {

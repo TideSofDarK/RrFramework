@@ -17,7 +17,7 @@
 typedef struct Rr_GenericRenderingContext Rr_GenericRenderingContext;
 struct Rr_GenericRenderingContext
 {
-    Rr_GenericPipelineSizes Sizes;
+    Rr_GenericPipeline *BasePipeline;
     VkDescriptorSet GlobalsDescriptorSet;
     VkDescriptorSet DrawDescriptorSet;
 };
@@ -34,7 +34,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_UploadContext *UploadContext,
     Rr_Buffer *GlobalsBuffer,
     Rr_Buffer *DrawBuffer,
-    Rr_GenericPipelineSizes *Sizes,
+    Rr_GenericPipeline *BasePipeline,
     char *GlobalsData,
     Rr_Arena *Arena)
 {
@@ -49,7 +49,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         1,
         Scratch.Arena);
 
-    Rr_GenericRenderingContext Context = { .Sizes = *Sizes };
+    Rr_GenericRenderingContext Context = { .BasePipeline = BasePipeline };
 
     /* Upload globals data. */
     /* @TODO: Make these take a Rr_WriteBuffer instead! */
@@ -58,7 +58,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         UploadContext,
         GlobalsBuffer,
         GlobalsData,
-        Sizes->Globals);
+        BasePipeline->Sizes.Globals);
 
     /* Allocate, write and bind globals descriptor set. */
     Context.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
@@ -70,7 +70,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         &DescriptorWriter,
         0,
         GlobalsBuffer->Handle,
-        Sizes->Globals,
+        BasePipeline->Sizes.Globals,
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         Scratch.Arena);
@@ -93,7 +93,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         &DescriptorWriter,
         0,
         DrawBuffer->Handle,
-        Sizes->Draw,
+        BasePipeline->Sizes.Draw,
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
         Scratch.Arena);
@@ -181,7 +181,7 @@ static void Rr_RenderGeneric(
             vkCmdBindPipeline(
                 CommandBuffer,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                BoundPipeline->Handle);
+                BoundPipeline->Pipeline->Handle);
         }
 
         if (BoundMaterial != Info->Material)
@@ -197,7 +197,7 @@ static void Rr_RenderGeneric(
                 &DescriptorWriter,
                 0,
                 BoundMaterial->Buffer->Handle,
-                GenericRenderingContext->Sizes.Material,
+                GenericRenderingContext->BasePipeline->Sizes.Material,
                 0,
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                 Scratch.Arena);
@@ -364,7 +364,7 @@ static void Rr_RenderText(
     vkCmdBindPipeline(
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        TextPipeline->Handle);
+        TextPipeline->Pipeline->Handle);
     vkCmdBindVertexBuffers(
         CommandBuffer,
         0,
@@ -558,28 +558,42 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
             &UploadContext,
             Frame->CommonBuffer.Buffer,
             Frame->DrawBuffer.Buffer,
-            &DrawContext->Info.Sizes,
+            DrawContext->Info.BasePipeline,
             DrawContext->GlobalsData,
             Scratch.Arena);
-    Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(
-        App,
-        &UploadContext,
-        (VkExtent2D){ .width = Viewport.Width, .height = Viewport.Height },
-        Scratch.Arena);
+
+    Rr_TextRenderingContext TextRenderingContext;
+    if (DrawContext->Info.bTextRendering)
+    {
+        TextRenderingContext = Rr_MakeTextRenderingContext(
+            App,
+            &UploadContext,
+            (VkExtent2D){ .width = Viewport.Width, .height = Viewport.Height },
+            Scratch.Arena);
+    }
 
     /* Begin render pass. */
-    VkClearValue ClearColorValues[2] = { (VkClearValue){ 0 },
-                                         (VkClearValue){ .depthStencil.depth =
-                                                             1.0f } };
+    uint32_t ColorAttachmentCount =
+        DrawContext->Info.BasePipeline->Pipeline->ColorAttachmentCount;
+    VkClearValue *ClearValues =
+        Rr_StackAlloc(VkClearValue, ColorAttachmentCount + 1);
+
+    for (uint32_t Index = 0; Index < ColorAttachmentCount; ++Index)
+    {
+        ClearValues[Index] = (VkClearValue){ 0 };
+    }
+    ClearValues[ColorAttachmentCount] =
+        (VkClearValue){ .depthStencil.depth = 1.0f };
+
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .framebuffer = DrawTarget->Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
                                   { Viewport.Z, Viewport.W } },
-        .renderPass = Renderer->RenderPasses.ColorDepth,
+        .renderPass = DrawContext->Info.BasePipeline->Pipeline->RenderPass,
         .clearValueCount = 2,
-        .pClearValues = ClearColorValues,
+        .pClearValues = ClearValues,
     };
     vkCmdBeginRenderPass(
         CommandBuffer,
@@ -617,12 +631,16 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
         DrawContext->DrawPrimitivesSlice,
         CommandBuffer,
         Scratch.Arena);
-    Rr_RenderText(
-        Renderer,
-        &TextRenderingContext,
-        DrawContext->DrawTextsSlice,
-        CommandBuffer,
-        Scratch.Arena);
+
+    if (DrawContext->Info.bTextRendering)
+    {
+        Rr_RenderText(
+            Renderer,
+            &TextRenderingContext,
+            DrawContext->DrawTextsSlice,
+            CommandBuffer,
+            Scratch.Arena);
+    }
 
     vkCmdEndRenderPass(CommandBuffer);
 

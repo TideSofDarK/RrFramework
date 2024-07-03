@@ -17,14 +17,6 @@ extern "C" {
 typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
 
-typedef struct Rr_GenericPipelineSizes Rr_GenericPipelineSizes;
-struct Rr_GenericPipelineSizes
-{
-    size_t Globals;
-    size_t Material;
-    size_t Draw;
-};
-
 typedef enum Rr_PolygonMode
 {
     RR_POLYGON_MODE_FILL,
@@ -54,14 +46,13 @@ extern void Rr_EnableDepthTest(Rr_PipelineBuilder *PipelineBuilder);
 extern Rr_GenericPipeline *Rr_BuildGenericPipeline(
     Rr_App *App,
     Rr_PipelineBuilder *PipelineBuilder,
-    Rr_GenericPipelineSizes Sizes);
+    size_t Globals,
+    size_t Material,
+    size_t Draw);
 
 extern void Rr_DestroyGenericPipeline(
     Rr_App *App,
-    Rr_GenericPipeline *Pipeline);
-
-extern Rr_GenericPipelineSizes Rr_GetGenericPipelineSizes(
-    Rr_GenericPipeline *Pipeline);
+    Rr_GenericPipeline *GenericPipeline);
 
 #ifdef __cplusplus
 }

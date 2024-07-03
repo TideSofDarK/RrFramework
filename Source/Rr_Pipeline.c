@@ -2,6 +2,7 @@
 
 #include "Rr_App.h"
 #include "Rr_Log.h"
+#include "Rr_Object.h"
 
 #include <SDL3/SDL_assert.h>
 
@@ -11,11 +12,16 @@ enum Rr_VertexInputBinding
     RR_VERTEX_INPUT_BINDING_PER_INSTANCE
 };
 
-VkPipeline Rr_BuildPipeline(
-    Rr_Renderer *Renderer,
+Rr_Pipeline *Rr_CreatePipeline(
+    Rr_App *App,
     Rr_PipelineBuilder *PipelineBuilder,
     VkPipelineLayout PipelineLayout)
 {
+    Rr_Renderer *Renderer = &App->Renderer;
+
+    Rr_Pipeline *Pipeline = (Rr_Pipeline *)Rr_CreateObject(&App->ObjectStorage);
+    Pipeline->ColorAttachmentCount = PipelineBuilder->ColorAttachmentCount;
+
     /* Create shader modules. */
     VkPipelineShaderStageCreateInfo *ShaderStages = Rr_StackAlloc(
         VkPipelineShaderStageCreateInfo,
@@ -139,14 +145,13 @@ VkPipeline Rr_BuildPipeline(
     };
 
     /* Select render pass. */
-    VkRenderPass RenderPass = VK_NULL_HANDLE;
     switch (PipelineBuilder->ColorAttachmentCount)
     {
         case 0:
-            RenderPass = Renderer->RenderPasses.Depth;
+            Pipeline->RenderPass = Renderer->RenderPasses.Depth;
             break;
         case 1:
-            RenderPass = Renderer->RenderPasses.ColorDepth;
+            Pipeline->RenderPass = Renderer->RenderPasses.ColorDepth;
             break;
         default:
             Rr_LogAbort("Unsupported color attachment count!");
@@ -168,17 +173,16 @@ VkPipeline Rr_BuildPipeline(
         .pDepthStencilState = &PipelineBuilder->DepthStencil,
         .layout = PipelineLayout,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = RenderPass,
+        .renderPass = Pipeline->RenderPass,
     };
 
-    VkPipeline Pipeline;
     vkCreateGraphicsPipelines(
         Renderer->Device,
         VK_NULL_HANDLE,
         1,
         &PipelineInfo,
         NULL,
-        &Pipeline);
+        &Pipeline->Handle);
 
     if (VertModule != VK_NULL_HANDLE)
     {
@@ -194,6 +198,15 @@ VkPipeline Rr_BuildPipeline(
     Rr_StackFree(ShaderStages);
 
     return Pipeline;
+}
+
+void Rr_DestroyPipeline(Rr_App *App, Rr_Pipeline *Pipeline)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+
+    vkDestroyPipeline(Renderer->Device, Pipeline->Handle, NULL);
+
+    Rr_DestroyObject(&App->ObjectStorage, Pipeline);
 }
 
 Rr_PipelineBuilder *Rr_CreatePipelineBuilder(void)
@@ -413,11 +426,13 @@ void Rr_EnableDepthTest(Rr_PipelineBuilder *PipelineBuilder)
 Rr_GenericPipeline *Rr_BuildGenericPipeline(
     Rr_App *App,
     Rr_PipelineBuilder *PipelineBuilder,
-    Rr_GenericPipelineSizes Sizes)
+    size_t Globals,
+    size_t Material,
+    size_t Draw)
 {
-    SDL_assert(Sizes.Globals < RR_PIPELINE_MAX_GLOBALS_SIZE);
-    SDL_assert(Sizes.Material < RR_PIPELINE_MAX_MATERIAL_SIZE);
-    SDL_assert(Sizes.Draw < RR_PIPELINE_MAX_DRAW_SIZE);
+    SDL_assert(Globals < RR_PIPELINE_MAX_GLOBALS_SIZE);
+    SDL_assert(Material < RR_PIPELINE_MAX_MATERIAL_SIZE);
+    SDL_assert(Draw < RR_PIPELINE_MAX_DRAW_SIZE);
 
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -449,27 +464,18 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
 
     Rr_GenericPipeline *Pipeline = Rr_CreateObject(&App->ObjectStorage);
     *Pipeline = (Rr_GenericPipeline){
-        .Handle = Rr_BuildPipeline(
-            Renderer,
+        .Pipeline = Rr_CreatePipeline(
+            App,
             PipelineBuilder,
             Renderer->GenericPipelineLayout),
-        .Sizes = Sizes,
+        .Sizes = { .Globals = Globals, .Material = Material, .Draw = Draw },
     };
 
     return Pipeline;
 }
 
-void Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *Pipeline)
+void Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *GenericPipeline)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
-
-    vkDestroyPipeline(Device, Pipeline->Handle, NULL);
-
-    Rr_DestroyObject(&App->ObjectStorage, Pipeline);
-}
-
-Rr_GenericPipelineSizes Rr_GetGenericPipelineSizes(Rr_GenericPipeline *Pipeline)
-{
-    return Pipeline->Sizes;
+    Rr_DestroyPipeline(App, GenericPipeline->Pipeline);
+    Rr_DestroyObject(&App->ObjectStorage, GenericPipeline);
 }

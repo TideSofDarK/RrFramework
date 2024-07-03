@@ -832,7 +832,7 @@ static VkRenderPass Rr_CreateRenderPassDepth(Rr_App *App)
         {
             .samples = 1,
             .format = RR_DEPTH_FORMAT,
-            .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             .flags = 0,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -858,6 +858,27 @@ static VkRenderPass Rr_CreateRenderPassDepth(Rr_App *App)
         .pPreserveAttachments = NULL,
     };
 
+    VkSubpassDependency Dependencies[2] = {
+        {
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
+            .srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dependencyFlags = 0,
+        },
+        {
+            .srcSubpass = 0,
+            .dstSubpass = VK_SUBPASS_EXTERNAL,
+            .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dependencyFlags = 0,
+        },
+    };
+
     VkRenderPassCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
@@ -866,8 +887,8 @@ static VkRenderPass Rr_CreateRenderPassDepth(Rr_App *App)
         .pAttachments = Attachments,
         .subpassCount = 1,
         .pSubpasses = &SubpassDescription,
-        .dependencyCount = 0,
-        .pDependencies = NULL,
+        .dependencyCount = SDL_arraysize(Dependencies),
+        .pDependencies = Dependencies,
     };
 
     VkRenderPass RenderPass;

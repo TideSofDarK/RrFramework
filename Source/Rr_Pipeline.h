@@ -6,10 +6,23 @@
 
 struct Rr_Renderer;
 
-struct Rr_GenericPipeline
+typedef struct Rr_Pipeline Rr_Pipeline;
+struct Rr_Pipeline
 {
     VkPipeline Handle;
-    Rr_GenericPipelineSizes Sizes;
+    VkRenderPass RenderPass;
+    uint32_t ColorAttachmentCount;
+};
+
+struct Rr_GenericPipeline
+{
+    Rr_Pipeline *Pipeline;
+    struct
+    {
+        size_t Globals;
+        size_t Material;
+        size_t Draw;
+    } Sizes;
 };
 
 struct Rr_PipelineBuilder
@@ -68,7 +81,11 @@ extern void Rr_EnablePerInstanceInputAttributes(
     Rr_PipelineBuilder *PipelineBuilder,
     Rr_VertexInput *VertexInput);
 
-extern VkPipeline Rr_BuildPipeline(
-    struct Rr_Renderer *Renderer,
+extern Rr_Pipeline *Rr_CreatePipeline(
+    struct Rr_App *App,
     Rr_PipelineBuilder *PipelineBuilder,
     VkPipelineLayout PipelineLayout);
+
+extern void Rr_DestroyPipeline(
+    struct Rr_App *App,
+    Rr_Pipeline *Pipeline);

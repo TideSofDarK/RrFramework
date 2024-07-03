@@ -18,6 +18,7 @@ union Rr_Object
     Rr_Image Image;
     Rr_Font Font;
     Rr_Material Material;
+    Rr_Pipeline Pipeline;
     Rr_GenericPipeline GenericPipeline;
     Rr_DrawTarget DrawTarget;
     void *Next;

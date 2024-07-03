@@ -83,8 +83,8 @@ void Rr_InitTextRenderer(Rr_App *App)
     Rr_EnableColorAttachment(Builder, RR_TRUE);
     Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
-    TextPipeline->Handle =
-        Rr_BuildPipeline(Renderer, Builder, TextPipeline->Layout);
+    TextPipeline->Pipeline =
+        Rr_CreatePipeline(App, Builder, TextPipeline->Layout);
 
     /* Quad Buffer */
     float Quad[8] = {
@@ -117,7 +117,7 @@ void Rr_CleanupTextRenderer(Rr_App *App)
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
     VkDevice Device = Renderer->Device;
-    vkDestroyPipeline(Device, TextPipeline->Handle, NULL);
+    Rr_DestroyPipeline(App, TextPipeline->Pipeline);
     vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
     for (size_t Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT;
          ++Index)

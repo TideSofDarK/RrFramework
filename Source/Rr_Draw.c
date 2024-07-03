@@ -30,7 +30,10 @@ Rr_DrawContext *Rr_CreateDrawContext(
             (int32_t)Renderer->SwapchainSize.height;
     }
 
-    memcpy(DrawContext->GlobalsData, GlobalsData, Info->Sizes.Globals);
+    memcpy(
+        DrawContext->GlobalsData,
+        GlobalsData,
+        Info->BasePipeline->Sizes.Globals);
 
     return DrawContext;
 }
