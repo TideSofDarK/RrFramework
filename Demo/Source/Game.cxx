@@ -302,8 +302,6 @@ public:
             Rr_GetAspectRatio(App),
             0.5f,
             50.0f);
-        // *
-        //                      ;
     }
 
     void OnLoadingComplete()
