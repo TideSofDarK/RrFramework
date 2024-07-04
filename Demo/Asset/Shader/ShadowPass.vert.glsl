@@ -21,9 +21,9 @@ layout(set = 1, binding = 0) uniform Material {
 layout(set = 1, binding = 1) uniform sampler2D u_texture[4];
 
 /* Set 2 */
-layout(set = 2, binding = 0) uniform Draw {
+layout(set = 2, binding = 0) uniform PerDraw {
     mat4 model;
-} u_draw;
+} u_perDraw;
 
 layout(push_constant) uniform Constants
 {
@@ -32,5 +32,5 @@ layout(push_constant) uniform Constants
 
 void main()
 {
-    gl_Position = u_globals.proj * u_globals.intermediate * u_globals.view * u_draw.model * vec4(in_position, 1.0f);
+    gl_Position = u_globals.proj * u_globals.intermediate * u_globals.view * u_perDraw.model * vec4(in_position, 1.0f);
 }

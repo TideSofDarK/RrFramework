@@ -13,7 +13,7 @@ layout(location = 0) out vec2 out_uv;
 
 void main()
 {
-    gl_Position = u_globals.proj * u_globals.intermediate * u_globals.view * u_draw.model * vec4(in_position, 1.0f);
+    gl_Position = u_globals.proj * u_globals.intermediate * u_globals.view * u_perDraw.model * vec4(in_position, 1.0f);
 
     out_uv.x = in_u;
     out_uv.y = in_v;
