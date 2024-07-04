@@ -1236,14 +1236,14 @@ void Rr_ProcessPendingLoads(Rr_App *App)
     if (SDL_TryLockSpinlock(&App->SyncArena.Lock))
     {
         for (size_t Index = 0;
-             Index < Rr_SliceLength(&Renderer->PendingLoadsSlice);
+             Index < RR_SLICE_LENGTH(&Renderer->PendingLoadsSlice);
              ++Index)
         {
             Rr_PendingLoad *PendingLoad =
                 &Renderer->PendingLoadsSlice.Data[Index];
             PendingLoad->LoadingCallback(App, PendingLoad->Userdata);
         }
-        Rr_SliceEmpty(&Renderer->PendingLoadsSlice);
+        RR_SLICE_EMPTY(&Renderer->PendingLoadsSlice);
 
         SDL_UnlockSpinlock(&App->SyncArena.Lock);
     }
@@ -1335,7 +1335,7 @@ void Rr_Draw(Rr_App *App)
             &Frame->DrawContextsSlice.Data[Index],
             Scratch.Arena);
     }
-    Rr_SliceClear(&Frame->DrawContextsSlice);
+    SDL_zero(Frame->DrawContextsSlice);
 
     /* Render Dear ImGui if needed. */
     Rr_ImGui *ImGui = &Renderer->ImGui;
@@ -1403,9 +1403,9 @@ void Rr_Draw(Rr_App *App)
 
     /* Submit frame command buffer and queue present. */
     VkSemaphore *WaitSemaphores =
-        Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkSemaphore));
+        RR_ARENA_ALLOC_ONE(Scratch.Arena, sizeof(VkSemaphore));
     VkPipelineStageFlags *WaitDstStages =
-        Rr_ArenaAllocOne(Scratch.Arena, sizeof(VkPipelineStageFlags));
+        RR_ARENA_ALLOC_ONE(Scratch.Arena, sizeof(VkPipelineStageFlags));
     size_t WaitSemaphoreIndex = 1;
     WaitSemaphores[0] = Frame->SwapchainSemaphore;
     WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;

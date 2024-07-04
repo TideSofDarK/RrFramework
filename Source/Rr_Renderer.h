@@ -70,7 +70,7 @@ struct Rr_Frame
     Rr_WriteBuffer PerDrawBuffer;
     VkDescriptorSet PerDrawDescriptor;
 
-    Rr_SliceType(struct Rr_DrawContext) DrawContextsSlice;
+    RR_SLICE_TYPE(struct Rr_DrawContext) DrawContextsSlice;
 
     Rr_Arena Arena;
 };
@@ -128,13 +128,14 @@ struct Rr_Renderer
     } NullTextures;
 
     /* Retired Semaphores */
-    Rr_SliceType(struct Rr_RetiredSemaphore {
+    RR_SLICE_TYPE(struct Rr_RetiredSemaphore {
         VkSemaphore Semaphore;
         size_t FrameIndex;
-    }) RetiredSemaphoresSlice;
+    })
+    RetiredSemaphoresSlice;
 
     /* Pending Loads */
-    Rr_SliceType(Rr_PendingLoad) PendingLoadsSlice;
+    RR_SLICE_TYPE(Rr_PendingLoad) PendingLoadsSlice;
 
     /* Main Draw Target */
     struct Rr_DrawTarget *DrawTarget;

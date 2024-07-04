@@ -135,13 +135,13 @@ void Rr_SliceGrow(void *Slice, size_t Size, Rr_Arena *Arena)
         Rr_LogAbort("Attempt to grow a slice but Arena is NULL!");
     }
 
-    Rr_SliceType(void) Replica;
+    RR_SLICE_TYPE(void) Replica;
     memcpy(&Replica, Slice, sizeof(Replica));
 
     void *Data = NULL;
     Replica.Capacity = Replica.Capacity ? Replica.Capacity : 1;
     Replica.Capacity *= 2;
-    Data = Rr_ArenaAllocCount(Arena, Size, Replica.Capacity);
+    Data = RR_ARENA_ALLOC_COUNT(Arena, Size, Replica.Capacity);
 
     if (Replica.Length)
     {
@@ -159,13 +159,13 @@ void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
         Rr_LogAbort("Attempt to grow a slice but Arena is NULL!");
     }
 
-    Rr_SliceType(void) Replica;
+    RR_SLICE_TYPE(void) Replica;
     memcpy(&Replica, Slice, sizeof(Replica));
 
     void *Data = NULL;
 
     Replica.Capacity = Count;
-    Data = Rr_ArenaAllocCount(Arena, Size, Count);
+    Data = RR_ARENA_ALLOC_COUNT(Arena, Size, Count);
 
     if (Replica.Length)
     {

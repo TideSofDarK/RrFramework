@@ -386,11 +386,9 @@ static void Rr_RenderText(
         NULL);
 
     size_t TextDataOffset = 0;
-    size_t TextCount = Rr_SliceLength(&DrawTextSlice);
-    //    Rr_TextPerInstanceVertexInput* TextData =
-    //    (Rr_TextPerInstanceVertexInput*)Rr_Malloc(RR_TEXT_BUFFER_SIZE);
+    size_t TextCount = RR_SLICE_LENGTH(&DrawTextSlice);
     Rr_TextPerInstanceVertexInput *TextData =
-        Rr_ArenaAllocOne(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
+        RR_ARENA_ALLOC_ONE(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
     for (size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
     {
         Rr_DrawTextInfo *DrawTextInfo = &DrawTextSlice.Data[TextIndex];

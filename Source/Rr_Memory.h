@@ -67,9 +67,9 @@ extern void *Rr_ArenaAlloc(
     size_t Align,
     size_t Count);
 
-#define Rr_ArenaAllocOne(Arena, Size) \
+#define RR_ARENA_ALLOC_ONE(Arena, Size) \
     Rr_ArenaAlloc(Arena, Size, RR_SAFE_ALIGNMENT, 1)
-#define Rr_ArenaAllocCount(Arena, Size, Count) \
+#define RR_ARENA_ALLOC_COUNT(Arena, Size, Count) \
     Rr_ArenaAlloc(Arena, Size, RR_SAFE_ALIGNMENT, Count)
 
 typedef struct Rr_ArenaScratch Rr_ArenaScratch;
@@ -116,23 +116,23 @@ extern void Rr_SliceResize(
     size_t Count,
     Rr_Arena *Arena);
 
-#define Rr_SliceType(Type) \
-    struct                 \
-    {                      \
-        Type *Data;        \
-        size_t Length;     \
-        size_t Capacity;   \
+#define RR_SLICE_TYPE(Type) \
+    struct                  \
+    {                       \
+        Type *Data;         \
+        size_t Length;      \
+        size_t Capacity;    \
     }
 
-#define Rr_SlicePush(Slice, Arena)                                          \
+#define RR_SLICE_PUSH(Slice, Arena)                                         \
     ((Slice)->Length >= (Slice)->Capacity                                   \
      ? Rr_SliceGrow((Slice), sizeof(*(Slice)->Data), (Arena)), /* NOLINT */ \
      (Slice)->Data + (Slice)->Length++                                      \
      : (Slice)->Data + (Slice)->Length++)
 
-#define Rr_SlicePop(Slice) (Slice)->Length > 0 ? (Slice)->Length-- : (void)0
+#define RR_SLICE_POP(Slice) (Slice)->Length > 0 ? (Slice)->Length-- : (void)0
 
-#define Rr_SliceReserve(Slice, ElementCount, Arena)                   \
+#define RR_SLICE_RESERVE(Slice, ElementCount, Arena)                  \
     ((Slice)->Capacity < (ElementCount) ? Rr_SliceResize(             \
                                               (Slice),                \
                                               sizeof(*(Slice)->Data), \
@@ -140,14 +140,11 @@ extern void Rr_SliceResize(
                                               (Arena))                \
                                         : (void)0)
 
-#define Rr_SliceClear(Slice) \
-    (Slice)->Length = 0, (Slice)->Capacity = 0, (Slice)->Data = NULL
+#define RR_SLICE_EMPTY(Slice) (Slice)->Length = 0
 
-#define Rr_SliceEmpty(Slice) (Slice)->Length = 0
+#define RR_SLICE_LENGTH(Slice) (Slice)->Length
 
-#define Rr_SliceLength(Slice) (Slice)->Length
-
-#define Rr_SliceDuplicate(Dst, Src, Arena)        \
+#define RR_SLICE_DUPLICATE(Dst, Src, Arena)       \
     Rr_SliceReserve((Dst), (Src)->Length, Arena), \
         (Dst)->Length = (Src)->Length,            \
         SDL_memcpy(                               \

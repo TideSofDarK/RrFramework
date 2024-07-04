@@ -26,7 +26,7 @@ typedef struct Rr_LoadingThread Rr_LoadingThread;
 struct Rr_LoadingThread
 {
     Rr_Arena Arena;
-    Rr_SliceType(Rr_LoadingContext) LoadingContextsSlice;
+    RR_SLICE_TYPE(Rr_LoadingContext) LoadingContextsSlice;
     SDL_Thread *Handle;
     SDL_Semaphore *Semaphore;
     SDL_Mutex *Mutex;

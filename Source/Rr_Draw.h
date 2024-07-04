@@ -31,8 +31,8 @@ struct Rr_DrawTextInfo
     Rr_DrawTextFlags Flags;
 };
 
-typedef Rr_SliceType(Rr_DrawTextInfo) Rr_DrawTextsSlice;
-typedef Rr_SliceType(Rr_DrawPrimitiveInfo) Rr_DrawPrimitivesSlice;
+typedef RR_SLICE_TYPE(Rr_DrawTextInfo) Rr_DrawTextsSlice;
+typedef RR_SLICE_TYPE(Rr_DrawPrimitiveInfo) Rr_DrawPrimitivesSlice;
 
 /* @TODO: Separate generic and builtin stuff! */
 struct Rr_DrawContext

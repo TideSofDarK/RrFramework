@@ -168,12 +168,12 @@ Rr_LoadingContext *Rr_LoadAsync(
 
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
     SDL_LockMutex(LoadingThread->Mutex);
-    Rr_LoadTask *NewTasks = Rr_ArenaAllocCount(
+    Rr_LoadTask *NewTasks = RR_ARENA_ALLOC_COUNT(
         &LoadingThread->Arena,
         sizeof(Rr_LoadTask),
         TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
-    Rr_LoadingContext *LoadingContext = Rr_SlicePush(
+    Rr_LoadingContext *LoadingContext = RR_SLICE_PUSH(
         &LoadingThread->LoadingContextsSlice,
         &LoadingThread->Arena);
     *LoadingContext = (Rr_LoadingContext){
@@ -274,21 +274,21 @@ Rr_LoadResult Rr_LoadAsync_Internal(
     {
         UploadContext.UseAcquireBarriers = RR_TRUE;
         UploadContext.AcquireBarriers = (Rr_AcquireBarriers){
-            .BufferMemoryBarriers = Rr_ArenaAllocCount(
+            .BufferMemoryBarriers = RR_ARENA_ALLOC_COUNT(
                 Scratch.Arena,
                 sizeof(VkBufferMemoryBarrier),
                 LoadSize.BufferCount),
-            .ImageMemoryBarriers = Rr_ArenaAllocCount(
+            .ImageMemoryBarriers = RR_ARENA_ALLOC_COUNT(
                 Scratch.Arena,
                 sizeof(VkImageMemoryBarrier),
                 LoadSize.ImageCount),
         };
         UploadContext.ReleaseBarriers = (Rr_AcquireBarriers){
-            .BufferMemoryBarriers = Rr_ArenaAllocCount(
+            .BufferMemoryBarriers = RR_ARENA_ALLOC_COUNT(
                 Scratch.Arena,
                 sizeof(VkBufferMemoryBarrier),
                 LoadSize.BufferCount),
-            .ImageMemoryBarriers = Rr_ArenaAllocCount(
+            .ImageMemoryBarriers = RR_ARENA_ALLOC_COUNT(
                 Scratch.Arena,
                 sizeof(VkImageMemoryBarrier),
                 LoadSize.ImageCount),
@@ -435,7 +435,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(
     SDL_LockSpinlock(&App->SyncArena.Lock);
 
     Rr_PendingLoad *PendingLoad =
-        Rr_SlicePush(&Renderer->PendingLoadsSlice, &App->SyncArena.Arena);
+        RR_SLICE_PUSH(&Renderer->PendingLoadsSlice, &App->SyncArena.Arena);
     *PendingLoad = (Rr_PendingLoad){
         .LoadingCallback = LoadingContext->LoadingCallback,
         .Userdata = LoadingContext->Userdata,
@@ -667,7 +667,7 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
         {
             Rr_ResetArena(&LoadingThread->Arena);
             CurrentLoadingContextIndex = 0;
-            Rr_SliceClear(&LoadingThread->LoadingContextsSlice);
+            SDL_zero(LoadingThread->LoadingContextsSlice);
         }
         SDL_UnlockMutex(LoadingThread->Mutex);
     }

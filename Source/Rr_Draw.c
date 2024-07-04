@@ -14,7 +14,7 @@ Rr_DrawContext *Rr_CreateDrawContext(
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_DrawContext *DrawContext =
-        Rr_SlicePush(&Frame->DrawContextsSlice, &Frame->Arena);
+        RR_SLICE_PUSH(&Frame->DrawContextsSlice, &Frame->Arena);
     *DrawContext = (Rr_DrawContext){
         .Arena = &Frame->Arena,
         .App = App,
@@ -50,7 +50,7 @@ void Rr_DrawStaticMesh(
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
+        *RR_SLICE_PUSH(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
             (Rr_DrawPrimitiveInfo){
                 .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
@@ -79,7 +79,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
+        *RR_SLICE_PUSH(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
             (Rr_DrawPrimitiveInfo){
                 .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
@@ -98,7 +98,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
 
 static void Rr_DrawText(Rr_DrawContext *RenderingContext, Rr_DrawTextInfo *Info)
 {
-    Rr_DrawTextInfo *NewInfo = Rr_SlicePush(
+    Rr_DrawTextInfo *NewInfo = RR_SLICE_PUSH(
         &RenderingContext->DrawTextsSlice,
         RenderingContext->Arena);
     *NewInfo = *Info;
