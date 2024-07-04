@@ -382,7 +382,8 @@ static void Rr_InitFrames(Rr_App *App)
         Frame->PerDrawBuffer.Buffer = Rr_CreateMappedBuffer(
             App,
             66560,
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 
         Frame->Arena = Rr_CreateArena(RR_PER_FRAME_ARENA_SIZE);
     }

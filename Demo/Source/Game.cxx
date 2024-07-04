@@ -493,7 +493,10 @@ public:
 
             SUber3DPerDraw MarbleDraw = {};
             MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
-            Rr_DrawStaticMesh(DrawContext, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
+            Rr_DrawStaticMesh(
+                DrawContext,
+                MarbleMesh,
+                RR_MAKE_DATA(MarbleDraw));
 
             Rr_DrawDefaultText(DrawContext, &TestString, { 50.0f, 50.0f });
 
