@@ -265,7 +265,7 @@ private:
     Rr_String DebugString{};
     Rr_LoadingContext *LoadingContext{};
 
-    Rr_DrawTarget *ShadowMap{};
+    Rr_DrawTarget *ShadowMap;
 
     Rr_GLTFLoader UnlitGLTFLoader;
     Rr_GLTFLoader Uber3DGLTFLoader;
@@ -563,7 +563,8 @@ public:
             .BaseTexture = 0,
             .NormalTexture = 1,
             .SpecularTexture = 2,
-        })
+        }),
+        ShadowMap(Rr_CreateDrawTargetDepthOnly(App, 1024, 1024))
     {
         InitInputMappings();
 
@@ -599,8 +600,6 @@ public:
             LoadTasks.size(),
             OnLoadingComplete,
             this);
-
-        ShadowMap = Rr_CreateDrawTargetDepthOnly(App, 1024, 1024);
 
         TestString = Rr_CreateString("A quick brown fox @#$ \nNew line "
                                      "test...\n\nA couple of new lines...");
