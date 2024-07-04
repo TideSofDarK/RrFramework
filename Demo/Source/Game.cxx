@@ -368,6 +368,23 @@ public:
             100.0f,
             "%f",
             ImGuiSliderFlags_None);
+        ImGui::Separator();
+        static Rr_Vec3 ShadowEye;
+        static Rr_Vec3 ShadowCenter;
+        ImGui::SliderFloat3(
+            "ShadowEye",
+            ShadowEye.Elements,
+            -10.0f,
+            10.0f,
+            "%.3f",
+            ImGuiSliderFlags_None);
+        ImGui::SliderFloat3(
+            "ShadowCenter",
+            ShadowCenter.Elements,
+            -10.0f,
+            10.0f,
+            "%f",
+            ImGuiSliderFlags_None);
 
         Rr_Vec3 LightRotation = LightDirEuler * Rr_DegToRad;
         ShaderGlobals.DirectionalLightDirection =
@@ -499,28 +516,35 @@ public:
                 .EnableTextRendering = false
             };
 
-            Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(
-                App,
-                &ShadowPassContextInfo,
-                reinterpret_cast<char *>(&ShaderGlobals));
-            Rr_DrawStaticMesh(
-                ShadowPassContext,
-                ArrowMesh,
-                Rr_MakeData(ArrowDraw));
-            Rr_DrawStaticMeshOverrideMaterials(
-                ShadowPassContext,
-                &CottageMaterial,
-                1,
-                CottageMesh,
-                Rr_MakeData(CottageDraw));
-            Rr_DrawStaticMesh(
-                ShadowPassContext,
-                AvocadoMesh,
-                Rr_MakeData(AvocadoDraw));
-            Rr_DrawStaticMesh(
-                ShadowPassContext,
-                MarbleMesh,
-                Rr_MakeData(MarbleDraw));
+            SShadowPassPipeline::SGlobals ShadowGlobals = {
+                .View =
+                    Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
+                .Proj =
+                    Rr_Orthographic_LH_ZO(-512, 512, -512, 512, 0.1f, 100.0f),
+            };
+
+            // Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(
+            //     App,
+            //     &ShadowPassContextInfo,
+            //     reinterpret_cast<char *>(&ShadowGlobals));
+            // // Rr_DrawStaticMesh(
+            // //     ShadowPassContext,
+            // //     ArrowMesh,
+            // //     Rr_MakeData(ArrowDraw));
+            // Rr_DrawStaticMeshOverrideMaterials(
+            //     ShadowPassContext,
+            //     &CottageMaterial,
+            //     1,
+            //     CottageMesh,
+            //     Rr_MakeData(CottageDraw));
+            // Rr_DrawStaticMesh(
+            //     ShadowPassContext,
+            //     AvocadoMesh,
+            //     Rr_MakeData(AvocadoDraw));
+            // Rr_DrawStaticMesh(
+            //     ShadowPassContext,
+            //     MarbleMesh,
+            //     Rr_MakeData(MarbleDraw));
         }
         else
         {
