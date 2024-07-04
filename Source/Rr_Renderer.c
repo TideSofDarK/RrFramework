@@ -323,6 +323,7 @@ static void Rr_InitFrames(Rr_App *App)
         SDL_zerop(Frame);
 
         /* Synchronization */
+
         vkCreateFence(Device, &FenceCreateInfo, NULL, &Frame->RenderFence);
         vkCreateSemaphore(
             Device,
@@ -336,6 +337,7 @@ static void Rr_InitFrames(Rr_App *App)
             &Frame->RenderSemaphore);
 
         /* Descriptor Allocator */
+
         Rr_DescriptorPoolSizeRatio Ratios[] = {
             { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
             { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
@@ -351,6 +353,7 @@ static void Rr_InitFrames(Rr_App *App)
             &App->PermanentArena);
 
         /* Commands */
+
         VkCommandPoolCreateInfo CommandPoolInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
@@ -370,12 +373,13 @@ static void Rr_InitFrames(Rr_App *App)
             &Frame->MainCommandBuffer);
 
         /* GPU Buffers */
+
         Frame->StagingBuffer.Buffer = Rr_CreateMappedBuffer(
             App,
             RR_STAGING_BUFFER_SIZE,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         Frame->CommonBuffer.Buffer = Rr_CreateDeviceUniformBuffer(App, 66560);
-        Frame->DrawBuffer.Buffer = Rr_CreateMappedBuffer(
+        Frame->PerDrawBuffer.Buffer = Rr_CreateMappedBuffer(
             App,
             66560,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
@@ -401,7 +405,7 @@ static void Rr_CleanupFrames(Rr_App *App)
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
         Rr_DestroyBuffer(App, Frame->StagingBuffer.Buffer);
-        Rr_DestroyBuffer(App, Frame->DrawBuffer.Buffer);
+        Rr_DestroyBuffer(App, Frame->PerDrawBuffer.Buffer);
         Rr_DestroyBuffer(App, Frame->CommonBuffer.Buffer);
 
         Rr_DestroyArena(&Frame->Arena);
@@ -1219,7 +1223,7 @@ void Rr_EndImmediate(Rr_Renderer *Renderer)
 static void Rr_ResetFrameResources(Rr_Frame *Frame)
 {
     Frame->StagingBuffer.Offset = 0;
-    Frame->DrawBuffer.Offset = 0;
+    Frame->PerDrawBuffer.Offset = 0;
     Frame->CommonBuffer.Offset = 0;
 
     Rr_ResetArena(&Frame->Arena);

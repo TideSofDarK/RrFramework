@@ -12,7 +12,7 @@ extern "C" {
 #define RR_PIPELINE_MAX_COLOR_ATTACHMENTS       2
 #define RR_PIPELINE_MAX_GLOBALS_SIZE            512
 #define RR_PIPELINE_MAX_MATERIAL_SIZE           256
-#define RR_PIPELINE_MAX_DRAW_SIZE               128
+#define RR_PIPELINE_MAX_PER_DRAW_SIZE           128
 
 typedef struct Rr_GenericPipeline Rr_GenericPipeline;
 typedef struct Rr_PipelineBuilder Rr_PipelineBuilder;
@@ -48,7 +48,7 @@ extern Rr_GenericPipeline *Rr_BuildGenericPipeline(
     Rr_PipelineBuilder *PipelineBuilder,
     size_t Globals,
     size_t Material,
-    size_t Draw);
+    size_t PerDraw);
 
 extern void Rr_DestroyGenericPipeline(
     Rr_App *App,

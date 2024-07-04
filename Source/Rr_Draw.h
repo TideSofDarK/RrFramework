@@ -18,7 +18,7 @@ struct Rr_DrawPrimitiveInfo
 {
     Rr_Material *Material;
     struct Rr_Primitive *Primitive;
-    uint32_t OffsetIntoDrawBuffer;
+    uint32_t PerDrawOffset;
 };
 
 typedef struct Rr_DrawTextInfo Rr_DrawTextInfo;

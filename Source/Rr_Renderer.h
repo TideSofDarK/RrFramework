@@ -59,8 +59,8 @@ struct Rr_Frame
     Rr_WriteBuffer StagingBuffer;
     Rr_WriteBuffer CommonBuffer;
 
-    Rr_WriteBuffer DrawBuffer;
-    VkDescriptorSet DrawDescriptor;
+    Rr_WriteBuffer PerDrawBuffer;
+    VkDescriptorSet PerDrawDescriptor;
 
     Rr_SliceType(struct Rr_DrawContext) DrawContextsSlice;
 

@@ -108,9 +108,9 @@ SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(
     {
         return (A->Primitive > B->Primitive) ? 1 : -1;
     }
-    if (A->OffsetIntoDrawBuffer != B->OffsetIntoDrawBuffer)
+    if (A->PerDrawOffset != B->PerDrawOffset)
     {
-        return (A->OffsetIntoDrawBuffer > B->OffsetIntoDrawBuffer) ? 1 : -1;
+        return (A->PerDrawOffset > B->PerDrawOffset) ? 1 : -1;
     }
     return 0;
 }
@@ -137,7 +137,7 @@ static void Rr_RenderGeneric(
     Rr_GenericPipeline *BoundPipeline = NULL;
     Rr_Material *BoundMaterial = NULL;
     Rr_Primitive *BoundPrimitive = NULL;
-    uint32_t BoundDrawOffset = UINT_MAX;
+    uint32_t BoundPerDrawOffset = UINT32_MAX;
 
     /* @TODO: Sort indices instead! */
     QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive)
@@ -254,9 +254,9 @@ static void Rr_RenderGeneric(
 
         /* Raw offset should be enough to differentiate between draws
          * however note that each draw size needs its own descriptor set.*/
-        if (BoundDrawOffset != Info->OffsetIntoDrawBuffer)
+        if (BoundPerDrawOffset != Info->PerDrawOffset)
         {
-            BoundDrawOffset = Info->OffsetIntoDrawBuffer;
+            BoundPerDrawOffset = Info->PerDrawOffset;
 
             vkCmdBindDescriptorSets(
                 CommandBuffer,
@@ -264,9 +264,9 @@ static void Rr_RenderGeneric(
                 Renderer->GenericPipelineLayout,
                 RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW,
                 1,
-                &BoundPipeline->DrawDescriptorSets[FrameIndex],
+                &BoundPipeline->PerDrawDescriptorSets[FrameIndex],
                 1,
-                &BoundDrawOffset);
+                &BoundPerDrawOffset);
         }
 
         if (BoundPrimitive == NULL)
@@ -298,7 +298,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     Rr_TextRenderingContext TextRenderingContext = { 0 };
 
     uint64_t Ticks = SDL_GetTicks();
-    float Time = (float)((double)Ticks / 1000.0);
+    float Time = (float)Ticks / 1000.0f;
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
     Rr_TextGlobalsLayout TextGlobalsData = {
         .Reserved = 0.0f,

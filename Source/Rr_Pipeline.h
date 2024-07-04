@@ -21,9 +21,9 @@ struct Rr_GenericPipeline
     {
         size_t Globals;
         size_t Material;
-        size_t Draw;
+        size_t PerDraw;
     } Sizes;
-    VkDescriptorSet DrawDescriptorSets[RR_FRAME_OVERLAP];
+    VkDescriptorSet PerDrawDescriptorSets[RR_FRAME_OVERLAP];
 };
 
 struct Rr_PipelineBuilder
@@ -83,10 +83,10 @@ extern void Rr_EnablePerInstanceInputAttributes(
     Rr_VertexInput *VertexInput);
 
 extern Rr_Pipeline *Rr_CreatePipeline(
-    struct Rr_App *App,
+    Rr_App *App,
     Rr_PipelineBuilder *PipelineBuilder,
     VkPipelineLayout PipelineLayout);
 
 extern void Rr_DestroyPipeline(
-    struct Rr_App *App,
+    Rr_App *App,
     Rr_Pipeline *Pipeline);

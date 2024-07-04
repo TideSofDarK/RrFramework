@@ -428,11 +428,11 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
     Rr_PipelineBuilder *PipelineBuilder,
     size_t Globals,
     size_t Material,
-    size_t Draw)
+    size_t PerDraw)
 {
     SDL_assert(Globals < RR_PIPELINE_MAX_GLOBALS_SIZE);
     SDL_assert(Material < RR_PIPELINE_MAX_MATERIAL_SIZE);
-    SDL_assert(Draw < RR_PIPELINE_MAX_DRAW_SIZE);
+    SDL_assert(PerDraw < RR_PIPELINE_MAX_PER_DRAW_SIZE);
 
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
@@ -470,13 +470,13 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
             App,
             PipelineBuilder,
             Renderer->GenericPipelineLayout),
-        .Sizes = { .Globals = Globals, .Material = Material, .Draw = Draw },
+        .Sizes = { .Globals = Globals, .Material = Material, .PerDraw = PerDraw },
     };
 
     /* Initialize per-draw buffer descriptor sets.
      * These are dynamic.
      * @TODO: The only thing that doesn't allow me to have single global set is
-     * @TODO: varying size.
+     * @TODO: varying PerDraw size.
      * @TODO: Pipeline might be deleted but what about the descriptor sets?
      */
     Rr_DescriptorWriter DescriptorWriter =
@@ -485,7 +485,7 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
     {
         Rr_Frame *Frame = &Renderer->Frames[FrameIndex];
 
-        Pipeline->DrawDescriptorSets[FrameIndex] = Rr_AllocateDescriptorSet(
+        Pipeline->PerDrawDescriptorSets[FrameIndex] = Rr_AllocateDescriptorSet(
             &Renderer->GlobalDescriptorAllocator,
             Renderer->Device,
             Renderer->GenericDescriptorSetLayouts
@@ -493,15 +493,15 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
         Rr_WriteBufferDescriptor(
             &DescriptorWriter,
             0,
-            Frame->DrawBuffer.Buffer->Handle,
-            Draw,
+            Frame->PerDrawBuffer.Buffer->Handle,
+            PerDraw,
             0,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
             Scratch.Arena);
         Rr_UpdateDescriptorSet(
             &DescriptorWriter,
             Renderer->Device,
-            Pipeline->DrawDescriptorSets[FrameIndex]);
+            Pipeline->PerDrawDescriptorSets[FrameIndex]);
         Rr_ResetDescriptorWriter(&DescriptorWriter);
     }
 

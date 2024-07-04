@@ -38,7 +38,7 @@ struct SEntity
 {
 };
 
-template <typename TGlobals, typename TMaterial, typename TDraw>
+template <typename TGlobals, typename TMaterial, typename TPerDraw>
 struct TPipeline
 {
 protected:
@@ -47,7 +47,7 @@ protected:
 public:
     using SGlobals = TGlobals;
     using SMaterial = TMaterial;
-    using SDraw = TDraw;
+    using SPerDraw = TPerDraw;
 
     Rr_GenericPipeline *GenericPipeline{};
 
@@ -76,13 +76,13 @@ struct SShadowPassMaterial
     Rr_Vec3 Emissive;
 };
 
-struct SShadowDraw
+struct SShadowPerDraw
 {
     Rr_Mat4 Model;
 };
 
 struct SShadowPassPipeline
-    : TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowDraw>
+    : TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowPerDraw>
 {
     explicit SShadowPassPipeline(Rr_App *InApp) :
         TPipeline(InApp)
@@ -98,7 +98,7 @@ struct SShadowPassPipeline
             Builder,
             sizeof(SGlobals),
             sizeof(SMaterial),
-            sizeof(SDraw));
+            sizeof(SPerDraw));
     }
 };
 
@@ -114,12 +114,12 @@ struct SUnlitMaterial
     Rr_Vec3 Emissive;
 };
 
-struct SUnlitDraw
+struct SUnlitPerDraw
 {
     Rr_Mat4 Model;
 };
 
-struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
+struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitPerDraw>
 {
     explicit SUnlitPipeline(Rr_App *InApp) :
         TPipeline(InApp)
@@ -139,7 +139,7 @@ struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitDraw>
             Builder,
             sizeof(SGlobals),
             sizeof(SMaterial),
-            sizeof(SDraw));
+            sizeof(SPerDraw));
     }
 };
 
@@ -148,7 +148,7 @@ struct SUber3DMaterial
     Rr_Vec3 Emissive;
 };
 
-struct SUber3DDraw
+struct SUber3DPerDraw
 {
     Rr_Mat4 Model;
 };
@@ -158,7 +158,7 @@ struct SUber3DPushConstants
     Rr_Mat4 Reserved;
 };
 
-struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
+struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DPerDraw>
 {
     explicit SUber3DPipeline(Rr_App *InApp) :
         TPipeline(InApp)
@@ -177,7 +177,7 @@ struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DDraw>
             Builder,
             sizeof(SGlobals),
             sizeof(SMaterial),
-            sizeof(SDraw));
+            sizeof(SPerDraw));
     }
 };
 
@@ -448,12 +448,12 @@ public:
 
         if (bLoaded)
         {
-            SUnlitPipeline::SDraw ArrowDraw = { 0 };
+            SUnlitPipeline::SPerDraw ArrowDraw = { 0 };
             ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
             ArrowDraw.Model[3][1] = 5.0f;
             Rr_DrawStaticMesh(DrawContext, ArrowMesh, Rr_MakeData(ArrowDraw));
 
-            SUber3DDraw CottageDraw = { 0 };
+            SUber3DPerDraw CottageDraw = { 0 };
             CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
             CottageDraw.Model[3][1] = 0.1f;
             Rr_DrawStaticMeshOverrideMaterials(
@@ -463,7 +463,7 @@ public:
                 CottageMesh,
                 Rr_MakeData(CottageDraw));
 
-            SUber3DDraw AvocadoDraw = { 0 };
+            SUber3DPerDraw AvocadoDraw = { 0 };
             AvocadoDraw.Model = Rr_Scale({ 0.75f, 0.75f, 0.75f }) *
                                 Rr_Rotate_LH(
                                     fmodf(Time, RR_PI32 * 2.0f),
@@ -477,7 +477,7 @@ public:
                 AvocadoMesh,
                 Rr_MakeData(AvocadoDraw));
 
-            SUber3DDraw MarbleDraw = { 0 };
+            SUber3DPerDraw MarbleDraw = { 0 };
             MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
             Rr_DrawStaticMesh(DrawContext, MarbleMesh, Rr_MakeData(MarbleDraw));
 

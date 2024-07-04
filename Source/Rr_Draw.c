@@ -45,14 +45,14 @@ void Rr_DrawStaticMesh(
 {
     Rr_Renderer *Renderer = &DrawContext->App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    VkDeviceSize Offset = Frame->DrawBuffer.Offset;
+    VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
 
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
         *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
             (Rr_DrawPrimitiveInfo){
-                .OffsetIntoDrawBuffer = Offset,
+                .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
                 .Material = StaticMesh->Materials[PrimitiveIndex],
             };
@@ -60,10 +60,10 @@ void Rr_DrawStaticMesh(
 
     Rr_CopyToMappedUniformBuffer(
         DrawContext->App,
-        Frame->DrawBuffer.Buffer,
+        Frame->PerDrawBuffer.Buffer,
         DrawData.Data,
         DrawData.Size,
-        &Frame->DrawBuffer.Offset);
+        &Frame->PerDrawBuffer.Offset);
 }
 
 void Rr_DrawStaticMeshOverrideMaterials(
@@ -75,14 +75,14 @@ void Rr_DrawStaticMeshOverrideMaterials(
 {
     Rr_Renderer *Renderer = &DrawContext->App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    VkDeviceSize Offset = Frame->DrawBuffer.Offset;
+    VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
 
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
         *Rr_SlicePush(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
             (Rr_DrawPrimitiveInfo){
-                .OffsetIntoDrawBuffer = Offset,
+                .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
                 .Material = PrimitiveIndex < OverrideMaterialCount
                                 ? OverrideMaterials[PrimitiveIndex]
@@ -92,10 +92,10 @@ void Rr_DrawStaticMeshOverrideMaterials(
 
     Rr_CopyToMappedUniformBuffer(
         DrawContext->App,
-        Frame->DrawBuffer.Buffer,
+        Frame->PerDrawBuffer.Buffer,
         DrawData.Data,
         DrawData.Size,
-        &Frame->DrawBuffer.Offset);
+        &Frame->PerDrawBuffer.Offset);
 }
 
 static void Rr_DrawText(Rr_DrawContext *RenderingContext, Rr_DrawTextInfo *Info)
