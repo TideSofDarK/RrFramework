@@ -61,7 +61,7 @@ void *Rr_CreateObject(Rr_ObjectStorage *Storage)
 
     SDL_UnlockSpinlock(&Storage->Lock);
 
-    SDL_zerop(NewObject);
+    RR_ZERO_PTR(NewObject);
     return NewObject;
 }
 

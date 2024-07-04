@@ -12,6 +12,9 @@ typedef uint32_t Rr_Bool;
 #define RR_FALSE 0
 #define RR_TRUE  1
 
+#define RR_ZERO(x)     memset(&(x), 0, sizeof((x)))
+#define RR_ZERO_PTR(x) memset((x), 0, sizeof(*(x)))
+
 #define RR_KILOBYTES(Value) ((Value) * 1024)
 #define RR_MEGABYTES(Value) ((Value) * RR_KILOBYTES(1024))
 #define RR_GIGABYTES(Value) ((Value) * RR_MEGABYTES(1024))

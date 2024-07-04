@@ -320,7 +320,7 @@ static void Rr_InitFrames(Rr_App *App)
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         Rr_Frame *Frame = &Frames[Index];
-        SDL_zerop(Frame);
+        RR_ZERO_PTR(Frame);
 
         /* Commands */
 
@@ -1335,7 +1335,7 @@ void Rr_Draw(Rr_App *App)
             &Frame->DrawContextsSlice.Data[Index],
             Scratch.Arena);
     }
-    SDL_zero(Frame->DrawContextsSlice);
+    RR_ZERO(Frame->DrawContextsSlice);
 
     /* Render Dear ImGui if needed. */
     Rr_ImGui *ImGui = &Renderer->ImGui;

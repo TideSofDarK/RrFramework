@@ -667,7 +667,7 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
         {
             Rr_ResetArena(&LoadingThread->Arena);
             CurrentLoadingContextIndex = 0;
-            SDL_zero(LoadingThread->LoadingContextsSlice);
+            RR_ZERO(LoadingThread->LoadingContextsSlice);
         }
         SDL_UnlockMutex(LoadingThread->Mutex);
     }

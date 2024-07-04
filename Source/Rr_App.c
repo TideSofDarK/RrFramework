@@ -226,7 +226,7 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
 
     Rr_App *App = Rr_StackAlloc(Rr_App, 1);
-    SDL_zerop(App);
+    RR_ZERO_PTR(App);
     *App = (Rr_App){ .Config = Config,
                      .Window = SDL_CreateWindow(
                          Config->Title,
