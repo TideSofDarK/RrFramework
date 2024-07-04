@@ -95,12 +95,12 @@ extern "C" {
 #define RR_TURNHALF   0.5
 #define RR_TURNHALF32 0.5f
 
-#define Rr_RadToDeg  (Rr_StaticCast(float, RR_DEG180 / RR_PI))
-#define Rr_RadToTurn (Rr_StaticCast(float, RR_TURNHALF / RR_PI))
-#define Rr_DegToRad  (Rr_StaticCast(float, RR_PI / RR_DEG180))
-#define Rr_DegToTurn (Rr_StaticCast(float, RR_TURNHALF / RR_DEG180))
-#define Rr_TurnToRad (Rr_StaticCast(float, RR_PI / RR_TURNHALF))
-#define Rr_TurnToDeg (Rr_StaticCast(float, RR_DEG180 / RR_TURNHALF))
+#define Rr_RadToDeg  (RR_STATIC_CAST(float, RR_DEG180 / RR_PI))
+#define Rr_RadToTurn (RR_STATIC_CAST(float, RR_TURNHALF / RR_PI))
+#define Rr_DegToRad  (RR_STATIC_CAST(float, RR_PI / RR_DEG180))
+#define Rr_DegToTurn (RR_STATIC_CAST(float, RR_TURNHALF / RR_DEG180))
+#define Rr_TurnToRad (RR_STATIC_CAST(float, RR_PI / RR_TURNHALF))
+#define Rr_TurnToDeg (RR_STATIC_CAST(float, RR_DEG180 / RR_TURNHALF))
 
 #if defined(RR_MATH_USE_RADIANS)
 #define Rr_AngleRad(a)  (a)
