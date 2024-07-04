@@ -66,9 +66,9 @@ void Rr_DebugOverlay(Rr_App *App)
     ImGuiIO *IO = igGetIO();
     ImGuiViewport *Viewport = igGetMainViewport();
     ImGuiWindowFlags Flags =
-        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
-        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+        ImGuiWindowFlags_NoNav;
     float Padding = 10.0f;
     ImVec2 WorkPos = Viewport->WorkPos;
     ImVec2 WindowPos, WindowPosPivot;
@@ -77,7 +77,6 @@ void Rr_DebugOverlay(Rr_App *App)
     WindowPosPivot.x = 0.0f;
     WindowPosPivot.y = 0.0f;
     igSetNextWindowPos(WindowPos, ImGuiCond_Always, WindowPosPivot);
-    igSetNextWindowViewport(Viewport->ID);
     Flags |= ImGuiWindowFlags_NoMove;
     igSetNextWindowBgAlpha(0.95f);
     if (igBegin("Debug Overlay", NULL, Flags))

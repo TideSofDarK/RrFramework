@@ -552,6 +552,7 @@ public:
         Uber3DPipeline(App),
         UnlitPipeline(App),
         ShadowPassPipeline(App),
+        ShadowMap(Rr_CreateDrawTargetDepthOnly(App, 1024, 1024)),
         UnlitGLTFLoader({
             .GenericPipeline = UnlitPipeline.GenericPipeline,
             .BaseTexture = 0,
@@ -563,8 +564,7 @@ public:
             .BaseTexture = 0,
             .NormalTexture = 1,
             .SpecularTexture = 2,
-        }),
-        ShadowMap(Rr_CreateDrawTargetDepthOnly(App, 1024, 1024))
+        })
     {
         InitInputMappings();
 
