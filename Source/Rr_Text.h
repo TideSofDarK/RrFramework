@@ -79,6 +79,6 @@ struct Rr_TextPipeline
     struct Rr_Pipeline *Pipeline;
     VkPipelineLayout Layout;
     struct Rr_Buffer *QuadBuffer;
-    struct Rr_Buffer *GlobalsBuffers[RR_FRAME_OVERLAP];
+    // struct Rr_Buffer *GlobalsBuffers[RR_FRAME_OVERLAP];
     struct Rr_Buffer *TextBuffers[RR_FRAME_OVERLAP];
 };

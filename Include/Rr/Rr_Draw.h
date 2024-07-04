@@ -16,18 +16,6 @@ extern "C" {
 typedef struct Rr_DrawTarget Rr_DrawTarget;
 typedef struct Rr_DrawContext Rr_DrawContext;
 
-typedef struct Rr_Data Rr_Data;
-struct Rr_Data
-{
-    void *Data;
-    size_t Size;
-};
-
-#define Rr_MakeData(Struct)       \
-    {                             \
-        &(Struct), sizeof(Struct) \
-    }
-
 typedef enum Rr_DrawTextFlags
 {
     RR_DRAW_TEXT_FLAGS_NONE_BIT = 0,
@@ -54,14 +42,14 @@ extern Rr_DrawContext *Rr_CreateDrawContext(
 extern void Rr_DrawStaticMesh(
     Rr_DrawContext *DrawContext,
     Rr_StaticMesh *StaticMesh,
-    Rr_Data DrawData);
+    Rr_Data PerDrawData);
 
 extern void Rr_DrawStaticMeshOverrideMaterials(
     Rr_DrawContext *DrawContext,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
-    Rr_Data DrawData);
+    Rr_Data PerDrawData);
 
 extern void Rr_DrawCustomText(
     Rr_DrawContext *DrawContext,

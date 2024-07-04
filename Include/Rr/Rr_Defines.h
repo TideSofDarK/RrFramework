@@ -36,7 +36,8 @@ typedef uint32_t Rr_Bool;
 
 #define RR_SAFE_ALIGNMENT 16
 
-#define Rr_Align(Num, Alignment) (((Num) + ((Alignment)-1)) & ~((Alignment)-1))
+#define Rr_Align(Num, Alignment) \
+    (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 
 #ifdef __cplusplus
 #define Rr_ReinterpretCast(Type, Expression) reinterpret_cast<Type>(Expression)
@@ -46,4 +47,21 @@ typedef uint32_t Rr_Bool;
 #define Rr_ReinterpretCast(Type, Expression) ((Type)(Expression))
 #define Rr_StaticCast(Type, Expression)      ((Type)(Expression))
 #define Rr_ConstCast(Type, Expression)       ((Type)(Expression))
+#endif
+
+typedef struct Rr_Data Rr_Data;
+struct Rr_Data
+{
+    void *Data;
+    size_t Size;
+};
+
+#ifdef __cplusplus
+#define Rr_MakeData(Struct)       \
+    {                             \
+        &(Struct), sizeof(Struct) \
+    }
+#else
+#define Rr_MakeData(Struct) \
+    (Rr_Data) { &(Struct), sizeof(Struct) }
 #endif

@@ -94,14 +94,13 @@ void Rr_InitTextRenderer(Rr_App *App)
     Rr_UploadToDeviceBufferImmediate(
         App,
         TextPipeline->QuadBuffer,
-        Quad,
-        sizeof(Quad));
+        Rr_MakeData(Quad));
 
     /* Buffers */
     for (size_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
     {
-        TextPipeline->GlobalsBuffers[FrameIndex] =
-            Rr_CreateDeviceUniformBuffer(App, sizeof(Rr_TextGlobalsLayout));
+        // TextPipeline->GlobalsBuffers[FrameIndex] =
+        //     Rr_CreateDeviceUniformBuffer(App, sizeof(Rr_TextGlobalsLayout));
 
         TextPipeline->TextBuffers[FrameIndex] =
             Rr_CreateMappedVertexBuffer(App, RR_TEXT_BUFFER_SIZE);
@@ -129,7 +128,7 @@ void Rr_CleanupTextRenderer(Rr_App *App)
     }
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_DestroyBuffer(App, TextPipeline->GlobalsBuffers[Index]);
+        // Rr_DestroyBuffer(App, TextPipeline->GlobalsBuffers[Index]);
         Rr_DestroyBuffer(App, TextPipeline->TextBuffers[Index]);
     }
     Rr_DestroyBuffer(App, TextPipeline->QuadBuffer);
@@ -239,11 +238,7 @@ Rr_Font *Rr_CreateFont(
 
     cJSON_Delete(FontDataJSON);
 
-    Rr_UploadToDeviceBufferImmediate(
-        App,
-        Buffer,
-        &TextFontData,
-        sizeof(Rr_TextFontLayout));
+    Rr_UploadToDeviceBufferImmediate(App, Buffer, Rr_MakeData(TextFontData));
 
     return Font;
 }

@@ -13,6 +13,13 @@ struct Rr_Buffer
     VmaAllocation Allocation;
 };
 
+typedef struct Rr_WriteBuffer Rr_WriteBuffer;
+struct Rr_WriteBuffer
+{
+    Rr_Buffer *Buffer;
+    VkDeviceSize Offset;
+};
+
 extern Rr_Buffer *Rr_CreateBuffer(
     Rr_App *App,
     size_t Size,
@@ -33,52 +40,42 @@ extern Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, size_t Size);
 
 extern void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer);
 
-typedef struct Rr_WriteBuffer Rr_WriteBuffer;
-struct Rr_WriteBuffer
-{
-    Rr_Buffer *Buffer;
-    VkDeviceSize Offset;
-};
-
 extern void Rr_UploadBufferAligned(
     Rr_App *App,
     struct Rr_UploadContext *UploadContext,
-    VkBuffer Buffer,
+    Rr_Buffer *DstBuffer,
+    VkDeviceSize *DstOffset,
     VkPipelineStageFlags SrcStageMask,
     VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
-    void *Data,
-    size_t DataLength,
+    Rr_Data Data,
     size_t Alignment);
 
 extern void Rr_UploadBuffer(
     Rr_App *App,
     struct Rr_UploadContext *UploadContext,
-    VkBuffer Buffer,
+    Rr_Buffer *Buffer,
     VkPipelineStageFlags SrcStageMask,
     VkAccessFlags SrcAccessMask,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
-    void *Data,
-    size_t DataLength);
+    Rr_Data Data);
 
 extern void Rr_UploadToDeviceBufferImmediate(
     Rr_App *App,
     Rr_Buffer *DstBuffer,
-    void *Data,
-    size_t Size);
+    Rr_Data Data);
 
 extern void Rr_UploadToUniformBuffer(
     Rr_App *App,
     struct Rr_UploadContext *UploadContext,
     Rr_Buffer *DstBuffer,
-    void *Data,
-    size_t DataLength);
+    VkDeviceSize *DstOffset,
+    Rr_Data Data);
 
 extern void Rr_CopyToMappedUniformBuffer(
     Rr_App *App,
     Rr_Buffer *DstBuffer,
-    void *Data,
-    size_t Size,
-    VkDeviceSize *DstOffset);
+    VkDeviceSize *DstOffset,
+    Rr_Data Data);

@@ -32,7 +32,6 @@ struct Rr_TextRenderingContext
 static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
-    Rr_Buffer *GlobalsBuffer,
     Rr_DrawContextInfo *DrawContextInfo,
     char *GlobalsData,
     Rr_Arena *Arena)
@@ -42,6 +41,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
 
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(
         RR_MAX_TEXTURES_PER_MATERIAL,
@@ -55,12 +55,14 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
 
     /* Upload globals data. */
     /* @TODO: Make these take a Rr_WriteBuffer instead! */
+    VkDeviceSize BufferOffset = CommonBuffer->Offset;
     Rr_UploadToUniformBuffer(
         App,
         UploadContext,
-        GlobalsBuffer,
-        GlobalsData,
-        Context.BasePipeline->Sizes.Globals);
+        CommonBuffer->Buffer,
+        &CommonBuffer->Offset,
+        (Rr_Data){ .Data = GlobalsData,
+                   .Size = Context.BasePipeline->Sizes.Globals });
 
     /* Allocate, write and bind globals descriptor set. */
     Context.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
@@ -71,9 +73,9 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_WriteBufferDescriptor(
         &DescriptorWriter,
         0,
-        GlobalsBuffer->Handle,
+        CommonBuffer->Buffer->Handle,
         Context.BasePipeline->Sizes.Globals,
-        0,
+        BufferOffset,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         Scratch.Arena);
     //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View,
@@ -291,6 +293,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
 
     Rr_DescriptorWriter DescriptorWriter =
         Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
@@ -310,12 +313,14 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
                      { 0.0f, 1.0f, 0.0f, 1.0f },
                      { 0.0f, 0.0f, 1.0f, 1.0f } }
     };
+
+    VkDeviceSize BufferOffset = CommonBuffer->Offset;
     Rr_UploadToUniformBuffer(
         App,
         UploadContext,
-        TextPipeline->GlobalsBuffers[Renderer->CurrentFrameIndex],
-        &TextGlobalsData,
-        sizeof(Rr_TextGlobalsLayout));
+        CommonBuffer->Buffer,
+        &CommonBuffer->Offset,
+        Rr_MakeData(TextGlobalsData));
 
     TextRenderingContext.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
         &Frame->DescriptorAllocator,
@@ -325,9 +330,9 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     Rr_WriteBufferDescriptor(
         &DescriptorWriter,
         0,
-        TextPipeline->GlobalsBuffers[Renderer->CurrentFrameIndex]->Handle,
+        CommonBuffer->Buffer->Handle,
         sizeof(Rr_TextGlobalsLayout),
-        0,
+        BufferOffset,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         Scratch.Arena);
     Rr_UpdateDescriptorSet(
@@ -551,7 +556,6 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
         Rr_MakeGenericRenderingContext(
             App,
             &UploadContext,
-            Frame->CommonBuffer.Buffer,
             &DrawContext->Info,
             DrawContext->GlobalsData,
             Scratch.Arena);

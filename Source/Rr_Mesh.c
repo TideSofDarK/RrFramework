@@ -18,9 +18,7 @@ static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
     return Rr_ArenaAllocOne((Rr_Arena *)Arena, Size);
 }
 
-static void Rr_CGLTFArenaFree(void *Arena, void *Ptr)
-{ /* no-op */
-}
+static void Rr_CGLTFArenaFree(void *Arena, void *Ptr) { /* no-op */ }
 
 static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
 {
@@ -383,25 +381,25 @@ Rr_Primitive *Rr_CreatePrimitive(
     Rr_UploadBuffer(
         App,
         UploadContext,
-        Primitive->VertexBuffer->Handle,
+        Primitive->VertexBuffer,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         0,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
             VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
-        RawMesh->VerticesSlice.Data,
-        VertexBufferSize);
+        (Rr_Data){ .Data = RawMesh->VerticesSlice.Data,
+                   .Size = VertexBufferSize });
 
     Rr_UploadBuffer(
         App,
         UploadContext,
-        Primitive->IndexBuffer->Handle,
+        Primitive->IndexBuffer,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         0,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         VK_ACCESS_INDEX_READ_BIT,
-        RawMesh->IndicesSlice.Data,
-        IndexBufferSize);
+        (Rr_Data){ .Data = RawMesh->IndicesSlice.Data,
+                   .Size = IndexBufferSize });
 
     return Primitive;
 }

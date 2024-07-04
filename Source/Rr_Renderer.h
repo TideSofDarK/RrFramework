@@ -49,13 +49,21 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
+    /* Commands */
+
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
+
+    /* Synchronization */
+
     VkSemaphore SwapchainSemaphore;
     VkSemaphore RenderSemaphore;
     VkFence RenderFence;
 
     Rr_DescriptorAllocator DescriptorAllocator;
+
+    /* Buffers */
+
     Rr_WriteBuffer StagingBuffer;
     Rr_WriteBuffer CommonBuffer;
 

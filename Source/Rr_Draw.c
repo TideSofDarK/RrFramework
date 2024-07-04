@@ -41,7 +41,7 @@ Rr_DrawContext *Rr_CreateDrawContext(
 void Rr_DrawStaticMesh(
     Rr_DrawContext *DrawContext,
     Rr_StaticMesh *StaticMesh,
-    Rr_Data DrawData)
+    Rr_Data PerDrawData)
 {
     Rr_Renderer *Renderer = &DrawContext->App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -61,9 +61,8 @@ void Rr_DrawStaticMesh(
     Rr_CopyToMappedUniformBuffer(
         DrawContext->App,
         Frame->PerDrawBuffer.Buffer,
-        DrawData.Data,
-        DrawData.Size,
-        &Frame->PerDrawBuffer.Offset);
+        &Frame->PerDrawBuffer.Offset,
+        PerDrawData);
 }
 
 void Rr_DrawStaticMeshOverrideMaterials(
@@ -71,7 +70,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
-    Rr_Data DrawData)
+    Rr_Data PerDrawData)
 {
     Rr_Renderer *Renderer = &DrawContext->App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -93,9 +92,8 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_CopyToMappedUniformBuffer(
         DrawContext->App,
         Frame->PerDrawBuffer.Buffer,
-        DrawData.Data,
-        DrawData.Size,
-        &Frame->PerDrawBuffer.Offset);
+        &Frame->PerDrawBuffer.Offset,
+        PerDrawData);
 }
 
 static void Rr_DrawText(Rr_DrawContext *RenderingContext, Rr_DrawTextInfo *Info)

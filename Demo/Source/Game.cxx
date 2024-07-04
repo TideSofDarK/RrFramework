@@ -523,28 +523,29 @@ public:
                     Rr_Orthographic_LH_ZO(-512, 512, -512, 512, 0.1f, 100.0f),
             };
 
-            // Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(
-            //     App,
-            //     &ShadowPassContextInfo,
-            //     reinterpret_cast<char *>(&ShadowGlobals));
-            // // Rr_DrawStaticMesh(
-            // //     ShadowPassContext,
-            // //     ArrowMesh,
-            // //     Rr_MakeData(ArrowDraw));
-            // Rr_DrawStaticMeshOverrideMaterials(
-            //     ShadowPassContext,
-            //     &CottageMaterial,
-            //     1,
-            //     CottageMesh,
-            //     Rr_MakeData(CottageDraw));
+            Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(
+                App,
+                &ShadowPassContextInfo,
+                reinterpret_cast<char *>(&ShaderGlobals));
+            // reinterpret_cast<char *>(&ShadowGlobals));
             // Rr_DrawStaticMesh(
             //     ShadowPassContext,
-            //     AvocadoMesh,
-            //     Rr_MakeData(AvocadoDraw));
-            // Rr_DrawStaticMesh(
-            //     ShadowPassContext,
-            //     MarbleMesh,
-            //     Rr_MakeData(MarbleDraw));
+            //     ArrowMesh,
+            //     Rr_MakeData(ArrowDraw));
+            Rr_DrawStaticMeshOverrideMaterials(
+                ShadowPassContext,
+                &CottageMaterial,
+                1,
+                CottageMesh,
+                Rr_MakeData(CottageDraw));
+            Rr_DrawStaticMesh(
+                ShadowPassContext,
+                AvocadoMesh,
+                Rr_MakeData(AvocadoDraw));
+            Rr_DrawStaticMesh(
+                ShadowPassContext,
+                MarbleMesh,
+                Rr_MakeData(MarbleDraw));
         }
         else
         {
