@@ -444,6 +444,7 @@ static void Rr_RenderText(
             128,
             &TextPushConstants);
         /* Upload and bind text data. */
+        VkDeviceSize BaseTextDataOffset = Frame->PerDrawBuffer.Offset;
         size_t TextLength = DrawTextInfo->String.Length;
         size_t FinalTextLength = 0;
         uint32_t PalleteIndex = 0;
@@ -523,8 +524,9 @@ static void Rr_RenderText(
             1,
             1,
             &Frame->PerDrawBuffer.Buffer->Handle,
-            &(VkDeviceSize){ TextDataOffset *
-                             sizeof(Rr_TextPerInstanceVertexInput) });
+            &(VkDeviceSize){ BaseTextDataOffset +
+                             TextDataOffset *
+                                 sizeof(Rr_TextPerInstanceVertexInput) });
         TextDataOffset += FinalTextLength;
         vkCmdDraw(CommandBuffer, 4, FinalTextLength, 0, 0);
     }
@@ -653,6 +655,9 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
     }
 
     vkCmdEndRenderPass(CommandBuffer);
+
+    /* @TODO: Ugly. */
+    Frame->StagingBuffer.Offset = UploadContext.StagingBuffer.Offset;
 
     Rr_DestroyArenaScratch(Scratch);
 }

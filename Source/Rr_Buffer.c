@@ -158,8 +158,7 @@ void Rr_UploadBufferAligned(
     }
     if (DstOffset != NULL)
     {
-        *DstOffset += Data.Size;
-        *DstOffset = RR_ALIGN(*DstOffset, Alignment);
+        *DstOffset = RR_ALIGN(*DstOffset + AlignedSize, Alignment);
     }
 
     vkCmdPipelineBarrier(
