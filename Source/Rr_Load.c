@@ -164,7 +164,7 @@ Rr_LoadingContext *Rr_LoadAsync(
 
     size_t AllocationSize =
         sizeof(Rr_LoadTask) * TaskCount + sizeof(Rr_LoadingContext);
-    AllocationSize = Rr_Align(AllocationSize, RR_SAFE_ALIGNMENT);
+    AllocationSize = RR_ALIGN(AllocationSize, RR_SAFE_ALIGNMENT);
 
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
     SDL_LockMutex(LoadingThread->Mutex);

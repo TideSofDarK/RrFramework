@@ -139,7 +139,7 @@ void Rr_UploadBufferAligned(
     }
     else
     {
-        StagingBuffer->Offset += Rr_Align(BufferOffset + Data.Size, Alignment);
+        StagingBuffer->Offset += RR_ALIGN(BufferOffset + Data.Size, Alignment);
     }
 
     vkCmdPipelineBarrier(
@@ -166,7 +166,7 @@ void Rr_UploadBufferAligned(
 
     /* Advance DstOffset here. */
 
-    size_t AlignedSize = Rr_Align(Data.Size, Alignment);
+    size_t AlignedSize = RR_ALIGN(Data.Size, Alignment);
     VkDeviceSize CurrentDstOffset = DstOffset != NULL ? *DstOffset : 0;
     if (CurrentDstOffset + AlignedSize > DstBuffer->AllocationInfo.size)
     {
@@ -180,7 +180,7 @@ void Rr_UploadBufferAligned(
     if (DstOffset != NULL)
     {
         *DstOffset += Data.Size;
-        *DstOffset = Rr_Align(*DstOffset, Alignment);
+        *DstOffset = RR_ALIGN(*DstOffset, Alignment);
     }
 
     VkBufferCopy Copy = { .size = Data.Size,
@@ -328,7 +328,7 @@ void Rr_CopyToMappedUniformBuffer(
 {
     uint32_t Alignment = App->Renderer.PhysicalDevice.Properties.properties
                              .limits.minUniformBufferOffsetAlignment;
-    size_t AlignedSize = Rr_Align(Data.Size, Alignment);
+    size_t AlignedSize = RR_ALIGN(Data.Size, Alignment);
     if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
         memcpy(
@@ -336,7 +336,7 @@ void Rr_CopyToMappedUniformBuffer(
             Data.Ptr,
             Data.Size);
         *DstOffset += Data.Size;
-        *DstOffset = Rr_Align(*DstOffset, Alignment);
+        *DstOffset = RR_ALIGN(*DstOffset, Alignment);
     }
     else
     {

@@ -465,7 +465,7 @@ public:
             SUnlitPipeline::SPerDraw ArrowDraw = { 0 };
             ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
             ArrowDraw.Model[3][1] = 5.0f;
-            Rr_DrawStaticMesh(DrawContext, ArrowMesh, Rr_MakeData(ArrowDraw));
+            Rr_DrawStaticMesh(DrawContext, ArrowMesh, RR_MAKE_DATA(ArrowDraw));
 
             SUber3DPerDraw CottageDraw = { 0 };
             CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
@@ -475,7 +475,7 @@ public:
                 &CottageMaterial,
                 1,
                 CottageMesh,
-                Rr_MakeData(CottageDraw));
+                RR_MAKE_DATA(CottageDraw));
 
             SUber3DPerDraw AvocadoDraw = {};
             AvocadoDraw.Model = Rr_Scale({ 0.75f, 0.75f, 0.75f }) *
@@ -489,11 +489,11 @@ public:
             Rr_DrawStaticMesh(
                 DrawContext,
                 AvocadoMesh,
-                Rr_MakeData(AvocadoDraw));
+                RR_MAKE_DATA(AvocadoDraw));
 
             SUber3DPerDraw MarbleDraw = {};
             MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
-            Rr_DrawStaticMesh(DrawContext, MarbleMesh, Rr_MakeData(MarbleDraw));
+            Rr_DrawStaticMesh(DrawContext, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
 
             Rr_DrawDefaultText(DrawContext, &TestString, { 50.0f, 50.0f });
 
@@ -537,15 +537,15 @@ public:
                 &CottageMaterial,
                 1,
                 CottageMesh,
-                Rr_MakeData(CottageDraw));
+                RR_MAKE_DATA(CottageDraw));
             Rr_DrawStaticMesh(
                 ShadowPassContext,
                 AvocadoMesh,
-                Rr_MakeData(AvocadoDraw));
+                RR_MAKE_DATA(AvocadoDraw));
             Rr_DrawStaticMesh(
                 ShadowPassContext,
                 MarbleMesh,
-                Rr_MakeData(MarbleDraw));
+                RR_MAKE_DATA(MarbleDraw));
         }
         else
         {

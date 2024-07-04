@@ -94,7 +94,7 @@ void Rr_InitTextRenderer(Rr_App *App)
     Rr_UploadToDeviceBufferImmediate(
         App,
         TextPipeline->QuadBuffer,
-        Rr_MakeData(Quad));
+        RR_MAKE_DATA(Quad));
 
     /* Buffers */
     for (size_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
@@ -238,7 +238,7 @@ Rr_Font *Rr_CreateFont(
 
     cJSON_Delete(FontDataJSON);
 
-    Rr_UploadToDeviceBufferImmediate(App, Buffer, Rr_MakeData(TextFontData));
+    Rr_UploadToDeviceBufferImmediate(App, Buffer, RR_MAKE_DATA(TextFontData));
 
     return Font;
 }
