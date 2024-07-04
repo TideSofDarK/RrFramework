@@ -1263,6 +1263,7 @@ void Rr_Draw(Rr_App *App)
     Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Renderer->Device);
 
     /* Acquire swapchain image. */
+
     uint32_t SwapchainImageIndex;
     VkResult Result = vkAcquireNextImageKHR(
         Device,
@@ -1285,12 +1286,14 @@ void Rr_Draw(Rr_App *App)
     VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
     /* Begin main command buffer. */
+
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
     VkCommandBufferBeginInfo CommandBufferBeginInfo =
         GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
     /* Rendering */
+
     Rr_Image *ColorImage = Renderer->DrawTarget->ColorImage;
     Rr_Image *DepthImage = Renderer->DrawTarget->DepthImage;
 
@@ -1329,6 +1332,7 @@ void Rr_Draw(Rr_App *App)
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     /* Flush Rendering Contexts */
+
     for (size_t Index = 0; Index < Frame->DrawContextsSlice.Length; ++Index)
     {
         Rr_FlushDrawContext(
@@ -1338,10 +1342,11 @@ void Rr_Draw(Rr_App *App)
     RR_ZERO(Frame->DrawContextsSlice);
 
     /* Render Dear ImGui if needed. */
+
     Rr_ImGui *ImGui = &Renderer->ImGui;
     if (ImGui->IsInitialized)
     {
-        VkRenderPassBeginInfo rp_info = {
+        VkRenderPassBeginInfo RenderPassBeginInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .renderPass = Renderer->RenderPasses.ColorDepthLoad,
             .framebuffer = Renderer->DrawTarget->Framebuffer,
@@ -1354,7 +1359,7 @@ void Rr_Draw(Rr_App *App)
         };
         vkCmdBeginRenderPass(
             CommandBuffer,
-            &rp_info,
+            &RenderPassBeginInfo,
             VK_SUBPASS_CONTENTS_INLINE);
 
         ImGui_ImplVulkan_RenderDrawData(
@@ -1366,6 +1371,7 @@ void Rr_Draw(Rr_App *App)
     }
 
     /* Blit primary draw target to swapchain image. */
+
     Rr_ChainImageBarrier(
         &ColorImageTransition,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -1402,6 +1408,7 @@ void Rr_Draw(Rr_App *App)
     vkEndCommandBuffer(CommandBuffer);
 
     /* Submit frame command buffer and queue present. */
+
     VkSemaphore *WaitSemaphores =
         RR_ARENA_ALLOC_ONE(Scratch.Arena, sizeof(VkSemaphore));
     VkPipelineStageFlags *WaitDstStages =
@@ -1451,6 +1458,7 @@ void Rr_Draw(Rr_App *App)
     Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
 
     /* Cleanup resources. */
+
     Rr_ResetFrameResources(Frame);
     Rr_DestroyArenaScratch(Scratch);
 }
