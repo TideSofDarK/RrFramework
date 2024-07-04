@@ -131,7 +131,7 @@ void Rr_UploadBufferAligned(
     memcpy(
         (char *)StagingBuffer->Buffer->AllocationInfo.pMappedData +
             BufferOffset,
-        Data.Data,
+        Data.Ptr,
         Data.Size);
     if (Alignment == 0)
     {
@@ -167,8 +167,8 @@ void Rr_UploadBufferAligned(
     /* Advance DstOffset here. */
 
     size_t AlignedSize = Rr_Align(Data.Size, Alignment);
-    VkDeviceSize WriteAt = DstOffset != NULL ? *DstOffset : 0;
-    if (WriteAt + AlignedSize > DstBuffer->AllocationInfo.size)
+    VkDeviceSize CurrentDstOffset = DstOffset != NULL ? *DstOffset : 0;
+    if (CurrentDstOffset + AlignedSize > DstBuffer->AllocationInfo.size)
     {
         Rr_LogAbort(
             "Exceeding buffer size! Current offset is %zu, allocation size is "
@@ -185,7 +185,7 @@ void Rr_UploadBufferAligned(
 
     VkBufferCopy Copy = { .size = Data.Size,
                           .srcOffset = BufferOffset,
-                          .dstOffset = WriteAt };
+                          .dstOffset = CurrentDstOffset };
 
     vkCmdCopyBuffer(
         TransferCommandBuffer,
@@ -284,7 +284,7 @@ void Rr_UploadToDeviceBufferImmediate(
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
     Rr_Buffer *HostMappedBuffer =
         Rr_CreateMappedBuffer(App, Data.Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-    memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data.Data, Data.Size);
+    memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data.Ptr, Data.Size);
     VkBufferCopy BufferCopy = { .dstOffset = 0,
                                 .size = Data.Size,
                                 .srcOffset = 0 };
@@ -333,7 +333,7 @@ void Rr_CopyToMappedUniformBuffer(
     {
         memcpy(
             (char *)DstBuffer->AllocationInfo.pMappedData + *DstOffset,
-            Data.Data,
+            Data.Ptr,
             Data.Size);
         *DstOffset += Data.Size;
         *DstOffset = Rr_Align(*DstOffset, Alignment);

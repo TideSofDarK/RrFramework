@@ -52,7 +52,7 @@ typedef uint32_t Rr_Bool;
 typedef struct Rr_Data Rr_Data;
 struct Rr_Data
 {
-    void *Data;
+    void *Ptr;
     size_t Size;
 };
 

@@ -61,7 +61,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         UploadContext,
         CommonBuffer->Buffer,
         &CommonBuffer->Offset,
-        (Rr_Data){ .Data = GlobalsData,
+        (Rr_Data){ .Ptr = GlobalsData,
                    .Size = Context.BasePipeline->Sizes.Globals });
 
     /* Allocate, write and bind globals descriptor set. */
