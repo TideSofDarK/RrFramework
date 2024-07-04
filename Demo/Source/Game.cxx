@@ -369,8 +369,8 @@ public:
             "%f",
             ImGuiSliderFlags_None);
         ImGui::Separator();
-        static Rr_Vec3 ShadowEye;
-        static Rr_Vec3 ShadowCenter;
+        static Rr_Vec3 ShadowEye = { 3, 3, 3 };
+        static Rr_Vec3 ShadowCenter = { 0, 0, 0 };
         ImGui::SliderFloat3(
             "ShadowEye",
             ShadowEye.Elements,
@@ -522,14 +522,19 @@ public:
             SShadowPassPipeline::SGlobals ShadowGlobals = {
                 .View =
                     Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
-                .Proj =
-                    Rr_Orthographic_LH_ZO(-512, 512, -512, 512, 0.1f, 100.0f),
+                .Proj = Rr_Orthographic_LH_ZO(
+                    -512 * 0.05f,
+                    512 * 0.05f,
+                    -512 * 0.05f,
+                    512 * 0.05f,
+                    0.1f,
+                    100.0f),
             };
 
             Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(
                 App,
                 &ShadowPassContextInfo,
-                reinterpret_cast<char *>(&ShaderGlobals));
+                reinterpret_cast<char *>(&ShadowGlobals));
             // reinterpret_cast<char *>(&ShadowGlobals));
             // Rr_DrawStaticMesh(
             //     ShadowPassContext,

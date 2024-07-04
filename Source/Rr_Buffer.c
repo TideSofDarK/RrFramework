@@ -143,28 +143,6 @@ void Rr_UploadBufferAligned(
             RR_ALIGN(StagingBufferOffset + Data.Size, Alignment);
     }
 
-    vkCmdPipelineBarrier(
-        TransferCommandBuffer,
-        SrcStageMask,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        0,
-        NULL,
-        1,
-        &(VkBufferMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-            .pNext = NULL,
-            .buffer = DstBuffer->Handle,
-            .offset = 0,
-            .size = Data.Size,
-            .srcAccessMask = SrcAccessMask,
-            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        },
-        0,
-        NULL);
-
     /* Advance DstOffset here. */
 
     size_t AlignedSize = RR_ALIGN(Data.Size, Alignment);
@@ -183,6 +161,28 @@ void Rr_UploadBufferAligned(
         *DstOffset += Data.Size;
         *DstOffset = RR_ALIGN(*DstOffset, Alignment);
     }
+
+    vkCmdPipelineBarrier(
+        TransferCommandBuffer,
+        SrcStageMask,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0,
+        NULL,
+        1,
+        &(VkBufferMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .pNext = NULL,
+            .buffer = DstBuffer->Handle,
+            .offset = CurrentDstOffset,
+            .size = Data.Size,
+            .srcAccessMask = SrcAccessMask,
+            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        },
+        0,
+        NULL);
 
     VkBufferCopy Copy = { .size = Data.Size,
                           .srcOffset = StagingBufferOffset,

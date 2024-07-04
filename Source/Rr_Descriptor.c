@@ -216,25 +216,25 @@ void Rr_WriteImageDescriptorAt(
     VkDescriptorType Type,
     Rr_Arena *Arena)
 {
-    *Rr_SlicePush(&Writer->ImageInfos, Arena) = ((VkDescriptorImageInfo){
+    *Rr_SlicePush(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
         .sampler = Sampler,
         .imageView = View,
         .imageLayout = Layout,
-    });
+    };
 
-    *Rr_SlicePush(&Writer->Writes, Arena) = ((VkWriteDescriptorSet){
+    *Rr_SlicePush(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
         .dstSet = VK_NULL_HANDLE,
         .descriptorCount = 1,
         .descriptorType = Type,
         .dstArrayElement = Index,
-    });
+    };
 
-    *Rr_SlicePush(&Writer->Entries, Arena) = ((Rr_DescriptorWriterEntry){
+    *Rr_SlicePush(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
         .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
         .Index = Rr_SliceLength(&Writer->ImageInfos) - 1,
-    });
+    };
 }
 
 void Rr_WriteBufferDescriptor(
@@ -246,24 +246,24 @@ void Rr_WriteBufferDescriptor(
     VkDescriptorType Type,
     Rr_Arena *Arena)
 {
-    *Rr_SlicePush(&Writer->BufferInfos, Arena) = ((VkDescriptorBufferInfo){
+    *Rr_SlicePush(&Writer->BufferInfos, Arena) = (VkDescriptorBufferInfo){
         .range = Size,
         .buffer = Buffer,
         .offset = Offset,
-    });
+    };
 
-    *Rr_SlicePush(&Writer->Writes, Arena) = ((VkWriteDescriptorSet){
+    *Rr_SlicePush(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
         .dstSet = VK_NULL_HANDLE,
         .descriptorCount = 1,
         .descriptorType = Type,
-    });
+    };
 
-    *Rr_SlicePush(&Writer->Entries, Arena) = ((Rr_DescriptorWriterEntry){
+    *Rr_SlicePush(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
         .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER,
         .Index = Rr_SliceLength(&Writer->BufferInfos) - 1,
-    });
+    };
 }
 
 void Rr_ResetDescriptorWriter(Rr_DescriptorWriter *Writer)
