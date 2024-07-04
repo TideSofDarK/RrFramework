@@ -14,11 +14,11 @@ typedef struct Rr_App Rr_App;
 typedef struct Rr_AppConfig Rr_AppConfig;
 struct Rr_AppConfig
 {
-    const char * Title;
+    const char *Title;
     void (*InitFunc)(Rr_App *App, void *UserData);
     void (*CleanupFunc)(Rr_App *App, void *UserData);
     void (*IterateFunc)(Rr_App *App, void *UserData);
-    void (*FileDroppedFunc)(Rr_App *App, const char * Path);
+    void (*FileDroppedFunc)(Rr_App *App, const char *Path);
     void *UserData;
 };
 
@@ -38,7 +38,7 @@ extern void Rr_SetInputConfig(Rr_App *App, Rr_InputConfig *InputConfig);
 
 extern Rr_InputState Rr_GetInputState(Rr_App *App);
 
-extern void Rr_SetRelativeMouseMode(Rr_Bool bRelative);
+extern void Rr_SetRelativeMouseMode(Rr_Bool IsRelative);
 
 #ifdef __cplusplus
 }

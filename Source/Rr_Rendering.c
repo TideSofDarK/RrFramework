@@ -438,47 +438,47 @@ static void Rr_RenderText(
         size_t TextLength = DrawTextInfo->String.Length;
         size_t FinalTextLength = 0;
         uint32_t PalleteIndex = 0;
-        Rr_Bool bCodePending = RR_FALSE;
-        Rr_Bool bPalleteIndexPending = RR_FALSE;
+        Rr_Bool CodePending = RR_FALSE;
+        Rr_Bool PalleteIndexPending = RR_FALSE;
         Rr_Vec2 AccumulatedAdvance = { 0 };
         for (size_t CharacterIndex = 0; CharacterIndex < TextLength;
              ++CharacterIndex)
         {
             uint32_t Unicode = DrawTextInfo->String.Data[CharacterIndex];
 
-            if (bCodePending)
+            if (CodePending)
             {
-                if (bPalleteIndexPending)
+                if (PalleteIndexPending)
                 {
                     if (Unicode >= '0' && Unicode <= '7')
                     {
                         PalleteIndex = Unicode - '0';
-                        bPalleteIndexPending = RR_FALSE;
-                        bCodePending = RR_FALSE;
+                        PalleteIndexPending = RR_FALSE;
+                        CodePending = RR_FALSE;
                         continue;
                     }
                     else
                     {
-                        bPalleteIndexPending = RR_FALSE;
-                        bCodePending = RR_FALSE;
+                        PalleteIndexPending = RR_FALSE;
+                        CodePending = RR_FALSE;
                         PalleteIndex = 0;
                     }
                 }
                 else if (Unicode == 'c')
                 {
-                    bPalleteIndexPending = RR_TRUE;
+                    PalleteIndexPending = RR_TRUE;
                     continue;
                 }
                 else
                 {
                     Unicode = '$';
                     CharacterIndex--;
-                    bCodePending = RR_FALSE;
+                    CodePending = RR_FALSE;
                 }
             }
             else if (Unicode == '$')
             {
-                bCodePending = RR_TRUE;
+                CodePending = RR_TRUE;
                 continue;
             }
             Rr_TextPerInstanceVertexInput *Input =
@@ -557,7 +557,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
             Scratch.Arena);
 
     Rr_TextRenderingContext TextRenderingContext;
-    if (DrawContext->Info.bTextRendering)
+    if (DrawContext->Info.EnableTextRendering)
     {
         TextRenderingContext = Rr_MakeTextRenderingContext(
             App,
@@ -631,7 +631,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
         CommandBuffer,
         Scratch.Arena);
 
-    if (DrawContext->Info.bTextRendering)
+    if (DrawContext->Info.EnableTextRendering)
     {
         Rr_RenderText(
             Renderer,

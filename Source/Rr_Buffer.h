@@ -18,7 +18,7 @@ extern Rr_Buffer *Rr_CreateBuffer(
     size_t Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
-    Rr_Bool bHostMapped);
+    Rr_Bool CreateMapped);
 
 extern Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, size_t Size);
 

@@ -11,7 +11,7 @@ Rr_Buffer *Rr_CreateBuffer(
     size_t Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
-    Rr_Bool bHostMapped)
+    Rr_Bool CreateMapped)
 {
     Rr_Buffer *Buffer = Rr_CreateObject(&App->ObjectStorage);
 
@@ -26,7 +26,7 @@ Rr_Buffer *Rr_CreateBuffer(
         .usage = MemoryUsage,
     };
 
-    if (bHostMapped)
+    if (CreateMapped)
     {
         AllocationInfo.flags =
             VMA_ALLOCATION_CREATE_MAPPED_BIT |
@@ -175,7 +175,7 @@ void Rr_UploadBufferAligned(
         1,
         &Copy);
 
-    if (!UploadContext->bUseAcquireBarriers)
+    if (!UploadContext->UseAcquireBarriers)
     {
         vkCmdPipelineBarrier(
             TransferCommandBuffer,

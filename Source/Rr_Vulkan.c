@@ -105,9 +105,9 @@ static Rr_Bool Rr_CheckPhysicalDevice(
         return RR_FALSE;
     }
 
-    Rr_Bool bForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
+    Rr_Bool ForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
 
-    if (!bForceDisableTransferQueue)
+    if (!ForceDisableTransferQueue)
     {
         for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
         {
@@ -170,8 +170,8 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
     };
 
-    Rr_Bool bUseTransferQueue = RR_FALSE;
-    Rr_Bool bFoundSuitableDevice = RR_FALSE;
+    Rr_Bool UseTransferQueue = RR_FALSE;
+    Rr_Bool FoundSuitableDevice = RR_FALSE;
     for (uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
@@ -181,7 +181,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
                 OutGraphicsQueueFamilyIndex,
                 OutTransferQueueFamilyIndex))
         {
-            bUseTransferQueue =
+            UseTransferQueue =
                 *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
             vkGetPhysicalDeviceFeatures(
@@ -199,11 +199,11 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
                 PhysicalDevice.Properties.properties.deviceName);
 
             PhysicalDevice.Handle = PhysicalDeviceHandle;
-            bFoundSuitableDevice = RR_TRUE;
+            FoundSuitableDevice = RR_TRUE;
             break;
         }
     }
-    if (!bFoundSuitableDevice)
+    if (!FoundSuitableDevice)
     {
         Rr_LogAbort(
             "Could not select physical device based on the chosen properties!");
@@ -211,7 +211,7 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
 
     Rr_LogVulkan(
         "Unified Queue Mode: %s",
-        !bUseTransferQueue ? "RR_TRUE" : "RR_FALSE");
+        !UseTransferQueue ? "RR_TRUE" : "RR_FALSE");
 
     Rr_StackFree(PhysicalDevices);
 
@@ -226,7 +226,7 @@ void Rr_InitDeviceAndQueues(
     VkQueue *OutGraphicsQueue,
     VkQueue *OutTransferQueue)
 {
-    Rr_Bool bUseTransferQueue =
+    Rr_Bool UseTransferQueue =
         GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
     float QueuePriorities[] = { 1.0f };
     VkDeviceQueueCreateInfo QueueInfos[] = {
@@ -249,7 +249,7 @@ void Rr_InitDeviceAndQueues(
     VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = NULL,
-        .queueCreateInfoCount = bUseTransferQueue ? 2 : 1,
+        .queueCreateInfoCount = UseTransferQueue ? 2 : 1,
         .pQueueCreateInfos = QueueInfos,
         .enabledExtensionCount = SDL_arraysize(DeviceExtensions),
         .ppEnabledExtensionNames = DeviceExtensions,
@@ -258,7 +258,7 @@ void Rr_InitDeviceAndQueues(
     vkCreateDevice(PhysicalDevice, &DeviceCreateInfo, NULL, OutDevice);
 
     vkGetDeviceQueue(*OutDevice, GraphicsQueueFamilyIndex, 0, OutGraphicsQueue);
-    if (bUseTransferQueue)
+    if (UseTransferQueue)
     {
         vkGetDeviceQueue(
             *OutDevice,

@@ -101,8 +101,8 @@ Rr_Pipeline *Rr_CreatePipeline(
     };
 
     uint32_t AttributeCount = 0;
-    Rr_Bool bHasPerVertexBinding = RR_FALSE;
-    Rr_Bool bHasPerInstanceBinding = RR_FALSE;
+    Rr_Bool HasPerVertexBinding = RR_FALSE;
+    Rr_Bool HasPerInstanceBinding = RR_FALSE;
     for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
          ++Index)
     {
@@ -111,19 +111,18 @@ Rr_Pipeline *Rr_CreatePipeline(
             break;
         }
         AttributeCount++;
-        bHasPerVertexBinding = bHasPerVertexBinding ||
-                               PipelineBuilder->Attributes[Index].binding == 0;
-        bHasPerInstanceBinding =
-            bHasPerInstanceBinding ||
-            PipelineBuilder->Attributes[Index].binding == 1;
+        HasPerVertexBinding = HasPerVertexBinding ||
+                              PipelineBuilder->Attributes[Index].binding == 0;
+        HasPerInstanceBinding = HasPerInstanceBinding ||
+                                PipelineBuilder->Attributes[Index].binding == 1;
     }
     if (AttributeCount > 0)
     {
-        if (bHasPerVertexBinding)
+        if (HasPerVertexBinding)
         {
             VertexInputInfo.vertexBindingDescriptionCount++;
         }
-        if (bHasPerInstanceBinding)
+        if (HasPerInstanceBinding)
         {
             VertexInputInfo.vertexBindingDescriptionCount++;
         }
@@ -241,12 +240,12 @@ Rr_PipelineBuilder *Rr_CreatePipelineBuilder(void)
 
 void Rr_EnableColorAttachment(
     Rr_PipelineBuilder *PipelineBuilder,
-    Rr_Bool bEnableAlphaBlend)
+    Rr_Bool EnableAlphaBlend)
 {
     PipelineBuilder
         ->ColorAttachmentFormats[PipelineBuilder->ColorAttachmentCount] =
         RR_COLOR_FORMAT;
-    if (bEnableAlphaBlend)
+    if (EnableAlphaBlend)
     {
         PipelineBuilder
             ->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
@@ -470,7 +469,9 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
             App,
             PipelineBuilder,
             Renderer->GenericPipelineLayout),
-        .Sizes = { .Globals = Globals, .Material = Material, .PerDraw = PerDraw },
+        .Sizes = { .Globals = Globals,
+                   .Material = Material,
+                   .PerDraw = PerDraw },
     };
 
     /* Initialize per-draw buffer descriptor sets.

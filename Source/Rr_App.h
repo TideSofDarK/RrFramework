@@ -22,10 +22,10 @@ struct Rr_FrameTime
     } PerformanceCounter;
 #endif
 
-    /* VSync Simulation */
+    /* Frame Limiter */
     uint64_t TargetFramerate;
     uint64_t StartTime;
-    Rr_Bool bSimulateVSync;
+    Rr_Bool EnableFrameLimiter;
 
     /* Delta Time Calculation */
     uint64_t Last;

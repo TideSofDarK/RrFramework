@@ -43,7 +43,7 @@ struct Rr_DrawContextInfo
     Rr_IntVec4 Viewport;
     Rr_GenericPipeline *BasePipeline;
     Rr_GenericPipeline *OverridePipeline;
-    Rr_Bool bTextRendering;
+    Rr_Bool EnableTextRendering;
 };
 
 extern Rr_DrawContext *Rr_CreateDrawContext(

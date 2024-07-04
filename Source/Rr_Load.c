@@ -238,8 +238,8 @@ Rr_LoadResult Rr_LoadAsync_Internal(
         Rr_CalculateLoadSize(Tasks, TaskCount, Scratch.Arena);
 
     /* Create appropriate upload context. */
-    Rr_Bool bUseTransferQueue = Rr_IsUsingTransferQueue(Renderer);
-    VkCommandPool CommandPool = bUseTransferQueue
+    Rr_Bool UseTransferQueue = Rr_IsUsingTransferQueue(Renderer);
+    VkCommandPool CommandPool = UseTransferQueue
                                     ? LoadAsyncContext.TransferCommandPool
                                     : LoadAsyncContext.GraphicsCommandPool;
 
@@ -270,9 +270,9 @@ Rr_LoadResult Rr_LoadAsync_Internal(
                                VK_BUFFER_USAGE_TRANSFER_SRC_BIT) },
     };
 
-    if (bUseTransferQueue)
+    if (UseTransferQueue)
     {
-        UploadContext.bUseAcquireBarriers = RR_TRUE;
+        UploadContext.UseAcquireBarriers = RR_TRUE;
         UploadContext.AcquireBarriers = (Rr_AcquireBarriers){
             .BufferMemoryBarriers = Rr_ArenaAllocCount(
                 Scratch.Arena,
@@ -305,7 +305,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(
 
     SDL_Delay(300);
 
-    if (!bUseTransferQueue)
+    if (!UseTransferQueue)
     {
         vkEndCommandBuffer(TransferCommandBuffer);
 

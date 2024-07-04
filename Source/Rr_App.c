@@ -92,8 +92,10 @@ void Rr_DebugOverlay(Rr_App *App)
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
 #endif
-        igCheckbox("Simulate VSync", (_Bool *)&App->FrameTime.bSimulateVSync);
-        if (App->FrameTime.bSimulateVSync)
+        igCheckbox(
+            "Simulate VSync",
+            (_Bool *)&App->FrameTime.EnableFrameLimiter);
+        if (App->FrameTime.EnableFrameLimiter)
         {
             igSliderScalar(
                 "Target FPS",
@@ -144,7 +146,7 @@ static void Iterate(Rr_App *App)
     Rr_CalculateFPS(&App->FrameTime);
 #endif
 
-    if (App->FrameTime.bSimulateVSync)
+    if (App->FrameTime.EnableFrameLimiter)
     {
         Rr_SimulateVSync(&App->FrameTime);
     }
@@ -193,7 +195,7 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
     FrameTime->TargetFramerate = (uint64_t)Mode->refresh_rate;
     FrameTime->StartTime = SDL_GetTicksNS();
-    FrameTime->bSimulateVSync = true;
+    FrameTime->EnableFrameLimiter = true;
 
     FrameTime->Now = SDL_GetPerformanceCounter();
 }
@@ -334,7 +336,7 @@ double Rr_GetTimeSeconds(Rr_App *App)
     return (double)SDL_GetTicks() / 1000.0;
 }
 
-void Rr_SetRelativeMouseMode(Rr_Bool bRelative)
+void Rr_SetRelativeMouseMode(Rr_Bool IsRelative)
 {
-    SDL_SetRelativeMouseMode(bRelative ? SDL_TRUE : SDL_FALSE);
+    SDL_SetRelativeMouseMode(IsRelative ? SDL_TRUE : SDL_FALSE);
 }

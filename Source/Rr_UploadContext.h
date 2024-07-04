@@ -19,5 +19,5 @@ struct Rr_UploadContext
     VkCommandBuffer TransferCommandBuffer;
     Rr_AcquireBarriers ReleaseBarriers;
     Rr_AcquireBarriers AcquireBarriers;
-    Rr_Bool bUseAcquireBarriers;
+    Rr_Bool UseAcquireBarriers;
 };

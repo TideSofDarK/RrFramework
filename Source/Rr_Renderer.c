@@ -143,7 +143,7 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         &FormatCount,
         SurfaceFormats);
 
-    Rr_Bool bPreferredFormatFound = RR_FALSE;
+    Rr_Bool PreferredFormatFound = RR_FALSE;
     for (uint32_t Index = 0; Index < FormatCount; Index++)
     {
         VkSurfaceFormatKHR *SurfaceFormat = &SurfaceFormats[Index];
@@ -153,12 +153,12 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         {
             Renderer->Swapchain.Format = SurfaceFormat->format;
             Renderer->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
-            bPreferredFormatFound = RR_TRUE;
+            PreferredFormatFound = RR_TRUE;
             break;
         }
     }
 
-    if (!bPreferredFormatFound)
+    if (!PreferredFormatFound)
     {
         Rr_LogAbort("No preferred surface format found!");
     }
@@ -268,20 +268,20 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
             &Renderer->Swapchain.Images[i].View);
     }
 
-    Rr_Bool bDrawTargetDirty = RR_TRUE;
+    Rr_Bool DrawTargetDirty = RR_TRUE;
     if (Renderer->DrawTarget != NULL)
     {
         VkExtent3D Extent = Renderer->DrawTarget->ColorImage->Extent;
         if (*Width <= Extent.width || *Height <= Extent.height)
         {
-            bDrawTargetDirty = RR_FALSE;
+            DrawTargetDirty = RR_FALSE;
         }
         else
         {
             Rr_DestroyDrawTarget(App, Renderer->DrawTarget);
         }
     }
-    if (bDrawTargetDirty)
+    if (DrawTargetDirty)
     {
         SDL_DisplayID DisplayID = SDL_GetPrimaryDisplay();
         SDL_Rect DisplayBounds;
@@ -554,7 +554,7 @@ void Rr_InitImGui(Rr_App *App)
 
     ImGui_ImplVulkan_CreateFontsTexture();
 
-    Renderer->ImGui.bInitiated = RR_TRUE;
+    Renderer->ImGui.IsInitialized = RR_TRUE;
 }
 
 static void Rr_InitImmediateMode(Rr_App *App)
@@ -1107,10 +1107,9 @@ Rr_Bool Rr_NewFrame(Rr_App *App, void *Window)
         int32_t Width, Height;
         SDL_GetWindowSizeInPixels(Window, &Width, &Height);
 
-        Rr_Bool bMinimized =
-            (Rr_Bool)(SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED);
+        Rr_Bool Minimized = (SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED);
 
-        if (!bMinimized && Width > 0 && Height > 0 &&
+        if (!Minimized && Width > 0 && Height > 0 &&
             Rr_InitSwapchain(App, (uint32_t *)&Width, (uint32_t *)&Height))
         {
             SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 0);
@@ -1131,7 +1130,7 @@ void Rr_CleanupRenderer(Rr_App *App)
 
     App->Config->CleanupFunc(App, App->UserData);
 
-    if (Renderer->ImGui.bInitiated)
+    if (Renderer->ImGui.IsInitialized)
     {
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();
@@ -1339,7 +1338,7 @@ void Rr_Draw(Rr_App *App)
 
     /* Render Dear ImGui if needed. */
     Rr_ImGui *ImGui = &Renderer->ImGui;
-    if (ImGui->bInitiated)
+    if (ImGui->IsInitialized)
     {
         VkRenderPassBeginInfo rp_info = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,

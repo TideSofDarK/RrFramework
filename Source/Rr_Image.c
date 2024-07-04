@@ -105,7 +105,7 @@ static void Rr_UploadImage(
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         });
 
-    if (UploadContext->bUseAcquireBarriers)
+    if (UploadContext->UseAcquireBarriers)
     {
         UploadContext->ReleaseBarriers.ImageMemoryBarriers
             [UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
@@ -146,7 +146,7 @@ Rr_Image *Rr_CreateImage(
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
-    Rr_Bool bMipMapped)
+    Rr_Bool MipMapped)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -157,7 +157,7 @@ Rr_Image *Rr_CreateImage(
     VkImageCreateInfo Info =
         GetImageCreateInfo(Image->Format, Usage, Image->Extent);
 
-    if (bMipMapped)
+    if (MipMapped)
     {
         Info.mipLevels =
             (uint32_t)floorf(logf(SDL_max(Extent.width, Extent.height))) + 1;
@@ -252,7 +252,7 @@ Rr_Image *Rr_CreateColorImageFromMemory(
     char *Data,
     uint32_t Width,
     uint32_t Height,
-    Rr_Bool bMipMapped)
+    Rr_Bool MipMapped)
 {
     int32_t DesiredChannels = 4;
     VkExtent3D Extent = { .width = Width, .height = Height, .depth = 1 };
@@ -264,7 +264,7 @@ Rr_Image *Rr_CreateColorImageFromMemory(
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-        bMipMapped);
+        MipMapped);
 
     Rr_UploadImage(
         App,
@@ -286,7 +286,7 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_UploadContext *UploadContext,
     char *Data,
     size_t DataSize,
-    Rr_Bool bMipMapped)
+    Rr_Bool MipMapped)
 {
     int32_t DesiredChannels = 4;
     int32_t Channels;
@@ -306,7 +306,7 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-        bMipMapped);
+        MipMapped);
 
     Rr_UploadImage(
         App,
@@ -329,7 +329,7 @@ Rr_Image *Rr_CreateColorImageFromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
-    Rr_Bool bMipMapped,
+    Rr_Bool MipMapped,
     Rr_Arena *Arena)
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
@@ -339,7 +339,7 @@ Rr_Image *Rr_CreateColorImageFromPNG(
         UploadContext,
         Asset.Data,
         Asset.Length,
-        bMipMapped);
+        MipMapped);
 }
 
 Rr_Image *Rr_CreateDepthImageFromEXR(

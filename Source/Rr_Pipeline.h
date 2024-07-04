@@ -87,6 +87,4 @@ extern Rr_Pipeline *Rr_CreatePipeline(
     Rr_PipelineBuilder *PipelineBuilder,
     VkPipelineLayout PipelineLayout);
 
-extern void Rr_DestroyPipeline(
-    Rr_App *App,
-    Rr_Pipeline *Pipeline);
+extern void Rr_DestroyPipeline(Rr_App *App, Rr_Pipeline *Pipeline);

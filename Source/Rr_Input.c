@@ -9,31 +9,22 @@ static Rr_KeyState Rr_UpdateKeyState(
     const uint8_t *KeyboardState,
     uint8_t Scancode)
 {
-    Rr_Bool bCurrentlyPressed = KeyboardState[Scancode] == 1;
-    Rr_Bool bWasPressed =
+    Rr_Bool CurrentlyPressed = KeyboardState[Scancode] == 1;
+    Rr_Bool WasPressed =
         OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
-    if (bCurrentlyPressed)
+    if (CurrentlyPressed)
     {
-        if (bWasPressed)
+        if (WasPressed)
         {
             return RR_KEYSTATE_HELD;
         }
-        else
-        {
-            return RR_KEYSTATE_PRESSED;
-        }
+        return RR_KEYSTATE_PRESSED;
     }
-    else
+    if (WasPressed)
     {
-        if (bWasPressed)
-        {
-            return RR_KEYSTATE_RELEASED;
-        }
-        else
-        {
-            return RR_KEYSTATE_NONE;
-        }
+        return RR_KEYSTATE_RELEASED;
     }
+    return RR_KEYSTATE_NONE;
 }
 
 void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)

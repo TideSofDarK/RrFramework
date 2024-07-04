@@ -35,7 +35,7 @@ typedef struct Rr_ImGui Rr_ImGui;
 struct Rr_ImGui
 {
     VkDescriptorPool DescriptorPool;
-    Rr_Bool bInitiated;
+    Rr_Bool IsInitialized;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;

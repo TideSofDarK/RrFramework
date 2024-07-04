@@ -27,7 +27,7 @@ extern Rr_PipelineBuilder *Rr_CreatePipelineBuilder(void);
 
 extern void Rr_EnableColorAttachment(
     Rr_PipelineBuilder *PipelineBuilder,
-    Rr_Bool bEnableAlphaBlend);
+    Rr_Bool EnableAlphaBlend);
 
 extern void Rr_EnableVertexStage(
     Rr_PipelineBuilder *PipelineBuilder,

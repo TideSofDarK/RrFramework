@@ -270,7 +270,7 @@ private:
     Rr_GLTFLoader UnlitGLTFLoader;
     Rr_GLTFLoader Uber3DGLTFLoader;
 
-    bool bLoaded = false;
+    bool IsLoaded = false;
 
 public:
     void InitInputMappings()
@@ -313,7 +313,7 @@ public:
             CottageTextures.data(),
             CottageTextures.size());
 
-        bLoaded = true;
+        IsLoaded = true;
 
         LoadingContext = nullptr;
     }
@@ -414,12 +414,12 @@ public:
 
         ImGui::End();
 
-        static bool bShowDebugOverlay = false;
+        static bool ShowDebugOverlay = false;
         if (Rr_GetKeyState(Keys, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
         {
-            bShowDebugOverlay = !bShowDebugOverlay;
+            ShowDebugOverlay = !ShowDebugOverlay;
         }
-        if (bShowDebugOverlay)
+        if (ShowDebugOverlay)
         {
             Rr_DebugOverlay(App);
         }
@@ -434,7 +434,7 @@ public:
             .Viewport = {},
             .BasePipeline = Uber3DPipeline.GenericPipeline,
             .OverridePipeline = nullptr,
-            .bTextRendering = true
+            .EnableTextRendering = true
         };
         Rr_DrawContext *DrawContext = Rr_CreateDrawContext(
             App,
@@ -443,7 +443,7 @@ public:
 
         const auto Time = static_cast<float>((Rr_GetTimeSeconds(App) * 2.0));
 
-        if (bLoaded)
+        if (IsLoaded)
         {
             SUnlitPipeline::SPerDraw ArrowDraw = { 0 };
             ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
@@ -496,7 +496,7 @@ public:
                 .Viewport = { 0, 0, 1024, 1024 },
                 .BasePipeline = ShadowPassPipeline.GenericPipeline,
                 .OverridePipeline = ShadowPassPipeline.GenericPipeline,
-                .bTextRendering = false
+                .EnableTextRendering = false
             };
 
             Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(
