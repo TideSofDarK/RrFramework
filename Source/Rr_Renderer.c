@@ -322,6 +322,7 @@ static void Rr_InitFrames(Rr_App *App)
         Rr_Frame *Frame = &Frames[Index];
         SDL_zerop(Frame);
 
+        /* Synchronization */
         vkCreateFence(Device, &FenceCreateInfo, NULL, &Frame->RenderFence);
         vkCreateSemaphore(
             Device,
@@ -334,6 +335,7 @@ static void Rr_InitFrames(Rr_App *App)
             NULL,
             &Frame->RenderSemaphore);
 
+        /* Descriptor Allocator */
         Rr_DescriptorPoolSizeRatio Ratios[] = {
             { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },
             { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
@@ -348,6 +350,7 @@ static void Rr_InitFrames(Rr_App *App)
             SDL_arraysize(Ratios),
             &App->PermanentArena);
 
+        /* Commands */
         VkCommandPoolCreateInfo CommandPoolInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
@@ -366,15 +369,16 @@ static void Rr_InitFrames(Rr_App *App)
             &CommandBufferAllocateInfo,
             &Frame->MainCommandBuffer);
 
+        /* GPU Buffers */
         Frame->StagingBuffer.Buffer = Rr_CreateMappedBuffer(
             App,
             RR_STAGING_BUFFER_SIZE,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        Frame->CommonBuffer.Buffer = Rr_CreateDeviceUniformBuffer(App, 66560);
         Frame->DrawBuffer.Buffer = Rr_CreateMappedBuffer(
             App,
             66560,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-        Frame->CommonBuffer.Buffer = Rr_CreateDeviceUniformBuffer(App, 66560);
 
         Frame->Arena = Rr_CreateArena(RR_PER_FRAME_ARENA_SIZE);
     }
@@ -828,7 +832,7 @@ static VkRenderPass Rr_CreateRenderPassDepth(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    VkAttachmentDescription Attachments[1] = {
+    VkAttachmentDescription Attachments[] = {
         {
             .samples = 1,
             .format = RR_DEPTH_FORMAT,
@@ -858,25 +862,26 @@ static VkRenderPass Rr_CreateRenderPassDepth(Rr_App *App)
         .pPreserveAttachments = NULL,
     };
 
-    VkSubpassDependency Dependencies[2] = {
+    VkSubpassDependency Dependencies[] = {
         {
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = 0,
-            .srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            .srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
             .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+                             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
             .dependencyFlags = 0,
         },
-        {
-            .srcSubpass = 0,
-            .dstSubpass = VK_SUBPASS_EXTERNAL,
-            .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-            .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            .dependencyFlags = 0,
-        },
+        // {
+        //     .srcSubpass = 0,
+        //     .dstSubpass = VK_SUBPASS_EXTERNAL,
+        //     .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        //     .dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        //     .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        //     .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        //     .dependencyFlags = 0,
+        // },
     };
 
     VkRenderPassCreateInfo Info = {

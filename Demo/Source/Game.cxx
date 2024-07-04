@@ -436,6 +436,7 @@ public:
             .InitialDepth = nullptr,
             .Viewport = {},
             .BasePipeline = Uber3DPipeline.GenericPipeline,
+            .OverridePipeline = nullptr,
             .bTextRendering = true
         };
         Rr_DrawContext *DrawContext = Rr_CreateDrawContext(
@@ -497,6 +498,8 @@ public:
                 .InitialDepth = nullptr,
                 .Viewport = { 0, 0, 1024, 1024 },
                 .BasePipeline = ShadowPassPipeline.GenericPipeline,
+                .OverridePipeline = ShadowPassPipeline.GenericPipeline,
+                .bTextRendering = false
             };
 
             Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(

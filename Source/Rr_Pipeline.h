@@ -23,6 +23,7 @@ struct Rr_GenericPipeline
         size_t Material;
         size_t Draw;
     } Sizes;
+    VkDescriptorSet DrawDescriptorSets[RR_FRAME_OVERLAP];
 };
 
 struct Rr_PipelineBuilder

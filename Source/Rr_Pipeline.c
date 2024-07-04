@@ -434,6 +434,8 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
     SDL_assert(Material < RR_PIPELINE_MAX_MATERIAL_SIZE);
     SDL_assert(Draw < RR_PIPELINE_MAX_DRAW_SIZE);
 
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
     Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_VertexInput VertexInput = {
@@ -470,6 +472,40 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
             Renderer->GenericPipelineLayout),
         .Sizes = { .Globals = Globals, .Material = Material, .Draw = Draw },
     };
+
+    /* Initialize per-draw buffer descriptor sets.
+     * These are dynamic.
+     * @TODO: The only thing that doesn't allow me to have single global set is
+     * @TODO: varying size.
+     * @TODO: Pipeline might be deleted but what about the descriptor sets?
+     */
+    Rr_DescriptorWriter DescriptorWriter =
+        Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
+    for (size_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
+    {
+        Rr_Frame *Frame = &Renderer->Frames[FrameIndex];
+
+        Pipeline->DrawDescriptorSets[FrameIndex] = Rr_AllocateDescriptorSet(
+            &Renderer->GlobalDescriptorAllocator,
+            Renderer->Device,
+            Renderer->GenericDescriptorSetLayouts
+                [RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW]);
+        Rr_WriteBufferDescriptor(
+            &DescriptorWriter,
+            0,
+            Frame->DrawBuffer.Buffer->Handle,
+            Draw,
+            0,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            Scratch.Arena);
+        Rr_UpdateDescriptorSet(
+            &DescriptorWriter,
+            Renderer->Device,
+            Pipeline->DrawDescriptorSets[FrameIndex]);
+        Rr_ResetDescriptorWriter(&DescriptorWriter);
+    }
+
+    Rr_DestroyArenaScratch(Scratch);
 
     return Pipeline;
 }

@@ -18,8 +18,8 @@ typedef struct Rr_GenericRenderingContext Rr_GenericRenderingContext;
 struct Rr_GenericRenderingContext
 {
     Rr_GenericPipeline *BasePipeline;
+    Rr_GenericPipeline *OverridePipeline;
     VkDescriptorSet GlobalsDescriptorSet;
-    VkDescriptorSet DrawDescriptorSet;
 };
 
 typedef struct Rr_TextRenderingContext Rr_TextRenderingContext;
@@ -33,8 +33,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_Buffer *GlobalsBuffer,
-    Rr_Buffer *DrawBuffer,
-    Rr_GenericPipeline *BasePipeline,
+    Rr_DrawContextInfo *DrawContextInfo,
     char *GlobalsData,
     Rr_Arena *Arena)
 {
@@ -49,7 +48,10 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         1,
         Scratch.Arena);
 
-    Rr_GenericRenderingContext Context = { .BasePipeline = BasePipeline };
+    Rr_GenericRenderingContext Context = {
+        .BasePipeline = DrawContextInfo->BasePipeline,
+        .OverridePipeline = DrawContextInfo->OverridePipeline,
+    };
 
     /* Upload globals data. */
     /* @TODO: Make these take a Rr_WriteBuffer instead! */
@@ -58,7 +60,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         UploadContext,
         GlobalsBuffer,
         GlobalsData,
-        BasePipeline->Sizes.Globals);
+        Context.BasePipeline->Sizes.Globals);
 
     /* Allocate, write and bind globals descriptor set. */
     Context.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
@@ -70,7 +72,7 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         &DescriptorWriter,
         0,
         GlobalsBuffer->Handle,
-        BasePipeline->Sizes.Globals,
+        Context.BasePipeline->Sizes.Globals,
         0,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         Scratch.Arena);
@@ -81,26 +83,6 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         &DescriptorWriter,
         Renderer->Device,
         Context.GlobalsDescriptorSet);
-    Rr_ResetDescriptorWriter(&DescriptorWriter);
-
-    /* Allocate and write draw descriptor set. */
-    Context.DrawDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        Renderer->GenericDescriptorSetLayouts
-            [RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW]);
-    Rr_WriteBufferDescriptor(
-        &DescriptorWriter,
-        0,
-        DrawBuffer->Handle,
-        BasePipeline->Sizes.Draw,
-        0,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        Scratch.Arena);
-    Rr_UpdateDescriptorSet(
-        &DescriptorWriter,
-        Renderer->Device,
-        Context.DrawDescriptorSet);
     Rr_ResetDescriptorWriter(&DescriptorWriter);
 
     Rr_DestroyArenaScratch(Scratch);
@@ -145,6 +127,7 @@ static void Rr_RenderGeneric(
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    size_t FrameIndex = Renderer->CurrentFrameIndex;
 
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(
         RR_MAX_TEXTURES_PER_MATERIAL,
@@ -174,14 +157,24 @@ static void Rr_RenderGeneric(
     {
         Rr_DrawPrimitiveInfo *Info = DrawPrimitivesSlice.Data + Index;
 
-        if (BoundPipeline != Info->Material->GenericPipeline)
+        Rr_GenericPipeline *TargetPipeline;
+        if (GenericRenderingContext->OverridePipeline)
         {
-            BoundPipeline = Info->Material->GenericPipeline;
+            TargetPipeline = GenericRenderingContext->OverridePipeline;
+        }
+        else
+        {
+            TargetPipeline = Info->Material->GenericPipeline;
+        }
+
+        if (BoundPipeline != TargetPipeline)
+        {
+            BoundPipeline = TargetPipeline;
 
             vkCmdBindPipeline(
                 CommandBuffer,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                BoundPipeline->Pipeline->Handle);
+                TargetPipeline->Pipeline->Handle);
         }
 
         if (BoundMaterial != Info->Material)
@@ -259,6 +252,8 @@ static void Rr_RenderGeneric(
                 VK_INDEX_TYPE_UINT32);
         }
 
+        /* Raw offset should be enough to differentiate between draws
+         * however note that each draw size needs its own descriptor set.*/
         if (BoundDrawOffset != Info->OffsetIntoDrawBuffer)
         {
             BoundDrawOffset = Info->OffsetIntoDrawBuffer;
@@ -269,7 +264,7 @@ static void Rr_RenderGeneric(
                 Renderer->GenericPipelineLayout,
                 RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW,
                 1,
-                &GenericRenderingContext->DrawDescriptorSet,
+                &BoundPipeline->DrawDescriptorSets[FrameIndex],
                 1,
                 &BoundDrawOffset);
         }
@@ -557,8 +552,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
             App,
             &UploadContext,
             Frame->CommonBuffer.Buffer,
-            Frame->DrawBuffer.Buffer,
-            DrawContext->Info.BasePipeline,
+            &DrawContext->Info,
             DrawContext->GlobalsData,
             Scratch.Arena);
 
@@ -572,18 +566,20 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
             Scratch.Arena);
     }
 
-    /* Begin render pass. */
+    /* Line up appropriate clear values. */
+
     uint32_t ColorAttachmentCount =
         DrawContext->Info.BasePipeline->Pipeline->ColorAttachmentCount;
     VkClearValue *ClearValues =
         Rr_StackAlloc(VkClearValue, ColorAttachmentCount + 1);
-
     for (uint32_t Index = 0; Index < ColorAttachmentCount; ++Index)
     {
         ClearValues[Index] = (VkClearValue){ 0 };
     }
     ClearValues[ColorAttachmentCount] =
         (VkClearValue){ .depthStencil.depth = 1.0f };
+
+    /* Begin render pass. */
 
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -592,7 +588,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
                                   { Viewport.Z, Viewport.W } },
         .renderPass = DrawContext->Info.BasePipeline->Pipeline->RenderPass,
-        .clearValueCount = 2,
+        .clearValueCount = ColorAttachmentCount + 1,
         .pClearValues = ClearValues,
     };
     vkCmdBeginRenderPass(
@@ -600,7 +596,10 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
         &RenderPassBeginInfo,
         VK_SUBPASS_CONTENTS_INLINE);
 
+    Rr_StackFree(ClearValues);
+
     /* Set dynamic states. */
+
     vkCmdSetViewport(
         CommandBuffer,
         0,

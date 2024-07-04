@@ -42,7 +42,8 @@ struct Rr_DrawContextInfo
     Rr_Image *InitialDepth;
     Rr_IntVec4 Viewport;
     Rr_GenericPipeline *BasePipeline;
-    uint32_t bTextRendering;
+    Rr_GenericPipeline *OverridePipeline;
+    Rr_Bool bTextRendering;
 };
 
 extern Rr_DrawContext *Rr_CreateDrawContext(
