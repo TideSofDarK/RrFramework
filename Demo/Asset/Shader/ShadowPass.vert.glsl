@@ -9,7 +9,6 @@ layout(location = 4) in vec4 in_tangent;
 /* Set 0 */
 layout(set = 0, binding = 0) uniform Globals {
     mat4 view;
-    mat4 intermediate;
     mat4 proj;
 } u_globals;
 layout(set = 0, binding = 1) uniform sampler2D u_prerenderedDepth;
@@ -32,5 +31,5 @@ layout(push_constant) uniform Constants
 
 void main()
 {
-    gl_Position = u_globals.proj * u_globals.intermediate * u_globals.view * u_perDraw.model * vec4(in_position, 1.0f);
+    gl_Position = u_globals.proj * u_globals.view * u_perDraw.model * vec4(in_position, 1.0f);
 }

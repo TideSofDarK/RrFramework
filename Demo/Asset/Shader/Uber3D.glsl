@@ -3,7 +3,6 @@
 /* Set 0 */
 layout(set = 0, binding = 0) uniform Globals {
     mat4 view;
-    mat4 intermediate;
     mat4 proj;
     vec4 ambientLightColor;
     vec4 directionalLightDirection;

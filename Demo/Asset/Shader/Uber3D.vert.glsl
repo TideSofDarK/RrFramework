@@ -18,7 +18,7 @@ layout(location = 5) out mat3 out_tbn;
 
 void main()
 {
-    gl_Position = u_globals.proj * u_globals.intermediate * u_globals.view * u_perDraw.model * vec4(in_position, 1.0f);
+    gl_Position = u_globals.proj * u_globals.view * u_perDraw.model * vec4(in_position, 1.0f);
 
     vec3 T = normalize(vec3(u_perDraw.model * vec4(in_tangent.xyz, 0.0)));
     vec3 N = normalize(vec3(u_perDraw.model * vec4(in_normal, 0.0)));

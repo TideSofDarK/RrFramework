@@ -14,7 +14,6 @@
 struct SUber3DGlobals
 {
     Rr_Mat4 View;
-    Rr_Mat4 Intermediate;
     Rr_Mat4 Proj;
     Rr_Vec4 AmbientLightColor;
     Rr_Vec4 DirectionalLightDirection;
@@ -67,7 +66,6 @@ public:
 struct SShadowPassGlobals
 {
     Rr_Mat4 View;
-    Rr_Mat4 Intermediate;
     Rr_Mat4 Proj;
 };
 
@@ -105,7 +103,6 @@ struct SShadowPassPipeline
 struct SUnlitGlobals
 {
     Rr_Mat4 View;
-    Rr_Mat4 Intermediate;
     Rr_Mat4 Proj;
 };
 
@@ -158,7 +155,8 @@ struct SUber3DPushConstants
     Rr_Mat4 Reserved;
 };
 
-struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DPerDraw>
+struct SUber3DPipeline
+    : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DPerDraw>
 {
     explicit SUber3DPipeline(Rr_App *InApp) :
         TPipeline(InApp)
@@ -304,7 +302,8 @@ public:
             Rr_GetAspectRatio(App),
             0.5f,
             50.0f);
-        ShaderGlobals.Intermediate = Rr_VulkanMatrix();
+        // *
+        //                      ;
     }
 
     void OnLoadingComplete()
@@ -413,7 +412,7 @@ public:
             Rr_SetRelativeMouseMode(false);
         }
 
-        ShaderGlobals.View = Camera.GetViewMatrix();
+        ShaderGlobals.View = Rr_VulkanMatrix() * Camera.GetViewMatrix();
 
         ImGui::End();
 
@@ -463,7 +462,7 @@ public:
                 CottageMesh,
                 Rr_MakeData(CottageDraw));
 
-            SUber3DPerDraw AvocadoDraw = { 0 };
+            SUber3DPerDraw AvocadoDraw = {};
             AvocadoDraw.Model = Rr_Scale({ 0.75f, 0.75f, 0.75f }) *
                                 Rr_Rotate_LH(
                                     fmodf(Time, RR_PI32 * 2.0f),
@@ -477,7 +476,7 @@ public:
                 AvocadoMesh,
                 Rr_MakeData(AvocadoDraw));
 
-            SUber3DPerDraw MarbleDraw = { 0 };
+            SUber3DPerDraw MarbleDraw = {};
             MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
             Rr_DrawStaticMesh(DrawContext, MarbleMesh, Rr_MakeData(MarbleDraw));
 
