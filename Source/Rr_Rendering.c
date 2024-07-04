@@ -120,13 +120,15 @@ SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(
 DEF_QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive) /* NOLINT */
 
 static void Rr_RenderGeneric(
-    Rr_Renderer *Renderer,
+    Rr_App *App,
     Rr_GenericRenderingContext *GenericRenderingContext,
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice,
     VkCommandBuffer CommandBuffer,
     Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
+    Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     size_t FrameIndex = Renderer->CurrentFrameIndex;
@@ -347,13 +349,15 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
 }
 
 static void Rr_RenderText(
-    Rr_Renderer *Renderer,
+    Rr_App *App,
     Rr_TextRenderingContext *TextRenderingContext,
     Rr_DrawTextsSlice DrawTextSlice,
     VkCommandBuffer CommandBuffer,
     Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
+    Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
@@ -518,17 +522,20 @@ static void Rr_RenderText(
             CommandBuffer,
             1,
             1,
-            &TextPipeline->TextBuffers[Renderer->CurrentFrameIndex]->Handle,
+            &Frame->PerDrawBuffer.Buffer->Handle,
             &(VkDeviceSize){ TextDataOffset *
                              sizeof(Rr_TextPerInstanceVertexInput) });
         TextDataOffset += FinalTextLength;
         vkCmdDraw(CommandBuffer, 4, FinalTextLength, 0, 0);
     }
-    SDL_memcpy(
-        TextPipeline->TextBuffers[Renderer->CurrentFrameIndex]
-            ->AllocationInfo.pMappedData,
-        TextData,
-        TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput));
+    /* @TODO: Probably not the best choice of buffer. */
+    Rr_CopyToMappedUniformBuffer(
+        App,
+        Frame->PerDrawBuffer.Buffer,
+        &Frame->PerDrawBuffer.Offset,
+        (Rr_Data){ .Ptr = TextData,
+                   .Size = TextDataOffset *
+                           sizeof(Rr_TextPerInstanceVertexInput) });
 
     Rr_DestroyArenaScratch(Scratch);
 }
@@ -629,7 +636,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
         });
 
     Rr_RenderGeneric(
-        Renderer,
+        App,
         &GenericRenderingContext,
         DrawContext->DrawPrimitivesSlice,
         CommandBuffer,
@@ -638,7 +645,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
     if (DrawContext->Info.EnableTextRendering)
     {
         Rr_RenderText(
-            Renderer,
+            App,
             &TextRenderingContext,
             DrawContext->DrawTextsSlice,
             CommandBuffer,

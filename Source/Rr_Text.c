@@ -96,16 +96,6 @@ void Rr_InitTextRenderer(Rr_App *App)
         TextPipeline->QuadBuffer,
         RR_MAKE_DATA(Quad));
 
-    /* Buffers */
-    for (size_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
-    {
-        // TextPipeline->GlobalsBuffers[FrameIndex] =
-        //     Rr_CreateDeviceUniformBuffer(App, sizeof(Rr_TextGlobalsLayout));
-
-        TextPipeline->TextBuffers[FrameIndex] =
-            Rr_CreateMappedVertexBuffer(App, RR_TEXT_BUFFER_SIZE);
-    }
-
     /* Builtin Font */
     Renderer->BuiltinFont =
         Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
@@ -126,11 +116,6 @@ void Rr_CleanupTextRenderer(Rr_App *App)
             TextPipeline->DescriptorSetLayouts[Index],
             NULL);
     }
-    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
-    {
-        // Rr_DestroyBuffer(App, TextPipeline->GlobalsBuffers[Index]);
-        Rr_DestroyBuffer(App, TextPipeline->TextBuffers[Index]);
-    }
     Rr_DestroyBuffer(App, TextPipeline->QuadBuffer);
     Rr_DestroyFont(App, Renderer->BuiltinFont);
 }
@@ -140,7 +125,6 @@ Rr_Font *Rr_CreateFont(
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Image *Atlas;
     Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNGRef, &Atlas);
     Rr_LoadImmediate(App, &ImageLoadTask, 1);
@@ -245,8 +229,6 @@ Rr_Font *Rr_CreateFont(
 
 void Rr_DestroyFont(Rr_App *App, Rr_Font *Font)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
-
     Rr_Free(Font->Advances);
 
     Rr_DestroyImage(App, Font->Atlas);

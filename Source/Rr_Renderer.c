@@ -322,6 +322,26 @@ static void Rr_InitFrames(Rr_App *App)
         Rr_Frame *Frame = &Frames[Index];
         SDL_zerop(Frame);
 
+        /* Commands */
+
+        VkCommandPoolCreateInfo CommandPoolInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext = VK_NULL_HANDLE,
+            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+        };
+        vkCreateCommandPool(
+            Renderer->Device,
+            &CommandPoolInfo,
+            NULL,
+            &Frame->CommandPool);
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo =
+            GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
+        vkAllocateCommandBuffers(
+            Renderer->Device,
+            &CommandBufferAllocateInfo,
+            &Frame->MainCommandBuffer);
+
         /* Synchronization */
 
         vkCreateFence(Device, &FenceCreateInfo, NULL, &Frame->RenderFence);
@@ -352,27 +372,7 @@ static void Rr_InitFrames(Rr_App *App)
             SDL_arraysize(Ratios),
             &App->PermanentArena);
 
-        /* Commands */
-
-        VkCommandPoolCreateInfo CommandPoolInfo = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-        };
-        vkCreateCommandPool(
-            Renderer->Device,
-            &CommandPoolInfo,
-            NULL,
-            &Frame->CommandPool);
-        VkCommandBufferAllocateInfo CommandBufferAllocateInfo =
-            GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
-        vkAllocateCommandBuffers(
-            Renderer->Device,
-            &CommandBufferAllocateInfo,
-            &Frame->MainCommandBuffer);
-
-        /* GPU Buffers */
+        /* Buffers */
 
         Frame->StagingBuffer.Buffer = Rr_CreateMappedBuffer(
             App,
@@ -382,7 +382,7 @@ static void Rr_InitFrames(Rr_App *App)
         Frame->PerDrawBuffer.Buffer = Rr_CreateMappedBuffer(
             App,
             66560,
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 
         Frame->Arena = Rr_CreateArena(RR_PER_FRAME_ARENA_SIZE);
     }
@@ -1222,8 +1222,8 @@ void Rr_EndImmediate(Rr_Renderer *Renderer)
 static void Rr_ResetFrameResources(Rr_Frame *Frame)
 {
     Frame->StagingBuffer.Offset = 0;
-    Frame->PerDrawBuffer.Offset = 0;
     Frame->CommonBuffer.Offset = 0;
+    Frame->PerDrawBuffer.Offset = 0;
 
     Rr_ResetArena(&Frame->Arena);
 }

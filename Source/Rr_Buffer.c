@@ -127,10 +127,10 @@ void Rr_UploadBufferAligned(
     VkCommandBuffer TransferCommandBuffer =
         UploadContext->TransferCommandBuffer;
 
-    size_t BufferOffset = StagingBuffer->Offset;
+    size_t StagingBufferOffset = StagingBuffer->Offset;
     memcpy(
         (char *)StagingBuffer->Buffer->AllocationInfo.pMappedData +
-            BufferOffset,
+            StagingBufferOffset,
         Data.Ptr,
         Data.Size);
     if (Alignment == 0)
@@ -139,7 +139,8 @@ void Rr_UploadBufferAligned(
     }
     else
     {
-        StagingBuffer->Offset += RR_ALIGN(BufferOffset + Data.Size, Alignment);
+        StagingBuffer->Offset +=
+            RR_ALIGN(StagingBufferOffset + Data.Size, Alignment);
     }
 
     vkCmdPipelineBarrier(
@@ -173,7 +174,7 @@ void Rr_UploadBufferAligned(
         Rr_LogAbort(
             "Exceeding buffer size! Current offset is %zu, allocation size is "
             "%zu and total  buffer size is %zu.",
-            *DstOffset,
+            CurrentDstOffset,
             AlignedSize,
             DstBuffer->AllocationInfo.size);
     }
@@ -184,7 +185,7 @@ void Rr_UploadBufferAligned(
     }
 
     VkBufferCopy Copy = { .size = Data.Size,
-                          .srcOffset = BufferOffset,
+                          .srcOffset = StagingBufferOffset,
                           .dstOffset = CurrentDstOffset };
 
     vkCmdCopyBuffer(
@@ -208,7 +209,7 @@ void Rr_UploadBufferAligned(
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
                 .buffer = DstBuffer->Handle,
-                .offset = 0,
+                .offset = CurrentDstOffset,
                 .size = Data.Size,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = DstAccessMask,
@@ -226,7 +227,7 @@ void Rr_UploadBufferAligned(
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
                 .buffer = DstBuffer->Handle,
-                .offset = 0,
+                .offset = CurrentDstOffset,
                 .size = Data.Size,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = 0,
@@ -241,7 +242,7 @@ void Rr_UploadBufferAligned(
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
                 .buffer = DstBuffer->Handle,
-                .offset = 0,
+                .offset = CurrentDstOffset,
                 .size = Data.Size,
                 .srcAccessMask = 0,
                 .dstAccessMask = DstAccessMask,

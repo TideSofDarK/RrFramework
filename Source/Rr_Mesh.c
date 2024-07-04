@@ -356,8 +356,6 @@ Rr_Primitive *Rr_CreatePrimitive(
     Rr_UploadContext *UploadContext,
     Rr_RawMesh *RawMesh)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
-
     Rr_Primitive *Primitive = Rr_CreateObject(&App->ObjectStorage);
 
     Primitive->IndexCount = Rr_SliceLength(&RawMesh->IndicesSlice);
@@ -427,7 +425,6 @@ Rr_StaticMesh *Rr_CreateStaticMesh(
     Rr_Material **Materials,
     size_t MaterialCount)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_StaticMesh *StaticMesh = Rr_CreateObject(&App->ObjectStorage);
 
     for (size_t Index = 0; Index < RawMeshCount; ++Index)
