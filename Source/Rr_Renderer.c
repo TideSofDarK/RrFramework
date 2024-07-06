@@ -976,11 +976,13 @@ static void Rr_InitNullTextures(Rr_App *App)
     Rr_Renderer *Renderer = &App->Renderer;
 
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
+    Rr_WriteBuffer StagingBuffer = {
+        .Buffer =
+            Rr_CreateMappedBuffer(App, 256, VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+        .Offset = 0
+    };
     Rr_UploadContext UploadContext = {
-        .StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(
-                               App,
-                               256,
-                               VK_BUFFER_USAGE_TRANSFER_SRC_BIT) },
+        .StagingBuffer = &StagingBuffer,
         .TransferCommandBuffer = CommandBuffer,
     };
     uint32_t WhiteData = 0xffffffff;
@@ -1001,7 +1003,7 @@ static void Rr_InitNullTextures(Rr_App *App)
         RR_FALSE);
     Rr_EndImmediate(Renderer);
 
-    Rr_DestroyBuffer(App, UploadContext.StagingBuffer.Buffer);
+    Rr_DestroyBuffer(App, StagingBuffer.Buffer);
 }
 
 void Rr_InitRenderer(Rr_App *App)

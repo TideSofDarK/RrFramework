@@ -24,7 +24,7 @@ static void Rr_UploadImage(
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_WriteBuffer *StagingBuffer = &UploadContext->StagingBuffer;
+    Rr_WriteBuffer *StagingBuffer = UploadContext->StagingBuffer;
     VkCommandBuffer TransferCommandBuffer =
         UploadContext->TransferCommandBuffer;
 

@@ -555,7 +555,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
     Rr_UploadContext UploadContext = {
-        .StagingBuffer = Frame->StagingBuffer,
+        .StagingBuffer = &Frame->StagingBuffer,
         .TransferCommandBuffer = CommandBuffer,
     };
 
@@ -653,9 +653,6 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
     }
 
     vkCmdEndRenderPass(CommandBuffer);
-
-    /* @TODO: Ugly. */
-    Frame->StagingBuffer.Offset = UploadContext.StagingBuffer.Offset;
 
     Rr_DestroyArenaScratch(Scratch);
 }

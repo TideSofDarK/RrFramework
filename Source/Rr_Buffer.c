@@ -112,7 +112,7 @@ void Rr_UploadBufferAligned(
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_WriteBuffer *StagingBuffer = &UploadContext->StagingBuffer;
+    Rr_WriteBuffer *StagingBuffer = UploadContext->StagingBuffer;
     if (StagingBuffer->Offset + Data.Size >
         StagingBuffer->Buffer->AllocationInfo.size)
     {

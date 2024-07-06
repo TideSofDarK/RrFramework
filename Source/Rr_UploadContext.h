@@ -15,7 +15,7 @@ struct Rr_AcquireBarriers
 typedef struct Rr_UploadContext Rr_UploadContext;
 struct Rr_UploadContext
 {
-    Rr_WriteBuffer StagingBuffer;
+    Rr_WriteBuffer *StagingBuffer;
     VkCommandBuffer TransferCommandBuffer;
     Rr_AcquireBarriers ReleaseBarriers;
     Rr_AcquireBarriers AcquireBarriers;
