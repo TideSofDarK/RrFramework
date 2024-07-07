@@ -140,11 +140,13 @@ void Rr_DrawCustomText(
     Rr_DrawText(
         App,
         Pass,
-        &(Rr_DrawTextInfo){ .Font = Font,
-                            .String = *String,
-                            .Position = Position,
-                            .Size = Size,
-                            .Flags = Flags });
+        &(Rr_DrawTextInfo){
+            .Font = Font,
+            .String = *String,
+            .Position = Position,
+            .Size = Size,
+            .Flags = Flags,
+        });
 }
 
 void Rr_DrawDefaultText(
@@ -156,10 +158,12 @@ void Rr_DrawDefaultText(
     Rr_DrawText(
         App,
         Pass,
-        &(Rr_DrawTextInfo){ .String = *String,
-                            .Position = Position,
-                            .Size = 32.0f,
-                            .Flags = 0 });
+        &(Rr_DrawTextInfo){
+            .String = *String,
+            .Position = Position,
+            .Size = 32.0f,
+            .Flags = 0,
+        });
 }
 
 Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height)

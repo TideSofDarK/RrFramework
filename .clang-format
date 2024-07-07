@@ -54,6 +54,7 @@ IncludeBlocks: Preserve
 
 ColumnLimit: 80
 
+InsertTrailingCommas: Wrapped
 IndentWidth: 4
 ContinuationIndentWidth: 4
 IndentCaseLabels: true
