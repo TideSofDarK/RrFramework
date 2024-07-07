@@ -2,6 +2,7 @@
 
 #include "Rr_App.h"
 #include "Rr_Image.h"
+#include "Rr_Log.h"
 #include "Rr_Material.h"
 #include "Rr_Mesh.h"
 
@@ -764,7 +765,18 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena) {}
+void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
+{
+    // Rr_LogRender("=================");
+    // for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->PassesSlice);
+    //      ++Index)
+    // {
+    //     Rr_LogRender(
+    //         "Pass #%d: '%s'",
+    //         Index,
+    //         Graph->PassesSlice.Data[Index].Info.Name);
+    // }
+}
 
 void Rr_ExecuteGraphPass(Rr_App *App, Rr_GraphPass *Pass, Rr_Arena *Arena)
 {

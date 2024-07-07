@@ -122,32 +122,37 @@ static void Rr_LoadResourcesFromTasks(
 
 Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage)
 {
-    return (Rr_LoadTask){ .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
-                          .AssetRef = AssetRef,
-                          .Out = (void **)OutImage };
+    return (Rr_LoadTask){
+        .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
+        .AssetRef = AssetRef,
+        .Out = (void **)OutImage,
+    };
 }
 
 Rr_LoadTask Rr_LoadStaticMeshFromOBJ(
     Rr_AssetRef AssetRef,
-    struct Rr_StaticMesh **OutStaticMesh)
+    Rr_StaticMesh **OutStaticMesh)
 {
-    return (Rr_LoadTask){ .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
-                          .AssetRef = AssetRef,
-                          .Out = (void **)OutStaticMesh };
+    return (Rr_LoadTask){
+        .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
+        .AssetRef = AssetRef,
+        .Out = (void **)OutStaticMesh,
+    };
 }
 
 Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
     Rr_AssetRef AssetRef,
     Rr_GLTFLoader *Loader,
     size_t MeshIndex,
-    struct Rr_StaticMesh **OutStaticMesh)
+    Rr_StaticMesh **OutStaticMesh)
 {
-    return (Rr_LoadTask){ .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
-                          .AssetRef = AssetRef,
-                          .Out = (void **)OutStaticMesh,
-                          .Options =
-                              (Rr_MeshGLTFOptions){ .MeshIndex = MeshIndex,
-                                                    .Loader = *Loader } };
+    return (Rr_LoadTask){
+        .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
+        .AssetRef = AssetRef,
+        .Out = (void **)OutStaticMesh,
+        .Options =
+            (Rr_MeshGLTFOptions){ .MeshIndex = MeshIndex, .Loader = *Loader },
+    };
 }
 
 Rr_LoadingContext *Rr_LoadAsync(
@@ -215,7 +220,11 @@ void Rr_GetLoadProgress(
 {
     if (OutCurrent != NULL)
     {
-        *OutCurrent = SDL_GetSemaphoreValue(LoadingContext->Semaphore);
+        if (LoadingContext->Semaphore != NULL)
+        {
+            *OutCurrent = SDL_GetSemaphoreValue(LoadingContext->Semaphore);
+        }
+        *OutCurrent = LoadingContext->TaskCount;
     }
     if (OutTotal != NULL)
     {
@@ -451,6 +460,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(
     if (LoadingContext->Semaphore)
     {
         SDL_DestroySemaphore(LoadingContext->Semaphore);
+        LoadingContext->Semaphore = NULL;
     }
 
     Rr_DestroyArenaScratch(Scratch);

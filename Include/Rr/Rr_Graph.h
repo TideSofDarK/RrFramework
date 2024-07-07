@@ -26,6 +26,7 @@ typedef enum Rr_DrawTextFlags
 typedef struct Rr_GraphPassInfo Rr_GraphPassInfo;
 struct Rr_GraphPassInfo
 {
+    const char *Name;
     Rr_DrawTarget *DrawTarget;
     Rr_Image *InitialColor;
     Rr_Image *InitialDepth;
