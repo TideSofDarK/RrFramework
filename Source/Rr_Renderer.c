@@ -1,7 +1,7 @@
 #include "Rr_Renderer.h"
 
-#include "Rr/Rr_Material.h"
 #include "Rr/Rr_Graph.h"
+#include "Rr/Rr_Material.h"
 #include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_BuiltinAssets.inc"
@@ -1340,6 +1340,7 @@ void Rr_Draw(Rr_App *App)
     for (size_t Index = 0; Index < Graph->PassesSlice.Length; ++Index)
     {
         Rr_ExecuteGraphPass(
+            App,
             &Graph->PassesSlice.Data[Index],
             Scratch.Arena);
     }

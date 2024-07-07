@@ -52,7 +52,6 @@ struct Rr_TextRenderingContext
 /* @TODO: Separate generic and builtin stuff! */
 struct Rr_GraphPass
 {
-    Rr_App *App;
     Rr_GraphPassInfo Info;
     Rr_DrawTextsSlice DrawTextsSlice;
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice;
@@ -74,4 +73,9 @@ struct Rr_Graph
     RR_SLICE_TYPE(Rr_GraphPass) PassesSlice;
 };
 
-extern void Rr_ExecuteGraphPass(Rr_GraphPass *Pass, Rr_Arena *Arena);
+extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
+
+extern void Rr_ExecuteGraphPass(
+    Rr_App *App,
+    Rr_GraphPass *Pass,
+    Rr_Arena *Arena);

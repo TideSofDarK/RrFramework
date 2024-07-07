@@ -47,11 +47,13 @@ extern Rr_GraphPass *Rr_CreateGraphPass(
  */
 
 extern void Rr_DrawStaticMesh(
+    Rr_App *App,
     Rr_GraphPass *Pass,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData);
 
 extern void Rr_DrawStaticMeshOverrideMaterials(
+    Rr_App *App,
     Rr_GraphPass *Pass,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
@@ -59,6 +61,7 @@ extern void Rr_DrawStaticMeshOverrideMaterials(
     Rr_Data PerDrawData);
 
 extern void Rr_DrawCustomText(
+    Rr_App *App,
     Rr_GraphPass *Pass,
     Rr_Font *Font,
     Rr_String *String,
@@ -67,6 +70,7 @@ extern void Rr_DrawCustomText(
     Rr_DrawTextFlags Flags);
 
 extern void Rr_DrawDefaultText(
+    Rr_App *App,
     Rr_GraphPass *Pass,
     Rr_String *String,
     Rr_Vec2 Position);

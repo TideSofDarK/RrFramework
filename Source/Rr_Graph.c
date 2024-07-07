@@ -21,11 +21,9 @@ Rr_GraphPass *Rr_CreateGraphPass(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphPass *Pass =
-        RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
+    Rr_GraphPass *Pass = RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
     *Pass = (Rr_GraphPass){
         .Arena = &Frame->Arena,
-        .App = App,
         .Info = *Info,
     };
 
@@ -52,11 +50,12 @@ Rr_GraphPass *Rr_CreateGraphPass(
 }
 
 void Rr_DrawStaticMesh(
+    Rr_App *App,
     Rr_GraphPass *Pass,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
-    Rr_Renderer *Renderer = &Pass->App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
 
@@ -72,20 +71,21 @@ void Rr_DrawStaticMesh(
     }
 
     Rr_CopyToMappedUniformBuffer(
-        Pass->App,
+        App,
         Frame->PerDrawBuffer.Buffer,
         &Frame->PerDrawBuffer.Offset,
         PerDrawData);
 }
 
 void Rr_DrawStaticMeshOverrideMaterials(
+    Rr_App *App,
     Rr_GraphPass *Pass,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
-    Rr_Renderer *Renderer = &Pass->App->Renderer;
+    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
 
@@ -103,13 +103,16 @@ void Rr_DrawStaticMeshOverrideMaterials(
     }
 
     Rr_CopyToMappedUniformBuffer(
-        Pass->App,
+        App,
         Frame->PerDrawBuffer.Buffer,
         &Frame->PerDrawBuffer.Offset,
         PerDrawData);
 }
 
-static void Rr_DrawText(Rr_GraphPass *RenderingContext, Rr_DrawTextInfo *Info)
+static void Rr_DrawText(
+    Rr_App *App,
+    Rr_GraphPass *RenderingContext,
+    Rr_DrawTextInfo *Info)
 {
     Rr_DrawTextInfo *NewInfo = RR_SLICE_PUSH(
         &RenderingContext->DrawTextsSlice,
@@ -117,7 +120,7 @@ static void Rr_DrawText(Rr_GraphPass *RenderingContext, Rr_DrawTextInfo *Info)
     *NewInfo = *Info;
     if (NewInfo->Font == NULL)
     {
-        NewInfo->Font = RenderingContext->App->Renderer.BuiltinFont;
+        NewInfo->Font = App->Renderer.BuiltinFont;
     }
     if (NewInfo->Size == 0.0f)
     {
@@ -126,6 +129,7 @@ static void Rr_DrawText(Rr_GraphPass *RenderingContext, Rr_DrawTextInfo *Info)
 }
 
 void Rr_DrawCustomText(
+    Rr_App *App,
     Rr_GraphPass *Pass,
     Rr_Font *Font,
     Rr_String *String,
@@ -134,6 +138,7 @@ void Rr_DrawCustomText(
     Rr_DrawTextFlags Flags)
 {
     Rr_DrawText(
+        App,
         Pass,
         &(Rr_DrawTextInfo){ .Font = Font,
                             .String = *String,
@@ -142,9 +147,14 @@ void Rr_DrawCustomText(
                             .Flags = Flags });
 }
 
-void Rr_DrawDefaultText(Rr_GraphPass *Pass, Rr_String *String, Rr_Vec2 Position)
+void Rr_DrawDefaultText(
+    Rr_App *App,
+    Rr_GraphPass *Pass,
+    Rr_String *String,
+    Rr_Vec2 Position)
 {
     Rr_DrawText(
+        App,
         Pass,
         &(Rr_DrawTextInfo){ .String = *String,
                             .Position = Position,
@@ -750,11 +760,12 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_ExecuteGraphPass(Rr_GraphPass *Pass, Rr_Arena *Arena)
+void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena) {}
+
+void Rr_ExecuteGraphPass(Rr_App *App, Rr_GraphPass *Pass, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_App *App = Pass->App;
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 

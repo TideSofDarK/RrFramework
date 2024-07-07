@@ -467,12 +467,13 @@ public:
             SUnlitPipeline::SPerDraw ArrowDraw = { 0 };
             ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
             ArrowDraw.Model[3][1] = 5.0f;
-            Rr_DrawStaticMesh(Pass, ArrowMesh, RR_MAKE_DATA(ArrowDraw));
+            Rr_DrawStaticMesh(App, Pass, ArrowMesh, RR_MAKE_DATA(ArrowDraw));
 
             SUber3DPerDraw CottageDraw = { 0 };
             CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
             CottageDraw.Model[3][1] = 0.1f;
             Rr_DrawStaticMeshOverrideMaterials(
+                App,
                 Pass,
                 &CottageMaterial,
                 1,
@@ -488,15 +489,20 @@ public:
             AvocadoDraw.Model[3][0] = 3.5f;
             AvocadoDraw.Model[3][1] = 0.5f;
             AvocadoDraw.Model[3][2] = 3.5f;
-            Rr_DrawStaticMesh(Pass, AvocadoMesh, RR_MAKE_DATA(AvocadoDraw));
+            Rr_DrawStaticMesh(
+                App,
+                Pass,
+                AvocadoMesh,
+                RR_MAKE_DATA(AvocadoDraw));
 
             SUber3DPerDraw MarbleDraw = {};
             MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
-            Rr_DrawStaticMesh(Pass, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
+            Rr_DrawStaticMesh(App, Pass, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
 
-            Rr_DrawDefaultText(Pass, &TestString, { 50.0f, 50.0f });
+            Rr_DrawDefaultText(App, Pass, &TestString, { 50.0f, 50.0f });
 
             Rr_DrawCustomText(
+                App,
                 Pass,
                 nullptr,
                 &DebugString,
@@ -539,16 +545,22 @@ public:
             //     ArrowMesh,
             //     Rr_MakeData(ArrowDraw));
             Rr_DrawStaticMeshOverrideMaterials(
+                App,
                 ShadowPass,
                 &CottageMaterial,
                 1,
                 CottageMesh,
                 RR_MAKE_DATA(CottageDraw));
             Rr_DrawStaticMesh(
+                App,
                 ShadowPass,
                 AvocadoMesh,
                 RR_MAKE_DATA(AvocadoDraw));
-            Rr_DrawStaticMesh(ShadowPass, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
+            Rr_DrawStaticMesh(
+                App,
+                ShadowPass,
+                MarbleMesh,
+                RR_MAKE_DATA(MarbleDraw));
         }
         else
         {
@@ -566,6 +578,7 @@ public:
             }
 
             Rr_DrawCustomText(
+                App,
                 Pass,
                 nullptr,
                 &LoadingString,
