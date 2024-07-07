@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Rr_Graph.h"
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Pipeline.h"
@@ -138,7 +139,7 @@ struct Rr_Renderer
     RR_SLICE_TYPE(Rr_PendingLoad) PendingLoadsSlice;
 
     /* Main Draw Target */
-    struct Rr_DrawTarget *DrawTarget;
+    Rr_DrawTarget *DrawTarget;
 
     /* Texture Samplers */
     VkSampler NearestSampler;
