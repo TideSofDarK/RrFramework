@@ -1227,6 +1227,8 @@ static void Rr_ResetFrameResources(Rr_Frame *Frame)
     Frame->CommonBuffer.Offset = 0;
     Frame->PerDrawBuffer.Offset = 0;
 
+    RR_ZERO(Frame->Graph);
+
     Rr_ResetArena(&Frame->Arena);
 }
 
@@ -1332,15 +1334,15 @@ void Rr_Draw(Rr_App *App)
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    /* Flush Rendering Contexts */
+    /* Execute Render Graph */
 
-    for (size_t Index = 0; Index < Frame->DrawContextsSlice.Length; ++Index)
+    Rr_Graph *Graph = &Frame->Graph;
+    for (size_t Index = 0; Index < Graph->PassesSlice.Length; ++Index)
     {
         Rr_ExecuteGraphPass(
-            &Frame->DrawContextsSlice.Data[Index],
+            &Graph->PassesSlice.Data[Index],
             Scratch.Arena);
     }
-    RR_ZERO(Frame->DrawContextsSlice);
 
     /* Render Dear ImGui if needed. */
 

@@ -50,12 +50,8 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    /* Commands */
-
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
-
-    /* Synchronization */
 
     VkSemaphore SwapchainSemaphore;
     VkSemaphore RenderSemaphore;
@@ -63,15 +59,13 @@ struct Rr_Frame
 
     Rr_DescriptorAllocator DescriptorAllocator;
 
-    /* Buffers */
-
     Rr_WriteBuffer StagingBuffer;
     Rr_WriteBuffer CommonBuffer;
 
     Rr_WriteBuffer PerDrawBuffer;
     VkDescriptorSet PerDrawDescriptor;
 
-    RR_SLICE_TYPE(struct Rr_GraphPass) DrawContextsSlice;
+    Rr_Graph Graph;
 
     Rr_Arena Arena;
 };

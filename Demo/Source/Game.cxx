@@ -456,7 +456,9 @@ public:
         Rr_GraphPass *Pass = Rr_CreateGraphPass(
             App,
             &PassInfo,
-            reinterpret_cast<char *>(&ShaderGlobals));
+            reinterpret_cast<char *>(&ShaderGlobals),
+            nullptr,
+            0);
 
         const auto Time = static_cast<float>((Rr_GetTimeSeconds(App) * 2.0));
 
@@ -528,7 +530,9 @@ public:
             Rr_GraphPass *ShadowPass = Rr_CreateGraphPass(
                 App,
                 &ShadowPassInfo,
-                reinterpret_cast<char *>(&ShadowGlobals));
+                reinterpret_cast<char *>(&ShadowGlobals),
+                &Pass,
+                1);
             // reinterpret_cast<char *>(&ShadowGlobals));
             // Rr_DrawStaticMesh(
             //     ShadowPassContext,

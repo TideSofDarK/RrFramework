@@ -12,13 +12,17 @@
 Rr_GraphPass *Rr_CreateGraphPass(
     Rr_App *App,
     Rr_GraphPassInfo *Info,
-    char *GlobalsData)
+    char *GlobalsData,
+    Rr_GraphPass **Dependencies,
+    size_t DependencyCount)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
+    Rr_Graph *Graph = &Frame->Graph;
+
     Rr_GraphPass *Pass =
-        RR_SLICE_PUSH(&Frame->DrawContextsSlice, &Frame->Arena);
+        RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
     *Pass = (Rr_GraphPass){
         .Arena = &Frame->Arena,
         .App = App,
@@ -33,6 +37,16 @@ Rr_GraphPass *Rr_CreateGraphPass(
     }
 
     memcpy(Pass->GlobalsData, GlobalsData, Info->BasePipeline->Sizes.Globals);
+
+    /* Populate adjacency list. */
+
+    for (size_t Index = 0; Index < DependencyCount; ++Index)
+    {
+        *RR_SLICE_PUSH(&Graph->AdjList, &Frame->Arena) = (Rr_GraphEdge){
+            .From = Dependencies[Index],
+            .To = Pass,
+        };
+    }
 
     return Pass;
 }
@@ -147,8 +161,8 @@ Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height)
     DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(App, Width, Height);
     DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
 
-    VkImageView Attachments[2] = { DrawTarget->ColorImage->View,
-                                   DrawTarget->DepthImage->View };
+    VkImageView Attachments[] = { DrawTarget->ColorImage->View,
+                                  DrawTarget->DepthImage->View };
 
     VkFramebufferCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -158,7 +172,7 @@ Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height)
         .height = Height,
         .width = Width,
         .layers = 1,
-        .attachmentCount = 2,
+        .attachmentCount = SDL_arraysize(Attachments),
         .pAttachments = Attachments,
     };
     vkCreateFramebuffer(
@@ -181,7 +195,7 @@ Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(
 
     DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
 
-    VkImageView Attachments[1] = { DrawTarget->DepthImage->View };
+    VkImageView Attachments[] = { DrawTarget->DepthImage->View };
 
     VkFramebufferCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,

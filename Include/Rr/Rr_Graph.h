@@ -15,6 +15,7 @@ extern "C" {
 
 typedef struct Rr_DrawTarget Rr_DrawTarget;
 typedef struct Rr_GraphPass Rr_GraphPass;
+typedef struct Rr_Graph Rr_Graph;
 
 typedef enum Rr_DrawTextFlags
 {
@@ -37,7 +38,9 @@ struct Rr_GraphPassInfo
 extern Rr_GraphPass *Rr_CreateGraphPass(
     Rr_App *App,
     Rr_GraphPassInfo *Info,
-    char *GlobalsData);
+    char *GlobalsData,
+    Rr_GraphPass **Dependencies,
+    size_t DependencyCount);
 
 /*
  * Draw Commands

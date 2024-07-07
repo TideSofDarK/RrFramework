@@ -60,4 +60,18 @@ struct Rr_GraphPass
     Rr_Arena *Arena;
 };
 
+typedef struct Rr_GraphEdge Rr_GraphEdge;
+struct Rr_GraphEdge
+{
+    Rr_GraphPass *From;
+    Rr_GraphPass *To;
+};
+
+struct Rr_Graph
+{
+    RR_SLICE_TYPE(Rr_GraphEdge) AdjList;
+
+    RR_SLICE_TYPE(Rr_GraphPass) PassesSlice;
+};
+
 extern void Rr_ExecuteGraphPass(Rr_GraphPass *Pass, Rr_Arena *Arena);
