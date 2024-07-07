@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 typedef struct Rr_DrawTarget Rr_DrawTarget;
-typedef struct Rr_DrawContext Rr_DrawContext;
+typedef struct Rr_GraphPass Rr_GraphPass;
 
 typedef enum Rr_DrawTextFlags
 {
@@ -22,8 +22,8 @@ typedef enum Rr_DrawTextFlags
     RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
 } Rr_DrawTextFlags;
 
-typedef struct Rr_DrawContextInfo Rr_DrawContextInfo;
-struct Rr_DrawContextInfo
+typedef struct Rr_GraphPassInfo Rr_GraphPassInfo;
+struct Rr_GraphPassInfo
 {
     Rr_DrawTarget *DrawTarget;
     Rr_Image *InitialColor;
@@ -34,25 +34,29 @@ struct Rr_DrawContextInfo
     Rr_Bool EnableTextRendering;
 };
 
-extern Rr_DrawContext *Rr_CreateDrawContext(
+extern Rr_GraphPass *Rr_CreateGraphPass(
     Rr_App *App,
-    Rr_DrawContextInfo *Info,
+    Rr_GraphPassInfo *Info,
     char *GlobalsData);
 
+/*
+ * Draw Commands
+ */
+
 extern void Rr_DrawStaticMesh(
-    Rr_DrawContext *DrawContext,
+    Rr_GraphPass *Pass,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData);
 
 extern void Rr_DrawStaticMeshOverrideMaterials(
-    Rr_DrawContext *DrawContext,
+    Rr_GraphPass *Pass,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData);
 
 extern void Rr_DrawCustomText(
-    Rr_DrawContext *DrawContext,
+    Rr_GraphPass *Pass,
     Rr_Font *Font,
     Rr_String *String,
     Rr_Vec2 Position,
@@ -60,9 +64,13 @@ extern void Rr_DrawCustomText(
     Rr_DrawTextFlags Flags);
 
 extern void Rr_DrawDefaultText(
-    Rr_DrawContext *DrawContext,
+    Rr_GraphPass *Pass,
     Rr_String *String,
     Rr_Vec2 Position);
+
+/*
+ * Draw Target
+ */
 
 extern Rr_DrawTarget *Rr_CreateDrawTarget(
     Rr_App *App,

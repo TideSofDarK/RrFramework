@@ -70,7 +70,7 @@ struct Rr_Frame
     Rr_WriteBuffer PerDrawBuffer;
     VkDescriptorSet PerDrawDescriptor;
 
-    RR_SLICE_TYPE(struct Rr_DrawContext) DrawContextsSlice;
+    RR_SLICE_TYPE(struct Rr_GraphPass) DrawContextsSlice;
 
     Rr_Arena Arena;
 };

@@ -32,7 +32,7 @@ struct Rr_TextRenderingContext
 static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
-    Rr_DrawContextInfo *DrawContextInfo,
+    Rr_GraphPassInfo *PassInfo,
     char *GlobalsData,
     Rr_Arena *Arena)
 {
@@ -49,8 +49,8 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
         Scratch.Arena);
 
     Rr_GenericRenderingContext Context = {
-        .BasePipeline = DrawContextInfo->BasePipeline,
-        .OverridePipeline = DrawContextInfo->OverridePipeline,
+        .BasePipeline = PassInfo->BasePipeline,
+        .OverridePipeline = PassInfo->OverridePipeline,
     };
 
     /* Upload globals data. */
@@ -540,17 +540,17 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
+void Rr_ExecuteGraphPass(Rr_GraphPass *Pass, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_App *App = DrawContext->App;
+    Rr_App *App = Pass->App;
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawTarget *DrawTarget = DrawContext->Info.DrawTarget;
+    Rr_DrawTarget *DrawTarget = Pass->Info.DrawTarget;
 
-    Rr_IntVec4 Viewport = DrawContext->Info.Viewport;
+    Rr_IntVec4 Viewport = Pass->Info.Viewport;
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
@@ -563,12 +563,12 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
         Rr_MakeGenericRenderingContext(
             App,
             &UploadContext,
-            &DrawContext->Info,
-            DrawContext->GlobalsData,
+            &Pass->Info,
+            Pass->GlobalsData,
             Scratch.Arena);
 
     Rr_TextRenderingContext TextRenderingContext;
-    if (DrawContext->Info.EnableTextRendering)
+    if (Pass->Info.EnableTextRendering)
     {
         TextRenderingContext = Rr_MakeTextRenderingContext(
             App,
@@ -580,7 +580,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
     /* Line up appropriate clear values. */
 
     uint32_t ColorAttachmentCount =
-        DrawContext->Info.BasePipeline->Pipeline->ColorAttachmentCount;
+        Pass->Info.BasePipeline->Pipeline->ColorAttachmentCount;
     VkClearValue *ClearValues =
         Rr_StackAlloc(VkClearValue, ColorAttachmentCount + 1);
     for (uint32_t Index = 0; Index < ColorAttachmentCount; ++Index)
@@ -598,7 +598,7 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
         .framebuffer = DrawTarget->Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
                                   { Viewport.Z, Viewport.W } },
-        .renderPass = DrawContext->Info.BasePipeline->Pipeline->RenderPass,
+        .renderPass = Pass->Info.BasePipeline->Pipeline->RenderPass,
         .clearValueCount = ColorAttachmentCount + 1,
         .pClearValues = ClearValues,
     };
@@ -638,16 +638,16 @@ void Rr_FlushDrawContext(Rr_DrawContext *DrawContext, Rr_Arena *Arena)
     Rr_RenderGeneric(
         App,
         &GenericRenderingContext,
-        DrawContext->DrawPrimitivesSlice,
+        Pass->DrawPrimitivesSlice,
         CommandBuffer,
         Scratch.Arena);
 
-    if (DrawContext->Info.EnableTextRendering)
+    if (Pass->Info.EnableTextRendering)
     {
         Rr_RenderText(
             App,
             &TextRenderingContext,
-            DrawContext->DrawTextsSlice,
+            Pass->DrawTextsSlice,
             CommandBuffer,
             Scratch.Arena);
     }

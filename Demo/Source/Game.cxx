@@ -241,7 +241,7 @@ private:
 
     SUber3DPipeline Uber3DPipeline;
     SUnlitPipeline UnlitPipeline;
-    SShadowPassPipeline ShadowPassPipeline;
+    SShadowPassPipeline ShadowPipeline;
 
     // Rr_Image SceneDepthImage;
     // Rr_Image SceneColorImage;
@@ -444,18 +444,18 @@ public:
         Rr_PerspectiveResize(Rr_GetAspectRatio(App), &ShaderGlobals.Proj);
 
         /* Rendering */
-        Rr_DrawContextInfo DrawContextInfo = {
-            .DrawTarget = nullptr,
-            .InitialColor = nullptr,
-            .InitialDepth = nullptr,
-            .Viewport = {},
-            .BasePipeline = Uber3DPipeline.GenericPipeline,
-            .OverridePipeline = nullptr,
-            .EnableTextRendering = true
-        };
-        Rr_DrawContext *DrawContext = Rr_CreateDrawContext(
+
+        Rr_GraphPassInfo PassInfo = { .DrawTarget = nullptr,
+                                      .InitialColor = nullptr,
+                                      .InitialDepth = nullptr,
+                                      .Viewport = {},
+                                      .BasePipeline =
+                                          Uber3DPipeline.GenericPipeline,
+                                      .OverridePipeline = nullptr,
+                                      .EnableTextRendering = true };
+        Rr_GraphPass *Pass = Rr_CreateGraphPass(
             App,
-            &DrawContextInfo,
+            &PassInfo,
             reinterpret_cast<char *>(&ShaderGlobals));
 
         const auto Time = static_cast<float>((Rr_GetTimeSeconds(App) * 2.0));
@@ -465,13 +465,13 @@ public:
             SUnlitPipeline::SPerDraw ArrowDraw = { 0 };
             ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
             ArrowDraw.Model[3][1] = 5.0f;
-            Rr_DrawStaticMesh(DrawContext, ArrowMesh, RR_MAKE_DATA(ArrowDraw));
+            Rr_DrawStaticMesh(Pass, ArrowMesh, RR_MAKE_DATA(ArrowDraw));
 
             SUber3DPerDraw CottageDraw = { 0 };
             CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
             CottageDraw.Model[3][1] = 0.1f;
             Rr_DrawStaticMeshOverrideMaterials(
-                DrawContext,
+                Pass,
                 &CottageMaterial,
                 1,
                 CottageMesh,
@@ -486,22 +486,16 @@ public:
             AvocadoDraw.Model[3][0] = 3.5f;
             AvocadoDraw.Model[3][1] = 0.5f;
             AvocadoDraw.Model[3][2] = 3.5f;
-            Rr_DrawStaticMesh(
-                DrawContext,
-                AvocadoMesh,
-                RR_MAKE_DATA(AvocadoDraw));
+            Rr_DrawStaticMesh(Pass, AvocadoMesh, RR_MAKE_DATA(AvocadoDraw));
 
             SUber3DPerDraw MarbleDraw = {};
             MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
-            Rr_DrawStaticMesh(
-                DrawContext,
-                MarbleMesh,
-                RR_MAKE_DATA(MarbleDraw));
+            Rr_DrawStaticMesh(Pass, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
 
-            Rr_DrawDefaultText(DrawContext, &TestString, { 50.0f, 50.0f });
+            Rr_DrawDefaultText(Pass, &TestString, { 50.0f, 50.0f });
 
             Rr_DrawCustomText(
-                DrawContext,
+                Pass,
                 nullptr,
                 &DebugString,
                 { 450.0f, 54.0f },
@@ -509,13 +503,13 @@ public:
                 RR_DRAW_TEXT_FLAGS_NONE_BIT);
 
             /* Shadow Pass */
-            Rr_DrawContextInfo ShadowPassContextInfo = {
+            Rr_GraphPassInfo ShadowPassInfo = {
                 .DrawTarget = ShadowMap,
                 .InitialColor = nullptr,
                 .InitialDepth = nullptr,
                 .Viewport = { 0, 0, 1024, 1024 },
-                .BasePipeline = ShadowPassPipeline.GenericPipeline,
-                .OverridePipeline = ShadowPassPipeline.GenericPipeline,
+                .BasePipeline = ShadowPipeline.GenericPipeline,
+                .OverridePipeline = ShadowPipeline.GenericPipeline,
                 .EnableTextRendering = false
             };
 
@@ -531,9 +525,9 @@ public:
                     1000.0f),
             };
 
-            Rr_DrawContext *ShadowPassContext = Rr_CreateDrawContext(
+            Rr_GraphPass *ShadowPass = Rr_CreateGraphPass(
                 App,
-                &ShadowPassContextInfo,
+                &ShadowPassInfo,
                 reinterpret_cast<char *>(&ShadowGlobals));
             // reinterpret_cast<char *>(&ShadowGlobals));
             // Rr_DrawStaticMesh(
@@ -541,19 +535,16 @@ public:
             //     ArrowMesh,
             //     Rr_MakeData(ArrowDraw));
             Rr_DrawStaticMeshOverrideMaterials(
-                ShadowPassContext,
+                ShadowPass,
                 &CottageMaterial,
                 1,
                 CottageMesh,
                 RR_MAKE_DATA(CottageDraw));
             Rr_DrawStaticMesh(
-                ShadowPassContext,
+                ShadowPass,
                 AvocadoMesh,
                 RR_MAKE_DATA(AvocadoDraw));
-            Rr_DrawStaticMesh(
-                ShadowPassContext,
-                MarbleMesh,
-                RR_MAKE_DATA(MarbleDraw));
+            Rr_DrawStaticMesh(ShadowPass, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
         }
         else
         {
@@ -571,7 +562,7 @@ public:
             }
 
             Rr_DrawCustomText(
-                DrawContext,
+                Pass,
                 nullptr,
                 &LoadingString,
                 { 25.0f, 540.0f - 25 - 32.0f },
@@ -584,7 +575,7 @@ public:
         App(InApp),
         Uber3DPipeline(App),
         UnlitPipeline(App),
-        ShadowPassPipeline(App),
+        ShadowPipeline(App),
         ShadowMap(Rr_CreateDrawTargetDepthOnly(App, 1024, 1024)),
         UnlitGLTFLoader({
             .GenericPipeline = UnlitPipeline.GenericPipeline,

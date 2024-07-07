@@ -35,10 +35,10 @@ typedef RR_SLICE_TYPE(Rr_DrawTextInfo) Rr_DrawTextsSlice;
 typedef RR_SLICE_TYPE(Rr_DrawPrimitiveInfo) Rr_DrawPrimitivesSlice;
 
 /* @TODO: Separate generic and builtin stuff! */
-struct Rr_DrawContext
+struct Rr_GraphPass
 {
     Rr_App *App;
-    Rr_DrawContextInfo Info;
+    Rr_GraphPassInfo Info;
     Rr_DrawTextsSlice DrawTextsSlice;
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice;
     char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];

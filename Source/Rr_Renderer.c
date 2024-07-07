@@ -1337,7 +1337,7 @@ void Rr_Draw(Rr_App *App)
 
     for (size_t Index = 0; Index < Frame->DrawContextsSlice.Length; ++Index)
     {
-        Rr_FlushDrawContext(
+        Rr_ExecuteGraphPass(
             &Frame->DrawContextsSlice.Data[Index],
             Scratch.Arena);
     }

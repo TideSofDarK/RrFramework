@@ -5,52 +5,47 @@
 #include "Rr_Material.h"
 #include "Rr_Mesh.h"
 
-Rr_DrawContext *Rr_CreateDrawContext(
+Rr_GraphPass *Rr_CreateGraphPass(
     Rr_App *App,
-    Rr_DrawContextInfo *Info,
+    Rr_GraphPassInfo *Info,
     char *GlobalsData)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawContext *DrawContext =
+    Rr_GraphPass *Pass =
         RR_SLICE_PUSH(&Frame->DrawContextsSlice, &Frame->Arena);
-    *DrawContext = (Rr_DrawContext){
+    *Pass = (Rr_GraphPass){
         .Arena = &Frame->Arena,
         .App = App,
         .Info = *Info,
     };
 
-    if (DrawContext->Info.DrawTarget == NULL)
+    if (Pass->Info.DrawTarget == NULL)
     {
-        DrawContext->Info.DrawTarget = Renderer->DrawTarget;
-        DrawContext->Info.Viewport.Width =
-            (int32_t)Renderer->SwapchainSize.width;
-        DrawContext->Info.Viewport.Height =
-            (int32_t)Renderer->SwapchainSize.height;
+        Pass->Info.DrawTarget = Renderer->DrawTarget;
+        Pass->Info.Viewport.Width = (int32_t)Renderer->SwapchainSize.width;
+        Pass->Info.Viewport.Height = (int32_t)Renderer->SwapchainSize.height;
     }
 
-    memcpy(
-        DrawContext->GlobalsData,
-        GlobalsData,
-        Info->BasePipeline->Sizes.Globals);
+    memcpy(Pass->GlobalsData, GlobalsData, Info->BasePipeline->Sizes.Globals);
 
-    return DrawContext;
+    return Pass;
 }
 
 void Rr_DrawStaticMesh(
-    Rr_DrawContext *DrawContext,
+    Rr_GraphPass *Pass,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
-    Rr_Renderer *Renderer = &DrawContext->App->Renderer;
+    Rr_Renderer *Renderer = &Pass->App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
 
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
+        *RR_SLICE_PUSH(&Pass->DrawPrimitivesSlice, Pass->Arena) =
             (Rr_DrawPrimitiveInfo){
                 .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
@@ -59,27 +54,27 @@ void Rr_DrawStaticMesh(
     }
 
     Rr_CopyToMappedUniformBuffer(
-        DrawContext->App,
+        Pass->App,
         Frame->PerDrawBuffer.Buffer,
         &Frame->PerDrawBuffer.Offset,
         PerDrawData);
 }
 
 void Rr_DrawStaticMeshOverrideMaterials(
-    Rr_DrawContext *DrawContext,
+    Rr_GraphPass *Pass,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
-    Rr_Renderer *Renderer = &DrawContext->App->Renderer;
+    Rr_Renderer *Renderer = &Pass->App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
 
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&DrawContext->DrawPrimitivesSlice, DrawContext->Arena) =
+        *RR_SLICE_PUSH(&Pass->DrawPrimitivesSlice, Pass->Arena) =
             (Rr_DrawPrimitiveInfo){
                 .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
@@ -90,13 +85,13 @@ void Rr_DrawStaticMeshOverrideMaterials(
     }
 
     Rr_CopyToMappedUniformBuffer(
-        DrawContext->App,
+        Pass->App,
         Frame->PerDrawBuffer.Buffer,
         &Frame->PerDrawBuffer.Offset,
         PerDrawData);
 }
 
-static void Rr_DrawText(Rr_DrawContext *RenderingContext, Rr_DrawTextInfo *Info)
+static void Rr_DrawText(Rr_GraphPass *RenderingContext, Rr_DrawTextInfo *Info)
 {
     Rr_DrawTextInfo *NewInfo = RR_SLICE_PUSH(
         &RenderingContext->DrawTextsSlice,
@@ -113,7 +108,7 @@ static void Rr_DrawText(Rr_DrawContext *RenderingContext, Rr_DrawTextInfo *Info)
 }
 
 void Rr_DrawCustomText(
-    Rr_DrawContext *DrawContext,
+    Rr_GraphPass *Pass,
     Rr_Font *Font,
     Rr_String *String,
     Rr_Vec2 Position,
@@ -121,7 +116,7 @@ void Rr_DrawCustomText(
     Rr_DrawTextFlags Flags)
 {
     Rr_DrawText(
-        DrawContext,
+        Pass,
         &(Rr_DrawTextInfo){ .Font = Font,
                             .String = *String,
                             .Position = Position,
@@ -129,13 +124,10 @@ void Rr_DrawCustomText(
                             .Flags = Flags });
 }
 
-void Rr_DrawDefaultText(
-    Rr_DrawContext *DrawContext,
-    Rr_String *String,
-    Rr_Vec2 Position)
+void Rr_DrawDefaultText(Rr_GraphPass *Pass, Rr_String *String, Rr_Vec2 Position)
 {
     Rr_DrawText(
-        DrawContext,
+        Pass,
         &(Rr_DrawTextInfo){ .String = *String,
                             .Position = Position,
                             .Size = 32.0f,
