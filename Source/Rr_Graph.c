@@ -5,6 +5,7 @@
 #include "Rr_Image.h"
 #include "Rr_Log.h"
 #include "Rr_Material.h"
+#include "Rr_Memory.h"
 #include "Rr_Mesh.h"
 #include "Rr_Renderer.h"
 
@@ -12,9 +13,9 @@
 
 #include <SDL3/SDL_timer.h>
 
-Rr_GraphPass *Rr_CreateGraphPass(
+Rr_DrawPass *Rr_AddDrawPass(
     Rr_App *App,
-    Rr_GraphPassInfo *Info,
+    Rr_DrawPassInfo *Info,
     char *GlobalsData)
 {
     Rr_Renderer *Renderer = &App->Renderer;
@@ -22,8 +23,10 @@ Rr_GraphPass *Rr_CreateGraphPass(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphPass *Pass = RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
-    *Pass = (Rr_GraphPass){
+    Rr_Pass *GraphPass = RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
+    GraphPass->Type = RR_PASS_TYPE_DRAW;
+    Rr_DrawPass *Pass = &GraphPass->Union.DrawPass;
+    *Pass = (Rr_DrawPass){
         .Info = *Info,
     };
 
@@ -41,7 +44,7 @@ Rr_GraphPass *Rr_CreateGraphPass(
 
 void Rr_DrawStaticMesh(
     Rr_App *App,
-    Rr_GraphPass *Pass,
+    Rr_DrawPass *Pass,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
@@ -69,7 +72,7 @@ void Rr_DrawStaticMesh(
 
 void Rr_DrawStaticMeshOverrideMaterials(
     Rr_App *App,
-    Rr_GraphPass *Pass,
+    Rr_DrawPass *Pass,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
@@ -237,7 +240,7 @@ Rr_DrawTarget *Rr_GetMainDrawTarget(Rr_App *App)
 static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
-    Rr_GraphPassInfo *PassInfo,
+    Rr_DrawPassInfo *PassInfo,
     char *GlobalsData,
     Rr_Arena *Arena)
 {
@@ -713,10 +716,10 @@ static void Rr_RenderText(
                 uint32_t GlyphIndexMask = ~0xFFE00000;
                 uint32_t GlyphPack = GlyphIndexMask & Unicode;
                 GlyphPack |= PalleteIndex << 28;
-                *Input =
-                    (Rr_TextPerInstanceVertexInput){ .Unicode = GlyphPack,
-                                                     .Advance =
-                                                         AccumulatedAdvance };
+                *Input = (Rr_TextPerInstanceVertexInput){
+                    .Unicode = GlyphPack,
+                    .Advance = AccumulatedAdvance,
+                };
                 FinalTextLength++;
                 float Advance = DrawTextInfo->Font->Advances[Unicode];
                 AccumulatedAdvance.X += Advance;
@@ -745,8 +748,32 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
+void Rr_BuildGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena) {}
+
 void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 {
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
+    for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->PassesSlice);
+         ++Index)
+    {
+        Rr_Pass *GraphPass = Graph->PassesSlice.Data + Index;
+
+        switch (GraphPass->Type)
+        {
+            case RR_PASS_TYPE_DRAW:
+            {
+                Rr_DrawPass *DrawPass = &GraphPass->Union.DrawPass;
+                // Rr_ExecuteDrawPass(App, );
+            }
+            break;
+            default:
+            {
+                Rr_LogAbort("Graph execution: unsupported pass type!");
+            }
+            break;
+        }
+    }
     // Rr_LogRender("=================");
     // for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->PassesSlice);
     //      ++Index)
@@ -756,9 +783,11 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     //         Index,
     //         Graph->PassesSlice.Data[Index].Info.Name);
     // }
+
+    Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_ExecuteGraphPass(Rr_App *App, Rr_GraphPass *Pass, Rr_Arena *Arena)
+void Rr_ExecuteGraphPass(Rr_App *App, Rr_DrawPass *Pass, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 

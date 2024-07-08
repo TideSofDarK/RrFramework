@@ -9,6 +9,8 @@
 #include <SDL3/SDL_vulkan.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include "Rr_Log.h"
+
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
 
@@ -216,6 +218,9 @@ Rr_IntVec2 Rr_GetDefaultWindowSize()
     };
 }
 
+RR_TYPEDEF_MAP(const char *, Rr_Map);
+#include "Rr_Memory.h"
+
 void Rr_Run(Rr_AppConfig *Config)
 {
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
@@ -227,18 +232,19 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_App *App = Rr_StackAlloc(Rr_App, 1);
     RR_ZERO_PTR(App);
-    *App = (Rr_App){ .Config = Config,
-                     .Window = SDL_CreateWindow(
-                         Config->Title,
-                         WindowSize.Width,
-                         WindowSize.Height,
-                         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE |
-                             SDL_WINDOW_HIDDEN),
-                     .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
-                     .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
-                     .ScratchArenaTLS = SDL_CreateTLS(),
-                     .ObjectStorage = Rr_CreateObjectStorage(),
-                     .UserData = Config->UserData };
+    *App = (Rr_App){
+        .Config = Config,
+        .Window = SDL_CreateWindow(
+            Config->Title,
+            WindowSize.Width,
+            WindowSize.Height,
+            SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
+        .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
+        .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
+        .ScratchArenaTLS = SDL_CreateTLS(),
+        .ObjectStorage = Rr_CreateObjectStorage(),
+        .UserData = Config->UserData,
+    };
 
     Rr_SetScratchTLS(&App->ScratchArenaTLS);
 

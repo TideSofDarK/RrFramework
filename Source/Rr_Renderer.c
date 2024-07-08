@@ -1340,10 +1340,10 @@ void Rr_Draw(Rr_App *App)
     Rr_ExecuteGraph(App, Graph, Scratch.Arena);
     for (size_t Index = 0; Index < Graph->PassesSlice.Length; ++Index)
     {
-        Rr_ExecuteGraphPass(
-            App,
-            &Graph->PassesSlice.Data[Index],
-            Scratch.Arena);
+        // Rr_ExecuteGraphPass(
+        //     App,
+        //     &Graph->PassesSlice.Data[Index],
+        //     Scratch.Arena);
     }
 
     /* Render Dear ImGui if needed. */

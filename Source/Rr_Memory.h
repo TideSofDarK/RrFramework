@@ -152,6 +152,35 @@ extern void Rr_SliceResize(
             (Src)->Data,                          \
             sizeof(*(Dst)->Data) * (Src)->Length)
 
+/*
+ * Hashmap
+ */
+
+typedef struct Rr_Map Rr_Map;
+struct Rr_Map
+{
+    Rr_Map *Child[4];
+    uintptr_t Key;
+    void *Value;
+};
+
+#define RR_NEW_MAP(Arena) (Rr_Map *)RR_ARENA_ALLOC_ONE(Arena, sizeof(Rr_Map))
+
+inline void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
+{
+    for (uintptr_t Hash = Key; *Map; Hash <<= 2)
+    {
+        if (Key == (*Map)->Key)
+        {
+            return &(*Map)->Value;
+        }
+        Map = &(*Map)->Child[Hash >> 62];
+    }
+    *Map = RR_NEW_MAP(Arena);
+    (*Map)->Key = Key;
+    return &(*Map)->Value;
+}
+
 #ifdef __cplusplus
 }
 #endif

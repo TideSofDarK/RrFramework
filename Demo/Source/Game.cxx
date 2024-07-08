@@ -325,7 +325,7 @@ public:
         Game->OnLoadingComplete();
     }
 
-    void DrawScene(Rr_GraphPass *Pass)
+    void DrawScene(Rr_DrawPass *Pass)
     {
         const auto Time = static_cast<float>((Rr_GetTimeSeconds(App) * 2.0));
 
@@ -476,7 +476,7 @@ public:
 
         /* Create Passes */
 
-        Rr_GraphPassInfo TestPassInfo = {
+        Rr_DrawPassInfo TestPassInfo = {
             .Name = "test_pass",
             .DrawTarget = TestTarget,
             .InitialColor = nullptr,
@@ -496,12 +496,12 @@ public:
                 -1000.0f,
                 1000.0f),
         };
-        Rr_GraphPass *TestPass = Rr_CreateGraphPass(
+        Rr_DrawPass *TestPass = Rr_AddDrawPass(
             App,
             &TestPassInfo,
             reinterpret_cast<char *>(&TestGlobals));
 
-        Rr_GraphPassInfo ShadowPassInfo = {
+        Rr_DrawPassInfo ShadowPassInfo = {
             .Name = "shadow_pass",
             .DrawTarget = ShadowMap,
             .InitialColor = nullptr,
@@ -521,14 +521,14 @@ public:
                 -1000.0f,
                 1000.0f),
         };
-        Rr_GraphPass *ShadowPass = Rr_CreateGraphPass(
+        Rr_DrawPass *ShadowPass = Rr_AddDrawPass(
             App,
             &ShadowPassInfo,
             reinterpret_cast<char *>(&ShadowGlobals));
 
-        std::array PassDependencies = { TestPass, ShadowPass };
+        // std::array PassDependencies = { TestPass, ShadowPass };
 
-        Rr_GraphPassInfo PassInfo = {
+        Rr_DrawPassInfo PassInfo = {
             .Name = "pbr_pass",
             .DrawTarget = nullptr,
             .InitialColor = nullptr,
@@ -538,7 +538,7 @@ public:
             .OverridePipeline = nullptr,
             .EnableTextRendering = true,
         };
-        Rr_GraphPass *Pass = Rr_CreateGraphPass(
+        Rr_DrawPass *Pass = Rr_AddDrawPass(
             App,
             &PassInfo,
             reinterpret_cast<char *>(&ShaderGlobals));

@@ -2,6 +2,7 @@
 
 #include "Rr/Rr_Graph.h"
 #include "Rr/Rr_String.h"
+#include "Rr_Image.h"
 #include "Rr_Memory.h"
 
 #include <volk.h>
@@ -55,42 +56,49 @@ struct Rr_BuiltinPass
     Rr_DrawTextsSlice DrawTextsSlice;
 };
 
-struct Rr_GraphPass
+struct Rr_DrawPass
 {
-    Rr_GraphPassInfo Info;
+    Rr_DrawPassInfo Info;
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice;
     char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
 };
 
-typedef union Rr_Pass Rr_Pass;
-union Rr_Pass
+typedef struct Rr_Pass Rr_Pass;
+struct Rr_Pass
 {
-    Rr_BuiltinPass BuiltinPass;
-    Rr_GraphPass GraphPass;
+    union
+    {
+        Rr_BuiltinPass BuiltinPass;
+        Rr_DrawPass DrawPass;
+    } Union;
     Rr_PassType Type;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
 struct Rr_GraphEdge
 {
-    Rr_GraphPass *From;
-    Rr_GraphPass *To;
+    Rr_Pass *From;
+    Rr_Pass *To;
 };
 
 struct Rr_Graph
 {
+    // Rr_ImageBarrierMap ImageBarrierMap;
+
     RR_SLICE_TYPE(Rr_GraphEdge) AdjList;
 
-    RR_SLICE_TYPE(Rr_GraphPass) PassesSlice;
+    RR_SLICE_TYPE(Rr_Pass) PassesSlice;
 
     Rr_BuiltinPass BuiltinPass;
 };
 
+extern void Rr_BuildGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
+
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 
-extern void Rr_ExecuteGraphPass(
+extern void Rr_ExecuteDrawPass(
     Rr_App *App,
-    Rr_GraphPass *Pass,
+    Rr_DrawPass *Pass,
     Rr_Arena *Arena);
 
 extern void Rr_ExecuteBuiltinPass(
