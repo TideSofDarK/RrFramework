@@ -325,7 +325,7 @@ public:
         Game->OnLoadingComplete();
     }
 
-    void DrawScene(Rr_DrawPass *Pass)
+    void DrawScene(Rr_GraphicsNode *Node)
     {
         const auto Time = static_cast<float>((Rr_GetTimeSeconds(App) * 2.0));
 
@@ -334,7 +334,7 @@ public:
         CottageDraw.Model[3][1] = 0.1f;
         Rr_DrawStaticMeshOverrideMaterials(
             App,
-            Pass,
+            Node,
             &CottageMaterial,
             1,
             CottageMesh,
@@ -348,11 +348,11 @@ public:
         AvocadoDraw.Model[3][0] = 3.5f;
         AvocadoDraw.Model[3][1] = 0.5f;
         AvocadoDraw.Model[3][2] = 3.5f;
-        Rr_DrawStaticMesh(App, Pass, AvocadoMesh, RR_MAKE_DATA(AvocadoDraw));
+        Rr_DrawStaticMesh(App, Node, AvocadoMesh, RR_MAKE_DATA(AvocadoDraw));
 
         SUber3DPerDraw MarbleDraw = {};
         MarbleDraw.Model = Rr_Translate({ 0.0f, 0.1f, 0.0f });
-        Rr_DrawStaticMesh(App, Pass, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
+        Rr_DrawStaticMesh(App, Node, MarbleMesh, RR_MAKE_DATA(MarbleDraw));
     }
 
     void Iterate()
@@ -474,9 +474,9 @@ public:
 
         Rr_PerspectiveResize(Rr_GetAspectRatio(App), &ShaderGlobals.Proj);
 
-        /* Create Passes */
+        /* Create Nodes */
 
-        Rr_DrawPassInfo TestPassInfo = {
+        Rr_GraphicsNodeInfo TestNodeInfo = {
             .Name = "test_pass",
             .DrawTarget = TestTarget,
             .InitialColor = nullptr,
@@ -496,12 +496,12 @@ public:
                 -1000.0f,
                 1000.0f),
         };
-        Rr_DrawPass *TestPass = Rr_AddDrawPass(
+        Rr_GraphicsNode *TestNode = Rr_AddGraphicsNode(
             App,
-            &TestPassInfo,
+            &TestNodeInfo,
             reinterpret_cast<char *>(&TestGlobals));
 
-        Rr_DrawPassInfo ShadowPassInfo = {
+        Rr_GraphicsNodeInfo ShadowNodeInfo = {
             .Name = "shadow_pass",
             .DrawTarget = ShadowMap,
             .InitialColor = nullptr,
@@ -521,14 +521,14 @@ public:
                 -1000.0f,
                 1000.0f),
         };
-        Rr_DrawPass *ShadowPass = Rr_AddDrawPass(
+        Rr_GraphicsNode *ShadowNode = Rr_AddGraphicsNode(
             App,
-            &ShadowPassInfo,
+            &ShadowNodeInfo,
             reinterpret_cast<char *>(&ShadowGlobals));
 
         // std::array PassDependencies = { TestPass, ShadowPass };
 
-        Rr_DrawPassInfo PassInfo = {
+        Rr_GraphicsNodeInfo NodeInfo = {
             .Name = "pbr_pass",
             .DrawTarget = nullptr,
             .InitialColor = nullptr,
@@ -538,22 +538,22 @@ public:
             .OverridePipeline = nullptr,
             .EnableTextRendering = true,
         };
-        Rr_DrawPass *Pass = Rr_AddDrawPass(
+        Rr_GraphicsNode *Node = Rr_AddGraphicsNode(
             App,
-            &PassInfo,
+            &NodeInfo,
             reinterpret_cast<char *>(&ShaderGlobals));
 
         if (IsLoaded)
         {
-            DrawScene(ShadowPass);
-            DrawScene(TestPass);
+            DrawScene(ShadowNode);
+            DrawScene(TestNode);
 
             SUnlitPipeline::SPerDraw ArrowDraw = {};
             ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
             ArrowDraw.Model[3][1] = 5.0f;
-            Rr_DrawStaticMesh(App, Pass, ArrowMesh, RR_MAKE_DATA(ArrowDraw));
+            Rr_DrawStaticMesh(App, Node, ArrowMesh, RR_MAKE_DATA(ArrowDraw));
 
-            DrawScene(Pass);
+            DrawScene(Node);
 
             Rr_DrawDefaultText(App, &TestString, { 50.0f, 50.0f });
 

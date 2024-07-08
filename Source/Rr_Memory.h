@@ -164,19 +164,20 @@ struct Rr_Map
     void *Value;
 };
 
-#define RR_NEW_MAP(Arena) (Rr_Map *)RR_ARENA_ALLOC_ONE(Arena, sizeof(Rr_Map))
-
 inline void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
 {
-    for (uintptr_t Hash = Key; *Map; Hash <<= 2)
+    if (*Map != NULL)
     {
-        if (Key == (*Map)->Key)
+        for (uintptr_t Hash = Key; *Map; Hash <<= 2)
         {
-            return &(*Map)->Value;
+            if (Key == (*Map)->Key)
+            {
+                return &(*Map)->Value;
+            }
+            Map = &(*Map)->Child[Hash >> 62];
         }
-        Map = &(*Map)->Child[Hash >> 62];
     }
-    *Map = RR_NEW_MAP(Arena);
+    *Map = (Rr_Map *)RR_ARENA_ALLOC_ONE(Arena, sizeof(Rr_Map));
     (*Map)->Key = Key;
     return &(*Map)->Value;
 }

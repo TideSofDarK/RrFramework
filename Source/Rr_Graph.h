@@ -50,58 +50,65 @@ struct Rr_TextRenderingContext
     VkDescriptorSet FontDescriptorSet;
 };
 
-typedef struct Rr_BuiltinPass Rr_BuiltinPass;
-struct Rr_BuiltinPass
+typedef struct Rr_BuiltinNode Rr_BuiltinNode;
+struct Rr_BuiltinNode
 {
     Rr_DrawTextsSlice DrawTextsSlice;
 };
 
-struct Rr_DrawPass
+struct Rr_GraphicsNode
 {
-    Rr_DrawPassInfo Info;
+    Rr_GraphicsNodeInfo Info;
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice;
     char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
 };
 
-typedef struct Rr_Pass Rr_Pass;
-struct Rr_Pass
+typedef struct Rr_GraphNode Rr_GraphNode;
+struct Rr_GraphNode
 {
     union
     {
-        Rr_BuiltinPass BuiltinPass;
-        Rr_DrawPass DrawPass;
+        Rr_BuiltinNode BuiltinNode;
+        Rr_GraphicsNode GraphicsNode;
+        Rr_PresentNode PresentNode;
     } Union;
-    Rr_PassType Type;
+    Rr_GraphNodeType Type;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
 struct Rr_GraphEdge
 {
-    Rr_Pass *From;
-    Rr_Pass *To;
+    Rr_GraphNode *From;
+    Rr_GraphNode *To;
 };
 
 struct Rr_Graph
 {
+    Rr_Map *ImageStateMap;
+    // RR_SLICE_TYPE(Rr_GraphEdge) AdjList;
     // Rr_ImageBarrierMap ImageBarrierMap;
 
-    RR_SLICE_TYPE(Rr_GraphEdge) AdjList;
+    RR_SLICE_TYPE(Rr_GraphNode) PassesSlice;
 
-    RR_SLICE_TYPE(Rr_Pass) PassesSlice;
-
-    Rr_BuiltinPass BuiltinPass;
+    Rr_BuiltinNode BuiltinPass;
 };
-
-extern void Rr_BuildGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 
-extern void Rr_ExecuteDrawPass(
+extern void Rr_ExecutePresentNode(
     Rr_App *App,
-    Rr_DrawPass *Pass,
+    Rr_Graph *Graph,
+    Rr_PresentNode *Node,
     Rr_Arena *Arena);
 
-extern void Rr_ExecuteBuiltinPass(
+extern void Rr_ExecuteGraphicsNode(
     Rr_App *App,
-    Rr_BuiltinPass *Pass,
+    Rr_Graph *Graph,
+    Rr_GraphicsNode *Node,
+    Rr_Arena *Arena);
+
+extern void Rr_ExecuteBuiltinNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_BuiltinNode *Node,
     Rr_Arena *Arena);

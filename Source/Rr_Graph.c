@@ -13,9 +13,9 @@
 
 #include <SDL3/SDL_timer.h>
 
-Rr_DrawPass *Rr_AddDrawPass(
+Rr_GraphicsNode *Rr_AddGraphicsNode(
     Rr_App *App,
-    Rr_DrawPassInfo *Info,
+    Rr_GraphicsNodeInfo *Info,
     char *GlobalsData)
 {
     Rr_Renderer *Renderer = &App->Renderer;
@@ -23,10 +23,10 @@ Rr_DrawPass *Rr_AddDrawPass(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_Pass *GraphPass = RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
+    Rr_GraphNode *GraphPass = RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
     GraphPass->Type = RR_PASS_TYPE_DRAW;
-    Rr_DrawPass *Pass = &GraphPass->Union.DrawPass;
-    *Pass = (Rr_DrawPass){
+    Rr_GraphicsNode *Pass = &GraphPass->Union.GraphicsNode;
+    *Pass = (Rr_GraphicsNode){
         .Info = *Info,
     };
 
@@ -44,7 +44,7 @@ Rr_DrawPass *Rr_AddDrawPass(
 
 void Rr_DrawStaticMesh(
     Rr_App *App,
-    Rr_DrawPass *Pass,
+    Rr_GraphicsNode *Node,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
@@ -55,7 +55,7 @@ void Rr_DrawStaticMesh(
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&Pass->DrawPrimitivesSlice, &Frame->Arena) =
+        *RR_SLICE_PUSH(&Node->DrawPrimitivesSlice, &Frame->Arena) =
             (Rr_DrawPrimitiveInfo){
                 .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
@@ -72,7 +72,7 @@ void Rr_DrawStaticMesh(
 
 void Rr_DrawStaticMeshOverrideMaterials(
     Rr_App *App,
-    Rr_DrawPass *Pass,
+    Rr_GraphicsNode *Node,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
@@ -85,7 +85,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&Pass->DrawPrimitivesSlice, &Frame->Arena) =
+        *RR_SLICE_PUSH(&Node->DrawPrimitivesSlice, &Frame->Arena) =
             (Rr_DrawPrimitiveInfo){
                 .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
@@ -105,7 +105,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
 static void Rr_DrawText(Rr_App *App, Rr_DrawTextInfo *Info)
 {
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
-    Rr_BuiltinPass *Pass = &Frame->Graph.BuiltinPass;
+    Rr_BuiltinNode *Pass = &Frame->Graph.BuiltinPass;
     Rr_DrawTextInfo *NewInfo =
         RR_SLICE_PUSH(&Pass->DrawTextsSlice, &Frame->Arena);
     *NewInfo = *Info;
@@ -240,7 +240,7 @@ Rr_DrawTarget *Rr_GetMainDrawTarget(Rr_App *App)
 static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
-    Rr_DrawPassInfo *PassInfo,
+    Rr_GraphicsNodeInfo *PassInfo,
     char *GlobalsData,
     Rr_Arena *Arena)
 {
@@ -748,28 +748,28 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_BuildGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena) {}
-
 void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
+    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+
     for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->PassesSlice);
          ++Index)
     {
-        Rr_Pass *GraphPass = Graph->PassesSlice.Data + Index;
+        Rr_GraphNode *GraphPass = Graph->PassesSlice.Data + Index;
 
         switch (GraphPass->Type)
         {
             case RR_PASS_TYPE_DRAW:
             {
-                Rr_DrawPass *DrawPass = &GraphPass->Union.DrawPass;
-                // Rr_ExecuteDrawPass(App, );
+                Rr_GraphicsNode *DrawPass = &GraphPass->Union.GraphicsNode;
+                Rr_ExecuteGraphicsNode(App, Graph, DrawPass, Scratch.Arena);
             }
             break;
             default:
             {
-                Rr_LogAbort("Graph execution: unsupported pass type!");
+                Rr_LogAbort("Unsupported pass type!");
             }
             break;
         }
@@ -787,16 +787,72 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_ExecuteGraphPass(Rr_App *App, Rr_DrawPass *Pass, Rr_Arena *Arena)
+void Rr_ExecutePresentNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_PresentNode *Node,
+    Rr_Arena *Arena)
+{
+}
+
+typedef struct Rr_ImageSync Rr_ImageSync;
+struct Rr_ImageSync
+{
+    VkImage Image;
+    VkPipelineStageFlags StageMask;
+    VkAccessFlags AccessMask;
+    VkImageLayout Layout;
+};
+
+static void Rr_SyncImage(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_Image *Image,
+    VkPipelineStageFlags StageMask,
+    VkAccessFlags AccessMask,
+    VkImageLayout Layout)
+{
+    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+
+    Rr_ImageSync **State = (Rr_ImageSync **)
+        Rr_MapUpsert(&Graph->ImageStateMap, (uintptr_t)Image, &Frame->Arena);
+
+    if (*State == NULL)
+    {
+        /* First time referencing this image. */
+    }
+    else
+    {
+    }
+}
+
+static void Rr_SyncDrawTarget(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_DrawTarget *DrawTarget)
+{
+    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+
+    if (DrawTarget->ColorImage)
+    {
+    }
+    // Graph->ImageBarrierMap
+}
+
+void Rr_ExecuteGraphicsNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_GraphicsNode *Node,
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawTarget *DrawTarget = Pass->Info.DrawTarget;
+    Rr_DrawTarget *DrawTarget = Node->Info.DrawTarget;
 
-    Rr_IntVec4 Viewport = Pass->Info.Viewport;
+    Rr_IntVec4 Viewport = Node->Info.Viewport;
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
@@ -809,12 +865,12 @@ void Rr_ExecuteGraphPass(Rr_App *App, Rr_DrawPass *Pass, Rr_Arena *Arena)
         Rr_MakeGenericRenderingContext(
             App,
             &UploadContext,
-            &Pass->Info,
-            Pass->GlobalsData,
+            &Node->Info,
+            Node->GlobalsData,
             Scratch.Arena);
 
     Rr_TextRenderingContext TextRenderingContext;
-    if (Pass->Info.EnableTextRendering)
+    if (Node->Info.EnableTextRendering)
     {
         TextRenderingContext = Rr_MakeTextRenderingContext(
             App,
@@ -826,7 +882,7 @@ void Rr_ExecuteGraphPass(Rr_App *App, Rr_DrawPass *Pass, Rr_Arena *Arena)
     /* Line up appropriate clear values. */
 
     uint32_t ColorAttachmentCount =
-        Pass->Info.BasePipeline->Pipeline->ColorAttachmentCount;
+        Node->Info.BasePipeline->Pipeline->ColorAttachmentCount;
     VkClearValue *ClearValues =
         Rr_StackAlloc(VkClearValue, ColorAttachmentCount + 1);
     for (uint32_t Index = 0; Index < ColorAttachmentCount; ++Index)
@@ -844,7 +900,7 @@ void Rr_ExecuteGraphPass(Rr_App *App, Rr_DrawPass *Pass, Rr_Arena *Arena)
         .framebuffer = DrawTarget->Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
                                   { Viewport.Z, Viewport.W } },
-        .renderPass = Pass->Info.BasePipeline->Pipeline->RenderPass,
+        .renderPass = Node->Info.BasePipeline->Pipeline->RenderPass,
         .clearValueCount = ColorAttachmentCount + 1,
         .pClearValues = ClearValues,
     };
@@ -884,7 +940,7 @@ void Rr_ExecuteGraphPass(Rr_App *App, Rr_DrawPass *Pass, Rr_Arena *Arena)
     Rr_RenderGeneric(
         App,
         &GenericRenderingContext,
-        Pass->DrawPrimitivesSlice,
+        Node->DrawPrimitivesSlice,
         CommandBuffer,
         Scratch.Arena);
 
@@ -893,7 +949,11 @@ void Rr_ExecuteGraphPass(Rr_App *App, Rr_DrawPass *Pass, Rr_Arena *Arena)
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_ExecuteBuiltinPass(Rr_App *App, Rr_BuiltinPass *Pass, Rr_Arena *Arena)
+void Rr_ExecuteBuiltinNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_BuiltinNode *Node,
+    Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -975,7 +1035,7 @@ void Rr_ExecuteBuiltinPass(Rr_App *App, Rr_BuiltinPass *Pass, Rr_Arena *Arena)
     Rr_RenderText(
         App,
         &TextRenderingContext,
-        Pass->DrawTextsSlice,
+        Node->DrawTextsSlice,
         CommandBuffer,
         Scratch.Arena);
 

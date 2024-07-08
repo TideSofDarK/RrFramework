@@ -20,18 +20,25 @@ typedef struct Rr_Graph Rr_Graph;
  * Passes
  */
 
-typedef struct Rr_DrawPass Rr_DrawPass;
+typedef struct Rr_PresentNode Rr_PresentNode;
+struct Rr_PresentNode
+{
+    Rr_DrawTarget *DrawTarget;
+    uint32_t StretchMode;
+};
 
-typedef enum Rr_PassType
+typedef struct Rr_GraphicsNode Rr_GraphicsNode;
+
+typedef enum Rr_GraphNodeType
 {
     RR_PASS_TYPE_BUILTIN,
     RR_PASS_TYPE_DRAW,
     RR_PASS_TYPE_BLIT,
     RR_PASS_TYPE_PRESENT,
-} Rr_PassType;
+} Rr_GraphNodeType;
 
-typedef struct Rr_DrawPassInfo Rr_DrawPassInfo;
-struct Rr_DrawPassInfo
+typedef struct Rr_GraphicsNodeInfo Rr_GraphicsNodeInfo;
+struct Rr_GraphicsNodeInfo
 {
     const char *Name;
     Rr_DrawTarget *DrawTarget;
@@ -43,9 +50,9 @@ struct Rr_DrawPassInfo
     Rr_Bool EnableTextRendering;
 };
 
-extern Rr_DrawPass *Rr_AddDrawPass(
+extern Rr_GraphicsNode *Rr_AddGraphicsNode(
     Rr_App *App,
-    Rr_DrawPassInfo *Info,
+    Rr_GraphicsNodeInfo *Info,
     char *GlobalsData);
 
 /*
@@ -77,13 +84,13 @@ extern void Rr_DrawDefaultText(
 
 extern void Rr_DrawStaticMesh(
     Rr_App *App,
-    Rr_DrawPass *Pass,
+    Rr_GraphicsNode *Node,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData);
 
 extern void Rr_DrawStaticMeshOverrideMaterials(
     Rr_App *App,
-    Rr_DrawPass *Pass,
+    Rr_GraphicsNode *Node,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
