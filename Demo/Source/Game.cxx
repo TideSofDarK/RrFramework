@@ -499,9 +499,7 @@ public:
         Rr_GraphPass *TestPass = Rr_CreateGraphPass(
             App,
             &TestPassInfo,
-            reinterpret_cast<char *>(&TestGlobals),
-            nullptr,
-            0);
+            reinterpret_cast<char *>(&TestGlobals));
 
         Rr_GraphPassInfo ShadowPassInfo = {
             .Name = "shadow_pass",
@@ -526,9 +524,7 @@ public:
         Rr_GraphPass *ShadowPass = Rr_CreateGraphPass(
             App,
             &ShadowPassInfo,
-            reinterpret_cast<char *>(&ShadowGlobals),
-            nullptr,
-            0);
+            reinterpret_cast<char *>(&ShadowGlobals));
 
         std::array PassDependencies = { TestPass, ShadowPass };
 
@@ -545,9 +541,7 @@ public:
         Rr_GraphPass *Pass = Rr_CreateGraphPass(
             App,
             &PassInfo,
-            reinterpret_cast<char *>(&ShaderGlobals),
-            PassDependencies.data(),
-            PassDependencies.size());
+            reinterpret_cast<char *>(&ShaderGlobals));
 
         if (IsLoaded)
         {
@@ -561,11 +555,10 @@ public:
 
             DrawScene(Pass);
 
-            Rr_DrawDefaultText(App, Pass, &TestString, { 50.0f, 50.0f });
+            Rr_DrawDefaultText(App, &TestString, { 50.0f, 50.0f });
 
             Rr_DrawCustomText(
                 App,
-                Pass,
                 nullptr,
                 &DebugString,
                 { 450.0f, 54.0f },
@@ -589,7 +582,6 @@ public:
 
             Rr_DrawCustomText(
                 App,
-                Pass,
                 nullptr,
                 &LoadingString,
                 { 25.0f, 540.0f - 25 - 32.0f },

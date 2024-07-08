@@ -14,14 +14,21 @@ extern "C" {
 #endif
 
 typedef struct Rr_DrawTarget Rr_DrawTarget;
-typedef struct Rr_GraphPass Rr_GraphPass;
 typedef struct Rr_Graph Rr_Graph;
 
-typedef enum Rr_DrawTextFlags
+/*
+ * Passes
+ */
+
+typedef struct Rr_GraphPass Rr_GraphPass;
+
+typedef enum Rr_PassType
 {
-    RR_DRAW_TEXT_FLAGS_NONE_BIT = 0,
-    RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
-} Rr_DrawTextFlags;
+    RR_PASS_TYPE_BUILTIN,
+    RR_PASS_TYPE_DRAW,
+    RR_PASS_TYPE_BLIT,
+    RR_PASS_TYPE_PRESENT,
+} Rr_PassType;
 
 typedef struct Rr_GraphPassInfo Rr_GraphPassInfo;
 struct Rr_GraphPassInfo
@@ -39,9 +46,30 @@ struct Rr_GraphPassInfo
 extern Rr_GraphPass *Rr_CreateGraphPass(
     Rr_App *App,
     Rr_GraphPassInfo *Info,
-    char *GlobalsData,
-    Rr_GraphPass **Dependencies,
-    size_t DependencyCount);
+    char *GlobalsData);
+
+/*
+ * Builtin Commands
+ */
+
+typedef enum Rr_DrawTextFlags
+{
+    RR_DRAW_TEXT_FLAGS_NONE_BIT = 0,
+    RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
+} Rr_DrawTextFlags;
+
+extern void Rr_DrawCustomText(
+    Rr_App *App,
+    Rr_Font *Font,
+    Rr_String *String,
+    Rr_Vec2 Position,
+    float Size,
+    Rr_DrawTextFlags Flags);
+
+extern void Rr_DrawDefaultText(
+    Rr_App *App,
+    Rr_String *String,
+    Rr_Vec2 Position);
 
 /*
  * Draw Commands
@@ -60,21 +88,6 @@ extern void Rr_DrawStaticMeshOverrideMaterials(
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData);
-
-extern void Rr_DrawCustomText(
-    Rr_App *App,
-    Rr_GraphPass *Pass,
-    Rr_Font *Font,
-    Rr_String *String,
-    Rr_Vec2 Position,
-    float Size,
-    Rr_DrawTextFlags Flags);
-
-extern void Rr_DrawDefaultText(
-    Rr_App *App,
-    Rr_GraphPass *Pass,
-    Rr_String *String,
-    Rr_Vec2 Position);
 
 /*
  * Draw Target

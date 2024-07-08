@@ -29,6 +29,8 @@ typedef uint32_t Rr_Bool;
 #define RR_CONST_CAST(Type, Expression)       ((Type)(Expression))
 #endif
 
+#define RR_ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
+
 typedef struct Rr_Data Rr_Data;
 struct Rr_Data
 {
@@ -48,8 +50,9 @@ struct Rr_Data
 
 /* Alignment */
 
-#define RR_SAFE_ALIGNMENT        16
-#define RR_ALIGN(Num, Alignment) (((Num) + ((Alignment)-1)) & ~((Alignment)-1))
+#define RR_SAFE_ALIGNMENT 16
+#define RR_ALIGN(Num, Alignment) \
+    (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 
 /* Renderer Configuration */
 

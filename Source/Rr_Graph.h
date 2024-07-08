@@ -49,14 +49,25 @@ struct Rr_TextRenderingContext
     VkDescriptorSet FontDescriptorSet;
 };
 
-/* @TODO: Separate generic and builtin stuff! */
+typedef struct Rr_BuiltinPass Rr_BuiltinPass;
+struct Rr_BuiltinPass
+{
+    Rr_DrawTextsSlice DrawTextsSlice;
+};
+
 struct Rr_GraphPass
 {
     Rr_GraphPassInfo Info;
-    Rr_DrawTextsSlice DrawTextsSlice;
     Rr_DrawPrimitivesSlice DrawPrimitivesSlice;
     char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
-    Rr_Arena *Arena;
+};
+
+typedef union Rr_Pass Rr_Pass;
+union Rr_Pass
+{
+    Rr_BuiltinPass BuiltinPass;
+    Rr_GraphPass GraphPass;
+    Rr_PassType Type;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
@@ -71,6 +82,8 @@ struct Rr_Graph
     RR_SLICE_TYPE(Rr_GraphEdge) AdjList;
 
     RR_SLICE_TYPE(Rr_GraphPass) PassesSlice;
+
+    Rr_BuiltinPass BuiltinPass;
 };
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
@@ -78,4 +91,9 @@ extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 extern void Rr_ExecuteGraphPass(
     Rr_App *App,
     Rr_GraphPass *Pass,
+    Rr_Arena *Arena);
+
+extern void Rr_ExecuteBuiltinPass(
+    Rr_App *App,
+    Rr_BuiltinPass *Pass,
     Rr_Arena *Arena);

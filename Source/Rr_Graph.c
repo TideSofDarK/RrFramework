@@ -1,10 +1,12 @@
 #include "Rr_Graph.h"
 
+#include "Rr/Rr_Defines.h"
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
 #include "Rr_Material.h"
 #include "Rr_Mesh.h"
+#include "Rr_Renderer.h"
 
 #include <qsort/qsort-inline.h>
 
@@ -13,9 +15,7 @@
 Rr_GraphPass *Rr_CreateGraphPass(
     Rr_App *App,
     Rr_GraphPassInfo *Info,
-    char *GlobalsData,
-    Rr_GraphPass **Dependencies,
-    size_t DependencyCount)
+    char *GlobalsData)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -24,7 +24,6 @@ Rr_GraphPass *Rr_CreateGraphPass(
 
     Rr_GraphPass *Pass = RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
     *Pass = (Rr_GraphPass){
-        .Arena = &Frame->Arena,
         .Info = *Info,
     };
 
@@ -36,16 +35,6 @@ Rr_GraphPass *Rr_CreateGraphPass(
     }
 
     memcpy(Pass->GlobalsData, GlobalsData, Info->BasePipeline->Sizes.Globals);
-
-    /* Populate adjacency list. */
-
-    for (size_t Index = 0; Index < DependencyCount; ++Index)
-    {
-        *RR_SLICE_PUSH(&Graph->AdjList, &Frame->Arena) = (Rr_GraphEdge){
-            .From = Dependencies[Index],
-            .To = Pass,
-        };
-    }
 
     return Pass;
 }
@@ -63,7 +52,7 @@ void Rr_DrawStaticMesh(
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&Pass->DrawPrimitivesSlice, Pass->Arena) =
+        *RR_SLICE_PUSH(&Pass->DrawPrimitivesSlice, &Frame->Arena) =
             (Rr_DrawPrimitiveInfo){
                 .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
@@ -93,7 +82,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&Pass->DrawPrimitivesSlice, Pass->Arena) =
+        *RR_SLICE_PUSH(&Pass->DrawPrimitivesSlice, &Frame->Arena) =
             (Rr_DrawPrimitiveInfo){
                 .PerDrawOffset = Offset,
                 .Primitive = StaticMesh->Primitives[PrimitiveIndex],
@@ -110,14 +99,12 @@ void Rr_DrawStaticMeshOverrideMaterials(
         PerDrawData);
 }
 
-static void Rr_DrawText(
-    Rr_App *App,
-    Rr_GraphPass *RenderingContext,
-    Rr_DrawTextInfo *Info)
+static void Rr_DrawText(Rr_App *App, Rr_DrawTextInfo *Info)
 {
-    Rr_DrawTextInfo *NewInfo = RR_SLICE_PUSH(
-        &RenderingContext->DrawTextsSlice,
-        RenderingContext->Arena);
+    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+    Rr_BuiltinPass *Pass = &Frame->Graph.BuiltinPass;
+    Rr_DrawTextInfo *NewInfo =
+        RR_SLICE_PUSH(&Pass->DrawTextsSlice, &Frame->Arena);
     *NewInfo = *Info;
     if (NewInfo->Font == NULL)
     {
@@ -131,7 +118,6 @@ static void Rr_DrawText(
 
 void Rr_DrawCustomText(
     Rr_App *App,
-    Rr_GraphPass *Pass,
     Rr_Font *Font,
     Rr_String *String,
     Rr_Vec2 Position,
@@ -140,7 +126,6 @@ void Rr_DrawCustomText(
 {
     Rr_DrawText(
         App,
-        Pass,
         &(Rr_DrawTextInfo){
             .Font = Font,
             .String = *String,
@@ -150,15 +135,10 @@ void Rr_DrawCustomText(
         });
 }
 
-void Rr_DrawDefaultText(
-    Rr_App *App,
-    Rr_GraphPass *Pass,
-    Rr_String *String,
-    Rr_Vec2 Position)
+void Rr_DrawDefaultText(Rr_App *App, Rr_String *String, Rr_Vec2 Position)
 {
     Rr_DrawText(
         App,
-        Pass,
         &(Rr_DrawTextInfo){
             .String = *String,
             .Position = Position,
@@ -879,15 +859,96 @@ void Rr_ExecuteGraphPass(Rr_App *App, Rr_GraphPass *Pass, Rr_Arena *Arena)
         CommandBuffer,
         Scratch.Arena);
 
-    if (Pass->Info.EnableTextRendering)
-    {
-        Rr_RenderText(
-            App,
-            &TextRenderingContext,
-            Pass->DrawTextsSlice,
-            CommandBuffer,
-            Scratch.Arena);
-    }
+    vkCmdEndRenderPass(CommandBuffer);
+
+    Rr_DestroyArenaScratch(Scratch);
+}
+
+void Rr_ExecuteBuiltinPass(Rr_App *App, Rr_BuiltinPass *Pass, Rr_Arena *Arena)
+{
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
+
+    Rr_IntVec4 Viewport = {
+        0,
+        0,
+        (int32_t)DrawTarget->ColorImage->Extent.width,
+        (int32_t)DrawTarget->ColorImage->Extent.height,
+    };
+
+    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+
+    Rr_UploadContext UploadContext = {
+        .StagingBuffer = &Frame->StagingBuffer,
+        .TransferCommandBuffer = CommandBuffer,
+    };
+
+    Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(
+        App,
+        &UploadContext,
+        (VkExtent2D){ .width = Viewport.Width, .height = Viewport.Height },
+        Scratch.Arena);
+
+    /* Line up appropriate clear values. */
+
+    VkClearValue ClearValues[] = {
+        (VkClearValue){ 0 },
+        (VkClearValue){ .depthStencil.depth = 1.0f },
+    };
+
+    /* Begin render pass. */
+
+    VkRenderPassBeginInfo RenderPassBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext = NULL,
+        .framebuffer = DrawTarget->Framebuffer,
+        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
+                                  { Viewport.Z, Viewport.W } },
+        .renderPass = Renderer->RenderPasses.ColorDepthLoad,
+        .clearValueCount = RR_ARRAY_COUNT(ClearValues),
+        .pClearValues = ClearValues,
+    };
+    vkCmdBeginRenderPass(
+        CommandBuffer,
+        &RenderPassBeginInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
+
+    /* Set dynamic states. */
+
+    vkCmdSetViewport(
+        CommandBuffer,
+        0,
+        1,
+        &(VkViewport){
+            .x = (float)Viewport.X,
+            .y = (float)Viewport.Y,
+            .width = (float)Viewport.Width,
+            .height = (float)Viewport.Height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        });
+
+    vkCmdSetScissor(
+        CommandBuffer,
+        0,
+        1,
+        &(VkRect2D){
+            .offset.x = Viewport.X,
+            .offset.y = Viewport.Y,
+            .extent.width = Viewport.Width,
+            .extent.height = Viewport.Height,
+        });
+
+    Rr_RenderText(
+        App,
+        &TextRenderingContext,
+        Pass->DrawTextsSlice,
+        CommandBuffer,
+        Scratch.Arena);
 
     vkCmdEndRenderPass(CommandBuffer);
 
