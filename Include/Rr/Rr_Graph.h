@@ -71,7 +71,7 @@ extern Rr_GraphNode *Rr_AddPresentNode(
     size_t DependencyCount);
 
 /*
- * Builtin Commands
+ * Builtin Node
  */
 
 typedef enum Rr_DrawTextFlags
@@ -80,8 +80,14 @@ typedef enum Rr_DrawTextFlags
     RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
 } Rr_DrawTextFlags;
 
+extern Rr_GraphNode *Rr_AddBuiltinNode(
+    Rr_App *App,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount);
+
 extern void Rr_DrawCustomText(
     Rr_App *App,
+    Rr_GraphNode *Node,
     Rr_Font *Font,
     Rr_String *String,
     Rr_Vec2 Position,
@@ -90,6 +96,7 @@ extern void Rr_DrawCustomText(
 
 extern void Rr_DrawDefaultText(
     Rr_App *App,
+    Rr_GraphNode *Node,
     Rr_String *String,
     Rr_Vec2 Position);
 

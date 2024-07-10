@@ -529,7 +529,7 @@ public:
             nullptr,
             0);
 
-        std::array PassDependencies = { TestNode, ShadowNode };
+        std::array NodeDependencies = { TestNode, ShadowNode };
 
         Rr_GraphicsNodeInfo NodeInfo = {
             .Name = "pbr_pass",
@@ -544,8 +544,10 @@ public:
             App,
             &NodeInfo,
             reinterpret_cast<char *>(&ShaderGlobals),
-            PassDependencies.data(),
-            PassDependencies.size());
+            NodeDependencies.data(),
+            NodeDependencies.size());
+
+        Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, &Node, 1);
 
         Rr_PresentNodeInfo PresentInfo = {
             .Name = "present",
@@ -553,7 +555,7 @@ public:
         };
 
         /* @TODO: Add dependencies later! */
-        Rr_AddPresentNode(App, &PresentInfo, nullptr, 0);
+        Rr_AddPresentNode(App, &PresentInfo, &BuiltinNode, 1);
 
         if (IsLoaded)
         {
@@ -567,10 +569,11 @@ public:
 
             DrawScene(Node);
 
-            Rr_DrawDefaultText(App, &TestString, { 50.0f, 50.0f });
+            Rr_DrawDefaultText(App, BuiltinNode, &TestString, { 50.0f, 50.0f });
 
             Rr_DrawCustomText(
                 App,
+                BuiltinNode,
                 nullptr,
                 &DebugString,
                 { 450.0f, 54.0f },
@@ -594,6 +597,7 @@ public:
 
             Rr_DrawCustomText(
                 App,
+                BuiltinNode,
                 nullptr,
                 &LoadingString,
                 { 25.0f, 540.0f - 25 - 32.0f },

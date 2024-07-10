@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graph/Rr_BuiltinNode.h"
 #include "Rr/Rr_Graph.h"
 #include "Rr/Rr_String.h"
 #include "Rr_Image.h"
@@ -30,17 +31,6 @@ struct Rr_DrawPrimitiveInfo
     uint32_t PerDrawOffset;
 };
 
-typedef struct Rr_DrawTextInfo Rr_DrawTextInfo;
-struct Rr_DrawTextInfo
-{
-    Rr_Font *Font;
-    Rr_String String;
-    Rr_Vec2 Position;
-    float Size;
-    Rr_DrawTextFlags Flags;
-};
-
-typedef RR_SLICE_TYPE(Rr_DrawTextInfo) Rr_DrawTextsSlice;
 typedef RR_SLICE_TYPE(Rr_DrawPrimitiveInfo) Rr_DrawPrimitivesSlice;
 
 typedef struct Rr_GenericRenderingContext Rr_GenericRenderingContext;
@@ -56,12 +46,6 @@ struct Rr_TextRenderingContext
 {
     VkDescriptorSet GlobalsDescriptorSet;
     VkDescriptorSet FontDescriptorSet;
-};
-
-typedef struct Rr_BuiltinNode Rr_BuiltinNode;
-struct Rr_BuiltinNode
-{
-    Rr_DrawTextsSlice DrawTextsSlice;
 };
 
 typedef struct Rr_GraphicsNode Rr_GraphicsNode;
@@ -103,7 +87,6 @@ struct Rr_Graph
     /* Nodes */
 
     RR_SLICE_TYPE(Rr_GraphNode) NodesSlice;
-    Rr_BuiltinNode BuiltinPass;
 
     /* Global State */
 
@@ -112,18 +95,30 @@ struct Rr_Graph
 
     /* Batch State */
 
-    struct {
+    struct Rr_GraphBatch
+    {
         RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
         RR_SLICE_TYPE(VkImageMemoryBarrier) ImageBarriersSlice;
         RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriersSlice;
         VkPipelineStageFlags StageMask;
         Rr_Map *SyncMap;
+        Rr_Bool Final;
+        Rr_Arena *Arena;
     } Batch;
 
     /* Resources */
 
     VkImage SwapchainImage;
 };
+
+extern Rr_Bool Rr_SyncImage(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    VkImage Image,
+    VkImageAspectFlags AspectMask,
+    VkPipelineStageFlags StageMask,
+    VkAccessFlags AccessMask,
+    VkImageLayout Layout);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 
@@ -147,10 +142,4 @@ extern void Rr_ExecuteGraphicsNode(
     Rr_App *App,
     Rr_Graph *Graph,
     Rr_GraphicsNode *Node,
-    Rr_Arena *Arena);
-
-extern void Rr_ExecuteBuiltinNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_BuiltinNode *Node,
     Rr_Arena *Arena);
