@@ -12,8 +12,12 @@
 
 #include <qsort/qsort-inline.h>
 
-#include <SDL3/SDL_timer.h>
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <imgui/cimgui.h>
+#include <imgui/cimgui_impl.h>
+
 #include <SDL3/SDL_assert.h>
+#include <SDL3/SDL_timer.h>
 
 static inline void Rr_CopyDependencies(
     Rr_GraphNode *GraphNode,
@@ -48,7 +52,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
         Dependencies,
         DependencyCount,
         &Frame->Arena);
-    GraphNode->Type = RR_PASS_TYPE_DRAW;
+    GraphNode->Type = RR_GRAPH_NODE_TYPE_GRAPHICS;
 
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
     *GraphicsNode = (Rr_GraphicsNode){
@@ -89,7 +93,7 @@ Rr_GraphNode *Rr_AddPresentNode(
         Dependencies,
         DependencyCount,
         &Frame->Arena);
-    GraphNode->Type = RR_PASS_TYPE_PRESENT;
+    GraphNode->Type = RR_GRAPH_NODE_TYPE_PRESENT;
 
     Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
     *PresentNode = (Rr_PresentNode){
@@ -105,7 +109,7 @@ void Rr_DrawStaticMesh(
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
-    SDL_assert(Node->Type == RR_PASS_TYPE_DRAW);
+    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -138,7 +142,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
-    SDL_assert(Node->Type == RR_PASS_TYPE_DRAW);
+    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -811,6 +815,95 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
+static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+
+    /* Submit barriers. */
+
+    size_t ImageBarrierCount =
+        RR_SLICE_LENGTH(&Graph->Batch.ImageBarriersSlice);
+    size_t BufferBarrierCount =
+        RR_SLICE_LENGTH(&Graph->Batch.BufferBarriersSlice);
+    if (ImageBarrierCount > 0 || BufferBarrierCount > 0)
+    {
+        if (Graph->StageMask == 0)
+        {
+            Graph->StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        }
+
+        vkCmdPipelineBarrier(
+            CommandBuffer,
+            Graph->StageMask,
+            Graph->Batch.StageMask,
+            0,
+            0,
+            NULL,
+            Graph->Batch.BufferBarriersSlice.Length,
+            Graph->Batch.BufferBarriersSlice.Data,
+            Graph->Batch.ImageBarriersSlice.Length,
+            Graph->Batch.ImageBarriersSlice.Data);
+    }
+
+    for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->Batch.NodesSlice);
+         ++Index)
+    {
+        Rr_GraphNode *GraphNode = Graph->Batch.NodesSlice.Data[Index];
+
+        switch (GraphNode->Type)
+        {
+            case RR_GRAPH_NODE_TYPE_GRAPHICS:
+            {
+                Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
+                Rr_ExecuteGraphicsNode(App, Graph, GraphicsNode, NULL);
+            }
+            case RR_GRAPH_NODE_TYPE_PRESENT:
+            {
+                Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
+                Rr_ExecutePresentNode(App, Graph, PresentNode, NULL);
+            }
+            break;
+            default:
+            {
+                Rr_LogAbort("Unsupported node type!");
+            }
+            break;
+        }
+
+        GraphNode->Executed = RR_TRUE;
+    }
+
+    /* Apply batch state. */
+
+    Graph->StageMask = Graph->Batch.StageMask;
+    for (size_t Index = 0; Index < ImageBarrierCount; ++Index)
+    {
+        VkImageMemoryBarrier *Barrier =
+            Graph->Batch.ImageBarriersSlice.Data + Index;
+        Rr_ImageSync **State = (Rr_ImageSync **)Rr_MapUpsert(
+            &Graph->GlobalSyncMap,
+            (uintptr_t)Barrier->image,
+            &Frame->Arena);
+        if (*State == NULL)
+        {
+            *State = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_ImageSync));
+        }
+        (*State)->AccessMask = Barrier->dstAccessMask;
+        (*State)->Layout = Barrier->newLayout;
+    }
+    /* @TODO: Same for buffers. */
+
+    /* Reset batch state. */
+
+    RR_SLICE_EMPTY(&Graph->Batch.ImageBarriersSlice);
+    RR_SLICE_EMPTY(&Graph->Batch.BufferBarriersSlice);
+    RR_SLICE_EMPTY(&Graph->Batch.NodesSlice);
+    Graph->Batch.StageMask = 0;
+    Graph->Batch.SyncMap = NULL;
+}
+
 void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
@@ -826,7 +919,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     Rr_GraphNode *PresentNode = NULL;
     for (size_t Index = NodeCount - 1; Index >= 0; --Index)
     {
-        if (Graph->NodesSlice.Data[Index].Type == RR_PASS_TYPE_PRESENT)
+        if (Graph->NodesSlice.Data[Index].Type == RR_GRAPH_NODE_TYPE_PRESENT)
         {
             PresentNode = Graph->NodesSlice.Data + Index;
             break;
@@ -837,56 +930,71 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         Rr_LogAbort("Graph doesn't contain present node!");
     }
 
-    for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->NodesSlice); ++Index)
+    while (RR_TRUE)
     {
-        Rr_GraphNode *GraphPass = Graph->NodesSlice.Data + Index;
-
-        switch (GraphPass->Type)
+        for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->NodesSlice);
+             ++Index)
         {
-            case RR_PASS_TYPE_DRAW:
+            Rr_GraphNode *GraphNode = Graph->NodesSlice.Data + Index;
+
+            if (GraphNode->Executed == RR_TRUE)
             {
-                Rr_GraphicsNode *DrawPass = &GraphPass->Union.GraphicsNode;
-                Rr_ExecuteGraphicsNode(App, Graph, DrawPass, Scratch.Arena);
+                continue;
             }
-            break;
-            default:
+
+            /* Dependency check. */
+
+            Rr_Bool DependenciesResolved = RR_TRUE;
+            for (size_t DepIndex = 0;
+                 DepIndex < RR_SLICE_LENGTH(&GraphNode->Dependencies);
+                 ++DepIndex)
             {
-                Rr_LogAbort("Unsupported pass type!");
+                Rr_GraphNode *Dependency =
+                    GraphNode->Dependencies.Data[DepIndex];
+                if (Dependency->Executed != RR_TRUE)
+                {
+                    DependenciesResolved = RR_FALSE;
+                }
             }
-            break;
+            if (DependenciesResolved != RR_TRUE)
+            {
+                continue;
+            }
+
+            /* Attempt batching current node. */
+
+            Rr_Bool NodeBatched = RR_FALSE;
+            switch (GraphNode->Type)
+            {
+                case RR_GRAPH_NODE_TYPE_GRAPHICS:
+                {
+                    Rr_GraphicsNode *GraphicsNode =
+                        &GraphNode->Union.GraphicsNode;
+                    NodeBatched =
+                        Rr_BatchGraphicsNode(App, Graph, GraphicsNode);
+                }
+                break;
+                case RR_GRAPH_NODE_TYPE_PRESENT:
+                {
+                    Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
+                    NodeBatched = Rr_BatchPresentNode(App, Graph, PresentNode);
+                }
+                break;
+                default:
+                {
+                    Rr_LogAbort("Unsupported node type!");
+                }
+                break;
+            }
         }
+
+        Rr_ExecuteGraphBatch(App, Graph);
     }
-    // Rr_LogRender("=================");
-    // for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->PassesSlice);
-    //      ++Index)
-    // {
-    //     Rr_LogRender(
-    //         "Pass #%d: '%s'",
-    //         Index,
-    //         Graph->PassesSlice.Data[Index].Info.Name);
-    // }
 
     Rr_DestroyArenaScratch(Scratch);
 }
 
-void Rr_ExecutePresentNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_PresentNode *Node,
-    Rr_Arena *Arena)
-{
-}
-
-typedef struct Rr_ImageSync Rr_ImageSync;
-struct Rr_ImageSync
-{
-    VkImage Image;
-    VkPipelineStageFlags StageMask;
-    VkAccessFlags AccessMask;
-    VkImageLayout Layout;
-};
-
-inline static Rr_Bool Rr_ImageBatchPossible(Rr_Graph *Graph, Rr_Image *Image)
+inline static Rr_Bool Rr_ImageBatchPossible(Rr_Graph *Graph, VkImage Image)
 {
     Rr_ImageSync **State = (Rr_ImageSync **)
         Rr_MapUpsert(&Graph->Batch.SyncMap, (uintptr_t)Image, NULL);
@@ -904,7 +1012,7 @@ inline static Rr_Bool Rr_ImageBatchPossible(Rr_Graph *Graph, Rr_Image *Image)
 static Rr_Bool Rr_SyncImage(
     Rr_App *App,
     Rr_Graph *Graph,
-    Rr_Image *Image,
+    VkImage Image,
     VkImageAspectFlags AspectMask,
     VkPipelineStageFlags StageMask,
     VkAccessFlags AccessMask,
@@ -940,7 +1048,7 @@ static Rr_Bool Rr_SyncImage(
                 .newLayout = Layout,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = Image->Handle,
+                .image = Image,
                 .subresourceRange = SubresourceRange,
             };
     }
@@ -958,14 +1066,148 @@ static Rr_Bool Rr_SyncImage(
                 .newLayout = Layout,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = Image->Handle,
+                .image = Image,
                 .subresourceRange = SubresourceRange,
             };
     }
 
+    Rr_ImageSync **BatchState = (Rr_ImageSync **)
+        Rr_MapUpsert(&Graph->Batch.SyncMap, (uintptr_t)Image, &Frame->Arena);
+    if (*BatchState == NULL)
+    {
+        *BatchState = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_ImageSync));
+    }
+    (*BatchState)->AccessMask = AccessMask;
+    (*BatchState)->Layout = Layout;
+
     Graph->Batch.StageMask |= StageMask;
 
     return RR_TRUE;
+}
+
+Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    if (Rr_SyncImage(
+            App,
+            Graph,
+            DrawTarget->ColorImage->Handle,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT |
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != RR_TRUE ||
+        Rr_SyncImage(
+            App,
+            Graph,
+            DrawTarget->DepthImage->Handle,
+            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != RR_TRUE ||
+        Rr_SyncImage(
+            App,
+            Graph,
+            Graph->SwapchainImage,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) != RR_TRUE)
+    {
+        return RR_FALSE;
+    }
+
+    return RR_TRUE;
+}
+
+void Rr_ExecutePresentNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_PresentNode *Node,
+    Rr_Arena *Arena)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+
+    /* Render Dear ImGui if needed. */
+
+    Rr_ImGui *ImGui = &Renderer->ImGui;
+    if (ImGui->IsInitialized)
+    {
+        VkRenderPassBeginInfo RenderPassBeginInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = Renderer->RenderPasses.ColorDepthLoad,
+            .framebuffer = Renderer->DrawTarget->Framebuffer,
+            .renderArea.extent.width =
+                Renderer->DrawTarget->ColorImage->Extent.width,
+            .renderArea.extent.height =
+                Renderer->DrawTarget->ColorImage->Extent.height,
+            .clearValueCount = 0,
+            .pClearValues = NULL,
+        };
+        vkCmdBeginRenderPass(
+            CommandBuffer,
+            &RenderPassBeginInfo,
+            VK_SUBPASS_CONTENTS_INLINE);
+
+        ImGui_ImplVulkan_RenderDrawData(
+            igGetDrawData(),
+            CommandBuffer,
+            VK_NULL_HANDLE);
+
+        vkCmdEndRenderPass(CommandBuffer);
+    }
+
+    Rr_ImageBarrier ColorImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = DrawTarget->ColorImage->Handle,
+        .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .AccessMask = VK_ACCESS_TRANSFER_READ_BIT |
+                      VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT |
+                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    };
+
+    Rr_ChainImageBarrier(
+        &ColorImageTransition,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    Rr_ImageBarrier SwapchainImageTransition = {
+        .CommandBuffer = CommandBuffer,
+        .Image = Graph->SwapchainImage,
+        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .AccessMask = VK_ACCESS_NONE,
+        .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    };
+
+    Rr_ChainImageBarrier(
+        &SwapchainImageTransition,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    Rr_BlitColorImage(
+        CommandBuffer,
+        DrawTarget->ColorImage->Handle,
+        Graph->SwapchainImage,
+        Renderer->SwapchainSize,
+        Renderer->SwapchainSize);
+
+    Rr_ChainImageBarrier(
+        &SwapchainImageTransition,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 
 Rr_Bool Rr_BatchGraphicsNode(
@@ -980,7 +1222,7 @@ Rr_Bool Rr_BatchGraphicsNode(
     if (Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->ColorImage,
+            DrawTarget->ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
@@ -989,7 +1231,7 @@ Rr_Bool Rr_BatchGraphicsNode(
         Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->DepthImage,
+            DrawTarget->DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |

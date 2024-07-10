@@ -19,10 +19,10 @@ typedef struct Rr_GraphNode Rr_GraphNode;
 
 typedef enum Rr_GraphNodeType
 {
-    RR_PASS_TYPE_BUILTIN,
-    RR_PASS_TYPE_DRAW,
-    RR_PASS_TYPE_BLIT,
-    RR_PASS_TYPE_PRESENT,
+    RR_GRAPH_NODE_TYPE_BUILTIN,
+    RR_GRAPH_NODE_TYPE_GRAPHICS,
+    RR_GRAPH_NODE_TYPE_BLIT,
+    RR_GRAPH_NODE_TYPE_PRESENT,
 } Rr_GraphNodeType;
 
 /*

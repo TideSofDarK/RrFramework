@@ -1334,81 +1334,10 @@ void Rr_Draw(Rr_App *App)
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    /* Execute Render Graph */
+    /* Execute Frame Graph */
 
-    Rr_Graph *Graph = &Frame->Graph;
-    Rr_ExecuteGraph(App, Graph, Scratch.Arena);
-    for (size_t Index = 0; Index < Graph->NodesSlice.Length; ++Index)
-    {
-        // Rr_ExecuteGraphPass(
-        //     App,
-        //     &Graph->PassesSlice.Data[Index],
-        //     Scratch.Arena);
-    }
-
-    /* Render Dear ImGui if needed. */
-
-    Rr_ImGui *ImGui = &Renderer->ImGui;
-    if (ImGui->IsInitialized)
-    {
-        VkRenderPassBeginInfo RenderPassBeginInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = Renderer->RenderPasses.ColorDepthLoad,
-            .framebuffer = Renderer->DrawTarget->Framebuffer,
-            .renderArea.extent.width =
-                Renderer->DrawTarget->ColorImage->Extent.width,
-            .renderArea.extent.height =
-                Renderer->DrawTarget->ColorImage->Extent.height,
-            .clearValueCount = 0,
-            .pClearValues = NULL,
-        };
-        vkCmdBeginRenderPass(
-            CommandBuffer,
-            &RenderPassBeginInfo,
-            VK_SUBPASS_CONTENTS_INLINE);
-
-        ImGui_ImplVulkan_RenderDrawData(
-            igGetDrawData(),
-            CommandBuffer,
-            VK_NULL_HANDLE);
-
-        vkCmdEndRenderPass(CommandBuffer);
-    }
-
-    /* Blit primary draw target to swapchain image. */
-
-    Rr_ChainImageBarrier(
-        &ColorImageTransition,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_READ_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-    Rr_ImageBarrier SwapchainImageTransition = {
-        .CommandBuffer = CommandBuffer,
-        .Image = SwapchainImage,
-        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_NONE,
-        .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    };
-
-    Rr_ChainImageBarrier(
-        &SwapchainImageTransition,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    Rr_BlitColorImage(
-        CommandBuffer,
-        ColorImage->Handle,
-        SwapchainImage,
-        Renderer->SwapchainSize,
-        Renderer->SwapchainSize);
-
-    Rr_ChainImageBarrier(
-        &SwapchainImageTransition,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-        0,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    Frame->Graph.SwapchainImage = SwapchainImage;
+    Rr_ExecuteGraph(App, &Frame->Graph, Scratch.Arena);
 
     vkEndCommandBuffer(CommandBuffer);
 

@@ -8,7 +8,7 @@
 #include <cstdint>
 #endif
 
-typedef uint32_t Rr_Bool;
+typedef uint8_t Rr_Bool;
 #define RR_FALSE 0
 #define RR_TRUE  1
 

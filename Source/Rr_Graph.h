@@ -7,6 +7,14 @@
 
 #include <volk.h>
 
+typedef struct Rr_ImageSync Rr_ImageSync;
+struct Rr_ImageSync
+{
+    // VkPipelineStageFlags StageMask;
+    VkAccessFlags AccessMask;
+    VkImageLayout Layout;
+};
+
 struct Rr_DrawTarget
 {
     Rr_Image *ColorImage;
@@ -80,6 +88,7 @@ struct Rr_GraphNode
     } Union;
     Rr_GraphNodeType Type;
     RR_SLICE_TYPE(Rr_GraphNode *) Dependencies;
+    Rr_Bool Executed;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
@@ -110,9 +119,18 @@ struct Rr_Graph
         VkPipelineStageFlags StageMask;
         Rr_Map *SyncMap;
     } Batch;
+
+    /* Resources */
+
+    VkImage SwapchainImage;
 };
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
+
+extern Rr_Bool Rr_BatchPresentNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_PresentNode *Node);
 
 extern void Rr_ExecutePresentNode(
     Rr_App *App,
