@@ -1338,7 +1338,7 @@ void Rr_Draw(Rr_App *App)
 
     Rr_Graph *Graph = &Frame->Graph;
     Rr_ExecuteGraph(App, Graph, Scratch.Arena);
-    for (size_t Index = 0; Index < Graph->PassesSlice.Length; ++Index)
+    for (size_t Index = 0; Index < Graph->NodesSlice.Length; ++Index)
     {
         // Rr_ExecuteGraphPass(
         //     App,

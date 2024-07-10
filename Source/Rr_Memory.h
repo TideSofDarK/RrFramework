@@ -132,13 +132,14 @@ extern void Rr_SliceResize(
 
 #define RR_SLICE_POP(Slice) (Slice)->Length > 0 ? (Slice)->Length-- : (void)0
 
-#define RR_SLICE_RESERVE(Slice, ElementCount, Arena)                  \
-    ((Slice)->Capacity < (ElementCount) ? Rr_SliceResize(             \
-                                              (Slice),                \
-                                              sizeof(*(Slice)->Data), \
-                                              (ElementCount),         \
-                                              (Arena))                \
-                                        : (void)0)
+#define RR_SLICE_RESERVE(Slice, ElementCount, Arena) \
+    ((Slice)->Capacity < (ElementCount)              \
+         ? Rr_SliceResize(                           \
+               (Slice),                              \
+               sizeof(*(Slice)->Data), /* NOLINT */  \
+               (ElementCount),                       \
+               (Arena))                              \
+         : (void)0)
 
 #define RR_SLICE_EMPTY(Slice) (Slice)->Length = 0
 
@@ -176,6 +177,10 @@ inline void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
             }
             Map = &(*Map)->Child[Hash >> 62];
         }
+    }
+    if (Arena == NULL)
+    {
+        return NULL;
     }
     *Map = (Rr_Map *)RR_ARENA_ALLOC_ONE(Arena, sizeof(Rr_Map));
     (*Map)->Key = Key;

@@ -15,19 +15,7 @@ extern "C" {
 
 typedef struct Rr_DrawTarget Rr_DrawTarget;
 typedef struct Rr_Graph Rr_Graph;
-
-/*
- * Passes
- */
-
-typedef struct Rr_PresentNode Rr_PresentNode;
-struct Rr_PresentNode
-{
-    Rr_DrawTarget *DrawTarget;
-    uint32_t StretchMode;
-};
-
-typedef struct Rr_GraphicsNode Rr_GraphicsNode;
+typedef struct Rr_GraphNode Rr_GraphNode;
 
 typedef enum Rr_GraphNodeType
 {
@@ -36,6 +24,10 @@ typedef enum Rr_GraphNodeType
     RR_PASS_TYPE_BLIT,
     RR_PASS_TYPE_PRESENT,
 } Rr_GraphNodeType;
+
+/*
+ * Graphics Node
+ */
 
 typedef struct Rr_GraphicsNodeInfo Rr_GraphicsNodeInfo;
 struct Rr_GraphicsNodeInfo
@@ -47,13 +39,36 @@ struct Rr_GraphicsNodeInfo
     Rr_IntVec4 Viewport;
     Rr_GenericPipeline *BasePipeline;
     Rr_GenericPipeline *OverridePipeline;
-    Rr_Bool EnableTextRendering;
 };
 
-extern Rr_GraphicsNode *Rr_AddGraphicsNode(
+extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     Rr_GraphicsNodeInfo *Info,
-    char *GlobalsData);
+    char *GlobalsData,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount);
+
+/*
+ * Present Node
+ */
+
+typedef enum Rr_PresentMode
+{
+    RR_PRESENT_MODE_STRETCH,
+} Rr_PresentMode;
+
+typedef struct Rr_PresentNodeInfo Rr_PresentNodeInfo;
+struct Rr_PresentNodeInfo
+{
+    const char *Name;
+    Rr_PresentMode Mode;
+};
+
+extern Rr_GraphNode *Rr_AddPresentNode(
+    Rr_App *App,
+    Rr_PresentNodeInfo *Info,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount);
 
 /*
  * Builtin Commands
@@ -84,13 +99,13 @@ extern void Rr_DrawDefaultText(
 
 extern void Rr_DrawStaticMesh(
     Rr_App *App,
-    Rr_GraphicsNode *Node,
+    Rr_GraphNode *Node,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData);
 
 extern void Rr_DrawStaticMeshOverrideMaterials(
     Rr_App *App,
-    Rr_GraphicsNode *Node,
+    Rr_GraphNode *Node,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,

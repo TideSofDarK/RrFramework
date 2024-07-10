@@ -2,6 +2,7 @@
 
 #include "DemoAssets.inc"
 #include "DevTools.hxx"
+#include "Rr/Rr_Graph.h"
 
 #include <imgui/imgui.h>
 
@@ -325,7 +326,7 @@ public:
         Game->OnLoadingComplete();
     }
 
-    void DrawScene(Rr_GraphicsNode *Node)
+    void DrawScene(Rr_GraphNode *Node)
     {
         const auto Time = static_cast<float>((Rr_GetTimeSeconds(App) * 2.0));
 
@@ -484,7 +485,6 @@ public:
             .Viewport = { 0, 0, 1024, 1024 },
             .BasePipeline = Uber3DPipeline.GenericPipeline,
             .OverridePipeline = nullptr,
-            .EnableTextRendering = false,
         };
         SShadowPassPipeline::SGlobals TestGlobals = {
             .View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
@@ -496,10 +496,12 @@ public:
                 -1000.0f,
                 1000.0f),
         };
-        Rr_GraphicsNode *TestNode = Rr_AddGraphicsNode(
+        Rr_GraphNode *TestNode = Rr_AddGraphicsNode(
             App,
             &TestNodeInfo,
-            reinterpret_cast<char *>(&TestGlobals));
+            reinterpret_cast<char *>(&TestGlobals),
+            nullptr,
+            0);
 
         Rr_GraphicsNodeInfo ShadowNodeInfo = {
             .Name = "shadow_pass",
@@ -509,7 +511,6 @@ public:
             .Viewport = { 0, 0, 1024, 1024 },
             .BasePipeline = ShadowPipeline.GenericPipeline,
             .OverridePipeline = ShadowPipeline.GenericPipeline,
-            .EnableTextRendering = false,
         };
         SShadowPassPipeline::SGlobals ShadowGlobals = {
             .View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
@@ -521,12 +522,14 @@ public:
                 -1000.0f,
                 1000.0f),
         };
-        Rr_GraphicsNode *ShadowNode = Rr_AddGraphicsNode(
+        Rr_GraphNode *ShadowNode = Rr_AddGraphicsNode(
             App,
             &ShadowNodeInfo,
-            reinterpret_cast<char *>(&ShadowGlobals));
+            reinterpret_cast<char *>(&ShadowGlobals),
+            nullptr,
+            0);
 
-        // std::array PassDependencies = { TestPass, ShadowPass };
+        std::array PassDependencies = { TestNode, ShadowNode };
 
         Rr_GraphicsNodeInfo NodeInfo = {
             .Name = "pbr_pass",
@@ -536,12 +539,21 @@ public:
             .Viewport = {},
             .BasePipeline = Uber3DPipeline.GenericPipeline,
             .OverridePipeline = nullptr,
-            .EnableTextRendering = true,
         };
-        Rr_GraphicsNode *Node = Rr_AddGraphicsNode(
+        Rr_GraphNode *Node = Rr_AddGraphicsNode(
             App,
             &NodeInfo,
-            reinterpret_cast<char *>(&ShaderGlobals));
+            reinterpret_cast<char *>(&ShaderGlobals),
+            PassDependencies.data(),
+            PassDependencies.size());
+
+        Rr_PresentNodeInfo PresentInfo = {
+            .Name = "present",
+            .Mode = RR_PRESENT_MODE_STRETCH,
+        };
+
+        /* @TODO: Add dependencies later! */
+        Rr_AddPresentNode(App, &PresentInfo, nullptr, 0);
 
         if (IsLoaded)
         {

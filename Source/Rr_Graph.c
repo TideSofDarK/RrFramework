@@ -1,6 +1,7 @@
 #include "Rr_Graph.h"
 
 #include "Rr/Rr_Defines.h"
+#include "Rr/Rr_Graph.h"
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
@@ -12,42 +13,100 @@
 #include <qsort/qsort-inline.h>
 
 #include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_assert.h>
 
-Rr_GraphicsNode *Rr_AddGraphicsNode(
+static inline void Rr_CopyDependencies(
+    Rr_GraphNode *GraphNode,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount,
+    Rr_Arena *Arena)
+{
+    RR_SLICE_RESERVE(&GraphNode->Dependencies, DependencyCount, Arena);
+    memcpy(
+        GraphNode->Dependencies.Data,
+        Dependencies,
+        sizeof(Rr_GraphNode *) * DependencyCount);
+    GraphNode->Dependencies.Length = DependencyCount;
+    GraphNode->Dependencies.Capacity = DependencyCount;
+}
+
+Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     Rr_GraphicsNodeInfo *Info,
-    char *GlobalsData)
+    char *GlobalsData,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphNode *GraphPass = RR_SLICE_PUSH(&Graph->PassesSlice, &Frame->Arena);
-    GraphPass->Type = RR_PASS_TYPE_DRAW;
-    Rr_GraphicsNode *Pass = &GraphPass->Union.GraphicsNode;
-    *Pass = (Rr_GraphicsNode){
+    Rr_GraphNode *GraphNode = RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena);
+    Rr_CopyDependencies(
+        GraphNode,
+        Dependencies,
+        DependencyCount,
+        &Frame->Arena);
+    GraphNode->Type = RR_PASS_TYPE_DRAW;
+
+    Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
+    *GraphicsNode = (Rr_GraphicsNode){
         .Info = *Info,
     };
 
-    if (Pass->Info.DrawTarget == NULL)
+    if (GraphicsNode->Info.DrawTarget == NULL)
     {
-        Pass->Info.DrawTarget = Renderer->DrawTarget;
-        Pass->Info.Viewport.Width = (int32_t)Renderer->SwapchainSize.width;
-        Pass->Info.Viewport.Height = (int32_t)Renderer->SwapchainSize.height;
+        GraphicsNode->Info.DrawTarget = Renderer->DrawTarget;
+        GraphicsNode->Info.Viewport.Width =
+            (int32_t)Renderer->SwapchainSize.width;
+        GraphicsNode->Info.Viewport.Height =
+            (int32_t)Renderer->SwapchainSize.height;
     }
 
-    memcpy(Pass->GlobalsData, GlobalsData, Info->BasePipeline->Sizes.Globals);
+    memcpy(
+        GraphicsNode->GlobalsData,
+        GlobalsData,
+        Info->BasePipeline->Sizes.Globals);
 
-    return Pass;
+    return GraphNode;
+}
+
+Rr_GraphNode *Rr_AddPresentNode(
+    Rr_App *App,
+    Rr_PresentNodeInfo *Info,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_Graph *Graph = &Frame->Graph;
+
+    Rr_GraphNode *GraphNode = RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena);
+    Rr_CopyDependencies(
+        GraphNode,
+        Dependencies,
+        DependencyCount,
+        &Frame->Arena);
+    GraphNode->Type = RR_PASS_TYPE_PRESENT;
+
+    Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
+    *PresentNode = (Rr_PresentNode){
+        .Info = *Info,
+    };
+
+    return GraphNode;
 }
 
 void Rr_DrawStaticMesh(
     Rr_App *App,
-    Rr_GraphicsNode *Node,
+    Rr_GraphNode *Node,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
+    SDL_assert(Node->Type == RR_PASS_TYPE_DRAW);
+
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
@@ -55,12 +114,13 @@ void Rr_DrawStaticMesh(
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&Node->DrawPrimitivesSlice, &Frame->Arena) =
-            (Rr_DrawPrimitiveInfo){
-                .PerDrawOffset = Offset,
-                .Primitive = StaticMesh->Primitives[PrimitiveIndex],
-                .Material = StaticMesh->Materials[PrimitiveIndex],
-            };
+        *RR_SLICE_PUSH(
+            &Node->Union.GraphicsNode.DrawPrimitivesSlice,
+            &Frame->Arena) = (Rr_DrawPrimitiveInfo){
+            .PerDrawOffset = Offset,
+            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+            .Material = StaticMesh->Materials[PrimitiveIndex],
+        };
     }
 
     Rr_CopyToMappedUniformBuffer(
@@ -72,12 +132,14 @@ void Rr_DrawStaticMesh(
 
 void Rr_DrawStaticMeshOverrideMaterials(
     Rr_App *App,
-    Rr_GraphicsNode *Node,
+    Rr_GraphNode *Node,
     Rr_Material **OverrideMaterials,
     size_t OverrideMaterialCount,
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
+    SDL_assert(Node->Type == RR_PASS_TYPE_DRAW);
+
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
@@ -85,14 +147,15 @@ void Rr_DrawStaticMeshOverrideMaterials(
     for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
          ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&Node->DrawPrimitivesSlice, &Frame->Arena) =
-            (Rr_DrawPrimitiveInfo){
-                .PerDrawOffset = Offset,
-                .Primitive = StaticMesh->Primitives[PrimitiveIndex],
-                .Material = PrimitiveIndex < OverrideMaterialCount
-                                ? OverrideMaterials[PrimitiveIndex]
-                                : NULL,
-            };
+        *RR_SLICE_PUSH(
+            &Node->Union.GraphicsNode.DrawPrimitivesSlice,
+            &Frame->Arena) = (Rr_DrawPrimitiveInfo){
+            .PerDrawOffset = Offset,
+            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+            .Material = PrimitiveIndex < OverrideMaterialCount
+                            ? OverrideMaterials[PrimitiveIndex]
+                            : NULL,
+        };
     }
 
     Rr_CopyToMappedUniformBuffer(
@@ -105,9 +168,9 @@ void Rr_DrawStaticMeshOverrideMaterials(
 static void Rr_DrawText(Rr_App *App, Rr_DrawTextInfo *Info)
 {
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
-    Rr_BuiltinNode *Pass = &Frame->Graph.BuiltinPass;
+    Rr_BuiltinNode *BuiltinNode = &Frame->Graph.BuiltinPass;
     Rr_DrawTextInfo *NewInfo =
-        RR_SLICE_PUSH(&Pass->DrawTextsSlice, &Frame->Arena);
+        RR_SLICE_PUSH(&BuiltinNode->DrawTextsSlice, &Frame->Arena);
     *NewInfo = *Info;
     if (NewInfo->Font == NULL)
     {
@@ -465,7 +528,7 @@ static void Rr_RenderGeneric(
         }
 
         /* Raw offset should be enough to differentiate between draws
-         * however note that each draw size needs its own descriptor set.*/
+         * however note that each PerDraw size needs its own descriptor set.*/
         if (BoundPerDrawOffset != Info->PerDrawOffset)
         {
             BoundPerDrawOffset = Info->PerDrawOffset;
@@ -754,10 +817,29 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
 
-    for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->PassesSlice);
-         ++Index)
+    size_t NodeCount = RR_SLICE_LENGTH(&Graph->NodesSlice);
+    if (NodeCount == 0)
     {
-        Rr_GraphNode *GraphPass = Graph->PassesSlice.Data + Index;
+        Rr_LogAbort("Graph doesn't contain any nodes!");
+    }
+
+    Rr_GraphNode *PresentNode = NULL;
+    for (size_t Index = NodeCount - 1; Index >= 0; --Index)
+    {
+        if (Graph->NodesSlice.Data[Index].Type == RR_PASS_TYPE_PRESENT)
+        {
+            PresentNode = Graph->NodesSlice.Data + Index;
+            break;
+        }
+    }
+    if (PresentNode == NULL)
+    {
+        Rr_LogAbort("Graph doesn't contain present node!");
+    }
+
+    for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->NodesSlice); ++Index)
+    {
+        Rr_GraphNode *GraphPass = Graph->NodesSlice.Data + Index;
 
         switch (GraphPass->Type)
         {
@@ -804,39 +886,120 @@ struct Rr_ImageSync
     VkImageLayout Layout;
 };
 
-static void Rr_SyncImage(
+inline static Rr_Bool Rr_ImageBatchPossible(Rr_Graph *Graph, Rr_Image *Image)
+{
+    Rr_ImageSync **State = (Rr_ImageSync **)
+        Rr_MapUpsert(&Graph->Batch.SyncMap, (uintptr_t)Image, NULL);
+
+    if (State != NULL)
+    {
+        /* @TODO: Should be true if for example current batch state matches
+         * requested state. */
+        return RR_FALSE;
+    }
+
+    return RR_TRUE;
+}
+
+static Rr_Bool Rr_SyncImage(
     Rr_App *App,
     Rr_Graph *Graph,
     Rr_Image *Image,
+    VkImageAspectFlags AspectMask,
     VkPipelineStageFlags StageMask,
     VkAccessFlags AccessMask,
     VkImageLayout Layout)
 {
+    if (Image == NULL)
+    {
+        return RR_TRUE;
+    }
+
+    if (!Rr_ImageBatchPossible(Graph, Image))
+    {
+        return RR_FALSE;
+    }
+
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
 
     Rr_ImageSync **State = (Rr_ImageSync **)
-        Rr_MapUpsert(&Graph->ImageStateMap, (uintptr_t)Image, &Frame->Arena);
+        Rr_MapUpsert(&Graph->GlobalSyncMap, (uintptr_t)Image, &Frame->Arena);
 
-    if (*State == NULL)
+    VkImageSubresourceRange SubresourceRange =
+        GetImageSubresourceRange(AspectMask);
+
+    if (*State == NULL) /* First time referencing this image. */
     {
-        /* First time referencing this image. */
+        *RR_SLICE_PUSH(&Graph->Batch.ImageBarriersSlice, &Frame->Arena) =
+            (VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .srcAccessMask = 0,
+                .dstAccessMask = AccessMask,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = Layout,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = Image->Handle,
+                .subresourceRange = SubresourceRange,
+            };
     }
-    else
+    else /* Syncing with previous state. */
     {
+        Rr_ImageSync *OldState = *State;
+
+        *RR_SLICE_PUSH(&Graph->Batch.ImageBarriersSlice, &Frame->Arena) =
+            (VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .srcAccessMask = OldState->AccessMask,
+                .dstAccessMask = AccessMask,
+                .oldLayout = OldState->Layout,
+                .newLayout = Layout,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = Image->Handle,
+                .subresourceRange = SubresourceRange,
+            };
     }
+
+    Graph->Batch.StageMask |= StageMask;
+
+    return RR_TRUE;
 }
 
-static void Rr_SyncDrawTarget(
+Rr_Bool Rr_BatchGraphicsNode(
     Rr_App *App,
     Rr_Graph *Graph,
-    Rr_DrawTarget *DrawTarget)
+    Rr_GraphicsNode *Node)
 {
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
 
-    if (DrawTarget->ColorImage)
+    Rr_DrawTarget *DrawTarget = Node->Info.DrawTarget;
+
+    if (Rr_SyncImage(
+            App,
+            Graph,
+            DrawTarget->ColorImage,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != RR_TRUE ||
+        Rr_SyncImage(
+            App,
+            Graph,
+            DrawTarget->DepthImage,
+            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != RR_TRUE)
     {
+        return RR_FALSE;
     }
-    // Graph->ImageBarrierMap
+
+    return RR_TRUE;
 }
 
 void Rr_ExecuteGraphicsNode(
@@ -868,16 +1031,6 @@ void Rr_ExecuteGraphicsNode(
             &Node->Info,
             Node->GlobalsData,
             Scratch.Arena);
-
-    Rr_TextRenderingContext TextRenderingContext;
-    if (Node->Info.EnableTextRendering)
-    {
-        TextRenderingContext = Rr_MakeTextRenderingContext(
-            App,
-            &UploadContext,
-            (VkExtent2D){ .width = Viewport.Width, .height = Viewport.Height },
-            Scratch.Arena);
-    }
 
     /* Line up appropriate clear values. */
 

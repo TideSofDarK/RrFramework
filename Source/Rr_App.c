@@ -218,9 +218,6 @@ Rr_IntVec2 Rr_GetDefaultWindowSize()
     };
 }
 
-RR_TYPEDEF_MAP(const char *, Rr_Map);
-#include "Rr_Memory.h"
-
 void Rr_Run(Rr_AppConfig *Config)
 {
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);

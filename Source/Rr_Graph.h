@@ -56,6 +56,7 @@ struct Rr_BuiltinNode
     Rr_DrawTextsSlice DrawTextsSlice;
 };
 
+typedef struct Rr_GraphicsNode Rr_GraphicsNode;
 struct Rr_GraphicsNode
 {
     Rr_GraphicsNodeInfo Info;
@@ -63,7 +64,12 @@ struct Rr_GraphicsNode
     char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
 };
 
-typedef struct Rr_GraphNode Rr_GraphNode;
+typedef struct Rr_PresentNode Rr_PresentNode;
+struct Rr_PresentNode
+{
+    Rr_PresentNodeInfo Info;
+};
+
 struct Rr_GraphNode
 {
     union
@@ -73,6 +79,7 @@ struct Rr_GraphNode
         Rr_PresentNode PresentNode;
     } Union;
     Rr_GraphNodeType Type;
+    RR_SLICE_TYPE(Rr_GraphNode *) Dependencies;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
@@ -84,13 +91,25 @@ struct Rr_GraphEdge
 
 struct Rr_Graph
 {
-    Rr_Map *ImageStateMap;
-    // RR_SLICE_TYPE(Rr_GraphEdge) AdjList;
-    // Rr_ImageBarrierMap ImageBarrierMap;
+    /* Nodes */
 
-    RR_SLICE_TYPE(Rr_GraphNode) PassesSlice;
-
+    RR_SLICE_TYPE(Rr_GraphNode) NodesSlice;
     Rr_BuiltinNode BuiltinPass;
+
+    /* Global State */
+
+    VkPipelineStageFlags StageMask;
+    Rr_Map *GlobalSyncMap;
+
+    /* Batch State */
+
+    struct {
+        RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
+        RR_SLICE_TYPE(VkImageMemoryBarrier) ImageBarriersSlice;
+        RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriersSlice;
+        VkPipelineStageFlags StageMask;
+        Rr_Map *SyncMap;
+    } Batch;
 };
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
@@ -100,6 +119,11 @@ extern void Rr_ExecutePresentNode(
     Rr_Graph *Graph,
     Rr_PresentNode *Node,
     Rr_Arena *Arena);
+
+extern Rr_Bool Rr_BatchGraphicsNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_GraphicsNode *Node);
 
 extern void Rr_ExecuteGraphicsNode(
     Rr_App *App,
