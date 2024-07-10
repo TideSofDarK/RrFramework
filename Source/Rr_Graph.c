@@ -19,7 +19,7 @@
 #include <SDL3/SDL_assert.h>
 #include <SDL3/SDL_timer.h>
 
-static inline void Rr_CopyDependencies(
+static void Rr_CopyDependencies(
     Rr_GraphNode *GraphNode,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount,
@@ -31,7 +31,10 @@ static inline void Rr_CopyDependencies(
         Dependencies,
         sizeof(Rr_GraphNode *) * DependencyCount);
     GraphNode->Dependencies.Length = DependencyCount;
-    GraphNode->Dependencies.Capacity = DependencyCount;
+    // for (size_t Index = 0; Index < DependencyCount; ++Index)
+    // {
+    //     *RR_SLICE_PUSH(&GraphNode->Dependencies, Arena) = Dependencies[Index];
+    // }
 }
 
 Rr_GraphNode *Rr_AddGraphicsNode(
@@ -46,7 +49,9 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphNode *GraphNode = RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena);
+    Rr_GraphNode *GraphNode = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
+    *RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena) = GraphNode;
+
     Rr_CopyDependencies(
         GraphNode,
         Dependencies,
@@ -87,7 +92,9 @@ Rr_GraphNode *Rr_AddPresentNode(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphNode *GraphNode = RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena);
+    Rr_GraphNode *GraphNode = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
+    *RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena) = GraphNode;
+
     Rr_CopyDependencies(
         GraphNode,
         Dependencies,
@@ -113,7 +120,9 @@ Rr_GraphNode *Rr_AddBuiltinNode(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphNode *GraphNode = RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena);
+    Rr_GraphNode *GraphNode = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
+    *RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena) = GraphNode;
+
     Rr_CopyDependencies(
         GraphNode,
         Dependencies,
@@ -640,6 +649,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph)
                 Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
                 Rr_ExecuteGraphicsNode(App, Graph, GraphicsNode, NULL);
             }
+            break;
             case RR_GRAPH_NODE_TYPE_PRESENT:
             {
                 Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
@@ -725,7 +735,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->NodesSlice);
              ++Index)
         {
-            Rr_GraphNode *GraphNode = Graph->NodesSlice.Data + Index;
+            Rr_GraphNode *GraphNode = Graph->NodesSlice.Data[Index];
 
             if (GraphNode->Executed == RR_TRUE)
             {
@@ -744,6 +754,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                 if (Dependency->Executed != RR_TRUE)
                 {
                     DependenciesResolved = RR_FALSE;
+                    break;
                 }
             }
             if (DependenciesResolved != RR_TRUE)
@@ -788,7 +799,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             }
             if (NodeBatched)
             {
-                *RR_SLICE_PUSH(&Graph->Batch.NodesSlice, Graph->Batch.Arena) = GraphNode;
+                *RR_SLICE_PUSH(&Graph->Batch.NodesSlice, Graph->Batch.Arena) =
+                    GraphNode;
             }
         }
 

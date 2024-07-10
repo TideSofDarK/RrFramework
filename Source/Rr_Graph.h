@@ -72,7 +72,8 @@ struct Rr_GraphNode
     } Union;
     Rr_GraphNodeType Type;
     RR_SLICE_TYPE(Rr_GraphNode *) Dependencies;
-    Rr_Bool Executed;
+    // Rr_Bool Executed;
+    uint32_t Executed;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
@@ -86,7 +87,7 @@ struct Rr_Graph
 {
     /* Nodes */
 
-    RR_SLICE_TYPE(Rr_GraphNode) NodesSlice;
+    RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
 
     /* Global State */
 
