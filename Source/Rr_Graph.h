@@ -18,9 +18,12 @@ struct Rr_ImageSync
 
 struct Rr_DrawTarget
 {
-    Rr_Image *ColorImage;
-    Rr_Image *DepthImage;
-    VkFramebuffer Framebuffer;
+    struct
+    {
+        Rr_Image *ColorImage;
+        Rr_Image *DepthImage;
+        VkFramebuffer Framebuffer;
+    } Frames[RR_FRAME_OVERLAP];
 };
 
 typedef struct Rr_DrawPrimitiveInfo Rr_DrawPrimitiveInfo;

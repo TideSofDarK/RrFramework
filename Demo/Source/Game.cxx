@@ -530,6 +530,7 @@ public:
             0);
 
         std::array NodeDependencies = { TestNode, ShadowNode };
+        // std::array<Rr_GraphNode *, 0> NodeDependencies{};
 
         Rr_GraphicsNodeInfo NodeInfo = {
             .Name = "pbr_pass",
@@ -559,8 +560,8 @@ public:
 
         if (IsLoaded)
         {
-            // DrawScene(ShadowNode);
-            // DrawScene(TestNode);
+            DrawScene(ShadowNode);
+            DrawScene(TestNode);
 
             SUnlitPipeline::SPerDraw ArrowDraw = {};
             ArrowDraw.Model = Rr_EulerXYZ(LightRotation);

@@ -270,7 +270,7 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     Rr_Bool DrawTargetDirty = RR_TRUE;
     if (Renderer->DrawTarget != NULL)
     {
-        VkExtent3D Extent = Renderer->DrawTarget->ColorImage->Extent;
+        VkExtent3D Extent = Renderer->DrawTarget->Frames[0].ColorImage->Extent;
         if (*Width <= Extent.width || *Height <= Extent.height)
         {
             DrawTargetDirty = RR_FALSE;
@@ -1294,45 +1294,6 @@ void Rr_Draw(Rr_App *App)
     VkCommandBufferBeginInfo CommandBufferBeginInfo =
         GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
-
-    /* Rendering */
-
-    Rr_Image *ColorImage = Renderer->DrawTarget->ColorImage;
-    Rr_Image *DepthImage = Renderer->DrawTarget->DepthImage;
-
-    Rr_ImageBarrier ColorImageTransition = {
-        .CommandBuffer = CommandBuffer,
-        .Image = ColorImage->Handle,
-        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_TRANSFER_READ_BIT |
-                      VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-                      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT |
-                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    };
-
-    Rr_ImageBarrier DepthImageTransition = {
-        .CommandBuffer = CommandBuffer,
-        .Image = DepthImage->Handle,
-        .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-                      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-        .StageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-    };
-
-    Rr_ChainImageBarrier(
-        &ColorImageTransition,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    Rr_ChainImageBarrier(
-        &DepthImageTransition,
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     /* Execute Frame Graph */
 

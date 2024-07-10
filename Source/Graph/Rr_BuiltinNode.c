@@ -269,7 +269,7 @@ Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_BuiltinNode *Node)
     if (Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->ColorImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
@@ -278,7 +278,7 @@ Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_BuiltinNode *Node)
         Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->DepthImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
@@ -307,8 +307,8 @@ void Rr_ExecuteBuiltinNode(
     Rr_IntVec4 Viewport = {
         0,
         0,
-        (int32_t)DrawTarget->ColorImage->Extent.width,
-        (int32_t)DrawTarget->ColorImage->Extent.height,
+        (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Extent.width,
+        (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Extent.height,
     };
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
@@ -336,7 +336,7 @@ void Rr_ExecuteBuiltinNode(
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
-        .framebuffer = DrawTarget->Framebuffer,
+        .framebuffer = DrawTarget->Frames[App->Renderer.CurrentFrameIndex].Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
                                   { Viewport.Z, Viewport.W } },
         .renderPass = Renderer->RenderPasses.ColorDepthLoad,

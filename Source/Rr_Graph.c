@@ -33,7 +33,8 @@ static void Rr_CopyDependencies(
     GraphNode->Dependencies.Length = DependencyCount;
     // for (size_t Index = 0; Index < DependencyCount; ++Index)
     // {
-    //     *RR_SLICE_PUSH(&GraphNode->Dependencies, Arena) = Dependencies[Index];
+    //     *RR_SLICE_PUSH(&GraphNode->Dependencies, Arena) =
+    //     Dependencies[Index];
     // }
 }
 
@@ -49,7 +50,8 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphNode *GraphNode = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
+    Rr_GraphNode *GraphNode =
+        RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
     *RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena) = GraphNode;
 
     Rr_CopyDependencies(
@@ -92,7 +94,8 @@ Rr_GraphNode *Rr_AddPresentNode(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphNode *GraphNode = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
+    Rr_GraphNode *GraphNode =
+        RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
     *RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena) = GraphNode;
 
     Rr_CopyDependencies(
@@ -120,7 +123,8 @@ Rr_GraphNode *Rr_AddBuiltinNode(
 
     Rr_Graph *Graph = &Frame->Graph;
 
-    Rr_GraphNode *GraphNode = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
+    Rr_GraphNode *GraphNode =
+        RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
     *RR_SLICE_PUSH(&Graph->NodesSlice, &Frame->Arena) = GraphNode;
 
     Rr_CopyDependencies(
@@ -269,28 +273,34 @@ Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height)
 
     Rr_DrawTarget *DrawTarget = Rr_CreateObject(&App->ObjectStorage);
 
-    DrawTarget->ColorImage = Rr_CreateColorAttachmentImage(App, Width, Height);
-    DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    {
+        Rr_Image *ColorImage =
+            Rr_CreateColorAttachmentImage(App, Width, Height);
+        Rr_Image *DepthImage =
+            Rr_CreateDepthAttachmentImage(App, Width, Height);
 
-    VkImageView Attachments[] = { DrawTarget->ColorImage->View,
-                                  DrawTarget->DepthImage->View };
+        VkImageView Attachments[] = { ColorImage->View, DepthImage->View };
 
-    VkFramebufferCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .renderPass = Renderer->RenderPasses.ColorDepth,
-        .height = Height,
-        .width = Width,
-        .layers = 1,
-        .attachmentCount = SDL_arraysize(Attachments),
-        .pAttachments = Attachments,
-    };
-    vkCreateFramebuffer(
-        Renderer->Device,
-        &Info,
-        NULL,
-        &DrawTarget->Framebuffer);
+        VkFramebufferCreateInfo Info = {
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+            .renderPass = Renderer->RenderPasses.ColorDepth,
+            .height = Height,
+            .width = Width,
+            .layers = 1,
+            .attachmentCount = SDL_arraysize(Attachments),
+            .pAttachments = Attachments,
+        };
+        vkCreateFramebuffer(
+            Renderer->Device,
+            &Info,
+            NULL,
+            &DrawTarget->Frames[Index].Framebuffer);
+        DrawTarget->Frames[Index].ColorImage = ColorImage;
+        DrawTarget->Frames[Index].DepthImage = DepthImage;
+    }
 
     return DrawTarget;
 }
@@ -304,26 +314,31 @@ Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(
 
     Rr_DrawTarget *DrawTarget = Rr_CreateObject(&App->ObjectStorage);
 
-    DrawTarget->DepthImage = Rr_CreateDepthAttachmentImage(App, Width, Height);
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    {
+        Rr_Image *DepthImage =
+            Rr_CreateDepthAttachmentImage(App, Width, Height);
 
-    VkImageView Attachments[] = { DrawTarget->DepthImage->View };
+        VkImageView Attachments[] = { DepthImage->View };
 
-    VkFramebufferCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .renderPass = Renderer->RenderPasses.Depth,
-        .height = Height,
-        .width = Width,
-        .layers = 1,
-        .attachmentCount = SDL_arraysize(Attachments),
-        .pAttachments = Attachments,
-    };
-    vkCreateFramebuffer(
-        Renderer->Device,
-        &Info,
-        NULL,
-        &DrawTarget->Framebuffer);
+        VkFramebufferCreateInfo Info = {
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+            .renderPass = Renderer->RenderPasses.Depth,
+            .height = Height,
+            .width = Width,
+            .layers = 1,
+            .attachmentCount = SDL_arraysize(Attachments),
+            .pAttachments = Attachments,
+        };
+        vkCreateFramebuffer(
+            Renderer->Device,
+            &Info,
+            NULL,
+            &DrawTarget->Frames[Index].Framebuffer);
+        DrawTarget->Frames[Index].DepthImage = DepthImage;
+    }
 
     return DrawTarget;
 }
@@ -337,10 +352,13 @@ void Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget)
 
     Rr_Renderer *Renderer = &App->Renderer;
 
-    vkDestroyFramebuffer(Renderer->Device, DrawTarget->Framebuffer, NULL);
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    {
+        vkDestroyFramebuffer(Renderer->Device, DrawTarget->Frames[Index].Framebuffer, NULL);
 
-    Rr_DestroyImage(App, DrawTarget->ColorImage);
-    Rr_DestroyImage(App, DrawTarget->DepthImage);
+        Rr_DestroyImage(App, DrawTarget->Frames[Index].ColorImage);
+        Rr_DestroyImage(App, DrawTarget->Frames[Index].DepthImage);
+    }
 
     Rr_DestroyObject(&App->ObjectStorage, DrawTarget);
 }
@@ -605,7 +623,7 @@ static void Rr_RenderGeneric(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena* Arena)
+static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
@@ -912,7 +930,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
     if (Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->ColorImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT |
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -922,7 +940,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
         Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->DepthImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
@@ -962,11 +980,11 @@ void Rr_ExecutePresentNode(
         VkRenderPassBeginInfo RenderPassBeginInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .renderPass = Renderer->RenderPasses.ColorDepthLoad,
-            .framebuffer = Renderer->DrawTarget->Framebuffer,
+            .framebuffer = Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
             .renderArea.extent.width =
-                Renderer->DrawTarget->ColorImage->Extent.width,
+                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Extent.width,
             .renderArea.extent.height =
-                Renderer->DrawTarget->ColorImage->Extent.height,
+                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Extent.height,
             .clearValueCount = 0,
             .pClearValues = NULL,
         };
@@ -985,7 +1003,7 @@ void Rr_ExecutePresentNode(
 
     Rr_ImageBarrier ColorImageTransition = {
         .CommandBuffer = CommandBuffer,
-        .Image = DrawTarget->ColorImage->Handle,
+        .Image = DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Handle,
         .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .AccessMask = VK_ACCESS_TRANSFER_READ_BIT |
                       VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
@@ -1016,7 +1034,7 @@ void Rr_ExecutePresentNode(
 
     Rr_BlitColorImage(
         CommandBuffer,
-        DrawTarget->ColorImage->Handle,
+        DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Handle,
         Graph->SwapchainImage,
         Renderer->SwapchainSize,
         Renderer->SwapchainSize);
@@ -1035,11 +1053,11 @@ Rr_Bool Rr_BatchGraphicsNode(
 {
     Rr_DrawTarget *DrawTarget = Node->Info.DrawTarget;
 
-    if (DrawTarget->ColorImage &&
+    if (DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage &&
         Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->ColorImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
@@ -1049,11 +1067,11 @@ Rr_Bool Rr_BatchGraphicsNode(
         return RR_FALSE;
     }
 
-    if (DrawTarget->DepthImage &&
+    if (DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage &&
         Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->DepthImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
@@ -1114,7 +1132,7 @@ void Rr_ExecuteGraphicsNode(
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
-        .framebuffer = DrawTarget->Framebuffer,
+        .framebuffer = DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
                                   { Viewport.Z, Viewport.W } },
         .renderPass = Node->Info.BasePipeline->Pipeline->RenderPass,
