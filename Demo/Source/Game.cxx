@@ -486,16 +486,16 @@ public:
             .BasePipeline = Uber3DPipeline.GenericPipeline,
             .OverridePipeline = nullptr,
         };
-        SShadowPassPipeline::SGlobals TestGlobals = {
-            .View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
-            .Proj = Rr_Orthographic_LH_ZO(
-                -512 * 0.05f,
-                512 * 0.05f,
-                -512 * 0.05f,
-                512 * 0.05f,
-                -1000.0f,
-                1000.0f),
-        };
+        SUber3DGlobals TestGlobals = ShaderGlobals;
+        TestGlobals.View =
+            Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
+        TestGlobals.Proj = Rr_Orthographic_LH_ZO(
+            -512 * 0.05f,
+            512 * 0.05f,
+            -512 * 0.05f,
+            512 * 0.05f,
+            -1000.0f,
+            1000.0f);
         Rr_GraphNode *TestNode = Rr_AddGraphicsNode(
             App,
             &TestNodeInfo,
