@@ -605,8 +605,10 @@ static void Rr_RenderGeneric(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph)
+static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena* Arena)
 {
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
@@ -647,19 +649,19 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph)
             case RR_GRAPH_NODE_TYPE_GRAPHICS:
             {
                 Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
-                Rr_ExecuteGraphicsNode(App, Graph, GraphicsNode, NULL);
+                Rr_ExecuteGraphicsNode(App, Graph, GraphicsNode, Scratch.Arena);
             }
             break;
             case RR_GRAPH_NODE_TYPE_PRESENT:
             {
                 Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
-                Rr_ExecutePresentNode(App, Graph, PresentNode, NULL);
+                Rr_ExecutePresentNode(App, Graph, PresentNode, Scratch.Arena);
             }
             break;
             case RR_GRAPH_NODE_TYPE_BUILTIN:
             {
                 Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
-                Rr_ExecuteBuiltinNode(App, Graph, BuiltinNode, NULL);
+                Rr_ExecuteBuiltinNode(App, Graph, BuiltinNode, Scratch.Arena);
             }
             break;
             default:
@@ -673,6 +675,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph)
     }
 
     /* Apply batch state. */
+    /* @TODO: Account for node specific transitions. */
 
     Graph->StageMask = Graph->Batch.StageMask;
     for (size_t Index = 0; Index < ImageBarrierCount; ++Index)
@@ -694,11 +697,13 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph)
 
     /* Reset batch state. */
 
-    RR_SLICE_EMPTY(&Graph->Batch.ImageBarriersSlice);
-    RR_SLICE_EMPTY(&Graph->Batch.BufferBarriersSlice);
-    RR_SLICE_EMPTY(&Graph->Batch.NodesSlice);
+    RR_ZERO(Graph->Batch.ImageBarriersSlice);
+    RR_ZERO(Graph->Batch.BufferBarriersSlice);
+    RR_ZERO(Graph->Batch.NodesSlice);
     Graph->Batch.StageMask = 0;
     Graph->Batch.SyncMap = NULL;
+
+    Rr_DestroyArenaScratch(Scratch);
 }
 
 void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
@@ -708,20 +713,6 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     {
         Rr_LogAbort("Graph doesn't contain any nodes!");
     }
-
-    // Rr_GraphNode *PresentNode = NULL;
-    // for (size_t Index = NodeCount - 1; Index >= 0; --Index)
-    // {
-    //     if (Graph->NodesSlice.Data[Index].Type == RR_GRAPH_NODE_TYPE_PRESENT)
-    //     {
-    //         PresentNode = Graph->NodesSlice.Data + Index;
-    //         break;
-    //     }
-    // }
-    // if (PresentNode == NULL)
-    // {
-    //     Rr_LogAbort("Graph doesn't contain present node!");
-    // }
 
     size_t Counter = 0;
     while (RR_TRUE)
@@ -804,7 +795,12 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             }
         }
 
-        Rr_ExecuteGraphBatch(App, Graph);
+        if (RR_SLICE_LENGTH(&Graph->NodesSlice) == 0)
+        {
+            Rr_LogAbort("Couldn't batch graph nodes, probably invalid graph!");
+        }
+
+        Rr_ExecuteGraphBatch(App, Graph, Scratch.Arena);
 
         Rr_DestroyArenaScratch(Scratch);
 
@@ -927,7 +923,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
             App,
             Graph,
             DrawTarget->DepthImage->Handle,
-            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,

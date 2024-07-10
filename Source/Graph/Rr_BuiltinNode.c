@@ -279,7 +279,7 @@ Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_BuiltinNode *Node)
             App,
             Graph,
             DrawTarget->DepthImage->Handle,
-            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+            VK_IMAGE_ASPECT_DEPTH_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,

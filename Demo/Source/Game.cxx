@@ -559,8 +559,8 @@ public:
 
         if (IsLoaded)
         {
-            DrawScene(ShadowNode);
-            DrawScene(TestNode);
+            // DrawScene(ShadowNode);
+            // DrawScene(TestNode);
 
             SUnlitPipeline::SPerDraw ArrowDraw = {};
             ArrowDraw.Model = Rr_EulerXYZ(LightRotation);
