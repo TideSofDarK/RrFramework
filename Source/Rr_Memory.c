@@ -144,9 +144,9 @@ void Rr_SliceGrow(void *Slice, size_t Size, Rr_Arena *Arena)
     Replica.Capacity *= 2;
     Data = RR_ARENA_ALLOC_COUNT(Arena, Size, Replica.Capacity);
 
-    if (Replica.Length)
+    if (Replica.Count)
     {
-        memcpy(Data, Replica.Data, Size * Replica.Length);
+        memcpy(Data, Replica.Data, Size * Replica.Count);
     }
     Replica.Data = Data;
 
@@ -168,9 +168,9 @@ void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
     Replica.Capacity = Count;
     Data = RR_ARENA_ALLOC_COUNT(Arena, Size, Count);
 
-    if (Replica.Length)
+    if (Replica.Count)
     {
-        memcpy(Data, Replica.Data, Size * Replica.Length);
+        memcpy(Data, Replica.Data, Size * Replica.Count);
     }
     Replica.Data = Data;
 

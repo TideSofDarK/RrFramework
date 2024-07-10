@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Rr/Rr_Graph.h"
-#include "Rr/Rr_String.h"
-#include "Rr/Rr_Math.h"
 #include "../Rr_Memory.h"
 #include "../Rr_Text.h"
+#include "Rr/Rr_Graph.h"
+#include "Rr/Rr_Math.h"
+#include "Rr/Rr_String.h"
 
 typedef struct Rr_DrawTextInfo Rr_DrawTextInfo;
 struct Rr_DrawTextInfo

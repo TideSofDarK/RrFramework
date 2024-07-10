@@ -120,17 +120,17 @@ extern void Rr_SliceResize(
     struct                  \
     {                       \
         Type *Data;         \
-        size_t Length;      \
+        size_t Count;       \
         size_t Capacity;    \
     }
 
 #define RR_SLICE_PUSH(Slice, Arena)                                         \
-    ((Slice)->Length >= (Slice)->Capacity                                   \
+    ((Slice)->Count >= (Slice)->Capacity                                    \
      ? Rr_SliceGrow((Slice), sizeof(*(Slice)->Data), (Arena)), /* NOLINT */ \
-     (Slice)->Data + (Slice)->Length++                                      \
-     : (Slice)->Data + (Slice)->Length++)
+     (Slice)->Data + (Slice)->Count++                                       \
+     : (Slice)->Data + (Slice)->Count++)
 
-#define RR_SLICE_POP(Slice) (Slice)->Length > 0 ? (Slice)->Length-- : (void)0
+#define RR_SLICE_POP(Slice) (Slice)->Count > 0 ? (Slice)->Count-- : (void)0
 
 #define RR_SLICE_RESERVE(Slice, ElementCount, Arena) \
     ((Slice)->Capacity < (ElementCount)              \
@@ -141,17 +141,15 @@ extern void Rr_SliceResize(
                (Arena))                              \
          : (void)0)
 
-#define RR_SLICE_EMPTY(Slice) (Slice)->Length = 0
+#define RR_SLICE_EMPTY(Slice) (Slice)->Count = 0
 
-#define RR_SLICE_LENGTH(Slice) (Slice)->Length
-
-#define RR_SLICE_DUPLICATE(Dst, Src, Arena)       \
-    Rr_SliceReserve((Dst), (Src)->Length, Arena), \
-        (Dst)->Length = (Src)->Length,            \
-        SDL_memcpy(                               \
-            (Dst)->Data,                          \
-            (Src)->Data,                          \
-            sizeof(*(Dst)->Data) * (Src)->Length)
+#define RR_SLICE_DUPLICATE(Dst, Src, Arena)      \
+    Rr_SliceReserve((Dst), (Src)->Count, Arena), \
+        (Dst)->Count = (Src)->Count,             \
+        SDL_memcpy(                              \
+            (Dst)->Data,                         \
+            (Src)->Data,                         \
+            sizeof(*(Dst)->Data) * (Src)->Count)
 
 /*
  * Hashmap

@@ -290,8 +290,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                     OBJIndices[Index].Z--;
 
                     size_t ExistingOBJIndex = SIZE_MAX;
-                    for (size_t I = 0; I < RR_SLICE_LENGTH(&ScratchIndices);
-                         I++)
+                    for (size_t I = 0; I < ScratchIndices.Count; I++)
                     {
                         if (Rr_EqIV3(OBJIndices[Index], ScratchIndices.Data[I]))
                         {
@@ -321,9 +320,8 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
 
                         /* Add freshly added vertex index */
                         *RR_SLICE_PUSH(&RawMesh.IndicesSlice, Arena) =
-                            (Rr_MeshIndexType){
-                                RR_SLICE_LENGTH(&RawMesh.VerticesSlice) - 1
-                            };
+                            (Rr_MeshIndexType){ RawMesh.VerticesSlice.Count -
+                                                1 };
                     }
                     else
                     {
@@ -343,7 +341,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
     }
 
     Rr_CalculateTangents(
-        RawMesh.IndicesSlice.Length,
+        RawMesh.IndicesSlice.Count,
         RawMesh.IndicesSlice.Data,
         RawMesh.VerticesSlice.Data);
 
@@ -359,10 +357,9 @@ Rr_Primitive *Rr_CreatePrimitive(
 {
     Rr_Primitive *Primitive = Rr_CreateObject(&App->ObjectStorage);
 
-    Primitive->IndexCount = RR_SLICE_LENGTH(&RawMesh->IndicesSlice);
+    Primitive->IndexCount = RawMesh->IndicesSlice.Count;
 
-    size_t VertexBufferSize =
-        sizeof(Rr_Vertex) * RR_SLICE_LENGTH(&RawMesh->VerticesSlice);
+    size_t VertexBufferSize = sizeof(Rr_Vertex) * RawMesh->VerticesSlice.Count;
     size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
 
     Primitive->VertexBuffer = Rr_CreateBuffer(
@@ -610,10 +607,9 @@ void Rr_GetStaticMeshSizeOBJ(
 
     Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
-    size_t VertexBufferSize =
-        sizeof(Rr_Vertex) * RR_SLICE_LENGTH(&RawMesh.VerticesSlice);
+    size_t VertexBufferSize = sizeof(Rr_Vertex) * RawMesh.VerticesSlice.Count;
     size_t IndexBufferSize =
-        sizeof(Rr_MeshIndexType) * RR_SLICE_LENGTH(&RawMesh.IndicesSlice);
+        sizeof(Rr_MeshIndexType) * RawMesh.IndicesSlice.Count;
 
     OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
     OutLoadSize->BufferCount += 2;

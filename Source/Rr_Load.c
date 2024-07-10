@@ -657,7 +657,7 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
             break;
         }
 
-        if (LoadingThread->LoadingContextsSlice.Length == 0)
+        if (LoadingThread->LoadingContextsSlice.Count == 0)
         {
             continue;
         }
@@ -683,7 +683,7 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
 
         SDL_LockMutex(LoadingThread->Mutex);
         if (CurrentLoadingContextIndex >=
-            LoadingThread->LoadingContextsSlice.Length)
+            LoadingThread->LoadingContextsSlice.Count)
         {
             Rr_ResetArena(&LoadingThread->Arena);
             CurrentLoadingContextIndex = 0;

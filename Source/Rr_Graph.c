@@ -30,7 +30,7 @@ static void Rr_CopyDependencies(
         GraphNode->Dependencies.Data,
         Dependencies,
         sizeof(Rr_GraphNode *) * DependencyCount);
-    GraphNode->Dependencies.Length = DependencyCount;
+    GraphNode->Dependencies.Count = DependencyCount;
     // for (size_t Index = 0; Index < DependencyCount; ++Index)
     // {
     //     *RR_SLICE_PUSH(&GraphNode->Dependencies, Arena) =
@@ -354,7 +354,10 @@ void Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget)
 
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        vkDestroyFramebuffer(Renderer->Device, DrawTarget->Frames[Index].Framebuffer, NULL);
+        vkDestroyFramebuffer(
+            Renderer->Device,
+            DrawTarget->Frames[Index].Framebuffer,
+            NULL);
 
         Rr_DestroyImage(App, DrawTarget->Frames[Index].ColorImage);
         Rr_DestroyImage(App, DrawTarget->Frames[Index].DepthImage);
@@ -484,7 +487,7 @@ static void Rr_RenderGeneric(
 
     /* @TODO: Sort indices instead! */
     QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive)
-    (DrawPrimitivesSlice.Data, DrawPrimitivesSlice.Length);
+    (DrawPrimitivesSlice.Data, DrawPrimitivesSlice.Count);
 
     vkCmdBindDescriptorSets(
         CommandBuffer,
@@ -496,7 +499,7 @@ static void Rr_RenderGeneric(
         0,
         NULL);
 
-    for (size_t Index = 0; Index < DrawPrimitivesSlice.Length; ++Index)
+    for (size_t Index = 0; Index < DrawPrimitivesSlice.Count; ++Index)
     {
         Rr_DrawPrimitiveInfo *Info = DrawPrimitivesSlice.Data + Index;
 
@@ -633,10 +636,8 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
     /* Submit barriers. */
 
-    size_t ImageBarrierCount =
-        RR_SLICE_LENGTH(&Graph->Batch.ImageBarriersSlice);
-    size_t BufferBarrierCount =
-        RR_SLICE_LENGTH(&Graph->Batch.BufferBarriersSlice);
+    size_t ImageBarrierCount = Graph->Batch.ImageBarriersSlice.Count;
+    size_t BufferBarrierCount = Graph->Batch.BufferBarriersSlice.Count;
     if (ImageBarrierCount > 0 || BufferBarrierCount > 0)
     {
         if (Graph->StageMask == 0)
@@ -651,14 +652,13 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             0,
             0,
             NULL,
-            Graph->Batch.BufferBarriersSlice.Length,
+            Graph->Batch.BufferBarriersSlice.Count,
             Graph->Batch.BufferBarriersSlice.Data,
-            Graph->Batch.ImageBarriersSlice.Length,
+            Graph->Batch.ImageBarriersSlice.Count,
             Graph->Batch.ImageBarriersSlice.Data);
     }
 
-    for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->Batch.NodesSlice);
-         ++Index)
+    for (size_t Index = 0; Index < Graph->Batch.NodesSlice.Count; ++Index)
     {
         Rr_GraphNode *GraphNode = Graph->Batch.NodesSlice.Data[Index];
 
@@ -726,7 +726,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
 void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 {
-    size_t NodeCount = RR_SLICE_LENGTH(&Graph->NodesSlice);
+    size_t NodeCount = Graph->NodesSlice.Count;
     if (NodeCount == 0)
     {
         Rr_LogAbort("Graph doesn't contain any nodes!");
@@ -741,8 +741,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
         Graph->Batch.Arena = Scratch.Arena;
 
-        for (size_t Index = 0; Index < RR_SLICE_LENGTH(&Graph->NodesSlice);
-             ++Index)
+        for (size_t Index = 0; Index < Graph->NodesSlice.Count; ++Index)
         {
             Rr_GraphNode *GraphNode = Graph->NodesSlice.Data[Index];
 
@@ -754,8 +753,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             /* Dependency check. */
 
             Rr_Bool DependenciesResolved = RR_TRUE;
-            for (size_t DepIndex = 0;
-                 DepIndex < RR_SLICE_LENGTH(&GraphNode->Dependencies);
+            for (size_t DepIndex = 0; DepIndex < GraphNode->Dependencies.Count;
                  ++DepIndex)
             {
                 Rr_GraphNode *Dependency =
@@ -813,7 +811,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             }
         }
 
-        if (RR_SLICE_LENGTH(&Graph->NodesSlice) == 0)
+        if (Graph->NodesSlice.Count == 0)
         {
             Rr_LogAbort("Couldn't batch graph nodes, probably invalid graph!");
         }
@@ -930,7 +928,8 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
     if (Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
+                .ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT |
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -940,7 +939,8 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
         Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
+                .DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
@@ -980,11 +980,15 @@ void Rr_ExecutePresentNode(
         VkRenderPassBeginInfo RenderPassBeginInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .renderPass = Renderer->RenderPasses.ColorDepthLoad,
-            .framebuffer = Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
+            .framebuffer =
+                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex]
+                    .Framebuffer,
             .renderArea.extent.width =
-                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Extent.width,
+                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex]
+                    .ColorImage->Extent.width,
             .renderArea.extent.height =
-                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Extent.height,
+                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex]
+                    .ColorImage->Extent.height,
             .clearValueCount = 0,
             .pClearValues = NULL,
         };
@@ -1003,7 +1007,8 @@ void Rr_ExecutePresentNode(
 
     Rr_ImageBarrier ColorImageTransition = {
         .CommandBuffer = CommandBuffer,
-        .Image = DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Handle,
+        .Image =
+            DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Handle,
         .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .AccessMask = VK_ACCESS_TRANSFER_READ_BIT |
                       VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
@@ -1057,7 +1062,8 @@ Rr_Bool Rr_BatchGraphicsNode(
         Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
+                .ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
@@ -1071,7 +1077,8 @@ Rr_Bool Rr_BatchGraphicsNode(
         Rr_SyncImage(
             App,
             Graph,
-            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
+            DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
+                .DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
@@ -1132,7 +1139,8 @@ void Rr_ExecuteGraphicsNode(
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
-        .framebuffer = DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
+        .framebuffer =
+            DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
                                   { Viewport.Z, Viewport.W } },
         .renderPass = Node->Info.BasePipeline->Pipeline->RenderPass,

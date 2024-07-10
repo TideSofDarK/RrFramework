@@ -1238,8 +1238,7 @@ void Rr_ProcessPendingLoads(Rr_App *App)
 
     if (SDL_TryLockSpinlock(&App->SyncArena.Lock))
     {
-        for (size_t Index = 0;
-             Index < RR_SLICE_LENGTH(&Renderer->PendingLoadsSlice);
+        for (size_t Index = 0; Index < Renderer->PendingLoadsSlice.Count;
              ++Index)
         {
             Rr_PendingLoad *PendingLoad =
