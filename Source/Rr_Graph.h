@@ -3,9 +3,8 @@
 #include "Rr/Rr_Graph.h"
 #include "Rr_BuiltinNode.h"
 #include "Rr_GraphicsNode.h"
-#include "Rr_Image.h"
-#include "Rr_Memory.h"
 #include "Rr_PresentNode.h"
+#include "Rr_Image.h"
 
 typedef struct Rr_ImageSync Rr_ImageSync;
 struct Rr_ImageSync
@@ -35,8 +34,7 @@ struct Rr_GraphNode
     } Union;
     Rr_GraphNodeType Type;
     RR_SLICE_TYPE(Rr_GraphNode *) Dependencies;
-    // Rr_Bool Executed;
-    uint32_t Executed;
+    Rr_Bool Executed;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;

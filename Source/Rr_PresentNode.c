@@ -1,14 +1,6 @@
 #include "Rr_PresentNode.h"
 
-#include "Rr/Rr_Defines.h"
-#include "Rr/Rr_Graph.h"
 #include "Rr_App.h"
-#include "Rr_Image.h"
-#include "Rr_Log.h"
-#include "Rr_Material.h"
-#include "Rr_Memory.h"
-#include "Rr_Mesh.h"
-#include "Rr_Renderer.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
