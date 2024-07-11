@@ -478,7 +478,6 @@ public:
         /* Create Nodes */
 
         Rr_GraphicsNodeInfo TestNodeInfo = {
-            .Name = "test_pass",
             .DrawTarget = TestTarget,
             .InitialColor = nullptr,
             .InitialDepth = nullptr,
@@ -498,13 +497,13 @@ public:
             1000.0f);
         Rr_GraphNode *TestNode = Rr_AddGraphicsNode(
             App,
+            "test_pass",
             &TestNodeInfo,
             reinterpret_cast<char *>(&TestGlobals),
             nullptr,
             0);
 
         Rr_GraphicsNodeInfo ShadowNodeInfo = {
-            .Name = "shadow_pass",
             .DrawTarget = ShadowMap,
             .InitialColor = nullptr,
             .InitialDepth = nullptr,
@@ -524,6 +523,7 @@ public:
         };
         Rr_GraphNode *ShadowNode = Rr_AddGraphicsNode(
             App,
+            "shadow_pass",
             &ShadowNodeInfo,
             reinterpret_cast<char *>(&ShadowGlobals),
             nullptr,
@@ -533,7 +533,6 @@ public:
         // std::array<Rr_GraphNode *, 0> NodeDependencies{};
 
         Rr_GraphicsNodeInfo NodeInfo = {
-            .Name = "pbr_pass",
             .DrawTarget = nullptr,
             .InitialColor = nullptr,
             .InitialDepth = nullptr,
@@ -543,20 +542,21 @@ public:
         };
         Rr_GraphNode *Node = Rr_AddGraphicsNode(
             App,
+            "pbr_pass",
             &NodeInfo,
             reinterpret_cast<char *>(&ShaderGlobals),
             NodeDependencies.data(),
             NodeDependencies.size());
 
-        Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, &Node, 1);
+        Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin", &Node, 1);
 
         Rr_PresentNodeInfo PresentInfo = {
-            .Name = "present",
             .Mode = RR_PRESENT_MODE_STRETCH,
+            .DrawTarget = nullptr,
         };
 
         /* @TODO: Add dependencies later! */
-        Rr_AddPresentNode(App, &PresentInfo, &BuiltinNode, 1);
+        Rr_AddPresentNode(App, "present", &PresentInfo, &BuiltinNode, 1);
 
         if (IsLoaded)
         {

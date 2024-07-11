@@ -32,7 +32,6 @@ typedef enum Rr_GraphNodeType
 typedef struct Rr_GraphicsNodeInfo Rr_GraphicsNodeInfo;
 struct Rr_GraphicsNodeInfo
 {
-    const char *Name;
     Rr_DrawTarget *DrawTarget;
     Rr_Image *InitialColor;
     Rr_Image *InitialDepth;
@@ -43,6 +42,7 @@ struct Rr_GraphicsNodeInfo
 
 extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
+    const char *Name,
     Rr_GraphicsNodeInfo *Info,
     char *GlobalsData,
     Rr_GraphNode **Dependencies,
@@ -54,18 +54,21 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
 
 typedef enum Rr_PresentMode
 {
+    RR_PRESENT_MODE_NORMAL,
     RR_PRESENT_MODE_STRETCH,
+    RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
 
 typedef struct Rr_PresentNodeInfo Rr_PresentNodeInfo;
 struct Rr_PresentNodeInfo
 {
-    const char *Name;
     Rr_PresentMode Mode;
+    Rr_DrawTarget *DrawTarget;
 };
 
 extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
+    const char *Name,
     Rr_PresentNodeInfo *Info,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount);
@@ -82,6 +85,7 @@ typedef enum Rr_DrawTextFlags
 
 extern Rr_GraphNode *Rr_AddBuiltinNode(
     Rr_App *App,
+    const char *Name,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount);
 

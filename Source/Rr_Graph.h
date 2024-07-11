@@ -33,6 +33,7 @@ struct Rr_GraphNode
         Rr_PresentNode PresentNode;
     } Union;
     Rr_GraphNodeType Type;
+    const char *Name;
     RR_SLICE_TYPE(Rr_GraphNode *) Dependencies;
     Rr_Bool Executed;
 };

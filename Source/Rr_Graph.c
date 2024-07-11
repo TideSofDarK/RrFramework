@@ -33,6 +33,7 @@ static void Rr_CopyDependencies(
 
 Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
+    const char *Name,
     Rr_GraphicsNodeInfo *Info,
     char *GlobalsData,
     Rr_GraphNode **Dependencies,
@@ -53,6 +54,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
         DependencyCount,
         &Frame->Arena);
     GraphNode->Type = RR_GRAPH_NODE_TYPE_GRAPHICS;
+    GraphNode->Name = Name;
 
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
     *GraphicsNode = (Rr_GraphicsNode){
@@ -78,6 +80,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 
 Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
+    const char *Name,
     Rr_PresentNodeInfo *Info,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount)
@@ -97,6 +100,7 @@ Rr_GraphNode *Rr_AddPresentNode(
         DependencyCount,
         &Frame->Arena);
     GraphNode->Type = RR_GRAPH_NODE_TYPE_PRESENT;
+    GraphNode->Name = Name;
 
     Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
     *PresentNode = (Rr_PresentNode){
@@ -108,6 +112,7 @@ Rr_GraphNode *Rr_AddPresentNode(
 
 Rr_GraphNode *Rr_AddBuiltinNode(
     Rr_App *App,
+    const char *Name,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount)
 {
@@ -126,6 +131,7 @@ Rr_GraphNode *Rr_AddBuiltinNode(
         DependencyCount,
         &Frame->Arena);
     GraphNode->Type = RR_GRAPH_NODE_TYPE_BUILTIN;
+    GraphNode->Name = Name;
 
     Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
     RR_ZERO_PTR(BuiltinNode);
