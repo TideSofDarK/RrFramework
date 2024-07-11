@@ -285,7 +285,7 @@ void Rr_BlitColorImage(
         },
         .srcOffsets = {
             { SrcRect.X, SrcRect.Y, 0, },
-            { SrcRect.Width, SrcRect.Height, 0, },
+            { SrcRect.X + SrcRect.Width, SrcRect.Y + SrcRect.Height, 0, },
         },
         .dstSubresource = {
             .aspectMask = AspectMask,
@@ -295,7 +295,7 @@ void Rr_BlitColorImage(
         },
         .dstOffsets = {
             { DstRect.X, DstRect.Y, 0, },
-            { DstRect.Width, DstRect.Height, 0, },
+            { DstRect.X + DstRect.Width, DstRect.Y + DstRect.Height, 0, },
         },
     };
 
