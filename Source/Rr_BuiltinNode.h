@@ -5,6 +5,8 @@
 #include "Rr/Rr_String.h"
 #include "Rr_Memory.h"
 
+#include <volk.h>
+
 typedef struct Rr_DrawTextInfo Rr_DrawTextInfo;
 struct Rr_DrawTextInfo
 {
@@ -21,6 +23,13 @@ typedef struct Rr_BuiltinNode Rr_BuiltinNode;
 struct Rr_BuiltinNode
 {
     Rr_DrawTextsSlice DrawTextsSlice;
+};
+
+typedef struct Rr_TextRenderingContext Rr_TextRenderingContext;
+struct Rr_TextRenderingContext
+{
+    VkDescriptorSet GlobalsDescriptorSet;
+    VkDescriptorSet FontDescriptorSet;
 };
 
 extern Rr_Bool Rr_BatchBuiltinNode(

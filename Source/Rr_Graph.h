@@ -2,6 +2,8 @@
 
 #include "Rr/Rr_Graph.h"
 #include "Rr_BuiltinNode.h"
+#include "Rr_GraphicsNode.h"
+#include "Rr_PresentNode.h"
 #include "Rr_Image.h"
 #include "Rr_Memory.h"
 
@@ -21,45 +23,6 @@ struct Rr_DrawTarget
         Rr_Image *DepthImage;
         VkFramebuffer Framebuffer;
     } Frames[RR_FRAME_OVERLAP];
-};
-
-typedef struct Rr_DrawPrimitiveInfo Rr_DrawPrimitiveInfo;
-struct Rr_DrawPrimitiveInfo
-{
-    Rr_Material *Material;
-    struct Rr_Primitive *Primitive;
-    uint32_t PerDrawOffset;
-};
-
-typedef RR_SLICE_TYPE(Rr_DrawPrimitiveInfo) Rr_DrawPrimitivesSlice;
-
-typedef struct Rr_GenericRenderingContext Rr_GenericRenderingContext;
-struct Rr_GenericRenderingContext
-{
-    Rr_GenericPipeline *BasePipeline;
-    Rr_GenericPipeline *OverridePipeline;
-    VkDescriptorSet GlobalsDescriptorSet;
-};
-
-typedef struct Rr_TextRenderingContext Rr_TextRenderingContext;
-struct Rr_TextRenderingContext
-{
-    VkDescriptorSet GlobalsDescriptorSet;
-    VkDescriptorSet FontDescriptorSet;
-};
-
-typedef struct Rr_GraphicsNode Rr_GraphicsNode;
-struct Rr_GraphicsNode
-{
-    Rr_GraphicsNodeInfo Info;
-    Rr_DrawPrimitivesSlice DrawPrimitivesSlice;
-    char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
-};
-
-typedef struct Rr_PresentNode Rr_PresentNode;
-struct Rr_PresentNode
-{
-    Rr_PresentNodeInfo Info;
 };
 
 struct Rr_GraphNode
@@ -123,24 +86,4 @@ extern Rr_Bool Rr_SyncImage(
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 
-extern Rr_Bool Rr_BatchPresentNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_PresentNode *Node);
 
-extern void Rr_ExecutePresentNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_PresentNode *Node,
-    Rr_Arena *Arena);
-
-extern Rr_Bool Rr_BatchGraphicsNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_GraphicsNode *Node);
-
-extern void Rr_ExecuteGraphicsNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_GraphicsNode *Node,
-    Rr_Arena *Arena);
