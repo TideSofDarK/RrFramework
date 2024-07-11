@@ -8,6 +8,28 @@
 #include <SDL3/SDL_assert.h>
 #include <SDL3/SDL_timer.h>
 
+Rr_GraphNode *Rr_AddBuiltinNode(
+    Rr_App *App,
+    const char *Name,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
+        Frame,
+        RR_GRAPH_NODE_TYPE_BUILTIN,
+        Name,
+        Dependencies,
+        DependencyCount);
+
+    Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
+    RR_ZERO_PTR(BuiltinNode);
+
+    return GraphNode;
+}
+
 static void Rr_DrawText(
     Rr_App *App,
     Rr_BuiltinNode *Node,
@@ -67,28 +89,6 @@ void Rr_DrawDefaultText(
             .Size = 32.0f,
             .Flags = 0,
         });
-}
-
-Rr_GraphNode *Rr_AddBuiltinNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
-        Frame,
-        RR_GRAPH_NODE_TYPE_BUILTIN,
-        Name,
-        Dependencies,
-        DependencyCount);
-
-    Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
-    RR_ZERO_PTR(BuiltinNode);
-
-    return GraphNode;
 }
 
 static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
@@ -380,7 +380,6 @@ Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_BuiltinNode *Node)
 
 void Rr_ExecuteBuiltinNode(
     Rr_App *App,
-    Rr_Graph *Graph,
     Rr_BuiltinNode *Node,
     Rr_Arena *Arena)
 {

@@ -38,6 +38,5 @@ extern Rr_Bool Rr_BatchBuiltinNode(
 
 extern void Rr_ExecuteBuiltinNode(
     Rr_App *App,
-    Rr_Graph *Graph,
     Rr_BuiltinNode *Node,
     Rr_Arena *Arena);

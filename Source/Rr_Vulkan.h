@@ -1,9 +1,10 @@
 #pragma once
 
 #include "Rr/Rr_Defines.h"
+#include "Rr/Rr_Math.h"
 
-#include <vk_mem_alloc.h>
 #include <volk.h>
+#include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
 
 #include <SDL3/SDL_thread.h>
@@ -42,26 +43,20 @@ extern void Rr_InitDeviceAndQueues(
     VkQueue *OutGraphicsQueue,
     VkQueue *OutTransferQueue);
 
-extern void Rr_BlitDepthImage(
-    VkCommandBuffer CommandBuffer,
-    VkImage Source,
-    VkImage Destination,
-    VkExtent2D SrcSize,
-    VkExtent2D DstSize);
-
 extern void Rr_BlitColorImage(
     VkCommandBuffer CommandBuffer,
     VkImage Source,
     VkImage Destination,
-    VkExtent2D SrcSize,
-    VkExtent2D DstSize);
+    Rr_IntVec4 SrcRect,
+    Rr_IntVec4 DstRect,
+    VkImageAspectFlags AspectMask);
 
-static inline VkExtent2D GetExtent2D(VkExtent3D Extent)
+static VkExtent2D GetExtent2D(VkExtent3D Extent)
 {
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
 }
 
-static inline VkPipelineShaderStageCreateInfo GetShaderStageInfo(
+static VkPipelineShaderStageCreateInfo GetShaderStageInfo(
     VkShaderStageFlagBits Stage,
     VkShaderModule Module)
 {
@@ -76,7 +71,7 @@ static inline VkPipelineShaderStageCreateInfo GetShaderStageInfo(
     return Info;
 }
 
-static inline VkImageCreateInfo GetImageCreateInfo(
+static VkImageCreateInfo GetImageCreateInfo(
     VkFormat Format,
     VkImageUsageFlags UsageFlags,
     VkExtent3D Extent)
@@ -97,7 +92,7 @@ static inline VkImageCreateInfo GetImageCreateInfo(
     return Info;
 }
 
-static inline VkImageViewCreateInfo GetImageViewCreateInfo(
+static VkImageViewCreateInfo GetImageViewCreateInfo(
     VkFormat Format,
     VkImage Image,
     VkImageAspectFlags AspectFlags)
@@ -119,7 +114,7 @@ static inline VkImageViewCreateInfo GetImageViewCreateInfo(
     return Info;
 }
 
-static inline VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
+static VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
 {
     VkFenceCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -129,7 +124,7 @@ static inline VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
     return Info;
 }
 
-static inline VkSemaphoreCreateInfo GetSemaphoreCreateInfo(
+static VkSemaphoreCreateInfo GetSemaphoreCreateInfo(
     VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
@@ -140,7 +135,7 @@ static inline VkSemaphoreCreateInfo GetSemaphoreCreateInfo(
     return Info;
 }
 
-static inline VkCommandBufferBeginInfo GetCommandBufferBeginInfo(
+static VkCommandBufferBeginInfo GetCommandBufferBeginInfo(
     VkCommandBufferUsageFlags Flags)
 {
     VkCommandBufferBeginInfo Info = {
@@ -152,7 +147,7 @@ static inline VkCommandBufferBeginInfo GetCommandBufferBeginInfo(
     return Info;
 }
 
-static inline VkImageSubresourceRange GetImageSubresourceRange(
+static VkImageSubresourceRange GetImageSubresourceRange(
     VkImageAspectFlags AspectMask)
 {
     VkImageSubresourceRange ImageSubresourceRange = {
@@ -166,7 +161,7 @@ static inline VkImageSubresourceRange GetImageSubresourceRange(
     return ImageSubresourceRange;
 }
 
-static inline VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(
+static VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(
     VkPipelineStageFlags2 StageMask,
     VkSemaphore Semaphore)
 {
@@ -182,7 +177,7 @@ static inline VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(
     return Info;
 }
 
-static inline VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(
+static VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(
     VkCommandBuffer CommandBuffer)
 {
     VkCommandBufferSubmitInfo Info = {
@@ -195,7 +190,7 @@ static inline VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(
     return Info;
 }
 
-static inline VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(
+static VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(
     VkCommandPool CommandPool,
     uint32_t Count)
 {

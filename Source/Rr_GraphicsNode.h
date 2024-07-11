@@ -39,6 +39,5 @@ extern Rr_Bool Rr_BatchGraphicsNode(
 
 extern void Rr_ExecuteGraphicsNode(
     Rr_App *App,
-    Rr_Graph *Graph,
     Rr_GraphicsNode *Node,
     Rr_Arena *Arena);

@@ -1285,7 +1285,7 @@ void Rr_Draw(Rr_App *App)
     }
     SDL_assert(Result >= 0);
 
-    VkImage SwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
+    Frame->CurrentSwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
 
     /* Begin main command buffer. */
 
@@ -1296,7 +1296,6 @@ void Rr_Draw(Rr_App *App)
 
     /* Execute Frame Graph */
 
-    Frame->Graph.SwapchainImage = SwapchainImage;
     Rr_ExecuteGraph(App, &Frame->Graph, Scratch.Arena);
 
     vkEndCommandBuffer(CommandBuffer);

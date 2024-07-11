@@ -72,10 +72,6 @@ struct Rr_Graph
         Rr_Bool Final;
         Rr_Arena *Arena;
     } Batch;
-
-    /* Resources */
-
-    VkImage SwapchainImage;
 };
 
 extern Rr_Bool Rr_SyncImage(

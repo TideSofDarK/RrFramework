@@ -34,6 +34,7 @@ Rr_GraphNode *Rr_AddPresentNode(
 Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
 {
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
 
     if (Rr_SyncImage(
@@ -60,7 +61,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
         Rr_SyncImage(
             App,
             Graph,
-            Graph->SwapchainImage,
+            Frame->CurrentSwapchainImage,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -74,9 +75,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
 
 void Rr_ExecutePresentNode(
     Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_PresentNode *Node,
-    Rr_Arena *Arena)
+    Rr_PresentNode *Node)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
@@ -136,7 +135,7 @@ void Rr_ExecutePresentNode(
 
     Rr_ImageBarrier SwapchainImageTransition = {
         .CommandBuffer = CommandBuffer,
-        .Image = Graph->SwapchainImage,
+        .Image = Frame->CurrentSwapchainImage,
         .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
         .AccessMask = VK_ACCESS_NONE,
         .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -151,9 +150,20 @@ void Rr_ExecutePresentNode(
     Rr_BlitColorImage(
         CommandBuffer,
         DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Handle,
-        Graph->SwapchainImage,
-        Renderer->SwapchainSize,
-        Renderer->SwapchainSize);
+        Frame->CurrentSwapchainImage,
+        (Rr_IntVec4){
+            0,
+            0,
+            (int32_t)Renderer->SwapchainSize.width,
+            (int32_t)Renderer->SwapchainSize.height,
+        },
+        (Rr_IntVec4){
+            0,
+            0,
+            (int32_t)Renderer->SwapchainSize.width,
+            (int32_t)Renderer->SwapchainSize.height,
+        },
+        VK_IMAGE_ASPECT_COLOR_BIT);
 
     Rr_ChainImageBarrier(
         &SwapchainImageTransition,

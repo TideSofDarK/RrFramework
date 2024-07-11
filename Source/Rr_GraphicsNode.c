@@ -411,7 +411,6 @@ Rr_Bool Rr_BatchGraphicsNode(
 
 void Rr_ExecuteGraphicsNode(
     Rr_App *App,
-    Rr_Graph *Graph,
     Rr_GraphicsNode *Node,
     Rr_Arena *Arena)
 {

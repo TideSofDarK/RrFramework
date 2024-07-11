@@ -50,6 +50,8 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
+    VkImage CurrentSwapchainImage;
+
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
 

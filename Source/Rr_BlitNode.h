@@ -1,20 +1,22 @@
 #pragma once
 
 #include "Rr/Rr_BlitNode.h"
-#include "Rr/Rr_Image.h"
-#include "Rr/Rr_Math.h"
+#include "Rr_Memory.h"
 
-typedef struct Rr_BlitNodeInfo Rr_BlitNodeInfo;
-struct Rr_BlitNodeInfo
-{
-    Rr_Image *SrcImage;
-    Rr_Image *DstImage;
-    Rr_IntVec4 SrcRect;
-    Rr_IntVec4 DstRect;
-};
+#include <volk.h>
 
 typedef struct Rr_BlitNode Rr_BlitNode;
 struct Rr_BlitNode
 {
     Rr_BlitNodeInfo Info;
+    VkImageAspectFlags AspectMask;
 };
+
+extern Rr_Bool Rr_BatchBlitNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_BlitNode *Node);
+
+extern void Rr_ExecuteBlitNode(
+    Rr_App *App,
+    Rr_BlitNode *Node);

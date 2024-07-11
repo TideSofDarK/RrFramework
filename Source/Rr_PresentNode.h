@@ -16,6 +16,4 @@ extern Rr_Bool Rr_BatchPresentNode(
 
 extern void Rr_ExecutePresentNode(
     Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_PresentNode *Node,
-    Rr_Arena *Arena);
+    Rr_PresentNode *Node);

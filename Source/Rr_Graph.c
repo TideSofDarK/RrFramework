@@ -191,19 +191,25 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             case RR_GRAPH_NODE_TYPE_GRAPHICS:
             {
                 Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
-                Rr_ExecuteGraphicsNode(App, Graph, GraphicsNode, Scratch.Arena);
+                Rr_ExecuteGraphicsNode(App, GraphicsNode, Scratch.Arena);
             }
             break;
             case RR_GRAPH_NODE_TYPE_PRESENT:
             {
                 Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
-                Rr_ExecutePresentNode(App, Graph, PresentNode, Scratch.Arena);
+                Rr_ExecutePresentNode(App, PresentNode);
             }
             break;
             case RR_GRAPH_NODE_TYPE_BUILTIN:
             {
                 Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
-                Rr_ExecuteBuiltinNode(App, Graph, BuiltinNode, Scratch.Arena);
+                Rr_ExecuteBuiltinNode(App, BuiltinNode, Scratch.Arena);
+            }
+            break;
+            case RR_GRAPH_NODE_TYPE_BLIT:
+            {
+                Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
+                Rr_ExecuteBlitNode(App, BlitNode);
             }
             break;
             default:
