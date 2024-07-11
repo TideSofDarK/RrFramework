@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Rr/Rr_BuiltinNode.h"
 #include "Rr/Rr_Graph.h"
 #include "Rr_Memory.h"
 

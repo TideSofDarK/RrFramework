@@ -5,7 +5,91 @@
 #include "Rr_Memory.h"
 #include "Rr_Renderer.h"
 
+#include <SDL3/SDL_assert.h>
 #include <SDL3/SDL_timer.h>
+
+static void Rr_DrawText(
+    Rr_App *App,
+    Rr_BuiltinNode *Node,
+    Rr_DrawTextInfo *Info)
+{
+    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+    Rr_DrawTextInfo *NewInfo =
+        RR_SLICE_PUSH(&Node->DrawTextsSlice, &Frame->Arena);
+    *NewInfo = *Info;
+    if (NewInfo->Font == NULL)
+    {
+        NewInfo->Font = App->Renderer.BuiltinFont;
+    }
+    if (NewInfo->Size == 0.0f)
+    {
+        NewInfo->Size = NewInfo->Font->DefaultSize;
+    }
+}
+
+void Rr_DrawCustomText(
+    Rr_App *App,
+    Rr_GraphNode *Node,
+    Rr_Font *Font,
+    Rr_String *String,
+    Rr_Vec2 Position,
+    float Size,
+    Rr_DrawTextFlags Flags)
+{
+    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_BUILTIN);
+
+    Rr_DrawText(
+        App,
+        &Node->Union.BuiltinNode,
+        &(Rr_DrawTextInfo){
+            .Font = Font,
+            .String = *String,
+            .Position = Position,
+            .Size = Size,
+            .Flags = Flags,
+        });
+}
+
+void Rr_DrawDefaultText(
+    Rr_App *App,
+    Rr_GraphNode *Node,
+    Rr_String *String,
+    Rr_Vec2 Position)
+{
+    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_BUILTIN);
+
+    Rr_DrawText(
+        App,
+        &Node->Union.BuiltinNode,
+        &(Rr_DrawTextInfo){
+            .String = *String,
+            .Position = Position,
+            .Size = 32.0f,
+            .Flags = 0,
+        });
+}
+
+Rr_GraphNode *Rr_AddBuiltinNode(
+    Rr_App *App,
+    const char *Name,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
+        Frame,
+        RR_GRAPH_NODE_TYPE_BUILTIN,
+        Name,
+        Dependencies,
+        DependencyCount);
+
+    Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
+    RR_ZERO_PTR(BuiltinNode);
+
+    return GraphNode;
+}
 
 static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     Rr_App *App,

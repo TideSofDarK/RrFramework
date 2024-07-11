@@ -6,6 +6,114 @@
 
 #include <qsort/qsort-inline.h>
 
+#include <SDL3/SDL_assert.h>
+
+Rr_GraphNode *Rr_AddGraphicsNode(
+    Rr_App *App,
+    const char *Name,
+    Rr_GraphicsNodeInfo *Info,
+    char *GlobalsData,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
+        Frame,
+        RR_GRAPH_NODE_TYPE_GRAPHICS,
+        Name,
+        Dependencies,
+        DependencyCount);
+
+    Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
+    *GraphicsNode = (Rr_GraphicsNode){
+        .Info = *Info,
+    };
+
+    if (GraphicsNode->Info.DrawTarget == NULL)
+    {
+        GraphicsNode->Info.DrawTarget = Renderer->DrawTarget;
+        GraphicsNode->Info.Viewport.Width =
+            (int32_t)Renderer->SwapchainSize.width;
+        GraphicsNode->Info.Viewport.Height =
+            (int32_t)Renderer->SwapchainSize.height;
+    }
+
+    memcpy(
+        GraphicsNode->GlobalsData,
+        GlobalsData,
+        Info->BasePipeline->Sizes.Globals);
+
+    return GraphNode;
+}
+
+void Rr_DrawStaticMesh(
+    Rr_App *App,
+    Rr_GraphNode *Node,
+    Rr_StaticMesh *StaticMesh,
+    Rr_Data PerDrawData)
+{
+    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
+
+    for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
+         ++PrimitiveIndex)
+    {
+        *RR_SLICE_PUSH(
+            &Node->Union.GraphicsNode.DrawPrimitivesSlice,
+            &Frame->Arena) = (Rr_DrawPrimitiveInfo){
+            .PerDrawOffset = Offset,
+            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+            .Material = StaticMesh->Materials[PrimitiveIndex],
+        };
+    }
+
+    Rr_CopyToMappedUniformBuffer(
+        App,
+        Frame->PerDrawBuffer.Buffer,
+        &Frame->PerDrawBuffer.Offset,
+        PerDrawData);
+}
+
+void Rr_DrawStaticMeshOverrideMaterials(
+    Rr_App *App,
+    Rr_GraphNode *Node,
+    Rr_Material **OverrideMaterials,
+    size_t OverrideMaterialCount,
+    Rr_StaticMesh *StaticMesh,
+    Rr_Data PerDrawData)
+{
+    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
+
+    for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
+         ++PrimitiveIndex)
+    {
+        *RR_SLICE_PUSH(
+            &Node->Union.GraphicsNode.DrawPrimitivesSlice,
+            &Frame->Arena) = (Rr_DrawPrimitiveInfo){
+            .PerDrawOffset = Offset,
+            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+            .Material = PrimitiveIndex < OverrideMaterialCount
+                            ? OverrideMaterials[PrimitiveIndex]
+                            : NULL,
+        };
+    }
+
+    Rr_CopyToMappedUniformBuffer(
+        App,
+        Frame->PerDrawBuffer.Buffer,
+        &Frame->PerDrawBuffer.Offset,
+        PerDrawData);
+}
+
 static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     Rr_App *App,
     Rr_UploadContext *UploadContext,

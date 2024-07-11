@@ -1,10 +1,13 @@
 #pragma once
 
 #include "Rr/Rr_Graph.h"
+#include "Rr_BlitNode.h"
 #include "Rr_BuiltinNode.h"
 #include "Rr_GraphicsNode.h"
-#include "Rr_PresentNode.h"
 #include "Rr_Image.h"
+#include "Rr_PresentNode.h"
+
+struct Rr_Frame;
 
 typedef struct Rr_ImageSync Rr_ImageSync;
 struct Rr_ImageSync
@@ -31,6 +34,7 @@ struct Rr_GraphNode
         Rr_BuiltinNode BuiltinNode;
         Rr_GraphicsNode GraphicsNode;
         Rr_PresentNode PresentNode;
+        Rr_BlitNode BlitNode;
     } Union;
     Rr_GraphNodeType Type;
     const char *Name;
@@ -82,5 +86,12 @@ extern Rr_Bool Rr_SyncImage(
     VkPipelineStageFlags StageMask,
     VkAccessFlags AccessMask,
     VkImageLayout Layout);
+
+extern Rr_GraphNode *Rr_AddGraphNode(
+    struct Rr_Frame *Frame,
+    Rr_GraphNodeType Type,
+    const char *Name,
+    Rr_GraphNode **Dependencies,
+    size_t DependencyCount);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);

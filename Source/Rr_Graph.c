@@ -5,9 +5,7 @@
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
-#include "Rr_Material.h"
 #include "Rr_Memory.h"
-#include "Rr_Mesh.h"
 #include "Rr_Renderer.h"
 
 #include <SDL3/SDL_assert.h>
@@ -24,14 +22,9 @@ static void Rr_CopyDependencies(
         Dependencies,
         sizeof(Rr_GraphNode *) * DependencyCount);
     GraphNode->Dependencies.Count = DependencyCount;
-    // for (size_t Index = 0; Index < DependencyCount; ++Index)
-    // {
-    //     *RR_SLICE_PUSH(&GraphNode->Dependencies, Arena) =
-    //     Dependencies[Index];
-    // }
 }
 
-static Rr_GraphNode *Rr_AddGraphNode(
+Rr_GraphNode *Rr_AddGraphNode(
     Rr_Frame *Frame,
     Rr_GraphNodeType Type,
     const char *Name,
@@ -51,220 +44,6 @@ static Rr_GraphNode *Rr_AddGraphNode(
     *RR_SLICE_PUSH(&Frame->Graph.NodesSlice, &Frame->Arena) = GraphNode;
 
     return GraphNode;
-}
-
-Rr_GraphNode *Rr_AddGraphicsNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_GraphicsNodeInfo *Info,
-    char *GlobalsData,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
-        Frame,
-        RR_GRAPH_NODE_TYPE_GRAPHICS,
-        Name,
-        Dependencies,
-        DependencyCount);
-
-    Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
-    *GraphicsNode = (Rr_GraphicsNode){
-        .Info = *Info,
-    };
-
-    if (GraphicsNode->Info.DrawTarget == NULL)
-    {
-        GraphicsNode->Info.DrawTarget = Renderer->DrawTarget;
-        GraphicsNode->Info.Viewport.Width =
-            (int32_t)Renderer->SwapchainSize.width;
-        GraphicsNode->Info.Viewport.Height =
-            (int32_t)Renderer->SwapchainSize.height;
-    }
-
-    memcpy(
-        GraphicsNode->GlobalsData,
-        GlobalsData,
-        Info->BasePipeline->Sizes.Globals);
-
-    return GraphNode;
-}
-
-Rr_GraphNode *Rr_AddPresentNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_PresentNodeInfo *Info,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
-        Frame,
-        RR_GRAPH_NODE_TYPE_PRESENT,
-        Name,
-        Dependencies,
-        DependencyCount);
-
-    Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
-    *PresentNode = (Rr_PresentNode){
-        .Info = *Info,
-    };
-
-    return GraphNode;
-}
-
-Rr_GraphNode *Rr_AddBuiltinNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
-        Frame,
-        RR_GRAPH_NODE_TYPE_BUILTIN,
-        Name,
-        Dependencies,
-        DependencyCount);
-
-    Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
-    RR_ZERO_PTR(BuiltinNode);
-
-    return GraphNode;
-}
-
-void Rr_DrawStaticMesh(
-    Rr_App *App,
-    Rr_GraphNode *Node,
-    Rr_StaticMesh *StaticMesh,
-    Rr_Data PerDrawData)
-{
-    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
-
-    for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
-         ++PrimitiveIndex)
-    {
-        *RR_SLICE_PUSH(
-            &Node->Union.GraphicsNode.DrawPrimitivesSlice,
-            &Frame->Arena) = (Rr_DrawPrimitiveInfo){
-            .PerDrawOffset = Offset,
-            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
-            .Material = StaticMesh->Materials[PrimitiveIndex],
-        };
-    }
-
-    Rr_CopyToMappedUniformBuffer(
-        App,
-        Frame->PerDrawBuffer.Buffer,
-        &Frame->PerDrawBuffer.Offset,
-        PerDrawData);
-}
-
-void Rr_DrawStaticMeshOverrideMaterials(
-    Rr_App *App,
-    Rr_GraphNode *Node,
-    Rr_Material **OverrideMaterials,
-    size_t OverrideMaterialCount,
-    Rr_StaticMesh *StaticMesh,
-    Rr_Data PerDrawData)
-{
-    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
-
-    for (size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount;
-         ++PrimitiveIndex)
-    {
-        *RR_SLICE_PUSH(
-            &Node->Union.GraphicsNode.DrawPrimitivesSlice,
-            &Frame->Arena) = (Rr_DrawPrimitiveInfo){
-            .PerDrawOffset = Offset,
-            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
-            .Material = PrimitiveIndex < OverrideMaterialCount
-                            ? OverrideMaterials[PrimitiveIndex]
-                            : NULL,
-        };
-    }
-
-    Rr_CopyToMappedUniformBuffer(
-        App,
-        Frame->PerDrawBuffer.Buffer,
-        &Frame->PerDrawBuffer.Offset,
-        PerDrawData);
-}
-
-static void Rr_DrawText(
-    Rr_App *App,
-    Rr_BuiltinNode *Node,
-    Rr_DrawTextInfo *Info)
-{
-    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
-    Rr_DrawTextInfo *NewInfo =
-        RR_SLICE_PUSH(&Node->DrawTextsSlice, &Frame->Arena);
-    *NewInfo = *Info;
-    if (NewInfo->Font == NULL)
-    {
-        NewInfo->Font = App->Renderer.BuiltinFont;
-    }
-    if (NewInfo->Size == 0.0f)
-    {
-        NewInfo->Size = NewInfo->Font->DefaultSize;
-    }
-}
-
-void Rr_DrawCustomText(
-    Rr_App *App,
-    Rr_GraphNode *Node,
-    Rr_Font *Font,
-    Rr_String *String,
-    Rr_Vec2 Position,
-    float Size,
-    Rr_DrawTextFlags Flags)
-{
-    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_BUILTIN);
-
-    Rr_DrawText(
-        App,
-        &Node->Union.BuiltinNode,
-        &(Rr_DrawTextInfo){
-            .Font = Font,
-            .String = *String,
-            .Position = Position,
-            .Size = Size,
-            .Flags = Flags,
-        });
-}
-
-void Rr_DrawDefaultText(
-    Rr_App *App,
-    Rr_GraphNode *Node,
-    Rr_String *String,
-    Rr_Vec2 Position)
-{
-    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_BUILTIN);
-
-    Rr_DrawText(
-        App,
-        &Node->Union.BuiltinNode,
-        &(Rr_DrawTextInfo){
-            .String = *String,
-            .Position = Position,
-            .Size = 32.0f,
-            .Flags = 0,
-        });
 }
 
 Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height)
@@ -556,7 +335,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             }
         }
 
-        if (Graph->NodesSlice.Count == 0)
+        if (Graph->Batch.NodesSlice.Count == 0)
         {
             Rr_LogAbort("Couldn't batch graph nodes, probably invalid graph!");
         }

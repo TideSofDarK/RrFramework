@@ -555,7 +555,6 @@ public:
             .DrawTarget = nullptr,
         };
 
-        /* @TODO: Add dependencies later! */
         Rr_AddPresentNode(App, "present", &PresentInfo, &BuiltinNode, 1);
 
         if (IsLoaded)
