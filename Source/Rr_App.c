@@ -324,6 +324,15 @@ void Rr_SetInputConfig(Rr_App *App, Rr_InputConfig *InputConfig)
 
 Rr_InputState Rr_GetInputState(Rr_App *App) { return App->InputState; }
 
+Rr_IntVec2 Rr_GetSwapchainSize(Rr_App *App)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    return (Rr_IntVec2){
+        (int32_t)Renderer->SwapchainSize.width,
+        (int32_t)Renderer->SwapchainSize.height,
+    };
+}
+
 float Rr_GetAspectRatio(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;

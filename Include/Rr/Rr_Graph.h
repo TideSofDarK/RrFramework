@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+struct Rr_Image;
+
 typedef struct Rr_DrawTarget Rr_DrawTarget;
 typedef struct Rr_Graph Rr_Graph;
 typedef struct Rr_GraphNode Rr_GraphNode;
@@ -34,6 +36,10 @@ extern Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(
     uint32_t Height);
 
 extern void Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget);
+
+extern struct Rr_Image *Rr_GetDrawTargetColorImage(Rr_App *App, Rr_DrawTarget *DrawTarget);
+
+extern struct Rr_Image *Rr_GetDrawTargetDepthImage(Rr_App *App, Rr_DrawTarget *DrawTarget);
 
 extern Rr_DrawTarget *Rr_GetMainDrawTarget(Rr_App *App);
 

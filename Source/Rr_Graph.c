@@ -145,6 +145,16 @@ void Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget)
     Rr_DestroyObject(&App->ObjectStorage, DrawTarget);
 }
 
+Rr_Image *Rr_GetDrawTargetColorImage(Rr_App *App, Rr_DrawTarget *DrawTarget)
+{
+    return DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage;
+}
+
+Rr_Image *Rr_GetDrawTargetDepthImage(Rr_App *App, Rr_DrawTarget *DrawTarget)
+{
+    return DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage;
+}
+
 Rr_DrawTarget *Rr_GetMainDrawTarget(Rr_App *App)
 {
     return App->Renderer.DrawTarget;
@@ -328,6 +338,12 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                     NodeBatched = Rr_BatchBuiltinNode(App, Graph, BuiltinNode);
                 }
                 break;
+                case RR_GRAPH_NODE_TYPE_BLIT:
+                {
+                    Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
+                    NodeBatched = Rr_BatchBlitNode(App, Graph, BlitNode);
+                }
+                break;
                 default:
                 {
                     Rr_LogAbort("Unsupported node type!");
@@ -417,15 +433,13 @@ Rr_Bool Rr_SyncImage(
     }
     else /* Syncing with previous state. */
     {
-        Rr_ImageSync *OldState = *GlobalState;
-
         *RR_SLICE_PUSH(&Graph->Batch.ImageBarriersSlice, Graph->Batch.Arena) =
             (VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
-                .srcAccessMask = OldState->AccessMask,
+                .srcAccessMask = (*GlobalState)->AccessMask,
                 .dstAccessMask = AccessMask,
-                .oldLayout = OldState->Layout,
+                .oldLayout = (*GlobalState)->Layout,
                 .newLayout = Layout,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,

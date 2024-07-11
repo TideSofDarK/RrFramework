@@ -28,6 +28,8 @@ extern void Rr_DebugOverlay(Rr_App *App);
 
 extern void Rr_ToggleFullscreen(Rr_App *App);
 
+extern Rr_IntVec2 Rr_GetSwapchainSize(Rr_App *App);
+
 extern float Rr_GetAspectRatio(Rr_App *App);
 
 extern double Rr_GetDeltaSeconds(Rr_App *App);
