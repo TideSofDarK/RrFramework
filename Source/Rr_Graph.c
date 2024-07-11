@@ -660,5 +660,3 @@ Rr_Bool Rr_SyncImage(
 
     return RR_TRUE;
 }
-
-

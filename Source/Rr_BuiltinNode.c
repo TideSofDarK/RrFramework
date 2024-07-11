@@ -2,8 +2,8 @@
 
 #include "Rr_App.h"
 #include "Rr_Graph.h"
-#include "Rr_Renderer.h"
 #include "Rr_Memory.h"
+#include "Rr_Renderer.h"
 
 #include <SDL3/SDL_timer.h>
 

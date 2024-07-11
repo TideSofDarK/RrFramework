@@ -3,9 +3,9 @@
 #include "Rr/Rr_Graph.h"
 #include "Rr_BuiltinNode.h"
 #include "Rr_GraphicsNode.h"
-#include "Rr_PresentNode.h"
 #include "Rr_Image.h"
 #include "Rr_Memory.h"
+#include "Rr_PresentNode.h"
 
 typedef struct Rr_ImageSync Rr_ImageSync;
 struct Rr_ImageSync
@@ -85,5 +85,3 @@ extern Rr_Bool Rr_SyncImage(
     VkImageLayout Layout);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
-
-
