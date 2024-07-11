@@ -174,14 +174,29 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     size_t BufferBarrierCount = Graph->Batch.BufferBarriersSlice.Count;
     if (ImageBarrierCount > 0 || BufferBarrierCount > 0)
     {
-        if (Graph->StageMask == 0)
+        VkPipelineStageFlags StageMask = 0;
+        for (size_t Index = 0; Index < ImageBarrierCount; ++Index)
         {
-            Graph->StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            VkImageMemoryBarrier *Barrier =
+                Graph->Batch.ImageBarriersSlice.Data + Index;
+            Rr_ImageSync **State = (Rr_ImageSync **)Rr_MapUpsert(
+                &Graph->GlobalSyncMap,
+                (uintptr_t)Barrier->image,
+                NULL);
+            if (*State != NULL)
+            {
+                StageMask |= (*State)->StageMask;
+            }
+        }
+
+        if (StageMask == 0)
+        {
+            StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         }
 
         vkCmdPipelineBarrier(
             CommandBuffer,
-            Graph->StageMask,
+            StageMask,
             Graph->Batch.StageMask,
             0,
             0,
@@ -235,7 +250,6 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     /* Apply batch state. */
     /* @TODO: Account for node specific transitions. */
 
-    Graph->StageMask = Graph->Batch.StageMask;
     for (size_t Index = 0; Index < ImageBarrierCount; ++Index)
     {
         VkImageMemoryBarrier *Barrier =
@@ -248,8 +262,11 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         {
             *State = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_ImageSync));
         }
-        (*State)->AccessMask = Barrier->dstAccessMask;
-        (*State)->Layout = Barrier->newLayout;
+        Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_MapUpsert(
+            &Graph->Batch.SyncMap,
+            (uintptr_t)Barrier->image,
+            NULL);
+        *(*State) = *(*BatchState);
     }
     /* @TODO: Same for buffers. */
 
@@ -458,6 +475,7 @@ Rr_Bool Rr_SyncImage(
     }
     (*BatchState)->AccessMask = AccessMask;
     (*BatchState)->Layout = Layout;
+    (*BatchState)->StageMask = StageMask;
 
     Graph->Batch.StageMask |= StageMask;
 

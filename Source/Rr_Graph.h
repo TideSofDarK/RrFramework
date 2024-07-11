@@ -12,7 +12,7 @@ struct Rr_Frame;
 typedef struct Rr_ImageSync Rr_ImageSync;
 struct Rr_ImageSync
 {
-    // VkPipelineStageFlags StageMask;
+    VkPipelineStageFlags StageMask;
     VkAccessFlags AccessMask;
     VkImageLayout Layout;
 };
@@ -57,7 +57,7 @@ struct Rr_Graph
 
     /* Global State */
 
-    VkPipelineStageFlags StageMask;
+    // VkPipelineStageFlags StageMask;
     Rr_Map *GlobalSyncMap;
 
     /* Batch State */
