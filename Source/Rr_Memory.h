@@ -163,7 +163,7 @@ struct Rr_Map
     void *Value;
 };
 
-inline void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
+static void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
 {
     if (*Map != NULL)
     {

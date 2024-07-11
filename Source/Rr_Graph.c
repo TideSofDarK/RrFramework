@@ -10,10 +10,7 @@
 #include "Rr_Mesh.h"
 #include "Rr_Renderer.h"
 
-#include <qsort/qsort-inline.h>
-
 #include <SDL3/SDL_assert.h>
-#include <SDL3/SDL_timer.h>
 
 static void Rr_CopyDependencies(
     Rr_GraphNode *GraphNode,
