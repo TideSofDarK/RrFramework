@@ -347,13 +347,18 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_BuiltinNode *Node)
+Rr_Bool Rr_BatchBuiltinNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_GraphBatch *Batch,
+    Rr_BuiltinNode *Node)
 {
     Rr_DrawTarget *DrawTarget = App->Renderer.DrawTarget;
 
     if (Rr_SyncImage(
             App,
             Graph,
+            Batch,
             DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
                 .ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
@@ -364,6 +369,7 @@ Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_BuiltinNode *Node)
         Rr_SyncImage(
             App,
             Graph,
+            Batch,
             DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
                 .DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -378,10 +384,7 @@ Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_BuiltinNode *Node)
     return RR_TRUE;
 }
 
-void Rr_ExecuteBuiltinNode(
-    Rr_App *App,
-    Rr_BuiltinNode *Node,
-    Rr_Arena *Arena)
+void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 

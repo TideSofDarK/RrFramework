@@ -551,15 +551,19 @@ public:
 
         Rr_BlitNodeInfo BlitInfo = {
             .SrcImage = Rr_GetDrawTargetColorImage(App, TestTarget),
-            .DstImage = Rr_GetDrawTargetColorImage(App, Rr_GetMainDrawTarget(App)),
-            .SrcRect = {0,0,1024,1024},
-            .DstRect = {SwapchainSize.Width - 512, 0, 512, 512},
+            .DstImage =
+                Rr_GetDrawTargetColorImage(App, Rr_GetMainDrawTarget(App)),
+            .SrcRect = { 0, 0, 1024, 1024 },
+            .DstRect = { SwapchainSize.Width - 512, 0, 512, 512 },
             .Mode = RR_BLIT_MODE_COLOR,
         };
-        Rr_GraphNode *BlitNode = Rr_AddBlitNode(App, "blit_test", &BlitInfo, &Node, 1);
+        Rr_GraphNode *BlitNode =
+            Rr_AddBlitNode(App, "blit_test", &BlitInfo, &Node, 1);
 
-        Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin", &BlitNode, 1);
-        // Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin", &Node, 1);
+        Rr_GraphNode *BuiltinNode =
+            Rr_AddBuiltinNode(App, "builtin", &BlitNode, 1);
+        // Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin", &Node,
+        // 1);
 
         Rr_PresentNodeInfo PresentInfo = {
             .Mode = RR_PRESENT_MODE_STRETCH,

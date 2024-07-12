@@ -133,7 +133,7 @@ static void Iterate(Rr_App *App)
     ImGui_ImplSDL3_NewFrame();
     igNewFrame();
 
-    Rr_ProcessPendingLoads(App);
+    Rr_PrepareFrame(App);
 
     App->Config->IterateFunc(App, App->UserData);
 

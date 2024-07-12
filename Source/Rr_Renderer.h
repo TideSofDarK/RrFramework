@@ -157,7 +157,7 @@ extern void Rr_InitImGui(Rr_App *App);
 
 extern void Rr_CleanupRenderer(Rr_App *App);
 
-extern void Rr_ProcessPendingLoads(Rr_App *App);
+extern void Rr_PrepareFrame(Rr_App *App);
 
 extern void Rr_Draw(Rr_App *App);
 

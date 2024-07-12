@@ -1232,7 +1232,7 @@ static void Rr_ResetFrameResources(Rr_Frame *Frame)
     Rr_ResetArena(&Frame->Arena);
 }
 
-void Rr_ProcessPendingLoads(Rr_App *App)
+static void Rr_ProcessPendingLoads(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -1249,6 +1249,17 @@ void Rr_ProcessPendingLoads(Rr_App *App)
 
         SDL_UnlockSpinlock(&App->SyncArena.Lock);
     }
+}
+
+void Rr_PrepareFrame(Rr_App *App)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    /* @TODO: Ugly. */
+    Frame->Graph.Arena = &Frame->Arena;
+
+    Rr_ProcessPendingLoads(App);
 }
 
 void Rr_Draw(Rr_App *App)
@@ -1285,7 +1296,8 @@ void Rr_Draw(Rr_App *App)
     }
     SDL_assert(Result >= 0);
 
-    Frame->CurrentSwapchainImage = Swapchain->Images[SwapchainImageIndex].Handle;
+    Frame->CurrentSwapchainImage =
+        Swapchain->Images[SwapchainImageIndex].Handle;
 
     /* Begin main command buffer. */
 

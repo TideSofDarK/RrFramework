@@ -49,11 +49,16 @@ Rr_GraphNode *Rr_AddBlitNode(
     return GraphNode;
 }
 
-Rr_Bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_BlitNode *Node)
+Rr_Bool Rr_BatchBlitNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_GraphBatch *Batch,
+    Rr_BlitNode *Node)
 {
     if (Rr_SyncImage(
             App,
             Graph,
+            Batch,
             Node->Info.SrcImage->Handle,
             Node->AspectMask,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -65,6 +70,7 @@ Rr_Bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_BlitNode *Node)
     if (Rr_SyncImage(
             App,
             Graph,
+            Batch,
             Node->Info.DstImage->Handle,
             Node->AspectMask,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -77,9 +83,7 @@ Rr_Bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_BlitNode *Node)
     return RR_TRUE;
 }
 
-void Rr_ExecuteBlitNode(
-    Rr_App *App,
-    Rr_BlitNode *Node)
+void Rr_ExecuteBlitNode(Rr_App *App, Rr_BlitNode *Node)
 {
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
     Rr_BlitColorImage(

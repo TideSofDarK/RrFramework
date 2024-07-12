@@ -372,6 +372,7 @@ static void Rr_RenderGeneric(
 Rr_Bool Rr_BatchGraphicsNode(
     Rr_App *App,
     Rr_Graph *Graph,
+    Rr_GraphBatch *Batch,
     Rr_GraphicsNode *Node)
 {
     Rr_DrawTarget *DrawTarget = Node->Info.DrawTarget;
@@ -380,6 +381,7 @@ Rr_Bool Rr_BatchGraphicsNode(
         Rr_SyncImage(
             App,
             Graph,
+            Batch,
             DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
                 .ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
@@ -395,6 +397,7 @@ Rr_Bool Rr_BatchGraphicsNode(
         Rr_SyncImage(
             App,
             Graph,
+            Batch,
             DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
                 .DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -409,10 +412,7 @@ Rr_Bool Rr_BatchGraphicsNode(
     return RR_TRUE;
 }
 
-void Rr_ExecuteGraphicsNode(
-    Rr_App *App,
-    Rr_GraphicsNode *Node,
-    Rr_Arena *Arena)
+void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 

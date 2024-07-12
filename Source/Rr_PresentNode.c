@@ -31,7 +31,12 @@ Rr_GraphNode *Rr_AddPresentNode(
     return GraphNode;
 }
 
-Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
+Rr_Bool Rr_BatchPresentNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+
+    Rr_GraphBatch *Batch,
+    Rr_PresentNode *Node)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -40,6 +45,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
     if (Rr_SyncImage(
             App,
             Graph,
+            Batch,
             DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
                 .ColorImage->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
@@ -51,6 +57,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
         Rr_SyncImage(
             App,
             Graph,
+            Batch,
             DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
                 .DepthImage->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -61,6 +68,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
         Rr_SyncImage(
             App,
             Graph,
+            Batch,
             Frame->CurrentSwapchainImage,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -73,9 +81,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_PresentNode *Node)
     return RR_TRUE;
 }
 
-void Rr_ExecutePresentNode(
-    Rr_App *App,
-    Rr_PresentNode *Node)
+void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;

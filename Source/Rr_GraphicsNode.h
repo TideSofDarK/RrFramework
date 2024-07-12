@@ -6,6 +6,8 @@
 
 #include <volk.h>
 
+struct Rr_GraphBatch;
+
 typedef struct Rr_DrawPrimitiveInfo Rr_DrawPrimitiveInfo;
 struct Rr_DrawPrimitiveInfo
 {
@@ -35,6 +37,7 @@ struct Rr_GraphicsNode
 extern Rr_Bool Rr_BatchGraphicsNode(
     Rr_App *App,
     Rr_Graph *Graph,
+    struct Rr_GraphBatch *Batch,
     Rr_GraphicsNode *Node);
 
 extern void Rr_ExecuteGraphicsNode(

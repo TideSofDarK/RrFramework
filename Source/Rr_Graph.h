@@ -49,34 +49,29 @@ struct Rr_GraphEdge
     Rr_GraphNode *To;
 };
 
+typedef struct Rr_GraphBatch Rr_GraphBatch;
+struct Rr_GraphBatch
+{
+    RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
+    RR_SLICE_TYPE(VkImageMemoryBarrier) ImageBarriersSlice;
+    RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriersSlice;
+    VkPipelineStageFlags StageMask;
+    Rr_Map *SyncMap;
+    Rr_Bool Final;
+    Rr_Arena *Arena;
+};
+
 struct Rr_Graph
 {
-    /* Nodes */
-
     RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
-
-    /* Global State */
-
-    // VkPipelineStageFlags StageMask;
     Rr_Map *GlobalSyncMap;
-
-    /* Batch State */
-
-    struct Rr_GraphBatch
-    {
-        RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
-        RR_SLICE_TYPE(VkImageMemoryBarrier) ImageBarriersSlice;
-        RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriersSlice;
-        VkPipelineStageFlags StageMask;
-        Rr_Map *SyncMap;
-        Rr_Bool Final;
-        Rr_Arena *Arena;
-    } Batch;
+    Rr_Arena *Arena;
 };
 
 extern Rr_Bool Rr_SyncImage(
     Rr_App *App,
     Rr_Graph *Graph,
+    Rr_GraphBatch *GraphBatch,
     VkImage Image,
     VkImageAspectFlags AspectMask,
     VkPipelineStageFlags StageMask,
