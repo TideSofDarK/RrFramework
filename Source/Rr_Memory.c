@@ -65,9 +65,9 @@ void Rr_SetScratchTLS(void *TLSID) { ScratchArenaTLS = *((SDL_TLSID *)TLSID); }
 
 void Rr_InitThreadScratch(size_t Size)
 {
-    if (ScratchArenaTLS == 0)
+    if (SDL_GetTLS(&ScratchArenaTLS) != 0)
     {
-        Rr_LogAbort("ScratchArenaTLS is not set!");
+        Rr_LogAbort("Scratch is already initialized for this thread!");
     }
     Rr_Arena *Arena =
         Rr_Calloc(RR_SCRATCH_ARENA_COUNT_PER_THREAD, sizeof(Rr_Arena));
@@ -75,16 +75,16 @@ void Rr_InitThreadScratch(size_t Size)
     {
         Arena[Index] = Rr_CreateArena(Size);
     }
-    SDL_SetTLS(ScratchArenaTLS, Arena, Rr_CleanupScratchArena);
+    SDL_SetTLS(&ScratchArenaTLS, Arena, Rr_CleanupScratchArena);
 }
 
 Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
 {
-    if (ScratchArenaTLS == 0)
+    if (ScratchArenaTLS.value == 0)
     {
         Rr_LogAbort("ScratchArenaTLS is not set!");
     }
-    Rr_Arena *Arena = (Rr_Arena *)SDL_GetTLS(ScratchArenaTLS);
+    Rr_Arena *Arena = (Rr_Arena *)SDL_GetTLS(&ScratchArenaTLS);
     if (Conflict == NULL)
     {
         return Rr_CreateArenaScratch(Arena);

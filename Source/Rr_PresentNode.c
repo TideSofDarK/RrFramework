@@ -34,7 +34,6 @@ Rr_GraphNode *Rr_AddPresentNode(
 Rr_Bool Rr_BatchPresentNode(
     Rr_App *App,
     Rr_Graph *Graph,
-
     Rr_GraphBatch *Batch,
     Rr_PresentNode *Node)
 {

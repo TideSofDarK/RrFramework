@@ -238,7 +238,6 @@ void Rr_Run(Rr_AppConfig *Config)
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
         .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
         .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
-        .ScratchArenaTLS = SDL_CreateTLS(),
         .ObjectStorage = Rr_CreateObjectStorage(),
         .UserData = Config->UserData,
     };

@@ -7,8 +7,6 @@
 extern "C" {
 #endif
 
-struct Rr_Image;
-
 typedef struct Rr_DrawTarget Rr_DrawTarget;
 typedef struct Rr_Graph Rr_Graph;
 typedef struct Rr_GraphNode Rr_GraphNode;

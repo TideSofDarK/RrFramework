@@ -115,7 +115,8 @@ static const char* ImGui_ImplSDL3_GetClipboardText(void*)
     ImGui_ImplSDL3_Data* bd = ImGui_ImplSDL3_GetBackendData();
     if (bd->ClipboardTextData)
         SDL_free(bd->ClipboardTextData);
-    bd->ClipboardTextData = SDL_GetClipboardText();
+    bd->ClipboardTextData = (char *)SDL_GetClipboardText();
+    SDL_ClaimTemporaryMemory(bd->ClipboardTextData);
     return bd->ClipboardTextData;
 }
 
@@ -636,7 +637,7 @@ static void ImGui_ImplSDL3_UpdateGamepads()
     {
         ImGui_ImplSDL3_CloseGamepads();
         int sdl_gamepads_count = 0;
-        SDL_JoystickID* sdl_gamepads = SDL_GetGamepads(&sdl_gamepads_count);
+        const SDL_JoystickID* sdl_gamepads = SDL_GetGamepads(&sdl_gamepads_count);
         for (int n = 0; n < sdl_gamepads_count; n++)
             if (SDL_Gamepad* gamepad = SDL_OpenGamepad(sdl_gamepads[n]))
             {
@@ -644,7 +645,6 @@ static void ImGui_ImplSDL3_UpdateGamepads()
                 if (bd->GamepadMode == ImGui_ImplSDL3_GamepadMode_AutoFirst)
                     break;
             }
-        SDL_free(sdl_gamepads);
         bd->WantUpdateGamepadsList = false;
     }
 
