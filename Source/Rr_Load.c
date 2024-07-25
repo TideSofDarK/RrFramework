@@ -113,7 +113,7 @@ static void Rr_LoadResourcesFromTasks(
 
         if (Semaphore)
         {
-            SDL_PostSemaphore(Semaphore);
+            SDL_SignalSemaphore(Semaphore);
         }
     }
 
@@ -189,7 +189,7 @@ Rr_LoadingContext *Rr_LoadAsync(
         .Tasks = NewTasks,
         .TaskCount = TaskCount,
     };
-    SDL_PostSemaphore(LoadingThread->Semaphore);
+    SDL_SignalSemaphore(LoadingThread->Semaphore);
     SDL_UnlockMutex(LoadingThread->Mutex);
 
     /* @TODO: Create better handle! */
@@ -715,7 +715,7 @@ void Rr_InitLoadingThread(Rr_App *App)
 void Rr_CleanupLoadingThread(Rr_App *App)
 {
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
-    SDL_PostSemaphore(LoadingThread->Semaphore);
+    SDL_SignalSemaphore(LoadingThread->Semaphore);
     SDL_WaitThread(LoadingThread->Handle, NULL);
     SDL_DestroySemaphore(LoadingThread->Semaphore);
     SDL_DestroyMutex(LoadingThread->Mutex);
