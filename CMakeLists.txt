@@ -41,7 +41,7 @@ set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
 CPMAddPackage("gh:libsdl-org/SDL#main")
 
 CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator#master")
-CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.283.0")
+CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.290.0")
 
 add_subdirectory("Vendor/imgui/")
 
