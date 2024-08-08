@@ -445,7 +445,7 @@ public:
 
         if (MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
         {
-            Rr_SetRelativeMouseMode(true);
+            Rr_SetRelativeMouseMode(App, true);
             constexpr float Sensitivity = 0.2f;
             Camera.Yaw = Rr_WrapMax(
                 Camera.Yaw - (MousePositionDelta.X * Sensitivity),
@@ -457,7 +457,7 @@ public:
         }
         else
         {
-            Rr_SetRelativeMouseMode(false);
+            Rr_SetRelativeMouseMode(App, false);
         }
 
         ShaderGlobals.View = Rr_VulkanMatrix() * Camera.GetViewMatrix();

@@ -346,7 +346,9 @@ double Rr_GetTimeSeconds(Rr_App *App)
     return (double)SDL_GetTicks() / 1000.0;
 }
 
-void Rr_SetRelativeMouseMode(Rr_Bool IsRelative)
+void Rr_SetRelativeMouseMode(Rr_App *App, Rr_Bool IsRelative)
 {
-    SDL_SetRelativeMouseMode(IsRelative ? SDL_TRUE : SDL_FALSE);
+    SDL_SetWindowRelativeMouseMode(
+        App->Window,
+        IsRelative ? SDL_TRUE : SDL_FALSE);
 }
