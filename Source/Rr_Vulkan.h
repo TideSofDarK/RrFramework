@@ -29,7 +29,7 @@ struct Rr_PhysicalDevice
     VkPhysicalDeviceSubgroupProperties SubgroupProperties;
 };
 
-extern Rr_PhysicalDevice Rr_CreatePhysicalDevice(
+extern Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
     uint32_t *OutGraphicsQueueFamilyIndex,

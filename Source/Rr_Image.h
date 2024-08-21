@@ -6,7 +6,7 @@
 #include "Rr_Memory.h"
 #include "Rr_UploadContext.h"
 
-#include <vma/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 
 struct Rr_Image
 {

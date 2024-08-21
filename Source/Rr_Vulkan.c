@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 
 static Rr_Bool Rr_CheckPhysicalDevice(
@@ -138,14 +139,12 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     return RR_TRUE;
 }
 
-Rr_PhysicalDevice Rr_CreatePhysicalDevice(
+Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
     uint32_t *OutGraphicsQueueFamilyIndex,
     uint32_t *OutTransferQueueFamilyIndex)
 {
-    Rr_PhysicalDevice PhysicalDevice = { 0 };
-
     uint32_t PhysicalDeviceCount = 0;
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, NULL);
     if (PhysicalDeviceCount == 0)
@@ -160,58 +159,148 @@ Rr_PhysicalDevice Rr_CreatePhysicalDevice(
         &PhysicalDeviceCount,
         &PhysicalDevices[0]);
 
-    PhysicalDevice.SubgroupProperties = (VkPhysicalDeviceSubgroupProperties){
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
-        .pNext = NULL,
-    };
+    Rr_LogVulkan("Selecting Vulkan device:");
 
-    PhysicalDevice.Properties = (VkPhysicalDeviceProperties2){
-        .pNext = &PhysicalDevice.SubgroupProperties,
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-    };
-
-    Rr_Bool UseTransferQueue = RR_FALSE;
-    Rr_Bool FoundSuitableDevice = RR_FALSE;
+    char DevicesString[1024];
+    size_t DevicesStringCursor = 1;
+    uint32_t BestDeviceIndex = ~0;
+    static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    // static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+    int BestDeviceType = 0;
+    VkDeviceSize BestDeviceMemory = 0;
     for (uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
+        uint32_t GraphicsQueueFamilyIndex;
+        uint32_t TransferQueueFamilyIndex;
         if (Rr_CheckPhysicalDevice(
                 PhysicalDeviceHandle,
                 Surface,
-                OutGraphicsQueueFamilyIndex,
-                OutTransferQueueFamilyIndex))
+                &GraphicsQueueFamilyIndex,
+                &TransferQueueFamilyIndex))
         {
-            UseTransferQueue =
-                *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
+            uint32_t Score = 0;
 
-            vkGetPhysicalDeviceFeatures(
-                PhysicalDeviceHandle,
-                &PhysicalDevice.Features);
+            VkPhysicalDeviceProperties2 Properties = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+            };
+            vkGetPhysicalDeviceProperties2(PhysicalDeviceHandle, &Properties);
+
+            VkPhysicalDeviceMemoryProperties MemoryProperties = { 0 };
             vkGetPhysicalDeviceMemoryProperties(
                 PhysicalDeviceHandle,
-                &PhysicalDevice.MemoryProperties);
-            vkGetPhysicalDeviceProperties2(
-                PhysicalDeviceHandle,
-                &PhysicalDevice.Properties);
+                &MemoryProperties);
 
-            Rr_LogVulkan(
-                "Selected GPU: %s",
-                PhysicalDevice.Properties.properties.deviceName);
+            VkDeviceSize Memory = 0;
+            for (uint32_t MemoryHeapIndex = 0;
+                 MemoryHeapIndex < MemoryProperties.memoryHeapCount;
+                 ++MemoryHeapIndex)
+            {
+                Memory += MemoryProperties.memoryHeaps[MemoryHeapIndex].size;
+            }
 
-            PhysicalDevice.Handle = PhysicalDeviceHandle;
-            FoundSuitableDevice = RR_TRUE;
-            break;
+            const char *TypeString = NULL;
+            switch (Properties.properties.deviceType)
+            {
+                case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                    TypeString = "discrete";
+                    break;
+                case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                    TypeString = "integrated";
+                    break;
+                case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+                    TypeString = "virtual";
+                    break;
+                default:
+                    TypeString = "unknown";
+                    break;
+            }
+
+            DevicesStringCursor += sprintf(
+                DevicesString + DevicesStringCursor - 1,
+                "  (|) GPU #%d: %s, type: %s, total memory: %lu \n",
+                Index,
+                Properties.properties.deviceName,
+                TypeString,
+                Memory);
+
+            if (BestDeviceIndex == ~0)
+            {
+            SetBestDevice:
+                BestDeviceIndex = Index;
+                BestDeviceType = Properties.properties.deviceType;
+                BestDeviceMemory = Memory;
+                *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
+                *OutTransferQueueFamilyIndex = TransferQueueFamilyIndex;
+            }
+            else
+            {
+                if (Properties.properties.deviceType == PreferredDeviceType)
+                {
+                    if (BestDeviceType == PreferredDeviceType)
+                    {
+                        if (Memory > BestDeviceMemory)
+                        {
+                            goto SetBestDevice;
+                        }
+                    }
+                    else
+                    {
+                        goto SetBestDevice;
+                    }
+                }
+            }
         }
     }
-    if (!FoundSuitableDevice)
+    if (BestDeviceIndex == ~0)
     {
         Rr_LogAbort(
             "Could not select physical device based on the chosen properties!");
     }
 
-    Rr_LogVulkan(
-        "Unified Queue Mode: %s",
-        !UseTransferQueue ? "RR_TRUE" : "RR_FALSE");
+    size_t DeviceIndex = 0;
+    char *Mark;
+    while ((Mark = strchr(DevicesString, '|')))
+    {
+        if (DeviceIndex == BestDeviceIndex)
+        {
+            *Mark = '*';
+        }
+        else
+        {
+            *Mark = ' ';
+        }
+        DeviceIndex++;
+    }
+    Rr_LogVulkan(DevicesString);
+
+    Rr_Bool UseTransferQueue =
+        *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
+
+    Rr_PhysicalDevice PhysicalDevice = {
+        .SubgroupProperties =
+            (VkPhysicalDeviceSubgroupProperties){
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+            },
+        .Properties =
+            (VkPhysicalDeviceProperties2){
+                .pNext = &PhysicalDevice.SubgroupProperties,
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+            },
+        .Handle = PhysicalDevices[BestDeviceIndex],
+    };
+
+    vkGetPhysicalDeviceFeatures(
+        PhysicalDevices[BestDeviceIndex],
+        &PhysicalDevice.Features);
+    vkGetPhysicalDeviceMemoryProperties(
+        PhysicalDevices[BestDeviceIndex],
+        &PhysicalDevice.MemoryProperties);
+    vkGetPhysicalDeviceProperties2(
+        PhysicalDevices[BestDeviceIndex],
+        &PhysicalDevice.Properties);
+
+    Rr_LogVulkan("Using separate transfer queue: %u", UseTransferQueue);
 
     Rr_StackFree(PhysicalDevices);
 

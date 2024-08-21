@@ -1063,7 +1063,7 @@ void Rr_InitRenderer(Rr_App *App)
         Rr_LogAbort("Failed to create Vulkan surface: %s", SDL_GetError());
     }
 
-    Renderer->PhysicalDevice = Rr_CreatePhysicalDevice(
+    Renderer->PhysicalDevice = Rr_SelectPhysicalDevice(
         Renderer->Instance,
         Renderer->Surface,
         &Renderer->GraphicsQueue.FamilyIndex,
