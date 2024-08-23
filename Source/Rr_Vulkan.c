@@ -199,29 +199,12 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
                 Memory += MemoryProperties.memoryHeaps[MemoryHeapIndex].size;
             }
 
-            const char *TypeString = NULL;
-            switch (Properties.properties.deviceType)
-            {
-                case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-                    TypeString = "discrete";
-                    break;
-                case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-                    TypeString = "integrated";
-                    break;
-                case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
-                    TypeString = "virtual";
-                    break;
-                default:
-                    TypeString = "unknown";
-                    break;
-            }
-
             DevicesStringCursor += sprintf(
                 DevicesString + DevicesStringCursor - 1,
-                "  (|) GPU #%d: %s, type: %s, total memory: %lu \n",
+                "  (\\) GPU #%d: %s, type: %s, total memory: %lu \n",
                 Index,
                 Properties.properties.deviceName,
-                TypeString,
+                string_VkPhysicalDeviceType(Properties.properties.deviceType),
                 Memory);
 
             if (BestDeviceIndex == ~0)
@@ -260,7 +243,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
 
     size_t DeviceIndex = 0;
     char *Mark;
-    while ((Mark = strchr(DevicesString, '|')))
+    while ((Mark = strchr(DevicesString, '\\')))
     {
         if (DeviceIndex == BestDeviceIndex)
         {
