@@ -5,3 +5,5 @@
 compile_commands.json
 *.spv
 CMakeSettings.json
+CMakeLists.txt.user
+.qtcreator/*
