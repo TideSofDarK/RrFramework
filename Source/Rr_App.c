@@ -153,7 +153,7 @@ static void Iterate(Rr_App *App)
     }
 }
 
-static int SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
+static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
 {
     switch (Event->type)
     {
