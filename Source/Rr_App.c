@@ -298,7 +298,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_CleanupTLS();
 
-    SDL_DelEventWatch((SDL_EventFilter)Rr_EventWatch, &App);
+    SDL_RemoveEventWatch((SDL_EventFilter)Rr_EventWatch, &App);
     SDL_DestroyWindow(App.Window);
 
     SDL_Quit();

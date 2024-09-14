@@ -6,7 +6,7 @@
 
 static Rr_KeyState Rr_UpdateKeyState(
     Rr_KeyState OldKeyState,
-    const uint8_t *KeyboardState,
+    const SDL_bool *KeyboardState,
     uint8_t Scancode)
 {
     Rr_Bool CurrentlyPressed = KeyboardState[Scancode] == 1;
@@ -30,7 +30,7 @@ static Rr_KeyState Rr_UpdateKeyState(
 void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
 {
     Rr_KeyStates NewKeys = State->Keys;
-    const uint8_t *KeyboardState = SDL_GetKeyboardState(NULL);
+    const SDL_bool *KeyboardState = SDL_GetKeyboardState(NULL);
     for (size_t Index = 0; Index < Config->Count; Index++)
     {
         Rr_InputMapping *Mapping = &Config->Mappings[Index];
