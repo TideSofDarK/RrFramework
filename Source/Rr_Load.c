@@ -652,7 +652,7 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
     {
         SDL_WaitSemaphore(LoadingThread->Semaphore);
 
-        if (SDL_AtomicGet(&App->bExit) == RR_TRUE)
+        if (SDL_GetAtomicInt(&App->bExit) == RR_TRUE)
         {
             break;
         }

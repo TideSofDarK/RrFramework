@@ -6,6 +6,7 @@
 #include "Rr_Object.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_vulkan.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
@@ -169,7 +170,7 @@ static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
         case SDL_EVENT_WINDOW_RESIZED:
         {
             Rr_App *App = (Rr_App *)AppPtr;
-            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
+            SDL_SetAtomicInt(&App->Renderer.Swapchain.bResizePending, 1);
         }
         break;
 #endif
@@ -260,7 +261,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_ShowWindow(App.Window);
 
-    while (SDL_AtomicGet(&App.bExit) == false)
+    while (SDL_GetAtomicInt(&App.bExit) == false)
     {
         for (SDL_Event Event; SDL_PollEvent(&Event);)
         {
@@ -277,7 +278,7 @@ void Rr_Run(Rr_AppConfig *Config)
                 }
                 case SDL_EVENT_QUIT:
                 {
-                    SDL_AtomicSet(&App.bExit, true);
+                    SDL_SetAtomicInt(&App.bExit, true);
                     break;
                 }
                 default:
@@ -348,5 +349,5 @@ void Rr_SetRelativeMouseMode(Rr_App *App, Rr_Bool IsRelative)
 {
     SDL_SetWindowRelativeMouseMode(
         App->Window,
-        IsRelative ? SDL_TRUE : SDL_FALSE);
+        IsRelative ? true : false);
 }

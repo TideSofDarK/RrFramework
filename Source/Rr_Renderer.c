@@ -14,6 +14,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
+#include <SDL3/SDL_atomic.h>
 
 // static void Rr_CalculateDrawTargetResolution(Rr_Renderer*  Renderer,  u32
 // WindowWidth,  u32 WindowHeight)
@@ -1058,7 +1059,7 @@ void Rr_InitRenderer(Rr_App *App)
             Window,
             Renderer->Instance,
             NULL,
-            &Renderer->Surface) != SDL_TRUE)
+            &Renderer->Surface) != true)
     {
         Rr_LogAbort("Failed to create Vulkan surface: %s", SDL_GetError());
     }
@@ -1101,7 +1102,7 @@ Rr_Bool Rr_NewFrame(Rr_App *App, void *Window)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    int32_t bResizePending = SDL_AtomicGet(&Renderer->Swapchain.bResizePending);
+    int32_t bResizePending = SDL_GetAtomicInt(&Renderer->Swapchain.bResizePending);
     if (bResizePending == RR_TRUE)
     {
         vkDeviceWaitIdle(Renderer->Device);
@@ -1114,7 +1115,7 @@ Rr_Bool Rr_NewFrame(Rr_App *App, void *Window)
         if (!Minimized && Width > 0 && Height > 0 &&
             Rr_InitSwapchain(App, (uint32_t *)&Width, (uint32_t *)&Height))
         {
-            SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 0);
+            SDL_SetAtomicInt(&Renderer->Swapchain.bResizePending, 0);
             return RR_TRUE;
         }
 
@@ -1287,12 +1288,12 @@ void Rr_Draw(Rr_App *App)
         &SwapchainImageIndex);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 1);
+        SDL_SetAtomicInt(&Renderer->Swapchain.bResizePending, 1);
         return;
     }
     if (Result == VK_SUBOPTIMAL_KHR)
     {
-        SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 1);
+        SDL_SetAtomicInt(&Renderer->Swapchain.bResizePending, 1);
     }
     SDL_assert(Result >= 0);
 
@@ -1356,7 +1357,7 @@ void Rr_Draw(Rr_App *App)
     Result = vkQueuePresentKHR(Renderer->GraphicsQueue.Handle, &PresentInfo);
     if (Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        SDL_AtomicSet(&Renderer->Swapchain.bResizePending, 1);
+        SDL_SetAtomicInt(&Renderer->Swapchain.bResizePending, 1);
     }
 
     Renderer->FrameNumber++;
