@@ -12,36 +12,22 @@ include(CMake/CPM.cmake)
 #
 # Dependencies
 #
-find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED volk)
 
-# set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
 set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
 set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
-# set(SDL_FILE OFF CACHE BOOL "" FORCE)
-# set(SDL_FILESYSTEM OFF CACHE BOOL "" FORCE)
 set(SDL_MISC OFF CACHE BOOL "" FORCE)
 set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
 set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
 set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
-# set(SDL_3DNOW OFF CACHE BOOL "" FORCE)
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-# set(SDL_RENDER_VULKAN OFF CACHE BOOL "" FORCE)
-# set(SDL_RENDER_D3D OFF CACHE BOOL "" FORCE)
-# set(SDL_RENDER_METAL OFF CACHE BOOL "" FORCE)
-# set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
-# set(SDL_HIDAPI OFF CACHE BOOL "" FORCE)
-# set(SDL_HIDAPI_LIBUSB OFF CACHE BOOL "" FORCE)
-# set(SDL_HIDAPI_LIBUSB_SHARED OFF CACHE BOOL "" FORCE)
-# set(SDL_HIDAPI_JOYSTICK OFF CACHE BOOL "" FORCE)
-# set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
-set(SDL_VULKAN ON CACHE BOOL "" FORCE)
+set(SDL_GPU OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+set(SDL_POWER OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC_PIC ON CACHE BOOL "" FORCE)
 set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
 set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
 CPMAddPackage("gh:libsdl-org/SDL#main")
-
-CPMAddPackage("gh:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator#master")
-CPMAddPackage("gh:zeux/volk#vulkan-sdk-1.3.290.0")
 
 add_subdirectory("Vendor/imgui/")
 
@@ -135,10 +121,9 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 target_include_directories(${PROJECT_NAME} PUBLIC Include)
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        SDL3::SDL3
         Vulkan::Headers
-        volk::volk_headers
-        GPUOpen::VulkanMemoryAllocator
+        Vulkan::volk
+        SDL3::SDL3
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
         ${IMGUI_TARGET}

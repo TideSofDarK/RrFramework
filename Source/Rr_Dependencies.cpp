@@ -9,7 +9,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #define VMA_SYSTEM_ALIGNED_MALLOC    Rr_AlignedAlloc
 #define VMA_SYSTEM_ALIGNED_FREE      Rr_AlignedFree
-#include <vk_mem_alloc.h>
+#include <vma/vk_mem_alloc.h>
 
 #define TINYEXR_IMPLEMENTATION
 #include <tinyexr/tinyexr.h>

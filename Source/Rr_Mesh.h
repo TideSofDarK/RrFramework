@@ -70,10 +70,7 @@ extern Rr_StaticMesh *Rr_CreateStaticMeshOBJ(
     Rr_AssetRef AssetRef,
     Rr_Arena *Arena);
 
-extern void Rr_GetStaticMeshSizeOBJ(
-    Rr_AssetRef AssetRef,
-    Rr_Arena *Arena,
-    struct Rr_LoadSize *OutLoadSize);
+extern void Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena *Arena, struct Rr_LoadSize *OutLoadSize);
 
 extern void Rr_GetStaticMeshSizeGLTF(
     Rr_AssetRef AssetRef,

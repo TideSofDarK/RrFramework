@@ -15,19 +15,14 @@ Rr_GraphNode *Rr_AddBlitNode(
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
-        Frame,
-        RR_GRAPH_NODE_TYPE_BLIT,
-        Name,
-        Dependencies,
-        DependencyCount);
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BLIT, Name, Dependencies, DependencyCount);
 
     Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
     *BlitNode = (Rr_BlitNode){
         .Info = *Info,
     };
 
-    switch (Info->Mode)
+    switch(Info->Mode)
     {
         case RR_BLIT_MODE_COLOR:
         {
@@ -49,33 +44,29 @@ Rr_GraphNode *Rr_AddBlitNode(
     return GraphNode;
 }
 
-Rr_Bool Rr_BatchBlitNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_GraphBatch *Batch,
-    Rr_BlitNode *Node)
+Rr_Bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BlitNode *Node)
 {
-    if (Rr_SyncImage(
-            App,
-            Graph,
-            Batch,
-            Node->Info.SrcImage->Handle,
-            Node->AspectMask,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_ACCESS_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) != RR_TRUE)
+    if(Rr_SyncImage(
+           App,
+           Graph,
+           Batch,
+           Node->Info.SrcImage->Handle,
+           Node->AspectMask,
+           VK_PIPELINE_STAGE_TRANSFER_BIT,
+           VK_ACCESS_TRANSFER_READ_BIT,
+           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) != RR_TRUE)
     {
         return RR_FALSE;
     }
-    if (Rr_SyncImage(
-            App,
-            Graph,
-            Batch,
-            Node->Info.DstImage->Handle,
-            Node->AspectMask,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) != RR_TRUE)
+    if(Rr_SyncImage(
+           App,
+           Graph,
+           Batch,
+           Node->Info.DstImage->Handle,
+           Node->AspectMask,
+           VK_PIPELINE_STAGE_TRANSFER_BIT,
+           VK_ACCESS_TRANSFER_WRITE_BIT,
+           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) != RR_TRUE)
     {
         return RR_FALSE;
     }

@@ -34,13 +34,6 @@ struct Rr_GraphicsNode
     char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
 };
 
-extern Rr_Bool Rr_BatchGraphicsNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    struct Rr_GraphBatch *Batch,
-    Rr_GraphicsNode *Node);
+extern Rr_Bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, struct Rr_GraphBatch *Batch, Rr_GraphicsNode *Node);
 
-extern void Rr_ExecuteGraphicsNode(
-    Rr_App *App,
-    Rr_GraphicsNode *Node,
-    Rr_Arena *Arena);
+extern void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena);

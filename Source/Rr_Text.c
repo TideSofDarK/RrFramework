@@ -16,38 +16,24 @@ void Rr_InitTextRenderer(Rr_App *App)
 
     /* Descriptor Set Layouts */
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
-    Rr_AddDescriptor(
+    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS] = Rr_BuildDescriptorLayout(
         &DescriptorLayoutBuilder,
-        0,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    TextPipeline
-        ->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS] =
-        Rr_BuildDescriptorLayout(
-            &DescriptorLayoutBuilder,
-            Device,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        Device,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
     Rr_ClearDescriptors(&DescriptorLayoutBuilder);
-    Rr_AddDescriptor(
+    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    Rr_AddDescriptor(&DescriptorLayoutBuilder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT] = Rr_BuildDescriptorLayout(
         &DescriptorLayoutBuilder,
-        0,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_AddDescriptor(
-        &DescriptorLayoutBuilder,
-        1,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT] =
-        Rr_BuildDescriptorLayout(
-            &DescriptorLayoutBuilder,
-            Device,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        Device,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
     /* Pipeline Layout */
-    VkPushConstantRange PushConstantRange = {
-        .offset = 0,
-        .size = 128,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-    };
+    VkPushConstantRange PushConstantRange = { .offset = 0,
+                                              .size = 128,
+                                              .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
 
     VkPipelineLayoutCreateInfo LayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -67,38 +53,31 @@ void Rr_InitTextRenderer(Rr_App *App)
     Rr_EnableTriangleFan(Builder);
     Rr_EnablePerVertexInputAttributes(
         Builder,
-        &(Rr_VertexInput){
-            .Attributes = {
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 0 },
-            } });
+        &(Rr_VertexInput){ .Attributes = {
+                               { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 0 },
+                           } });
     Rr_EnablePerInstanceInputAttributes(
         Builder,
-        &(Rr_VertexInput){
-            .Attributes = {
-                { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 1 },
-                { .Type = RR_VERTEX_INPUT_TYPE_UINT, .Location = 2 },
-            } });
+        &(Rr_VertexInput){ .Attributes = {
+                               { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 1 },
+                               { .Type = RR_VERTEX_INPUT_TYPE_UINT, .Location = 2 },
+                           } });
     Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
     Rr_EnableColorAttachment(Builder, RR_TRUE);
     Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
-    TextPipeline->Pipeline =
-        Rr_CreatePipeline(App, Builder, TextPipeline->Layout);
+    TextPipeline->Pipeline = Rr_CreatePipeline(App, Builder, TextPipeline->Layout);
 
     /* Quad Buffer */
     float Quad[8] = {
         0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
     };
     TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(App, sizeof(Quad));
-    Rr_UploadToDeviceBufferImmediate(
-        App,
-        TextPipeline->QuadBuffer,
-        RR_MAKE_DATA(Quad));
+    Rr_UploadToDeviceBufferImmediate(App, TextPipeline->QuadBuffer, RR_MAKE_DATA(Quad));
 
     /* Builtin Font */
-    Renderer->BuiltinFont =
-        Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
+    Renderer->BuiltinFont = Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
 }
 
 void Rr_CleanupTextRenderer(Rr_App *App)
@@ -108,22 +87,15 @@ void Rr_CleanupTextRenderer(Rr_App *App)
     VkDevice Device = Renderer->Device;
     Rr_DestroyPipeline(App, TextPipeline->Pipeline);
     vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
-    for (size_t Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT;
-         ++Index)
+    for(size_t Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT; ++Index)
     {
-        vkDestroyDescriptorSetLayout(
-            Device,
-            TextPipeline->DescriptorSetLayouts[Index],
-            NULL);
+        vkDestroyDescriptorSetLayout(Device, TextPipeline->DescriptorSetLayouts[Index], NULL);
     }
     Rr_DestroyBuffer(App, TextPipeline->QuadBuffer);
     Rr_DestroyFont(App, Renderer->BuiltinFont);
 }
 
-Rr_Font *Rr_CreateFont(
-    Rr_App *App,
-    Rr_AssetRef FontPNGRef,
-    Rr_AssetRef FontJSONRef)
+Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
 {
     Rr_Image *Atlas;
     Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNGRef, &Atlas);
@@ -141,8 +113,7 @@ Rr_Font *Rr_CreateFont(
     cJSON *FontDataJSON = cJSON_ParseWithLength(FontJSON.Data, FontJSON.Length);
 
     cJSON *AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
-    cJSON *MetricsJSON =
-        cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
+    cJSON *MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
 
     Rr_TextFontLayout TextFontData = {
         .DistanceRange = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "distanceRange")),
@@ -156,68 +127,53 @@ Rr_Font *Rr_CreateFont(
     *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
-        .LineHeight = (float)cJSON_GetNumberValue(
-            cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
-        .DefaultSize =
-            (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
+        .LineHeight = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
+        .DefaultSize = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
         .Advances = Rr_Calloc(RR_TEXT_MAX_GLYPHS, sizeof(float)),
     };
 
-    cJSON *GlyphsJSON =
-        cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
+    cJSON *GlyphsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
 
     size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
-    for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
+    for(size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
         cJSON *GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (int32_t)GlyphIndex);
 
-        size_t Unicode = (size_t)cJSON_GetNumberValue(
-            cJSON_GetObjectItem(GlyphJSON, "unicode"));
+        size_t Unicode = (size_t)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "unicode"));
 
         cJSON *AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
         uint16_t AtlasBounds[4] = { 0 };
-        if (cJSON_IsObject(AtlasBoundsJSON))
+        if(cJSON_IsObject(AtlasBoundsJSON))
         {
-            AtlasBounds[0] = (uint16_t)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(AtlasBoundsJSON, "left"));
-            AtlasBounds[1] = (uint16_t)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(AtlasBoundsJSON, "bottom"));
-            AtlasBounds[2] = (uint16_t)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(AtlasBoundsJSON, "right"));
-            AtlasBounds[3] = (uint16_t)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(AtlasBoundsJSON, "top"));
+            AtlasBounds[0] = (uint16_t)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "left"));
+            AtlasBounds[1] = (uint16_t)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "bottom"));
+            AtlasBounds[2] = (uint16_t)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "right"));
+            AtlasBounds[3] = (uint16_t)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasBoundsJSON, "top"));
         }
 
         cJSON *PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
         Rr_Vec4 PlaneBounds = { 0 };
-        if (cJSON_IsObject(PlaneBoundsJSON))
+        if(cJSON_IsObject(PlaneBoundsJSON))
         {
-            PlaneBounds.X = (float)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
-            PlaneBounds.Y = (float)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(PlaneBoundsJSON, "bottom"));
-            PlaneBounds.Z = (float)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(PlaneBoundsJSON, "right"));
-            PlaneBounds.W = (float)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
+            PlaneBounds.X = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
+            PlaneBounds.Y = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "bottom"));
+            PlaneBounds.Z = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "right"));
+            PlaneBounds.W = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
         }
 
-        Font->Advances[Unicode] = (float)cJSON_GetNumberValue(
-            cJSON_GetObjectItem(GlyphJSON, "advance"));
+        Font->Advances[Unicode] = (float)cJSON_GetNumberValue(cJSON_GetObjectItem(GlyphJSON, "advance"));
 
         uint32_t PlaneLB;
         uint32_t PlaneRT;
 
         Rr_PackVec4(PlaneBounds, &PlaneLB, &PlaneRT);
 
-        TextFontData.Glyphs[Unicode] = (Rr_Glyph){
-            .AtlasXY =
-                ((uint32_t)AtlasBounds[0] << 16) | (uint32_t)AtlasBounds[1],
-            .AtlasWH = ((uint32_t)(AtlasBounds[2] - AtlasBounds[0]) << 16) |
-                       (uint32_t)(AtlasBounds[3] - AtlasBounds[1]),
-            .PlaneLB = PlaneLB,
-            .PlaneRT = PlaneRT
-        };
+        TextFontData.Glyphs[Unicode] =
+            (Rr_Glyph){ .AtlasXY = ((uint32_t)AtlasBounds[0] << 16) | (uint32_t)AtlasBounds[1],
+                        .AtlasWH = ((uint32_t)(AtlasBounds[2] - AtlasBounds[0]) << 16) |
+                                   (uint32_t)(AtlasBounds[3] - AtlasBounds[1]),
+                        .PlaneLB = PlaneLB,
+                        .PlaneRT = PlaneRT };
     }
 
     cJSON_Delete(FontDataJSON);

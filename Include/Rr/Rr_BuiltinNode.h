@@ -28,11 +28,7 @@ extern void Rr_DrawCustomText(
     float Size,
     Rr_DrawTextFlags Flags);
 
-extern void Rr_DrawDefaultText(
-    Rr_App *App,
-    Rr_GraphNode *Node,
-    Rr_String *String,
-    Rr_Vec2 Position);
+extern void Rr_DrawDefaultText(Rr_App *App, Rr_GraphNode *Node, Rr_String *String, Rr_Vec2 Position);
 
 #ifdef __cplusplus
 }

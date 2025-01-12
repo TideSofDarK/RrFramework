@@ -10,9 +10,8 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
     Rr_DescriptorPoolSizeRatio *Ratios,
     size_t RatioCount)
 {
-    VkDescriptorPoolSize *PoolSizes =
-        Rr_StackAlloc(VkDescriptorPoolSize, RatioCount);
-    for (size_t Index = 0; Index < RatioCount; Index++)
+    VkDescriptorPoolSize *PoolSizes = Rr_StackAlloc(VkDescriptorPoolSize, RatioCount);
+    for(size_t Index = 0; Index < RatioCount; Index++)
     {
         Rr_DescriptorPoolSizeRatio *Ratio = &Ratios[Index];
         PoolSizes[Index] = (VkDescriptorPoolSize){
@@ -44,13 +43,9 @@ Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
     Rr_DescriptorAllocator DescriptorAllocator = { 0 };
     DescriptorAllocator.Arena = Arena;
     RR_SLICE_RESERVE(&DescriptorAllocator.Ratios, RatioCount, Arena);
-    memcpy(
-        DescriptorAllocator.Ratios.Data,
-        Ratios,
-        RatioCount * sizeof(Rr_DescriptorPoolSizeRatio));
+    memcpy(DescriptorAllocator.Ratios.Data, Ratios, RatioCount * sizeof(Rr_DescriptorPoolSizeRatio));
 
-    VkDescriptorPool NewPool =
-        Rr_CreateDescriptorPool(Device, MaxSets, Ratios, RatioCount);
+    VkDescriptorPool NewPool = Rr_CreateDescriptorPool(Device, MaxSets, Ratios, RatioCount);
     RR_SLICE_RESERVE(&DescriptorAllocator.ReadyPools, 1, Arena); /* NOLINT */
     *RR_SLICE_PUSH(&DescriptorAllocator.ReadyPools, Arena) = NewPool;
 
@@ -61,20 +56,17 @@ Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
     return DescriptorAllocator;
 }
 
-void Rr_ResetDescriptorAllocator(
-    Rr_DescriptorAllocator *DescriptorAllocator,
-    VkDevice Device)
+void Rr_ResetDescriptorAllocator(Rr_DescriptorAllocator *DescriptorAllocator, VkDevice Device)
 {
     size_t Count = DescriptorAllocator->ReadyPools.Count;
-    for (size_t Index = 0; Index < Count; Index++)
+    for(size_t Index = 0; Index < Count; Index++)
     {
-        VkDescriptorPool ReadyPool =
-            DescriptorAllocator->ReadyPools.Data[Index];
+        VkDescriptorPool ReadyPool = DescriptorAllocator->ReadyPools.Data[Index];
         vkResetDescriptorPool(Device, ReadyPool, 0);
     }
 
     Count = DescriptorAllocator->FullPools.Count;
-    for (size_t Index = 0; Index < Count; Index++)
+    for(size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool FullPool = DescriptorAllocator->FullPools.Data[Index];
         vkResetDescriptorPool(Device, FullPool, 0);
@@ -84,34 +76,29 @@ void Rr_ResetDescriptorAllocator(
     RR_SLICE_EMPTY(&DescriptorAllocator->FullPools);
 }
 
-void Rr_DestroyDescriptorAllocator(
-    Rr_DescriptorAllocator *DescriptorAllocator,
-    VkDevice Device)
+void Rr_DestroyDescriptorAllocator(Rr_DescriptorAllocator *DescriptorAllocator, VkDevice Device)
 {
     size_t Count = DescriptorAllocator->ReadyPools.Count;
-    for (size_t Index = 0; Index < Count; Index++)
+    for(size_t Index = 0; Index < Count; Index++)
     {
-        VkDescriptorPool ReadyPool =
-            DescriptorAllocator->ReadyPools.Data[Index];
+        VkDescriptorPool ReadyPool = DescriptorAllocator->ReadyPools.Data[Index];
         vkDestroyDescriptorPool(Device, ReadyPool, NULL);
     }
     RR_SLICE_EMPTY(&DescriptorAllocator->ReadyPools);
 
     Count = DescriptorAllocator->FullPools.Count;
-    for (size_t Index = 0; Index < Count; Index++)
+    for(size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool FullPool = DescriptorAllocator->FullPools.Data[Index];
         vkDestroyDescriptorPool(Device, FullPool, NULL);
     }
 }
 
-VkDescriptorPool Rr_GetDescriptorPool(
-    Rr_DescriptorAllocator *DescriptorAllocator,
-    VkDevice Device)
+VkDescriptorPool Rr_GetDescriptorPool(Rr_DescriptorAllocator *DescriptorAllocator, VkDevice Device)
 {
     VkDescriptorPool NewPool;
     size_t ReadyCount = DescriptorAllocator->ReadyPools.Count;
-    if (ReadyCount != 0)
+    if(ReadyCount != 0)
     {
         NewPool = DescriptorAllocator->ReadyPools.Data[ReadyCount - 1];
         RR_SLICE_POP(&DescriptorAllocator->ReadyPools);
@@ -124,10 +111,9 @@ VkDescriptorPool Rr_GetDescriptorPool(
             DescriptorAllocator->Ratios.Data,
             DescriptorAllocator->Ratios.Count);
 
-        DescriptorAllocator->SetsPerPool =
-            (size_t)((float)DescriptorAllocator->SetsPerPool * 1.5f);
+        DescriptorAllocator->SetsPerPool = (size_t)((float)DescriptorAllocator->SetsPerPool * 1.5f);
 
-        if (DescriptorAllocator->SetsPerPool > 4096)
+        if(DescriptorAllocator->SetsPerPool > 4096)
         {
             DescriptorAllocator->SetsPerPool = 4096;
         }
@@ -143,23 +129,17 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
 {
     VkDescriptorPool Pool = Rr_GetDescriptorPool(DescriptorAllocator, Device);
 
-    VkDescriptorSetAllocateInfo AllocateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = Pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &Layout
-    };
+    VkDescriptorSetAllocateInfo AllocateInfo = { .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                                 .descriptorPool = Pool,
+                                                 .descriptorSetCount = 1,
+                                                 .pSetLayouts = &Layout };
 
     VkDescriptorSet DescriptorSet;
-    VkResult Result =
-        vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet);
+    VkResult Result = vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet);
 
-    if (Result == VK_ERROR_OUT_OF_POOL_MEMORY ||
-        Result == VK_ERROR_FRAGMENTED_POOL)
+    if(Result == VK_ERROR_OUT_OF_POOL_MEMORY || Result == VK_ERROR_FRAGMENTED_POOL)
     {
-        *RR_SLICE_PUSH(
-            &DescriptorAllocator->FullPools,
-            DescriptorAllocator->Arena) = Pool;
+        *RR_SLICE_PUSH(&DescriptorAllocator->FullPools, DescriptorAllocator->Arena) = Pool;
 
         Pool = Rr_GetDescriptorPool(DescriptorAllocator, Device);
         AllocateInfo.descriptorPool = Pool;
@@ -167,16 +147,11 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
         vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet);
     }
 
-    *RR_SLICE_PUSH(
-        &DescriptorAllocator->ReadyPools,
-        DescriptorAllocator->Arena) = Pool;
+    *RR_SLICE_PUSH(&DescriptorAllocator->ReadyPools, DescriptorAllocator->Arena) = Pool;
     return DescriptorSet;
 }
 
-Rr_DescriptorWriter Rr_CreateDescriptorWriter(
-    size_t Images,
-    size_t Buffers,
-    Rr_Arena *Arena)
+Rr_DescriptorWriter Rr_CreateDescriptorWriter(size_t Images, size_t Buffers, Rr_Arena *Arena)
 {
     Rr_DescriptorWriter Writer = { 0 };
     RR_SLICE_RESERVE(&Writer.ImageInfos, Images, Arena);
@@ -195,15 +170,7 @@ void Rr_WriteImageDescriptor(
     VkDescriptorType Type,
     Rr_Arena *Arena)
 {
-    Rr_WriteImageDescriptorAt(
-        Writer,
-        Binding,
-        0,
-        View,
-        Sampler,
-        Layout,
-        Type,
-        Arena);
+    Rr_WriteImageDescriptorAt(Writer, Binding, 0, View, Sampler, Layout, Type, Arena);
 }
 
 void Rr_WriteImageDescriptorAt(
@@ -274,18 +241,15 @@ void Rr_ResetDescriptorWriter(Rr_DescriptorWriter *Writer)
     RR_SLICE_EMPTY(&Writer->Entries);
 }
 
-void Rr_UpdateDescriptorSet(
-    Rr_DescriptorWriter *Writer,
-    VkDevice Device,
-    VkDescriptorSet Set)
+void Rr_UpdateDescriptorSet(Rr_DescriptorWriter *Writer, VkDevice Device, VkDescriptorSet Set)
 {
     size_t WritesCount = Writer->Writes.Count;
-    for (size_t Index = 0; Index < WritesCount; ++Index)
+    for(size_t Index = 0; Index < WritesCount; ++Index)
     {
         Rr_DescriptorWriterEntry *Entry = &Writer->Entries.Data[Index];
         VkWriteDescriptorSet *Write = &Writer->Writes.Data[Index];
         Write->dstSet = Set;
-        switch (Entry->Type)
+        switch(Entry->Type)
         {
             case RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER:
             {
@@ -304,48 +268,34 @@ void Rr_UpdateDescriptorSet(
         }
     }
 
-    vkUpdateDescriptorSets(
-        Device,
-        (uint32_t)WritesCount,
-        Writer->Writes.Data,
-        0,
-        NULL);
+    vkUpdateDescriptorSets(Device, (uint32_t)WritesCount, Writer->Writes.Data, 0, NULL);
 }
 
-void Rr_AddDescriptor(
-    Rr_DescriptorLayoutBuilder *Builder,
-    uint32_t Binding,
-    VkDescriptorType Type)
+void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder *Builder, uint32_t Binding, VkDescriptorType Type)
 {
-    if (Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
+    if(Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
     {
         return;
     }
-    Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
-        .binding = Binding,
-        .descriptorType = Type,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-    };
+    Builder->Bindings[Builder->Count] =
+        (VkDescriptorSetLayoutBinding){ .binding = Binding,
+                                        .descriptorType = Type,
+                                        .descriptorCount = 1,
+                                        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
     Builder->Count++;
 }
 
-void Rr_AddDescriptorArray(
-    Rr_DescriptorLayoutBuilder *Builder,
-    uint32_t Binding,
-    uint32_t Count,
-    VkDescriptorType Type)
+void Rr_AddDescriptorArray(Rr_DescriptorLayoutBuilder *Builder, uint32_t Binding, uint32_t Count, VkDescriptorType Type)
 {
-    if (Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
+    if(Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
     {
         return;
     }
-    Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
-        .binding = Binding,
-        .descriptorType = Type,
-        .descriptorCount = Count,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-    };
+    Builder->Bindings[Builder->Count] =
+        (VkDescriptorSetLayoutBinding){ .binding = Binding,
+                                        .descriptorType = Type,
+                                        .descriptorCount = Count,
+                                        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
     Builder->Count++;
 }
 

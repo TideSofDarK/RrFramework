@@ -24,7 +24,7 @@ Rr_Material *Rr_CreateMaterial(
     };
 
     TextureCount = SDL_min(TextureCount, RR_MAX_TEXTURES_PER_MATERIAL);
-    for (size_t Index = 0; Index < TextureCount; ++Index)
+    for(size_t Index = 0; Index < TextureCount; ++Index)
     {
         Material->Textures[Index] = Textures[Index];
     }
@@ -34,15 +34,14 @@ Rr_Material *Rr_CreateMaterial(
 
 void Rr_DestroyMaterial(Rr_App *App, Rr_Material *Material)
 {
-    if (Material == NULL)
+    if(Material == NULL)
     {
         return;
     }
 
-    if (Material->bOwning)
+    if(Material->bOwning)
     {
-        for (size_t TextureIndex = 0; TextureIndex < Material->TextureCount;
-             ++TextureIndex)
+        for(size_t TextureIndex = 0; TextureIndex < Material->TextureCount; ++TextureIndex)
         {
             Rr_DestroyImage(App, Material->Textures[TextureIndex]);
         }

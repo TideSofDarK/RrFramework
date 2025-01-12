@@ -32,14 +32,12 @@ struct Rr_PipelineBuilder
     {
         uint32_t VertexInputStride;
     } VertexInput[2];
-    VkVertexInputAttributeDescription
-        Attributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
+    VkVertexInputAttributeDescription Attributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
 
     VkPipelineInputAssemblyStateCreateInfo InputAssembly;
     VkPipelineRasterizationStateCreateInfo Rasterizer;
     VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
-    VkPipelineColorBlendAttachmentState
-        ColorBlendAttachments[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
+    VkPipelineColorBlendAttachmentState ColorBlendAttachments[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
     VkPipelineMultisampleStateCreateInfo Multisampling;
     VkPipelineDepthStencilStateCreateInfo DepthStencil;
     Rr_Asset VertexShaderSPV;
@@ -74,13 +72,9 @@ struct Rr_VertexInput
 
 extern void Rr_EnableTriangleFan(Rr_PipelineBuilder *PipelineBuilder);
 
-extern void Rr_EnablePerVertexInputAttributes(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_VertexInput *VertexInput);
+extern void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder *PipelineBuilder, Rr_VertexInput *VertexInput);
 
-extern void Rr_EnablePerInstanceInputAttributes(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_VertexInput *VertexInput);
+extern void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder *PipelineBuilder, Rr_VertexInput *VertexInput);
 
 extern Rr_Pipeline *Rr_CreatePipeline(
     Rr_App *App,

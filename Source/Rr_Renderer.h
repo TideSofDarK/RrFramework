@@ -146,8 +146,7 @@ struct Rr_Renderer
     Rr_Font *BuiltinFont;
 
     /* Generic Pipeline Layout */
-    VkDescriptorSetLayout
-        GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
+    VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
     VkPipelineLayout GenericPipelineLayout;
 };
 

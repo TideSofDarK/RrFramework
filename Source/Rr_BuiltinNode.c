@@ -8,21 +8,12 @@
 #include <SDL3/SDL_assert.h>
 #include <SDL3/SDL_timer.h>
 
-Rr_GraphNode *Rr_AddBuiltinNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
+Rr_GraphNode *Rr_AddBuiltinNode(Rr_App *App, const char *Name, Rr_GraphNode **Dependencies, size_t DependencyCount)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(
-        Frame,
-        RR_GRAPH_NODE_TYPE_BUILTIN,
-        Name,
-        Dependencies,
-        DependencyCount);
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BUILTIN, Name, Dependencies, DependencyCount);
 
     Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
     RR_ZERO_PTR(BuiltinNode);
@@ -30,20 +21,16 @@ Rr_GraphNode *Rr_AddBuiltinNode(
     return GraphNode;
 }
 
-static void Rr_DrawText(
-    Rr_App *App,
-    Rr_BuiltinNode *Node,
-    Rr_DrawTextInfo *Info)
+static void Rr_DrawText(Rr_App *App, Rr_BuiltinNode *Node, Rr_DrawTextInfo *Info)
 {
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
-    Rr_DrawTextInfo *NewInfo =
-        RR_SLICE_PUSH(&Node->DrawTextsSlice, &Frame->Arena);
+    Rr_DrawTextInfo *NewInfo = RR_SLICE_PUSH(&Node->DrawTextsSlice, &Frame->Arena);
     *NewInfo = *Info;
-    if (NewInfo->Font == NULL)
+    if(NewInfo->Font == NULL)
     {
         NewInfo->Font = App->Renderer.BuiltinFont;
     }
-    if (NewInfo->Size == 0.0f)
+    if(NewInfo->Size == 0.0f)
     {
         NewInfo->Size = NewInfo->Font->DefaultSize;
     }
@@ -72,11 +59,7 @@ void Rr_DrawCustomText(
         });
 }
 
-void Rr_DrawDefaultText(
-    Rr_App *App,
-    Rr_GraphNode *Node,
-    Rr_String *String,
-    Rr_Vec2 Position)
+void Rr_DrawDefaultText(Rr_App *App, Rr_GraphNode *Node, Rr_String *String, Rr_Vec2 Position)
 {
     SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_BUILTIN);
 
@@ -104,24 +87,21 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
 
-    Rr_DescriptorWriter DescriptorWriter =
-        Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
+    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
 
     Rr_TextRenderingContext TextRenderingContext = { 0 };
 
     uint64_t Ticks = SDL_GetTicks();
     float Time = (float)Ticks / 1000.0f;
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
-    Rr_TextGlobalsLayout TextGlobalsData = {
-        .Reserved = 0.0f,
-        .Time = Time,
-        .ScreenSize = { (float)ActiveResolution.width,
-                        (float)ActiveResolution.height },
-        .Palette = { { 1.0f, 1.0f, 1.0f, 1.0f },
-                     { 1.0f, 0.0f, 0.0f, 1.0f },
-                     { 0.0f, 1.0f, 0.0f, 1.0f },
-                     { 0.0f, 0.0f, 1.0f, 1.0f } }
-    };
+    Rr_TextGlobalsLayout TextGlobalsData = { .Reserved = 0.0f,
+                                             .Time = Time,
+                                             .ScreenSize = { (float)ActiveResolution.width,
+                                                             (float)ActiveResolution.height },
+                                             .Palette = { { 1.0f, 1.0f, 1.0f, 1.0f },
+                                                          { 1.0f, 0.0f, 0.0f, 1.0f },
+                                                          { 0.0f, 1.0f, 0.0f, 1.0f },
+                                                          { 0.0f, 0.0f, 1.0f, 1.0f } } };
 
     VkDeviceSize BufferOffset = CommonBuffer->Offset;
     Rr_UploadToUniformBuffer(
@@ -134,8 +114,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     TextRenderingContext.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
         &Frame->DescriptorAllocator,
         Renderer->Device,
-        TextPipeline
-            ->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS]);
+        TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS]);
     Rr_WriteBufferDescriptor(
         &DescriptorWriter,
         0,
@@ -144,10 +123,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
         BufferOffset,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         Scratch.Arena);
-    Rr_UpdateDescriptorSet(
-        &DescriptorWriter,
-        Renderer->Device,
-        TextRenderingContext.GlobalsDescriptorSet);
+    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextRenderingContext.GlobalsDescriptorSet);
     Rr_ResetDescriptorWriter(&DescriptorWriter);
 
     Rr_DestroyArenaScratch(Scratch);
@@ -169,19 +145,10 @@ static void Rr_RenderText(
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
 
-    Rr_DescriptorWriter DescriptorWriter =
-        Rr_CreateDescriptorWriter(1, 1, Scratch.Arena);
+    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(1, 1, Scratch.Arena);
 
-    vkCmdBindPipeline(
-        CommandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        TextPipeline->Pipeline->Handle);
-    vkCmdBindVertexBuffers(
-        CommandBuffer,
-        0,
-        1,
-        &TextPipeline->QuadBuffer->Handle,
-        &(VkDeviceSize){ 0 });
+    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Pipeline->Handle);
+    vkCmdBindVertexBuffers(CommandBuffer, 0, 1, &TextPipeline->QuadBuffer->Handle, &(VkDeviceSize){ 0 });
     vkCmdBindDescriptorSets(
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -194,17 +161,15 @@ static void Rr_RenderText(
 
     size_t TextDataOffset = 0;
     size_t TextCount = DrawTextSlice.Count;
-    Rr_TextPerInstanceVertexInput *TextData =
-        RR_ARENA_ALLOC_ONE(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
-    for (size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
+    Rr_TextPerInstanceVertexInput *TextData = RR_ARENA_ALLOC_ONE(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
+    for(size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
     {
         Rr_DrawTextInfo *DrawTextInfo = &DrawTextSlice.Data[TextIndex];
 
         VkDescriptorSet TextFontDescriptorSet = Rr_AllocateDescriptorSet(
             &Frame->DescriptorAllocator,
             Renderer->Device,
-            TextPipeline
-                ->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT]);
+            TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT]);
         Rr_WriteBufferDescriptor(
             &DescriptorWriter,
             0,
@@ -221,10 +186,7 @@ static void Rr_RenderText(
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             Scratch.Arena);
-        Rr_UpdateDescriptorSet(
-            &DescriptorWriter,
-            Renderer->Device,
-            TextFontDescriptorSet);
+        Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextFontDescriptorSet);
         Rr_ResetDescriptorWriter(&DescriptorWriter);
 
         vkCmdBindDescriptorSets(
@@ -256,16 +218,15 @@ static void Rr_RenderText(
         Rr_Bool CodePending = RR_FALSE;
         Rr_Bool PalleteIndexPending = RR_FALSE;
         Rr_Vec2 AccumulatedAdvance = { 0 };
-        for (size_t CharacterIndex = 0; CharacterIndex < TextLength;
-             ++CharacterIndex)
+        for(size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
         {
             uint32_t Unicode = DrawTextInfo->String.Data[CharacterIndex];
 
-            if (CodePending)
+            if(CodePending)
             {
-                if (PalleteIndexPending)
+                if(PalleteIndexPending)
                 {
-                    if (Unicode >= '0' && Unicode <= '7')
+                    if(Unicode >= '0' && Unicode <= '7')
                     {
                         PalleteIndex = Unicode - '0';
                         PalleteIndexPending = RR_FALSE;
@@ -279,7 +240,7 @@ static void Rr_RenderText(
                         PalleteIndex = 0;
                     }
                 }
-                else if (Unicode == 'c')
+                else if(Unicode == 'c')
                 {
                     PalleteIndexPending = RR_TRUE;
                     continue;
@@ -291,20 +252,19 @@ static void Rr_RenderText(
                     CodePending = RR_FALSE;
                 }
             }
-            else if (Unicode == '$')
+            else if(Unicode == '$')
             {
                 CodePending = RR_TRUE;
                 continue;
             }
-            Rr_TextPerInstanceVertexInput *Input =
-                &TextData[TextDataOffset + FinalTextLength];
-            if (Unicode == '\n')
+            Rr_TextPerInstanceVertexInput *Input = &TextData[TextDataOffset + FinalTextLength];
+            if(Unicode == '\n')
             {
                 AccumulatedAdvance.Y += DrawTextInfo->Font->LineHeight;
                 AccumulatedAdvance.X = 0.0f;
                 continue;
             }
-            else if (Unicode == ' ')
+            else if(Unicode == ' ')
             {
                 float Advance = DrawTextInfo->Font->Advances[Unicode];
                 AccumulatedAdvance.X += Advance;
@@ -329,9 +289,7 @@ static void Rr_RenderText(
             1,
             1,
             &Frame->PerDrawBuffer.Buffer->Handle,
-            &(VkDeviceSize){ BaseTextDataOffset +
-                             TextDataOffset *
-                                 sizeof(Rr_TextPerInstanceVertexInput) });
+            &(VkDeviceSize){ BaseTextDataOffset + TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput) });
         TextDataOffset += FinalTextLength;
         vkCmdDraw(CommandBuffer, 4, FinalTextLength, 0, 0);
     }
@@ -340,43 +298,33 @@ static void Rr_RenderText(
         App,
         Frame->PerDrawBuffer.Buffer,
         &Frame->PerDrawBuffer.Offset,
-        (Rr_Data){ .Ptr = TextData,
-                   .Size = TextDataOffset *
-                           sizeof(Rr_TextPerInstanceVertexInput) });
+        (Rr_Data){ .Ptr = TextData, .Size = TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput) });
 
     Rr_DestroyArenaScratch(Scratch);
 }
 
-Rr_Bool Rr_BatchBuiltinNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_GraphBatch *Batch,
-    Rr_BuiltinNode *Node)
+Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BuiltinNode *Node)
 {
     Rr_DrawTarget *DrawTarget = App->Renderer.DrawTarget;
 
-    if (Rr_SyncImage(
-            App,
-            Graph,
-            Batch,
-            DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
-                .ColorImage->Handle,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != RR_TRUE ||
-        Rr_SyncImage(
-            App,
-            Graph,
-            Batch,
-            DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
-                .DepthImage->Handle,
-            VK_IMAGE_ASPECT_DEPTH_BIT,
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != RR_TRUE)
+    if(Rr_SyncImage(
+           App,
+           Graph,
+           Batch,
+           DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
+           VK_IMAGE_ASPECT_COLOR_BIT,
+           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+           VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != RR_TRUE ||
+       Rr_SyncImage(
+           App,
+           Graph,
+           Batch,
+           DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
+           VK_IMAGE_ASPECT_DEPTH_BIT,
+           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != RR_TRUE)
     {
         return RR_FALSE;
     }
@@ -396,10 +344,8 @@ void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
     Rr_IntVec4 Viewport = {
         0,
         0,
-        (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
-            .ColorImage->Extent.width,
-        (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex]
-            .ColorImage->Extent.height,
+        (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Extent.width,
+        (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Extent.height,
     };
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
@@ -427,18 +373,13 @@ void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
-        .framebuffer =
-            DrawTarget->Frames[App->Renderer.CurrentFrameIndex].Framebuffer,
-        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
-                                  { Viewport.Z, Viewport.W } },
+        .framebuffer = DrawTarget->Frames[App->Renderer.CurrentFrameIndex].Framebuffer,
+        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
         .renderPass = Renderer->RenderPasses.ColorDepthLoad,
         .clearValueCount = RR_ARRAY_COUNT(ClearValues),
         .pClearValues = ClearValues,
     };
-    vkCmdBeginRenderPass(
-        CommandBuffer,
-        &RenderPassBeginInfo,
-        VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     /* Set dynamic states. */
 
@@ -466,12 +407,7 @@ void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
             .extent.height = Viewport.Height,
         });
 
-    Rr_RenderText(
-        App,
-        &TextRenderingContext,
-        Node->DrawTextsSlice,
-        CommandBuffer,
-        Scratch.Arena);
+    Rr_RenderText(App, &TextRenderingContext, Node->DrawTextsSlice, CommandBuffer, Scratch.Arena);
 
     vkCmdEndRenderPass(CommandBuffer);
 

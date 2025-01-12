@@ -15,12 +15,8 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     uint32_t *OutTransferQueueFamilyIndex)
 {
     uint32_t ExtensionCount;
-    vkEnumerateDeviceExtensionProperties(
-        PhysicalDevice,
-        NULL,
-        &ExtensionCount,
-        NULL);
-    if (ExtensionCount == 0)
+    vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
+    if(ExtensionCount == 0)
     {
         return RR_FALSE;
     }
@@ -31,95 +27,71 @@ static Rr_Bool Rr_CheckPhysicalDevice(
 
     Rr_Bool FoundExtensions[] = { 0 };
 
-    VkExtensionProperties *Extensions =
-        Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
-    vkEnumerateDeviceExtensionProperties(
-        PhysicalDevice,
-        NULL,
-        &ExtensionCount,
-        Extensions);
+    VkExtensionProperties *Extensions = Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
+    vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
 
-    for (uint32_t Index = 0; Index < ExtensionCount; Index++)
+    for(uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
-        for (uint32_t TargetIndex = 0;
-             TargetIndex < SDL_arraysize(TargetExtensions);
-             ++TargetIndex)
+        for(uint32_t TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
         {
-            if (strcmp(
-                    Extensions[Index].extensionName,
-                    TargetExtensions[TargetIndex]) == 0)
+            if(strcmp(Extensions[Index].extensionName, TargetExtensions[TargetIndex]) == 0)
             {
                 FoundExtensions[TargetIndex] = RR_TRUE;
             }
         }
     }
-    for (uint32_t TargetIndex = 0;
-         TargetIndex < SDL_arraysize(TargetExtensions);
-         ++TargetIndex)
+    for(uint32_t TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
     {
-        if (!FoundExtensions[TargetIndex])
+        if(!FoundExtensions[TargetIndex])
         {
             return RR_FALSE;
         }
     }
 
     uint32_t QueueFamilyCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        PhysicalDevice,
-        &QueueFamilyCount,
-        NULL);
-    if (QueueFamilyCount == 0)
+    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, NULL);
+    if(QueueFamilyCount == 0)
     {
         return RR_FALSE;
     }
 
-    VkQueueFamilyProperties *QueueFamilyProperties =
-        Rr_StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
+    VkQueueFamilyProperties *QueueFamilyProperties = Rr_StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
     VkBool32 *QueuePresentSupport = Rr_StackAlloc(VkBool32, QueueFamilyCount);
 
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        PhysicalDevice,
-        &QueueFamilyCount,
-        QueueFamilyProperties);
+    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
     uint32_t GraphicsQueueFamilyIndex = ~0U;
     uint32_t TransferQueueFamilyIndex = ~0U;
 
-    for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
+    for(uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
     {
-        vkGetPhysicalDeviceSurfaceSupportKHR(
-            PhysicalDevice,
-            Index,
-            Surface,
-            &QueuePresentSupport[Index]);
-        if (QueuePresentSupport[Index] &&
-            QueueFamilyProperties[Index].queueCount > 0 &&
-            (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+        vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, Index, Surface, &QueuePresentSupport[Index]);
+        if(QueuePresentSupport[Index] && QueueFamilyProperties[Index].queueCount > 0 &&
+           (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
         {
             GraphicsQueueFamilyIndex = Index;
             break;
         }
     }
 
-    if (GraphicsQueueFamilyIndex == ~0U)
+    if(GraphicsQueueFamilyIndex == ~0U)
     {
         return RR_FALSE;
     }
 
     Rr_Bool ForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
 
-    if (!ForceDisableTransferQueue)
+    if(!ForceDisableTransferQueue)
     {
-        for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
+        for(uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
         {
-            if (Index == GraphicsQueueFamilyIndex)
+            if(Index == GraphicsQueueFamilyIndex)
             {
                 continue;
             }
 
-            if (QueueFamilyProperties[Index].queueCount > 0 &&
-                (QueueFamilyProperties[Index].queueFlags &
-                 VK_QUEUE_TRANSFER_BIT))
+            if(QueueFamilyProperties[Index].queueCount > 0 &&
+               (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_TRANSFER_BIT))
             {
                 TransferQueueFamilyIndex = Index;
                 break;
@@ -128,9 +100,8 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     }
 
     *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
-    *OutTransferQueueFamilyIndex = TransferQueueFamilyIndex == ~0U
-                                       ? GraphicsQueueFamilyIndex
-                                       : TransferQueueFamilyIndex;
+    *OutTransferQueueFamilyIndex =
+        TransferQueueFamilyIndex == ~0U ? GraphicsQueueFamilyIndex : TransferQueueFamilyIndex;
 
     Rr_StackFree(QueuePresentSupport);
     Rr_StackFree(QueueFamilyProperties);
@@ -147,17 +118,13 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
 {
     uint32_t PhysicalDeviceCount = 0;
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, NULL);
-    if (PhysicalDeviceCount == 0)
+    if(PhysicalDeviceCount == 0)
     {
         Rr_LogAbort("No device with Vulkan support found");
     }
 
-    VkPhysicalDevice *PhysicalDevices =
-        Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
-    vkEnumeratePhysicalDevices(
-        Instance,
-        &PhysicalDeviceCount,
-        &PhysicalDevices[0]);
+    VkPhysicalDevice *PhysicalDevices = Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
+    vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
     Rr_LogVulkan("Selecting Vulkan device:");
 
@@ -168,16 +135,12 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     // static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
     int BestDeviceType = 0;
     VkDeviceSize BestDeviceMemory = 0;
-    for (uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
+    for(uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
         uint32_t GraphicsQueueFamilyIndex;
         uint32_t TransferQueueFamilyIndex;
-        if (Rr_CheckPhysicalDevice(
-                PhysicalDeviceHandle,
-                Surface,
-                &GraphicsQueueFamilyIndex,
-                &TransferQueueFamilyIndex))
+        if(Rr_CheckPhysicalDevice(PhysicalDeviceHandle, Surface, &GraphicsQueueFamilyIndex, &TransferQueueFamilyIndex))
         {
             uint32_t Score = 0;
 
@@ -187,14 +150,10 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
             vkGetPhysicalDeviceProperties2(PhysicalDeviceHandle, &Properties);
 
             VkPhysicalDeviceMemoryProperties MemoryProperties = { 0 };
-            vkGetPhysicalDeviceMemoryProperties(
-                PhysicalDeviceHandle,
-                &MemoryProperties);
+            vkGetPhysicalDeviceMemoryProperties(PhysicalDeviceHandle, &MemoryProperties);
 
             VkDeviceSize Memory = 0;
-            for (uint32_t MemoryHeapIndex = 0;
-                 MemoryHeapIndex < MemoryProperties.memoryHeapCount;
-                 ++MemoryHeapIndex)
+            for(uint32_t MemoryHeapIndex = 0; MemoryHeapIndex < MemoryProperties.memoryHeapCount; ++MemoryHeapIndex)
             {
                 Memory += MemoryProperties.memoryHeaps[MemoryHeapIndex].size;
             }
@@ -207,7 +166,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
                 string_VkPhysicalDeviceType(Properties.properties.deviceType),
                 Memory);
 
-            if (BestDeviceIndex == ~0)
+            if(BestDeviceIndex == ~0)
             {
             SetBestDevice:
                 BestDeviceIndex = Index;
@@ -218,11 +177,11 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
             }
             else
             {
-                if (Properties.properties.deviceType == PreferredDeviceType)
+                if(Properties.properties.deviceType == PreferredDeviceType)
                 {
-                    if (BestDeviceType == PreferredDeviceType)
+                    if(BestDeviceType == PreferredDeviceType)
                     {
-                        if (Memory > BestDeviceMemory)
+                        if(Memory > BestDeviceMemory)
                         {
                             goto SetBestDevice;
                         }
@@ -235,17 +194,16 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
             }
         }
     }
-    if (BestDeviceIndex == ~0)
+    if(BestDeviceIndex == ~0)
     {
-        Rr_LogAbort(
-            "Could not select physical device based on the chosen properties!");
+        Rr_LogAbort("Could not select physical device based on the chosen properties!");
     }
 
     size_t DeviceIndex = 0;
     char *Mark;
-    while ((Mark = strchr(DevicesString, '\\')))
+    while((Mark = strchr(DevicesString, '\\')))
     {
-        if (DeviceIndex == BestDeviceIndex)
+        if(DeviceIndex == BestDeviceIndex)
         {
             *Mark = '*';
         }
@@ -257,8 +215,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     }
     Rr_LogVulkan(DevicesString);
 
-    Rr_Bool UseTransferQueue =
-        *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
+    Rr_Bool UseTransferQueue = *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
     Rr_PhysicalDevice PhysicalDevice = {
         .SubgroupProperties =
@@ -273,15 +230,9 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
         .Handle = PhysicalDevices[BestDeviceIndex],
     };
 
-    vkGetPhysicalDeviceFeatures(
-        PhysicalDevices[BestDeviceIndex],
-        &PhysicalDevice.Features);
-    vkGetPhysicalDeviceMemoryProperties(
-        PhysicalDevices[BestDeviceIndex],
-        &PhysicalDevice.MemoryProperties);
-    vkGetPhysicalDeviceProperties2(
-        PhysicalDevices[BestDeviceIndex],
-        &PhysicalDevice.Properties);
+    vkGetPhysicalDeviceFeatures(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.Features);
+    vkGetPhysicalDeviceMemoryProperties(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.MemoryProperties);
+    vkGetPhysicalDeviceProperties2(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.Properties);
 
     Rr_LogVulkan("Using separate transfer queue: %u", UseTransferQueue);
 
@@ -298,23 +249,20 @@ void Rr_InitDeviceAndQueues(
     VkQueue *OutGraphicsQueue,
     VkQueue *OutTransferQueue)
 {
-    Rr_Bool UseTransferQueue =
-        GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
+    Rr_Bool UseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
     float QueuePriorities[] = { 1.0f };
-    VkDeviceQueueCreateInfo QueueInfos[] = {
-        {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = GraphicsQueueFamilyIndex,
-            .queueCount = 1,
-            .pQueuePriorities = QueuePriorities,
-        },
-        {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = TransferQueueFamilyIndex,
-            .queueCount = 1,
-            .pQueuePriorities = QueuePriorities,
-        }
-    };
+    VkDeviceQueueCreateInfo QueueInfos[] = { {
+                                                 .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                                 .queueFamilyIndex = GraphicsQueueFamilyIndex,
+                                                 .queueCount = 1,
+                                                 .pQueuePriorities = QueuePriorities,
+                                             },
+                                             {
+                                                 .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                                 .queueFamilyIndex = TransferQueueFamilyIndex,
+                                                 .queueCount = 1,
+                                                 .pQueuePriorities = QueuePriorities,
+                                             } };
 
     const char *DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
@@ -330,13 +278,9 @@ void Rr_InitDeviceAndQueues(
     vkCreateDevice(PhysicalDevice, &DeviceCreateInfo, NULL, OutDevice);
 
     vkGetDeviceQueue(*OutDevice, GraphicsQueueFamilyIndex, 0, OutGraphicsQueue);
-    if (UseTransferQueue)
+    if(UseTransferQueue)
     {
-        vkGetDeviceQueue(
-            *OutDevice,
-            TransferQueueFamilyIndex,
-            0,
-            OutTransferQueue);
+        vkGetDeviceQueue(*OutDevice, TransferQueueFamilyIndex, 0, OutTransferQueue);
     }
 }
 

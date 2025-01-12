@@ -26,11 +26,10 @@ Rr_Buffer *Rr_CreateBuffer(
         .usage = MemoryUsage,
     };
 
-    if (CreateMapped)
+    if(CreateMapped)
     {
         AllocationInfo.flags =
-            VMA_ALLOCATION_CREATE_MAPPED_BIT |
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     }
 
     vmaCreateBuffer(
@@ -47,12 +46,7 @@ Rr_Buffer *Rr_CreateBuffer(
 Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, size_t Size)
 {
     Size = SDL_max(Size, 128);
-    return Rr_CreateBuffer(
-        App,
-        Size,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        RR_FALSE);
+    return Rr_CreateBuffer(App, Size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, RR_FALSE);
 }
 
 Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, size_t Size)
@@ -66,17 +60,9 @@ Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, size_t Size)
         RR_FALSE);
 }
 
-Rr_Buffer *Rr_CreateMappedBuffer(
-    Rr_App *App,
-    size_t Size,
-    VkBufferUsageFlags UsageFlags)
+Rr_Buffer *Rr_CreateMappedBuffer(Rr_App *App, size_t Size, VkBufferUsageFlags UsageFlags)
 {
-    return Rr_CreateBuffer(
-        App,
-        Size,
-        UsageFlags,
-        VMA_MEMORY_USAGE_AUTO,
-        RR_TRUE);
+    return Rr_CreateBuffer(App, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, RR_TRUE);
 }
 
 Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, size_t Size)
@@ -86,7 +72,7 @@ Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, size_t Size)
 
 void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer)
 {
-    if (Buffer == NULL)
+    if(Buffer == NULL)
     {
         return;
     }
@@ -113,8 +99,7 @@ void Rr_UploadBufferAligned(
     Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_WriteBuffer *StagingBuffer = UploadContext->StagingBuffer;
-    if (StagingBuffer->Offset + Data.Size >
-        StagingBuffer->Buffer->AllocationInfo.size)
+    if(StagingBuffer->Offset + Data.Size > StagingBuffer->Buffer->AllocationInfo.size)
     {
         Rr_LogAbort(
             "Exceeding staging buffer size! Current offset is %zu, allocation "
@@ -124,30 +109,24 @@ void Rr_UploadBufferAligned(
             (size_t)StagingBuffer->Buffer->AllocationInfo.size);
     }
 
-    VkCommandBuffer TransferCommandBuffer =
-        UploadContext->TransferCommandBuffer;
+    VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
 
     size_t StagingBufferOffset = StagingBuffer->Offset;
-    memcpy(
-        (char *)StagingBuffer->Buffer->AllocationInfo.pMappedData +
-            StagingBufferOffset,
-        Data.Ptr,
-        Data.Size);
-    if (Alignment == 0)
+    memcpy((char *)StagingBuffer->Buffer->AllocationInfo.pMappedData + StagingBufferOffset, Data.Ptr, Data.Size);
+    if(Alignment == 0)
     {
         StagingBuffer->Offset += Data.Size;
     }
     else
     {
-        StagingBuffer->Offset +=
-            RR_ALIGN(StagingBufferOffset + Data.Size, Alignment);
+        StagingBuffer->Offset += RR_ALIGN(StagingBufferOffset + Data.Size, Alignment);
     }
 
     /* Advance DstOffset here. */
 
     size_t AlignedSize = RR_ALIGN(Data.Size, Alignment);
     VkDeviceSize CurrentDstOffset = DstOffset != NULL ? *DstOffset : 0;
-    if (CurrentDstOffset + AlignedSize > DstBuffer->AllocationInfo.size)
+    if(CurrentDstOffset + AlignedSize > DstBuffer->AllocationInfo.size)
     {
         Rr_LogAbort(
             "Exceeding buffer size! Current offset is %zu, allocation size is "
@@ -156,7 +135,7 @@ void Rr_UploadBufferAligned(
             AlignedSize,
             DstBuffer->AllocationInfo.size);
     }
-    if (DstOffset != NULL)
+    if(DstOffset != NULL)
     {
         *DstOffset = RR_ALIGN(*DstOffset + AlignedSize, Alignment);
     }
@@ -183,18 +162,11 @@ void Rr_UploadBufferAligned(
         0,
         NULL);
 
-    VkBufferCopy Copy = { .size = Data.Size,
-                          .srcOffset = StagingBufferOffset,
-                          .dstOffset = CurrentDstOffset };
+    VkBufferCopy Copy = { .size = Data.Size, .srcOffset = StagingBufferOffset, .dstOffset = CurrentDstOffset };
 
-    vkCmdCopyBuffer(
-        TransferCommandBuffer,
-        StagingBuffer->Buffer->Handle,
-        DstBuffer->Handle,
-        1,
-        &Copy);
+    vkCmdCopyBuffer(TransferCommandBuffer, StagingBuffer->Buffer->Handle, DstBuffer->Handle, 1, &Copy);
 
-    if (!UploadContext->UseAcquireBarriers)
+    if(!UploadContext->UseAcquireBarriers)
     {
         vkCmdPipelineBarrier(
             TransferCommandBuffer,
@@ -220,8 +192,7 @@ void Rr_UploadBufferAligned(
     }
     else
     {
-        UploadContext->ReleaseBarriers.BufferMemoryBarriers
-            [UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
+        UploadContext->ReleaseBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
             (VkBufferMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
@@ -235,8 +206,7 @@ void Rr_UploadBufferAligned(
             };
         UploadContext->ReleaseBarriers.BufferMemoryBarrierCount++;
 
-        UploadContext->AcquireBarriers.BufferMemoryBarriers
-            [UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
+        UploadContext->AcquireBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
             (VkBufferMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                 .pNext = NULL,
@@ -275,25 +245,14 @@ void Rr_UploadBuffer(
         0);
 }
 
-void Rr_UploadToDeviceBufferImmediate(
-    Rr_App *App,
-    Rr_Buffer *DstBuffer,
-    Rr_Data Data)
+void Rr_UploadToDeviceBufferImmediate(Rr_App *App, Rr_Buffer *DstBuffer, Rr_Data Data)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
-    Rr_Buffer *HostMappedBuffer =
-        Rr_CreateMappedBuffer(App, Data.Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    Rr_Buffer *HostMappedBuffer = Rr_CreateMappedBuffer(App, Data.Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     memcpy(HostMappedBuffer->AllocationInfo.pMappedData, Data.Ptr, Data.Size);
-    VkBufferCopy BufferCopy = { .dstOffset = 0,
-                                .size = Data.Size,
-                                .srcOffset = 0 };
-    vkCmdCopyBuffer(
-        CommandBuffer,
-        HostMappedBuffer->Handle,
-        DstBuffer->Handle,
-        1,
-        &BufferCopy);
+    VkBufferCopy BufferCopy = { .dstOffset = 0, .size = Data.Size, .srcOffset = 0 };
+    vkCmdCopyBuffer(CommandBuffer, HostMappedBuffer->Handle, DstBuffer->Handle, 1, &BufferCopy);
     Rr_EndImmediate(Renderer);
     Rr_DestroyBuffer(App, HostMappedBuffer);
 }
@@ -310,31 +269,21 @@ void Rr_UploadToUniformBuffer(
         UploadContext,
         DstBuffer,
         DstOffset,
-        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_UNIFORM_READ_BIT,
-        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_UNIFORM_READ_BIT,
         Data,
         Rr_GetUniformAlignment(&App->Renderer));
 }
 
-void Rr_CopyToMappedUniformBuffer(
-    Rr_App *App,
-    Rr_Buffer *DstBuffer,
-    VkDeviceSize *DstOffset,
-    Rr_Data Data)
+void Rr_CopyToMappedUniformBuffer(Rr_App *App, Rr_Buffer *DstBuffer, VkDeviceSize *DstOffset, Rr_Data Data)
 {
-    uint32_t Alignment = App->Renderer.PhysicalDevice.Properties.properties
-                             .limits.minUniformBufferOffsetAlignment;
+    uint32_t Alignment = App->Renderer.PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
     size_t AlignedSize = RR_ALIGN(Data.Size, Alignment);
-    if (*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
+    if(*DstOffset + AlignedSize <= DstBuffer->AllocationInfo.size)
     {
-        memcpy(
-            (char *)DstBuffer->AllocationInfo.pMappedData + *DstOffset,
-            Data.Ptr,
-            Data.Size);
+        memcpy((char *)DstBuffer->AllocationInfo.pMappedData + *DstOffset, Data.Ptr, Data.Size);
         *DstOffset += Data.Size;
         *DstOffset = RR_ALIGN(*DstOffset, Alignment);
     }

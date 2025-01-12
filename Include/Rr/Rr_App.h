@@ -15,6 +15,8 @@ typedef struct Rr_AppConfig Rr_AppConfig;
 struct Rr_AppConfig
 {
     const char *Title;
+    const char *Version;
+    const char *Package;
     void (*InitFunc)(Rr_App *App, void *UserData);
     void (*CleanupFunc)(Rr_App *App, void *UserData);
     void (*IterateFunc)(Rr_App *App, void *UserData);

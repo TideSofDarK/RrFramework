@@ -39,20 +39,19 @@ struct Rr_Data
 };
 
 #ifdef __cplusplus
+#define RR_MAKE_DATA(Struct) { &(Struct), sizeof(Struct) }
+#else
 #define RR_MAKE_DATA(Struct)      \
+    (Rr_Data)                     \
     {                             \
         &(Struct), sizeof(Struct) \
     }
-#else
-#define RR_MAKE_DATA(Struct) \
-    (Rr_Data) { &(Struct), sizeof(Struct) }
 #endif
 
 /* Alignment */
 
-#define RR_SAFE_ALIGNMENT 16
-#define RR_ALIGN(Num, Alignment) \
-    (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
+#define RR_SAFE_ALIGNMENT        16
+#define RR_ALIGN(Num, Alignment) (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 
 /* Renderer Configuration */
 

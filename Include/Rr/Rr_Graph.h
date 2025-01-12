@@ -23,15 +23,9 @@ typedef enum Rr_GraphNodeType
  * Draw Target
  */
 
-extern Rr_DrawTarget *Rr_CreateDrawTarget(
-    Rr_App *App,
-    uint32_t Width,
-    uint32_t Height);
+extern Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height);
 
-extern Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(
-    Rr_App *App,
-    uint32_t Width,
-    uint32_t Height);
+extern Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(Rr_App *App, uint32_t Width, uint32_t Height);
 
 extern void Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget);
 

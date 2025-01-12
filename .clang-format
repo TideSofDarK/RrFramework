@@ -1,4 +1,3 @@
----
 AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveMacros: Consecutive
 AlignConsecutiveAssignments: None
@@ -14,7 +13,7 @@ PenaltyReturnTypeOnItsOwnLine: 1000
 AllowShortEnumsOnASingleLine: true
 AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
+AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 
@@ -25,36 +24,37 @@ AlwaysBreakTemplateDeclarations: MultiLine
 
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterCaseLabel: true
-  AfterClass: true
-  AfterControlStatement: true
-  AfterEnum: true
-  AfterFunction: true
-  AfterNamespace: true
-  AfterObjCDeclaration: true
-  AfterStruct: true
-  AfterUnion: true
-  AfterExternBlock: false
-  BeforeElse: true
-  BeforeWhile: true
-  IndentBraces: false
-  SplitEmptyFunction: true
-  SplitEmptyRecord: true
+    AfterCaseLabel: true
+    AfterClass: true
+    AfterControlStatement: true
+    AfterEnum: true
+    AfterFunction: true
+    AfterNamespace: true
+    AfterObjCDeclaration: true
+    AfterStruct: true
+    AfterUnion: true
+    AfterExternBlock: false
+    BeforeElse: true
+    BeforeWhile: true
+    IndentBraces: false
+    SplitEmptyFunction: true
+    SplitEmptyRecord: true
 BinPackArguments: false
 BinPackParameters: false
 
 Cpp11BracedListStyle: false
 
-# Never format includes
-IncludeBlocks: Preserve
-# clang-format version 4.0 through 12.0:
-#SortIncludes: false
-# clang-format version 13.0+:
-#SortIncludes: Never
+# # Never format includes
+# IncludeBlocks: Preserve
+# # clang-format version 4.0 through 12.0:
+# #SortIncludes: false
+# # clang-format version 13.0+:
+# #SortIncludes: Never
 
-ColumnLimit: 80
+ColumnLimit: 120
 
 InsertTrailingCommas: Wrapped
+InsertBraces: true
 IndentWidth: 4
 ContinuationIndentWidth: 4
 IndentCaseLabels: true
@@ -66,7 +66,7 @@ IndentAccessModifiers: false
 AccessModifierOffset: -4
 
 PackConstructorInitializers: Never
-BreakConstructorInitializers: AfterColon
+BreakConstructorInitializers: BeforeComma
 
 PointerAlignment: Right
 SpaceAfterCStyleCast: false
@@ -75,12 +75,13 @@ SpacesInConditionalStatement: false
 SpacesInContainerLiterals: true
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
-SpaceBeforeParens: ControlStatements
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+    AfterControlStatements: false
+    AfterFunctionDefinitionName: false
 SpaceAroundPointerQualifiers: Default
 SpaceInEmptyBlock: false
 SpaceInEmptyParentheses: false
 
 UseCRLF: false
 UseTab: Never
-
----

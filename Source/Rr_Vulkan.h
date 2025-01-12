@@ -3,8 +3,8 @@
 #include "Rr/Rr_Defines.h"
 #include "Rr/Rr_Math.h"
 
+#include <vma/vk_mem_alloc.h>
 #include <volk.h>
-#include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
 
 #include <SDL3/SDL_thread.h>
@@ -56,25 +56,18 @@ static VkExtent2D GetExtent2D(VkExtent3D Extent)
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
 }
 
-static VkPipelineShaderStageCreateInfo GetShaderStageInfo(
-    VkShaderStageFlagBits Stage,
-    VkShaderModule Module)
+static VkPipelineShaderStageCreateInfo GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
 {
-    VkPipelineShaderStageCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext = NULL,
-        .pName = "main",
-        .stage = Stage,
-        .module = Module
-    };
+    VkPipelineShaderStageCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                             .pNext = NULL,
+                                             .pName = "main",
+                                             .stage = Stage,
+                                             .module = Module };
 
     return Info;
 }
 
-static VkImageCreateInfo GetImageCreateInfo(
-    VkFormat Format,
-    VkImageUsageFlags UsageFlags,
-    VkExtent3D Extent)
+static VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
 {
     VkImageCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -92,13 +85,9 @@ static VkImageCreateInfo GetImageCreateInfo(
     return Info;
 }
 
-static VkImageViewCreateInfo GetImageViewCreateInfo(
-    VkFormat Format,
-    VkImage Image,
-    VkImageAspectFlags AspectFlags)
+static VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
 {
-    VkImageViewCreateInfo Info = { .sType =
-                                       VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    VkImageViewCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                                    .pNext = NULL,
                                    .image = Image,
                                    .viewType = VK_IMAGE_VIEW_TYPE_2D,
@@ -124,8 +113,7 @@ static VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
     return Info;
 }
 
-static VkSemaphoreCreateInfo GetSemaphoreCreateInfo(
-    VkSemaphoreCreateFlags Flags)
+static VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -135,8 +123,7 @@ static VkSemaphoreCreateInfo GetSemaphoreCreateInfo(
     return Info;
 }
 
-static VkCommandBufferBeginInfo GetCommandBufferBeginInfo(
-    VkCommandBufferUsageFlags Flags)
+static VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
 {
     VkCommandBufferBeginInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -147,8 +134,7 @@ static VkCommandBufferBeginInfo GetCommandBufferBeginInfo(
     return Info;
 }
 
-static VkImageSubresourceRange GetImageSubresourceRange(
-    VkImageAspectFlags AspectMask)
+static VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlags AspectMask)
 {
     VkImageSubresourceRange ImageSubresourceRange = {
         .aspectMask = AspectMask,
@@ -161,9 +147,7 @@ static VkImageSubresourceRange GetImageSubresourceRange(
     return ImageSubresourceRange;
 }
 
-static VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(
-    VkPipelineStageFlags2 StageMask,
-    VkSemaphore Semaphore)
+static VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
 {
     VkSemaphoreSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -177,8 +161,7 @@ static VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(
     return Info;
 }
 
-static VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(
-    VkCommandBuffer CommandBuffer)
+static VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)
 {
     VkCommandBufferSubmitInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -190,9 +173,7 @@ static VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(
     return Info;
 }
 
-static VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(
-    VkCommandPool CommandPool,
-    uint32_t Count)
+static VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool CommandPool, uint32_t Count)
 {
     VkCommandBufferAllocateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,

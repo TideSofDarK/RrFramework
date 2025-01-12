@@ -18,11 +18,7 @@ void Rr_LogAbort(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    SDL_LogMessageV(
-        RR_LOG_CATEGORY_GENERAL,
-        SDL_LOG_PRIORITY_CRITICAL,
-        Format,
-        Args);
+    SDL_LogMessageV(RR_LOG_CATEGORY_GENERAL, SDL_LOG_PRIORITY_CRITICAL, Format, Args);
     va_end(Args);
     abort();
 }
@@ -31,11 +27,7 @@ void Rr_LogRender(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    SDL_LogMessageV(
-        RR_LOG_CATEGORY_RENDER,
-        SDL_LOG_PRIORITY_INFO,
-        Format,
-        Args);
+    SDL_LogMessageV(RR_LOG_CATEGORY_RENDER, SDL_LOG_PRIORITY_INFO, Format, Args);
     va_end(Args);
 }
 
@@ -43,11 +35,7 @@ void Rr_LogVulkan(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    SDL_LogMessageV(
-        RR_LOG_CATEGORY_VULKAN,
-        SDL_LOG_PRIORITY_INFO,
-        Format,
-        Args);
+    SDL_LogMessageV(RR_LOG_CATEGORY_VULKAN, SDL_LOG_PRIORITY_INFO, Format, Args);
     va_end(Args);
 }
 
@@ -55,10 +43,6 @@ void Rr_LogMemory(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    SDL_LogMessageV(
-        RR_LOG_CATEGORY_MEMORY,
-        SDL_LOG_PRIORITY_INFO,
-        Format,
-        Args);
+    SDL_LogMessageV(RR_LOG_CATEGORY_MEMORY, SDL_LOG_PRIORITY_INFO, Format, Args);
     va_end(Args);
 }

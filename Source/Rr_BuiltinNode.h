@@ -33,13 +33,6 @@ struct Rr_TextRenderingContext
     VkDescriptorSet FontDescriptorSet;
 };
 
-extern Rr_Bool Rr_BatchBuiltinNode(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    struct Rr_GraphBatch *Batch,
-    Rr_BuiltinNode *Node);
+extern Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, struct Rr_GraphBatch *Batch, Rr_BuiltinNode *Node);
 
-extern void Rr_ExecuteBuiltinNode(
-    Rr_App *App,
-    Rr_BuiltinNode *Node,
-    Rr_Arena *Arena);
+extern void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena);

@@ -19,22 +19,19 @@ static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
     FrameTime->Now = SDL_GetPerformanceCounter();
-    FrameTime->DeltaSeconds = (double)(FrameTime->Now - FrameTime->Last) *
-                              1000.0 / (double)SDL_GetPerformanceFrequency();
+    FrameTime->DeltaSeconds =
+        (double)(FrameTime->Now - FrameTime->Last) * 1000.0 / (double)SDL_GetPerformanceFrequency();
 }
 
 static void Rr_CalculateFPS(Rr_FrameTime *FrameTime)
 {
     FrameTime->PerformanceCounter.Frames++;
     uint64_t CurrentTime = SDL_GetPerformanceCounter();
-    if (CurrentTime - FrameTime->PerformanceCounter.StartTime >=
-        FrameTime->PerformanceCounter.UpdateFrequency)
+    if(CurrentTime - FrameTime->PerformanceCounter.StartTime >= FrameTime->PerformanceCounter.UpdateFrequency)
     {
-        double Elapsed =
-            (double)(CurrentTime - FrameTime->PerformanceCounter.StartTime) /
-            FrameTime->PerformanceCounter.CountPerSecond;
-        FrameTime->PerformanceCounter.FPS =
-            (double)FrameTime->PerformanceCounter.Frames / Elapsed;
+        double Elapsed = (double)(CurrentTime - FrameTime->PerformanceCounter.StartTime) /
+                         FrameTime->PerformanceCounter.CountPerSecond;
+        FrameTime->PerformanceCounter.FPS = (double)FrameTime->PerformanceCounter.Frames / Elapsed;
         FrameTime->PerformanceCounter.StartTime = CurrentTime;
         FrameTime->PerformanceCounter.Frames = 0;
     }
@@ -46,7 +43,7 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
     uint64_t Now = SDL_GetTicksNS();
     uint64_t Elapsed = Now - FrameTime->StartTime;
 
-    if (Elapsed < Interval)
+    if(Elapsed < Interval)
     {
         SDL_DelayNS(Interval - Elapsed);
         Now = SDL_GetTicksNS();
@@ -54,7 +51,7 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 
     Elapsed = Now - FrameTime->StartTime;
 
-    if (!FrameTime->StartTime || Elapsed > SDL_MS_TO_NS(1000))
+    if(!FrameTime->StartTime || Elapsed > SDL_MS_TO_NS(1000))
     {
         FrameTime->StartTime = Now;
     }
@@ -68,10 +65,9 @@ void Rr_DebugOverlay(Rr_App *App)
 {
     ImGuiIO *IO = igGetIO();
     ImGuiViewport *Viewport = igGetMainViewport();
-    ImGuiWindowFlags Flags =
-        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-        ImGuiWindowFlags_NoNav;
+    ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+                             ImGuiWindowFlags_NoNav;
     float Padding = 10.0f;
     ImVec2 WorkPos = Viewport->WorkPos;
     ImVec2 WindowPos, WindowPosPivot;
@@ -82,22 +78,17 @@ void Rr_DebugOverlay(Rr_App *App)
     igSetNextWindowPos(WindowPos, ImGuiCond_Always, WindowPosPivot);
     Flags |= ImGuiWindowFlags_NoMove;
     igSetNextWindowBgAlpha(0.95f);
-    if (igBegin("Debug Overlay", NULL, Flags))
+    if(igBegin("Debug Overlay", NULL, Flags))
     {
-        igText(
-            "Swapchain Size: %dx%d",
-            App->Renderer.SwapchainSize.width,
-            App->Renderer.SwapchainSize.height);
+        igText("Swapchain Size: %dx%d", App->Renderer.SwapchainSize.width, App->Renderer.SwapchainSize.height);
         igText("SDL Allocations: %zu", SDL_GetNumAllocations());
         igText("RrFramework Objects: %zu", App->ObjectStorage.ObjectCount);
         igSeparator();
 #ifdef RR_PERFORMANCE_COUNTER
         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
 #endif
-        igCheckbox(
-            "Simulate VSync",
-            (_Bool *)&App->FrameTime.EnableFrameLimiter);
-        if (App->FrameTime.EnableFrameLimiter)
+        igCheckbox("Simulate VSync", (_Bool *)&App->FrameTime.EnableFrameLimiter);
+        if(App->FrameTime.EnableFrameLimiter)
         {
             igSliderScalar(
                 "Target FPS",
@@ -109,12 +100,9 @@ void Rr_DebugOverlay(Rr_App *App)
                 ImGuiSliderFlags_None);
         }
         igSeparator();
-        if (igIsMousePosValid(NULL))
+        if(igIsMousePosValid(NULL))
         {
-            igText(
-                "Mouse Position: (%.1f,%.1f)",
-                IO->MousePos.x,
-                IO->MousePos.y);
+            igText("Mouse Position: (%.1f,%.1f)", IO->MousePos.x, IO->MousePos.y);
         }
         else
         {
@@ -138,7 +126,7 @@ static void Iterate(Rr_App *App)
 
     App->Config->IterateFunc(App, App->UserData);
 
-    if (Rr_NewFrame(App, App->Window))
+    if(Rr_NewFrame(App, App->Window))
     {
         igRender();
         Rr_Draw(App);
@@ -148,7 +136,7 @@ static void Iterate(Rr_App *App)
     Rr_CalculateFPS(&App->FrameTime);
 #endif
 
-    if (App->FrameTime.EnableFrameLimiter)
+    if(App->FrameTime.EnableFrameLimiter)
     {
         Rr_SimulateVSync(&App->FrameTime);
     }
@@ -156,7 +144,7 @@ static void Iterate(Rr_App *App)
 
 static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
 {
-    switch (Event->type)
+    switch(Event->type)
     {
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
@@ -187,10 +175,8 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
 {
 #ifdef RR_PERFORMANCE_COUNTER
     FrameTime->PerformanceCounter.StartTime = SDL_GetPerformanceCounter();
-    FrameTime->PerformanceCounter.UpdateFrequency =
-        SDL_GetPerformanceFrequency() / 2;
-    FrameTime->PerformanceCounter.CountPerSecond =
-        (double)SDL_GetPerformanceFrequency();
+    FrameTime->PerformanceCounter.UpdateFrequency = SDL_GetPerformanceFrequency() / 2;
+    FrameTime->PerformanceCounter.CountPerSecond = (double)SDL_GetPerformanceFrequency();
 #endif
 
     SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
@@ -211,16 +197,13 @@ Rr_IntVec2 Rr_GetDefaultWindowSize()
 
     float ScaleFactor = 0.75f;
 
-    return (Rr_IntVec2){
-        .Width =
-            (int32_t)((float)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
-        .Height =
-            (int32_t)((float)(UsableBounds.h - UsableBounds.y) * ScaleFactor)
-    };
+    return (Rr_IntVec2){ .Width = (int32_t)((float)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
+                         .Height = (int32_t)((float)(UsableBounds.h - UsableBounds.y) * ScaleFactor) };
 }
 
 void Rr_Run(Rr_AppConfig *Config)
 {
+    SDL_SetAppMetadata(Config->Title, Config->Version, Config->Package);
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -234,7 +217,7 @@ void Rr_Run(Rr_AppConfig *Config)
             Config->Title,
             WindowSize.Width,
             WindowSize.Height,
-            SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN),
+            SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY),
         .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
         .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
         .ObjectStorage = Rr_CreateObjectStorage(),
@@ -261,16 +244,16 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_ShowWindow(App.Window);
 
-    while (SDL_GetAtomicInt(&App.bExit) == false)
+    while(SDL_GetAtomicInt(&App.bExit) == false)
     {
-        for (SDL_Event Event; SDL_PollEvent(&Event);)
+        for(SDL_Event Event; SDL_PollEvent(&Event);)
         {
             ImGui_ImplSDL3_ProcessEvent(&Event);
-            switch (Event.type)
+            switch(Event.type)
             {
                 case SDL_EVENT_DROP_FILE:
                 {
-                    if (Config->FileDroppedFunc != NULL)
+                    if(Config->FileDroppedFunc != NULL)
                     {
                         Config->FileDroppedFunc(&App, Event.drop.data);
                     }
@@ -320,7 +303,10 @@ void Rr_SetInputConfig(Rr_App *App, Rr_InputConfig *InputConfig)
     App->InputConfig = *InputConfig;
 }
 
-Rr_InputState Rr_GetInputState(Rr_App *App) { return App->InputState; }
+Rr_InputState Rr_GetInputState(Rr_App *App)
+{
+    return App->InputState;
+}
 
 Rr_IntVec2 Rr_GetSwapchainSize(Rr_App *App)
 {
@@ -334,11 +320,13 @@ Rr_IntVec2 Rr_GetSwapchainSize(Rr_App *App)
 float Rr_GetAspectRatio(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
-    return (float)Renderer->SwapchainSize.width /
-           (float)Renderer->SwapchainSize.height;
+    return (float)Renderer->SwapchainSize.width / (float)Renderer->SwapchainSize.height;
 }
 
-double Rr_GetDeltaSeconds(Rr_App *App) { return App->FrameTime.DeltaSeconds; }
+double Rr_GetDeltaSeconds(Rr_App *App)
+{
+    return App->FrameTime.DeltaSeconds;
+}
 
 double Rr_GetTimeSeconds(Rr_App *App)
 {
@@ -347,7 +335,5 @@ double Rr_GetTimeSeconds(Rr_App *App)
 
 void Rr_SetRelativeMouseMode(Rr_App *App, Rr_Bool IsRelative)
 {
-    SDL_SetWindowRelativeMouseMode(
-        App->Window,
-        IsRelative ? true : false);
+    SDL_SetWindowRelativeMouseMode(App->Window, IsRelative ? true : false);
 }

@@ -29,11 +29,7 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_GraphNode **Dependencies,
     size_t DependencyCount);
 
-extern void Rr_DrawStaticMesh(
-    Rr_App *App,
-    Rr_GraphNode *Node,
-    Rr_StaticMesh *StaticMesh,
-    Rr_Data PerDrawData);
+extern void Rr_DrawStaticMesh(Rr_App *App, Rr_GraphNode *Node, Rr_StaticMesh *StaticMesh, Rr_Data PerDrawData);
 
 extern void Rr_DrawStaticMeshOverrideMaterials(
     Rr_App *App,

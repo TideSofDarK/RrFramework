@@ -27,8 +27,7 @@ union Rr_Object
 Rr_ObjectStorage Rr_CreateObjectStorage()
 {
     Rr_ObjectStorage ObjectStorage = { 0 };
-    ObjectStorage.Storage =
-        Rr_Calloc(1, Rr_CalculateObjectStorageSize(RR_MAX_OBJECTS));
+    ObjectStorage.Storage = Rr_Calloc(1, Rr_CalculateObjectStorageSize(RR_MAX_OBJECTS));
     ObjectStorage.NextObject = ObjectStorage.Storage;
 
     return ObjectStorage;
@@ -49,7 +48,7 @@ void *Rr_CreateObject(Rr_ObjectStorage *Storage)
     SDL_LockSpinlock(&Storage->Lock);
 
     Rr_Object *NewObject = (Rr_Object *)Storage->NextObject;
-    if (NewObject->Next == NULL)
+    if(NewObject->Next == NULL)
     {
         Storage->NextObject = NewObject + 1;
     }

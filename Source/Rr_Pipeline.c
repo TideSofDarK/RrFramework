@@ -12,10 +12,7 @@ enum Rr_VertexInputBinding
     RR_VERTEX_INPUT_BINDING_PER_INSTANCE
 };
 
-Rr_Pipeline *Rr_CreatePipeline(
-    Rr_App *App,
-    Rr_PipelineBuilder *PipelineBuilder,
-    VkPipelineLayout PipelineLayout)
+Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder, VkPipelineLayout PipelineLayout)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -23,13 +20,12 @@ Rr_Pipeline *Rr_CreatePipeline(
     Pipeline->ColorAttachmentCount = PipelineBuilder->ColorAttachmentCount;
 
     /* Create shader modules. */
-    VkPipelineShaderStageCreateInfo *ShaderStages = Rr_StackAlloc(
-        VkPipelineShaderStageCreateInfo,
-        RR_PIPELINE_SHADER_STAGES);
+    VkPipelineShaderStageCreateInfo *ShaderStages =
+        Rr_StackAlloc(VkPipelineShaderStageCreateInfo, RR_PIPELINE_SHADER_STAGES);
     uint32_t ShaderStageCount = 0;
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
-    if (PipelineBuilder->VertexShaderSPV.Data != NULL)
+    if(PipelineBuilder->VertexShaderSPV.Data != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -37,18 +33,13 @@ Rr_Pipeline *Rr_CreatePipeline(
             .pCode = (uint32_t *)PipelineBuilder->VertexShaderSPV.Data,
             .codeSize = PipelineBuilder->VertexShaderSPV.Length,
         };
-        vkCreateShaderModule(
-            Renderer->Device,
-            &ShaderModuleCreateInfo,
-            NULL,
-            &VertModule);
-        ShaderStages[ShaderStageCount] =
-            GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
+        vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
+        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
         ShaderStageCount++;
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
-    if (PipelineBuilder->FragmentShaderSPV.Data != NULL)
+    if(PipelineBuilder->FragmentShaderSPV.Data != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -56,13 +47,8 @@ Rr_Pipeline *Rr_CreatePipeline(
             .pCode = (uint32_t *)PipelineBuilder->FragmentShaderSPV.Data,
             .codeSize = PipelineBuilder->FragmentShaderSPV.Length,
         };
-        vkCreateShaderModule(
-            Renderer->Device,
-            &ShaderModuleCreateInfo,
-            NULL,
-            &FragModule);
-        ShaderStages[ShaderStageCount] =
-            GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
+        vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
+        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
         ShaderStageCount++;
     }
 
@@ -103,39 +89,33 @@ Rr_Pipeline *Rr_CreatePipeline(
     uint32_t AttributeCount = 0;
     Rr_Bool HasPerVertexBinding = RR_FALSE;
     Rr_Bool HasPerInstanceBinding = RR_FALSE;
-    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
-         ++Index)
+    for(size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
-        if (PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
+        if(PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
         {
             break;
         }
         AttributeCount++;
-        HasPerVertexBinding = HasPerVertexBinding ||
-                              PipelineBuilder->Attributes[Index].binding == 0;
-        HasPerInstanceBinding = HasPerInstanceBinding ||
-                                PipelineBuilder->Attributes[Index].binding == 1;
+        HasPerVertexBinding = HasPerVertexBinding || PipelineBuilder->Attributes[Index].binding == 0;
+        HasPerInstanceBinding = HasPerInstanceBinding || PipelineBuilder->Attributes[Index].binding == 1;
     }
-    if (AttributeCount > 0)
+    if(AttributeCount > 0)
     {
-        if (HasPerVertexBinding)
+        if(HasPerVertexBinding)
         {
             VertexInputInfo.vertexBindingDescriptionCount++;
         }
-        if (HasPerInstanceBinding)
+        if(HasPerInstanceBinding)
         {
             VertexInputInfo.vertexBindingDescriptionCount++;
         }
         VertexInputInfo.vertexAttributeDescriptionCount = AttributeCount;
-        VertexInputInfo.pVertexBindingDescriptions =
-            VertexInputBindingDescriptions;
-        VertexInputInfo.pVertexAttributeDescriptions =
-            PipelineBuilder->Attributes;
+        VertexInputInfo.pVertexBindingDescriptions = VertexInputBindingDescriptions;
+        VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->Attributes;
     }
 
     /* Dynamic States */
-    VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT,
-                                       VK_DYNAMIC_STATE_SCISSOR };
+    VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
     VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .pNext = NULL,
@@ -144,7 +124,7 @@ Rr_Pipeline *Rr_CreatePipeline(
     };
 
     /* Select render pass. */
-    switch (PipelineBuilder->ColorAttachmentCount)
+    switch(PipelineBuilder->ColorAttachmentCount)
     {
         case 0:
             Pipeline->RenderPass = Renderer->RenderPasses.Depth;
@@ -175,20 +155,14 @@ Rr_Pipeline *Rr_CreatePipeline(
         .renderPass = Pipeline->RenderPass,
     };
 
-    vkCreateGraphicsPipelines(
-        Renderer->Device,
-        VK_NULL_HANDLE,
-        1,
-        &PipelineInfo,
-        NULL,
-        &Pipeline->Handle);
+    vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline->Handle);
 
-    if (VertModule != VK_NULL_HANDLE)
+    if(VertModule != VK_NULL_HANDLE)
     {
         vkDestroyShaderModule(Renderer->Device, VertModule, NULL);
     }
 
-    if (FragModule != VK_NULL_HANDLE)
+    if(FragModule != VK_NULL_HANDLE)
     {
         vkDestroyShaderModule(Renderer->Device, FragModule, NULL);
     }
@@ -210,8 +184,7 @@ void Rr_DestroyPipeline(Rr_App *App, Rr_Pipeline *Pipeline)
 
 Rr_PipelineBuilder *Rr_CreatePipelineBuilder(void)
 {
-    Rr_PipelineBuilder *PipelineBuilder =
-        Rr_Calloc(1, sizeof(Rr_PipelineBuilder));
+    Rr_PipelineBuilder *PipelineBuilder = Rr_Calloc(1, sizeof(Rr_PipelineBuilder));
     *PipelineBuilder = (Rr_PipelineBuilder){
         .InputAssembly = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -238,21 +211,15 @@ Rr_PipelineBuilder *Rr_CreatePipelineBuilder(void)
     return PipelineBuilder;
 }
 
-void Rr_EnableColorAttachment(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_Bool EnableAlphaBlend)
+void Rr_EnableColorAttachment(Rr_PipelineBuilder *PipelineBuilder, Rr_Bool EnableAlphaBlend)
 {
-    PipelineBuilder
-        ->ColorAttachmentFormats[PipelineBuilder->ColorAttachmentCount] =
-        RR_COLOR_FORMAT;
-    if (EnableAlphaBlend)
+    PipelineBuilder->ColorAttachmentFormats[PipelineBuilder->ColorAttachmentCount] = RR_COLOR_FORMAT;
+    if(EnableAlphaBlend)
     {
-        PipelineBuilder
-            ->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
+        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
             (VkPipelineColorBlendAttachmentState){
-                .colorWriteMask =
-                    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+                                  VK_COLOR_COMPONENT_A_BIT,
                 .blendEnable = VK_TRUE,
                 .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
                 .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -264,12 +231,10 @@ void Rr_EnableColorAttachment(
     }
     else
     {
-        PipelineBuilder
-            ->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
+        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
             (VkPipelineColorBlendAttachmentState){
-                .colorWriteMask =
-                    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+                                  VK_COLOR_COMPONENT_A_BIT,
                 .blendEnable = VK_FALSE,
             };
     }
@@ -278,13 +243,12 @@ void Rr_EnableColorAttachment(
 
 void Rr_EnableTriangleFan(Rr_PipelineBuilder *PipelineBuilder)
 {
-    PipelineBuilder->InputAssembly.topology =
-        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+    PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
 }
 
 static VkFormat Rr_GetVulkanFormat(Rr_VertexInputType Type)
 {
-    switch (Type)
+    switch(Type)
     {
         case RR_VERTEX_INPUT_TYPE_FLOAT:
             return VK_FORMAT_R32_SFLOAT;
@@ -304,7 +268,7 @@ static VkFormat Rr_GetVulkanFormat(Rr_VertexInputType Type)
 
 static size_t Rr_GetVertexInputSize(Rr_VertexInputType Type)
 {
-    switch (Type)
+    switch(Type)
     {
         case RR_VERTEX_INPUT_TYPE_FLOAT:
             return sizeof(float);
@@ -328,13 +292,13 @@ static void Rr_EnableVertexInputAttribute(
     size_t Binding)
 {
     VkFormat Format = Rr_GetVulkanFormat(Attribute.Type);
-    if (Format == VK_FORMAT_UNDEFINED)
+    if(Format == VK_FORMAT_UNDEFINED)
     {
         return;
     }
 
     size_t Location = Attribute.Location;
-    if (Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
+    if(Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
     {
         Rr_LogAbort("Exceeding max allowed number of vertex attributes for a "
                     "pipeline!");
@@ -347,16 +311,12 @@ static void Rr_EnableVertexInputAttribute(
         .offset = PipelineBuilder->VertexInput[Binding].VertexInputStride,
     };
 
-    PipelineBuilder->VertexInput[Binding].VertexInputStride +=
-        Rr_GetVertexInputSize(Attribute.Type);
+    PipelineBuilder->VertexInput[Binding].VertexInputStride += Rr_GetVertexInputSize(Attribute.Type);
 }
 
-void Rr_EnablePerVertexInputAttributes(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_VertexInput *VertexInput)
+void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder *PipelineBuilder, Rr_VertexInput *VertexInput)
 {
-    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
-         ++Index)
+    for(size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         Rr_EnableVertexInputAttribute(
             PipelineBuilder,
@@ -365,12 +325,9 @@ void Rr_EnablePerVertexInputAttributes(
     }
 }
 
-void Rr_EnablePerInstanceInputAttributes(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_VertexInput *VertexInput)
+void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder *PipelineBuilder, Rr_VertexInput *VertexInput)
 {
-    for (size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES;
-         ++Index)
+    for(size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         Rr_EnableVertexInputAttribute(
             PipelineBuilder,
@@ -379,25 +336,19 @@ void Rr_EnablePerInstanceInputAttributes(
     }
 }
 
-void Rr_EnableVertexStage(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_Asset *SPVAsset)
+void Rr_EnableVertexStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset)
 {
     PipelineBuilder->VertexShaderSPV = *SPVAsset;
 }
 
-void Rr_EnableFragmentStage(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_Asset *SPVAsset)
+void Rr_EnableFragmentStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset)
 {
     PipelineBuilder->FragmentShaderSPV = *SPVAsset;
 }
 
-void Rr_EnableRasterizer(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_PolygonMode PolygonMode)
+void Rr_EnableRasterizer(Rr_PipelineBuilder *PipelineBuilder, Rr_PolygonMode PolygonMode)
 {
-    switch (PolygonMode)
+    switch(PolygonMode)
     {
         case RR_POLYGON_MODE_LINE:
         {
@@ -465,13 +416,8 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
 
     Rr_GenericPipeline *Pipeline = Rr_CreateObject(&App->ObjectStorage);
     *Pipeline = (Rr_GenericPipeline){
-        .Pipeline = Rr_CreatePipeline(
-            App,
-            PipelineBuilder,
-            Renderer->GenericPipelineLayout),
-        .Sizes = { .Globals = Globals,
-                   .Material = Material,
-                   .PerDraw = PerDraw },
+        .Pipeline = Rr_CreatePipeline(App, PipelineBuilder, Renderer->GenericPipelineLayout),
+        .Sizes = { .Globals = Globals, .Material = Material, .PerDraw = PerDraw },
     };
 
     /* Initialize per-draw buffer descriptor sets.
@@ -480,17 +426,15 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
      * @TODO: varying PerDraw size.
      * @TODO: Pipeline might be deleted but what about the descriptor sets?
      */
-    Rr_DescriptorWriter DescriptorWriter =
-        Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
-    for (size_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
+    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
+    for(size_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
     {
         Rr_Frame *Frame = &Renderer->Frames[FrameIndex];
 
         Pipeline->PerDrawDescriptorSets[FrameIndex] = Rr_AllocateDescriptorSet(
             &Renderer->GlobalDescriptorAllocator,
             Renderer->Device,
-            Renderer->GenericDescriptorSetLayouts
-                [RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW]);
+            Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW]);
         Rr_WriteBufferDescriptor(
             &DescriptorWriter,
             0,
@@ -499,10 +443,7 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
             0,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
             Scratch.Arena);
-        Rr_UpdateDescriptorSet(
-            &DescriptorWriter,
-            Renderer->Device,
-            Pipeline->PerDrawDescriptorSets[FrameIndex]);
+        Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, Pipeline->PerDrawDescriptorSets[FrameIndex]);
         Rr_ResetDescriptorWriter(&DescriptorWriter);
     }
 

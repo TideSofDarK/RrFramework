@@ -37,8 +37,7 @@ struct SEntity
 {
 };
 
-template <typename TGlobals, typename TMaterial, typename TPerDraw>
-struct TPipeline
+template <typename TGlobals, typename TMaterial, typename TPerDraw> struct TPipeline
 {
 protected:
     Rr_App *App;
@@ -50,12 +49,15 @@ public:
 
     Rr_GenericPipeline *GenericPipeline{};
 
-    explicit TPipeline(Rr_App *InApp) :
-        App(InApp)
+    explicit TPipeline(Rr_App *InApp)
+        : App(InApp)
     {
     }
 
-    ~TPipeline() { Rr_DestroyGenericPipeline(App, GenericPipeline); }
+    ~TPipeline()
+    {
+        Rr_DestroyGenericPipeline(App, GenericPipeline);
+    }
 
     TPipeline(TPipeline &&Rhs) = delete;
     TPipeline &operator=(TPipeline &&Rhs) = delete;
@@ -79,11 +81,10 @@ struct SShadowPerDraw
     Rr_Mat4 Model;
 };
 
-struct SShadowPassPipeline
-    : TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowPerDraw>
+struct SShadowPassPipeline : TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowPerDraw>
 {
-    explicit SShadowPassPipeline(Rr_App *InApp) :
-        TPipeline(InApp)
+    explicit SShadowPassPipeline(Rr_App *InApp)
+        : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_SHADOWPASS_VERT_SPV);
 
@@ -91,12 +92,7 @@ struct SShadowPassPipeline
         Rr_EnableVertexStage(Builder, &VertexShader);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-        GenericPipeline = Rr_BuildGenericPipeline(
-            App,
-            Builder,
-            sizeof(SGlobals),
-            sizeof(SMaterial),
-            sizeof(SPerDraw));
+        GenericPipeline = Rr_BuildGenericPipeline(App, Builder, sizeof(SGlobals), sizeof(SMaterial), sizeof(SPerDraw));
     }
 };
 
@@ -118,8 +114,8 @@ struct SUnlitPerDraw
 
 struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitPerDraw>
 {
-    explicit SUnlitPipeline(Rr_App *InApp) :
-        TPipeline(InApp)
+    explicit SUnlitPipeline(Rr_App *InApp)
+        : TPipeline(InApp)
     {
         Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_VERT_SPV);
         Rr_Asset FragmentShader = Rr_LoadAsset(DEMO_ASSET_UNLIT_FRAG_SPV);
@@ -131,12 +127,7 @@ struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitPerDraw>
         Rr_EnableColorAttachment(Builder, false);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-        GenericPipeline = Rr_BuildGenericPipeline(
-            App,
-            Builder,
-            sizeof(SGlobals),
-            sizeof(SMaterial),
-            sizeof(SPerDraw));
+        GenericPipeline = Rr_BuildGenericPipeline(App, Builder, sizeof(SGlobals), sizeof(SMaterial), sizeof(SPerDraw));
     }
 };
 
@@ -155,11 +146,10 @@ struct SUber3DPushConstants
     Rr_Mat4 Reserved;
 };
 
-struct SUber3DPipeline
-    : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DPerDraw>
+struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DPerDraw>
 {
-    explicit SUber3DPipeline(Rr_App *InApp) :
-        TPipeline(InApp)
+    explicit SUber3DPipeline(Rr_App *InApp)
+        : TPipeline(InApp)
     {
         Rr_Asset Uber3DVERT = Rr_LoadAsset(DEMO_ASSET_UBER3D_VERT_SPV);
         Rr_Asset Uber3DFRAG = Rr_LoadAsset(DEMO_ASSET_UBER3D_FRAG_SPV);
@@ -170,12 +160,7 @@ struct SUber3DPipeline
         Rr_EnableColorAttachment(Builder, false);
         Rr_EnableDepthTest(Builder);
         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-        GenericPipeline = Rr_BuildGenericPipeline(
-            App,
-            Builder,
-            sizeof(SGlobals),
-            sizeof(SMaterial),
-            sizeof(SPerDraw));
+        GenericPipeline = Rr_BuildGenericPipeline(App, Builder, sizeof(SGlobals), sizeof(SMaterial), sizeof(SPerDraw));
     }
 };
 
@@ -298,21 +283,14 @@ public:
         ShaderGlobals.DirectionalLightColor = { 1.0f, 0.95f, 0.93f, 1.0f };
         ShaderGlobals.DirectionalLightIntensity = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-        ShaderGlobals.Proj = Rr_Perspective_LH_ZO(
-            0.7643276f,
-            Rr_GetAspectRatio(App),
-            0.5f,
-            50.0f);
+        ShaderGlobals.Proj = Rr_Perspective_LH_ZO(0.7643276f, Rr_GetAspectRatio(App), 0.5f, 50.0f);
     }
 
     void OnLoadingComplete()
     {
         std::array CottageTextures = { CottageDiffuse, CottageNormal };
-        CottageMaterial = Rr_CreateMaterial(
-            App,
-            Uber3DPipeline.GenericPipeline,
-            CottageTextures.data(),
-            CottageTextures.size());
+        CottageMaterial =
+            Rr_CreateMaterial(App, Uber3DPipeline.GenericPipeline, CottageTextures.data(), CottageTextures.size());
 
         IsLoaded = true;
 
@@ -332,19 +310,12 @@ public:
         SUber3DPerDraw CottageDraw = {};
         CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
         CottageDraw.Model[3][1] = 0.1f;
-        Rr_DrawStaticMeshOverrideMaterials(
-            App,
-            Node,
-            &CottageMaterial,
-            1,
-            CottageMesh,
-            RR_MAKE_DATA(CottageDraw));
+        Rr_DrawStaticMeshOverrideMaterials(App, Node, &CottageMaterial, 1, CottageMesh, RR_MAKE_DATA(CottageDraw));
 
         SUber3DPerDraw AvocadoDraw = {};
-        AvocadoDraw.Model =
-            Rr_Scale({ 0.75f, 0.75f, 0.75f }) *
-            Rr_Rotate_LH(fmodf(Time, RR_PI32 * 2.0f), { 0.0f, 1.0f, 0.0f }) *
-            Rr_Translate({ 3.5f, 0.5f, 3.5f });
+        AvocadoDraw.Model = Rr_Scale({ 0.75f, 0.75f, 0.75f }) *
+                            Rr_Rotate_LH(fmodf(Time, RR_PI32 * 2.0f), { 0.0f, 1.0f, 0.0f }) *
+                            Rr_Translate({ 3.5f, 0.5f, 3.5f });
         AvocadoDraw.Model[3][0] = 3.5f;
         AvocadoDraw.Model[3][1] = 0.5f;
         AvocadoDraw.Model[3][2] = 3.5f;
@@ -357,14 +328,13 @@ public:
 
     void Iterate()
     {
-        auto [Keys, MousePosition, MousePositionDelta, MouseState] =
-            Rr_GetInputState(App);
+        auto [Keys, MousePosition, MousePositionDelta, MouseState] = Rr_GetInputState(App);
 
         auto DeltaTime = static_cast<float>(Rr_GetDeltaSeconds(App));
 
         auto SwapchainSize = Rr_GetSwapchainSize(App);
 
-        if (Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
+        if(Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
         {
             Rr_ToggleFullscreen(App);
         }
@@ -380,80 +350,44 @@ public:
         // static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f
         // };
         static Rr_Vec3 LightDirEuler = { -100.0f, 18.0f, 3.16371f };
-        ImGui::SliderFloat2(
-            "CameraPitchYaw",
-            &Camera.Pitch,
-            -360.0f,
-            360.0f,
-            "%f",
-            ImGuiSliderFlags_None);
-        ImGui::SliderFloat3(
-            "CameraPos",
-            Camera.Position.Elements,
-            -100.0f,
-            100.0f,
-            "%.3f",
-            ImGuiSliderFlags_None);
-        ImGui::SliderFloat3(
-            "LightDir",
-            LightDirEuler.Elements,
-            -100.0f,
-            100.0f,
-            "%f",
-            ImGuiSliderFlags_None);
+        ImGui::SliderFloat2("CameraPitchYaw", &Camera.Pitch, -360.0f, 360.0f, "%f", ImGuiSliderFlags_None);
+        ImGui::SliderFloat3("CameraPos", Camera.Position.Elements, -100.0f, 100.0f, "%.3f", ImGuiSliderFlags_None);
+        ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
         ImGui::Separator();
         static Rr_Vec3 ShadowEye = { 3, 3, 3 };
         static Rr_Vec3 ShadowCenter = { 0, 0, 0 };
-        ImGui::SliderFloat3(
-            "ShadowEye",
-            ShadowEye.Elements,
-            -10.0f,
-            10.0f,
-            "%.3f",
-            ImGuiSliderFlags_None);
-        ImGui::SliderFloat3(
-            "ShadowCenter",
-            ShadowCenter.Elements,
-            -10.0f,
-            10.0f,
-            "%f",
-            ImGuiSliderFlags_None);
+        ImGui::SliderFloat3("ShadowEye", ShadowEye.Elements, -10.0f, 10.0f, "%.3f", ImGuiSliderFlags_None);
+        ImGui::SliderFloat3("ShadowCenter", ShadowCenter.Elements, -10.0f, 10.0f, "%f", ImGuiSliderFlags_None);
 
         Rr_Vec3 LightRotation = LightDirEuler * Rr_DegToRad;
-        ShaderGlobals.DirectionalLightDirection =
-            Rr_EulerXYZ(LightRotation).Columns[2];
+        ShaderGlobals.DirectionalLightDirection = Rr_EulerXYZ(LightRotation).Columns[2];
 
         Rr_Vec3 CameraForward = Camera.GetForwardVector();
         Rr_Vec3 CameraLeft = Camera.GetRightVector();
         constexpr float CameraSpeed = 0.1f;
-        if (Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
+        if(Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
         {
             Camera.Position -= CameraForward * DeltaTime * CameraSpeed;
         }
-        if (Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
+        if(Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
         {
             Camera.Position -= CameraLeft * DeltaTime * CameraSpeed;
         }
-        if (Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
+        if(Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
         {
             Camera.Position += CameraForward * DeltaTime * CameraSpeed;
         }
-        if (Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
+        if(Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
         {
             Camera.Position += CameraLeft * DeltaTime * CameraSpeed;
         }
 
-        if (MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
+        if(MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
         {
             Rr_SetRelativeMouseMode(App, true);
             constexpr float Sensitivity = 0.2f;
-            Camera.Yaw = Rr_WrapMax(
-                Camera.Yaw - (MousePositionDelta.X * Sensitivity),
-                360.0f);
-            Camera.Pitch = Rr_WrapMinMax(
-                Camera.Pitch - (MousePositionDelta.Y * Sensitivity),
-                -90.0f,
-                90.0f);
+            Camera.Yaw = Rr_WrapMax(Camera.Yaw - (MousePositionDelta.X * Sensitivity), 360.0f);
+            Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (MousePositionDelta.Y * Sensitivity), -90.0f, 90.0f);
         }
         else
         {
@@ -465,11 +399,11 @@ public:
         ImGui::End();
 
         static bool ShowDebugOverlay = false;
-        if (Rr_GetKeyState(Keys, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
+        if(Rr_GetKeyState(Keys, EIA_DEBUGOVERLAY) == RR_KEYSTATE_PRESSED)
         {
             ShowDebugOverlay = !ShowDebugOverlay;
         }
-        if (ShowDebugOverlay)
+        if(ShowDebugOverlay)
         {
             Rr_DebugOverlay(App);
         }
@@ -487,22 +421,11 @@ public:
             .OverridePipeline = nullptr,
         };
         SUber3DGlobals TestGlobals = ShaderGlobals;
-        TestGlobals.View =
-            Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
-        TestGlobals.Proj = Rr_Orthographic_LH_ZO(
-            -512 * 0.05f,
-            512 * 0.05f,
-            -512 * 0.05f,
-            512 * 0.05f,
-            -1000.0f,
-            1000.0f);
-        Rr_GraphNode *TestNode = Rr_AddGraphicsNode(
-            App,
-            "test_pass",
-            &TestNodeInfo,
-            reinterpret_cast<char *>(&TestGlobals),
-            nullptr,
-            0);
+        TestGlobals.View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
+        TestGlobals.Proj =
+            Rr_Orthographic_LH_ZO(-512 * 0.05f, 512 * 0.05f, -512 * 0.05f, 512 * 0.05f, -1000.0f, 1000.0f);
+        Rr_GraphNode *TestNode =
+            Rr_AddGraphicsNode(App, "test_pass", &TestNodeInfo, reinterpret_cast<char *>(&TestGlobals), nullptr, 0);
 
         Rr_GraphicsNodeInfo ShadowNodeInfo = {
             .DrawTarget = ShadowMap,
@@ -514,13 +437,7 @@ public:
         };
         SShadowPassPipeline::SGlobals ShadowGlobals = {
             .View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
-            .Proj = Rr_Orthographic_LH_ZO(
-                -512 * 0.05f,
-                512 * 0.05f,
-                -512 * 0.05f,
-                512 * 0.05f,
-                -1000.0f,
-                1000.0f),
+            .Proj = Rr_Orthographic_LH_ZO(-512 * 0.05f, 512 * 0.05f, -512 * 0.05f, 512 * 0.05f, -1000.0f, 1000.0f),
         };
         Rr_GraphNode *ShadowNode = Rr_AddGraphicsNode(
             App,
@@ -551,17 +468,14 @@ public:
 
         Rr_BlitNodeInfo BlitInfo = {
             .SrcImage = Rr_GetDrawTargetColorImage(App, TestTarget),
-            .DstImage =
-                Rr_GetDrawTargetColorImage(App, Rr_GetMainDrawTarget(App)),
+            .DstImage = Rr_GetDrawTargetColorImage(App, Rr_GetMainDrawTarget(App)),
             .SrcRect = { 0, 0, 1024, 1024 },
             .DstRect = { SwapchainSize.Width - 512, 0, 512, 512 },
             .Mode = RR_BLIT_MODE_COLOR,
         };
-        Rr_GraphNode *BlitNode =
-            Rr_AddBlitNode(App, "blit_test", &BlitInfo, &Node, 1);
+        Rr_GraphNode *BlitNode = Rr_AddBlitNode(App, "blit_test", &BlitInfo, &Node, 1);
 
-        Rr_GraphNode *BuiltinNode =
-            Rr_AddBuiltinNode(App, "builtin", &BlitNode, 1);
+        Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin", &BlitNode, 1);
         // Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin", &Node,
         // 1);
 
@@ -572,7 +486,7 @@ public:
 
         Rr_AddPresentNode(App, "present", &PresentInfo, &BuiltinNode, 1);
 
-        if (IsLoaded)
+        if(IsLoaded)
         {
             DrawScene(ShadowNode);
             DrawScene(TestNode);
@@ -597,17 +511,13 @@ public:
         }
         else
         {
-            if (LoadingContext != nullptr)
+            if(LoadingContext != nullptr)
             {
                 uint32_t Current, Total;
                 Rr_GetLoadProgress(LoadingContext, &Current, &Total);
 
-                std::string Formatted =
-                    std::format("Загружайу: {}/{}\n", Current, Total);
-                Rr_SetString(
-                    &LoadingString,
-                    Formatted.c_str(),
-                    Formatted.length());
+                std::string Formatted = std::format("Загружайу: {}/{}\n", Current, Total);
+                Rr_SetString(&LoadingString, Formatted.c_str(), Formatted.length());
             }
 
             Rr_DrawCustomText(
@@ -621,60 +531,39 @@ public:
         }
     }
 
-    explicit SGame(Rr_App *InApp) :
-        App(InApp),
-        Uber3DPipeline(App),
-        UnlitPipeline(App),
-        ShadowPipeline(App),
-        ShadowMap(Rr_CreateDrawTargetDepthOnly(App, 1024, 1024)),
-        TestTarget(Rr_CreateDrawTarget(App, 1024, 1024)),
-        UnlitGLTFLoader({
-            .GenericPipeline = UnlitPipeline.GenericPipeline,
-            .BaseTexture = 0,
-            .NormalTexture = 1,
-            .SpecularTexture = 2,
-        }),
-        Uber3DGLTFLoader({
-            .GenericPipeline = Uber3DPipeline.GenericPipeline,
-            .BaseTexture = 0,
-            .NormalTexture = 1,
-            .SpecularTexture = 2,
-        })
+    explicit SGame(Rr_App *InApp)
+        : App(InApp)
+        , Uber3DPipeline(App)
+        , UnlitPipeline(App)
+        , ShadowPipeline(App)
+        , ShadowMap(Rr_CreateDrawTargetDepthOnly(App, 1024, 1024))
+        , TestTarget(Rr_CreateDrawTarget(App, 1024, 1024))
+        , UnlitGLTFLoader({
+              .GenericPipeline = UnlitPipeline.GenericPipeline,
+              .BaseTexture = 0,
+              .NormalTexture = 1,
+              .SpecularTexture = 2,
+          })
+        , Uber3DGLTFLoader({
+              .GenericPipeline = Uber3DPipeline.GenericPipeline,
+              .BaseTexture = 0,
+              .NormalTexture = 1,
+              .SpecularTexture = 2,
+          })
     {
         InitInputMappings();
 
         InitGlobals();
 
         std::array LoadTasks = {
-            Rr_LoadColorImageFromPNG(
-                DEMO_ASSET_COTTAGEDIFFUSE_PNG,
-                &CottageDiffuse),
-            Rr_LoadColorImageFromPNG(
-                DEMO_ASSET_COTTAGENORMAL_PNG,
-                &CottageNormal),
-            Rr_LoadStaticMeshFromGLTF(
-                DEMO_ASSET_AVOCADO_GLB,
-                &Uber3DGLTFLoader,
-                0,
-                &AvocadoMesh),
-            Rr_LoadStaticMeshFromGLTF(
-                DEMO_ASSET_MARBLE_GLB,
-                &Uber3DGLTFLoader,
-                0,
-                &MarbleMesh),
-            Rr_LoadStaticMeshFromGLTF(
-                DEMO_ASSET_ARROW_GLB,
-                &UnlitGLTFLoader,
-                0,
-                &ArrowMesh),
+            Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
+            Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &Uber3DGLTFLoader, 0, &AvocadoMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &Uber3DGLTFLoader, 0, &MarbleMesh),
+            Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitGLTFLoader, 0, &ArrowMesh),
             Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
         };
-        LoadingContext = Rr_LoadAsync(
-            App,
-            LoadTasks.data(),
-            LoadTasks.size(),
-            OnLoadingComplete,
-            this);
+        LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
 
         TestString = Rr_CreateString("A quick brown fox @#$ \nNew line "
                                      "test...\n\nA couple of new lines...");
@@ -707,7 +596,10 @@ public:
     }
 };
 
-static void Init(Rr_App *App, void *UserData) { new (UserData) SGame(App); }
+static void Init(Rr_App *App, void *UserData)
+{
+    new (UserData) SGame(App);
+}
 
 static void Iterate(Rr_App *App, void *UserData)
 {
@@ -728,6 +620,8 @@ void RunGame()
 {
     std::byte Game[sizeof(SGame)];
     Rr_AppConfig Config = { .Title = "RrDemo",
+                            .Version = "0.0.1",
+                            .Package = "com.rrframework.demo",
                             .InitFunc = Init,
                             .CleanupFunc = Cleanup,
                             .IterateFunc = Iterate,
