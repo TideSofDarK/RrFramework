@@ -64,7 +64,7 @@ else()
         set(ASSET_FINAL_IDENTIFIER "${IDENTIFIER_PREFIX}${ASSET_IDENTIFIER}")
         file(
             APPEND "${ASSET_HEADER_PATH}"
-            "RR_ASSET_EXTERN const Rr_AssetRef ${ASSET_FINAL_IDENTIFIER};\n"
+            "RR_EXTERN const Rr_AssetRef ${ASSET_FINAL_IDENTIFIER};\n"
         )
     endforeach (ASSET_PATH)
     file(

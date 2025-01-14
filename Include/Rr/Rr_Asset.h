@@ -3,12 +3,6 @@
 #include "Rr_Defines.h"
 
 #ifdef __cplusplus
-#define RR_ASSET_EXTERN extern "C"
-#else
-#define RR_ASSET_EXTERN extern
-#endif
-
-#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -31,55 +25,55 @@ typedef struct Rr_AssetRef
     char *End;
 } Rr_AssetRef;
 
-#define STR2(x) #x
-#define STR(x)  STR2(x)
+#define RR_STR2(X) #X
+#define RR_STR(X) RR_STR2(X)
 
 #ifdef _WIN32
-#define INCBIN_SECTION ".rdata, \"dr\""
+#define RR_INCBIN_SECTION ".rdata, \"dr\""
 #elif defined(__APPLE__)
-#define INCBIN_SECTION "__TEXT,__const"
-// #define INCBIN_SECTION ".const_data"
+#define RR_INCBIN_SECTION "__TEXT,__const"
+// #define RR_INCBIN_SECTION ".const_data"
 #else
-#define INCBIN_SECTION ".rodata"
+#define RR_INCBIN_SECTION ".rodata"
 #endif
 
 // clang-format off
     #ifdef __APPLE__
     #define RR_INCBIN(NAME, ABSOLUTE_PATH) \
-        __asm__(".section " INCBIN_SECTION "\n" \
-                ".global " "_incbin" "_" STR(NAME) "_start\n" \
+        __asm__(".section " RR_INCBIN_SECTION "\n" \
+                ".global " "_incbin" "_" RR_STR(NAME) "_start\n" \
                 ".balign 16\n" \
-                "_incbin" "_" STR(NAME) "_start:\n" \
+                "_incbin" "_" RR_STR(NAME) "_start:\n" \
                 ".incbin \"" ABSOLUTE_PATH "\"\n" \
-                ".global " "_incbin" "_" STR(NAME) "_end\n" \
+                ".global " "_incbin" "_" RR_STR(NAME) "_end\n" \
                 ".balign 1\n" \
-                "_incbin" "_" STR(NAME) "_end:\n" \
+                "_incbin" "_" RR_STR(NAME) "_end:\n" \
                 ".byte 0\n" \
                 ".text\n" \
         )
     #else
     #define RR_INCBIN(NAME, ABSOLUTE_PATH) \
-        __asm__(".section " INCBIN_SECTION "\n" \
-                ".global " STR(__USER_LABEL_PREFIX__) "incbin_" STR(NAME) "_start\n" \
+        __asm__(".section " RR_INCBIN_SECTION "\n" \
+                ".global " "incbin_" RR_STR(NAME) "_start\n" \
                 ".balign 16\n" \
-                STR(__USER_LABEL_PREFIX__)"incbin_" STR(NAME) "_start:\n" \
+                "incbin_" RR_STR(NAME) "_start:\n" \
                 ".incbin \"" ABSOLUTE_PATH "\"\n" \
-                ".global " STR(__USER_LABEL_PREFIX__) "incbin_" STR(NAME) "_end\n" \
+                ".global " "incbin_" RR_STR(NAME) "_end\n" \
                 ".balign 1\n" \
-                STR(__USER_LABEL_PREFIX__)"incbin_" STR(NAME) "_end:\n" \
+                "incbin_" RR_STR(NAME) "_end:\n" \
                 ".byte 0\n" \
                 ".text\n" \
         )
     #endif
 // clang-format on
 
-#define RR_INCBIN_REF(NAME) \
-        RR_ASSET_EXTERN  __attribute__((aligned(16)))  char incbin_ ## NAME ## _start[]; \
-        RR_ASSET_EXTERN                                char incbin_ ## NAME ## _end[];   \
-        Rr_AssetRef NAME = { \
-            .Start = incbin_ ## NAME ## _start, \
-            .End = incbin_ ## NAME ## _end, \
-        }
+#define RR_INCBIN_REF(NAME)                                                    \
+    extern __attribute__((aligned(16))) char incbin_##NAME##_start[]; \
+    extern char incbin_##NAME##_end[];                                \
+    Rr_AssetRef NAME = {                                                       \
+        .Start = incbin_##NAME##_start,                                        \
+        .End = incbin_##NAME##_end,                                            \
+    }
 
 #endif
 
@@ -88,5 +82,3 @@ extern Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
 #ifdef __cplusplus
 }
 #endif
-
-// #undef RR_ASSET_EXTERN

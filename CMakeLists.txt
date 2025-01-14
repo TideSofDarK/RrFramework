@@ -24,7 +24,6 @@ set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 set(SDL_GPU OFF CACHE BOOL "" FORCE)
 set(SDL_RENDER OFF CACHE BOOL "" FORCE)
 set(SDL_POWER OFF CACHE BOOL "" FORCE)
-set(SDL_STATIC_PIC ON CACHE BOOL "" FORCE)
 set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
 set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
 CPMAddPackage("gh:libsdl-org/SDL#main")
@@ -56,11 +55,11 @@ function(rr_embed_assets TARGET_NAME ASSETS_TARGET_NAME IDENTIFIER_PREFIX HEADER
             get_filename_component(ASSET_NAME_WLE ${ASSET_PATH} NAME_WLE)
             set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${ASSET_NAME_WLE}.spv")
             add_custom_command(
-                    MAIN_DEPENDENCY ${ASSET_PATH}
-                    OUTPUT ${SPIRV}
-                    COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.0 ${ASSET_PATH} -o ${SPIRV}
-                    DEPENDS ${ASSET_PATH}
-                    VERBATIM)
+                MAIN_DEPENDENCY ${ASSET_PATH}
+                OUTPUT ${SPIRV}
+                COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.0 ${ASSET_PATH} -o ${SPIRV}
+                DEPENDS ${ASSET_PATH}
+                VERBATIM)
             list(APPEND SPIRVBinaries ${SPIRV})
             set(ASSET_PATH ${SPIRV})
         endif ()
@@ -70,22 +69,22 @@ function(rr_embed_assets TARGET_NAME ASSETS_TARGET_NAME IDENTIFIER_PREFIX HEADER
     set(ASSETS_LIST "${ASSETS_LIST_FINAL}")
 
     add_custom_command(
-            OUTPUT
-            "${ASSET_HEADER_PATH}"
-            COMMAND ${CMAKE_COMMAND}
-            "-DASSET_HEADER_PATH=${ASSET_HEADER_PATH}"
-            "-DASSETS_LIST=${ASSETS_LIST}"
-            "-DIDENTIFIER_PREFIX=${IDENTIFIER_PREFIX}"
-            -P ${RrFramework_SOURCE_DIR}/CMake/EmbedAssets.cmake
-            DEPENDS
-            ${ASSETS_LIST}
-            VERBATIM
+        OUTPUT
+        "${ASSET_HEADER_PATH}"
+        COMMAND ${CMAKE_COMMAND}
+        "-DASSET_HEADER_PATH=${ASSET_HEADER_PATH}"
+        "-DASSETS_LIST=${ASSETS_LIST}"
+        "-DIDENTIFIER_PREFIX=${IDENTIFIER_PREFIX}"
+        -P ${RrFramework_SOURCE_DIR}/CMake/EmbedAssets.cmake
+        DEPENDS
+        ${ASSETS_LIST}
+        VERBATIM
     )
 
     add_custom_target(
-            ${ASSETS_TARGET_NAME}
-            DEPENDS
-            "${ASSET_HEADER_PATH}"
+        ${ASSETS_TARGET_NAME}
+        DEPENDS
+        "${ASSET_HEADER_PATH}"
     )
 
     set_source_files_properties("${ASSET_HEADER_PATH}" PROPERTIES OBJECT_DEPENDS "${ASSETS_LIST}")
@@ -96,9 +95,9 @@ function(rr_embed_assets TARGET_NAME ASSETS_TARGET_NAME IDENTIFIER_PREFIX HEADER
     else ()
         set_source_files_properties("${ASSET_HEADER_PATH}" PROPERTIES LANGUAGE C)
         set_source_files_properties(
-                "${ASSET_HEADER_PATH}"
-                PROPERTIES
-                COMPILE_DEFINITIONS "RR_DEFINE_ASSETS=1"
+            "${ASSET_HEADER_PATH}"
+            PROPERTIES
+            COMPILE_DEFINITIONS "RR_DEFINE_ASSETS=1"
         )
     endif ()
 
@@ -112,8 +111,8 @@ endfunction()
 #
 #set_source_files_properties(Source/Rr_AssetDef.c PROPERTIES OBJECT_DEPENDS "${RR_GLSL_SOURCES}")
 file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
-        "Source/*.c"
-        "Source/*.cpp"
+    "Source/*.c"
+    "Source/*.cpp"
 )
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
@@ -121,44 +120,47 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 target_include_directories(${PROJECT_NAME} PUBLIC Include)
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        Vulkan::Headers
-        Vulkan::volk
-        SDL3::SDL3
+    Vulkan::Headers
+    Vulkan::volk
+    SDL3::SDL3
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
-        ${IMGUI_TARGET}
+    ${IMGUI_TARGET}
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-        SDL_DYNAMIC_API=0
-        TINYEXR_USE_MINIZ=0
-        TINYEXR_USE_STB_ZLIB=1
-        STBI_NO_STDIO
-        STBI_NO_JPEG
-        STBI_NO_GIF
-        STBI_NO_BMP
-        STBI_NO_PSD
-        STBI_NO_PIC
-        STBI_NO_PNM
-        STBI_NO_HDR
-        STBI_NO_TGA
-        STBI_NO_FAILURE_STRINGS
-        VK_NO_PROTOTYPES
+    TINYEXR_USE_MINIZ=0
+    TINYEXR_USE_STB_ZLIB=1
+    STBI_NO_STDIO
+    STBI_NO_JPEG
+    STBI_NO_GIF
+    STBI_NO_BMP
+    STBI_NO_PSD
+    STBI_NO_PIC
+    STBI_NO_PNM
+    STBI_NO_HDR
+    STBI_NO_TGA
+    STBI_NO_FAILURE_STRINGS
+    VK_NO_PROTOTYPES
 )
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-        RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}
-        "$<$<CONFIG:DEBUG>:-DRR_DEBUG>")
+target_compile_definitions(
+    ${PROJECT_NAME}
+    PRIVATE
+    RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}
+    "$<$<CONFIG:DEBUG>:-DRR_DEBUG>"
+)
 file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
-        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.png"
-        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.ttf"
-        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.vert.glsl"
-        "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.frag.glsl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.png"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.ttf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.vert.glsl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.frag.glsl"
 )
 rr_embed_assets(
-        ${PROJECT_NAME}
-        "RrBuiltinAssets"
-        "RR_BUILTIN_"
-        "Rr_BuiltinAssets"
-        "${RR_BUILTIN_ASSETS}")
+    ${PROJECT_NAME}
+    "RrBuiltinAssets"
+    "RR_BUILTIN_"
+    "Rr_BuiltinAssets"
+    "${RR_BUILTIN_ASSETS}"
+)
 
 add_subdirectory(Demo)

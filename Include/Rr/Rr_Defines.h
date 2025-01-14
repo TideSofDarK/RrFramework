@@ -8,6 +8,12 @@
 #include <cstdint>
 #endif
 
+#ifdef __cplusplus
+#define RR_EXTERN extern "C"
+#else
+#define RR_EXTERN extern
+#endif
+
 typedef uint8_t Rr_Bool;
 #define RR_FALSE 0
 #define RR_TRUE  1
