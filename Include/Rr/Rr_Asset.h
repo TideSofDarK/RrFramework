@@ -45,45 +45,41 @@ typedef struct Rr_AssetRef
 
 // clang-format off
     #ifdef __APPLE__
-    #define INCBIN(NAME, ABSOLUTE_PATH) \
+    #define RR_INCBIN(NAME, ABSOLUTE_PATH) \
         __asm__(".section " INCBIN_SECTION "\n" \
                 ".global " "_incbin" "_" STR(NAME) "_start\n" \
                 ".balign 16\n" \
                 "_incbin" "_" STR(NAME) "_start:\n" \
                 ".incbin \"" ABSOLUTE_PATH "\"\n" \
-                \
                 ".global " "_incbin" "_" STR(NAME) "_end\n" \
                 ".balign 1\n" \
                 "_incbin" "_" STR(NAME) "_end:\n" \
                 ".byte 0\n" \
-        ); \
-        RR_ASSET_EXTERN  __attribute__((aligned(16)))  char incbin ## _ ## NAME ## _start[]; \
-        RR_ASSET_EXTERN                                char incbin ## _ ## NAME ## _end[]; \
-        Rr_AssetRef NAME = { \
-            .Start = incbin ## _ ## NAME ## _start, \
-            .End = incbin ## _ ## NAME ## _end, \
-        }
+                ".text\n" \
+        )
     #else
-    #define INCBIN(NAME, ABSOLUTE_PATH) \
+    #define RR_INCBIN(NAME, ABSOLUTE_PATH) \
         __asm__(".section " INCBIN_SECTION "\n" \
                 ".global " STR(__USER_LABEL_PREFIX__) "incbin_" STR(NAME) "_start\n" \
                 ".balign 16\n" \
                 STR(__USER_LABEL_PREFIX__)"incbin_" STR(NAME) "_start:\n" \
                 ".incbin \"" ABSOLUTE_PATH "\"\n" \
-                \
                 ".global " STR(__USER_LABEL_PREFIX__) "incbin_" STR(NAME) "_end\n" \
                 ".balign 1\n" \
                 STR(__USER_LABEL_PREFIX__)"incbin_" STR(NAME) "_end:\n" \
                 ".byte 0\n" \
-        ); \
+                ".text\n" \
+        )
+    #endif
+// clang-format on
+
+#define RR_INCBIN_REF(NAME) \
         RR_ASSET_EXTERN  __attribute__((aligned(16)))  char incbin_ ## NAME ## _start[]; \
         RR_ASSET_EXTERN                                char incbin_ ## NAME ## _end[];   \
         Rr_AssetRef NAME = { \
             .Start = incbin_ ## NAME ## _start, \
             .End = incbin_ ## NAME ## _end, \
         }
-    #endif
-// clang-format on
 
 #endif
 
