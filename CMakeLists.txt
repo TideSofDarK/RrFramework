@@ -109,10 +109,9 @@ endfunction()
 #
 # Add library
 #
-#set_source_files_properties(Source/Rr_AssetDef.c PROPERTIES OBJECT_DEPENDS "${RR_GLSL_SOURCES}")
 file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
     "Source/*.c"
-    "Source/*.cpp"
+    "Source/*.cxx"
 )
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
@@ -145,7 +144,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_compile_definitions(
     ${PROJECT_NAME}
     PRIVATE
-    RR_BUILTIN_ASSET_PATH=${RR_BUILTIN_ASSET_PATH}
     "$<$<CONFIG:DEBUG>:-DRR_DEBUG>"
 )
 file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS

@@ -1,3 +1,4 @@
 Diagnostics:
-  MissingIncludes: None
-  UnusedIncludes: None
+  Includes:
+    IgnoreHeader:
+      - Include/Rr/Rr_Defines\.h
