@@ -121,7 +121,6 @@ target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 target_include_directories(${PROJECT_NAME} PUBLIC Include)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Vulkan::Headers
-    Vulkan::volk
     SDL3::SDL3
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
