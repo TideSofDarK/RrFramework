@@ -148,7 +148,7 @@ static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
         case SDL_EVENT_WINDOW_EXPOSED:
         {
             Rr_App *App = (Rr_App *)AppPtr;
-            SDL_AtomicSet(&App->Renderer.Swapchain.bResizePending, 1);
+            SDL_SetAtomicInt(&App->Renderer.Swapchain.bResizePending, 1);
             Iterate(App);
         }
         break;

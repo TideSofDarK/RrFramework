@@ -2,3 +2,4 @@ Diagnostics:
   Includes:
     IgnoreHeader:
       - Include/Rr/Rr_Defines\.h
+      - Source/Rr_Vulkan\.h

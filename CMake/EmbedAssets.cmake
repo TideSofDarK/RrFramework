@@ -5,7 +5,7 @@ file(
     "#endif\n"
     "\n"
 )
-if(RR_USE_RC)
+if(USE_RC)
     foreach (ASSET_PATH ${ASSETS_LIST})
         cmake_path(ABSOLUTE_PATH ASSET_PATH NORMALIZE OUTPUT_VARIABLE AssetAbsolutePath)
 

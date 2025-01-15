@@ -75,6 +75,7 @@ function(rr_embed_assets TARGET_NAME ASSETS_TARGET_NAME IDENTIFIER_PREFIX HEADER
         "-DASSET_HEADER_PATH=${ASSET_HEADER_PATH}"
         "-DASSETS_LIST=${ASSETS_LIST}"
         "-DIDENTIFIER_PREFIX=${IDENTIFIER_PREFIX}"
+        "-DUSE_RC=${RR_USE_RC}"
         -P ${RrFramework_SOURCE_DIR}/CMake/EmbedAssets.cmake
         DEPENDS
         ${ASSETS_LIST}
