@@ -2,8 +2,7 @@
 
 #include "Rr/Rr_Defines.h"
 #include "Rr_Memory.h"
-
-#include <volk.h>
+#include "Rr_Vulkan.h"
 
 typedef struct Rr_DescriptorPoolSizeRatio Rr_DescriptorPoolSizeRatio;
 struct Rr_DescriptorPoolSizeRatio
