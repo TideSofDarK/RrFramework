@@ -160,7 +160,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
 
             DevicesStringCursor += sprintf(
                 DevicesString + DevicesStringCursor - 1,
-                "  (\\) GPU #%d: %s, type: %s, total memory: %lu \n",
+                "  (\\) GPU #%d: %s, type: %s, total memory: %zu \n",
                 Index,
                 Properties.properties.deviceName,
                 string_VkPhysicalDeviceType(Properties.properties.deviceType),

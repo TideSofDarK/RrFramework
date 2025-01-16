@@ -618,20 +618,14 @@ static void OnFileDropped(Rr_App *App, const char *Path)
 
 void RunGame()
 {
-    // std::byte Game[sizeof(SGame)];
-    // Rr_AppConfig Config = { .Title = "RrDemo",
-    //                         .Version = "0.0.1",
-    //                         .Package = "com.rrframework.demo",
-    //                         .InitFunc = Init,
-    //                         .CleanupFunc = Cleanup,
-    //                         .IterateFunc = Iterate,
-    //                         .FileDroppedFunc = OnFileDropped,
-    //                         .UserData = Game };
-    // Rr_Run(&Config);
-
-    void *Data = Rr_ReserveMemory(RR_GIGABYTES(32));
-    Rr_CommitMemory(Data, RR_GIGABYTES(1));
-    Rr_CommitMemory(Data, RR_GIGABYTES(2));
-    Rr_DecommitMemory(Data, RR_GIGABYTES(1));
-    Rr_ReleaseMemory(Data, RR_GIGABYTES(32));
+     std::byte Game[sizeof(SGame)];
+     Rr_AppConfig Config = { .Title = "RrDemo",
+                             .Version = "0.0.1",
+                             .Package = "com.rrframework.demo",
+                             .InitFunc = Init,
+                             .CleanupFunc = Cleanup,
+                             .IterateFunc = Iterate,
+                             .FileDroppedFunc = OnFileDropped,
+                             .UserData = Game };
+     Rr_Run(&Config);
 }
