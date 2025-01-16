@@ -1,6 +1,6 @@
 #include "Rr_Text.h"
 
-#include "Rr/Rr_Utility.h"
+#include <Rr/Rr_Utility.h>
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
@@ -64,7 +64,7 @@ void Rr_InitTextRenderer(Rr_App *App)
                            } });
     Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
     Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
-    Rr_EnableColorAttachment(Builder, RR_TRUE);
+    Rr_EnableColorAttachment(Builder, true);
     Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
     TextPipeline->Pipeline = Rr_CreatePipeline(App, Builder, TextPipeline->Layout);
@@ -106,7 +106,7 @@ Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
         sizeof(Rr_TextFontLayout),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        RR_FALSE);
+        false);
 
     Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
 

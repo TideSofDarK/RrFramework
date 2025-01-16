@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rr/Rr_Graph.h"
+#include <Rr/Rr_Graph.h>
 #include "Rr_BlitNode.h"
 #include "Rr_BuiltinNode.h"
 #include "Rr_GraphicsNode.h"
@@ -39,7 +39,7 @@ struct Rr_GraphNode
     Rr_GraphNodeType Type;
     const char *Name;
     RR_SLICE_TYPE(Rr_GraphNode *) Dependencies;
-    Rr_Bool Executed;
+    bool Executed;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
@@ -57,7 +57,7 @@ struct Rr_GraphBatch
     RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriersSlice;
     VkPipelineStageFlags StageMask;
     Rr_Map *SyncMap;
-    Rr_Bool Final;
+    bool Final;
     Rr_Arena *Arena;
 };
 
@@ -68,7 +68,7 @@ struct Rr_Graph
     Rr_Arena *Arena;
 };
 
-extern Rr_Bool Rr_SyncImage(
+extern bool Rr_SyncImage(
     Rr_App *App,
     Rr_Graph *Graph,
     Rr_GraphBatch *GraphBatch,

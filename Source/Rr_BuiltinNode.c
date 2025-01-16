@@ -215,8 +215,8 @@ static void Rr_RenderText(
         size_t TextLength = DrawTextInfo->String.Length;
         size_t FinalTextLength = 0;
         uint32_t PalleteIndex = 0;
-        Rr_Bool CodePending = RR_FALSE;
-        Rr_Bool PalleteIndexPending = RR_FALSE;
+        bool CodePending = false;
+        bool PalleteIndexPending = false;
         Rr_Vec2 AccumulatedAdvance = { 0 };
         for(size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
         {
@@ -229,32 +229,32 @@ static void Rr_RenderText(
                     if(Unicode >= '0' && Unicode <= '7')
                     {
                         PalleteIndex = Unicode - '0';
-                        PalleteIndexPending = RR_FALSE;
-                        CodePending = RR_FALSE;
+                        PalleteIndexPending = false;
+                        CodePending = false;
                         continue;
                     }
                     else
                     {
-                        PalleteIndexPending = RR_FALSE;
-                        CodePending = RR_FALSE;
+                        PalleteIndexPending = false;
+                        CodePending = false;
                         PalleteIndex = 0;
                     }
                 }
                 else if(Unicode == 'c')
                 {
-                    PalleteIndexPending = RR_TRUE;
+                    PalleteIndexPending = true;
                     continue;
                 }
                 else
                 {
                     Unicode = '$';
                     CharacterIndex--;
-                    CodePending = RR_FALSE;
+                    CodePending = false;
                 }
             }
             else if(Unicode == '$')
             {
-                CodePending = RR_TRUE;
+                CodePending = true;
                 continue;
             }
             Rr_TextPerInstanceVertexInput *Input = &TextData[TextDataOffset + FinalTextLength];
@@ -303,7 +303,7 @@ static void Rr_RenderText(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BuiltinNode *Node)
+bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BuiltinNode *Node)
 {
     Rr_DrawTarget *DrawTarget = App->Renderer.DrawTarget;
 
@@ -315,7 +315,7 @@ Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, 
            VK_IMAGE_ASPECT_COLOR_BIT,
            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != RR_TRUE ||
+           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true ||
        Rr_SyncImage(
            App,
            Graph,
@@ -324,12 +324,12 @@ Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, 
            VK_IMAGE_ASPECT_DEPTH_BIT,
            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != RR_TRUE)
+           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != true)
     {
-        return RR_FALSE;
+        return false;
     }
 
-    return RR_TRUE;
+    return true;
 }
 
 void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)

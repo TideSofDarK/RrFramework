@@ -3,6 +3,7 @@
 #ifndef __cplusplus
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 #else
 #include <cstddef>
 #include <cstdint>
@@ -13,10 +14,6 @@
 #else
 #define RR_EXTERN extern
 #endif
-
-typedef uint8_t Rr_Bool;
-#define RR_FALSE 0
-#define RR_TRUE  1
 
 #define RR_ZERO(x)     memset(&(x), 0, sizeof((x)))
 #define RR_ZERO_PTR(x) memset((x), 0, sizeof(*(x)))

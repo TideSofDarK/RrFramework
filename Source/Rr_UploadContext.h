@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Rr/Rr_Defines.h"
 #include "Rr_Buffer.h"
 
 typedef struct Rr_AcquireBarriers Rr_AcquireBarriers;
@@ -19,5 +18,5 @@ struct Rr_UploadContext
     VkCommandBuffer TransferCommandBuffer;
     Rr_AcquireBarriers ReleaseBarriers;
     Rr_AcquireBarriers AcquireBarriers;
-    Rr_Bool UseAcquireBarriers;
+    bool UseAcquireBarriers;
 };

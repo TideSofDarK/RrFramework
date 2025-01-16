@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Rr/Rr_App.h"
-#include "Rr/Rr_Asset.h"
-#include "Rr/Rr_Image.h"
+#include <Rr/Rr_App.h>
+#include <Rr/Rr_Asset.h>
+#include <Rr/Rr_Image.h>
 #include "Rr_Memory.h"
 #include "Rr_UploadContext.h"
 
@@ -22,7 +22,7 @@ extern Rr_Image *Rr_CreateImage(
     VkExtent3D Extent,
     VkFormat Format,
     VkImageUsageFlags Usage,
-    Rr_Bool MipMapped);
+    bool MipMapped);
 
 extern Rr_Image *Rr_CreateColorImageFromMemory(
     Rr_App *App,
@@ -30,20 +30,20 @@ extern Rr_Image *Rr_CreateColorImageFromMemory(
     char *Data,
     uint32_t Width,
     uint32_t Height,
-    Rr_Bool MipMapped);
+    bool MipMapped);
 
 extern Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     char *Data,
     size_t DataSize,
-    Rr_Bool MipMapped);
+    bool MipMapped);
 
 extern Rr_Image *Rr_CreateColorImageFromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
-    Rr_Bool MipMapped,
+    bool MipMapped,
     Rr_Arena *Arena);
 
 extern Rr_Image *Rr_CreateDepthImageFromEXR(

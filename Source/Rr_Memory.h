@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL_thread.h>
 
-#include "Rr/Rr_Defines.h"
+#include <Rr/Rr_Defines.h>
 
 #ifdef __cplusplus
 extern "C" {

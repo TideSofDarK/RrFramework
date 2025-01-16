@@ -35,7 +35,7 @@ typedef struct Rr_ImGui Rr_ImGui;
 struct Rr_ImGui
 {
     VkDescriptorPool DescriptorPool;
-    Rr_Bool IsInitialized;
+    bool IsInitialized;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
@@ -159,7 +159,7 @@ extern void Rr_PrepareFrame(Rr_App *App);
 
 extern void Rr_Draw(Rr_App *App);
 
-extern Rr_Bool Rr_NewFrame(Rr_App *App, void *Window);
+extern bool Rr_NewFrame(Rr_App *App, void *Window);
 
 extern VkCommandBuffer Rr_BeginImmediate(Rr_Renderer *Renderer);
 
@@ -167,6 +167,6 @@ extern void Rr_EndImmediate(Rr_Renderer *Renderer);
 
 extern Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer);
 
-extern Rr_Bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
+extern bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
 
 extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer);

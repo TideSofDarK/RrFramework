@@ -26,7 +26,7 @@ Rr_GraphNode *Rr_AddPresentNode(
     return GraphNode;
 }
 
-Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_PresentNode *Node)
+bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_PresentNode *Node)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -40,7 +40,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, 
            VK_IMAGE_ASPECT_COLOR_BIT,
            VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
            VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != RR_TRUE ||
+           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true ||
        Rr_SyncImage(
            App,
            Graph,
@@ -49,7 +49,7 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, 
            VK_IMAGE_ASPECT_DEPTH_BIT,
            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != RR_TRUE ||
+           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != true ||
        Rr_SyncImage(
            App,
            Graph,
@@ -58,12 +58,12 @@ Rr_Bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, 
            VK_IMAGE_ASPECT_COLOR_BIT,
            VK_PIPELINE_STAGE_TRANSFER_BIT,
            VK_ACCESS_TRANSFER_WRITE_BIT,
-           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) != RR_TRUE)
+           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) != true)
     {
-        return RR_FALSE;
+        return false;
     }
 
-    return RR_TRUE;
+    return true;
 }
 
 void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)

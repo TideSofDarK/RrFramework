@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rr/Rr_App.h"
+#include <Rr/Rr_App.h>
 #include "Rr_Load.h"
 #include "Rr_Object.h"
 #include "Rr_Renderer.h"
@@ -25,7 +25,7 @@ struct Rr_FrameTime
     /* Frame Limiter */
     uint64_t TargetFramerate;
     uint64_t StartTime;
-    Rr_Bool EnableFrameLimiter;
+    bool EnableFrameLimiter;
 
     /* Delta Time Calculation */
     uint64_t Last;

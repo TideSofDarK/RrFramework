@@ -44,7 +44,7 @@ Rr_GraphNode *Rr_AddBlitNode(
     return GraphNode;
 }
 
-Rr_Bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BlitNode *Node)
+bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BlitNode *Node)
 {
     if(Rr_SyncImage(
            App,
@@ -54,9 +54,9 @@ Rr_Bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_
            Node->AspectMask,
            VK_PIPELINE_STAGE_TRANSFER_BIT,
            VK_ACCESS_TRANSFER_READ_BIT,
-           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) != RR_TRUE)
+           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) != true)
     {
-        return RR_FALSE;
+        return false;
     }
     if(Rr_SyncImage(
            App,
@@ -66,12 +66,12 @@ Rr_Bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_
            Node->AspectMask,
            VK_PIPELINE_STAGE_TRANSFER_BIT,
            VK_ACCESS_TRANSFER_WRITE_BIT,
-           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) != RR_TRUE)
+           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) != true)
     {
-        return RR_FALSE;
+        return false;
     }
 
-    return RR_TRUE;
+    return true;
 }
 
 void Rr_ExecuteBlitNode(Rr_App *App, Rr_BlitNode *Node)

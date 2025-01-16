@@ -1,6 +1,6 @@
 #include "Rr_App.h"
 
-#include "Rr/Rr_Input.h"
+#include <Rr/Rr_Input.h>
 #include "Rr_Load.h"
 #include "Rr_Memory.h"
 #include "Rr_Object.h"
@@ -331,7 +331,7 @@ double Rr_GetTimeSeconds(Rr_App *App)
     return (double)SDL_GetTicks() / 1000.0;
 }
 
-void Rr_SetRelativeMouseMode(Rr_App *App, Rr_Bool IsRelative)
+void Rr_SetRelativeMouseMode(Rr_App *App, bool IsRelative)
 {
     SDL_SetWindowRelativeMouseMode(App->Window, IsRelative ? true : false);
 }

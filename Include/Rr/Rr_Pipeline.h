@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rr/Rr_App.h"
+#include "Rr_App.h"
 #include "Rr_Asset.h"
 
 #ifdef __cplusplus
@@ -25,7 +25,7 @@ typedef enum Rr_PolygonMode
 
 extern Rr_PipelineBuilder *Rr_CreatePipelineBuilder(void);
 
-extern void Rr_EnableColorAttachment(Rr_PipelineBuilder *PipelineBuilder, Rr_Bool EnableAlphaBlend);
+extern void Rr_EnableColorAttachment(Rr_PipelineBuilder *PipelineBuilder, bool EnableAlphaBlend);
 
 extern void Rr_EnableVertexStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset);
 

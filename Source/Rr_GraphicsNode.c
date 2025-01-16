@@ -305,7 +305,7 @@ static void Rr_RenderGeneric(
     Rr_DestroyArenaScratch(Scratch);
 }
 
-Rr_Bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_GraphicsNode *Node)
+bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_GraphicsNode *Node)
 {
     Rr_DrawTarget *DrawTarget = Node->Info.DrawTarget;
 
@@ -318,9 +318,9 @@ Rr_Bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch,
            VK_IMAGE_ASPECT_COLOR_BIT,
            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != RR_TRUE)
+           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true)
     {
-        return RR_FALSE;
+        return false;
     }
 
     if(DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage &&
@@ -332,12 +332,12 @@ Rr_Bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch,
            VK_IMAGE_ASPECT_DEPTH_BIT,
            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != RR_TRUE)
+           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != true)
     {
-        return RR_FALSE;
+        return false;
     }
 
-    return RR_TRUE;
+    return true;
 }
 
 void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)

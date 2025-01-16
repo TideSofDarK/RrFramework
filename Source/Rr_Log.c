@@ -1,7 +1,5 @@
 #include "Rr_Log.h"
 
-#include "Rr/Rr_Defines.h"
-
 #include <SDL3/SDL_log.h>
 
 #include <stdlib.h>

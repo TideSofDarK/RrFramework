@@ -11,7 +11,7 @@ Rr_Buffer *Rr_CreateBuffer(
     size_t Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
-    Rr_Bool CreateMapped)
+    bool CreateMapped)
 {
     Rr_Buffer *Buffer = Rr_CreateObject(&App->ObjectStorage);
 
@@ -46,7 +46,7 @@ Rr_Buffer *Rr_CreateBuffer(
 Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, size_t Size)
 {
     Size = SDL_max(Size, 128);
-    return Rr_CreateBuffer(App, Size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, RR_FALSE);
+    return Rr_CreateBuffer(App, Size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, false);
 }
 
 Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, size_t Size)
@@ -57,12 +57,12 @@ Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, size_t Size)
         Size,
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        RR_FALSE);
+        false);
 }
 
 Rr_Buffer *Rr_CreateMappedBuffer(Rr_App *App, size_t Size, VkBufferUsageFlags UsageFlags)
 {
-    return Rr_CreateBuffer(App, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, RR_TRUE);
+    return Rr_CreateBuffer(App, Size, UsageFlags, VMA_MEMORY_USAGE_AUTO, true);
 }
 
 Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, size_t Size)

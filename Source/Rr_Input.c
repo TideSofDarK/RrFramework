@@ -1,13 +1,11 @@
 #include "Rr/Rr_Input.h"
 
-#include "Rr/Rr_Defines.h"
-
 #include <SDL3/SDL.h>
 
 static Rr_KeyState Rr_UpdateKeyState(Rr_KeyState OldKeyState, const bool *KeyboardState, uint8_t Scancode)
 {
-    Rr_Bool CurrentlyPressed = KeyboardState[Scancode] == 1;
-    Rr_Bool WasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
+    bool CurrentlyPressed = KeyboardState[Scancode] == 1;
+    bool WasPressed = OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
     if(CurrentlyPressed)
     {
         if(WasPressed)

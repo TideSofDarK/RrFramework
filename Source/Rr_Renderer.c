@@ -1,20 +1,18 @@
 #include "Rr_Renderer.h"
 
-#include "Rr/Rr_Graph.h"
-#include "Rr/Rr_Material.h"
+#include <Rr/Rr_Graph.h>
+#include <Rr/Rr_Material.h>
 #include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
-#include <SDL3/SDL_video.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
 #include <imgui/cimgui_impl.h>
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_vulkan.h>
 
 // static void Rr_CalculateDrawTargetResolution(Rr_Renderer*  Renderer,  u32
@@ -49,7 +47,7 @@ static void Rr_CleanupSwapchain(Rr_App *App, VkSwapchainKHR Swapchain)
     vkDestroySwapchainKHR(Renderer->Device, Swapchain, NULL);
 }
 
-static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
+static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -60,7 +58,7 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
 
     if(SurfCaps.currentExtent.width == 0 || SurfCaps.currentExtent.height == 0)
     {
-        return RR_FALSE;
+        return false;
     }
     if(SurfCaps.currentExtent.width == UINT32_MAX)
     {
@@ -131,7 +129,7 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         &FormatCount,
         SurfaceFormats);
 
-    Rr_Bool PreferredFormatFound = RR_FALSE;
+    bool PreferredFormatFound = false;
     for(uint32_t Index = 0; Index < FormatCount; Index++)
     {
         VkSurfaceFormatKHR *SurfaceFormat = &SurfaceFormats[Index];
@@ -140,7 +138,7 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         {
             Renderer->Swapchain.Format = SurfaceFormat->format;
             Renderer->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
-            PreferredFormatFound = RR_TRUE;
+            PreferredFormatFound = true;
             break;
         }
     }
@@ -235,13 +233,13 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &Renderer->Swapchain.Images[i].View);
     }
 
-    Rr_Bool DrawTargetDirty = RR_TRUE;
+    bool DrawTargetDirty = true;
     if(Renderer->DrawTarget != NULL)
     {
         VkExtent3D Extent = Renderer->DrawTarget->Frames[0].ColorImage->Extent;
         if(*Width <= Extent.width || *Height <= Extent.height)
         {
-            DrawTargetDirty = RR_FALSE;
+            DrawTargetDirty = false;
         }
         else
         {
@@ -266,7 +264,7 @@ static Rr_Bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     Rr_StackFree(Images);
     Rr_StackFree(SurfaceFormats);
 
-    return RR_TRUE;
+    return true;
 }
 
 static void Rr_InitFrames(Rr_App *App)
@@ -447,7 +445,7 @@ void Rr_InitImGui(Rr_App *App)
                                            .DescriptorPool = Renderer->ImGui.DescriptorPool,
                                            .MinImageCount = 3,
                                            .ImageCount = 3,
-                                           .UseDynamicRendering = RR_FALSE,
+                                           .UseDynamicRendering = false,
                                            .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
                                            .RenderPass = Renderer->RenderPasses.ColorDepthLoad };
 
@@ -459,7 +457,7 @@ void Rr_InitImGui(Rr_App *App)
     /* Init default font. */
     Rr_Asset MartianMonoTTF = Rr_LoadAsset(RR_BUILTIN_MARTIANMONO_TTF);
     ImFontConfig *FontConfig = ImFontConfig_ImFontConfig();
-    FontConfig->FontDataOwnedByAtlas = RR_FALSE; /* Don't transfer asset ownership to
+    FontConfig->FontDataOwnedByAtlas = false; /* Don't transfer asset ownership to
                                                     ImGui, it will crash otherwise! */
     ImFontAtlas_AddFontFromMemoryTTF(
         IO->Fonts,
@@ -472,7 +470,7 @@ void Rr_InitImGui(Rr_App *App)
 
     ImGui_ImplVulkan_CreateFontsTexture();
 
-    Renderer->ImGui.IsInitialized = RR_TRUE;
+    Renderer->ImGui.IsInitialized = true;
 }
 
 static void Rr_InitImmediateMode(Rr_App *App)
@@ -844,10 +842,10 @@ static void Rr_InitNullTextures(Rr_App *App)
     };
     uint32_t WhiteData = 0xffffffff;
     Renderer->NullTextures.White =
-        Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&WhiteData, 1, 1, RR_FALSE);
+        Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&WhiteData, 1, 1, false);
     uint32_t NormalData = 0xffff8888;
     Renderer->NullTextures.Normal =
-        Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&NormalData, 1, 1, RR_FALSE);
+        Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&NormalData, 1, 1, false);
     Rr_EndImmediate(Renderer);
 
     Rr_DestroyBuffer(App, StagingBuffer.Buffer);
@@ -939,29 +937,29 @@ void Rr_InitRenderer(Rr_App *App)
     Rr_StackFree(Extensions);
 }
 
-Rr_Bool Rr_NewFrame(Rr_App *App, void *Window)
+bool Rr_NewFrame(Rr_App *App, void *Window)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
     int32_t bResizePending = SDL_GetAtomicInt(&Renderer->Swapchain.bResizePending);
-    if(bResizePending == RR_TRUE)
+    if(bResizePending == true)
     {
         vkDeviceWaitIdle(Renderer->Device);
 
         int32_t Width, Height;
         SDL_GetWindowSizeInPixels(Window, &Width, &Height);
 
-        Rr_Bool Minimized = (SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED);
+        bool Minimized = (SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED);
 
         if(!Minimized && Width > 0 && Height > 0 && Rr_InitSwapchain(App, (uint32_t *)&Width, (uint32_t *)&Height))
         {
             SDL_SetAtomicInt(&Renderer->Swapchain.bResizePending, 0);
-            return RR_TRUE;
+            return true;
         }
 
-        return RR_FALSE;
+        return false;
     }
-    return RR_TRUE;
+    return true;
 }
 
 void Rr_CleanupRenderer(Rr_App *App)
@@ -1045,7 +1043,7 @@ void Rr_EndImmediate(Rr_Renderer *Renderer)
     };
 
     vkQueueSubmit(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, ImmediateMode->Fence);
-    vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, RR_TRUE, UINT64_MAX);
+    vkWaitForFences(Renderer->Device, 1, &ImmediateMode->Fence, true, UINT64_MAX);
 }
 
 static void Rr_ResetFrameResources(Rr_Frame *Frame)
@@ -1095,7 +1093,7 @@ void Rr_Draw(Rr_App *App)
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
-    vkWaitForFences(Device, 1, &Frame->RenderFence, RR_TRUE, 1000000000);
+    vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
 
     Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Renderer->Device);
@@ -1191,7 +1189,7 @@ Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer)
     return &Renderer->Frames[Renderer->CurrentFrameIndex];
 }
 
-Rr_Bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer)
+bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer)
 {
     return Renderer->TransferQueue.Handle != VK_NULL_HANDLE;
 }

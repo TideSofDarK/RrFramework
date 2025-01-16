@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Rr/Rr_BuiltinNode.h"
-#include "Rr/Rr_Graph.h"
+#include <Rr/Rr_BuiltinNode.h>
+#include <Rr/Rr_Graph.h>
 #include "Rr_Memory.h"
 #include "Rr_Vulkan.h"
 
@@ -32,6 +32,6 @@ struct Rr_TextRenderingContext
     VkDescriptorSet FontDescriptorSet;
 };
 
-extern Rr_Bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, struct Rr_GraphBatch *Batch, Rr_BuiltinNode *Node);
+extern bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, struct Rr_GraphBatch *Batch, Rr_BuiltinNode *Node);
 
 extern void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena);

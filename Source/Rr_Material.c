@@ -20,7 +20,7 @@ Rr_Material *Rr_CreateMaterial(
             GenericPipeline->Sizes.Material,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VMA_MEMORY_USAGE_AUTO,
-            RR_FALSE),
+            false),
     };
 
     TextureCount = SDL_min(TextureCount, RR_MAX_TEXTURES_PER_MATERIAL);

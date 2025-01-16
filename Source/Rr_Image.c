@@ -134,7 +134,7 @@ static void Rr_UploadImage(
     }
 }
 
-Rr_Image *Rr_CreateImage(Rr_App *App, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, Rr_Bool MipMapped)
+Rr_Image *Rr_CreateImage(Rr_App *App, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, bool MipMapped)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -214,7 +214,7 @@ Rr_Image *Rr_CreateColorImageFromMemory(
     char *Data,
     uint32_t Width,
     uint32_t Height,
-    Rr_Bool MipMapped)
+    bool MipMapped)
 {
     int32_t DesiredChannels = 4;
     VkExtent3D Extent = { .width = Width, .height = Height, .depth = 1 };
@@ -247,7 +247,7 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_UploadContext *UploadContext,
     char *Data,
     size_t DataSize,
-    Rr_Bool MipMapped)
+    bool MipMapped)
 {
     int32_t DesiredChannels = 4;
     int32_t Channels;
@@ -289,7 +289,7 @@ Rr_Image *Rr_CreateColorImageFromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_AssetRef AssetRef,
-    Rr_Bool MipMapped,
+    bool MipMapped,
     Rr_Arena *Arena)
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
@@ -367,7 +367,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
         Extent,
         RR_PRERENDERED_DEPTH_FORMAT,
         Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-        RR_FALSE);
+        false);
 
     Rr_UploadImage(
         App,
@@ -394,7 +394,7 @@ Rr_Image *Rr_CreateColorAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
         (VkExtent3D){ Width, Height, 1 },
         RR_COLOR_FORMAT,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        RR_FALSE);
+        false);
 }
 
 Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t Height)
@@ -404,7 +404,7 @@ Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
         (VkExtent3D){ Width, Height, 1 },
         RR_DEPTH_FORMAT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        RR_FALSE);
+        false);
 }
 
 Rr_Image *Rr_GetDummyColorTexture(Rr_App *App)

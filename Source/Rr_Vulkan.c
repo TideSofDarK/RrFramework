@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static Rr_Bool Rr_CheckPhysicalDevice(
+static bool Rr_CheckPhysicalDevice(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
     uint32_t *OutGraphicsQueueFamilyIndex,
@@ -18,14 +18,14 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
     if(ExtensionCount == 0)
     {
-        return RR_FALSE;
+        return false;
     }
 
     char *TargetExtensions[] = {
         "VK_KHR_swapchain",
     };
 
-    Rr_Bool FoundExtensions[] = { 0 };
+    bool FoundExtensions[] = { 0 };
 
     VkExtensionProperties *Extensions = Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
@@ -36,7 +36,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
         {
             if(strcmp(Extensions[Index].extensionName, TargetExtensions[TargetIndex]) == 0)
             {
-                FoundExtensions[TargetIndex] = RR_TRUE;
+                FoundExtensions[TargetIndex] = true;
             }
         }
     }
@@ -44,7 +44,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     {
         if(!FoundExtensions[TargetIndex])
         {
-            return RR_FALSE;
+            return false;
         }
     }
 
@@ -52,7 +52,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, NULL);
     if(QueueFamilyCount == 0)
     {
-        return RR_FALSE;
+        return false;
     }
 
     VkQueueFamilyProperties *QueueFamilyProperties = Rr_StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
@@ -76,10 +76,10 @@ static Rr_Bool Rr_CheckPhysicalDevice(
 
     if(GraphicsQueueFamilyIndex == ~0U)
     {
-        return RR_FALSE;
+        return false;
     }
 
-    Rr_Bool ForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
+    bool ForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
 
     if(!ForceDisableTransferQueue)
     {
@@ -107,7 +107,7 @@ static Rr_Bool Rr_CheckPhysicalDevice(
     Rr_StackFree(QueueFamilyProperties);
     Rr_StackFree(Extensions);
 
-    return RR_TRUE;
+    return true;
 }
 
 Rr_PhysicalDevice Rr_SelectPhysicalDevice(
@@ -215,7 +215,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     }
     Rr_LogVulkan(DevicesString);
 
-    Rr_Bool UseTransferQueue = *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
+    bool UseTransferQueue = *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
     Rr_PhysicalDevice PhysicalDevice = {
         .SubgroupProperties =
@@ -249,7 +249,7 @@ void Rr_InitDeviceAndQueues(
     VkQueue *OutGraphicsQueue,
     VkQueue *OutTransferQueue)
 {
-    Rr_Bool UseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
+    bool UseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
     float QueuePriorities[] = { 1.0f };
     VkDeviceQueueCreateInfo QueueInfos[] = { {
                                                  .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rr_Defines.h"
+#include <Rr/Rr_Defines.h>
 
 // Dummy macros for when test framework is not present.
 #ifndef COVERAGE
@@ -1109,27 +1109,27 @@ static inline Rr_Vec4 Rr_DivV4F(Rr_Vec4 Left, float Right)
 }
 
 COVERAGE(Rr_EqV2, 1)
-static inline Rr_Bool Rr_EqV2(Rr_Vec2 Left, Rr_Vec2 Right)
+static inline bool Rr_EqV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_EqV2);
     return Left.X == Right.X && Left.Y == Right.Y;
 }
 
 COVERAGE(Rr_EqV3, 1)
-static inline Rr_Bool Rr_EqV3(Rr_Vec3 Left, Rr_Vec3 Right)
+static inline bool Rr_EqV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_EqV3);
     return Left.X == Right.X && Left.Y == Right.Y && Left.Z == Right.Z;
 }
 
 COVERAGE(Rr_EqV4, 1)
-static inline Rr_Bool Rr_EqV4(Rr_Vec4 Left, Rr_Vec4 Right)
+static inline bool Rr_EqV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_EqV4);
     return Left.X == Right.X && Left.Y == Right.Y && Left.Z == Right.Z && Left.W == Right.W;
 }
 
-static inline Rr_Bool Rr_EqIV3(Rr_IntVec3 Left, Rr_IntVec3 Right)
+static inline bool Rr_EqIV3(Rr_IntVec3 Left, Rr_IntVec3 Right)
 {
     return Left.X == Right.X && Left.Y == Right.Y && Left.Z == Right.Z;
 }
@@ -3352,21 +3352,21 @@ static inline Rr_Quat Rr_Div(Rr_Quat Left, float Right)
 }
 
 COVERAGE(Rr_EqV2CPP, 1)
-static inline Rr_Bool Rr_Eq(Rr_Vec2 Left, Rr_Vec2 Right)
+static inline bool Rr_Eq(Rr_Vec2 Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_EqV2CPP);
     return Rr_EqV2(Left, Right);
 }
 
 COVERAGE(Rr_EqV3CPP, 1)
-static inline Rr_Bool Rr_Eq(Rr_Vec3 Left, Rr_Vec3 Right)
+static inline bool Rr_Eq(Rr_Vec3 Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_EqV3CPP);
     return Rr_EqV3(Left, Right);
 }
 
 COVERAGE(Rr_EqV4CPP, 1)
-static inline Rr_Bool Rr_Eq(Rr_Vec4 Left, Rr_Vec4 Right)
+static inline bool Rr_Eq(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_EqV4CPP);
     return Rr_EqV4(Left, Right);
@@ -3933,42 +3933,42 @@ static inline Rr_Quat &operator/=(Rr_Quat &Left, float Right)
 }
 
 COVERAGE(Rr_EqV2Op, 1)
-static inline Rr_Bool operator==(Rr_Vec2 Left, Rr_Vec2 Right)
+static inline bool operator==(Rr_Vec2 Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_EqV2Op);
     return Rr_EqV2(Left, Right);
 }
 
 COVERAGE(Rr_EqV3Op, 1)
-static inline Rr_Bool operator==(Rr_Vec3 Left, Rr_Vec3 Right)
+static inline bool operator==(Rr_Vec3 Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_EqV3Op);
     return Rr_EqV3(Left, Right);
 }
 
 COVERAGE(Rr_EqV4Op, 1)
-static inline Rr_Bool operator==(Rr_Vec4 Left, Rr_Vec4 Right)
+static inline bool operator==(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_EqV4Op);
     return Rr_EqV4(Left, Right);
 }
 
 COVERAGE(Rr_EqV2OpNot, 1)
-static inline Rr_Bool operator!=(Rr_Vec2 Left, Rr_Vec2 Right)
+static inline bool operator!=(Rr_Vec2 Left, Rr_Vec2 Right)
 {
     ASSERT_COVERED(Rr_EqV2OpNot);
     return !Rr_EqV2(Left, Right);
 }
 
 COVERAGE(Rr_EqV3OpNot, 1)
-static inline Rr_Bool operator!=(Rr_Vec3 Left, Rr_Vec3 Right)
+static inline bool operator!=(Rr_Vec3 Left, Rr_Vec3 Right)
 {
     ASSERT_COVERED(Rr_EqV3OpNot);
     return !Rr_EqV3(Left, Right);
 }
 
 COVERAGE(Rr_EqV4OpNot, 1)
-static inline Rr_Bool operator!=(Rr_Vec4 Left, Rr_Vec4 Right)
+static inline bool operator!=(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     ASSERT_COVERED(Rr_EqV4OpNot);
     return !Rr_EqV4(Left, Right);

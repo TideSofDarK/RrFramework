@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Rr/Rr_Defines.h"
 #include "Rr_Memory.h"
 #include "Rr_Vulkan.h"
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Rr/Rr_App.h"
-#include "Rr_Math.h"
+#include <Rr/Rr_App.h>
+#include <Rr/Rr_Math.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Rr/Rr_Graph.h"
-#include "Rr/Rr_GraphicsNode.h"
+#include <Rr/Rr_Graph.h>
+#include <Rr/Rr_GraphicsNode.h>
 #include "Rr_Memory.h"
 #include "Rr_Vulkan.h"
 
@@ -33,6 +33,6 @@ struct Rr_GraphicsNode
     char GlobalsData[RR_PIPELINE_MAX_GLOBALS_SIZE];
 };
 
-extern Rr_Bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, struct Rr_GraphBatch *Batch, Rr_GraphicsNode *Node);
+extern bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, struct Rr_GraphBatch *Batch, Rr_GraphicsNode *Node);
 
 extern void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena);

@@ -1,6 +1,6 @@
 #include "Rr_Mesh.h"
 
-#include "Rr/Rr_Mesh.h"
+#include <Rr/Rr_Mesh.h>
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
@@ -314,10 +314,10 @@ Rr_Primitive *Rr_CreatePrimitive(Rr_App *App, Rr_UploadContext *UploadContext, R
     size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
 
     Primitive->VertexBuffer =
-        Rr_CreateBuffer(App, VertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, RR_FALSE);
+        Rr_CreateBuffer(App, VertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, false);
 
     Primitive->IndexBuffer =
-        Rr_CreateBuffer(App, IndexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, RR_FALSE);
+        Rr_CreateBuffer(App, IndexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, false);
 
     Rr_UploadBuffer(
         App,
@@ -447,7 +447,7 @@ Rr_StaticMesh *Rr_CreateStaticMeshGLTF(
                         size_t PNGSize = BaseColorTexture->image->buffer_view->size;
 
                         Textures[Loader->BaseTexture] =
-                            Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, RR_FALSE);
+                            Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, false);
                     }
                 }
             }
@@ -461,12 +461,12 @@ Rr_StaticMesh *Rr_CreateStaticMeshGLTF(
                     size_t PNGSize = NormalTexture->image->buffer_view->size;
 
                     Textures[Loader->NormalTexture] =
-                        Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, RR_FALSE);
+                        Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, false);
                 }
             }
 
             Materials[Index] = Rr_CreateMaterial(App, Loader->GenericPipeline, Textures, RR_MAX_TEXTURES_PER_MATERIAL);
-            Materials[Index]->bOwning = RR_TRUE;
+            Materials[Index]->bOwning = true;
         }
 
         Rr_RawMesh *RawMesh = RawMeshes + Index;

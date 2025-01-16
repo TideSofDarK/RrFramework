@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rr_Input.h"
+#include <Rr/Rr_Input.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +42,7 @@ extern void Rr_SetInputConfig(Rr_App *App, Rr_InputConfig *InputConfig);
 
 extern Rr_InputState Rr_GetInputState(Rr_App *App);
 
-extern void Rr_SetRelativeMouseMode(Rr_App *App, Rr_Bool IsRelative);
+extern void Rr_SetRelativeMouseMode(Rr_App *App, bool IsRelative);
 
 #ifdef __cplusplus
 }

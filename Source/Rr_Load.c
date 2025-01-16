@@ -66,7 +66,7 @@ static void Rr_LoadResourcesFromTasks(
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
                 *(Rr_Image **)Task->Out =
-                    Rr_CreateColorImageFromPNG(App, UploadContext, Task->AssetRef, RR_FALSE, Scratch.Arena);
+                    Rr_CreateColorImageFromPNG(App, UploadContext, Task->AssetRef, false, Scratch.Arena);
             }
             break;
             case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
@@ -211,7 +211,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
     Rr_LoadSize LoadSize = Rr_CalculateLoadSize(Tasks, TaskCount, Scratch.Arena);
 
     /* Create appropriate upload context. */
-    Rr_Bool UseTransferQueue = Rr_IsUsingTransferQueue(Renderer);
+    bool UseTransferQueue = Rr_IsUsingTransferQueue(Renderer);
     VkCommandPool CommandPool =
         UseTransferQueue ? LoadAsyncContext.TransferCommandPool : LoadAsyncContext.GraphicsCommandPool;
 
@@ -242,7 +242,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
 
     if(UseTransferQueue)
     {
-        UploadContext.UseAcquireBarriers = RR_TRUE;
+        UploadContext.UseAcquireBarriers = true;
         UploadContext.AcquireBarriers = (Rr_AcquireBarriers){
             .BufferMemoryBarriers =
                 RR_ARENA_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier), LoadSize.BufferCount),
@@ -372,7 +372,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
         }
     }
 
-    vkWaitForFences(Renderer->Device, 1, &LoadAsyncContext.Fence, RR_TRUE, UINT64_MAX);
+    vkWaitForFences(Renderer->Device, 1, &LoadAsyncContext.Fence, true, UINT64_MAX);
 
     Rr_DestroyBuffer(App, StagingBuffer.Buffer);
 
@@ -467,7 +467,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext)
 
     SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
 
-    vkWaitForFences(Renderer->Device, 1, &Fence, RR_TRUE, UINT64_MAX);
+    vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
     vkDestroyFence(Renderer->Device, Fence, NULL);
 
     Rr_DestroyBuffer(App, StagingBuffer.Buffer);
@@ -551,11 +551,11 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
 
     size_t CurrentLoadingContextIndex = 0;
 
-    while(RR_TRUE)
+    while(true)
     {
         SDL_WaitSemaphore(LoadingThread->Semaphore);
 
-        if(SDL_GetAtomicInt(&App->bExit) == RR_TRUE)
+        if(SDL_GetAtomicInt(&App->bExit) == true)
         {
             break;
         }

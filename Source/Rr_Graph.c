@@ -1,7 +1,5 @@
 #include "Rr_Graph.h"
 
-#include "Rr/Rr_Defines.h"
-#include "Rr/Rr_Graph.h"
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
@@ -216,7 +214,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
             break;
         }
 
-        GraphNode->Executed = RR_TRUE;
+        GraphNode->Executed = true;
     }
 
     /* Apply batch state. */
@@ -248,7 +246,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     }
 
     size_t Counter = 0;
-    while(RR_TRUE)
+    while(true)
     {
         Counter++;
 
@@ -264,31 +262,31 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         {
             Rr_GraphNode *GraphNode = Graph->NodesSlice.Data[Index];
 
-            if(GraphNode->Executed == RR_TRUE)
+            if(GraphNode->Executed == true)
             {
                 continue;
             }
 
             /* Dependency check. */
 
-            Rr_Bool DependenciesResolved = RR_TRUE;
+            bool DependenciesResolved = true;
             for(size_t DepIndex = 0; DepIndex < GraphNode->Dependencies.Count; ++DepIndex)
             {
                 Rr_GraphNode *Dependency = GraphNode->Dependencies.Data[DepIndex];
-                if(Dependency->Executed != RR_TRUE)
+                if(Dependency->Executed != true)
                 {
-                    DependenciesResolved = RR_FALSE;
+                    DependenciesResolved = false;
                     break;
                 }
             }
-            if(DependenciesResolved != RR_TRUE)
+            if(DependenciesResolved != true)
             {
                 continue;
             }
 
             /* Attempt batching current node. */
 
-            Rr_Bool NodeBatched = RR_FALSE;
+            bool NodeBatched = false;
             switch(GraphNode->Type)
             {
                 case RR_GRAPH_NODE_TYPE_GRAPHICS:
@@ -303,7 +301,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                     NodeBatched = Rr_BatchPresentNode(App, Graph, &Batch, PresentNode);
                     if(NodeBatched)
                     {
-                        Batch.Final = RR_TRUE;
+                        Batch.Final = true;
                     }
                 }
                 break;
@@ -347,7 +345,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     }
 }
 
-static Rr_Bool Rr_ImageBatchPossible(Rr_Map **BatchSyncMap, VkImage Image)
+static bool Rr_ImageBatchPossible(Rr_Map **BatchSyncMap, VkImage Image)
 {
     Rr_ImageSync **State = (Rr_ImageSync **)Rr_MapUpsert(BatchSyncMap, (uintptr_t)Image, NULL);
 
@@ -355,13 +353,13 @@ static Rr_Bool Rr_ImageBatchPossible(Rr_Map **BatchSyncMap, VkImage Image)
     {
         /* @TODO: Should be true if for example current batch state matches
          * requested state. */
-        return RR_FALSE;
+        return false;
     }
 
-    return RR_TRUE;
+    return true;
 }
 
-Rr_Bool Rr_SyncImage(
+bool Rr_SyncImage(
     Rr_App *App,
     Rr_Graph *Graph,
     Rr_GraphBatch *Batch,
@@ -373,12 +371,12 @@ Rr_Bool Rr_SyncImage(
 {
     if(Image == NULL)
     {
-        return RR_TRUE;
+        return true;
     }
 
     if(!Rr_ImageBatchPossible(&Batch->SyncMap, Image))
     {
-        return RR_FALSE;
+        return false;
     }
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
@@ -429,5 +427,5 @@ Rr_Bool Rr_SyncImage(
 
     Batch->StageMask |= StageMask;
 
-    return RR_TRUE;
+    return true;
 }

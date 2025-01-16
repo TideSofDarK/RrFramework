@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Rr/Rr_Defines.h"
-#include "Rr/Rr_Math.h"
+#include <Rr/Rr_Math.h>
 
 #include <vma/vk_mem_alloc.h>
 #include <volk/volk.h>

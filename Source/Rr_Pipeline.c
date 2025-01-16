@@ -87,8 +87,8 @@ Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder,
     };
 
     uint32_t AttributeCount = 0;
-    Rr_Bool HasPerVertexBinding = RR_FALSE;
-    Rr_Bool HasPerInstanceBinding = RR_FALSE;
+    bool HasPerVertexBinding = false;
+    bool HasPerInstanceBinding = false;
     for(size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
     {
         if(PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
@@ -211,7 +211,7 @@ Rr_PipelineBuilder *Rr_CreatePipelineBuilder(void)
     return PipelineBuilder;
 }
 
-void Rr_EnableColorAttachment(Rr_PipelineBuilder *PipelineBuilder, Rr_Bool EnableAlphaBlend)
+void Rr_EnableColorAttachment(Rr_PipelineBuilder *PipelineBuilder, bool EnableAlphaBlend)
 {
     PipelineBuilder->ColorAttachmentFormats[PipelineBuilder->ColorAttachmentCount] = RR_COLOR_FORMAT;
     if(EnableAlphaBlend)

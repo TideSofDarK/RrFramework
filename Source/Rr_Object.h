@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rr/Rr_Defines.h"
+#include <Rr/Rr_Defines.h>
 
 #include <SDL3/SDL_thread.h>
 
