@@ -1,10 +1,10 @@
 #include "Rr_Text.h"
 
-#include <Rr/Rr_Utility.h>
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
 #include "Rr_Pipeline.h"
+#include <Rr/Rr_Utility.h>
 
 #include <cJSON/cJSON.h>
 

@@ -1,6 +1,5 @@
 #include "Rr_Mesh.h"
 
-#include <Rr/Rr_Mesh.h>
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"

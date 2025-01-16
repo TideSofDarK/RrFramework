@@ -1,12 +1,12 @@
 #include "Rr_Renderer.h"
 
-#include <Rr/Rr_Graph.h>
-#include <Rr/Rr_Material.h>
 #include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
+#include <Rr/Rr_Graph.h>
+#include <Rr/Rr_Material.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <imgui/cimgui.h>
@@ -841,8 +841,7 @@ static void Rr_InitNullTextures(Rr_App *App)
         .TransferCommandBuffer = CommandBuffer,
     };
     uint32_t WhiteData = 0xffffffff;
-    Renderer->NullTextures.White =
-        Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&WhiteData, 1, 1, false);
+    Renderer->NullTextures.White = Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&WhiteData, 1, 1, false);
     uint32_t NormalData = 0xffff8888;
     Renderer->NullTextures.Normal =
         Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&NormalData, 1, 1, false);

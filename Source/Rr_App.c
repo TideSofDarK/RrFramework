@@ -1,9 +1,9 @@
 #include "Rr_App.h"
 
-#include <Rr/Rr_Input.h>
 #include "Rr_Load.h"
 #include "Rr_Memory.h"
 #include "Rr_Object.h"
+#include <Rr/Rr_Input.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_atomic.h>
