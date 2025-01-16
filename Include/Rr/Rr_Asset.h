@@ -26,7 +26,7 @@ typedef struct Rr_AssetRef
 } Rr_AssetRef;
 
 #define RR_STR2(X) #X
-#define RR_STR(X) RR_STR2(X)
+#define RR_STR(X)  RR_STR2(X)
 
 #ifdef _WIN32
 #define RR_INCBIN_SECTION ".rdata, \"dr\""
@@ -67,12 +67,12 @@ typedef struct Rr_AssetRef
     #endif
 // clang-format on
 
-#define RR_INCBIN_REF(NAME)                                                    \
+#define RR_INCBIN_REF(NAME)                                           \
     extern __attribute__((aligned(16))) char incbin_##NAME##_start[]; \
     extern char incbin_##NAME##_end[];                                \
-    Rr_AssetRef NAME = {                                                       \
-        .Start = incbin_##NAME##_start,                                        \
-        .End = incbin_##NAME##_end,                                            \
+    Rr_AssetRef NAME = {                                              \
+        .Start = incbin_##NAME##_start,                               \
+        .End = incbin_##NAME##_end,                                   \
     }
 
 #endif

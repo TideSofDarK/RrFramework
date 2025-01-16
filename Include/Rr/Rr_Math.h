@@ -41,7 +41,7 @@
 /* NEON Supported */
 #endif /* #ifndef RR_MATH_NO_SIMD */
 
-#if(!defined(__cplusplus) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
+#if (!defined(__cplusplus) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
 #define RR_MATH__USE_C11_GENERICS 1
 #endif
 

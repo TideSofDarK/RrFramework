@@ -1,9 +1,9 @@
 #pragma once
 
-#include <Rr/Rr_App.h>
 #include "Rr_Load.h"
 #include "Rr_Object.h"
 #include "Rr_Renderer.h"
+#include <Rr/Rr_App.h>
 
 #include <SDL3/SDL_thread.h>
 #include <SDL3/SDL_video.h>
