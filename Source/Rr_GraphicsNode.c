@@ -48,7 +48,7 @@ void Rr_DrawStaticMesh(Rr_App *App, Rr_GraphNode *Node, Rr_StaticMesh *StaticMes
 
     for(size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&Node->Union.GraphicsNode.DrawPrimitivesSlice, &Frame->Arena) = (Rr_DrawPrimitiveInfo){
+        *RR_SLICE_PUSH(&Node->Union.GraphicsNode.DrawPrimitivesSlice, Frame->Arena) = (Rr_DrawPrimitiveInfo){
             .PerDrawOffset = Offset,
             .Primitive = StaticMesh->Primitives[PrimitiveIndex],
             .Material = StaticMesh->Materials[PrimitiveIndex],
@@ -74,7 +74,7 @@ void Rr_DrawStaticMeshOverrideMaterials(
 
     for(size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
     {
-        *RR_SLICE_PUSH(&Node->Union.GraphicsNode.DrawPrimitivesSlice, &Frame->Arena) = (Rr_DrawPrimitiveInfo){
+        *RR_SLICE_PUSH(&Node->Union.GraphicsNode.DrawPrimitivesSlice, Frame->Arena) = (Rr_DrawPrimitiveInfo){
             .PerDrawOffset = Offset,
             .Primitive = StaticMesh->Primitives[PrimitiveIndex],
             .Material = PrimitiveIndex < OverrideMaterialCount ? OverrideMaterials[PrimitiveIndex] : NULL,

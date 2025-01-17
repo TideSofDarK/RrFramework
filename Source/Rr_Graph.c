@@ -26,12 +26,12 @@ Rr_GraphNode *Rr_AddGraphNode(
     Rr_GraphNode **Dependencies,
     size_t DependencyCount)
 {
-    Rr_GraphNode *GraphNode = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_GraphNode));
+    Rr_GraphNode *GraphNode = RR_ARENA_ALLOC_ONE(Frame->Arena, sizeof(Rr_GraphNode));
     GraphNode->Type = Type;
     GraphNode->Name = Name;
-    Rr_CopyDependencies(GraphNode, Dependencies, DependencyCount, &Frame->Arena);
+    Rr_CopyDependencies(GraphNode, Dependencies, DependencyCount, Frame->Arena);
 
-    *RR_SLICE_PUSH(&Frame->Graph.NodesSlice, &Frame->Arena) = GraphNode;
+    *RR_SLICE_PUSH(&Frame->Graph.NodesSlice, Frame->Arena) = GraphNode;
 
     return GraphNode;
 }
@@ -224,10 +224,10 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
     {
         VkImageMemoryBarrier *Barrier = Batch->ImageBarriersSlice.Data + Index;
         Rr_ImageSync **State =
-            (Rr_ImageSync **)Rr_MapUpsert(&Graph->GlobalSyncMap, (uintptr_t)Barrier->image, Graph->Arena);
+            (Rr_ImageSync **)Rr_MapUpsert(&Graph->GlobalSyncMap, (uintptr_t)Barrier->image, Frame->Arena);
         if(*State == NULL)
         {
-            *State = RR_ARENA_ALLOC_ONE(Graph->Arena, sizeof(Rr_ImageSync));
+            *State = RR_ARENA_ALLOC_ONE(Frame->Arena, sizeof(Rr_ImageSync));
         }
         Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_MapUpsert(&Batch->SyncMap, (uintptr_t)Barrier->image, NULL);
         *(*State) = *(*BatchState);
@@ -381,7 +381,7 @@ bool Rr_SyncImage(
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
 
-    Rr_ImageSync **GlobalState = (Rr_ImageSync **)Rr_MapUpsert(&Graph->GlobalSyncMap, (uintptr_t)Image, &Frame->Arena);
+    Rr_ImageSync **GlobalState = (Rr_ImageSync **)Rr_MapUpsert(&Graph->GlobalSyncMap, (uintptr_t)Image, Frame->Arena);
 
     VkImageSubresourceRange SubresourceRange = GetImageSubresourceRange(AspectMask);
 
@@ -419,7 +419,7 @@ bool Rr_SyncImage(
     Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_MapUpsert(&Batch->SyncMap, (uintptr_t)Image, Batch->Arena);
     if(*BatchState == NULL)
     {
-        *BatchState = RR_ARENA_ALLOC_ONE(&Frame->Arena, sizeof(Rr_ImageSync));
+        *BatchState = RR_ARENA_ALLOC_ONE(Frame->Arena, sizeof(Rr_ImageSync));
     }
     (*BatchState)->AccessMask = AccessMask;
     (*BatchState)->Layout = Layout;

@@ -1,9 +1,25 @@
 #if defined(_WIN32)
 
-#include <Rr/Rr_OS.h>
+#include <Rr/Rr_Platform.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+
+static Rr_PlatformInfo PlatformInfo;
+
+bool Rr_InitPlatform()
+{
+    SYSTEM_INFO SystemInfo;
+    GetSystemInfo(&SystemInfo);
+    PlatformInfo.PageSize = SystemInfo.dwPageSize;
+
+    return true;
+}
+
+Rr_PlatformInfo *Rr_GetPlatformInfo()
+{
+    return &PlatformInfo;
+}
 
 void *Rr_ReserveMemory(size_t Size)
 {

@@ -24,7 +24,7 @@ Rr_GraphNode *Rr_AddBuiltinNode(Rr_App *App, const char *Name, Rr_GraphNode **De
 static void Rr_DrawText(Rr_App *App, Rr_BuiltinNode *Node, Rr_DrawTextInfo *Info)
 {
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
-    Rr_DrawTextInfo *NewInfo = RR_SLICE_PUSH(&Node->DrawTextsSlice, &Frame->Arena);
+    Rr_DrawTextInfo *NewInfo = RR_SLICE_PUSH(&Node->DrawTextsSlice, Frame->Arena);
     *NewInfo = *Info;
     if(NewInfo->Font == NULL)
     {

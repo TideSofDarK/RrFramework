@@ -307,7 +307,7 @@ static void Rr_InitFrames(Rr_App *App)
             { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
         };
         Frame->DescriptorAllocator =
-            Rr_CreateDescriptorAllocator(Renderer->Device, 1000, Ratios, SDL_arraysize(Ratios), &App->PermanentArena);
+            Rr_CreateDescriptorAllocator(Renderer->Device, 1000, Ratios, SDL_arraysize(Ratios), App->PermanentArena);
 
         /* Buffers */
 
@@ -317,7 +317,7 @@ static void Rr_InitFrames(Rr_App *App)
         Frame->PerDrawBuffer.Buffer =
             Rr_CreateMappedBuffer(App, 66560, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 
-        Frame->Arena = Rr_CreateArena(RR_PER_FRAME_ARENA_SIZE);
+        Frame->Arena = Rr_CreateArenaDefault();
     }
 }
 
@@ -341,7 +341,7 @@ static void Rr_CleanupFrames(Rr_App *App)
         Rr_DestroyBuffer(App, Frame->PerDrawBuffer.Buffer);
         Rr_DestroyBuffer(App, Frame->CommonBuffer.Buffer);
 
-        Rr_DestroyArena(&Frame->Arena);
+        Rr_DestroyArena(Frame->Arena);
     }
 }
 
@@ -392,7 +392,7 @@ static void Rr_InitDescriptors(Rr_App *App)
     };
 
     Renderer->GlobalDescriptorAllocator =
-        Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios), &App->PermanentArena);
+        Rr_CreateDescriptorAllocator(Renderer->Device, 10, Ratios, SDL_arraysize(Ratios), App->PermanentArena);
 }
 
 static PFN_vkVoidFunction Rr_LoadVulkanFunction(const char *FuncName, void *UserData)
@@ -1053,7 +1053,7 @@ static void Rr_ResetFrameResources(Rr_Frame *Frame)
 
     RR_ZERO(Frame->Graph);
 
-    Rr_ResetArena(&Frame->Arena);
+    Rr_ResetArena(Frame->Arena);
 }
 
 static void Rr_ProcessPendingLoads(Rr_App *App)
@@ -1077,9 +1077,6 @@ void Rr_PrepareFrame(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    /* @TODO: Ugly. */
-    Frame->Graph.Arena = &Frame->Arena;
 
     Rr_ProcessPendingLoads(App);
 }

@@ -65,7 +65,6 @@ struct Rr_Graph
 {
     RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
     Rr_Map *GlobalSyncMap;
-    Rr_Arena *Arena;
 };
 
 extern bool Rr_SyncImage(

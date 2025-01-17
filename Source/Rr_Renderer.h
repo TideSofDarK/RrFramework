@@ -68,7 +68,7 @@ struct Rr_Frame
 
     Rr_Graph Graph;
 
-    Rr_Arena Arena;
+    Rr_Arena *Arena;
 };
 
 typedef struct Rr_Renderer Rr_Renderer;

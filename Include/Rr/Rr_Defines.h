@@ -15,6 +15,10 @@
 #define RR_EXTERN extern
 #endif
 
+#define RR_MIN(A, B)      (((A) < (B)) ? (A) : (B))
+#define RR_MAX(A, B)      (((A) > (B)) ? (A) : (B))
+#define RR_CLAMP(A, X, B) (((X) < (A)) ? (A) : ((X) > (B)) ? (B) : (X))
+
 #define RR_ZERO(x)     memset(&(x), 0, sizeof((x)))
 #define RR_ZERO_PTR(x) memset((x), 0, sizeof(*(x)))
 

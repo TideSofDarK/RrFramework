@@ -1,9 +1,26 @@
 #if defined(__linux__)
 
-#include <Rr/Rr_OS.h>
+#include <Rr/Rr_Platform.h>
 
-#include <assert.h>
+#include "Rr_Log.h"
+
 #include <sys/mman.h>
+#include <unistd.h>
+#include <assert.h>
+
+static Rr_PlatformInfo PlatformInfo;
+
+bool Rr_InitPlatform()
+{
+    PlatformInfo.PageSize = getpagesize();
+
+    return true;
+}
+
+Rr_PlatformInfo *Rr_GetPlatformInfo()
+{
+    return &PlatformInfo;
+}
 
 void *Rr_ReserveMemory(size_t Size)
 {

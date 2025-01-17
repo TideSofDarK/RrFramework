@@ -151,9 +151,9 @@ Rr_LoadingContext *Rr_LoadAsync(
 
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
     SDL_LockMutex(LoadingThread->Mutex);
-    Rr_LoadTask *NewTasks = RR_ARENA_ALLOC_COUNT(&LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
+    Rr_LoadTask *NewTasks = RR_ARENA_ALLOC_COUNT(LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
-    Rr_LoadingContext *LoadingContext = RR_SLICE_PUSH(&LoadingThread->LoadingContextsSlice, &LoadingThread->Arena);
+    Rr_LoadingContext *LoadingContext = RR_SLICE_PUSH(&LoadingThread->LoadingContextsSlice, LoadingThread->Arena);
     *LoadingContext = (Rr_LoadingContext){
         .Semaphore = SDL_CreateSemaphore(0),
         .LoadingCallback = LoadingCallback,
@@ -378,7 +378,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
 
     SDL_LockSpinlock(&App->SyncArena.Lock);
 
-    Rr_PendingLoad *PendingLoad = RR_SLICE_PUSH(&Renderer->PendingLoadsSlice, &App->SyncArena.Arena);
+    Rr_PendingLoad *PendingLoad = RR_SLICE_PUSH(&Renderer->PendingLoadsSlice, App->SyncArena.Arena);
     *PendingLoad = (Rr_PendingLoad){
         .LoadingCallback = LoadingContext->LoadingCallback,
         .Userdata = LoadingContext->Userdata,
@@ -578,7 +578,7 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
         SDL_LockMutex(LoadingThread->Mutex);
         if(CurrentLoadingContextIndex >= LoadingThread->LoadingContextsSlice.Count)
         {
-            Rr_ResetArena(&LoadingThread->Arena);
+            Rr_ResetArena(LoadingThread->Arena);
             CurrentLoadingContextIndex = 0;
             RR_ZERO(LoadingThread->LoadingContextsSlice);
         }
@@ -598,7 +598,7 @@ void Rr_InitLoadingThread(Rr_App *App)
 
     App->LoadingThread = (Rr_LoadingThread){ .Semaphore = SDL_CreateSemaphore(0),
                                              .Mutex = SDL_CreateMutex(),
-                                             .Arena = Rr_CreateArena(RR_LOADING_THREAD_ARENA_SIZE) };
+                                             .Arena = Rr_CreateArenaDefault() };
     App->LoadingThread.Handle = SDL_CreateThread(Rr_LoadingThreadProc, "lt", App);
 }
 
@@ -609,5 +609,5 @@ void Rr_CleanupLoadingThread(Rr_App *App)
     SDL_WaitThread(LoadingThread->Handle, NULL);
     SDL_DestroySemaphore(LoadingThread->Semaphore);
     SDL_DestroyMutex(LoadingThread->Mutex);
-    Rr_DestroyArena(&LoadingThread->Arena);
+    Rr_DestroyArena(LoadingThread->Arena);
 }

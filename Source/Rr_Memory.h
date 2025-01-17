@@ -45,17 +45,22 @@ extern void Rr_AlignedFree(void *Ptr);
  * Arena
  */
 
-#define RR_SCRATCH_ARENA_COUNT_PER_THREAD 2
+#define RR_ARENA_RESERVE_DEFAULT RR_GIGABYTES(8)
+#define RR_ARENA_COMMIT_DEFAULT RR_KILOBYTES(64)
 
 typedef struct Rr_Arena Rr_Arena;
 struct Rr_Arena
 {
-    char *Allocation;
-    char *Current;
-    char *End;
+    uintptr_t Position;
+    uintptr_t ReserveSize;
+    uintptr_t CommitSize;
+    uintptr_t Reserved;
+    uintptr_t Commited;
 };
 
-extern Rr_Arena Rr_CreateArena(size_t Size);
+extern Rr_Arena *Rr_CreateArena(size_t Reserve, size_t Commit);
+
+extern Rr_Arena *Rr_CreateArenaDefault();
 
 extern void Rr_ResetArena(Rr_Arena *Arena);
 
@@ -70,7 +75,7 @@ typedef struct Rr_ArenaScratch Rr_ArenaScratch;
 struct Rr_ArenaScratch
 {
     Rr_Arena *Arena;
-    char *Position;
+    uintptr_t Position;
 };
 
 extern Rr_ArenaScratch Rr_CreateArenaScratch(Rr_Arena *Arena);
@@ -91,10 +96,10 @@ typedef struct Rr_SyncArena Rr_SyncArena;
 struct Rr_SyncArena
 {
     SDL_SpinLock Lock;
-    Rr_Arena Arena;
+    Rr_Arena *Arena;
 };
 
-extern Rr_SyncArena Rr_CreateSyncArena(size_t Size);
+extern Rr_SyncArena Rr_CreateSyncArena();
 
 extern void Rr_DestroySyncArena(Rr_SyncArena *Arena);
 

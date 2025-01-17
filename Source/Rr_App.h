@@ -41,7 +41,7 @@ struct Rr_App
     Rr_InputState InputState;
     Rr_FrameTime FrameTime;
     Rr_LoadingThread LoadingThread;
-    Rr_Arena PermanentArena;
+    Rr_Arena *PermanentArena;
     Rr_SyncArena SyncArena;
     Rr_ObjectStorage ObjectStorage;
     SDL_TLSID ScratchArenaTLS;

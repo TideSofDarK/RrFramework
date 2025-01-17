@@ -24,11 +24,11 @@ struct Rr_PendingLoad
 typedef struct Rr_LoadingThread Rr_LoadingThread;
 struct Rr_LoadingThread
 {
-    Rr_Arena Arena;
     RR_SLICE_TYPE(Rr_LoadingContext) LoadingContextsSlice;
     SDL_Thread *Handle;
     SDL_Semaphore *Semaphore;
     SDL_Mutex *Mutex;
+    Rr_Arena *Arena;
 };
 
 // typedef struct Rr_LoadingContext Rr_LoadingContext;

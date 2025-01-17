@@ -3,7 +3,9 @@
 #include "Rr_Load.h"
 #include "Rr_Memory.h"
 #include "Rr_Object.h"
+
 #include <Rr/Rr_Input.h>
+#include <Rr/Rr_Platform.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_atomic.h>
@@ -201,6 +203,8 @@ Rr_IntVec2 Rr_GetDefaultWindowSize()
 
 void Rr_Run(Rr_AppConfig *Config)
 {
+    Rr_InitPlatform();
+
     SDL_SetAppMetadata(Config->Title, Config->Version, Config->Package);
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -216,8 +220,8 @@ void Rr_Run(Rr_AppConfig *Config)
             WindowSize.Width,
             WindowSize.Height,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY),
-        .PermanentArena = Rr_CreateArena(RR_PERMANENT_ARENA_SIZE),
-        .SyncArena = Rr_CreateSyncArena(RR_SYNC_ARENA_SIZE),
+        .PermanentArena = Rr_CreateArenaDefault(),
+        .SyncArena = Rr_CreateSyncArena(),
         .ObjectStorage = Rr_CreateObjectStorage(),
         .UserData = Config->UserData,
     };
@@ -275,7 +279,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_DestroyObjectStorage(&App.ObjectStorage);
 
-    Rr_DestroyArena(&App.PermanentArena);
+    Rr_DestroyArena(App.PermanentArena);
     Rr_DestroySyncArena(&App.SyncArena);
 
     SDL_CleanupTLS();
