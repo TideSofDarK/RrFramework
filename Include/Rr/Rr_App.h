@@ -6,9 +6,6 @@
 extern "C" {
 #endif
 
-struct Rr_Arena;
-struct Rr_ArenaScratch;
-
 typedef struct Rr_App Rr_App;
 
 typedef struct Rr_AppConfig Rr_AppConfig;

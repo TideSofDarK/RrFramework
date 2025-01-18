@@ -4,8 +4,8 @@
 #include "Rr_Buffer.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
-#include "Rr_UI.h"
 #include "Rr_Log.h"
+#include "Rr_UI.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Material.h>
@@ -319,7 +319,7 @@ static void Rr_InitFrames(Rr_App *App)
         Frame->PerDrawBuffer.Buffer =
             Rr_CreateMappedBuffer(App, 66560, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 
-        Frame->Arena = Rr_CreateArenaDefault();
+        Frame->Arena = Rr_CreateDefaultArena();
     }
 }
 
@@ -1134,8 +1134,8 @@ void Rr_Draw(Rr_App *App)
 
     /* Submit frame command buffer and queue present. */
 
-    VkSemaphore *WaitSemaphores = RR_ARENA_ALLOC_ONE(Scratch.Arena, sizeof(VkSemaphore));
-    VkPipelineStageFlags *WaitDstStages = RR_ARENA_ALLOC_ONE(Scratch.Arena, sizeof(VkPipelineStageFlags));
+    VkSemaphore *WaitSemaphores = RR_ALLOC(Scratch.Arena, sizeof(VkSemaphore));
+    VkPipelineStageFlags *WaitDstStages = RR_ALLOC(Scratch.Arena, sizeof(VkPipelineStageFlags));
     size_t WaitSemaphoreIndex = 1;
     WaitSemaphores[0] = Frame->SwapchainSemaphore;
     WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;

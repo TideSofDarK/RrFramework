@@ -222,7 +222,7 @@ void Rr_Run(Rr_AppConfig *Config)
             WindowSize.Width,
             WindowSize.Height,
             SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY),
-        .PermanentArena = Rr_CreateArenaDefault(),
+        .PermanentArena = Rr_CreateDefaultArena(),
         .SyncArena = Rr_CreateSyncArena(),
         .ObjectStorage = Rr_CreateObjectStorage(),
         .UserData = Config->UserData,

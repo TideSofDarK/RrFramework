@@ -61,7 +61,7 @@ Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
     return Arena;
 }
 
-Rr_Arena *Rr_CreateArenaDefault()
+Rr_Arena *Rr_CreateDefaultArena()
 {
     return Rr_CreateArena(RR_ARENA_RESERVE_DEFAULT, RR_ARENA_COMMIT_DEFAULT);
 }
@@ -116,7 +116,7 @@ void Rr_InitThreadScratch(size_t Size)
     Rr_Arena **Arenas = Rr_Calloc(2, sizeof(Rr_Arena *));
     for(size_t Index = 0; Index < 2; ++Index)
     {
-        Arenas[Index] = Rr_CreateArenaDefault();
+        Arenas[Index] = Rr_CreateDefaultArena();
     }
     SDL_SetTLS(&ScratchArenaTLS, Arenas, Rr_CleanupScratchArena);
 }
@@ -148,7 +148,7 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
     return (Rr_ArenaScratch){ 0 };
 }
 
-void *Rr_ArenaAlloc(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
+void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
 {
     size_t TotalSize = Size * Count;
     uintptr_t PositionAligned = RR_ALIGN_POW2(Arena->Position, Align);
@@ -179,9 +179,14 @@ void *Rr_ArenaAlloc(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
     return memset(Result, 0, TotalSize);
 }
 
+void Rr_PopArena(Rr_Arena *Arena, size_t Amount)
+{
+    Arena->Position -= Amount;
+}
+
 Rr_SyncArena Rr_CreateSyncArena()
 {
-    return (Rr_SyncArena){ .Arena = Rr_CreateArenaDefault() };
+    return (Rr_SyncArena){ .Arena = Rr_CreateDefaultArena() };
 }
 
 void Rr_DestroySyncArena(Rr_SyncArena *Arena)
@@ -202,7 +207,7 @@ void Rr_SliceGrow(void *Slice, size_t Size, Rr_Arena *Arena)
     void *Data = NULL;
     Replica.Capacity = Replica.Capacity ? Replica.Capacity : 1;
     Replica.Capacity *= 2;
-    Data = RR_ARENA_ALLOC_COUNT(Arena, Size, Replica.Capacity);
+    Data = RR_ALLOC_COUNT(Arena, Size, Replica.Capacity);
 
     if(Replica.Count)
     {
@@ -226,7 +231,7 @@ void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
     void *Data = NULL;
 
     Replica.Capacity = Count;
-    Data = RR_ARENA_ALLOC_COUNT(Arena, Size, Count);
+    Data = RR_ALLOC_COUNT(Arena, Size, Count);
 
     if(Replica.Count)
     {
@@ -235,4 +240,26 @@ void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
     Replica.Data = Data;
 
     memcpy(Slice, &Replica, sizeof(Replica));
+}
+
+void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
+{
+    if(*Map != NULL)
+    {
+        for(uintptr_t Hash = Key; *Map; Hash <<= 2)
+        {
+            if(Key == (*Map)->Key)
+            {
+                return &(*Map)->Value;
+            }
+            Map = &(*Map)->Child[Hash >> 62];
+        }
+    }
+    if(Arena == NULL)
+    {
+        return NULL;
+    }
+    *Map = (Rr_Map *)RR_ALLOC(Arena, sizeof(Rr_Map));
+    (*Map)->Key = Key;
+    return &(*Map)->Value;
 }

@@ -2,6 +2,7 @@
 
 #include "DemoAssets.inc"
 #include "DevTools.hxx"
+#include "Rr/Rr_String.h"
 
 #include <imgui/imgui.h>
 
@@ -220,6 +221,8 @@ struct SGame
 private:
     Rr_App *App{};
 
+    Rr_Arena *PermanentArena;
+
     std::array<Rr_InputMapping, EIA_COUNT> InputMappings{};
 
     SUber3DGlobals ShaderGlobals{};
@@ -245,9 +248,6 @@ private:
 
     Rr_StaticMesh *AvocadoMesh{};
 
-    Rr_String LoadingString{};
-    Rr_String TestString{};
-    Rr_String DebugString{};
     Rr_LoadingContext *LoadingContext{};
 
     Rr_DrawTarget *ShadowMap;
@@ -257,6 +257,10 @@ private:
     Rr_GLTFLoader Uber3DGLTFLoader;
 
     bool IsLoaded = false;
+
+    Rr_String TestString;
+    Rr_String DebugString;
+    Rr_String LoadingString;
 
 public:
     void InitInputMappings()
@@ -517,7 +521,7 @@ public:
                 Rr_GetLoadProgress(LoadingContext, &Current, &Total);
 
                 std::string Formatted = std::format("Загружайу: {}/{}\n", Current, Total);
-                Rr_SetString(&LoadingString, Formatted.c_str(), Formatted.length());
+                Rr_UpdateString(&LoadingString, 128, Formatted.data(), Formatted.length());
             }
 
             Rr_DrawCustomText(
@@ -533,6 +537,7 @@ public:
 
     explicit SGame(Rr_App *InApp)
         : App(InApp)
+        , PermanentArena(Rr_CreateDefaultArena())
         , Uber3DPipeline(App)
         , UnlitPipeline(App)
         , ShadowPipeline(App)
@@ -565,10 +570,12 @@ public:
         };
         LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
 
-        TestString = Rr_CreateString("A quick brown fox @#$ \nNew line "
-                                     "test...\n\nA couple of new lines...");
-        DebugString = Rr_CreateString("$c3Colored $c1text$c2");
-        LoadingString = Rr_CreateEmptyString(128);
+        TestString = RR_STRING(
+            "A quick brown fox @#$ \nNew line "
+            "test...\n\nA couple of new lines...",
+            PermanentArena);
+        DebugString = RR_STRING("$c3Colored $c1text$c2", PermanentArena);
+        LoadingString = Rr_CreateEmptyString(128, PermanentArena);
     }
 
     ~SGame()
@@ -587,12 +594,10 @@ public:
         Rr_DestroyStaticMesh(App, AvocadoMesh);
         Rr_DestroyStaticMesh(App, ArrowMesh);
 
-        Rr_DestroyString(&TestString);
-        Rr_DestroyString(&DebugString);
-        Rr_DestroyString(&LoadingString);
-
         Rr_DestroyDrawTarget(App, ShadowMap);
         Rr_DestroyDrawTarget(App, TestTarget);
+
+        Rr_DestroyArena(PermanentArena);
     }
 };
 

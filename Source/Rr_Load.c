@@ -151,7 +151,7 @@ Rr_LoadingContext *Rr_LoadAsync(
 
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
     SDL_LockMutex(LoadingThread->Mutex);
-    Rr_LoadTask *NewTasks = RR_ARENA_ALLOC_COUNT(LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
+    Rr_LoadTask *NewTasks = RR_ALLOC_COUNT(LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
     Rr_LoadingContext *LoadingContext = RR_SLICE_PUSH(&LoadingThread->LoadingContextsSlice, LoadingThread->Arena);
     *LoadingContext = (Rr_LoadingContext){
@@ -244,16 +244,12 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
     {
         UploadContext.UseAcquireBarriers = true;
         UploadContext.AcquireBarriers = (Rr_AcquireBarriers){
-            .BufferMemoryBarriers =
-                RR_ARENA_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier), LoadSize.BufferCount),
-            .ImageMemoryBarriers =
-                RR_ARENA_ALLOC_COUNT(Scratch.Arena, sizeof(VkImageMemoryBarrier), LoadSize.ImageCount),
+            .BufferMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier), LoadSize.BufferCount),
+            .ImageMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkImageMemoryBarrier), LoadSize.ImageCount),
         };
         UploadContext.ReleaseBarriers = (Rr_AcquireBarriers){
-            .BufferMemoryBarriers =
-                RR_ARENA_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier), LoadSize.BufferCount),
-            .ImageMemoryBarriers =
-                RR_ARENA_ALLOC_COUNT(Scratch.Arena, sizeof(VkImageMemoryBarrier), LoadSize.ImageCount),
+            .BufferMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier), LoadSize.BufferCount),
+            .ImageMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkImageMemoryBarrier), LoadSize.ImageCount),
         };
     }
 
@@ -598,7 +594,7 @@ void Rr_InitLoadingThread(Rr_App *App)
 
     App->LoadingThread = (Rr_LoadingThread){ .Semaphore = SDL_CreateSemaphore(0),
                                              .Mutex = SDL_CreateMutex(),
-                                             .Arena = Rr_CreateArenaDefault() };
+                                             .Arena = Rr_CreateDefaultArena() };
     App->LoadingThread.Handle = SDL_CreateThread(Rr_LoadingThreadProc, "lt", App);
 }
 

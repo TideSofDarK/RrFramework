@@ -13,7 +13,7 @@ enum Rr_UIObjectType
 typedef struct Rr_UIObject Rr_UIObject;
 struct Rr_UIObject
 {
-    Rr_String Title;
+    Rr_String Text;
     Rr_UIObjectType Type;
     Rr_UIObject *Next;
 };
@@ -44,9 +44,9 @@ void Rr_EndHorizontal(Rr_App *App)
 
 Rr_UI *Rr_CreateUI(Rr_App *App)
 {
-    Rr_Arena *Arena = Rr_CreateArenaDefault();
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    Rr_UI *UI = RR_ARENA_ALLOC_ONE(Arena, sizeof(Rr_UI));
+    Rr_UI *UI = RR_ALLOC(Arena, sizeof(Rr_UI));
 
     UI->Arena = Arena;
 
@@ -66,5 +66,4 @@ void Rr_ResetUI(Rr_App *App, Rr_UI *UI)
 
 void Rr_DrawUI(Rr_App *App, Rr_UI *UI)
 {
-
 }

@@ -1,34 +1,27 @@
 #include "Rr/Rr_String.h"
 
 #include "Rr_Log.h"
-#include "Rr_Memory.h"
 
-static uint32_t *Rr_UTF8ToUTF32(
-    const char *CString,
-    size_t OptionalLength,
-    uint32_t *OutOldBuffer,
-    size_t OldLength,
-    size_t *OutNewLength)
+#include <string.h>
+
+static size_t Rr_UTF8ToUTF32(const char *CString, size_t Length, uint32_t *Buffer, size_t BufferLength)
 {
-    static uint32_t Buffer[2048] = { 0 };
-
     uint8_t Ready = 128;
     uint8_t Two = 192;
     uint8_t Three = 224;
     uint8_t Four = 240;
     uint8_t Five = 248;
 
-    size_t SourceLength = OptionalLength > 0 ? OptionalLength : strlen(CString);
-    if(SourceLength > 2048)
-    {
-        Rr_LogAbort("Exceeding max string length!");
-    }
-
     uint8_t Carry = 0;
     size_t FinalIndex = 0;
     uint32_t FinalCharacter = 0;
-    for(size_t SourceIndex = 0; SourceIndex < SourceLength; ++SourceIndex)
+    for(size_t SourceIndex = 0; SourceIndex < Length; ++SourceIndex)
     {
+        if(FinalIndex >= BufferLength)
+        {
+            break;
+        }
+
         if(Carry > 0)
         {
             Carry--;
@@ -71,54 +64,41 @@ static uint32_t *Rr_UTF8ToUTF32(
         }
     }
 
-    uint32_t *Data;
-    if(OutOldBuffer == NULL)
-    {
-        Data = (uint32_t *)Rr_Malloc(sizeof(uint32_t) * FinalIndex);
-    }
-    else if(OldLength >= FinalIndex)
-    {
-        Data = OutOldBuffer;
-    }
-    else
-    {
-        Data = (uint32_t *)Rr_Realloc(OutOldBuffer, sizeof(uint32_t) * FinalIndex);
-    }
-
-    memcpy((void *)Data, Buffer, sizeof(uint32_t) * FinalIndex);
-
-    *OutNewLength = FinalIndex;
-
-    return Data;
+    return FinalIndex;
 }
 
-Rr_String Rr_CreateString(const char *CString)
+Rr_String Rr_CreateString(const char *CString, size_t LengthHint, Rr_Arena *Arena)
 {
-    Rr_String String;
-    String.Data = Rr_UTF8ToUTF32(CString, 0, NULL, 0, &String.Length);
-
-    return String;
-}
-
-Rr_String Rr_CreateEmptyString(size_t Length)
-{
-    return (Rr_String){ .Length = Length, .Data = (uint32_t *)Rr_Calloc(Length, sizeof(uint32_t)) };
-}
-
-void Rr_SetString(Rr_String *String, const char *CString, size_t OptionalLength)
-{
-    if(String == NULL)
+    if(CString == NULL)
     {
-        return;
+        Rr_LogAbort("Attempting to parse NULL string!");
     }
 
-    String->Data = Rr_UTF8ToUTF32(CString, OptionalLength, String->Data, String->Length, &String->Length);
+    size_t SourceLength = LengthHint > 0 ? LengthHint : strlen(CString);
+
+    uint32_t *Buffer = RR_ALLOC_COUNT(Arena, sizeof(uint32_t), SourceLength);
+
+    size_t FinalLength = Rr_UTF8ToUTF32(CString, LengthHint, Buffer, SourceLength);
+
+    Rr_PopArena(Arena, SourceLength - FinalLength);
+
+    return (Rr_String){
+        .Data = Buffer,
+        .Length = FinalLength,
+    };
 }
 
-void Rr_DestroyString(Rr_String *String)
+Rr_String Rr_CreateEmptyString(size_t Length, Rr_Arena *Arena)
 {
-    if(String->Data != NULL)
-    {
-        Rr_Free((void *)String->Data);
-    }
+    return (Rr_String){
+        .Data = RR_ALLOC(Arena, Length * sizeof(uint32_t)),
+        .Length = Length,
+    };
+}
+
+void Rr_UpdateString(Rr_String *String, size_t MaxLength, const char *CString, size_t LengthHint)
+{
+    size_t SourceLength = LengthHint > 0 ? LengthHint : strlen(CString);
+
+    String->Length = Rr_UTF8ToUTF32(CString, LengthHint, String->Data, SourceLength);
 }

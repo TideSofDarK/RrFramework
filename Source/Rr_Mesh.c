@@ -16,7 +16,7 @@
 
 static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 {
-    return RR_ARENA_ALLOC_ONE((Rr_Arena *)Arena, Size);
+    return RR_ALLOC((Rr_Arena *)Arena, Size);
 }
 
 static void Rr_CGLTFArenaFree(void *Arena, void *Ptr)

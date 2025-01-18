@@ -4,9 +4,9 @@
 
 #include "Rr_Log.h"
 
+#include <assert.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <assert.h>
 
 static Rr_PlatformInfo PlatformInfo;
 
