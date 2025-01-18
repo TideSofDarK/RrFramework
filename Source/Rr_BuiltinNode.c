@@ -298,7 +298,7 @@ static void Rr_RenderText(
         App,
         Frame->PerDrawBuffer.Buffer,
         &Frame->PerDrawBuffer.Offset,
-        (Rr_Data){ .Ptr = TextData, .Size = TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput) });
+        RR_MAKE_DATA(TextData, TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput)));
 
     Rr_DestroyArenaScratch(Scratch);
 }

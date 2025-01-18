@@ -41,24 +41,41 @@
 typedef struct Rr_Data Rr_Data;
 struct Rr_Data
 {
-    void *Ptr;
+    void *Pointer;
     size_t Size;
 };
 
+/* Macro Overloading */
+
+#define RR_EXPAND(X)                          X
+#define RR_GET_MACRO_2(_1, _2, Name, ...)     Name
+#define RR_GET_MACRO_3(_1, _2, _3, Name, ...) Name
+
+/* Make Data Helper */
+
 #ifdef __cplusplus
-#define RR_MAKE_DATA(Struct) { &(Struct), sizeof(Struct) }
+#define RR_MAKE_DATA_STRUCT(Struct)              { &(Struct), sizeof(Struct) }
+#define RR_MAKE_DATA_POINTER_SIZE(Pointer, Size) { Pointer, Size }
 #else
-#define RR_MAKE_DATA(Struct)      \
-    (Rr_Data)                     \
-    {                             \
-        &(Struct), sizeof(Struct) \
+#define RR_MAKE_DATA_STRUCT(Struct) \
+    (Rr_Data)                       \
+    {                               \
+        &(Struct), sizeof(Struct)   \
+    }
+#define RR_MAKE_DATA_POINTER_SIZE(Pointer, Size) \
+    (Rr_Data)                                    \
+    {                                            \
+        Pointer, Size                            \
     }
 #endif
 
+#define RR_MAKE_DATA(...) \
+    RR_EXPAND(RR_GET_MACRO_2(__VA_ARGS__, RR_MAKE_DATA_POINTER_SIZE, RR_MAKE_DATA_STRUCT)(__VA_ARGS__))
+
 /* Alignment */
 
-#define RR_SAFE_ALIGNMENT        16
-#define RR_ALIGN(Num, Alignment) (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
+#define RR_SAFE_ALIGNMENT             16
+#define RR_ALIGN_POW2(Num, Alignment) (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 
 /* Renderer Configuration */
 

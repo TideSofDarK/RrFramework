@@ -6,6 +6,8 @@
 #include "Rr_Material.h"
 #include "Rr_UploadContext.h"
 
+#include <Rr/Rr_Defines.h>
+
 #include <SDL3/SDL.h>
 
 #include <stb/stb_image.h>
@@ -326,7 +328,7 @@ Rr_Primitive *Rr_CreatePrimitive(Rr_App *App, Rr_UploadContext *UploadContext, R
         0,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
-        (Rr_Data){ .Ptr = RawMesh->VerticesSlice.Data, .Size = VertexBufferSize });
+        RR_MAKE_DATA(RawMesh->VerticesSlice.Data, VertexBufferSize));
 
     Rr_UploadBuffer(
         App,
@@ -336,7 +338,7 @@ Rr_Primitive *Rr_CreatePrimitive(Rr_App *App, Rr_UploadContext *UploadContext, R
         0,
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         VK_ACCESS_INDEX_READ_BIT,
-        (Rr_Data){ .Ptr = RawMesh->IndicesSlice.Data, .Size = IndexBufferSize });
+        RR_MAKE_DATA(RawMesh->IndicesSlice.Data, IndexBufferSize));
 
     return Primitive;
 }

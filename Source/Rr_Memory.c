@@ -41,9 +41,14 @@ void Rr_AlignedFree(void *Ptr)
 
 Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
 {
+    size_t PageSize = Rr_GetPlatformInfo()->PageSize;
+    ReserveSize = RR_ALIGN_POW2(ReserveSize, PageSize);
+    CommitSize = RR_ALIGN_POW2(CommitSize, PageSize);
+
     char *Data = Rr_ReserveMemory(ReserveSize);
     bool Success = Rr_CommitMemory(Data, CommitSize);
     assert(Success);
+
     Rr_Arena *Arena = (Rr_Arena *)Data;
     *Arena = (Rr_Arena){
         .Position = sizeof(Rr_Arena),
@@ -52,6 +57,7 @@ Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
         .Reserved = ReserveSize,
         .Commited = CommitSize,
     };
+
     return Arena;
 }
 
@@ -145,7 +151,7 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
 void *Rr_ArenaAlloc(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
 {
     size_t TotalSize = Size * Count;
-    uintptr_t PositionAligned = RR_ALIGN(Arena->Position, Align);
+    uintptr_t PositionAligned = RR_ALIGN_POW2(Arena->Position, Align);
     uintptr_t Target = PositionAligned + TotalSize;
 
     if(Arena->Commited < Target)
