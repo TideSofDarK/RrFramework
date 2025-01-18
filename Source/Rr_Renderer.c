@@ -4,7 +4,9 @@
 #include "Rr_Buffer.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
+#include "Rr_UI.h"
 #include "Rr_Log.h"
+
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Material.h>
 

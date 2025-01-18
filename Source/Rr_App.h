@@ -36,6 +36,7 @@ struct Rr_FrameTime
 struct Rr_App
 {
     Rr_Renderer Renderer;
+    struct Rr_UI *UI;
     Rr_AppConfig *Config;
     Rr_InputConfig InputConfig;
     Rr_InputState InputState;

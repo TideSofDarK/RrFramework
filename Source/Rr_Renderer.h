@@ -75,26 +75,32 @@ typedef struct Rr_Renderer Rr_Renderer;
 struct Rr_Renderer
 {
     /* Vulkan Instance */
+
     VkInstance Instance;
 
     /* Presentation */
+
     VkSurfaceKHR Surface;
     Rr_Swapchain Swapchain;
     VkExtent2D SwapchainSize;
 
     /* Device */
+
     Rr_PhysicalDevice PhysicalDevice;
     VkDevice Device;
 
     /* Queues */
+
     Rr_Queue GraphicsQueue;
     Rr_Queue TransferQueue;
     // Rr_Queue ComputeQueue;
 
     /* Vulkan Memory Allocator */
+
     VmaAllocator Allocator;
 
     /* Frames */
+
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
     size_t CurrentFrameIndex;
@@ -102,6 +108,7 @@ struct Rr_Renderer
     Rr_DescriptorAllocator GlobalDescriptorAllocator;
 
     /* Render Passes */
+
     struct
     {
         VkRenderPass ColorDepth;
@@ -111,12 +118,15 @@ struct Rr_Renderer
     } RenderPasses;
 
     /* Dear ImGui */
+
     Rr_ImGui ImGui;
 
     /* Immediate Command Pool/Buffer */
+
     Rr_ImmediateMode ImmediateMode;
 
     /* Null Textures */
+
     struct
     {
         Rr_Image *White;
@@ -124,6 +134,7 @@ struct Rr_Renderer
     } NullTextures;
 
     /* Retired Semaphores */
+
     RR_SLICE_TYPE(struct Rr_RetiredSemaphore {
         VkSemaphore Semaphore;
         size_t FrameIndex;
@@ -131,20 +142,25 @@ struct Rr_Renderer
     RetiredSemaphoresSlice;
 
     /* Pending Loads */
+
     RR_SLICE_TYPE(Rr_PendingLoad) PendingLoadsSlice;
 
     /* Main Draw Target */
+
     Rr_DrawTarget *DrawTarget;
 
     /* Texture Samplers */
+
     VkSampler NearestSampler;
     VkSampler LinearSampler;
 
     /* Text Rendering */
+
     Rr_TextPipeline TextPipeline;
     Rr_Font *BuiltinFont;
 
     /* Generic Pipeline Layout */
+
     VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
     VkPipelineLayout GenericPipelineLayout;
 };

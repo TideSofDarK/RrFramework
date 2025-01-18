@@ -3,6 +3,7 @@
 #include "Rr_Load.h"
 #include "Rr_Memory.h"
 #include "Rr_Object.h"
+#include "Rr_UI.h"
 
 #include <Rr/Rr_Input.h>
 #include <Rr/Rr_Platform.h>
@@ -123,6 +124,7 @@ static void Iterate(Rr_App *App)
     igNewFrame();
 
     Rr_PrepareFrame(App);
+    Rr_ResetUI(App, App->UI);
 
     App->Config->IterateFunc(App, App->UserData);
 
@@ -241,6 +243,7 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_InitRenderer(&App);
     Rr_InitLoadingThread(&App);
     Rr_InitImGui(&App);
+    App.UI = Rr_CreateUI(&App);
 
     Config->InitFunc(&App, App.UserData);
 
@@ -275,6 +278,7 @@ void Rr_Run(Rr_AppConfig *Config)
     }
 
     Rr_CleanupLoadingThread(&App);
+    Rr_DestroyUI(&App, App.UI);
     Rr_CleanupRenderer(&App);
 
     Rr_DestroyObjectStorage(&App.ObjectStorage);
