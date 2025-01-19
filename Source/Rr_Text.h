@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Rr_Vulkan.h"
+
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Text.h>
 

@@ -78,7 +78,7 @@ Rr_String Rr_CreateString(const char *CString, size_t LengthHint, Rr_Arena *Aren
 
     uint32_t *Buffer = RR_ALLOC_COUNT(Arena, sizeof(uint32_t), SourceLength);
 
-    size_t FinalLength = Rr_UTF8ToUTF32(CString, LengthHint, Buffer, SourceLength);
+    size_t FinalLength = Rr_UTF8ToUTF32(CString, SourceLength, Buffer, SourceLength);
 
     Rr_PopArena(Arena, SourceLength - FinalLength);
 

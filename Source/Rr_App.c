@@ -124,7 +124,7 @@ static void Iterate(Rr_App *App)
     igNewFrame();
 
     Rr_PrepareFrame(App);
-    Rr_ResetUI(App, App->UI);
+    Rr_BeginUI(App, App->UI);
 
     App->Config->IterateFunc(App, App->UserData);
 

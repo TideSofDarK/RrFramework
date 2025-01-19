@@ -4,6 +4,7 @@
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
 #include "Rr_Pipeline.h"
+
 #include <Rr/Rr_Utility.h>
 
 #include <cJSON/cJSON.h>
@@ -15,6 +16,7 @@ void Rr_InitTextRenderer(Rr_App *App)
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
 
     /* Descriptor Set Layouts */
+
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
     Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS] = Rr_BuildDescriptorLayout(
@@ -31,6 +33,7 @@ void Rr_InitTextRenderer(Rr_App *App)
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
     /* Pipeline Layout */
+
     VkPushConstantRange PushConstantRange = { .offset = 0,
                                               .size = 128,
                                               .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
@@ -46,6 +49,7 @@ void Rr_InitTextRenderer(Rr_App *App)
     vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &TextPipeline->Layout);
 
     /* Pipeline */
+
     Rr_Asset BuiltinTextVERT = Rr_LoadAsset(RR_BUILTIN_TEXT_VERT_SPV);
     Rr_Asset BuiltinTextFRAG = Rr_LoadAsset(RR_BUILTIN_TEXT_FRAG_SPV);
 
@@ -70,6 +74,7 @@ void Rr_InitTextRenderer(Rr_App *App)
     TextPipeline->Pipeline = Rr_CreatePipeline(App, Builder, TextPipeline->Layout);
 
     /* Quad Buffer */
+
     float Quad[8] = {
         0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
     };
@@ -77,6 +82,7 @@ void Rr_InitTextRenderer(Rr_App *App)
     Rr_UploadToDeviceBufferImmediate(App, TextPipeline->QuadBuffer, RR_MAKE_DATA(Quad));
 
     /* Builtin Font */
+
     Renderer->BuiltinFont = Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
 }
 
@@ -191,4 +197,72 @@ void Rr_DestroyFont(Rr_App *App, Rr_Font *Font)
     Rr_DestroyBuffer(App, Font->Buffer);
 
     Rr_DestroyObject(&App->ObjectStorage, Font);
+}
+
+Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)
+{
+    if(String->Length == 0)
+    {
+        return (Rr_Vec2){ 0 };
+    }
+
+    /* @TODO: Optimize. */
+
+    bool CodePending = false;
+    bool PalleteIndexPending = false;
+
+    float AdvanceX = 0.0f;
+    float MaxX = 0.0f;
+    int Lines = 1;
+    for(size_t CharacterIndex = 0; CharacterIndex < String->Length; ++CharacterIndex)
+    {
+        uint32_t Unicode = String->Data[CharacterIndex];
+
+        if(CodePending)
+        {
+            if(PalleteIndexPending)
+            {
+                if(Unicode >= '0' && Unicode <= '7')
+                {
+                    PalleteIndexPending = false;
+                    CodePending = false;
+                    continue;
+                }
+                else
+                {
+                    PalleteIndexPending = false;
+                    CodePending = false;
+                }
+            }
+            else if(Unicode == 'c')
+            {
+                PalleteIndexPending = true;
+                continue;
+            }
+            else
+            {
+                Unicode = '$';
+                CharacterIndex--;
+                CodePending = false;
+            }
+        }
+        else if(Unicode == '$')
+        {
+            CodePending = true;
+            continue;
+        }
+        if(Unicode == '\n')
+        {
+            Lines++;
+            MaxX = RR_MAX(MaxX, AdvanceX);
+            AdvanceX = 0.0f;
+        }
+        else
+        {
+            AdvanceX += Font->Advances[Unicode];
+            MaxX = RR_MAX(MaxX, AdvanceX);
+        }
+    }
+
+    return (Rr_Vec2){ .Width = MaxX * FontSize, .Height = Lines * Font->LineHeight * FontSize };
 }

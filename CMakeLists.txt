@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.26)
 #
 # Setup project
 #
+
 project(RrFramework LANGUAGES C CXX)
 
 set(BUILD_SHARED_LIBS OFF)
@@ -12,6 +13,7 @@ include(CMake/CPM.cmake)
 #
 # Dependencies
 #
+
 find_package(Vulkan REQUIRED volk)
 
 set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
@@ -33,6 +35,7 @@ add_subdirectory("Vendor/imgui/")
 #
 # Embed Function
 #
+
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
 if (CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND CMAKE_C_SIMULATE_ID STREQUAL "")
@@ -110,22 +113,32 @@ endfunction()
 #
 # Add library
 #
+
 file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
     "Source/*.c"
     "Source/*.cxx"
 )
+
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
+
+target_include_directories(${PROJECT_NAME} PUBLIC Include)
+
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
+
+target_sources(${PROJECT_NAME} PRIVATE Vendor/xxHash/xxhash.c Vendor/xxHash/xxh_x86dispatch.c)
+
 target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
-target_include_directories(${PROJECT_NAME} PUBLIC Include)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Vulkan::Headers
     SDL3::SDL3
 )
+
 target_link_libraries(${PROJECT_NAME} PUBLIC
     ${IMGUI_TARGET}
 )
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     TINYEXR_USE_MINIZ=0
     TINYEXR_USE_STB_ZLIB=1
@@ -141,11 +154,13 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     STBI_NO_FAILURE_STRINGS
     VK_NO_PROTOTYPES
 )
+
 target_compile_definitions(
     ${PROJECT_NAME}
     PRIVATE
     "$<$<CONFIG:DEBUG>:-DRR_DEBUG>"
 )
+
 file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.png"
@@ -153,6 +168,7 @@ file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.vert.glsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.frag.glsl"
 )
+
 rr_embed_assets(
     ${PROJECT_NAME}
     "RrBuiltinAssets"

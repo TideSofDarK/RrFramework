@@ -3,6 +3,8 @@
 #include "DemoAssets.inc"
 #include "DevTools.hxx"
 #include "Rr/Rr_String.h"
+#include "Rr/Rr_Text.h"
+#include "Rr/Rr_UI.h"
 
 #include <imgui/imgui.h>
 
@@ -343,6 +345,22 @@ public:
             Rr_ToggleFullscreen(App);
         }
 
+        // ImGui::Begin("nest1", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+        // ImGui::LabelText("sdfsdf", "Test!!");
+        // ImGui::Begin("nest2", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+        // ImGui::LabelText("sdfsdf", "Test!!");
+        // ImGui::End();
+        // ImGui::End();
+
+        Rr_BeginWindow("IMGUI");
+        Rr_Label("Test...\n\nA couple of new lines...");
+        Rr_Label("Label 1");
+        Rr_BeginHorizontal();
+        Rr_Label("Label 2");
+        Rr_Label("Label 3");
+        Rr_EndHorizontal();
+        Rr_EndWindow();
+
         ImGui::Begin("RotTest", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
         static SCamera Camera = {
@@ -354,6 +372,7 @@ public:
         // static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f
         // };
         static Rr_Vec3 LightDirEuler = { -100.0f, 18.0f, 3.16371f };
+        ImGui::LabelText("Camera", "Camera");
         ImGui::SliderFloat2("CameraPitchYaw", &Camera.Pitch, -360.0f, 360.0f, "%f", ImGuiSliderFlags_None);
         ImGui::SliderFloat3("CameraPos", Camera.Position.Elements, -100.0f, 100.0f, "%.3f", ImGuiSliderFlags_None);
         ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
@@ -570,10 +589,11 @@ public:
         };
         LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
 
-        TestString = RR_STRING(
-            "A quick brown fox @#$ \nNew line "
-            "test...\n\nA couple of new lines...",
-            PermanentArena);
+        TestString = RR_STRING("Test...\n\nA couple of new lines...", PermanentArena);
+        // TestString = RR_STRING(
+        //     "A quick brown fox @#$ \nNew line "
+        //     "test...\n\nA couple of new lines...",
+        //     PermanentArena);
         DebugString = RR_STRING("$c3Colored $c1text$c2", PermanentArena);
         LoadingString = Rr_CreateEmptyString(128, PermanentArena);
     }

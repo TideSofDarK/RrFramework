@@ -6,17 +6,27 @@
 extern "C" {
 #endif
 
-extern void Rr_BeginWindow(Rr_App *App, const char *Title);
+typedef struct Rr_UIStyle Rr_UIStyle;
+struct Rr_UIStyle
+{
+    float TitlePadding;
+    float ContentsPadding;
+    Rr_Vec4 OutlineColor;
+    Rr_Vec4 TitleBGColor;
+    Rr_Vec4 ContentsBGColor;
+};
 
-extern void Rr_EndWindow(Rr_App *App);
+extern void Rr_BeginWindow(const char *Title);
 
-extern void Rr_Label(Rr_App *App, const char *Text);
+extern void Rr_EndWindow();
 
-extern void Rr_Button(Rr_App *App, const char *Text);
+extern void Rr_Label(const char *Text);
 
-extern void Rr_BeginHorizontal(Rr_App *App);
+extern void Rr_Button(const char *Text);
 
-extern void Rr_EndHorizontal(Rr_App *App);
+extern void Rr_BeginHorizontal();
+
+extern void Rr_EndHorizontal();
 
 #ifdef __cplusplus
 }
