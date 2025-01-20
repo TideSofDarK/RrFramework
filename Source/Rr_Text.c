@@ -11,6 +11,8 @@
 
 void Rr_InitTextRenderer(Rr_App *App)
 {
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
     Rr_Renderer *Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
@@ -53,7 +55,7 @@ void Rr_InitTextRenderer(Rr_App *App)
     Rr_Asset BuiltinTextVERT = Rr_LoadAsset(RR_BUILTIN_TEXT_VERT_SPV);
     Rr_Asset BuiltinTextFRAG = Rr_LoadAsset(RR_BUILTIN_TEXT_FRAG_SPV);
 
-    Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder();
+    Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder(Scratch.Arena);
     Rr_EnableTriangleFan(Builder);
     Rr_EnablePerVertexInputAttributes(
         Builder,
@@ -84,6 +86,8 @@ void Rr_InitTextRenderer(Rr_App *App)
     /* Builtin Font */
 
     Renderer->BuiltinFont = Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
+
+    Rr_DestroyArenaScratch(Scratch);
 }
 
 void Rr_CleanupTextRenderer(Rr_App *App)

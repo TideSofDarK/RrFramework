@@ -55,6 +55,7 @@ struct Rr_Data
 
 #ifdef __cplusplus
 #define RR_MAKE_DATA_STRUCT(Struct)              { &(Struct), sizeof(Struct) }
+#define RR_MAKE_DATA_ARRAY(Array)               { (Array), sizeof(Array) }
 #define RR_MAKE_DATA_POINTER_SIZE(Pointer, Size) { Pointer, Size }
 #else
 #define RR_MAKE_DATA_STRUCT(Struct) \

@@ -31,13 +31,6 @@ struct Rr_Swapchain
     SDL_AtomicInt bResizePending;
 };
 
-typedef struct Rr_ImGui Rr_ImGui;
-struct Rr_ImGui
-{
-    VkDescriptorPool DescriptorPool;
-    bool IsInitialized;
-};
-
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
 struct Rr_ImmediateMode
 {
@@ -117,10 +110,6 @@ struct Rr_Renderer
         VkRenderPass DepthLoad;
     } RenderPasses;
 
-    /* Dear ImGui */
-
-    Rr_ImGui ImGui;
-
     /* Immediate Command Pool/Buffer */
 
     Rr_ImmediateMode ImmediateMode;
@@ -166,8 +155,6 @@ struct Rr_Renderer
 };
 
 extern void Rr_InitRenderer(Rr_App *App);
-
-extern void Rr_InitImGui(Rr_App *App);
 
 extern void Rr_CleanupRenderer(Rr_App *App);
 

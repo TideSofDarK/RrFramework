@@ -3,6 +3,7 @@
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Asset.h>
 #include <Rr/Rr_BlitNode.h>
+#include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_BuiltinNode.h>
 #include <Rr/Rr_Defines.h>
 #include <Rr/Rr_Graph.h>

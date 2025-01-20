@@ -30,8 +30,6 @@ set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
 set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
 CPMAddPackage("gh:libsdl-org/SDL#main")
 
-add_subdirectory("Vendor/imgui/")
-
 #
 # Embed Function
 #
@@ -122,6 +120,7 @@ file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC Include)
+target_include_directories(${PROJECT_NAME} PRIVATE Vendor)
 
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
@@ -133,10 +132,6 @@ target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Vulkan::Headers
     SDL3::SDL3
-)
-
-target_link_libraries(${PROJECT_NAME} PUBLIC
-    ${IMGUI_TARGET}
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

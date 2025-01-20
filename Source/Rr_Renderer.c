@@ -10,10 +10,6 @@
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Material.h>
 
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include <imgui/cimgui.h>
-#include <imgui/cimgui_impl.h>
-
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 
@@ -400,79 +396,6 @@ static void Rr_InitDescriptors(Rr_App *App)
 static PFN_vkVoidFunction Rr_LoadVulkanFunction(const char *FuncName, void *UserData)
 {
     return (PFN_vkVoidFunction)vkGetInstanceProcAddr(volkGetLoadedInstance(), FuncName);
-}
-
-void Rr_InitImGui(Rr_App *App)
-{
-    SDL_Window *Window = App->Window;
-    Rr_Renderer *Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
-
-    VkDescriptorPoolSize PoolSizes[] = {
-        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 },
-    };
-
-    VkDescriptorPoolCreateInfo PoolCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-        .maxSets = 1000,
-        .poolSizeCount = (uint32_t)SDL_arraysize(PoolSizes),
-        .pPoolSizes = PoolSizes,
-    };
-
-    vkCreateDescriptorPool(Device, &PoolCreateInfo, NULL, &Renderer->ImGui.DescriptorPool);
-
-    igCreateContext(NULL);
-    ImGuiIO *IO = igGetIO();
-    IO->IniFilename = NULL;
-
-    ImGui_ImplVulkan_LoadFunctions(Rr_LoadVulkanFunction, NULL);
-    ImGui_ImplSDL3_InitForVulkan(Window);
-
-    ImGui_ImplVulkan_InitInfo InitInfo = { .Instance = Renderer->Instance,
-                                           .PhysicalDevice = Renderer->PhysicalDevice.Handle,
-                                           .Device = Device,
-                                           .QueueFamily = Renderer->GraphicsQueue.FamilyIndex,
-                                           .Queue = Renderer->GraphicsQueue.Handle,
-                                           .DescriptorPool = Renderer->ImGui.DescriptorPool,
-                                           .MinImageCount = 3,
-                                           .ImageCount = 3,
-                                           .UseDynamicRendering = false,
-                                           .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
-                                           .RenderPass = Renderer->RenderPasses.ColorDepthLoad };
-
-    ImGui_ImplVulkan_Init(&InitInfo);
-
-    float WindowScale = SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(Window));
-    ImGuiStyle_ScaleAllSizes(igGetStyle(), WindowScale);
-
-    /* Init default font. */
-    Rr_Asset MartianMonoTTF = Rr_LoadAsset(RR_BUILTIN_MARTIANMONO_TTF);
-    ImFontConfig *FontConfig = ImFontConfig_ImFontConfig();
-    FontConfig->FontDataOwnedByAtlas = false; /* Don't transfer asset ownership to
-                                                    ImGui, it will crash otherwise! */
-    ImFontAtlas_AddFontFromMemoryTTF(
-        IO->Fonts,
-        (void *)MartianMonoTTF.Data,
-        (int32_t)MartianMonoTTF.Length,
-        SDL_floorf(14.0f * WindowScale),
-        FontConfig,
-        NULL);
-    igMemFree(FontConfig);
-
-    ImGui_ImplVulkan_CreateFontsTexture();
-
-    Renderer->ImGui.IsInitialized = true;
 }
 
 static void Rr_InitImmediateMode(Rr_App *App)
@@ -971,14 +894,6 @@ void Rr_CleanupRenderer(Rr_App *App)
     vkDeviceWaitIdle(Renderer->Device);
 
     App->Config->CleanupFunc(App, App->UserData);
-
-    if(Renderer->ImGui.IsInitialized)
-    {
-        ImGui_ImplVulkan_Shutdown();
-        ImGui_ImplSDL3_Shutdown();
-        igDestroyContext(NULL);
-        vkDestroyDescriptorPool(Device, Renderer->ImGui.DescriptorPool, NULL);
-    }
 
     Rr_CleanupTextRenderer(App);
 

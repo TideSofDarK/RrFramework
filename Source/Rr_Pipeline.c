@@ -167,7 +167,6 @@ Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder,
         vkDestroyShaderModule(Renderer->Device, FragModule, NULL);
     }
 
-    Rr_Free(PipelineBuilder);
     Rr_StackFree(ShaderStages);
 
     return Pipeline;
@@ -182,9 +181,9 @@ void Rr_DestroyPipeline(Rr_App *App, Rr_Pipeline *Pipeline)
     Rr_DestroyObject(&App->ObjectStorage, Pipeline);
 }
 
-Rr_PipelineBuilder *Rr_CreatePipelineBuilder(void)
+Rr_PipelineBuilder *Rr_CreatePipelineBuilder(Rr_Arena *Arena)
 {
-    Rr_PipelineBuilder *PipelineBuilder = Rr_Calloc(1, sizeof(Rr_PipelineBuilder));
+    Rr_PipelineBuilder *PipelineBuilder = RR_ALLOC(Arena, sizeof(Rr_PipelineBuilder));
     *PipelineBuilder = (Rr_PipelineBuilder){
         .InputAssembly = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -456,4 +455,28 @@ void Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *GenericPipeline)
 {
     Rr_DestroyPipeline(App, GenericPipeline->Pipeline);
     Rr_DestroyObject(&App->ObjectStorage, GenericPipeline);
+}
+
+Rr_GraphicsPipeline *Rr_BuildGraphicsPipeline(
+    Rr_App *App,
+    Rr_PipelineBuilder *PipelineBuilder)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+
+    Rr_GraphicsPipeline *Pipeline = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Pipeline *TPipeline  = Rr_CreatePipeline(App, PipelineBuilder, Renderer->GenericPipelineLayout);
+    *Pipeline = (Rr_GraphicsPipeline){
+        .Handle = TPipeline->Handle,
+    };
+
+    return Pipeline;
+}
+
+void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipeline)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+
+    vkDestroyPipeline(Renderer->Device, GraphicsPipeline->Handle, NULL);
+
+    Rr_DestroyObject(&App->ObjectStorage, GraphicsPipeline);
 }

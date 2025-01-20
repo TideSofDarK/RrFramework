@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Rr_Vulkan.h"
+
 #include <Rr/Rr_Pipeline.h>
 
 struct Rr_Renderer;
@@ -10,6 +11,12 @@ struct Rr_Pipeline
 {
     VkPipeline Handle;
     VkRenderPass RenderPass;
+    uint32_t ColorAttachmentCount;
+};
+
+struct Rr_GraphicsPipeline
+{
+    VkPipeline Handle;
     uint32_t ColorAttachmentCount;
 };
 
@@ -45,35 +52,6 @@ struct Rr_PipelineBuilder
 
     size_t ColorAttachmentCount;
 };
-
-typedef enum Rr_VertexInputType
-{
-    RR_VERTEX_INPUT_TYPE_NONE,
-    RR_VERTEX_INPUT_TYPE_FLOAT,
-    RR_VERTEX_INPUT_TYPE_UINT,
-    RR_VERTEX_INPUT_TYPE_VEC2,
-    RR_VERTEX_INPUT_TYPE_VEC3,
-    RR_VERTEX_INPUT_TYPE_VEC4,
-} Rr_VertexInputType;
-
-typedef struct Rr_VertexInputAttribute Rr_VertexInputAttribute;
-struct Rr_VertexInputAttribute
-{
-    Rr_VertexInputType Type;
-    uint32_t Location;
-};
-
-typedef struct Rr_VertexInput Rr_VertexInput;
-struct Rr_VertexInput
-{
-    Rr_VertexInputAttribute Attributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
-};
-
-extern void Rr_EnableTriangleFan(Rr_PipelineBuilder *PipelineBuilder);
-
-extern void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder *PipelineBuilder, Rr_VertexInput *VertexInput);
-
-extern void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder *PipelineBuilder, Rr_VertexInput *VertexInput);
 
 extern Rr_Pipeline *Rr_CreatePipeline(
     Rr_App *App,

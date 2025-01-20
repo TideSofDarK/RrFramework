@@ -2,10 +2,6 @@
 
 #include "Rr_App.h"
 
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include <imgui/cimgui.h>
-#include <imgui/cimgui_impl.h>
-
 Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
@@ -72,29 +68,6 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)
     Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-
-    /* Render Dear ImGui if needed. */
-
-    Rr_ImGui *ImGui = &Renderer->ImGui;
-    if(ImGui->IsInitialized)
-    {
-        VkRenderPassBeginInfo RenderPassBeginInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = Renderer->RenderPasses.ColorDepthLoad,
-            .framebuffer = Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
-            .renderArea.extent.width =
-                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Extent.width,
-            .renderArea.extent.height =
-                Renderer->DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Extent.height,
-            .clearValueCount = 0,
-            .pClearValues = NULL,
-        };
-        vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        ImGui_ImplVulkan_RenderDrawData(igGetDrawData(), CommandBuffer, VK_NULL_HANDLE);
-
-        vkCmdEndRenderPass(CommandBuffer);
-    }
 
     Rr_ImageBarrier ColorImageTransition = {
         .CommandBuffer = CommandBuffer,

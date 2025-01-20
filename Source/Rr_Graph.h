@@ -36,6 +36,7 @@ struct Rr_GraphNode
         Rr_PresentNode PresentNode;
         Rr_BlitNode BlitNode;
     } Union;
+    Rr_Arena *Arena;
     Rr_GraphNodeType Type;
     const char *Name;
     RR_SLICE_TYPE(Rr_GraphNode *) Dependencies;

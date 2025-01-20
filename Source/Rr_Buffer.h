@@ -3,9 +3,10 @@
 #include "Rr_Load.h"
 #include "Rr_Vulkan.h"
 
+#include <Rr/Rr_Buffer.h>
+
 struct Rr_UploadContext;
 
-typedef struct Rr_Buffer Rr_Buffer;
 struct Rr_Buffer
 {
     VkBuffer Handle;
@@ -27,15 +28,11 @@ extern Rr_Buffer *Rr_CreateBuffer(
     VmaMemoryUsage MemoryUsage,
     bool CreateMapped);
 
-extern Rr_Buffer *Rr_CreateDeviceVertexBuffer(Rr_App *App, size_t Size);
-
 extern Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, size_t Size);
 
 extern Rr_Buffer *Rr_CreateMappedBuffer(Rr_App *App, size_t Size, VkBufferUsageFlags UsageFlags);
 
 extern Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, size_t Size);
-
-extern void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer);
 
 extern void Rr_UploadBufferAligned(
     Rr_App *App,
@@ -58,8 +55,6 @@ extern void Rr_UploadBuffer(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     Rr_Data Data);
-
-extern void Rr_UploadToDeviceBufferImmediate(Rr_App *App, Rr_Buffer *DstBuffer, Rr_Data Data);
 
 extern void Rr_UploadToUniformBuffer(
     Rr_App *App,

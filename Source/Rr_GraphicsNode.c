@@ -12,7 +12,6 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     const char *Name,
     Rr_GraphicsNodeInfo *Info,
-    char *GlobalsData,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount)
 {
@@ -20,11 +19,12 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_GRAPHICS, Name, Dependencies, DependencyCount);
+    GraphNode->Arena = Frame->Arena;
 
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
-    *GraphicsNode = (Rr_GraphicsNode){
-        .Info = *Info,
-    };
+    GraphicsNode->Info = *Info;
+    GraphicsNode->Encoded = RR_ALLOC(Frame->Arena, sizeof(Rr_GraphicsNodeFunction));
+    GraphicsNode->EncodedFirst = GraphicsNode->Encoded;
 
     if(GraphicsNode->Info.DrawTarget == NULL)
     {
@@ -33,29 +33,27 @@ Rr_GraphNode *Rr_AddGraphicsNode(
         GraphicsNode->Info.Viewport.Height = (int32_t)Renderer->SwapchainSize.height;
     }
 
-    memcpy(GraphicsNode->GlobalsData, GlobalsData, Info->BasePipeline->Sizes.Globals);
-
     return GraphNode;
 }
 
 void Rr_DrawStaticMesh(Rr_App *App, Rr_GraphNode *Node, Rr_StaticMesh *StaticMesh, Rr_Data PerDrawData)
 {
-    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
-
-    for(size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
-    {
-        *RR_SLICE_PUSH(&Node->Union.GraphicsNode.DrawPrimitivesSlice, Frame->Arena) = (Rr_DrawPrimitiveInfo){
-            .PerDrawOffset = Offset,
-            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
-            .Material = StaticMesh->Materials[PrimitiveIndex],
-        };
-    }
-
-    Rr_CopyToMappedUniformBuffer(App, Frame->PerDrawBuffer.Buffer, &Frame->PerDrawBuffer.Offset, PerDrawData);
+    // SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+    //
+    // Rr_Renderer *Renderer = &App->Renderer;
+    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    // VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
+    //
+    // for(size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
+    // {
+    //     *RR_SLICE_PUSH(&Node->Union.GraphicsNode.DrawPrimitivesSlice, Frame->Arena) = (Rr_DrawPrimitiveInfo){
+    //         .PerDrawOffset = Offset,
+    //         .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+    //         .Material = StaticMesh->Materials[PrimitiveIndex],
+    //     };
+    // }
+    //
+    // Rr_CopyToMappedUniformBuffer(App, Frame->PerDrawBuffer.Buffer, &Frame->PerDrawBuffer.Offset, PerDrawData);
 }
 
 void Rr_DrawStaticMeshOverrideMaterials(
@@ -66,22 +64,22 @@ void Rr_DrawStaticMeshOverrideMaterials(
     Rr_StaticMesh *StaticMesh,
     Rr_Data PerDrawData)
 {
-    SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
-
-    for(size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
-    {
-        *RR_SLICE_PUSH(&Node->Union.GraphicsNode.DrawPrimitivesSlice, Frame->Arena) = (Rr_DrawPrimitiveInfo){
-            .PerDrawOffset = Offset,
-            .Primitive = StaticMesh->Primitives[PrimitiveIndex],
-            .Material = PrimitiveIndex < OverrideMaterialCount ? OverrideMaterials[PrimitiveIndex] : NULL,
-        };
-    }
-
-    Rr_CopyToMappedUniformBuffer(App, Frame->PerDrawBuffer.Buffer, &Frame->PerDrawBuffer.Offset, PerDrawData);
+    // SDL_assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+    //
+    // Rr_Renderer *Renderer = &App->Renderer;
+    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    // VkDeviceSize Offset = Frame->PerDrawBuffer.Offset;
+    //
+    // for(size_t PrimitiveIndex = 0; PrimitiveIndex < StaticMesh->PrimitiveCount; ++PrimitiveIndex)
+    // {
+    //     *RR_SLICE_PUSH(&Node->Union.GraphicsNode.DrawPrimitivesSlice, Frame->Arena) = (Rr_DrawPrimitiveInfo){
+    //         .PerDrawOffset = Offset,
+    //         .Primitive = StaticMesh->Primitives[PrimitiveIndex],
+    //         .Material = PrimitiveIndex < OverrideMaterialCount ? OverrideMaterials[PrimitiveIndex] : NULL,
+    //     };
+    // }
+    //
+    // Rr_CopyToMappedUniformBuffer(App, Frame->PerDrawBuffer.Buffer, &Frame->PerDrawBuffer.Offset, PerDrawData);
 }
 
 static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
@@ -91,52 +89,53 @@ static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
     char *GlobalsData,
     Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
-
-    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1, Scratch.Arena);
-
-    Rr_GenericRenderingContext Context = {
-        .BasePipeline = PassInfo->BasePipeline,
-        .OverridePipeline = PassInfo->OverridePipeline,
-    };
-
-    /* Upload globals data. */
-    /* @TODO: Make these take a Rr_WriteBuffer instead! */
-    VkDeviceSize BufferOffset = CommonBuffer->Offset;
-    Rr_UploadToUniformBuffer(
-        App,
-        UploadContext,
-        CommonBuffer->Buffer,
-        &CommonBuffer->Offset,
-        RR_MAKE_DATA(GlobalsData, Context.BasePipeline->Sizes.Globals));
-
-    /* Allocate, write and bind globals descriptor set. */
-    Context.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS]);
-    Rr_WriteBufferDescriptor(
-        &DescriptorWriter,
-        0,
-        CommonBuffer->Buffer->Handle,
-        Context.BasePipeline->Sizes.Globals,
-        BufferOffset,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        Scratch.Arena);
-    //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View,
-    //    Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    //    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, Context.GlobalsDescriptorSet);
-    Rr_ResetDescriptorWriter(&DescriptorWriter);
-
-    Rr_DestroyArenaScratch(Scratch);
-
-    return Context;
+    // Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    //
+    // Rr_Renderer *Renderer = &App->Renderer;
+    //
+    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    // Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
+    //
+    // Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1, Scratch.Arena);
+    //
+    // Rr_GenericRenderingContext Context = {
+    //     .BasePipeline = PassInfo->BasePipeline,
+    //     .OverridePipeline = PassInfo->OverridePipeline,
+    // };
+    //
+    // /* Upload globals data. */
+    // /* @TODO: Make these take a Rr_WriteBuffer instead! */
+    // VkDeviceSize BufferOffset = CommonBuffer->Offset;
+    // Rr_UploadToUniformBuffer(
+    //     App,
+    //     UploadContext,
+    //     CommonBuffer->Buffer,
+    //     &CommonBuffer->Offset,
+    //     RR_MAKE_DATA(GlobalsData, Context.BasePipeline->Sizes.Globals));
+    //
+    // /* Allocate, write and bind globals descriptor set. */
+    // Context.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
+    //     &Frame->DescriptorAllocator,
+    //     Renderer->Device,
+    //     Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS]);
+    // Rr_WriteBufferDescriptor(
+    //     &DescriptorWriter,
+    //     0,
+    //     CommonBuffer->Buffer->Handle,
+    //     Context.BasePipeline->Sizes.Globals,
+    //     BufferOffset,
+    //     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    //     Scratch.Arena);
+    // //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View,
+    // //    Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    // //    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    // Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, Context.GlobalsDescriptorSet);
+    // Rr_ResetDescriptorWriter(&DescriptorWriter);
+    //
+    // Rr_DestroyArenaScratch(Scratch);
+    //
+    // return Context;
+    return (Rr_GenericRenderingContext){ 0 };
 }
 
 SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo *A, Rr_DrawPrimitiveInfo *B)
@@ -353,17 +352,18 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
 
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
-    Rr_UploadContext UploadContext = {
-        .StagingBuffer = &Frame->StagingBuffer,
-        .TransferCommandBuffer = CommandBuffer,
-    };
-
-    Rr_GenericRenderingContext GenericRenderingContext =
-        Rr_MakeGenericRenderingContext(App, &UploadContext, &Node->Info, Node->GlobalsData, Scratch.Arena);
+    // Rr_UploadContext UploadContext = {
+    //     .StagingBuffer = &Frame->StagingBuffer,
+    //     .TransferCommandBuffer = CommandBuffer,
+    // };
+    //
+    // Rr_GenericRenderingContext GenericRenderingContext =
+    //     Rr_MakeGenericRenderingContext(App, &UploadContext, &Node->Info, Node->GlobalsData, Scratch.Arena);
 
     /* Line up appropriate clear values. */
 
-    uint32_t ColorAttachmentCount = Node->Info.BasePipeline->Pipeline->ColorAttachmentCount;
+    // uint32_t ColorAttachmentCount = Node->Info.BasePipeline->Pipeline->ColorAttachmentCount;
+    uint32_t ColorAttachmentCount = 1;
     VkClearValue *ClearValues = Rr_StackAlloc(VkClearValue, ColorAttachmentCount + 1);
     for(uint32_t Index = 0; Index < ColorAttachmentCount; ++Index)
     {
@@ -378,7 +378,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
         .pNext = NULL,
         .framebuffer = DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
-        .renderPass = Node->Info.BasePipeline->Pipeline->RenderPass,
+        .renderPass = Renderer->RenderPasses.ColorDepth,
         .clearValueCount = ColorAttachmentCount + 1,
         .pClearValues = ClearValues,
     };
@@ -412,9 +412,81 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             .extent.height = Viewport.Height,
         });
 
-    Rr_RenderGeneric(App, &GenericRenderingContext, Node->DrawPrimitivesSlice, CommandBuffer, Scratch.Arena);
+    for(Rr_GraphicsNodeFunction *Function = Node->EncodedFirst; Function != NULL; Function = Function->Next)
+    {
+        switch(Function->Type)
+        {
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
+            {
+                Rr_BufferBinding *Binding = (Rr_BufferBinding *)Function->Args;
+                vkCmdBindIndexBuffer(CommandBuffer, Binding->Buffer->Handle, Binding->Offset, VK_INDEX_TYPE_UINT32);
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
+            {
+                Rr_BufferBinding *Binding = (Rr_BufferBinding *)Function->Args;
+                vkCmdBindVertexBuffers(
+                    CommandBuffer,
+                    Binding->Slot,
+                    1,
+                    &Binding->Buffer->Handle,
+                    &(VkDeviceSize){ Binding->Offset });
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED:
+            {
+                Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
+                vkCmdDrawIndexed(
+                    CommandBuffer,
+                    Args->IndexCount,
+                    Args->InstanceCount,
+                    Args->FirstIndex,
+                    Args->VertexOffset,
+                    Args->FirstInstance);
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
+            {
+                vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (*(Rr_GraphicsPipeline **)Function->Args)->Handle);
+            }
+            break;
+            default:
+            {
+            }
+            break;
+        }
+    }
 
     vkCmdEndRenderPass(CommandBuffer);
 
     Rr_DestroyArenaScratch(Scratch);
+}
+
+#define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType, ArgsData)                   \
+    Rr_Arena *Arena = Node->Arena;                                                  \
+    Rr_GraphicsNode *GraphicsNode = (Rr_GraphicsNode *)&Node->Union.GraphicsNode;   \
+    GraphicsNode->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_GraphicsNodeFunction)); \
+    GraphicsNode->Encoded = GraphicsNode->Encoded->Next;                            \
+    GraphicsNode->Encoded->Args = RR_ALLOC(Arena, sizeof(ArgsType));                \
+    memcpy(GraphicsNode->Encoded->Args, ArgsData, sizeof(ArgsType));                \
+    GraphicsNode->Encoded->Type = FunctionType
+
+void Rr_DrawIndexed(Rr_GraphNode *Node, Rr_DrawIndexedArgs *Args)
+{
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED, Rr_DrawIndexedArgs, Args);
+}
+
+void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding)
+{
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER, Rr_BufferBinding, Binding);
+}
+
+void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding)
+{
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER, Rr_BufferBinding, Binding);
+}
+
+void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline)
+{
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE, Rr_GraphicsPipeline *, &GraphicsPipeline);
 }

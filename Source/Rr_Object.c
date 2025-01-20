@@ -20,6 +20,7 @@ union Rr_Object
     Rr_Material Material;
     Rr_Pipeline Pipeline;
     Rr_GenericPipeline GenericPipeline;
+    Rr_GraphicsPipeline GraphicsPipeline;
     Rr_DrawTarget DrawTarget;
     void *Next;
 };
