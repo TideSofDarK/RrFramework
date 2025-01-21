@@ -1,5 +1,3 @@
-#if defined(_WIN32)
-
 #include <Rr/Rr_Platform.h>
 
 #define WIN32_LEAN_AND_MEAN
@@ -40,5 +38,3 @@ void Rr_DecommitMemory(void *Data, size_t Size)
 {
     VirtualFree(Data, Size, MEM_DECOMMIT);
 }
-
-#endif

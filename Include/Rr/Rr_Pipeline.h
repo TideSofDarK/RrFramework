@@ -76,9 +76,7 @@ extern Rr_GenericPipeline *Rr_BuildGenericPipeline(
 
 extern void Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *GenericPipeline);
 
-extern Rr_GraphicsPipeline *Rr_BuildGraphicsPipeline(
-    Rr_App *App,
-    Rr_PipelineBuilder *PipelineBuilder);
+extern Rr_GraphicsPipeline *Rr_BuildGraphicsPipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder);
 
 extern void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipelin);
 

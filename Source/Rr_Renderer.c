@@ -250,8 +250,8 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         SDL_Rect DisplayBounds;
         SDL_GetDisplayBounds(DisplayID, &DisplayBounds);
 
-        uint32_t DrawTargetWidth = SDL_max(DisplayBounds.w, *Width);
-        uint32_t DrawTargetHeight = SDL_max(DisplayBounds.h, *Height);
+        uint32_t DrawTargetWidth = RR_MAX((uint32_t)DisplayBounds.w, *Width);
+        uint32_t DrawTargetHeight = RR_MAX((uint32_t)DisplayBounds.h, *Height);
         Renderer->DrawTarget = Rr_CreateDrawTarget(App, DrawTargetWidth, DrawTargetHeight);
 
         Rr_LogVulkan("Creating primary draw target with size %dx%d", DrawTargetWidth, DrawTargetHeight);
@@ -779,7 +779,7 @@ void Rr_InitRenderer(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     SDL_Window *Window = App->Window;
-    Rr_AppConfig *Config = App->Config;
+    // Rr_AppConfig *Config = App->Config;
 
     volkInitializeCustom((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
 
@@ -992,8 +992,8 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
 
 void Rr_PrepareFrame(Rr_App *App)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    // Rr_Renderer *Renderer = &App->Renderer;
+    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_ProcessPendingLoads(App);
 }

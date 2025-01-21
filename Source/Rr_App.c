@@ -1,8 +1,9 @@
 #include "Rr_App.h"
 
 #include "Rr_Load.h"
+#include "Rr_Material.h"
 #include "Rr_Memory.h"
-#include "Rr_Object.h"
+#include "Rr_Mesh.h"
 #include "Rr_UI.h"
 
 #include <Rr/Rr_Input.h>
@@ -11,6 +12,22 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_vulkan.h>
+
+union Rr_Object
+{
+    Rr_Buffer Buffer;
+    Rr_Primitive Primitive;
+    Rr_StaticMesh StaticMesh;
+    Rr_SkeletalMesh SkeletalMesh;
+    Rr_Image Image;
+    Rr_Font Font;
+    Rr_Material Material;
+    Rr_Pipeline Pipeline;
+    Rr_GenericPipeline GenericPipeline;
+    Rr_GraphicsPipeline GraphicsPipeline;
+    Rr_DrawTarget DrawTarget;
+    void *Next;
+};
 
 static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
@@ -181,7 +198,7 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
     FrameTime->Now = SDL_GetPerformanceCounter();
 }
 
-Rr_IntVec2 Rr_GetDefaultWindowSize()
+Rr_IntVec2 Rr_GetDefaultWindowSize(void)
 {
     SDL_DisplayID DisplayID = SDL_GetPrimaryDisplay();
 
@@ -206,18 +223,16 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
 
-    Rr_App App = (Rr_App){
-        .Config = Config,
-        .Window = SDL_CreateWindow(
-            Config->Title,
-            WindowSize.Width,
-            WindowSize.Height,
-            SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY),
-        .PermanentArena = Rr_CreateDefaultArena(),
-        .SyncArena = Rr_CreateSyncArena(),
-        .ObjectStorage = Rr_CreateObjectStorage(),
-        .UserData = Config->UserData,
-    };
+    Rr_App App = (Rr_App){ 0 };
+    App.Config = Config;
+    App.Window = SDL_CreateWindow(
+        Config->Title,
+        WindowSize.Width,
+        WindowSize.Height,
+        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    App.PermanentArena = Rr_CreateDefaultArena();
+    App.SyncArena = Rr_CreateSyncArena();
+    App.UserData = Config->UserData;
 
     Rr_SetScratchTLS(&App.ScratchArenaTLS);
 
@@ -269,8 +284,6 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_CleanupLoadingThread(&App);
     Rr_DestroyUI(&App, App.UI);
     Rr_CleanupRenderer(&App);
-
-    Rr_DestroyObjectStorage(&App.ObjectStorage);
 
     Rr_DestroyArena(App.PermanentArena);
     Rr_DestroySyncArena(&App.SyncArena);
@@ -331,4 +344,36 @@ double Rr_GetTimeSeconds(Rr_App *App)
 void Rr_SetRelativeMouseMode(Rr_App *App, bool IsRelative)
 {
     SDL_SetWindowRelativeMouseMode(App->Window, IsRelative ? true : false);
+}
+
+void *Rr_CreateObject(Rr_App *App)
+{
+    SDL_LockSpinlock(&App->ObjectStorage.Lock);
+
+    Rr_Object *NewObject = (Rr_Object *)App->ObjectStorage.FreeObject;
+    if(NewObject == NULL)
+    {
+        NewObject = RR_ALLOC(App->PermanentArena, sizeof(Rr_Object));
+    }
+    else
+    {
+        App->ObjectStorage.FreeObject = NewObject->Next;
+    }
+    App->ObjectStorage.ObjectCount++;
+
+    SDL_UnlockSpinlock(&App->ObjectStorage.Lock);
+
+    return RR_ZERO_PTR(NewObject);
+}
+
+void Rr_DestroyObject(Rr_App *App, void *Object)
+{
+    SDL_LockSpinlock(&App->ObjectStorage.Lock);
+
+    Rr_Object *DestroyedObject = (Rr_Object *)Object;
+    DestroyedObject->Next = App->ObjectStorage.FreeObject;
+    App->ObjectStorage.FreeObject = DestroyedObject;
+    App->ObjectStorage.ObjectCount--;
+
+    SDL_UnlockSpinlock(&App->ObjectStorage.Lock);
 }

@@ -8,12 +8,11 @@
 
 #include <xxHash/xxhash.h>
 
-typedef enum Rr_UIWidgetType Rr_UIWidgetType;
-enum Rr_UIWidgetType
+typedef enum
 {
     RR_UI_WIDGET_TYPE_LABEL,
     RR_UI_WIDGET_TYPE_BUTTON,
-};
+} Rr_UIWidgetType;
 
 typedef struct Rr_UILabel Rr_UILabel;
 struct Rr_UILabel
@@ -66,7 +65,7 @@ struct Rr_UI
 
 static Rr_UI *GUI;
 
-static float Rr_GetWindowTitleHeight()
+static float Rr_GetWindowTitleHeight(void)
 {
     return GUI->Style.TitlePadding * GUI->FontSize + GUI->Font->LineHeight * GUI->FontSize;
 }
@@ -97,7 +96,7 @@ void Rr_BeginWindow(const char *Title)
     GUI->Cursor.Y = GUI->Window->Position.Y + GUI->Style.ContentsPadding * GUI->FontSize + Rr_GetWindowTitleHeight();
 }
 
-void Rr_EndWindow()
+void Rr_EndWindow(void)
 {
     GUI->Window = NULL;
 }
@@ -143,11 +142,11 @@ void Rr_Button(const char *Text)
 {
 }
 
-void Rr_BeginHorizontal()
+void Rr_BeginHorizontal(void)
 {
 }
 
-void Rr_EndHorizontal()
+void Rr_EndHorizontal(void)
 {
 }
 

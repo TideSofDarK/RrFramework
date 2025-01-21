@@ -2,7 +2,6 @@
 
 #include "Rr_App.h"
 #include "Rr_Log.h"
-#include "Rr_Object.h"
 
 #include <SDL3/SDL_assert.h>
 
@@ -16,7 +15,7 @@ Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder,
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Pipeline *Pipeline = (Rr_Pipeline *)Rr_CreateObject(&App->ObjectStorage);
+    Rr_Pipeline *Pipeline = (Rr_Pipeline *)Rr_CreateObject(App);
     Pipeline->ColorAttachmentCount = PipelineBuilder->ColorAttachmentCount;
 
     /* Create shader modules. */
@@ -178,7 +177,7 @@ void Rr_DestroyPipeline(Rr_App *App, Rr_Pipeline *Pipeline)
 
     vkDestroyPipeline(Renderer->Device, Pipeline->Handle, NULL);
 
-    Rr_DestroyObject(&App->ObjectStorage, Pipeline);
+    Rr_DestroyObject(App, Pipeline);
 }
 
 Rr_PipelineBuilder *Rr_CreatePipelineBuilder(Rr_Arena *Arena)
@@ -413,7 +412,7 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
     };
     Rr_EnablePerVertexInputAttributes(PipelineBuilder, &VertexInput);
 
-    Rr_GenericPipeline *Pipeline = Rr_CreateObject(&App->ObjectStorage);
+    Rr_GenericPipeline *Pipeline = Rr_CreateObject(App);
     *Pipeline = (Rr_GenericPipeline){
         .Pipeline = Rr_CreatePipeline(App, PipelineBuilder, Renderer->GenericPipelineLayout),
         .Sizes = { .Globals = Globals, .Material = Material, .PerDraw = PerDraw },
@@ -454,17 +453,15 @@ Rr_GenericPipeline *Rr_BuildGenericPipeline(
 void Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *GenericPipeline)
 {
     Rr_DestroyPipeline(App, GenericPipeline->Pipeline);
-    Rr_DestroyObject(&App->ObjectStorage, GenericPipeline);
+    Rr_DestroyObject(App, GenericPipeline);
 }
 
-Rr_GraphicsPipeline *Rr_BuildGraphicsPipeline(
-    Rr_App *App,
-    Rr_PipelineBuilder *PipelineBuilder)
+Rr_GraphicsPipeline *Rr_BuildGraphicsPipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_GraphicsPipeline *Pipeline = Rr_CreateObject(&App->ObjectStorage);
-    Rr_Pipeline *TPipeline  = Rr_CreatePipeline(App, PipelineBuilder, Renderer->GenericPipelineLayout);
+    Rr_GraphicsPipeline *Pipeline = Rr_CreateObject(App);
+    Rr_Pipeline *TPipeline = Rr_CreatePipeline(App, PipelineBuilder, Renderer->GenericPipelineLayout);
     *Pipeline = (Rr_GraphicsPipeline){
         .Handle = TPipeline->Handle,
     };
@@ -478,5 +475,5 @@ void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipeli
 
     vkDestroyPipeline(Renderer->Device, GraphicsPipeline->Handle, NULL);
 
-    Rr_DestroyObject(&App->ObjectStorage, GraphicsPipeline);
+    Rr_DestroyObject(App, GraphicsPipeline);
 }

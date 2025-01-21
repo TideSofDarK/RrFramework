@@ -3,35 +3,13 @@ cmake_minimum_required(VERSION 3.26)
 #
 # Setup project
 #
+
 project(RrDemo LANGUAGES CXX)
-
-#
-# Setup warnings and sanitizers
-#
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-        add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-parameter -Wno-missing-braces)
-
-        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-            add_compile_options(-Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unsafe-buffer-usage -Wno-pre-c++20-compat-pedantic)
-        endif ()
-
-        if (ENABLE_SANITIZERS)
-            add_compile_options(-fsanitize=address,undefined)
-            add_link_options(-fsanitize=address,undefined)
-        endif ()
-    elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
-        add_compile_options(/W3)
-
-        if (ENABLE_SANITIZERS)
-            target_compile_options(/fsanitize=address)
-        endif ()
-    endif ()
-endif ()
 
 #
 # Assets
 #
+
 file(GLOB_RECURSE RR_DEMO_ASSETS CONFIGURE_DEPENDS
     "${RR_ASSET_PATH}*.png"
     "${RR_ASSET_PATH}*.exr"
@@ -43,19 +21,28 @@ file(GLOB_RECURSE RR_DEMO_ASSETS CONFIGURE_DEPENDS
 #
 # Add executable target
 #
+
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "Source/*.cxx"
 )
+
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
+
+rr_enable_debug_options(${PROJECT_NAME})
+
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+
 target_compile_definitions(${PROJECT_NAME} PUBLIC RR_ASSET_PATH=${RR_ASSET_PATH})
+
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
+
 if (WIN32)
     if (MINGW)
         set(CMAKE_EXE_LINKER_FLAGS "-static")
     endif ()
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE On)
 endif ()
+
 file(GLOB_RECURSE RR_DEMO_BUILTIN_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.png"
@@ -65,6 +52,7 @@ file(GLOB_RECURSE RR_DEMO_BUILTIN_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.vert.glsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.frag.glsl"
 )
+
 rr_embed_assets(
     ${PROJECT_NAME}
     "RrDemoBuiltinAssets"

@@ -109,7 +109,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
         UploadContext,
         CommonBuffer->Buffer,
         &CommonBuffer->Offset,
-        RR_MAKE_DATA(TextGlobalsData));
+        RR_MAKE_DATA_STRUCT(TextGlobalsData));
 
     TextRenderingContext.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
         &Frame->DescriptorAllocator,

@@ -138,7 +138,7 @@ Rr_Image *Rr_CreateImage(Rr_App *App, VkExtent3D Extent, VkFormat Format, VkImag
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Image *Image = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Image *Image = Rr_CreateObject(App);
     Image->Format = Format;
     Image->Extent = Extent;
 
@@ -180,7 +180,7 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
     vkDestroyImageView(Renderer->Device, Image->View, NULL);
     vmaDestroyImage(Renderer->Allocator, Image->Handle, Image->Allocation);
 
-    Rr_DestroyObject(&App->ObjectStorage, Image);
+    Rr_DestroyObject(App, Image);
 }
 
 void Rr_GetImageSizePNGMemory(char *Data, size_t DataSize, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)

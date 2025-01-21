@@ -1,5 +1,3 @@
-#if defined(__linux__)
-
 #include <Rr/Rr_Platform.h>
 
 #include "Rr_Log.h"
@@ -10,14 +8,14 @@
 
 static Rr_PlatformInfo PlatformInfo;
 
-bool Rr_InitPlatform()
+bool Rr_InitPlatform(void)
 {
     PlatformInfo.PageSize = getpagesize();
 
     return true;
 }
 
-Rr_PlatformInfo *Rr_GetPlatformInfo()
+Rr_PlatformInfo *Rr_GetPlatformInfo(void)
 {
     return &PlatformInfo;
 }
@@ -48,5 +46,3 @@ void Rr_DecommitMemory(void *Data, size_t Size)
     madvise(Data, Size, MADV_DONTNEED);
     mprotect(Data, Size, PROT_NONE);
 }
-
-#endif

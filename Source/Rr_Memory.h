@@ -15,6 +15,6 @@ struct Rr_SyncArena
     Rr_Arena *Arena;
 };
 
-extern Rr_SyncArena Rr_CreateSyncArena();
+extern Rr_SyncArena Rr_CreateSyncArena(void);
 
 extern void Rr_DestroySyncArena(Rr_SyncArena *Arena);

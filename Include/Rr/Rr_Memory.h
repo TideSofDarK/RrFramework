@@ -58,7 +58,7 @@ struct Rr_Arena
 
 extern Rr_Arena *Rr_CreateArena(size_t Reserve, size_t Commit);
 
-extern Rr_Arena *Rr_CreateDefaultArena();
+extern Rr_Arena *Rr_CreateDefaultArena(void);
 
 extern void Rr_ResetArena(Rr_Arena *Arena);
 
@@ -109,7 +109,7 @@ extern void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Are
      (Slice)->Data + (Slice)->Count++                                                                           \
                                          : (Slice)->Data + (Slice)->Count++)
 
-#define RR_SLICE_POP(Slice) (Slice)->Count > 0 ? (Slice)->Count-- : (void)0
+#define RR_SLICE_POP(Slice) (Slice)->Count > 0 ? (Slice)->Count-- : (int)0
 
 #define RR_SLICE_RESERVE(Slice, ElementCount, Arena)                               \
     ((Slice)->Capacity < (ElementCount) ? Rr_SliceResize(                          \

@@ -12,9 +12,9 @@ struct Rr_PlatformInfo
     int PageSize;
 };
 
-extern bool Rr_InitPlatform();
+extern bool Rr_InitPlatform(void);
 
-extern Rr_PlatformInfo *Rr_GetPlatformInfo();
+extern Rr_PlatformInfo *Rr_GetPlatformInfo(void);
 
 extern void *Rr_ReserveMemory(size_t Size);
 

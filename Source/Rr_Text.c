@@ -81,7 +81,7 @@ void Rr_InitTextRenderer(Rr_App *App)
         0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
     };
     TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(App, sizeof(Quad));
-    Rr_UploadToDeviceBufferImmediate(App, TextPipeline->QuadBuffer, RR_MAKE_DATA(Quad));
+    Rr_UploadToDeviceBufferImmediate(App, TextPipeline->QuadBuffer, RR_MAKE_DATA_ARRAY(Quad));
 
     /* Builtin Font */
 
@@ -133,7 +133,7 @@ Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
         },
     };
 
-    Rr_Font *Font = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Font *Font = Rr_CreateObject(App);
     *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
@@ -188,7 +188,7 @@ Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
 
     cJSON_Delete(FontDataJSON);
 
-    Rr_UploadToDeviceBufferImmediate(App, Buffer, RR_MAKE_DATA(TextFontData));
+    Rr_UploadToDeviceBufferImmediate(App, Buffer, RR_MAKE_DATA_STRUCT(TextFontData));
 
     return Font;
 }
@@ -200,7 +200,7 @@ void Rr_DestroyFont(Rr_App *App, Rr_Font *Font)
     Rr_DestroyImage(App, Font->Atlas);
     Rr_DestroyBuffer(App, Font->Buffer);
 
-    Rr_DestroyObject(&App->ObjectStorage, Font);
+    Rr_DestroyObject(App, Font);
 }
 
 Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)

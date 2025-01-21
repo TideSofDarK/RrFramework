@@ -130,7 +130,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
 
     char DevicesString[1024];
     size_t DevicesStringCursor = 1;
-    uint32_t BestDeviceIndex = ~0;
+    uint32_t BestDeviceIndex = UINT32_MAX;
     static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     // static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
     int BestDeviceType = 0;
@@ -142,8 +142,6 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
         uint32_t TransferQueueFamilyIndex;
         if(Rr_CheckPhysicalDevice(PhysicalDeviceHandle, Surface, &GraphicsQueueFamilyIndex, &TransferQueueFamilyIndex))
         {
-            uint32_t Score = 0;
-
             VkPhysicalDeviceProperties2 Properties = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
             };
@@ -166,7 +164,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
                 string_VkPhysicalDeviceType(Properties.properties.deviceType),
                 Memory);
 
-            if(BestDeviceIndex == ~0)
+            if(BestDeviceIndex == UINT32_MAX)
             {
             SetBestDevice:
                 BestDeviceIndex = Index;
@@ -194,7 +192,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
             }
         }
     }
-    if(BestDeviceIndex == ~0)
+    if(BestDeviceIndex == UINT32_MAX)
     {
         Rr_LogAbort("Could not select physical device based on the chosen properties!");
     }

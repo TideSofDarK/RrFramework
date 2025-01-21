@@ -307,7 +307,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
 
 Rr_Primitive *Rr_CreatePrimitive(Rr_App *App, Rr_UploadContext *UploadContext, Rr_RawMesh *RawMesh)
 {
-    Rr_Primitive *Primitive = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Primitive *Primitive = Rr_CreateObject(App);
 
     Primitive->IndexCount = RawMesh->IndicesSlice.Count;
 
@@ -353,7 +353,7 @@ void Rr_DestroyPrimitive(Rr_App *App, Rr_Primitive *Primitive)
     Rr_DestroyBuffer(App, Primitive->IndexBuffer);
     Rr_DestroyBuffer(App, Primitive->VertexBuffer);
 
-    Rr_DestroyObject(&App->ObjectStorage, Primitive);
+    Rr_DestroyObject(App, Primitive);
 }
 
 Rr_StaticMesh *Rr_CreateStaticMesh(
@@ -364,7 +364,7 @@ Rr_StaticMesh *Rr_CreateStaticMesh(
     Rr_Material **Materials,
     size_t MaterialCount)
 {
-    Rr_StaticMesh *StaticMesh = Rr_CreateObject(&App->ObjectStorage);
+    Rr_StaticMesh *StaticMesh = Rr_CreateObject(App);
 
     for(size_t Index = 0; Index < RawMeshCount; ++Index)
     {
@@ -391,8 +391,6 @@ void Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *StaticMesh)
         return;
     }
 
-    Rr_Renderer *Renderer = &App->Renderer;
-
     for(size_t Index = 0; Index < StaticMesh->PrimitiveCount; ++Index)
     {
         Rr_DestroyPrimitive(App, StaticMesh->Primitives[Index]);
@@ -403,7 +401,7 @@ void Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *StaticMesh)
         Rr_DestroyMaterial(App, StaticMesh->Materials[Index]);
     }
 
-    Rr_DestroyObject(&App->ObjectStorage, StaticMesh);
+    Rr_DestroyObject(App, StaticMesh);
 }
 
 Rr_StaticMesh *Rr_CreateStaticMeshGLTF(

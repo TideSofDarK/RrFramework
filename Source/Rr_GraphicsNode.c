@@ -159,7 +159,7 @@ SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo *A, Rr_DrawPri
     return 0;
 }
 
-DEF_QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive) /* NOLINT */
+// DEF_QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive) /* NOLINT */
 
 static void Rr_RenderGeneric(
     Rr_App *App,
@@ -183,8 +183,8 @@ static void Rr_RenderGeneric(
     uint32_t BoundPerDrawOffset = UINT32_MAX;
 
     /* @TODO: Sort indices instead! */
-    QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive)
-    (DrawPrimitivesSlice.Data, DrawPrimitivesSlice.Count);
+    // QSORT(Rr_DrawPrimitiveInfo, Rr_CompareDrawPrimitive)
+    // (DrawPrimitivesSlice.Data, DrawPrimitivesSlice.Count);
 
     vkCmdBindDescriptorSets(
         CommandBuffer,
@@ -447,7 +447,10 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
             {
-                vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, (*(Rr_GraphicsPipeline **)Function->Args)->Handle);
+                vkCmdBindPipeline(
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    (*(Rr_GraphicsPipeline **)Function->Args)->Handle);
             }
             break;
             default:
@@ -488,5 +491,8 @@ void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding)
 
 void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE, Rr_GraphicsPipeline *, &GraphicsPipeline);
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
+        Rr_GraphicsPipeline *,
+        &GraphicsPipeline);
 }

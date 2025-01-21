@@ -11,6 +11,31 @@ set(BUILD_SHARED_LIBS OFF)
 include(CMake/CPM.cmake)
 
 #
+# Setup warnings and sanitizers
+#
+
+function(rr_enable_debug_options TARGET)
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        target_compile_options(${TARGET} PRIVATE -Werror -Wall -Wextra -Wpedantic -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces)
+
+        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+            target_compile_options(${TARGET} PRIVATE -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unsafe-buffer-usage -Wno-pre-c++20-compat-pedantic)
+        endif ()
+
+        if (ENABLE_SANITIZERS)
+            target_compile_options(${TARGET} PRIVATE -fsanitize=address,undefined)
+            target_link_options(${TARGET} PRIVATE -fsanitize=address,undefined)
+        endif ()
+    elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+        target_compile_options(${TARGET} PRIVATE /W3)
+
+        if (ENABLE_SANITIZERS)
+            target_compile_options(${TARGET} PRIVATE /fsanitize=address)
+        endif ()
+    endif ()
+endfunction ()
+
+#
 # Dependencies
 #
 
@@ -119,14 +144,15 @@ file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
 
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 
+rr_enable_debug_options(${PROJECT_NAME})
+
 target_include_directories(${PROJECT_NAME} PUBLIC Include)
-target_include_directories(${PROJECT_NAME} PRIVATE Vendor)
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE Vendor)
 
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 
 target_sources(${PROJECT_NAME} PRIVATE Vendor/xxHash/xxhash.c Vendor/xxHash/xxh_x86dispatch.c)
-
 target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

@@ -61,7 +61,7 @@ Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
     return Arena;
 }
 
-Rr_Arena *Rr_CreateDefaultArena()
+Rr_Arena *Rr_CreateDefaultArena(void)
 {
     return Rr_CreateArena(RR_ARENA_RESERVE_DEFAULT, RR_ARENA_COMMIT_DEFAULT);
 }
@@ -184,7 +184,7 @@ void Rr_PopArena(Rr_Arena *Arena, size_t Amount)
     Arena->Position -= Amount;
 }
 
-Rr_SyncArena Rr_CreateSyncArena()
+Rr_SyncArena Rr_CreateSyncArena(void)
 {
     return (Rr_SyncArena){ .Arena = Rr_CreateDefaultArena() };
 }

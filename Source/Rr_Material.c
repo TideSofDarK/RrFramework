@@ -11,7 +11,7 @@ Rr_Material *Rr_CreateMaterial(
     Rr_Image **Textures,
     size_t TextureCount)
 {
-    Rr_Material *Material = Rr_CreateObject(&App->ObjectStorage);
+    Rr_Material *Material = Rr_CreateObject(App);
     *Material = (Rr_Material){
         .GenericPipeline = GenericPipeline,
         .TextureCount = TextureCount,
@@ -49,5 +49,5 @@ void Rr_DestroyMaterial(Rr_App *App, Rr_Material *Material)
 
     Rr_DestroyBuffer(App, Material->Buffer);
 
-    Rr_DestroyObject(&App->ObjectStorage, Material);
+    Rr_DestroyObject(App, Material);
 }

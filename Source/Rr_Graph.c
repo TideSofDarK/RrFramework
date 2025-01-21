@@ -40,7 +40,7 @@ Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_DrawTarget *DrawTarget = Rr_CreateObject(&App->ObjectStorage);
+    Rr_DrawTarget *DrawTarget = Rr_CreateObject(App);
 
     for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
@@ -72,7 +72,7 @@ Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(Rr_App *App, uint32_t Width, uint32_
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_DrawTarget *DrawTarget = Rr_CreateObject(&App->ObjectStorage);
+    Rr_DrawTarget *DrawTarget = Rr_CreateObject(App);
 
     for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
@@ -115,7 +115,7 @@ void Rr_DestroyDrawTarget(Rr_App *App, Rr_DrawTarget *DrawTarget)
         Rr_DestroyImage(App, DrawTarget->Frames[Index].DepthImage);
     }
 
-    Rr_DestroyObject(&App->ObjectStorage, DrawTarget);
+    Rr_DestroyObject(App, DrawTarget);
 }
 
 Rr_Image *Rr_GetDrawTargetColorImage(Rr_App *App, Rr_DrawTarget *DrawTarget)
@@ -245,11 +245,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         Rr_LogAbort("Graph doesn't contain any nodes!");
     }
 
-    size_t Counter = 0;
     while(true)
     {
-        Counter++;
-
         /* Begin a new batch. */
 
         Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);

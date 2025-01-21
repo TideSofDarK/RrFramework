@@ -18,15 +18,15 @@ struct Rr_UIStyle
 
 extern void Rr_BeginWindow(const char *Title);
 
-extern void Rr_EndWindow();
+extern void Rr_EndWindow(void);
 
 extern void Rr_Label(const char *Text);
 
 extern void Rr_Button(const char *Text);
 
-extern void Rr_BeginHorizontal();
+extern void Rr_BeginHorizontal(void);
 
-extern void Rr_EndHorizontal();
+extern void Rr_EndHorizontal(void);
 
 #ifdef __cplusplus
 }
