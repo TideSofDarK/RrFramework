@@ -1,6 +1,7 @@
 #include "Rr_Renderer.h"
 
 #include "Rr_App.h"
+
 #include "Rr_Buffer.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
@@ -12,6 +13,10 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
+
+#include <xxHash/xxhash.h>
+
+#include <assert.h>
 
 // static void Rr_CalculateDrawTargetResolution(Rr_Renderer*  Renderer,  u32
 // WindowWidth,  u32 WindowHeight)
@@ -502,224 +507,6 @@ static void Rr_CleanupSamplers(Rr_App *App)
     vkDestroySampler(Renderer->Device, Renderer->LinearSampler, NULL);
 }
 
-static VkRenderPass Rr_CreateRenderPassColorDepth(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    VkAttachmentDescription Attachments[2] = {
-        {
-            .samples = 1,
-            .format = RR_COLOR_FORMAT,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .flags = 0,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        },
-        {
-            .samples = 1,
-            .format = RR_DEPTH_FORMAT,
-            .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            .flags = 0,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        },
-    };
-
-    VkAttachmentReference ColorAttachmentRef = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
-
-    VkAttachmentReference DepthAttachmentRef = {
-        .attachment = 1,
-        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    };
-
-    VkSubpassDescription SubpassDescription = {
-        .flags = 0,
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &ColorAttachmentRef,
-        .pDepthStencilAttachment = &DepthAttachmentRef,
-        .pResolveAttachments = NULL,
-        .inputAttachmentCount = 0,
-        .pInputAttachments = NULL,
-        .preserveAttachmentCount = 0,
-        .pPreserveAttachments = NULL,
-    };
-
-    VkRenderPassCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = 0,
-        .attachmentCount = SDL_arraysize(Attachments),
-        .pAttachments = Attachments,
-        .subpassCount = 1,
-        .pSubpasses = &SubpassDescription,
-        .dependencyCount = 0,
-        .pDependencies = NULL,
-    };
-
-    VkRenderPass RenderPass;
-    vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
-    return RenderPass;
-}
-
-static VkRenderPass Rr_CreateRenderPassColorDepthLoad(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    VkAttachmentDescription Attachments[2] = { {
-                                                   .samples = 1,
-                                                   .format = RR_COLOR_FORMAT,
-                                                   .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                   .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                   .flags = 0,
-                                                   .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-                                                   .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                                               },
-                                               {
-                                                   .samples = 1,
-                                                   .format = RR_DEPTH_FORMAT,
-                                                   .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                   .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                   .flags = 0,
-                                                   .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                   .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                               } };
-
-    VkAttachmentReference ColorAttachmentRef = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
-
-    VkAttachmentReference DepthAttachmentRef = {
-        .attachment = 1,
-        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    };
-
-    VkSubpassDescription SubpassDescription = {
-        .flags = 0,
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &ColorAttachmentRef,
-        .pDepthStencilAttachment = &DepthAttachmentRef,
-        .pResolveAttachments = NULL,
-        .inputAttachmentCount = 0,
-        .pInputAttachments = NULL,
-        .preserveAttachmentCount = 0,
-        .pPreserveAttachments = NULL,
-    };
-
-    VkRenderPassCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = 0,
-        .attachmentCount = SDL_arraysize(Attachments),
-        .pAttachments = Attachments,
-        .subpassCount = 1,
-        .pSubpasses = &SubpassDescription,
-        .dependencyCount = 0,
-        .pDependencies = NULL,
-    };
-
-    VkRenderPass RenderPass;
-    vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
-    return RenderPass;
-}
-
-static VkRenderPass Rr_CreateRenderPassDepth(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    VkAttachmentDescription Attachments[] = {
-        {
-            .samples = 1,
-            .format = RR_DEPTH_FORMAT,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            .flags = 0,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        },
-    };
-
-    VkAttachmentReference DepthAttachmentRef = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    };
-
-    VkSubpassDescription SubpassDescription = {
-        .flags = 0,
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 0,
-        .pColorAttachments = NULL,
-        .pDepthStencilAttachment = &DepthAttachmentRef,
-        .pResolveAttachments = NULL,
-        .inputAttachmentCount = 0,
-        .pInputAttachments = NULL,
-        .preserveAttachmentCount = 0,
-        .pPreserveAttachments = NULL,
-    };
-
-    VkSubpassDependency Dependencies[] = {
-        {
-            .srcSubpass = VK_SUBPASS_EXTERNAL,
-            .dstSubpass = 0,
-            .srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-            .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-            .dependencyFlags = 0,
-        },
-        // {
-        //     .srcSubpass = 0,
-        //     .dstSubpass = VK_SUBPASS_EXTERNAL,
-        //     .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-        //     .dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        //     .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-        //     .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-        //     .dependencyFlags = 0,
-        // },
-    };
-
-    VkRenderPassCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = 0,
-        .attachmentCount = SDL_arraysize(Attachments),
-        .pAttachments = Attachments,
-        .subpassCount = 1,
-        .pSubpasses = &SubpassDescription,
-        .dependencyCount = SDL_arraysize(Dependencies),
-        .pDependencies = Dependencies,
-    };
-
-    VkRenderPass RenderPass;
-    vkCreateRenderPass(Renderer->Device, &Info, NULL, &RenderPass);
-    return RenderPass;
-}
-
-static void Rr_InitRenderPasses(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    Renderer->RenderPasses.ColorDepth = Rr_CreateRenderPassColorDepth(App);
-    Renderer->RenderPasses.ColorDepthLoad = Rr_CreateRenderPassColorDepthLoad(App);
-    Renderer->RenderPasses.Depth = Rr_CreateRenderPassDepth(App);
-}
-
-static void Rr_CleanupRenderPasses(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPasses.ColorDepth, NULL);
-    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPasses.ColorDepthLoad, NULL);
-    vkDestroyRenderPass(Renderer->Device, Renderer->RenderPasses.Depth, NULL);
-}
-
 /* @TODO: Move to queue initialization? */
 static void Rr_InitTransientCommandPools(Rr_App *App)
 {
@@ -845,7 +632,6 @@ void Rr_InitRenderer(Rr_App *App)
     Rr_InitVMA(App);
     Rr_InitTransientCommandPools(App);
     Rr_InitSamplers(App);
-    Rr_InitRenderPasses(App);
     Rr_InitDescriptors(App);
 
     uint32_t Width, Height;
@@ -897,7 +683,13 @@ void Rr_CleanupRenderer(Rr_App *App)
 
     Rr_CleanupTextRenderer(App);
 
+    for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
+    {
+        vkDestroyRenderPass(Renderer->Device, Renderer->RenderPasses.Data[Index].Handle, NULL);
+    }
+
     /* Generic Pipeline Layout */
+
     vkDestroyPipelineLayout(Device, Renderer->GenericPipelineLayout, NULL);
     for(size_t Index = 0; Index < RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT; ++Index)
     {
@@ -915,7 +707,7 @@ void Rr_CleanupRenderer(Rr_App *App)
 
     Rr_CleanupTransientCommandPools(Renderer);
     Rr_CleanupImmediateMode(App);
-    Rr_CleanupRenderPasses(App);
+
     Rr_CleanupSamplers(App);
     Rr_CleanupSwapchain(App, Renderer->Swapchain.Handle);
 
@@ -1110,4 +902,138 @@ bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer)
 VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer)
 {
     return Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+}
+
+Rr_Arena *Rr_GetFrameArena(Rr_App *App)
+{
+    return Rr_GetCurrentFrame(&App->Renderer)->Arena;
+}
+
+static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
+{
+    switch(LoadOp)
+    {
+        case RR_LOAD_OP_CLEAR:
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        case RR_LOAD_OP_LOAD:
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+        default:
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    }
+}
+
+static VkAttachmentStoreOp Rr_GetStoreOp(Rr_StoreOp StoreOp)
+{
+    switch(StoreOp)
+    {
+        case RR_STORE_OP_DONT_CARE:
+            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case RR_STORE_OP_STORE:
+            return VK_ATTACHMENT_STORE_OP_STORE;
+        default:
+            return VK_ATTACHMENT_STORE_OP_STORE;
+    }
+}
+
+VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
+{
+    assert(Info != NULL);
+
+    uint32_t Hash = XXH32(Info->Attachments, sizeof(Rr_Attachment) * Info->AttachmentCount, 0);
+
+    for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
+    {
+        if(Renderer->RenderPasses.Data[Index].Hash == Hash)
+        {
+            return Renderer->RenderPasses.Data[Index].Handle;
+        }
+    }
+
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
+    VkAttachmentDescription *Attachments = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkAttachmentDescription), Info->AttachmentCount);
+
+    size_t ColorCount = 0;
+    VkAttachmentReference *ColorReferences =
+        RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkAttachmentDescription), Info->AttachmentCount);
+    VkAttachmentReference *DepthReference = NULL;
+
+    for(size_t Index = 0; Index < Info->AttachmentCount; ++Index)
+    {
+        Rr_Attachment *Attachment = &Info->Attachments[Index];
+        if(Attachment->Depth)
+        {
+            if(DepthReference != NULL)
+            {
+                Rr_LogAbort("Can't have more than one depth attachment!");
+            }
+            DepthReference = RR_ALLOC(Scratch.Arena, sizeof(VkAttachmentDescription));
+            DepthReference->attachment = Index;
+            DepthReference->layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            Attachments[Index] = (VkAttachmentDescription){
+                .samples = 1,
+                .format = RR_DEPTH_FORMAT,
+                .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                .flags = 0,
+                .loadOp = Rr_GetLoadOp(Attachment->LoadOp),
+                .storeOp = Rr_GetStoreOp(Attachment->StoreOp),
+            };
+        }
+        else
+        {
+            ColorCount++;
+            ColorReferences[Index] = (VkAttachmentReference){
+                .attachment = Index,
+                .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            };
+            Attachments[Index] = (VkAttachmentDescription){
+                .samples = 1,
+                .format = RR_COLOR_FORMAT,
+                .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .flags = 0,
+                .loadOp = Rr_GetLoadOp(Attachment->LoadOp),
+                .storeOp = Rr_GetStoreOp(Attachment->StoreOp),
+            };
+        }
+    }
+
+    VkSubpassDescription SubpassDescription = {
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = ColorCount,
+        .pColorAttachments = ColorReferences,
+        .pDepthStencilAttachment = DepthReference,
+        .pResolveAttachments = NULL,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = NULL,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = NULL,
+    };
+
+    VkRenderPassCreateInfo RenderPassCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .pNext = VK_NULL_HANDLE,
+        .flags = 0,
+        .attachmentCount = Info->AttachmentCount,
+        .pAttachments = Attachments,
+        .subpassCount = 1,
+        .pSubpasses = &SubpassDescription,
+        .dependencyCount = 0,
+        .pDependencies = NULL,
+    };
+
+    VkRenderPass RenderPass = VK_NULL_HANDLE;
+
+    vkCreateRenderPass(Renderer->Device, &RenderPassCreateInfo, NULL, &RenderPass);
+
+    *RR_SLICE_PUSH(&Renderer->RenderPasses, Scratch.Arena) = (Rr_CachedRenderPass){
+        .Handle = RenderPass,
+        .Hash = Hash,
+    };
+
+    Rr_DestroyArenaScratch(Scratch);
+
+    return RenderPass;
 }

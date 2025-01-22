@@ -18,6 +18,7 @@
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Platform.h>
 #include <Rr/Rr_PresentNode.h>
+#include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_String.h>
 #include <Rr/Rr_Text.h>
 #include <Rr/Rr_UI.h>

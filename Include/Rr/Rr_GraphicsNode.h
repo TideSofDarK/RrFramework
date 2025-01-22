@@ -10,20 +10,62 @@
 extern "C" {
 #endif
 
-typedef struct Rr_GraphicsNodeInfo Rr_GraphicsNodeInfo;
-struct Rr_GraphicsNodeInfo
+typedef enum
 {
-    Rr_DrawTarget *DrawTarget;
-    Rr_Image *InitialColor;
-    Rr_Image *InitialDepth;
-    Rr_IntVec4 Viewport;
-    Rr_GraphicsPipeline *BasePipeline;
+    RR_LOAD_OP_LOAD,
+    RR_LOAD_OP_CLEAR,
+    RR_LOAD_OP_DONT_CARE,
+} Rr_LoadOp;
+
+typedef enum
+{
+    RR_STORE_OP_STORE,
+    RR_STORE_OP_DONT_CARE,
+    RR_STORE_OP_RESOLVE,
+    RR_STORE_OP_RESOLVE_AND_STORE,
+} Rr_StoreOp;
+
+typedef union Rr_ColorClear Rr_ColorClear;
+union Rr_ColorClear
+{
+    float Float32[4];
+    int32_t Int32[4];
+    uint32_t Uint32[4];
+};
+
+typedef struct Rr_ColorTarget Rr_ColorTarget;
+struct Rr_ColorTarget
+{
+    Rr_Image *Image;
+    uint32_t Slot;
+    Rr_LoadOp LoadOp;
+    Rr_StoreOp StoreOp;
+    Rr_ColorClear Clear;
+};
+
+typedef struct Rr_DepthClear Rr_DepthClear;
+struct Rr_DepthClear
+{
+    float Depth;
+    uint32_t Stencil;
+};
+
+typedef struct Rr_DepthTarget Rr_DepthTarget;
+struct Rr_DepthTarget
+{
+    Rr_Image *Image;
+    uint32_t Slot;
+    Rr_LoadOp LoadOp;
+    Rr_StoreOp StoreOp;
+    Rr_DepthClear Clear;
 };
 
 extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphicsNodeInfo *Info,
+    Rr_ColorTarget *ColorTargets,
+    size_t ColorTargetCount,
+    Rr_DepthTarget *DepthTarget,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount);
 

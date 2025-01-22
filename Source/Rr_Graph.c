@@ -27,6 +27,7 @@ Rr_GraphNode *Rr_AddGraphNode(
     size_t DependencyCount)
 {
     Rr_GraphNode *GraphNode = RR_ALLOC(Frame->Arena, sizeof(Rr_GraphNode));
+    GraphNode->Arena = Frame->Arena;
     GraphNode->Type = Type;
     GraphNode->Name = Name;
     Rr_CopyDependencies(GraphNode, Dependencies, DependencyCount, Frame->Arena);
@@ -53,7 +54,7 @@ Rr_DrawTarget *Rr_CreateDrawTarget(Rr_App *App, uint32_t Width, uint32_t Height)
             .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .pNext = NULL,
             .flags = 0,
-            .renderPass = Renderer->RenderPasses.ColorDepth,
+            .renderPass = Rr_GetRenderPass(Renderer, NULL),
             .height = Height,
             .width = Width,
             .layers = 1,
@@ -84,7 +85,7 @@ Rr_DrawTarget *Rr_CreateDrawTargetDepthOnly(Rr_App *App, uint32_t Width, uint32_
             .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .pNext = NULL,
             .flags = 0,
-            .renderPass = Renderer->RenderPasses.Depth,
+            .renderPass = Rr_GetRenderPass(Renderer, NULL),
             .height = Height,
             .width = Width,
             .layers = 1,

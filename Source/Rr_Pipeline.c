@@ -126,10 +126,10 @@ Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder,
     switch(PipelineBuilder->ColorAttachmentCount)
     {
         case 0:
-            Pipeline->RenderPass = Renderer->RenderPasses.Depth;
+            Pipeline->RenderPass = Rr_GetRenderPass(Renderer, NULL);
             break;
         case 1:
-            Pipeline->RenderPass = Renderer->RenderPasses.ColorDepth;
+            Pipeline->RenderPass = Rr_GetRenderPass(Renderer, NULL);
             break;
         default:
             Rr_LogAbort("Unsupported color attachment count!");

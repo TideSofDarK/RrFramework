@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Rr/Rr_Renderer.h>
+
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Graph.h"
@@ -64,6 +66,13 @@ struct Rr_Frame
     Rr_Arena *Arena;
 };
 
+typedef struct Rr_CachedRenderPass Rr_CachedRenderPass;
+struct Rr_CachedRenderPass
+{
+    VkRenderPass Handle;
+    uint32_t Hash;
+};
+
 typedef struct Rr_Renderer Rr_Renderer;
 struct Rr_Renderer
 {
@@ -102,13 +111,7 @@ struct Rr_Renderer
 
     /* Render Passes */
 
-    struct
-    {
-        VkRenderPass ColorDepth;
-        VkRenderPass ColorDepthLoad;
-        VkRenderPass Depth;
-        VkRenderPass DepthLoad;
-    } RenderPasses;
+    RR_SLICE_TYPE(Rr_CachedRenderPass) RenderPasses;
 
     /* Immediate Command Pool/Buffer */
 
@@ -173,3 +176,20 @@ extern Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer);
 extern bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
 
 extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer);
+
+typedef struct Rr_Attachment Rr_Attachment;
+struct Rr_Attachment
+{
+    Rr_LoadOp LoadOp;
+    Rr_StoreOp StoreOp;
+    bool Depth;
+};
+
+typedef struct Rr_RenderPassInfo Rr_RenderPassInfo;
+struct Rr_RenderPassInfo
+{
+    Rr_Attachment *Attachments;
+    size_t AttachmentCount;
+};
+
+extern VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info);

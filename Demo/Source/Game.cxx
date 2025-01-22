@@ -2,6 +2,7 @@
 
 #include "DemoAssets.inc"
 #include "Rr/Rr_Buffer.h"
+#include "Rr/Rr_Graph.h"
 #include "Rr/Rr_GraphicsNode.h"
 #include "Rr/Rr_Memory.h"
 
@@ -675,14 +676,15 @@ static void Init(Rr_App *App, void *UserData)
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    Rr_GraphicsNodeInfo NodeInfo = {
-        .DrawTarget = nullptr,
-        .InitialColor = nullptr,
-        .InitialDepth = nullptr,
-        .Viewport = {},
-        .BasePipeline = GraphicsPipeline,
+    Rr_Image *ColorImage = Rr_GetDrawTargetColorImage(App, Rr_GetMainDrawTarget(App));
+
+    Rr_ColorTarget ColorTarget = {
+        .Image = ColorImage,
+        .Slot = 0,
+        .LoadOp = RR_LOAD_OP_CLEAR,
+        .StoreOp = RR_STORE_OP_STORE,
     };
-    Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "test", &NodeInfo, nullptr, 0);
+    Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "test", &ColorTarget, 1, nullptr, nullptr, 0);
 
     Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
 

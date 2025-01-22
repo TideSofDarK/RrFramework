@@ -375,7 +375,7 @@ void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
         .pNext = NULL,
         .framebuffer = DrawTarget->Frames[App->Renderer.CurrentFrameIndex].Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
-        .renderPass = Renderer->RenderPasses.ColorDepthLoad,
+        .renderPass = Rr_GetRenderPass(Renderer, NULL),
         .clearValueCount = RR_ARRAY_COUNT(ClearValues),
         .pClearValues = ClearValues,
     };

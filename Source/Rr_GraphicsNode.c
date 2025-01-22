@@ -6,32 +6,37 @@
 
 #include <qsort/qsort-inline.h>
 
-#include <SDL3/SDL_assert.h>
+#include <assert.h>
 
 Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphicsNodeInfo *Info,
+    Rr_ColorTarget *ColorTargets,
+    size_t ColorTargetCount,
+    Rr_DepthTarget *DepthTarget,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount)
 {
+    assert(ColorTargetCount > 0 || DepthTarget != NULL);
+
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_GRAPHICS, Name, Dependencies, DependencyCount);
-    GraphNode->Arena = Frame->Arena;
 
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
-    GraphicsNode->Info = *Info;
+    if(ColorTargetCount > 0)
+    {
+        GraphicsNode->ColorTargets = RR_ALLOC_STRUCT_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
+        memcpy(GraphicsNode->ColorTargets, ColorTargets, sizeof(Rr_ColorTarget) * ColorTargetCount);
+    }
+    if(DepthTarget != NULL)
+    {
+        GraphicsNode->DepthTarget = RR_ALLOC_STRUCT(Frame->Arena, Rr_DepthTarget);
+        memcpy(GraphicsNode->DepthTarget, DepthTarget, sizeof(Rr_DepthTarget));
+    }
     GraphicsNode->Encoded = RR_ALLOC(Frame->Arena, sizeof(Rr_GraphicsNodeFunction));
     GraphicsNode->EncodedFirst = GraphicsNode->Encoded;
-
-    if(GraphicsNode->Info.DrawTarget == NULL)
-    {
-        GraphicsNode->Info.DrawTarget = Renderer->DrawTarget;
-        GraphicsNode->Info.Viewport.Width = (int32_t)Renderer->SwapchainSize.width;
-        GraphicsNode->Info.Viewport.Height = (int32_t)Renderer->SwapchainSize.height;
-    }
 
     return GraphNode;
 }
@@ -82,61 +87,61 @@ void Rr_DrawStaticMeshOverrideMaterials(
     // Rr_CopyToMappedUniformBuffer(App, Frame->PerDrawBuffer.Buffer, &Frame->PerDrawBuffer.Offset, PerDrawData);
 }
 
-static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
-    Rr_App *App,
-    Rr_UploadContext *UploadContext,
-    Rr_GraphicsNodeInfo *PassInfo,
-    char *GlobalsData,
-    Rr_Arena *Arena)
-{
-    // Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
-    //
-    // Rr_Renderer *Renderer = &App->Renderer;
-    //
-    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    // Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
-    //
-    // Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1, Scratch.Arena);
-    //
-    // Rr_GenericRenderingContext Context = {
-    //     .BasePipeline = PassInfo->BasePipeline,
-    //     .OverridePipeline = PassInfo->OverridePipeline,
-    // };
-    //
-    // /* Upload globals data. */
-    // /* @TODO: Make these take a Rr_WriteBuffer instead! */
-    // VkDeviceSize BufferOffset = CommonBuffer->Offset;
-    // Rr_UploadToUniformBuffer(
-    //     App,
-    //     UploadContext,
-    //     CommonBuffer->Buffer,
-    //     &CommonBuffer->Offset,
-    //     RR_MAKE_DATA(GlobalsData, Context.BasePipeline->Sizes.Globals));
-    //
-    // /* Allocate, write and bind globals descriptor set. */
-    // Context.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
-    //     &Frame->DescriptorAllocator,
-    //     Renderer->Device,
-    //     Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS]);
-    // Rr_WriteBufferDescriptor(
-    //     &DescriptorWriter,
-    //     0,
-    //     CommonBuffer->Buffer->Handle,
-    //     Context.BasePipeline->Sizes.Globals,
-    //     BufferOffset,
-    //     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    //     Scratch.Arena);
-    // //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View,
-    // //    Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    // //    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    // Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, Context.GlobalsDescriptorSet);
-    // Rr_ResetDescriptorWriter(&DescriptorWriter);
-    //
-    // Rr_DestroyArenaScratch(Scratch);
-    //
-    // return Context;
-    return (Rr_GenericRenderingContext){ 0 };
-}
+// static Rr_GenericRenderingContext Rr_MakeGenericRenderingContext(
+//     Rr_App *App,
+//     Rr_UploadContext *UploadContext,
+//     Rr_GraphicsNodeInfo *PassInfo,
+//     char *GlobalsData,
+//     Rr_Arena *Arena)
+// {
+//     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+//
+//     Rr_Renderer *Renderer = &App->Renderer;
+//
+//     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+//     Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
+//
+//     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(RR_MAX_TEXTURES_PER_MATERIAL, 1, Scratch.Arena);
+//
+//     Rr_GenericRenderingContext Context = {
+//         .BasePipeline = PassInfo->BasePipeline,
+//         .OverridePipeline = PassInfo->OverridePipeline,
+//     };
+//
+//     /* Upload globals data. */
+//     /* @TODO: Make these take a Rr_WriteBuffer instead! */
+//     VkDeviceSize BufferOffset = CommonBuffer->Offset;
+//     Rr_UploadToUniformBuffer(
+//         App,
+//         UploadContext,
+//         CommonBuffer->Buffer,
+//         &CommonBuffer->Offset,
+//         RR_MAKE_DATA(GlobalsData, Context.BasePipeline->Sizes.Globals));
+//
+//     /* Allocate, write and bind globals descriptor set. */
+//     Context.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
+//         &Frame->DescriptorAllocator,
+//         Renderer->Device,
+//         Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS]);
+//     Rr_WriteBufferDescriptor(
+//         &DescriptorWriter,
+//         0,
+//         CommonBuffer->Buffer->Handle,
+//         Context.BasePipeline->Sizes.Globals,
+//         BufferOffset,
+//         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+//         Scratch.Arena);
+//     //    Rr_WriteImageDescriptor(&DescriptorWriter, 1, PocDiffuseImage.View,
+//     //    Renderer->NearestSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+//     //    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+//     Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, Context.GlobalsDescriptorSet);
+//     Rr_ResetDescriptorWriter(&DescriptorWriter);
+//
+//     Rr_DestroyArenaScratch(Scratch);
+//
+//     return Context;
+//     return (Rr_GenericRenderingContext){ 0 };
+// }
 
 SDL_FORCE_INLINE int Rr_CompareDrawPrimitive(Rr_DrawPrimitiveInfo *A, Rr_DrawPrimitiveInfo *B)
 {
@@ -346,30 +351,29 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawTarget *DrawTarget = Node->Info.DrawTarget;
-
-    Rr_IntVec4 Viewport = Node->Info.Viewport;
-
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-
-    // Rr_UploadContext UploadContext = {
-    //     .StagingBuffer = &Frame->StagingBuffer,
-    //     .TransferCommandBuffer = CommandBuffer,
-    // };
-    //
-    // Rr_GenericRenderingContext GenericRenderingContext =
-    //     Rr_MakeGenericRenderingContext(App, &UploadContext, &Node->Info, Node->GlobalsData, Scratch.Arena);
 
     /* Line up appropriate clear values. */
 
-    // uint32_t ColorAttachmentCount = Node->Info.BasePipeline->Pipeline->ColorAttachmentCount;
-    uint32_t ColorAttachmentCount = 1;
-    VkClearValue *ClearValues = Rr_StackAlloc(VkClearValue, ColorAttachmentCount + 1);
-    for(uint32_t Index = 0; Index < ColorAttachmentCount; ++Index)
+    uint32_t ClearValueCount = Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
+
+    Rr_Attachment *Attachments = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_Attachment, ClearValueCount);
+    VkClearValue *ClearValues = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkClearValue, ClearValueCount);
+    for(uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
-        ClearValues[Index] = (VkClearValue){ 0 };
+        Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
+        VkClearValue *ClearValue = &ClearValues[ColorTarget->Slot];
+        memcpy(ClearValue, &ColorTarget->Clear, sizeof(VkClearValue));
+        Attachments[ColorTarget->Slot] = (Rr_Attachment){
+            .LoadOp = ColorTarget->LoadOp,
+            .StoreOp = ColorTarget->StoreOp,
+        };
     }
-    ClearValues[ColorAttachmentCount] = (VkClearValue){ .depthStencil.depth = 1.0f };
+    if(Node->DepthTarget != NULL)
+    {
+        VkClearValue *ClearValue = &ClearValues[Node->DepthTarget->Slot];
+        memcpy(ClearValue, &Node->DepthTarget->Clear, sizeof(VkClearValue));
+    }
 
     /* Begin render pass. */
 
@@ -378,13 +382,11 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
         .pNext = NULL,
         .framebuffer = DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
-        .renderPass = Renderer->RenderPasses.ColorDepth,
-        .clearValueCount = ColorAttachmentCount + 1,
+        .renderPass = Rr_GetRenderPass(Renderer, NULL),
+        .clearValueCount = ClearValueCount,
         .pClearValues = ClearValues,
     };
     vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    Rr_StackFree(ClearValues);
 
     /* Set dynamic states. */
 

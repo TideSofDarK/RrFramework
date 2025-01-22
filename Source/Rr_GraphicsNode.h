@@ -1,10 +1,11 @@
 #pragma once
 
+#include <Rr/Rr_GraphicsNode.h>
+
 #include "Rr_Memory.h"
 #include "Rr_Vulkan.h"
 
 #include <Rr/Rr_Graph.h>
-#include <Rr/Rr_GraphicsNode.h>
 
 struct Rr_GraphBatch;
 
@@ -46,7 +47,9 @@ struct Rr_GenericRenderingContext
 typedef struct Rr_GraphicsNode Rr_GraphicsNode;
 struct Rr_GraphicsNode
 {
-    Rr_GraphicsNodeInfo Info;
+    Rr_ColorTarget *ColorTargets;
+    size_t ColorTargetCount;
+    Rr_DepthTarget *DepthTarget;
     Rr_GraphicsNodeFunction *EncodedFirst;
     Rr_GraphicsNodeFunction *Encoded;
 };
