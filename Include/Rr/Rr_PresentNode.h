@@ -17,7 +17,6 @@ typedef struct Rr_PresentNodeInfo Rr_PresentNodeInfo;
 struct Rr_PresentNodeInfo
 {
     Rr_PresentMode Mode;
-    Rr_DrawTarget *DrawTarget;
 };
 
 extern Rr_GraphNode *Rr_AddPresentNode(

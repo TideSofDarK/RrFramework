@@ -622,40 +622,30 @@
 //     }
 // };
 
+static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
 static Rr_Buffer *IndexBuffer;
 
 static void Init(Rr_App *App, void *UserData)
 {
-    Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV);
-    Rr_Asset FragmentShader = Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV);
+    PipelineLayout = Rr_CreatePipelineLayout(App, nullptr, 0);
+
+    Rr_VertexInputAttribute VertexAttributes[] = {
+        { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 0 },
+        { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 1 },
+    };
+    Rr_ColorTargetInfo ColorTargets[] = { { .Blend = {}, .Format = RR_TEXTURE_FORMAT_TODO } };
 
     Rr_PipelineInfo PipelineInfo = {};
-    PipelineInfo.VertexShaderSPV = RR_MAKE_DATA_ASSET(VertexShader);
-    PipelineInfo.FragmentShaderSPV = RR_MAKE_DATA_ASSET(FragmentShader);
+    PipelineInfo.Layout = PipelineLayout;
+    PipelineInfo.VertexShaderSPV = RR_MAKE_DATA_ASSET(Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV));
+    PipelineInfo.FragmentShaderSPV = RR_MAKE_DATA_ASSET(Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV));
     PipelineInfo.VertexAttributeCount = 2;
+    PipelineInfo.VertexAttributes = VertexAttributes;
     PipelineInfo.ColorTargetCount = 1;
+    PipelineInfo.ColorTargets = ColorTargets;
 
-    // Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder(Scratch.Arena);
-    // Rr_VertexInput VertexInput = {
-    //     .Attributes = {
-    //         {
-    //             .Type = RR_VERTEX_INPUT_TYPE_VEC4,
-    //             .Location = 0,
-    //         },
-    //         {
-    //             .Type = RR_VERTEX_INPUT_TYPE_VEC4,
-    //             .Location = 1,
-    //         },
-    //     },
-    // };
-    // Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
-    // Rr_EnableVertexStage(Builder, &VertexShader);
-    // Rr_EnableFragmentStage(Builder, &FragmentShader);
-    // Rr_EnableColorAttachment(Builder, false);
-    // // Rr_EnableDepthTest(Builder);
-    // Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
     GraphicsPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
 
     float VertexData[] = {
@@ -678,7 +668,7 @@ static void Init(Rr_App *App, void *UserData)
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    Rr_Image *ColorImage = Rr_GetDrawTargetColorImage(App, Rr_GetMainDrawTarget(App));
+    Rr_Image *ColorImage = Rr_GetSwapchainImage(App);
 
     Rr_ColorTarget ColorTarget = {
         .Image = ColorImage,
@@ -702,13 +692,6 @@ static void Iterate(Rr_App *App, void *UserData)
     Args.IndexCount = 3;
     Args.InstanceCount = 1;
     Rr_DrawIndexed(Node, &Args);
-
-    Rr_PresentNodeInfo PresentInfo = {
-        .Mode = RR_PRESENT_MODE_STRETCH,
-        .DrawTarget = nullptr,
-    };
-
-    Rr_AddPresentNode(App, "present", &PresentInfo, &Node, 1);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
@@ -716,6 +699,7 @@ static void Cleanup(Rr_App *App, void *UserData)
     Rr_DestroyBuffer(App, VertexBuffer);
     Rr_DestroyBuffer(App, IndexBuffer);
     Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);
+    Rr_DestroyPipelineLayout(App, PipelineLayout);
 }
 
 void RunGame()

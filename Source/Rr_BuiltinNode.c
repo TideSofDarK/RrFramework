@@ -305,29 +305,29 @@ static void Rr_RenderText(
 
 bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BuiltinNode *Node)
 {
-    Rr_DrawTarget *DrawTarget = App->Renderer.DrawTarget;
-
-    if(Rr_SyncImage(
-           App,
-           Graph,
-           Batch,
-           DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
-           VK_IMAGE_ASPECT_COLOR_BIT,
-           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-           VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true ||
-       Rr_SyncImage(
-           App,
-           Graph,
-           Batch,
-           DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
-           VK_IMAGE_ASPECT_DEPTH_BIT,
-           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != true)
-    {
-        return false;
-    }
+    // Rr_DrawTarget *DrawTarget = App->Renderer.DrawTarget;
+    //
+    // if(Rr_SyncImage(
+    //        App,
+    //        Graph,
+    //        Batch,
+    //        DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
+    //        VK_IMAGE_ASPECT_COLOR_BIT,
+    //        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    //        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    //        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true ||
+    //    Rr_SyncImage(
+    //        App,
+    //        Graph,
+    //        Batch,
+    //        DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
+    //        VK_IMAGE_ASPECT_DEPTH_BIT,
+    //        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+    //        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+    //        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != true)
+    // {
+    //     return false;
+    // }
 
     return true;
 }
@@ -339,77 +339,76 @@ void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
-
-    Rr_IntVec4 Viewport = {
-        0,
-        0,
-        (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Extent.width,
-        (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Extent.height,
-    };
-
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-
-    Rr_UploadContext UploadContext = {
-        .StagingBuffer = &Frame->StagingBuffer,
-        .TransferCommandBuffer = CommandBuffer,
-    };
-
-    Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(
-        App,
-        &UploadContext,
-        (VkExtent2D){ .width = Viewport.Width, .height = Viewport.Height },
-        Scratch.Arena);
-
-    /* Line up appropriate clear values. */
-
-    VkClearValue ClearValues[] = {
-        (VkClearValue){ 0 },
-        (VkClearValue){ .depthStencil.depth = 1.0f },
-    };
-
-    /* Begin render pass. */
-
-    VkRenderPassBeginInfo RenderPassBeginInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .pNext = NULL,
-        .framebuffer = DrawTarget->Frames[App->Renderer.CurrentFrameIndex].Framebuffer,
-        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
-        .renderPass = Rr_GetRenderPass(Renderer, NULL),
-        .clearValueCount = RR_ARRAY_COUNT(ClearValues),
-        .pClearValues = ClearValues,
-    };
-    vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    /* Set dynamic states. */
-
-    vkCmdSetViewport(
-        CommandBuffer,
-        0,
-        1,
-        &(VkViewport){
-            .x = (float)Viewport.X,
-            .y = (float)Viewport.Y,
-            .width = (float)Viewport.Width,
-            .height = (float)Viewport.Height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-        });
-
-    vkCmdSetScissor(
-        CommandBuffer,
-        0,
-        1,
-        &(VkRect2D){
-            .offset.x = Viewport.X,
-            .offset.y = Viewport.Y,
-            .extent.width = Viewport.Width,
-            .extent.height = Viewport.Height,
-        });
-
-    Rr_RenderText(App, &TextRenderingContext, Node->DrawTextsSlice, CommandBuffer, Scratch.Arena);
-
-    vkCmdEndRenderPass(CommandBuffer);
-
+    //
+    // Rr_IntVec4 Viewport = {
+    //     0,
+    //     0,
+    //     (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Extent.width,
+    //     (int32_t)DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Extent.height,
+    // };
+    //
+    // VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+    //
+    // Rr_UploadContext UploadContext = {
+    //     .StagingBuffer = &Frame->StagingBuffer,
+    //     .TransferCommandBuffer = CommandBuffer,
+    // };
+    //
+    // Rr_TextRenderingContext TextRenderingContext = Rr_MakeTextRenderingContext(
+    //     App,
+    //     &UploadContext,
+    //     (VkExtent2D){ .width = Viewport.Width, .height = Viewport.Height },
+    //     Scratch.Arena);
+    //
+    // /* Line up appropriate clear values. */
+    //
+    // VkClearValue ClearValues[] = {
+    //     (VkClearValue){ 0 },
+    //     (VkClearValue){ .depthStencil.depth = 1.0f },
+    // };
+    //
+    // /* Begin render pass. */
+    //
+    // VkRenderPassBeginInfo RenderPassBeginInfo = {
+    //     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+    //     .pNext = NULL,
+    //     .framebuffer = DrawTarget->Frames[App->Renderer.CurrentFrameIndex].Framebuffer,
+    //     .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
+    //     .renderPass = Rr_GetRenderPass(Renderer, NULL),
+    //     .clearValueCount = RR_ARRAY_COUNT(ClearValues),
+    //     .pClearValues = ClearValues,
+    // };
+    // vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    //
+    // /* Set dynamic states. */
+    //
+    // vkCmdSetViewport(
+    //     CommandBuffer,
+    //     0,
+    //     1,
+    //     &(VkViewport){
+    //         .x = (float)Viewport.X,
+    //         .y = (float)Viewport.Y,
+    //         .width = (float)Viewport.Width,
+    //         .height = (float)Viewport.Height,
+    //         .minDepth = 0.0f,
+    //         .maxDepth = 1.0f,
+    //     });
+    //
+    // vkCmdSetScissor(
+    //     CommandBuffer,
+    //     0,
+    //     1,
+    //     &(VkRect2D){
+    //         .offset.x = Viewport.X,
+    //         .offset.y = Viewport.Y,
+    //         .extent.width = Viewport.Width,
+    //         .extent.height = Viewport.Height,
+    //     });
+    //
+    // Rr_RenderText(App, &TextRenderingContext, Node->DrawTextsSlice, CommandBuffer, Scratch.Arena);
+    //
+    // vkCmdEndRenderPass(CommandBuffer);
+    //
     Rr_DestroyArenaScratch(Scratch);
 }

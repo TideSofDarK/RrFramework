@@ -5,6 +5,7 @@
 #include "Rr_GraphicsNode.h"
 #include "Rr_Image.h"
 #include "Rr_PresentNode.h"
+
 #include <Rr/Rr_Graph.h>
 
 struct Rr_Frame;
@@ -15,16 +16,6 @@ struct Rr_ImageSync
     VkPipelineStageFlags StageMask;
     VkAccessFlags AccessMask;
     VkImageLayout Layout;
-};
-
-struct Rr_DrawTarget
-{
-    struct
-    {
-        Rr_Image *ColorImage;
-        Rr_Image *DepthImage;
-        VkFramebuffer Framebuffer;
-    } Frames[RR_FRAME_OVERLAP];
 };
 
 struct Rr_GraphNode

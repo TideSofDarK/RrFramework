@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Image.h>
 #include <Rr/Rr_Mesh.h>
@@ -71,7 +72,7 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
 typedef struct Rr_BufferBinding Rr_BufferBinding;
 struct Rr_BufferBinding
 {
-    struct Rr_Buffer *Buffer;
+    Rr_Buffer *Buffer;
     uint32_t Offset;
     uint32_t Slot;
 };
@@ -93,16 +94,6 @@ void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding);
 void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding);
 
 void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline);
-
-// extern void Rr_DrawStaticMesh(Rr_App *App, Rr_GraphNode *Node, Rr_StaticMesh *StaticMesh, Rr_Data PerDrawData);
-//
-// extern void Rr_DrawStaticMeshOverrideMaterials(
-//     Rr_App *App,
-//     Rr_GraphNode *Node,
-//     Rr_Material **OverrideMaterials,
-//     size_t OverrideMaterialCount,
-//     Rr_StaticMesh *StaticMesh,
-//     Rr_Data PerDrawData);
 
 #ifdef __cplusplus
 }

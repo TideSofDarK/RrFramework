@@ -11,15 +11,7 @@
 
 #include <SDL3/SDL_atomic.h>
 
-typedef struct Rr_SwapchainImage Rr_SwapchainImage;
-struct Rr_SwapchainImage
-{
-    VkExtent2D Extent;
-    VkImage Handle;
-    VkImageView View;
-    VkSampler Sampler;
-    VkDeviceMemory Memory;
-};
+#define RR_MAX_SWAPCHAIN_IMAGE_COUNT 8
 
 typedef struct Rr_Swapchain Rr_Swapchain;
 struct Rr_Swapchain
@@ -27,10 +19,10 @@ struct Rr_Swapchain
     VkSwapchainKHR Handle;
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
-    Rr_SwapchainImage Images[RR_MAX_SWAPCHAIN_IMAGE_COUNT];
+    Rr_Image Images[RR_MAX_SWAPCHAIN_IMAGE_COUNT];
     uint32_t ImageCount;
     VkExtent2D Extent;
-    SDL_AtomicInt bResizePending;
+    SDL_AtomicInt ResizePending;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
@@ -44,7 +36,7 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    VkImage CurrentSwapchainImage;
+    Rr_Image *CurrentSwapchainImage;
 
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
@@ -66,6 +58,13 @@ struct Rr_Frame
     Rr_Arena *Arena;
 };
 
+typedef struct Rr_CachedFramebuffer Rr_CachedFramebuffer;
+struct Rr_CachedFramebuffer
+{
+    VkFramebuffer Handle;
+    uint32_t Hash;
+};
+
 typedef struct Rr_CachedRenderPass Rr_CachedRenderPass;
 struct Rr_CachedRenderPass
 {
@@ -84,7 +83,6 @@ struct Rr_Renderer
 
     VkSurfaceKHR Surface;
     Rr_Swapchain Swapchain;
-    VkExtent2D SwapchainSize;
 
     /* Device */
 
@@ -112,6 +110,7 @@ struct Rr_Renderer
     /* Render Passes */
 
     RR_SLICE_TYPE(Rr_CachedRenderPass) RenderPasses;
+    RR_SLICE_TYPE(Rr_CachedFramebuffer) Framebuffers;
 
     /* Immediate Command Pool/Buffer */
 
@@ -137,10 +136,6 @@ struct Rr_Renderer
 
     RR_SLICE_TYPE(Rr_PendingLoad) PendingLoadsSlice;
 
-    /* Main Draw Target */
-
-    Rr_DrawTarget *DrawTarget;
-
     /* Texture Samplers */
 
     VkSampler NearestSampler;
@@ -150,11 +145,6 @@ struct Rr_Renderer
 
     Rr_TextPipeline TextPipeline;
     Rr_Font *BuiltinFont;
-
-    /* Generic Pipeline Layout */
-
-    VkDescriptorSetLayout GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT];
-    VkPipelineLayout GenericPipelineLayout;
 };
 
 extern void Rr_InitRenderer(Rr_App *App);
@@ -192,4 +182,18 @@ struct Rr_RenderPassInfo
     size_t AttachmentCount;
 };
 
-extern VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info);
+extern VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info);
+
+extern VkFramebuffer Rr_GetFramebuffer(
+    Rr_App *App,
+    VkRenderPass RenderPass,
+    Rr_Image *Images,
+    size_t ImageCount,
+    VkExtent3D Extent);
+
+extern VkFramebuffer Rr_GetFramebufferViews(
+    Rr_App *App,
+    VkRenderPass RenderPass,
+    VkImageView *ImageViews,
+    size_t ImageViewCount,
+    VkExtent3D Extent);

@@ -3,8 +3,6 @@
 #include "Rr_App.h"
 #include "Rr_Mesh.h"
 
-#include <qsort/qsort-inline.h>
-
 #include <assert.h>
 
 Rr_GraphNode *Rr_AddGraphicsNode(
@@ -280,15 +278,20 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    // Rr_Renderer *Renderer = &App->Renderer;
-    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    // VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+
+    Rr_IntVec4 Viewport = { 0 };
+    Viewport.Width = INT32_MAX;
+    Viewport.Height = INT32_MAX;
 
     /* Line up appropriate clear values. */
 
     uint32_t ClearValueCount = Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
+    VkImageView *ImageViews = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImageView, ClearValueCount);
     Rr_Attachment *Attachments = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_Attachment, ClearValueCount);
     VkClearValue *ClearValues = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkClearValue, ClearValueCount);
     for(uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
@@ -300,103 +303,115 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             .LoadOp = ColorTarget->LoadOp,
             .StoreOp = ColorTarget->StoreOp,
         };
+        ImageViews[ColorTarget->Slot] = ColorTarget->Image->View;
+
+        Viewport.Width = RR_MIN(Viewport.Width, ColorTarget->Image->Extent.width);
+        Viewport.Height = RR_MIN(Viewport.Width, ColorTarget->Image->Extent.height);
     }
     if(Node->DepthTarget != NULL)
     {
-        VkClearValue *ClearValue = &ClearValues[Node->DepthTarget->Slot];
-        memcpy(ClearValue, &Node->DepthTarget->Clear, sizeof(VkClearValue));
+        Rr_DepthTarget *DepthTarget = Node->DepthTarget;
+        VkClearValue *ClearValue = &ClearValues[DepthTarget->Slot];
+        memcpy(ClearValue, &DepthTarget->Clear, sizeof(VkClearValue));
+        ImageViews[DepthTarget->Slot] = DepthTarget->Image->View;
+
+        Viewport.Width = RR_MIN(Viewport.Width, DepthTarget->Image->Extent.width);
+        Viewport.Height = RR_MIN(Viewport.Width, DepthTarget->Image->Extent.height);
     }
 
     /* Begin render pass. */
 
-    // VkRenderPassBeginInfo RenderPassBeginInfo = {
-    //     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    //     .pNext = NULL,
-    //     .framebuffer = DrawTarget->Frames[Renderer->CurrentFrameIndex].Framebuffer,
-    //     .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
-    //     .renderPass = Rr_GetRenderPass(Renderer, NULL),
-    //     .clearValueCount = ClearValueCount,
-    //     .pClearValues = ClearValues,
-    // };
-    // vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    //
-    // /* Set dynamic states. */
-    //
-    // vkCmdSetViewport(
-    //     CommandBuffer,
-    //     0,
-    //     1,
-    //     &(VkViewport){
-    //         .x = (float)Viewport.X,
-    //         .y = (float)Viewport.Y,
-    //         .width = (float)Viewport.Width,
-    //         .height = (float)Viewport.Height,
-    //         .minDepth = 0.0f,
-    //         .maxDepth = 1.0f,
-    //     });
-    //
-    // vkCmdSetScissor(
-    //     CommandBuffer,
-    //     0,
-    //     1,
-    //     &(VkRect2D){
-    //         .offset.x = Viewport.X,
-    //         .offset.y = Viewport.Y,
-    //         .extent.width = Viewport.Width,
-    //         .extent.height = Viewport.Height,
-    //     });
-    //
-    // for(Rr_GraphicsNodeFunction *Function = Node->EncodedFirst; Function != NULL; Function = Function->Next)
-    // {
-    //     switch(Function->Type)
-    //     {
-    //         case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
-    //         {
-    //             Rr_BufferBinding *Binding = (Rr_BufferBinding *)Function->Args;
-    //             vkCmdBindIndexBuffer(CommandBuffer, Binding->Buffer->Handle, Binding->Offset, VK_INDEX_TYPE_UINT32);
-    //         }
-    //         break;
-    //         case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
-    //         {
-    //             Rr_BufferBinding *Binding = (Rr_BufferBinding *)Function->Args;
-    //             vkCmdBindVertexBuffers(
-    //                 CommandBuffer,
-    //                 Binding->Slot,
-    //                 1,
-    //                 &Binding->Buffer->Handle,
-    //                 &(VkDeviceSize){ Binding->Offset });
-    //         }
-    //         break;
-    //         case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED:
-    //         {
-    //             Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
-    //             vkCmdDrawIndexed(
-    //                 CommandBuffer,
-    //                 Args->IndexCount,
-    //                 Args->InstanceCount,
-    //                 Args->FirstIndex,
-    //                 Args->VertexOffset,
-    //                 Args->FirstInstance);
-    //         }
-    //         break;
-    //         case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
-    //         {
-    //             vkCmdBindPipeline(
-    //                 CommandBuffer,
-    //                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-    //                 (*(Rr_GraphicsPipeline **)Function->Args)->Handle);
-    //         }
-    //         break;
-    //         default:
-    //         {
-    //         }
-    //         break;
-    //     }
-    // }
-    //
-    // vkCmdEndRenderPass(CommandBuffer);
-    //
-    // Rr_DestroyArenaScratch(Scratch);
+    Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = ClearValueCount, .Attachments = Attachments };
+    VkRenderPass RenderPass = Rr_GetRenderPass(App, &RenderPassInfo);
+    VkFramebuffer Framebuffer = Rr_GetFramebufferViews(App, RenderPass, ImageViews, ClearValueCount, (VkExtent3D){});
+    VkRenderPassBeginInfo RenderPassBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext = NULL,
+        .framebuffer = Framebuffer,
+        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
+        .renderPass = RenderPass,
+        .clearValueCount = ClearValueCount,
+        .pClearValues = ClearValues,
+    };
+    vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    /* Set dynamic states. */
+
+    vkCmdSetViewport(
+        CommandBuffer,
+        0,
+        1,
+        &(VkViewport){
+            .x = (float)Viewport.X,
+            .y = (float)Viewport.Y,
+            .width = (float)Viewport.Width,
+            .height = (float)Viewport.Height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        });
+
+    vkCmdSetScissor(
+        CommandBuffer,
+        0,
+        1,
+        &(VkRect2D){
+            .offset.x = Viewport.X,
+            .offset.y = Viewport.Y,
+            .extent.width = Viewport.Width,
+            .extent.height = Viewport.Height,
+        });
+
+    for(Rr_GraphicsNodeFunction *Function = Node->EncodedFirst; Function != NULL; Function = Function->Next)
+    {
+        switch(Function->Type)
+        {
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
+            {
+                Rr_BufferBinding *Binding = (Rr_BufferBinding *)Function->Args;
+                vkCmdBindIndexBuffer(CommandBuffer, Binding->Buffer->Handle, Binding->Offset, VK_INDEX_TYPE_UINT32);
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
+            {
+                Rr_BufferBinding *Binding = (Rr_BufferBinding *)Function->Args;
+                vkCmdBindVertexBuffers(
+                    CommandBuffer,
+                    Binding->Slot,
+                    1,
+                    &Binding->Buffer->Handle,
+                    &(VkDeviceSize){ Binding->Offset });
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED:
+            {
+                Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
+                vkCmdDrawIndexed(
+                    CommandBuffer,
+                    Args->IndexCount,
+                    Args->InstanceCount,
+                    Args->FirstIndex,
+                    Args->VertexOffset,
+                    Args->FirstInstance);
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
+            {
+                vkCmdBindPipeline(
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    (*(Rr_GraphicsPipeline **)Function->Args)->Handle);
+            }
+            break;
+            default:
+            {
+            }
+            break;
+        }
+    }
+
+    vkCmdEndRenderPass(CommandBuffer);
+
+    Rr_DestroyArenaScratch(Scratch);
 }
 
 #define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType, ArgsData)                   \

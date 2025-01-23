@@ -22,7 +22,6 @@ union Rr_Object
     Rr_Font Font;
     Rr_PipelineLayout PipelineLayout;
     Rr_GraphicsPipeline GraphicsPipeline;
-    Rr_DrawTarget DrawTarget;
     void *Next;
 };
 
@@ -165,7 +164,7 @@ static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
         case SDL_EVENT_WINDOW_RESIZED:
         {
             Rr_App *App = (Rr_App *)AppPtr;
-            SDL_SetAtomicInt(&App->Renderer.Swapchain.bResizePending, 1);
+            SDL_SetAtomicInt(&App->Renderer.Swapchain.ResizePending, 1);
         }
         break;
 #endif
@@ -317,15 +316,15 @@ Rr_IntVec2 Rr_GetSwapchainSize(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     return (Rr_IntVec2){
-        (int32_t)Renderer->SwapchainSize.width,
-        (int32_t)Renderer->SwapchainSize.height,
+        (int32_t)Renderer->Swapchain.Extent.width,
+        (int32_t)Renderer->Swapchain.Extent.height,
     };
 }
 
 float Rr_GetAspectRatio(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
-    return (float)Renderer->SwapchainSize.width / (float)Renderer->SwapchainSize.height;
+    return (float)Renderer->Swapchain.Extent.width / (float)Renderer->Swapchain.Extent.height;
 }
 
 double Rr_GetDeltaSeconds(Rr_App *App)

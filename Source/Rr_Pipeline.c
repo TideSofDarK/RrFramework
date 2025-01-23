@@ -26,10 +26,7 @@ static VkStencilOp Rr_GetVulkanStencilOp(Rr_StencilOp StencilOp)
         case RR_STENCIL_OP_DECREMENT_AND_WRAP:
             return VK_STENCIL_OP_DECREMENT_AND_WRAP;
         default:
-        {
-            Rr_LogAbort("Invalid StencilOp!");
             return 0;
-        }
     }
 }
 
@@ -54,10 +51,7 @@ static VkCompareOp Rr_GetVulkanCompareOp(Rr_CompareOp CompareOp)
         case RR_COMPARE_OP_ALWAYS:
             return VK_COMPARE_OP_ALWAYS;
         default:
-        {
-            Rr_LogAbort("Invalid CompareOp!");
             return 0;
-        }
     }
 }
 
@@ -140,10 +134,7 @@ static VkBlendFactor Rr_GetVulkanBlendFactor(Rr_BlendFactor BlendFactor)
         case RR_BLEND_FACTOR_SRC_ALPHA_SATURATE:
             return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
         default:
-        {
-            Rr_LogAbort("Invalid BlendFactor!");
             return 0;
-        }
     }
 }
 
@@ -163,10 +154,7 @@ static VkBlendOp Rr_GetVulkanBlendOp(Rr_BlendOp BlendOp)
             return VK_BLEND_OP_MAX;
         case RR_BLEND_OP_INVALID:
         default:
-        {
-            Rr_LogAbort("Invalid BlendOp!");
             return 0;
-        }
     }
 }
 
@@ -394,8 +382,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         .back = Rr_GetVulkanStencilOpState(Info->DepthStencil.BackStencilState, &Info->DepthStencil),
     };
 
-    VkPipelineLayout PipelineLayout = VK_NULL_HANDLE;
-
     VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = NULL,
@@ -408,7 +394,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         .pMultisampleState = &Multisampling,
         .pColorBlendState = &ColorBlendInfo,
         .pDepthStencilState = &DepthStencil,
-        .layout = PipelineLayout,
+        .layout = Info->Layout->Handle,
         .pDynamicState = &DynamicStateInfo,
         .renderPass = Rr_GetRenderPass(&App->Renderer, NULL),
     };

@@ -190,7 +190,6 @@ struct Rr_PipelineInfo
 {
     Rr_Data VertexShaderSPV;
     Rr_Data FragmentShaderSPV;
-    size_t PushConstantsSize;
     Rr_VertexInputAttribute *VertexAttributes;
     size_t VertexAttributeCount;
     Rr_Topology Topology;
@@ -198,6 +197,7 @@ struct Rr_PipelineInfo
     size_t ColorTargetCount;
     Rr_Rasterizer Rasterizer;
     Rr_DepthStencil DepthStencil;
+    Rr_PipelineLayout *Layout;
 };
 
 typedef enum

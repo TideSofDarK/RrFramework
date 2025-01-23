@@ -80,11 +80,7 @@ struct Rr_Data
 #define RR_PERFORMANCE_COUNTER          1
 #define RR_MAX_OBJECTS                  128
 #define RR_MAX_LAYOUT_BINDINGS          4
-#define RR_MAX_SWAPCHAIN_IMAGE_COUNT    8
 #define RR_FRAME_OVERLAP                2
-#define RR_DEPTH_FORMAT                 VK_FORMAT_D32_SFLOAT
-#define RR_PRERENDERED_DEPTH_FORMAT     VK_FORMAT_D32_SFLOAT
-#define RR_COLOR_FORMAT                 VK_FORMAT_R8G8B8A8_UNORM
 #define RR_STAGING_BUFFER_SIZE          RR_MEGABYTES(16)
 
 /* Arenas */
