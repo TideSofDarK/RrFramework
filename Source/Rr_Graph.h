@@ -49,7 +49,6 @@ struct Rr_GraphBatch
     RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriersSlice;
     VkPipelineStageFlags StageMask;
     Rr_Map *SyncMap;
-    bool Final;
     Rr_Arena *Arena;
 };
 

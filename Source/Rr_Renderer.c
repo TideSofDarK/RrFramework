@@ -740,6 +740,8 @@ void Rr_Draw(Rr_App *App)
 
     /* Execute Frame Graph */
 
+    App->Config->DrawFunc(App, App->UserData);
+
     Rr_ExecuteGraph(App, &Frame->Graph, Scratch.Arena);
 
     vkEndCommandBuffer(CommandBuffer);

@@ -17,6 +17,7 @@ struct Rr_AppConfig
     void (*InitFunc)(Rr_App *App, void *UserData);
     void (*CleanupFunc)(Rr_App *App, void *UserData);
     void (*IterateFunc)(Rr_App *App, void *UserData);
+    void (*DrawFunc)(Rr_App *App, void *UserData);
     void (*FileDroppedFunc)(Rr_App *App, const char *Path);
     void *UserData;
 };

@@ -668,6 +668,10 @@ static void Init(Rr_App *App, void *UserData)
 
 static void Iterate(Rr_App *App, void *UserData)
 {
+}
+
+static void Draw(Rr_App *App, void *UserData)
+{
     Rr_Image *ColorImage = Rr_GetSwapchainImage(App);
 
     Rr_ColorTarget ColorTarget = {
@@ -710,6 +714,7 @@ void RunGame()
                             .InitFunc = Init,
                             .CleanupFunc = Cleanup,
                             .IterateFunc = Iterate,
+                            .DrawFunc = Draw,
                             .FileDroppedFunc = nullptr,
                             .UserData = nullptr };
     Rr_Run(&Config);

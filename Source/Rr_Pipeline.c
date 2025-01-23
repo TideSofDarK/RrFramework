@@ -256,7 +256,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
 
     Rr_GraphicsPipeline *Pipeline = (Rr_GraphicsPipeline *)Rr_CreateObject(App);
 
-    RR_SLICE_TYPE(VkPipelineShaderStageCreateInfo) ShaderStages;
+    RR_SLICE_TYPE(VkPipelineShaderStageCreateInfo) ShaderStages = {0};
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
     if(Info->VertexShaderSPV.Pointer != NULL)
@@ -284,18 +284,9 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         *RR_SLICE_PUSH(&ShaderStages, Scratch.Arena) = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
     }
 
-    RR_SLICE_TYPE(VkVertexInputBindingDescription) BindingDescriptions;
-    RR_SLICE_TYPE(VkVertexInputAttributeDescription) AttributeDescriptions;
+    RR_SLICE_TYPE(VkVertexInputBindingDescription) BindingDescriptions = {0};
+    RR_SLICE_TYPE(VkVertexInputAttributeDescription) AttributeDescriptions = {0};
     RR_SLICE_RESERVE(&AttributeDescriptions, Info->VertexAttributeCount, Scratch.Arena);
-    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .vertexAttributeDescriptionCount = AttributeDescriptions.Count,
-        .pVertexAttributeDescriptions = AttributeDescriptions.Data,
-        .vertexBindingDescriptionCount = BindingDescriptions.Count,
-        .pVertexBindingDescriptions = BindingDescriptions.Data,
-    };
     for(size_t Index = 0; Index < Info->VertexAttributeCount; ++Index)
     {
         Rr_VertexInputAttribute *Attribute = Info->VertexAttributes + Index;
@@ -326,6 +317,16 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         AttributeDescription->offset = BindingDescription->stride;
         BindingDescription->stride += Size;
     }
+
+    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .vertexAttributeDescriptionCount = AttributeDescriptions.Count,
+        .pVertexAttributeDescriptions = AttributeDescriptions.Data,
+        .vertexBindingDescriptionCount = BindingDescriptions.Count,
+        .pVertexBindingDescriptions = BindingDescriptions.Data,
+    };
 
     VkPipelineInputAssemblyStateCreateInfo InputAssembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -375,7 +376,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         .alphaToOneEnable = VK_FALSE,
     };
 
-    RR_SLICE_TYPE(VkPipelineColorBlendAttachmentState) ColorAttachments;
+    RR_SLICE_TYPE(VkPipelineColorBlendAttachmentState) ColorAttachments = {0};
     RR_SLICE_RESERVE(&ColorAttachments, Info->ColorTargetCount, Scratch.Arena);
     for(size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {

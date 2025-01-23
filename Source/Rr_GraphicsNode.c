@@ -26,6 +26,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     {
         GraphicsNode->ColorTargets = RR_ALLOC_STRUCT_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
         memcpy(GraphicsNode->ColorTargets, ColorTargets, sizeof(Rr_ColorTarget) * ColorTargetCount);
+        GraphicsNode->ColorTargetCount = ColorTargetCount;
     }
     if(DepthTarget != NULL)
     {
@@ -241,35 +242,36 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 
 bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_GraphicsNode *Node)
 {
-    // Rr_DrawTarget *DrawTarget = Node->Info.DrawTarget;
-    //
-    // if(DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage &&
-    //    Rr_SyncImage(
-    //        App,
-    //        Graph,
-    //        Batch,
-    //        DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
-    //        VK_IMAGE_ASPECT_COLOR_BIT,
-    //        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    //        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-    //        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true)
-    // {
-    //     return false;
-    // }
-    //
-    // if(DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage &&
-    //    Rr_SyncImage(
-    //        App,
-    //        Graph,
-    //        Batch,
-    //        DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
-    //        VK_IMAGE_ASPECT_DEPTH_BIT,
-    //        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-    //        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-    //        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != true)
-    // {
-    //     return false;
-    // }
+    for (size_t Index = 0; Index < Node->ColorTargetCount; ++Index)
+    {
+        Rr_ColorTarget *ColorTarget = Node->ColorTargets + Index;
+        if(Rr_SyncImage(
+           App,
+           Graph,
+           Batch,
+ColorTarget->Image->Handle,
+           VK_IMAGE_ASPECT_COLOR_BIT,
+           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+           VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true)
+        {
+            return false;
+        }
+    }
+
+    if(Node->DepthTarget &&
+       Rr_SyncImage(
+           App,
+           Graph,
+           Batch,
+           Node->DepthTarget->Image->Handle,
+           VK_IMAGE_ASPECT_DEPTH_BIT,
+           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != true)
+    {
+        return false;
+    }
 
     return true;
 }

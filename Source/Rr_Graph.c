@@ -200,10 +200,6 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                 {
                     Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
                     NodeBatched = Rr_BatchPresentNode(App, Graph, &Batch, PresentNode);
-                    if(NodeBatched)
-                    {
-                        Batch.Final = true;
-                    }
                 }
                 break;
                 case RR_GRAPH_NODE_TYPE_BUILTIN:
@@ -227,6 +223,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             if(NodeBatched)
             {
                 *RR_SLICE_PUSH(&Batch.NodesSlice, Batch.Arena) = GraphNode;
+                NodeCount--;
             }
         }
 
@@ -239,7 +236,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
         Rr_DestroyArenaScratch(Scratch);
 
-        if(Batch.Final)
+        if(NodeCount <= 0)
         {
             break;
         }
