@@ -336,8 +336,8 @@ void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
 
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    // Rr_Renderer *Renderer = &App->Renderer;
+    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     //
     // Rr_IntVec4 Viewport = {

@@ -24,8 +24,8 @@ Rr_GraphNode *Rr_AddPresentNode(
 
 bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_PresentNode *Node)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    // Rr_Renderer *Renderer = &App->Renderer;
+    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     // Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
     //
     // if(Rr_SyncImage(
@@ -64,7 +64,7 @@ bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_
 
 void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    // Rr_Renderer *Renderer = &App->Renderer;
     // Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
     // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     // VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;

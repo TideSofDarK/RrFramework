@@ -216,6 +216,38 @@ static size_t Rr_GetFormatSize(Rr_Format Format)
     }
 }
 
+static VkRenderPass Rr_GetCompatibleRenderPass(Rr_App *App, Rr_PipelineInfo *Info)
+{
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
+    bool HasDepth = Info->DepthStencil.EnableDepthWrite;
+    size_t AttachmentCount = Info->ColorTargetCount + (HasDepth ? 1 : 0);
+    Rr_Attachment *Attachments = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+
+    for(uint32_t Index = 0; Index < Info->ColorTargetCount; ++Index)
+    {
+        Attachments[Index].LoadOp = RR_LOAD_OP_DONT_CARE;
+        Attachments[Index].StoreOp = RR_STORE_OP_DONT_CARE;
+    }
+    if(HasDepth)
+    {
+        Attachments[AttachmentCount - 1].LoadOp = RR_LOAD_OP_DONT_CARE;
+        Attachments[AttachmentCount - 1].StoreOp = RR_STORE_OP_DONT_CARE;
+        Attachments[AttachmentCount - 1].Depth = true;
+    }
+
+    VkRenderPass RenderPass = Rr_GetRenderPass(
+        App,
+        &(Rr_RenderPassInfo){
+            .AttachmentCount = AttachmentCount,
+            .Attachments = Attachments,
+        });
+
+    Rr_DestroyArenaScratch(Scratch);
+
+    return RenderPass;
+}
+
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Info)
 {
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
@@ -396,7 +428,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         .pDepthStencilState = &DepthStencil,
         .layout = Info->Layout->Handle,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = Rr_GetRenderPass(&App->Renderer, NULL),
+        .renderPass = Rr_GetCompatibleRenderPass(App, Info),
     };
 
     vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline->Handle);
@@ -440,7 +472,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *S
     {
         Rr_PipelineBindingSet *Set = Sets + Index;
 
-        for(size_t BindingIndex; BindingIndex < Set->BindingCount; ++BindingIndex)
+        for(size_t BindingIndex = 0; BindingIndex < Set->BindingCount; ++BindingIndex)
         {
             Rr_PipelineBinding *Binding = Set->Bindings + BindingIndex;
 

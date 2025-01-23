@@ -144,7 +144,7 @@ file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
 
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 
-# rr_enable_debug_options(${PROJECT_NAME})
+rr_enable_debug_options(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PUBLIC Include)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE Vendor)

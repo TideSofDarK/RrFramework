@@ -289,11 +289,11 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
 
     /* Line up appropriate clear values. */
 
-    uint32_t ClearValueCount = Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
+    uint32_t AttachmentCount = Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
-    VkImageView *ImageViews = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImageView, ClearValueCount);
-    Rr_Attachment *Attachments = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_Attachment, ClearValueCount);
-    VkClearValue *ClearValues = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkClearValue, ClearValueCount);
+    VkImageView *ImageViews = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
+    Rr_Attachment *Attachments = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+    VkClearValue *ClearValues = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
     for(uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
         Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
@@ -305,32 +305,42 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
         };
         ImageViews[ColorTarget->Slot] = ColorTarget->Image->View;
 
-        Viewport.Width = RR_MIN(Viewport.Width, ColorTarget->Image->Extent.width);
-        Viewport.Height = RR_MIN(Viewport.Width, ColorTarget->Image->Extent.height);
+        Viewport.Width = RR_MIN(Viewport.Width, (int32_t)ColorTarget->Image->Extent.width);
+        Viewport.Height = RR_MIN(Viewport.Width, (int32_t)ColorTarget->Image->Extent.height);
     }
     if(Node->DepthTarget != NULL)
     {
         Rr_DepthTarget *DepthTarget = Node->DepthTarget;
         VkClearValue *ClearValue = &ClearValues[DepthTarget->Slot];
         memcpy(ClearValue, &DepthTarget->Clear, sizeof(VkClearValue));
+        Attachments[DepthTarget->Slot] = (Rr_Attachment){
+            .LoadOp = DepthTarget->LoadOp,
+            .StoreOp = DepthTarget->StoreOp,
+            .Depth = true,
+        };
         ImageViews[DepthTarget->Slot] = DepthTarget->Image->View;
 
-        Viewport.Width = RR_MIN(Viewport.Width, DepthTarget->Image->Extent.width);
-        Viewport.Height = RR_MIN(Viewport.Width, DepthTarget->Image->Extent.height);
+        Viewport.Width = RR_MIN(Viewport.Width, (int32_t)DepthTarget->Image->Extent.width);
+        Viewport.Height = RR_MIN(Viewport.Width, (int32_t)DepthTarget->Image->Extent.height);
     }
 
     /* Begin render pass. */
 
-    Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = ClearValueCount, .Attachments = Attachments };
+    Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = AttachmentCount, .Attachments = Attachments };
     VkRenderPass RenderPass = Rr_GetRenderPass(App, &RenderPassInfo);
-    VkFramebuffer Framebuffer = Rr_GetFramebufferViews(App, RenderPass, ImageViews, ClearValueCount, (VkExtent3D){});
+    VkFramebuffer Framebuffer = Rr_GetFramebufferViews(
+        App,
+        RenderPass,
+        ImageViews,
+        AttachmentCount,
+        (VkExtent3D){ .width = Viewport.Width, .height = Viewport.Height, .depth = 1 });
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .framebuffer = Framebuffer,
         .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
         .renderPass = RenderPass,
-        .clearValueCount = ClearValueCount,
+        .clearValueCount = AttachmentCount,
         .pClearValues = ClearValues,
     };
     vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
