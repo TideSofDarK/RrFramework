@@ -256,7 +256,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
 
     Rr_GraphicsPipeline *Pipeline = (Rr_GraphicsPipeline *)Rr_CreateObject(App);
 
-    RR_SLICE_TYPE(VkPipelineShaderStageCreateInfo) ShaderStages = {0};
+    RR_SLICE_TYPE(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
     if(Info->VertexShaderSPV.Pointer != NULL)
@@ -284,8 +284,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         *RR_SLICE_PUSH(&ShaderStages, Scratch.Arena) = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
     }
 
-    RR_SLICE_TYPE(VkVertexInputBindingDescription) BindingDescriptions = {0};
-    RR_SLICE_TYPE(VkVertexInputAttributeDescription) AttributeDescriptions = {0};
+    RR_SLICE_TYPE(VkVertexInputBindingDescription) BindingDescriptions = { 0 };
+    RR_SLICE_TYPE(VkVertexInputAttributeDescription) AttributeDescriptions = { 0 };
     RR_SLICE_RESERVE(&AttributeDescriptions, Info->VertexAttributeCount, Scratch.Arena);
     for(size_t Index = 0; Index < Info->VertexAttributeCount; ++Index)
     {
@@ -376,7 +376,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         .alphaToOneEnable = VK_FALSE,
     };
 
-    RR_SLICE_TYPE(VkPipelineColorBlendAttachmentState) ColorAttachments = {0};
+    RR_SLICE_TYPE(VkPipelineColorBlendAttachmentState) ColorAttachments = { 0 };
     RR_SLICE_RESERVE(&ColorAttachments, Info->ColorTargetCount, Scratch.Arena);
     for(size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {

@@ -242,18 +242,18 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 
 bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_GraphicsNode *Node)
 {
-    for (size_t Index = 0; Index < Node->ColorTargetCount; ++Index)
+    for(size_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
         Rr_ColorTarget *ColorTarget = Node->ColorTargets + Index;
         if(Rr_SyncImage(
-           App,
-           Graph,
-           Batch,
-ColorTarget->Image->Handle,
-           VK_IMAGE_ASPECT_COLOR_BIT,
-           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-           VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true)
+               App,
+               Graph,
+               Batch,
+               ColorTarget->Image->Handle,
+               VK_IMAGE_ASPECT_COLOR_BIT,
+               VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+               VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true)
         {
             return false;
         }
