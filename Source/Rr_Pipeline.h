@@ -4,14 +4,9 @@
 
 #include <Rr/Rr_Pipeline.h>
 
-struct Rr_Renderer;
-
-typedef struct Rr_Pipeline Rr_Pipeline;
-struct Rr_Pipeline
+struct Rr_PipelineLayout
 {
-    VkPipeline Handle;
-    VkRenderPass RenderPass;
-    uint32_t ColorAttachmentCount;
+    VkPipelineLayout Handle;
 };
 
 struct Rr_GraphicsPipeline
@@ -19,43 +14,3 @@ struct Rr_GraphicsPipeline
     VkPipeline Handle;
     uint32_t ColorAttachmentCount;
 };
-
-struct Rr_GenericPipeline
-{
-    Rr_Pipeline *Pipeline;
-    struct
-    {
-        size_t Globals;
-        size_t Material;
-        size_t PerDraw;
-    } Sizes;
-    VkDescriptorSet PerDrawDescriptorSets[RR_FRAME_OVERLAP];
-};
-
-struct Rr_PipelineBuilder
-{
-    struct
-    {
-        uint32_t VertexInputStride;
-    } VertexInput[2];
-    VkVertexInputAttributeDescription Attributes[RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES];
-
-    VkPipelineInputAssemblyStateCreateInfo InputAssembly;
-    VkPipelineRasterizationStateCreateInfo Rasterizer;
-    VkFormat ColorAttachmentFormats[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
-    VkPipelineColorBlendAttachmentState ColorBlendAttachments[RR_PIPELINE_MAX_COLOR_ATTACHMENTS];
-    VkPipelineMultisampleStateCreateInfo Multisampling;
-    VkPipelineDepthStencilStateCreateInfo DepthStencil;
-    Rr_Asset VertexShaderSPV;
-    Rr_Asset FragmentShaderSPV;
-    size_t PushConstantsSize;
-
-    size_t ColorAttachmentCount;
-};
-
-extern Rr_Pipeline *Rr_CreatePipeline(
-    Rr_App *App,
-    Rr_PipelineBuilder *PipelineBuilder,
-    VkPipelineLayout PipelineLayout);
-
-extern void Rr_DestroyPipeline(Rr_App *App, Rr_Pipeline *Pipeline);

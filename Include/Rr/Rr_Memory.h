@@ -10,23 +10,6 @@ extern "C" {
  * Common Memory Functions
  */
 
-#ifndef RR_DISABLE_ALLOCA
-#define Rr_StackAlloc(Type, Count) (Type *)alloca(sizeof(Type) * (Count))
-#define Rr_StackFree(Data) \
-    do                     \
-    {                      \
-    }                      \
-    while(0)
-#else
-#define Rr_StackAlloc(Type, Count) (Type *)Rr_Calloc((Count), sizeof(Type))
-#define Rr_StackFree(Data) \
-    do                     \
-    {                      \
-        Rr_Free(Data)      \
-    }                      \
-    while(0)
-#endif
-
 extern void *Rr_Malloc(size_t Bytes);
 
 extern void *Rr_Calloc(size_t Num, size_t Bytes);
@@ -141,6 +124,25 @@ struct Rr_Map
 };
 
 extern void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena);
+
+/*
+ * Free List
+ */
+
+typedef struct Rr_FreeList Rr_FreeList;
+struct Rr_FreeList
+{
+    void *Data;
+    Rr_FreeList *Next;
+};
+
+extern void *Rr_FreeListGet(Rr_FreeList **FreeList, size_t Size, Rr_Arena *Arena);
+
+extern void Rr_FreeListReturn(Rr_FreeList **FreeList, void *Pointer);
+
+#define RR_FREE_LIST_GET(FreeList, Arena) Rr_FreeListGet((Rr_FreeList **)(FreeList), sizeof(*(*FreeList)), Arena)
+
+#define RR_FREE_LIST_RETURN(FreeList, Pointer) Rr_FreeListReturn((Rr_FreeList **)(FreeList), Pointer)
 
 #ifdef __cplusplus
 }

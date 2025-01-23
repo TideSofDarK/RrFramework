@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Rr/Rr_Math.h>
+#include <Rr/Rr_Memory.h>
+#include <Rr/Rr_Renderer.h>
 
 #include <vma/vk_mem_alloc.h>
 #include <volk/volk.h>
@@ -32,7 +34,8 @@ extern Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
     uint32_t *OutGraphicsQueueFamilyIndex,
-    uint32_t *OutTransferQueueFamilyIndex);
+    uint32_t *OutTransferQueueFamilyIndex,
+    Rr_Arena *Arena);
 
 extern void Rr_InitDeviceAndQueues(
     VkPhysicalDevice PhysicalDevice,
@@ -183,4 +186,18 @@ static VkCommandBufferAllocateInfo GetCommandBufferAllocateInfo(VkCommandPool Co
     };
 
     return Info;
+}
+
+static VkShaderStageFlags Rr_GetVulkanShaderStageFlags(Rr_ShaderStage ShaderStage)
+{
+    VkShaderStageFlags ShaderStageFlags = 0;
+    if((ShaderStage & RR_SHADER_STAGE_VERTEX_BIT) != 0)
+    {
+        ShaderStageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+    }
+    if((ShaderStage & RR_SHADER_STAGE_FRAGMENT_BIT) != 0)
+    {
+        ShaderStageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    return ShaderStageFlags;
 }

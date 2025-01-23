@@ -26,24 +26,6 @@ struct Rr_GraphicsNodeFunction
     Rr_GraphicsNodeFunction *Next;
 };
 
-typedef struct Rr_DrawPrimitiveInfo Rr_DrawPrimitiveInfo;
-struct Rr_DrawPrimitiveInfo
-{
-    Rr_Material *Material;
-    struct Rr_Primitive *Primitive;
-    uint32_t PerDrawOffset;
-};
-
-typedef RR_SLICE_TYPE(Rr_DrawPrimitiveInfo) Rr_DrawPrimitivesSlice;
-
-typedef struct Rr_GenericRenderingContext Rr_GenericRenderingContext;
-struct Rr_GenericRenderingContext
-{
-    Rr_GenericPipeline *BasePipeline;
-    Rr_GenericPipeline *OverridePipeline;
-    VkDescriptorSet GlobalsDescriptorSet;
-};
-
 typedef struct Rr_GraphicsNode Rr_GraphicsNode;
 struct Rr_GraphicsNode
 {

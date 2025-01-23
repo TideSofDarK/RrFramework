@@ -6,7 +6,6 @@
 
 struct Rr_LoadSize;
 struct Rr_UploadContext;
-struct Rr_Material;
 struct Rr_Buffer;
 struct Rr_GLTFLoader;
 
@@ -28,9 +27,7 @@ struct Rr_RawMesh
 struct Rr_StaticMesh
 {
     Rr_Primitive *Primitives[RR_MESH_MAX_PRIMITIVES];
-    struct Rr_Material *Materials[RR_MESH_MAX_PRIMITIVES];
     uint8_t PrimitiveCount : 4;
-    uint8_t MaterialCount : 4;
 };
 
 struct Rr_SkeletalMesh
@@ -52,9 +49,7 @@ extern Rr_StaticMesh *Rr_CreateStaticMesh(
     struct Rr_App *App,
     struct Rr_UploadContext *UploadContext,
     Rr_RawMesh *RawMeshes,
-    size_t RawMeshCount,
-    struct Rr_Material **Materials,
-    size_t MaterialCount);
+    size_t RawMeshCount);
 
 extern Rr_StaticMesh *Rr_CreateStaticMeshGLTF(
     struct Rr_App *App,

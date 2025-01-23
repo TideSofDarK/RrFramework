@@ -11,83 +11,84 @@
 
 void Rr_InitTextRenderer(Rr_App *App)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
-    Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
-
-    /* Descriptor Set Layouts */
-
-    Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
-    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS] = Rr_BuildDescriptorLayout(
-        &DescriptorLayoutBuilder,
-        Device,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    Rr_ClearDescriptors(&DescriptorLayoutBuilder);
-    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_AddDescriptor(&DescriptorLayoutBuilder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT] = Rr_BuildDescriptorLayout(
-        &DescriptorLayoutBuilder,
-        Device,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    /* Pipeline Layout */
-
-    VkPushConstantRange PushConstantRange = { .offset = 0,
-                                              .size = 128,
-                                              .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
-
-    VkPipelineLayoutCreateInfo LayoutInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = NULL,
-        .setLayoutCount = RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT,
-        .pSetLayouts = TextPipeline->DescriptorSetLayouts,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &PushConstantRange,
-    };
-    vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &TextPipeline->Layout);
-
-    /* Pipeline */
-
-    Rr_Asset BuiltinTextVERT = Rr_LoadAsset(RR_BUILTIN_TEXT_VERT_SPV);
-    Rr_Asset BuiltinTextFRAG = Rr_LoadAsset(RR_BUILTIN_TEXT_FRAG_SPV);
-
-    Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder(Scratch.Arena);
-    Rr_EnableTriangleFan(Builder);
-    Rr_EnablePerVertexInputAttributes(
-        Builder,
-        &(Rr_VertexInput){ .Attributes = {
-                               { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 0 },
-                           } });
-    Rr_EnablePerInstanceInputAttributes(
-        Builder,
-        &(Rr_VertexInput){ .Attributes = {
-                               { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 1 },
-                               { .Type = RR_VERTEX_INPUT_TYPE_UINT, .Location = 2 },
-                           } });
-    Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
-    Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
-    Rr_EnableColorAttachment(Builder, true);
-    Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-    //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
-    TextPipeline->Pipeline = Rr_CreatePipeline(App, Builder, TextPipeline->Layout);
-
-    /* Quad Buffer */
-
-    float Quad[8] = {
-        0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-    };
-    TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(App, sizeof(Quad));
-    Rr_UploadToDeviceBufferImmediate(App, TextPipeline->QuadBuffer, RR_MAKE_DATA_ARRAY(Quad));
-
-    /* Builtin Font */
-
-    Renderer->BuiltinFont = Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
-
-    Rr_DestroyArenaScratch(Scratch);
+    // Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    //
+    // Rr_Renderer *Renderer = &App->Renderer;
+    // VkDevice Device = Renderer->Device;
+    // Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
+    //
+    // /* Descriptor Set Layouts */
+    //
+    // Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
+    // Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    // TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS] = Rr_BuildDescriptorLayout(
+    //     &DescriptorLayoutBuilder,
+    //     Device,
+    //     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    //
+    // Rr_ClearDescriptors(&DescriptorLayoutBuilder);
+    // Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    // Rr_AddDescriptor(&DescriptorLayoutBuilder, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    // TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT] = Rr_BuildDescriptorLayout(
+    //     &DescriptorLayoutBuilder,
+    //     Device,
+    //     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    //
+    // /* Pipeline Layout */
+    //
+    // VkPushConstantRange PushConstantRange = { .offset = 0,
+    //                                           .size = 128,
+    //                                           .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+    //                                           };
+    //
+    // VkPipelineLayoutCreateInfo LayoutInfo = {
+    //     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    //     .pNext = NULL,
+    //     .setLayoutCount = RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT,
+    //     .pSetLayouts = TextPipeline->DescriptorSetLayouts,
+    //     .pushConstantRangeCount = 1,
+    //     .pPushConstantRanges = &PushConstantRange,
+    // };
+    // vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &TextPipeline->Layout);
+    //
+    // /* Pipeline */
+    //
+    // Rr_Asset BuiltinTextVERT = Rr_LoadAsset(RR_BUILTIN_TEXT_VERT_SPV);
+    // Rr_Asset BuiltinTextFRAG = Rr_LoadAsset(RR_BUILTIN_TEXT_FRAG_SPV);
+    //
+    // Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder(Scratch.Arena);
+    // Rr_EnableTriangleFan(Builder);
+    // Rr_EnablePerVertexInputAttributes(
+    //     Builder,
+    //     &(Rr_VertexInput){ .Attributes = {
+    //                            { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 0 },
+    //                        } });
+    // Rr_EnablePerInstanceInputAttributes(
+    //     Builder,
+    //     &(Rr_VertexInput){ .Attributes = {
+    //                            { .Type = RR_VERTEX_INPUT_TYPE_VEC2, .Location = 1 },
+    //                            { .Type = RR_VERTEX_INPUT_TYPE_UINT, .Location = 2 },
+    //                        } });
+    // Rr_EnableVertexStage(Builder, &BuiltinTextVERT);
+    // Rr_EnableFragmentStage(Builder, &BuiltinTextFRAG);
+    // Rr_EnableColorAttachment(Builder, true);
+    // Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
+    // //     Rr_EnableRasterizer(&Builder, RR_POLYGON_MODE_LINE);
+    // TextPipeline->Pipeline = Rr_CreatePipeline(App, Builder, TextPipeline->Layout);
+    //
+    // /* Quad Buffer */
+    //
+    // float Quad[8] = {
+    //     0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+    // };
+    // TextPipeline->QuadBuffer = Rr_CreateDeviceVertexBuffer(App, sizeof(Quad));
+    // Rr_UploadToDeviceBufferImmediate(App, TextPipeline->QuadBuffer, RR_MAKE_DATA_ARRAY(Quad));
+    //
+    // /* Builtin Font */
+    //
+    // Renderer->BuiltinFont = Rr_CreateFont(App, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
+    //
+    // Rr_DestroyArenaScratch(Scratch);
 }
 
 void Rr_CleanupTextRenderer(Rr_App *App)
@@ -95,7 +96,7 @@ void Rr_CleanupTextRenderer(Rr_App *App)
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
     VkDevice Device = Renderer->Device;
-    Rr_DestroyPipeline(App, TextPipeline->Pipeline);
+    // Rr_DestroyPipeline(App, TextPipeline->Pipeline);
     vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
     for(size_t Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT; ++Index)
     {

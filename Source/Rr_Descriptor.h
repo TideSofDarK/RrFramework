@@ -3,6 +3,8 @@
 #include "Rr_Memory.h"
 #include "Rr_Vulkan.h"
 
+#include <Rr/Rr_Pipeline.h>
+
 typedef struct Rr_DescriptorPoolSizeRatio Rr_DescriptorPoolSizeRatio;
 struct Rr_DescriptorPoolSizeRatio
 {
@@ -107,17 +109,19 @@ struct Rr_DescriptorLayoutBuilder
     uint32_t Count;
 };
 
-extern void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder *Builder, uint32_t Binding, VkDescriptorType Type);
+extern void Rr_AddDescriptor(
+    Rr_DescriptorLayoutBuilder *Builder,
+    uint32_t Binding,
+    Rr_PipelineBindingType Type,
+    Rr_ShaderStage ShaderStage);
 
 extern void Rr_AddDescriptorArray(
     Rr_DescriptorLayoutBuilder *Builder,
     uint32_t Binding,
     uint32_t Count,
-    VkDescriptorType Type);
+    Rr_PipelineBindingType Type,
+    Rr_ShaderStage ShaderStage);
 
 extern void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder *Builder);
 
-extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(
-    Rr_DescriptorLayoutBuilder *Builder,
-    VkDevice Device,
-    VkShaderStageFlags ShaderStageFlags);
+extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder *Builder, VkDevice Device);

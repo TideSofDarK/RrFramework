@@ -3,53 +3,316 @@
 #include "Rr_App.h"
 #include "Rr_Log.h"
 
-#include <SDL3/SDL_assert.h>
+#include <assert.h>
 
-enum Rr_VertexInputBinding
+static VkStencilOp Rr_GetVulkanStencilOp(Rr_StencilOp StencilOp)
 {
-    RR_VERTEX_INPUT_BINDING_PER_VERTEX,
-    RR_VERTEX_INPUT_BINDING_PER_INSTANCE
-};
+    switch(StencilOp)
+    {
+        case RR_STENCIL_OP_KEEP:
+            return VK_STENCIL_OP_KEEP;
+        case RR_STENCIL_OP_ZERO:
+            return VK_STENCIL_OP_ZERO;
+        case RR_STENCIL_OP_REPLACE:
+            return VK_STENCIL_OP_REPLACE;
+        case RR_STENCIL_OP_INCREMENT_AND_CLAMP:
+            return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+        case RR_STENCIL_OP_DECREMENT_AND_CLAMP:
+            return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+        case RR_STENCIL_OP_INVERT:
+            return VK_STENCIL_OP_INVERT;
+        case RR_STENCIL_OP_INCREMENT_AND_WRAP:
+            return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        case RR_STENCIL_OP_DECREMENT_AND_WRAP:
+            return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        default:
+        {
+            Rr_LogAbort("Invalid StencilOp!");
+            return 0;
+        }
+    }
+}
 
-Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder, VkPipelineLayout PipelineLayout)
+static VkCompareOp Rr_GetVulkanCompareOp(Rr_CompareOp CompareOp)
 {
+    switch(CompareOp)
+    {
+        case RR_COMPARE_OP_NEVER:
+            return VK_COMPARE_OP_NEVER;
+        case RR_COMPARE_OP_LESS:
+            return VK_COMPARE_OP_LESS;
+        case RR_COMPARE_OP_EQUAL:
+            return VK_COMPARE_OP_EQUAL;
+        case RR_COMPARE_OP_LESS_OR_EQUAL:
+            return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case RR_COMPARE_OP_GREATER:
+            return VK_COMPARE_OP_GREATER;
+        case RR_COMPARE_OP_NOT_EQUAL:
+            return VK_COMPARE_OP_NOT_EQUAL;
+        case RR_COMPARE_OP_GREATER_OR_EQUAL:
+            return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        case RR_COMPARE_OP_ALWAYS:
+            return VK_COMPARE_OP_ALWAYS;
+        default:
+        {
+            Rr_LogAbort("Invalid CompareOp!");
+            return 0;
+        }
+    }
+}
+
+static VkStencilOpState Rr_GetVulkanStencilOpState(Rr_StencilOpState State, Rr_DepthStencil *DepthStencil)
+{
+    return (VkStencilOpState){
+        .compareOp = Rr_GetVulkanCompareOp(State.CompareOp),
+        .failOp = Rr_GetVulkanStencilOp(State.FailOp),
+        .passOp = Rr_GetVulkanStencilOp(State.PassOp),
+        .depthFailOp = Rr_GetVulkanStencilOp(State.DepthFailOp),
+        .writeMask = DepthStencil->WriteMask,
+        .compareMask = DepthStencil->CompareMask,
+        .reference = 0,
+    };
+}
+
+static VkPolygonMode Rr_GetVulkanPolygonMode(Rr_PolygonMode Mode)
+{
+    switch(Mode)
+    {
+        case RR_POLYGON_MODE_LINE:
+            return VK_POLYGON_MODE_LINE;
+        default:
+            return VK_POLYGON_MODE_FILL;
+    }
+}
+
+static VkCullModeFlagBits Rr_GetVulkanCullMode(Rr_CullMode Mode)
+{
+    switch(Mode)
+    {
+        case RR_CULL_MODE_FRONT:
+            return VK_CULL_MODE_FRONT_BIT;
+        case RR_CULL_MODE_BACK:
+            return VK_CULL_MODE_BACK_BIT;
+        default:
+            return VK_CULL_MODE_NONE;
+    }
+}
+
+static VkFrontFace Rr_GetVulkanFrontFace(Rr_FrontFace FrontFace)
+{
+    switch(FrontFace)
+    {
+        case RR_FRONT_FACE_COUNTER_CLOCKWISE:
+            return VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        default:
+            return VK_FRONT_FACE_CLOCKWISE;
+    }
+}
+
+static VkBlendFactor Rr_GetVulkanBlendFactor(Rr_BlendFactor BlendFactor)
+{
+    switch(BlendFactor)
+    {
+        case RR_BLEND_FACTOR_ZERO:
+            return VK_BLEND_FACTOR_ZERO;
+        case RR_BLEND_FACTOR_ONE:
+            return VK_BLEND_FACTOR_ONE;
+        case RR_BLEND_FACTOR_SRC_COLOR:
+            return VK_BLEND_FACTOR_SRC_COLOR;
+        case RR_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+            return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        case RR_BLEND_FACTOR_DST_COLOR:
+            return VK_BLEND_FACTOR_DST_COLOR;
+        case RR_BLEND_FACTOR_ONE_MINUS_DST_COLOR:
+            return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+        case RR_BLEND_FACTOR_SRC_ALPHA:
+            return VK_BLEND_FACTOR_SRC_ALPHA;
+        case RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+            return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        case RR_BLEND_FACTOR_DST_ALPHA:
+            return VK_BLEND_FACTOR_DST_ALPHA;
+        case RR_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
+            return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        case RR_BLEND_FACTOR_CONSTANT_COLOR:
+            return VK_BLEND_FACTOR_CONSTANT_COLOR;
+        case RR_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
+            return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+        case RR_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+            return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+        default:
+        {
+            Rr_LogAbort("Invalid BlendFactor!");
+            return 0;
+        }
+    }
+}
+
+static VkBlendOp Rr_GetVulkanBlendOp(Rr_BlendOp BlendOp)
+{
+    switch(BlendOp)
+    {
+        case RR_BLEND_OP_ADD:
+            return VK_BLEND_OP_ADD;
+        case RR_BLEND_OP_SUBTRACT:
+            return VK_BLEND_OP_SUBTRACT;
+        case RR_BLEND_OP_REVERSE_SUBTRACT:
+            return VK_BLEND_OP_REVERSE_SUBTRACT;
+        case RR_BLEND_OP_MIN:
+            return VK_BLEND_OP_MIN;
+        case RR_BLEND_OP_MAX:
+            return VK_BLEND_OP_MAX;
+        case RR_BLEND_OP_INVALID:
+        default:
+        {
+            Rr_LogAbort("Invalid BlendOp!");
+            return 0;
+        }
+    }
+}
+
+static VkPrimitiveTopology Rr_GetVulkanTopology(Rr_Topology Topology)
+{
+    switch(Topology)
+    {
+        case RR_TOPOLOGY_TRIANGLE_LIST:
+            return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        case RR_TOPOLOGY_TRIANGLE_STRIP:
+            return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        case RR_TOPOLOGY_LINE_LIST:
+            return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        case RR_TOPOLOGY_LINE_STRIP:
+            return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+        case RR_TOPOLOGY_POINT_LIST:
+        default:
+            return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    }
+}
+
+static VkFormat Rr_GetVulkanFormat(Rr_Format Format)
+{
+    switch(Format)
+    {
+        case RR_FORMAT_FLOAT:
+            return VK_FORMAT_R32_SFLOAT;
+        case RR_FORMAT_UINT:
+            return VK_FORMAT_R32_UINT;
+        case RR_FORMAT_VEC2:
+            return VK_FORMAT_R32G32_SFLOAT;
+        case RR_FORMAT_VEC3:
+            return VK_FORMAT_R32G32B32_SFLOAT;
+        case RR_FORMAT_VEC4:
+            return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case RR_FORMAT_NONE:
+        default:
+            return VK_FORMAT_UNDEFINED;
+    }
+}
+
+static size_t Rr_GetFormatSize(Rr_Format Format)
+{
+    switch(Format)
+    {
+        case RR_FORMAT_FLOAT:
+            return sizeof(float);
+        case RR_FORMAT_UINT:
+            return sizeof(uint32_t);
+        case RR_FORMAT_VEC2:
+            return sizeof(float) * 2;
+        case RR_FORMAT_VEC3:
+            return sizeof(float) * 3;
+        case RR_FORMAT_VEC4:
+            return sizeof(float) * 4;
+        case RR_FORMAT_NONE:
+        default:
+            return 0;
+    }
+}
+
+Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Info)
+{
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Pipeline *Pipeline = (Rr_Pipeline *)Rr_CreateObject(App);
-    Pipeline->ColorAttachmentCount = PipelineBuilder->ColorAttachmentCount;
+    Rr_GraphicsPipeline *Pipeline = (Rr_GraphicsPipeline *)Rr_CreateObject(App);
 
-    /* Create shader modules. */
-    VkPipelineShaderStageCreateInfo *ShaderStages =
-        Rr_StackAlloc(VkPipelineShaderStageCreateInfo, RR_PIPELINE_SHADER_STAGES);
-    uint32_t ShaderStageCount = 0;
+    RR_SLICE_TYPE(VkPipelineShaderStageCreateInfo) ShaderStages;
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
-    if(PipelineBuilder->VertexShaderSPV.Data != NULL)
+    if(Info->VertexShaderSPV.Pointer != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (uint32_t *)PipelineBuilder->VertexShaderSPV.Data,
-            .codeSize = PipelineBuilder->VertexShaderSPV.Length,
+            .pCode = (uint32_t *)Info->VertexShaderSPV.Pointer,
+            .codeSize = Info->VertexShaderSPV.Size,
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
-        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
-        ShaderStageCount++;
+        *RR_SLICE_PUSH(&ShaderStages, Scratch.Arena) = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
-    if(PipelineBuilder->FragmentShaderSPV.Data != NULL)
+    if(Info->FragmentShaderSPV.Pointer != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (uint32_t *)PipelineBuilder->FragmentShaderSPV.Data,
-            .codeSize = PipelineBuilder->FragmentShaderSPV.Length,
+            .pCode = (uint32_t *)Info->FragmentShaderSPV.Pointer,
+            .codeSize = Info->FragmentShaderSPV.Size,
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
-        ShaderStages[ShaderStageCount] = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
-        ShaderStageCount++;
+        *RR_SLICE_PUSH(&ShaderStages, Scratch.Arena) = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
     }
+
+    RR_SLICE_TYPE(VkVertexInputBindingDescription) BindingDescriptions;
+    RR_SLICE_TYPE(VkVertexInputAttributeDescription) AttributeDescriptions;
+    RR_SLICE_RESERVE(&AttributeDescriptions, Info->VertexAttributeCount, Scratch.Arena);
+    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .vertexAttributeDescriptionCount = AttributeDescriptions.Count,
+        .pVertexAttributeDescriptions = AttributeDescriptions.Data,
+        .vertexBindingDescriptionCount = BindingDescriptions.Count,
+        .pVertexBindingDescriptions = BindingDescriptions.Data,
+    };
+    for(size_t Index = 0; Index < Info->VertexAttributeCount; ++Index)
+    {
+        Rr_VertexInputAttribute *Attribute = Info->VertexAttributes + Index;
+
+        VkVertexInputAttributeDescription *AttributeDescription = RR_SLICE_PUSH(&AttributeDescriptions, Scratch.Arena);
+        size_t Binding = Attribute->Type == RR_VERTEX_INPUT_TYPE_INSTANCE ? 1 : 0;
+        AttributeDescription->location = Attribute->Location;
+        AttributeDescription->format = Rr_GetVulkanFormat(Attribute->Format);
+        AttributeDescription->binding = Binding;
+        VkVertexInputBindingDescription *BindingDescription = NULL;
+        for(size_t BindingIndex = 0; BindingIndex < BindingDescriptions.Count; ++BindingIndex)
+        {
+            if(BindingDescriptions.Data[BindingIndex].binding == Binding)
+            {
+                BindingDescription = BindingDescriptions.Data + BindingIndex;
+                break;
+            }
+        }
+        if(BindingDescription == NULL)
+        {
+            BindingDescription = RR_SLICE_PUSH(&BindingDescriptions, Scratch.Arena);
+            BindingDescription->binding = Binding;
+            BindingDescription->inputRate = Attribute->Type == RR_VERTEX_INPUT_TYPE_INSTANCE
+                                                ? VK_VERTEX_INPUT_RATE_INSTANCE
+                                                : VK_VERTEX_INPUT_RATE_VERTEX;
+        }
+        size_t Size = Rr_GetFormatSize(Attribute->Format);
+        AttributeDescription->offset = BindingDescription->stride;
+        BindingDescription->stride += Size;
+    }
+
+    VkPipelineInputAssemblyStateCreateInfo InputAssembly = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .topology = Rr_GetVulkanTopology(Info->Topology),
+        .primitiveRestartEnable = VK_FALSE,
+    };
 
     VkPipelineViewportStateCreateInfo ViewportInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -58,62 +321,22 @@ Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder,
         .scissorCount = 1,
     };
 
-    VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+    VkPipelineRasterizationStateCreateInfo Rasterizer = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .pNext = NULL,
-        .logicOpEnable = VK_FALSE,
-        .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = PipelineBuilder->ColorAttachmentCount,
-        .pAttachments = PipelineBuilder->ColorBlendAttachments,
+        .flags = 0,
+        .depthClampEnable = Info->Rasterizer.EnableDepthClip,
+        .rasterizerDiscardEnable = false,
+        .polygonMode = Rr_GetVulkanPolygonMode(Info->Rasterizer.PolygonMode),
+        .cullMode = Rr_GetVulkanCullMode(Info->Rasterizer.CullMode),
+        .frontFace = Rr_GetVulkanFrontFace(Info->Rasterizer.FrontFace),
+        .depthBiasEnable = Info->Rasterizer.EnableDepthBias,
+        .depthBiasConstantFactor = Info->Rasterizer.DepthBiasConstantFactor,
+        .depthBiasClamp = Info->Rasterizer.DepthBiasClamp,
+        .depthBiasSlopeFactor = Info->Rasterizer.DepthBiasSlopeFactor,
+        .lineWidth = 1.0f,
     };
 
-    /* Vertex Input */
-    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext = NULL,
-    };
-    VkVertexInputBindingDescription VertexInputBindingDescriptions[] = {
-        {
-            .binding = 0,
-            .stride = PipelineBuilder->VertexInput[0].VertexInputStride,
-            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-        },
-        {
-            .binding = 1,
-            .stride = PipelineBuilder->VertexInput[1].VertexInputStride,
-            .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
-        }
-    };
-
-    uint32_t AttributeCount = 0;
-    bool HasPerVertexBinding = false;
-    bool HasPerInstanceBinding = false;
-    for(size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
-    {
-        if(PipelineBuilder->Attributes[Index].format == VK_FORMAT_UNDEFINED)
-        {
-            break;
-        }
-        AttributeCount++;
-        HasPerVertexBinding = HasPerVertexBinding || PipelineBuilder->Attributes[Index].binding == 0;
-        HasPerInstanceBinding = HasPerInstanceBinding || PipelineBuilder->Attributes[Index].binding == 1;
-    }
-    if(AttributeCount > 0)
-    {
-        if(HasPerVertexBinding)
-        {
-            VertexInputInfo.vertexBindingDescriptionCount++;
-        }
-        if(HasPerInstanceBinding)
-        {
-            VertexInputInfo.vertexBindingDescriptionCount++;
-        }
-        VertexInputInfo.vertexAttributeDescriptionCount = AttributeCount;
-        VertexInputInfo.pVertexBindingDescriptions = VertexInputBindingDescriptions;
-        VertexInputInfo.pVertexAttributeDescriptions = PipelineBuilder->Attributes;
-    }
-
-    /* Dynamic States */
     VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
     VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -122,36 +345,72 @@ Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder,
         .dynamicStateCount = SDL_arraysize(DynamicStates),
     };
 
-    /* Select render pass. */
-    switch(PipelineBuilder->ColorAttachmentCount)
+    VkPipelineMultisampleStateCreateInfo Multisampling = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .sampleShadingEnable = VK_FALSE,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .minSampleShading = 1.0f,
+        .pSampleMask = NULL,
+        .alphaToCoverageEnable = VK_FALSE,
+        .alphaToOneEnable = VK_FALSE,
+    };
+
+    RR_SLICE_TYPE(VkPipelineColorBlendAttachmentState) ColorAttachments;
+    RR_SLICE_RESERVE(&ColorAttachments, Info->ColorTargetCount, Scratch.Arena);
+    for(size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {
-        case 0:
-            Pipeline->RenderPass = Rr_GetRenderPass(Renderer, NULL);
-            break;
-        case 1:
-            Pipeline->RenderPass = Rr_GetRenderPass(Renderer, NULL);
-            break;
-        default:
-            Rr_LogAbort("Unsupported color attachment count!");
-            break;
+        VkPipelineColorBlendAttachmentState *Attachment = RR_SLICE_PUSH(&ColorAttachments, Scratch.Arena);
+        Rr_ColorTargetInfo *ColorTargetInfo = Info->ColorTargets + Index;
+        Rr_ColorTargetBlend *Blend = &ColorTargetInfo->Blend;
+
+        Attachment->blendEnable = Blend->BlendEnable;
+        Attachment->srcColorBlendFactor = Rr_GetVulkanBlendFactor(Blend->SrcColorBlendFactor);
+        Attachment->dstColorBlendFactor = Rr_GetVulkanBlendFactor(Blend->DstColorBlendFactor);
+        Attachment->colorBlendOp = Rr_GetVulkanBlendOp(Blend->ColorBlendOp);
+        Attachment->srcAlphaBlendFactor = Rr_GetVulkanBlendFactor(Blend->SrcAlphaBlendFactor);
+        Attachment->dstAlphaBlendFactor = Rr_GetVulkanBlendFactor(Blend->DstAlphaBlendFactor);
+        Attachment->alphaBlendOp = Rr_GetVulkanBlendOp(Blend->AlphaBlendOp);
+        Attachment->colorWriteMask = Blend->ColorWriteMask;
     }
 
-    /* Create pipeline. */
+    VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = ColorAttachments.Count,
+        .pAttachments = ColorAttachments.Data,
+    };
+
+    VkPipelineDepthStencilStateCreateInfo DepthStencil = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .depthTestEnable = Info->DepthStencil.EnableDepthTest,
+        .depthWriteEnable = Info->DepthStencil.EnableDepthWrite,
+        .depthCompareOp = Rr_GetVulkanCompareOp(Info->DepthStencil.CompareOp),
+        .stencilTestEnable = Info->DepthStencil.EnableStencilTest,
+        .front = Rr_GetVulkanStencilOpState(Info->DepthStencil.FrontStencilState, &Info->DepthStencil),
+        .back = Rr_GetVulkanStencilOpState(Info->DepthStencil.BackStencilState, &Info->DepthStencil),
+    };
+
+    VkPipelineLayout PipelineLayout = VK_NULL_HANDLE;
+
     VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = NULL,
-        .stageCount = ShaderStageCount,
-        .pStages = ShaderStages,
+        .stageCount = ShaderStages.Count,
+        .pStages = ShaderStages.Data,
         .pVertexInputState = &VertexInputInfo,
-        .pInputAssemblyState = &PipelineBuilder->InputAssembly,
+        .pInputAssemblyState = &InputAssembly,
         .pViewportState = &ViewportInfo,
-        .pRasterizationState = &PipelineBuilder->Rasterizer,
-        .pMultisampleState = &PipelineBuilder->Multisampling,
+        .pRasterizationState = &Rasterizer,
+        .pMultisampleState = &Multisampling,
         .pColorBlendState = &ColorBlendInfo,
-        .pDepthStencilState = &PipelineBuilder->DepthStencil,
+        .pDepthStencilState = &DepthStencil,
         .layout = PipelineLayout,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = Pipeline->RenderPass,
+        .renderPass = Rr_GetRenderPass(&App->Renderer, NULL),
     };
 
     vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline->Handle);
@@ -166,305 +425,7 @@ Rr_Pipeline *Rr_CreatePipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder,
         vkDestroyShaderModule(Renderer->Device, FragModule, NULL);
     }
 
-    Rr_StackFree(ShaderStages);
-
-    return Pipeline;
-}
-
-void Rr_DestroyPipeline(Rr_App *App, Rr_Pipeline *Pipeline)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    vkDestroyPipeline(Renderer->Device, Pipeline->Handle, NULL);
-
-    Rr_DestroyObject(App, Pipeline);
-}
-
-Rr_PipelineBuilder *Rr_CreatePipelineBuilder(Rr_Arena *Arena)
-{
-    Rr_PipelineBuilder *PipelineBuilder = RR_ALLOC(Arena, sizeof(Rr_PipelineBuilder));
-    *PipelineBuilder = (Rr_PipelineBuilder){
-        .InputAssembly = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-            .primitiveRestartEnable = VK_FALSE,
-        },
-        .Rasterizer = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        },
-        .Multisampling = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-            .sampleShadingEnable = VK_FALSE,
-            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-            .minSampleShading = 1.0f,
-            .pSampleMask = NULL,
-            .alphaToCoverageEnable = VK_FALSE,
-            .alphaToOneEnable = VK_FALSE,
-        },
-        .DepthStencil = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        },
-    };
-
-    return PipelineBuilder;
-}
-
-void Rr_EnableColorAttachment(Rr_PipelineBuilder *PipelineBuilder, bool EnableAlphaBlend)
-{
-    PipelineBuilder->ColorAttachmentFormats[PipelineBuilder->ColorAttachmentCount] = RR_COLOR_FORMAT;
-    if(EnableAlphaBlend)
-    {
-        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
-            (VkPipelineColorBlendAttachmentState){
-                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-                                  VK_COLOR_COMPONENT_A_BIT,
-                .blendEnable = VK_TRUE,
-                .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-                .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                .colorBlendOp = VK_BLEND_OP_ADD,
-                .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-                .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-                .alphaBlendOp = VK_BLEND_OP_ADD,
-            };
-    }
-    else
-    {
-        PipelineBuilder->ColorBlendAttachments[PipelineBuilder->ColorAttachmentCount] =
-            (VkPipelineColorBlendAttachmentState){
-                .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-                                  VK_COLOR_COMPONENT_A_BIT,
-                .blendEnable = VK_FALSE,
-            };
-    }
-    PipelineBuilder->ColorAttachmentCount++;
-}
-
-void Rr_EnableTriangleFan(Rr_PipelineBuilder *PipelineBuilder)
-{
-    PipelineBuilder->InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
-}
-
-static VkFormat Rr_GetVulkanFormat(Rr_VertexInputType Type)
-{
-    switch(Type)
-    {
-        case RR_VERTEX_INPUT_TYPE_FLOAT:
-            return VK_FORMAT_R32_SFLOAT;
-        case RR_VERTEX_INPUT_TYPE_UINT:
-            return VK_FORMAT_R32_UINT;
-        case RR_VERTEX_INPUT_TYPE_VEC2:
-            return VK_FORMAT_R32G32_SFLOAT;
-        case RR_VERTEX_INPUT_TYPE_VEC3:
-            return VK_FORMAT_R32G32B32_SFLOAT;
-        case RR_VERTEX_INPUT_TYPE_VEC4:
-            return VK_FORMAT_R32G32B32A32_SFLOAT;
-        case RR_VERTEX_INPUT_TYPE_NONE:
-        default:
-            return VK_FORMAT_UNDEFINED;
-    }
-}
-
-static size_t Rr_GetVertexInputSize(Rr_VertexInputType Type)
-{
-    switch(Type)
-    {
-        case RR_VERTEX_INPUT_TYPE_FLOAT:
-            return sizeof(float);
-        case RR_VERTEX_INPUT_TYPE_UINT:
-            return sizeof(uint32_t);
-        case RR_VERTEX_INPUT_TYPE_VEC2:
-            return sizeof(float) * 2;
-        case RR_VERTEX_INPUT_TYPE_VEC3:
-            return sizeof(float) * 3;
-        case RR_VERTEX_INPUT_TYPE_VEC4:
-            return sizeof(float) * 4;
-        case RR_VERTEX_INPUT_TYPE_NONE:
-        default:
-            return 0;
-    }
-}
-
-static void Rr_EnableVertexInputAttribute(
-    Rr_PipelineBuilder *PipelineBuilder,
-    Rr_VertexInputAttribute Attribute,
-    size_t Binding)
-{
-    VkFormat Format = Rr_GetVulkanFormat(Attribute.Type);
-    if(Format == VK_FORMAT_UNDEFINED)
-    {
-        return;
-    }
-
-    size_t Location = Attribute.Location;
-    if(Location >= RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES)
-    {
-        Rr_LogAbort("Exceeding max allowed number of vertex attributes for a "
-                    "pipeline!");
-    }
-
-    PipelineBuilder->Attributes[Location] = (VkVertexInputAttributeDescription){
-        .binding = Binding,
-        .location = Location,
-        .format = Format,
-        .offset = PipelineBuilder->VertexInput[Binding].VertexInputStride,
-    };
-
-    PipelineBuilder->VertexInput[Binding].VertexInputStride += Rr_GetVertexInputSize(Attribute.Type);
-}
-
-void Rr_EnablePerVertexInputAttributes(Rr_PipelineBuilder *PipelineBuilder, Rr_VertexInput *VertexInput)
-{
-    for(size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
-    {
-        Rr_EnableVertexInputAttribute(
-            PipelineBuilder,
-            VertexInput->Attributes[Index],
-            RR_VERTEX_INPUT_BINDING_PER_VERTEX);
-    }
-}
-
-void Rr_EnablePerInstanceInputAttributes(Rr_PipelineBuilder *PipelineBuilder, Rr_VertexInput *VertexInput)
-{
-    for(size_t Index = 0; Index < RR_PIPELINE_MAX_VERTEX_INPUT_ATTRIBUTES; ++Index)
-    {
-        Rr_EnableVertexInputAttribute(
-            PipelineBuilder,
-            VertexInput->Attributes[Index],
-            RR_VERTEX_INPUT_BINDING_PER_INSTANCE);
-    }
-}
-
-void Rr_EnableVertexStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset)
-{
-    PipelineBuilder->VertexShaderSPV = *SPVAsset;
-}
-
-void Rr_EnableFragmentStage(Rr_PipelineBuilder *PipelineBuilder, Rr_Asset *SPVAsset)
-{
-    PipelineBuilder->FragmentShaderSPV = *SPVAsset;
-}
-
-void Rr_EnableRasterizer(Rr_PipelineBuilder *PipelineBuilder, Rr_PolygonMode PolygonMode)
-{
-    switch(PolygonMode)
-    {
-        case RR_POLYGON_MODE_LINE:
-        {
-            PipelineBuilder->Rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
-            break;
-        }
-        default:
-        {
-            PipelineBuilder->Rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-            break;
-        }
-    }
-    PipelineBuilder->Rasterizer.lineWidth = 1.0f;
-    PipelineBuilder->Rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    PipelineBuilder->Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-}
-
-void Rr_EnableDepthTest(Rr_PipelineBuilder *PipelineBuilder)
-{
-    PipelineBuilder->DepthStencil.depthTestEnable = VK_TRUE;
-    PipelineBuilder->DepthStencil.depthWriteEnable = VK_TRUE;
-    PipelineBuilder->DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-}
-
-Rr_GenericPipeline *Rr_BuildGenericPipeline(
-    Rr_App *App,
-    Rr_PipelineBuilder *PipelineBuilder,
-    size_t Globals,
-    size_t Material,
-    size_t PerDraw)
-{
-    SDL_assert(Globals < RR_PIPELINE_MAX_GLOBALS_SIZE);
-    SDL_assert(Material < RR_PIPELINE_MAX_MATERIAL_SIZE);
-    SDL_assert(PerDraw < RR_PIPELINE_MAX_PER_DRAW_SIZE);
-
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    Rr_VertexInput VertexInput = {
-        .Attributes = {
-            {
-                .Type = RR_VERTEX_INPUT_TYPE_VEC3,
-                .Location = 0,
-            },
-            {
-                .Type = RR_VERTEX_INPUT_TYPE_FLOAT,
-                .Location = 1,
-            },
-            {
-                .Type = RR_VERTEX_INPUT_TYPE_VEC3,
-                .Location = 2,
-            },
-            {
-                .Type = RR_VERTEX_INPUT_TYPE_FLOAT,
-                .Location = 3,
-            },
-            {
-                .Type = RR_VERTEX_INPUT_TYPE_VEC4,
-                .Location = 4,
-            },
-        },
-    };
-    Rr_EnablePerVertexInputAttributes(PipelineBuilder, &VertexInput);
-
-    Rr_GenericPipeline *Pipeline = Rr_CreateObject(App);
-    *Pipeline = (Rr_GenericPipeline){
-        .Pipeline = Rr_CreatePipeline(App, PipelineBuilder, Renderer->GenericPipelineLayout),
-        .Sizes = { .Globals = Globals, .Material = Material, .PerDraw = PerDraw },
-    };
-
-    /* Initialize per-draw buffer descriptor sets.
-     * These are dynamic.
-     * @TODO: The only thing that doesn't allow me to have single global set is
-     * @TODO: varying PerDraw size.
-     * @TODO: Pipeline might be deleted but what about the descriptor sets?
-     */
-    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
-    for(size_t FrameIndex = 0; FrameIndex < RR_FRAME_OVERLAP; ++FrameIndex)
-    {
-        Rr_Frame *Frame = &Renderer->Frames[FrameIndex];
-
-        Pipeline->PerDrawDescriptorSets[FrameIndex] = Rr_AllocateDescriptorSet(
-            &Renderer->GlobalDescriptorAllocator,
-            Renderer->Device,
-            Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW]);
-        Rr_WriteBufferDescriptor(
-            &DescriptorWriter,
-            0,
-            Frame->PerDrawBuffer.Buffer->Handle,
-            PerDraw,
-            0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-            Scratch.Arena);
-        Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, Pipeline->PerDrawDescriptorSets[FrameIndex]);
-        Rr_ResetDescriptorWriter(&DescriptorWriter);
-    }
-
     Rr_DestroyArenaScratch(Scratch);
-
-    return Pipeline;
-}
-
-void Rr_DestroyGenericPipeline(Rr_App *App, Rr_GenericPipeline *GenericPipeline)
-{
-    Rr_DestroyPipeline(App, GenericPipeline->Pipeline);
-    Rr_DestroyObject(App, GenericPipeline);
-}
-
-Rr_GraphicsPipeline *Rr_BuildGraphicsPipeline(Rr_App *App, Rr_PipelineBuilder *PipelineBuilder)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    Rr_GraphicsPipeline *Pipeline = Rr_CreateObject(App);
-    Rr_Pipeline *TPipeline = Rr_CreatePipeline(App, PipelineBuilder, Renderer->GenericPipelineLayout);
-    *Pipeline = (Rr_GraphicsPipeline){
-        .Handle = TPipeline->Handle,
-    };
 
     return Pipeline;
 }
@@ -476,4 +437,64 @@ void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipeli
     vkDestroyPipeline(Renderer->Device, GraphicsPipeline->Handle, NULL);
 
     Rr_DestroyObject(App, GraphicsPipeline);
+}
+
+Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *Sets, size_t SetCount)
+{
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_PipelineLayout *PipelineLayout = (Rr_PipelineLayout *)Rr_CreateObject(App);
+
+    Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
+
+    VkDescriptorSetLayout *SetLayouts = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkDescriptorSetLayout, SetCount);
+
+    for(size_t Index = 0; Index < SetCount; ++Index)
+    {
+        Rr_PipelineBindingSet *Set = Sets + Index;
+
+        for(size_t BindingIndex; BindingIndex < Set->BindingCount; ++BindingIndex)
+        {
+            Rr_PipelineBinding *Binding = Set->Bindings + BindingIndex;
+
+            assert(Binding->Count > 0);
+
+            if(Binding->Count == 1)
+            {
+                Rr_AddDescriptor(&DescriptorLayoutBuilder, Binding->Slot, Binding->Type, Set->Visibility);
+            }
+            else
+            {
+                Rr_AddDescriptorArray(
+                    &DescriptorLayoutBuilder,
+                    Binding->Slot,
+                    Binding->Count,
+                    Binding->Type,
+                    Set->Visibility);
+            }
+        }
+
+        SetLayouts[Index] = Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, Renderer->Device);
+        Rr_ClearDescriptors(&DescriptorLayoutBuilder);
+    }
+
+    VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext = NULL,
+        .setLayoutCount = SetCount,
+        .pSetLayouts = SetLayouts,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = NULL,
+    };
+
+    vkCreatePipelineLayout(Renderer->Device, &PipelineLayoutCreateInfo, NULL, &PipelineLayout->Handle);
+
+    Rr_DestroyArenaScratch(Scratch);
+
+    return PipelineLayout;
+}
+
+void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout)
+{
 }

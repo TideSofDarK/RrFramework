@@ -2,7 +2,6 @@
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Image.h>
-#include <Rr/Rr_Material.h>
 #include <Rr/Rr_Mesh.h>
 #include <Rr/Rr_Pipeline.h>
 

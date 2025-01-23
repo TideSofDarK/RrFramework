@@ -2,7 +2,20 @@
 
 #include "Rr_Memory.h"
 
-#include <SDL3/SDL_stdinc.h>
+static VkDescriptorType Rr_GetVulkanDescriptorType(Rr_PipelineBindingType Type)
+{
+    switch(Type)
+    {
+        case RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER:
+            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        case RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER:
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        default:
+            return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    }
+}
 
 static VkDescriptorPool Rr_CreateDescriptorPool(
     VkDevice Device,
@@ -10,7 +23,9 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
     Rr_DescriptorPoolSizeRatio *Ratios,
     size_t RatioCount)
 {
-    VkDescriptorPoolSize *PoolSizes = Rr_StackAlloc(VkDescriptorPoolSize, RatioCount);
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
+    VkDescriptorPoolSize *PoolSizes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkDescriptorPoolSize, RatioCount);
     for(size_t Index = 0; Index < RatioCount; Index++)
     {
         Rr_DescriptorPoolSizeRatio *Ratio = &Ratios[Index];
@@ -30,6 +45,9 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
 
     VkDescriptorPool NewPool;
     vkCreateDescriptorPool(Device, &Info, NULL, &NewPool);
+
+    Rr_DestroyArenaScratch(Scratch);
+
     return NewPool;
 }
 
@@ -271,7 +289,11 @@ void Rr_UpdateDescriptorSet(Rr_DescriptorWriter *Writer, VkDevice Device, VkDesc
     vkUpdateDescriptorSets(Device, (uint32_t)WritesCount, Writer->Writes.Data, 0, NULL);
 }
 
-void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder *Builder, uint32_t Binding, VkDescriptorType Type)
+void Rr_AddDescriptor(
+    Rr_DescriptorLayoutBuilder *Builder,
+    uint32_t Binding,
+    Rr_PipelineBindingType Type,
+    Rr_ShaderStage ShaderStage)
 {
     if(Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
     {
@@ -279,13 +301,18 @@ void Rr_AddDescriptor(Rr_DescriptorLayoutBuilder *Builder, uint32_t Binding, VkD
     }
     Builder->Bindings[Builder->Count] =
         (VkDescriptorSetLayoutBinding){ .binding = Binding,
-                                        .descriptorType = Type,
+                                        .descriptorType = Rr_GetVulkanDescriptorType(Type),
                                         .descriptorCount = 1,
-                                        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
+                                        .stageFlags = Rr_GetVulkanShaderStageFlags(ShaderStage) };
     Builder->Count++;
 }
 
-void Rr_AddDescriptorArray(Rr_DescriptorLayoutBuilder *Builder, uint32_t Binding, uint32_t Count, VkDescriptorType Type)
+void Rr_AddDescriptorArray(
+    Rr_DescriptorLayoutBuilder *Builder,
+    uint32_t Binding,
+    uint32_t Count,
+    Rr_PipelineBindingType Type,
+    Rr_ShaderStage ShaderStage)
 {
     if(Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
     {
@@ -293,9 +320,9 @@ void Rr_AddDescriptorArray(Rr_DescriptorLayoutBuilder *Builder, uint32_t Binding
     }
     Builder->Bindings[Builder->Count] =
         (VkDescriptorSetLayoutBinding){ .binding = Binding,
-                                        .descriptorType = Type,
+                                        .descriptorType = Rr_GetVulkanDescriptorType(Type),
                                         .descriptorCount = Count,
-                                        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
+                                        .stageFlags = Rr_GetVulkanShaderStageFlags(ShaderStage) };
     Builder->Count++;
 }
 
@@ -304,10 +331,7 @@ void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder *Builder)
     *Builder = (Rr_DescriptorLayoutBuilder){ 0 };
 }
 
-VkDescriptorSetLayout Rr_BuildDescriptorLayout(
-    Rr_DescriptorLayoutBuilder *Builder,
-    VkDevice Device,
-    VkShaderStageFlags ShaderStageFlags)
+VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder *Builder, VkDevice Device)
 {
     VkDescriptorSetLayoutCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,

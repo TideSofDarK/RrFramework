@@ -12,7 +12,8 @@ static bool Rr_CheckPhysicalDevice(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
     uint32_t *OutGraphicsQueueFamilyIndex,
-    uint32_t *OutTransferQueueFamilyIndex)
+    uint32_t *OutTransferQueueFamilyIndex,
+    Rr_Arena *Arena)
 {
     uint32_t ExtensionCount;
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
@@ -21,13 +22,13 @@ static bool Rr_CheckPhysicalDevice(
         return false;
     }
 
-    char *TargetExtensions[] = {
+    const char *TargetExtensions[] = {
         "VK_KHR_swapchain",
     };
 
     bool FoundExtensions[] = { 0 };
 
-    VkExtensionProperties *Extensions = Rr_StackAlloc(VkExtensionProperties, ExtensionCount);
+    VkExtensionProperties *Extensions = RR_ALLOC_STRUCT_COUNT(Arena, VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
 
     for(uint32_t Index = 0; Index < ExtensionCount; Index++)
@@ -55,8 +56,9 @@ static bool Rr_CheckPhysicalDevice(
         return false;
     }
 
-    VkQueueFamilyProperties *QueueFamilyProperties = Rr_StackAlloc(VkQueueFamilyProperties, QueueFamilyCount);
-    VkBool32 *QueuePresentSupport = Rr_StackAlloc(VkBool32, QueueFamilyCount);
+    VkQueueFamilyProperties *QueueFamilyProperties =
+        RR_ALLOC_STRUCT_COUNT(Arena, VkQueueFamilyProperties, QueueFamilyCount);
+    VkBool32 *QueuePresentSupport = RR_ALLOC_STRUCT_COUNT(Arena, VkBool32, QueueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
@@ -103,10 +105,6 @@ static bool Rr_CheckPhysicalDevice(
     *OutTransferQueueFamilyIndex =
         TransferQueueFamilyIndex == ~0U ? GraphicsQueueFamilyIndex : TransferQueueFamilyIndex;
 
-    Rr_StackFree(QueuePresentSupport);
-    Rr_StackFree(QueueFamilyProperties);
-    Rr_StackFree(Extensions);
-
     return true;
 }
 
@@ -114,7 +112,8 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     VkInstance Instance,
     VkSurfaceKHR Surface,
     uint32_t *OutGraphicsQueueFamilyIndex,
-    uint32_t *OutTransferQueueFamilyIndex)
+    uint32_t *OutTransferQueueFamilyIndex,
+    Rr_Arena *Arena)
 {
     uint32_t PhysicalDeviceCount = 0;
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, NULL);
@@ -123,7 +122,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
         Rr_LogAbort("No device with Vulkan support found");
     }
 
-    VkPhysicalDevice *PhysicalDevices = Rr_StackAlloc(VkPhysicalDevice, PhysicalDeviceCount);
+    VkPhysicalDevice *PhysicalDevices = RR_ALLOC_STRUCT_COUNT(Arena, VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
     Rr_LogVulkan("Selecting Vulkan device:");
@@ -140,7 +139,12 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
         uint32_t GraphicsQueueFamilyIndex;
         uint32_t TransferQueueFamilyIndex;
-        if(Rr_CheckPhysicalDevice(PhysicalDeviceHandle, Surface, &GraphicsQueueFamilyIndex, &TransferQueueFamilyIndex))
+        if(Rr_CheckPhysicalDevice(
+               PhysicalDeviceHandle,
+               Surface,
+               &GraphicsQueueFamilyIndex,
+               &TransferQueueFamilyIndex,
+               Arena))
         {
             VkPhysicalDeviceProperties2 Properties = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
@@ -233,8 +237,6 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     vkGetPhysicalDeviceProperties2(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.Properties);
 
     Rr_LogVulkan("Using separate transfer queue: %u", UseTransferQueue);
-
-    Rr_StackFree(PhysicalDevices);
 
     return PhysicalDevice;
 }

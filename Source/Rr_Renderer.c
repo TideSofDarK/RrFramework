@@ -9,7 +9,6 @@
 #include "Rr_UI.h"
 
 #include <Rr/Rr_Graph.h>
-#include <Rr/Rr_Material.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -75,6 +74,8 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         *Height = SurfCaps.currentExtent.height;
     }
 
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
     uint32_t PresentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
@@ -83,7 +84,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         NULL);
     SDL_assert(PresentModeCount > 0);
 
-    VkPresentModeKHR *PresentModes = Rr_StackAlloc(VkPresentModeKHR, PresentModeCount);
+    VkPresentModeKHR *PresentModes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkPresentModeKHR, PresentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
@@ -103,7 +104,6 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
             SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
         }
     }
-    Rr_StackFree(PresentModes);
 
     uint32_t DesiredNumberOfSwapchainImages = SurfCaps.minImageCount + 1;
     if((SurfCaps.maxImageCount > 0) && (DesiredNumberOfSwapchainImages > SurfCaps.maxImageCount))
@@ -125,7 +125,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, NULL);
     SDL_assert(FormatCount > 0);
 
-    VkSurfaceFormatKHR *SurfaceFormats = Rr_StackAlloc(VkSurfaceFormatKHR, FormatCount);
+    VkSurfaceFormatKHR *SurfaceFormats = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkSurfaceFormatKHR, FormatCount);
     vkGetPhysicalDeviceSurfaceFormatsKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
@@ -207,7 +207,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     SDL_assert(ImageCount <= RR_MAX_SWAPCHAIN_IMAGE_COUNT);
 
     Renderer->Swapchain.ImageCount = ImageCount;
-    VkImage *Images = Rr_StackAlloc(VkImage, ImageCount);
+    VkImage *Images = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImage, ImageCount);
     vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images);
 
     VkImageViewCreateInfo ImageViewCreateInfo = {
@@ -264,8 +264,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
 
     Renderer->SwapchainSize = (VkExtent2D){ .width = *Width, .height = *Height };
 
-    Rr_StackFree(Images);
-    Rr_StackFree(SurfaceFormats);
+    Rr_DestroyArenaScratch(Scratch);
 
     return true;
 }
@@ -431,59 +430,6 @@ static void Rr_CleanupImmediateMode(Rr_App *App)
     vkDestroyFence(Renderer->Device, Renderer->ImmediateMode.Fence, NULL);
 }
 
-static void Rr_InitGenericPipelineLayout(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-    VkDevice Device = Renderer->Device;
-
-    /* Descriptor Set Layouts */
-    Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
-    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_AddDescriptorArray(
-        &DescriptorLayoutBuilder,
-        1,
-        RR_MAX_TEXTURES_PER_MATERIAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS] = Rr_BuildDescriptorLayout(
-        &DescriptorLayoutBuilder,
-        Device,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    Rr_ClearDescriptors(&DescriptorLayoutBuilder);
-    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    Rr_AddDescriptorArray(
-        &DescriptorLayoutBuilder,
-        1,
-        RR_MAX_TEXTURES_PER_MATERIAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL] = Rr_BuildDescriptorLayout(
-        &DescriptorLayoutBuilder,
-        Device,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    Rr_ClearDescriptors(&DescriptorLayoutBuilder);
-    Rr_AddDescriptor(&DescriptorLayoutBuilder, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-    Renderer->GenericDescriptorSetLayouts[RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW] = Rr_BuildDescriptorLayout(
-        &DescriptorLayoutBuilder,
-        Device,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    /* Pipeline Layout */
-    VkPushConstantRange PushConstantRange = { .offset = 0,
-                                              .size = 128,
-                                              .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT };
-
-    VkPipelineLayoutCreateInfo LayoutInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = NULL,
-        .setLayoutCount = RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT,
-        .pSetLayouts = Renderer->GenericDescriptorSetLayouts,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &PushConstantRange,
-    };
-    vkCreatePipelineLayout(Device, &LayoutInfo, NULL, &Renderer->GenericPipelineLayout);
-}
-
 static void Rr_InitSamplers(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
@@ -564,6 +510,8 @@ static void Rr_InitNullTextures(Rr_App *App)
 
 void Rr_InitRenderer(Rr_App *App)
 {
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
     Rr_Renderer *Renderer = &App->Renderer;
     SDL_Window *Window = App->Window;
     // Rr_AppConfig *Config = App->Config;
@@ -578,6 +526,7 @@ void Rr_InitRenderer(Rr_App *App)
     };
 
     /* Gather required extensions. */
+
     const char *AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
     uint32_t AppExtensionCount = SDL_arraysize(AppExtensions);
     AppExtensionCount = 0; /* Use Vulkan Configurator! */
@@ -586,7 +535,7 @@ void Rr_InitRenderer(Rr_App *App)
     const char *const *SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
 
     uint32_t ExtensionCount = SDLExtensionCount + AppExtensionCount;
-    const char **Extensions = Rr_StackAlloc(const char *, ExtensionCount);
+    const char **Extensions = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, const char *, ExtensionCount);
     for(uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
@@ -597,6 +546,7 @@ void Rr_InitRenderer(Rr_App *App)
     }
 
     /* Create Vulkan instance. */
+
     VkInstanceCreateInfo InstanceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = NULL,
@@ -618,7 +568,8 @@ void Rr_InitRenderer(Rr_App *App)
         Renderer->Instance,
         Renderer->Surface,
         &Renderer->GraphicsQueue.FamilyIndex,
-        &Renderer->TransferQueue.FamilyIndex);
+        &Renderer->TransferQueue.FamilyIndex,
+        Scratch.Arena);
     Rr_InitDeviceAndQueues(
         Renderer->PhysicalDevice.Handle,
         Renderer->GraphicsQueue.FamilyIndex,
@@ -640,11 +591,10 @@ void Rr_InitRenderer(Rr_App *App)
 
     Rr_InitFrames(App);
     Rr_InitImmediateMode(App);
-    Rr_InitGenericPipelineLayout(App);
     Rr_InitNullTextures(App);
-    Rr_InitTextRenderer(App);
+    // Rr_InitTextRenderer(App);
 
-    Rr_StackFree(Extensions);
+    Rr_DestroyArenaScratch(Scratch);
 }
 
 bool Rr_NewFrame(Rr_App *App, void *Window)
@@ -681,7 +631,7 @@ void Rr_CleanupRenderer(Rr_App *App)
 
     App->Config->CleanupFunc(App, App->UserData);
 
-    Rr_CleanupTextRenderer(App);
+    // Rr_CleanupTextRenderer(App);
 
     for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
     {
@@ -792,11 +742,12 @@ void Rr_PrepareFrame(Rr_App *App)
 
 void Rr_Draw(Rr_App *App)
 {
+    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+
     Rr_Renderer *Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
     Rr_Swapchain *Swapchain = &Renderer->Swapchain;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
     vkWaitForFences(Device, 1, &Frame->RenderFence, true, 1000000000);
     vkResetFences(Device, 1, &Frame->RenderFence);
@@ -883,9 +834,8 @@ void Rr_Draw(Rr_App *App)
     Renderer->FrameNumber++;
     Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
 
-    /* Cleanup resources. */
-
     Rr_ResetFrameResources(Frame);
+
     Rr_DestroyArenaScratch(Scratch);
 }
 
@@ -951,7 +901,8 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
 
     Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
 
-    VkAttachmentDescription *Attachments = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkAttachmentDescription), Info->AttachmentCount);
+    VkAttachmentDescription *Attachments =
+        RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkAttachmentDescription), Info->AttachmentCount);
 
     size_t ColorCount = 0;
     VkAttachmentReference *ColorReferences =

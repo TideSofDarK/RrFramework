@@ -263,3 +263,30 @@ void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
     (*Map)->Key = Key;
     return &(*Map)->Value;
 }
+
+void *Rr_FreeListGet(Rr_FreeList **FreeList, size_t Size, Rr_Arena *Arena)
+{
+    assert(FreeList != NULL);
+
+    Rr_FreeList *Header = *FreeList;
+    if(Header == NULL)
+    {
+        Header = RR_ALLOC(Arena, Size + sizeof(Rr_FreeList));
+        Header->Data = ((char *)Header) + sizeof(Rr_FreeList);
+        return Header->Data;
+    }
+    else
+    {
+        *FreeList = Header->Next;
+        return Header->Data;
+    }
+}
+
+void Rr_FreeListReturn(Rr_FreeList **FreeList, void *Pointer)
+{
+    assert(FreeList != NULL && Pointer != NULL);
+
+    Rr_FreeList *Header = (Rr_FreeList *)(((char *)Pointer) - sizeof(Rr_FreeList));
+    Header->Next = *FreeList;
+    *FreeList = Header;
+}

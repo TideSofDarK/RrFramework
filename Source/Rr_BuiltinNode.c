@@ -147,7 +147,7 @@ static void Rr_RenderText(
 
     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(1, 1, Scratch.Arena);
 
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Pipeline->Handle);
+    // vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Pipeline->Handle);
     vkCmdBindVertexBuffers(CommandBuffer, 0, 1, &TextPipeline->QuadBuffer->Handle, &(VkDeviceSize){ 0 });
     vkCmdBindDescriptorSets(
         CommandBuffer,

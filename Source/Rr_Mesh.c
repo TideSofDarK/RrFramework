@@ -3,7 +3,6 @@
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
-#include "Rr_Material.h"
 #include "Rr_UploadContext.h"
 
 #include <Rr/Rr_Defines.h>
@@ -360,9 +359,7 @@ Rr_StaticMesh *Rr_CreateStaticMesh(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     Rr_RawMesh *RawMeshes,
-    size_t RawMeshCount,
-    Rr_Material **Materials,
-    size_t MaterialCount)
+    size_t RawMeshCount)
 {
     Rr_StaticMesh *StaticMesh = Rr_CreateObject(App);
 
@@ -371,15 +368,6 @@ Rr_StaticMesh *Rr_CreateStaticMesh(
         StaticMesh->Primitives[Index] = Rr_CreatePrimitive(App, UploadContext, RawMeshes + Index);
     }
     StaticMesh->PrimitiveCount = RawMeshCount;
-
-    if(Materials != NULL)
-    {
-        for(size_t Index = 0; Index < MaterialCount; ++Index)
-        {
-            StaticMesh->Materials[Index] = Materials[Index];
-        }
-    }
-    StaticMesh->MaterialCount = MaterialCount;
 
     return StaticMesh;
 }
@@ -394,11 +382,6 @@ void Rr_DestroyStaticMesh(Rr_App *App, Rr_StaticMesh *StaticMesh)
     for(size_t Index = 0; Index < StaticMesh->PrimitiveCount; ++Index)
     {
         Rr_DestroyPrimitive(App, StaticMesh->Primitives[Index]);
-    }
-
-    for(size_t Index = 0; Index < StaticMesh->MaterialCount; ++Index)
-    {
-        Rr_DestroyMaterial(App, StaticMesh->Materials[Index]);
     }
 
     Rr_DestroyObject(App, StaticMesh);
@@ -421,65 +404,62 @@ Rr_StaticMesh *Rr_CreateStaticMeshGLTF(
     cgltf_mesh *Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
     cgltf_load_buffers(&Options, Data, NULL);
 
-    Rr_RawMesh *RawMeshes = Rr_StackAlloc(Rr_RawMesh, Mesh->primitives_count);
+    Rr_RawMesh *RawMeshes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_RawMesh, Mesh->primitives_count);
 
-    Rr_Material *Materials[RR_MESH_MAX_PRIMITIVES] = { 0 };
+    // Rr_Material *Materials[RR_MESH_MAX_PRIMITIVES] = { 0 };
+    //
+    // for(size_t Index = 0; Index < Mesh->primitives_count; ++Index)
+    // {
+    //     cgltf_primitive *Primitive = Mesh->primitives + Index;
+    //
+    //     if(Loader != NULL && Primitive->material != NULL)
+    //     {
+    //         Rr_Image *Textures[RR_MAX_TEXTURES_PER_MATERIAL] = { 0 };
+    //
+    //         cgltf_material *CGLTFMaterial = Primitive->material;
+    //         if(CGLTFMaterial->has_pbr_metallic_roughness)
+    //         {
+    //             cgltf_texture *BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
+    //             if(BaseColorTexture)
+    //             {
+    //                 if(strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+    //                 {
+    //                     char *PNGData = (char *)BaseColorTexture->image->buffer_view->buffer->data +
+    //                                     BaseColorTexture->image->buffer_view->offset;
+    //                     size_t PNGSize = BaseColorTexture->image->buffer_view->size;
+    //
+    //                     Textures[Loader->BaseTexture] =
+    //                         Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, false);
+    //                 }
+    //             }
+    //         }
+    //         if(CGLTFMaterial->normal_texture.texture != NULL)
+    //         {
+    //             cgltf_texture *NormalTexture = CGLTFMaterial->normal_texture.texture;
+    //             if(strcmp(NormalTexture->image->mime_type, "image/png") == 0)
+    //             {
+    //                 char *PNGData = (char *)NormalTexture->image->buffer_view->buffer->data +
+    //                                 NormalTexture->image->buffer_view->offset;
+    //                 size_t PNGSize = NormalTexture->image->buffer_view->size;
+    //
+    //                 Textures[Loader->NormalTexture] =
+    //                     Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, false);
+    //             }
+    //         }
+    //
+    //         Materials[Index] = Rr_CreateMaterial(App, Loader->GenericPipeline, Textures,
+    //         RR_MAX_TEXTURES_PER_MATERIAL); Materials[Index]->bOwning = true;
+    //     }
+    //
+    //     Rr_RawMesh *RawMesh = RawMeshes + Index;
+    //     *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);
+    // }
 
-    for(size_t Index = 0; Index < Mesh->primitives_count; ++Index)
-    {
-        cgltf_primitive *Primitive = Mesh->primitives + Index;
-
-        if(Loader != NULL && Primitive->material != NULL)
-        {
-            Rr_Image *Textures[RR_MAX_TEXTURES_PER_MATERIAL] = { 0 };
-
-            cgltf_material *CGLTFMaterial = Primitive->material;
-            if(CGLTFMaterial->has_pbr_metallic_roughness)
-            {
-                cgltf_texture *BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
-                if(BaseColorTexture)
-                {
-                    if(strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
-                    {
-                        char *PNGData = (char *)BaseColorTexture->image->buffer_view->buffer->data +
-                                        BaseColorTexture->image->buffer_view->offset;
-                        size_t PNGSize = BaseColorTexture->image->buffer_view->size;
-
-                        Textures[Loader->BaseTexture] =
-                            Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, false);
-                    }
-                }
-            }
-            if(CGLTFMaterial->normal_texture.texture != NULL)
-            {
-                cgltf_texture *NormalTexture = CGLTFMaterial->normal_texture.texture;
-                if(strcmp(NormalTexture->image->mime_type, "image/png") == 0)
-                {
-                    char *PNGData = (char *)NormalTexture->image->buffer_view->buffer->data +
-                                    NormalTexture->image->buffer_view->offset;
-                    size_t PNGSize = NormalTexture->image->buffer_view->size;
-
-                    Textures[Loader->NormalTexture] =
-                        Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, false);
-                }
-            }
-
-            Materials[Index] = Rr_CreateMaterial(App, Loader->GenericPipeline, Textures, RR_MAX_TEXTURES_PER_MATERIAL);
-            Materials[Index]->bOwning = true;
-        }
-
-        Rr_RawMesh *RawMesh = RawMeshes + Index;
-        *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);
-    }
-
-    Rr_StaticMesh *StaticMesh =
-        Rr_CreateStaticMesh(App, UploadContext, RawMeshes, Mesh->primitives_count, Materials, RR_MESH_MAX_PRIMITIVES);
+    Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(App, UploadContext, RawMeshes, Mesh->primitives_count);
 
     cgltf_free(Data);
 
     Rr_DestroyArenaScratch(Scratch);
-
-    Rr_StackFree(RawMeshes);
 
     return StaticMesh;
 }
@@ -496,7 +476,7 @@ Rr_StaticMesh *Rr_CreateStaticMeshOBJ(
 
     Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 
-    Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1, NULL, 0);
+    Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1);
 
     Rr_DestroyArenaScratch(Scratch);
 

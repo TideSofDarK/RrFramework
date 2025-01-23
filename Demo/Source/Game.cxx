@@ -628,33 +628,35 @@ static Rr_Buffer *IndexBuffer;
 
 static void Init(Rr_App *App, void *UserData)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(nullptr);
-
     Rr_Asset VertexShader = Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV);
     Rr_Asset FragmentShader = Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV);
 
-    Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder(Scratch.Arena);
-    Rr_VertexInput VertexInput = {
-        .Attributes = {
-            {
-                .Type = RR_VERTEX_INPUT_TYPE_VEC4,
-                .Location = 0,
-            },
-            {
-                .Type = RR_VERTEX_INPUT_TYPE_VEC4,
-                .Location = 1,
-            },
-        },
-    };
-    Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
-    Rr_EnableVertexStage(Builder, &VertexShader);
-    Rr_EnableFragmentStage(Builder, &FragmentShader);
-    Rr_EnableColorAttachment(Builder, false);
-    // Rr_EnableDepthTest(Builder);
-    Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-    GraphicsPipeline = Rr_BuildGraphicsPipeline(App, Builder);
+    Rr_PipelineInfo PipelineInfo = {};
+    PipelineInfo.VertexShaderSPV = RR_MAKE_DATA_ASSET(VertexShader);
+    PipelineInfo.FragmentShaderSPV = RR_MAKE_DATA_ASSET(FragmentShader);
+    PipelineInfo.VertexAttributeCount = 2;
+    PipelineInfo.ColorTargetCount = 1;
 
-    Rr_DestroyArenaScratch(Scratch);
+    // Rr_PipelineBuilder *Builder = Rr_CreatePipelineBuilder(Scratch.Arena);
+    // Rr_VertexInput VertexInput = {
+    //     .Attributes = {
+    //         {
+    //             .Type = RR_VERTEX_INPUT_TYPE_VEC4,
+    //             .Location = 0,
+    //         },
+    //         {
+    //             .Type = RR_VERTEX_INPUT_TYPE_VEC4,
+    //             .Location = 1,
+    //         },
+    //     },
+    // };
+    // Rr_EnablePerVertexInputAttributes(Builder, &VertexInput);
+    // Rr_EnableVertexStage(Builder, &VertexShader);
+    // Rr_EnableFragmentStage(Builder, &FragmentShader);
+    // Rr_EnableColorAttachment(Builder, false);
+    // // Rr_EnableDepthTest(Builder);
+    // Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
 
     float VertexData[] = {
         0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f,
@@ -683,6 +685,7 @@ static void Iterate(Rr_App *App, void *UserData)
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
+        .Clear = { 0, 0, 0 },
     };
     Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "test", &ColorTarget, 1, nullptr, nullptr, 0);
 

@@ -77,6 +77,18 @@ typedef struct Rr_AssetRef
 
 #endif
 
+/* Make Data Helper */
+
+#ifdef __cplusplus
+#define RR_MAKE_DATA_ASSET(Asset) { Asset.Data, Asset.Length }
+#else
+#define RR_MAKE_DATA_ASSET(Asset) \
+    (Rr_Data)                     \
+    {                             \
+        Asset.Data, Asset.Length  \
+    }
+#endif
+
 extern Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
 
 #ifdef __cplusplus
