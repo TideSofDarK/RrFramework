@@ -155,7 +155,7 @@ Rr_Image *Rr_CreateImage(Rr_App *App, VkExtent3D Extent, VkFormat Format, VkImag
     vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image->Handle, &Image->Allocation, NULL);
 
     VkImageAspectFlags AspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
-    if(Format == RR_DEPTH_FORMAT)
+    if(Format == VK_FORMAT_D32_SFLOAT)
     {
         AspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
@@ -223,7 +223,7 @@ Rr_Image *Rr_CreateColorImageFromMemory(
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
         Extent,
-        RR_COLOR_FORMAT,
+        VK_FORMAT_R8G8B8A8_UNORM,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         MipMapped);
 
@@ -264,7 +264,7 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
         Extent,
-        RR_COLOR_FORMAT,
+        VK_FORMAT_R8G8B8A8_UNORM,
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         MipMapped);
 
@@ -365,7 +365,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     Rr_Image *DepthImage = Rr_CreateImage(
         App,
         Extent,
-        RR_PRERENDERED_DEPTH_FORMAT,
+        VK_FORMAT_D32_SFLOAT,
         Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         false);
 
@@ -392,7 +392,7 @@ Rr_Image *Rr_CreateColorAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
     return Rr_CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
-        RR_COLOR_FORMAT,
+        VK_FORMAT_R8G8B8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         false);
 }
@@ -402,7 +402,7 @@ Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
     return Rr_CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
-        RR_DEPTH_FORMAT,
+        VK_FORMAT_D32_SFLOAT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         false);
 }

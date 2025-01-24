@@ -111,13 +111,15 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         SurfaceFormats);
 
     bool PreferredFormatFound = false;
+    VkFormat VulkanFormat;
     for(uint32_t Index = 0; Index < FormatCount; Index++)
     {
         VkSurfaceFormatKHR *SurfaceFormat = &SurfaceFormats[Index];
 
         if(SurfaceFormat->format == VK_FORMAT_B8G8R8A8_UNORM || SurfaceFormat->format == VK_FORMAT_R8G8B8A8_UNORM)
         {
-            Renderer->Swapchain.Format = SurfaceFormat->format;
+            VulkanFormat = SurfaceFormat->format;
+            Renderer->Swapchain.Format = Rr_GetTextureFormat(VulkanFormat);
             Renderer->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
             PreferredFormatFound = true;
             break;
@@ -150,7 +152,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = Renderer->Surface,
         .minImageCount = DesiredNumberOfSwapchainImages,
-        .imageFormat = Renderer->Swapchain.Format,
+        .imageFormat = VulkanFormat,
         .imageColorSpace = Renderer->Swapchain.ColorSpace,
         .imageExtent = { Renderer->Swapchain.Extent.width, Renderer->Swapchain.Extent.height },
         .imageArrayLayers = 1,
@@ -191,7 +193,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     VkImageViewCreateInfo ImageViewCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = Renderer->Swapchain.Format,
+        .format = VulkanFormat,
         .components = {
             .r = VK_COMPONENT_SWIZZLE_R,
             .g = VK_COMPONENT_SWIZZLE_G,
@@ -217,7 +219,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
                     .width = *Width,
                     .height = *Height,
                 },
-            .Format = Renderer->Swapchain.Format,
+            .Format = VulkanFormat,
         };
         ImageViewCreateInfo.image = Images[Index];
         vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &Renderer->Swapchain.Images[Index].View);
@@ -729,7 +731,7 @@ void Rr_Draw(Rr_App *App)
     }
     SDL_assert(Result >= 0);
 
-    Frame->CurrentSwapchainImage = &Swapchain->Images[SwapchainImageIndex];
+    Frame->SwapchainImage = &Swapchain->Images[SwapchainImageIndex];
 
     /* Begin main command buffer. */
 
@@ -742,7 +744,45 @@ void Rr_Draw(Rr_App *App)
 
     App->Config->DrawFunc(App, App->UserData);
 
+    // Rr_ImageBarrier SwapchainImageTransition = {
+    //     .CommandBuffer = CommandBuffer,
+    //     .Image = Frame->SwapchainImage->Handle,
+    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+    //     .AccessMask = VK_ACCESS_NONE,
+    //     .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    // };
+
+    // Rr_ChainImageBarrier(
+    //     &SwapchainImageTransition,
+    //     VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+    //     VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+    //     VK_IMAGE_LAYOUT_GENERAL);
+    //
+    // VkClearColorValue ClearColor = {
+    //     .float32 = { 1.0f, 0.0f, 0.0f, 1.0f },
+    // };
+    // VkImageSubresourceRange Range = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+    // vkCmdClearColorImage(
+    //     CommandBuffer,
+    //     SwapchainImageTransition.Image,
+    //     VK_IMAGE_LAYOUT_GENERAL,
+    //     &ClearColor,
+    //     1,
+    //     &Range);
+
+    // Rr_ChainImageBarrier(
+    //     &SwapchainImageTransition,
+    //     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    //     VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    //     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
     Rr_ExecuteGraph(App, &Frame->Graph, Scratch.Arena);
+
+    // Rr_ChainImageBarrier(
+    //     &SwapchainImageTransition,
+    //     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+    //     0,
+    //     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     vkEndCommandBuffer(CommandBuffer);
 
@@ -817,7 +857,12 @@ Rr_Arena *Rr_GetFrameArena(Rr_App *App)
 
 Rr_Image *Rr_GetSwapchainImage(Rr_App *App)
 {
-    return Rr_GetCurrentFrame(&App->Renderer)->CurrentSwapchainImage;
+    return Rr_GetCurrentFrame(&App->Renderer)->SwapchainImage;
+}
+
+Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App)
+{
+    return App->Renderer.Swapchain.Format;
 }
 
 static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
@@ -886,7 +931,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
             DepthReference->layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             Attachments[Index] = (VkAttachmentDescription){
                 .samples = 1,
-                .format = RR_DEPTH_FORMAT,
+                .format = VK_FORMAT_D32_SFLOAT,
                 .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 .flags = 0,
@@ -903,7 +948,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
             };
             Attachments[Index] = (VkAttachmentDescription){
                 .samples = 1,
-                .format = RR_COLOR_FORMAT,
+                .format = Rr_GetVulkanTextureFormat(Rr_GetSwapchainFormat(App)),
                 .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .flags = 0,
@@ -1043,4 +1088,42 @@ VkFramebuffer Rr_GetFramebuffer(
     Rr_DestroyArenaScratch(Scratch);
 
     return Framebuffer;
+}
+
+Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat)
+{
+    switch(TextureFormat)
+    {
+        case VK_FORMAT_R8G8B8A8_UNORM:
+            return RR_TEXTURE_FORMAT_R8G8B8A8_UNORM;
+        case VK_FORMAT_B8G8R8A8_UNORM:
+            return RR_TEXTURE_FORMAT_B8G8R8A8_UNORM;
+        case VK_FORMAT_D32_SFLOAT:
+            return RR_TEXTURE_FORMAT_D32_SFLOAT;
+        case VK_FORMAT_D24_UNORM_S8_UINT:
+            return RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT;
+        case VK_FORMAT_D32_SFLOAT_S8_UINT:
+            return RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT;
+        default:
+            return RR_TEXTURE_FORMAT_UNDEFINED;
+    }
+}
+
+VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat)
+{
+    switch(TextureFormat)
+    {
+        case RR_TEXTURE_FORMAT_R8G8B8A8_UNORM:
+            return VK_FORMAT_R8G8B8A8_UNORM;
+        case RR_TEXTURE_FORMAT_B8G8R8A8_UNORM:
+            return VK_FORMAT_B8G8R8A8_UNORM;
+        case RR_TEXTURE_FORMAT_D32_SFLOAT:
+            return VK_FORMAT_D32_SFLOAT;
+        case RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT:
+            return VK_FORMAT_D24_UNORM_S8_UINT;
+        case RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT:
+            return VK_FORMAT_D32_SFLOAT_S8_UINT;
+        default:
+            return VK_FORMAT_UNDEFINED;
+    }
 }

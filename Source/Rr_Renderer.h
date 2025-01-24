@@ -17,7 +17,7 @@ typedef struct Rr_Swapchain Rr_Swapchain;
 struct Rr_Swapchain
 {
     VkSwapchainKHR Handle;
-    VkFormat Format;
+    Rr_TextureFormat Format;
     VkColorSpaceKHR ColorSpace;
     Rr_Image Images[RR_MAX_SWAPCHAIN_IMAGE_COUNT];
     uint32_t ImageCount;
@@ -36,7 +36,7 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    Rr_Image *CurrentSwapchainImage;
+    Rr_Image *SwapchainImage;
 
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
@@ -167,6 +167,7 @@ extern bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
 
 extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer);
 
+/* @TODO: Add format? */
 typedef struct Rr_Attachment Rr_Attachment;
 struct Rr_Attachment
 {
@@ -197,3 +198,7 @@ extern VkFramebuffer Rr_GetFramebufferViews(
     VkImageView *ImageViews,
     size_t ImageViewCount,
     VkExtent3D Extent);
+
+extern Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat);
+
+extern VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat);

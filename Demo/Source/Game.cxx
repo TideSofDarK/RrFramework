@@ -635,7 +635,10 @@ static void Init(Rr_App *App, void *UserData)
         { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 0 },
         { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 1 },
     };
-    Rr_ColorTargetInfo ColorTargets[] = { { .Blend = {}, .Format = RR_TEXTURE_FORMAT_TODO } };
+
+    Rr_ColorTargetInfo ColorTargets[1] = {};
+    ColorTargets[0].Blend.ColorWriteMask = RR_COLOR_COMPONENT_ALL;
+    ColorTargets[0].Format = Rr_GetSwapchainFormat(App);
 
     Rr_PipelineInfo PipelineInfo = {};
     PipelineInfo.Layout = PipelineLayout;
@@ -679,7 +682,7 @@ static void Draw(Rr_App *App, void *UserData)
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
-        .Clear = { 0, 0, 0 },
+        .Clear = { 0.2f, 0.2f, 0.2f, 1.0f },
     };
     Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "test", &ColorTarget, 1, nullptr, nullptr, 0);
 
@@ -696,6 +699,14 @@ static void Draw(Rr_App *App, void *UserData)
     Args.IndexCount = 3;
     Args.InstanceCount = 1;
     Rr_DrawIndexed(Node, &Args);
+
+    /* Present */
+
+    Rr_PresentNodeInfo PresentInfo = {
+        .Mode = RR_PRESENT_MODE_STRETCH,
+    };
+
+    Rr_AddPresentNode(App, "present", &PresentInfo, &Node, 1);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)

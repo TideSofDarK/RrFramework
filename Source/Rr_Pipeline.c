@@ -451,9 +451,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
 
 void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    vkDestroyPipeline(Renderer->Device, GraphicsPipeline->Handle, NULL);
+    vkDestroyPipeline(App->Renderer.Device, GraphicsPipeline->Handle, NULL);
 
     Rr_DestroyObject(App, GraphicsPipeline);
 }
@@ -516,4 +514,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *S
 
 void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout)
 {
+    vkDestroyPipelineLayout(App->Renderer.Device, PipelineLayout->Handle, NULL);
+
+    Rr_DestroyObject(App, PipelineLayout);
 }

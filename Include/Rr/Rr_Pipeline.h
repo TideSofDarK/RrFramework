@@ -99,13 +99,6 @@ struct Rr_VertexInputAttribute
     uint32_t Location;
 };
 
-typedef uint8_t Rr_ColorComponentFlags;
-
-#define RR_COLOR_COMPONENT_R (1u << 0)
-#define RR_COLOR_COMPONENT_G (1u << 1)
-#define RR_COLOR_COMPONENT_B (1u << 2)
-#define RR_COLOR_COMPONENT_A (1u << 3)
-
 typedef enum
 {
     RR_BLEND_FACTOR_INVALID,
@@ -134,11 +127,6 @@ typedef enum
     RR_BLEND_OP_MAX,
 } Rr_BlendOp;
 
-typedef enum
-{
-    RR_TEXTURE_FORMAT_TODO,
-} Rr_TextureFormat;
-
 typedef struct Rr_ColorTargetBlend Rr_ColorTargetBlend;
 struct Rr_ColorTargetBlend
 {
@@ -149,7 +137,7 @@ struct Rr_ColorTargetBlend
     Rr_BlendFactor SrcAlphaBlendFactor;
     Rr_BlendFactor DstAlphaBlendFactor;
     Rr_BlendOp AlphaBlendOp;
-    Rr_ColorComponentFlags ColorWriteMask;
+    Rr_ColorComponent ColorWriteMask;
 };
 
 typedef struct Rr_ColorTargetInfo Rr_ColorTargetInfo;

@@ -24,69 +24,29 @@ Rr_GraphNode *Rr_AddPresentNode(
 
 bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_PresentNode *Node)
 {
-    // Rr_Renderer *Renderer = &App->Renderer;
-    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    // Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
-    //
-    // if(Rr_SyncImage(
-    //        App,
-    //        Graph,
-    //        Batch,
-    //        DrawTarget->Frames[App->Renderer.CurrentFrameIndex].ColorImage->Handle,
-    //        VK_IMAGE_ASPECT_COLOR_BIT,
-    //        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    //        VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-    //        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) != true ||
-    //    Rr_SyncImage(
-    //        App,
-    //        Graph,
-    //        Batch,
-    //        DrawTarget->Frames[App->Renderer.CurrentFrameIndex].DepthImage->Handle,
-    //        VK_IMAGE_ASPECT_DEPTH_BIT,
-    //        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-    //        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-    //        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) != true ||
-    //    Rr_SyncImage(
-    //        App,
-    //        Graph,
-    //        Batch,
-    //        Frame->CurrentSwapchainImage,
-    //        VK_IMAGE_ASPECT_COLOR_BIT,
-    //        VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //        VK_ACCESS_TRANSFER_WRITE_BIT,
-    //        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) != true)
-    // {
-    //     return false;
-    // }
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    return true;
+    return Rr_SyncImage(
+        App,
+        Graph,
+        Batch,
+        Frame->SwapchainImage->Handle,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 
 void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)
 {
     // Rr_Renderer *Renderer = &App->Renderer;
-    // Rr_DrawTarget *DrawTarget = Renderer->DrawTarget;
     // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     // VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-    //
-    // Rr_ImageBarrier ColorImageTransition = {
-    //     .CommandBuffer = CommandBuffer,
-    //     .Image = DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Handle,
-    //     .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    //     .AccessMask =
-    //         VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-    //     .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    // };
-    //
-    // Rr_ChainImageBarrier(
-    //     &ColorImageTransition,
-    //     VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //     VK_ACCESS_TRANSFER_READ_BIT,
-    //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    //
+
     // Rr_ImageBarrier SwapchainImageTransition = {
     //     .CommandBuffer = CommandBuffer,
-    //     .Image = Frame->CurrentSwapchainImage,
+    //     .Image = Frame->CurrentSwapchainImage->Handle,
     //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
     //     .AccessMask = VK_ACCESS_NONE,
     //     .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -98,23 +58,6 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)
     //     VK_ACCESS_TRANSFER_WRITE_BIT,
     //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     //
-    // Rr_BlitColorImage(
-    //     CommandBuffer,
-    //     DrawTarget->Frames[Renderer->CurrentFrameIndex].ColorImage->Handle,
-    //     Frame->CurrentSwapchainImage,
-    //     (Rr_IntVec4){
-    //         0,
-    //         0,
-    //         (int32_t)Renderer->SwapchainSize.width,
-    //         (int32_t)Renderer->SwapchainSize.height,
-    //     },
-    //     (Rr_IntVec4){
-    //         0,
-    //         0,
-    //         (int32_t)Renderer->SwapchainSize.width,
-    //         (int32_t)Renderer->SwapchainSize.height,
-    //     },
-    //     VK_IMAGE_ASPECT_COLOR_BIT);
     //
     // Rr_ChainImageBarrier(
     //     &SwapchainImageTransition,
