@@ -11,7 +11,7 @@
 
 static Rr_LoadSize Rr_CalculateLoadSize(Rr_LoadTask *Tasks, size_t TaskCount, Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_LoadSize LoadSize = { 0 };
 
@@ -43,7 +43,7 @@ static Rr_LoadSize Rr_CalculateLoadSize(Rr_LoadTask *Tasks, size_t TaskCount, Rr
         }
     }
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return LoadSize;
 }
@@ -56,7 +56,7 @@ static void Rr_LoadResourcesFromTasks(
     SDL_Semaphore *Semaphore,
     Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     for(size_t Index = 0; Index < TaskCount; ++Index)
     {
@@ -99,7 +99,7 @@ static void Rr_LoadResourcesFromTasks(
         }
     }
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }
 
 Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage)
@@ -203,7 +203,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
 {
     Rr_App *App = LoadingContext->App;
     Rr_Renderer *Renderer = &App->Renderer;
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     size_t TaskCount = LoadingContext->TaskCount;
     Rr_LoadTask *Tasks = LoadingContext->Tasks;
@@ -388,7 +388,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
         LoadingContext->Semaphore = NULL;
     }
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return RR_LOAD_RESULT_READY;
 }
@@ -397,7 +397,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext)
 {
     Rr_App *App = LoadingContext->App;
     Rr_Renderer *Renderer = &App->Renderer;
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     size_t TaskCount = LoadingContext->TaskCount;
     Rr_LoadTask *Tasks = LoadingContext->Tasks;
@@ -470,7 +470,7 @@ Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext)
 
     vkFreeCommandBuffers(Renderer->Device, CommandPool, 1, &TransferCommandBuffer);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return RR_LOAD_RESULT_READY;
 }
@@ -541,7 +541,7 @@ static int SDLCALL Rr_LoadingThreadProc(void *Data)
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
 
-    Rr_InitThreadScratch(RR_LOADING_THREAD_SCRATCH_SIZE);
+    Rr_InitScratch(RR_LOADING_THREAD_SCRATCH_SIZE);
 
     Rr_LoadAsyncContext LoadAsyncContext = Rr_CreateLoadAsyncContext(Renderer);
 

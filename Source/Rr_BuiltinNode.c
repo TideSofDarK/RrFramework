@@ -80,7 +80,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     VkExtent2D ActiveResolution,
     Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -126,7 +126,7 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextRenderingContext.GlobalsDescriptorSet);
     Rr_ResetDescriptorWriter(&DescriptorWriter);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return TextRenderingContext;
 }
@@ -138,7 +138,7 @@ static void Rr_RenderText(
     VkCommandBuffer CommandBuffer,
     Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -300,7 +300,7 @@ static void Rr_RenderText(
         &Frame->PerDrawBuffer.Offset,
         RR_MAKE_DATA(TextData, TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput)));
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }
 
 bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BuiltinNode *Node)
@@ -334,7 +334,7 @@ bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_
 
 void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     // Rr_Renderer *Renderer = &App->Renderer;
     // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -410,5 +410,5 @@ void Rr_ExecuteBuiltinNode(Rr_App *App, Rr_BuiltinNode *Node, Rr_Arena *Arena)
     //
     // vkCmdEndRenderPass(CommandBuffer);
     //
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }

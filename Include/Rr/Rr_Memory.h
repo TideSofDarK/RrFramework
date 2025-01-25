@@ -57,30 +57,30 @@ extern void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Co
 
 extern void Rr_PopArena(Rr_Arena *Arena, size_t Amount);
 
-typedef struct Rr_ArenaScratch Rr_ArenaScratch;
-struct Rr_ArenaScratch
+typedef struct Rr_Scratch Rr_Scratch;
+struct Rr_Scratch
 {
     Rr_Arena *Arena;
     uintptr_t Position;
 };
 
-extern Rr_ArenaScratch Rr_CreateArenaScratch(Rr_Arena *Arena);
+extern Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena);
 
-extern void Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch);
+extern void Rr_DestroyScratch(Rr_Scratch Scratch);
 
 extern void Rr_SetScratchTLS(void *TLSID);
 
-extern void Rr_InitThreadScratch(size_t Size);
+extern void Rr_InitScratch(size_t Size);
 
-extern Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict);
+extern Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
 
 /*
  * Dynamic Slice
  */
 
-extern void Rr_SliceGrow(void *Slice, size_t Size, Rr_Arena *Arena);
+extern void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena);
 
-extern void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena);
+extern void Rr_ResizeSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena);
 
 #define RR_SLICE_TYPE(Type) \
     struct                  \
@@ -91,14 +91,14 @@ extern void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Are
     }
 
 #define RR_SLICE_PUSH(Slice, Arena)                                                                             \
-    ((Slice)->Count >= (Slice)->Capacity ? Rr_SliceGrow((Slice), sizeof(*(Slice)->Data), (Arena)), /* NOLINT */ \
+    ((Slice)->Count >= (Slice)->Capacity ? Rr_GrowSlice((Slice), sizeof(*(Slice)->Data), (Arena)), /* NOLINT */ \
      (Slice)->Data + (Slice)->Count++                                                                           \
                                          : (Slice)->Data + (Slice)->Count++)
 
 #define RR_SLICE_POP(Slice) (Slice)->Count > 0 ? (Slice)->Count-- : (int)0
 
 #define RR_SLICE_RESERVE(Slice, ElementCount, Arena)                               \
-    ((Slice)->Capacity < (ElementCount) ? Rr_SliceResize(                          \
+    ((Slice)->Capacity < (ElementCount) ? Rr_ResizeSlice(                          \
                                               (Slice),                             \
                                               sizeof(*(Slice)->Data), /* NOLINT */ \
                                               (ElementCount),                      \
@@ -107,9 +107,9 @@ extern void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Are
 
 #define RR_SLICE_EMPTY(Slice) (Slice)->Count = 0
 
-#define RR_SLICE_DUPLICATE(Dst, Src, Arena)      \
-    Rr_SliceReserve((Dst), (Src)->Count, Arena), \
-        (Dst)->Count = (Src)->Count, SDL_memcpy((Dst)->Data, (Src)->Data, sizeof(*(Dst)->Data) * (Src)->Count)
+#define RR_SLICE_DUPLICATE(Dst, Src, Arena)                                  \
+    Rr_ResizeSlice((Dst), (Src)->Count, Arena), (Dst)->Count = (Src)->Count, \
+                                                memcpy((Dst)->Data, (Src)->Data, sizeof(*(Dst)->Data) * (Src)->Count)
 
 /*
  * Hashmap

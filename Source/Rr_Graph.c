@@ -39,7 +39,7 @@ Rr_GraphNode *Rr_AddGraphNode(
 
 static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -138,7 +138,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
     }
     /* @TODO: Same for buffers. */
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }
 
 void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
@@ -153,7 +153,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     {
         /* Begin a new batch. */
 
-        Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+        Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
         Rr_GraphBatch Batch = {
             .Arena = Scratch.Arena,
@@ -234,7 +234,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
         Rr_ExecuteGraphBatch(App, Graph, &Batch, Scratch.Arena);
 
-        Rr_DestroyArenaScratch(Scratch);
+        Rr_DestroyScratch(Scratch);
 
         if(NodeCount <= 0)
         {

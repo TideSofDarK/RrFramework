@@ -52,7 +52,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         *Height = SurfCaps.currentExtent.height;
     }
 
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     uint32_t PresentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(
@@ -225,7 +225,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &Renderer->Swapchain.Images[Index].View);
     }
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return true;
 }
@@ -471,7 +471,7 @@ static void Rr_InitNullTextures(Rr_App *App)
 
 void Rr_InitRenderer(Rr_App *App)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
     SDL_Window *Window = App->Window;
@@ -555,7 +555,7 @@ void Rr_InitRenderer(Rr_App *App)
     Rr_InitNullTextures(App);
     // Rr_InitTextRenderer(App);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }
 
 bool Rr_NewFrame(Rr_App *App, void *Window)
@@ -698,7 +698,7 @@ void Rr_PrepareFrame(Rr_App *App)
 
 void Rr_Draw(Rr_App *App)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
     VkDevice Device = Renderer->Device;
@@ -843,7 +843,7 @@ void Rr_Draw(Rr_App *App)
 
     Rr_ResetFrameResources(Frame);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }
 
 Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer)
@@ -918,7 +918,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
         }
     }
 
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     VkAttachmentDescription *Attachments =
         RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkAttachmentDescription), Info->AttachmentCount);
@@ -1003,7 +1003,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
         .Hash = Hash,
     };
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return RenderPass;
 }
@@ -1016,7 +1016,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
     VkExtent3D Extent,
     Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -1062,7 +1062,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
         .Hash = Hash,
     };
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return Framebuffer;
 }
@@ -1084,7 +1084,7 @@ VkFramebuffer Rr_GetFramebuffer(
     size_t ImageCount,
     VkExtent3D Extent)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     VkImageView *ImageViews = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImageView, ImageCount);
 
@@ -1096,7 +1096,7 @@ VkFramebuffer Rr_GetFramebuffer(
     VkFramebuffer Framebuffer =
         Rr_GetFramebufferInternal(App, RenderPass, ImageViews, ImageCount, Extent, Scratch.Arena);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return Framebuffer;
 }

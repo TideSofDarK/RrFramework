@@ -286,7 +286,7 @@ bool Rr_BatchGraphicsNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_GraphicsNode *No
 
 void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -431,7 +431,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
 
     vkCmdEndRenderPass(CommandBuffer);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }
 
 #define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType, ArgsData)                   \

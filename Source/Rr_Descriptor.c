@@ -23,7 +23,7 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
     Rr_DescriptorPoolSizeRatio *Ratios,
     size_t RatioCount)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     VkDescriptorPoolSize *PoolSizes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkDescriptorPoolSize, RatioCount);
     for(size_t Index = 0; Index < RatioCount; Index++)
@@ -46,7 +46,7 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
     VkDescriptorPool NewPool;
     vkCreateDescriptorPool(Device, &Info, NULL, &NewPool);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return NewPool;
 }

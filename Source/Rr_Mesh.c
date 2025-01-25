@@ -56,7 +56,7 @@ static cgltf_mesh *Rr_ParseGLTFMesh(Rr_Asset *Asset, size_t MeshIndex, cgltf_opt
 
 static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     size_t VertexCount = Primitive->attributes->data->count;
     size_t IndexCount = Primitive->indices->count;
@@ -124,7 +124,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, 
         *RR_SLICE_PUSH(&RawMesh.VerticesSlice, NULL) = NewVertex;
     }
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return RawMesh;
 }
@@ -169,7 +169,7 @@ static void Rr_CalculateTangents(size_t IndexCount, const Rr_MeshIndexType *Indi
 
 static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     RR_SLICE_TYPE(Rr_Vec3) ScratchPositions = { 0 };
     RR_SLICE_TYPE(Rr_Vec4) ScratchColors = { 0 };
@@ -299,7 +299,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
 
     Rr_CalculateTangents(RawMesh.IndicesSlice.Count, RawMesh.IndicesSlice.Data, RawMesh.VerticesSlice.Data);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return RawMesh;
 }
@@ -395,7 +395,7 @@ Rr_StaticMesh *Rr_CreateStaticMeshGLTF(
     size_t MeshIndex,
     Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
@@ -459,7 +459,7 @@ Rr_StaticMesh *Rr_CreateStaticMeshGLTF(
 
     cgltf_free(Data);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return StaticMesh;
 }
@@ -470,7 +470,7 @@ Rr_StaticMesh *Rr_CreateStaticMeshOBJ(
     Rr_AssetRef AssetRef,
     Rr_Arena *Arena)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
@@ -478,14 +478,14 @@ Rr_StaticMesh *Rr_CreateStaticMeshOBJ(
 
     Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return StaticMesh;
 }
 
 void Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
@@ -497,7 +497,7 @@ void Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize 
     OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
     OutLoadSize->BufferCount += 2;
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }
 
 void Rr_GetStaticMeshSizeGLTF(
@@ -507,7 +507,7 @@ void Rr_GetStaticMeshSizeGLTF(
     Rr_Arena *Arena,
     Rr_LoadSize *OutLoadSize)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
@@ -564,5 +564,5 @@ void Rr_GetStaticMeshSizeGLTF(
     OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
     OutLoadSize->BufferCount += 2;
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 }

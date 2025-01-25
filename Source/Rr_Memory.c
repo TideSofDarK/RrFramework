@@ -80,12 +80,12 @@ void Rr_DestroyArena(Rr_Arena *Arena)
     Rr_ReleaseMemory((void *)Arena, Arena->ReserveSize);
 }
 
-Rr_ArenaScratch Rr_CreateArenaScratch(Rr_Arena *Arena)
+Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena)
 {
-    return (Rr_ArenaScratch){ .Arena = Arena, .Position = Arena->Position };
+    return (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
 }
 
-void Rr_DestroyArenaScratch(Rr_ArenaScratch Scratch)
+void Rr_DestroyScratch(Rr_Scratch Scratch)
 {
     Scratch.Arena->Position = Scratch.Position;
 }
@@ -107,7 +107,7 @@ void Rr_SetScratchTLS(void *TLSID)
     ScratchArenaTLS = *((SDL_TLSID *)TLSID);
 }
 
-void Rr_InitThreadScratch(size_t Size)
+void Rr_InitScratch(size_t Size)
 {
     if(SDL_GetTLS(&ScratchArenaTLS) != 0)
     {
@@ -121,7 +121,7 @@ void Rr_InitThreadScratch(size_t Size)
     SDL_SetTLS(&ScratchArenaTLS, Arenas, Rr_CleanupScratchArena);
 }
 
-Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
+Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
 {
     if(ScratchArenaTLS.value == 0)
     {
@@ -130,7 +130,7 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
     Rr_Arena **Arenas = (Rr_Arena **)SDL_GetTLS(&ScratchArenaTLS);
     if(Conflict == NULL)
     {
-        return Rr_CreateArenaScratch(Arenas[0]);
+        return Rr_CreateScratch(Arenas[0]);
     }
     else
     {
@@ -138,14 +138,14 @@ Rr_ArenaScratch Rr_GetArenaScratch(Rr_Arena *Conflict)
         {
             if(Arenas[Index] != Conflict)
             {
-                return Rr_CreateArenaScratch(Arenas[Index]);
+                return Rr_CreateScratch(Arenas[Index]);
             }
         }
     }
 
     Rr_LogAbort("Couldn't find appropriate arena for a scratch!");
 
-    return (Rr_ArenaScratch){ 0 };
+    return (Rr_Scratch){ 0 };
 }
 
 void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
@@ -194,7 +194,7 @@ void Rr_DestroySyncArena(Rr_SyncArena *Arena)
     Rr_DestroyArena(Arena->Arena);
 }
 
-void Rr_SliceGrow(void *Slice, size_t Size, Rr_Arena *Arena)
+void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena)
 {
     if(Arena == NULL)
     {
@@ -218,7 +218,7 @@ void Rr_SliceGrow(void *Slice, size_t Size, Rr_Arena *Arena)
     memcpy(Slice, &Replica, sizeof(Replica));
 }
 
-void Rr_SliceResize(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
+void Rr_ResizeSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
 {
     if(Arena == NULL)
     {

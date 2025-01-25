@@ -218,7 +218,7 @@ static size_t Rr_GetFormatSize(Rr_Format Format)
 
 static VkRenderPass Rr_GetCompatibleRenderPass(Rr_App *App, Rr_PipelineInfo *Info)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     bool HasDepth = Info->DepthStencil.EnableDepthWrite;
     size_t AttachmentCount = Info->ColorTargetCount + (HasDepth ? 1 : 0);
@@ -243,14 +243,14 @@ static VkRenderPass Rr_GetCompatibleRenderPass(Rr_App *App, Rr_PipelineInfo *Inf
             .Attachments = Attachments,
         });
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return RenderPass;
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Info)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
 
@@ -444,7 +444,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         vkDestroyShaderModule(Renderer->Device, FragModule, NULL);
     }
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return Pipeline;
 }
@@ -458,7 +458,7 @@ void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipeli
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *Sets, size_t SetCount)
 {
-    Rr_ArenaScratch Scratch = Rr_GetArenaScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_PipelineLayout *PipelineLayout = (Rr_PipelineLayout *)Rr_CreateObject(App);
@@ -507,7 +507,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *S
 
     vkCreatePipelineLayout(Renderer->Device, &PipelineLayoutCreateInfo, NULL, &PipelineLayout->Handle);
 
-    Rr_DestroyArenaScratch(Scratch);
+    Rr_DestroyScratch(Scratch);
 
     return PipelineLayout;
 }
