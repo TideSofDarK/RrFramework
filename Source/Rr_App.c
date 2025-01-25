@@ -344,7 +344,7 @@ void Rr_SetRelativeMouseMode(Rr_App *App, bool IsRelative)
 
 void *Rr_CreateObject(Rr_App *App)
 {
-    SDL_LockSpinlock(&App->ObjectStorage.Lock);
+    Rr_LockSpinLock(&App->ObjectStorage.Lock);
 
     Rr_Object *NewObject = (Rr_Object *)App->ObjectStorage.FreeObject;
     if(NewObject == NULL)
@@ -357,19 +357,19 @@ void *Rr_CreateObject(Rr_App *App)
     }
     App->ObjectStorage.ObjectCount++;
 
-    SDL_UnlockSpinlock(&App->ObjectStorage.Lock);
+    Rr_UnlockSpinLock(&App->ObjectStorage.Lock);
 
     return RR_ZERO_PTR(NewObject);
 }
 
 void Rr_DestroyObject(Rr_App *App, void *Object)
 {
-    SDL_LockSpinlock(&App->ObjectStorage.Lock);
+    Rr_LockSpinLock(&App->ObjectStorage.Lock);
 
     Rr_Object *DestroyedObject = (Rr_Object *)Object;
     DestroyedObject->Next = App->ObjectStorage.FreeObject;
     App->ObjectStorage.FreeObject = DestroyedObject;
     App->ObjectStorage.ObjectCount--;
 
-    SDL_UnlockSpinlock(&App->ObjectStorage.Lock);
+    Rr_UnlockSpinLock(&App->ObjectStorage.Lock);
 }

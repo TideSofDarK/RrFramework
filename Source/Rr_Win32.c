@@ -1,3 +1,5 @@
+#if defined(_WIN32)
+
 #include <Rr/Rr_Platform.h>
 
 #define WIN32_LEAN_AND_MEAN
@@ -38,3 +40,20 @@ void Rr_DecommitMemory(void *Data, size_t Size)
 {
     VirtualFree(Data, Size, MEM_DECOMMIT);
 }
+
+bool Rr_TryLockSpinLock(Rr_SpinLock *SpinLock)
+{
+    return InterlockedExchange((long *)SpinLock, 1) == 0;
+}
+
+void Rr_UnlockSpinLock(Rr_SpinLock *SpinLock)
+{
+    _ReadWriteBarrier();
+    *SpinLock = 0;
+}
+
+#else
+
+static void Rr_Unused(void);
+
+#endif

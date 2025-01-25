@@ -8,6 +8,7 @@
 #include "Rr_UI.h"
 
 #include <Rr/Rr_Graph.h>
+#include <Rr/Rr_Platform.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -675,7 +676,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    if(SDL_TryLockSpinlock(&App->SyncArena.Lock))
+    if(Rr_TryLockSpinLock(&App->SyncArena.Lock))
     {
         for(size_t Index = 0; Index < Renderer->PendingLoadsSlice.Count; ++Index)
         {
@@ -684,7 +685,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
         }
         RR_EMPTY_SLICE(&Renderer->PendingLoadsSlice);
 
-        SDL_UnlockSpinlock(&App->SyncArena.Lock);
+        Rr_UnlockSpinLock(&App->SyncArena.Lock);
     }
 }
 
@@ -816,11 +817,11 @@ void Rr_Draw(Rr_App *App)
         .pWaitDstStageMask = WaitDstStages,
     };
 
-    SDL_LockSpinlock(&Renderer->GraphicsQueue.Lock);
+    Rr_LockSpinLock(&Renderer->GraphicsQueue.Lock);
 
     vkQueueSubmit(Renderer->GraphicsQueue.Handle, 1, &SubmitInfo, Frame->RenderFence);
 
-    SDL_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
+    Rr_UnlockSpinLock(&Renderer->GraphicsQueue.Lock);
 
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,

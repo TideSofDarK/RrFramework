@@ -2,7 +2,7 @@
 
 #include <Rr/Rr_Memory.h>
 
-#include <SDL3/SDL_atomic.h>
+#include <Rr/Rr_Platform.h>
 
 /*
  * Sync Arena
@@ -11,7 +11,7 @@
 typedef struct Rr_SyncArena Rr_SyncArena;
 struct Rr_SyncArena
 {
-    SDL_SpinLock Lock;
+    Rr_SpinLock Lock;
     Rr_Arena *Arena;
 };
 

@@ -1,3 +1,5 @@
+#if defined(__linux__)
+
 #include <Rr/Rr_Platform.h>
 
 #include "Rr_Log.h"
@@ -46,3 +48,19 @@ void Rr_DecommitMemory(void *Data, size_t Size)
     madvise(Data, Size, MADV_DONTNEED);
     mprotect(Data, Size, PROT_NONE);
 }
+
+bool Rr_TryLockSpinLock(Rr_SpinLock *SpinLock)
+{
+    return __sync_lock_test_and_set(SpinLock, 1) == 0;
+}
+
+void Rr_UnlockSpinLock(Rr_SpinLock *SpinLock)
+{
+    __sync_lock_release(SpinLock);
+}
+
+#else
+
+static void Rr_Unused(void);
+
+#endif

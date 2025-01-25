@@ -2,6 +2,8 @@
 
 #include "Rr_Memory.h"
 
+#include <string.h>
+
 static VkDescriptorType Rr_GetVulkanDescriptorType(Rr_PipelineBindingType Type)
 {
     switch(Type)

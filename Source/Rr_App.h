@@ -44,7 +44,7 @@ struct Rr_App
     {
         void *FreeObject;
         size_t ObjectCount;
-        SDL_SpinLock Lock;
+        Rr_SpinLock Lock;
     } ObjectStorage;
 
     Rr_Renderer Renderer;

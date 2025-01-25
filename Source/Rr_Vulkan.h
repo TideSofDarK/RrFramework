@@ -2,13 +2,12 @@
 
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Memory.h>
+#include <Rr/Rr_Platform.h>
 #include <Rr/Rr_Renderer.h>
 
 #include <vma/vk_mem_alloc.h>
 #include <volk/volk.h>
 #include <vulkan/vk_enum_string_helper.h>
-
-#include <SDL3/SDL_thread.h>
 
 typedef struct Rr_Queue Rr_Queue;
 struct Rr_Queue
@@ -16,7 +15,7 @@ struct Rr_Queue
     VkCommandPool TransientCommandPool;
     VkQueue Handle;
     uint32_t FamilyIndex;
-    SDL_SpinLock Lock;
+    Rr_SpinLock Lock;
 };
 
 typedef struct Rr_PhysicalDevice Rr_PhysicalDevice;
