@@ -24,7 +24,7 @@ struct Rr_PendingLoad
 typedef struct Rr_LoadingThread Rr_LoadingThread;
 struct Rr_LoadingThread
 {
-    RR_SLICE_TYPE(Rr_LoadingContext) LoadingContextsSlice;
+    RR_SLICE(Rr_LoadingContext) LoadingContextsSlice;
     SDL_Thread *Handle;
     SDL_Semaphore *Semaphore;
     SDL_Mutex *Mutex;

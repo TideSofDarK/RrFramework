@@ -20,8 +20,8 @@ struct Rr_Primitive
 typedef struct Rr_RawMesh Rr_RawMesh;
 struct Rr_RawMesh
 {
-    RR_SLICE_TYPE(Rr_Vertex) VerticesSlice;
-    RR_SLICE_TYPE(Rr_MeshIndexType) IndicesSlice;
+    RR_SLICE(Rr_Vertex) VerticesSlice;
+    RR_SLICE(Rr_MeshIndexType) IndicesSlice;
 };
 
 struct Rr_StaticMesh

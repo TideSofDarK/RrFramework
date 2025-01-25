@@ -30,7 +30,7 @@ struct Rr_GraphNode
     Rr_Arena *Arena;
     Rr_GraphNodeType Type;
     const char *Name;
-    RR_SLICE_TYPE(Rr_GraphNode *) Dependencies;
+    RR_SLICE(Rr_GraphNode *) Dependencies;
     bool Executed;
 };
 
@@ -44,9 +44,9 @@ struct Rr_GraphEdge
 typedef struct Rr_GraphBatch Rr_GraphBatch;
 struct Rr_GraphBatch
 {
-    RR_SLICE_TYPE(Rr_GraphNode *) Nodes;
-    RR_SLICE_TYPE(VkImageMemoryBarrier) ImageBarriers;
-    RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriers;
+    RR_SLICE(Rr_GraphNode *) Nodes;
+    RR_SLICE(VkImageMemoryBarrier) ImageBarriers;
+    RR_SLICE(VkBufferMemoryBarrier) BufferBarriers;
     VkPipelineStageFlags StageMask;
     VkPipelineStageFlags SwapchainImageStage;
     Rr_Map *LocalSync;
@@ -55,7 +55,7 @@ struct Rr_GraphBatch
 
 struct Rr_Graph
 {
-    RR_SLICE_TYPE(Rr_GraphNode *) Nodes;
+    RR_SLICE(Rr_GraphNode *) Nodes;
 };
 
 extern bool Rr_BatchImagePossible(Rr_Map **Sync, VkImage Image);

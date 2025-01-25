@@ -18,7 +18,7 @@ struct Rr_DrawTextInfo
     Rr_DrawTextFlags Flags;
 };
 
-typedef RR_SLICE_TYPE(Rr_DrawTextInfo) Rr_DrawTextsSlice;
+typedef RR_SLICE(Rr_DrawTextInfo) Rr_DrawTextsSlice;
 
 typedef struct Rr_BuiltinNode Rr_BuiltinNode;
 struct Rr_BuiltinNode

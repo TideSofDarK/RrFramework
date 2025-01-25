@@ -153,7 +153,7 @@ Rr_LoadingContext *Rr_LoadAsync(
     SDL_LockMutex(LoadingThread->Mutex);
     Rr_LoadTask *NewTasks = RR_ALLOC_COUNT(LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
-    Rr_LoadingContext *LoadingContext = RR_SLICE_PUSH(&LoadingThread->LoadingContextsSlice, LoadingThread->Arena);
+    Rr_LoadingContext *LoadingContext = RR_PUSH_SLICE(&LoadingThread->LoadingContextsSlice, LoadingThread->Arena);
     *LoadingContext = (Rr_LoadingContext){
         .Semaphore = SDL_CreateSemaphore(0),
         .LoadingCallback = LoadingCallback,
@@ -374,7 +374,7 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
 
     SDL_LockSpinlock(&App->SyncArena.Lock);
 
-    Rr_PendingLoad *PendingLoad = RR_SLICE_PUSH(&Renderer->PendingLoadsSlice, App->SyncArena.Arena);
+    Rr_PendingLoad *PendingLoad = RR_PUSH_SLICE(&Renderer->PendingLoadsSlice, App->SyncArena.Arena);
     *PendingLoad = (Rr_PendingLoad){
         .LoadingCallback = LoadingContext->LoadingCallback,
         .Userdata = LoadingContext->Userdata,

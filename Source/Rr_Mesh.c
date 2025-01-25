@@ -62,8 +62,8 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, 
     size_t IndexCount = Primitive->indices->count;
 
     Rr_RawMesh RawMesh = { 0 };
-    RR_SLICE_RESERVE(&RawMesh.VerticesSlice, VertexCount, Arena);
-    RR_SLICE_RESERVE(&RawMesh.IndicesSlice, IndexCount, Arena);
+    RR_RESERVE_SLICE(&RawMesh.VerticesSlice, VertexCount, Arena);
+    RR_RESERVE_SLICE(&RawMesh.IndicesSlice, IndexCount, Arena);
 
     char *IndexData = (char *)Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
     if(Primitive->indices->component_type == cgltf_component_type_r_16u)
@@ -72,7 +72,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, 
         for(size_t Index = 0; Index < IndexCount; ++Index)
         {
             uint32_t Converted = *(Indices + Index);
-            *RR_SLICE_PUSH(&RawMesh.IndicesSlice, NULL) = Converted;
+            *RR_PUSH_SLICE(&RawMesh.IndicesSlice, NULL) = Converted;
         }
     }
     else
@@ -121,7 +121,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, 
             }
         }
 
-        *RR_SLICE_PUSH(&RawMesh.VerticesSlice, NULL) = NewVertex;
+        *RR_PUSH_SLICE(&RawMesh.VerticesSlice, NULL) = NewVertex;
     }
 
     Rr_DestroyScratch(Scratch);
@@ -171,11 +171,11 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    RR_SLICE_TYPE(Rr_Vec3) ScratchPositions = { 0 };
-    RR_SLICE_TYPE(Rr_Vec4) ScratchColors = { 0 };
-    RR_SLICE_TYPE(Rr_Vec2) ScratchTexCoords = { 0 };
-    RR_SLICE_TYPE(Rr_Vec3) ScratchNormals = { 0 };
-    RR_SLICE_TYPE(Rr_IntVec3) ScratchIndices = { 0 };
+    RR_SLICE(Rr_Vec3) ScratchPositions = { 0 };
+    RR_SLICE(Rr_Vec4) ScratchColors = { 0 };
+    RR_SLICE(Rr_Vec2) ScratchTexCoords = { 0 };
+    RR_SLICE(Rr_Vec3) ScratchNormals = { 0 };
+    RR_SLICE(Rr_IntVec3) ScratchIndices = { 0 };
 
     Rr_RawMesh RawMesh = { 0 };
 
@@ -197,7 +197,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                         NewPosition.Y = (float)SDL_strtod(EndPos, &EndPos);
                         NewPosition.Z = (float)SDL_strtod(EndPos, &EndPos);
 
-                        *RR_SLICE_PUSH(&ScratchPositions, Scratch.Arena) = NewPosition;
+                        *RR_PUSH_SLICE(&ScratchPositions, Scratch.Arena) = NewPosition;
 
                         if(*EndPos == ' ')
                         {
@@ -206,7 +206,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                             NewColor.Y = (float)SDL_strtod(EndPos, &EndPos);
                             NewColor.Z = (float)SDL_strtod(EndPos, &EndPos);
 
-                            *RR_SLICE_PUSH(&ScratchColors, Scratch.Arena) = NewColor;
+                            *RR_PUSH_SLICE(&ScratchColors, Scratch.Arena) = NewColor;
                         }
                     }
                     break;
@@ -217,7 +217,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                         NewTexCoord.X = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
                         NewTexCoord.Y = (float)SDL_strtod(EndPos, &EndPos);
 
-                        *RR_SLICE_PUSH(&ScratchTexCoords, Scratch.Arena) = NewTexCoord;
+                        *RR_PUSH_SLICE(&ScratchTexCoords, Scratch.Arena) = NewTexCoord;
                     }
                     break;
                     case 'n':
@@ -228,7 +228,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                         NewNormal.Y = (float)SDL_strtod(EndPos, &EndPos);
                         NewNormal.Z = (float)SDL_strtod(EndPos, &EndPos);
 
-                        *RR_SLICE_PUSH(&ScratchNormals, Scratch.Arena) = NewNormal;
+                        *RR_PUSH_SLICE(&ScratchNormals, Scratch.Arena) = NewNormal;
                     }
                     break;
                 }
@@ -273,17 +273,17 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
                         NewVertex.TexCoordX = (*TexCoord).X;
                         // NewVertex.TexCoordY = (*TexCoord).Y;
                         NewVertex.TexCoordY = 1.0f - (*TexCoord).Y;
-                        *RR_SLICE_PUSH(&RawMesh.VerticesSlice, Arena) = NewVertex;
+                        *RR_PUSH_SLICE(&RawMesh.VerticesSlice, Arena) = NewVertex;
 
-                        *RR_SLICE_PUSH(&ScratchIndices, Scratch.Arena) = OBJIndices[Index];
+                        *RR_PUSH_SLICE(&ScratchIndices, Scratch.Arena) = OBJIndices[Index];
 
                         /* Add freshly added vertex index */
-                        *RR_SLICE_PUSH(&RawMesh.IndicesSlice, Arena) =
+                        *RR_PUSH_SLICE(&RawMesh.IndicesSlice, Arena) =
                             (Rr_MeshIndexType){ RawMesh.VerticesSlice.Count - 1 };
                     }
                     else
                     {
-                        *RR_SLICE_PUSH(&RawMesh.IndicesSlice, Arena) = ExistingOBJIndex;
+                        *RR_PUSH_SLICE(&RawMesh.IndicesSlice, Arena) = ExistingOBJIndex;
                     }
                 }
             }

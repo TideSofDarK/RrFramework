@@ -682,7 +682,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
             Rr_PendingLoad *PendingLoad = &Renderer->PendingLoadsSlice.Data[Index];
             PendingLoad->LoadingCallback(App, PendingLoad->Userdata);
         }
-        RR_SLICE_EMPTY(&Renderer->PendingLoadsSlice);
+        RR_EMPTY_SLICE(&Renderer->PendingLoadsSlice);
 
         SDL_UnlockSpinlock(&App->SyncArena.Lock);
     }
@@ -733,7 +733,7 @@ void Rr_Draw(Rr_App *App)
 
     Frame->SwapchainImage = &Swapchain->Images[SwapchainImageIndex];
     Rr_ImageSync **SwapchainImageState = (Rr_ImageSync **)
-        Rr_MapUpsert(&Renderer->GlobalSync, (uintptr_t)Frame->SwapchainImage->Handle, App->PermanentArena);
+        Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Frame->SwapchainImage->Handle, App->PermanentArena);
     if(*SwapchainImageState == NULL)
     {
         *SwapchainImageState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
@@ -998,7 +998,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
 
     vkCreateRenderPass(Renderer->Device, &RenderPassCreateInfo, NULL, &RenderPass);
 
-    *RR_SLICE_PUSH(&Renderer->RenderPasses, App->PermanentArena) = (Rr_CachedRenderPass){
+    *RR_PUSH_SLICE(&Renderer->RenderPasses, App->PermanentArena) = (Rr_CachedRenderPass){
         .Handle = RenderPass,
         .Hash = Hash,
     };
@@ -1057,7 +1057,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
 
     vkCreateFramebuffer(Renderer->Device, &CreateInfo, NULL, &Framebuffer);
 
-    *RR_SLICE_PUSH(&Renderer->Framebuffers, App->PermanentArena) = (Rr_CachedFramebuffer){
+    *RR_PUSH_SLICE(&Renderer->Framebuffers, App->PermanentArena) = (Rr_CachedFramebuffer){
         .Handle = Framebuffer,
         .Hash = Hash,
     };

@@ -14,7 +14,7 @@ static void Rr_CopyDependencies(
     size_t DependencyCount,
     Rr_Arena *Arena)
 {
-    RR_SLICE_RESERVE(&GraphNode->Dependencies, DependencyCount, Arena);
+    RR_RESERVE_SLICE(&GraphNode->Dependencies, DependencyCount, Arena);
     memcpy(GraphNode->Dependencies.Data, Dependencies, sizeof(Rr_GraphNode *) * DependencyCount);
     GraphNode->Dependencies.Count = DependencyCount;
 }
@@ -32,7 +32,7 @@ Rr_GraphNode *Rr_AddGraphNode(
     GraphNode->Name = Name;
     Rr_CopyDependencies(GraphNode, Dependencies, DependencyCount, Frame->Arena);
 
-    *RR_SLICE_PUSH(&Frame->Graph.Nodes, Frame->Arena) = GraphNode;
+    *RR_PUSH_SLICE(&Frame->Graph.Nodes, Frame->Arena) = GraphNode;
 
     return GraphNode;
 }
@@ -56,7 +56,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
         {
             VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
             Rr_ImageSync **State =
-                (Rr_ImageSync **)Rr_MapUpsert(&Renderer->GlobalSync, (uintptr_t)Barrier->image, NULL);
+                (Rr_ImageSync **)Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Barrier->image, NULL);
             if(*State != NULL)
             {
                 StageMask |= (*State)->StageMask;
@@ -128,12 +128,12 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
     {
         VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
         Rr_ImageSync **GlobalState =
-            (Rr_ImageSync **)Rr_MapUpsert(&Renderer->GlobalSync, (uintptr_t)Barrier->image, App->PermanentArena);
+            (Rr_ImageSync **)Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Barrier->image, App->PermanentArena);
         if(*GlobalState == NULL)
         {
             *GlobalState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
         }
-        Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_MapUpsert(&Batch->LocalSync, (uintptr_t)Barrier->image, NULL);
+        Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_UpsertMap(&Batch->LocalSync, (uintptr_t)Barrier->image, NULL);
         *(*GlobalState) = *(*BatchState);
     }
     /* @TODO: Same for buffers. */
@@ -222,7 +222,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             }
             if(NodeBatched)
             {
-                *RR_SLICE_PUSH(&Batch.Nodes, Batch.Arena) = GraphNode;
+                *RR_PUSH_SLICE(&Batch.Nodes, Batch.Arena) = GraphNode;
                 NodeCount--;
             }
         }
@@ -245,7 +245,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
 bool Rr_BatchImagePossible(Rr_Map **Sync, VkImage Image)
 {
-    Rr_ImageSync **State = (Rr_ImageSync **)Rr_MapUpsert(Sync, (uintptr_t)Image, NULL);
+    Rr_ImageSync **State = (Rr_ImageSync **)Rr_UpsertMap(Sync, (uintptr_t)Image, NULL);
 
     if(State != NULL)
     {
@@ -275,13 +275,13 @@ void Rr_BatchImage(
     Rr_Arena *Arena = Rr_GetFrameArena(App);
 
     Rr_ImageSync **GlobalState =
-        (Rr_ImageSync **)Rr_MapUpsert(&Renderer->GlobalSync, (uintptr_t)Image, App->PermanentArena);
+        (Rr_ImageSync **)Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Image, App->PermanentArena);
 
     VkImageSubresourceRange SubresourceRange = Rr_GetImageSubresourceRange(AspectMask);
 
     if(*GlobalState == NULL) /* First time referencing this image. */
     {
-        *RR_SLICE_PUSH(&Batch->ImageBarriers, Arena) = (VkImageMemoryBarrier){
+        *RR_PUSH_SLICE(&Batch->ImageBarriers, Arena) = (VkImageMemoryBarrier){
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = NULL,
             .srcAccessMask = 0,
@@ -296,7 +296,7 @@ void Rr_BatchImage(
     }
     else /* Syncing with previous state. */
     {
-        *RR_SLICE_PUSH(&Batch->ImageBarriers, Arena) = (VkImageMemoryBarrier){
+        *RR_PUSH_SLICE(&Batch->ImageBarriers, Arena) = (VkImageMemoryBarrier){
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = NULL,
             .srcAccessMask = (*GlobalState)->AccessMask,
@@ -310,7 +310,7 @@ void Rr_BatchImage(
         };
     }
 
-    Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_MapUpsert(&Batch->LocalSync, (uintptr_t)Image, Arena);
+    Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_UpsertMap(&Batch->LocalSync, (uintptr_t)Image, Arena);
     if(*BatchState == NULL)
     {
         Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);

@@ -201,7 +201,7 @@ void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena)
         Rr_LogAbort("Attempt to grow a slice but Arena is NULL!");
     }
 
-    RR_SLICE_TYPE(void) Replica;
+    RR_SLICE(void) Replica;
     memcpy(&Replica, Slice, sizeof(Replica));
 
     void *Data = NULL;
@@ -225,7 +225,7 @@ void Rr_ResizeSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
         Rr_LogAbort("Attempt to grow a slice but Arena is NULL!");
     }
 
-    RR_SLICE_TYPE(void) Replica;
+    RR_SLICE(void) Replica;
     memcpy(&Replica, Slice, sizeof(Replica));
 
     void *Data = NULL;
@@ -242,7 +242,7 @@ void Rr_ResizeSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
     memcpy(Slice, &Replica, sizeof(Replica));
 }
 
-void **Rr_MapUpsert(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
+void **Rr_UpsertMap(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
 {
     if(*Map != NULL)
     {

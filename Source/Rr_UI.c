@@ -74,7 +74,7 @@ void Rr_BeginWindow(const char *Title)
 {
     XXH64_hash_t Hash = XXH3_64bits(Title, strlen(Title));
 
-    Rr_UIWindow **Window = (Rr_UIWindow **)Rr_MapUpsert(&GUI->WindowMap, Hash, GUI->Arena);
+    Rr_UIWindow **Window = (Rr_UIWindow **)Rr_UpsertMap(&GUI->WindowMap, Hash, GUI->Arena);
 
     if(*Window == NULL)
     {

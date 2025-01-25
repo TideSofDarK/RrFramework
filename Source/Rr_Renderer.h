@@ -110,8 +110,8 @@ struct Rr_Renderer
 
     /* Render Passes */
 
-    RR_SLICE_TYPE(Rr_CachedRenderPass) RenderPasses;
-    RR_SLICE_TYPE(Rr_CachedFramebuffer) Framebuffers;
+    RR_SLICE(Rr_CachedRenderPass) RenderPasses;
+    RR_SLICE(Rr_CachedFramebuffer) Framebuffers;
 
     /* Immediate Command Pool/Buffer */
 
@@ -127,7 +127,7 @@ struct Rr_Renderer
 
     /* Retired Semaphores */
 
-    RR_SLICE_TYPE(struct Rr_RetiredSemaphore {
+    RR_SLICE(struct Rr_RetiredSemaphore {
         VkSemaphore Semaphore;
         size_t FrameIndex;
     })
@@ -135,7 +135,7 @@ struct Rr_Renderer
 
     /* Pending Loads */
 
-    RR_SLICE_TYPE(Rr_PendingLoad) PendingLoadsSlice;
+    RR_SLICE(Rr_PendingLoad) PendingLoadsSlice;
 
     /* Texture Samplers */
 
