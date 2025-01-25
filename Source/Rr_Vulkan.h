@@ -136,7 +136,7 @@ static VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFl
     return Info;
 }
 
-static VkImageSubresourceRange GetImageSubresourceRange(VkImageAspectFlags AspectMask)
+static VkImageSubresourceRange Rr_GetImageSubresourceRange(VkImageAspectFlags AspectMask)
 {
     VkImageSubresourceRange ImageSubresourceRange = {
         .aspectMask = AspectMask,

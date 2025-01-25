@@ -622,6 +622,7 @@
 //     }
 // };
 
+static Rr_Image *ColorAttachment;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
@@ -667,6 +668,8 @@ static void Init(Rr_App *App, void *UserData)
 
     IndexBuffer = Rr_CreateDeviceIndexBuffer(App, sizeof(IndexData));
     Rr_UploadToDeviceBufferImmediate(App, IndexBuffer, RR_MAKE_DATA_ARRAY(IndexData));
+
+    ColorAttachment = Rr_CreateColorAttachmentImage(App, 1024, 1024);
 }
 
 static void Iterate(Rr_App *App, void *UserData)
@@ -675,30 +678,67 @@ static void Iterate(Rr_App *App, void *UserData)
 
 static void Draw(Rr_App *App, void *UserData)
 {
-    Rr_Image *ColorImage = Rr_GetSwapchainImage(App);
+    Rr_BufferBinding VertexBinding = {};
+    VertexBinding.Buffer = VertexBuffer;
 
-    Rr_ColorTarget ColorTarget = {
-        .Image = ColorImage,
+    Rr_BufferBinding IndexBinding = {};
+    IndexBinding.Buffer = IndexBuffer;
+
+    Rr_DrawIndexedArgs Args = {};
+    Args.IndexCount = 3;
+    Args.InstanceCount = 1;
+
+    /* Draw Offscreen */
+
+    Rr_ColorTarget OffscreenTarget = {
+        .Image = ColorAttachment,
+        .Slot = 0,
+        .LoadOp = RR_LOAD_OP_CLEAR,
+        .StoreOp = RR_STORE_OP_STORE,
+        .Clear = { 0.9f, 0.2f, 0.9f, 1.0f },
+    };
+    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, "offscreen", &OffscreenTarget, 1, nullptr, nullptr, 0);
+
+    Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
+
+    Rr_BindVertexBuffer(OffscreenNode, &VertexBinding);
+
+    Rr_BindIndexBuffer(OffscreenNode, &IndexBinding);
+
+    Rr_DrawIndexed(OffscreenNode, &Args);
+
+    /* Draw to Swapchain Image */
+
+    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(App);
+
+    Rr_ColorTarget SwapchainImageTarget = {
+        .Image = SwapchainImage,
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = { 0.2f, 0.2f, 0.2f, 1.0f },
     };
-    Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "test", &ColorTarget, 1, nullptr, nullptr, 0);
+    Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr, nullptr, 0);
 
     Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
 
-    Rr_BufferBinding Binding = {};
-    Binding.Buffer = VertexBuffer;
-    Rr_BindVertexBuffer(Node, &Binding);
+    Rr_BindVertexBuffer(Node, &VertexBinding);
 
-    Binding.Buffer = IndexBuffer;
-    Rr_BindIndexBuffer(Node, &Binding);
+    Rr_BindIndexBuffer(Node, &IndexBinding);
 
-    Rr_DrawIndexedArgs Args = {};
-    Args.IndexCount = 3;
-    Args.InstanceCount = 1;
     Rr_DrawIndexed(Node, &Args);
+
+    /* Blit to Swapchain Image */
+
+    Rr_GraphNode *Dependencies[] = { OffscreenNode, Node };
+    Rr_BlitNodeInfo BlitInfo = {
+        .SrcImage = ColorAttachment,
+        .DstImage = SwapchainImage,
+        .SrcRect = { 0, 0, 1024, 1024 },
+        .DstRect = { 0, 0, 512, 512 },
+        .Mode = RR_BLIT_MODE_COLOR,
+    };
+    Rr_GraphNode *BlitNode = Rr_AddBlitNode(App, "blit_test", &BlitInfo, Dependencies, 2);
 
     /* Present */
 
@@ -706,11 +746,12 @@ static void Draw(Rr_App *App, void *UserData)
         .Mode = RR_PRESENT_MODE_STRETCH,
     };
 
-    Rr_AddPresentNode(App, "present", &PresentInfo, &Node, 1);
+    Rr_AddPresentNode(App, "present", &PresentInfo, &BlitNode, 1);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
+    Rr_DestroyImage(App, ColorAttachment);
     Rr_DestroyBuffer(App, VertexBuffer);
     Rr_DestroyBuffer(App, IndexBuffer);
     Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);

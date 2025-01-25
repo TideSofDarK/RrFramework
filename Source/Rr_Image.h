@@ -53,8 +53,6 @@ extern Rr_Image *Rr_CreateDepthImageFromEXR(
     Rr_AssetRef AssetRef,
     Rr_Arena *Arena);
 
-extern Rr_Image *Rr_CreateColorAttachmentImage(Rr_App *App, uint32_t Width, uint32_t Height);
-
 extern Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t Height);
 
 extern void Rr_GetImageSizePNGMemory(char *Data, size_t DataSize, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize);

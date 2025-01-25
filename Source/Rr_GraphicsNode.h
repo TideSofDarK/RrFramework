@@ -36,6 +36,6 @@ struct Rr_GraphicsNode
     Rr_GraphicsNodeFunction *Encoded;
 };
 
-extern bool Rr_BatchGraphicsNode(Rr_App *App, Rr_Graph *Graph, struct Rr_GraphBatch *Batch, Rr_GraphicsNode *Node);
+extern bool Rr_BatchGraphicsNode(Rr_App *App, struct Rr_GraphBatch *Batch, Rr_GraphicsNode *Node);
 
 extern void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena);

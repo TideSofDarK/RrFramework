@@ -44,23 +44,24 @@ struct Rr_GraphEdge
 typedef struct Rr_GraphBatch Rr_GraphBatch;
 struct Rr_GraphBatch
 {
-    RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
-    RR_SLICE_TYPE(VkImageMemoryBarrier) ImageBarriersSlice;
-    RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriersSlice;
+    RR_SLICE_TYPE(Rr_GraphNode *) Nodes;
+    RR_SLICE_TYPE(VkImageMemoryBarrier) ImageBarriers;
+    RR_SLICE_TYPE(VkBufferMemoryBarrier) BufferBarriers;
     VkPipelineStageFlags StageMask;
-    Rr_Map *SyncMap;
+    VkPipelineStageFlags SwapchainImageStage;
+    Rr_Map *LocalSync;
     Rr_Arena *Arena;
 };
 
 struct Rr_Graph
 {
-    RR_SLICE_TYPE(Rr_GraphNode *) NodesSlice;
-    Rr_Map *GlobalSyncMap;
+    RR_SLICE_TYPE(Rr_GraphNode *) Nodes;
 };
 
-extern bool Rr_SyncImage(
+extern bool Rr_BatchImagePossible(Rr_Map **Sync, VkImage Image);
+
+extern void Rr_BatchImage(
     Rr_App *App,
-    Rr_Graph *Graph,
     Rr_GraphBatch *GraphBatch,
     VkImage Image,
     VkImageAspectFlags AspectMask,

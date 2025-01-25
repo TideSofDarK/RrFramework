@@ -31,7 +31,7 @@ static void Rr_UploadImage(
     memcpy((char *)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
     StagingBuffer->Offset += ImageDataLength;
 
-    VkImageSubresourceRange SubresourceRange = GetImageSubresourceRange(Aspect);
+    VkImageSubresourceRange SubresourceRange = Rr_GetImageSubresourceRange(Aspect);
 
     vkCmdPipelineBarrier(
         TransferCommandBuffer,
@@ -440,7 +440,7 @@ void Rr_ChainImageBarrier_Aspect(
             .image = TransitionImage->Image,
             .oldLayout = TransitionImage->Layout,
             .newLayout = NewLayout,
-            .subresourceRange = GetImageSubresourceRange(Aspect),
+            .subresourceRange = Rr_GetImageSubresourceRange(Aspect),
             .srcAccessMask = TransitionImage->AccessMask,
             .dstAccessMask = DstAccessMask,
         });

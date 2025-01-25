@@ -732,6 +732,17 @@ void Rr_Draw(Rr_App *App)
     SDL_assert(Result >= 0);
 
     Frame->SwapchainImage = &Swapchain->Images[SwapchainImageIndex];
+    Rr_ImageSync **SwapchainImageState = (Rr_ImageSync **)
+        Rr_MapUpsert(&Renderer->GlobalSync, (uintptr_t)Frame->SwapchainImage->Handle, App->PermanentArena);
+    if(*SwapchainImageState == NULL)
+    {
+        *SwapchainImageState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
+        *(*SwapchainImageState) = (Rr_ImageSync){
+            .AccessMask = 0,
+            .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+        };
+    }
 
     /* Begin main command buffer. */
 
@@ -792,7 +803,7 @@ void Rr_Draw(Rr_App *App)
     VkPipelineStageFlags *WaitDstStages = RR_ALLOC(Scratch.Arena, sizeof(VkPipelineStageFlags));
     size_t WaitSemaphoreIndex = 1;
     WaitSemaphores[0] = Frame->SwapchainSemaphore;
-    WaitDstStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    WaitDstStages[0] = Frame->SwapchainImageStage;
     VkSubmitInfo SubmitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = NULL,

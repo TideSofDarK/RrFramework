@@ -37,6 +37,7 @@ typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
     Rr_Image *SwapchainImage;
+    VkPipelineStageFlags SwapchainImageStage;
 
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;
@@ -145,6 +146,9 @@ struct Rr_Renderer
 
     Rr_TextPipeline TextPipeline;
     Rr_Font *BuiltinFont;
+
+    /* Global Synchronization Map */
+    Rr_Map *GlobalSync;
 };
 
 extern void Rr_InitRenderer(Rr_App *App);

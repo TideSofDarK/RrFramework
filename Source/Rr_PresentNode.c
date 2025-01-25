@@ -22,26 +22,37 @@ Rr_GraphNode *Rr_AddPresentNode(
     return GraphNode;
 }
 
-bool Rr_BatchPresentNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_PresentNode *Node)
+bool Rr_BatchPresentNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_PresentNode *Node)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    return Rr_SyncImage(
+    if(Rr_BatchImagePossible(&Batch->LocalSync, Frame->SwapchainImage->Handle) != true)
+    {
+        return false;
+    }
+
+    Rr_BatchImage(
         App,
-        Graph,
         Batch,
         Frame->SwapchainImage->Handle,
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    return true;
 }
 
 void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)
 {
     // Rr_Renderer *Renderer = &App->Renderer;
     // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    // Rr_ImageSync **GlobalState =
+    //     (Rr_ImageSync **)Rr_MapUpsert(&Renderer->GlobalSync, (uintptr_t)Frame->SwapchainImage->Handle, NULL);
+    // (*GlobalState)->StageMask =
+
     // VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
     // Rr_ImageBarrier SwapchainImageTransition = {
