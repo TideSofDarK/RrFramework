@@ -474,6 +474,9 @@ void Rr_InitRenderer(Rr_App *App)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
+    {
+    }
+
     Rr_Renderer *Renderer = &App->Renderer;
     SDL_Window *Window = App->Window;
     // Rr_AppConfig *Config = App->Config;
@@ -696,6 +699,14 @@ void Rr_PrepareFrame(Rr_App *App)
 
     Rr_ProcessPendingLoads(App);
 }
+
+typedef struct STest STest;
+struct STest
+{
+    double g;
+    int b;
+    double s;
+};
 
 void Rr_Draw(Rr_App *App)
 {

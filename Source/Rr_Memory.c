@@ -290,3 +290,71 @@ void Rr_FreeListReturn(Rr_FreeList **FreeList, void *Pointer)
     Header->Next = *FreeList;
     *FreeList = Header;
 }
+
+typedef struct Rr_FreeListBase Rr_FreeListBase;
+struct Rr_FreeListBase
+{
+    char *Next;
+    char *Free;
+};
+
+typedef struct Rr_FreeListHeader Rr_FreeListHeader;
+struct Rr_FreeListHeader
+{
+    char *Prev;
+    char *Next;
+};
+
+void *Rr_GetFreeListElement(void *FreeList, size_t Size, Rr_Arena *Arena)
+{
+    assert(FreeList != NULL);
+
+    void *Element;
+    Rr_FreeListHeader *Header;
+    Rr_FreeListBase *Base = FreeList;
+    if(Base->Free)
+    {
+        Header = (Rr_FreeListHeader *)(Base->Free - sizeof(Rr_FreeListHeader));
+        Element = Base->Free;
+        Base->Free = Header->Next;
+    }
+    else
+    {
+        Header = RR_ALLOC(Arena, sizeof(Rr_FreeListHeader) + Size);
+        Element = (((char *)Header) + sizeof(Rr_FreeListHeader));
+    }
+
+    Header->Next = Base->Next;
+    if(Base->Next)
+    {
+        ((Rr_FreeListHeader *)(((char *)Base->Next) - sizeof(Rr_FreeListHeader)))->Prev = Element;
+    }
+    Base->Next = Element;
+
+    return Element;
+}
+
+void Rr_ReturnFreeListElement(void *FreeList, size_t Size, void *Pointer)
+{
+    assert(FreeList != NULL);
+
+    Rr_FreeListHeader *Header = (Rr_FreeListHeader *)(((char *)Pointer) - sizeof(Rr_FreeListHeader));
+    Rr_FreeListBase *Base = FreeList;
+
+    if(Header->Prev)
+    {
+        ((Rr_FreeListHeader *)(((char *)Header->Prev) - sizeof(Rr_FreeListHeader)))->Next = Header->Next;
+    }
+    if(Header->Next)
+    {
+        ((Rr_FreeListHeader *)(((char *)Header->Next) - sizeof(Rr_FreeListHeader)))->Prev = Header->Prev;
+    }
+    if(Base->Next == Pointer)
+    {
+        Base->Next = NULL;
+    }
+
+    void *OldFree = Base->Free;
+    Base->Free = Pointer;
+    Header->Next = OldFree;
+}

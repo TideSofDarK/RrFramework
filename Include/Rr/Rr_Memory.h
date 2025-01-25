@@ -144,6 +144,26 @@ extern void Rr_FreeListReturn(Rr_FreeList **FreeList, void *Pointer);
 
 #define RR_FREE_LIST_RETURN(FreeList, Pointer) Rr_FreeListReturn((Rr_FreeList **)(FreeList), Pointer)
 
+/*
+ * Free List Node
+ */
+
+#define RR_FREE_LIST(Type) \
+    struct                 \
+    {                      \
+        Type *Next;        \
+        Type *Free;        \
+    }
+
+extern void *Rr_GetFreeListElement(void *FreeList, size_t Size, Rr_Arena *Arena);
+
+extern void Rr_ReturnFreeListElement(void *FreeList, size_t Size, void *Pointer);
+
+#define RR_GET_FREE_LIST_ELEMENT(FreeList, Arena) Rr_GetFreeListElement((FreeList), sizeof(*((FreeList)->Next)), Arena)
+
+#define RR_RETURN_FREE_LIST_ELEMENT(FreeList, Pointer) \
+    Rr_ReturnFreeListElement((FreeList), sizeof(*((FreeList)->Next)), (Pointer))
+
 #ifdef __cplusplus
 }
 #endif
