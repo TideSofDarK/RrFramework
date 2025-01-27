@@ -104,7 +104,7 @@ static VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Ima
     return Info;
 }
 
-static VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
+static VkFenceCreateInfo Rr_GetFenceCreateInfo(VkFenceCreateFlags Flags)
 {
     VkFenceCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -114,7 +114,7 @@ static VkFenceCreateInfo GetFenceCreateInfo(VkFenceCreateFlags Flags)
     return Info;
 }
 
-static VkSemaphoreCreateInfo GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
+static VkSemaphoreCreateInfo Rr_GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,

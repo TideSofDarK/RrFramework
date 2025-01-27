@@ -387,13 +387,13 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
         {
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
             {
-                Rr_BufferBinding *Binding = (Rr_BufferBinding *)Function->Args;
+                Rr_BindBufferArgs *Binding = (Rr_BindBufferArgs *)Function->Args;
                 vkCmdBindIndexBuffer(CommandBuffer, Binding->Buffer->Handle, Binding->Offset, VK_INDEX_TYPE_UINT32);
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
             {
-                Rr_BufferBinding *Binding = (Rr_BufferBinding *)Function->Args;
+                Rr_BindBufferArgs *Binding = (Rr_BindBufferArgs *)Function->Args;
                 vkCmdBindVertexBuffers(
                     CommandBuffer,
                     Binding->Slot,
@@ -434,34 +434,54 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
     Rr_DestroyScratch(Scratch);
 }
 
-#define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType, ArgsData)                   \
+#define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType)                             \
     Rr_Arena *Arena = Node->Arena;                                                  \
     Rr_GraphicsNode *GraphicsNode = (Rr_GraphicsNode *)&Node->Union.GraphicsNode;   \
     GraphicsNode->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_GraphicsNodeFunction)); \
     GraphicsNode->Encoded = GraphicsNode->Encoded->Next;                            \
+    GraphicsNode->Encoded->Type = FunctionType;                                     \
     GraphicsNode->Encoded->Args = RR_ALLOC(Arena, sizeof(ArgsType));                \
-    memcpy(GraphicsNode->Encoded->Args, ArgsData, sizeof(ArgsType));                \
-    GraphicsNode->Encoded->Type = FunctionType
+    *(ArgsType *)GraphicsNode->Encoded->Args
 
-void Rr_DrawIndexed(Rr_GraphNode *Node, Rr_DrawIndexedArgs *Args)
+void Rr_DrawIndexed(
+    Rr_GraphNode *Node,
+    uint32_t IndexCount,
+    uint32_t InstanceCount,
+    uint32_t FirstIndex,
+    int32_t VertexOffset,
+    uint32_t FirstInstance)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED, Rr_DrawIndexedArgs, Args);
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED, Rr_DrawIndexedArgs) = (Rr_DrawIndexedArgs){
+        .IndexCount = IndexCount,
+        .InstanceCount = InstanceCount,
+        .FirstIndex = FirstIndex,
+        .VertexOffset = VertexOffset,
+        .FirstInstance = FirstInstance,
+    };
 }
 
-void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding)
+void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, uint32_t Offset)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER, Rr_BufferBinding, Binding);
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER, Rr_BindIndexBufferArgs) =
+        (Rr_BindIndexBufferArgs){
+            .Buffer = Buffer,
+            .Slot = Slot,
+            .Offset = Offset,
+        };
 }
 
-void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding)
+void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, uint32_t Offset)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER, Rr_BufferBinding, Binding);
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER, Rr_BindIndexBufferArgs) =
+        (Rr_BindIndexBufferArgs){
+            .Buffer = Buffer,
+            .Slot = Slot,
+            .Offset = Offset,
+        };
 }
 
 void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
-        Rr_GraphicsPipeline *,
-        &GraphicsPipeline);
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE, Rr_GraphicsPipeline *) =
+        GraphicsPipeline;
 }

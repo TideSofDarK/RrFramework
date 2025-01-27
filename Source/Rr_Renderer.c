@@ -237,8 +237,8 @@ static void Rr_InitFrames(Rr_App *App)
     VkDevice Device = Renderer->Device;
     Rr_Frame *Frames = Renderer->Frames;
 
-    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VkSemaphoreCreateInfo SemaphoreCreateInfo = GetSemaphoreCreateInfo(0);
+    VkFenceCreateInfo FenceCreateInfo = Rr_GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkSemaphoreCreateInfo SemaphoreCreateInfo = Rr_GetSemaphoreCreateInfo(0);
 
     for(size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
@@ -380,7 +380,7 @@ static void Rr_InitImmediateMode(Rr_App *App)
     vkCreateCommandPool(Device, &CommandPoolInfo, NULL, &ImmediateMode->CommandPool);
     VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
     vkAllocateCommandBuffers(Device, &CommandBufferAllocateInfo, &ImmediateMode->CommandBuffer);
-    VkFenceCreateInfo FenceCreateInfo = GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkFenceCreateInfo FenceCreateInfo = Rr_GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence);
 }
 
@@ -473,9 +473,6 @@ static void Rr_InitNullTextures(Rr_App *App)
 void Rr_InitRenderer(Rr_App *App)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    {
-    }
 
     Rr_Renderer *Renderer = &App->Renderer;
     SDL_Window *Window = App->Window;
@@ -733,11 +730,12 @@ void Rr_Draw(Rr_App *App)
     {
         SDL_SetAtomicInt(&Renderer->Swapchain.ResizePending, 1);
     }
-    SDL_assert(Result >= 0);
+    assert(Result >= 0);
 
-    Frame->SwapchainImage = &Swapchain->Images[SwapchainImageIndex];
+    memcpy(&Frame->SwapchainImage, &Swapchain->Images[SwapchainImageIndex], sizeof(Rr_Image));
+
     Rr_ImageSync **SwapchainImageState = (Rr_ImageSync **)
-        Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Frame->SwapchainImage->Handle, App->PermanentArena);
+        Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Frame->SwapchainImage.Handle, App->PermanentArena);
     if(*SwapchainImageState == NULL)
     {
         *SwapchainImageState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
@@ -757,47 +755,7 @@ void Rr_Draw(Rr_App *App)
 
     /* Execute Frame Graph */
 
-    App->Config->DrawFunc(App, App->UserData);
-
-    // Rr_ImageBarrier SwapchainImageTransition = {
-    //     .CommandBuffer = CommandBuffer,
-    //     .Image = Frame->SwapchainImage->Handle,
-    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //     .AccessMask = VK_ACCESS_NONE,
-    //     .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    // };
-
-    // Rr_ChainImageBarrier(
-    //     &SwapchainImageTransition,
-    //     VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-    //     VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-    //     VK_IMAGE_LAYOUT_GENERAL);
-    //
-    // VkClearColorValue ClearColor = {
-    //     .float32 = { 1.0f, 0.0f, 0.0f, 1.0f },
-    // };
-    // VkImageSubresourceRange Range = GetImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
-    // vkCmdClearColorImage(
-    //     CommandBuffer,
-    //     SwapchainImageTransition.Image,
-    //     VK_IMAGE_LAYOUT_GENERAL,
-    //     &ClearColor,
-    //     1,
-    //     &Range);
-
-    // Rr_ChainImageBarrier(
-    //     &SwapchainImageTransition,
-    //     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    //     VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-    //     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
     Rr_ExecuteGraph(App, &Frame->Graph, Scratch.Arena);
-
-    // Rr_ChainImageBarrier(
-    //     &SwapchainImageTransition,
-    //     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-    //     0,
-    //     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     vkEndCommandBuffer(CommandBuffer);
 
@@ -872,7 +830,7 @@ Rr_Arena *Rr_GetFrameArena(Rr_App *App)
 
 Rr_Image *Rr_GetSwapchainImage(Rr_App *App)
 {
-    return Rr_GetCurrentFrame(&App->Renderer)->SwapchainImage;
+    return &Rr_GetCurrentFrame(&App->Renderer)->SwapchainImage;
 }
 
 Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App)

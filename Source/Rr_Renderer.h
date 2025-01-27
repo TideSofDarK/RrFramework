@@ -37,7 +37,7 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    Rr_Image *SwapchainImage;
+    Rr_Image SwapchainImage;
     VkPipelineStageFlags SwapchainImageStage;
 
     VkCommandPool CommandPool;

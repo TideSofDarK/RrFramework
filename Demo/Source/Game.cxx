@@ -674,20 +674,6 @@ static void Init(Rr_App *App, void *UserData)
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-}
-
-static void Draw(Rr_App *App, void *UserData)
-{
-    Rr_BufferBinding VertexBinding = {};
-    VertexBinding.Buffer = VertexBuffer;
-
-    Rr_BufferBinding IndexBinding = {};
-    IndexBinding.Buffer = IndexBuffer;
-
-    Rr_DrawIndexedArgs Args = {};
-    Args.IndexCount = 3;
-    Args.InstanceCount = 1;
-
     /* Draw Offscreen */
 
     Rr_ColorTarget OffscreenTarget = {
@@ -701,11 +687,11 @@ static void Draw(Rr_App *App, void *UserData)
 
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
 
-    Rr_BindVertexBuffer(OffscreenNode, &VertexBinding);
+    Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
 
-    Rr_BindIndexBuffer(OffscreenNode, &IndexBinding);
+    Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0);
 
-    Rr_DrawIndexed(OffscreenNode, &Args);
+    Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
 
     /* Draw to Swapchain Image */
 
@@ -722,11 +708,11 @@ static void Draw(Rr_App *App, void *UserData)
 
     Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
 
-    Rr_BindVertexBuffer(Node, &VertexBinding);
+    Rr_BindVertexBuffer(Node, VertexBuffer, 0, 0);
 
-    Rr_BindIndexBuffer(Node, &IndexBinding);
+    Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0);
 
-    Rr_DrawIndexed(Node, &Args);
+    Rr_DrawIndexed(Node, 3, 1, 0, 0, 0);
 
     /* Blit to Swapchain Image */
 
@@ -766,7 +752,6 @@ void RunGame()
                             .InitFunc = Init,
                             .CleanupFunc = Cleanup,
                             .IterateFunc = Iterate,
-                            .DrawFunc = Draw,
                             .FileDroppedFunc = nullptr,
                             .UserData = nullptr };
     Rr_Run(&Config);

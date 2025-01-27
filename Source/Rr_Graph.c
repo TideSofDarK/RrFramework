@@ -314,7 +314,7 @@ void Rr_BatchImage(
     if(*BatchState == NULL)
     {
         Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-        if(Frame->SwapchainImageStage == 0 && Image == Frame->SwapchainImage->Handle)
+        if(Frame->SwapchainImageStage == 0 && Image == Frame->SwapchainImage.Handle)
         {
             Frame->SwapchainImageStage = StageMask;
         }

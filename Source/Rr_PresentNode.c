@@ -27,7 +27,7 @@ bool Rr_BatchPresentNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_PresentNode *Node
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    if(Rr_BatchImagePossible(&Batch->LocalSync, Frame->SwapchainImage->Handle) != true)
+    if(Rr_BatchImagePossible(&Batch->LocalSync, Frame->SwapchainImage.Handle) != true)
     {
         return false;
     }
@@ -35,7 +35,7 @@ bool Rr_BatchPresentNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_PresentNode *Node
     Rr_BatchImage(
         App,
         Batch,
-        Frame->SwapchainImage->Handle,
+        Frame->SwapchainImage.Handle,
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,

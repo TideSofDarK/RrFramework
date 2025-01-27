@@ -69,31 +69,19 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_GraphNode **Dependencies,
     size_t DependencyCount);
 
-typedef struct Rr_BufferBinding Rr_BufferBinding;
-struct Rr_BufferBinding
-{
-    Rr_Buffer *Buffer;
-    uint32_t Offset;
-    uint32_t Slot;
-};
+extern void Rr_DrawIndexed(
+    Rr_GraphNode *Node,
+    uint32_t IndexCount,
+    uint32_t InstanceCount,
+    uint32_t FirstIndex,
+    int32_t VertexOffset,
+    uint32_t FirstInstance);
 
-typedef struct Rr_DrawIndexedArgs Rr_DrawIndexedArgs;
-struct Rr_DrawIndexedArgs
-{
-    uint32_t IndexCount;
-    uint32_t InstanceCount;
-    uint32_t FirstIndex;
-    int32_t VertexOffset;
-    uint32_t FirstInstance;
-};
+extern void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, uint32_t Offset);
 
-void Rr_DrawIndexed(Rr_GraphNode *Node, Rr_DrawIndexedArgs *Args);
+extern void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, uint32_t Offset);
 
-void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding);
-
-void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_BufferBinding *Binding);
-
-void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline);
+extern void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline);
 
 #ifdef __cplusplus
 }

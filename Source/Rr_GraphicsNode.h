@@ -36,6 +36,26 @@ struct Rr_GraphicsNode
     Rr_GraphicsNodeFunction *Encoded;
 };
 
+typedef struct Rr_BindBufferArgs Rr_BindIndexBufferArgs;
+typedef struct Rr_BindBufferArgs Rr_BindIndexBufferArgs;
+typedef struct Rr_BindBufferArgs Rr_BindBufferArgs;
+struct Rr_BindBufferArgs
+{
+    Rr_Buffer *Buffer;
+    uint32_t Slot;
+    uint32_t Offset;
+};
+
+typedef struct Rr_DrawIndexedArgs Rr_DrawIndexedArgs;
+struct Rr_DrawIndexedArgs
+{
+    uint32_t IndexCount;
+    uint32_t InstanceCount;
+    uint32_t FirstIndex;
+    int32_t VertexOffset;
+    uint32_t FirstInstance;
+};
+
 extern bool Rr_BatchGraphicsNode(Rr_App *App, struct Rr_GraphBatch *Batch, Rr_GraphicsNode *Node);
 
 extern void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena);
