@@ -129,40 +129,20 @@ extern void **Rr_UpsertMap(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena);
  * Free List
  */
 
-typedef struct Rr_FreeList Rr_FreeList;
-struct Rr_FreeList
-{
-    void *Data;
-    Rr_FreeList *Next;
-};
-
-extern void *Rr_FreeListGet(Rr_FreeList **FreeList, size_t Size, Rr_Arena *Arena);
-
-extern void Rr_FreeListReturn(Rr_FreeList **FreeList, void *Pointer);
-
-#define RR_FREE_LIST_GET(FreeList, Arena) Rr_FreeListGet((Rr_FreeList **)(FreeList), sizeof(*(*FreeList)), Arena)
-
-#define RR_FREE_LIST_RETURN(FreeList, Pointer) Rr_FreeListReturn((Rr_FreeList **)(FreeList), Pointer)
-
-/*
- * Free List Node
- */
-
 #define RR_FREE_LIST(Type) \
     struct                 \
     {                      \
-        Type *Next;        \
-        Type *Free;        \
+        void *First;       \
+        Type *SizeHint;    \
     }
 
-extern void *Rr_GetFreeListElement(void *FreeList, size_t Size, Rr_Arena *Arena);
+extern void *Rr_GetFreeListItem(void *FreeList, size_t Size, Rr_Arena *Arena);
 
-extern void Rr_ReturnFreeListElement(void *FreeList, size_t Size, void *Pointer);
+extern void Rr_ReturnFreeListItem(void *FreeList, void *Pointer);
 
-#define RR_GET_FREE_LIST_ELEMENT(FreeList, Arena) Rr_GetFreeListElement((FreeList), sizeof(*((FreeList)->Next)), Arena)
+#define RR_GET_FREE_LIST_ITEM(FreeList, Arena) Rr_GetFreeListItem((FreeList), sizeof(*(FreeList)->SizeHint), Arena)
 
-#define RR_RETURN_FREE_LIST_ELEMENT(FreeList, Pointer) \
-    Rr_ReturnFreeListElement((FreeList), sizeof(*((FreeList)->Next)), (Pointer))
+#define RR_RETURN_FREE_LIST_ITEM(FreeList, Pointer) Rr_ReturnFreeListItem((FreeList), Pointer)
 
 #ifdef __cplusplus
 }

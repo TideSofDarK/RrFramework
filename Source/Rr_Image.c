@@ -4,8 +4,6 @@
 #include "Rr_Log.h"
 #include "Rr_UploadContext.h"
 
-#include <SDL3/SDL.h>
-
 #include <stb/stb_image.h>
 
 #include <tinyexr/tinyexr.h>
@@ -138,7 +136,7 @@ Rr_Image *Rr_CreateImage(Rr_App *App, VkExtent3D Extent, VkFormat Format, VkImag
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Image *Image = Rr_CreateObject(App);
+    Rr_Image *Image = RR_GET_FREE_LIST_ITEM(&App->Renderer.Images, App->PermanentArena);
     Image->Format = Format;
     Image->Extent = Extent;
 
@@ -146,7 +144,7 @@ Rr_Image *Rr_CreateImage(Rr_App *App, VkExtent3D Extent, VkFormat Format, VkImag
 
     if(MipMapped)
     {
-        Info.mipLevels = (uint32_t)floorf(logf(SDL_max(Extent.width, Extent.height))) + 1;
+        Info.mipLevels = (uint32_t)floorf(logf(RR_MAX(Extent.width, Extent.height))) + 1;
     }
 
     VmaAllocationCreateInfo AllocationCreateInfo = { .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -180,7 +178,7 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
     vkDestroyImageView(Renderer->Device, Image->View, NULL);
     vmaDestroyImage(Renderer->Allocator, Image->Handle, Image->Allocation);
 
-    Rr_DestroyObject(App, Image);
+    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Images, Image);
 }
 
 void Rr_GetImageSizePNGMemory(char *Data, size_t DataSize, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)
@@ -392,7 +390,7 @@ Rr_Image *Rr_CreateColorAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
     return Rr_CreateImage(
         App,
         (VkExtent3D){ Width, Height, 1 },
-        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_B8G8R8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         false);
 }

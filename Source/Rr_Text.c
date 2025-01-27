@@ -134,7 +134,7 @@ Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
         },
     };
 
-    Rr_Font *Font = Rr_CreateObject(App);
+    Rr_Font *Font = RR_GET_FREE_LIST_ITEM(&App->Renderer.Fonts, App->PermanentArena);
     *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
@@ -201,7 +201,7 @@ void Rr_DestroyFont(Rr_App *App, Rr_Font *Font)
     Rr_DestroyImage(App, Font->Atlas);
     Rr_DestroyBuffer(App, Font->Buffer);
 
-    Rr_DestroyObject(App, Font);
+    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Fonts, Font);
 }
 
 Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)

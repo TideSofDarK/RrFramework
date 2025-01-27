@@ -5,6 +5,7 @@
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Graph.h"
+#include "Rr_Mesh.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Text.h"
 #include "Rr_Vulkan.h"
@@ -148,7 +149,19 @@ struct Rr_Renderer
     Rr_Font *BuiltinFont;
 
     /* Global Synchronization Map */
+
     Rr_Map *GlobalSync;
+
+    /* Storage */
+
+    RR_FREE_LIST(Rr_Buffer) Buffers;
+    RR_FREE_LIST(Rr_Primitive) Primitives;
+    RR_FREE_LIST(Rr_StaticMesh) StaticMeshes;
+    RR_FREE_LIST(Rr_SkeletalMesh) SkeletalMeshes;
+    RR_FREE_LIST(Rr_Image) Images;
+    RR_FREE_LIST(Rr_Font) Fonts;
+    RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
+    RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;
 };
 
 extern void Rr_InitRenderer(Rr_App *App);

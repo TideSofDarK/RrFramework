@@ -13,7 +13,7 @@ Rr_Buffer *Rr_CreateBuffer(
     VmaMemoryUsage MemoryUsage,
     bool CreateMapped)
 {
-    Rr_Buffer *Buffer = Rr_CreateObject(App);
+    Rr_Buffer *Buffer = RR_GET_FREE_LIST_ITEM(&App->Renderer.Buffers, App->PermanentArena);
 
     VkBufferCreateInfo BufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -82,7 +82,7 @@ void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer)
 
     vmaDestroyBuffer(Renderer->Allocator, Buffer->Handle, Buffer->Allocation);
 
-    Rr_DestroyObject(App, Buffer);
+    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Buffers, Buffer);
 }
 
 void Rr_UploadBufferAligned(

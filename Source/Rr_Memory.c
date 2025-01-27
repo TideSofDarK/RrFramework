@@ -264,97 +264,47 @@ void **Rr_UpsertMap(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
     return &(*Map)->Value;
 }
 
-void *Rr_FreeListGet(Rr_FreeList **FreeList, size_t Size, Rr_Arena *Arena)
+typedef struct Rr_FreeList Rr_FreeList;
+struct Rr_FreeList
 {
-    assert(FreeList != NULL);
-
-    Rr_FreeList *Header = *FreeList;
-    if(Header == NULL)
-    {
-        Header = RR_ALLOC(Arena, Size + sizeof(Rr_FreeList));
-        Header->Data = ((char *)Header) + sizeof(Rr_FreeList);
-        return Header->Data;
-    }
-    else
-    {
-        *FreeList = Header->Next;
-        return Header->Data;
-    }
-}
-
-void Rr_FreeListReturn(Rr_FreeList **FreeList, void *Pointer)
-{
-    assert(FreeList != NULL && Pointer != NULL);
-
-    Rr_FreeList *Header = (Rr_FreeList *)(((char *)Pointer) - sizeof(Rr_FreeList));
-    Header->Next = *FreeList;
-    *FreeList = Header;
-}
-
-typedef struct Rr_FreeListBase Rr_FreeListBase;
-struct Rr_FreeListBase
-{
-    char *Next;
-    char *Free;
+    void *First;
+    void *Unused;
 };
 
 typedef struct Rr_FreeListHeader Rr_FreeListHeader;
 struct Rr_FreeListHeader
 {
-    char *Prev;
-    char *Next;
+    void *Data;
+    Rr_FreeListHeader *Next;
 };
 
-void *Rr_GetFreeListElement(void *FreeList, size_t Size, Rr_Arena *Arena)
+void *Rr_GetFreeListItem(void *FreeList, size_t Size, Rr_Arena *Arena)
 {
     assert(FreeList != NULL);
 
-    void *Element;
-    Rr_FreeListHeader *Header;
-    Rr_FreeListBase *Base = FreeList;
-    if(Base->Free)
+    Rr_FreeList *FreeListTyped = FreeList;
+    Rr_FreeListHeader *Header = NULL;
+    Rr_FreeListHeader *OldFirst = FreeListTyped->First;
+    if(OldFirst == NULL)
     {
-        Header = (Rr_FreeListHeader *)(Base->Free - sizeof(Rr_FreeListHeader));
-        Element = Base->Free;
-        Base->Free = Header->Next;
+        Header = RR_ALLOC(Arena, Size + sizeof(Rr_FreeListHeader));
+        Header->Data = ((char *)Header) + sizeof(Rr_FreeListHeader);
     }
     else
     {
-        Header = RR_ALLOC(Arena, sizeof(Rr_FreeListHeader) + Size);
-        Element = (((char *)Header) + sizeof(Rr_FreeListHeader));
+        FreeListTyped->First = OldFirst->Next;
+        Header = OldFirst;
     }
 
-    Header->Next = Base->Next;
-    if(Base->Next)
-    {
-        ((Rr_FreeListHeader *)(((char *)Base->Next) - sizeof(Rr_FreeListHeader)))->Prev = Element;
-    }
-    Base->Next = Element;
-
-    return Element;
+    return Header->Data;
 }
 
-void Rr_ReturnFreeListElement(void *FreeList, size_t Size, void *Pointer)
+void Rr_ReturnFreeListItem(void *FreeList, void *Pointer)
 {
-    assert(FreeList != NULL);
+    assert(FreeList != NULL && Pointer != NULL);
 
-    Rr_FreeListHeader *Header = (Rr_FreeListHeader *)(((char *)Pointer) - sizeof(Rr_FreeListHeader));
-    Rr_FreeListBase *Base = FreeList;
-
-    if(Header->Prev)
-    {
-        ((Rr_FreeListHeader *)(((char *)Header->Prev) - sizeof(Rr_FreeListHeader)))->Next = Header->Next;
-    }
-    if(Header->Next)
-    {
-        ((Rr_FreeListHeader *)(((char *)Header->Next) - sizeof(Rr_FreeListHeader)))->Prev = Header->Prev;
-    }
-    if(Base->Next == Pointer)
-    {
-        Base->Next = NULL;
-    }
-
-    void *OldFree = Base->Free;
-    Base->Free = Pointer;
-    Header->Next = OldFree;
+    Rr_FreeList *FreeListTyped = FreeList;
+    Rr_FreeListHeader *OldFirst = FreeListTyped->First;
+    FreeListTyped->First = ((char *)Pointer) - sizeof(Rr_FreeListHeader);
+    ((Rr_FreeListHeader *)FreeListTyped->First)->Next = OldFirst;
 }

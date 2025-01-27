@@ -40,13 +40,6 @@ struct Rr_App
     Rr_AppConfig *Config;
     void *UserData;
 
-    struct
-    {
-        void *FreeObject;
-        size_t ObjectCount;
-        Rr_SpinLock Lock;
-    } ObjectStorage;
-
     Rr_Renderer Renderer;
 
     struct Rr_UI *UI;
@@ -65,7 +58,3 @@ struct Rr_App
     Rr_Arena *PermanentArena;
     Rr_SyncArena SyncArena;
 };
-
-extern void *Rr_CreateObject(Rr_App *App);
-
-extern void Rr_DestroyObject(Rr_App *App, void *Object);

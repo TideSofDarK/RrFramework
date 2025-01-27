@@ -254,7 +254,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
 
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_GraphicsPipeline *Pipeline = (Rr_GraphicsPipeline *)Rr_CreateObject(App);
+    Rr_GraphicsPipeline *Pipeline = RR_GET_FREE_LIST_ITEM(&App->Renderer.GraphicsPipelines, App->PermanentArena);
 
     RR_SLICE(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
@@ -453,7 +453,7 @@ void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipeli
 {
     vkDestroyPipeline(App->Renderer.Device, GraphicsPipeline->Handle, NULL);
 
-    Rr_DestroyObject(App, GraphicsPipeline);
+    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.GraphicsPipelines, GraphicsPipeline);
 }
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *Sets, size_t SetCount)
@@ -461,7 +461,8 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *S
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
-    Rr_PipelineLayout *PipelineLayout = (Rr_PipelineLayout *)Rr_CreateObject(App);
+
+    Rr_PipelineLayout *PipelineLayout = RR_GET_FREE_LIST_ITEM(&App->Renderer.PipelineLayouts, App->PermanentArena);
 
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
 
@@ -516,5 +517,5 @@ void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout)
 {
     vkDestroyPipelineLayout(App->Renderer.Device, PipelineLayout->Handle, NULL);
 
-    Rr_DestroyObject(App, PipelineLayout);
+    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.PipelineLayouts, PipelineLayout);
 }

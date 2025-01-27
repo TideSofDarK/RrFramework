@@ -12,19 +12,6 @@
 #include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_vulkan.h>
 
-union Rr_Object
-{
-    Rr_Buffer Buffer;
-    Rr_Primitive Primitive;
-    Rr_StaticMesh StaticMesh;
-    Rr_SkeletalMesh SkeletalMesh;
-    Rr_Image Image;
-    Rr_Font Font;
-    Rr_PipelineLayout PipelineLayout;
-    Rr_GraphicsPipeline GraphicsPipeline;
-    void *Next;
-};
-
 static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
@@ -340,36 +327,4 @@ double Rr_GetTimeSeconds(Rr_App *App)
 void Rr_SetRelativeMouseMode(Rr_App *App, bool IsRelative)
 {
     SDL_SetWindowRelativeMouseMode(App->Window, IsRelative ? true : false);
-}
-
-void *Rr_CreateObject(Rr_App *App)
-{
-    Rr_LockSpinLock(&App->ObjectStorage.Lock);
-
-    Rr_Object *NewObject = (Rr_Object *)App->ObjectStorage.FreeObject;
-    if(NewObject == NULL)
-    {
-        NewObject = RR_ALLOC(App->PermanentArena, sizeof(Rr_Object));
-    }
-    else
-    {
-        App->ObjectStorage.FreeObject = NewObject->Next;
-    }
-    App->ObjectStorage.ObjectCount++;
-
-    Rr_UnlockSpinLock(&App->ObjectStorage.Lock);
-
-    return RR_ZERO_PTR(NewObject);
-}
-
-void Rr_DestroyObject(Rr_App *App, void *Object)
-{
-    Rr_LockSpinLock(&App->ObjectStorage.Lock);
-
-    Rr_Object *DestroyedObject = (Rr_Object *)Object;
-    DestroyedObject->Next = App->ObjectStorage.FreeObject;
-    App->ObjectStorage.FreeObject = DestroyedObject;
-    App->ObjectStorage.ObjectCount--;
-
-    Rr_UnlockSpinLock(&App->ObjectStorage.Lock);
 }
