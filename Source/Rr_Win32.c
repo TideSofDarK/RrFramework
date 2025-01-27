@@ -12,6 +12,7 @@ bool Rr_InitPlatform()
     SYSTEM_INFO SystemInfo;
     GetSystemInfo(&SystemInfo);
     PlatformInfo.PageSize = SystemInfo.dwPageSize;
+    PlatformInfo.AllocationGranularity = SystemInfo.dwAllocationGranularity;
 
     return true;
 }

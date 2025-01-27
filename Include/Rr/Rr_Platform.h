@@ -10,6 +10,7 @@ typedef struct Rr_PlatformInfo Rr_PlatformInfo;
 struct Rr_PlatformInfo
 {
     int PageSize;
+    int AllocationGranularity;
 };
 
 extern bool Rr_InitPlatform(void);

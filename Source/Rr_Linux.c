@@ -13,6 +13,7 @@ static Rr_PlatformInfo PlatformInfo;
 bool Rr_InitPlatform(void)
 {
     PlatformInfo.PageSize = getpagesize();
+    PlatformInfo.AllocationGranularity = PlatformInfo.PageSize;
 
     return true;
 }

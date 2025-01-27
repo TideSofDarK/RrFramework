@@ -47,9 +47,12 @@ extern void Rr_ResetArena(Rr_Arena *Arena);
 
 extern void Rr_DestroyArena(Rr_Arena *Arena);
 
+extern void *Rr_AllocArenaNoZero(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count);
+
 extern void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count);
 
 #define RR_ALLOC(Arena, Size)              Rr_AllocArena(Arena, Size, RR_SAFE_ALIGNMENT, 1)
+#define RR_ALLOC_NO_ZERO(Arena, Size)      Rr_AllocArenaNoZero(Arena, Size, RR_SAFE_ALIGNMENT, 1)
 #define RR_ALLOC_STRUCT(Arena, Struct)     (Struct *)Rr_AllocArena(Arena, sizeof(Struct), RR_SAFE_ALIGNMENT, 1)
 #define RR_ALLOC_COUNT(Arena, Size, Count) Rr_AllocArena(Arena, Size, RR_SAFE_ALIGNMENT, Count)
 #define RR_ALLOC_STRUCT_COUNT(Arena, Struct, Count) \
