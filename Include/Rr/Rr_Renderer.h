@@ -1,12 +1,13 @@
 #pragma once
 
 #include <Rr/Rr_App.h>
-#include <Rr/Rr_Image.h>
 #include <Rr/Rr_Memory.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct Rr_Image;
 
 typedef enum
 {
@@ -35,7 +36,7 @@ typedef enum
 
 extern Rr_Arena *Rr_GetFrameArena(Rr_App *App);
 
-extern Rr_Image *Rr_GetSwapchainImage(Rr_App *App);
+extern struct Rr_Image *Rr_GetSwapchainImage(Rr_App *App);
 
 extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App);
 

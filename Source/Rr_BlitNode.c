@@ -8,7 +8,11 @@
 Rr_GraphNode *Rr_AddBlitNode(
     Rr_App *App,
     const char *Name,
-    Rr_BlitNodeInfo *Info,
+    Rr_Image *SrcImage,
+    Rr_Image *DstImage,
+    Rr_IntVec4 SrcRect,
+    Rr_IntVec4 DstRect,
+    Rr_BlitMode Mode,
     Rr_GraphNode **Dependencies,
     size_t DependencyCount)
 {
@@ -19,10 +23,13 @@ Rr_GraphNode *Rr_AddBlitNode(
 
     Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
     *BlitNode = (Rr_BlitNode){
-        .Info = *Info,
+        .SrcImage = Rr_GetCurrentAllocatedImage(App, SrcImage),
+        .DstImage = Rr_GetCurrentAllocatedImage(App, DstImage),
+        .SrcRect = SrcRect,
+        .DstRect = DstRect,
     };
 
-    switch(Info->Mode)
+    switch(Mode)
     {
         case RR_BLIT_MODE_COLOR:
         {
@@ -46,8 +53,8 @@ Rr_GraphNode *Rr_AddBlitNode(
 
 bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BlitNode *Node)
 {
-    if(Rr_BatchImagePossible(&Batch->LocalSync, Node->Info.SrcImage->Handle) != true ||
-       Rr_BatchImagePossible(&Batch->LocalSync, Node->Info.DstImage->Handle) != true)
+    if(Rr_BatchImagePossible(&Batch->LocalSync, Node->SrcImage->Handle) != true ||
+       Rr_BatchImagePossible(&Batch->LocalSync, Node->DstImage->Handle) != true)
     {
         return false;
     }
@@ -55,7 +62,7 @@ bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_Bli
     Rr_BatchImage(
         App,
         Batch,
-        Node->Info.SrcImage->Handle,
+        Node->SrcImage->Handle,
         Node->AspectMask,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_READ_BIT,
@@ -64,7 +71,7 @@ bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_Bli
     Rr_BatchImage(
         App,
         Batch,
-        Node->Info.DstImage->Handle,
+        Node->DstImage->Handle,
         Node->AspectMask,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -78,9 +85,9 @@ void Rr_ExecuteBlitNode(Rr_App *App, Rr_BlitNode *Node)
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
     Rr_BlitColorImage(
         Frame->MainCommandBuffer,
-        Node->Info.SrcImage->Handle,
-        Node->Info.DstImage->Handle,
-        Node->Info.SrcRect,
-        Node->Info.DstRect,
+        Node->SrcImage->Handle,
+        Node->DstImage->Handle,
+        Node->SrcRect,
+        Node->DstRect,
         Node->AspectMask);
 }

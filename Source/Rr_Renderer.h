@@ -12,18 +12,16 @@
 
 #include <SDL3/SDL_atomic.h>
 
-#define RR_MAX_SWAPCHAIN_IMAGE_COUNT 8
-
 typedef struct Rr_Swapchain Rr_Swapchain;
 struct Rr_Swapchain
 {
     VkSwapchainKHR Handle;
-    Rr_TextureFormat Format;
+    VkFormat Format;
     VkColorSpaceKHR ColorSpace;
-    Rr_Image Images[RR_MAX_SWAPCHAIN_IMAGE_COUNT];
-    uint32_t ImageCount;
-    VkExtent2D Extent;
+    VkExtent3D Extent;
     SDL_AtomicInt ResizePending;
+    RR_SLICE(VkImage) Images;
+    RR_SLICE(VkImageView) ImageViews;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
@@ -38,6 +36,7 @@ typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
     Rr_Image SwapchainImage;
+    Rr_AllocatedImage *AllocatedSwapchainImage;
     VkPipelineStageFlags SwapchainImageStage;
 
     VkCommandPool CommandPool;

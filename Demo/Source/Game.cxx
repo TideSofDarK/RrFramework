@@ -5,6 +5,7 @@
 #include "Rr/Rr_Graph.h"
 #include "Rr/Rr_GraphicsNode.h"
 #include "Rr/Rr_Memory.h"
+#include "Rr/Rr_Renderer.h"
 
 #include <Rr/Rr.h>
 
@@ -669,7 +670,12 @@ static void Init(Rr_App *App, void *UserData)
     IndexBuffer = Rr_CreateDeviceIndexBuffer(App, sizeof(IndexData));
     Rr_UploadToDeviceBufferImmediate(App, IndexBuffer, RR_MAKE_DATA_ARRAY(IndexData));
 
-    ColorAttachment = Rr_CreateColorAttachmentImage(App, 1024, 1024);
+    ColorAttachment = Rr_CreateImage(
+        App,
+        { 1024, 1024, 1 },
+        RR_TEXTURE_FORMAT_B8G8R8A8_UNORM,
+        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
+        false);
 }
 
 static void Iterate(Rr_App *App, void *UserData)
@@ -717,14 +723,16 @@ static void Iterate(Rr_App *App, void *UserData)
     /* Blit to Swapchain Image */
 
     Rr_GraphNode *Dependencies[] = { OffscreenNode, Node };
-    Rr_BlitNodeInfo BlitInfo = {
-        .SrcImage = ColorAttachment,
-        .DstImage = SwapchainImage,
-        .SrcRect = { 0, 0, 1024, 1024 },
-        .DstRect = { 0, 0, 512, 512 },
-        .Mode = RR_BLIT_MODE_COLOR,
-    };
-    Rr_GraphNode *BlitNode = Rr_AddBlitNode(App, "blit_test", &BlitInfo, Dependencies, 2);
+    Rr_GraphNode *BlitNode = Rr_AddBlitNode(
+        App,
+        "blit_test",
+        ColorAttachment,
+        SwapchainImage,
+        { 0, 0, 1024, 1024 },
+        { 0, 0, 512, 512 },
+        RR_BLIT_MODE_COLOR,
+        Dependencies,
+        2);
 
     /* Present */
 

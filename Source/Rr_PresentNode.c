@@ -27,7 +27,9 @@ bool Rr_BatchPresentNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_PresentNode *Node
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    if(Rr_BatchImagePossible(&Batch->LocalSync, Frame->SwapchainImage.Handle) != true)
+    VkImage Handle = Rr_GetCurrentAllocatedImage(App, &Frame->SwapchainImage)->Handle;
+
+    if(Rr_BatchImagePossible(&Batch->LocalSync, Handle) != true)
     {
         return false;
     }
@@ -35,7 +37,7 @@ bool Rr_BatchPresentNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_PresentNode *Node
     Rr_BatchImage(
         App,
         Batch,
-        Frame->SwapchainImage.Handle,
+        Handle,
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,
@@ -46,33 +48,4 @@ bool Rr_BatchPresentNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_PresentNode *Node
 
 void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)
 {
-    // Rr_Renderer *Renderer = &App->Renderer;
-    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    // Rr_ImageSync **GlobalState =
-    //     (Rr_ImageSync **)Rr_MapUpsert(&Renderer->GlobalSync, (uintptr_t)Frame->SwapchainImage->Handle, NULL);
-    // (*GlobalState)->StageMask =
-
-    // VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-
-    // Rr_ImageBarrier SwapchainImageTransition = {
-    //     .CommandBuffer = CommandBuffer,
-    //     .Image = Frame->CurrentSwapchainImage->Handle,
-    //     .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //     .AccessMask = VK_ACCESS_NONE,
-    //     .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    // };
-    //
-    // Rr_ChainImageBarrier(
-    //     &SwapchainImageTransition,
-    //     VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //     VK_ACCESS_TRANSFER_WRITE_BIT,
-    //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    //
-    //
-    // Rr_ChainImageBarrier(
-    //     &SwapchainImageTransition,
-    //     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-    //     0,
-    //     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }

@@ -360,6 +360,11 @@ typedef union Rr_IntVec3
 
     struct
     {
+        int32_t Width, Height, Depth;
+    };
+
+    struct
+    {
         Rr_IntVec2 XY;
         int32_t _Ignored0;
     };

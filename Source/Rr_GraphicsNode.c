@@ -1,7 +1,6 @@
 #include "Rr_GraphicsNode.h"
 
 #include "Rr_App.h"
-#include "Rr_Mesh.h"
 
 #include <assert.h>
 
@@ -27,11 +26,20 @@ Rr_GraphNode *Rr_AddGraphicsNode(
         GraphicsNode->ColorTargets = RR_ALLOC_STRUCT_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
         memcpy(GraphicsNode->ColorTargets, ColorTargets, sizeof(Rr_ColorTarget) * ColorTargetCount);
         GraphicsNode->ColorTargetCount = ColorTargetCount;
+
+        GraphicsNode->AllocatedColorTargets =
+            RR_ALLOC_STRUCT_COUNT(Frame->Arena, Rr_AllocatedImage *, ColorTargetCount);
+        for(size_t Index = 0; Index < ColorTargetCount; ++Index)
+        {
+            GraphicsNode->AllocatedColorTargets[Index] = Rr_GetCurrentAllocatedImage(App, ColorTargets[Index].Image);
+        }
     }
     if(DepthTarget != NULL)
     {
         GraphicsNode->DepthTarget = RR_ALLOC_STRUCT(Frame->Arena, Rr_DepthTarget);
         memcpy(GraphicsNode->DepthTarget, DepthTarget, sizeof(Rr_DepthTarget));
+
+        GraphicsNode->AllocatedDepthTarget = Rr_GetCurrentAllocatedImage(App, DepthTarget->Image);
     }
     GraphicsNode->Encoded = RR_ALLOC(Frame->Arena, sizeof(Rr_GraphicsNodeFunction));
     GraphicsNode->EncodedFirst = GraphicsNode->Encoded;
@@ -244,25 +252,23 @@ bool Rr_BatchGraphicsNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_GraphicsNode *No
 {
     for(size_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
-        Rr_ColorTarget *ColorTarget = Node->ColorTargets + Index;
-        if(Rr_BatchImagePossible(&Batch->LocalSync, ColorTarget->Image->Handle) != true)
+        if(Rr_BatchImagePossible(&Batch->LocalSync, Node->AllocatedColorTargets[Index]->Handle) != true)
         {
             return false;
         }
     }
 
-    if(Node->DepthTarget && Rr_BatchImagePossible(&Batch->LocalSync, Node->DepthTarget->Image->Handle) != true)
+    if(Node->DepthTarget && Rr_BatchImagePossible(&Batch->LocalSync, Node->AllocatedDepthTarget->Handle) != true)
     {
         return false;
     }
 
     for(size_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
-        Rr_ColorTarget *ColorTarget = Node->ColorTargets + Index;
         Rr_BatchImage(
             App,
             Batch,
-            ColorTarget->Image->Handle,
+            Node->AllocatedColorTargets[Index]->Handle,
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -274,7 +280,7 @@ bool Rr_BatchGraphicsNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_GraphicsNode *No
         Rr_BatchImage(
             App,
             Batch,
-            Node->DepthTarget->Image->Handle,
+            Node->AllocatedDepthTarget->Handle,
             VK_IMAGE_ASPECT_DEPTH_BIT,
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
@@ -313,7 +319,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             .LoadOp = ColorTarget->LoadOp,
             .StoreOp = ColorTarget->StoreOp,
         };
-        ImageViews[ColorTarget->Slot] = ColorTarget->Image->View;
+        ImageViews[ColorTarget->Slot] = Node->AllocatedColorTargets[Index]->View;
 
         Viewport.Width = RR_MIN(Viewport.Width, (int32_t)ColorTarget->Image->Extent.width);
         Viewport.Height = RR_MIN(Viewport.Width, (int32_t)ColorTarget->Image->Extent.height);
@@ -328,7 +334,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             .StoreOp = DepthTarget->StoreOp,
             .Depth = true,
         };
-        ImageViews[DepthTarget->Slot] = DepthTarget->Image->View;
+        ImageViews[DepthTarget->Slot] = Node->AllocatedDepthTarget->View;
 
         Viewport.Width = RR_MIN(Viewport.Width, (int32_t)DepthTarget->Image->Extent.width);
         Viewport.Height = RR_MIN(Viewport.Width, (int32_t)DepthTarget->Image->Extent.height);

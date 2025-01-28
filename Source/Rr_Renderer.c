@@ -21,9 +21,9 @@ static void Rr_CleanupSwapchain(Rr_App *App, VkSwapchainKHR Swapchain)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    for(uint32_t Index = 0; Index < Renderer->Swapchain.ImageCount; Index++)
+    for(uint32_t Index = 0; Index < Renderer->Swapchain.ImageViews.Capacity; Index++)
     {
-        vkDestroyImageView(Renderer->Device, Renderer->Swapchain.Images[Index].View, NULL);
+        vkDestroyImageView(Renderer->Device, Renderer->Swapchain.ImageViews.Data[Index], NULL);
     }
     vkDestroySwapchainKHR(Renderer->Device, Swapchain, NULL);
 }
@@ -48,10 +48,12 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     }
     else
     {
-        Renderer->Swapchain.Extent = SurfCaps.currentExtent;
+        Renderer->Swapchain.Extent.width = SurfCaps.currentExtent.width;
+        Renderer->Swapchain.Extent.height = SurfCaps.currentExtent.height;
         *Width = SurfCaps.currentExtent.width;
         *Height = SurfCaps.currentExtent.height;
     }
+    Renderer->Swapchain.Extent.depth = 1;
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -61,7 +63,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         Renderer->Surface,
         &PresentModeCount,
         NULL);
-    SDL_assert(PresentModeCount > 0);
+    assert(PresentModeCount > 0);
 
     VkPresentModeKHR *PresentModes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkPresentModeKHR, PresentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(
@@ -102,7 +104,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
 
     uint32_t FormatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, NULL);
-    SDL_assert(FormatCount > 0);
+    assert(FormatCount > 0);
 
     VkSurfaceFormatKHR *SurfaceFormats = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkSurfaceFormatKHR, FormatCount);
     vkGetPhysicalDeviceSurfaceFormatsKHR(
@@ -112,15 +114,13 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         SurfaceFormats);
 
     bool PreferredFormatFound = false;
-    VkFormat VulkanFormat;
     for(uint32_t Index = 0; Index < FormatCount; Index++)
     {
         VkSurfaceFormatKHR *SurfaceFormat = &SurfaceFormats[Index];
 
         if(SurfaceFormat->format == VK_FORMAT_B8G8R8A8_UNORM || SurfaceFormat->format == VK_FORMAT_R8G8B8A8_UNORM)
         {
-            VulkanFormat = SurfaceFormat->format;
-            Renderer->Swapchain.Format = Rr_GetTextureFormat(VulkanFormat);
+            Renderer->Swapchain.Format = SurfaceFormat->format;
             Renderer->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
             PreferredFormatFound = true;
             break;
@@ -139,7 +139,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
         VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
     };
-    for(uint32_t Index = 0; Index < SDL_arraysize(CompositeAlphaFlags); Index++)
+    for(uint32_t Index = 0; Index < RR_ARRAY_COUNT(CompositeAlphaFlags); Index++)
     {
         VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag = CompositeAlphaFlags[Index];
         if(SurfCaps.supportedCompositeAlpha & CompositeAlphaFlag)
@@ -153,7 +153,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = Renderer->Surface,
         .minImageCount = DesiredNumberOfSwapchainImages,
-        .imageFormat = VulkanFormat,
+        .imageFormat = Renderer->Swapchain.Format,
         .imageColorSpace = Renderer->Swapchain.ColorSpace,
         .imageExtent = { Renderer->Swapchain.Extent.width, Renderer->Swapchain.Extent.height },
         .imageArrayLayers = 1,
@@ -185,16 +185,14 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
 
     uint32_t ImageCount = 0;
     vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, NULL);
-    SDL_assert(ImageCount <= RR_MAX_SWAPCHAIN_IMAGE_COUNT);
-
-    Renderer->Swapchain.ImageCount = ImageCount;
-    VkImage *Images = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImage, ImageCount);
-    vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images);
+    RR_RESERVE_SLICE(&Renderer->Swapchain.Images, ImageCount, App->PermanentArena);
+    Renderer->Swapchain.Images.Count = ImageCount;
+    vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Renderer->Swapchain.Images.Data);
 
     VkImageViewCreateInfo ImageViewCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = VulkanFormat,
+        .format = Renderer->Swapchain.Format,
         .components = {
             .r = VK_COMPONENT_SWIZZLE_R,
             .g = VK_COMPONENT_SWIZZLE_G,
@@ -210,20 +208,13 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         },
     };
 
+    RR_RESERVE_SLICE(&Renderer->Swapchain.ImageViews, ImageCount, App->PermanentArena);
+    Renderer->Swapchain.ImageViews.Count = ImageCount;
+
     for(uint32_t Index = 0; Index < ImageCount; Index++)
     {
-        Renderer->Swapchain.Images[Index] = (Rr_Image){
-            .Handle = Images[Index],
-            .Extent =
-                (VkExtent3D){
-                    .depth = 1,
-                    .width = *Width,
-                    .height = *Height,
-                },
-            .Format = VulkanFormat,
-        };
-        ImageViewCreateInfo.image = Images[Index];
-        vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &Renderer->Swapchain.Images[Index].View);
+        ImageViewCreateInfo.image = Renderer->Swapchain.Images.Data[Index];
+        vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &Renderer->Swapchain.ImageViews.Data[Index]);
     }
 
     Rr_DestroyScratch(Scratch);
@@ -237,7 +228,11 @@ static void Rr_InitFrames(Rr_App *App)
     VkDevice Device = Renderer->Device;
     Rr_Frame *Frames = Renderer->Frames;
 
-    VkFenceCreateInfo FenceCreateInfo = Rr_GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkFenceCreateInfo FenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+    };
     VkSemaphoreCreateInfo SemaphoreCreateInfo = Rr_GetSemaphoreCreateInfo(0);
 
     for(size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
@@ -380,7 +375,11 @@ static void Rr_InitImmediateMode(Rr_App *App)
     vkCreateCommandPool(Device, &CommandPoolInfo, NULL, &ImmediateMode->CommandPool);
     VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(ImmediateMode->CommandPool, 1);
     vkAllocateCommandBuffers(Device, &CommandBufferAllocateInfo, &ImmediateMode->CommandBuffer);
-    VkFenceCreateInfo FenceCreateInfo = Rr_GetFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkFenceCreateInfo FenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+    };
     vkCreateFence(Device, &FenceCreateInfo, NULL, &ImmediateMode->Fence);
 }
 
@@ -691,8 +690,12 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
 
 void Rr_PrepareFrame(Rr_App *App)
 {
-    // Rr_Renderer *Renderer = &App->Renderer;
-    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Frame->SwapchainImage.AllocatedImageCount = RR_FRAME_OVERLAP;
+    Frame->SwapchainImage.Extent = Renderer->Swapchain.Extent;
+    Frame->SwapchainImage.Format = Renderer->Swapchain.Format;
 
     Rr_ProcessPendingLoads(App);
 }
@@ -732,10 +735,14 @@ void Rr_Draw(Rr_App *App)
     }
     assert(Result >= 0);
 
-    memcpy(&Frame->SwapchainImage, &Swapchain->Images[SwapchainImageIndex], sizeof(Rr_Image));
+    Frame->AllocatedSwapchainImage = &Frame->SwapchainImage.AllocatedImages[Renderer->CurrentFrameIndex];
+    *Frame->AllocatedSwapchainImage = (Rr_AllocatedImage){
+        .Handle = Swapchain->Images.Data[SwapchainImageIndex],
+        .View = Swapchain->ImageViews.Data[SwapchainImageIndex],
+    };
 
     Rr_ImageSync **SwapchainImageState = (Rr_ImageSync **)
-        Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Frame->SwapchainImage.Handle, App->PermanentArena);
+        Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Frame->AllocatedSwapchainImage->Handle, App->PermanentArena);
     if(*SwapchainImageState == NULL)
     {
         *SwapchainImageState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
@@ -835,7 +842,7 @@ Rr_Image *Rr_GetSwapchainImage(Rr_App *App)
 
 Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App)
 {
-    return App->Renderer.Swapchain.Format;
+    return Rr_GetTextureFormat(App->Renderer.Swapchain.Format);
 }
 
 static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
@@ -1052,7 +1059,7 @@ VkFramebuffer Rr_GetFramebuffer(
 
     for(size_t Index = 0; Index < ImageCount; ++Index)
     {
-        ImageViews[Index] = Images[Index].View;
+        ImageViews[Index] = Rr_GetCurrentAllocatedImage(App, Images + Index)->View;
     }
 
     VkFramebuffer Framebuffer =

@@ -57,63 +57,6 @@ static VkExtent2D GetExtent2D(VkExtent3D Extent)
     return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
 }
 
-static VkPipelineShaderStageCreateInfo GetShaderStageInfo(VkShaderStageFlagBits Stage, VkShaderModule Module)
-{
-    VkPipelineShaderStageCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                                             .pNext = NULL,
-                                             .pName = "main",
-                                             .stage = Stage,
-                                             .module = Module };
-
-    return Info;
-}
-
-static VkImageCreateInfo GetImageCreateInfo(VkFormat Format, VkImageUsageFlags UsageFlags, VkExtent3D Extent)
-{
-    VkImageCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = NULL,
-        .imageType = VK_IMAGE_TYPE_2D,
-        .format = Format,
-        .extent = Extent,
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = UsageFlags,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-    };
-    return Info;
-}
-
-static VkImageViewCreateInfo GetImageViewCreateInfo(VkFormat Format, VkImage Image, VkImageAspectFlags AspectFlags)
-{
-    VkImageViewCreateInfo Info = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                                   .pNext = NULL,
-                                   .image = Image,
-                                   .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                                   .format = Format,
-                                   .subresourceRange = {
-                                       .aspectMask = AspectFlags,
-                                       .baseMipLevel = 0,
-                                       .levelCount = 1,
-                                       .baseArrayLayer = 0,
-                                       .layerCount = 1,
-                                   } };
-
-    return Info;
-}
-
-static VkFenceCreateInfo Rr_GetFenceCreateInfo(VkFenceCreateFlags Flags)
-{
-    VkFenceCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = Flags,
-    };
-    return Info;
-}
-
 static VkSemaphoreCreateInfo Rr_GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
 {
     VkSemaphoreCreateInfo Info = {
@@ -146,20 +89,6 @@ static VkImageSubresourceRange Rr_GetImageSubresourceRange(VkImageAspectFlags As
     };
 
     return ImageSubresourceRange;
-}
-
-static VkSemaphoreSubmitInfo GetSemaphoreSubmitInfo(VkPipelineStageFlags2 StageMask, VkSemaphore Semaphore)
-{
-    VkSemaphoreSubmitInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-        .pNext = NULL,
-        .semaphore = Semaphore,
-        .value = 1,
-        .stageMask = StageMask,
-        .deviceIndex = 0,
-    };
-
-    return Info;
 }
 
 static VkCommandBufferSubmitInfo GetCommandBufferSubmitInfo(VkCommandBuffer CommandBuffer)

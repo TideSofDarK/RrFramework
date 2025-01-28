@@ -268,7 +268,14 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
             .codeSize = Info->VertexShaderSPV.Size,
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
-        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) = GetShaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, VertModule);
+
+        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) = (VkPipelineShaderStageCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = NULL,
+            .pName = "main",
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = VertModule,
+        };
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
@@ -281,7 +288,13 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
             .codeSize = Info->FragmentShaderSPV.Size,
         };
         vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
-        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) = GetShaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, FragModule);
+        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) = (VkPipelineShaderStageCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = NULL,
+            .pName = "main",
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = FragModule,
+        };
     }
 
     RR_SLICE(VkVertexInputBindingDescription) BindingDescriptions = { 0 };

@@ -131,177 +131,177 @@ static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
     return TextRenderingContext;
 }
 
-static void Rr_RenderText(
-    Rr_App *App,
-    Rr_TextRenderingContext *TextRenderingContext,
-    Rr_DrawTextsSlice DrawTextSlice,
-    VkCommandBuffer CommandBuffer,
-    Rr_Arena *Arena)
-{
-    Rr_Scratch Scratch = Rr_GetScratch(Arena);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
-
-    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(1, 1, Scratch.Arena);
-
-    // vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Pipeline->Handle);
-    vkCmdBindVertexBuffers(CommandBuffer, 0, 1, &TextPipeline->QuadBuffer->Handle, &(VkDeviceSize){ 0 });
-    vkCmdBindDescriptorSets(
-        CommandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        TextPipeline->Layout,
-        RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS,
-        1,
-        &TextRenderingContext->GlobalsDescriptorSet,
-        0,
-        NULL);
-
-    size_t TextDataOffset = 0;
-    size_t TextCount = DrawTextSlice.Count;
-    Rr_TextPerInstanceVertexInput *TextData = RR_ALLOC(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
-    for(size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
-    {
-        Rr_DrawTextInfo *DrawTextInfo = &DrawTextSlice.Data[TextIndex];
-
-        VkDescriptorSet TextFontDescriptorSet = Rr_AllocateDescriptorSet(
-            &Frame->DescriptorAllocator,
-            Renderer->Device,
-            TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT]);
-        Rr_WriteBufferDescriptor(
-            &DescriptorWriter,
-            0,
-            DrawTextInfo->Font->Buffer->Handle,
-            sizeof(Rr_TextFontLayout),
-            0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            Scratch.Arena);
-        Rr_WriteImageDescriptor(
-            &DescriptorWriter,
-            1,
-            DrawTextInfo->Font->Atlas->View,
-            Renderer->LinearSampler,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            Scratch.Arena);
-        Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextFontDescriptorSet);
-        Rr_ResetDescriptorWriter(&DescriptorWriter);
-
-        vkCmdBindDescriptorSets(
-            CommandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            TextPipeline->Layout,
-            RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT,
-            1,
-            &TextFontDescriptorSet,
-            0,
-            NULL);
-
-        Rr_TextPushConstants TextPushConstants;
-        TextPushConstants.PositionScreenSpace = DrawTextInfo->Position;
-        TextPushConstants.Size = DrawTextInfo->Size;
-        TextPushConstants.Flags = DrawTextInfo->Flags;
-        vkCmdPushConstants(
-            CommandBuffer,
-            TextPipeline->Layout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            128,
-            &TextPushConstants);
-        /* Upload and bind text data. */
-        VkDeviceSize BaseTextDataOffset = Frame->PerDrawBuffer.Offset;
-        size_t TextLength = DrawTextInfo->String.Length;
-        size_t FinalTextLength = 0;
-        uint32_t PalleteIndex = 0;
-        bool CodePending = false;
-        bool PalleteIndexPending = false;
-        Rr_Vec2 AccumulatedAdvance = { 0 };
-        for(size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
-        {
-            uint32_t Unicode = DrawTextInfo->String.Data[CharacterIndex];
-
-            if(CodePending)
-            {
-                if(PalleteIndexPending)
-                {
-                    if(Unicode >= '0' && Unicode <= '7')
-                    {
-                        PalleteIndex = Unicode - '0';
-                        PalleteIndexPending = false;
-                        CodePending = false;
-                        continue;
-                    }
-                    else
-                    {
-                        PalleteIndexPending = false;
-                        CodePending = false;
-                        PalleteIndex = 0;
-                    }
-                }
-                else if(Unicode == 'c')
-                {
-                    PalleteIndexPending = true;
-                    continue;
-                }
-                else
-                {
-                    Unicode = '$';
-                    CharacterIndex--;
-                    CodePending = false;
-                }
-            }
-            else if(Unicode == '$')
-            {
-                CodePending = true;
-                continue;
-            }
-            Rr_TextPerInstanceVertexInput *Input = &TextData[TextDataOffset + FinalTextLength];
-            if(Unicode == '\n')
-            {
-                AccumulatedAdvance.Y += DrawTextInfo->Font->LineHeight;
-                AccumulatedAdvance.X = 0.0f;
-                continue;
-            }
-            else if(Unicode == ' ')
-            {
-                float Advance = DrawTextInfo->Font->Advances[Unicode];
-                AccumulatedAdvance.X += Advance;
-                continue;
-            }
-            else
-            {
-                uint32_t GlyphIndexMask = ~0xFFE00000;
-                uint32_t GlyphPack = GlyphIndexMask & Unicode;
-                GlyphPack |= PalleteIndex << 28;
-                *Input = (Rr_TextPerInstanceVertexInput){
-                    .Unicode = GlyphPack,
-                    .Advance = AccumulatedAdvance,
-                };
-                FinalTextLength++;
-                float Advance = DrawTextInfo->Font->Advances[Unicode];
-                AccumulatedAdvance.X += Advance;
-            }
-        }
-        vkCmdBindVertexBuffers(
-            CommandBuffer,
-            1,
-            1,
-            &Frame->PerDrawBuffer.Buffer->Handle,
-            &(VkDeviceSize){ BaseTextDataOffset + TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput) });
-        TextDataOffset += FinalTextLength;
-        vkCmdDraw(CommandBuffer, 4, FinalTextLength, 0, 0);
-    }
-    /* @TODO: Probably not the best choice of buffer. */
-    Rr_CopyToMappedUniformBuffer(
-        App,
-        Frame->PerDrawBuffer.Buffer,
-        &Frame->PerDrawBuffer.Offset,
-        RR_MAKE_DATA(TextData, TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput)));
-
-    Rr_DestroyScratch(Scratch);
-}
+// static void Rr_RenderText(
+//     Rr_App *App,
+//     Rr_TextRenderingContext *TextRenderingContext,
+//     Rr_DrawTextsSlice DrawTextSlice,
+//     VkCommandBuffer CommandBuffer,
+//     Rr_Arena *Arena)
+// {
+//     Rr_Scratch Scratch = Rr_GetScratch(Arena);
+//
+//     Rr_Renderer *Renderer = &App->Renderer;
+//
+//     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+//     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
+//
+//     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(1, 1, Scratch.Arena);
+//
+//     // vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, TextPipeline->Pipeline->Handle);
+//     vkCmdBindVertexBuffers(CommandBuffer, 0, 1, &TextPipeline->QuadBuffer->Handle, &(VkDeviceSize){ 0 });
+//     vkCmdBindDescriptorSets(
+//         CommandBuffer,
+//         VK_PIPELINE_BIND_POINT_GRAPHICS,
+//         TextPipeline->Layout,
+//         RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS,
+//         1,
+//         &TextRenderingContext->GlobalsDescriptorSet,
+//         0,
+//         NULL);
+//
+//     size_t TextDataOffset = 0;
+//     size_t TextCount = DrawTextSlice.Count;
+//     Rr_TextPerInstanceVertexInput *TextData = RR_ALLOC(Scratch.Arena, RR_TEXT_BUFFER_SIZE);
+//     for(size_t TextIndex = 0; TextIndex < TextCount; ++TextIndex)
+//     {
+//         Rr_DrawTextInfo *DrawTextInfo = &DrawTextSlice.Data[TextIndex];
+//
+//         VkDescriptorSet TextFontDescriptorSet = Rr_AllocateDescriptorSet(
+//             &Frame->DescriptorAllocator,
+//             Renderer->Device,
+//             TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT]);
+//         Rr_WriteBufferDescriptor(
+//             &DescriptorWriter,
+//             0,
+//             DrawTextInfo->Font->Buffer->Handle,
+//             sizeof(Rr_TextFontLayout),
+//             0,
+//             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+//             Scratch.Arena);
+//         Rr_WriteImageDescriptor(
+//             &DescriptorWriter,
+//             1,
+//             DrawTextInfo->Font->Atlas->View,
+//             Renderer->LinearSampler,
+//             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+//             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+//             Scratch.Arena);
+//         Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextFontDescriptorSet);
+//         Rr_ResetDescriptorWriter(&DescriptorWriter);
+//
+//         vkCmdBindDescriptorSets(
+//             CommandBuffer,
+//             VK_PIPELINE_BIND_POINT_GRAPHICS,
+//             TextPipeline->Layout,
+//             RR_TEXT_PIPELINE_DESCRIPTOR_SET_FONT,
+//             1,
+//             &TextFontDescriptorSet,
+//             0,
+//             NULL);
+//
+//         Rr_TextPushConstants TextPushConstants;
+//         TextPushConstants.PositionScreenSpace = DrawTextInfo->Position;
+//         TextPushConstants.Size = DrawTextInfo->Size;
+//         TextPushConstants.Flags = DrawTextInfo->Flags;
+//         vkCmdPushConstants(
+//             CommandBuffer,
+//             TextPipeline->Layout,
+//             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+//             0,
+//             128,
+//             &TextPushConstants);
+//         /* Upload and bind text data. */
+//         VkDeviceSize BaseTextDataOffset = Frame->PerDrawBuffer.Offset;
+//         size_t TextLength = DrawTextInfo->String.Length;
+//         size_t FinalTextLength = 0;
+//         uint32_t PalleteIndex = 0;
+//         bool CodePending = false;
+//         bool PalleteIndexPending = false;
+//         Rr_Vec2 AccumulatedAdvance = { 0 };
+//         for(size_t CharacterIndex = 0; CharacterIndex < TextLength; ++CharacterIndex)
+//         {
+//             uint32_t Unicode = DrawTextInfo->String.Data[CharacterIndex];
+//
+//             if(CodePending)
+//             {
+//                 if(PalleteIndexPending)
+//                 {
+//                     if(Unicode >= '0' && Unicode <= '7')
+//                     {
+//                         PalleteIndex = Unicode - '0';
+//                         PalleteIndexPending = false;
+//                         CodePending = false;
+//                         continue;
+//                     }
+//                     else
+//                     {
+//                         PalleteIndexPending = false;
+//                         CodePending = false;
+//                         PalleteIndex = 0;
+//                     }
+//                 }
+//                 else if(Unicode == 'c')
+//                 {
+//                     PalleteIndexPending = true;
+//                     continue;
+//                 }
+//                 else
+//                 {
+//                     Unicode = '$';
+//                     CharacterIndex--;
+//                     CodePending = false;
+//                 }
+//             }
+//             else if(Unicode == '$')
+//             {
+//                 CodePending = true;
+//                 continue;
+//             }
+//             Rr_TextPerInstanceVertexInput *Input = &TextData[TextDataOffset + FinalTextLength];
+//             if(Unicode == '\n')
+//             {
+//                 AccumulatedAdvance.Y += DrawTextInfo->Font->LineHeight;
+//                 AccumulatedAdvance.X = 0.0f;
+//                 continue;
+//             }
+//             else if(Unicode == ' ')
+//             {
+//                 float Advance = DrawTextInfo->Font->Advances[Unicode];
+//                 AccumulatedAdvance.X += Advance;
+//                 continue;
+//             }
+//             else
+//             {
+//                 uint32_t GlyphIndexMask = ~0xFFE00000;
+//                 uint32_t GlyphPack = GlyphIndexMask & Unicode;
+//                 GlyphPack |= PalleteIndex << 28;
+//                 *Input = (Rr_TextPerInstanceVertexInput){
+//                     .Unicode = GlyphPack,
+//                     .Advance = AccumulatedAdvance,
+//                 };
+//                 FinalTextLength++;
+//                 float Advance = DrawTextInfo->Font->Advances[Unicode];
+//                 AccumulatedAdvance.X += Advance;
+//             }
+//         }
+//         vkCmdBindVertexBuffers(
+//             CommandBuffer,
+//             1,
+//             1,
+//             &Frame->PerDrawBuffer.Buffer->Handle,
+//             &(VkDeviceSize){ BaseTextDataOffset + TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput) });
+//         TextDataOffset += FinalTextLength;
+//         vkCmdDraw(CommandBuffer, 4, FinalTextLength, 0, 0);
+//     }
+//     /* @TODO: Probably not the best choice of buffer. */
+//     Rr_CopyToMappedUniformBuffer(
+//         App,
+//         Frame->PerDrawBuffer.Buffer,
+//         &Frame->PerDrawBuffer.Offset,
+//         RR_MAKE_DATA(TextData, TextDataOffset * sizeof(Rr_TextPerInstanceVertexInput)));
+//
+//     Rr_DestroyScratch(Scratch);
+// }
 
 bool Rr_BatchBuiltinNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_BuiltinNode *Node)
 {

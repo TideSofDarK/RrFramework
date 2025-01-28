@@ -9,21 +9,21 @@
 
 #include <vma/vk_mem_alloc.h>
 
-struct Rr_Image
+typedef struct Rr_AllocatedImage Rr_AllocatedImage;
+struct Rr_AllocatedImage
 {
     VkImage Handle;
     VkImageView View;
     VmaAllocation Allocation;
-    VkExtent3D Extent;
-    VkFormat Format;
 };
 
-extern Rr_Image *Rr_CreateImage(
-    Rr_App *App,
-    VkExtent3D Extent,
-    VkFormat Format,
-    VkImageUsageFlags Usage,
-    bool MipMapped);
+struct Rr_Image
+{
+    VkExtent3D Extent;
+    VkFormat Format;
+    size_t AllocatedImageCount;
+    Rr_AllocatedImage AllocatedImages[RR_MAX_FRAME_OVERLAP];
+};
 
 extern Rr_Image *Rr_CreateColorImageFromMemory(
     Rr_App *App,
@@ -83,3 +83,5 @@ extern void Rr_ChainImageBarrier(
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     VkImageLayout NewLayout);
+
+extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_App *App, Rr_Image *Image);

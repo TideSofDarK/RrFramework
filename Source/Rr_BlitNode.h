@@ -1,15 +1,20 @@
 #pragma once
 
-#include "Rr_Memory.h"
-#include "Rr_Vulkan.h"
 #include <Rr/Rr_BlitNode.h>
+
+#include "Rr_Image.h"
+#include "Rr_Vulkan.h"
 
 struct Rr_GraphBatch;
 
 typedef struct Rr_BlitNode Rr_BlitNode;
 struct Rr_BlitNode
 {
-    Rr_BlitNodeInfo Info;
+    Rr_AllocatedImage *SrcImage;
+    Rr_AllocatedImage *DstImage;
+    Rr_IntVec4 SrcRect;
+    Rr_IntVec4 DstRect;
+    Rr_BlitMode Mode;
     VkImageAspectFlags AspectMask;
 };
 

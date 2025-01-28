@@ -8,6 +8,13 @@
 
 #include <tinyexr/tinyexr.h>
 
+#include <assert.h>
+
+static VkExtent3D Rr_GetVulkanExtent3D(Rr_IntVec3 *Extent)
+{
+    return (VkExtent3D){ .width = Extent->Width, .height = Extent->Height, .depth = Extent->Depth };
+}
+
 static void Rr_UploadImage(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
@@ -132,36 +139,123 @@ static void Rr_UploadImage(
     }
 }
 
-Rr_Image *Rr_CreateImage(Rr_App *App, VkExtent3D Extent, VkFormat Format, VkImageUsageFlags Usage, bool MipMapped)
+Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format, Rr_ImageUsage Usage, bool MipMapped)
 {
+    assert(Extent.Width >= 1);
+    assert(Extent.Height >= 1);
+    assert(Extent.Depth >= 1);
+
     Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_Image *Image = RR_GET_FREE_LIST_ITEM(&App->Renderer.Images, App->PermanentArena);
-    Image->Format = Format;
-    Image->Extent = Extent;
+    Image->Format = Rr_GetVulkanTextureFormat(Format);
+    Image->Extent = *(VkExtent3D *)&Extent;
 
-    VkImageCreateInfo Info = GetImageCreateInfo(Image->Format, Usage, Image->Extent);
+    VkImageType ImageType = VK_IMAGE_TYPE_3D;
+    VkImageViewType ImageViewType = VK_IMAGE_VIEW_TYPE_3D;
+    if(Extent.Depth == 1)
+    {
+        ImageType = VK_IMAGE_TYPE_2D;
+        ImageViewType = VK_IMAGE_VIEW_TYPE_2D;
+    }
+    if(Extent.Height == 1)
+    {
+        ImageType = VK_IMAGE_TYPE_1D;
+        ImageViewType = VK_IMAGE_VIEW_TYPE_1D;
+    }
 
+    uint32_t MipLevels = 1;
     if(MipMapped)
     {
-        Info.mipLevels = (uint32_t)floorf(logf(RR_MAX(Extent.width, Extent.height))) + 1;
+        MipLevels = (uint32_t)floorf(logf(RR_MAX(Extent.Width, Extent.Height))) + 1;
+    }
+
+    Image->AllocatedImageCount = 1;
+
+    VkImageUsageFlags UsageFlags = 0;
+    if((RR_IMAGE_USAGE_STORAGE & Usage) != 0)
+    {
+        UsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
+        Image->AllocatedImageCount = RR_FRAME_OVERLAP;
+    }
+    if((RR_IMAGE_USAGE_SAMPLED & Usage) != 0)
+    {
+        UsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
+    if((RR_IMAGE_USAGE_COLOR_ATTACHMENT & Usage) != 0)
+    {
+        UsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        Image->AllocatedImageCount = RR_FRAME_OVERLAP;
+    }
+    if((RR_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT & Usage) != 0)
+    {
+        UsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    }
+    if((RR_IMAGE_USAGE_TRANSFER & Usage) != 0)
+    {
+        UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
+
+    VkImageCreateInfo ImageCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = NULL,
+        .imageType = ImageType,
+        .format = Image->Format,
+        .extent = Image->Extent,
+        .mipLevels = MipLevels,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = UsageFlags,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+
+    VkImageAspectFlags AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+    if(Image->Format == VK_FORMAT_D16_UNORM_S8_UINT || Image->Format == VK_FORMAT_D24_UNORM_S8_UINT ||
+       Image->Format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+    {
+        AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+    else if(
+        Image->Format == VK_FORMAT_D16_UNORM || Image->Format == VK_FORMAT_D32_SFLOAT ||
+        Image->Format == VK_FORMAT_X8_D24_UNORM_PACK32)
+    {
+        AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
     VmaAllocationCreateInfo AllocationCreateInfo = { .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
                                                      .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
 
-    vmaCreateImage(Renderer->Allocator, &Info, &AllocationCreateInfo, &Image->Handle, &Image->Allocation, NULL);
-
-    VkImageAspectFlags AspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
-    if(Format == VK_FORMAT_D32_SFLOAT)
+    for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
-        AspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+        Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + Index;
+
+        vmaCreateImage(
+            Renderer->Allocator,
+            &ImageCreateInfo,
+            &AllocationCreateInfo,
+            &AllocatedImage->Handle,
+            &AllocatedImage->Allocation,
+            NULL);
+
+        VkImageViewCreateInfo ImageViewCreateInfo = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                                                      .pNext = NULL,
+                                                      .image = AllocatedImage->Handle,
+                                                      .viewType = ImageViewType,
+                                                      .format = Image->Format,
+                                                      .subresourceRange = {
+                                                          .aspectMask = AspectFlags,
+                                                          .baseMipLevel = 0,
+                                                          .layerCount = MipLevels,
+                                                          .baseArrayLayer = 0,
+                                                          .levelCount = 1,
+                                                      }, };
+
+        vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &AllocatedImage->View);
     }
-
-    VkImageViewCreateInfo ViewInfo = GetImageViewCreateInfo(Image->Format, Image->Handle, AspectFlag);
-    ViewInfo.subresourceRange.levelCount = Info.mipLevels;
-
-    vkCreateImageView(Renderer->Device, &ViewInfo, NULL, &Image->View);
 
     return Image;
 }
@@ -175,8 +269,14 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
 
     Rr_Renderer *Renderer = &App->Renderer;
 
-    vkDestroyImageView(Renderer->Device, Image->View, NULL);
-    vmaDestroyImage(Renderer->Allocator, Image->Handle, Image->Allocation);
+    for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
+    {
+        vkDestroyImageView(Renderer->Device, Image->AllocatedImages[Index].View, NULL);
+        vmaDestroyImage(
+            Renderer->Allocator,
+            Image->AllocatedImages[Index].Handle,
+            Image->AllocatedImages[Index].Allocation);
+    }
 
     RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Images, Image);
 }
@@ -215,21 +315,21 @@ Rr_Image *Rr_CreateColorImageFromMemory(
     bool MipMapped)
 {
     int32_t DesiredChannels = 4;
-    VkExtent3D Extent = { .width = Width, .height = Height, .depth = 1 };
-    size_t DataSize = Extent.width * Extent.height * DesiredChannels;
+    Rr_IntVec3 Extent = { .Width = Width, .Height = Height, .Depth = 1 };
+    size_t DataSize = Extent.Width * Extent.Height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
         Extent,
-        VK_FORMAT_R8G8B8A8_UNORM,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+        RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
         MipMapped);
 
     Rr_UploadImage(
         App,
         UploadContext,
-        ColorImage->Handle,
-        Extent,
+        ColorImage->AllocatedImages[0].Handle,
+        Rr_GetVulkanExtent3D(&Extent),
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_ACCESS_SHADER_READ_BIT,
@@ -249,28 +349,28 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
 {
     int32_t DesiredChannels = 4;
     int32_t Channels;
-    VkExtent3D Extent = { .depth = 1 };
+    Rr_IntVec3 Extent = { .Depth = 1 };
     stbi_uc *ParsedImage = stbi_load_from_memory(
         (stbi_uc *)Data,
         (int32_t)DataSize,
-        (int32_t *)&Extent.width,
-        (int32_t *)&Extent.height,
+        (int32_t *)&Extent.Width,
+        (int32_t *)&Extent.Height,
         &Channels,
         DesiredChannels);
-    size_t ParsedSize = Extent.width * Extent.height * DesiredChannels;
+    size_t ParsedSize = Extent.Width * Extent.Height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
         Extent,
-        VK_FORMAT_R8G8B8A8_UNORM,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+        RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
         MipMapped);
 
     Rr_UploadImage(
         App,
         UploadContext,
-        ColorImage->Handle,
-        Extent,
+        ColorImage->AllocatedImages[0].Handle,
+        Rr_GetVulkanExtent3D(&Extent),
         VK_IMAGE_ASPECT_COLOR_BIT,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_ACCESS_SHADER_READ_BIT,
@@ -302,8 +402,6 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     Rr_Arena *Arena)
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-
-    VkImageUsageFlags Usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
     const char *Error;
 
@@ -352,26 +450,26 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
         *Current = Depth;
     }
 
-    VkExtent3D Extent = {
-        .width = Image.width,
-        .height = Image.height,
-        .depth = 1,
+    Rr_IntVec3 Extent = {
+        .Width = Image.width,
+        .Height = Image.height,
+        .Depth = 1,
     };
 
-    size_t DataSize = Extent.width * Extent.height * sizeof(float);
+    size_t DataSize = Extent.Width * Extent.Height * sizeof(float);
 
     Rr_Image *DepthImage = Rr_CreateImage(
         App,
         Extent,
-        VK_FORMAT_D32_SFLOAT,
-        Usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        RR_TEXTURE_FORMAT_D32_SFLOAT,
+        RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
         false);
 
     Rr_UploadImage(
         App,
         UploadContext,
-        DepthImage->Handle,
-        Extent,
+        DepthImage->AllocatedImages[0].Handle,
+        Rr_GetVulkanExtent3D(&Extent),
         VK_IMAGE_ASPECT_DEPTH_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_READ_BIT,
@@ -389,9 +487,9 @@ Rr_Image *Rr_CreateColorAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
 {
     return Rr_CreateImage(
         App,
-        (VkExtent3D){ Width, Height, 1 },
-        VK_FORMAT_B8G8R8A8_UNORM,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        (Rr_IntVec3){ Width, Height, 1 },
+        RR_TEXTURE_FORMAT_B8G8R8A8_UNORM,
+        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
         false);
 }
 
@@ -399,9 +497,9 @@ Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
 {
     return Rr_CreateImage(
         App,
-        (VkExtent3D){ Width, Height, 1 },
-        VK_FORMAT_D32_SFLOAT,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        (Rr_IntVec3){ Width, Height, 1 },
+        RR_TEXTURE_FORMAT_D32_SFLOAT,
+        RR_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
         false);
 }
 
@@ -461,4 +559,10 @@ void Rr_ChainImageBarrier(
         NewLayout,
         NewLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ? VK_IMAGE_ASPECT_DEPTH_BIT
                                                                       : VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
+Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_App *App, Rr_Image *Image)
+{
+    size_t AllocatedImageIndex = App->Renderer.CurrentFrameIndex % Image->AllocatedImageCount;
+    return &Image->AllocatedImages[AllocatedImageIndex];
 }

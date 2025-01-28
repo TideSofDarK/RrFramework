@@ -2,7 +2,7 @@
 
 #include <Rr/Rr_GraphicsNode.h>
 
-#include "Rr_Memory.h"
+#include "Rr_Image.h"
 #include "Rr_Vulkan.h"
 
 #include <Rr/Rr_Graph.h>
@@ -31,7 +31,11 @@ struct Rr_GraphicsNode
 {
     Rr_ColorTarget *ColorTargets;
     size_t ColorTargetCount;
+    Rr_AllocatedImage **AllocatedColorTargets;
+
     Rr_DepthTarget *DepthTarget;
+    Rr_AllocatedImage *AllocatedDepthTarget;
+
     Rr_GraphicsNodeFunction *EncodedFirst;
     Rr_GraphicsNodeFunction *Encoded;
 };

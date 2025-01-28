@@ -80,6 +80,7 @@ struct Rr_Data
 #define RR_PERFORMANCE_COUNTER          1
 #define RR_MAX_OBJECTS                  128
 #define RR_MAX_LAYOUT_BINDINGS          4
+#define RR_MAX_FRAME_OVERLAP            3
 #define RR_FRAME_OVERLAP                2
 #define RR_STAGING_BUFFER_SIZE          RR_MEGABYTES(16)
 
