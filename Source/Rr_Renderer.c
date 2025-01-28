@@ -741,8 +741,8 @@ void Rr_Draw(Rr_App *App)
         .View = Swapchain->ImageViews.Data[SwapchainImageIndex],
     };
 
-    Rr_ImageSync **SwapchainImageState = (Rr_ImageSync **)
-        Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Frame->AllocatedSwapchainImage->Handle, App->PermanentArena);
+    Rr_ImageSync **SwapchainImageState =
+        RR_UPSERT(&Renderer->GlobalSync, Frame->AllocatedSwapchainImage->Handle, App->PermanentArena);
     if(*SwapchainImageState == NULL)
     {
         *SwapchainImageState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));

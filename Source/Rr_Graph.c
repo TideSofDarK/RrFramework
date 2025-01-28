@@ -3,10 +3,7 @@
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
-#include "Rr_Memory.h"
 #include "Rr_Renderer.h"
-
-#include <SDL3/SDL_assert.h>
 
 static void Rr_CopyDependencies(
     Rr_GraphNode *GraphNode,
@@ -46,6 +43,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
     VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
 
     /* Submit barriers. */
+    /* @TODO: Split into two barriers: pre vertex work and post vertex work. */
 
     size_t ImageBarrierCount = Batch->ImageBarriers.Count;
     size_t BufferBarrierCount = Batch->BufferBarriers.Count;
@@ -55,8 +53,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
         for(size_t Index = 0; Index < ImageBarrierCount; ++Index)
         {
             VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
-            Rr_ImageSync **State =
-                (Rr_ImageSync **)Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Barrier->image, NULL);
+            Rr_ImageSync **State = RR_UPSERT(&Renderer->GlobalSync, Barrier->image, NULL);
             if(*State != NULL)
             {
                 StageMask |= (*State)->StageMask;
@@ -127,13 +124,12 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
     for(size_t Index = 0; Index < ImageBarrierCount; ++Index)
     {
         VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
-        Rr_ImageSync **GlobalState =
-            (Rr_ImageSync **)Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Barrier->image, App->PermanentArena);
+        Rr_ImageSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Barrier->image, App->PermanentArena);
         if(*GlobalState == NULL)
         {
             *GlobalState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
         }
-        Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_UpsertMap(&Batch->LocalSync, (uintptr_t)Barrier->image, NULL);
+        Rr_ImageSync **BatchState = RR_UPSERT(&Batch->LocalSync, Barrier->image, NULL);
         *(*GlobalState) = *(*BatchState);
     }
     /* @TODO: Same for buffers. */
@@ -245,7 +241,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
 bool Rr_BatchImagePossible(Rr_Map **Sync, VkImage Image)
 {
-    Rr_ImageSync **State = (Rr_ImageSync **)Rr_UpsertMap(Sync, (uintptr_t)Image, NULL);
+    Rr_ImageSync **State = RR_UPSERT(Sync, Image, NULL);
 
     if(State != NULL)
     {
@@ -274,8 +270,7 @@ void Rr_BatchImage(
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Arena *Arena = Rr_GetFrameArena(App);
 
-    Rr_ImageSync **GlobalState =
-        (Rr_ImageSync **)Rr_UpsertMap(&Renderer->GlobalSync, (uintptr_t)Image, App->PermanentArena);
+    Rr_ImageSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Image, App->PermanentArena);
 
     VkImageSubresourceRange SubresourceRange = Rr_GetImageSubresourceRange(AspectMask);
 
@@ -310,7 +305,7 @@ void Rr_BatchImage(
         };
     }
 
-    Rr_ImageSync **BatchState = (Rr_ImageSync **)Rr_UpsertMap(&Batch->LocalSync, (uintptr_t)Image, Arena);
+    Rr_ImageSync **BatchState = RR_UPSERT(&Batch->LocalSync, Image, Arena);
     if(*BatchState == NULL)
     {
         Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);

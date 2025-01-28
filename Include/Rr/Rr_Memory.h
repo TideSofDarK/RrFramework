@@ -128,6 +128,8 @@ struct Rr_Map
 
 extern void **Rr_UpsertMap(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena);
 
+#define RR_UPSERT(Map, Key, Arena) (void *)Rr_UpsertMap((Map), (uintptr_t)Key, Arena)
+
 /*
  * Free List
  */
