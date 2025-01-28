@@ -308,6 +308,8 @@ void Rr_BatchImage(
     Rr_ImageSync **BatchState = RR_UPSERT(&Batch->LocalSync, Image, Arena);
     if(*BatchState == NULL)
     {
+        /* @TODO: This stores first usage of a swapchain image.
+         * @TODO: Feels hacky. */
         Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
         if(Frame->SwapchainImageStage == 0 && Image == Frame->AllocatedSwapchainImage->Handle)
         {

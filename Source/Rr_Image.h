@@ -15,6 +15,7 @@ struct Rr_AllocatedImage
     VkImage Handle;
     VkImageView View;
     VmaAllocation Allocation;
+    Rr_Image *Container;
 };
 
 struct Rr_Image

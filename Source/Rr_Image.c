@@ -232,6 +232,7 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
     for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
         Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + Index;
+        AllocatedImage->Container = Image;
 
         vmaCreateImage(
             Renderer->Allocator,

@@ -80,14 +80,29 @@ bool Rr_BatchBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Batch, Rr_Bli
     return true;
 }
 
+static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
+{
+    Rect->X = RR_CLAMP(0, Rect->X, (int)Extent->width);
+    Rect->Y = RR_CLAMP(0, Rect->Y, (int)Extent->height);
+    Rect->Width = RR_CLAMP(1, Rect->Width, (int)Extent->width - Rect->X);
+    Rect->Height = RR_CLAMP(1, Rect->Height, (int)Extent->height - Rect->Y);
+
+    return Rect->Width > 0 && Rect->Height > 0;
+}
+
 void Rr_ExecuteBlitNode(Rr_App *App, Rr_BlitNode *Node)
 {
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
-    Rr_BlitColorImage(
-        Frame->MainCommandBuffer,
-        Node->SrcImage->Handle,
-        Node->DstImage->Handle,
-        Node->SrcRect,
-        Node->DstRect,
-        Node->AspectMask);
+
+    if(Rr_ClampBlitRect(&Node->SrcRect, &Node->SrcImage->Container->Extent) &&
+       Rr_ClampBlitRect(&Node->DstRect, &Node->DstImage->Container->Extent))
+    {
+        Rr_BlitColorImage(
+            Frame->MainCommandBuffer,
+            Node->SrcImage->Handle,
+            Node->DstImage->Handle,
+            Node->SrcRect,
+            Node->DstRect,
+            Node->AspectMask);
+    }
 }

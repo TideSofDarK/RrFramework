@@ -735,14 +735,18 @@ void Rr_Draw(Rr_App *App)
     }
     assert(Result >= 0);
 
+    /* We setup virtual Rr_Image for client use of swapchain image.
+     * Graph stores Rr_AllocatedImage pointer for use during this frame.
+     * Here we put real, actual swapchain image into this pointer. */
     Frame->AllocatedSwapchainImage = &Frame->SwapchainImage.AllocatedImages[Renderer->CurrentFrameIndex];
     *Frame->AllocatedSwapchainImage = (Rr_AllocatedImage){
         .Handle = Swapchain->Images.Data[SwapchainImageIndex],
         .View = Swapchain->ImageViews.Data[SwapchainImageIndex],
+        .Container = &Frame->SwapchainImage,
     };
 
-    /* Swapchain size might be different at this point
-     * so it needs updating. */
+    /* Swapchain size might be different at this point.
+     * So it needs updating. */
     Frame->SwapchainImage.Extent = Renderer->Swapchain.Extent;
 
     /* Attempt to properly synchronize first time use of a swapchain image. */
