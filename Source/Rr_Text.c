@@ -121,7 +121,7 @@ Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
 
     Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
 
-    cJSON *FontDataJSON = cJSON_ParseWithLength(FontJSON.Data, FontJSON.Length);
+    cJSON *FontDataJSON = cJSON_ParseWithLength(FontJSON.Data, FontJSON.Size);
 
     cJSON *AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
     cJSON *MetricsJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");

@@ -428,6 +428,38 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
                     (*(Rr_GraphicsPipeline **)Function->Args)->Handle);
             }
             break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT:
+            {
+                Rr_Vec4 *Viewport = Function->Args;
+                vkCmdSetViewport(
+                    CommandBuffer,
+                    0,
+                    1,
+                    &(VkViewport){
+                        .x = Viewport->X,
+                        .y = Viewport->Y,
+                        .width = Viewport->Width,
+                        .height = Viewport->Height,
+                        .minDepth = 0.0f,
+                        .maxDepth = 1.0f,
+                    });
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR:
+            {
+                Rr_IntVec4 *Scissor = Function->Args;
+                vkCmdSetScissor(
+                    CommandBuffer,
+                    0,
+                    1,
+                    &(VkRect2D){
+                        .offset.x = Scissor->X,
+                        .offset.y = Scissor->Y,
+                        .extent.width = Scissor->Width,
+                        .extent.height = Scissor->Height,
+                    });
+            }
+            break;
             default:
             {
             }
@@ -490,4 +522,14 @@ void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPi
 {
     RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE, Rr_GraphicsPipeline *) =
         GraphicsPipeline;
+}
+
+void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect)
+{
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT, Rr_Vec4) = Rect;
+}
+
+void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect)
+{
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR, Rr_IntVec4) = Rect;
 }

@@ -31,7 +31,7 @@ static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
 static cgltf_mesh *Rr_ParseGLTFMesh(Rr_Asset *Asset, size_t MeshIndex, cgltf_options *Options, cgltf_data **OutData)
 {
     cgltf_data *Data = NULL;
-    cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Length, &Data);
+    cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Size, &Data);
     if(Result != cgltf_result_success)
     {
         Rr_LogAbort("Error loading glTF asset!");
@@ -181,7 +181,7 @@ static Rr_RawMesh Rr_CreateRawMeshFromOBJ(Rr_Asset *Asset, Rr_Arena *Arena)
 
     size_t CurrentIndex = 0;
     char *EndPos;
-    while(CurrentIndex < Asset->Length)
+    while(CurrentIndex < Asset->Size)
     {
         switch(Asset->Data[CurrentIndex])
         {

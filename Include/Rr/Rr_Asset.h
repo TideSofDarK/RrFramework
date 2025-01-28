@@ -9,8 +9,8 @@ extern "C" {
 typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset
 {
+    size_t Size;
     char *Data;
-    size_t Length;
 };
 
 #if defined(RR_USE_RC)
@@ -80,12 +80,12 @@ typedef struct Rr_AssetRef
 /* Make Data Helper */
 
 #ifdef __cplusplus
-#define RR_MAKE_DATA_ASSET(Asset) { Asset.Data, Asset.Length }
+#define RR_MAKE_DATA_ASSET(Asset) { Asset.Data, Asset.Size }
 #else
 #define RR_MAKE_DATA_ASSET(Asset) \
     (Rr_Data)                     \
     {                             \
-        Asset.Data, Asset.Length  \
+        Asset.Data, Asset.Size    \
     }
 #endif
 

@@ -242,11 +242,20 @@ typedef union Rr_Vec4
             Rr_Vec3 XYZ;
             struct
             {
-                float X, Y, Z;
+                float X, Y;
+                union
+                {
+                    float Z;
+                    float Width;
+                };
             };
         };
 
-        float W;
+        union
+        {
+            float W;
+            float Height;
+        };
     };
     struct
     {

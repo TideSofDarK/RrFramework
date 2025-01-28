@@ -690,13 +690,9 @@ static void Iterate(Rr_App *App, void *UserData)
         .Clear = { 0.9f, 0.2f, 0.9f, 1.0f },
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, "offscreen", &OffscreenTarget, 1, nullptr, nullptr, 0);
-
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-
     Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
-
     Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0);
-
     Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
 
     /* Draw to Swapchain Image */
@@ -711,13 +707,9 @@ static void Iterate(Rr_App *App, void *UserData)
         .Clear = { 0.2f, 0.2f, 0.2f, 1.0f },
     };
     Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr, nullptr, 0);
-
     Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-
     Rr_BindVertexBuffer(Node, VertexBuffer, 0, 0);
-
     Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0);
-
     Rr_DrawIndexed(Node, 3, 1, 0, 0, 0);
 
     /* Blit to Swapchain Image */

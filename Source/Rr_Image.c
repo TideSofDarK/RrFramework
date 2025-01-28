@@ -297,7 +297,7 @@ void Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutL
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    Rr_GetImageSizePNGMemory(Asset.Data, Asset.Length, Arena, OutLoadSize);
+    Rr_GetImageSizePNGMemory(Asset.Data, Asset.Size, Arena, OutLoadSize);
 }
 
 void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)
@@ -392,7 +392,7 @@ Rr_Image *Rr_CreateColorImageFromPNG(
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    return Rr_CreateColorImageFromPNGMemory(App, UploadContext, Asset.Data, Asset.Length, MipMapped);
+    return Rr_CreateColorImageFromPNGMemory(App, UploadContext, Asset.Data, Asset.Size, MipMapped);
 }
 
 Rr_Image *Rr_CreateDepthImageFromEXR(
@@ -406,14 +406,14 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     const char *Error;
 
     EXRVersion Version;
-    int32_t Result = ParseEXRVersionFromMemory(&Version, (unsigned char *)Asset.Data, Asset.Length);
+    int32_t Result = ParseEXRVersionFromMemory(&Version, (unsigned char *)Asset.Data, Asset.Size);
     if(Result != 0)
     {
         Rr_LogAbort("Error opening EXR file!");
     }
 
     EXRHeader Header;
-    Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char *)Asset.Data, Asset.Length, &Error);
+    Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char *)Asset.Data, Asset.Size, &Error);
     if(Result != 0)
     {
         Rr_LogAbort("Error opening EXR file: %s", Error);
@@ -423,7 +423,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     EXRImage Image;
     InitEXRImage(&Image);
 
-    Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char *)Asset.Data, Asset.Length, &Error);
+    Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char *)Asset.Data, Asset.Size, &Error);
     if(Result != 0)
     {
         Rr_LogAbort("Error opening EXR file: %s", Error);

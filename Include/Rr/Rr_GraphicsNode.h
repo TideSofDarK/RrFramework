@@ -83,6 +83,10 @@ extern void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t S
 
 extern void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline);
 
+extern void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect);
+
+extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect);
+
 #ifdef __cplusplus
 }
 #endif
