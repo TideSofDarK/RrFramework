@@ -741,16 +741,22 @@ void Rr_Draw(Rr_App *App)
         .View = Swapchain->ImageViews.Data[SwapchainImageIndex],
     };
 
-    Rr_ImageSync **SwapchainImageState =
-        RR_UPSERT(&Renderer->GlobalSync, Frame->AllocatedSwapchainImage->Handle, App->PermanentArena);
-    if(*SwapchainImageState == NULL)
+    /* Swapchain size might be different at this point
+     * so it needs updating. */
+    Frame->SwapchainImage.Extent = Renderer->Swapchain.Extent;
+
+    /* Attempt to properly synchronize first time use of a swapchain image. */
+    if(Rr_HasImageState(&Renderer->GlobalSync, Frame->AllocatedSwapchainImage->Handle) != true)
     {
-        *SwapchainImageState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
-        *(*SwapchainImageState) = (Rr_ImageSync){
-            .AccessMask = 0,
-            .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-            .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
-        };
+        Rr_SetImageState(
+            &Renderer->GlobalSync,
+            Frame->AllocatedSwapchainImage->Handle,
+            (Rr_ImageSync){
+                .AccessMask = 0,
+                .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                .Layout = VK_IMAGE_LAYOUT_UNDEFINED,
+            },
+            App->PermanentArena);
     }
 
     /* Begin main command buffer. */
@@ -1106,4 +1112,20 @@ VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat)
         default:
             return VK_FORMAT_UNDEFINED;
     }
+}
+
+bool Rr_HasImageState(Rr_Map **Map, VkImage Image)
+{
+    Rr_ImageSync **State = RR_UPSERT(Map, Image, NULL);
+    return State && *State;
+}
+
+void Rr_SetImageState(Rr_Map **Map, VkImage Image, Rr_ImageSync NewState, Rr_Arena *Arena)
+{
+    Rr_ImageSync **State = RR_UPSERT(Map, Image, Arena);
+    if(*State == NULL)
+    {
+        *State = RR_ALLOC(Arena, sizeof(Rr_ImageSync));
+    }
+    *(*State) = NewState;
 }
