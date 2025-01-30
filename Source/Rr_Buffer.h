@@ -7,11 +7,19 @@
 
 struct Rr_UploadContext;
 
-struct Rr_Buffer
+typedef struct Rr_AllocatedBuffer Rr_AllocatedBuffer;
+struct Rr_AllocatedBuffer
 {
     VkBuffer Handle;
     VmaAllocationInfo AllocationInfo;
     VmaAllocation Allocation;
+};
+
+struct Rr_Buffer
+{
+    VkBufferUsageFlags Usage;
+    size_t AllocatedBufferCount;
+    Rr_AllocatedBuffer AllocatedBuffers[RR_MAX_FRAME_OVERLAP];
 };
 
 typedef struct Rr_WriteBuffer Rr_WriteBuffer;
@@ -21,18 +29,15 @@ struct Rr_WriteBuffer
     VkDeviceSize Offset;
 };
 
-extern Rr_Buffer *Rr_CreateBuffer(
+extern Rr_Buffer *Rr_CreateBuffer_Internal(
     Rr_App *App,
     size_t Size,
     VkBufferUsageFlags UsageFlags,
     VmaMemoryUsage MemoryUsage,
-    bool CreateMapped);
+    bool CreateMapped,
+    bool Buffered);
 
 extern Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, size_t Size);
-
-extern Rr_Buffer *Rr_CreateMappedBuffer(Rr_App *App, size_t Size, VkBufferUsageFlags UsageFlags);
-
-extern Rr_Buffer *Rr_CreateMappedVertexBuffer(Rr_App *App, size_t Size);
 
 extern void Rr_UploadBufferAligned(
     Rr_App *App,
@@ -56,11 +61,13 @@ extern void Rr_UploadBuffer(
     VkAccessFlags DstAccessMask,
     Rr_Data Data);
 
-extern void Rr_UploadToUniformBuffer(
-    Rr_App *App,
-    struct Rr_UploadContext *UploadContext,
-    Rr_Buffer *DstBuffer,
-    VkDeviceSize *DstOffset,
-    Rr_Data Data);
+// extern void Rr_UploadToUniformBuffer(
+//     Rr_App *App,
+//     struct Rr_UploadContext *UploadContext,
+//     Rr_Buffer *DstBuffer,
+//     VkDeviceSize *DstOffset,
+//     Rr_Data Data);
 
-extern void Rr_CopyToMappedUniformBuffer(Rr_App *App, Rr_Buffer *DstBuffer, VkDeviceSize *DstOffset, Rr_Data Data);
+// extern void Rr_CopyToMappedUniformBuffer(Rr_App *App, Rr_Buffer *DstBuffer, VkDeviceSize *DstOffset, Rr_Data Data);
+
+extern Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_App *App, Rr_Buffer *Buffer);

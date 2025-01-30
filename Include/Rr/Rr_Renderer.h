@@ -11,6 +11,19 @@ struct Rr_Image;
 
 typedef enum
 {
+    RR_COMPARE_OP_INVALID,
+    RR_COMPARE_OP_NEVER,
+    RR_COMPARE_OP_LESS,
+    RR_COMPARE_OP_EQUAL,
+    RR_COMPARE_OP_LESS_OR_EQUAL,
+    RR_COMPARE_OP_GREATER,
+    RR_COMPARE_OP_NOT_EQUAL,
+    RR_COMPARE_OP_GREATER_OR_EQUAL,
+    RR_COMPARE_OP_ALWAYS,
+} Rr_CompareOp;
+
+typedef enum
+{
     RR_COLOR_COMPONENT_R = (1 << 0),
     RR_COLOR_COMPONENT_G = (1 << 1),
     RR_COLOR_COMPONENT_B = (1 << 2),
@@ -32,13 +45,18 @@ typedef enum
 {
     RR_SHADER_STAGE_VERTEX_BIT = (1 << 0),
     RR_SHADER_STAGE_FRAGMENT_BIT = (1 << 1),
-} Rr_ShaderStage;
+} Rr_ShaderStageBits;
+typedef uint32_t Rr_ShaderStage;
+
+typedef struct Rr_CommandBuffer Rr_CommandBuffer;
 
 extern Rr_Arena *Rr_GetFrameArena(Rr_App *App);
 
 extern struct Rr_Image *Rr_GetSwapchainImage(Rr_App *App);
 
 extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App);
+
+extern Rr_CommandBuffer *Rr_GetCurrentCommandBuffer(Rr_App *App);
 
 #ifdef __cplusplus
 }

@@ -125,3 +125,69 @@ extern void Rr_AddDescriptorArray(
 extern void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder *Builder);
 
 extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder *Builder, VkDevice Device);
+
+/* */
+
+#define RR_MAX_BINDINGS 16
+#define RR_MAX_SETS     4
+
+typedef struct Rr_DescriptorSetImageBinding Rr_DescriptorSetImageBinding;
+struct Rr_DescriptorSetImageBinding
+{
+    VkImageView View;
+    VkSampler Sampler;
+    VkImageLayout Layout;
+};
+
+typedef struct Rr_DescriptorSetBufferBinding Rr_DescriptorSetBufferBinding;
+struct Rr_DescriptorSetBufferBinding
+{
+    VkBuffer Handle;
+    size_t Size;
+    size_t Offset;
+};
+
+typedef struct Rr_DescriptorSetBinding Rr_DescriptorSetBinding;
+struct Rr_DescriptorSetBinding
+{
+    union
+    {
+        Rr_DescriptorSetImageBinding Image;
+        Rr_DescriptorSetBufferBinding Buffer;
+    };
+    VkDescriptorType DescriptorType;
+    Rr_PipelineBindingType Type;
+    bool Used;
+};
+
+typedef struct Rr_DescriptorSetState Rr_DescriptorSetState;
+struct Rr_DescriptorSetState
+{
+    size_t BindingCount;
+    Rr_DescriptorSetBinding Bindings[RR_MAX_BINDINGS];
+    VkPipelineStageFlags Stages;
+    VkDescriptorSet Handle;
+    bool Dirty;
+    bool Used;
+};
+
+typedef struct Rr_DescriptorsState Rr_DescriptorsState;
+struct Rr_DescriptorsState
+{
+    Rr_DescriptorSetState States[RR_MAX_SETS];
+    bool Dirty;
+};
+
+extern void Rr_UpdateDescriptorsState(
+    Rr_DescriptorsState *State,
+    size_t SetIndex,
+    size_t BindingIndex,
+    Rr_DescriptorSetBinding *Binding);
+
+extern void Rr_ApplyDescriptorsState(
+    Rr_DescriptorsState *State,
+    Rr_DescriptorAllocator *DescriptorAllocator,
+    Rr_PipelineLayout *PipelineLayout,
+    VkDevice Device,
+    VkCommandBuffer CommandBuffer,
+    VkPipelineBindPoint PipelineBindPoint);

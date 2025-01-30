@@ -297,7 +297,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+    VkCommandBuffer CommandBuffer = Frame->CommandBuffer.Handle;
 
     Rr_IntVec4 Viewport = { 0 };
     Viewport.Width = INT32_MAX;
@@ -387,6 +387,9 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             .extent.height = Viewport.Height,
         });
 
+    Rr_GraphicsPipeline *GraphicsPipeline = NULL;
+    Rr_DescriptorsState DescriptorsState = { 0 };
+
     for(Rr_GraphicsNodeFunction *Function = Node->EncodedFirst; Function != NULL; Function = Function->Next)
     {
         switch(Function->Type)
@@ -394,7 +397,11 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
             {
                 Rr_BindBufferArgs *Binding = (Rr_BindBufferArgs *)Function->Args;
-                vkCmdBindIndexBuffer(CommandBuffer, Binding->Buffer->Handle, Binding->Offset, VK_INDEX_TYPE_UINT32);
+                vkCmdBindIndexBuffer(
+                    CommandBuffer,
+                    Rr_GetCurrentAllocatedBuffer(App, Binding->Buffer)->Handle,
+                    Binding->Offset,
+                    VK_INDEX_TYPE_UINT32);
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
@@ -404,12 +411,20 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
                     CommandBuffer,
                     Binding->Slot,
                     1,
-                    &Binding->Buffer->Handle,
+                    &Rr_GetCurrentAllocatedBuffer(App, Binding->Buffer)->Handle,
                     &(VkDeviceSize){ Binding->Offset });
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED:
             {
+                Rr_ApplyDescriptorsState(
+                    &DescriptorsState,
+                    &Frame->DescriptorAllocator,
+                    GraphicsPipeline->Layout,
+                    Renderer->Device,
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS
+                );
                 Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
                 vkCmdDrawIndexed(
                     CommandBuffer,
@@ -422,10 +437,8 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
             {
-                vkCmdBindPipeline(
-                    CommandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    (*(Rr_GraphicsPipeline **)Function->Args)->Handle);
+                GraphicsPipeline = Function->Args;
+                vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GraphicsPipeline->Handle);
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT:
@@ -460,16 +473,36 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
                     });
             }
             break;
-            default:
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
             {
+                Rr_BindUniformBufferArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+                        .Buffer =
+                            (Rr_DescriptorSetBufferBinding){
+                                .Handle = Rr_GetCurrentAllocatedBuffer(App, Args->Buffer)->Handle,
+                                .Size = Args->Size,
+                                .Offset = Args->Offset,
+                            },
+                        .DescriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                        .Used = true,
+                    });
+                break;
+                default:
+                {
+                }
+                break;
             }
-            break;
         }
+
+        vkCmdEndRenderPass(CommandBuffer);
+
+        Rr_DestroyScratch(Scratch);
     }
-
-    vkCmdEndRenderPass(CommandBuffer);
-
-    Rr_DestroyScratch(Scratch);
 }
 
 #define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType)                             \
@@ -532,4 +565,25 @@ void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect)
 void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect)
 {
     RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR, Rr_IntVec4) = Rect;
+}
+
+void Rr_BindUniformBuffer(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t Offset,
+    Rr_ShaderStage ShaderStage)
+{
+    assert(Set < 4);
+    assert(Binding < 16);
+
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER, Rr_BindUniformBufferArgs) =
+        (Rr_BindUniformBufferArgs){
+            .Buffer = Buffer,
+            .Set = Set,
+            .Offset = Offset,
+            .Binding = Binding,
+            .Stages = Rr_GetVulkanShaderStageFlags(ShaderStage),
+        };
 }

@@ -1,12 +1,12 @@
 #pragma once
 
+#include <Rr/Rr_Graph.h>
+
 #include "Rr_BlitNode.h"
 #include "Rr_BuiltinNode.h"
 #include "Rr_GraphicsNode.h"
-#include "Rr_Image.h"
 #include "Rr_PresentNode.h"
-
-#include <Rr/Rr_Graph.h>
+#include "Rr_TransferNode.h"
 
 struct Rr_Frame;
 
@@ -18,6 +18,13 @@ struct Rr_ImageSync
     VkImageLayout Layout;
 };
 
+typedef struct Rr_BufferSync Rr_BufferSync;
+struct Rr_BufferSync
+{
+    VkPipelineStageFlags StageMask;
+    VkAccessFlags AccessMask;
+};
+
 struct Rr_GraphNode
 {
     union
@@ -26,6 +33,7 @@ struct Rr_GraphNode
         Rr_GraphicsNode GraphicsNode;
         Rr_PresentNode PresentNode;
         Rr_BlitNode BlitNode;
+        Rr_TransferNode TransferNode;
     } Union;
     Rr_Arena *Arena;
     Rr_GraphNodeType Type;
@@ -58,17 +66,6 @@ struct Rr_Graph
     RR_SLICE(Rr_GraphNode *) Nodes;
 };
 
-extern bool Rr_BatchImagePossible(Rr_Map **Sync, VkImage Image);
-
-extern void Rr_BatchImage(
-    Rr_App *App,
-    Rr_GraphBatch *GraphBatch,
-    VkImage Image,
-    VkImageAspectFlags AspectMask,
-    VkPipelineStageFlags StageMask,
-    VkAccessFlags AccessMask,
-    VkImageLayout Layout);
-
 extern Rr_GraphNode *Rr_AddGraphNode(
     struct Rr_Frame *Frame,
     Rr_GraphNodeType Type,
@@ -77,3 +74,23 @@ extern Rr_GraphNode *Rr_AddGraphNode(
     size_t DependencyCount);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
+
+extern bool Rr_BatchImagePossible(Rr_Map **Sync, VkImage Image);
+
+extern void Rr_BatchImage(
+    Rr_App *App,
+    Rr_GraphBatch *Batch,
+    VkImage Image,
+    VkImageAspectFlags AspectMask,
+    VkPipelineStageFlags StageMask,
+    VkAccessFlags AccessMask,
+    VkImageLayout Layout);
+
+extern bool Rr_BatchBufferPossible(Rr_Map **Sync, VkBuffer Buffer);
+
+extern void Rr_BatchBuffer(
+    Rr_App *App,
+    Rr_GraphBatch *Batch,
+    VkBuffer Buffer,
+    VkPipelineStageFlags StageMask,
+    VkAccessFlags AccessMask);

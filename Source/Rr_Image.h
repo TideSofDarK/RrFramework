@@ -9,6 +9,11 @@
 
 #include <vma/vk_mem_alloc.h>
 
+struct Rr_Sampler
+{
+    VkSampler Handle;
+};
+
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
 struct Rr_AllocatedImage
 {

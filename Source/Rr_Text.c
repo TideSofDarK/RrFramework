@@ -112,11 +112,12 @@ Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
     Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNGRef, &Atlas);
     Rr_LoadImmediate(App, &ImageLoadTask, 1);
 
-    Rr_Buffer *Buffer = Rr_CreateBuffer(
+    Rr_Buffer *Buffer = Rr_CreateBuffer_Internal(
         App,
         sizeof(Rr_TextFontLayout),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        false,
         false);
 
     Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);

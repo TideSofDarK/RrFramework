@@ -87,6 +87,8 @@ extern void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect);
 
 extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect);
 
+extern void Rr_BindUniformBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Set, uint32_t Binding, uint32_t Offset, Rr_ShaderStage ShaderStage);
+
 #ifdef __cplusplus
 }
 #endif

@@ -10,9 +10,104 @@
 
 #include <assert.h>
 
-static VkExtent3D Rr_GetVulkanExtent3D(Rr_IntVec3 *Extent)
+static VkBorderColor Rr_GetVulkanBorderColor(Rr_BorderColor BorderColor)
 {
-    return (VkExtent3D){ .width = Extent->Width, .height = Extent->Height, .depth = Extent->Depth };
+    switch(BorderColor)
+    {
+        case RR_BORDER_COLOR_INT_TRANSPARENT_BLACK:
+            return VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
+        case RR_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
+            return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+        case RR_BORDER_COLOR_INT_OPAQUE_BLACK:
+            return VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        case RR_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
+            return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        case RR_BORDER_COLOR_INT_OPAQUE_WHITE:
+            return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+        default:
+            return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    }
+}
+
+static VkSamplerAddressMode Rr_GetVulkanSamplerAddressMode(Rr_SamplerAddressMode SamplerAddressMode)
+{
+    switch(SamplerAddressMode)
+    {
+        case RR_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:
+            return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+        case RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:
+            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        case RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:
+            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        case RR_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
+            return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+        default:
+            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    }
+}
+
+static VkSamplerMipmapMode Rr_GetVulkanSamplerMipmapMode(Rr_SamplerMipmapMode SamplerMipmapMode)
+{
+    switch(SamplerMipmapMode)
+    {
+        case RR_SAMPLER_MIPMAP_MODE_NEAREST:
+            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        default:
+            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    }
+}
+
+static VkFilter Rr_GetVulkanFilter(Rr_Filter Filter)
+{
+    switch(Filter)
+    {
+        case RR_FILTER_NEAREST:
+            return VK_FILTER_NEAREST;
+        default:
+            return VK_FILTER_LINEAR;
+    }
+}
+
+Rr_Sampler *Rr_CreateSampler(Rr_App *App, Rr_SamplerInfo *Info)
+{
+    assert(Info != NULL);
+
+    Rr_Renderer *Renderer = &App->Renderer;
+
+    Rr_Sampler *Sampler = RR_GET_FREE_LIST_ITEM(&App->Renderer.Samplers, App->PermanentArena);
+
+    VkSamplerCreateInfo SamplerInfo = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .pNext = NULL,
+        .magFilter = Rr_GetVulkanFilter(Info->MagFilter),
+        .minFilter = Rr_GetVulkanFilter(Info->MinFilter),
+        .mipmapMode = Rr_GetVulkanSamplerMipmapMode(Info->MipmapMode),
+        .addressModeU = Rr_GetVulkanSamplerAddressMode(Info->AddressModeU),
+        .addressModeV = Rr_GetVulkanSamplerAddressMode(Info->AddressModeV),
+        .addressModeW = Rr_GetVulkanSamplerAddressMode(Info->AddressModeW),
+        .mipLodBias = Info->MipLodBias,
+        .anisotropyEnable = Info->AnisotropyEnable,
+        .maxAnisotropy = Info->MaxAnisotropy,
+        .compareEnable = Info->CompareEnable,
+        .compareOp = Rr_GetVulkanCompareOp(Info->CompareOp),
+        .minLod = Info->MinLod,
+        .maxLod = Info->MaxLod,
+        .borderColor = Rr_GetVulkanBorderColor(Info->BorderColor),
+        .unnormalizedCoordinates = Info->UnnormalizedCoordinates,
+    };
+
+    vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Sampler->Handle);
+
+    return Sampler;
+}
+
+void Rr_DestroySampler(Rr_App *App, Rr_Sampler *Sampler)
+{
+    assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
+
+    vkDestroySampler(App->Renderer.Device, Sampler->Handle, NULL);
+
+    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Samplers, Sampler);
 }
 
 static void Rr_UploadImage(
@@ -27,116 +122,116 @@ static void Rr_UploadImage(
     void *ImageData,
     size_t ImageDataLength)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    Rr_WriteBuffer *StagingBuffer = UploadContext->StagingBuffer;
-    VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
-
-    VkDeviceSize BufferOffset = StagingBuffer->Offset;
-    memcpy((char *)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
-    StagingBuffer->Offset += ImageDataLength;
-
-    VkImageSubresourceRange SubresourceRange = Rr_GetImageSubresourceRange(Aspect);
-
-    vkCmdPipelineBarrier(
-        TransferCommandBuffer,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        0,
-        NULL,
-        0,
-        NULL,
-        1,
-        &(VkImageMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = NULL,
-            .image = Image,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            .subresourceRange = SubresourceRange,
-            .srcAccessMask = 0,
-            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        });
-
-    VkBufferImageCopy Copy = {
-        .bufferOffset = BufferOffset,
-        .bufferRowLength = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource = {
-            .aspectMask = Aspect,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .imageExtent = Extent,
-    };
-
-    vkCmdCopyBufferToImage(
-        TransferCommandBuffer,
-        StagingBuffer->Buffer->Handle,
-        Image,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &Copy);
-
-    vkCmdPipelineBarrier(
-        TransferCommandBuffer,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        DstStageMask,
-        0,
-        0,
-        NULL,
-        0,
-        NULL,
-        1,
-        &(VkImageMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = NULL,
-            .image = Image,
-            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            .newLayout = DstLayout,
-            .subresourceRange = SubresourceRange,
-            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-            .dstAccessMask = DstAccessMask,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        });
-
-    if(UploadContext->UseAcquireBarriers)
-    {
-        UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-            (VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = Image,
-                .oldLayout = DstLayout,
-                .newLayout = DstLayout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = DstAccessMask,
-                .dstAccessMask = 0,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-            };
-        UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
-
-        UploadContext->AcquireBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-            (VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = Image,
-                .oldLayout = DstLayout,
-                .newLayout = DstLayout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = 0,
-                .dstAccessMask = DstAccessMask,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-            };
-        UploadContext->AcquireBarriers.ImageMemoryBarrierCount++;
-    }
+    // Rr_Renderer *Renderer = &App->Renderer;
+    //
+    // Rr_WriteBuffer *StagingBuffer = UploadContext->StagingBuffer;
+    // VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
+    //
+    // VkDeviceSize BufferOffset = StagingBuffer->Offset;
+    // memcpy((char *)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
+    // StagingBuffer->Offset += ImageDataLength;
+    //
+    // VkImageSubresourceRange SubresourceRange = Rr_GetImageSubresourceRange(Aspect);
+    //
+    // vkCmdPipelineBarrier(
+    //     TransferCommandBuffer,
+    //     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    //     VK_PIPELINE_STAGE_TRANSFER_BIT,
+    //     0,
+    //     0,
+    //     NULL,
+    //     0,
+    //     NULL,
+    //     1,
+    //     &(VkImageMemoryBarrier){
+    //         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    //         .pNext = NULL,
+    //         .image = Image,
+    //         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    //         .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    //         .subresourceRange = SubresourceRange,
+    //         .srcAccessMask = 0,
+    //         .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+    //         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    //         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    //     });
+    //
+    // VkBufferImageCopy Copy = {
+    //     .bufferOffset = BufferOffset,
+    //     .bufferRowLength = 0,
+    //     .bufferImageHeight = 0,
+    //     .imageSubresource = {
+    //         .aspectMask = Aspect,
+    //         .mipLevel = 0,
+    //         .baseArrayLayer = 0,
+    //         .layerCount = 1,
+    //     },
+    //     .imageExtent = Extent,
+    // };
+    //
+    // vkCmdCopyBufferToImage(
+    //     TransferCommandBuffer,
+    //     StagingBuffer->Buffer->Handle,
+    //     Image,
+    //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    //     1,
+    //     &Copy);
+    //
+    // vkCmdPipelineBarrier(
+    //     TransferCommandBuffer,
+    //     VK_PIPELINE_STAGE_TRANSFER_BIT,
+    //     DstStageMask,
+    //     0,
+    //     0,
+    //     NULL,
+    //     0,
+    //     NULL,
+    //     1,
+    //     &(VkImageMemoryBarrier){
+    //         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    //         .pNext = NULL,
+    //         .image = Image,
+    //         .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    //         .newLayout = DstLayout,
+    //         .subresourceRange = SubresourceRange,
+    //         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+    //         .dstAccessMask = DstAccessMask,
+    //         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    //         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    //     });
+    //
+    // if(UploadContext->UseAcquireBarriers)
+    // {
+    //     UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
+    //         (VkImageMemoryBarrier){
+    //             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    //             .pNext = NULL,
+    //             .image = Image,
+    //             .oldLayout = DstLayout,
+    //             .newLayout = DstLayout,
+    //             .subresourceRange = SubresourceRange,
+    //             .srcAccessMask = DstAccessMask,
+    //             .dstAccessMask = 0,
+    //             .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+    //             .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+    //         };
+    //     UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
+    //
+    //     UploadContext->AcquireBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
+    //         (VkImageMemoryBarrier){
+    //             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    //             .pNext = NULL,
+    //             .image = Image,
+    //             .oldLayout = DstLayout,
+    //             .newLayout = DstLayout,
+    //             .subresourceRange = SubresourceRange,
+    //             .srcAccessMask = 0,
+    //             .dstAccessMask = DstAccessMask,
+    //             .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+    //             .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+    //         };
+    //     UploadContext->AcquireBarriers.ImageMemoryBarrierCount++;
+    // }
 }
 
 Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format, Rr_ImageUsage Usage, bool MipMapped)
@@ -242,18 +337,20 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
             &AllocatedImage->Allocation,
             NULL);
 
-        VkImageViewCreateInfo ImageViewCreateInfo = { .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                                                      .pNext = NULL,
-                                                      .image = AllocatedImage->Handle,
-                                                      .viewType = ImageViewType,
-                                                      .format = Image->Format,
-                                                      .subresourceRange = {
-                                                          .aspectMask = AspectFlags,
-                                                          .baseMipLevel = 0,
-                                                          .layerCount = MipLevels,
-                                                          .baseArrayLayer = 0,
-                                                          .levelCount = 1,
-                                                      }, };
+        VkImageViewCreateInfo ImageViewCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = NULL,
+            .image = AllocatedImage->Handle,
+            .viewType = ImageViewType,
+            .format = Image->Format,
+            .subresourceRange = {
+                .aspectMask = AspectFlags,
+                .baseMipLevel = 0,
+                .layerCount = MipLevels,
+                .baseArrayLayer = 0,
+                .levelCount = 1,
+            },
+        };
 
         vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &AllocatedImage->View);
     }
@@ -315,9 +412,9 @@ Rr_Image *Rr_CreateColorImageFromMemory(
     uint32_t Height,
     bool MipMapped)
 {
-    int32_t DesiredChannels = 4;
+    // int32_t DesiredChannels = 4;
     Rr_IntVec3 Extent = { .Width = Width, .Height = Height, .Depth = 1 };
-    size_t DataSize = Extent.Width * Extent.Height * DesiredChannels;
+    // size_t DataSize = Extent.Width * Extent.Height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
@@ -326,17 +423,17 @@ Rr_Image *Rr_CreateColorImageFromMemory(
         RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
         MipMapped);
 
-    Rr_UploadImage(
-        App,
-        UploadContext,
-        ColorImage->AllocatedImages[0].Handle,
-        Rr_GetVulkanExtent3D(&Extent),
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_ACCESS_SHADER_READ_BIT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        Data,
-        DataSize);
+    // Rr_UploadImage(
+    //     App,
+    //     UploadContext,
+    //     ColorImage->AllocatedImages[0].Handle,
+    //     Rr_GetVulkanExtent3D(&Extent),
+    //     VK_IMAGE_ASPECT_COLOR_BIT,
+    //     VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+    //     VK_ACCESS_SHADER_READ_BIT,
+    //     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    //     Data,
+    //     DataSize);
 
     return ColorImage;
 }
@@ -358,7 +455,7 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
         (int32_t *)&Extent.Height,
         &Channels,
         DesiredChannels);
-    size_t ParsedSize = Extent.Width * Extent.Height * DesiredChannels;
+    // size_t ParsedSize = Extent.Width * Extent.Height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
@@ -367,17 +464,17 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
         RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
         MipMapped);
 
-    Rr_UploadImage(
-        App,
-        UploadContext,
-        ColorImage->AllocatedImages[0].Handle,
-        Rr_GetVulkanExtent3D(&Extent),
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_ACCESS_SHADER_READ_BIT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        ParsedImage,
-        ParsedSize);
+    // Rr_UploadImage(
+    //     App,
+    //     UploadContext,
+    //     ColorImage->AllocatedImages[0].Handle,
+    //     Rr_GetVulkanExtent3D(&Extent),
+    //     VK_IMAGE_ASPECT_COLOR_BIT,
+    //     VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+    //     VK_ACCESS_SHADER_READ_BIT,
+    //     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    //     ParsedImage,
+    //     ParsedSize);
 
     stbi_image_free(ParsedImage);
 
@@ -457,7 +554,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
         .Depth = 1,
     };
 
-    size_t DataSize = Extent.Width * Extent.Height * sizeof(float);
+    // size_t DataSize = Extent.Width * Extent.Height * sizeof(float);
 
     Rr_Image *DepthImage = Rr_CreateImage(
         App,
@@ -466,17 +563,17 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
         RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
         false);
 
-    Rr_UploadImage(
-        App,
-        UploadContext,
-        DepthImage->AllocatedImages[0].Handle,
-        Rr_GetVulkanExtent3D(&Extent),
-        VK_IMAGE_ASPECT_DEPTH_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_READ_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        Image.images[0],
-        DataSize);
+    // Rr_UploadImage(
+    //     App,
+    //     UploadContext,
+    //     DepthImage->AllocatedImages[0].Handle,
+    //     Rr_GetVulkanExtent3D(&Extent),
+    //     VK_IMAGE_ASPECT_DEPTH_BIT,
+    //     VK_PIPELINE_STAGE_TRANSFER_BIT,
+    //     VK_ACCESS_TRANSFER_READ_BIT,
+    //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    //     Image.images[0],
+    //     DataSize);
 
     FreeEXRHeader(&Header);
     FreeEXRImage(&Image);
@@ -504,15 +601,15 @@ Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
         false);
 }
 
-Rr_Image *Rr_GetDummyColorTexture(Rr_App *App)
-{
-    return App->Renderer.NullTextures.White;
-}
-
-Rr_Image *Rr_GetDummyNormalTexture(Rr_App *App)
-{
-    return App->Renderer.NullTextures.Normal;
-}
+// Rr_Image *Rr_GetDummyColorTexture(Rr_App *App)
+// {
+//     return App->Renderer.NullTextures.White;
+// }
+//
+// Rr_Image *Rr_GetDummyNormalTexture(Rr_App *App)
+// {
+//     return App->Renderer.NullTextures.Normal;
+// }
 
 void Rr_ChainImageBarrier_Aspect(
     Rr_ImageBarrier *TransitionImage,

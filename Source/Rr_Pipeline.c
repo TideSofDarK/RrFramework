@@ -30,31 +30,6 @@ static VkStencilOp Rr_GetVulkanStencilOp(Rr_StencilOp StencilOp)
     }
 }
 
-static VkCompareOp Rr_GetVulkanCompareOp(Rr_CompareOp CompareOp)
-{
-    switch(CompareOp)
-    {
-        case RR_COMPARE_OP_NEVER:
-            return VK_COMPARE_OP_NEVER;
-        case RR_COMPARE_OP_LESS:
-            return VK_COMPARE_OP_LESS;
-        case RR_COMPARE_OP_EQUAL:
-            return VK_COMPARE_OP_EQUAL;
-        case RR_COMPARE_OP_LESS_OR_EQUAL:
-            return VK_COMPARE_OP_LESS_OR_EQUAL;
-        case RR_COMPARE_OP_GREATER:
-            return VK_COMPARE_OP_GREATER;
-        case RR_COMPARE_OP_NOT_EQUAL:
-            return VK_COMPARE_OP_NOT_EQUAL;
-        case RR_COMPARE_OP_GREATER_OR_EQUAL:
-            return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        case RR_COMPARE_OP_ALWAYS:
-            return VK_COMPARE_OP_ALWAYS;
-        default:
-            return 0;
-    }
-}
-
 static VkStencilOpState Rr_GetVulkanStencilOpState(Rr_StencilOpState State, Rr_DepthStencil *DepthStencil)
 {
     return (VkStencilOpState){
@@ -255,6 +230,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
     Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_GraphicsPipeline *Pipeline = RR_GET_FREE_LIST_ITEM(&App->Renderer.GraphicsPipelines, App->PermanentArena);
+    Pipeline->Layout = Info->Layout;
 
     RR_SLICE(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
@@ -479,8 +455,6 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *S
 
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
 
-    VkDescriptorSetLayout *SetLayouts = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkDescriptorSetLayout, SetCount);
-
     for(size_t Index = 0; Index < SetCount; ++Index)
     {
         Rr_PipelineBindingSet *Set = Sets + Index;
@@ -493,7 +467,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *S
 
             if(Binding->Count == 1)
             {
-                Rr_AddDescriptor(&DescriptorLayoutBuilder, Binding->Slot, Binding->Type, Set->Visibility);
+                Rr_AddDescriptor(&DescriptorLayoutBuilder, Binding->Slot, Binding->Type, Set->Stages);
             }
             else
             {
@@ -502,11 +476,12 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *S
                     Binding->Slot,
                     Binding->Count,
                     Binding->Type,
-                    Set->Visibility);
+                    Set->Stages);
             }
         }
 
-        SetLayouts[Index] = Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, Renderer->Device);
+        PipelineLayout->DescriptorSetLayouts[Index] =
+            Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, Renderer->Device);
         Rr_ClearDescriptors(&DescriptorLayoutBuilder);
     }
 
@@ -514,7 +489,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *S
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         .setLayoutCount = SetCount,
-        .pSetLayouts = SetLayouts,
+        .pSetLayouts = PipelineLayout->DescriptorSetLayouts,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = NULL,
     };

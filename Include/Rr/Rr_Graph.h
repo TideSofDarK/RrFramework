@@ -16,6 +16,7 @@ typedef enum Rr_GraphNodeType
     RR_GRAPH_NODE_TYPE_GRAPHICS,
     RR_GRAPH_NODE_TYPE_BLIT,
     RR_GRAPH_NODE_TYPE_PRESENT,
+    RR_GRAPH_NODE_TYPE_TRANSFER,
 } Rr_GraphNodeType;
 
 #ifdef __cplusplus

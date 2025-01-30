@@ -74,62 +74,62 @@ void Rr_DrawDefaultText(Rr_App *App, Rr_GraphNode *Node, Rr_String *String, Rr_V
         });
 }
 
-static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
-    Rr_App *App,
-    Rr_UploadContext *UploadContext,
-    VkExtent2D ActiveResolution,
-    Rr_Arena *Arena)
-{
-    Rr_Scratch Scratch = Rr_GetScratch(Arena);
-
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
-
-    Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
-
-    Rr_TextRenderingContext TextRenderingContext = { 0 };
-
-    uint64_t Ticks = SDL_GetTicks();
-    float Time = (float)Ticks / 1000.0f;
-    Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
-    Rr_TextGlobalsLayout TextGlobalsData = { .Reserved = 0.0f,
-                                             .Time = Time,
-                                             .ScreenSize = { (float)ActiveResolution.width,
-                                                             (float)ActiveResolution.height },
-                                             .Palette = { { 1.0f, 1.0f, 1.0f, 1.0f },
-                                                          { 1.0f, 0.0f, 0.0f, 1.0f },
-                                                          { 0.0f, 1.0f, 0.0f, 1.0f },
-                                                          { 0.0f, 0.0f, 1.0f, 1.0f } } };
-
-    VkDeviceSize BufferOffset = CommonBuffer->Offset;
-    Rr_UploadToUniformBuffer(
-        App,
-        UploadContext,
-        CommonBuffer->Buffer,
-        &CommonBuffer->Offset,
-        RR_MAKE_DATA_STRUCT(TextGlobalsData));
-
-    TextRenderingContext.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Renderer->Device,
-        TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS]);
-    Rr_WriteBufferDescriptor(
-        &DescriptorWriter,
-        0,
-        CommonBuffer->Buffer->Handle,
-        sizeof(Rr_TextGlobalsLayout),
-        BufferOffset,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        Scratch.Arena);
-    Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextRenderingContext.GlobalsDescriptorSet);
-    Rr_ResetDescriptorWriter(&DescriptorWriter);
-
-    Rr_DestroyScratch(Scratch);
-
-    return TextRenderingContext;
-}
+// static Rr_TextRenderingContext Rr_MakeTextRenderingContext(
+//     Rr_App *App,
+//     Rr_UploadContext *UploadContext,
+//     VkExtent2D ActiveResolution,
+//     Rr_Arena *Arena)
+// {
+//     Rr_Scratch Scratch = Rr_GetScratch(Arena);
+//
+//     Rr_Renderer *Renderer = &App->Renderer;
+//
+//     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+//     Rr_WriteBuffer *CommonBuffer = &Frame->CommonBuffer;
+//
+//     Rr_DescriptorWriter DescriptorWriter = Rr_CreateDescriptorWriter(0, 1, Scratch.Arena);
+//
+//     Rr_TextRenderingContext TextRenderingContext = { 0 };
+//
+//     uint64_t Ticks = SDL_GetTicks();
+//     float Time = (float)Ticks / 1000.0f;
+//     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
+//     Rr_TextGlobalsLayout TextGlobalsData = { .Reserved = 0.0f,
+//                                              .Time = Time,
+//                                              .ScreenSize = { (float)ActiveResolution.width,
+//                                                              (float)ActiveResolution.height },
+//                                              .Palette = { { 1.0f, 1.0f, 1.0f, 1.0f },
+//                                                           { 1.0f, 0.0f, 0.0f, 1.0f },
+//                                                           { 0.0f, 1.0f, 0.0f, 1.0f },
+//                                                           { 0.0f, 0.0f, 1.0f, 1.0f } } };
+//
+//     VkDeviceSize BufferOffset = CommonBuffer->Offset;
+//     Rr_UploadToUniformBuffer(
+//         App,
+//         UploadContext,
+//         CommonBuffer->Buffer,
+//         &CommonBuffer->Offset,
+//         RR_MAKE_DATA_STRUCT(TextGlobalsData));
+//
+//     TextRenderingContext.GlobalsDescriptorSet = Rr_AllocateDescriptorSet(
+//         &Frame->DescriptorAllocator,
+//         Renderer->Device,
+//         TextPipeline->DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_GLOBALS]);
+//     Rr_WriteBufferDescriptor(
+//         &DescriptorWriter,
+//         0,
+//         CommonBuffer->Buffer->Handle,
+//         sizeof(Rr_TextGlobalsLayout),
+//         BufferOffset,
+//         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+//         Scratch.Arena);
+//     Rr_UpdateDescriptorSet(&DescriptorWriter, Renderer->Device, TextRenderingContext.GlobalsDescriptorSet);
+//     Rr_ResetDescriptorWriter(&DescriptorWriter);
+//
+//     Rr_DestroyScratch(Scratch);
+//
+//     return TextRenderingContext;
+// }
 
 // static void Rr_RenderText(
 //     Rr_App *App,

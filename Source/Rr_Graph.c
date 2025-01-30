@@ -5,6 +5,8 @@
 #include "Rr_Log.h"
 #include "Rr_Renderer.h"
 
+#include <assert.h>
+
 static void Rr_CopyDependencies(
     Rr_GraphNode *GraphNode,
     Rr_GraphNode **Dependencies,
@@ -40,7 +42,7 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
+    VkCommandBuffer CommandBuffer = Frame->CommandBuffer.Handle;
 
     /* Submit barriers. */
     /* @TODO: Split into two barriers: pre vertex work and post vertex work. */
@@ -50,10 +52,21 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
     if(ImageBarrierCount > 0 || BufferBarrierCount > 0)
     {
         VkPipelineStageFlags StageMask = 0;
+
         for(size_t Index = 0; Index < ImageBarrierCount; ++Index)
         {
             VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
             Rr_ImageSync **State = RR_UPSERT(&Renderer->GlobalSync, Barrier->image, NULL);
+            if(*State != NULL)
+            {
+                StageMask |= (*State)->StageMask;
+            }
+        }
+
+        for(size_t Index = 0; Index < BufferBarrierCount; ++Index)
+        {
+            VkBufferMemoryBarrier *Barrier = Batch->BufferBarriers.Data + Index;
+            Rr_BufferSync **State = RR_UPSERT(&Renderer->GlobalSync, Barrier->buffer, NULL);
             if(*State != NULL)
             {
                 StageMask |= (*State)->StageMask;
@@ -107,6 +120,11 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
                 Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
                 Rr_ExecuteBlitNode(App, BlitNode);
             }
+            case RR_GRAPH_NODE_TYPE_TRANSFER:
+            {
+                Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
+                Rr_ExecuteBlitNode(App, BlitNode);
+            }
             break;
             default:
             {
@@ -132,7 +150,18 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
         Rr_ImageSync **BatchState = RR_UPSERT(&Batch->LocalSync, Barrier->image, NULL);
         *(*GlobalState) = *(*BatchState);
     }
-    /* @TODO: Same for buffers. */
+
+    for(size_t Index = 0; Index < BufferBarrierCount; ++Index)
+    {
+        VkBufferMemoryBarrier *Barrier = Batch->BufferBarriers.Data + Index;
+        Rr_BufferSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Barrier->buffer, App->PermanentArena);
+        if(*GlobalState == NULL)
+        {
+            *GlobalState = RR_ALLOC(App->PermanentArena, sizeof(Rr_BufferSync));
+        }
+        Rr_BufferSync **BatchState = RR_UPSERT(&Batch->LocalSync, Barrier->buffer, NULL);
+        *(*GlobalState) = *(*BatchState);
+    }
 
     Rr_DestroyScratch(Scratch);
 }
@@ -210,6 +239,12 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                     NodeBatched = Rr_BatchBlitNode(App, Graph, &Batch, BlitNode);
                 }
                 break;
+                case RR_GRAPH_NODE_TYPE_TRANSFER:
+                {
+                    Rr_TransferNode *TransferNode = &GraphNode->Union.TransferNode;
+                    NodeBatched = Rr_BatchTransferNode(App, &Batch, TransferNode);
+                }
+                break;
                 default:
                 {
                     Rr_LogAbort("Unsupported node type!");
@@ -262,10 +297,7 @@ void Rr_BatchImage(
     VkAccessFlags AccessMask,
     VkImageLayout Layout)
 {
-    if(Image == NULL)
-    {
-        return;
-    }
+    assert(Image != VK_NULL_HANDLE);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Arena *Arena = Rr_GetFrameArena(App);
@@ -320,6 +352,74 @@ void Rr_BatchImage(
     }
     (*BatchState)->AccessMask = AccessMask;
     (*BatchState)->Layout = Layout;
+    (*BatchState)->StageMask = StageMask;
+
+    Batch->StageMask |= StageMask;
+}
+
+bool Rr_BatchBufferPossible(Rr_Map **Sync, VkBuffer Buffer)
+{
+    Rr_BufferSync **State = RR_UPSERT(Sync, Buffer, NULL);
+
+    if(State != NULL)
+    {
+        /* @TODO: Should be true if for example current batch state matches
+         * requested state. */
+        return false;
+    }
+
+    return true;
+}
+
+void Rr_BatchBuffer(
+    Rr_App *App,
+    Rr_GraphBatch *Batch,
+    VkBuffer Buffer,
+    VkPipelineStageFlags StageMask,
+    VkAccessFlags AccessMask)
+{
+    assert(Buffer != VK_NULL_HANDLE);
+
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Arena *Arena = Rr_GetFrameArena(App);
+
+    Rr_BufferSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Buffer, App->PermanentArena);
+
+    if(*GlobalState == NULL) /* First time referencing this buffer. */
+    {
+        *RR_PUSH_SLICE(&Batch->BufferBarriers, Arena) = (VkBufferMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .pNext = NULL,
+            .srcAccessMask = 0,
+            .dstAccessMask = AccessMask,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = Buffer,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        };
+    }
+    else /* Syncing with previous state. */
+    {
+        *RR_PUSH_SLICE(&Batch->BufferBarriers, Arena) = (VkBufferMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = NULL,
+            .srcAccessMask = (*GlobalState)->AccessMask,
+            .dstAccessMask = AccessMask,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = Buffer,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        };
+    }
+
+    Rr_BufferSync **BatchState = RR_UPSERT(&Batch->LocalSync, Buffer, Arena);
+    if(*BatchState == NULL)
+    {
+        *BatchState = RR_ALLOC(Arena, sizeof(Rr_ImageSync));
+    }
+    (*BatchState)->AccessMask = AccessMask;
     (*BatchState)->StageMask = StageMask;
 
     Batch->StageMask |= StageMask;

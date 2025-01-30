@@ -5,12 +5,16 @@
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Graph.h"
-#include "Rr_Mesh.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Text.h"
 #include "Rr_Vulkan.h"
 
 #include <SDL3/SDL_atomic.h>
+
+struct Rr_CommandBuffer
+{
+    VkCommandBuffer Handle;
+};
 
 typedef struct Rr_Swapchain Rr_Swapchain;
 struct Rr_Swapchain
@@ -40,7 +44,9 @@ struct Rr_Frame
     VkPipelineStageFlags SwapchainImageStage;
 
     VkCommandPool CommandPool;
-    VkCommandBuffer MainCommandBuffer;
+    VkCommandBuffer CommandBuffers[2];
+    size_t CurrentCommandBufferIndex;
+    Rr_CommandBuffer CommandBuffer;
 
     VkSemaphore SwapchainSemaphore;
     VkSemaphore RenderSemaphore;
@@ -49,10 +55,6 @@ struct Rr_Frame
     Rr_DescriptorAllocator DescriptorAllocator;
 
     Rr_WriteBuffer StagingBuffer;
-    Rr_WriteBuffer CommonBuffer;
-
-    Rr_WriteBuffer PerDrawBuffer;
-    VkDescriptorSet PerDrawDescriptor;
 
     Rr_Graph Graph;
 
@@ -119,11 +121,11 @@ struct Rr_Renderer
 
     /* Null Textures */
 
-    struct
-    {
-        Rr_Image *White;
-        Rr_Image *Normal;
-    } NullTextures;
+    // struct
+    // {
+    //     Rr_Image *White;
+    //     Rr_Image *Normal;
+    // } NullTextures;
 
     /* Retired Semaphores */
 
@@ -137,11 +139,6 @@ struct Rr_Renderer
 
     RR_SLICE(Rr_PendingLoad) PendingLoadsSlice;
 
-    /* Texture Samplers */
-
-    VkSampler NearestSampler;
-    VkSampler LinearSampler;
-
     /* Text Rendering */
 
     Rr_TextPipeline TextPipeline;
@@ -154,13 +151,14 @@ struct Rr_Renderer
     /* Storage */
 
     RR_FREE_LIST(Rr_Buffer) Buffers;
-    RR_FREE_LIST(Rr_Primitive) Primitives;
-    RR_FREE_LIST(Rr_StaticMesh) StaticMeshes;
-    RR_FREE_LIST(Rr_SkeletalMesh) SkeletalMeshes;
+    // RR_FREE_LIST(Rr_Primitive) Primitives;
+    // RR_FREE_LIST(Rr_StaticMesh) StaticMeshes;
+    // RR_FREE_LIST(Rr_SkeletalMesh) SkeletalMeshes;
     RR_FREE_LIST(Rr_Image) Images;
     RR_FREE_LIST(Rr_Font) Fonts;
     RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
     RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;
+    RR_FREE_LIST(Rr_Sampler) Samplers;
 };
 
 extern void Rr_InitRenderer(Rr_App *App);
@@ -182,6 +180,8 @@ extern Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer);
 extern bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
 
 extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer);
+
+extern VkDeviceSize Rr_GetStorageAlignment(Rr_Renderer *Renderer);
 
 /* @TODO: Add format? */
 typedef struct Rr_Attachment Rr_Attachment;

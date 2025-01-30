@@ -98,7 +98,7 @@ void Rr_ExecuteBlitNode(Rr_App *App, Rr_BlitNode *Node)
        Rr_ClampBlitRect(&Node->DstRect, &Node->DstImage->Container->Extent))
     {
         Rr_BlitColorImage(
-            Frame->MainCommandBuffer,
+            Frame->CommandBuffer.Handle,
             Node->SrcImage->Handle,
             Node->DstImage->Handle,
             Node->SrcRect,

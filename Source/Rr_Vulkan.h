@@ -52,9 +52,14 @@ extern void Rr_BlitColorImage(
     Rr_IntVec4 DstRect,
     VkImageAspectFlags AspectMask);
 
-static VkExtent2D GetExtent2D(VkExtent3D Extent)
+static VkExtent2D Rr_ToExtent2D(VkExtent3D *Extent)
 {
-    return (VkExtent2D){ .height = Extent.height, .width = Extent.width };
+    return (VkExtent2D){ .height = Extent->height, .width = Extent->width };
+}
+
+static VkExtent3D Rr_ToVulkanExtent3D(Rr_IntVec3 *Extent)
+{
+    return (VkExtent3D){ .width = Extent->Width, .height = Extent->Height, .depth = Extent->Depth };
 }
 
 static VkSemaphoreCreateInfo Rr_GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Flags)
@@ -63,17 +68,6 @@ static VkSemaphoreCreateInfo Rr_GetSemaphoreCreateInfo(VkSemaphoreCreateFlags Fl
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         .pNext = NULL,
         .flags = Flags,
-    };
-    return Info;
-}
-
-static VkCommandBufferBeginInfo GetCommandBufferBeginInfo(VkCommandBufferUsageFlags Flags)
-{
-    VkCommandBufferBeginInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext = NULL,
-        .flags = Flags,
-        .pInheritanceInfo = NULL,
     };
     return Info;
 }
@@ -128,4 +122,29 @@ static VkShaderStageFlags Rr_GetVulkanShaderStageFlags(Rr_ShaderStage ShaderStag
         ShaderStageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
     }
     return ShaderStageFlags;
+}
+
+static VkCompareOp Rr_GetVulkanCompareOp(Rr_CompareOp CompareOp)
+{
+    switch(CompareOp)
+    {
+        case RR_COMPARE_OP_NEVER:
+            return VK_COMPARE_OP_NEVER;
+        case RR_COMPARE_OP_LESS:
+            return VK_COMPARE_OP_LESS;
+        case RR_COMPARE_OP_EQUAL:
+            return VK_COMPARE_OP_EQUAL;
+        case RR_COMPARE_OP_LESS_OR_EQUAL:
+            return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case RR_COMPARE_OP_GREATER:
+            return VK_COMPARE_OP_GREATER;
+        case RR_COMPARE_OP_NOT_EQUAL:
+            return VK_COMPARE_OP_NOT_EQUAL;
+        case RR_COMPARE_OP_GREATER_OR_EQUAL:
+            return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        case RR_COMPARE_OP_ALWAYS:
+            return VK_COMPARE_OP_ALWAYS;
+        default:
+            return 0;
+    }
 }

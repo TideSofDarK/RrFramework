@@ -59,13 +59,13 @@ typedef void (*Rr_LoadingCallback)(Rr_App *App, void *Userdata);
 
 extern Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage);
 
-extern Rr_LoadTask Rr_LoadStaticMeshFromOBJ(Rr_AssetRef AssetRef, Rr_StaticMesh **OutStaticMesh);
+// extern Rr_LoadTask Rr_LoadStaticMeshFromOBJ(Rr_AssetRef AssetRef, Rr_StaticMesh **OutStaticMesh);
 
-extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
-    Rr_AssetRef AssetRef,
-    Rr_GLTFLoader *Loader,
-    size_t MeshIndex,
-    Rr_StaticMesh **OutStaticMesh);
+// extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
+//     Rr_AssetRef AssetRef,
+//     Rr_GLTFLoader *Loader,
+//     size_t MeshIndex,
+//     Rr_StaticMesh **OutStaticMesh);
 
 extern Rr_LoadingContext *Rr_LoadAsync(
     Rr_App *App,

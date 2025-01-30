@@ -628,14 +628,32 @@ static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
 static Rr_Buffer *IndexBuffer;
+static Rr_Buffer *UniformBuffer;
+static Rr_Sampler *LinearSampler;
 
 static void Init(Rr_App *App, void *UserData)
 {
-    PipelineLayout = Rr_CreatePipelineLayout(App, nullptr, 0);
+    Rr_SamplerInfo SamplerInfo = {};
+    SamplerInfo.MinFilter = RR_FILTER_LINEAR;
+    SamplerInfo.MagFilter = RR_FILTER_LINEAR;
+    LinearSampler = Rr_CreateSampler(App, &SamplerInfo);
+
+    Rr_PipelineBinding Binding = {
+        .Slot = 0,
+        .Count = 1,
+        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+    };
+    Rr_PipelineBindingSet BindingSet = {
+        .BindingCount = 1,
+        .Bindings = &Binding,
+        .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+    };
+    PipelineLayout = Rr_CreatePipelineLayout(App, &BindingSet, 1);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 0 },
-        { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 1 },
+        { .Format = RR_FORMAT_VEC2, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 1 },
+        { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 2 },
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = {};
@@ -646,7 +664,7 @@ static void Init(Rr_App *App, void *UserData)
     PipelineInfo.Layout = PipelineLayout;
     PipelineInfo.VertexShaderSPV = RR_MAKE_DATA_ASSET(Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV));
     PipelineInfo.FragmentShaderSPV = RR_MAKE_DATA_ASSET(Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV));
-    PipelineInfo.VertexAttributeCount = 2;
+    PipelineInfo.VertexAttributeCount = RR_ARRAY_COUNT(VertexAttributes);
     PipelineInfo.VertexAttributes = VertexAttributes;
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
@@ -654,11 +672,11 @@ static void Init(Rr_App *App, void *UserData)
     GraphicsPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
 
     float VertexData[] = {
-        0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
     };
 
-    VertexBuffer = Rr_CreateDeviceVertexBuffer(App, sizeof(VertexData));
+    VertexBuffer = Rr_CreateBufferNEW(App, sizeof(VertexData), RR_BUFFER_USAGE_VERTEX_BUFFER_BIT, false);
     Rr_UploadToDeviceBufferImmediate(App, VertexBuffer, RR_MAKE_DATA_ARRAY(VertexData));
 
     uint32_t IndexData[] = {
@@ -667,19 +685,28 @@ static void Init(Rr_App *App, void *UserData)
         0,
     };
 
-    IndexBuffer = Rr_CreateDeviceIndexBuffer(App, sizeof(IndexData));
+    IndexBuffer = Rr_CreateBufferNEW(App, sizeof(IndexData), RR_BUFFER_USAGE_INDEX_BUFFER_BIT, false);
     Rr_UploadToDeviceBufferImmediate(App, IndexBuffer, RR_MAKE_DATA_ARRAY(IndexData));
 
     ColorAttachment = Rr_CreateImage(
         App,
         { 1024, 1024, 1 },
-        RR_TEXTURE_FORMAT_B8G8R8A8_UNORM,
+        Rr_GetSwapchainFormat(App),
         RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
         false);
+
+    UniformBuffer = Rr_CreateBufferNEW(App, sizeof(Rr_Vec4), RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true);
 }
 
 static void Iterate(Rr_App *App, void *UserData)
 {
+    /* Update Uniform Buffer */
+
+    Rr_Vec4 UniformValue{ 0.2f, 0.99f, 0.1f, 1.0f };
+    size_t Offset = 0;
+    Rr_GraphNode *TransferNode =
+        Rr_AddTransferNode(App, "transfer", UniformBuffer, RR_MAKE_DATA_STRUCT(UniformValue), &Offset, nullptr, 0);
+
     /* Draw Offscreen */
 
     Rr_ColorTarget OffscreenTarget = {
@@ -689,8 +716,9 @@ static void Iterate(Rr_App *App, void *UserData)
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = { 0.9f, 0.2f, 0.9f, 1.0f },
     };
-    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, "offscreen", &OffscreenTarget, 1, nullptr, nullptr, 0);
+    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, "offscreen", &OffscreenTarget, 1, nullptr, &TransferNode, 1);
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
+    Rr_BindUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, Offset, RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT);
     Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0);
     Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
@@ -706,8 +734,9 @@ static void Iterate(Rr_App *App, void *UserData)
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = { 0.2f, 0.2f, 0.2f, 1.0f },
     };
-    Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr, nullptr, 0);
+    Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr, &TransferNode, 1);
     Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
+    Rr_BindUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, Offset, RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT);
     Rr_BindVertexBuffer(Node, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0);
     Rr_DrawIndexed(Node, 3, 1, 0, 0, 0);

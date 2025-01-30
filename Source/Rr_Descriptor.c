@@ -1,6 +1,8 @@
 #include "Rr_Descriptor.h"
 
+#include "Rr_Log.h"
 #include "Rr_Memory.h"
+#include "Rr_Pipeline.h"
 
 #include <string.h>
 
@@ -149,10 +151,12 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
 {
     VkDescriptorPool Pool = Rr_GetDescriptorPool(DescriptorAllocator, Device);
 
-    VkDescriptorSetAllocateInfo AllocateInfo = { .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-                                                 .descriptorPool = Pool,
-                                                 .descriptorSetCount = 1,
-                                                 .pSetLayouts = &Layout };
+    VkDescriptorSetAllocateInfo AllocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = Pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &Layout,
+    };
 
     VkDescriptorSet DescriptorSet;
     VkResult Result = vkAllocateDescriptorSets(Device, &AllocateInfo, &DescriptorSet);
@@ -346,4 +350,117 @@ VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder *Build
     vkCreateDescriptorSetLayout(Device, &Info, NULL, &DescriptorSetLayout);
 
     return DescriptorSetLayout;
+}
+
+void Rr_UpdateDescriptorsState(
+    Rr_DescriptorsState *State,
+    size_t SetIndex,
+    size_t BindingIndex,
+    Rr_DescriptorSetBinding *Binding)
+{
+    memcpy(&State->States[SetIndex].Bindings[BindingIndex], Binding, sizeof(Rr_DescriptorSetBinding));
+    State->States[SetIndex].Dirty = true;
+    State->Dirty = true;
+}
+
+void Rr_ApplyDescriptorsState(
+    Rr_DescriptorsState *State,
+    Rr_DescriptorAllocator *DescriptorAllocator,
+    Rr_PipelineLayout *PipelineLayout,
+    VkDevice Device,
+    VkCommandBuffer CommandBuffer,
+    VkPipelineBindPoint PipelineBindPoint)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    if(State->Dirty != true)
+    {
+        return;
+    }
+
+    RR_SLICE(uint32_t) DynamicOffsets = { 0 };
+    RR_RESERVE_SLICE(&DynamicOffsets, RR_MAX_BINDINGS, Scratch.Arena);
+
+    uint32_t FirstSet = 0;
+    uint32_t DescriptorSetCount = 0;
+    VkDescriptorSet DescriptorSets[RR_MAX_SETS];
+
+    Rr_DescriptorWriter Writer = { 0 };
+
+    for(size_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
+    {
+        Rr_DescriptorSetState *SetState = State->States + SetIndex;
+        if(SetState->Dirty == false)
+        {
+            FirstSet++;
+            continue;
+        }
+
+        VkDescriptorSet DescriptorSet =
+            Rr_AllocateDescriptorSet(DescriptorAllocator, Device, PipelineLayout->DescriptorSetLayouts[SetIndex]);
+
+        for(size_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS; ++BindingIndex)
+        {
+            Rr_DescriptorSetBinding *Binding = SetState->Bindings + BindingIndex;
+            if(Binding->Used != true)
+            {
+                continue;
+            }
+
+            switch(Binding->Type)
+            {
+                case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
+                {
+                    Rr_WriteBufferDescriptor(
+                        &Writer,
+                        BindingIndex,
+                        Binding->Buffer.Handle,
+                        Binding->Buffer.Size,
+                        0, /* We rely on dynamic offsets! */
+                        Binding->DescriptorType,
+                        Scratch.Arena);
+
+                    *RR_PUSH_SLICE(&DynamicOffsets, NULL) = Binding->Buffer.Offset;
+                }
+                break;
+                case RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER:
+                {
+                    Rr_WriteImageDescriptor(
+                        &Writer,
+                        BindingIndex,
+                        Binding->Image.View,
+                        Binding->Image.Sampler,
+                        Binding->Image.Layout,
+                        Binding->DescriptorType,
+                        Scratch.Arena);
+                }
+                break;
+                default:
+                {
+                    Rr_LogAbort("Not implemented!");
+                }
+                break;
+            }
+        }
+
+        Rr_UpdateDescriptorSet(&Writer, Device, DescriptorSet);
+        Rr_ResetDescriptorWriter(&Writer);
+    }
+
+    if(DescriptorSetCount == 0)
+    {
+        return;
+    }
+
+    vkCmdBindDescriptorSets(
+        CommandBuffer,
+        PipelineBindPoint,
+        PipelineLayout->Handle,
+        FirstSet,
+        DescriptorSetCount,
+        DescriptorSets,
+        DynamicOffsets.Count,
+        DynamicOffsets.Data);
+
+    Rr_DestroyScratch(Scratch);
 }

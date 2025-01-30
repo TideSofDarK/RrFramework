@@ -14,19 +14,6 @@ typedef struct Rr_GraphicsPipeline Rr_GraphicsPipeline;
 
 typedef enum
 {
-    RR_COMPARE_OP_INVALID,
-    RR_COMPARE_OP_NEVER,
-    RR_COMPARE_OP_LESS,
-    RR_COMPARE_OP_EQUAL,
-    RR_COMPARE_OP_LESS_OR_EQUAL,
-    RR_COMPARE_OP_GREATER,
-    RR_COMPARE_OP_NOT_EQUAL,
-    RR_COMPARE_OP_GREATER_OR_EQUAL,
-    RR_COMPARE_OP_ALWAYS,
-} Rr_CompareOp;
-
-typedef enum
-{
     RR_STENCIL_OP_INVALID,
     RR_STENCIL_OP_KEEP,
     RR_STENCIL_OP_ZERO,
@@ -206,9 +193,9 @@ struct Rr_PipelineBinding
 typedef struct Rr_PipelineBindingSet Rr_PipelineBindingSet;
 struct Rr_PipelineBindingSet
 {
-    Rr_PipelineBinding *Bindings;
     size_t BindingCount;
-    Rr_ShaderStage Visibility;
+    Rr_PipelineBinding *Bindings;
+    Rr_ShaderStage Stages;
 };
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *Sets, size_t SetCount);

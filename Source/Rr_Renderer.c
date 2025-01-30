@@ -249,8 +249,14 @@ static void Rr_InitFrames(Rr_App *App)
             .queueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
         };
         vkCreateCommandPool(Renderer->Device, &CommandPoolInfo, NULL, &Frame->CommandPool);
-        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = GetCommandBufferAllocateInfo(Frame->CommandPool, 1);
-        vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, &Frame->MainCommandBuffer);
+        VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = VK_NULL_HANDLE,
+            .commandPool = Frame->CommandPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 2,
+        };
+        vkAllocateCommandBuffers(Renderer->Device, &CommandBufferAllocateInfo, Frame->CommandBuffers);
 
         /* Synchronization */
 
@@ -261,20 +267,27 @@ static void Rr_InitFrames(Rr_App *App)
         /* Descriptor Allocator */
 
         Rr_DescriptorPoolSizeRatio Ratios[] = {
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10 },          { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 16 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 16 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 16 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 16 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16 },
+            { VK_DESCRIPTOR_TYPE_SAMPLER, 16 },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 16 },
         };
         Frame->DescriptorAllocator =
-            Rr_CreateDescriptorAllocator(Renderer->Device, 1000, Ratios, SDL_arraysize(Ratios), App->PermanentArena);
+            Rr_CreateDescriptorAllocator(Renderer->Device, 1000, Ratios, RR_ARRAY_COUNT(Ratios), App->PermanentArena);
 
         /* Buffers */
 
-        Frame->StagingBuffer.Buffer =
-            Rr_CreateMappedBuffer(App, RR_STAGING_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        Frame->CommonBuffer.Buffer = Rr_CreateDeviceUniformBuffer(App, 66560);
-        Frame->PerDrawBuffer.Buffer =
-            Rr_CreateMappedBuffer(App, 66560, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        Frame->StagingBuffer.Buffer = Rr_CreateBuffer_Internal(
+            App,
+            RR_MEGABYTES(16),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VMA_MEMORY_USAGE_AUTO,
+            true,
+            false);
 
         Frame->Arena = Rr_CreateDefaultArena();
     }
@@ -297,8 +310,6 @@ static void Rr_CleanupFrames(Rr_App *App)
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
         Rr_DestroyBuffer(App, Frame->StagingBuffer.Buffer);
-        Rr_DestroyBuffer(App, Frame->PerDrawBuffer.Buffer);
-        Rr_DestroyBuffer(App, Frame->CommonBuffer.Buffer);
 
         Rr_DestroyArena(Frame->Arena);
     }
@@ -391,29 +402,6 @@ static void Rr_CleanupImmediateMode(Rr_App *App)
     vkDestroyFence(Renderer->Device, Renderer->ImmediateMode.Fence, NULL);
 }
 
-static void Rr_InitSamplers(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    VkSamplerCreateInfo SamplerInfo = { .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-
-    SamplerInfo.magFilter = VK_FILTER_NEAREST;
-    SamplerInfo.minFilter = VK_FILTER_NEAREST;
-    vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->NearestSampler);
-
-    SamplerInfo.magFilter = VK_FILTER_LINEAR;
-    SamplerInfo.minFilter = VK_FILTER_LINEAR;
-    vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Renderer->LinearSampler);
-}
-
-static void Rr_CleanupSamplers(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    vkDestroySampler(Renderer->Device, Renderer->NearestSampler, NULL);
-    vkDestroySampler(Renderer->Device, Renderer->LinearSampler, NULL);
-}
-
 /* @TODO: Move to queue initialization? */
 static void Rr_InitTransientCommandPools(Rr_App *App)
 {
@@ -448,26 +436,25 @@ static void Rr_CleanupTransientCommandPools(Rr_Renderer *Renderer)
     vkDestroyCommandPool(Renderer->Device, Renderer->TransferQueue.TransientCommandPool, NULL);
 }
 
-static void Rr_InitNullTextures(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-
-    VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
-    Rr_WriteBuffer StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(App, 256, VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-                                     .Offset = 0 };
-    Rr_UploadContext UploadContext = {
-        .StagingBuffer = &StagingBuffer,
-        .TransferCommandBuffer = CommandBuffer,
-    };
-    uint32_t WhiteData = 0xffffffff;
-    Renderer->NullTextures.White = Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&WhiteData, 1, 1, false);
-    uint32_t NormalData = 0xffff8888;
-    Renderer->NullTextures.Normal =
-        Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&NormalData, 1, 1, false);
-    Rr_EndImmediate(Renderer);
-
-    Rr_DestroyBuffer(App, StagingBuffer.Buffer);
-}
+// static void Rr_InitNullTextures(Rr_App *App)
+// {
+//     Rr_Renderer *Renderer = &App->Renderer;
+//
+//     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
+//     Rr_WriteBuffer StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(App, 256, VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+//                                      .Offset = 0 };
+//     Rr_UploadContext UploadContext = {
+//         .StagingBuffer = &StagingBuffer,
+//         .TransferCommandBuffer = CommandBuffer,
+//     };
+//     uint32_t WhiteData = 0xffffffff;
+//     Renderer->NullTextures.White = Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&WhiteData, 1, 1,
+//     false); uint32_t NormalData = 0xffff8888; Renderer->NullTextures.Normal =
+//         Rr_CreateColorImageFromMemory(App, &UploadContext, (char *)&NormalData, 1, 1, false);
+//     Rr_EndImmediate(Renderer);
+//
+//     Rr_DestroyBuffer(App, StagingBuffer.Buffer);
+// }
 
 void Rr_InitRenderer(Rr_App *App)
 {
@@ -543,7 +530,6 @@ void Rr_InitRenderer(Rr_App *App)
 
     Rr_InitVMA(App);
     Rr_InitTransientCommandPools(App);
-    Rr_InitSamplers(App);
     Rr_InitDescriptors(App);
 
     uint32_t Width, Height;
@@ -552,7 +538,7 @@ void Rr_InitRenderer(Rr_App *App)
 
     Rr_InitFrames(App);
     Rr_InitImmediateMode(App);
-    Rr_InitNullTextures(App);
+    // Rr_InitNullTextures(App);
     // Rr_InitTextRenderer(App);
 
     Rr_DestroyScratch(Scratch);
@@ -608,13 +594,12 @@ void Rr_CleanupRenderer(Rr_App *App)
 
     Rr_CleanupFrames(App);
 
-    Rr_DestroyImage(App, Renderer->NullTextures.White);
-    Rr_DestroyImage(App, Renderer->NullTextures.Normal);
+    // Rr_DestroyImage(App, Renderer->NullTextures.White);
+    // Rr_DestroyImage(App, Renderer->NullTextures.Normal);
 
     Rr_CleanupTransientCommandPools(Renderer);
     Rr_CleanupImmediateMode(App);
 
-    Rr_CleanupSamplers(App);
     Rr_CleanupSwapchain(App, Renderer->Swapchain.Handle);
 
     vmaDestroyAllocator(Renderer->Allocator);
@@ -631,8 +616,12 @@ VkCommandBuffer Rr_BeginImmediate(Rr_Renderer *Renderer)
     vkResetFences(Renderer->Device, 1, &ImmediateMode->Fence);
     vkResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
 
-    VkCommandBufferBeginInfo BeginInfo = GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
+    VkCommandBufferBeginInfo BeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = NULL,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = NULL,
+    };
     vkBeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
 
     return ImmediateMode->CommandBuffer;
@@ -662,9 +651,9 @@ void Rr_EndImmediate(Rr_Renderer *Renderer)
 
 static void Rr_ResetFrameResources(Rr_Frame *Frame)
 {
-    Frame->StagingBuffer.Offset = 0;
-    Frame->CommonBuffer.Offset = 0;
-    Frame->PerDrawBuffer.Offset = 0;
+    // Frame->StagingBuffer.Offset = 0;
+    // Frame->CommonBuffer.Offset = 0;
+    // Frame->PerDrawBuffer.Offset = 0;
 
     RR_ZERO(Frame->Graph);
 
@@ -693,6 +682,20 @@ void Rr_PrepareFrame(Rr_App *App)
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
+    /* We cycle between two command buffers to allow having
+     * combined iterate + draw stage. */
+    Frame->CurrentCommandBufferIndex++;
+    Frame->CommandBuffer.Handle = Frame->CommandBuffers[Frame->CurrentCommandBufferIndex % 2];
+    VkCommandBufferBeginInfo CommandBufferBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = NULL,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = NULL,
+    };
+    vkBeginCommandBuffer(Frame->CommandBuffer.Handle, &CommandBufferBeginInfo);
+
+    /* Keep virtual swapchain image up-to-date with
+     * swapchain.*/
     Frame->SwapchainImage.AllocatedImageCount = RR_FRAME_OVERLAP;
     Frame->SwapchainImage.Extent = Renderer->Swapchain.Extent;
     Frame->SwapchainImage.Format = Renderer->Swapchain.Format;
@@ -763,18 +766,11 @@ void Rr_Draw(Rr_App *App)
             App->PermanentArena);
     }
 
-    /* Begin main command buffer. */
-
-    VkCommandBuffer CommandBuffer = Frame->MainCommandBuffer;
-    VkCommandBufferBeginInfo CommandBufferBeginInfo =
-        GetCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
-
     /* Execute Frame Graph */
 
     Rr_ExecuteGraph(App, &Frame->Graph, Scratch.Arena);
 
-    vkEndCommandBuffer(CommandBuffer);
+    vkEndCommandBuffer(Frame->CommandBuffer.Handle);
 
     /* Submit frame command buffer and queue present. */
 
@@ -787,7 +783,7 @@ void Rr_Draw(Rr_App *App)
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = NULL,
         .commandBufferCount = 1,
-        .pCommandBuffers = &CommandBuffer,
+        .pCommandBuffers = &Frame->CommandBuffer.Handle,
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &Frame->RenderSemaphore,
         .waitSemaphoreCount = WaitSemaphoreIndex,
@@ -838,6 +834,11 @@ bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer)
 VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer)
 {
     return Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+}
+
+VkDeviceSize Rr_GetStorageAlignment(Rr_Renderer *Renderer)
+{
+    return Renderer->PhysicalDevice.Properties.properties.limits.minStorageBufferOffsetAlignment;
 }
 
 Rr_Arena *Rr_GetFrameArena(Rr_App *App)
@@ -1132,4 +1133,9 @@ void Rr_SetImageState(Rr_Map **Map, VkImage Image, Rr_ImageSync NewState, Rr_Are
         *State = RR_ALLOC(Arena, sizeof(Rr_ImageSync));
     }
     *(*State) = NewState;
+}
+
+Rr_CommandBuffer *Rr_GetCurrentCommandBuffer(Rr_App *App)
+{
+    return &Rr_GetCurrentFrame(&App->Renderer)->CommandBuffer;
 }
