@@ -120,10 +120,11 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
                 Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
                 Rr_ExecuteBlitNode(App, BlitNode);
             }
+            break;
             case RR_GRAPH_NODE_TYPE_TRANSFER:
             {
-                Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
-                Rr_ExecuteBlitNode(App, BlitNode);
+                Rr_TransferNode *TransferNode = &GraphNode->Union.TransferNode;
+                Rr_ExecuteTransferNode(App, TransferNode, Scratch.Arena);
             }
             break;
             default:

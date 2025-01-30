@@ -13,9 +13,9 @@ static VkDescriptorType Rr_GetVulkanDescriptorType(Rr_PipelineBindingType Type)
         case RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER:
             return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         case RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER:
-            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
-            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         default:
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
@@ -385,7 +385,7 @@ void Rr_ApplyDescriptorsState(
     uint32_t FirstSet = 0;
     uint32_t DescriptorSetCount = 0;
     VkDescriptorSet DescriptorSets[RR_MAX_SETS];
-    size_t DynamicOffsetCount;
+    size_t DynamicOffsetCount = 0;
     uint32_t DynamicOffsets[RR_MAX_BINDINGS * RR_MAX_SETS];
 
     for(size_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
@@ -399,9 +399,7 @@ void Rr_ApplyDescriptorsState(
             }
         }
 
-        VkDescriptorSet DescriptorSet =
-            Rr_AllocateDescriptorSet(DescriptorAllocator, Device, PipelineLayout->DescriptorSetLayouts[SetIndex]);
-
+        size_t UsedBindingsCount = 0;
         for(size_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS; ++BindingIndex)
         {
             Rr_DescriptorSetBinding *Binding = SetState->Bindings + BindingIndex;
@@ -422,9 +420,9 @@ void Rr_ApplyDescriptorsState(
                         0, /* We rely on dynamic offsets! */
                         Binding->DescriptorType,
                         Scratch.Arena);
-
                     DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
                     DynamicOffsetCount++;
+                    UsedBindingsCount++;
                 }
                 break;
                 case RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER:
@@ -437,6 +435,7 @@ void Rr_ApplyDescriptorsState(
                         Binding->Image.Layout,
                         Binding->DescriptorType,
                         Scratch.Arena);
+                    UsedBindingsCount++;
                 }
                 break;
                 default:
@@ -447,11 +446,17 @@ void Rr_ApplyDescriptorsState(
             }
         }
 
-        Rr_UpdateDescriptorSet(&Writer, Device, DescriptorSet);
-        Rr_ResetDescriptorWriter(&Writer);
+        if(UsedBindingsCount > 0)
+        {
+            VkDescriptorSet DescriptorSet =
+                Rr_AllocateDescriptorSet(DescriptorAllocator, Device, PipelineLayout->DescriptorSetLayouts[SetIndex]);
 
-        DescriptorSets[DescriptorSetCount] = DescriptorSet;
-        DescriptorSetCount++;
+            Rr_UpdateDescriptorSet(&Writer, Device, DescriptorSet);
+            Rr_ResetDescriptorWriter(&Writer);
+
+            DescriptorSets[DescriptorSetCount] = DescriptorSet;
+            DescriptorSetCount++;
+        }
 
         if(SetIndex == RR_MAX_SETS - 1 || State->States[SetIndex + 1].Dirty == false)
         {

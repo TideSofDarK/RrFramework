@@ -383,6 +383,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         Attachment->colorWriteMask = Blend->ColorWriteMask;
     }
 
+    Pipeline->ColorAttachmentCount = Info->ColorTargetCount;
+
     VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .pNext = NULL,

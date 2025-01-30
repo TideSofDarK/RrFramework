@@ -7,10 +7,6 @@ layout(location = 2) in vec4 in_color;
 
 layout(location = 0) out vec3 out_color;
 
-layout(set = 0, binding = 0) uniform UTest {
-    vec3 color;
-} u_test;
-
 void main()
 {
     gl_Position = in_position;

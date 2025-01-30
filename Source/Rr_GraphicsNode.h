@@ -79,7 +79,6 @@ struct Rr_BindUniformBufferArgs
     uint32_t Binding;
     uint32_t Offset;
     uint32_t Size;
-    VkPipelineStageFlags Stages;
 };
 
 extern bool Rr_BatchGraphicsNode(Rr_App *App, struct Rr_GraphBatch *Batch, Rr_GraphicsNode *Node);

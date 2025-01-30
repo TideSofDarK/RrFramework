@@ -11,6 +11,8 @@
 
 #include <array>
 #include <format>
+#include <iostream>
+#include <random>
 #include <string>
 
 // struct SUber3DGlobals
@@ -631,6 +633,10 @@ static Rr_Buffer *IndexBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_Sampler *LinearSampler;
 
+static std::random_device RandomDevice;
+static std::mt19937 Generator(RandomDevice());
+static std::uniform_real_distribution<float> Distribution(0.0f, 1.0f);
+
 static void Init(Rr_App *App, void *UserData)
 {
     Rr_SamplerInfo SamplerInfo = {};
@@ -702,7 +708,7 @@ static void Iterate(Rr_App *App, void *UserData)
 {
     /* Update Uniform Buffer */
 
-    Rr_Vec4 UniformValue{ 0.2f, 0.99f, 0.1f, 1.0f };
+    Rr_Vec4 UniformValue{ Distribution(Generator), Distribution(Generator), Distribution(Generator), 1.0f };
     size_t Offset = 0;
     Rr_GraphNode *TransferNode =
         Rr_AddTransferNode(App, "transfer", UniformBuffer, RR_MAKE_DATA_STRUCT(UniformValue), &Offset, nullptr, 0);
@@ -718,13 +724,7 @@ static void Iterate(Rr_App *App, void *UserData)
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, "offscreen", &OffscreenTarget, 1, nullptr, &TransferNode, 1);
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-    Rr_BindUniformBuffer(
-        OffscreenNode,
-        UniformBuffer,
-        0,
-        0,
-        Offset,
-        RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT);
+    Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, Offset, sizeof(Rr_Vec4));
     Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
     Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
@@ -742,13 +742,7 @@ static void Iterate(Rr_App *App, void *UserData)
     };
     Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr, &TransferNode, 1);
     Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-    Rr_BindUniformBuffer(
-        OffscreenNode,
-        UniformBuffer,
-        0,
-        0,
-        Offset,
-        RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT);
+    Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, Offset, sizeof(Rr_Vec4));
     Rr_BindVertexBuffer(Node, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
     Rr_DrawIndexed(Node, 3, 1, 0, 0, 0);
@@ -781,19 +775,23 @@ static void Cleanup(Rr_App *App, void *UserData)
     Rr_DestroyImage(App, ColorAttachment);
     Rr_DestroyBuffer(App, VertexBuffer);
     Rr_DestroyBuffer(App, IndexBuffer);
+    Rr_DestroyBuffer(App, UniformBuffer);
     Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);
     Rr_DestroyPipelineLayout(App, PipelineLayout);
+    Rr_DestroySampler(App, LinearSampler);
 }
 
 void RunGame()
 {
-    Rr_AppConfig Config = { .Title = "RrDemo",
-                            .Version = "0.0.1",
-                            .Package = "com.rrframework.demo",
-                            .InitFunc = Init,
-                            .CleanupFunc = Cleanup,
-                            .IterateFunc = Iterate,
-                            .FileDroppedFunc = nullptr,
-                            .UserData = nullptr };
+    Rr_AppConfig Config = {
+        .Title = "RrDemo",
+        .Version = "0.0.1",
+        .Package = "com.rrframework.demo",
+        .InitFunc = Init,
+        .CleanupFunc = Cleanup,
+        .IterateFunc = Iterate,
+        .FileDroppedFunc = nullptr,
+        .UserData = nullptr,
+    };
     Rr_Run(&Config);
 }

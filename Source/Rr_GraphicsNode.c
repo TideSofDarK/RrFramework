@@ -449,7 +449,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
             {
-                GraphicsPipeline = Function->Args;
+                GraphicsPipeline = *(Rr_GraphicsPipeline **)Function->Args;
                 vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GraphicsPipeline->Handle);
             }
             break;
@@ -502,18 +502,18 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
                             },
                         .DescriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
                     });
-                break;
-                default:
-                {
-                }
-                break;
             }
+            break;
+            default:
+            {
+            }
+            break;
         }
-
-        vkCmdEndRenderPass(CommandBuffer);
-
-        Rr_DestroyScratch(Scratch);
     }
+
+    vkCmdEndRenderPass(CommandBuffer);
+
+    Rr_DestroyScratch(Scratch);
 }
 
 #define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType)                             \
@@ -579,23 +579,24 @@ void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect)
     RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR, Rr_IntVec4) = Rect;
 }
 
-void Rr_BindUniformBuffer(
+void Rr_BindGraphicsUniformBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
     uint32_t Set,
     uint32_t Binding,
     uint32_t Offset,
-    Rr_ShaderStage ShaderStage)
+    uint32_t Size)
 {
-    assert(Set < 4);
-    assert(Binding < 16);
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(Size > 0);
 
     RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER, Rr_BindUniformBufferArgs) =
         (Rr_BindUniformBufferArgs){
             .Buffer = Buffer,
             .Set = Set,
             .Offset = Offset,
+            .Size = Size,
             .Binding = Binding,
-            .Stages = Rr_GetVulkanShaderStageFlags(ShaderStage),
         };
 }

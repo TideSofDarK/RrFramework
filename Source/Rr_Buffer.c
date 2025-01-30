@@ -85,7 +85,7 @@ Rr_Buffer *Rr_CreateBufferNEW(Rr_App *App, size_t Size, Rr_BufferUsage Usage, bo
         App,
         Size,
         Rr_GetVulkanBufferUsage(Usage) | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        VMA_MEMORY_USAGE_GPU_ONLY,
         false,
         Buffered);
 }
@@ -279,7 +279,13 @@ void Rr_UploadToDeviceBufferImmediate(Rr_App *App, Rr_Buffer *DstBuffer, Rr_Data
 
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
 
-    Rr_Buffer *SrcBuffer = Rr_CreateBuffer_Internal(App, Data.Size, 0, VMA_MEMORY_USAGE_AUTO_PREFER_HOST, true, false);
+    Rr_Buffer *SrcBuffer = Rr_CreateBuffer_Internal(
+        App,
+        Data.Size,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_AUTO_PREFER_HOST,
+        true,
+        false);
     Rr_AllocatedBuffer *SrcAllocatedBuffer = Rr_GetCurrentAllocatedBuffer(App, SrcBuffer);
     memcpy(SrcAllocatedBuffer->AllocationInfo.pMappedData, Data.Pointer, Data.Size);
 
