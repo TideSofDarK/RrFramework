@@ -25,7 +25,8 @@ static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 // static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
 // {
 //     return (
-//         cgltf_memory_options){ .alloc_func = Rr_CGLTFArenaAlloc, .free_func = Rr_CGLTFArenaFree, .user_data = Arena };
+//         cgltf_memory_options){ .alloc_func = Rr_CGLTFArenaAlloc, .free_func = Rr_CGLTFArenaFree, .user_data = Arena
+//         };
 // }
 //
 // static cgltf_mesh *Rr_ParseGLTFMesh(Rr_Asset *Asset, size_t MeshIndex, cgltf_options *Options, cgltf_data **OutData)
@@ -65,8 +66,8 @@ static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 //     RR_RESERVE_SLICE(&RawMesh.VerticesSlice, VertexCount, Arena);
 //     RR_RESERVE_SLICE(&RawMesh.IndicesSlice, IndexCount, Arena);
 //
-//     char *IndexData = (char *)Primitive->indices->buffer_view->buffer->data + Primitive->indices->buffer_view->offset;
-//     if(Primitive->indices->component_type == cgltf_component_type_r_16u)
+//     char *IndexData = (char *)Primitive->indices->buffer_view->buffer->data +
+//     Primitive->indices->buffer_view->offset; if(Primitive->indices->component_type == cgltf_component_type_r_16u)
 //     {
 //         uint16_t *Indices = (uint16_t *)IndexData;
 //         for(size_t Index = 0; Index < IndexCount; ++Index)
@@ -419,7 +420,8 @@ static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 //     //         cgltf_material *CGLTFMaterial = Primitive->material;
 //     //         if(CGLTFMaterial->has_pbr_metallic_roughness)
 //     //         {
-//     //             cgltf_texture *BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
+//     //             cgltf_texture *BaseColorTexture =
+//     CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
 //     //             if(BaseColorTexture)
 //     //             {
 //     //                 if(strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)

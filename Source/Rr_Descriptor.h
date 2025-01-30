@@ -157,7 +157,6 @@ struct Rr_DescriptorSetBinding
     };
     VkDescriptorType DescriptorType;
     Rr_PipelineBindingType Type;
-    bool Used;
 };
 
 typedef struct Rr_DescriptorSetState Rr_DescriptorSetState;
@@ -165,6 +164,7 @@ struct Rr_DescriptorSetState
 {
     size_t BindingCount;
     Rr_DescriptorSetBinding Bindings[RR_MAX_BINDINGS];
+    bool UsedBindings[RR_MAX_BINDINGS];
     VkPipelineStageFlags Stages;
     VkDescriptorSet Handle;
     bool Dirty;

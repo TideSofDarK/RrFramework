@@ -2,9 +2,9 @@
 
 #include <Rr/Rr_GraphicsNode.h>
 
+#include "Rr_Descriptor.h"
 #include "Rr_Image.h"
 #include "Rr_Vulkan.h"
-#include "Rr_Descriptor.h"
 
 #include <Rr/Rr_Graph.h>
 
@@ -44,8 +44,15 @@ struct Rr_GraphicsNode
     Rr_GraphicsNodeFunction *Encoded;
 };
 
-typedef struct Rr_BindBufferArgs Rr_BindIndexBufferArgs;
-typedef struct Rr_BindBufferArgs Rr_BindIndexBufferArgs;
+typedef struct Rr_BindIndexBufferArgs Rr_BindIndexBufferArgs;
+struct Rr_BindIndexBufferArgs
+{
+    Rr_Buffer *Buffer;
+    uint32_t Slot;
+    uint32_t Offset;
+    VkIndexType Type;
+};
+
 typedef struct Rr_BindBufferArgs Rr_BindBufferArgs;
 struct Rr_BindBufferArgs
 {

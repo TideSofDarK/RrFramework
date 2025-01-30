@@ -216,7 +216,8 @@ void Rr_UploadBufferAligned(
     // }
     // else
     // {
-    //     UploadContext->ReleaseBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
+    //     UploadContext->ReleaseBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount]
+    //     =
     //         (VkBufferMemoryBarrier){
     //             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
     //             .pNext = NULL,
@@ -230,7 +231,8 @@ void Rr_UploadBufferAligned(
     //         };
     //     UploadContext->ReleaseBarriers.BufferMemoryBarrierCount++;
     //
-    //     UploadContext->AcquireBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount] =
+    //     UploadContext->AcquireBarriers.BufferMemoryBarriers[UploadContext->AcquireBarriers.BufferMemoryBarrierCount]
+    //     =
     //         (VkBufferMemoryBarrier){
     //             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
     //             .pNext = NULL,

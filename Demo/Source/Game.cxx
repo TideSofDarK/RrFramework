@@ -718,9 +718,15 @@ static void Iterate(Rr_App *App, void *UserData)
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, "offscreen", &OffscreenTarget, 1, nullptr, &TransferNode, 1);
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-    Rr_BindUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, Offset, RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT);
+    Rr_BindUniformBuffer(
+        OffscreenNode,
+        UniformBuffer,
+        0,
+        0,
+        Offset,
+        RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT);
     Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
-    Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0);
+    Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
     Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
 
     /* Draw to Swapchain Image */
@@ -736,9 +742,15 @@ static void Iterate(Rr_App *App, void *UserData)
     };
     Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr, &TransferNode, 1);
     Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-    Rr_BindUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, Offset, RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT);
+    Rr_BindUniformBuffer(
+        OffscreenNode,
+        UniformBuffer,
+        0,
+        0,
+        Offset,
+        RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_FRAGMENT_BIT);
     Rr_BindVertexBuffer(Node, VertexBuffer, 0, 0);
-    Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0);
+    Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
     Rr_DrawIndexed(Node, 3, 1, 0, 0, 0);
 
     /* Blit to Swapchain Image */

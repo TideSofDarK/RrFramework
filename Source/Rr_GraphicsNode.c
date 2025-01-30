@@ -4,6 +4,19 @@
 
 #include <assert.h>
 
+static VkIndexType Rr_GetVulkanIndexType(Rr_IndexType Type)
+{
+    switch(Type)
+    {
+        case RR_INDEX_TYPE_UINT8:
+            return VK_INDEX_TYPE_UINT8;
+        case RR_INDEX_TYPE_UINT16:
+            return VK_INDEX_TYPE_UINT16;
+        default:
+            return VK_INDEX_TYPE_UINT32;
+    }
+}
+
 Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     const char *Name,
@@ -396,23 +409,23 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
         {
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
             {
-                Rr_BindBufferArgs *Binding = (Rr_BindBufferArgs *)Function->Args;
+                Rr_BindIndexBufferArgs *Args = Function->Args;
                 vkCmdBindIndexBuffer(
                     CommandBuffer,
-                    Rr_GetCurrentAllocatedBuffer(App, Binding->Buffer)->Handle,
-                    Binding->Offset,
-                    VK_INDEX_TYPE_UINT32);
+                    Rr_GetCurrentAllocatedBuffer(App, Args->Buffer)->Handle,
+                    Args->Offset,
+                    Args->Type);
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
             {
-                Rr_BindBufferArgs *Binding = (Rr_BindBufferArgs *)Function->Args;
+                Rr_BindBufferArgs *Args = Function->Args;
                 vkCmdBindVertexBuffers(
                     CommandBuffer,
-                    Binding->Slot,
+                    Args->Slot,
                     1,
-                    &Rr_GetCurrentAllocatedBuffer(App, Binding->Buffer)->Handle,
-                    &(VkDeviceSize){ Binding->Offset });
+                    &Rr_GetCurrentAllocatedBuffer(App, Args->Buffer)->Handle,
+                    &(VkDeviceSize){ Args->Offset });
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED:
@@ -423,8 +436,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
                     GraphicsPipeline->Layout,
                     Renderer->Device,
                     CommandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS
-                );
+                    VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
                 vkCmdDrawIndexed(
                     CommandBuffer,
@@ -489,7 +501,6 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena)
                                 .Offset = Args->Offset,
                             },
                         .DescriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                        .Used = true,
                     });
                 break;
                 default:
@@ -541,13 +552,14 @@ void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, u
         };
 }
 
-void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, uint32_t Offset)
+void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, uint32_t Offset, Rr_IndexType Type)
 {
     RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER, Rr_BindIndexBufferArgs) =
         (Rr_BindIndexBufferArgs){
             .Buffer = Buffer,
             .Slot = Slot,
             .Offset = Offset,
+            .Type = Rr_GetVulkanIndexType(Type),
         };
 }
 

@@ -12,6 +12,13 @@ extern "C" {
 
 typedef enum
 {
+    RR_INDEX_TYPE_UINT8,
+    RR_INDEX_TYPE_UINT16,
+    RR_INDEX_TYPE_UINT32,
+} Rr_IndexType;
+
+typedef enum
+{
     RR_LOAD_OP_LOAD,
     RR_LOAD_OP_CLEAR,
     RR_LOAD_OP_DONT_CARE,
@@ -79,7 +86,12 @@ extern void Rr_DrawIndexed(
 
 extern void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, uint32_t Offset);
 
-extern void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Slot, uint32_t Offset);
+extern void Rr_BindIndexBuffer(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    uint32_t Slot,
+    uint32_t Offset,
+    Rr_IndexType Type);
 
 extern void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline);
 
@@ -87,7 +99,13 @@ extern void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect);
 
 extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect);
 
-extern void Rr_BindUniformBuffer(Rr_GraphNode *Node, Rr_Buffer *Buffer, uint32_t Set, uint32_t Binding, uint32_t Offset, Rr_ShaderStage ShaderStage);
+extern void Rr_BindUniformBuffer(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t Offset,
+    Rr_ShaderStage ShaderStage);
 
 #ifdef __cplusplus
 }

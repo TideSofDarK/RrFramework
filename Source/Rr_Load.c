@@ -33,7 +33,8 @@ static Rr_LoadSize Rr_CalculateLoadSize(Rr_LoadTask *Tasks, size_t TaskCount, Rr
     //         case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
     //         {
     //             Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
-    //             Rr_GetStaticMeshSizeGLTF(Task->AssetRef, &Options.Loader, Options.MeshIndex, Scratch.Arena, &LoadSize);
+    //             Rr_GetStaticMeshSizeGLTF(Task->AssetRef, &Options.Loader, Options.MeshIndex, Scratch.Arena,
+    //             &LoadSize);
     //         }
     //         break;
     //         default:
@@ -244,12 +245,14 @@ Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAs
     // {
     //     UploadContext.UseAcquireBarriers = true;
     //     UploadContext.AcquireBarriers = (Rr_AcquireBarriers){
-    //         .BufferMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier), LoadSize.BufferCount),
-    //         .ImageMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkImageMemoryBarrier), LoadSize.ImageCount),
+    //         .BufferMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier),
+    //         LoadSize.BufferCount), .ImageMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkImageMemoryBarrier),
+    //         LoadSize.ImageCount),
     //     };
     //     UploadContext.ReleaseBarriers = (Rr_AcquireBarriers){
-    //         .BufferMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier), LoadSize.BufferCount),
-    //         .ImageMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkImageMemoryBarrier), LoadSize.ImageCount),
+    //         .BufferMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkBufferMemoryBarrier),
+    //         LoadSize.BufferCount), .ImageMemoryBarriers = RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkImageMemoryBarrier),
+    //         LoadSize.ImageCount),
     //     };
     // }
     //

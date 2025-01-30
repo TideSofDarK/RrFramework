@@ -20,11 +20,7 @@ typedef enum
 } Rr_BufferUsageBits;
 typedef int Rr_BufferUsage;
 
-extern Rr_Buffer *Rr_CreateBufferNEW(
-    Rr_App *App,
-    size_t Size,
-    Rr_BufferUsage Usage,
-    bool Buffered);
+extern Rr_Buffer *Rr_CreateBufferNEW(Rr_App *App, size_t Size, Rr_BufferUsage Usage, bool Buffered);
 
 extern void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer);
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Buffer.h>
+#include <Rr/Rr_Graph.h>
 
 #ifdef __cplusplus
 extern "C" {

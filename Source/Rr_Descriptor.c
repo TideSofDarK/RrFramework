@@ -359,6 +359,7 @@ void Rr_UpdateDescriptorsState(
     Rr_DescriptorSetBinding *Binding)
 {
     memcpy(&State->States[SetIndex].Bindings[BindingIndex], Binding, sizeof(Rr_DescriptorSetBinding));
+    State->States[SetIndex].UsedBindings[BindingIndex] = true;
     State->States[SetIndex].Dirty = true;
     State->Dirty = true;
 }
@@ -371,29 +372,31 @@ void Rr_ApplyDescriptorsState(
     VkCommandBuffer CommandBuffer,
     VkPipelineBindPoint PipelineBindPoint)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    if(State->Dirty != true)
+    if(State->Dirty == false)
     {
         return;
     }
 
-    RR_SLICE(uint32_t) DynamicOffsets = { 0 };
-    RR_RESERVE_SLICE(&DynamicOffsets, RR_MAX_BINDINGS, Scratch.Arena);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
+    Rr_DescriptorWriter Writer = { 0 };
+
+    bool FirstSetSet = false;
     uint32_t FirstSet = 0;
     uint32_t DescriptorSetCount = 0;
     VkDescriptorSet DescriptorSets[RR_MAX_SETS];
-
-    Rr_DescriptorWriter Writer = { 0 };
+    size_t DynamicOffsetCount;
+    uint32_t DynamicOffsets[RR_MAX_BINDINGS * RR_MAX_SETS];
 
     for(size_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
     {
         Rr_DescriptorSetState *SetState = State->States + SetIndex;
-        if(SetState->Dirty == false)
+        if(SetState->Dirty == true)
         {
-            FirstSet++;
-            continue;
+            if(FirstSetSet == false)
+            {
+                FirstSet = SetIndex;
+            }
         }
 
         VkDescriptorSet DescriptorSet =
@@ -402,7 +405,7 @@ void Rr_ApplyDescriptorsState(
         for(size_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS; ++BindingIndex)
         {
             Rr_DescriptorSetBinding *Binding = SetState->Bindings + BindingIndex;
-            if(Binding->Used != true)
+            if(SetState->UsedBindings[BindingIndex] != true)
             {
                 continue;
             }
@@ -420,7 +423,8 @@ void Rr_ApplyDescriptorsState(
                         Binding->DescriptorType,
                         Scratch.Arena);
 
-                    *RR_PUSH_SLICE(&DynamicOffsets, NULL) = Binding->Buffer.Offset;
+                    DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
+                    DynamicOffsetCount++;
                 }
                 break;
                 case RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER:
@@ -445,22 +449,32 @@ void Rr_ApplyDescriptorsState(
 
         Rr_UpdateDescriptorSet(&Writer, Device, DescriptorSet);
         Rr_ResetDescriptorWriter(&Writer);
+
+        DescriptorSets[DescriptorSetCount] = DescriptorSet;
+        DescriptorSetCount++;
+
+        if(SetIndex == RR_MAX_SETS - 1 || State->States[SetIndex + 1].Dirty == false)
+        {
+            if(DescriptorSetCount > 0)
+            {
+                vkCmdBindDescriptorSets(
+                    CommandBuffer,
+                    PipelineBindPoint,
+                    PipelineLayout->Handle,
+                    FirstSet,
+                    DescriptorSetCount,
+                    DescriptorSets,
+                    DynamicOffsetCount,
+                    DynamicOffsets);
+
+                FirstSetSet = false;
+                DescriptorSetCount = 0;
+                DynamicOffsetCount = 0;
+            }
+        }
     }
 
-    if(DescriptorSetCount == 0)
-    {
-        return;
-    }
-
-    vkCmdBindDescriptorSets(
-        CommandBuffer,
-        PipelineBindPoint,
-        PipelineLayout->Handle,
-        FirstSet,
-        DescriptorSetCount,
-        DescriptorSets,
-        DynamicOffsets.Count,
-        DynamicOffsets.Data);
+    State->Dirty = false;
 
     Rr_DestroyScratch(Scratch);
 }
