@@ -9,7 +9,7 @@ struct Rr_GraphBatch;
 typedef struct Rr_PresentNode Rr_PresentNode;
 struct Rr_PresentNode
 {
-    Rr_PresentNodeInfo Info;
+    Rr_PresentMode Mode;
     VkPipelineStageFlags Stage;
 };
 

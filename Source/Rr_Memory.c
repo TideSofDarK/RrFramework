@@ -257,7 +257,7 @@ void **Rr_UpsertMap(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
             {
                 return &(*Map)->Value;
             }
-            Map = &(*Map)->Child[Hash >> 62];
+            Map = &(*Map)->Child[Hash >> 62]; /* @TODO: Assumes 64 bit pointers! */
         }
     }
     if(Arena == NULL)

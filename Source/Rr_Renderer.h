@@ -179,10 +179,6 @@ extern Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer);
 
 extern bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
 
-extern VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer);
-
-extern VkDeviceSize Rr_GetStorageAlignment(Rr_Renderer *Renderer);
-
 /* @TODO: Add format? */
 typedef struct Rr_Attachment Rr_Attachment;
 struct Rr_Attachment

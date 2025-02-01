@@ -58,6 +58,10 @@ extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App);
 
 extern Rr_CommandBuffer *Rr_GetCurrentCommandBuffer(Rr_App *App);
 
+extern size_t Rr_GetUniformAlignment(Rr_App *App);
+
+extern size_t Rr_GetStorageAlignment(Rr_App *App);
+
 #ifdef __cplusplus
 }
 #endif

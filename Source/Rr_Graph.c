@@ -7,29 +7,22 @@
 
 #include <assert.h>
 
-static void Rr_CopyDependencies(
-    Rr_GraphNode *GraphNode,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount,
-    Rr_Arena *Arena)
-{
-    RR_RESERVE_SLICE(&GraphNode->Dependencies, DependencyCount, Arena);
-    memcpy(GraphNode->Dependencies.Data, Dependencies, sizeof(Rr_GraphNode *) * DependencyCount);
-    GraphNode->Dependencies.Count = DependencyCount;
-}
+static VkAccessFlags AllVulkanReads =
+    VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT |
+    VK_ACCESS_UNIFORM_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT |
+    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
+    VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT;
 
-Rr_GraphNode *Rr_AddGraphNode(
-    Rr_Frame *Frame,
-    Rr_GraphNodeType Type,
-    const char *Name,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
+static VkAccessFlags AllVulkanWrites = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
+                                       VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+
+Rr_GraphNode *Rr_AddGraphNode(Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name)
 {
     Rr_GraphNode *GraphNode = RR_ALLOC(Frame->Arena, sizeof(Rr_GraphNode));
     GraphNode->Arena = Frame->Arena;
     GraphNode->Type = Type;
     GraphNode->Name = Name;
-    Rr_CopyDependencies(GraphNode, Dependencies, DependencyCount, Frame->Arena);
 
     *RR_PUSH_SLICE(&Frame->Graph.Nodes, Frame->Arena) = GraphNode;
 
@@ -45,50 +38,69 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
     VkCommandBuffer CommandBuffer = Frame->CommandBuffer.Handle;
 
     /* Submit barriers. */
-    /* @TODO: Split into two barriers: pre vertex work and post vertex work. */
+    /* @TODO: People suggesting batching these into two submits: pre vertex stage and post vertex stage. */
 
     size_t ImageBarrierCount = Batch->ImageBarriers.Count;
-    size_t BufferBarrierCount = Batch->BufferBarriers.Count;
-    if(ImageBarrierCount > 0 || BufferBarrierCount > 0)
+    for(size_t Index = 0; Index < ImageBarrierCount; ++Index)
     {
-        VkPipelineStageFlags StageMask = 0;
-
-        for(size_t Index = 0; Index < ImageBarrierCount; ++Index)
+        VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
+        Rr_ImageSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Barrier->image, NULL);
+        Rr_ImageSync **LocalState = RR_UPSERT(&Batch->LocalSync, Barrier->image, NULL);
+        VkPipelineStageFlags StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        if(*GlobalState != NULL)
         {
-            VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
-            Rr_ImageSync **State = RR_UPSERT(&Renderer->GlobalSync, Barrier->image, NULL);
-            if(*State != NULL)
-            {
-                StageMask |= (*State)->StageMask;
-            }
+            StageMask = (*GlobalState)->StageMask;
         }
+        vkCmdPipelineBarrier(CommandBuffer, StageMask, (*LocalState)->StageMask, 0, 0, NULL, 0, NULL, 1, Barrier);
+    }
 
-        for(size_t Index = 0; Index < BufferBarrierCount; ++Index)
+    size_t BufferCount = Batch->Buffers.Count;
+    for(size_t Index = 0; Index < BufferCount; ++Index)
+    {
+        VkBuffer Buffer = Batch->Buffers.Data[Index];
+
+        Rr_BufferSync **GlobalStatePtr = RR_UPSERT(&Renderer->GlobalSync, Buffer, NULL);
+        Rr_BufferSync *GlobalState = *GlobalStatePtr;
+        bool HasGlobalState = GlobalState != NULL;
+
+        Rr_BufferSync **LocalStatePtr = RR_UPSERT(&Batch->LocalSync, Buffer, NULL);
+        Rr_BufferSync *LocalState = *LocalStatePtr;
+
+        VkBufferMemoryBarrier *Barriers =
+            RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkBufferMemoryBarrier, LocalState->RangeCount);
+
+        size_t RangeIndex = 0;
+        for(Rr_BufferRange *Range = LocalState->SentinelRange.Next; Range != NULL; Range = Range->Next, ++RangeIndex)
         {
-            VkBufferMemoryBarrier *Barrier = Batch->BufferBarriers.Data + Index;
-            Rr_BufferSync **State = RR_UPSERT(&Renderer->GlobalSync, Barrier->buffer, NULL);
-            if(*State != NULL)
-            {
-                StageMask |= (*State)->StageMask;
-            }
+            Barriers[RangeIndex] = (VkBufferMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .pNext = NULL,
+                .srcAccessMask = HasGlobalState ? GlobalState->AccessMask : 0,
+                .dstAccessMask = LocalState->AccessMask,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .buffer = Buffer,
+                .offset = Range->Offset,
+                .size = Range->Size,
+            };
         }
-
-        if(StageMask == 0)
-        {
-            StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        }
-
         vkCmdPipelineBarrier(
             CommandBuffer,
-            StageMask,
-            Batch->StageMask,
+            HasGlobalState ? GlobalState->StageMask : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            LocalState->StageMask,
             0,
             0,
             NULL,
-            Batch->BufferBarriers.Count,
-            Batch->BufferBarriers.Data,
-            Batch->ImageBarriers.Count,
-            Batch->ImageBarriers.Data);
+            RangeIndex,
+            Barriers,
+            0,
+            NULL);
+        if(GlobalState == NULL)
+        {
+            *GlobalStatePtr = RR_ALLOC(App->PermanentArena, sizeof(Rr_BufferSync));
+            GlobalState = *GlobalStatePtr;
+        }
+        *GlobalState = *LocalState;
     }
 
     for(size_t Index = 0; Index < Batch->Nodes.Count; ++Index)
@@ -137,9 +149,6 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
         GraphNode->Executed = true;
     }
 
-    /* Apply batch state. */
-    /* @TODO: Account for node specific transitions. */
-
     for(size_t Index = 0; Index < ImageBarrierCount; ++Index)
     {
         VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
@@ -149,18 +158,6 @@ static void Rr_ExecuteGraphBatch(Rr_App *App, Rr_Graph *Graph, Rr_GraphBatch *Ba
             *GlobalState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
         }
         Rr_ImageSync **BatchState = RR_UPSERT(&Batch->LocalSync, Barrier->image, NULL);
-        *(*GlobalState) = *(*BatchState);
-    }
-
-    for(size_t Index = 0; Index < BufferBarrierCount; ++Index)
-    {
-        VkBufferMemoryBarrier *Barrier = Batch->BufferBarriers.Data + Index;
-        Rr_BufferSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Barrier->buffer, App->PermanentArena);
-        if(*GlobalState == NULL)
-        {
-            *GlobalState = RR_ALLOC(App->PermanentArena, sizeof(Rr_BufferSync));
-        }
-        Rr_BufferSync **BatchState = RR_UPSERT(&Batch->LocalSync, Barrier->buffer, NULL);
         *(*GlobalState) = *(*BatchState);
     }
 
@@ -185,28 +182,60 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             .Arena = Scratch.Arena,
         };
 
+        /* First Graph Pass */
+        /* Here we go through the nodes and accumulate barriers
+         * up until  */
+
+        for(size_t Index = 0; Index < Graph->Nodes.Count; ++Index)
+        {
+            Rr_GraphNode *GraphNode = Graph->Nodes.Data[Index];
+
+            bool NodeBatched = false;
+            switch(GraphNode->Type)
+            {
+                case RR_GRAPH_NODE_TYPE_GRAPHICS:
+                {
+                    Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
+                    NodeBatched = Rr_BatchGraphicsNode(App, &Batch, GraphicsNode);
+                }
+                break;
+                case RR_GRAPH_NODE_TYPE_PRESENT:
+                {
+                    Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
+                    NodeBatched = Rr_BatchPresentNode(App, &Batch, PresentNode);
+                }
+                break;
+                case RR_GRAPH_NODE_TYPE_BUILTIN:
+                {
+                    Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
+                    NodeBatched = Rr_BatchBuiltinNode(App, Graph, &Batch, BuiltinNode);
+                }
+                break;
+                case RR_GRAPH_NODE_TYPE_BLIT:
+                {
+                    Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
+                    NodeBatched = Rr_BatchBlitNode(App, Graph, &Batch, BlitNode);
+                }
+                break;
+                case RR_GRAPH_NODE_TYPE_TRANSFER:
+                {
+                    Rr_TransferNode *TransferNode = &GraphNode->Union.TransferNode;
+                    NodeBatched = Rr_BatchTransferNode(App, &Batch, TransferNode);
+                }
+                break;
+                default:
+                {
+                    Rr_LogAbort("Unsupported node type!");
+                }
+                break;
+            }
+        }
+
         for(size_t Index = 0; Index < Graph->Nodes.Count; ++Index)
         {
             Rr_GraphNode *GraphNode = Graph->Nodes.Data[Index];
 
             if(GraphNode->Executed == true)
-            {
-                continue;
-            }
-
-            /* Dependency check. */
-
-            bool DependenciesResolved = true;
-            for(size_t DepIndex = 0; DepIndex < GraphNode->Dependencies.Count; ++DepIndex)
-            {
-                Rr_GraphNode *Dependency = GraphNode->Dependencies.Data[DepIndex];
-                if(Dependency->Executed != true)
-                {
-                    DependenciesResolved = false;
-                    break;
-                }
-            }
-            if(DependenciesResolved != true)
             {
                 continue;
             }
@@ -354,74 +383,59 @@ void Rr_BatchImage(
     (*BatchState)->AccessMask = AccessMask;
     (*BatchState)->Layout = Layout;
     (*BatchState)->StageMask = StageMask;
-
-    Batch->StageMask |= StageMask;
 }
 
-bool Rr_BatchBufferPossible(Rr_Map **Sync, VkBuffer Buffer)
-{
-    Rr_BufferSync **State = RR_UPSERT(Sync, Buffer, NULL);
-
-    if(State != NULL)
-    {
-        /* @TODO: Should be true if for example current batch state matches
-         * requested state. */
-        return false;
-    }
-
-    return true;
-}
-
-void Rr_BatchBuffer(
+bool Rr_BatchBuffer(
     Rr_App *App,
     Rr_GraphBatch *Batch,
     VkBuffer Buffer,
+    VkDeviceSize Size,
+    VkDeviceSize Offset,
     VkPipelineStageFlags StageMask,
     VkAccessFlags AccessMask)
 {
     assert(Buffer != VK_NULL_HANDLE);
+    assert(Size != 0);
 
-    Rr_Renderer *Renderer = &App->Renderer;
-    Rr_Arena *Arena = Rr_GetFrameArena(App);
-
-    Rr_BufferSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Buffer, App->PermanentArena);
-
-    if(*GlobalState == NULL) /* First time referencing this buffer. */
+    Rr_BufferSync **LocalStatePtr = RR_UPSERT(&Batch->LocalSync, Buffer, Batch->Arena);
+    Rr_BufferSync *LocalState = *LocalStatePtr;
+    if(LocalState == NULL)
     {
-        *RR_PUSH_SLICE(&Batch->BufferBarriers, Arena) = (VkBufferMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-            .pNext = NULL,
-            .srcAccessMask = 0,
-            .dstAccessMask = AccessMask,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .buffer = Buffer,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE,
-        };
+        *LocalStatePtr = RR_ALLOC(Batch->Arena, sizeof(Rr_BufferSync));
+        LocalState = *LocalStatePtr;
     }
-    else /* Syncing with previous state. */
+    else
     {
-        *RR_PUSH_SLICE(&Batch->BufferBarriers, Arena) = (VkBufferMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = NULL,
-            .srcAccessMask = (*GlobalState)->AccessMask,
-            .dstAccessMask = AccessMask,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .buffer = Buffer,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE,
-        };
+        /* Syncing with previous state. */
+
+        bool IsRead = (AccessMask & AllVulkanReads) != 0;
+        bool IsWrite = (AccessMask & AllVulkanWrites) != 0;
+        bool LocalIsRead = (LocalState->AccessMask & AllVulkanReads) != 0;
+        bool LocalIsWrite = (LocalState->AccessMask & AllVulkanWrites) != 0;
+        if(IsRead && LocalIsRead)
+        {
+            LocalState->AccessMask |= AccessMask;
+            LocalState->StageMask |= StageMask;
+            LocalState->From = RR_MIN(LocalState->From, Offset);
+            LocalState->To = RR_MAX(LocalState->To, Offset + Size);
+            return true;
+        }
+        else if(IsWrite && LocalIsWrite)
+        {
+            if(LocalState->AccessMask != AccessMask || LocalState->StageMask != AccessMask)
+            {
+                return false;
+            }
+            if()
+            LocalState->From = RR_MIN(LocalState->From, Offset);
+            LocalState->To = RR_MAX(LocalState->To, Offset + Size);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
-    Rr_BufferSync **BatchState = RR_UPSERT(&Batch->LocalSync, Buffer, Arena);
-    if(*BatchState == NULL)
-    {
-        *BatchState = RR_ALLOC(Arena, sizeof(Rr_ImageSync));
-    }
-    (*BatchState)->AccessMask = AccessMask;
-    (*BatchState)->StageMask = StageMask;
-
-    Batch->StageMask |= StageMask;
+    return true;
 }

@@ -12,14 +12,12 @@ Rr_GraphNode *Rr_AddBlitNode(
     Rr_Image *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
-    Rr_BlitMode Mode,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
+    Rr_BlitMode Mode)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BLIT, Name, Dependencies, DependencyCount);
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BLIT, Name);
 
     Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
     *BlitNode = (Rr_BlitNode){
@@ -84,8 +82,8 @@ static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
 {
     Rect->X = RR_CLAMP(0, Rect->X, (int)Extent->width);
     Rect->Y = RR_CLAMP(0, Rect->Y, (int)Extent->height);
-    Rect->Width = RR_CLAMP(1, Rect->Width, (int)Extent->width - Rect->X);
-    Rect->Height = RR_CLAMP(1, Rect->Height, (int)Extent->height - Rect->Y);
+    Rect->Width = RR_CLAMP(0, Rect->Width, (int)Extent->width - Rect->X);
+    Rect->Height = RR_CLAMP(0, Rect->Height, (int)Extent->height - Rect->Y);
 
     return Rect->Width > 0 && Rect->Height > 0;
 }

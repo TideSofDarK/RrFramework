@@ -7,35 +7,14 @@
 #include <assert.h>
 #include <string.h>
 
-Rr_GraphNode *Rr_AddTransferNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_Buffer *DstBuffer,
-    Rr_Data Data,
-    size_t *InOutOffset,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
+Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name, Rr_Buffer *DstBuffer, Rr_Data Data, size_t DstOffset)
 {
-    assert(DstBuffer != NULL);
-    assert(Data.Pointer != NULL);
-    assert(Data.Size != 0);
-    assert(InOutOffset != NULL);
-
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_TRANSFER, Name, Dependencies, DependencyCount);
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_TRANSFER, Name);
 
     Rr_AllocatedBuffer *StagingBuffer = Rr_GetCurrentAllocatedBuffer(App, Frame->StagingBuffer.Buffer);
-    size_t Alignment = 0;
-    if((DstBuffer->Usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0)
-    {
-        Alignment = RR_MAX(Rr_GetUniformAlignment(&App->Renderer), Alignment);
-    }
-    if((DstBuffer->Usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0)
-    {
-        Alignment = RR_MAX(Rr_GetStorageAlignment(&App->Renderer), Alignment);
-    }
 
     size_t SrcOffset = Frame->StagingBuffer.Offset;
 
@@ -43,8 +22,6 @@ Rr_GraphNode *Rr_AddTransferNode(
     {
         Rr_LogAbort("Transfer: source buffer overflow!");
     }
-
-    size_t DstOffset = RR_ALIGN_POW2(*InOutOffset, Alignment);
 
     if(DstOffset + Data.Size > DstBuffer->AllocatedBuffers[0].AllocationInfo.size)
     {
@@ -62,23 +39,27 @@ Rr_GraphNode *Rr_AddTransferNode(
     TransferNode->DstOffset = DstOffset;
     TransferNode->Size = Data.Size;
 
-    *InOutOffset = DstOffset;
-
     return GraphNode;
 }
 
 bool Rr_BatchTransferNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_TransferNode *Node)
 {
-    if(Rr_BatchBufferPossible(&Batch->LocalSync, Node->SrcBuffer->Handle) != true ||
-       Rr_BatchBufferPossible(&Batch->LocalSync, Node->DstBuffer->Handle) != true)
-    {
-        return false;
-    }
-
-    Rr_BatchBuffer(App, Batch, Node->SrcBuffer->Handle, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-    Rr_BatchBuffer(App, Batch, Node->DstBuffer->Handle, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
-
-    return true;
+    return Rr_BatchBuffer(
+               App,
+               Batch,
+               Node->SrcBuffer->Handle,
+               Node->Size,
+               Node->SrcOffset,
+               VK_PIPELINE_STAGE_TRANSFER_BIT,
+               VK_ACCESS_TRANSFER_READ_BIT) &&
+           Rr_BatchBuffer(
+               App,
+               Batch,
+               Node->DstBuffer->Handle,
+               Node->Size,
+               Node->DstOffset,
+               VK_PIPELINE_STAGE_TRANSFER_BIT,
+               VK_ACCESS_TRANSFER_WRITE_BIT);
 }
 
 void Rr_ExecuteTransferNode(Rr_App *App, Rr_TransferNode *Node, Rr_Arena *Arena)

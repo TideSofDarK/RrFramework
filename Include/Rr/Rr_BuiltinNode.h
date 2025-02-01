@@ -13,11 +13,7 @@ typedef enum Rr_DrawTextFlags
     RR_DRAW_TEXT_FLAGS_ANIMATION_BIT = 1
 } Rr_DrawTextFlags;
 
-extern Rr_GraphNode *Rr_AddBuiltinNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount);
+extern Rr_GraphNode *Rr_AddBuiltinNode(Rr_App *App, const char *Name);
 
 extern void Rr_DrawCustomText(
     Rr_App *App,

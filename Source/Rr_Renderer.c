@@ -741,6 +741,7 @@ void Rr_Draw(Rr_App *App)
     /* We setup virtual Rr_Image for client use of swapchain image.
      * Graph stores Rr_AllocatedImage pointer for use during this frame.
      * Here we put real, actual swapchain image into this pointer. */
+
     Frame->AllocatedSwapchainImage = &Frame->SwapchainImage.AllocatedImages[Renderer->CurrentFrameIndex];
     *Frame->AllocatedSwapchainImage = (Rr_AllocatedImage){
         .Handle = Swapchain->Images.Data[SwapchainImageIndex],
@@ -750,9 +751,11 @@ void Rr_Draw(Rr_App *App)
 
     /* Swapchain size might be different at this point.
      * So it needs updating. */
+
     Frame->SwapchainImage.Extent = Renderer->Swapchain.Extent;
 
     /* Attempt to properly synchronize first time use of a swapchain image. */
+
     if(Rr_HasImageState(&Renderer->GlobalSync, Frame->AllocatedSwapchainImage->Handle) != true)
     {
         Rr_SetImageState(
@@ -831,14 +834,14 @@ bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer)
     return Renderer->TransferQueue.Handle != VK_NULL_HANDLE;
 }
 
-VkDeviceSize Rr_GetUniformAlignment(Rr_Renderer *Renderer)
+size_t Rr_GetUniformAlignment(Rr_App *App)
 {
-    return Renderer->PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
+    return App->Renderer.PhysicalDevice.Properties.properties.limits.minUniformBufferOffsetAlignment;
 }
 
-VkDeviceSize Rr_GetStorageAlignment(Rr_Renderer *Renderer)
+size_t Rr_GetStorageAlignment(Rr_App *App)
 {
-    return Renderer->PhysicalDevice.Properties.properties.limits.minStorageBufferOffsetAlignment;
+    return App->Renderer.PhysicalDevice.Properties.properties.limits.minStorageBufferOffsetAlignment;
 }
 
 Rr_Arena *Rr_GetFrameArena(Rr_App *App)

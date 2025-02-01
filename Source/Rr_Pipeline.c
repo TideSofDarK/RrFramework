@@ -507,5 +507,13 @@ void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout)
 {
     vkDestroyPipelineLayout(App->Renderer.Device, PipelineLayout->Handle, NULL);
 
+    for(size_t Index = 0; Index < RR_MAX_SETS; ++Index)
+    {
+        if(PipelineLayout->DescriptorSetLayouts[Index] != VK_NULL_HANDLE)
+        {
+            vkDestroyDescriptorSetLayout(App->Renderer.Device, PipelineLayout->DescriptorSetLayouts[Index], NULL);
+        }
+    }
+
     RR_RETURN_FREE_LIST_ITEM(&App->Renderer.PipelineLayouts, PipelineLayout);
 }

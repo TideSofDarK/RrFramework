@@ -12,9 +12,7 @@ extern Rr_GraphNode *Rr_AddTransferNode(
     const char *Name,
     Rr_Buffer *DstBuffer,
     Rr_Data Data,
-    size_t *InOutOffset,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount);
+    size_t Offset);
 
 #ifdef __cplusplus
 }

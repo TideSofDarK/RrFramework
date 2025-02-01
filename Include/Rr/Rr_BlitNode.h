@@ -20,9 +20,7 @@ extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_Image *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
-    Rr_BlitMode Mode,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount);
+    Rr_BlitMode Mode);
 
 #ifdef __cplusplus
 }

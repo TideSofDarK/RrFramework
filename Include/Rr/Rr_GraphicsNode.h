@@ -72,9 +72,7 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     Rr_ColorTarget *ColorTargets,
     size_t ColorTargetCount,
-    Rr_DepthTarget *DepthTarget,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount);
+    Rr_DepthTarget *DepthTarget);
 
 extern void Rr_DrawIndexed(
     Rr_GraphNode *Node,

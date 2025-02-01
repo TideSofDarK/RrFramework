@@ -396,6 +396,7 @@ void Rr_ApplyDescriptorsState(
             if(FirstSetSet == false)
             {
                 FirstSet = SetIndex;
+                FirstSetSet = true;
             }
         }
 

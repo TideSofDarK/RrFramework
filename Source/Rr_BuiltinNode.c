@@ -8,12 +8,12 @@
 #include <SDL3/SDL_assert.h>
 #include <SDL3/SDL_timer.h>
 
-Rr_GraphNode *Rr_AddBuiltinNode(Rr_App *App, const char *Name, Rr_GraphNode **Dependencies, size_t DependencyCount)
+Rr_GraphNode *Rr_AddBuiltinNode(Rr_App *App, const char *Name)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BUILTIN, Name, Dependencies, DependencyCount);
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BUILTIN, Name);
 
     Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
     RR_ZERO_PTR(BuiltinNode);

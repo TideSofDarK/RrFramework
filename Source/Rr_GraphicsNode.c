@@ -22,16 +22,14 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     Rr_ColorTarget *ColorTargets,
     size_t ColorTargetCount,
-    Rr_DepthTarget *DepthTarget,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount)
+    Rr_DepthTarget *DepthTarget)
 {
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_GRAPHICS, Name, Dependencies, DependencyCount);
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_GRAPHICS, Name);
 
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
     if(ColorTargetCount > 0)

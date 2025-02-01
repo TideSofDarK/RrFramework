@@ -23,6 +23,8 @@ struct Rr_BufferSync
 {
     VkPipelineStageFlags StageMask;
     VkAccessFlags AccessMask;
+    VkDeviceSize From;
+    VkDeviceSize To;
 };
 
 struct Rr_GraphNode
@@ -35,11 +37,9 @@ struct Rr_GraphNode
         Rr_BlitNode BlitNode;
         Rr_TransferNode TransferNode;
     } Union;
-    Rr_Arena *Arena;
     Rr_GraphNodeType Type;
     const char *Name;
-    RR_SLICE(Rr_GraphNode *) Dependencies;
-    bool Executed;
+    Rr_Arena *Arena;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
@@ -54,8 +54,7 @@ struct Rr_GraphBatch
 {
     RR_SLICE(Rr_GraphNode *) Nodes;
     RR_SLICE(VkImageMemoryBarrier) ImageBarriers;
-    RR_SLICE(VkBufferMemoryBarrier) BufferBarriers;
-    VkPipelineStageFlags StageMask;
+    RR_SLICE(VkBuffer) Buffers;
     VkPipelineStageFlags SwapchainImageStage;
     Rr_Map *LocalSync;
     Rr_Arena *Arena;
@@ -66,12 +65,7 @@ struct Rr_Graph
     RR_SLICE(Rr_GraphNode *) Nodes;
 };
 
-extern Rr_GraphNode *Rr_AddGraphNode(
-    struct Rr_Frame *Frame,
-    Rr_GraphNodeType Type,
-    const char *Name,
-    Rr_GraphNode **Dependencies,
-    size_t DependencyCount);
+extern Rr_GraphNode *Rr_AddGraphNode(struct Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 
@@ -86,11 +80,11 @@ extern void Rr_BatchImage(
     VkAccessFlags AccessMask,
     VkImageLayout Layout);
 
-extern bool Rr_BatchBufferPossible(Rr_Map **Sync, VkBuffer Buffer);
-
-extern void Rr_BatchBuffer(
+extern bool Rr_BatchBuffer(
     Rr_App *App,
     Rr_GraphBatch *Batch,
     VkBuffer Buffer,
+    VkDeviceSize Size,
+    VkDeviceSize Offset,
     VkPipelineStageFlags StageMask,
     VkAccessFlags AccessMask);
