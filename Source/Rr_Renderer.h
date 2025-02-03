@@ -26,6 +26,7 @@ struct Rr_Swapchain
     SDL_AtomicInt ResizePending;
     RR_SLICE(VkImage) Images;
     RR_SLICE(VkImageView) ImageViews;
+    RR_SLICE(VkFramebuffer) Framebuffers;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
@@ -39,17 +40,18 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    Rr_Image SwapchainImage;
-    Rr_AllocatedImage *AllocatedSwapchainImage;
-    VkPipelineStageFlags SwapchainImageStage;
+    size_t SwapchainImageIndex;
 
     VkCommandPool CommandPool;
-    VkCommandBuffer CommandBuffers[2];
-    size_t CurrentCommandBufferIndex;
-    Rr_CommandBuffer CommandBuffer;
+    VkCommandBuffer MainCommandBuffers[2];
+    VkCommandBuffer PresentCommandBuffers[2];
+    VkCommandBuffer MainCommandBuffer;
+    VkCommandBuffer PresentCommandBuffer;
+    size_t CommandBufferIndex;
 
     VkSemaphore SwapchainSemaphore;
-    VkSemaphore RenderSemaphore;
+    VkSemaphore MainSemaphore;
+    VkSemaphore PresentSemaphore;
     VkFence RenderFence;
 
     Rr_DescriptorAllocator DescriptorAllocator;
@@ -86,6 +88,9 @@ struct Rr_Renderer
 
     VkSurfaceKHR Surface;
     Rr_Swapchain Swapchain;
+    Rr_GraphicsPipeline *PresentPipeline;
+    Rr_PipelineLayout *PresentLayout;
+    VkRenderPass PresentRenderPass;
 
     /* Device */
 

@@ -27,6 +27,18 @@ struct Rr_BufferSync
     VkDeviceSize To;
 };
 
+typedef struct Rr_GraphNodeResource Rr_GraphNodeResource;
+struct Rr_GraphNodeResource
+{
+    union
+    {
+        Rr_ImageSync Image;
+        Rr_BufferSync Buffer;
+    } Union;
+    void *Handle;
+    bool IsImage;
+};
+
 struct Rr_GraphNode
 {
     union
@@ -39,6 +51,9 @@ struct Rr_GraphNode
     } Union;
     Rr_GraphNodeType Type;
     const char *Name;
+    size_t OriginalIndex;
+    RR_SLICE(Rr_GraphNodeResource) Reads;
+    RR_SLICE(Rr_GraphNodeResource) Writes;
     Rr_Arena *Arena;
 };
 
@@ -66,6 +81,10 @@ struct Rr_Graph
 };
 
 extern Rr_GraphNode *Rr_AddGraphNode(struct Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name);
+
+extern Rr_GraphNodeResource *Rr_AddGraphNodeRead(Rr_GraphNode *Node);
+
+extern Rr_GraphNodeResource *Rr_AddGraphNodeWrite(Rr_GraphNode *Node);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 

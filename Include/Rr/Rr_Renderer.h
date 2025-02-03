@@ -48,15 +48,9 @@ typedef enum
 } Rr_ShaderStageBits;
 typedef uint32_t Rr_ShaderStage;
 
-typedef struct Rr_CommandBuffer Rr_CommandBuffer;
-
 extern Rr_Arena *Rr_GetFrameArena(Rr_App *App);
 
-extern struct Rr_Image *Rr_GetSwapchainImage(Rr_App *App);
-
 extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App);
-
-extern Rr_CommandBuffer *Rr_GetCurrentCommandBuffer(Rr_App *App);
 
 extern size_t Rr_GetUniformAlignment(Rr_App *App);
 

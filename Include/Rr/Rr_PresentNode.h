@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Rr/Rr_Graph.h>
+#include <Rr/Rr_Image.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,6 +17,7 @@ typedef enum Rr_PresentMode
 extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
+    Rr_Image *Image,
     Rr_PresentMode Mode);
 
 #ifdef __cplusplus

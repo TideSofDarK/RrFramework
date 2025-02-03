@@ -5,6 +5,7 @@
 Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
+    Rr_Image *Image,
     Rr_PresentMode Mode)
 {
     Rr_Renderer *Renderer = &App->Renderer;
@@ -14,6 +15,7 @@ Rr_GraphNode *Rr_AddPresentNode(
 
     Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
     PresentNode->Mode = Mode;
+    PresentNode->Image = Rr_GetCurrentAllocatedImage(App, Image);
 
     return GraphNode;
 }
@@ -44,4 +46,21 @@ bool Rr_BatchPresentNode(Rr_App *App, Rr_GraphBatch *Batch, Rr_PresentNode *Node
 
 void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node)
 {
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    VkFramebuffer Framebuffer = Renderer->Swapchain.Framebuffers.Data[Frame->SwapchainImageIndex];
+
+    VkRenderPassBeginInfo RenderPassBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext = NULL,
+        .framebuffer = Framebuffer,
+        .renderArea = (VkRect2D){ { 0, 0 }, { Renderer->Swapchain.Extent.width, Renderer->Swapchain.Extent.height } },
+        .renderPass = Renderer->PresentRenderPass,
+        .clearValueCount = 0,
+        .pClearValues = NULL,
+    };
+    vkCmdBeginRenderPass(Frame->PresentCommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(Frame->PresentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Renderer->PresentPipeline->Handle);
+    vkCmdDraw(Frame->PresentCommandBuffer, 3, 1, 0, 0);
+    vkCmdEndRenderPass(Frame->PresentCommandBuffer);
 }
