@@ -6,12 +6,7 @@
 extern "C" {
 #endif
 
-typedef struct Rr_Asset Rr_Asset;
-struct Rr_Asset
-{
-    size_t Size;
-    char *Data;
-};
+typedef struct Rr_Data Rr_Asset;
 
 #if defined(RR_USE_RC)
 
@@ -75,18 +70,6 @@ typedef struct Rr_AssetRef
         .End = incbin_##NAME##_end,                                   \
     }
 
-#endif
-
-/* Make Data Helper */
-
-#ifdef __cplusplus
-#define RR_MAKE_DATA_ASSET(Asset) { Asset.Data, Asset.Size }
-#else
-#define RR_MAKE_DATA_ASSET(Asset) \
-    (Rr_Data)                     \
-    {                             \
-        Asset.Data, Asset.Size    \
-    }
 #endif
 
 extern Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);

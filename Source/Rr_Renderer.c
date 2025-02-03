@@ -432,9 +432,11 @@ static void Rr_InitPresent(Rr_App *App)
     ColorTargets[0].Format = Rr_GetSwapchainFormat(App);
 
     Rr_PipelineInfo PipelineInfo = { 0 };
+    PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
+    PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_CLOCKWISE;
     PipelineInfo.Layout = Renderer->PresentLayout;
-    PipelineInfo.VertexShaderSPV = RR_MAKE_DATA_ASSET(Rr_LoadAsset(RR_BUILTIN_PRESENT_VERT_SPV));
-    PipelineInfo.FragmentShaderSPV = RR_MAKE_DATA_ASSET(Rr_LoadAsset(RR_BUILTIN_PRESENT_FRAG_SPV));
+    PipelineInfo.VertexShaderSPV = Rr_LoadAsset(RR_BUILTIN_PRESENT_VERT_SPV);
+    PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(RR_BUILTIN_PRESENT_FRAG_SPV);
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
 

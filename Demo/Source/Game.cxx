@@ -684,8 +684,8 @@ static void Init(Rr_App *App, void *UserData)
 
     Rr_PipelineInfo PipelineInfo = {};
     PipelineInfo.Layout = PipelineLayout;
-    PipelineInfo.VertexShaderSPV = RR_MAKE_DATA_ASSET(Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV));
-    PipelineInfo.FragmentShaderSPV = RR_MAKE_DATA_ASSET(Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV));
+    PipelineInfo.VertexShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV);
+    PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV);
     PipelineInfo.VertexAttributeCount = RR_ARRAY_COUNT(VertexAttributes);
     PipelineInfo.VertexAttributes = VertexAttributes;
     PipelineInfo.ColorTargetCount = 1;
@@ -717,11 +717,19 @@ static void Init(Rr_App *App, void *UserData)
         RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
         false);
 
-    UniformBuffer = Rr_CreateBufferNEW(
-        App,
-        RR_KILOBYTES(4),
-        RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        true);
+    UniformBuffer = Rr_CreateBufferNEW(App, RR_KILOBYTES(4), RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true);
+}
+
+static Rr_Vec4 GetRandomVec4()
+{
+    return { Distribution(Generator), Distribution(Generator), Distribution(Generator), 1.0f };
+}
+
+static STest GetRandomSTest()
+{
+    STest Test;
+    Test.Offset = { Distribution(Generator) * 0.1f, Distribution(Generator) * 0.1f, Distribution(Generator) * 0.1f };
+    return Test;
 }
 
 static void Iterate(Rr_App *App, void *UserData)
@@ -730,11 +738,8 @@ static void Iterate(Rr_App *App, void *UserData)
 
     size_t UniformAlignment = Rr_GetUniformAlignment(App);
 
-    Rr_Vec4 UniformValueA{ Distribution(Generator), Distribution(Generator), Distribution(Generator), 1.0f };
-    STest UniformValueB;
-    UniformValueB.Offset = { Distribution(Generator) * 0.1f,
-                             Distribution(Generator) * 0.1f,
-                             Distribution(Generator) * 0.1f };
+    Rr_Vec4 UniformValueA = GetRandomVec4();
+    STest UniformValueB = GetRandomSTest();
 
     size_t OffsetA = 0;
     Rr_AddTransferNode(App, "transfer_a", UniformBuffer, RR_MAKE_DATA_STRUCT(UniformValueA), OffsetA);
@@ -760,37 +765,37 @@ static void Iterate(Rr_App *App, void *UserData)
 
     /* Draw to Swapchain Image */
 
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(App);
-
-    Rr_ColorTarget SwapchainImageTarget = {
-        .Image = SwapchainImage,
-        .Slot = 0,
-        .LoadOp = RR_LOAD_OP_CLEAR,
-        .StoreOp = RR_STORE_OP_STORE,
-        .Clear = { 0.2f, 0.2f, 0.2f, 1.0f },
-    };
-    Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr);
-    Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-    Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, OffsetA, sizeof(Rr_Vec4));
-    Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBuffer, 1, 3, OffsetB, sizeof(STest));
-    Rr_BindVertexBuffer(Node, VertexBuffer, 0, 0);
-    Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
-    Rr_DrawIndexed(Node, 3, 1, 0, 0, 0);
+    // Rr_Image *SwapchainImage = Rr_GetSwapchainImage(App);
+    //
+    // Rr_ColorTarget SwapchainImageTarget = {
+    //     .Image = SwapchainImage,
+    //     .Slot = 0,
+    //     .LoadOp = RR_LOAD_OP_CLEAR,
+    //     .StoreOp = RR_STORE_OP_STORE,
+    //     .Clear = { 0.2f, 0.2f, 0.2f, 1.0f },
+    // };
+    // Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr);
+    // Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
+    // Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, OffsetA, sizeof(Rr_Vec4));
+    // Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBuffer, 1, 3, OffsetB, sizeof(STest));
+    // Rr_BindVertexBuffer(Node, VertexBuffer, 0, 0);
+    // Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
+    // Rr_DrawIndexed(Node, 3, 1, 0, 0, 0);
 
     /* Blit to Swapchain Image */
 
-    Rr_AddBlitNode(
-        App,
-        "blit_test",
-        ColorAttachment,
-        SwapchainImage,
-        { 0, 0, 1024, 1024 },
-        { 0, 0, 512, 512 },
-        RR_BLIT_MODE_COLOR);
+    // Rr_AddBlitNode(
+    //     App,
+    //     "blit_test",
+    //     ColorAttachment,
+    //     SwapchainImage,
+    //     { 0, 0, 1024, 1024 },
+    //     { 0, 0, 512, 512 },
+    //     RR_BLIT_MODE_COLOR);
 
     /* Present */
 
-    Rr_AddPresentNode(App, "present", RR_PRESENT_MODE_NORMAL);
+    Rr_AddPresentNode(App, "present", ColorAttachment, RR_PRESENT_MODE_NORMAL);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)

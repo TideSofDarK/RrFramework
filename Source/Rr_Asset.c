@@ -11,8 +11,8 @@ Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
     HGLOBAL Memory = LoadResource(NULL, Resource);
 
     Rr_Asset Asset;
-    Asset.Length = SizeofResource(NULL, Resource);
-    Asset.Data = (char *)LockResource(Memory);
+    Asset.Size = SizeofResource(NULL, Resource);
+    Asset.Pointer = (char *)LockResource(Memory);
     return Asset;
 }
 
@@ -21,8 +21,8 @@ Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
     Rr_Asset Asset = {
-        .Data = AssetRef.Start,
         .Size = (size_t)(AssetRef.End - AssetRef.Start),
+        .Pointer = AssetRef.Start,
     };
     return Asset;
 }

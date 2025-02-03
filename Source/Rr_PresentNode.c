@@ -2,11 +2,7 @@
 
 #include "Rr_App.h"
 
-Rr_GraphNode *Rr_AddPresentNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_Image *Image,
-    Rr_PresentMode Mode)
+Rr_GraphNode *Rr_AddPresentNode(Rr_App *App, const char *Name, Rr_Image *Image, Rr_PresentMode Mode)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);

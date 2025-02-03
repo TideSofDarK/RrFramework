@@ -14,11 +14,7 @@ typedef enum Rr_PresentMode
     RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
 
-extern Rr_GraphNode *Rr_AddPresentNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_Image *Image,
-    Rr_PresentMode Mode);
+extern Rr_GraphNode *Rr_AddPresentNode(Rr_App *App, const char *Name, Rr_Image *Image, Rr_PresentMode Mode);
 
 #ifdef __cplusplus
 }

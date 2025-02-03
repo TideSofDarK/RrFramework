@@ -41,8 +41,8 @@
 typedef struct Rr_Data Rr_Data;
 struct Rr_Data
 {
-    void *Pointer;
     size_t Size;
+    void *Pointer;
 };
 
 /* Make Data Helper */
