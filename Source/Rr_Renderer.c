@@ -882,6 +882,11 @@ size_t Rr_GetStorageAlignment(Rr_App *App)
     return App->Renderer.PhysicalDevice.Properties.properties.limits.minStorageBufferOffsetAlignment;
 }
 
+Rr_Graph *Rr_GetGraph(Rr_App *App)
+{
+    return &Rr_GetCurrentFrame(&App->Renderer)->Graph;
+}
+
 Rr_Arena *Rr_GetFrameArena(Rr_App *App)
 {
     return Rr_GetCurrentFrame(&App->Renderer)->Arena;

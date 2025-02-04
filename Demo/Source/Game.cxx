@@ -734,6 +734,11 @@ static STest GetRandomSTest()
 
 static void Iterate(Rr_App *App, void *UserData)
 {
+    /* Register Graph Resources */
+
+    Rr_GraphImageHandle ColorAttachmentHandle = Rr_RegisterGraphImage(App, ColorAttachment);
+    Rr_GraphBufferHandle UniformBufferHandle = Rr_RegisterGraphBuffer(App, UniformBuffer);
+
     /* Update Uniform Buffer */
 
     size_t UniformAlignment = Rr_GetUniformAlignment(App);
@@ -742,9 +747,10 @@ static void Iterate(Rr_App *App, void *UserData)
     STest UniformValueB = GetRandomSTest();
 
     size_t OffsetA = 0;
-    Rr_AddTransferNode(App, "transfer_a", UniformBuffer, RR_MAKE_DATA_STRUCT(UniformValueA), OffsetA);
+    Rr_GraphNode *TransferNode = Rr_AddTransferNode(App, "transfer_a", UniformBufferHandle);
+    Rr_TransferBufferData(App, TransferNode, RR_MAKE_DATA_STRUCT(UniformValueA), OffsetA);
     size_t OffsetB = RR_ALIGN_POW2(sizeof(Rr_Vec4), UniformAlignment);
-    Rr_AddTransferNode(App, "transfer_b", UniformBuffer, RR_MAKE_DATA_STRUCT(UniformValueB), OffsetB);
+    Rr_TransferBufferData(App, TransferNode, RR_MAKE_DATA_STRUCT(UniformValueB), OffsetB);
 
     /* Draw Offscreen */
 

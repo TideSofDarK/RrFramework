@@ -8,6 +8,29 @@ extern "C" {
 #endif
 
 struct Rr_Image;
+struct Rr_Graph;
+
+typedef enum
+{
+    RR_INDEX_TYPE_UINT8,
+    RR_INDEX_TYPE_UINT16,
+    RR_INDEX_TYPE_UINT32,
+} Rr_IndexType;
+
+typedef enum
+{
+    RR_LOAD_OP_LOAD,
+    RR_LOAD_OP_CLEAR,
+    RR_LOAD_OP_DONT_CARE,
+} Rr_LoadOp;
+
+typedef enum
+{
+    RR_STORE_OP_STORE,
+    RR_STORE_OP_DONT_CARE,
+    RR_STORE_OP_RESOLVE,
+    RR_STORE_OP_RESOLVE_AND_STORE,
+} Rr_StoreOp;
 
 typedef enum
 {
@@ -47,6 +70,8 @@ typedef enum
     RR_SHADER_STAGE_FRAGMENT_BIT = (1 << 1),
 } Rr_ShaderStageBits;
 typedef uint32_t Rr_ShaderStage;
+
+extern struct Rr_Graph *Rr_GetGraph(Rr_App *App);
 
 extern Rr_Arena *Rr_GetFrameArena(Rr_App *App);
 
