@@ -93,11 +93,7 @@ struct Rr_GraphicsNode
 {
     Rr_ColorTarget *ColorTargets;
     size_t ColorTargetCount;
-    Rr_AllocatedImage **AllocatedColorTargets;
-
     Rr_DepthTarget *DepthTarget;
-    Rr_AllocatedImage *AllocatedDepthTarget;
-
     Rr_GraphicsNodeFunction *EncodedFirst;
     Rr_GraphicsNodeFunction *Encoded;
 };
@@ -105,7 +101,7 @@ struct Rr_GraphicsNode
 typedef struct Rr_BindIndexBufferArgs Rr_BindIndexBufferArgs;
 struct Rr_BindIndexBufferArgs
 {
-    Rr_Buffer *Buffer;
+    Rr_GraphBufferHandle *BufferHandle;
     uint32_t Slot;
     uint32_t Offset;
     VkIndexType Type;
@@ -114,7 +110,7 @@ struct Rr_BindIndexBufferArgs
 typedef struct Rr_BindBufferArgs Rr_BindBufferArgs;
 struct Rr_BindBufferArgs
 {
-    Rr_Buffer *Buffer;
+    Rr_GraphBufferHandle *BufferHandle;
     uint32_t Slot;
     uint32_t Offset;
 };
@@ -132,7 +128,7 @@ struct Rr_DrawIndexedArgs
 typedef struct Rr_BindUniformBufferArgs Rr_BindUniformBufferArgs;
 struct Rr_BindUniformBufferArgs
 {
-    Rr_Buffer *Buffer;
+    Rr_GraphBufferHandle *BufferHandle;
     uint32_t Set;
     uint32_t Binding;
     uint32_t Offset;
@@ -142,7 +138,7 @@ struct Rr_BindUniformBufferArgs
 typedef struct Rr_PresentNode Rr_PresentNode;
 struct Rr_PresentNode
 {
-    Rr_AllocatedImage *Image;
+    Rr_GraphImageHandle ImageHandle;
     Rr_PresentMode Mode;
     VkPipelineStageFlags Stage;
 };
@@ -174,7 +170,6 @@ struct Rr_GraphNode
     RR_SLICE(Rr_GraphBufferWrite) BufferWrites;
     RR_SLICE(Rr_GraphImageRead) ImageReads;
     RR_SLICE(Rr_GraphImageWrite) ImageWrites;
-    Rr_Arena *Arena;
 };
 
 typedef struct Rr_GraphEdge Rr_GraphEdge;
@@ -190,23 +185,20 @@ struct Rr_GraphBatch
     RR_SLICE(Rr_GraphNode *) Nodes;
     RR_SLICE(VkImageMemoryBarrier) ImageBarriers;
     RR_SLICE(VkBuffer) Buffers;
-    VkPipelineStageFlags SwapchainImageStage;
     Rr_Map *LocalSync;
-    Rr_Arena *Arena;
 };
 
 struct Rr_Graph
 {
     RR_SLICE(Rr_GraphNode *) Nodes;
-    RR_SLICE(Rr_AllocatedBuffer *) Buffers;
-    RR_SLICE(Rr_AllocatedImage *) Images;
+    RR_SLICE(void *) ResolvedResources;
+    RR_SLICE(Rr_GraphResourceHandle) RootResources;
+    Rr_Map *ResourceToNode;
 };
 
 extern Rr_GraphNode *Rr_AddGraphNode(struct Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name);
 
-extern void Rr_AddBufferRead(Rr_GraphNode *Node, Rr_GraphBufferHandle *Handle);
-
-extern void Rr_AddBufferWrite(Rr_GraphNode *Node, Rr_GraphBufferHandle *Handle);
+extern void Rr_AddGraphWrite(Rr_Graph *Graph, Rr_GraphNode *Node, Rr_GraphResourceHandle *Handle, Rr_Arena *Arena);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 

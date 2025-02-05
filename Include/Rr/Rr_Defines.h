@@ -48,24 +48,24 @@ struct Rr_Data
 /* Make Data Helper */
 
 #ifdef __cplusplus
-#define RR_MAKE_DATA_STRUCT(Struct) { &(Struct), sizeof(Struct) }
-#define RR_MAKE_DATA_ARRAY(Array)   { (Array), sizeof(Array) }
-#define RR_MAKE_DATA(Pointer, Size) { Pointer, Size }
+#define RR_MAKE_DATA_STRUCT(Struct) { sizeof(Struct), &(Struct) }
+#define RR_MAKE_DATA_ARRAY(Array)   { sizeof(Array), (Array) }
+#define RR_MAKE_DATA(Size, Pointer) { Size, Pointer }
 #else
 #define RR_MAKE_DATA_STRUCT(Struct) \
     (Rr_Data)                       \
     {                               \
-        &(Struct), sizeof(Struct)   \
+        sizeof(Struct), &(Struct)   \
     }
 #define RR_MAKE_DATA_ARRAY(Struct) \
     (Rr_Data)                      \
     {                              \
-        (Struct), sizeof(Struct)   \
+        sizeof(Struct), (Struct)   \
     }
-#define RR_MAKE_DATA(Pointer, Size) \
+#define RR_MAKE_DATA(Size, Pointer) \
     (Rr_Data)                       \
     {                               \
-        Pointer, Size               \
+        Size, Pointer               \
     }
 #endif
 

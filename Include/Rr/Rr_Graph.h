@@ -24,6 +24,7 @@ typedef enum Rr_GraphNodeType
 
 typedef struct Rr_GraphResourceHandle Rr_GraphBufferHandle;
 typedef struct Rr_GraphResourceHandle Rr_GraphImageHandle;
+typedef struct Rr_GraphResourceHandle Rr_GraphResourceHandle;
 struct Rr_GraphResourceHandle
 {
     uint16_t Index;
@@ -47,7 +48,7 @@ union Rr_ColorClear
 typedef struct Rr_ColorTarget Rr_ColorTarget;
 struct Rr_ColorTarget
 {
-    Rr_GraphBufferHandle *Image;
+    Rr_GraphBufferHandle *ImageHandle;
     uint32_t Slot;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
@@ -64,7 +65,7 @@ struct Rr_DepthClear
 typedef struct Rr_DepthTarget Rr_DepthTarget;
 struct Rr_DepthTarget
 {
-    Rr_GraphBufferHandle *Image;
+    Rr_GraphBufferHandle *ImageHandle;
     uint32_t Slot;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
@@ -78,20 +79,20 @@ typedef enum Rr_PresentMode
     RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
 
-extern Rr_GraphNode *Rr_AddPresentNode(Rr_App *App, const char *Name, Rr_GraphImageHandle ImageHandle, Rr_PresentMode Mode);
+extern Rr_GraphNode *Rr_AddPresentNode(Rr_App *App, const char *Name, Rr_GraphImageHandle *ImageHandle, Rr_PresentMode Mode);
 
 extern Rr_GraphNode *Rr_AddTransferNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphBufferHandle DstBufferHandle);
+    Rr_GraphBufferHandle *DstBufferHandle);
 
 extern void Rr_TransferBufferData(Rr_App *App, Rr_GraphNode *Node, Rr_Data Data, size_t DstOffset);
 
 extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphImageHandle SrcImage,
-    Rr_GraphImageHandle DstImage,
+    Rr_GraphImageHandle *SrcImage,
+    Rr_GraphImageHandle *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_BlitMode Mode);
@@ -111,11 +112,11 @@ extern void Rr_DrawIndexed(
     int32_t VertexOffset,
     uint32_t FirstInstance);
 
-extern void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_GraphBufferHandle Buffer, uint32_t Slot, uint32_t Offset);
+extern void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_GraphBufferHandle *BufferHandle, uint32_t Slot, uint32_t Offset);
 
 extern void Rr_BindIndexBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle *Buffer,
+    Rr_GraphBufferHandle *BufferHandle,
     uint32_t Slot,
     uint32_t Offset,
     Rr_IndexType Type);
@@ -128,7 +129,7 @@ extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect);
 
 extern void Rr_BindGraphicsUniformBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle Buffer,
+    Rr_GraphBufferHandle *BufferHandle,
     uint32_t Set,
     uint32_t Binding,
     uint32_t Offset,
