@@ -34,7 +34,12 @@ Rr_GraphNode *Rr_AddGraphNode(Rr_Frame *Frame, Rr_GraphNodeType Type, const char
     return GraphNode;
 }
 
-void Rr_AddGraphWrite(Rr_Graph *Graph, Rr_GraphNode *Node, Rr_GraphResourceHandle *Handle, Rr_Arena *Arena)
+void Rr_AddNodeDependency(
+    Rr_Graph *Graph,
+    Rr_GraphNode *Node,
+    Rr_GraphResourceHandle *Handle,
+    Rr_NodeDependencyType DependencyType,
+    Rr_Arena *Arena)
 {
     Rr_GraphNode **NodeInMap = RR_UPSERT(&Graph->ResourceToNode, *(uintptr_t *)Handle, Arena);
     if(*NodeInMap == NULL)
@@ -1382,7 +1387,12 @@ void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_GraphBufferHandle *BufferHandle,
         };
 }
 
-void Rr_BindIndexBuffer(Rr_GraphNode *Node, Rr_GraphBufferHandle *BufferHandle, uint32_t Slot, uint32_t Offset, Rr_IndexType Type)
+void Rr_BindIndexBuffer(
+    Rr_GraphNode *Node,
+    Rr_GraphBufferHandle *BufferHandle,
+    uint32_t Slot,
+    uint32_t Offset,
+    Rr_IndexType Type)
 {
     RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER, Rr_BindIndexBufferArgs) =
         (Rr_BindIndexBufferArgs){

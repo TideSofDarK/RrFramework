@@ -2,8 +2,8 @@
 
 #include <Rr/Rr_Graph.h>
 
-#include "Rr_Image.h"
 #include "Rr_Buffer.h"
+#include "Rr_Image.h"
 #include "Rr_Vulkan.h"
 
 struct Rr_Frame;
@@ -154,6 +154,25 @@ struct Rr_BlitNode
     VkImageAspectFlags AspectMask;
 };
 
+typedef enum
+{
+    RR_NODE_DEPENDENCY_TYPE_READ,
+    RR_NODE_DEPENDENCY_TYPE_WRITE,
+    RR_NODE_DEPENDENCY_TYPE_READWRITE,
+} Rr_NodeDependencyType;
+
+typedef struct Rr_NodeDependency Rr_NodeDependency;
+struct Rr_NodeDependency
+{
+    union
+    {
+        Rr_BufferSync Buffer;
+        Rr_ImageSync Image;
+    } State;
+    Rr_GraphResourceHandle Handle;
+    Rr_NodeDependencyType DependencyType;
+};
+
 struct Rr_GraphNode
 {
     union
@@ -166,17 +185,8 @@ struct Rr_GraphNode
     Rr_GraphNodeType Type;
     const char *Name;
     size_t OriginalIndex;
-    RR_SLICE(Rr_GraphBufferRead) BufferReads;
-    RR_SLICE(Rr_GraphBufferWrite) BufferWrites;
-    RR_SLICE(Rr_GraphImageRead) ImageReads;
-    RR_SLICE(Rr_GraphImageWrite) ImageWrites;
-};
-
-typedef struct Rr_GraphEdge Rr_GraphEdge;
-struct Rr_GraphEdge
-{
-    Rr_GraphNode *From;
-    Rr_GraphNode *To;
+    RR_SLICE(Rr_NodeDependency) Reads;
+    RR_SLICE(Rr_NodeDependency) Writes;
 };
 
 typedef struct Rr_GraphBatch Rr_GraphBatch;
@@ -198,7 +208,12 @@ struct Rr_Graph
 
 extern Rr_GraphNode *Rr_AddGraphNode(struct Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name);
 
-extern void Rr_AddGraphWrite(Rr_Graph *Graph, Rr_GraphNode *Node, Rr_GraphResourceHandle *Handle, Rr_Arena *Arena);
+extern void Rr_AddNodeDependency(
+    Rr_Graph *Graph,
+    Rr_GraphNode *Node,
+    Rr_GraphResourceHandle *Handle,
+    Rr_NodeDependencyType DependencyType,
+    Rr_Arena *Arena);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 
