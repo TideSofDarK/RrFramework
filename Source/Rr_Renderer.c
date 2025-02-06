@@ -735,9 +735,9 @@ void Rr_PrepareFrame(Rr_App *App)
 
     /* We cycle between two command buffers to allow having
      * combined iterate + draw stage. */
-    Frame->CurrentCommandBufferIndex = (Frame->CurrentCommandBufferIndex + 1) % 2;
-    Frame->MainCommandBuffer = Frame->MainCommandBuffers[Frame->CurrentCommandBufferIndex];
-    Frame->PresentCommandBuffer = Frame->PresentCommandBuffers[Frame->CurrentCommandBufferIndex];
+    Frame->CommandBufferIndex = (Frame->CommandBufferIndex + 1) % 2;
+    Frame->MainCommandBuffer = Frame->MainCommandBuffers[Frame->CommandBufferIndex];
+    Frame->PresentCommandBuffer = Frame->PresentCommandBuffers[Frame->CommandBufferIndex];
     VkCommandBufferBeginInfo CommandBufferBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext = NULL,

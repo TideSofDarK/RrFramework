@@ -23,34 +23,6 @@ struct Rr_BufferSync
     VkAccessFlags AccessMask;
 };
 
-typedef struct Rr_GraphBufferRead Rr_GraphBufferRead;
-struct Rr_GraphBufferRead
-{
-    Rr_BufferSync State;
-    Rr_GraphBufferHandle Handle;
-};
-
-typedef struct Rr_GraphBufferWrite Rr_GraphBufferWrite;
-struct Rr_GraphBufferWrite
-{
-    Rr_BufferSync State;
-    Rr_GraphBufferHandle Handle;
-};
-
-typedef struct Rr_GraphImageRead Rr_GraphImageRead;
-struct Rr_GraphImageRead
-{
-    Rr_ImageSync State;
-    Rr_GraphImageHandle Handle;
-};
-
-typedef struct Rr_GraphImageWrite Rr_GraphImageWrite;
-struct Rr_GraphImageWrite
-{
-    Rr_ImageSync State;
-    Rr_GraphImageHandle Handle;
-};
-
 /* Nodes */
 
 typedef struct Rr_Transfer Rr_Transfer;
@@ -101,7 +73,7 @@ struct Rr_GraphicsNode
 typedef struct Rr_BindIndexBufferArgs Rr_BindIndexBufferArgs;
 struct Rr_BindIndexBufferArgs
 {
-    Rr_GraphBufferHandle *BufferHandle;
+    Rr_GraphBufferHandle BufferHandle;
     uint32_t Slot;
     uint32_t Offset;
     VkIndexType Type;
@@ -110,7 +82,7 @@ struct Rr_BindIndexBufferArgs
 typedef struct Rr_BindBufferArgs Rr_BindBufferArgs;
 struct Rr_BindBufferArgs
 {
-    Rr_GraphBufferHandle *BufferHandle;
+    Rr_GraphBufferHandle BufferHandle;
     uint32_t Slot;
     uint32_t Offset;
 };
@@ -128,7 +100,7 @@ struct Rr_DrawIndexedArgs
 typedef struct Rr_BindUniformBufferArgs Rr_BindUniformBufferArgs;
 struct Rr_BindUniformBufferArgs
 {
-    Rr_GraphBufferHandle *BufferHandle;
+    Rr_GraphBufferHandle BufferHandle;
     uint32_t Set;
     uint32_t Binding;
     uint32_t Offset;
@@ -156,10 +128,10 @@ struct Rr_BlitNode
 
 typedef enum
 {
-    RR_NODE_DEPENDENCY_TYPE_READ,
-    RR_NODE_DEPENDENCY_TYPE_WRITE,
-    RR_NODE_DEPENDENCY_TYPE_READWRITE,
-} Rr_NodeDependencyType;
+    RR_NODE_DEPENDENCY_TYPE_READ_BIT = 1,
+    RR_NODE_DEPENDENCY_TYPE_WRITE_BIT = 2,
+} Rr_NodeDependencyTypeBits;
+typedef uint32_t Rr_NodeDependencyType;
 
 typedef struct Rr_NodeDependency Rr_NodeDependency;
 struct Rr_NodeDependency
@@ -171,6 +143,7 @@ struct Rr_NodeDependency
     } State;
     Rr_GraphResourceHandle Handle;
     Rr_NodeDependencyType DependencyType;
+    bool IsImage;
 };
 
 struct Rr_GraphNode
@@ -187,6 +160,7 @@ struct Rr_GraphNode
     size_t OriginalIndex;
     RR_SLICE(Rr_NodeDependency) Reads;
     RR_SLICE(Rr_NodeDependency) Writes;
+    Rr_Arena *Arena;
 };
 
 typedef struct Rr_GraphBatch Rr_GraphBatch;
@@ -203,17 +177,10 @@ struct Rr_Graph
     RR_SLICE(Rr_GraphNode *) Nodes;
     RR_SLICE(void *) ResolvedResources;
     RR_SLICE(Rr_GraphResourceHandle) RootResources;
-    Rr_Map *ResourceToNode;
+    Rr_Map *ResourceWriteToNode;
 };
 
 extern Rr_GraphNode *Rr_AddGraphNode(struct Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name);
-
-extern void Rr_AddNodeDependency(
-    Rr_Graph *Graph,
-    Rr_GraphNode *Node,
-    Rr_GraphResourceHandle *Handle,
-    Rr_NodeDependencyType DependencyType,
-    Rr_Arena *Arena);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
 
@@ -241,6 +208,6 @@ extern void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBu
 
 extern void Rr_ExecuteTransferNode(Rr_App *App, Rr_Graph *Graph, Rr_TransferNode *Node, VkCommandBuffer CommandBuffer);
 
-extern void Rr_ExecuteBlitNode(Rr_App *App, Rr_BlitNode *Node, VkCommandBuffer CommandBuffer);
+extern void Rr_ExecuteBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_BlitNode *Node, VkCommandBuffer CommandBuffer);
 
-extern void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_GraphicsNode *Node, Rr_Arena *Arena, VkCommandBuffer CommandBuffer);
+extern void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node, VkCommandBuffer CommandBuffer);

@@ -15,6 +15,16 @@
 #define RR_EXTERN extern
 #endif
 
+#if UINTPTR_MAX == UINT32_MAX
+    #define RR_HALF_UINTPTR uint16_t
+#elif UINTPTR_MAX == UINT64_MAX
+    #define RR_HALF_UINTPTR uint32_t
+#else
+    #error "Unrecognized UINTPTR_MAX value!"
+#endif
+
+#define RR_HAS_BIT(Value, Bit) ((Value & Bit) != 0)
+
 #define RR_MIN(A, B)      (((A) < (B)) ? (A) : (B))
 #define RR_MAX(A, B)      (((A) > (B)) ? (A) : (B))
 #define RR_CLAMP(A, X, B) (((X) < (A)) ? (A) : ((X) > (B)) ? (B) : (X))

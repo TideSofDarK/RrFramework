@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_Pipeline.h>
+#include <Rr/Rr_Renderer.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,13 +22,17 @@ typedef enum Rr_GraphNodeType
     RR_GRAPH_NODE_TYPE_TRANSFER,
 } Rr_GraphNodeType;
 
-typedef struct Rr_GraphResourceHandle Rr_GraphBufferHandle;
-typedef struct Rr_GraphResourceHandle Rr_GraphImageHandle;
-typedef struct Rr_GraphResourceHandle Rr_GraphResourceHandle;
-struct Rr_GraphResourceHandle
+typedef union Rr_GraphResourceHandle Rr_GraphBufferHandle;
+typedef union Rr_GraphResourceHandle Rr_GraphImageHandle;
+typedef union Rr_GraphResourceHandle Rr_GraphResourceHandle;
+union Rr_GraphResourceHandle
 {
-    uint16_t Index;
-    uint16_t Generation;
+    struct
+    {
+        RR_HALF_UINTPTR Index;
+        RR_HALF_UINTPTR Generation;
+    } Values;
+    uintptr_t Hash;
 };
 
 typedef enum Rr_BlitMode
@@ -79,12 +83,13 @@ typedef enum Rr_PresentMode
     RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
 
-extern Rr_GraphNode *Rr_AddPresentNode(Rr_App *App, const char *Name, Rr_GraphImageHandle *ImageHandle, Rr_PresentMode Mode);
-
-extern Rr_GraphNode *Rr_AddTransferNode(
+extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphBufferHandle *DstBufferHandle);
+    Rr_GraphImageHandle *ImageHandle,
+    Rr_PresentMode Mode);
+
+extern Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name, Rr_GraphBufferHandle *DstBufferHandle);
 
 extern void Rr_TransferBufferData(Rr_App *App, Rr_GraphNode *Node, Rr_Data Data, size_t DstOffset);
 
