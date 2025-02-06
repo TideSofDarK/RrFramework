@@ -43,8 +43,6 @@ struct Rr_Frame
     size_t SwapchainImageIndex;
 
     VkCommandPool CommandPool;
-    VkCommandBuffer MainCommandBuffers[2];
-    VkCommandBuffer PresentCommandBuffers[2];
     VkCommandBuffer MainCommandBuffer;
     VkCommandBuffer PresentCommandBuffer;
     size_t CommandBufferIndex;

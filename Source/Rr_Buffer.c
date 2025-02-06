@@ -6,32 +6,6 @@
 
 #include <assert.h>
 
-static VkBufferUsageFlags Rr_GetVulkanBufferUsage(Rr_BufferUsage Usage)
-{
-    VkBufferUsageFlags Result = 0;
-    if((Usage & RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    }
-    if((Usage & RR_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    }
-    if((Usage & RR_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    }
-    if((Usage & RR_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    }
-    if((Usage & RR_BUFFER_USAGE_INDIRECT_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-    }
-    return Result;
-}
-
 Rr_Buffer *Rr_CreateBuffer_Internal(
     Rr_App *App,
     size_t Size,
@@ -79,7 +53,7 @@ Rr_Buffer *Rr_CreateBuffer_Internal(
     return Buffer;
 }
 
-Rr_Buffer *Rr_CreateBufferNEW(Rr_App *App, size_t Size, Rr_BufferUsage Usage, bool Buffered)
+Rr_Buffer *Rr_CreateBuffer(Rr_App *App, size_t Size, Rr_BufferUsage Usage, bool Buffered)
 {
     return Rr_CreateBuffer_Internal(
         App,

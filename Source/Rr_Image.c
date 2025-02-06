@@ -10,64 +10,6 @@
 
 #include <assert.h>
 
-static VkBorderColor Rr_GetVulkanBorderColor(Rr_BorderColor BorderColor)
-{
-    switch(BorderColor)
-    {
-        case RR_BORDER_COLOR_INT_TRANSPARENT_BLACK:
-            return VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
-        case RR_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
-            return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-        case RR_BORDER_COLOR_INT_OPAQUE_BLACK:
-            return VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        case RR_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
-            return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-        case RR_BORDER_COLOR_INT_OPAQUE_WHITE:
-            return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
-        default:
-            return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    }
-}
-
-static VkSamplerAddressMode Rr_GetVulkanSamplerAddressMode(Rr_SamplerAddressMode SamplerAddressMode)
-{
-    switch(SamplerAddressMode)
-    {
-        case RR_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:
-            return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-        case RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:
-            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        case RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:
-            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-        case RR_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
-            return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
-        default:
-            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    }
-}
-
-static VkSamplerMipmapMode Rr_GetVulkanSamplerMipmapMode(Rr_SamplerMipmapMode SamplerMipmapMode)
-{
-    switch(SamplerMipmapMode)
-    {
-        case RR_SAMPLER_MIPMAP_MODE_NEAREST:
-            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        default:
-            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    }
-}
-
-static VkFilter Rr_GetVulkanFilter(Rr_Filter Filter)
-{
-    switch(Filter)
-    {
-        case RR_FILTER_NEAREST:
-            return VK_FILTER_NEAREST;
-        default:
-            return VK_FILTER_LINEAR;
-    }
-}
-
 Rr_Sampler *Rr_CreateSampler(Rr_App *App, Rr_SamplerInfo *Info)
 {
     assert(Info != NULL);
@@ -610,54 +552,6 @@ Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t He
 // {
 //     return App->Renderer.NullTextures.Normal;
 // }
-
-void Rr_ChainImageBarrier_Aspect(
-    Rr_ImageBarrier *TransitionImage,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
-    VkImageLayout NewLayout,
-    VkImageAspectFlagBits Aspect)
-{
-    vkCmdPipelineBarrier(
-        TransitionImage->CommandBuffer,
-        TransitionImage->StageMask,
-        DstStageMask,
-        0,
-        0,
-        NULL,
-        0,
-        NULL,
-        1,
-        &(VkImageMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = NULL,
-            .image = TransitionImage->Image,
-            .oldLayout = TransitionImage->Layout,
-            .newLayout = NewLayout,
-            .subresourceRange = Rr_GetImageSubresourceRange(Aspect),
-            .srcAccessMask = TransitionImage->AccessMask,
-            .dstAccessMask = DstAccessMask,
-        });
-
-    TransitionImage->Layout = NewLayout;
-    TransitionImage->StageMask = DstStageMask;
-    TransitionImage->AccessMask = DstAccessMask;
-}
-
-void Rr_ChainImageBarrier(
-    Rr_ImageBarrier *TransitionImage,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
-    VkImageLayout NewLayout)
-{
-    Rr_ChainImageBarrier_Aspect(
-        TransitionImage,
-        DstStageMask,
-        DstAccessMask,
-        NewLayout,
-        NewLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ? VK_IMAGE_ASPECT_DEPTH_BIT
-                                                                      : VK_IMAGE_ASPECT_COLOR_BIT);
-}
 
 Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_App *App, Rr_Image *Image)
 {

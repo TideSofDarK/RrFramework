@@ -628,9 +628,9 @@ static Rr_Buffer *IndexBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_Sampler *LinearSampler;
 
-static std::random_device RandomDevice;
-static std::mt19937 Generator(RandomDevice());
-static std::uniform_real_distribution<float> Distribution(0.0f, 1.0f);
+std::random_device RandomDevice;
+std::mt19937 Generator(RandomDevice());
+std::uniform_real_distribution<float> Distribution(0.0f, 1.0f);
 
 struct STest
 {
@@ -698,7 +698,7 @@ static void Init(Rr_App *App, void *UserData)
         0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
     };
 
-    VertexBuffer = Rr_CreateBufferNEW(App, sizeof(VertexData), RR_BUFFER_USAGE_VERTEX_BUFFER_BIT, false);
+    VertexBuffer = Rr_CreateBuffer(App, sizeof(VertexData), RR_BUFFER_USAGE_VERTEX_BUFFER_BIT, false);
     Rr_UploadToDeviceBufferImmediate(App, VertexBuffer, RR_MAKE_DATA_ARRAY(VertexData));
 
     uint32_t IndexData[] = {
@@ -707,7 +707,7 @@ static void Init(Rr_App *App, void *UserData)
         0,
     };
 
-    IndexBuffer = Rr_CreateBufferNEW(App, sizeof(IndexData), RR_BUFFER_USAGE_INDEX_BUFFER_BIT, false);
+    IndexBuffer = Rr_CreateBuffer(App, sizeof(IndexData), RR_BUFFER_USAGE_INDEX_BUFFER_BIT, false);
     Rr_UploadToDeviceBufferImmediate(App, IndexBuffer, RR_MAKE_DATA_ARRAY(IndexData));
 
     ColorAttachment = Rr_CreateImage(
@@ -717,7 +717,7 @@ static void Init(Rr_App *App, void *UserData)
         RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
         false);
 
-    UniformBuffer = Rr_CreateBufferNEW(App, RR_KILOBYTES(4), RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true);
+    UniformBuffer = Rr_CreateBuffer(App, RR_KILOBYTES(4), RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true);
 }
 
 static Rr_Vec4 GetRandomVec4()

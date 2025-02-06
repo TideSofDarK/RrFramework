@@ -142,7 +142,6 @@ struct Rr_NodeDependency
         Rr_ImageSync Image;
     } State;
     Rr_GraphResourceHandle Handle;
-    Rr_NodeDependencyType DependencyType;
     bool IsImage;
 };
 
@@ -160,7 +159,7 @@ struct Rr_GraphNode
     size_t OriginalIndex;
     RR_SLICE(Rr_NodeDependency) Reads;
     RR_SLICE(Rr_NodeDependency) Writes;
-    Rr_Arena *Arena;
+    Rr_Graph *Graph;
 };
 
 typedef struct Rr_GraphBatch Rr_GraphBatch;
@@ -178,6 +177,7 @@ struct Rr_Graph
     RR_SLICE(void *) ResolvedResources;
     RR_SLICE(Rr_GraphResourceHandle) RootResources;
     Rr_Map *ResourceWriteToNode;
+    Rr_Arena *Arena;
 };
 
 extern Rr_GraphNode *Rr_AddGraphNode(struct Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name);

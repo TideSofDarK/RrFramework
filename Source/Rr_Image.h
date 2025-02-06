@@ -1,11 +1,12 @@
 #pragma once
 
+#include <Rr/Rr_Image.h>
+
 #include "Rr_Memory.h"
 #include "Rr_UploadContext.h"
 
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Asset.h>
-#include <Rr/Rr_Image.h>
 
 #include <vma/vk_mem_alloc.h>
 
@@ -66,28 +67,5 @@ extern void Rr_GetImageSizePNGMemory(size_t DataSize, char *Data, Rr_Arena *Aren
 extern void Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize);
 
 extern void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize);
-
-typedef struct Rr_ImageBarrier Rr_ImageBarrier;
-struct Rr_ImageBarrier
-{
-    VkCommandBuffer CommandBuffer;
-    VkImage Image;
-    VkPipelineStageFlags StageMask;
-    VkAccessFlags AccessMask;
-    VkImageLayout Layout;
-};
-
-extern void Rr_ChainImageBarrier_Aspect(
-    Rr_ImageBarrier *TransitionImage,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
-    VkImageLayout NewLayout,
-    VkImageAspectFlagBits Aspect);
-
-extern void Rr_ChainImageBarrier(
-    Rr_ImageBarrier *TransitionImage,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
-    VkImageLayout NewLayout);
 
 extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_App *App, Rr_Image *Image);

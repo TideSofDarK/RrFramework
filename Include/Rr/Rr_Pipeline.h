@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Rr_App.h"
-
+#include <Rr/Rr_App.h>
 #include <Rr/Rr_Memory.h>
 #include <Rr/Rr_Renderer.h>
 
