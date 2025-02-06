@@ -40,7 +40,11 @@ Rr_GraphNode *Rr_AddGraphNode(Rr_Frame *Frame, Rr_GraphNodeType Type, const char
     return GraphNode;
 }
 
-static inline void Rr_AddGraphWrite(Rr_Graph *Graph, Rr_GraphNode *Node, Rr_GraphResourceHandle *Handle, Rr_Arena *Arena)
+static inline void Rr_AddGraphWrite(
+    Rr_Graph *Graph,
+    Rr_GraphNode *Node,
+    Rr_GraphResourceHandle *Handle,
+    Rr_Arena *Arena)
 {
     Rr_GraphNode **NodeInMap = RR_UPSERT(&Graph->ResourceWriteToNode, *(uintptr_t *)Handle, Arena);
     if(*NodeInMap == NULL)

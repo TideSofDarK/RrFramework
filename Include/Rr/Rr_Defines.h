@@ -16,11 +16,11 @@
 #endif
 
 #if UINTPTR_MAX == UINT32_MAX
-    #define RR_HALF_UINTPTR uint16_t
+#define RR_HALF_UINTPTR uint16_t
 #elif UINTPTR_MAX == UINT64_MAX
-    #define RR_HALF_UINTPTR uint32_t
+#define RR_HALF_UINTPTR uint32_t
 #else
-    #error "Unrecognized UINTPTR_MAX value!"
+#error "Unrecognized UINTPTR_MAX value!"
 #endif
 
 #define RR_HAS_BIT(Value, Bit) ((Value & Bit) != 0)
