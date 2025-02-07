@@ -56,7 +56,7 @@ struct Rr_ColorTarget
     uint32_t Slot;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
-    Rr_ColorClear Clear;
+    Rr_ColorClear ColorClear;
 };
 
 typedef struct Rr_DepthClear Rr_DepthClear;

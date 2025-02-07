@@ -11,9 +11,12 @@
 
 #include <SDL3/SDL_atomic.h>
 
-struct Rr_CommandBuffer
+typedef struct Rr_SwapchainImage Rr_SwapchainImage;
+struct Rr_SwapchainImage
 {
-    VkCommandBuffer Handle;
+    VkImage Handle;
+    VkImageView View;
+    VkFramebuffer Framebuffer;
 };
 
 typedef struct Rr_Swapchain Rr_Swapchain;
@@ -24,9 +27,7 @@ struct Rr_Swapchain
     VkColorSpaceKHR ColorSpace;
     VkExtent3D Extent;
     SDL_AtomicInt ResizePending;
-    RR_SLICE(VkImage) Images;
-    RR_SLICE(VkImageView) ImageViews;
-    RR_SLICE(VkFramebuffer) Framebuffers;
+    RR_SLICE(Rr_SwapchainImage) Images;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
@@ -40,7 +41,8 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    size_t SwapchainImageIndex;
+    VkFramebuffer SwapchainFramebuffer;
+    Rr_Image VirtualSwapchainImage;
 
     VkCommandPool CommandPool;
     VkCommandBuffer MainCommandBuffer;

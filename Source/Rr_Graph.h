@@ -112,7 +112,6 @@ struct Rr_PresentNode
 {
     Rr_GraphImageHandle ImageHandle;
     Rr_PresentMode Mode;
-    VkPipelineStageFlags Stage;
 };
 
 typedef struct Rr_BlitNode Rr_BlitNode;

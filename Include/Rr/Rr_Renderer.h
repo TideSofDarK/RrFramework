@@ -77,6 +77,8 @@ extern Rr_Arena *Rr_GetFrameArena(Rr_App *App);
 
 extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App);
 
+extern struct Rr_Image *Rr_GetSwapchainImage(Rr_App *App);
+
 extern size_t Rr_GetUniformAlignment(Rr_App *App);
 
 extern size_t Rr_GetStorageAlignment(Rr_App *App);

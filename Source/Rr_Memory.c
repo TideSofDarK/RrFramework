@@ -46,8 +46,7 @@ Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
     CommitSize = RR_ALIGN_POW2(CommitSize, PageSize);
 
     char *Data = Rr_ReserveMemory(ReserveSize);
-    bool Success = Rr_CommitMemory(Data, CommitSize);
-    assert(Success);
+    Rr_CommitMemory(Data, CommitSize);
 
     Rr_Arena *Arena = (Rr_Arena *)Data;
     *Arena = (Rr_Arena){

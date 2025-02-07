@@ -620,7 +620,8 @@
 //     }
 // };
 
-static Rr_Image *ColorAttachment;
+static Rr_Image *ColorAttachmentA;
+static Rr_Image *ColorAttachmentB;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
@@ -710,9 +711,16 @@ static void Init(Rr_App *App, void *UserData)
     IndexBuffer = Rr_CreateBuffer(App, sizeof(IndexData), RR_BUFFER_USAGE_INDEX_BUFFER_BIT, false);
     Rr_UploadToDeviceBufferImmediate(App, IndexBuffer, RR_MAKE_DATA_ARRAY(IndexData));
 
-    ColorAttachment = Rr_CreateImage(
+    ColorAttachmentA = Rr_CreateImage(
         App,
         { 1024, 1024, 1 },
+        Rr_GetSwapchainFormat(App),
+        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
+        false);
+
+    ColorAttachmentB = Rr_CreateImage(
+        App,
+        { 512, 512, 1 },
         Rr_GetSwapchainFormat(App),
         RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
         false);
@@ -736,7 +744,8 @@ static void Iterate(Rr_App *App, void *UserData)
 {
     /* Register Graph Resources */
 
-    Rr_GraphImageHandle ColorAttachmentHandle = Rr_RegisterGraphImage(App, ColorAttachment);
+    Rr_GraphImageHandle ColorAttachmentAHandle = Rr_RegisterGraphImage(App, ColorAttachmentA);
+    Rr_GraphImageHandle ColorAttachmentBHandle = Rr_RegisterGraphImage(App, ColorAttachmentB);
     Rr_GraphBufferHandle UniformBufferHandle = Rr_RegisterGraphBuffer(App, UniformBuffer);
     Rr_GraphBufferHandle VertexBufferHandle = Rr_RegisterGraphBuffer(App, VertexBuffer);
     Rr_GraphBufferHandle IndexBufferHandle = Rr_RegisterGraphBuffer(App, IndexBuffer);
@@ -754,61 +763,77 @@ static void Iterate(Rr_App *App, void *UserData)
     size_t OffsetB = RR_ALIGN_POW2(sizeof(Rr_Vec4), UniformAlignment);
     Rr_TransferBufferData(App, TransferNode, RR_MAKE_DATA_STRUCT(UniformValueB), OffsetB);
 
-    /* Draw Offscreen */
+    /* Draw Offscreen A */
 
-    Rr_ColorTarget OffscreenTarget = {
-        .ImageHandle = &ColorAttachmentHandle,
+    Rr_ColorTarget OffscreenTargetA = {
+        .ImageHandle = &ColorAttachmentAHandle,
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
-        .Clear = { 0.9f, 0.2f, 0.9f, 1.0f },
+        .ColorClear = { 0.9f, 0.2f, 0.9f, 1.0f },
     };
-    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, "offscreen", &OffscreenTarget, 1, nullptr);
-    Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-    Rr_BindGraphicsUniformBuffer(OffscreenNode, &UniformBufferHandle, 0, 0, OffsetA, sizeof(Rr_Vec4));
-    Rr_BindGraphicsUniformBuffer(OffscreenNode, &UniformBufferHandle, 1, 3, OffsetB, sizeof(STest));
-    Rr_BindVertexBuffer(OffscreenNode, &VertexBufferHandle, 0, 0);
-    Rr_BindIndexBuffer(OffscreenNode, &IndexBufferHandle, 0, 0, RR_INDEX_TYPE_UINT32);
-    Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
+    Rr_GraphNode *OffscreenNodeA = Rr_AddGraphicsNode(App, "offscreen_A", &OffscreenTargetA, 1, nullptr);
+    Rr_BindGraphicsPipeline(OffscreenNodeA, GraphicsPipeline);
+    Rr_BindGraphicsUniformBuffer(OffscreenNodeA, &UniformBufferHandle, 0, 0, OffsetA, sizeof(Rr_Vec4));
+    Rr_BindGraphicsUniformBuffer(OffscreenNodeA, &UniformBufferHandle, 1, 3, OffsetB, sizeof(STest));
+    Rr_BindVertexBuffer(OffscreenNodeA, &VertexBufferHandle, 0, 0);
+    Rr_BindIndexBuffer(OffscreenNodeA, &IndexBufferHandle, 0, 0, RR_INDEX_TYPE_UINT32);
+    Rr_DrawIndexed(OffscreenNodeA, 3, 1, 0, 0, 0);
 
-    /* Draw to Swapchain Image */
+    /* Draw Offscreen B */
 
-    // Rr_Image *SwapchainImage = Rr_GetSwapchainImage(App);
-    //
-    // Rr_ColorTarget SwapchainImageTarget = {
-    //     .Image = SwapchainImage,
-    //     .Slot = 0,
-    //     .LoadOp = RR_LOAD_OP_CLEAR,
-    //     .StoreOp = RR_STORE_OP_STORE,
-    //     .Clear = { 0.2f, 0.2f, 0.2f, 1.0f },
-    // };
-    // Rr_GraphNode *Node = Rr_AddGraphicsNode(App, "swapchain", &SwapchainImageTarget, 1, nullptr);
-    // Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-    // Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBuffer, 0, 0, OffsetA, sizeof(Rr_Vec4));
-    // Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBuffer, 1, 3, OffsetB, sizeof(STest));
-    // Rr_BindVertexBuffer(Node, VertexBuffer, 0, 0);
-    // Rr_BindIndexBuffer(Node, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
-    // Rr_DrawIndexed(Node, 3, 1, 0, 0, 0);
+    Rr_ColorTarget OffscreenTargetB = {
+        .ImageHandle = &ColorAttachmentBHandle,
+        .Slot = 0,
+        .LoadOp = RR_LOAD_OP_CLEAR,
+        .StoreOp = RR_STORE_OP_STORE,
+        .ColorClear = { 0.2f, 0.9f, 0.2f, 1.0f },
+    };
+    Rr_GraphNode *OffscreenNodeB = Rr_AddGraphicsNode(App, "offscreen_b", &OffscreenTargetB, 1, nullptr);
+    Rr_BindGraphicsPipeline(OffscreenNodeB, GraphicsPipeline);
+    Rr_BindGraphicsUniformBuffer(OffscreenNodeB, &UniformBufferHandle, 0, 0, OffsetA, sizeof(Rr_Vec4));
+    Rr_BindGraphicsUniformBuffer(OffscreenNodeB, &UniformBufferHandle, 1, 3, OffsetB, sizeof(STest));
+    Rr_BindVertexBuffer(OffscreenNodeB, &VertexBufferHandle, 0, 0);
+    Rr_BindIndexBuffer(OffscreenNodeB, &IndexBufferHandle, 0, 0, RR_INDEX_TYPE_UINT32);
+    Rr_DrawIndexed(OffscreenNodeB, 3, 1, 0, 0, 0);
 
-    /* Blit to Swapchain Image */
+    /* Blit B to A */
 
-    // Rr_AddBlitNode(
-    //     App,
-    //     "blit_test",
-    //     ColorAttachment,
-    //     SwapchainImage,
-    //     { 0, 0, 1024, 1024 },
-    //     { 0, 0, 512, 512 },
-    //     RR_BLIT_MODE_COLOR);
+    Rr_AddBlitNode(
+        App,
+        "blit",
+        &ColorAttachmentBHandle,
+        &ColorAttachmentAHandle,
+        { 0, 0, 1024, 1024 },
+        { 0, 0, 512, 512 },
+        RR_BLIT_MODE_COLOR);
 
     /* Present */
 
-    Rr_AddPresentNode(App, "present", &ColorAttachmentHandle, RR_PRESENT_MODE_NORMAL);
+    Rr_AddPresentNode(App, "present", &ColorAttachmentAHandle, RR_PRESENT_MODE_NORMAL);
+
+    /* Stripped Node */
+
+    Rr_ColorTarget OffscreenTargetC = {
+        .ImageHandle = &ColorAttachmentBHandle,
+        .Slot = 0,
+        .LoadOp = RR_LOAD_OP_CLEAR,
+        .StoreOp = RR_STORE_OP_STORE,
+        .ColorClear = { 0.2f, 0.9f, 0.9f, 1.0f },
+    };
+    Rr_GraphNode *OffscreenNodeC = Rr_AddGraphicsNode(App, "offscreen_c", &OffscreenTargetC, 1, nullptr);
+    Rr_BindGraphicsPipeline(OffscreenNodeC, GraphicsPipeline);
+    Rr_BindGraphicsUniformBuffer(OffscreenNodeC, &UniformBufferHandle, 0, 0, OffsetA, sizeof(Rr_Vec4));
+    Rr_BindGraphicsUniformBuffer(OffscreenNodeC, &UniformBufferHandle, 1, 3, OffsetB, sizeof(STest));
+    Rr_BindVertexBuffer(OffscreenNodeC, &VertexBufferHandle, 0, 0);
+    Rr_BindIndexBuffer(OffscreenNodeC, &IndexBufferHandle, 0, 0, RR_INDEX_TYPE_UINT32);
+    Rr_DrawIndexed(OffscreenNodeC, 3, 1, 0, 0, 0);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
-    Rr_DestroyImage(App, ColorAttachment);
+    Rr_DestroyImage(App, ColorAttachmentA);
+    Rr_DestroyImage(App, ColorAttachmentB);
     Rr_DestroyBuffer(App, VertexBuffer);
     Rr_DestroyBuffer(App, IndexBuffer);
     Rr_DestroyBuffer(App, UniformBuffer);

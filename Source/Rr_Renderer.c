@@ -21,10 +21,10 @@ static void Rr_CleanupSwapchain(Rr_App *App, VkSwapchainKHR Swapchain)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    for(uint32_t Index = 0; Index < Renderer->Swapchain.ImageViews.Capacity; Index++)
+    for(uint32_t Index = 0; Index < Renderer->Swapchain.Images.Capacity; Index++)
     {
-        vkDestroyFramebuffer(Renderer->Device, Renderer->Swapchain.Framebuffers.Data[Index], NULL);
-        vkDestroyImageView(Renderer->Device, Renderer->Swapchain.ImageViews.Data[Index], NULL);
+        vkDestroyFramebuffer(Renderer->Device, Renderer->Swapchain.Images.Data[Index].Framebuffer, NULL);
+        vkDestroyImageView(Renderer->Device, Renderer->Swapchain.Images.Data[Index].View, NULL);
     }
 
     if(Swapchain != VK_NULL_HANDLE)
@@ -190,10 +190,9 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     uint32_t ImageCount = 0;
     vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, NULL);
 
-    RR_RESERVE_SLICE(&Renderer->Swapchain.Images, ImageCount, App->PermanentArena);
-    Renderer->Swapchain.Images.Count = ImageCount;
+    VkImage *Images = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImage, ImageCount);
 
-    vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Renderer->Swapchain.Images.Data);
+    vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images);
 
     /* Initialize Present Pipeline If Needed */
 
@@ -236,8 +235,8 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
 
     /* Create Framebuffers And Image Views */
 
-    RR_RESERVE_SLICE(&Renderer->Swapchain.ImageViews, ImageCount, App->PermanentArena);
-    Renderer->Swapchain.ImageViews.Count = ImageCount;
+    RR_RESERVE_SLICE(&Renderer->Swapchain.Images, ImageCount, App->PermanentArena);
+    Renderer->Swapchain.Images.Count = ImageCount;
 
     VkImageViewCreateInfo ImageViewCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -258,9 +257,6 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         },
     };
 
-    RR_RESERVE_SLICE(&Renderer->Swapchain.Framebuffers, ImageCount, App->PermanentArena);
-    Renderer->Swapchain.Framebuffers.Count = ImageCount;
-
     VkFramebufferCreateInfo FramebufferCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .attachmentCount = 1,
@@ -272,15 +268,15 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
 
     for(uint32_t Index = 0; Index < ImageCount; Index++)
     {
-        ImageViewCreateInfo.image = Renderer->Swapchain.Images.Data[Index];
-        vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &Renderer->Swapchain.ImageViews.Data[Index]);
+        Rr_SwapchainImage *Image = Renderer->Swapchain.Images.Data + Index;
 
-        FramebufferCreateInfo.pAttachments = &Renderer->Swapchain.ImageViews.Data[Index];
-        vkCreateFramebuffer(
-            Renderer->Device,
-            &FramebufferCreateInfo,
-            NULL,
-            &Renderer->Swapchain.Framebuffers.Data[Index]);
+        Image->Handle = Images[Index];
+
+        ImageViewCreateInfo.image = Image->Handle;
+        vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &Image->View);
+
+        FramebufferCreateInfo.pAttachments = &Image->View;
+        vkCreateFramebuffer(Renderer->Device, &FramebufferCreateInfo, NULL, &Image->Framebuffer);
     }
 
     Rr_DestroyScratch(Scratch);
@@ -759,6 +755,12 @@ void Rr_PrepareFrame(Rr_App *App)
 
     Rr_ResetArena(Frame->Arena);
 
+    /* Make sure virtual swapchain image has latest extent and format values.  */
+
+    Frame->VirtualSwapchainImage.AllocatedImageCount = 1;
+    Frame->VirtualSwapchainImage.Extent = Renderer->Swapchain.Extent;
+    Frame->VirtualSwapchainImage.Format = Renderer->Swapchain.Format;
+
     RR_ZERO(Frame->Graph);
     Frame->Graph.Arena = Frame->Arena;
 
@@ -802,15 +804,25 @@ void Rr_Draw(Rr_App *App)
     }
     assert(Result >= 0);
 
-    VkImage CurrentSwapchainImage = Renderer->Swapchain.Images.Data[SwapchainImageIndex];
+    VkImage SwapchainImage = Renderer->Swapchain.Images.Data[SwapchainImageIndex].Handle;
+
+    /* Now that we acquired swapchain image index we can
+     * put real handles to virtual swapchain image which
+     * will be used by the graph. */
+
+    Frame->VirtualSwapchainImage.AllocatedImages[0] = (Rr_AllocatedImage){
+        .View = Renderer->Swapchain.Images.Data[SwapchainImageIndex].View,
+        .Handle = SwapchainImage,
+        .Container = &Frame->VirtualSwapchainImage,
+    };
 
     /* Attempt to properly synchronize first time use of a swapchain image. */
 
-    if(Rr_HasImageState(&Renderer->GlobalSync, CurrentSwapchainImage) != true)
+    if(Rr_HasImageState(&Renderer->GlobalSync, SwapchainImage) != true)
     {
         Rr_SetImageState(
             &Renderer->GlobalSync,
-            CurrentSwapchainImage,
+            SwapchainImage,
             (Rr_ImageSync){
                 .AccessMask = 0,
                 .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -922,6 +934,11 @@ Rr_Arena *Rr_GetFrameArena(Rr_App *App)
 Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App)
 {
     return Rr_GetTextureFormat(App->Renderer.Swapchain.Format);
+}
+
+Rr_Image *Rr_GetSwapchainImage(Rr_App *App)
+{
+    return &Rr_GetCurrentFrame(&App->Renderer)->VirtualSwapchainImage;
 }
 
 static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)

@@ -1,9 +1,12 @@
 #include "Rr_Graph.h"
 
 #include "Rr_App.h"
+#include "Rr_Descriptor.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
 #include "Rr_Renderer.h"
+
+#include <SDL3/SDL.h>
 
 #include <assert.h>
 
@@ -34,6 +37,9 @@ Rr_GraphNode *Rr_AddGraphNode(Rr_Frame *Frame, Rr_GraphNodeType Type, const char
     GraphNode->Name = Name;
     GraphNode->OriginalIndex = Frame->Graph.Nodes.Count;
     GraphNode->Graph = &Frame->Graph;
+
+    RR_RESERVE_SLICE(&GraphNode->Reads, 2, Frame->Arena);
+    RR_RESERVE_SLICE(&GraphNode->Writes, 2, Frame->Arena);
 
     *RR_PUSH_SLICE(&Frame->Graph.Nodes, Frame->Arena) = GraphNode;
 
@@ -69,7 +75,7 @@ static inline Rr_NodeDependencyType Rr_GetNodeDependencyType(VkAccessFlags Acces
     }
     if(RR_HAS_BIT(AccessMask, AllVulkanReads))
     {
-        DependencyType |= RR_NODE_DEPENDENCY_TYPE_WRITE_BIT;
+        DependencyType |= RR_NODE_DEPENDENCY_TYPE_READ_BIT;
     }
     return DependencyType;
 }
@@ -78,46 +84,58 @@ static inline void Rr_AddNodeImageDependency(Rr_GraphNode *Node, Rr_GraphResourc
 {
     Rr_Arena *Arena = Node->Graph->Arena;
     Rr_NodeDependencyType DependencyType = Rr_GetNodeDependencyType(State->AccessMask);
-    if(RR_HAS_BIT(DependencyType, RR_NODE_DEPENDENCY_TYPE_READ_BIT))
+    if(RR_HAS_BIT(DependencyType, RR_NODE_DEPENDENCY_TYPE_WRITE_BIT))
     {
         *RR_PUSH_SLICE(&Node->Reads, Arena) = (Rr_NodeDependency){
             .State.Image = *State,
             .Handle = *Handle,
             .IsImage = true,
         };
-    }
-    if(RR_HAS_BIT(DependencyType, RR_NODE_DEPENDENCY_TYPE_WRITE_BIT))
-    {
         *RR_PUSH_SLICE(&Node->Writes, Arena) = (Rr_NodeDependency){
             .State.Image = *State,
             .Handle = *Handle,
             .IsImage = true,
         };
         Rr_AddGraphWrite(Node, Handle);
+    }
+    else
+    {
+        *RR_PUSH_SLICE(&Node->Reads, Arena) = (Rr_NodeDependency){
+            .State.Image = *State,
+            .Handle = *Handle,
+            .IsImage = true,
+        };
     }
 }
 
 static inline void Rr_AddNodeBufferDependency(Rr_GraphNode *Node, Rr_GraphResourceHandle *Handle, Rr_BufferSync *State)
 {
     Rr_Arena *Arena = Node->Graph->Arena;
-    Rr_NodeDependencyType DependencyType = DependencyType = Rr_GetNodeDependencyType(State->AccessMask);
-    if(RR_HAS_BIT(DependencyType, RR_NODE_DEPENDENCY_TYPE_READ_BIT))
+    Rr_NodeDependencyType DependencyType = Rr_GetNodeDependencyType(State->AccessMask);
+    if(RR_HAS_BIT(DependencyType, RR_NODE_DEPENDENCY_TYPE_WRITE_BIT))
     {
         *RR_PUSH_SLICE(&Node->Reads, Arena) = (Rr_NodeDependency){
             .State.Buffer = *State,
             .Handle = *Handle,
             .IsImage = false,
         };
-    }
-    if(RR_HAS_BIT(DependencyType, RR_NODE_DEPENDENCY_TYPE_WRITE_BIT))
-    {
         *RR_PUSH_SLICE(&Node->Writes, Arena) = (Rr_NodeDependency){
             .State.Buffer = *State,
             .Handle = *Handle,
             .IsImage = false,
         };
-
         Rr_AddGraphWrite(Node, Handle);
+    }
+    else
+    {
+        if(RR_HAS_BIT(DependencyType, RR_NODE_DEPENDENCY_TYPE_READ_BIT))
+        {
+            *RR_PUSH_SLICE(&Node->Reads, Arena) = (Rr_NodeDependency){
+                .State.Buffer = *State,
+                .Handle = *Handle,
+                .IsImage = false,
+            };
+        }
     }
 }
 
@@ -262,32 +280,32 @@ static void Rr_ExecuteGraphBatch(
 
 typedef RR_SLICE(size_t) Rr_IndexSlice;
 
-static void Rr_CreateGraphAdjacencyList(
-    size_t NodeCount,
-    Rr_GraphNode **Nodes,
-    Rr_IndexSlice *AdjacencyList,
-    Rr_Arena *Arena)
+static void Rr_CreateGraphAdjacencyList(Rr_Graph *Graph, Rr_IndexSlice *AdjacencyList, Rr_Arena *Arena)
 {
-    for(size_t Index = 0; Index < NodeCount; ++Index)
+    for(size_t Index = 0; Index < Graph->Nodes.Count; ++Index)
     {
-        for(size_t Index2 = 0; Index2 < NodeCount; ++Index2)
-        {
-            if(Index == Index2)
-            {
-                continue;
-            }
+        Rr_GraphNode *Node = Graph->Nodes.Data[Index];
 
-            Rr_GraphNode *Node = Nodes[Index];
-            Rr_GraphNode *Node2 = Nodes[Index2];
-            for(size_t ReadIndex = 0; ReadIndex < Node->Reads.Count; ++ReadIndex)
+        for(size_t ReadIndex = 0; ReadIndex < Node->Reads.Count; ++ReadIndex)
+        {
+            Rr_NodeDependency *Read = Node->Reads.Data + ReadIndex;
+
+            /* If Generation is greater than zero
+             * it means we should lookup another node that
+             * produces that state of the resource and add
+             * that node as a dependency. */
+            if(Read->Handle.Values.Generation > 0)
             {
-                for(size_t WriteIndex = 0; WriteIndex < Node2->Writes.Count; ++WriteIndex)
+                Rr_GraphResourceHandle Handle = Read->Handle;
+                Handle.Values.Generation--;
+                Rr_GraphNode *Producer = RR_UPSERT_DEREF(&Graph->ResourceWriteToNode, Handle.Hash, Arena);
+                if(Producer != NULL)
                 {
-                    if(Node->Reads.Data[ReadIndex].Handle.Hash == Node->Writes.Data[WriteIndex].Handle.Hash)
-                    {
-                        *RR_PUSH_SLICE(&AdjacencyList[Index], Arena) = Index2;
-                        break;
-                    }
+                    *RR_PUSH_SLICE(&AdjacencyList[Index], Arena) = Producer->OriginalIndex;
+                }
+                else
+                {
+                    Rr_LogAbort("Failed to find resource producer!");
                 }
             }
         }
@@ -323,20 +341,86 @@ static void Rr_SortGraph(size_t CurrentNodeIndex, Rr_IndexSlice *AdjacencyList, 
     State[CurrentNodeIndex] &= ~OnStackBit;
 }
 
-static void Rr_ProcessGraphNodes(size_t NodeCount, Rr_GraphNode **Nodes, Rr_IndexSlice *Out, Rr_Arena *Arena)
+static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    RR_SLICE(Rr_IndexSlice) AdjacencyList = { 0 };
-    RR_RESERVE_SLICE(&AdjacencyList, NodeCount, Scratch.Arena);
+    size_t NodeCount = Graph->Nodes.Count;
+    Rr_GraphNode **Nodes = Graph->Nodes.Data;
 
-    Rr_CreateGraphAdjacencyList(NodeCount, Nodes, AdjacencyList.Data, Scratch.Arena);
+    /* Adjacency list maps a node to a set of nodes that must
+     * be executed before it. */
+
+    Rr_IndexSlice *AdjacencyList = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_IndexSlice, NodeCount);
+    Rr_CreateGraphAdjacencyList(Graph, AdjacencyList, Scratch.Arena);
+
+    // for(size_t Index = 0; Index < NodeCount; ++Index)
+    // {
+    //     size_t NodeIndex = Index;
+    //     size_t OriginalIndex = Nodes[NodeIndex]->OriginalIndex;
+    //     Rr_LogVulkan("Node: %zu %s\n", OriginalIndex, Nodes[OriginalIndex]->Name);
+    //     for(size_t DepIndex = 0; DepIndex < AdjacencyList[OriginalIndex].Count; ++DepIndex)
+    //     {
+    //         size_t DepNodeIndex = AdjacencyList[OriginalIndex].Data[DepIndex];
+    //         Rr_LogVulkan("    Dependency: %zu %s\n", DepNodeIndex, Nodes[DepNodeIndex]->Name);
+    //     }
+    // }
+
+    /* Here we do topological sort on our graph starting at nodes
+     * that contribute to "root resources".
+     * This basically strips anything that doesn't
+     * contribute to graphs external resources. */
 
     int *SortState = RR_ALLOC(Scratch.Arena, sizeof(int) * NodeCount);
+    for(size_t Index = 0; Index < Graph->RootResources.Count; ++Index)
+    {
+        Rr_GraphResourceHandle RootResource = Graph->RootResources.Data[Index];
+        Rr_GraphNode *Producer = RR_UPSERT_DEREF(&Graph->ResourceWriteToNode, RootResource.Hash, Scratch.Arena);
+        if(Producer != NULL)
+        {
+            Rr_SortGraph(Producer->OriginalIndex, AdjacencyList, SortState, Out);
+        }
+        else
+        {
+            Rr_LogAbort("Failed to find resource producer!");
+        }
+    }
 
+    NodeCount = Out->Count;
+
+    // for(size_t Index = 0; Index < NodeCount; ++Index)
+    // {
+    //     Rr_SortGraph(Index, AdjacencyList, SortState, Out);
+    // }
+
+    size_t *Reversed = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, size_t, NodeCount);
     for(size_t Index = 0; Index < NodeCount; ++Index)
     {
-        Rr_SortGraph(0, AdjacencyList.Data, SortState, Out);
+        Reversed[Index] = NodeCount - Out->Data[Index] - 1;
+    }
+
+    // for(size_t Index = 0; Index < NodeCount; ++Index)
+    // {
+    //     Rr_LogVulkan("Reversed %zu: %s\n", Index, Nodes[Reversed[Index]]->Name);
+    // }
+
+    size_t *LongestDistances = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, size_t, NodeCount);
+    for(size_t Index = 0; Index < NodeCount; ++Index)
+    {
+        size_t NodeIndex = Reversed[Index];
+        size_t OriginalIndex = Nodes[NodeIndex]->OriginalIndex;
+        for(size_t DepIndex = 0; DepIndex < AdjacencyList[OriginalIndex].Count; ++DepIndex)
+        {
+            size_t DepNodeIndex = AdjacencyList[OriginalIndex].Data[DepIndex];
+            LongestDistances[DepNodeIndex] =
+                RR_MAX(LongestDistances[DepNodeIndex], LongestDistances[OriginalIndex] + 1);
+        }
+    }
+
+    for(size_t I = 0; I < NodeCount; ++I)
+    {
+        size_t Index = Reversed[I];
+        Rr_LogVulkan("Longest Distance: %zu %s\n", LongestDistances[Index], Nodes[Index]->Name);
     }
 
     Rr_DestroyScratch(Scratch);
@@ -355,12 +439,12 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     Rr_IndexSlice SortedIndices = { 0 };
     RR_RESERVE_SLICE(&SortedIndices, NodeCount, Scratch.Arena);
 
-    Rr_ProcessGraphNodes(NodeCount, Graph->Nodes.Data, &SortedIndices, Scratch.Arena);
+    Rr_ProcessGraphNodes(Graph, &SortedIndices, Scratch.Arena);
 
-    for(size_t Index = 0; Index < SortedIndices.Count; ++Index)
-    {
-        Rr_LogVulkan("%zu: %s\n", Index, Graph->Nodes.Data[Index]->Name);
-    }
+    // for(size_t Index = 0; Index < SortedIndices.Count; ++Index)
+    // {
+    //     Rr_LogVulkan("%zu: %s\n", Index, Graph->Nodes.Data[Index]->Name);
+    // }
 
     Rr_LogAbort("That's it for now!");
 
@@ -668,19 +752,59 @@ Rr_GraphNode *Rr_AddPresentNode(Rr_App *App, const char *Name, Rr_GraphImageHand
     PresentNode->Mode = Mode;
     PresentNode->ImageHandle = *ImageHandle;
 
+    Rr_GraphImageHandle SwapchainImageHandle = Rr_RegisterGraphImage(App, Rr_GetSwapchainImage(App));
+
+    Rr_AddNodeImageDependency(
+        GraphNode,
+        &SwapchainImageHandle,
+        &(Rr_ImageSync){
+            .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .AccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+            .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        });
+
+    Rr_AddNodeImageDependency(
+        GraphNode,
+        ImageHandle,
+        &(Rr_ImageSync){
+            .StageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        });
+
     return GraphNode;
 }
 
 void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer CommandBuffer)
 {
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    VkFramebuffer Framebuffer = Renderer->Swapchain.Framebuffers.Data[Frame->SwapchainImageIndex];
+
+    Rr_AllocatedImage *Image = Rr_GetGraphImage(App, ((Rr_GraphNode *)Node)->Graph, Node->ImageHandle);
+
+    VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
+        &Frame->DescriptorAllocator,
+        Renderer->Device,
+        Renderer->PresentLayout->DescriptorSetLayouts[0]);
+
+    VkSampler Sampler = VK_NULL_HANDLE;
+    Rr_DescriptorWriter Writer = { 0 };
+    Rr_WriteImageDescriptor(
+        &Writer,
+        0,
+        Image->View,
+        Sampler,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        Scratch.Arena);
+    Rr_UpdateDescriptorSet(&Writer, Renderer->Device, DescriptorSet);
 
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
-        .framebuffer = Framebuffer,
+        .framebuffer = Frame->SwapchainFramebuffer,
         .renderArea = (VkRect2D){ { 0, 0 }, { Renderer->Swapchain.Extent.width, Renderer->Swapchain.Extent.height } },
         .renderPass = Renderer->PresentRenderPass,
         .clearValueCount = 0,
@@ -688,8 +812,19 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
     };
     vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Renderer->PresentPipeline->Handle);
+    vkCmdBindDescriptorSets(
+        CommandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        Renderer->PresentPipeline->Layout->Handle,
+        0,
+        1,
+        &DescriptorSet,
+        0,
+        NULL);
     vkCmdDraw(CommandBuffer, 3, 1, 0, 0);
     vkCmdEndRenderPass(CommandBuffer);
+
+    Rr_DestroyScratch(Scratch);
 }
 
 Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name, Rr_GraphBufferHandle *DstBufferHandle)
@@ -946,7 +1081,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
     {
         Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
         VkClearValue *ClearValue = &ClearValues[ColorTarget->Slot];
-        memcpy(ClearValue, &ColorTarget->Clear, sizeof(VkClearValue));
+        memcpy(ClearValue, &ColorTarget->ColorClear, sizeof(VkClearValue));
         Attachments[ColorTarget->Slot] = (Rr_Attachment){
             .LoadOp = ColorTarget->LoadOp,
             .StoreOp = ColorTarget->StoreOp,
