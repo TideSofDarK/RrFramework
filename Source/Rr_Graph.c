@@ -62,7 +62,7 @@ static inline void Rr_AddGraphWrite(Rr_GraphNode *Node, Rr_GraphResourceHandle *
     }
     else
     {
-        Rr_LogAbort("A versioned resource can only be written once!");
+        RR_ABORT("A versioned resource can only be written once!");
     }
 }
 
@@ -255,7 +255,7 @@ static void Rr_ExecuteGraphBatch(
     //         break;
     //         default:
     //         {
-    //             Rr_LogAbort("Unsupported node type!");
+    //             RR_ABORT("Unsupported node type!");
     //         }
     //         break;
     //     }
@@ -305,7 +305,7 @@ static void Rr_CreateGraphAdjacencyList(Rr_Graph *Graph, Rr_IndexSlice *Adjacenc
                 }
                 else
                 {
-                    Rr_LogAbort("Failed to find resource producer!");
+                    RR_ABORT("Failed to find resource producer!");
                 }
             }
         }
@@ -321,7 +321,7 @@ static void Rr_SortGraph(size_t CurrentNodeIndex, Rr_IndexSlice *AdjacencyList, 
     {
         if(RR_HAS_BIT(State[CurrentNodeIndex], OnStackBit))
         {
-            Rr_LogAbort("Cyclic graph detected!");
+            RR_ABORT("Cyclic graph detected!");
         }
 
         return;
@@ -351,18 +351,18 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
     /* Adjacency list maps a node to a set of nodes that must
      * be executed before it. */
 
-    Rr_IndexSlice *AdjacencyList = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_IndexSlice, NodeCount);
+    Rr_IndexSlice *AdjacencyList = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_IndexSlice, NodeCount);
     Rr_CreateGraphAdjacencyList(Graph, AdjacencyList, Scratch.Arena);
 
     // for(size_t Index = 0; Index < NodeCount; ++Index)
     // {
     //     size_t NodeIndex = Index;
     //     size_t OriginalIndex = Nodes[NodeIndex]->OriginalIndex;
-    //     Rr_LogVulkan("Node: %zu %s\n", OriginalIndex, Nodes[OriginalIndex]->Name);
+    //     RR_LOG("Node: %zu %s\n", OriginalIndex, Nodes[OriginalIndex]->Name);
     //     for(size_t DepIndex = 0; DepIndex < AdjacencyList[OriginalIndex].Count; ++DepIndex)
     //     {
     //         size_t DepNodeIndex = AdjacencyList[OriginalIndex].Data[DepIndex];
-    //         Rr_LogVulkan("    Dependency: %zu %s\n", DepNodeIndex, Nodes[DepNodeIndex]->Name);
+    //         RR_LOG("    Dependency: %zu %s\n", DepNodeIndex, Nodes[DepNodeIndex]->Name);
     //     }
     // }
 
@@ -382,7 +382,7 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
         }
         else
         {
-            Rr_LogAbort("Failed to find resource producer!");
+            RR_ABORT("Failed to find resource producer!");
         }
     }
 
@@ -393,7 +393,7 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
     //     Rr_SortGraph(Index, AdjacencyList, SortState, Out);
     // }
 
-    size_t *Reversed = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, size_t, NodeCount);
+    size_t *Reversed = RR_ALLOC_TYPE_COUNT(Scratch.Arena, size_t, NodeCount);
     for(size_t Index = 0; Index < NodeCount; ++Index)
     {
         Reversed[Index] = NodeCount - Out->Data[Index] - 1;
@@ -401,10 +401,10 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
 
     // for(size_t Index = 0; Index < NodeCount; ++Index)
     // {
-    //     Rr_LogVulkan("Reversed %zu: %s\n", Index, Nodes[Reversed[Index]]->Name);
+    //     RR_LOG("Reversed %zu: %s\n", Index, Nodes[Reversed[Index]]->Name);
     // }
 
-    size_t *LongestDistances = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, size_t, NodeCount);
+    size_t *LongestDistances = RR_ALLOC_TYPE_COUNT(Scratch.Arena, size_t, NodeCount);
     for(size_t Index = 0; Index < NodeCount; ++Index)
     {
         size_t NodeIndex = Reversed[Index];
@@ -420,7 +420,7 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
     for(size_t I = 0; I < NodeCount; ++I)
     {
         size_t Index = Reversed[I];
-        Rr_LogVulkan("Longest Distance: %zu %s\n", LongestDistances[Index], Nodes[Index]->Name);
+        RR_LOG("Longest Distance: %zu %s", LongestDistances[Index], Nodes[Index]->Name);
     }
 
     Rr_DestroyScratch(Scratch);
@@ -431,7 +431,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     size_t NodeCount = Graph->Nodes.Count;
     if(NodeCount == 0)
     {
-        Rr_LogAbort("Graph doesn't contain any nodes!");
+        RR_LOG("Graph doesn't contain any nodes!");
     }
 
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
@@ -443,10 +443,10 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
     // for(size_t Index = 0; Index < SortedIndices.Count; ++Index)
     // {
-    //     Rr_LogVulkan("%zu: %s\n", Index, Graph->Nodes.Data[Index]->Name);
+    //     RR_LOG("%zu: %s\n", Index, Graph->Nodes.Data[Index]->Name);
     // }
 
-    Rr_LogAbort("That's it for now!");
+    RR_ABORT("That's it for now!");
 
     // while(true)
     // {
@@ -501,7 +501,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     //             break;
     //             default:
     //             {
-    //                 Rr_LogAbort("Unsupported node type!");
+    //                 RR_ABORT("Unsupported node type!");
     //             }
     //             break;
     //         }
@@ -553,7 +553,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     //             break;
     //             default:
     //             {
-    //                 Rr_LogAbort("Unsupported node type!");
+    //                 RR_ABORT("Unsupported node type!");
     //             }
     //             break;
     //         }
@@ -566,7 +566,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     //
     //     if(Batch.Nodes.Count == 0)
     //     {
-    //         Rr_LogAbort("Couldn't batch graph nodes, probably invalid graph!");
+    //         RR_ABORT("Couldn't batch graph nodes, probably invalid graph!");
     //     }
     //
     //     Rr_ExecuteGraphBatch(App, Graph, &Batch, Scratch.Arena);
@@ -863,7 +863,7 @@ void Rr_TransferBufferData(Rr_App *App, Rr_GraphNode *Node, Rr_Data Data, size_t
 
     if(SrcOffset + Data.Size > StagingBuffer->AllocationInfo.size)
     {
-        Rr_LogAbort("Transfer: source buffer overflow!");
+        RR_ABORT("Transfer: source buffer overflow!");
     }
 
     memcpy((char *)StagingBuffer->AllocationInfo.pMappedData + Frame->StagingBuffer.Offset, Data.Pointer, Data.Size);
@@ -932,7 +932,7 @@ Rr_GraphNode *Rr_AddBlitNode(
         break;
         default:
         {
-            Rr_LogAbort("Unsupported blit mode!");
+            RR_ABORT("Unsupported blit mode!");
         }
         break;
     }
@@ -1018,7 +1018,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.Graphics;
     if(ColorTargetCount > 0)
     {
-        GraphicsNode->ColorTargets = RR_ALLOC_STRUCT_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
+        GraphicsNode->ColorTargets = RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
         memcpy(GraphicsNode->ColorTargets, ColorTargets, sizeof(Rr_ColorTarget) * ColorTargetCount);
         GraphicsNode->ColorTargetCount = ColorTargetCount;
 
@@ -1038,7 +1038,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     }
     if(DepthTarget != NULL)
     {
-        GraphicsNode->DepthTarget = RR_ALLOC_STRUCT(Frame->Arena, Rr_DepthTarget);
+        GraphicsNode->DepthTarget = RR_ALLOC_TYPE(Frame->Arena, Rr_DepthTarget);
         memcpy(GraphicsNode->DepthTarget, DepthTarget, sizeof(Rr_DepthTarget));
 
         /* @TODO: Infer access type from attachment struct! */
@@ -1074,9 +1074,9 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
 
     uint32_t AttachmentCount = Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
-    VkImageView *ImageViews = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
-    Rr_Attachment *Attachments = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
-    VkClearValue *ClearValues = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
+    VkImageView *ImageViews = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
+    Rr_Attachment *Attachments = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+    VkClearValue *ClearValues = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
     for(uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
         Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];

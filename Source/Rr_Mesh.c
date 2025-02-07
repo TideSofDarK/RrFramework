@@ -35,19 +35,19 @@ static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 //     cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Size, &Data);
 //     if(Result != cgltf_result_success)
 //     {
-//         Rr_LogAbort("Error loading glTF asset!");
+//         RR_ABORT("Error loading glTF asset!");
 //     }
 //
 //     cgltf_mesh *Mesh = Data->meshes + MeshIndex;
 //
 //     if(MeshIndex + 1 > Data->meshes_count || Mesh->primitives_count < 1)
 //     {
-//         Rr_LogAbort("Mesh contains no geometry!");
+//         RR_ABORT("Mesh contains no geometry!");
 //     }
 //
 //     if(Data->meshes->primitives_count > RR_MESH_MAX_PRIMITIVES)
 //     {
-//         Rr_LogAbort("Exceeding max mesh primitives count!");
+//         RR_ABORT("Exceeding max mesh primitives count!");
 //     }
 //
 //     *OutData = Data;
@@ -78,7 +78,7 @@ static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 //     }
 //     else
 //     {
-//         Rr_LogAbort("Unsupported index type!");
+//         RR_ABORT("Unsupported index type!");
 //     }
 //
 //     for(size_t VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)

@@ -449,14 +449,14 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     int32_t Result = ParseEXRVersionFromMemory(&Version, (unsigned char *)Asset.Pointer, Asset.Size);
     if(Result != 0)
     {
-        Rr_LogAbort("Error opening EXR file!");
+        RR_ABORT("Error opening EXR file!");
     }
 
     EXRHeader Header;
     Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char *)Asset.Pointer, Asset.Size, &Error);
     if(Result != 0)
     {
-        Rr_LogAbort("Error opening EXR file: %s", Error);
+        RR_ABORT("Error opening EXR file: %s", Error);
         // FreeEXRErrorMessage(Error);
     }
 
@@ -466,7 +466,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char *)Asset.Pointer, Asset.Size, &Error);
     if(Result != 0)
     {
-        Rr_LogAbort("Error opening EXR file: %s", Error);
+        RR_ABORT("Error opening EXR file: %s", Error);
         // FreeEXRHeader(&Header);
         // FreeEXRErrorMessage(Error);
     }

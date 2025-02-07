@@ -144,7 +144,7 @@ Rr_LoadingContext *Rr_LoadAsync(
 {
     if(TaskCount == 0)
     {
-        Rr_LogAbort("Submitted zero tasks to load procedure!");
+        RR_ABORT("Submitted zero tasks to load procedure!");
     }
 
     size_t AllocationSize = sizeof(Rr_LoadTask) * TaskCount + sizeof(Rr_LoadingContext);
@@ -152,7 +152,7 @@ Rr_LoadingContext *Rr_LoadAsync(
 
     Rr_LoadingThread *LoadingThread = &App->LoadingThread;
     SDL_LockMutex(LoadingThread->Mutex);
-    Rr_LoadTask *NewTasks = RR_ALLOC_COUNT(LoadingThread->Arena, sizeof(Rr_LoadTask), TaskCount);
+    Rr_LoadTask *NewTasks = RR_ALLOC_TYPE_COUNT(LoadingThread->Arena, Rr_LoadTask, TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
     Rr_LoadingContext *LoadingContext = RR_PUSH_SLICE(&LoadingThread->LoadingContextsSlice, LoadingThread->Arena);
     *LoadingContext = (Rr_LoadingContext){
@@ -174,7 +174,7 @@ Rr_LoadResult Rr_LoadImmediate(Rr_App *App, Rr_LoadTask *Tasks, size_t TaskCount
 {
     if(Tasks == 0)
     {
-        Rr_LogAbort("Submitted zero tasks to load procedure!");
+        RR_ABORT("Submitted zero tasks to load procedure!");
     }
     Rr_LoadingContext LoadingContext = {
         .App = App,

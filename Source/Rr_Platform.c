@@ -10,7 +10,7 @@ void Rr_LockSpinLock(Rr_SpinLock *SpinLock)
     {
         if(Loops > MaxLoops)
         {
-            Rr_LogAbort("Spin lock timeout!");
+            RR_ABORT("Spin lock timeout!");
         }
     }
 }

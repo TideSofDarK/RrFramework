@@ -28,7 +28,7 @@ static bool Rr_CheckPhysicalDevice(
 
     bool FoundExtensions[] = { 0 };
 
-    VkExtensionProperties *Extensions = RR_ALLOC_STRUCT_COUNT(Arena, VkExtensionProperties, ExtensionCount);
+    VkExtensionProperties *Extensions = RR_ALLOC_TYPE_COUNT(Arena, VkExtensionProperties, ExtensionCount);
     vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
 
     for(uint32_t Index = 0; Index < ExtensionCount; Index++)
@@ -57,8 +57,8 @@ static bool Rr_CheckPhysicalDevice(
     }
 
     VkQueueFamilyProperties *QueueFamilyProperties =
-        RR_ALLOC_STRUCT_COUNT(Arena, VkQueueFamilyProperties, QueueFamilyCount);
-    VkBool32 *QueuePresentSupport = RR_ALLOC_STRUCT_COUNT(Arena, VkBool32, QueueFamilyCount);
+        RR_ALLOC_TYPE_COUNT(Arena, VkQueueFamilyProperties, QueueFamilyCount);
+    VkBool32 *QueuePresentSupport = RR_ALLOC_TYPE_COUNT(Arena, VkBool32, QueueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
 
@@ -119,16 +119,16 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, NULL);
     if(PhysicalDeviceCount == 0)
     {
-        Rr_LogAbort("No device with Vulkan support found");
+        RR_LOG("No device with Vulkan support found");
     }
 
-    VkPhysicalDevice *PhysicalDevices = RR_ALLOC_STRUCT_COUNT(Arena, VkPhysicalDevice, PhysicalDeviceCount);
+    VkPhysicalDevice *PhysicalDevices = RR_ALLOC_TYPE_COUNT(Arena, VkPhysicalDevice, PhysicalDeviceCount);
     vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
 
-    Rr_LogVulkan("Selecting Vulkan device:");
+    RR_LOG("Selecting Vulkan device:");
 
-    char DevicesString[1024];
-    size_t DevicesStringCursor = 1;
+    typedef char Rr_DeviceString[1024];
+    RR_SLICE(Rr_DeviceString) DeviceStrings = { 0 };
     uint32_t BestDeviceIndex = UINT32_MAX;
     static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     // static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
@@ -160,12 +160,31 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
                 Memory += MemoryProperties.memoryHeaps[MemoryHeapIndex].size;
             }
 
-            DevicesStringCursor += sprintf(
-                DevicesString + DevicesStringCursor - 1,
-                "  (\\) GPU #%d: %s, type: %s, total memory: %zu \n",
+            const char *TypeString = NULL;
+            switch(Properties.properties.deviceType)
+            {
+                case VK_PHYSICAL_DEVICE_TYPE_OTHER:
+                    TypeString = "other";
+                case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                    TypeString = "integrated";
+                case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                    TypeString = "discrete";
+                case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+                    TypeString = "virtual";
+                case VK_PHYSICAL_DEVICE_TYPE_CPU:
+                    TypeString = "cpu";
+                default:
+                    TypeString = "undefined";
+            }
+
+            char *DstString = *RR_PUSH_SLICE(&DeviceStrings, Arena);
+            snprintf(
+                DstString,
+                sizeof(Rr_DeviceString),
+                "(\\) GPU #%d: %s, type: %s, total memory: %zu",
                 Index,
                 Properties.properties.deviceName,
-                string_VkPhysicalDeviceType(Properties.properties.deviceType),
+                TypeString,
                 Memory);
 
             if(BestDeviceIndex == UINT32_MAX)
@@ -198,14 +217,14 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     }
     if(BestDeviceIndex == UINT32_MAX)
     {
-        Rr_LogAbort("Could not select physical device based on the chosen properties!");
+        RR_LOG("Could not select physical device based on the chosen properties!");
     }
 
-    size_t DeviceIndex = 0;
     char *Mark;
-    while((Mark = strchr(DevicesString, '\\')))
+    for(size_t Index = 0; Index < DeviceStrings.Count; ++Index)
     {
-        if(DeviceIndex == BestDeviceIndex)
+        Mark = strchr(DeviceStrings.Data[Index], '\\');
+        if(Index == BestDeviceIndex)
         {
             *Mark = '*';
         }
@@ -213,9 +232,8 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
         {
             *Mark = ' ';
         }
-        DeviceIndex++;
+        RR_LOG("%s", DeviceStrings.Data[Index]);
     }
-    Rr_LogVulkan(DevicesString);
 
     bool UseTransferQueue = *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
@@ -236,7 +254,7 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     vkGetPhysicalDeviceMemoryProperties(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.MemoryProperties);
     vkGetPhysicalDeviceProperties2(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.Properties);
 
-    Rr_LogVulkan("Using separate transfer queue: %u", UseTransferQueue);
+    RR_LOG("Using %s transfer queue.", UseTransferQueue ? "dedicated" : "unified");
 
     return PhysicalDevice;
 }

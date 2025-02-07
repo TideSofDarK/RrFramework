@@ -1,9 +1,23 @@
 #pragma once
 
-extern void Rr_LogAbort(const char *Format, ...);
+#include <stdio.h>
+#include <stdlib.h>
 
-extern void Rr_LogRender(const char *Format, ...);
+#define RR_LOG(...)                          \
+    do                                       \
+    {                                        \
+        fprintf(stderr, "%s(): ", __func__); \
+        fprintf(stderr, __VA_ARGS__);        \
+        fprintf(stderr, "\n");               \
+    }                                        \
+    while(0)
 
-extern void Rr_LogVulkan(const char *Format, ...);
-
-extern void Rr_LogMemory(const char *Format, ...);
+#define RR_ABORT(...)                        \
+    do                                       \
+    {                                        \
+        fprintf(stderr, "%s(): ", __func__); \
+        fprintf(stderr, __VA_ARGS__);        \
+        fprintf(stderr, "\n");               \
+        abort();                             \
+    }                                        \
+    while(0)

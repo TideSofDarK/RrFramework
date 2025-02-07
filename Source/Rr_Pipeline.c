@@ -11,7 +11,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(Rr_App *App, Rr_PipelineInfo *Inf
 
     bool HasDepth = Info->DepthStencil.EnableDepthWrite;
     size_t AttachmentCount = Info->ColorTargetCount + (HasDepth ? 1 : 0);
-    Rr_Attachment *Attachments = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+    Rr_Attachment *Attachments = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
 
     for(uint32_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {

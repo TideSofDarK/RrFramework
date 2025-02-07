@@ -110,7 +110,7 @@ void Rr_InitScratch(size_t Size)
 {
     if(SDL_GetTLS(&ScratchArenaTLS) != 0)
     {
-        Rr_LogAbort("Scratch is already initialized for this thread!");
+        RR_ABORT("Scratch is already initialized for this thread!");
     }
     Rr_Arena **Arenas = Rr_Calloc(2, sizeof(Rr_Arena *));
     for(size_t Index = 0; Index < 2; ++Index)
@@ -124,7 +124,7 @@ Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
 {
     if(ScratchArenaTLS.value == 0)
     {
-        Rr_LogAbort("ScratchArenaTLS is not set!");
+        RR_ABORT("ScratchArenaTLS is not set!");
     }
     Rr_Arena **Arenas = (Rr_Arena **)SDL_GetTLS(&ScratchArenaTLS);
     if(Conflict == NULL)
@@ -142,7 +142,7 @@ Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
         }
     }
 
-    Rr_LogAbort("Couldn't find appropriate arena for a scratch!");
+    RR_ABORT("Couldn't find appropriate arena for a scratch!");
 
     return (Rr_Scratch){ 0 };
 }
@@ -172,10 +172,10 @@ void *Rr_AllocArenaNoZero(Rr_Arena *Arena, size_t Size, size_t Align, size_t Cou
     }
     else
     {
-        Rr_LogAbort("Arena reserved memory overflow!");
+        RR_ABORT("Arena reserved memory overflow!");
     }
 
-    return memset(Result, 0, TotalSize);
+    return Result;
 }
 
 void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
@@ -202,7 +202,7 @@ void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena)
 {
     if(Arena == NULL)
     {
-        Rr_LogAbort("Attempt to grow a slice but Arena is NULL!");
+        RR_ABORT("Attempt to grow a slice but Arena is NULL!");
     }
 
     RR_SLICE(void) Replica;
@@ -211,7 +211,7 @@ void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena)
     void *Data = NULL;
     Replica.Capacity = Replica.Capacity ? Replica.Capacity : 1;
     Replica.Capacity *= 2;
-    Data = RR_ALLOC_COUNT(Arena, Size, Replica.Capacity);
+    Data = RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
 
     if(Replica.Count)
     {
@@ -226,7 +226,7 @@ void Rr_ResizeSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
 {
     if(Arena == NULL)
     {
-        Rr_LogAbort("Attempt to grow a slice but Arena is NULL!");
+        RR_ABORT("Attempt to grow a slice but Arena is NULL!");
     }
 
     RR_SLICE(void) Replica;
@@ -235,7 +235,7 @@ void Rr_ResizeSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
     void *Data = NULL;
 
     Replica.Capacity = Count;
-    Data = RR_ALLOC_COUNT(Arena, Size, Count);
+    Data = RR_ALLOC_NO_ZERO(Arena, Size * Count);
 
     if(Replica.Count)
     {

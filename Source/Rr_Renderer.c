@@ -70,7 +70,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         NULL);
     assert(PresentModeCount > 0);
 
-    VkPresentModeKHR *PresentModes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkPresentModeKHR, PresentModeCount);
+    VkPresentModeKHR *PresentModes = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkPresentModeKHR, PresentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
@@ -111,7 +111,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     vkGetPhysicalDeviceSurfaceFormatsKHR(Renderer->PhysicalDevice.Handle, Renderer->Surface, &FormatCount, NULL);
     assert(FormatCount > 0);
 
-    VkSurfaceFormatKHR *SurfaceFormats = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkSurfaceFormatKHR, FormatCount);
+    VkSurfaceFormatKHR *SurfaceFormats = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkSurfaceFormatKHR, FormatCount);
     vkGetPhysicalDeviceSurfaceFormatsKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
@@ -134,7 +134,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
 
     if(!PreferredFormatFound)
     {
-        Rr_LogAbort("No preferred surface format found!");
+        RR_ABORT("No preferred surface format found!");
     }
 
     VkCompositeAlphaFlagBitsKHR CompositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -190,7 +190,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     uint32_t ImageCount = 0;
     vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, NULL);
 
-    VkImage *Images = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImage, ImageCount);
+    VkImage *Images = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImage, ImageCount);
 
     vkGetSwapchainImagesKHR(Renderer->Device, Renderer->Swapchain.Handle, &ImageCount, Images);
 
@@ -564,7 +564,7 @@ void Rr_InitRenderer(Rr_App *App)
     const char *const *SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
 
     uint32_t ExtensionCount = SDLExtensionCount + AppExtensionCount;
-    const char **Extensions = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, const char *, ExtensionCount);
+    const char **Extensions = RR_ALLOC_TYPE_COUNT(Scratch.Arena, const char *, ExtensionCount);
     for(uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
@@ -590,7 +590,7 @@ void Rr_InitRenderer(Rr_App *App)
 
     if(SDL_Vulkan_CreateSurface(Window, Renderer->Instance, NULL, &Renderer->Surface) != true)
     {
-        Rr_LogAbort("Failed to create Vulkan surface: %s", SDL_GetError());
+        RR_ABORT("Failed to create Vulkan surface: %s", SDL_GetError());
     }
 
     Renderer->PhysicalDevice = Rr_SelectPhysicalDevice(
@@ -986,11 +986,11 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     VkAttachmentDescription *Attachments =
-        RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkAttachmentDescription), Info->AttachmentCount);
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkAttachmentDescription, Info->AttachmentCount);
 
     size_t ColorCount = 0;
     VkAttachmentReference *ColorReferences =
-        RR_ALLOC_COUNT(Scratch.Arena, sizeof(VkAttachmentDescription), Info->AttachmentCount);
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkAttachmentReference, Info->AttachmentCount);
     VkAttachmentReference *DepthReference = NULL;
 
     for(size_t Index = 0; Index < Info->AttachmentCount; ++Index)
@@ -1000,7 +1000,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
         {
             if(DepthReference != NULL)
             {
-                Rr_LogAbort("Can't have more than one depth attachment!");
+                RR_ABORT("Can't have more than one depth attachment!");
             }
             DepthReference = RR_ALLOC(Scratch.Arena, sizeof(VkAttachmentDescription));
             DepthReference->attachment = Index;
@@ -1151,7 +1151,7 @@ VkFramebuffer Rr_GetFramebuffer(
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    VkImageView *ImageViews = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkImageView, ImageCount);
+    VkImageView *ImageViews = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, ImageCount);
 
     for(size_t Index = 0; Index < ImageCount; ++Index)
     {

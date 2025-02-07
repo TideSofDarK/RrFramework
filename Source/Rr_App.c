@@ -199,7 +199,7 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_InitPlatform();
 
     SDL_SetAppMetadata(Config->Title, Config->Version, Config->Package);
-    SDL_SetLogPriorities(SDL_LOG_PRIORITY_INFO);
+    SDL_SetLogPriorities(SDL_LOG_PRIORITY_CRITICAL);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
     SDL_Vulkan_LoadLibrary(NULL);

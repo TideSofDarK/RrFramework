@@ -71,12 +71,12 @@ Rr_String Rr_CreateString(const char *CString, size_t LengthHint, Rr_Arena *Aren
 {
     if(CString == NULL)
     {
-        Rr_LogAbort("Attempting to parse NULL string!");
+        RR_ABORT("Attempting to parse NULL string!");
     }
 
     size_t SourceLength = LengthHint > 0 ? LengthHint : strlen(CString);
 
-    uint32_t *Buffer = RR_ALLOC_COUNT(Arena, sizeof(uint32_t), SourceLength);
+    uint32_t *Buffer = RR_ALLOC_NO_ZERO(Arena, sizeof(uint32_t) * SourceLength);
 
     size_t FinalLength = Rr_UTF8ToUTF32(CString, SourceLength, Buffer, SourceLength);
 

@@ -29,7 +29,7 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    VkDescriptorPoolSize *PoolSizes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkDescriptorPoolSize, RatioCount);
+    VkDescriptorPoolSize *PoolSizes = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkDescriptorPoolSize, RatioCount);
     for(size_t Index = 0; Index < RatioCount; Index++)
     {
         Rr_DescriptorPoolSizeRatio *Ratio = &Ratios[Index];
@@ -441,7 +441,7 @@ void Rr_ApplyDescriptorsState(
                 break;
                 default:
                 {
-                    Rr_LogAbort("Not implemented!");
+                    RR_ABORT("Not implemented!");
                 }
                 break;
             }

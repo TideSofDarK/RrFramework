@@ -99,7 +99,7 @@ void Rr_UploadBufferAligned(
     // Rr_WriteBuffer *StagingBuffer = UploadContext->StagingBuffer;
     // if(StagingBuffer->Offset + Data.Size > StagingBuffer->Buffer->AllocationInfo.size)
     // {
-    //     Rr_LogAbort(
+    //     RR_ABORT(
     //         "Exceeding staging buffer size! Current offset is %zu, allocation "
     //         "size is %zu and total staging buffer size is %zu.",
     //         (size_t)StagingBuffer->Offset,
@@ -126,7 +126,7 @@ void Rr_UploadBufferAligned(
     // VkDeviceSize CurrentDstOffset = DstOffset != NULL ? *DstOffset : 0;
     // if(CurrentDstOffset + AlignedSize > DstBuffer->AllocationInfo.size)
     // {
-    //     Rr_LogAbort(
+    //     RR_ABORT(
     //         "Exceeding buffer size! Current offset is %zu, allocation size is "
     //         "%zu and total  buffer size is %zu.",
     //         CurrentDstOffset,
@@ -307,7 +307,7 @@ void Rr_UploadToDeviceBufferImmediate(Rr_App *App, Rr_Buffer *DstBuffer, Rr_Data
 //     }
 //     else
 //     {
-//         Rr_LogAbort(
+//         RR_ABORT(
 //             "Exceeding buffer size! Current offset is %zu, allocation size is "
 //             "%zu and total  buffer size is %zu.",
 //             *DstOffset,
