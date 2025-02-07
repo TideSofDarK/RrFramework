@@ -139,145 +139,6 @@ static inline void Rr_AddNodeBufferDependency(Rr_GraphNode *Node, Rr_GraphResour
     }
 }
 
-static void Rr_ExecuteGraphBatch(
-    Rr_App *App,
-    Rr_Graph *Graph,
-    Rr_GraphBatch *Batch,
-    VkCommandBuffer CommandBuffer,
-    Rr_Arena *Arena)
-{
-    // Rr_Scratch Scratch = Rr_GetScratch(Arena);
-    //
-    // Rr_Renderer *Renderer = &App->Renderer;
-    // Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    //
-    // /* Submit barriers. */
-    // /* @TODO: People suggesting batching these into two submits: pre vertex stage and post vertex stage. */
-    //
-    // size_t ImageBarrierCount = Batch->ImageBarriers.Count;
-    // for(size_t Index = 0; Index < ImageBarrierCount; ++Index)
-    // {
-    //     VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
-    //     Rr_ImageSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Barrier->image, NULL);
-    //     Rr_ImageSync **LocalState = RR_UPSERT(&Batch->LocalSync, Barrier->image, NULL);
-    //     VkPipelineStageFlags StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    //     if(*GlobalState != NULL)
-    //     {
-    //         StageMask = (*GlobalState)->StageMask;
-    //     }
-    //     vkCmdPipelineBarrier(CommandBuffer, StageMask, (*LocalState)->StageMask, 0, 0, NULL, 0, NULL, 1, Barrier);
-    // }
-    //
-    // size_t BufferCount = Batch->Buffers.Count;
-    // for(size_t Index = 0; Index < BufferCount; ++Index)
-    // {
-    //     VkBuffer Buffer = Batch->Buffers.Data[Index];
-    //
-    //     Rr_BufferSync **GlobalStatePtr = RR_UPSERT(&Renderer->GlobalSync, Buffer, NULL);
-    //     Rr_BufferSync *GlobalState = *GlobalStatePtr;
-    //     bool HasGlobalState = GlobalState != NULL;
-    //
-    //     Rr_BufferSync **LocalStatePtr = RR_UPSERT(&Batch->LocalSync, Buffer, NULL);
-    //     Rr_BufferSync *LocalState = *LocalStatePtr;
-    //
-    //     VkBufferMemoryBarrier *Barriers =
-    //         RR_ALLOC_STRUCT_COUNT(Scratch.Arena, VkBufferMemoryBarrier, LocalState->RangeCount);
-    //
-    //     size_t RangeIndex = 0;
-    //     for(Rr_BufferRange *Range = LocalState->SentinelRange.Next; Range != NULL; Range = Range->Next, ++RangeIndex)
-    //     {
-    //         Barriers[RangeIndex] = (VkBufferMemoryBarrier){
-    //             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-    //             .pNext = NULL,
-    //             .srcAccessMask = HasGlobalState ? GlobalState->AccessMask : 0,
-    //             .dstAccessMask = LocalState->AccessMask,
-    //             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //             .buffer = Buffer,
-    //             .offset = Range->Offset,
-    //             .size = Range->Size,
-    //         };
-    //     }
-    //     vkCmdPipelineBarrier(
-    //         CommandBuffer,
-    //         HasGlobalState ? GlobalState->StageMask : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-    //         LocalState->StageMask,
-    //         0,
-    //         0,
-    //         NULL,
-    //         RangeIndex,
-    //         Barriers,
-    //         0,
-    //         NULL);
-    //     if(GlobalState == NULL)
-    //     {
-    //         *GlobalStatePtr = RR_ALLOC(App->PermanentArena, sizeof(Rr_BufferSync));
-    //         GlobalState = *GlobalStatePtr;
-    //     }
-    //     *GlobalState = *LocalState;
-    // }
-    //
-    // for(size_t Index = 0; Index < Batch->Nodes.Count; ++Index)
-    // {
-    //     Rr_GraphNode *GraphNode = Batch->Nodes.Data[Index];
-    //
-    //     switch(GraphNode->Type)
-    //     {
-    //         case RR_GRAPH_NODE_TYPE_GRAPHICS:
-    //         {
-    //             Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.Graphics;
-    //             Rr_ExecuteGraphicsNode(App, GraphicsNode, Scratch.Arena);
-    //         }
-    //         break;
-    //         case RR_GRAPH_NODE_TYPE_PRESENT:
-    //         {
-    //             Rr_PresentNode *PresentNode = &GraphNode->Union.Present;
-    //             Rr_ExecutePresentNode(App, PresentNode);
-    //         }
-    //         break;
-    //         case RR_GRAPH_NODE_TYPE_BUILTIN:
-    //         {
-    //             Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.Builtin;
-    //             Rr_ExecuteBuiltinNode(App, BuiltinNode, Scratch.Arena);
-    //         }
-    //         break;
-    //         case RR_GRAPH_NODE_TYPE_BLIT:
-    //         {
-    //             Rr_BlitNode *BlitNode = &GraphNode->Union.Blit;
-    //             Rr_ExecuteBlitNode(App, BlitNode);
-    //         }
-    //         break;
-    //         case RR_GRAPH_NODE_TYPE_TRANSFER:
-    //         {
-    //             Rr_TransferNode *TransferNode = &GraphNode->Union.Transfer;
-    //             Rr_ExecuteTransferNode(App, Graph, TransferNode, Frame->MainCommandBuffer);
-    //         }
-    //         break;
-    //         default:
-    //         {
-    //             RR_ABORT("Unsupported node type!");
-    //         }
-    //         break;
-    //     }
-    //
-    //     GraphNode->Executed = true;
-    // }
-    //
-    // for(size_t Index = 0; Index < ImageBarrierCount; ++Index)
-    // {
-    //     VkImageMemoryBarrier *Barrier = Batch->ImageBarriers.Data + Index;
-    //     Rr_ImageSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Barrier->image, App->PermanentArena);
-    //     if(*GlobalState == NULL)
-    //     {
-    //         *GlobalState = RR_ALLOC(App->PermanentArena, sizeof(Rr_ImageSync));
-    //     }
-    //     Rr_ImageSync **BatchState = RR_UPSERT(&Batch->LocalSync, Barrier->image, NULL);
-    //     *(*GlobalState) = *(*BatchState);
-    // }
-    //
-    // Rr_DestroyScratch(Scratch);
-}
-
 typedef RR_SLICE(size_t) Rr_IndexSlice;
 
 static void Rr_CreateGraphAdjacencyList(Rr_Graph *Graph, Rr_IndexSlice *AdjacencyList, Rr_Arena *Arena)
@@ -343,28 +204,23 @@ static void Rr_SortGraph(size_t CurrentNodeIndex, Rr_IndexSlice *AdjacencyList, 
 
 static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *Arena)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(Arena);
-
     size_t NodeCount = Graph->Nodes.Count;
     Rr_GraphNode **Nodes = Graph->Nodes.Data;
+
+    if(NodeCount == 0)
+    {
+        RR_LOG("Graph doesn't contain any nodes!");
+
+        return;
+    }
+
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     /* Adjacency list maps a node to a set of nodes that must
      * be executed before it. */
 
     Rr_IndexSlice *AdjacencyList = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_IndexSlice, NodeCount);
     Rr_CreateGraphAdjacencyList(Graph, AdjacencyList, Scratch.Arena);
-
-    // for(size_t Index = 0; Index < NodeCount; ++Index)
-    // {
-    //     size_t NodeIndex = Index;
-    //     size_t OriginalIndex = Nodes[NodeIndex]->OriginalIndex;
-    //     RR_LOG("Node: %zu %s\n", OriginalIndex, Nodes[OriginalIndex]->Name);
-    //     for(size_t DepIndex = 0; DepIndex < AdjacencyList[OriginalIndex].Count; ++DepIndex)
-    //     {
-    //         size_t DepNodeIndex = AdjacencyList[OriginalIndex].Data[DepIndex];
-    //         RR_LOG("    Dependency: %zu %s\n", DepNodeIndex, Nodes[DepNodeIndex]->Name);
-    //     }
-    // }
 
     /* Here we do topological sort on our graph starting at nodes
      * that contribute to "root resources".
@@ -388,10 +244,8 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
 
     NodeCount = Out->Count;
 
-    // for(size_t Index = 0; Index < NodeCount; ++Index)
-    // {
-    //     Rr_SortGraph(Index, AdjacencyList, SortState, Out);
-    // }
+    /* Longest path search will determine dependency level for each node.
+     * Nodes within same dependency level are meant to be batched together. */
 
     size_t *Reversed = RR_ALLOC_TYPE_COUNT(Scratch.Arena, size_t, NodeCount);
     for(size_t Index = 0; Index < NodeCount; ++Index)
@@ -399,12 +253,6 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
         Reversed[Index] = NodeCount - Out->Data[Index] - 1;
     }
 
-    // for(size_t Index = 0; Index < NodeCount; ++Index)
-    // {
-    //     RR_LOG("Reversed %zu: %s\n", Index, Nodes[Reversed[Index]]->Name);
-    // }
-
-    size_t *LongestDistances = RR_ALLOC_TYPE_COUNT(Scratch.Arena, size_t, NodeCount);
     for(size_t Index = 0; Index < NodeCount; ++Index)
     {
         size_t NodeIndex = Reversed[Index];
@@ -412,15 +260,10 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
         for(size_t DepIndex = 0; DepIndex < AdjacencyList[OriginalIndex].Count; ++DepIndex)
         {
             size_t DepNodeIndex = AdjacencyList[OriginalIndex].Data[DepIndex];
-            LongestDistances[DepNodeIndex] =
-                RR_MAX(LongestDistances[DepNodeIndex], LongestDistances[OriginalIndex] + 1);
+            Graph->Nodes.Data[DepNodeIndex]->DependencyLevel = RR_MAX(
+                Graph->Nodes.Data[DepNodeIndex]->DependencyLevel,
+                Graph->Nodes.Data[OriginalIndex]->DependencyLevel + 1);
         }
-    }
-
-    for(size_t I = 0; I < NodeCount; ++I)
-    {
-        size_t Index = Reversed[I];
-        RR_LOG("Longest Distance: %zu %s", LongestDistances[Index], Nodes[Index]->Name);
     }
 
     Rr_DestroyScratch(Scratch);
@@ -428,170 +271,29 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_IndexSlice *Out, Rr_Arena *
 
 void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 {
-    size_t NodeCount = Graph->Nodes.Count;
-    if(NodeCount == 0)
-    {
-        RR_LOG("Graph doesn't contain any nodes!");
-    }
-
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_IndexSlice SortedIndices = { 0 };
-    RR_RESERVE_SLICE(&SortedIndices, NodeCount, Scratch.Arena);
+    RR_RESERVE_SLICE(&SortedIndices, Graph->Nodes.Count, Scratch.Arena);
 
     Rr_ProcessGraphNodes(Graph, &SortedIndices, Scratch.Arena);
 
-    // for(size_t Index = 0; Index < SortedIndices.Count; ++Index)
-    // {
-    //     RR_LOG("%zu: %s\n", Index, Graph->Nodes.Data[Index]->Name);
-    // }
+    size_t DependencyLevel = SIZE_MAX;
+    for(size_t Index = 0; Index < SortedIndices.Count; ++Index)
+    {
+        Rr_GraphNode *Node = Graph->Nodes.Data[SortedIndices.Data[Index]];
+        if(Node->DependencyLevel != DependencyLevel)
+        {
+            DependencyLevel = Node->DependencyLevel;
+            RR_LOG("Batching dependency level %zu", DependencyLevel);
+        }
+
+        RR_LOG("Node %s", Node->Name);
+    }
 
     RR_ABORT("That's it for now!");
 
-    // while(true)
-    // {
-    //     /* Begin a new batch. */
-    //
-    //     Rr_Scratch Scratch = Rr_GetScratch(Arena);
-    //
-    //     Rr_GraphBatch Batch = {
-    //         .Arena = Scratch.Arena,
-    //     };
-    //
-    //     /* First Graph Pass */
-    //     /* Here we go through the nodes and accumulate barriers
-    //      * up until  */
-    //
-    //     for(size_t Index = 0; Index < Graph->Nodes.Count; ++Index)
-    //     {
-    //         Rr_GraphNode *GraphNode = Graph->Nodes.Data[Index];
-    //
-    //         bool NodeBatched = false;
-    //         switch(GraphNode->Type)
-    //         {
-    //             case RR_GRAPH_NODE_TYPE_GRAPHICS:
-    //             {
-    //                 Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
-    //                 NodeBatched = Rr_BatchGraphicsNode(App, &Batch, GraphicsNode);
-    //             }
-    //             break;
-    //             case RR_GRAPH_NODE_TYPE_PRESENT:
-    //             {
-    //                 Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
-    //                 NodeBatched = Rr_BatchPresentNode(App, &Batch, PresentNode);
-    //             }
-    //             break;
-    //             case RR_GRAPH_NODE_TYPE_BUILTIN:
-    //             {
-    //                 Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
-    //                 NodeBatched = Rr_BatchBuiltinNode(App, Graph, &Batch, BuiltinNode);
-    //             }
-    //             break;
-    //             case RR_GRAPH_NODE_TYPE_BLIT:
-    //             {
-    //                 Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
-    //                 NodeBatched = Rr_BatchBlitNode(App, Graph, &Batch, BlitNode);
-    //             }
-    //             break;
-    //             case RR_GRAPH_NODE_TYPE_TRANSFER:
-    //             {
-    //                 Rr_TransferNode *TransferNode = &GraphNode->Union.TransferNode;
-    //                 NodeBatched = Rr_BatchTransferNode(App, &Batch, TransferNode);
-    //             }
-    //             break;
-    //             default:
-    //             {
-    //                 RR_ABORT("Unsupported node type!");
-    //             }
-    //             break;
-    //         }
-    //     }
-    //
-    //     for(size_t Index = 0; Index < Graph->Nodes.Count; ++Index)
-    //     {
-    //         Rr_GraphNode *GraphNode = Graph->Nodes.Data[Index];
-    //
-    //         if(GraphNode->Executed == true)
-    //         {
-    //             continue;
-    //         }
-    //
-    //         /* Attempt batching current node. */
-    //
-    //         bool NodeBatched = false;
-    //         switch(GraphNode->Type)
-    //         {
-    //             case RR_GRAPH_NODE_TYPE_GRAPHICS:
-    //             {
-    //                 Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.GraphicsNode;
-    //                 NodeBatched = Rr_BatchGraphicsNode(App, &Batch, GraphicsNode);
-    //             }
-    //             break;
-    //             case RR_GRAPH_NODE_TYPE_PRESENT:
-    //             {
-    //                 Rr_PresentNode *PresentNode = &GraphNode->Union.PresentNode;
-    //                 NodeBatched = Rr_BatchPresentNode(App, &Batch, PresentNode);
-    //             }
-    //             break;
-    //             case RR_GRAPH_NODE_TYPE_BUILTIN:
-    //             {
-    //                 Rr_BuiltinNode *BuiltinNode = &GraphNode->Union.BuiltinNode;
-    //                 NodeBatched = Rr_BatchBuiltinNode(App, Graph, &Batch, BuiltinNode);
-    //             }
-    //             break;
-    //             case RR_GRAPH_NODE_TYPE_BLIT:
-    //             {
-    //                 Rr_BlitNode *BlitNode = &GraphNode->Union.BlitNode;
-    //                 NodeBatched = Rr_BatchBlitNode(App, Graph, &Batch, BlitNode);
-    //             }
-    //             break;
-    //             case RR_GRAPH_NODE_TYPE_TRANSFER:
-    //             {
-    //                 Rr_TransferNode *TransferNode = &GraphNode->Union.TransferNode;
-    //                 NodeBatched = Rr_BatchTransferNode(App, &Batch, TransferNode);
-    //             }
-    //             break;
-    //             default:
-    //             {
-    //                 RR_ABORT("Unsupported node type!");
-    //             }
-    //             break;
-    //         }
-    //         if(NodeBatched)
-    //         {
-    //             *RR_PUSH_SLICE(&Batch.Nodes, Batch.Arena) = GraphNode;
-    //             NodeCount--;
-    //         }
-    //     }
-    //
-    //     if(Batch.Nodes.Count == 0)
-    //     {
-    //         RR_ABORT("Couldn't batch graph nodes, probably invalid graph!");
-    //     }
-    //
-    //     Rr_ExecuteGraphBatch(App, Graph, &Batch, Scratch.Arena);
-    //
-    //     Rr_DestroyScratch(Scratch);
-    //
-    //     if(NodeCount <= 0)
-    //     {
-    //         break;
-    //     }
-    // }
-}
-
-bool Rr_BatchImagePossible(Rr_Map **Sync, VkImage Image)
-{
-    // Rr_ImageSync **State = RR_UPSERT(Sync, Image, NULL);
-    //
-    // if(State != NULL)
-    // {
-    //     /* @TODO: Should be true if for example current batch state matches
-    //      * requested state. */
-    //     return false;
-    // }
-
-    return true;
+    Rr_DestroyScratch(Scratch);
 }
 
 void Rr_BatchImage(

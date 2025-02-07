@@ -156,6 +156,7 @@ struct Rr_GraphNode
     Rr_GraphNodeType Type;
     const char *Name;
     size_t OriginalIndex;
+    size_t DependencyLevel;
     RR_SLICE(Rr_NodeDependency) Reads;
     RR_SLICE(Rr_NodeDependency) Writes;
     Rr_Graph *Graph;
