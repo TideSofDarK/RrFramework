@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+struct Rr_Sampler;
 struct Rr_Buffer;
 struct Rr_Image;
 
@@ -83,6 +84,10 @@ typedef enum Rr_PresentMode
     RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
 
+extern Rr_GraphBufferHandle Rr_RegisterGraphBuffer(Rr_App *App, struct Rr_Buffer *Buffer);
+
+extern Rr_GraphImageHandle Rr_RegisterGraphImage(Rr_App *App, struct Rr_Image *Image);
+
 extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
@@ -140,9 +145,12 @@ extern void Rr_BindGraphicsUniformBuffer(
     uint32_t Offset,
     uint32_t Size);
 
-extern Rr_GraphBufferHandle Rr_RegisterGraphBuffer(Rr_App *App, struct Rr_Buffer *Buffer);
-
-extern Rr_GraphImageHandle Rr_RegisterGraphImage(Rr_App *App, struct Rr_Image *Image);
+extern void Rr_BindCombinedImageSampler(
+    Rr_GraphNode *Node,
+    Rr_GraphImageHandle *ImageHandle,
+    struct Rr_Sampler *Sampler,
+    uint32_t Set,
+    uint32_t Binding);
 
 #ifdef __cplusplus
 }

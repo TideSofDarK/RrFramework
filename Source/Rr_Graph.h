@@ -8,6 +8,9 @@
 
 struct Rr_Frame;
 
+typedef RR_SLICE(size_t) Rr_IndexSlice;
+typedef RR_SLICE(Rr_GraphNode *) Rr_NodeSlice;
+
 typedef struct Rr_ImageSync Rr_ImageSync;
 struct Rr_ImageSync
 {
@@ -50,6 +53,7 @@ typedef enum
     RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT,
     RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR,
     RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
+    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
 } Rr_GraphicsNodeFunctionType;
 
 typedef struct Rr_GraphicsNodeFunction Rr_GraphicsNodeFunction;
@@ -107,6 +111,16 @@ struct Rr_BindUniformBufferArgs
     uint32_t Size;
 };
 
+typedef struct Rr_BindCombinedImageSamplerArgs Rr_BindCombinedImageSamplerArgs;
+struct Rr_BindCombinedImageSamplerArgs
+{
+    Rr_GraphImageHandle ImageHandle;
+    Rr_Sampler *Sampler;
+    VkImageLayout Layout;
+    uint32_t Set;
+    uint32_t Binding;
+};
+
 typedef struct Rr_PresentNode Rr_PresentNode;
 struct Rr_PresentNode
 {
@@ -132,16 +146,22 @@ typedef enum
 } Rr_NodeDependencyTypeBits;
 typedef uint32_t Rr_NodeDependencyType;
 
+typedef struct Rr_GenericSync Rr_GenericSync;
+struct Rr_GenericSync
+{
+    VkPipelineStageFlags StageMask;
+    VkAccessFlags AccessMask;
+    union
+    {
+        VkImageLayout Layout;
+    } Specific;
+};
+
 typedef struct Rr_NodeDependency Rr_NodeDependency;
 struct Rr_NodeDependency
 {
-    union
-    {
-        Rr_BufferSync Buffer;
-        Rr_ImageSync Image;
-    } State;
+    Rr_GenericSync State;
     Rr_GraphResourceHandle Handle;
-    bool IsImage;
 };
 
 struct Rr_GraphNode
@@ -157,9 +177,11 @@ struct Rr_GraphNode
     const char *Name;
     size_t OriginalIndex;
     size_t DependencyLevel;
-    RR_SLICE(Rr_NodeDependency) Reads;
-    RR_SLICE(Rr_NodeDependency) Writes;
+    size_t DependencyCount;
+    RR_SLICE(Rr_NodeDependency) Dependencies;
     Rr_Graph *Graph;
+    bool Visited;
+    bool Added;
 };
 
 typedef struct Rr_GraphBatch Rr_GraphBatch;
@@ -175,7 +197,7 @@ struct Rr_Graph
 {
     RR_SLICE(Rr_GraphNode *) Nodes;
     RR_SLICE(void *) ResolvedResources;
-    RR_SLICE(Rr_GraphResourceHandle) RootResources;
+    RR_SLICE(Rr_GraphNode *) RootNodes;
     Rr_Map *ResourceWriteToNode;
     Rr_Arena *Arena;
 };
