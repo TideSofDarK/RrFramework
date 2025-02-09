@@ -7,6 +7,6 @@ const vec2 UVs[3] = vec2[3](vec2(0.0, 0.0), vec2(2.0, 0.0), vec2(0.0, 2.0));
 
 void main()
 {
-    gl_Position = vec4(Positions[gl_InstanceIndex], 1.0f);
-    OutUV = UVs[gl_InstanceIndex];
+    gl_Position = vec4(Positions[gl_VertexIndex], 1.0f);
+    OutUV = UVs[gl_VertexIndex];
 }

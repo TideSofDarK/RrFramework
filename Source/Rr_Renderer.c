@@ -1,5 +1,6 @@
 #include "Rr_Renderer.h"
 
+#include "Rr/Rr_Pipeline.h"
 #include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_BuiltinAssets.inc"
@@ -682,7 +683,6 @@ void Rr_CleanupRenderer(Rr_App *App)
     Rr_CleanupSwapchain(App, Renderer->Swapchain.Handle);
     Rr_DestroyGraphicsPipeline(App, Renderer->PresentPipeline);
     Rr_DestroyPipelineLayout(App, Renderer->PresentLayout);
-    vkDestroyRenderPass(Renderer->Device, Renderer->PresentRenderPass, NULL);
 
     vmaDestroyAllocator(Renderer->Allocator);
 
@@ -815,6 +815,7 @@ void Rr_Draw(Rr_App *App)
         .Handle = SwapchainImage,
         .Container = &Frame->VirtualSwapchainImage,
     };
+    Frame->SwapchainFramebuffer = Renderer->Swapchain.Images.Data[SwapchainImageIndex].Framebuffer;
 
     /* Attempt to properly synchronize first time use of a swapchain image. */
 
@@ -867,9 +868,17 @@ void Rr_Draw(Rr_App *App)
             .pCommandBuffers = &Frame->PresentCommandBuffer,
             .signalSemaphoreCount = 1,
             .pSignalSemaphores = &Frame->PresentSemaphore,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &Frame->MainSemaphore,
-            .pWaitDstStageMask = (VkPipelineStageFlags[]){ VK_PIPELINE_STAGE_ALL_COMMANDS_BIT },
+            .waitSemaphoreCount = 2,
+            .pWaitSemaphores =
+                (VkSemaphore[]){
+                    Frame->MainSemaphore,
+                    Frame->SwapchainSemaphore,
+                },
+            .pWaitDstStageMask =
+                (VkPipelineStageFlags[]){
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                },
         },
     };
 

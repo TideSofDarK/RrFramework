@@ -92,6 +92,7 @@ extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
     Rr_GraphImageHandle *ImageHandle,
+    struct Rr_Sampler *Sampler,
     Rr_PresentMode Mode);
 
 extern Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name, Rr_GraphBufferHandle *DstBufferHandle);

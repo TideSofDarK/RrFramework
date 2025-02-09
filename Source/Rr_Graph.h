@@ -126,6 +126,7 @@ struct Rr_PresentNode
 {
     Rr_GraphImageHandle ImageHandle;
     Rr_PresentMode Mode;
+    Rr_Sampler *Sampler;
 };
 
 typedef struct Rr_BlitNode Rr_BlitNode;
@@ -179,17 +180,6 @@ struct Rr_GraphNode
     size_t DependencyLevel;
     RR_SLICE(Rr_NodeDependency) Dependencies;
     Rr_Graph *Graph;
-    bool Visited;
-    bool Added;
-};
-
-typedef struct Rr_GraphBatch Rr_GraphBatch;
-struct Rr_GraphBatch
-{
-    RR_SLICE(Rr_GraphNode *) Nodes;
-    RR_SLICE(VkImageMemoryBarrier) ImageBarriers;
-    RR_SLICE(VkBuffer) Buffers;
-    Rr_Map *LocalSync;
 };
 
 struct Rr_Graph
@@ -204,26 +194,6 @@ struct Rr_Graph
 extern Rr_GraphNode *Rr_AddGraphNode(struct Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name);
 
 extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
-
-extern bool Rr_BatchImagePossible(Rr_Map **Sync, VkImage Image);
-
-extern void Rr_BatchImage(
-    Rr_App *App,
-    Rr_GraphBatch *Batch,
-    VkImage Image,
-    VkImageAspectFlags AspectMask,
-    VkPipelineStageFlags StageMask,
-    VkAccessFlags AccessMask,
-    VkImageLayout Layout);
-
-extern bool Rr_BatchBuffer(
-    Rr_App *App,
-    Rr_GraphBatch *Batch,
-    VkBuffer Buffer,
-    VkDeviceSize Size,
-    VkDeviceSize Offset,
-    VkPipelineStageFlags StageMask,
-    VkAccessFlags AccessMask);
 
 extern void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer CommandBuffer);
 

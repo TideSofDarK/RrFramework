@@ -10,13 +10,6 @@
 
 #include <assert.h>
 
-/*static VkAccessFlags AllVulkanReads =*/
-/*    VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT |*/
-/*    VK_ACCESS_UNIFORM_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT |*/
-/*    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT
- * |*/
-/*    VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT;*/
-
 static VkAccessFlags AllVulkanWrites = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
                                        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
                                        VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
@@ -181,9 +174,18 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_NodeSlice *SortedNodes, Rr_
     Rr_CreateGraphAdjacencyList(Graph, AdjacencyList, Scratch.Arena);
 
     int *SortState = RR_ALLOC(Scratch.Arena, sizeof(int) * Graph->Nodes.Count);
-    for(size_t Index = 0; Index < Graph->RootNodes.Count; ++Index)
+    // for(size_t Index = 0; Index < Graph->RootNodes.Count; ++Index)
+    // {
+    // Rr_GraphNode *Node = Graph->RootNodes.Data[Index];
+    // if(Node != NULL)
+    // {
+    // Rr_SortGraph(Node->OriginalIndex, AdjacencyList, SortState, Graph->Nodes.Data, SortedNodes);
+    // }
+    // }
+
+    for(size_t Index = 0; Index < Graph->Nodes.Count; ++Index)
     {
-        Rr_GraphNode *Node = Graph->RootNodes.Data[Index];
+        Rr_GraphNode *Node = Graph->Nodes.Data[Index];
         if(Node != NULL)
         {
             Rr_SortGraph(Node->OriginalIndex, AdjacencyList, SortState, Graph->Nodes.Data, SortedNodes);
@@ -215,7 +217,12 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_NodeSlice *SortedNodes, Rr_
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_ExecuteGraphNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphNode *Node, VkCommandBuffer CommandBuffer)
+void Rr_ExecuteGraphNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_GraphNode *Node,
+    VkCommandBuffer CommandBuffer,
+    VkCommandBuffer PresentCommandBuffer)
 {
     switch(Node->Type)
     {
@@ -228,7 +235,7 @@ void Rr_ExecuteGraphNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphNode *Node, VkCom
         case RR_GRAPH_NODE_TYPE_PRESENT:
         {
             Rr_PresentNode *PresentNode = &Node->Union.Present;
-            Rr_ExecutePresentNode(App, PresentNode, CommandBuffer);
+            Rr_ExecutePresentNode(App, PresentNode, PresentCommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_BLIT:
@@ -261,23 +268,92 @@ struct Rr_VulkanPipelineBarrier
     Rr_Map *VulkanHandleToBarrier;
 };
 
-static inline void Rr_ResetVulkanPipelineBarrier(Rr_VulkanPipelineBarrier *Barrier)
+static void Rr_ResetVulkanPipelineBarrier(Rr_VulkanPipelineBarrier *Barrier)
 {
     Barrier->ImageBarriers.Count = 0;
     Barrier->BufferBarriers.Count = 0;
     Barrier->SrcStageMask = 0;
     Barrier->DstStageMask = 0;
+    Barrier->VulkanHandleToBarrier = NULL;
 }
 
-static inline Rr_GenericSync *Rr_GetGraphState(Rr_Map **State, uintptr_t Key, Rr_Arena *Arena)
+static Rr_GenericSync *Rr_GetSynchronizationState(Rr_Map **State, uintptr_t Key, Rr_Arena *Arena)
 {
-    Rr_GenericSync **GenericState = RR_UPSERT(State, Key, Arena);
-    if(*GenericState != NULL)
+    Rr_GenericSync **GenericStateRef = RR_UPSERT(State, Key, Arena);
+    if(*GenericStateRef != NULL)
     {
-        return *GenericState;
+        return *GenericStateRef;
     }
-    *GenericState = RR_ALLOC_TYPE(Arena, Rr_GenericSync);
-    return *GenericState;
+    *GenericStateRef = RR_ALLOC_TYPE(Arena, Rr_GenericSync);
+    Rr_GenericSync *GenericState = *GenericStateRef;
+    GenericState->StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    return GenericState;
+}
+
+static void Rr_IssueVulkanPipelineBarrier(Rr_VulkanPipelineBarrier *Barrier, VkCommandBuffer CommandBuffer)
+{
+    if(Barrier->BufferBarriers.Count > 0 || Barrier->ImageBarriers.Count)
+    {
+        vkCmdPipelineBarrier(
+            CommandBuffer,
+            Barrier->SrcStageMask,
+            Barrier->DstStageMask,
+            0,
+            0,
+            NULL,
+            Barrier->BufferBarriers.Count,
+            Barrier->BufferBarriers.Data,
+            Barrier->ImageBarriers.Count,
+            Barrier->ImageBarriers.Data);
+    }
+}
+
+static void Rr_ApplyVulkanPipelineBarrierState(
+    Rr_VulkanPipelineBarrier *Barrier,
+    Rr_Map **State,
+    bool BitwiseOr,
+    Rr_Arena *Arena)
+{
+    for(size_t Index = 0; Index < Barrier->BufferBarriers.Count; ++Index)
+    {
+        VkBufferMemoryBarrier *BufferBarrier = Barrier->BufferBarriers.Data + Index;
+
+        Rr_GenericSync *BufferState = Rr_GetSynchronizationState(State, (uintptr_t)BufferBarrier->buffer, Arena);
+
+        if(BitwiseOr)
+        {
+            BufferState->StageMask |= Barrier->DstStageMask;
+            BufferState->AccessMask |= BufferBarrier->dstAccessMask;
+        }
+        else
+        {
+            *BufferState = (Rr_GenericSync){
+                .StageMask = Barrier->DstStageMask,
+                .AccessMask = BufferBarrier->dstAccessMask,
+            };
+        }
+    }
+    for(size_t Index = 0; Index < Barrier->ImageBarriers.Count; ++Index)
+    {
+        VkImageMemoryBarrier *ImageBarrier = Barrier->ImageBarriers.Data + Index;
+
+        Rr_GenericSync *ImageState = Rr_GetSynchronizationState(State, (uintptr_t)ImageBarrier->image, Arena);
+
+        if(BitwiseOr)
+        {
+            ImageState->StageMask |= Barrier->DstStageMask;
+            ImageState->AccessMask |= ImageBarrier->dstAccessMask;
+            ImageState->Specific.Layout = ImageBarrier->newLayout;
+        }
+        else
+        {
+            *ImageState = (Rr_GenericSync){
+                .StageMask = Barrier->DstStageMask,
+                .AccessMask = ImageBarrier->dstAccessMask,
+                .Specific.Layout = ImageBarrier->newLayout,
+            };
+        }
+    }
 }
 
 void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
@@ -291,12 +367,10 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
     Rr_ProcessGraphNodes(Graph, &SortedNodes, Scratch.Arena);
 
-    size_t DependencyLevel = SIZE_MAX;
+    size_t DependencyLevel = SortedNodes.Data[0]->DependencyLevel;
 
-    Rr_VulkanPipelineBarrier BarrierVertex;
-    Rr_VulkanPipelineBarrier Barrier;
-
-    Rr_Map *GraphState = NULL;
+    Rr_VulkanPipelineBarrier BarrierVertex = { 0 };
+    Rr_VulkanPipelineBarrier Barrier = { 0 };
 
     size_t BatchStartIndex = 0;
     size_t BatchSize = 0;
@@ -304,47 +378,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     for(size_t Index = 0; Index < SortedNodes.Count; ++Index)
     {
         Rr_GraphNode *Node = SortedNodes.Data[Index];
-        if(Node->DependencyLevel != DependencyLevel)
-        {
-            /* Execute current batch now! */
-
-            vkCmdPipelineBarrier(
-                Frame->MainCommandBuffer,
-                BarrierVertex.SrcStageMask,
-                BarrierVertex.DstStageMask,
-                0,
-                0,
-                NULL,
-                BarrierVertex.BufferBarriers.Count,
-                BarrierVertex.BufferBarriers.Data,
-                BarrierVertex.ImageBarriers.Count,
-                BarrierVertex.ImageBarriers.Data);
-
-            vkCmdPipelineBarrier(
-                Frame->MainCommandBuffer,
-                Barrier.SrcStageMask,
-                Barrier.DstStageMask,
-                0,
-                0,
-                NULL,
-                Barrier.BufferBarriers.Count,
-                Barrier.BufferBarriers.Data,
-                Barrier.ImageBarriers.Count,
-                Barrier.ImageBarriers.Data);
-
-            Rr_ResetVulkanPipelineBarrier(&BarrierVertex);
-            Rr_ResetVulkanPipelineBarrier(&Barrier);
-
-            for(size_t NodeIndex = BatchStartIndex; NodeIndex < BatchStartIndex + BatchSize; ++NodeIndex)
-            {
-                Rr_ExecuteGraphNode(App, Graph, SortedNodes.Data[NodeIndex], Frame->MainCommandBuffer);
-            }
-
-            DependencyLevel = Node->DependencyLevel;
-
-            BatchStartIndex = Index;
-            BatchSize = 0;
-        }
+        DependencyLevel = Node->DependencyLevel;
 
         for(size_t DepIndex = 0; DepIndex < Node->Dependencies.Count; ++DepIndex)
         {
@@ -366,7 +400,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             {
                 VkImage Image = Rr_GetGraphImage(App, Graph, Dependency->Handle)->Handle;
 
-                Rr_GenericSync *PrevState = Rr_GetGraphState(&GraphState, (uintptr_t)Image, Scratch.Arena);
+                Rr_GenericSync *PrevState =
+                    Rr_GetSynchronizationState(&App->Renderer.GlobalSync, (uintptr_t)Image, App->PermanentArena);
 
                 SelectedBarrier->SrcStageMask |= PrevState->StageMask;
 
@@ -384,6 +419,14 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                         .dstAccessMask = State->AccessMask,
                         .oldLayout = PrevState->Specific.Layout,
                         .newLayout = State->Specific.Layout,
+                        .subresourceRange =
+                            (VkImageSubresourceRange){
+                                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                .baseMipLevel = 0,
+                                .levelCount = VK_REMAINING_MIP_LEVELS,
+                                .baseArrayLayer = 0,
+                                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                            },
                     };
                 }
                 else
@@ -398,7 +441,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             {
                 VkBuffer Buffer = Rr_GetGraphBuffer(App, Graph, Dependency->Handle)->Handle;
 
-                Rr_GenericSync *PrevState = Rr_GetGraphState(&GraphState, (uintptr_t)Buffer, Scratch.Arena);
+                Rr_GenericSync *PrevState =
+                    Rr_GetSynchronizationState(&App->Renderer.GlobalSync, (uintptr_t)Buffer, App->PermanentArena);
 
                 SelectedBarrier->SrcStageMask |= PrevState->StageMask;
 
@@ -427,133 +471,46 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         }
 
         BatchSize++;
+
+        bool LastNode = false;
+        bool LastNodeThisLevel = false;
+        if(Index + 1 < SortedNodes.Count)
+        {
+            LastNodeThisLevel = SortedNodes.Data[Index + 1]->DependencyLevel != DependencyLevel;
+        }
+        else
+        {
+            LastNode = true;
+        }
+        if(LastNode || LastNodeThisLevel)
+        {
+            /* Execute current batch now! */
+
+            Rr_IssueVulkanPipelineBarrier(&BarrierVertex, Frame->MainCommandBuffer);
+            Rr_IssueVulkanPipelineBarrier(&Barrier, Frame->MainCommandBuffer);
+
+            Rr_ApplyVulkanPipelineBarrierState(&BarrierVertex, &App->Renderer.GlobalSync, false, App->PermanentArena);
+            Rr_ApplyVulkanPipelineBarrierState(&Barrier, &App->Renderer.GlobalSync, true, App->PermanentArena);
+
+            Rr_ResetVulkanPipelineBarrier(&BarrierVertex);
+            Rr_ResetVulkanPipelineBarrier(&Barrier);
+
+            for(size_t NodeIndex = BatchStartIndex; NodeIndex < BatchStartIndex + BatchSize; ++NodeIndex)
+            {
+                Rr_ExecuteGraphNode(
+                    App,
+                    Graph,
+                    SortedNodes.Data[NodeIndex],
+                    Frame->MainCommandBuffer,
+                    Frame->PresentCommandBuffer);
+            }
+
+            BatchStartIndex = Index + 1;
+            BatchSize = 0;
+        }
     }
 
     Rr_DestroyScratch(Scratch);
-}
-
-void Rr_BatchImage(
-    Rr_App *App,
-    Rr_GraphBatch *Batch,
-    VkImage Image,
-    VkImageAspectFlags AspectMask,
-    VkPipelineStageFlags StageMask,
-    VkAccessFlags AccessMask,
-    VkImageLayout Layout)
-{
-    // assert(Image != VK_NULL_HANDLE);
-    //
-    // Rr_Renderer *Renderer = &App->Renderer;
-    // Rr_Arena *Arena = Rr_GetFrameArena(App);
-    //
-    // Rr_ImageSync **GlobalState = RR_UPSERT(&Renderer->GlobalSync, Image, App->PermanentArena);
-    //
-    // VkImageSubresourceRange SubresourceRange = Rr_GetImageSubresourceRange(AspectMask);
-    //
-    // if(*GlobalState == NULL) /* First time referencing this image. */
-    // {
-    //     *RR_PUSH_SLICE(&Batch->ImageBarriers, Arena) = (VkImageMemoryBarrier){
-    //         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    //         .pNext = NULL,
-    //         .srcAccessMask = 0,
-    //         .dstAccessMask = AccessMask,
-    //         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //         .newLayout = Layout,
-    //         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //         .image = Image,
-    //         .subresourceRange = SubresourceRange,
-    //     };
-    // }
-    // else /* Syncing with previous state. */
-    // {
-    //     *RR_PUSH_SLICE(&Batch->ImageBarriers, Arena) = (VkImageMemoryBarrier){
-    //         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    //         .pNext = NULL,
-    //         .srcAccessMask = (*GlobalState)->AccessMask,
-    //         .dstAccessMask = AccessMask,
-    //         .oldLayout = (*GlobalState)->Layout,
-    //         .newLayout = Layout,
-    //         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //         .image = Image,
-    //         .subresourceRange = SubresourceRange,
-    //     };
-    // }
-    //
-    // Rr_ImageSync **BatchState = RR_UPSERT(&Batch->LocalSync, Image, Arena);
-    // if(*BatchState == NULL)
-    // {
-    //     /* @TODO: This stores first usage of a swapchain image.
-    //      * @TODO: Feels hacky. */
-    //     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    //     if(Frame->SwapchainImageStage == 0 && Image == Frame->AllocatedSwapchainImage->Handle)
-    //     {
-    //         Frame->SwapchainImageStage = StageMask;
-    //     }
-    //
-    //     *BatchState = RR_ALLOC(Arena, sizeof(Rr_ImageSync));
-    // }
-    // (*BatchState)->AccessMask = AccessMask;
-    // (*BatchState)->Layout = Layout;
-    // (*BatchState)->StageMask = StageMask;
-}
-
-bool Rr_BatchBuffer(
-    Rr_App *App,
-    Rr_GraphBatch *Batch,
-    VkBuffer Buffer,
-    VkDeviceSize Size,
-    VkDeviceSize Offset,
-    VkPipelineStageFlags StageMask,
-    VkAccessFlags AccessMask)
-{
-    // assert(Buffer != VK_NULL_HANDLE);
-    // assert(Size != 0);
-    //
-    // Rr_BufferSync **LocalStatePtr = RR_UPSERT(&Batch->LocalSync, Buffer, Batch->Arena);
-    // Rr_BufferSync *LocalState = *LocalStatePtr;
-    // if(LocalState == NULL)
-    // {
-    //     *LocalStatePtr = RR_ALLOC(Batch->Arena, sizeof(Rr_BufferSync));
-    //     LocalState = *LocalStatePtr;
-    // }
-    // else
-    // {
-    //     /* Syncing with previous state. */
-    //
-    //     bool IsRead = (AccessMask & AllVulkanReads) != 0;
-    //     bool IsWrite = (AccessMask & AllVulkanWrites) != 0;
-    //     bool LocalIsRead = (LocalState->AccessMask & AllVulkanReads) != 0;
-    //     bool LocalIsWrite = (LocalState->AccessMask & AllVulkanWrites) != 0;
-    //     if(IsRead && LocalIsRead)
-    //     {
-    //         LocalState->AccessMask |= AccessMask;
-    //         LocalState->StageMask |= StageMask;
-    //         LocalState->From = RR_MIN(LocalState->From, Offset);
-    //         LocalState->To = RR_MAX(LocalState->To, Offset + Size);
-    //         return true;
-    //     }
-    //     else if(IsWrite && LocalIsWrite)
-    //     {
-    //         if(LocalState->AccessMask != AccessMask || LocalState->StageMask != AccessMask)
-    //         {
-    //             return false;
-    //         }
-    //         if()
-    //         {
-    //             LocalState->From = RR_MIN(LocalState->From, Offset);
-    //         }
-    //         LocalState->To = RR_MAX(LocalState->To, Offset + Size);
-    //         return true;
-    //     }
-    //     else
-    //     {
-    //         return false;
-    //     }
-    // }
-
-    return true;
 }
 
 Rr_GraphBufferHandle Rr_RegisterGraphBuffer(Rr_App *App, Rr_Buffer *Buffer)
@@ -578,28 +535,33 @@ Rr_GraphImageHandle Rr_RegisterGraphImage(Rr_App *App, Rr_Image *Image)
     return Handle;
 }
 
-Rr_GraphNode *Rr_AddPresentNode(Rr_App *App, const char *Name, Rr_GraphImageHandle *ImageHandle, Rr_PresentMode Mode)
+Rr_GraphNode *Rr_AddPresentNode(
+    Rr_App *App,
+    const char *Name,
+    Rr_GraphImageHandle *ImageHandle,
+    Rr_Sampler *Sampler,
+    Rr_PresentMode Mode)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    // Rr_Graph *Graph = &Frame->Graph;
 
     Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_PRESENT, Name);
 
     Rr_PresentNode *PresentNode = &GraphNode->Union.Present;
     PresentNode->Mode = Mode;
     PresentNode->ImageHandle = *ImageHandle;
+    PresentNode->Sampler = Sampler;
 
-    Rr_GraphImageHandle SwapchainImageHandle = Rr_RegisterGraphImage(App, Rr_GetSwapchainImage(App));
-
-    Rr_AddNodeDependency(
-        GraphNode,
-        &SwapchainImageHandle,
-        &(Rr_GenericSync){
-            .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .AccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
-            .Specific.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        });
+    /*Rr_GraphImageHandle SwapchainImageHandle = Rr_RegisterGraphImage(App, Rr_GetSwapchainImage(App));*/
+    /**/
+    /*Rr_AddNodeDependency(*/
+    /*    GraphNode,*/
+    /*    &SwapchainImageHandle,*/
+    /*    &(Rr_GenericSync){*/
+    /*        .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,*/
+    /*        .AccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,*/
+    /*        .Specific.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,*/
+    /*    });*/
 
     Rr_AddNodeDependency(
         GraphNode,
@@ -627,7 +589,7 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
         Renderer->Device,
         Renderer->PresentLayout->DescriptorSetLayouts[0]);
 
-    VkSampler Sampler = VK_NULL_HANDLE;
+    VkSampler Sampler = Node->Sampler->Handle;
     Rr_DescriptorWriter Writer = { 0 };
     Rr_WriteImageDescriptor(
         &Writer,
@@ -639,6 +601,32 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
         Scratch.Arena);
     Rr_UpdateDescriptorSet(&Writer, Renderer->Device, DescriptorSet);
 
+    VkImage SwapchainImage = Rr_GetCurrentAllocatedImage(App, &Frame->VirtualSwapchainImage)->Handle;
+
+    vkCmdPipelineBarrier(
+        CommandBuffer,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &(VkImageMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .image = SwapchainImage,
+                                 .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                                 .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                 .srcAccessMask = 0,
+                                 .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                 .subresourceRange = {
+                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                     .baseMipLevel = 0,
+                                     .levelCount = VK_REMAINING_MIP_LEVELS,
+                                     .baseArrayLayer = 0,
+                                     .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                                 }, });
+
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
@@ -649,6 +637,28 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
         .pClearValues = NULL,
     };
     vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdSetViewport(
+        CommandBuffer,
+        0,
+        1,
+        &(VkViewport){
+            .x = 0,
+            .y = 0,
+            .width = Renderer->Swapchain.Extent.width,
+            .height = Renderer->Swapchain.Extent.height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        });
+    vkCmdSetScissor(
+        CommandBuffer,
+        0,
+        1,
+        &(VkRect2D){
+            .offset.x = 0,
+            .offset.y = 0,
+            .extent.width = Renderer->Swapchain.Extent.width,
+            .extent.height = Renderer->Swapchain.Extent.width,
+        });
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Renderer->PresentPipeline->Handle);
     vkCmdBindDescriptorSets(
         CommandBuffer,
@@ -660,7 +670,45 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
         0,
         NULL);
     vkCmdDraw(CommandBuffer, 3, 1, 0, 0);
+    /* vkCmdClearAttachments(
+        CommandBuffer,
+        1,
+        &(VkClearAttachment){
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .colorAttachment = 0,
+            .clearValue.color.float32 = { 1.0f, 0.0f, 0.0f, 1.0f },
+        },
+        1,
+        &(VkClearRect){ .baseArrayLayer = 0,
+                        .layerCount = 1,
+                        .rect = {
+                            .extent.width = Renderer->Swapchain.Extent.width,
+                            .extent.height = Renderer->Swapchain.Extent.height,
+                        }, }); */
     vkCmdEndRenderPass(CommandBuffer);
+    vkCmdPipelineBarrier(
+        CommandBuffer,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &(VkImageMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .image = SwapchainImage,
+                                 .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                 .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                 .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                 .dstAccessMask = 0,
+                                 .subresourceRange = {
+                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                     .baseMipLevel = 0,
+                                     .levelCount = VK_REMAINING_MIP_LEVELS,
+                                     .baseArrayLayer = 0,
+                                     .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                                 }, });
 
     Rr_DestroyScratch(Scratch);
 }
