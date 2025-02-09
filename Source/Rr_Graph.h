@@ -177,7 +177,6 @@ struct Rr_GraphNode
     const char *Name;
     size_t OriginalIndex;
     size_t DependencyLevel;
-    size_t DependencyCount;
     RR_SLICE(Rr_NodeDependency) Dependencies;
     Rr_Graph *Graph;
     bool Visited;
