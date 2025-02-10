@@ -1170,7 +1170,7 @@ Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, void *Key)
     }
     *SyncStateRef = RR_GET_FREE_LIST_ITEM(&Renderer->SyncStates, App->PermanentArena);
     Rr_SyncState *SyncState = *SyncStateRef;
-    SyncState->StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    RR_ZERO_PTR(SyncState);
     return SyncState;
 }
 
