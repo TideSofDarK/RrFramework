@@ -52,9 +52,11 @@ struct Rr_GraphicsNodeFunction
 typedef struct Rr_GraphicsNode Rr_GraphicsNode;
 struct Rr_GraphicsNode
 {
-    Rr_ColorTarget *ColorTargets;
     size_t ColorTargetCount;
+    Rr_ColorTarget *ColorTargets;
+    Rr_GraphImageHandle *ColorImages;
     Rr_DepthTarget *DepthTarget;
+    Rr_GraphImageHandle DepthImage;
     Rr_GraphicsNodeFunction *EncodedFirst;
     Rr_GraphicsNodeFunction *Encoded;
 };

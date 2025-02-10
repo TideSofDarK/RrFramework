@@ -197,7 +197,7 @@ struct Rr_PipelineBindingSet
     Rr_ShaderStage Stages;
 };
 
-extern Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *Sets, size_t SetCount);
+extern Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, size_t SetCount, Rr_PipelineBindingSet *Sets);
 
 extern void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout);
 

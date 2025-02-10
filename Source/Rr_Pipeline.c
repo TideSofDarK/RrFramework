@@ -261,7 +261,7 @@ void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipeli
     RR_RETURN_FREE_LIST_ITEM(&App->Renderer.GraphicsPipelines, GraphicsPipeline);
 }
 
-Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, Rr_PipelineBindingSet *Sets, size_t SetCount)
+Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, size_t SetCount, Rr_PipelineBindingSet *Sets)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 

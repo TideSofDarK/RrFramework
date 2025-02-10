@@ -673,7 +673,7 @@ static void Init(Rr_App *App, void *UserData)
             .Stages = RR_SHADER_STAGE_VERTEX_BIT,
         },
     };
-    PipelineLayout = Rr_CreatePipelineLayout(App, BindingSets, 2);
+    PipelineLayout = Rr_CreatePipelineLayout(App, 2, BindingSets);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 0 },
@@ -769,13 +769,12 @@ static void TestGraphicsNode(
     Rr_ColorClear ColorClear = { 0.2f, 0.9f, 0.9f, 1.0f })
 {
     Rr_ColorTarget OffscreenTarget = {
-        .ImageHandle = AttachmentHandle,
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .ColorClear = ColorClear,
     };
-    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, Name, &OffscreenTarget, 1, nullptr);
+    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(App, Name, 1, &OffscreenTarget, &AttachmentHandle, nullptr, nullptr);
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
     Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBufferHandle, 0, 0, OffsetA, sizeof(Rr_Vec4));
     Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBufferHandle, 1, 3, OffsetB, sizeof(STest));
@@ -917,7 +916,7 @@ void RunGame()
     Rr_AppConfig Config = {
         .Title = "RrDemo",
         .Version = "0.0.1",
-        .Package = "com.rrframework.demo",
+        .Package = "com.rr.demo",
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
         .IterateFunc = Iterate,

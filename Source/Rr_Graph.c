@@ -955,9 +955,11 @@ static VkIndexType Rr_GetVulkanIndexType(Rr_IndexType Type)
 Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     const char *Name,
-    Rr_ColorTarget *ColorTargets,
     size_t ColorTargetCount,
-    Rr_DepthTarget *DepthTarget)
+    Rr_ColorTarget *ColorTargets,
+    Rr_GraphImageHandle **ColorImages,
+    Rr_DepthTarget *DepthTarget,
+    Rr_GraphImageHandle *DepthImage)
 {
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
 
@@ -969,20 +971,26 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.Graphics;
     if(ColorTargetCount > 0)
     {
-        GraphicsNode->ColorTargets = RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
-        memcpy(GraphicsNode->ColorTargets, ColorTargets, sizeof(Rr_ColorTarget) * ColorTargetCount);
         GraphicsNode->ColorTargetCount = ColorTargetCount;
+        GraphicsNode->ColorTargets = RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
+        GraphicsNode->ColorImages = RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_GraphImageHandle, ColorTargetCount);
 
         for(size_t Index = 0; Index < ColorTargetCount; ++Index)
         {
-            /* @TODO: Infer access type from attachment struct! */
+            GraphicsNode->ColorTargets[Index] = ColorTargets[Index];
+            GraphicsNode->ColorImages[Index] = *ColorImages[Index];
 
+            VkAccessFlags AccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            if(ColorTargets[Index].LoadOp == RR_LOAD_OP_LOAD)
+            {
+                AccessMask |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            }
             Rr_AddNodeDependency(
                 GraphNode,
-                GraphicsNode->ColorTargets[Index].ImageHandle,
+                ColorImages[Index],
                 &(Rr_SyncState){
                     .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    .AccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    .AccessMask = AccessMask,
                     .Specific.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 });
         }
@@ -990,20 +998,24 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     if(DepthTarget != NULL)
     {
         GraphicsNode->DepthTarget = RR_ALLOC_TYPE(Frame->Arena, Rr_DepthTarget);
-        memcpy(GraphicsNode->DepthTarget, DepthTarget, sizeof(Rr_DepthTarget));
+        *GraphicsNode->DepthTarget = *DepthTarget;
+        GraphicsNode->DepthImage = *DepthImage;
 
-        /* @TODO: Infer access type from attachment struct! */
-
+        VkAccessFlags AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        if(DepthTarget->LoadOp == RR_LOAD_OP_LOAD)
+        {
+            AccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        }
         Rr_AddNodeDependency(
             GraphNode,
-            GraphicsNode->DepthTarget->ImageHandle,
+            DepthImage,
             &(Rr_SyncState){
                 .StageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                .AccessMask =
-                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                .AccessMask = AccessMask,
                 .Specific.Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             });
     }
+
     GraphicsNode->Encoded = RR_ALLOC(Frame->Arena, sizeof(Rr_GraphicsNodeFunction));
     GraphicsNode->EncodedFirst = GraphicsNode->Encoded;
 
@@ -1037,7 +1049,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
             .LoadOp = ColorTarget->LoadOp,
             .StoreOp = ColorTarget->StoreOp,
         };
-        Rr_AllocatedImage *ColorImage = Rr_GetGraphImage(App, Graph, *ColorTarget->ImageHandle);
+        Rr_AllocatedImage *ColorImage = Rr_GetGraphImage(App, Graph, Node->ColorImages[Index]);
         ImageViews[ColorTarget->Slot] = ColorImage->View;
 
         Viewport.Width = RR_MIN(Viewport.Width, (int32_t)ColorImage->Container->Extent.width);
@@ -1053,7 +1065,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
             .StoreOp = DepthTarget->StoreOp,
             .Depth = true,
         };
-        Rr_AllocatedImage *DepthImage = Rr_GetGraphImage(App, Graph, *DepthTarget->ImageHandle);
+        Rr_AllocatedImage *DepthImage = Rr_GetGraphImage(App, Graph, Node->DepthImage);
         ImageViews[DepthTarget->Slot] = DepthImage->View;
 
         Viewport.Width = RR_MIN(Viewport.Width, (int32_t)DepthImage->Container->Extent.width);

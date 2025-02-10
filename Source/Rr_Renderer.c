@@ -209,7 +209,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
             .Bindings = &PipelineBinding,
             .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
         };
-        Renderer->PresentLayout = Rr_CreatePipelineLayout(App, &PipelineBindingSet, 1);
+        Renderer->PresentLayout = Rr_CreatePipelineLayout(App, 1, &PipelineBindingSet);
 
         Rr_ColorTargetInfo ColorTargets[1] = { 0 };
         ColorTargets[0].Blend.ColorWriteMask = RR_COLOR_COMPONENT_ALL;

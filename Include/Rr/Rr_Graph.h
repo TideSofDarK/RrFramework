@@ -53,7 +53,6 @@ union Rr_ColorClear
 typedef struct Rr_ColorTarget Rr_ColorTarget;
 struct Rr_ColorTarget
 {
-    Rr_GraphBufferHandle *ImageHandle;
     uint32_t Slot;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
@@ -70,7 +69,6 @@ struct Rr_DepthClear
 typedef struct Rr_DepthTarget Rr_DepthTarget;
 struct Rr_DepthTarget
 {
-    Rr_GraphBufferHandle *ImageHandle;
     uint32_t Slot;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
@@ -111,9 +109,11 @@ extern Rr_GraphNode *Rr_AddBlitNode(
 extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     const char *Name,
-    Rr_ColorTarget *ColorTargets,
     size_t ColorTargetCount,
-    Rr_DepthTarget *DepthTarget);
+    Rr_ColorTarget *ColorTargets,
+    Rr_GraphImageHandle **ColorImages,
+    Rr_DepthTarget *DepthTarget,
+    Rr_GraphImageHandle *DepthImage);
 
 extern void Rr_DrawIndexed(
     Rr_GraphNode *Node,
