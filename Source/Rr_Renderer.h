@@ -220,6 +220,4 @@ extern Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat);
 
 extern VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat);
 
-extern bool Rr_HasImageState(Rr_Map **Map, VkImage Image);
-
-extern void Rr_SetImageState(Rr_Map **Map, VkImage Image, Rr_ImageSync State, Rr_Arena *Arena);
+extern Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, void *Key);

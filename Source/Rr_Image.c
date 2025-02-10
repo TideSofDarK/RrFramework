@@ -250,17 +250,17 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
 
-    VkImageAspectFlags AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+    Image->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
     if(Image->Format == VK_FORMAT_D16_UNORM_S8_UINT || Image->Format == VK_FORMAT_D24_UNORM_S8_UINT ||
        Image->Format == VK_FORMAT_D32_SFLOAT_S8_UINT)
     {
-        AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        Image->AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
     }
     else if(
         Image->Format == VK_FORMAT_D16_UNORM || Image->Format == VK_FORMAT_D32_SFLOAT ||
         Image->Format == VK_FORMAT_X8_D24_UNORM_PACK32)
     {
-        AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+        Image->AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
     VmaAllocationCreateInfo AllocationCreateInfo = { .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -286,11 +286,11 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
             .viewType = ImageViewType,
             .format = Image->Format,
             .subresourceRange = {
-                .aspectMask = AspectFlags,
+                .aspectMask = Image->AspectFlags,
                 .baseMipLevel = 0,
                 .layerCount = MipLevels,
                 .baseArrayLayer = 0,
-                .levelCount = 1,
+                .levelCount = VK_REMAINING_ARRAY_LAYERS,
             },
         };
 

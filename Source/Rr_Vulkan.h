@@ -12,6 +12,54 @@
 #include <volk/volk.h>
 #include <vulkan/vk_enum_string_helper.h>
 
+typedef struct Rr_SyncState Rr_SyncState;
+struct Rr_SyncState
+{
+    VkPipelineStageFlags StageMask;
+    VkAccessFlags AccessMask;
+    union
+    {
+        VkImageLayout Layout;
+    } Specific;
+};
+
+typedef struct Rr_BufferMemoryBarrier Rr_BufferMemoryBarrier;
+struct Rr_BufferMemoryBarrier
+{
+    VkPipelineStageFlags SrcStageMask;
+    VkPipelineStageFlags DstStageMask;
+    VkAccessFlags SrcAccessMask;
+    VkAccessFlags DstAccessMask;
+    uint32_t SrcQueueFamilyIndex;
+    uint32_t DstQueueFamilyIndex;
+    VkBuffer Buffer;
+    VkDeviceSize Offset;
+    VkDeviceSize Size;
+};
+
+typedef struct Rr_ImageMemoryBarrier Rr_ImageMemoryBarrier;
+struct Rr_ImageMemoryBarrier
+{
+    VkPipelineStageFlags SrcStageMask;
+    VkPipelineStageFlags DstStageMask;
+    VkAccessFlags SrcAccessMask;
+    VkAccessFlags DstAccessMask;
+    VkImageLayout OldLayout;
+    VkImageLayout NewLayout;
+    uint32_t SrcQueueFamilyIndex;
+    uint32_t DstQueueFamilyIndex;
+    VkImage Image;
+    VkImageSubresourceRange SubresourceRange;
+};
+
+typedef struct Rr_BarrierBatch Rr_BarrierBatch;
+struct Rr_BarrierBatch
+{
+    RR_SLICE(Rr_ImageMemoryBarrier) ImageBarriers;
+    RR_SLICE(Rr_BufferMemoryBarrier) BufferBarriers;
+    Rr_Map *VulkanHandleToBarrier;
+};
+
 typedef struct Rr_Queue Rr_Queue;
 struct Rr_Queue
 {

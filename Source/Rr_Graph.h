@@ -11,21 +11,6 @@ struct Rr_Frame;
 typedef RR_SLICE(size_t) Rr_IndexSlice;
 typedef RR_SLICE(Rr_GraphNode *) Rr_NodeSlice;
 
-typedef struct Rr_ImageSync Rr_ImageSync;
-struct Rr_ImageSync
-{
-    VkPipelineStageFlags StageMask;
-    VkAccessFlags AccessMask;
-    VkImageLayout Layout;
-};
-
-typedef struct Rr_BufferSync Rr_BufferSync;
-struct Rr_BufferSync
-{
-    VkPipelineStageFlags StageMask;
-    VkAccessFlags AccessMask;
-};
-
 /* Nodes */
 
 typedef struct Rr_Transfer Rr_Transfer;
@@ -147,21 +132,10 @@ typedef enum
 } Rr_NodeDependencyTypeBits;
 typedef uint32_t Rr_NodeDependencyType;
 
-typedef struct Rr_GenericSync Rr_GenericSync;
-struct Rr_GenericSync
-{
-    VkPipelineStageFlags StageMask;
-    VkAccessFlags AccessMask;
-    union
-    {
-        VkImageLayout Layout;
-    } Specific;
-};
-
 typedef struct Rr_NodeDependency Rr_NodeDependency;
 struct Rr_NodeDependency
 {
-    Rr_GenericSync State;
+    Rr_SyncState State;
     Rr_GraphResourceHandle Handle;
 };
 
@@ -182,11 +156,19 @@ struct Rr_GraphNode
     Rr_Graph *Graph;
 };
 
+typedef struct Rr_GraphResource Rr_GraphResource;
+struct Rr_GraphResource
+{
+    void *Container;
+    void *Allocated;
+    bool IsImage;
+};
+
 struct Rr_Graph
 {
     RR_SLICE(Rr_GraphNode *) Nodes;
-    RR_SLICE(void *) ResolvedResources;
     RR_SLICE(Rr_GraphNode *) RootNodes;
+    RR_SLICE(Rr_GraphResource) Resources;
     Rr_Map *ResourceWriteToNode;
     Rr_Arena *Arena;
 };
