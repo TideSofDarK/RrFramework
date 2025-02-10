@@ -264,6 +264,9 @@ static void Rr_ApplyBarrierBatch(Rr_App *App, Rr_BarrierBatch *Barrier, VkComman
         return;
     }
 
+    const VkPipelineStageFlags AllEarlyStages =
+        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+
     VkPipelineStageFlags SrcStageMaskEarly = 0;
     VkPipelineStageFlags DstStageMaskEarly = 0;
     RR_SLICE(VkBufferMemoryBarrier) BufferBarriersEarly = { 0 };
@@ -283,7 +286,7 @@ static void Rr_ApplyBarrierBatch(Rr_App *App, Rr_BarrierBatch *Barrier, VkComman
         Rr_BufferMemoryBarrier *BufferBarrier = Barrier->BufferBarriers.Data + Index;
 
         RR_SLICE(VkBufferMemoryBarrier) * BarriersSlice;
-        if(BufferBarrier->DstStageMask <= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT)
+        if(BufferBarrier->DstStageMask <= AllEarlyStages)
         {
             SrcStageMaskEarly |= BufferBarrier->SrcStageMask;
             DstStageMaskEarly |= BufferBarrier->DstStageMask;
@@ -317,7 +320,7 @@ static void Rr_ApplyBarrierBatch(Rr_App *App, Rr_BarrierBatch *Barrier, VkComman
         Rr_ImageMemoryBarrier *ImageBarrier = Barrier->ImageBarriers.Data + Index;
 
         RR_SLICE(VkImageMemoryBarrier) * BarriersSlice;
-        if(ImageBarrier->DstStageMask <= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT)
+        if(ImageBarrier->DstStageMask <= AllEarlyStages)
         {
             SrcStageMaskEarly |= ImageBarrier->SrcStageMask;
             DstStageMaskEarly |= ImageBarrier->DstStageMask;
@@ -463,7 +466,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                     *ImageBarrierRef = RR_PUSH_SLICE(&BarrierBatch.ImageBarriers, Scratch.Arena);
                     ImageBarrier = *ImageBarrierRef;
                     *ImageBarrier = (Rr_ImageMemoryBarrier){
-                        .SrcStageMask = PrevState->StageMask,
+                        .SrcStageMask =
+                            PrevState->StageMask != 0 ? PrevState->StageMask : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                         .DstStageMask = State->StageMask,
                         .Image = Image,
                         .SrcAccessMask = PrevState->AccessMask,
@@ -518,7 +522,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                     *BufferBarrierRef = RR_PUSH_SLICE(&BarrierBatch.BufferBarriers, Scratch.Arena);
                     BufferBarrier = *BufferBarrierRef;
                     *BufferBarrier = (Rr_BufferMemoryBarrier){
-                        .SrcStageMask = PrevState->StageMask,
+                        .SrcStageMask =
+                            PrevState->StageMask != 0 ? PrevState->StageMask : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                         .DstStageMask = State->StageMask,
                         .Buffer = Buffer,
                         .SrcAccessMask = PrevState->AccessMask,
@@ -648,6 +653,7 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_AllocatedImage *Image = Rr_GetGraphImage(App, ((Rr_GraphNode *)Node)->Graph, Node->ImageHandle);
+    Rr_Image *Container = Image->Container;
 
     VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
         &Frame->DescriptorAllocator,
@@ -691,40 +697,84 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
                                      .baseArrayLayer = 0,
                                      .layerCount = VK_REMAINING_ARRAY_LAYERS,
                                  }, });
-
+    VkClearValue ClearValue = {
+        .color.float32 = { 0.1f, 0.1f, 0.2f, 1.0f },
+    };
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .framebuffer = Frame->SwapchainFramebuffer,
         .renderArea = (VkRect2D){ { 0, 0 }, { Renderer->Swapchain.Extent.width, Renderer->Swapchain.Extent.height } },
         .renderPass = Renderer->PresentRenderPass,
-        .clearValueCount = 0,
-        .pClearValues = NULL,
+        .clearValueCount = 1,
+        .pClearValues = &ClearValue,
     };
     vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    float X = 0;
+    float Y = 0;
+    float Width = 0;
+    float Height = 0;
+
+    float SwapchainWidth = Renderer->Swapchain.Extent.width;
+    float SwapchainHeight = Renderer->Swapchain.Extent.height;
+    float ImageWidth = Container->Extent.width;
+    float ImageHeight = Container->Extent.height;
+    float SwapchainRatio = SwapchainWidth / SwapchainHeight;
+    float ImageRatio = ImageWidth / ImageHeight;
+
+    switch(Node->Mode)
+    {
+        case RR_PRESENT_MODE_FIT:
+        {
+            if(SwapchainRatio > ImageRatio)
+            {
+                Width = (ImageWidth / ImageHeight) * SwapchainHeight;
+                Height = SwapchainHeight;
+            }
+            else
+            {
+                Width = SwapchainWidth;
+                Height = (ImageHeight / ImageWidth) * SwapchainWidth;
+            }
+            X = (SwapchainWidth / 2.0f) - (Width / 2.0f);
+            Y = (SwapchainHeight / 2.0f) - (Height / 2.0f);
+        }
+        break;
+        default:
+        {
+            Width = Renderer->Swapchain.Extent.width;
+            Height = Renderer->Swapchain.Extent.height;
+        }
+        break;
+    }
+
     vkCmdSetViewport(
         CommandBuffer,
         0,
         1,
         &(VkViewport){
-            .x = 0,
-            .y = 0,
-            .width = Renderer->Swapchain.Extent.width,
-            .height = Renderer->Swapchain.Extent.height,
+            .x = X,
+            .y = Y,
+            .width = Width,
+            .height = Height,
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
         });
+
     vkCmdSetScissor(
         CommandBuffer,
         0,
         1,
         &(VkRect2D){
-            .offset.x = 0,
-            .offset.y = 0,
-            .extent.width = Renderer->Swapchain.Extent.width,
-            .extent.height = Renderer->Swapchain.Extent.width,
+            .offset.x = X,
+            .offset.y = Y,
+            .extent.width = Width,
+            .extent.height = Height,
         });
+
     vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Renderer->PresentPipeline->Handle);
+
     vkCmdBindDescriptorSets(
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -734,23 +784,11 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
         &DescriptorSet,
         0,
         NULL);
+
     vkCmdDraw(CommandBuffer, 3, 1, 0, 0);
-    /* vkCmdClearAttachments(
-        CommandBuffer,
-        1,
-        &(VkClearAttachment){
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .colorAttachment = 0,
-            .clearValue.color.float32 = { 1.0f, 0.0f, 0.0f, 1.0f },
-        },
-        1,
-        &(VkClearRect){ .baseArrayLayer = 0,
-                        .layerCount = 1,
-                        .rect = {
-                            .extent.width = Renderer->Swapchain.Extent.width,
-                            .extent.height = Renderer->Swapchain.Extent.height,
-                        }, }); */
+
     vkCmdEndRenderPass(CommandBuffer);
+
     vkCmdPipelineBarrier(
         CommandBuffer,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -761,19 +799,21 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
         0,
         NULL,
         1,
-        &(VkImageMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .image = SwapchainImage,
-                                 .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                 .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                 .dstAccessMask = 0,
-                                 .subresourceRange = {
-                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                     .baseMipLevel = 0,
-                                     .levelCount = VK_REMAINING_MIP_LEVELS,
-                                     .baseArrayLayer = 0,
-                                     .layerCount = VK_REMAINING_ARRAY_LAYERS,
-                                 }, });
+            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = 0,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        });
 
     Rr_DestroyScratch(Scratch);
 }
@@ -1053,7 +1093,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
         ImageViews[ColorTarget->Slot] = ColorImage->View;
 
         Viewport.Width = RR_MIN(Viewport.Width, (int32_t)ColorImage->Container->Extent.width);
-        Viewport.Height = RR_MIN(Viewport.Width, (int32_t)ColorImage->Container->Extent.height);
+        Viewport.Height = RR_MIN(Viewport.Height, (int32_t)ColorImage->Container->Extent.height);
     }
     if(Node->DepthTarget != NULL)
     {
@@ -1069,7 +1109,7 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
         ImageViews[DepthTarget->Slot] = DepthImage->View;
 
         Viewport.Width = RR_MIN(Viewport.Width, (int32_t)DepthImage->Container->Extent.width);
-        Viewport.Height = RR_MIN(Viewport.Width, (int32_t)DepthImage->Container->Extent.height);
+        Viewport.Height = RR_MIN(Viewport.Height, (int32_t)DepthImage->Container->Extent.height);
     }
 
     /* Begin render pass. */

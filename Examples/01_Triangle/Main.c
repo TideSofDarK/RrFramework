@@ -14,6 +14,8 @@ static void Init(Rr_App *App, void *UserData)
     Rr_SamplerInfo SamplerInfo = { 0 };
     SamplerInfo.MinFilter = RR_FILTER_NEAREST;
     SamplerInfo.MagFilter = RR_FILTER_NEAREST;
+    SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_REPEAT;
+    SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_REPEAT;
     NearestSampler = Rr_CreateSampler(App, &SamplerInfo);
 
     PipelineLayout = Rr_CreatePipelineLayout(App, 0, NULL);
@@ -56,7 +58,7 @@ static void Init(Rr_App *App, void *UserData)
 
     ColorAttachment = Rr_CreateImage(
         App,
-        (Rr_IntVec3){ 320, 240, 1 },
+        (Rr_IntVec3){ 240, 320, 1 },
         Rr_GetSwapchainFormat(App),
         RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER | RR_IMAGE_USAGE_SAMPLED,
         false);
@@ -87,7 +89,7 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_BindIndexBuffer(OffscreenNode, &IndexBufferHandle, 0, 0, RR_INDEX_TYPE_UINT32);
     Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
 
-    Rr_AddPresentNode(App, "present", &ColorAttachmentHandle, NearestSampler, RR_PRESENT_MODE_NORMAL);
+    Rr_AddPresentNode(App, "present", &ColorAttachmentHandle, NearestSampler, RR_PRESENT_MODE_FIT);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)

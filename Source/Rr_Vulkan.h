@@ -421,3 +421,41 @@ static VkBufferUsageFlags Rr_GetVulkanBufferUsage(Rr_BufferUsage Usage)
     }
     return Result;
 }
+
+static Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat)
+{
+    switch(TextureFormat)
+    {
+        case VK_FORMAT_R8G8B8A8_UNORM:
+            return RR_TEXTURE_FORMAT_R8G8B8A8_UNORM;
+        case VK_FORMAT_B8G8R8A8_UNORM:
+            return RR_TEXTURE_FORMAT_B8G8R8A8_UNORM;
+        case VK_FORMAT_D32_SFLOAT:
+            return RR_TEXTURE_FORMAT_D32_SFLOAT;
+        case VK_FORMAT_D24_UNORM_S8_UINT:
+            return RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT;
+        case VK_FORMAT_D32_SFLOAT_S8_UINT:
+            return RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT;
+        default:
+            return RR_TEXTURE_FORMAT_UNDEFINED;
+    }
+}
+
+static VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat)
+{
+    switch(TextureFormat)
+    {
+        case RR_TEXTURE_FORMAT_R8G8B8A8_UNORM:
+            return VK_FORMAT_R8G8B8A8_UNORM;
+        case RR_TEXTURE_FORMAT_B8G8R8A8_UNORM:
+            return VK_FORMAT_B8G8R8A8_UNORM;
+        case RR_TEXTURE_FORMAT_D32_SFLOAT:
+            return VK_FORMAT_D32_SFLOAT;
+        case RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT:
+            return VK_FORMAT_D24_UNORM_S8_UINT;
+        case RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT:
+            return VK_FORMAT_D32_SFLOAT_S8_UINT;
+        default:
+            return VK_FORMAT_UNDEFINED;
+    }
+}

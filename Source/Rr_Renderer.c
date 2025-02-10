@@ -227,7 +227,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         Renderer->PresentPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
 
         Rr_Attachment Attachment = {
-            .LoadOp = RR_LOAD_OP_DONT_CARE,
+            .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
         };
         Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = 1, .Attachments = &Attachment };
@@ -1160,44 +1160,6 @@ VkFramebuffer Rr_GetFramebuffer(
     return Framebuffer;
 }
 
-Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat)
-{
-    switch(TextureFormat)
-    {
-        case VK_FORMAT_R8G8B8A8_UNORM:
-            return RR_TEXTURE_FORMAT_R8G8B8A8_UNORM;
-        case VK_FORMAT_B8G8R8A8_UNORM:
-            return RR_TEXTURE_FORMAT_B8G8R8A8_UNORM;
-        case VK_FORMAT_D32_SFLOAT:
-            return RR_TEXTURE_FORMAT_D32_SFLOAT;
-        case VK_FORMAT_D24_UNORM_S8_UINT:
-            return RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT;
-        case VK_FORMAT_D32_SFLOAT_S8_UINT:
-            return RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT;
-        default:
-            return RR_TEXTURE_FORMAT_UNDEFINED;
-    }
-}
-
-VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat)
-{
-    switch(TextureFormat)
-    {
-        case RR_TEXTURE_FORMAT_R8G8B8A8_UNORM:
-            return VK_FORMAT_R8G8B8A8_UNORM;
-        case RR_TEXTURE_FORMAT_B8G8R8A8_UNORM:
-            return VK_FORMAT_B8G8R8A8_UNORM;
-        case RR_TEXTURE_FORMAT_D32_SFLOAT:
-            return VK_FORMAT_D32_SFLOAT;
-        case RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT:
-            return VK_FORMAT_D24_UNORM_S8_UINT;
-        case RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT:
-            return VK_FORMAT_D32_SFLOAT_S8_UINT;
-        default:
-            return VK_FORMAT_UNDEFINED;
-    }
-}
-
 Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, void *Key)
 {
     Rr_Renderer *Renderer = &App->Renderer;
@@ -1206,8 +1168,18 @@ Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, void *Key)
     {
         return *SyncStateRef;
     }
-    *SyncStateRef = RR_ALLOC_TYPE(App->PermanentArena, Rr_SyncState);
+    *SyncStateRef = RR_GET_FREE_LIST_ITEM(&Renderer->SyncStates, App->PermanentArena);
     Rr_SyncState *SyncState = *SyncStateRef;
     SyncState->StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     return SyncState;
+}
+
+void Rr_ReturnSynchronizationState(Rr_App *App, void *Key)
+{
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_SyncState **SyncStateRef = RR_UPSERT(&Renderer->GlobalSync, Key, App->PermanentArena);
+    if(*SyncStateRef != NULL)
+    {
+        RR_RETURN_FREE_LIST_ITEM(&Renderer->SyncStates, *SyncStateRef);
+    }
 }

@@ -164,6 +164,11 @@ struct Rr_Renderer
     RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
     RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;
     RR_FREE_LIST(Rr_Sampler) Samplers;
+    RR_FREE_LIST(Rr_SyncState) SyncStates;
+
+    /* Arena */
+
+    Rr_Arena *Arena;
 };
 
 extern void Rr_InitRenderer(Rr_App *App);
@@ -216,8 +221,6 @@ extern VkFramebuffer Rr_GetFramebufferViews(
     size_t ImageViewCount,
     VkExtent3D Extent);
 
-extern Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat);
-
-extern VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat);
-
 extern Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, void *Key);
+
+extern void Rr_ReturnSynchronizationState(Rr_App *App, void *Key);

@@ -77,7 +77,6 @@ struct Rr_DepthTarget
 
 typedef enum Rr_PresentMode
 {
-    RR_PRESENT_MODE_NORMAL,
     RR_PRESENT_MODE_STRETCH,
     RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
