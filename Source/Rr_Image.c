@@ -107,18 +107,18 @@ static void Rr_UploadImage(
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             });
 
-        VkBufferImageCopy Copy = {
-        .bufferOffset = BufferOffset,
-        .bufferRowLength = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource = {
-            .aspectMask = Aspect,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .imageExtent = Container->Extent,
-    };
+        VkBufferImageCopy BufferImageCopy = {
+            .bufferOffset = BufferOffset,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource = {
+                .aspectMask = Aspect,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .imageExtent = Container->Extent,
+        };
 
         vkCmdCopyBufferToImage(
             TransferCommandBuffer,
@@ -126,7 +126,7 @@ static void Rr_UploadImage(
             Image,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
-            &Copy);
+            &BufferImageCopy);
 
         vkCmdPipelineBarrier(
             TransferCommandBuffer,
