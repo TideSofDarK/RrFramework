@@ -55,125 +55,135 @@ void Rr_DestroySampler(Rr_App *App, Rr_Sampler *Sampler)
 static void Rr_UploadImage(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
-    VkImage Image,
-    VkExtent3D Extent,
+    Rr_Image *Container,
     VkImageAspectFlags Aspect,
     VkPipelineStageFlags DstStageMask,
     VkAccessFlags DstAccessMask,
     VkImageLayout DstLayout,
-    void *ImageData,
-    size_t ImageDataLength)
+    size_t ImageDataLength,
+    void *ImageData)
 {
-    // Rr_Renderer *Renderer = &App->Renderer;
-    //
-    // Rr_WriteBuffer *StagingBuffer = UploadContext->StagingBuffer;
-    // VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
-    //
-    // VkDeviceSize BufferOffset = StagingBuffer->Offset;
-    // memcpy((char *)StagingBuffer->Buffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
-    // StagingBuffer->Offset += ImageDataLength;
-    //
-    // VkImageSubresourceRange SubresourceRange = Rr_GetImageSubresourceRange(Aspect);
-    //
-    // vkCmdPipelineBarrier(
-    //     TransferCommandBuffer,
-    //     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-    //     VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //     0,
-    //     0,
-    //     NULL,
-    //     0,
-    //     NULL,
-    //     1,
-    //     &(VkImageMemoryBarrier){
-    //         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    //         .pNext = NULL,
-    //         .image = Image,
-    //         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    //         .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //         .subresourceRange = SubresourceRange,
-    //         .srcAccessMask = 0,
-    //         .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-    //         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //     });
-    //
-    // VkBufferImageCopy Copy = {
-    //     .bufferOffset = BufferOffset,
-    //     .bufferRowLength = 0,
-    //     .bufferImageHeight = 0,
-    //     .imageSubresource = {
-    //         .aspectMask = Aspect,
-    //         .mipLevel = 0,
-    //         .baseArrayLayer = 0,
-    //         .layerCount = 1,
-    //     },
-    //     .imageExtent = Extent,
-    // };
-    //
-    // vkCmdCopyBufferToImage(
-    //     TransferCommandBuffer,
-    //     StagingBuffer->Buffer->Handle,
-    //     Image,
-    //     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //     1,
-    //     &Copy);
-    //
-    // vkCmdPipelineBarrier(
-    //     TransferCommandBuffer,
-    //     VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //     DstStageMask,
-    //     0,
-    //     0,
-    //     NULL,
-    //     0,
-    //     NULL,
-    //     1,
-    //     &(VkImageMemoryBarrier){
-    //         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    //         .pNext = NULL,
-    //         .image = Image,
-    //         .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //         .newLayout = DstLayout,
-    //         .subresourceRange = SubresourceRange,
-    //         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-    //         .dstAccessMask = DstAccessMask,
-    //         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    //     });
-    //
-    // if(UploadContext->UseAcquireBarriers)
-    // {
-    //     UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-    //         (VkImageMemoryBarrier){
-    //             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    //             .pNext = NULL,
-    //             .image = Image,
-    //             .oldLayout = DstLayout,
-    //             .newLayout = DstLayout,
-    //             .subresourceRange = SubresourceRange,
-    //             .srcAccessMask = DstAccessMask,
-    //             .dstAccessMask = 0,
-    //             .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-    //             .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-    //         };
-    //     UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
-    //
-    //     UploadContext->AcquireBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-    //         (VkImageMemoryBarrier){
-    //             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    //             .pNext = NULL,
-    //             .image = Image,
-    //             .oldLayout = DstLayout,
-    //             .newLayout = DstLayout,
-    //             .subresourceRange = SubresourceRange,
-    //             .srcAccessMask = 0,
-    //             .dstAccessMask = DstAccessMask,
-    //             .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-    //             .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-    //         };
-    //     UploadContext->AcquireBarriers.ImageMemoryBarrierCount++;
-    // }
+    Rr_Renderer *Renderer = &App->Renderer;
+
+    VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
+
+    VkDeviceSize BufferOffset = UploadContext->StagingBufferOffset;
+    memcpy((char *)UploadContext->StagingBuffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
+    UploadContext->StagingBufferOffset += ImageDataLength;
+
+    for(size_t AllocatedIndex = 0; AllocatedIndex < Container->AllocatedImageCount; ++AllocatedIndex)
+    {
+        Rr_AllocatedImage *AllocatedImage = Container->AllocatedImages + AllocatedIndex;
+        VkImage Image = AllocatedImage->Handle;
+
+        VkImageSubresourceRange SubresourceRange = (VkImageSubresourceRange){
+            .aspectMask = Aspect,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+        };
+
+        vkCmdPipelineBarrier(
+            TransferCommandBuffer,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0,
+            0,
+            NULL,
+            0,
+            NULL,
+            1,
+            &(VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .image = Image,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .subresourceRange = SubresourceRange,
+                .srcAccessMask = 0,
+                .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            });
+
+        VkBufferImageCopy Copy = {
+        .bufferOffset = BufferOffset,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource = {
+            .aspectMask = Aspect,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .imageExtent = Container->Extent,
+    };
+
+        vkCmdCopyBufferToImage(
+            TransferCommandBuffer,
+            UploadContext->StagingBuffer->Handle,
+            Image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &Copy);
+
+        vkCmdPipelineBarrier(
+            TransferCommandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            DstStageMask,
+            0,
+            0,
+            NULL,
+            0,
+            NULL,
+            1,
+            &(VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .image = Image,
+                .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .newLayout = DstLayout,
+                .subresourceRange = SubresourceRange,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = DstAccessMask,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            });
+
+        if(UploadContext->UseAcquireBarriers)
+        {
+            UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
+                (VkImageMemoryBarrier){
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    .pNext = NULL,
+                    .image = Image,
+                    .oldLayout = DstLayout,
+                    .newLayout = DstLayout,
+                    .subresourceRange = SubresourceRange,
+                    .srcAccessMask = DstAccessMask,
+                    .dstAccessMask = 0,
+                    .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                    .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+                };
+            UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
+
+            UploadContext->AcquireBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
+                (VkImageMemoryBarrier){
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    .pNext = NULL,
+                    .image = Image,
+                    .oldLayout = DstLayout,
+                    .newLayout = DstLayout,
+                    .subresourceRange = SubresourceRange,
+                    .srcAccessMask = 0,
+                    .dstAccessMask = DstAccessMask,
+                    .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                    .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+                };
+            UploadContext->AcquireBarriers.ImageMemoryBarrierCount++;
+        }
+    }
 }
 
 Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format, Rr_ImageUsage Usage, bool MipMapped)
@@ -321,6 +331,23 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
     RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Images, Image);
 }
 
+Rr_IntVec3 Rr_GetImageExtent3D(Rr_Image *Image)
+{
+    return (Rr_IntVec3){
+        .Width = Image->Extent.width,
+        .Height = Image->Extent.height,
+        .Depth = Image->Extent.depth,
+    };
+}
+
+Rr_IntVec2 Rr_GetImageExtent2D(Rr_Image *Image)
+{
+    return (Rr_IntVec2){
+        .Width = Image->Extent.width,
+        .Height = Image->Extent.height,
+    };
+}
+
 void Rr_GetImageSizePNGMemory(size_t DataSize, char *Data, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)
 {
     int32_t DesiredChannels = 4;
@@ -354,9 +381,9 @@ Rr_Image *Rr_CreateColorImageFromMemory(
     uint32_t Height,
     bool MipMapped)
 {
-    // int32_t DesiredChannels = 4;
+    int32_t DesiredChannels = 4;
     Rr_IntVec3 Extent = { .Width = Width, .Height = Height, .Depth = 1 };
-    // size_t DataSize = Extent.Width * Extent.Height * DesiredChannels;
+    size_t DataSize = Extent.Width * Extent.Height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
@@ -365,17 +392,16 @@ Rr_Image *Rr_CreateColorImageFromMemory(
         RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
         MipMapped);
 
-    // Rr_UploadImage(
-    //     App,
-    //     UploadContext,
-    //     ColorImage->AllocatedImages[0].Handle,
-    //     Rr_GetVulkanExtent3D(&Extent),
-    //     VK_IMAGE_ASPECT_COLOR_BIT,
-    //     VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-    //     VK_ACCESS_SHADER_READ_BIT,
-    //     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    //     Data,
-    //     DataSize);
+    Rr_UploadImage(
+        App,
+        UploadContext,
+        ColorImage,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        DataSize,
+        Data);
 
     return ColorImage;
 }
@@ -390,14 +416,14 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
     int32_t DesiredChannels = 4;
     int32_t Channels;
     Rr_IntVec3 Extent = { .Depth = 1 };
-    stbi_uc *ParsedImage = stbi_load_from_memory(
+    stbi_uc *ParsedData = stbi_load_from_memory(
         (stbi_uc *)Data,
         (int32_t)DataSize,
         (int32_t *)&Extent.Width,
         (int32_t *)&Extent.Height,
         &Channels,
         DesiredChannels);
-    // size_t ParsedSize = Extent.Width * Extent.Height * DesiredChannels;
+    size_t ParsedSize = Extent.Width * Extent.Height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
         App,
@@ -406,33 +432,20 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
         RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
         MipMapped);
 
-    // Rr_UploadImage(
-    //     App,
-    //     UploadContext,
-    //     ColorImage->AllocatedImages[0].Handle,
-    //     Rr_GetVulkanExtent3D(&Extent),
-    //     VK_IMAGE_ASPECT_COLOR_BIT,
-    //     VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-    //     VK_ACCESS_SHADER_READ_BIT,
-    //     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    //     ParsedImage,
-    //     ParsedSize);
+    Rr_UploadImage(
+        App,
+        UploadContext,
+        ColorImage,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        ParsedSize,
+        ParsedData);
 
-    stbi_image_free(ParsedImage);
+    stbi_image_free(ParsedData);
 
     return ColorImage;
-}
-
-Rr_Image *Rr_CreateColorImageFromPNG(
-    Rr_App *App,
-    Rr_UploadContext *UploadContext,
-    Rr_AssetRef AssetRef,
-    bool MipMapped,
-    Rr_Arena *Arena)
-{
-    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-
-    return Rr_CreateColorImageFromPNGMemory(App, UploadContext, Asset.Size, Asset.Pointer, MipMapped);
 }
 
 Rr_Image *Rr_CreateDepthImageFromEXR(
@@ -472,6 +485,7 @@ Rr_Image *Rr_CreateDepthImageFromEXR(
     }
 
     /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
+
     float Near = 0.5f;
     float Far = 50.0f;
     float FarPlusNear = Far + Near;

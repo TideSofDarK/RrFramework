@@ -48,13 +48,6 @@ extern Rr_Image *Rr_CreateColorImageFromPNGMemory(
     char *Data,
     bool MipMapped);
 
-extern Rr_Image *Rr_CreateColorImageFromPNG(
-    Rr_App *App,
-    Rr_UploadContext *UploadContext,
-    Rr_AssetRef AssetRef,
-    bool MipMapped,
-    Rr_Arena *Arena);
-
 extern Rr_Image *Rr_CreateDepthImageFromEXR(
     Rr_App *App,
     Rr_UploadContext *UploadContext,

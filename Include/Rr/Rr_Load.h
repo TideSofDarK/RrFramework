@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+typedef struct Rr_LoadingThread Rr_LoadingThread;
 typedef struct Rr_LoadingContext Rr_LoadingContext;
 
 typedef enum Rr_LoadResult
@@ -57,6 +58,10 @@ struct Rr_LoadTask
 
 typedef void (*Rr_LoadingCallback)(Rr_App *App, void *Userdata);
 
+extern Rr_LoadingThread *Rr_CreateLoadingThread(Rr_App *App);
+
+extern void Rr_DestroyLoadingThread(Rr_App *App, Rr_LoadingThread *LoadingThread);
+
 extern Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage);
 
 // extern Rr_LoadTask Rr_LoadStaticMeshFromOBJ(Rr_AssetRef AssetRef, Rr_StaticMesh **OutStaticMesh);
@@ -68,7 +73,7 @@ extern Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **Out
 //     Rr_StaticMesh **OutStaticMesh);
 
 extern Rr_LoadingContext *Rr_LoadAsync(
-    Rr_App *App,
+    Rr_LoadingThread *LoadingThread,
     size_t TaskCount,
     Rr_LoadTask *Tasks,
     Rr_LoadingCallback LoadingCallback,

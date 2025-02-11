@@ -110,7 +110,7 @@ Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSON
 {
     Rr_Image *Atlas;
     Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNGRef, &Atlas);
-    Rr_LoadImmediate(App, &ImageLoadTask, 1);
+    Rr_LoadImmediate(App, 1, &ImageLoadTask);
 
     Rr_Buffer *Buffer = Rr_CreateBuffer_Internal(
         App,

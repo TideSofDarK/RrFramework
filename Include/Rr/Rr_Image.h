@@ -84,6 +84,10 @@ extern Rr_Image *Rr_CreateImage(
 
 extern void Rr_DestroyImage(Rr_App *App, Rr_Image *Image);
 
+extern Rr_IntVec3 Rr_GetImageExtent3D(Rr_Image *Image);
+
+extern Rr_IntVec2 Rr_GetImageExtent2D(Rr_Image *Image);
+
 extern Rr_Image *Rr_GetDummyColorTexture(Rr_App *App);
 
 extern Rr_Image *Rr_GetDummyNormalTexture(Rr_App *App);

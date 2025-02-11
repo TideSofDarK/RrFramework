@@ -22,7 +22,6 @@ struct Rr_PendingLoad
     void *UserData;
 };
 
-typedef struct Rr_LoadingThread Rr_LoadingThread;
 struct Rr_LoadingThread
 {
     RR_SLICE(Rr_LoadingContext) LoadingContexts;
@@ -41,7 +40,7 @@ struct Rr_LoadingContext
     struct Rr_App *App;
     SDL_Semaphore *Semaphore;
     Rr_LoadingCallback LoadingCallback;
-    void *Userdata;
+    void *UserData;
     Rr_LoadTask *Tasks;
     size_t TaskCount;
 };
@@ -54,7 +53,3 @@ struct Rr_LoadAsyncContext
     VkFence Fence;
     VkSemaphore Semaphore;
 };
-
-extern Rr_LoadingThread *Rr_CreateLoadingThread(Rr_App *App);
-
-extern void Rr_DestroyLoadingThread(Rr_App *App, Rr_LoadingThread *LoadingThread);

@@ -230,7 +230,6 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_AddEventWatch(Rr_EventWatch, &App);
 
     Rr_InitRenderer(&App);
-    Rr_InitLoadingThread(&App);
     App.UI = Rr_CreateUI(&App);
 
     Config->InitFunc(&App, App.UserData);
@@ -264,7 +263,6 @@ void Rr_Run(Rr_AppConfig *Config)
         Iterate(&App);
     }
 
-    Rr_CleanupLoadingThread(&App);
     Rr_DestroyUI(&App, App.UI);
     Rr_CleanupRenderer(&App);
 

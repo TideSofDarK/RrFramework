@@ -740,7 +740,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
         for(size_t Index = 0; Index < Renderer->PendingLoadsSlice.Count; ++Index)
         {
             Rr_PendingLoad *PendingLoad = &Renderer->PendingLoadsSlice.Data[Index];
-            PendingLoad->LoadingCallback(App, PendingLoad->Userdata);
+            PendingLoad->LoadingCallback(App, PendingLoad->UserData);
         }
         RR_EMPTY_SLICE(&Renderer->PendingLoadsSlice);
 

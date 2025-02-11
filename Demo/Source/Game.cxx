@@ -622,12 +622,15 @@
 
 static Rr_Image *ColorAttachmentA;
 static Rr_Image *ColorAttachmentB;
+static Rr_Image *TexturePNG;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
 static Rr_Buffer *IndexBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_Sampler *LinearSampler;
+static Rr_LoadingThread *LoadingThread;
+static bool LoadComplete;
 
 std::random_device RandomDevice;
 std::mt19937 Generator(RandomDevice());
@@ -642,17 +645,36 @@ struct STest
     Rr_Vec3 Offset;
 };
 
+static void OnLoadComplete(Rr_App *App, void *UserData)
+{
+    LoadComplete = true;
+}
+
 static void Init(Rr_App *App, void *UserData)
 {
+    LoadingThread = Rr_CreateLoadingThread(App);
+    Rr_LoadTask Tasks[] = {
+        Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &TexturePNG),
+    };
+    Rr_LoadAsync(LoadingThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
+
     Rr_SamplerInfo SamplerInfo = {};
     SamplerInfo.MinFilter = RR_FILTER_LINEAR;
     SamplerInfo.MagFilter = RR_FILTER_LINEAR;
     LinearSampler = Rr_CreateSampler(App, &SamplerInfo);
 
-    Rr_PipelineBinding BindingA = {
-        .Slot = 0,
-        .Count = 1,
-        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+    Rr_PipelineBinding BindingsA[] = {
+        {
+            .Slot = 0,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+        },
+        {
+            .Slot = 1,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER,
+        },
+
     };
     Rr_PipelineBinding BindingB = {
         .Slot = 3,
@@ -661,8 +683,8 @@ static void Init(Rr_App *App, void *UserData)
     };
     Rr_PipelineBindingSet BindingSets[] = {
         {
-            .BindingCount = 1,
-            .Bindings = &BindingA,
+            .BindingCount = RR_ARRAY_COUNT(BindingsA),
+            .Bindings = BindingsA,
             .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
         },
         {
@@ -806,21 +828,39 @@ static void Iterate(Rr_App *App, void *UserData)
         OffsetB,
         &VertexBufferHandle,
         &IndexBufferHandle,
-        nullptr);
+        &ColorAttachmentBHandle);
 
     /* Draw Offscreen B */
 
-    TestGraphicsNode(
-        App,
-        "offscreen_b",
-        &ColorAttachmentBHandle,
-        &UniformBufferHandle,
-        OffsetA,
-        OffsetB,
-        &VertexBufferHandle,
-        &IndexBufferHandle,
-        nullptr,
-        { 1.0f, 0.1f, 0.2f, 1.0f });
+    if(LoadComplete)
+    {
+        Rr_GraphImageHandle TexturePNGHandle = Rr_RegisterGraphImage(App, TexturePNG);
+        TestGraphicsNode(
+            App,
+            "offscreen_b",
+            &ColorAttachmentBHandle,
+            &UniformBufferHandle,
+            OffsetA,
+            OffsetB,
+            &VertexBufferHandle,
+            &IndexBufferHandle,
+            &TexturePNGHandle,
+            { 1.0f, 0.1f, 0.2f, 1.0f });
+    }
+    else
+    {
+        TestGraphicsNode(
+            App,
+            "offscreen_b",
+            &ColorAttachmentBHandle,
+            &UniformBufferHandle,
+            OffsetA,
+            OffsetB,
+            &VertexBufferHandle,
+            &IndexBufferHandle,
+            &ColorAttachmentAHandle,
+            { 1.0f, 0.1f, 0.2f, 1.0f });
+    }
 
     /* Blit B to A (testing batching image reads with different layouts) */
 
@@ -840,8 +880,13 @@ static void Iterate(Rr_App *App, void *UserData)
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
+    Rr_DestroyLoadingThread(App, LoadingThread);
     Rr_DestroyImage(App, ColorAttachmentA);
     Rr_DestroyImage(App, ColorAttachmentB);
+    if(LoadComplete)
+    {
+        Rr_DestroyImage(App, TexturePNG);
+    }
     Rr_DestroyBuffer(App, VertexBuffer);
     Rr_DestroyBuffer(App, IndexBuffer);
     Rr_DestroyBuffer(App, UniformBuffer);
