@@ -19,20 +19,23 @@ typedef struct Rr_PendingLoad Rr_PendingLoad;
 struct Rr_PendingLoad
 {
     Rr_LoadingCallback LoadingCallback;
-    void *Userdata;
+    void *UserData;
 };
 
 typedef struct Rr_LoadingThread Rr_LoadingThread;
 struct Rr_LoadingThread
 {
-    RR_SLICE(Rr_LoadingContext) LoadingContextsSlice;
+    RR_SLICE(Rr_LoadingContext) LoadingContexts;
+
     SDL_Thread *Handle;
     SDL_Semaphore *Semaphore;
     SDL_Mutex *Mutex;
+
+    Rr_App *App;
+
     Rr_Arena *Arena;
 };
 
-// typedef struct Rr_LoadingContext Rr_LoadingContext;
 struct Rr_LoadingContext
 {
     struct Rr_App *App;
@@ -52,10 +55,6 @@ struct Rr_LoadAsyncContext
     VkSemaphore Semaphore;
 };
 
-extern Rr_LoadResult Rr_LoadAsync_Internal(Rr_LoadingContext *LoadingContext, Rr_LoadAsyncContext LoadAsyncContext);
+extern Rr_LoadingThread *Rr_CreateLoadingThread(Rr_App *App);
 
-extern Rr_LoadResult Rr_LoadImmediate_Internal(Rr_LoadingContext *LoadingContext);
-
-extern void Rr_InitLoadingThread(Rr_App *App);
-
-extern void Rr_CleanupLoadingThread(Rr_App *App);
+extern void Rr_DestroyLoadingThread(Rr_App *App, Rr_LoadingThread *LoadingThread);

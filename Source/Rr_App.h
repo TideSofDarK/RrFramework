@@ -49,8 +49,6 @@ struct Rr_App
 
     Rr_FrameTime FrameTime;
 
-    Rr_LoadingThread LoadingThread;
-
     SDL_TLSID ScratchArenaTLS;
     SDL_Window *Window;
     SDL_AtomicInt bExit;
