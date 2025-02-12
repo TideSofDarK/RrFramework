@@ -1,4 +1,4 @@
-#include "Rr_Mesh.h"
+#include "Rr_GLTF.h"
 
 #include "Rr_App.h"
 #include "Rr_Image.h"
@@ -7,54 +7,19 @@
 
 #include <Rr/Rr_Defines.h>
 
-#include <SDL3/SDL.h>
-
 #include <stb/stb_image.h>
 
 #include <cgltf/cgltf.h>
 
-static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
+static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
 {
-    return RR_ALLOC((Rr_Arena *)Arena, Size);
+    return (cgltf_memory_options){
+        .alloc_func = Rr_GenericArenaAlloc,
+        .free_func = Rr_GenericArenaFree,
+        .user_data = Arena,
+    };
 }
 
-// static void Rr_CGLTFArenaFree(void *Arena, void *Ptr)
-// { /* no-op */
-// }
-//
-// static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
-// {
-//     return (
-//         cgltf_memory_options){ .alloc_func = Rr_CGLTFArenaAlloc, .free_func = Rr_CGLTFArenaFree, .user_data = Arena
-//         };
-// }
-//
-// static cgltf_mesh *Rr_ParseGLTFMesh(Rr_Asset *Asset, size_t MeshIndex, cgltf_options *Options, cgltf_data **OutData)
-// {
-//     cgltf_data *Data = NULL;
-//     cgltf_result Result = cgltf_parse(Options, Asset->Data, Asset->Size, &Data);
-//     if(Result != cgltf_result_success)
-//     {
-//         RR_ABORT("Error loading glTF asset!");
-//     }
-//
-//     cgltf_mesh *Mesh = Data->meshes + MeshIndex;
-//
-//     if(MeshIndex + 1 > Data->meshes_count || Mesh->primitives_count < 1)
-//     {
-//         RR_ABORT("Mesh contains no geometry!");
-//     }
-//
-//     if(Data->meshes->primitives_count > RR_MESH_MAX_PRIMITIVES)
-//     {
-//         RR_ABORT("Exceeding max mesh primitives count!");
-//     }
-//
-//     *OutData = Data;
-//
-//     return Mesh;
-// }
-//
 // static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
 // {
 //     Rr_Scratch Scratch = Rr_GetScratch(Arena);
@@ -502,69 +467,97 @@ static void *Rr_CGLTFArenaAlloc(void *Arena, cgltf_size Size)
 //     Rr_DestroyScratch(Scratch);
 // }
 //
-// void Rr_GetStaticMeshSizeGLTF(
-//     Rr_AssetRef AssetRef,
-//     Rr_GLTFLoader *Loader,
-//     size_t MeshIndex,
-//     Rr_Arena *Arena,
-//     Rr_LoadSize *OutLoadSize)
-// {
-//     Rr_Scratch Scratch = Rr_GetScratch(Arena);
-//
-//     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-//
-//     cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
-//     cgltf_data *Data = NULL;
-//     cgltf_mesh *Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
-//     cgltf_load_buffers(&Options, Data, NULL);
-//
-//     size_t VertexBufferSize = 0;
-//     size_t IndexBufferSize = 0;
-//
-//     for(size_t Index = 0; Index < Mesh->primitives_count; ++Index)
-//     {
-//         cgltf_primitive *Primitive = Mesh->primitives + Index;
-//
-//         VertexBufferSize += sizeof(Rr_Vertex) * Primitive->attributes->data->count;
-//         IndexBufferSize += sizeof(Rr_MeshIndexType) * Primitive->indices->count;
-//
-//         if(Loader != NULL && Primitive->material != NULL)
-//         {
-//             cgltf_material *CGLTFMaterial = Primitive->material;
-//             if(CGLTFMaterial->has_pbr_metallic_roughness)
-//             {
-//                 cgltf_texture *BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
-//                 if(BaseColorTexture)
-//                 {
-//                     if(strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
-//                     {
-//                         char *PNGData = (char *)BaseColorTexture->image->buffer_view->buffer->data +
-//                                         BaseColorTexture->image->buffer_view->offset;
-//                         size_t PNGSize = BaseColorTexture->image->buffer_view->size;
-//
-//                         Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
-//                     }
-//                 }
-//             }
-//             if(CGLTFMaterial->normal_texture.texture != NULL)
-//             {
-//                 cgltf_texture *NormalTexture = CGLTFMaterial->normal_texture.texture;
-//                 if(strcmp(NormalTexture->image->mime_type, "image/png") == 0)
-//                 {
-//                     char *PNGData = (char *)NormalTexture->image->buffer_view->buffer->data +
-//                                     NormalTexture->image->buffer_view->offset;
-//                     size_t PNGSize = NormalTexture->image->buffer_view->size;
-//
-//                     Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
-//                 }
-//             }
-//         }
-//     }
-//
-//     cgltf_free(Data);
-//
-//     OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
-//     OutLoadSize->BufferCount += 2;
-//
-//     Rr_DestroyScratch(Scratch);
-// }
+void GetGLTFSceneLoadSize(Rr_AssetRef AssetRef, size_t SceneIndex, Rr_LoadSize *OutLoadSize, Rr_Arena *Arena)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
+
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+
+    cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
+    cgltf_data *Data = NULL;
+    cgltf_result Result = cgltf_parse(&Options, Asset.Pointer, Asset.Size, &Data);
+    if(Result != cgltf_result_success)
+    {
+        RR_ABORT("cGLTF: Parsing failed!");
+    }
+    if(Data->scenes_count == 0)
+    {
+        RR_ABORT("cGLTF: scenes_count is zero!");
+    }
+    cgltf_load_buffers(&Options, Data, NULL);
+    cgltf_scene *Scene = Data->scenes + SceneIndex;
+
+    size_t VertexBufferSize = 0;
+    size_t IndexBufferSize = 0;
+
+    bool *AddedMeshes = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->meshes_count);
+    bool *AddedImages = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->images_count);
+
+    for(size_t NodeIndex = 0; NodeIndex < Scene->nodes_count; ++NodeIndex)
+    {
+        cgltf_node *Node = Scene->nodes[NodeIndex];
+        cgltf_mesh *Mesh = Node->mesh;
+        size_t MeshIndex = cgltf_mesh_index(Data, Mesh);
+        if(AddedMeshes[MeshIndex] == true)
+        {
+            continue;
+        }
+        AddedMeshes[MeshIndex] = true;
+        for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count; ++ PrimitiveIndex)
+        {
+            cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
+            for(size_t AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+            {
+                cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
+                // Attribute->data->buffer_view->buffer
+            }
+        }
+    }
+
+    // for(size_t Index = 0; Index < Mesh->primitives_count; ++Index)
+    // {
+    //     cgltf_primitive *Primitive = Mesh->primitives + Index;
+    //
+    //     VertexBufferSize += sizeof(Rr_Vertex) * Primitive->attributes->data->count;
+    //     IndexBufferSize += sizeof(Rr_MeshIndexType) * Primitive->indices->count;
+    //
+    //     if(Loader != NULL && Primitive->material != NULL)
+    //     {
+    //         cgltf_material *CGLTFMaterial = Primitive->material;
+    //         if(CGLTFMaterial->has_pbr_metallic_roughness)
+    //         {
+    //             cgltf_texture *BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
+    //             if(BaseColorTexture)
+    //             {
+    //                 if(strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+    //                 {
+    //                     char *PNGData = (char *)BaseColorTexture->image->buffer_view->buffer->data +
+    //                                     BaseColorTexture->image->buffer_view->offset;
+    //                     size_t PNGSize = BaseColorTexture->image->buffer_view->size;
+    //
+    //                     Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+    //                 }
+    //             }
+    //         }
+    //         if(CGLTFMaterial->normal_texture.texture != NULL)
+    //         {
+    //             cgltf_texture *NormalTexture = CGLTFMaterial->normal_texture.texture;
+    //             if(strcmp(NormalTexture->image->mime_type, "image/png") == 0)
+    //             {
+    //                 char *PNGData = (char *)NormalTexture->image->buffer_view->buffer->data +
+    //                                 NormalTexture->image->buffer_view->offset;
+    //                 size_t PNGSize = NormalTexture->image->buffer_view->size;
+    //
+    //                 Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+    //             }
+    //         }
+    //     }
+    // }
+    //
+    // cgltf_free(Data);
+    //
+    // OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
+    // OutLoadSize->BufferCount += 2;
+
+    Rr_DestroyScratch(Scratch);
+}

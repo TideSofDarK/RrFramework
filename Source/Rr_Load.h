@@ -18,13 +18,13 @@ struct Rr_LoadSize
 typedef struct Rr_PendingLoad Rr_PendingLoad;
 struct Rr_PendingLoad
 {
-    Rr_LoadingCallback LoadingCallback;
+    Rr_LoadCallback LoadingCallback;
     void *UserData;
 };
 
-struct Rr_LoadingThread
+struct Rr_LoadThread
 {
-    RR_SLICE(Rr_LoadingContext) LoadingContexts;
+    RR_SLICE(Rr_LoadContext) LoadContexts;
 
     SDL_Thread *Handle;
     SDL_Semaphore *Semaphore;
@@ -35,11 +35,11 @@ struct Rr_LoadingThread
     Rr_Arena *Arena;
 };
 
-struct Rr_LoadingContext
+struct Rr_LoadContext
 {
     struct Rr_App *App;
     SDL_Semaphore *Semaphore;
-    Rr_LoadingCallback LoadingCallback;
+    Rr_LoadCallback LoadingCallback;
     void *UserData;
     Rr_LoadTask *Tasks;
     size_t TaskCount;

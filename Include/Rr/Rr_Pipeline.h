@@ -63,16 +63,6 @@ typedef enum
 
 typedef enum
 {
-    RR_FORMAT_NONE,
-    RR_FORMAT_FLOAT,
-    RR_FORMAT_UINT,
-    RR_FORMAT_VEC2,
-    RR_FORMAT_VEC3,
-    RR_FORMAT_VEC4,
-} Rr_Format;
-
-typedef enum
-{
     RR_VERTEX_INPUT_TYPE_VERTEX,
     RR_VERTEX_INPUT_TYPE_INSTANCE,
 } Rr_VertexInputType;

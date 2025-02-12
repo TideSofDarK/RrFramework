@@ -59,6 +59,19 @@ extern void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Co
 
 extern void Rr_PopArena(Rr_Arena *Arena, size_t Amount);
 
+static void *Rr_GenericArenaAlloc(void *Arena, size_t Size)
+{
+    return RR_ALLOC((Rr_Arena *)Arena, Size);
+}
+
+static void Rr_GenericArenaFree(void *Arena, void *Ptr)
+{
+}
+
+/*
+ * Scratch Arena
+ */
+
 typedef struct Rr_Scratch Rr_Scratch;
 struct Rr_Scratch
 {

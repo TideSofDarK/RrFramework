@@ -12,6 +12,16 @@ struct Rr_Graph;
 
 typedef enum
 {
+    RR_FORMAT_INVALID,
+    RR_FORMAT_FLOAT,
+    RR_FORMAT_UINT,
+    RR_FORMAT_VEC2,
+    RR_FORMAT_VEC3,
+    RR_FORMAT_VEC4,
+} Rr_Format;
+
+typedef enum
+{
     RR_INDEX_TYPE_UINT8,
     RR_INDEX_TYPE_UINT16,
     RR_INDEX_TYPE_UINT32,

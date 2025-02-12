@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Rr/Rr_Mesh.h>
+#include <Rr/Rr_GLTF.h>
 
 #include "Rr_Memory.h"
 
@@ -75,3 +75,5 @@ struct Rr_GLTFLoader;
 //     size_t MeshIndex,
 //     Rr_Arena *Arena,
 //     struct Rr_LoadSize *OutLoadSize);
+
+extern void GetGLTFSceneLoadSize(Rr_AssetRef AssetRef, size_t SceneIndex, struct Rr_LoadSize *OutLoadSize, Rr_Arena *Arena);

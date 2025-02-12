@@ -1,9 +1,9 @@
 #include "Rr_Load.h"
 
 #include "Rr_App.h"
+#include "Rr_GLTF.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
-#include "Rr_Mesh.h"
 #include "Rr_UploadContext.h"
 
 #include <SDL3/SDL.h>
@@ -22,23 +22,22 @@ static Rr_LoadSize Rr_CalculateLoadSize(Rr_LoadTask *Tasks, size_t TaskCount, Rr
         Rr_LoadTask *Task = &Tasks[Index];
         switch(Task->LoadType)
         {
-            case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
+            case RR_LOAD_TYPE_PNG_RGBA8:
             {
                 Rr_GetImageSizePNG(Task->AssetRef, Scratch.Arena, &LoadSize);
             }
             break;
-            // case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
+            // case RR_LOAD_TYPE_OBJ_MESH:
             // {
             //     Rr_GetStaticMeshSizeOBJ(Task->AssetRef, Scratch.Arena, &LoadSize);
             // }
             // break;
-            // case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
-            // {
-            //     Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
-            //     Rr_GetStaticMeshSizeGLTF(Task->AssetRef, &Options.Loader, Options.MeshIndex, Scratch.Arena,
-            //     &LoadSize);
-            // }
-            // break;
+            case RR_LOAD_TYPE_GLTF_SCENE:
+            {
+                Rr_LoadGLTFOptions *Options = &Task->Options.GLTF;
+                GetGLTFSceneLoadSize(Task->AssetRef, Options->SceneIndex, &LoadSize, Scratch.Arena);
+            }
+            break;
             default:
             {
                 RR_ABORT("Unsupported load type!");
@@ -67,7 +66,7 @@ static void Rr_LoadResourcesFromTasks(
         void *Result = NULL;
         switch(Task->LoadType)
         {
-            case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
+            case RR_LOAD_TYPE_PNG_RGBA8:
             {
                 Rr_Asset Asset = Rr_LoadAsset(Task->AssetRef);
                 Result = Rr_CreateColorImageFromPNGMemory(App, UploadContext, Asset.Size, Asset.Pointer, false);
@@ -79,18 +78,18 @@ static void Rr_LoadResourcesFromTasks(
             //         Rr_CreateStaticMeshOBJ(App, UploadContext, Task->AssetRef, Scratch.Arena);
             // }
             // break;
-            // case RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF:
-            // {
-            //     Rr_MeshGLTFOptions Options = Task->Options.MeshGLTF;
-            //     Result = Rr_CreateStaticMeshGLTF(
-            //         App,
-            //         UploadContext,
-            //         Task->AssetRef,
-            //         &Options.Loader,
-            //         Options.MeshIndex,
-            //         Scratch.Arena);
-            // }
-            // break;
+            case RR_LOAD_TYPE_GLTF_SCENE:
+            {
+                Rr_LoadGLTFOptions *Options = &Task->Options.GLTF;
+                // Result = Rr_CreateStaticMeshGLTF(
+                //     App,
+                //     UploadContext,
+                //     Task->AssetRef,
+                //     &Options.Loader,
+                //     Options.MeshIndex,
+                //     Scratch.Arena);
+            }
+            break;
             default:
             {
                 RR_ABORT("Unsupported load type!");
@@ -147,14 +146,14 @@ Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage)
 //     };
 // }
 
-static Rr_LoadResult Rr_ProcessLoadContext(Rr_LoadingContext *LoadingContext, Rr_LoadAsyncContext LoadAsyncContext)
+static Rr_LoadResult Rr_ProcessLoadContext(Rr_LoadContext *LoadContext, Rr_LoadAsyncContext LoadAsyncContext)
 {
-    Rr_App *App = LoadingContext->App;
+    Rr_App *App = LoadContext->App;
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    size_t TaskCount = LoadingContext->TaskCount;
-    Rr_LoadTask *Tasks = LoadingContext->Tasks;
+    size_t TaskCount = LoadContext->TaskCount;
+    Rr_LoadTask *Tasks = LoadContext->Tasks;
 
     Rr_LoadSize LoadSize = Rr_CalculateLoadSize(Tasks, TaskCount, Scratch.Arena);
 
@@ -210,7 +209,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(Rr_LoadingContext *LoadingContext, Rr
         };
     }
 
-    Rr_LoadResourcesFromTasks(App, Tasks, TaskCount, &UploadContext, LoadingContext->Semaphore, Scratch.Arena);
+    Rr_LoadResourcesFromTasks(App, Tasks, TaskCount, &UploadContext, LoadContext->Semaphore, Scratch.Arena);
 
     SDL_Delay(300);
 
@@ -323,16 +322,16 @@ static Rr_LoadResult Rr_ProcessLoadContext(Rr_LoadingContext *LoadingContext, Rr
 
     Rr_PendingLoad *PendingLoad = RR_PUSH_SLICE(&Renderer->PendingLoadsSlice, App->SyncArena.Arena);
     *PendingLoad = (Rr_PendingLoad){
-        .LoadingCallback = LoadingContext->LoadingCallback,
-        .UserData = LoadingContext->UserData,
+        .LoadingCallback = LoadContext->LoadingCallback,
+        .UserData = LoadContext->UserData,
     };
 
     Rr_UnlockSpinLock(&App->SyncArena.Lock);
 
-    if(LoadingContext->Semaphore)
+    if(LoadContext->Semaphore)
     {
-        SDL_DestroySemaphore(LoadingContext->Semaphore);
-        LoadingContext->Semaphore = NULL;
+        SDL_DestroySemaphore(LoadContext->Semaphore);
+        LoadContext->Semaphore = NULL;
     }
 
     Rr_DestroyScratch(Scratch);
@@ -397,10 +396,10 @@ static void Rr_CleanupLoadAsyncContext(Rr_Renderer *Renderer, Rr_LoadAsyncContex
     RR_ZERO_PTR(LoadAsyncContext);
 }
 
-static int SDLCALL Rr_LoadingThreadProc(void *UserData)
+static int SDLCALL Rr_LoadThreadProc(void *UserData)
 {
-    Rr_LoadingThread *LoadingThread = UserData;
-    Rr_App *App = LoadingThread->App;
+    Rr_LoadThread *LoadThread = UserData;
+    Rr_App *App = LoadThread->App;
     Rr_Renderer *Renderer = &App->Renderer;
 
     Rr_InitScratch(RR_LOADING_THREAD_SCRATCH_SIZE);
@@ -412,19 +411,19 @@ static int SDLCALL Rr_LoadingThreadProc(void *UserData)
 
     while(true)
     {
-        SDL_WaitSemaphore(LoadingThread->Semaphore);
+        SDL_WaitSemaphore(LoadThread->Semaphore);
 
         if(SDL_GetAtomicInt(&App->bExit) == true)
         {
             break;
         }
 
-        if(LoadingThread->LoadingContexts.Count == 0)
+        if(LoadThread->LoadContexts.Count == 0)
         {
             continue;
         }
 
-        Rr_ProcessLoadContext(&LoadingThread->LoadingContexts.Data[CurrentLoadingContextIndex], LoadAsyncContext);
+        Rr_ProcessLoadContext(&LoadThread->LoadContexts.Data[CurrentLoadingContextIndex], LoadAsyncContext);
         CurrentLoadingContextIndex++;
 
         vkResetCommandPool(Renderer->Device, LoadAsyncContext.GraphicsCommandPool, 0);
@@ -434,14 +433,14 @@ static int SDLCALL Rr_LoadingThreadProc(void *UserData)
         }
         vkResetFences(Renderer->Device, 1, &LoadAsyncContext.Fence);
 
-        SDL_LockMutex(LoadingThread->Mutex);
-        if(CurrentLoadingContextIndex >= LoadingThread->LoadingContexts.Count)
+        SDL_LockMutex(LoadThread->Mutex);
+        if(CurrentLoadingContextIndex >= LoadThread->LoadContexts.Count)
         {
-            Rr_ResetArena(LoadingThread->Arena);
+            Rr_ResetArena(LoadThread->Arena);
             CurrentLoadingContextIndex = 0;
-            RR_ZERO(LoadingThread->LoadingContexts);
+            RR_ZERO(LoadThread->LoadContexts);
         }
-        SDL_UnlockMutex(LoadingThread->Mutex);
+        SDL_UnlockMutex(LoadThread->Mutex);
     }
 
     Rr_CleanupLoadAsyncContext(Renderer, &LoadAsyncContext);
@@ -451,34 +450,34 @@ static int SDLCALL Rr_LoadingThreadProc(void *UserData)
     return 0;
 }
 
-Rr_LoadingThread *Rr_CreateLoadingThread(Rr_App *App)
+Rr_LoadThread *Rr_CreateLoadThread(Rr_App *App)
 {
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    Rr_LoadingThread *LoadingThread = RR_ALLOC_TYPE(Arena, Rr_LoadingThread);
-    LoadingThread->Mutex = SDL_CreateMutex();
-    LoadingThread->Semaphore = SDL_CreateSemaphore(0);
-    LoadingThread->Arena = Arena;
-    LoadingThread->App = App;
-    LoadingThread->Handle = SDL_CreateThread(Rr_LoadingThreadProc, "lt", LoadingThread);
+    Rr_LoadThread *LoadThread = RR_ALLOC_TYPE(Arena, Rr_LoadThread);
+    LoadThread->Mutex = SDL_CreateMutex();
+    LoadThread->Semaphore = SDL_CreateSemaphore(0);
+    LoadThread->Arena = Arena;
+    LoadThread->App = App;
+    LoadThread->Handle = SDL_CreateThread(Rr_LoadThreadProc, "lt", LoadThread);
 
-    return LoadingThread;
+    return LoadThread;
 }
 
-void Rr_DestroyLoadingThread(Rr_App *App, Rr_LoadingThread *LoadingThread)
+void Rr_DestroyLoadThread(Rr_App *App, Rr_LoadThread *LoadThread)
 {
-    SDL_SignalSemaphore(LoadingThread->Semaphore);
-    SDL_WaitThread(LoadingThread->Handle, NULL);
-    SDL_DestroySemaphore(LoadingThread->Semaphore);
-    SDL_DestroyMutex(LoadingThread->Mutex);
-    Rr_DestroyArena(LoadingThread->Arena);
+    SDL_SignalSemaphore(LoadThread->Semaphore);
+    SDL_WaitThread(LoadThread->Handle, NULL);
+    SDL_DestroySemaphore(LoadThread->Semaphore);
+    SDL_DestroyMutex(LoadThread->Mutex);
+    Rr_DestroyArena(LoadThread->Arena);
 }
 
-Rr_LoadingContext *Rr_LoadAsync(
-    Rr_LoadingThread *LoadingThread,
+Rr_LoadContext *Rr_LoadAsync(
+    Rr_LoadThread *LoadThread,
     size_t TaskCount,
     Rr_LoadTask *Tasks,
-    Rr_LoadingCallback LoadingCallback,
+    Rr_LoadCallback LoadCallback,
     void *Userdata)
 {
     if(TaskCount == 0)
@@ -486,20 +485,20 @@ Rr_LoadingContext *Rr_LoadAsync(
         RR_ABORT("Submitted zero tasks to load procedure!");
     }
 
-    SDL_LockMutex(LoadingThread->Mutex);
-    Rr_LoadTask *NewTasks = RR_ALLOC_TYPE_COUNT(LoadingThread->Arena, Rr_LoadTask, TaskCount);
+    SDL_LockMutex(LoadThread->Mutex);
+    Rr_LoadTask *NewTasks = RR_ALLOC_TYPE_COUNT(LoadThread->Arena, Rr_LoadTask, TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
-    Rr_LoadingContext *LoadingContext = RR_PUSH_SLICE(&LoadingThread->LoadingContexts, LoadingThread->Arena);
-    *LoadingContext = (Rr_LoadingContext){
+    Rr_LoadContext *LoadingContext = RR_PUSH_SLICE(&LoadThread->LoadContexts, LoadThread->Arena);
+    *LoadingContext = (Rr_LoadContext){
         .Semaphore = SDL_CreateSemaphore(0),
-        .LoadingCallback = LoadingCallback,
+        .LoadingCallback = LoadCallback,
         .UserData = Userdata,
-        .App = LoadingThread->App,
+        .App = LoadThread->App,
         .Tasks = NewTasks,
         .TaskCount = TaskCount,
     };
-    SDL_SignalSemaphore(LoadingThread->Semaphore);
-    SDL_UnlockMutex(LoadingThread->Mutex);
+    SDL_SignalSemaphore(LoadThread->Semaphore);
+    SDL_UnlockMutex(LoadThread->Mutex);
 
     return LoadingContext;
 }
@@ -592,18 +591,18 @@ Rr_LoadResult Rr_LoadImmediate(Rr_App *App, size_t TaskCount, Rr_LoadTask *Tasks
     return RR_LOAD_RESULT_READY;
 }
 
-void Rr_GetLoadProgress(Rr_LoadingContext *LoadingContext, uint32_t *OutCurrent, uint32_t *OutTotal)
+void Rr_GetLoadProgress(Rr_LoadContext *LoadContext, uint32_t *OutCurrent, uint32_t *OutTotal)
 {
     if(OutCurrent != NULL)
     {
-        if(LoadingContext->Semaphore != NULL)
+        if(LoadContext->Semaphore != NULL)
         {
-            *OutCurrent = SDL_GetSemaphoreValue(LoadingContext->Semaphore);
+            *OutCurrent = SDL_GetSemaphoreValue(LoadContext->Semaphore);
         }
-        *OutCurrent = LoadingContext->TaskCount;
+        *OutCurrent = LoadContext->TaskCount;
     }
     if(OutTotal != NULL)
     {
-        *OutTotal = LoadingContext->TaskCount;
+        *OutTotal = LoadContext->TaskCount;
     }
 }
