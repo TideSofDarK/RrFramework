@@ -7,14 +7,6 @@
 
 #include <SDL3/SDL_mutex.h>
 
-typedef struct Rr_LoadSize Rr_LoadSize;
-struct Rr_LoadSize
-{
-    size_t StagingBufferSize;
-    size_t BufferCount;
-    size_t ImageCount;
-};
-
 typedef struct Rr_PendingLoad Rr_PendingLoad;
 struct Rr_PendingLoad
 {

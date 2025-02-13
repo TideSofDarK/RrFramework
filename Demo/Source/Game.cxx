@@ -629,7 +629,7 @@ static Rr_Buffer *VertexBuffer;
 static Rr_Buffer *IndexBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_Sampler *LinearSampler;
-static Rr_LoadingThread *LoadingThread;
+static Rr_LoadThread *LoadThread;
 static bool LoadComplete;
 
 std::random_device RandomDevice;
@@ -652,11 +652,11 @@ static void OnLoadComplete(Rr_App *App, void *UserData)
 
 static void Init(Rr_App *App, void *UserData)
 {
-    LoadingThread = Rr_CreateLoadingThread(App);
+    LoadThread = Rr_CreateLoadingThread(App);
     Rr_LoadTask Tasks[] = {
         Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &TexturePNG),
     };
-    Rr_LoadAsync(LoadingThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
+    Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
 
     Rr_SamplerInfo SamplerInfo = {};
     SamplerInfo.MinFilter = RR_FILTER_LINEAR;
@@ -880,7 +880,7 @@ static void Iterate(Rr_App *App, void *UserData)
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
-    Rr_DestroyLoadingThread(App, LoadingThread);
+    Rr_DestroyLoadThread(App, LoadThread);
     Rr_DestroyImage(App, ColorAttachmentA);
     Rr_DestroyImage(App, ColorAttachmentB);
     if(LoadComplete)

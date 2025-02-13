@@ -1,23 +1,33 @@
 #include "Rr_GLTF.h"
 
 #include "Rr_App.h"
+#include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
 #include "Rr_UploadContext.h"
 
 #include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Memory.h>
 
 #include <stb/stb_image.h>
 
 #include <cgltf/cgltf.h>
 
-static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
+Rr_GLTFContext *Rr_CreateGLTFContext(Rr_App *App)
 {
-    return (cgltf_memory_options){
-        .alloc_func = Rr_GenericArenaAlloc,
-        .free_func = Rr_GenericArenaFree,
-        .user_data = Arena,
-    };
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
+
+    Rr_GLTFContext *GLTFContext = RR_ALLOC_TYPE(Arena, Rr_GLTFContext);
+    GLTFContext->Arena = Arena;
+
+    return GLTFContext;
+}
+
+void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
+{
+    /* @TODO: Go through allocated resources? */
+
+    Rr_DestroyArena(GLTFContext->Arena);
 }
 
 // static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
@@ -466,53 +476,198 @@ static cgltf_memory_options Rr_GetCGLTFMemoryOptions(Rr_Arena *Arena)
 //
 //     Rr_DestroyScratch(Scratch);
 // }
-//
-void GetGLTFSceneLoadSize(Rr_AssetRef AssetRef, size_t SceneIndex, Rr_LoadSize *OutLoadSize, Rr_Arena *Arena)
+
+static inline Rr_Format Rr_GetGLTFAttributeFormat()
+
+    Rr_GLTFAsset *Rr_CreateGLTFAsset(
+        Rr_App *App,
+        struct Rr_UploadContext *UploadContext,
+        Rr_AssetRef AssetRef,
+        Rr_GLTFContext *GLTFContext,
+        Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
+    cgltf_options Options = {
+        .memory =
+            (cgltf_memory_options){
+                .alloc_func = Rr_GenericArenaAlloc,
+                .free_func = Rr_GenericArenaFree,
+                .user_data = Scratch.Arena,
+            },
+    };
     cgltf_data *Data = NULL;
     cgltf_result Result = cgltf_parse(&Options, Asset.Pointer, Asset.Size, &Data);
     if(Result != cgltf_result_success)
     {
         RR_ABORT("cGLTF: Parsing failed!");
     }
-    if(Data->scenes_count == 0)
-    {
-        RR_ABORT("cGLTF: scenes_count is zero!");
-    }
     cgltf_load_buffers(&Options, Data, NULL);
-    cgltf_scene *Scene = Data->scenes + SceneIndex;
 
-    size_t VertexBufferSize = 0;
-    size_t IndexBufferSize = 0;
+    Rr_GLTFAsset *GLTFAsset = RR_ALLOC_TYPE(GLTFContext->Arena, Rr_GLTFAsset);
 
-    bool *AddedMeshes = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->meshes_count);
-    bool *AddedImages = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->images_count);
+    /* Upload buffers. */
 
-    for(size_t NodeIndex = 0; NodeIndex < Scene->nodes_count; ++NodeIndex)
+    GLTFAsset->BufferCount = Data->buffers_count;
+    GLTFAsset->Buffers = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_Buffer *, GLTFAsset->BufferCount);
+    for(size_t BufferIndex = 0; BufferIndex < GLTFAsset->BufferCount; ++BufferIndex)
     {
-        cgltf_node *Node = Scene->nodes[NodeIndex];
-        cgltf_mesh *Mesh = Node->mesh;
-        size_t MeshIndex = cgltf_mesh_index(Data, Mesh);
-        if(AddedMeshes[MeshIndex] == true)
-        {
-            continue;
-        }
-        AddedMeshes[MeshIndex] = true;
-        for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count; ++ PrimitiveIndex)
+        cgltf_buffer *Buffer = Data->buffers + BufferIndex;
+        GLTFAsset->Buffers[BufferIndex] = Rr_CreateBuffer(
+            App,
+            Buffer->size,
+            RR_BUFFER_USAGE_INDEX_BUFFER_BIT | RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            false);
+        Rr_UploadBuffer(
+            App,
+            UploadContext,
+            GLTFAsset->Buffers[BufferIndex],
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            0,
+            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+            VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT,
+            RR_MAKE_DATA(Buffer->size, Buffer->data));
+    }
+
+    /* Upload images. */
+
+    GLTFAsset->ImageCount = Data->images_count;
+    GLTFAsset->Images = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_Image *, GLTFAsset->ImageCount);
+    for(size_t ImageIndex = 0; ImageIndex < GLTFAsset->ImageCount; ++ImageIndex)
+    {
+        cgltf_image *Image = Data->images + ImageIndex;
+        GLTFAsset->Images[ImageIndex] = Rr_CreateImage(
+            App,
+            Image->size,
+            RR_BUFFER_USAGE_INDEX_BUFFER_BIT | RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            false);
+        Rr_UploadImage(
+            App,
+            UploadContext,
+            GLTFAsset->Images[ImageIndex],
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            0,
+            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+            VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT,
+            RR_MAKE_DATA(Image->size, Image->data));
+    }
+
+    /* Process meshes. */
+
+    GLTFAsset->MeshCount = Data->meshes_count;
+    GLTFAsset->Meshes = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_GLTFMesh, GLTFAsset->MeshCount);
+    for(size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
+    {
+        cgltf_mesh *Mesh = Data->meshes + MeshIndex;
+        /* @TODO: Names could be useful. */
+        Rr_GLTFMesh *GLTFMesh = GLTFAsset->Meshes + MeshIndex;
+        GLTFMesh->PrimitiveCount = Mesh->primitives_count;
+        GLTFMesh->Primitives = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_GLTFPrimitive, GLTFMesh->PrimitiveCount);
+        for(size_t PrimitiveIndex = 0; PrimitiveIndex < GLTFMesh->PrimitiveCount; ++PrimitiveIndex)
         {
             cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
-            for(size_t AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+            Rr_GLTFPrimitive *GLTFPrimitive = GLTFMesh->Primitives + PrimitiveIndex;
+            GLTFPrimitive->AttributeCount = Primitive->attributes_count;
+            GLTFPrimitive->Attributes =
+                RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_GLTFAttribute, GLTFPrimitive->AttributeCount);
+            size_t VertexCount = 0;
+            for(size_t AttributeIndex = 0; AttributeIndex < GLTFPrimitive->AttributeCount; ++AttributeIndex)
             {
                 cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
-                // Attribute->data->buffer_view->buffer
+                Rr_GLTFAttribute *GLTFAttribute = GLTFPrimitive->Attributes + AttributeIndex;
+                GLTFAttribute->Buffer =
+                    GLTFAsset->Buffers[cgltf_buffer_index(Data, Attribute->data->buffer_view->buffer)];
+                GLTFAttribute->BufferOffset = Attribute->data->buffer_view->offset;
+                VertexCount = RR_MAX(VertexCount, Attribute->data->count);
+                switch(Attribute->type)
+                {
+                    case cgltf_attribute_type_position:
+                    {
+                        GLTFAttribute->Type = RR_GLTF_ATTRIBUTE_TYPE_POSITION;
+                    }
+                    break;
+                    case cgltf_attribute_type_texcoord:
+                    {
+                        GLTFAttribute->Type = RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0;
+                    }
+                    break;
+                    case cgltf_attribute_type_normal:
+                    {
+                        GLTFAttribute->Type = RR_GLTF_ATTRIBUTE_TYPE_NORMAL;
+                    }
+                    break;
+                    case cgltf_attribute_type_color:
+                    {
+                        GLTFAttribute->Type = RR_GLTF_ATTRIBUTE_TYPE_COLOR;
+                    }
+                    break;
+                    case cgltf_attribute_type_tangent:
+                    {
+                        GLTFAttribute->Type = RR_GLTF_ATTRIBUTE_TYPE_TANGENT;
+                    }
+                    break;
+                    default:
+                    {
+                    }
+                    break;
+                }
+            }
+            GLTFPrimitive->VertexCount = VertexCount;
+            GLTFPrimitive->IndexCount = Primitive->indices->count;
+            GLTFPrimitive->IndexBuffer =
+                GLTFAsset->Buffers[cgltf_buffer_index(Data, Primitive->indices->buffer_view->buffer)];
+            GLTFPrimitive->IndexBufferOffset = Primitive->indices->buffer_view->offset;
+            switch(Primitive->indices->component_type)
+            {
+                case cgltf_component_type_r_16u:
+                {
+                    GLTFPrimitive->IndexType = RR_INDEX_TYPE_UINT16;
+                }
+                break;
+                case cgltf_component_type_r_32u:
+                {
+                    GLTFPrimitive->IndexType = RR_INDEX_TYPE_UINT32;
+                }
+                break;
+                default:
+                {
+                    RR_ABORT("cGLTF: Unsupported index type!");
+                }
+                break;
             }
         }
     }
+
+    // cgltf_scene *Scene = Data->scenes + SceneIndex;
+    //
+    // size_t VertexBufferSize = 0;
+    // size_t IndexBufferSize = 0;
+    //
+    // bool *AddedMeshes = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->meshes_count);
+    // bool *AddedImages = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->images_count);
+    //
+    // for(size_t NodeIndex = 0; NodeIndex < Scene->nodes_count; ++NodeIndex)
+    // {
+    //     cgltf_node *Node = Scene->nodes[NodeIndex];
+    //     cgltf_mesh *Mesh = Node->mesh;
+    //     size_t MeshIndex = cgltf_mesh_index(Data, Mesh);
+    //     if(AddedMeshes[MeshIndex] == true)
+    //     {
+    //         continue;
+    //     }
+    //     AddedMeshes[MeshIndex] = true;
+    //     for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count; ++PrimitiveIndex)
+    //     {
+    //         cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
+    //         for(size_t AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+    //         {
+    //             cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
+    //             // Attribute->data->buffer_view->buffer
+    //         }
+    //     }
+    // }
 
     // for(size_t Index = 0; Index < Mesh->primitives_count; ++Index)
     // {

@@ -7,15 +7,17 @@
 extern "C" {
 #endif
 
+typedef struct Rr_GLTFContext Rr_GLTFContext;
+
 typedef enum
 {
-    RR_GLTF_PRIMITIVE_TYPE_INVALID,
-    RR_GLTF_PRIMITIVE_TYPE_POSITION,
-    RR_GLTF_PRIMITIVE_TYPE_TEXCOORD0,
-    RR_GLTF_PRIMITIVE_TYPE_NORMAL,
-    RR_GLTF_PRIMITIVE_TYPE_COLOR,
-    RR_GLTF_PRIMITIVE_TYPE_TANGENT,
-} Rr_GLTFPrimitiveType;
+    RR_GLTF_ATTRIBUTE_TYPE_INVALID,
+    RR_GLTF_ATTRIBUTE_TYPE_POSITION,
+    RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0,
+    RR_GLTF_ATTRIBUTE_TYPE_NORMAL,
+    RR_GLTF_ATTRIBUTE_TYPE_COLOR,
+    RR_GLTF_ATTRIBUTE_TYPE_TANGENT,
+} Rr_GLTFAttributeType;
 
 typedef struct Rr_GLTFMaterial Rr_GLTFMaterial;
 struct Rr_GLTFMaterial
@@ -26,8 +28,7 @@ struct Rr_GLTFMaterial
 typedef struct Rr_GLTFAttribute Rr_GLTFAttribute;
 struct Rr_GLTFAttribute
 {
-    Rr_GLTFPrimitiveType Type;
-    Rr_Format Format;
+    Rr_GLTFAttributeType Type;
     size_t BufferOffset;
     struct Rr_Buffer *Buffer;
 };
@@ -38,6 +39,7 @@ struct Rr_GLTFPrimitive
     size_t VertexCount;
     size_t AttributeCount;
     Rr_GLTFAttribute *Attributes;
+    Rr_IndexType IndexType;
     size_t IndexCount;
     size_t IndexBufferOffset;
     struct Rr_Buffer *IndexBuffer;
@@ -64,6 +66,13 @@ struct Rr_GLTFScene
 {
     size_t NodeCount;
     Rr_GLTFNode *Nodes;
+};
+
+typedef struct Rr_GLTFAsset Rr_GLTFAsset;
+struct Rr_GLTFAsset
+{
+    size_t SceneCount;
+    Rr_GLTFScene *Scenes;
     size_t MeshCount;
     Rr_GLTFMesh *Meshes;
     size_t BufferCount;
@@ -71,6 +80,22 @@ struct Rr_GLTFScene
     size_t ImageCount;
     struct Rr_Image **Images;
 };
+
+typedef struct Rr_GLTFAttributeMapping Rr_GLTFAttributeMapping;
+struct Rr_GLTFAttributeMapping
+{
+   Rr_GLTFAttributeType
+};
+
+typedef struct Rr_GLTFMapping Rr_GLTFMapping;
+struct Rr_GLTFMapping
+{
+
+};
+
+extern Rr_GLTFContext *Rr_CreateGLTFContext(Rr_App *App, Rr_GLTFMapping *GLTFMapping);
+
+extern void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext);
 
 #ifdef __cplusplus
 }

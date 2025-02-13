@@ -37,7 +37,7 @@ extern Rr_Buffer *Rr_CreateBuffer_Internal(
     bool CreateMapped,
     bool Buffered);
 
-extern Rr_Buffer *Rr_CreateDeviceUniformBuffer(Rr_App *App, size_t Size);
+extern Rr_Buffer *Rr_CreateStagingBuffer(Rr_App *App, size_t Size);
 
 extern void Rr_UploadBufferAligned(
     Rr_App *App,

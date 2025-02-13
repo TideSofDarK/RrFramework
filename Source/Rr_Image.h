@@ -33,7 +33,7 @@ struct Rr_Image
     Rr_AllocatedImage AllocatedImages[RR_MAX_FRAME_OVERLAP];
 };
 
-extern Rr_Image *Rr_CreateColorImageFromMemory(
+extern Rr_Image *Rr_CreateImageRGBA8(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     char *Data,
@@ -41,25 +41,21 @@ extern Rr_Image *Rr_CreateColorImageFromMemory(
     uint32_t Height,
     bool MipMapped);
 
-extern Rr_Image *Rr_CreateColorImageFromPNGMemory(
+Rr_Image *Rr_CreateImageRGBA8FromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
     char *Data,
     bool MipMapped);
 
-extern Rr_Image *Rr_CreateDepthImageFromEXR(
-    Rr_App *App,
-    Rr_UploadContext *UploadContext,
-    Rr_AssetRef AssetRef,
-    Rr_Arena *Arena);
+// extern Rr_Image *Rr_CreateDepthImageFromEXR(
+//     Rr_App *App,
+//     Rr_UploadContext *UploadContext,
+//     Rr_AssetRef AssetRef,
+//     Rr_Arena *Arena);
 
-extern Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t Height);
+extern size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena);
 
-extern void Rr_GetImageSizePNGMemory(size_t DataSize, char *Data, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize);
-
-extern void Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize);
-
-extern void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize);
+// extern void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize);
 
 extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_App *App, Rr_Image *Image);

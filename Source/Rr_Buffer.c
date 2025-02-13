@@ -275,6 +275,17 @@ void Rr_UploadToDeviceBufferImmediate(Rr_App *App, Rr_Buffer *DstBuffer, Rr_Data
     Rr_DestroyBuffer(App, SrcBuffer);
 }
 
+Rr_Buffer *Rr_CreateStagingBuffer(Rr_App *App, size_t Size)
+{
+    return Rr_CreateBuffer_Internal(
+        App,
+        Size,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        true,
+        false);
+}
+
 // void Rr_UploadToUniformBuffer(
 //     Rr_App *App,
 //     Rr_UploadContext *UploadContext,

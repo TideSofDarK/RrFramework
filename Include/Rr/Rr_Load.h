@@ -8,6 +8,9 @@
 extern "C" {
 #endif
 
+struct GLTFContext;
+struct GLTFAsset;
+
 typedef struct Rr_LoadThread Rr_LoadThread;
 typedef struct Rr_LoadContext Rr_LoadContext;
 
@@ -20,15 +23,15 @@ typedef enum Rr_LoadResult
 
 typedef enum Rr_LoadType
 {
-    RR_LOAD_TYPE_PNG_RGBA8,
-    RR_LOAD_TYPE_GLTF_SCENE,
+    RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
+    RR_LOAD_TYPE_GLTF_ASSET,
     RR_LOAD_TYPE_CUSTOM,
 } Rr_LoadType;
 
 typedef struct Rr_LoadGLTFOptions Rr_LoadGLTFOptions;
 struct Rr_LoadGLTFOptions
 {
-    size_t SceneIndex;
+    struct Rr_GLTFContext *GLTFContext;
 };
 
 typedef struct Rr_LoadTask Rr_LoadTask;
@@ -40,24 +43,19 @@ struct Rr_LoadTask
     {
         Rr_LoadGLTFOptions GLTF;
     } Options;
-    void **Out;
+    union
+    {
+        void **Any;
+        Rr_Image **Image;
+        struct Rr_GLTFAsset **GLTFAsset;
+    } Out;
 };
 
 typedef void (*Rr_LoadCallback)(Rr_App *App, void *Userdata);
 
-extern Rr_LoadThread *Rr_CreateLoadingThread(Rr_App *App);
+extern Rr_LoadThread *Rr_CreateLoadThread(Rr_App *App);
 
-extern void Rr_DestroyLoadingThread(Rr_App *App, Rr_LoadThread *LoadThread);
-
-extern Rr_LoadTask Rr_LoadColorImageFromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage);
-
-// extern Rr_LoadTask Rr_LoadStaticMeshFromOBJ(Rr_AssetRef AssetRef, Rr_StaticMesh **OutStaticMesh);
-
-// extern Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
-//     Rr_AssetRef AssetRef,
-//     Rr_GLTFLoader *Loader,
-//     size_t MeshIndex,
-//     Rr_StaticMesh **OutStaticMesh);
+extern void Rr_DestroyLoadThread(Rr_App *App, Rr_LoadThread *LoadThread);
 
 extern Rr_LoadContext *Rr_LoadAsync(
     Rr_LoadThread *LoadThread,

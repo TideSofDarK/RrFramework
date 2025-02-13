@@ -1,5 +1,6 @@
 #include "Rr_Text.h"
 
+#include "Rr/Rr_Load.h"
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
@@ -109,7 +110,11 @@ void Rr_CleanupTextRenderer(Rr_App *App)
 Rr_Font *Rr_CreateFont(Rr_App *App, Rr_AssetRef FontPNGRef, Rr_AssetRef FontJSONRef)
 {
     Rr_Image *Atlas;
-    Rr_LoadTask ImageLoadTask = Rr_LoadColorImageFromPNG(FontPNGRef, &Atlas);
+    Rr_LoadTask ImageLoadTask = (Rr_LoadTask){
+        .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
+        .AssetRef = FontPNGRef,
+        .Out.Image = &Atlas,
+    };
     Rr_LoadImmediate(App, 1, &ImageLoadTask);
 
     Rr_Buffer *Buffer = Rr_CreateBuffer_Internal(

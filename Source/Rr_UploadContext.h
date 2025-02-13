@@ -2,22 +2,15 @@
 
 #include "Rr_Buffer.h"
 
-typedef struct Rr_AcquireBarriers Rr_AcquireBarriers;
-struct Rr_AcquireBarriers
-{
-    size_t ImageMemoryBarrierCount;
-    VkImageMemoryBarrier *ImageMemoryBarriers;
-    size_t BufferMemoryBarrierCount;
-    VkBufferMemoryBarrier *BufferMemoryBarriers;
-};
-
 typedef struct Rr_UploadContext Rr_UploadContext;
 struct Rr_UploadContext
 {
-    size_t StagingBufferOffset;
-    Rr_AllocatedBuffer *StagingBuffer;
-    VkCommandBuffer TransferCommandBuffer;
-    Rr_AcquireBarriers ReleaseBarriers;
-    Rr_AcquireBarriers AcquireBarriers;
+    VkCommandBuffer CommandBuffer;
+    RR_SLICE(Rr_Buffer*) StagingBuffers;
+    RR_SLICE(VkImageMemoryBarrier) ReleaseImageMemoryBarriers;
+    RR_SLICE(VkImageMemoryBarrier) AcquireImageMemoryBarriers;
+    RR_SLICE(VkBufferMemoryBarrier) ReleaseBufferMemoryBarriers;
+    RR_SLICE(VkBufferMemoryBarrier) AcquireBufferMemoryBarriers;
     bool UseAcquireBarriers;
+    Rr_Arena *Arena;
 };

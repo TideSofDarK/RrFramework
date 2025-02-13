@@ -65,11 +65,14 @@ static void Rr_UploadImage(
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
-    VkCommandBuffer TransferCommandBuffer = UploadContext->TransferCommandBuffer;
+    VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
 
-    VkDeviceSize BufferOffset = UploadContext->StagingBufferOffset;
-    memcpy((char *)UploadContext->StagingBuffer->AllocationInfo.pMappedData + BufferOffset, ImageData, ImageDataLength);
-    UploadContext->StagingBufferOffset += ImageDataLength;
+    Rr_Buffer *StagingBufferContainer = Rr_CreateStagingBuffer(App, ImageDataLength);
+    RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena);
+
+    Rr_AllocatedBuffer *StagingBuffer = StagingBufferContainer->AllocatedBuffers;
+    memcpy(StagingBuffer->AllocationInfo.pMappedData, ImageData, ImageDataLength);
+    VkBuffer StagingBufferHandle = StagingBuffer->Handle;
 
     for(size_t AllocatedIndex = 0; AllocatedIndex < Container->AllocatedImageCount; ++AllocatedIndex)
     {
@@ -85,7 +88,7 @@ static void Rr_UploadImage(
         };
 
         vkCmdPipelineBarrier(
-            TransferCommandBuffer,
+            CommandBuffer,
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             0,
@@ -108,7 +111,7 @@ static void Rr_UploadImage(
             });
 
         VkBufferImageCopy BufferImageCopy = {
-            .bufferOffset = BufferOffset,
+            .bufferOffset = 0,
             .bufferRowLength = 0,
             .bufferImageHeight = 0,
             .imageSubresource = {
@@ -121,15 +124,15 @@ static void Rr_UploadImage(
         };
 
         vkCmdCopyBufferToImage(
-            TransferCommandBuffer,
-            UploadContext->StagingBuffer->Handle,
+            CommandBuffer,
+            StagingBufferHandle,
             Image,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &BufferImageCopy);
 
         vkCmdPipelineBarrier(
-            TransferCommandBuffer,
+            CommandBuffer,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             DstStageMask,
             0,
@@ -153,35 +156,31 @@ static void Rr_UploadImage(
 
         if(UploadContext->UseAcquireBarriers)
         {
-            UploadContext->ReleaseBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-                (VkImageMemoryBarrier){
-                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                    .pNext = NULL,
-                    .image = Image,
-                    .oldLayout = DstLayout,
-                    .newLayout = DstLayout,
-                    .subresourceRange = SubresourceRange,
-                    .srcAccessMask = DstAccessMask,
-                    .dstAccessMask = 0,
-                    .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                    .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-                };
-            UploadContext->ReleaseBarriers.ImageMemoryBarrierCount++;
+            *RR_PUSH_SLICE(&UploadContext->ReleaseImageMemoryBarriers, UploadContext->Arena) = (VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .image = Image,
+                .oldLayout = DstLayout,
+                .newLayout = DstLayout,
+                .subresourceRange = SubresourceRange,
+                .srcAccessMask = DstAccessMask,
+                .dstAccessMask = 0,
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+            };
 
-            UploadContext->AcquireBarriers.ImageMemoryBarriers[UploadContext->AcquireBarriers.ImageMemoryBarrierCount] =
-                (VkImageMemoryBarrier){
-                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                    .pNext = NULL,
-                    .image = Image,
-                    .oldLayout = DstLayout,
-                    .newLayout = DstLayout,
-                    .subresourceRange = SubresourceRange,
-                    .srcAccessMask = 0,
-                    .dstAccessMask = DstAccessMask,
-                    .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                    .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
-                };
-            UploadContext->AcquireBarriers.ImageMemoryBarrierCount++;
+            *RR_PUSH_SLICE(&UploadContext->AcquireImageMemoryBarriers, UploadContext->Arena) = (VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = NULL,
+                .image = Image,
+                .oldLayout = DstLayout,
+                .newLayout = DstLayout,
+                .subresourceRange = SubresourceRange,
+                .srcAccessMask = 0,
+                .dstAccessMask = DstAccessMask,
+                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+            };
         }
     }
 }
@@ -273,8 +272,10 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
         Image->AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
-    VmaAllocationCreateInfo AllocationCreateInfo = { .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-                                                     .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
+    VmaAllocationCreateInfo AllocationCreateInfo = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    };
 
     for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
@@ -348,7 +349,7 @@ Rr_IntVec2 Rr_GetImageExtent2D(Rr_Image *Image)
     };
 }
 
-void Rr_GetImageSizePNGMemory(size_t DataSize, char *Data, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)
+size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)
 {
     int32_t DesiredChannels = 4;
     int32_t Width;
@@ -356,24 +357,10 @@ void Rr_GetImageSizePNGMemory(size_t DataSize, char *Data, Rr_Arena *Arena, Rr_L
     int32_t Channels;
     stbi_info_from_memory((stbi_uc *)Data, (int32_t)DataSize, &Width, &Height, &Channels);
 
-    OutLoadSize->StagingBufferSize += Width * Height * DesiredChannels;
-    OutLoadSize->ImageCount += 1;
+    return Width * Height * DesiredChannels;
 }
 
-void Rr_GetImageSizePNG(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)
-{
-    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-
-    Rr_GetImageSizePNGMemory(Asset.Size, Asset.Pointer, Arena, OutLoadSize);
-}
-
-void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)
-{
-    OutLoadSize->StagingBufferSize += 0;
-    OutLoadSize->ImageCount += 1;
-}
-
-Rr_Image *Rr_CreateColorImageFromMemory(
+Rr_Image *Rr_CreateImageRGBA8(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     char *Data,
@@ -406,7 +393,7 @@ Rr_Image *Rr_CreateColorImageFromMemory(
     return ColorImage;
 }
 
-Rr_Image *Rr_CreateColorImageFromPNGMemory(
+Rr_Image *Rr_CreateImageRGBA8FromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
@@ -448,114 +435,94 @@ Rr_Image *Rr_CreateColorImageFromPNGMemory(
     return ColorImage;
 }
 
-Rr_Image *Rr_CreateDepthImageFromEXR(
-    Rr_App *App,
-    Rr_UploadContext *UploadContext,
-    Rr_AssetRef AssetRef,
-    Rr_Arena *Arena)
-{
-    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-
-    const char *Error;
-
-    EXRVersion Version;
-    int32_t Result = ParseEXRVersionFromMemory(&Version, (unsigned char *)Asset.Pointer, Asset.Size);
-    if(Result != 0)
-    {
-        RR_ABORT("Error opening EXR file!");
-    }
-
-    EXRHeader Header;
-    Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char *)Asset.Pointer, Asset.Size, &Error);
-    if(Result != 0)
-    {
-        RR_ABORT("Error opening EXR file: %s", Error);
-        // FreeEXRErrorMessage(Error);
-    }
-
-    EXRImage Image;
-    InitEXRImage(&Image);
-
-    Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char *)Asset.Pointer, Asset.Size, &Error);
-    if(Result != 0)
-    {
-        RR_ABORT("Error opening EXR file: %s", Error);
-        // FreeEXRHeader(&Header);
-        // FreeEXRErrorMessage(Error);
-    }
-
-    /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
-
-    float Near = 0.5f;
-    float Far = 50.0f;
-    float FarPlusNear = Far + Near;
-    float FarMinusNear = Far - Near;
-    float FTimesNear = Far * Near;
-    for(int32_t Index = 0; Index < Image.width * Image.height; Index++)
-    {
-        float *Current = (float *)Image.images[0] + Index;
-        float ZReciprocal = 1.0f / *Current;
-        float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
-        Depth = (Depth + 1.0f) / 2.0f;
-        if(Depth > 1.0f)
-        {
-            Depth = 1.0f;
-        }
-        *Current = Depth;
-    }
-
-    Rr_IntVec3 Extent = {
-        .Width = Image.width,
-        .Height = Image.height,
-        .Depth = 1,
-    };
-
-    // size_t DataSize = Extent.Width * Extent.Height * sizeof(float);
-
-    Rr_Image *DepthImage = Rr_CreateImage(
-        App,
-        Extent,
-        RR_TEXTURE_FORMAT_D32_SFLOAT,
-        RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
-        false);
-
-    // Rr_UploadImage(
-    //     App,
-    //     UploadContext,
-    //     DepthImage->AllocatedImages[0].Handle,
-    //     Rr_GetVulkanExtent3D(&Extent),
-    //     VK_IMAGE_ASPECT_DEPTH_BIT,
-    //     VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //     VK_ACCESS_TRANSFER_READ_BIT,
-    //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-    //     Image.images[0],
-    //     DataSize);
-
-    FreeEXRHeader(&Header);
-    FreeEXRImage(&Image);
-
-    return DepthImage;
-}
-
-Rr_Image *Rr_CreateColorAttachmentImage(Rr_App *App, uint32_t Width, uint32_t Height)
-{
-    return Rr_CreateImage(
-        App,
-        (Rr_IntVec3){ Width, Height, 1 },
-        RR_TEXTURE_FORMAT_B8G8R8A8_UNORM,
-        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
-        false);
-}
-
-Rr_Image *Rr_CreateDepthAttachmentImage(Rr_App *App, uint32_t Width, uint32_t Height)
-{
-    return Rr_CreateImage(
-        App,
-        (Rr_IntVec3){ Width, Height, 1 },
-        RR_TEXTURE_FORMAT_D32_SFLOAT,
-        RR_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
-        false);
-}
+// Rr_Image *Rr_CreateDepthImageFromEXR(
+//     Rr_App *App,
+//     Rr_UploadContext *UploadContext,
+//     Rr_AssetRef AssetRef,
+//     Rr_Arena *Arena)
+// {
+//     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+//
+//     const char *Error;
+//
+//     EXRVersion Version;
+//     int32_t Result = ParseEXRVersionFromMemory(&Version, (unsigned char *)Asset.Pointer, Asset.Size);
+//     if(Result != 0)
+//     {
+//         RR_ABORT("Error opening EXR file!");
+//     }
+//
+//     EXRHeader Header;
+//     Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char *)Asset.Pointer, Asset.Size, &Error);
+//     if(Result != 0)
+//     {
+//         RR_ABORT("Error opening EXR file: %s", Error);
+//         // FreeEXRErrorMessage(Error);
+//     }
+//
+//     EXRImage Image;
+//     InitEXRImage(&Image);
+//
+//     Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char *)Asset.Pointer, Asset.Size, &Error);
+//     if(Result != 0)
+//     {
+//         RR_ABORT("Error opening EXR file: %s", Error);
+//         // FreeEXRHeader(&Header);
+//         // FreeEXRErrorMessage(Error);
+//     }
+//
+//     /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
+//
+//     float Near = 0.5f;
+//     float Far = 50.0f;
+//     float FarPlusNear = Far + Near;
+//     float FarMinusNear = Far - Near;
+//     float FTimesNear = Far * Near;
+//     for(int32_t Index = 0; Index < Image.width * Image.height; Index++)
+//     {
+//         float *Current = (float *)Image.images[0] + Index;
+//         float ZReciprocal = 1.0f / *Current;
+//         float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
+//         Depth = (Depth + 1.0f) / 2.0f;
+//         if(Depth > 1.0f)
+//         {
+//             Depth = 1.0f;
+//         }
+//         *Current = Depth;
+//     }
+//
+//     Rr_IntVec3 Extent = {
+//         .Width = Image.width,
+//         .Height = Image.height,
+//         .Depth = 1,
+//     };
+//
+//     // size_t DataSize = Extent.Width * Extent.Height * sizeof(float);
+//
+//     Rr_Image *DepthImage = Rr_CreateImage(
+//         App,
+//         Extent,
+//         RR_TEXTURE_FORMAT_D32_SFLOAT,
+//         RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
+//         false);
+//
+//     // Rr_UploadImage(
+//     //     App,
+//     //     UploadContext,
+//     //     DepthImage->AllocatedImages[0].Handle,
+//     //     Rr_GetVulkanExtent3D(&Extent),
+//     //     VK_IMAGE_ASPECT_DEPTH_BIT,
+//     //     VK_PIPELINE_STAGE_TRANSFER_BIT,
+//     //     VK_ACCESS_TRANSFER_READ_BIT,
+//     //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+//     //     Image.images[0],
+//     //     DataSize);
+//
+//     FreeEXRHeader(&Header);
+//     FreeEXRImage(&Image);
+//
+//     return DepthImage;
+// }
 
 // Rr_Image *Rr_GetDummyColorTexture(Rr_App *App)
 // {
