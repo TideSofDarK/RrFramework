@@ -63,16 +63,23 @@ typedef enum
 
 typedef enum
 {
-    RR_VERTEX_INPUT_TYPE_VERTEX,
-    RR_VERTEX_INPUT_TYPE_INSTANCE,
-} Rr_VertexInputType;
+    RR_VERTEX_INPUT_RATE_VERTEX,
+    RR_VERTEX_INPUT_RATE_INSTANCE,
+} Rr_VertexInputRate;
 
 typedef struct Rr_VertexInputAttribute Rr_VertexInputAttribute;
 struct Rr_VertexInputAttribute
 {
     Rr_Format Format;
-    Rr_VertexInputType Type;
     uint32_t Location;
+};
+
+typedef struct Rr_VertexInputBinding Rr_VertexInputBinding;
+struct Rr_VertexInputBinding
+{
+    Rr_VertexInputRate Rate;
+    size_t AttributeCount;
+    Rr_VertexInputAttribute *Attributes;
 };
 
 typedef enum
@@ -154,11 +161,11 @@ struct Rr_PipelineInfo
 {
     Rr_Data VertexShaderSPV;
     Rr_Data FragmentShaderSPV;
-    Rr_VertexInputAttribute *VertexAttributes;
-    size_t VertexAttributeCount;
+    size_t VertexInputBindingCount;
+    Rr_VertexInputBinding *VertexInputBindings;
     Rr_Topology Topology;
-    Rr_ColorTargetInfo *ColorTargets;
     size_t ColorTargetCount;
+    Rr_ColorTargetInfo *ColorTargets;
     Rr_Rasterizer Rasterizer;
     Rr_DepthStencil DepthStencil;
     Rr_PipelineLayout *Layout;

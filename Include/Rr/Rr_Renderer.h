@@ -57,6 +57,7 @@ typedef enum
 
 typedef enum
 {
+    RR_COLOR_COMPONENT_DEFAULT = 0,
     RR_COLOR_COMPONENT_R = (1 << 0),
     RR_COLOR_COMPONENT_G = (1 << 1),
     RR_COLOR_COMPONENT_B = (1 << 2),

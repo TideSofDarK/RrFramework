@@ -620,6 +620,10 @@
 //     }
 // };
 
+static Rr_App *App;
+static Rr_GLTFContext *GLTFContext;
+static Rr_GraphicsPipeline *GLTFPipeline;
+
 static Rr_Image *ColorAttachmentA;
 static Rr_Image *ColorAttachmentB;
 static Rr_Image *TexturePNG;
@@ -645,6 +649,81 @@ struct STest
     Rr_Vec3 Offset;
 };
 
+static void InitGLTF()
+{
+    Rr_PipelineBinding BindingsA[] = {
+        {
+            .Slot = 0,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+        },
+        {
+            .Slot = 1,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER,
+        },
+
+    };
+    Rr_PipelineBinding BindingB = {
+        .Slot = 3,
+        .Count = 1,
+        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+    };
+    Rr_PipelineBindingSet BindingSets[] = {
+        {
+            .BindingCount = RR_ARRAY_COUNT(BindingsA),
+            .Bindings = BindingsA,
+            .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
+        },
+        {
+            .BindingCount = 1,
+            .Bindings = &BindingB,
+            .Stages = RR_SHADER_STAGE_VERTEX_BIT,
+        },
+    };
+    PipelineLayout = Rr_CreatePipelineLayout(App, 2, BindingSets);
+
+    Rr_VertexInputAttribute VertexAttributes[] = {
+        { .Format = RR_FORMAT_VEC3, .Location = 0 },
+        { .Format = RR_FORMAT_VEC2, .Location = 1 },
+        { .Format = RR_FORMAT_VEC3, .Location = 2 },
+        { .Format = RR_FORMAT_VEC3, .Location = 3 },
+    };
+
+    Rr_VertexInputBinding VertexInputBinding = {
+        .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+        .AttributeCount = RR_ARRAY_COUNT(VertexAttributes),
+        .Attributes = VertexAttributes,
+    };
+
+    Rr_ColorTargetInfo ColorTargets[1] = {};
+    ColorTargets[0].Format = Rr_GetSwapchainFormat(App);
+
+    Rr_PipelineInfo PipelineInfo = {};
+    PipelineInfo.Layout = PipelineLayout;
+    PipelineInfo.VertexShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV);
+    PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV);
+    PipelineInfo.VertexInputBindingCount = 1;
+    PipelineInfo.VertexInputBindings = &VertexInputBinding;
+    PipelineInfo.ColorTargetCount = 1;
+    PipelineInfo.ColorTargets = ColorTargets;
+
+    GLTFPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
+
+    Rr_GLTFAttributeType GLTFAttributes[] = {
+        RR_GLTF_ATTRIBUTE_TYPE_POSITION,
+        RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0,
+        RR_GLTF_ATTRIBUTE_TYPE_NORMAL,
+        RR_GLTF_ATTRIBUTE_TYPE_TANGENT,
+    };
+    Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
+        .Binding = 0,
+        .AttributeCount = RR_ARRAY_COUNT(GLTFAttributes),
+        .Attributes = GLTFAttributes,
+    };
+    GLTFContext = Rr_CreateGLTFContext(App, 1, &VertexInputBinding, &GLTFVertexInputBinding);
+}
+
 static void OnLoadComplete(Rr_App *App, void *UserData)
 {
     LoadComplete = true;
@@ -652,11 +731,8 @@ static void OnLoadComplete(Rr_App *App, void *UserData)
 
 static void Init(Rr_App *App, void *UserData)
 {
-    LoadThread = Rr_CreateLoadingThread(App);
-    Rr_LoadTask Tasks[] = {
-        Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &TexturePNG),
-    };
-    Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
+    ::App = App;
+    LoadThread = Rr_CreateLoadThread(App);
 
     Rr_SamplerInfo SamplerInfo = {};
     SamplerInfo.MinFilter = RR_FILTER_LINEAR;
@@ -696,25 +772,50 @@ static void Init(Rr_App *App, void *UserData)
     PipelineLayout = Rr_CreatePipelineLayout(App, 2, BindingSets);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
-        { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 0 },
-        { .Format = RR_FORMAT_VEC2, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 1 },
-        { .Format = RR_FORMAT_VEC4, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 2 },
+        { .Format = RR_FORMAT_VEC4, .Location = 0 },
+        { .Format = RR_FORMAT_VEC2, .Location = 1 },
+        { .Format = RR_FORMAT_VEC4, .Location = 2 },
+    };
+
+    Rr_VertexInputBinding VertexInputBinding = {
+        .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+        .AttributeCount = RR_ARRAY_COUNT(VertexAttributes),
+        .Attributes = VertexAttributes,
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = {};
-    ColorTargets[0].Blend.ColorWriteMask = RR_COLOR_COMPONENT_ALL;
     ColorTargets[0].Format = Rr_GetSwapchainFormat(App);
 
     Rr_PipelineInfo PipelineInfo = {};
     PipelineInfo.Layout = PipelineLayout;
     PipelineInfo.VertexShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV);
     PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV);
-    PipelineInfo.VertexAttributeCount = RR_ARRAY_COUNT(VertexAttributes);
-    PipelineInfo.VertexAttributes = VertexAttributes;
+    PipelineInfo.VertexInputBindingCount = 1;
+    PipelineInfo.VertexInputBindings = &VertexInputBinding;
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
 
     GraphicsPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
+
+    InitGLTF();
+
+    Rr_LoadTask Tasks[] = {
+        {
+            .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
+            .AssetRef = DEMO_ASSET_COTTAGEDIFFUSE_PNG,
+            .Options = {},
+            .Out = { .Image = &TexturePNG },
+        },
+        {
+            .LoadType = RR_LOAD_TYPE_GLTF_ASSET,
+            .AssetRef = DEMO_ASSET_COTTAGEDIFFUSE_PNG,
+            .Options = {
+                .GLTF = { .GLTFContext = GLTFContext, },
+            },
+            .Out = { .Image = &TexturePNG },
+        },
+    };
+    Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
 
     float VertexData[] = {
         0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f,

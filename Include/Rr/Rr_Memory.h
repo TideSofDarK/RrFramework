@@ -51,11 +51,13 @@ extern void *Rr_AllocArenaNoZero(Rr_Arena *Arena, size_t Size, size_t Align, siz
 
 extern void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count);
 
-#define RR_ALLOC(Arena, Size)         Rr_AllocArena(Arena, Size, RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_NO_ZERO(Arena, Size) Rr_AllocArenaNoZero(Arena, Size, RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_TYPE(Arena, Type)  (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_TYPE_COUNT(Arena, Type, Count) \
-    (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, Count)
+#define RR_ALLOC(Arena, Size)                   Rr_AllocArena(Arena, Size, RR_SAFE_ALIGNMENT, 1)
+#define RR_ALLOC_NO_ZERO(Arena, Size)           Rr_AllocArenaNoZero(Arena, Size, RR_SAFE_ALIGNMENT, 1)
+#define RR_ALLOC_TYPE(Arena, Type)              (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, 1)
+#define RR_ALLOC_TYPE_COUNT(Arena, Type, Count) (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, Count)
+#define RR_ALLOC_COPY(Arena, Dst, Src, Size) \
+    Dst = RR_ALLOC_NO_ZERO(Arena, Size);     \
+    memcpy(Dst, Src, Size)
 
 extern void Rr_PopArena(Rr_Arena *Arena, size_t Amount);
 

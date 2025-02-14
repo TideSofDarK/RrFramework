@@ -89,36 +89,42 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
 
     RR_SLICE(VkVertexInputBindingDescription) BindingDescriptions = { 0 };
     RR_SLICE(VkVertexInputAttributeDescription) AttributeDescriptions = { 0 };
-    RR_RESERVE_SLICE(&AttributeDescriptions, Info->VertexAttributeCount, Scratch.Arena);
-    for(size_t Index = 0; Index < Info->VertexAttributeCount; ++Index)
+    for(size_t BindingIndex = 0; BindingIndex < Info->VertexInputBindingCount; ++BindingIndex)
     {
-        Rr_VertexInputAttribute *Attribute = Info->VertexAttributes + Index;
+        Rr_VertexInputBinding *VertexInputBinding = Info->VertexInputBindings + BindingIndex;
 
-        VkVertexInputAttributeDescription *AttributeDescription = RR_PUSH_SLICE(&AttributeDescriptions, Scratch.Arena);
-        size_t Binding = Attribute->Type == RR_VERTEX_INPUT_TYPE_INSTANCE ? 1 : 0;
-        AttributeDescription->location = Attribute->Location;
-        AttributeDescription->format = Rr_GetVulkanFormat(Attribute->Format);
-        AttributeDescription->binding = Binding;
-        VkVertexInputBindingDescription *BindingDescription = NULL;
-        for(size_t BindingIndex = 0; BindingIndex < BindingDescriptions.Count; ++BindingIndex)
+        RR_RESERVE_SLICE(&AttributeDescriptions, AttributeDescriptions.Count + VertexInputBinding->AttributeCount, Scratch.Arena);
+
+        for(size_t Index = 0; Index < VertexInputBinding->AttributeCount; ++Index)
         {
-            if(BindingDescriptions.Data[BindingIndex].binding == Binding)
+            Rr_VertexInputAttribute *Attribute = VertexInputBinding->Attributes + Index;
+
+            VkVertexInputAttributeDescription *AttributeDescription =
+                RR_PUSH_SLICE(&AttributeDescriptions, Scratch.Arena);
+            AttributeDescription->location = Attribute->Location;
+            AttributeDescription->format = Rr_GetVulkanFormat(Attribute->Format);
+            AttributeDescription->binding = BindingIndex;
+            VkVertexInputBindingDescription *BindingDescription = NULL;
+            for(size_t BindingIndex = 0; BindingIndex < BindingDescriptions.Count; ++BindingIndex)
             {
-                BindingDescription = BindingDescriptions.Data + BindingIndex;
-                break;
+                if(BindingDescriptions.Data[BindingIndex].binding == BindingIndex)
+                {
+                    BindingDescription = BindingDescriptions.Data + BindingIndex;
+                    break;
+                }
             }
+            if(BindingDescription == NULL)
+            {
+                BindingDescription = RR_PUSH_SLICE(&BindingDescriptions, Scratch.Arena);
+                BindingDescription->binding = BindingIndex;
+                BindingDescription->inputRate = VertexInputBinding->Rate == RR_VERTEX_INPUT_RATE_INSTANCE
+                                                    ? VK_VERTEX_INPUT_RATE_INSTANCE
+                                                    : VK_VERTEX_INPUT_RATE_VERTEX;
+            }
+            size_t Size = Rr_GetFormatSize(Attribute->Format);
+            AttributeDescription->offset = BindingDescription->stride;
+            BindingDescription->stride += Size;
         }
-        if(BindingDescription == NULL)
-        {
-            BindingDescription = RR_PUSH_SLICE(&BindingDescriptions, Scratch.Arena);
-            BindingDescription->binding = Binding;
-            BindingDescription->inputRate = Attribute->Type == RR_VERTEX_INPUT_TYPE_INSTANCE
-                                                ? VK_VERTEX_INPUT_RATE_INSTANCE
-                                                : VK_VERTEX_INPUT_RATE_VERTEX;
-        }
-        size_t Size = Rr_GetFormatSize(Attribute->Format);
-        AttributeDescription->offset = BindingDescription->stride;
-        BindingDescription->stride += Size;
     }
 
     VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
@@ -187,6 +193,11 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         Rr_ColorTargetInfo *ColorTargetInfo = Info->ColorTargets + Index;
         Rr_ColorTargetBlend *Blend = &ColorTargetInfo->Blend;
 
+        VkColorComponentFlags ColorWriteMask = Blend->ColorWriteMask;
+        if(Blend->ColorWriteMask == RR_COLOR_COMPONENT_DEFAULT)
+        {
+            ColorWriteMask = RR_COLOR_COMPONENT_ALL;
+        }
         Attachment->blendEnable = Blend->BlendEnable;
         Attachment->srcColorBlendFactor = Rr_GetVulkanBlendFactor(Blend->SrcColorBlendFactor);
         Attachment->dstColorBlendFactor = Rr_GetVulkanBlendFactor(Blend->DstColorBlendFactor);
@@ -194,7 +205,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         Attachment->srcAlphaBlendFactor = Rr_GetVulkanBlendFactor(Blend->SrcAlphaBlendFactor);
         Attachment->dstAlphaBlendFactor = Rr_GetVulkanBlendFactor(Blend->DstAlphaBlendFactor);
         Attachment->alphaBlendOp = Rr_GetVulkanBlendOp(Blend->AlphaBlendOp);
-        Attachment->colorWriteMask = Blend->ColorWriteMask;
+        Attachment->colorWriteMask = ColorWriteMask;
     }
 
     Pipeline->ColorAttachmentCount = Info->ColorTargetCount;

@@ -21,8 +21,14 @@ static void Init(Rr_App *App, void *UserData)
     PipelineLayout = Rr_CreatePipelineLayout(App, 0, NULL);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
-        { .Format = RR_FORMAT_VEC3, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 0 },
-        { .Format = RR_FORMAT_VEC3, .Type = RR_VERTEX_INPUT_TYPE_VERTEX, .Location = 1 },
+        { .Format = RR_FORMAT_VEC3, .Location = 0 },
+        { .Format = RR_FORMAT_VEC3, .Location = 1 },
+    };
+
+    Rr_VertexInputBinding VertexInputBinding = {
+        .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+        .AttributeCount = RR_ARRAY_COUNT(VertexAttributes),
+        .Attributes = VertexAttributes,
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
@@ -33,8 +39,8 @@ static void Init(Rr_App *App, void *UserData)
     PipelineInfo.Layout = PipelineLayout;
     PipelineInfo.VertexShaderSPV = Rr_LoadAsset(EXAMPLE_ASSET_TRIANGLE_VERT_SPV);
     PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(EXAMPLE_ASSET_TRIANGLE_FRAG_SPV);
-    PipelineInfo.VertexAttributeCount = RR_ARRAY_COUNT(VertexAttributes);
-    PipelineInfo.VertexAttributes = VertexAttributes;
+    PipelineInfo.VertexInputBindingCount = RR_ARRAY_COUNT(VertexAttributes);
+    PipelineInfo.VertexInputBindings = &VertexInputBinding;
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
 

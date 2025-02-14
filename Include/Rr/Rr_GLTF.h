@@ -2,6 +2,7 @@
 
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_Pipeline.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,19 +82,14 @@ struct Rr_GLTFAsset
     struct Rr_Image **Images;
 };
 
-typedef struct Rr_GLTFAttributeMapping Rr_GLTFAttributeMapping;
-struct Rr_GLTFAttributeMapping
+typedef struct Rr_GLTFVertexInputBinding Rr_GLTFVertexInputBinding;
+struct Rr_GLTFVertexInputBinding
 {
-   Rr_GLTFAttributeType
+    size_t AttributeCount;
+    Rr_GLTFAttributeType *Attributes;
 };
 
-typedef struct Rr_GLTFMapping Rr_GLTFMapping;
-struct Rr_GLTFMapping
-{
-
-};
-
-extern Rr_GLTFContext *Rr_CreateGLTFContext(Rr_App *App, Rr_GLTFMapping *GLTFMapping);
+extern Rr_GLTFContext *Rr_CreateGLTFContext(Rr_App *App, size_t VertexInputBindingCount, Rr_VertexInputBinding *VertexInputBindings, Rr_GLTFVertexInputBinding *GLTFVertexInputBindings);
 
 extern void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext);
 
