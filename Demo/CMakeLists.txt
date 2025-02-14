@@ -55,7 +55,6 @@ file(GLOB_RECURSE RR_DEMO_BUILTIN_ASSETS CONFIGURE_DEPENDS
 
 rr_embed_assets(
     ${PROJECT_NAME}
-    "RrDemoBuiltinAssets"
     "DEMO_ASSET_"
     "DemoAssets"
     "${RR_DEMO_BUILTIN_ASSETS}"

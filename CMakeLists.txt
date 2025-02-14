@@ -68,7 +68,7 @@ else ()
     set(RR_USE_RC 0)
 endif ()
 
-function(rr_embed_assets TARGET_NAME ASSETS_TARGET_NAME IDENTIFIER_PREFIX HEADER_NAME ASSETS_LIST)
+function(rr_embed_assets TARGET_NAME IDENTIFIER_PREFIX HEADER_NAME ASSETS_LIST)
     set(ASSET_HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/AssetHeaders/${HEADER_NAME}.inc")
 
     set(ASSETS_LIST_FINAL "")
@@ -107,6 +107,8 @@ function(rr_embed_assets TARGET_NAME ASSETS_TARGET_NAME IDENTIFIER_PREFIX HEADER
         ${ASSETS_LIST}
         VERBATIM
     )
+
+    set(ASSETS_TARGET_NAME "${TARGET_NAME}EmbeddedAssets")
 
     add_custom_target(
         ${ASSETS_TARGET_NAME}
@@ -191,7 +193,6 @@ file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS
 
 rr_embed_assets(
     ${PROJECT_NAME}
-    "RrBuiltinAssets"
     "RR_BUILTIN_"
     "Rr_BuiltinAssets"
     "${RR_BUILTIN_ASSETS}"
@@ -199,3 +200,4 @@ rr_embed_assets(
 
 add_subdirectory(Demo)
 add_subdirectory(Examples/01_Triangle)
+add_subdirectory(Examples/05_GLTFCube)
