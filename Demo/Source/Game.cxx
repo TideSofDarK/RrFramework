@@ -717,7 +717,6 @@ static void InitGLTF()
         RR_GLTF_ATTRIBUTE_TYPE_TANGENT,
     };
     Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
-        .Binding = 0,
         .AttributeCount = RR_ARRAY_COUNT(GLTFAttributes),
         .Attributes = GLTFAttributes,
     };

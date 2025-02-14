@@ -20,23 +20,14 @@ static inline size_t Rr_GetGLTFAttributeSize(Rr_GLTFAttributeType Type)
     switch(Type)
     {
         case RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0:
-        {
             return 8;
-        }
-        break;
         case RR_GLTF_ATTRIBUTE_TYPE_POSITION:
         case RR_GLTF_ATTRIBUTE_TYPE_NORMAL:
         case RR_GLTF_ATTRIBUTE_TYPE_COLOR:
         case RR_GLTF_ATTRIBUTE_TYPE_TANGENT:
-        {
             return 12;
-        }
-        break;
         default:
-        {
             return cgltf_attribute_type_invalid;
-        }
-        break;
     }
 }
 
@@ -45,35 +36,17 @@ static inline cgltf_attribute_type Rr_GetCGLTFAttributeType(Rr_GLTFAttributeType
     switch(Type)
     {
         case RR_GLTF_ATTRIBUTE_TYPE_POSITION:
-        {
             return cgltf_attribute_type_position;
-        }
-        break;
         case RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0:
-        {
             return cgltf_attribute_type_texcoord;
-        }
-        break;
         case RR_GLTF_ATTRIBUTE_TYPE_NORMAL:
-        {
             return cgltf_attribute_type_normal;
-        }
-        break;
         case RR_GLTF_ATTRIBUTE_TYPE_COLOR:
-        {
             return cgltf_attribute_type_color;
-        }
-        break;
         case RR_GLTF_ATTRIBUTE_TYPE_TANGENT:
-        {
             return cgltf_attribute_type_tangent;
-        }
-        break;
         default:
-        {
             return cgltf_attribute_type_invalid;
-        }
-        break;
     }
 }
 
@@ -82,60 +55,33 @@ static inline Rr_GLTFAttributeType Rr_GetGLTFAttributeType(cgltf_attribute_type 
     switch(Type)
     {
         case cgltf_attribute_type_position:
-        {
             return RR_GLTF_ATTRIBUTE_TYPE_POSITION;
-        }
-        break;
         case cgltf_attribute_type_texcoord:
-        {
             return RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0;
-        }
-        break;
         case cgltf_attribute_type_normal:
-        {
             return RR_GLTF_ATTRIBUTE_TYPE_NORMAL;
-        }
-        break;
         case cgltf_attribute_type_color:
-        {
             return RR_GLTF_ATTRIBUTE_TYPE_COLOR;
-        }
-        break;
         case cgltf_attribute_type_tangent:
-        {
             return RR_GLTF_ATTRIBUTE_TYPE_TANGENT;
-        }
-        break;
         default:
-        {
             return RR_GLTF_ATTRIBUTE_TYPE_INVALID;
-        }
-        break;
     }
 }
 
-static Rr_Format Rr_GLTFAttributeTypeToFormat(Rr_GLTFAttributeType Type)
+static inline Rr_Format Rr_GLTFAttributeTypeToFormat(Rr_GLTFAttributeType Type)
 {
     switch(Type)
     {
         case RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0:
-        {
             return RR_FORMAT_VEC2;
-        }
-        break;
         case RR_GLTF_ATTRIBUTE_TYPE_POSITION:
         case RR_GLTF_ATTRIBUTE_TYPE_NORMAL:
         case RR_GLTF_ATTRIBUTE_TYPE_COLOR:
         case RR_GLTF_ATTRIBUTE_TYPE_TANGENT:
-        {
             return RR_FORMAT_VEC3;
-        }
-        break;
         default:
-        {
             return RR_FORMAT_INVALID;
-        }
-        break;
     }
 }
 
@@ -165,6 +111,7 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
 
     Rr_GLTFContext *GLTFContext = RR_ALLOC_TYPE(Arena, Rr_GLTFContext);
     GLTFContext->Arena = Arena;
+    GLTFContext->VertexInputStrides = RR_ALLOC_TYPE_COUNT(Arena, size_t, VertexInputBindingCount);
     GLTFContext->VertexInputBindingCount = VertexInputBindingCount;
     RR_ALLOC_COPY(
         Arena,
@@ -179,6 +126,12 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
             GLTFVertexInputBinding->Attributes,
             GLTFVertexInputBindings[BindingIndex].Attributes,
             sizeof(Rr_GLTFAttributeType) * GLTFVertexInputBindings[BindingIndex].AttributeCount);
+
+        for(size_t AttributeIndex = 0; AttributeIndex < GLTFVertexInputBinding->AttributeCount; ++AttributeIndex)
+        {
+            GLTFContext->VertexInputStrides[BindingIndex] +=
+                Rr_GetGLTFAttributeSize(GLTFVertexInputBinding->Attributes[AttributeIndex]);
+        }
     }
 
     return GLTFContext;
@@ -696,16 +649,16 @@ static size_t Rr_CalculateGLTFAssetStagingBufferSize(cgltf_data *Data, Rr_GLTFCo
     return TotalSize;
 }
 
-static inline void *Rr_GetCGLTFAttributeValueAt(cgltf_attribute *Attribute, size_t Index)
+static inline void *Rr_GetCGLTFAccessorValueAt(cgltf_accessor *Accessor, size_t Index)
 {
-    if(Attribute->data->stride > 0)
+    if(Accessor->stride > 0)
     {
-        return (char *)Attribute->data->buffer_view->data + Attribute->data->offset + (Attribute->data->stride * Index);
+        return (char *)Accessor->buffer_view->data + Accessor->offset + (Accessor->stride * Index);
     }
     else
     {
-        return (char *)Attribute->data->buffer_view->data + Attribute->data->offset +
-               (cgltf_calc_size(Attribute->data->type, Attribute->data->component_type) * Index);
+        return (char *)Accessor->buffer_view->data + Accessor->offset +
+               (cgltf_calc_size(Accessor->type, Accessor->component_type) * Index);
     }
 }
 
@@ -757,14 +710,15 @@ static inline Rr_GLTFVertexInputInfo Rr_GetGLTFVertexInputInfoForAttribute(
     return Info;
 }
 
-typedef struct Rr_GLTFStagingData Rr_GLTFStagingData;
-struct Rr_GLTFStagingData
+static inline size_t Rr_GetFlatBindingOffset(Rr_GLTFContext *Context, size_t BindingIndex, size_t VertexCount)
 {
-    size_t Start;
-    size_t Size;
-    size_t Offset;
-    Rr_BufferUsage BufferUsage;
-};
+    size_t Result = 0;
+    for(size_t Index = 0; Index < BindingIndex; ++Index)
+    {
+        Result += Context->VertexInputStrides[Index] * VertexCount;
+    }
+    return Result;
+}
 
 Rr_GLTFAsset *Rr_CreateGLTFAsset(
     Rr_App *App,
@@ -789,7 +743,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     cgltf_result Result = cgltf_parse(&Options, Asset.Pointer, Asset.Size, &Data);
     if(Result != cgltf_result_success)
     {
-        RR_ABORT("cGLTF: Parsing failed!");
+        RR_ABORT("GLTF: Parsing failed!");
     }
     cgltf_load_buffers(&Options, Data, NULL);
 
@@ -797,18 +751,16 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     /* Create staging structures. */
 
-    // size_t StagingDataSize = Rr_CalculateGLTFAssetStagingBufferSize(Data, GLTFContext);
     assert(Data->buffers_count == 1);
     size_t StagingDataSize = Data->buffers[0].size;
     char *StagingData = RR_ALLOC(Scratch.Arena, StagingDataSize);
-    Rr_GLTFStagingData *GLTFStagingDatas = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_GLTFStagingData, GLTFContext->VertexInputBindingCount);
-
+    size_t StagingDataOffset = 0;
     // Rr_Buffer *StagingBuffer = Rr_CreateStagingBuffer(App, StagingDataSize);
 
     /* Upload buffers. */
 
-    GLTFAsset->BufferCount = Data->buffers_count;
-    GLTFAsset->Buffers = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_Buffer *, GLTFAsset->BufferCount);
+    // GLTFAsset->BufferCount = Data->buffers_count;
+    // GLTFAsset->Buffers = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_Buffer *, GLTFAsset->BufferCount);
     // for(size_t BufferIndex = 0; BufferIndex < GLTFAsset->BufferCount; ++BufferIndex)
     // {
     //     cgltf_buffer *Buffer = Data->buffers + BufferIndex;
@@ -859,10 +811,11 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     {
         cgltf_mesh *Mesh = Data->meshes + MeshIndex;
 
-        /* @TODO: Names could be useful. */
         Rr_GLTFMesh *GLTFMesh = GLTFAsset->Meshes + MeshIndex;
         GLTFMesh->PrimitiveCount = Mesh->primitives_count;
         GLTFMesh->Primitives = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_GLTFPrimitive, GLTFMesh->PrimitiveCount);
+
+        RR_ALLOC_COPY(GLTFContext->Arena, GLTFMesh->Name, Mesh->name, strlen(Mesh->name));
 
         for(size_t PrimitiveIndex = 0; PrimitiveIndex < GLTFMesh->PrimitiveCount; ++PrimitiveIndex)
         {
@@ -872,8 +825,22 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             GLTFPrimitive->AttributeCount = Primitive->attributes_count;
             GLTFPrimitive->Attributes =
                 RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_GLTFAttribute, GLTFPrimitive->AttributeCount);
+            GLTFPrimitive->VertexBufferOffsets =
+                RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, size_t, GLTFContext->VertexInputBindingCount);
 
-            size_t VertexCount = 0;
+            size_t VertexCount = Primitive->attributes->data->count;
+
+            /* Quick check to make sure every attribute has the same count. */
+
+            for(size_t AttributeIndex = 1; AttributeIndex < GLTFPrimitive->AttributeCount; ++AttributeIndex)
+            {
+                cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
+                if(VertexCount != Attribute->data->count)
+                {
+                    RR_ABORT("GLTF: Attributes with different counts!");
+                }
+            }
+
             for(size_t AttributeIndex = 0; AttributeIndex < GLTFPrimitive->AttributeCount; ++AttributeIndex)
             {
                 cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
@@ -881,31 +848,31 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 Rr_GLTFAttribute *GLTFAttribute = GLTFPrimitive->Attributes + AttributeIndex;
                 GLTFAttribute->Type = Rr_GetGLTFAttributeType(Attribute->type);
                 assert(GLTFAttribute->Type != RR_GLTF_ATTRIBUTE_TYPE_INVALID);
-                // GLTFAttribute->Buffer =
-                //     GLTFAsset->Buffers[cgltf_buffer_index(Data, Attribute->data->buffer_view->buffer)];
-                // GLTFAttribute->BufferOffset = Attribute->data->buffer_view->offset;
 
-                // VertexCount = RR_MAX(VertexCount, Attribute->data->count);
                 Rr_GLTFVertexInputInfo Info = Rr_GetGLTFVertexInputInfoForAttribute(GLTFContext, Attribute->type);
                 if(Info.Offset != SIZE_MAX && Info.Binding != SIZE_MAX && Info.Stride != SIZE_MAX)
                 {
                     /* Copy attribute values to staging data. */
 
                     size_t AttributeSize = cgltf_calc_size(Attribute->data->type, Attribute->data->component_type);
+                    size_t BindingOffset = Rr_GetFlatBindingOffset(GLTFContext, Info.Binding, VertexCount);
+                    char *DstBase = (char *)StagingData + StagingDataOffset + BindingOffset;
+                    GLTFPrimitive->VertexBufferOffsets[Info.Binding] = StagingDataOffset + BindingOffset;
                     for(size_t VertexIndex = 0; VertexIndex < Attribute->data->count; ++VertexIndex)
                     {
-                        Rr_GLTFStagingData *GLTFStagingData = GLTFStagingDatas + Info.Binding;
-                        void *Dst = StagingData
-                        memcpy( AttributeSize);
+                        void *Dst = DstBase + Info.Offset + (Info.Stride * VertexIndex);
+                        void *Src = Rr_GetCGLTFAccessorValueAt(Attribute->data, VertexIndex);
+                        memcpy(Dst, Src, AttributeSize);
                     }
                 }
             }
 
+            StagingDataOffset +=
+                Rr_GetFlatBindingOffset(GLTFContext, GLTFContext->VertexInputBindingCount, VertexCount);
+
             GLTFPrimitive->VertexCount = VertexCount;
             GLTFPrimitive->IndexCount = Primitive->indices->count;
-            GLTFPrimitive->IndexBuffer =
-                GLTFAsset->Buffers[cgltf_buffer_index(Data, Primitive->indices->buffer_view->buffer)];
-            GLTFPrimitive->IndexBufferOffset = Primitive->indices->buffer_view->offset;
+            GLTFPrimitive->IndexBufferOffset = StagingDataOffset;
             switch(Primitive->indices->component_type)
             {
                 case cgltf_component_type_r_16u:
@@ -924,6 +891,16 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 }
                 break;
             }
+            size_t IndexSize = cgltf_component_size(Primitive->indices->component_type);
+            for(size_t IndexIndex = 0; IndexIndex < GLTFPrimitive->IndexCount; ++IndexIndex)
+            {
+                memcpy(
+                    (char *)StagingData + StagingDataOffset + (IndexSize * IndexIndex),
+                    Rr_GetCGLTFAccessorValueAt(Primitive->indices, IndexIndex),
+                    IndexSize);
+            }
+
+            StagingDataOffset += GLTFPrimitive->IndexCount * IndexSize;
         }
     }
 
@@ -996,10 +973,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     //     }
     // }
     //
-    // cgltf_free(Data);
-    //
-    // OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
-    // OutLoadSize->BufferCount += 2;
+    cgltf_free(Data);
 
     Rr_DestroyScratch(Scratch);
 

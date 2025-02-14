@@ -16,6 +16,7 @@ struct Rr_GLTFContext
     RR_SLICE(struct Rr_Image) Images;
     size_t VertexInputBindingCount;
     Rr_GLTFVertexInputBinding *VertexInputBindings;
+    size_t *VertexInputStrides;
     Rr_SpinLock Lock;
     Rr_Arena *Arena;
 };

@@ -312,7 +312,6 @@ static inline VkFormat Rr_GetVulkanFormat(Rr_Format Format)
             return VK_FORMAT_R32G32B32_SFLOAT;
         case RR_FORMAT_VEC4:
             return VK_FORMAT_R32G32B32A32_SFLOAT;
-        case RR_FORMAT_NONE:
         default:
             return VK_FORMAT_UNDEFINED;
     }
@@ -332,7 +331,6 @@ static inline size_t Rr_GetFormatSize(Rr_Format Format)
             return sizeof(float) * 3;
         case RR_FORMAT_VEC4:
             return sizeof(float) * 4;
-        case RR_FORMAT_NONE:
         default:
             return 0;
     }
