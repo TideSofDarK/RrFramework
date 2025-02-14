@@ -10,7 +10,7 @@ project(01_Triangle LANGUAGES C)
 # Add executable target
 #
 
-add_executable(${PROJECT_NAME} Main.c)
+add_executable(${PROJECT_NAME} 01_Triangle.c)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
 

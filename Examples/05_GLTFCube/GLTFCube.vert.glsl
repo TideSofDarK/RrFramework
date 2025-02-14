@@ -14,6 +14,6 @@ layout(set = 0, binding = 0) uniform Globals
 
 void main()
 {
-    gl_Position = Projection * View * Model;
+    gl_Position = Projection * View * Model * vec4(InPosition, 1.0f);
     OutNormal = InNormal;
 }

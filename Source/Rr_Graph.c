@@ -682,6 +682,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
 
 Rr_GraphBufferHandle Rr_RegisterGraphBuffer(Rr_App *App, Rr_Buffer *Buffer)
 {
+    assert(Buffer != NULL);
+
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
     Rr_Graph *Graph = &Frame->Graph;
     Rr_GraphBufferHandle Handle = {
@@ -695,6 +697,8 @@ Rr_GraphBufferHandle Rr_RegisterGraphBuffer(Rr_App *App, Rr_Buffer *Buffer)
 
 Rr_GraphImageHandle Rr_RegisterGraphImage(Rr_App *App, Rr_Image *Image)
 {
+    assert(Image != NULL);
+
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
     Rr_Graph *Graph = &Frame->Graph;
     Rr_GraphImageHandle Handle = {

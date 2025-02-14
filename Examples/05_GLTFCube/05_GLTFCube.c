@@ -2,6 +2,15 @@
 
 #include "ExampleAssets.inc"
 
+typedef struct UniformData UniformData;
+struct UniformData
+{
+    Rr_Mat4 Model;
+    Rr_Mat4 View;
+    Rr_Mat4 Projection;
+};
+
+static Rr_LoadThread *LoadThread;
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
 static Rr_Image *ColorAttachment;
@@ -9,6 +18,13 @@ static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Sampler *NearestSampler;
+
+static bool Loaded;
+
+static void OnLoadComplete(Rr_App *App, void *UserData)
+{
+    Loaded = true;
+}
 
 static void Init(Rr_App *App, void *UserData)
 {
@@ -53,7 +69,7 @@ static void Init(Rr_App *App, void *UserData)
         Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_VERT_SPV);
     PipelineInfo.FragmentShaderSPV =
         Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_FRAG_SPV);
-    PipelineInfo.VertexInputBindingCount = RR_ARRAY_COUNT(VertexAttributes);
+    PipelineInfo.VertexInputBindingCount = 1;
     PipelineInfo.VertexInputBindings = &VertexInputBinding;
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
@@ -76,34 +92,67 @@ static void Init(Rr_App *App, void *UserData)
         &VertexInputBinding,
         &GLTFVertexInputBinding);
 
+    /* Create load thread and load glTF asset. */
+
+    LoadThread = Rr_CreateLoadThread(App);
+    Rr_LoadTask Tasks[] = {
+        {
+            .LoadType = RR_LOAD_TYPE_GLTF_ASSET,
+            .AssetRef = EXAMPLE_ASSET_CUBE_GLB,
+            .Options = {
+                .GLTF = { .GLTFContext = GLTFContext, },
+            },
+            .Out = { .GLTFAsset = &GLTFAsset },
+        },
+    };
+    Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
+
     /* Create main draw target. */
 
     ColorAttachment = Rr_CreateImage(
         App,
-        (Rr_IntVec3){ 240, 320, 1 },
+        (Rr_IntVec3){ 320, 240, 1 },
         Rr_GetSwapchainFormat(App),
         RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER |
             RR_IMAGE_USAGE_SAMPLED,
         false);
+
+    /* Create uniform buffer. */
+
+    UniformBuffer = Rr_CreateBuffer(
+        App,
+        sizeof(UniformData),
+        RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        true);
 }
 
-struct UniformData
-{
-    Rr_Mat4 Model;
-    Rr_Mat4 View;
-    Rr_Mat4 Projection;
-};
-
-static void DrawFirstGLTFMesh(
+static void DrawFirstGLTFPrimitive(
     Rr_App *App,
     Rr_GraphImageHandle *ColorAttachmentHandle)
 {
-    Rr_GraphBufferHandle UniformBufferHandle = Rr_RegisterGraphBuffer(App, UniformBuffer);
+    double Time = Rr_GetTimeSeconds(App);
 
-    UniformData UniformData;
+    Rr_GraphBufferHandle UniformBufferHandle =
+        Rr_RegisterGraphBuffer(App, UniformBuffer);
 
-    Rr_GraphNode *TransferNode = Rr_AddTransferNode(App, "upload_uniform_buffer", &UniformBufferHandle);
-    Rr_TransferBufferData(App, TransferNode, RR_MAKE_DATA_STRUCT());
+    UniformData UniformData = {};
+    UniformData.Projection =
+        Rr_Perspective_LH_ZO(0.7643276f, 320.0f / 240.0f, 0.5f, 50.0f);
+    UniformData.View = Rr_M4D(1.0f);
+    UniformData.Model = Rr_MulM4(
+        Rr_Translate((Rr_Vec3){ 0.0f, 0.0f, 5.0f }),
+        Rr_Rotate_LH(cos(Time), (Rr_Vec3){ 0.0f, 1.0f, 0.0f }));
+    UniformData.Model = Rr_MulM4(
+        UniformData.Model,
+        Rr_Rotate_LH(sin(Time), (Rr_Vec3){ 0.0f, 0.0f, 1.0f }));
+
+    Rr_GraphNode *TransferNode =
+        Rr_AddTransferNode(App, "upload_uniform_buffer", &UniformBufferHandle);
+    Rr_TransferBufferData(
+        App,
+        TransferNode,
+        RR_MAKE_DATA_STRUCT(UniformData),
+        0);
 
     Rr_ColorTarget OffscreenTarget = {
         .Slot = 0,
@@ -119,15 +168,31 @@ static void DrawFirstGLTFMesh(
         &(Rr_GraphImageHandle *){ ColorAttachmentHandle },
         NULL,
         NULL);
+
+    Rr_GraphBufferHandle GLTFBufferHandle =
+        Rr_RegisterGraphBuffer(App, GLTFAsset->Buffer);
+
+    Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-    Rr_BindVertexBuffer(OffscreenNode, &VertexBufferHandle, 0, 0);
+    Rr_BindVertexBuffer(
+        OffscreenNode,
+        &GLTFBufferHandle,
+        0,
+        *GLTFPrimitive->VertexBufferOffsets);
     Rr_BindIndexBuffer(
         OffscreenNode,
-        &IndexBufferHandle,
+        &GLTFBufferHandle,
+        0,
+        GLTFPrimitive->IndexBufferOffset,
+        GLTFPrimitive->IndexType);
+    Rr_BindGraphicsUniformBuffer(
+        OffscreenNode,
+        &UniformBufferHandle,
         0,
         0,
-        RR_INDEX_TYPE_UINT32);
-    Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
+        0,
+        sizeof(UniformData));
+    Rr_DrawIndexed(OffscreenNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
 }
 
 static void Iterate(Rr_App *App, void *UserData)
@@ -135,7 +200,10 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_GraphImageHandle ColorAttachmentHandle =
         Rr_RegisterGraphImage(App, ColorAttachment);
 
-    DrawFirstGLTFMesh(App, &ColorAttachmentHandle);
+    if(Loaded)
+    {
+        DrawFirstGLTFPrimitive(App, &ColorAttachmentHandle);
+    }
 
     Rr_AddPresentNode(
         App,
@@ -147,7 +215,10 @@ static void Iterate(Rr_App *App, void *UserData)
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
+    Rr_DestroyLoadThread(App, LoadThread);
     Rr_DestroyImage(App, ColorAttachment);
+    Rr_DestroyBuffer(App, UniformBuffer);
+    Rr_DestroyGLTFContext(App, GLTFContext);
     Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);
     Rr_DestroyPipelineLayout(App, PipelineLayout);
     Rr_DestroySampler(App, NearestSampler);
@@ -156,7 +227,7 @@ static void Cleanup(Rr_App *App, void *UserData)
 int main(int ArgC, char **ArgV)
 {
     Rr_AppConfig Config = {
-        .Title = "05_Triangle",
+        .Title = "05_GLTFCube",
         .Version = "1.0.0",
         .Package = "com.rr.examples.05_gltfcube",
         .InitFunc = Init,
