@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Rr/Rr_App.h>
-#include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_Pipeline.h>
+#include <Rr/Rr_Renderer.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,7 +86,11 @@ struct Rr_GLTFVertexInputBinding
     Rr_GLTFAttributeType *Attributes;
 };
 
-extern Rr_GLTFContext *Rr_CreateGLTFContext(Rr_App *App, size_t VertexInputBindingCount, Rr_VertexInputBinding *VertexInputBindings, Rr_GLTFVertexInputBinding *GLTFVertexInputBindings);
+extern Rr_GLTFContext *Rr_CreateGLTFContext(
+    Rr_App *App,
+    size_t VertexInputBindingCount,
+    Rr_VertexInputBinding *VertexInputBindings,
+    Rr_GLTFVertexInputBinding *GLTFVertexInputBindings);
 
 extern void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext);
 

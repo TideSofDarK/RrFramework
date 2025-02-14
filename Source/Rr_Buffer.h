@@ -3,9 +3,8 @@
 #include <Rr/Rr_Buffer.h>
 
 #include "Rr_Load.h"
+#include "Rr_UploadContext.h"
 #include "Rr_Vulkan.h"
-
-struct Rr_UploadContext;
 
 typedef struct Rr_AllocatedBuffer Rr_AllocatedBuffer;
 struct Rr_AllocatedBuffer
@@ -39,35 +38,22 @@ extern Rr_Buffer *Rr_CreateBuffer_Internal(
 
 extern Rr_Buffer *Rr_CreateStagingBuffer(Rr_App *App, size_t Size);
 
-extern void Rr_UploadBufferAligned(
+extern void Rr_UploadStagingBuffer(
     Rr_App *App,
-    struct Rr_UploadContext *UploadContext,
-    Rr_Buffer *DstBuffer,
-    VkDeviceSize *DstOffset,
-    VkPipelineStageFlags SrcStageMask,
-    VkAccessFlags SrcAccessMask,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
-    Rr_Data Data,
-    size_t Alignment);
+    Rr_UploadContext *UploadContext,
+    Rr_Buffer *Buffer,
+    Rr_SyncState SrcState,
+    Rr_SyncState DstState,
+    Rr_Buffer *StagingBuffer,
+    size_t StagingOffset,
+    size_t StagingSize);
 
 extern void Rr_UploadBuffer(
     Rr_App *App,
-    struct Rr_UploadContext *UploadContext,
+    Rr_UploadContext *UploadContext,
     Rr_Buffer *Buffer,
-    VkPipelineStageFlags SrcStageMask,
-    VkAccessFlags SrcAccessMask,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
+    Rr_SyncState SrcState,
+    Rr_SyncState DstState,
     Rr_Data Data);
-
-// extern void Rr_UploadToUniformBuffer(
-//     Rr_App *App,
-//     struct Rr_UploadContext *UploadContext,
-//     Rr_Buffer *DstBuffer,
-//     VkDeviceSize *DstOffset,
-//     Rr_Data Data);
-
-// extern void Rr_CopyToMappedUniformBuffer(Rr_App *App, Rr_Buffer *DstBuffer, VkDeviceSize *DstOffset, Rr_Data Data);
 
 extern Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_App *App, Rr_Buffer *Buffer);

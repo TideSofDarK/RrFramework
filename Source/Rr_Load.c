@@ -41,14 +41,8 @@ static void Rr_LoadResourcesFromTasks(
             // break;
             case RR_LOAD_TYPE_GLTF_ASSET:
             {
-                // Rr_LoadGLTFOptions *Options = &Task->Options.GLTF;
-                // Result = Rr_CreateStaticMeshGLTF(
-                //     App,
-                //     UploadContext,
-                //     Task->AssetRef,
-                //     &Options.Loader,
-                //     Options.MeshIndex,
-                //     Scratch.Arena);
+                Rr_LoadGLTFOptions *Options = &Task->Options.GLTF;
+                Result = Rr_CreateGLTFAsset(App, UploadContext, Task->AssetRef, Options->GLTFContext, Scratch.Arena);
             }
             break;
             default:

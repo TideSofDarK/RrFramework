@@ -68,7 +68,7 @@ static void Rr_UploadImage(
     VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
 
     Rr_Buffer *StagingBufferContainer = Rr_CreateStagingBuffer(App, ImageDataLength);
-    RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena);
+    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) = StagingBufferContainer;
 
     Rr_AllocatedBuffer *StagingBuffer = StagingBufferContainer->AllocatedBuffers;
     memcpy(StagingBuffer->AllocationInfo.pMappedData, ImageData, ImageDataLength);

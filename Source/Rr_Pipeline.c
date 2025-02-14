@@ -93,7 +93,10 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
     {
         Rr_VertexInputBinding *VertexInputBinding = Info->VertexInputBindings + BindingIndex;
 
-        RR_RESERVE_SLICE(&AttributeDescriptions, AttributeDescriptions.Count + VertexInputBinding->AttributeCount, Scratch.Arena);
+        RR_RESERVE_SLICE(
+            &AttributeDescriptions,
+            AttributeDescriptions.Count + VertexInputBinding->AttributeCount,
+            Scratch.Arena);
 
         for(size_t Index = 0; Index < VertexInputBinding->AttributeCount; ++Index)
         {

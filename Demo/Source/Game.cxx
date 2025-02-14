@@ -622,6 +622,7 @@
 
 static Rr_App *App;
 static Rr_GLTFContext *GLTFContext;
+static Rr_GLTFAsset *GLTFAsset;
 static Rr_GraphicsPipeline *GLTFPipeline;
 
 static Rr_Image *ColorAttachmentA;
@@ -807,11 +808,11 @@ static void Init(Rr_App *App, void *UserData)
         },
         {
             .LoadType = RR_LOAD_TYPE_GLTF_ASSET,
-            .AssetRef = DEMO_ASSET_COTTAGEDIFFUSE_PNG,
+            .AssetRef = DEMO_ASSET_CUBE_GLB,
             .Options = {
                 .GLTF = { .GLTFContext = GLTFContext, },
             },
-            .Out = { .Image = &TexturePNG },
+            .Out = { .GLTFAsset = &GLTFAsset },
         },
     };
     Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
@@ -981,6 +982,7 @@ static void Iterate(Rr_App *App, void *UserData)
 static void Cleanup(Rr_App *App, void *UserData)
 {
     Rr_DestroyLoadThread(App, LoadThread);
+    Rr_DestroyGLTFContext(App, GLTFContext);
     Rr_DestroyImage(App, ColorAttachmentA);
     Rr_DestroyImage(App, ColorAttachmentB);
     if(LoadComplete)

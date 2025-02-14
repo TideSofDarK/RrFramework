@@ -143,7 +143,7 @@ static void Rr_SortGraph(
 
         return;
     }
-    
+
     State[CurrentNodeIndex] |= VisitedBit;
     State[CurrentNodeIndex] |= OnStackBit;
 
