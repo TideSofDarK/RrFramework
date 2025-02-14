@@ -54,8 +54,14 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
 //     Rr_AssetRef AssetRef,
 //     Rr_Arena *Arena);
 
-extern size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena);
+extern size_t Rr_GetImagePNGRGBA8Size(
+    size_t DataSize,
+    char *Data,
+    Rr_Arena *Arena);
 
-// extern void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize);
+// extern void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena,
+// Rr_LoadSize *OutLoadSize);
 
-extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_App *App, Rr_Image *Image);
+extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(
+    Rr_App *App,
+    Rr_Image *Image);

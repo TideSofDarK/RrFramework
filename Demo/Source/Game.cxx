@@ -36,7 +36,8 @@
 // {
 // };
 //
-// template <typename TGlobals, typename TMaterial, typename TPerDraw> struct TPipeline
+// template <typename TGlobals, typename TMaterial, typename TPerDraw> struct
+// TPipeline
 // {
 // protected:
 //     Rr_App *App;
@@ -80,7 +81,8 @@
 //     Rr_Mat4 Model;
 // };
 //
-// struct SShadowPassPipeline : TPipeline<SShadowPassGlobals, SShadowPassMaterial, SShadowPerDraw>
+// struct SShadowPassPipeline : TPipeline<SShadowPassGlobals,
+// SShadowPassMaterial, SShadowPerDraw>
 // {
 //     explicit SShadowPassPipeline(Rr_App *InApp)
 //         : TPipeline(InApp)
@@ -91,8 +93,8 @@
 //         Rr_EnableVertexStage(Builder, &VertexShader);
 //         Rr_EnableDepthTest(Builder);
 //         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-//         GenericPipeline = Rr_BuildGenericPipeline(App, Builder, sizeof(SGlobals), sizeof(SMaterial),
-//         sizeof(SPerDraw));
+//         GenericPipeline = Rr_BuildGenericPipeline(App, Builder,
+//         sizeof(SGlobals), sizeof(SMaterial), sizeof(SPerDraw));
 //     }
 // };
 //
@@ -112,7 +114,8 @@
 //     Rr_Mat4 Model;
 // };
 //
-// struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial, SUnlitPerDraw>
+// struct SUnlitPipeline : TPipeline<SUnlitGlobals, SUnlitMaterial,
+// SUnlitPerDraw>
 // {
 //     explicit SUnlitPipeline(Rr_App *InApp)
 //         : TPipeline(InApp)
@@ -127,8 +130,8 @@
 //         Rr_EnableColorAttachment(Builder, false);
 //         Rr_EnableDepthTest(Builder);
 //         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-//         GenericPipeline = Rr_BuildGenericPipeline(App, Builder, sizeof(SGlobals), sizeof(SMaterial),
-//         sizeof(SPerDraw));
+//         GenericPipeline = Rr_BuildGenericPipeline(App, Builder,
+//         sizeof(SGlobals), sizeof(SMaterial), sizeof(SPerDraw));
 //     }
 // };
 //
@@ -147,7 +150,8 @@
 //     Rr_Mat4 Reserved;
 // };
 //
-// struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial, SUber3DPerDraw>
+// struct SUber3DPipeline : TPipeline<SUber3DGlobals, SUber3DMaterial,
+// SUber3DPerDraw>
 // {
 //     explicit SUber3DPipeline(Rr_App *InApp)
 //         : TPipeline(InApp)
@@ -161,8 +165,8 @@
 //         Rr_EnableColorAttachment(Builder, false);
 //         Rr_EnableDepthTest(Builder);
 //         Rr_EnableRasterizer(Builder, RR_POLYGON_MODE_FILL);
-//         GenericPipeline = Rr_BuildGenericPipeline(App, Builder, sizeof(SGlobals), sizeof(SMaterial),
-//         sizeof(SPerDraw));
+//         GenericPipeline = Rr_BuildGenericPipeline(App, Builder,
+//         sizeof(SGlobals), sizeof(SMaterial), sizeof(SPerDraw));
 //     }
 // };
 //
@@ -288,14 +292,16 @@
 //         ShaderGlobals.DirectionalLightColor = { 1.0f, 0.95f, 0.93f, 1.0f };
 //         ShaderGlobals.DirectionalLightIntensity = { 1.0f, 1.0f, 1.0f, 1.0f };
 //
-//         ShaderGlobals.Proj = Rr_Perspective_LH_ZO(0.7643276f, Rr_GetAspectRatio(App), 0.5f, 50.0f);
+//         ShaderGlobals.Proj = Rr_Perspective_LH_ZO(0.7643276f,
+//         Rr_GetAspectRatio(App), 0.5f, 50.0f);
 //     }
 //
 //     void OnLoadingComplete()
 //     {
 //         std::array CottageTextures = { CottageDiffuse, CottageNormal };
 //         CottageMaterial =
-//             Rr_CreateMaterial(App, Uber3DPipeline.GenericPipeline, CottageTextures.data(), CottageTextures.size());
+//             Rr_CreateMaterial(App, Uber3DPipeline.GenericPipeline,
+//             CottageTextures.data(), CottageTextures.size());
 //
 //         IsLoaded = true;
 //
@@ -315,12 +321,14 @@
 //         SUber3DPerDraw CottageDraw = {};
 //         CottageDraw.Model = Rr_Scale({ 1.f, 1.f, 1.f });
 //         CottageDraw.Model[3][1] = 0.1f;
-//         Rr_DrawStaticMeshOverrideMaterials(App, Node, &CottageMaterial, 1, CottageMesh, RR_MAKE_DATA(CottageDraw));
+//         Rr_DrawStaticMeshOverrideMaterials(App, Node, &CottageMaterial, 1,
+//         CottageMesh, RR_MAKE_DATA(CottageDraw));
 //
 //         SUber3DPerDraw AvocadoDraw = {};
 //         AvocadoDraw.Model = Rr_Scale({ 0.75f, 0.75f, 0.75f }) *
-//                             Rr_Rotate_LH(fmodf(Time, RR_PI32 * 2.0f), { 0.0f, 1.0f, 0.0f }) *
-//                             Rr_Translate({ 3.5f, 0.5f, 3.5f });
+//                             Rr_Rotate_LH(fmodf(Time, RR_PI32 * 2.0f), {
+//                             0.0f, 1.0f, 0.0f }) * Rr_Translate({ 3.5f,
+//                             0.5f, 3.5f });
 //         AvocadoDraw.Model[3][0] = 3.5f;
 //         AvocadoDraw.Model[3][1] = 0.5f;
 //         AvocadoDraw.Model[3][2] = 3.5f;
@@ -333,7 +341,8 @@
 //
 //     void Iterate()
 //     {
-//         auto [Keys, MousePosition, MousePositionDelta, MouseState] = Rr_GetInputState(App);
+//         auto [Keys, MousePosition, MousePositionDelta, MouseState] =
+//         Rr_GetInputState(App);
 //
 //         auto DeltaTime = static_cast<float>(Rr_GetDeltaSeconds(App));
 //
@@ -368,21 +377,25 @@
 //             .Position = { -7.35889f, 4.0f, -6.92579f },
 //         };
 //
-//         // static Rr_Vec3 LightDirEuler = { 90.0f - 37.261f, 99.6702f, 3.16371f
+//         // static Rr_Vec3 LightDirEuler = { 90.0f
+//         - 37.261f, 99.6702f, 3.16371f
 //         // };
 //         static Rr_Vec3 LightDirEuler = { -100.0f, 18.0f, 3.16371f };
 //         ImGui::LabelText("Camera", "Camera");
-//         ImGui::SliderFloat2("CameraPitchYaw", &Camera.Pitch, -360.0f, 360.0f, "%f", ImGuiSliderFlags_None);
-//         ImGui::SliderFloat3("CameraPos", Camera.Position.Elements, -100.0f, 100.0f, "%.3f", ImGuiSliderFlags_None);
-//         ImGui::SliderFloat3("LightDir", LightDirEuler.Elements, -100.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-//         ImGui::Separator();
-//         static Rr_Vec3 ShadowEye = { 3, 3, 3 };
-//         static Rr_Vec3 ShadowCenter = { 0, 0, 0 };
-//         ImGui::SliderFloat3("ShadowEye", ShadowEye.Elements, -10.0f, 10.0f, "%.3f", ImGuiSliderFlags_None);
-//         ImGui::SliderFloat3("ShadowCenter", ShadowCenter.Elements, -10.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+//         ImGui::SliderFloat2("CameraPitchYaw", &Camera.Pitch, -360.0f, 360.0f,
+//         "%f", ImGuiSliderFlags_None); ImGui::SliderFloat3("CameraPos",
+//         Camera.Position.Elements, -100.0f, 100.0f, "%.3f",
+//         ImGuiSliderFlags_None); ImGui::SliderFloat3("LightDir",
+//         LightDirEuler.Elements, -100.0f, 100.0f, "%f",
+//         ImGuiSliderFlags_None); ImGui::Separator(); static Rr_Vec3 ShadowEye
+//         = { 3, 3, 3 }; static Rr_Vec3 ShadowCenter = { 0, 0, 0 };
+//         ImGui::SliderFloat3("ShadowEye", ShadowEye.Elements, -10.0f, 10.0f,
+//         "%.3f", ImGuiSliderFlags_None); ImGui::SliderFloat3("ShadowCenter",
+//         ShadowCenter.Elements, -10.0f, 10.0f, "%f", ImGuiSliderFlags_None);
 //
 //         Rr_Vec3 LightRotation = LightDirEuler * Rr_DegToRad;
-//         ShaderGlobals.DirectionalLightDirection = Rr_EulerXYZ(LightRotation).Columns[2];
+//         ShaderGlobals.DirectionalLightDirection =
+//         Rr_EulerXYZ(LightRotation).Columns[2];
 //
 //         Rr_Vec3 CameraForward = Camera.GetForwardVector();
 //         Rr_Vec3 CameraLeft = Camera.GetRightVector();
@@ -408,8 +421,9 @@
 //         {
 //             Rr_SetRelativeMouseMode(App, true);
 //             constexpr float Sensitivity = 0.2f;
-//             Camera.Yaw = Rr_WrapMax(Camera.Yaw - (MousePositionDelta.X * Sensitivity), 360.0f);
-//             Camera.Pitch = Rr_WrapMinMax(Camera.Pitch - (MousePositionDelta.Y * Sensitivity), -90.0f, 90.0f);
+//             Camera.Yaw = Rr_WrapMax(Camera.Yaw - (MousePositionDelta.X *
+//             Sensitivity), 360.0f); Camera.Pitch = Rr_WrapMinMax(Camera.Pitch
+//             - (MousePositionDelta.Y * Sensitivity), -90.0f, 90.0f);
 //         }
 //         else
 //         {
@@ -443,11 +457,13 @@
 //             .OverridePipeline = nullptr,
 //         };
 //         SUber3DGlobals TestGlobals = ShaderGlobals;
-//         TestGlobals.View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
-//         TestGlobals.Proj =
-//             Rr_Orthographic_LH_ZO(-512 * 0.05f, 512 * 0.05f, -512 * 0.05f, 512 * 0.05f, -1000.0f, 1000.0f);
+//         TestGlobals.View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f,
+//         0.0f }), TestGlobals.Proj =
+//             Rr_Orthographic_LH_ZO(-512 * 0.05f, 512 * 0.05f, -512 * 0.05f,
+//             512 * 0.05f, -1000.0f, 1000.0f);
 //         Rr_GraphNode *TestNode =
-//             Rr_AddGraphicsNode(App, "test_pass", &TestNodeInfo, reinterpret_cast<char *>(&TestGlobals), nullptr, 0);
+//             Rr_AddGraphicsNode(App, "test_pass", &TestNodeInfo,
+//             reinterpret_cast<char *>(&TestGlobals), nullptr, 0);
 //
 //         Rr_GraphicsNodeInfo ShadowNodeInfo = {
 //             .DrawTarget = ShadowMap,
@@ -458,8 +474,9 @@
 //             .OverridePipeline = ShadowPipeline.GenericPipeline,
 //         };
 //         SShadowPassPipeline::SGlobals ShadowGlobals = {
-//             .View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f }),
-//             .Proj = Rr_Orthographic_LH_ZO(-512 * 0.05f, 512 * 0.05f, -512 * 0.05f, 512 * 0.05f, -1000.0f, 1000.0f),
+//             .View = Rr_LookAt_LH(ShadowEye, ShadowCenter, { 0.0, 1.0f, 0.0f
+//             }), .Proj = Rr_Orthographic_LH_ZO(-512 * 0.05f, 512 * 0.05f, -512
+//             * 0.05f, 512 * 0.05f, -1000.0f, 1000.0f),
 //         };
 //         Rr_GraphNode *ShadowNode = Rr_AddGraphicsNode(
 //             App,
@@ -490,15 +507,18 @@
 //
 //         Rr_BlitNodeInfo BlitInfo = {
 //             .SrcImage = Rr_GetDrawTargetColorImage(App, TestTarget),
-//             .DstImage = Rr_GetDrawTargetColorImage(App, Rr_GetMainDrawTarget(App)),
-//             .SrcRect = { 0, 0, 1024, 1024 },
+//             .DstImage = Rr_GetDrawTargetColorImage(App,
+//             Rr_GetMainDrawTarget(App)), .SrcRect = { 0, 0, 1024, 1024 },
 //             .DstRect = { SwapchainSize.Width - 512, 0, 512, 512 },
 //             .Mode = RR_BLIT_MODE_COLOR,
 //         };
-//         Rr_GraphNode *BlitNode = Rr_AddBlitNode(App, "blit_test", &BlitInfo, &Node, 1);
+//         Rr_GraphNode *BlitNode = Rr_AddBlitNode(App, "blit_test", &BlitInfo,
+//         &Node, 1);
 //
-//         Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin", &BlitNode, 1);
-//         // Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin", &Node,
+//         Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin",
+//         &BlitNode, 1);
+//         // Rr_GraphNode *BuiltinNode = Rr_AddBuiltinNode(App, "builtin",
+//         &Node,
 //         // 1);
 //
 //         Rr_PresentNodeInfo PresentInfo = {
@@ -520,7 +540,8 @@
 //
 //             DrawScene(Node);
 //
-//             Rr_DrawDefaultText(App, BuiltinNode, &TestString, { 50.0f, 50.0f });
+//             Rr_DrawDefaultText(App, BuiltinNode, &TestString, { 50.0f, 50.0f
+//             });
 //
 //             Rr_DrawCustomText(
 //                 App,
@@ -538,8 +559,9 @@
 //                 uint32_t Current, Total;
 //                 Rr_GetLoadProgress(LoadingContext, &Current, &Total);
 //
-//                 std::string Formatted = std::format("Загружайу: {}/{}\n", Current, Total);
-//                 Rr_UpdateString(&LoadingString, 128, Formatted.data(), Formatted.length());
+//                 std::string Formatted = std::format("Загружайу: {}/{}\n",
+//                 Current, Total); Rr_UpdateString(&LoadingString, 128,
+//                 Formatted.data(), Formatted.length());
 //             }
 //
 //             Rr_DrawCustomText(
@@ -579,16 +601,23 @@
 //         InitGlobals();
 //
 //         std::array LoadTasks = {
-//             Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG, &CottageDiffuse),
-//             Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG, &CottageNormal),
-//             Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB, &Uber3DGLTFLoader, 0, &AvocadoMesh),
-//             Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB, &Uber3DGLTFLoader, 0, &MarbleMesh),
-//             Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitGLTFLoader, 0, &ArrowMesh),
-//             Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ, &CottageMesh),
+//             Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGEDIFFUSE_PNG,
+//             &CottageDiffuse),
+//             Rr_LoadColorImageFromPNG(DEMO_ASSET_COTTAGENORMAL_PNG,
+//             &CottageNormal),
+//             Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_AVOCADO_GLB,
+//             &Uber3DGLTFLoader, 0, &AvocadoMesh),
+//             Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_MARBLE_GLB,
+//             &Uber3DGLTFLoader, 0, &MarbleMesh),
+//             Rr_LoadStaticMeshFromGLTF(DEMO_ASSET_ARROW_GLB, &UnlitGLTFLoader,
+//             0, &ArrowMesh), Rr_LoadStaticMeshFromOBJ(DEMO_ASSET_COTTAGE_OBJ,
+//             &CottageMesh),
 //         };
-//         LoadingContext = Rr_LoadAsync(App, LoadTasks.data(), LoadTasks.size(), OnLoadingComplete, this);
+//         LoadingContext = Rr_LoadAsync(App, LoadTasks.data(),
+//         LoadTasks.size(), OnLoadingComplete, this);
 //
-//         TestString = RR_STRING("Test...\n\nA couple of new lines...", PermanentArena);
+//         TestString = RR_STRING("Test...\n\nA couple of new lines...",
+//         PermanentArena);
 //         // TestString = RR_STRING(
 //         //     "A quick brown fox @#$ \nNew line "
 //         //     "test...\n\nA couple of new lines...",
@@ -621,8 +650,10 @@
 // };
 
 static Rr_App *App;
+
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
+static Rr_PipelineLayout *GLTFPipelineLayout;
 static Rr_GraphicsPipeline *GLTFPipeline;
 
 static Rr_Image *ColorAttachmentA;
@@ -682,7 +713,7 @@ static void InitGLTF()
             .Stages = RR_SHADER_STAGE_VERTEX_BIT,
         },
     };
-    PipelineLayout = Rr_CreatePipelineLayout(App, 2, BindingSets);
+    GLTFPipelineLayout = Rr_CreatePipelineLayout(App, 2, BindingSets);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Format = RR_FORMAT_VEC3, .Location = 0 },
@@ -701,7 +732,7 @@ static void InitGLTF()
     ColorTargets[0].Format = Rr_GetSwapchainFormat(App);
 
     Rr_PipelineInfo PipelineInfo = {};
-    PipelineInfo.Layout = PipelineLayout;
+    PipelineInfo.Layout = GLTFPipelineLayout;
     PipelineInfo.VertexShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV);
     PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV);
     PipelineInfo.VertexInputBindingCount = 1;
@@ -721,7 +752,11 @@ static void InitGLTF()
         .AttributeCount = RR_ARRAY_COUNT(GLTFAttributes),
         .Attributes = GLTFAttributes,
     };
-    GLTFContext = Rr_CreateGLTFContext(App, 1, &VertexInputBinding, &GLTFVertexInputBinding);
+    GLTFContext = Rr_CreateGLTFContext(
+        App,
+        1,
+        &VertexInputBinding,
+        &GLTFVertexInputBinding);
 }
 
 static void OnLoadComplete(Rr_App *App, void *UserData)
@@ -818,12 +853,20 @@ static void Init(Rr_App *App, void *UserData)
     Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
 
     float VertexData[] = {
-        0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+        0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
+        1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
     };
 
-    VertexBuffer = Rr_CreateBuffer(App, sizeof(VertexData), RR_BUFFER_USAGE_VERTEX_BUFFER_BIT, false);
-    Rr_UploadToDeviceBufferImmediate(App, VertexBuffer, RR_MAKE_DATA_ARRAY(VertexData));
+    VertexBuffer = Rr_CreateBuffer(
+        App,
+        sizeof(VertexData),
+        RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        false);
+    Rr_UploadToDeviceBufferImmediate(
+        App,
+        VertexBuffer,
+        RR_MAKE_DATA_ARRAY(VertexData));
 
     uint32_t IndexData[] = {
         2,
@@ -831,35 +874,53 @@ static void Init(Rr_App *App, void *UserData)
         0,
     };
 
-    IndexBuffer = Rr_CreateBuffer(App, sizeof(IndexData), RR_BUFFER_USAGE_INDEX_BUFFER_BIT, false);
-    Rr_UploadToDeviceBufferImmediate(App, IndexBuffer, RR_MAKE_DATA_ARRAY(IndexData));
+    IndexBuffer = Rr_CreateBuffer(
+        App,
+        sizeof(IndexData),
+        RR_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        false);
+    Rr_UploadToDeviceBufferImmediate(
+        App,
+        IndexBuffer,
+        RR_MAKE_DATA_ARRAY(IndexData));
 
     ColorAttachmentA = Rr_CreateImage(
         App,
         { 1024, 1024, 1 },
         Rr_GetSwapchainFormat(App),
-        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER | RR_IMAGE_USAGE_SAMPLED,
+        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER |
+            RR_IMAGE_USAGE_SAMPLED,
         false);
 
     ColorAttachmentB = Rr_CreateImage(
         App,
         { 512, 512, 1 },
         Rr_GetSwapchainFormat(App),
-        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER | RR_IMAGE_USAGE_SAMPLED,
+        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER |
+            RR_IMAGE_USAGE_SAMPLED,
         false);
 
-    UniformBuffer = Rr_CreateBuffer(App, RR_KILOBYTES(4), RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true);
+    UniformBuffer = Rr_CreateBuffer(
+        App,
+        RR_KILOBYTES(4),
+        RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        true);
 }
 
 static Rr_Vec4 GetRandomVec4()
 {
-    return { Distribution(Generator), Distribution(Generator), Distribution(Generator), 1.0f };
+    return { Distribution(Generator),
+             Distribution(Generator),
+             Distribution(Generator),
+             1.0f };
 }
 
 static STest GetRandomSTest()
 {
     STest Test;
-    Test.Offset = { Distribution(Generator) * 0.1f, Distribution(Generator) * 0.1f, Distribution(Generator) * 0.1f };
+    Test.Offset = { Distribution(Generator) * 0.1f,
+                    Distribution(Generator) * 0.1f,
+                    Distribution(Generator) * 0.1f };
     return Test;
 }
 
@@ -881,17 +942,45 @@ static void TestGraphicsNode(
         .StoreOp = RR_STORE_OP_STORE,
         .ColorClear = ColorClear,
     };
-    Rr_GraphNode *OffscreenNode =
-        Rr_AddGraphicsNode(App, Name, 1, &OffscreenTarget, &AttachmentHandle, nullptr, nullptr);
+    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
+        App,
+        Name,
+        1,
+        &OffscreenTarget,
+        &AttachmentHandle,
+        nullptr,
+        nullptr);
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-    Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBufferHandle, 0, 0, OffsetA, sizeof(Rr_Vec4));
-    Rr_BindGraphicsUniformBuffer(OffscreenNode, UniformBufferHandle, 1, 3, OffsetB, sizeof(STest));
+    Rr_BindGraphicsUniformBuffer(
+        OffscreenNode,
+        UniformBufferHandle,
+        0,
+        0,
+        OffsetA,
+        sizeof(Rr_Vec4));
+    Rr_BindGraphicsUniformBuffer(
+        OffscreenNode,
+        UniformBufferHandle,
+        1,
+        3,
+        OffsetB,
+        sizeof(STest));
     if(SampledImageHandle != nullptr)
     {
-        Rr_BindCombinedImageSampler(OffscreenNode, SampledImageHandle, LinearSampler, 0, 1);
+        Rr_BindCombinedImageSampler(
+            OffscreenNode,
+            SampledImageHandle,
+            LinearSampler,
+            0,
+            1);
     }
     Rr_BindVertexBuffer(OffscreenNode, VertexBufferHandle, 0, 0);
-    Rr_BindIndexBuffer(OffscreenNode, IndexBufferHandle, 0, 0, RR_INDEX_TYPE_UINT32);
+    Rr_BindIndexBuffer(
+        OffscreenNode,
+        IndexBufferHandle,
+        0,
+        0,
+        RR_INDEX_TYPE_UINT32);
     Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
 }
 
@@ -899,11 +988,16 @@ static void Iterate(Rr_App *App, void *UserData)
 {
     /* Register Graph Resources */
 
-    Rr_GraphImageHandle ColorAttachmentAHandle = Rr_RegisterGraphImage(App, ColorAttachmentA);
-    Rr_GraphImageHandle ColorAttachmentBHandle = Rr_RegisterGraphImage(App, ColorAttachmentB);
-    Rr_GraphBufferHandle UniformBufferHandle = Rr_RegisterGraphBuffer(App, UniformBuffer);
-    Rr_GraphBufferHandle VertexBufferHandle = Rr_RegisterGraphBuffer(App, VertexBuffer);
-    Rr_GraphBufferHandle IndexBufferHandle = Rr_RegisterGraphBuffer(App, IndexBuffer);
+    Rr_GraphImageHandle ColorAttachmentAHandle =
+        Rr_RegisterGraphImage(App, ColorAttachmentA);
+    Rr_GraphImageHandle ColorAttachmentBHandle =
+        Rr_RegisterGraphImage(App, ColorAttachmentB);
+    Rr_GraphBufferHandle UniformBufferHandle =
+        Rr_RegisterGraphBuffer(App, UniformBuffer);
+    Rr_GraphBufferHandle VertexBufferHandle =
+        Rr_RegisterGraphBuffer(App, VertexBuffer);
+    Rr_GraphBufferHandle IndexBufferHandle =
+        Rr_RegisterGraphBuffer(App, IndexBuffer);
 
     /* Update Uniform Buffer */
 
@@ -913,10 +1007,19 @@ static void Iterate(Rr_App *App, void *UserData)
     STest UniformValueB = GetRandomSTest();
 
     size_t OffsetA = 0;
-    Rr_GraphNode *TransferNode = Rr_AddTransferNode(App, "transfer_a", &UniformBufferHandle);
-    Rr_TransferBufferData(App, TransferNode, RR_MAKE_DATA_STRUCT(UniformValueA), OffsetA);
+    Rr_GraphNode *TransferNode =
+        Rr_AddTransferNode(App, "transfer_a", &UniformBufferHandle);
+    Rr_TransferBufferData(
+        App,
+        TransferNode,
+        RR_MAKE_DATA_STRUCT(UniformValueA),
+        OffsetA);
     size_t OffsetB = RR_ALIGN_POW2(sizeof(Rr_Vec4), UniformAlignment);
-    Rr_TransferBufferData(App, TransferNode, RR_MAKE_DATA_STRUCT(UniformValueB), OffsetB);
+    Rr_TransferBufferData(
+        App,
+        TransferNode,
+        RR_MAKE_DATA_STRUCT(UniformValueB),
+        OffsetB);
 
     /* Draw Offscreen A */
 
@@ -935,7 +1038,8 @@ static void Iterate(Rr_App *App, void *UserData)
 
     if(LoadComplete)
     {
-        Rr_GraphImageHandle TexturePNGHandle = Rr_RegisterGraphImage(App, TexturePNG);
+        Rr_GraphImageHandle TexturePNGHandle =
+            Rr_RegisterGraphImage(App, TexturePNG);
         TestGraphicsNode(
             App,
             "offscreen_b",
@@ -976,13 +1080,20 @@ static void Iterate(Rr_App *App, void *UserData)
 
     /* Present */
 
-    Rr_AddPresentNode(App, "present", &ColorAttachmentAHandle, LinearSampler, RR_PRESENT_MODE_FIT);
+    Rr_AddPresentNode(
+        App,
+        "present",
+        &ColorAttachmentAHandle,
+        LinearSampler,
+        RR_PRESENT_MODE_FIT);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
     Rr_DestroyLoadThread(App, LoadThread);
     Rr_DestroyGLTFContext(App, GLTFContext);
+    Rr_DestroyGraphicsPipeline(App, GLTFPipeline);
+    Rr_DestroyPipelineLayout(App, GLTFPipelineLayout);
     Rr_DestroyImage(App, ColorAttachmentA);
     Rr_DestroyImage(App, ColorAttachmentB);
     if(LoadComplete)

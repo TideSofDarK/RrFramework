@@ -4,7 +4,11 @@
 
 #include <string.h>
 
-static size_t Rr_UTF8ToUTF32(const char *CString, size_t Length, uint32_t *Buffer, size_t BufferLength)
+static size_t Rr_UTF8ToUTF32(
+    const char *CString,
+    size_t Length,
+    uint32_t *Buffer,
+    size_t BufferLength)
 {
     uint8_t Ready = 128;
     uint8_t Two = 192;
@@ -25,7 +29,8 @@ static size_t Rr_UTF8ToUTF32(const char *CString, size_t Length, uint32_t *Buffe
         if(Carry > 0)
         {
             Carry--;
-            FinalCharacter |= (uint8_t)((~Two & CString[SourceIndex]) << (Carry * 6));
+            FinalCharacter |=
+                (uint8_t)((~Two & CString[SourceIndex]) << (Carry * 6));
 
             if(Carry == 0)
             {
@@ -67,7 +72,10 @@ static size_t Rr_UTF8ToUTF32(const char *CString, size_t Length, uint32_t *Buffe
     return FinalIndex;
 }
 
-Rr_String Rr_CreateString(const char *CString, size_t LengthHint, Rr_Arena *Arena)
+Rr_String Rr_CreateString(
+    const char *CString,
+    size_t LengthHint,
+    Rr_Arena *Arena)
 {
     if(CString == NULL)
     {
@@ -78,7 +86,8 @@ Rr_String Rr_CreateString(const char *CString, size_t LengthHint, Rr_Arena *Aren
 
     uint32_t *Buffer = RR_ALLOC_NO_ZERO(Arena, sizeof(uint32_t) * SourceLength);
 
-    size_t FinalLength = Rr_UTF8ToUTF32(CString, SourceLength, Buffer, SourceLength);
+    size_t FinalLength =
+        Rr_UTF8ToUTF32(CString, SourceLength, Buffer, SourceLength);
 
     Rr_PopArena(Arena, SourceLength - FinalLength);
 
@@ -96,9 +105,14 @@ Rr_String Rr_CreateEmptyString(size_t Length, Rr_Arena *Arena)
     };
 }
 
-void Rr_UpdateString(Rr_String *String, size_t MaxLength, const char *CString, size_t LengthHint)
+void Rr_UpdateString(
+    Rr_String *String,
+    size_t MaxLength,
+    const char *CString,
+    size_t LengthHint)
 {
     size_t SourceLength = LengthHint > 0 ? LengthHint : strlen(CString);
 
-    String->Length = Rr_UTF8ToUTF32(CString, LengthHint, String->Data, SourceLength);
+    String->Length =
+        Rr_UTF8ToUTF32(CString, LengthHint, String->Data, SourceLength);
 }

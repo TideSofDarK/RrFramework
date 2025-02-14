@@ -15,6 +15,20 @@
 
 #include <assert.h>
 
+static inline Rr_IndexType Rr_CGLTFComponentTypeToIndexType(
+    cgltf_component_type Type)
+{
+    switch(Type)
+    {
+        case cgltf_component_type_r_16u:
+            return RR_INDEX_TYPE_UINT16;
+        case cgltf_component_type_r_32u:
+            return RR_INDEX_TYPE_UINT32;
+        default:
+            RR_ABORT("cGLTF: Unsupported index type!");
+    }
+}
+
 static inline size_t Rr_GetGLTFAttributeSize(Rr_GLTFAttributeType Type)
 {
     switch(Type)
@@ -31,7 +45,8 @@ static inline size_t Rr_GetGLTFAttributeSize(Rr_GLTFAttributeType Type)
     }
 }
 
-static inline cgltf_attribute_type Rr_GetCGLTFAttributeType(Rr_GLTFAttributeType Type)
+static inline cgltf_attribute_type Rr_GetCGLTFAttributeType(
+    Rr_GLTFAttributeType Type)
 {
     switch(Type)
     {
@@ -50,7 +65,8 @@ static inline cgltf_attribute_type Rr_GetCGLTFAttributeType(Rr_GLTFAttributeType
     }
 }
 
-static inline Rr_GLTFAttributeType Rr_GetGLTFAttributeType(cgltf_attribute_type Type)
+static inline Rr_GLTFAttributeType Rr_GetGLTFAttributeType(
+    cgltf_attribute_type Type)
 {
     switch(Type)
     {
@@ -94,16 +110,27 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     assert(VertexInputBindingCount != 0);
     assert(VertexInputBindings != NULL);
     assert(GLTFVertexInputBindings != NULL);
-    for(size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount; ++BindingIndex)
+    for(size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
+        ++BindingIndex)
     {
-        Rr_VertexInputBinding *VertexInputBinding = VertexInputBindings + BindingIndex;
-        Rr_GLTFVertexInputBinding *GLTFVertexInputBinding = GLTFVertexInputBindings + BindingIndex;
-        assert(VertexInputBinding->AttributeCount == GLTFVertexInputBinding->AttributeCount);
-        for(size_t AttributeIndex = 0; AttributeIndex < VertexInputBinding->AttributeCount; ++AttributeIndex)
+        Rr_VertexInputBinding *VertexInputBinding =
+            VertexInputBindings + BindingIndex;
+        Rr_GLTFVertexInputBinding *GLTFVertexInputBinding =
+            GLTFVertexInputBindings + BindingIndex;
+        assert(
+            VertexInputBinding->AttributeCount ==
+            GLTFVertexInputBinding->AttributeCount);
+        for(size_t AttributeIndex = 0;
+            AttributeIndex < VertexInputBinding->AttributeCount;
+            ++AttributeIndex)
         {
-            Rr_VertexInputAttribute *Attribute = VertexInputBinding->Attributes + AttributeIndex;
-            Rr_GLTFAttributeType GLTFAttributeType = GLTFVertexInputBinding->Attributes[AttributeIndex];
-            assert(Attribute->Format == Rr_GLTFAttributeTypeToFormat(GLTFAttributeType));
+            Rr_VertexInputAttribute *Attribute =
+                VertexInputBinding->Attributes + AttributeIndex;
+            Rr_GLTFAttributeType GLTFAttributeType =
+                GLTFVertexInputBinding->Attributes[AttributeIndex];
+            assert(
+                Attribute->Format ==
+                Rr_GLTFAttributeTypeToFormat(GLTFAttributeType));
         }
     }
 
@@ -111,26 +138,33 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
 
     Rr_GLTFContext *GLTFContext = RR_ALLOC_TYPE(Arena, Rr_GLTFContext);
     GLTFContext->Arena = Arena;
-    GLTFContext->VertexInputStrides = RR_ALLOC_TYPE_COUNT(Arena, size_t, VertexInputBindingCount);
+    GLTFContext->VertexInputStrides =
+        RR_ALLOC_TYPE_COUNT(Arena, size_t, VertexInputBindingCount);
     GLTFContext->VertexInputBindingCount = VertexInputBindingCount;
     RR_ALLOC_COPY(
         Arena,
         GLTFContext->VertexInputBindings,
         GLTFVertexInputBindings,
         sizeof(Rr_GLTFVertexInputBinding) * VertexInputBindingCount);
-    for(size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount; ++BindingIndex)
+    for(size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
+        ++BindingIndex)
     {
-        Rr_GLTFVertexInputBinding *GLTFVertexInputBinding = GLTFContext->VertexInputBindings + BindingIndex;
+        Rr_GLTFVertexInputBinding *GLTFVertexInputBinding =
+            GLTFContext->VertexInputBindings + BindingIndex;
         RR_ALLOC_COPY(
             Arena,
             GLTFVertexInputBinding->Attributes,
             GLTFVertexInputBindings[BindingIndex].Attributes,
-            sizeof(Rr_GLTFAttributeType) * GLTFVertexInputBindings[BindingIndex].AttributeCount);
+            sizeof(Rr_GLTFAttributeType) *
+                GLTFVertexInputBindings[BindingIndex].AttributeCount);
 
-        for(size_t AttributeIndex = 0; AttributeIndex < GLTFVertexInputBinding->AttributeCount; ++AttributeIndex)
+        for(size_t AttributeIndex = 0;
+            AttributeIndex < GLTFVertexInputBinding->AttributeCount;
+            ++AttributeIndex)
         {
             GLTFContext->VertexInputStrides[BindingIndex] +=
-                Rr_GetGLTFAttributeSize(GLTFVertexInputBinding->Attributes[AttributeIndex]);
+                Rr_GetGLTFAttributeSize(
+                    GLTFVertexInputBinding->Attributes[AttributeIndex]);
         }
     }
 
@@ -152,7 +186,8 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
     Rr_DestroyArena(GLTFContext->Arena);
 }
 
-// static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive *Primitive, Rr_Arena *Arena)
+// static Rr_RawMesh Rr_CreateRawMeshFromGLTFPrimitive(cgltf_primitive
+// *Primitive, Rr_Arena *Arena)
 // {
 //     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 //
@@ -164,7 +199,8 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //     RR_RESERVE_SLICE(&RawMesh.IndicesSlice, IndexCount, Arena);
 //
 //     char *IndexData = (char *)Primitive->indices->buffer_view->buffer->data +
-//     Primitive->indices->buffer_view->offset; if(Primitive->indices->component_type == cgltf_component_type_r_16u)
+//     Primitive->indices->buffer_view->offset;
+//     if(Primitive->indices->component_type == cgltf_component_type_r_16u)
 //     {
 //         uint16_t *Indices = (uint16_t *)IndexData;
 //         for(size_t Index = 0; Index < IndexCount; ++Index)
@@ -182,36 +218,40 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //     {
 //         Rr_Vertex NewVertex = { 0 };
 //
-//         for(size_t AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+//         for(size_t AttributeIndex = 0; AttributeIndex <
+//         Primitive->attributes_count; ++AttributeIndex)
 //         {
-//             cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
-//             cgltf_accessor *Accessor = Attribute->data;
-//             char *AttributeData = (char *)Accessor->buffer_view->buffer->data + Accessor->buffer_view->offset;
-//             switch(Attribute->type)
+//             cgltf_attribute *Attribute = Primitive->attributes +
+//             AttributeIndex; cgltf_accessor *Accessor = Attribute->data; char
+//             *AttributeData = (char *)Accessor->buffer_view->buffer->data +
+//             Accessor->buffer_view->offset; switch(Attribute->type)
 //             {
 //                 case cgltf_attribute_type_position:
 //                 {
-//                     Rr_Vec3 *Position = (Rr_Vec3 *)(AttributeData + Accessor->stride * VertexIndex);
-//                     NewVertex.Position = *Position;
+//                     Rr_Vec3 *Position = (Rr_Vec3 *)(AttributeData +
+//                     Accessor->stride * VertexIndex); NewVertex.Position =
+//                     *Position;
 //                 }
 //                 break;
 //                 case cgltf_attribute_type_normal:
 //                 {
-//                     Rr_Vec3 *Normal = (Rr_Vec3 *)(AttributeData + Accessor->stride * VertexIndex);
-//                     NewVertex.Normal = *Normal;
+//                     Rr_Vec3 *Normal = (Rr_Vec3 *)(AttributeData +
+//                     Accessor->stride * VertexIndex); NewVertex.Normal =
+//                     *Normal;
 //                 }
 //                 break;
 //                 case cgltf_attribute_type_tangent:
 //                 {
-//                     Rr_Vec3 *Tangent = (Rr_Vec3 *)(AttributeData + Accessor->stride * VertexIndex);
-//                     NewVertex.Tangent = *Tangent;
+//                     Rr_Vec3 *Tangent = (Rr_Vec3 *)(AttributeData +
+//                     Accessor->stride * VertexIndex); NewVertex.Tangent =
+//                     *Tangent;
 //                 }
 //                 break;
 //                 case cgltf_attribute_type_texcoord:
 //                 {
-//                     Rr_Vec2 *TexCoord = (Rr_Vec2 *)(AttributeData + Accessor->stride * VertexIndex);
-//                     NewVertex.TexCoordX = TexCoord->X;
-//                     NewVertex.TexCoordY = TexCoord->Y;
+//                     Rr_Vec2 *TexCoord = (Rr_Vec2 *)(AttributeData +
+//                     Accessor->stride * VertexIndex); NewVertex.TexCoordX =
+//                     TexCoord->X; NewVertex.TexCoordY = TexCoord->Y;
 //                 }
 //                 break;
 //                 default:
@@ -227,7 +267,8 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //     return RawMesh;
 // }
 //
-// static void Rr_CalculateTangents(size_t IndexCount, const Rr_MeshIndexType *Indices, Rr_Vertex *OutVertices)
+// static void Rr_CalculateTangents(size_t IndexCount, const Rr_MeshIndexType
+// *Indices, Rr_Vertex *OutVertices)
 // {
 //     for(uint32_t Index = 3; Index < IndexCount; Index += 3)
 //     {
@@ -242,11 +283,13 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //         Rr_Vec3 Tangent = Rr_V3(0.0f, 0.0f, 0.0f);
 //         Rr_Vec3 Edge0 = Rr_SubV3(Vertex1->Position, Vertex0->Position);
 //         Rr_Vec3 Edge1 = Rr_SubV3(Vertex2->Position, Vertex0->Position);
-//         Rr_Vec2 DeltaUV0 = { Vertex1->TexCoordX - Vertex0->TexCoordX, Vertex1->TexCoordY - Vertex0->TexCoordY };
-//         Rr_Vec2 DeltaUV1 = { Vertex2->TexCoordX - Vertex0->TexCoordX, Vertex2->TexCoordY - Vertex0->TexCoordY };
+//         Rr_Vec2 DeltaUV0 = { Vertex1->TexCoordX - Vertex0->TexCoordX,
+//         Vertex1->TexCoordY - Vertex0->TexCoordY }; Rr_Vec2 DeltaUV1 = {
+//         Vertex2->TexCoordX - Vertex0->TexCoordX, Vertex2->TexCoordY -
+//         Vertex0->TexCoordY };
 //
-//         float Denominator = DeltaUV0.X * DeltaUV1.Y - DeltaUV1.X * DeltaUV0.Y;
-//         if(fabsf(Denominator) <= 0.0000001f)
+//         float Denominator = DeltaUV0.X * DeltaUV1.Y - DeltaUV1.X *
+//         DeltaUV0.Y; if(fabsf(Denominator) <= 0.0000001f)
 //         {
 //             Tangent = Rr_SubV3(Vertex1->Position, Vertex2->Position);
 //         }
@@ -291,11 +334,13 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //                     case ' ':
 //                     {
 //                         Rr_Vec3 NewPosition;
-//                         NewPosition.X = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
-//                         NewPosition.Y = (float)SDL_strtod(EndPos, &EndPos);
-//                         NewPosition.Z = (float)SDL_strtod(EndPos, &EndPos);
+//                         NewPosition.X = (float)SDL_strtod(Asset->Data +
+//                         CurrentIndex, &EndPos); NewPosition.Y =
+//                         (float)SDL_strtod(EndPos, &EndPos); NewPosition.Z =
+//                         (float)SDL_strtod(EndPos, &EndPos);
 //
-//                         *RR_PUSH_SLICE(&ScratchPositions, Scratch.Arena) = NewPosition;
+//                         *RR_PUSH_SLICE(&ScratchPositions, Scratch.Arena) =
+//                         NewPosition;
 //
 //                         if(*EndPos == ' ')
 //                         {
@@ -304,7 +349,8 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //                             NewColor.Y = (float)SDL_strtod(EndPos, &EndPos);
 //                             NewColor.Z = (float)SDL_strtod(EndPos, &EndPos);
 //
-//                             *RR_PUSH_SLICE(&ScratchColors, Scratch.Arena) = NewColor;
+//                             *RR_PUSH_SLICE(&ScratchColors, Scratch.Arena) =
+//                             NewColor;
 //                         }
 //                     }
 //                     break;
@@ -312,21 +358,25 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //                     {
 //                         CurrentIndex++;
 //                         Rr_Vec2 NewTexCoord;
-//                         NewTexCoord.X = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
-//                         NewTexCoord.Y = (float)SDL_strtod(EndPos, &EndPos);
+//                         NewTexCoord.X = (float)SDL_strtod(Asset->Data +
+//                         CurrentIndex, &EndPos); NewTexCoord.Y =
+//                         (float)SDL_strtod(EndPos, &EndPos);
 //
-//                         *RR_PUSH_SLICE(&ScratchTexCoords, Scratch.Arena) = NewTexCoord;
+//                         *RR_PUSH_SLICE(&ScratchTexCoords, Scratch.Arena) =
+//                         NewTexCoord;
 //                     }
 //                     break;
 //                     case 'n':
 //                     {
 //                         CurrentIndex++;
 //                         Rr_Vec3 NewNormal;
-//                         NewNormal.X = (float)SDL_strtod(Asset->Data + CurrentIndex, &EndPos);
-//                         NewNormal.Y = (float)SDL_strtod(EndPos, &EndPos);
-//                         NewNormal.Z = (float)SDL_strtod(EndPos, &EndPos);
+//                         NewNormal.X = (float)SDL_strtod(Asset->Data +
+//                         CurrentIndex, &EndPos); NewNormal.Y =
+//                         (float)SDL_strtod(EndPos, &EndPos); NewNormal.Z =
+//                         (float)SDL_strtod(EndPos, &EndPos);
 //
-//                         *RR_PUSH_SLICE(&ScratchNormals, Scratch.Arena) = NewNormal;
+//                         *RR_PUSH_SLICE(&ScratchNormals, Scratch.Arena) =
+//                         NewNormal;
 //                     }
 //                     break;
 //                 }
@@ -336,16 +386,18 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //             {
 //                 CurrentIndex++;
 //                 Rr_IntVec3 OBJIndices[3] = { 0 };
-//                 OBJIndices[0].X = (int32_t)SDL_strtoul(Asset->Data + CurrentIndex, &EndPos, 10);
-//                 OBJIndices[0].Y = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
-//                 OBJIndices[0].Z = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
-//                 OBJIndices[1].X = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
-//                 OBJIndices[1].Y = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
-//                 OBJIndices[1].Z = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
-//                 OBJIndices[2].X = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
-//                 OBJIndices[2].Y = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
-//                 OBJIndices[2].Z = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
-//                 for(size_t Index = 0; Index < 3; Index++)
+//                 OBJIndices[0].X = (int32_t)SDL_strtoul(Asset->Data +
+//                 CurrentIndex, &EndPos, 10); OBJIndices[0].Y =
+//                 (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0); OBJIndices[0].Z
+//                 = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0);
+//                 OBJIndices[1].X = (int32_t)SDL_strtoul(EndPos + 1, &EndPos,
+//                 0); OBJIndices[1].Y = (int32_t)SDL_strtoul(EndPos + 1,
+//                 &EndPos, 0); OBJIndices[1].Z = (int32_t)SDL_strtoul(EndPos +
+//                 1, &EndPos, 0); OBJIndices[2].X = (int32_t)SDL_strtoul(EndPos
+//                 + 1, &EndPos, 0); OBJIndices[2].Y =
+//                 (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0); OBJIndices[2].Z
+//                 = (int32_t)SDL_strtoul(EndPos + 1, &EndPos, 0); for(size_t
+//                 Index = 0; Index < 3; Index++)
 //                 {
 //                     OBJIndices[Index].X--;
 //                     OBJIndices[Index].Y--;
@@ -354,7 +406,8 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //                     size_t ExistingOBJIndex = SIZE_MAX;
 //                     for(size_t I = 0; I < ScratchIndices.Count; I++)
 //                     {
-//                         if(Rr_EqIV3(OBJIndices[Index], ScratchIndices.Data[I]))
+//                         if(Rr_EqIV3(OBJIndices[Index],
+//                         ScratchIndices.Data[I]))
 //                         {
 //                             ExistingOBJIndex = I;
 //                             break;
@@ -362,26 +415,33 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //                     }
 //                     if(ExistingOBJIndex == SIZE_MAX)
 //                     {
-//                         Rr_Vec2 *TexCoord = &ScratchTexCoords.Data[OBJIndices[Index].Y];
+//                         Rr_Vec2 *TexCoord =
+//                         &ScratchTexCoords.Data[OBJIndices[Index].Y];
 //                         Rr_Vertex NewVertex = { 0 };
-//                         NewVertex.Position = ScratchPositions.Data[OBJIndices[Index].X];
+//                         NewVertex.Position =
+//                         ScratchPositions.Data[OBJIndices[Index].X];
 //                         // NewVertex.Color =
 //                         // ScratchColors.Data[OBJIndices[Index].X];
-//                         NewVertex.Normal = ScratchNormals.Data[OBJIndices[Index].Z];
+//                         NewVertex.Normal =
+//                         ScratchNormals.Data[OBJIndices[Index].Z];
 //                         NewVertex.TexCoordX = (*TexCoord).X;
 //                         // NewVertex.TexCoordY = (*TexCoord).Y;
 //                         NewVertex.TexCoordY = 1.0f - (*TexCoord).Y;
-//                         *RR_PUSH_SLICE(&RawMesh.VerticesSlice, Arena) = NewVertex;
+//                         *RR_PUSH_SLICE(&RawMesh.VerticesSlice, Arena) =
+//                         NewVertex;
 //
-//                         *RR_PUSH_SLICE(&ScratchIndices, Scratch.Arena) = OBJIndices[Index];
+//                         *RR_PUSH_SLICE(&ScratchIndices, Scratch.Arena) =
+//                         OBJIndices[Index];
 //
 //                         /* Add freshly added vertex index */
 //                         *RR_PUSH_SLICE(&RawMesh.IndicesSlice, Arena) =
-//                             (Rr_MeshIndexType){ RawMesh.VerticesSlice.Count - 1 };
+//                             (Rr_MeshIndexType){ RawMesh.VerticesSlice.Count -
+//                             1 };
 //                     }
 //                     else
 //                     {
-//                         *RR_PUSH_SLICE(&RawMesh.IndicesSlice, Arena) = ExistingOBJIndex;
+//                         *RR_PUSH_SLICE(&RawMesh.IndicesSlice, Arena) =
+//                         ExistingOBJIndex;
 //                     }
 //                 }
 //             }
@@ -395,27 +455,33 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //         CurrentIndex += strcspn(Asset->Data + CurrentIndex, "\n") + 1;
 //     }
 //
-//     Rr_CalculateTangents(RawMesh.IndicesSlice.Count, RawMesh.IndicesSlice.Data, RawMesh.VerticesSlice.Data);
+//     Rr_CalculateTangents(RawMesh.IndicesSlice.Count,
+//     RawMesh.IndicesSlice.Data, RawMesh.VerticesSlice.Data);
 //
 //     Rr_DestroyScratch(Scratch);
 //
 //     return RawMesh;
 // }
 //
-// Rr_Primitive *Rr_CreatePrimitive(Rr_App *App, Rr_UploadContext *UploadContext, Rr_RawMesh *RawMesh)
+// Rr_Primitive *Rr_CreatePrimitive(Rr_App *App, Rr_UploadContext
+// *UploadContext, Rr_RawMesh *RawMesh)
 // {
-//     Rr_Primitive *Primitive = RR_GET_FREE_LIST_ITEM(&App->Renderer.Primitives, App->PermanentArena);
+//     Rr_Primitive *Primitive =
+//     RR_GET_FREE_LIST_ITEM(&App->Renderer.Primitives, App->PermanentArena);
 //
 //     Primitive->IndexCount = RawMesh->IndicesSlice.Count;
 //
-//     size_t VertexBufferSize = sizeof(Rr_Vertex) * RawMesh->VerticesSlice.Count;
-//     size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
+//     size_t VertexBufferSize = sizeof(Rr_Vertex) *
+//     RawMesh->VerticesSlice.Count; size_t IndexBufferSize =
+//     sizeof(Rr_MeshIndexType) * Primitive->IndexCount;
 //
 //     Primitive->VertexBuffer =
-//         Rr_CreateBuffer(App, VertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, false);
+//         Rr_CreateBuffer(App, VertexBufferSize,
+//         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, false);
 //
 //     Primitive->IndexBuffer =
-//         Rr_CreateBuffer(App, IndexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, false);
+//         Rr_CreateBuffer(App, IndexBufferSize,
+//         VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO, false);
 //
 //     Rr_UploadBuffer(
 //         App,
@@ -423,7 +489,8 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //         Primitive->VertexBuffer,
 //         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 //         0,
-//         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+//         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+//         VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
 //         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT,
 //         RR_MAKE_DATA(RawMesh->VerticesSlice.Data, VertexBufferSize));
 //
@@ -459,11 +526,13 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //     Rr_RawMesh *RawMeshes,
 //     size_t RawMeshCount)
 // {
-//     Rr_StaticMesh *StaticMesh = RR_GET_FREE_LIST_ITEM(&App->Renderer.StaticMeshes, App->PermanentArena);
+//     Rr_StaticMesh *StaticMesh =
+//     RR_GET_FREE_LIST_ITEM(&App->Renderer.StaticMeshes, App->PermanentArena);
 //
 //     for(size_t Index = 0; Index < RawMeshCount; ++Index)
 //     {
-//         StaticMesh->Primitives[Index] = Rr_CreatePrimitive(App, UploadContext, RawMeshes + Index);
+//         StaticMesh->Primitives[Index] = Rr_CreatePrimitive(App,
+//         UploadContext, RawMeshes + Index);
 //     }
 //     StaticMesh->PrimitiveCount = RawMeshCount;
 //
@@ -497,12 +566,13 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //
 //     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 //
-//     cgltf_options Options = { .memory = Rr_GetCGLTFMemoryOptions(Scratch.Arena) };
-//     cgltf_data *Data = NULL;
+//     cgltf_options Options = { .memory =
+//     Rr_GetCGLTFMemoryOptions(Scratch.Arena) }; cgltf_data *Data = NULL;
 //     cgltf_mesh *Mesh = Rr_ParseGLTFMesh(&Asset, MeshIndex, &Options, &Data);
 //     cgltf_load_buffers(&Options, Data, NULL);
 //
-//     Rr_RawMesh *RawMeshes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_RawMesh, Mesh->primitives_count);
+//     Rr_RawMesh *RawMeshes = RR_ALLOC_STRUCT_COUNT(Scratch.Arena, Rr_RawMesh,
+//     Mesh->primitives_count);
 //
 //     // Rr_Material *Materials[RR_MESH_MAX_PRIMITIVES] = { 0 };
 //     //
@@ -521,40 +591,53 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //     CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
 //     //             if(BaseColorTexture)
 //     //             {
-//     //                 if(strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+//     //                 if(strcmp(BaseColorTexture->image->mime_type,
+//     "image/png") == 0)
 //     //                 {
-//     //                     char *PNGData = (char *)BaseColorTexture->image->buffer_view->buffer->data +
-//     //                                     BaseColorTexture->image->buffer_view->offset;
-//     //                     size_t PNGSize = BaseColorTexture->image->buffer_view->size;
+//     //                     char *PNGData = (char
+//     *)BaseColorTexture->image->buffer_view->buffer->data +
+//     // BaseColorTexture->image->buffer_view->offset;
+//     //                     size_t PNGSize =
+//     BaseColorTexture->image->buffer_view->size;
 //     //
 //     //                     Textures[Loader->BaseTexture] =
-//     //                         Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, false);
+//     //                         Rr_CreateColorImageFromPNGMemory(App,
+//     UploadContext, PNGData, PNGSize, false);
 //     //                 }
 //     //             }
 //     //         }
 //     //         if(CGLTFMaterial->normal_texture.texture != NULL)
 //     //         {
-//     //             cgltf_texture *NormalTexture = CGLTFMaterial->normal_texture.texture;
-//     //             if(strcmp(NormalTexture->image->mime_type, "image/png") == 0)
+//     //             cgltf_texture *NormalTexture =
+//     CGLTFMaterial->normal_texture.texture;
+//     //             if(strcmp(NormalTexture->image->mime_type, "image/png") ==
+//     0)
 //     //             {
-//     //                 char *PNGData = (char *)NormalTexture->image->buffer_view->buffer->data +
-//     //                                 NormalTexture->image->buffer_view->offset;
-//     //                 size_t PNGSize = NormalTexture->image->buffer_view->size;
+//     //                 char *PNGData = (char
+//     *)NormalTexture->image->buffer_view->buffer->data +
+//     // NormalTexture->image->buffer_view->offset;
+//     //                 size_t PNGSize =
+//     NormalTexture->image->buffer_view->size;
 //     //
 //     //                 Textures[Loader->NormalTexture] =
-//     //                     Rr_CreateColorImageFromPNGMemory(App, UploadContext, PNGData, PNGSize, false);
+//     //                     Rr_CreateColorImageFromPNGMemory(App,
+//     UploadContext, PNGData, PNGSize, false);
 //     //             }
 //     //         }
 //     //
-//     //         Materials[Index] = Rr_CreateMaterial(App, Loader->GenericPipeline, Textures,
-//     //         RR_MAX_TEXTURES_PER_MATERIAL); Materials[Index]->bOwning = true;
+//     //         Materials[Index] = Rr_CreateMaterial(App,
+//     Loader->GenericPipeline, Textures,
+//     //         RR_MAX_TEXTURES_PER_MATERIAL); Materials[Index]->bOwning =
+//     true;
 //     //     }
 //     //
 //     //     Rr_RawMesh *RawMesh = RawMeshes + Index;
-//     //     *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive, Scratch.Arena);
+//     //     *RawMesh = Rr_CreateRawMeshFromGLTFPrimitive(Primitive,
+//     Scratch.Arena);
 //     // }
 //
-//     Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(App, UploadContext, RawMeshes, Mesh->primitives_count);
+//     Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(App, UploadContext,
+//     RawMeshes, Mesh->primitives_count);
 //
 //     cgltf_free(Data);
 //
@@ -575,14 +658,16 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //
 //     Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 //
-//     Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(App, UploadContext, &RawMesh, 1);
+//     Rr_StaticMesh *StaticMesh = Rr_CreateStaticMesh(App, UploadContext,
+//     &RawMesh, 1);
 //
 //     Rr_DestroyScratch(Scratch);
 //
 //     return StaticMesh;
 // }
 //
-// void Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena *Arena, Rr_LoadSize *OutLoadSize)
+// void Rr_GetStaticMeshSizeOBJ(Rr_AssetRef AssetRef, Rr_Arena *Arena,
+// Rr_LoadSize *OutLoadSize)
 // {
 //     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 //
@@ -590,8 +675,9 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //
 //     Rr_RawMesh RawMesh = Rr_CreateRawMeshFromOBJ(&Asset, Scratch.Arena);
 //
-//     size_t VertexBufferSize = sizeof(Rr_Vertex) * RawMesh.VerticesSlice.Count;
-//     size_t IndexBufferSize = sizeof(Rr_MeshIndexType) * RawMesh.IndicesSlice.Count;
+//     size_t VertexBufferSize = sizeof(Rr_Vertex) *
+//     RawMesh.VerticesSlice.Count; size_t IndexBufferSize =
+//     sizeof(Rr_MeshIndexType) * RawMesh.IndicesSlice.Count;
 //
 //     OutLoadSize->StagingBufferSize += VertexBufferSize + IndexBufferSize;
 //     OutLoadSize->BufferCount += 2;
@@ -599,18 +685,24 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //     Rr_DestroyScratch(Scratch);
 // }
 
-static size_t Rr_CalculateGLTFAssetStagingBufferSize(cgltf_data *Data, Rr_GLTFContext *GLTFContext)
+static size_t Rr_CalculateGLTFAssetStagingBufferSize(
+    cgltf_data *Data,
+    Rr_GLTFContext *GLTFContext)
 {
     size_t TotalSize = 0;
     for(size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
     {
         cgltf_mesh *Mesh = Data->meshes + MeshIndex;
-        for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count; ++PrimitiveIndex)
+        for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count;
+            ++PrimitiveIndex)
         {
             cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
-            for(size_t AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+            for(size_t AttributeIndex = 0;
+                AttributeIndex < Primitive->attributes_count;
+                ++AttributeIndex)
             {
-                cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
+                cgltf_attribute *Attribute =
+                    Primitive->attributes + AttributeIndex;
                 switch(Attribute->type)
                 {
                     case cgltf_attribute_type_texcoord:
@@ -657,7 +749,9 @@ static size_t Rr_CalculateGLTFAssetStagingBufferSize(cgltf_data *Data, Rr_GLTFCo
     return TotalSize;
 }
 
-static inline void *Rr_GetCGLTFAccessorValueAt(cgltf_accessor *Accessor, size_t Index)
+static inline void *Rr_GetCGLTFAccessorValueAt(
+    cgltf_accessor *Accessor,
+    size_t Index)
 {
     char *Buffer = Accessor->buffer_view->buffer->data;
     char *BufferView = Buffer + Accessor->buffer_view->offset;
@@ -678,9 +772,12 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
     Rr_GLTFVertexInputInfo *Out)
 {
     bool Found = false;
-    for(size_t BindingIndex = 0; BindingIndex < Context->VertexInputBindingCount; ++BindingIndex)
+    for(size_t BindingIndex = 0;
+        BindingIndex < Context->VertexInputBindingCount;
+        ++BindingIndex)
     {
-        Rr_GLTFVertexInputBinding *Binding = Context->VertexInputBindings + BindingIndex;
+        Rr_GLTFVertexInputBinding *Binding =
+            Context->VertexInputBindings + BindingIndex;
         size_t Offset = 0;
         for(size_t Index = 0; Index < Binding->AttributeCount; ++Index)
         {
@@ -689,7 +786,8 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
             {
                 if(Found)
                 {
-                    RR_ABORT("GLTF: Multiple mappings found for the same attribute type!");
+                    RR_ABORT("GLTF: Multiple mappings found for the same "
+                             "attribute type!");
                 }
                 if(Out)
                 {
@@ -713,17 +811,24 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
     return false;
 }
 
-static inline size_t Rr_GetStagingSizeForVertexCount(Rr_GLTFContext *Context, size_t VertexCount)
+static inline size_t Rr_GetStagingSizeForVertexCount(
+    Rr_GLTFContext *Context,
+    size_t VertexCount)
 {
     size_t StagingSize = 0;
-    for(size_t BindingIndex = 0; BindingIndex < Context->VertexInputBindingCount; ++BindingIndex)
+    for(size_t BindingIndex = 0;
+        BindingIndex < Context->VertexInputBindingCount;
+        ++BindingIndex)
     {
         StagingSize += Context->VertexInputStrides[BindingIndex] * VertexCount;
     }
     return StagingSize;
 }
 
-static inline size_t Rr_GetFlatBindingOffset(Rr_GLTFContext *Context, size_t BindingIndex, size_t VertexCount)
+static inline size_t Rr_GetFlatBindingOffset(
+    Rr_GLTFContext *Context,
+    size_t BindingIndex,
+    size_t VertexCount)
 {
     size_t Result = 0;
     for(size_t Index = 0; Index < BindingIndex; ++Index)
@@ -753,7 +858,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             },
     };
     cgltf_data *Data = NULL;
-    cgltf_result Result = cgltf_parse(&Options, Asset.Pointer, Asset.Size, &Data);
+    cgltf_result Result =
+        cgltf_parse(&Options, Asset.Pointer, Asset.Size, &Data);
     if(Result != cgltf_result_success)
     {
         RR_ABORT("GLTF: Parsing failed!");
@@ -768,7 +874,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     for(size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
     {
         cgltf_mesh *Mesh = Data->meshes + MeshIndex;
-        for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count; ++PrimitiveIndex)
+        for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count;
+            ++PrimitiveIndex)
         {
             cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
             assert(Primitive->attributes_count > 0);
@@ -777,146 +884,140 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
             /* Quick check to make sure every attribute has the same count. */
 
-            for(size_t AttributeIndex = 1; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+            for(size_t AttributeIndex = 1;
+                AttributeIndex < Primitive->attributes_count;
+                ++AttributeIndex)
             {
-                cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
+                cgltf_attribute *Attribute =
+                    Primitive->attributes + AttributeIndex;
                 if(VertexCount != Attribute->data->count)
                 {
                     RR_ABORT("GLTF: Attributes with different counts!");
                 }
             }
 
-            StagingDataSize += Rr_GetStagingSizeForVertexCount(GLTFContext, VertexCount);
+            StagingDataSize +=
+                Rr_GetStagingSizeForVertexCount(GLTFContext, VertexCount);
             StagingDataSize += Primitive->indices->count *
-                               cgltf_calc_size(Primitive->indices->type, Primitive->indices->component_type);
+                               cgltf_calc_size(
+                                   Primitive->indices->type,
+                                   Primitive->indices->component_type);
         }
     }
 
     char *StagingData = RR_ALLOC(Scratch.Arena, StagingDataSize);
     size_t StagingDataOffset = 0;
 
-    /* Upload buffers. */
-
-    // GLTFAsset->BufferCount = Data->buffers_count;
-    // GLTFAsset->Buffers = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_Buffer *, GLTFAsset->BufferCount);
-    // for(size_t BufferIndex = 0; BufferIndex < GLTFAsset->BufferCount; ++BufferIndex)
-    // {
-    //     cgltf_buffer *Buffer = Data->buffers + BufferIndex;
-    //     GLTFAsset->Buffers[BufferIndex] = Rr_CreateBuffer(
-    //         App,
-    //         Buffer->size,
-    //         RR_BUFFER_USAGE_INDEX_BUFFER_BIT | RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-    //         false);
-    //     Rr_UploadBuffer(
-    //         App,
-    //         UploadContext,
-    //         GLTFAsset->Buffers[BufferIndex],
-    //         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-    //         0,
-    //         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-    //         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT,
-    //         RR_MAKE_DATA(Buffer->size, Buffer->data));
-    // }
-
-    /* Upload images. */
-
-    // GLTFAsset->ImageCount = Data->images_count;
-    // GLTFAsset->Images = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_Image *, GLTFAsset->ImageCount);
-    // for(size_t ImageIndex = 0; ImageIndex < GLTFAsset->ImageCount; ++ImageIndex)
-    // {
-    //     cgltf_image *Image = Data->images + ImageIndex;
-    //     GLTFAsset->Images[ImageIndex] = Rr_CreateImage(
-    //         App,
-    //         Image->size,
-    //         RR_BUFFER_USAGE_INDEX_BUFFER_BIT | RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-    //         false);
-    //     Rr_UploadImage(
-    //         App,
-    //         UploadContext,
-    //         GLTFAsset->Images[ImageIndex],
-    //         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-    //         0,
-    //         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-    //         VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT,
-    //         RR_MAKE_DATA(Image->size, Image->data));
-    // }
-
     /* Process meshes. */
 
     GLTFAsset->MeshCount = Data->meshes_count;
-    GLTFAsset->Meshes = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_GLTFMesh, GLTFAsset->MeshCount);
+    GLTFAsset->Meshes = RR_ALLOC_TYPE_COUNT(
+        GLTFContext->Arena,
+        Rr_GLTFMesh,
+        GLTFAsset->MeshCount);
     for(size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
     {
         cgltf_mesh *Mesh = Data->meshes + MeshIndex;
 
         Rr_GLTFMesh *GLTFMesh = GLTFAsset->Meshes + MeshIndex;
         GLTFMesh->PrimitiveCount = Mesh->primitives_count;
-        GLTFMesh->Primitives = RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_GLTFPrimitive, GLTFMesh->PrimitiveCount);
+        GLTFMesh->Primitives = RR_ALLOC_TYPE_COUNT(
+            GLTFContext->Arena,
+            Rr_GLTFPrimitive,
+            GLTFMesh->PrimitiveCount);
 
-        RR_ALLOC_COPY(GLTFContext->Arena, GLTFMesh->Name, Mesh->name, strlen(Mesh->name));
+        RR_ALLOC_COPY(
+            GLTFContext->Arena,
+            GLTFMesh->Name,
+            Mesh->name,
+            strlen(Mesh->name));
 
-        for(size_t PrimitiveIndex = 0; PrimitiveIndex < GLTFMesh->PrimitiveCount; ++PrimitiveIndex)
+        for(size_t PrimitiveIndex = 0;
+            PrimitiveIndex < GLTFMesh->PrimitiveCount;
+            ++PrimitiveIndex)
         {
             cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
 
-            Rr_GLTFPrimitive *GLTFPrimitive = GLTFMesh->Primitives + PrimitiveIndex;
+            Rr_GLTFPrimitive *GLTFPrimitive =
+                GLTFMesh->Primitives + PrimitiveIndex;
             GLTFPrimitive->AttributeCount = Primitive->attributes_count;
-            GLTFPrimitive->Attributes =
-                RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_GLTFAttribute, GLTFPrimitive->AttributeCount);
-            GLTFPrimitive->VertexBufferOffsets =
-                RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, size_t, GLTFContext->VertexInputBindingCount);
+            GLTFPrimitive->Attributes = RR_ALLOC_TYPE_COUNT(
+                GLTFContext->Arena,
+                Rr_GLTFAttribute,
+                GLTFPrimitive->AttributeCount);
+            GLTFPrimitive->VertexBufferOffsets = RR_ALLOC_TYPE_COUNT(
+                GLTFContext->Arena,
+                size_t,
+                GLTFContext->VertexInputBindingCount);
 
             size_t VertexCount = Primitive->attributes->data->count;
 
             GLTFPrimitive->VertexCount = VertexCount;
 
-            for(size_t AttributeIndex = 0; AttributeIndex < GLTFPrimitive->AttributeCount; ++AttributeIndex)
+            for(size_t AttributeIndex = 0;
+                AttributeIndex < GLTFPrimitive->AttributeCount;
+                ++AttributeIndex)
             {
-                cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
+                cgltf_attribute *Attribute =
+                    Primitive->attributes + AttributeIndex;
                 assert(Attribute->data->is_sparse == false);
 
-                Rr_GLTFAttribute *GLTFAttribute = GLTFPrimitive->Attributes + AttributeIndex;
+                Rr_GLTFAttribute *GLTFAttribute =
+                    GLTFPrimitive->Attributes + AttributeIndex;
                 GLTFAttribute->Type = Rr_GetGLTFAttributeType(Attribute->type);
                 assert(GLTFAttribute->Type != RR_GLTF_ATTRIBUTE_TYPE_INVALID);
 
                 Rr_GLTFVertexInputInfo Info;
-                bool Found = Rr_GetGLTFVertexInputInfoForAttribute(GLTFContext, Attribute->type, &Info);
+                bool Found = Rr_GetGLTFVertexInputInfoForAttribute(
+                    GLTFContext,
+                    Attribute->type,
+                    &Info);
                 if(Found)
                 {
                     /* Copy attribute values to staging data. */
 
-                    size_t AttributeSize = cgltf_calc_size(Attribute->data->type, Attribute->data->component_type);
-                    size_t BindingOffset = Rr_GetFlatBindingOffset(GLTFContext, Info.Binding, VertexCount);
-                    char *DstBase = (char *)StagingData + StagingDataOffset + BindingOffset;
-                    GLTFPrimitive->VertexBufferOffsets[Info.Binding] = StagingDataOffset + BindingOffset;
-                    for(size_t VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
+                    size_t AttributeSize = cgltf_calc_size(
+                        Attribute->data->type,
+                        Attribute->data->component_type);
+                    size_t BindingOffset = Rr_GetFlatBindingOffset(
+                        GLTFContext,
+                        Info.Binding,
+                        VertexCount);
+                    char *DstBase =
+                        (char *)StagingData + StagingDataOffset + BindingOffset;
+                    GLTFPrimitive->VertexBufferOffsets[Info.Binding] =
+                        StagingDataOffset + BindingOffset;
+                    for(size_t VertexIndex = 0; VertexIndex < VertexCount;
+                        ++VertexIndex)
                     {
-                        void *Dst = DstBase + Info.Offset + (Info.Stride * VertexIndex);
-                        void *Src = Rr_GetCGLTFAccessorValueAt(Attribute->data, VertexIndex);
+                        void *Dst =
+                            DstBase + Info.Offset + (Info.Stride * VertexIndex);
+                        void *Src = Rr_GetCGLTFAccessorValueAt(
+                            Attribute->data,
+                            VertexIndex);
                         memcpy(Dst, Src, AttributeSize);
                     }
                 }
             }
 
-            StagingDataOffset +=
-                Rr_GetFlatBindingOffset(GLTFContext, GLTFContext->VertexInputBindingCount, VertexCount);
+            StagingDataOffset += Rr_GetFlatBindingOffset(
+                GLTFContext,
+                GLTFContext->VertexInputBindingCount,
+                VertexCount);
 
             GLTFPrimitive->IndexCount = Primitive->indices->count;
             GLTFPrimitive->IndexBufferOffset = StagingDataOffset;
-            switch(Primitive->indices->component_type)
+            GLTFPrimitive->IndexType = Rr_CGLTFComponentTypeToIndexType(
+                Primitive->indices->component_type);
+            size_t IndexSize =
+                cgltf_component_size(Primitive->indices->component_type);
+            for(size_t IndexIndex = 0; IndexIndex < GLTFPrimitive->IndexCount;
+                ++IndexIndex)
             {
-                case cgltf_component_type_r_16u:
-                    GLTFPrimitive->IndexType = RR_INDEX_TYPE_UINT16;
-                case cgltf_component_type_r_32u:
-                    GLTFPrimitive->IndexType = RR_INDEX_TYPE_UINT32;
-                default:
-                    RR_ABORT("cGLTF: Unsupported index type!");
-            }
-            size_t IndexSize = cgltf_component_size(Primitive->indices->component_type);
-            for(size_t IndexIndex = 0; IndexIndex < GLTFPrimitive->IndexCount; ++IndexIndex)
-            {
-                void *Dst = (char *)StagingData + StagingDataOffset + (IndexSize * IndexIndex);
-                void *Src = Rr_GetCGLTFAccessorValueAt(Primitive->indices, IndexIndex);
+                void *Dst = (char *)StagingData + StagingDataOffset +
+                            (IndexSize * IndexIndex);
+                void *Src =
+                    Rr_GetCGLTFAccessorValueAt(Primitive->indices, IndexIndex);
                 memcpy(Dst, Src, IndexSize);
             }
 
@@ -930,15 +1031,20 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
      * and images. We create a mapped buffer and upload it to GPU. */
 
     Rr_Buffer *StagingBuffer = Rr_CreateStagingBuffer(App, StagingDataSize);
-    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) = StagingBuffer;
-    memcpy(StagingBuffer->AllocatedBuffers[0].AllocationInfo.pMappedData, StagingData, StagingDataSize);
+    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
+        StagingBuffer;
+    memcpy(
+        StagingBuffer->AllocatedBuffers[0].AllocationInfo.pMappedData,
+        StagingData,
+        StagingDataSize);
 
     GLTFAsset->Buffer = Rr_CreateBuffer(
         App,
         VertexAndIndexBufferSize,
         RR_BUFFER_USAGE_INDEX_BUFFER_BIT | RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         false);
-    *RR_PUSH_SLICE(&GLTFContext->Buffers, GLTFContext->Arena) = GLTFAsset->Buffer;
+    *RR_PUSH_SLICE(&GLTFContext->Buffers, GLTFContext->Arena) =
+        GLTFAsset->Buffer;
 
     Rr_UploadStagingBuffer(
         App,
@@ -949,7 +1055,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         },
         (Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-            .AccessMask = VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+            .AccessMask =
+                VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
         },
         StagingBuffer,
         0,
@@ -960,8 +1067,9 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     // size_t VertexBufferSize = 0;
     // size_t IndexBufferSize = 0;
     //
-    // bool *AddedMeshes = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->meshes_count);
-    // bool *AddedImages = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->images_count);
+    // bool *AddedMeshes = RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool,
+    // Data->meshes_count); bool *AddedImages =
+    // RR_ALLOC_TYPE_COUNT(Scratch.Arena, bool, Data->images_count);
     //
     // for(size_t NodeIndex = 0; NodeIndex < Scene->nodes_count; ++NodeIndex)
     // {
@@ -973,12 +1081,15 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     //         continue;
     //     }
     //     AddedMeshes[MeshIndex] = true;
-    //     for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count; ++PrimitiveIndex)
+    //     for(size_t PrimitiveIndex = 0; PrimitiveIndex <
+    //     Mesh->primitives_count; ++PrimitiveIndex)
     //     {
     //         cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
-    //         for(size_t AttributeIndex = 0; AttributeIndex < Primitive->attributes_count; ++AttributeIndex)
+    //         for(size_t AttributeIndex = 0; AttributeIndex <
+    //         Primitive->attributes_count; ++AttributeIndex)
     //         {
-    //             cgltf_attribute *Attribute = Primitive->attributes + AttributeIndex;
+    //             cgltf_attribute *Attribute = Primitive->attributes +
+    //             AttributeIndex;
     //             // Attribute->data->buffer_view->buffer
     //         }
     //     }
@@ -988,37 +1099,47 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     // {
     //     cgltf_primitive *Primitive = Mesh->primitives + Index;
     //
-    //     VertexBufferSize += sizeof(Rr_Vertex) * Primitive->attributes->data->count;
-    //     IndexBufferSize += sizeof(Rr_MeshIndexType) * Primitive->indices->count;
+    //     VertexBufferSize += sizeof(Rr_Vertex) *
+    //     Primitive->attributes->data->count; IndexBufferSize +=
+    //     sizeof(Rr_MeshIndexType) * Primitive->indices->count;
     //
     //     if(Loader != NULL && Primitive->material != NULL)
     //     {
     //         cgltf_material *CGLTFMaterial = Primitive->material;
     //         if(CGLTFMaterial->has_pbr_metallic_roughness)
     //         {
-    //             cgltf_texture *BaseColorTexture = CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
+    //             cgltf_texture *BaseColorTexture =
+    //             CGLTFMaterial->pbr_metallic_roughness.base_color_texture.texture;
     //             if(BaseColorTexture)
     //             {
-    //                 if(strcmp(BaseColorTexture->image->mime_type, "image/png") == 0)
+    //                 if(strcmp(BaseColorTexture->image->mime_type,
+    //                 "image/png") == 0)
     //                 {
-    //                     char *PNGData = (char *)BaseColorTexture->image->buffer_view->buffer->data +
+    //                     char *PNGData = (char
+    //                     *)BaseColorTexture->image->buffer_view->buffer->data
+    //                     +
     //                                     BaseColorTexture->image->buffer_view->offset;
-    //                     size_t PNGSize = BaseColorTexture->image->buffer_view->size;
+    //                     size_t PNGSize =
+    //                     BaseColorTexture->image->buffer_view->size;
     //
-    //                     Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+    //                     Rr_GetImageSizePNGMemory(PNGData, PNGSize,
+    //                     Scratch.Arena, OutLoadSize);
     //                 }
     //             }
     //         }
     //         if(CGLTFMaterial->normal_texture.texture != NULL)
     //         {
-    //             cgltf_texture *NormalTexture = CGLTFMaterial->normal_texture.texture;
+    //             cgltf_texture *NormalTexture =
+    //             CGLTFMaterial->normal_texture.texture;
     //             if(strcmp(NormalTexture->image->mime_type, "image/png") == 0)
     //             {
-    //                 char *PNGData = (char *)NormalTexture->image->buffer_view->buffer->data +
+    //                 char *PNGData = (char
+    //                 *)NormalTexture->image->buffer_view->buffer->data +
     //                                 NormalTexture->image->buffer_view->offset;
     //                 size_t PNGSize = NormalTexture->image->buffer_view->size;
     //
-    //                 Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena, OutLoadSize);
+    //                 Rr_GetImageSizePNGMemory(PNGData, PNGSize, Scratch.Arena,
+    //                 OutLoadSize);
     //             }
     //         }
     //     }

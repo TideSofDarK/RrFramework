@@ -16,7 +16,8 @@ Rr_Sampler *Rr_CreateSampler(Rr_App *App, Rr_SamplerInfo *Info)
 
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Sampler *Sampler = RR_GET_FREE_LIST_ITEM(&App->Renderer.Samplers, App->PermanentArena);
+    Rr_Sampler *Sampler =
+        RR_GET_FREE_LIST_ITEM(&App->Renderer.Samplers, App->PermanentArena);
 
     VkSamplerCreateInfo SamplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -67,16 +68,25 @@ static void Rr_UploadImage(
 
     VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
 
-    Rr_Buffer *StagingBufferContainer = Rr_CreateStagingBuffer(App, ImageDataLength);
-    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) = StagingBufferContainer;
+    Rr_Buffer *StagingBufferContainer =
+        Rr_CreateStagingBuffer(App, ImageDataLength);
+    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
+        StagingBufferContainer;
 
-    Rr_AllocatedBuffer *StagingBuffer = StagingBufferContainer->AllocatedBuffers;
-    memcpy(StagingBuffer->AllocationInfo.pMappedData, ImageData, ImageDataLength);
+    Rr_AllocatedBuffer *StagingBuffer =
+        StagingBufferContainer->AllocatedBuffers;
+    memcpy(
+        StagingBuffer->AllocationInfo.pMappedData,
+        ImageData,
+        ImageDataLength);
     VkBuffer StagingBufferHandle = StagingBuffer->Handle;
 
-    for(size_t AllocatedIndex = 0; AllocatedIndex < Container->AllocatedImageCount; ++AllocatedIndex)
+    for(size_t AllocatedIndex = 0;
+        AllocatedIndex < Container->AllocatedImageCount;
+        ++AllocatedIndex)
     {
-        Rr_AllocatedImage *AllocatedImage = Container->AllocatedImages + AllocatedIndex;
+        Rr_AllocatedImage *AllocatedImage =
+            Container->AllocatedImages + AllocatedIndex;
         VkImage Image = AllocatedImage->Handle;
 
         VkImageSubresourceRange SubresourceRange = (VkImageSubresourceRange){
@@ -156,7 +166,9 @@ static void Rr_UploadImage(
 
         if(UploadContext->UseAcquireBarriers)
         {
-            *RR_PUSH_SLICE(&UploadContext->ReleaseImageMemoryBarriers, UploadContext->Arena) = (VkImageMemoryBarrier){
+            *RR_PUSH_SLICE(
+                &UploadContext->ReleaseImageMemoryBarriers,
+                UploadContext->Arena) = (VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
                 .image = Image,
@@ -169,7 +181,9 @@ static void Rr_UploadImage(
                 .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
             };
 
-            *RR_PUSH_SLICE(&UploadContext->AcquireImageMemoryBarriers, UploadContext->Arena) = (VkImageMemoryBarrier){
+            *RR_PUSH_SLICE(
+                &UploadContext->AcquireImageMemoryBarriers,
+                UploadContext->Arena) = (VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
                 .image = Image,
@@ -185,7 +199,12 @@ static void Rr_UploadImage(
     }
 }
 
-Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format, Rr_ImageUsage Usage, bool MipMapped)
+Rr_Image *Rr_CreateImage(
+    Rr_App *App,
+    Rr_IntVec3 Extent,
+    Rr_TextureFormat Format,
+    Rr_ImageUsage Usage,
+    bool MipMapped)
 {
     assert(Extent.Width >= 1);
     assert(Extent.Height >= 1);
@@ -193,7 +212,8 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
 
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_Image *Image = RR_GET_FREE_LIST_ITEM(&App->Renderer.Images, App->PermanentArena);
+    Rr_Image *Image =
+        RR_GET_FREE_LIST_ITEM(&App->Renderer.Images, App->PermanentArena);
     Image->Format = Rr_GetVulkanTextureFormat(Format);
     Image->Extent = *(VkExtent3D *)&Extent;
 
@@ -213,7 +233,8 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
     uint32_t MipLevels = 1;
     if(MipMapped)
     {
-        MipLevels = (uint32_t)floorf(logf(RR_MAX(Extent.Width, Extent.Height))) + 1;
+        MipLevels =
+            (uint32_t)floorf(logf(RR_MAX(Extent.Width, Extent.Height))) + 1;
     }
 
     Image->AllocatedImageCount = 1;
@@ -260,13 +281,16 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
     };
 
     Image->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-    if(Image->Format == VK_FORMAT_D16_UNORM_S8_UINT || Image->Format == VK_FORMAT_D24_UNORM_S8_UINT ||
+    if(Image->Format == VK_FORMAT_D16_UNORM_S8_UINT ||
+       Image->Format == VK_FORMAT_D24_UNORM_S8_UINT ||
        Image->Format == VK_FORMAT_D32_SFLOAT_S8_UINT)
     {
-        Image->AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        Image->AspectFlags =
+            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
     }
     else if(
-        Image->Format == VK_FORMAT_D16_UNORM || Image->Format == VK_FORMAT_D32_SFLOAT ||
+        Image->Format == VK_FORMAT_D16_UNORM ||
+        Image->Format == VK_FORMAT_D32_SFLOAT ||
         Image->Format == VK_FORMAT_X8_D24_UNORM_PACK32)
     {
         Image->AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -305,7 +329,11 @@ Rr_Image *Rr_CreateImage(Rr_App *App, Rr_IntVec3 Extent, Rr_TextureFormat Format
             },
         };
 
-        vkCreateImageView(Renderer->Device, &ImageViewCreateInfo, NULL, &AllocatedImage->View);
+        vkCreateImageView(
+            Renderer->Device,
+            &ImageViewCreateInfo,
+            NULL,
+            &AllocatedImage->View);
     }
 
     return Image;
@@ -322,7 +350,10 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
 
     for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
-        vkDestroyImageView(Renderer->Device, Image->AllocatedImages[Index].View, NULL);
+        vkDestroyImageView(
+            Renderer->Device,
+            Image->AllocatedImages[Index].View,
+            NULL);
         vmaDestroyImage(
             Renderer->Allocator,
             Image->AllocatedImages[Index].Handle,
@@ -355,7 +386,12 @@ size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)
     int32_t Width;
     int32_t Height;
     int32_t Channels;
-    stbi_info_from_memory((stbi_uc *)Data, (int32_t)DataSize, &Width, &Height, &Channels);
+    stbi_info_from_memory(
+        (stbi_uc *)Data,
+        (int32_t)DataSize,
+        &Width,
+        &Height,
+        &Channels);
 
     return Width * Height * DesiredChannels;
 }
@@ -446,15 +482,15 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
 //     const char *Error;
 //
 //     EXRVersion Version;
-//     int32_t Result = ParseEXRVersionFromMemory(&Version, (unsigned char *)Asset.Pointer, Asset.Size);
-//     if(Result != 0)
+//     int32_t Result = ParseEXRVersionFromMemory(&Version, (unsigned char
+//     *)Asset.Pointer, Asset.Size); if(Result != 0)
 //     {
 //         RR_ABORT("Error opening EXR file!");
 //     }
 //
 //     EXRHeader Header;
-//     Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char *)Asset.Pointer, Asset.Size, &Error);
-//     if(Result != 0)
+//     Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char
+//     *)Asset.Pointer, Asset.Size, &Error); if(Result != 0)
 //     {
 //         RR_ABORT("Error opening EXR file: %s", Error);
 //         // FreeEXRErrorMessage(Error);
@@ -463,8 +499,8 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
 //     EXRImage Image;
 //     InitEXRImage(&Image);
 //
-//     Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char *)Asset.Pointer, Asset.Size, &Error);
-//     if(Result != 0)
+//     Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char
+//     *)Asset.Pointer, Asset.Size, &Error); if(Result != 0)
 //     {
 //         RR_ABORT("Error opening EXR file: %s", Error);
 //         // FreeEXRHeader(&Header);
@@ -482,8 +518,8 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
 //     {
 //         float *Current = (float *)Image.images[0] + Index;
 //         float ZReciprocal = 1.0f / *Current;
-//         float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
-//         Depth = (Depth + 1.0f) / 2.0f;
+//         float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f *
+//         FTimesNear) / (FarMinusNear)); Depth = (Depth + 1.0f) / 2.0f;
 //         if(Depth > 1.0f)
 //         {
 //             Depth = 1.0f;
@@ -536,6 +572,7 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
 
 Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_App *App, Rr_Image *Image)
 {
-    size_t AllocatedImageIndex = App->Renderer.CurrentFrameIndex % Image->AllocatedImageCount;
+    size_t AllocatedImageIndex =
+        App->Renderer.CurrentFrameIndex % Image->AllocatedImageCount;
     return &Image->AllocatedImages[AllocatedImageIndex];
 }

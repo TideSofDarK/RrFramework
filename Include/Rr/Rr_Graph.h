@@ -81,9 +81,13 @@ typedef enum Rr_PresentMode
     RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
 
-extern Rr_GraphBufferHandle Rr_RegisterGraphBuffer(Rr_App *App, struct Rr_Buffer *Buffer);
+extern Rr_GraphBufferHandle Rr_RegisterGraphBuffer(
+    Rr_App *App,
+    struct Rr_Buffer *Buffer);
 
-extern Rr_GraphImageHandle Rr_RegisterGraphImage(Rr_App *App, struct Rr_Image *Image);
+extern Rr_GraphImageHandle Rr_RegisterGraphImage(
+    Rr_App *App,
+    struct Rr_Image *Image);
 
 extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
@@ -92,9 +96,16 @@ extern Rr_GraphNode *Rr_AddPresentNode(
     struct Rr_Sampler *Sampler,
     Rr_PresentMode Mode);
 
-extern Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name, Rr_GraphBufferHandle *DstBufferHandle);
+extern Rr_GraphNode *Rr_AddTransferNode(
+    Rr_App *App,
+    const char *Name,
+    Rr_GraphBufferHandle *DstBufferHandle);
 
-extern void Rr_TransferBufferData(Rr_App *App, Rr_GraphNode *Node, Rr_Data Data, size_t DstOffset);
+extern void Rr_TransferBufferData(
+    Rr_App *App,
+    Rr_GraphNode *Node,
+    Rr_Data Data,
+    size_t DstOffset);
 
 extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_App *App,
@@ -122,7 +133,11 @@ extern void Rr_DrawIndexed(
     int32_t VertexOffset,
     uint32_t FirstInstance);
 
-extern void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_GraphBufferHandle *BufferHandle, uint32_t Slot, uint32_t Offset);
+extern void Rr_BindVertexBuffer(
+    Rr_GraphNode *Node,
+    Rr_GraphBufferHandle *BufferHandle,
+    uint32_t Slot,
+    uint32_t Offset);
 
 extern void Rr_BindIndexBuffer(
     Rr_GraphNode *Node,
@@ -131,7 +146,9 @@ extern void Rr_BindIndexBuffer(
     uint32_t Offset,
     Rr_IndexType Type);
 
-extern void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline);
+extern void Rr_BindGraphicsPipeline(
+    Rr_GraphNode *Node,
+    Rr_GraphicsPipeline *GraphicsPipeline);
 
 extern void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect);
 

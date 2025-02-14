@@ -110,7 +110,9 @@ static inline VkExtent2D Rr_ToExtent2D(VkExtent3D *Extent)
 
 static inline VkExtent3D Rr_ToVulkanExtent3D(Rr_IntVec3 *Extent)
 {
-    return (VkExtent3D){ .width = Extent->Width, .height = Extent->Height, .depth = Extent->Depth };
+    return (VkExtent3D){ .width = Extent->Width,
+                         .height = Extent->Height,
+                         .depth = Extent->Depth };
 }
 
 static inline VkStencilOp Rr_GetVulkanStencilOp(Rr_StencilOp StencilOp)
@@ -138,7 +140,8 @@ static inline VkStencilOp Rr_GetVulkanStencilOp(Rr_StencilOp StencilOp)
     }
 }
 
-static inline VkShaderStageFlags Rr_GetVulkanShaderStageFlags(Rr_ShaderStage ShaderStage)
+static inline VkShaderStageFlags Rr_GetVulkanShaderStageFlags(
+    Rr_ShaderStage ShaderStage)
 {
     VkShaderStageFlags ShaderStageFlags = 0;
     if((ShaderStage & RR_SHADER_STAGE_VERTEX_BIT) != 0)
@@ -177,7 +180,9 @@ static inline VkCompareOp Rr_GetVulkanCompareOp(Rr_CompareOp CompareOp)
     }
 }
 
-static inline VkStencilOpState Rr_GetVulkanStencilOpState(Rr_StencilOpState State, Rr_DepthStencil *DepthStencil)
+static inline VkStencilOpState Rr_GetVulkanStencilOpState(
+    Rr_StencilOpState State,
+    Rr_DepthStencil *DepthStencil)
 {
     return (VkStencilOpState){
         .compareOp = Rr_GetVulkanCompareOp(State.CompareOp),
@@ -355,7 +360,8 @@ static inline VkBorderColor Rr_GetVulkanBorderColor(Rr_BorderColor BorderColor)
     }
 }
 
-static inline VkSamplerAddressMode Rr_GetVulkanSamplerAddressMode(Rr_SamplerAddressMode SamplerAddressMode)
+static inline VkSamplerAddressMode Rr_GetVulkanSamplerAddressMode(
+    Rr_SamplerAddressMode SamplerAddressMode)
 {
     switch(SamplerAddressMode)
     {
@@ -372,7 +378,8 @@ static inline VkSamplerAddressMode Rr_GetVulkanSamplerAddressMode(Rr_SamplerAddr
     }
 }
 
-static inline VkSamplerMipmapMode Rr_GetVulkanSamplerMipmapMode(Rr_SamplerMipmapMode SamplerMipmapMode)
+static inline VkSamplerMipmapMode Rr_GetVulkanSamplerMipmapMode(
+    Rr_SamplerMipmapMode SamplerMipmapMode)
 {
     switch(SamplerMipmapMode)
     {

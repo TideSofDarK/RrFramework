@@ -56,4 +56,6 @@ extern void Rr_UploadBuffer(
     Rr_SyncState DstState,
     Rr_Data Data);
 
-extern Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_App *App, Rr_Buffer *Buffer);
+extern Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(
+    Rr_App *App,
+    Rr_Buffer *Buffer);

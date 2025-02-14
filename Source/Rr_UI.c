@@ -67,7 +67,8 @@ static Rr_UI *GUI;
 
 static float Rr_GetWindowTitleHeight(void)
 {
-    return GUI->Style.TitlePadding * GUI->FontSize + GUI->Font->LineHeight * GUI->FontSize;
+    return GUI->Style.TitlePadding * GUI->FontSize +
+           GUI->Font->LineHeight * GUI->FontSize;
 }
 
 void Rr_BeginWindow(const char *Title)
@@ -92,8 +93,11 @@ void Rr_BeginWindow(const char *Title)
 
     RR_ZERO(GUI->Window->Size);
 
-    GUI->Cursor.X = GUI->Window->Position.X + GUI->Style.ContentsPadding * GUI->FontSize;
-    GUI->Cursor.Y = GUI->Window->Position.Y + GUI->Style.ContentsPadding * GUI->FontSize + Rr_GetWindowTitleHeight();
+    GUI->Cursor.X =
+        GUI->Window->Position.X + GUI->Style.ContentsPadding * GUI->FontSize;
+    GUI->Cursor.Y = GUI->Window->Position.Y +
+                    GUI->Style.ContentsPadding * GUI->FontSize +
+                    Rr_GetWindowTitleHeight();
 }
 
 void Rr_EndWindow(void)
@@ -110,7 +114,8 @@ static Rr_UIWidget *Rr_PushWidget(Rr_UIWindow *Window, Rr_UIWidgetType Type)
     }
     else
     {
-        Window->CurrentWidget->Next = RR_ALLOC(GUI->FrameArena, sizeof(Rr_UIWidget));
+        Window->CurrentWidget->Next =
+            RR_ALLOC(GUI->FrameArena, sizeof(Rr_UIWidget));
         Window->CurrentWidget = Window->CurrentWidget->Next;
     }
 
@@ -129,7 +134,8 @@ void Rr_Label(const char *Text)
     Rr_UIWidget *Widget = Rr_PushWidget(GUI->Window, RR_UI_WIDGET_TYPE_LABEL);
     Rr_UILabel *Label = (Rr_UILabel *)&Widget->Union.Label;
     Label->Text = Rr_CreateString(Text, 0, GUI->FrameArena);
-    Rr_Vec2 Size = Rr_CalculateTextSize(GUI->Font, GUI->Font->DefaultSize, &Label->Text);
+    Rr_Vec2 Size =
+        Rr_CalculateTextSize(GUI->Font, GUI->Font->DefaultSize, &Label->Text);
 
     Widget->Position = GUI->Cursor;
     GUI->Cursor = Rr_AddV2(GUI->Cursor, Size);

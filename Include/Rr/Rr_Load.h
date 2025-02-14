@@ -64,9 +64,15 @@ extern Rr_LoadContext *Rr_LoadAsync(
     Rr_LoadCallback LoadCallback,
     void *Userdata);
 
-extern Rr_LoadResult Rr_LoadImmediate(Rr_App *App, size_t TaskCount, Rr_LoadTask *Tasks);
+extern Rr_LoadResult Rr_LoadImmediate(
+    Rr_App *App,
+    size_t TaskCount,
+    Rr_LoadTask *Tasks);
 
-extern void Rr_GetLoadProgress(Rr_LoadContext *LoadContext, uint32_t *OutCurrent, uint32_t *OutTotal);
+extern void Rr_GetLoadProgress(
+    Rr_LoadContext *LoadContext,
+    uint32_t *OutCurrent,
+    uint32_t *OutTotal);
 
 #ifdef __cplusplus
 }

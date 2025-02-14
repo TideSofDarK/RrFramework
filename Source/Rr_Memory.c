@@ -147,7 +147,11 @@ Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
     return (Rr_Scratch){ 0 };
 }
 
-void *Rr_AllocArenaNoZero(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
+void *Rr_AllocArenaNoZero(
+    Rr_Arena *Arena,
+    size_t Size,
+    size_t Align,
+    size_t Count)
 {
     size_t TotalSize = Size * Count;
     uintptr_t PositionAligned = RR_ALIGN_POW2(Arena->Position, Align);
@@ -180,7 +184,10 @@ void *Rr_AllocArenaNoZero(Rr_Arena *Arena, size_t Size, size_t Align, size_t Cou
 
 void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
 {
-    return memset(Rr_AllocArenaNoZero(Arena, Size, Align, Count), 0, Size * Count);
+    return memset(
+        Rr_AllocArenaNoZero(Arena, Size, Align, Count),
+        0,
+        Size * Count);
 }
 
 void Rr_PopArena(Rr_Arena *Arena, size_t Amount)
@@ -256,7 +263,9 @@ void **Rr_UpsertMap(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
             {
                 return &(*Map)->Value;
             }
-            Map = &(*Map)->Child[Hash >> 62]; /* @TODO: Assumes 64 bit pointers! */
+            Map =
+                &(*Map)
+                     ->Child[Hash >> 62]; /* @TODO: Assumes 64 bit pointers! */
         }
     }
     if(Arena == NULL)

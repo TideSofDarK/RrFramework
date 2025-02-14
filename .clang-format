@@ -51,7 +51,7 @@ Cpp11BracedListStyle: false
 # # clang-format version 13.0+:
 # #SortIncludes: Never
 
-ColumnLimit: 120
+ColumnLimit: 80
 
 InsertTrailingCommas: Wrapped
 InsertBraces: true

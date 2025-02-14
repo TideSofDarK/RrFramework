@@ -64,11 +64,18 @@ extern VkDescriptorSet Rr_AllocateDescriptorSet(
     VkDevice Device,
     VkDescriptorSetLayout Layout);
 
-extern void Rr_ResetDescriptorAllocator(Rr_DescriptorAllocator *DescriptorAllocator, VkDevice Device);
+extern void Rr_ResetDescriptorAllocator(
+    Rr_DescriptorAllocator *DescriptorAllocator,
+    VkDevice Device);
 
-extern void Rr_DestroyDescriptorAllocator(Rr_DescriptorAllocator *DescriptorAllocator, VkDevice Device);
+extern void Rr_DestroyDescriptorAllocator(
+    Rr_DescriptorAllocator *DescriptorAllocator,
+    VkDevice Device);
 
-extern Rr_DescriptorWriter Rr_CreateDescriptorWriter(size_t Images, size_t Buffers, struct Rr_Arena *Arena);
+extern Rr_DescriptorWriter Rr_CreateDescriptorWriter(
+    size_t Images,
+    size_t Buffers,
+    struct Rr_Arena *Arena);
 
 extern void Rr_WriteImageDescriptor(
     Rr_DescriptorWriter *Writer,
@@ -100,7 +107,10 @@ extern void Rr_WriteBufferDescriptor(
 
 extern void Rr_ResetDescriptorWriter(Rr_DescriptorWriter *Writer);
 
-extern void Rr_UpdateDescriptorSet(Rr_DescriptorWriter *Writer, VkDevice Device, VkDescriptorSet Set);
+extern void Rr_UpdateDescriptorSet(
+    Rr_DescriptorWriter *Writer,
+    VkDevice Device,
+    VkDescriptorSet Set);
 
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 struct Rr_DescriptorLayoutBuilder
@@ -124,7 +134,9 @@ extern void Rr_AddDescriptorArray(
 
 extern void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder *Builder);
 
-extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(Rr_DescriptorLayoutBuilder *Builder, VkDevice Device);
+extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(
+    Rr_DescriptorLayoutBuilder *Builder,
+    VkDevice Device);
 
 /* */
 

@@ -5,13 +5,16 @@
 
 #include <assert.h>
 
-static VkRenderPass Rr_GetCompatibleRenderPass(Rr_App *App, Rr_PipelineInfo *Info)
+static VkRenderPass Rr_GetCompatibleRenderPass(
+    Rr_App *App,
+    Rr_PipelineInfo *Info)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     bool HasDepth = Info->DepthStencil.EnableDepthWrite;
     size_t AttachmentCount = Info->ColorTargetCount + (HasDepth ? 1 : 0);
-    Rr_Attachment *Attachments = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+    Rr_Attachment *Attachments =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
 
     for(uint32_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {
@@ -37,13 +40,17 @@ static VkRenderPass Rr_GetCompatibleRenderPass(Rr_App *App, Rr_PipelineInfo *Inf
     return RenderPass;
 }
 
-Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Info)
+Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
+    Rr_App *App,
+    Rr_PipelineInfo *Info)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_GraphicsPipeline *Pipeline = RR_GET_FREE_LIST_ITEM(&App->Renderer.GraphicsPipelines, App->PermanentArena);
+    Rr_GraphicsPipeline *Pipeline = RR_GET_FREE_LIST_ITEM(
+        &App->Renderer.GraphicsPipelines,
+        App->PermanentArena);
     Pipeline->Layout = Info->Layout;
 
     RR_SLICE(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
@@ -57,15 +64,20 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
             .pCode = (uint32_t *)Info->VertexShaderSPV.Pointer,
             .codeSize = Info->VertexShaderSPV.Size,
         };
-        vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &VertModule);
+        vkCreateShaderModule(
+            Renderer->Device,
+            &ShaderModuleCreateInfo,
+            NULL,
+            &VertModule);
 
-        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) = (VkPipelineShaderStageCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext = NULL,
-            .pName = "main",
-            .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = VertModule,
-        };
+        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) =
+            (VkPipelineShaderStageCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .pNext = NULL,
+                .pName = "main",
+                .stage = VK_SHADER_STAGE_VERTEX_BIT,
+                .module = VertModule,
+            };
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
@@ -77,52 +89,68 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
             .pCode = (uint32_t *)Info->FragmentShaderSPV.Pointer,
             .codeSize = Info->FragmentShaderSPV.Size,
         };
-        vkCreateShaderModule(Renderer->Device, &ShaderModuleCreateInfo, NULL, &FragModule);
-        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) = (VkPipelineShaderStageCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext = NULL,
-            .pName = "main",
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = FragModule,
-        };
+        vkCreateShaderModule(
+            Renderer->Device,
+            &ShaderModuleCreateInfo,
+            NULL,
+            &FragModule);
+        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) =
+            (VkPipelineShaderStageCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .pNext = NULL,
+                .pName = "main",
+                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .module = FragModule,
+            };
     }
 
     RR_SLICE(VkVertexInputBindingDescription) BindingDescriptions = { 0 };
     RR_SLICE(VkVertexInputAttributeDescription) AttributeDescriptions = { 0 };
-    for(size_t BindingIndex = 0; BindingIndex < Info->VertexInputBindingCount; ++BindingIndex)
+    for(size_t BindingIndex = 0; BindingIndex < Info->VertexInputBindingCount;
+        ++BindingIndex)
     {
-        Rr_VertexInputBinding *VertexInputBinding = Info->VertexInputBindings + BindingIndex;
+        Rr_VertexInputBinding *VertexInputBinding =
+            Info->VertexInputBindings + BindingIndex;
 
         RR_RESERVE_SLICE(
             &AttributeDescriptions,
             AttributeDescriptions.Count + VertexInputBinding->AttributeCount,
             Scratch.Arena);
 
-        for(size_t Index = 0; Index < VertexInputBinding->AttributeCount; ++Index)
+        for(size_t Index = 0; Index < VertexInputBinding->AttributeCount;
+            ++Index)
         {
-            Rr_VertexInputAttribute *Attribute = VertexInputBinding->Attributes + Index;
+            Rr_VertexInputAttribute *Attribute =
+                VertexInputBinding->Attributes + Index;
 
             VkVertexInputAttributeDescription *AttributeDescription =
                 RR_PUSH_SLICE(&AttributeDescriptions, Scratch.Arena);
             AttributeDescription->location = Attribute->Location;
-            AttributeDescription->format = Rr_GetVulkanFormat(Attribute->Format);
+            AttributeDescription->format =
+                Rr_GetVulkanFormat(Attribute->Format);
             AttributeDescription->binding = BindingIndex;
             VkVertexInputBindingDescription *BindingDescription = NULL;
-            for(size_t BindingIndex = 0; BindingIndex < BindingDescriptions.Count; ++BindingIndex)
+            for(size_t BindingIndex = 0;
+                BindingIndex < BindingDescriptions.Count;
+                ++BindingIndex)
             {
-                if(BindingDescriptions.Data[BindingIndex].binding == BindingIndex)
+                if(BindingDescriptions.Data[BindingIndex].binding ==
+                   BindingIndex)
                 {
-                    BindingDescription = BindingDescriptions.Data + BindingIndex;
+                    BindingDescription =
+                        BindingDescriptions.Data + BindingIndex;
                     break;
                 }
             }
             if(BindingDescription == NULL)
             {
-                BindingDescription = RR_PUSH_SLICE(&BindingDescriptions, Scratch.Arena);
+                BindingDescription =
+                    RR_PUSH_SLICE(&BindingDescriptions, Scratch.Arena);
                 BindingDescription->binding = BindingIndex;
-                BindingDescription->inputRate = VertexInputBinding->Rate == RR_VERTEX_INPUT_RATE_INSTANCE
-                                                    ? VK_VERTEX_INPUT_RATE_INSTANCE
-                                                    : VK_VERTEX_INPUT_RATE_VERTEX;
+                BindingDescription->inputRate =
+                    VertexInputBinding->Rate == RR_VERTEX_INPUT_RATE_INSTANCE
+                        ? VK_VERTEX_INPUT_RATE_INSTANCE
+                        : VK_VERTEX_INPUT_RATE_VERTEX;
             }
             size_t Size = Rr_GetFormatSize(Attribute->Format);
             AttributeDescription->offset = BindingDescription->stride;
@@ -170,7 +198,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         .lineWidth = 1.0f,
     };
 
-    VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT,
+                                       VK_DYNAMIC_STATE_SCISSOR };
     VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .pNext = NULL,
@@ -192,7 +221,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
     RR_RESERVE_SLICE(&ColorAttachments, Info->ColorTargetCount, Scratch.Arena);
     for(size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {
-        VkPipelineColorBlendAttachmentState *Attachment = RR_PUSH_SLICE(&ColorAttachments, Scratch.Arena);
+        VkPipelineColorBlendAttachmentState *Attachment =
+            RR_PUSH_SLICE(&ColorAttachments, Scratch.Arena);
         Rr_ColorTargetInfo *ColorTargetInfo = Info->ColorTargets + Index;
         Rr_ColorTargetBlend *Blend = &ColorTargetInfo->Blend;
 
@@ -202,11 +232,15 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
             ColorWriteMask = RR_COLOR_COMPONENT_ALL;
         }
         Attachment->blendEnable = Blend->BlendEnable;
-        Attachment->srcColorBlendFactor = Rr_GetVulkanBlendFactor(Blend->SrcColorBlendFactor);
-        Attachment->dstColorBlendFactor = Rr_GetVulkanBlendFactor(Blend->DstColorBlendFactor);
+        Attachment->srcColorBlendFactor =
+            Rr_GetVulkanBlendFactor(Blend->SrcColorBlendFactor);
+        Attachment->dstColorBlendFactor =
+            Rr_GetVulkanBlendFactor(Blend->DstColorBlendFactor);
         Attachment->colorBlendOp = Rr_GetVulkanBlendOp(Blend->ColorBlendOp);
-        Attachment->srcAlphaBlendFactor = Rr_GetVulkanBlendFactor(Blend->SrcAlphaBlendFactor);
-        Attachment->dstAlphaBlendFactor = Rr_GetVulkanBlendFactor(Blend->DstAlphaBlendFactor);
+        Attachment->srcAlphaBlendFactor =
+            Rr_GetVulkanBlendFactor(Blend->SrcAlphaBlendFactor);
+        Attachment->dstAlphaBlendFactor =
+            Rr_GetVulkanBlendFactor(Blend->DstAlphaBlendFactor);
         Attachment->alphaBlendOp = Rr_GetVulkanBlendOp(Blend->AlphaBlendOp);
         Attachment->colorWriteMask = ColorWriteMask;
     }
@@ -230,8 +264,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         .depthWriteEnable = Info->DepthStencil.EnableDepthWrite,
         .depthCompareOp = Rr_GetVulkanCompareOp(Info->DepthStencil.CompareOp),
         .stencilTestEnable = Info->DepthStencil.EnableStencilTest,
-        .front = Rr_GetVulkanStencilOpState(Info->DepthStencil.FrontStencilState, &Info->DepthStencil),
-        .back = Rr_GetVulkanStencilOpState(Info->DepthStencil.BackStencilState, &Info->DepthStencil),
+        .front = Rr_GetVulkanStencilOpState(
+            Info->DepthStencil.FrontStencilState,
+            &Info->DepthStencil),
+        .back = Rr_GetVulkanStencilOpState(
+            Info->DepthStencil.BackStencilState,
+            &Info->DepthStencil),
     };
 
     VkGraphicsPipelineCreateInfo PipelineInfo = {
@@ -251,7 +289,13 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
         .renderPass = Rr_GetCompatibleRenderPass(App, Info),
     };
 
-    vkCreateGraphicsPipelines(Renderer->Device, VK_NULL_HANDLE, 1, &PipelineInfo, NULL, &Pipeline->Handle);
+    vkCreateGraphicsPipelines(
+        Renderer->Device,
+        VK_NULL_HANDLE,
+        1,
+        &PipelineInfo,
+        NULL,
+        &Pipeline->Handle);
 
     if(VertModule != VK_NULL_HANDLE)
     {
@@ -268,20 +312,29 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(Rr_App *App, Rr_PipelineInfo *Inf
     return Pipeline;
 }
 
-void Rr_DestroyGraphicsPipeline(Rr_App *App, Rr_GraphicsPipeline *GraphicsPipeline)
+void Rr_DestroyGraphicsPipeline(
+    Rr_App *App,
+    Rr_GraphicsPipeline *GraphicsPipeline)
 {
     vkDestroyPipeline(App->Renderer.Device, GraphicsPipeline->Handle, NULL);
 
-    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.GraphicsPipelines, GraphicsPipeline);
+    RR_RETURN_FREE_LIST_ITEM(
+        &App->Renderer.GraphicsPipelines,
+        GraphicsPipeline);
 }
 
-Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, size_t SetCount, Rr_PipelineBindingSet *Sets)
+Rr_PipelineLayout *Rr_CreatePipelineLayout(
+    Rr_App *App,
+    size_t SetCount,
+    Rr_PipelineBindingSet *Sets)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
 
-    Rr_PipelineLayout *PipelineLayout = RR_GET_FREE_LIST_ITEM(&App->Renderer.PipelineLayouts, App->PermanentArena);
+    Rr_PipelineLayout *PipelineLayout = RR_GET_FREE_LIST_ITEM(
+        &App->Renderer.PipelineLayouts,
+        App->PermanentArena);
 
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
 
@@ -289,7 +342,8 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, size_t SetCount, Rr_Pipe
     {
         Rr_PipelineBindingSet *Set = Sets + Index;
 
-        for(size_t BindingIndex = 0; BindingIndex < Set->BindingCount; ++BindingIndex)
+        for(size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
+            ++BindingIndex)
         {
             Rr_PipelineBinding *Binding = Set->Bindings + BindingIndex;
 
@@ -297,7 +351,11 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, size_t SetCount, Rr_Pipe
 
             if(Binding->Count == 1)
             {
-                Rr_AddDescriptor(&DescriptorLayoutBuilder, Binding->Slot, Binding->Type, Set->Stages);
+                Rr_AddDescriptor(
+                    &DescriptorLayoutBuilder,
+                    Binding->Slot,
+                    Binding->Type,
+                    Set->Stages);
             }
             else
             {
@@ -310,8 +368,9 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, size_t SetCount, Rr_Pipe
             }
         }
 
-        PipelineLayout->DescriptorSetLayouts[Index] =
-            Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, Renderer->Device);
+        PipelineLayout->DescriptorSetLayouts[Index] = Rr_BuildDescriptorLayout(
+            &DescriptorLayoutBuilder,
+            Renderer->Device);
         Rr_ClearDescriptors(&DescriptorLayoutBuilder);
     }
 
@@ -324,7 +383,11 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(Rr_App *App, size_t SetCount, Rr_Pipe
         .pPushConstantRanges = NULL,
     };
 
-    vkCreatePipelineLayout(Renderer->Device, &PipelineLayoutCreateInfo, NULL, &PipelineLayout->Handle);
+    vkCreatePipelineLayout(
+        Renderer->Device,
+        &PipelineLayoutCreateInfo,
+        NULL,
+        &PipelineLayout->Handle);
 
     Rr_DestroyScratch(Scratch);
 
@@ -339,7 +402,10 @@ void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout)
     {
         if(PipelineLayout->DescriptorSetLayouts[Index] != VK_NULL_HANDLE)
         {
-            vkDestroyDescriptorSetLayout(App->Renderer.Device, PipelineLayout->DescriptorSetLayouts[Index], NULL);
+            vkDestroyDescriptorSetLayout(
+                App->Renderer.Device,
+                PipelineLayout->DescriptorSetLayouts[Index],
+                NULL);
         }
     }
 

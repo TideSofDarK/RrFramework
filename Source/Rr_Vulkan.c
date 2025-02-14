@@ -16,7 +16,11 @@ static bool Rr_CheckPhysicalDevice(
     Rr_Arena *Arena)
 {
     uint32_t ExtensionCount;
-    vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, NULL);
+    vkEnumerateDeviceExtensionProperties(
+        PhysicalDevice,
+        NULL,
+        &ExtensionCount,
+        NULL);
     if(ExtensionCount == 0)
     {
         return false;
@@ -28,20 +32,30 @@ static bool Rr_CheckPhysicalDevice(
 
     bool FoundExtensions[] = { 0 };
 
-    VkExtensionProperties *Extensions = RR_ALLOC_TYPE_COUNT(Arena, VkExtensionProperties, ExtensionCount);
-    vkEnumerateDeviceExtensionProperties(PhysicalDevice, NULL, &ExtensionCount, Extensions);
+    VkExtensionProperties *Extensions =
+        RR_ALLOC_TYPE_COUNT(Arena, VkExtensionProperties, ExtensionCount);
+    vkEnumerateDeviceExtensionProperties(
+        PhysicalDevice,
+        NULL,
+        &ExtensionCount,
+        Extensions);
 
     for(uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
-        for(uint32_t TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
+        for(uint32_t TargetIndex = 0;
+            TargetIndex < SDL_arraysize(TargetExtensions);
+            ++TargetIndex)
         {
-            if(strcmp(Extensions[Index].extensionName, TargetExtensions[TargetIndex]) == 0)
+            if(strcmp(
+                   Extensions[Index].extensionName,
+                   TargetExtensions[TargetIndex]) == 0)
             {
                 FoundExtensions[TargetIndex] = true;
             }
         }
     }
-    for(uint32_t TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions); ++TargetIndex)
+    for(uint32_t TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions);
+        ++TargetIndex)
     {
         if(!FoundExtensions[TargetIndex])
         {
@@ -50,7 +64,10 @@ static bool Rr_CheckPhysicalDevice(
     }
 
     uint32_t QueueFamilyCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, NULL);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        PhysicalDevice,
+        &QueueFamilyCount,
+        NULL);
     if(QueueFamilyCount == 0)
     {
         return false;
@@ -58,17 +75,26 @@ static bool Rr_CheckPhysicalDevice(
 
     VkQueueFamilyProperties *QueueFamilyProperties =
         RR_ALLOC_TYPE_COUNT(Arena, VkQueueFamilyProperties, QueueFamilyCount);
-    VkBool32 *QueuePresentSupport = RR_ALLOC_TYPE_COUNT(Arena, VkBool32, QueueFamilyCount);
+    VkBool32 *QueuePresentSupport =
+        RR_ALLOC_TYPE_COUNT(Arena, VkBool32, QueueFamilyCount);
 
-    vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &QueueFamilyCount, QueueFamilyProperties);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        PhysicalDevice,
+        &QueueFamilyCount,
+        QueueFamilyProperties);
 
     uint32_t GraphicsQueueFamilyIndex = ~0U;
     uint32_t TransferQueueFamilyIndex = ~0U;
 
     for(uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
     {
-        vkGetPhysicalDeviceSurfaceSupportKHR(PhysicalDevice, Index, Surface, &QueuePresentSupport[Index]);
-        if(QueuePresentSupport[Index] && QueueFamilyProperties[Index].queueCount > 0 &&
+        vkGetPhysicalDeviceSurfaceSupportKHR(
+            PhysicalDevice,
+            Index,
+            Surface,
+            &QueuePresentSupport[Index]);
+        if(QueuePresentSupport[Index] &&
+           QueueFamilyProperties[Index].queueCount > 0 &&
            (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
         {
             GraphicsQueueFamilyIndex = Index;
@@ -93,7 +119,8 @@ static bool Rr_CheckPhysicalDevice(
             }
 
             if(QueueFamilyProperties[Index].queueCount > 0 &&
-               (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_TRANSFER_BIT))
+               (QueueFamilyProperties[Index].queueFlags &
+                VK_QUEUE_TRANSFER_BIT))
             {
                 TransferQueueFamilyIndex = Index;
                 break;
@@ -102,8 +129,9 @@ static bool Rr_CheckPhysicalDevice(
     }
 
     *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
-    *OutTransferQueueFamilyIndex =
-        TransferQueueFamilyIndex == ~0U ? GraphicsQueueFamilyIndex : TransferQueueFamilyIndex;
+    *OutTransferQueueFamilyIndex = TransferQueueFamilyIndex == ~0U
+                                       ? GraphicsQueueFamilyIndex
+                                       : TransferQueueFamilyIndex;
 
     return true;
 }
@@ -122,8 +150,12 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
         RR_LOG("No device with Vulkan support found");
     }
 
-    VkPhysicalDevice *PhysicalDevices = RR_ALLOC_TYPE_COUNT(Arena, VkPhysicalDevice, PhysicalDeviceCount);
-    vkEnumeratePhysicalDevices(Instance, &PhysicalDeviceCount, &PhysicalDevices[0]);
+    VkPhysicalDevice *PhysicalDevices =
+        RR_ALLOC_TYPE_COUNT(Arena, VkPhysicalDevice, PhysicalDeviceCount);
+    vkEnumeratePhysicalDevices(
+        Instance,
+        &PhysicalDeviceCount,
+        &PhysicalDevices[0]);
 
     RR_LOG("Selecting Vulkan device:");
 
@@ -131,7 +163,8 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     RR_SLICE(Rr_DeviceString) DeviceStrings = { 0 };
     uint32_t BestDeviceIndex = UINT32_MAX;
     static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-    // static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+    // static const int PreferredDeviceType =
+    // VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
     int BestDeviceType = 0;
     VkDeviceSize BestDeviceMemory = 0;
     for(uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
@@ -152,10 +185,14 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
             vkGetPhysicalDeviceProperties2(PhysicalDeviceHandle, &Properties);
 
             VkPhysicalDeviceMemoryProperties MemoryProperties = { 0 };
-            vkGetPhysicalDeviceMemoryProperties(PhysicalDeviceHandle, &MemoryProperties);
+            vkGetPhysicalDeviceMemoryProperties(
+                PhysicalDeviceHandle,
+                &MemoryProperties);
 
             VkDeviceSize Memory = 0;
-            for(uint32_t MemoryHeapIndex = 0; MemoryHeapIndex < MemoryProperties.memoryHeapCount; ++MemoryHeapIndex)
+            for(uint32_t MemoryHeapIndex = 0;
+                MemoryHeapIndex < MemoryProperties.memoryHeapCount;
+                ++MemoryHeapIndex)
             {
                 Memory += MemoryProperties.memoryHeaps[MemoryHeapIndex].size;
             }
@@ -217,7 +254,8 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     }
     if(BestDeviceIndex == UINT32_MAX)
     {
-        RR_LOG("Could not select physical device based on the chosen properties!");
+        RR_LOG(
+            "Could not select physical device based on the chosen properties!");
     }
 
     char *Mark;
@@ -235,7 +273,8 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
         RR_LOG("%s", DeviceStrings.Data[Index]);
     }
 
-    bool UseTransferQueue = *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
+    bool UseTransferQueue =
+        *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
     Rr_PhysicalDevice PhysicalDevice = {
         .SubgroupProperties =
@@ -250,11 +289,19 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
         .Handle = PhysicalDevices[BestDeviceIndex],
     };
 
-    vkGetPhysicalDeviceFeatures(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.Features);
-    vkGetPhysicalDeviceMemoryProperties(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.MemoryProperties);
-    vkGetPhysicalDeviceProperties2(PhysicalDevices[BestDeviceIndex], &PhysicalDevice.Properties);
+    vkGetPhysicalDeviceFeatures(
+        PhysicalDevices[BestDeviceIndex],
+        &PhysicalDevice.Features);
+    vkGetPhysicalDeviceMemoryProperties(
+        PhysicalDevices[BestDeviceIndex],
+        &PhysicalDevice.MemoryProperties);
+    vkGetPhysicalDeviceProperties2(
+        PhysicalDevices[BestDeviceIndex],
+        &PhysicalDevice.Properties);
 
-    RR_LOG("Using %s transfer queue.", UseTransferQueue ? "dedicated" : "unified");
+    RR_LOG(
+        "Using %s transfer queue.",
+        UseTransferQueue ? "dedicated" : "unified");
 
     return PhysicalDevice;
 }
@@ -267,20 +314,23 @@ void Rr_InitDeviceAndQueues(
     VkQueue *OutGraphicsQueue,
     VkQueue *OutTransferQueue)
 {
-    bool UseTransferQueue = GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
+    bool UseTransferQueue =
+        GraphicsQueueFamilyIndex != TransferQueueFamilyIndex;
     float QueuePriorities[] = { 1.0f };
-    VkDeviceQueueCreateInfo QueueInfos[] = { {
-                                                 .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                                                 .queueFamilyIndex = GraphicsQueueFamilyIndex,
-                                                 .queueCount = 1,
-                                                 .pQueuePriorities = QueuePriorities,
-                                             },
-                                             {
-                                                 .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                                                 .queueFamilyIndex = TransferQueueFamilyIndex,
-                                                 .queueCount = 1,
-                                                 .pQueuePriorities = QueuePriorities,
-                                             } };
+    VkDeviceQueueCreateInfo QueueInfos[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = GraphicsQueueFamilyIndex,
+            .queueCount = 1,
+            .pQueuePriorities = QueuePriorities,
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = TransferQueueFamilyIndex,
+            .queueCount = 1,
+            .pQueuePriorities = QueuePriorities,
+        }
+    };
 
     const char *DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
@@ -298,7 +348,11 @@ void Rr_InitDeviceAndQueues(
     vkGetDeviceQueue(*OutDevice, GraphicsQueueFamilyIndex, 0, OutGraphicsQueue);
     if(UseTransferQueue)
     {
-        vkGetDeviceQueue(*OutDevice, TransferQueueFamilyIndex, 0, OutTransferQueue);
+        vkGetDeviceQueue(
+            *OutDevice,
+            TransferQueueFamilyIndex,
+            0,
+            OutTransferQueue);
     }
 }
 

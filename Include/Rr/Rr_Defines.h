@@ -81,8 +81,9 @@ struct Rr_Data
 
 /* Alignment */
 
-#define RR_SAFE_ALIGNMENT             16
-#define RR_ALIGN_POW2(Num, Alignment) (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
+#define RR_SAFE_ALIGNMENT 16
+#define RR_ALIGN_POW2(Num, Alignment) \
+    (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 
 /* Renderer Configuration */
 

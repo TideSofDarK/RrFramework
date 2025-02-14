@@ -74,7 +74,8 @@ struct Rr_TextPushConstants
 typedef struct Rr_TextPipeline Rr_TextPipeline;
 struct Rr_TextPipeline
 {
-    VkDescriptorSetLayout DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT];
+    VkDescriptorSetLayout
+        DescriptorSetLayouts[RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT];
     struct Rr_Pipeline *Pipeline;
     VkPipelineLayout Layout;
     struct Rr_Buffer *QuadBuffer;

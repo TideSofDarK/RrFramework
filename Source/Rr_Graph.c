@@ -10,21 +10,32 @@
 
 #include <assert.h>
 
-static VkAccessFlags AllVulkanWrites = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
-                                       VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+static VkAccessFlags AllVulkanWrites =
+    VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+    VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT |
+    VK_ACCESS_MEMORY_WRITE_BIT;
 
-static Rr_AllocatedBuffer *Rr_GetGraphBuffer(Rr_App *App, Rr_Graph *Graph, Rr_GraphBufferHandle Handle)
+static Rr_AllocatedBuffer *Rr_GetGraphBuffer(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_GraphBufferHandle Handle)
 {
     return Graph->Resources.Data[Handle.Values.Index].Allocated;
 }
 
-static Rr_AllocatedImage *Rr_GetGraphImage(Rr_App *App, Rr_Graph *Graph, Rr_GraphImageHandle Handle)
+static Rr_AllocatedImage *Rr_GetGraphImage(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_GraphImageHandle Handle)
 {
     return Graph->Resources.Data[Handle.Values.Index].Allocated;
 }
 
-Rr_GraphNode *Rr_AddGraphNode(Rr_Frame *Frame, Rr_GraphNodeType Type, const char *Name)
+Rr_GraphNode *Rr_AddGraphNode(
+    Rr_Frame *Frame,
+    Rr_GraphNodeType Type,
+    const char *Name)
 {
     Rr_GraphNode *GraphNode = RR_ALLOC(Frame->Arena, sizeof(Rr_GraphNode));
     GraphNode->Type = Type;
@@ -39,7 +50,10 @@ Rr_GraphNode *Rr_AddGraphNode(Rr_Frame *Frame, Rr_GraphNodeType Type, const char
     return GraphNode;
 }
 
-static inline void Rr_AddNodeDependency(Rr_GraphNode *Node, Rr_GraphResourceHandle *Handle, Rr_SyncState *State)
+static inline void Rr_AddNodeDependency(
+    Rr_GraphNode *Node,
+    Rr_GraphResourceHandle *Handle,
+    Rr_SyncState *State)
 {
     for(size_t Index = 0; Index < Node->Dependencies.Count; ++Index)
     {
@@ -59,15 +73,18 @@ static inline void Rr_AddNodeDependency(Rr_GraphNode *Node, Rr_GraphResourceHand
         .Handle = *Handle,
     };
 
-    Rr_GraphNode **NodeInMap = RR_UPSERT(&Graph->ResourceWriteToNode, Handle->Hash, Arena);
+    Rr_GraphNode **NodeInMap =
+        RR_UPSERT(&Graph->ResourceWriteToNode, Handle->Hash, Arena);
 
     /* Treat any image read as a write for now due to layout transitions. */
 
-    if(State->Specific.Layout != VK_IMAGE_LAYOUT_UNDEFINED || RR_HAS_BIT(State->AccessMask, AllVulkanWrites))
+    if(State->Specific.Layout != VK_IMAGE_LAYOUT_UNDEFINED ||
+       RR_HAS_BIT(State->AccessMask, AllVulkanWrites))
     {
         if(*NodeInMap == NULL)
         {
-            size_t NewCapacity = RR_MAX(Handle->Values.Index + 1, Graph->RootNodes.Capacity);
+            size_t NewCapacity =
+                RR_MAX(Handle->Values.Index + 1, Graph->RootNodes.Capacity);
             RR_RESERVE_SLICE(&Graph->RootNodes, NewCapacity, Arena);
             Graph->RootNodes.Count = NewCapacity;
             Graph->RootNodes.Data[Handle->Values.Index] = Node;
@@ -83,22 +100,30 @@ static inline void Rr_AddNodeDependency(Rr_GraphNode *Node, Rr_GraphResourceHand
     }
 }
 
-static void Rr_CreateGraphAdjacencyList(Rr_Graph *Graph, Rr_IndexSlice *AdjacencyList, Rr_Arena *Arena)
+static void Rr_CreateGraphAdjacencyList(
+    Rr_Graph *Graph,
+    Rr_IndexSlice *AdjacencyList,
+    Rr_Arena *Arena)
 {
     for(size_t Index = 0; Index < Graph->Nodes.Count; ++Index)
     {
         Rr_GraphNode *Node = Graph->Nodes.Data[Index];
 
-        for(size_t DepIndex = 0; DepIndex < Node->Dependencies.Count; ++DepIndex)
+        for(size_t DepIndex = 0; DepIndex < Node->Dependencies.Count;
+            ++DepIndex)
         {
             Rr_NodeDependency *Dependency = Node->Dependencies.Data + DepIndex;
 
             /* Artifical "read-before-write" dependency. */
 
-            Rr_GraphNode *Writer = RR_UPSERT_DEREF(&Graph->ResourceWriteToNode, Dependency->Handle.Hash, Arena);
+            Rr_GraphNode *Writer = RR_UPSERT_DEREF(
+                &Graph->ResourceWriteToNode,
+                Dependency->Handle.Hash,
+                Arena);
             if(Writer != NULL && Writer != Node)
             {
-                *RR_PUSH_SLICE(&AdjacencyList[Writer->OriginalIndex], Arena) = Node->OriginalIndex;
+                *RR_PUSH_SLICE(&AdjacencyList[Writer->OriginalIndex], Arena) =
+                    Node->OriginalIndex;
             }
 
             /* If Generation is greater than zero
@@ -110,10 +135,14 @@ static void Rr_CreateGraphAdjacencyList(Rr_Graph *Graph, Rr_IndexSlice *Adjacenc
             {
                 Rr_GraphResourceHandle Handle = Dependency->Handle;
                 Handle.Values.Generation--;
-                Rr_GraphNode *Producer = RR_UPSERT_DEREF(&Graph->ResourceWriteToNode, Handle.Hash, Arena);
+                Rr_GraphNode *Producer = RR_UPSERT_DEREF(
+                    &Graph->ResourceWriteToNode,
+                    Handle.Hash,
+                    Arena);
                 if(Producer != NULL)
                 {
-                    *RR_PUSH_SLICE(&AdjacencyList[Index], Arena) = Producer->OriginalIndex;
+                    *RR_PUSH_SLICE(&AdjacencyList[Index], Arena) =
+                        Producer->OriginalIndex;
                 }
                 else
                 {
@@ -150,7 +179,12 @@ static void Rr_SortGraph(
     Rr_IndexSlice *Dependencies = &AdjacencyList[CurrentNodeIndex];
     for(size_t Index = 0; Index < Dependencies->Count; ++Index)
     {
-        Rr_SortGraph(Dependencies->Data[Index], AdjacencyList, State, Nodes, Out);
+        Rr_SortGraph(
+            Dependencies->Data[Index],
+            AdjacencyList,
+            State,
+            Nodes,
+            Out);
     }
 
     *RR_PUSH_SLICE(Out, NULL) = Nodes[CurrentNodeIndex];
@@ -158,7 +192,10 @@ static void Rr_SortGraph(
     State[CurrentNodeIndex] &= ~OnStackBit;
 }
 
-static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_NodeSlice *SortedNodes, Rr_Arena *Arena)
+static void Rr_ProcessGraphNodes(
+    Rr_Graph *Graph,
+    Rr_NodeSlice *SortedNodes,
+    Rr_Arena *Arena)
 {
     if(Graph->Nodes.Count == 0)
     {
@@ -172,7 +209,8 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_NodeSlice *SortedNodes, Rr_
     /* Adjacency list maps a node to a set of nodes that must
      * be executed before it. */
 
-    Rr_IndexSlice *AdjacencyList = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_IndexSlice, Graph->Nodes.Count);
+    Rr_IndexSlice *AdjacencyList =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_IndexSlice, Graph->Nodes.Count);
     Rr_CreateGraphAdjacencyList(Graph, AdjacencyList, Scratch.Arena);
 
     /* Topological sort. */
@@ -183,14 +221,20 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_NodeSlice *SortedNodes, Rr_
         Rr_GraphNode *Node = Graph->Nodes.Data[Index];
         if(Node != NULL)
         {
-            Rr_SortGraph(Node->OriginalIndex, AdjacencyList, SortState, Graph->Nodes.Data, SortedNodes);
+            Rr_SortGraph(
+                Node->OriginalIndex,
+                AdjacencyList,
+                SortState,
+                Graph->Nodes.Data,
+                SortedNodes);
         }
     }
 
     /* Longest path search will determine dependency level for each node.
      * Nodes within same dependency level are meant to be batched together. */
 
-    Rr_GraphNode **Reversed = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_GraphNode *, SortedNodes->Count);
+    Rr_GraphNode **Reversed =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_GraphNode *, SortedNodes->Count);
     for(size_t Index = 0; Index < SortedNodes->Count; ++Index)
     {
         Reversed[Index] = SortedNodes->Data[SortedNodes->Count - 1 - Index];
@@ -200,7 +244,8 @@ static void Rr_ProcessGraphNodes(Rr_Graph *Graph, Rr_NodeSlice *SortedNodes, Rr_
     {
         Rr_GraphNode *Node = Reversed[Index];
         size_t OriginalIndex = Node->OriginalIndex;
-        for(size_t DepIndex = 0; DepIndex < AdjacencyList[OriginalIndex].Count; ++DepIndex)
+        for(size_t DepIndex = 0; DepIndex < AdjacencyList[OriginalIndex].Count;
+            ++DepIndex)
         {
             size_t DepNodeIndex = AdjacencyList[OriginalIndex].Data[DepIndex];
             Graph->Nodes.Data[DepNodeIndex]->DependencyLevel = RR_MAX(
@@ -253,11 +298,16 @@ void Rr_ExecuteGraphNode(
     }
 }
 
-static void Rr_ApplyBarrierBatch(Rr_App *App, Rr_BarrierBatch *Barrier, VkCommandBuffer CommandBuffer, Rr_Arena *Arena)
+static void Rr_ApplyBarrierBatch(
+    Rr_App *App,
+    Rr_BarrierBatch *Barrier,
+    VkCommandBuffer CommandBuffer,
+    Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    size_t MaxPossibleBarriers = Barrier->BufferBarriers.Count + Barrier->ImageBarriers.Count;
+    size_t MaxPossibleBarriers =
+        Barrier->BufferBarriers.Count + Barrier->ImageBarriers.Count;
 
     if(MaxPossibleBarriers == 0)
     {
@@ -265,25 +315,40 @@ static void Rr_ApplyBarrierBatch(Rr_App *App, Rr_BarrierBatch *Barrier, VkComman
     }
 
     const VkPipelineStageFlags AllEarlyStages =
-        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 
     VkPipelineStageFlags SrcStageMaskEarly = 0;
     VkPipelineStageFlags DstStageMaskEarly = 0;
     RR_SLICE(VkBufferMemoryBarrier) BufferBarriersEarly = { 0 };
-    RR_RESERVE_SLICE(&BufferBarriersEarly, Barrier->BufferBarriers.Count, Scratch.Arena);
+    RR_RESERVE_SLICE(
+        &BufferBarriersEarly,
+        Barrier->BufferBarriers.Count,
+        Scratch.Arena);
     RR_SLICE(VkImageMemoryBarrier) ImageBarriersEarly = { 0 };
-    RR_RESERVE_SLICE(&ImageBarriersEarly, Barrier->ImageBarriers.Count, Scratch.Arena);
+    RR_RESERVE_SLICE(
+        &ImageBarriersEarly,
+        Barrier->ImageBarriers.Count,
+        Scratch.Arena);
 
     VkPipelineStageFlags SrcStageMask = 0;
     VkPipelineStageFlags DstStageMask = 0;
     RR_SLICE(VkBufferMemoryBarrier) BufferBarriers = { 0 };
-    RR_RESERVE_SLICE(&BufferBarriers, Barrier->BufferBarriers.Count, Scratch.Arena);
+    RR_RESERVE_SLICE(
+        &BufferBarriers,
+        Barrier->BufferBarriers.Count,
+        Scratch.Arena);
     RR_SLICE(VkImageMemoryBarrier) ImageBarriers = { 0 };
-    RR_RESERVE_SLICE(&ImageBarriers, Barrier->ImageBarriers.Count, Scratch.Arena);
+    RR_RESERVE_SLICE(
+        &ImageBarriers,
+        Barrier->ImageBarriers.Count,
+        Scratch.Arena);
 
     for(size_t Index = 0; Index < Barrier->BufferBarriers.Count; ++Index)
     {
-        Rr_BufferMemoryBarrier *BufferBarrier = Barrier->BufferBarriers.Data + Index;
+        Rr_BufferMemoryBarrier *BufferBarrier =
+            Barrier->BufferBarriers.Data + Index;
 
         RR_SLICE(VkBufferMemoryBarrier) * BarriersSlice;
         if(BufferBarrier->DstStageMask <= AllEarlyStages)
@@ -308,7 +373,8 @@ static void Rr_ApplyBarrierBatch(Rr_App *App, Rr_BarrierBatch *Barrier, VkComman
             .size = VK_WHOLE_SIZE,
         };
 
-        Rr_SyncState *BufferState = Rr_GetSynchronizationState(App, BufferBarrier->Buffer);
+        Rr_SyncState *BufferState =
+            Rr_GetSynchronizationState(App, BufferBarrier->Buffer);
         *BufferState = (Rr_SyncState){
             .StageMask = BufferBarrier->DstStageMask,
             .AccessMask = BufferBarrier->DstAccessMask,
@@ -317,7 +383,8 @@ static void Rr_ApplyBarrierBatch(Rr_App *App, Rr_BarrierBatch *Barrier, VkComman
 
     for(size_t Index = 0; Index < Barrier->ImageBarriers.Count; ++Index)
     {
-        Rr_ImageMemoryBarrier *ImageBarrier = Barrier->ImageBarriers.Data + Index;
+        Rr_ImageMemoryBarrier *ImageBarrier =
+            Barrier->ImageBarriers.Data + Index;
 
         RR_SLICE(VkImageMemoryBarrier) * BarriersSlice;
         if(ImageBarrier->DstStageMask <= AllEarlyStages)
@@ -343,7 +410,8 @@ static void Rr_ApplyBarrierBatch(Rr_App *App, Rr_BarrierBatch *Barrier, VkComman
             .subresourceRange = ImageBarrier->SubresourceRange,
         };
 
-        Rr_SyncState *ImageState = Rr_GetSynchronizationState(App, ImageBarrier->Image);
+        Rr_SyncState *ImageState =
+            Rr_GetSynchronizationState(App, ImageBarrier->Image);
 
         *ImageState = (Rr_SyncState){
             .StageMask = ImageBarrier->DstStageMask,
@@ -407,11 +475,13 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         Rr_GraphResource *Resource = Graph->Resources.Data + Index;
         if(Resource->IsImage)
         {
-            Resource->Allocated = Rr_GetCurrentAllocatedImage(App, Resource->Container);
+            Resource->Allocated =
+                Rr_GetCurrentAllocatedImage(App, Resource->Container);
         }
         else
         {
-            Resource->Allocated = Rr_GetCurrentAllocatedBuffer(App, Resource->Container);
+            Resource->Allocated =
+                Rr_GetCurrentAllocatedBuffer(App, Resource->Container);
         }
     }
 
@@ -427,7 +497,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         Rr_GraphNode *Node = SortedNodes.Data[Index];
         DependencyLevel = Node->DependencyLevel;
 
-        for(size_t DepIndex = 0; DepIndex < Node->Dependencies.Count; ++DepIndex)
+        for(size_t DepIndex = 0; DepIndex < Node->Dependencies.Count;
+            ++DepIndex)
         {
             Rr_NodeDependency *Dependency = Node->Dependencies.Data + DepIndex;
             Rr_SyncState *State = &Dependency->State;
@@ -436,20 +507,27 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             {
                 /* Image Synchronization */
 
-                Rr_AllocatedImage *AllocatedImage = Rr_GetGraphImage(App, Graph, Dependency->Handle);
+                Rr_AllocatedImage *AllocatedImage =
+                    Rr_GetGraphImage(App, Graph, Dependency->Handle);
                 VkImage Image = AllocatedImage->Handle;
 
-                Rr_SyncState *PrevState = Rr_GetSynchronizationState(App, Image);
+                Rr_SyncState *PrevState =
+                    Rr_GetSynchronizationState(App, Image);
 
-                /* If reading again, just make sure the memory is "available" to this
-                 * memory domain AND the image is in the same layout. */
+                /* If reading again, just make sure the memory is "available" to
+                 * this memory domain AND the image is in the same layout. */
 
-                bool IsReadingNow = RR_HAS_BIT(State->AccessMask, AllVulkanWrites) == 0;
-                bool WasReadingBefore = RR_HAS_BIT(PrevState->AccessMask, AllVulkanWrites) == 0;
-                bool IsSameLayout = State->Specific.Layout == PrevState->Specific.Layout;
+                bool IsReadingNow =
+                    RR_HAS_BIT(State->AccessMask, AllVulkanWrites) == 0;
+                bool WasReadingBefore =
+                    RR_HAS_BIT(PrevState->AccessMask, AllVulkanWrites) == 0;
+                bool IsSameLayout =
+                    State->Specific.Layout == PrevState->Specific.Layout;
                 if(IsReadingNow && WasReadingBefore && IsSameLayout)
                 {
-                    bool IncludesPreviousAccessMask = (PrevState->AccessMask & State->AccessMask) == State->AccessMask;
+                    bool IncludesPreviousAccessMask =
+                        (PrevState->AccessMask & State->AccessMask) ==
+                        State->AccessMask;
                     if(IncludesPreviousAccessMask)
                     {
                         /* Skip this barrier! */
@@ -458,16 +536,21 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                     }
                 }
 
-                Rr_ImageMemoryBarrier **ImageBarrierRef =
-                    RR_UPSERT(&BarrierBatch.VulkanHandleToBarrier, Image, Scratch.Arena);
+                Rr_ImageMemoryBarrier **ImageBarrierRef = RR_UPSERT(
+                    &BarrierBatch.VulkanHandleToBarrier,
+                    Image,
+                    Scratch.Arena);
                 Rr_ImageMemoryBarrier *ImageBarrier = *ImageBarrierRef;
                 if(ImageBarrier == NULL)
                 {
-                    *ImageBarrierRef = RR_PUSH_SLICE(&BarrierBatch.ImageBarriers, Scratch.Arena);
+                    *ImageBarrierRef = RR_PUSH_SLICE(
+                        &BarrierBatch.ImageBarriers,
+                        Scratch.Arena);
                     ImageBarrier = *ImageBarrierRef;
                     *ImageBarrier = (Rr_ImageMemoryBarrier){
-                        .SrcStageMask =
-                            PrevState->StageMask != 0 ? PrevState->StageMask : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        .SrcStageMask = PrevState->StageMask != 0
+                                            ? PrevState->StageMask
+                                            : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                         .DstStageMask = State->StageMask,
                         .Image = Image,
                         .SrcAccessMask = PrevState->AccessMask,
@@ -476,7 +559,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                         .NewLayout = State->Specific.Layout,
                         .SubresourceRange =
                             (VkImageSubresourceRange){
-                                .aspectMask = AllocatedImage->Container->AspectFlags,
+                                .aspectMask =
+                                    AllocatedImage->Container->AspectFlags,
                                 .baseMipLevel = 0,
                                 .levelCount = VK_REMAINING_MIP_LEVELS,
                                 .baseArrayLayer = 0,
@@ -493,19 +577,25 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             {
                 /* Buffer Synchronization */
 
-                Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetGraphBuffer(App, Graph, Dependency->Handle);
+                Rr_AllocatedBuffer *AllocatedBuffer =
+                    Rr_GetGraphBuffer(App, Graph, Dependency->Handle);
                 VkBuffer Buffer = AllocatedBuffer->Handle;
 
-                Rr_SyncState *PrevState = Rr_GetSynchronizationState(App, Buffer);
+                Rr_SyncState *PrevState =
+                    Rr_GetSynchronizationState(App, Buffer);
 
-                /* If reading again, just make sure the memory is "available" to this
-                 * memory domain. */
+                /* If reading again, just make sure the memory is "available" to
+                 * this memory domain. */
 
-                bool IsReadingNow = RR_HAS_BIT(State->AccessMask, AllVulkanWrites) == 0;
-                bool WasReadingBefore = RR_HAS_BIT(PrevState->AccessMask, AllVulkanWrites) == 0;
+                bool IsReadingNow =
+                    RR_HAS_BIT(State->AccessMask, AllVulkanWrites) == 0;
+                bool WasReadingBefore =
+                    RR_HAS_BIT(PrevState->AccessMask, AllVulkanWrites) == 0;
                 if(IsReadingNow && WasReadingBefore)
                 {
-                    bool IncludesPreviousAccessMask = (PrevState->AccessMask & State->AccessMask) == State->AccessMask;
+                    bool IncludesPreviousAccessMask =
+                        (PrevState->AccessMask & State->AccessMask) ==
+                        State->AccessMask;
                     if(IncludesPreviousAccessMask)
                     {
                         /* Skip this barrier! */
@@ -514,16 +604,21 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                     }
                 }
 
-                Rr_BufferMemoryBarrier **BufferBarrierRef =
-                    RR_UPSERT(&BarrierBatch.VulkanHandleToBarrier, Buffer, Scratch.Arena);
+                Rr_BufferMemoryBarrier **BufferBarrierRef = RR_UPSERT(
+                    &BarrierBatch.VulkanHandleToBarrier,
+                    Buffer,
+                    Scratch.Arena);
                 Rr_BufferMemoryBarrier *BufferBarrier = *BufferBarrierRef;
                 if(BufferBarrier == NULL)
                 {
-                    *BufferBarrierRef = RR_PUSH_SLICE(&BarrierBatch.BufferBarriers, Scratch.Arena);
+                    *BufferBarrierRef = RR_PUSH_SLICE(
+                        &BarrierBatch.BufferBarriers,
+                        Scratch.Arena);
                     BufferBarrier = *BufferBarrierRef;
                     *BufferBarrier = (Rr_BufferMemoryBarrier){
-                        .SrcStageMask =
-                            PrevState->StageMask != 0 ? PrevState->StageMask : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        .SrcStageMask = PrevState->StageMask != 0
+                                            ? PrevState->StageMask
+                                            : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                         .DstStageMask = State->StageMask,
                         .Buffer = Buffer,
                         .SrcAccessMask = PrevState->AccessMask,
@@ -548,7 +643,8 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         bool LastNodeThisLevel = false;
         if(Index + 1 < SortedNodes.Count)
         {
-            LastNodeThisLevel = SortedNodes.Data[Index + 1]->DependencyLevel != DependencyLevel;
+            LastNodeThisLevel =
+                SortedNodes.Data[Index + 1]->DependencyLevel != DependencyLevel;
         }
         else
         {
@@ -558,9 +654,15 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         {
             /* Execute current batch now! */
 
-            Rr_ApplyBarrierBatch(App, &BarrierBatch, Frame->MainCommandBuffer, Scratch.Arena);
+            Rr_ApplyBarrierBatch(
+                App,
+                &BarrierBatch,
+                Frame->MainCommandBuffer,
+                Scratch.Arena);
 
-            for(size_t NodeIndex = BatchStartIndex; NodeIndex < BatchStartIndex + BatchSize; ++NodeIndex)
+            for(size_t NodeIndex = BatchStartIndex;
+                NodeIndex < BatchStartIndex + BatchSize;
+                ++NodeIndex)
             {
                 Rr_ExecuteGraphNode(
                     App,
@@ -615,21 +717,24 @@ Rr_GraphNode *Rr_AddPresentNode(
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_PRESENT, Name);
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_PRESENT, Name);
 
     Rr_PresentNode *PresentNode = &GraphNode->Union.Present;
     PresentNode->Mode = Mode;
     PresentNode->ImageHandle = *ImageHandle;
     PresentNode->Sampler = Sampler;
 
-    /*Rr_GraphImageHandle SwapchainImageHandle = Rr_RegisterGraphImage(App, Rr_GetSwapchainImage(App));*/
+    /*Rr_GraphImageHandle SwapchainImageHandle = Rr_RegisterGraphImage(App,
+     * Rr_GetSwapchainImage(App));*/
     /**/
     /*Rr_AddNodeDependency(*/
     /*    GraphNode,*/
     /*    &SwapchainImageHandle,*/
     /*    &(Rr_GenericSync){*/
     /*        .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,*/
-    /*        .AccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,*/
+    /*        .AccessMask = VK_ACCESS_SHADER_WRITE_BIT |
+     * VK_ACCESS_SHADER_READ_BIT,*/
     /*        .Specific.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,*/
     /*    });*/
 
@@ -645,14 +750,18 @@ Rr_GraphNode *Rr_AddPresentNode(
     return GraphNode;
 }
 
-void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer CommandBuffer)
+void Rr_ExecutePresentNode(
+    Rr_App *App,
+    Rr_PresentNode *Node,
+    VkCommandBuffer CommandBuffer)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_AllocatedImage *Image = Rr_GetGraphImage(App, ((Rr_GraphNode *)Node)->Graph, Node->ImageHandle);
+    Rr_AllocatedImage *Image =
+        Rr_GetGraphImage(App, ((Rr_GraphNode *)Node)->Graph, Node->ImageHandle);
     Rr_Image *Container = Image->Container;
 
     VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
@@ -672,7 +781,8 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
         Scratch.Arena);
     Rr_UpdateDescriptorSet(&Writer, Renderer->Device, DescriptorSet);
 
-    VkImage SwapchainImage = Rr_GetCurrentAllocatedImage(App, &Frame->VirtualSwapchainImage)->Handle;
+    VkImage SwapchainImage =
+        Rr_GetCurrentAllocatedImage(App, &Frame->VirtualSwapchainImage)->Handle;
 
     vkCmdPipelineBarrier(
         CommandBuffer,
@@ -704,12 +814,17 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .framebuffer = Frame->SwapchainFramebuffer,
-        .renderArea = (VkRect2D){ { 0, 0 }, { Renderer->Swapchain.Extent.width, Renderer->Swapchain.Extent.height } },
+        .renderArea = (VkRect2D){ { 0, 0 },
+                                  { Renderer->Swapchain.Extent.width,
+                                    Renderer->Swapchain.Extent.height } },
         .renderPass = Renderer->PresentRenderPass,
         .clearValueCount = 1,
         .pClearValues = &ClearValue,
     };
-    vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(
+        CommandBuffer,
+        &RenderPassBeginInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
 
     float X = 0;
     float Y = 0;
@@ -773,7 +888,10 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
             .extent.height = Height,
         });
 
-    vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Renderer->PresentPipeline->Handle);
+    vkCmdBindPipeline(
+        CommandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        Renderer->PresentPipeline->Handle);
 
     vkCmdBindDescriptorSets(
         CommandBuffer,
@@ -818,12 +936,16 @@ void Rr_ExecutePresentNode(Rr_App *App, Rr_PresentNode *Node, VkCommandBuffer Co
     Rr_DestroyScratch(Scratch);
 }
 
-Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name, Rr_GraphBufferHandle *DstBufferHandle)
+Rr_GraphNode *Rr_AddTransferNode(
+    Rr_App *App,
+    const char *Name,
+    Rr_GraphBufferHandle *DstBufferHandle)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_TRANSFER, Name);
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_TRANSFER, Name);
 
     Rr_TransferNode *TransferNode = &GraphNode->Union.Transfer;
     TransferNode->DstBufferHandle = *DstBufferHandle;
@@ -842,13 +964,18 @@ Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name, Rr_GraphBufferHa
     return GraphNode;
 }
 
-void Rr_TransferBufferData(Rr_App *App, Rr_GraphNode *Node, Rr_Data Data, size_t DstOffset)
+void Rr_TransferBufferData(
+    Rr_App *App,
+    Rr_GraphNode *Node,
+    Rr_Data Data,
+    size_t DstOffset)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     Rr_TransferNode *TransferNode = &Node->Union.Transfer;
 
-    Rr_AllocatedBuffer *StagingBuffer = Rr_GetCurrentAllocatedBuffer(App, Frame->StagingBuffer.Buffer);
+    Rr_AllocatedBuffer *StagingBuffer =
+        Rr_GetCurrentAllocatedBuffer(App, Frame->StagingBuffer.Buffer);
 
     size_t SrcOffset = Frame->StagingBuffer.Offset;
 
@@ -857,7 +984,11 @@ void Rr_TransferBufferData(Rr_App *App, Rr_GraphNode *Node, Rr_Data Data, size_t
         RR_ABORT("Transfer: source buffer overflow!");
     }
 
-    memcpy((char *)StagingBuffer->AllocationInfo.pMappedData + Frame->StagingBuffer.Offset, Data.Pointer, Data.Size);
+    memcpy(
+        (char *)StagingBuffer->AllocationInfo.pMappedData +
+            Frame->StagingBuffer.Offset,
+        Data.Pointer,
+        Data.Size);
 
     Frame->StagingBuffer.Offset += Data.Size;
 
@@ -868,13 +999,19 @@ void Rr_TransferBufferData(Rr_App *App, Rr_GraphNode *Node, Rr_Data Data, size_t
     };
 }
 
-void Rr_ExecuteTransferNode(Rr_App *App, Rr_Graph *Graph, Rr_TransferNode *Node, VkCommandBuffer CommandBuffer)
+void Rr_ExecuteTransferNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_TransferNode *Node,
+    VkCommandBuffer CommandBuffer)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    VkBuffer SrcBuffer = Rr_GetCurrentAllocatedBuffer(App, Frame->StagingBuffer.Buffer)->Handle;
-    VkBuffer DstBuffer = Rr_GetGraphBuffer(App, Graph, Node->DstBufferHandle)->Handle;
+    VkBuffer SrcBuffer =
+        Rr_GetCurrentAllocatedBuffer(App, Frame->StagingBuffer.Buffer)->Handle;
+    VkBuffer DstBuffer =
+        Rr_GetGraphBuffer(App, Graph, Node->DstBufferHandle)->Handle;
 
     for(size_t Index = 0; Index < Node->Transfers.Count; ++Index)
     {
@@ -899,7 +1036,8 @@ Rr_GraphNode *Rr_AddBlitNode(
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BLIT, Name);
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BLIT, Name);
 
     Rr_BlitNode *BlitNode = &GraphNode->Union.Blit;
     *BlitNode = (Rr_BlitNode){
@@ -959,12 +1097,18 @@ static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
     return Rect->Width > 0 && Rect->Height > 0;
 }
 
-void Rr_ExecuteBlitNode(Rr_App *App, Rr_Graph *Graph, Rr_BlitNode *Node, VkCommandBuffer CommandBuffer)
+void Rr_ExecuteBlitNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_BlitNode *Node,
+    VkCommandBuffer CommandBuffer)
 {
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
 
-    Rr_AllocatedImage *SrcImage = Rr_GetGraphImage(App, &Frame->Graph, Node->SrcImageHandle);
-    Rr_AllocatedImage *DstImage = Rr_GetGraphImage(App, &Frame->Graph, Node->DstImageHandle);
+    Rr_AllocatedImage *SrcImage =
+        Rr_GetGraphImage(App, &Frame->Graph, Node->SrcImageHandle);
+    Rr_AllocatedImage *DstImage =
+        Rr_GetGraphImage(App, &Frame->Graph, Node->DstImageHandle);
 
     if(Rr_ClampBlitRect(&Node->SrcRect, &SrcImage->Container->Extent) &&
        Rr_ClampBlitRect(&Node->DstRect, &DstImage->Container->Extent))
@@ -1006,14 +1150,19 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_GRAPHICS, Name);
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_GRAPHICS, Name);
 
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.Graphics;
     if(ColorTargetCount > 0)
     {
         GraphicsNode->ColorTargetCount = ColorTargetCount;
-        GraphicsNode->ColorTargets = RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
-        GraphicsNode->ColorImages = RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_GraphImageHandle, ColorTargetCount);
+        GraphicsNode->ColorTargets =
+            RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
+        GraphicsNode->ColorImages = RR_ALLOC_TYPE_COUNT(
+            Frame->Arena,
+            Rr_GraphImageHandle,
+            ColorTargetCount);
 
         for(size_t Index = 0; Index < ColorTargetCount; ++Index)
         {
@@ -1052,17 +1201,23 @@ Rr_GraphNode *Rr_AddGraphicsNode(
             &(Rr_SyncState){
                 .StageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                 .AccessMask = AccessMask,
-                .Specific.Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                .Specific.Layout =
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             });
     }
 
-    GraphicsNode->Encoded = RR_ALLOC(Frame->Arena, sizeof(Rr_GraphicsNodeFunction));
+    GraphicsNode->Encoded =
+        RR_ALLOC(Frame->Arena, sizeof(Rr_GraphicsNodeFunction));
     GraphicsNode->EncodedFirst = GraphicsNode->Encoded;
 
     return GraphNode;
 }
 
-void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node, VkCommandBuffer CommandBuffer)
+void Rr_ExecuteGraphicsNode(
+    Rr_App *App,
+    Rr_Graph *Graph,
+    Rr_GraphicsNode *Node,
+    VkCommandBuffer CommandBuffer)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -1075,11 +1230,15 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
 
     /* Line up appropriate clear values. */
 
-    uint32_t AttachmentCount = Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
+    uint32_t AttachmentCount =
+        Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
-    VkImageView *ImageViews = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
-    Rr_Attachment *Attachments = RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
-    VkClearValue *ClearValues = RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
+    VkImageView *ImageViews =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
+    Rr_Attachment *Attachments =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+    VkClearValue *ClearValues =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
     for(uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
         Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
@@ -1089,11 +1248,16 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
             .LoadOp = ColorTarget->LoadOp,
             .StoreOp = ColorTarget->StoreOp,
         };
-        Rr_AllocatedImage *ColorImage = Rr_GetGraphImage(App, Graph, Node->ColorImages[Index]);
+        Rr_AllocatedImage *ColorImage =
+            Rr_GetGraphImage(App, Graph, Node->ColorImages[Index]);
         ImageViews[ColorTarget->Slot] = ColorImage->View;
 
-        Viewport.Width = RR_MIN(Viewport.Width, (int32_t)ColorImage->Container->Extent.width);
-        Viewport.Height = RR_MIN(Viewport.Height, (int32_t)ColorImage->Container->Extent.height);
+        Viewport.Width = RR_MIN(
+            Viewport.Width,
+            (int32_t)ColorImage->Container->Extent.width);
+        Viewport.Height = RR_MIN(
+            Viewport.Height,
+            (int32_t)ColorImage->Container->Extent.height);
     }
     if(Node->DepthTarget != NULL)
     {
@@ -1105,33 +1269,45 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
             .StoreOp = DepthTarget->StoreOp,
             .Depth = true,
         };
-        Rr_AllocatedImage *DepthImage = Rr_GetGraphImage(App, Graph, Node->DepthImage);
+        Rr_AllocatedImage *DepthImage =
+            Rr_GetGraphImage(App, Graph, Node->DepthImage);
         ImageViews[DepthTarget->Slot] = DepthImage->View;
 
-        Viewport.Width = RR_MIN(Viewport.Width, (int32_t)DepthImage->Container->Extent.width);
-        Viewport.Height = RR_MIN(Viewport.Height, (int32_t)DepthImage->Container->Extent.height);
+        Viewport.Width = RR_MIN(
+            Viewport.Width,
+            (int32_t)DepthImage->Container->Extent.width);
+        Viewport.Height = RR_MIN(
+            Viewport.Height,
+            (int32_t)DepthImage->Container->Extent.height);
     }
 
     /* Begin render pass. */
 
-    Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = AttachmentCount, .Attachments = Attachments };
+    Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = AttachmentCount,
+                                         .Attachments = Attachments };
     VkRenderPass RenderPass = Rr_GetRenderPass(App, &RenderPassInfo);
     VkFramebuffer Framebuffer = Rr_GetFramebufferViews(
         App,
         RenderPass,
         ImageViews,
         AttachmentCount,
-        (VkExtent3D){ .width = Viewport.Width, .height = Viewport.Height, .depth = 1 });
+        (VkExtent3D){ .width = Viewport.Width,
+                      .height = Viewport.Height,
+                      .depth = 1 });
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .framebuffer = Framebuffer,
-        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y }, { Viewport.Z, Viewport.W } },
+        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
+                                  { Viewport.Z, Viewport.W } },
         .renderPass = RenderPass,
         .clearValueCount = AttachmentCount,
         .pClearValues = ClearValues,
     };
-    vkCmdBeginRenderPass(CommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(
+        CommandBuffer,
+        &RenderPassBeginInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
 
     /* Set dynamic states. */
 
@@ -1162,7 +1338,9 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
     Rr_GraphicsPipeline *GraphicsPipeline = NULL;
     Rr_DescriptorsState DescriptorsState = { 0 };
 
-    for(Rr_GraphicsNodeFunction *Function = Node->EncodedFirst; Function != NULL; Function = Function->Next)
+    for(Rr_GraphicsNodeFunction *Function = Node->EncodedFirst;
+        Function != NULL;
+        Function = Function->Next)
     {
         switch(Function->Type)
         {
@@ -1209,7 +1387,10 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
             {
                 GraphicsPipeline = *(Rr_GraphicsPipeline **)Function->Args;
-                vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GraphicsPipeline->Handle);
+                vkCmdBindPipeline(
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    GraphicsPipeline->Handle);
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT:
@@ -1255,11 +1436,16 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
                         .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
                         .Buffer =
                             (Rr_DescriptorSetBufferBinding){
-                                .Handle = Rr_GetGraphBuffer(App, Graph, Args->BufferHandle)->Handle,
+                                .Handle = Rr_GetGraphBuffer(
+                                              App,
+                                              Graph,
+                                              Args->BufferHandle)
+                                              ->Handle,
                                 .Size = Args->Size,
                                 .Offset = Args->Offset,
                             },
-                        .DescriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                        .DescriptorType =
+                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
                     });
             }
             break;
@@ -1274,11 +1460,16 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
                         .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER,
                         .Image =
                             (Rr_DescriptorSetImageBinding){
-                                .View = Rr_GetGraphImage(App, Graph, Args->ImageHandle)->View,
+                                .View = Rr_GetGraphImage(
+                                            App,
+                                            Graph,
+                                            Args->ImageHandle)
+                                            ->View,
                                 .Sampler = Args->Sampler->Handle,
                                 .Layout = Args->Layout,
                             },
-                        .DescriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .DescriptorType =
+                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     });
             }
             break;
@@ -1294,13 +1485,14 @@ void Rr_ExecuteGraphicsNode(Rr_App *App, Rr_Graph *Graph, Rr_GraphicsNode *Node,
     Rr_DestroyScratch(Scratch);
 }
 
-#define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType)                             \
-    Rr_Arena *Arena = Node->Graph->Arena;                                           \
-    Rr_GraphicsNode *GraphicsNode = (Rr_GraphicsNode *)&Node->Union.Graphics;       \
-    GraphicsNode->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_GraphicsNodeFunction)); \
-    GraphicsNode->Encoded = GraphicsNode->Encoded->Next;                            \
-    GraphicsNode->Encoded->Type = FunctionType;                                     \
-    GraphicsNode->Encoded->Args = RR_ALLOC(Arena, sizeof(ArgsType));                \
+#define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType)                       \
+    Rr_Arena *Arena = Node->Graph->Arena;                                     \
+    Rr_GraphicsNode *GraphicsNode = (Rr_GraphicsNode *)&Node->Union.Graphics; \
+    GraphicsNode->Encoded->Next =                                             \
+        RR_ALLOC(Arena, sizeof(Rr_GraphicsNodeFunction));                     \
+    GraphicsNode->Encoded = GraphicsNode->Encoded->Next;                      \
+    GraphicsNode->Encoded->Type = FunctionType;                               \
+    GraphicsNode->Encoded->Args = RR_ALLOC(Arena, sizeof(ArgsType));          \
     *(ArgsType *)GraphicsNode->Encoded->Args
 
 void Rr_DrawIndexed(
@@ -1311,7 +1503,9 @@ void Rr_DrawIndexed(
     int32_t VertexOffset,
     uint32_t FirstInstance)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED, Rr_DrawIndexedArgs) = (Rr_DrawIndexedArgs){
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED,
+        Rr_DrawIndexedArgs) = (Rr_DrawIndexedArgs){
         .IndexCount = IndexCount,
         .InstanceCount = InstanceCount,
         .FirstIndex = FirstIndex,
@@ -1320,7 +1514,11 @@ void Rr_DrawIndexed(
     };
 }
 
-void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_GraphBufferHandle *BufferHandle, uint32_t Slot, uint32_t Offset)
+void Rr_BindVertexBuffer(
+    Rr_GraphNode *Node,
+    Rr_GraphBufferHandle *BufferHandle,
+    uint32_t Slot,
+    uint32_t Offset)
 {
     Rr_AddNodeDependency(
         Node,
@@ -1330,12 +1528,13 @@ void Rr_BindVertexBuffer(Rr_GraphNode *Node, Rr_GraphBufferHandle *BufferHandle,
             .StageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         });
 
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER, Rr_BindIndexBufferArgs) =
-        (Rr_BindIndexBufferArgs){
-            .BufferHandle = *BufferHandle,
-            .Slot = Slot,
-            .Offset = Offset,
-        };
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
+        Rr_BindIndexBufferArgs) = (Rr_BindIndexBufferArgs){
+        .BufferHandle = *BufferHandle,
+        .Slot = Slot,
+        .Offset = Offset,
+    };
 }
 
 void Rr_BindIndexBuffer(
@@ -1353,29 +1552,37 @@ void Rr_BindIndexBuffer(
             .StageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         });
 
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER, Rr_BindIndexBufferArgs) =
-        (Rr_BindIndexBufferArgs){
-            .BufferHandle = *BufferHandle,
-            .Slot = Slot,
-            .Offset = Offset,
-            .Type = Rr_GetVulkanIndexType(Type),
-        };
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
+        Rr_BindIndexBufferArgs) = (Rr_BindIndexBufferArgs){
+        .BufferHandle = *BufferHandle,
+        .Slot = Slot,
+        .Offset = Offset,
+        .Type = Rr_GetVulkanIndexType(Type),
+    };
 }
 
-void Rr_BindGraphicsPipeline(Rr_GraphNode *Node, Rr_GraphicsPipeline *GraphicsPipeline)
+void Rr_BindGraphicsPipeline(
+    Rr_GraphNode *Node,
+    Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE, Rr_GraphicsPipeline *) =
-        GraphicsPipeline;
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
+        Rr_GraphicsPipeline *) = GraphicsPipeline;
 }
 
 void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT, Rr_Vec4) = Rect;
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT,
+        Rr_Vec4) = Rect;
 }
 
 void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR, Rr_IntVec4) = Rect;
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR,
+        Rr_IntVec4) = Rect;
 }
 
 void Rr_BindGraphicsUniformBuffer(
@@ -1395,17 +1602,19 @@ void Rr_BindGraphicsUniformBuffer(
         BufferHandle,
         &(Rr_SyncState){
             .AccessMask = VK_ACCESS_UNIFORM_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         });
 
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER, Rr_BindUniformBufferArgs) =
-        (Rr_BindUniformBufferArgs){
-            .BufferHandle = *BufferHandle,
-            .Set = Set,
-            .Offset = Offset,
-            .Size = Size,
-            .Binding = Binding,
-        };
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
+        Rr_BindUniformBufferArgs) = (Rr_BindUniformBufferArgs){
+        .BufferHandle = *BufferHandle,
+        .Set = Set,
+        .Offset = Offset,
+        .Size = Size,
+        .Binding = Binding,
+    };
 }
 
 void Rr_BindCombinedImageSampler(
@@ -1427,7 +1636,8 @@ void Rr_BindCombinedImageSampler(
         ImageHandle,
         &(Rr_SyncState){
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             .Specific.Layout = Layout,
         });
 
