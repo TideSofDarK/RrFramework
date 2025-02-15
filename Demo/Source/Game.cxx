@@ -749,8 +749,8 @@ static void InitGLTF()
         RR_GLTF_ATTRIBUTE_TYPE_TANGENT,
     };
     Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
-        .AttributeCount = RR_ARRAY_COUNT(GLTFAttributes),
-        .Attributes = GLTFAttributes,
+        .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributes),
+        .AttributeTypes = GLTFAttributes,
     };
     GLTFContext = Rr_CreateGLTFContext(
         App,
@@ -940,7 +940,7 @@ static void TestGraphicsNode(
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
-        .ColorClear = ColorClear,
+        .Clear = ColorClear,
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
         App,

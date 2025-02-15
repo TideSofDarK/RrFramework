@@ -56,7 +56,7 @@ struct Rr_ColorTarget
     uint32_t Slot;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
-    Rr_ColorClear ColorClear;
+    Rr_ColorClear Clear;
 };
 
 typedef struct Rr_DepthClear Rr_DepthClear;
@@ -69,7 +69,6 @@ struct Rr_DepthClear
 typedef struct Rr_DepthTarget Rr_DepthTarget;
 struct Rr_DepthTarget
 {
-    uint32_t Slot;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
     Rr_DepthClear Clear;

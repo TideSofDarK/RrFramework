@@ -14,6 +14,7 @@ static Rr_LoadThread *LoadThread;
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
 static Rr_Image *ColorAttachment;
+static Rr_Image *DepthAttachment;
 static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
@@ -73,6 +74,9 @@ static void Init(Rr_App *App, void *UserData)
     PipelineInfo.VertexInputBindings = &VertexInputBinding;
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
+    PipelineInfo.DepthStencil.EnableDepthTest = true;
+    PipelineInfo.DepthStencil.EnableDepthWrite = true;
+    PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
 
     GraphicsPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
 
@@ -83,8 +87,8 @@ static void Init(Rr_App *App, void *UserData)
         RR_GLTF_ATTRIBUTE_TYPE_NORMAL,
     };
     Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
-        .AttributeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
-        .Attributes = GLTFAttributeTypes,
+        .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
+        .AttributeTypes = GLTFAttributeTypes,
     };
     GLTFContext = Rr_CreateGLTFContext(
         App,
@@ -117,6 +121,13 @@ static void Init(Rr_App *App, void *UserData)
             RR_IMAGE_USAGE_SAMPLED,
         false);
 
+    DepthAttachment = Rr_CreateImage(
+        App,
+        (Rr_IntVec3){ 320, 240, 1 },
+        RR_TEXTURE_FORMAT_D32_SFLOAT,
+        RR_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
+        false);
+
     /* Create uniform buffer. */
 
     UniformBuffer = Rr_CreateBuffer(
@@ -128,7 +139,8 @@ static void Init(Rr_App *App, void *UserData)
 
 static void DrawFirstGLTFPrimitive(
     Rr_App *App,
-    Rr_GraphImageHandle *ColorAttachmentHandle)
+    Rr_GraphImageHandle *ColorAttachmentHandle,
+    Rr_GraphImageHandle *DepthAttachmentHandle)
 {
     double Time = Rr_GetTimeSeconds(App);
 
@@ -158,7 +170,14 @@ static void DrawFirstGLTFPrimitive(
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
-        .ColorClear = (Rr_ColorClear){ .Float32 = { 0.1f, 0.1f, 0.1f, 1.0f } },
+        .Clear = (Rr_ColorClear){ .Float32 = { 0.1f, 0.1f, 0.1f, 1.0f } },
+    };
+    Rr_DepthTarget OffscreenDepth = {
+        .LoadOp = RR_LOAD_OP_CLEAR,
+        .StoreOp = RR_STORE_OP_STORE,
+        .Clear = {
+            .Depth = 1.0f,
+        },
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
         App,
@@ -166,8 +185,8 @@ static void DrawFirstGLTFPrimitive(
         1,
         &OffscreenTarget,
         &(Rr_GraphImageHandle *){ ColorAttachmentHandle },
-        NULL,
-        NULL);
+        &OffscreenDepth,
+        DepthAttachmentHandle);
 
     Rr_GraphBufferHandle GLTFBufferHandle =
         Rr_RegisterGraphBuffer(App, GLTFAsset->Buffer);
@@ -199,10 +218,12 @@ static void Iterate(Rr_App *App, void *UserData)
 {
     Rr_GraphImageHandle ColorAttachmentHandle =
         Rr_RegisterGraphImage(App, ColorAttachment);
+    Rr_GraphImageHandle DepthAttachmentHandle =
+        Rr_RegisterGraphImage(App, DepthAttachment);
 
     if(Loaded)
     {
-        DrawFirstGLTFPrimitive(App, &ColorAttachmentHandle);
+        DrawFirstGLTFPrimitive(App, &ColorAttachmentHandle, &DepthAttachmentHandle);
     }
 
     Rr_AddPresentNode(
@@ -217,6 +238,7 @@ static void Cleanup(Rr_App *App, void *UserData)
 {
     Rr_DestroyLoadThread(App, LoadThread);
     Rr_DestroyImage(App, ColorAttachment);
+    Rr_DestroyImage(App, DepthAttachment);
     Rr_DestroyBuffer(App, UniformBuffer);
     Rr_DestroyGLTFContext(App, GLTFContext);
     Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);

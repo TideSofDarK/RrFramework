@@ -80,7 +80,7 @@ static void Iterate(Rr_App *App, void *UserData)
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
-        .ColorClear = (Rr_ColorClear){ .Float32 = { 0.1f, 0.1f, 0.1f, 1.0f } },
+        .Clear = (Rr_ColorClear){ .Float32 = { 0.1f, 0.1f, 0.1f, 1.0f } },
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
         App,

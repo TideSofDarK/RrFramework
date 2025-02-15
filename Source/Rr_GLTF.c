@@ -116,7 +116,7 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
             GLTFVertexInputBindings + BindingIndex;
         assert(
             VertexInputBinding->AttributeCount ==
-            GLTFVertexInputBinding->AttributeCount);
+            GLTFVertexInputBinding->AttributeTypeCount);
         for(size_t AttributeIndex = 0;
             AttributeIndex < VertexInputBinding->AttributeCount;
             ++AttributeIndex)
@@ -124,7 +124,7 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
             Rr_VertexInputAttribute *Attribute =
                 VertexInputBinding->Attributes + AttributeIndex;
             Rr_GLTFAttributeType GLTFAttributeType =
-                GLTFVertexInputBinding->Attributes[AttributeIndex];
+                GLTFVertexInputBinding->AttributeTypes[AttributeIndex];
             assert(
                 Attribute->Format ==
                 Rr_GLTFAttributeTypeToFormat(GLTFAttributeType));
@@ -150,18 +150,18 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
             GLTFContext->VertexInputBindings + BindingIndex;
         RR_ALLOC_COPY(
             Arena,
-            GLTFVertexInputBinding->Attributes,
-            GLTFVertexInputBindings[BindingIndex].Attributes,
+            GLTFVertexInputBinding->AttributeTypes,
+            GLTFVertexInputBindings[BindingIndex].AttributeTypes,
             sizeof(Rr_GLTFAttributeType) *
-                GLTFVertexInputBindings[BindingIndex].AttributeCount);
+                GLTFVertexInputBindings[BindingIndex].AttributeTypeCount);
 
         for(size_t AttributeIndex = 0;
-            AttributeIndex < GLTFVertexInputBinding->AttributeCount;
+            AttributeIndex < GLTFVertexInputBinding->AttributeTypeCount;
             ++AttributeIndex)
         {
             GLTFContext->VertexInputStrides[BindingIndex] +=
                 Rr_GetGLTFAttributeSize(
-                    GLTFVertexInputBinding->Attributes[AttributeIndex]);
+                    GLTFVertexInputBinding->AttributeTypes[AttributeIndex]);
         }
     }
 
@@ -712,9 +712,9 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
         Rr_GLTFVertexInputBinding *Binding =
             Context->VertexInputBindings + BindingIndex;
         size_t Offset = 0;
-        for(size_t Index = 0; Index < Binding->AttributeCount; ++Index)
+        for(size_t Index = 0; Index < Binding->AttributeTypeCount; ++Index)
         {
-            Rr_GLTFAttributeType Type = Binding->Attributes[Index];
+            Rr_GLTFAttributeType Type = Binding->AttributeTypes[Index];
             if(Rr_GetCGLTFAttributeType(Type) == AttributeType)
             {
                 if(Found)

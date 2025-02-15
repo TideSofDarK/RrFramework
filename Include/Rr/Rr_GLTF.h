@@ -82,8 +82,8 @@ struct Rr_GLTFAsset
 typedef struct Rr_GLTFVertexInputBinding Rr_GLTFVertexInputBinding;
 struct Rr_GLTFVertexInputBinding
 {
-    size_t AttributeCount;
-    Rr_GLTFAttributeType *Attributes;
+    size_t AttributeTypeCount;
+    Rr_GLTFAttributeType *AttributeTypes;
 };
 
 extern Rr_GLTFContext *Rr_CreateGLTFContext(

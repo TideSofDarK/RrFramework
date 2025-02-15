@@ -1237,17 +1237,17 @@ void Rr_ExecuteGraphicsNode(
     uint32_t AttachmentCount =
         Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
-    VkImageView *ImageViews =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
     Rr_Attachment *Attachments =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+    VkImageView *ImageViews =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
     VkClearValue *ClearValues =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
     for(uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
         Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
         VkClearValue *ClearValue = &ClearValues[ColorTarget->Slot];
-        memcpy(ClearValue, &ColorTarget->ColorClear, sizeof(VkClearValue));
+        memcpy(ClearValue, &ColorTarget->Clear, sizeof(VkClearValue));
         Attachments[ColorTarget->Slot] = (Rr_Attachment){
             .LoadOp = ColorTarget->LoadOp,
             .StoreOp = ColorTarget->StoreOp,
@@ -1265,17 +1265,18 @@ void Rr_ExecuteGraphicsNode(
     }
     if(Node->DepthTarget != NULL)
     {
+        size_t DepthIndex = AttachmentCount - 1;
         Rr_DepthTarget *DepthTarget = Node->DepthTarget;
-        VkClearValue *ClearValue = &ClearValues[DepthTarget->Slot];
+        VkClearValue *ClearValue = &ClearValues[DepthIndex];
         memcpy(ClearValue, &DepthTarget->Clear, sizeof(VkClearValue));
-        Attachments[DepthTarget->Slot] = (Rr_Attachment){
+        Attachments[DepthIndex] = (Rr_Attachment){
             .LoadOp = DepthTarget->LoadOp,
             .StoreOp = DepthTarget->StoreOp,
             .Depth = true,
         };
         Rr_AllocatedImage *DepthImage =
             Rr_GetGraphImage(App, Graph, Node->DepthImage);
-        ImageViews[DepthTarget->Slot] = DepthImage->View;
+        ImageViews[DepthIndex] = DepthImage->View;
 
         Viewport.Width = RR_MIN(
             Viewport.Width,
@@ -1287,23 +1288,36 @@ void Rr_ExecuteGraphicsNode(
 
     /* Begin render pass. */
 
-    Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = AttachmentCount,
-                                         .Attachments = Attachments };
+    Rr_RenderPassInfo RenderPassInfo = {
+        .AttachmentCount = AttachmentCount,
+        .Attachments = Attachments,
+    };
     VkRenderPass RenderPass = Rr_GetRenderPass(App, &RenderPassInfo);
     VkFramebuffer Framebuffer = Rr_GetFramebufferViews(
         App,
         RenderPass,
         ImageViews,
         AttachmentCount,
-        (VkExtent3D){ .width = Viewport.Width,
-                      .height = Viewport.Height,
-                      .depth = 1 });
+        (VkExtent3D){
+            .width = Viewport.Width,
+            .height = Viewport.Height,
+            .depth = 1,
+        });
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .framebuffer = Framebuffer,
-        .renderArea = (VkRect2D){ { Viewport.X, Viewport.Y },
-                                  { Viewport.Z, Viewport.W } },
+        .renderArea =
+            (VkRect2D){
+                {
+                    Viewport.X,
+                    Viewport.Y,
+                },
+                {
+                    Viewport.Z,
+                    Viewport.W,
+                },
+            },
         .renderPass = RenderPass,
         .clearValueCount = AttachmentCount,
         .pClearValues = ClearValues,
