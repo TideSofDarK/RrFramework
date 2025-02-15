@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Rr/Rr_App.h>
+#include <Rr/Rr_Buffer.h>
+#include <Rr/Rr_Image.h>
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Renderer.h>
 
@@ -20,10 +22,20 @@ typedef enum
     RR_GLTF_ATTRIBUTE_TYPE_TANGENT,
 } Rr_GLTFAttributeType;
 
+typedef enum
+{
+    RR_GLTF_TEXTURE_TYPE_INVALID,
+    RR_GLTF_TEXTURE_TYPE_COLOR,
+    RR_GLTF_TEXTURE_TYPE_NORMAL,
+    RR_GLTF_TEXTURE_TYPE_METALLIC_ROUGHNESS,
+} Rr_GLTFTextureType;
+
 typedef struct Rr_GLTFMaterial Rr_GLTFMaterial;
 struct Rr_GLTFMaterial
 {
-    struct Rr_Image *Image;
+    size_t TextureCount;
+    size_t *Textures;
+    Rr_GLTFTextureType *TextureTypes;
 };
 
 typedef struct Rr_GLTFAttribute Rr_GLTFAttribute;
@@ -74,9 +86,11 @@ struct Rr_GLTFAsset
     Rr_GLTFScene *Scenes;
     size_t MeshCount;
     Rr_GLTFMesh *Meshes;
-    struct Rr_Buffer *Buffer;
+    Rr_Buffer *Buffer;
     size_t ImageCount;
-    struct Rr_Image **Images;
+    Rr_Image **Images;
+    size_t MaterialCount;
+    Rr_GLTFMaterial *Materials;
 };
 
 typedef struct Rr_GLTFVertexInputBinding Rr_GLTFVertexInputBinding;
@@ -86,11 +100,21 @@ struct Rr_GLTFVertexInputBinding
     Rr_GLTFAttributeType *AttributeTypes;
 };
 
+typedef struct Rr_GLTFTextureMapping Rr_GLTFTextureMapping;
+struct Rr_GLTFTextureMapping
+{
+    Rr_GLTFTextureType TextureType;
+    size_t Set;
+    size_t Binding;
+};
+
 extern Rr_GLTFContext *Rr_CreateGLTFContext(
     Rr_App *App,
     size_t VertexInputBindingCount,
     Rr_VertexInputBinding *VertexInputBindings,
-    Rr_GLTFVertexInputBinding *GLTFVertexInputBindings);
+    Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
+    size_t GLTFTextureMappingCount,
+    Rr_GLTFTextureMapping *GLTFTextureMappings);
 
 extern void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext);
 

@@ -1,9 +1,11 @@
 #version 450
 
 layout(location = 0) in vec3 InPosition;
-layout(location = 1) in vec3 InNormal;
+layout(location = 1) in vec2 InUV;
+layout(location = 2) in vec3 InNormal;
 
-layout(location = 0) out vec3 OutNormal;
+layout(location = 0) out vec2 OutUV;
+layout(location = 1) out vec3 OutNormal;
 
 layout(set = 0, binding = 0) uniform Globals
 {
@@ -15,5 +17,6 @@ layout(set = 0, binding = 0) uniform Globals
 void main()
 {
     gl_Position = Projection * View * Model * vec4(InPosition, 1.0f);
-    OutNormal = abs(InNormal);
+    OutNormal = mat3(transpose(inverse(Model))) * InNormal;
+    OutUV = InUV;
 }

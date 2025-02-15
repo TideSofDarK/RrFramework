@@ -757,11 +757,20 @@ static void InitGLTF()
         .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributes),
         .AttributeTypes = GLTFAttributes,
     };
+    Rr_GLTFTextureMapping GLTFTextureMappings[] = {
+        {
+            .TextureType = RR_GLTF_TEXTURE_TYPE_COLOR,
+            .Set = 1,
+            .Binding = 0,
+        },
+    };
     GLTFContext = Rr_CreateGLTFContext(
         App,
         1,
         &VertexInputBinding,
-        &GLTFVertexInputBinding);
+        &GLTFVertexInputBinding,
+        RR_ARRAY_COUNT(GLTFTextureMappings),
+        GLTFTextureMappings);
 }
 
 static void OnLoadComplete(Rr_App *App, void *UserData)

@@ -153,6 +153,12 @@ void *Rr_AllocArenaNoZero(
     size_t Align,
     size_t Count)
 {
+    if(Size == 0 || Count == 0)
+    {
+        RR_LOG("Allocating 0 bytes from an arena!");
+        return NULL;
+    }
+
     size_t TotalSize = Size * Count;
     uintptr_t PositionAligned = RR_ALIGN_POW2(Arena->Position, Align);
     uintptr_t Target = PositionAligned + TotalSize;

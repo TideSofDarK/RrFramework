@@ -38,21 +38,34 @@ static void Init(Rr_App *App, void *UserData)
 
     /* Create graphics pipeline. */
 
-    Rr_PipelineBinding Binding = {
-        .Slot = 0,
-        .Count = 1,
-        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+    Rr_PipelineBinding Bindings[] = {
+        {
+            .Slot = 0,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+        },
+        {
+            .Slot = 1,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
+        },
+        {
+            .Slot = 2,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
+        },
     };
     Rr_PipelineBindingSet BindingSet = {
-        .BindingCount = 1,
-        .Bindings = &Binding,
-        .Stages = RR_SHADER_STAGE_VERTEX_BIT,
+        .BindingCount = RR_ARRAY_COUNT(Bindings),
+        .Bindings = Bindings,
+        .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
     };
     PipelineLayout = Rr_CreatePipelineLayout(App, 1, &BindingSet);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Format = RR_FORMAT_VEC3, .Location = 0 },
-        { .Format = RR_FORMAT_VEC3, .Location = 1 },
+        { .Format = RR_FORMAT_VEC2, .Location = 1 },
+        { .Format = RR_FORMAT_VEC3, .Location = 2 },
     };
 
     Rr_VertexInputBinding VertexInputBinding = {
@@ -84,17 +97,27 @@ static void Init(Rr_App *App, void *UserData)
 
     Rr_GLTFAttributeType GLTFAttributeTypes[] = {
         RR_GLTF_ATTRIBUTE_TYPE_POSITION,
+        RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0,
         RR_GLTF_ATTRIBUTE_TYPE_NORMAL,
     };
     Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
         .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
         .AttributeTypes = GLTFAttributeTypes,
     };
+    Rr_GLTFTextureMapping GLTFTextureMappings[] = {
+        {
+            .TextureType = RR_GLTF_TEXTURE_TYPE_COLOR,
+            .Set = 0,
+            .Binding = 1,
+        },
+    };
     GLTFContext = Rr_CreateGLTFContext(
         App,
         1,
         &VertexInputBinding,
-        &GLTFVertexInputBinding);
+        &GLTFVertexInputBinding,
+        RR_ARRAY_COUNT(GLTFTextureMappings),
+        GLTFTextureMappings);
 
     /* Create load thread and load glTF asset. */
 
@@ -211,6 +234,9 @@ static void DrawFirstGLTFPrimitive(
         0,
         0,
         sizeof(UniformData));
+    Rr_BindSampler(OffscreenNode, NearestSampler, 0, 1);
+    Rr_GraphImageHandle ColorTextureHandle = Rr_RegisterGraphImage(App, GLTFAsset->Images[0]);
+    Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 0, 2);
     Rr_DrawIndexed(OffscreenNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
 }
 
@@ -223,7 +249,10 @@ static void Iterate(Rr_App *App, void *UserData)
 
     if(Loaded)
     {
-        DrawFirstGLTFPrimitive(App, &ColorAttachmentHandle, &DepthAttachmentHandle);
+        DrawFirstGLTFPrimitive(
+            App,
+            &ColorAttachmentHandle,
+            &DepthAttachmentHandle);
     }
 
     Rr_AddPresentNode(

@@ -102,7 +102,9 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     Rr_App *App,
     size_t VertexInputBindingCount,
     Rr_VertexInputBinding *VertexInputBindings,
-    Rr_GLTFVertexInputBinding *GLTFVertexInputBindings)
+    Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
+    size_t GLTFTextureMappingCount,
+    Rr_GLTFTextureMapping *GLTFTextureMappings)
 {
     assert(VertexInputBindingCount != 0);
     assert(VertexInputBindings != NULL);
@@ -135,6 +137,7 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
 
     Rr_GLTFContext *GLTFContext = RR_ALLOC_TYPE(Arena, Rr_GLTFContext);
     GLTFContext->Arena = Arena;
+
     GLTFContext->VertexInputStrides =
         RR_ALLOC_TYPE_COUNT(Arena, size_t, VertexInputBindingCount);
     GLTFContext->VertexInputBindingCount = VertexInputBindingCount;
@@ -164,6 +167,12 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
                     GLTFVertexInputBinding->AttributeTypes[AttributeIndex]);
         }
     }
+
+    RR_ALLOC_COPY(
+        Arena,
+        GLTFContext->TextureMappings,
+        GLTFTextureMappings,
+        sizeof(Rr_GLTFTextureMapping) * GLTFTextureMappingCount);
 
     return GLTFContext;
 }
@@ -852,13 +861,42 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     for(size_t ImageIndex = 0; ImageIndex < Data->images_count; ++ImageIndex)
     {
         cgltf_image *Image = Data->images + ImageIndex;
-        RR_LOG("Image size: %zu", Image->buffer_view->size);
+
+        if(strcmp(Image->mime_type, "image/png") == 0 ||
+           strcmp(Image->mime_type, "image/jpeg") == 0)
+        {
+            char *Data = (char *)Image->buffer_view->buffer->data +
+                         Image->buffer_view->offset;
+            size_t Size = Image->buffer_view->size;
+
+            int Width = 0;
+            int Height = 0;
+            int Components = 0;
+            stbi_info_from_memory(
+                (stbi_uc *)Data,
+                Size,
+                &Width,
+                &Height,
+                &Components);
+
+            StagingDataSize += Width * Height * Components;
+        }
     }
 
     ImageDataSize = StagingDataSize - GeometryDataSize;
     RR_UNUSED(ImageDataSize);
 
     char *StagingData = RR_ALLOC(Scratch.Arena, StagingDataSize);
+
+    /* Preallocate materials. */
+
+    GLTFAsset->Materials = RR_ALLOC_TYPE_COUNT(
+        GLTFContext->Arena,
+        Rr_GLTFMaterial,
+        Data->materials_count);
+
+    GLTFAsset->Images =
+        RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_Image *, Data->images_count);
 
     /* Process meshes. */
 
@@ -901,6 +939,10 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 GLTFContext->Arena,
                 size_t,
                 GLTFContext->VertexInputBindingCount);
+
+            GLTFPrimitive->Material =
+                GLTFAsset->Materials +
+                cgltf_material_index(Data, Primitive->material);
 
             size_t VertexCount = Primitive->attributes->data->count;
 
@@ -982,6 +1024,63 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     }
 
     assert(StagingDataOffset == GeometryDataSize);
+
+    /* Process materials, textures and images. */
+
+    for(size_t MaterialIndex = 0; MaterialIndex < Data->materials_count;
+        ++MaterialIndex)
+    {
+        cgltf_material *Material = Data->materials + MaterialIndex;
+
+        size_t TextureCount = 0;
+
+        if(Material->has_pbr_metallic_roughness &&
+           Material->pbr_metallic_roughness.base_color_texture.texture != NULL)
+        {
+            TextureCount++;
+        }
+
+        Rr_GLTFMaterial *GLTFMaterial = GLTFAsset->Materials + MaterialIndex;
+        GLTFMaterial->TextureCount = TextureCount;
+        GLTFMaterial->Textures =
+            RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, size_t, TextureCount);
+        GLTFMaterial->TextureTypes = RR_ALLOC_TYPE_COUNT(
+            GLTFContext->Arena,
+            Rr_GLTFTextureType,
+            TextureCount);
+
+        size_t CurrentTextureIndex = 0;
+
+        if(Material->has_pbr_metallic_roughness &&
+           Material->pbr_metallic_roughness.base_color_texture.texture != NULL)
+        {
+            GLTFMaterial->TextureTypes[CurrentTextureIndex] =
+                RR_GLTF_TEXTURE_TYPE_COLOR;
+            if(GLTFAsset->Images[CurrentTextureIndex] == NULL)
+            {
+                int32_t ImageDataSize =
+                    Material->pbr_metallic_roughness.base_color_texture.texture
+                        ->image->buffer_view->size;
+                char *ImageData =
+                    (char *)Material->pbr_metallic_roughness.base_color_texture
+                        .texture->image->buffer_view->buffer->data +
+                    Material->pbr_metallic_roughness.base_color_texture.texture
+                        ->image->buffer_view->offset;
+
+                GLTFAsset->Images[CurrentTextureIndex] =
+                    Rr_CreateImageRGBA8FromPNG(
+                        App,
+                        UploadContext,
+                        ImageDataSize,
+                        ImageData,
+                        false);
+
+                *RR_PUSH_SLICE(&GLTFContext->Images, GLTFContext->Arena) =
+                    GLTFAsset->Images[CurrentTextureIndex];
+            }
+            CurrentTextureIndex++;
+        }
+    }
 
     /* At this point StagingData is populated with vertices, indices
      * and images. We create a mapped buffer and upload it to GPU. */

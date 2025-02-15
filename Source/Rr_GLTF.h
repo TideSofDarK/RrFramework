@@ -14,9 +14,14 @@ struct Rr_GLTFContext
 {
     RR_SLICE(struct Rr_Buffer *) Buffers;
     RR_SLICE(struct Rr_Image *) Images;
+
     size_t VertexInputBindingCount;
     Rr_GLTFVertexInputBinding *VertexInputBindings;
     size_t *VertexInputStrides;
+
+    size_t TextureMappingCount;
+    Rr_GLTFTextureMapping *TextureMappings;
+
     Rr_SpinLock Lock;
     Rr_Arena *Arena;
 };
