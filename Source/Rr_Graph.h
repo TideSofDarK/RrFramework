@@ -31,6 +31,7 @@ struct Rr_TransferNode
 typedef enum
 {
     RR_GRAPHICS_NODE_FUNCTION_TYPE_NO_OP,
+    RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW,
     RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED,
     RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
     RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
@@ -76,6 +77,15 @@ struct Rr_BindBufferArgs
     Rr_GraphBufferHandle BufferHandle;
     uint32_t Slot;
     uint32_t Offset;
+};
+
+typedef struct Rr_DrawArgs Rr_DrawArgs;
+struct Rr_DrawArgs
+{
+    uint32_t VertexCount;
+    uint32_t InstanceCount;
+    uint32_t FirstVertex;
+    uint32_t FirstInstance;
 };
 
 typedef struct Rr_DrawIndexedArgs Rr_DrawIndexedArgs;

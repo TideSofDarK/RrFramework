@@ -114,7 +114,7 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 //     igEnd();
 // }
 
-static void Iterate(Rr_App *App)
+static void Rr_Iterate(Rr_App *App)
 {
     Rr_CalculateDeltaTime(&App->FrameTime);
 
@@ -127,7 +127,7 @@ static void Iterate(Rr_App *App)
 
     if(Rr_NewFrame(App, App->Window))
     {
-        Rr_Draw(App);
+        Rr_DrawFrame(App);
     }
 
 #ifdef RR_PERFORMANCE_COUNTER
@@ -272,7 +272,7 @@ void Rr_Run(Rr_AppConfig *Config)
             }
         }
 
-        Iterate(&App);
+        Rr_Iterate(&App);
     }
 
     Rr_DestroyUI(&App, App.UI);

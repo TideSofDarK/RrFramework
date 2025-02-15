@@ -6,9 +6,6 @@
 #include "Rr_Log.h"
 #include "Rr_UploadContext.h"
 
-#include <Rr/Rr_Defines.h>
-#include <Rr/Rr_Memory.h>
-
 #include <stb/stb_image.h>
 
 #include <cgltf/cgltf.h>
@@ -685,70 +682,6 @@ void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext)
 //     Rr_DestroyScratch(Scratch);
 // }
 
-static size_t Rr_CalculateGLTFAssetStagingBufferSize(
-    cgltf_data *Data,
-    Rr_GLTFContext *GLTFContext)
-{
-    size_t TotalSize = 0;
-    for(size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
-    {
-        cgltf_mesh *Mesh = Data->meshes + MeshIndex;
-        for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count;
-            ++PrimitiveIndex)
-        {
-            cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
-            for(size_t AttributeIndex = 0;
-                AttributeIndex < Primitive->attributes_count;
-                ++AttributeIndex)
-            {
-                cgltf_attribute *Attribute =
-                    Primitive->attributes + AttributeIndex;
-                switch(Attribute->type)
-                {
-                    case cgltf_attribute_type_texcoord:
-                    {
-                        TotalSize += 2 * sizeof(float) * Attribute->data->count;
-                    }
-                    break;
-                    case cgltf_attribute_type_position:
-                    case cgltf_attribute_type_normal:
-                    case cgltf_attribute_type_color:
-                    case cgltf_attribute_type_tangent:
-                    {
-                        TotalSize += 3 * sizeof(float) * Attribute->data->count;
-                    }
-                    break;
-                    default:
-                    {
-                        RR_ABORT("cGLTF: Unsupported attribute type!");
-                    }
-                    break;
-                }
-            }
-            switch(Primitive->indices->component_type)
-            {
-                case cgltf_component_type_r_16u:
-                {
-                    TotalSize += sizeof(uint16_t) * Primitive->indices->count;
-                }
-                break;
-                case cgltf_component_type_r_32u:
-                {
-                    TotalSize += sizeof(uint32_t) * Primitive->indices->count;
-                }
-                break;
-                default:
-                {
-                    RR_ABORT("cGLTF: Unsupported index type!");
-                }
-                break;
-            }
-        }
-    }
-
-    return TotalSize;
-}
-
 static inline void *Rr_GetCGLTFAccessorValueAt(
     cgltf_accessor *Accessor,
     size_t Index)
@@ -871,6 +804,12 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     /* Create staging structures. */
 
     size_t StagingDataSize = 0;
+    size_t StagingDataOffset = 0;
+    size_t GeometryDataSize = 0;
+    size_t ImageDataSize = 0;
+
+    /* Calculate how much memory is needed for vertices and indices. */
+
     for(size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
     {
         cgltf_mesh *Mesh = Data->meshes + MeshIndex;
@@ -898,15 +837,28 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
             StagingDataSize +=
                 Rr_GetStagingSizeForVertexCount(GLTFContext, VertexCount);
-            StagingDataSize += Primitive->indices->count *
-                               cgltf_calc_size(
-                                   Primitive->indices->type,
-                                   Primitive->indices->component_type);
+
+            size_t IndexSize = cgltf_calc_size(
+                Primitive->indices->type,
+                Primitive->indices->component_type);
+            StagingDataSize += Primitive->indices->count * IndexSize;
         }
     }
 
+    GeometryDataSize = StagingDataSize;
+
+    /* Calculate how much memory is needed for images. */
+
+    for(size_t ImageIndex = 0; ImageIndex < Data->meshes_count; ++ImageIndex)
+    {
+        cgltf_image *Image = Data->images + ImageIndex;
+        RR_LOG("Image size: %zu", Image->buffer_view->size);
+    }
+
+    ImageDataSize = StagingDataSize - GeometryDataSize;
+    RR_UNUSED(ImageDataSize);
+
     char *StagingData = RR_ALLOC(Scratch.Arena, StagingDataSize);
-    size_t StagingDataOffset = 0;
 
     /* Process meshes. */
 
@@ -979,14 +931,18 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                     size_t AttributeSize = cgltf_calc_size(
                         Attribute->data->type,
                         Attribute->data->component_type);
+
                     size_t BindingOffset = Rr_GetFlatBindingOffset(
                         GLTFContext,
                         Info.Binding,
                         VertexCount);
+
                     char *DstBase =
                         (char *)StagingData + StagingDataOffset + BindingOffset;
+
                     GLTFPrimitive->VertexBufferOffsets[Info.Binding] =
                         StagingDataOffset + BindingOffset;
+
                     for(size_t VertexIndex = 0; VertexIndex < VertexCount;
                         ++VertexIndex)
                     {
@@ -1025,7 +981,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         }
     }
 
-    size_t VertexAndIndexBufferSize = StagingDataOffset;
+    assert(StagingDataOffset == GeometryDataSize);
 
     /* At this point StagingData is populated with vertices, indices
      * and images. We create a mapped buffer and upload it to GPU. */
@@ -1040,7 +996,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     GLTFAsset->Buffer = Rr_CreateBuffer(
         App,
-        VertexAndIndexBufferSize,
+        GeometryDataSize,
         RR_BUFFER_USAGE_INDEX_BUFFER_BIT | RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         false);
     *RR_PUSH_SLICE(&GLTFContext->Buffers, GLTFContext->Arena) =
@@ -1060,7 +1016,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         },
         StagingBuffer,
         0,
-        VertexAndIndexBufferSize);
+        GeometryDataSize);
 
     // cgltf_scene *Scene = Data->scenes + SceneIndex;
     //

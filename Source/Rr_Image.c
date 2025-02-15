@@ -53,41 +53,29 @@ void Rr_DestroySampler(Rr_App *App, Rr_Sampler *Sampler)
     RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Samplers, Sampler);
 }
 
-static void Rr_UploadImage(
+void Rr_UploadStagingImage(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
-    Rr_Image *Container,
+    Rr_Image *Image,
     VkImageAspectFlags Aspect,
-    VkPipelineStageFlags DstStageMask,
-    VkAccessFlags DstAccessMask,
-    VkImageLayout DstLayout,
-    size_t ImageDataLength,
-    void *ImageData)
+    Rr_SyncState SrcState,
+    Rr_SyncState DstState,
+    Rr_Buffer *StagingBuffer,
+    size_t StagingOffset,
+    size_t StagingSize)
 {
     Rr_Renderer *Renderer = &App->Renderer;
 
     VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
 
-    Rr_Buffer *StagingBufferContainer =
-        Rr_CreateStagingBuffer(App, ImageDataLength);
-    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
-        StagingBufferContainer;
+    Rr_AllocatedBuffer *AllocatedStagingBuffer =
+        StagingBuffer->AllocatedBuffers;
 
-    Rr_AllocatedBuffer *StagingBuffer =
-        StagingBufferContainer->AllocatedBuffers;
-    memcpy(
-        StagingBuffer->AllocationInfo.pMappedData,
-        ImageData,
-        ImageDataLength);
-    VkBuffer StagingBufferHandle = StagingBuffer->Handle;
-
-    for(size_t AllocatedIndex = 0;
-        AllocatedIndex < Container->AllocatedImageCount;
+    for(size_t AllocatedIndex = 0; AllocatedIndex < Image->AllocatedImageCount;
         ++AllocatedIndex)
     {
         Rr_AllocatedImage *AllocatedImage =
-            Container->AllocatedImages + AllocatedIndex;
-        VkImage Image = AllocatedImage->Handle;
+            Image->AllocatedImages + AllocatedIndex;
 
         VkImageSubresourceRange SubresourceRange = (VkImageSubresourceRange){
             .aspectMask = Aspect,
@@ -110,7 +98,7 @@ static void Rr_UploadImage(
             &(VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
-                .image = Image,
+                .image = AllocatedImage->Handle,
                 .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                 .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .subresourceRange = SubresourceRange,
@@ -130,13 +118,13 @@ static void Rr_UploadImage(
                 .baseArrayLayer = 0,
                 .layerCount = 1,
             },
-            .imageExtent = Container->Extent,
+            .imageExtent = Image->Extent,
         };
 
         vkCmdCopyBufferToImage(
             CommandBuffer,
-            StagingBufferHandle,
-            Image,
+            AllocatedStagingBuffer->Handle,
+            AllocatedImage->Handle,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &BufferImageCopy);
@@ -144,7 +132,7 @@ static void Rr_UploadImage(
         vkCmdPipelineBarrier(
             CommandBuffer,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
-            DstStageMask,
+            DstState.StageMask,
             0,
             0,
             NULL,
@@ -154,12 +142,12 @@ static void Rr_UploadImage(
             &(VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
-                .image = Image,
+                .image = AllocatedImage->Handle,
                 .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .newLayout = DstLayout,
+                .newLayout = DstState.Specific.Layout,
                 .subresourceRange = SubresourceRange,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = DstAccessMask,
+                .dstAccessMask = DstState.AccessMask,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             });
@@ -171,11 +159,11 @@ static void Rr_UploadImage(
                 UploadContext->Arena) = (VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
-                .image = Image,
-                .oldLayout = DstLayout,
-                .newLayout = DstLayout,
+                .image = AllocatedImage->Handle,
+                .oldLayout = DstState.Specific.Layout,
+                .newLayout = DstState.Specific.Layout,
                 .subresourceRange = SubresourceRange,
-                .srcAccessMask = DstAccessMask,
+                .srcAccessMask = DstState.AccessMask,
                 .dstAccessMask = 0,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
                 .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
@@ -186,17 +174,49 @@ static void Rr_UploadImage(
                 UploadContext->Arena) = (VkImageMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
-                .image = Image,
-                .oldLayout = DstLayout,
-                .newLayout = DstLayout,
+                .image = AllocatedImage->Handle,
+                .oldLayout = DstState.Specific.Layout,
+                .newLayout = DstState.Specific.Layout,
                 .subresourceRange = SubresourceRange,
                 .srcAccessMask = 0,
-                .dstAccessMask = DstAccessMask,
+                .dstAccessMask = DstState.AccessMask,
                 .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
                 .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
             };
         }
     }
+}
+
+void Rr_UploadImage(
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
+    Rr_Image *Image,
+    VkImageAspectFlags Aspect,
+    Rr_SyncState SrcState,
+    Rr_SyncState DstState,
+    Rr_Data Data)
+{
+    Rr_Buffer *StagingBuffer = Rr_CreateStagingBuffer(App, Data.Size);
+    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
+        StagingBuffer;
+
+    Rr_AllocatedBuffer *AllocatedStagingBuffer =
+        StagingBuffer->AllocatedBuffers;
+    memcpy(
+        AllocatedStagingBuffer->AllocationInfo.pMappedData,
+        Data.Pointer,
+        Data.Size);
+
+    Rr_UploadStagingImage(
+        App,
+        UploadContext,
+        Image,
+        Aspect,
+        SrcState,
+        DstState,
+        StagingBuffer,
+        0,
+        0);
 }
 
 Rr_Image *Rr_CreateImage(
@@ -420,11 +440,15 @@ Rr_Image *Rr_CreateImageRGBA8(
         UploadContext,
         ColorImage,
         VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_ACCESS_SHADER_READ_BIT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        DataSize,
-        Data);
+        (Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        },
+        (Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .Specific.Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        },
+        RR_MAKE_DATA(DataSize, Data));
 
     return ColorImage;
 }
@@ -460,11 +484,15 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
         UploadContext,
         ColorImage,
         VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_ACCESS_SHADER_READ_BIT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        ParsedSize,
-        ParsedData);
+        (Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        },
+        (Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .Specific.Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        },
+        RR_MAKE_DATA(ParsedSize, ParsedData));
 
     stbi_image_free(ParsedData);
 

@@ -33,6 +33,26 @@ struct Rr_Image
     Rr_AllocatedImage AllocatedImages[RR_MAX_FRAME_OVERLAP];
 };
 
+extern void Rr_UploadStagingImage(
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
+    Rr_Image *Image,
+    VkImageAspectFlags Aspect,
+    Rr_SyncState SrcState,
+    Rr_SyncState DstState,
+    Rr_Buffer *StagingBuffer,
+    size_t StagingOffset,
+    size_t StagingSize);
+
+extern void Rr_UploadImage(
+    Rr_App *App,
+    Rr_UploadContext *UploadContext,
+    Rr_Image *Image,
+    VkImageAspectFlags Aspect,
+    Rr_SyncState SrcState,
+    Rr_SyncState DstState,
+    Rr_Data Data);
+
 extern Rr_Image *Rr_CreateImageRGBA8(
     Rr_App *App,
     Rr_UploadContext *UploadContext,

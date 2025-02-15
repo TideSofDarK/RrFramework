@@ -1348,25 +1348,22 @@ void Rr_ExecuteGraphicsNode(
     {
         switch(Function->Type)
         {
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW:
             {
-                Rr_BindIndexBufferArgs *Args = Function->Args;
-                vkCmdBindIndexBuffer(
+                Rr_ApplyDescriptorsState(
+                    &DescriptorsState,
+                    &Frame->DescriptorAllocator,
+                    GraphicsPipeline->Layout,
+                    Renderer->Device,
                     CommandBuffer,
-                    Rr_GetGraphBuffer(App, Graph, Args->BufferHandle)->Handle,
-                    Args->Offset,
-                    Args->Type);
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
-            {
-                Rr_BindBufferArgs *Args = Function->Args;
-                vkCmdBindVertexBuffers(
+                    VK_PIPELINE_BIND_POINT_GRAPHICS);
+                Rr_DrawArgs *Args = (Rr_DrawArgs *)Function->Args;
+                vkCmdDraw(
                     CommandBuffer,
-                    Args->Slot,
-                    1,
-                    &Rr_GetGraphBuffer(App, Graph, Args->BufferHandle)->Handle,
-                    &(VkDeviceSize){ Args->Offset });
+                    Args->VertexCount,
+                    Args->InstanceCount,
+                    Args->FirstVertex,
+                    Args->FirstInstance);
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED:
@@ -1386,6 +1383,27 @@ void Rr_ExecuteGraphicsNode(
                     Args->FirstIndex,
                     Args->VertexOffset,
                     Args->FirstInstance);
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
+            {
+                Rr_BindIndexBufferArgs *Args = Function->Args;
+                vkCmdBindIndexBuffer(
+                    CommandBuffer,
+                    Rr_GetGraphBuffer(App, Graph, Args->BufferHandle)->Handle,
+                    Args->Offset,
+                    Args->Type);
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
+            {
+                Rr_BindBufferArgs *Args = Function->Args;
+                vkCmdBindVertexBuffers(
+                    CommandBuffer,
+                    Args->Slot,
+                    1,
+                    &Rr_GetGraphBuffer(App, Graph, Args->BufferHandle)->Handle,
+                    &(VkDeviceSize){ Args->Offset });
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
@@ -1498,6 +1516,22 @@ void Rr_ExecuteGraphicsNode(
     GraphicsNode->Encoded->Type = FunctionType;                               \
     GraphicsNode->Encoded->Args = RR_ALLOC(Arena, sizeof(ArgsType));          \
     *(ArgsType *)GraphicsNode->Encoded->Args
+
+void Rr_Draw(
+    Rr_GraphNode *Node,
+    uint32_t VertexCount,
+    uint32_t InstanceCount,
+    uint32_t FirstVertex,
+    uint32_t FirstInstance)
+{
+    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW, Rr_DrawArgs) =
+        (Rr_DrawArgs){
+            .VertexCount = VertexCount,
+            .InstanceCount = InstanceCount,
+            .FirstVertex = FirstVertex,
+            .FirstInstance = FirstInstance,
+        };
+}
 
 void Rr_DrawIndexed(
     Rr_GraphNode *Node,

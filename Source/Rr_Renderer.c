@@ -907,7 +907,7 @@ void Rr_PrepareFrame(Rr_App *App)
     Rr_ProcessPendingLoads(App);
 }
 
-void Rr_Draw(Rr_App *App)
+void Rr_DrawFrame(Rr_App *App)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 

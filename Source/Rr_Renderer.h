@@ -177,7 +177,7 @@ extern void Rr_CleanupRenderer(Rr_App *App);
 
 extern void Rr_PrepareFrame(Rr_App *App);
 
-extern void Rr_Draw(Rr_App *App);
+extern void Rr_DrawFrame(Rr_App *App);
 
 extern bool Rr_NewFrame(Rr_App *App, void *Window);
 

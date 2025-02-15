@@ -23,6 +23,8 @@
 #error "Unrecognized UINTPTR_MAX value!"
 #endif
 
+#define RR_UNUSED(Var) (void)Var
+
 #define RR_HAS_BIT(Value, Bit) ((Value & Bit) != 0)
 
 #define RR_MIN(A, B)      (((A) < (B)) ? (A) : (B))

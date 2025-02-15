@@ -125,6 +125,13 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_DepthTarget *DepthTarget,
     Rr_GraphImageHandle *DepthImage);
 
+extern void Rr_Draw(
+    Rr_GraphNode *Node,
+    uint32_t VertexCount,
+    uint32_t InstanceCount,
+    uint32_t FirstVertex,
+    uint32_t FirstInstance);
+
 extern void Rr_DrawIndexed(
     Rr_GraphNode *Node,
     uint32_t IndexCount,
