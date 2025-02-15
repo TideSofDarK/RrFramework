@@ -692,7 +692,12 @@ static void InitGLTF()
         {
             .Slot = 1,
             .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER,
+            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
+        },
+        {
+            .Slot = 2,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
         },
 
     };
@@ -783,7 +788,12 @@ static void Init(Rr_App *App, void *UserData)
         {
             .Slot = 1,
             .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER,
+            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
+        },
+        {
+            .Slot = 2,
+            .Count = 1,
+            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
         },
 
     };
@@ -967,12 +977,8 @@ static void TestGraphicsNode(
         sizeof(STest));
     if(SampledImageHandle != nullptr)
     {
-        Rr_BindCombinedImageSampler(
-            OffscreenNode,
-            SampledImageHandle,
-            LinearSampler,
-            0,
-            1);
+        Rr_BindSampler(OffscreenNode, LinearSampler, 0, 1);
+        Rr_BindSampledImage(OffscreenNode, SampledImageHandle, 0, 2);
     }
     Rr_BindVertexBuffer(OffscreenNode, VertexBufferHandle, 0, 0);
     Rr_BindIndexBuffer(

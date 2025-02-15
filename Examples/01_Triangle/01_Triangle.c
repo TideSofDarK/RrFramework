@@ -64,7 +64,7 @@ static void Init(Rr_App *App, void *UserData)
 
     ColorAttachment = Rr_CreateImage(
         App,
-        (Rr_IntVec3){ 240, 320, 1 },
+        (Rr_IntVec3){ 320, 240, 1 },
         Rr_GetSwapchainFormat(App),
         RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER | RR_IMAGE_USAGE_SAMPLED,
         false);

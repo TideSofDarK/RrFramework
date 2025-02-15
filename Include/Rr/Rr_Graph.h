@@ -160,13 +160,17 @@ extern void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect);
 
 extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect);
 
-extern void Rr_BindGraphicsUniformBuffer(
+extern void Rr_BindSampler(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle *BufferHandle,
+    struct Rr_Sampler *Sampler,
     uint32_t Set,
-    uint32_t Binding,
-    uint32_t Offset,
-    uint32_t Size);
+    uint32_t Binding);
+
+extern void Rr_BindSampledImage(
+    Rr_GraphNode *Node,
+    Rr_GraphImageHandle *ImageHandle,
+    uint32_t Set,
+    uint32_t Binding);
 
 extern void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
@@ -174,6 +178,14 @@ extern void Rr_BindCombinedImageSampler(
     struct Rr_Sampler *Sampler,
     uint32_t Set,
     uint32_t Binding);
+
+extern void Rr_BindGraphicsUniformBuffer(
+    Rr_GraphNode *Node,
+    Rr_GraphBufferHandle *BufferHandle,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t Offset,
+    uint32_t Size);
 
 #ifdef __cplusplus
 }

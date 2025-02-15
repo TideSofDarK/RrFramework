@@ -10,7 +10,11 @@ static VkDescriptorType Rr_GetVulkanDescriptorType(Rr_PipelineBindingType Type)
 {
     switch(Type)
     {
-        case RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER:
+        case RR_PIPELINE_BINDING_TYPE_SAMPLER:
+            return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE:
+            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
             return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         case RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER:
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
@@ -195,49 +199,85 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
     return DescriptorSet;
 }
 
-Rr_DescriptorWriter Rr_CreateDescriptorWriter(
-    size_t Images,
-    size_t Buffers,
+Rr_DescriptorWriter *Rr_CreateDescriptorWriter(
+    size_t SamplerCount,
+    size_t ImageCount,
+    size_t BufferCount,
     Rr_Arena *Arena)
 {
-    Rr_DescriptorWriter Writer = { 0 };
-    RR_RESERVE_SLICE(&Writer.ImageInfos, Images, Arena);
-    RR_RESERVE_SLICE(&Writer.BufferInfos, Buffers, Arena);
-    RR_RESERVE_SLICE(&Writer.Writes, Images + Buffers, Arena);
-    RR_RESERVE_SLICE(&Writer.Entries, Images + Buffers, Arena);
+    Rr_DescriptorWriter *Writer = RR_ALLOC_TYPE(Arena, Rr_DescriptorWriter);
+    Writer->Arena = Arena;
+    RR_RESERVE_SLICE(&Writer->ImageInfos, ImageCount, Arena);
+    RR_RESERVE_SLICE(&Writer->BufferInfos, BufferCount, Arena);
+    RR_RESERVE_SLICE(&Writer->Writes, ImageCount + BufferCount, Arena);
+    RR_RESERVE_SLICE(&Writer->Entries, ImageCount + BufferCount, Arena);
     return Writer;
 }
 
-void Rr_WriteImageDescriptor(
+void Rr_WriteSamplerDescriptor(
     Rr_DescriptorWriter *Writer,
     uint32_t Binding,
-    VkImageView View,
-    VkSampler Sampler,
-    VkImageLayout Layout,
-    VkDescriptorType Type,
-    Rr_Arena *Arena)
+    uint32_t Index,
+    VkSampler Sampler)
 {
-    Rr_WriteImageDescriptorAt(
-        Writer,
-        Binding,
-        0,
-        View,
-        Sampler,
-        Layout,
-        Type,
-        Arena);
+    Rr_Arena *Arena = Writer->Arena;
+
+    *RR_PUSH_SLICE(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
+        .sampler = Sampler,
+    };
+
+    *RR_PUSH_SLICE(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstBinding = Binding,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+        .dstArrayElement = Index,
+    };
+
+    *RR_PUSH_SLICE(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
+        .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
+        .Index = Writer->ImageInfos.Count - 1,
+    };
 }
 
-void Rr_WriteImageDescriptorAt(
+void Rr_WriteSampledImageDescriptor(
+    Rr_DescriptorWriter *Writer,
+    uint32_t Binding,
+    uint32_t Index,
+    VkImageView View,
+    VkImageLayout Layout)
+{
+    Rr_Arena *Arena = Writer->Arena;
+
+    *RR_PUSH_SLICE(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
+        .imageView = View,
+        .imageLayout = Layout,
+    };
+
+    *RR_PUSH_SLICE(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstBinding = Binding,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .dstArrayElement = Index,
+    };
+
+    *RR_PUSH_SLICE(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
+        .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
+        .Index = Writer->ImageInfos.Count - 1,
+    };
+}
+
+void Rr_WriteCombinedImageSamplerDescriptor(
     Rr_DescriptorWriter *Writer,
     uint32_t Binding,
     uint32_t Index,
     VkImageView View,
     VkSampler Sampler,
-    VkImageLayout Layout,
-    VkDescriptorType Type,
-    Rr_Arena *Arena)
+    VkImageLayout Layout)
 {
+    Rr_Arena *Arena = Writer->Arena;
+
     *RR_PUSH_SLICE(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
         .sampler = Sampler,
         .imageView = View,
@@ -247,9 +287,8 @@ void Rr_WriteImageDescriptorAt(
     *RR_PUSH_SLICE(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
-        .dstSet = VK_NULL_HANDLE,
         .descriptorCount = 1,
-        .descriptorType = Type,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .dstArrayElement = Index,
     };
 
@@ -277,7 +316,6 @@ void Rr_WriteBufferDescriptor(
     *RR_PUSH_SLICE(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
-        .dstSet = VK_NULL_HANDLE,
         .descriptorCount = 1,
         .descriptorType = Type,
     };
@@ -425,7 +463,8 @@ void Rr_ApplyDescriptorsState(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_DescriptorWriter Writer = { 0 };
+    Rr_DescriptorWriter *Writer =
+        Rr_CreateDescriptorWriter(0, 0, 0, Scratch.Arena);
 
     bool FirstSetSet = false;
     uint32_t FirstSet = 0;
@@ -459,10 +498,40 @@ void Rr_ApplyDescriptorsState(
 
             switch(Binding->Type)
             {
+                case RR_PIPELINE_BINDING_TYPE_SAMPLER:
+                {
+                    Rr_WriteSamplerDescriptor(
+                        Writer,
+                        BindingIndex,
+                        0,
+                        Binding->Sampler);
+                }
+                break;
+                case RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE:
+                {
+                    Rr_WriteSampledImageDescriptor(
+                        Writer,
+                        BindingIndex,
+                        0,
+                        Binding->Image.View,
+                        Binding->Image.Layout);
+                }
+                break;
+                case RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
+                {
+                    Rr_WriteCombinedImageSamplerDescriptor(
+                        Writer,
+                        BindingIndex,
+                        0,
+                        Binding->Image.View,
+                        Binding->Image.Sampler,
+                        Binding->Image.Layout);
+                }
+                break;
                 case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
                 {
                     Rr_WriteBufferDescriptor(
-                        &Writer,
+                        Writer,
                         BindingIndex,
                         Binding->Buffer.Handle,
                         Binding->Buffer.Size,
@@ -471,20 +540,6 @@ void Rr_ApplyDescriptorsState(
                         Scratch.Arena);
                     DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
                     DynamicOffsetCount++;
-                    UsedBindingsCount++;
-                }
-                break;
-                case RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER:
-                {
-                    Rr_WriteImageDescriptor(
-                        &Writer,
-                        BindingIndex,
-                        Binding->Image.View,
-                        Binding->Image.Sampler,
-                        Binding->Image.Layout,
-                        Binding->DescriptorType,
-                        Scratch.Arena);
-                    UsedBindingsCount++;
                 }
                 break;
                 default:
@@ -493,6 +548,7 @@ void Rr_ApplyDescriptorsState(
                 }
                 break;
             }
+            UsedBindingsCount++;
         }
 
         if(UsedBindingsCount > 0)
@@ -502,8 +558,8 @@ void Rr_ApplyDescriptorsState(
                 Device,
                 PipelineLayout->DescriptorSetLayouts[SetIndex]);
 
-            Rr_UpdateDescriptorSet(&Writer, Device, DescriptorSet);
-            Rr_ResetDescriptorWriter(&Writer);
+            Rr_UpdateDescriptorSet(Writer, Device, DescriptorSet);
+            Rr_ResetDescriptorWriter(Writer);
 
             DescriptorSets[DescriptorSetCount] = DescriptorSet;
             DescriptorSetCount++;

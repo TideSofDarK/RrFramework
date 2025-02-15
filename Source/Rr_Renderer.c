@@ -243,7 +243,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         Rr_PipelineBinding PipelineBinding = {
             .Slot = 0,
             .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER,
+            .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
         };
         Rr_PipelineBindingSet PipelineBindingSet = {
             .BindingCount = 1,

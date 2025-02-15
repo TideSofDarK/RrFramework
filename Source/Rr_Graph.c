@@ -774,16 +774,16 @@ void Rr_ExecutePresentNode(
         Renderer->PresentLayout->DescriptorSetLayouts[0]);
 
     VkSampler Sampler = Node->Sampler->Handle;
-    Rr_DescriptorWriter Writer = { 0 };
-    Rr_WriteImageDescriptor(
-        &Writer,
+    Rr_DescriptorWriter *Writer =
+        Rr_CreateDescriptorWriter(0, 1, 0, Scratch.Arena);
+    Rr_WriteCombinedImageSamplerDescriptor(
+        Writer,
+        0,
         0,
         Image->View,
         Sampler,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        Scratch.Arena);
-    Rr_UpdateDescriptorSet(&Writer, Renderer->Device, DescriptorSet);
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    Rr_UpdateDescriptorSet(Writer, Renderer->Device, DescriptorSet);
 
     VkImage SwapchainImage =
         Rr_GetCurrentAllocatedImage(App, &Frame->VirtualSwapchainImage)->Handle;
@@ -798,19 +798,21 @@ void Rr_ExecutePresentNode(
         0,
         NULL,
         1,
-        &(VkImageMemoryBarrier){ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .image = SwapchainImage,
-                                 .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                 .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 .srcAccessMask = 0,
-                                 .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                 .subresourceRange = {
-                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                     .baseMipLevel = 0,
-                                     .levelCount = VK_REMAINING_MIP_LEVELS,
-                                     .baseArrayLayer = 0,
-                                     .layerCount = VK_REMAINING_ARRAY_LAYERS,
-                                 }, });
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        });
     VkClearValue ClearValue = {
         .color.float32 = { 0.1f, 0.1f, 0.2f, 1.0f },
     };
@@ -1461,6 +1463,62 @@ void Rr_ExecuteGraphicsNode(
                     });
             }
             break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLER:
+            {
+                Rr_BindSamplerArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
+                        .Sampler = Args->Sampler->Handle,
+                        .DescriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+                    });
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
+            {
+                Rr_BindSampledImageArgs *Args = Function->Args;
+                VkImageView ImageView =
+                    Rr_GetGraphImage(App, Graph, Args->ImageHandle)->View;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
+                        .Image =
+                            {
+                                .View = ImageView,
+                                .Layout = Args->Layout,
+                            },
+                        .DescriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                    });
+            }
+            break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
+            {
+                Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
+                VkImageView ImageView =
+                    Rr_GetGraphImage(App, Graph, Args->ImageHandle)->View;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .Image =
+                            {
+                                .View = ImageView,
+                                .Sampler = Args->Sampler->Handle,
+                                .Layout = Args->Layout,
+                            },
+                        .DescriptorType =
+                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    });
+            }
+            break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
             {
                 Rr_BindUniformBufferArgs *Args = Function->Args;
@@ -1471,7 +1529,7 @@ void Rr_ExecuteGraphicsNode(
                     &(Rr_DescriptorSetBinding){
                         .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
                         .Buffer =
-                            (Rr_DescriptorSetBufferBinding){
+                            {
                                 .Handle = Rr_GetGraphBuffer(
                                               App,
                                               Graph,
@@ -1482,30 +1540,6 @@ void Rr_ExecuteGraphicsNode(
                             },
                         .DescriptorType =
                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                    });
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
-            {
-                Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_SAMPLER,
-                        .Image =
-                            (Rr_DescriptorSetImageBinding){
-                                .View = Rr_GetGraphImage(
-                                            App,
-                                            Graph,
-                                            Args->ImageHandle)
-                                            ->View,
-                                .Sampler = Args->Sampler->Handle,
-                                .Layout = Args->Layout,
-                            },
-                        .DescriptorType =
-                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     });
             }
             break;
@@ -1637,6 +1671,96 @@ void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect)
         Rr_IntVec4) = Rect;
 }
 
+void Rr_BindSampler(
+    Rr_GraphNode *Node,
+    struct Rr_Sampler *Sampler,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(Sampler != NULL);
+
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLER,
+        Rr_BindSamplerArgs) = (Rr_BindSamplerArgs){
+        .Sampler = Sampler,
+        .Set = Set,
+        .Binding = Binding,
+    };
+}
+
+void Rr_BindSampledImage(
+    Rr_GraphNode *Node,
+    Rr_GraphImageHandle *ImageHandle,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(ImageHandle);
+
+    VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    /* @TODO: Stage mask can be infered from pipeline layout. */
+
+    Rr_AddNodeDependency(
+        Node,
+        ImageHandle,
+        &(Rr_SyncState){
+            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .Specific.Layout = Layout,
+        });
+
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
+        Rr_BindSampledImageArgs) = (Rr_BindSampledImageArgs){
+        .ImageHandle = *ImageHandle,
+        .Layout = Layout,
+        .Set = Set,
+        .Binding = Binding,
+    };
+}
+
+void Rr_BindCombinedImageSampler(
+    Rr_GraphNode *Node,
+    Rr_GraphImageHandle *ImageHandle,
+    Rr_Sampler *Sampler,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(Sampler != NULL);
+    assert(ImageHandle);
+
+    VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    /* @TODO: Stage mask can be infered from pipeline layout. */
+
+    Rr_AddNodeDependency(
+        Node,
+        ImageHandle,
+        &(Rr_SyncState){
+            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .Specific.Layout = Layout,
+        });
+
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
+        Rr_BindCombinedImageSamplerArgs) = (Rr_BindCombinedImageSamplerArgs){
+        .ImageHandle = *ImageHandle,
+        .Layout = Layout,
+        .Sampler = Sampler,
+        .Set = Set,
+        .Binding = Binding,
+    };
+}
+
 void Rr_BindGraphicsUniformBuffer(
     Rr_GraphNode *Node,
     Rr_GraphBufferHandle *BufferHandle,
@@ -1665,41 +1789,6 @@ void Rr_BindGraphicsUniformBuffer(
         .Set = Set,
         .Offset = Offset,
         .Size = Size,
-        .Binding = Binding,
-    };
-}
-
-void Rr_BindCombinedImageSampler(
-    Rr_GraphNode *Node,
-    Rr_GraphImageHandle *ImageHandle,
-    Rr_Sampler *Sampler,
-    uint32_t Set,
-    uint32_t Binding)
-{
-    assert(Set < RR_MAX_SETS);
-    assert(Binding < RR_MAX_BINDINGS);
-    assert(Sampler != NULL);
-    assert(ImageHandle);
-
-    VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    Rr_AddNodeDependency(
-        Node,
-        ImageHandle,
-        &(Rr_SyncState){
-            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            .Specific.Layout = Layout,
-        });
-
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
-        Rr_BindCombinedImageSamplerArgs) = (Rr_BindCombinedImageSamplerArgs){
-        .ImageHandle = *ImageHandle,
-        .Layout = Layout,
-        .Sampler = Sampler,
-        .Set = Set,
         .Binding = Binding,
     };
 }

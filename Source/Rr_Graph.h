@@ -38,8 +38,11 @@ typedef enum
     RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
     RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT,
     RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
+    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLER,
+    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
     RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
+    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
+    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
 } Rr_GraphicsNodeFunctionType;
 
 typedef struct Rr_GraphicsNodeFunction Rr_GraphicsNodeFunction;
@@ -98,14 +101,22 @@ struct Rr_DrawIndexedArgs
     uint32_t FirstInstance;
 };
 
-typedef struct Rr_BindUniformBufferArgs Rr_BindUniformBufferArgs;
-struct Rr_BindUniformBufferArgs
+typedef struct Rr_BindSamplerArgs Rr_BindSamplerArgs;
+struct Rr_BindSamplerArgs
 {
-    Rr_GraphBufferHandle BufferHandle;
+    Rr_Sampler *Sampler;
+    VkImageLayout Layout;
     uint32_t Set;
     uint32_t Binding;
-    uint32_t Offset;
-    uint32_t Size;
+};
+
+typedef struct Rr_BindSampledImageArgs Rr_BindSampledImageArgs;
+struct Rr_BindSampledImageArgs
+{
+    Rr_GraphImageHandle ImageHandle;
+    VkImageLayout Layout;
+    uint32_t Set;
+    uint32_t Binding;
 };
 
 typedef struct Rr_BindCombinedImageSamplerArgs Rr_BindCombinedImageSamplerArgs;
@@ -116,6 +127,16 @@ struct Rr_BindCombinedImageSamplerArgs
     VkImageLayout Layout;
     uint32_t Set;
     uint32_t Binding;
+};
+
+typedef struct Rr_BindUniformBufferArgs Rr_BindUniformBufferArgs;
+struct Rr_BindUniformBufferArgs
+{
+    Rr_GraphBufferHandle BufferHandle;
+    uint32_t Set;
+    uint32_t Binding;
+    uint32_t Offset;
+    uint32_t Size;
 };
 
 typedef struct Rr_PresentNode Rr_PresentNode;

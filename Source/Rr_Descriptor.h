@@ -42,15 +42,8 @@ struct Rr_DescriptorWriter
     RR_SLICE(VkDescriptorBufferInfo) BufferInfos;
     RR_SLICE(Rr_DescriptorWriterEntry) Entries;
     RR_SLICE(VkWriteDescriptorSet) Writes;
+    Rr_Arena *Arena;
 };
-
-typedef enum Rr_GenericDescriptorSetLayout
-{
-    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_GLOBALS,
-    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_MATERIAL,
-    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_DRAW,
-    RR_GENERIC_DESCRIPTOR_SET_LAYOUT_COUNT,
-} Rr_GenericDescriptorSetLayout;
 
 extern Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
     VkDevice Device,
@@ -72,38 +65,46 @@ extern void Rr_DestroyDescriptorAllocator(
     Rr_DescriptorAllocator *DescriptorAllocator,
     VkDevice Device);
 
-extern Rr_DescriptorWriter Rr_CreateDescriptorWriter(
-    size_t Images,
-    size_t Buffers,
-    struct Rr_Arena *Arena);
+extern Rr_DescriptorWriter *Rr_CreateDescriptorWriter(
+    size_t SamplerCount,
+    size_t ImageCount,
+    size_t BufferCount,
+    Rr_Arena *Arena);
 
-extern void Rr_WriteImageDescriptor(
+extern void Rr_WriteSamplerDescriptor(
     Rr_DescriptorWriter *Writer,
     uint32_t Binding,
-    VkImageView View,
-    VkSampler Sampler,
-    VkImageLayout Layout,
-    VkDescriptorType Type,
-    struct Rr_Arena *Arena);
+    uint32_t Index,
+    VkSampler Sampler);
 
-extern void Rr_WriteImageDescriptorAt(
+extern void Rr_WriteSampledImageDescriptor(
+    Rr_DescriptorWriter *Writer,
+    uint32_t Binding,
+    uint32_t Index,
+    VkImageView View,
+    VkImageLayout Layout);
+
+extern void Rr_WriteCombinedImageSamplerDescriptor(
     Rr_DescriptorWriter *Writer,
     uint32_t Binding,
     uint32_t Index,
     VkImageView View,
     VkSampler Sampler,
-    VkImageLayout Layout,
-    VkDescriptorType Type,
-    struct Rr_Arena *Arena);
+    VkImageLayout Layout);
 
-extern void Rr_WriteBufferDescriptor(
+extern void Rr_WriteUniformBufferDescriptor(
     Rr_DescriptorWriter *Writer,
     uint32_t Binding,
     VkBuffer Buffer,
     size_t Size,
-    size_t Offset,
-    VkDescriptorType Type,
-    struct Rr_Arena *Arena);
+    size_t Offset);
+
+extern void Rr_WriteStorageBufferDescriptor(
+    Rr_DescriptorWriter *Writer,
+    uint32_t Binding,
+    VkBuffer Buffer,
+    size_t Size,
+    size_t Offset);
 
 extern void Rr_ResetDescriptorWriter(Rr_DescriptorWriter *Writer);
 
@@ -166,6 +167,7 @@ struct Rr_DescriptorSetBinding
     {
         Rr_DescriptorSetImageBinding Image;
         Rr_DescriptorSetBufferBinding Buffer;
+        VkSampler Sampler;
     };
     VkDescriptorType DescriptorType;
     Rr_PipelineBindingType Type;
