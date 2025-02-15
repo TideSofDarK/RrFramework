@@ -849,7 +849,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     /* Calculate how much memory is needed for images. */
 
-    for(size_t ImageIndex = 0; ImageIndex < Data->meshes_count; ++ImageIndex)
+    for(size_t ImageIndex = 0; ImageIndex < Data->images_count; ++ImageIndex)
     {
         cgltf_image *Image = Data->images + ImageIndex;
         RR_LOG("Image size: %zu", Image->buffer_view->size);
