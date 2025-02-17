@@ -201,7 +201,10 @@ void Rr_UploadImage(
     Rr_SyncState DstState,
     Rr_Data Data)
 {
-    Rr_Buffer *StagingBuffer = Rr_CreateStagingBuffer(App, Data.Size);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        App,
+        Data.Size,
+        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
         StagingBuffer;
 

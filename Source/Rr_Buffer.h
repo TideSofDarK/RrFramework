@@ -16,27 +16,11 @@ struct Rr_AllocatedBuffer
 
 struct Rr_Buffer
 {
+    Rr_BufferFlags Flags;
     VkBufferUsageFlags Usage;
     size_t AllocatedBufferCount;
     Rr_AllocatedBuffer AllocatedBuffers[RR_MAX_FRAME_OVERLAP];
 };
-
-typedef struct Rr_WriteBuffer Rr_WriteBuffer;
-struct Rr_WriteBuffer
-{
-    Rr_Buffer *Buffer;
-    VkDeviceSize Offset;
-};
-
-extern Rr_Buffer *Rr_CreateBuffer_Internal(
-    Rr_App *App,
-    size_t Size,
-    VkBufferUsageFlags UsageFlags,
-    VmaMemoryUsage MemoryUsage,
-    bool CreateMapped,
-    bool Buffered);
-
-extern Rr_Buffer *Rr_CreateStagingBuffer(Rr_App *App, size_t Size);
 
 extern void Rr_UploadStagingBuffer(
     Rr_App *App,

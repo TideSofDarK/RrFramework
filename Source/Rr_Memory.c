@@ -8,6 +8,7 @@
 #include <SDL3/SDL_thread.h>
 
 #include <assert.h>
+#include <limits.h>
 
 void *Rr_Malloc(size_t Bytes)
 {
@@ -259,19 +260,18 @@ void Rr_ResizeSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
     memcpy(Slice, &Replica, sizeof(Replica));
 }
 
-void **Rr_UpsertMap(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena)
+void **Rr_UpsertMap(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
 {
     if(*Map != NULL)
     {
-        for(uintptr_t Hash = Key; *Map; Hash <<= 2)
+        for(Rr_MapKey Hash = Key; *Map; Hash <<= 2)
         {
             if(Key == (*Map)->Key)
             {
                 return &(*Map)->Value;
             }
-            Map =
-                &(*Map)
-                     ->Child[Hash >> 62]; /* @TODO: Assumes 64 bit pointers! */
+            static const int Shift = (sizeof(Rr_MapKey) * CHAR_BIT) - 2;
+            Map = &(*Map)->Child[Hash >> Shift];
         }
     }
     if(Arena == NULL)

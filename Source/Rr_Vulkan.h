@@ -602,32 +602,6 @@ static inline VkFilter Rr_GetVulkanFilter(Rr_Filter Filter)
     }
 }
 
-static VkBufferUsageFlags Rr_GetVulkanBufferUsage(Rr_BufferUsage Usage)
-{
-    VkBufferUsageFlags Result = 0;
-    if((Usage & RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    }
-    if((Usage & RR_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    }
-    if((Usage & RR_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    }
-    if((Usage & RR_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    }
-    if((Usage & RR_BUFFER_USAGE_INDIRECT_BUFFER_BIT) != 0)
-    {
-        Result |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-    }
-    return Result;
-}
-
 static Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat)
 {
     switch(TextureFormat)

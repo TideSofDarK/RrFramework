@@ -441,16 +441,6 @@ static void Rr_InitFrames(Rr_App *App)
             RR_ARRAY_COUNT(Ratios),
             App->PermanentArena);
 
-        /* Buffers */
-
-        Frame->StagingBuffer.Buffer = Rr_CreateBuffer_Internal(
-            App,
-            RR_MEGABYTES(16),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VMA_MEMORY_USAGE_AUTO,
-            true,
-            false);
-
         Frame->Arena = Rr_CreateDefaultArena();
     }
 }
@@ -475,8 +465,6 @@ static void Rr_CleanupFrames(Rr_App *App)
             NULL);
 
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
-
-        Rr_DestroyBuffer(App, Frame->StagingBuffer.Buffer);
 
         Rr_DestroyArena(Frame->Arena);
     }
@@ -679,6 +667,12 @@ void Rr_InitRenderer(Rr_App *App)
     // Rr_InitNullTextures(App);
     // Rr_InitTextRenderer(App);
 
+    Renderer->StagingBuffer = Rr_CreateBuffer(
+        App,
+        RR_MEGABYTES(16),
+        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+            RR_BUFFER_FLAGS_PER_FRAME_BIT);
+
     Rr_DestroyScratch(Scratch);
 }
 
@@ -737,6 +731,8 @@ void Rr_CleanupRenderer(Rr_App *App)
             Renderer->Framebuffers.Data[Index].Handle,
             NULL);
     }
+
+    Rr_DestroyBuffer(App, Renderer->StagingBuffer);
 
     Rr_DestroyDescriptorAllocator(&Renderer->GlobalDescriptorAllocator, Device);
 
@@ -847,7 +843,7 @@ void Rr_PrepareFrame(Rr_App *App)
     RR_ZERO(Frame->Graph);
     Frame->Graph.Arena = Frame->Arena;
 
-    Frame->StagingBuffer.Offset = 0;
+    Renderer->StagingBufferOffset = 0;
 
     Rr_ProcessPendingLoads(App);
 }
@@ -1299,7 +1295,7 @@ VkFramebuffer Rr_GetFramebuffer(
     return Framebuffer;
 }
 
-Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, void *Key)
+Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, Rr_MapKey Key)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_SyncState **SyncStateRef =
@@ -1315,7 +1311,7 @@ Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, void *Key)
     return SyncState;
 }
 
-void Rr_ReturnSynchronizationState(Rr_App *App, void *Key)
+void Rr_ReturnSynchronizationState(Rr_App *App, Rr_MapKey Key)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_SyncState **SyncStateRef =

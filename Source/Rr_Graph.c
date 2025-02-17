@@ -376,7 +376,7 @@ static void Rr_ApplyBarrierBatch(
         };
 
         Rr_SyncState *BufferState =
-            Rr_GetSynchronizationState(App, BufferBarrier->Buffer);
+            Rr_GetSynchronizationState(App, (Rr_MapKey)BufferBarrier->Buffer);
         *BufferState = (Rr_SyncState){
             .StageMask = BufferBarrier->DstStageMask,
             .AccessMask = BufferBarrier->DstAccessMask,
@@ -413,7 +413,7 @@ static void Rr_ApplyBarrierBatch(
         };
 
         Rr_SyncState *ImageState =
-            Rr_GetSynchronizationState(App, ImageBarrier->Image);
+            Rr_GetSynchronizationState(App, (Rr_MapKey)ImageBarrier->Image);
 
         *ImageState = (Rr_SyncState){
             .StageMask = ImageBarrier->DstStageMask,
@@ -514,7 +514,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                 VkImage Image = AllocatedImage->Handle;
 
                 Rr_SyncState *PrevState =
-                    Rr_GetSynchronizationState(App, Image);
+                    Rr_GetSynchronizationState(App, (Rr_MapKey)Image);
 
                 /* If reading again, just make sure the memory is "available" to
                  * this memory domain AND the image is in the same layout. */
@@ -584,7 +584,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                 VkBuffer Buffer = AllocatedBuffer->Handle;
 
                 Rr_SyncState *PrevState =
-                    Rr_GetSynchronizationState(App, Buffer);
+                    Rr_GetSynchronizationState(App, (Rr_MapKey)Buffer);
 
                 /* If reading again, just make sure the memory is "available" to
                  * this memory domain. */
@@ -984,9 +984,9 @@ void Rr_TransferBufferData(
     Rr_TransferNode *TransferNode = &Node->Union.Transfer;
 
     Rr_AllocatedBuffer *StagingBuffer =
-        Rr_GetCurrentAllocatedBuffer(App, Frame->StagingBuffer.Buffer);
+        Rr_GetCurrentAllocatedBuffer(App, Renderer->StagingBuffer);
 
-    size_t SrcOffset = Frame->StagingBuffer.Offset;
+    size_t SrcOffset = Renderer->StagingBufferOffset;
 
     if(SrcOffset + Data.Size > StagingBuffer->AllocationInfo.size)
     {
@@ -995,11 +995,11 @@ void Rr_TransferBufferData(
 
     memcpy(
         (char *)StagingBuffer->AllocationInfo.pMappedData +
-            Frame->StagingBuffer.Offset,
+            Renderer->StagingBufferOffset,
         Data.Pointer,
         Data.Size);
 
-    Frame->StagingBuffer.Offset += Data.Size;
+    Renderer->StagingBufferOffset += Data.Size;
 
     *RR_PUSH_SLICE(&TransferNode->Transfers, Frame->Arena) = (Rr_Transfer){
         .DstOffset = DstOffset,
@@ -1016,10 +1016,9 @@ void Rr_ExecuteTransferNode(
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     VkBuffer SrcBuffer =
-        Rr_GetCurrentAllocatedBuffer(App, Frame->StagingBuffer.Buffer)->Handle;
+        Rr_GetCurrentAllocatedBuffer(App, Renderer->StagingBuffer)->Handle;
     VkBuffer DstBuffer =
         Rr_GetGraphBuffer(App, Graph, Node->DstBufferHandle)->Handle;
 

@@ -56,8 +56,6 @@ struct Rr_Frame
 
     Rr_DescriptorAllocator DescriptorAllocator;
 
-    Rr_WriteBuffer StagingBuffer;
-
     Rr_Graph Graph;
 
     Rr_Arena *Arena;
@@ -129,6 +127,11 @@ struct Rr_Renderer
     //     Rr_Image *White;
     //     Rr_Image *Normal;
     // } NullTextures;
+
+    /* Temporary Staging Buffer */
+
+    Rr_Buffer *StagingBuffer;
+    size_t StagingBufferOffset;
 
     /* Pending Loads */
 
@@ -211,6 +214,6 @@ extern VkFramebuffer Rr_GetFramebufferViews(
     size_t ImageViewCount,
     VkExtent3D Extent);
 
-extern Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, void *Key);
+extern Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, Rr_MapKey Key);
 
-extern void Rr_ReturnSynchronizationState(Rr_App *App, void *Key);
+extern void Rr_ReturnSynchronizationState(Rr_App *App, Rr_MapKey Key);

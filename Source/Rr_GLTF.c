@@ -815,7 +815,6 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     size_t StagingDataSize = 0;
     size_t StagingDataOffset = 0;
     size_t GeometryDataSize = 0;
-    size_t ImageDataSize = 0;
 
     /* Calculate how much memory is needed for vertices and indices. */
 
@@ -856,37 +855,13 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     GeometryDataSize = StagingDataSize;
 
-    /* Calculate how much memory is needed for images. */
-
-    for(size_t ImageIndex = 0; ImageIndex < Data->images_count; ++ImageIndex)
-    {
-        cgltf_image *Image = Data->images + ImageIndex;
-
-        if(strcmp(Image->mime_type, "image/png") == 0 ||
-           strcmp(Image->mime_type, "image/jpeg") == 0)
-        {
-            char *Data = (char *)Image->buffer_view->buffer->data +
-                         Image->buffer_view->offset;
-            size_t Size = Image->buffer_view->size;
-
-            int Width = 0;
-            int Height = 0;
-            int Components = 0;
-            stbi_info_from_memory(
-                (stbi_uc *)Data,
-                Size,
-                &Width,
-                &Height,
-                &Components);
-
-            StagingDataSize += Width * Height * Components;
-        }
-    }
-
-    ImageDataSize = StagingDataSize - GeometryDataSize;
-    RR_UNUSED(ImageDataSize);
-
-    char *StagingData = RR_ALLOC(Scratch.Arena, StagingDataSize);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        App,
+        StagingDataSize,
+        RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
+        StagingBuffer;
+    char *StagingData = Rr_GetMappedBufferData(App, StagingBuffer);
 
     /* Preallocate materials. */
 
@@ -1025,6 +1000,31 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     assert(StagingDataOffset == GeometryDataSize);
 
+    Rr_FlushBufferRange(App, StagingBuffer, 0, StagingDataSize);
+
+    GLTFAsset->Buffer = Rr_CreateBuffer(
+        App,
+        GeometryDataSize,
+        RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT);
+    *RR_PUSH_SLICE(&GLTFContext->Buffers, GLTFContext->Arena) =
+        GLTFAsset->Buffer;
+
+    Rr_UploadStagingBuffer(
+        App,
+        UploadContext,
+        GLTFAsset->Buffer,
+        (Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        },
+        (Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+            .AccessMask =
+                VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+        },
+        StagingBuffer,
+        0,
+        GeometryDataSize);
+
     /* Process materials, textures and images. */
 
     for(size_t MaterialIndex = 0; MaterialIndex < Data->materials_count;
@@ -1081,41 +1081,6 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             CurrentTextureIndex++;
         }
     }
-
-    /* At this point StagingData is populated with vertices, indices
-     * and images. We create a mapped buffer and upload it to GPU. */
-
-    Rr_Buffer *StagingBuffer = Rr_CreateStagingBuffer(App, StagingDataSize);
-    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
-        StagingBuffer;
-    memcpy(
-        StagingBuffer->AllocatedBuffers[0].AllocationInfo.pMappedData,
-        StagingData,
-        StagingDataSize);
-
-    GLTFAsset->Buffer = Rr_CreateBuffer(
-        App,
-        GeometryDataSize,
-        RR_BUFFER_USAGE_INDEX_BUFFER_BIT | RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        false);
-    *RR_PUSH_SLICE(&GLTFContext->Buffers, GLTFContext->Arena) =
-        GLTFAsset->Buffer;
-
-    Rr_UploadStagingBuffer(
-        App,
-        UploadContext,
-        GLTFAsset->Buffer,
-        (Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        },
-        (Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-            .AccessMask =
-                VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        },
-        StagingBuffer,
-        0,
-        GeometryDataSize);
 
     // cgltf_scene *Scene = Data->scenes + SceneIndex;
     //

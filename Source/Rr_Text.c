@@ -136,13 +136,10 @@ Rr_Font *Rr_CreateFont(
     };
     Rr_LoadImmediate(App, 1, &ImageLoadTask);
 
-    Rr_Buffer *Buffer = Rr_CreateBuffer_Internal(
+    Rr_Buffer *Buffer = Rr_CreateBuffer(
         App,
         sizeof(Rr_TextFontLayout),
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        false,
-        false);
+        RR_BUFFER_FLAGS_UNIFORM_BIT);
 
     Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
 

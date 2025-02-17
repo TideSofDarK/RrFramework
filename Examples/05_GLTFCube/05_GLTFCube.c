@@ -156,8 +156,7 @@ static void Init(Rr_App *App, void *UserData)
     UniformBuffer = Rr_CreateBuffer(
         App,
         sizeof(UniformData),
-        RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        true);
+        RR_BUFFER_FLAGS_UNIFORM_BIT);
 }
 
 static void DrawFirstGLTFPrimitive(

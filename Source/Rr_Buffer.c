@@ -6,40 +6,77 @@
 
 #include <assert.h>
 
-Rr_Buffer *Rr_CreateBuffer_Internal(
-    Rr_App *App,
-    size_t Size,
-    VkBufferUsageFlags UsageFlags,
-    VmaMemoryUsage MemoryUsage,
-    bool CreateMapped,
-    bool Buffered)
+Rr_Buffer *Rr_CreateBuffer(Rr_App *App, size_t Size, Rr_BufferFlags Flags)
 {
     Rr_Buffer *Buffer =
         RR_GET_FREE_LIST_ITEM(&App->Renderer.Buffers, App->PermanentArena);
-    Buffer->Usage = UsageFlags;
+    Buffer->Flags = Flags;
+
+    Buffer->Usage = 0;
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_UNIFORM_BIT))
+    {
+        Buffer->Usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    }
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STORAGE_BIT))
+    {
+        Buffer->Usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    }
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_VERTEX_BIT))
+    {
+        Buffer->Usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    }
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_INDEX_BIT))
+    {
+        Buffer->Usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    }
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_INDIRECT_BIT))
+    {
+        Buffer->Usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+    }
+    Buffer->Usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    Buffer->Usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     /* Fixing VMA issues with small buffers. */
+
     Size = SDL_max(Size, 128);
 
     VkBufferCreateInfo BufferCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = NULL,
         .size = Size,
-        .usage = UsageFlags,
+        .usage = Buffer->Usage,
     };
 
-    VmaAllocationCreateInfo AllocationInfo = {
-        .usage = MemoryUsage,
-    };
+    VmaAllocationCreateInfo AllocationInfo = { 0 };
+    AllocationInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
-    if(CreateMapped)
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
     {
-        AllocationInfo.flags =
-            VMA_ALLOCATION_CREATE_MAPPED_BIT |
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        AllocationInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    }
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_READBACK_BIT))
+    {
+        AllocationInfo.preferredFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        AllocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     }
 
-    Buffer->AllocatedBufferCount = Buffered ? RR_FRAME_OVERLAP : 1;
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_BIT))
+    {
+        AllocationInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        AllocationInfo.flags |=
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    }
+    else if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT))
+    {
+        AllocationInfo.preferredFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        AllocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    }
+
+    Buffer->AllocatedBufferCount = 1;
+    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_PER_FRAME_BIT))
+    {
+        Buffer->AllocatedBufferCount = RR_FRAME_OVERLAP;
+    }
     for(size_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
@@ -53,22 +90,6 @@ Rr_Buffer *Rr_CreateBuffer_Internal(
     }
 
     return Buffer;
-}
-
-Rr_Buffer *Rr_CreateBuffer(
-    Rr_App *App,
-    size_t Size,
-    Rr_BufferUsage Usage,
-    bool Buffered)
-{
-    return Rr_CreateBuffer_Internal(
-        App,
-        Size,
-        Rr_GetVulkanBufferUsage(Usage) | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        false,
-        Buffered);
 }
 
 void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer)
@@ -90,6 +111,55 @@ void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer)
     }
 
     RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Buffers, Buffer);
+}
+
+void *Rr_GetMappedBufferData(Rr_App *App, Rr_Buffer *Buffer)
+{
+    Rr_AllocatedBuffer *AllocatedBuffer =
+        Rr_GetCurrentAllocatedBuffer(App, Buffer);
+    return AllocatedBuffer->AllocationInfo.pMappedData;
+}
+
+void *Rr_MapBuffer(Rr_App *App, Rr_Buffer *Buffer)
+{
+    Rr_AllocatedBuffer *AllocatedBuffer =
+        Rr_GetCurrentAllocatedBuffer(App, Buffer);
+    if(RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
+    {
+        return AllocatedBuffer->AllocationInfo.pMappedData;
+    }
+    void *MappedData;
+    vmaMapMemory(
+        App->Renderer.Allocator,
+        AllocatedBuffer->Allocation,
+        &MappedData);
+    return MappedData;
+}
+
+void Rr_UnmapBuffer(Rr_App *App, Rr_Buffer *Buffer)
+{
+    if(RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
+    {
+        return;
+    }
+    Rr_AllocatedBuffer *AllocatedBuffer =
+        Rr_GetCurrentAllocatedBuffer(App, Buffer);
+    vmaUnmapMemory(App->Renderer.Allocator, AllocatedBuffer->Allocation);
+}
+
+void Rr_FlushBufferRange(
+    Rr_App *App,
+    Rr_Buffer *Buffer,
+    size_t Offset,
+    size_t Size)
+{
+    Rr_AllocatedBuffer *AllocatedBuffer =
+        Rr_GetCurrentAllocatedBuffer(App, Buffer);
+    vmaFlushAllocation(
+        App->Renderer.Allocator,
+        AllocatedBuffer->Allocation,
+        Offset,
+        Size);
 }
 
 void Rr_UploadStagingBuffer(
@@ -215,7 +285,10 @@ void Rr_UploadBuffer(
     Rr_SyncState DstState,
     Rr_Data Data)
 {
-    Rr_Buffer *StagingBuffer = Rr_CreateStagingBuffer(App, Data.Size);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        App,
+        Data.Size,
+        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
         StagingBuffer;
 
@@ -249,13 +322,10 @@ void Rr_UploadToDeviceBufferImmediate(
 
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
 
-    Rr_Buffer *SrcBuffer = Rr_CreateBuffer_Internal(
+    Rr_Buffer *SrcBuffer = Rr_CreateBuffer(
         App,
         Data.Size,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_AUTO_PREFER_HOST,
-        true,
-        false);
+        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     Rr_AllocatedBuffer *SrcAllocatedBuffer =
         Rr_GetCurrentAllocatedBuffer(App, SrcBuffer);
     memcpy(
@@ -284,17 +354,6 @@ void Rr_UploadToDeviceBufferImmediate(
     Rr_EndImmediate(Renderer);
 
     Rr_DestroyBuffer(App, SrcBuffer);
-}
-
-Rr_Buffer *Rr_CreateStagingBuffer(Rr_App *App, size_t Size)
-{
-    return Rr_CreateBuffer_Internal(
-        App,
-        Size,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        true,
-        false);
 }
 
 Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_App *App, Rr_Buffer *Buffer)

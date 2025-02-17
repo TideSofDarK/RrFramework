@@ -150,15 +150,17 @@ extern void Rr_ResizeSlice(
  * Hashmap
  */
 
+typedef uint64_t Rr_MapKey;
+
 typedef struct Rr_Map Rr_Map;
 struct Rr_Map
 {
     Rr_Map *Child[4];
-    uintptr_t Key;
+    Rr_MapKey Key;
     void *Value;
 };
 
-extern void **Rr_UpsertMap(Rr_Map **Map, uintptr_t Key, Rr_Arena *Arena);
+extern void **Rr_UpsertMap(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena);
 
 #define RR_UPSERT(Map, Key, Arena) \
     ((void *)Rr_UpsertMap((Map), (uintptr_t)Key, Arena))

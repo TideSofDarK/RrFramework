@@ -877,11 +877,8 @@ static void Init(Rr_App *App, void *UserData)
         1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
     };
 
-    VertexBuffer = Rr_CreateBuffer(
-        App,
-        sizeof(VertexData),
-        RR_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        false);
+    VertexBuffer =
+        Rr_CreateBuffer(App, sizeof(VertexData), RR_BUFFER_FLAGS_VERTEX_BIT);
     Rr_UploadToDeviceBufferImmediate(
         App,
         VertexBuffer,
@@ -893,11 +890,8 @@ static void Init(Rr_App *App, void *UserData)
         0,
     };
 
-    IndexBuffer = Rr_CreateBuffer(
-        App,
-        sizeof(IndexData),
-        RR_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        false);
+    IndexBuffer =
+        Rr_CreateBuffer(App, sizeof(IndexData), RR_BUFFER_FLAGS_INDEX_BIT);
     Rr_UploadToDeviceBufferImmediate(
         App,
         IndexBuffer,
@@ -919,11 +913,8 @@ static void Init(Rr_App *App, void *UserData)
             RR_IMAGE_USAGE_SAMPLED,
         false);
 
-    UniformBuffer = Rr_CreateBuffer(
-        App,
-        RR_KILOBYTES(4),
-        RR_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        true);
+    UniformBuffer =
+        Rr_CreateBuffer(App, RR_KILOBYTES(4), RR_BUFFER_FLAGS_UNIFORM_BIT);
 }
 
 static Rr_Vec4 GetRandomVec4()

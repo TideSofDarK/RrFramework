@@ -50,7 +50,7 @@ static void Init(Rr_App *App, void *UserData)
         -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
     };
 
-    VertexBuffer = Rr_CreateBuffer(App, sizeof(VertexData), RR_BUFFER_USAGE_VERTEX_BUFFER_BIT, false);
+    VertexBuffer = Rr_CreateBuffer(App, sizeof(VertexData), RR_BUFFER_FLAGS_VERTEX_BIT);
     Rr_UploadToDeviceBufferImmediate(App, VertexBuffer, RR_MAKE_DATA_ARRAY(VertexData));
 
     uint32_t IndexData[] = {
@@ -59,7 +59,7 @@ static void Init(Rr_App *App, void *UserData)
         0,
     };
 
-    IndexBuffer = Rr_CreateBuffer(App, sizeof(IndexData), RR_BUFFER_USAGE_INDEX_BUFFER_BIT, false);
+    IndexBuffer = Rr_CreateBuffer(App, sizeof(IndexData), RR_BUFFER_FLAGS_INDEX_BIT);
     Rr_UploadToDeviceBufferImmediate(App, IndexBuffer, RR_MAKE_DATA_ARRAY(IndexData));
 
     ColorAttachment = Rr_CreateImage(

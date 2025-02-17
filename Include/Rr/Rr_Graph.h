@@ -30,10 +30,10 @@ union Rr_GraphResourceHandle
 {
     struct
     {
-        RR_HALF_UINTPTR Index;
-        RR_HALF_UINTPTR Generation;
+        uint32_t Index;
+        uint32_t Generation;
     } Values;
-    uintptr_t Hash;
+    Rr_MapKey Hash;
 };
 
 typedef enum Rr_BlitMode
