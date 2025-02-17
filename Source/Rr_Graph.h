@@ -24,7 +24,7 @@ struct Rr_Transfer
 typedef struct Rr_TransferNode Rr_TransferNode;
 struct Rr_TransferNode
 {
-    Rr_GraphBufferHandle DstBufferHandle;
+    Rr_GraphBuffer DstBufferHandle;
     RR_SLICE(Rr_Transfer) Transfers;
 };
 
@@ -58,9 +58,9 @@ struct Rr_GraphicsNode
 {
     size_t ColorTargetCount;
     Rr_ColorTarget *ColorTargets;
-    Rr_GraphImageHandle *ColorImages;
+    Rr_GraphImage *ColorImages;
     Rr_DepthTarget *DepthTarget;
-    Rr_GraphImageHandle DepthImage;
+    Rr_GraphImage DepthImage;
     Rr_GraphicsNodeFunction *EncodedFirst;
     Rr_GraphicsNodeFunction *Encoded;
 };
@@ -68,7 +68,7 @@ struct Rr_GraphicsNode
 typedef struct Rr_BindIndexBufferArgs Rr_BindIndexBufferArgs;
 struct Rr_BindIndexBufferArgs
 {
-    Rr_GraphBufferHandle BufferHandle;
+    Rr_GraphBuffer BufferHandle;
     uint32_t Slot;
     uint32_t Offset;
     VkIndexType Type;
@@ -77,7 +77,7 @@ struct Rr_BindIndexBufferArgs
 typedef struct Rr_BindBufferArgs Rr_BindBufferArgs;
 struct Rr_BindBufferArgs
 {
-    Rr_GraphBufferHandle BufferHandle;
+    Rr_GraphBuffer BufferHandle;
     uint32_t Slot;
     uint32_t Offset;
 };
@@ -113,7 +113,7 @@ struct Rr_BindSamplerArgs
 typedef struct Rr_BindSampledImageArgs Rr_BindSampledImageArgs;
 struct Rr_BindSampledImageArgs
 {
-    Rr_GraphImageHandle ImageHandle;
+    Rr_GraphImage ImageHandle;
     VkImageLayout Layout;
     uint32_t Set;
     uint32_t Binding;
@@ -122,7 +122,7 @@ struct Rr_BindSampledImageArgs
 typedef struct Rr_BindCombinedImageSamplerArgs Rr_BindCombinedImageSamplerArgs;
 struct Rr_BindCombinedImageSamplerArgs
 {
-    Rr_GraphImageHandle ImageHandle;
+    Rr_GraphImage ImageHandle;
     Rr_Sampler *Sampler;
     VkImageLayout Layout;
     uint32_t Set;
@@ -132,7 +132,7 @@ struct Rr_BindCombinedImageSamplerArgs
 typedef struct Rr_BindUniformBufferArgs Rr_BindUniformBufferArgs;
 struct Rr_BindUniformBufferArgs
 {
-    Rr_GraphBufferHandle BufferHandle;
+    Rr_GraphBuffer BufferHandle;
     uint32_t Set;
     uint32_t Binding;
     uint32_t Offset;
@@ -142,7 +142,7 @@ struct Rr_BindUniformBufferArgs
 typedef struct Rr_PresentNode Rr_PresentNode;
 struct Rr_PresentNode
 {
-    Rr_GraphImageHandle ImageHandle;
+    Rr_GraphImage ImageHandle;
     Rr_PresentMode Mode;
     Rr_Sampler *Sampler;
 };
@@ -150,8 +150,8 @@ struct Rr_PresentNode
 typedef struct Rr_BlitNode Rr_BlitNode;
 struct Rr_BlitNode
 {
-    Rr_GraphImageHandle SrcImageHandle;
-    Rr_GraphImageHandle DstImageHandle;
+    Rr_GraphImage SrcImageHandle;
+    Rr_GraphImage DstImageHandle;
     Rr_IntVec4 SrcRect;
     Rr_IntVec4 DstRect;
     Rr_BlitMode Mode;
@@ -169,7 +169,7 @@ typedef struct Rr_NodeDependency Rr_NodeDependency;
 struct Rr_NodeDependency
 {
     Rr_SyncState State;
-    Rr_GraphResourceHandle Handle;
+    Rr_GraphHandle Handle;
 };
 
 struct Rr_GraphNode

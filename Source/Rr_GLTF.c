@@ -1054,31 +1054,33 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         if(Material->has_pbr_metallic_roughness &&
            Material->pbr_metallic_roughness.base_color_texture.texture != NULL)
         {
-            GLTFMaterial->TextureTypes[CurrentTextureIndex] =
-                RR_GLTF_TEXTURE_TYPE_COLOR;
-            if(GLTFAsset->Images[CurrentTextureIndex] == NULL)
+            cgltf_texture *Texture =
+                Material->pbr_metallic_roughness.base_color_texture.texture;
+            if(strcmp(Texture->image->mime_type, "image/png") == 0 ||
+               strcmp(Texture->image->mime_type, "image/jpeg") == 0)
             {
-                int32_t ImageDataSize =
-                    Material->pbr_metallic_roughness.base_color_texture.texture
-                        ->image->buffer_view->size;
-                char *ImageData =
-                    (char *)Material->pbr_metallic_roughness.base_color_texture
-                        .texture->image->buffer_view->buffer->data +
-                    Material->pbr_metallic_roughness.base_color_texture.texture
-                        ->image->buffer_view->offset;
+                GLTFMaterial->TextureTypes[CurrentTextureIndex] =
+                    RR_GLTF_TEXTURE_TYPE_COLOR;
+                if(GLTFAsset->Images[CurrentTextureIndex] == NULL)
+                {
+                    int32_t ImageDataSize = Texture->image->buffer_view->size;
+                    char *ImageData =
+                        (char *)Texture->image->buffer_view->buffer->data +
+                        Texture->image->buffer_view->offset;
 
-                GLTFAsset->Images[CurrentTextureIndex] =
-                    Rr_CreateImageRGBA8FromPNG(
-                        App,
-                        UploadContext,
-                        ImageDataSize,
-                        ImageData,
-                        false);
+                    GLTFAsset->Images[CurrentTextureIndex] =
+                        Rr_CreateImageRGBA8FromPNG(
+                            App,
+                            UploadContext,
+                            ImageDataSize,
+                            ImageData,
+                            false);
 
-                *RR_PUSH_SLICE(&GLTFContext->Images, GLTFContext->Arena) =
-                    GLTFAsset->Images[CurrentTextureIndex];
+                    *RR_PUSH_SLICE(&GLTFContext->Images, GLTFContext->Arena) =
+                        GLTFAsset->Images[CurrentTextureIndex];
+                }
+                CurrentTextureIndex++;
             }
-            CurrentTextureIndex++;
         }
     }
 

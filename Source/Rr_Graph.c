@@ -19,7 +19,7 @@ static VkAccessFlags AllVulkanWrites =
 static Rr_AllocatedBuffer *Rr_GetGraphBuffer(
     Rr_App *App,
     Rr_Graph *Graph,
-    Rr_GraphBufferHandle Handle)
+    Rr_GraphBuffer Handle)
 {
     return Graph->Resources.Data[Handle.Values.Index].Allocated;
 }
@@ -27,7 +27,7 @@ static Rr_AllocatedBuffer *Rr_GetGraphBuffer(
 static Rr_AllocatedImage *Rr_GetGraphImage(
     Rr_App *App,
     Rr_Graph *Graph,
-    Rr_GraphImageHandle Handle)
+    Rr_GraphImage Handle)
 {
     return Graph->Resources.Data[Handle.Values.Index].Allocated;
 }
@@ -52,7 +52,7 @@ Rr_GraphNode *Rr_AddGraphNode(
 
 static inline void Rr_AddNodeDependency(
     Rr_GraphNode *Node,
-    Rr_GraphResourceHandle *Handle,
+    Rr_GraphHandle *Handle,
     Rr_SyncState *State)
 {
     for(size_t Index = 0; Index < Node->Dependencies.Count; ++Index)
@@ -133,7 +133,7 @@ static void Rr_CreateGraphAdjacencyList(
 
             if(Dependency->Handle.Values.Generation > 0)
             {
-                Rr_GraphResourceHandle Handle = Dependency->Handle;
+                Rr_GraphHandle Handle = Dependency->Handle;
                 Handle.Values.Generation--;
                 Rr_GraphNode *Producer = RR_UPSERT_DEREF(
                     &Graph->ResourceWriteToNode,
@@ -682,13 +682,13 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
     Rr_DestroyScratch(Scratch);
 }
 
-Rr_GraphBufferHandle Rr_RegisterGraphBuffer(Rr_App *App, Rr_Buffer *Buffer)
+Rr_GraphBuffer Rr_RegisterGraphBuffer(Rr_App *App, Rr_Buffer *Buffer)
 {
     assert(Buffer != NULL);
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
     Rr_Graph *Graph = &Frame->Graph;
-    Rr_GraphBufferHandle Handle = {
+    Rr_GraphBuffer Handle = {
         .Values.Index = Graph->Resources.Count,
     };
     *RR_PUSH_SLICE(&Graph->Resources, Frame->Arena) = (Rr_GraphResource){
@@ -697,13 +697,13 @@ Rr_GraphBufferHandle Rr_RegisterGraphBuffer(Rr_App *App, Rr_Buffer *Buffer)
     return Handle;
 }
 
-Rr_GraphImageHandle Rr_RegisterGraphImage(Rr_App *App, Rr_Image *Image)
+Rr_GraphImage Rr_RegisterGraphImage(Rr_App *App, Rr_Image *Image)
 {
     assert(Image != NULL);
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
     Rr_Graph *Graph = &Frame->Graph;
-    Rr_GraphImageHandle Handle = {
+    Rr_GraphImage Handle = {
         .Values.Index = Graph->Resources.Count,
     };
     *RR_PUSH_SLICE(&Graph->Resources, Frame->Arena) = (Rr_GraphResource){
@@ -716,7 +716,7 @@ Rr_GraphImageHandle Rr_RegisterGraphImage(Rr_App *App, Rr_Image *Image)
 Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphImageHandle *ImageHandle,
+    Rr_GraphImage *ImageHandle,
     Rr_Sampler *Sampler,
     Rr_PresentMode Mode)
 {
@@ -948,7 +948,7 @@ void Rr_ExecutePresentNode(
 Rr_GraphNode *Rr_AddTransferNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphBufferHandle *DstBufferHandle)
+    Rr_GraphBuffer *DstBufferHandle)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -1036,8 +1036,8 @@ void Rr_ExecuteTransferNode(
 Rr_GraphNode *Rr_AddBlitNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphImageHandle *SrcImageHandle,
-    Rr_GraphImageHandle *DstImageHandle,
+    Rr_GraphImage *SrcImageHandle,
+    Rr_GraphImage *DstImageHandle,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_BlitMode Mode)
@@ -1153,9 +1153,9 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
-    Rr_GraphImageHandle **ColorImages,
+    Rr_GraphImage **ColorImages,
     Rr_DepthTarget *DepthTarget,
-    Rr_GraphImageHandle *DepthImage)
+    Rr_GraphImage *DepthImage)
 {
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
 
@@ -1171,10 +1171,8 @@ Rr_GraphNode *Rr_AddGraphicsNode(
         GraphicsNode->ColorTargetCount = ColorTargetCount;
         GraphicsNode->ColorTargets =
             RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
-        GraphicsNode->ColorImages = RR_ALLOC_TYPE_COUNT(
-            Frame->Arena,
-            Rr_GraphImageHandle,
-            ColorTargetCount);
+        GraphicsNode->ColorImages =
+            RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_GraphImage, ColorTargetCount);
 
         for(size_t Index = 0; Index < ColorTargetCount; ++Index)
         {
@@ -1609,7 +1607,7 @@ void Rr_DrawIndexed(
 
 void Rr_BindVertexBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle *BufferHandle,
+    Rr_GraphBuffer *BufferHandle,
     uint32_t Slot,
     uint32_t Offset)
 {
@@ -1632,7 +1630,7 @@ void Rr_BindVertexBuffer(
 
 void Rr_BindIndexBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle *BufferHandle,
+    Rr_GraphBuffer *BufferHandle,
     uint32_t Slot,
     uint32_t Offset,
     Rr_IndexType Type)
@@ -1699,7 +1697,7 @@ void Rr_BindSampler(
 
 void Rr_BindSampledImage(
     Rr_GraphNode *Node,
-    Rr_GraphImageHandle *ImageHandle,
+    Rr_GraphImage *ImageHandle,
     uint32_t Set,
     uint32_t Binding)
 {
@@ -1733,7 +1731,7 @@ void Rr_BindSampledImage(
 
 void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
-    Rr_GraphImageHandle *ImageHandle,
+    Rr_GraphImage *ImageHandle,
     Rr_Sampler *Sampler,
     uint32_t Set,
     uint32_t Binding)
@@ -1770,7 +1768,7 @@ void Rr_BindCombinedImageSampler(
 
 void Rr_BindGraphicsUniformBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle *BufferHandle,
+    Rr_GraphBuffer *BufferHandle,
     uint32_t Set,
     uint32_t Binding,
     uint32_t Offset,

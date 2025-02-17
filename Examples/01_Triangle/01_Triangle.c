@@ -72,9 +72,9 @@ static void Init(Rr_App *App, void *UserData)
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    Rr_GraphImageHandle ColorAttachmentHandle = Rr_RegisterGraphImage(App, ColorAttachment);
-    Rr_GraphBufferHandle VertexBufferHandle = Rr_RegisterGraphBuffer(App, VertexBuffer);
-    Rr_GraphBufferHandle IndexBufferHandle = Rr_RegisterGraphBuffer(App, IndexBuffer);
+    Rr_GraphImage ColorAttachmentHandle = Rr_RegisterGraphImage(App, ColorAttachment);
+    Rr_GraphBuffer VertexBufferHandle = Rr_RegisterGraphBuffer(App, VertexBuffer);
+    Rr_GraphBuffer IndexBufferHandle = Rr_RegisterGraphBuffer(App, IndexBuffer);
 
     Rr_ColorTarget OffscreenTarget = {
         .Slot = 0,
@@ -87,7 +87,7 @@ static void Iterate(Rr_App *App, void *UserData)
         "offscreen",
         1,
         &OffscreenTarget,
-        &(Rr_GraphImageHandle *){ &ColorAttachmentHandle },
+        &(Rr_GraphImage *){ &ColorAttachmentHandle },
         NULL,
         NULL);
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);

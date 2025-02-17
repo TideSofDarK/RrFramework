@@ -23,10 +23,10 @@ typedef enum Rr_GraphNodeType
     RR_GRAPH_NODE_TYPE_TRANSFER,
 } Rr_GraphNodeType;
 
-typedef union Rr_GraphResourceHandle Rr_GraphBufferHandle;
-typedef union Rr_GraphResourceHandle Rr_GraphImageHandle;
-typedef union Rr_GraphResourceHandle Rr_GraphResourceHandle;
-union Rr_GraphResourceHandle
+typedef union Rr_GraphHandle Rr_GraphBuffer;
+typedef union Rr_GraphHandle Rr_GraphImage;
+typedef union Rr_GraphHandle Rr_GraphHandle;
+union Rr_GraphHandle
 {
     struct
     {
@@ -80,25 +80,23 @@ typedef enum Rr_PresentMode
     RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
 
-extern Rr_GraphBufferHandle Rr_RegisterGraphBuffer(
+extern Rr_GraphBuffer Rr_RegisterGraphBuffer(
     Rr_App *App,
     struct Rr_Buffer *Buffer);
 
-extern Rr_GraphImageHandle Rr_RegisterGraphImage(
-    Rr_App *App,
-    struct Rr_Image *Image);
+extern Rr_GraphImage Rr_RegisterGraphImage(Rr_App *App, struct Rr_Image *Image);
 
 extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphImageHandle *ImageHandle,
+    Rr_GraphImage *ImageHandle,
     struct Rr_Sampler *Sampler,
     Rr_PresentMode Mode);
 
 extern Rr_GraphNode *Rr_AddTransferNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphBufferHandle *DstBufferHandle);
+    Rr_GraphBuffer *DstBufferHandle);
 
 extern void Rr_TransferBufferData(
     Rr_App *App,
@@ -109,8 +107,8 @@ extern void Rr_TransferBufferData(
 extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphImageHandle *SrcImage,
-    Rr_GraphImageHandle *DstImage,
+    Rr_GraphImage *SrcImage,
+    Rr_GraphImage *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_BlitMode Mode);
@@ -120,9 +118,9 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
-    Rr_GraphImageHandle **ColorImages,
+    Rr_GraphImage **ColorImages,
     Rr_DepthTarget *DepthTarget,
-    Rr_GraphImageHandle *DepthImage);
+    Rr_GraphImage *DepthImage);
 
 extern void Rr_Draw(
     Rr_GraphNode *Node,
@@ -141,13 +139,13 @@ extern void Rr_DrawIndexed(
 
 extern void Rr_BindVertexBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle *BufferHandle,
+    Rr_GraphBuffer *BufferHandle,
     uint32_t Slot,
     uint32_t Offset);
 
 extern void Rr_BindIndexBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle *BufferHandle,
+    Rr_GraphBuffer *BufferHandle,
     uint32_t Slot,
     uint32_t Offset,
     Rr_IndexType Type);
@@ -168,20 +166,20 @@ extern void Rr_BindSampler(
 
 extern void Rr_BindSampledImage(
     Rr_GraphNode *Node,
-    Rr_GraphImageHandle *ImageHandle,
+    Rr_GraphImage *ImageHandle,
     uint32_t Set,
     uint32_t Binding);
 
 extern void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
-    Rr_GraphImageHandle *ImageHandle,
+    Rr_GraphImage *ImageHandle,
     struct Rr_Sampler *Sampler,
     uint32_t Set,
     uint32_t Binding);
 
 extern void Rr_BindGraphicsUniformBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBufferHandle *BufferHandle,
+    Rr_GraphBuffer *BufferHandle,
     uint32_t Set,
     uint32_t Binding,
     uint32_t Offset,

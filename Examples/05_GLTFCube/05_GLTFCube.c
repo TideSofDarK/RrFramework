@@ -2,8 +2,8 @@
 
 #include "ExampleAssets.inc"
 
-typedef struct UniformData UniformData;
-struct UniformData
+typedef struct SUniformData UniformData;
+struct SUniformData
 {
     Rr_Mat4 Model;
     Rr_Mat4 View;
@@ -161,12 +161,12 @@ static void Init(Rr_App *App, void *UserData)
 
 static void DrawFirstGLTFPrimitive(
     Rr_App *App,
-    Rr_GraphImageHandle *ColorAttachmentHandle,
-    Rr_GraphImageHandle *DepthAttachmentHandle)
+    Rr_GraphImage *ColorAttachmentHandle,
+    Rr_GraphImage *DepthAttachmentHandle)
 {
     double Time = Rr_GetTimeSeconds(App);
 
-    Rr_GraphBufferHandle UniformBufferHandle =
+    Rr_GraphBuffer UniformBufferHandle =
         Rr_RegisterGraphBuffer(App, UniformBuffer);
 
     UniformData UniformData = {};
@@ -206,11 +206,11 @@ static void DrawFirstGLTFPrimitive(
         "offscreen",
         1,
         &OffscreenTarget,
-        &(Rr_GraphImageHandle *){ ColorAttachmentHandle },
+        &(Rr_GraphImage *){ ColorAttachmentHandle },
         &OffscreenDepth,
         DepthAttachmentHandle);
 
-    Rr_GraphBufferHandle GLTFBufferHandle =
+    Rr_GraphBuffer GLTFBufferHandle =
         Rr_RegisterGraphBuffer(App, GLTFAsset->Buffer);
 
     Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
@@ -234,16 +234,16 @@ static void DrawFirstGLTFPrimitive(
         0,
         sizeof(UniformData));
     Rr_BindSampler(OffscreenNode, NearestSampler, 0, 1);
-    Rr_GraphImageHandle ColorTextureHandle = Rr_RegisterGraphImage(App, GLTFAsset->Images[0]);
+    Rr_GraphImage ColorTextureHandle = Rr_RegisterGraphImage(App, GLTFAsset->Images[0]);
     Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 0, 2);
     Rr_DrawIndexed(OffscreenNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
 }
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    Rr_GraphImageHandle ColorAttachmentHandle =
+    Rr_GraphImage ColorAttachmentHandle =
         Rr_RegisterGraphImage(App, ColorAttachment);
-    Rr_GraphImageHandle DepthAttachmentHandle =
+    Rr_GraphImage DepthAttachmentHandle =
         Rr_RegisterGraphImage(App, DepthAttachment);
 
     if(Loaded)
