@@ -39,7 +39,7 @@ endfunction ()
 # Dependencies
 #
 
-find_package(Vulkan REQUIRED volk)
+find_package(Vulkan)
 
 set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
 set(SDL_SENSOR OFF CACHE BOOL "" FORCE)

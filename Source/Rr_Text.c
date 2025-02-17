@@ -108,17 +108,17 @@ void Rr_CleanupTextRenderer(Rr_App *App)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
-    VkDevice Device = Renderer->Device;
-    // Rr_DestroyPipeline(App, TextPipeline->Pipeline);
-    vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
-    for(size_t Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT;
-        ++Index)
-    {
-        vkDestroyDescriptorSetLayout(
-            Device,
-            TextPipeline->DescriptorSetLayouts[Index],
-            NULL);
-    }
+    // VkDevice Device = Renderer->Device;
+    // // Rr_DestroyPipeline(App, TextPipeline->Pipeline);
+    // vkDestroyPipelineLayout(Device, TextPipeline->Layout, NULL);
+    // for(size_t Index = 0; Index < RR_TEXT_PIPELINE_DESCRIPTOR_SET_COUNT;
+    //     ++Index)
+    // {
+    //     vkDestroyDescriptorSetLayout(
+    //         Device,
+    //         TextPipeline->DescriptorSetLayouts[Index],
+    //         NULL);
+    // }
     Rr_DestroyBuffer(App, TextPipeline->QuadBuffer);
     Rr_DestroyFont(App, Renderer->BuiltinFont);
 }

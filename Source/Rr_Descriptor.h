@@ -46,7 +46,7 @@ struct Rr_DescriptorWriter
 };
 
 extern Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
-    VkDevice Device,
+    Rr_Device *Device,
     size_t MaxSets,
     Rr_DescriptorPoolSizeRatio *Ratios,
     size_t RatioCount,
@@ -54,16 +54,16 @@ extern Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
 
 extern VkDescriptorSet Rr_AllocateDescriptorSet(
     Rr_DescriptorAllocator *DescriptorAllocator,
-    VkDevice Device,
+    Rr_Device *Device,
     VkDescriptorSetLayout Layout);
 
 extern void Rr_ResetDescriptorAllocator(
     Rr_DescriptorAllocator *DescriptorAllocator,
-    VkDevice Device);
+    Rr_Device *Device);
 
 extern void Rr_DestroyDescriptorAllocator(
     Rr_DescriptorAllocator *DescriptorAllocator,
-    VkDevice Device);
+    Rr_Device *Device);
 
 extern Rr_DescriptorWriter *Rr_CreateDescriptorWriter(
     size_t SamplerCount,
@@ -110,7 +110,7 @@ extern void Rr_ResetDescriptorWriter(Rr_DescriptorWriter *Writer);
 
 extern void Rr_UpdateDescriptorSet(
     Rr_DescriptorWriter *Writer,
-    VkDevice Device,
+    Rr_Device *Device,
     VkDescriptorSet Set);
 
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
@@ -137,7 +137,7 @@ extern void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder *Builder);
 
 extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(
     Rr_DescriptorLayoutBuilder *Builder,
-    VkDevice Device);
+    Rr_Device *Device);
 
 /* */
 
@@ -202,6 +202,6 @@ extern void Rr_ApplyDescriptorsState(
     Rr_DescriptorsState *State,
     Rr_DescriptorAllocator *DescriptorAllocator,
     Rr_PipelineLayout *PipelineLayout,
-    VkDevice Device,
+    Rr_Device *Device,
     VkCommandBuffer CommandBuffer,
     VkPipelineBindPoint PipelineBindPoint);

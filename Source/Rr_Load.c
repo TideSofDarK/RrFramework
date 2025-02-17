@@ -120,6 +120,8 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 {
     Rr_App *App = LoadContext->App;
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
+
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     size_t TaskCount = LoadContext->TaskCount;
@@ -135,8 +137,8 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 
     VkCommandBuffer TransferCommandBuffer;
     {
-        vkAllocateCommandBuffers(
-            Renderer->Device,
+        Device->AllocateCommandBuffers(
+            Device->Handle,
             &(VkCommandBufferAllocateInfo){
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
                 .commandPool = CommandPool,
@@ -145,7 +147,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
             &TransferCommandBuffer);
     }
 
-    vkBeginCommandBuffer(
+    Device->BeginCommandBuffer(
         TransferCommandBuffer,
         &(VkCommandBufferBeginInfo){
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -170,11 +172,11 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 
     if(!UseTransferQueue)
     {
-        vkEndCommandBuffer(TransferCommandBuffer);
+        Device->EndCommandBuffer(TransferCommandBuffer);
 
         Rr_LockSpinLock(&Renderer->GraphicsQueue.Lock);
 
-        vkQueueSubmit(
+        Device->QueueSubmit(
             Renderer->GraphicsQueue.Handle,
             1,
             &(VkSubmitInfo){
@@ -188,7 +190,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     }
     else
     {
-        vkCmdPipelineBarrier(
+        Device->CmdPipelineBarrier(
             TransferCommandBuffer,
             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
@@ -200,9 +202,9 @@ static Rr_LoadResult Rr_ProcessLoadContext(
             UploadContext.ReleaseImageMemoryBarriers.Count,
             UploadContext.ReleaseImageMemoryBarriers.Data);
 
-        vkEndCommandBuffer(TransferCommandBuffer);
+        Device->EndCommandBuffer(TransferCommandBuffer);
 
-        vkQueueSubmit(
+        Device->QueueSubmit(
             Renderer->TransferQueue.Handle,
             1,
             &(VkSubmitInfo){
@@ -218,8 +220,8 @@ static Rr_LoadResult Rr_ProcessLoadContext(
         {
             VkCommandBuffer GraphicsCommandBuffer = VK_NULL_HANDLE;
 
-            vkAllocateCommandBuffers(
-                Renderer->Device,
+            Device->AllocateCommandBuffers(
+                Device->Handle,
                 &(VkCommandBufferAllocateInfo){
                     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
                     .commandPool = LoadAsyncContext.GraphicsCommandPool,
@@ -227,14 +229,14 @@ static Rr_LoadResult Rr_ProcessLoadContext(
                 },
                 &GraphicsCommandBuffer);
 
-            vkBeginCommandBuffer(
+            Device->BeginCommandBuffer(
                 GraphicsCommandBuffer,
                 &(VkCommandBufferBeginInfo){
                     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
                 });
 
-            vkCmdPipelineBarrier(
+            Device->CmdPipelineBarrier(
                 GraphicsCommandBuffer,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
@@ -247,14 +249,14 @@ static Rr_LoadResult Rr_ProcessLoadContext(
                 UploadContext.AcquireImageMemoryBarriers.Count,
                 UploadContext.AcquireImageMemoryBarriers.Data);
 
-            vkEndCommandBuffer(GraphicsCommandBuffer);
+            Device->EndCommandBuffer(GraphicsCommandBuffer);
 
             VkPipelineStageFlags WaitDstStageMask =
                 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
             Rr_LockSpinLock(&Renderer->GraphicsQueue.Lock);
 
-            vkQueueSubmit(
+            Device->QueueSubmit(
                 Renderer->GraphicsQueue.Handle,
                 1,
                 &(VkSubmitInfo){
@@ -271,8 +273,8 @@ static Rr_LoadResult Rr_ProcessLoadContext(
         }
     }
 
-    vkWaitForFences(
-        Renderer->Device,
+    Device->WaitForFences(
+        Device->Handle,
         1,
         &LoadAsyncContext.Fence,
         true,
@@ -309,8 +311,10 @@ static void Rr_InitLoadAsyncContext(
     Rr_Renderer *Renderer,
     Rr_LoadAsyncContext *LoadAsyncContext)
 {
-    vkCreateCommandPool(
-        Renderer->Device,
+    Rr_Device *Device = &Renderer->Device;
+
+    Device->CreateCommandPool(
+        Device->Handle,
         &(VkCommandPoolCreateInfo){
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
@@ -319,8 +323,8 @@ static void Rr_InitLoadAsyncContext(
         },
         NULL,
         &LoadAsyncContext->GraphicsCommandPool);
-    vkCreateFence(
-        Renderer->Device,
+    Device->CreateFence(
+        Device->Handle,
         &(VkFenceCreateInfo){
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .pNext = NULL,
@@ -330,8 +334,8 @@ static void Rr_InitLoadAsyncContext(
         &LoadAsyncContext->Fence);
     if(Rr_IsUsingTransferQueue(Renderer))
     {
-        vkCreateCommandPool(
-            Renderer->Device,
+        Device->CreateCommandPool(
+            Device->Handle,
             &(VkCommandPoolCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                 .pNext = VK_NULL_HANDLE,
@@ -340,8 +344,8 @@ static void Rr_InitLoadAsyncContext(
             },
             NULL,
             &LoadAsyncContext->TransferCommandPool);
-        vkCreateSemaphore(
-            Renderer->Device,
+        Device->CreateSemaphore(
+            Device->Handle,
             &(VkSemaphoreCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
                 .pNext = NULL,
@@ -356,18 +360,23 @@ static void Rr_CleanupLoadAsyncContext(
     Rr_Renderer *Renderer,
     Rr_LoadAsyncContext *LoadAsyncContext)
 {
-    vkDestroyCommandPool(
-        Renderer->Device,
+    Rr_Device *Device = &Renderer->Device;
+
+    Device->DestroyCommandPool(
+        Device->Handle,
         LoadAsyncContext->GraphicsCommandPool,
         NULL);
-    vkDestroyFence(Renderer->Device, LoadAsyncContext->Fence, NULL);
+    Device->DestroyFence(Device->Handle, LoadAsyncContext->Fence, NULL);
     if(LoadAsyncContext->TransferCommandPool != VK_NULL_HANDLE)
     {
-        vkDestroyCommandPool(
-            Renderer->Device,
+        Device->DestroyCommandPool(
+            Device->Handle,
             LoadAsyncContext->TransferCommandPool,
             NULL);
-        vkDestroySemaphore(Renderer->Device, LoadAsyncContext->Semaphore, NULL);
+        Device->DestroySemaphore(
+            Device->Handle,
+            LoadAsyncContext->Semaphore,
+            NULL);
     }
     RR_ZERO_PTR(LoadAsyncContext);
 }
@@ -375,8 +384,10 @@ static void Rr_CleanupLoadAsyncContext(
 static int SDLCALL Rr_LoadThreadProc(void *UserData)
 {
     Rr_LoadThread *LoadThread = UserData;
+
     Rr_App *App = LoadThread->App;
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     Rr_InitScratch(RR_LOADING_THREAD_SCRATCH_SIZE);
 
@@ -404,18 +415,18 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
             LoadAsyncContext);
         CurrentLoadingContextIndex++;
 
-        vkResetCommandPool(
-            Renderer->Device,
+        Device->ResetCommandPool(
+            Device->Handle,
             LoadAsyncContext.GraphicsCommandPool,
             0);
         if(LoadAsyncContext.TransferCommandPool != VK_NULL_HANDLE)
         {
-            vkResetCommandPool(
-                Renderer->Device,
+            Device->ResetCommandPool(
+                Device->Handle,
                 LoadAsyncContext.TransferCommandPool,
                 0);
         }
-        vkResetFences(Renderer->Device, 1, &LoadAsyncContext.Fence);
+        Device->ResetFences(Device->Handle, 1, &LoadAsyncContext.Fence);
 
         SDL_LockMutex(LoadThread->Mutex);
         if(CurrentLoadingContextIndex >= LoadThread->LoadContexts.Count)
@@ -497,6 +508,8 @@ Rr_LoadResult Rr_LoadImmediate(
     assert(TaskCount > 0 && Tasks != NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
+
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     VkCommandBuffer TransferCommandBuffer;
@@ -508,11 +521,11 @@ Rr_LoadResult Rr_LoadImmediate(
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = 1,
     };
-    vkAllocateCommandBuffers(
-        Renderer->Device,
+    Device->AllocateCommandBuffers(
+        Device->Handle,
         &CommandBufferAllocateInfo,
         &TransferCommandBuffer);
-    vkBeginCommandBuffer(
+    Device->BeginCommandBuffer(
         TransferCommandBuffer,
         &(VkCommandBufferBeginInfo){
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -535,8 +548,8 @@ Rr_LoadResult Rr_LoadImmediate(
         Scratch.Arena);
 
     VkFence Fence;
-    vkCreateFence(
-        Renderer->Device,
+    Device->CreateFence(
+        Device->Handle,
         &(VkFenceCreateInfo){
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .pNext = NULL,
@@ -545,11 +558,11 @@ Rr_LoadResult Rr_LoadImmediate(
         NULL,
         &Fence);
 
-    vkEndCommandBuffer(TransferCommandBuffer);
+    Device->EndCommandBuffer(TransferCommandBuffer);
 
     Rr_LockSpinLock(&Renderer->GraphicsQueue.Lock);
 
-    vkQueueSubmit(
+    Device->QueueSubmit(
         Renderer->GraphicsQueue.Handle,
         1,
         &(VkSubmitInfo){
@@ -567,16 +580,16 @@ Rr_LoadResult Rr_LoadImmediate(
 
     Rr_UnlockSpinLock(&Renderer->GraphicsQueue.Lock);
 
-    vkWaitForFences(Renderer->Device, 1, &Fence, true, UINT64_MAX);
-    vkDestroyFence(Renderer->Device, Fence, NULL);
+    Device->WaitForFences(Device->Handle, 1, &Fence, true, UINT64_MAX);
+    Device->DestroyFence(Device->Handle, Fence, NULL);
 
     for(size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
     {
         Rr_DestroyBuffer(App, UploadContext.StagingBuffers.Data[Index]);
     }
 
-    vkFreeCommandBuffers(
-        Renderer->Device,
+    Device->FreeCommandBuffers(
+        Device->Handle,
         CommandPool,
         1,
         &TransferCommandBuffer);

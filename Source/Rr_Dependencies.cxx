@@ -1,8 +1,5 @@
 #include "Rr_Memory.h"
 
-#define VOLK_IMPLEMENTATION
-#include <volk/volk.h>
-
 #define VMA_IMPLEMENTATION
 #define VMA_VULKAN_VERSION           1001000
 #define VMA_STATIC_VULKAN_FUNCTIONS  0

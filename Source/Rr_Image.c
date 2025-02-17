@@ -15,6 +15,7 @@ Rr_Sampler *Rr_CreateSampler(Rr_App *App, Rr_SamplerInfo *Info)
     assert(Info != NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     Rr_Sampler *Sampler =
         RR_GET_FREE_LIST_ITEM(&App->Renderer.Samplers, App->PermanentArena);
@@ -39,7 +40,7 @@ Rr_Sampler *Rr_CreateSampler(Rr_App *App, Rr_SamplerInfo *Info)
         .unnormalizedCoordinates = Info->UnnormalizedCoordinates,
     };
 
-    vkCreateSampler(Renderer->Device, &SamplerInfo, NULL, &Sampler->Handle);
+    Device->CreateSampler(Device->Handle, &SamplerInfo, NULL, &Sampler->Handle);
 
     return Sampler;
 }
@@ -48,7 +49,10 @@ void Rr_DestroySampler(Rr_App *App, Rr_Sampler *Sampler)
 {
     assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
 
-    vkDestroySampler(App->Renderer.Device, Sampler->Handle, NULL);
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
+
+    Device->DestroySampler(Device->Handle, Sampler->Handle, NULL);
 
     RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Samplers, Sampler);
 }
@@ -65,6 +69,7 @@ void Rr_UploadStagingImage(
     size_t StagingSize)
 {
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
 
@@ -85,7 +90,7 @@ void Rr_UploadStagingImage(
             .layerCount = VK_REMAINING_ARRAY_LAYERS,
         };
 
-        vkCmdPipelineBarrier(
+        Device->CmdPipelineBarrier(
             CommandBuffer,
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -121,7 +126,7 @@ void Rr_UploadStagingImage(
             .imageExtent = Image->Extent,
         };
 
-        vkCmdCopyBufferToImage(
+        Device->CmdCopyBufferToImage(
             CommandBuffer,
             AllocatedStagingBuffer->Handle,
             AllocatedImage->Handle,
@@ -129,7 +134,7 @@ void Rr_UploadStagingImage(
             1,
             &BufferImageCopy);
 
-        vkCmdPipelineBarrier(
+        Device->CmdPipelineBarrier(
             CommandBuffer,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             DstState.StageMask,
@@ -231,6 +236,7 @@ Rr_Image *Rr_CreateImage(
     assert(Extent.Depth >= 1);
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     Rr_Image *Image =
         RR_GET_FREE_LIST_ITEM(&App->Renderer.Images, App->PermanentArena);
@@ -349,8 +355,8 @@ Rr_Image *Rr_CreateImage(
             },
         };
 
-        vkCreateImageView(
-            Renderer->Device,
+        Device->CreateImageView(
+            Device->Handle,
             &ImageViewCreateInfo,
             NULL,
             &AllocatedImage->View);
@@ -367,11 +373,12 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
     }
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
-        vkDestroyImageView(
-            Renderer->Device,
+        Device->DestroyImageView(
+            Device->Handle,
             Image->AllocatedImages[Index].View,
             NULL);
         vmaDestroyImage(

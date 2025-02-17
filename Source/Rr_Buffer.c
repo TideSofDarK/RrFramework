@@ -103,6 +103,7 @@ void Rr_UploadStagingBuffer(
     size_t StagingSize)
 {
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
 
@@ -116,7 +117,7 @@ void Rr_UploadStagingBuffer(
         Rr_AllocatedBuffer *AllocatedBuffer =
             Buffer->AllocatedBuffers + AllocatedIndex;
 
-        vkCmdPipelineBarrier(
+        Device->CmdPipelineBarrier(
             CommandBuffer,
             SrcState.StageMask,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -142,7 +143,7 @@ void Rr_UploadStagingBuffer(
                               .srcOffset = StagingOffset,
                               .dstOffset = 0 };
 
-        vkCmdCopyBuffer(
+        Device->CmdCopyBuffer(
             CommandBuffer,
             AllocatedStagingBuffer->Handle,
             AllocatedBuffer->Handle,
@@ -181,7 +182,7 @@ void Rr_UploadStagingBuffer(
         }
         else
         {
-            vkCmdPipelineBarrier(
+            Device->CmdPipelineBarrier(
                 CommandBuffer,
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
                 DstState.StageMask,
@@ -244,6 +245,7 @@ void Rr_UploadToDeviceBufferImmediate(
     assert(DstBuffer != NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
 
@@ -261,14 +263,17 @@ void Rr_UploadToDeviceBufferImmediate(
         Data.Pointer,
         Data.Size);
 
-    VkBufferCopy BufferCopy = { .dstOffset = 0,
-                                .size = Data.Size,
-                                .srcOffset = 0 };
+    VkBufferCopy BufferCopy = {
+        .dstOffset = 0,
+        .size = Data.Size,
+        .srcOffset = 0,
+    };
+
     for(size_t Index = 0; Index < DstBuffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *DstAllocatedBuffer =
             &DstBuffer->AllocatedBuffers[Index];
-        vkCmdCopyBuffer(
+        Device->CmdCopyBuffer(
             CommandBuffer,
             SrcAllocatedBuffer->Handle,
             DstAllocatedBuffer->Handle,

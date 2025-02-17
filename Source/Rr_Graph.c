@@ -306,6 +306,8 @@ static void Rr_ApplyBarrierBatch(
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
+    Rr_Device *Device = &App->Renderer.Device;
+
     size_t MaxPossibleBarriers =
         Barrier->BufferBarriers.Count + Barrier->ImageBarriers.Count;
 
@@ -422,7 +424,7 @@ static void Rr_ApplyBarrierBatch(
 
     if(BufferBarriersEarly.Count > 0 || ImageBarriersEarly.Count > 0)
     {
-        vkCmdPipelineBarrier(
+        Device->CmdPipelineBarrier(
             CommandBuffer,
             SrcStageMaskEarly,
             DstStageMaskEarly,
@@ -437,7 +439,7 @@ static void Rr_ApplyBarrierBatch(
 
     if(BufferBarriers.Count > 0 || ImageBarriers.Count > 0)
     {
-        vkCmdPipelineBarrier(
+        Device->CmdPipelineBarrier(
             CommandBuffer,
             SrcStageMask,
             DstStageMask,
@@ -762,6 +764,7 @@ void Rr_ExecutePresentNode(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_AllocatedImage *Image =
@@ -770,7 +773,7 @@ void Rr_ExecutePresentNode(
 
     VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
         &Frame->DescriptorAllocator,
-        Renderer->Device,
+        Device,
         Renderer->PresentLayout->DescriptorSetLayouts[0]);
 
     VkSampler Sampler = Node->Sampler->Handle;
@@ -783,12 +786,12 @@ void Rr_ExecutePresentNode(
         Image->View,
         Sampler,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    Rr_UpdateDescriptorSet(Writer, Renderer->Device, DescriptorSet);
+    Rr_UpdateDescriptorSet(Writer, Device, DescriptorSet);
 
     VkImage SwapchainImage =
         Rr_GetCurrentAllocatedImage(App, &Frame->VirtualSwapchainImage)->Handle;
 
-    vkCmdPipelineBarrier(
+    Device->CmdPipelineBarrier(
         CommandBuffer,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -827,7 +830,7 @@ void Rr_ExecutePresentNode(
         .clearValueCount = 1,
         .pClearValues = &ClearValue,
     };
-    vkCmdBeginRenderPass(
+    Device->CmdBeginRenderPass(
         CommandBuffer,
         &RenderPassBeginInfo,
         VK_SUBPASS_CONTENTS_INLINE);
@@ -870,7 +873,7 @@ void Rr_ExecutePresentNode(
         break;
     }
 
-    vkCmdSetViewport(
+    Device->CmdSetViewport(
         CommandBuffer,
         0,
         1,
@@ -883,7 +886,7 @@ void Rr_ExecutePresentNode(
             .maxDepth = 1.0f,
         });
 
-    vkCmdSetScissor(
+    Device->CmdSetScissor(
         CommandBuffer,
         0,
         1,
@@ -894,12 +897,12 @@ void Rr_ExecutePresentNode(
             .extent.height = Height,
         });
 
-    vkCmdBindPipeline(
+    Device->CmdBindPipeline(
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         Renderer->PresentPipeline->Handle);
 
-    vkCmdBindDescriptorSets(
+    Device->CmdBindDescriptorSets(
         CommandBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         Renderer->PresentPipeline->Layout->Handle,
@@ -909,11 +912,11 @@ void Rr_ExecutePresentNode(
         0,
         NULL);
 
-    vkCmdDraw(CommandBuffer, 3, 1, 0, 0);
+    Device->CmdDraw(CommandBuffer, 3, 1, 0, 0);
 
-    vkCmdEndRenderPass(CommandBuffer);
+    Device->CmdEndRenderPass(CommandBuffer);
 
-    vkCmdPipelineBarrier(
+    Device->CmdPipelineBarrier(
         CommandBuffer,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
@@ -1012,6 +1015,7 @@ void Rr_ExecuteTransferNode(
     VkCommandBuffer CommandBuffer)
 {
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     VkBuffer SrcBuffer =
@@ -1026,7 +1030,7 @@ void Rr_ExecuteTransferNode(
         VkBufferCopy Copy = { .size = Transfer->Size,
                               .srcOffset = Transfer->SrcOffset,
                               .dstOffset = Transfer->DstOffset };
-        vkCmdCopyBuffer(CommandBuffer, SrcBuffer, DstBuffer, 1, &Copy);
+        Device->CmdCopyBuffer(CommandBuffer, SrcBuffer, DstBuffer, 1, &Copy);
     }
 }
 
@@ -1109,6 +1113,8 @@ void Rr_ExecuteBlitNode(
     Rr_BlitNode *Node,
     VkCommandBuffer CommandBuffer)
 {
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
 
     Rr_AllocatedImage *SrcImage =
@@ -1120,6 +1126,7 @@ void Rr_ExecuteBlitNode(
        Rr_ClampBlitRect(&Node->DstRect, &DstImage->Container->Extent))
     {
         Rr_BlitColorImage(
+            Device,
             CommandBuffer,
             SrcImage->Handle,
             DstImage->Handle,
@@ -1228,6 +1235,7 @@ void Rr_ExecuteGraphicsNode(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_IntVec4 Viewport = { 0 };
@@ -1324,14 +1332,14 @@ void Rr_ExecuteGraphicsNode(
         .clearValueCount = AttachmentCount,
         .pClearValues = ClearValues,
     };
-    vkCmdBeginRenderPass(
+    Device->CmdBeginRenderPass(
         CommandBuffer,
         &RenderPassBeginInfo,
         VK_SUBPASS_CONTENTS_INLINE);
 
     /* Set dynamic states. */
 
-    vkCmdSetViewport(
+    Device->CmdSetViewport(
         CommandBuffer,
         0,
         1,
@@ -1344,7 +1352,7 @@ void Rr_ExecuteGraphicsNode(
             .maxDepth = 1.0f,
         });
 
-    vkCmdSetScissor(
+    Device->CmdSetScissor(
         CommandBuffer,
         0,
         1,
@@ -1370,11 +1378,11 @@ void Rr_ExecuteGraphicsNode(
                     &DescriptorsState,
                     &Frame->DescriptorAllocator,
                     GraphicsPipeline->Layout,
-                    Renderer->Device,
+                    Device,
                     CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawArgs *Args = (Rr_DrawArgs *)Function->Args;
-                vkCmdDraw(
+                Device->CmdDraw(
                     CommandBuffer,
                     Args->VertexCount,
                     Args->InstanceCount,
@@ -1388,11 +1396,11 @@ void Rr_ExecuteGraphicsNode(
                     &DescriptorsState,
                     &Frame->DescriptorAllocator,
                     GraphicsPipeline->Layout,
-                    Renderer->Device,
+                    Device,
                     CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
-                vkCmdDrawIndexed(
+                Device->CmdDrawIndexed(
                     CommandBuffer,
                     Args->IndexCount,
                     Args->InstanceCount,
@@ -1404,7 +1412,7 @@ void Rr_ExecuteGraphicsNode(
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
             {
                 Rr_BindIndexBufferArgs *Args = Function->Args;
-                vkCmdBindIndexBuffer(
+                Device->CmdBindIndexBuffer(
                     CommandBuffer,
                     Rr_GetGraphBuffer(App, Graph, Args->BufferHandle)->Handle,
                     Args->Offset,
@@ -1414,7 +1422,7 @@ void Rr_ExecuteGraphicsNode(
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
             {
                 Rr_BindBufferArgs *Args = Function->Args;
-                vkCmdBindVertexBuffers(
+                Device->CmdBindVertexBuffers(
                     CommandBuffer,
                     Args->Slot,
                     1,
@@ -1425,7 +1433,7 @@ void Rr_ExecuteGraphicsNode(
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
             {
                 GraphicsPipeline = *(Rr_GraphicsPipeline **)Function->Args;
-                vkCmdBindPipeline(
+                Device->CmdBindPipeline(
                     CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS,
                     GraphicsPipeline->Handle);
@@ -1434,7 +1442,7 @@ void Rr_ExecuteGraphicsNode(
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT:
             {
                 Rr_Vec4 *Viewport = Function->Args;
-                vkCmdSetViewport(
+                Device->CmdSetViewport(
                     CommandBuffer,
                     0,
                     1,
@@ -1451,7 +1459,7 @@ void Rr_ExecuteGraphicsNode(
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR:
             {
                 Rr_IntVec4 *Scissor = Function->Args;
-                vkCmdSetScissor(
+                Device->CmdSetScissor(
                     CommandBuffer,
                     0,
                     1,
@@ -1550,7 +1558,7 @@ void Rr_ExecuteGraphicsNode(
         }
     }
 
-    vkCmdEndRenderPass(CommandBuffer);
+    Device->CmdEndRenderPass(CommandBuffer);
 
     Rr_DestroyScratch(Scratch);
 }

@@ -80,22 +80,20 @@ struct Rr_CachedRenderPass
 typedef struct Rr_Renderer Rr_Renderer;
 struct Rr_Renderer
 {
-    /* Vulkan Instance */
+    /* Vulkan Core */
 
-    VkInstance Instance;
+    Rr_VulkanLoader Loader;
+    Rr_Instance Instance;
+    Rr_PhysicalDevice PhysicalDevice;
+    Rr_Device Device;
+    VkSurfaceKHR Surface;
 
     /* Presentation */
 
-    VkSurfaceKHR Surface;
     Rr_Swapchain Swapchain;
     Rr_GraphicsPipeline *PresentPipeline;
     Rr_PipelineLayout *PresentLayout;
     VkRenderPass PresentRenderPass;
-
-    /* Device */
-
-    Rr_PhysicalDevice PhysicalDevice;
-    VkDevice Device;
 
     /* Queues */
 

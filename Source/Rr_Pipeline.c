@@ -47,6 +47,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     Rr_GraphicsPipeline *Pipeline = RR_GET_FREE_LIST_ITEM(
         &App->Renderer.GraphicsPipelines,
@@ -64,8 +65,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             .pCode = (uint32_t *)Info->VertexShaderSPV.Pointer,
             .codeSize = Info->VertexShaderSPV.Size,
         };
-        vkCreateShaderModule(
-            Renderer->Device,
+        Device->CreateShaderModule(
+            Device->Handle,
             &ShaderModuleCreateInfo,
             NULL,
             &VertModule);
@@ -89,8 +90,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             .pCode = (uint32_t *)Info->FragmentShaderSPV.Pointer,
             .codeSize = Info->FragmentShaderSPV.Size,
         };
-        vkCreateShaderModule(
-            Renderer->Device,
+        Device->CreateShaderModule(
+            Device->Handle,
             &ShaderModuleCreateInfo,
             NULL,
             &FragModule);
@@ -289,8 +290,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .renderPass = Rr_GetCompatibleRenderPass(App, Info),
     };
 
-    vkCreateGraphicsPipelines(
-        Renderer->Device,
+    Device->CreateGraphicsPipelines(
+        Device->Handle,
         VK_NULL_HANDLE,
         1,
         &PipelineInfo,
@@ -299,12 +300,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     if(VertModule != VK_NULL_HANDLE)
     {
-        vkDestroyShaderModule(Renderer->Device, VertModule, NULL);
+        Device->DestroyShaderModule(Device->Handle, VertModule, NULL);
     }
 
     if(FragModule != VK_NULL_HANDLE)
     {
-        vkDestroyShaderModule(Renderer->Device, FragModule, NULL);
+        Device->DestroyShaderModule(Device->Handle, FragModule, NULL);
     }
 
     Rr_DestroyScratch(Scratch);
@@ -316,7 +317,10 @@ void Rr_DestroyGraphicsPipeline(
     Rr_App *App,
     Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    vkDestroyPipeline(App->Renderer.Device, GraphicsPipeline->Handle, NULL);
+    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
+
+    Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
     RR_RETURN_FREE_LIST_ITEM(
         &App->Renderer.GraphicsPipelines,
@@ -331,6 +335,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     Rr_PipelineLayout *PipelineLayout = RR_GET_FREE_LIST_ITEM(
         &App->Renderer.PipelineLayouts,
@@ -368,9 +373,8 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
             }
         }
 
-        PipelineLayout->DescriptorSetLayouts[Index] = Rr_BuildDescriptorLayout(
-            &DescriptorLayoutBuilder,
-            Renderer->Device);
+        PipelineLayout->DescriptorSetLayouts[Index] =
+            Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, Device);
         Rr_ClearDescriptors(&DescriptorLayoutBuilder);
     }
 
@@ -383,8 +387,8 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
         .pPushConstantRanges = NULL,
     };
 
-    vkCreatePipelineLayout(
-        Renderer->Device,
+    Device->CreatePipelineLayout(
+        Device->Handle,
         &PipelineLayoutCreateInfo,
         NULL,
         &PipelineLayout->Handle);
@@ -396,14 +400,16 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
 void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout)
 {
-    vkDestroyPipelineLayout(App->Renderer.Device, PipelineLayout->Handle, NULL);
+    Rr_Device *Device = &App->Renderer.Device;
+
+    Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
 
     for(size_t Index = 0; Index < RR_MAX_SETS; ++Index)
     {
         if(PipelineLayout->DescriptorSetLayouts[Index] != VK_NULL_HANDLE)
         {
-            vkDestroyDescriptorSetLayout(
-                App->Renderer.Device,
+            Device->DestroyDescriptorSetLayout(
+                Device->Handle,
                 PipelineLayout->DescriptorSetLayouts[Index],
                 NULL);
         }
