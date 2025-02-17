@@ -132,14 +132,6 @@ struct Rr_Renderer
     //     Rr_Image *Normal;
     // } NullTextures;
 
-    /* Retired Semaphores */
-
-    RR_SLICE(struct Rr_RetiredSemaphore {
-        VkSemaphore Semaphore;
-        size_t FrameIndex;
-    })
-    RetiredSemaphoresSlice;
-
     /* Pending Loads */
 
     RR_SLICE(Rr_PendingLoad) PendingLoadsSlice;

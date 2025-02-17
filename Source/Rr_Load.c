@@ -319,6 +319,15 @@ static void Rr_InitLoadAsyncContext(
         },
         NULL,
         &LoadAsyncContext->GraphicsCommandPool);
+    vkCreateFence(
+        Renderer->Device,
+        &(VkFenceCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+        },
+        NULL,
+        &LoadAsyncContext->Fence);
     if(Rr_IsUsingTransferQueue(Renderer))
     {
         vkCreateCommandPool(
@@ -331,25 +340,16 @@ static void Rr_InitLoadAsyncContext(
             },
             NULL,
             &LoadAsyncContext->TransferCommandPool);
+        vkCreateSemaphore(
+            Renderer->Device,
+            &(VkSemaphoreCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+            },
+            NULL,
+            &LoadAsyncContext->Semaphore);
     }
-    vkCreateFence(
-        Renderer->Device,
-        &(VkFenceCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = NULL,
-            .flags = 0,
-        },
-        NULL,
-        &LoadAsyncContext->Fence);
-    vkCreateSemaphore(
-        Renderer->Device,
-        &(VkSemaphoreCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = NULL,
-            .flags = 0,
-        },
-        NULL,
-        &LoadAsyncContext->Semaphore);
 }
 
 static void Rr_CleanupLoadAsyncContext(
@@ -360,15 +360,15 @@ static void Rr_CleanupLoadAsyncContext(
         Renderer->Device,
         LoadAsyncContext->GraphicsCommandPool,
         NULL);
+    vkDestroyFence(Renderer->Device, LoadAsyncContext->Fence, NULL);
     if(LoadAsyncContext->TransferCommandPool != VK_NULL_HANDLE)
     {
         vkDestroyCommandPool(
             Renderer->Device,
             LoadAsyncContext->TransferCommandPool,
             NULL);
+        vkDestroySemaphore(Renderer->Device, LoadAsyncContext->Semaphore, NULL);
     }
-    vkDestroyFence(Renderer->Device, LoadAsyncContext->Fence, NULL);
-    vkDestroySemaphore(Renderer->Device, LoadAsyncContext->Semaphore, NULL);
     RR_ZERO_PTR(LoadAsyncContext);
 }
 
