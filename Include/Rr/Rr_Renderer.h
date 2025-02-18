@@ -22,6 +22,7 @@ typedef enum
 
 typedef enum
 {
+    RR_INDEX_TYPE_INVALID,
     RR_INDEX_TYPE_UINT8,
     RR_INDEX_TYPE_UINT16,
     RR_INDEX_TYPE_UINT32,

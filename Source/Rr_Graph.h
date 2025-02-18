@@ -2,8 +2,6 @@
 
 #include <Rr/Rr_Graph.h>
 
-#include "Rr_Buffer.h"
-#include "Rr_Image.h"
 #include "Rr_Vulkan.h"
 
 struct Rr_Frame;
@@ -145,6 +143,7 @@ struct Rr_PresentNode
     Rr_GraphImage ImageHandle;
     Rr_PresentMode Mode;
     Rr_Sampler *Sampler;
+    Rr_Vec4 ColorClear;
 };
 
 typedef struct Rr_BlitNode Rr_BlitNode;

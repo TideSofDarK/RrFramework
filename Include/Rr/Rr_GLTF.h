@@ -50,11 +50,10 @@ struct Rr_GLTFPrimitive
     size_t VertexCount;
     size_t AttributeCount;
     Rr_GLTFAttribute *Attributes;
-    size_t *VertexBufferOffsets;
-    Rr_IndexType IndexType;
     size_t IndexCount;
-    size_t IndexBufferOffset;
     Rr_GLTFMaterial *Material;
+    size_t VertexOffset;
+    size_t FirstIndex;
 };
 
 typedef struct Rr_GLTFMesh Rr_GLTFMesh;
@@ -91,6 +90,9 @@ struct Rr_GLTFAsset
     Rr_Image **Images;
     size_t MaterialCount;
     Rr_GLTFMaterial *Materials;
+    size_t VertexBufferOffset;
+    size_t IndexBufferOffset;
+    Rr_IndexType IndexType;
 };
 
 typedef struct Rr_GLTFVertexInputBinding Rr_GLTFVertexInputBinding;

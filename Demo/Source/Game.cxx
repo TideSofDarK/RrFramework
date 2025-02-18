@@ -599,6 +599,8 @@
 //     }
 // };
 
+const Rr_Vec4 BackgroundColor{ 0.1f, 0.1f, 0.1f, 1.0f };
+
 struct SCamera
 {
     float Pitch{};
@@ -815,10 +817,10 @@ static void DrawFirstGLTFMesh(
     SUniformData UniformData = {};
     UniformData.Projection =
         Rr_Perspective_LH_ZO(0.7643276f, 320.0f / 240.0f, 0.5f, 50.0f);
-    UniformData.View = Rr_M4D(1.0f);
+    UniformData.View = Rr_VulkanMatrix();
     UniformData.Model = Rr_MulM4(
-        Rr_Translate({ 0.0f, 0.0f, 5.0f }),
-        Rr_Rotate_LH(fmodf(Time, RR_PI), { 0.0f, 1.0f, 0.0f }));
+        Rr_Translate({ 0.0f, -2.0f, -10.0f }),
+        Rr_Rotate_LH(fmodf(Time, RR_PI * 2), { 0.0f, 1.0f, 0.0f }));
     // UniformData.Model = Rr_MulM4(
     //     UniformData.Model,
     //     Rr_Rotate_LH(sin(Time), { 0.0f, 0.0f, 1.0f }));
@@ -835,7 +837,9 @@ static void DrawFirstGLTFMesh(
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
-        .Clear = { .Float32 = { 0.1f, 0.1f, 0.1f, 1.0f } },
+        .Clear = {
+            .Vec4 = BackgroundColor,
+        },
     };
     Rr_DepthTarget OffscreenDepth = {
         .LoadOp = RR_LOAD_OP_CLEAR,
@@ -855,31 +859,12 @@ static void DrawFirstGLTFMesh(
         &OffscreenDepth,
         DepthAttachmentHandle);
 
-    Rr_GraphBuffer GLTFBufferHandle =
-        Rr_RegisterGraphBuffer(App, GLTFAsset->Buffer);
-
-    Rr_BindSampler(OffscreenNode, NearestSampler, 0, 1);
-    Rr_GraphImage ColorTextureHandle =
-        Rr_RegisterGraphImage(App, GLTFAsset->Images[0]);
-    Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 0, 2);
-
-    Rr_GLTFMesh *Mesh = GLTFAsset->Meshes;
-
-    for(size_t Index = 0; Index < Mesh->PrimitiveCount; ++Index)
+    if(Loaded)
     {
-        Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives + Index;
+        Rr_GraphBuffer GLTFBufferHandle =
+            Rr_RegisterGraphBuffer(App, GLTFAsset->Buffer);
+
         Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-        Rr_BindVertexBuffer(
-            OffscreenNode,
-            &GLTFBufferHandle,
-            0,
-            *GLTFPrimitive->VertexBufferOffsets);
-        Rr_BindIndexBuffer(
-            OffscreenNode,
-            &GLTFBufferHandle,
-            0,
-            GLTFPrimitive->IndexBufferOffset,
-            GLTFPrimitive->IndexType);
         Rr_BindGraphicsUniformBuffer(
             OffscreenNode,
             &UniformBufferHandle,
@@ -887,7 +872,38 @@ static void DrawFirstGLTFMesh(
             0,
             0,
             sizeof(UniformData));
-        Rr_DrawIndexed(OffscreenNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
+        Rr_BindSampler(OffscreenNode, NearestSampler, 0, 1);
+        Rr_GraphImage ColorTextureHandle =
+            Rr_RegisterGraphImage(App, GLTFAsset->Images[0]);
+        Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 0, 2);
+
+        Rr_BindVertexBuffer(
+            OffscreenNode,
+            &GLTFBufferHandle,
+            0,
+            GLTFAsset->VertexBufferOffset);
+        Rr_BindIndexBuffer(
+            OffscreenNode,
+            &GLTFBufferHandle,
+            0,
+            GLTFAsset->IndexBufferOffset,
+            GLTFAsset->IndexType);
+
+        for(size_t MeshIndex = 0; MeshIndex < GLTFAsset->MeshCount; ++MeshIndex)
+        {
+            Rr_GLTFMesh *Mesh = GLTFAsset->Meshes + MeshIndex;
+            for(size_t Index = 0; Index < Mesh->PrimitiveCount; ++Index)
+            {
+                Rr_GLTFPrimitive *GLTFPrimitive = Mesh->Primitives + Index;
+                Rr_DrawIndexed(
+                    OffscreenNode,
+                    GLTFPrimitive->IndexCount,
+                    1,
+                    GLTFPrimitive->FirstIndex,
+                    GLTFPrimitive->VertexOffset,
+                    0);
+            }
+        }
     }
 }
 
@@ -898,16 +914,14 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_GraphImage DepthAttachmentHandle =
         Rr_RegisterGraphImage(App, DepthAttachment);
 
-    if(Loaded)
-    {
-        DrawFirstGLTFMesh(App, &ColorAttachmentHandle, &DepthAttachmentHandle);
-    }
+    DrawFirstGLTFMesh(App, &ColorAttachmentHandle, &DepthAttachmentHandle);
 
     Rr_AddPresentNode(
         App,
         "present",
         &ColorAttachmentHandle,
         NearestSampler,
+        BackgroundColor,
         RR_PRESENT_MODE_FIT);
 }
 

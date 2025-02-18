@@ -53,7 +53,7 @@ set(SDL_RENDER OFF CACHE BOOL "" FORCE)
 set(SDL_POWER OFF CACHE BOOL "" FORCE)
 set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
 set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
-CPMAddPackage("gh:libsdl-org/SDL#main")
+CPMAddPackage("gh:libsdl-org/SDL#release-3.2.4")
 
 #
 # Embed Function

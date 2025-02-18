@@ -219,13 +219,13 @@ static void DrawFirstGLTFPrimitive(
         OffscreenNode,
         &GLTFBufferHandle,
         0,
-        *GLTFPrimitive->VertexBufferOffsets);
+        GLTFAsset->VertexBufferOffset);
     Rr_BindIndexBuffer(
         OffscreenNode,
         &GLTFBufferHandle,
         0,
-        GLTFPrimitive->IndexBufferOffset,
-        GLTFPrimitive->IndexType);
+        GLTFAsset->IndexBufferOffset,
+        GLTFAsset->IndexType);
     Rr_BindGraphicsUniformBuffer(
         OffscreenNode,
         &UniformBufferHandle,

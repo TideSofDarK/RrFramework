@@ -718,6 +718,7 @@ Rr_GraphNode *Rr_AddPresentNode(
     const char *Name,
     Rr_GraphImage *ImageHandle,
     Rr_Sampler *Sampler,
+    Rr_Vec4 ColorClear,
     Rr_PresentMode Mode)
 {
     Rr_Renderer *Renderer = &App->Renderer;
@@ -730,6 +731,7 @@ Rr_GraphNode *Rr_AddPresentNode(
     PresentNode->Mode = Mode;
     PresentNode->ImageHandle = *ImageHandle;
     PresentNode->Sampler = Sampler;
+    PresentNode->ColorClear = ColorClear;
 
     /*Rr_GraphImageHandle SwapchainImageHandle = Rr_RegisterGraphImage(App,
      * Rr_GetSwapchainImage(App));*/
@@ -816,9 +818,11 @@ void Rr_ExecutePresentNode(
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
         });
-    VkClearValue ClearValue = {
-        .color.float32 = { 0.1f, 0.1f, 0.2f, 1.0f },
-    };
+    VkClearValue ClearValue = { 0 };
+    memcpy(
+        &ClearValue.color.float32,
+        Node->ColorClear.Elements,
+        sizeof(Rr_Vec4));
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,

@@ -48,6 +48,7 @@ union Rr_ColorClear
     float Float32[4];
     int32_t Int32[4];
     uint32_t Uint32[4];
+    Rr_Vec4 Vec4;
 };
 
 typedef struct Rr_ColorTarget Rr_ColorTarget;
@@ -91,6 +92,7 @@ extern Rr_GraphNode *Rr_AddPresentNode(
     const char *Name,
     Rr_GraphImage *ImageHandle,
     struct Rr_Sampler *Sampler,
+    Rr_Vec4 ColorClear,
     Rr_PresentMode Mode);
 
 extern Rr_GraphNode *Rr_AddTransferNode(
