@@ -153,10 +153,8 @@ static void Init(Rr_App *App, void *UserData)
 
     /* Create uniform buffer. */
 
-    UniformBuffer = Rr_CreateBuffer(
-        App,
-        sizeof(UniformData),
-        RR_BUFFER_FLAGS_UNIFORM_BIT);
+    UniformBuffer =
+        Rr_CreateBuffer(App, sizeof(UniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
 }
 
 static void DrawFirstGLTFPrimitive(
@@ -234,7 +232,8 @@ static void DrawFirstGLTFPrimitive(
         0,
         sizeof(UniformData));
     Rr_BindSampler(OffscreenNode, NearestSampler, 0, 1);
-    Rr_GraphImage ColorTextureHandle = Rr_RegisterGraphImage(App, GLTFAsset->Images[0]);
+    Rr_GraphImage ColorTextureHandle =
+        Rr_RegisterGraphImage(App, GLTFAsset->Images[0]);
     Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 0, 2);
     Rr_DrawIndexed(OffscreenNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
 }
@@ -259,6 +258,7 @@ static void Iterate(Rr_App *App, void *UserData)
         "present",
         &ColorAttachmentHandle,
         NearestSampler,
+        (Rr_Vec4){},
         RR_PRESENT_MODE_FIT);
 }
 
