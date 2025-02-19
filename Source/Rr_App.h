@@ -40,9 +40,7 @@ struct Rr_App
     Rr_AppConfig *Config;
     void *UserData;
 
-    Rr_Renderer Renderer;
-
-    struct Rr_UI *UI;
+    Rr_Renderer *Renderer;
 
     Rr_InputConfig InputConfig;
     Rr_InputState InputState;
@@ -53,6 +51,7 @@ struct Rr_App
     SDL_Window *Window;
     SDL_AtomicInt bExit;
 
-    Rr_Arena *PermanentArena;
     Rr_SyncArena SyncArena;
+
+    Rr_Arena *Arena;
 };

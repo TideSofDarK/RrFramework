@@ -18,9 +18,8 @@
 
 #include <assert.h>
 
-static void Rr_CleanupSwapchain(Rr_App *App, VkSwapchainKHR Swapchain)
+static void Rr_CleanupSwapchain(Rr_Renderer *Renderer, VkSwapchainKHR Swapchain)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     for(uint32_t Index = 0; Index < Renderer->Swapchain.Images.Capacity;
@@ -42,9 +41,11 @@ static void Rr_CleanupSwapchain(Rr_App *App, VkSwapchainKHR Swapchain)
     }
 }
 
-static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
+static bool Rr_InitSwapchain(
+    Rr_Renderer *Renderer,
+    uint32_t *Width,
+    uint32_t *Height)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Instance *Instance = &Renderer->Instance;
     Rr_Device *Device = &Renderer->Device;
 
@@ -220,7 +221,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         NULL,
         &Renderer->Swapchain.Handle);
 
-    Rr_CleanupSwapchain(App, OldSwapchain);
+    Rr_CleanupSwapchain(Renderer, OldSwapchain);
 
     /* Acquire Swapchain Images */
 
@@ -254,11 +255,11 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
             .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
         };
         Renderer->PresentLayout =
-            Rr_CreatePipelineLayout(App, 1, &PipelineBindingSet);
+            Rr_CreatePipelineLayout(Renderer, 1, &PipelineBindingSet);
 
         Rr_ColorTargetInfo ColorTargets[1] = { 0 };
         ColorTargets[0].Blend.ColorWriteMask = RR_COLOR_COMPONENT_ALL;
-        ColorTargets[0].Format = Rr_GetSwapchainFormat(App);
+        ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
 
         Rr_PipelineInfo PipelineInfo = { 0 };
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
@@ -272,7 +273,7 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         PipelineInfo.ColorTargets = ColorTargets;
 
         Renderer->PresentPipeline =
-            Rr_CreateGraphicsPipeline(App, &PipelineInfo);
+            Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
         Rr_Attachment Attachment = {
             .LoadOp = RR_LOAD_OP_CLEAR,
@@ -280,15 +281,13 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
         };
         Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = 1,
                                              .Attachments = &Attachment };
-        Renderer->PresentRenderPass = Rr_GetRenderPass(App, &RenderPassInfo);
+        Renderer->PresentRenderPass =
+            Rr_GetRenderPass(Renderer, &RenderPassInfo);
     }
 
     /* Create Framebuffers And Image Views */
 
-    RR_RESERVE_SLICE(
-        &Renderer->Swapchain.Images,
-        ImageCount,
-        App->PermanentArena);
+    RR_RESERVE_SLICE(&Renderer->Swapchain.Images, ImageCount, Renderer->Arena);
     Renderer->Swapchain.Images.Count = ImageCount;
 
     VkImageViewCreateInfo ImageViewCreateInfo = {
@@ -345,9 +344,8 @@ static bool Rr_InitSwapchain(Rr_App *App, uint32_t *Width, uint32_t *Height)
     return true;
 }
 
-static void Rr_InitFrames(Rr_App *App)
+static void Rr_InitFrames(Rr_Renderer *Renderer)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frames = Renderer->Frames;
 
@@ -439,7 +437,7 @@ static void Rr_InitFrames(Rr_App *App)
             1024,
             Ratios,
             RR_ARRAY_COUNT(Ratios),
-            App->PermanentArena);
+            Renderer->Arena);
 
         Frame->Arena = Rr_CreateDefaultArena();
     }
@@ -447,7 +445,7 @@ static void Rr_InitFrames(Rr_App *App)
 
 static void Rr_CleanupFrames(Rr_App *App)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
@@ -470,9 +468,8 @@ static void Rr_CleanupFrames(Rr_App *App)
     }
 }
 
-static void Rr_InitVMA(Rr_App *App)
+static void Rr_InitVMA(Rr_Renderer *Renderer)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Instance *Instance = &Renderer->Instance;
     Rr_Device *Device = &Renderer->Device;
 
@@ -514,10 +511,8 @@ static void Rr_InitVMA(Rr_App *App)
     vmaCreateAllocator(&AllocatorInfo, &Renderer->Allocator);
 }
 
-static void Rr_InitImmediateMode(Rr_App *App)
+static void Rr_InitImmediateMode(Rr_Renderer *Renderer)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
-
     Rr_Device *Device = &Renderer->Device;
     Rr_ImmediateMode *ImmediateMode = &Renderer->ImmediateMode;
 
@@ -559,7 +554,7 @@ static void Rr_InitImmediateMode(Rr_App *App)
 
 static void Rr_CleanupImmediateMode(Rr_App *App)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Device->DestroyCommandPool(
@@ -570,9 +565,8 @@ static void Rr_CleanupImmediateMode(Rr_App *App)
 }
 
 /* @TODO: Move to queue initialization? */
-static void Rr_InitTransientCommandPools(Rr_App *App)
+static void Rr_InitTransientCommandPools(Rr_Renderer *Renderer)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Device->CreateCommandPool(
@@ -634,11 +628,15 @@ static void Rr_CleanupTransientCommandPools(Rr_Renderer *Renderer)
 //     Rr_DestroyBuffer(App, StagingBuffer.Buffer);
 // }
 
-void Rr_InitRenderer(Rr_App *App)
+Rr_Renderer *Rr_CreateRenderer(Rr_App *App)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
+
+    Rr_Renderer *Renderer = RR_ALLOC_TYPE(Arena, Rr_Renderer);
+    Renderer->Arena = Arena;
+
     SDL_Window *Window = App->Window;
     // Rr_AppConfig *Config = App->Config;
 
@@ -657,22 +655,24 @@ void Rr_InitRenderer(Rr_App *App)
         &Renderer->TransferQueue,
         Scratch.Arena);
 
-    Rr_InitVMA(App);
-    Rr_InitTransientCommandPools(App);
+    Rr_InitVMA(Renderer);
+    Rr_InitTransientCommandPools(Renderer);
     uint32_t Width, Height;
     SDL_GetWindowSizeInPixels(Window, (int32_t *)&Width, (int32_t *)&Height);
-    Rr_InitSwapchain(App, &Width, &Height);
-    Rr_InitFrames(App);
-    Rr_InitImmediateMode(App);
+    Rr_InitSwapchain(Renderer, &Width, &Height);
+    Rr_InitFrames(Renderer);
+    Rr_InitImmediateMode(Renderer);
     // Rr_InitNullTextures(App);
     // Rr_InitTextRenderer(App);
 
     Rr_DestroyScratch(Scratch);
+
+    return Renderer;
 }
 
 bool Rr_NewFrame(Rr_App *App, void *Window)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     int32_t bResizePending =
@@ -687,7 +687,7 @@ bool Rr_NewFrame(Rr_App *App, void *Window)
         bool Minimized = (SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED);
 
         if(!Minimized && Width > 0 && Height > 0 &&
-           Rr_InitSwapchain(App, (uint32_t *)&Width, (uint32_t *)&Height))
+           Rr_InitSwapchain(Renderer, (uint32_t *)&Width, (uint32_t *)&Height))
         {
             SDL_SetAtomicInt(&Renderer->Swapchain.ResizePending, 0);
             return true;
@@ -698,9 +698,8 @@ bool Rr_NewFrame(Rr_App *App, void *Window)
     return true;
 }
 
-void Rr_CleanupRenderer(Rr_App *App)
+void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Instance *Instance = &Renderer->Instance;
     Rr_Device *Device = &Renderer->Device;
 
@@ -734,9 +733,9 @@ void Rr_CleanupRenderer(Rr_App *App)
     Rr_CleanupTransientCommandPools(Renderer);
     Rr_CleanupImmediateMode(App);
 
-    Rr_CleanupSwapchain(App, Renderer->Swapchain.Handle);
-    Rr_DestroyGraphicsPipeline(App, Renderer->PresentPipeline);
-    Rr_DestroyPipelineLayout(App, Renderer->PresentLayout);
+    Rr_CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
+    Rr_DestroyGraphicsPipeline(Renderer, Renderer->PresentPipeline);
+    Rr_DestroyPipelineLayout(Renderer, Renderer->PresentLayout);
 
     vmaDestroyAllocator(Renderer->Allocator);
 
@@ -744,6 +743,8 @@ void Rr_CleanupRenderer(Rr_App *App)
     Device->DestroyDevice(Device->Handle, NULL);
 
     Instance->DestroyInstance(Instance->Handle, NULL);
+
+    Rr_DestroyArena(Renderer->Arena);
 }
 
 VkCommandBuffer Rr_BeginImmediate(Rr_Renderer *Renderer)
@@ -800,7 +801,7 @@ void Rr_EndImmediate(Rr_Renderer *Renderer)
 
 static void Rr_ProcessPendingLoads(Rr_App *App)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
 
     if(Rr_TryLockSpinLock(&App->SyncArena.Lock))
     {
@@ -819,7 +820,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
 
 void Rr_PrepareFrame(Rr_App *App)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_ResetArena(Frame->Arena);
@@ -840,7 +841,7 @@ void Rr_DrawFrame(Rr_App *App)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
     Rr_Swapchain *Swapchain = &Renderer->Swapchain;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -907,7 +908,7 @@ void Rr_DrawFrame(Rr_App *App)
         Frame->PresentCommandBuffer,
         &CommandBufferBeginInfo);
 
-    Rr_ExecuteGraph(App, &Frame->Graph, Scratch.Arena);
+    Rr_ExecuteGraph(Renderer, &Frame->Graph, Scratch.Arena);
 
     Device->EndCommandBuffer(Frame->MainCommandBuffer);
     Device->EndCommandBuffer(Frame->PresentCommandBuffer);
@@ -988,36 +989,44 @@ bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer)
     return Renderer->TransferQueue.Handle != VK_NULL_HANDLE;
 }
 
-size_t Rr_GetUniformAlignment(Rr_App *App)
+size_t Rr_GetUniformAlignment(Rr_Renderer *Renderer)
 {
-    return App->Renderer.PhysicalDevice.Properties.properties.limits
+    return Renderer->PhysicalDevice.Properties.properties.limits
         .minUniformBufferOffsetAlignment;
 }
 
-size_t Rr_GetStorageAlignment(Rr_App *App)
+size_t Rr_GetStorageAlignment(Rr_Renderer *Renderer)
 {
-    return App->Renderer.PhysicalDevice.Properties.properties.limits
+    return Renderer->PhysicalDevice.Properties.properties.limits
         .minStorageBufferOffsetAlignment;
 }
 
-Rr_Graph *Rr_GetGraph(Rr_App *App)
+Rr_Graph *Rr_GetGraph(Rr_Renderer *Renderer)
 {
-    return &Rr_GetCurrentFrame(&App->Renderer)->Graph;
+    return &Rr_GetCurrentFrame(Renderer)->Graph;
 }
 
-Rr_Arena *Rr_GetFrameArena(Rr_App *App)
+Rr_Arena *Rr_GetFrameArena(Rr_Renderer *Renderer)
 {
-    return Rr_GetCurrentFrame(&App->Renderer)->Arena;
+    return Rr_GetCurrentFrame(Renderer)->Arena;
 }
 
-Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App)
+Rr_TextureFormat Rr_GetSwapchainFormat(Rr_Renderer *Renderer)
 {
-    return Rr_GetTextureFormat(App->Renderer.Swapchain.Format);
+    return Rr_GetTextureFormat(Renderer->Swapchain.Format);
 }
 
-Rr_Image *Rr_GetSwapchainImage(Rr_App *App)
+Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer)
 {
-    return &Rr_GetCurrentFrame(&App->Renderer)->VirtualSwapchainImage;
+    return (Rr_IntVec2){
+        (int32_t)Renderer->Swapchain.Extent.width,
+        (int32_t)Renderer->Swapchain.Extent.height,
+    };
+}
+
+Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer)
+{
+    return &Rr_GetCurrentFrame(Renderer)->VirtualSwapchainImage;
 }
 
 static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
@@ -1046,11 +1055,9 @@ static VkAttachmentStoreOp Rr_GetStoreOp(Rr_StoreOp StoreOp)
     }
 }
 
-VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
+VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
 {
     assert(Info != NULL);
-
-    Rr_Renderer *Renderer = &App->Renderer;
 
     uint32_t Hash = XXH32(
         Info->Attachments,
@@ -1113,7 +1120,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
             };
             Attachments[Index] = (VkAttachmentDescription){
                 .samples = 1,
-                .format = Rr_GetVulkanTextureFormat(Rr_GetSwapchainFormat(App)),
+                .format = Renderer->Swapchain.Format,
                 .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .flags = 0,
@@ -1158,7 +1165,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
         NULL,
         &RenderPass);
 
-    *RR_PUSH_SLICE(&Renderer->RenderPasses, App->PermanentArena) =
+    *RR_PUSH_SLICE(&Renderer->RenderPasses, Renderer->Arena) =
         (Rr_CachedRenderPass){
             .Handle = RenderPass,
             .Hash = Hash,
@@ -1170,7 +1177,7 @@ VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info)
 }
 
 static VkFramebuffer Rr_GetFramebufferInternal(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     VkImageView *ImageViews,
     size_t ImageViewCount,
@@ -1178,8 +1185,6 @@ static VkFramebuffer Rr_GetFramebufferInternal(
     Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_Renderer *Renderer = &App->Renderer;
 
     size_t QuerySize = sizeof(VkImageView) * ImageViewCount +
                        sizeof(VkExtent3D) + sizeof(RenderPass); /* NOLINT */
@@ -1225,7 +1230,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
 
     Device->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, &Framebuffer);
 
-    *RR_PUSH_SLICE(&Renderer->Framebuffers, App->PermanentArena) =
+    *RR_PUSH_SLICE(&Renderer->Framebuffers, Renderer->Arena) =
         (Rr_CachedFramebuffer){
             .Handle = Framebuffer,
             .Hash = Hash,
@@ -1237,14 +1242,14 @@ static VkFramebuffer Rr_GetFramebufferInternal(
 }
 
 VkFramebuffer Rr_GetFramebufferViews(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     VkImageView *ImageViews,
     size_t ImageViewCount,
     VkExtent3D Extent)
 {
     return Rr_GetFramebufferInternal(
-        App,
+        Renderer,
         RenderPass,
         ImageViews,
         ImageViewCount,
@@ -1253,7 +1258,7 @@ VkFramebuffer Rr_GetFramebufferViews(
 }
 
 VkFramebuffer Rr_GetFramebuffer(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     Rr_Image *Images,
     size_t ImageCount,
@@ -1267,11 +1272,11 @@ VkFramebuffer Rr_GetFramebuffer(
     for(size_t Index = 0; Index < ImageCount; ++Index)
     {
         ImageViews[Index] =
-            Rr_GetCurrentAllocatedImage(App, Images + Index)->View;
+            Rr_GetCurrentAllocatedImage(Renderer, Images + Index)->View;
     }
 
     VkFramebuffer Framebuffer = Rr_GetFramebufferInternal(
-        App,
+        Renderer,
         RenderPass,
         ImageViews,
         ImageCount,
@@ -1283,27 +1288,25 @@ VkFramebuffer Rr_GetFramebuffer(
     return Framebuffer;
 }
 
-Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, Rr_MapKey Key)
+Rr_SyncState *Rr_GetSynchronizationState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_SyncState **SyncStateRef =
-        RR_UPSERT(&Renderer->GlobalSync, Key, App->PermanentArena);
+        RR_UPSERT(&Renderer->GlobalSync, Key, Renderer->Arena);
     if(*SyncStateRef != NULL)
     {
         return *SyncStateRef;
     }
     *SyncStateRef =
-        RR_GET_FREE_LIST_ITEM(&Renderer->SyncStates, App->PermanentArena);
+        RR_GET_FREE_LIST_ITEM(&Renderer->SyncStates, Renderer->Arena);
     Rr_SyncState *SyncState = *SyncStateRef;
     RR_ZERO_PTR(SyncState);
     return SyncState;
 }
 
-void Rr_ReturnSynchronizationState(Rr_App *App, Rr_MapKey Key)
+void Rr_ReturnSynchronizationState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_SyncState **SyncStateRef =
-        RR_UPSERT(&Renderer->GlobalSync, Key, App->PermanentArena);
+        RR_UPSERT(&Renderer->GlobalSync, Key, Renderer->Arena);
     if(*SyncStateRef != NULL)
     {
         RR_RETURN_FREE_LIST_ITEM(&Renderer->SyncStates, *SyncStateRef);

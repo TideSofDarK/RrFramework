@@ -17,7 +17,6 @@ static VkAccessFlags AllVulkanWrites =
     VK_ACCESS_MEMORY_WRITE_BIT;
 
 static Rr_AllocatedBuffer *Rr_GetGraphBuffer(
-    Rr_App *App,
     Rr_Graph *Graph,
     Rr_GraphBuffer Handle)
 {
@@ -25,7 +24,6 @@ static Rr_AllocatedBuffer *Rr_GetGraphBuffer(
 }
 
 static Rr_AllocatedImage *Rr_GetGraphImage(
-    Rr_App *App,
     Rr_Graph *Graph,
     Rr_GraphImage Handle)
 {
@@ -329,7 +327,7 @@ static void Rr_ProcessGraphNodes(
 }
 
 void Rr_ExecuteGraphNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_GraphNode *Node,
     VkCommandBuffer CommandBuffer,
@@ -340,25 +338,33 @@ void Rr_ExecuteGraphNode(
         case RR_GRAPH_NODE_TYPE_GRAPHICS:
         {
             Rr_GraphicsNode *GraphicsNode = &Node->Union.Graphics;
-            Rr_ExecuteGraphicsNode(App, Graph, GraphicsNode, CommandBuffer);
+            Rr_ExecuteGraphicsNode(
+                Renderer,
+                Graph,
+                GraphicsNode,
+                CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_PRESENT:
         {
             Rr_PresentNode *PresentNode = &Node->Union.Present;
-            Rr_ExecutePresentNode(App, PresentNode, PresentCommandBuffer);
+            Rr_ExecutePresentNode(Renderer, PresentNode, PresentCommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_BLIT:
         {
             Rr_BlitNode *BlitNode = &Node->Union.Blit;
-            Rr_ExecuteBlitNode(App, Graph, BlitNode, CommandBuffer);
+            Rr_ExecuteBlitNode(Renderer, Graph, BlitNode, CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_TRANSFER:
         {
             Rr_TransferNode *TransferNode = &Node->Union.Transfer;
-            Rr_ExecuteTransferNode(App, Graph, TransferNode, CommandBuffer);
+            Rr_ExecuteTransferNode(
+                Renderer,
+                Graph,
+                TransferNode,
+                CommandBuffer);
         }
         break;
         default:
@@ -370,14 +376,14 @@ void Rr_ExecuteGraphNode(
 }
 
 static void Rr_ApplyBarrierBatch(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_BarrierBatch *Barrier,
     VkCommandBuffer CommandBuffer,
     Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    Rr_Device *Device = &App->Renderer.Device;
+    Rr_Device *Device = &Renderer->Device;
 
     size_t MaxPossibleBarriers =
         Barrier->BufferBarriers.Count + Barrier->ImageBarriers.Count;
@@ -446,8 +452,9 @@ static void Rr_ApplyBarrierBatch(
             .size = VK_WHOLE_SIZE,
         };
 
-        Rr_SyncState *BufferState =
-            Rr_GetSynchronizationState(App, (Rr_MapKey)BufferBarrier->Buffer);
+        Rr_SyncState *BufferState = Rr_GetSynchronizationState(
+            Renderer,
+            (Rr_MapKey)BufferBarrier->Buffer);
         *BufferState = (Rr_SyncState){
             .StageMask = BufferBarrier->DstStageMask,
             .AccessMask = BufferBarrier->DstAccessMask,
@@ -483,8 +490,9 @@ static void Rr_ApplyBarrierBatch(
             .subresourceRange = ImageBarrier->SubresourceRange,
         };
 
-        Rr_SyncState *ImageState =
-            Rr_GetSynchronizationState(App, (Rr_MapKey)ImageBarrier->Image);
+        Rr_SyncState *ImageState = Rr_GetSynchronizationState(
+            Renderer,
+            (Rr_MapKey)ImageBarrier->Image);
 
         *ImageState = (Rr_SyncState){
             .StageMask = ImageBarrier->DstStageMask,
@@ -530,11 +538,11 @@ static void Rr_ApplyBarrierBatch(
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
+void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_NodeSlice SortedNodes = { 0 };
     RR_RESERVE_SLICE(&SortedNodes, Graph->Nodes.Count, Scratch.Arena);
@@ -549,12 +557,12 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
         if(Resource->IsImage)
         {
             Resource->Allocated =
-                Rr_GetCurrentAllocatedImage(App, Resource->Container);
+                Rr_GetCurrentAllocatedImage(Renderer, Resource->Container);
         }
         else
         {
             Resource->Allocated =
-                Rr_GetCurrentAllocatedBuffer(App, Resource->Container);
+                Rr_GetCurrentAllocatedBuffer(Renderer, Resource->Container);
         }
     }
 
@@ -581,11 +589,11 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                 /* Image Synchronization */
 
                 Rr_AllocatedImage *AllocatedImage =
-                    Rr_GetGraphImage(App, Graph, Dependency->Handle);
+                    Rr_GetGraphImage(Graph, Dependency->Handle);
                 VkImage Image = AllocatedImage->Handle;
 
                 Rr_SyncState *PrevState =
-                    Rr_GetSynchronizationState(App, (Rr_MapKey)Image);
+                    Rr_GetSynchronizationState(Renderer, (Rr_MapKey)Image);
 
                 /* If reading again, just make sure the memory is "available" to
                  * this memory domain AND the image is in the same layout. */
@@ -651,11 +659,11 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                 /* Buffer Synchronization */
 
                 Rr_AllocatedBuffer *AllocatedBuffer =
-                    Rr_GetGraphBuffer(App, Graph, Dependency->Handle);
+                    Rr_GetGraphBuffer(Graph, Dependency->Handle);
                 VkBuffer Buffer = AllocatedBuffer->Handle;
 
                 Rr_SyncState *PrevState =
-                    Rr_GetSynchronizationState(App, (Rr_MapKey)Buffer);
+                    Rr_GetSynchronizationState(Renderer, (Rr_MapKey)Buffer);
 
                 /* If reading again, just make sure the memory is "available" to
                  * this memory domain. */
@@ -728,7 +736,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
             /* Execute current batch now! */
 
             Rr_ApplyBarrierBatch(
-                App,
+                Renderer,
                 &BarrierBatch,
                 Frame->MainCommandBuffer,
                 Scratch.Arena);
@@ -738,7 +746,7 @@ void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena)
                 ++NodeIndex)
             {
                 Rr_ExecuteGraphNode(
-                    App,
+                    Renderer,
                     Graph,
                     SortedNodes.Data[NodeIndex],
                     Frame->MainCommandBuffer,
@@ -757,7 +765,7 @@ Rr_GraphBuffer Rr_RegisterGraphBuffer(Rr_App *App, Rr_Buffer *Buffer)
 {
     assert(Buffer != NULL);
 
-    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame(App->Renderer);
     Rr_Graph *Graph = &Frame->Graph;
     Rr_GraphBuffer Handle = {
         .Values.Index = Graph->Resources.Count,
@@ -772,7 +780,7 @@ Rr_GraphImage Rr_RegisterGraphImage(Rr_App *App, Rr_Image *Image)
 {
     assert(Image != NULL);
 
-    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame(App->Renderer);
     Rr_Graph *Graph = &Frame->Graph;
     Rr_GraphImage Handle = {
         .Values.Index = Graph->Resources.Count,
@@ -792,7 +800,7 @@ Rr_GraphNode *Rr_AddPresentNode(
     Rr_Vec4 ColorClear,
     Rr_PresentMode Mode)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_GraphNode *GraphNode =
@@ -830,18 +838,17 @@ Rr_GraphNode *Rr_AddPresentNode(
 }
 
 void Rr_ExecutePresentNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_PresentNode *Node,
     VkCommandBuffer CommandBuffer)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_AllocatedImage *Image =
-        Rr_GetGraphImage(App, ((Rr_GraphNode *)Node)->Graph, Node->ImageHandle);
+        Rr_GetGraphImage(((Rr_GraphNode *)Node)->Graph, Node->ImageHandle);
     Rr_Image *Container = Image->Container;
 
     VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
@@ -862,7 +869,8 @@ void Rr_ExecutePresentNode(
     Rr_UpdateDescriptorSet(Writer, Device, DescriptorSet);
 
     VkImage SwapchainImage =
-        Rr_GetCurrentAllocatedImage(App, &Frame->VirtualSwapchainImage)->Handle;
+        Rr_GetCurrentAllocatedImage(Renderer, &Frame->VirtualSwapchainImage)
+            ->Handle;
 
     Device->CmdPipelineBarrier(
         CommandBuffer,
@@ -1022,7 +1030,7 @@ void Rr_ExecutePresentNode(
 
 Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_GraphNode *GraphNode =
@@ -1043,7 +1051,7 @@ void Rr_TransferBufferData(
     Rr_GraphBuffer *DstBuffer,
     size_t DstOffset)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     Rr_TransferNode *TransferNode = &Node->Union.Transfer;
 
@@ -1073,12 +1081,11 @@ void Rr_TransferBufferData(
 }
 
 void Rr_ExecuteTransferNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_TransferNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     for(size_t Index = 0; Index < Node->Transfers.Count; ++Index)
@@ -1086,9 +1093,9 @@ void Rr_ExecuteTransferNode(
         Rr_Transfer *Transfer = Node->Transfers.Data + Index;
 
         VkBuffer SrcBuffer =
-            Rr_GetGraphBuffer(App, Graph, Transfer->SrcBuffer)->Handle;
+            Rr_GetGraphBuffer(Graph, Transfer->SrcBuffer)->Handle;
         VkBuffer DstBuffer =
-            Rr_GetGraphBuffer(App, Graph, Transfer->DstBuffer)->Handle;
+            Rr_GetGraphBuffer(Graph, Transfer->DstBuffer)->Handle;
 
         VkBufferCopy Copy = { .size = Transfer->Size,
                               .srcOffset = Transfer->SrcOffset,
@@ -1106,7 +1113,7 @@ Rr_GraphNode *Rr_AddBlitNode(
     Rr_IntVec4 DstRect,
     Rr_BlitMode Mode)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_GraphNode *GraphNode =
@@ -1171,19 +1178,18 @@ static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
 }
 
 void Rr_ExecuteBlitNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_BlitNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(&App->Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_AllocatedImage *SrcImage =
-        Rr_GetGraphImage(App, &Frame->Graph, Node->SrcImageHandle);
+        Rr_GetGraphImage(&Frame->Graph, Node->SrcImageHandle);
     Rr_AllocatedImage *DstImage =
-        Rr_GetGraphImage(App, &Frame->Graph, Node->DstImageHandle);
+        Rr_GetGraphImage(&Frame->Graph, Node->DstImageHandle);
 
     if(Rr_ClampBlitRect(&Node->SrcRect, &SrcImage->Container->Extent) &&
        Rr_ClampBlitRect(&Node->DstRect, &DstImage->Container->Extent))
@@ -1223,7 +1229,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 {
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_GraphNode *GraphNode =
@@ -1288,14 +1294,13 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 }
 
 void Rr_ExecuteGraphicsNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_GraphicsNode *Node,
     VkCommandBuffer CommandBuffer)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
@@ -1324,7 +1329,7 @@ void Rr_ExecuteGraphicsNode(
             .StoreOp = ColorTarget->StoreOp,
         };
         Rr_AllocatedImage *ColorImage =
-            Rr_GetGraphImage(App, Graph, Node->ColorImages[Index]);
+            Rr_GetGraphImage(Graph, Node->ColorImages[Index]);
         ImageViews[ColorTarget->Slot] = ColorImage->View;
 
         Viewport.Width = RR_MIN(
@@ -1346,7 +1351,7 @@ void Rr_ExecuteGraphicsNode(
             .Depth = true,
         };
         Rr_AllocatedImage *DepthImage =
-            Rr_GetGraphImage(App, Graph, Node->DepthImage);
+            Rr_GetGraphImage(Graph, Node->DepthImage);
         ImageViews[DepthIndex] = DepthImage->View;
 
         Viewport.Width = RR_MIN(
@@ -1363,9 +1368,9 @@ void Rr_ExecuteGraphicsNode(
         .AttachmentCount = AttachmentCount,
         .Attachments = Attachments,
     };
-    VkRenderPass RenderPass = Rr_GetRenderPass(App, &RenderPassInfo);
+    VkRenderPass RenderPass = Rr_GetRenderPass(Renderer, &RenderPassInfo);
     VkFramebuffer Framebuffer = Rr_GetFramebufferViews(
-        App,
+        Renderer,
         RenderPass,
         ImageViews,
         AttachmentCount,
@@ -1475,7 +1480,7 @@ void Rr_ExecuteGraphicsNode(
                 Rr_BindIndexBufferArgs *Args = Function->Args;
                 Device->CmdBindIndexBuffer(
                     CommandBuffer,
-                    Rr_GetGraphBuffer(App, Graph, Args->BufferHandle)->Handle,
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
                     Args->Offset,
                     Args->Type);
             }
@@ -1487,7 +1492,7 @@ void Rr_ExecuteGraphicsNode(
                     CommandBuffer,
                     Args->Slot,
                     1,
-                    &Rr_GetGraphBuffer(App, Graph, Args->BufferHandle)->Handle,
+                    &Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
                     &(VkDeviceSize){ Args->Offset });
             }
             break;
@@ -1550,7 +1555,7 @@ void Rr_ExecuteGraphicsNode(
             {
                 Rr_BindSampledImageArgs *Args = Function->Args;
                 VkImageView ImageView =
-                    Rr_GetGraphImage(App, Graph, Args->ImageHandle)->View;
+                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
                 Rr_UpdateDescriptorsState(
                     &DescriptorsState,
                     Args->Set,
@@ -1570,7 +1575,7 @@ void Rr_ExecuteGraphicsNode(
             {
                 Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
                 VkImageView ImageView =
-                    Rr_GetGraphImage(App, Graph, Args->ImageHandle)->View;
+                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
                 Rr_UpdateDescriptorsState(
                     &DescriptorsState,
                     Args->Set,
@@ -1600,7 +1605,6 @@ void Rr_ExecuteGraphicsNode(
                         .Buffer =
                             {
                                 .Handle = Rr_GetGraphBuffer(
-                                              App,
                                               Graph,
                                               Args->BufferHandle)
                                               ->Handle,

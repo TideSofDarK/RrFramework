@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Rr/Rr_App.h>
 #include <Rr/Rr_Asset.h>
+#include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_String.h>
 
 #ifdef __cplusplus
@@ -19,11 +19,11 @@ void Rr_InitTextRenderer(Rr_App *App);
 void Rr_CleanupTextRenderer(Rr_App *App);
 
 Rr_Font *Rr_CreateFont(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef);
 
-void Rr_DestroyFont(Rr_App *App, Rr_Font *Font);
+void Rr_DestroyFont(Rr_Renderer *Renderer, Rr_Font *Font);
 
 Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String);
 

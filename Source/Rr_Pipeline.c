@@ -6,7 +6,7 @@
 #include <assert.h>
 
 static VkRenderPass Rr_GetCompatibleRenderPass(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_PipelineInfo *Info)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -29,7 +29,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     }
 
     VkRenderPass RenderPass = Rr_GetRenderPass(
-        App,
+        Renderer,
         &(Rr_RenderPassInfo){
             .AttachmentCount = AttachmentCount,
             .Attachments = Attachments,
@@ -41,17 +41,15 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_PipelineInfo *Info)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
-    Rr_GraphicsPipeline *Pipeline = RR_GET_FREE_LIST_ITEM(
-        &App->Renderer.GraphicsPipelines,
-        App->PermanentArena);
+    Rr_GraphicsPipeline *Pipeline =
+        RR_GET_FREE_LIST_ITEM(&Renderer->GraphicsPipelines, Renderer->Arena);
     Pipeline->Layout = Info->Layout;
 
     RR_SLICE(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
@@ -287,7 +285,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .pDepthStencilState = &DepthStencil,
         .layout = Info->Layout->Handle,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = Rr_GetCompatibleRenderPass(App, Info),
+        .renderPass = Rr_GetCompatibleRenderPass(Renderer, Info),
     };
 
     Device->CreateGraphicsPipelines(
@@ -314,32 +312,27 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 }
 
 void Rr_DestroyGraphicsPipeline(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
-    RR_RETURN_FREE_LIST_ITEM(
-        &App->Renderer.GraphicsPipelines,
-        GraphicsPipeline);
+    RR_RETURN_FREE_LIST_ITEM(&Renderer->GraphicsPipelines, GraphicsPipeline);
 }
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     size_t SetCount,
     Rr_PipelineBindingSet *Sets)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
-    Rr_PipelineLayout *PipelineLayout = RR_GET_FREE_LIST_ITEM(
-        &App->Renderer.PipelineLayouts,
-        App->PermanentArena);
+    Rr_PipelineLayout *PipelineLayout =
+        RR_GET_FREE_LIST_ITEM(&Renderer->PipelineLayouts, Renderer->Arena);
 
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
 
@@ -398,9 +391,11 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     return PipelineLayout;
 }
 
-void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout)
+void Rr_DestroyPipelineLayout(
+    Rr_Renderer *Renderer,
+    Rr_PipelineLayout *PipelineLayout)
 {
-    Rr_Device *Device = &App->Renderer.Device;
+    Rr_Device *Device = &Renderer->Device;
 
     Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
 
@@ -415,5 +410,5 @@ void Rr_DestroyPipelineLayout(Rr_App *App, Rr_PipelineLayout *PipelineLayout)
         }
     }
 
-    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.PipelineLayouts, PipelineLayout);
+    RR_RETURN_FREE_LIST_ITEM(&Renderer->PipelineLayouts, PipelineLayout);
 }

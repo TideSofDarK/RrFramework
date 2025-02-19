@@ -26,26 +26,26 @@ typedef enum
 typedef uint32_t Rr_BufferFlags;
 
 extern Rr_Buffer *Rr_CreateBuffer(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     size_t Size,
     Rr_BufferFlags Flags);
 
-extern void Rr_DestroyBuffer(Rr_App *App, Rr_Buffer *Buffer);
+extern void Rr_DestroyBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer);
 
-extern void *Rr_GetMappedBufferData(Rr_App *App, Rr_Buffer *Buffer);
+extern void *Rr_GetMappedBufferData(Rr_Renderer *Renderer, Rr_Buffer *Buffer);
 
-extern void *Rr_MapBuffer(Rr_App *App, Rr_Buffer *Buffer);
+extern void *Rr_MapBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer);
 
-extern void Rr_UnmapBuffer(Rr_App *App, Rr_Buffer *Buffer);
+extern void Rr_UnmapBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer);
 
 extern void Rr_FlushBufferRange(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Buffer *Buffer,
     size_t Offset,
     size_t Size);
 
 extern void Rr_UploadToDeviceBufferImmediate(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Buffer *DstBuffer,
     Rr_Data Data);
 

@@ -12,7 +12,7 @@
 #include <assert.h>
 
 static void Rr_LoadResourcesFromTasks(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_LoadTask *Tasks,
     size_t TaskCount,
     Rr_UploadContext *UploadContext,
@@ -31,7 +31,7 @@ static void Rr_LoadResourcesFromTasks(
             {
                 Rr_Asset Asset = Rr_LoadAsset(Task->AssetRef);
                 Result = Rr_CreateImageRGBA8FromPNG(
-                    App,
+                    Renderer,
                     UploadContext,
                     Asset.Size,
                     Asset.Pointer);
@@ -48,10 +48,9 @@ static void Rr_LoadResourcesFromTasks(
             {
                 Rr_LoadGLTFOptions *Options = &Task->Options.GLTF;
                 Result = Rr_CreateGLTFAsset(
-                    App,
+                    Options->GLTFContext,
                     UploadContext,
                     Task->AssetRef,
-                    Options->GLTFContext,
                     Scratch.Arena);
             }
             break;
@@ -118,7 +117,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     Rr_LoadAsyncContext LoadAsyncContext)
 {
     Rr_App *App = LoadContext->App;
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -160,7 +159,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     };
 
     Rr_LoadResourcesFromTasks(
-        App,
+        Renderer,
         Tasks,
         TaskCount,
         &UploadContext,
@@ -281,7 +280,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 
     for(size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
     {
-        Rr_DestroyBuffer(App, UploadContext.StagingBuffers.Data[Index]);
+        Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffers.Data[Index]);
     }
 
     Rr_LockSpinLock(&App->SyncArena.Lock);
@@ -385,7 +384,7 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
     Rr_LoadThread *LoadThread = UserData;
 
     Rr_App *App = LoadThread->App;
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Rr_InitScratch(RR_LOADING_THREAD_SCRATCH_SIZE);
@@ -524,13 +523,12 @@ Rr_LoadContext *Rr_LoadAsync(
 }
 
 Rr_LoadResult Rr_LoadImmediate(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     size_t TaskCount,
     Rr_LoadTask *Tasks)
 {
     assert(TaskCount > 0 && Tasks != NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -563,7 +561,7 @@ Rr_LoadResult Rr_LoadImmediate(
     };
 
     Rr_LoadResourcesFromTasks(
-        App,
+        Renderer,
         Tasks,
         TaskCount,
         &UploadContext,
@@ -608,7 +606,7 @@ Rr_LoadResult Rr_LoadImmediate(
 
     for(size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
     {
-        Rr_DestroyBuffer(App, UploadContext.StagingBuffers.Data[Index]);
+        Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffers.Data[Index]);
     }
 
     Device->FreeCommandBuffers(

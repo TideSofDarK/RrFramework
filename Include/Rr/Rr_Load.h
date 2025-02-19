@@ -72,7 +72,7 @@ extern Rr_LoadContext *Rr_LoadAsync(
     void *Userdata);
 
 extern Rr_LoadResult Rr_LoadImmediate(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     size_t TaskCount,
     Rr_LoadTask *Tasks);
 

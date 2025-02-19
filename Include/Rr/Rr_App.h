@@ -23,11 +23,11 @@ struct Rr_AppConfig
 
 extern void Rr_Run(Rr_AppConfig *Config);
 
+extern struct Rr_Renderer *Rr_GetRenderer(Rr_App *App);
+
 extern void Rr_DebugOverlay(Rr_App *App);
 
 extern void Rr_ToggleFullscreen(Rr_App *App);
-
-extern Rr_IntVec2 Rr_GetSwapchainSize(Rr_App *App);
 
 extern float Rr_GetAspectRatio(Rr_App *App);
 

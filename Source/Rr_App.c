@@ -121,7 +121,6 @@ static void Rr_Iterate(Rr_App *App)
     Rr_UpdateInputState(&App->InputState, &App->InputConfig);
 
     Rr_PrepareFrame(App);
-    Rr_BeginUI(App, App->UI);
 
     App->Config->IterateFunc(App, App->UserData);
 
@@ -148,7 +147,7 @@ static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
         case SDL_EVENT_WINDOW_EXPOSED:
         {
             Rr_App *App = (Rr_App *)AppPtr;
-            SDL_SetAtomicInt(&App->Renderer.Swapchain.bResizePending, 1);
+            SDL_SetAtomicInt(&App->Renderer->Swapchain.bResizePending, 1);
             Iterate(App);
         }
         break;
@@ -156,7 +155,7 @@ static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
         case SDL_EVENT_WINDOW_RESIZED:
         {
             Rr_App *App = (Rr_App *)AppPtr;
-            SDL_SetAtomicInt(&App->Renderer.Swapchain.ResizePending, 1);
+            SDL_SetAtomicInt(&App->Renderer->Swapchain.ResizePending, 1);
         }
         break;
 #endif
@@ -225,7 +224,7 @@ void Rr_Run(Rr_AppConfig *Config)
         WindowSize.Height,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
             SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    App.PermanentArena = Rr_CreateDefaultArena();
+    App.Arena = Rr_CreateDefaultArena();
     App.SyncArena = Rr_CreateSyncArena();
     App.UserData = Config->UserData;
 
@@ -241,8 +240,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_AddEventWatch(Rr_EventWatch, &App);
 
-    Rr_InitRenderer(&App);
-    App.UI = Rr_CreateUI(&App);
+    App.Renderer = Rr_CreateRenderer(&App);
 
     Config->InitFunc(&App, App.UserData);
 
@@ -275,10 +273,9 @@ void Rr_Run(Rr_AppConfig *Config)
         Rr_Iterate(&App);
     }
 
-    Rr_DestroyUI(&App, App.UI);
-    Rr_CleanupRenderer(&App);
+    Rr_DestroyRenderer(&App, App.Renderer);
 
-    Rr_DestroyArena(App.PermanentArena);
+    Rr_DestroyArena(App.Arena);
     Rr_DestroySyncArena(&App.SyncArena);
 
     SDL_CleanupTLS();
@@ -287,6 +284,11 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_DestroyWindow(App.Window);
 
     SDL_Quit();
+}
+
+Rr_Renderer *Rr_GetRenderer(Rr_App *App)
+{
+    return App->Renderer;
 }
 
 static bool Rr_IsAnyFullscreen(SDL_Window *Window)
@@ -309,18 +311,9 @@ Rr_InputState Rr_GetInputState(Rr_App *App)
     return App->InputState;
 }
 
-Rr_IntVec2 Rr_GetSwapchainSize(Rr_App *App)
-{
-    Rr_Renderer *Renderer = &App->Renderer;
-    return (Rr_IntVec2){
-        (int32_t)Renderer->Swapchain.Extent.width,
-        (int32_t)Renderer->Swapchain.Extent.height,
-    };
-}
-
 float Rr_GetAspectRatio(Rr_App *App)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     return (float)Renderer->Swapchain.Extent.width /
            (float)Renderer->Swapchain.Extent.height;
 }

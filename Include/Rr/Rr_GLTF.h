@@ -111,14 +111,14 @@ struct Rr_GLTFTextureMapping
 };
 
 extern Rr_GLTFContext *Rr_CreateGLTFContext(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     size_t VertexInputBindingCount,
     Rr_VertexInputBinding *VertexInputBindings,
     Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
     size_t GLTFTextureMappingCount,
     Rr_GLTFTextureMapping *GLTFTextureMappings);
 
-extern void Rr_DestroyGLTFContext(Rr_App *App, Rr_GLTFContext *GLTFContext);
+extern void Rr_DestroyGLTFContext(Rr_GLTFContext *GLTFContext);
 
 #ifdef __cplusplus
 }

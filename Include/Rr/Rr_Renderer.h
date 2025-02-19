@@ -10,6 +10,8 @@ extern "C" {
 struct Rr_Image;
 struct Rr_Graph;
 
+typedef struct Rr_Renderer Rr_Renderer;
+
 typedef enum
 {
     RR_FORMAT_INVALID,
@@ -84,17 +86,19 @@ typedef enum
 } Rr_ShaderStageBits;
 typedef uint32_t Rr_ShaderStage;
 
-extern struct Rr_Graph *Rr_GetGraph(Rr_App *App);
+extern struct Rr_Graph *Rr_GetGraph(Rr_Renderer *Renderer);
 
-extern Rr_Arena *Rr_GetFrameArena(Rr_App *App);
+extern Rr_Arena *Rr_GetFrameArena(Rr_Renderer *Renderer);
 
-extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_App *App);
+extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_Renderer *Renderer);
 
-extern struct Rr_Image *Rr_GetSwapchainImage(Rr_App *App);
+extern Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer);
 
-extern size_t Rr_GetUniformAlignment(Rr_App *App);
+extern struct Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer);
 
-extern size_t Rr_GetStorageAlignment(Rr_App *App);
+extern size_t Rr_GetUniformAlignment(Rr_Renderer *Renderer);
+
+extern size_t Rr_GetStorageAlignment(Rr_Renderer *Renderer);
 
 #ifdef __cplusplus
 }

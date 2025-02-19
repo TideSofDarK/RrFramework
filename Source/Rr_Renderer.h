@@ -76,7 +76,6 @@ struct Rr_CachedRenderPass
     uint32_t Hash;
 };
 
-typedef struct Rr_Renderer Rr_Renderer;
 struct Rr_Renderer
 {
     /* Vulkan Core */
@@ -158,9 +157,9 @@ struct Rr_Renderer
     Rr_Arena *Arena;
 };
 
-extern void Rr_InitRenderer(Rr_App *App);
+extern Rr_Renderer *Rr_CreateRenderer(Rr_App *App);
 
-extern void Rr_CleanupRenderer(Rr_App *App);
+extern void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer);
 
 extern void Rr_PrepareFrame(Rr_App *App);
 
@@ -192,22 +191,26 @@ struct Rr_RenderPassInfo
     size_t AttachmentCount;
 };
 
-extern VkRenderPass Rr_GetRenderPass(Rr_App *App, Rr_RenderPassInfo *Info);
+extern VkRenderPass Rr_GetRenderPass(
+    Rr_Renderer *Renderer,
+    Rr_RenderPassInfo *Info);
 
 extern VkFramebuffer Rr_GetFramebuffer(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     Rr_Image *Images,
     size_t ImageCount,
     VkExtent3D Extent);
 
 extern VkFramebuffer Rr_GetFramebufferViews(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     VkImageView *ImageViews,
     size_t ImageViewCount,
     VkExtent3D Extent);
 
-extern Rr_SyncState *Rr_GetSynchronizationState(Rr_App *App, Rr_MapKey Key);
+extern Rr_SyncState *Rr_GetSynchronizationState(
+    Rr_Renderer *Renderer,
+    Rr_MapKey Key);
 
-extern void Rr_ReturnSynchronizationState(Rr_App *App, Rr_MapKey Key);
+extern void Rr_ReturnSynchronizationState(Rr_Renderer *Renderer, Rr_MapKey Key);

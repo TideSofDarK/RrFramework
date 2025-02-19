@@ -156,12 +156,11 @@ void Rr_EndHorizontal(void)
 {
 }
 
-Rr_UI *Rr_CreateUI(Rr_App *App)
+Rr_UI *Rr_CreateUI(void)
 {
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     Rr_UI *UI = RR_ALLOC(Arena, sizeof(Rr_UI));
-
     UI->Arena = Arena;
 
     UI->Style = (Rr_UIStyle){
@@ -175,23 +174,24 @@ Rr_UI *Rr_CreateUI(Rr_App *App)
     return UI;
 }
 
-void Rr_DestroyUI(Rr_App *App, Rr_UI *UI)
+void Rr_DestroyUI(Rr_UI *UI)
 {
     Rr_DestroyArena(UI->Arena);
+    RR_ZERO_PTR(UI);
 }
 
-void Rr_BeginUI(Rr_App *App, Rr_UI *UI)
+void Rr_BeginUI(Rr_Renderer *Renderer, Rr_UI *UI)
 {
     // UI->Arena->Position = sizeof(Rr_UI);
     GUI = UI;
     GUI->Window = NULL;
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(App);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
     GUI->ScreenSize.Width = SwapchainSize.Width;
     GUI->ScreenSize.Height = SwapchainSize.Height;
-    GUI->FrameArena = Rr_GetCurrentFrame(&App->Renderer)->Arena;
-    GUI->Font = App->Renderer.BuiltinFont;
+    GUI->FrameArena = Rr_GetCurrentFrame(Renderer)->Arena;
+    GUI->Font = Renderer->BuiltinFont;
 }
 
-void Rr_DrawUI(Rr_App *App, Rr_UI *UI)
+void Rr_DrawUI(Rr_Renderer *Renderer, Rr_UI *UI)
 {
 }

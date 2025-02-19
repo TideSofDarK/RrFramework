@@ -11,14 +11,16 @@ static Rr_Sampler *NearestSampler;
 
 static void Init(Rr_App *App, void *UserData)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
     Rr_SamplerInfo SamplerInfo = { 0 };
     SamplerInfo.MinFilter = RR_FILTER_NEAREST;
     SamplerInfo.MagFilter = RR_FILTER_NEAREST;
     SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_REPEAT;
     SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_REPEAT;
-    NearestSampler = Rr_CreateSampler(App, &SamplerInfo);
+    NearestSampler = Rr_CreateSampler(Renderer, &SamplerInfo);
 
-    PipelineLayout = Rr_CreatePipelineLayout(App, 0, NULL);
+    PipelineLayout = Rr_CreatePipelineLayout(Renderer, 0, NULL);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Format = RR_FORMAT_VEC3, .Location = 0 },
@@ -33,7 +35,7 @@ static void Init(Rr_App *App, void *UserData)
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
     ColorTargets[0].Blend.ColorWriteMask = RR_COLOR_COMPONENT_ALL;
-    ColorTargets[0].Format = Rr_GetSwapchainFormat(App);
+    ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
 
     Rr_PipelineInfo PipelineInfo = { 0 };
     PipelineInfo.Layout = PipelineLayout;
@@ -46,7 +48,7 @@ static void Init(Rr_App *App, void *UserData)
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
 
-    GraphicsPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
     float VertexData[] = {
         -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
@@ -54,9 +56,9 @@ static void Init(Rr_App *App, void *UserData)
     };
 
     VertexBuffer =
-        Rr_CreateBuffer(App, sizeof(VertexData), RR_BUFFER_FLAGS_VERTEX_BIT);
+        Rr_CreateBuffer(Renderer, sizeof(VertexData), RR_BUFFER_FLAGS_VERTEX_BIT);
     Rr_UploadToDeviceBufferImmediate(
-        App,
+        Renderer,
         VertexBuffer,
         RR_MAKE_DATA_ARRAY(VertexData));
 
@@ -67,16 +69,16 @@ static void Init(Rr_App *App, void *UserData)
     };
 
     IndexBuffer =
-        Rr_CreateBuffer(App, sizeof(IndexData), RR_BUFFER_FLAGS_INDEX_BIT);
+        Rr_CreateBuffer(Renderer, sizeof(IndexData), RR_BUFFER_FLAGS_INDEX_BIT);
     Rr_UploadToDeviceBufferImmediate(
-        App,
+        Renderer,
         IndexBuffer,
         RR_MAKE_DATA_ARRAY(IndexData));
 
     ColorAttachment = Rr_CreateImage(
-        App,
+        Renderer,
         (Rr_IntVec3){ 320, 240, 1 },
-        Rr_GetSwapchainFormat(App),
+        Rr_GetSwapchainFormat(Renderer),
         RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
             RR_IMAGE_FLAGS_SAMPLED_BIT);
 }
@@ -124,12 +126,13 @@ static void Iterate(Rr_App *App, void *UserData)
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
-    Rr_DestroyImage(App, ColorAttachment);
-    Rr_DestroyBuffer(App, VertexBuffer);
-    Rr_DestroyBuffer(App, IndexBuffer);
-    Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);
-    Rr_DestroyPipelineLayout(App, PipelineLayout);
-    Rr_DestroySampler(App, NearestSampler);
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_DestroyImage(Renderer, ColorAttachment);
+    Rr_DestroyBuffer(Renderer, VertexBuffer);
+    Rr_DestroyBuffer(Renderer, IndexBuffer);
+    Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
+    Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
+    Rr_DestroySampler(Renderer, NearestSampler);
 }
 
 int main(int ArgC, char **ArgV)

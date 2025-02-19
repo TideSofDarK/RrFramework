@@ -209,27 +209,30 @@ extern Rr_GraphNode *Rr_AddGraphNode(
     Rr_GraphNodeType Type,
     const char *Name);
 
-extern void Rr_ExecuteGraph(Rr_App *App, Rr_Graph *Graph, Rr_Arena *Arena);
+extern void Rr_ExecuteGraph(
+    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
+    Rr_Arena *Arena);
 
 extern void Rr_ExecutePresentNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_PresentNode *Node,
     VkCommandBuffer CommandBuffer);
 
 extern void Rr_ExecuteTransferNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_TransferNode *Node,
     VkCommandBuffer CommandBuffer);
 
 extern void Rr_ExecuteBlitNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_BlitNode *Node,
     VkCommandBuffer CommandBuffer);
 
 extern void Rr_ExecuteGraphicsNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_GraphicsNode *Node,
     VkCommandBuffer CommandBuffer);

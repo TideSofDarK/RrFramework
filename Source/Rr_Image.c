@@ -10,15 +10,14 @@
 
 #include <assert.h>
 
-Rr_Sampler *Rr_CreateSampler(Rr_App *App, Rr_SamplerInfo *Info)
+Rr_Sampler *Rr_CreateSampler(Rr_Renderer *Renderer, Rr_SamplerInfo *Info)
 {
     assert(Info != NULL);
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Rr_Sampler *Sampler =
-        RR_GET_FREE_LIST_ITEM(&App->Renderer.Samplers, App->PermanentArena);
+        RR_GET_FREE_LIST_ITEM(&Renderer->Samplers, Renderer->Arena);
 
     VkSamplerCreateInfo SamplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -45,20 +44,19 @@ Rr_Sampler *Rr_CreateSampler(Rr_App *App, Rr_SamplerInfo *Info)
     return Sampler;
 }
 
-void Rr_DestroySampler(Rr_App *App, Rr_Sampler *Sampler)
+void Rr_DestroySampler(Rr_Renderer *Renderer, Rr_Sampler *Sampler)
 {
     assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Device->DestroySampler(Device->Handle, Sampler->Handle, NULL);
 
-    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Samplers, Sampler);
+    RR_RETURN_FREE_LIST_ITEM(&Renderer->Samplers, Sampler);
 }
 
 void Rr_UploadStagingImage(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Image *Image,
     VkImageAspectFlags Aspect,
@@ -68,7 +66,6 @@ void Rr_UploadStagingImage(
     size_t StagingOffset,
     size_t StagingSize)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
@@ -193,7 +190,7 @@ void Rr_UploadStagingImage(
 }
 
 void Rr_UploadImage(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Image *Image,
     VkImageAspectFlags Aspect,
@@ -202,7 +199,7 @@ void Rr_UploadImage(
     Rr_Data Data)
 {
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        App,
+        Renderer,
         Data.Size,
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
@@ -216,7 +213,7 @@ void Rr_UploadImage(
         Data.Size);
 
     Rr_UploadStagingImage(
-        App,
+        Renderer,
         UploadContext,
         Image,
         Aspect,
@@ -228,7 +225,7 @@ void Rr_UploadImage(
 }
 
 Rr_Image *Rr_CreateImage(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags)
@@ -237,11 +234,9 @@ Rr_Image *Rr_CreateImage(
     assert(Extent.Height >= 1);
     assert(Extent.Depth >= 1);
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
-    Rr_Image *Image =
-        RR_GET_FREE_LIST_ITEM(&App->Renderer.Images, App->PermanentArena);
+    Rr_Image *Image = RR_GET_FREE_LIST_ITEM(&Renderer->Images, Renderer->Arena);
     Image->Flags = Flags;
     Image->Format = Rr_GetVulkanTextureFormat(Format);
     Image->Extent = *(VkExtent3D *)&Extent;
@@ -371,14 +366,13 @@ Rr_Image *Rr_CreateImage(
     return Image;
 }
 
-void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
+void Rr_DestroyImage(Rr_Renderer *Renderer, Rr_Image *Image)
 {
     if(Image == NULL)
     {
         return;
     }
 
-    Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
@@ -393,7 +387,7 @@ void Rr_DestroyImage(Rr_App *App, Rr_Image *Image)
             Image->AllocatedImages[Index].Allocation);
     }
 
-    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Images, Image);
+    RR_RETURN_FREE_LIST_ITEM(&Renderer->Images, Image);
 }
 
 Rr_IntVec3 Rr_GetImageExtent3D(Rr_Image *Image)
@@ -430,7 +424,7 @@ size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)
 }
 
 Rr_Image *Rr_CreateImageRGBA8(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     char *Data,
     uint32_t Width,
@@ -441,13 +435,13 @@ Rr_Image *Rr_CreateImageRGBA8(
     size_t DataSize = Extent.Width * Extent.Height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
-        App,
+        Renderer,
         Extent,
         RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
     Rr_UploadImage(
-        App,
+        Renderer,
         UploadContext,
         ColorImage,
         VK_IMAGE_ASPECT_COLOR_BIT,
@@ -465,7 +459,7 @@ Rr_Image *Rr_CreateImageRGBA8(
 }
 
 Rr_Image *Rr_CreateImageRGBA8FromPNG(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
     char *Data)
@@ -483,13 +477,13 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
     size_t ParsedSize = Extent.Width * Extent.Height * DesiredChannels;
 
     Rr_Image *ColorImage = Rr_CreateImage(
-        App,
+        Renderer,
         Extent,
         RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
     Rr_UploadImage(
-        App,
+        Renderer,
         UploadContext,
         ColorImage,
         VK_IMAGE_ASPECT_COLOR_BIT,
@@ -607,9 +601,11 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
 //     return App->Renderer.NullTextures.Normal;
 // }
 
-Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_App *App, Rr_Image *Image)
+Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(
+    Rr_Renderer *Renderer,
+    Rr_Image *Image)
 {
     size_t AllocatedImageIndex =
-        App->Renderer.CurrentFrameIndex % Image->AllocatedImageCount;
+        Renderer->CurrentFrameIndex % Image->AllocatedImageCount;
     return &Image->AllocatedImages[AllocatedImageIndex];
 }

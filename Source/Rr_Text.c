@@ -106,7 +106,7 @@ void Rr_InitTextRenderer(Rr_App *App)
 
 void Rr_CleanupTextRenderer(Rr_App *App)
 {
-    Rr_Renderer *Renderer = &App->Renderer;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_TextPipeline *TextPipeline = &Renderer->TextPipeline;
     // VkDevice Device = Renderer->Device;
     // // Rr_DestroyPipeline(App, TextPipeline->Pipeline);
@@ -119,12 +119,12 @@ void Rr_CleanupTextRenderer(Rr_App *App)
     //         TextPipeline->DescriptorSetLayouts[Index],
     //         NULL);
     // }
-    Rr_DestroyBuffer(App, TextPipeline->QuadBuffer);
-    Rr_DestroyFont(App, Renderer->BuiltinFont);
+    Rr_DestroyBuffer(Renderer, TextPipeline->QuadBuffer);
+    Rr_DestroyFont(Renderer, Renderer->BuiltinFont);
 }
 
 Rr_Font *Rr_CreateFont(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef)
 {
@@ -134,10 +134,10 @@ Rr_Font *Rr_CreateFont(
         .AssetRef = FontPNGRef,
         .Out.Image = &Atlas,
     };
-    Rr_LoadImmediate(App, 1, &ImageLoadTask);
+    Rr_LoadImmediate(Renderer, 1, &ImageLoadTask);
 
     Rr_Buffer *Buffer = Rr_CreateBuffer(
-        App,
+        Renderer,
         sizeof(Rr_TextFontLayout),
         RR_BUFFER_FLAGS_UNIFORM_BIT);
 
@@ -158,8 +158,7 @@ Rr_Font *Rr_CreateFont(
         },
     };
 
-    Rr_Font *Font =
-        RR_GET_FREE_LIST_ITEM(&App->Renderer.Fonts, App->PermanentArena);
+    Rr_Font *Font = RR_GET_FREE_LIST_ITEM(&Renderer->Fonts, Renderer->Arena);
     *Font = (Rr_Font){
         .Buffer = Buffer,
         .Atlas = Atlas,
@@ -230,21 +229,21 @@ Rr_Font *Rr_CreateFont(
     cJSON_Delete(FontDataJSON);
 
     Rr_UploadToDeviceBufferImmediate(
-        App,
+        Renderer,
         Buffer,
         RR_MAKE_DATA_STRUCT(TextFontData));
 
     return Font;
 }
 
-void Rr_DestroyFont(Rr_App *App, Rr_Font *Font)
+void Rr_DestroyFont(Rr_Renderer *Renderer, Rr_Font *Font)
 {
     Rr_Free(Font->Advances);
 
-    Rr_DestroyImage(App, Font->Atlas);
-    Rr_DestroyBuffer(App, Font->Buffer);
+    Rr_DestroyImage(Renderer, Font->Atlas);
+    Rr_DestroyBuffer(Renderer, Font->Buffer);
 
-    RR_RETURN_FREE_LIST_ITEM(&App->Renderer.Fonts, Font);
+    RR_RETURN_FREE_LIST_ITEM(&Renderer->Fonts, Font);
 }
 
 Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)

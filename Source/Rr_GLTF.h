@@ -2,7 +2,7 @@
 
 #include <Rr/Rr_GLTF.h>
 
-#include "Rr_Memory.h"
+#include "Rr_UploadContext.h"
 
 #include <Rr/Rr_Asset.h>
 #include <Rr/Rr_Platform.h>
@@ -12,6 +12,8 @@ struct Rr_Buffer;
 
 struct Rr_GLTFContext
 {
+    Rr_Renderer *Renderer;
+
     RR_SLICE(struct Rr_Buffer *) Buffers;
     RR_SLICE(struct Rr_Image *) Images;
 
@@ -27,8 +29,7 @@ struct Rr_GLTFContext
 };
 
 extern Rr_GLTFAsset *Rr_CreateGLTFAsset(
-    Rr_App *App,
-    struct Rr_UploadContext *UploadContext,
-    Rr_AssetRef AssetRef,
     Rr_GLTFContext *GLTFContext,
+    Rr_UploadContext *UploadContext,
+    Rr_AssetRef AssetRef,
     Rr_Arena *Arena);

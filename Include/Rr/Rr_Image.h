@@ -59,9 +59,11 @@ struct Rr_SamplerInfo
     bool UnnormalizedCoordinates;
 };
 
-extern Rr_Sampler *Rr_CreateSampler(Rr_App *App, Rr_SamplerInfo *Info);
+extern Rr_Sampler *Rr_CreateSampler(
+    Rr_Renderer *Renderer,
+    Rr_SamplerInfo *Info);
 
-extern void Rr_DestroySampler(Rr_App *App, Rr_Sampler *Sampler);
+extern void Rr_DestroySampler(Rr_Renderer *Renderer, Rr_Sampler *Sampler);
 
 typedef struct Rr_Image Rr_Image;
 
@@ -79,20 +81,20 @@ typedef enum
 typedef uint32_t Rr_ImageFlags;
 
 extern Rr_Image *Rr_CreateImage(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags);
 
-extern void Rr_DestroyImage(Rr_App *App, Rr_Image *Image);
+extern void Rr_DestroyImage(Rr_Renderer *Renderer, Rr_Image *Image);
 
 extern Rr_IntVec3 Rr_GetImageExtent3D(Rr_Image *Image);
 
 extern Rr_IntVec2 Rr_GetImageExtent2D(Rr_Image *Image);
 
-extern Rr_Image *Rr_GetDummyColorTexture(Rr_App *App);
+extern Rr_Image *Rr_GetDummyColorTexture(Rr_Renderer *Renderer);
 
-extern Rr_Image *Rr_GetDummyNormalTexture(Rr_App *App);
+extern Rr_Image *Rr_GetDummyNormalTexture(Rr_Renderer *Renderer);
 
 #ifdef __cplusplus
 }

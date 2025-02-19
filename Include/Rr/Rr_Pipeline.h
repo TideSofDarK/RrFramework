@@ -197,20 +197,20 @@ struct Rr_PipelineBindingSet
 };
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     size_t SetCount,
     Rr_PipelineBindingSet *Sets);
 
 extern void Rr_DestroyPipelineLayout(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_PipelineLayout *PipelineLayout);
 
 extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_PipelineInfo *Info);
 
 extern void Rr_DestroyGraphicsPipeline(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_GraphicsPipeline *GraphicsPipelin);
 
 #ifdef __cplusplus

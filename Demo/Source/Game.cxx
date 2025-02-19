@@ -680,12 +680,14 @@ static void OnLoadComplete(Rr_App *App, void *UserData)
 
 static void Init(Rr_App *App, void *UserData)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
     /* Create simple sampler. */
 
     Rr_SamplerInfo SamplerInfo = {};
     SamplerInfo.MinFilter = RR_FILTER_NEAREST;
     SamplerInfo.MagFilter = RR_FILTER_NEAREST;
-    NearestSampler = Rr_CreateSampler(App, &SamplerInfo);
+    NearestSampler = Rr_CreateSampler(Renderer, &SamplerInfo);
 
     /* Create graphics pipeline. */
 
@@ -699,7 +701,7 @@ static void Init(Rr_App *App, void *UserData)
         Bindings,
         RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
     };
-    PipelineLayout = Rr_CreatePipelineLayout(App, 1, &BindingSet);
+    PipelineLayout = Rr_CreatePipelineLayout(Renderer, 1, &BindingSet);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { 0, RR_FORMAT_VEC3 },
@@ -714,7 +716,7 @@ static void Init(Rr_App *App, void *UserData)
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = {};
-    ColorTargets[0].Format = Rr_GetSwapchainFormat(App);
+    ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
 
     Rr_PipelineInfo PipelineInfo = {};
     PipelineInfo.Layout = PipelineLayout;
@@ -728,7 +730,7 @@ static void Init(Rr_App *App, void *UserData)
     PipelineInfo.DepthStencil.EnableDepthWrite = true;
     PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
 
-    GraphicsPipeline = Rr_CreateGraphicsPipeline(App, &PipelineInfo);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
     /* Create GLTF context. */
 
@@ -745,7 +747,7 @@ static void Init(Rr_App *App, void *UserData)
         { 0, 1, RR_GLTF_TEXTURE_TYPE_COLOR },
     };
     GLTFContext = Rr_CreateGLTFContext(
-        App,
+        Renderer,
         1,
         &VertexInputBinding,
         &GLTFVertexInputBinding,
@@ -763,14 +765,14 @@ static void Init(Rr_App *App, void *UserData)
     /* Create main draw target. */
 
     ColorAttachment = Rr_CreateImage(
-        App,
+        Renderer,
         { 320, 240, 1 },
-        Rr_GetSwapchainFormat(App),
+        Rr_GetSwapchainFormat(Renderer),
         RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
             RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     DepthAttachment = Rr_CreateImage(
-        App,
+        Renderer,
         { 320, 240, 1 },
         RR_TEXTURE_FORMAT_D32_SFLOAT,
         RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
@@ -778,13 +780,15 @@ static void Init(Rr_App *App, void *UserData)
 
     /* Create uniform buffer. */
 
-    UniformBuffer =
-        Rr_CreateBuffer(App, sizeof(SUniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
+    UniformBuffer = Rr_CreateBuffer(
+        Renderer,
+        sizeof(SUniformData),
+        RR_BUFFER_FLAGS_UNIFORM_BIT);
 
     /* Create staging buffer */
 
     StagingBuffer = Rr_CreateBuffer(
-        App,
+        Renderer,
         RR_MEGABYTES(16),
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
@@ -795,6 +799,8 @@ static void DrawFirstGLTFMesh(
     Rr_GraphImage *ColorAttachmentHandle,
     Rr_GraphImage *DepthAttachmentHandle)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
     double Time = Rr_GetTimeSeconds(App);
 
     Rr_GraphBuffer StagingBufferHandle =
@@ -814,7 +820,7 @@ static void DrawFirstGLTFMesh(
     //     Rr_Rotate_LH(sin(Time), { 0.0f, 0.0f, 1.0f }));
 
     std::memcpy(
-        Rr_GetMappedBufferData(App, StagingBuffer),
+        Rr_GetMappedBufferData(Renderer, StagingBuffer),
         &UniformData,
         sizeof(UniformData));
 
@@ -923,15 +929,17 @@ static void Iterate(Rr_App *App, void *UserData)
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
     Rr_DestroyLoadThread(App, LoadThread);
-    Rr_DestroyImage(App, ColorAttachment);
-    Rr_DestroyImage(App, DepthAttachment);
-    Rr_DestroyBuffer(App, StagingBuffer);
-    Rr_DestroyBuffer(App, UniformBuffer);
-    Rr_DestroyGLTFContext(App, GLTFContext);
-    Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);
-    Rr_DestroyPipelineLayout(App, PipelineLayout);
-    Rr_DestroySampler(App, NearestSampler);
+    Rr_DestroyGLTFContext(GLTFContext);
+    Rr_DestroyImage(Renderer, ColorAttachment);
+    Rr_DestroyImage(Renderer, DepthAttachment);
+    Rr_DestroyBuffer(Renderer, StagingBuffer);
+    Rr_DestroyBuffer(Renderer, UniformBuffer);
+    Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
+    Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
+    Rr_DestroySampler(Renderer, NearestSampler);
 }
 
 void RunGame()

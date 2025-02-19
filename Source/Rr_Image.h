@@ -35,7 +35,7 @@ struct Rr_Image
 };
 
 extern void Rr_UploadStagingImage(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Image *Image,
     VkImageAspectFlags Aspect,
@@ -46,7 +46,7 @@ extern void Rr_UploadStagingImage(
     size_t StagingSize);
 
 extern void Rr_UploadImage(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Image *Image,
     VkImageAspectFlags Aspect,
@@ -55,14 +55,14 @@ extern void Rr_UploadImage(
     Rr_Data Data);
 
 extern Rr_Image *Rr_CreateImageRGBA8(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     char *Data,
     uint32_t Width,
     uint32_t Height);
 
 Rr_Image *Rr_CreateImageRGBA8FromPNG(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
     char *Data);
@@ -82,5 +82,5 @@ extern size_t Rr_GetImagePNGRGBA8Size(
 // Rr_LoadSize *OutLoadSize);
 
 extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     Rr_Image *Image);
