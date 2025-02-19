@@ -125,6 +125,7 @@ extern void Rr_ResizeSlice(
 #define RR_PUSH_SLICE(Slice, Arena)                                         \
     ((Slice)->Count >= (Slice)->Capacity                                    \
      ? Rr_GrowSlice((Slice), sizeof(*(Slice)->Data), (Arena)), /* NOLINT */ \
+     memset((Slice)->Data + (Slice)->Count, 0, sizeof(*(Slice)->Data)),     \
      (Slice)->Data + (Slice)->Count++                                       \
      : (Slice)->Data + (Slice)->Count++)
 

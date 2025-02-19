@@ -77,10 +77,10 @@ Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
 
     VkDescriptorPool NewPool =
         Rr_CreateDescriptorPool(Device, MaxSets, Ratios, RatioCount);
-    RR_RESERVE_SLICE(&DescriptorAllocator.ReadyPools, 1, Arena); /* NOLINT */
+    RR_RESERVE_SLICE(&DescriptorAllocator.ReadyPools, 1, Arena);
     *RR_PUSH_SLICE(&DescriptorAllocator.ReadyPools, Arena) = NewPool;
 
-    RR_RESERVE_SLICE(&DescriptorAllocator.FullPools, 1, Arena); /* NOLINT */
+    RR_RESERVE_SLICE(&DescriptorAllocator.FullPools, 1, Arena);
 
     DescriptorAllocator.SetsPerPool = (size_t)((float)MaxSets * 1.5f);
 

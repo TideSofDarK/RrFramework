@@ -342,9 +342,10 @@ static bool Rr_CheckPhysicalDevice(
     return true;
 }
 
-Rr_PhysicalDevice Rr_SelectPhysicalDevice(
+void Rr_SelectPhysicalDevice(
     Rr_Instance *Instance,
     VkSurfaceKHR Surface,
+    Rr_PhysicalDevice *PhysicalDevice,
     uint32_t *OutGraphicsQueueFamilyIndex,
     uint32_t *OutTransferQueueFamilyIndex,
     Rr_Arena *Arena)
@@ -371,10 +372,11 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     typedef char Rr_DeviceString[1024];
     RR_SLICE(Rr_DeviceString) DeviceStrings = { 0 };
     uint32_t BestDeviceIndex = UINT32_MAX;
-    static const int PreferredDeviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-    // static const int PreferredDeviceType =
+    static const uint32_t PreferredDeviceType =
+        VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    // static const uint32_t PreferredDeviceType =
     // VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
-    int BestDeviceType = 0;
+    uint32_t BestDeviceType = 0;
     VkDeviceSize BestDeviceMemory = 0;
     for(uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
     {
@@ -414,16 +416,22 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
             {
                 case VK_PHYSICAL_DEVICE_TYPE_OTHER:
                     TypeString = "other";
+                    break;
                 case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
                     TypeString = "integrated";
+                    break;
                 case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
                     TypeString = "discrete";
+                    break;
                 case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
                     TypeString = "virtual";
+                    break;
                 case VK_PHYSICAL_DEVICE_TYPE_CPU:
                     TypeString = "cpu";
+                    break;
                 default:
                     TypeString = "undefined";
+                    break;
             }
 
             char *DstString = *RR_PUSH_SLICE(&DeviceStrings, Arena);
@@ -488,14 +496,14 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
     bool UseTransferQueue =
         *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
-    Rr_PhysicalDevice PhysicalDevice = {
+    *PhysicalDevice = (Rr_PhysicalDevice){
         .SubgroupProperties =
             (VkPhysicalDeviceSubgroupProperties){
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
             },
         .Properties =
             (VkPhysicalDeviceProperties2){
-                .pNext = &PhysicalDevice.SubgroupProperties,
+                .pNext = &PhysicalDevice->SubgroupProperties,
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
             },
         .Handle = PhysicalDevices[BestDeviceIndex],
@@ -503,19 +511,17 @@ Rr_PhysicalDevice Rr_SelectPhysicalDevice(
 
     Instance->GetPhysicalDeviceFeatures(
         PhysicalDevices[BestDeviceIndex],
-        &PhysicalDevice.Features);
+        &PhysicalDevice->Features);
     Instance->GetPhysicalDeviceMemoryProperties(
         PhysicalDevices[BestDeviceIndex],
-        &PhysicalDevice.MemoryProperties);
+        &PhysicalDevice->MemoryProperties);
     Instance->GetPhysicalDeviceProperties2(
         PhysicalDevices[BestDeviceIndex],
-        &PhysicalDevice.Properties);
+        &PhysicalDevice->Properties);
 
     RR_LOG(
         "Using %s transfer queue.",
         UseTransferQueue ? "dedicated" : "unified");
-
-    return PhysicalDevice;
 }
 
 void Rr_InitSurface(void *Window, Rr_Instance *Instance, VkSurfaceKHR *Surface)
@@ -533,15 +539,17 @@ void Rr_InitDeviceAndQueues(
     Rr_PhysicalDevice *PhysicalDevice,
     Rr_Device *Device,
     Rr_Queue *GraphicsQueue,
-    Rr_Queue *TransferQueue,
-    Rr_Arena *Arena)
+    Rr_Queue *TransferQueue)
 {
-    *PhysicalDevice = Rr_SelectPhysicalDevice(
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_SelectPhysicalDevice(
         Instance,
         Surface,
+        PhysicalDevice,
         &GraphicsQueue->FamilyIndex,
         &TransferQueue->FamilyIndex,
-        Arena);
+        Scratch.Arena);
 
     bool UseTransferQueue =
         GraphicsQueue->FamilyIndex != TransferQueue->FamilyIndex;
@@ -1056,6 +1064,8 @@ void Rr_InitDeviceAndQueues(
             0,
             &TransferQueue->Handle);
     }
+
+    Rr_DestroyScratch(Scratch);
 }
 
 void Rr_BlitColorImage(

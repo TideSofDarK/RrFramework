@@ -652,8 +652,7 @@ Rr_Renderer *Rr_CreateRenderer(Rr_App *App)
         &Renderer->PhysicalDevice,
         &Renderer->Device,
         &Renderer->GraphicsQueue,
-        &Renderer->TransferQueue,
-        Scratch.Arena);
+        &Renderer->TransferQueue);
 
     Rr_InitVMA(Renderer);
     Rr_InitTransientCommandPools(Renderer);

@@ -304,8 +304,7 @@ extern void Rr_InitDeviceAndQueues(
     Rr_PhysicalDevice *PhysicalDevice,
     Rr_Device *Device,
     Rr_Queue *GraphicsQueue,
-    Rr_Queue *TransferQueue,
-    Rr_Arena *Arena);
+    Rr_Queue *TransferQueue);
 
 extern void Rr_BlitColorImage(
     Rr_Device *Device,
