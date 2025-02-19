@@ -50,6 +50,16 @@ void Rr_DecommitMemory(void *Data, size_t Size)
     mprotect(Data, Size, PROT_NONE);
 }
 
+int Rr_GetAtomicInt(Rr_AtomicInt *AtomicInt)
+{
+    return __atomic_load_n(&AtomicInt->Value, __ATOMIC_SEQ_CST);
+}
+
+int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value)
+{
+    return __sync_lock_test_and_set(&AtomicInt->Value, Value);
+}
+
 bool Rr_TryLockSpinLock(Rr_SpinLock *SpinLock)
 {
     return __sync_lock_test_and_set(SpinLock, 1) == 0;

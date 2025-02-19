@@ -25,6 +25,16 @@ extern bool Rr_CommitMemory(void *Data, size_t Size);
 
 extern void Rr_DecommitMemory(void *Data, size_t Size);
 
+typedef struct Rr_AtomicInt Rr_AtomicInt;
+struct Rr_AtomicInt
+{
+    int Value;
+};
+
+extern int Rr_GetAtomicInt(Rr_AtomicInt *AtomicInt);
+
+extern int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value);
+
 typedef int Rr_SpinLock;
 
 extern bool Rr_TryLockSpinLock(Rr_SpinLock *SpinLock);

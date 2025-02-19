@@ -30,7 +30,7 @@ add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
 rr_enable_debug_options(${PROJECT_NAME})
 
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC RR_ASSET_PATH=${RR_ASSET_PATH})
 

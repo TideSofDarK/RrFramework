@@ -110,8 +110,6 @@ struct Rr_Renderer
     size_t FrameNumber;
     size_t CurrentFrameIndex;
 
-    Rr_DescriptorAllocator GlobalDescriptorAllocator;
-
     /* Render Passes */
 
     RR_SLICE(Rr_CachedRenderPass) RenderPasses;
@@ -128,11 +126,6 @@ struct Rr_Renderer
     //     Rr_Image *White;
     //     Rr_Image *Normal;
     // } NullTextures;
-
-    /* Temporary Staging Buffer */
-
-    Rr_Buffer *StagingBuffer;
-    size_t StagingBufferOffset;
 
     /* Pending Loads */
 

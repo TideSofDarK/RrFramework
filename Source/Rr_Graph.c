@@ -50,7 +50,7 @@ Rr_GraphNode *Rr_AddGraphNode(
     return GraphNode;
 }
 
-static inline void Rr_AddNodeDependency(
+static inline bool Rr_AddNodeDependency(
     Rr_GraphNode *Node,
     Rr_GraphHandle *Handle,
     Rr_SyncState *State)
@@ -61,17 +61,33 @@ static inline void Rr_AddNodeDependency(
 
         if(Dependency->Handle.Values.Index == Handle->Values.Index)
         {
-            return;
+            if(RR_HAS_BIT(State->AccessMask, AllVulkanWrites))
+            {
+                goto CantWriteWrite;
+            }
+            else
+            {
+                if(RR_HAS_BIT(Dependency->State.AccessMask, AllVulkanWrites))
+                {
+                    goto CantReadWrite;
+                }
+                else
+                {
+                    /* Multiple reads might be from different stages. */
+
+                    Dependency->State.StageMask |= State->StageMask;
+                    Dependency->State.AccessMask |= State->AccessMask;
+
+                    return true;
+                }
+            }
         }
     }
 
     Rr_Graph *Graph = Node->Graph;
     Rr_Arena *Arena = Node->Graph->Arena;
 
-    *RR_PUSH_SLICE(&Node->Dependencies, Arena) = (Rr_NodeDependency){
-        .State = *State,
-        .Handle = *Handle,
-    };
+    Rr_GraphHandle CurrentHandle = *Handle;
 
     Rr_GraphNode **NodeInMap =
         RR_UPSERT(&Graph->ResourceWriteToNode, Handle->Hash, Arena);
@@ -95,9 +111,41 @@ static inline void Rr_AddNodeDependency(
         }
         else
         {
-            RR_ABORT("A versioned resource can only be written once!");
+            goto OtherNodeWrites;
         }
     }
+
+    *RR_PUSH_SLICE(&Node->Dependencies, Arena) = (Rr_NodeDependency){
+        .State = *State,
+        .Handle = CurrentHandle,
+    };
+
+    return true;
+
+CantWriteWrite:
+
+    RR_LOG(
+        "Node \"%s\": already writing to the versioned resource!",
+        Node->Name);
+
+    return false;
+
+CantReadWrite:
+
+    RR_LOG(
+        "Node \"%s\": trying to read and write a versioned resource at the "
+        "same time!",
+        Node->Name);
+
+    return false;
+
+OtherNodeWrites:
+
+    RR_LOG(
+        "Node \"%s\": another node already writes to the versioned resource!",
+        Node->Name);
+
+    return false;
 }
 
 static void Rr_CreateGraphAdjacencyList(
@@ -167,7 +215,9 @@ static void Rr_SortGraph(
     {
         if(RR_HAS_BIT(State[CurrentNodeIndex], OnStackBit))
         {
-            RR_ABORT("Cyclic graph detected!");
+            RR_ABORT(
+                "Cyclic graph detected on node \"%s\"!",
+                Nodes[CurrentNodeIndex]->Name);
         }
 
         return;
@@ -192,6 +242,24 @@ static void Rr_SortGraph(
     State[CurrentNodeIndex] &= ~OnStackBit;
 }
 
+static void Rr_PrintAdjacencyList(
+    Rr_GraphNode **Nodes,
+    Rr_IndexSlice *AdjacencyList,
+    size_t Count)
+{
+    for(size_t Index = 0; Index < Count; ++Index)
+    {
+        Rr_IndexSlice *Deps = AdjacencyList + Index;
+        for(size_t DepIndex = 0; DepIndex < Deps->Count; ++DepIndex)
+        {
+            RR_LOG(
+                "Node \"%s\" depends on node \"%s\"",
+                Nodes[Index]->Name,
+                Nodes[Deps->Data[DepIndex]]->Name);
+        }
+    }
+}
+
 static void Rr_ProcessGraphNodes(
     Rr_Graph *Graph,
     Rr_NodeSlice *SortedNodes,
@@ -212,6 +280,9 @@ static void Rr_ProcessGraphNodes(
     Rr_IndexSlice *AdjacencyList =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_IndexSlice, Graph->Nodes.Count);
     Rr_CreateGraphAdjacencyList(Graph, AdjacencyList, Scratch.Arena);
+
+    // Rr_PrintAdjacencyList(Graph->Nodes.Data, AdjacencyList,
+    // Graph->Nodes.Count);
 
     /* Topological sort. */
 
@@ -949,10 +1020,7 @@ void Rr_ExecutePresentNode(
     Rr_DestroyScratch(Scratch);
 }
 
-Rr_GraphNode *Rr_AddTransferNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_GraphBuffer *DstBufferHandle)
+Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -961,18 +1029,7 @@ Rr_GraphNode *Rr_AddTransferNode(
         Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_TRANSFER, Name);
 
     Rr_TransferNode *TransferNode = &GraphNode->Union.Transfer;
-    TransferNode->DstBufferHandle = *DstBufferHandle;
     RR_RESERVE_SLICE(&TransferNode->Transfers, 2, Frame->Arena);
-
-    /* @TODO: Add staging dependency! */
-
-    Rr_AddNodeDependency(
-        GraphNode,
-        DstBufferHandle,
-        &(Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
-            .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-        });
 
     return GraphNode;
 }
@@ -980,35 +1037,38 @@ Rr_GraphNode *Rr_AddTransferNode(
 void Rr_TransferBufferData(
     Rr_App *App,
     Rr_GraphNode *Node,
-    Rr_Data Data,
+    size_t Size,
+    Rr_GraphBuffer *SrcBuffer,
+    size_t SrcOffset,
+    Rr_GraphBuffer *DstBuffer,
     size_t DstOffset)
 {
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
     Rr_TransferNode *TransferNode = &Node->Union.Transfer;
 
-    Rr_AllocatedBuffer *StagingBuffer =
-        Rr_GetCurrentAllocatedBuffer(App, Renderer->StagingBuffer);
+    Rr_AddNodeDependency(
+        Node,
+        SrcBuffer,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        });
 
-    size_t SrcOffset = Renderer->StagingBufferOffset;
-
-    if(SrcOffset + Data.Size > StagingBuffer->AllocationInfo.size)
-    {
-        RR_ABORT("Transfer: source buffer overflow!");
-    }
-
-    memcpy(
-        (char *)StagingBuffer->AllocationInfo.pMappedData +
-            Renderer->StagingBufferOffset,
-        Data.Pointer,
-        Data.Size);
-
-    Renderer->StagingBufferOffset += Data.Size;
+    Rr_AddNodeDependency(
+        Node,
+        DstBuffer,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        });
 
     *RR_PUSH_SLICE(&TransferNode->Transfers, Frame->Arena) = (Rr_Transfer){
-        .DstOffset = DstOffset,
+        .Size = Size,
         .SrcOffset = SrcOffset,
-        .Size = Data.Size,
+        .SrcBuffer = *SrcBuffer,
+        .DstOffset = DstOffset,
+        .DstBuffer = *DstBuffer,
     };
 }
 
@@ -1021,14 +1081,14 @@ void Rr_ExecuteTransferNode(
     Rr_Renderer *Renderer = &App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
-    VkBuffer SrcBuffer =
-        Rr_GetCurrentAllocatedBuffer(App, Renderer->StagingBuffer)->Handle;
-    VkBuffer DstBuffer =
-        Rr_GetGraphBuffer(App, Graph, Node->DstBufferHandle)->Handle;
-
     for(size_t Index = 0; Index < Node->Transfers.Count; ++Index)
     {
         Rr_Transfer *Transfer = Node->Transfers.Data + Index;
+
+        VkBuffer SrcBuffer =
+            Rr_GetGraphBuffer(App, Graph, Transfer->SrcBuffer)->Handle;
+        VkBuffer DstBuffer =
+            Rr_GetGraphBuffer(App, Graph, Transfer->DstBuffer)->Handle;
 
         VkBufferCopy Copy = { .size = Transfer->Size,
                               .srcOffset = Transfer->SrcOffset,

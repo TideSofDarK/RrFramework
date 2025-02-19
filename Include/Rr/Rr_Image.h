@@ -67,20 +67,22 @@ typedef struct Rr_Image Rr_Image;
 
 typedef enum
 {
-    RR_IMAGE_USAGE_STORAGE = (1 << 0),
-    RR_IMAGE_USAGE_SAMPLED = (1 << 1),
-    RR_IMAGE_USAGE_COLOR_ATTACHMENT = (1 << 2),
-    RR_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT = (1 << 3),
-    RR_IMAGE_USAGE_TRANSFER = (1 << 4),
-} Rr_ImageUsageBits;
-typedef uint32_t Rr_ImageUsage;
+    RR_IMAGE_FLAGS_STORAGE_BIT = (1 << 0),
+    RR_IMAGE_FLAGS_SAMPLED_BIT = (1 << 1),
+    RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT = (1 << 2),
+    RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT = (1 << 3),
+    RR_IMAGE_FLAGS_TRANSFER_BIT = (1 << 4),
+    RR_IMAGE_FLAGS_READBACK_BIT = (1 << 5),
+    RR_IMAGE_FLAGS_PER_FRAME_BIT = (1 << 6),
+    RR_IMAGE_FLAGS_MIP_MAPPED_BIT = (1 << 7),
+} Rr_ImageFlagsBits;
+typedef uint32_t Rr_ImageFlags;
 
 extern Rr_Image *Rr_CreateImage(
     Rr_App *App,
     Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
-    Rr_ImageUsage Usage,
-    bool MipMapped);
+    Rr_ImageFlags Flags);
 
 extern void Rr_DestroyImage(Rr_App *App, Rr_Image *Image);
 

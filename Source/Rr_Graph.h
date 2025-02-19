@@ -9,23 +9,6 @@ struct Rr_Frame;
 typedef RR_SLICE(size_t) Rr_IndexSlice;
 typedef RR_SLICE(Rr_GraphNode *) Rr_NodeSlice;
 
-/* Nodes */
-
-typedef struct Rr_Transfer Rr_Transfer;
-struct Rr_Transfer
-{
-    size_t DstOffset;
-    size_t SrcOffset;
-    size_t Size;
-};
-
-typedef struct Rr_TransferNode Rr_TransferNode;
-struct Rr_TransferNode
-{
-    Rr_GraphBuffer DstBufferHandle;
-    RR_SLICE(Rr_Transfer) Transfers;
-};
-
 typedef enum
 {
     RR_GRAPHICS_NODE_FUNCTION_TYPE_NO_OP,
@@ -135,6 +118,22 @@ struct Rr_BindUniformBufferArgs
     uint32_t Binding;
     uint32_t Offset;
     uint32_t Size;
+};
+
+typedef struct Rr_Transfer Rr_Transfer;
+struct Rr_Transfer
+{
+    size_t Size;
+    Rr_GraphBuffer SrcBuffer;
+    size_t SrcOffset;
+    Rr_GraphBuffer DstBuffer;
+    size_t DstOffset;
+};
+
+typedef struct Rr_TransferNode Rr_TransferNode;
+struct Rr_TransferNode
+{
+    RR_SLICE(Rr_Transfer) Transfers;
 };
 
 typedef struct Rr_PresentNode Rr_PresentNode;

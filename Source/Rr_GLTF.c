@@ -109,6 +109,7 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     assert(VertexInputBindingCount != 0);
     assert(VertexInputBindings != NULL);
     assert(GLTFVertexInputBindings != NULL);
+#if defined(RR_DEBUG)
     for(size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
         ++BindingIndex)
     {
@@ -132,6 +133,7 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
                 Rr_GLTFAttributeTypeToFormat(GLTFAttributeType));
         }
     }
+#endif
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
@@ -1102,8 +1104,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                             App,
                             UploadContext,
                             ImageDataSize,
-                            ImageData,
-                            false);
+                            ImageData);
 
                     *RR_PUSH_SLICE(&GLTFContext->Images, GLTFContext->Arena) =
                         GLTFAsset->Images[CurrentTextureIndex];

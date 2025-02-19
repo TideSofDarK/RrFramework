@@ -45,10 +45,8 @@ typedef enum Rr_BlitMode
 typedef union Rr_ColorClear Rr_ColorClear;
 union Rr_ColorClear
 {
-    float Float32[4];
-    int32_t Int32[4];
-    uint32_t Uint32[4];
     Rr_Vec4 Vec4;
+    Rr_IntVec4 IntVec4;
 };
 
 typedef struct Rr_ColorTarget Rr_ColorTarget;
@@ -95,15 +93,15 @@ extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_Vec4 ColorClear,
     Rr_PresentMode Mode);
 
-extern Rr_GraphNode *Rr_AddTransferNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_GraphBuffer *DstBufferHandle);
+extern Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name);
 
 extern void Rr_TransferBufferData(
     Rr_App *App,
     Rr_GraphNode *Node,
-    Rr_Data Data,
+    size_t Size,
+    Rr_GraphBuffer *SrcBuffer,
+    size_t SrcOffset,
+    Rr_GraphBuffer *DstBuffer,
     size_t DstOffset);
 
 extern Rr_GraphNode *Rr_AddBlitNode(

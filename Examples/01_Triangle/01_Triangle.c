@@ -77,9 +77,8 @@ static void Init(Rr_App *App, void *UserData)
         App,
         (Rr_IntVec3){ 320, 240, 1 },
         Rr_GetSwapchainFormat(App),
-        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER |
-            RR_IMAGE_USAGE_SAMPLED,
-        false);
+        RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
+            RR_IMAGE_FLAGS_SAMPLED_BIT);
 }
 
 static void Iterate(Rr_App *App, void *UserData)

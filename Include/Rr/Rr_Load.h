@@ -2,14 +2,12 @@
 
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Asset.h>
+#include <Rr/Rr_GLTF.h>
 #include <Rr/Rr_Image.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct GLTFContext;
-struct GLTFAsset;
 
 typedef struct Rr_LoadThread Rr_LoadThread;
 typedef struct Rr_LoadContext Rr_LoadContext;
@@ -47,7 +45,7 @@ struct Rr_LoadTask
     {
         void **Any;
         Rr_Image **Image;
-        struct Rr_GLTFAsset **GLTFAsset;
+        Rr_GLTFAsset **GLTFAsset;
     } Out;
 };
 
@@ -56,6 +54,15 @@ typedef void (*Rr_LoadCallback)(Rr_App *App, void *Userdata);
 extern Rr_LoadThread *Rr_CreateLoadThread(Rr_App *App);
 
 extern void Rr_DestroyLoadThread(Rr_App *App, Rr_LoadThread *LoadThread);
+
+extern Rr_LoadTask Rr_LoadGLTFAssetTask(
+    Rr_AssetRef AssetRef,
+    Rr_GLTFContext *Context,
+    Rr_GLTFAsset **Out);
+
+extern Rr_LoadTask Rr_LoadImageRGBA8FromPNGTask(
+    Rr_AssetRef AssetRef,
+    Rr_Image **Out);
 
 extern Rr_LoadContext *Rr_LoadAsync(
     Rr_LoadThread *LoadThread,

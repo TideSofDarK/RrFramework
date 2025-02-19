@@ -105,9 +105,9 @@ struct Rr_GLTFVertexInputBinding
 typedef struct Rr_GLTFTextureMapping Rr_GLTFTextureMapping;
 struct Rr_GLTFTextureMapping
 {
-    Rr_GLTFTextureType TextureType;
     size_t Set;
     size_t Binding;
+    Rr_GLTFTextureType TextureType;
 };
 
 extern Rr_GLTFContext *Rr_CreateGLTFContext(

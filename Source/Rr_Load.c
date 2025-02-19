@@ -34,8 +34,7 @@ static void Rr_LoadResourcesFromTasks(
                     App,
                     UploadContext,
                     Asset.Size,
-                    Asset.Pointer,
-                    false);
+                    Asset.Pointer);
             }
             break;
             // case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
@@ -466,6 +465,30 @@ void Rr_DestroyLoadThread(Rr_App *App, Rr_LoadThread *LoadThread)
     SDL_DestroySemaphore(LoadThread->Semaphore);
     SDL_DestroyMutex(LoadThread->Mutex);
     Rr_DestroyArena(LoadThread->Arena);
+}
+
+Rr_LoadTask Rr_LoadGLTFAssetTask(
+    Rr_AssetRef AssetRef,
+    Rr_GLTFContext *Context,
+    Rr_GLTFAsset **Out)
+{
+    return (Rr_LoadTask){
+        .LoadType = RR_LOAD_TYPE_GLTF_ASSET,
+        .AssetRef = AssetRef,
+        .Options = {
+            .GLTF = { .GLTFContext = Context, },
+        },
+        .Out = { .GLTFAsset = Out },
+    };
+}
+
+Rr_LoadTask Rr_LoadImageRGBA8FromPNGTask(Rr_AssetRef AssetRef, Rr_Image **Out)
+{
+    return (Rr_LoadTask){
+        .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
+        .AssetRef = AssetRef,
+        .Out = { .Image = Out },
+    };
 }
 
 Rr_LoadContext *Rr_LoadAsync(

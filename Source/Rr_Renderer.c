@@ -667,12 +667,6 @@ void Rr_InitRenderer(Rr_App *App)
     // Rr_InitNullTextures(App);
     // Rr_InitTextRenderer(App);
 
-    Renderer->StagingBuffer = Rr_CreateBuffer(
-        App,
-        RR_MEGABYTES(16),
-        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-            RR_BUFFER_FLAGS_PER_FRAME_BIT);
-
     Rr_DestroyScratch(Scratch);
 }
 
@@ -731,10 +725,6 @@ void Rr_CleanupRenderer(Rr_App *App)
             Renderer->Framebuffers.Data[Index].Handle,
             NULL);
     }
-
-    Rr_DestroyBuffer(App, Renderer->StagingBuffer);
-
-    Rr_DestroyDescriptorAllocator(&Renderer->GlobalDescriptorAllocator, Device);
 
     Rr_CleanupFrames(App);
 
@@ -842,8 +832,6 @@ void Rr_PrepareFrame(Rr_App *App)
 
     RR_ZERO(Frame->Graph);
     Frame->Graph.Arena = Frame->Arena;
-
-    Renderer->StagingBufferOffset = 0;
 
     Rr_ProcessPendingLoads(App);
 }

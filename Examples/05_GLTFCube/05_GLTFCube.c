@@ -2,6 +2,8 @@
 
 #include "ExampleAssets.inc"
 
+#include <string.h>
+
 typedef struct SUniformData UniformData;
 struct SUniformData
 {
@@ -15,6 +17,7 @@ static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
 static Rr_Image *ColorAttachment;
 static Rr_Image *DepthAttachment;
+static Rr_Buffer *StagingBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
@@ -123,14 +126,7 @@ static void Init(Rr_App *App, void *UserData)
 
     LoadThread = Rr_CreateLoadThread(App);
     Rr_LoadTask Tasks[] = {
-        {
-            .LoadType = RR_LOAD_TYPE_GLTF_ASSET,
-            .AssetRef = EXAMPLE_ASSET_CUBE_GLB,
-            .Options = {
-                .GLTF = { .GLTFContext = GLTFContext, },
-            },
-            .Out = { .GLTFAsset = &GLTFAsset },
-        },
+        Rr_LoadGLTFAssetTask(EXAMPLE_ASSET_CUBE_GLB, GLTFContext, &GLTFAsset),
     };
     Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
 
@@ -140,21 +136,27 @@ static void Init(Rr_App *App, void *UserData)
         App,
         (Rr_IntVec3){ 320, 240, 1 },
         Rr_GetSwapchainFormat(App),
-        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER |
-            RR_IMAGE_USAGE_SAMPLED,
-        false);
+        RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
+            RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     DepthAttachment = Rr_CreateImage(
         App,
         (Rr_IntVec3){ 320, 240, 1 },
         RR_TEXTURE_FORMAT_D32_SFLOAT,
-        RR_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
-        false);
+        RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
     /* Create uniform buffer. */
 
     UniformBuffer =
         Rr_CreateBuffer(App, sizeof(UniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
+
+    /* Create staging buffer */
+
+    StagingBuffer = Rr_CreateBuffer(
+        App,
+        RR_MEGABYTES(1),
+        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+            RR_BUFFER_FLAGS_PER_FRAME_BIT);
 }
 
 static void DrawFirstGLTFPrimitive(
@@ -166,6 +168,8 @@ static void DrawFirstGLTFPrimitive(
 
     Rr_GraphBuffer UniformBufferHandle =
         Rr_RegisterGraphBuffer(App, UniformBuffer);
+    Rr_GraphBuffer StagingBufferHandle =
+        Rr_RegisterGraphBuffer(App, StagingBuffer);
 
     UniformData UniformData = {};
     UniformData.Projection =
@@ -178,19 +182,27 @@ static void DrawFirstGLTFPrimitive(
         UniformData.Model,
         Rr_Rotate_LH(sin(Time), (Rr_Vec3){ 0.0f, 0.0f, 1.0f }));
 
+    memcpy(
+        Rr_GetMappedBufferData(App, StagingBuffer),
+        &UniformData,
+        sizeof(UniformData));
+
     Rr_GraphNode *TransferNode =
-        Rr_AddTransferNode(App, "upload_uniform_buffer", &UniformBufferHandle);
+        Rr_AddTransferNode(App, "upload_uniform_buffer");
     Rr_TransferBufferData(
         App,
         TransferNode,
-        RR_MAKE_DATA_STRUCT(UniformData),
+        sizeof(UniformData),
+        &StagingBufferHandle,
+        0,
+        &UniformBufferHandle,
         0);
 
     Rr_ColorTarget OffscreenTarget = {
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
-        .Clear = (Rr_ColorClear){ .Float32 = { 0.1f, 0.1f, 0.1f, 1.0f } },
+        .Clear = (Rr_ColorClear){ { 0.1f, 0.1f, 0.1f, 1.0f } },
     };
     Rr_DepthTarget OffscreenDepth = {
         .LoadOp = RR_LOAD_OP_CLEAR,
@@ -267,6 +279,7 @@ static void Cleanup(Rr_App *App, void *UserData)
     Rr_DestroyLoadThread(App, LoadThread);
     Rr_DestroyImage(App, ColorAttachment);
     Rr_DestroyImage(App, DepthAttachment);
+    Rr_DestroyBuffer(App, StagingBuffer);
     Rr_DestroyBuffer(App, UniformBuffer);
     Rr_DestroyGLTFContext(App, GLTFContext);
     Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);

@@ -70,8 +70,8 @@ typedef enum
 typedef struct Rr_VertexInputAttribute Rr_VertexInputAttribute;
 struct Rr_VertexInputAttribute
 {
-    Rr_Format Format;
     uint32_t Location;
+    Rr_Format Format;
 };
 
 typedef struct Rr_VertexInputBinding Rr_VertexInputBinding;

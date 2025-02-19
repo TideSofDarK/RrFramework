@@ -29,6 +29,7 @@ struct Rr_Image
     VkExtent3D Extent;
     VkFormat Format;
     VkImageAspectFlags AspectFlags;
+    Rr_ImageFlags Flags;
     size_t AllocatedImageCount;
     Rr_AllocatedImage AllocatedImages[RR_MAX_FRAME_OVERLAP];
 };
@@ -58,15 +59,13 @@ extern Rr_Image *Rr_CreateImageRGBA8(
     Rr_UploadContext *UploadContext,
     char *Data,
     uint32_t Width,
-    uint32_t Height,
-    bool MipMapped);
+    uint32_t Height);
 
 Rr_Image *Rr_CreateImageRGBA8FromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
-    char *Data,
-    bool MipMapped);
+    char *Data);
 
 // extern Rr_Image *Rr_CreateDepthImageFromEXR(
 //     Rr_App *App,

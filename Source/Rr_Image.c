@@ -231,8 +231,7 @@ Rr_Image *Rr_CreateImage(
     Rr_App *App,
     Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
-    Rr_ImageUsage Usage,
-    bool MipMapped)
+    Rr_ImageFlags Flags)
 {
     assert(Extent.Width >= 1);
     assert(Extent.Height >= 1);
@@ -243,6 +242,7 @@ Rr_Image *Rr_CreateImage(
 
     Rr_Image *Image =
         RR_GET_FREE_LIST_ITEM(&App->Renderer.Images, App->PermanentArena);
+    Image->Flags = Flags;
     Image->Format = Rr_GetVulkanTextureFormat(Format);
     Image->Extent = *(VkExtent3D *)&Extent;
 
@@ -260,36 +260,39 @@ Rr_Image *Rr_CreateImage(
     }
 
     uint32_t MipLevels = 1;
-    if(MipMapped)
+    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
     {
         MipLevels =
             (uint32_t)floorf(logf(RR_MAX(Extent.Width, Extent.Height))) + 1;
     }
 
     Image->AllocatedImageCount = 1;
-
-    VkImageUsageFlags UsageFlags = 0;
-    if((RR_IMAGE_USAGE_STORAGE & Usage) != 0)
+    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_PER_FRAME_BIT) ||
+       RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_READBACK_BIT))
     {
-        UsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
         Image->AllocatedImageCount = RR_FRAME_OVERLAP;
     }
-    if((RR_IMAGE_USAGE_SAMPLED & Usage) != 0)
+
+    VkImageUsageFlags UsageFlags = 0;
+    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_STORAGE_BIT))
+    {
+        UsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
+    }
+    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_SAMPLED_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
-    if((RR_IMAGE_USAGE_COLOR_ATTACHMENT & Usage) != 0)
+    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        Image->AllocatedImageCount = RR_FRAME_OVERLAP;
     }
-    if((RR_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT & Usage) != 0)
+    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
-    if((RR_IMAGE_USAGE_TRANSFER & Usage) != 0)
+    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_TRANSFER_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -431,8 +434,7 @@ Rr_Image *Rr_CreateImageRGBA8(
     Rr_UploadContext *UploadContext,
     char *Data,
     uint32_t Width,
-    uint32_t Height,
-    bool MipMapped)
+    uint32_t Height)
 {
     int32_t DesiredChannels = 4;
     Rr_IntVec3 Extent = { .Width = Width, .Height = Height, .Depth = 1 };
@@ -442,8 +444,7 @@ Rr_Image *Rr_CreateImageRGBA8(
         App,
         Extent,
         RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
-        RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
-        MipMapped);
+        RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
     Rr_UploadImage(
         App,
@@ -467,8 +468,7 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
     Rr_App *App,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
-    char *Data,
-    bool MipMapped)
+    char *Data)
 {
     int32_t DesiredChannels = 4;
     int32_t Channels;
@@ -486,8 +486,7 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
         App,
         Extent,
         RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
-        RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
-        MipMapped);
+        RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
     Rr_UploadImage(
         App,

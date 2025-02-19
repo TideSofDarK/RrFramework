@@ -5,6 +5,7 @@
 #include <Rr/Rr.h>
 
 #include <array>
+#include <cstring>
 #include <format>
 #include <iostream>
 #include <random>
@@ -664,6 +665,7 @@ static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
 static Rr_Image *ColorAttachment;
 static Rr_Image *DepthAttachment;
+static Rr_Buffer *StagingBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
@@ -688,39 +690,27 @@ static void Init(Rr_App *App, void *UserData)
     /* Create graphics pipeline. */
 
     Rr_PipelineBinding Bindings[] = {
-        {
-            .Slot = 0,
-            .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
-        },
-        {
-            .Slot = 1,
-            .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
-        },
-        {
-            .Slot = 2,
-            .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
-        },
+        { 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+        { 1, 1, RR_PIPELINE_BINDING_TYPE_SAMPLER },
+        { 2, 1, RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE },
     };
     Rr_PipelineBindingSet BindingSet = {
-        .BindingCount = RR_ARRAY_COUNT(Bindings),
-        .Bindings = Bindings,
-        .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
+        RR_ARRAY_COUNT(Bindings),
+        Bindings,
+        RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
     };
     PipelineLayout = Rr_CreatePipelineLayout(App, 1, &BindingSet);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
-        { .Format = RR_FORMAT_VEC3, .Location = 0 },
-        { .Format = RR_FORMAT_VEC2, .Location = 1 },
-        { .Format = RR_FORMAT_VEC3, .Location = 2 },
+        { 0, RR_FORMAT_VEC3 },
+        { 1, RR_FORMAT_VEC2 },
+        { 2, RR_FORMAT_VEC3 },
     };
 
     Rr_VertexInputBinding VertexInputBinding = {
-        .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-        .AttributeCount = RR_ARRAY_COUNT(VertexAttributes),
-        .Attributes = VertexAttributes,
+        RR_VERTEX_INPUT_RATE_VERTEX,
+        RR_ARRAY_COUNT(VertexAttributes),
+        VertexAttributes,
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = {};
@@ -748,15 +738,11 @@ static void Init(Rr_App *App, void *UserData)
         RR_GLTF_ATTRIBUTE_TYPE_NORMAL,
     };
     Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
-        .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
-        .AttributeTypes = GLTFAttributeTypes,
+        RR_ARRAY_COUNT(GLTFAttributeTypes),
+        GLTFAttributeTypes,
     };
     Rr_GLTFTextureMapping GLTFTextureMappings[] = {
-        {
-            .TextureType = RR_GLTF_TEXTURE_TYPE_COLOR,
-            .Set = 0,
-            .Binding = 1,
-        },
+        { 0, 1, RR_GLTF_TEXTURE_TYPE_COLOR },
     };
     GLTFContext = Rr_CreateGLTFContext(
         App,
@@ -770,14 +756,7 @@ static void Init(Rr_App *App, void *UserData)
 
     LoadThread = Rr_CreateLoadThread(App);
     Rr_LoadTask Tasks[] = {
-        {
-            .LoadType = RR_LOAD_TYPE_GLTF_ASSET,
-            .AssetRef = DEMO_ASSET_TOWER_GLB,
-            .Options = {
-                .GLTF = { .GLTFContext = GLTFContext, },
-            },
-            .Out = { .GLTFAsset = &GLTFAsset },
-        },
+        Rr_LoadGLTFAssetTask(DEMO_ASSET_TOWER_GLB, GLTFContext, &GLTFAsset),
     };
     Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
 
@@ -787,21 +766,28 @@ static void Init(Rr_App *App, void *UserData)
         App,
         { 320, 240, 1 },
         Rr_GetSwapchainFormat(App),
-        RR_IMAGE_USAGE_COLOR_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER |
-            RR_IMAGE_USAGE_SAMPLED,
-        false);
+        RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
+            RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     DepthAttachment = Rr_CreateImage(
         App,
         { 320, 240, 1 },
         RR_TEXTURE_FORMAT_D32_SFLOAT,
-        RR_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT | RR_IMAGE_USAGE_TRANSFER,
-        false);
+        RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
+            RR_IMAGE_FLAGS_TRANSFER_BIT);
 
     /* Create uniform buffer. */
 
     UniformBuffer =
         Rr_CreateBuffer(App, sizeof(SUniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
+
+    /* Create staging buffer */
+
+    StagingBuffer = Rr_CreateBuffer(
+        App,
+        RR_MEGABYTES(16),
+        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+            RR_BUFFER_FLAGS_PER_FRAME_BIT);
 }
 
 static void DrawFirstGLTFMesh(
@@ -811,6 +797,8 @@ static void DrawFirstGLTFMesh(
 {
     double Time = Rr_GetTimeSeconds(App);
 
+    Rr_GraphBuffer StagingBufferHandle =
+        Rr_RegisterGraphBuffer(App, StagingBuffer);
     Rr_GraphBuffer UniformBufferHandle =
         Rr_RegisterGraphBuffer(App, UniformBuffer);
 
@@ -825,28 +813,36 @@ static void DrawFirstGLTFMesh(
     //     UniformData.Model,
     //     Rr_Rotate_LH(sin(Time), { 0.0f, 0.0f, 1.0f }));
 
+    std::memcpy(
+        Rr_GetMappedBufferData(App, StagingBuffer),
+        &UniformData,
+        sizeof(UniformData));
+
     Rr_GraphNode *TransferNode =
-        Rr_AddTransferNode(App, "upload_uniform_buffer", &UniformBufferHandle);
+        Rr_AddTransferNode(App, "upload_uniform_buffer");
     Rr_TransferBufferData(
         App,
         TransferNode,
-        RR_MAKE_DATA_STRUCT(UniformData),
+        sizeof(UniformData),
+        &StagingBufferHandle,
+        0,
+        &UniformBufferHandle,
         0);
 
     Rr_ColorTarget OffscreenTarget = {
-        .Slot = 0,
-        .LoadOp = RR_LOAD_OP_CLEAR,
-        .StoreOp = RR_STORE_OP_STORE,
-        .Clear = {
-            .Vec4 = BackgroundColor,
+        0,
+        RR_LOAD_OP_CLEAR,
+        RR_STORE_OP_STORE,
+        {
+            BackgroundColor,
         },
     };
     Rr_DepthTarget OffscreenDepth = {
-        .LoadOp = RR_LOAD_OP_CLEAR,
-        .StoreOp = RR_STORE_OP_STORE,
-        .Clear = {
-            .Depth = 1.0f,
-            .Stencil = 0,
+        RR_LOAD_OP_CLEAR,
+        RR_STORE_OP_STORE,
+        {
+            1.0f,
+            0,
         },
     };
     Rr_GraphImage *ColorAttachments[] = { ColorAttachmentHandle };
@@ -930,6 +926,7 @@ static void Cleanup(Rr_App *App, void *UserData)
     Rr_DestroyLoadThread(App, LoadThread);
     Rr_DestroyImage(App, ColorAttachment);
     Rr_DestroyImage(App, DepthAttachment);
+    Rr_DestroyBuffer(App, StagingBuffer);
     Rr_DestroyBuffer(App, UniformBuffer);
     Rr_DestroyGLTFContext(App, GLTFContext);
     Rr_DestroyGraphicsPipeline(App, GraphicsPipeline);
@@ -939,15 +936,12 @@ static void Cleanup(Rr_App *App, void *UserData)
 
 void RunGame()
 {
-    Rr_AppConfig Config = {
-        .Title = "05_GLTFCube",
-        .Version = "1.0.0",
-        .Package = "com.rr.examples.05_gltfcube",
-        .InitFunc = Init,
-        .CleanupFunc = Cleanup,
-        .IterateFunc = Iterate,
-        .FileDroppedFunc = nullptr,
-        .UserData = nullptr,
-    };
+    Rr_AppConfig Config = {};
+    Config.Title = "05_GLTFCube";
+    Config.Version = "1.0.0";
+    Config.Package = "com.rr.examples.05_gltfcube";
+    Config.InitFunc = Init;
+    Config.CleanupFunc = Cleanup;
+    Config.IterateFunc = Iterate;
     Rr_Run(&Config);
 }
