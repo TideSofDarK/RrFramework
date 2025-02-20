@@ -35,10 +35,6 @@ extern double Rr_GetDeltaSeconds(Rr_App *App);
 
 extern double Rr_GetTimeSeconds(Rr_App *App);
 
-extern void Rr_SetInputConfig(Rr_App *App, Rr_InputConfig *InputConfig);
-
-extern Rr_InputState Rr_GetInputState(Rr_App *App);
-
 extern void Rr_SetRelativeMouseMode(Rr_App *App, bool IsRelative);
 
 #ifdef __cplusplus

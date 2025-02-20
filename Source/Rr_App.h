@@ -42,9 +42,6 @@ struct Rr_App
 
     Rr_Renderer *Renderer;
 
-    Rr_InputConfig InputConfig;
-    Rr_InputState InputState;
-
     Rr_FrameTime FrameTime;
 
     SDL_TLSID ScratchArenaTLS;

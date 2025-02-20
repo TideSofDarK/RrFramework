@@ -25,13 +25,16 @@ static Rr_KeyState Rr_UpdateKeyState(
     return RR_KEYSTATE_NONE;
 }
 
-void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
+void Rr_UpdateInputState(
+    size_t MappingCount,
+    Rr_InputMapping *Mappings,
+    Rr_InputState *State)
 {
     Rr_KeyStates NewKeys = State->Keys;
     const bool *KeyboardState = SDL_GetKeyboardState(NULL);
-    for(size_t Index = 0; Index < Config->Count; Index++)
+    for(size_t Index = 0; Index < MappingCount; Index++)
     {
-        Rr_InputMapping *Mapping = &Config->Mappings[Index];
+        Rr_InputMapping *Mapping = &Mappings[Index];
 
         Rr_KeyState OldKeyState = Rr_GetKeyState(NewKeys, Index);
         Rr_KeyState NewKeyState =
@@ -51,4 +54,28 @@ void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config)
 Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, uint32_t Key)
 {
     return (Keys >> (2 * Key)) & 3;
+}
+
+bool Rr_IsScancodePressed(Rr_Scancode Scancode)
+{
+    return SDL_GetKeyboardState(NULL)[Scancode];
+}
+
+Rr_Vec2 Rr_GetMousePosition(void)
+{
+    Rr_Vec2 MousePosition;
+    SDL_GetMouseState(&MousePosition.X, &MousePosition.Y);
+    return MousePosition;
+}
+
+Rr_Vec2 Rr_GetMousePositionDelta(void)
+{
+    Rr_Vec2 MousePositionDelta;
+    SDL_GetRelativeMouseState(&MousePositionDelta.X, &MousePositionDelta.Y);
+    return MousePositionDelta;
+}
+
+Rr_MouseButtonMask Rr_GetMouseState(void)
+{
+    return SDL_GetMouseState(NULL, NULL);
 }

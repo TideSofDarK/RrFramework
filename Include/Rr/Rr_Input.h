@@ -123,15 +123,20 @@ struct Rr_InputMapping
     Rr_Scancode Secondary;
 };
 
-typedef struct Rr_InputConfig Rr_InputConfig;
-struct Rr_InputConfig
-{
-    Rr_InputMapping *Mappings;
-    size_t Count;
-};
+extern void Rr_UpdateInputState(
+    size_t MappingCount,
+    Rr_InputMapping *Mappings,
+    Rr_InputState *State);
 
-void Rr_UpdateInputState(Rr_InputState *State, Rr_InputConfig *Config);
-Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, uint32_t Key);
+extern Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, uint32_t Key);
+
+extern bool Rr_IsScancodePressed(Rr_Scancode Scancode);
+
+extern Rr_Vec2 Rr_GetMousePosition(void);
+
+extern Rr_Vec2 Rr_GetMousePositionDelta(void);
+
+extern Rr_MouseButtonMask Rr_GetMouseState(void);
 
 #ifdef __cplusplus
 }

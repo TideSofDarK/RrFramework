@@ -118,8 +118,6 @@ static void Rr_Iterate(Rr_App *App)
 {
     Rr_CalculateDeltaTime(&App->FrameTime);
 
-    Rr_UpdateInputState(&App->InputState, &App->InputConfig);
-
     Rr_PrepareFrame(App);
 
     App->Config->IterateFunc(App, App->UserData);
@@ -299,16 +297,6 @@ static bool Rr_IsAnyFullscreen(SDL_Window *Window)
 void Rr_ToggleFullscreen(Rr_App *App)
 {
     SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
-}
-
-void Rr_SetInputConfig(Rr_App *App, Rr_InputConfig *InputConfig)
-{
-    App->InputConfig = *InputConfig;
-}
-
-Rr_InputState Rr_GetInputState(Rr_App *App)
-{
-    return App->InputState;
 }
 
 float Rr_GetAspectRatio(Rr_App *App)

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <random>
 #include <string>
+#include <unordered_map>
 
 // struct SUber3DGlobals
 // {
@@ -600,6 +601,28 @@
 //     }
 // };
 
+enum EInputAction
+{
+    EIA_UP,
+    EIA_DOWN,
+    EIA_LEFT,
+    EIA_RIGHT,
+    EIA_FULLSCREEN,
+    EIA_DEBUGOVERLAY,
+    EIA_TEST,
+    EIA_COUNT,
+};
+
+static std::vector<Rr_InputMapping> InputMappings = {
+    { RR_SCANCODE_W, RR_SCANCODE_UNKNOWN },
+    { RR_SCANCODE_S, RR_SCANCODE_UNKNOWN },
+    { RR_SCANCODE_A, RR_SCANCODE_UNKNOWN },
+    { RR_SCANCODE_D, RR_SCANCODE_UNKNOWN },
+    { RR_SCANCODE_F11, RR_SCANCODE_UNKNOWN },
+    { RR_SCANCODE_F1, RR_SCANCODE_UNKNOWN },
+    { RR_SCANCODE_F2, RR_SCANCODE_UNKNOWN },
+};
+
 const Rr_Vec4 BackgroundColor{ 0.1f, 0.1f, 0.1f, 1.0f };
 
 struct SCamera
@@ -670,6 +693,7 @@ static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Sampler *NearestSampler;
+static SCamera Camera;
 
 static bool Loaded;
 
@@ -810,10 +834,10 @@ static void DrawFirstGLTFMesh(
 
     SUniformData UniformData = {};
     UniformData.Projection =
-        Rr_Perspective_LH_ZO(0.7643276f, 320.0f / 240.0f, 0.5f, 50.0f);
-    UniformData.View = Rr_VulkanMatrix();
+        Rr_Perspective_LH_ZO(Rr_AngleDeg(75.0f), 320.0f / 240.0f, 0.5f, 50.0f);
+    UniformData.View = Rr_MulM4(Rr_VulkanMatrix(), Camera.GetViewMatrix());
     UniformData.Model = Rr_MulM4(
-        Rr_Translate({ 0.0f, -2.0f, -10.0f }),
+        Rr_Translate({ 0.0f, -2.0f, -6.0f }),
         Rr_Rotate_LH(fmodf(Time, RR_PI * 2), { 0.0f, 1.0f, 0.0f }));
     // UniformData.Model = Rr_MulM4(
     //     UniformData.Model,
@@ -911,6 +935,60 @@ static void DrawFirstGLTFMesh(
 
 static void Iterate(Rr_App *App, void *UserData)
 {
+    float DeltaTime = Rr_GetDeltaSeconds(App);
+
+    {
+        static Rr_InputState InputState;
+        Rr_UpdateInputState(
+            InputMappings.size(),
+            InputMappings.data(),
+            &InputState);
+
+        Rr_KeyStates Keys = InputState.Keys;
+
+        Rr_Vec3 CameraForward = Camera.GetForwardVector();
+        Rr_Vec3 CameraLeft = Camera.GetRightVector();
+        constexpr float CameraSpeed = 0.1f;
+        if(Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
+        {
+            Camera.Position -= CameraForward * DeltaTime * CameraSpeed;
+        }
+        if(Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
+        {
+            Camera.Position -= CameraLeft * DeltaTime * CameraSpeed;
+        }
+        if(Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
+        {
+            Camera.Position += CameraForward * DeltaTime * CameraSpeed;
+        }
+        if(Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
+        {
+            Camera.Position += CameraLeft * DeltaTime * CameraSpeed;
+        }
+
+        if(InputState.MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
+        {
+            Rr_SetRelativeMouseMode(App, true);
+            constexpr float Sensitivity = 0.2f;
+            Camera.Yaw = Rr_WrapMax(
+                Camera.Yaw - (InputState.MousePositionDelta.X * Sensitivity),
+                360.0f);
+            Camera.Pitch = Rr_WrapMinMax(
+                Camera.Pitch - (InputState.MousePositionDelta.Y * Sensitivity),
+                -90.0f,
+                90.0f);
+        }
+        else
+        {
+            Rr_SetRelativeMouseMode(App, false);
+        }
+
+        if(Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
+        {
+            Rr_ToggleFullscreen(App);
+        }
+    }
+
     Rr_GraphImage ColorAttachmentHandle =
         Rr_RegisterGraphImage(App, ColorAttachment);
     Rr_GraphImage DepthAttachmentHandle =
