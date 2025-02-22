@@ -5,6 +5,8 @@
 
 #include <assert.h>
 
+#include <xxHash/xxhash.h>
+
 static VkRenderPass Rr_GetCompatibleRenderPass(
     Rr_Renderer *Renderer,
     Rr_PipelineInfo *Info)
@@ -322,60 +324,107 @@ void Rr_DestroyGraphicsPipeline(
     RR_RETURN_FREE_LIST_ITEM(&Renderer->GraphicsPipelines, GraphicsPipeline);
 }
 
+Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
+    Rr_Renderer *Renderer,
+    Rr_PipelineBindingSet *Set)
+{
+    uint32_t Hash =
+        XXH32(Set->Bindings, sizeof(Rr_PipelineBinding) * Set->BindingCount, 0);
+    for(size_t LayoutIndex = 0;
+        LayoutIndex < Renderer->DescriptorSetLayouts.Count;
+        ++LayoutIndex)
+    {
+        Rr_DescriptorSetLayout *DescriptorSetLayout =
+            Renderer->DescriptorSetLayouts.Data + LayoutIndex;
+        if(DescriptorSetLayout && DescriptorSetLayout->Hash == Hash)
+        {
+            if(DescriptorSetLayout->Set.BindingCount == Set->BindingCount &&
+               DescriptorSetLayout->Set.Stages == Set->Stages &&
+               memcmp(
+                   &DescriptorSetLayout->Set.Bindings,
+                   Set->Bindings,
+                   sizeof(Rr_PipelineBinding) * Set->BindingCount) == 0)
+            {
+                return DescriptorSetLayout;
+            }
+        }
+    }
+
+    Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
+
+    for(size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
+        ++BindingIndex)
+    {
+        Rr_PipelineBinding *Binding = Set->Bindings + BindingIndex;
+
+        assert(Binding->Count > 0);
+
+        if(Binding->Count == 1)
+        {
+            Rr_AddDescriptor(
+                &DescriptorLayoutBuilder,
+                Binding->Binding,
+                Binding->Type,
+                Set->Stages);
+        }
+        else
+        {
+            Rr_AddDescriptorArray(
+                &DescriptorLayoutBuilder,
+                Binding->Binding,
+                Binding->Count,
+                Binding->Type,
+                Set->Stages);
+        }
+    }
+
+    Rr_DescriptorSetLayout *DescriptorSetLayout =
+        RR_PUSH_SLICE(&Renderer->DescriptorSetLayouts, Renderer->Arena);
+    DescriptorSetLayout->Hash = Hash;
+    DescriptorSetLayout->Set = *Set;
+    RR_ALLOC_COPY(
+        Renderer->Arena,
+        DescriptorSetLayout->Set.Bindings,
+        Set->Bindings,
+        sizeof(Rr_PipelineBinding) * Set->BindingCount);
+    DescriptorSetLayout->Handle =
+        Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, &Renderer->Device);
+
+    return DescriptorSetLayout;
+}
+
 Rr_PipelineLayout *Rr_CreatePipelineLayout(
     Rr_Renderer *Renderer,
     size_t SetCount,
     Rr_PipelineBindingSet *Sets)
 {
+    assert(SetCount > 0);
+    assert(SetCount < RR_MAX_SETS);
+
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = &Renderer->Device;
 
     Rr_PipelineLayout *PipelineLayout =
         RR_GET_FREE_LIST_ITEM(&Renderer->PipelineLayouts, Renderer->Arena);
+    PipelineLayout->SetLayoutCount = SetCount;
 
-    Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
+    VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
 
     for(size_t Index = 0; Index < SetCount; ++Index)
     {
         Rr_PipelineBindingSet *Set = Sets + Index;
 
-        for(size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
-            ++BindingIndex)
-        {
-            Rr_PipelineBinding *Binding = Set->Bindings + BindingIndex;
-
-            assert(Binding->Count > 0);
-
-            if(Binding->Count == 1)
-            {
-                Rr_AddDescriptor(
-                    &DescriptorLayoutBuilder,
-                    Binding->Binding,
-                    Binding->Type,
-                    Set->Stages);
-            }
-            else
-            {
-                Rr_AddDescriptorArray(
-                    &DescriptorLayoutBuilder,
-                    Binding->Binding,
-                    Binding->Count,
-                    Binding->Type,
-                    Set->Stages);
-            }
-        }
-
-        PipelineLayout->DescriptorSetLayouts[Index] =
-            Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, Device);
-        Rr_ClearDescriptors(&DescriptorLayoutBuilder);
+        PipelineLayout->SetLayouts[Index] =
+            Rr_GetDescriptorSetLayout(Renderer, Set);
+        Handles[Index] = PipelineLayout->SetLayouts[Index]->Handle;
     }
 
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         .setLayoutCount = SetCount,
-        .pSetLayouts = PipelineLayout->DescriptorSetLayouts,
+        .pSetLayouts = Handles,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = NULL,
     };
@@ -398,17 +447,6 @@ void Rr_DestroyPipelineLayout(
     Rr_Device *Device = &Renderer->Device;
 
     Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
-
-    for(size_t Index = 0; Index < RR_MAX_SETS; ++Index)
-    {
-        if(PipelineLayout->DescriptorSetLayouts[Index] != VK_NULL_HANDLE)
-        {
-            Device->DestroyDescriptorSetLayout(
-                Device->Handle,
-                PipelineLayout->DescriptorSetLayouts[Index],
-                NULL);
-        }
-    }
 
     RR_RETURN_FREE_LIST_ITEM(&Renderer->PipelineLayouts, PipelineLayout);
 }

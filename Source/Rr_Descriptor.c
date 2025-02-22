@@ -345,6 +345,10 @@ void Rr_UpdateDescriptorSet(
     VkDescriptorSet Set)
 {
     size_t WritesCount = Writer->Writes.Count;
+    if(WritesCount == 0)
+    {
+        return;
+    }
     for(size_t Index = 0; Index < WritesCount; ++Index)
     {
         Rr_DescriptorWriterEntry *Entry = &Writer->Entries.Data[Index];
@@ -383,7 +387,7 @@ void Rr_AddDescriptor(
     Rr_PipelineBindingType Type,
     Rr_ShaderStage ShaderStage)
 {
-    if(Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
+    if(Builder->Count >= RR_MAX_SETS)
     {
         return;
     }
@@ -403,7 +407,7 @@ void Rr_AddDescriptorArray(
     Rr_PipelineBindingType Type,
     Rr_ShaderStage ShaderStage)
 {
-    if(Builder->Count >= RR_MAX_LAYOUT_BINDINGS)
+    if(Builder->Count >= RR_MAX_SETS)
     {
         return;
     }
@@ -447,20 +451,26 @@ void Rr_InvalidateDescriptorState(
     Rr_PipelineLayout *PipelineLayout)
 {
     bool Disturbed = false;
-    for(size_t Index = 0; Index < RR_MAX_SETS; ++Index)
+    for(size_t Index = 0; Index < PipelineLayout->SetLayoutCount; ++Index)
     {
         Rr_DescriptorSetState *SetState = &State->SetStates[Index];
         VkDescriptorSetLayout Current = SetState->Layout;
-        VkDescriptorSetLayout New = PipelineLayout->DescriptorSetLayouts[Index];
-        if(Current != VK_NULL_HANDLE && Current != New)
+        VkDescriptorSetLayout New = PipelineLayout->SetLayouts[Index]->Handle;
+        if(Current != New)
         {
             Disturbed = true;
         }
         if(Disturbed)
         {
-            SetState->Flags |= RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT;
+            SetState->Layout = New;
+            SetState->Flags = RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT;
+            memset(
+                SetState->Bindings,
+                0,
+                sizeof(Rr_DescriptorSetBinding) * RR_MAX_BINDINGS);
         }
     }
+    State->Dirty = true;
 }
 
 void Rr_UpdateDescriptorsState(
@@ -476,6 +486,20 @@ void Rr_UpdateDescriptorsState(
     State->SetStates[SetIndex].Flags |= RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT;
     State->SetStates[SetIndex].Flags |= (1 << BindingIndex);
     State->Dirty = true;
+}
+
+static void Rr_ValidateNullSetBinding(
+    Rr_PipelineBindingSet *Set,
+    size_t Binding)
+{
+    for(size_t Index = 0; Index < Set->BindingCount; ++Index)
+    {
+        Rr_PipelineBinding *PipelineBinding = &Set->Bindings[Index];
+        if(PipelineBinding->Binding == Binding && PipelineBinding->Count != 0)
+        {
+            RR_ABORT("Missing binding %zu!", Binding);
+        }
+    }
 }
 
 void Rr_ApplyDescriptorsState(
@@ -497,6 +521,7 @@ void Rr_ApplyDescriptorsState(
         Rr_CreateDescriptorWriter(0, 0, 0, Scratch.Arena);
 
     bool FirstSetSet = false;
+    bool Disturbed = false;
     uint32_t FirstSet = 0;
     uint32_t DescriptorSetCount = 0;
     VkDescriptorSet DescriptorSets[RR_MAX_SETS];
@@ -506,18 +531,25 @@ void Rr_ApplyDescriptorsState(
     for(size_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
     {
         Rr_DescriptorSetState *SetState = State->SetStates + SetIndex;
-        if(RR_HAS_BIT(
-               SetState->Flags,
-               RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT) == true)
+
+        bool Dirty = RR_HAS_BIT(
+                         SetState->Flags,
+                         RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT) == true;
+
+        if(Disturbed || Dirty)
         {
+            Disturbed = true;
             if(FirstSetSet == false)
             {
                 FirstSet = SetIndex;
                 FirstSetSet = true;
             }
         }
+        else
+        {
+            continue;
+        }
 
-        size_t UsedBindingsCount = 0;
         for(size_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
             ++BindingIndex)
         {
@@ -526,6 +558,11 @@ void Rr_ApplyDescriptorsState(
 
             if(RR_HAS_BIT(SetState->Flags, (1 << BindingIndex)) != true)
             {
+#if defined(RR_DEBUG)
+                Rr_ValidateNullSetBinding(
+                    &PipelineLayout->SetLayouts[SetIndex]->Set,
+                    BindingIndex);
+#endif
                 continue;
             }
 
@@ -569,7 +606,7 @@ void Rr_ApplyDescriptorsState(
                         Binding->Buffer.Handle,
                         Binding->Buffer.Size,
                         0, /* We rely on dynamic offsets! */
-                        Binding->DescriptorType,
+                        Rr_GetVulkanDescriptorType(Binding->Type),
                         Scratch.Arena);
                     DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
                     DynamicOffsetCount++;
@@ -583,7 +620,7 @@ void Rr_ApplyDescriptorsState(
                         Binding->Buffer.Handle,
                         Binding->Buffer.Size,
                         0, /* We rely on dynamic offsets! */
-                        Binding->DescriptorType,
+                        Rr_GetVulkanDescriptorType(Binding->Type),
                         Scratch.Arena);
                     DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
                     DynamicOffsetCount++;
@@ -595,44 +632,31 @@ void Rr_ApplyDescriptorsState(
                 }
                 break;
             }
-            UsedBindingsCount++;
         }
 
-        if(UsedBindingsCount > 0)
+        VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
+            DescriptorAllocator,
+            Device,
+            PipelineLayout->SetLayouts[SetIndex]->Handle);
+
+        Rr_UpdateDescriptorSet(Writer, Device, DescriptorSet);
+        Rr_ResetDescriptorWriter(Writer);
+
+        DescriptorSets[DescriptorSetCount++] = DescriptorSet;
+
+        bool LastSet = SetIndex == PipelineLayout->SetLayoutCount - 1;
+        if(LastSet && DescriptorSetCount > 0)
         {
-            VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
-                DescriptorAllocator,
-                Device,
-                PipelineLayout->DescriptorSetLayouts[SetIndex]);
-
-            Rr_UpdateDescriptorSet(Writer, Device, DescriptorSet);
-            Rr_ResetDescriptorWriter(Writer);
-
-            DescriptorSets[DescriptorSetCount] = DescriptorSet;
-            DescriptorSetCount++;
-        }
-
-        if(SetIndex == RR_MAX_SETS - 1 ||
-           RR_HAS_BIT(
-               State->SetStates[SetIndex + 1].Flags,
-               RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT) == false)
-        {
-            if(DescriptorSetCount > 0)
-            {
-                Device->CmdBindDescriptorSets(
-                    CommandBuffer,
-                    PipelineBindPoint,
-                    PipelineLayout->Handle,
-                    FirstSet,
-                    DescriptorSetCount,
-                    DescriptorSets,
-                    DynamicOffsetCount,
-                    DynamicOffsets);
-
-                FirstSetSet = false;
-                DescriptorSetCount = 0;
-                DynamicOffsetCount = 0;
-            }
+            Device->CmdBindDescriptorSets(
+                CommandBuffer,
+                PipelineBindPoint,
+                PipelineLayout->Handle,
+                FirstSet,
+                DescriptorSetCount,
+                DescriptorSets,
+                DynamicOffsetCount,
+                DynamicOffsets);
+            break;
         }
     }
 

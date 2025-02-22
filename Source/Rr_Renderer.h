@@ -62,14 +62,14 @@ struct Rr_Frame
     Rr_Arena *Arena;
 };
 
-typedef struct Rr_CachedFramebuffer Rr_CachedFramebuffer;
+typedef struct Rr_CachedFramebuffer Rr_Framebuffer;
 struct Rr_CachedFramebuffer
 {
     VkFramebuffer Handle;
     uint32_t Hash;
 };
 
-typedef struct Rr_CachedRenderPass Rr_CachedRenderPass;
+typedef struct Rr_CachedRenderPass Rr_RenderPass;
 struct Rr_CachedRenderPass
 {
     VkRenderPass Handle;
@@ -109,10 +109,11 @@ struct Rr_Renderer
     size_t FrameNumber;
     size_t CurrentFrameIndex;
 
-    /* Render Passes */
+    /* Hashed structures. */
 
-    RR_SLICE(Rr_CachedRenderPass) RenderPasses;
-    RR_SLICE(Rr_CachedFramebuffer) Framebuffers;
+    RR_SLICE(Rr_RenderPass) RenderPasses;
+    RR_SLICE(Rr_Framebuffer) Framebuffers;
+    RR_SLICE(Rr_DescriptorSetLayout) DescriptorSetLayouts;
 
     /* Immediate Command Pool/Buffer */
 

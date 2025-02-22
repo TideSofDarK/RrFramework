@@ -5,6 +5,9 @@
 
 #include <Rr/Rr_Pipeline.h>
 
+#define RR_MAX_BINDINGS 16
+#define RR_MAX_SETS     4
+
 typedef struct Rr_DescriptorPoolSizeRatio Rr_DescriptorPoolSizeRatio;
 struct Rr_DescriptorPoolSizeRatio
 {
@@ -116,7 +119,7 @@ extern void Rr_UpdateDescriptorSet(
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 struct Rr_DescriptorLayoutBuilder
 {
-    VkDescriptorSetLayoutBinding Bindings[RR_MAX_LAYOUT_BINDINGS];
+    VkDescriptorSetLayoutBinding Bindings[RR_MAX_SETS];
     uint32_t Count;
 };
 
@@ -140,9 +143,6 @@ extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(
     Rr_Device *Device);
 
 /* */
-
-#define RR_MAX_BINDINGS 16
-#define RR_MAX_SETS     4
 
 typedef struct Rr_DescriptorSetImageBinding Rr_DescriptorSetImageBinding;
 struct Rr_DescriptorSetImageBinding
@@ -169,7 +169,6 @@ struct Rr_DescriptorSetBinding
         Rr_DescriptorSetBufferBinding Buffer;
         VkSampler Sampler;
     };
-    VkDescriptorType DescriptorType;
     Rr_PipelineBindingType Type;
 };
 
@@ -183,10 +182,7 @@ typedef uint32_t Rr_DescriptorSetStateFlags;
 typedef struct Rr_DescriptorSetState Rr_DescriptorSetState;
 struct Rr_DescriptorSetState
 {
-    size_t BindingCount;
     Rr_DescriptorSetBinding Bindings[RR_MAX_BINDINGS];
-    VkPipelineStageFlags Stages;
-    VkDescriptorSet Handle;
     VkDescriptorSetLayout Layout;
     Rr_DescriptorSetStateFlags Flags; /* First RR_MAX_BINDINGS bits
                                          are reserved for "used bindings"

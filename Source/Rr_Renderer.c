@@ -736,6 +736,16 @@ void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer)
     Rr_DestroyGraphicsPipeline(Renderer, Renderer->PresentPipeline);
     Rr_DestroyPipelineLayout(Renderer, Renderer->PresentLayout);
 
+    for(size_t Index = 0; Index < Renderer->DescriptorSetLayouts.Count; ++Index)
+    {
+        Rr_DescriptorSetLayout *DescriptorSetLayout =
+            Renderer->DescriptorSetLayouts.Data + Index;
+        Device->DestroyDescriptorSetLayout(
+            Device->Handle,
+            DescriptorSetLayout->Handle,
+            NULL);
+    }
+
     vmaDestroyAllocator(Renderer->Allocator);
 
     Instance->DestroySurfaceKHR(Instance->Handle, Renderer->Surface, NULL);
@@ -1164,11 +1174,10 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
         NULL,
         &RenderPass);
 
-    *RR_PUSH_SLICE(&Renderer->RenderPasses, Renderer->Arena) =
-        (Rr_CachedRenderPass){
-            .Handle = RenderPass,
-            .Hash = Hash,
-        };
+    *RR_PUSH_SLICE(&Renderer->RenderPasses, Renderer->Arena) = (Rr_RenderPass){
+        .Handle = RenderPass,
+        .Hash = Hash,
+    };
 
     Rr_DestroyScratch(Scratch);
 
@@ -1204,8 +1213,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
 
     for(size_t Index = 0; Index < Renderer->Framebuffers.Count; ++Index)
     {
-        Rr_CachedFramebuffer *CachedFramebuffer =
-            Renderer->Framebuffers.Data + Index;
+        Rr_Framebuffer *CachedFramebuffer = Renderer->Framebuffers.Data + Index;
 
         if(CachedFramebuffer->Hash == Hash)
         {
@@ -1229,11 +1237,10 @@ static VkFramebuffer Rr_GetFramebufferInternal(
 
     Device->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, &Framebuffer);
 
-    *RR_PUSH_SLICE(&Renderer->Framebuffers, Renderer->Arena) =
-        (Rr_CachedFramebuffer){
-            .Handle = Framebuffer,
-            .Hash = Hash,
-        };
+    *RR_PUSH_SLICE(&Renderer->Framebuffers, Renderer->Arena) = (Rr_Framebuffer){
+        .Handle = Framebuffer,
+        .Hash = Hash,
+    };
 
     Rr_DestroyScratch(Scratch);
 

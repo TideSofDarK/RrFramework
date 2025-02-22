@@ -5,8 +5,8 @@ layout(location = 1) in vec3 InNormal;
 
 layout(location = 0) out vec4 OutColor;
 
-layout(set = 0, binding = 1) uniform sampler Sampler;
-layout(set = 0, binding = 2) uniform texture2D ColorTexture;
+layout(set = 1, binding = 0) uniform sampler Sampler;
+layout(set = 1, binding = 1) uniform texture2D ColorTexture;
 
 void main()
 {

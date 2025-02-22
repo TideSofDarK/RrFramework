@@ -854,7 +854,7 @@ void Rr_ExecutePresentNode(
     VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
         &Frame->DescriptorAllocator,
         Device,
-        Renderer->PresentLayout->DescriptorSetLayouts[0]);
+        Renderer->PresentLayout->SetLayouts[0]->Handle);
 
     VkSampler Sampler = Node->Sampler->Handle;
     Rr_DescriptorWriter *Writer =
@@ -1503,6 +1503,9 @@ void Rr_ExecuteGraphicsNode(
                     CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS,
                     GraphicsPipeline->Handle);
+                Rr_InvalidateDescriptorState(
+                    &DescriptorsState,
+                    GraphicsPipeline->Layout);
             }
             break;
             case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT:
@@ -1547,7 +1550,6 @@ void Rr_ExecuteGraphicsNode(
                     &(Rr_DescriptorSetBinding){
                         .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
                         .Sampler = Args->Sampler->Handle,
-                        .DescriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
                     });
             }
             break;
@@ -1567,7 +1569,6 @@ void Rr_ExecuteGraphicsNode(
                                 .View = ImageView,
                                 .Layout = Args->Layout,
                             },
-                        .DescriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
                     });
             }
             break;
@@ -1588,8 +1589,6 @@ void Rr_ExecuteGraphicsNode(
                                 .Sampler = Args->Sampler->Handle,
                                 .Layout = Args->Layout,
                             },
-                        .DescriptorType =
-                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     });
             }
             break;
@@ -1611,8 +1610,6 @@ void Rr_ExecuteGraphicsNode(
                                 .Size = Args->Size,
                                 .Offset = Args->Offset,
                             },
-                        .DescriptorType =
-                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
                     });
             }
             break;
@@ -1634,8 +1631,6 @@ void Rr_ExecuteGraphicsNode(
                                 .Size = Args->Size,
                                 .Offset = Args->Offset,
                             },
-                        .DescriptorType =
-                            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                     });
             }
             break;

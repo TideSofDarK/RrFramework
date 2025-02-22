@@ -54,6 +54,8 @@ struct SCamera
 
     Rr_Vec3 OrbitCenter = { 0.0f, 3.0f, 0.0f };
     float OrbitDistance = 10.0f;
+    float OrbitAcceleration = 0.1f;
+    Rr_Vec2 OrbitVelocity{};
 
     float TDHeight = 10.0f;
     float TDPitch = 45.0f * Rr_DegToRad;
@@ -167,19 +169,26 @@ struct SCamera
                 if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
                 {
                     Rr_SetRelativeMouseMode(App, true);
-                    constexpr float Sensitivity = 0.2f;
-                    Yaw = Rr_WrapMax(
-                        Yaw - (State->MousePositionDelta.X * Sensitivity),
-                        360.0f);
-                    Pitch = RR_CLAMP(
-                        -89.99f,
-                        Pitch - (State->MousePositionDelta.Y * Sensitivity),
-                        0.0f);
+                    constexpr float Sensitivity = 0.05f;
+
+                    OrbitVelocity.X -=
+                        (State->MousePositionDelta.Y * Sensitivity);
+                    OrbitVelocity.Y -=
+                        (State->MousePositionDelta.X * Sensitivity);
                 }
                 else
                 {
                     Rr_SetRelativeMouseMode(App, false);
                 }
+
+                OrbitVelocity.X *= 0.9f;
+                OrbitVelocity.Y *= 0.9f;
+
+                Pitch += OrbitVelocity.X;
+                Yaw += OrbitVelocity.Y;
+
+                Yaw = Rr_WrapMax(Yaw, 360.0f);
+                Pitch = RR_CLAMP(-89.99f, Pitch, 0.0f);
 
                 Rr_Vec3 Eye = { 0.0f, 0.0f, -1.0f };
                 Eye = Rr_RotateV3AxisAngle_RH(
@@ -312,7 +321,7 @@ struct SCreepManager
         StorageBuffer = Rr_CreateBuffer(
             Renderer,
             sizeof(SCreep) * MAX_CREEPS,
-            RR_BUFFER_FLAGS_UNIFORM_BIT);
+            RR_BUFFER_FLAGS_STORAGE_BIT);
 
         AddCreeps(InitialCount);
     }
@@ -553,17 +562,29 @@ static void Init(Rr_App *App, void *UserData)
 
     /* Create graphics pipeline. */
 
-    Rr_PipelineBinding Bindings[] = {
+    Rr_PipelineBinding BindingsA[] = {
         { 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
-        { 1, 1, RR_PIPELINE_BINDING_TYPE_SAMPLER },
-        { 2, 1, RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE },
     };
-    Rr_PipelineBindingSet BindingSet = {
-        RR_ARRAY_COUNT(Bindings),
-        Bindings,
-        RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
+    Rr_PipelineBinding BindingsB[] = {
+        { 0, 1, RR_PIPELINE_BINDING_TYPE_SAMPLER },
+        { 1, 1, RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE },
     };
-    PipelineLayout = Rr_CreatePipelineLayout(Renderer, 1, &BindingSet);
+    Rr_PipelineBindingSet BindingSets[] = {
+        {
+            RR_ARRAY_COUNT(BindingsA),
+            BindingsA,
+            RR_SHADER_STAGE_VERTEX_BIT,
+        },
+        {
+            RR_ARRAY_COUNT(BindingsB),
+            BindingsB,
+            RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
+        },
+    };
+    PipelineLayout = Rr_CreatePipelineLayout(
+        Renderer,
+        RR_ARRAY_COUNT(BindingSets),
+        BindingSets);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { 0, RR_FORMAT_VEC3 },
@@ -741,10 +762,10 @@ static void Render(
             0,
             0,
             sizeof(UniformData));
-        Rr_BindSampler(OffscreenNode, NearestSampler, 0, 1);
+        Rr_BindSampler(OffscreenNode, NearestSampler, 1, 0);
         Rr_GraphImage ColorTextureHandle =
             Rr_RegisterGraphImage(App, TowerAsset->Images[0]);
-        Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 0, 2);
+        Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 1, 1);
 
         Rr_BindVertexBuffer(
             OffscreenNode,
