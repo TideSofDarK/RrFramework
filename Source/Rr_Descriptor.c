@@ -442,6 +442,27 @@ VkDescriptorSetLayout Rr_BuildDescriptorLayout(
     return DescriptorSetLayout;
 }
 
+void Rr_InvalidateDescriptorState(
+    Rr_DescriptorsState *State,
+    Rr_PipelineLayout *PipelineLayout)
+{
+    bool Disturbed = false;
+    for(size_t Index = 0; Index < RR_MAX_SETS; ++Index)
+    {
+        Rr_DescriptorSetState *SetState = &State->SetStates[Index];
+        VkDescriptorSetLayout Current = SetState->Layout;
+        VkDescriptorSetLayout New = PipelineLayout->DescriptorSetLayouts[Index];
+        if(Current != VK_NULL_HANDLE && Current != New)
+        {
+            Disturbed = true;
+        }
+        if(Disturbed)
+        {
+            SetState->Flags |= RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT;
+        }
+    }
+}
+
 void Rr_UpdateDescriptorsState(
     Rr_DescriptorsState *State,
     size_t SetIndex,
@@ -449,11 +470,11 @@ void Rr_UpdateDescriptorsState(
     Rr_DescriptorSetBinding *Binding)
 {
     memcpy(
-        &State->States[SetIndex].Bindings[BindingIndex],
+        &State->SetStates[SetIndex].Bindings[BindingIndex],
         Binding,
         sizeof(Rr_DescriptorSetBinding));
-    State->States[SetIndex].UsedBindings[BindingIndex] = true;
-    State->States[SetIndex].Dirty = true;
+    State->SetStates[SetIndex].Flags |= RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT;
+    State->SetStates[SetIndex].Flags |= (1 << BindingIndex);
     State->Dirty = true;
 }
 
@@ -484,8 +505,10 @@ void Rr_ApplyDescriptorsState(
 
     for(size_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
     {
-        Rr_DescriptorSetState *SetState = State->States + SetIndex;
-        if(SetState->Dirty == true)
+        Rr_DescriptorSetState *SetState = State->SetStates + SetIndex;
+        if(RR_HAS_BIT(
+               SetState->Flags,
+               RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT) == true)
         {
             if(FirstSetSet == false)
             {
@@ -500,7 +523,8 @@ void Rr_ApplyDescriptorsState(
         {
             Rr_DescriptorSetBinding *Binding =
                 SetState->Bindings + BindingIndex;
-            if(SetState->UsedBindings[BindingIndex] != true)
+
+            if(RR_HAS_BIT(SetState->Flags, (1 << BindingIndex)) != true)
             {
                 continue;
             }
@@ -589,7 +613,9 @@ void Rr_ApplyDescriptorsState(
         }
 
         if(SetIndex == RR_MAX_SETS - 1 ||
-           State->States[SetIndex + 1].Dirty == false)
+           RR_HAS_BIT(
+               State->SetStates[SetIndex + 1].Flags,
+               RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT) == false)
         {
             if(DescriptorSetCount > 0)
             {

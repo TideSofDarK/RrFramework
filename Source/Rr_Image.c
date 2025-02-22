@@ -407,6 +407,11 @@ Rr_IntVec2 Rr_GetImageExtent2D(Rr_Image *Image)
     };
 }
 
+float Rr_GetImageAspect2D(Rr_Image *Image)
+{
+    return (float)Image->Extent.width / (float)Image->Extent.height;
+}
+
 size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)
 {
     int32_t DesiredChannels = 4;

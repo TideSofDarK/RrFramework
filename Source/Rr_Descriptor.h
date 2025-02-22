@@ -173,22 +173,30 @@ struct Rr_DescriptorSetBinding
     Rr_PipelineBindingType Type;
 };
 
+typedef enum
+{
+    RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT = (1 << RR_MAX_BINDINGS),
+    RR_DESCRIPTOR_SET_STATE_FLAG_USED_BIT = (1 << (RR_MAX_BINDINGS + 1)),
+} Rr_DescriptorSetStateFlagsBits;
+typedef uint32_t Rr_DescriptorSetStateFlags;
+
 typedef struct Rr_DescriptorSetState Rr_DescriptorSetState;
 struct Rr_DescriptorSetState
 {
     size_t BindingCount;
     Rr_DescriptorSetBinding Bindings[RR_MAX_BINDINGS];
-    bool UsedBindings[RR_MAX_BINDINGS];
     VkPipelineStageFlags Stages;
     VkDescriptorSet Handle;
-    bool Dirty;
-    bool Used;
+    VkDescriptorSetLayout Layout;
+    Rr_DescriptorSetStateFlags Flags; /* First RR_MAX_BINDINGS bits
+                                         are reserved for "used bindings"
+                                         flags. */
 };
 
 typedef struct Rr_DescriptorsState Rr_DescriptorsState;
 struct Rr_DescriptorsState
 {
-    Rr_DescriptorSetState States[RR_MAX_SETS];
+    Rr_DescriptorSetState SetStates[RR_MAX_SETS];
     bool Dirty;
 };
 
