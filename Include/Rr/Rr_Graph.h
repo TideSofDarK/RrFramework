@@ -185,6 +185,14 @@ extern void Rr_BindGraphicsUniformBuffer(
     uint32_t Offset,
     uint32_t Size);
 
+extern void Rr_BindGraphicsStorageBuffer(
+    Rr_GraphNode *Node,
+    Rr_GraphBuffer *BufferHandle,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t Offset,
+    uint32_t Size);
+
 #ifdef __cplusplus
 }
 #endif

@@ -120,6 +120,16 @@ struct Rr_BindUniformBufferArgs
     uint32_t Size;
 };
 
+typedef struct Rr_BindStorageBufferArgs Rr_BindStorageBufferArgs;
+struct Rr_BindStorageBufferArgs
+{
+    Rr_GraphBuffer BufferHandle;
+    uint32_t Set;
+    uint32_t Binding;
+    uint32_t Offset;
+    uint32_t Size;
+};
+
 typedef struct Rr_Transfer Rr_Transfer;
 struct Rr_Transfer
 {

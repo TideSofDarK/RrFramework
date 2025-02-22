@@ -466,11 +466,14 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             Rr_GLTFPrimitive,
             GLTFMesh->PrimitiveCount);
 
-        RR_ALLOC_COPY(
-            GLTFContext->Arena,
-            GLTFMesh->Name,
-            Mesh->name,
-            strlen(Mesh->name));
+        if(Mesh->name)
+        {
+            RR_ALLOC_COPY(
+                GLTFContext->Arena,
+                GLTFMesh->Name,
+                Mesh->name,
+                strlen(Mesh->name));
+        }
 
         for(size_t PrimitiveIndex = 0;
             PrimitiveIndex < GLTFMesh->PrimitiveCount;
@@ -486,9 +489,12 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 Rr_GLTFAttribute,
                 GLTFPrimitive->AttributeCount);
 
-            GLTFPrimitive->Material =
-                GLTFAsset->Materials +
-                cgltf_material_index(Data, Primitive->material);
+            if(Primitive->material)
+            {
+                GLTFPrimitive->Material =
+                    GLTFAsset->Materials +
+                    cgltf_material_index(Data, Primitive->material);
+            }
 
             size_t VertexCount = Primitive->attributes->data->count;
 

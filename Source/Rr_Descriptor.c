@@ -551,6 +551,20 @@ void Rr_ApplyDescriptorsState(
                     DynamicOffsetCount++;
                 }
                 break;
+                case RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER:
+                {
+                    Rr_WriteBufferDescriptor(
+                        Writer,
+                        BindingIndex,
+                        Binding->Buffer.Handle,
+                        Binding->Buffer.Size,
+                        0, /* We rely on dynamic offsets! */
+                        Binding->DescriptorType,
+                        Scratch.Arena);
+                    DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
+                    DynamicOffsetCount++;
+                }
+                break;
                 default:
                 {
                     RR_ABORT("Not implemented!");

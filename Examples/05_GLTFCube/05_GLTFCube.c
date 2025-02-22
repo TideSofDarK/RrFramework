@@ -45,17 +45,17 @@ static void Init(Rr_App *App, void *UserData)
 
     Rr_PipelineBinding Bindings[] = {
         {
-            .Slot = 0,
+            .Binding = 0,
             .Count = 1,
             .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
         },
         {
-            .Slot = 1,
+            .Binding = 1,
             .Count = 1,
             .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
         },
         {
-            .Slot = 2,
+            .Binding = 2,
             .Count = 1,
             .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
         },

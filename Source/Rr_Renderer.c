@@ -245,7 +245,7 @@ static bool Rr_InitSwapchain(
     if(Renderer->PresentRenderPass == VK_NULL_HANDLE)
     {
         Rr_PipelineBinding PipelineBinding = {
-            .Slot = 0,
+            .Binding = 0,
             .Count = 1,
             .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
         };

@@ -351,7 +351,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
             {
                 Rr_AddDescriptor(
                     &DescriptorLayoutBuilder,
-                    Binding->Slot,
+                    Binding->Binding,
                     Binding->Type,
                     Set->Stages);
             }
@@ -359,7 +359,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
             {
                 Rr_AddDescriptorArray(
                     &DescriptorLayoutBuilder,
-                    Binding->Slot,
+                    Binding->Binding,
                     Binding->Count,
                     Binding->Type,
                     Set->Stages);

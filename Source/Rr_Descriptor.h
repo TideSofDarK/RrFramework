@@ -192,6 +192,10 @@ struct Rr_DescriptorsState
     bool Dirty;
 };
 
+extern void Rr_InvalidateDescriptorState(
+    Rr_DescriptorsState *State,
+    Rr_PipelineLayout *PipelineLayout);
+
 extern void Rr_UpdateDescriptorsState(
     Rr_DescriptorsState *State,
     size_t SetIndex,

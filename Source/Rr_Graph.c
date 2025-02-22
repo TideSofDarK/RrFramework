@@ -1616,6 +1616,29 @@ void Rr_ExecuteGraphicsNode(
                     });
             }
             break;
+            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
+            {
+                Rr_BindStorageBufferArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER,
+                        .Buffer =
+                            {
+                                .Handle = Rr_GetGraphBuffer(
+                                              Graph,
+                                              Args->BufferHandle)
+                                              ->Handle,
+                                .Size = Args->Size,
+                                .Offset = Args->Offset,
+                            },
+                        .DescriptorType =
+                            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                    });
+            }
+            break;
             default:
             {
             }
@@ -1846,6 +1869,8 @@ void Rr_BindGraphicsUniformBuffer(
     assert(Binding < RR_MAX_BINDINGS);
     assert(Size > 0);
 
+    /* @TODO: Proper stage can be infered from pipeline layout. */
+
     Rr_AddNodeDependency(
         Node,
         BufferHandle,
@@ -1860,8 +1885,40 @@ void Rr_BindGraphicsUniformBuffer(
         Rr_BindUniformBufferArgs) = (Rr_BindUniformBufferArgs){
         .BufferHandle = *BufferHandle,
         .Set = Set,
+        .Binding = Binding,
         .Offset = Offset,
         .Size = Size,
+    };
+}
+
+void Rr_BindGraphicsStorageBuffer(
+    Rr_GraphNode *Node,
+    Rr_GraphBuffer *BufferHandle,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t Offset,
+    uint32_t Size)
+{
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(Size > 0);
+
+    Rr_AddNodeDependency(
+        Node,
+        BufferHandle,
+        &(Rr_SyncState){
+            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        });
+
+    RR_GRAPHICS_NODE_ENCODE(
+        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
+        Rr_BindStorageBufferArgs) = (Rr_BindStorageBufferArgs){
+        .BufferHandle = *BufferHandle,
+        .Set = Set,
         .Binding = Binding,
+        .Offset = Offset,
+        .Size = Size,
     };
 }
