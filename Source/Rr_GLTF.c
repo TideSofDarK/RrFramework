@@ -438,13 +438,21 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     /* Preallocate materials. */
 
-    GLTFAsset->Materials = RR_ALLOC_TYPE_COUNT(
-        GLTFContext->Arena,
-        Rr_GLTFMaterial,
-        Data->materials_count);
+    if(Data->materials)
+    {
+        GLTFAsset->Materials = RR_ALLOC_TYPE_COUNT(
+            GLTFContext->Arena,
+            Rr_GLTFMaterial,
+            Data->materials_count);
+    }
 
-    GLTFAsset->Images =
-        RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, Rr_Image *, Data->images_count);
+    if(Data->images)
+    {
+        GLTFAsset->Images = RR_ALLOC_TYPE_COUNT(
+            GLTFContext->Arena,
+            Rr_Image *,
+            Data->images_count);
+    }
 
     /* Process meshes. */
 

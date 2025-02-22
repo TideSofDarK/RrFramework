@@ -336,15 +336,32 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
     {
         Rr_DescriptorSetLayout *DescriptorSetLayout =
             Renderer->DescriptorSetLayouts.Data + LayoutIndex;
-        if(DescriptorSetLayout && DescriptorSetLayout->Hash == Hash)
+        if(DescriptorSetLayout == NULL)
         {
-            if(DescriptorSetLayout->Set.BindingCount == Set->BindingCount &&
-               DescriptorSetLayout->Set.Stages == Set->Stages &&
-               memcmp(
-                   &DescriptorSetLayout->Set.Bindings,
-                   Set->Bindings,
-                   sizeof(Rr_PipelineBinding) * Set->BindingCount) == 0)
+            continue;
+        }
+        if(DescriptorSetLayout->Hash == Hash &&
+           DescriptorSetLayout->Set.BindingCount == Set->BindingCount &&
+           DescriptorSetLayout->Set.Stages == Set->Stages)
+        {
+            bool Fail = false;
+            for(size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
+                ++BindingIndex)
             {
+                Rr_PipelineBinding *BindingA = &Set->Bindings[BindingIndex];
+                Rr_PipelineBinding *BindingB =
+                    &DescriptorSetLayout->Set.Bindings[BindingIndex];
+                if(BindingA->Binding != BindingB->Binding ||
+                   BindingA->Count != BindingB->Count ||
+                   BindingA->Type != BindingB->Type)
+                {
+                    Fail = true;
+                    break;
+                }
+            }
+            if(!Fail)
+            {
+
                 return DescriptorSetLayout;
             }
         }
