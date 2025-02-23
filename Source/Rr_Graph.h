@@ -200,8 +200,10 @@ struct Rr_GraphNode
 typedef struct Rr_GraphResource Rr_GraphResource;
 struct Rr_GraphResource
 {
+    Rr_GraphHandle Handle;
     void *Container;
     void *Allocated;
+    uint32_t Generation;
     bool IsImage;
 };
 
@@ -210,6 +212,7 @@ struct Rr_Graph
     RR_SLICE(Rr_GraphNode *) Nodes;
     RR_SLICE(Rr_GraphNode *) RootNodes;
     RR_SLICE(Rr_GraphResource) Resources;
+    Rr_Map *Handles;
     Rr_Map *ResourceWriteToNode;
     Rr_Arena *Arena;
 };

@@ -41,7 +41,7 @@ extern void Rr_UploadStagingImage(
     VkImageAspectFlags Aspect,
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
-    Rr_Buffer *StagingBuffer,
+    struct Rr_Buffer *StagingBuffer,
     size_t StagingOffset,
     size_t StagingSize);
 

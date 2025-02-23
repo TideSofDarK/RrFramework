@@ -445,16 +445,13 @@ struct SCreepManager
         Rr_GraphNode *Node,
         Rr_GLTFAsset *GLTFAsset,
         Rr_GLTFContext *GLTFContext,
-        Rr_GraphBuffer *StagingBufferHandle,
+        Rr_Buffer *StagingBuffer,
         char *StagingData,
         size_t *StagingOffset)
     {
         Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
         /* Upload creeps to storage buffer. */
-
-        Rr_GraphBuffer StorageBufferHandle =
-            Rr_RegisterGraphBuffer(App, StorageBuffer);
 
         size_t StorageSize = sizeof(SCreep) * Creeps.size();
 
@@ -466,9 +463,9 @@ struct SCreepManager
             App,
             TransferNode,
             StorageSize,
-            StagingBufferHandle,
+            StagingBuffer,
             *StagingOffset,
-            &StorageBufferHandle,
+            StorageBuffer,
             0);
 
         *StagingOffset = RR_ALIGN_POW2(
@@ -477,26 +474,17 @@ struct SCreepManager
 
         /* Draw creeps. */
 
-        Rr_GraphBuffer GLTFBufferHandle =
-            Rr_RegisterGraphBuffer(App, GLTFAsset->Buffer);
-
         Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-        Rr_BindGraphicsStorageBuffer(
-            Node,
-            &StorageBufferHandle,
-            1,
-            0,
-            0,
-            StorageSize);
+        Rr_BindGraphicsStorageBuffer(Node, StorageBuffer, 1, 0, 0, StorageSize);
 
         Rr_BindVertexBuffer(
             Node,
-            &GLTFBufferHandle,
+            GLTFAsset->Buffer,
             0,
             GLTFAsset->VertexBufferOffset);
         Rr_BindIndexBuffer(
             Node,
-            &GLTFBufferHandle,
+            GLTFAsset->Buffer,
             0,
             GLTFAsset->IndexBufferOffset,
             GLTFAsset->IndexType);
@@ -530,6 +518,7 @@ static Rr_LoadThread *LoadThread;
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *TowerAsset;
 static Rr_GLTFAsset *ArrowAsset;
+static Rr_Image *BlitImage;
 static Rr_Image *ColorAttachment;
 static Rr_Image *DepthAttachment;
 static Rr_Buffer *StagingBuffer;
@@ -648,6 +637,12 @@ static void Init(Rr_App *App, void *UserData)
 
     /* Create main draw target. */
 
+    BlitImage = Rr_CreateImage(
+        Renderer,
+        { 128, 128, 1 },
+        Rr_GetSwapchainFormat(Renderer),
+        RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+
     ColorAttachment = Rr_CreateImage(
         Renderer,
         { 320, 240, 1 },
@@ -683,17 +678,12 @@ static void Init(Rr_App *App, void *UserData)
 
 static void Render(
     Rr_App *App,
-    Rr_GraphImage *ColorAttachmentHandle,
-    Rr_GraphImage *DepthAttachmentHandle)
+    Rr_Image *ColorAttachment,
+    Rr_Image *DepthAttachment)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
     // double Time = Rr_GetTimeSeconds(App);
-
-    Rr_GraphBuffer StagingBufferHandle =
-        Rr_RegisterGraphBuffer(App, StagingBuffer);
-    Rr_GraphBuffer UniformBufferHandle =
-        Rr_RegisterGraphBuffer(App, UniformBuffer);
 
     SUniformData UniformData = {};
     UniformData.Projection =
@@ -718,9 +708,9 @@ static void Render(
         App,
         TransferNode,
         sizeof(UniformData),
-        &StagingBufferHandle,
+        StagingBuffer,
         0,
-        &UniformBufferHandle,
+        UniformBuffer,
         0);
 
     Rr_ColorTarget OffscreenTarget = {
@@ -739,42 +729,36 @@ static void Render(
             0,
         },
     };
-    Rr_GraphImage *ColorAttachments[] = { ColorAttachmentHandle };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
         App,
         "offscreen",
         1,
         &OffscreenTarget,
-        ColorAttachments,
+        &ColorAttachment,
         &OffscreenDepth,
-        DepthAttachmentHandle);
+        DepthAttachment);
 
     if(Loaded)
     {
-        Rr_GraphBuffer GLTFBufferHandle =
-            Rr_RegisterGraphBuffer(App, TowerAsset->Buffer);
-
         Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
         Rr_BindGraphicsUniformBuffer(
             OffscreenNode,
-            &UniformBufferHandle,
+            UniformBuffer,
             0,
             0,
             0,
             sizeof(UniformData));
         Rr_BindSampler(OffscreenNode, NearestSampler, 1, 0);
-        Rr_GraphImage ColorTextureHandle =
-            Rr_RegisterGraphImage(App, TowerAsset->Images[0]);
-        Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 1, 1);
+        Rr_BindSampledImage(OffscreenNode, TowerAsset->Images[0], 1, 1);
 
         Rr_BindVertexBuffer(
             OffscreenNode,
-            &GLTFBufferHandle,
+            TowerAsset->Buffer,
             0,
             TowerAsset->VertexBufferOffset);
         Rr_BindIndexBuffer(
             OffscreenNode,
-            &GLTFBufferHandle,
+            TowerAsset->Buffer,
             0,
             TowerAsset->IndexBufferOffset,
             TowerAsset->IndexType);
@@ -800,9 +784,26 @@ static void Render(
             OffscreenNode,
             ArrowAsset,
             GLTFContext,
-            &StagingBufferHandle,
+            StagingBuffer,
             StagingData,
             &StagingOffset);
+
+        Rr_AddBlitNode(
+            App,
+            "blit1",
+            ColorAttachment,
+            BlitImage,
+            { 0, 0, 320, 240 },
+            { 0, 0, 128, 128 },
+            RR_BLIT_MODE_COLOR);
+        Rr_AddBlitNode(
+            App,
+            "blit2",
+            BlitImage,
+            ColorAttachment,
+            { 0, 0, 128, 128 },
+            { 0, 0, 64, 64 },
+            RR_BLIT_MODE_COLOR);
     }
 }
 
@@ -824,19 +825,14 @@ static void Iterate(Rr_App *App, void *UserData)
         }
     }
 
-    Rr_GraphImage ColorAttachmentHandle =
-        Rr_RegisterGraphImage(App, ColorAttachment);
-    Rr_GraphImage DepthAttachmentHandle =
-        Rr_RegisterGraphImage(App, DepthAttachment);
-
     CreepManager->Update(Rr_GetDeltaSeconds(App));
 
-    Render(App, &ColorAttachmentHandle, &DepthAttachmentHandle);
+    Render(App, ColorAttachment, DepthAttachment);
 
     Rr_AddPresentNode(
         App,
         "present",
-        &ColorAttachmentHandle,
+        ColorAttachment,
         NearestSampler,
         BackgroundColor,
         RR_PRESENT_MODE_FIT);
@@ -849,6 +845,7 @@ static void Cleanup(Rr_App *App, void *UserData)
     Rr_DestroyLoadThread(App, LoadThread);
     CreepManager->Cleanup();
     Rr_DestroyGLTFContext(GLTFContext);
+    Rr_DestroyImage(Renderer, BlitImage);
     Rr_DestroyImage(Renderer, ColorAttachment);
     Rr_DestroyImage(Renderer, DepthAttachment);
     Rr_DestroyBuffer(Renderer, StagingBuffer);

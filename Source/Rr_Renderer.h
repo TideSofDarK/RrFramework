@@ -2,10 +2,9 @@
 
 #include <Rr/Rr_Renderer.h>
 
-#include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Graph.h"
-#include "Rr_Image.h"
+#include "Rr_Load.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Text.h"
 #include "Rr_Vulkan.h"

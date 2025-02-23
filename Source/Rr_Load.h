@@ -2,6 +2,7 @@
 
 #include <Rr/Rr_Load.h>
 
+#include "Rr_Image.h"
 #include "Rr_Memory.h"
 #include "Rr_Vulkan.h"
 

@@ -1,15 +1,13 @@
 #pragma once
 
+#include <Rr/Rr_Buffer.h>
+#include <Rr/Rr_Image.h>
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Renderer.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct Rr_Sampler;
-struct Rr_Buffer;
-struct Rr_Image;
 
 typedef struct Rr_Graph Rr_Graph;
 typedef struct Rr_GraphNode Rr_GraphNode;
@@ -79,17 +77,11 @@ typedef enum Rr_PresentMode
     RR_PRESENT_MODE_FIT,
 } Rr_PresentMode;
 
-extern Rr_GraphBuffer Rr_RegisterGraphBuffer(
-    Rr_App *App,
-    struct Rr_Buffer *Buffer);
-
-extern Rr_GraphImage Rr_RegisterGraphImage(Rr_App *App, struct Rr_Image *Image);
-
 extern Rr_GraphNode *Rr_AddPresentNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphImage *ImageHandle,
-    struct Rr_Sampler *Sampler,
+    Rr_Image *Image,
+    Rr_Sampler *Sampler,
     Rr_Vec4 ColorClear,
     Rr_PresentMode Mode);
 
@@ -99,16 +91,16 @@ extern void Rr_TransferBufferData(
     Rr_App *App,
     Rr_GraphNode *Node,
     size_t Size,
-    Rr_GraphBuffer *SrcBuffer,
+    Rr_Buffer *SrcBuffer,
     size_t SrcOffset,
-    Rr_GraphBuffer *DstBuffer,
+    Rr_Buffer *DstBuffer,
     size_t DstOffset);
 
 extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_App *App,
     const char *Name,
-    Rr_GraphImage *SrcImage,
-    Rr_GraphImage *DstImage,
+    Rr_Image *SrcImage,
+    Rr_Image *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_BlitMode Mode);
@@ -118,9 +110,9 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
-    Rr_GraphImage **ColorImages,
+    Rr_Image **ColorImages,
     Rr_DepthTarget *DepthTarget,
-    Rr_GraphImage *DepthImage);
+    Rr_Image *DepthImage);
 
 extern void Rr_Draw(
     Rr_GraphNode *Node,
@@ -139,13 +131,13 @@ extern void Rr_DrawIndexed(
 
 extern void Rr_BindVertexBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBuffer *BufferHandle,
+    Rr_Buffer *Buffer,
     uint32_t Slot,
     uint32_t Offset);
 
 extern void Rr_BindIndexBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBuffer *BufferHandle,
+    Rr_Buffer *Buffer,
     uint32_t Slot,
     uint32_t Offset,
     Rr_IndexType Type);
@@ -160,26 +152,26 @@ extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect);
 
 extern void Rr_BindSampler(
     Rr_GraphNode *Node,
-    struct Rr_Sampler *Sampler,
+    Rr_Sampler *Sampler,
     uint32_t Set,
     uint32_t Binding);
 
 extern void Rr_BindSampledImage(
     Rr_GraphNode *Node,
-    Rr_GraphImage *ImageHandle,
+    Rr_Image *Image,
     uint32_t Set,
     uint32_t Binding);
 
 extern void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
-    Rr_GraphImage *ImageHandle,
-    struct Rr_Sampler *Sampler,
+    Rr_Image *Image,
+    Rr_Sampler *Sampler,
     uint32_t Set,
     uint32_t Binding);
 
 extern void Rr_BindGraphicsUniformBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBuffer *BufferHandle,
+    Rr_Buffer *Buffer,
     uint32_t Set,
     uint32_t Binding,
     uint32_t Offset,
@@ -187,7 +179,7 @@ extern void Rr_BindGraphicsUniformBuffer(
 
 extern void Rr_BindGraphicsStorageBuffer(
     Rr_GraphNode *Node,
-    Rr_GraphBuffer *BufferHandle,
+    Rr_Buffer *Buffer,
     uint32_t Set,
     uint32_t Binding,
     uint32_t Offset,

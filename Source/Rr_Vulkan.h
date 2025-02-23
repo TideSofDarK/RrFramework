@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Image.h>
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Memory.h>
@@ -636,5 +635,18 @@ static VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat)
             return VK_FORMAT_D32_SFLOAT_S8_UINT;
         default:
             return VK_FORMAT_UNDEFINED;
+    }
+}
+
+static VkIndexType Rr_GetVulkanIndexType(Rr_IndexType Type)
+{
+    switch(Type)
+    {
+        case RR_INDEX_TYPE_UINT8:
+            return VK_INDEX_TYPE_UINT8;
+        case RR_INDEX_TYPE_UINT16:
+            return VK_INDEX_TYPE_UINT16;
+        default:
+            return VK_INDEX_TYPE_UINT32;
     }
 }

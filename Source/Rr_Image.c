@@ -1,6 +1,7 @@
 #include "Rr_Image.h"
 
 #include "Rr_App.h"
+#include "Rr_Buffer.h"
 #include "Rr_Log.h"
 #include "Rr_UploadContext.h"
 
@@ -292,6 +293,8 @@ Rr_Image *Rr_CreateImage(
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
+
+    /* @TODO: Some kind of real usage must be enforced aside from TRANSFER_*. */
 
     VkImageCreateInfo ImageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
