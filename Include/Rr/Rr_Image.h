@@ -77,6 +77,7 @@ typedef enum
     RR_IMAGE_FLAGS_READBACK_BIT = (1 << 5),
     RR_IMAGE_FLAGS_PER_FRAME_BIT = (1 << 6),
     RR_IMAGE_FLAGS_MIP_MAPPED_BIT = (1 << 7),
+    RR_IMAGE_FLAGS_CUBE_BIT = (1 << 8),
 } Rr_ImageFlagsBits;
 typedef uint32_t Rr_ImageFlags;
 
