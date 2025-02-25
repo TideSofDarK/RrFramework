@@ -9,7 +9,7 @@
 
 static VkRenderPass Rr_GetCompatibleRenderPass(
     Rr_Renderer *Renderer,
-    Rr_PipelineInfo *Info)
+    Rr_GraphicsPipelineCreateInfo *Info)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -42,9 +42,129 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     return RenderPass;
 }
 
+Rr_PipelineLayout *Rr_CreatePipelineLayout(
+    Rr_Renderer *Renderer,
+    size_t SetCount,
+    Rr_PipelineBindingSet *Sets)
+{
+    assert(SetCount > 0);
+    assert(SetCount < RR_MAX_SETS);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Device *Device = &Renderer->Device;
+
+    Rr_PipelineLayout *PipelineLayout =
+        RR_GET_FREE_LIST_ITEM(&Renderer->PipelineLayouts, Renderer->Arena);
+    PipelineLayout->SetLayoutCount = SetCount;
+
+    VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
+
+    for(size_t Index = 0; Index < SetCount; ++Index)
+    {
+        Rr_PipelineBindingSet *Set = Sets + Index;
+
+        PipelineLayout->SetLayouts[Index] =
+            Rr_GetDescriptorSetLayout(Renderer, Set);
+        Handles[Index] = PipelineLayout->SetLayouts[Index]->Handle;
+    }
+
+    VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext = NULL,
+        .setLayoutCount = SetCount,
+        .pSetLayouts = Handles,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = NULL,
+    };
+
+    Device->CreatePipelineLayout(
+        Device->Handle,
+        &PipelineLayoutCreateInfo,
+        NULL,
+        &PipelineLayout->Handle);
+
+    Rr_DestroyScratch(Scratch);
+
+    return PipelineLayout;
+}
+
+void Rr_DestroyPipelineLayout(
+    Rr_Renderer *Renderer,
+    Rr_PipelineLayout *PipelineLayout)
+{
+    Rr_Device *Device = &Renderer->Device;
+
+    Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
+
+    RR_RETURN_FREE_LIST_ITEM(&Renderer->PipelineLayouts, PipelineLayout);
+}
+
+Rr_ComputePipeline *Rr_CreateComputePipeline(
+    Rr_Renderer *Renderer,
+    Rr_PipelineLayout *Layout,
+    Rr_Data SPV)
+{
+    Rr_Device *Device = &Renderer->Device;
+
+    Rr_ComputePipeline *Pipeline =
+        RR_GET_FREE_LIST_ITEM(&Renderer->ComputePipelines, Renderer->Arena);
+    Pipeline->Layout = Layout;
+
+    VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = SPV.Size,
+        .pCode = (uint32_t *)SPV.Pointer,
+    };
+
+    VkShaderModule ShaderModule;
+
+    Device->CreateShaderModule(
+        Device->Handle,
+        &ShaderModuleCreateInfo,
+        NULL,
+        &ShaderModule);
+
+    VkPipelineShaderStageCreateInfo ShaderStageCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+        .module = ShaderModule,
+        .pName = "main",
+    };
+
+    VkComputePipelineCreateInfo PipelineCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .layout = Layout->Handle,
+        .stage = ShaderStageCreateInfo,
+    };
+
+    Device->CreateComputePipelines(
+        Device->Handle,
+        VK_NULL_HANDLE,
+        1,
+        &PipelineCreateInfo,
+        NULL,
+        &Pipeline->Handle);
+
+    Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
+
+    return Pipeline;
+}
+
+void Rr_DestroyComputePipeline(
+    Rr_Renderer *Renderer,
+    Rr_ComputePipeline *ComputePipeline)
+{
+    Rr_Device *Device = &Renderer->Device;
+
+    Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
+
+    RR_RETURN_FREE_LIST_ITEM(&Renderer->ComputePipelines, ComputePipeline);
+}
+
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_Renderer *Renderer,
-    Rr_PipelineInfo *Info)
+    Rr_GraphicsPipelineCreateInfo *Info)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -62,8 +182,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (uint32_t *)Info->VertexShaderSPV.Pointer,
             .codeSize = Info->VertexShaderSPV.Size,
+            .pCode = (uint32_t *)Info->VertexShaderSPV.Pointer,
         };
         Device->CreateShaderModule(
             Device->Handle,
@@ -87,8 +207,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .pCode = (uint32_t *)Info->FragmentShaderSPV.Pointer,
             .codeSize = Info->FragmentShaderSPV.Size,
+            .pCode = (uint32_t *)Info->FragmentShaderSPV.Pointer,
         };
         Device->CreateShaderModule(
             Device->Handle,
@@ -408,62 +528,4 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
         Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, &Renderer->Device);
 
     return DescriptorSetLayout;
-}
-
-Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    Rr_Renderer *Renderer,
-    size_t SetCount,
-    Rr_PipelineBindingSet *Sets)
-{
-    assert(SetCount > 0);
-    assert(SetCount < RR_MAX_SETS);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_Device *Device = &Renderer->Device;
-
-    Rr_PipelineLayout *PipelineLayout =
-        RR_GET_FREE_LIST_ITEM(&Renderer->PipelineLayouts, Renderer->Arena);
-    PipelineLayout->SetLayoutCount = SetCount;
-
-    VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
-
-    for(size_t Index = 0; Index < SetCount; ++Index)
-    {
-        Rr_PipelineBindingSet *Set = Sets + Index;
-
-        PipelineLayout->SetLayouts[Index] =
-            Rr_GetDescriptorSetLayout(Renderer, Set);
-        Handles[Index] = PipelineLayout->SetLayouts[Index]->Handle;
-    }
-
-    VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = NULL,
-        .setLayoutCount = SetCount,
-        .pSetLayouts = Handles,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = NULL,
-    };
-
-    Device->CreatePipelineLayout(
-        Device->Handle,
-        &PipelineLayoutCreateInfo,
-        NULL,
-        &PipelineLayout->Handle);
-
-    Rr_DestroyScratch(Scratch);
-
-    return PipelineLayout;
-}
-
-void Rr_DestroyPipelineLayout(
-    Rr_Renderer *Renderer,
-    Rr_PipelineLayout *PipelineLayout)
-{
-    Rr_Device *Device = &Renderer->Device;
-
-    Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
-
-    RR_RETURN_FREE_LIST_ITEM(&Renderer->PipelineLayouts, PipelineLayout);
 }

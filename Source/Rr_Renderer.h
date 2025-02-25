@@ -148,6 +148,7 @@ struct Rr_Renderer
     RR_FREE_LIST(Rr_Image) Images;
     RR_FREE_LIST(Rr_Font) Fonts;
     RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
+    RR_FREE_LIST(Rr_ComputePipeline) ComputePipelines;
     RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;
     RR_FREE_LIST(Rr_Sampler) Samplers;
     RR_FREE_LIST(Rr_SyncState) SyncStates;

@@ -22,6 +22,12 @@ struct Rr_PipelineLayout
     Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
 };
 
+struct Rr_ComputePipeline
+{
+    VkPipeline Handle;
+    Rr_PipelineLayout *Layout;
+};
+
 struct Rr_GraphicsPipeline
 {
     VkPipeline Handle;

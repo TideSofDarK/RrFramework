@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
 typedef struct Rr_PipelineLayout Rr_PipelineLayout;
+typedef struct Rr_ComputePipeline Rr_ComputePipeline;
 typedef struct Rr_GraphicsPipeline Rr_GraphicsPipeline;
 
 typedef enum
@@ -156,8 +157,8 @@ struct Rr_DepthStencil
     bool EnableStencilTest;
 };
 
-typedef struct Rr_PipelineInfo Rr_PipelineInfo;
-struct Rr_PipelineInfo
+typedef struct Rr_GraphicsPipelineCreateInfo Rr_GraphicsPipelineCreateInfo;
+struct Rr_GraphicsPipelineCreateInfo
 {
     Rr_Data VertexShaderSPV;
     Rr_Data FragmentShaderSPV;
@@ -206,9 +207,18 @@ extern void Rr_DestroyPipelineLayout(
     Rr_Renderer *Renderer,
     Rr_PipelineLayout *PipelineLayout);
 
+extern Rr_ComputePipeline *Rr_CreateComputePipeline(
+    Rr_Renderer *Renderer,
+    Rr_PipelineLayout *Layout,
+    Rr_Data SPV);
+
+extern void Rr_DestroyComputePipeline(
+    Rr_Renderer *Renderer,
+    Rr_ComputePipeline *ComputePipeline);
+
 extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_Renderer *Renderer,
-    Rr_PipelineInfo *Info);
+    Rr_GraphicsPipelineCreateInfo *CreateInfo);
 
 extern void Rr_DestroyGraphicsPipeline(
     Rr_Renderer *Renderer,

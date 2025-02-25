@@ -13,12 +13,12 @@ layout(set = 0, binding = 0) uniform Globals
     vec3 HFOVFocal;
 };
 
-layout(std430, set = 0, binding = 1) readonly buffer GPUSplats
+layout(set = 0, binding = 1) readonly buffer GPUSplats
 {
     SGPUSplat Splats[];
 };
 
-layout(std430, set = 0, binding = 2) readonly buffer SortedIndices
+layout(set = 0, binding = 2) readonly buffer SortedIndices
 {
     uint Indices[];
 };

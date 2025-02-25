@@ -11,39 +11,53 @@ typedef RR_SLICE(Rr_GraphNode *) Rr_NodeSlice;
 
 typedef enum
 {
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_NO_OP,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLER,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
-    RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
-} Rr_GraphicsNodeFunctionType;
+    RR_NODE_FUNCTION_TYPE_NO_OP,
+    RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
+    RR_NODE_FUNCTION_TYPE_DISPATCH,
+    RR_NODE_FUNCTION_TYPE_DRAW,
+    RR_NODE_FUNCTION_TYPE_DRAW_INDEXED,
+    RR_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
+    RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
+    RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
+    RR_NODE_FUNCTION_TYPE_SET_VIEWPORT,
+    RR_NODE_FUNCTION_TYPE_SET_SCISSOR,
+    RR_NODE_FUNCTION_TYPE_BIND_SAMPLER,
+    RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
+    RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
+    RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
+    RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
+} Rr_NodeFunctionType;
 
-typedef struct Rr_GraphicsNodeFunction Rr_GraphicsNodeFunction;
-struct Rr_GraphicsNodeFunction
+typedef struct Rr_NodeFunction Rr_NodeFunction;
+struct Rr_NodeFunction
 {
-    Rr_GraphicsNodeFunctionType Type;
+    Rr_NodeFunctionType Type;
     void *Args;
-    Rr_GraphicsNodeFunction *Next;
+    Rr_NodeFunction *Next;
+};
+
+typedef struct Rr_Encoded Rr_Encoded;
+struct Rr_Encoded
+{
+    Rr_NodeFunction *EncodedFirst;
+    Rr_NodeFunction *Encoded;
+};
+
+typedef struct Rr_ComputeNode Rr_ComputeNode;
+struct Rr_ComputeNode
+{
+    Rr_Encoded Encoded;
 };
 
 typedef struct Rr_GraphicsNode Rr_GraphicsNode;
 struct Rr_GraphicsNode
 {
+    Rr_Encoded Encoded;
     size_t ColorTargetCount;
     Rr_ColorTarget *ColorTargets;
     Rr_GraphImage *ColorImages;
     Rr_DepthTarget *DepthTarget;
     Rr_GraphImage DepthImage;
-    Rr_GraphicsNodeFunction *EncodedFirst;
-    Rr_GraphicsNodeFunction *Encoded;
 };
 
 typedef struct Rr_BindIndexBufferArgs Rr_BindIndexBufferArgs;
@@ -61,6 +75,14 @@ struct Rr_BindBufferArgs
     Rr_GraphBuffer BufferHandle;
     uint32_t Slot;
     uint32_t Offset;
+};
+
+typedef struct Rr_DispatchArgs Rr_DispatchArgs;
+struct Rr_DispatchArgs
+{
+    uint32_t GroupCountX;
+    uint32_t GroupCountY;
+    uint32_t GroupCountZ;
 };
 
 typedef struct Rr_DrawArgs Rr_DrawArgs;
@@ -184,6 +206,7 @@ struct Rr_GraphNode
 {
     union
     {
+        Rr_ComputeNode Compute;
         Rr_GraphicsNode Graphics;
         Rr_PresentNode Present;
         Rr_BlitNode Blit;
@@ -226,26 +249,3 @@ extern void Rr_ExecuteGraph(
     Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_Arena *Arena);
-
-extern void Rr_ExecutePresentNode(
-    Rr_Renderer *Renderer,
-    Rr_PresentNode *Node,
-    VkCommandBuffer CommandBuffer);
-
-extern void Rr_ExecuteTransferNode(
-    Rr_Renderer *Renderer,
-    Rr_Graph *Graph,
-    Rr_TransferNode *Node,
-    VkCommandBuffer CommandBuffer);
-
-extern void Rr_ExecuteBlitNode(
-    Rr_Renderer *Renderer,
-    Rr_Graph *Graph,
-    Rr_BlitNode *Node,
-    VkCommandBuffer CommandBuffer);
-
-extern void Rr_ExecuteGraphicsNode(
-    Rr_Renderer *Renderer,
-    Rr_Graph *Graph,
-    Rr_GraphicsNode *Node,
-    VkCommandBuffer CommandBuffer);

@@ -94,12 +94,12 @@ void main()
     float DetInv = 1.f / Det;
     OutConic = vec3(Cov2D.z * DetInv, -Cov2D.y * DetInv, Cov2D.x * DetInv);
 
-    vec2 QuadWidthHeight_scr = vec2(3.f * sqrt(Cov2D.x), 3.f * sqrt(Cov2D.z));
-    vec2 QuadWidthHeight_ndc = QuadWidthHeight_scr / WidthHeight * 2;
-    PositionScreen.xy = PositionScreen.xy + TriPosition * QuadWidthHeight_ndc;
+    vec2 QuadWidthHeightScreen = vec2(3.f * sqrt(Cov2D.x), 3.f * sqrt(Cov2D.z));
+    vec2 QuadWidthHeightNDC = QuadWidthHeightScreen / WidthHeight * 2;
+    PositionScreen.xy = PositionScreen.xy + TriPosition * QuadWidthHeightNDC;
 
     OutUV = TriPosition;
-    OutCoords = TriPosition * QuadWidthHeight_scr;
+    OutCoords = TriPosition * QuadWidthHeightScreen;
     gl_Position = PositionScreen;
     OutColor = Splat.Color;
 }

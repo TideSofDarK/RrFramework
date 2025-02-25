@@ -83,6 +83,7 @@ typedef enum
 {
     RR_SHADER_STAGE_VERTEX_BIT = (1 << 0),
     RR_SHADER_STAGE_FRAGMENT_BIT = (1 << 1),
+    RR_SHADER_STAGE_COMPUTE_BIT = (1 << 2),
 } Rr_ShaderStageBits;
 typedef uint32_t Rr_ShaderStage;
 

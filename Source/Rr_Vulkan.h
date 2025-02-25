@@ -351,6 +351,10 @@ static inline VkShaderStageFlags Rr_GetVulkanShaderStageFlags(
     {
         ShaderStageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
     }
+    if((ShaderStage & RR_SHADER_STAGE_COMPUTE_BIT) != 0)
+    {
+        ShaderStageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
+    }
     return ShaderStageFlags;
 }
 

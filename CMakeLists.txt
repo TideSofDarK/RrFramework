@@ -77,7 +77,7 @@ function(rr_embed_assets TARGET_NAME IDENTIFIER_PREFIX HEADER_NAME ASSETS_LIST)
     set(SPIRVBinaries "")
     foreach (ASSET_PATH ${ASSETS_LIST})
         get_filename_component(ASSET_EXTENSION ${ASSET_PATH} EXT)
-        if ((ASSET_EXTENSION STREQUAL ".vert.glsl") OR (ASSET_EXTENSION STREQUAL ".frag.glsl"))
+        if ((ASSET_EXTENSION STREQUAL ".vert.glsl") OR (ASSET_EXTENSION STREQUAL ".frag.glsl") OR (ASSET_EXTENSION STREQUAL ".comp.glsl"))
             get_filename_component(ASSET_NAME_WLE ${ASSET_PATH} NAME_WLE)
             set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${ASSET_NAME_WLE}.spv")
             add_custom_command(

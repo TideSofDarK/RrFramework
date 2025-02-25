@@ -261,7 +261,7 @@ static bool Rr_InitSwapchain(
         ColorTargets[0].Blend.ColorWriteMask = RR_COLOR_COMPONENT_ALL;
         ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
 
-        Rr_PipelineInfo PipelineInfo = { 0 };
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_CLOCKWISE;
         PipelineInfo.Layout = Renderer->PresentLayout;

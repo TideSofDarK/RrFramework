@@ -14,7 +14,7 @@ typedef struct Rr_GraphNode Rr_GraphNode;
 
 typedef enum Rr_GraphNodeType
 {
-    RR_GRAPH_NODE_TYPE_BUILTIN,
+    RR_GRAPH_NODE_TYPE_COMPUTE,
     RR_GRAPH_NODE_TYPE_GRAPHICS,
     RR_GRAPH_NODE_TYPE_BLIT,
     RR_GRAPH_NODE_TYPE_PRESENT,
@@ -105,6 +105,18 @@ extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_IntVec4 DstRect,
     Rr_BlitMode Mode);
 
+extern Rr_GraphNode *Rr_AddComputeNode(Rr_App *App, const char *Name);
+
+extern void Rr_BindComputePipeline(
+    Rr_GraphNode *Node,
+    Rr_ComputePipeline *ComputePipeline);
+
+extern void Rr_Dispatch(
+    Rr_GraphNode *Node,
+    uint32_t GroupCountX,
+    uint32_t GroupCountY,
+    uint32_t GroupCountZ);
+
 extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_App *App,
     const char *Name,
@@ -169,7 +181,7 @@ extern void Rr_BindCombinedImageSampler(
     uint32_t Set,
     uint32_t Binding);
 
-extern void Rr_BindGraphicsUniformBuffer(
+extern void Rr_BindUniformBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
     uint32_t Set,
@@ -177,7 +189,7 @@ extern void Rr_BindGraphicsUniformBuffer(
     uint32_t Offset,
     uint32_t Size);
 
-extern void Rr_BindGraphicsStorageBuffer(
+extern void Rr_BindStorageBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
     uint32_t Set,

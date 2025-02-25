@@ -31,6 +31,765 @@ static Rr_AllocatedImage *Rr_GetGraphImage(
     return Graph->Resources.Data[Handle.Values.Index].Allocated;
 }
 
+static void Rr_ExecutePresentNode(
+    Rr_Renderer *Renderer,
+    Rr_PresentNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Device *Device = &Renderer->Device;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_AllocatedImage *Image =
+        Rr_GetGraphImage(((Rr_GraphNode *)Node)->Graph, Node->ImageHandle);
+    Rr_Image *Container = Image->Container;
+
+    VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
+        &Frame->DescriptorAllocator,
+        Device,
+        Renderer->PresentLayout->SetLayouts[0]->Handle);
+
+    VkSampler Sampler = Node->Sampler->Handle;
+    Rr_DescriptorWriter *Writer =
+        Rr_CreateDescriptorWriter(0, 1, 0, Scratch.Arena);
+    Rr_WriteCombinedImageSamplerDescriptor(
+        Writer,
+        0,
+        0,
+        Image->View,
+        Sampler,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    Rr_UpdateDescriptorSet(Writer, Device, DescriptorSet);
+
+    VkImage SwapchainImage =
+        Rr_GetCurrentAllocatedImage(Renderer, &Frame->VirtualSwapchainImage)
+            ->Handle;
+
+    Device->CmdPipelineBarrier(
+        CommandBuffer,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .image = SwapchainImage,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        });
+    VkClearValue ClearValue = { 0 };
+    memcpy(
+        &ClearValue.color.float32,
+        Node->ColorClear.Elements,
+        sizeof(Rr_Vec4));
+    VkRenderPassBeginInfo RenderPassBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext = NULL,
+        .framebuffer = Frame->SwapchainFramebuffer,
+        .renderArea = (VkRect2D){ { 0, 0 },
+                                  { Renderer->Swapchain.Extent.width,
+                                    Renderer->Swapchain.Extent.height } },
+        .renderPass = Renderer->PresentRenderPass,
+        .clearValueCount = 1,
+        .pClearValues = &ClearValue,
+    };
+    Device->CmdBeginRenderPass(
+        CommandBuffer,
+        &RenderPassBeginInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
+
+    float X = 0;
+    float Y = 0;
+    float Width = 0;
+    float Height = 0;
+
+    float SwapchainWidth = Renderer->Swapchain.Extent.width;
+    float SwapchainHeight = Renderer->Swapchain.Extent.height;
+    float ImageWidth = Container->Extent.width;
+    float ImageHeight = Container->Extent.height;
+    float SwapchainRatio = SwapchainWidth / SwapchainHeight;
+    float ImageRatio = ImageWidth / ImageHeight;
+
+    switch(Node->Mode)
+    {
+        case RR_PRESENT_MODE_FIT:
+        {
+            if(SwapchainRatio > ImageRatio)
+            {
+                Width = (ImageWidth / ImageHeight) * SwapchainHeight;
+                Height = SwapchainHeight;
+            }
+            else
+            {
+                Width = SwapchainWidth;
+                Height = (ImageHeight / ImageWidth) * SwapchainWidth;
+            }
+            X = (SwapchainWidth / 2.0f) - (Width / 2.0f);
+            Y = (SwapchainHeight / 2.0f) - (Height / 2.0f);
+        }
+        break;
+        default:
+        {
+            Width = Renderer->Swapchain.Extent.width;
+            Height = Renderer->Swapchain.Extent.height;
+        }
+        break;
+    }
+
+    Device->CmdSetViewport(
+        CommandBuffer,
+        0,
+        1,
+        &(VkViewport){
+            .x = X,
+            .y = Y,
+            .width = Width,
+            .height = Height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        });
+
+    Device->CmdSetScissor(
+        CommandBuffer,
+        0,
+        1,
+        &(VkRect2D){
+            .offset.x = X,
+            .offset.y = Y,
+            .extent.width = Width,
+            .extent.height = Height,
+        });
+
+    Device->CmdBindPipeline(
+        CommandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        Renderer->PresentPipeline->Handle);
+
+    Device->CmdBindDescriptorSets(
+        CommandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        Renderer->PresentPipeline->Layout->Handle,
+        0,
+        1,
+        &DescriptorSet,
+        0,
+        NULL);
+
+    Device->CmdDraw(CommandBuffer, 3, 1, 0, 0);
+
+    Device->CmdEndRenderPass(CommandBuffer);
+
+    Device->CmdPipelineBarrier(
+        CommandBuffer,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .image = SwapchainImage,
+            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = 0,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        });
+
+    Rr_DestroyScratch(Scratch);
+}
+
+static void Rr_ExecuteTransferNode(
+    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
+    Rr_TransferNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Device *Device = &Renderer->Device;
+
+    for(size_t Index = 0; Index < Node->Transfers.Count; ++Index)
+    {
+        Rr_Transfer *Transfer = Node->Transfers.Data + Index;
+
+        VkBuffer SrcBuffer =
+            Rr_GetGraphBuffer(Graph, Transfer->SrcBuffer)->Handle;
+        VkBuffer DstBuffer =
+            Rr_GetGraphBuffer(Graph, Transfer->DstBuffer)->Handle;
+
+        VkBufferCopy Copy = { .size = Transfer->Size,
+                              .srcOffset = Transfer->SrcOffset,
+                              .dstOffset = Transfer->DstOffset };
+        Device->CmdCopyBuffer(CommandBuffer, SrcBuffer, DstBuffer, 1, &Copy);
+    }
+}
+
+static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
+{
+    Rect->X = RR_CLAMP(0, Rect->X, (int)Extent->width);
+    Rect->Y = RR_CLAMP(0, Rect->Y, (int)Extent->height);
+    Rect->Width = RR_CLAMP(0, Rect->Width, (int)Extent->width - Rect->X);
+    Rect->Height = RR_CLAMP(0, Rect->Height, (int)Extent->height - Rect->Y);
+
+    return Rect->Width > 0 && Rect->Height > 0;
+}
+
+static void Rr_ExecuteBlitNode(
+    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
+    Rr_BlitNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Device *Device = &Renderer->Device;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_AllocatedImage *SrcImage =
+        Rr_GetGraphImage(&Frame->Graph, Node->SrcImageHandle);
+    Rr_AllocatedImage *DstImage =
+        Rr_GetGraphImage(&Frame->Graph, Node->DstImageHandle);
+
+    if(Rr_ClampBlitRect(&Node->SrcRect, &SrcImage->Container->Extent) &&
+       Rr_ClampBlitRect(&Node->DstRect, &DstImage->Container->Extent))
+    {
+        Rr_BlitColorImage(
+            Device,
+            CommandBuffer,
+            SrcImage->Handle,
+            DstImage->Handle,
+            Node->SrcRect,
+            Node->DstRect,
+            Node->AspectMask);
+    }
+}
+
+static void Rr_ExecuteComputeNode(
+    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
+    Rr_ComputeNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Device *Device = &Renderer->Device;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_ComputePipeline *Pipeline = NULL;
+    Rr_DescriptorsState DescriptorsState = { 0 };
+
+    for(Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
+        Function != NULL;
+        Function = Function->Next)
+    {
+        switch(Function->Type)
+        {
+            case RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE:
+            {
+                Pipeline = *(Rr_ComputePipeline **)Function->Args;
+                Device->CmdBindPipeline(
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_COMPUTE,
+                    Pipeline->Handle);
+                Rr_InvalidateDescriptorState(
+                    &DescriptorsState,
+                    Pipeline->Layout);
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_DISPATCH:
+            {
+                Rr_ApplyDescriptorsState(
+                    &DescriptorsState,
+                    &Frame->DescriptorAllocator,
+                    Pipeline->Layout,
+                    Device,
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_COMPUTE);
+                Rr_DispatchArgs *Args = Function->Args;
+                Device->CmdDispatch(
+                    CommandBuffer,
+                    Args->GroupCountX,
+                    Args->GroupCountY,
+                    Args->GroupCountZ);
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
+            {
+                Rr_BindSamplerArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
+                        .Sampler = Args->Sampler->Handle,
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
+            {
+                Rr_BindSampledImageArgs *Args = Function->Args;
+                VkImageView ImageView =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
+                        .Image =
+                            {
+                                .View = ImageView,
+                                .Layout = Args->Layout,
+                            },
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
+            {
+                Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
+                VkImageView ImageView =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .Image =
+                            {
+                                .View = ImageView,
+                                .Sampler = Args->Sampler->Handle,
+                                .Layout = Args->Layout,
+                            },
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
+            {
+                Rr_BindUniformBufferArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+                        .Buffer =
+                            {
+                                .Handle = Rr_GetGraphBuffer(
+                                              Graph,
+                                              Args->BufferHandle)
+                                              ->Handle,
+                                .Size = Args->Size,
+                                .Offset = Args->Offset,
+                            },
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
+            {
+                Rr_BindStorageBufferArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER,
+                        .Buffer =
+                            {
+                                .Handle = Rr_GetGraphBuffer(
+                                              Graph,
+                                              Args->BufferHandle)
+                                              ->Handle,
+                                .Size = Args->Size,
+                                .Offset = Args->Offset,
+                            },
+                    });
+            }
+            break;
+            default:
+            {
+            }
+            break;
+        }
+    }
+
+    Rr_DestroyScratch(Scratch);
+}
+
+static void Rr_ExecuteGraphicsNode(
+    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
+    Rr_GraphicsNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Device *Device = &Renderer->Device;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_IntVec4 Viewport = { 0 };
+    Viewport.Width = INT32_MAX;
+    Viewport.Height = INT32_MAX;
+
+    /* Line up appropriate clear values. */
+
+    uint32_t AttachmentCount =
+        Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
+
+    Rr_Attachment *Attachments =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+    VkImageView *ImageViews =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
+    VkClearValue *ClearValues =
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
+    for(uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
+    {
+        Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
+        VkClearValue *ClearValue = &ClearValues[ColorTarget->Slot];
+        memcpy(ClearValue, &ColorTarget->Clear, sizeof(VkClearValue));
+        Attachments[ColorTarget->Slot] = (Rr_Attachment){
+            .LoadOp = ColorTarget->LoadOp,
+            .StoreOp = ColorTarget->StoreOp,
+        };
+        Rr_AllocatedImage *ColorImage =
+            Rr_GetGraphImage(Graph, Node->ColorImages[Index]);
+        ImageViews[ColorTarget->Slot] = ColorImage->View;
+
+        Viewport.Width = RR_MIN(
+            Viewport.Width,
+            (int32_t)ColorImage->Container->Extent.width);
+        Viewport.Height = RR_MIN(
+            Viewport.Height,
+            (int32_t)ColorImage->Container->Extent.height);
+    }
+    if(Node->DepthTarget != NULL)
+    {
+        size_t DepthIndex = AttachmentCount - 1;
+        Rr_DepthTarget *DepthTarget = Node->DepthTarget;
+        VkClearValue *ClearValue = &ClearValues[DepthIndex];
+        memcpy(ClearValue, &DepthTarget->Clear, sizeof(VkClearValue));
+        Attachments[DepthIndex] = (Rr_Attachment){
+            .LoadOp = DepthTarget->LoadOp,
+            .StoreOp = DepthTarget->StoreOp,
+            .Depth = true,
+        };
+        Rr_AllocatedImage *DepthImage =
+            Rr_GetGraphImage(Graph, Node->DepthImage);
+        ImageViews[DepthIndex] = DepthImage->View;
+
+        Viewport.Width = RR_MIN(
+            Viewport.Width,
+            (int32_t)DepthImage->Container->Extent.width);
+        Viewport.Height = RR_MIN(
+            Viewport.Height,
+            (int32_t)DepthImage->Container->Extent.height);
+    }
+
+    /* Begin render pass. */
+
+    Rr_RenderPassInfo RenderPassInfo = {
+        .AttachmentCount = AttachmentCount,
+        .Attachments = Attachments,
+    };
+    VkRenderPass RenderPass = Rr_GetRenderPass(Renderer, &RenderPassInfo);
+    VkFramebuffer Framebuffer = Rr_GetFramebufferViews(
+        Renderer,
+        RenderPass,
+        ImageViews,
+        AttachmentCount,
+        (VkExtent3D){
+            .width = Viewport.Width,
+            .height = Viewport.Height,
+            .depth = 1,
+        });
+    VkRenderPassBeginInfo RenderPassBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext = NULL,
+        .framebuffer = Framebuffer,
+        .renderArea =
+            (VkRect2D){
+                {
+                    Viewport.X,
+                    Viewport.Y,
+                },
+                {
+                    Viewport.Z,
+                    Viewport.W,
+                },
+            },
+        .renderPass = RenderPass,
+        .clearValueCount = AttachmentCount,
+        .pClearValues = ClearValues,
+    };
+    Device->CmdBeginRenderPass(
+        CommandBuffer,
+        &RenderPassBeginInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
+
+    /* Set dynamic states. */
+
+    Device->CmdSetViewport(
+        CommandBuffer,
+        0,
+        1,
+        &(VkViewport){
+            .x = (float)Viewport.X,
+            .y = (float)Viewport.Y,
+            .width = (float)Viewport.Width,
+            .height = (float)Viewport.Height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        });
+
+    Device->CmdSetScissor(
+        CommandBuffer,
+        0,
+        1,
+        &(VkRect2D){
+            .offset.x = Viewport.X,
+            .offset.y = Viewport.Y,
+            .extent.width = Viewport.Width,
+            .extent.height = Viewport.Height,
+        });
+
+    Rr_GraphicsPipeline *GraphicsPipeline = NULL;
+    Rr_DescriptorsState DescriptorsState = { 0 };
+
+    for(Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
+        Function != NULL;
+        Function = Function->Next)
+    {
+        switch(Function->Type)
+        {
+            case RR_NODE_FUNCTION_TYPE_DRAW:
+            {
+                Rr_ApplyDescriptorsState(
+                    &DescriptorsState,
+                    &Frame->DescriptorAllocator,
+                    GraphicsPipeline->Layout,
+                    Device,
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS);
+                Rr_DrawArgs *Args = (Rr_DrawArgs *)Function->Args;
+                Device->CmdDraw(
+                    CommandBuffer,
+                    Args->VertexCount,
+                    Args->InstanceCount,
+                    Args->FirstVertex,
+                    Args->FirstInstance);
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_DRAW_INDEXED:
+            {
+                Rr_ApplyDescriptorsState(
+                    &DescriptorsState,
+                    &Frame->DescriptorAllocator,
+                    GraphicsPipeline->Layout,
+                    Device,
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS);
+                Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
+                Device->CmdDrawIndexed(
+                    CommandBuffer,
+                    Args->IndexCount,
+                    Args->InstanceCount,
+                    Args->FirstIndex,
+                    Args->VertexOffset,
+                    Args->FirstInstance);
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
+            {
+                Rr_BindIndexBufferArgs *Args = Function->Args;
+                Device->CmdBindIndexBuffer(
+                    CommandBuffer,
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                    Args->Offset,
+                    Args->Type);
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
+            {
+                Rr_BindBufferArgs *Args = Function->Args;
+                Device->CmdBindVertexBuffers(
+                    CommandBuffer,
+                    Args->Slot,
+                    1,
+                    &Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                    &(VkDeviceSize){ Args->Offset });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
+            {
+                GraphicsPipeline = *(Rr_GraphicsPipeline **)Function->Args;
+                Device->CmdBindPipeline(
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    GraphicsPipeline->Handle);
+                Rr_InvalidateDescriptorState(
+                    &DescriptorsState,
+                    GraphicsPipeline->Layout);
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_SET_VIEWPORT:
+            {
+                Rr_Vec4 *Viewport = Function->Args;
+                Device->CmdSetViewport(
+                    CommandBuffer,
+                    0,
+                    1,
+                    &(VkViewport){
+                        .x = Viewport->X,
+                        .y = Viewport->Y,
+                        .width = Viewport->Width,
+                        .height = Viewport->Height,
+                        .minDepth = 0.0f,
+                        .maxDepth = 1.0f,
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_SET_SCISSOR:
+            {
+                Rr_IntVec4 *Scissor = Function->Args;
+                Device->CmdSetScissor(
+                    CommandBuffer,
+                    0,
+                    1,
+                    &(VkRect2D){
+                        .offset.x = Scissor->X,
+                        .offset.y = Scissor->Y,
+                        .extent.width = Scissor->Width,
+                        .extent.height = Scissor->Height,
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
+            {
+                Rr_BindSamplerArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
+                        .Sampler = Args->Sampler->Handle,
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
+            {
+                Rr_BindSampledImageArgs *Args = Function->Args;
+                VkImageView ImageView =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
+                        .Image =
+                            {
+                                .View = ImageView,
+                                .Layout = Args->Layout,
+                            },
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
+            {
+                Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
+                VkImageView ImageView =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .Image =
+                            {
+                                .View = ImageView,
+                                .Sampler = Args->Sampler->Handle,
+                                .Layout = Args->Layout,
+                            },
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
+            {
+                Rr_BindUniformBufferArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
+                        .Buffer =
+                            {
+                                .Handle = Rr_GetGraphBuffer(
+                                              Graph,
+                                              Args->BufferHandle)
+                                              ->Handle,
+                                .Size = Args->Size,
+                                .Offset = Args->Offset,
+                            },
+                    });
+            }
+            break;
+            case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
+            {
+                Rr_BindStorageBufferArgs *Args = Function->Args;
+                Rr_UpdateDescriptorsState(
+                    &DescriptorsState,
+                    Args->Set,
+                    Args->Binding,
+                    &(Rr_DescriptorSetBinding){
+                        .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER,
+                        .Buffer =
+                            {
+                                .Handle = Rr_GetGraphBuffer(
+                                              Graph,
+                                              Args->BufferHandle)
+                                              ->Handle,
+                                .Size = Args->Size,
+                                .Offset = Args->Offset,
+                            },
+                    });
+            }
+            break;
+            default:
+            {
+            }
+            break;
+        }
+    }
+
+    Device->CmdEndRenderPass(CommandBuffer);
+
+    Rr_DestroyScratch(Scratch);
+}
+
 Rr_GraphNode *Rr_AddGraphNode(
     Rr_Frame *Frame,
     Rr_GraphNodeType Type,
@@ -327,7 +1086,7 @@ static void Rr_ProcessGraphNodes(
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_ExecuteGraphNode(
+static void Rr_ExecuteGraphNode(
     Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_GraphNode *Node,
@@ -336,6 +1095,12 @@ void Rr_ExecuteGraphNode(
 {
     switch(Node->Type)
     {
+        case RR_GRAPH_NODE_TYPE_COMPUTE:
+        {
+            Rr_ComputeNode *ComputeNode = &Node->Union.Compute;
+            Rr_ExecuteComputeNode(Renderer, Graph, ComputeNode, CommandBuffer);
+        }
+        break;
         case RR_GRAPH_NODE_TYPE_GRAPHICS:
         {
             Rr_GraphicsNode *GraphicsNode = &Node->Union.Graphics;
@@ -848,197 +1613,6 @@ Rr_GraphNode *Rr_AddPresentNode(
     return GraphNode;
 }
 
-void Rr_ExecutePresentNode(
-    Rr_Renderer *Renderer,
-    Rr_PresentNode *Node,
-    VkCommandBuffer CommandBuffer)
-{
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_Device *Device = &Renderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    Rr_AllocatedImage *Image =
-        Rr_GetGraphImage(((Rr_GraphNode *)Node)->Graph, Node->ImageHandle);
-    Rr_Image *Container = Image->Container;
-
-    VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
-        &Frame->DescriptorAllocator,
-        Device,
-        Renderer->PresentLayout->SetLayouts[0]->Handle);
-
-    VkSampler Sampler = Node->Sampler->Handle;
-    Rr_DescriptorWriter *Writer =
-        Rr_CreateDescriptorWriter(0, 1, 0, Scratch.Arena);
-    Rr_WriteCombinedImageSamplerDescriptor(
-        Writer,
-        0,
-        0,
-        Image->View,
-        Sampler,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    Rr_UpdateDescriptorSet(Writer, Device, DescriptorSet);
-
-    VkImage SwapchainImage =
-        Rr_GetCurrentAllocatedImage(Renderer, &Frame->VirtualSwapchainImage)
-            ->Handle;
-
-    Device->CmdPipelineBarrier(
-        CommandBuffer,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        0,
-        0,
-        NULL,
-        0,
-        NULL,
-        1,
-        &(VkImageMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .image = SwapchainImage,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .srcAccessMask = 0,
-            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = VK_REMAINING_ARRAY_LAYERS,
-            },
-        });
-    VkClearValue ClearValue = { 0 };
-    memcpy(
-        &ClearValue.color.float32,
-        Node->ColorClear.Elements,
-        sizeof(Rr_Vec4));
-    VkRenderPassBeginInfo RenderPassBeginInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .pNext = NULL,
-        .framebuffer = Frame->SwapchainFramebuffer,
-        .renderArea = (VkRect2D){ { 0, 0 },
-                                  { Renderer->Swapchain.Extent.width,
-                                    Renderer->Swapchain.Extent.height } },
-        .renderPass = Renderer->PresentRenderPass,
-        .clearValueCount = 1,
-        .pClearValues = &ClearValue,
-    };
-    Device->CmdBeginRenderPass(
-        CommandBuffer,
-        &RenderPassBeginInfo,
-        VK_SUBPASS_CONTENTS_INLINE);
-
-    float X = 0;
-    float Y = 0;
-    float Width = 0;
-    float Height = 0;
-
-    float SwapchainWidth = Renderer->Swapchain.Extent.width;
-    float SwapchainHeight = Renderer->Swapchain.Extent.height;
-    float ImageWidth = Container->Extent.width;
-    float ImageHeight = Container->Extent.height;
-    float SwapchainRatio = SwapchainWidth / SwapchainHeight;
-    float ImageRatio = ImageWidth / ImageHeight;
-
-    switch(Node->Mode)
-    {
-        case RR_PRESENT_MODE_FIT:
-        {
-            if(SwapchainRatio > ImageRatio)
-            {
-                Width = (ImageWidth / ImageHeight) * SwapchainHeight;
-                Height = SwapchainHeight;
-            }
-            else
-            {
-                Width = SwapchainWidth;
-                Height = (ImageHeight / ImageWidth) * SwapchainWidth;
-            }
-            X = (SwapchainWidth / 2.0f) - (Width / 2.0f);
-            Y = (SwapchainHeight / 2.0f) - (Height / 2.0f);
-        }
-        break;
-        default:
-        {
-            Width = Renderer->Swapchain.Extent.width;
-            Height = Renderer->Swapchain.Extent.height;
-        }
-        break;
-    }
-
-    Device->CmdSetViewport(
-        CommandBuffer,
-        0,
-        1,
-        &(VkViewport){
-            .x = X,
-            .y = Y,
-            .width = Width,
-            .height = Height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-        });
-
-    Device->CmdSetScissor(
-        CommandBuffer,
-        0,
-        1,
-        &(VkRect2D){
-            .offset.x = X,
-            .offset.y = Y,
-            .extent.width = Width,
-            .extent.height = Height,
-        });
-
-    Device->CmdBindPipeline(
-        CommandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        Renderer->PresentPipeline->Handle);
-
-    Device->CmdBindDescriptorSets(
-        CommandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        Renderer->PresentPipeline->Layout->Handle,
-        0,
-        1,
-        &DescriptorSet,
-        0,
-        NULL);
-
-    Device->CmdDraw(CommandBuffer, 3, 1, 0, 0);
-
-    Device->CmdEndRenderPass(CommandBuffer);
-
-    Device->CmdPipelineBarrier(
-        CommandBuffer,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-        0,
-        0,
-        NULL,
-        0,
-        NULL,
-        1,
-        &(VkImageMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .image = SwapchainImage,
-            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            .dstAccessMask = 0,
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = VK_REMAINING_ARRAY_LAYERS,
-            },
-        });
-
-    Rr_DestroyScratch(Scratch);
-}
-
 Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name)
 {
     Rr_Renderer *Renderer = App->Renderer;
@@ -1094,30 +1668,6 @@ void Rr_TransferBufferData(
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         });
-}
-
-void Rr_ExecuteTransferNode(
-    Rr_Renderer *Renderer,
-    Rr_Graph *Graph,
-    Rr_TransferNode *Node,
-    VkCommandBuffer CommandBuffer)
-{
-    Rr_Device *Device = &Renderer->Device;
-
-    for(size_t Index = 0; Index < Node->Transfers.Count; ++Index)
-    {
-        Rr_Transfer *Transfer = Node->Transfers.Data + Index;
-
-        VkBuffer SrcBuffer =
-            Rr_GetGraphBuffer(Graph, Transfer->SrcBuffer)->Handle;
-        VkBuffer DstBuffer =
-            Rr_GetGraphBuffer(Graph, Transfer->DstBuffer)->Handle;
-
-        VkBufferCopy Copy = { .size = Transfer->Size,
-                              .srcOffset = Transfer->SrcOffset,
-                              .dstOffset = Transfer->DstOffset };
-        Device->CmdCopyBuffer(CommandBuffer, SrcBuffer, DstBuffer, 1, &Copy);
-    }
 }
 
 Rr_GraphNode *Rr_AddBlitNode(
@@ -1188,42 +1738,21 @@ Rr_GraphNode *Rr_AddBlitNode(
     return GraphNode;
 }
 
-static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
+Rr_GraphNode *Rr_AddComputeNode(Rr_App *App, const char *Name)
 {
-    Rect->X = RR_CLAMP(0, Rect->X, (int)Extent->width);
-    Rect->Y = RR_CLAMP(0, Rect->Y, (int)Extent->height);
-    Rect->Width = RR_CLAMP(0, Rect->Width, (int)Extent->width - Rect->X);
-    Rect->Height = RR_CLAMP(0, Rect->Height, (int)Extent->height - Rect->Y);
-
-    return Rect->Width > 0 && Rect->Height > 0;
-}
-
-void Rr_ExecuteBlitNode(
-    Rr_Renderer *Renderer,
-    Rr_Graph *Graph,
-    Rr_BlitNode *Node,
-    VkCommandBuffer CommandBuffer)
-{
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Renderer *Renderer = App->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_AllocatedImage *SrcImage =
-        Rr_GetGraphImage(&Frame->Graph, Node->SrcImageHandle);
-    Rr_AllocatedImage *DstImage =
-        Rr_GetGraphImage(&Frame->Graph, Node->DstImageHandle);
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_COMPUTE, Name);
 
-    if(Rr_ClampBlitRect(&Node->SrcRect, &SrcImage->Container->Extent) &&
-       Rr_ClampBlitRect(&Node->DstRect, &DstImage->Container->Extent))
-    {
-        Rr_BlitColorImage(
-            Device,
-            CommandBuffer,
-            SrcImage->Handle,
-            DstImage->Handle,
-            Node->SrcRect,
-            Node->DstRect,
-            Node->AspectMask);
-    }
+    Rr_ComputeNode *ComputeNode = &GraphNode->Union.Compute;
+
+    ComputeNode->Encoded.Encoded =
+        RR_ALLOC(Frame->Arena, sizeof(Rr_NodeFunction));
+    ComputeNode->Encoded.EncodedFirst = ComputeNode->Encoded.Encoded;
+
+    return GraphNode;
 }
 
 Rr_GraphNode *Rr_AddGraphicsNode(
@@ -1305,375 +1834,53 @@ Rr_GraphNode *Rr_AddGraphicsNode(
             });
     }
 
-    GraphicsNode->Encoded =
-        RR_ALLOC(Frame->Arena, sizeof(Rr_GraphicsNodeFunction));
-    GraphicsNode->EncodedFirst = GraphicsNode->Encoded;
+    GraphicsNode->Encoded.Encoded =
+        RR_ALLOC(Frame->Arena, sizeof(Rr_NodeFunction));
+    GraphicsNode->Encoded.EncodedFirst = GraphicsNode->Encoded.Encoded;
 
     return GraphNode;
 }
 
-void Rr_ExecuteGraphicsNode(
-    Rr_Renderer *Renderer,
-    Rr_Graph *Graph,
-    Rr_GraphicsNode *Node,
-    VkCommandBuffer CommandBuffer)
+#define RR_NODE_ENCODE(FunctionType, ArgsType)                         \
+    Rr_Arena *Arena = Node->Graph->Arena;                              \
+    Rr_Encoded *Encoded = (Rr_Encoded *)&Node->Union;                  \
+    Encoded->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_NodeFunction)); \
+    Encoded->Encoded = Encoded->Encoded->Next;                         \
+    Encoded->Encoded->Type = FunctionType;                             \
+    Encoded->Encoded->Args = RR_ALLOC(Arena, sizeof(ArgsType));        \
+    *(ArgsType *)Encoded->Encoded->Args
+
+void Rr_BindComputePipeline(
+    Rr_GraphNode *Node,
+    Rr_ComputePipeline *ComputePipeline)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+    assert(ComputePipeline != NULL);
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE);
 
-    Rr_Device *Device = &Renderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    Rr_IntVec4 Viewport = { 0 };
-    Viewport.Width = INT32_MAX;
-    Viewport.Height = INT32_MAX;
-
-    /* Line up appropriate clear values. */
-
-    uint32_t AttachmentCount =
-        Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
-
-    Rr_Attachment *Attachments =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
-    VkImageView *ImageViews =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
-    VkClearValue *ClearValues =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
-    for(uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
-    {
-        Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
-        VkClearValue *ClearValue = &ClearValues[ColorTarget->Slot];
-        memcpy(ClearValue, &ColorTarget->Clear, sizeof(VkClearValue));
-        Attachments[ColorTarget->Slot] = (Rr_Attachment){
-            .LoadOp = ColorTarget->LoadOp,
-            .StoreOp = ColorTarget->StoreOp,
-        };
-        Rr_AllocatedImage *ColorImage =
-            Rr_GetGraphImage(Graph, Node->ColorImages[Index]);
-        ImageViews[ColorTarget->Slot] = ColorImage->View;
-
-        Viewport.Width = RR_MIN(
-            Viewport.Width,
-            (int32_t)ColorImage->Container->Extent.width);
-        Viewport.Height = RR_MIN(
-            Viewport.Height,
-            (int32_t)ColorImage->Container->Extent.height);
-    }
-    if(Node->DepthTarget != NULL)
-    {
-        size_t DepthIndex = AttachmentCount - 1;
-        Rr_DepthTarget *DepthTarget = Node->DepthTarget;
-        VkClearValue *ClearValue = &ClearValues[DepthIndex];
-        memcpy(ClearValue, &DepthTarget->Clear, sizeof(VkClearValue));
-        Attachments[DepthIndex] = (Rr_Attachment){
-            .LoadOp = DepthTarget->LoadOp,
-            .StoreOp = DepthTarget->StoreOp,
-            .Depth = true,
-        };
-        Rr_AllocatedImage *DepthImage =
-            Rr_GetGraphImage(Graph, Node->DepthImage);
-        ImageViews[DepthIndex] = DepthImage->View;
-
-        Viewport.Width = RR_MIN(
-            Viewport.Width,
-            (int32_t)DepthImage->Container->Extent.width);
-        Viewport.Height = RR_MIN(
-            Viewport.Height,
-            (int32_t)DepthImage->Container->Extent.height);
-    }
-
-    /* Begin render pass. */
-
-    Rr_RenderPassInfo RenderPassInfo = {
-        .AttachmentCount = AttachmentCount,
-        .Attachments = Attachments,
-    };
-    VkRenderPass RenderPass = Rr_GetRenderPass(Renderer, &RenderPassInfo);
-    VkFramebuffer Framebuffer = Rr_GetFramebufferViews(
-        Renderer,
-        RenderPass,
-        ImageViews,
-        AttachmentCount,
-        (VkExtent3D){
-            .width = Viewport.Width,
-            .height = Viewport.Height,
-            .depth = 1,
-        });
-    VkRenderPassBeginInfo RenderPassBeginInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .pNext = NULL,
-        .framebuffer = Framebuffer,
-        .renderArea =
-            (VkRect2D){
-                {
-                    Viewport.X,
-                    Viewport.Y,
-                },
-                {
-                    Viewport.Z,
-                    Viewport.W,
-                },
-            },
-        .renderPass = RenderPass,
-        .clearValueCount = AttachmentCount,
-        .pClearValues = ClearValues,
-    };
-    Device->CmdBeginRenderPass(
-        CommandBuffer,
-        &RenderPassBeginInfo,
-        VK_SUBPASS_CONTENTS_INLINE);
-
-    /* Set dynamic states. */
-
-    Device->CmdSetViewport(
-        CommandBuffer,
-        0,
-        1,
-        &(VkViewport){
-            .x = (float)Viewport.X,
-            .y = (float)Viewport.Y,
-            .width = (float)Viewport.Width,
-            .height = (float)Viewport.Height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-        });
-
-    Device->CmdSetScissor(
-        CommandBuffer,
-        0,
-        1,
-        &(VkRect2D){
-            .offset.x = Viewport.X,
-            .offset.y = Viewport.Y,
-            .extent.width = Viewport.Width,
-            .extent.height = Viewport.Height,
-        });
-
-    Rr_GraphicsPipeline *GraphicsPipeline = NULL;
-    Rr_DescriptorsState DescriptorsState = { 0 };
-
-    for(Rr_GraphicsNodeFunction *Function = Node->EncodedFirst;
-        Function != NULL;
-        Function = Function->Next)
-    {
-        switch(Function->Type)
-        {
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW:
-            {
-                Rr_ApplyDescriptorsState(
-                    &DescriptorsState,
-                    &Frame->DescriptorAllocator,
-                    GraphicsPipeline->Layout,
-                    Device,
-                    CommandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS);
-                Rr_DrawArgs *Args = (Rr_DrawArgs *)Function->Args;
-                Device->CmdDraw(
-                    CommandBuffer,
-                    Args->VertexCount,
-                    Args->InstanceCount,
-                    Args->FirstVertex,
-                    Args->FirstInstance);
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED:
-            {
-                Rr_ApplyDescriptorsState(
-                    &DescriptorsState,
-                    &Frame->DescriptorAllocator,
-                    GraphicsPipeline->Layout,
-                    Device,
-                    CommandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS);
-                Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
-                Device->CmdDrawIndexed(
-                    CommandBuffer,
-                    Args->IndexCount,
-                    Args->InstanceCount,
-                    Args->FirstIndex,
-                    Args->VertexOffset,
-                    Args->FirstInstance);
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
-            {
-                Rr_BindIndexBufferArgs *Args = Function->Args;
-                Device->CmdBindIndexBuffer(
-                    CommandBuffer,
-                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
-                    Args->Offset,
-                    Args->Type);
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER:
-            {
-                Rr_BindBufferArgs *Args = Function->Args;
-                Device->CmdBindVertexBuffers(
-                    CommandBuffer,
-                    Args->Slot,
-                    1,
-                    &Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
-                    &(VkDeviceSize){ Args->Offset });
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
-            {
-                GraphicsPipeline = *(Rr_GraphicsPipeline **)Function->Args;
-                Device->CmdBindPipeline(
-                    CommandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    GraphicsPipeline->Handle);
-                Rr_InvalidateDescriptorState(
-                    &DescriptorsState,
-                    GraphicsPipeline->Layout);
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT:
-            {
-                Rr_Vec4 *Viewport = Function->Args;
-                Device->CmdSetViewport(
-                    CommandBuffer,
-                    0,
-                    1,
-                    &(VkViewport){
-                        .x = Viewport->X,
-                        .y = Viewport->Y,
-                        .width = Viewport->Width,
-                        .height = Viewport->Height,
-                        .minDepth = 0.0f,
-                        .maxDepth = 1.0f,
-                    });
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR:
-            {
-                Rr_IntVec4 *Scissor = Function->Args;
-                Device->CmdSetScissor(
-                    CommandBuffer,
-                    0,
-                    1,
-                    &(VkRect2D){
-                        .offset.x = Scissor->X,
-                        .offset.y = Scissor->Y,
-                        .extent.width = Scissor->Width,
-                        .extent.height = Scissor->Height,
-                    });
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLER:
-            {
-                Rr_BindSamplerArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
-                        .Sampler = Args->Sampler->Handle,
-                    });
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
-            {
-                Rr_BindSampledImageArgs *Args = Function->Args;
-                VkImageView ImageView =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
-                Rr_UpdateDescriptorsState(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
-                        .Image =
-                            {
-                                .View = ImageView,
-                                .Layout = Args->Layout,
-                            },
-                    });
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
-            {
-                Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
-                VkImageView ImageView =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
-                Rr_UpdateDescriptorsState(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .Image =
-                            {
-                                .View = ImageView,
-                                .Sampler = Args->Sampler->Handle,
-                                .Layout = Args->Layout,
-                            },
-                    });
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
-            {
-                Rr_BindUniformBufferArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
-                        .Buffer =
-                            {
-                                .Handle = Rr_GetGraphBuffer(
-                                              Graph,
-                                              Args->BufferHandle)
-                                              ->Handle,
-                                .Size = Args->Size,
-                                .Offset = Args->Offset,
-                            },
-                    });
-            }
-            break;
-            case RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
-            {
-                Rr_BindStorageBufferArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER,
-                        .Buffer =
-                            {
-                                .Handle = Rr_GetGraphBuffer(
-                                              Graph,
-                                              Args->BufferHandle)
-                                              ->Handle,
-                                .Size = Args->Size,
-                                .Offset = Args->Offset,
-                            },
-                    });
-            }
-            break;
-            default:
-            {
-            }
-            break;
-        }
-    }
-
-    Device->CmdEndRenderPass(CommandBuffer);
-
-    Rr_DestroyScratch(Scratch);
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
+        Rr_ComputePipeline *) = ComputePipeline;
 }
 
-#define RR_GRAPHICS_NODE_ENCODE(FunctionType, ArgsType)                       \
-    Rr_Arena *Arena = Node->Graph->Arena;                                     \
-    Rr_GraphicsNode *GraphicsNode = (Rr_GraphicsNode *)&Node->Union.Graphics; \
-    GraphicsNode->Encoded->Next =                                             \
-        RR_ALLOC(Arena, sizeof(Rr_GraphicsNodeFunction));                     \
-    GraphicsNode->Encoded = GraphicsNode->Encoded->Next;                      \
-    GraphicsNode->Encoded->Type = FunctionType;                               \
-    GraphicsNode->Encoded->Args = RR_ALLOC(Arena, sizeof(ArgsType));          \
-    *(ArgsType *)GraphicsNode->Encoded->Args
+void Rr_Dispatch(
+    Rr_GraphNode *Node,
+    uint32_t GroupCountX,
+    uint32_t GroupCountY,
+    uint32_t GroupCountZ)
+{
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE);
+    assert(GroupCountX >= 1);
+    assert(GroupCountY >= 1);
+    assert(GroupCountZ >= 1);
+
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DISPATCH, Rr_DispatchArgs) =
+        (Rr_DispatchArgs){
+
+            .GroupCountX = GroupCountX,
+            .GroupCountY = GroupCountY,
+            .GroupCountZ = GroupCountZ,
+        };
+}
 
 void Rr_Draw(
     Rr_GraphNode *Node,
@@ -1682,13 +1889,14 @@ void Rr_Draw(
     uint32_t FirstVertex,
     uint32_t FirstInstance)
 {
-    RR_GRAPHICS_NODE_ENCODE(RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW, Rr_DrawArgs) =
-        (Rr_DrawArgs){
-            .VertexCount = VertexCount,
-            .InstanceCount = InstanceCount,
-            .FirstVertex = FirstVertex,
-            .FirstInstance = FirstInstance,
-        };
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW, Rr_DrawArgs) = (Rr_DrawArgs){
+        .VertexCount = VertexCount,
+        .InstanceCount = InstanceCount,
+        .FirstVertex = FirstVertex,
+        .FirstInstance = FirstInstance,
+    };
 }
 
 void Rr_DrawIndexed(
@@ -1699,15 +1907,16 @@ void Rr_DrawIndexed(
     int32_t VertexOffset,
     uint32_t FirstInstance)
 {
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_DRAW_INDEXED,
-        Rr_DrawIndexedArgs) = (Rr_DrawIndexedArgs){
-        .IndexCount = IndexCount,
-        .InstanceCount = InstanceCount,
-        .FirstIndex = FirstIndex,
-        .VertexOffset = VertexOffset,
-        .FirstInstance = FirstInstance,
-    };
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW_INDEXED, Rr_DrawIndexedArgs) =
+        (Rr_DrawIndexedArgs){
+            .IndexCount = IndexCount,
+            .InstanceCount = InstanceCount,
+            .FirstIndex = FirstIndex,
+            .VertexOffset = VertexOffset,
+            .FirstInstance = FirstInstance,
+        };
 }
 
 void Rr_BindVertexBuffer(
@@ -1716,10 +1925,12 @@ void Rr_BindVertexBuffer(
     uint32_t Slot,
     uint32_t Offset)
 {
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);
 
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
         Rr_BindIndexBufferArgs) = (Rr_BindIndexBufferArgs){
         .BufferHandle = *BufferHandle,
         .Slot = Slot,
@@ -1742,10 +1953,12 @@ void Rr_BindIndexBuffer(
     uint32_t Offset,
     Rr_IndexType Type)
 {
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);
 
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
         Rr_BindIndexBufferArgs) = (Rr_BindIndexBufferArgs){
         .BufferHandle = *BufferHandle,
         .Slot = Slot,
@@ -1766,23 +1979,25 @@ void Rr_BindGraphicsPipeline(
     Rr_GraphNode *Node,
     Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
         Rr_GraphicsPipeline *) = GraphicsPipeline;
 }
 
 void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect)
 {
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_VIEWPORT,
-        Rr_Vec4) = Rect;
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_VIEWPORT, Rr_Vec4) = Rect;
 }
 
 void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect)
 {
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_SET_SCISSOR,
-        Rr_IntVec4) = Rect;
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_SCISSOR, Rr_IntVec4) = Rect;
 }
 
 void Rr_BindSampler(
@@ -1795,13 +2010,12 @@ void Rr_BindSampler(
     assert(Binding < RR_MAX_BINDINGS);
     assert(Sampler != NULL);
 
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLER,
-        Rr_BindSamplerArgs) = (Rr_BindSamplerArgs){
-        .Sampler = Sampler,
-        .Set = Set,
-        .Binding = Binding,
-    };
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_BIND_SAMPLER, Rr_BindSamplerArgs) =
+        (Rr_BindSamplerArgs){
+            .Sampler = Sampler,
+            .Set = Set,
+            .Binding = Binding,
+        };
 }
 
 void Rr_BindSampledImage(
@@ -1818,8 +2032,8 @@ void Rr_BindSampledImage(
 
     VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
         Rr_BindSampledImageArgs) = (Rr_BindSampledImageArgs){
         .ImageHandle = *ImageHandle,
         .Layout = Layout,
@@ -1856,8 +2070,8 @@ void Rr_BindCombinedImageSampler(
 
     VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
         Rr_BindCombinedImageSamplerArgs) = (Rr_BindCombinedImageSamplerArgs){
         .ImageHandle = *ImageHandle,
         .Layout = Layout,
@@ -1879,7 +2093,7 @@ void Rr_BindCombinedImageSampler(
         });
 }
 
-void Rr_BindGraphicsUniformBuffer(
+void Rr_BindUniformBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
     uint32_t Set,
@@ -1893,8 +2107,8 @@ void Rr_BindGraphicsUniformBuffer(
 
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);
 
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
         Rr_BindUniformBufferArgs) = (Rr_BindUniformBufferArgs){
         .BufferHandle = *BufferHandle,
         .Set = Set,
@@ -1905,17 +2119,32 @@ void Rr_BindGraphicsUniformBuffer(
 
     /* @TODO: Proper stage can be infered from pipeline layout. */
 
-    Rr_AddNodeDependency(
-        Node,
-        BufferHandle,
-        &(Rr_SyncState){
-            .AccessMask = VK_ACCESS_UNIFORM_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        });
+    if(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
+    {
+
+        Rr_AddNodeDependency(
+            Node,
+            BufferHandle,
+            &(Rr_SyncState){
+                .AccessMask = VK_ACCESS_UNIFORM_READ_BIT,
+                .StageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            });
+    }
+    else
+    {
+
+        Rr_AddNodeDependency(
+            Node,
+            BufferHandle,
+            &(Rr_SyncState){
+                .AccessMask = VK_ACCESS_UNIFORM_READ_BIT,
+                .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            });
+    }
 }
 
-void Rr_BindGraphicsStorageBuffer(
+void Rr_BindStorageBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
     uint32_t Set,
@@ -1929,8 +2158,8 @@ void Rr_BindGraphicsStorageBuffer(
 
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);
 
-    RR_GRAPHICS_NODE_ENCODE(
-        RR_GRAPHICS_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
         Rr_BindStorageBufferArgs) = (Rr_BindStorageBufferArgs){
         .BufferHandle = *BufferHandle,
         .Set = Set,
@@ -1939,12 +2168,28 @@ void Rr_BindGraphicsStorageBuffer(
         .Size = Size,
     };
 
-    Rr_AddNodeDependency(
-        Node,
-        BufferHandle,
-        &(Rr_SyncState){
-            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        });
+    /* @TODO: Proper read/write stuff. */
+
+    if(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
+    {
+        Rr_AddNodeDependency(
+            Node,
+            BufferHandle,
+            &(Rr_SyncState){
+                .AccessMask =
+                    VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                .StageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            });
+    }
+    else
+    {
+        Rr_AddNodeDependency(
+            Node,
+            BufferHandle,
+            &(Rr_SyncState){
+                .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            });
+    }
 }

@@ -303,7 +303,7 @@ struct SCreepManager
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetSwapchainFormat(Renderer);
 
-        Rr_PipelineInfo PipelineInfo = {};
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderSPV = Rr_LoadAsset(DEMO_ASSET_CREEP_VERT_SPV);
         PipelineInfo.FragmentShaderSPV =
@@ -475,7 +475,7 @@ struct SCreepManager
         /* Draw creeps. */
 
         Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-        Rr_BindGraphicsStorageBuffer(Node, StorageBuffer, 1, 0, 0, StorageSize);
+        Rr_BindStorageBuffer(Node, StorageBuffer, 1, 0, 0, StorageSize);
 
         Rr_BindVertexBuffer(
             Node,
@@ -590,7 +590,7 @@ static void Init(Rr_App *App, void *UserData)
     Rr_ColorTargetInfo ColorTargets[1] = {};
     ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
 
-    Rr_PipelineInfo PipelineInfo = {};
+    Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
     PipelineInfo.Layout = PipelineLayout;
     PipelineInfo.VertexShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_VERT_SPV);
     PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(DEMO_ASSET_TEST_FRAG_SPV);
@@ -741,7 +741,7 @@ static void Render(
     if(Loaded)
     {
         Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-        Rr_BindGraphicsUniformBuffer(
+        Rr_BindUniformBuffer(
             OffscreenNode,
             UniformBuffer,
             0,
