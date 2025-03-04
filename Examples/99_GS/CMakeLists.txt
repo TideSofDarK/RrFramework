@@ -10,7 +10,7 @@ project(99_GS LANGUAGES CXX)
 # Add executable target
 #
 
-add_executable(${PROJECT_NAME} GS.cxx)
+add_executable(${PROJECT_NAME} Main.cxx)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 

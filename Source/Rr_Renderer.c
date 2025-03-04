@@ -1,12 +1,9 @@
 #include "Rr_Renderer.h"
 
-#include "Rr/Rr_Pipeline.h"
 #include "Rr_App.h"
-#include "Rr_Buffer.h"
 #include "Rr_BuiltinAssets.inc"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
-#include "Rr_UI.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
@@ -452,9 +449,8 @@ static void Rr_InitFrames(Rr_Renderer *Renderer)
     }
 }
 
-static void Rr_CleanupFrames(Rr_App *App)
+static void Rr_CleanupFrames(Rr_Renderer *Renderer)
 {
-    Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
@@ -561,9 +557,8 @@ static void Rr_InitImmediateMode(Rr_Renderer *Renderer)
         &ImmediateMode->Fence);
 }
 
-static void Rr_CleanupImmediateMode(Rr_App *App)
+static void Rr_CleanupImmediateMode(Rr_Renderer *Renderer)
 {
-    Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
     Device->DestroyCommandPool(
@@ -733,13 +728,13 @@ void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer)
             NULL);
     }
 
-    Rr_CleanupFrames(App);
+    Rr_CleanupFrames(Renderer);
 
     // Rr_DestroyImage(App, Renderer->NullTextures.White);
     // Rr_DestroyImage(App, Renderer->NullTextures.Normal);
 
     Rr_CleanupTransientCommandPools(Renderer);
-    Rr_CleanupImmediateMode(App);
+    Rr_CleanupImmediateMode(Renderer);
 
     Rr_CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
     Rr_DestroyGraphicsPipeline(Renderer, Renderer->PresentPipeline);

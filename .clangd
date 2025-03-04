@@ -1,4 +1,6 @@
 Diagnostics:
+  # MissingIncludes: Strict
+  # UnusedIncludes: None
   Includes:
     IgnoreHeader:
       - Include/Rr/Rr\.h

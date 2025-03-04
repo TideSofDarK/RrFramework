@@ -2,7 +2,6 @@
 
 #include <Rr/Rr_Image.h>
 
-#include "Rr_Memory.h"
 #include "Rr_UploadContext.h"
 
 #include <Rr/Rr_App.h>

@@ -1,6 +1,5 @@
 #include "Rr_GLTF.h"
 
-#include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
@@ -11,6 +10,7 @@
 #include <cgltf/cgltf.h>
 
 #include <assert.h>
+#include <string.h>
 
 static inline Rr_IndexType Rr_CGLTFComponentTypeToIndexType(
     cgltf_component_type Type)

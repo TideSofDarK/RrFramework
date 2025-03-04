@@ -1,6 +1,5 @@
 #include "Rr_Graph.h"
 
-#include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Image.h"

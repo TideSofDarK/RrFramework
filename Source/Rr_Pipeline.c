@@ -1,7 +1,6 @@
 #include "Rr_Pipeline.h"
 
-#include "Rr_App.h"
-#include "Rr_Log.h"
+#include "Rr_Renderer.h"
 
 #include <assert.h>
 

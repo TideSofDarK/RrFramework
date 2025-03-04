@@ -1,8 +1,7 @@
 #include "Rr_Image.h"
 
-#include "Rr_App.h"
 #include "Rr_Buffer.h"
-#include "Rr_Log.h"
+#include "Rr_Renderer.h"
 #include "Rr_UploadContext.h"
 
 #include <stb/stb_image.h>

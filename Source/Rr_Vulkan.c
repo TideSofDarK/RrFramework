@@ -1,7 +1,6 @@
 #include "Rr_Vulkan.h"
 
 #include "Rr_Log.h"
-#include "Rr_Memory.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>

@@ -1,7 +1,6 @@
 #include "Rr_Descriptor.h"
 
 #include "Rr_Log.h"
-#include "Rr_Memory.h"
 #include "Rr_Pipeline.h"
 
 #include <string.h>
