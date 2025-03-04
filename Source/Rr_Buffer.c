@@ -59,15 +59,21 @@ Rr_Buffer *Rr_CreateBuffer(
     }
     if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_READBACK_BIT))
     {
-        AllocationInfo.preferredFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        AllocationInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
         AllocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     }
 
     if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_BIT))
     {
         AllocationInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        AllocationInfo.flags |=
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        if(RR_HAS_BIT(
+               AllocationInfo.flags,
+               VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT) == false)
+        {
+
+            AllocationInfo.flags |=
+                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        }
     }
     else if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT))
     {

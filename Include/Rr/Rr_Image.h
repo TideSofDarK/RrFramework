@@ -6,6 +6,13 @@
 extern "C" {
 #endif
 
+typedef enum
+{
+    RR_IMAGE_ASPECT_COLOR = (1 << 0),
+    RR_IMAGE_ASPECT_DEPTH = (1 << 1),
+    RR_IMAGE_ASPECT_STENCIL = (1 << 2),
+} Rr_ImageAspect;
+
 typedef struct Rr_Sampler Rr_Sampler;
 
 typedef enum

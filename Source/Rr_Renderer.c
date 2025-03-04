@@ -33,6 +33,10 @@ static void Rr_CleanupSwapchain(Rr_Renderer *Renderer, VkSwapchainKHR Swapchain)
             Renderer->Device.Handle,
             Renderer->Swapchain.Images.Data[Index].View,
             NULL);
+
+        Rr_ReturnSynchronizationState(
+            Renderer,
+            (Rr_MapKey)Renderer->Swapchain.Images.Data[Index].Handle);
     }
 
     if(Swapchain != VK_NULL_HANDLE)
@@ -275,9 +279,10 @@ static bool Rr_InitSwapchain(
         Renderer->PresentPipeline =
             Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
-        Rr_Attachment Attachment = {
+        Rr_RenderPassAttachment Attachment = {
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
+            .Format = Renderer->Swapchain.Format,
         };
         Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = 1,
                                              .Attachments = &Attachment };
@@ -337,6 +342,10 @@ static bool Rr_InitSwapchain(
             &FramebufferCreateInfo,
             NULL,
             &Image->Framebuffer);
+
+        Rr_SyncState *SyncState =
+            Rr_GetSynchronizationState(Renderer, (Rr_MapKey)Image->Handle);
+        SyncState->StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     }
 
     Rr_DestroyScratch(Scratch);
@@ -391,11 +400,11 @@ static void Rr_InitFrames(Rr_Renderer *Renderer)
         Device->AllocateCommandBuffers(
             Device->Handle,
             &CommandBufferAllocateInfo,
-            &Frame->MainCommandBuffer);
+            &Frame->EarlyCommandBuffer);
         Device->AllocateCommandBuffers(
             Device->Handle,
             &CommandBufferAllocateInfo,
-            &Frame->PresentCommandBuffer);
+            &Frame->LateCommandBuffer);
 
         /* Synchronization */
 
@@ -413,12 +422,12 @@ static void Rr_InitFrames(Rr_Renderer *Renderer)
             Device->Handle,
             &SemaphoreCreateInfo,
             NULL,
-            &Frame->MainSemaphore);
+            &Frame->EarlySemaphore);
         Device->CreateSemaphore(
             Device->Handle,
             &SemaphoreCreateInfo,
             NULL,
-            &Frame->PresentSemaphore);
+            &Frame->LateSemaphore);
 
         /* Descriptor Allocator */
 
@@ -455,8 +464,8 @@ static void Rr_CleanupFrames(Rr_App *App)
         Device->DestroyCommandPool(Device->Handle, Frame->CommandPool, NULL);
 
         Device->DestroyFence(Device->Handle, Frame->RenderFence, NULL);
-        Device->DestroySemaphore(Device->Handle, Frame->MainSemaphore, NULL);
-        Device->DestroySemaphore(Device->Handle, Frame->PresentSemaphore, NULL);
+        Device->DestroySemaphore(Device->Handle, Frame->EarlySemaphore, NULL);
+        Device->DestroySemaphore(Device->Handle, Frame->LateSemaphore, NULL);
         Device->DestroySemaphore(
             Device->Handle,
             Frame->SwapchainSemaphore,
@@ -836,12 +845,19 @@ void Rr_PrepareFrame(Rr_App *App)
 
     /* Make sure virtual swapchain image has latest extent and format values. */
 
-    Frame->VirtualSwapchainImage.AllocatedImageCount = 1;
-    Frame->VirtualSwapchainImage.Extent = Renderer->Swapchain.Extent;
-    Frame->VirtualSwapchainImage.Format = Renderer->Swapchain.Format;
+    Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image);
+    *Frame->VirtualSwapchainImage = (Rr_Image){
+        .AllocatedImageCount = 1,
+        .Extent = Renderer->Swapchain.Extent,
+        .Format = Renderer->Swapchain.Format,
+        .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
+    };
 
-    RR_ZERO(Frame->Graph);
-    Frame->Graph.Arena = Frame->Arena;
+    Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
+    Frame->Graph->Arena = Frame->Arena;
+    Frame->Graph->SwapchainImageResourceIndex =
+        Rr_GetGraphImageHandle(Frame->Graph, Frame->VirtualSwapchainImage)
+            ->Values.Index;
 
     Rr_ProcessPendingLoads(App);
 }
@@ -893,10 +909,10 @@ void Rr_DrawFrame(Rr_App *App)
      * put real handles to virtual swapchain image which
      * will be used by the graph. */
 
-    Frame->VirtualSwapchainImage.AllocatedImages[0] = (Rr_AllocatedImage){
+    Frame->VirtualSwapchainImage->AllocatedImages[0] = (Rr_AllocatedImage){
         .View = Renderer->Swapchain.Images.Data[SwapchainImageIndex].View,
         .Handle = SwapchainImage,
-        .Container = &Frame->VirtualSwapchainImage,
+        .Container = Frame->VirtualSwapchainImage,
     };
     Frame->SwapchainFramebuffer =
         Renderer->Swapchain.Images.Data[SwapchainImageIndex].Framebuffer;
@@ -911,16 +927,51 @@ void Rr_DrawFrame(Rr_App *App)
     /* Execute Frame Graph */
 
     Device->BeginCommandBuffer(
-        Frame->MainCommandBuffer,
+        Frame->EarlyCommandBuffer,
         &CommandBufferBeginInfo);
     Device->BeginCommandBuffer(
-        Frame->PresentCommandBuffer,
+        Frame->LateCommandBuffer,
         &CommandBufferBeginInfo);
 
-    Rr_ExecuteGraph(Renderer, &Frame->Graph, Scratch.Arena);
+    Rr_ExecuteGraph(Renderer, Frame->Graph, Scratch.Arena);
 
-    Device->EndCommandBuffer(Frame->MainCommandBuffer);
-    Device->EndCommandBuffer(Frame->PresentCommandBuffer);
+    Device->EndCommandBuffer(Frame->EarlyCommandBuffer);
+
+    /* Always transition swapchain image to present layout. */
+
+    Rr_SyncState *SyncState =
+        Rr_GetSynchronizationState(Renderer, (Rr_MapKey)SwapchainImage);
+    Device->CmdPipelineBarrier(
+        Frame->LateCommandBuffer,
+        SyncState->StageMask,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &(VkImageMemoryBarrier){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .image = SwapchainImage,
+            .oldLayout = SyncState->Specific.Layout,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcAccessMask = SyncState->AccessMask,
+            .dstAccessMask = 0,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        });
+    SyncState->AccessMask = 0;
+    SyncState->StageMask =
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; /* Doesn't seems right. */
+    SyncState->Specific.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    Device->EndCommandBuffer(Frame->LateCommandBuffer);
 
     /* Submit frame command buffer and queue present. */
 
@@ -928,9 +979,9 @@ void Rr_DrawFrame(Rr_App *App)
         {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .commandBufferCount = 1,
-            .pCommandBuffers = &Frame->MainCommandBuffer,
+            .pCommandBuffers = &Frame->EarlyCommandBuffer,
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &Frame->MainSemaphore,
+            .pSignalSemaphores = &Frame->EarlySemaphore,
             .waitSemaphoreCount = 0,
             .pWaitSemaphores = NULL,
             .pWaitDstStageMask = NULL,
@@ -938,13 +989,13 @@ void Rr_DrawFrame(Rr_App *App)
         {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .commandBufferCount = 1,
-            .pCommandBuffers = &Frame->PresentCommandBuffer,
+            .pCommandBuffers = &Frame->LateCommandBuffer,
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &Frame->PresentSemaphore,
+            .pSignalSemaphores = &Frame->LateSemaphore,
             .waitSemaphoreCount = 2,
             .pWaitSemaphores =
                 (VkSemaphore[]){
-                    Frame->MainSemaphore,
+                    Frame->EarlySemaphore,
                     Frame->SwapchainSemaphore,
                 },
             .pWaitDstStageMask =
@@ -967,9 +1018,8 @@ void Rr_DrawFrame(Rr_App *App)
 
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .pNext = NULL,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &Frame->PresentSemaphore,
+        .pWaitSemaphores = &Frame->LateSemaphore,
         .swapchainCount = 1,
         .pSwapchains = &Swapchain->Handle,
         .pImageIndices = &SwapchainImageIndex,
@@ -1010,9 +1060,21 @@ size_t Rr_GetStorageAlignment(Rr_Renderer *Renderer)
         .minStorageBufferOffsetAlignment;
 }
 
+size_t Rr_GetMaxComputeSharedMemorySize(Rr_Renderer *Renderer)
+{
+    return Renderer->PhysicalDevice.Properties.properties.limits
+        .maxComputeSharedMemorySize;
+}
+
+size_t Rr_GetMaxComputeWorkgroupInvocations(Rr_Renderer *Renderer)
+{
+    return Renderer->PhysicalDevice.Properties.properties.limits
+        .maxComputeWorkGroupInvocations;
+}
+
 Rr_Graph *Rr_GetGraph(Rr_Renderer *Renderer)
 {
-    return &Rr_GetCurrentFrame(Renderer)->Graph;
+    return Rr_GetCurrentFrame(Renderer)->Graph;
 }
 
 Rr_Arena *Rr_GetFrameArena(Rr_Renderer *Renderer)
@@ -1035,7 +1097,7 @@ Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer)
 
 Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer)
 {
-    return &Rr_GetCurrentFrame(Renderer)->VirtualSwapchainImage;
+    return Rr_GetCurrentFrame(Renderer)->VirtualSwapchainImage;
 }
 
 static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
@@ -1070,7 +1132,7 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
 
     uint32_t Hash = XXH32(
         Info->Attachments,
-        sizeof(Rr_Attachment) * Info->AttachmentCount,
+        sizeof(Rr_RenderPassAttachment) * Info->AttachmentCount,
         0);
 
     for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
@@ -1097,8 +1159,8 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
 
     for(size_t Index = 0; Index < Info->AttachmentCount; ++Index)
     {
-        Rr_Attachment *Attachment = &Info->Attachments[Index];
-        if(Attachment->Depth)
+        Rr_RenderPassAttachment *Attachment = &Info->Attachments[Index];
+        if(Rr_IsVulkanDepthFormat(Attachment->Format))
         {
             if(DepthReference != NULL)
             {
@@ -1111,7 +1173,7 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             Attachments[Index] = (VkAttachmentDescription){
                 .samples = 1,
-                .format = VK_FORMAT_D32_SFLOAT,
+                .format = Attachment->Format,
                 .initialLayout =
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -1129,7 +1191,7 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
             };
             Attachments[Index] = (VkAttachmentDescription){
                 .samples = 1,
-                .format = Renderer->Swapchain.Format,
+                .format = Attachment->Format,
                 .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .flags = 0,
@@ -1317,4 +1379,5 @@ void Rr_ReturnSynchronizationState(Rr_Renderer *Renderer, Rr_MapKey Key)
     {
         RR_RETURN_FREE_LIST_ITEM(&Renderer->SyncStates, *SyncStateRef);
     }
+    *SyncStateRef = NULL;
 }

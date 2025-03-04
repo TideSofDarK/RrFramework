@@ -26,6 +26,7 @@ typedef enum
     RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
     RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
     RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
+    RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
 } Rr_NodeFunctionType;
 
 typedef struct Rr_NodeFunction Rr_NodeFunction;
@@ -152,6 +153,14 @@ struct Rr_BindStorageBufferArgs
     uint32_t Size;
 };
 
+typedef struct Rr_BindStorageImageArgs Rr_BindStorageImageArgs;
+struct Rr_BindStorageImageArgs
+{
+    Rr_GraphImage ImageHandle;
+    uint32_t Set;
+    uint32_t Binding;
+};
+
 typedef struct Rr_Transfer Rr_Transfer;
 struct Rr_Transfer
 {
@@ -168,15 +177,6 @@ struct Rr_TransferNode
     RR_SLICE(Rr_Transfer) Transfers;
 };
 
-typedef struct Rr_PresentNode Rr_PresentNode;
-struct Rr_PresentNode
-{
-    Rr_GraphImage ImageHandle;
-    Rr_PresentMode Mode;
-    Rr_Sampler *Sampler;
-    Rr_Vec4 ColorClear;
-};
-
 typedef struct Rr_BlitNode Rr_BlitNode;
 struct Rr_BlitNode
 {
@@ -187,13 +187,6 @@ struct Rr_BlitNode
     Rr_BlitMode Mode;
     VkImageAspectFlags AspectMask;
 };
-
-typedef enum
-{
-    RR_NODE_DEPENDENCY_TYPE_READ_BIT = 1,
-    RR_NODE_DEPENDENCY_TYPE_WRITE_BIT = 2,
-} Rr_NodeDependencyTypeBits;
-typedef uint32_t Rr_NodeDependencyType;
 
 typedef struct Rr_NodeDependency Rr_NodeDependency;
 struct Rr_NodeDependency
@@ -208,7 +201,6 @@ struct Rr_GraphNode
     {
         Rr_ComputeNode Compute;
         Rr_GraphicsNode Graphics;
-        Rr_PresentNode Present;
         Rr_BlitNode Blit;
         Rr_TransferNode Transfer;
     } Union;
@@ -218,6 +210,7 @@ struct Rr_GraphNode
     size_t DependencyLevel;
     RR_SLICE(Rr_NodeDependency) Dependencies;
     Rr_Graph *Graph;
+    bool UsesLateCommandBuffer;
 };
 
 typedef struct Rr_GraphResource Rr_GraphResource;
@@ -233,12 +226,18 @@ struct Rr_GraphResource
 struct Rr_Graph
 {
     RR_SLICE(Rr_GraphNode *) Nodes;
-    RR_SLICE(Rr_GraphNode *) RootNodes;
     RR_SLICE(Rr_GraphResource) Resources;
     Rr_Map *Handles;
     Rr_Map *ResourceWriteToNode;
+    uint32_t SwapchainImageResourceIndex;
     Rr_Arena *Arena;
 };
+
+extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
+    Rr_Graph *Graph,
+    Rr_Buffer *Buffer);
+
+extern Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, Rr_Image *Image);
 
 extern Rr_GraphNode *Rr_AddGraphNode(
     struct Rr_Frame *Frame,

@@ -13,6 +13,16 @@
 
 #define RR_VULKAN_VERSION VK_MAKE_API_VERSION(0, 1, 1, 0)
 
+#define RR_VULKAN_EARLY_STAGES             \
+    (VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | \
+     VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT)
+
+#define RR_VULKAN_WRITES                                                 \
+    (VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | \
+     VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |                      \
+     VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT |           \
+     VK_ACCESS_MEMORY_WRITE_BIT)
+
 typedef struct Rr_SyncState Rr_SyncState;
 struct Rr_SyncState
 {
@@ -637,6 +647,14 @@ static VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat)
             return VK_FORMAT_D24_UNORM_S8_UINT;
         case RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT:
             return VK_FORMAT_D32_SFLOAT_S8_UINT;
+        case RR_TEXTURE_FORMAT_R8G8B8A8_UINT:
+            return VK_FORMAT_R8G8B8A8_UINT;
+        case RR_TEXTURE_FORMAT_R8G8B8A8_SINT:
+            return VK_FORMAT_R8G8B8A8_SINT;
+        case RR_TEXTURE_FORMAT_R32_UINT:
+            return VK_FORMAT_R32_UINT;
+        case RR_TEXTURE_FORMAT_R32_SINT:
+            return VK_FORMAT_R32_SINT;
         default:
             return VK_FORMAT_UNDEFINED;
     }
@@ -653,4 +671,29 @@ static VkIndexType Rr_GetVulkanIndexType(Rr_IndexType Type)
         default:
             return VK_INDEX_TYPE_UINT32;
     }
+}
+
+static inline bool Rr_IsVulkanDepthFormat(VkFormat Format)
+{
+    return Format == VK_FORMAT_D32_SFLOAT ||
+           Format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+           Format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
+static inline VkImageAspectFlags Rr_GetVulkanImageAspect(Rr_ImageAspect Aspect)
+{
+    VkImageAspectFlags Result = 0;
+    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_COLOR))
+    {
+        Result |= VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_DEPTH))
+    {
+        Result |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_STENCIL))
+    {
+        Result |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+    return Result;
 }

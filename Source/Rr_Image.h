@@ -27,8 +27,8 @@ struct Rr_AllocatedImage
 struct Rr_Image
 {
     VkExtent3D Extent;
-    VkFormat Format;
     VkImageAspectFlags AspectFlags;
+    VkFormat Format;
     Rr_ImageFlags Flags;
     size_t AllocatedImageCount;
     Rr_AllocatedImage AllocatedImages[RR_MAX_FRAME_OVERLAP];

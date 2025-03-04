@@ -53,13 +53,14 @@ set(SDL_RENDER OFF CACHE BOOL "" FORCE)
 set(SDL_POWER OFF CACHE BOOL "" FORCE)
 set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
 set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
-CPMAddPackage("gh:libsdl-org/SDL#release-3.2.4")
+CPMAddPackage("gh:libsdl-org/SDL#main")
 
 #
 # Embed Function
 #
 
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
+find_program(GLSLC glslc HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
 if (CMAKE_C_COMPILER_ID STREQUAL "MSVC" AND CMAKE_C_SIMULATE_ID STREQUAL "")
     set(RR_USE_RC 1)
@@ -198,7 +199,8 @@ rr_embed_assets(
     "${RR_BUILTIN_ASSETS}"
 )
 
-add_subdirectory(Demo)
-# add_subdirectory(Examples/01_Triangle)
-# add_subdirectory(Examples/05_GLTFCube)
+# add_subdirectory(Demo)
+add_subdirectory(Examples/01_Triangle)
+add_subdirectory(Examples/05_GLTFCube)
+add_subdirectory(Examples/10_BitonicSort)
 add_subdirectory(Examples/99_GS)

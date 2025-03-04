@@ -17,7 +17,6 @@ typedef enum Rr_GraphNodeType
     RR_GRAPH_NODE_TYPE_COMPUTE,
     RR_GRAPH_NODE_TYPE_GRAPHICS,
     RR_GRAPH_NODE_TYPE_BLIT,
-    RR_GRAPH_NODE_TYPE_PRESENT,
     RR_GRAPH_NODE_TYPE_TRANSFER,
 } Rr_GraphNodeType;
 
@@ -38,6 +37,8 @@ typedef enum Rr_BlitMode
 {
     RR_BLIT_MODE_COLOR,
     RR_BLIT_MODE_DEPTH,
+    RR_PRESENT_MODE_STRETCH,
+    RR_PRESENT_MODE_FIT,
 } Rr_BlitMode;
 
 typedef union Rr_ColorClear Rr_ColorClear;
@@ -71,24 +72,11 @@ struct Rr_DepthTarget
     Rr_DepthClear Clear;
 };
 
-typedef enum Rr_PresentMode
-{
-    RR_PRESENT_MODE_STRETCH,
-    RR_PRESENT_MODE_FIT,
-} Rr_PresentMode;
-
-extern Rr_GraphNode *Rr_AddPresentNode(
-    Rr_App *App,
-    const char *Name,
-    Rr_Image *Image,
-    Rr_Sampler *Sampler,
-    Rr_Vec4 ColorClear,
-    Rr_PresentMode Mode);
-
-extern Rr_GraphNode *Rr_AddTransferNode(Rr_App *App, const char *Name);
+extern Rr_GraphNode *Rr_AddTransferNode(
+    Rr_Renderer *Renderer,
+    const char *Name);
 
 extern void Rr_TransferBufferData(
-    Rr_App *App,
     Rr_GraphNode *Node,
     size_t Size,
     Rr_Buffer *SrcBuffer,
@@ -97,15 +85,15 @@ extern void Rr_TransferBufferData(
     size_t DstOffset);
 
 extern Rr_GraphNode *Rr_AddBlitNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     const char *Name,
     Rr_Image *SrcImage,
     Rr_Image *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
-    Rr_BlitMode Mode);
+    Rr_ImageAspect ImageAspect);
 
-extern Rr_GraphNode *Rr_AddComputeNode(Rr_App *App, const char *Name);
+extern Rr_GraphNode *Rr_AddComputeNode(Rr_Renderer *Renderer, const char *Name);
 
 extern void Rr_BindComputePipeline(
     Rr_GraphNode *Node,
@@ -118,7 +106,7 @@ extern void Rr_Dispatch(
     uint32_t GroupCountZ);
 
 extern Rr_GraphNode *Rr_AddGraphicsNode(
-    Rr_App *App,
+    Rr_Renderer *Renderer,
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
@@ -196,6 +184,12 @@ extern void Rr_BindStorageBuffer(
     uint32_t Binding,
     uint32_t Offset,
     uint32_t Size);
+
+extern void Rr_BindStorageImage(
+    Rr_GraphNode *Node,
+    Rr_Image *Image,
+    uint32_t Set,
+    uint32_t Binding);
 
 #ifdef __cplusplus
 }

@@ -80,12 +80,13 @@ extern void Rr_WriteSamplerDescriptor(
     uint32_t Index,
     VkSampler Sampler);
 
-extern void Rr_WriteSampledImageDescriptor(
+extern void Rr_WriteImageDescriptor(
     Rr_DescriptorWriter *Writer,
     uint32_t Binding,
     uint32_t Index,
     VkImageView View,
-    VkImageLayout Layout);
+    VkImageLayout Layout,
+    VkDescriptorType Type);
 
 extern void Rr_WriteCombinedImageSamplerDescriptor(
     Rr_DescriptorWriter *Writer,

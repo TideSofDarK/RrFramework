@@ -116,3 +116,67 @@ void Rr_PackVec4(Rr_Vec4 From, uint32_t *OutA, uint32_t *OutB)
     *OutA = (uint32_t)HalfValues[0] | ((uint32_t)HalfValues[1] << 16);
     *OutB = (uint32_t)HalfValues[2] | ((uint32_t)HalfValues[3] << 16);
 }
+
+Rr_Vec4 Rr_FitRect(Rr_Vec4 Src, Rr_Vec4 Dst)
+{
+    float X = 0;
+    float Y = 0;
+    float Width = 0;
+    float Height = 0;
+
+    float DstWidth = Dst.Width;
+    float DstHeight = Dst.Height;
+    float SrcWidth = Src.Width;
+    float SrcHeight = Dst.Height;
+    float DstRatio = DstWidth / DstHeight;
+    float SrcRatio = SrcWidth / SrcHeight;
+
+    if(DstRatio > SrcRatio)
+    {
+        Width = (SrcWidth / SrcHeight) * DstHeight;
+        Height = DstHeight;
+    }
+    else
+    {
+        Width = DstWidth;
+        Height = (SrcHeight / SrcWidth) * DstWidth;
+    }
+    X = (DstWidth / 2.0f) - (Width / 2.0f);
+    Y = (DstHeight / 2.0f) - (Height / 2.0f);
+
+    Rr_Vec4 Result = { X, Y, Width, Height };
+
+    return Result;
+}
+
+Rr_IntVec4 Rr_FitIntRect(Rr_IntVec4 Src, Rr_IntVec4 Dst)
+{
+    float X = 0;
+    float Y = 0;
+    float Width = 0;
+    float Height = 0;
+
+    float DstWidth = Dst.Width;
+    float DstHeight = Dst.Height;
+    float SrcWidth = Src.Width;
+    float SrcHeight = Dst.Height;
+    float DstRatio = DstWidth / DstHeight;
+    float SrcRatio = SrcWidth / SrcHeight;
+
+    if(DstRatio > SrcRatio)
+    {
+        Width = (SrcWidth / SrcHeight) * DstHeight;
+        Height = DstHeight;
+    }
+    else
+    {
+        Width = DstWidth;
+        Height = (SrcHeight / SrcWidth) * DstWidth;
+    }
+    X = (DstWidth / 2.0f) - (Width / 2.0f);
+    Y = (DstHeight / 2.0f) - (Height / 2.0f);
+
+    Rr_IntVec4 Result = { X, Y, Width, Height };
+
+    return Result;
+}

@@ -2,7 +2,6 @@
 
 #include <Rr/Rr_Renderer.h>
 
-#include "Rr_Descriptor.h"
 #include "Rr_Graph.h"
 #include "Rr_Load.h"
 #include "Rr_Pipeline.h"
@@ -42,21 +41,21 @@ typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
     VkFramebuffer SwapchainFramebuffer;
-    Rr_Image VirtualSwapchainImage;
+    Rr_Image *VirtualSwapchainImage;
 
     VkCommandPool CommandPool;
-    VkCommandBuffer MainCommandBuffer;
-    VkCommandBuffer PresentCommandBuffer;
+    VkCommandBuffer EarlyCommandBuffer;
+    VkCommandBuffer LateCommandBuffer;
     size_t CommandBufferIndex;
 
     VkSemaphore SwapchainSemaphore;
-    VkSemaphore MainSemaphore;
-    VkSemaphore PresentSemaphore;
+    VkSemaphore EarlySemaphore;
+    VkSemaphore LateSemaphore;
     VkFence RenderFence;
 
     Rr_DescriptorAllocator DescriptorAllocator;
 
-    Rr_Graph Graph;
+    Rr_Graph *Graph;
 
     Rr_Arena *Arena;
 };
@@ -176,19 +175,18 @@ extern Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer);
 
 extern bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
 
-/* @TODO: Add format? */
-typedef struct Rr_Attachment Rr_Attachment;
-struct Rr_Attachment
+typedef struct Rr_RenderPassAttachment Rr_RenderPassAttachment;
+struct Rr_RenderPassAttachment
 {
+    VkFormat Format;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
-    bool Depth;
 };
 
 typedef struct Rr_RenderPassInfo Rr_RenderPassInfo;
 struct Rr_RenderPassInfo
 {
-    Rr_Attachment *Attachments;
+    Rr_RenderPassAttachment *Attachments;
     size_t AttachmentCount;
 };
 

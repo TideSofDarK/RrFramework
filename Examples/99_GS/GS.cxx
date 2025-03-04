@@ -24,23 +24,23 @@ struct SSplatData
     {
         Rr_Vec3 Position;
         Rr_Vec3 Scale;
-        unsigned char r, g, b, a;
-        unsigned char rw, rx, ry, rz;
+        unsigned char R, G, B, A;
+        unsigned char QuatW, QuatX, QuatY, QuatZ;
 
         Rr_Quat Quat() const
         {
-            return Rr_Quat{ ((float)rx - 128.0f) / 128.0f,
-                            ((float)ry - 128.0f) / 128.0f,
-                            ((float)rz - 128.0f) / 128.0f,
-                            ((float)rw - 128.0f) / 128.0f };
+            return Rr_Quat{ ((float)QuatX - 128.0f) / 128.0f,
+                            ((float)QuatY - 128.0f) / 128.0f,
+                            ((float)QuatZ - 128.0f) / 128.0f,
+                            ((float)QuatW - 128.0f) / 128.0f };
         }
 
         Rr_Vec4 Color() const
         {
-            return Rr_Vec4{ (float)r / 255.0f,
-                            (float)g / 255.0f,
-                            (float)b / 255.0f,
-                            (float)a / 255.0f };
+            return Rr_Vec4{ (float)R / 255.0f,
+                            (float)G / 255.0f,
+                            (float)B / 255.0f,
+                            (float)A / 255.0f };
         }
     };
 
@@ -56,9 +56,6 @@ struct SSplatData
 
     Rr_Renderer *Renderer{};
 
-    Rr_PipelineLayout *SortLayout;
-    Rr_ComputePipeline *SortPipeline;
-
     void InitSortPipeline()
     {
         std::array Bindings = {
@@ -66,6 +63,7 @@ struct SSplatData
             Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
             Rr_PipelineBinding{ 2, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
         };
+
         Rr_PipelineBindingSet BindingSets[] = {
             {
                 Bindings.size(),
@@ -73,15 +71,6 @@ struct SSplatData
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
-        SortLayout = Rr_CreatePipelineLayout(
-            Renderer,
-            RR_ARRAY_COUNT(BindingSets),
-            BindingSets);
-
-        SortPipeline = Rr_CreateComputePipeline(
-            Renderer,
-            SortLayout,
-            Rr_LoadAsset(EXAMPLE_ASSET_SORT_COMP_SPV));
     }
 
     void Load(Rr_Renderer *Renderer, Rr_AssetRef AssetRef)
@@ -105,6 +94,9 @@ struct SSplatData
 
             GPUSplat.Position.XYZ = Splat->Position;
             GPUSplat.Position.Y *= -1.0f;
+            // GPUSplat.Position.XYZ =
+            // Rr_RotateV3AxisAngle_LH(GPUSplat.Position.XYZ, {0.0f,
+            // 0.0f, 1.0f}, Rr_DegToRad * 45.0f);
             GPUSplat.Scale.XYZ = Splat->Scale;
             GPUSplat.Quat = Rr_NormQ(Splat->Quat());
             GPUSplat.Color = Splat->Color();
@@ -124,18 +116,16 @@ struct SSplatData
         SortedBuffer = Rr_CreateBuffer(
             Renderer,
             SortedBufferSize,
-            RR_BUFFER_FLAGS_STORAGE_BIT);
+            RR_BUFFER_FLAGS_STORAGE_BIT
+
+                | RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT);
 
         UniformBuffer = Rr_CreateBuffer(
             Renderer,
             sizeof(Rr_Vec4),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
                 RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
-
-        Rr_UploadToDeviceBufferImmediate(
-            Renderer,
-            SortedBuffer,
-            RR_MAKE_DATA(sizeof(uint32_t) * Count, Sorted.data()));
     }
 
     void Cleanup()
@@ -143,35 +133,33 @@ struct SSplatData
         Rr_DestroyBuffer(Renderer, Buffer);
         Rr_DestroyBuffer(Renderer, SortedBuffer);
         Rr_DestroyBuffer(Renderer, UniformBuffer);
-        Rr_DestroyPipelineLayout(Renderer, SortLayout);
-        Rr_DestroyComputePipeline(Renderer, SortPipeline);
     }
 
-    void Render(Rr_App *App, Rr_Vec4 CameraPos, Rr_GraphNode *OffscreenNode)
+    void Render(Rr_App *App, const Rr_Mat4 &View, Rr_GraphNode *OffscreenNode)
     {
+        std::sort(Sorted.begin(), Sorted.end(), [&](uint32_t A, uint32_t B) {
+            auto ZA = (View * GPUSplats[A].Position).Z;
+            auto ZB = (View * GPUSplats[B].Position).Z;
+            return ZA > ZB;
+        });
+
+        std::memcpy(
+            Rr_GetMappedBufferData(Renderer, SortedBuffer),
+            Sorted.data(),
+            sizeof(uint32_t) * Count);
+
         std::memcpy(
             Rr_GetMappedBufferData(Renderer, UniformBuffer),
-            &CameraPos,
+            &View[3],
             sizeof(Rr_Vec4));
 
-        Rr_GraphNode *SortNode = Rr_AddComputeNode(App, "sort");
-        Rr_BindComputePipeline(SortNode, SortPipeline);
-        Rr_BindUniformBuffer(SortNode, UniformBuffer, 0, 0, 0, sizeof(Rr_Vec4));
-        Rr_BindStorageBuffer(
-            SortNode,
-            Buffer,
-            0,
-            1,
-            0,
-            sizeof(SGPUSplat) * Count);
-        Rr_BindStorageBuffer(
-            SortNode,
-            SortedBuffer,
-            0,
-            2,
-            0,
-            SortedBufferSize);
-        Rr_Dispatch(SortNode, Count / 1024, 1, 1);
+        // Rr_GraphNode *SortNode = Rr_AddComputeNode(Renderer, "sort");
+        // Rr_BindComputePipeline(SortNode, SortPipeline);
+        // Rr_BindUniformBuffer(SortNode, UniformBuffer, 0, 0, 0,
+        // sizeof(Rr_Vec4)); Rr_BindStorageBuffer( SortNode, Buffer, 0, 1, 0,
+        // sizeof(SGPUSplat) * Count);
+        // Rr_BindStorageBuffer(SortNode, SortedBuffer, 0, 2, 0,
+        // SortedBufferSize); Rr_Dispatch(SortNode, Count / 1024, 1, 1);
 
         Rr_BindStorageBuffer(
             OffscreenNode,
@@ -201,7 +189,7 @@ struct SUniformData
 Rr_LoadThread *LoadThread;
 Rr_Image *ColorAttachment;
 Rr_Buffer *StagingBuffer;
-Rr_Buffer *UniformBuffer;
+Rr_Buffer *RandomNumbersBuffer;
 Rr_PipelineLayout *PipelineLayout;
 Rr_GraphicsPipeline *GraphicsPipeline;
 Rr_Sampler *LinearSampler;
@@ -253,7 +241,7 @@ static void Init(Rr_App *App, void *UserData)
         nullptr,
     };
 
-    std::array<Rr_ColorTargetInfo, 1>  ColorTargets = {};
+    std::array<Rr_ColorTargetInfo, 1> ColorTargets = {};
     ColorTargets[0].Format = RR_TEXTURE_FORMAT_R8G8B8A8_UNORM;
     ColorTargets[0].Blend.BlendEnable = true;
     ColorTargets[0].Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
@@ -287,7 +275,7 @@ static void Init(Rr_App *App, void *UserData)
 
     /* Create uniform buffer. */
 
-    UniformBuffer = Rr_CreateBuffer(
+    RandomNumbersBuffer = Rr_CreateBuffer(
         Renderer,
         sizeof(SUniformData),
         RR_BUFFER_FLAGS_UNIFORM_BIT);
@@ -327,14 +315,13 @@ static void Render(Rr_App *App, Rr_Image *ColorAttachment)
         RR_ALIGN_POW2(sizeof(UniformData), Rr_GetUniformAlignment(Renderer));
 
     Rr_GraphNode *TransferNode =
-        Rr_AddTransferNode(App, "upload_uniform_buffer");
+        Rr_AddTransferNode(Renderer, "upload_uniform_buffer");
     Rr_TransferBufferData(
-        App,
         TransferNode,
         sizeof(UniformData),
         StagingBuffer,
         0,
-        UniformBuffer,
+        RandomNumbersBuffer,
         0);
 
     Rr_ColorTarget OffscreenTarget = {
@@ -346,7 +333,7 @@ static void Render(Rr_App *App, Rr_Image *ColorAttachment)
         },
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
-        App,
+        Renderer,
         "offscreen",
         1,
         &OffscreenTarget,
@@ -356,21 +343,28 @@ static void Render(Rr_App *App, Rr_Image *ColorAttachment)
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
     Rr_BindUniformBuffer(
         OffscreenNode,
-        UniformBuffer,
+        RandomNumbersBuffer,
         0,
         0,
         0,
         sizeof(UniformData));
 
-    SplatData.Render(App, UniformData.View[3], OffscreenNode);
+    SplatData.Render(App, UniformData.View, OffscreenNode);
 
-    Rr_AddPresentNode(
-        App,
-        "present",
+    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+
+    auto SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    Rr_IntVec4 FitRect = Rr_FitIntRect(
+        { 0, 0, 1600, 1000 },
+        { 0, 0, SwapchainSize.Width, SwapchainSize.Height });
+    Rr_AddBlitNode(
+        Renderer,
+        "swapchain_blit",
         ColorAttachment,
-        LinearSampler,
-        BackgroundColor,
-        RR_PRESENT_MODE_FIT);
+        SwapchainImage,
+        { 0, 0, 1600, 1000 },
+        FitRect,
+        RR_IMAGE_ASPECT_COLOR);
 }
 
 static void Iterate(Rr_App *App, void *UserData)
@@ -402,7 +396,7 @@ static void Cleanup(Rr_App *App, void *UserData)
     Rr_DestroyImage(Renderer, ColorAttachment);
     SplatData.Cleanup();
     Rr_DestroyBuffer(Renderer, StagingBuffer);
-    Rr_DestroyBuffer(Renderer, UniformBuffer);
+    Rr_DestroyBuffer(Renderer, RandomNumbersBuffer);
     Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
     Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
     Rr_DestroySampler(Renderer, LinearSampler);

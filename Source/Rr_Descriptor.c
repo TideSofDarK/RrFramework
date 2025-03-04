@@ -20,6 +20,8 @@ static VkDescriptorType Rr_GetVulkanDescriptorType(Rr_PipelineBindingType Type)
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        case RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE:
+            return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         default:
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
@@ -245,12 +247,13 @@ void Rr_WriteSamplerDescriptor(
     };
 }
 
-void Rr_WriteSampledImageDescriptor(
+void Rr_WriteImageDescriptor(
     Rr_DescriptorWriter *Writer,
     uint32_t Binding,
     uint32_t Index,
     VkImageView View,
-    VkImageLayout Layout)
+    VkImageLayout Layout,
+    VkDescriptorType Type)
 {
     Rr_Arena *Arena = Writer->Arena;
 
@@ -263,7 +266,7 @@ void Rr_WriteSampledImageDescriptor(
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
         .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .descriptorType = Type,
         .dstArrayElement = Index,
     };
 
@@ -579,12 +582,13 @@ void Rr_ApplyDescriptorsState(
                 break;
                 case RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE:
                 {
-                    Rr_WriteSampledImageDescriptor(
+                    Rr_WriteImageDescriptor(
                         Writer,
                         BindingIndex,
                         0,
                         Binding->Image.View,
-                        Binding->Image.Layout);
+                        Binding->Image.Layout,
+                        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
                 }
                 break;
                 case RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
@@ -624,6 +628,17 @@ void Rr_ApplyDescriptorsState(
                         Scratch.Arena);
                     DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
                     DynamicOffsetCount++;
+                }
+                break;
+                case RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE:
+                {
+                    Rr_WriteImageDescriptor(
+                        Writer,
+                        BindingIndex,
+                        0,
+                        Binding->Image.View,
+                        Binding->Image.Layout,
+                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
                 }
                 break;
                 default:

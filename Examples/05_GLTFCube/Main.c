@@ -15,7 +15,6 @@ struct SUniformData
 static Rr_LoadThread *LoadThread;
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
-static Rr_Image *ColorAttachment;
 static Rr_Image *DepthAttachment;
 static Rr_Buffer *StagingBuffer;
 static Rr_Buffer *UniformBuffer;
@@ -82,7 +81,7 @@ static void Init(Rr_App *App, void *UserData)
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
     ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
 
-    Rr_PipelineInfo PipelineInfo = { 0 };
+    Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
     PipelineInfo.Layout = PipelineLayout;
     PipelineInfo.VertexShaderSPV =
         Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_VERT_SPV);
@@ -132,18 +131,13 @@ static void Init(Rr_App *App, void *UserData)
     };
     Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
 
-    /* Create main draw target. */
+    /* Create depth buffer. */
 
-    ColorAttachment = Rr_CreateImage(
-        Renderer,
-        (Rr_IntVec3){ 320, 240, 1 },
-        Rr_GetSwapchainFormat(Renderer),
-        RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
-            RR_IMAGE_FLAGS_SAMPLED_BIT);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
     DepthAttachment = Rr_CreateImage(
         Renderer,
-        (Rr_IntVec3){ 320, 240, 1 },
+        (Rr_IntVec3){ SwapchainSize.Width, SwapchainSize.Height, 1 },
         RR_TEXTURE_FORMAT_D32_SFLOAT,
         RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
             RR_IMAGE_FLAGS_TRANSFER_BIT);
@@ -164,23 +158,17 @@ static void Init(Rr_App *App, void *UserData)
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
 }
 
-static void DrawFirstGLTFPrimitive(
-    Rr_App *App,
-    Rr_GraphImage *ColorAttachmentHandle,
-    Rr_GraphImage *DepthAttachmentHandle)
+static void DrawFirstGLTFPrimitive(Rr_App *App, Rr_GraphNode *GraphicsNode)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
     double Time = Rr_GetTimeSeconds(App);
 
-    Rr_GraphBuffer UniformBufferHandle =
-        Rr_RegisterGraphBuffer(App, UniformBuffer);
-    Rr_GraphBuffer StagingBufferHandle =
-        Rr_RegisterGraphBuffer(App, StagingBuffer);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
     UniformData UniformData = {};
     UniformData.Projection =
-        Rr_Perspective_LH_ZO(0.7643276f, 320.0f / 240.0f, 0.5f, 50.0f);
+        Rr_Perspective_LH_ZO(0.7643276f, SwapchainSize.Width / (float)SwapchainSize.Height, 0.5f, 50.0f);
     UniformData.View = Rr_M4D(1.0f);
     UniformData.Model = Rr_MulM4(
         Rr_Translate((Rr_Vec3){ 0.0f, 0.0f, 5.0f }),
@@ -195,15 +183,45 @@ static void DrawFirstGLTFPrimitive(
         sizeof(UniformData));
 
     Rr_GraphNode *TransferNode =
-        Rr_AddTransferNode(App, "upload_uniform_buffer");
+        Rr_AddTransferNode(Renderer, "upload_uniform_buffer");
     Rr_TransferBufferData(
-        App,
         TransferNode,
         sizeof(UniformData),
-        &StagingBufferHandle,
+        StagingBuffer,
         0,
-        &UniformBufferHandle,
+        UniformBuffer,
         0);
+
+    Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
+    Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+    Rr_BindVertexBuffer(
+        GraphicsNode,
+        GLTFAsset->Buffer,
+        0,
+        GLTFAsset->VertexBufferOffset);
+    Rr_BindIndexBuffer(
+        GraphicsNode,
+        GLTFAsset->Buffer,
+        0,
+        GLTFAsset->IndexBufferOffset,
+        GLTFAsset->IndexType);
+    Rr_BindUniformBuffer(
+            GraphicsNode,
+        UniformBuffer,
+        0,
+        0,
+        0,
+        sizeof(UniformData));
+    Rr_BindSampler(GraphicsNode, NearestSampler, 0, 1);
+    Rr_BindSampledImage(GraphicsNode, GLTFAsset->Images[0], 0, 2);
+    Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
+}
+
+static void Iterate(Rr_App *App, void *UserData)
+{
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
+    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
     Rr_ColorTarget OffscreenTarget = {
         .Slot = 0,
@@ -218,67 +236,18 @@ static void DrawFirstGLTFPrimitive(
             .Depth = 1.0f,
         },
     };
-    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
-        App,
+    Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+        Renderer,
         "offscreen",
         1,
         &OffscreenTarget,
-        &(Rr_GraphImage *){ ColorAttachmentHandle },
+        &SwapchainImage,
         &OffscreenDepth,
-        DepthAttachmentHandle);
-
-    Rr_GraphBuffer GLTFBufferHandle =
-        Rr_RegisterGraphBuffer(App, GLTFAsset->Buffer);
-
-    Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
-    Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-    Rr_BindVertexBuffer(
-        OffscreenNode,
-        &GLTFBufferHandle,
-        0,
-        GLTFAsset->VertexBufferOffset);
-    Rr_BindIndexBuffer(
-        OffscreenNode,
-        &GLTFBufferHandle,
-        0,
-        GLTFAsset->IndexBufferOffset,
-        GLTFAsset->IndexType);
-    Rr_BindGraphicsUniformBuffer(
-        OffscreenNode,
-        &UniformBufferHandle,
-        0,
-        0,
-        0,
-        sizeof(UniformData));
-    Rr_BindSampler(OffscreenNode, NearestSampler, 0, 1);
-    Rr_GraphImage ColorTextureHandle =
-        Rr_RegisterGraphImage(App, GLTFAsset->Images[0]);
-    Rr_BindSampledImage(OffscreenNode, &ColorTextureHandle, 0, 2);
-    Rr_DrawIndexed(OffscreenNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
-}
-
-static void Iterate(Rr_App *App, void *UserData)
-{
-    Rr_GraphImage ColorAttachmentHandle =
-        Rr_RegisterGraphImage(App, ColorAttachment);
-    Rr_GraphImage DepthAttachmentHandle =
-        Rr_RegisterGraphImage(App, DepthAttachment);
-
+        DepthAttachment);
     if(Loaded)
     {
-        DrawFirstGLTFPrimitive(
-            App,
-            &ColorAttachmentHandle,
-            &DepthAttachmentHandle);
+        DrawFirstGLTFPrimitive(App, GraphicsNode);
     }
-
-    Rr_AddPresentNode(
-        App,
-        "present",
-        &ColorAttachmentHandle,
-        NearestSampler,
-        (Rr_Vec4){},
-        RR_PRESENT_MODE_FIT);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
@@ -287,7 +256,6 @@ static void Cleanup(Rr_App *App, void *UserData)
 
     Rr_DestroyLoadThread(App, LoadThread);
     Rr_DestroyGLTFContext(GLTFContext);
-    Rr_DestroyImage(Renderer, ColorAttachment);
     Rr_DestroyImage(Renderer, DepthAttachment);
     Rr_DestroyBuffer(Renderer, StagingBuffer);
     Rr_DestroyBuffer(Renderer, UniformBuffer);

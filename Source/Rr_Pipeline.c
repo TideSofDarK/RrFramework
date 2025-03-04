@@ -15,19 +15,24 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 
     bool HasDepth = Info->DepthStencil.EnableDepthWrite;
     size_t AttachmentCount = Info->ColorTargetCount + (HasDepth ? 1 : 0);
-    Rr_Attachment *Attachments =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_Attachment, AttachmentCount);
+    Rr_RenderPassAttachment *Attachments = RR_ALLOC_TYPE_COUNT(
+        Scratch.Arena,
+        Rr_RenderPassAttachment,
+        AttachmentCount);
 
     for(uint32_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {
         Attachments[Index].LoadOp = RR_LOAD_OP_DONT_CARE;
         Attachments[Index].StoreOp = RR_STORE_OP_DONT_CARE;
+        Attachments[Index].Format =
+            Rr_GetVulkanTextureFormat(Info->ColorTargets[Index].Format);
     }
     if(HasDepth)
     {
         Attachments[AttachmentCount - 1].LoadOp = RR_LOAD_OP_DONT_CARE;
         Attachments[AttachmentCount - 1].StoreOp = RR_STORE_OP_DONT_CARE;
-        Attachments[AttachmentCount - 1].Depth = true;
+        Attachments[AttachmentCount - 1].Format = Rr_GetVulkanTextureFormat(
+            Info->ColorTargets[Info->ColorTargetCount].Format);
     }
 
     VkRenderPass RenderPass = Rr_GetRenderPass(
@@ -47,7 +52,6 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     size_t SetCount,
     Rr_PipelineBindingSet *Sets)
 {
-    assert(SetCount > 0);
     assert(SetCount < RR_MAX_SETS);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -100,21 +104,68 @@ void Rr_DestroyPipelineLayout(
     RR_RETURN_FREE_LIST_ITEM(&Renderer->PipelineLayouts, PipelineLayout);
 }
 
+static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
+    size_t SpecializationCount,
+    Rr_PipelineSpecialization *Specializations,
+    Rr_Arena *Arena)
+{
+    VkSpecializationInfo *SpecializationInfo =
+        RR_ALLOC_TYPE(Arena, VkSpecializationInfo);
+    SpecializationInfo->mapEntryCount = SpecializationCount;
+    VkSpecializationMapEntry *Entries = RR_ALLOC_NO_ZERO(
+        Arena,
+        sizeof(VkSpecializationMapEntry) * SpecializationCount);
+    uintptr_t ArenaPosition = Arena->Position;
+    char *DataStart = NULL;
+    for(size_t Index = 0; Index < SpecializationCount; ++Index)
+    {
+        Rr_PipelineSpecialization *Specialization = Specializations + Index;
+        char *SpecializationData =
+            RR_ALLOC_NO_ZERO(Arena, Specialization->Data.Size);
+        if(DataStart == NULL)
+        {
+            DataStart = SpecializationData;
+        }
+        memcpy(
+            SpecializationData,
+            Specialization->Data.Pointer,
+            Specialization->Data.Size);
+        size_t Offset = SpecializationData - DataStart;
+        Entries[Index] = (VkSpecializationMapEntry){
+            .constantID = Specialization->ConstantID,
+            .size = Specialization->Data.Size,
+            .offset = Offset,
+        };
+    }
+    SpecializationInfo->pMapEntries = Entries;
+    SpecializationInfo->pData = DataStart;
+    SpecializationInfo->dataSize = Arena->Position - ArenaPosition;
+
+    return SpecializationInfo;
+}
+
 Rr_ComputePipeline *Rr_CreateComputePipeline(
     Rr_Renderer *Renderer,
-    Rr_PipelineLayout *Layout,
-    Rr_Data SPV)
+    Rr_ComputePipelineCreateInfo *CreateInfo)
 {
+    assert(CreateInfo);
+    assert(CreateInfo->Layout != NULL);
+    assert(
+        CreateInfo->SpecializationCount == 0 ||
+        CreateInfo->Specializations != NULL);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
     Rr_Device *Device = &Renderer->Device;
 
     Rr_ComputePipeline *Pipeline =
         RR_GET_FREE_LIST_ITEM(&Renderer->ComputePipelines, Renderer->Arena);
-    Pipeline->Layout = Layout;
+    Pipeline->Layout = CreateInfo->Layout;
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = SPV.Size,
-        .pCode = (uint32_t *)SPV.Pointer,
+        .codeSize = CreateInfo->ShaderSPV.Size,
+        .pCode = (uint32_t *)CreateInfo->ShaderSPV.Pointer,
     };
 
     VkShaderModule ShaderModule;
@@ -132,9 +183,18 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         .pName = "main",
     };
 
+    if(CreateInfo->SpecializationCount > 0)
+    {
+        ShaderStageCreateInfo.pSpecializationInfo =
+            Rr_GetVulkanSpecializationInfo(
+                CreateInfo->SpecializationCount,
+                CreateInfo->Specializations,
+                Scratch.Arena);
+    }
+
     VkComputePipelineCreateInfo PipelineCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .layout = Layout->Handle,
+        .layout = CreateInfo->Layout->Handle,
         .stage = ShaderStageCreateInfo,
     };
 
@@ -147,6 +207,8 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         &Pipeline->Handle);
 
     Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
+
+    Rr_DestroyScratch(Scratch);
 
     return Pipeline;
 }

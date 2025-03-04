@@ -147,6 +147,7 @@ struct Rr_Rasterizer
 typedef struct Rr_DepthStencil Rr_DepthStencil;
 struct Rr_DepthStencil
 {
+    Rr_TextureFormat Format;
     Rr_CompareOp CompareOp;
     Rr_StencilOpState BackStencilState;
     Rr_StencilOpState FrontStencilState;
@@ -155,6 +156,13 @@ struct Rr_DepthStencil
     bool EnableDepthTest;
     bool EnableDepthWrite;
     bool EnableStencilTest;
+};
+
+typedef struct Rr_PipelineSpecialization Rr_PipelineSpecialization;
+struct Rr_PipelineSpecialization
+{
+    uint32_t ConstantID;
+    Rr_Data Data;
 };
 
 typedef struct Rr_GraphicsPipelineCreateInfo Rr_GraphicsPipelineCreateInfo;
@@ -172,6 +180,15 @@ struct Rr_GraphicsPipelineCreateInfo
     Rr_PipelineLayout *Layout;
 };
 
+typedef struct Rr_ComputePipelineCreateInfo Rr_ComputePipelineCreateInfo;
+struct Rr_ComputePipelineCreateInfo
+{
+    Rr_Data ShaderSPV;
+    Rr_PipelineLayout *Layout;
+    size_t SpecializationCount;
+    Rr_PipelineSpecialization *Specializations;
+};
+
 typedef enum
 {
     RR_PIPELINE_BINDING_TYPE_INVALID,
@@ -180,6 +197,7 @@ typedef enum
     RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
     RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
     RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER,
+    RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE,
 } Rr_PipelineBindingType;
 
 typedef struct Rr_PipelineBinding Rr_PipelineBinding;
@@ -209,8 +227,7 @@ extern void Rr_DestroyPipelineLayout(
 
 extern Rr_ComputePipeline *Rr_CreateComputePipeline(
     Rr_Renderer *Renderer,
-    Rr_PipelineLayout *Layout,
-    Rr_Data SPV);
+    Rr_ComputePipelineCreateInfo *CreateInfo);
 
 extern void Rr_DestroyComputePipeline(
     Rr_Renderer *Renderer,

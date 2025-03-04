@@ -76,7 +76,11 @@ typedef enum
     RR_TEXTURE_FORMAT_B8G8R8A8_UNORM,
     RR_TEXTURE_FORMAT_D32_SFLOAT,
     RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT,
-    RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT
+    RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT,
+    RR_TEXTURE_FORMAT_R8G8B8A8_UINT,
+    RR_TEXTURE_FORMAT_R8G8B8A8_SINT,
+    RR_TEXTURE_FORMAT_R32_UINT,
+    RR_TEXTURE_FORMAT_R32_SINT,
 } Rr_TextureFormat;
 
 typedef enum
@@ -100,6 +104,10 @@ extern struct Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer);
 extern size_t Rr_GetUniformAlignment(Rr_Renderer *Renderer);
 
 extern size_t Rr_GetStorageAlignment(Rr_Renderer *Renderer);
+
+extern size_t Rr_GetMaxComputeSharedMemorySize(Rr_Renderer *Renderer);
+
+extern size_t Rr_GetMaxComputeWorkgroupInvocations(Rr_Renderer *Renderer);
 
 #ifdef __cplusplus
 }
