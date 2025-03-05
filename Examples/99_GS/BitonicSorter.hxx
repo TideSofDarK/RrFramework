@@ -17,7 +17,7 @@ struct SSortList
     };
 
     Rr_Renderer *Renderer;
-    uint32_t ThreadsPerWorkgroup;
+    uint32_t ThreadsPerWorkgroup{};
 
     Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
@@ -25,8 +25,13 @@ struct SSortList
 
     SSortList(Rr_Renderer *Renderer)
         : Renderer(Renderer)
-        , ThreadsPerWorkgroup(Rr_GetMaxComputeWorkgroupInvocations(Renderer))
     {
+        ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
+        if(RR_IS_POW2(ThreadsPerWorkgroup) != true)
+        {
+            ThreadsPerWorkgroup = Rr_NextPowerOfTwo(ThreadsPerWorkgroup) / 2;
+        }
+
         std::array Bindings = {
             Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
             Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
@@ -129,7 +134,7 @@ struct SBitonicSorter
 
     Rr_Renderer *Renderer;
     SSortList SortList;
-    uint32_t ThreadsPerWorkgroup;
+    uint32_t ThreadsPerWorkgroup{};
     Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
     Rr_Buffer *UniformBuffer;
@@ -172,10 +177,15 @@ struct SBitonicSorter
         uint32_t AlignedCount)
         : Renderer(Renderer)
         , SortList(Renderer)
-        , ThreadsPerWorkgroup(Rr_GetMaxComputeWorkgroupInvocations(Renderer))
         , AliveCount(AliveCount)
         , AlignedCount(AlignedCount)
     {
+        ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
+        if(RR_IS_POW2(ThreadsPerWorkgroup) != true)
+        {
+            ThreadsPerWorkgroup = Rr_NextPowerOfTwo(ThreadsPerWorkgroup) / 2;
+        }
+
         /* Create compute pipeline. */
 
         std::array BindingsA = {

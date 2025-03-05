@@ -111,12 +111,15 @@ static bool Rr_InitSwapchain(
         }
     }
 
-    uint32_t DesiredNumberOfSwapchainImages =
-        SurfaceCapabilities.minImageCount + 1;
-    if((SurfaceCapabilities.maxImageCount > 0) &&
-       (DesiredNumberOfSwapchainImages > SurfaceCapabilities.maxImageCount))
+    uint32_t DesiredNumberOfSwapchainImages;
+    if(SurfaceCapabilities.maxImageCount == 0)
     {
-        DesiredNumberOfSwapchainImages = SurfaceCapabilities.maxImageCount;
+        DesiredNumberOfSwapchainImages = 4;
+    }
+    else
+    {
+        DesiredNumberOfSwapchainImages =
+            RR_CLAMP(3, SurfaceCapabilities.maxImageCount, 4);
     }
 
     VkSurfaceTransformFlagsKHR PreTransform;

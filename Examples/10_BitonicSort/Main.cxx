@@ -122,7 +122,10 @@ struct SBitonicSorter
 
     explicit SBitonicSorter(Rr_Renderer *Renderer)
         : Renderer(Renderer)
-        , ThreadsPerWorkgroup(Rr_GetMaxComputeWorkgroupInvocations(Renderer))
+        , ThreadsPerWorkgroup(
+              Rr_NextPowerOfTwo(
+                  Rr_GetMaxComputeWorkgroupInvocations(Renderer)) /
+              2)
     {
         std::array Bindings = {
             Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
@@ -182,8 +185,9 @@ struct SBitonicSorter
             SortInfo.Height = Height;
             SortInfo.Algorithm = Algorithm;
 
-            char *Dst = (char *)Rr_GetMappedBufferData(Renderer, UniformBuffer) +
-                        InfoBufferOffset;
+            char *Dst =
+                (char *)Rr_GetMappedBufferData(Renderer, UniformBuffer) +
+                InfoBufferOffset;
             std::memcpy(Dst, &SortInfo, sizeof(SGPUSortInfo));
 
             Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Renderer, "compute");
