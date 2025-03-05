@@ -1,4 +1,7 @@
 #version 460 core
+#extension GL_ARB_shading_language_include : require
+
+#include "Shared.glsl"
 
 #define LOCAL_SORT 0
 #define LOCAL_DISPERSE 1
@@ -7,37 +10,42 @@
 
 layout(local_size_x_id = 0) in;
 
-layout(set = 0, binding = 0) buffer SortData
+layout(set = 0, binding = 0) readonly buffer SplatData
 {
-    uint Values[];
+    SGPUSplat Splats[];
 };
 
-layout(set = 0, binding = 1) uniform SortInfo
+layout(set = 0, binding = 1) buffer Indices
+{
+    SSortEntry Entries[];
+};
+
+layout(set = 1, binding = 0) uniform SortInfo
 {
     uint Count;
     uint Height;
     uint Algorithm;
 } Info;
 
-shared uint LocalValues[gl_WorkGroupSize.x * 2];
+shared SSortEntry LocalEntries[gl_WorkGroupSize.x * 2];
 
-bool Compare(const uint Left, const uint Right) {
-    return Left > Right;
+bool Compare(const float LeftZ, const float RightZ) {
+    return LeftZ > RightZ;
 }
 
-void GlobalCAS(uvec2 idx) {
-    if (Compare(Values[idx.x], Values[idx.y])) {
-        uint Temp = Values[idx.x];
-        Values[idx.x] = Values[idx.y];
-        Values[idx.y] = Temp;
+void GlobalCAS(uvec2 Indices) {
+    if (Compare(Entries[Indices.x].Z, Entries[Indices.y].Z)) {
+        SSortEntry Temp = Entries[Indices.x];
+        Entries[Indices.x]= Entries[Indices.y];
+        Entries[Indices.y]= Temp;
     }
 }
 
-void LocalCAS(uvec2 idx) {
-    if (Compare(LocalValues[idx.x], LocalValues[idx.y])) {
-        uint Temp = LocalValues[idx.x];
-        LocalValues[idx.x] = LocalValues[idx.y];
-        LocalValues[idx.y] = Temp;
+void LocalCAS(uvec2 Indices) {
+    if (Compare(LocalEntries[Indices.x].Z, LocalEntries[Indices.y].Z)) {
+        SSortEntry Temp = LocalEntries[Indices.x];
+        LocalEntries[Indices.x] = LocalEntries[Indices.y];
+        LocalEntries[Indices.y] = Temp;
     }
 }
 
@@ -104,8 +112,8 @@ void main() {
     uint Offset = gl_WorkGroupSize.x * 2 * gl_WorkGroupID.x;
 
     if (Info.Algorithm <= LOCAL_DISPERSE) {
-        LocalValues[ThreadID * 2] = Values[Offset + ThreadID * 2];
-        LocalValues[ThreadID * 2 + 1] = Values[Offset + ThreadID * 2 + 1];
+        LocalEntries[ThreadID * 2] = Entries[Offset + ThreadID * 2];
+        LocalEntries[ThreadID * 2 + 1] = Entries[Offset + ThreadID * 2 + 1];
     }
 
     switch (Info.Algorithm) {
@@ -133,7 +141,7 @@ void main() {
 
     if (Info.Algorithm <= LOCAL_DISPERSE) {
         barrier();
-        Values[Offset + ThreadID * 2] = LocalValues[ThreadID * 2];
-        Values[Offset + ThreadID * 2 + 1] = LocalValues[ThreadID * 2 + 1];
+        Entries[Offset + ThreadID * 2] = LocalEntries[ThreadID * 2];
+        Entries[Offset + ThreadID * 2 + 1] = LocalEntries[ThreadID * 2 + 1];
     }
 }

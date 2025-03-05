@@ -46,26 +46,28 @@ struct SCamera
 
     void Update(Rr_App *App, Rr_InputState *State)
     {
+        float DeltaTime = Rr_GetDeltaSeconds(App);
+
         Rr_KeyStates Keys = State->Keys;
 
         Rr_Vec3 CameraForward = GetForwardVector();
         Rr_Vec3 CameraLeft = GetRightVector();
-        constexpr float CameraSpeed = 0.02f;
+        constexpr float CameraSpeed = 0.005f;
         if(Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
         {
-            Position -= CameraForward * CameraSpeed;
+            Position += CameraForward * CameraSpeed * DeltaTime;
         }
         if(Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
         {
-            Position -= CameraLeft * CameraSpeed;
+            Position -= CameraLeft * CameraSpeed * DeltaTime;
         }
         if(Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
         {
-            Position += CameraForward * CameraSpeed;
+            Position -= CameraForward * CameraSpeed * DeltaTime;
         }
         if(Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
         {
-            Position += CameraLeft * CameraSpeed;
+            Position += CameraLeft * CameraSpeed * DeltaTime;
         }
 
         if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
@@ -73,7 +75,7 @@ struct SCamera
             Rr_SetRelativeMouseMode(App, true);
             constexpr float Sensitivity = 0.2f;
             Yaw = Rr_WrapMax(
-                Yaw - (State->MousePositionDelta.X * Sensitivity),
+                Yaw + (State->MousePositionDelta.X * Sensitivity),
                 360.0f);
             Pitch = Rr_WrapMinMax(
                 Pitch - (State->MousePositionDelta.Y * Sensitivity),

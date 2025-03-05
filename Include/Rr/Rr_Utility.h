@@ -6,6 +6,8 @@
 extern "C" {
 #endif
 
+extern size_t Rr_NextPowerOfTwo(size_t Number);
+
 extern float Rr_WrapMax(float X, float Max);
 
 extern float Rr_WrapMinMax(float X, float Min, float Max);

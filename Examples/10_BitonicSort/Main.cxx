@@ -118,7 +118,7 @@ struct SBitonicSorter
     uint32_t ThreadsPerWorkgroup;
     Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
-    Rr_Buffer *InfoBuffer;
+    Rr_Buffer *UniformBuffer;
 
     explicit SBitonicSorter(Rr_Renderer *Renderer)
         : Renderer(Renderer)
@@ -155,7 +155,7 @@ struct SBitonicSorter
 
         Pipeline = Rr_CreateComputePipeline(Renderer, &PipelineCreateInfo);
 
-        InfoBuffer = Rr_CreateBuffer(
+        UniformBuffer = Rr_CreateBuffer(
             Renderer,
             sizeof(uint32_t) * 1024,
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
@@ -166,7 +166,7 @@ struct SBitonicSorter
     {
         Rr_DestroyComputePipeline(Renderer, Pipeline);
         Rr_DestroyPipelineLayout(Renderer, Layout);
-        Rr_DestroyBuffer(Renderer, InfoBuffer);
+        Rr_DestroyBuffer(Renderer, UniformBuffer);
     }
 
     void Sort(uint32_t Count, Rr_Buffer *Buffer)
@@ -182,7 +182,7 @@ struct SBitonicSorter
             SortInfo.Height = Height;
             SortInfo.Algorithm = Algorithm;
 
-            char *Dst = (char *)Rr_GetMappedBufferData(Renderer, InfoBuffer) +
+            char *Dst = (char *)Rr_GetMappedBufferData(Renderer, UniformBuffer) +
                         InfoBufferOffset;
             std::memcpy(Dst, &SortInfo, sizeof(SGPUSortInfo));
 
@@ -197,7 +197,7 @@ struct SBitonicSorter
                 sizeof(uint32_t) * Count);
             Rr_BindUniformBuffer(
                 ComputeNode,
-                InfoBuffer,
+                UniformBuffer,
                 0,
                 1,
                 InfoBufferOffset,

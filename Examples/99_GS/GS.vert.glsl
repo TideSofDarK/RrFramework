@@ -63,7 +63,7 @@ void main()
     uint Index = TriIndices[gl_VertexIndex];
     vec2 TriPosition = TriPositions[Index];
 
-    uint InstanceIndex = Indices[gl_InstanceIndex];
+    uint InstanceIndex = Entries[gl_InstanceIndex].Index;
 
     SGPUSplat Splat = Splats[InstanceIndex];
 

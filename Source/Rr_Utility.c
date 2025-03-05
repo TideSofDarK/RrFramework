@@ -3,6 +3,11 @@
 #include <math.h>
 #include <string.h>
 
+size_t Rr_NextPowerOfTwo(size_t Number)
+{
+    return 1 << (size_t)ceil(log2(Number));
+}
+
 float Rr_WrapMax(float X, float Max)
 {
     return fmodf(Max + fmodf(X, Max), Max);
