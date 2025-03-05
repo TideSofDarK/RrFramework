@@ -239,7 +239,9 @@ Rr_Image *Rr_CreateImage(
     Rr_Image *Image = RR_GET_FREE_LIST_ITEM(&Renderer->Images, Renderer->Arena);
     Image->Flags = Flags;
     Image->Format = Rr_GetVulkanTextureFormat(Format);
-    Image->Extent = *(VkExtent3D *)&Extent;
+    Image->Extent.width = Extent.Width;
+    Image->Extent.height = Extent.Height;
+    Image->Extent.depth = Extent.Depth;
 
     VkImageType ImageType = VK_IMAGE_TYPE_3D;
     VkImageViewType ImageViewType = VK_IMAGE_VIEW_TYPE_3D;
