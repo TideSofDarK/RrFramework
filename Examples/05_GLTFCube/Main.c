@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-typedef struct SUniformData UniformData;
+typedef struct SUniformData SUniformData;
 struct SUniformData
 {
     Rr_Mat4 Model;
@@ -21,6 +21,8 @@ static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Sampler *NearestSampler;
+
+static SUniformData UniformData;
 
 static bool Loaded;
 
@@ -156,26 +158,23 @@ static void Init(Rr_App *App, void *UserData)
         RR_MEGABYTES(1),
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
+
+    UniformData.Model = Rr_M4D(1.0f);
 }
 
 static void DrawFirstGLTFPrimitive(Rr_App *App, Rr_GraphNode *GraphicsNode)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
-    double Time = Rr_GetTimeSeconds(App);
-
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
-    UniformData UniformData = {};
-    UniformData.Projection =
-        Rr_Perspective_LH_ZO(0.7643276f, SwapchainSize.Width / (float)SwapchainSize.Height, 0.5f, 50.0f);
-    UniformData.View = Rr_M4D(1.0f);
-    UniformData.Model = Rr_MulM4(
-        Rr_Translate((Rr_Vec3){ 0.0f, 0.0f, 5.0f }),
-        Rr_Rotate_LH(cos(Time), (Rr_Vec3){ 0.0f, 1.0f, 0.0f }));
-    UniformData.Model = Rr_MulM4(
-        UniformData.Model,
-        Rr_Rotate_LH(sin(Time), (Rr_Vec3){ 0.0f, 0.0f, 1.0f }));
+    UniformData.Projection = Rr_Perspective_LH_ZO(
+        0.7643276f,
+        SwapchainSize.Width / (float)SwapchainSize.Height,
+        0.5f,
+        50.0f);
+    UniformData.View = Rr_Translate((Rr_Vec3){ 0.0f, 0.0f, 5.0f });
+    UniformData.Model = Rr_MulM4(UniformData.Model, Rr_Rotate_LH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }));
 
     memcpy(
         Rr_GetMappedBufferData(Renderer, StagingBuffer),
@@ -206,7 +205,7 @@ static void DrawFirstGLTFPrimitive(Rr_App *App, Rr_GraphNode *GraphicsNode)
         GLTFAsset->IndexBufferOffset,
         GLTFAsset->IndexType);
     Rr_BindUniformBuffer(
-            GraphicsNode,
+        GraphicsNode,
         UniformBuffer,
         0,
         0,

@@ -91,6 +91,14 @@ typedef enum
 } Rr_ShaderStageBits;
 typedef uint32_t Rr_ShaderStage;
 
+typedef enum
+{
+    RR_PRESENT_MODE_FIFO,
+    RR_PRESENT_MODE_FIFO_RELAXED,
+    RR_PRESENT_MODE_IMMEDIATE,
+    RR_PRESENT_MODE_MAILBOX,
+} Rr_PresentMode;
+
 extern struct Rr_Graph *Rr_GetGraph(Rr_Renderer *Renderer);
 
 extern Rr_Arena *Rr_GetFrameArena(Rr_Renderer *Renderer);
@@ -100,6 +108,10 @@ extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_Renderer *Renderer);
 extern Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer);
 
 extern struct Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer);
+
+extern bool Rr_SetSwapchainPresentMode(
+    Rr_Renderer *Renderer,
+    Rr_PresentMode PresentMode);
 
 extern size_t Rr_GetUniformAlignment(Rr_Renderer *Renderer);
 

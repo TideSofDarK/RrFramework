@@ -23,6 +23,8 @@ struct Rr_AppConfig
 
 extern void Rr_Run(Rr_AppConfig *Config);
 
+extern void Rr_SetFrameLimiterEnabled(Rr_App *App, bool Enabled);
+
 extern struct Rr_Renderer *Rr_GetRenderer(Rr_App *App);
 
 extern void Rr_DebugOverlay(Rr_App *App);

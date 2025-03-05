@@ -138,21 +138,20 @@ static void Rr_Iterate(Rr_App *App)
 
 static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
 {
+    Rr_App *App = (Rr_App *)AppPtr;
     switch(Event->type)
     {
 #ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
         {
-            Rr_App *App = (Rr_App *)AppPtr;
-            SDL_SetAtomicInt(&App->Renderer->Swapchain.bResizePending, 1);
-            Iterate(App);
+            Rr_SetSwapchainDirty(Rr_GetRenderer(App), true);
+            Rr_Iterate(App);
         }
         break;
 #else
         case SDL_EVENT_WINDOW_RESIZED:
         {
-            Rr_App *App = (Rr_App *)AppPtr;
-            SDL_SetAtomicInt(&App->Renderer->Swapchain.ResizePending, 1);
+            Rr_SetSwapchainDirty(Rr_GetRenderer(App), true);
         }
         break;
 #endif
@@ -179,7 +178,6 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
     FrameTime->TargetFramerate = (uint64_t)Mode->refresh_rate;
     FrameTime->StartTime = SDL_GetTicksNS();
-    FrameTime->EnableFrameLimiter = true;
 
     FrameTime->Now = SDL_GetPerformanceCounter();
 }
@@ -243,7 +241,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_ShowWindow(App.Window);
 
-    while(SDL_GetAtomicInt(&App.bExit) == false)
+    while(SDL_GetAtomicInt(&App.ExitRequested) == false)
     {
         for(SDL_Event Event; SDL_PollEvent(&Event);)
         {
@@ -259,7 +257,7 @@ void Rr_Run(Rr_AppConfig *Config)
                 }
                 case SDL_EVENT_QUIT:
                 {
-                    SDL_SetAtomicInt(&App.bExit, true);
+                    SDL_SetAtomicInt(&App.ExitRequested, true);
                     break;
                 }
                 default:
@@ -281,6 +279,11 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_DestroyWindow(App.Window);
 
     SDL_Quit();
+}
+
+void Rr_SetFrameLimiterEnabled(Rr_App *App, bool Enabled)
+{
+    App->FrameTime.EnableFrameLimiter = Enabled;
 }
 
 Rr_Renderer *Rr_GetRenderer(Rr_App *App)

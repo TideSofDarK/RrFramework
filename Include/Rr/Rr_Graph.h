@@ -37,8 +37,6 @@ typedef enum Rr_BlitMode
 {
     RR_BLIT_MODE_COLOR,
     RR_BLIT_MODE_DEPTH,
-    RR_PRESENT_MODE_STRETCH,
-    RR_PRESENT_MODE_FIT,
 } Rr_BlitMode;
 
 typedef union Rr_ColorClear Rr_ColorClear;

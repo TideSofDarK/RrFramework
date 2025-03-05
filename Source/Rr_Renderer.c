@@ -42,6 +42,16 @@ static void Rr_CleanupSwapchain(Rr_Renderer *Renderer, VkSwapchainKHR Swapchain)
     }
 }
 
+static bool Rr_IsSwapchainDirty(Rr_Renderer *Renderer)
+{
+    return Rr_GetAtomicInt(&Renderer->Swapchain.RecreatePending);
+}
+
+void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty)
+{
+    Rr_SetAtomicInt(&Renderer->Swapchain.RecreatePending, Dirty);
+}
+
 static bool Rr_InitSwapchain(
     Rr_Renderer *Renderer,
     uint32_t *Width,
@@ -97,29 +107,45 @@ static bool Rr_InitSwapchain(
         &PresentModeCount,
         PresentModes);
 
-    VkPresentModeKHR SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-    for(uint32_t Index = 0; Index < PresentModeCount; Index++)
+    VkPresentModeKHR SwapchainPresentMode;
+    switch(Renderer->Swapchain.PresentMode)
     {
-        if(PresentModes[Index] == VK_PRESENT_MODE_MAILBOX_KHR)
-        {
+        case RR_PRESENT_MODE_FIFO_RELAXED:
+            SwapchainPresentMode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+            break;
+        case RR_PRESENT_MODE_IMMEDIATE:
+            SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+            break;
+        case RR_PRESENT_MODE_MAILBOX:
             SwapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
             break;
-        }
-        if(PresentModes[Index] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+        default:
+            SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+            break;
+    }
+    bool PresentModeAvailable = false;
+    for(uint32_t Index = 0; Index < PresentModeCount; Index++)
+    {
+        if(PresentModes[Index] == SwapchainPresentMode)
         {
-            SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+            PresentModeAvailable = true;
+            break;
         }
+    }
+    if(PresentModeAvailable == false)
+    {
+        SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+        Renderer->Swapchain.PresentMode = RR_PRESENT_MODE_FIFO;
     }
 
-    uint32_t DesiredNumberOfSwapchainImages;
-    if(SurfaceCapabilities.maxImageCount == 0)
+    uint32_t DesiredNumberOfSwapchainImages =
+        5; /* Should be safe enough for any present mode and Wayland. */
+    if(SurfaceCapabilities.maxImageCount != 0)
     {
-        DesiredNumberOfSwapchainImages = 4;
-    }
-    else
-    {
-        DesiredNumberOfSwapchainImages =
-            RR_CLAMP(3, SurfaceCapabilities.maxImageCount, 4);
+        DesiredNumberOfSwapchainImages = RR_CLAMP(
+            RR_FRAME_OVERLAP + 1,
+            SurfaceCapabilities.maxImageCount,
+            DesiredNumberOfSwapchainImages);
     }
 
     VkSurfaceTransformFlagsKHR PreTransform;
@@ -681,9 +707,7 @@ bool Rr_NewFrame(Rr_App *App, void *Window)
     Rr_Renderer *Renderer = App->Renderer;
     Rr_Device *Device = &Renderer->Device;
 
-    int32_t bResizePending =
-        SDL_GetAtomicInt(&Renderer->Swapchain.ResizePending);
-    if(bResizePending == true)
+    if(Rr_IsSwapchainDirty(Renderer) == true)
     {
         Device->DeviceWaitIdle(Device->Handle);
 
@@ -695,7 +719,8 @@ bool Rr_NewFrame(Rr_App *App, void *Window)
         if(!Minimized && Width > 0 && Height > 0 &&
            Rr_InitSwapchain(Renderer, (uint32_t *)&Width, (uint32_t *)&Height))
         {
-            SDL_SetAtomicInt(&Renderer->Swapchain.ResizePending, 0);
+            Rr_SetSwapchainDirty(Renderer, false);
+
             return true;
         }
 
@@ -891,12 +916,12 @@ void Rr_DrawFrame(Rr_App *App)
         &SwapchainImageIndex);
     if(Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        SDL_SetAtomicInt(&Renderer->Swapchain.ResizePending, 1);
+        Rr_SetSwapchainDirty(Renderer, true);
         return;
     }
     if(Result == VK_SUBOPTIMAL_KHR)
     {
-        SDL_SetAtomicInt(&Renderer->Swapchain.ResizePending, 1);
+        Rr_SetSwapchainDirty(Renderer, true);
     }
     assert(Result >= 0);
 
@@ -1027,7 +1052,7 @@ void Rr_DrawFrame(Rr_App *App)
         Device->QueuePresentKHR(Renderer->GraphicsQueue.Handle, &PresentInfo);
     if(Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        SDL_SetAtomicInt(&Renderer->Swapchain.ResizePending, 1);
+        Rr_SetSwapchainDirty(Renderer, true);
     }
 
     Renderer->FrameNumber++;
@@ -1098,30 +1123,14 @@ Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer)
     return Rr_GetCurrentFrame(Renderer)->VirtualSwapchainImage;
 }
 
-static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
+bool Rr_SetSwapchainPresentMode(
+    Rr_Renderer *Renderer,
+    Rr_PresentMode PresentMode)
 {
-    switch(LoadOp)
-    {
-        case RR_LOAD_OP_CLEAR:
-            return VK_ATTACHMENT_LOAD_OP_CLEAR;
-        case RR_LOAD_OP_LOAD:
-            return VK_ATTACHMENT_LOAD_OP_LOAD;
-        default:
-            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    }
-}
+    Renderer->Swapchain.PresentMode = PresentMode;
+    Rr_SetSwapchainDirty(Renderer, true);
 
-static VkAttachmentStoreOp Rr_GetStoreOp(Rr_StoreOp StoreOp)
-{
-    switch(StoreOp)
-    {
-        case RR_STORE_OP_DONT_CARE:
-            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        case RR_STORE_OP_STORE:
-            return VK_ATTACHMENT_STORE_OP_STORE;
-        default:
-            return VK_ATTACHMENT_STORE_OP_STORE;
-    }
+    return true;
 }
 
 VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)

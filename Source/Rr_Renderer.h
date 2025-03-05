@@ -21,11 +21,12 @@ struct Rr_SwapchainImage
 typedef struct Rr_Swapchain Rr_Swapchain;
 struct Rr_Swapchain
 {
+    Rr_PresentMode PresentMode;
     VkSwapchainKHR Handle;
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
     VkExtent3D Extent;
-    SDL_AtomicInt ResizePending;
+    Rr_AtomicInt RecreatePending;
     RR_SLICE(Rr_SwapchainImage) Images;
 };
 
@@ -160,6 +161,8 @@ struct Rr_Renderer
 extern Rr_Renderer *Rr_CreateRenderer(Rr_App *App);
 
 extern void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer);
+
+extern void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty);
 
 extern void Rr_PrepareFrame(Rr_App *App);
 

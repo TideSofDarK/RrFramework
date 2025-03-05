@@ -697,3 +697,29 @@ static inline VkImageAspectFlags Rr_GetVulkanImageAspect(Rr_ImageAspect Aspect)
     }
     return Result;
 }
+
+static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
+{
+    switch(LoadOp)
+    {
+        case RR_LOAD_OP_CLEAR:
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        case RR_LOAD_OP_LOAD:
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+        default:
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    }
+}
+
+static VkAttachmentStoreOp Rr_GetStoreOp(Rr_StoreOp StoreOp)
+{
+    switch(StoreOp)
+    {
+        case RR_STORE_OP_DONT_CARE:
+            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case RR_STORE_OP_STORE:
+            return VK_ATTACHMENT_STORE_OP_STORE;
+        default:
+            return VK_ATTACHMENT_STORE_OP_STORE;
+    }
+}
