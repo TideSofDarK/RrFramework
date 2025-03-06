@@ -70,6 +70,15 @@ struct Rr_DepthTarget
     Rr_DepthClear Clear;
 };
 
+typedef struct Rr_DrawIndirectCommand Rr_DrawIndirectCommand;
+struct Rr_DrawIndirectCommand
+{
+    uint32_t VertexCount;
+    uint32_t InstanceCount;
+    uint32_t FirstVertex;
+    uint32_t FirstInstance;
+};
+
 extern Rr_GraphNode *Rr_AddTransferNode(
     Rr_Renderer *Renderer,
     const char *Name);
@@ -118,6 +127,13 @@ extern void Rr_Draw(
     uint32_t InstanceCount,
     uint32_t FirstVertex,
     uint32_t FirstInstance);
+
+extern void Rr_DrawIndirect(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    uint32_t Offset,
+    uint32_t Count,
+    uint32_t Stride);
 
 extern void Rr_DrawIndexed(
     Rr_GraphNode *Node,

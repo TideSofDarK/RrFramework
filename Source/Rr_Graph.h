@@ -15,6 +15,7 @@ typedef enum
     RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
     RR_NODE_FUNCTION_TYPE_DISPATCH,
     RR_NODE_FUNCTION_TYPE_DRAW,
+    RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT,
     RR_NODE_FUNCTION_TYPE_DRAW_INDEXED,
     RR_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
     RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
@@ -93,6 +94,15 @@ struct Rr_DrawArgs
     uint32_t InstanceCount;
     uint32_t FirstVertex;
     uint32_t FirstInstance;
+};
+
+typedef struct Rr_DrawIndirectArgs Rr_DrawIndirectArgs;
+struct Rr_DrawIndirectArgs
+{
+    Rr_GraphBuffer BufferHandle;
+    uint32_t Offset;
+    uint32_t Count;
+    uint32_t Stride;
 };
 
 typedef struct Rr_DrawIndexedArgs Rr_DrawIndexedArgs;

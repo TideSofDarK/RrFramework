@@ -12,7 +12,7 @@ struct SSortList
 {
     struct SUniformData
     {
-        Rr_Mat4 View;
+        Rr_Mat4 ViewProjection;
         uint32_t AliveCount;
     };
 
@@ -22,6 +22,7 @@ struct SSortList
     Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
     Rr_Buffer *UniformBuffer;
+    Rr_Buffer *IndirectBuffer;
 
     SSortList(Rr_Renderer *Renderer)
         : Renderer(Renderer)
@@ -36,6 +37,7 @@ struct SSortList
             Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
             Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
             Rr_PipelineBinding{ 2, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_PipelineBinding{ 3, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
         };
         std::array BindingSets = {
             Rr_PipelineBindingSet{
@@ -69,6 +71,13 @@ struct SSortList
             sizeof(SUniformData),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+
+        IndirectBuffer = Rr_CreateBuffer(
+            Renderer,
+            sizeof(Rr_DrawIndirectCommand),
+            RR_BUFFER_FLAGS_INDIRECT_BIT | RR_BUFFER_FLAGS_STORAGE_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     ~SSortList()
@@ -76,12 +85,13 @@ struct SSortList
         Rr_DestroyComputePipeline(Renderer, Pipeline);
         Rr_DestroyPipelineLayout(Renderer, Layout);
         Rr_DestroyBuffer(Renderer, UniformBuffer);
+        Rr_DestroyBuffer(Renderer, IndirectBuffer);
     }
 
     void Generate(
         size_t AliveCount,
         size_t AlignedCount,
-        const Rr_Mat4 &View,
+        const Rr_Mat4 &ViewProjection,
         size_t SplatsSize,
         Rr_Buffer *SplatsBuffer,
         size_t EntriesSize,
@@ -93,8 +103,16 @@ struct SSortList
             return;
         }
 
+        Rr_DrawIndirectCommand Command = { 0 };
+        Command.VertexCount = 6;
+        // Command.InstanceCount = AliveCount;
+        std::memcpy(
+            Rr_GetMappedBufferData(Renderer, IndirectBuffer),
+            &Command,
+            sizeof(Rr_DrawIndirectCommand));
+
         SUniformData UniformData;
-        UniformData.View = View;
+        UniformData.ViewProjection = ViewProjection;
         UniformData.AliveCount = AliveCount;
 
         std::memcpy(
@@ -114,6 +132,13 @@ struct SSortList
             sizeof(SUniformData));
         Rr_BindStorageBuffer(ComputeNode, SplatsBuffer, 0, 1, 0, SplatsSize);
         Rr_BindStorageBuffer(ComputeNode, EntriesBuffer, 0, 2, 0, EntriesSize);
+        Rr_BindStorageBuffer(
+            ComputeNode,
+            IndirectBuffer,
+            0,
+            3,
+            0,
+            sizeof(Rr_DrawIndirectCommand));
         Rr_Dispatch(ComputeNode, DispatchSize, 1, 1);
     }
 };
@@ -229,11 +254,10 @@ struct SBitonicSorter
 
         UniformBuffer = Rr_CreateBuffer(
             Renderer,
-            RR_ALIGN_POW2(sizeof(Rr_Mat4), Rr_GetUniformAlignment(Renderer)) +
-                RR_ALIGN_POW2(
-                    sizeof(SGPUSortInfo),
-                    Rr_GetUniformAlignment(Renderer)) *
-                    DispatchCount(),
+            RR_ALIGN_POW2(
+                sizeof(SGPUSortInfo),
+                Rr_GetUniformAlignment(Renderer)) *
+                DispatchCount(),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
@@ -246,7 +270,7 @@ struct SBitonicSorter
     }
 
     void Sort(
-        const Rr_Mat4 &View,
+        const Rr_Mat4 &ViewProjection,
         size_t SplatsSize,
         Rr_Buffer *SplatsBuffer,
         size_t EntriesSize,
@@ -255,7 +279,7 @@ struct SBitonicSorter
         SortList.Generate(
             AliveCount,
             AlignedCount,
-            View,
+            ViewProjection,
             SplatsSize,
             SplatsBuffer,
             EntriesSize,
@@ -263,8 +287,7 @@ struct SBitonicSorter
 
         uint32_t DispatchSize = AlignedCount / 2 / ThreadsPerWorkgroup;
 
-        size_t UniformBufferOffset =
-            RR_ALIGN_POW2(sizeof(Rr_Mat4), Rr_GetUniformAlignment(Renderer));
+        size_t UniformBufferOffset = 0;
         auto Dispatch = [&](uint32_t Height, uint32_t Algorithm) {
             SGPUSortInfo SortInfo;
             SortInfo.Count = AlignedCount;

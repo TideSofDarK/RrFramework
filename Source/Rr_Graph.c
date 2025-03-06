@@ -423,6 +423,25 @@ static void Rr_ExecuteGraphicsNode(
                     Args->FirstInstance);
             }
             break;
+            case RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT:
+            {
+                Rr_ApplyDescriptorsState(
+                    &DescriptorsState,
+                    &Frame->DescriptorAllocator,
+                    GraphicsPipeline->Layout,
+                    Device,
+                    CommandBuffer,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS);
+                Rr_DrawIndirectArgs *Args =
+                    (Rr_DrawIndirectArgs *)Function->Args;
+                Device->CmdDrawIndirect(
+                    CommandBuffer,
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                    Args->Offset,
+                    Args->Count,
+                    Args->Stride);
+            }
+            break;
             case RR_NODE_FUNCTION_TYPE_DRAW_INDEXED:
             {
                 Rr_ApplyDescriptorsState(
@@ -1186,12 +1205,12 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
     size_t BatchStartIndex = 0;
     size_t BatchSize = 0;
 
-    bool UseLateCommandBuffer = false;
+    // bool UseLateCommandBuffer = false;
 
     for(size_t Index = 0; Index < SortedNodes.Count; ++Index)
     {
         Rr_GraphNode *Node = SortedNodes.Data[Index];
-        UseLateCommandBuffer |= Node->UsesLateCommandBuffer;
+        // UseLateCommandBuffer |= Node->UsesLateCommandBuffer;
         DependencyLevel = Node->DependencyLevel;
 
         for(size_t DepIndex = 0; DepIndex < Node->Dependencies.Count;
@@ -1351,9 +1370,11 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
         {
             /* Execute current batch now! */
 
-            VkCommandBuffer CommandBuffer = UseLateCommandBuffer
-                                                ? Frame->LateCommandBuffer
-                                                : Frame->EarlyCommandBuffer;
+            // VkCommandBuffer CommandBuffer = UseLateCommandBuffer
+            //                                     ? Frame->LateCommandBuffer
+            //                                     : Frame->EarlyCommandBuffer;
+
+            VkCommandBuffer CommandBuffer = Frame->LateCommandBuffer;
 
             Rr_ApplyBarrierBatch(
                 Renderer,
@@ -1371,7 +1392,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
 
             BatchStartIndex = Index + 1;
             BatchSize = 0;
-            UseLateCommandBuffer = 0;
+            // UseLateCommandBuffer = 0;
         }
     }
 
@@ -1674,6 +1695,34 @@ void Rr_Draw(
         .FirstVertex = FirstVertex,
         .FirstInstance = FirstInstance,
     };
+}
+
+void Rr_DrawIndirect(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    uint32_t Offset,
+    uint32_t Count,
+    uint32_t Stride)
+{
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+
+    Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);
+
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT, Rr_DrawIndirectArgs) =
+        (Rr_DrawIndirectArgs){
+            .BufferHandle = *BufferHandle,
+            .Offset = Offset,
+            .Count = Count,
+            .Stride = Stride,
+        };
+
+    Rr_AddNodeDependency(
+        Node,
+        BufferHandle,
+        &(Rr_SyncState){
+            .AccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
+            .StageMask = VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+        });
 }
 
 void Rr_DrawIndexed(

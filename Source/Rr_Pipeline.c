@@ -12,7 +12,8 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    bool HasDepth = Info->DepthStencil.EnableDepthWrite;
+    bool HasDepth = Info->DepthStencil.EnableDepthWrite ||
+                    Info->DepthStencil.EnableDepthTest;
     size_t AttachmentCount = Info->ColorTargetCount + (HasDepth ? 1 : 0);
     Rr_RenderPassAttachment *Attachments = RR_ALLOC_TYPE_COUNT(
         Scratch.Arena,
@@ -30,8 +31,8 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     {
         Attachments[AttachmentCount - 1].LoadOp = RR_LOAD_OP_DONT_CARE;
         Attachments[AttachmentCount - 1].StoreOp = RR_STORE_OP_DONT_CARE;
-        Attachments[AttachmentCount - 1].Format = Rr_GetVulkanTextureFormat(
-            Info->ColorTargets[Info->ColorTargetCount].Format);
+        Attachments[AttachmentCount - 1].Format =
+            Rr_GetVulkanTextureFormat(Info->DepthStencil.Format);
     }
 
     VkRenderPass RenderPass = Rr_GetRenderPass(

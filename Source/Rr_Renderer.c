@@ -894,12 +894,16 @@ void Rr_DrawFrame(Rr_App *App)
     Rr_Swapchain *Swapchain = &Renderer->Swapchain;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Device->WaitForFences(
+    VkResult Result = Device->WaitForFences(
         Device->Handle,
         1,
         &Frame->RenderFence,
         true,
         1000000000);
+    if(Result == VK_TIMEOUT)
+    {
+        RR_ABORT("Render fence timeout!");
+    }
     Device->ResetFences(Device->Handle, 1, &Frame->RenderFence);
 
     Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Device);
@@ -907,13 +911,17 @@ void Rr_DrawFrame(Rr_App *App)
     /* Acquire swapchain image. */
 
     uint32_t SwapchainImageIndex;
-    VkResult Result = Device->AcquireNextImageKHR(
+    Result = Device->AcquireNextImageKHR(
         Device->Handle,
         Swapchain->Handle,
         1000000000,
         Frame->SwapchainSemaphore,
         VK_NULL_HANDLE,
         &SwapchainImageIndex);
+    if(Result == VK_TIMEOUT)
+    {
+        RR_ABORT("Swapchain image timeout!");
+    }
     if(Result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         Rr_SetSwapchainDirty(Renderer, true);

@@ -64,9 +64,11 @@ struct SSplatRenderer
     size_t AlignedCount;
     SBitonicSorter Sorter;
 
+    std::vector<SGPUSplat> GPUSplats;
+
     Rr_Buffer *SplatsBuffer{};
-    Rr_Buffer *EntriesBuffer{};
     Rr_Buffer *UniformBuffer{};
+    Rr_Buffer *EntriesBuffer{};
 
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
@@ -103,7 +105,7 @@ struct SSplatRenderer
         };
 
         std::array<Rr_ColorTargetInfo, 1> ColorTargets = {};
-        ColorTargets[0].Format = RR_TEXTURE_FORMAT_R8G8B8A8_UNORM;
+        ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
         ColorTargets[0].Blend.BlendEnable = true;
         ColorTargets[0].Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
         ColorTargets[0].Blend.DstColorBlendFactor =
@@ -123,12 +125,13 @@ struct SSplatRenderer
         PipelineInfo.VertexInputBindings = &VertexInputBinding;
         PipelineInfo.ColorTargetCount = ColorTargets.size();
         PipelineInfo.ColorTargets = ColorTargets.data();
+        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
+        PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
         /* Parse and upload splats. */
 
-        std::vector<SGPUSplat> GPUSplats;
         GPUSplats.resize(AlignedCount);
 
         for(size_t Index = 0; Index < AliveCount; ++Index)
@@ -175,7 +178,7 @@ struct SSplatRenderer
     void Render(Rr_App *App, const SCamera &Camera, Rr_Image *ColorAttachment)
     {
         Sorter.Sort(
-            Camera.ViewMatrix,
+            Camera.ProjMatrix * Camera.ViewMatrix,
             sizeof(SGPUSplat) * AlignedCount,
             SplatsBuffer,
             sizeof(SGPUEntry) * AlignedCount,
@@ -227,7 +230,7 @@ struct SSplatRenderer
             2,
             0,
             sizeof(SGPUEntry) * AliveCount);
-        Rr_Draw(GraphicsNode, 6, AliveCount, 0, 0);
+        Rr_DrawIndirect(GraphicsNode, Sorter.SortList.IndirectBuffer, 0, 1, 0);
     }
 };
 
