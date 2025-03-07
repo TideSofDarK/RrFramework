@@ -9,7 +9,6 @@
 #include <numeric>
 #include <vector>
 
-static uint32_t ThreadsPerWorkgroup;
 static Rr_PipelineLayout *Layout;
 static Rr_ComputePipeline *Pipeline;
 static Rr_Buffer *Buffer;
@@ -33,12 +32,6 @@ static void Init(Rr_App *App, void *UserData)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
-    ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
-    if(RR_IS_POW2(ThreadsPerWorkgroup) != true)
-    {
-        ThreadsPerWorkgroup = Rr_NextPowerOfTwo(ThreadsPerWorkgroup) / 2;
-    }
-
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
         Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
@@ -55,6 +48,7 @@ static void Init(Rr_App *App, void *UserData)
         BindingSets.size(),
         BindingSets.data());
 
+    uint32_t ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
     std::array Specializations = {
         Rr_PipelineSpecialization{ 0,
                                    RR_MAKE_DATA_STRUCT(ThreadsPerWorkgroup) },
@@ -135,7 +129,7 @@ static void Cleanup(Rr_App *App, void *UserData)
 int main()
 {
     Rr_AppConfig Config = {};
-    Config.Title = "11_GS";
+    Config.Title = "11_PrefixSum";
     Config.Version = "1.0.0";
     Config.Package = "com.rr.examples.11_prefixsum";
     Config.InitFunc = Init;
