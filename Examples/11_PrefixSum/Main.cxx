@@ -3,22 +3,25 @@
 #include <Rr/Rr.h>
 
 #include <array>
-#include <cfloat>
 #include <cstring>
 #include <iostream>
 #include <numeric>
+#include <stdlib.h>
 #include <vector>
 
 static Rr_PipelineLayout *Layout;
 static Rr_ComputePipeline *Pipeline;
-static Rr_Buffer *Buffer;
+static Rr_Buffer *InputBuffer;
+static Rr_Buffer *OutputBuffer;
+static Rr_Buffer *WorkgroupBuffer;
 static Rr_Buffer *UniformBuffer;
+static uint32_t ThreadsPerWorkgroup;
 
 std::vector<uint32_t> Numbers;
 
-const uint32_t COUNT = 456456;
+static const uint32_t COUNT = 456456;
 
-uint32_t GetPrefixSum(uint32_t Number)
+static uint32_t GetPrefixSum(uint32_t Number)
 {
     uint32_t Result = 0;
     for(uint32_t Index = 0; Index <= Number; ++Index)
@@ -28,6 +31,16 @@ uint32_t GetPrefixSum(uint32_t Number)
     return Result;
 }
 
+static uint32_t GetDispatchSize()
+{
+    uint32_t DispatchSize = COUNT / ThreadsPerWorkgroup;
+    if((COUNT % ThreadsPerWorkgroup) != 0)
+    {
+        DispatchSize++;
+    }
+    return DispatchSize;
+}
+
 static void Init(Rr_App *App, void *UserData)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
@@ -35,6 +48,8 @@ static void Init(Rr_App *App, void *UserData)
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
         Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+        Rr_PipelineBinding{ 2, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+        Rr_PipelineBinding{ 3, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
     };
     std::array BindingSets = {
         Rr_PipelineBindingSet{
@@ -48,7 +63,7 @@ static void Init(Rr_App *App, void *UserData)
         BindingSets.size(),
         BindingSets.data());
 
-    uint32_t ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
+    ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
     std::array Specializations = {
         Rr_PipelineSpecialization{ 0,
                                    RR_MAKE_DATA_STRUCT(ThreadsPerWorkgroup) },
@@ -66,9 +81,15 @@ static void Init(Rr_App *App, void *UserData)
     Numbers.resize(COUNT);
     std::iota(Numbers.begin(), Numbers.end(), 0);
     size_t NumbersSize = sizeof(uint32_t) * Numbers.size();
-    Buffer = Rr_CreateBuffer(
+    InputBuffer =
+        Rr_CreateBuffer(Renderer, NumbersSize, RR_BUFFER_FLAGS_STORAGE_BIT);
+
+    OutputBuffer =
+        Rr_CreateBuffer(Renderer, NumbersSize, RR_BUFFER_FLAGS_STORAGE_BIT);
+
+    WorkgroupBuffer = Rr_CreateBuffer(
         Renderer,
-        NumbersSize,
+        GetDispatchSize() * sizeof(uint32_t),
         RR_BUFFER_FLAGS_STORAGE_BIT);
 
     UniformBuffer = Rr_CreateBuffer(
@@ -94,8 +115,16 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Renderer, "compute");
     Rr_BindComputePipeline(ComputeNode, Pipeline);
     Rr_BindUniformBuffer(ComputeNode, UniformBuffer, 0, 0, 0, sizeof(uint32_t));
-    Rr_BindStorageBuffer(ComputeNode, Buffer, 0, 1, 0, NumbersSize);
-    Rr_Dispatch(ComputeNode, 1, 1, 1);
+    Rr_BindStorageBuffer(ComputeNode, InputBuffer, 0, 1, 0, NumbersSize);
+    Rr_BindStorageBuffer(ComputeNode, OutputBuffer, 0, 2, 0, NumbersSize);
+    Rr_BindStorageBuffer(
+        ComputeNode,
+        WorkgroupBuffer,
+        0,
+        3,
+        0,
+        GetDispatchSize() * sizeof(uint32_t));
+    Rr_Dispatch(ComputeNode, GetDispatchSize(), 1, 1);
 
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
@@ -113,14 +142,17 @@ static void Iterate(Rr_App *App, void *UserData)
         &SwapchainImage,
         nullptr,
         nullptr);
-    Rr_BindStorageBuffer(GraphicsNode, Buffer, 0, 0, 0, NumbersSize);
+    Rr_BindStorageBuffer(GraphicsNode, InputBuffer, 0, 0, 0, NumbersSize);
+    Rr_BindStorageBuffer(GraphicsNode, OutputBuffer, 0, 1, 0, NumbersSize);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
-    Rr_DestroyBuffer(Renderer, Buffer);
+    Rr_DestroyBuffer(Renderer, InputBuffer);
+    Rr_DestroyBuffer(Renderer, OutputBuffer);
+    Rr_DestroyBuffer(Renderer, WorkgroupBuffer);
     Rr_DestroyBuffer(Renderer, UniformBuffer);
     Rr_DestroyComputePipeline(Renderer, Pipeline);
     Rr_DestroyPipelineLayout(Renderer, Layout);
