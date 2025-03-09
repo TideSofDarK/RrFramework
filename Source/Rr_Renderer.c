@@ -1045,8 +1045,6 @@ void Rr_DrawFrame(Rr_App *App)
         SubmitInfos,
         Frame->RenderFence);
 
-    Rr_UnlockSpinLock(&Renderer->GraphicsQueue.Lock);
-
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
@@ -1062,6 +1060,8 @@ void Rr_DrawFrame(Rr_App *App)
     {
         Rr_SetSwapchainDirty(Renderer, true);
     }
+
+    Rr_UnlockSpinLock(&Renderer->GraphicsQueue.Lock);
 
     Renderer->FrameNumber++;
     Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;

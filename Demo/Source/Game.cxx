@@ -6,14 +6,11 @@
 
 #include <array>
 #include <cstring>
-#include <format>
-#include <iostream>
 #include <random>
-#include <string>
-#include <thread>
-#include <unordered_map>
 
 #define MAX_CREEPS 1024
+
+static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
 
 enum EInputAction
 {
@@ -315,6 +312,7 @@ struct SCreepManager
         PipelineInfo.DepthStencil.EnableDepthTest = true;
         PipelineInfo.DepthStencil.EnableDepthWrite = true;
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
+        PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
@@ -458,9 +456,8 @@ struct SCreepManager
         std::memcpy(StagingData + *StagingOffset, Creeps.data(), StorageSize);
 
         Rr_GraphNode *TransferNode =
-            Rr_AddTransferNode(App, "upload_creep_data");
+            Rr_AddTransferNode(Renderer, "upload_creep_data");
         Rr_TransferBufferData(
-            App,
             TransferNode,
             StorageSize,
             StagingBuffer,
@@ -601,6 +598,7 @@ static void Init(Rr_App *App, void *UserData)
     PipelineInfo.DepthStencil.EnableDepthTest = true;
     PipelineInfo.DepthStencil.EnableDepthWrite = true;
     PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
+    PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
 
     GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
@@ -703,9 +701,8 @@ static void Render(
         RR_ALIGN_POW2(sizeof(UniformData), Rr_GetUniformAlignment(Renderer));
 
     Rr_GraphNode *TransferNode =
-        Rr_AddTransferNode(App, "upload_uniform_buffer");
+        Rr_AddTransferNode(Renderer, "upload_uniform_buffer");
     Rr_TransferBufferData(
-        App,
         TransferNode,
         sizeof(UniformData),
         StagingBuffer,
@@ -730,7 +727,7 @@ static void Render(
         },
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
-        App,
+        Renderer,
         "offscreen",
         1,
         &OffscreenTarget,
@@ -789,21 +786,21 @@ static void Render(
             &StagingOffset);
 
         Rr_AddBlitNode(
-            App,
+            Renderer,
             "blit1",
             ColorAttachment,
             BlitImage,
             { 0, 0, 320, 240 },
             { 0, 0, 128, 128 },
-            RR_BLIT_MODE_COLOR);
+            RR_IMAGE_ASPECT_COLOR_BIT);
         Rr_AddBlitNode(
-            App,
+            Renderer,
             "blit2",
             BlitImage,
             ColorAttachment,
             { 0, 0, 128, 128 },
             { 0, 0, 64, 64 },
-            RR_BLIT_MODE_COLOR);
+            RR_IMAGE_ASPECT_COLOR_BIT);
     }
 }
 
@@ -829,13 +826,17 @@ static void Iterate(Rr_App *App, void *UserData)
 
     Render(App, ColorAttachment, DepthAttachment);
 
-    Rr_AddPresentNode(
-        App,
-        "present",
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_IntVec2 SwapchainImageSize = Rr_GetSwapchainSize(Renderer);
+    Rr_AddBlitNode(
+        Renderer,
+        "blit_to_swapchain",
         ColorAttachment,
-        NearestSampler,
-        BackgroundColor,
-        RR_PRESENT_MODE_FIT);
+        SwapchainImage,
+        { 0, 0, 320, 240 },
+        { 0, 0, SwapchainImageSize.X, SwapchainImageSize.Y },
+        RR_IMAGE_ASPECT_COLOR_BIT);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)

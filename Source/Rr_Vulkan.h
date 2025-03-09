@@ -683,15 +683,15 @@ static inline bool Rr_IsVulkanDepthFormat(VkFormat Format)
 static inline VkImageAspectFlags Rr_GetVulkanImageAspect(Rr_ImageAspect Aspect)
 {
     VkImageAspectFlags Result = 0;
-    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_COLOR))
+    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_COLOR_BIT))
     {
         Result |= VK_IMAGE_ASPECT_COLOR_BIT;
     }
-    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_DEPTH))
+    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_DEPTH_BIT))
     {
         Result |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
-    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_STENCIL))
+    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_STENCIL_BIT))
     {
         Result |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }

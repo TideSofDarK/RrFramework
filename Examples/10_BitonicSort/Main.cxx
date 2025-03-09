@@ -333,7 +333,7 @@ static void Iterate(Rr_App *App, void *UserData)
         SwapchainImage,
         { 0, 0, 2, 2 },
         { 0, 0, SwapchainSize.Width, SwapchainSize.Height },
-        RR_IMAGE_ASPECT_COLOR);
+        RR_IMAGE_ASPECT_COLOR_BIT);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)

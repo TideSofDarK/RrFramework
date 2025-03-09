@@ -8,9 +8,9 @@ extern "C" {
 
 typedef enum
 {
-    RR_IMAGE_ASPECT_COLOR = (1 << 0),
-    RR_IMAGE_ASPECT_DEPTH = (1 << 1),
-    RR_IMAGE_ASPECT_STENCIL = (1 << 2),
+    RR_IMAGE_ASPECT_COLOR_BIT = (1 << 0),
+    RR_IMAGE_ASPECT_DEPTH_BIT = (1 << 1),
+    RR_IMAGE_ASPECT_STENCIL_BIT = (1 << 2),
 } Rr_ImageAspect;
 
 typedef struct Rr_Sampler Rr_Sampler;
