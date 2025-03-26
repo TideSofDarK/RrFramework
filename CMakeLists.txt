@@ -202,6 +202,7 @@ rr_embed_assets(
 add_subdirectory(Demo)
 add_subdirectory(Examples/01_Triangle)
 add_subdirectory(Examples/05_GLTFCube)
+add_subdirectory(Examples/08_QuadTree)
 add_subdirectory(Examples/10_BitonicSort)
 add_subdirectory(Examples/11_PrefixSum)
 add_subdirectory(Examples/99_GS)
