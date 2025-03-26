@@ -141,8 +141,10 @@ public:
     void PushPoint(const SPoint &Point, const SRect &Bounds)
     {
         SGPUDraw Draw{};
-        const float MaxHor = RR_MIN((Bounds.Right - Point.X), (Point.X - Bounds.Left));
-        const float MaxVert = RR_MIN((Bounds.Bottom - Point.Y), (Point.Y - Bounds.Top));
+        const float MaxHor =
+            RR_MIN((Bounds.Right - Point.X), (Point.X - Bounds.Left));
+        const float MaxVert =
+            RR_MIN((Bounds.Bottom - Point.Y), (Point.Y - Bounds.Top));
         Draw.Width = RR_MIN(MaxHor, MaxVert) * 2.0f;
         Draw.Height = Draw.Width;
         Draw.X = (float)Point.X - Draw.Width / 2;
@@ -392,7 +394,8 @@ static void Iterate(Rr_App *App, void *UserData)
     const float Right = SwapchainSize.X / 2.0f * CameraZoom;
     const float Bottom = -SwapchainSize.Y / 2.0f * CameraZoom;
     const float Top = SwapchainSize.Y / 2.0f * CameraZoom;
-    UniformData.Projection = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, -1, 1);
+    UniformData.Projection =
+        Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, -1, 1);
     UniformData.View =
         Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
     UniformData.ScreenSize = { SwapchainSize.X, SwapchainSize.Y };
