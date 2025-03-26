@@ -475,7 +475,13 @@ struct SCreepManager
         /* Draw creeps. */
 
         Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-        Rr_BindStorageBuffer(Node, StorageBuffer, 1, 0, 0, (uint32_t)StorageSize);
+        Rr_BindStorageBuffer(
+            Node,
+            StorageBuffer,
+            1,
+            0,
+            0,
+            (uint32_t)StorageSize);
 
         Rr_BindVertexBuffer(
             Node,

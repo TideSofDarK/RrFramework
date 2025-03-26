@@ -260,7 +260,8 @@ Rr_Image *Rr_CreateImage(
     if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
     {
         MipLevels =
-            (uint32_t)floorf(logf((float)RR_MAX(Extent.Width, Extent.Height))) + 1;
+            (uint32_t)floorf(logf((float)RR_MAX(Extent.Width, Extent.Height))) +
+            1;
     }
 
     Image->AllocatedImageCount = 1;

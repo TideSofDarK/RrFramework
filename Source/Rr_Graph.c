@@ -934,7 +934,7 @@ static void Rr_ProcessGraphNodes(
         {
             Rr_GraphNode *Dependency =
                 Graph->Nodes.Data[Dependencies->Data[DependencyIndex]];
-            if (Dependency != NULL)
+            if(Dependency != NULL)
             {
                 Node->UsesLateCommandBuffer |=
                     Dependency->UsesLateCommandBuffer;
