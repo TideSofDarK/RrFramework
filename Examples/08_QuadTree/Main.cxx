@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <initializer_list>
 #include <iostream>
 #include <iterator>
 #include <numeric>
@@ -90,6 +89,25 @@ struct SRect
     }
 };
 
+struct SGPUUniformData
+{
+    Rr_Mat4 View;
+    Rr_Mat4 Projection;
+    Rr_IntVec2 ScreenSize;
+};
+
+struct SGPUDraw
+{
+    float X;
+    float Y;
+    float Width;
+    float Height;
+    int32_t Type;
+    uint32_t Color;
+    float Param1;
+    float Param2;
+};
+
 template <typename TItem> class CQuadTree
 {
 public:
@@ -106,13 +124,41 @@ public:
     SRect Bounds;
     std::vector<SNode> Nodes;
     std::vector<TItem> Items;
+    std::vector<SGPUDraw> Draws;
     uint32_t RootIndex;
+
+    void PushCross(const SPoint &Center, const SRect &Bounds)
+    {
+        SGPUDraw Draw{};
+        Draw.Width = float(Bounds.Right - Bounds.Left);
+        Draw.Height = float(Bounds.Bottom - Bounds.Top);
+        Draw.X = (float)Center.X - Draw.Width / 2;
+        Draw.Y = (float)Center.Y - Draw.Height / 2;
+        Draw.Type = 1;
+        Draws.push_back(Draw);
+    }
+
+    void PushPoint(SPoint Point)
+    {
+        SGPUDraw Draw{};
+        constexpr float Radius = 32.0f;
+        Draw.Width = Radius;
+        Draw.Height = Radius;
+        Draw.X = (float)Point.X - Draw.Width / 2;
+        Draw.Y = (float)Point.Y - Draw.Height / 2;
+        Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
+                     ((std::rand() % 256) << 16);
+        Draw.Type = 0;
+        Draws.push_back(Draw);
+    }
 
     template <typename TIterator>
     uint32_t Build(const SRect &Bounds, TIterator Begin, TIterator End)
     {
         if(Begin == End)
         {
+            PushPoint(*Begin);
+
             return UINT32_MAX;
         }
 
@@ -130,6 +176,20 @@ public:
         }
 
         SPoint Center = Bounds.Center();
+
+        PushCross(Center, Bounds);
+
+        // SGPUDraw Draw{};
+        // Draw.X =
+        //     (((float)std::rand() / (float)RAND_MAX) - 0.5f) * 2.0f * 256.0f;
+        // Draw.Y =
+        //     (((float)std::rand() / (float)RAND_MAX) - 0.5f) * 2.0f * 256.0f;
+        // float Radius = (float)std::rand() / (float)RAND_MAX * 256.0f + 10.0f;
+        // Draw.Width = Radius;
+        // Draw.Height = Radius;
+        // Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
+        //              ((std::rand() % 256) << 16);
+        // Draws.push_back(Draw);
 
         TIterator SplitY =
             std::partition(Begin, End, [Center](const SPoint &Point) {
@@ -167,32 +227,14 @@ public:
         return Result;
     }
 
-public:
-    template <typename TIterator>
-    CQuadTree(TIterator Begin, TIterator End)
-        : Bounds(SRect{ Begin, End })
+    template <typename TIterator> void Build(TIterator Begin, TIterator End)
     {
+        Nodes.clear();
+        Items.clear();
+        Draws.clear();
+        Bounds = SRect(Begin, End);
         RootIndex = Build(Bounds, Begin, End);
     }
-};
-
-struct SGPUUniformData
-{
-    Rr_Mat4 View;
-    Rr_Mat4 Projection;
-    Rr_IntVec2 ScreenSize;
-};
-
-struct SGPUDraw
-{
-    float X;
-    float Y;
-    float Width;
-    float Height;
-    int32_t Type;
-    uint32_t Color;
-    float Param1;
-    float Param2;
 };
 
 const uint32_t MAX_DRAWS = 1024;
@@ -204,10 +246,25 @@ static Rr_Buffer *StorageBuffer;
 static Rr_Buffer *StagingBuffer;
 
 static SGPUUniformData UniformData;
-static std::vector<SGPUDraw> Draws;
 
 static float CameraZoom = 1.0f;
 static Rr_Vec2 CameraPosition;
+static CQuadTree<double> Tree;
+static bool Dragging;
+static Rr_Vec2 DragStartMouse;
+static Rr_Vec2 DragStartCamera;
+
+static void RebuildTree()
+{
+    const int NUM_POINTS = 512;
+    std::vector<SPoint> Points;
+    Points.reserve(NUM_POINTS);
+    std::generate_n(std::back_inserter(Points), NUM_POINTS, []() {
+        return SPoint{ ((int)std::rand() % 5000) - 2500,
+                       ((int)std::rand() % 5000) - 2500 };
+    });
+    Tree.Build(Points.begin(), Points.end());
+}
 
 static void Init(Rr_App *App, void *UserData)
 {
@@ -264,47 +321,42 @@ static void Init(Rr_App *App, void *UserData)
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
-    for(auto Index = 0; Index < 14; ++Index)
-    {
-        SGPUDraw Draw{};
-        Draw.X =
-            (((float)std::rand() / (float)RAND_MAX) - 0.5f) * 2.0f * 256.0f;
-        Draw.Y =
-            (((float)std::rand() / (float)RAND_MAX) - 0.5f) * 2.0f * 256.0f;
-        float Radius = (float)std::rand() / (float)RAND_MAX * 256.0f + 10.0f;
-        Draw.Width = Radius;
-        Draw.Height = Radius;
-        Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
-                     ((std::rand() % 256) << 16);
-        Draws.push_back(Draw);
-    }
+    std::srand((uint32_t)std::time(nullptr));
+
+    RebuildTree();
 }
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    if(Rr_IsScancodePressed(RR_SCANCODE_Q))
+    if(Rr_IsScancodePressed(RR_SCANCODE_SPACE))
     {
-        CameraZoom -= 0.005;
+        RebuildTree();
     }
-    if(Rr_IsScancodePressed(RR_SCANCODE_E))
+    if(Rr_IsScancodePressed(RR_SCANCODE_Q))
     {
         CameraZoom += 0.005;
     }
-    if(Rr_IsScancodePressed(RR_SCANCODE_A))
+    if(Rr_IsScancodePressed(RR_SCANCODE_E))
     {
-        CameraPosition.X += 0.5;
+        CameraZoom -= 0.005;
     }
-    if(Rr_IsScancodePressed(RR_SCANCODE_D))
+    CameraZoom = RR_CLAMP(0.1f, CameraZoom, 10.0f);
+    Rr_MouseButtonMask MouseState = Rr_GetMouseState();
+    if(Dragging == false && RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_MASK))
     {
-        CameraPosition.X -= 0.5;
+        Dragging = true;
+        DragStartCamera = CameraPosition;
+        DragStartMouse = Rr_GetMousePosition();
     }
-    if(Rr_IsScancodePressed(RR_SCANCODE_W))
+    if(Dragging == true &&
+       RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_MASK) == false)
     {
-        CameraPosition.Y += 0.5;
+        Dragging = false;
     }
-    if(Rr_IsScancodePressed(RR_SCANCODE_S))
+    if(Dragging)
     {
-        CameraPosition.Y -= 0.5;
+        CameraPosition =
+            DragStartCamera - (DragStartMouse - Rr_GetMousePosition()) * 1.25f;
     }
 
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
@@ -341,8 +393,8 @@ static void Iterate(Rr_App *App, void *UserData)
     char *StagingData = (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
     std::memcpy(StagingData, &UniformData, sizeof(UniformData));
     StagingData += sizeof(UniformData);
-    std::uint32_t DrawsSize = sizeof(SGPUDraw) * Draws.size();
-    std::memcpy(StagingData, Draws.data(), DrawsSize);
+    std::uint32_t DrawsSize = sizeof(SGPUDraw) * Tree.Draws.size();
+    std::memcpy(StagingData, Tree.Draws.data(), DrawsSize);
 
     Rr_GraphNode *TransferNode = Rr_AddTransferNode(Renderer, "transfer");
     Rr_TransferBufferData(
@@ -371,7 +423,7 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_BindGraphicsPipeline(TreeNode, Pipeline);
     Rr_BindUniformBuffer(TreeNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
     Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
-    Rr_Draw(TreeNode, 6, Draws.size(), 0, 0);
+    Rr_Draw(TreeNode, 6, Tree.Draws.size(), 0, 0);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
@@ -387,53 +439,6 @@ static void Cleanup(Rr_App *App, void *UserData)
 
 int main()
 {
-    std::srand((uint32_t)std::time(nullptr));
-
-    // CQuadTree<uint32_t> Tree;
-    SRect RectA{ 10, 10, 20, 20 };
-    SRect RectB{ 11, 11, 19, 19 };
-    std::cout << RectA << "\n" << RectB << "\n";
-    std::cout << "Intersects: " << RectA.Intersects(RectB) << std::endl;
-    std::cout << "Contains: " << RectA.Contains(RectB) << std::endl;
-
-    std::vector<SPoint> Points = {
-        { -1, 1 },
-        { 5, 0 },
-        { 4, 10 },
-        { -5, 4 },
-    };
-    std::cout << "BoundingBox: " << SRect(Points.begin(), Points.end())
-              << std::endl;
-
-    auto Split =
-        std::partition(Points.begin(), Points.end(), [](const SPoint &Point) {
-            return Point.X > 0;
-        });
-
-    for(auto It = Split; It != Points.end(); ++It)
-    {
-        std::cout << It->X << " " << It->Y << "\n";
-    }
-
-    {
-        const int NUM_POINTS = 32;
-        std::vector<SPoint> Points;
-        Points.reserve(NUM_POINTS);
-        std::generate_n(std::back_inserter(Points), NUM_POINTS, []() {
-            return SPoint{ ((int)std::rand() % 256) - 128,
-                           ((int)std::rand() % 256) - 128 };
-        });
-        // std::generate_n
-        for(auto &Point : Points)
-        {
-            std::cout << Point.X << " " << Point.Y << "\n";
-        }
-        CQuadTree<double> Tree{ Points.begin(), Points.end() };
-
-        std::cout << Tree.Bounds << "\n";
-        std::cout << Tree.Nodes.size() << "\n";
-    }
-
     Rr_AppConfig Config = {};
     Config.Title = "08_QuadTree";
     Config.Version = "1.0.0";
