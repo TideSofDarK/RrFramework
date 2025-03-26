@@ -130,20 +130,21 @@ public:
     void PushCross(const SPoint &Center, const SRect &Bounds)
     {
         SGPUDraw Draw{};
-        Draw.Width = float(Bounds.Right - Bounds.Left);
-        Draw.Height = float(Bounds.Bottom - Bounds.Top);
-        Draw.X = (float)Center.X - Draw.Width / 2;
-        Draw.Y = (float)Center.Y - Draw.Height / 2;
+        Draw.Width = (float)Bounds.Right - (float)Bounds.Left;
+        Draw.Height = (float)Bounds.Bottom - (float)Bounds.Top;
+        Draw.X = (float)Center.X - Draw.Width / 2.0f;
+        Draw.Y = (float)Center.Y - Draw.Height / 2.0f;
         Draw.Type = 1;
         Draws.push_back(Draw);
     }
 
-    void PushPoint(SPoint Point)
+    void PushPoint(const SPoint &Point, const SRect &Bounds)
     {
         SGPUDraw Draw{};
-        constexpr float Radius = 32.0f;
-        Draw.Width = Radius;
-        Draw.Height = Radius;
+        const float MaxHor = RR_MIN((Bounds.Right - Point.X), (Point.X - Bounds.Left));
+        const float MaxVert = RR_MIN((Bounds.Bottom - Point.Y), (Point.Y - Bounds.Top));
+        Draw.Width = RR_MIN(MaxHor, MaxVert) * 2.0f;
+        Draw.Height = Draw.Width;
         Draw.X = (float)Point.X - Draw.Width / 2;
         Draw.Y = (float)Point.Y - Draw.Height / 2;
         Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
@@ -153,12 +154,10 @@ public:
     }
 
     template <typename TIterator>
-    uint32_t Build(const SRect &Bounds, TIterator Begin, TIterator End)
+    uint32_t BuildNode(const SRect &Bounds, TIterator Begin, TIterator End)
     {
         if(Begin == End)
         {
-            PushPoint(*Begin);
-
             return UINT32_MAX;
         }
 
@@ -167,11 +166,13 @@ public:
 
         if(std::equal(Begin + 1, End, Begin))
         {
+            PushPoint(*Begin, Bounds);
             return Result;
         }
 
         if(Begin + 1 == End)
         {
+            PushPoint(*Begin, Bounds);
             return Result;
         }
 
@@ -206,20 +207,22 @@ public:
                 return Point.X < Center.X;
             });
 
-        Nodes[Result].Indices[0][0] =
-            Build({ { Bounds.Left, Bounds.Top }, Center }, Begin, SplitXLower);
+        Nodes[Result].Indices[0][0] = BuildNode(
+            { { Bounds.Left, Bounds.Top }, Center },
+            Begin,
+            SplitXLower);
 
-        Nodes[Result].Indices[0][1] = Build(
+        Nodes[Result].Indices[0][1] = BuildNode(
             { Center.X, Bounds.Top, Bounds.Right, Center.Y },
             SplitXLower,
             SplitY);
 
-        Nodes[Result].Indices[1][0] = Build(
+        Nodes[Result].Indices[1][0] = BuildNode(
             { Bounds.Left, Center.Y, Center.X, Bounds.Bottom },
             SplitY,
             SplitXUpper);
 
-        Nodes[Result].Indices[1][1] = Build(
+        Nodes[Result].Indices[1][1] = BuildNode(
             { Center, { Bounds.Right, Bounds.Bottom } },
             SplitXUpper,
             End);
@@ -233,7 +236,13 @@ public:
         Items.clear();
         Draws.clear();
         Bounds = SRect(Begin, End);
-        RootIndex = Build(Bounds, Begin, End);
+        RootIndex = BuildNode(Bounds, Begin, End);
+        std::sort(
+            Draws.begin(),
+            Draws.end(),
+            [](const SGPUDraw &DrawA, const SGPUDraw &DrawB) {
+                return DrawA.Type < DrawB.Type;
+            });
     }
 };
 
@@ -256,7 +265,7 @@ static Rr_Vec2 DragStartCamera;
 
 static void RebuildTree()
 {
-    const int NUM_POINTS = 512;
+    const int NUM_POINTS = 1024;
     std::vector<SPoint> Points;
     Points.reserve(NUM_POINTS);
     std::generate_n(std::back_inserter(Points), NUM_POINTS, []() {
@@ -379,13 +388,11 @@ static void Iterate(Rr_App *App, void *UserData)
     //     nullptr,
     //     nullptr);
 
-    UniformData.Projection = Rr_Orthographic_RH_ZO(
-        -SwapchainSize.X / 2.0f * CameraZoom,
-        SwapchainSize.X / 2.0f * CameraZoom,
-        -SwapchainSize.Y / 2.0f * CameraZoom,
-        SwapchainSize.Y / 2.0f * CameraZoom,
-        -1,
-        1);
+    const float Left = -SwapchainSize.X / 2.0f * CameraZoom;
+    const float Right = SwapchainSize.X / 2.0f * CameraZoom;
+    const float Bottom = -SwapchainSize.Y / 2.0f * CameraZoom;
+    const float Top = SwapchainSize.Y / 2.0f * CameraZoom;
+    UniformData.Projection = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, -1, 1);
     UniformData.View =
         Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
     UniformData.ScreenSize = { SwapchainSize.X, SwapchainSize.Y };

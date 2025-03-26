@@ -8,7 +8,7 @@ layout(location = 1) flat in uint InIndex;
 
 layout(location = 0) out vec4 OutColor;
 
-const float FEATHER_RATIO = 2.0f;
+const float CIRCLE_FEATHER_RATIO = 2.0f;
 
 void main()
 {
@@ -18,10 +18,9 @@ void main()
             float((Draw.Color & 0x0000ff00) >> 8) / 255.0f,
             float((Draw.Color & 0x00ff0000) >> 16) / 255.0f);
 
-    float Feather = FEATHER_RATIO * abs(dFdx(InUV.x));
-
     if (Draw.Type == 0)
     {
+        float Feather = CIRCLE_FEATHER_RATIO * abs(dFdx(InUV.x));
         float Distance = length(InUV - 0.5);
         float Radius = 0.5 - Feather;
         float Weight = 1.0 - smoothstep(Radius - Feather, Radius + Feather, Distance);
@@ -29,9 +28,11 @@ void main()
     }
     else if (Draw.Type == 1)
     {
-        float Hor = abs(InUV.x * 2.0 - 1.0);
-        float Vert = abs(InUV.y * 2.0 - 1.0);
-        float Total = (Hor < Feather ? 1.0 : 0.0) + (Vert < Feather ? 1.0 : 0.0);
+        vec2 Feather = fwidth(InUV);
+        float Hor = 1.0 - abs(InUV.x * 2.0 - 1.0);
+        float Vert = 1.0 - abs(InUV.y * 2.0 - 1.0);
+        float Total = smoothstep(1.0f - Feather.x * 4.0f, 1.0f, Hor);
+        Total += smoothstep(1.0f - Feather.y * 4.0f, 1.0f, Vert);
         OutColor = vec4(0.0, 0.0, 0.0, Total);
     }
 }

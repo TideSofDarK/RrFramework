@@ -7,6 +7,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_atomic.h>
+#include <SDL3/SDL_render.h>
 #include <SDL3/SDL_vulkan.h>
 
 static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
