@@ -34,11 +34,10 @@ void main()
     }
     else if (Draw.Type == 1)
     {
-        vec2 Feather = fwidth(InUV);
         float Hor = 1.0 - abs(InUV.x * 2.0 - 1.0);
         float Vert = 1.0 - abs(InUV.y * 2.0 - 1.0);
-        float Total = smoothstep(1.0f - Feather.x * 4.0f, 1.0f, Hor);
-        Total += smoothstep(1.0f - Feather.y * 4.0f, 1.0f, Vert);
+        vec2 Feather = vec2(dFdx(InUV.x), dFdy(InUV.y)) * 3.0;
+        float Total = max(smoothstep(1.0f - Feather.x, 1.0f, Hor), smoothstep(1.0f - Feather.y, 1.0f, Vert));
         OutColor = vec4(0.0, 0.0, 0.0, Total);
     }
 }

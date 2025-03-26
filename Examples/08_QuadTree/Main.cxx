@@ -14,7 +14,7 @@
 
 struct SPoint
 {
-    int32_t X, Y;
+    float X, Y;
 
     bool operator==(const SPoint &Rhs) const
     {
@@ -24,7 +24,7 @@ struct SPoint
 
 struct SRect
 {
-    int32_t Left, Top, Right, Bottom;
+    float Left, Top, Right, Bottom;
 
     constexpr bool Contains(const SPoint &Point) const
     {
@@ -49,6 +49,11 @@ struct SRect
         return { (Right + Left) / 2, (Top + Bottom) / 2 };
     }
 
+    constexpr SPoint Extent() const
+    {
+        return { (Left - Right) / 2, (Bottom - Top) / 2 };
+    }
+
     friend std::ostream &operator<<(std::ostream &Stream, const SRect &Rect)
     {
         Stream << "Left: " << Rect.Left << " Top: " << Rect.Top
@@ -67,7 +72,7 @@ struct SRect
 
     SRect() = default;
 
-    SRect(int32_t Left, int32_t Top, int32_t Right, int32_t Bottom)
+    SRect(float Left, float Top, float Right, float Bottom)
         : Left(Left)
         , Top(Top)
         , Right(Right)
@@ -174,25 +179,12 @@ public:
 
         if(Begin + 1 == End)
         {
-            PushPoint(*Begin, Bounds);
             return Result;
         }
 
         SPoint Center = Bounds.Center();
 
         PushCross(Center, Bounds);
-
-        // SGPUDraw Draw{};
-        // Draw.X =
-        //     (((float)std::rand() / (float)RAND_MAX) - 0.5f) * 2.0f * 256.0f;
-        // Draw.Y =
-        //     (((float)std::rand() / (float)RAND_MAX) - 0.5f) * 2.0f * 256.0f;
-        // float Radius = (float)std::rand() / (float)RAND_MAX * 256.0f + 10.0f;
-        // Draw.Width = Radius;
-        // Draw.Height = Radius;
-        // Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
-        //              ((std::rand() % 256) << 16);
-        // Draws.push_back(Draw);
 
         TIterator SplitY =
             std::partition(Begin, End, [Center](const SPoint &Point) {
@@ -246,6 +238,92 @@ public:
                 return DrawA.Type < DrawB.Type;
             });
     }
+
+    bool QueryImpl(const SPoint &Point, const SNode &Node, const SRect &Bounds)
+    {
+        SPoint Center = Bounds.Center();
+        if(Point.X > Center.X)
+        {
+            if(Point.Y > Center.Y)
+            {
+                if(Node.Indices[1][1] == UINT32_MAX)
+                {
+                    return true;
+                }
+                Center.X += Bounds.Extent().X / 2.0;
+                Center.Y += Bounds.Extent().Y / 2.0;
+                return QueryImpl(
+                    Point,
+                    Nodes[Node.Indices[1][1]],
+                    {
+                        Bounds.Left + Bounds.Extent().X,
+                        Bounds.Top + Bounds.Extent().Y,
+                        Bounds.Right,
+                        Bounds.Bottom,
+                    });
+            }
+            else
+            {
+                if(Node.Indices[0][1] == UINT32_MAX)
+                {
+                    return true;
+                }
+                Center.X += Bounds.Extent().X / 2.0;
+                Center.Y -= Bounds.Extent().Y / 2.0;
+                return QueryImpl(
+                    Point,
+                    Nodes[Node.Indices[0][1]],
+                    {
+                        Bounds.Left + Bounds.Extent().X,
+                        Bounds.Top,
+                        Bounds.Right,
+                        Bounds.Bottom + Bounds.Extent().Y,
+                    });
+            }
+        }
+        else
+        {
+            if(Point.Y > Center.Y)
+            {
+                if(Node.Indices[1][0] == UINT32_MAX)
+                {
+                    return true;
+                }
+                Center.X -= Bounds.Extent().X / 2.0;
+                Center.Y += Bounds.Extent().Y / 2.0;
+                return QueryImpl(
+                    Point,
+                    Nodes[Node.Indices[1][0]],
+                    {
+                        Bounds.Left,
+                        Bounds.Top + Bounds.Extent().Y,
+                        Bounds.Left + Bounds.Extent().X,
+                        Bounds.Bottom,
+                    });
+            }
+            else
+            {
+                if(Node.Indices[0][0] == UINT32_MAX)
+                {
+                    return true;
+                }
+                return QueryImpl(
+                    Point,
+                    Nodes[Node.Indices[0][0]],
+                    {
+                        Bounds.Left,
+                        Bounds.Top,
+                        Bounds.Left + Bounds.Extent().X,
+                        Bounds.Top + Bounds.Extent().Y,
+                    });
+            }
+        }
+    }
+
+    bool Query(const SPoint &Point)
+    {
+        return QueryImpl(Point, Nodes[RootIndex], Bounds);
+    }
 };
 
 const uint32_t MAX_DRAWS = 1024;
@@ -271,8 +349,8 @@ static void RebuildTree()
     std::vector<SPoint> Points;
     Points.reserve(NUM_POINTS);
     std::generate_n(std::back_inserter(Points), NUM_POINTS, []() {
-        return SPoint{ ((int)std::rand() % 5000) - 2500,
-                       ((int)std::rand() % 5000) - 2500 };
+        return SPoint{ float(((int)std::rand() % 5000) - 2500),
+                       float(((int)std::rand() % 5000) - 2500) };
     });
     Tree.Build(Points.begin(), Points.end());
 }
@@ -332,7 +410,7 @@ static void Init(Rr_App *App, void *UserData)
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
-    std::srand((uint32_t)std::time(nullptr));
+    // std::srand((uint32_t)std::time(nullptr));
 
     RebuildTree();
 }
@@ -366,8 +444,8 @@ static void Iterate(Rr_App *App, void *UserData)
     }
     if(Dragging)
     {
-        CameraPosition =
-            DragStartCamera - (DragStartMouse - Rr_GetMousePosition()) * 1.25f;
+        CameraPosition = DragStartCamera -
+                         (DragStartMouse - Rr_GetMousePosition()) * CameraZoom;
     }
 
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
