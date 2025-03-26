@@ -20,6 +20,12 @@ struct SPoint
     {
         return X == Rhs.X && Y == Rhs.Y;
     }
+
+    friend std::ostream &operator<<(std::ostream &Stream, const SPoint &Point)
+    {
+        Stream << "X: " << Point.X << " Y: " << Point.Y;
+        return Stream;
+    }
 };
 
 struct SRect
@@ -51,14 +57,7 @@ struct SRect
 
     constexpr SPoint Extent() const
     {
-        return { (Left - Right) / 2, (Bottom - Top) / 2 };
-    }
-
-    friend std::ostream &operator<<(std::ostream &Stream, const SRect &Rect)
-    {
-        Stream << "Left: " << Rect.Left << " Top: " << Rect.Top
-               << " Right: " << Rect.Right << " Bottom: " << Rect.Bottom;
-        return Stream;
+        return { std::abs(Left - Right) / 2, std::abs(Bottom - Top) / 2 };
     }
 
     SRect &operator|(const SPoint &Rhs)
@@ -92,12 +91,18 @@ struct SRect
     {
         *this = std::accumulate(Begin, End, SRect{}, std::bit_or());
     }
+
+    friend std::ostream &operator<<(std::ostream &Stream, const SRect &Rect)
+    {
+        Stream << "Left: " << Rect.Left << " Top: " << Rect.Top
+               << " Right: " << Rect.Right << " Bottom: " << Rect.Bottom;
+        return Stream;
+    }
 };
 
 struct SGPUUniformData
 {
-    Rr_Mat4 View;
-    Rr_Mat4 Projection;
+    Rr_Mat4 ViewProjection;
     Rr_IntVec2 ScreenSize;
 };
 
@@ -118,12 +123,20 @@ template <typename TItem> class CQuadTree
 public:
     struct SNode
     {
-        uint32_t Indices[2][2] = {
+        std::array<uint32_t, 4> Indices = {
             UINT32_MAX,
             UINT32_MAX,
             UINT32_MAX,
             UINT32_MAX,
         };
+
+        bool IsEmpty() const
+        {
+            return std::all_of(
+                Indices.cbegin(),
+                Indices.cend(),
+                [&](auto Index) { return Index == UINT32_MAX; });
+        }
     };
 
     SRect Bounds;
@@ -201,22 +214,22 @@ public:
                 return Point.X < Center.X;
             });
 
-        Nodes[Result].Indices[0][0] = BuildNode(
+        Nodes[Result].Indices[0] = BuildNode(
             { { Bounds.Left, Bounds.Top }, Center },
             Begin,
             SplitXLower);
 
-        Nodes[Result].Indices[0][1] = BuildNode(
+        Nodes[Result].Indices[1] = BuildNode(
             { Center.X, Bounds.Top, Bounds.Right, Center.Y },
             SplitXLower,
             SplitY);
 
-        Nodes[Result].Indices[1][0] = BuildNode(
+        Nodes[Result].Indices[2] = BuildNode(
             { Bounds.Left, Center.Y, Center.X, Bounds.Bottom },
             SplitY,
             SplitXUpper);
 
-        Nodes[Result].Indices[1][1] = BuildNode(
+        Nodes[Result].Indices[3] = BuildNode(
             { Center, { Bounds.Right, Bounds.Bottom } },
             SplitXUpper,
             End);
@@ -241,20 +254,23 @@ public:
 
     bool QueryImpl(const SPoint &Point, const SNode &Node, const SRect &Bounds)
     {
+        if(Node.IsEmpty())
+        {
+            return true;
+        }
+
         SPoint Center = Bounds.Center();
         if(Point.X > Center.X)
         {
             if(Point.Y > Center.Y)
             {
-                if(Node.Indices[1][1] == UINT32_MAX)
+                if(Node.Indices[3] == UINT32_MAX)
                 {
-                    return true;
+                    return false;
                 }
-                Center.X += Bounds.Extent().X / 2.0;
-                Center.Y += Bounds.Extent().Y / 2.0;
                 return QueryImpl(
                     Point,
-                    Nodes[Node.Indices[1][1]],
+                    Nodes[Node.Indices[3]],
                     {
                         Bounds.Left + Bounds.Extent().X,
                         Bounds.Top + Bounds.Extent().Y,
@@ -264,20 +280,18 @@ public:
             }
             else
             {
-                if(Node.Indices[0][1] == UINT32_MAX)
+                if(Node.Indices[1] == UINT32_MAX)
                 {
-                    return true;
+                    return false;
                 }
-                Center.X += Bounds.Extent().X / 2.0;
-                Center.Y -= Bounds.Extent().Y / 2.0;
                 return QueryImpl(
                     Point,
-                    Nodes[Node.Indices[0][1]],
+                    Nodes[Node.Indices[1]],
                     {
                         Bounds.Left + Bounds.Extent().X,
                         Bounds.Top,
                         Bounds.Right,
-                        Bounds.Bottom + Bounds.Extent().Y,
+                        Bounds.Top + Bounds.Extent().Y,
                     });
             }
         }
@@ -285,15 +299,13 @@ public:
         {
             if(Point.Y > Center.Y)
             {
-                if(Node.Indices[1][0] == UINT32_MAX)
+                if(Node.Indices[2] == UINT32_MAX)
                 {
-                    return true;
+                    return false;
                 }
-                Center.X -= Bounds.Extent().X / 2.0;
-                Center.Y += Bounds.Extent().Y / 2.0;
                 return QueryImpl(
                     Point,
-                    Nodes[Node.Indices[1][0]],
+                    Nodes[Node.Indices[2]],
                     {
                         Bounds.Left,
                         Bounds.Top + Bounds.Extent().Y,
@@ -303,13 +315,13 @@ public:
             }
             else
             {
-                if(Node.Indices[0][0] == UINT32_MAX)
+                if(Node.Indices[0] == UINT32_MAX)
                 {
-                    return true;
+                    return false;
                 }
                 return QueryImpl(
                     Point,
-                    Nodes[Node.Indices[0][0]],
+                    Nodes[Node.Indices[0]],
                     {
                         Bounds.Left,
                         Bounds.Top,
@@ -336,6 +348,8 @@ static Rr_Buffer *StagingBuffer;
 
 static SGPUUniformData UniformData;
 
+static Rr_Mat4 CameraProjection;
+static Rr_Mat4 CameraView;
 static float CameraZoom = 1.0f;
 static Rr_Vec2 CameraPosition;
 static CQuadTree<double> Tree;
@@ -353,6 +367,21 @@ static void RebuildTree()
                        float(((int)std::rand() % 5000) - 2500) };
     });
     Tree.Build(Points.begin(), Points.end());
+}
+
+static SPoint ConvertMousePosition(Rr_App *App)
+{
+    Rr_Vec2 MousePosition = Rr_GetMousePosition(App);
+    Rr_IntVec2 WindowSize = Rr_GetWindowSize(App);
+    MousePosition.X /= (float)WindowSize.X;
+    MousePosition.Y /= (float)WindowSize.Y;
+    MousePosition *= 2.0f;
+    MousePosition -= Rr_Vec2{ 1.0f, 1.0f };
+    Rr_Vec4 Deprojected =
+        Rr_InvGeneralM4(CameraProjection) *
+        Rr_Vec4{ MousePosition.X, MousePosition.Y, 0.0f, 1.0f };
+    Deprojected = Rr_InvGeneralM4(CameraView) * Deprojected;
+    return { Deprojected.X, Deprojected.Y };
 }
 
 static void Init(Rr_App *App, void *UserData)
@@ -417,6 +446,11 @@ static void Init(Rr_App *App, void *UserData)
 
 static void Iterate(Rr_App *App, void *UserData)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
+    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+
     if(Rr_IsScancodePressed(RR_SCANCODE_SPACE))
     {
         RebuildTree();
@@ -435,7 +469,7 @@ static void Iterate(Rr_App *App, void *UserData)
     {
         Dragging = true;
         DragStartCamera = CameraPosition;
-        DragStartMouse = Rr_GetMousePosition();
+        DragStartMouse = Rr_GetMousePosition(App);
     }
     if(Dragging == true &&
        RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_MASK) == false)
@@ -444,14 +478,14 @@ static void Iterate(Rr_App *App, void *UserData)
     }
     if(Dragging)
     {
-        CameraPosition = DragStartCamera -
-                         (DragStartMouse - Rr_GetMousePosition()) * CameraZoom;
+        CameraPosition =
+            DragStartCamera -
+            (DragStartMouse - Rr_GetMousePosition(App)) * CameraZoom;
     }
-
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
-
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK) == true)
+    {
+        SPoint Point = ConvertMousePosition(App);
+    }
 
     Rr_ColorTarget ColorTarget;
     ColorTarget.Clear = { 1.0, 1.0, 1.0, 1.0 };
@@ -459,23 +493,13 @@ static void Iterate(Rr_App *App, void *UserData)
     ColorTarget.Slot = 0;
     ColorTarget.StoreOp = RR_STORE_OP_STORE;
 
-    // Rr_GraphNode *ClearNode = Rr_AddGraphicsNode(
-    //     Renderer,
-    //     "clear",
-    //     1,
-    //     &ColorTarget,
-    //     &SwapchainImage,
-    //     nullptr,
-    //     nullptr);
-
     const float Left = -SwapchainSize.X / 2.0f * CameraZoom;
     const float Right = SwapchainSize.X / 2.0f * CameraZoom;
     const float Bottom = -SwapchainSize.Y / 2.0f * CameraZoom;
     const float Top = SwapchainSize.Y / 2.0f * CameraZoom;
-    UniformData.Projection =
-        Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, -1, 1);
-    UniformData.View =
-        Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
+    CameraProjection = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, -1, 1);
+    CameraView = Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
+    UniformData.ViewProjection = CameraProjection * CameraView;
     UniformData.ScreenSize = { SwapchainSize.X, SwapchainSize.Y };
 
     char *StagingData = (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);

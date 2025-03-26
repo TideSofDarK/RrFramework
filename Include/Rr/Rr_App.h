@@ -27,6 +27,8 @@ extern void Rr_SetFrameLimiterEnabled(Rr_App *App, bool Enabled);
 
 extern struct Rr_Renderer *Rr_GetRenderer(Rr_App *App);
 
+extern Rr_IntVec2 Rr_GetWindowSize(Rr_App *App);
+
 extern void Rr_DebugOverlay(Rr_App *App);
 
 extern void Rr_ToggleFullscreen(Rr_App *App);

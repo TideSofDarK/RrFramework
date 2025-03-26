@@ -17,7 +17,7 @@ void main()
     vec2 Position = vec2(VertexPosition.x * Draw.Width, VertexPosition.y * Draw.Height);
     Position.x += Draw.X;
     Position.y += Draw.Y;
-    gl_Position = Projection * View * vec4(Position, 0.0, 1.0);
+    gl_Position = ViewProjection * vec4(Position, 0.0, 1.0);
     OutUV = UVs[Indices[gl_VertexIndex]];
     OutIndex = gl_InstanceIndex;
 }

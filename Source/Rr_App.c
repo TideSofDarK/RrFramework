@@ -292,6 +292,13 @@ Rr_Renderer *Rr_GetRenderer(Rr_App *App)
     return App->Renderer;
 }
 
+Rr_IntVec2 Rr_GetWindowSize(Rr_App *App)
+{
+    Rr_IntVec2 Size;
+    SDL_GetWindowSizeInPixels(App->Window, &Size.X, &Size.Y);
+    return Size;
+}
+
 static bool Rr_IsAnyFullscreen(SDL_Window *Window)
 {
     return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;

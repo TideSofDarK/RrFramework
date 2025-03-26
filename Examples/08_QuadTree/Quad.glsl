@@ -12,8 +12,7 @@ struct SGPUDraw
 
 layout(set = 0, binding = 0) uniform UniformGlobals
 {
-    mat4 View;
-    mat4 Projection;
+    mat4 ViewProjection;
     ivec2 ScreenSize;
 };
 
