@@ -1172,7 +1172,7 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
         Info->AttachmentCount);
     VkAttachmentReference *DepthReference = NULL;
 
-    for(size_t Index = 0; Index < Info->AttachmentCount; ++Index)
+    for(uint32_t Index = 0; Index < Info->AttachmentCount; ++Index)
     {
         Rr_RenderPassAttachment *Attachment = &Info->Attachments[Index];
         if(Rr_IsVulkanDepthFormat(Attachment->Format))
@@ -1219,7 +1219,7 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
     VkSubpassDescription SubpassDescription = {
         .flags = 0,
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = ColorCount,
+        .colorAttachmentCount = (uint32_t)ColorCount,
         .pColorAttachments = ColorReferences,
         .pDepthStencilAttachment = DepthReference,
         .pResolveAttachments = NULL,
@@ -1233,7 +1233,7 @@ VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .flags = 0,
-        .attachmentCount = Info->AttachmentCount,
+        .attachmentCount = (uint32_t)Info->AttachmentCount,
         .pAttachments = Attachments,
         .subpassCount = 1,
         .pSubpasses = &SubpassDescription,
@@ -1306,7 +1306,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
         .height = Extent.height,
         .width = Extent.width,
         .layers = Extent.depth,
-        .attachmentCount = ImageViewCount,
+        .attachmentCount = (uint32_t)ImageViewCount,
         .pAttachments = ImageViews,
     };
 

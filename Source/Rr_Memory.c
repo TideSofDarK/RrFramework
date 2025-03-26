@@ -154,10 +154,14 @@ void *Rr_AllocArenaNoZero(
     size_t Align,
     size_t Count)
 {
+    if(Arena == NULL)
+    {
+        RR_ABORT("Allocating from NULL arena!");
+    }
+
     if(Size == 0 || Count == 0)
     {
-        RR_LOG("Allocating 0 bytes from an arena!");
-        return NULL;
+        RR_ABORT("Allocating 0 bytes from an arena is not allowed!");
     }
 
     size_t TotalSize = Size * Count;

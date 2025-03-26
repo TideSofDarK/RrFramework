@@ -78,8 +78,8 @@ extern Rr_LoadResult Rr_LoadImmediate(
 
 extern void Rr_GetLoadProgress(
     Rr_LoadContext *LoadContext,
-    uint32_t *OutCurrent,
-    uint32_t *OutTotal);
+    size_t *OutCurrent,
+    size_t *OutTotal);
 
 #ifdef __cplusplus
 }

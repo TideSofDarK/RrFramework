@@ -5,7 +5,7 @@
 
 size_t Rr_NextPowerOfTwo(size_t Number)
 {
-    return 1 << (size_t)ceil(log2(Number));
+    return (size_t)1 << (size_t)ceil(log2((double)Number));
 }
 
 float Rr_WrapMax(float X, float Max)
@@ -132,7 +132,7 @@ Rr_Vec4 Rr_FitRect(Rr_Vec4 Src, Rr_Vec4 Dst)
     float DstWidth = Dst.Width;
     float DstHeight = Dst.Height;
     float SrcWidth = Src.Width;
-    float SrcHeight = Dst.Height;
+    float SrcHeight = Src.Height;
     float DstRatio = DstWidth / DstHeight;
     float SrcRatio = SrcWidth / SrcHeight;
 
@@ -149,9 +149,7 @@ Rr_Vec4 Rr_FitRect(Rr_Vec4 Src, Rr_Vec4 Dst)
     X = (DstWidth / 2.0f) - (Width / 2.0f);
     Y = (DstHeight / 2.0f) - (Height / 2.0f);
 
-    Rr_Vec4 Result = { X, Y, Width, Height };
-
-    return Result;
+    return (Rr_Vec4){ X, Y, Width, Height };
 }
 
 Rr_IntVec4 Rr_FitIntRect(Rr_IntVec4 Src, Rr_IntVec4 Dst)
@@ -161,10 +159,10 @@ Rr_IntVec4 Rr_FitIntRect(Rr_IntVec4 Src, Rr_IntVec4 Dst)
     float Width = 0;
     float Height = 0;
 
-    float DstWidth = Dst.Width;
-    float DstHeight = Dst.Height;
-    float SrcWidth = Src.Width;
-    float SrcHeight = Dst.Height;
+    float DstWidth = (float)Dst.Width;
+    float DstHeight = (float)Dst.Height;
+    float SrcWidth = (float)Src.Width;
+    float SrcHeight = (float)Src.Height;
     float DstRatio = DstWidth / DstHeight;
     float SrcRatio = SrcWidth / SrcHeight;
 
@@ -181,7 +179,6 @@ Rr_IntVec4 Rr_FitIntRect(Rr_IntVec4 Src, Rr_IntVec4 Dst)
     X = (DstWidth / 2.0f) - (Width / 2.0f);
     Y = (DstHeight / 2.0f) - (Height / 2.0f);
 
-    Rr_IntVec4 Result = { X, Y, Width, Height };
-
-    return Result;
+    return (
+        Rr_IntVec4){ (int32_t)X, (int32_t)Y, (int32_t)Width, (int32_t)Height };
 }

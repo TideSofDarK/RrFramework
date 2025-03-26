@@ -238,7 +238,7 @@ struct SCreep
     Rr_Vec3 Position;
     float Speed;
     Rr_Vec3 Velocity;
-    uint Flags;
+    uint32_t Flags;
     Rr_Vec3 Color;
     float Padding3;
 };
@@ -282,8 +282,10 @@ struct SCreepManager
                 RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
             },
         };
-        PipelineLayout =
-            Rr_CreatePipelineLayout(Renderer, Sets.size(), Sets.data());
+        PipelineLayout = Rr_CreatePipelineLayout(
+            Renderer,
+            (uint32_t)Sets.size(),
+            Sets.data());
 
         std::array VertexAttributes = {
             Rr_VertexInputAttribute{ 0, RR_FORMAT_VEC3 },
@@ -377,9 +379,10 @@ struct SCreepManager
     {
         std::random_device RandomDevice;
         std::mt19937 Gen(RandomDevice());
-        std::uniform_real_distribution<> SpeedDist(MinSpeed, MaxSpeed);
-        std::uniform_real_distribution<> ColorDist(0.2f, 1.0f);
-        std::uniform_real_distribution<> HeightDist(2.0f, 5.0f);
+        auto SpeedDist =
+            std::uniform_real_distribution<float>(MinSpeed, MaxSpeed);
+        auto ColorDist = std::uniform_real_distribution<float>(0.2f, 1.0f);
+        auto HeightDist = std::uniform_real_distribution<float>(2.0f, 5.0f);
 
         for(size_t Index = 0; Index < Count; ++Index)
         {
@@ -451,7 +454,7 @@ struct SCreepManager
 
         /* Upload creeps to storage buffer. */
 
-        size_t StorageSize = sizeof(SCreep) * Creeps.size();
+        auto StorageSize = sizeof(SCreep) * Creeps.size();
 
         std::memcpy(StagingData + *StagingOffset, Creeps.data(), StorageSize);
 
@@ -472,7 +475,7 @@ struct SCreepManager
         /* Draw creeps. */
 
         Rr_BindGraphicsPipeline(Node, GraphicsPipeline);
-        Rr_BindStorageBuffer(Node, StorageBuffer, 1, 0, 0, StorageSize);
+        Rr_BindStorageBuffer(Node, StorageBuffer, 1, 0, 0, (uint32_t)StorageSize);
 
         Rr_BindVertexBuffer(
             Node,
@@ -822,7 +825,7 @@ static void Iterate(Rr_App *App, void *UserData)
         }
     }
 
-    CreepManager->Update(Rr_GetDeltaSeconds(App));
+    CreepManager->Update((float)Rr_GetDeltaSeconds(App));
 
     Render(App, ColorAttachment, DepthAttachment);
 

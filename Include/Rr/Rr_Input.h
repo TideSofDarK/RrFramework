@@ -7,8 +7,6 @@
 extern "C" {
 #endif
 
-#define RR_MAX_INPUT_MAPPINGS 16
-
 typedef enum Rr_Scancode
 {
     RR_SCANCODE_UNKNOWN = 0,
@@ -96,39 +94,6 @@ typedef enum Rr_MouseButtonMask
     RR_MOUSE_BUTTON_X1_MASK = RR_MOUSE_BUTTON_MASK(RR_MOUSE_BUTTON_X1),
     RR_MOUSE_BUTTON_X2_MASK = RR_MOUSE_BUTTON_MASK(RR_MOUSE_BUTTON_X2)
 } Rr_MouseButtonMask;
-
-typedef uint32_t Rr_KeyStates;
-
-typedef struct Rr_InputState Rr_InputState;
-struct Rr_InputState
-{
-    Rr_KeyStates Keys;
-    Rr_Vec2 MousePosition;
-    Rr_Vec2 MousePositionDelta;
-    Rr_MouseButtonMask MouseState;
-};
-
-typedef enum Rr_KeyState
-{
-    RR_KEYSTATE_NONE,
-    RR_KEYSTATE_PRESSED,
-    RR_KEYSTATE_RELEASED,
-    RR_KEYSTATE_HELD
-} Rr_KeyState;
-
-typedef struct Rr_InputMapping Rr_InputMapping;
-struct Rr_InputMapping
-{
-    Rr_Scancode Primary;
-    Rr_Scancode Secondary;
-};
-
-extern void Rr_UpdateInputState(
-    size_t MappingCount,
-    Rr_InputMapping *Mappings,
-    Rr_InputState *State);
-
-extern Rr_KeyState Rr_GetKeyState(Rr_KeyStates Keys, uint32_t Key);
 
 extern bool Rr_IsScancodePressed(Rr_Scancode Scancode);
 

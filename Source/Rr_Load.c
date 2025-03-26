@@ -195,9 +195,9 @@ static Rr_LoadResult Rr_ProcessLoadContext(
             0,
             0,
             NULL,
-            UploadContext.ReleaseBufferMemoryBarriers.Count,
+            (uint32_t)UploadContext.ReleaseBufferMemoryBarriers.Count,
             UploadContext.ReleaseBufferMemoryBarriers.Data,
-            UploadContext.ReleaseImageMemoryBarriers.Count,
+            (uint32_t)UploadContext.ReleaseImageMemoryBarriers.Count,
             UploadContext.ReleaseImageMemoryBarriers.Data);
 
         Device->EndCommandBuffer(TransferCommandBuffer);
@@ -242,9 +242,9 @@ static Rr_LoadResult Rr_ProcessLoadContext(
                 0,
                 0,
                 NULL,
-                UploadContext.AcquireBufferMemoryBarriers.Count,
+                (uint32_t)UploadContext.AcquireBufferMemoryBarriers.Count,
                 UploadContext.AcquireBufferMemoryBarriers.Data,
-                UploadContext.AcquireImageMemoryBarriers.Count,
+                (uint32_t)UploadContext.AcquireImageMemoryBarriers.Count,
                 UploadContext.AcquireImageMemoryBarriers.Data);
 
             Device->EndCommandBuffer(GraphicsCommandBuffer);
@@ -622,14 +622,14 @@ Rr_LoadResult Rr_LoadImmediate(
 
 void Rr_GetLoadProgress(
     Rr_LoadContext *LoadContext,
-    uint32_t *OutCurrent,
-    uint32_t *OutTotal)
+    size_t *OutCurrent,
+    size_t *OutTotal)
 {
     if(OutCurrent != NULL)
     {
         if(LoadContext->Semaphore != NULL)
         {
-            *OutCurrent = SDL_GetSemaphoreValue(LoadContext->Semaphore);
+            *OutCurrent = (size_t)SDL_GetSemaphoreValue(LoadContext->Semaphore);
         }
         *OutCurrent = LoadContext->TaskCount;
     }

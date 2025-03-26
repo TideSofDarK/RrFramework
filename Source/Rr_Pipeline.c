@@ -49,7 +49,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(
     Rr_Renderer *Renderer,
-    size_t SetCount,
+    uint32_t SetCount,
     Rr_PipelineBindingSet *Sets)
 {
     assert(SetCount < RR_MAX_SETS);
@@ -111,7 +111,7 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
 {
     VkSpecializationInfo *SpecializationInfo =
         RR_ALLOC_TYPE(Arena, VkSpecializationInfo);
-    SpecializationInfo->mapEntryCount = SpecializationCount;
+    SpecializationInfo->mapEntryCount = (uint32_t)SpecializationCount;
     VkSpecializationMapEntry *Entries = RR_ALLOC_NO_ZERO(
         Arena,
         sizeof(VkSpecializationMapEntry) * SpecializationCount);
@@ -134,7 +134,7 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
         Entries[Index] = (VkSpecializationMapEntry){
             .constantID = Specialization->ConstantID,
             .size = Specialization->Data.Size,
-            .offset = Offset,
+            .offset = (uint32_t)Offset,
         };
     }
     SpecializationInfo->pMapEntries = Entries;
@@ -308,10 +308,11 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
             VkVertexInputAttributeDescription *AttributeDescription =
                 RR_PUSH_SLICE(&AttributeDescriptions, Scratch.Arena);
+
             AttributeDescription->location = Attribute->Location;
             AttributeDescription->format =
                 Rr_GetVulkanFormat(Attribute->Format);
-            AttributeDescription->binding = BindingIndex;
+            AttributeDescription->binding = (uint32_t)BindingIndex;
             VkVertexInputBindingDescription *BindingDescription = NULL;
             for(size_t BindingIndex = 0;
                 BindingIndex < BindingDescriptions.Count;
@@ -329,7 +330,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             {
                 BindingDescription =
                     RR_PUSH_SLICE(&BindingDescriptions, Scratch.Arena);
-                BindingDescription->binding = BindingIndex;
+                BindingDescription->binding = (uint32_t)BindingIndex;
                 BindingDescription->inputRate =
                     VertexInputBinding->Rate == RR_VERTEX_INPUT_RATE_INSTANCE
                         ? VK_VERTEX_INPUT_RATE_INSTANCE
@@ -337,7 +338,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             }
             size_t Size = Rr_GetFormatSize(Attribute->Format);
             AttributeDescription->offset = BindingDescription->stride;
-            BindingDescription->stride += Size;
+            BindingDescription->stride += (uint32_t)Size;
         }
     }
 
@@ -345,9 +346,10 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .vertexAttributeDescriptionCount = AttributeDescriptions.Count,
+        .vertexAttributeDescriptionCount =
+            (uint32_t)AttributeDescriptions.Count,
         .pVertexAttributeDescriptions = AttributeDescriptions.Data,
-        .vertexBindingDescriptionCount = BindingDescriptions.Count,
+        .vertexBindingDescriptionCount = (uint32_t)BindingDescriptions.Count,
         .pVertexBindingDescriptions = BindingDescriptions.Data,
     };
 
@@ -428,14 +430,14 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         Attachment->colorWriteMask = ColorWriteMask;
     }
 
-    Pipeline->ColorAttachmentCount = Info->ColorTargetCount;
+    Pipeline->ColorAttachmentCount = (uint32_t)Info->ColorTargetCount;
 
     VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .pNext = NULL,
         .logicOpEnable = VK_FALSE,
         .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = ColorAttachments.Count,
+        .attachmentCount = (uint32_t)ColorAttachments.Count,
         .pAttachments = ColorAttachments.Data,
     };
 
@@ -458,7 +460,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = NULL,
-        .stageCount = ShaderStages.Count,
+        .stageCount = (uint32_t)ShaderStages.Count,
         .pStages = ShaderStages.Data,
         .pVertexInputState = &VertexInputInfo,
         .pInputAssemblyState = &InputAssembly,

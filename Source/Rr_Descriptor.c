@@ -28,9 +28,9 @@ static VkDescriptorType Rr_GetVulkanDescriptorType(Rr_PipelineBindingType Type)
 
 static VkDescriptorPool Rr_CreateDescriptorPool(
     Rr_Device *Device,
-    size_t SetCount,
+    uint32_t SetCount,
     Rr_DescriptorPoolSizeRatio *Ratios,
-    size_t RatioCount)
+    uint32_t RatioCount)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -63,9 +63,9 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
 
 Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
     Rr_Device *Device,
-    size_t MaxSets,
+    uint32_t MaxSets,
     Rr_DescriptorPoolSizeRatio *Ratios,
-    size_t RatioCount,
+    uint32_t RatioCount,
     Rr_Arena *Arena)
 {
     Rr_DescriptorAllocator DescriptorAllocator = { 0 };
@@ -149,7 +149,7 @@ VkDescriptorPool Rr_GetDescriptorPool(
             Device,
             DescriptorAllocator->SetsPerPool,
             DescriptorAllocator->Ratios.Data,
-            DescriptorAllocator->Ratios.Count);
+            (uint32_t)DescriptorAllocator->Ratios.Count);
 
         DescriptorAllocator->SetsPerPool =
             (size_t)((float)DescriptorAllocator->SetsPerPool * 1.5f);
@@ -527,10 +527,10 @@ void Rr_ApplyDescriptorsState(
     uint32_t FirstSet = 0;
     uint32_t DescriptorSetCount = 0;
     VkDescriptorSet DescriptorSets[RR_MAX_SETS];
-    size_t DynamicOffsetCount = 0;
+    uint32_t DynamicOffsetCount = 0;
     uint32_t DynamicOffsets[RR_MAX_BINDINGS * RR_MAX_SETS];
 
-    for(size_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
+    for(uint32_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
     {
         Rr_DescriptorSetState *SetState = State->SetStates + SetIndex;
 
@@ -552,7 +552,7 @@ void Rr_ApplyDescriptorsState(
             continue;
         }
 
-        for(size_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
+        for(uint32_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
             ++BindingIndex)
         {
             Rr_DescriptorSetBinding *Binding =

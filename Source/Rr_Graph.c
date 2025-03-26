@@ -119,6 +119,7 @@ static void Rr_ExecuteComputeNode(
             break;
             case RR_NODE_FUNCTION_TYPE_DISPATCH:
             {
+                assert(Pipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     &Frame->DescriptorAllocator,
@@ -274,7 +275,7 @@ static void Rr_ExecuteGraphicsNode(
 
     /* Line up appropriate clear values. */
 
-    uint32_t AttachmentCount =
+    size_t AttachmentCount =
         Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
     Rr_RenderPassAttachment *Attachments = RR_ALLOC_TYPE_COUNT(
@@ -362,7 +363,7 @@ static void Rr_ExecuteGraphicsNode(
                 },
             },
         .renderPass = RenderPass,
-        .clearValueCount = AttachmentCount,
+        .clearValueCount = (uint32_t)AttachmentCount,
         .pClearValues = ClearValues,
     };
     Device->CmdBeginRenderPass(
@@ -407,6 +408,7 @@ static void Rr_ExecuteGraphicsNode(
         {
             case RR_NODE_FUNCTION_TYPE_DRAW:
             {
+                assert(GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     &Frame->DescriptorAllocator,
@@ -425,6 +427,7 @@ static void Rr_ExecuteGraphicsNode(
             break;
             case RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT:
             {
+                assert(GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     &Frame->DescriptorAllocator,
@@ -444,6 +447,7 @@ static void Rr_ExecuteGraphicsNode(
             break;
             case RR_NODE_FUNCTION_TYPE_DRAW_INDEXED:
             {
+                assert(GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     &Frame->DescriptorAllocator,
@@ -930,7 +934,11 @@ static void Rr_ProcessGraphNodes(
         {
             Rr_GraphNode *Dependency =
                 Graph->Nodes.Data[Dependencies->Data[DependencyIndex]];
-            Node->UsesLateCommandBuffer |= Dependency->UsesLateCommandBuffer;
+            if (Dependency != NULL)
+            {
+                Node->UsesLateCommandBuffer |=
+                    Dependency->UsesLateCommandBuffer;
+            }
         }
     }
 
@@ -1142,9 +1150,9 @@ static void Rr_ApplyBarrierBatch(
             0,
             0,
             NULL,
-            BufferBarriersEarly.Count,
+            (uint32_t)BufferBarriersEarly.Count,
             BufferBarriersEarly.Data,
-            ImageBarriersEarly.Count,
+            (uint32_t)ImageBarriersEarly.Count,
             ImageBarriersEarly.Data);
     }
 
@@ -1157,9 +1165,9 @@ static void Rr_ApplyBarrierBatch(
             0,
             0,
             NULL,
-            BufferBarriers.Count,
+            (uint32_t)BufferBarriers.Count,
             BufferBarriers.Data,
-            ImageBarriers.Count,
+            (uint32_t)ImageBarriers.Count,
             ImageBarriers.Data);
     }
 
@@ -1411,7 +1419,7 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
     if(*GraphHandle == NULL)
     {
         Rr_GraphImage Handle = {
-            .Values.Index = Graph->Resources.Count,
+            .Values.Index = (uint32_t)Graph->Resources.Count,
         };
         *RR_PUSH_SLICE(&Graph->Resources, Graph->Arena) = (Rr_GraphResource){
             .Container = Container,
@@ -1682,27 +1690,27 @@ void Rr_Dispatch(
 
 void Rr_Draw(
     Rr_GraphNode *Node,
-    uint32_t VertexCount,
-    uint32_t InstanceCount,
-    uint32_t FirstVertex,
-    uint32_t FirstInstance)
+    size_t VertexCount,
+    size_t InstanceCount,
+    size_t FirstVertex,
+    size_t FirstInstance)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW, Rr_DrawArgs) = (Rr_DrawArgs){
-        .VertexCount = VertexCount,
-        .InstanceCount = InstanceCount,
-        .FirstVertex = FirstVertex,
-        .FirstInstance = FirstInstance,
+        .VertexCount = (uint32_t)VertexCount,
+        .InstanceCount = (uint32_t)InstanceCount,
+        .FirstVertex = (uint32_t)FirstVertex,
+        .FirstInstance = (uint32_t)FirstInstance,
     };
 }
 
 void Rr_DrawIndirect(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Offset,
-    uint32_t Count,
-    uint32_t Stride)
+    size_t Offset,
+    size_t Count,
+    size_t Stride)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
@@ -1711,9 +1719,9 @@ void Rr_DrawIndirect(
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT, Rr_DrawIndirectArgs) =
         (Rr_DrawIndirectArgs){
             .BufferHandle = *BufferHandle,
-            .Offset = Offset,
-            .Count = Count,
-            .Stride = Stride,
+            .Offset = (uint32_t)Offset,
+            .Count = (uint32_t)Count,
+            .Stride = (uint32_t)Stride,
         };
 
     Rr_AddNodeDependency(
@@ -1727,29 +1735,29 @@ void Rr_DrawIndirect(
 
 void Rr_DrawIndexed(
     Rr_GraphNode *Node,
-    uint32_t IndexCount,
-    uint32_t InstanceCount,
-    uint32_t FirstIndex,
+    size_t IndexCount,
+    size_t InstanceCount,
+    size_t FirstIndex,
     int32_t VertexOffset,
-    uint32_t FirstInstance)
+    size_t FirstInstance)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW_INDEXED, Rr_DrawIndexedArgs) =
         (Rr_DrawIndexedArgs){
-            .IndexCount = IndexCount,
-            .InstanceCount = InstanceCount,
-            .FirstIndex = FirstIndex,
+            .IndexCount = (uint32_t)IndexCount,
+            .InstanceCount = (uint32_t)InstanceCount,
+            .FirstIndex = (uint32_t)FirstIndex,
             .VertexOffset = VertexOffset,
-            .FirstInstance = FirstInstance,
+            .FirstInstance = (uint32_t)FirstInstance,
         };
 }
 
 void Rr_BindVertexBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Slot,
-    uint32_t Offset)
+    size_t Slot,
+    size_t Offset)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
@@ -1759,8 +1767,8 @@ void Rr_BindVertexBuffer(
         RR_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
         Rr_BindIndexBufferArgs) = (Rr_BindIndexBufferArgs){
         .BufferHandle = *BufferHandle,
-        .Slot = Slot,
-        .Offset = Offset,
+        .Slot = (uint32_t)Slot,
+        .Offset = (uint32_t)Offset,
     };
 
     Rr_AddNodeDependency(
@@ -1775,8 +1783,8 @@ void Rr_BindVertexBuffer(
 void Rr_BindIndexBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Slot,
-    uint32_t Offset,
+    size_t Slot,
+    size_t Offset,
     Rr_IndexType Type)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
@@ -1787,8 +1795,8 @@ void Rr_BindIndexBuffer(
         RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
         Rr_BindIndexBufferArgs) = (Rr_BindIndexBufferArgs){
         .BufferHandle = *BufferHandle,
-        .Slot = Slot,
-        .Offset = Offset,
+        .Slot = (uint32_t)Slot,
+        .Offset = (uint32_t)Offset,
         .Type = Rr_GetVulkanIndexType(Type),
     };
 
@@ -1828,9 +1836,9 @@ void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect)
 
 void Rr_BindSampler(
     Rr_GraphNode *Node,
-    struct Rr_Sampler *Sampler,
-    uint32_t Set,
-    uint32_t Binding)
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -1839,16 +1847,16 @@ void Rr_BindSampler(
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_BIND_SAMPLER, Rr_BindSamplerArgs) =
         (Rr_BindSamplerArgs){
             .Sampler = Sampler,
-            .Set = Set,
-            .Binding = Binding,
+            .Set = (uint32_t)Set,
+            .Binding = (uint32_t)Binding,
         };
 }
 
 void Rr_BindSampledImage(
     Rr_GraphNode *Node,
     Rr_Image *Image,
-    uint32_t Set,
-    uint32_t Binding)
+    size_t Set,
+    size_t Binding)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -1863,8 +1871,8 @@ void Rr_BindSampledImage(
         Rr_BindSampledImageArgs) = (Rr_BindSampledImageArgs){
         .ImageHandle = *ImageHandle,
         .Layout = Layout,
-        .Set = Set,
-        .Binding = Binding,
+        .Set = (uint32_t)Set,
+        .Binding = (uint32_t)Binding,
     };
 
     /* @TODO: Stage mask can be infered from pipeline layout. */
@@ -1884,8 +1892,8 @@ void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
     Rr_Image *Image,
     Rr_Sampler *Sampler,
-    uint32_t Set,
-    uint32_t Binding)
+    size_t Set,
+    size_t Binding)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -1902,8 +1910,8 @@ void Rr_BindCombinedImageSampler(
         .ImageHandle = *ImageHandle,
         .Layout = Layout,
         .Sampler = Sampler,
-        .Set = Set,
-        .Binding = Binding,
+        .Set = (uint32_t)Set,
+        .Binding = (uint32_t)Binding,
     };
 
     /* @TODO: Stage mask can be infered from pipeline layout. */
@@ -1922,10 +1930,10 @@ void Rr_BindCombinedImageSampler(
 void Rr_BindUniformBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t Offset,
-    uint32_t Size)
+    size_t Set,
+    size_t Binding,
+    size_t Offset,
+    size_t Size)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -1937,10 +1945,10 @@ void Rr_BindUniformBuffer(
         RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
         Rr_BindUniformBufferArgs) = (Rr_BindUniformBufferArgs){
         .BufferHandle = *BufferHandle,
-        .Set = Set,
-        .Binding = Binding,
-        .Offset = Offset,
-        .Size = Size,
+        .Set = (uint32_t)Set,
+        .Binding = (uint32_t)Binding,
+        .Offset = (uint32_t)Offset,
+        .Size = (uint32_t)Size,
     };
 
     /* @TODO: Proper stage can be infered from pipeline layout. */
@@ -1973,10 +1981,10 @@ void Rr_BindUniformBuffer(
 void Rr_BindStorageBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t Offset,
-    uint32_t Size)
+    size_t Set,
+    size_t Binding,
+    size_t Offset,
+    size_t Size)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -1988,10 +1996,10 @@ void Rr_BindStorageBuffer(
         RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
         Rr_BindStorageBufferArgs) = (Rr_BindStorageBufferArgs){
         .BufferHandle = *BufferHandle,
-        .Set = Set,
-        .Binding = Binding,
-        .Offset = Offset,
-        .Size = Size,
+        .Set = (uint32_t)Set,
+        .Binding = (uint32_t)Binding,
+        .Offset = (uint32_t)Offset,
+        .Size = (uint32_t)Size,
     };
 
     /* @TODO: Proper read/write stuff. */
@@ -2023,8 +2031,8 @@ void Rr_BindStorageBuffer(
 void Rr_BindStorageImage(
     Rr_GraphNode *Node,
     Rr_Image *Image,
-    uint32_t Set,
-    uint32_t Binding)
+    size_t Set,
+    size_t Binding)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -2037,8 +2045,8 @@ void Rr_BindStorageImage(
         RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
         Rr_BindStorageImageArgs) = (Rr_BindStorageImageArgs){
         .ImageHandle = *ImageHandle,
-        .Set = Set,
-        .Binding = Binding,
+        .Set = (uint32_t)Set,
+        .Binding = (uint32_t)Binding,
     };
 
     /* @TODO: Proper read/write stuff. */

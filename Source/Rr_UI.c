@@ -186,8 +186,8 @@ void Rr_BeginUI(Rr_Renderer *Renderer, Rr_UI *UI)
     GUI = UI;
     GUI->Window = NULL;
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
-    GUI->ScreenSize.Width = SwapchainSize.Width;
-    GUI->ScreenSize.Height = SwapchainSize.Height;
+    GUI->ScreenSize.Width = (float)SwapchainSize.Width;
+    GUI->ScreenSize.Height = (float)SwapchainSize.Height;
     GUI->FrameArena = Rr_GetCurrentFrame(Renderer)->Arena;
     GUI->Font = Renderer->BuiltinFont;
 }

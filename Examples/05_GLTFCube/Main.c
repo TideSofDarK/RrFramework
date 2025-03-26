@@ -1,6 +1,7 @@
 #include <Rr/Rr.h>
 
 #include "ExampleAssets.inc"
+#include "Rr/Rr_Pipeline.h"
 
 #include <string.h>
 
@@ -74,10 +75,12 @@ static void Init(Rr_App *App, void *UserData)
         { .Format = RR_FORMAT_VEC3, .Location = 2 },
     };
 
-    Rr_VertexInputBinding VertexInputBinding = {
-        .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-        .AttributeCount = RR_ARRAY_COUNT(VertexAttributes),
-        .Attributes = VertexAttributes,
+    Rr_VertexInputBinding VertexInputBindings[] = {
+        {
+            .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+            .AttributeCount = RR_ARRAY_COUNT(VertexAttributes),
+            .Attributes = VertexAttributes,
+        },
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
@@ -89,13 +92,15 @@ static void Init(Rr_App *App, void *UserData)
         Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_VERT_SPV);
     PipelineInfo.FragmentShaderSPV =
         Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_FRAG_SPV);
-    PipelineInfo.VertexInputBindingCount = 1;
-    PipelineInfo.VertexInputBindings = &VertexInputBinding;
-    PipelineInfo.ColorTargetCount = 1;
+    PipelineInfo.VertexInputBindingCount = RR_ARRAY_COUNT(VertexInputBindings);
+    PipelineInfo.VertexInputBindings = VertexInputBindings;
+    PipelineInfo.ColorTargetCount = RR_ARRAY_COUNT(ColorTargets);
     PipelineInfo.ColorTargets = ColorTargets;
     PipelineInfo.DepthStencil.EnableDepthTest = true;
     PipelineInfo.DepthStencil.EnableDepthWrite = true;
     PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
+    PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
+    PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
 
     GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
@@ -119,8 +124,8 @@ static void Init(Rr_App *App, void *UserData)
     };
     GLTFContext = Rr_CreateGLTFContext(
         Renderer,
-        1,
-        &VertexInputBinding,
+        RR_ARRAY_COUNT(VertexInputBindings),
+        VertexInputBindings,
         &GLTFVertexInputBinding,
         RR_ARRAY_COUNT(GLTFTextureMappings),
         GLTFTextureMappings);
@@ -174,7 +179,9 @@ static void DrawFirstGLTFPrimitive(Rr_App *App, Rr_GraphNode *GraphicsNode)
         0.5f,
         50.0f);
     UniformData.View = Rr_Translate((Rr_Vec3){ 0.0f, 0.0f, 5.0f });
-    UniformData.Model = Rr_MulM4(UniformData.Model, Rr_Rotate_LH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }));
+    UniformData.Model = Rr_MulM4(
+        UniformData.Model,
+        Rr_Rotate_LH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }));
 
     memcpy(
         Rr_GetMappedBufferData(Renderer, StagingBuffer),
@@ -222,13 +229,13 @@ static void Iterate(Rr_App *App, void *UserData)
 
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
-    Rr_ColorTarget OffscreenTarget = {
+    Rr_ColorTarget ColorTarget = {
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = (Rr_ColorClear){ { 0.1f, 0.1f, 0.1f, 1.0f } },
     };
-    Rr_DepthTarget OffscreenDepth = {
+    Rr_DepthTarget DepthTarget = {
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = {
@@ -237,11 +244,11 @@ static void Iterate(Rr_App *App, void *UserData)
     };
     Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
         Renderer,
-        "offscreen",
+        "graphics",
         1,
-        &OffscreenTarget,
+        &ColorTarget,
         &SwapchainImage,
-        &OffscreenDepth,
+        &DepthTarget,
         DepthAttachment);
     if(Loaded)
     {

@@ -123,37 +123,37 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
 
 extern void Rr_Draw(
     Rr_GraphNode *Node,
-    uint32_t VertexCount,
-    uint32_t InstanceCount,
-    uint32_t FirstVertex,
-    uint32_t FirstInstance);
+    size_t VertexCount,
+    size_t InstanceCount,
+    size_t FirstVertex,
+    size_t FirstInstance);
 
 extern void Rr_DrawIndirect(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Offset,
-    uint32_t Count,
-    uint32_t Stride);
+    size_t Offset,
+    size_t Count,
+    size_t Stride);
 
 extern void Rr_DrawIndexed(
     Rr_GraphNode *Node,
-    uint32_t IndexCount,
-    uint32_t InstanceCount,
-    uint32_t FirstIndex,
+    size_t IndexCount,
+    size_t InstanceCount,
+    size_t FirstIndex,
     int32_t VertexOffset,
-    uint32_t FirstInstance);
+    size_t FirstInstance);
 
 extern void Rr_BindVertexBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Slot,
-    uint32_t Offset);
+    size_t Slot,
+    size_t Offset);
 
 extern void Rr_BindIndexBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Slot,
-    uint32_t Offset,
+    size_t Slot,
+    size_t Offset,
     Rr_IndexType Type);
 
 extern void Rr_BindGraphicsPipeline(
@@ -167,43 +167,43 @@ extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect);
 extern void Rr_BindSampler(
     Rr_GraphNode *Node,
     Rr_Sampler *Sampler,
-    uint32_t Set,
-    uint32_t Binding);
+    size_t Set,
+    size_t Binding);
 
 extern void Rr_BindSampledImage(
     Rr_GraphNode *Node,
     Rr_Image *Image,
-    uint32_t Set,
-    uint32_t Binding);
+    size_t Set,
+    size_t Binding);
 
 extern void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
     Rr_Image *Image,
     Rr_Sampler *Sampler,
-    uint32_t Set,
-    uint32_t Binding);
+    size_t Set,
+    size_t Binding);
 
 extern void Rr_BindUniformBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t Offset,
-    uint32_t Size);
+    size_t Set,
+    size_t Binding,
+    size_t Offset,
+    size_t Size);
 
 extern void Rr_BindStorageBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t Offset,
-    uint32_t Size);
+    size_t Set,
+    size_t Binding,
+    size_t Offset,
+    size_t Size);
 
 extern void Rr_BindStorageImage(
     Rr_GraphNode *Node,
     Rr_Image *Image,
-    uint32_t Set,
-    uint32_t Binding);
+    size_t Set,
+    size_t Binding);
 
 #ifdef __cplusplus
 }

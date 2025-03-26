@@ -52,7 +52,7 @@ struct Rr_GLTFPrimitive
     Rr_GLTFAttribute *Attributes;
     size_t IndexCount;
     Rr_GLTFMaterial *Material;
-    size_t VertexOffset;
+    int32_t VertexOffset;
     size_t FirstIndex;
 };
 

@@ -218,7 +218,7 @@ struct Rr_PipelineBindingSet
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
     Rr_Renderer *Renderer,
-    size_t SetCount,
+    uint32_t SetCount,
     Rr_PipelineBindingSet *Sets);
 
 extern void Rr_DestroyPipelineLayout(

@@ -275,8 +275,9 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
             {
                 if(Found)
                 {
-                    RR_ABORT("GLTF: Multiple mappings found for the same "
-                             "attribute type!");
+                    RR_ABORT(
+                        "GLTF: Multiple mappings found for the same "
+                        "attribute type!");
                 }
                 if(Out)
                 {
@@ -509,7 +510,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             GLTFPrimitive->VertexCount = VertexCount;
             GLTFPrimitive->IndexCount = Primitive->indices->count;
             GLTFPrimitive->FirstIndex = FirstIndex;
-            GLTFPrimitive->VertexOffset = VertexOffset;
+            GLTFPrimitive->VertexOffset = (int32_t)VertexOffset;
 
             for(size_t AttributeIndex = 0;
                 AttributeIndex < GLTFPrimitive->AttributeCount;
@@ -617,58 +618,71 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     /* Process materials, textures and images. */
 
-    for(size_t MaterialIndex = 0; MaterialIndex < Data->materials_count;
-        ++MaterialIndex)
+    if(Data->materials != NULL)
     {
-        cgltf_material *Material = Data->materials + MaterialIndex;
-
-        size_t TextureCount = 0;
-
-        if(Material->has_pbr_metallic_roughness &&
-           Material->pbr_metallic_roughness.base_color_texture.texture != NULL)
+        for(size_t MaterialIndex = 0; MaterialIndex < Data->materials_count;
+            ++MaterialIndex)
         {
-            TextureCount++;
-        }
-
-        Rr_GLTFMaterial *GLTFMaterial = GLTFAsset->Materials + MaterialIndex;
-        GLTFMaterial->TextureCount = TextureCount;
-        GLTFMaterial->Textures =
-            RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, size_t, TextureCount);
-        GLTFMaterial->TextureTypes = RR_ALLOC_TYPE_COUNT(
-            GLTFContext->Arena,
-            Rr_GLTFTextureType,
-            TextureCount);
-
-        size_t CurrentTextureIndex = 0;
-
-        if(Material->has_pbr_metallic_roughness &&
-           Material->pbr_metallic_roughness.base_color_texture.texture != NULL)
-        {
-            cgltf_texture *Texture =
-                Material->pbr_metallic_roughness.base_color_texture.texture;
-            if(strcmp(Texture->image->mime_type, "image/png") == 0 ||
-               strcmp(Texture->image->mime_type, "image/jpeg") == 0)
+            cgltf_material *Material = Data->materials + MaterialIndex;
+            if(Material == NULL)
             {
-                GLTFMaterial->TextureTypes[CurrentTextureIndex] =
-                    RR_GLTF_TEXTURE_TYPE_COLOR;
-                if(GLTFAsset->Images[CurrentTextureIndex] == NULL)
+                continue;
+            }
+
+            size_t TextureCount = 0;
+
+            if(Material->has_pbr_metallic_roughness &&
+               Material->pbr_metallic_roughness.base_color_texture.texture !=
+                   NULL)
+            {
+                TextureCount++;
+            }
+
+            Rr_GLTFMaterial *GLTFMaterial =
+                GLTFAsset->Materials + MaterialIndex;
+            GLTFMaterial->TextureCount = TextureCount;
+            GLTFMaterial->Textures =
+                RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, size_t, TextureCount);
+            GLTFMaterial->TextureTypes = RR_ALLOC_TYPE_COUNT(
+                GLTFContext->Arena,
+                Rr_GLTFTextureType,
+                TextureCount);
+
+            size_t CurrentTextureIndex = 0;
+
+            if(Material->has_pbr_metallic_roughness &&
+               Material->pbr_metallic_roughness.base_color_texture.texture !=
+                   NULL)
+            {
+                cgltf_texture *Texture =
+                    Material->pbr_metallic_roughness.base_color_texture.texture;
+                if(strcmp(Texture->image->mime_type, "image/png") == 0 ||
+                   strcmp(Texture->image->mime_type, "image/jpeg") == 0)
                 {
-                    int32_t ImageDataSize = Texture->image->buffer_view->size;
-                    char *ImageData =
-                        (char *)Texture->image->buffer_view->buffer->data +
-                        Texture->image->buffer_view->offset;
+                    GLTFMaterial->TextureTypes[CurrentTextureIndex] =
+                        RR_GLTF_TEXTURE_TYPE_COLOR;
+                    if(GLTFAsset->Images[CurrentTextureIndex] == NULL)
+                    {
+                        int32_t ImageDataSize =
+                            (int32_t)Texture->image->buffer_view->size;
+                        char *ImageData =
+                            (char *)Texture->image->buffer_view->buffer->data +
+                            Texture->image->buffer_view->offset;
 
-                    GLTFAsset->Images[CurrentTextureIndex] =
-                        Rr_CreateImageRGBA8FromPNG(
-                            Renderer,
-                            UploadContext,
-                            ImageDataSize,
-                            ImageData);
+                        GLTFAsset->Images[CurrentTextureIndex] =
+                            Rr_CreateImageRGBA8FromPNG(
+                                Renderer,
+                                UploadContext,
+                                ImageDataSize,
+                                ImageData);
 
-                    *RR_PUSH_SLICE(&GLTFContext->Images, GLTFContext->Arena) =
-                        GLTFAsset->Images[CurrentTextureIndex];
+                        *RR_PUSH_SLICE(
+                            &GLTFContext->Images,
+                            GLTFContext->Arena) =
+                            GLTFAsset->Images[CurrentTextureIndex];
+                    }
+                    CurrentTextureIndex++;
                 }
-                CurrentTextureIndex++;
             }
         }
     }

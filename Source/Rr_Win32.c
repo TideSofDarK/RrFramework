@@ -49,7 +49,7 @@ int Rr_GetAtomicInt(Rr_AtomicInt *AtomicInt)
 
 int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value)
 {
-    return _InterlockedExchange((long *)&AtomicInt->Value, v);
+    return _InterlockedExchange((long *)&AtomicInt->Value, Value);
 }
 
 bool Rr_TryLockSpinLock(Rr_SpinLock *SpinLock)

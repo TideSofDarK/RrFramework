@@ -22,7 +22,7 @@ struct Rr_DescriptorAllocator
     RR_SLICE(Rr_DescriptorPoolSizeRatio) Ratios;
     RR_SLICE(VkDescriptorPool) FullPools;
     RR_SLICE(VkDescriptorPool) ReadyPools;
-    size_t SetsPerPool;
+    uint32_t SetsPerPool;
 };
 
 typedef enum Rr_DescriptorWriterEntryType
@@ -50,9 +50,9 @@ struct Rr_DescriptorWriter
 
 extern Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
     Rr_Device *Device,
-    size_t MaxSets,
+    uint32_t MaxSets,
     Rr_DescriptorPoolSizeRatio *Ratios,
-    size_t RatioCount,
+    uint32_t RatioCount,
     Rr_Arena *Arena);
 
 extern VkDescriptorSet Rr_AllocateDescriptorSet(
@@ -157,8 +157,8 @@ typedef struct Rr_DescriptorSetBufferBinding Rr_DescriptorSetBufferBinding;
 struct Rr_DescriptorSetBufferBinding
 {
     VkBuffer Handle;
-    size_t Size;
-    size_t Offset;
+    uint32_t Size;
+    uint32_t Offset;
 };
 
 typedef struct Rr_DescriptorSetBinding Rr_DescriptorSetBinding;
