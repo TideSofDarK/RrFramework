@@ -10,6 +10,7 @@
 #include <iostream>
 #include <iterator>
 #include <numeric>
+#include <optional>
 #include <vector>
 
 struct SPoint
@@ -118,30 +119,31 @@ struct SGPUDraw
     float Param2;
 };
 
-template <typename TItem> class CQuadTree
+class CQuadTree
 {
-public:
+private:
+    static constexpr uint32_t NULL_NODE = UINT32_MAX;
+
     struct SNode
     {
         std::array<uint32_t, 4> Indices = {
-            UINT32_MAX,
-            UINT32_MAX,
-            UINT32_MAX,
-            UINT32_MAX,
+            NULL_NODE,
+            NULL_NODE,
+            NULL_NODE,
+            NULL_NODE,
         };
 
-        bool IsEmpty() const
+        constexpr bool IsEmpty() const
         {
             return std::all_of(
                 Indices.cbegin(),
                 Indices.cend(),
-                [&](auto Index) { return Index == UINT32_MAX; });
+                [&](auto Index) { return Index == NULL_NODE; });
         }
     };
 
     SRect Bounds;
     std::vector<SNode> Nodes;
-    std::vector<TItem> Items;
     std::vector<SGPUDraw> Draws;
     uint32_t RootIndex;
 
@@ -178,7 +180,7 @@ public:
     {
         if(Begin == End)
         {
-            return UINT32_MAX;
+            return NULL_NODE;
         }
 
         uint32_t Result = Nodes.size();
@@ -237,26 +239,16 @@ public:
         return Result;
     }
 
-    template <typename TIterator> void Build(TIterator Begin, TIterator End)
+    std::optional<std::reference_wrapper<SGPUDraw>> QueryPoint(
+        const SPoint &Point,
+        uint32_t NodeIndex,
+        SRect &Bounds)
     {
-        Nodes.clear();
-        Items.clear();
-        Draws.clear();
-        Bounds = SRect(Begin, End);
-        RootIndex = BuildNode(Bounds, Begin, End);
-        std::sort(
-            Draws.begin(),
-            Draws.end(),
-            [](const SGPUDraw &DrawA, const SGPUDraw &DrawB) {
-                return DrawA.Type < DrawB.Type;
-            });
-    }
+        const SNode &Node = Nodes[NodeIndex];
 
-    bool QueryImpl(const SPoint &Point, const SNode &Node, const SRect &Bounds)
-    {
         if(Node.IsEmpty())
         {
-            return true;
+            return std::make_optional(std::reference_wrapper(Draws[NodeIndex]));
         }
 
         SPoint Center = Bounds.Center();
@@ -264,77 +256,90 @@ public:
         {
             if(Point.Y > Center.Y)
             {
-                if(Node.Indices[3] == UINT32_MAX)
+                if(Node.Indices[3] == NULL_NODE)
                 {
-                    return false;
+                    return {};
                 }
-                return QueryImpl(
-                    Point,
-                    Nodes[Node.Indices[3]],
-                    {
-                        Bounds.Left + Bounds.Extent().X,
-                        Bounds.Top + Bounds.Extent().Y,
-                        Bounds.Right,
-                        Bounds.Bottom,
-                    });
+                Bounds = {
+                    Bounds.Left + Bounds.Extent().X,
+                    Bounds.Top + Bounds.Extent().Y,
+                    Bounds.Right,
+                    Bounds.Bottom,
+                };
+                return QueryPoint(Point, Node.Indices[3], Bounds);
             }
             else
             {
-                if(Node.Indices[1] == UINT32_MAX)
+                if(Node.Indices[1] == NULL_NODE)
                 {
-                    return false;
+                    return {};
                 }
-                return QueryImpl(
-                    Point,
-                    Nodes[Node.Indices[1]],
-                    {
-                        Bounds.Left + Bounds.Extent().X,
-                        Bounds.Top,
-                        Bounds.Right,
-                        Bounds.Top + Bounds.Extent().Y,
-                    });
+                Bounds = {
+                    Bounds.Left + Bounds.Extent().X,
+                    Bounds.Top,
+                    Bounds.Right,
+                    Bounds.Top + Bounds.Extent().Y,
+                };
+                return QueryPoint(Point, Node.Indices[1], Bounds);
             }
         }
         else
         {
             if(Point.Y > Center.Y)
             {
-                if(Node.Indices[2] == UINT32_MAX)
+                if(Node.Indices[2] == NULL_NODE)
                 {
-                    return false;
+                    return {};
                 }
-                return QueryImpl(
-                    Point,
-                    Nodes[Node.Indices[2]],
-                    {
-                        Bounds.Left,
-                        Bounds.Top + Bounds.Extent().Y,
-                        Bounds.Left + Bounds.Extent().X,
-                        Bounds.Bottom,
-                    });
+                Bounds = {
+                    Bounds.Left,
+                    Bounds.Top + Bounds.Extent().Y,
+                    Bounds.Left + Bounds.Extent().X,
+                    Bounds.Bottom,
+                };
+                return QueryPoint(Point, Node.Indices[2], Bounds);
             }
             else
             {
-                if(Node.Indices[0] == UINT32_MAX)
+                if(Node.Indices[0] == NULL_NODE)
                 {
-                    return false;
+                    return {};
                 }
-                return QueryImpl(
-                    Point,
-                    Nodes[Node.Indices[0]],
-                    {
-                        Bounds.Left,
-                        Bounds.Top,
-                        Bounds.Left + Bounds.Extent().X,
-                        Bounds.Top + Bounds.Extent().Y,
-                    });
+                Bounds = {
+                    Bounds.Left,
+                    Bounds.Top,
+                    Bounds.Left + Bounds.Extent().X,
+                    Bounds.Top + Bounds.Extent().Y,
+                };
+                return QueryPoint(Point, Node.Indices[0], Bounds);
             }
         }
     }
 
-    bool Query(const SPoint &Point)
+public:
+    template <typename TIterator> void Build(TIterator Begin, TIterator End)
     {
-        return QueryImpl(Point, Nodes[RootIndex], Bounds);
+        Nodes.clear();
+        Draws.clear();
+        Bounds = SRect(Begin, End);
+        RootIndex = BuildNode(Bounds, Begin, End);
+        // std::sort(
+        //     Draws.begin(),
+        //     Draws.end(),
+        //     [](const SGPUDraw &DrawA, const SGPUDraw &DrawB) {
+        //         return DrawA.Type < DrawB.Type;
+        //     });
+    }
+
+    std::optional<std::reference_wrapper<SGPUDraw>> Query(const SPoint &Point)
+    {
+        SRect Bounds = this->Bounds;
+        return QueryPoint(Point, RootIndex, Bounds);
+    }
+
+    const std::vector<SGPUDraw> GetDraws()
+    {
+        return Draws;
     }
 };
 
@@ -352,7 +357,7 @@ static Rr_Mat4 CameraProjection;
 static Rr_Mat4 CameraView;
 static float CameraZoom = 1.0f;
 static Rr_Vec2 CameraPosition;
-static CQuadTree<double> Tree;
+static CQuadTree Tree;
 static bool Dragging;
 static Rr_Vec2 DragStartMouse;
 static Rr_Vec2 DragStartCamera;
@@ -485,6 +490,11 @@ static void Iterate(Rr_App *App, void *UserData)
     if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK) == true)
     {
         SPoint Point = ConvertMousePosition(App);
+        auto Result = Tree.Query(Point);
+        if(Result.has_value())
+        {
+            Result.value().get().Color = 0xFFFFFFFF;
+        }
     }
 
     Rr_ColorTarget ColorTarget;
@@ -505,8 +515,8 @@ static void Iterate(Rr_App *App, void *UserData)
     char *StagingData = (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
     std::memcpy(StagingData, &UniformData, sizeof(UniformData));
     StagingData += sizeof(UniformData);
-    std::uint32_t DrawsSize = sizeof(SGPUDraw) * Tree.Draws.size();
-    std::memcpy(StagingData, Tree.Draws.data(), DrawsSize);
+    std::uint32_t DrawsSize = sizeof(SGPUDraw) * Tree.GetDraws().size();
+    std::memcpy(StagingData, Tree.GetDraws().data(), DrawsSize);
 
     Rr_GraphNode *TransferNode = Rr_AddTransferNode(Renderer, "transfer");
     Rr_TransferBufferData(
@@ -535,7 +545,7 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_BindGraphicsPipeline(TreeNode, Pipeline);
     Rr_BindUniformBuffer(TreeNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
     Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
-    Rr_Draw(TreeNode, 6, Tree.Draws.size(), 0, 0);
+    Rr_Draw(TreeNode, 6, Tree.GetDraws().size(), 0, 0);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
