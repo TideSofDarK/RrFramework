@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <numeric>
@@ -56,7 +57,7 @@ struct SRect
         return { (Right + Left) / 2, (Top + Bottom) / 2 };
     }
 
-    constexpr SPoint Extent() const
+    const SPoint Extent() const
     {
         return { std::abs(Left - Right) / 2, std::abs(Bottom - Top) / 2 };
     }
@@ -133,7 +134,7 @@ private:
             NULL_NODE,
         };
 
-        constexpr bool IsEmpty() const
+        const bool IsEmpty() const
         {
             return std::all_of(
                 Indices.cbegin(),
