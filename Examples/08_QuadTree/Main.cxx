@@ -11,7 +11,6 @@
 #include <iostream>
 #include <iterator>
 #include <numeric>
-#include <optional>
 #include <vector>
 
 struct SPoint
@@ -290,67 +289,17 @@ private:
             return;
         }
 
-        SPoint Center = Bounds.Center();
-        if(Point.X > Center.X)
+        auto Quadrants = Bounds.Quadrants();
+        for(auto Index = 0; Index < 4; ++Index)
         {
-            if(Point.Y > Center.Y)
+            SRect Quadrant = Quadrants[Index];
+            if(Quadrant.Contains(Point))
             {
-                if(Node.Indices[3] == NULL_NODE)
+                if(Node.Indices[Index] != NULL_NODE)
                 {
-                    return;
+                    QueryPoint(Point, Node.Indices[Index], Quadrant, Callback);
                 }
-                Bounds = {
-                    Bounds.Left + Bounds.Extent().X,
-                    Bounds.Top + Bounds.Extent().Y,
-                    Bounds.Right,
-                    Bounds.Bottom,
-                };
-                return QueryPoint(Point, Node.Indices[3], Bounds, Callback);
-            }
-            else
-            {
-                if(Node.Indices[1] == NULL_NODE)
-                {
-                    return;
-                }
-                Bounds = {
-                    Bounds.Left + Bounds.Extent().X,
-                    Bounds.Top,
-                    Bounds.Right,
-                    Bounds.Top + Bounds.Extent().Y,
-                };
-                return QueryPoint(Point, Node.Indices[1], Bounds, Callback);
-            }
-        }
-        else
-        {
-            if(Point.Y > Center.Y)
-            {
-                if(Node.Indices[2] == NULL_NODE)
-                {
-                    return;
-                }
-                Bounds = {
-                    Bounds.Left,
-                    Bounds.Top + Bounds.Extent().Y,
-                    Bounds.Left + Bounds.Extent().X,
-                    Bounds.Bottom,
-                };
-                return QueryPoint(Point, Node.Indices[2], Bounds, Callback);
-            }
-            else
-            {
-                if(Node.Indices[0] == NULL_NODE)
-                {
-                    return;
-                }
-                Bounds = {
-                    Bounds.Left,
-                    Bounds.Top,
-                    Bounds.Left + Bounds.Extent().X,
-                    Bounds.Top + Bounds.Extent().Y,
-                };
-                return QueryPoint(Point, Node.Indices[0], Bounds, Callback);
+                return;
             }
         }
     }
@@ -524,6 +473,8 @@ static void Init(Rr_App *App, void *UserData)
 
 static void Input(Rr_App *App, CQuadTree &Tree)
 {
+    float DeltaTime = Rr_GetDeltaSeconds(App);
+
     Rr_MouseButtonMask MouseState = Rr_GetMouseState();
 
     if(Rr_IsScancodePressed(RR_SCANCODE_SPACE))
@@ -532,11 +483,11 @@ static void Input(Rr_App *App, CQuadTree &Tree)
     }
     if(Rr_IsScancodePressed(RR_SCANCODE_Q))
     {
-        CameraZoom += 0.005;
+        CameraZoom += 0.01 * DeltaTime;
     }
     if(Rr_IsScancodePressed(RR_SCANCODE_E))
     {
-        CameraZoom -= 0.005;
+        CameraZoom -= 0.01 * DeltaTime;
     }
     CameraZoom = RR_CLAMP(0.1f, CameraZoom, 10.0f);
 
@@ -576,11 +527,11 @@ static void Input(Rr_App *App, CQuadTree &Tree)
         });
     }
 
-    // if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK) == true)
-    // {
-    //     SPoint Point = ConvertMousePosition(App);
-    //     Tree.Query(Point, [](SGPUDraw &Draw) { Draw.Color = 0xFFFFFFFF; });
-    // }
+    if(Rr_IsScancodePressed(RR_SCANCODE_W))
+    {
+        SPoint Point = ConvertMousePosition(App);
+        Tree.Query(Point, [](SGPUDraw &Draw) { Draw.Param1 = 1.0f; });
+    }
 }
 
 static void Render(Rr_App *App, CQuadTree &Tree)
