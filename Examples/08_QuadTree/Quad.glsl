@@ -13,7 +13,7 @@ struct SGPUDraw
 layout(set = 0, binding = 0) uniform UniformGlobals
 {
     mat4 ViewProjection;
-    ivec2 ScreenSize;
+    float Time;
 };
 
 layout(set = 0, binding = 1) readonly buffer StorageDraws

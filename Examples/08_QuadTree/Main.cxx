@@ -57,9 +57,46 @@ struct SRect
         return { (Right + Left) / 2, (Top + Bottom) / 2 };
     }
 
+    const SRect LeftTop() const
+    {
+        return { Left, Top, Left + Extent().X, Top + Extent().Y };
+    }
+
+    const SRect RightTop() const
+    {
+        return { Left + Extent().X, Top, Right, Top + Extent().Y };
+    }
+
+    const SRect LeftBottom() const
+    {
+        return { Left, Top + Extent().Y, Left + Extent().X, Bottom };
+    }
+
+    const SRect RightBottom() const
+    {
+        return { Left + Extent().X, Top + Extent().Y, Right, Bottom };
+    }
+
+    const std::array<SRect, 4> Quadrants() const
+    {
+        return { LeftTop(), RightTop(), LeftBottom(), RightBottom() };
+    }
+
     const SPoint Extent() const
     {
         return { std::abs(Left - Right) / 2, std::abs(Bottom - Top) / 2 };
+    }
+
+    const SPoint Size() const
+    {
+        return { std::abs(Left - Right), std::abs(Bottom - Top) };
+    }
+
+    const SRect Quad() const
+    {
+        float Min = std::min(Left, std::min(Right, std::min(Top, Bottom)));
+        float Max = std::max(Left, std::max(Right, std::max(Top, Bottom)));
+        return { Min, Min, Max, Max };
     }
 
     SRect &operator|(const SPoint &Rhs)
@@ -74,18 +111,15 @@ struct SRect
     SRect() = default;
 
     SRect(float Left, float Top, float Right, float Bottom)
-        : Left(Left)
-        , Top(Top)
-        , Right(Right)
-        , Bottom(Bottom)
+        : Left(std::min(Left, Right))
+        , Top(std::min(Top, Bottom))
+        , Right(std::max(Left, Right))
+        , Bottom(std::max(Top, Bottom))
     {
     }
 
     SRect(const SPoint &Min, const SPoint &Max)
-        : Left(Min.X)
-        , Top(Min.Y)
-        , Right(Max.X)
-        , Bottom(Max.Y)
+        : SRect(Min.X, Min.Y, Max.X, Max.Y)
     {
     }
 
@@ -105,7 +139,7 @@ struct SRect
 struct SGPUUniformData
 {
     Rr_Mat4 ViewProjection;
-    Rr_IntVec2 ScreenSize;
+    float Time;
 };
 
 struct SGPUDraw
@@ -123,6 +157,8 @@ struct SGPUDraw
 class CQuadTree
 {
 private:
+    using UCallback = const std::function<void(SGPUDraw &)> &;
+
     static constexpr uint32_t NULL_NODE = UINT32_MAX;
 
     struct SNode
@@ -240,16 +276,18 @@ private:
         return Result;
     }
 
-    std::optional<std::reference_wrapper<SGPUDraw>> QueryPoint(
+    void QueryPoint(
         const SPoint &Point,
         uint32_t NodeIndex,
-        SRect &Bounds)
+        SRect &Bounds,
+        UCallback Callback)
     {
         const SNode &Node = Nodes[NodeIndex];
 
         if(Node.IsEmpty())
         {
-            return std::make_optional(std::reference_wrapper(Draws[NodeIndex]));
+            Callback(Draws[NodeIndex]);
+            return;
         }
 
         SPoint Center = Bounds.Center();
@@ -259,7 +297,7 @@ private:
             {
                 if(Node.Indices[3] == NULL_NODE)
                 {
-                    return {};
+                    return;
                 }
                 Bounds = {
                     Bounds.Left + Bounds.Extent().X,
@@ -267,13 +305,13 @@ private:
                     Bounds.Right,
                     Bounds.Bottom,
                 };
-                return QueryPoint(Point, Node.Indices[3], Bounds);
+                return QueryPoint(Point, Node.Indices[3], Bounds, Callback);
             }
             else
             {
                 if(Node.Indices[1] == NULL_NODE)
                 {
-                    return {};
+                    return;
                 }
                 Bounds = {
                     Bounds.Left + Bounds.Extent().X,
@@ -281,7 +319,7 @@ private:
                     Bounds.Right,
                     Bounds.Top + Bounds.Extent().Y,
                 };
-                return QueryPoint(Point, Node.Indices[1], Bounds);
+                return QueryPoint(Point, Node.Indices[1], Bounds, Callback);
             }
         }
         else
@@ -290,7 +328,7 @@ private:
             {
                 if(Node.Indices[2] == NULL_NODE)
                 {
-                    return {};
+                    return;
                 }
                 Bounds = {
                     Bounds.Left,
@@ -298,13 +336,13 @@ private:
                     Bounds.Left + Bounds.Extent().X,
                     Bounds.Bottom,
                 };
-                return QueryPoint(Point, Node.Indices[2], Bounds);
+                return QueryPoint(Point, Node.Indices[2], Bounds, Callback);
             }
             else
             {
                 if(Node.Indices[0] == NULL_NODE)
                 {
-                    return {};
+                    return;
                 }
                 Bounds = {
                     Bounds.Left,
@@ -312,7 +350,32 @@ private:
                     Bounds.Left + Bounds.Extent().X,
                     Bounds.Top + Bounds.Extent().Y,
                 };
-                return QueryPoint(Point, Node.Indices[0], Bounds);
+                return QueryPoint(Point, Node.Indices[0], Bounds, Callback);
+            }
+        }
+    }
+
+    void QueryRect(
+        const SRect &Rect,
+        uint32_t NodeIndex,
+        SRect &Bounds,
+        UCallback Callback)
+    {
+        const SNode &Node = Nodes[NodeIndex];
+
+        if(Node.IsEmpty())
+        {
+            Callback(Draws[NodeIndex]);
+            return;
+        }
+
+        auto Quadrants = Bounds.Quadrants();
+        for(auto Index = 0; Index < 4; ++Index)
+        {
+            SRect Quadrant = Quadrants[Index];
+            if(Node.Indices[Index] != NULL_NODE && Rect.Intersects(Quadrant))
+            {
+                QueryRect(Rect, Node.Indices[Index], Quadrant, Callback);
             }
         }
     }
@@ -322,23 +385,29 @@ public:
     {
         Nodes.clear();
         Draws.clear();
-        Bounds = SRect(Begin, End);
+        Bounds = SRect(Begin, End).Quad();
         RootIndex = BuildNode(Bounds, Begin, End);
-        // std::sort(
-        //     Draws.begin(),
-        //     Draws.end(),
-        //     [](const SGPUDraw &DrawA, const SGPUDraw &DrawB) {
-        //         return DrawA.Type < DrawB.Type;
-        //     });
     }
 
-    std::optional<std::reference_wrapper<SGPUDraw>> Query(const SPoint &Point)
+    void Query(const SPoint &Point, UCallback Callback)
     {
         SRect Bounds = this->Bounds;
-        return QueryPoint(Point, RootIndex, Bounds);
+        if(Bounds.Contains(Point))
+        {
+            QueryPoint(Point, RootIndex, Bounds, Callback);
+        }
     }
 
-    const std::vector<SGPUDraw> GetDraws()
+    void Query(const SRect &Rect, UCallback Callback)
+    {
+        SRect Bounds = this->Bounds;
+        if(Bounds.Intersects(Rect))
+        {
+            QueryRect(Rect, RootIndex, Bounds, Callback);
+        }
+    }
+
+    std::vector<SGPUDraw> &GetDraws()
     {
         return Draws;
     }
@@ -362,15 +431,18 @@ static CQuadTree Tree;
 static bool Dragging;
 static Rr_Vec2 DragStartMouse;
 static Rr_Vec2 DragStartCamera;
+static bool Selecting;
+static SPoint SelectStart;
+static SPoint SelectEnd;
 
 static void RebuildTree()
 {
-    const int NUM_POINTS = 1024;
+    const int NUM_POINTS = 5000;
     std::vector<SPoint> Points;
     Points.reserve(NUM_POINTS);
     std::generate_n(std::back_inserter(Points), NUM_POINTS, []() {
-        return SPoint{ float(((int)std::rand() % 5000) - 2500),
-                       float(((int)std::rand() % 5000) - 2500) };
+        return SPoint{ float(((int)std::rand() % 160000) - 80000),
+                       float(((int)std::rand() % 100000) - 50000) };
     });
     Tree.Build(Points.begin(), Points.end());
 }
@@ -450,12 +522,9 @@ static void Init(Rr_App *App, void *UserData)
     RebuildTree();
 }
 
-static void Iterate(Rr_App *App, void *UserData)
+static void Input(Rr_App *App, CQuadTree &Tree)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
-
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    Rr_MouseButtonMask MouseState = Rr_GetMouseState();
 
     if(Rr_IsScancodePressed(RR_SCANCODE_SPACE))
     {
@@ -470,7 +539,7 @@ static void Iterate(Rr_App *App, void *UserData)
         CameraZoom -= 0.005;
     }
     CameraZoom = RR_CLAMP(0.1f, CameraZoom, 10.0f);
-    Rr_MouseButtonMask MouseState = Rr_GetMouseState();
+
     if(Dragging == false && RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_MASK))
     {
         Dragging = true;
@@ -488,15 +557,38 @@ static void Iterate(Rr_App *App, void *UserData)
             DragStartCamera -
             (DragStartMouse - Rr_GetMousePosition(App)) * CameraZoom;
     }
-    if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK) == true)
+
+    if(Selecting == false && RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK))
     {
-        SPoint Point = ConvertMousePosition(App);
-        auto Result = Tree.Query(Point);
-        if(Result.has_value())
-        {
-            Result.value().get().Color = 0xFFFFFFFF;
-        }
+        Selecting = true;
+        SelectStart = ConvertMousePosition(App);
     }
+    if(Selecting == true &&
+       RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK) == false)
+    {
+        Selecting = false;
+    }
+    if(Selecting)
+    {
+        SelectEnd = ConvertMousePosition(App);
+        Tree.Query({ SelectStart, SelectEnd }, [](SGPUDraw &Draw) {
+            Draw.Param1 = 1.0f;
+        });
+    }
+
+    // if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK) == true)
+    // {
+    //     SPoint Point = ConvertMousePosition(App);
+    //     Tree.Query(Point, [](SGPUDraw &Draw) { Draw.Color = 0xFFFFFFFF; });
+    // }
+}
+
+static void Render(Rr_App *App, CQuadTree &Tree)
+{
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
+    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
     Rr_ColorTarget ColorTarget;
     ColorTarget.Clear = { 1.0, 1.0, 1.0, 1.0 };
@@ -511,7 +603,20 @@ static void Iterate(Rr_App *App, void *UserData)
     CameraProjection = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, -1, 1);
     CameraView = Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
     UniformData.ViewProjection = CameraProjection * CameraView;
-    UniformData.ScreenSize = { SwapchainSize.X, SwapchainSize.Y };
+    UniformData.Time = Rr_GetTimeSeconds(App);
+
+    if(Selecting)
+    {
+        SRect SelectRect = { SelectStart, SelectEnd };
+        SGPUDraw Draw{};
+        Draw.X = SelectRect.Left;
+        Draw.Y = SelectRect.Top;
+        Draw.Width = SelectRect.Size().X;
+        Draw.Height = SelectRect.Size().Y;
+        Draw.Type = 2;
+        Draw.Color = 0xffecc5ad;
+        Tree.GetDraws().push_back(Draw);
+    }
 
     char *StagingData = (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
     std::memcpy(StagingData, &UniformData, sizeof(UniformData));
@@ -547,6 +652,13 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_BindUniformBuffer(TreeNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
     Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
     Rr_Draw(TreeNode, 6, Tree.GetDraws().size(), 0, 0);
+}
+
+static void Iterate(Rr_App *App, void *UserData)
+{
+    CQuadTree Clone = Tree;
+    Input(App, Clone);
+    Render(App, Clone);
 }
 
 static void Cleanup(Rr_App *App, void *UserData)
