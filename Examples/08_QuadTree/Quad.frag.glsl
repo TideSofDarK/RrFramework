@@ -3,6 +3,11 @@
 
 #include "Quad.glsl"
 
+#define CIRCLE 0
+#define CROSS 1
+#define RECT_SELECTION 2
+#define RECT_TREE_BORDER 3
+
 layout(location = 0) in vec2 InUV;
 layout(location = 1) flat in uint InIndex;
 

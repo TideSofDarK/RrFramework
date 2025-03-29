@@ -1,5 +1,4 @@
 #include "ExampleAssets.inc"
-#include "Rr/Rr_App.h"
 
 #include <Rr/Rr.h>
 
@@ -164,13 +163,21 @@ struct SGPUUniformData
     float Time;
 };
 
+enum class EDrawType : uint32_t
+{
+    CIRCLE,
+    CROSS,
+    RECT_SELECTION,
+    RECT_TREE_BORDER,
+};
+
 struct SGPUDraw
 {
     float X;
     float Y;
     float Width;
     float Height;
-    int32_t Type;
+    EDrawType Type;
     uint32_t Color;
     float Param1;
     float Param2;
@@ -234,7 +241,7 @@ private:
         auto Center = Bounds.Center();
         Draw.X = (float)Center.X - Draw.Width / 2.0f;
         Draw.Y = (float)Center.Y - Draw.Height / 2.0f;
-        Draw.Type = 1;
+        Draw.Type = EDrawType::CROSS;
         DebugDraws.push_back(Draw);
     }
 
@@ -381,7 +388,7 @@ private:
         Draw.Height = Bounds.Size().Y;
         Draw.X = Bounds.Left;
         Draw.Y = Bounds.Top;
-        Draw.Type = 3;
+        Draw.Type = EDrawType::RECT_TREE_BORDER;
         DebugDraws.push_back(Draw);
     }
 
@@ -427,7 +434,7 @@ public:
     }
 };
 
-const uint32_t MAX_DRAWS = 1024;
+const uint32_t MAX_DRAWS = 1 << 14;
 
 static Rr_PipelineLayout *Layout;
 static Rr_GraphicsPipeline *Pipeline;
@@ -476,6 +483,7 @@ static void RebuildTree()
             float(((int)std::rand() % (int)(AREA_HEIGHT)) - AREA_HEIGHT / 2.0f);
         Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
                      ((std::rand() % 256) << 16);
+        Draw.Type = EDrawType::CIRCLE;
 
         /* Some points may not be eligble for the tree.
          * It's important to use Draws.size() as index
@@ -757,7 +765,7 @@ static void Render(Rr_App *App)
         Draw.Y = SelectRect.Top;
         Draw.Width = SelectRect.Size().X;
         Draw.Height = SelectRect.Size().Y;
-        Draw.Type = 2;
+        Draw.Type = EDrawType::RECT_SELECTION;
         Draw.Color = 0xffecc5ad;
         std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
         StagingData += sizeof(SGPUDraw);
@@ -787,7 +795,7 @@ static void Render(Rr_App *App)
             0);
         Rr_TransferBufferData(
             TransferNode,
-            DrawsSize,
+            RR_MIN(DrawsSize, MAX_DRAWS * sizeof(SGPUDraw)),
             StagingBuffer,
             sizeof(UniformData),
             StorageBuffer,
