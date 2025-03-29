@@ -1,4 +1,5 @@
 #include "ExampleAssets.inc"
+#include "Rr/Rr_App.h"
 
 #include <Rr/Rr.h>
 
@@ -9,8 +10,9 @@
 #include <ctime>
 #include <functional>
 #include <iostream>
-#include <iterator>
+#include <limits>
 #include <numeric>
+#include <unordered_set>
 #include <vector>
 
 struct SPoint
@@ -33,6 +35,11 @@ struct SRect
 {
     float Left, Top, Right, Bottom;
 
+    constexpr SPoint Center() const
+    {
+        return { (Right + Left) / 2, (Top + Bottom) / 2 };
+    }
+
     constexpr bool Contains(const SPoint &Point) const
     {
         return Point.X >= Left && Point.X <= Right && Point.Y >= Top &&
@@ -51,9 +58,25 @@ struct SRect
                ((Another.Top <= Bottom) && (Another.Bottom >= Top));
     }
 
-    constexpr SPoint Center() const
+    constexpr bool IntersectsCircle(const SPoint &Center, float Radius) const
     {
-        return { (Right + Left) / 2, (Top + Bottom) / 2 };
+        float ClosestX = RR_CLAMP(Left, Center.X, Right);
+        float ClosestY = RR_CLAMP(Top, Center.Y, Bottom);
+        float DistanceX = Center.X - ClosestX;
+        float DistanceY = Center.Y - ClosestY;
+        float DistanceSquared =
+            (DistanceX * DistanceX) + (DistanceY * DistanceY);
+        return DistanceSquared < (Radius * Radius);
+    }
+
+    const SRect Clamp(const SRect &Rhs) const
+    {
+        return {
+            std::max(Left, Rhs.Left),
+            std::max(Top, Rhs.Top),
+            std::min(Right, Rhs.Right),
+            std::min(Bottom, Rhs.Bottom),
+        };
     }
 
     const SRect LeftTop() const
@@ -122,7 +145,7 @@ struct SRect
     {
     }
 
-    template <typename TIterator> SRect(TIterator Begin, TIterator End)
+    template<typename TIterator> SRect(TIterator Begin, TIterator End)
     {
         *this = std::accumulate(Begin, End, SRect{}, std::bit_or());
     }
@@ -151,170 +174,88 @@ struct SGPUDraw
     uint32_t Color;
     float Param1;
     float Param2;
+
+    SRect Bounds() const
+    {
+        return { X, Y, X + Width, Y + Height };
+    }
+
+    friend SRect &operator|(SRect &Rect, const SGPUDraw &Rhs)
+    {
+        Rect = Rect | SPoint{ Rhs.X, Rhs.Y };
+        Rect = Rect | SPoint{ Rhs.X + Rhs.Width, Rhs.Y + Rhs.Height };
+        return Rect;
+    }
 };
 
+template<
+    typename TPayload,
+    std::size_t MaxDepth = 12,
+    typename =
+        typename std::enable_if_t<std::is_copy_constructible_v<TPayload>>>
 class CQuadTree
 {
 private:
-    using UCallback = const std::function<void(SGPUDraw &)> &;
+    using UIndex = std::uint32_t;
 
-    static constexpr uint32_t NULL_NODE = UINT32_MAX;
+    static constexpr UIndex NULL_NODE = std::numeric_limits<UIndex>::max();
 
     struct SNode
     {
-        std::array<uint32_t, 4> Indices = {
-            NULL_NODE,
-            NULL_NODE,
-            NULL_NODE,
-            NULL_NODE,
-        };
+        UIndex First{ NULL_NODE };
+        std::int32_t Count{};
+    };
 
-        const bool IsEmpty() const
-        {
-            return std::all_of(
-                Indices.cbegin(),
-                Indices.cend(),
-                [&](auto Index) { return Index == NULL_NODE; });
-        }
+    struct SElement
+    {
+        TPayload Payload;
+        SRect Bounds;
+    };
+
+    struct SElementNode
+    {
+        UIndex ElementIndex;
+        UIndex Next = NULL_NODE;
     };
 
     SRect Bounds;
-    std::vector<SNode> Nodes;
-    std::vector<SGPUDraw> Draws;
     uint32_t RootIndex;
+    std::vector<SNode> Nodes;
+    std::vector<SElement> Elements;
+    std::vector<SElementNode> ElementNodes;
+    UIndex NextElementNodeIndex = NULL_NODE;
+    std::vector<SGPUDraw> DebugDraws;
 
-    void PushCross(const SPoint &Center, const SRect &Bounds)
+    void PushCross(const SRect &Bounds)
     {
         SGPUDraw Draw{};
         Draw.Width = (float)Bounds.Right - (float)Bounds.Left;
         Draw.Height = (float)Bounds.Bottom - (float)Bounds.Top;
+        auto Center = Bounds.Center();
         Draw.X = (float)Center.X - Draw.Width / 2.0f;
         Draw.Y = (float)Center.Y - Draw.Height / 2.0f;
         Draw.Type = 1;
-        Draws.push_back(Draw);
-    }
-
-    void PushPoint(const SPoint &Point, const SRect &Bounds)
-    {
-        SGPUDraw Draw{};
-        const float MaxHor =
-            RR_MIN((Bounds.Right - Point.X), (Point.X - Bounds.Left));
-        const float MaxVert =
-            RR_MIN((Bounds.Bottom - Point.Y), (Point.Y - Bounds.Top));
-        Draw.Width = RR_MIN(MaxHor, MaxVert) * 2.0f;
-        Draw.Height = Draw.Width;
-        Draw.X = (float)Point.X - Draw.Width / 2;
-        Draw.Y = (float)Point.Y - Draw.Height / 2;
-        Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
-                     ((std::rand() % 256) << 16);
-        Draw.Type = 0;
-        Draws.push_back(Draw);
-    }
-
-    template <typename TIterator>
-    uint32_t BuildNode(const SRect &Bounds, TIterator Begin, TIterator End)
-    {
-        if(Begin == End)
-        {
-            return NULL_NODE;
-        }
-
-        uint32_t Result = Nodes.size();
-        Nodes.emplace_back();
-
-        if(std::equal(Begin + 1, End, Begin))
-        {
-            PushPoint(*Begin, Bounds);
-            return Result;
-        }
-
-        if(Begin + 1 == End)
-        {
-            return Result;
-        }
-
-        SPoint Center = Bounds.Center();
-
-        PushCross(Center, Bounds);
-
-        TIterator SplitY =
-            std::partition(Begin, End, [Center](const SPoint &Point) {
-                return Point.Y < Center.Y;
-            });
-
-        TIterator SplitXLower =
-            std::partition(Begin, SplitY, [Center](const SPoint &Point) {
-                return Point.X < Center.X;
-            });
-
-        TIterator SplitXUpper =
-            std::partition(SplitY, End, [Center](const SPoint &Point) {
-                return Point.X < Center.X;
-            });
-
-        Nodes[Result].Indices[0] = BuildNode(
-            { { Bounds.Left, Bounds.Top }, Center },
-            Begin,
-            SplitXLower);
-
-        Nodes[Result].Indices[1] = BuildNode(
-            { Center.X, Bounds.Top, Bounds.Right, Center.Y },
-            SplitXLower,
-            SplitY);
-
-        Nodes[Result].Indices[2] = BuildNode(
-            { Bounds.Left, Center.Y, Center.X, Bounds.Bottom },
-            SplitY,
-            SplitXUpper);
-
-        Nodes[Result].Indices[3] = BuildNode(
-            { Center, { Bounds.Right, Bounds.Bottom } },
-            SplitXUpper,
-            End);
-
-        return Result;
-    }
-
-    void QueryPoint(
-        const SPoint &Point,
-        uint32_t NodeIndex,
-        SRect &Bounds,
-        UCallback Callback)
-    {
-        const SNode &Node = Nodes[NodeIndex];
-
-        if(Node.IsEmpty())
-        {
-            Callback(Draws[NodeIndex]);
-            return;
-        }
-
-        auto Quadrants = Bounds.Quadrants();
-        for(auto Index = 0; Index < 4; ++Index)
-        {
-            SRect Quadrant = Quadrants[Index];
-            if(Quadrant.Contains(Point))
-            {
-                if(Node.Indices[Index] != NULL_NODE)
-                {
-                    QueryPoint(Point, Node.Indices[Index], Quadrant, Callback);
-                }
-                return;
-            }
-        }
+        DebugDraws.push_back(Draw);
     }
 
     void QueryRect(
         const SRect &Rect,
         uint32_t NodeIndex,
         SRect &Bounds,
-        UCallback Callback)
+        std::unordered_set<TPayload> &Result)
     {
         const SNode &Node = Nodes[NodeIndex];
 
-        if(Node.IsEmpty())
+        if(Node.Count != -1)
         {
-            Callback(Draws[NodeIndex]);
+            UIndex ElementNodeIndex = Node.First;
+            while(ElementNodeIndex != NULL_NODE)
+            {
+                Result.emplace(
+                    Elements[ElementNodes[ElementNodeIndex].ElementIndex]
+                        .Payload);
+                ElementNodeIndex = ElementNodes[ElementNodeIndex].Next;
+            }
             return;
         }
 
@@ -322,43 +263,167 @@ private:
         for(auto Index = 0; Index < 4; ++Index)
         {
             SRect Quadrant = Quadrants[Index];
-            if(Node.Indices[Index] != NULL_NODE && Rect.Intersects(Quadrant))
+            if(Rect.Intersects(Quadrant))
             {
-                QueryRect(Rect, Node.Indices[Index], Quadrant, Callback);
+                QueryRect(Rect, Node.First + Index, Quadrant, Result);
             }
         }
     }
 
-public:
-    template <typename TIterator> void Build(TIterator Begin, TIterator End)
+    UIndex AddFourNodes()
     {
-        Nodes.clear();
-        Draws.clear();
-        Bounds = SRect(Begin, End).Quad();
-        RootIndex = BuildNode(Bounds, Begin, End);
+        UIndex Current = (UIndex)Nodes.size();
+        for(auto Index = 0; Index < 4; ++Index)
+        {
+            Nodes.emplace_back();
+        }
+        return Current;
     }
 
-    void Query(const SPoint &Point, UCallback Callback)
+    void AddElementToNode(SNode &Node, UIndex ElementIndex)
     {
-        SRect Bounds = this->Bounds;
-        if(Bounds.Contains(Point))
+        UIndex ElementNodeIndex;
+        if(NextElementNodeIndex != NULL_NODE)
         {
-            QueryPoint(Point, RootIndex, Bounds, Callback);
+            ElementNodeIndex = NextElementNodeIndex;
+            NextElementNodeIndex = ElementNodes[ElementNodeIndex].Next;
+            ElementNodes[ElementNodeIndex].ElementIndex = ElementIndex;
+            ElementNodes[ElementNodeIndex].Next = Node.First;
+        }
+        else
+        {
+            ElementNodeIndex = (UIndex)ElementNodes.size();
+            ElementNodes.emplace_back(SElementNode{ ElementIndex, Node.First });
+        }
+        Node.First = ElementNodeIndex;
+        Node.Count++;
+    }
+
+    void ConvertToBranch(UIndex NodeIndex, const SRect &Bounds)
+    {
+        UIndex ElementNodeIndex = Nodes[NodeIndex].First;
+        UIndex Current = AddFourNodes();
+        Nodes[NodeIndex].First = (UIndex)Current;
+        Nodes[NodeIndex].Count = -1;
+
+        /* This will propagate existing elements down
+         * to newly created subnodes taking element
+         * bounds into account.*/
+
+        auto Quadrants = Bounds.Quadrants();
+        while(ElementNodeIndex != NULL_NODE)
+        {
+            for(UIndex QuadrantIndex = 0; QuadrantIndex < 4; ++QuadrantIndex)
+            {
+                auto &ElementNode = ElementNodes[ElementNodeIndex];
+                if(Quadrants[QuadrantIndex].Intersects(
+                       Elements[ElementNode.ElementIndex].Bounds))
+                {
+                    AddElementToNode(
+                        Nodes[Current + QuadrantIndex],
+                        ElementNode.ElementIndex);
+                }
+            }
+
+            auto Next = ElementNodes[ElementNodeIndex].Next;
+
+            /* Release element node to free list. */
+
+            auto &ElementNodeToRecycle = ElementNodes[ElementNodeIndex];
+            ElementNodeToRecycle.Next = NextElementNodeIndex;
+            NextElementNodeIndex = ElementNodeIndex;
+
+            /* Proceed to next element node. */
+
+            ElementNodeIndex = Next;
         }
     }
 
-    void Query(const SRect &Rect, UCallback Callback)
+    void InsertRecursive(
+        UIndex ElementIndex,
+        UIndex NodeIndex,
+        const SRect &Bounds,
+        std::size_t Depth)
+    {
+        const auto &ElementBounds = Elements[ElementIndex].Bounds;
+        if(Nodes[NodeIndex].Count == 0 || Depth == 0) /* It's a leaf node. */
+        {
+            AddElementToNode(Nodes[NodeIndex], ElementIndex);
+            return;
+        }
+        else if(Nodes[NodeIndex].Count > 0) /* Split the node. */
+        {
+            PushCross(Bounds);
+            ConvertToBranch(NodeIndex, Bounds);
+        }
+
+        /* It's a branch node. */
+
+        auto Quadrants = Bounds.Quadrants();
+        for(UIndex Index = 0; Index < 4; ++Index)
+        {
+            if(Quadrants[Index].Intersects(ElementBounds))
+            {
+                InsertRecursive(
+                    ElementIndex,
+                    Nodes[NodeIndex].First + Index,
+                    Quadrants[Index],
+                    Depth - 1);
+            }
+        }
+    }
+
+    void ResetDebugDraws()
+    {
+        DebugDraws.clear();
+        SGPUDraw Draw{};
+        Draw.Width = Bounds.Size().X;
+        Draw.Height = Bounds.Size().Y;
+        Draw.X = Bounds.Left;
+        Draw.Y = Bounds.Top;
+        Draw.Type = 3;
+        DebugDraws.push_back(Draw);
+    }
+
+public:
+    bool Insert(const TPayload &Payload, const SRect &ElementBounds)
+    {
+        if(!Bounds.Contains(ElementBounds))
+        {
+            return false;
+        }
+
+        UIndex ElementIndex = (UIndex)Elements.size();
+        Elements.emplace_back(SElement{ Payload, ElementBounds });
+
+        InsertRecursive(ElementIndex, RootIndex, Bounds, MaxDepth);
+
+        return true;
+    }
+
+    void Reset(const SRect &Bounds)
+    {
+        this->Bounds = Bounds.Quad();
+        ResetDebugDraws();
+        Nodes.clear();
+        Elements.clear();
+        ElementNodes.clear();
+        Nodes.emplace_back();
+        RootIndex = 0;
+    }
+
+    void Query(const SRect &Rect, std::unordered_set<TPayload> &Result)
     {
         SRect Bounds = this->Bounds;
         if(Bounds.Intersects(Rect))
         {
-            QueryRect(Rect, RootIndex, Bounds, Callback);
+            QueryRect(Bounds.Clamp(Rect), RootIndex, Bounds, Result);
         }
     }
 
-    std::vector<SGPUDraw> &GetDraws()
+    const std::vector<SGPUDraw> &GetDebugDraws()
     {
-        return Draws;
+        return DebugDraws;
     }
 };
 
@@ -376,24 +441,69 @@ static Rr_Mat4 CameraProjection;
 static Rr_Mat4 CameraView;
 static float CameraZoom = 1.0f;
 static Rr_Vec2 CameraPosition;
-static CQuadTree Tree;
+static CQuadTree<std::size_t> Tree;
+static std::vector<SGPUDraw> Draws;
 static bool Dragging;
 static Rr_Vec2 DragStartMouse;
 static Rr_Vec2 DragStartCamera;
 static bool Selecting;
 static SPoint SelectStart;
 static SPoint SelectEnd;
+static std::unordered_set<std::size_t> SelectResult;
+static std::unordered_set<std::size_t> RenderResult;
+static bool FastSelect = true;
+static bool DrawDebug = true;
 
 static void RebuildTree()
 {
-    const int NUM_POINTS = 5000;
-    std::vector<SPoint> Points;
-    Points.reserve(NUM_POINTS);
-    std::generate_n(std::back_inserter(Points), NUM_POINTS, []() {
-        return SPoint{ float(((int)std::rand() % 160000) - 80000),
-                       float(((int)std::rand() % 100000) - 50000) };
-    });
-    Tree.Build(Points.begin(), Points.end());
+    const uint32_t NUM_POINTS = 800000;
+    const float AREA_WIDTH = 160000.0f;
+    const float AREA_HEIGHT = 100000.0f;
+    Draws.reserve(NUM_POINTS);
+    Draws.clear();
+    Tree.Reset({ -AREA_WIDTH / 2.0f,
+                 -AREA_HEIGHT / 2.0f,
+                 AREA_WIDTH / 2.0f,
+                 AREA_HEIGHT / 2.0f });
+    for(auto Index = 0; Index < NUM_POINTS; ++Index)
+    {
+        SGPUDraw Draw{};
+        Draw.Width = float(std::rand() % 128) + 8.0f;
+        Draw.Height = Draw.Width;
+        Draw.X =
+            float(((int)std::rand() % (int)(AREA_WIDTH)) - AREA_WIDTH / 2.0f);
+        Draw.Y =
+            float(((int)std::rand() % (int)(AREA_HEIGHT)) - AREA_HEIGHT / 2.0f);
+        Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
+                     ((std::rand() % 256) << 16);
+
+        /* Some points may not be eligble for the tree.
+         * It's important to use Draws.size() as index
+         * because "Index" iterator doesn't refer
+         * to real index in the vector if some points
+         * are being skipped. */
+
+        auto ElementIndex = Draws.size();
+        if(Tree.Insert(ElementIndex, Draw.Bounds()))
+        {
+            Draws.emplace_back(Draw);
+        }
+    }
+}
+
+static SRect GetScreenRect()
+{
+    Rr_Vec4 DeprojectedMin =
+        Rr_InvGeneralM4(CameraProjection) * Rr_Vec4{ -1.0f, -1.0f, 0.0f, 1.0f };
+    DeprojectedMin = Rr_InvGeneralM4(CameraView) * DeprojectedMin;
+
+    Rr_Vec4 DeprojectedMax =
+        Rr_InvGeneralM4(CameraProjection) * Rr_Vec4{ 1.0f, 1.0f, 0.0f, 1.0f };
+    DeprojectedMax = Rr_InvGeneralM4(CameraView) * DeprojectedMax;
+    return { DeprojectedMin.X,
+             DeprojectedMin.Y,
+             DeprojectedMax.X,
+             DeprojectedMax.Y };
 }
 
 static SPoint ConvertMousePosition(Rr_App *App)
@@ -414,6 +524,8 @@ static SPoint ConvertMousePosition(Rr_App *App)
 static void Init(Rr_App *App, void *UserData)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
+    Rr_SetSwapchainPresentMode(Renderer, RR_PRESENT_MODE_IMMEDIATE);
 
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
@@ -471,7 +583,7 @@ static void Init(Rr_App *App, void *UserData)
     RebuildTree();
 }
 
-static void Input(Rr_App *App, CQuadTree &Tree)
+static void Input(Rr_App *App)
 {
     float DeltaTime = Rr_GetDeltaSeconds(App);
 
@@ -489,7 +601,7 @@ static void Input(Rr_App *App, CQuadTree &Tree)
     {
         CameraZoom -= 0.01 * DeltaTime;
     }
-    CameraZoom = RR_CLAMP(0.1f, CameraZoom, 10.0f);
+    CameraZoom = RR_CLAMP(0.1f, CameraZoom, 100.0f);
 
     if(Dragging == false && RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_MASK))
     {
@@ -522,19 +634,78 @@ static void Input(Rr_App *App, CQuadTree &Tree)
     if(Selecting)
     {
         SelectEnd = ConvertMousePosition(App);
-        Tree.Query({ SelectStart, SelectEnd }, [](SGPUDraw &Draw) {
-            Draw.Param1 = 1.0f;
-        });
+        const SRect QueryRect{ SelectStart, SelectEnd };
+        if(FastSelect)
+        {
+            Tree.Query(QueryRect, SelectResult);
+            for(auto Index : SelectResult)
+            {
+                auto Bounds = Draws[Index].Bounds();
+                auto Center = Bounds.Center();
+                auto Radius = Bounds.Extent().X;
+                if(QueryRect.IntersectsCircle(Center, Radius))
+                {
+                    Draws[Index].Param1 = 1.0f;
+                }
+            }
+        }
+        else
+        {
+            for(auto Index = 0; Index < Draws.size(); ++Index)
+            {
+                auto Bounds = Draws[Index].Bounds();
+                auto Center = Bounds.Center();
+                auto Radius = Bounds.Extent().X;
+                if(QueryRect.IntersectsCircle(Center, Radius))
+                {
+                    Draws[Index].Param1 = 1.0f;
+                    SelectResult.emplace(Index);
+                }
+            }
+        }
     }
 
-    if(Rr_IsScancodePressed(RR_SCANCODE_W))
+    if(Rr_IsScancodePressed(RR_SCANCODE_F2))
+    {
+        FastSelect = true;
+    }
+    if(Rr_IsScancodePressed(RR_SCANCODE_F3))
+    {
+        FastSelect = false;
+    }
+    if(Rr_IsScancodePressed(RR_SCANCODE_F4))
+    {
+        DrawDebug = true;
+    }
+    if(Rr_IsScancodePressed(RR_SCANCODE_F5))
+    {
+        DrawDebug = false;
+    }
+
+    static bool Spawn = false;
+    if(Rr_IsScancodePressed(RR_SCANCODE_S) == false && Spawn == true)
+    {
+        Spawn = false;
+    }
+    if(Rr_IsScancodePressed(RR_SCANCODE_S) && Spawn == false)
     {
         SPoint Point = ConvertMousePosition(App);
-        Tree.Query(Point, [](SGPUDraw &Draw) { Draw.Param1 = 1.0f; });
+        SGPUDraw Draw{};
+        Draw.Width = float(std::rand() % 32) + 32.0f;
+        Draw.Height = Draw.Width;
+        Draw.X = Point.X - Draw.Width / 2.0f;
+        Draw.Y = Point.Y - Draw.Height / 2.0f;
+        Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
+                     ((std::rand() % 256) << 16);
+        if(Tree.Insert(Draws.size(), Draw.Bounds()))
+        {
+            Draws.emplace_back(Draw);
+        }
+        Spawn = true;
     }
 }
 
-static void Render(Rr_App *App, CQuadTree &Tree)
+static void Render(Rr_App *App)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
@@ -556,6 +727,28 @@ static void Render(Rr_App *App, CQuadTree &Tree)
     UniformData.ViewProjection = CameraProjection * CameraView;
     UniformData.Time = Rr_GetTimeSeconds(App);
 
+    char *StagingData = (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
+    std::memcpy(StagingData, &UniformData, sizeof(UniformData));
+    StagingData += sizeof(UniformData);
+
+    /* Query screen rect and populate draws. */
+
+    std::size_t DrawCount = 0;
+    std::uint32_t DrawsSize = 0;
+
+    SRect ScreenRect = GetScreenRect();
+    Tree.Query(ScreenRect, RenderResult);
+    if(RenderResult.size() > 0)
+    {
+        DrawCount += RenderResult.size();
+        DrawsSize += sizeof(SGPUDraw) * RenderResult.size();
+        for(auto Index : RenderResult)
+        {
+            std::memcpy(StagingData, &Draws[Index], sizeof(SGPUDraw));
+            StagingData += sizeof(SGPUDraw);
+        }
+    }
+
     if(Selecting)
     {
         SRect SelectRect = { SelectStart, SelectEnd };
@@ -566,30 +759,40 @@ static void Render(Rr_App *App, CQuadTree &Tree)
         Draw.Height = SelectRect.Size().Y;
         Draw.Type = 2;
         Draw.Color = 0xffecc5ad;
-        Tree.GetDraws().push_back(Draw);
+        std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
+        StagingData += sizeof(SGPUDraw);
+        DrawCount++;
+        DrawsSize += sizeof(SGPUDraw);
     }
 
-    char *StagingData = (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
-    std::memcpy(StagingData, &UniformData, sizeof(UniformData));
-    StagingData += sizeof(UniformData);
-    std::uint32_t DrawsSize = sizeof(SGPUDraw) * Tree.GetDraws().size();
-    std::memcpy(StagingData, Tree.GetDraws().data(), DrawsSize);
+    if(DrawDebug)
+    {
+        auto DebugDrawsCount = Tree.GetDebugDraws().size();
+        auto DebugDrawsSize = sizeof(SGPUDraw) * DebugDrawsCount;
+        std::memcpy(StagingData, Tree.GetDebugDraws().data(), DebugDrawsSize);
+        StagingData += DebugDrawsSize;
+        DrawCount += DebugDrawsCount;
+        DrawsSize += DebugDrawsSize;
+    }
 
-    Rr_GraphNode *TransferNode = Rr_AddTransferNode(Renderer, "transfer");
-    Rr_TransferBufferData(
-        TransferNode,
-        sizeof(UniformData),
-        StagingBuffer,
-        0,
-        UniformBuffer,
-        0);
-    Rr_TransferBufferData(
-        TransferNode,
-        DrawsSize,
-        StagingBuffer,
-        sizeof(UniformData),
-        StorageBuffer,
-        0);
+    if(DrawCount > 0)
+    {
+        Rr_GraphNode *TransferNode = Rr_AddTransferNode(Renderer, "transfer");
+        Rr_TransferBufferData(
+            TransferNode,
+            sizeof(UniformData),
+            StagingBuffer,
+            0,
+            UniformBuffer,
+            0);
+        Rr_TransferBufferData(
+            TransferNode,
+            DrawsSize,
+            StagingBuffer,
+            sizeof(UniformData),
+            StorageBuffer,
+            0);
+    }
 
     Rr_GraphNode *TreeNode = Rr_AddGraphicsNode(
         Renderer,
@@ -600,16 +803,48 @@ static void Render(Rr_App *App, CQuadTree &Tree)
         nullptr,
         nullptr);
     Rr_BindGraphicsPipeline(TreeNode, Pipeline);
-    Rr_BindUniformBuffer(TreeNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
-    Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
-    Rr_Draw(TreeNode, 6, Tree.GetDraws().size(), 0, 0);
+    if(DrawCount > 0)
+    {
+        Rr_BindUniformBuffer(
+            TreeNode,
+            UniformBuffer,
+            0,
+            0,
+            0,
+            sizeof(UniformData));
+        Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
+        Rr_Draw(TreeNode, 6, DrawCount, 0, 0);
+    }
+}
+
+static void Reset()
+{
+    for(auto Index : SelectResult)
+    {
+        Draws[Index].Param1 = 0.0f;
+    }
+    SelectResult.clear();
+    RenderResult.clear();
 }
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    CQuadTree Clone = Tree;
-    Input(App, Clone);
-    Render(App, Clone);
+    static float TimeCounter = 0.0f;
+    TimeCounter += Rr_GetDeltaSeconds(App);
+    if(TimeCounter > 0.2f)
+    {
+        TimeCounter = 0.0f;
+        char WindowTitle[128];
+        std::sprintf(
+            WindowTitle,
+            "08_QuadTree - FPS: %.2f",
+            Rr_GetFramesPerSecond(App));
+        Rr_SetWindowTitle(App, WindowTitle);
+    }
+
+    Input(App);
+    Render(App);
+    Reset();
 }
 
 static void Cleanup(Rr_App *App, void *UserData)

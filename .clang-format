@@ -82,6 +82,7 @@ SpaceBeforeParensOptions:
 SpaceAroundPointerQualifiers: Default
 SpaceInEmptyBlock: false
 SpaceInEmptyParentheses: false
+SpaceAfterTemplateKeyword: false
 
 UseCRLF: false
 UseTab: Never

@@ -15,7 +15,7 @@ void main()
     SGPUDraw Draw = Draws[gl_InstanceIndex];
     vec2 VertexPosition = Positions[Indices[gl_VertexIndex]];
     vec2 Position = vec2(VertexPosition.x * Draw.Width, VertexPosition.y * Draw.Height);
-    float ScaleAnim = 1.0f + (cos(Time * 20.0f + float(gl_InstanceIndex)) * Draw.Param1 * Draw.Width / 4.0);
+    float ScaleAnim = cos(Time * 20.0f + float(gl_InstanceIndex)) * Draw.Param1 * Draw.Width / 4.0;
     Position.x += (VertexPosition.x == 0.0 ? -ScaleAnim : ScaleAnim);
     Position.y += (VertexPosition.y == 0.0 ? -ScaleAnim : ScaleAnim);
     Position.x += Draw.X;

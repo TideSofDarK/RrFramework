@@ -299,6 +299,16 @@ Rr_IntVec2 Rr_GetWindowSize(Rr_App *App)
     return Size;
 }
 
+void Rr_SetWindowTitle(Rr_App *App, const char *Title)
+{
+    SDL_SetWindowTitle(App->Window, Title);
+}
+
+float Rr_GetFramesPerSecond(Rr_App *App)
+{
+    return App->FrameTime.PerformanceCounter.FPS;
+}
+
 static bool Rr_IsAnyFullscreen(SDL_Window *Window)
 {
     return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;

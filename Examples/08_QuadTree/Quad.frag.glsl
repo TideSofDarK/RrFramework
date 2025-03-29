@@ -8,8 +8,6 @@ layout(location = 1) flat in uint InIndex;
 
 layout(location = 0) out vec4 OutColor;
 
-const float CIRCLE_FEATHER_RATIO = 1.0f;
-
 float linearstep(float A, float B, float X)
 {
     float T = (X - A) / (B - A);
@@ -26,11 +24,13 @@ void main()
 
     if (Draw.Type == 0)
     {
-        float Feather = CIRCLE_FEATHER_RATIO * abs(dFdx(InUV.x));
+        float Feather = abs(dFdx(InUV.x));
         float Distance = length(InUV - 0.5);
-        float Radius = 0.5 - Feather;
+        float Radius = 0.5 - Feather * 2.0;
         float Weight = 1.0 - linearstep(Radius - Feather, Radius + Feather, Distance);
-        OutColor = vec4(Color, Weight * 0.75f);
+        Weight *= 0.5;
+        Weight += linearstep(1.0 - Feather * 1.5, 1.0, 1.0 - abs(Distance - Radius));
+        OutColor = vec4(Color, Weight);
     }
     else if (Draw.Type == 1)
     {
@@ -51,5 +51,15 @@ void main()
                 linearstep(1.0f - Feather.x * 1.5, 1.0f - Feather.x * 0.5, Hor),
                 linearstep(1.0f - Feather.y * 1.5, 1.0f - Feather.y * 0.5, Vert));
         OutColor = vec4(Color, 0.5f + Total);
+    }
+    else if (Draw.Type == 3)
+    {
+        float Hor = abs(InUV.x * 2.0 - 1.0);
+        float Vert = abs(InUV.y * 2.0 - 1.0);
+        vec2 Feather = vec2(dFdx(InUV.x), dFdy(InUV.y)) * 3.0;
+        float Total = max(
+                linearstep(1.0f - Feather.x * 1.5, 1.0f - Feather.x * 0.5, Hor),
+                linearstep(1.0f - Feather.y * 1.5, 1.0f - Feather.y * 0.5, Vert));
+        OutColor = vec4(Color, Total);
     }
 }
