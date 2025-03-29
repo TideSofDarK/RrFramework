@@ -783,6 +783,8 @@ static void Render(Rr_App *App)
         DrawsSize += DebugDrawsSize;
     }
 
+    const auto FinalDrawsSize = RR_MIN(DrawsSize, MAX_DRAWS * sizeof(SGPUDraw));
+
     if(DrawCount > 0)
     {
         Rr_GraphNode *TransferNode = Rr_AddTransferNode(Renderer, "transfer");
@@ -795,7 +797,7 @@ static void Render(Rr_App *App)
             0);
         Rr_TransferBufferData(
             TransferNode,
-            RR_MIN(DrawsSize, MAX_DRAWS * sizeof(SGPUDraw)),
+            FinalDrawsSize,
             StagingBuffer,
             sizeof(UniformData),
             StorageBuffer,
@@ -820,7 +822,7 @@ static void Render(Rr_App *App)
             0,
             0,
             sizeof(UniformData));
-        Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
+        Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, FinalDrawsSize);
         Rr_Draw(TreeNode, 6, DrawCount, 0, 0);
     }
 }
