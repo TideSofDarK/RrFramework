@@ -6,10 +6,10 @@
 
 typedef struct Rr_UI Rr_UI;
 
-extern Rr_UI *Rr_CreateUI(void);
+extern Rr_UI *Rr_CreateUI(Rr_App *App);
 
-extern void Rr_DestroyUI(Rr_UI *UI);
+extern void Rr_DestroyUI(Rr_App *App, Rr_UI *UI);
 
-extern void Rr_BeginUI(Rr_Renderer *Renderer, Rr_UI *UI);
+extern void Rr_BeginUI(Rr_App *App, Rr_UI *UI);
 
-extern void Rr_DrawUI(Rr_Renderer *Renderer, Rr_UI *UI);
+extern void Rr_EndUI(Rr_App *App, Rr_UI *UI);

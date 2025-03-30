@@ -1,10 +1,11 @@
+#include "Rr_BuiltinAssets.inc"
+
 #include "Rr_UI.h"
 
-#include "Rr/Rr_App.h"
-#include "Rr/Rr_Text.h"
 #include "Rr_App.h"
 #include "Rr_Memory.h"
 #include "Rr_Renderer.h"
+#include "Rr_Text.h"
 
 #include <xxHash/xxhash.h>
 
@@ -57,6 +58,8 @@ struct Rr_UI
     Rr_UIWindow *Window;
     Rr_Vec2 Cursor;
     Rr_Vec2 ScreenSize;
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_Font *Font;
     float FontSize;
     Rr_Arena *FrameArena;
@@ -156,8 +159,10 @@ void Rr_EndHorizontal(void)
 {
 }
 
-Rr_UI *Rr_CreateUI(void)
+Rr_UI *Rr_CreateUI(Rr_App *App)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     Rr_UI *UI = RR_ALLOC(Arena, sizeof(Rr_UI));
@@ -171,17 +176,59 @@ Rr_UI *Rr_CreateUI(void)
         .ContentsBGColor = (Rr_Vec4){ 0.1f, 0.12f, 0.114f, 1.0f },
     };
 
+    Rr_PipelineBinding Bindings[] = {
+        { 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+        { 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+    };
+    Rr_PipelineBindingSet BindingSets[] = {
+        {
+            RR_ARRAY_COUNT(Bindings),
+            Bindings,
+            RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+        },
+    };
+    UI->PipelineLayout = Rr_CreatePipelineLayout(
+        Renderer,
+        RR_ARRAY_COUNT(BindingSets),
+        BindingSets);
+
+    Rr_ColorTargetInfo ColorTargets[] = {
+        {
+            .Format = RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            .Blend.BlendEnable = true,
+            .Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA,
+            .Blend.DstColorBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .Blend.ColorBlendOp = RR_BLEND_OP_ADD,
+            .Blend.SrcAlphaBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA,
+            .Blend.DstAlphaBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .Blend.AlphaBlendOp = RR_BLEND_OP_ADD,
+        },
+    };
+
+    Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+        .Layout = UI->PipelineLayout,
+        .VertexShaderSPV = Rr_LoadAsset(RR_BUILTIN_UI_VERT_SPV),
+        .FragmentShaderSPV = Rr_LoadAsset(RR_BUILTIN_UI_FRAG_SPV),
+        .ColorTargetCount = RR_ARRAY_COUNT(ColorTargets),
+        .ColorTargets = ColorTargets,
+    };
+
+    UI->GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+
     return UI;
 }
 
-void Rr_DestroyUI(Rr_UI *UI)
+void Rr_DestroyUI(Rr_App *App, Rr_UI *UI)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_DestroyPipelineLayout(Renderer, UI->PipelineLayout);
+    Rr_DestroyGraphicsPipeline(Renderer, UI->GraphicsPipeline);
     Rr_DestroyArena(UI->Arena);
-    RR_ZERO_PTR(UI);
 }
 
-void Rr_BeginUI(Rr_Renderer *Renderer, Rr_UI *UI)
+void Rr_BeginUI(Rr_App *App, Rr_UI *UI)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer(App);
     // UI->Arena->Position = sizeof(Rr_UI);
     GUI = UI;
     GUI->Window = NULL;
@@ -192,6 +239,9 @@ void Rr_BeginUI(Rr_Renderer *Renderer, Rr_UI *UI)
     GUI->Font = Renderer->BuiltinFont;
 }
 
-void Rr_DrawUI(Rr_Renderer *Renderer, Rr_UI *UI)
+void Rr_EndUI(Rr_App *App, Rr_UI *UI)
 {
+    // Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    // Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    // Rr_GraphNode *Node = Rr_AddGraphicsNode(Renderer);
 }

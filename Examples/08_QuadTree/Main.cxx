@@ -246,9 +246,9 @@ private:
             UIndex ElementNodeIndex = Node.First;
             while(ElementNodeIndex != NULL_NODE)
             {
-                Result.emplace(
-                    Elements[ElementNodes[ElementNodeIndex].ElementIndex]
-                        .Payload);
+                const auto ElementIndex =
+                    ElementNodes[ElementNodeIndex].ElementIndex;
+                Result.emplace(Elements[ElementIndex].Payload);
                 ElementNodeIndex = ElementNodes[ElementNodeIndex].Next;
             }
             return;
@@ -900,6 +900,11 @@ static void Iterate(Rr_App *App, void *UserData)
             Rr_GetFramesPerSecond(App));
         Rr_SetWindowTitle(App, WindowTitle);
     }
+
+    // Rr_BeginWindow("Stats");
+    // Rr_Label("Text label");
+    // Rr_Label("Text label 2");
+    // Rr_EndWindow();
 
     Input(App);
     Render(App);

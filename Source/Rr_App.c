@@ -120,7 +120,11 @@ static void Rr_Iterate(Rr_App *App)
 
     Rr_PrepareFrame(App);
 
+    Rr_BeginUI(App, App->UI);
+
     App->Config->IterateFunc(App, App->UserData);
+
+    Rr_EndUI(App, App->UI);
 
     if(Rr_NewFrame(App, App->Window))
     {
@@ -237,6 +241,7 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_AddEventWatch(Rr_EventWatch, &App);
 
     App.Renderer = Rr_CreateRenderer(&App);
+    App.UI = Rr_CreateUI(&App);
 
     Config->InitFunc(&App, App.UserData);
 
@@ -269,6 +274,7 @@ void Rr_Run(Rr_AppConfig *Config)
         Rr_Iterate(&App);
     }
 
+    Rr_DestroyUI(&App, App.UI);
     Rr_DestroyRenderer(&App, App.Renderer);
 
     Rr_DestroyArena(App.Arena);

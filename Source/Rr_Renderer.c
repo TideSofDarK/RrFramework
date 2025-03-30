@@ -253,7 +253,7 @@ static bool Rr_InitSwapchain(
 
     Rr_CleanupSwapchain(Renderer, OldSwapchain);
 
-    /* Acquire Swapchain Images */
+    /* Acquire swapchain images. */
 
     uint32_t ImageCount = 0;
     Device->GetSwapchainImagesKHR(
@@ -270,53 +270,24 @@ static bool Rr_InitSwapchain(
         &ImageCount,
         Images);
 
-    /* Initialize Present Pipeline If Needed */
+    /* Initialize present pipeline if needed. */
 
     if(Renderer->PresentRenderPass == VK_NULL_HANDLE)
     {
-        Rr_PipelineBinding PipelineBinding = {
-            .Binding = 0,
-            .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-        };
-        Rr_PipelineBindingSet PipelineBindingSet = {
-            .BindingCount = 1,
-            .Bindings = &PipelineBinding,
-            .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-        };
-        Renderer->PresentLayout =
-            Rr_CreatePipelineLayout(Renderer, 1, &PipelineBindingSet);
-
-        Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-        ColorTargets[0].Blend.ColorWriteMask = RR_COLOR_COMPONENT_ALL;
-        ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
-
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
-        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
-        PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_CLOCKWISE;
-        PipelineInfo.Layout = Renderer->PresentLayout;
-        PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(RR_BUILTIN_PRESENT_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(RR_BUILTIN_PRESENT_FRAG_SPV);
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = ColorTargets;
-
-        Renderer->PresentPipeline =
-            Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
-
         Rr_RenderPassAttachment Attachment = {
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Format = Renderer->Swapchain.Format,
         };
-        Rr_RenderPassInfo RenderPassInfo = { .AttachmentCount = 1,
-                                             .Attachments = &Attachment };
+        Rr_RenderPassInfo RenderPassInfo = {
+            .AttachmentCount = 1,
+            .Attachments = &Attachment,
+        };
         Renderer->PresentRenderPass =
             Rr_GetRenderPass(Renderer, &RenderPassInfo);
     }
 
-    /* Create Framebuffers And Image Views */
+    /* Create framebuffers and image views. */
 
     RR_RESERVE_SLICE(&Renderer->Swapchain.Images, ImageCount, Renderer->Arena);
     Renderer->Swapchain.Images.Count = ImageCount;
@@ -697,6 +668,11 @@ Rr_Renderer *Rr_CreateRenderer(Rr_App *App)
     // Rr_InitNullTextures(App);
     // Rr_InitTextRenderer(App);
 
+    Renderer->BuiltinFont = Rr_CreateFont(
+        Renderer,
+        RR_BUILTIN_IOSEVKA_PNG,
+        RR_BUILTIN_IOSEVKA_JSON);
+
     Rr_DestroyScratch(Scratch);
 
     return Renderer;
@@ -738,6 +714,8 @@ void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer)
 
     App->Config->CleanupFunc(App, App->UserData);
 
+    Rr_DestroyFont(Renderer, Renderer->BuiltinFont);
+
     // Rr_CleanupTextRenderer(App);
 
     for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
@@ -765,8 +743,6 @@ void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer)
     Rr_CleanupImmediateMode(Renderer);
 
     Rr_CleanupSwapchain(Renderer, Renderer->Swapchain.Handle);
-    Rr_DestroyGraphicsPipeline(Renderer, Renderer->PresentPipeline);
-    Rr_DestroyPipelineLayout(Renderer, Renderer->PresentLayout);
 
     for(size_t Index = 0; Index < Renderer->DescriptorSetLayouts.Count; ++Index)
     {

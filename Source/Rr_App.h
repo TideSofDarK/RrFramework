@@ -4,6 +4,7 @@
 
 #include "Rr_Load.h"
 #include "Rr_Renderer.h"
+#include "Rr_UI.h"
 
 #include <SDL3/SDL_thread.h>
 #include <SDL3/SDL_video.h>
@@ -41,6 +42,8 @@ struct Rr_App
     void *UserData;
 
     Rr_Renderer *Renderer;
+
+    Rr_UI *UI;
 
     Rr_FrameTime FrameTime;
 

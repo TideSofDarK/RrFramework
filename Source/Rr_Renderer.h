@@ -88,8 +88,6 @@ struct Rr_Renderer
     /* Presentation */
 
     Rr_Swapchain Swapchain;
-    Rr_GraphicsPipeline *PresentPipeline;
-    Rr_PipelineLayout *PresentLayout;
     VkRenderPass PresentRenderPass;
 
     /* Queues */
