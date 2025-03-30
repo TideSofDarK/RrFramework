@@ -11,6 +11,7 @@
 #include <iostream>
 #include <limits>
 #include <numeric>
+#include <random>
 #include <unordered_set>
 #include <vector>
 
@@ -231,19 +232,6 @@ private:
     std::vector<SElement> Elements;
     std::vector<SElementNode> ElementNodes;
     UIndex NextElementNodeIndex = NULL_NODE;
-    std::vector<SGPUDraw> DebugDraws;
-
-    void PushCross(const SRect &Bounds)
-    {
-        SGPUDraw Draw{};
-        Draw.Width = (float)Bounds.Right - (float)Bounds.Left;
-        Draw.Height = (float)Bounds.Bottom - (float)Bounds.Top;
-        auto Center = Bounds.Center();
-        Draw.X = (float)Center.X - Draw.Width / 2.0f;
-        Draw.Y = (float)Center.Y - Draw.Height / 2.0f;
-        Draw.Type = EDrawType::CROSS;
-        DebugDraws.push_back(Draw);
-    }
 
     void QueryRect(
         const SRect &Rect,
@@ -273,6 +261,46 @@ private:
             if(Rect.Intersects(Quadrant))
             {
                 QueryRect(Rect, Node.First + Index, Quadrant, Result);
+            }
+        }
+    }
+
+    void ForEachDebugDrawInRect(
+        const SRect &Rect,
+        uint32_t NodeIndex,
+        SRect &Bounds,
+        const std::function<void(const SGPUDraw &)> &Callback)
+    {
+        const SNode &Node = Nodes[NodeIndex];
+
+        if(Node.Count != -1)
+        {
+            return;
+        }
+
+        if(Node.Count == -1)
+        {
+            SGPUDraw Draw{};
+            Draw.Width = Bounds.Right - Bounds.Left;
+            Draw.Height = Bounds.Bottom - Bounds.Top;
+            auto Center = Bounds.Center();
+            Draw.X = Center.X - Draw.Width / 2.0f;
+            Draw.Y = Center.Y - Draw.Height / 2.0f;
+            Draw.Type = EDrawType::CROSS;
+            Callback(Draw);
+        }
+
+        auto Quadrants = Bounds.Quadrants();
+        for(auto Index = 0; Index < 4; ++Index)
+        {
+            SRect Quadrant = Quadrants[Index];
+            if(Rect.Intersects(Quadrant))
+            {
+                ForEachDebugDrawInRect(
+                    Rect,
+                    Node.First + Index,
+                    Quadrant,
+                    Callback);
             }
         }
     }
@@ -360,7 +388,6 @@ private:
         }
         else if(Nodes[NodeIndex].Count > 0) /* Split the node. */
         {
-            PushCross(Bounds);
             ConvertToBranch(NodeIndex, Bounds);
         }
 
@@ -378,18 +405,6 @@ private:
                     Depth - 1);
             }
         }
-    }
-
-    void ResetDebugDraws()
-    {
-        DebugDraws.clear();
-        SGPUDraw Draw{};
-        Draw.Width = Bounds.Size().X;
-        Draw.Height = Bounds.Size().Y;
-        Draw.X = Bounds.Left;
-        Draw.Y = Bounds.Top;
-        Draw.Type = EDrawType::RECT_TREE_BORDER;
-        DebugDraws.push_back(Draw);
     }
 
 public:
@@ -411,7 +426,6 @@ public:
     void Reset(const SRect &Bounds)
     {
         this->Bounds = Bounds.Quad();
-        ResetDebugDraws();
         Nodes.clear();
         Elements.clear();
         ElementNodes.clear();
@@ -428,9 +442,27 @@ public:
         }
     }
 
-    const std::vector<SGPUDraw> &GetDebugDraws()
+    void ForEachDebugDraw(
+        const SRect &Rect,
+        const std::function<void(const SGPUDraw &)> &Callback)
     {
-        return DebugDraws;
+        SRect Bounds = this->Bounds;
+        if(Bounds.Intersects(Rect))
+        {
+            ForEachDebugDrawInRect(
+                Bounds.Clamp(Rect),
+                RootIndex,
+                Bounds,
+                Callback);
+        }
+
+        SGPUDraw TreeBorder{};
+        TreeBorder.Width = Bounds.Size().X;
+        TreeBorder.Height = Bounds.Size().Y;
+        TreeBorder.X = Bounds.Left;
+        TreeBorder.Y = Bounds.Top;
+        TreeBorder.Type = EDrawType::RECT_TREE_BORDER;
+        Callback(TreeBorder);
     }
 };
 
@@ -444,45 +476,63 @@ static Rr_Buffer *StagingBuffer;
 
 static SGPUUniformData UniformData;
 
+static CQuadTree<std::size_t> Tree;
+static std::vector<SGPUDraw> Draws;
+
 static Rr_Mat4 CameraProjection;
 static Rr_Mat4 CameraView;
 static float CameraZoom = 1.0f;
 static Rr_Vec2 CameraPosition;
-static CQuadTree<std::size_t> Tree;
-static std::vector<SGPUDraw> Draws;
+static std::unordered_set<std::size_t> RenderResult;
+
 static bool Dragging;
 static Rr_Vec2 DragStartMouse;
 static Rr_Vec2 DragStartCamera;
+
 static bool Selecting;
 static SPoint SelectStart;
 static SPoint SelectEnd;
 static std::unordered_set<std::size_t> SelectResult;
-static std::unordered_set<std::size_t> RenderResult;
+
 static bool FastSelect = true;
 static bool DrawDebug = true;
+static std::default_random_engine RandomEngine;
+
+static float GetRandomFloat(float Min, float Max)
+{
+    std::uniform_real_distribution<double> Distribution(Min, Max);
+
+    return Distribution(RandomEngine);
+}
+
+static uint32_t GetRandomColor()
+{
+    static std::uniform_int_distribution<std::uint32_t> Distribution(
+        0,
+        UCHAR_MAX);
+
+    std::uint32_t Color = (Distribution(RandomEngine) << 0) |
+                          (Distribution(RandomEngine) << 8) |
+                          (Distribution(RandomEngine) << 16);
+    return Color;
+}
 
 static void RebuildTree()
 {
-    const uint32_t NUM_POINTS = 800000;
-    const float AREA_WIDTH = 160000.0f;
-    const float AREA_HEIGHT = 100000.0f;
+    const uint32_t NUM_POINTS = 200000;
+    const float AREA_WIDTH = 80000.0f;
+    const float AREA_HEIGHT = 50000.0f;
     Draws.reserve(NUM_POINTS);
     Draws.clear();
-    Tree.Reset({ -AREA_WIDTH / 2.0f,
-                 -AREA_HEIGHT / 2.0f,
-                 AREA_WIDTH / 2.0f,
-                 AREA_HEIGHT / 2.0f });
+    Tree.Reset({ -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
     for(auto Index = 0; Index < NUM_POINTS; ++Index)
     {
         SGPUDraw Draw{};
-        Draw.Width = float(std::rand() % 128) + 8.0f;
+        Draw.Width = GetRandomFloat(96.0f, 128.0f);
         Draw.Height = Draw.Width;
-        Draw.X =
-            float(((int)std::rand() % (int)(AREA_WIDTH)) - AREA_WIDTH / 2.0f);
-        Draw.Y =
-            float(((int)std::rand() % (int)(AREA_HEIGHT)) - AREA_HEIGHT / 2.0f);
-        Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
-                     ((std::rand() % 256) << 16);
+        Draw.X = GetRandomFloat(-AREA_WIDTH, AREA_WIDTH);
+        Draw.Y = GetRandomFloat(-AREA_HEIGHT, AREA_HEIGHT);
+        Draw.Color = GetRandomColor();
         Draw.Type = EDrawType::CIRCLE;
 
         /* Some points may not be eligble for the tree.
@@ -585,8 +635,6 @@ static void Init(Rr_App *App, void *UserData)
         RR_MEGABYTES(64),
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
-
-    // std::srand((uint32_t)std::time(nullptr));
 
     RebuildTree();
 }
@@ -699,12 +747,11 @@ static void Input(Rr_App *App)
     {
         SPoint Point = ConvertMousePosition(App);
         SGPUDraw Draw{};
-        Draw.Width = float(std::rand() % 32) + 32.0f;
+        Draw.Width = GetRandomFloat(32.0f, 64.0f);
         Draw.Height = Draw.Width;
         Draw.X = Point.X - Draw.Width / 2.0f;
         Draw.Y = Point.Y - Draw.Height / 2.0f;
-        Draw.Color = (std::rand() % 256) | ((std::rand() % 256) << 8) |
-                     ((std::rand() % 256) << 16);
+        Draw.Color = GetRandomColor();
         if(Tree.Insert(Draws.size(), Draw.Bounds()))
         {
             Draws.emplace_back(Draw);
@@ -735,21 +782,21 @@ static void Render(Rr_App *App)
     UniformData.ViewProjection = CameraProjection * CameraView;
     UniformData.Time = Rr_GetTimeSeconds(App);
 
-    char *StagingData = (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
+    char *StagingDataStart =
+        (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
+    char *StagingData = StagingDataStart;
     std::memcpy(StagingData, &UniformData, sizeof(UniformData));
     StagingData += sizeof(UniformData);
 
     /* Query screen rect and populate draws. */
 
     std::size_t DrawCount = 0;
-    std::uint32_t DrawsSize = 0;
 
     SRect ScreenRect = GetScreenRect();
     Tree.Query(ScreenRect, RenderResult);
     if(RenderResult.size() > 0)
     {
         DrawCount += RenderResult.size();
-        DrawsSize += sizeof(SGPUDraw) * RenderResult.size();
         for(auto Index : RenderResult)
         {
             std::memcpy(StagingData, &Draws[Index], sizeof(SGPUDraw));
@@ -770,20 +817,21 @@ static void Render(Rr_App *App)
         std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
         StagingData += sizeof(SGPUDraw);
         DrawCount++;
-        DrawsSize += sizeof(SGPUDraw);
     }
 
     if(DrawDebug)
     {
-        auto DebugDrawsCount = Tree.GetDebugDraws().size();
-        auto DebugDrawsSize = sizeof(SGPUDraw) * DebugDrawsCount;
-        std::memcpy(StagingData, Tree.GetDebugDraws().data(), DebugDrawsSize);
-        StagingData += DebugDrawsSize;
-        DrawCount += DebugDrawsCount;
-        DrawsSize += DebugDrawsSize;
+        Tree.ForEachDebugDraw(ScreenRect, [&](const SGPUDraw &Draw) {
+            std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
+            StagingData += sizeof(SGPUDraw);
+            DrawCount++;
+        });
     }
 
-    const auto FinalDrawsSize = RR_MIN(DrawsSize, MAX_DRAWS * sizeof(SGPUDraw));
+    const auto FinalDrawsSize = RR_MIN(
+        StagingData - StagingDataStart - sizeof(SGPUUniformData),
+        MAX_DRAWS * sizeof(SGPUDraw));
+    // std::cout << DrawCount << " -- " << FinalDrawsSize << std::endl;
 
     if(DrawCount > 0)
     {

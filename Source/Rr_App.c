@@ -306,7 +306,7 @@ void Rr_SetWindowTitle(Rr_App *App, const char *Title)
 
 float Rr_GetFramesPerSecond(Rr_App *App)
 {
-    return App->FrameTime.PerformanceCounter.FPS;
+    return (float)App->FrameTime.PerformanceCounter.FPS;
 }
 
 static bool Rr_IsAnyFullscreen(SDL_Window *Window)

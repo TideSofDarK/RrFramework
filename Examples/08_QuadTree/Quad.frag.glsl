@@ -27,7 +27,7 @@ void main()
             float((Draw.Color & 0x0000ff00) >> 8) / 255.0f,
             float((Draw.Color & 0x00ff0000) >> 16) / 255.0f);
 
-    if (Draw.Type == 0)
+    if (Draw.Type == CIRCLE)
     {
         float Feather = abs(dFdx(InUV.x));
         float Distance = length(InUV - 0.5);
@@ -37,7 +37,7 @@ void main()
         Weight += linearstep(1.0 - Feather * 1.5, 1.0, 1.0 - abs(Distance - Radius));
         OutColor = vec4(Color, Weight);
     }
-    else if (Draw.Type == 1)
+    else if (Draw.Type == CROSS)
     {
         float Hor = 1.0 - abs(InUV.x * 2.0 - 1.0);
         float Vert = 1.0 - abs(InUV.y * 2.0 - 1.0);
@@ -47,7 +47,7 @@ void main()
                 linearstep(1.0f - Feather.y, 1.0f, Vert));
         OutColor = vec4(0.0, 0.0, 0.0, Total);
     }
-    else if (Draw.Type == 2)
+    else if (Draw.Type == RECT_SELECTION)
     {
         float Hor = abs(InUV.x * 2.0 - 1.0);
         float Vert = abs(InUV.y * 2.0 - 1.0);
@@ -57,7 +57,7 @@ void main()
                 linearstep(1.0f - Feather.y * 1.5, 1.0f - Feather.y * 0.5, Vert));
         OutColor = vec4(Color, 0.5f + Total);
     }
-    else if (Draw.Type == 3)
+    else if (Draw.Type == RECT_TREE_BORDER)
     {
         float Hor = abs(InUV.x * 2.0 - 1.0);
         float Vert = abs(InUV.y * 2.0 - 1.0);
