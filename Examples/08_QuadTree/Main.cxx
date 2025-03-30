@@ -509,7 +509,7 @@ static uint32_t GetRandomColor()
 {
     static std::uniform_int_distribution<std::uint32_t> Distribution(
         0,
-        UCHAR_MAX);
+        std::numeric_limits<unsigned char>::max());
 
     std::uint32_t Color = (Distribution(RandomEngine) << 0) |
                           (Distribution(RandomEngine) << 8) |
@@ -519,7 +519,7 @@ static uint32_t GetRandomColor()
 
 static void RebuildTree()
 {
-    const uint32_t NUM_POINTS = 200000;
+    const uint32_t NUM_POINTS = 400000;
     const float AREA_WIDTH = 80000.0f;
     const float AREA_HEIGHT = 50000.0f;
     Draws.reserve(NUM_POINTS);
@@ -828,10 +828,11 @@ static void Render(Rr_App *App)
         });
     }
 
-    const auto FinalDrawsSize = RR_MIN(
+    const auto DrawsSize = RR_MIN(
         StagingData - StagingDataStart - sizeof(SGPUUniformData),
         MAX_DRAWS * sizeof(SGPUDraw));
-    // std::cout << DrawCount << " -- " << FinalDrawsSize << std::endl;
+    DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
+    // std::cout << DrawCount << " -- " << DrawsSize << std::endl;
 
     if(DrawCount > 0)
     {
@@ -845,7 +846,7 @@ static void Render(Rr_App *App)
             0);
         Rr_TransferBufferData(
             TransferNode,
-            FinalDrawsSize,
+            DrawsSize,
             StagingBuffer,
             sizeof(UniformData),
             StorageBuffer,
@@ -870,7 +871,7 @@ static void Render(Rr_App *App)
             0,
             0,
             sizeof(UniformData));
-        Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, FinalDrawsSize);
+        Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
         Rr_Draw(TreeNode, 6, DrawCount, 0, 0);
     }
 }
