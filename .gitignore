@@ -1,9 +1,9 @@
-/build/
-/.idea/
-/.vs/
-/.cache/
-compile_commands.json
-*.spv
+build*/
+.qtcreator/
+.idea/
+.vs/
+.cache/
+*.el
 CMakeSettings.json
 CMakeLists.txt.user
-.qtcreator/*
+compile_commands.json

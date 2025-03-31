@@ -1,5 +1,3 @@
-#include "Shared.glsl"
-
 struct Glyph {
     uint atlasXY;
     uint atlasWH;
