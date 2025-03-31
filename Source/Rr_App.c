@@ -216,23 +216,26 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
 
-    Rr_App App = (Rr_App){ 0 };
-    App.Config = Config;
-    App.Window = SDL_CreateWindow(
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
+
+    Rr_App *App = RR_ALLOC_TYPE(Arena, Rr_App);
+    App->Arena = Arena;
+
+    App->Config = Config;
+    App->Window = SDL_CreateWindow(
         Config->Title,
         WindowSize.Width,
         WindowSize.Height,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
             SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    App.Arena = Rr_CreateDefaultArena();
-    App.SyncArena = Rr_CreateSyncArena();
-    App.UserData = Config->UserData;
+    App->SyncArena = Rr_CreateSyncArena();
+    App->UserData = Config->UserData;
 
-    Rr_SetScratchTLS(&App.ScratchArenaTLS);
+    Rr_SetScratchTLS(&App->ScratchArenaTLS);
 
     Rr_InitScratch(RR_MAIN_THREAD_SCRATCH_ARENA_SIZE);
 
-    Rr_InitFrameTime(&App.FrameTime, App.Window);
+    Rr_InitFrameTime(&App->FrameTime, App->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
     SDL_SetEventEnabled(SDL_EVENT_MOUSE_BUTTON_DOWN, true);
@@ -240,14 +243,14 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_AddEventWatch(Rr_EventWatch, &App);
 
-    App.Renderer = Rr_CreateRenderer(&App);
-    App.UI = Rr_CreateUI(&App);
+    App->Renderer = Rr_CreateRenderer(App);
+    App->UI = Rr_CreateUI(App);
 
-    Config->InitFunc(&App, App.UserData);
+    Config->InitFunc(App, App->UserData);
 
-    SDL_ShowWindow(App.Window);
+    SDL_ShowWindow(App->Window);
 
-    while(SDL_GetAtomicInt(&App.ExitRequested) == false)
+    while(SDL_GetAtomicInt(&App->ExitRequested) == false)
     {
         for(SDL_Event Event; SDL_PollEvent(&Event);)
         {
@@ -257,13 +260,13 @@ void Rr_Run(Rr_AppConfig *Config)
                 {
                     if(Config->FileDroppedFunc != NULL)
                     {
-                        Config->FileDroppedFunc(&App, Event.drop.data);
+                        Config->FileDroppedFunc(App, Event.drop.data);
                     }
                     break;
                 }
                 case SDL_EVENT_QUIT:
                 {
-                    SDL_SetAtomicInt(&App.ExitRequested, true);
+                    SDL_SetAtomicInt(&App->ExitRequested, true);
                     break;
                 }
                 default:
@@ -271,19 +274,20 @@ void Rr_Run(Rr_AppConfig *Config)
             }
         }
 
-        Rr_Iterate(&App);
+        Rr_Iterate(App);
     }
 
-    Rr_DestroyUI(&App, App.UI);
-    Rr_DestroyRenderer(&App, App.Renderer);
+    Rr_DestroyUI(App, App->UI);
+    Rr_DestroyRenderer(App, App->Renderer);
 
-    Rr_DestroyArena(App.Arena);
-    Rr_DestroySyncArena(&App.SyncArena);
+    Rr_DestroySyncArena(&App->SyncArena);
 
     SDL_CleanupTLS();
 
     SDL_RemoveEventWatch((SDL_EventFilter)Rr_EventWatch, &App);
-    SDL_DestroyWindow(App.Window);
+    SDL_DestroyWindow(App->Window);
+
+    Rr_DestroyArena(App->Arena);
 
     SDL_Quit();
 }

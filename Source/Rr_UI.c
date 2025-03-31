@@ -60,6 +60,7 @@ struct Rr_UI
     Rr_Vec2 ScreenSize;
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_Buffer *Buffer;
     Rr_Font *Font;
     float FontSize;
     Rr_Arena *FrameArena;
@@ -215,12 +216,20 @@ Rr_UI *Rr_CreateUI(Rr_App *App)
 
     UI->GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
+    UI->Buffer = Rr_CreateBuffer(
+        Renderer,
+        RR_MEGABYTES(16),
+        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+            RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT |
+            RR_BUFFER_FLAGS_STAGING_BIT);
+
     return UI;
 }
 
 void Rr_DestroyUI(Rr_App *App, Rr_UI *UI)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_DestroyBuffer(Renderer, UI->Buffer);
     Rr_DestroyPipelineLayout(Renderer, UI->PipelineLayout);
     Rr_DestroyGraphicsPipeline(Renderer, UI->GraphicsPipeline);
     Rr_DestroyArena(UI->Arena);
