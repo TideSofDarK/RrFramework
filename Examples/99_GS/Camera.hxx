@@ -24,12 +24,12 @@ struct SCamera
         float Far)
     {
         ProjMatrix = Rr_Perspective_LH_ZO(
-            Rr_AngleDeg(FOVDegrees),
+            RR_ANGLE_DEG(FOVDegrees),
             (float)Size.X / (float)Size.Y,
             Near,
             Far);
 
-        HTanY = tanf(Rr_AngleDeg(FOVDegrees) / 2.0);
+        HTanY = tanf(RR_ANGLE_DEG(FOVDegrees) / 2.0);
         HTanX = HTanY / (float)Size.Y * (float)Size.X;
         FocalZ = (float)Size.Y / (2 * HTanY);
     }
@@ -87,10 +87,10 @@ struct SCamera
             Rr_SetRelativeMouseMode(App, false);
         }
 
-        float CosPitch = cosf(Pitch * Rr_DegToRad);
-        float SinPitch = sinf(Pitch * Rr_DegToRad);
-        float CosYaw = cosf(Yaw * Rr_DegToRad);
-        float SinYaw = sinf(Yaw * Rr_DegToRad);
+        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
+        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
+        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
+        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
 
         Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
         Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };

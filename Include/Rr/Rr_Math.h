@@ -22,23 +22,20 @@
    => only use "#ifdef RR_MATH__USE_SSE" to check for SSE support below this
    block! */
 #ifndef RR_MATH_NO_SIMD
-#ifdef _MSC_VER /* MSVC supports SSE in amd64 mode or _M_IX86_FP >= 1 (2 \
-                   means SSE2) */
+#ifdef _MSC_VER /* MSVC supports SSE in amd64 mode or _M_IX86_FP >= 1 (2 means \
+                   SSE2) */
 #if defined(_M_AMD64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 1)
 #define RR_MATH__USE_SSE 1
 #endif
-#else
-/* not MSVC, probably GCC, clang, icc or something that doesn't support SSE
- * anyway */
+#else /* not MSVC, probably GCC, clang, icc or something that doesn't support \
+         SSE anyway */
 #ifdef __SSE__ /* they #define __SSE__ if it's supported */
 #define RR_MATH__USE_SSE 1
 #endif /*  __SSE__ */
-#endif
-/* not _MSC_VER */
+#endif /* not _MSC_VER */
 #ifdef __ARM_NEON
 #define RR_MATH__USE_NEON 1
-#endif
-/* NEON Supported */
+#endif /* NEON Supported */
 #endif /* #ifndef RR_MATH_NO_SIMD */
 
 #if (                                                     \
@@ -61,11 +58,9 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #ifdef __clang__
-#pragma GCC diagnostic ignored "-Wunsafe-buffer-usage"
 #pragma GCC diagnostic ignored "-Wgnu-anonymous-struct"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #endif
@@ -95,47 +90,47 @@ extern "C" {
 #define RR_TURNHALF   0.5
 #define RR_TURNHALF32 0.5f
 
-#define Rr_RadToDeg  (RR_STATIC_CAST(float, RR_DEG180 / RR_PI))
-#define Rr_RadToTurn (RR_STATIC_CAST(float, RR_TURNHALF / RR_PI))
-#define Rr_DegToRad  (RR_STATIC_CAST(float, RR_PI / RR_DEG180))
-#define Rr_DegToTurn (RR_STATIC_CAST(float, RR_TURNHALF / RR_DEG180))
-#define Rr_TurnToRad (RR_STATIC_CAST(float, RR_PI / RR_TURNHALF))
-#define Rr_TurnToDeg (RR_STATIC_CAST(float, RR_DEG180 / RR_TURNHALF))
+#define RR_RAD_TO_DEG  (RR_STATIC_CAST(float, RR_DEG180 / RR_PI))
+#define RR_RAD_TO_TURN (RR_STATIC_CAST(float, RR_TURNHALF / RR_PI))
+#define RR_DEG_TO_RAD  (RR_STATIC_CAST(float, RR_PI / RR_DEG180))
+#define RR_DEG_TO_TURN (RR_STATIC_CAST(float, RR_TURNHALF / RR_DEG180))
+#define RR_TURN_TO_RAD (RR_STATIC_CAST(float, RR_PI / RR_TURNHALF))
+#define RR_TURN_TO_DEG (RR_STATIC_CAST(float, RR_DEG180 / RR_TURNHALF))
 
 #if defined(RR_MATH_USE_RADIANS)
-#define Rr_AngleRad(a)  (a)
-#define Rr_AngleDeg(a)  ((a) * Rr_DegToRad)
-#define Rr_AngleTurn(a) ((a) * Rr_TurnToRad)
+#define RR_ANGLE_RAD(a)  (a)
+#define RR_ANGLE_DEG(a)  ((a) * RR_DEG_TO_RAD)
+#define RR_ANGLE_TURN(a) ((a) * RR_TURN_TO_RAD)
 #elif defined(RR_MATH_USE_DEGREES)
-#define Rr_AngleRad(a)  ((a) * Rr_RadToDeg)
-#define Rr_AngleDeg(a)  (a)
-#define Rr_AngleTurn(a) ((a) * Rr_TurnToDeg)
+#define RR_ANGLE_RAD(a)  ((a) * RR_RAD_TO_DEG)
+#define RR_ANGLE_DEG(a)  (a)
+#define RR_ANGLE_TURN(a) ((a) * RR_TURN_TO_DEG)
 #elif defined(RR_MATH_USE_TURNS)
-#define Rr_AngleRad(a)  ((a) * Rr_RadToTurn)
-#define Rr_AngleDeg(a)  ((a) * Rr_DegToTurn)
-#define Rr_AngleTurn(a) (a)
+#define RR_ANGLE_RAD(a)  ((a) * RR_RAD_TO_TURN)
+#define RR_ANGLE_DEG(a)  ((a) * RR_DEG_TO_TURN)
+#define RR_ANGLE_TURN(a) (a)
 #endif
 
 #if !defined(RR_MATH_PROVIDE_MATH_FUNCTIONS)
 #include <math.h>
-#define Rr_SINF  sinf
-#define Rr_COSF  cosf
-#define Rr_TANF  tanf
-#define Rr_SQRTF sqrtf
-#define Rr_ACOSF acosf
+#define RR_SINF  sinf
+#define RR_COSF  cosf
+#define RR_TANF  tanf
+#define RR_SQRTF sqrtf
+#define RR_ACOSF acosf
 #endif
 
-#if !defined(Rr_ANGLE_USER_TO_INTERNAL)
-#define Rr_ANGLE_USER_TO_INTERNAL(a) (Rr_ToRad(a))
+#if !defined(RR_ANGLE_USER_TO_INTERNAL)
+#define RR_ANGLE_USER_TO_INTERNAL(a) (Rr_ToRad(a))
 #endif
 
-#if !defined(Rr_ANGLE_INTERNAL_TO_USER)
+#if !defined(RR_ANGLE_INTERNAL_TO_USER)
 #if defined(RR_MATH_USE_RADIANS)
-#define Rr_ANGLE_INTERNAL_TO_USER(a) (a)
+#define RR_ANGLE_INTERNAL_TO_USER(a) (a)
 #elif defined(RR_MATH_USE_DEGREES)
-#define Rr_ANGLE_INTERNAL_TO_USER(a) ((a) * Rr_RadToDeg)
+#define RR_ANGLE_INTERNAL_TO_USER(a) ((a) * RR_RAD_TO_DEG)
 #elif defined(RR_MATH_USE_TURNS)
-#define Rr_ANGLE_INTERNAL_TO_USER(a) ((a) * Rr_RadToTurn)
+#define RR_ANGLE_INTERNAL_TO_USER(a) ((a) * RR_RAD_TO_TURN)
 #endif
 #endif
 
@@ -574,9 +569,9 @@ static inline float Rr_ToRad(float Angle)
 #if defined(RR_MATH_USE_RADIANS)
     float Result = Angle;
 #elif defined(RR_MATH_USE_DEGREES)
-    float Result = Angle * Rr_DegToRad;
+    float Result = Angle * RR_DEG_TO_RAD;
 #elif defined(RR_MATH_USE_TURNS)
-    float Result = Angle * Rr_TurnToRad;
+    float Result = Angle * RR_TURN_TO_RAD;
 #endif
 
     return Result;
@@ -585,11 +580,11 @@ static inline float Rr_ToRad(float Angle)
 static inline float Rr_ToDeg(float Angle)
 {
 #if defined(RR_MATH_USE_RADIANS)
-    float Result = Angle * Rr_RadToDeg;
+    float Result = Angle * RR_RAD_TO_DEG;
 #elif defined(RR_MATH_USE_DEGREES)
     float Result = Angle;
 #elif defined(RR_MATH_USE_TURNS)
-    float Result = Angle * Rr_TurnToDeg;
+    float Result = Angle * RR_TURN_TO_DEG;
 #endif
 
     return Result;
@@ -598,9 +593,9 @@ static inline float Rr_ToDeg(float Angle)
 static inline float Rr_ToTurn(float Angle)
 {
 #if defined(RR_MATH_USE_RADIANS)
-    float Result = Angle * Rr_RadToTurn;
+    float Result = Angle * RR_RAD_TO_TURN;
 #elif defined(RR_MATH_USE_DEGREES)
-    float Result = Angle * Rr_DegToTurn;
+    float Result = Angle * RR_DEG_TO_TURN;
 #elif defined(RR_MATH_USE_TURNS)
     float Result = Angle;
 #endif
@@ -616,28 +611,28 @@ COVERAGE(Rr_SinF, 1)
 static inline float Rr_SinF(float Angle)
 {
     ASSERT_COVERED(Rr_SinF);
-    return Rr_SINF(Rr_ANGLE_USER_TO_INTERNAL(Angle));
+    return RR_SINF(RR_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
 COVERAGE(Rr_CosF, 1)
 static inline float Rr_CosF(float Angle)
 {
     ASSERT_COVERED(Rr_CosF);
-    return Rr_COSF(Rr_ANGLE_USER_TO_INTERNAL(Angle));
+    return RR_COSF(RR_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
 COVERAGE(Rr_TanF, 1)
 static inline float Rr_TanF(float Angle)
 {
     ASSERT_COVERED(Rr_TanF);
-    return Rr_TANF(Rr_ANGLE_USER_TO_INTERNAL(Angle));
+    return RR_TANF(RR_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
 COVERAGE(Rr_ACosF, 1)
 static inline float Rr_ACosF(float Arg)
 {
     ASSERT_COVERED(Rr_ACosF);
-    return Rr_ANGLE_INTERNAL_TO_USER(Rr_ACOSF(Arg));
+    return RR_ANGLE_INTERNAL_TO_USER(RR_ACOSF(Arg));
 }
 
 COVERAGE(Rr_SqrtF, 1)
@@ -656,7 +651,7 @@ static inline float Rr_SqrtF(float Float)
     float32x4_t Out = vsqrtq_f32(In);
     Result = vgetq_lane_f32(Out, 0);
 #else
-    Result = Rr_SQRTF(Float);
+    Result = RR_SQRTF(Float);
 #endif
 
     return Result;

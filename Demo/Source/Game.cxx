@@ -55,8 +55,8 @@ struct SCamera
     Rr_Vec2 OrbitVelocity{};
 
     float TDHeight = 10.0f;
-    float TDPitch = 45.0f * Rr_DegToRad;
-    float TDYaw = 45.0f * Rr_DegToRad;
+    float TDPitch = 45.0f * RR_DEG_TO_RAD;
+    float TDYaw = 45.0f * RR_DEG_TO_RAD;
     Rr_Vec3 TDPosition{};
 
     Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
@@ -67,7 +67,7 @@ struct SCamera
     void SetPerspective(float FOVDegrees, float Aspect)
     {
         ProjMatrix =
-            Rr_Perspective_LH_ZO(Rr_AngleDeg(FOVDegrees), Aspect, 0.5f, 50.0f);
+            Rr_Perspective_LH_ZO(RR_ANGLE_DEG(FOVDegrees), Aspect, 0.5f, 50.0f);
     }
 
     [[nodiscard]] Rr_Vec3 GetForwardVector() const
@@ -130,10 +130,10 @@ struct SCamera
                     Rr_SetRelativeMouseMode(App, false);
                 }
 
-                float CosPitch = cosf(Pitch * Rr_DegToRad);
-                float SinPitch = sinf(Pitch * Rr_DegToRad);
-                float CosYaw = cosf(Yaw * Rr_DegToRad);
-                float SinYaw = sinf(Yaw * Rr_DegToRad);
+                float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
+                float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
+                float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
+                float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
 
                 Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
                 Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
@@ -191,11 +191,11 @@ struct SCamera
                 Eye = Rr_RotateV3AxisAngle_RH(
                     Eye,
                     { 0.0f, 1.0f, 0.0f },
-                    Yaw * Rr_DegToRad);
+                    Yaw * RR_DEG_TO_RAD);
                 Eye = Rr_RotateV3AxisAngle_RH(
                     Eye,
                     Rr_Cross(Eye, { 0.0f, 1.0f, 0.0f }),
-                    -Pitch * Rr_DegToRad);
+                    -Pitch * RR_DEG_TO_RAD);
 
                 Eye *= OrbitDistance;
                 Eye += OrbitCenter;
@@ -694,7 +694,7 @@ static void Render(
 
     SUniformData UniformData = {};
     UniformData.Projection =
-        Rr_Perspective_LH_ZO(Rr_AngleDeg(75.0f), 320.0f / 240.0f, 0.5f, 50.0f);
+        Rr_Perspective_LH_ZO(RR_ANGLE_DEG(75.0f), 320.0f / 240.0f, 0.5f, 50.0f);
     UniformData.View = Rr_VulkanMatrix() * Camera.ViewMatrix;
     UniformData.Model = Rr_M4D(1.0f);
     // UniformData.Model = Rr_MulM4(
