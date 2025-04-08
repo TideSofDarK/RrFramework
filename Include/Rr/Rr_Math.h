@@ -610,7 +610,6 @@ static inline float Rr_ACosF(float Arg)
 
 static inline float Rr_SqrtF(float Float)
 {
-
     float Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -630,7 +629,6 @@ static inline float Rr_SqrtF(float Float)
 
 static inline float Rr_InvSqrtF(float Float)
 {
-
     float Result;
 
     Result = 1.0f / Rr_SqrtF(Float);
@@ -717,7 +715,6 @@ static inline float Rr_Lerp(float A, float Time, float B)
 
 static inline float Rr_Clamp(float Min, float Value, float Max)
 {
-
     float Result = Value;
 
     if(Result < Min)
@@ -739,7 +736,6 @@ static inline float Rr_Clamp(float Min, float Value, float Max)
 
 static inline Rr_Vec2 Rr_V2(float X, float Y)
 {
-
     Rr_Vec2 Result;
     Result.X = X;
     Result.Y = Y;
@@ -749,7 +745,6 @@ static inline Rr_Vec2 Rr_V2(float X, float Y)
 
 static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
 {
-
     Rr_Vec3 Result;
     Result.X = X;
     Result.Y = Y;
@@ -760,7 +755,6 @@ static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
 
 static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
 {
-
     Rr_Vec4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -780,7 +774,6 @@ static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
 
 static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, float W)
 {
-
     Rr_Vec4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -802,7 +795,6 @@ static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, float W)
 
 static inline Rr_Vec2 Rr_AddV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-
     Rr_Vec2 Result;
     Result.X = Left.X + Right.X;
     Result.Y = Left.Y + Right.Y;
@@ -812,7 +804,6 @@ static inline Rr_Vec2 Rr_AddV2(Rr_Vec2 Left, Rr_Vec2 Right)
 
 static inline Rr_Vec3 Rr_AddV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-
     Rr_Vec3 Result;
     Result.X = Left.X + Right.X;
     Result.Y = Left.Y + Right.Y;
@@ -823,7 +814,6 @@ static inline Rr_Vec3 Rr_AddV3(Rr_Vec3 Left, Rr_Vec3 Right)
 
 static inline Rr_Vec4 Rr_AddV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-
     Rr_Vec4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -842,7 +832,6 @@ static inline Rr_Vec4 Rr_AddV4(Rr_Vec4 Left, Rr_Vec4 Right)
 
 static inline Rr_Vec2 Rr_SubV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-
     Rr_Vec2 Result;
     Result.X = Left.X - Right.X;
     Result.Y = Left.Y - Right.Y;
@@ -852,7 +841,6 @@ static inline Rr_Vec2 Rr_SubV2(Rr_Vec2 Left, Rr_Vec2 Right)
 
 static inline Rr_Vec3 Rr_SubV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-
     Rr_Vec3 Result;
     Result.X = Left.X - Right.X;
     Result.Y = Left.Y - Right.Y;
@@ -863,7 +851,6 @@ static inline Rr_Vec3 Rr_SubV3(Rr_Vec3 Left, Rr_Vec3 Right)
 
 static inline Rr_Vec4 Rr_SubV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-
     Rr_Vec4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -882,7 +869,6 @@ static inline Rr_Vec4 Rr_SubV4(Rr_Vec4 Left, Rr_Vec4 Right)
 
 static inline Rr_Vec2 Rr_MulV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-
     Rr_Vec2 Result;
     Result.X = Left.X * Right.X;
     Result.Y = Left.Y * Right.Y;
@@ -892,7 +878,6 @@ static inline Rr_Vec2 Rr_MulV2(Rr_Vec2 Left, Rr_Vec2 Right)
 
 static inline Rr_Vec2 Rr_MulV2F(Rr_Vec2 Left, float Right)
 {
-
     Rr_Vec2 Result;
     Result.X = Left.X * Right;
     Result.Y = Left.Y * Right;
@@ -902,7 +887,6 @@ static inline Rr_Vec2 Rr_MulV2F(Rr_Vec2 Left, float Right)
 
 static inline Rr_Vec3 Rr_MulV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-
     Rr_Vec3 Result;
     Result.X = Left.X * Right.X;
     Result.Y = Left.Y * Right.Y;
@@ -913,7 +897,6 @@ static inline Rr_Vec3 Rr_MulV3(Rr_Vec3 Left, Rr_Vec3 Right)
 
 static inline Rr_Vec3 Rr_MulV3F(Rr_Vec3 Left, float Right)
 {
-
     Rr_Vec3 Result;
     Result.X = Left.X * Right;
     Result.Y = Left.Y * Right;
@@ -924,7 +907,6 @@ static inline Rr_Vec3 Rr_MulV3F(Rr_Vec3 Left, float Right)
 
 static inline Rr_Vec4 Rr_MulV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-
     Rr_Vec4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -943,7 +925,6 @@ static inline Rr_Vec4 Rr_MulV4(Rr_Vec4 Left, Rr_Vec4 Right)
 
 static inline Rr_Vec4 Rr_MulV4F(Rr_Vec4 Left, float Right)
 {
-
     Rr_Vec4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -963,7 +944,6 @@ static inline Rr_Vec4 Rr_MulV4F(Rr_Vec4 Left, float Right)
 
 static inline Rr_Vec2 Rr_DivV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-
     Rr_Vec2 Result;
     Result.X = Left.X / Right.X;
     Result.Y = Left.Y / Right.Y;
@@ -973,7 +953,6 @@ static inline Rr_Vec2 Rr_DivV2(Rr_Vec2 Left, Rr_Vec2 Right)
 
 static inline Rr_Vec2 Rr_DivV2F(Rr_Vec2 Left, float Right)
 {
-
     Rr_Vec2 Result;
     Result.X = Left.X / Right;
     Result.Y = Left.Y / Right;
@@ -983,7 +962,6 @@ static inline Rr_Vec2 Rr_DivV2F(Rr_Vec2 Left, float Right)
 
 static inline Rr_Vec3 Rr_DivV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-
     Rr_Vec3 Result;
     Result.X = Left.X / Right.X;
     Result.Y = Left.Y / Right.Y;
@@ -994,7 +972,6 @@ static inline Rr_Vec3 Rr_DivV3(Rr_Vec3 Left, Rr_Vec3 Right)
 
 static inline Rr_Vec3 Rr_DivV3F(Rr_Vec3 Left, float Right)
 {
-
     Rr_Vec3 Result;
     Result.X = Left.X / Right;
     Result.Y = Left.Y / Right;
@@ -1005,7 +982,6 @@ static inline Rr_Vec3 Rr_DivV3F(Rr_Vec3 Left, float Right)
 
 static inline Rr_Vec4 Rr_DivV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-
     Rr_Vec4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -1024,7 +1000,6 @@ static inline Rr_Vec4 Rr_DivV4(Rr_Vec4 Left, Rr_Vec4 Right)
 
 static inline Rr_Vec4 Rr_DivV4F(Rr_Vec4 Left, float Right)
 {
-
     Rr_Vec4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -1076,7 +1051,6 @@ static inline float Rr_DotV3(Rr_Vec3 Left, Rr_Vec3 Right)
 
 static inline float Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-
     float Result;
 
     // NOTE(zak): IN the future if we wanna check what version SSE is support
@@ -1108,7 +1082,6 @@ static inline float Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
 
 static inline Rr_Vec3 Rr_Cross(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-
     Rr_Vec3 Result;
     Result.X = (Left.Y * Right.Z) - (Left.Z * Right.Y);
     Result.Y = (Left.Z * Right.X) - (Left.X * Right.Z);
@@ -1191,7 +1164,6 @@ static inline Rr_Vec4 Rr_LerpV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
 
 static inline Rr_Vec4 Rr_LinearCombineV4M4(Rr_Vec4 Left, Rr_Mat4 Right)
 {
-
     Rr_Vec4 Result;
 #ifdef RR_MATH__USE_SSE
     Result.SSE = _mm_mul_ps(
@@ -1257,7 +1229,6 @@ static inline Rr_Mat2 Rr_M2(void)
 
 static inline Rr_Mat2 Rr_M2D(float Diagonal)
 {
-
     Rr_Mat2 Result = { 0 };
     Result.Elements[0][0] = Diagonal;
     Result.Elements[1][1] = Diagonal;
@@ -1267,7 +1238,6 @@ static inline Rr_Mat2 Rr_M2D(float Diagonal)
 
 static inline Rr_Mat2 Rr_TransposeM2(Rr_Mat2 Matrix)
 {
-
     Rr_Mat2 Result = Matrix;
 
     Result.Elements[0][1] = Matrix.Elements[1][0];
@@ -1278,7 +1248,6 @@ static inline Rr_Mat2 Rr_TransposeM2(Rr_Mat2 Matrix)
 
 static inline Rr_Mat2 Rr_AddM2(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-
     Rr_Mat2 Result;
 
     Result.Elements[0][0] = Left.Elements[0][0] + Right.Elements[0][0];
@@ -1291,7 +1260,6 @@ static inline Rr_Mat2 Rr_AddM2(Rr_Mat2 Left, Rr_Mat2 Right)
 
 static inline Rr_Mat2 Rr_SubM2(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-
     Rr_Mat2 Result;
 
     Result.Elements[0][0] = Left.Elements[0][0] - Right.Elements[0][0];
@@ -1304,7 +1272,6 @@ static inline Rr_Mat2 Rr_SubM2(Rr_Mat2 Left, Rr_Mat2 Right)
 
 static inline Rr_Vec2 Rr_MulM2V2(Rr_Mat2 Matrix, Rr_Vec2 Vector)
 {
-
     Rr_Vec2 Result;
 
     Result.X = Vector.Elements[0] * Matrix.Columns[0].X;
@@ -1318,7 +1285,6 @@ static inline Rr_Vec2 Rr_MulM2V2(Rr_Mat2 Matrix, Rr_Vec2 Vector)
 
 static inline Rr_Mat2 Rr_MulM2(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-
     Rr_Mat2 Result;
     Result.Columns[0] = Rr_MulM2V2(Left, Right.Columns[0]);
     Result.Columns[1] = Rr_MulM2V2(Left, Right.Columns[1]);
@@ -1328,7 +1294,6 @@ static inline Rr_Mat2 Rr_MulM2(Rr_Mat2 Left, Rr_Mat2 Right)
 
 static inline Rr_Mat2 Rr_MulM2F(Rr_Mat2 Matrix, float Scalar)
 {
-
     Rr_Mat2 Result;
 
     Result.Elements[0][0] = Matrix.Elements[0][0] * Scalar;
@@ -1341,7 +1306,6 @@ static inline Rr_Mat2 Rr_MulM2F(Rr_Mat2 Matrix, float Scalar)
 
 static inline Rr_Mat2 Rr_DivM2F(Rr_Mat2 Matrix, float Scalar)
 {
-
     Rr_Mat2 Result;
 
     Result.Elements[0][0] = Matrix.Elements[0][0] / Scalar;
@@ -1360,7 +1324,6 @@ static inline float Rr_DeterminantM2(Rr_Mat2 Matrix)
 
 static inline Rr_Mat2 Rr_InvGeneralM2(Rr_Mat2 Matrix)
 {
-
     Rr_Mat2 Result;
     float InvDeterminant = 1.0f / Rr_DeterminantM2(Matrix);
     Result.Elements[0][0] = InvDeterminant * +Matrix.Elements[1][1];
@@ -1383,7 +1346,6 @@ static inline Rr_Mat3 Rr_M3(void)
 
 static inline Rr_Mat3 Rr_M3D(float Diagonal)
 {
-
     Rr_Mat3 Result = { 0 };
     Result.Elements[0][0] = Diagonal;
     Result.Elements[1][1] = Diagonal;
@@ -1394,7 +1356,6 @@ static inline Rr_Mat3 Rr_M3D(float Diagonal)
 
 static inline Rr_Mat3 Rr_TransposeM3(Rr_Mat3 Matrix)
 {
-
     Rr_Mat3 Result = Matrix;
 
     Result.Elements[0][1] = Matrix.Elements[1][0];
@@ -1409,7 +1370,6 @@ static inline Rr_Mat3 Rr_TransposeM3(Rr_Mat3 Matrix)
 
 static inline Rr_Mat3 Rr_AddM3(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-
     Rr_Mat3 Result;
 
     Result.Elements[0][0] = Left.Elements[0][0] + Right.Elements[0][0];
@@ -1427,7 +1387,6 @@ static inline Rr_Mat3 Rr_AddM3(Rr_Mat3 Left, Rr_Mat3 Right)
 
 static inline Rr_Mat3 Rr_SubM3(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-
     Rr_Mat3 Result;
 
     Result.Elements[0][0] = Left.Elements[0][0] - Right.Elements[0][0];
@@ -1445,7 +1404,6 @@ static inline Rr_Mat3 Rr_SubM3(Rr_Mat3 Left, Rr_Mat3 Right)
 
 static inline Rr_Vec3 Rr_MulM3V3(Rr_Mat3 Matrix, Rr_Vec3 Vector)
 {
-
     Rr_Vec3 Result;
 
     Result.X = Vector.Elements[0] * Matrix.Columns[0].X;
@@ -1465,7 +1423,6 @@ static inline Rr_Vec3 Rr_MulM3V3(Rr_Mat3 Matrix, Rr_Vec3 Vector)
 
 static inline Rr_Mat3 Rr_MulM3(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-
     Rr_Mat3 Result;
     Result.Columns[0] = Rr_MulM3V3(Left, Right.Columns[0]);
     Result.Columns[1] = Rr_MulM3V3(Left, Right.Columns[1]);
@@ -1476,7 +1433,6 @@ static inline Rr_Mat3 Rr_MulM3(Rr_Mat3 Left, Rr_Mat3 Right)
 
 static inline Rr_Mat3 Rr_MulM3F(Rr_Mat3 Matrix, float Scalar)
 {
-
     Rr_Mat3 Result;
 
     Result.Elements[0][0] = Matrix.Elements[0][0] * Scalar;
@@ -1494,7 +1450,6 @@ static inline Rr_Mat3 Rr_MulM3F(Rr_Mat3 Matrix, float Scalar)
 
 static inline Rr_Mat3 Rr_DivM3F(Rr_Mat3 Matrix, float Scalar)
 {
-
     Rr_Mat3 Result;
 
     Result.Elements[0][0] = Matrix.Elements[0][0] / Scalar;
@@ -1512,7 +1467,6 @@ static inline Rr_Mat3 Rr_DivM3F(Rr_Mat3 Matrix, float Scalar)
 
 static inline float Rr_DeterminantM3(Rr_Mat3 Matrix)
 {
-
     Rr_Mat3 Cross;
     Cross.Columns[0] = Rr_Cross(Matrix.Columns[1], Matrix.Columns[2]);
     Cross.Columns[1] = Rr_Cross(Matrix.Columns[2], Matrix.Columns[0]);
@@ -1523,7 +1477,6 @@ static inline float Rr_DeterminantM3(Rr_Mat3 Matrix)
 
 static inline Rr_Mat3 Rr_InvGeneralM3(Rr_Mat3 Matrix)
 {
-
     Rr_Mat3 Cross;
     Cross.Columns[0] = Rr_Cross(Matrix.Columns[1], Matrix.Columns[2]);
     Cross.Columns[1] = Rr_Cross(Matrix.Columns[2], Matrix.Columns[0]);
@@ -1551,7 +1504,6 @@ static inline Rr_Mat4 Rr_M4(void)
 
 static inline Rr_Mat4 Rr_M4D(float Diagonal)
 {
-
     Rr_Mat4 Result = { 0 };
     Result.Elements[0][0] = Diagonal;
     Result.Elements[1][1] = Diagonal;
@@ -1563,7 +1515,6 @@ static inline Rr_Mat4 Rr_M4D(float Diagonal)
 
 static inline Rr_Mat4 Rr_TransposeM4(Rr_Mat4 Matrix)
 {
-
     Rr_Mat4 Result;
 #ifdef RR_MATH__USE_SSE
     Result = Matrix;
@@ -1602,7 +1553,6 @@ static inline Rr_Mat4 Rr_TransposeM4(Rr_Mat4 Matrix)
 
 static inline Rr_Mat4 Rr_AddM4(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-
     Rr_Mat4 Result;
 
     Result.Columns[0] = Rr_AddV4(Left.Columns[0], Right.Columns[0]);
@@ -1615,7 +1565,6 @@ static inline Rr_Mat4 Rr_AddM4(Rr_Mat4 Left, Rr_Mat4 Right)
 
 static inline Rr_Mat4 Rr_SubM4(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-
     Rr_Mat4 Result;
 
     Result.Columns[0] = Rr_SubV4(Left.Columns[0], Right.Columns[0]);
@@ -1628,7 +1577,6 @@ static inline Rr_Mat4 Rr_SubM4(Rr_Mat4 Left, Rr_Mat4 Right)
 
 static inline Rr_Mat4 Rr_MulM4(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-
     Rr_Mat4 Result;
     Result.Columns[0] = Rr_LinearCombineV4M4(Right.Columns[0], Left);
     Result.Columns[1] = Rr_LinearCombineV4M4(Right.Columns[1], Left);
@@ -1640,7 +1588,6 @@ static inline Rr_Mat4 Rr_MulM4(Rr_Mat4 Left, Rr_Mat4 Right)
 
 static inline Rr_Mat4 Rr_MulM4F(Rr_Mat4 Matrix, float Scalar)
 {
-
     Rr_Mat4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -1683,7 +1630,6 @@ static inline Rr_Vec4 Rr_MulM4V4(Rr_Mat4 Matrix, Rr_Vec4 Vector)
 
 static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, float Scalar)
 {
-
     Rr_Mat4 Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -1722,7 +1668,6 @@ static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, float Scalar)
 
 static inline float Rr_DeterminantM4(Rr_Mat4 Matrix)
 {
-
     Rr_Vec3 C01 = Rr_Cross(Matrix.Columns[0].XYZ, Matrix.Columns[1].XYZ);
     Rr_Vec3 C23 = Rr_Cross(Matrix.Columns[2].XYZ, Matrix.Columns[3].XYZ);
     Rr_Vec3 B10 = Rr_SubV3(
@@ -1739,7 +1684,6 @@ static inline float Rr_DeterminantM4(Rr_Mat4 Matrix)
 // inverses of many transformations are available and will be more efficient.
 static inline Rr_Mat4 Rr_InvGeneralM4(Rr_Mat4 Matrix)
 {
-
     Rr_Vec3 C01 = Rr_Cross(Matrix.Columns[0].XYZ, Matrix.Columns[1].XYZ);
     Rr_Vec3 C23 = Rr_Cross(Matrix.Columns[2].XYZ, Matrix.Columns[3].XYZ);
     Rr_Vec3 B10 = Rr_SubV3(
@@ -1796,7 +1740,6 @@ static inline Rr_Mat4 Rr_Orthographic_RH_NO(
     float Near,
     float Far)
 {
-
     Rr_Mat4 Result = { 0 };
 
     Result.Elements[0][0] = 2.0f / (Right - Left);
@@ -1823,7 +1766,6 @@ static inline Rr_Mat4 Rr_Orthographic_RH_ZO(
     float Near,
     float Far)
 {
-
     Rr_Mat4 Result = { 0 };
 
     Result.Elements[0][0] = 2.0f / (Right - Left);
@@ -1850,7 +1792,6 @@ static inline Rr_Mat4 Rr_Orthographic_LH_NO(
     float Near,
     float Far)
 {
-
     Rr_Mat4 Result = Rr_Orthographic_RH_NO(Left, Right, Bottom, Top, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
 
@@ -1869,7 +1810,6 @@ static inline Rr_Mat4 Rr_Orthographic_LH_ZO(
     float Near,
     float Far)
 {
-
     Rr_Mat4 Result = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
 
@@ -1881,7 +1821,6 @@ static inline Rr_Mat4 Rr_Orthographic_LH_ZO(
 // convention.
 static inline Rr_Mat4 Rr_InvOrthographic(Rr_Mat4 OrthoMatrix)
 {
-
     Rr_Mat4 Result = { 0 };
     Result.Elements[0][0] = 1.0f / OrthoMatrix.Elements[0][0];
     Result.Elements[1][1] = 1.0f / OrthoMatrix.Elements[1][1];
@@ -1901,7 +1840,6 @@ static inline Rr_Mat4 Rr_Perspective_RH_NO(
     float Near,
     float Far)
 {
-
     Rr_Mat4 Result = { 0 };
 
     // See
@@ -1924,7 +1862,6 @@ static inline Rr_Mat4 Rr_Perspective_RH_ZO(
     float Near,
     float Far)
 {
-
     Rr_Mat4 Result = { 0 };
 
     // See
@@ -1947,7 +1884,6 @@ static inline Rr_Mat4 Rr_Perspective_LH_NO(
     float Near,
     float Far)
 {
-
     Rr_Mat4 Result = Rr_Perspective_RH_NO(FOV, AspectRatio, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
     Result.Elements[2][3] = -Result.Elements[2][3];
@@ -1961,7 +1897,6 @@ static inline Rr_Mat4 Rr_Perspective_LH_ZO(
     float Near,
     float Far)
 {
-
     Rr_Mat4 Result = Rr_Perspective_RH_ZO(FOV, AspectRatio, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
     Result.Elements[2][3] = -Result.Elements[2][3];
@@ -1971,7 +1906,6 @@ static inline Rr_Mat4 Rr_Perspective_LH_ZO(
 
 static inline Rr_Mat4 Rr_InvPerspective_RH(Rr_Mat4 PerspectiveMatrix)
 {
-
     Rr_Mat4 Result = { 0 };
     Result.Elements[0][0] = 1.0f / PerspectiveMatrix.Elements[0][0];
     Result.Elements[1][1] = 1.0f / PerspectiveMatrix.Elements[1][1];
@@ -1987,7 +1921,6 @@ static inline Rr_Mat4 Rr_InvPerspective_RH(Rr_Mat4 PerspectiveMatrix)
 
 static inline Rr_Mat4 Rr_InvPerspective_LH(Rr_Mat4 PerspectiveMatrix)
 {
-
     Rr_Mat4 Result = { 0 };
     Result.Elements[0][0] = 1.0f / PerspectiveMatrix.Elements[0][0];
     Result.Elements[1][1] = 1.0f / PerspectiveMatrix.Elements[1][1];
@@ -2003,7 +1936,6 @@ static inline Rr_Mat4 Rr_InvPerspective_LH(Rr_Mat4 PerspectiveMatrix)
 
 static inline Rr_Mat4 Rr_Translate(Rr_Vec3 Translation)
 {
-
     Rr_Mat4 Result = Rr_M4D(1.0f);
     Result.Elements[3][0] = Translation.X;
     Result.Elements[3][1] = Translation.Y;
@@ -2014,7 +1946,6 @@ static inline Rr_Mat4 Rr_Translate(Rr_Vec3 Translation)
 
 static inline Rr_Mat4 Rr_InvTranslate(Rr_Mat4 TranslationMatrix)
 {
-
     Rr_Mat4 Result = TranslationMatrix;
     Result.Elements[3][0] = -Result.Elements[3][0];
     Result.Elements[3][1] = -Result.Elements[3][1];
@@ -2025,7 +1956,6 @@ static inline Rr_Mat4 Rr_InvTranslate(Rr_Mat4 TranslationMatrix)
 
 static inline Rr_Mat4 Rr_Rotate_RH(float Angle, Rr_Vec3 Axis)
 {
-
     Rr_Mat4 Result = Rr_M4D(1.0f);
 
     Axis = Rr_NormV3(Axis);
@@ -2062,7 +1992,6 @@ static inline Rr_Mat4 Rr_InvRotate(Rr_Mat4 RotationMatrix)
 
 static inline Rr_Mat4 Rr_Scale(Rr_Vec3 Scale)
 {
-
     Rr_Mat4 Result = Rr_M4D(1.0f);
     Result.Elements[0][0] = Scale.X;
     Result.Elements[1][1] = Scale.Y;
@@ -2073,7 +2002,6 @@ static inline Rr_Mat4 Rr_Scale(Rr_Vec3 Scale)
 
 static inline Rr_Mat4 Rr_InvScale(Rr_Mat4 ScaleMatrix)
 {
-
     Rr_Mat4 Result = ScaleMatrix;
     Result.Elements[0][0] = 1.0f / Result.Elements[0][0];
     Result.Elements[1][1] = 1.0f / Result.Elements[1][1];
@@ -2111,7 +2039,6 @@ static inline Rr_Mat4 _Rr_LookAt(Rr_Vec3 F, Rr_Vec3 S, Rr_Vec3 U, Rr_Vec3 Eye)
 
 static inline Rr_Mat4 Rr_LookAt_RH(Rr_Vec3 Eye, Rr_Vec3 Center, Rr_Vec3 Up)
 {
-
     Rr_Vec3 F = Rr_NormV3(Rr_SubV3(Center, Eye));
     Rr_Vec3 S = Rr_NormV3(Rr_Cross(F, Up));
     Rr_Vec3 U = Rr_Cross(S, F);
@@ -2121,7 +2048,6 @@ static inline Rr_Mat4 Rr_LookAt_RH(Rr_Vec3 Eye, Rr_Vec3 Center, Rr_Vec3 Up)
 
 static inline Rr_Mat4 Rr_LookAt_LH(Rr_Vec3 Eye, Rr_Vec3 Center, Rr_Vec3 Up)
 {
-
     Rr_Vec3 F = Rr_NormV3(Rr_SubV3(Eye, Center));
     Rr_Vec3 S = Rr_NormV3(Rr_Cross(F, Up));
     Rr_Vec3 U = Rr_Cross(S, F);
@@ -2163,7 +2089,6 @@ static inline Rr_Mat4 Rr_InvLookAt(Rr_Mat4 Matrix)
 
 static inline Rr_Quat Rr_Q(float X, float Y, float Z, float W)
 {
-
     Rr_Quat Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -2183,7 +2108,6 @@ static inline Rr_Quat Rr_Q(float X, float Y, float Z, float W)
 
 static inline Rr_Quat Rr_QV4(Rr_Vec4 Vector)
 {
-
     Rr_Quat Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -2202,7 +2126,6 @@ static inline Rr_Quat Rr_QV4(Rr_Vec4 Vector)
 
 static inline Rr_Quat Rr_AddQ(Rr_Quat Left, Rr_Quat Right)
 {
-
     Rr_Quat Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -2222,7 +2145,6 @@ static inline Rr_Quat Rr_AddQ(Rr_Quat Left, Rr_Quat Right)
 
 static inline Rr_Quat Rr_SubQ(Rr_Quat Left, Rr_Quat Right)
 {
-
     Rr_Quat Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -2241,7 +2163,6 @@ static inline Rr_Quat Rr_SubQ(Rr_Quat Left, Rr_Quat Right)
 
 static inline Rr_Quat Rr_MulQ(Rr_Quat Left, Rr_Quat Right)
 {
-
     Rr_Quat Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -2322,7 +2243,6 @@ static inline Rr_Quat Rr_MulQ(Rr_Quat Left, Rr_Quat Right)
 
 static inline Rr_Quat Rr_MulQF(Rr_Quat Left, float Multiplicative)
 {
-
     Rr_Quat Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -2342,7 +2262,6 @@ static inline Rr_Quat Rr_MulQF(Rr_Quat Left, float Multiplicative)
 
 static inline Rr_Quat Rr_DivQF(Rr_Quat Left, float Divnd)
 {
-
     Rr_Quat Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -2363,7 +2282,6 @@ static inline Rr_Quat Rr_DivQF(Rr_Quat Left, float Divnd)
 
 static inline float Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
 {
-
     float Result;
 
 #ifdef RR_MATH__USE_SSE
@@ -2391,7 +2309,6 @@ static inline float Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
 
 static inline Rr_Quat Rr_InvQ(Rr_Quat Left)
 {
-
     Rr_Quat Result;
     Result.X = -Left.X;
     Result.Y = -Left.Y;
@@ -2403,7 +2320,6 @@ static inline Rr_Quat Rr_InvQ(Rr_Quat Left)
 
 static inline Rr_Quat Rr_NormQ(Rr_Quat Quat)
 {
-
     /* NOTE(lcf): Take advantage of SSE implementation in Rr_NormV4 */
     Rr_Vec4 Vec = { Quat.X, Quat.Y, Quat.Z, Quat.W };
     Vec = Rr_NormV4(Vec);
@@ -2442,7 +2358,6 @@ static inline Rr_Quat _Rr_MixQ(
 
 static inline Rr_Quat Rr_NLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 {
-
     Rr_Quat Result = _Rr_MixQ(Left, 1.0f - Time, Right, Time);
     Result = Rr_NormQ(Result);
 
@@ -2451,7 +2366,6 @@ static inline Rr_Quat Rr_NLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 
 static inline Rr_Quat Rr_SLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 {
-
     Rr_Quat Result;
 
     float Cos_Theta = Rr_DotQ(Left, Right);
@@ -2483,7 +2397,6 @@ static inline Rr_Quat Rr_SLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 
 static inline Rr_Mat4 Rr_QToM4(Rr_Quat Left)
 {
-
     Rr_Mat4 Result;
 
     Rr_Quat NormalizedQ = Rr_NormQ(Left);
@@ -2546,7 +2459,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
     {
         if(M.Elements[0][0] > M.Elements[1][1])
         {
-
             T = 1 + M.Elements[0][0] - M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
                 T,
@@ -2556,7 +2468,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
         }
         else
         {
-
             T = 1 - M.Elements[0][0] + M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
                 M.Elements[0][1] + M.Elements[1][0],
@@ -2569,7 +2480,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
     {
         if(M.Elements[0][0] < -M.Elements[1][1])
         {
-
             T = 1 - M.Elements[0][0] - M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
                 M.Elements[2][0] + M.Elements[0][2],
@@ -2579,7 +2489,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
         }
         else
         {
-
             T = 1 + M.Elements[0][0] + M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
                 M.Elements[1][2] - M.Elements[2][1],
@@ -2603,7 +2512,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
     {
         if(M.Elements[0][0] > M.Elements[1][1])
         {
-
             T = 1 + M.Elements[0][0] - M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
                 T,
@@ -2613,7 +2521,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
         }
         else
         {
-
             T = 1 - M.Elements[0][0] + M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
                 M.Elements[0][1] + M.Elements[1][0],
@@ -2626,7 +2533,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
     {
         if(M.Elements[0][0] < -M.Elements[1][1])
         {
-
             T = 1 - M.Elements[0][0] - M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
                 M.Elements[2][0] + M.Elements[0][2],
@@ -2636,7 +2542,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
         }
         else
         {
-
             T = 1 + M.Elements[0][0] + M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
                 M.Elements[2][1] - M.Elements[1][2],
@@ -2653,7 +2558,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
 
 static inline Rr_Quat Rr_QFromAxisAngle_RH(Rr_Vec3 Axis, float Angle)
 {
-
     Rr_Quat Result;
 
     Rr_Vec3 AxisNormalized = Rr_NormV3(Axis);
@@ -2667,13 +2571,11 @@ static inline Rr_Quat Rr_QFromAxisAngle_RH(Rr_Vec3 Axis, float Angle)
 
 static inline Rr_Quat Rr_QFromAxisAngle_LH(Rr_Vec3 Axis, float Angle)
 {
-
     return Rr_QFromAxisAngle_RH(Axis, -Angle);
 }
 
 static inline Rr_Quat Rr_QFromNormPair(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-
     Rr_Quat Result;
 
     Result.XYZ = Rr_Cross(Left, Right);
@@ -2684,13 +2586,11 @@ static inline Rr_Quat Rr_QFromNormPair(Rr_Vec3 Left, Rr_Vec3 Right)
 
 static inline Rr_Quat Rr_QFromVecPair(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-
     return Rr_QFromNormPair(Rr_NormV3(Left), Rr_NormV3(Right));
 }
 
 static inline Rr_Vec2 Rr_RotateV2(Rr_Vec2 V, float Angle)
 {
-
     float sinA = Rr_SinF(Angle);
     float cosA = Rr_CosF(Angle);
 
@@ -2701,7 +2601,6 @@ static inline Rr_Vec2 Rr_RotateV2(Rr_Vec2 V, float Angle)
 // https://blog.molecular-matters.com/2013/05/24/a-faster-quaternion-vector-multiplication/
 static inline Rr_Vec3 Rr_RotateV3Q(Rr_Vec3 V, Rr_Quat Q)
 {
-
     Rr_Vec3 t = Rr_MulV3F(Rr_Cross(Q.XYZ, V), 2);
     return Rr_AddV3(V, Rr_AddV3(Rr_MulV3F(t, Q.W), Rr_Cross(Q.XYZ, t)));
 }
@@ -2711,7 +2610,6 @@ static inline Rr_Vec3 Rr_RotateV3AxisAngle_LH(
     Rr_Vec3 Axis,
     float Angle)
 {
-
     return Rr_RotateV3Q(V, Rr_QFromAxisAngle_LH(Axis, Angle));
 }
 
@@ -2720,7 +2618,6 @@ static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
     Rr_Vec3 Axis,
     float Angle)
 {
-
     return Rr_RotateV3Q(V, Rr_QFromAxisAngle_RH(Axis, Angle));
 }
 
