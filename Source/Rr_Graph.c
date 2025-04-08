@@ -1213,12 +1213,12 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
     size_t BatchStartIndex = 0;
     size_t BatchSize = 0;
 
-    // bool UseLateCommandBuffer = false;
+     bool UseLateCommandBuffer = false;
 
     for(size_t Index = 0; Index < SortedNodes.Count; ++Index)
     {
         Rr_GraphNode *Node = SortedNodes.Data[Index];
-        // UseLateCommandBuffer |= Node->UsesLateCommandBuffer;
+        UseLateCommandBuffer |= Node->UsesLateCommandBuffer;
         DependencyLevel = Node->DependencyLevel;
 
         for(size_t DepIndex = 0; DepIndex < Node->Dependencies.Count;
@@ -1378,11 +1378,9 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
         {
             /* Execute current batch now! */
 
-            // VkCommandBuffer CommandBuffer = UseLateCommandBuffer
-            //                                     ? Frame->LateCommandBuffer
-            //                                     : Frame->EarlyCommandBuffer;
-
-            VkCommandBuffer CommandBuffer = Frame->LateCommandBuffer;
+            VkCommandBuffer CommandBuffer = UseLateCommandBuffer
+                                                ? Frame->LateCommandBuffer
+                                                : Frame->EarlyCommandBuffer;
 
             Rr_ApplyBarrierBatch(
                 Renderer,
@@ -1400,7 +1398,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
 
             BatchStartIndex = Index + 1;
             BatchSize = 0;
-            // UseLateCommandBuffer = 0;
+            UseLateCommandBuffer = 0;
         }
     }
 

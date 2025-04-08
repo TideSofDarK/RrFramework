@@ -96,6 +96,7 @@ static void Init(Rr_App *App, void *UserData)
     PipelineInfo.VertexInputBindings = VertexInputBindings;
     PipelineInfo.ColorTargetCount = RR_ARRAY_COUNT(ColorTargets);
     PipelineInfo.ColorTargets = ColorTargets;
+    PipelineInfo.DepthStencil.Format = RR_TEXTURE_FORMAT_D32_SFLOAT;
     PipelineInfo.DepthStencil.EnableDepthTest = true;
     PipelineInfo.DepthStencil.EnableDepthWrite = true;
     PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;

@@ -27,7 +27,6 @@ static void Init(Rr_App *App, void *UserData)
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Blend.ColorWriteMask = RR_COLOR_COMPONENT_ALL;
     ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
