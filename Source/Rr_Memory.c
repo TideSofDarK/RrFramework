@@ -2,6 +2,7 @@
 
 #include "Rr_Log.h"
 
+#include <Rr/Rr_Math.h>
 #include <Rr/Rr_Platform.h>
 
 #include <SDL3/SDL_atomic.h>

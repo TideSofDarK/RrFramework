@@ -27,10 +27,6 @@
 
 #define RR_HAS_BIT(Value, Bit) ((Value & Bit) != 0)
 
-#define RR_MIN(A, B)      (((A) < (B)) ? (A) : (B))
-#define RR_MAX(A, B)      (((A) > (B)) ? (A) : (B))
-#define RR_CLAMP(A, X, B) (((X) < (A)) ? (A) : ((X) > (B)) ? (B) : (X))
-
 #define RR_ZERO(x)     memset(&(x), 0, sizeof((x)))
 #define RR_ZERO_PTR(x) memset((x), 0, sizeof(*(x)))
 
@@ -46,6 +42,14 @@
 #define RR_REINTERPRET_CAST(Type, Expression) ((Type)(Expression))
 #define RR_STATIC_CAST(Type, Expression)      ((Type)(Expression))
 #define RR_CONST_CAST(Type, Expression)       ((Type)(Expression))
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#define RR_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#elif defined(_MSC_VER)
+#define RR_DEPRECATED(msg) __declspec(deprecated(msg))
+#else
+#define RR_DEPRECATED(msg)
 #endif
 
 #define RR_ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))

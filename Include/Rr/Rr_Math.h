@@ -2,20 +2,6 @@
 
 #include <Rr/Rr_Defines.h>
 
-// Dummy macros for when test framework is not present.
-#ifndef COVERAGE
-#define COVERAGE(a, b)
-#endif
-
-#ifndef ASSERT_COVERED
-#define ASSERT_COVERED(a)
-#endif
-
-#ifdef RR_MATH_NO_SSE
-#warning "RR_MATH_NO_SSE is deprecated, use RR_MATH_NO_SIMD instead"
-#define RR_MATH_NO_SIMD
-#endif
-
 /* let's figure out if SSE is really available (unless disabled anyway)
    (it isn't on non-x86/x86_64 platforms or even x86 without explicit SSE
    support)
@@ -58,20 +44,14 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #ifdef __clang__
+#pragma GCC diagnostic ignored "-Wnested-anon-types"
 #pragma GCC diagnostic ignored "-Wgnu-anonymous-struct"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #endif
-#endif
-
-#if defined(__GNUC__) || defined(__clang__)
-#define Rr_DEPRECATED(msg) __attribute__((deprecated(msg)))
-#elif defined(_MSC_VER)
-#define Rr_DEPRECATED(msg) __declspec(deprecated(msg))
-#else
-#define Rr_DEPRECATED(msg)
 #endif
 
 #ifdef __cplusplus
@@ -134,11 +114,12 @@ extern "C" {
 #endif
 #endif
 
-#define Rr_MIN(a, b) ((a) > (b) ? (b) : (a))
-#define Rr_MAX(a, b) ((a) < (b) ? (b) : (a))
-#define Rr_ABS(a)    ((a) > 0 ? (a) : -(a))
-#define Rr_MOD(a, m) (((a) % (m)) >= 0 ? ((a) % (m)) : (((a) % (m)) + (m)))
-#define Rr_SQUARE(x) ((x) * (x))
+#define RR_MIN(A, B)      ((A) > (B) ? (B) : (A))
+#define RR_MAX(A, B)      ((A) < (B) ? (B) : (A))
+#define RR_CLAMP(A, X, B) (((X) < (A)) ? (A) : ((X) > (B)) ? (B) : (X))
+#define RR_ABS(A)         ((A) > 0 ? (A) : -(A))
+#define RR_MOD(A, M)      (((A) % (M)) >= 0 ? ((A) % (M)) : (((A) % (M)) + (M)))
+#define RR_SQUARE(X)      ((X) * (X))
 
 typedef union Rr_Vec2
 {
@@ -607,38 +588,28 @@ static inline float Rr_ToTurn(float Angle)
  * Floating-point math functions
  */
 
-COVERAGE(Rr_SinF, 1)
 static inline float Rr_SinF(float Angle)
 {
-    ASSERT_COVERED(Rr_SinF);
     return RR_SINF(RR_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
-COVERAGE(Rr_CosF, 1)
 static inline float Rr_CosF(float Angle)
 {
-    ASSERT_COVERED(Rr_CosF);
     return RR_COSF(RR_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
-COVERAGE(Rr_TanF, 1)
 static inline float Rr_TanF(float Angle)
 {
-    ASSERT_COVERED(Rr_TanF);
     return RR_TANF(RR_ANGLE_USER_TO_INTERNAL(Angle));
 }
 
-COVERAGE(Rr_ACosF, 1)
 static inline float Rr_ACosF(float Arg)
 {
-    ASSERT_COVERED(Rr_ACosF);
     return RR_ANGLE_INTERNAL_TO_USER(RR_ACOSF(Arg));
 }
 
-COVERAGE(Rr_SqrtF, 1)
 static inline float Rr_SqrtF(float Float)
 {
-    ASSERT_COVERED(Rr_SqrtF);
 
     float Result;
 
@@ -657,10 +628,8 @@ static inline float Rr_SqrtF(float Float)
     return Result;
 }
 
-COVERAGE(Rr_InvSqrtF, 1)
 static inline float Rr_InvSqrtF(float Float)
 {
-    ASSERT_COVERED(Rr_InvSqrtF);
 
     float Result;
 
@@ -690,7 +659,7 @@ static inline void Rr_PerspectiveResize(float Aspect, Rr_Mat4 *Proj)
     Proj->Elements[0][0] = Proj->Elements[1][1] / Aspect;
 }
 
-static inline Rr_Mat4 Rr_VulkanMatrix()
+static inline Rr_Mat4 Rr_VulkanMatrix(void)
 {
     Rr_Mat4 Out = { 0 };
     Out.Elements[0][0] = 1.0f;
@@ -741,17 +710,13 @@ static inline Rr_Mat4 Rr_EulerXYZ(Rr_Vec3 Angles)
  * Utility functions
  */
 
-COVERAGE(Rr_Lerp, 1)
 static inline float Rr_Lerp(float A, float Time, float B)
 {
-    ASSERT_COVERED(Rr_Lerp);
     return (1.0f - Time) * A + Time * B;
 }
 
-COVERAGE(Rr_Clamp, 1)
 static inline float Rr_Clamp(float Min, float Value, float Max)
 {
-    ASSERT_COVERED(Rr_Clamp);
 
     float Result = Value;
 
@@ -772,10 +737,8 @@ static inline float Rr_Clamp(float Min, float Value, float Max)
  * Vector initialization
  */
 
-COVERAGE(Rr_V2, 1)
 static inline Rr_Vec2 Rr_V2(float X, float Y)
 {
-    ASSERT_COVERED(Rr_V2);
 
     Rr_Vec2 Result;
     Result.X = X;
@@ -784,10 +747,8 @@ static inline Rr_Vec2 Rr_V2(float X, float Y)
     return Result;
 }
 
-COVERAGE(Rr_V3, 1)
 static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
 {
-    ASSERT_COVERED(Rr_V3);
 
     Rr_Vec3 Result;
     Result.X = X;
@@ -797,10 +758,8 @@ static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
     return Result;
 }
 
-COVERAGE(Rr_V4, 1)
 static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
 {
-    ASSERT_COVERED(Rr_V4);
 
     Rr_Vec4 Result;
 
@@ -819,10 +778,8 @@ static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
     return Result;
 }
 
-COVERAGE(Rr_V4V, 1)
 static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, float W)
 {
-    ASSERT_COVERED(Rr_V4V);
 
     Rr_Vec4 Result;
 
@@ -843,10 +800,8 @@ static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, float W)
  * Binary vector operations
  */
 
-COVERAGE(Rr_AddV2, 1)
 static inline Rr_Vec2 Rr_AddV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_AddV2);
 
     Rr_Vec2 Result;
     Result.X = Left.X + Right.X;
@@ -855,10 +810,8 @@ static inline Rr_Vec2 Rr_AddV2(Rr_Vec2 Left, Rr_Vec2 Right)
     return Result;
 }
 
-COVERAGE(Rr_AddV3, 1)
 static inline Rr_Vec3 Rr_AddV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_AddV3);
 
     Rr_Vec3 Result;
     Result.X = Left.X + Right.X;
@@ -868,10 +821,8 @@ static inline Rr_Vec3 Rr_AddV3(Rr_Vec3 Left, Rr_Vec3 Right)
     return Result;
 }
 
-COVERAGE(Rr_AddV4, 1)
 static inline Rr_Vec4 Rr_AddV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_AddV4);
 
     Rr_Vec4 Result;
 
@@ -889,10 +840,8 @@ static inline Rr_Vec4 Rr_AddV4(Rr_Vec4 Left, Rr_Vec4 Right)
     return Result;
 }
 
-COVERAGE(Rr_SubV2, 1)
 static inline Rr_Vec2 Rr_SubV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_SubV2);
 
     Rr_Vec2 Result;
     Result.X = Left.X - Right.X;
@@ -901,10 +850,8 @@ static inline Rr_Vec2 Rr_SubV2(Rr_Vec2 Left, Rr_Vec2 Right)
     return Result;
 }
 
-COVERAGE(Rr_SubV3, 1)
 static inline Rr_Vec3 Rr_SubV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_SubV3);
 
     Rr_Vec3 Result;
     Result.X = Left.X - Right.X;
@@ -914,10 +861,8 @@ static inline Rr_Vec3 Rr_SubV3(Rr_Vec3 Left, Rr_Vec3 Right)
     return Result;
 }
 
-COVERAGE(Rr_SubV4, 1)
 static inline Rr_Vec4 Rr_SubV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_SubV4);
 
     Rr_Vec4 Result;
 
@@ -935,10 +880,8 @@ static inline Rr_Vec4 Rr_SubV4(Rr_Vec4 Left, Rr_Vec4 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulV2, 1)
 static inline Rr_Vec2 Rr_MulV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_MulV2);
 
     Rr_Vec2 Result;
     Result.X = Left.X * Right.X;
@@ -947,10 +890,8 @@ static inline Rr_Vec2 Rr_MulV2(Rr_Vec2 Left, Rr_Vec2 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulV2F, 1)
 static inline Rr_Vec2 Rr_MulV2F(Rr_Vec2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV2F);
 
     Rr_Vec2 Result;
     Result.X = Left.X * Right;
@@ -959,10 +900,8 @@ static inline Rr_Vec2 Rr_MulV2F(Rr_Vec2 Left, float Right)
     return Result;
 }
 
-COVERAGE(Rr_MulV3, 1)
 static inline Rr_Vec3 Rr_MulV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_MulV3);
 
     Rr_Vec3 Result;
     Result.X = Left.X * Right.X;
@@ -972,10 +911,8 @@ static inline Rr_Vec3 Rr_MulV3(Rr_Vec3 Left, Rr_Vec3 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulV3F, 1)
 static inline Rr_Vec3 Rr_MulV3F(Rr_Vec3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV3F);
 
     Rr_Vec3 Result;
     Result.X = Left.X * Right;
@@ -985,10 +922,8 @@ static inline Rr_Vec3 Rr_MulV3F(Rr_Vec3 Left, float Right)
     return Result;
 }
 
-COVERAGE(Rr_MulV4, 1)
 static inline Rr_Vec4 Rr_MulV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_MulV4);
 
     Rr_Vec4 Result;
 
@@ -1006,10 +941,8 @@ static inline Rr_Vec4 Rr_MulV4(Rr_Vec4 Left, Rr_Vec4 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulV4F, 1)
 static inline Rr_Vec4 Rr_MulV4F(Rr_Vec4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV4F);
 
     Rr_Vec4 Result;
 
@@ -1028,10 +961,8 @@ static inline Rr_Vec4 Rr_MulV4F(Rr_Vec4 Left, float Right)
     return Result;
 }
 
-COVERAGE(Rr_DivV2, 1)
 static inline Rr_Vec2 Rr_DivV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_DivV2);
 
     Rr_Vec2 Result;
     Result.X = Left.X / Right.X;
@@ -1040,10 +971,8 @@ static inline Rr_Vec2 Rr_DivV2(Rr_Vec2 Left, Rr_Vec2 Right)
     return Result;
 }
 
-COVERAGE(Rr_DivV2F, 1)
 static inline Rr_Vec2 Rr_DivV2F(Rr_Vec2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV2F);
 
     Rr_Vec2 Result;
     Result.X = Left.X / Right;
@@ -1052,10 +981,8 @@ static inline Rr_Vec2 Rr_DivV2F(Rr_Vec2 Left, float Right)
     return Result;
 }
 
-COVERAGE(Rr_DivV3, 1)
 static inline Rr_Vec3 Rr_DivV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_DivV3);
 
     Rr_Vec3 Result;
     Result.X = Left.X / Right.X;
@@ -1065,10 +992,8 @@ static inline Rr_Vec3 Rr_DivV3(Rr_Vec3 Left, Rr_Vec3 Right)
     return Result;
 }
 
-COVERAGE(Rr_DivV3F, 1)
 static inline Rr_Vec3 Rr_DivV3F(Rr_Vec3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV3F);
 
     Rr_Vec3 Result;
     Result.X = Left.X / Right;
@@ -1078,10 +1003,8 @@ static inline Rr_Vec3 Rr_DivV3F(Rr_Vec3 Left, float Right)
     return Result;
 }
 
-COVERAGE(Rr_DivV4, 1)
 static inline Rr_Vec4 Rr_DivV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_DivV4);
 
     Rr_Vec4 Result;
 
@@ -1099,10 +1022,8 @@ static inline Rr_Vec4 Rr_DivV4(Rr_Vec4 Left, Rr_Vec4 Right)
     return Result;
 }
 
-COVERAGE(Rr_DivV4F, 1)
 static inline Rr_Vec4 Rr_DivV4F(Rr_Vec4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV4F);
 
     Rr_Vec4 Result;
 
@@ -1122,24 +1043,18 @@ static inline Rr_Vec4 Rr_DivV4F(Rr_Vec4 Left, float Right)
     return Result;
 }
 
-COVERAGE(Rr_EqV2, 1)
 static inline bool Rr_EqV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_EqV2);
     return Left.X == Right.X && Left.Y == Right.Y;
 }
 
-COVERAGE(Rr_EqV3, 1)
 static inline bool Rr_EqV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_EqV3);
     return Left.X == Right.X && Left.Y == Right.Y && Left.Z == Right.Z;
 }
 
-COVERAGE(Rr_EqV4, 1)
 static inline bool Rr_EqV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_EqV4);
     return Left.X == Right.X && Left.Y == Right.Y && Left.Z == Right.Z &&
            Left.W == Right.W;
 }
@@ -1149,24 +1064,18 @@ static inline bool Rr_EqIV3(Rr_IntVec3 Left, Rr_IntVec3 Right)
     return Left.X == Right.X && Left.Y == Right.Y && Left.Z == Right.Z;
 }
 
-COVERAGE(Rr_DotV2, 1)
 static inline float Rr_DotV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_DotV2);
     return (Left.X * Right.X) + (Left.Y * Right.Y);
 }
 
-COVERAGE(Rr_DotV3, 1)
 static inline float Rr_DotV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_DotV3);
     return (Left.X * Right.X) + (Left.Y * Right.Y) + (Left.Z * Right.Z);
 }
 
-COVERAGE(Rr_DotV4, 1)
 static inline float Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_DotV4);
 
     float Result;
 
@@ -1197,10 +1106,8 @@ static inline float Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
     return Result;
 }
 
-COVERAGE(Rr_Cross, 1)
 static inline Rr_Vec3 Rr_Cross(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_Cross);
 
     Rr_Vec3 Result;
     Result.X = (Left.Y * Right.Z) - (Left.Z * Right.Y);
@@ -1214,66 +1121,48 @@ static inline Rr_Vec3 Rr_Cross(Rr_Vec3 Left, Rr_Vec3 Right)
  * Unary vector operations
  */
 
-COVERAGE(Rr_LenSqrV2, 1)
 static inline float Rr_LenSqrV2(Rr_Vec2 A)
 {
-    ASSERT_COVERED(Rr_LenSqrV2);
     return Rr_DotV2(A, A);
 }
 
-COVERAGE(Rr_LenSqrV3, 1)
 static inline float Rr_LenSqrV3(Rr_Vec3 A)
 {
-    ASSERT_COVERED(Rr_LenSqrV3);
     return Rr_DotV3(A, A);
 }
 
-COVERAGE(Rr_LenSqrV4, 1)
 static inline float Rr_LenSqrV4(Rr_Vec4 A)
 {
-    ASSERT_COVERED(Rr_LenSqrV4);
     return Rr_DotV4(A, A);
 }
 
-COVERAGE(Rr_LenV2, 1)
 static inline float Rr_LenV2(Rr_Vec2 A)
 {
-    ASSERT_COVERED(Rr_LenV2);
     return Rr_SqrtF(Rr_LenSqrV2(A));
 }
 
-COVERAGE(Rr_LenV3, 1)
 static inline float Rr_LenV3(Rr_Vec3 A)
 {
-    ASSERT_COVERED(Rr_LenV3);
     return Rr_SqrtF(Rr_LenSqrV3(A));
 }
 
-COVERAGE(Rr_LenV4, 1)
 static inline float Rr_LenV4(Rr_Vec4 A)
 {
-    ASSERT_COVERED(Rr_LenV4);
     return Rr_SqrtF(Rr_LenSqrV4(A));
 }
 
-COVERAGE(Rr_NormV2, 1)
 static inline Rr_Vec2 Rr_NormV2(Rr_Vec2 A)
 {
-    ASSERT_COVERED(Rr_NormV2);
     return Rr_MulV2F(A, Rr_InvSqrtF(Rr_DotV2(A, A)));
 }
 
-COVERAGE(Rr_NormV3, 1)
 static inline Rr_Vec3 Rr_NormV3(Rr_Vec3 A)
 {
-    ASSERT_COVERED(Rr_NormV3);
     return Rr_MulV3F(A, Rr_InvSqrtF(Rr_DotV3(A, A)));
 }
 
-COVERAGE(Rr_NormV4, 1)
 static inline Rr_Vec4 Rr_NormV4(Rr_Vec4 A)
 {
-    ASSERT_COVERED(Rr_NormV4);
     return Rr_MulV4F(A, Rr_InvSqrtF(Rr_DotV4(A, A)));
 }
 
@@ -1281,24 +1170,18 @@ static inline Rr_Vec4 Rr_NormV4(Rr_Vec4 A)
  * Utility vector functions
  */
 
-COVERAGE(Rr_LerpV2, 1)
 static inline Rr_Vec2 Rr_LerpV2(Rr_Vec2 A, float Time, Rr_Vec2 B)
 {
-    ASSERT_COVERED(Rr_LerpV2);
     return Rr_AddV2(Rr_MulV2F(A, 1.0f - Time), Rr_MulV2F(B, Time));
 }
 
-COVERAGE(Rr_LerpV3, 1)
 static inline Rr_Vec3 Rr_LerpV3(Rr_Vec3 A, float Time, Rr_Vec3 B)
 {
-    ASSERT_COVERED(Rr_LerpV3);
     return Rr_AddV3(Rr_MulV3F(A, 1.0f - Time), Rr_MulV3F(B, Time));
 }
 
-COVERAGE(Rr_LerpV4, 1)
 static inline Rr_Vec4 Rr_LerpV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
 {
-    ASSERT_COVERED(Rr_LerpV4);
     return Rr_AddV4(Rr_MulV4F(A, 1.0f - Time), Rr_MulV4F(B, Time));
 }
 
@@ -1306,10 +1189,8 @@ static inline Rr_Vec4 Rr_LerpV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
  * SSE stuff
  */
 
-COVERAGE(Rr_LinearCombineV4M4, 1)
 static inline Rr_Vec4 Rr_LinearCombineV4M4(Rr_Vec4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_LinearCombineV4M4);
 
     Rr_Vec4 Result;
 #ifdef RR_MATH__USE_SSE
@@ -1368,18 +1249,14 @@ static inline Rr_Vec4 Rr_LinearCombineV4M4(Rr_Vec4 Left, Rr_Mat4 Right)
  * 2x2 Matrices
  */
 
-COVERAGE(Rr_M2, 1)
 static inline Rr_Mat2 Rr_M2(void)
 {
-    ASSERT_COVERED(Rr_M2);
     Rr_Mat2 Result = { 0 };
     return Result;
 }
 
-COVERAGE(Rr_M2D, 1)
 static inline Rr_Mat2 Rr_M2D(float Diagonal)
 {
-    ASSERT_COVERED(Rr_M2D);
 
     Rr_Mat2 Result = { 0 };
     Result.Elements[0][0] = Diagonal;
@@ -1388,10 +1265,8 @@ static inline Rr_Mat2 Rr_M2D(float Diagonal)
     return Result;
 }
 
-COVERAGE(Rr_TransposeM2, 1)
 static inline Rr_Mat2 Rr_TransposeM2(Rr_Mat2 Matrix)
 {
-    ASSERT_COVERED(Rr_TransposeM2);
 
     Rr_Mat2 Result = Matrix;
 
@@ -1401,10 +1276,8 @@ static inline Rr_Mat2 Rr_TransposeM2(Rr_Mat2 Matrix)
     return Result;
 }
 
-COVERAGE(Rr_AddM2, 1)
 static inline Rr_Mat2 Rr_AddM2(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_AddM2);
 
     Rr_Mat2 Result;
 
@@ -1416,10 +1289,8 @@ static inline Rr_Mat2 Rr_AddM2(Rr_Mat2 Left, Rr_Mat2 Right)
     return Result;
 }
 
-COVERAGE(Rr_SubM2, 1)
 static inline Rr_Mat2 Rr_SubM2(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_SubM2);
 
     Rr_Mat2 Result;
 
@@ -1431,10 +1302,8 @@ static inline Rr_Mat2 Rr_SubM2(Rr_Mat2 Left, Rr_Mat2 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulM2V2, 1)
 static inline Rr_Vec2 Rr_MulM2V2(Rr_Mat2 Matrix, Rr_Vec2 Vector)
 {
-    ASSERT_COVERED(Rr_MulM2V2);
 
     Rr_Vec2 Result;
 
@@ -1447,10 +1316,8 @@ static inline Rr_Vec2 Rr_MulM2V2(Rr_Mat2 Matrix, Rr_Vec2 Vector)
     return Result;
 }
 
-COVERAGE(Rr_MulM2, 1)
 static inline Rr_Mat2 Rr_MulM2(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_MulM2);
 
     Rr_Mat2 Result;
     Result.Columns[0] = Rr_MulM2V2(Left, Right.Columns[0]);
@@ -1459,10 +1326,8 @@ static inline Rr_Mat2 Rr_MulM2(Rr_Mat2 Left, Rr_Mat2 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulM2F, 1)
 static inline Rr_Mat2 Rr_MulM2F(Rr_Mat2 Matrix, float Scalar)
 {
-    ASSERT_COVERED(Rr_MulM2F);
 
     Rr_Mat2 Result;
 
@@ -1474,10 +1339,8 @@ static inline Rr_Mat2 Rr_MulM2F(Rr_Mat2 Matrix, float Scalar)
     return Result;
 }
 
-COVERAGE(Rr_DivM2F, 1)
 static inline Rr_Mat2 Rr_DivM2F(Rr_Mat2 Matrix, float Scalar)
 {
-    ASSERT_COVERED(Rr_DivM2F);
 
     Rr_Mat2 Result;
 
@@ -1489,18 +1352,14 @@ static inline Rr_Mat2 Rr_DivM2F(Rr_Mat2 Matrix, float Scalar)
     return Result;
 }
 
-COVERAGE(Rr_DeterminantM2, 1)
 static inline float Rr_DeterminantM2(Rr_Mat2 Matrix)
 {
-    ASSERT_COVERED(Rr_DeterminantM2);
     return Matrix.Elements[0][0] * Matrix.Elements[1][1] -
            Matrix.Elements[0][1] * Matrix.Elements[1][0];
 }
 
-COVERAGE(Rr_InvGeneralM2, 1)
 static inline Rr_Mat2 Rr_InvGeneralM2(Rr_Mat2 Matrix)
 {
-    ASSERT_COVERED(Rr_InvGeneralM2);
 
     Rr_Mat2 Result;
     float InvDeterminant = 1.0f / Rr_DeterminantM2(Matrix);
@@ -1516,18 +1375,14 @@ static inline Rr_Mat2 Rr_InvGeneralM2(Rr_Mat2 Matrix)
  * 3x3 Matrices
  */
 
-COVERAGE(Rr_M3, 1)
 static inline Rr_Mat3 Rr_M3(void)
 {
-    ASSERT_COVERED(Rr_M3);
     Rr_Mat3 Result = { 0 };
     return Result;
 }
 
-COVERAGE(Rr_M3D, 1)
 static inline Rr_Mat3 Rr_M3D(float Diagonal)
 {
-    ASSERT_COVERED(Rr_M3D);
 
     Rr_Mat3 Result = { 0 };
     Result.Elements[0][0] = Diagonal;
@@ -1537,10 +1392,8 @@ static inline Rr_Mat3 Rr_M3D(float Diagonal)
     return Result;
 }
 
-COVERAGE(Rr_TransposeM3, 1)
 static inline Rr_Mat3 Rr_TransposeM3(Rr_Mat3 Matrix)
 {
-    ASSERT_COVERED(Rr_TransposeM3);
 
     Rr_Mat3 Result = Matrix;
 
@@ -1554,10 +1407,8 @@ static inline Rr_Mat3 Rr_TransposeM3(Rr_Mat3 Matrix)
     return Result;
 }
 
-COVERAGE(Rr_AddM3, 1)
 static inline Rr_Mat3 Rr_AddM3(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_AddM3);
 
     Rr_Mat3 Result;
 
@@ -1574,10 +1425,8 @@ static inline Rr_Mat3 Rr_AddM3(Rr_Mat3 Left, Rr_Mat3 Right)
     return Result;
 }
 
-COVERAGE(Rr_SubM3, 1)
 static inline Rr_Mat3 Rr_SubM3(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_SubM3);
 
     Rr_Mat3 Result;
 
@@ -1594,10 +1443,8 @@ static inline Rr_Mat3 Rr_SubM3(Rr_Mat3 Left, Rr_Mat3 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulM3V3, 1)
 static inline Rr_Vec3 Rr_MulM3V3(Rr_Mat3 Matrix, Rr_Vec3 Vector)
 {
-    ASSERT_COVERED(Rr_MulM3V3);
 
     Rr_Vec3 Result;
 
@@ -1616,10 +1463,8 @@ static inline Rr_Vec3 Rr_MulM3V3(Rr_Mat3 Matrix, Rr_Vec3 Vector)
     return Result;
 }
 
-COVERAGE(Rr_MulM3, 1)
 static inline Rr_Mat3 Rr_MulM3(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_MulM3);
 
     Rr_Mat3 Result;
     Result.Columns[0] = Rr_MulM3V3(Left, Right.Columns[0]);
@@ -1629,10 +1474,8 @@ static inline Rr_Mat3 Rr_MulM3(Rr_Mat3 Left, Rr_Mat3 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulM3F, 1)
 static inline Rr_Mat3 Rr_MulM3F(Rr_Mat3 Matrix, float Scalar)
 {
-    ASSERT_COVERED(Rr_MulM3F);
 
     Rr_Mat3 Result;
 
@@ -1649,10 +1492,8 @@ static inline Rr_Mat3 Rr_MulM3F(Rr_Mat3 Matrix, float Scalar)
     return Result;
 }
 
-COVERAGE(Rr_DivM3, 1)
 static inline Rr_Mat3 Rr_DivM3F(Rr_Mat3 Matrix, float Scalar)
 {
-    ASSERT_COVERED(Rr_DivM3);
 
     Rr_Mat3 Result;
 
@@ -1669,10 +1510,8 @@ static inline Rr_Mat3 Rr_DivM3F(Rr_Mat3 Matrix, float Scalar)
     return Result;
 }
 
-COVERAGE(Rr_DeterminantM3, 1)
 static inline float Rr_DeterminantM3(Rr_Mat3 Matrix)
 {
-    ASSERT_COVERED(Rr_DeterminantM3);
 
     Rr_Mat3 Cross;
     Cross.Columns[0] = Rr_Cross(Matrix.Columns[1], Matrix.Columns[2]);
@@ -1682,10 +1521,8 @@ static inline float Rr_DeterminantM3(Rr_Mat3 Matrix)
     return Rr_DotV3(Cross.Columns[2], Matrix.Columns[2]);
 }
 
-COVERAGE(Rr_InvGeneralM3, 1)
 static inline Rr_Mat3 Rr_InvGeneralM3(Rr_Mat3 Matrix)
 {
-    ASSERT_COVERED(Rr_InvGeneralM3);
 
     Rr_Mat3 Cross;
     Cross.Columns[0] = Rr_Cross(Matrix.Columns[1], Matrix.Columns[2]);
@@ -1706,18 +1543,14 @@ static inline Rr_Mat3 Rr_InvGeneralM3(Rr_Mat3 Matrix)
  * 4x4 Matrices
  */
 
-COVERAGE(Rr_M4, 1)
 static inline Rr_Mat4 Rr_M4(void)
 {
-    ASSERT_COVERED(Rr_M4);
     Rr_Mat4 Result = { 0 };
     return Result;
 }
 
-COVERAGE(Rr_M4D, 1)
 static inline Rr_Mat4 Rr_M4D(float Diagonal)
 {
-    ASSERT_COVERED(Rr_M4D);
 
     Rr_Mat4 Result = { 0 };
     Result.Elements[0][0] = Diagonal;
@@ -1728,10 +1561,8 @@ static inline Rr_Mat4 Rr_M4D(float Diagonal)
     return Result;
 }
 
-COVERAGE(Rr_TransposeM4, 1)
 static inline Rr_Mat4 Rr_TransposeM4(Rr_Mat4 Matrix)
 {
-    ASSERT_COVERED(Rr_TransposeM4);
 
     Rr_Mat4 Result;
 #ifdef RR_MATH__USE_SSE
@@ -1769,10 +1600,8 @@ static inline Rr_Mat4 Rr_TransposeM4(Rr_Mat4 Matrix)
     return Result;
 }
 
-COVERAGE(Rr_AddM4, 1)
 static inline Rr_Mat4 Rr_AddM4(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_AddM4);
 
     Rr_Mat4 Result;
 
@@ -1784,10 +1613,8 @@ static inline Rr_Mat4 Rr_AddM4(Rr_Mat4 Left, Rr_Mat4 Right)
     return Result;
 }
 
-COVERAGE(Rr_SubM4, 1)
 static inline Rr_Mat4 Rr_SubM4(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_SubM4);
 
     Rr_Mat4 Result;
 
@@ -1799,10 +1626,8 @@ static inline Rr_Mat4 Rr_SubM4(Rr_Mat4 Left, Rr_Mat4 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulM4, 1)
 static inline Rr_Mat4 Rr_MulM4(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_MulM4);
 
     Rr_Mat4 Result;
     Result.Columns[0] = Rr_LinearCombineV4M4(Right.Columns[0], Left);
@@ -1813,10 +1638,8 @@ static inline Rr_Mat4 Rr_MulM4(Rr_Mat4 Left, Rr_Mat4 Right)
     return Result;
 }
 
-COVERAGE(Rr_MulM4F, 1)
 static inline Rr_Mat4 Rr_MulM4F(Rr_Mat4 Matrix, float Scalar)
 {
-    ASSERT_COVERED(Rr_MulM4F);
 
     Rr_Mat4 Result;
 
@@ -1853,17 +1676,13 @@ static inline Rr_Mat4 Rr_MulM4F(Rr_Mat4 Matrix, float Scalar)
     return Result;
 }
 
-COVERAGE(Rr_MulM4V4, 1)
 static inline Rr_Vec4 Rr_MulM4V4(Rr_Mat4 Matrix, Rr_Vec4 Vector)
 {
-    ASSERT_COVERED(Rr_MulM4V4);
     return Rr_LinearCombineV4M4(Vector, Matrix);
 }
 
-COVERAGE(Rr_DivM4F, 1)
 static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, float Scalar)
 {
-    ASSERT_COVERED(Rr_DivM4F);
 
     Rr_Mat4 Result;
 
@@ -1901,10 +1720,8 @@ static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, float Scalar)
     return Result;
 }
 
-COVERAGE(Rr_DeterminantM4, 1)
 static inline float Rr_DeterminantM4(Rr_Mat4 Matrix)
 {
-    ASSERT_COVERED(Rr_DeterminantM4);
 
     Rr_Vec3 C01 = Rr_Cross(Matrix.Columns[0].XYZ, Matrix.Columns[1].XYZ);
     Rr_Vec3 C23 = Rr_Cross(Matrix.Columns[2].XYZ, Matrix.Columns[3].XYZ);
@@ -1918,12 +1735,10 @@ static inline float Rr_DeterminantM4(Rr_Mat4 Matrix)
     return Rr_DotV3(C01, B32) + Rr_DotV3(C23, B10);
 }
 
-COVERAGE(Rr_InvGeneralM4, 1)
 // Returns a general-purpose inverse of an Rr_Mat4. Note that special-purpose
 // inverses of many transformations are available and will be more efficient.
 static inline Rr_Mat4 Rr_InvGeneralM4(Rr_Mat4 Matrix)
 {
-    ASSERT_COVERED(Rr_InvGeneralM4);
 
     Rr_Vec3 C01 = Rr_Cross(Matrix.Columns[0].XYZ, Matrix.Columns[1].XYZ);
     Rr_Vec3 C23 = Rr_Cross(Matrix.Columns[2].XYZ, Matrix.Columns[3].XYZ);
@@ -1969,7 +1784,6 @@ static inline Rr_Mat4 Rr_InvGeneralM4(Rr_Mat4 Matrix)
  * Common graphics transformations
  */
 
-COVERAGE(Rr_Orthographic_RH_NO, 1)
 // Produces a right-handed orthographic projection matrix with Z ranging from -1
 // to 1 (the GL convention). Left, Right, Bottom, and Top specify the
 // coordinates of their respective clipping planes. Near and Far specify the
@@ -1982,7 +1796,6 @@ static inline Rr_Mat4 Rr_Orthographic_RH_NO(
     float Near,
     float Far)
 {
-    ASSERT_COVERED(Rr_Orthographic_RH_NO);
 
     Rr_Mat4 Result = { 0 };
 
@@ -1998,7 +1811,6 @@ static inline Rr_Mat4 Rr_Orthographic_RH_NO(
     return Result;
 }
 
-COVERAGE(Rr_Orthographic_RH_ZO, 1)
 // Produces a right-handed orthographic projection matrix with Z ranging from 0
 // to 1 (the DirectX convention). Left, Right, Bottom, and Top specify the
 // coordinates of their respective clipping planes. Near and Far specify the
@@ -2011,7 +1823,6 @@ static inline Rr_Mat4 Rr_Orthographic_RH_ZO(
     float Near,
     float Far)
 {
-    ASSERT_COVERED(Rr_Orthographic_RH_ZO);
 
     Rr_Mat4 Result = { 0 };
 
@@ -2027,7 +1838,6 @@ static inline Rr_Mat4 Rr_Orthographic_RH_ZO(
     return Result;
 }
 
-COVERAGE(Rr_Orthographic_LH_NO, 1)
 // Produces a left-handed orthographic projection matrix with Z ranging from -1
 // to 1 (the GL convention). Left, Right, Bottom, and Top specify the
 // coordinates of their respective clipping planes. Near and Far specify the
@@ -2040,7 +1850,6 @@ static inline Rr_Mat4 Rr_Orthographic_LH_NO(
     float Near,
     float Far)
 {
-    ASSERT_COVERED(Rr_Orthographic_LH_NO);
 
     Rr_Mat4 Result = Rr_Orthographic_RH_NO(Left, Right, Bottom, Top, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
@@ -2048,7 +1857,6 @@ static inline Rr_Mat4 Rr_Orthographic_LH_NO(
     return Result;
 }
 
-COVERAGE(Rr_Orthographic_LH_ZO, 1)
 // Produces a left-handed orthographic projection matrix with Z ranging from 0
 // to 1 (the DirectX convention). Left, Right, Bottom, and Top specify the
 // coordinates of their respective clipping planes. Near and Far specify the
@@ -2061,7 +1869,6 @@ static inline Rr_Mat4 Rr_Orthographic_LH_ZO(
     float Near,
     float Far)
 {
-    ASSERT_COVERED(Rr_Orthographic_LH_ZO);
 
     Rr_Mat4 Result = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
@@ -2069,13 +1876,11 @@ static inline Rr_Mat4 Rr_Orthographic_LH_ZO(
     return Result;
 }
 
-COVERAGE(Rr_InvOrthographic, 1)
 // Returns an inverse for the given orthographic projection matrix. Works for
 // all orthographic projection matrices, regardless of handedness or NDC
 // convention.
 static inline Rr_Mat4 Rr_InvOrthographic(Rr_Mat4 OrthoMatrix)
 {
-    ASSERT_COVERED(Rr_InvOrthographic);
 
     Rr_Mat4 Result = { 0 };
     Result.Elements[0][0] = 1.0f / OrthoMatrix.Elements[0][0];
@@ -2090,14 +1895,12 @@ static inline Rr_Mat4 Rr_InvOrthographic(Rr_Mat4 OrthoMatrix)
     return Result;
 }
 
-COVERAGE(Rr_Perspective_RH_NO, 1)
 static inline Rr_Mat4 Rr_Perspective_RH_NO(
     float FOV,
     float AspectRatio,
     float Near,
     float Far)
 {
-    ASSERT_COVERED(Rr_Perspective_RH_NO);
 
     Rr_Mat4 Result = { 0 };
 
@@ -2115,14 +1918,12 @@ static inline Rr_Mat4 Rr_Perspective_RH_NO(
     return Result;
 }
 
-COVERAGE(Rr_Perspective_RH_ZO, 1)
 static inline Rr_Mat4 Rr_Perspective_RH_ZO(
     float FOV,
     float AspectRatio,
     float Near,
     float Far)
 {
-    ASSERT_COVERED(Rr_Perspective_RH_ZO);
 
     Rr_Mat4 Result = { 0 };
 
@@ -2140,14 +1941,12 @@ static inline Rr_Mat4 Rr_Perspective_RH_ZO(
     return Result;
 }
 
-COVERAGE(Rr_Perspective_LH_NO, 1)
 static inline Rr_Mat4 Rr_Perspective_LH_NO(
     float FOV,
     float AspectRatio,
     float Near,
     float Far)
 {
-    ASSERT_COVERED(Rr_Perspective_LH_NO);
 
     Rr_Mat4 Result = Rr_Perspective_RH_NO(FOV, AspectRatio, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
@@ -2156,14 +1955,12 @@ static inline Rr_Mat4 Rr_Perspective_LH_NO(
     return Result;
 }
 
-COVERAGE(Rr_Perspective_LH_ZO, 1)
 static inline Rr_Mat4 Rr_Perspective_LH_ZO(
     float FOV,
     float AspectRatio,
     float Near,
     float Far)
 {
-    ASSERT_COVERED(Rr_Perspective_LH_ZO);
 
     Rr_Mat4 Result = Rr_Perspective_RH_ZO(FOV, AspectRatio, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
@@ -2172,10 +1969,8 @@ static inline Rr_Mat4 Rr_Perspective_LH_ZO(
     return Result;
 }
 
-COVERAGE(Rr_InvPerspective_RH, 1)
 static inline Rr_Mat4 Rr_InvPerspective_RH(Rr_Mat4 PerspectiveMatrix)
 {
-    ASSERT_COVERED(Rr_InvPerspective_RH);
 
     Rr_Mat4 Result = { 0 };
     Result.Elements[0][0] = 1.0f / PerspectiveMatrix.Elements[0][0];
@@ -2190,10 +1985,8 @@ static inline Rr_Mat4 Rr_InvPerspective_RH(Rr_Mat4 PerspectiveMatrix)
     return Result;
 }
 
-COVERAGE(Rr_InvPerspective_LH, 1)
 static inline Rr_Mat4 Rr_InvPerspective_LH(Rr_Mat4 PerspectiveMatrix)
 {
-    ASSERT_COVERED(Rr_InvPerspective_LH);
 
     Rr_Mat4 Result = { 0 };
     Result.Elements[0][0] = 1.0f / PerspectiveMatrix.Elements[0][0];
@@ -2208,10 +2001,8 @@ static inline Rr_Mat4 Rr_InvPerspective_LH(Rr_Mat4 PerspectiveMatrix)
     return Result;
 }
 
-COVERAGE(Rr_Translate, 1)
 static inline Rr_Mat4 Rr_Translate(Rr_Vec3 Translation)
 {
-    ASSERT_COVERED(Rr_Translate);
 
     Rr_Mat4 Result = Rr_M4D(1.0f);
     Result.Elements[3][0] = Translation.X;
@@ -2221,10 +2012,8 @@ static inline Rr_Mat4 Rr_Translate(Rr_Vec3 Translation)
     return Result;
 }
 
-COVERAGE(Rr_InvTranslate, 1)
 static inline Rr_Mat4 Rr_InvTranslate(Rr_Mat4 TranslationMatrix)
 {
-    ASSERT_COVERED(Rr_InvTranslate);
 
     Rr_Mat4 Result = TranslationMatrix;
     Result.Elements[3][0] = -Result.Elements[3][0];
@@ -2234,10 +2023,8 @@ static inline Rr_Mat4 Rr_InvTranslate(Rr_Mat4 TranslationMatrix)
     return Result;
 }
 
-COVERAGE(Rr_Rotate_RH, 1)
 static inline Rr_Mat4 Rr_Rotate_RH(float Angle, Rr_Vec3 Axis)
 {
-    ASSERT_COVERED(Rr_Rotate_RH);
 
     Rr_Mat4 Result = Rr_M4D(1.0f);
 
@@ -2262,25 +2049,19 @@ static inline Rr_Mat4 Rr_Rotate_RH(float Angle, Rr_Vec3 Axis)
     return Result;
 }
 
-COVERAGE(Rr_Rotate_LH, 1)
 static inline Rr_Mat4 Rr_Rotate_LH(float Angle, Rr_Vec3 Axis)
 {
-    ASSERT_COVERED(Rr_Rotate_LH);
     /* NOTE(lcf): Matrix will be inverse/transpose of RH. */
     return Rr_Rotate_RH(-Angle, Axis);
 }
 
-COVERAGE(Rr_InvRotate, 1)
 static inline Rr_Mat4 Rr_InvRotate(Rr_Mat4 RotationMatrix)
 {
-    ASSERT_COVERED(Rr_InvRotate);
     return Rr_TransposeM4(RotationMatrix);
 }
 
-COVERAGE(Rr_Scale, 1)
 static inline Rr_Mat4 Rr_Scale(Rr_Vec3 Scale)
 {
-    ASSERT_COVERED(Rr_Scale);
 
     Rr_Mat4 Result = Rr_M4D(1.0f);
     Result.Elements[0][0] = Scale.X;
@@ -2290,10 +2071,8 @@ static inline Rr_Mat4 Rr_Scale(Rr_Vec3 Scale)
     return Result;
 }
 
-COVERAGE(Rr_InvScale, 1)
 static inline Rr_Mat4 Rr_InvScale(Rr_Mat4 ScaleMatrix)
 {
-    ASSERT_COVERED(Rr_InvScale);
 
     Rr_Mat4 Result = ScaleMatrix;
     Result.Elements[0][0] = 1.0f / Result.Elements[0][0];
@@ -2330,10 +2109,8 @@ static inline Rr_Mat4 _Rr_LookAt(Rr_Vec3 F, Rr_Vec3 S, Rr_Vec3 U, Rr_Vec3 Eye)
     return Result;
 }
 
-COVERAGE(Rr_LookAt_RH, 1)
 static inline Rr_Mat4 Rr_LookAt_RH(Rr_Vec3 Eye, Rr_Vec3 Center, Rr_Vec3 Up)
 {
-    ASSERT_COVERED(Rr_LookAt_RH);
 
     Rr_Vec3 F = Rr_NormV3(Rr_SubV3(Center, Eye));
     Rr_Vec3 S = Rr_NormV3(Rr_Cross(F, Up));
@@ -2342,10 +2119,8 @@ static inline Rr_Mat4 Rr_LookAt_RH(Rr_Vec3 Eye, Rr_Vec3 Center, Rr_Vec3 Up)
     return _Rr_LookAt(F, S, U, Eye);
 }
 
-COVERAGE(Rr_LookAt_LH, 1)
 static inline Rr_Mat4 Rr_LookAt_LH(Rr_Vec3 Eye, Rr_Vec3 Center, Rr_Vec3 Up)
 {
-    ASSERT_COVERED(Rr_LookAt_LH);
 
     Rr_Vec3 F = Rr_NormV3(Rr_SubV3(Eye, Center));
     Rr_Vec3 S = Rr_NormV3(Rr_Cross(F, Up));
@@ -2354,10 +2129,8 @@ static inline Rr_Mat4 Rr_LookAt_LH(Rr_Vec3 Eye, Rr_Vec3 Center, Rr_Vec3 Up)
     return _Rr_LookAt(F, S, U, Eye);
 }
 
-COVERAGE(Rr_InvLookAt, 1)
 static inline Rr_Mat4 Rr_InvLookAt(Rr_Mat4 Matrix)
 {
-    ASSERT_COVERED(Rr_InvLookAt);
     Rr_Mat4 Result;
 
     Rr_Mat3 Rotation = { 0 };
@@ -2388,10 +2161,8 @@ static inline Rr_Mat4 Rr_InvLookAt(Rr_Mat4 Matrix)
  * Quaternion operations
  */
 
-COVERAGE(Rr_Q, 1)
 static inline Rr_Quat Rr_Q(float X, float Y, float Z, float W)
 {
-    ASSERT_COVERED(Rr_Q);
 
     Rr_Quat Result;
 
@@ -2410,10 +2181,8 @@ static inline Rr_Quat Rr_Q(float X, float Y, float Z, float W)
     return Result;
 }
 
-COVERAGE(Rr_QV4, 1)
 static inline Rr_Quat Rr_QV4(Rr_Vec4 Vector)
 {
-    ASSERT_COVERED(Rr_QV4);
 
     Rr_Quat Result;
 
@@ -2431,10 +2200,8 @@ static inline Rr_Quat Rr_QV4(Rr_Vec4 Vector)
     return Result;
 }
 
-COVERAGE(Rr_AddQ, 1)
 static inline Rr_Quat Rr_AddQ(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_AddQ);
 
     Rr_Quat Result;
 
@@ -2453,10 +2220,8 @@ static inline Rr_Quat Rr_AddQ(Rr_Quat Left, Rr_Quat Right)
     return Result;
 }
 
-COVERAGE(Rr_SubQ, 1)
 static inline Rr_Quat Rr_SubQ(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_SubQ);
 
     Rr_Quat Result;
 
@@ -2474,10 +2239,8 @@ static inline Rr_Quat Rr_SubQ(Rr_Quat Left, Rr_Quat Right)
     return Result;
 }
 
-COVERAGE(Rr_MulQ, 1)
 static inline Rr_Quat Rr_MulQ(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_MulQ);
 
     Rr_Quat Result;
 
@@ -2557,10 +2320,8 @@ static inline Rr_Quat Rr_MulQ(Rr_Quat Left, Rr_Quat Right)
     return Result;
 }
 
-COVERAGE(Rr_MulQF, 1)
 static inline Rr_Quat Rr_MulQF(Rr_Quat Left, float Multiplicative)
 {
-    ASSERT_COVERED(Rr_MulQF);
 
     Rr_Quat Result;
 
@@ -2579,10 +2340,8 @@ static inline Rr_Quat Rr_MulQF(Rr_Quat Left, float Multiplicative)
     return Result;
 }
 
-COVERAGE(Rr_DivQF, 1)
 static inline Rr_Quat Rr_DivQF(Rr_Quat Left, float Divnd)
 {
-    ASSERT_COVERED(Rr_DivQF);
 
     Rr_Quat Result;
 
@@ -2602,10 +2361,8 @@ static inline Rr_Quat Rr_DivQF(Rr_Quat Left, float Divnd)
     return Result;
 }
 
-COVERAGE(Rr_DotQ, 1)
 static inline float Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_DotQ);
 
     float Result;
 
@@ -2632,10 +2389,8 @@ static inline float Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
     return Result;
 }
 
-COVERAGE(Rr_InvQ, 1)
 static inline Rr_Quat Rr_InvQ(Rr_Quat Left)
 {
-    ASSERT_COVERED(Rr_InvQ);
 
     Rr_Quat Result;
     Result.X = -Left.X;
@@ -2646,10 +2401,8 @@ static inline Rr_Quat Rr_InvQ(Rr_Quat Left)
     return Rr_DivQF(Result, (Rr_DotQ(Left, Left)));
 }
 
-COVERAGE(Rr_NormQ, 1)
 static inline Rr_Quat Rr_NormQ(Rr_Quat Quat)
 {
-    ASSERT_COVERED(Rr_NormQ);
 
     /* NOTE(lcf): Take advantage of SSE implementation in Rr_NormV4 */
     Rr_Vec4 Vec = { Quat.X, Quat.Y, Quat.Z, Quat.W };
@@ -2687,10 +2440,8 @@ static inline Rr_Quat _Rr_MixQ(
     return Result;
 }
 
-COVERAGE(Rr_NLerp, 1)
 static inline Rr_Quat Rr_NLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_NLerp);
 
     Rr_Quat Result = _Rr_MixQ(Left, 1.0f - Time, Right, Time);
     Result = Rr_NormQ(Result);
@@ -2698,10 +2449,8 @@ static inline Rr_Quat Rr_NLerp(Rr_Quat Left, float Time, Rr_Quat Right)
     return Result;
 }
 
-COVERAGE(Rr_SLerp, 1)
 static inline Rr_Quat Rr_SLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_SLerp);
 
     Rr_Quat Result;
 
@@ -2732,10 +2481,8 @@ static inline Rr_Quat Rr_SLerp(Rr_Quat Left, float Time, Rr_Quat Right)
     return Result;
 }
 
-COVERAGE(Rr_QToM4, 1)
 static inline Rr_Mat4 Rr_QToM4(Rr_Quat Left)
 {
-    ASSERT_COVERED(Rr_QToM4);
 
     Rr_Mat4 Result;
 
@@ -2790,7 +2537,6 @@ static inline Rr_Mat4 Rr_QToM4(Rr_Quat Left)
 //
 // Don't be confused! Or if you must be confused, at least trust this
 // comment. :)
-COVERAGE(Rr_M4ToQ_RH, 4)
 static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
 {
     float T;
@@ -2800,7 +2546,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
     {
         if(M.Elements[0][0] > M.Elements[1][1])
         {
-            ASSERT_COVERED(Rr_M4ToQ_RH);
 
             T = 1 + M.Elements[0][0] - M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
@@ -2811,7 +2556,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
         }
         else
         {
-            ASSERT_COVERED(Rr_M4ToQ_RH);
 
             T = 1 - M.Elements[0][0] + M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
@@ -2825,7 +2569,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
     {
         if(M.Elements[0][0] < -M.Elements[1][1])
         {
-            ASSERT_COVERED(Rr_M4ToQ_RH);
 
             T = 1 - M.Elements[0][0] - M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
@@ -2836,7 +2579,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
         }
         else
         {
-            ASSERT_COVERED(Rr_M4ToQ_RH);
 
             T = 1 + M.Elements[0][0] + M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
@@ -2852,7 +2594,6 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
     return Q;
 }
 
-COVERAGE(Rr_M4ToQ_LH, 4)
 static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
 {
     float T;
@@ -2862,7 +2603,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
     {
         if(M.Elements[0][0] > M.Elements[1][1])
         {
-            ASSERT_COVERED(Rr_M4ToQ_LH);
 
             T = 1 + M.Elements[0][0] - M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
@@ -2873,7 +2613,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
         }
         else
         {
-            ASSERT_COVERED(Rr_M4ToQ_LH);
 
             T = 1 - M.Elements[0][0] + M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
@@ -2887,7 +2626,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
     {
         if(M.Elements[0][0] < -M.Elements[1][1])
         {
-            ASSERT_COVERED(Rr_M4ToQ_LH);
 
             T = 1 - M.Elements[0][0] - M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
@@ -2898,7 +2636,6 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
         }
         else
         {
-            ASSERT_COVERED(Rr_M4ToQ_LH);
 
             T = 1 + M.Elements[0][0] + M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
@@ -2914,10 +2651,8 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
     return Q;
 }
 
-COVERAGE(Rr_QFromAxisAngle_RH, 1)
 static inline Rr_Quat Rr_QFromAxisAngle_RH(Rr_Vec3 Axis, float Angle)
 {
-    ASSERT_COVERED(Rr_QFromAxisAngle_RH);
 
     Rr_Quat Result;
 
@@ -2930,18 +2665,14 @@ static inline Rr_Quat Rr_QFromAxisAngle_RH(Rr_Vec3 Axis, float Angle)
     return Result;
 }
 
-COVERAGE(Rr_QFromAxisAngle_LH, 1)
 static inline Rr_Quat Rr_QFromAxisAngle_LH(Rr_Vec3 Axis, float Angle)
 {
-    ASSERT_COVERED(Rr_QFromAxisAngle_LH);
 
     return Rr_QFromAxisAngle_RH(Axis, -Angle);
 }
 
-COVERAGE(Rr_QFromNormPair, 1)
 static inline Rr_Quat Rr_QFromNormPair(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_QFromNormPair);
 
     Rr_Quat Result;
 
@@ -2951,18 +2682,14 @@ static inline Rr_Quat Rr_QFromNormPair(Rr_Vec3 Left, Rr_Vec3 Right)
     return Rr_NormQ(Result);
 }
 
-COVERAGE(Rr_QFromVecPair, 1)
 static inline Rr_Quat Rr_QFromVecPair(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_QFromVecPair);
 
     return Rr_QFromNormPair(Rr_NormV3(Left), Rr_NormV3(Right));
 }
 
-COVERAGE(Rr_RotateV2, 1)
 static inline Rr_Vec2 Rr_RotateV2(Rr_Vec2 V, float Angle)
 {
-    ASSERT_COVERED(Rr_RotateV2)
 
     float sinA = Rr_SinF(Angle);
     float cosA = Rr_CosF(Angle);
@@ -2972,33 +2699,27 @@ static inline Rr_Vec2 Rr_RotateV2(Rr_Vec2 V, float Angle)
 
 // implementation from
 // https://blog.molecular-matters.com/2013/05/24/a-faster-quaternion-vector-multiplication/
-COVERAGE(Rr_RotateV3Q, 1)
 static inline Rr_Vec3 Rr_RotateV3Q(Rr_Vec3 V, Rr_Quat Q)
 {
-    ASSERT_COVERED(Rr_RotateV3Q);
 
     Rr_Vec3 t = Rr_MulV3F(Rr_Cross(Q.XYZ, V), 2);
     return Rr_AddV3(V, Rr_AddV3(Rr_MulV3F(t, Q.W), Rr_Cross(Q.XYZ, t)));
 }
 
-COVERAGE(Rr_RotateV3AxisAngle_LH, 1)
 static inline Rr_Vec3 Rr_RotateV3AxisAngle_LH(
     Rr_Vec3 V,
     Rr_Vec3 Axis,
     float Angle)
 {
-    ASSERT_COVERED(Rr_RotateV3AxisAngle_LH);
 
     return Rr_RotateV3Q(V, Rr_QFromAxisAngle_LH(Axis, Angle));
 }
 
-COVERAGE(Rr_RotateV3AxisAngle_RH, 1)
 static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
     Rr_Vec3 V,
     Rr_Vec3 Axis,
     float Angle)
 {
-    ASSERT_COVERED(Rr_RotateV3AxisAngle_RH);
 
     return Rr_RotateV3Q(V, Rr_QFromAxisAngle_RH(Axis, Angle));
 }
@@ -3009,1103 +2730,788 @@ static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
 
 #ifdef __cplusplus
 
-COVERAGE(Rr_LenV2CPP, 1)
 static inline float Rr_Len(Rr_Vec2 A)
 {
-    ASSERT_COVERED(Rr_LenV2CPP);
     return Rr_LenV2(A);
 }
 
-COVERAGE(Rr_LenV3CPP, 1)
 static inline float Rr_Len(Rr_Vec3 A)
 {
-    ASSERT_COVERED(Rr_LenV3CPP);
     return Rr_LenV3(A);
 }
 
-COVERAGE(Rr_LenV4CPP, 1)
 static inline float Rr_Len(Rr_Vec4 A)
 {
-    ASSERT_COVERED(Rr_LenV4CPP);
     return Rr_LenV4(A);
 }
 
-COVERAGE(Rr_LenSqrV2CPP, 1)
 static inline float Rr_LenSqr(Rr_Vec2 A)
 {
-    ASSERT_COVERED(Rr_LenSqrV2CPP);
     return Rr_LenSqrV2(A);
 }
 
-COVERAGE(Rr_LenSqrV3CPP, 1)
 static inline float Rr_LenSqr(Rr_Vec3 A)
 {
-    ASSERT_COVERED(Rr_LenSqrV3CPP);
     return Rr_LenSqrV3(A);
 }
 
-COVERAGE(Rr_LenSqrV4CPP, 1)
 static inline float Rr_LenSqr(Rr_Vec4 A)
 {
-    ASSERT_COVERED(Rr_LenSqrV4CPP);
     return Rr_LenSqrV4(A);
 }
 
-COVERAGE(Rr_NormV2CPP, 1)
 static inline Rr_Vec2 Rr_Norm(Rr_Vec2 A)
 {
-    ASSERT_COVERED(Rr_NormV2CPP);
     return Rr_NormV2(A);
 }
 
-COVERAGE(Rr_NormV3CPP, 1)
 static inline Rr_Vec3 Rr_Norm(Rr_Vec3 A)
 {
-    ASSERT_COVERED(Rr_NormV3CPP);
     return Rr_NormV3(A);
 }
 
-COVERAGE(Rr_NormV4CPP, 1)
 static inline Rr_Vec4 Rr_Norm(Rr_Vec4 A)
 {
-    ASSERT_COVERED(Rr_NormV4CPP);
     return Rr_NormV4(A);
 }
 
-COVERAGE(Rr_NormQCPP, 1)
 static inline Rr_Quat Rr_Norm(Rr_Quat A)
 {
-    ASSERT_COVERED(Rr_NormQCPP);
     return Rr_NormQ(A);
 }
 
-COVERAGE(Rr_DotV2CPP, 1)
 static inline float Rr_Dot(Rr_Vec2 Left, Rr_Vec2 VecTwo)
 {
-    ASSERT_COVERED(Rr_DotV2CPP);
     return Rr_DotV2(Left, VecTwo);
 }
 
-COVERAGE(Rr_DotV3CPP, 1)
 static inline float Rr_Dot(Rr_Vec3 Left, Rr_Vec3 VecTwo)
 {
-    ASSERT_COVERED(Rr_DotV3CPP);
     return Rr_DotV3(Left, VecTwo);
 }
 
-COVERAGE(Rr_DotV4CPP, 1)
 static inline float Rr_Dot(Rr_Vec4 Left, Rr_Vec4 VecTwo)
 {
-    ASSERT_COVERED(Rr_DotV4CPP);
     return Rr_DotV4(Left, VecTwo);
 }
 
-COVERAGE(Rr_LerpV2CPP, 1)
 static inline Rr_Vec2 Rr_Lerp(Rr_Vec2 Left, float Time, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_LerpV2CPP);
     return Rr_LerpV2(Left, Time, Right);
 }
 
-COVERAGE(Rr_LerpV3CPP, 1)
 static inline Rr_Vec3 Rr_Lerp(Rr_Vec3 Left, float Time, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_LerpV3CPP);
     return Rr_LerpV3(Left, Time, Right);
 }
 
-COVERAGE(Rr_LerpV4CPP, 1)
 static inline Rr_Vec4 Rr_Lerp(Rr_Vec4 Left, float Time, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_LerpV4CPP);
     return Rr_LerpV4(Left, Time, Right);
 }
 
-COVERAGE(Rr_TransposeM2CPP, 1)
 static inline Rr_Mat2 Rr_Transpose(Rr_Mat2 Matrix)
 {
-    ASSERT_COVERED(Rr_TransposeM2CPP);
     return Rr_TransposeM2(Matrix);
 }
 
-COVERAGE(Rr_TransposeM3CPP, 1)
 static inline Rr_Mat3 Rr_Transpose(Rr_Mat3 Matrix)
 {
-    ASSERT_COVERED(Rr_TransposeM3CPP);
     return Rr_TransposeM3(Matrix);
 }
 
-COVERAGE(Rr_TransposeM4CPP, 1)
 static inline Rr_Mat4 Rr_Transpose(Rr_Mat4 Matrix)
 {
-    ASSERT_COVERED(Rr_TransposeM4CPP);
     return Rr_TransposeM4(Matrix);
 }
 
-COVERAGE(Rr_DeterminantM2CPP, 1)
 static inline float Rr_Determinant(Rr_Mat2 Matrix)
 {
-    ASSERT_COVERED(Rr_DeterminantM2CPP);
     return Rr_DeterminantM2(Matrix);
 }
 
-COVERAGE(Rr_DeterminantM3CPP, 1)
 static inline float Rr_Determinant(Rr_Mat3 Matrix)
 {
-    ASSERT_COVERED(Rr_DeterminantM3CPP);
     return Rr_DeterminantM3(Matrix);
 }
 
-COVERAGE(Rr_DeterminantM4CPP, 1)
 static inline float Rr_Determinant(Rr_Mat4 Matrix)
 {
-    ASSERT_COVERED(Rr_DeterminantM4CPP);
     return Rr_DeterminantM4(Matrix);
 }
 
-COVERAGE(Rr_InvGeneralM2CPP, 1)
 static inline Rr_Mat2 Rr_InvGeneral(Rr_Mat2 Matrix)
 {
-    ASSERT_COVERED(Rr_InvGeneralM2CPP);
     return Rr_InvGeneralM2(Matrix);
 }
 
-COVERAGE(Rr_InvGeneralM3CPP, 1)
 static inline Rr_Mat3 Rr_InvGeneral(Rr_Mat3 Matrix)
 {
-    ASSERT_COVERED(Rr_InvGeneralM3CPP);
     return Rr_InvGeneralM3(Matrix);
 }
 
-COVERAGE(Rr_InvGeneralM4CPP, 1)
 static inline Rr_Mat4 Rr_InvGeneral(Rr_Mat4 Matrix)
 {
-    ASSERT_COVERED(Rr_InvGeneralM4CPP);
     return Rr_InvGeneralM4(Matrix);
 }
 
-COVERAGE(Rr_DotQCPP, 1)
 static inline float Rr_Dot(Rr_Quat QuatOne, Rr_Quat QuatTwo)
 {
-    ASSERT_COVERED(Rr_DotQCPP);
     return Rr_DotQ(QuatOne, QuatTwo);
 }
 
-COVERAGE(Rr_AddV2CPP, 1)
 static inline Rr_Vec2 Rr_Add(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_AddV2CPP);
     return Rr_AddV2(Left, Right);
 }
 
-COVERAGE(Rr_AddV3CPP, 1)
 static inline Rr_Vec3 Rr_Add(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_AddV3CPP);
     return Rr_AddV3(Left, Right);
 }
 
-COVERAGE(Rr_AddV4CPP, 1)
 static inline Rr_Vec4 Rr_Add(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_AddV4CPP);
     return Rr_AddV4(Left, Right);
 }
 
-COVERAGE(Rr_AddM2CPP, 1)
 static inline Rr_Mat2 Rr_Add(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_AddM2CPP);
     return Rr_AddM2(Left, Right);
 }
 
-COVERAGE(Rr_AddM3CPP, 1)
 static inline Rr_Mat3 Rr_Add(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_AddM3CPP);
     return Rr_AddM3(Left, Right);
 }
 
-COVERAGE(Rr_AddM4CPP, 1)
 static inline Rr_Mat4 Rr_Add(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_AddM4CPP);
     return Rr_AddM4(Left, Right);
 }
 
-COVERAGE(Rr_AddQCPP, 1)
 static inline Rr_Quat Rr_Add(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_AddQCPP);
     return Rr_AddQ(Left, Right);
 }
 
-COVERAGE(Rr_SubV2CPP, 1)
 static inline Rr_Vec2 Rr_Sub(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_SubV2CPP);
     return Rr_SubV2(Left, Right);
 }
 
-COVERAGE(Rr_SubV3CPP, 1)
 static inline Rr_Vec3 Rr_Sub(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_SubV3CPP);
     return Rr_SubV3(Left, Right);
 }
 
-COVERAGE(Rr_SubV4CPP, 1)
 static inline Rr_Vec4 Rr_Sub(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_SubV4CPP);
     return Rr_SubV4(Left, Right);
 }
 
-COVERAGE(Rr_SubM2CPP, 1)
 static inline Rr_Mat2 Rr_Sub(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_SubM2CPP);
     return Rr_SubM2(Left, Right);
 }
 
-COVERAGE(Rr_SubM3CPP, 1)
 static inline Rr_Mat3 Rr_Sub(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_SubM3CPP);
     return Rr_SubM3(Left, Right);
 }
 
-COVERAGE(Rr_SubM4CPP, 1)
 static inline Rr_Mat4 Rr_Sub(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_SubM4CPP);
     return Rr_SubM4(Left, Right);
 }
 
-COVERAGE(Rr_SubQCPP, 1)
 static inline Rr_Quat Rr_Sub(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_SubQCPP);
     return Rr_SubQ(Left, Right);
 }
 
-COVERAGE(Rr_MulV2CPP, 1)
 static inline Rr_Vec2 Rr_Mul(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_MulV2CPP);
     return Rr_MulV2(Left, Right);
 }
 
-COVERAGE(Rr_MulV2FCPP, 1)
 static inline Rr_Vec2 Rr_Mul(Rr_Vec2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV2FCPP);
     return Rr_MulV2F(Left, Right);
 }
 
-COVERAGE(Rr_MulV3CPP, 1)
 static inline Rr_Vec3 Rr_Mul(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_MulV3CPP);
     return Rr_MulV3(Left, Right);
 }
 
-COVERAGE(Rr_MulV3FCPP, 1)
 static inline Rr_Vec3 Rr_Mul(Rr_Vec3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV3FCPP);
     return Rr_MulV3F(Left, Right);
 }
 
-COVERAGE(Rr_MulV4CPP, 1)
 static inline Rr_Vec4 Rr_Mul(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_MulV4CPP);
     return Rr_MulV4(Left, Right);
 }
 
-COVERAGE(Rr_MulV4FCPP, 1)
 static inline Rr_Vec4 Rr_Mul(Rr_Vec4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV4FCPP);
     return Rr_MulV4F(Left, Right);
 }
 
-COVERAGE(Rr_MulM2CPP, 1)
 static inline Rr_Mat2 Rr_Mul(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_MulM2CPP);
     return Rr_MulM2(Left, Right);
 }
 
-COVERAGE(Rr_MulM3CPP, 1)
 static inline Rr_Mat3 Rr_Mul(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_MulM3CPP);
     return Rr_MulM3(Left, Right);
 }
 
-COVERAGE(Rr_MulM4CPP, 1)
 static inline Rr_Mat4 Rr_Mul(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_MulM4CPP);
     return Rr_MulM4(Left, Right);
 }
 
-COVERAGE(Rr_MulM2FCPP, 1)
 static inline Rr_Mat2 Rr_Mul(Rr_Mat2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM2FCPP);
     return Rr_MulM2F(Left, Right);
 }
 
-COVERAGE(Rr_MulM3FCPP, 1)
 static inline Rr_Mat3 Rr_Mul(Rr_Mat3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM3FCPP);
     return Rr_MulM3F(Left, Right);
 }
 
-COVERAGE(Rr_MulM4FCPP, 1)
 static inline Rr_Mat4 Rr_Mul(Rr_Mat4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM4FCPP);
     return Rr_MulM4F(Left, Right);
 }
 
-COVERAGE(Rr_MulM2V2CPP, 1)
 static inline Rr_Vec2 Rr_Mul(Rr_Mat2 Matrix, Rr_Vec2 Vector)
 {
-    ASSERT_COVERED(Rr_MulM2V2CPP);
     return Rr_MulM2V2(Matrix, Vector);
 }
 
-COVERAGE(Rr_MulM3V3CPP, 1)
 static inline Rr_Vec3 Rr_Mul(Rr_Mat3 Matrix, Rr_Vec3 Vector)
 {
-    ASSERT_COVERED(Rr_MulM3V3CPP);
     return Rr_MulM3V3(Matrix, Vector);
 }
 
-COVERAGE(Rr_MulM4V4CPP, 1)
 static inline Rr_Vec4 Rr_Mul(Rr_Mat4 Matrix, Rr_Vec4 Vector)
 {
-    ASSERT_COVERED(Rr_MulM4V4CPP);
     return Rr_MulM4V4(Matrix, Vector);
 }
 
-COVERAGE(Rr_MulQCPP, 1)
 static inline Rr_Quat Rr_Mul(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_MulQCPP);
     return Rr_MulQ(Left, Right);
 }
 
-COVERAGE(Rr_MulQFCPP, 1)
 static inline Rr_Quat Rr_Mul(Rr_Quat Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulQFCPP);
     return Rr_MulQF(Left, Right);
 }
 
-COVERAGE(Rr_DivV2CPP, 1)
 static inline Rr_Vec2 Rr_Div(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_DivV2CPP);
     return Rr_DivV2(Left, Right);
 }
 
-COVERAGE(Rr_DivV2FCPP, 1)
 static inline Rr_Vec2 Rr_Div(Rr_Vec2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV2FCPP);
     return Rr_DivV2F(Left, Right);
 }
 
-COVERAGE(Rr_DivV3CPP, 1)
 static inline Rr_Vec3 Rr_Div(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_DivV3CPP);
     return Rr_DivV3(Left, Right);
 }
 
-COVERAGE(Rr_DivV3FCPP, 1)
 static inline Rr_Vec3 Rr_Div(Rr_Vec3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV3FCPP);
     return Rr_DivV3F(Left, Right);
 }
 
-COVERAGE(Rr_DivV4CPP, 1)
 static inline Rr_Vec4 Rr_Div(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_DivV4CPP);
     return Rr_DivV4(Left, Right);
 }
 
-COVERAGE(Rr_DivV4FCPP, 1)
 static inline Rr_Vec4 Rr_Div(Rr_Vec4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV4FCPP);
     return Rr_DivV4F(Left, Right);
 }
 
-COVERAGE(Rr_DivM2FCPP, 1)
 static inline Rr_Mat2 Rr_Div(Rr_Mat2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivM2FCPP);
     return Rr_DivM2F(Left, Right);
 }
 
-COVERAGE(Rr_DivM3FCPP, 1)
 static inline Rr_Mat3 Rr_Div(Rr_Mat3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivM3FCPP);
     return Rr_DivM3F(Left, Right);
 }
 
-COVERAGE(Rr_DivM4FCPP, 1)
 static inline Rr_Mat4 Rr_Div(Rr_Mat4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivM4FCPP);
     return Rr_DivM4F(Left, Right);
 }
 
-COVERAGE(Rr_DivQFCPP, 1)
 static inline Rr_Quat Rr_Div(Rr_Quat Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivQFCPP);
     return Rr_DivQF(Left, Right);
 }
 
-COVERAGE(Rr_EqV2CPP, 1)
 static inline bool Rr_Eq(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_EqV2CPP);
     return Rr_EqV2(Left, Right);
 }
 
-COVERAGE(Rr_EqV3CPP, 1)
 static inline bool Rr_Eq(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_EqV3CPP);
     return Rr_EqV3(Left, Right);
 }
 
-COVERAGE(Rr_EqV4CPP, 1)
 static inline bool Rr_Eq(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_EqV4CPP);
     return Rr_EqV4(Left, Right);
 }
 
-COVERAGE(Rr_AddV2Op, 1)
 static inline Rr_Vec2 operator+(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_AddV2Op);
     return Rr_AddV2(Left, Right);
 }
 
-COVERAGE(Rr_AddV3Op, 1)
 static inline Rr_Vec3 operator+(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_AddV3Op);
     return Rr_AddV3(Left, Right);
 }
 
-COVERAGE(Rr_AddV4Op, 1)
 static inline Rr_Vec4 operator+(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_AddV4Op);
     return Rr_AddV4(Left, Right);
 }
 
-COVERAGE(Rr_AddM2Op, 1)
 static inline Rr_Mat2 operator+(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_AddM2Op);
     return Rr_AddM2(Left, Right);
 }
 
-COVERAGE(Rr_AddM3Op, 1)
 static inline Rr_Mat3 operator+(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_AddM3Op);
     return Rr_AddM3(Left, Right);
 }
 
-COVERAGE(Rr_AddM4Op, 1)
 static inline Rr_Mat4 operator+(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_AddM4Op);
     return Rr_AddM4(Left, Right);
 }
 
-COVERAGE(Rr_AddQOp, 1)
 static inline Rr_Quat operator+(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_AddQOp);
     return Rr_AddQ(Left, Right);
 }
 
-COVERAGE(Rr_SubV2Op, 1)
 static inline Rr_Vec2 operator-(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_SubV2Op);
     return Rr_SubV2(Left, Right);
 }
 
-COVERAGE(Rr_SubV3Op, 1)
 static inline Rr_Vec3 operator-(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_SubV3Op);
     return Rr_SubV3(Left, Right);
 }
 
-COVERAGE(Rr_SubV4Op, 1)
 static inline Rr_Vec4 operator-(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_SubV4Op);
     return Rr_SubV4(Left, Right);
 }
 
-COVERAGE(Rr_SubM2Op, 1)
 static inline Rr_Mat2 operator-(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_SubM2Op);
     return Rr_SubM2(Left, Right);
 }
 
-COVERAGE(Rr_SubM3Op, 1)
 static inline Rr_Mat3 operator-(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_SubM3Op);
     return Rr_SubM3(Left, Right);
 }
 
-COVERAGE(Rr_SubM4Op, 1)
 static inline Rr_Mat4 operator-(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_SubM4Op);
     return Rr_SubM4(Left, Right);
 }
 
-COVERAGE(Rr_SubQOp, 1)
 static inline Rr_Quat operator-(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_SubQOp);
     return Rr_SubQ(Left, Right);
 }
 
-COVERAGE(Rr_MulV2Op, 1)
 static inline Rr_Vec2 operator*(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_MulV2Op);
     return Rr_MulV2(Left, Right);
 }
 
-COVERAGE(Rr_MulV3Op, 1)
 static inline Rr_Vec3 operator*(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_MulV3Op);
     return Rr_MulV3(Left, Right);
 }
 
-COVERAGE(Rr_MulV4Op, 1)
 static inline Rr_Vec4 operator*(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_MulV4Op);
     return Rr_MulV4(Left, Right);
 }
 
-COVERAGE(Rr_MulM2Op, 1)
 static inline Rr_Mat2 operator*(Rr_Mat2 Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_MulM2Op);
     return Rr_MulM2(Left, Right);
 }
 
-COVERAGE(Rr_MulM3Op, 1)
 static inline Rr_Mat3 operator*(Rr_Mat3 Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_MulM3Op);
     return Rr_MulM3(Left, Right);
 }
 
-COVERAGE(Rr_MulM4Op, 1)
 static inline Rr_Mat4 operator*(Rr_Mat4 Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_MulM4Op);
     return Rr_MulM4(Left, Right);
 }
 
-COVERAGE(Rr_MulQOp, 1)
 static inline Rr_Quat operator*(Rr_Quat Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_MulQOp);
     return Rr_MulQ(Left, Right);
 }
 
-COVERAGE(Rr_MulV2FOp, 1)
 static inline Rr_Vec2 operator*(Rr_Vec2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV2FOp);
     return Rr_MulV2F(Left, Right);
 }
 
-COVERAGE(Rr_MulV3FOp, 1)
 static inline Rr_Vec3 operator*(Rr_Vec3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV3FOp);
     return Rr_MulV3F(Left, Right);
 }
 
-COVERAGE(Rr_MulV4FOp, 1)
 static inline Rr_Vec4 operator*(Rr_Vec4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV4FOp);
     return Rr_MulV4F(Left, Right);
 }
 
-COVERAGE(Rr_MulM2FOp, 1)
 static inline Rr_Mat2 operator*(Rr_Mat2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM2FOp);
     return Rr_MulM2F(Left, Right);
 }
 
-COVERAGE(Rr_MulM3FOp, 1)
 static inline Rr_Mat3 operator*(Rr_Mat3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM3FOp);
     return Rr_MulM3F(Left, Right);
 }
 
-COVERAGE(Rr_MulM4FOp, 1)
 static inline Rr_Mat4 operator*(Rr_Mat4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM4FOp);
     return Rr_MulM4F(Left, Right);
 }
 
-COVERAGE(Rr_MulQFOp, 1)
 static inline Rr_Quat operator*(Rr_Quat Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulQFOp);
     return Rr_MulQF(Left, Right);
 }
 
-COVERAGE(Rr_MulV2FOpLeft, 1)
 static inline Rr_Vec2 operator*(float Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_MulV2FOpLeft);
     return Rr_MulV2F(Right, Left);
 }
 
-COVERAGE(Rr_MulV3FOpLeft, 1)
 static inline Rr_Vec3 operator*(float Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_MulV3FOpLeft);
     return Rr_MulV3F(Right, Left);
 }
 
-COVERAGE(Rr_MulV4FOpLeft, 1)
 static inline Rr_Vec4 operator*(float Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_MulV4FOpLeft);
     return Rr_MulV4F(Right, Left);
 }
 
-COVERAGE(Rr_MulM2FOpLeft, 1)
 static inline Rr_Mat2 operator*(float Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_MulM2FOpLeft);
     return Rr_MulM2F(Right, Left);
 }
 
-COVERAGE(Rr_MulM3FOpLeft, 1)
 static inline Rr_Mat3 operator*(float Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_MulM3FOpLeft);
     return Rr_MulM3F(Right, Left);
 }
 
-COVERAGE(Rr_MulM4FOpLeft, 1)
 static inline Rr_Mat4 operator*(float Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_MulM4FOpLeft);
     return Rr_MulM4F(Right, Left);
 }
 
-COVERAGE(Rr_MulQFOpLeft, 1)
 static inline Rr_Quat operator*(float Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_MulQFOpLeft);
     return Rr_MulQF(Right, Left);
 }
 
-COVERAGE(Rr_MulM2V2Op, 1)
 static inline Rr_Vec2 operator*(Rr_Mat2 Matrix, Rr_Vec2 Vector)
 {
-    ASSERT_COVERED(Rr_MulM2V2Op);
     return Rr_MulM2V2(Matrix, Vector);
 }
 
-COVERAGE(Rr_MulM3V3Op, 1)
 static inline Rr_Vec3 operator*(Rr_Mat3 Matrix, Rr_Vec3 Vector)
 {
-    ASSERT_COVERED(Rr_MulM3V3Op);
     return Rr_MulM3V3(Matrix, Vector);
 }
 
-COVERAGE(Rr_MulM4V4Op, 1)
 static inline Rr_Vec4 operator*(Rr_Mat4 Matrix, Rr_Vec4 Vector)
 {
-    ASSERT_COVERED(Rr_MulM4V4Op);
     return Rr_MulM4V4(Matrix, Vector);
 }
 
-COVERAGE(Rr_DivV2Op, 1)
 static inline Rr_Vec2 operator/(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_DivV2Op);
     return Rr_DivV2(Left, Right);
 }
 
-COVERAGE(Rr_DivV3Op, 1)
 static inline Rr_Vec3 operator/(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_DivV3Op);
     return Rr_DivV3(Left, Right);
 }
 
-COVERAGE(Rr_DivV4Op, 1)
 static inline Rr_Vec4 operator/(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_DivV4Op);
     return Rr_DivV4(Left, Right);
 }
 
-COVERAGE(Rr_DivV2FOp, 1)
 static inline Rr_Vec2 operator/(Rr_Vec2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV2FOp);
     return Rr_DivV2F(Left, Right);
 }
 
-COVERAGE(Rr_DivV3FOp, 1)
 static inline Rr_Vec3 operator/(Rr_Vec3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV3FOp);
     return Rr_DivV3F(Left, Right);
 }
 
-COVERAGE(Rr_DivV4FOp, 1)
 static inline Rr_Vec4 operator/(Rr_Vec4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV4FOp);
     return Rr_DivV4F(Left, Right);
 }
 
-COVERAGE(Rr_DivM4FOp, 1)
 static inline Rr_Mat4 operator/(Rr_Mat4 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivM4FOp);
     return Rr_DivM4F(Left, Right);
 }
 
-COVERAGE(Rr_DivM3FOp, 1)
 static inline Rr_Mat3 operator/(Rr_Mat3 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivM3FOp);
     return Rr_DivM3F(Left, Right);
 }
 
-COVERAGE(Rr_DivM2FOp, 1)
 static inline Rr_Mat2 operator/(Rr_Mat2 Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivM2FOp);
     return Rr_DivM2F(Left, Right);
 }
 
-COVERAGE(Rr_DivQFOp, 1)
 static inline Rr_Quat operator/(Rr_Quat Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivQFOp);
     return Rr_DivQF(Left, Right);
 }
 
-COVERAGE(Rr_AddV2Assign, 1)
 static inline Rr_Vec2 &operator+=(Rr_Vec2 &Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_AddV2Assign);
     return Left = Left + Right;
 }
 
-COVERAGE(Rr_AddV3Assign, 1)
 static inline Rr_Vec3 &operator+=(Rr_Vec3 &Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_AddV3Assign);
     return Left = Left + Right;
 }
 
-COVERAGE(Rr_AddV4Assign, 1)
 static inline Rr_Vec4 &operator+=(Rr_Vec4 &Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_AddV4Assign);
     return Left = Left + Right;
 }
 
-COVERAGE(Rr_AddM2Assign, 1)
 static inline Rr_Mat2 &operator+=(Rr_Mat2 &Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_AddM2Assign);
     return Left = Left + Right;
 }
 
-COVERAGE(Rr_AddM3Assign, 1)
 static inline Rr_Mat3 &operator+=(Rr_Mat3 &Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_AddM3Assign);
     return Left = Left + Right;
 }
 
-COVERAGE(Rr_AddM4Assign, 1)
 static inline Rr_Mat4 &operator+=(Rr_Mat4 &Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_AddM4Assign);
     return Left = Left + Right;
 }
 
-COVERAGE(Rr_AddQAssign, 1)
 static inline Rr_Quat &operator+=(Rr_Quat &Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_AddQAssign);
     return Left = Left + Right;
 }
 
-COVERAGE(Rr_SubV2Assign, 1)
 static inline Rr_Vec2 &operator-=(Rr_Vec2 &Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_SubV2Assign);
     return Left = Left - Right;
 }
 
-COVERAGE(Rr_SubV3Assign, 1)
 static inline Rr_Vec3 &operator-=(Rr_Vec3 &Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_SubV3Assign);
     return Left = Left - Right;
 }
 
-COVERAGE(Rr_SubV4Assign, 1)
 static inline Rr_Vec4 &operator-=(Rr_Vec4 &Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_SubV4Assign);
     return Left = Left - Right;
 }
 
-COVERAGE(Rr_SubM2Assign, 1)
 static inline Rr_Mat2 &operator-=(Rr_Mat2 &Left, Rr_Mat2 Right)
 {
-    ASSERT_COVERED(Rr_SubM2Assign);
     return Left = Left - Right;
 }
 
-COVERAGE(Rr_SubM3Assign, 1)
 static inline Rr_Mat3 &operator-=(Rr_Mat3 &Left, Rr_Mat3 Right)
 {
-    ASSERT_COVERED(Rr_SubM3Assign);
     return Left = Left - Right;
 }
 
-COVERAGE(Rr_SubM4Assign, 1)
 static inline Rr_Mat4 &operator-=(Rr_Mat4 &Left, Rr_Mat4 Right)
 {
-    ASSERT_COVERED(Rr_SubM4Assign);
     return Left = Left - Right;
 }
 
-COVERAGE(Rr_SubQAssign, 1)
 static inline Rr_Quat &operator-=(Rr_Quat &Left, Rr_Quat Right)
 {
-    ASSERT_COVERED(Rr_SubQAssign);
     return Left = Left - Right;
 }
 
-COVERAGE(Rr_MulV2Assign, 1)
 static inline Rr_Vec2 &operator*=(Rr_Vec2 &Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_MulV2Assign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulV3Assign, 1)
 static inline Rr_Vec3 &operator*=(Rr_Vec3 &Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_MulV3Assign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulV4Assign, 1)
 static inline Rr_Vec4 &operator*=(Rr_Vec4 &Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_MulV4Assign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulV2FAssign, 1)
 static inline Rr_Vec2 &operator*=(Rr_Vec2 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV2FAssign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulV3FAssign, 1)
 static inline Rr_Vec3 &operator*=(Rr_Vec3 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV3FAssign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulV4FAssign, 1)
 static inline Rr_Vec4 &operator*=(Rr_Vec4 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulV4FAssign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulM2FAssign, 1)
 static inline Rr_Mat2 &operator*=(Rr_Mat2 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM2FAssign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulM3FAssign, 1)
 static inline Rr_Mat3 &operator*=(Rr_Mat3 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM3FAssign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulM4FAssign, 1)
 static inline Rr_Mat4 &operator*=(Rr_Mat4 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulM4FAssign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_MulQFAssign, 1)
 static inline Rr_Quat &operator*=(Rr_Quat &Left, float Right)
 {
-    ASSERT_COVERED(Rr_MulQFAssign);
     return Left = Left * Right;
 }
 
-COVERAGE(Rr_DivV2Assign, 1)
 static inline Rr_Vec2 &operator/=(Rr_Vec2 &Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_DivV2Assign);
     return Left = Left / Right;
 }
 
-COVERAGE(Rr_DivV3Assign, 1)
 static inline Rr_Vec3 &operator/=(Rr_Vec3 &Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_DivV3Assign);
     return Left = Left / Right;
 }
 
-COVERAGE(Rr_DivV4Assign, 1)
 static inline Rr_Vec4 &operator/=(Rr_Vec4 &Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_DivV4Assign);
     return Left = Left / Right;
 }
 
-COVERAGE(Rr_DivV2FAssign, 1)
 static inline Rr_Vec2 &operator/=(Rr_Vec2 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV2FAssign);
     return Left = Left / Right;
 }
 
-COVERAGE(Rr_DivV3FAssign, 1)
 static inline Rr_Vec3 &operator/=(Rr_Vec3 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV3FAssign);
     return Left = Left / Right;
 }
 
-COVERAGE(Rr_DivV4FAssign, 1)
 static inline Rr_Vec4 &operator/=(Rr_Vec4 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivV4FAssign);
     return Left = Left / Right;
 }
 
-COVERAGE(Rr_DivM4FAssign, 1)
 static inline Rr_Mat4 &operator/=(Rr_Mat4 &Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivM4FAssign);
     return Left = Left / Right;
 }
 
-COVERAGE(Rr_DivQFAssign, 1)
 static inline Rr_Quat &operator/=(Rr_Quat &Left, float Right)
 {
-    ASSERT_COVERED(Rr_DivQFAssign);
     return Left = Left / Right;
 }
 
-COVERAGE(Rr_EqV2Op, 1)
 static inline bool operator==(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_EqV2Op);
     return Rr_EqV2(Left, Right);
 }
 
-COVERAGE(Rr_EqV3Op, 1)
 static inline bool operator==(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_EqV3Op);
     return Rr_EqV3(Left, Right);
 }
 
-COVERAGE(Rr_EqV4Op, 1)
 static inline bool operator==(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_EqV4Op);
     return Rr_EqV4(Left, Right);
 }
 
-COVERAGE(Rr_EqV2OpNot, 1)
 static inline bool operator!=(Rr_Vec2 Left, Rr_Vec2 Right)
 {
-    ASSERT_COVERED(Rr_EqV2OpNot);
     return !Rr_EqV2(Left, Right);
 }
 
-COVERAGE(Rr_EqV3OpNot, 1)
 static inline bool operator!=(Rr_Vec3 Left, Rr_Vec3 Right)
 {
-    ASSERT_COVERED(Rr_EqV3OpNot);
     return !Rr_EqV3(Left, Right);
 }
 
-COVERAGE(Rr_EqV4OpNot, 1)
 static inline bool operator!=(Rr_Vec4 Left, Rr_Vec4 Right)
 {
-    ASSERT_COVERED(Rr_EqV4OpNot);
     return !Rr_EqV4(Left, Right);
 }
 
-COVERAGE(Rr_UnaryMinusV2, 1)
 static inline Rr_Vec2 operator-(Rr_Vec2 In)
 {
-    ASSERT_COVERED(Rr_UnaryMinusV2);
-
     Rr_Vec2 Result;
     Result.X = -In.X;
     Result.Y = -In.Y;
@@ -4113,11 +3519,8 @@ static inline Rr_Vec2 operator-(Rr_Vec2 In)
     return Result;
 }
 
-COVERAGE(Rr_UnaryMinusV3, 1)
 static inline Rr_Vec3 operator-(Rr_Vec3 In)
 {
-    ASSERT_COVERED(Rr_UnaryMinusV3);
-
     Rr_Vec3 Result;
     Result.X = -In.X;
     Result.Y = -In.Y;
@@ -4126,11 +3529,8 @@ static inline Rr_Vec3 operator-(Rr_Vec3 In)
     return Result;
 }
 
-COVERAGE(Rr_UnaryMinusV4, 1)
 static inline Rr_Vec4 operator-(Rr_Vec4 In)
 {
-    ASSERT_COVERED(Rr_UnaryMinusV4);
-
     Rr_Vec4 Result;
 #if RR_MATH__USE_SSE
     Result.SSE = _mm_xor_ps(In.SSE, _mm_set1_ps(-0.0f));

@@ -25,17 +25,6 @@ enum EInputAction
     EIA_COUNT,
 };
 
-static std::vector<Rr_InputMapping> InputMappings = {
-    { RR_SCANCODE_W, RR_SCANCODE_UNKNOWN },
-    { RR_SCANCODE_S, RR_SCANCODE_UNKNOWN },
-    { RR_SCANCODE_A, RR_SCANCODE_UNKNOWN },
-    { RR_SCANCODE_D, RR_SCANCODE_UNKNOWN },
-    { RR_SCANCODE_F11, RR_SCANCODE_UNKNOWN },
-    { RR_SCANCODE_F1, RR_SCANCODE_UNKNOWN },
-    { RR_SCANCODE_F2, RR_SCANCODE_UNKNOWN },
-    { RR_SCANCODE_F3, RR_SCANCODE_UNKNOWN },
-};
-
 struct SCamera
 {
     enum class EType
@@ -816,6 +805,17 @@ static void Render(
 static void Iterate(Rr_App *App, void *UserData)
 {
     {
+        static std::vector<Rr_InputMapping> InputMappings = {
+            { RR_SCANCODE_W, RR_SCANCODE_UNKNOWN },
+            { RR_SCANCODE_S, RR_SCANCODE_UNKNOWN },
+            { RR_SCANCODE_A, RR_SCANCODE_UNKNOWN },
+            { RR_SCANCODE_D, RR_SCANCODE_UNKNOWN },
+            { RR_SCANCODE_F11, RR_SCANCODE_UNKNOWN },
+            { RR_SCANCODE_F1, RR_SCANCODE_UNKNOWN },
+            { RR_SCANCODE_F2, RR_SCANCODE_UNKNOWN },
+            { RR_SCANCODE_F3, RR_SCANCODE_UNKNOWN },
+        };
+
         static Rr_InputState InputState;
         Rr_UpdateInputState(
             InputMappings.size(),

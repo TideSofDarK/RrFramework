@@ -16,7 +16,17 @@ include(CMake/CPM.cmake)
 
 function(rr_enable_debug_options TARGET)
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-        target_compile_options(${TARGET} PRIVATE -Werror -Wall -Wextra -Wpedantic -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces)
+        target_compile_options(
+            ${TARGET}
+            PRIVATE
+            -Werror
+            -Wall
+            -Wextra
+            -Wpedantic
+            -Wno-unused-function
+            -Wno-unused-parameter
+            -Wno-unused-variable
+            -Wno-missing-braces)
 
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
             target_compile_options(${TARGET} PRIVATE -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unsafe-buffer-usage -Wno-pre-c++20-compat-pedantic)
