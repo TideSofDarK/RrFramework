@@ -14,8 +14,8 @@ static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
     FrameTime->Now = SDL_GetPerformanceCounter();
-    FrameTime->DeltaSeconds = (double)(FrameTime->Now - FrameTime->Last) *
-                              1000.0 / (double)SDL_GetPerformanceFrequency();
+    FrameTime->DeltaSeconds = (double)(FrameTime->Now - FrameTime->Last) /
+                              (double)SDL_GetPerformanceFrequency();
 }
 
 static void Rr_CalculateFPS(Rr_FrameTime *FrameTime)

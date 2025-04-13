@@ -325,9 +325,6 @@ struct SCreepManager
 
     void Update(float DeltaTime)
     {
-        // DeltaTime *= 0.01f;
-        // if(DeltaTime > 0.1f)
-        // return;
         for(size_t Index = 0; Index < Creeps.size(); ++Index)
         {
             SCreep &Creep = Creeps[Index];

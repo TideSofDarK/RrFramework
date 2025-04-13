@@ -651,11 +651,11 @@ static void Input(Rr_App *App)
     }
     if(Rr_IsScancodePressed(RR_SCANCODE_Q))
     {
-        CameraZoom += 0.01 * DeltaTime;
+        CameraZoom += 10.0f * DeltaTime;
     }
     if(Rr_IsScancodePressed(RR_SCANCODE_E))
     {
-        CameraZoom -= 0.01 * DeltaTime;
+        CameraZoom -= 10.0f * DeltaTime;
     }
     CameraZoom = RR_CLAMP(0.1f, CameraZoom, 100.0f);
 

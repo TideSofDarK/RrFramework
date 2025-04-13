@@ -68,7 +68,7 @@ struct SCamera
 
         Rr_Vec3 CameraForward = GetForwardVector();
         Rr_Vec3 CameraLeft = GetRightVector();
-        constexpr float CameraSpeed = 0.005f;
+        constexpr float CameraSpeed = 5.0f;
         if(Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
         {
             Position += CameraForward * CameraSpeed * DeltaTime;
