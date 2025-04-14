@@ -244,7 +244,7 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_AddEventWatch(Rr_EventWatch, App);
 
     App->Renderer = Rr_CreateRenderer(App);
-    App->UI = Rr_CreateUI(App);
+    App->UI = Rr_CreateUIContext(App);
 
     Config->InitFunc(App, App->UserData);
 
@@ -277,7 +277,7 @@ void Rr_Run(Rr_AppConfig *Config)
         Rr_Iterate(App);
     }
 
-    Rr_DestroyUI(App, App->UI);
+    Rr_DestroyUIContext(App, App->UI);
     Rr_DestroyRenderer(App, App->Renderer);
 
     Rr_DestroySyncArena(&App->SyncArena);

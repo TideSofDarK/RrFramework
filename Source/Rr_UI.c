@@ -48,7 +48,7 @@ struct Rr_UIWindow
     Rr_UIWidget *CurrentWidget;
 };
 
-struct Rr_UI
+struct Rr_UIContext
 {
     Rr_UIStyle Style;
     Rr_Map *WindowMap;
@@ -64,59 +64,59 @@ struct Rr_UI
     Rr_Arena *Arena;
 };
 
-static Rr_UI *GUI;
+static Rr_UIContext *Global;
 
 static float Rr_GetWindowTitleHeight(void)
 {
-    return GUI->Style.TitlePadding * GUI->FontSize +
-           GUI->Font->LineHeight * GUI->FontSize;
+    return Global->Style.TitlePadding * Global->FontSize +
+           Global->Font->LineHeight * Global->FontSize;
 }
 
 void Rr_BeginWindow(const char *Title)
 {
     XXH64_hash_t Hash = XXH3_64bits(Title, strlen(Title));
 
-    Rr_UIWindow **Window = RR_UPSERT(&GUI->WindowMap, Hash, GUI->Arena);
+    Rr_UIWindow **Window = RR_UPSERT(&Global->WindowMap, Hash, Global->Arena);
 
     if(*Window == NULL)
     {
-        *Window = RR_ALLOC(GUI->Arena, sizeof(Rr_UIWindow));
-        GUI->Window = *Window;
-        GUI->Window->Position = (Rr_Vec2){
-            .X = GUI->ScreenSize.Width / 2.0f,
-            .Y = GUI->ScreenSize.Height / 2.0f,
+        *Window = RR_ALLOC(Global->Arena, sizeof(Rr_UIWindow));
+        Global->Window = *Window;
+        Global->Window->Position = (Rr_Vec2){
+            .X = Global->ScreenSize.Width / 2.0f,
+            .Y = Global->ScreenSize.Height / 2.0f,
         };
     }
     else
     {
-        GUI->Window = *Window;
+        Global->Window = *Window;
     }
 
-    RR_ZERO(GUI->Window->Size);
+    RR_ZERO(Global->Window->Size);
 
-    GUI->Cursor.X =
-        GUI->Window->Position.X + GUI->Style.ContentsPadding * GUI->FontSize;
-    GUI->Cursor.Y = GUI->Window->Position.Y +
-                    GUI->Style.ContentsPadding * GUI->FontSize +
+    Global->Cursor.X =
+        Global->Window->Position.X + Global->Style.ContentsPadding * Global->FontSize;
+    Global->Cursor.Y = Global->Window->Position.Y +
+                    Global->Style.ContentsPadding * Global->FontSize +
                     Rr_GetWindowTitleHeight();
 }
 
 void Rr_EndWindow(void)
 {
-    GUI->Window = NULL;
+    Global->Window = NULL;
 }
 
 static Rr_UIWidget *Rr_PushWidget(Rr_UIWindow *Window, Rr_UIWidgetType Type)
 {
     if(Window->CurrentWidget == NULL)
     {
-        Window->FirstWidget = RR_ALLOC(GUI->FrameArena, sizeof(Rr_UIWidget));
+        Window->FirstWidget = RR_ALLOC(Global->FrameArena, sizeof(Rr_UIWidget));
         Window->CurrentWidget = Window->FirstWidget;
     }
     else
     {
         Window->CurrentWidget->Next =
-            RR_ALLOC(GUI->FrameArena, sizeof(Rr_UIWidget));
+            RR_ALLOC(Global->FrameArena, sizeof(Rr_UIWidget));
         Window->CurrentWidget = Window->CurrentWidget->Next;
     }
 
@@ -127,22 +127,22 @@ static Rr_UIWidget *Rr_PushWidget(Rr_UIWindow *Window, Rr_UIWidgetType Type)
 
 void Rr_Label(const char *Text)
 {
-    if(GUI->Window == NULL)
+    if(Global->Window == NULL)
     {
         return;
     }
 
-    Rr_UIWidget *Widget = Rr_PushWidget(GUI->Window, RR_UI_WIDGET_TYPE_LABEL);
+    Rr_UIWidget *Widget = Rr_PushWidget(Global->Window, RR_UI_WIDGET_TYPE_LABEL);
     Rr_UILabel *Label = (Rr_UILabel *)&Widget->Union.Label;
-    Label->Text = Rr_CreateString(Text, 0, GUI->FrameArena);
+    Label->Text = Rr_CreateString(Text, 0, Global->FrameArena);
     Rr_Vec2 Size =
-        Rr_CalculateTextSize(GUI->Font, GUI->Font->DefaultSize, &Label->Text);
+        Rr_CalculateTextSize(Global->Font, Global->Font->DefaultSize, &Label->Text);
 
-    Widget->Position = GUI->Cursor;
-    GUI->Cursor = Rr_AddV2(GUI->Cursor, Size);
+    Widget->Position = Global->Cursor;
+    Global->Cursor = Rr_AddV2(Global->Cursor, Size);
 
-    GUI->Window->Size.Width = RR_MAX(GUI->Window->Size.Width, Size.Width);
-    GUI->Window->Size.Height += Size.Height;
+    Global->Window->Size.Width = RR_MAX(Global->Window->Size.Width, Size.Width);
+    Global->Window->Size.Height += Size.Height;
 }
 
 void Rr_Button(const char *Text)
@@ -157,16 +157,16 @@ void Rr_EndHorizontal(void)
 {
 }
 
-Rr_UI *Rr_CreateUI(Rr_App *App)
+Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    Rr_UI *UI = RR_ALLOC(Arena, sizeof(Rr_UI));
-    UI->Arena = Arena;
+    Rr_UIContext *Context = RR_ALLOC(Arena, sizeof(Rr_UIContext));
+    Context->Arena = Arena;
 
-    UI->Style = (Rr_UIStyle){
+    Context->Style = (Rr_UIStyle){
         .TitlePadding = 0.1f,
         .ContentsPadding = 0.1f,
         .OutlineColor = (Rr_Vec4){ 0.2f, 0.67f, 0.111f, 1.0f },
@@ -185,7 +185,7 @@ Rr_UI *Rr_CreateUI(Rr_App *App)
             RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
         },
     };
-    UI->PipelineLayout = Rr_CreatePipelineLayout(
+    Context->PipelineLayout = Rr_CreatePipelineLayout(
         Renderer,
         RR_ARRAY_COUNT(BindingSets),
         BindingSets);
@@ -204,48 +204,48 @@ Rr_UI *Rr_CreateUI(Rr_App *App)
     };
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = {
-        .Layout = UI->PipelineLayout,
+        .Layout = Context->PipelineLayout,
         .VertexShaderSPV = Rr_LoadAsset(RR_BUILTIN_UI_VERT_SPV),
         .FragmentShaderSPV = Rr_LoadAsset(RR_BUILTIN_UI_FRAG_SPV),
         .ColorTargetCount = RR_ARRAY_COUNT(ColorTargets),
         .ColorTargets = ColorTargets,
     };
 
-    UI->GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+    Context->GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
-    UI->Buffer = Rr_CreateBuffer(
+    Context->Buffer = Rr_CreateBuffer(
         Renderer,
         RR_MEGABYTES(16),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT |
             RR_BUFFER_FLAGS_STAGING_BIT);
 
-    return UI;
+    return Context;
 }
 
-void Rr_DestroyUI(Rr_App *App, Rr_UI *UI)
+void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *Context)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
-    Rr_DestroyBuffer(Renderer, UI->Buffer);
-    Rr_DestroyPipelineLayout(Renderer, UI->PipelineLayout);
-    Rr_DestroyGraphicsPipeline(Renderer, UI->GraphicsPipeline);
-    Rr_DestroyArena(UI->Arena);
+    Rr_DestroyBuffer(Renderer, Context->Buffer);
+    Rr_DestroyPipelineLayout(Renderer, Context->PipelineLayout);
+    Rr_DestroyGraphicsPipeline(Renderer, Context->GraphicsPipeline);
+    Rr_DestroyArena(Context->Arena);
 }
 
-void Rr_BeginUI(Rr_App *App, Rr_UI *UI)
+void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
     // UI->Arena->Position = sizeof(Rr_UI);
-    GUI = UI;
-    GUI->Window = NULL;
+    Global = Context;
+    Global->Window = NULL;
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
-    GUI->ScreenSize.Width = (float)SwapchainSize.Width;
-    GUI->ScreenSize.Height = (float)SwapchainSize.Height;
-    GUI->FrameArena = Rr_GetCurrentFrame(Renderer)->Arena;
-    GUI->Font = Renderer->BuiltinFont;
+    Global->ScreenSize.Width = (float)SwapchainSize.Width;
+    Global->ScreenSize.Height = (float)SwapchainSize.Height;
+    Global->FrameArena = Rr_GetCurrentFrame(Renderer)->Arena;
+    Global->Font = Renderer->BuiltinFont;
 }
 
-void Rr_EndUI(Rr_App *App, Rr_UI *UI)
+void Rr_EndUI(Rr_App *App, Rr_UIContext *Context)
 {
     // Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
     // Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);

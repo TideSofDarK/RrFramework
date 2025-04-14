@@ -43,7 +43,7 @@ struct Rr_App
 
     Rr_Renderer *Renderer;
 
-    Rr_UI *UI;
+    Rr_UIContext *UI;
 
     Rr_FrameTime FrameTime;
 
