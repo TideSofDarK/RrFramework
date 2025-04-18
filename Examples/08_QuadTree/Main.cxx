@@ -888,23 +888,17 @@ static void Reset()
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    static float TimeCounter = 0.0f;
+    static char StatsString[128];
+    static float TimeCounter = 1.0f;
     TimeCounter += Rr_GetDeltaSeconds(App);
     if(TimeCounter > 0.2f)
     {
         TimeCounter = 0.0f;
-        char WindowTitle[128];
-        std::sprintf(
-            WindowTitle,
-            "08_QuadTree - FPS: %.2f",
-            Rr_GetFramesPerSecond(App));
-        Rr_SetWindowTitle(App, WindowTitle);
+        std::sprintf(StatsString, "FPS: %.2f", Rr_GetFramesPerSecond(App));
     }
 
-    Rr_BeginWindow("Stats");
-    Rr_Label("Asd qwerty\n  sdfsdf\n    dsfgsdf sdf fds");
-    // Rr_Label("A");
-    // Rr_Label("Text label 2");
+    Rr_BeginWindow("QuadTree");
+    Rr_Label(StatsString);
     Rr_EndWindow();
 
     Input(App);

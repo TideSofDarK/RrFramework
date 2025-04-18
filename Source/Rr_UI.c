@@ -48,7 +48,7 @@ struct Rr_UIWidget
 typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
-    Rr_String Text;
+    Rr_String Title;
     Rr_Vec2 Position;
     Rr_Vec2 Size;
     Rr_UIWidget *FirstWidget;
@@ -156,17 +156,17 @@ Rr_Font *Rr_CreateFont(
                     cJSON_GetObjectItem(AtlasBoundsJSON, "left")) /
                 AtlasSize.X;
             Glyph->AtlasBounds.Y =
-                (float)cJSON_GetNumberValue(
-                    cJSON_GetObjectItem(AtlasBoundsJSON, "bottom")) /
-                AtlasSize.Y;
+                1.0f - ((float)cJSON_GetNumberValue(
+                            cJSON_GetObjectItem(AtlasBoundsJSON, "bottom")) /
+                        AtlasSize.Y);
             Glyph->AtlasBounds.Z =
                 (float)cJSON_GetNumberValue(
                     cJSON_GetObjectItem(AtlasBoundsJSON, "right")) /
                 AtlasSize.X;
             Glyph->AtlasBounds.W =
-                (float)cJSON_GetNumberValue(
-                    cJSON_GetObjectItem(AtlasBoundsJSON, "top")) /
-                AtlasSize.Y;
+                1.0f - ((float)cJSON_GetNumberValue(
+                            cJSON_GetObjectItem(AtlasBoundsJSON, "top")) /
+                        AtlasSize.Y);
         }
 
         cJSON *PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
@@ -242,7 +242,8 @@ static float Rr_GetWindowTitleHeight(void)
 
 void Rr_BeginWindow(const char *Title)
 {
-    XXH64_hash_t Hash = XXH3_64bits(Title, strlen(Title));
+    size_t TitleLength = strlen(Title);
+    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
 
     Rr_UIWindow **Window = RR_UPSERT(&Global->WindowMap, Hash, Global->Arena);
 
@@ -250,6 +251,8 @@ void Rr_BeginWindow(const char *Title)
     {
         *Window = RR_ALLOC(Global->Arena, sizeof(Rr_UIWindow));
         Global->CurrentWindow = *Window;
+        Global->CurrentWindow->Title =
+            Rr_CreateString(Title, TitleLength, Global->Arena);
         Global->CurrentWindow->Position = (Rr_Vec2){
             .X = Global->FontSize,
             .Y = Global->FontSize,
@@ -342,6 +345,7 @@ typedef struct Rr_UIUniformData Rr_UIUniformData;
 struct Rr_UIUniformData
 {
     Rr_Vec2 ScreenSize;
+    float DistanceRange;
     float Time;
 };
 
@@ -355,7 +359,7 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
     Context->Arena = Arena;
 
     /* Context->FontSize = 12.0f; */
-    Context->FontSize = 24.0f;
+    Context->FontSize = 48.0f;
 
     Context->Style = (Rr_UIStyle){
         .TitlePadding = 0.2f,
@@ -504,29 +508,29 @@ struct Rr_UIVertex
 static inline void Rr_PushQuad(
     Rr_Vec2 Position,
     Rr_Vec2 Size,
-    Rr_Vec4 *Color,
+    Rr_Vec4 *Colors,
     Rr_Vec2 *UVs)
 {
     Rr_UIVertex Vertices[] = {
         {
             .Position = Position,
             .UV = UVs ? UVs[0] : (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Color ? *Color : Global->Style.Foreground,
+            .Color = Colors ? Colors[0] : Global->Style.Foreground,
         },
         {
             .Position = { Position.X + Size.X, Position.Y },
-            .UV = UVs ? UVs[1] : (Rr_Vec2){ 1.0f, 0.0f },
-            .Color = Color ? *Color : Global->Style.Foreground,
+            .UV = UVs ? UVs[1] : (Rr_Vec2){ 0.0f, 0.0f },
+            .Color = Colors ? Colors[1] : Global->Style.Foreground,
         },
         {
             .Position = { Position.X, Position.Y + Size.Y },
-            .UV = UVs ? UVs[2] : (Rr_Vec2){ 0.0f, 1.0f },
-            .Color = Color ? *Color : Global->Style.Foreground,
+            .UV = UVs ? UVs[2] : (Rr_Vec2){ 0.0f, 0.0f },
+            .Color = Colors ? Colors[2] : Global->Style.Foreground,
         },
         {
             .Position = { Position.X + Size.X, Position.Y + Size.Y },
-            .UV = UVs ? UVs[3] : (Rr_Vec2){ 1.0f, 1.0f },
-            .Color = Color ? *Color : Global->Style.Foreground,
+            .UV = UVs ? UVs[3] : (Rr_Vec2){ 0.0f, 0.0f },
+            .Color = Colors ? Colors[3] : Global->Style.Foreground,
         },
     };
 
@@ -581,16 +585,26 @@ static inline void Rr_PushText(Rr_Vec2 Position, Rr_String String)
 
         Rr_Glyph *Glyph = &Font->Glyphs[Codepoint];
 
+        float Left = Glyph->PlaneBounds.X * FontSize;
+        float Width = (Glyph->PlaneBounds.Z - Glyph->PlaneBounds.X) * FontSize;
+
+        float Top = (1.0f - Glyph->PlaneBounds.W) * FontSize;
+        float Height = (Glyph->PlaneBounds.W - Glyph->PlaneBounds.Y) * FontSize;
+
+        Rr_Vec2 UVs[] = {
+            { Glyph->AtlasBounds.X, Glyph->AtlasBounds.W },
+            { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.W },
+            { Glyph->AtlasBounds.X, Glyph->AtlasBounds.Y },
+            { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.Y },
+        };
+
         Rr_PushQuad(
-            Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY }),
-            (Rr_Vec2){ FontSize * Global->Font->Advances[Codepoint],
-                       LineHeight },
-            &(Rr_Vec4){ 1.0f, 1.0f, 1.0f, 1.0f },
-            NULL);
+            Rr_AddV2(Position, (Rr_Vec2){ CurrentX + Left, CurrentY + Top }),
+            (Rr_Vec2){ Width, Height },
+            NULL,
+            UVs);
 
         CurrentX += Global->Font->Advances[Codepoint] * FontSize;
-
-        /* Glyph->PlaneBounds */
     }
 }
 
@@ -603,6 +617,7 @@ void Rr_EndUI(Rr_App *App)
 
     Rr_UIUniformData UniformData = {
         .ScreenSize = Global->ScreenSize,
+        .DistanceRange = Global->Font->DistanceRange,
         .Time = Rr_GetTimeSeconds(App),
     };
 
@@ -631,11 +646,22 @@ void Rr_EndUI(Rr_App *App)
             Window->Size.X,
             Rr_GetWindowTitleHeight(),
         };
-        Rr_PushQuad(
-            TitlePosition,
-            TitleSize,
-            &Global->Style.TitleBackground,
-            NULL);
+        Rr_Vec4 Colors[] = {
+            Global->Style.TitleBackground,
+            Global->Style.TitleBackground,
+            Global->Style.TitleBackground,
+            Global->Style.TitleBackground,
+        };
+        Rr_PushQuad(TitlePosition, TitleSize, Colors, NULL);
+
+        Rr_PushText(
+            Rr_AddV2(
+                TitlePosition,
+                (Rr_Vec2){
+                    Global->Style.TitlePadding * Global->FontSize,
+                    Global->Style.TitlePadding * Global->FontSize,
+                }),
+            Window->Title);
 
         Rr_Vec2 ContentsPosition = {
             Window->Position.X,
@@ -645,11 +671,13 @@ void Rr_EndUI(Rr_App *App)
             Window->Size.X,
             Window->Size.Y - Rr_GetWindowTitleHeight(),
         };
-        Rr_PushQuad(
-            ContentsPosition,
-            ContentsSize,
-            &Global->Style.Background,
-            NULL);
+        Rr_Vec4 BackgroundColors[] = {
+            Global->Style.Background,
+            Global->Style.Background,
+            Global->Style.Background,
+            Global->Style.Background,
+        };
+        Rr_PushQuad(ContentsPosition, ContentsSize, BackgroundColors, NULL);
 
         for(Rr_UIWidget *Widget = Window->FirstWidget; Widget != NULL;
             Widget = Widget->Next)
