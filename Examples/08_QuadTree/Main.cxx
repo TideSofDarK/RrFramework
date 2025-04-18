@@ -901,10 +901,11 @@ static void Iterate(Rr_App *App, void *UserData)
         Rr_SetWindowTitle(App, WindowTitle);
     }
 
-    // Rr_BeginWindow("Stats");
-    // Rr_Label("Text label");
+    Rr_BeginWindow("Stats");
+    Rr_Label("Asd qwerty\n  sdfsdf\n    dsfgsdf sdf fds");
+    // Rr_Label("A");
     // Rr_Label("Text label 2");
-    // Rr_EndWindow();
+    Rr_EndWindow();
 
     Input(App);
     Render(App);

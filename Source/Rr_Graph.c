@@ -1213,7 +1213,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
     size_t BatchStartIndex = 0;
     size_t BatchSize = 0;
 
-     bool UseLateCommandBuffer = false;
+    bool UseLateCommandBuffer = false;
 
     for(size_t Index = 0; Index < SortedNodes.Count; ++Index)
     {

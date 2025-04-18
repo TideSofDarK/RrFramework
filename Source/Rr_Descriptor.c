@@ -499,7 +499,7 @@ static void Rr_ValidateNullSetBinding(
         Rr_PipelineBinding *PipelineBinding = &Set->Bindings[Index];
         if(PipelineBinding->Binding == Binding && PipelineBinding->Count != 0)
         {
-            RR_ABORT("Missing binding %zu!", Binding);
+            RR_ABORT("Missing layout binding %zu!", Binding);
         }
     }
 }

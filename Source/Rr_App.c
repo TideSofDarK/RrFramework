@@ -124,7 +124,7 @@ static void Rr_Iterate(Rr_App *App)
 
     App->Config->IterateFunc(App, App->UserData);
 
-    Rr_EndUI(App, App->UI);
+    Rr_EndUI(App);
 
     if(Rr_NewFrame(App, App->Window))
     {

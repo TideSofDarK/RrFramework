@@ -12,4 +12,4 @@ extern void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *UI);
 
 extern void Rr_BeginUI(Rr_App *App, Rr_UIContext *UI);
 
-extern void Rr_EndUI(Rr_App *App, Rr_UIContext *UI);
+extern void Rr_EndUI(Rr_App *App);

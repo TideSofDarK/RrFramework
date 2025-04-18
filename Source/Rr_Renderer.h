@@ -5,7 +5,7 @@
 #include "Rr_Graph.h"
 #include "Rr_Load.h"
 #include "Rr_Pipeline.h"
-#include "Rr_Text.h"
+#include "Rr_UI.h"
 #include "Rr_Vulkan.h"
 
 #include <SDL3/SDL_atomic.h>
@@ -130,7 +130,6 @@ struct Rr_Renderer
 
     /* Text Rendering */
 
-    Rr_TextPipeline TextPipeline;
     Rr_Font *BuiltinFont;
 
     /* Global Synchronization Map */
