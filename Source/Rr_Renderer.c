@@ -705,18 +705,20 @@ bool Rr_NewFrame(Rr_App *App, void *Window)
     return true;
 }
 
-void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer)
+void Rr_WaitIdle(Rr_Renderer *Renderer)
+{
+    Rr_Device *Device = &Renderer->Device;
+    Device->DeviceWaitIdle(Device->Handle);
+}
+
+void Rr_DestroyRenderer(Rr_Renderer *Renderer)
 {
     Rr_Instance *Instance = &Renderer->Instance;
     Rr_Device *Device = &Renderer->Device;
 
-    Device->DeviceWaitIdle(Device->Handle);
-
-    App->Config->CleanupFunc(App, App->UserData);
+    Rr_WaitIdle(Renderer);
 
     Rr_DestroyFont(Renderer, Renderer->BuiltinFont);
-
-    // Rr_CleanupTextRenderer(App);
 
     for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
     {

@@ -14,6 +14,16 @@
 
 #include <assert.h>
 
+typedef uint16_t Rr_UIIndex;
+
+typedef struct Rr_UIVertex Rr_UIVertex;
+struct Rr_UIVertex
+{
+    Rr_Vec2 Position;
+    Rr_Vec2 UV;
+    Rr_Vec4 Color;
+};
+
 typedef enum
 {
     RR_UI_WIDGET_TYPE_LABEL,
@@ -79,12 +89,12 @@ struct Rr_UIContext
     float FontSize;
 
     Rr_Buffer *VertexBuffer;
-    uint32_t CurrentVertex;
-    char *VertexBufferData;
-
     Rr_Buffer *IndexBuffer;
-    uint32_t CurrentIndex;
-    char *IndexBufferData;
+
+    Rr_UIVertex *VertexBufferDataStart;
+    Rr_UIVertex *VertexBufferData;
+    Rr_UIIndex *IndexBufferDataStart;
+    Rr_UIIndex *IndexBufferData;
 
     Rr_Buffer *UniformBuffer;
 
@@ -359,7 +369,7 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
     Context->Arena = Arena;
 
     /* Context->FontSize = 12.0f; */
-    Context->FontSize = 48.0f;
+    Context->FontSize = 28.0f;
 
     Context->Style = (Rr_UIStyle){
         .TitlePadding = 0.2f,
@@ -388,7 +398,7 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
 
     Rr_ColorTargetInfo ColorTargets[] = {
         {
-            .Format = RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            .Format = Rr_GetSwapchainFormat(Renderer),
             .Blend.BlendEnable = true,
             .Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA,
             .Blend.DstColorBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -497,64 +507,89 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Global->Font = Renderer->BuiltinFont;
 }
 
-typedef struct Rr_UIVertex Rr_UIVertex;
-struct Rr_UIVertex
+static inline void Rr_PushQuad(Rr_UIVertex *Vertices)
 {
-    Rr_Vec2 Position;
-    Rr_Vec2 UV;
-    Rr_Vec4 Color;
-};
+    /* @TODO: Bounds checking! */
 
-static inline void Rr_PushQuad(
+    Rr_UIIndex Base =
+        (Rr_UIIndex)(Global->VertexBufferData - Global->VertexBufferDataStart);
+    Rr_UIIndex Indices[] = {
+        Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
+    };
+    memcpy(Global->IndexBufferData, Indices, sizeof(Indices));
+    Global->IndexBufferData += 6;
+
+    memcpy(Global->VertexBufferData, Vertices, sizeof(Rr_UIVertex) * 4);
+    Global->VertexBufferData += 4;
+}
+
+static inline void Rr_PushSolidQuad(
     Rr_Vec2 Position,
     Rr_Vec2 Size,
-    Rr_Vec4 *Colors,
+    Rr_Vec4 Color)
+{
+    Rr_UIVertex Vertices[] = {
+        {
+            .Position = Position,
+            .UV = (Rr_Vec2){ 0.0f, 0.0f },
+            .Color = Color,
+        },
+        {
+            .Position = { Position.X + Size.X, Position.Y },
+            .UV = (Rr_Vec2){ 0.0f, 0.0f },
+            .Color = Color,
+        },
+        {
+            .Position = { Position.X, Position.Y + Size.Y },
+            .UV = (Rr_Vec2){ 0.0f, 0.0f },
+            .Color = Color,
+        },
+        {
+            .Position = { Position.X + Size.X, Position.Y + Size.Y },
+            .UV = (Rr_Vec2){ 0.0f, 0.0f },
+            .Color = Color,
+        },
+    };
+
+    Rr_PushQuad(Vertices);
+}
+
+static inline void Rr_PushTexturedQuad(
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    Rr_Vec4 *Color,
     Rr_Vec2 *UVs)
 {
     Rr_UIVertex Vertices[] = {
         {
             .Position = Position,
-            .UV = UVs ? UVs[0] : (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Colors ? Colors[0] : Global->Style.Foreground,
+            .UV = UVs[0],
+            .Color = *Color,
         },
         {
             .Position = { Position.X + Size.X, Position.Y },
-            .UV = UVs ? UVs[1] : (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Colors ? Colors[1] : Global->Style.Foreground,
+            .UV = UVs[1],
+            .Color = *Color,
         },
         {
             .Position = { Position.X, Position.Y + Size.Y },
-            .UV = UVs ? UVs[2] : (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Colors ? Colors[2] : Global->Style.Foreground,
+            .UV = UVs[2],
+            .Color = *Color,
         },
         {
             .Position = { Position.X + Size.X, Position.Y + Size.Y },
-            .UV = UVs ? UVs[3] : (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Colors ? Colors[3] : Global->Style.Foreground,
+            .UV = UVs[3],
+            .Color = *Color,
         },
     };
 
-    memcpy(
-        Global->VertexBufferData + Global->CurrentVertex * sizeof(Rr_UIVertex),
-        Vertices,
-        sizeof(Vertices));
-
-    uint32_t Indices[] = {
-        Global->CurrentVertex,     Global->CurrentVertex + 1,
-        Global->CurrentVertex + 2, Global->CurrentVertex + 1,
-        Global->CurrentVertex + 3, Global->CurrentVertex + 2,
-    };
-
-    memcpy(
-        Global->IndexBufferData + Global->CurrentIndex * sizeof(uint32_t),
-        Indices,
-        sizeof(Indices));
-
-    Global->CurrentVertex += 4;
-    Global->CurrentIndex += 6;
+    Rr_PushQuad(Vertices);
 }
 
-static inline void Rr_PushText(Rr_Vec2 Position, Rr_String String)
+static inline void Rr_PushText(
+    Rr_Vec2 Position,
+    Rr_String String,
+    Rr_Vec4 *Color)
 {
     Rr_Font *Font = Global->Font;
     float FontSize = Global->FontSize;
@@ -598,10 +633,10 @@ static inline void Rr_PushText(Rr_Vec2 Position, Rr_String String)
             { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.Y },
         };
 
-        Rr_PushQuad(
+        Rr_PushTexturedQuad(
             Rr_AddV2(Position, (Rr_Vec2){ CurrentX + Left, CurrentY + Top }),
             (Rr_Vec2){ Width, Height },
-            NULL,
+            Color,
             UVs);
 
         CurrentX += Global->Font->Advances[Codepoint] * FontSize;
@@ -626,15 +661,11 @@ void Rr_EndUI(Rr_App *App)
         &UniformData,
         sizeof(UniformData));
 
-    Global->CurrentVertex = 0;
-    Global->VertexBufferData =
+    Global->VertexBufferData = Global->VertexBufferDataStart =
         Rr_GetMappedBufferData(Renderer, Global->VertexBuffer);
 
-    Global->CurrentIndex = 0;
-    Global->IndexBufferData =
+    Global->IndexBufferData = Global->IndexBufferDataStart =
         Rr_GetMappedBufferData(Renderer, Global->IndexBuffer);
-
-    Rr_Vec4 TempColor = { 1.0, 0.0f, 0.0f, 0.8f };
 
     Global->LastWindowCount = Global->Windows.Count;
     for(size_t Index = 0; Index < Global->Windows.Count; ++Index)
@@ -646,13 +677,10 @@ void Rr_EndUI(Rr_App *App)
             Window->Size.X,
             Rr_GetWindowTitleHeight(),
         };
-        Rr_Vec4 Colors[] = {
-            Global->Style.TitleBackground,
-            Global->Style.TitleBackground,
-            Global->Style.TitleBackground,
-            Global->Style.TitleBackground,
-        };
-        Rr_PushQuad(TitlePosition, TitleSize, Colors, NULL);
+        Rr_PushSolidQuad(
+            TitlePosition,
+            TitleSize,
+            Global->Style.TitleBackground);
 
         Rr_PushText(
             Rr_AddV2(
@@ -661,7 +689,8 @@ void Rr_EndUI(Rr_App *App)
                     Global->Style.TitlePadding * Global->FontSize,
                     Global->Style.TitlePadding * Global->FontSize,
                 }),
-            Window->Title);
+            Window->Title,
+            &Global->Style.Foreground);
 
         Rr_Vec2 ContentsPosition = {
             Window->Position.X,
@@ -671,13 +700,10 @@ void Rr_EndUI(Rr_App *App)
             Window->Size.X,
             Window->Size.Y - Rr_GetWindowTitleHeight(),
         };
-        Rr_Vec4 BackgroundColors[] = {
-            Global->Style.Background,
-            Global->Style.Background,
-            Global->Style.Background,
-            Global->Style.Background,
-        };
-        Rr_PushQuad(ContentsPosition, ContentsSize, BackgroundColors, NULL);
+        Rr_PushSolidQuad(
+            ContentsPosition,
+            ContentsSize,
+            Global->Style.Background);
 
         for(Rr_UIWidget *Widget = Window->FirstWidget; Widget != NULL;
             Widget = Widget->Next)
@@ -691,7 +717,10 @@ void Rr_EndUI(Rr_App *App)
                 break;
                 case RR_UI_WIDGET_TYPE_LABEL:
                 {
-                    Rr_PushText(Widget->Position, Widget->Union.Label.Text);
+                    Rr_PushText(
+                        Widget->Position,
+                        Widget->Union.Label.Text,
+                        &Global->Style.Foreground);
                 }
                 break;
                 default:
@@ -700,7 +729,7 @@ void Rr_EndUI(Rr_App *App)
         }
     }
 
-    if(Global->CurrentIndex > 0)
+    if(Global->Windows.Count > 0)
     {
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
@@ -723,7 +752,7 @@ void Rr_EndUI(Rr_App *App)
             Global->IndexBuffer,
             0,
             0,
-            RR_INDEX_TYPE_UINT32);
+            RR_INDEX_TYPE_UINT16);
         Rr_BindUniformBuffer(
             GraphicsNode,
             Global->UniformBuffer,
@@ -737,7 +766,13 @@ void Rr_EndUI(Rr_App *App)
             Global->Sampler,
             0,
             1);
-        Rr_DrawIndexed(GraphicsNode, Global->CurrentIndex, 1, 0, 0, 0);
+        Rr_DrawIndexed(
+            GraphicsNode,
+            (size_t)(Global->IndexBufferData - Global->IndexBufferDataStart),
+            1,
+            0,
+            0,
+            0);
     }
 
     Global = NULL;

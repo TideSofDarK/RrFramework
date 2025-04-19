@@ -602,7 +602,7 @@ static void Init(Rr_App *App, void *UserData)
         BindingSets.data());
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Format = RR_TEXTURE_FORMAT_R8G8B8A8_UNORM;
+    ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
     ColorTargets[0].Blend.BlendEnable = true;
     ColorTargets[0].Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
     ColorTargets[0].Blend.DstColorBlendFactor =

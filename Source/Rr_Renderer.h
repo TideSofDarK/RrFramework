@@ -139,9 +139,6 @@ struct Rr_Renderer
     /* Storage */
 
     RR_FREE_LIST(Rr_Buffer) Buffers;
-    // RR_FREE_LIST(Rr_Primitive) Primitives;
-    // RR_FREE_LIST(Rr_StaticMesh) StaticMeshes;
-    // RR_FREE_LIST(Rr_SkeletalMesh) SkeletalMeshes;
     RR_FREE_LIST(Rr_Image) Images;
     RR_FREE_LIST(Rr_Font) Fonts;
     RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
@@ -157,7 +154,9 @@ struct Rr_Renderer
 
 extern Rr_Renderer *Rr_CreateRenderer(Rr_App *App);
 
-extern void Rr_DestroyRenderer(Rr_App *App, Rr_Renderer *Renderer);
+extern void Rr_WaitIdle(Rr_Renderer *Renderer);
+
+extern void Rr_DestroyRenderer(Rr_Renderer *Renderer);
 
 extern void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty);
 

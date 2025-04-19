@@ -277,14 +277,20 @@ void Rr_Run(Rr_AppConfig *Config)
         Rr_Iterate(App);
     }
 
+    Rr_WaitIdle(App->Renderer);
+
     Rr_DestroyUIContext(App, App->UI);
-    Rr_DestroyRenderer(App, App->Renderer);
+
+    App->Config->CleanupFunc(App, App->UserData);
+
+    Rr_DestroyRenderer(App->Renderer);
 
     Rr_DestroySyncArena(&App->SyncArena);
 
     SDL_CleanupTLS();
 
     SDL_RemoveEventWatch((SDL_EventFilter)Rr_EventWatch, &App);
+
     SDL_DestroyWindow(App->Window);
 
     Rr_DestroyArena(App->Arena);
