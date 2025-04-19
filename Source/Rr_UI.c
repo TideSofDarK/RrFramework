@@ -345,7 +345,7 @@ void Rr_Label(const char *Text)
         Rr_PushWidget(Global->CurrentWindow, RR_UI_WIDGET_TYPE_LABEL);
     Widget->Text = Rr_CreateString(Text, 0, Global->FrameArena);
     Rr_Vec2 Size =
-        Rr_CalculateTextSize(Global->Font, Global->FontSize, &Label->Text);
+        Rr_CalculateTextSize(Global->Font, Global->FontSize, &Widget->Text);
 
     Widget->Position = Global->Cursor;
 
@@ -373,7 +373,7 @@ void Rr_Checkbox(const char *Text, bool *Checked)
     Widget->Text = Rr_CreateString(Text, 0, Global->FrameArena);
     Widget->Checked = Checked;
     Rr_Vec2 Size =
-        Rr_CalculateTextSize(Global->Font, Global->FontSize, &Label->Text);
+        Rr_CalculateTextSize(Global->Font, Global->FontSize, &Widget->Text);
 
     Widget->Position = Global->Cursor;
 
@@ -768,7 +768,7 @@ void Rr_EndUI(Rr_App *App)
                 {
                     Rr_PushText(
                         Widget->Position,
-                        Widget->Union.Label.Text,
+                        Widget->Text,
                         &Global->Style.Foreground);
                 }
                 break;
