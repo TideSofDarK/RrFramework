@@ -899,6 +899,8 @@ static void Iterate(Rr_App *App, void *UserData)
 
     Rr_BeginWindow("QuadTree");
     Rr_Label(StatsString);
+    Rr_Separator();
+    Rr_Label("Dodik");
     Rr_EndWindow();
 
     Input(App);

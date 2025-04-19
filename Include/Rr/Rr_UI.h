@@ -61,6 +61,8 @@ extern void Rr_BeginWindow(const char *Title);
 
 extern void Rr_EndWindow(void);
 
+extern void Rr_Separator(void);
+
 extern void Rr_Label(const char *Text);
 
 extern void Rr_Button(const char *Text);

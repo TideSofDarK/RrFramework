@@ -26,6 +26,7 @@ struct Rr_UIVertex
 
 typedef enum
 {
+    RR_UI_WIDGET_TYPE_SEPARATOR,
     RR_UI_WIDGET_TYPE_LABEL,
     RR_UI_WIDGET_TYPE_BUTTON,
 } Rr_UIWidgetType;
@@ -290,6 +291,9 @@ void Rr_BeginWindow(const char *Title)
     Global->Cursor.Y = Global->CurrentWindow->Position.Y +
                        Global->Style.ContentsPadding * Global->FontSize +
                        Rr_GetWindowTitleHeight();
+
+    Global->CurrentWindow->CurrentWidget = Global->CurrentWindow->FirstWidget =
+        NULL;
 }
 
 void Rr_EndWindow(void)
@@ -314,6 +318,32 @@ static Rr_UIWidget *Rr_PushWidget(Rr_UIWindow *Window, Rr_UIWidgetType Type)
     Window->CurrentWidget->Type = Type;
 
     return Window->CurrentWidget;
+}
+
+static inline float Rr_GetSeperatorLineHeight(void)
+{
+    return Global->FontSize * Global->Font->LineHeight * 0.5f;
+}
+
+static inline float Rr_GetSeperatorHeight(void)
+{
+    return RR_MAX(1.0f, Global->FontSize * 0.05f);
+}
+
+void Rr_Separator(void)
+{
+    if(Global->CurrentWindow == NULL)
+    {
+        return;
+    }
+
+    Rr_UIWidget *Widget =
+        Rr_PushWidget(Global->CurrentWindow, RR_UI_WIDGET_TYPE_SEPARATOR);
+
+    Widget->Position = Global->Cursor;
+    float Offset = Rr_GetSeperatorLineHeight();
+    Global->Cursor.Y += Offset;
+    Global->CurrentWindow->Size.Height += Offset;
 }
 
 void Rr_Label(const char *Text)
@@ -369,7 +399,7 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
     Context->Arena = Arena;
 
     /* Context->FontSize = 12.0f; */
-    Context->FontSize = 28.0f;
+    Context->FontSize = 24.0f;
 
     Context->Style = (Rr_UIStyle){
         .TitlePadding = 0.2f,
@@ -710,9 +740,19 @@ void Rr_EndUI(Rr_App *App)
         {
             switch(Widget->Type)
             {
-                case RR_UI_WIDGET_TYPE_BUTTON:
+                case RR_UI_WIDGET_TYPE_SEPARATOR:
                 {
-                    RR_ABORT("Not implemented!");
+                    Rr_Vec2 Position = { Widget->Position.X,
+                                         Widget->Position.Y +
+                                             (Rr_GetSeperatorLineHeight() /
+                                                  2.0f -
+                                              Rr_GetSeperatorHeight() / 2.0f) };
+                    Rr_Vec2 Size = {
+                        Window->Size.X - (Global->Style.ContentsPadding *
+                                          Global->FontSize * 2.0f),
+                        Rr_GetSeperatorHeight(),
+                    };
+                    Rr_PushSolidQuad(Position, Size, Global->Style.Foreground);
                 }
                 break;
                 case RR_UI_WIDGET_TYPE_LABEL:
@@ -721,6 +761,11 @@ void Rr_EndUI(Rr_App *App)
                         Widget->Position,
                         Widget->Union.Label.Text,
                         &Global->Style.Foreground);
+                }
+                break;
+                case RR_UI_WIDGET_TYPE_BUTTON:
+                {
+                    RR_ABORT("Not implemented!");
                 }
                 break;
                 default:
