@@ -37,8 +37,8 @@ struct Rr_Font
 typedef struct Rr_UIStyle Rr_UIStyle;
 struct Rr_UIStyle
 {
-    float TitlePadding;
-    float ContentsPadding;
+    Rr_Vec2 TitlePadding;
+    Rr_Vec2 ContentsPadding;
     Rr_Vec4 Foreground;
     Rr_Vec4 Background;
     Rr_Vec4 TitleBackground;
@@ -66,6 +66,8 @@ extern void Rr_Separator(void);
 extern void Rr_Label(const char *Text);
 
 extern void Rr_Button(const char *Text);
+
+extern void Rr_Checkbox(const char *Text, bool *Checked);
 
 extern void Rr_BeginHorizontal(void);
 

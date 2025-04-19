@@ -29,28 +29,17 @@ typedef enum
     RR_UI_WIDGET_TYPE_SEPARATOR,
     RR_UI_WIDGET_TYPE_LABEL,
     RR_UI_WIDGET_TYPE_BUTTON,
+    RR_UI_WIDGET_TYPE_CHECKBOX,
 } Rr_UIWidgetType;
-
-typedef struct Rr_UILabel Rr_UILabel;
-struct Rr_UILabel
-{
-    Rr_String Text;
-};
-
-typedef struct Rr_UIButton Rr_UIButton;
-struct Rr_UIButton
-{
-    Rr_String Text;
-};
 
 typedef struct Rr_UIWidget Rr_UIWidget;
 struct Rr_UIWidget
 {
     union
     {
-        Rr_UILabel Label;
-        Rr_UIButton Button;
-    } Union;
+        bool *Checked;
+    };
+    Rr_String Text;
     Rr_Vec2 Position;
     Rr_UIWidgetType Type;
     Rr_UIWidget *Next;
@@ -247,7 +236,7 @@ Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)
 
 static float Rr_GetWindowTitleHeight(void)
 {
-    return Global->Style.TitlePadding * Global->FontSize * 2.0f +
+    return Global->Style.TitlePadding.Y * Global->FontSize * 2.0f +
            Global->Font->LineHeight * Global->FontSize;
 }
 
@@ -279,17 +268,16 @@ void Rr_BeginWindow(const char *Title)
         Global->CurrentWindow;
     Global->CurrentWindow->LastFrameNumber = Global->FrameNumber;
 
-    RR_ZERO(Global->CurrentWindow->Size);
     Global->CurrentWindow->Size = (Rr_Vec2){
-        .X = Global->Style.ContentsPadding * 2.0f * Global->FontSize,
-        .Y = Global->Style.ContentsPadding * 2.0f * Global->FontSize +
+        .X = Global->Style.ContentsPadding.X * 2.0f * Global->FontSize,
+        .Y = Global->Style.ContentsPadding.Y * 2.0f * Global->FontSize +
              Rr_GetWindowTitleHeight(),
     };
 
     Global->Cursor.X = Global->CurrentWindow->Position.X +
-                       Global->Style.ContentsPadding * Global->FontSize;
+                       Global->Style.ContentsPadding.X * Global->FontSize;
     Global->Cursor.Y = Global->CurrentWindow->Position.Y +
-                       Global->Style.ContentsPadding * Global->FontSize +
+                       Global->Style.ContentsPadding.Y * Global->FontSize +
                        Rr_GetWindowTitleHeight();
 
     Global->CurrentWindow->CurrentWidget = Global->CurrentWindow->FirstWidget =
@@ -355,8 +343,7 @@ void Rr_Label(const char *Text)
 
     Rr_UIWidget *Widget =
         Rr_PushWidget(Global->CurrentWindow, RR_UI_WIDGET_TYPE_LABEL);
-    Rr_UILabel *Label = (Rr_UILabel *)&Widget->Union.Label;
-    Label->Text = Rr_CreateString(Text, 0, Global->FrameArena);
+    Widget->Text = Rr_CreateString(Text, 0, Global->FrameArena);
     Rr_Vec2 Size =
         Rr_CalculateTextSize(Global->Font, Global->FontSize, &Label->Text);
 
@@ -365,12 +352,37 @@ void Rr_Label(const char *Text)
     Global->Cursor.Y += Size.Height;
     Global->CurrentWindow->Size.Width = RR_MAX(
         Global->CurrentWindow->Size.Width,
-        Size.Width + (Global->Style.ContentsPadding * Global->FontSize * 2.0f));
+        Size.Width +
+            (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f));
     Global->CurrentWindow->Size.Height += Size.Height;
 }
 
 void Rr_Button(const char *Text)
 {
+}
+
+void Rr_Checkbox(const char *Text, bool *Checked)
+{
+    if(Global->CurrentWindow == NULL)
+    {
+        return;
+    }
+
+    Rr_UIWidget *Widget =
+        Rr_PushWidget(Global->CurrentWindow, RR_UI_WIDGET_TYPE_CHECKBOX);
+    Widget->Text = Rr_CreateString(Text, 0, Global->FrameArena);
+    Widget->Checked = Checked;
+    Rr_Vec2 Size =
+        Rr_CalculateTextSize(Global->Font, Global->FontSize, &Label->Text);
+
+    Widget->Position = Global->Cursor;
+
+    Global->Cursor.Y += Size.Height;
+    Global->CurrentWindow->Size.Width = RR_MAX(
+        Global->CurrentWindow->Size.Width,
+        Size.Width +
+            (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f));
+    Global->CurrentWindow->Size.Height += Size.Height;
 }
 
 void Rr_BeginHorizontal(void)
@@ -402,12 +414,12 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
     Context->FontSize = 24.0f;
 
     Context->Style = (Rr_UIStyle){
-        .TitlePadding = 0.2f,
-        .ContentsPadding = 0.2f,
-        .Foreground = Rr_U32ToRGBA(0xD6D0B3ff),
-        .Background = Rr_U32ToRGBA(0x292F33F7),
-        .TitleBackground = Rr_U32ToRGBA(0xD54251F7),
-        .Outline = Rr_U32ToRGBA(0x6C6F72F7),
+        .TitlePadding = { 0.5f, 0.25f },
+        .ContentsPadding = { 0.5f, 0.25f },
+        .Foreground = Rr_U32ToRGBA(0xD6D0B3FF),
+        .Background = Rr_U32ToRGBA(0x292F33FA),
+        .TitleBackground = Rr_U32ToRGBA(0xD54251FA),
+        .Outline = Rr_U32ToRGBA(0x6C6F72FA),
     };
 
     Rr_PipelineBinding Bindings[] = {
@@ -715,10 +727,7 @@ void Rr_EndUI(Rr_App *App)
         Rr_PushText(
             Rr_AddV2(
                 TitlePosition,
-                (Rr_Vec2){
-                    Global->Style.TitlePadding * Global->FontSize,
-                    Global->Style.TitlePadding * Global->FontSize,
-                }),
+                Rr_MulV2F(Global->Style.TitlePadding, Global->FontSize)),
             Window->Title,
             &Global->Style.Foreground);
 
@@ -748,7 +757,7 @@ void Rr_EndUI(Rr_App *App)
                                                   2.0f -
                                               Rr_GetSeperatorHeight() / 2.0f) };
                     Rr_Vec2 Size = {
-                        Window->Size.X - (Global->Style.ContentsPadding *
+                        Window->Size.X - (Global->Style.ContentsPadding.X *
                                           Global->FontSize * 2.0f),
                         Rr_GetSeperatorHeight(),
                     };

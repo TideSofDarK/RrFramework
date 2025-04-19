@@ -897,9 +897,12 @@ static void Iterate(Rr_App *App, void *UserData)
         std::sprintf(StatsString, "FPS: %.2f", Rr_GetFramesPerSecond(App));
     }
 
+    static bool VSyncEnabled = false;
+
     Rr_BeginWindow("QuadTree");
     Rr_Label(StatsString);
     Rr_Separator();
+    Rr_Checkbox("Use Query", &VSyncEnabled);
     Rr_Label("Dodik");
     Rr_EndWindow();
 
