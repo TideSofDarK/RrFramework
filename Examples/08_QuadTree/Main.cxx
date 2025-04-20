@@ -237,7 +237,7 @@ private:
         const SRect &Rect,
         uint32_t NodeIndex,
         SRect &Bounds,
-        std::unordered_set<TPayload> &Result)
+        std::unordered_set<TPayload> &Result) const
     {
         const SNode &Node = Nodes[NodeIndex];
 
@@ -433,7 +433,7 @@ public:
         RootIndex = 0;
     }
 
-    void Query(const SRect &Rect, std::unordered_set<TPayload> &Result)
+    void Query(const SRect &Rect, std::unordered_set<TPayload> &Result) const
     {
         SRect Bounds = this->Bounds;
         if(Bounds.Intersects(Rect))
@@ -463,6 +463,11 @@ public:
         TreeBorder.Y = Bounds.Top;
         TreeBorder.Type = EDrawType::RECT_TREE_BORDER;
         Callback(TreeBorder);
+    }
+
+    size_t ElementsCount() const
+    {
+        return Elements.size();
     }
 };
 
@@ -888,19 +893,22 @@ static void Reset()
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    static char StatsString[128];
+    static char FPSString[128];
+    static char CountString[128];
     static float TimeCounter = 1.0f;
     TimeCounter += Rr_GetDeltaSeconds(App);
     if(TimeCounter > 0.2f)
     {
         TimeCounter = 0.0f;
-        std::sprintf(StatsString, "FPS: %.2f", Rr_GetFramesPerSecond(App));
+        std::sprintf(FPSString, "FPS: %.2f", Rr_GetFramesPerSecond(App));
+        std::sprintf(CountString, "Circles: %zu", Tree.ElementsCount());
     }
 
     static bool VSyncEnabled = false;
 
     Rr_BeginWindow("QuadTree");
-    Rr_Label(StatsString);
+    Rr_Label(FPSString);
+    Rr_Label(CountString);
     Rr_Separator();
     Rr_Checkbox("Use Query", &VSyncEnabled);
     Rr_Label("Sample Text");

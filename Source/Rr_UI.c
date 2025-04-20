@@ -755,17 +755,20 @@ void Rr_DrawWidgets(Rr_UIWindow *Window)
             break;
             case RR_UI_WIDGET_TYPE_SEPARATOR:
             {
+                Rr_Vec2 Size = {
+                    Window->Size.X -
+                        (Global->Style.ContentsPadding.X * Global->FontSize *
+                         2.0f) -
+                        (Window->Size.X * 0.1f),
+                    Rr_GetFrameThickness(),
+                };
                 Rr_Vec2 Position = {
-                    Widget->Position.X,
+                    Widget->Position.X + (Window->Size.X * 0.05f),
                     Widget->Position.Y + (Rr_GetSeperatorLineHeight() / 2.0f -
                                           Rr_GetFrameThickness() / 2.0f),
                 };
-                Rr_Vec2 Size = {
-                    Window->Size.X - (Global->Style.ContentsPadding.X *
-                                      Global->FontSize * 2.0f),
-                    Rr_GetFrameThickness(),
-                };
-                Rr_DrawSolidQuad(Position, Size, &Global->Style.Foreground);
+                Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, 0.85f);
+                Rr_DrawSolidQuad(Position, Size, &Color);
             }
             break;
             case RR_UI_WIDGET_TYPE_LABEL:
