@@ -903,7 +903,8 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_Label(StatsString);
     Rr_Separator();
     Rr_Checkbox("Use Query", &VSyncEnabled);
-    Rr_Label("Dodik");
+    Rr_Label("Sample Text");
+    Rr_Label("Multi\n line\n  text");
     Rr_EndWindow();
 
     Input(App);

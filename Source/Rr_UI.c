@@ -24,6 +24,14 @@ struct Rr_UIVertex
     Rr_Vec4 Color;
 };
 
+typedef struct Rr_UIUniformData Rr_UIUniformData;
+struct Rr_UIUniformData
+{
+    Rr_Vec2 ScreenSize;
+    float DistanceRange;
+    float Time;
+};
+
 typedef enum
 {
     RR_UI_WIDGET_TYPE_SEPARATOR,
@@ -313,9 +321,9 @@ static inline float Rr_GetSeperatorLineHeight(void)
     return Global->FontSize * Global->Font->LineHeight * 0.5f;
 }
 
-static inline float Rr_GetSeperatorHeight(void)
+static inline float Rr_GetFrameThickness(void)
 {
-    return RR_MAX(1.0f, Global->FontSize * 0.05f);
+    return roundf(RR_MAX(1.0f, Global->FontSize * 0.05f));
 }
 
 void Rr_Separator(void)
@@ -361,6 +369,12 @@ void Rr_Button(const char *Text)
 {
 }
 
+static inline Rr_Vec2 Rr_GetCheckboxSize()
+{
+    float Size = Global->FontSize * Global->Font->LineHeight * 0.6f;
+    return (Rr_Vec2){ Size, Size };
+}
+
 void Rr_Checkbox(const char *Text, bool *Checked)
 {
     if(Global->CurrentWindow == NULL)
@@ -374,6 +388,10 @@ void Rr_Checkbox(const char *Text, bool *Checked)
     Widget->Checked = Checked;
     Rr_Vec2 Size =
         Rr_CalculateTextSize(Global->Font, Global->FontSize, &Widget->Text);
+    Rr_Vec2 CheckboxSize = Rr_GetCheckboxSize();
+    Size.Y = RR_MAX(Size.Y, CheckboxSize.Y);
+    Size.X += CheckboxSize.X;
+    Size.X += Global->Style.ContentsPadding.X * Global->FontSize;
 
     Widget->Position = Global->Cursor;
 
@@ -392,14 +410,6 @@ void Rr_BeginHorizontal(void)
 void Rr_EndHorizontal(void)
 {
 }
-
-typedef struct Rr_UIUniformData Rr_UIUniformData;
-struct Rr_UIUniformData
-{
-    Rr_Vec2 ScreenSize;
-    float DistanceRange;
-    float Time;
-};
 
 Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
 {
@@ -549,7 +559,7 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Global->Font = Renderer->BuiltinFont;
 }
 
-static inline void Rr_PushQuad(Rr_UIVertex *Vertices)
+static inline void Rr_DrawQuad(Rr_UIVertex *Vertices)
 {
     /* @TODO: Bounds checking! */
 
@@ -565,38 +575,62 @@ static inline void Rr_PushQuad(Rr_UIVertex *Vertices)
     Global->VertexBufferData += 4;
 }
 
-static inline void Rr_PushSolidQuad(
+static inline void Rr_DrawSolidQuad(
     Rr_Vec2 Position,
     Rr_Vec2 Size,
-    Rr_Vec4 Color)
+    Rr_Vec4 *Color)
 {
     Rr_UIVertex Vertices[] = {
         {
             .Position = Position,
             .UV = (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Color,
+            .Color = *Color,
         },
         {
             .Position = { Position.X + Size.X, Position.Y },
             .UV = (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Color,
+            .Color = *Color,
         },
         {
             .Position = { Position.X, Position.Y + Size.Y },
             .UV = (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Color,
+            .Color = *Color,
         },
         {
             .Position = { Position.X + Size.X, Position.Y + Size.Y },
             .UV = (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = Color,
+            .Color = *Color,
         },
     };
 
-    Rr_PushQuad(Vertices);
+    Rr_DrawQuad(Vertices);
 }
 
-static inline void Rr_PushTexturedQuad(
+static inline void Rr_DrawFrameQuad(
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    Rr_Vec4 *Color)
+{
+    float FrameThickness = Rr_GetFrameThickness();
+    Rr_DrawSolidQuad(
+        (Rr_Vec2){ Position.X, Position.Y - FrameThickness },
+        (Rr_Vec2){ Size.X, FrameThickness },
+        Color);
+    Rr_DrawSolidQuad(
+        (Rr_Vec2){ Position.X, Position.Y + Size.Y },
+        (Rr_Vec2){ Size.X, FrameThickness },
+        Color);
+    Rr_DrawSolidQuad(
+        (Rr_Vec2){ Position.X - FrameThickness, Position.Y - FrameThickness },
+        (Rr_Vec2){ FrameThickness, Size.Y + FrameThickness * 2.0f },
+        Color);
+    Rr_DrawSolidQuad(
+        (Rr_Vec2){ Position.X + Size.X, Position.Y - FrameThickness },
+        (Rr_Vec2){ FrameThickness, Size.Y + FrameThickness * 2.0f },
+        Color);
+}
+
+static inline void Rr_DrawTexturedQuad(
     Rr_Vec2 Position,
     Rr_Vec2 Size,
     Rr_Vec4 *Color,
@@ -625,10 +659,10 @@ static inline void Rr_PushTexturedQuad(
         },
     };
 
-    Rr_PushQuad(Vertices);
+    Rr_DrawQuad(Vertices);
 }
 
-static inline void Rr_PushText(
+static inline void Rr_DrawText(
     Rr_Vec2 Position,
     Rr_String String,
     Rr_Vec4 *Color)
@@ -675,13 +709,81 @@ static inline void Rr_PushText(
             { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.Y },
         };
 
-        Rr_PushTexturedQuad(
+        Rr_DrawTexturedQuad(
             Rr_AddV2(Position, (Rr_Vec2){ CurrentX + Left, CurrentY + Top }),
             (Rr_Vec2){ Width, Height },
             Color,
             UVs);
 
         CurrentX += Global->Font->Advances[Codepoint] * FontSize;
+    }
+}
+
+void Rr_DrawWidgets(Rr_UIWindow *Window)
+{
+    float LineHeight = Global->FontSize * Global->Font->LineHeight;
+    float FrameThickness = Rr_GetFrameThickness();
+    Rr_Vec2 ContentsPadding =
+        Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
+    Rr_Vec2 CheckboxSize = Rr_GetCheckboxSize();
+
+    for(Rr_UIWidget *Widget = Window->FirstWidget; Widget != NULL;
+        Widget = Widget->Next)
+    {
+        switch(Widget->Type)
+        {
+            case RR_UI_WIDGET_TYPE_CHECKBOX:
+            {
+                Rr_Vec2 CheckboxPosition = Rr_AddV2(
+                    Widget->Position,
+                    (Rr_Vec2){
+                        FrameThickness,
+                        LineHeight / 2.0f - CheckboxSize.Y / 2.0f,
+                    });
+                Rr_DrawFrameQuad(
+                    CheckboxPosition,
+                    CheckboxSize,
+                    &Global->Style.Foreground);
+                Rr_Vec2 TextPosition = Rr_AddV2(
+                    Widget->Position,
+                    (Rr_Vec2){ ContentsPadding.X + CheckboxSize.X, 0.0f });
+                Rr_DrawText(
+                    TextPosition,
+                    Widget->Text,
+                    &Global->Style.Foreground);
+            }
+            break;
+            case RR_UI_WIDGET_TYPE_SEPARATOR:
+            {
+                Rr_Vec2 Position = {
+                    Widget->Position.X,
+                    Widget->Position.Y + (Rr_GetSeperatorLineHeight() / 2.0f -
+                                          Rr_GetFrameThickness() / 2.0f),
+                };
+                Rr_Vec2 Size = {
+                    Window->Size.X - (Global->Style.ContentsPadding.X *
+                                      Global->FontSize * 2.0f),
+                    Rr_GetFrameThickness(),
+                };
+                Rr_DrawSolidQuad(Position, Size, &Global->Style.Foreground);
+            }
+            break;
+            case RR_UI_WIDGET_TYPE_LABEL:
+            {
+                Rr_DrawText(
+                    Widget->Position,
+                    Widget->Text,
+                    &Global->Style.Foreground);
+            }
+            break;
+            case RR_UI_WIDGET_TYPE_BUTTON:
+            {
+                RR_ABORT("Not implemented!");
+            }
+            break;
+            default:
+                break;
+        }
     }
 }
 
@@ -714,17 +816,22 @@ void Rr_EndUI(Rr_App *App)
     {
         Rr_UIWindow *Window = Global->Windows.Data[Index];
 
+        Rr_DrawFrameQuad(
+            Window->Position,
+            Window->Size,
+            &Global->Style.Outline);
+
         Rr_Vec2 TitlePosition = Window->Position;
         Rr_Vec2 TitleSize = {
             Window->Size.X,
             Rr_GetWindowTitleHeight(),
         };
-        Rr_PushSolidQuad(
+        Rr_DrawSolidQuad(
             TitlePosition,
             TitleSize,
-            Global->Style.TitleBackground);
+            &Global->Style.TitleBackground);
 
-        Rr_PushText(
+        Rr_DrawText(
             Rr_AddV2(
                 TitlePosition,
                 Rr_MulV2F(Global->Style.TitlePadding, Global->FontSize)),
@@ -739,48 +846,12 @@ void Rr_EndUI(Rr_App *App)
             Window->Size.X,
             Window->Size.Y - Rr_GetWindowTitleHeight(),
         };
-        Rr_PushSolidQuad(
+        Rr_DrawSolidQuad(
             ContentsPosition,
             ContentsSize,
-            Global->Style.Background);
+            &Global->Style.Background);
 
-        for(Rr_UIWidget *Widget = Window->FirstWidget; Widget != NULL;
-            Widget = Widget->Next)
-        {
-            switch(Widget->Type)
-            {
-                case RR_UI_WIDGET_TYPE_SEPARATOR:
-                {
-                    Rr_Vec2 Position = { Widget->Position.X,
-                                         Widget->Position.Y +
-                                             (Rr_GetSeperatorLineHeight() /
-                                                  2.0f -
-                                              Rr_GetSeperatorHeight() / 2.0f) };
-                    Rr_Vec2 Size = {
-                        Window->Size.X - (Global->Style.ContentsPadding.X *
-                                          Global->FontSize * 2.0f),
-                        Rr_GetSeperatorHeight(),
-                    };
-                    Rr_PushSolidQuad(Position, Size, Global->Style.Foreground);
-                }
-                break;
-                case RR_UI_WIDGET_TYPE_LABEL:
-                {
-                    Rr_PushText(
-                        Widget->Position,
-                        Widget->Text,
-                        &Global->Style.Foreground);
-                }
-                break;
-                case RR_UI_WIDGET_TYPE_BUTTON:
-                {
-                    RR_ABORT("Not implemented!");
-                }
-                break;
-                default:
-                    break;
-            }
-        }
+        Rr_DrawWidgets(Window);
     }
 
     if(Global->Windows.Count > 0)
