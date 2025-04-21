@@ -14,6 +14,38 @@
 
 #include <assert.h>
 
+/*
+ * Plan for immediate-mode graphical user interface (IMGUI).
+ *
+ * At the start of a frame we have access to final on-screen layout as it was
+ * rendered to the screen. That's the time to process incoming input events and
+ * handle clicks/typing/etc... For example, an input box widget would store char
+ * pointer, max size and current position at which chars should be inserted.
+ * These events should be consumed by IMGUI.
+ *
+ * After finishing input processing the arena will be popped to position stored
+ * before rendering stage. Now only persistent state remains such as window
+ * positions and window sizes.
+ *
+ * User code will then (again) create windows (allocated from IMGUI arena) and
+ * populate them with widgets (allocated from "frame" arena borrowed from the
+ * renderer). At this point a widget doesn't know the final layout of a window
+ * it happens to be in so bare minimum of information must be stored (i. e.
+ * type, text and pointers to user state). That's what I call a "widget
+ * command".
+ *
+ * Before doing any rendering, store current IMGUI arena position.
+ * Then iterate through windows and their "widget commands" to generate
+ * actual layout (store it in IMGUI arena) and quads.
+ * Minor inconvenience: layout boxes (such as windows) should be added after all
+ * of their children. So, add quads to a scratch arena before copying to GPU?
+ *
+ * With such approach, one memory arena should be enough (not counting the
+ * "frame" arena, borrowed from the renderer). At some point however I must look
+ * into some kind of a string caching which may or may not introduce another
+ * allocator.
+ */
+
 typedef uint16_t Rr_UIIndex;
 
 typedef struct Rr_UIVertex Rr_UIVertex;
@@ -45,6 +77,12 @@ struct Rr_UIWidget
 {
     union
     {
+        struct
+        {
+            char *Data;
+            uint32_t Size;
+            uint32_t Position;
+        } Input;
         bool *Checked;
     };
     Rr_String Text;
@@ -369,7 +407,7 @@ void Rr_Button(const char *Text)
 {
 }
 
-static inline Rr_Vec2 Rr_GetCheckboxSize()
+static inline Rr_Vec2 Rr_GetCheckboxSize(void)
 {
     float Size = Global->FontSize * Global->Font->LineHeight * 0.6f;
     return (Rr_Vec2){ Size, Size };
