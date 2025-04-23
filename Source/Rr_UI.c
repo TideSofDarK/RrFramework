@@ -375,24 +375,25 @@ static inline void Rr_DrawFrameQuad(
     float FrameThickness = Rr_GetFrameThickness();
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X, Position.Y - FrameThickness },
+        (Rr_Vec2){ Position.X, Position.Y },
         (Rr_Vec2){ Size.X, FrameThickness },
-        Color);
+        Color); /* Top */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X, Position.Y + Size.Y },
+        (Rr_Vec2){ Position.X, Position.Y + Size.Y - FrameThickness },
         (Rr_Vec2){ Size.X, FrameThickness },
-        Color);
+        Color); /* Bottom */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X - FrameThickness, Position.Y - FrameThickness },
-        (Rr_Vec2){ FrameThickness, Size.Y + FrameThickness * 2.0f },
-        Color);
+        (Rr_Vec2){ Position.X, Position.Y + FrameThickness },
+        (Rr_Vec2){ FrameThickness, Size.Y - FrameThickness * 2.0f },
+        Color); /* Left */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X + Size.X, Position.Y - FrameThickness },
-        (Rr_Vec2){ FrameThickness, Size.Y + FrameThickness * 2.0f },
-        Color);
+        (Rr_Vec2){ Position.X + Size.X - FrameThickness,
+                   Position.Y + FrameThickness },
+        (Rr_Vec2){ FrameThickness, Size.Y - FrameThickness * 2.0f },
+        Color); /* Right */
 }
 
 static inline void Rr_DrawTexturedQuad(
@@ -514,6 +515,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             .Y = Global->Style.ContentsPadding.Y * 2.0f * Global->FontSize +
                  Rr_GetWindowTitleHeight() + DEFAULT_WINDOW_HEIGHT,
         };
+        *WindowRef = Window;
     }
     else
     {
@@ -595,7 +597,7 @@ void Rr_Separator(void)
     Rr_DrawSolidQuad(Window, Position, Size, &Color);
 
     Global->Cursor.Y += SeparatorLineHeight;
-    Window->Size.Height += SeparatorLineHeight;
+    /* Window->Size.Height += SeparatorLineHeight; */
 }
 
 void Rr_Label(const char *Text)
@@ -617,7 +619,7 @@ void Rr_Label(const char *Text)
     /*     Window->Size.Width, */
     /*     TextSize.Width + */
     /*         (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f)); */
-    Window->Size.Height += TextSize.Height;
+    /* Window->Size.Height += TextSize.Height; */
 
     Rr_DestroyScratch(Scratch);
 }
@@ -695,7 +697,7 @@ void Rr_Checkbox(const char *Text, bool *Checked)
     /*     Window->Size.Width, */
     /*     (TextSize.Width + CheckboxSize.Width) + */
     /*         (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f)); */
-    Window->Size.Height += YOffset;
+    /* Window->Size.Height += YOffset; */
 
     Rr_DestroyScratch(Scratch);
 }
@@ -1026,8 +1028,4 @@ void Rr_EndUI(Rr_App *App)
     }
 
     Global = NULL;
-
-    // Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
-    // Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
-    // Rr_GraphNode *Node = Rr_AddGraphicsNode(Renderer);
 }
