@@ -909,10 +909,10 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_BeginWindow("QuadTree");
     Rr_Label(FPSString);
     Rr_Label(CountString);
-    Rr_Separator();
-    Rr_Checkbox("Use Query", &VSyncEnabled);
-    Rr_Label("Sample Text");
-    Rr_Label("Multi\n line\n  text");
+    // Rr_Separator();
+    // Rr_Checkbox("Use Query", &VSyncEnabled);
+    // Rr_Label("Sample Text");
+    // Rr_Label("Multi\n line\n  text");
     Rr_EndWindow();
 
     Input(App);

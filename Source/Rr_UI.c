@@ -14,37 +14,18 @@
 
 #include <assert.h>
 
-/*
- * Plan for immediate-mode graphical user interface (IMGUI).
- *
- * At the start of a frame we have access to final on-screen layout as it was
- * rendered to the screen. That's the time to process incoming input events and
- * handle clicks/typing/etc... For example, an input box widget would store char
- * pointer, max size and current position at which chars should be inserted.
- * These events should be consumed by IMGUI.
- *
- * After finishing input processing the arena will be popped to position stored
- * before rendering stage. Now only persistent state remains such as window
- * positions and window sizes.
- *
- * User code will then (again) create windows (allocated from IMGUI arena) and
- * populate them with widgets (allocated from "frame" arena borrowed from the
- * renderer). At this point a widget doesn't know the final layout of a window
- * it happens to be in so bare minimum of information must be stored (i. e.
- * type, text and pointers to user state). That's what I call a "widget
- * command".
- *
- * Before doing any rendering, store current IMGUI arena position.
- * Then iterate through windows and their "widget commands" to generate
- * actual layout (store it in IMGUI arena) and quads.
- * Minor inconvenience: layout boxes (such as windows) should be added after all
- * of their children. So, add quads to a scratch arena before copying to GPU?
- *
- * With such approach, one memory arena should be enough (not counting the
- * "frame" arena, borrowed from the renderer). At some point however I must look
- * into some kind of a string caching which may or may not introduce another
- * allocator.
- */
+#define RR_ASSERT_GLOBAL() \
+    assert(Global != NULL && "Did you forget to call Rr_BeginUI()?")
+
+#define RR_ASSERT_NO_WINDOW()            \
+    RR_ASSERT_GLOBAL();                  \
+    assert(                              \
+        Global->CurrentWindow == NULL && \
+        "Did you forget to call Rr_EndWindow()?")
+
+#define RR_ASSERT_WIDGET() \
+    RR_ASSERT_GLOBAL();    \
+    assert(Global->CurrentWindow && "Did you forget to call Rr_BeginWindow()?")
 
 typedef uint16_t Rr_UIIndex;
 
@@ -56,6 +37,8 @@ struct Rr_UIVertex
     Rr_Vec4 Color;
 };
 
+typedef Rr_UIVertex *Rr_UIQuad; /* Implies 4 allocated vertices. */
+
 typedef struct Rr_UIUniformData Rr_UIUniformData;
 struct Rr_UIUniformData
 {
@@ -64,41 +47,17 @@ struct Rr_UIUniformData
     float Time;
 };
 
-typedef enum
-{
-    RR_UI_WIDGET_TYPE_SEPARATOR,
-    RR_UI_WIDGET_TYPE_LABEL,
-    RR_UI_WIDGET_TYPE_BUTTON,
-    RR_UI_WIDGET_TYPE_CHECKBOX,
-} Rr_UIWidgetType;
-
-typedef struct Rr_UIWidget Rr_UIWidget;
-struct Rr_UIWidget
-{
-    union
-    {
-        struct
-        {
-            char *Data;
-            uint32_t Size;
-            uint32_t Position;
-        } Input;
-        bool *Checked;
-    };
-    Rr_String Text;
-    Rr_Vec2 Position;
-    Rr_UIWidgetType Type;
-    Rr_UIWidget *Next;
-};
-
 typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
     Rr_String Title;
     Rr_Vec2 Position;
     Rr_Vec2 Size;
-    Rr_UIWidget *FirstWidget;
-    Rr_UIWidget *CurrentWidget;
+    uint32_t LastVertexCount;
+    RR_SLICE(Rr_UIVertex) Vertices;
+    uint32_t LastIndexCount;
+    RR_SLICE(Rr_UIIndex) Indices;
+    Rr_Map *WidgetMap;
     size_t LastFrameNumber;
     bool Minimized;
 };
@@ -110,11 +69,10 @@ struct Rr_UIContext
     Rr_UIStyle Style;
 
     Rr_Map *WindowMap;
-    size_t LastWindowCount;
     RR_SLICE(Rr_UIWindow *) Windows;
+    size_t LastWindowCount;
     Rr_UIWindow *CurrentWindow;
-
-    Rr_Vec2 Cursor;
+    Rr_UIWindow *HoveredWindow;
 
     Rr_Vec2 ScreenSize;
 
@@ -124,13 +82,10 @@ struct Rr_UIContext
     Rr_Font *Font;
     float FontSize;
 
+    Rr_Vec2 Cursor;
+
     Rr_Buffer *VertexBuffer;
     Rr_Buffer *IndexBuffer;
-
-    Rr_UIVertex *VertexBufferDataStart;
-    Rr_UIVertex *VertexBufferData;
-    Rr_UIIndex *IndexBufferDataStart;
-    Rr_UIIndex *IndexBufferData;
 
     Rr_Buffer *UniformBuffer;
 
@@ -141,6 +96,22 @@ struct Rr_UIContext
 };
 
 static Rr_UIContext *Global;
+
+static inline float Rr_GetSeperatorLineHeight(void)
+{
+    return Global->FontSize * Global->Font->LineHeight * 0.5f;
+}
+
+static inline float Rr_GetFrameThickness(void)
+{
+    return roundf(RR_MAX(1.0f, Global->FontSize * 0.05f));
+}
+
+static float Rr_GetWindowTitleHeight(void)
+{
+    return Global->Style.TitlePadding.Y * Global->FontSize * 2.0f +
+           Global->Font->LineHeight * Global->FontSize;
+}
 
 Rr_Font *Rr_CreateFont(
     Rr_Renderer *Renderer,
@@ -280,127 +251,336 @@ Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)
                       .Height = Lines * Font->LineHeight * FontSize };
 }
 
-static float Rr_GetWindowTitleHeight(void)
+static inline Rr_UIQuad Rr_ReserveQuad(void)
 {
-    return Global->Style.TitlePadding.Y * Global->FontSize * 2.0f +
-           Global->Font->LineHeight * Global->FontSize;
+    /* @TODO: Bounds checking! */
+
+    Rr_UIWindow *Window = Global->CurrentWindow;
+
+    Rr_UIIndex Base = Window->Vertices.Count;
+    Rr_UIIndex Indices[] = {
+        Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
+    };
+
+    Rr_UIQuad ReservedQuad = Window->Vertices.Data + Window->Vertices.Count;
+    for(size_t Index = 0; Index < 4; ++Index)
+    {
+        RR_PUSH_SLICE(&Window->Vertices, Global->FrameArena);
+    }
+
+    for(size_t Index = 0; Index < 6; ++Index)
+    {
+        *RR_PUSH_SLICE(&Window->Indices, Global->FrameArena) = Indices[Index];
+    }
+
+    return ReservedQuad;
+}
+
+static inline void Rr_DrawQuad(Rr_UIWindow *Window, Rr_UIVertex *Vertices)
+{
+    /* @TODO: Bounds checking! */
+
+    Rr_UIIndex Base = Window->Vertices.Count;
+    Rr_UIIndex Indices[] = {
+        Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
+    };
+    for(size_t Index = 0; Index < 4; ++Index)
+    {
+        *RR_PUSH_SLICE(&Window->Vertices, Global->FrameArena) = Vertices[Index];
+    }
+
+    for(size_t Index = 0; Index < 6; ++Index)
+    {
+        *RR_PUSH_SLICE(&Window->Indices, Global->FrameArena) = Indices[Index];
+    }
+}
+
+static inline void Rr_SolidQuad(
+    Rr_UIQuad Quad,
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    Rr_Vec4 *Color)
+{
+    memcpy(
+        Quad,
+        (Rr_UIVertex[]){
+            {
+                .Position = Position,
+                .UV = (Rr_Vec2){ 0.0f, 0.0f },
+                .Color = *Color,
+            },
+            {
+                .Position = { Position.X + Size.X, Position.Y },
+                .UV = (Rr_Vec2){ 0.0f, 0.0f },
+                .Color = *Color,
+            },
+            {
+                .Position = { Position.X, Position.Y + Size.Y },
+                .UV = (Rr_Vec2){ 0.0f, 0.0f },
+                .Color = *Color,
+            },
+            {
+                .Position = { Position.X + Size.X, Position.Y + Size.Y },
+                .UV = (Rr_Vec2){ 0.0f, 0.0f },
+                .Color = *Color,
+            },
+        },
+        sizeof(Rr_UIVertex) * 4);
+}
+
+static inline void Rr_DrawSolidQuad(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    Rr_Vec4 *Color)
+{
+    Rr_UIVertex Vertices[4];
+    Rr_SolidQuad(Vertices, Position, Size, Color);
+    Rr_DrawQuad(Window, Vertices);
+}
+
+static inline void Rr_DrawFrameQuad(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    Rr_Vec4 *Color)
+{
+    float FrameThickness = Rr_GetFrameThickness();
+    Rr_DrawSolidQuad(
+        Window,
+        (Rr_Vec2){ Position.X, Position.Y - FrameThickness },
+        (Rr_Vec2){ Size.X, FrameThickness },
+        Color);
+    Rr_DrawSolidQuad(
+        Window,
+        (Rr_Vec2){ Position.X, Position.Y + Size.Y },
+        (Rr_Vec2){ Size.X, FrameThickness },
+        Color);
+    Rr_DrawSolidQuad(
+        Window,
+        (Rr_Vec2){ Position.X - FrameThickness, Position.Y - FrameThickness },
+        (Rr_Vec2){ FrameThickness, Size.Y + FrameThickness * 2.0f },
+        Color);
+    Rr_DrawSolidQuad(
+        Window,
+        (Rr_Vec2){ Position.X + Size.X, Position.Y - FrameThickness },
+        (Rr_Vec2){ FrameThickness, Size.Y + FrameThickness * 2.0f },
+        Color);
+}
+
+static inline void Rr_DrawTexturedQuad(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    Rr_Vec4 *Color,
+    Rr_Vec2 *UVs)
+{
+    Rr_UIVertex Vertices[] = {
+        {
+            .Position = Position,
+            .UV = UVs[0],
+            .Color = *Color,
+        },
+        {
+            .Position = { Position.X + Size.X, Position.Y },
+            .UV = UVs[1],
+            .Color = *Color,
+        },
+        {
+            .Position = { Position.X, Position.Y + Size.Y },
+            .UV = UVs[2],
+            .Color = *Color,
+        },
+        {
+            .Position = { Position.X + Size.X, Position.Y + Size.Y },
+            .UV = UVs[3],
+            .Color = *Color,
+        },
+    };
+
+    Rr_DrawQuad(Window, Vertices);
+}
+
+static inline void Rr_DrawText(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Position,
+    Rr_String *String,
+    Rr_Vec4 *Color)
+{
+    Rr_Font *Font = Global->Font;
+    float FontSize = Global->FontSize;
+    float LineHeight = Font->LineHeight * FontSize;
+    float CurrentX = 0.0f;
+    float CurrentY = 0.0f;
+    for(size_t Index = 0; Index < String->Length; ++Index)
+    {
+        uint32_t Codepoint = String->Data[Index];
+
+        if(Codepoint >= RR_TEXT_MAX_GLYPHS)
+        {
+            RR_ABORT("Codepoint is not within range!");
+        }
+
+        if(Codepoint == '\n')
+        {
+            CurrentX = 0.0f;
+            CurrentY += LineHeight;
+            continue;
+        }
+
+        if(Codepoint == ' ')
+        {
+            CurrentX += Global->Font->Advances[Codepoint] * FontSize;
+            continue;
+        }
+
+        Rr_Glyph *Glyph = &Font->Glyphs[Codepoint];
+
+        float Left = Glyph->PlaneBounds.X * FontSize;
+        float Width = (Glyph->PlaneBounds.Z - Glyph->PlaneBounds.X) * FontSize;
+
+        float Top = (1.0f - Glyph->PlaneBounds.W) * FontSize;
+        float Height = (Glyph->PlaneBounds.W - Glyph->PlaneBounds.Y) * FontSize;
+
+        Rr_Vec2 UVs[] = {
+            { Glyph->AtlasBounds.X, Glyph->AtlasBounds.W },
+            { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.W },
+            { Glyph->AtlasBounds.X, Glyph->AtlasBounds.Y },
+            { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.Y },
+        };
+
+        Rr_DrawTexturedQuad(
+            Window,
+            Rr_AddV2(Position, (Rr_Vec2){ CurrentX + Left, CurrentY + Top }),
+            (Rr_Vec2){ Width, Height },
+            Color,
+            UVs);
+
+        CurrentX += Global->Font->Advances[Codepoint] * FontSize;
+    }
 }
 
 void Rr_BeginWindow(const char *Title)
 {
+    RR_ASSERT_NO_WINDOW();
+
     size_t TitleLength = strlen(Title);
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
 
-    Rr_UIWindow **Window = RR_UPSERT(&Global->WindowMap, Hash, Global->Arena);
+    Rr_UIWindow **WindowRef =
+        RR_UPSERT(&Global->WindowMap, Hash, Global->Arena);
+    Rr_UIWindow *Window = *WindowRef;
 
-    if(*Window == NULL)
+    if(Window == NULL)
     {
-        *Window = RR_ALLOC(Global->Arena, sizeof(Rr_UIWindow));
-        Global->CurrentWindow = *Window;
-        Global->CurrentWindow->Title =
-            Rr_CreateString(Title, TitleLength, Global->Arena);
-        Global->CurrentWindow->Position = (Rr_Vec2){
+        Window = RR_ALLOC_TYPE(Global->Arena, Rr_UIWindow);
+        Window->Title = Rr_CreateString(Title, TitleLength, Global->Arena);
+        Window->Position = (Rr_Vec2){
             .X = Global->FontSize,
             .Y = Global->FontSize,
+        };
+        const float DEFAULT_WINDOW_WIDTH = 300;
+        const float DEFAULT_WINDOW_HEIGHT = 500;
+        Window->Size = (Rr_Vec2){
+            .X = Global->Style.ContentsPadding.X * 2.0f * Global->FontSize +
+                 DEFAULT_WINDOW_WIDTH,
+            .Y = Global->Style.ContentsPadding.Y * 2.0f * Global->FontSize +
+                 Rr_GetWindowTitleHeight() + DEFAULT_WINDOW_HEIGHT,
         };
     }
     else
     {
-        Global->CurrentWindow = *Window;
-        assert(Global->CurrentWindow->LastFrameNumber != Global->FrameNumber);
+        assert(Window->LastFrameNumber != Global->FrameNumber);
     }
 
-    *RR_PUSH_SLICE(&Global->Windows, Global->FrameArena) =
-        Global->CurrentWindow;
-    Global->CurrentWindow->LastFrameNumber = Global->FrameNumber;
+    Window->LastFrameNumber = Global->FrameNumber;
 
-    Global->CurrentWindow->Size = (Rr_Vec2){
-        .X = Global->Style.ContentsPadding.X * 2.0f * Global->FontSize,
-        .Y = Global->Style.ContentsPadding.Y * 2.0f * Global->FontSize +
+    *RR_PUSH_SLICE(&Global->Windows, Global->FrameArena) = Window;
+
+    RR_ZERO(Window->Vertices);
+    RR_RESERVE_SLICE(
+        &Global->CurrentWindow->Vertices,
+        Window->LastVertexCount ? Window->LastVertexCount : (4 * 32),
+        Global->FrameArena);
+
+    RR_ZERO(Window->Indices);
+    RR_RESERVE_SLICE(
+        &Window->Indices,
+        Window->LastIndexCount ? Window->LastIndexCount : (6 * 32),
+        Global->FrameArena);
+
+    Rr_UIQuad _ = Rr_ReserveQuad(); /* Reserved contents background quad. */
+    (void)_;
+
+    Global->Cursor = (Rr_Vec2){
+        .X = Window->Position.X +
+             Global->Style.ContentsPadding.X * Global->FontSize,
+        .Y = Window->Position.Y +
+             Global->Style.ContentsPadding.Y * Global->FontSize +
              Rr_GetWindowTitleHeight(),
     };
 
-    Global->Cursor.X = Global->CurrentWindow->Position.X +
-                       Global->Style.ContentsPadding.X * Global->FontSize;
-    Global->Cursor.Y = Global->CurrentWindow->Position.Y +
-                       Global->Style.ContentsPadding.Y * Global->FontSize +
-                       Rr_GetWindowTitleHeight();
-
-    Global->CurrentWindow->CurrentWidget = Global->CurrentWindow->FirstWidget =
-        NULL;
+    Global->CurrentWindow = Window;
 }
 
 void Rr_EndWindow(void)
 {
+    RR_ASSERT_WIDGET();
+
+    Rr_UIWindow *Window = Global->CurrentWindow;
+    Window->LastVertexCount = Window->Vertices.Count;
+    Window->LastIndexCount = Window->Indices.Count;
     Global->CurrentWindow = NULL;
-}
-
-static Rr_UIWidget *Rr_PushWidget(Rr_UIWindow *Window, Rr_UIWidgetType Type)
-{
-    if(Window->CurrentWidget == NULL)
-    {
-        Window->FirstWidget = RR_ALLOC(Global->FrameArena, sizeof(Rr_UIWidget));
-        Window->CurrentWidget = Window->FirstWidget;
-    }
-    else
-    {
-        Window->CurrentWidget->Next =
-            RR_ALLOC(Global->FrameArena, sizeof(Rr_UIWidget));
-        Window->CurrentWidget = Window->CurrentWidget->Next;
-    }
-
-    Window->CurrentWidget->Type = Type;
-
-    return Window->CurrentWidget;
-}
-
-static inline float Rr_GetSeperatorLineHeight(void)
-{
-    return Global->FontSize * Global->Font->LineHeight * 0.5f;
-}
-
-static inline float Rr_GetFrameThickness(void)
-{
-    return roundf(RR_MAX(1.0f, Global->FontSize * 0.05f));
 }
 
 void Rr_Separator(void)
 {
-    if(Global->CurrentWindow == NULL)
-    {
-        return;
-    }
+    RR_ASSERT_WIDGET();
 
-    Rr_UIWidget *Widget =
-        Rr_PushWidget(Global->CurrentWindow, RR_UI_WIDGET_TYPE_SEPARATOR);
+    Rr_UIWindow *Window = Global->CurrentWindow;
 
-    Widget->Position = Global->Cursor;
-    float Offset = Rr_GetSeperatorLineHeight();
-    Global->Cursor.Y += Offset;
-    Global->CurrentWindow->Size.Height += Offset;
+    float SeparatorLineHeight = Rr_GetSeperatorLineHeight();
+    float FrameThickness = Rr_GetFrameThickness();
+
+    Rr_Vec2 Size = {
+        Window->Size.X -
+            (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f) -
+            (Window->Size.X * 0.1f),
+        FrameThickness,
+    };
+    Rr_Vec2 Position = {
+        Global->Cursor.X + (Window->Size.X * 0.05f),
+        Global->Cursor.Y + (SeparatorLineHeight / 2.0f - FrameThickness / 2.0f),
+    };
+    Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, 0.85f);
+    Rr_DrawSolidQuad(Window, Position, Size, &Color);
+
+    Global->Cursor.Y += SeparatorLineHeight;
+    Window->Size.Height += SeparatorLineHeight;
 }
 
 void Rr_Label(const char *Text)
 {
-    if(Global->CurrentWindow == NULL)
-    {
-        return;
-    }
+    RR_ASSERT_WIDGET();
 
-    Rr_UIWidget *Widget =
-        Rr_PushWidget(Global->CurrentWindow, RR_UI_WIDGET_TYPE_LABEL);
-    Widget->Text = Rr_CreateString(Text, 0, Global->FrameArena);
-    Rr_Vec2 Size =
-        Rr_CalculateTextSize(Global->Font, Global->FontSize, &Widget->Text);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Widget->Position = Global->Cursor;
+    Rr_UIWindow *Window = Global->CurrentWindow;
 
-    Global->Cursor.Y += Size.Height;
-    Global->CurrentWindow->Size.Width = RR_MAX(
-        Global->CurrentWindow->Size.Width,
-        Size.Width +
+    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
+    Rr_Vec2 TextSize =
+        Rr_CalculateTextSize(Global->Font, Global->FontSize, &TextString);
+
+    Rr_DrawText(Window, Global->Cursor, &TextString, &Global->Style.Foreground);
+
+    Global->Cursor.Y += TextSize.Height;
+    Window->Size.Width = RR_MAX(
+        Window->Size.Width,
+        TextSize.Width +
             (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f));
-    Global->CurrentWindow->Size.Height += Size.Height;
+    Window->Size.Height += TextSize.Height;
+
+    Rr_DestroyScratch(Scratch);
 }
 
 void Rr_Button(const char *Text)
@@ -415,30 +595,48 @@ static inline Rr_Vec2 Rr_GetCheckboxSize(void)
 
 void Rr_Checkbox(const char *Text, bool *Checked)
 {
-    if(Global->CurrentWindow == NULL)
-    {
-        return;
-    }
+    RR_ASSERT_WIDGET();
 
-    Rr_UIWidget *Widget =
-        Rr_PushWidget(Global->CurrentWindow, RR_UI_WIDGET_TYPE_CHECKBOX);
-    Widget->Text = Rr_CreateString(Text, 0, Global->FrameArena);
-    Widget->Checked = Checked;
-    Rr_Vec2 Size =
-        Rr_CalculateTextSize(Global->Font, Global->FontSize, &Widget->Text);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UIWindow *Window = Global->CurrentWindow;
+
+    float FrameThickness = Rr_GetFrameThickness();
+    float LineHeight = Global->FontSize * Global->Font->LineHeight;
+    Rr_Vec2 ContentsPadding =
+        Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
     Rr_Vec2 CheckboxSize = Rr_GetCheckboxSize();
-    Size.Y = RR_MAX(Size.Y, CheckboxSize.Y);
-    Size.X += CheckboxSize.X;
-    Size.X += Global->Style.ContentsPadding.X * Global->FontSize;
 
-    Widget->Position = Global->Cursor;
+    Rr_Vec2 CheckboxPosition = Rr_AddV2(
+        Global->Cursor,
+        (Rr_Vec2){
+            FrameThickness,
+            LineHeight / 2.0f - CheckboxSize.Y / 2.0f,
+        });
+    Rr_DrawFrameQuad(
+        Window,
+        CheckboxPosition,
+        CheckboxSize,
+        &Global->Style.Foreground);
 
-    Global->Cursor.Y += Size.Height;
-    Global->CurrentWindow->Size.Width = RR_MAX(
-        Global->CurrentWindow->Size.Width,
-        Size.Width +
+    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
+    Rr_Vec2 TextSize =
+        Rr_CalculateTextSize(Global->Font, Global->FontSize, &TextString);
+
+    Rr_Vec2 TextPosition = Rr_AddV2(
+        Global->Cursor,
+        (Rr_Vec2){ ContentsPadding.X + CheckboxSize.X, 0.0f });
+    Rr_DrawText(Window, TextPosition, &TextString, &Global->Style.Foreground);
+
+    float YOffset = RR_MAX(CheckboxSize.Y, TextSize.Y);
+    Global->Cursor.Y += YOffset;
+    Window->Size.Width = RR_MAX(
+        Window->Size.Width,
+        (TextSize.Width + CheckboxSize.Width) +
             (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f));
-    Global->CurrentWindow->Size.Height += Size.Height;
+    Window->Size.Height += YOffset;
+
+    Rr_DestroyScratch(Scratch);
 }
 
 void Rr_BeginHorizontal(void)
@@ -583,6 +781,11 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Global->FrameNumber = Renderer->FrameNumber;
     Global->FrameArena = Rr_GetCurrentFrame(Renderer)->Arena;
 
+    Global->HoveredWindow = NULL;
+    for(int Index = Global->Windows.Count - 1; Index >= 0; --Index)
+    {
+    }
+
     RR_ZERO(Global->Windows);
     RR_RESERVE_SLICE(
         &Global->Windows,
@@ -597,240 +800,17 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Global->Font = Renderer->BuiltinFont;
 }
 
-static inline void Rr_DrawQuad(Rr_UIVertex *Vertices)
-{
-    /* @TODO: Bounds checking! */
-
-    Rr_UIIndex Base =
-        (Rr_UIIndex)(Global->VertexBufferData - Global->VertexBufferDataStart);
-    Rr_UIIndex Indices[] = {
-        Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
-    };
-    memcpy(Global->IndexBufferData, Indices, sizeof(Indices));
-    Global->IndexBufferData += 6;
-
-    memcpy(Global->VertexBufferData, Vertices, sizeof(Rr_UIVertex) * 4);
-    Global->VertexBufferData += 4;
-}
-
-static inline void Rr_DrawSolidQuad(
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
-    Rr_Vec4 *Color)
-{
-    Rr_UIVertex Vertices[] = {
-        {
-            .Position = Position,
-            .UV = (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = *Color,
-        },
-        {
-            .Position = { Position.X + Size.X, Position.Y },
-            .UV = (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = *Color,
-        },
-        {
-            .Position = { Position.X, Position.Y + Size.Y },
-            .UV = (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = *Color,
-        },
-        {
-            .Position = { Position.X + Size.X, Position.Y + Size.Y },
-            .UV = (Rr_Vec2){ 0.0f, 0.0f },
-            .Color = *Color,
-        },
-    };
-
-    Rr_DrawQuad(Vertices);
-}
-
-static inline void Rr_DrawFrameQuad(
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
-    Rr_Vec4 *Color)
-{
-    float FrameThickness = Rr_GetFrameThickness();
-    Rr_DrawSolidQuad(
-        (Rr_Vec2){ Position.X, Position.Y - FrameThickness },
-        (Rr_Vec2){ Size.X, FrameThickness },
-        Color);
-    Rr_DrawSolidQuad(
-        (Rr_Vec2){ Position.X, Position.Y + Size.Y },
-        (Rr_Vec2){ Size.X, FrameThickness },
-        Color);
-    Rr_DrawSolidQuad(
-        (Rr_Vec2){ Position.X - FrameThickness, Position.Y - FrameThickness },
-        (Rr_Vec2){ FrameThickness, Size.Y + FrameThickness * 2.0f },
-        Color);
-    Rr_DrawSolidQuad(
-        (Rr_Vec2){ Position.X + Size.X, Position.Y - FrameThickness },
-        (Rr_Vec2){ FrameThickness, Size.Y + FrameThickness * 2.0f },
-        Color);
-}
-
-static inline void Rr_DrawTexturedQuad(
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
-    Rr_Vec4 *Color,
-    Rr_Vec2 *UVs)
-{
-    Rr_UIVertex Vertices[] = {
-        {
-            .Position = Position,
-            .UV = UVs[0],
-            .Color = *Color,
-        },
-        {
-            .Position = { Position.X + Size.X, Position.Y },
-            .UV = UVs[1],
-            .Color = *Color,
-        },
-        {
-            .Position = { Position.X, Position.Y + Size.Y },
-            .UV = UVs[2],
-            .Color = *Color,
-        },
-        {
-            .Position = { Position.X + Size.X, Position.Y + Size.Y },
-            .UV = UVs[3],
-            .Color = *Color,
-        },
-    };
-
-    Rr_DrawQuad(Vertices);
-}
-
-static inline void Rr_DrawText(
-    Rr_Vec2 Position,
-    Rr_String String,
-    Rr_Vec4 *Color)
-{
-    Rr_Font *Font = Global->Font;
-    float FontSize = Global->FontSize;
-    float LineHeight = Font->LineHeight * FontSize;
-    float CurrentX = 0.0f;
-    float CurrentY = 0.0f;
-    for(size_t Index = 0; Index < String.Length; ++Index)
-    {
-        uint32_t Codepoint = String.Data[Index];
-
-        if(Codepoint >= RR_TEXT_MAX_GLYPHS)
-        {
-            RR_ABORT("Codepoint is not within range!");
-        }
-
-        if(Codepoint == '\n')
-        {
-            CurrentX = 0.0f;
-            CurrentY += LineHeight;
-            continue;
-        }
-
-        if(Codepoint == ' ')
-        {
-            CurrentX += Global->Font->Advances[Codepoint] * FontSize;
-            continue;
-        }
-
-        Rr_Glyph *Glyph = &Font->Glyphs[Codepoint];
-
-        float Left = Glyph->PlaneBounds.X * FontSize;
-        float Width = (Glyph->PlaneBounds.Z - Glyph->PlaneBounds.X) * FontSize;
-
-        float Top = (1.0f - Glyph->PlaneBounds.W) * FontSize;
-        float Height = (Glyph->PlaneBounds.W - Glyph->PlaneBounds.Y) * FontSize;
-
-        Rr_Vec2 UVs[] = {
-            { Glyph->AtlasBounds.X, Glyph->AtlasBounds.W },
-            { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.W },
-            { Glyph->AtlasBounds.X, Glyph->AtlasBounds.Y },
-            { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.Y },
-        };
-
-        Rr_DrawTexturedQuad(
-            Rr_AddV2(Position, (Rr_Vec2){ CurrentX + Left, CurrentY + Top }),
-            (Rr_Vec2){ Width, Height },
-            Color,
-            UVs);
-
-        CurrentX += Global->Font->Advances[Codepoint] * FontSize;
-    }
-}
-
-void Rr_DrawWidgets(Rr_UIWindow *Window)
-{
-    float LineHeight = Global->FontSize * Global->Font->LineHeight;
-    float FrameThickness = Rr_GetFrameThickness();
-    Rr_Vec2 ContentsPadding =
-        Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
-    Rr_Vec2 CheckboxSize = Rr_GetCheckboxSize();
-
-    for(Rr_UIWidget *Widget = Window->FirstWidget; Widget != NULL;
-        Widget = Widget->Next)
-    {
-        switch(Widget->Type)
-        {
-            case RR_UI_WIDGET_TYPE_CHECKBOX:
-            {
-                Rr_Vec2 CheckboxPosition = Rr_AddV2(
-                    Widget->Position,
-                    (Rr_Vec2){
-                        FrameThickness,
-                        LineHeight / 2.0f - CheckboxSize.Y / 2.0f,
-                    });
-                Rr_DrawFrameQuad(
-                    CheckboxPosition,
-                    CheckboxSize,
-                    &Global->Style.Foreground);
-                Rr_Vec2 TextPosition = Rr_AddV2(
-                    Widget->Position,
-                    (Rr_Vec2){ ContentsPadding.X + CheckboxSize.X, 0.0f });
-                Rr_DrawText(
-                    TextPosition,
-                    Widget->Text,
-                    &Global->Style.Foreground);
-            }
-            break;
-            case RR_UI_WIDGET_TYPE_SEPARATOR:
-            {
-                Rr_Vec2 Size = {
-                    Window->Size.X -
-                        (Global->Style.ContentsPadding.X * Global->FontSize *
-                         2.0f) -
-                        (Window->Size.X * 0.1f),
-                    Rr_GetFrameThickness(),
-                };
-                Rr_Vec2 Position = {
-                    Widget->Position.X + (Window->Size.X * 0.05f),
-                    Widget->Position.Y + (Rr_GetSeperatorLineHeight() / 2.0f -
-                                          Rr_GetFrameThickness() / 2.0f),
-                };
-                Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, 0.85f);
-                Rr_DrawSolidQuad(Position, Size, &Color);
-            }
-            break;
-            case RR_UI_WIDGET_TYPE_LABEL:
-            {
-                Rr_DrawText(
-                    Widget->Position,
-                    Widget->Text,
-                    &Global->Style.Foreground);
-            }
-            break;
-            case RR_UI_WIDGET_TYPE_BUTTON:
-            {
-                RR_ABORT("Not implemented!");
-            }
-            break;
-            default:
-                break;
-        }
-    }
-}
-
 void Rr_EndUI(Rr_App *App)
 {
-    assert(Global != NULL);
+    RR_ASSERT_NO_WINDOW();
+
+    Global->LastWindowCount = Global->Windows.Count;
+
+    if(Global->Windows.Count == 0)
+    {
+        Global = NULL;
+        return;
+    }
 
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
@@ -840,44 +820,60 @@ void Rr_EndUI(Rr_App *App)
         .DistanceRange = Global->Font->DistanceRange,
         .Time = Rr_GetTimeSeconds(App),
     };
+    char *MappedUniformData =
+        Rr_GetMappedBufferData(Renderer, Global->UniformBuffer);
+    memcpy(MappedUniformData, &UniformData, sizeof(UniformData));
 
-    memcpy(
-        Rr_GetMappedBufferData(Renderer, Global->UniformBuffer),
-        &UniformData,
-        sizeof(UniformData));
-
-    Global->VertexBufferData = Global->VertexBufferDataStart =
+    Rr_UIVertex *VertexBufferDataStart;
+    Rr_UIVertex *VertexBufferData;
+    VertexBufferData = VertexBufferDataStart =
         Rr_GetMappedBufferData(Renderer, Global->VertexBuffer);
 
-    Global->IndexBufferData = Global->IndexBufferDataStart =
+    Rr_UIIndex *IndexBufferDataStart;
+    Rr_UIIndex *IndexBufferData;
+    IndexBufferData = IndexBufferDataStart =
         Rr_GetMappedBufferData(Renderer, Global->IndexBuffer);
 
-    Global->LastWindowCount = Global->Windows.Count;
+    Rr_ColorTarget ColorTarget = {
+        .Slot = 0,
+        .LoadOp = RR_LOAD_OP_LOAD,
+        .StoreOp = RR_STORE_OP_STORE,
+    };
+    Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+        Renderer,
+        "ui",
+        1,
+        &ColorTarget,
+        &SwapchainImage,
+        NULL,
+        NULL);
+    Rr_BindGraphicsPipeline(GraphicsNode, Global->GraphicsPipeline);
+    Rr_BindVertexBuffer(GraphicsNode, Global->VertexBuffer, 0, 0);
+    Rr_BindIndexBuffer(
+        GraphicsNode,
+        Global->IndexBuffer,
+        0,
+        0,
+        RR_INDEX_TYPE_UINT16);
+    Rr_BindUniformBuffer(
+        GraphicsNode,
+        Global->UniformBuffer,
+        0,
+        0,
+        0,
+        sizeof(Rr_UIUniformData));
+    Rr_BindCombinedImageSampler(
+        GraphicsNode,
+        Global->Font->Atlas,
+        Global->Sampler,
+        0,
+        1);
+
     for(size_t Index = 0; Index < Global->Windows.Count; ++Index)
     {
         Rr_UIWindow *Window = Global->Windows.Data[Index];
 
-        Rr_DrawFrameQuad(
-            Window->Position,
-            Window->Size,
-            &Global->Style.Outline);
-
-        Rr_Vec2 TitlePosition = Window->Position;
-        Rr_Vec2 TitleSize = {
-            Window->Size.X,
-            Rr_GetWindowTitleHeight(),
-        };
-        Rr_DrawSolidQuad(
-            TitlePosition,
-            TitleSize,
-            &Global->Style.TitleBackground);
-
-        Rr_DrawText(
-            Rr_AddV2(
-                TitlePosition,
-                Rr_MulV2F(Global->Style.TitlePadding, Global->FontSize)),
-            Window->Title,
-            &Global->Style.Foreground);
+        /* Contents background quad is reserved first. */
 
         Rr_Vec2 ContentsPosition = {
             Window->Position.X,
@@ -887,57 +883,60 @@ void Rr_EndUI(Rr_App *App)
             Window->Size.X,
             Window->Size.Y - Rr_GetWindowTitleHeight(),
         };
-        Rr_DrawSolidQuad(
+        Rr_UIQuad ContentsBackgroundQuad = Window->Vertices.Data;
+        Rr_SolidQuad(
+            ContentsBackgroundQuad,
             ContentsPosition,
             ContentsSize,
             &Global->Style.Background);
 
-        Rr_DrawWidgets(Window);
-    }
-
-    if(Global->Windows.Count > 0)
-    {
-        Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
-            .LoadOp = RR_LOAD_OP_LOAD,
-            .StoreOp = RR_STORE_OP_STORE,
+        Rr_Vec2 TitlePosition = Window->Position;
+        Rr_Vec2 TitleSize = {
+            Window->Size.X,
+            Rr_GetWindowTitleHeight(),
         };
+        Rr_DrawSolidQuad(
+            Window,
+            TitlePosition,
+            TitleSize,
+            &Global->Style.TitleBackground);
+        Rr_DrawText(
+            Window,
+            Rr_AddV2(
+                TitlePosition,
+                Rr_MulV2F(Global->Style.TitlePadding, Global->FontSize)),
+            &Window->Title,
+            &Global->Style.Foreground);
 
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Renderer,
-            "ui",
-            1,
-            &ColorTarget,
-            &SwapchainImage,
-            NULL,
-            NULL);
-        Rr_BindGraphicsPipeline(GraphicsNode, Global->GraphicsPipeline);
-        Rr_BindVertexBuffer(GraphicsNode, Global->VertexBuffer, 0, 0);
-        Rr_BindIndexBuffer(
-            GraphicsNode,
-            Global->IndexBuffer,
-            0,
-            0,
-            RR_INDEX_TYPE_UINT16);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            Global->UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(Rr_UIUniformData));
-        Rr_BindCombinedImageSampler(
-            GraphicsNode,
-            Global->Font->Atlas,
-            Global->Sampler,
-            0,
-            1);
+        Rr_DrawFrameQuad(
+            Window,
+            Window->Position,
+            Window->Size,
+            &Global->Style.Outline);
+
+        int32_t VertexOffset =
+            (int32_t)(VertexBufferData - VertexBufferDataStart);
+
+        size_t FirstIndex = (int32_t)(IndexBufferData - IndexBufferDataStart);
+
+        memcpy(
+            VertexBufferData,
+            Window->Vertices.Data,
+            sizeof(Rr_UIVertex) * Window->Vertices.Count);
+        VertexBufferData += Window->Vertices.Count;
+
+        memcpy(
+            IndexBufferData,
+            Window->Indices.Data,
+            sizeof(Rr_UIIndex) * Window->Indices.Count);
+        IndexBufferData += Window->Indices.Count;
+
         Rr_DrawIndexed(
             GraphicsNode,
-            (size_t)(Global->IndexBufferData - Global->IndexBufferDataStart),
+            Window->Indices.Count,
             1,
-            0,
-            0,
+            FirstIndex,
+            VertexOffset,
             0);
     }
 
