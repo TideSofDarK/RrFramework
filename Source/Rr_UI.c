@@ -1007,6 +1007,15 @@ void Rr_EndUI(Rr_App *App)
             sizeof(Rr_UIIndex) * Window->Indices.Count);
         IndexBufferData += Window->Indices.Count;
 
+        Rr_SetScissor(
+            GraphicsNode,
+            (Rr_IntVec4){
+                (int)Window->Position.X,
+                (int)Window->Position.Y,
+                (int)ceilf(Window->Size.X),
+                (int)ceilf(Window->Size.Y),
+            });
+
         Rr_DrawIndexed(
             GraphicsNode,
             Window->Indices.Count,
