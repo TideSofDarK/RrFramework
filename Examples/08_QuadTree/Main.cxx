@@ -894,25 +894,27 @@ static void Reset()
 static void Iterate(Rr_App *App, void *UserData)
 {
     static char FPSString[128];
-    static char CountString[128];
     static float TimeCounter = 1.0f;
     TimeCounter += Rr_GetDeltaSeconds(App);
     if(TimeCounter > 0.2f)
     {
         TimeCounter = 0.0f;
         std::sprintf(FPSString, "FPS: %.2f", Rr_GetFramesPerSecond(App));
-        std::sprintf(CountString, "Circles: %zu", Tree.ElementsCount());
     }
 
     static bool VSyncEnabled = false;
 
-    Rr_BeginWindow("QuadTree");
+    Rr_BeginWindow("QuadTree", 0);
     Rr_Label(FPSString);
-    Rr_Label(CountString);
-    // Rr_Separator();
-    // Rr_Checkbox("Use Query", &VSyncEnabled);
-    // Rr_Label("Sample Text");
-    // Rr_Label("Multi\n line\n  text");
+    Rr_Separator();
+    Rr_LabelF("Circles: %zu", Tree.ElementsCount());
+    Rr_Separator();
+    Rr_Checkbox("Use Query", &VSyncEnabled);
+    Rr_Separator();
+    Rr_Label("Sample Wrapped Text Sample Wrapped Text Sample Wrapped Text "
+             "Sample Wrapped Text Sample Wrapped Text Sample Wrapped Text");
+    Rr_Separator();
+    Rr_Label("Multi\n line\n  text");
     Rr_EndWindow();
 
     Input(App);

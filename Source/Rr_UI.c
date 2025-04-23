@@ -13,6 +13,7 @@
 #include <cJSON/cJSON.h>
 
 #include <assert.h>
+#include <stdio.h>
 
 #define RR_ASSERT_GLOBAL() \
     assert(Global != NULL && "Did you forget to call Rr_BeginUI()?")
@@ -59,6 +60,7 @@ struct Rr_UIWindow
     RR_SLICE(Rr_UIIndex) Indices;
     Rr_Map *WidgetMap;
     size_t LastFrameNumber;
+    Rr_UIWindowFlags Flags;
     bool Minimized;
 };
 
@@ -251,11 +253,9 @@ Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)
                       .Height = Lines * Font->LineHeight * FontSize };
 }
 
-static inline Rr_UIQuad Rr_ReserveQuad(void)
+static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
 {
     /* @TODO: Bounds checking! */
-
-    Rr_UIWindow *Window = Global->CurrentWindow;
 
     Rr_UIIndex Base = Window->Vertices.Count;
     Rr_UIIndex Indices[] = {
@@ -278,8 +278,6 @@ static inline Rr_UIQuad Rr_ReserveQuad(void)
 
 static inline void Rr_DrawQuad(Rr_UIWindow *Window, Rr_UIVertex *Vertices)
 {
-    /* @TODO: Bounds checking! */
-
     Rr_UIIndex Base = Window->Vertices.Count;
     Rr_UIIndex Indices[] = {
         Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
@@ -306,26 +304,55 @@ static inline void Rr_SolidQuad(
         (Rr_UIVertex[]){
             {
                 .Position = Position,
-                .UV = (Rr_Vec2){ 0.0f, 0.0f },
                 .Color = *Color,
             },
             {
                 .Position = { Position.X + Size.X, Position.Y },
-                .UV = (Rr_Vec2){ 0.0f, 0.0f },
                 .Color = *Color,
             },
             {
                 .Position = { Position.X, Position.Y + Size.Y },
-                .UV = (Rr_Vec2){ 0.0f, 0.0f },
                 .Color = *Color,
             },
             {
                 .Position = { Position.X + Size.X, Position.Y + Size.Y },
-                .UV = (Rr_Vec2){ 0.0f, 0.0f },
                 .Color = *Color,
             },
         },
         sizeof(Rr_UIVertex) * 4);
+}
+
+static inline void Rr_DrawSolidTriangle(
+    Rr_UIWindow *Window,
+    Rr_Vec2 PositionA,
+    Rr_Vec2 PositionB,
+    Rr_Vec2 PositionC,
+    Rr_Vec4 *Color)
+{
+    Rr_UIVertex Vertices[3] = {
+        {
+            .Position = PositionA,
+            .Color = *Color,
+        },
+        {
+            .Position = PositionB,
+            .Color = *Color,
+        },
+        {
+            .Position = PositionC,
+            .Color = *Color,
+        },
+    };
+    for(size_t Index = 0; Index < 3; ++Index)
+    {
+        *RR_PUSH_SLICE(&Window->Indices, Global->FrameArena) =
+            Window->Vertices.Count + Index;
+    }
+
+    for(size_t Index = 0; Index < 3; ++Index)
+    {
+        *RR_PUSH_SLICE(&Window->Vertices, Global->FrameArena) = Vertices[Index];
+    }
 }
 
 static inline void Rr_DrawSolidQuad(
@@ -460,7 +487,7 @@ static inline void Rr_DrawText(
     }
 }
 
-void Rr_BeginWindow(const char *Title)
+void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 {
     RR_ASSERT_NO_WINDOW();
 
@@ -493,13 +520,14 @@ void Rr_BeginWindow(const char *Title)
         assert(Window->LastFrameNumber != Global->FrameNumber);
     }
 
+    Window->Flags = Flags;
     Window->LastFrameNumber = Global->FrameNumber;
 
     *RR_PUSH_SLICE(&Global->Windows, Global->FrameArena) = Window;
 
     RR_ZERO(Window->Vertices);
     RR_RESERVE_SLICE(
-        &Global->CurrentWindow->Vertices,
+        &Window->Vertices,
         Window->LastVertexCount ? Window->LastVertexCount : (4 * 32),
         Global->FrameArena);
 
@@ -509,7 +537,8 @@ void Rr_BeginWindow(const char *Title)
         Window->LastIndexCount ? Window->LastIndexCount : (6 * 32),
         Global->FrameArena);
 
-    Rr_UIQuad _ = Rr_ReserveQuad(); /* Reserved contents background quad. */
+    Rr_UIQuad _ =
+        Rr_ReserveQuad(Window); /* Reserved contents background quad. */
     (void)_;
 
     Global->Cursor = (Rr_Vec2){
@@ -542,17 +571,27 @@ void Rr_Separator(void)
     float SeparatorLineHeight = Rr_GetSeperatorLineHeight();
     float FrameThickness = Rr_GetFrameThickness();
 
+    /* Rr_Vec2 Size = { */
+    /*     Window->Size.X - */
+    /*         (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f) - */
+    /*         (Window->Size.X * 0.1f), */
+    /*     FrameThickness, */
+    /* }; */
+    /* Rr_Vec2 Position = { */
+    /*     Global->Cursor.X + (Window->Size.X * 0.05f), */
+    /*     Global->Cursor.Y + (SeparatorLineHeight / 2.0f - FrameThickness
+     * / 2.0f), */
+    /* }; */
     Rr_Vec2 Size = {
         Window->Size.X -
-            (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f) -
-            (Window->Size.X * 0.1f),
+            (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f),
         FrameThickness,
     };
     Rr_Vec2 Position = {
-        Global->Cursor.X + (Window->Size.X * 0.05f),
+        Global->Cursor.X,
         Global->Cursor.Y + (SeparatorLineHeight / 2.0f - FrameThickness / 2.0f),
     };
-    Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, 0.85f);
+    Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, 0.75f);
     Rr_DrawSolidQuad(Window, Position, Size, &Color);
 
     Global->Cursor.Y += SeparatorLineHeight;
@@ -574,11 +613,33 @@ void Rr_Label(const char *Text)
     Rr_DrawText(Window, Global->Cursor, &TextString, &Global->Style.Foreground);
 
     Global->Cursor.Y += TextSize.Height;
-    Window->Size.Width = RR_MAX(
-        Window->Size.Width,
-        TextSize.Width +
-            (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f));
+    /* Window->Size.Width = RR_MAX( */
+    /*     Window->Size.Width, */
+    /*     TextSize.Width + */
+    /*         (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f)); */
     Window->Size.Height += TextSize.Height;
+
+    Rr_DestroyScratch(Scratch);
+}
+
+void Rr_LabelF(const char *Format, ...)
+{
+    int BufferSize;
+    va_list Args;
+
+    va_start(Args, Format);
+    BufferSize = vsnprintf(NULL, 0, Format, Args);
+    va_end(Args);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    char *Buffer = RR_ALLOC_NO_ZERO(Scratch.Arena, BufferSize + 1);
+
+    va_start(Args, Format);
+    BufferSize = vsnprintf(Buffer, BufferSize + 1, Format, Args);
+    va_end(Args);
+
+    Rr_Label(Buffer);
 
     Rr_DestroyScratch(Scratch);
 }
@@ -630,10 +691,10 @@ void Rr_Checkbox(const char *Text, bool *Checked)
 
     float YOffset = RR_MAX(CheckboxSize.Y, TextSize.Y);
     Global->Cursor.Y += YOffset;
-    Window->Size.Width = RR_MAX(
-        Window->Size.Width,
-        (TextSize.Width + CheckboxSize.Width) +
-            (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f));
+    /* Window->Size.Width = RR_MAX( */
+    /*     Window->Size.Width, */
+    /*     (TextSize.Width + CheckboxSize.Width) + */
+    /*         (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f)); */
     Window->Size.Height += YOffset;
 
     Rr_DestroyScratch(Scratch);
@@ -869,6 +930,8 @@ void Rr_EndUI(Rr_App *App)
         0,
         1);
 
+    const float ResizeHandleSize = Global->FontSize * 0.75f;
+
     for(size_t Index = 0; Index < Global->Windows.Count; ++Index)
     {
         Rr_UIWindow *Window = Global->Windows.Data[Index];
@@ -914,10 +977,23 @@ void Rr_EndUI(Rr_App *App)
             Window->Size,
             &Global->Style.Outline);
 
+        if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
+        {
+            Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
+            Rr_DrawSolidTriangle(
+                Window,
+                (Rr_Vec2){ BottomRight.X - ResizeHandleSize, BottomRight.Y },
+                (Rr_Vec2){ BottomRight.X, BottomRight.Y - ResizeHandleSize },
+                (Rr_Vec2){ BottomRight.X, BottomRight.Y },
+                &Global->Style.Foreground);
+        }
+
+        /* Finished generating geometry. */
+
         int32_t VertexOffset =
             (int32_t)(VertexBufferData - VertexBufferDataStart);
 
-        size_t FirstIndex = (int32_t)(IndexBufferData - IndexBufferDataStart);
+        size_t FirstIndex = (size_t)(IndexBufferData - IndexBufferDataStart);
 
         memcpy(
             VertexBufferData,

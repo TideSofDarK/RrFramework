@@ -57,13 +57,23 @@ Rr_Vec2 Rr_CalculateTextSize(
     float FontSize,
     struct Rr_String *String);
 
-extern void Rr_BeginWindow(const char *Title);
+typedef enum
+{
+    RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT = (1 << 0),
+    RR_UI_WINDOW_FLAGS_NO_TITLE_BIT = (1 << 1),
+    RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT = (1 << 2),
+} Rr_UIWindowFlagsBits;
+typedef uint32_t Rr_UIWindowFlags;
+
+extern void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags);
 
 extern void Rr_EndWindow(void);
 
 extern void Rr_Separator(void);
 
 extern void Rr_Label(const char *Text);
+
+extern void Rr_LabelF(const char *Format, ...);
 
 extern void Rr_Button(const char *Text);
 
