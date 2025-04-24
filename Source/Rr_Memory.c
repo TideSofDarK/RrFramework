@@ -219,34 +219,43 @@ void Rr_DestroySyncArena(Rr_SyncArena *Arena)
 
 void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena)
 {
-    if(Arena == NULL)
-    {
-        RR_ABORT("Attempt to grow a slice but Arena is NULL!");
-    }
+    assert(Slice != NULL && "Attempt to grow a slice but it's NULL!");
+    assert(Arena != NULL && "Attempt to grow a slice but Arena is NULL!");
 
     RR_SLICE(void) Replica;
     memcpy(&Replica, Slice, sizeof(Replica));
 
-    void *Data = NULL;
-    Replica.Capacity = Replica.Capacity ? Replica.Capacity : 1;
-    Replica.Capacity *= 2;
-    Data = RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
-
-    if(Replica.Count)
+    if(Replica.Data != NULL &&
+       (uintptr_t)Replica.Data + Replica.Capacity * Size ==
+           (uintptr_t)Arena + Arena->Position)
     {
-        memcpy(Data, Replica.Data, Size * Replica.Count);
+        /* Fast path: the slice is at the tip of an arena.
+         * Works best with nicely aligned sizes. */
+
+        RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
+        Replica.Capacity *= 2;
     }
-    Replica.Data = Data;
+    else
+    {
+        void *Data = NULL;
+        Replica.Capacity = Replica.Capacity ? Replica.Capacity : 1;
+        Replica.Capacity *= 2;
+        Data = RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
+
+        if(Replica.Count)
+        {
+            memcpy(Data, Replica.Data, Size * Replica.Count);
+        }
+        Replica.Data = Data;
+    }
 
     memcpy(Slice, &Replica, sizeof(Replica));
 }
 
-void Rr_ResizeSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
+void Rr_ReserveSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
 {
-    if(Arena == NULL)
-    {
-        RR_ABORT("Attempt to grow a slice but Arena is NULL!");
-    }
+    assert(Slice != NULL && "Attempt to grow a slice but it's NULL!");
+    assert(Arena != NULL && "Attempt to grow a slice but Arena is NULL!");
 
     RR_SLICE(void) Replica;
     memcpy(&Replica, Slice, sizeof(Replica));

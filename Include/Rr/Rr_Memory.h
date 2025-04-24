@@ -108,7 +108,7 @@ extern Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
 
 extern void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena);
 
-extern void Rr_ResizeSlice(
+extern void Rr_ReserveSlice(
     void *Slice,
     size_t Size,
     size_t Count,
@@ -133,7 +133,7 @@ extern void Rr_ResizeSlice(
 
 #define RR_RESERVE_SLICE(Slice, ElementCount, Arena) \
     ((Slice)->Capacity < (ElementCount)              \
-         ? Rr_ResizeSlice(                           \
+         ? Rr_ReserveSlice(                          \
                (Slice),                              \
                sizeof(*(Slice)->Data), /* NOLINT */  \
                (ElementCount),                       \
