@@ -659,6 +659,21 @@ static void Init(Rr_App *App, void *UserData)
     RebuildTree();
 }
 
+static void Event(Rr_App *App, Rr_Event *Event)
+{
+    switch(Event->Type)
+    {
+        case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
+        {
+            std::cout << "Mouse button " << (int)Event->MouseButton.Button
+                      << " down!\n";
+        }
+        break;
+        default:
+            break;
+    }
+}
+
 static void Input(Rr_App *App)
 {
     float DeltaTime = Rr_GetDeltaSeconds(App);
@@ -962,7 +977,8 @@ int main()
     Config.Version = "1.0.0";
     Config.Package = "com.rr.examples.08_quadtree";
     Config.InitFunc = Init;
-    Config.CleanupFunc = Cleanup;
+    Config.EventFunc = Event;
     Config.IterateFunc = Iterate;
+    Config.CleanupFunc = Cleanup;
     Rr_Run(&Config);
 }

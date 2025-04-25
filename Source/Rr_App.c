@@ -250,27 +250,29 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_ShowWindow(App->Window);
 
-    while(SDL_GetAtomicInt(&App->ExitRequested) == false)
+    while(Rr_GetAtomicInt(&App->QuitRequested) == false)
     {
-        for(SDL_Event Event; SDL_PollEvent(&Event);)
+        for(Rr_Event Event; Rr_PollEvent(&Event);)
         {
-            switch(Event.type)
+            if(Rr_ProcessUIEvent(&Event) == true)
             {
-                case SDL_EVENT_DROP_FILE:
+                continue; /* Consumed. */
+            }
+
+            switch(Event.Type)
+            {
+                case RR_EVENT_TYPE_QUIT:
                 {
-                    if(Config->FileDroppedFunc != NULL)
-                    {
-                        Config->FileDroppedFunc(App, Event.drop.data);
-                    }
-                    break;
+                    Rr_SetAtomicInt(&App->QuitRequested, true);
                 }
-                case SDL_EVENT_QUIT:
-                {
-                    SDL_SetAtomicInt(&App->ExitRequested, true);
-                    break;
-                }
+                break;
                 default:
                     break;
+            }
+
+            if(Config->EventFunc != NULL)
+            {
+                Config->EventFunc(App, &Event);
             }
         }
 

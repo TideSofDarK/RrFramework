@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Rr/Rr_Input.h>
+#include <Rr/Rr_Platform.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,9 +16,9 @@ struct Rr_AppConfig
     const char *Version;
     const char *Package;
     void (*InitFunc)(Rr_App *App, void *UserData);
-    void (*CleanupFunc)(Rr_App *App, void *UserData);
+    void (*EventFunc)(Rr_App *App, Rr_Event *Event);
     void (*IterateFunc)(Rr_App *App, void *UserData);
-    void (*FileDroppedFunc)(Rr_App *App, const char *Path);
+    void (*CleanupFunc)(Rr_App *App, void *UserData);
     void *UserData;
 };
 

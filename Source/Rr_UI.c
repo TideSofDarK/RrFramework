@@ -834,6 +834,25 @@ void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *Context)
     Rr_DestroyArena(Context->Arena);
 }
 
+bool Rr_ProcessUIEvent(Rr_Event *Event)
+{
+    switch(Event->Type)
+    {
+        case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
+        {
+            if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
+            {
+                return true;
+            }
+        }
+        break;
+        default:
+            break;
+    }
+
+    return false;
+}
+
 void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
 {
     assert(Global == NULL);

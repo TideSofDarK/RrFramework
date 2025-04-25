@@ -49,7 +49,7 @@ struct Rr_App
 
     SDL_TLSID ScratchArenaTLS;
     SDL_Window *Window;
-    SDL_AtomicInt ExitRequested;
+    Rr_AtomicInt QuitRequested;
 
     Rr_SyncArena SyncArena;
 
