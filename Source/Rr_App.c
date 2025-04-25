@@ -254,10 +254,7 @@ void Rr_Run(Rr_AppConfig *Config)
     {
         for(Rr_Event Event; Rr_PollEvent(&Event);)
         {
-            if(Rr_ProcessUIEvent(&Event) == true)
-            {
-                continue; /* Consumed. */
-            }
+            Rr_ProcessUIEvent(App, &Event);
 
             switch(Event.Type)
             {

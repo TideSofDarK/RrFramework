@@ -131,6 +131,15 @@ static void Rr_PackVec4(Rr_Vec4 From, uint32_t *OutA, uint32_t *OutB)
     *OutB = (uint32_t)HalfValues[2] | ((uint32_t)HalfValues[3] << 16);
 }
 
+static inline bool Rr_RectContains(
+    Rr_Vec2 Offset,
+    Rr_Vec2 Extent,
+    Rr_Vec2 Point)
+{
+    return Point.X >= Offset.X && Point.X <= Offset.X + Extent.X &&
+           Point.Y >= Offset.Y && Point.Y <= Offset.Y + Extent.Y;
+}
+
 static Rr_Vec4 Rr_FitRect(Rr_Vec4 Src, Rr_Vec4 Dst)
 {
     float X = 0;
@@ -203,7 +212,7 @@ static Rr_IntVec4 Rr_FitIntRect(Rr_IntVec4 Src, Rr_IntVec4 Dst)
     return Result;
 }
 
-static Rr_Vec4 Rr_U32ToRGBA(uint32_t Color)
+static inline Rr_Vec4 Rr_U32ToRGBA(uint32_t Color)
 {
     Rr_Vec4 Result;
 
@@ -215,7 +224,7 @@ static Rr_Vec4 Rr_U32ToRGBA(uint32_t Color)
     return Result;
 }
 
-static uint32_t Rr_RGBAtoU32(Rr_Vec4 Color)
+static inline uint32_t Rr_RGBAtoU32(Rr_Vec4 Color)
 {
     uint32_t Result = 0;
 

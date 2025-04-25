@@ -918,8 +918,8 @@ static void Rr_ProcessGraphNodes(
     }
 
     /* Split nodes between early and late command buffers. */
-    /* @TODO: Probably shouldn't require its own pass? */
-    /* @TODO: Some early nodes still get batched for late execution. */
+    /* TODO: Probably shouldn't require its own pass? */
+    /* TODO: Some early nodes still get batched for late execution. */
 
     for(size_t Index = 0; Index < SortedNodes->Count; ++Index)
     {
@@ -1873,7 +1873,7 @@ void Rr_BindSampledImage(
         .Binding = (uint32_t)Binding,
     };
 
-    /* @TODO: Stage mask can be infered from pipeline layout. */
+    /* TODO: Stage mask can be infered from pipeline layout. */
 
     Rr_AddNodeDependency(
         Node,
@@ -1912,7 +1912,7 @@ void Rr_BindCombinedImageSampler(
         .Binding = (uint32_t)Binding,
     };
 
-    /* @TODO: Stage mask can be infered from pipeline layout. */
+    /* TODO: Stage mask can be infered from pipeline layout. */
 
     Rr_AddNodeDependency(
         Node,
@@ -1949,7 +1949,7 @@ void Rr_BindUniformBuffer(
         .Size = (uint32_t)Size,
     };
 
-    /* @TODO: Proper stage can be infered from pipeline layout. */
+    /* TODO: Proper stage can be infered from pipeline layout. */
 
     if(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
     {
@@ -2000,7 +2000,7 @@ void Rr_BindStorageBuffer(
         .Size = (uint32_t)Size,
     };
 
-    /* @TODO: Proper read/write stuff. */
+    /* TODO: Proper read/write stuff. */
 
     if(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
     {
@@ -2047,7 +2047,7 @@ void Rr_BindStorageImage(
         .Binding = (uint32_t)Binding,
     };
 
-    /* @TODO: Proper read/write stuff. */
+    /* TODO: Proper read/write stuff. */
 
     if(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
     {

@@ -241,6 +241,11 @@ private:
         SRect &Bounds,
         std::unordered_set<TPayload> &Result) const
     {
+        if(Nodes.empty())
+        {
+            return;
+        }
+
         const SNode &Node = Nodes[NodeIndex];
 
         if(Node.Count != -1)
@@ -273,6 +278,11 @@ private:
         SRect &Bounds,
         const std::function<void(const SGPUDraw &)> &Callback)
     {
+        if(Nodes.empty())
+        {
+            return;
+        }
+
         const SNode &Node = Nodes[NodeIndex];
 
         if(Node.Count != -1)
@@ -410,6 +420,17 @@ private:
     }
 
 public:
+    CQuadTree &operator=(CQuadTree &&Rhs)
+    {
+        Bounds = Rhs.Bounds;
+        RootIndex = Rhs.RootIndex;
+        Nodes = std::move(Rhs.Nodes);
+        Elements = std::move(Rhs.Elements);
+        ElementNodes = std::move(Rhs.ElementNodes);
+        NextElementNodeIndex = Rhs.NextElementNodeIndex;
+        return *this;
+    }
+
     bool Insert(const TPayload &Payload, const SRect &ElementBounds)
     {
         if(!Bounds.Contains(ElementBounds))
@@ -510,6 +531,8 @@ static std::size_t DrawCount = 0;
 static std::size_t DrawsSize = 0;
 
 std::mutex Mutex;
+bool Rebuilding;
+std::mutex RebuildMutex;
 
 static float GetRandomFloat(float Min, float Max)
 {
@@ -532,39 +555,54 @@ static uint32_t GetRandomColor()
 
 static void RebuildTree()
 {
-    auto Thread = std::thread([&]() {
-        auto Lock = std::lock_guard(Mutex);
+    if(auto RebuildLock = std::unique_lock(RebuildMutex, std::try_to_lock))
+    {
+        auto Thread = std::thread([&]() {
+            auto RebuildLock = std::lock_guard(RebuildMutex);
 
-        const uint32_t NUM_POINTS = 400000;
-        const float AREA_WIDTH = 80000.0f;
-        const float AREA_HEIGHT = 50000.0f;
-        Draws.reserve(NUM_POINTS);
-        Draws.clear();
-        Tree.Reset({ -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
-        for(auto Index = 0; Index < NUM_POINTS; ++Index)
-        {
-            SGPUDraw Draw{};
-            Draw.Width = GetRandomFloat(96.0f, 128.0f);
-            Draw.Height = Draw.Width;
-            Draw.X = GetRandomFloat(-AREA_WIDTH, AREA_WIDTH);
-            Draw.Y = GetRandomFloat(-AREA_HEIGHT, AREA_HEIGHT);
-            Draw.Color = GetRandomColor();
-            Draw.Type = EDrawType::CIRCLE;
+            Rebuilding = true;
 
-            /* Some points may not be eligble for the tree.
-             * It's important to use Draws.size() as index
-             * because "Index" iterator doesn't refer
-             * to real index in the vector if some points
-             * are being skipped. */
+            CQuadTree<std::size_t> NewTree;
+            std::vector<SGPUDraw> NewDraws;
 
-            auto ElementIndex = Draws.size();
-            if(Tree.Insert(ElementIndex, Draw.Bounds()))
+            const uint32_t NUM_POINTS = 400000;
+            const float AREA_WIDTH = 80000.0f;
+            const float AREA_HEIGHT = 50000.0f;
+            NewDraws.reserve(NUM_POINTS);
+            NewDraws.clear();
+            NewTree.Reset(
+                { -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
+            for(auto Index = 0; Index < NUM_POINTS; ++Index)
             {
-                Draws.emplace_back(Draw);
+                SGPUDraw Draw{};
+                Draw.Width = GetRandomFloat(96.0f, 128.0f);
+                Draw.Height = Draw.Width;
+                Draw.X = GetRandomFloat(-AREA_WIDTH, AREA_WIDTH);
+                Draw.Y = GetRandomFloat(-AREA_HEIGHT, AREA_HEIGHT);
+                Draw.Color = GetRandomColor();
+                Draw.Type = EDrawType::CIRCLE;
+
+                /* Some points may not be eligble for the tree.
+                 * It's important to use Draws.size() as index
+                 * because "Index" iterator doesn't refer
+                 * to real index in the vector if some points
+                 * are being skipped. */
+
+                auto ElementIndex = NewDraws.size();
+                if(NewTree.Insert(ElementIndex, Draw.Bounds()))
+                {
+                    NewDraws.emplace_back(Draw);
+                }
             }
-        }
-    });
-    Thread.detach();
+
+            auto Lock = std::lock_guard(Mutex);
+            Tree = std::move(NewTree);
+            Draws = std::move(NewDraws);
+
+            Rebuilding = false;
+        });
+        Thread.detach();
+    }
 }
 
 static SRect GetScreenRect()
@@ -673,6 +711,11 @@ static void Event(Rr_App *App, Rr_Event *Event)
         break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
         {
+            if(Rr_WantMouseCapture())
+            {
+                return;
+            }
+
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
                 SelectStart = ConvertMousePosition(App);
@@ -691,7 +734,7 @@ static void Event(Rr_App *App, Rr_Event *Event)
         {
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                if(Selecting == false)
+                if(Selecting == false && Rr_WantMouseCapture() == false)
                 {
                     if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
                     {
@@ -950,6 +993,7 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_BeginWindow("QuadTree", 0);
     Rr_Label(FPSString);
     Rr_LabelF("Circles: %zu", Tree.ElementsCount());
+    Rr_LabelF("Rebuilding: %d", Rebuilding);
     Rr_LabelF("Draw Count: %d", DrawCount);
     Rr_LabelF("Draws Size: %d", DrawsSize);
     Rr_LabelF("Box Select: %d", Selecting);

@@ -80,7 +80,7 @@ struct Rr_Event
         } Wheel;
         struct
         {
-            const char* Path;
+            const char *Path;
         } DropFile;
     };
 };

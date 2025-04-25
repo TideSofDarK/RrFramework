@@ -128,7 +128,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     /* Create appropriate upload context. */
 
     bool UseTransferQueue = Rr_IsUsingTransferQueue(Renderer);
-    /* @TODO: Simplify checks */
+    /* TODO: Simplify checks */
     VkCommandPool CommandPool = UseTransferQueue
                                     ? LoadAsyncContext.TransferCommandPool
                                     : LoadAsyncContext.GraphicsCommandPool;

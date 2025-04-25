@@ -83,6 +83,10 @@ extern void Rr_BeginHorizontal(void);
 
 extern void Rr_EndHorizontal(void);
 
+extern bool Rr_WantMouseCapture(void);
+
+extern bool Rr_WantKeyboardCapture(void);
+
 #ifdef __cplusplus
 }
 #endif

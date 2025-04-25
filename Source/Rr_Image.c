@@ -296,7 +296,7 @@ Rr_Image *Rr_CreateImage(
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    /* @TODO: Some kind of real usage must be enforced aside from TRANSFER_*. */
+    /* TODO: Some kind of real usage must be enforced aside from TRANSFER_*. */
 
     VkImageCreateInfo ImageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,

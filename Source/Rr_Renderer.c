@@ -568,7 +568,7 @@ static void Rr_CleanupImmediateMode(Rr_Renderer *Renderer)
     Device->DestroyFence(Device->Handle, Renderer->ImmediateMode.Fence, NULL);
 }
 
-/* @TODO: Move to queue initialization? */
+/* TODO: Move to queue initialization? */
 static void Rr_InitTransientCommandPools(Rr_Renderer *Renderer)
 {
     Rr_Device *Device = &Renderer->Device;

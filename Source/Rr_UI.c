@@ -244,7 +244,7 @@ Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)
 
 static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
 {
-    /* @TODO: Bounds checking! */
+    /* TODO: Bounds checking! */
 
     Rr_UIIndex Base = Window->Vertices.Count;
     Rr_UIIndex Indices[] = {
@@ -699,6 +699,16 @@ void Rr_EndHorizontal(void)
 {
 }
 
+bool Rr_WantMouseCapture(void)
+{
+    return Global && Global->HoveredWindow;
+}
+
+bool Rr_WantKeyboardCapture(void)
+{
+    return false;
+}
+
 Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
@@ -823,38 +833,45 @@ void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *Context)
     Rr_DestroyArena(Context->Arena);
 }
 
-bool Rr_ProcessUIEvent(Rr_Event *Event)
+void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event)
 {
+    if(Global == NULL)
+    {
+        return;
+    }
+
+    /* TODO: Set mouse position here. */
+
     switch(Event->Type)
     {
         case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
+        case RR_EVENT_TYPE_MOUSE_BUTTON_UP:
+        case RR_EVENT_TYPE_MOUSE_MOTION:
         {
-            if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
-            {
-                return false;
-            }
         }
         break;
         default:
             break;
     }
-
-    return false;
 }
 
 void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
 {
-    assert(Global == NULL);
-
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
     // UI->Arena->Position = sizeof(Rr_UI);
     Global = Context;
     Global->FrameNumber = Renderer->FrameNumber;
-    Global->FrameArena = Rr_GetCurrentFrame(Renderer)->Arena;
+    Global->FrameArena = Rr_GetFrameArena(Renderer);
 
+    Rr_Vec2 MousePosition = Rr_GetMousePosition(App);
     Global->HoveredWindow = NULL;
     for(int Index = Global->Windows.Count - 1; Index >= 0; --Index)
     {
+        Rr_UIWindow *Window = Global->Windows.Data[Index];
+        if(Rr_RectContains(Window->Position, Window->Size, MousePosition))
+        {
+            Global->HoveredWindow = Window;
+        }
     }
 
     RR_ZERO(Global->Windows);
@@ -1034,6 +1051,4 @@ void Rr_EndUI(Rr_App *App)
             VertexOffset,
             0);
     }
-
-    Global = NULL;
 }
