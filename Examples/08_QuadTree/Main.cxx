@@ -497,13 +497,19 @@ static Rr_Vec2 DragStartMouse;
 static Rr_Vec2 DragStartCamera;
 
 static bool Selecting;
+static bool TrySelect;
 static SPoint SelectStart;
 static SPoint SelectEnd;
 static std::unordered_set<std::size_t> SelectResult;
 
-static bool FastSelect = true;
+static bool UseQuery = true;
 static bool DrawDebug = true;
 static std::default_random_engine RandomEngine;
+
+static std::size_t DrawCount = 0;
+static std::size_t DrawsSize = 0;
+
+std::mutex Mutex;
 
 static float GetRandomFloat(float Min, float Max)
 {
@@ -524,16 +530,8 @@ static uint32_t GetRandomColor()
     return Color;
 }
 
-std::mutex Mutex;
-
 static void RebuildTree()
 {
-    auto OuterLock = std::unique_lock(Mutex, std::try_to_lock);
-    if(OuterLock.owns_lock() != true)
-    {
-        return;
-    }
-
     auto Thread = std::thread([&]() {
         auto Lock = std::lock_guard(Mutex);
 
@@ -663,10 +661,60 @@ static void Event(Rr_App *App, Rr_Event *Event)
 {
     switch(Event->Type)
     {
+        case RR_EVENT_TYPE_MOUSE_MOTION:
+        {
+            if(TrySelect)
+            {
+                SelectEnd = ConvertMousePosition(App);
+                Selecting = std::fabs(SelectStart.X - SelectEnd.X) > 10.0f ||
+                            std::fabs(SelectStart.Y - SelectEnd.Y) > 10.0f;
+            }
+        }
+        break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
         {
-            std::cout << "Mouse button " << (int)Event->MouseButton.Button
-                      << " down!\n";
+            if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
+            {
+                SelectStart = ConvertMousePosition(App);
+                TrySelect = true;
+                Selecting = false;
+            }
+            else if(Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
+            {
+                Dragging = true;
+                DragStartCamera = CameraPosition;
+                DragStartMouse = Rr_GetMousePosition(App);
+            }
+        }
+        break;
+        case RR_EVENT_TYPE_MOUSE_BUTTON_UP:
+        {
+            if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
+            {
+                if(Selecting == false)
+                {
+                    if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+                    {
+                        SPoint Point = ConvertMousePosition(App);
+                        SGPUDraw Draw{};
+                        Draw.Width = GetRandomFloat(32.0f, 64.0f);
+                        Draw.Height = Draw.Width;
+                        Draw.X = Point.X - Draw.Width / 2.0f;
+                        Draw.Y = Point.Y - Draw.Height / 2.0f;
+                        Draw.Color = GetRandomColor();
+                        if(Tree.Insert(Draws.size(), Draw.Bounds()))
+                        {
+                            Draws.emplace_back(Draw);
+                        }
+                    }
+                }
+                TrySelect = false;
+                Selecting = false;
+            }
+            else if(Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
+            {
+                Dragging = false;
+            }
         }
         break;
         default:
@@ -680,10 +728,6 @@ static void Input(Rr_App *App)
 
     Rr_MouseButtonMask MouseState = Rr_GetMouseState();
 
-    if(Rr_IsScancodePressed(RR_SCANCODE_SPACE))
-    {
-        RebuildTree();
-    }
     if(Rr_IsScancodePressed(RR_SCANCODE_Q))
     {
         CameraZoom += 10.0f * DeltaTime;
@@ -694,75 +738,13 @@ static void Input(Rr_App *App)
     }
     CameraZoom = RR_CLAMP(0.1f, CameraZoom, 100.0f);
 
-    if(Dragging == false && RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_MASK))
-    {
-        Dragging = true;
-        DragStartCamera = CameraPosition;
-        DragStartMouse = Rr_GetMousePosition(App);
-    }
-    if(Dragging == true &&
-       RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_MASK) == false)
-    {
-        Dragging = false;
-    }
-    if(Dragging)
-    {
-        CameraPosition =
-            DragStartCamera -
-            (DragStartMouse - Rr_GetMousePosition(App)) * CameraZoom;
-    }
-
-    if(Selecting == false && RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK))
-    {
-        Selecting = true;
-        SelectStart = ConvertMousePosition(App);
-    }
-    if(Selecting == true &&
-       RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_MASK) == false)
-    {
-        Selecting = false;
-    }
-    if(Selecting)
-    {
-        SelectEnd = ConvertMousePosition(App);
-        const SRect QueryRect{ SelectStart, SelectEnd };
-        if(FastSelect)
-        {
-            Tree.Query(QueryRect, SelectResult);
-            for(auto Index : SelectResult)
-            {
-                auto Bounds = Draws[Index].Bounds();
-                auto Center = Bounds.Center();
-                auto Radius = Bounds.Extent().X;
-                if(QueryRect.IntersectsCircle(Center, Radius))
-                {
-                    Draws[Index].Param1 = 1.0f;
-                }
-            }
-        }
-        else
-        {
-            for(auto Index = 0; Index < Draws.size(); ++Index)
-            {
-                auto Bounds = Draws[Index].Bounds();
-                auto Center = Bounds.Center();
-                auto Radius = Bounds.Extent().X;
-                if(QueryRect.IntersectsCircle(Center, Radius))
-                {
-                    Draws[Index].Param1 = 1.0f;
-                    SelectResult.emplace(Index);
-                }
-            }
-        }
-    }
-
     if(Rr_IsScancodePressed(RR_SCANCODE_F2))
     {
-        FastSelect = true;
+        UseQuery = true;
     }
     if(Rr_IsScancodePressed(RR_SCANCODE_F3))
     {
-        FastSelect = false;
+        UseQuery = false;
     }
     if(Rr_IsScancodePressed(RR_SCANCODE_F4))
     {
@@ -773,25 +755,52 @@ static void Input(Rr_App *App)
         DrawDebug = false;
     }
 
-    static bool Spawn = false;
-    if(Rr_IsScancodePressed(RR_SCANCODE_S) == false && Spawn == true)
+    if(Dragging)
     {
-        Spawn = false;
+        CameraPosition =
+            DragStartCamera -
+            (DragStartMouse - Rr_GetMousePosition(App)) * CameraZoom;
     }
-    if(Rr_IsScancodePressed(RR_SCANCODE_S) && Spawn == false)
+
+    if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
     {
-        SPoint Point = ConvertMousePosition(App);
-        SGPUDraw Draw{};
-        Draw.Width = GetRandomFloat(32.0f, 64.0f);
-        Draw.Height = Draw.Width;
-        Draw.X = Point.X - Draw.Width / 2.0f;
-        Draw.Y = Point.Y - Draw.Height / 2.0f;
-        Draw.Color = GetRandomColor();
-        if(Tree.Insert(Draws.size(), Draw.Bounds()))
+        if(Rr_IsScancodePressed(RR_SCANCODE_SPACE))
         {
-            Draws.emplace_back(Draw);
+            RebuildTree();
         }
-        Spawn = true;
+
+        if(Selecting)
+        {
+            const SRect QueryRect{ SelectStart, SelectEnd };
+            if(UseQuery)
+            {
+                Tree.Query(QueryRect, SelectResult);
+                for(auto Index : SelectResult)
+                {
+                    auto Bounds = Draws[Index].Bounds();
+                    auto Center = Bounds.Center();
+                    auto Radius = Bounds.Extent().X;
+                    if(QueryRect.IntersectsCircle(Center, Radius))
+                    {
+                        Draws[Index].Param1 = 1.0f;
+                    }
+                }
+            }
+            else
+            {
+                for(auto Index = 0; Index < Draws.size(); ++Index)
+                {
+                    auto Bounds = Draws[Index].Bounds();
+                    auto Center = Bounds.Center();
+                    auto Radius = Bounds.Extent().X;
+                    if(QueryRect.IntersectsCircle(Center, Radius))
+                    {
+                        Draws[Index].Param1 = 1.0f;
+                        SelectResult.emplace(Index);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -827,8 +836,7 @@ static void Render(Rr_App *App)
 
     /* Query screen rect and populate draws. */
 
-    std::size_t DrawCount = 0;
-    std::size_t DrawsSize = 0;
+    DrawCount = DrawsSize = 0;
 
     if(Lock.owns_lock())
     {
@@ -873,8 +881,6 @@ static void Render(Rr_App *App)
             MAX_DRAWS * sizeof(SGPUDraw));
         DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
     }
-
-    // std::cout << DrawCount << " -- " << DrawsSize << std::endl;
 
     if(DrawCount > 0)
     {
@@ -943,10 +949,18 @@ static void Iterate(Rr_App *App, void *UserData)
 
     Rr_BeginWindow("QuadTree", 0);
     Rr_Label(FPSString);
-    Rr_Separator();
     Rr_LabelF("Circles: %zu", Tree.ElementsCount());
+    Rr_LabelF("Draw Count: %d", DrawCount);
+    Rr_LabelF("Draws Size: %d", DrawsSize);
+    Rr_LabelF("Box Select: %d", Selecting);
+    Rr_LabelF(
+        "Camera Position: %d %d",
+        (int)CameraPosition.X,
+        (int)CameraPosition.Y);
     Rr_Separator();
-    Rr_Checkbox("Use Query", &VSyncEnabled);
+    Rr_Checkbox("Debug Draw", &DrawDebug);
+    Rr_Checkbox("Use Query", &UseQuery);
+    Rr_Checkbox("Use VSync", &VSyncEnabled);
     Rr_Separator();
     Rr_Label("Sample Wrapped Text Sample Wrapped Text Sample Wrapped Text "
              "Sample Wrapped Text Sample Wrapped Text Sample Wrapped Text");

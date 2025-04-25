@@ -831,7 +831,7 @@ bool Rr_ProcessUIEvent(Rr_Event *Event)
         {
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                return true;
+                return false;
             }
         }
         break;
