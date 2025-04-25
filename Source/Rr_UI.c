@@ -115,6 +115,9 @@ static float Rr_GetWindowTitleHeight(void)
            Global->Font->LineHeight * Global->FontSize;
 }
 
+#define CJSON_GET_OBJECT_FLOAT(Object, Item) \
+    ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
+
 Rr_Font *Rr_CreateFont(
     Rr_Renderer *Renderer,
     Rr_AssetRef FontPNGRef,
@@ -133,37 +136,29 @@ Rr_Font *Rr_CreateFont(
     cJSON *FontDataJSON =
         cJSON_ParseWithLength(FontJSON.Pointer, FontJSON.Size);
 
-    cJSON *AtlasJSON = cJSON_GetObjectItemCaseSensitive(FontDataJSON, "atlas");
-    cJSON *MetricsJSON =
-        cJSON_GetObjectItemCaseSensitive(FontDataJSON, "metrics");
+    cJSON *AtlasJSON = cJSON_GetObjectItem(FontDataJSON, "atlas");
+    cJSON *MetricsJSON = cJSON_GetObjectItem(FontDataJSON, "metrics");
 
     Rr_Vec2 AtlasSize;
-    AtlasSize.X =
-        (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "width"));
-    AtlasSize.Y =
-        (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "height"));
+    AtlasSize.X = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "width");
+    AtlasSize.Y = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "height");
 
     Rr_Font *Font = RR_GET_FREE_LIST_ITEM(&Renderer->Fonts, Renderer->Arena);
     *Font = (Rr_Font){
         .Atlas = Atlas,
-        .LineHeight = (float)cJSON_GetNumberValue(
-            cJSON_GetObjectItem(MetricsJSON, "lineHeight")),
-        .DefaultSize =
-            (float)cJSON_GetNumberValue(cJSON_GetObjectItem(AtlasJSON, "size")),
-        .DistanceRange = (float)cJSON_GetNumberValue(
-            cJSON_GetObjectItem(AtlasJSON, "distanceRange")),
+        .LineHeight = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "lineHeight"),
+        .DefaultSize = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "size"),
+        .DistanceRange = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "distanceRange"),
     };
 
-    cJSON *GlyphsJSON =
-        cJSON_GetObjectItemCaseSensitive(FontDataJSON, "glyphs");
+    cJSON *GlyphsJSON = cJSON_GetObjectItem(FontDataJSON, "glyphs");
 
     size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
     for(size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
         cJSON *GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (int32_t)GlyphIndex);
 
-        uint32_t Codepoint = (size_t)cJSON_GetNumberValue(
-            cJSON_GetObjectItem(GlyphJSON, "unicode"));
+        uint32_t Codepoint = CJSON_GET_OBJECT_FLOAT(GlyphJSON, "unicode");
 
         Rr_Glyph *Glyph = &Font->Glyphs[Codepoint];
 
@@ -171,38 +166,32 @@ Rr_Font *Rr_CreateFont(
         if(cJSON_IsObject(AtlasBoundsJSON))
         {
             Glyph->AtlasBounds.X =
-                (float)cJSON_GetNumberValue(
-                    cJSON_GetObjectItem(AtlasBoundsJSON, "left")) /
-                AtlasSize.X;
+                CJSON_GET_OBJECT_FLOAT(AtlasBoundsJSON, "left") / AtlasSize.X;
             Glyph->AtlasBounds.Y =
-                1.0f - ((float)cJSON_GetNumberValue(
-                            cJSON_GetObjectItem(AtlasBoundsJSON, "bottom")) /
-                        AtlasSize.Y);
+                1.0f -
+                CJSON_GET_OBJECT_FLOAT(AtlasBoundsJSON, "bottom") / AtlasSize.Y;
             Glyph->AtlasBounds.Z =
-                (float)cJSON_GetNumberValue(
-                    cJSON_GetObjectItem(AtlasBoundsJSON, "right")) /
-                AtlasSize.X;
+                CJSON_GET_OBJECT_FLOAT(AtlasBoundsJSON, "right") / AtlasSize.X;
             Glyph->AtlasBounds.W =
-                1.0f - ((float)cJSON_GetNumberValue(
-                            cJSON_GetObjectItem(AtlasBoundsJSON, "top")) /
-                        AtlasSize.Y);
+                1.0f -
+                CJSON_GET_OBJECT_FLOAT(AtlasBoundsJSON, "top") / AtlasSize.Y;
         }
 
         cJSON *PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
         if(cJSON_IsObject(PlaneBoundsJSON))
         {
-            Glyph->PlaneBounds.X = (float)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(PlaneBoundsJSON, "left"));
-            Glyph->PlaneBounds.Y = (float)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(PlaneBoundsJSON, "bottom"));
-            Glyph->PlaneBounds.Z = (float)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(PlaneBoundsJSON, "right"));
-            Glyph->PlaneBounds.W = (float)cJSON_GetNumberValue(
-                cJSON_GetObjectItem(PlaneBoundsJSON, "top"));
+            Glyph->PlaneBounds.X =
+                CJSON_GET_OBJECT_FLOAT(PlaneBoundsJSON, "left");
+            Glyph->PlaneBounds.Y =
+                CJSON_GET_OBJECT_FLOAT(PlaneBoundsJSON, "bottom");
+            Glyph->PlaneBounds.Z =
+                CJSON_GET_OBJECT_FLOAT(PlaneBoundsJSON, "right");
+            Glyph->PlaneBounds.W =
+                CJSON_GET_OBJECT_FLOAT(PlaneBoundsJSON, "top");
         }
 
-        Font->Advances[Codepoint] = (float)cJSON_GetNumberValue(
-            cJSON_GetObjectItem(GlyphJSON, "advance"));
+        Font->Advances[Codepoint] =
+            CJSON_GET_OBJECT_FLOAT(GlyphJSON, "advance");
     }
 
     cJSON_Delete(FontDataJSON);
