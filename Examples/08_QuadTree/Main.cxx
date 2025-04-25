@@ -10,8 +10,10 @@
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <mutex>
 #include <numeric>
 #include <random>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
@@ -522,36 +524,49 @@ static uint32_t GetRandomColor()
     return Color;
 }
 
+std::mutex Mutex;
+
 static void RebuildTree()
 {
-    const uint32_t NUM_POINTS = 400000;
-    const float AREA_WIDTH = 80000.0f;
-    const float AREA_HEIGHT = 50000.0f;
-    Draws.reserve(NUM_POINTS);
-    Draws.clear();
-    Tree.Reset({ -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
-    for(auto Index = 0; Index < NUM_POINTS; ++Index)
+    auto OuterLock = std::unique_lock(Mutex, std::try_to_lock);
+    if(OuterLock.owns_lock() != true)
     {
-        SGPUDraw Draw{};
-        Draw.Width = GetRandomFloat(96.0f, 128.0f);
-        Draw.Height = Draw.Width;
-        Draw.X = GetRandomFloat(-AREA_WIDTH, AREA_WIDTH);
-        Draw.Y = GetRandomFloat(-AREA_HEIGHT, AREA_HEIGHT);
-        Draw.Color = GetRandomColor();
-        Draw.Type = EDrawType::CIRCLE;
-
-        /* Some points may not be eligble for the tree.
-         * It's important to use Draws.size() as index
-         * because "Index" iterator doesn't refer
-         * to real index in the vector if some points
-         * are being skipped. */
-
-        auto ElementIndex = Draws.size();
-        if(Tree.Insert(ElementIndex, Draw.Bounds()))
-        {
-            Draws.emplace_back(Draw);
-        }
+        return;
     }
+
+    auto Thread = std::thread([&]() {
+        auto Lock = std::lock_guard(Mutex);
+
+        const uint32_t NUM_POINTS = 400000;
+        const float AREA_WIDTH = 80000.0f;
+        const float AREA_HEIGHT = 50000.0f;
+        Draws.reserve(NUM_POINTS);
+        Draws.clear();
+        Tree.Reset({ -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
+        for(auto Index = 0; Index < NUM_POINTS; ++Index)
+        {
+            SGPUDraw Draw{};
+            Draw.Width = GetRandomFloat(96.0f, 128.0f);
+            Draw.Height = Draw.Width;
+            Draw.X = GetRandomFloat(-AREA_WIDTH, AREA_WIDTH);
+            Draw.Y = GetRandomFloat(-AREA_HEIGHT, AREA_HEIGHT);
+            Draw.Color = GetRandomColor();
+            Draw.Type = EDrawType::CIRCLE;
+
+            /* Some points may not be eligble for the tree.
+             * It's important to use Draws.size() as index
+             * because "Index" iterator doesn't refer
+             * to real index in the vector if some points
+             * are being skipped. */
+
+            auto ElementIndex = Draws.size();
+            if(Tree.Insert(ElementIndex, Draw.Bounds()))
+            {
+                Draws.emplace_back(Draw);
+            }
+        }
+    });
+    Thread.detach();
 }
 
 static SRect GetScreenRect()
@@ -767,6 +782,8 @@ static void Input(Rr_App *App)
 
 static void Render(Rr_App *App)
 {
+    auto Lock = std::unique_lock(Mutex, std::try_to_lock);
+
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
 
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
@@ -796,47 +813,52 @@ static void Render(Rr_App *App)
     /* Query screen rect and populate draws. */
 
     std::size_t DrawCount = 0;
+    std::size_t DrawsSize = 0;
 
-    SRect ScreenRect = GetScreenRect();
-    Tree.Query(ScreenRect, RenderResult);
-    if(RenderResult.size() > 0)
+    if(Lock.owns_lock())
     {
-        DrawCount += RenderResult.size();
-        for(auto Index : RenderResult)
+        SRect ScreenRect = GetScreenRect();
+        Tree.Query(ScreenRect, RenderResult);
+        if(RenderResult.size() > 0)
         {
-            std::memcpy(StagingData, &Draws[Index], sizeof(SGPUDraw));
-            StagingData += sizeof(SGPUDraw);
+            DrawCount += RenderResult.size();
+            for(auto Index : RenderResult)
+            {
+                std::memcpy(StagingData, &Draws[Index], sizeof(SGPUDraw));
+                StagingData += sizeof(SGPUDraw);
+            }
         }
-    }
 
-    if(Selecting)
-    {
-        SRect SelectRect = { SelectStart, SelectEnd };
-        SGPUDraw Draw{};
-        Draw.X = SelectRect.Left;
-        Draw.Y = SelectRect.Top;
-        Draw.Width = SelectRect.Size().X;
-        Draw.Height = SelectRect.Size().Y;
-        Draw.Type = EDrawType::RECT_SELECTION;
-        Draw.Color = 0xffecc5ad;
-        std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
-        StagingData += sizeof(SGPUDraw);
-        DrawCount++;
-    }
-
-    if(DrawDebug)
-    {
-        Tree.ForEachDebugDraw(ScreenRect, [&](const SGPUDraw &Draw) {
+        if(Selecting)
+        {
+            SRect SelectRect = { SelectStart, SelectEnd };
+            SGPUDraw Draw{};
+            Draw.X = SelectRect.Left;
+            Draw.Y = SelectRect.Top;
+            Draw.Width = SelectRect.Size().X;
+            Draw.Height = SelectRect.Size().Y;
+            Draw.Type = EDrawType::RECT_SELECTION;
+            Draw.Color = 0xffecc5ad;
             std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
             StagingData += sizeof(SGPUDraw);
             DrawCount++;
-        });
+        }
+
+        if(DrawDebug)
+        {
+            Tree.ForEachDebugDraw(ScreenRect, [&](const SGPUDraw &Draw) {
+                std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
+                StagingData += sizeof(SGPUDraw);
+                DrawCount++;
+            });
+        }
+
+        DrawsSize = RR_MIN(
+            StagingData - StagingDataStart - sizeof(SGPUUniformData),
+            MAX_DRAWS * sizeof(SGPUDraw));
+        DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
     }
 
-    const auto DrawsSize = RR_MIN(
-        StagingData - StagingDataStart - sizeof(SGPUUniformData),
-        MAX_DRAWS * sizeof(SGPUDraw));
-    DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
     // std::cout << DrawCount << " -- " << DrawsSize << std::endl;
 
     if(DrawCount > 0)
