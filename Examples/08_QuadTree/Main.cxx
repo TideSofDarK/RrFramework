@@ -698,6 +698,17 @@ static void Event(Rr_App *App, Rr_Event *Event)
 {
     switch(Event->Type)
     {
+        case RR_EVENT_TYPE_MOUSE_WHEEL:
+        {
+            if(Rr_WantMouseCapture())
+            {
+                return;
+            }
+
+            CameraZoom += Event->Wheel.Amount.Y * -0.5f;
+            CameraZoom = RR_CLAMP(0.1f, CameraZoom, 100.0f);
+        }
+        break;
         case RR_EVENT_TYPE_MOUSE_MOTION:
         {
             if(TrySelect)
@@ -764,38 +775,11 @@ static void Event(Rr_App *App, Rr_Event *Event)
     }
 }
 
-static void Input(Rr_App *App)
+static void Update(Rr_App *App)
 {
     float DeltaTime = Rr_GetDeltaSeconds(App);
 
     Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
-
-    if(Rr_IsScancodePressed(RR_SCANCODE_Q))
-    {
-        CameraZoom += 10.0f * DeltaTime;
-    }
-    if(Rr_IsScancodePressed(RR_SCANCODE_E))
-    {
-        CameraZoom -= 10.0f * DeltaTime;
-    }
-    CameraZoom = RR_CLAMP(0.1f, CameraZoom, 100.0f);
-
-    if(Rr_IsScancodePressed(RR_SCANCODE_F2))
-    {
-        UseQuery = true;
-    }
-    if(Rr_IsScancodePressed(RR_SCANCODE_F3))
-    {
-        UseQuery = false;
-    }
-    if(Rr_IsScancodePressed(RR_SCANCODE_F4))
-    {
-        DrawDebug = true;
-    }
-    if(Rr_IsScancodePressed(RR_SCANCODE_F5))
-    {
-        DrawDebug = false;
-    }
 
     if(Dragging)
     {
@@ -1014,7 +998,7 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_Label("Multi\n line\n  text");
     Rr_EndWindow();
 
-    Input(App);
+    Update(App);
     Render(App);
     Reset();
 }
