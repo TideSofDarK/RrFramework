@@ -102,7 +102,7 @@ struct SCamera
                     Position += CameraLeft * CameraSpeed;
                 }
 
-                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
+                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
                     Rr_SetRelativeMouseMode(App, true);
                     constexpr float Sensitivity = 0.2f;
@@ -152,7 +152,7 @@ struct SCamera
             break;
             case EType::ORBIT:
             {
-                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
+                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
                     Rr_SetRelativeMouseMode(App, true);
                     constexpr float Sensitivity = 0.05f;
@@ -195,7 +195,7 @@ struct SCamera
             break;
             case EType::TOPDOWN:
             {
-                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
+                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
                     Rr_SetRelativeMouseMode(App, true);
                     constexpr float Sensitivity = 0.1f;

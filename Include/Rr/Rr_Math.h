@@ -1090,6 +1090,39 @@ static inline Rr_Vec3 Rr_Cross(Rr_Vec3 Left, Rr_Vec3 Right)
     return Result;
 }
 
+static inline Rr_Vec2 Rr_FloorV2(Rr_Vec2 A)
+{
+    Rr_Vec2 Result;
+
+    Result.X = floorf(A.X);
+    Result.Y = floorf(A.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_FloorV3(Rr_Vec3 A)
+{
+    Rr_Vec3 Result;
+
+    Result.X = floorf(A.X);
+    Result.Y = floorf(A.Y);
+    Result.Z = floorf(A.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_FloorV4(Rr_Vec4 A)
+{
+    Rr_Vec4 Result;
+
+    Result.X = floorf(A.X);
+    Result.Y = floorf(A.Y);
+    Result.Z = floorf(A.Z);
+    Result.W = floorf(A.W);
+
+    return Result;
+}
+
 /*
  * Unary vector operations
  */

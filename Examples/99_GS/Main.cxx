@@ -86,7 +86,7 @@ struct SCamera
             Position += CameraLeft * CameraSpeed * DeltaTime;
         }
 
-        if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_MASK)
+        if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
             Rr_SetRelativeMouseMode(App, true);
             constexpr float Sensitivity = 0.2f;

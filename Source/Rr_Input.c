@@ -39,7 +39,7 @@ Rr_Vec2 Rr_GetMousePositionDelta(Rr_App *App)
     return MousePositionDelta;
 }
 
-Rr_MouseButtonMask Rr_GetMouseState(void)
+Rr_MouseButtonFlags Rr_GetMouseState(void)
 {
     return SDL_GetMouseState(NULL, NULL);
 }

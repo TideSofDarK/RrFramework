@@ -523,8 +523,9 @@ static SPoint SelectStart;
 static SPoint SelectEnd;
 static std::unordered_set<std::size_t> SelectResult;
 
-static bool UseQuery = true;
 static bool DrawDebug = true;
+static bool UseQuery = true;
+static bool VSyncEnabled = true;
 static std::default_random_engine RandomEngine;
 
 static std::size_t DrawCount = 0;
@@ -638,8 +639,6 @@ static SPoint ConvertMousePosition(Rr_App *App)
 static void Init(Rr_App *App, void *UserData)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
-
-    Rr_SetSwapchainPresentMode(Renderer, RR_PRESENT_MODE_IMMEDIATE);
 
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
@@ -769,7 +768,7 @@ static void Input(Rr_App *App)
 {
     float DeltaTime = Rr_GetDeltaSeconds(App);
 
-    Rr_MouseButtonMask MouseState = Rr_GetMouseState();
+    Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
 
     if(Rr_IsScancodePressed(RR_SCANCODE_Q))
     {
@@ -979,19 +978,17 @@ static void Reset()
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    static char FPSString[128];
     static float TimeCounter = 1.0f;
+    static float FPSCount;
     TimeCounter += Rr_GetDeltaSeconds(App);
     if(TimeCounter > 0.2f)
     {
         TimeCounter = 0.0f;
-        std::sprintf(FPSString, "FPS: %.2f", Rr_GetFramesPerSecond(App));
+        FPSCount = Rr_GetFramesPerSecond(App);
     }
 
-    static bool VSyncEnabled = false;
-
     Rr_BeginWindow("QuadTree", 0);
-    Rr_Label(FPSString);
+    Rr_LabelF("FPS: %.2f", FPSCount);
     Rr_LabelF("Circles: %zu", Tree.ElementsCount());
     Rr_LabelF("Rebuilding: %d", Rebuilding);
     Rr_LabelF("Draw Count: %d", DrawCount);
@@ -1004,7 +1001,12 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_Separator();
     Rr_Checkbox("Debug Draw", &DrawDebug);
     Rr_Checkbox("Use Query", &UseQuery);
-    Rr_Checkbox("Use VSync", &VSyncEnabled);
+    if(Rr_Checkbox("Use VSync", &VSyncEnabled))
+    {
+        Rr_SetSwapchainPresentMode(
+            Rr_GetRenderer(App),
+            VSyncEnabled ? RR_PRESENT_MODE_FIFO : RR_PRESENT_MODE_IMMEDIATE);
+    }
     Rr_Separator();
     Rr_Label("Sample Wrapped Text Sample Wrapped Text Sample Wrapped Text "
              "Sample Wrapped Text Sample Wrapped Text Sample Wrapped Text");

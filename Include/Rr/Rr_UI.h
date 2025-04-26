@@ -77,7 +77,7 @@ extern void Rr_LabelF(const char *Format, ...);
 
 extern void Rr_Button(const char *Text);
 
-extern void Rr_Checkbox(const char *Text, bool *Checked);
+extern bool Rr_Checkbox(const char *Text, bool *Checked);
 
 extern void Rr_BeginHorizontal(void);
 

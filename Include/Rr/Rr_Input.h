@@ -86,16 +86,15 @@ typedef enum Rr_MouseButton
     RR_MOUSE_BUTTON_X2 = 5
 } Rr_MouseButton;
 
-#define RR_MOUSE_BUTTON_MASK(X) (1u << ((X) - 1))
-
 typedef enum Rr_MouseButtonMask
 {
-    RR_MOUSE_BUTTON_LEFT_MASK = RR_MOUSE_BUTTON_MASK(RR_MOUSE_BUTTON_LEFT),
-    RR_MOUSE_BUTTON_MIDDLE_MASK = RR_MOUSE_BUTTON_MASK(RR_MOUSE_BUTTON_MIDDLE),
-    RR_MOUSE_BUTTON_RIGHT_MASK = RR_MOUSE_BUTTON_MASK(RR_MOUSE_BUTTON_RIGHT),
-    RR_MOUSE_BUTTON_X1_MASK = RR_MOUSE_BUTTON_MASK(RR_MOUSE_BUTTON_X1),
-    RR_MOUSE_BUTTON_X2_MASK = RR_MOUSE_BUTTON_MASK(RR_MOUSE_BUTTON_X2)
-} Rr_MouseButtonMask;
+    RR_MOUSE_BUTTON_LEFT_BIT = (1 << 0),
+    RR_MOUSE_BUTTON_MIDDLE_BIT = (1 << 1),
+    RR_MOUSE_BUTTON_RIGHT_BIT = (1 << 2),
+    RR_MOUSE_BUTTON_X1_BIT = (1 << 3),
+    RR_MOUSE_BUTTON_X2_BIT = (1 << 4),
+} Rr_MouseButtonFlagsBits;
+typedef uint32_t Rr_MouseButtonFlags;
 
 extern bool Rr_IsScancodePressed(Rr_Scancode Scancode);
 
@@ -103,7 +102,7 @@ extern Rr_Vec2 Rr_GetMousePosition(struct Rr_App *App);
 
 extern Rr_Vec2 Rr_GetMousePositionDelta(struct Rr_App *App);
 
-extern Rr_MouseButtonMask Rr_GetMouseState(void);
+extern Rr_MouseButtonFlags Rr_GetMouseState(void);
 
 #ifdef __cplusplus
 }

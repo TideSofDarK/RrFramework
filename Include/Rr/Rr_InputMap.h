@@ -16,7 +16,7 @@ struct Rr_InputState
     Rr_KeyStates Keys;
     Rr_Vec2 MousePosition;
     Rr_Vec2 MousePositionDelta;
-    Rr_MouseButtonMask MouseState;
+    Rr_MouseButtonFlags MouseState;
 };
 
 typedef enum Rr_KeyState
