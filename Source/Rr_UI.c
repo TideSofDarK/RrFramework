@@ -98,6 +98,18 @@ struct Rr_UIContext
 
     Rr_Font *Font;
     float FontSize;
+    float NextFontSize;
+
+    Rr_Vec2 ContentsPadding;
+    float LineHeight;
+    Rr_Vec2 MinWindowSize;
+    float WindowTitleHeight;
+    float ResizeHandleSize;
+    float HorizontalMargin;
+    float FrameThickness;
+    float SeparatorLineHeight;
+    Rr_Vec2 ButtonPadding;
+    Rr_Vec2 CheckboxSize;
 
     Rr_Vec2 Cursor;
 
@@ -113,36 +125,6 @@ struct Rr_UIContext
 };
 
 static Rr_UIContext *Global;
-
-static inline float Rr_GetSeperatorLineHeight(void)
-{
-    return Global->FontSize * Global->Font->LineHeight * 0.5f;
-}
-
-static inline float Rr_GetFrameThickness(void)
-{
-    return floorf(RR_MAX(1.0f, Global->FontSize * 0.075f));
-}
-
-static inline float Rr_GetWindowTitleHeight(void)
-{
-    return Global->Style.TitlePadding.Y * Global->FontSize * 2.0f +
-           Global->Font->LineHeight * Global->FontSize;
-}
-
-static inline Rr_Vec2 Rr_GetMinWindowSize(void)
-{
-    return (Rr_Vec2){
-        .X = Global->Style.ContentsPadding.X * 2.0f * Global->FontSize,
-        .Y = Global->Style.ContentsPadding.Y * 2.0f * Global->FontSize +
-             Rr_GetWindowTitleHeight(),
-    };
-}
-
-static inline float Rr_GetResizeHandleSize(void)
-{
-    return Global->FontSize * 0.75f;
-}
 
 #define CJSON_GET_OBJECT_FLOAT(Object, Item) \
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
@@ -525,7 +507,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             .Y = Global->FontSize,
         };
         const Rr_Vec2 DEFAULT_WINDOW_SIZE = { 300.0f, 500.0f };
-        Window->Size = Rr_AddV2(Rr_GetMinWindowSize(), DEFAULT_WINDOW_SIZE);
+        Window->Size = Rr_AddV2(Global->MinWindowSize, DEFAULT_WINDOW_SIZE);
         *WindowRef = Window;
     }
     else
@@ -555,11 +537,9 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     (void)_;
 
     Global->Cursor = (Rr_Vec2){
-        .X = Window->Position.X +
-             Global->Style.ContentsPadding.X * Global->FontSize,
-        .Y = Window->Position.Y +
-             Global->Style.ContentsPadding.Y * Global->FontSize +
-             Rr_GetWindowTitleHeight(),
+        .X = Window->Position.X + Global->ContentsPadding.X,
+        .Y = Window->Position.Y + Global->ContentsPadding.Y +
+             Global->WindowTitleHeight,
     };
 
     Global->CurrentWindow = Window;
@@ -592,7 +572,7 @@ static inline void Rr_Advance(Rr_Vec2 Size)
 {
     if(Global->Horizontal)
     {
-        Global->Cursor.X += Size.Width + Global->FontSize * 0.5f;
+        Global->Cursor.X += Size.Width + Global->HorizontalMargin;
         Global->HorizontalMaxHeight =
             RR_MAX(Global->HorizontalMaxHeight, Size.Height);
     }
@@ -608,34 +588,19 @@ void Rr_Separator(void)
 
     Rr_UIWindow *Window = Global->CurrentWindow;
 
-    float SeparatorLineHeight = Rr_GetSeperatorLineHeight();
-    float FrameThickness = Rr_GetFrameThickness();
-
-    /* Rr_Vec2 Size = { */
-    /*     Window->Size.X - */
-    /*         (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f) - */
-    /*         (Window->Size.X * 0.1f), */
-    /*     FrameThickness, */
-    /* }; */
-    /* Rr_Vec2 Position = { */
-    /*     Global->Cursor.X + (Window->Size.X * 0.05f), */
-    /*     Global->Cursor.Y + (SeparatorLineHeight / 2.0f - FrameThickness
-     * / 2.0f), */
-    /* }; */
     Rr_Vec2 Size = {
-        Window->Size.X -
-            (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f),
-        FrameThickness,
+        Window->Size.X - (Global->ContentsPadding.X * 2.0f),
+        Global->FrameThickness,
     };
     Rr_Vec2 Position = {
         Global->Cursor.X,
-        Global->Cursor.Y + (SeparatorLineHeight / 2.0f - FrameThickness / 2.0f),
+        Global->Cursor.Y + (Global->SeparatorLineHeight / 2.0f -
+                            Global->FrameThickness / 2.0f),
     };
     Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, 0.75f);
     Rr_DrawSolidQuad(Window, Position, Size, &Color);
 
-    Global->Cursor.Y += SeparatorLineHeight;
-    /* Window->Size.Height += SeparatorLineHeight; */
+    Global->Cursor.Y += Global->SeparatorLineHeight;
 }
 
 void Rr_Label(const char *Text)
@@ -653,11 +618,6 @@ void Rr_Label(const char *Text)
     Rr_DrawText(Window, Global->Cursor, &TextString, &Global->Style.Foreground);
 
     Rr_Advance(TextSize);
-    /* Window->Size.Width = RR_MAX( */
-    /*     Window->Size.Width, */
-    /*     TextSize.Width + */
-    /*         (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f)); */
-    /* Window->Size.Height += TextSize.Height; */
 
     Rr_DestroyScratch(Scratch);
 }
@@ -684,15 +644,6 @@ void Rr_LabelF(const char *Format, ...)
     Rr_DestroyScratch(Scratch);
 }
 
-static inline Rr_Vec2 Rr_GetButtonPadding(void)
-{
-    Rr_Vec2 Padding = {
-        Global->FontSize * Global->Font->LineHeight * 0.25f,
-        Global->FontSize * Global->Font->LineHeight * 0.125f,
-    };
-    return Padding;
-}
-
 bool Rr_Button(const char *Text)
 {
     RR_ASSERT_WIDGET();
@@ -705,8 +656,8 @@ bool Rr_Button(const char *Text)
     Rr_Vec2 TextSize =
         Rr_CalculateTextSize(Global->Font, Global->FontSize, &TextString);
 
-    Rr_Vec2 ButtonPadding = Rr_GetButtonPadding();
-    Rr_Vec2 ButtonSize = Rr_AddV2(TextSize, Rr_MulV2F(ButtonPadding, 2.0f));
+    Rr_Vec2 ButtonSize =
+        Rr_AddV2(TextSize, Rr_MulV2F(Global->ButtonPadding, 2.0f));
     Rr_Vec2 ButtonPosition = Global->Cursor;
 
     bool Clicked = false;
@@ -752,7 +703,7 @@ bool Rr_Button(const char *Text)
             &Global->Style.Foreground);
     }
 
-    Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, ButtonPadding);
+    Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, Global->ButtonPadding);
     Rr_DrawText(Window, TextPosition, &TextString, &Global->Style.Background);
 
     Rr_Advance(ButtonSize);
@@ -760,12 +711,6 @@ bool Rr_Button(const char *Text)
     Rr_DestroyScratch(Scratch);
 
     return Clicked;
-}
-
-static inline Rr_Vec2 Rr_GetCheckboxSize(void)
-{
-    float Size = Global->FontSize * Global->Font->LineHeight * 0.75f;
-    return (Rr_Vec2){ (int)Size, (int)Size };
 }
 
 bool Rr_Checkbox(const char *Text, bool *Checked)
@@ -776,24 +721,24 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     Rr_UIWindow *Window = Global->CurrentWindow;
 
-    float FrameThickness = Rr_GetFrameThickness();
-    float LineHeight = Global->FontSize * Global->Font->LineHeight;
     Rr_Vec2 ContentsPadding =
         Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
-    Rr_Vec2 FrameSize = Rr_GetCheckboxSize();
 
     Rr_Vec2 FramePosition = Rr_AddV2(
         Global->Cursor,
         (Rr_Vec2){
-            FrameThickness,
-            LineHeight / 2.0f - FrameSize.Y / 2.0f,
+            Global->FrameThickness,
+            Global->LineHeight / 2.0f - Global->CheckboxSize.Y / 2.0f,
         });
 
     bool Clicked = false;
     bool Hovered = false;
     if(Window == Global->HoveredWindow)
     {
-        if(Rr_RectContains(FramePosition, FrameSize, Global->MousePosition))
+        if(Rr_RectContains(
+               FramePosition,
+               Global->CheckboxSize,
+               Global->MousePosition))
         {
             if(Global->LeftMouseButtonPressed)
             {
@@ -810,16 +755,22 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, Hovered ? 0.75f : 1.0f);
 
-    Rr_DrawFrameQuad(Window, FramePosition, FrameSize, FrameThickness, &Color);
+    Rr_DrawFrameQuad(
+        Window,
+        FramePosition,
+        Global->CheckboxSize,
+        Global->FrameThickness,
+        &Color);
 
     if(*Checked)
     {
         Rr_Vec2 Inset = (Rr_Vec2){
-            FrameThickness * 4.0f,
-            FrameThickness * 4.0f,
+            Global->FrameThickness * 4.0f,
+            Global->FrameThickness * 4.0f,
         };
         Rr_Vec2 CheckmarkPosition = Rr_AddV2(FramePosition, Inset);
-        Rr_Vec2 CheckmarkSize = Rr_SubV2(FrameSize, Rr_MulV2F(Inset, 2.0f));
+        Rr_Vec2 CheckmarkSize =
+            Rr_SubV2(Global->CheckboxSize, Rr_MulV2F(Inset, 2.0f));
         Rr_DrawSolidQuad(Window, CheckmarkPosition, CheckmarkSize, &Color);
     }
 
@@ -829,12 +780,12 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     Rr_Vec2 TextPosition = Rr_AddV2(
         Global->Cursor,
-        (Rr_Vec2){ ContentsPadding.X + FrameSize.X, 0.0f });
+        (Rr_Vec2){ ContentsPadding.X + Global->CheckboxSize.X, 0.0f });
     Rr_DrawText(Window, TextPosition, &TextString, &Global->Style.Foreground);
 
     Rr_Vec2 TotalSize = {
-        FrameSize.X + TextSize.X + ContentsPadding.X,
-        RR_MAX(FrameSize.Y, TextSize.Y),
+        Global->CheckboxSize.X + TextSize.X + ContentsPadding.X,
+        RR_MAX(Global->CheckboxSize.Y, TextSize.Y),
     };
     Rr_Advance(TotalSize);
 
@@ -862,8 +813,8 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
     Rr_UIContext *Context = RR_ALLOC(Arena, sizeof(Rr_UIContext));
     Context->Arena = Arena;
 
-    /* Context->FontSize = 36.0f; */
-    Context->FontSize = 24.0f;
+    Context->NextFontSize =
+        24.0f; /* TODO: Calculate default font size based on DPI. */
 
     Context->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.25f },
@@ -1014,6 +965,34 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Global->FrameNumber = Renderer->FrameNumber;
     Global->FrameArena = Rr_GetFrameArena(Renderer);
 
+    Global->Font = Renderer->BuiltinFont;
+
+    if(Global->NextFontSize != 0.0f)
+    {
+        Global->FontSize = Global->NextFontSize;
+        Global->NextFontSize = 0.0f;
+
+        Global->LineHeight = Global->FontSize * Global->Font->LineHeight;
+        Global->WindowTitleHeight =
+                Global->Style.TitlePadding.Y * Global->FontSize * 2.0f + Global->LineHeight;
+        Global->MinWindowSize = (Rr_Vec2){
+            .X = Global->Style.ContentsPadding.X * 2.0f * Global->FontSize,
+            .Y = Global->Style.ContentsPadding.Y * 2.0f * Global->FontSize +
+                 Global->WindowTitleHeight,
+        };
+        Global->ResizeHandleSize = Global->FontSize * 0.75f;
+        Global->HorizontalMargin = Global->FontSize * 0.5f;
+        Global->ContentsPadding =
+            Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
+        Global->FrameThickness =
+            floorf(RR_MAX(1.0f, Global->FontSize * 0.075f));
+        Global->SeparatorLineHeight = Global->LineHeight * 0.5f;
+        Global->ButtonPadding = (Rr_Vec2){ Global->LineHeight * 0.25f,
+                                           Global->LineHeight * 0.125f };
+        Global->CheckboxSize =
+            (Rr_Vec2){ Global->LineHeight * 0.75f, Global->LineHeight * 0.75f };
+    }
+
     Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
     Global->MousePosition = Rr_GetMousePosition(App);
 
@@ -1054,11 +1033,10 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
         {
             Rr_Vec2 Delta =
                 Rr_SubV2(Global->MousePosition, Global->ResizingStart);
-            Rr_Vec2 MinWindowSize = Rr_GetMinWindowSize();
             Rr_Vec2 NewWindowSize =
                 Rr_AddV2(Global->ResizingWindowStart, Delta);
-            NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
-            NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
+            NewWindowSize.X = RR_MAX(NewWindowSize.X, Global->MinWindowSize.X);
+            NewWindowSize.Y = RR_MAX(NewWindowSize.Y, Global->MinWindowSize.Y);
             Global->ResizingWindow->Size = Rr_FloorV2(NewWindowSize);
         }
         else
@@ -1069,8 +1047,8 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     else if(Global->HoveredWindow && Global->LeftMouseButtonPressed)
     {
         Rr_Vec2 ResizeHandleSize = {
-            Rr_GetResizeHandleSize(),
-            Rr_GetResizeHandleSize(),
+            Global->ResizeHandleSize,
+            Global->ResizeHandleSize,
         };
         Rr_Vec2 ResizeHandlePosition = Rr_SubV2(
             Rr_AddV2(
@@ -1105,8 +1083,6 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
     Global->ScreenSize.Width = (float)SwapchainSize.Width;
     Global->ScreenSize.Height = (float)SwapchainSize.Height;
-
-    Global->Font = Renderer->BuiltinFont;
 }
 
 void Rr_EndUI(Rr_App *App)
@@ -1186,11 +1162,11 @@ void Rr_EndUI(Rr_App *App)
 
         Rr_Vec2 ContentsPosition = {
             Window->Position.X,
-            Window->Position.Y + Rr_GetWindowTitleHeight(),
+            Window->Position.Y + Global->WindowTitleHeight,
         };
         Rr_Vec2 ContentsSize = {
             Window->Size.X,
-            Window->Size.Y - Rr_GetWindowTitleHeight(),
+            Window->Size.Y - Global->WindowTitleHeight,
         };
         Rr_UIQuad ContentsBackgroundQuad = Window->Vertices.Data;
         Rr_SolidQuad(
@@ -1202,7 +1178,7 @@ void Rr_EndUI(Rr_App *App)
         Rr_Vec2 TitlePosition = Window->Position;
         Rr_Vec2 TitleSize = {
             Window->Size.X,
-            Rr_GetWindowTitleHeight(),
+            Global->WindowTitleHeight,
         };
         Rr_DrawSolidQuad(
             Window,
@@ -1221,7 +1197,7 @@ void Rr_EndUI(Rr_App *App)
             Window,
             Window->Position,
             Window->Size,
-            Rr_GetFrameThickness(),
+            Global->FrameThickness,
             &Global->Style.Outline);
 
         if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
@@ -1229,10 +1205,10 @@ void Rr_EndUI(Rr_App *App)
             Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
             Rr_DrawSolidTriangle(
                 Window,
-                (Rr_Vec2){ BottomRight.X - Rr_GetResizeHandleSize(),
+                (Rr_Vec2){ BottomRight.X - Global->ResizeHandleSize,
                            BottomRight.Y },
                 (Rr_Vec2){ BottomRight.X,
-                           BottomRight.Y - Rr_GetResizeHandleSize() },
+                           BottomRight.Y - Global->ResizeHandleSize },
                 (Rr_Vec2){ BottomRight.X, BottomRight.Y },
                 &Global->Style.Foreground);
         }
@@ -1275,4 +1251,12 @@ void Rr_EndUI(Rr_App *App)
     }
 
     Global->LeftMouseButtonPressed = false;
+}
+
+void Rr_SetFontSize(float Size)
+{
+    if(Global)
+    {
+        Global->NextFontSize = Size;
+    }
 }

@@ -975,7 +975,6 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_LabelF("FPS: %.2f", FPSCount);
     Rr_LabelF("Circles: %zu", Tree.ElementsCount());
     Rr_LabelF("Rebuilding: %d", Rebuilding);
-    Rr_BeginHorizontal();
     if(Rr_Button("Regenerate Tree"))
     {
         if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
@@ -983,10 +982,6 @@ static void Iterate(Rr_App *App, void *UserData)
             RebuildTree();
         }
     }
-    if(Rr_Button("Test"))
-    {
-    }
-    Rr_EndHorizontal();
     Rr_LabelF("Draw Count: %d", DrawCount);
     Rr_LabelF("Draws Size: %d", DrawsSize);
     Rr_LabelF("Box Select: %d", Selecting);
