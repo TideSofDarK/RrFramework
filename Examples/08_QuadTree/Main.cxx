@@ -975,6 +975,18 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_LabelF("FPS: %.2f", FPSCount);
     Rr_LabelF("Circles: %zu", Tree.ElementsCount());
     Rr_LabelF("Rebuilding: %d", Rebuilding);
+    Rr_BeginHorizontal();
+    if(Rr_Button("Regenerate Tree"))
+    {
+        if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+        {
+            RebuildTree();
+        }
+    }
+    if(Rr_Button("Test"))
+    {
+    }
+    Rr_EndHorizontal();
     Rr_LabelF("Draw Count: %d", DrawCount);
     Rr_LabelF("Draws Size: %d", DrawsSize);
     Rr_LabelF("Box Select: %d", Selecting);
@@ -984,6 +996,7 @@ static void Iterate(Rr_App *App, void *UserData)
         (int)CameraPosition.Y);
     Rr_Separator();
     Rr_Checkbox("Debug Draw", &DrawDebug);
+    Rr_BeginHorizontal();
     Rr_Checkbox("Use Query", &UseQuery);
     if(Rr_Checkbox("Use VSync", &VSyncEnabled))
     {
@@ -991,6 +1004,7 @@ static void Iterate(Rr_App *App, void *UserData)
             Rr_GetRenderer(App),
             VSyncEnabled ? RR_PRESENT_MODE_FIFO : RR_PRESENT_MODE_IMMEDIATE);
     }
+    Rr_EndHorizontal();
     Rr_Separator();
     Rr_Label("Sample Wrapped Text Sample Wrapped Text Sample Wrapped Text "
              "Sample Wrapped Text Sample Wrapped Text Sample Wrapped Text");

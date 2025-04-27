@@ -76,6 +76,10 @@ struct Rr_UIContext
     Rr_UIWindow *CurrentWindow;
     Rr_UIWindow *HoveredWindow;
 
+    bool Horizontal;
+    float HorizontalX;
+    float HorizontalMaxHeight;
+
     bool LeftMouseButtonPressed;
     Rr_Vec2 MousePosition;
 
@@ -571,6 +575,33 @@ void Rr_EndWindow(void)
     Global->CurrentWindow = NULL;
 }
 
+void Rr_BeginHorizontal(void)
+{
+    Global->Horizontal = true;
+    Global->HorizontalX = Global->Cursor.X;
+}
+
+void Rr_EndHorizontal(void)
+{
+    Global->Horizontal = false;
+    Global->Cursor.X = Global->HorizontalX;
+    Global->Cursor.Y += Global->HorizontalMaxHeight;
+}
+
+static inline void Rr_Advance(Rr_Vec2 Size)
+{
+    if(Global->Horizontal)
+    {
+        Global->Cursor.X += Size.Width + Global->FontSize * 0.5f;
+        Global->HorizontalMaxHeight =
+            RR_MAX(Global->HorizontalMaxHeight, Size.Height);
+    }
+    else
+    {
+        Global->Cursor.Y += Size.Height;
+    }
+}
+
 void Rr_Separator(void)
 {
     RR_ASSERT_WIDGET();
@@ -621,7 +652,7 @@ void Rr_Label(const char *Text)
 
     Rr_DrawText(Window, Global->Cursor, &TextString, &Global->Style.Foreground);
 
-    Global->Cursor.Y += TextSize.Height;
+    Rr_Advance(TextSize);
     /* Window->Size.Width = RR_MAX( */
     /*     Window->Size.Width, */
     /*     TextSize.Width + */
@@ -653,8 +684,82 @@ void Rr_LabelF(const char *Format, ...)
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_Button(const char *Text)
+static inline Rr_Vec2 Rr_GetButtonPadding(void)
 {
+    Rr_Vec2 Padding = {
+        Global->FontSize * Global->Font->LineHeight * 0.25f,
+        Global->FontSize * Global->Font->LineHeight * 0.125f,
+    };
+    return Padding;
+}
+
+bool Rr_Button(const char *Text)
+{
+    RR_ASSERT_WIDGET();
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UIWindow *Window = Global->CurrentWindow;
+
+    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
+    Rr_Vec2 TextSize =
+        Rr_CalculateTextSize(Global->Font, Global->FontSize, &TextString);
+
+    Rr_Vec2 ButtonPadding = Rr_GetButtonPadding();
+    Rr_Vec2 ButtonSize = Rr_AddV2(TextSize, Rr_MulV2F(ButtonPadding, 2.0f));
+    Rr_Vec2 ButtonPosition = Global->Cursor;
+
+    bool Clicked = false;
+    bool Hovered = false;
+    if(Window == Global->HoveredWindow)
+    {
+        if(Rr_RectContains(ButtonPosition, ButtonSize, Global->MousePosition))
+        {
+            if(Global->LeftMouseButtonPressed)
+            {
+                Global->MovingWindow = NULL;
+                Clicked = true;
+            }
+            else if(!Global->MovingWindow && !Global->ResizingWindow)
+            {
+                Hovered = true;
+            }
+        }
+    }
+
+    Rr_DrawSolidQuad(
+        Window,
+        ButtonPosition,
+        ButtonSize,
+        &Global->Style.Foreground);
+
+    if(Clicked)
+    {
+        Rr_Vec4 ClickedColor = Rr_MulV4F(Global->Style.Foreground, 0.5f);
+        Rr_DrawSolidQuad(Window, ButtonPosition, ButtonSize, &ClickedColor);
+    }
+    else if(Hovered)
+    {
+        Rr_Vec4 HoveredColor = Rr_MulV4F(Global->Style.Foreground, 0.75f);
+        Rr_DrawSolidQuad(Window, ButtonPosition, ButtonSize, &HoveredColor);
+    }
+    else
+    {
+        Rr_DrawSolidQuad(
+            Window,
+            ButtonPosition,
+            ButtonSize,
+            &Global->Style.Foreground);
+    }
+
+    Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, ButtonPadding);
+    Rr_DrawText(Window, TextPosition, &TextString, &Global->Style.Background);
+
+    Rr_Advance(ButtonSize);
+
+    Rr_DestroyScratch(Scratch);
+
+    return Clicked;
 }
 
 static inline Rr_Vec2 Rr_GetCheckboxSize(void)
@@ -683,26 +788,29 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
             FrameThickness,
             LineHeight / 2.0f - FrameSize.Y / 2.0f,
         });
-    Rr_DrawFrameQuad(
-        Window,
-        FramePosition,
-        FrameSize,
-        FrameThickness,
-        &Global->Style.Foreground);
 
     bool Clicked = false;
+    bool Hovered = false;
     if(Window == Global->HoveredWindow)
     {
-        if(Global->LeftMouseButtonPressed)
+        if(Rr_RectContains(FramePosition, FrameSize, Global->MousePosition))
         {
-            if(Rr_RectContains(FramePosition, FrameSize, Global->MousePosition))
+            if(Global->LeftMouseButtonPressed)
             {
                 Global->MovingWindow = NULL;
                 *Checked = !*Checked;
                 Clicked = true;
             }
+            else if(!Global->MovingWindow && !Global->ResizingWindow)
+            {
+                Hovered = true;
+            }
         }
     }
+
+    Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, Hovered ? 0.75f : 1.0f);
+
+    Rr_DrawFrameQuad(Window, FramePosition, FrameSize, FrameThickness, &Color);
 
     if(*Checked)
     {
@@ -712,11 +820,7 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
         };
         Rr_Vec2 CheckmarkPosition = Rr_AddV2(FramePosition, Inset);
         Rr_Vec2 CheckmarkSize = Rr_SubV2(FrameSize, Rr_MulV2F(Inset, 2.0f));
-        Rr_DrawSolidQuad(
-            Window,
-            CheckmarkPosition,
-            CheckmarkSize,
-            &Global->Style.Foreground);
+        Rr_DrawSolidQuad(Window, CheckmarkPosition, CheckmarkSize, &Color);
     }
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
@@ -728,25 +832,15 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
         (Rr_Vec2){ ContentsPadding.X + FrameSize.X, 0.0f });
     Rr_DrawText(Window, TextPosition, &TextString, &Global->Style.Foreground);
 
-    float YOffset = RR_MAX(FrameSize.Y, TextSize.Y);
-    Global->Cursor.Y += YOffset;
-    /* Window->Size.Width = RR_MAX( */
-    /*     Window->Size.Width, */
-    /*     (TextSize.Width + CheckboxSize.Width) + */
-    /*         (Global->Style.ContentsPadding.X * Global->FontSize * 2.0f)); */
-    /* Window->Size.Height += YOffset; */
+    Rr_Vec2 TotalSize = {
+        FrameSize.X + TextSize.X + ContentsPadding.X,
+        RR_MAX(FrameSize.Y, TextSize.Y),
+    };
+    Rr_Advance(TotalSize);
 
     Rr_DestroyScratch(Scratch);
 
     return Clicked;
-}
-
-void Rr_BeginHorizontal(void)
-{
-}
-
-void Rr_EndHorizontal(void)
-{
 }
 
 bool Rr_WantMouseCapture(void)
