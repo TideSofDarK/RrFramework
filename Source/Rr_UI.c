@@ -644,6 +644,34 @@ void Rr_LabelF(const char *Format, ...)
     Rr_DestroyScratch(Scratch);
 }
 
+static inline void Rr_ButtonBehavior(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    bool *Clicked,
+    bool *Hovered)
+{
+    if(Window == Global->HoveredWindow &&
+       Rr_RectContains(Position, Size, Global->MousePosition))
+    {
+        if(Global->LeftMouseButtonPressed)
+        {
+            Global->MovingWindow = NULL;
+            if(Clicked)
+            {
+                *Clicked = true;
+            }
+        }
+        else if(!Global->MovingWindow && !Global->ResizingWindow)
+        {
+            if(Hovered)
+            {
+                *Hovered = true;
+            }
+        }
+    }
+}
+
 bool Rr_Button(const char *Text)
 {
     RR_ASSERT_WIDGET();
@@ -662,21 +690,7 @@ bool Rr_Button(const char *Text)
 
     bool Clicked = false;
     bool Hovered = false;
-    if(Window == Global->HoveredWindow)
-    {
-        if(Rr_RectContains(ButtonPosition, ButtonSize, Global->MousePosition))
-        {
-            if(Global->LeftMouseButtonPressed)
-            {
-                Global->MovingWindow = NULL;
-                Clicked = true;
-            }
-            else if(!Global->MovingWindow && !Global->ResizingWindow)
-            {
-                Hovered = true;
-            }
-        }
-    }
+    Rr_ButtonBehavior(Window, ButtonPosition, ButtonSize, &Clicked, &Hovered);
 
     Rr_DrawSolidQuad(
         Window,
@@ -733,24 +747,16 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     bool Clicked = false;
     bool Hovered = false;
-    if(Window == Global->HoveredWindow)
+    Rr_ButtonBehavior(
+        Window,
+        FramePosition,
+        Global->CheckboxSize,
+        &Clicked,
+        &Hovered);
+
+    if(Clicked)
     {
-        if(Rr_RectContains(
-               FramePosition,
-               Global->CheckboxSize,
-               Global->MousePosition))
-        {
-            if(Global->LeftMouseButtonPressed)
-            {
-                Global->MovingWindow = NULL;
-                *Checked = !*Checked;
-                Clicked = true;
-            }
-            else if(!Global->MovingWindow && !Global->ResizingWindow)
-            {
-                Hovered = true;
-            }
-        }
+        *Checked = !*Checked;
     }
 
     Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, Hovered ? 0.75f : 1.0f);
@@ -948,6 +954,9 @@ void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event)
         }
         break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_UP:
+        {
+        }
+        break;
         case RR_EVENT_TYPE_MOUSE_MOTION:
         {
         }
@@ -974,7 +983,8 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
 
         Global->LineHeight = Global->FontSize * Global->Font->LineHeight;
         Global->WindowTitleHeight =
-                Global->Style.TitlePadding.Y * Global->FontSize * 2.0f + Global->LineHeight;
+            Global->Style.TitlePadding.Y * Global->FontSize * 2.0f +
+            Global->LineHeight;
         Global->MinWindowSize = (Rr_Vec2){
             .X = Global->Style.ContentsPadding.X * 2.0f * Global->FontSize,
             .Y = Global->Style.ContentsPadding.Y * 2.0f * Global->FontSize +
@@ -1083,6 +1093,43 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
     Global->ScreenSize.Width = (float)SwapchainSize.Width;
     Global->ScreenSize.Height = (float)SwapchainSize.Height;
+}
+
+static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
+{
+    Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
+    BottomRight.X -= Global->FrameThickness;
+    BottomRight.Y -= Global->FrameThickness;
+    Rr_Vec2 ResizeHandlePosition = {
+        BottomRight.X - Global->ResizeHandleSize,
+        BottomRight.Y - Global->ResizeHandleSize,
+    };
+    Rr_Vec2 ResizeHandleSize = {
+        Global->ResizeHandleSize,
+        Global->ResizeHandleSize,
+    };
+
+    Rr_Vec4 ResizeHandleColor = Global->Style.Foreground;
+
+    bool Hovered = false;
+    Rr_ButtonBehavior(
+        Window,
+        ResizeHandlePosition,
+        ResizeHandleSize,
+        NULL,
+        &Hovered);
+
+    if(Hovered || Global->ResizingWindow == Window)
+    {
+        ResizeHandleColor = Rr_MulV4F(ResizeHandleColor, 0.75f);
+    }
+
+    Rr_DrawSolidTriangle(
+        Window,
+        (Rr_Vec2){ BottomRight.X - Global->ResizeHandleSize, BottomRight.Y },
+        (Rr_Vec2){ BottomRight.X, BottomRight.Y - Global->ResizeHandleSize },
+        (Rr_Vec2){ BottomRight.X, BottomRight.Y },
+        &ResizeHandleColor);
 }
 
 void Rr_EndUI(Rr_App *App)
@@ -1202,15 +1249,7 @@ void Rr_EndUI(Rr_App *App)
 
         if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
         {
-            Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
-            Rr_DrawSolidTriangle(
-                Window,
-                (Rr_Vec2){ BottomRight.X - Global->ResizeHandleSize,
-                           BottomRight.Y },
-                (Rr_Vec2){ BottomRight.X,
-                           BottomRight.Y - Global->ResizeHandleSize },
-                (Rr_Vec2){ BottomRight.X, BottomRight.Y },
-                &Global->Style.Foreground);
+            Rr_DrawResizeHandle(Window);
         }
 
         /* Finished generating geometry. */
