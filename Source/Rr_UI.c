@@ -61,6 +61,7 @@ struct Rr_UIWindow
     Rr_Map *WidgetMap;
     size_t LastFrameNumber;
     Rr_UIWindowFlags Flags;
+    int ZOrder;
     bool Minimized;
 };
 
@@ -71,6 +72,7 @@ struct Rr_UIContext
     Rr_UIStyle Style;
 
     Rr_Map *WindowMap;
+    int TotalWindowCount;
     RR_SLICE(Rr_UIWindow *) Windows;
     size_t LastWindowCount;
     Rr_UIWindow *CurrentWindow;
@@ -516,6 +518,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     if(Window == NULL)
     {
         Window = RR_ALLOC_TYPE(Global->Arena, Rr_UIWindow);
+        Window->ZOrder = Global->TotalWindowCount++;
         Window->Title = Rr_CreateString(Title, TitleLength, Global->Arena);
         Window->Position = (Rr_Vec2){
             .X = Global->FontSize,
@@ -1007,6 +1010,8 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
             Global->Style.TitlePadding.Y * Global->FontSize * 2.0f +
             Global->LineHeight;
         Global->MinWindowSizeNoTitle = Rr_MulV2F(Global->ContentsPadding, 2.0f);
+        Global->MinWindowSizeNoTitle.X += Global->FontSize;
+        Global->MinWindowSizeNoTitle.Y += Global->FontSize;
         Global->MinWindowSize = Global->MinWindowSizeNoTitle;
         Global->MinWindowSize.Y += Global->WindowTitleHeight;
 
@@ -1034,6 +1039,19 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
                Global->MousePosition))
         {
             Global->HoveredWindow = Window;
+
+            if(Global->LeftMouseButtonPressed)
+            {
+                Rr_UIWindow *HighestWindow =
+                    Global->Windows.Data[Global->Windows.Count - 1];
+                if(Window != HighestWindow)
+                {
+                    int Temp = HighestWindow->ZOrder;
+                    HighestWindow->ZOrder = Window->ZOrder;
+                    Window->ZOrder = Temp;
+                }
+            }
+
             break;
         }
     }
@@ -1172,6 +1190,14 @@ static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
         &ResizeHandleColor);
 }
 
+int Rr_WindowSort(const void *A, const void *B)
+{
+    const Rr_UIWindow *WindowA = *(Rr_UIWindow **)A;
+    const Rr_UIWindow *WindowB = *(Rr_UIWindow **)B;
+
+    return WindowA->ZOrder > WindowB->ZOrder;
+}
+
 void Rr_EndUI(Rr_App *App)
 {
     RR_UI_ASSERT_NO_WINDOW();
@@ -1240,6 +1266,12 @@ void Rr_EndUI(Rr_App *App)
         Global->Sampler,
         0,
         1);
+
+    qsort(
+        Global->Windows.Data,
+        Global->Windows.Count,
+        sizeof(Rr_UIWindow *),
+        Rr_WindowSort);
 
     for(size_t Index = 0; Index < Global->Windows.Count; ++Index)
     {
@@ -1328,6 +1360,7 @@ void Rr_EndUI(Rr_App *App)
     }
 
     Global->LeftMouseButtonPressed = false;
+    RR_ZERO(Global->HorizontalX);
 }
 
 void Rr_SetFontSize(float Size)
