@@ -89,6 +89,8 @@ extern bool Rr_WantKeyboardCapture(void);
 
 extern void Rr_SetFontSize(float Size);
 
+extern void Rr_DebugOverlay(void);
+
 #ifdef __cplusplus
 }
 #endif

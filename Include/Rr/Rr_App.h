@@ -34,8 +34,6 @@ extern void Rr_SetWindowTitle(Rr_App *App, const char *Title);
 
 extern float Rr_GetFramesPerSecond(Rr_App *App);
 
-extern void Rr_DebugOverlay(Rr_App *App);
-
 extern void Rr_ToggleFullscreen(Rr_App *App);
 
 extern float Rr_GetAspectRatio(Rr_App *App);

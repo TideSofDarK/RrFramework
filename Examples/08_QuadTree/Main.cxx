@@ -962,17 +962,9 @@ static void Reset()
 
 static void Iterate(Rr_App *App, void *UserData)
 {
-    static float TimeCounter = 1.0f;
-    static float FPSCount;
-    TimeCounter += Rr_GetDeltaSeconds(App);
-    if(TimeCounter > 0.2f)
-    {
-        TimeCounter = 0.0f;
-        FPSCount = Rr_GetFramesPerSecond(App);
-    }
+    Rr_DebugOverlay();
 
     Rr_BeginWindow("QuadTree", 0);
-    Rr_LabelF("FPS: %.2f", FPSCount);
     Rr_LabelF("Circles: %zu", Tree.ElementsCount());
     Rr_LabelF("Rebuilding: %d", Rebuilding);
     if(Rr_Button("Regenerate Tree"))

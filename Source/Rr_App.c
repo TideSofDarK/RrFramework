@@ -59,61 +59,6 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
     }
 }
 
-// void Rr_DebugOverlay(Rr_App *App)
-// {
-//     ImGuiIO *IO = igGetIO();
-//     ImGuiViewport *Viewport = igGetMainViewport();
-//     ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration |
-//     ImGuiWindowFlags_AlwaysAutoResize |
-//                              ImGuiWindowFlags_NoSavedSettings |
-//                              ImGuiWindowFlags_NoFocusOnAppearing |
-//                              ImGuiWindowFlags_NoNav;
-//     float Padding = 10.0f;
-//     ImVec2 WorkPos = Viewport->WorkPos;
-//     ImVec2 WindowPos, WindowPosPivot;
-//     WindowPos.x = WorkPos.x + Padding;
-//     WindowPos.y = WorkPos.y + Padding;
-//     WindowPosPivot.x = 0.0f;
-//     WindowPosPivot.y = 0.0f;
-//     igSetNextWindowPos(WindowPos, ImGuiCond_Always, WindowPosPivot);
-//     Flags |= ImGuiWindowFlags_NoMove;
-//     igSetNextWindowBgAlpha(0.95f);
-//     if(igBegin("Debug Overlay", NULL, Flags))
-//     {
-//         igText("Swapchain Size: %dx%d", App->Renderer.SwapchainSize.width,
-//         App->Renderer.SwapchainSize.height); igText("SDL Allocations: %zu",
-//         SDL_GetNumAllocations()); igText("RrFramework Objects: %zu",
-//         App->ObjectStorage.ObjectCount); igSeparator();
-// #ifdef RR_PERFORMANCE_COUNTER
-//         igText("FPS: %.2f", App->FrameTime.PerformanceCounter.FPS);
-// #endif
-//         igCheckbox("Simulate VSync", (_Bool
-//         *)&App->FrameTime.EnableFrameLimiter);
-//         if(App->FrameTime.EnableFrameLimiter)
-//         {
-//             igSliderScalar(
-//                 "Target FPS",
-//                 ImGuiDataType_U64,
-//                 &App->FrameTime.TargetFramerate,
-//                 &(uint64_t){ 30 },
-//                 &(uint64_t){ 480 },
-//                 "%d",
-//                 ImGuiSliderFlags_None);
-//         }
-//         igSeparator();
-//         if(igIsMousePosValid(NULL))
-//         {
-//             igText("Mouse Position: (%.1f,%.1f)", IO->MousePos.x,
-//             IO->MousePos.y);
-//         }
-//         else
-//         {
-//             igText("Mouse Position: <invalid>");
-//         }
-//     }
-//     igEnd();
-// }
-
 static void Rr_Iterate(Rr_App *App)
 {
     Rr_CalculateDeltaTime(&App->FrameTime);

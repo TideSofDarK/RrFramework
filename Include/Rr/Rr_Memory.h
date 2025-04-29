@@ -129,7 +129,9 @@ extern void Rr_ReserveSlice(
      (Slice)->Data + (Slice)->Count++                                       \
      : (Slice)->Data + (Slice)->Count++)
 
-#define RR_POP_SLICE(Slice) (Slice)->Count > 0 ? (Slice)->Count-- : (int)0
+#define RR_POP_SLICE(Slice)                                                \
+    (Slice)->Count > 0 ? ((Slice)->Count--, (Slice)->Data[(Slice)->Count]) \
+                       : (int)0
 
 #define RR_RESERVE_SLICE(Slice, ElementCount, Arena) \
     ((Slice)->Capacity < (ElementCount)              \

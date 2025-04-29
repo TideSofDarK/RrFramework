@@ -15,17 +15,17 @@
 #include <assert.h>
 #include <stdio.h>
 
-#define RR_ASSERT_GLOBAL() \
+#define RR_UI_ASSERT_GLOBAL() \
     assert(Global != NULL && "Did you forget to call Rr_BeginUI()?")
 
-#define RR_ASSERT_NO_WINDOW()            \
-    RR_ASSERT_GLOBAL();                  \
+#define RR_UI_ASSERT_NO_WINDOW()         \
+    RR_UI_ASSERT_GLOBAL();               \
     assert(                              \
         Global->CurrentWindow == NULL && \
         "Did you forget to call Rr_EndWindow()?")
 
-#define RR_ASSERT_WIDGET() \
-    RR_ASSERT_GLOBAL();    \
+#define RR_UI_ASSERT_WIDGET() \
+    RR_UI_ASSERT_GLOBAL();    \
     assert(Global->CurrentWindow && "Did you forget to call Rr_BeginWindow()?")
 
 typedef uint16_t Rr_UIIndex;
@@ -77,7 +77,7 @@ struct Rr_UIContext
     Rr_UIWindow *HoveredWindow;
 
     bool Horizontal;
-    float HorizontalX;
+    RR_SLICE(float) HorizontalX;
     float HorizontalMaxHeight;
 
     bool LeftMouseButtonPressed;
@@ -103,6 +103,7 @@ struct Rr_UIContext
     Rr_Vec2 ContentsPadding;
     float LineHeight;
     Rr_Vec2 MinWindowSize;
+    Rr_Vec2 MinWindowSizeNoTitle;
     float WindowTitleHeight;
     float ResizeHandleSize;
     float HorizontalMargin;
@@ -120,6 +121,7 @@ struct Rr_UIContext
 
     Rr_Sampler *Sampler;
 
+    Rr_App *App;
     Rr_Arena *FrameArena;
     Rr_Arena *Arena;
 };
@@ -487,10 +489,23 @@ static inline void Rr_DrawText(
     }
 }
 
+static inline Rr_Vec2 Rr_GetMinWindowSize(Rr_UIWindowFlags Flags)
+{
+    if(RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT))
+    {
+        return Global->MinWindowSizeNoTitle;
+    }
+    else
+    {
+        return Global->MinWindowSize;
+    }
+}
+
 void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 {
-    RR_ASSERT_NO_WINDOW();
+    RR_UI_ASSERT_NO_WINDOW();
 
+    bool HasTitle = RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
     size_t TitleLength = strlen(Title);
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
 
@@ -507,7 +522,8 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             .Y = Global->FontSize,
         };
         const Rr_Vec2 DEFAULT_WINDOW_SIZE = { 300.0f, 500.0f };
-        Window->Size = Rr_AddV2(Global->MinWindowSize, DEFAULT_WINDOW_SIZE);
+        Window->Size =
+            Rr_AddV2(Rr_GetMinWindowSize(Flags), DEFAULT_WINDOW_SIZE);
         *WindowRef = Window;
     }
     else
@@ -536,18 +552,18 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Rr_ReserveQuad(Window); /* Reserved contents background quad. */
     (void)_;
 
-    Global->Cursor = (Rr_Vec2){
-        .X = Window->Position.X + Global->ContentsPadding.X,
-        .Y = Window->Position.Y + Global->ContentsPadding.Y +
-             Global->WindowTitleHeight,
-    };
+    Global->Cursor = Rr_AddV2(Window->Position, Global->ContentsPadding);
+    if(HasTitle)
+    {
+        Global->Cursor.Y += Global->WindowTitleHeight;
+    }
 
     Global->CurrentWindow = Window;
 }
 
 void Rr_EndWindow(void)
 {
-    RR_ASSERT_WIDGET();
+    RR_UI_ASSERT_WIDGET();
 
     Rr_UIWindow *Window = Global->CurrentWindow;
     Window->LastVertexCount = Window->Vertices.Count;
@@ -558,13 +574,13 @@ void Rr_EndWindow(void)
 void Rr_BeginHorizontal(void)
 {
     Global->Horizontal = true;
-    Global->HorizontalX = Global->Cursor.X;
+    *RR_PUSH_SLICE(&Global->HorizontalX, Global->FrameArena) = Global->Cursor.X;
 }
 
 void Rr_EndHorizontal(void)
 {
     Global->Horizontal = false;
-    Global->Cursor.X = Global->HorizontalX;
+    Global->Cursor.X = RR_POP_SLICE(&Global->HorizontalX);
     Global->Cursor.Y += Global->HorizontalMaxHeight;
 }
 
@@ -584,7 +600,7 @@ static inline void Rr_Advance(Rr_Vec2 Size)
 
 void Rr_Separator(void)
 {
-    RR_ASSERT_WIDGET();
+    RR_UI_ASSERT_WIDGET();
 
     Rr_UIWindow *Window = Global->CurrentWindow;
 
@@ -605,7 +621,7 @@ void Rr_Separator(void)
 
 void Rr_Label(const char *Text)
 {
-    RR_ASSERT_WIDGET();
+    RR_UI_ASSERT_WIDGET();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -674,7 +690,7 @@ static inline void Rr_ButtonBehavior(
 
 bool Rr_Button(const char *Text)
 {
-    RR_ASSERT_WIDGET();
+    RR_UI_ASSERT_WIDGET();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -729,7 +745,7 @@ bool Rr_Button(const char *Text)
 
 bool Rr_Checkbox(const char *Text, bool *Checked)
 {
-    RR_ASSERT_WIDGET();
+    RR_UI_ASSERT_WIDGET();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -971,6 +987,7 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
     // UI->Arena->Position = sizeof(Rr_UI);
     Global = Context;
+    Global->App = App;
     Global->FrameNumber = Renderer->FrameNumber;
     Global->FrameArena = Rr_GetFrameArena(Renderer);
 
@@ -982,20 +999,20 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
         Global->NextFontSize = 0.0f;
 
         Global->LineHeight = Global->FontSize * Global->Font->LineHeight;
+        Global->ContentsPadding =
+            Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
+        Global->HorizontalMargin = Global->FontSize * 0.5f;
+
         Global->WindowTitleHeight =
             Global->Style.TitlePadding.Y * Global->FontSize * 2.0f +
             Global->LineHeight;
-        Global->MinWindowSize = (Rr_Vec2){
-            .X = Global->Style.ContentsPadding.X * 2.0f * Global->FontSize,
-            .Y = Global->Style.ContentsPadding.Y * 2.0f * Global->FontSize +
-                 Global->WindowTitleHeight,
-        };
-        Global->ResizeHandleSize = Global->FontSize * 0.75f;
-        Global->HorizontalMargin = Global->FontSize * 0.5f;
-        Global->ContentsPadding =
-            Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
+        Global->MinWindowSizeNoTitle = Rr_MulV2F(Global->ContentsPadding, 2.0f);
+        Global->MinWindowSize = Global->MinWindowSizeNoTitle;
+        Global->MinWindowSize.Y += Global->WindowTitleHeight;
+
         Global->FrameThickness =
             floorf(RR_MAX(1.0f, Global->FontSize * 0.075f));
+        Global->ResizeHandleSize = Global->FontSize * 0.75f;
         Global->SeparatorLineHeight = Global->LineHeight * 0.5f;
         Global->ButtonPadding = (Rr_Vec2){ Global->LineHeight * 0.25f,
                                            Global->LineHeight * 0.125f };
@@ -1045,8 +1062,10 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
                 Rr_SubV2(Global->MousePosition, Global->ResizingStart);
             Rr_Vec2 NewWindowSize =
                 Rr_AddV2(Global->ResizingWindowStart, Delta);
-            NewWindowSize.X = RR_MAX(NewWindowSize.X, Global->MinWindowSize.X);
-            NewWindowSize.Y = RR_MAX(NewWindowSize.Y, Global->MinWindowSize.Y);
+            Rr_Vec2 MinWindowSize =
+                Rr_GetMinWindowSize(Global->ResizingWindow->Flags);
+            NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
+            NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
             Global->ResizingWindow->Size = Rr_FloorV2(NewWindowSize);
         }
         else
@@ -1095,6 +1114,27 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Global->ScreenSize.Height = (float)SwapchainSize.Height;
 }
 
+static inline void Rr_DrawWindowTitle(Rr_UIWindow *Window)
+{
+    Rr_Vec2 TitlePosition = Window->Position;
+    Rr_Vec2 TitleSize = {
+        Window->Size.X,
+        Global->WindowTitleHeight,
+    };
+    Rr_DrawSolidQuad(
+        Window,
+        TitlePosition,
+        TitleSize,
+        &Global->Style.TitleBackground);
+    Rr_DrawText(
+        Window,
+        Rr_AddV2(
+            TitlePosition,
+            Rr_MulV2F(Global->Style.TitlePadding, Global->FontSize)),
+        &Window->Title,
+        &Global->Style.Foreground);
+}
+
 static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
 {
     Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
@@ -1134,7 +1174,7 @@ static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
 
 void Rr_EndUI(Rr_App *App)
 {
-    RR_ASSERT_NO_WINDOW();
+    RR_UI_ASSERT_NO_WINDOW();
 
     Global->LastWindowCount = Global->Windows.Count;
 
@@ -1205,16 +1245,27 @@ void Rr_EndUI(Rr_App *App)
     {
         Rr_UIWindow *Window = Global->Windows.Data[Index];
 
-        /* Contents background quad is reserved first. */
+        bool HasTitle =
+            RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
+
+        /* Contents background quad was already reserved. */
 
         Rr_Vec2 ContentsPosition = {
             Window->Position.X,
-            Window->Position.Y + Global->WindowTitleHeight,
+            Window->Position.Y,
         };
+        if(HasTitle)
+        {
+            ContentsPosition.Y += Global->WindowTitleHeight;
+        }
         Rr_Vec2 ContentsSize = {
             Window->Size.X,
-            Window->Size.Y - Global->WindowTitleHeight,
+            Window->Size.Y,
         };
+        if(HasTitle)
+        {
+            ContentsSize.Y -= Global->WindowTitleHeight;
+        }
         Rr_UIQuad ContentsBackgroundQuad = Window->Vertices.Data;
         Rr_SolidQuad(
             ContentsBackgroundQuad,
@@ -1222,23 +1273,15 @@ void Rr_EndUI(Rr_App *App)
             ContentsSize,
             &Global->Style.Background);
 
-        Rr_Vec2 TitlePosition = Window->Position;
-        Rr_Vec2 TitleSize = {
-            Window->Size.X,
-            Global->WindowTitleHeight,
-        };
-        Rr_DrawSolidQuad(
-            Window,
-            TitlePosition,
-            TitleSize,
-            &Global->Style.TitleBackground);
-        Rr_DrawText(
-            Window,
-            Rr_AddV2(
-                TitlePosition,
-                Rr_MulV2F(Global->Style.TitlePadding, Global->FontSize)),
-            &Window->Title,
-            &Global->Style.Foreground);
+        if(HasTitle)
+        {
+            Rr_DrawWindowTitle(Window);
+        }
+
+        if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
+        {
+            Rr_DrawResizeHandle(Window);
+        }
 
         Rr_DrawFrameQuad(
             Window,
@@ -1246,11 +1289,6 @@ void Rr_EndUI(Rr_App *App)
             Window->Size,
             Global->FrameThickness,
             &Global->Style.Outline);
-
-        if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
-        {
-            Rr_DrawResizeHandle(Window);
-        }
 
         /* Finished generating geometry. */
 
@@ -1298,4 +1336,14 @@ void Rr_SetFontSize(float Size)
     {
         Global->NextFontSize = Size;
     }
+}
+
+void Rr_DebugOverlay(void)
+{
+    RR_UI_ASSERT_GLOBAL();
+
+    Rr_BeginWindow("Rr_DebugOverlay", RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
+    Rr_LabelF("FPS: %.2f", Rr_GetDeltaSeconds(Global->App));
+    Rr_Label("More text...");
+    Rr_EndWindow();
 }
