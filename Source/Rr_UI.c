@@ -939,6 +939,11 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
             .MagFilter = RR_FILTER_LINEAR,
         });
 
+    Context->Font = Rr_CreateFont(
+        Renderer,
+        RR_BUILTIN_IOSEVKA_PNG,
+        RR_BUILTIN_IOSEVKA_JSON);
+
     return Context;
 }
 
@@ -951,6 +956,7 @@ void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *Context)
     Rr_DestroySampler(Renderer, Context->Sampler);
     Rr_DestroyPipelineLayout(Renderer, Context->PipelineLayout);
     Rr_DestroyGraphicsPipeline(Renderer, Context->GraphicsPipeline);
+    Rr_DestroyFont(Renderer, Context->Font);
     Rr_DestroyArena(Context->Arena);
 }
 
@@ -994,8 +1000,6 @@ void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
     Global->App = App;
     Global->FrameNumber = Renderer->FrameNumber;
     Global->FrameArena = Rr_GetFrameArena(Renderer);
-
-    Global->Font = Renderer->BuiltinFont;
 
     if(Global->NextFontSize != 0.0f)
     {

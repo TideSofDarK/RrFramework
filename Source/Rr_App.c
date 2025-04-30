@@ -223,9 +223,9 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_WaitIdle(App->Renderer);
 
-    Rr_DestroyUIContext(App, App->UI);
-
     App->Config->CleanupFunc(App, App->UserData);
+
+    Rr_DestroyUIContext(App, App->UI);
 
     Rr_DestroyRenderer(App->Renderer);
 

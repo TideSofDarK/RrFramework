@@ -35,7 +35,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
             Rr_GetVulkanTextureFormat(Info->DepthStencil.Format);
     }
 
-    VkRenderPass RenderPass = Rr_GetRenderPass(
+    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(
         Renderer,
         &(Rr_RenderPassInfo){
             .AttachmentCount = AttachmentCount,

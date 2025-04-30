@@ -31,7 +31,7 @@ static void Rr_CleanupSwapchain(Rr_Renderer *Renderer, VkSwapchainKHR Swapchain)
             Renderer->Swapchain.Images.Data[Index].View,
             NULL);
 
-        Rr_ReturnSynchronizationState(
+        Rr_ReturnSyncState(
             Renderer,
             (Rr_MapKey)Renderer->Swapchain.Images.Data[Index].Handle);
     }
@@ -54,8 +54,8 @@ void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty)
 
 static bool Rr_InitSwapchain(
     Rr_Renderer *Renderer,
-    uint32_t *Width,
-    uint32_t *Height)
+    uint32_t Width,
+    uint32_t Height)
 {
     Rr_Instance *Instance = &Renderer->Instance;
     Rr_Device *Device = &Renderer->Device;
@@ -75,8 +75,8 @@ static bool Rr_InitSwapchain(
     }
     if(SurfaceCapabilities.currentExtent.width == UINT32_MAX)
     {
-        Renderer->Swapchain.Extent.width = *Width;
-        Renderer->Swapchain.Extent.height = *Height;
+        Renderer->Swapchain.Extent.width = Width;
+        Renderer->Swapchain.Extent.height = Height;
     }
     else
     {
@@ -84,8 +84,8 @@ static bool Rr_InitSwapchain(
             SurfaceCapabilities.currentExtent.width;
         Renderer->Swapchain.Extent.height =
             SurfaceCapabilities.currentExtent.height;
-        *Width = SurfaceCapabilities.currentExtent.width;
-        *Height = SurfaceCapabilities.currentExtent.height;
+        Width = SurfaceCapabilities.currentExtent.width;
+        Height = SurfaceCapabilities.currentExtent.height;
     }
     Renderer->Swapchain.Extent.depth = 1;
 
@@ -139,13 +139,12 @@ static bool Rr_InitSwapchain(
     }
 
     uint32_t DesiredNumberOfSwapchainImages =
-        5; /* Should be safe enough for any present mode and Wayland. */
-    if(SurfaceCapabilities.maxImageCount != 0)
+        RR_MAX(SurfaceCapabilities.minImageCount, 3);
+    if(SurfaceCapabilities.maxImageCount > 0)
     {
-        DesiredNumberOfSwapchainImages = RR_CLAMP(
-            RR_FRAME_OVERLAP + 1,
-            SurfaceCapabilities.maxImageCount,
-            DesiredNumberOfSwapchainImages);
+        DesiredNumberOfSwapchainImages = RR_MIN(
+            DesiredNumberOfSwapchainImages,
+            SurfaceCapabilities.maxImageCount);
     }
 
     VkSurfaceTransformFlagsKHR PreTransform;
@@ -284,7 +283,7 @@ static bool Rr_InitSwapchain(
             .Attachments = &Attachment,
         };
         Renderer->PresentRenderPass =
-            Rr_GetRenderPass(Renderer, &RenderPassInfo);
+            Rr_GetVulkanRenderPass(Renderer, &RenderPassInfo);
     }
 
     /* Create framebuffers and image views. */
@@ -314,8 +313,8 @@ static bool Rr_InitSwapchain(
     VkFramebufferCreateInfo FramebufferCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .attachmentCount = 1,
-        .width = *Width,
-        .height = *Height,
+        .width = Width,
+        .height = Height,
         .layers = 1,
         .renderPass = Renderer->PresentRenderPass,
     };
@@ -341,7 +340,7 @@ static bool Rr_InitSwapchain(
             &Image->Framebuffer);
 
         Rr_SyncState *SyncState =
-            Rr_GetSynchronizationState(Renderer, (Rr_MapKey)Image->Handle);
+            Rr_GetSyncState(Renderer, (Rr_MapKey)Image->Handle);
         SyncState->StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     }
 
@@ -609,29 +608,6 @@ static void Rr_CleanupTransientCommandPools(Rr_Renderer *Renderer)
         NULL);
 }
 
-// static void Rr_InitNullTextures(Rr_App *App)
-// {
-//     Rr_Renderer *Renderer = &App->Renderer;
-//
-//     VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
-//     Rr_WriteBuffer StagingBuffer = { .Buffer = Rr_CreateMappedBuffer(App,
-//     256, VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-//                                      .Offset = 0 };
-//     Rr_UploadContext UploadContext = {
-//         .StagingBuffer = &StagingBuffer,
-//         .TransferCommandBuffer = CommandBuffer,
-//     };
-//     uint32_t WhiteData = 0xffffffff;
-//     Renderer->NullTextures.White = Rr_CreateColorImageFromMemory(App,
-//     &UploadContext, (char *)&WhiteData, 1, 1, false); uint32_t NormalData =
-//     0xffff8888; Renderer->NullTextures.Normal =
-//         Rr_CreateColorImageFromMemory(App, &UploadContext, (char
-//         *)&NormalData, 1, 1, false);
-//     Rr_EndImmediate(Renderer);
-//
-//     Rr_DestroyBuffer(App, StagingBuffer.Buffer);
-// }
-
 Rr_Renderer *Rr_CreateRenderer(Rr_App *App)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -660,18 +636,11 @@ Rr_Renderer *Rr_CreateRenderer(Rr_App *App)
 
     Rr_InitVMA(Renderer);
     Rr_InitTransientCommandPools(Renderer);
-    uint32_t Width, Height;
-    SDL_GetWindowSizeInPixels(Window, (int32_t *)&Width, (int32_t *)&Height);
-    Rr_InitSwapchain(Renderer, &Width, &Height);
+    int32_t Width, Height;
+    SDL_GetWindowSizeInPixels(Window, &Width, &Height);
+    Rr_InitSwapchain(Renderer, Width, Height);
     Rr_InitFrames(Renderer);
     Rr_InitImmediateMode(Renderer);
-    // Rr_InitNullTextures(App);
-    // Rr_InitTextRenderer(App);
-
-    Renderer->BuiltinFont = Rr_CreateFont(
-        Renderer,
-        RR_BUILTIN_IOSEVKA_PNG,
-        RR_BUILTIN_IOSEVKA_JSON);
 
     Rr_DestroyScratch(Scratch);
 
@@ -693,7 +662,7 @@ bool Rr_NewFrame(Rr_App *App, void *Window)
         bool Minimized = (SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED);
 
         if(!Minimized && Width > 0 && Height > 0 &&
-           Rr_InitSwapchain(Renderer, (uint32_t *)&Width, (uint32_t *)&Height))
+           Rr_InitSwapchain(Renderer, Width, Height))
         {
             Rr_SetSwapchainDirty(Renderer, false);
 
@@ -717,8 +686,6 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
     Rr_Device *Device = &Renderer->Device;
 
     Rr_WaitIdle(Renderer);
-
-    Rr_DestroyFont(Renderer, Renderer->BuiltinFont);
 
     for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
     {
@@ -953,7 +920,7 @@ void Rr_DrawFrame(Rr_App *App)
     /* Always transition swapchain image to present layout. */
 
     Rr_SyncState *SwapchainImageSyncState =
-        Rr_GetSynchronizationState(Renderer, (Rr_MapKey)SwapchainImage);
+        Rr_GetSyncState(Renderer, (Rr_MapKey)SwapchainImage);
     Device->CmdPipelineBarrier(
         Frame->LateCommandBuffer,
         SwapchainImageSyncState->StageMask,
@@ -1123,7 +1090,9 @@ bool Rr_SetSwapchainPresentMode(
     return true;
 }
 
-VkRenderPass Rr_GetRenderPass(Rr_Renderer *Renderer, Rr_RenderPassInfo *Info)
+VkRenderPass Rr_GetVulkanRenderPass(
+    Rr_Renderer *Renderer,
+    Rr_RenderPassInfo *Info)
 {
     assert(Info != NULL);
 
@@ -1254,7 +1223,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     size_t QuerySize = sizeof(VkImageView) * ImageViewCount +
-                       sizeof(VkExtent3D) + sizeof(RenderPass); /* NOLINT */
+                       sizeof(VkExtent3D) + sizeof(VkRenderPass);
     void *Query = RR_ALLOC(Scratch.Arena, QuerySize);
     memcpy(Query, ImageViews, sizeof(VkImageView) * ImageViewCount);
     memcpy(
@@ -1264,7 +1233,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
     memcpy(
         ((char *)Query) + sizeof(VkImageView) * ImageViewCount + sizeof(Extent),
         &RenderPass,
-        sizeof(RenderPass)); /* NOLINT */
+        sizeof(VkRenderPass));
 
     uint32_t Hash = XXH32(Query, QuerySize, 0);
 
@@ -1306,7 +1275,7 @@ static VkFramebuffer Rr_GetFramebufferInternal(
     return Framebuffer;
 }
 
-VkFramebuffer Rr_GetFramebufferViews(
+VkFramebuffer Rr_GetVulkanFramebufferFromViews(
     Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     VkImageView *ImageViews,
@@ -1322,7 +1291,7 @@ VkFramebuffer Rr_GetFramebufferViews(
         NULL);
 }
 
-VkFramebuffer Rr_GetFramebuffer(
+VkFramebuffer Rr_GetVulkanFramebuffer(
     Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     Rr_Image *Images,
@@ -1353,7 +1322,7 @@ VkFramebuffer Rr_GetFramebuffer(
     return Framebuffer;
 }
 
-Rr_SyncState *Rr_GetSynchronizationState(Rr_Renderer *Renderer, Rr_MapKey Key)
+Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
     Rr_SyncState **SyncStateRef =
         RR_UPSERT(&Renderer->GlobalSync, Key, Renderer->Arena);
@@ -1368,7 +1337,7 @@ Rr_SyncState *Rr_GetSynchronizationState(Rr_Renderer *Renderer, Rr_MapKey Key)
     return SyncState;
 }
 
-void Rr_ReturnSynchronizationState(Rr_Renderer *Renderer, Rr_MapKey Key)
+void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
     Rr_SyncState **SyncStateRef =
         RR_UPSERT(&Renderer->GlobalSync, Key, Renderer->Arena);

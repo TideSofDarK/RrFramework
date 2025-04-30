@@ -336,8 +336,8 @@ static void Rr_ExecuteGraphicsNode(
         .AttachmentCount = AttachmentCount,
         .Attachments = Attachments,
     };
-    VkRenderPass RenderPass = Rr_GetRenderPass(Renderer, &RenderPassInfo);
-    VkFramebuffer Framebuffer = Rr_GetFramebufferViews(
+    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(Renderer, &RenderPassInfo);
+    VkFramebuffer Framebuffer = Rr_GetVulkanFramebufferFromViews(
         Renderer,
         RenderPass,
         ImageViews,
@@ -1092,9 +1092,8 @@ static void Rr_ApplyBarrierBatch(
             .size = VK_WHOLE_SIZE,
         };
 
-        Rr_SyncState *BufferState = Rr_GetSynchronizationState(
-            Renderer,
-            (Rr_MapKey)BufferBarrier->Buffer);
+        Rr_SyncState *BufferState =
+            Rr_GetSyncState(Renderer, (Rr_MapKey)BufferBarrier->Buffer);
         *BufferState = (Rr_SyncState){
             .StageMask = BufferBarrier->DstStageMask,
             .AccessMask = BufferBarrier->DstAccessMask,
@@ -1130,9 +1129,8 @@ static void Rr_ApplyBarrierBatch(
             .subresourceRange = ImageBarrier->SubresourceRange,
         };
 
-        Rr_SyncState *ImageState = Rr_GetSynchronizationState(
-            Renderer,
-            (Rr_MapKey)ImageBarrier->Image);
+        Rr_SyncState *ImageState =
+            Rr_GetSyncState(Renderer, (Rr_MapKey)ImageBarrier->Image);
 
         *ImageState = (Rr_SyncState){
             .StageMask = ImageBarrier->DstStageMask,
@@ -1236,7 +1234,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
                 VkImage Image = AllocatedImage->Handle;
 
                 Rr_SyncState *PrevState =
-                    Rr_GetSynchronizationState(Renderer, (Rr_MapKey)Image);
+                    Rr_GetSyncState(Renderer, (Rr_MapKey)Image);
 
                 /* If reading again, just make sure the memory is "available" to
                  * this memory domain AND the image is in the same layout. */
@@ -1306,7 +1304,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
                 VkBuffer Buffer = AllocatedBuffer->Handle;
 
                 Rr_SyncState *PrevState =
-                    Rr_GetSynchronizationState(Renderer, (Rr_MapKey)Buffer);
+                    Rr_GetSyncState(Renderer, (Rr_MapKey)Buffer);
 
                 /* If reading again, just make sure the memory is "available" to
                  * this memory domain. */

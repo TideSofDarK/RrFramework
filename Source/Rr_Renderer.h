@@ -77,66 +77,34 @@ struct Rr_CachedRenderPass
 
 struct Rr_Renderer
 {
-    /* Vulkan Core */
-
     Rr_VulkanLoader Loader;
     Rr_Instance Instance;
     Rr_PhysicalDevice PhysicalDevice;
     Rr_Device Device;
     VkSurfaceKHR Surface;
 
-    /* Presentation */
-
     Rr_Swapchain Swapchain;
     VkRenderPass PresentRenderPass;
-
-    /* Queues */
 
     Rr_Queue GraphicsQueue;
     Rr_Queue TransferQueue;
     // Rr_Queue ComputeQueue;
 
-    /* Vulkan Memory Allocator */
-
     VmaAllocator Allocator;
-
-    /* Frames */
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
     size_t CurrentFrameIndex;
 
-    /* Hashed structures. */
-
     RR_SLICE(Rr_RenderPass) RenderPasses;
     RR_SLICE(Rr_Framebuffer) Framebuffers;
     RR_SLICE(Rr_DescriptorSetLayout) DescriptorSetLayouts;
 
-    /* Immediate Command Pool/Buffer */
-
     Rr_ImmediateMode ImmediateMode;
-
-    /* Null Textures */
-
-    // struct
-    // {
-    //     Rr_Image *White;
-    //     Rr_Image *Normal;
-    // } NullTextures;
-
-    /* Pending Loads */
 
     RR_SLICE(Rr_PendingLoad) PendingLoadsSlice;
 
-    /* Text Rendering */
-
-    Rr_Font *BuiltinFont;
-
-    /* Global Synchronization Map */
-
     Rr_Map *GlobalSync;
-
-    /* Storage */
 
     RR_FREE_LIST(Rr_Buffer) Buffers;
     RR_FREE_LIST(Rr_Image) Images;
@@ -146,8 +114,6 @@ struct Rr_Renderer
     RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;
     RR_FREE_LIST(Rr_Sampler) Samplers;
     RR_FREE_LIST(Rr_SyncState) SyncStates;
-
-    /* Arena */
 
     Rr_Arena *Arena;
 };
@@ -189,26 +155,24 @@ struct Rr_RenderPassInfo
     size_t AttachmentCount;
 };
 
-extern VkRenderPass Rr_GetRenderPass(
+extern VkRenderPass Rr_GetVulkanRenderPass(
     Rr_Renderer *Renderer,
     Rr_RenderPassInfo *Info);
 
-extern VkFramebuffer Rr_GetFramebuffer(
+extern VkFramebuffer Rr_GetVulkanFramebuffer(
     Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     Rr_Image *Images,
     size_t ImageCount,
     VkExtent3D Extent);
 
-extern VkFramebuffer Rr_GetFramebufferViews(
+extern VkFramebuffer Rr_GetVulkanFramebufferFromViews(
     Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     VkImageView *ImageViews,
     size_t ImageViewCount,
     VkExtent3D Extent);
 
-extern Rr_SyncState *Rr_GetSynchronizationState(
-    Rr_Renderer *Renderer,
-    Rr_MapKey Key);
+extern Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key);
 
-extern void Rr_ReturnSynchronizationState(Rr_Renderer *Renderer, Rr_MapKey Key);
+extern void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key);
