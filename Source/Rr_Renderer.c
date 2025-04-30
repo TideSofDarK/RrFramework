@@ -1382,5 +1382,7 @@ VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer)
 
 void Rr_ReturnVulkanFence(Rr_Renderer *Renderer, VkFence Fence)
 {
+    Rr_Device *Device = &Renderer->Device;
     *RR_PUSH_SLICE(&Renderer->Fences, Renderer->Arena) = Fence;
+    Device->ResetFences(Device->Handle, 1, &Fence);
 }
