@@ -354,18 +354,6 @@ static void Rr_InitFrames(Rr_Renderer *Renderer)
     Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frames = Renderer->Frames;
 
-    VkFenceCreateInfo FenceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
-    };
-
-    VkSemaphoreCreateInfo SemaphoreCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-    };
-
     for(size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         Rr_Frame *Frame = &Frames[Index];
@@ -404,26 +392,11 @@ static void Rr_InitFrames(Rr_Renderer *Renderer)
 
         /* Synchronization */
 
-        Device->CreateFence(
-            Device->Handle,
-            &FenceCreateInfo,
-            NULL,
-            &Frame->RenderFence);
-        Device->CreateSemaphore(
-            Device->Handle,
-            &SemaphoreCreateInfo,
-            NULL,
-            &Frame->SwapchainSemaphore);
-        Device->CreateSemaphore(
-            Device->Handle,
-            &SemaphoreCreateInfo,
-            NULL,
-            &Frame->EarlySemaphore);
-        Device->CreateSemaphore(
-            Device->Handle,
-            &SemaphoreCreateInfo,
-            NULL,
-            &Frame->LateSemaphore);
+        Frame->RenderFence = Rr_GetVulkanFence(Renderer);
+
+        Frame->SwapchainSemaphore = Rr_GetVulkanSemaphore(Renderer);
+        Frame->EarlySemaphore = Rr_GetVulkanSemaphore(Renderer);
+        Frame->LateSemaphore = Rr_GetVulkanSemaphore(Renderer);
 
         /* Descriptor Allocator */
 
@@ -458,13 +431,11 @@ static void Rr_CleanupFrames(Rr_Renderer *Renderer)
 
         Device->DestroyCommandPool(Device->Handle, Frame->CommandPool, NULL);
 
-        Device->DestroyFence(Device->Handle, Frame->RenderFence, NULL);
-        Device->DestroySemaphore(Device->Handle, Frame->EarlySemaphore, NULL);
-        Device->DestroySemaphore(Device->Handle, Frame->LateSemaphore, NULL);
-        Device->DestroySemaphore(
-            Device->Handle,
-            Frame->SwapchainSemaphore,
-            NULL);
+        Rr_ReturnVulkanFence(Renderer, Frame->RenderFence);
+
+        Rr_ReturnVulkanSemaphore(Renderer, Frame->EarlySemaphore);
+        Rr_ReturnVulkanSemaphore(Renderer, Frame->LateSemaphore);
+        Rr_ReturnVulkanSemaphore(Renderer, Frame->SwapchainSemaphore);
 
         Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
 
@@ -544,16 +515,7 @@ static void Rr_InitImmediateMode(Rr_Renderer *Renderer)
         &CommandBufferAllocateInfo,
         &ImmediateMode->CommandBuffer);
 
-    VkFenceCreateInfo FenceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
-    };
-    Device->CreateFence(
-        Device->Handle,
-        &FenceCreateInfo,
-        NULL,
-        &ImmediateMode->Fence);
+    ImmediateMode->Fence = Rr_GetVulkanFence(Renderer);
 }
 
 static void Rr_CleanupImmediateMode(Rr_Renderer *Renderer)
@@ -564,7 +526,8 @@ static void Rr_CleanupImmediateMode(Rr_Renderer *Renderer)
         Device->Handle,
         Renderer->ImmediateMode.CommandPool,
         NULL);
-    Device->DestroyFence(Device->Handle, Renderer->ImmediateMode.Fence, NULL);
+
+    Rr_ReturnVulkanFence(Renderer, Renderer->ImmediateMode.Fence);
 }
 
 /* TODO: Move to queue initialization? */
@@ -720,6 +683,22 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
         Device->DestroyDescriptorSetLayout(
             Device->Handle,
             DescriptorSetLayout->Handle,
+            NULL);
+    }
+
+    for(size_t Index = 0; Index < Renderer->Semaphores.Count; ++Index)
+    {
+        Device->DestroySemaphore(
+            Device->Handle,
+            Renderer->Semaphores.Data[Index],
+            NULL);
+    }
+
+    for(size_t Index = 0; Index < Renderer->Fences.Count; ++Index)
+    {
+        Device->DestroyFence(
+            Device->Handle,
+            Renderer->Fences.Data[Index],
             NULL);
     }
 
@@ -1346,4 +1325,62 @@ void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
         RR_RETURN_FREE_LIST_ITEM(&Renderer->SyncStates, *SyncStateRef);
     }
     *SyncStateRef = NULL;
+}
+
+VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer)
+{
+    if(Renderer->Semaphores.Count > 0)
+    {
+        return RR_POP_SLICE(&Renderer->Semaphores);
+    }
+
+    Rr_Device *Device = &Renderer->Device;
+
+    VkSemaphoreCreateInfo SemaphoreCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+    };
+
+    VkSemaphore Semaphore;
+
+    Device->CreateSemaphore(
+        Device->Handle,
+        &SemaphoreCreateInfo,
+        NULL,
+        &Semaphore);
+
+    return Semaphore;
+}
+
+void Rr_ReturnVulkanSemaphore(Rr_Renderer *Renderer, VkSemaphore Semaphore)
+{
+    *RR_PUSH_SLICE(&Renderer->Semaphores, Renderer->Arena) = Semaphore;
+}
+
+VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer)
+{
+    if(Renderer->Fences.Count > 0)
+    {
+        return RR_POP_SLICE(&Renderer->Fences);
+    }
+
+    Rr_Device *Device = &Renderer->Device;
+
+    VkFenceCreateInfo FenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+    };
+
+    VkFence Fence;
+
+    Device->CreateFence(Device->Handle, &FenceCreateInfo, NULL, &Fence);
+
+    return Fence;
+}
+
+void Rr_ReturnVulkanFence(Rr_Renderer *Renderer, VkFence Fence)
+{
+    *RR_PUSH_SLICE(&Renderer->Fences, Renderer->Arena) = Fence;
 }

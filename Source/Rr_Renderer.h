@@ -92,6 +92,9 @@ struct Rr_Renderer
 
     VmaAllocator Allocator;
 
+    RR_SLICE(VkSemaphore) Semaphores;
+    RR_SLICE(VkFence) Fences;
+
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
     size_t CurrentFrameIndex;
@@ -176,3 +179,11 @@ extern VkFramebuffer Rr_GetVulkanFramebufferFromViews(
 extern Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key);
 
 extern void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key);
+
+extern VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer);
+
+extern void Rr_ReturnVulkanSemaphore(Rr_Renderer *Renderer, VkSemaphore Semaphore);
+
+extern VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer);
+
+extern void Rr_ReturnVulkanFence(Rr_Renderer *Renderer, VkFence Fence);
