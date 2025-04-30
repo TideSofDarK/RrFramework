@@ -60,12 +60,12 @@ int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value)
     return __sync_lock_test_and_set(&AtomicInt->Value, Value);
 }
 
-bool Rr_TryLockSpinLock(Rr_SpinLock *SpinLock)
+bool Rr_TryLockSpinlock(Rr_Spinlock *SpinLock)
 {
     return __sync_lock_test_and_set(SpinLock, 1) == 0;
 }
 
-void Rr_UnlockSpinLock(Rr_SpinLock *SpinLock)
+void Rr_UnlockSpinlock(Rr_Spinlock *SpinLock)
 {
     __sync_lock_release(SpinLock);
 }

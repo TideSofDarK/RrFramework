@@ -77,7 +77,7 @@ struct Rr_Queue
     VkCommandPool TransientCommandPool;
     VkQueue Handle;
     uint32_t FamilyIndex;
-    Rr_SpinLock Lock;
+    Rr_Spinlock Lock;
 };
 
 typedef struct Rr_PhysicalDevice Rr_PhysicalDevice;

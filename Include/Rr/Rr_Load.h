@@ -49,7 +49,7 @@ struct Rr_LoadTask
     } Out;
 };
 
-typedef void (*Rr_LoadCallback)(Rr_App *App, void *Userdata);
+typedef void (*Rr_LoadCallback)(Rr_App *App, void *UserData);
 
 extern Rr_LoadThread *Rr_CreateLoadThread(Rr_App *App);
 
@@ -69,7 +69,7 @@ extern Rr_LoadContext *Rr_LoadAsync(
     size_t TaskCount,
     Rr_LoadTask *Tasks,
     Rr_LoadCallback LoadCallback,
-    void *Userdata);
+    void *UserData);
 
 extern Rr_LoadResult Rr_LoadImmediate(
     Rr_Renderer *Renderer,

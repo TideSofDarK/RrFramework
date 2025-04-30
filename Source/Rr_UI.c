@@ -24,9 +24,11 @@
         Global->CurrentWindow == NULL && \
         "Did you forget to call Rr_EndWindow()?")
 
-#define RR_UI_ASSERT_WIDGET() \
-    RR_UI_ASSERT_GLOBAL();    \
-    assert(Global->CurrentWindow && "Did you forget to call Rr_BeginWindow()?")
+#define RR_UI_ASSERT_WINDOW()            \
+    RR_UI_ASSERT_GLOBAL();               \
+    assert(                              \
+        Global->CurrentWindow != NULL && \
+        "Did you forget to call Rr_BeginWindow()?")
 
 typedef uint16_t Rr_UIIndex;
 
@@ -59,10 +61,10 @@ struct Rr_UIWindow
     uint32_t LastIndexCount;
     RR_SLICE(Rr_UIIndex) Indices;
     Rr_Map *WidgetMap;
-    size_t LastFrameNumber;
     Rr_UIWindowFlags Flags;
     int ZOrder;
     bool Minimized;
+    bool Added;
 };
 
 struct Rr_UIContext
@@ -531,13 +533,15 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     }
     else
     {
-        assert(Window->LastFrameNumber != Global->FrameNumber);
+        assert(
+            Window->Added == false &&
+            "There already is a window with this title!");
     }
 
     Window->Flags = Flags;
-    Window->LastFrameNumber = Global->FrameNumber;
 
     *RR_PUSH_SLICE(&Global->Windows, Global->FrameArena) = Window;
+    Window->Added = true;
 
     RR_ZERO(Window->Vertices);
     RR_RESERVE_SLICE(
@@ -566,11 +570,8 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
 void Rr_EndWindow(void)
 {
-    RR_UI_ASSERT_WIDGET();
+    RR_UI_ASSERT_WINDOW();
 
-    Rr_UIWindow *Window = Global->CurrentWindow;
-    Window->LastVertexCount = Window->Vertices.Count;
-    Window->LastIndexCount = Window->Indices.Count;
     Global->CurrentWindow = NULL;
 }
 
@@ -603,7 +604,7 @@ static inline void Rr_Advance(Rr_Vec2 Size)
 
 void Rr_Separator(void)
 {
-    RR_UI_ASSERT_WIDGET();
+    RR_UI_ASSERT_WINDOW();
 
     Rr_UIWindow *Window = Global->CurrentWindow;
 
@@ -624,7 +625,7 @@ void Rr_Separator(void)
 
 void Rr_Label(const char *Text)
 {
-    RR_UI_ASSERT_WIDGET();
+    RR_UI_ASSERT_WINDOW();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -693,7 +694,7 @@ static inline void Rr_ButtonBehavior(
 
 bool Rr_Button(const char *Text)
 {
-    RR_UI_ASSERT_WIDGET();
+    RR_UI_ASSERT_WINDOW();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -748,7 +749,7 @@ bool Rr_Button(const char *Text)
 
 bool Rr_Checkbox(const char *Text, bool *Checked)
 {
-    RR_UI_ASSERT_WIDGET();
+    RR_UI_ASSERT_WINDOW();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -1357,6 +1358,12 @@ void Rr_EndUI(Rr_App *App)
             FirstIndex,
             VertexOffset,
             0);
+
+        /* Prepare the window for the next frame. */
+
+        Window->Added = false;
+        Window->LastIndexCount = Window->Indices.Count;
+        Window->LastVertexCount = Window->Vertices.Count;
     }
 
     Global->LeftMouseButtonPressed = false;
@@ -1375,8 +1382,19 @@ void Rr_DebugOverlay(void)
 {
     RR_UI_ASSERT_GLOBAL();
 
+    static double Timer = 1.0f;
+    static double FPSCount = 0.0f;
+
+    Timer += Rr_GetDeltaSeconds(Global->App);
+
+    if(Timer > 0.25f)
+    {
+        FPSCount = Rr_GetFramesPerSecond(Global->App);
+        Timer = 0.0f;
+    }
+
     Rr_BeginWindow("Rr_DebugOverlay", RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
-    Rr_LabelF("FPS: %.2f", Rr_GetDeltaSeconds(Global->App));
+    Rr_LabelF("FPS: %.2f", FPSCount);
     Rr_Label("More text...");
     Rr_EndWindow();
 }

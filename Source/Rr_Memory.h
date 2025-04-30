@@ -11,7 +11,7 @@
 typedef struct Rr_SyncArena Rr_SyncArena;
 struct Rr_SyncArena
 {
-    Rr_SpinLock Lock;
+    Rr_Spinlock Lock;
     Rr_Arena *Arena;
 };
 

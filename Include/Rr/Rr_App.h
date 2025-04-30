@@ -32,7 +32,7 @@ extern Rr_IntVec2 Rr_GetWindowSize(Rr_App *App);
 
 extern void Rr_SetWindowTitle(Rr_App *App, const char *Title);
 
-extern float Rr_GetFramesPerSecond(Rr_App *App);
+extern double Rr_GetFramesPerSecond(Rr_App *App);
 
 extern void Rr_ToggleFullscreen(Rr_App *App);
 

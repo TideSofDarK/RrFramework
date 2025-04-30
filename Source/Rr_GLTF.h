@@ -24,7 +24,7 @@ struct Rr_GLTFContext
     size_t TextureMappingCount;
     Rr_GLTFTextureMapping *TextureMappings;
 
-    Rr_SpinLock Lock;
+    Rr_Spinlock Lock;
     Rr_Arena *Arena;
 };
 

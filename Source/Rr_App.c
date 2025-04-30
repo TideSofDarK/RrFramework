@@ -86,9 +86,9 @@ static void Rr_Iterate(Rr_App *App)
     }
 }
 
-static _Bool SDLCALL Rr_EventWatch(void *AppPtr, SDL_Event *Event)
+static _Bool SDLCALL Rr_EventWatch(void *UserData, SDL_Event *Event)
 {
-    Rr_App *App = (Rr_App *)AppPtr;
+    Rr_App *App = (Rr_App *)UserData;
     switch(Event->type)
     {
 #ifdef SDL_PLATFORM_WIN32
@@ -264,7 +264,7 @@ void Rr_SetWindowTitle(Rr_App *App, const char *Title)
     SDL_SetWindowTitle(App->Window, Title);
 }
 
-float Rr_GetFramesPerSecond(Rr_App *App)
+double Rr_GetFramesPerSecond(Rr_App *App)
 {
     return (float)App->FrameTime.PerformanceCounter.FPS;
 }

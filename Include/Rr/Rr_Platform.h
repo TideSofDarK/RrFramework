@@ -35,13 +35,13 @@ extern int Rr_GetAtomicInt(Rr_AtomicInt *AtomicInt);
 
 extern int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value);
 
-typedef int Rr_SpinLock;
+typedef int Rr_Spinlock;
 
-extern bool Rr_TryLockSpinLock(Rr_SpinLock *SpinLock);
+extern bool Rr_TryLockSpinlock(Rr_Spinlock *SpinLock);
 
-extern void Rr_LockSpinLock(Rr_SpinLock *SpinLock);
+extern void Rr_LockSpinlock(Rr_Spinlock *SpinLock);
 
-extern void Rr_UnlockSpinLock(Rr_SpinLock *SpinLock);
+extern void Rr_UnlockSpinlock(Rr_Spinlock *SpinLock);
 
 typedef enum Rr_EventType
 {

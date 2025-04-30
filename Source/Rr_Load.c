@@ -172,7 +172,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     {
         Device->EndCommandBuffer(TransferCommandBuffer);
 
-        Rr_LockSpinLock(&Renderer->GraphicsQueue.Lock);
+        Rr_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 
         Device->QueueSubmit(
             Renderer->GraphicsQueue.Handle,
@@ -184,7 +184,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
             },
             LoadAsyncContext.Fence);
 
-        Rr_UnlockSpinLock(&Renderer->GraphicsQueue.Lock);
+        Rr_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
     }
     else
     {
@@ -252,7 +252,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
             VkPipelineStageFlags WaitDstStageMask =
                 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
-            Rr_LockSpinLock(&Renderer->GraphicsQueue.Lock);
+            Rr_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 
             Device->QueueSubmit(
                 Renderer->GraphicsQueue.Handle,
@@ -267,7 +267,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
                 },
                 LoadAsyncContext.Fence);
 
-            Rr_UnlockSpinLock(&Renderer->GraphicsQueue.Lock);
+            Rr_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
         }
     }
 
@@ -283,7 +283,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
         Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffers.Data[Index]);
     }
 
-    Rr_LockSpinLock(&App->SyncArena.Lock);
+    Rr_LockSpinlock(&App->SyncArena.Lock);
 
     Rr_PendingLoad *PendingLoad =
         RR_PUSH_SLICE(&Renderer->PendingLoadsSlice, App->SyncArena.Arena);
@@ -292,7 +292,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
         .UserData = LoadContext->UserData,
     };
 
-    Rr_UnlockSpinLock(&App->SyncArena.Lock);
+    Rr_UnlockSpinlock(&App->SyncArena.Lock);
 
     if(LoadContext->Semaphore)
     {
@@ -495,7 +495,7 @@ Rr_LoadContext *Rr_LoadAsync(
     size_t TaskCount,
     Rr_LoadTask *Tasks,
     Rr_LoadCallback LoadCallback,
-    void *Userdata)
+    void *UserData)
 {
     if(TaskCount == 0)
     {
@@ -511,7 +511,7 @@ Rr_LoadContext *Rr_LoadAsync(
     *LoadingContext = (Rr_LoadContext){
         .Semaphore = SDL_CreateSemaphore(0),
         .LoadingCallback = LoadCallback,
-        .UserData = Userdata,
+        .UserData = UserData,
         .App = LoadThread->App,
         .Tasks = NewTasks,
         .TaskCount = TaskCount,
@@ -581,7 +581,7 @@ Rr_LoadResult Rr_LoadImmediate(
 
     Device->EndCommandBuffer(TransferCommandBuffer);
 
-    Rr_LockSpinLock(&Renderer->GraphicsQueue.Lock);
+    Rr_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     Device->QueueSubmit(
         Renderer->GraphicsQueue.Handle,
@@ -599,7 +599,7 @@ Rr_LoadResult Rr_LoadImmediate(
         },
         Fence);
 
-    Rr_UnlockSpinLock(&Renderer->GraphicsQueue.Lock);
+    Rr_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     Device->WaitForFences(Device->Handle, 1, &Fence, true, UINT64_MAX);
     Device->DestroyFence(Device->Handle, Fence, NULL);

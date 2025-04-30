@@ -822,7 +822,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
 {
     Rr_Renderer *Renderer = App->Renderer;
 
-    if(Rr_TryLockSpinLock(&App->SyncArena.Lock))
+    if(Rr_TryLockSpinlock(&App->SyncArena.Lock))
     {
         for(size_t Index = 0; Index < Renderer->PendingLoadsSlice.Count;
             ++Index)
@@ -833,7 +833,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
         }
         RR_EMPTY_SLICE(&Renderer->PendingLoadsSlice);
 
-        Rr_UnlockSpinLock(&App->SyncArena.Lock);
+        Rr_UnlockSpinlock(&App->SyncArena.Lock);
     }
 }
 
@@ -844,15 +844,13 @@ void Rr_PrepareFrame(Rr_App *App)
 
     Rr_ResetArena(Frame->Arena);
 
-    /* Make sure virtual swapchain image has latest extent and format values. */
-
     Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image);
-    *Frame->VirtualSwapchainImage = (Rr_Image){
-        .AllocatedImageCount = 1,
-        .Extent = Renderer->Swapchain.Extent,
-        .Format = Renderer->Swapchain.Format,
-        .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
-    };
+
+    /* These are applied again just before graph execution. */
+
+    Frame->VirtualSwapchainImage->Extent = Renderer->Swapchain.Extent;
+    Frame->VirtualSwapchainImage->Format = Renderer->Swapchain.Format;
+    Frame->VirtualSwapchainImage->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
     Frame->Graph->Arena = Frame->Arena;
@@ -918,10 +916,16 @@ void Rr_DrawFrame(Rr_App *App)
      * put real handles to virtual swapchain image which
      * will be used by the graph. */
 
-    Frame->VirtualSwapchainImage->AllocatedImages[0] = (Rr_AllocatedImage){
-        .View = Renderer->Swapchain.Images.Data[SwapchainImageIndex].View,
-        .Handle = SwapchainImage,
-        .Container = Frame->VirtualSwapchainImage,
+    *Frame->VirtualSwapchainImage = (Rr_Image){
+        .AllocatedImageCount = 1,
+        .Extent = Renderer->Swapchain.Extent,
+        .Format = Renderer->Swapchain.Format,
+        .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
+        .AllocatedImages[0] = {
+            .View = Renderer->Swapchain.Images.Data[SwapchainImageIndex].View,
+            .Handle = SwapchainImage,
+            .Container = Frame->VirtualSwapchainImage,
+        },
     };
     Frame->SwapchainFramebuffer =
         Renderer->Swapchain.Images.Data[SwapchainImageIndex].Framebuffer;
@@ -1015,7 +1019,7 @@ void Rr_DrawFrame(Rr_App *App)
         },
     };
 
-    Rr_LockSpinLock(&Renderer->GraphicsQueue.Lock);
+    Rr_LockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     Device->QueueSubmit(
         Renderer->GraphicsQueue.Handle,
@@ -1039,7 +1043,7 @@ void Rr_DrawFrame(Rr_App *App)
         Rr_SetSwapchainDirty(Renderer, true);
     }
 
-    Rr_UnlockSpinLock(&Renderer->GraphicsQueue.Lock);
+    Rr_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
 
     Renderer->FrameNumber++;
     Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;

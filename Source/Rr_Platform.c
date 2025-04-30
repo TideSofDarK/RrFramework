@@ -6,11 +6,11 @@
 
 #include <SDL3/SDL.h>
 
-void Rr_LockSpinLock(Rr_SpinLock *SpinLock)
+void Rr_LockSpinlock(Rr_Spinlock *SpinLock)
 {
     int Loops = 0;
     const int MaxLoops = 1000000;
-    while(!Rr_TryLockSpinLock(SpinLock))
+    while(!Rr_TryLockSpinlock(SpinLock))
     {
         if(Loops > MaxLoops)
         {
