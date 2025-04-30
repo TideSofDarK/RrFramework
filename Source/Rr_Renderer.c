@@ -952,11 +952,11 @@ void Rr_DrawFrame(Rr_App *App)
 
     /* Always transition swapchain image to present layout. */
 
-    Rr_SyncState *SyncState =
+    Rr_SyncState *SwapchainImageSyncState =
         Rr_GetSynchronizationState(Renderer, (Rr_MapKey)SwapchainImage);
     Device->CmdPipelineBarrier(
         Frame->LateCommandBuffer,
-        SyncState->StageMask,
+        SwapchainImageSyncState->StageMask,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,
         0,
@@ -967,9 +967,9 @@ void Rr_DrawFrame(Rr_App *App)
         &(VkImageMemoryBarrier){
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .image = SwapchainImage,
-            .oldLayout = SyncState->Specific.Layout,
+            .oldLayout = SwapchainImageSyncState->Specific.Layout,
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcAccessMask = SyncState->AccessMask,
+            .srcAccessMask = SwapchainImageSyncState->AccessMask,
             .dstAccessMask = 0,
             .subresourceRange = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -979,10 +979,10 @@ void Rr_DrawFrame(Rr_App *App)
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
         });
-    SyncState->AccessMask = 0;
-    SyncState->StageMask =
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; /* Doesn't seems right. */
-    SyncState->Specific.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    SwapchainImageSyncState->AccessMask = 0;
+    SwapchainImageSyncState->StageMask =
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; /* Doesn't look right. */
+    SwapchainImageSyncState->Specific.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     Device->EndCommandBuffer(Frame->LateCommandBuffer);
 
