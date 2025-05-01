@@ -92,20 +92,12 @@ static _Bool SDLCALL Rr_EventWatch(void *UserData, SDL_Event *Event)
     Rr_App *App = (Rr_App *)UserData;
     switch(Event->type)
     {
-#ifdef SDL_PLATFORM_WIN32
         case SDL_EVENT_WINDOW_EXPOSED:
-        {
-            Rr_SetSwapchainDirty(Rr_GetRenderer(App), true);
-            Rr_Iterate(App);
-        }
-        break;
-#else
         case SDL_EVENT_WINDOW_RESIZED:
         {
             Rr_SetSwapchainDirty(Rr_GetRenderer(App), true);
         }
         break;
-#endif
         default:
         {
         }

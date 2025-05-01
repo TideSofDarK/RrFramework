@@ -15,6 +15,8 @@
 
 #include <assert.h>
 
+static int SwapTotal = 0;
+
 static inline void Rr_DestroySwapchainImage(
     Rr_Renderer *Renderer,
     Rr_SwapchainImage *SwapchainImage)
@@ -54,6 +56,9 @@ static void Rr_CleanupSwapchainData(
             Renderer->Device.Handle,
             SwapchainCleanupData->Handle,
             NULL);
+
+        SwapTotal--;
+        RR_LOG("Swapchain Destroyed, total: %d", SwapTotal);
     }
 
     for(size_t Index = 0; Index < SwapchainCleanupData->Semaphores.Count;
@@ -84,7 +89,19 @@ void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty)
     Rr_SetAtomicInt(&Renderer->Swapchain.RecreatePending, Dirty);
 }
 
-void Rr_ScheduleOldSwapchainForDestruction(
+static void Rr_PopFrontPresentHistory(Rr_Renderer *Renderer)
+{
+    if(Renderer->PresentHistory.Count > 1)
+    {
+        memmove(
+            Renderer->PresentHistory.Data,
+            Renderer->PresentHistory.Data + 1,
+            sizeof(Rr_PresentInfo) * (Renderer->PresentHistory.Count - 1));
+    }
+    Renderer->PresentHistory.Count--;
+}
+
+static void Rr_ScheduleOldSwapchainForDestruction(
     Rr_Renderer *Renderer,
     VkSwapchainKHR Handle)
 {
@@ -95,6 +112,10 @@ void Rr_ScheduleOldSwapchainForDestruction(
                .ImageIndex == UINT32_MAX)
     {
         Device->DestroySwapchainKHR(Renderer->Device.Handle, Handle, NULL);
+
+        SwapTotal--;
+        RR_LOG("Swapchain Destroyed Imm, total: %d", SwapTotal);
+        return;
     }
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -105,7 +126,8 @@ void Rr_ScheduleOldSwapchainForDestruction(
     RR_SLICE(Rr_PresentInfo) HistoryToKeep = { 0 };
     while(Renderer->PresentHistory.Count)
     {
-        Rr_PresentInfo *PresentInfo = Renderer->PresentHistory.Data;
+        Rr_PresentInfo *PresentInfo = Renderer->PresentHistory.Data +
+                                      (Renderer->PresentHistory.Count - 1);
 
         if(PresentInfo->ImageIndex == UINT32_MAX)
         {
@@ -118,15 +140,16 @@ void Rr_ScheduleOldSwapchainForDestruction(
         if(PresentInfo->CleanupFence != VK_NULL_HANDLE)
         {
             *RR_PUSH_SLICE(&HistoryToKeep, Scratch.Arena) = *PresentInfo;
+            RR_ZERO_PTR(PresentInfo);
         }
         else
         {
             assert(PresentInfo->EarlySemaphore != VK_NULL_HANDLE);
             assert(PresentInfo->LateSemaphore != VK_NULL_HANDLE);
 
-            *RR_PUSH_SLICE(&Cleanup.Semaphores, Scratch.Arena) =
+            *RR_PUSH_SLICE(&Cleanup.Semaphores, Renderer->Arena) =
                 PresentInfo->EarlySemaphore;
-            *RR_PUSH_SLICE(&Cleanup.Semaphores, Scratch.Arena) =
+            *RR_PUSH_SLICE(&Cleanup.Semaphores, Renderer->Arena) =
                 PresentInfo->LateSemaphore;
 
             for(size_t Index = 0; Index < PresentInfo->OldSwapchains.Count;
@@ -135,16 +158,9 @@ void Rr_ScheduleOldSwapchainForDestruction(
                 *RR_PUSH_SLICE(&Renderer->OldSwapchains, Renderer->Arena) =
                     PresentInfo->OldSwapchains.Data[Index];
             }
-            RR_EMPTY_SLICE(&PresentInfo->OldSwapchains);
+            RR_ZERO(PresentInfo->OldSwapchains);
         }
 
-        if(Renderer->PresentHistory.Count > 1)
-        {
-            memmove(
-                Renderer->PresentHistory.Data,
-                Renderer->PresentHistory.Data + 1,
-                sizeof(Rr_PresentInfo) * (Renderer->PresentHistory.Count - 1));
-        }
         Renderer->PresentHistory.Count--;
     }
 
@@ -362,17 +378,16 @@ static bool Rr_InitSwapchain(
         &SwapchainCreateInfo,
         NULL,
         &Renderer->Swapchain.Handle);
+    SwapTotal++;
+    RR_LOG("Swapchain Created, total: %d", SwapTotal);
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-    if(Renderer->SwapchainImages.Count > 0)
+    for(size_t Index = 0; Index < Renderer->SwapchainImages.Count; ++Index)
     {
-        for(size_t Index = 0; Index < Renderer->SwapchainImages.Count; ++Index)
-        {
-            *RR_PUSH_SLICE(&Frame->SwapchainGarbage, Renderer->Arena) =
-                Renderer->SwapchainImages.Data[Index];
-        }
-        RR_EMPTY_SLICE(&Renderer->SwapchainImages);
+        *RR_PUSH_SLICE(&Frame->SwapchainGarbage, Renderer->Arena) =
+            Renderer->SwapchainImages.Data[Index];
     }
+    RR_EMPTY_SLICE(&Renderer->SwapchainImages);
     if(OldSwapchain != VK_NULL_HANDLE)
     {
         Rr_ScheduleOldSwapchainForDestruction(Renderer, OldSwapchain);
@@ -488,7 +503,7 @@ static void Rr_AssociateFenceWithPresentHistory(
 {
     for(size_t Index = 0; Index < Renderer->PresentHistory.Count; ++Index)
     {
-        size_t Reverse = Renderer->PresentHistory.Count - (1 + Index);
+        size_t Reverse = Renderer->PresentHistory.Count - 1 - Index;
         Rr_PresentInfo *PresentInfo = Renderer->PresentHistory.Data + Reverse;
 
         if(PresentInfo->ImageIndex == UINT32_MAX)
@@ -564,8 +579,9 @@ static void Rr_CleanupPresentInfo(
     }
     for(size_t Index = 0; Index < PresentInfo->OldSwapchains.Count; ++Index)
     {
-        Rr_SwapchainCleanupData *OldSwapchain =
-            PresentInfo->OldSwapchains.Data + Index;
+        Rr_CleanupSwapchainData(
+            Renderer,
+            PresentInfo->OldSwapchains.Data + Index);
     }
     RR_ZERO_PTR(PresentInfo);
 }
@@ -594,29 +610,14 @@ static void Rr_CleanupPresentHistory(Rr_Renderer *Renderer)
 
         Rr_CleanupPresentInfo(Renderer, PresentInfo);
 
-        if(Renderer->PresentHistory.Count > 1)
-        {
-            memmove(
-                Renderer->PresentHistory.Data,
-                Renderer->PresentHistory.Data + 1,
-                sizeof(Rr_PresentInfo) * (Renderer->PresentHistory.Count - 1));
-        }
-        Renderer->PresentHistory.Count--;
+        Rr_PopFrontPresentHistory(Renderer);
     }
 
     if(Renderer->PresentHistory.Count > Renderer->SwapchainImages.Count * 2 &&
        Renderer->PresentHistory.Data->CleanupFence == VK_NULL_HANDLE)
     {
         Rr_PresentInfo PresentInfo = Renderer->PresentHistory.Data[0];
-
-        if(Renderer->PresentHistory.Count > 1)
-        {
-            memmove(
-                Renderer->PresentHistory.Data,
-                Renderer->PresentHistory.Data + 1,
-                sizeof(Rr_PresentInfo) * (Renderer->PresentHistory.Count - 1));
-        }
-        Renderer->PresentHistory.Count--;
+        Rr_PopFrontPresentHistory(Renderer);
 
         assert(PresentInfo.ImageIndex != UINT32_MAX);
 
@@ -974,6 +975,8 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
             Renderer->Device.Handle,
             Renderer->Swapchain.Handle,
             NULL);
+        SwapTotal--;
+        RR_LOG("Swapchain Destroyed, total: %d", SwapTotal);
     }
 
     Rr_CleanupTransientCommandPools(Renderer);
@@ -1115,9 +1118,8 @@ void Rr_DrawFrame(Rr_App *App)
             &Frame->SubmitFence,
             true,
             1000000000);
-        assert(Result != VK_TIMEOUT && "Render fence timeout!");
+        assert(Result != VK_TIMEOUT && "Submit fence timeout!");
 
-        Device->ResetFences(Device->Handle, 1, &Frame->SubmitFence);
         Rr_ReturnVulkanFence(Renderer, Frame->SubmitFence);
         Rr_ReturnVulkanSemaphore(Renderer, Frame->AcquireSemaphore);
 
@@ -1139,20 +1141,18 @@ void Rr_DrawFrame(Rr_App *App)
     Frame->EarlySemaphore = Rr_GetVulkanSemaphore(Renderer);
     Frame->LateSemaphore = Rr_GetVulkanSemaphore(Renderer);
 
-    Rr_CheckSwapchainDirty(App);
-
     /* Acquire swapchain image. */
 
     uint32_t SwapchainImageIndex;
-    Result = Rr_AcquireNextImage(Renderer, &SwapchainImageIndex);
-    if(Result == VK_ERROR_OUT_OF_DATE_KHR || Result == VK_SUBOPTIMAL_KHR)
+    while(true)
     {
-        Rr_RecreateSwapchain(App);
+        Rr_CheckSwapchainDirty(App);
         Result = Rr_AcquireNextImage(Renderer, &SwapchainImageIndex);
-    }
-    if(Result != VK_SUBOPTIMAL_KHR)
-    {
-        assert(Result >= 0);
+        if(Result == VK_SUCCESS || Result == VK_SUBOPTIMAL_KHR)
+        {
+            break;
+        }
+        Rr_RecreateSwapchain(App);
     }
 
     VkImage SwapchainImage =
@@ -1640,6 +1640,9 @@ VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer)
 
     VkSemaphore Semaphore;
 
+    static int TotalSem = 0;
+    TotalSem++;
+    RR_LOG("Total Sem Created: %d", TotalSem);
     Device->CreateSemaphore(
         Device->Handle,
         &(VkSemaphoreCreateInfo){
