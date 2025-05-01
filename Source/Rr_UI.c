@@ -2,6 +2,7 @@
 
 #include "Rr_UI.h"
 
+#include "Rr_App.h"
 #include "Rr_Log.h"
 #include "Rr_Renderer.h"
 
@@ -1397,8 +1398,18 @@ void Rr_DebugOverlay(void)
         Timer = 0.0f;
     }
 
+    Rr_Renderer *Renderer = Global->App->Renderer;
+
     Rr_BeginWindow("Rr_DebugOverlay", RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
     Rr_LabelF("FPS: %.2f", FPSCount);
+    Rr_Separator();
+    Rr_LabelF("Renderer Arena: %d", Global->App->Renderer->Arena->Commited);
+    for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    {
+        Rr_Frame *Frame = Renderer->Frames + Index;
+        Rr_LabelF("Frame#%d Arena: %d", Index, Frame->Arena->Commited);
+    }
+    Rr_Separator();
     Rr_Label("More text...");
     Rr_EndWindow();
 }
