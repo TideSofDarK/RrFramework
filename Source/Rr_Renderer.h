@@ -27,13 +27,28 @@ struct Rr_Swapchain
     VkColorSpaceKHR ColorSpace;
     VkExtent3D Extent;
     Rr_AtomicInt RecreatePending;
-    RR_SLICE(Rr_SwapchainImage) Images;
+};
+
+typedef struct Rr_SwapchainCleanupData Rr_SwapchainCleanupData;
+struct Rr_SwapchainCleanupData
+{
+    VkSwapchainKHR Handle;
+    RR_SLICE(VkSemaphore) Semaphores;
+};
+
+typedef struct Rr_PresentInfo Rr_PresentInfo;
+struct Rr_PresentInfo
+{
+    VkFence CleanupFence;
+    VkSemaphore EarlySemaphore;
+    VkSemaphore LateSemaphore;
+    uint32_t ImageIndex;
+    RR_SLICE(Rr_SwapchainCleanupData) OldSwapchains;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
 struct Rr_ImmediateMode
 {
-    VkFence Fence;
     VkCommandBuffer CommandBuffer;
     VkCommandPool CommandPool;
 };
@@ -41,18 +56,18 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    VkFramebuffer SwapchainFramebuffer;
     Rr_Image *VirtualSwapchainImage;
+    RR_SLICE(Rr_SwapchainImage) SwapchainGarbage;
 
     VkCommandPool CommandPool;
     VkCommandBuffer EarlyCommandBuffer;
     VkCommandBuffer LateCommandBuffer;
     size_t CommandBufferIndex;
 
-    VkSemaphore SwapchainSemaphore;
+    VkSemaphore AcquireSemaphore;
     VkSemaphore EarlySemaphore;
     VkSemaphore LateSemaphore;
-    VkFence RenderFence;
+    VkFence SubmitFence;
 
     Rr_DescriptorAllocator DescriptorAllocator;
 
@@ -84,7 +99,9 @@ struct Rr_Renderer
     VkSurfaceKHR Surface;
 
     Rr_Swapchain Swapchain;
-    VkRenderPass PresentRenderPass;
+    RR_SLICE(Rr_SwapchainImage) SwapchainImages;
+    RR_SLICE(Rr_SwapchainCleanupData) OldSwapchains;
+    RR_SLICE(Rr_PresentInfo) PresentHistory;
 
     Rr_Queue GraphicsQueue;
     Rr_Queue TransferQueue;
@@ -121,6 +138,8 @@ struct Rr_Renderer
     Rr_Arena *Arena;
 };
 
+extern bool Rr_RecreateSwapchain(Rr_App *App);
+
 extern Rr_Renderer *Rr_CreateRenderer(Rr_App *App);
 
 extern void Rr_WaitIdle(Rr_Renderer *Renderer);
@@ -132,8 +151,6 @@ extern void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty);
 extern void Rr_PrepareFrame(Rr_App *App);
 
 extern void Rr_DrawFrame(Rr_App *App);
-
-extern bool Rr_NewFrame(Rr_App *App, void *Window);
 
 extern VkCommandBuffer Rr_BeginImmediate(Rr_Renderer *Renderer);
 
@@ -182,7 +199,9 @@ extern void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key);
 
 extern VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer);
 
-extern void Rr_ReturnVulkanSemaphore(Rr_Renderer *Renderer, VkSemaphore Semaphore);
+extern void Rr_ReturnVulkanSemaphore(
+    Rr_Renderer *Renderer,
+    VkSemaphore Semaphore);
 
 extern VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer);
 

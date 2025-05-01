@@ -71,7 +71,8 @@ static void Rr_Iterate(Rr_App *App)
 
     Rr_EndUI(App);
 
-    if(Rr_NewFrame(App, App->Window))
+    bool Minimized = (SDL_GetWindowFlags(App->Window) & SDL_WINDOW_MINIMIZED);
+    if(Minimized == false)
     {
         Rr_DrawFrame(App);
     }
@@ -189,6 +190,7 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_AddEventWatch(Rr_EventWatch, App);
 
     App->Renderer = Rr_CreateRenderer(App);
+    Rr_RecreateSwapchain(App);
     App->UI = Rr_CreateUIContext(App);
 
     Config->InitFunc(App, App->UserData);
