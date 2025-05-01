@@ -67,9 +67,16 @@ static void Rr_CleanupSwapchainData(
     RR_ZERO_PTR(SwapchainCleanupData);
 }
 
-static bool Rr_IsSwapchainDirty(Rr_Renderer *Renderer)
+static bool Rr_CheckSwapchainDirty(Rr_App *App)
 {
-    return Rr_GetAtomicInt(&Renderer->Swapchain.RecreatePending);
+    Rr_Renderer *Renderer = App->Renderer;
+    bool StillDirty = Rr_GetAtomicInt(&Renderer->Swapchain.RecreatePending);
+    if(StillDirty)
+    {
+        StillDirty = !Rr_RecreateSwapchain(App);
+        Rr_SetSwapchainDirty(Renderer, StillDirty);
+    }
+    return StillDirty;
 }
 
 void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty)
@@ -162,6 +169,9 @@ static bool Rr_InitSwapchain(
 {
     Rr_Instance *Instance = &Renderer->Instance;
     Rr_Device *Device = &Renderer->Device;
+
+    VkResult Result;
+    (void)Result;
 
     VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
 
@@ -347,7 +357,7 @@ static bool Rr_InitSwapchain(
         SwapchainCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    Device->CreateSwapchainKHR(
+    Result = Device->CreateSwapchainKHR(
         Renderer->Device.Handle,
         &SwapchainCreateInfo,
         NULL,
@@ -518,6 +528,8 @@ static VkResult Rr_AcquireNextImage(
         Frame->AcquireSemaphore,
         AcquireFence,
         SwapchainImageIndex);
+
+    assert(Result != VK_TIMEOUT && "Swapchain image timeout!");
 
     if(Result != VK_SUCCESS && Result != VK_SUBOPTIMAL_KHR)
     {
@@ -1127,11 +1139,12 @@ void Rr_DrawFrame(Rr_App *App)
     Frame->EarlySemaphore = Rr_GetVulkanSemaphore(Renderer);
     Frame->LateSemaphore = Rr_GetVulkanSemaphore(Renderer);
 
+    Rr_CheckSwapchainDirty(App);
+
     /* Acquire swapchain image. */
 
     uint32_t SwapchainImageIndex;
     Result = Rr_AcquireNextImage(Renderer, &SwapchainImageIndex);
-    assert(Result != VK_TIMEOUT && "Swapchain image timeout!");
     if(Result == VK_ERROR_OUT_OF_DATE_KHR || Result == VK_SUBOPTIMAL_KHR)
     {
         Rr_RecreateSwapchain(App);
@@ -1275,10 +1288,9 @@ void Rr_DrawFrame(Rr_App *App)
     Rr_AddPresentToHistory(Renderer, SwapchainImageIndex);
     Rr_CleanupPresentHistory(Renderer);
 
-    if(Result == VK_ERROR_OUT_OF_DATE_KHR || Result == VK_SUBOPTIMAL_KHR ||
-       Rr_IsSwapchainDirty(Renderer))
+    if(Result == VK_ERROR_OUT_OF_DATE_KHR || Result == VK_SUBOPTIMAL_KHR)
     {
-        Rr_SetSwapchainDirty(Renderer, !Rr_RecreateSwapchain(App));
+        Rr_RecreateSwapchain(App);
     }
 
     Renderer->FrameNumber++;

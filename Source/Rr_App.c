@@ -102,7 +102,7 @@ static _Bool SDLCALL Rr_EventWatch(void *UserData, SDL_Event *Event)
 #else
         case SDL_EVENT_WINDOW_RESIZED:
         {
-            // Rr_SetSwapchainDirty(Rr_GetRenderer(App), true);
+            Rr_SetSwapchainDirty(Rr_GetRenderer(App), true);
         }
         break;
 #endif
