@@ -1120,11 +1120,10 @@ void Rr_DrawFrame(Rr_App *App)
         Rr_RecreateSwapchain(App);
         Result = Rr_AcquireNextImage(Renderer, &SwapchainImageIndex);
     }
-    /* if(Result != VK_SUBOPTIMAL_KHR) */
-    /* { */
-    /*     assert(Result >= 0); */
-    /* } */
-    assert(Result >= 0);
+    if(Result != VK_SUBOPTIMAL_KHR)
+    {
+        assert(Result >= 0);
+    }
 
     VkImage SwapchainImage =
         Renderer->SwapchainImages.Data[SwapchainImageIndex].Handle;
