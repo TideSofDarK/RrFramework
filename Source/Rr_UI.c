@@ -101,6 +101,7 @@ struct Rr_UIContext
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
 
+    RR_FREE_LIST(Rr_Font) Fonts;
     Rr_Font *Font;
     float FontSize;
     float NextFontSize;
@@ -137,10 +138,12 @@ static Rr_UIContext *Global;
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
 
 Rr_Font *Rr_CreateFont(
-    Rr_Renderer *Renderer,
+    Rr_UIContext *Context,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef)
 {
+    Rr_Renderer *Renderer = Context->App->Renderer;
+
     Rr_Image *Atlas;
     Rr_LoadTask ImageLoadTask = (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
@@ -161,7 +164,7 @@ Rr_Font *Rr_CreateFont(
     AtlasSize.X = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "width");
     AtlasSize.Y = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "height");
 
-    Rr_Font *Font = RR_GET_FREE_LIST_ITEM(&Renderer->Fonts, Renderer->Arena);
+    Rr_Font *Font = RR_GET_FREE_LIST_ITEM(&Context->Fonts, Context->Arena);
     *Font = (Rr_Font){
         .Atlas = Atlas,
         .LineHeight = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "lineHeight"),
@@ -217,11 +220,11 @@ Rr_Font *Rr_CreateFont(
     return Font;
 }
 
-void Rr_DestroyFont(Rr_Renderer *Renderer, Rr_Font *Font)
+void Rr_DestroyFont(Rr_UIContext *Context, Rr_Font *Font)
 {
-    Rr_DestroyImage(Renderer, Font->Atlas);
+    Rr_DestroyImage(Context->App->Renderer, Font->Atlas);
 
-    RR_RETURN_FREE_LIST_ITEM(&Renderer->Fonts, Font);
+    RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
 }
 
 Rr_Vec2 Rr_CalculateTextSize(Rr_Font *Font, float FontSize, Rr_String *String)
@@ -838,6 +841,7 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     Rr_UIContext *Context = RR_ALLOC(Arena, sizeof(Rr_UIContext));
+    Context->App = App;
     Context->Arena = Arena;
 
     Context->NextFontSize =
@@ -940,10 +944,8 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
             .MagFilter = RR_FILTER_LINEAR,
         });
 
-    Context->Font = Rr_CreateFont(
-        Renderer,
-        RR_BUILTIN_IOSEVKA_PNG,
-        RR_BUILTIN_IOSEVKA_JSON);
+    Context->Font =
+        Rr_CreateFont(Context, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
 
     return Context;
 }
@@ -957,7 +959,7 @@ void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *Context)
     Rr_DestroySampler(Renderer, Context->Sampler);
     Rr_DestroyPipelineLayout(Renderer, Context->PipelineLayout);
     Rr_DestroyGraphicsPipeline(Renderer, Context->GraphicsPipeline);
-    Rr_DestroyFont(Renderer, Context->Font);
+    Rr_DestroyFont(Context, Context->Font);
     Rr_DestroyArena(Context->Arena);
 }
 
@@ -993,12 +995,15 @@ void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event)
     }
 }
 
-void Rr_BeginUI(Rr_App *App, Rr_UIContext *Context)
+void Rr_BeginUI(Rr_UIContext *Context)
 {
+    assert(Context);
+    assert(Context->App);
+
+    Rr_App *App = Context->App;
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
-    // UI->Arena->Position = sizeof(Rr_UI);
+
     Global = Context;
-    Global->App = App;
     Global->FrameNumber = Renderer->FrameNumber;
     Global->FrameArena = Rr_GetFrameArena(Renderer);
 
@@ -1204,7 +1209,7 @@ int Rr_WindowSort(const void *A, const void *B)
     return WindowA->ZOrder > WindowB->ZOrder;
 }
 
-void Rr_EndUI(Rr_App *App)
+void Rr_EndUI(void)
 {
     RR_UI_ASSERT_NO_WINDOW();
 
@@ -1216,6 +1221,7 @@ void Rr_EndUI(Rr_App *App)
         return;
     }
 
+    Rr_App *App = Global->App;
     Rr_Renderer *Renderer = Rr_GetRenderer(App);
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 

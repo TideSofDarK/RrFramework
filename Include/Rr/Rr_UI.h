@@ -10,6 +10,8 @@ extern "C" {
 struct Rr_Renderer;
 struct Rr_String;
 
+typedef struct Rr_UIContext Rr_UIContext;
+
 typedef struct Rr_Font Rr_Font;
 
 #define RR_TEXT_BUFFER_SIZE (1024 * 1024)
@@ -46,11 +48,11 @@ struct Rr_UIStyle
 };
 
 extern Rr_Font *Rr_CreateFont(
-    struct Rr_Renderer *Renderer,
+    Rr_UIContext *Context,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef);
 
-extern void Rr_DestroyFont(struct Rr_Renderer *Renderer, Rr_Font *Font);
+extern void Rr_DestroyFont(Rr_UIContext *Context, Rr_Font *Font);
 
 Rr_Vec2 Rr_CalculateTextSize(
     Rr_Font *Font,

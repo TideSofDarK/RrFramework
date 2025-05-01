@@ -5,7 +5,6 @@
 #include "Rr_Graph.h"
 #include "Rr_Load.h"
 #include "Rr_Pipeline.h"
-#include "Rr_UI.h"
 #include "Rr_Vulkan.h"
 
 #include <SDL3/SDL_atomic.h>
@@ -128,7 +127,6 @@ struct Rr_Renderer
 
     RR_FREE_LIST(Rr_Buffer) Buffers;
     RR_FREE_LIST(Rr_Image) Images;
-    RR_FREE_LIST(Rr_Font) Fonts;
     RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
     RR_FREE_LIST(Rr_ComputePipeline) ComputePipelines;
     RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;

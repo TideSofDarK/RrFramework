@@ -16,14 +16,29 @@
 #include <assert.h>
 
 static inline void Rr_DestroySwapchainImage(
-    Rr_Device *Device,
+    Rr_Renderer *Renderer,
     Rr_SwapchainImage *SwapchainImage)
 {
-    Device->DestroyFramebuffer(
-        Device->Handle,
-        SwapchainImage->Framebuffer,
-        NULL);
-    Device->DestroyImageView(Device->Handle, SwapchainImage->View, NULL);
+    Rr_Device *Device = &Renderer->Device;
+
+    if(SwapchainImage->Framebuffer)
+    {
+        Device->DestroyFramebuffer(
+            Device->Handle,
+            SwapchainImage->Framebuffer,
+            NULL);
+    }
+
+    if(SwapchainImage->View)
+    {
+        Device->DestroyImageView(Device->Handle, SwapchainImage->View, NULL);
+    }
+
+    if(SwapchainImage->Handle)
+    {
+        Rr_ReturnSyncState(Renderer, (Rr_MapKey)SwapchainImage->Handle);
+    }
+
     RR_ZERO_PTR(SwapchainImage);
 }
 
@@ -48,6 +63,8 @@ static void Rr_CleanupSwapchainData(
             Renderer,
             SwapchainCleanupData->Semaphores.Data[Index]);
     }
+
+    RR_ZERO_PTR(SwapchainCleanupData);
 }
 
 static bool Rr_IsSwapchainDirty(Rr_Renderer *Renderer)
@@ -710,7 +727,7 @@ static void Rr_CleanupFrames(Rr_Renderer *Renderer)
         for(size_t Index = 0; Index < Frame->SwapchainGarbage.Count; ++Index)
         {
             Rr_DestroySwapchainImage(
-                Device,
+                Renderer,
                 Frame->SwapchainGarbage.Data + Index);
         }
         RR_EMPTY_SLICE(&Frame->SwapchainGarbage);
@@ -935,7 +952,7 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
     for(size_t Index = 0; Index < Renderer->SwapchainImages.Count; ++Index)
     {
         Rr_DestroySwapchainImage(
-            Device,
+            Renderer,
             &Renderer->SwapchainImages.Data[Index]);
     }
 
@@ -1097,7 +1114,7 @@ void Rr_DrawFrame(Rr_App *App)
         for(size_t Index = 0; Index < Frame->SwapchainGarbage.Count; ++Index)
         {
             Rr_SwapchainImage *Garbage = Frame->SwapchainGarbage.Data + Index;
-            Rr_DestroySwapchainImage(Device, Garbage);
+            Rr_DestroySwapchainImage(Renderer, Garbage);
         }
         RR_EMPTY_SLICE(&Frame->SwapchainGarbage);
 
