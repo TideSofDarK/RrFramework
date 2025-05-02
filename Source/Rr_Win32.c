@@ -52,15 +52,15 @@ int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value)
     return _InterlockedExchange((long *)&AtomicInt->Value, Value);
 }
 
-bool Rr_TryLockSpinLock(Rr_SpinLock *SpinLock)
+bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock)
 {
-    return InterlockedExchange((long *)SpinLock, 1) == 0;
+    return InterlockedExchange((long *)Spinlock, 1) == 0;
 }
 
-void Rr_UnlockSpinLock(Rr_SpinLock *SpinLock)
+void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock)
 {
     _ReadWriteBarrier();
-    *SpinLock = 0;
+    *Spinlock = 0;
 }
 
 #else
