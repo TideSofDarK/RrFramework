@@ -85,7 +85,11 @@ struct Rr_UIContext
     RR_SLICE(float) HorizontalX;
     float HorizontalMaxHeight;
 
-    bool LeftMouseButtonPressed;
+    bool MouseButtonCapture;
+
+    bool LeftMouseButtonDown;
+    bool LeftMouseButtonHeld;
+    bool LeftMouseButtonUp;
     Rr_Vec2 MousePosition;
 
     Rr_UIWindow *MovingWindow;
@@ -678,7 +682,7 @@ static inline void Rr_ButtonBehavior(
     if(Window == Global->HoveredWindow &&
        Rr_RectContains(Position, Size, Global->MousePosition))
     {
-        if(Global->LeftMouseButtonPressed)
+        if(Global->LeftMouseButtonDown)
         {
             Global->MovingWindow = NULL;
             if(Clicked)
@@ -826,7 +830,7 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
 bool Rr_WantMouseCapture(void)
 {
-    return Global && Global->HoveredWindow;
+    return Global && (Global->MouseButtonCapture || Global->HoveredWindow);
 }
 
 bool Rr_WantKeyboardCapture(void)
@@ -978,12 +982,16 @@ void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event)
         {
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                Global->LeftMouseButtonPressed = true;
+                Global->LeftMouseButtonDown = true;
             }
         }
         break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_UP:
         {
+            if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
+            {
+                Global->LeftMouseButtonUp = true;
+            }
         }
         break;
         case RR_EVENT_TYPE_MOUSE_MOTION:
@@ -1051,7 +1059,7 @@ void Rr_BeginUI(Rr_UIContext *Context)
         {
             Global->HoveredWindow = Window;
 
-            if(Global->LeftMouseButtonPressed)
+            if(Global->LeftMouseButtonDown)
             {
                 Rr_UIWindow *HighestWindow =
                     Global->Windows.Data[Global->Windows.Count - 1];
@@ -1061,6 +1069,8 @@ void Rr_BeginUI(Rr_UIContext *Context)
                     HighestWindow->ZOrder = Window->ZOrder;
                     Window->ZOrder = Temp;
                 }
+
+                Global->MouseButtonCapture = true;
             }
 
             break;
@@ -1102,7 +1112,7 @@ void Rr_BeginUI(Rr_UIContext *Context)
             Global->ResizingWindow = NULL;
         }
     }
-    else if(Global->HoveredWindow && Global->LeftMouseButtonPressed)
+    else if(Global->HoveredWindow && Global->LeftMouseButtonDown)
     {
         Rr_Vec2 ResizeHandleSize = {
             Global->ResizeHandleSize,
@@ -1377,7 +1387,13 @@ void Rr_EndUI(void)
         Window->LastVertexCount = Window->Vertices.Count;
     }
 
-    Global->LeftMouseButtonPressed = false;
+    if(Global->LeftMouseButtonUp)
+    {
+        Global->LeftMouseButtonHeld = false;
+        Global->MouseButtonCapture = false;
+    }
+    Global->LeftMouseButtonDown = false;
+    Global->LeftMouseButtonUp = false;
     RR_ZERO(Global->HorizontalX);
 }
 

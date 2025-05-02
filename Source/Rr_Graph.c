@@ -337,7 +337,7 @@ static void Rr_ExecuteGraphicsNode(
         .Attachments = Attachments,
     };
     VkRenderPass RenderPass = Rr_GetVulkanRenderPass(Renderer, &RenderPassInfo);
-    VkFramebuffer Framebuffer = Rr_GetVulkanFramebufferFromViews(
+    VkFramebuffer Framebuffer = Rr_GetVulkanFramebuffer(
         Renderer,
         RenderPass,
         ImageViews,

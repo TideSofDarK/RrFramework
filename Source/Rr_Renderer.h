@@ -157,13 +157,6 @@ extern VkRenderPass Rr_GetVulkanRenderPass(
 extern VkFramebuffer Rr_GetVulkanFramebuffer(
     Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
-    Rr_Image *Images,
-    size_t ImageCount,
-    VkExtent3D Extent);
-
-extern VkFramebuffer Rr_GetVulkanFramebufferFromViews(
-    Rr_Renderer *Renderer,
-    VkRenderPass RenderPass,
     VkImageView *ImageViews,
     size_t ImageViewCount,
     VkExtent3D Extent);

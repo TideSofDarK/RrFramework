@@ -1128,13 +1128,12 @@ VkRenderPass Rr_GetVulkanRenderPass(
     return RenderPass;
 }
 
-static VkFramebuffer Rr_GetFramebufferInternal(
+VkFramebuffer Rr_GetVulkanFramebuffer(
     Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     VkImageView *ImageViews,
     size_t ImageViewCount,
-    VkExtent3D Extent,
-    Rr_Arena *Arena)
+    VkExtent3D Extent)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -1185,53 +1184,6 @@ static VkFramebuffer Rr_GetFramebufferInternal(
         .Handle = Framebuffer,
         .Hash = Hash,
     };
-
-    Rr_DestroyScratch(Scratch);
-
-    return Framebuffer;
-}
-
-VkFramebuffer Rr_GetVulkanFramebufferFromViews(
-    Rr_Renderer *Renderer,
-    VkRenderPass RenderPass,
-    VkImageView *ImageViews,
-    size_t ImageViewCount,
-    VkExtent3D Extent)
-{
-    return Rr_GetFramebufferInternal(
-        Renderer,
-        RenderPass,
-        ImageViews,
-        ImageViewCount,
-        Extent,
-        NULL);
-}
-
-VkFramebuffer Rr_GetVulkanFramebuffer(
-    Rr_Renderer *Renderer,
-    VkRenderPass RenderPass,
-    Rr_Image *Images,
-    size_t ImageCount,
-    VkExtent3D Extent)
-{
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    VkImageView *ImageViews =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, ImageCount);
-
-    for(size_t Index = 0; Index < ImageCount; ++Index)
-    {
-        ImageViews[Index] =
-            Rr_GetCurrentAllocatedImage(Renderer, Images + Index)->View;
-    }
-
-    VkFramebuffer Framebuffer = Rr_GetFramebufferInternal(
-        Renderer,
-        RenderPass,
-        ImageViews,
-        ImageCount,
-        Extent,
-        Scratch.Arena);
 
     Rr_DestroyScratch(Scratch);
 
