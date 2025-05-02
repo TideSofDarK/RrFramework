@@ -49,11 +49,11 @@ struct Rr_LoadTask
     } Out;
 };
 
-typedef void (*Rr_LoadCallback)(Rr_App *App, void *UserData);
+typedef void (*Rr_LoadCallback)(void *UserData);
 
-extern Rr_LoadThread *Rr_CreateLoadThread(Rr_App *App);
+extern Rr_LoadThread *Rr_CreateLoadThread(void);
 
-extern void Rr_DestroyLoadThread(Rr_App *App, Rr_LoadThread *LoadThread);
+extern void Rr_DestroyLoadThread(Rr_LoadThread *LoadThread);
 
 extern Rr_LoadTask Rr_LoadGLTFAssetTask(
     Rr_AssetRef AssetRef,

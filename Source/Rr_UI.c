@@ -1,6 +1,6 @@
-#include "Rr_BuiltinAssets.inc"
-
 #include "Rr_UI.h"
+
+#include "Rr_BuiltinAssets.inc"
 
 #include "Rr_App.h"
 #include "Rr_Log.h"
@@ -17,18 +17,18 @@
 #include <stdio.h>
 
 #define RR_UI_ASSERT_GLOBAL() \
-    assert(Global != NULL && "Did you forget to call Rr_BeginUI()?")
+    assert(gContext != NULL && "Did you forget to call Rr_BeginUI()?")
 
-#define RR_UI_ASSERT_NO_WINDOW()         \
-    RR_UI_ASSERT_GLOBAL();               \
-    assert(                              \
-        Global->CurrentWindow == NULL && \
+#define RR_UI_ASSERT_NO_WINDOW()           \
+    RR_UI_ASSERT_GLOBAL();                 \
+    assert(                                \
+        gContext->CurrentWindow == NULL && \
         "Did you forget to call Rr_EndWindow()?")
 
-#define RR_UI_ASSERT_WINDOW()            \
-    RR_UI_ASSERT_GLOBAL();               \
-    assert(                              \
-        Global->CurrentWindow != NULL && \
+#define RR_UI_ASSERT_WINDOW()              \
+    RR_UI_ASSERT_GLOBAL();                 \
+    assert(                                \
+        gContext->CurrentWindow != NULL && \
         "Did you forget to call Rr_BeginWindow()?")
 
 typedef uint16_t Rr_UIIndex;
@@ -131,12 +131,11 @@ struct Rr_UIContext
 
     Rr_Sampler *Sampler;
 
-    Rr_App *App;
     Rr_Arena *FrameArena;
     Rr_Arena *Arena;
 };
 
-static Rr_UIContext *Global;
+static Rr_UIContext *gContext;
 
 #define CJSON_GET_OBJECT_FLOAT(Object, Item) \
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
@@ -146,7 +145,7 @@ Rr_Font *Rr_CreateFont(
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef)
 {
-    Rr_Renderer *Renderer = Context->App->Renderer;
+    Rr_Renderer *Renderer = gApp->Renderer;
 
     Rr_Image *Atlas;
     Rr_LoadTask ImageLoadTask = (Rr_LoadTask){
@@ -226,7 +225,7 @@ Rr_Font *Rr_CreateFont(
 
 void Rr_DestroyFont(Rr_UIContext *Context, Rr_Font *Font)
 {
-    Rr_DestroyImage(Context->App->Renderer, Font->Atlas);
+    Rr_DestroyImage(gApp->Renderer, Font->Atlas);
 
     RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
 }
@@ -279,12 +278,12 @@ static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
     Rr_UIQuad ReservedQuad = Window->Vertices.Data + Window->Vertices.Count;
     for(size_t Index = 0; Index < 4; ++Index)
     {
-        RR_PUSH_SLICE(&Window->Vertices, Global->FrameArena);
+        RR_PUSH_SLICE(&Window->Vertices, gContext->FrameArena);
     }
 
     for(size_t Index = 0; Index < 6; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Indices, Global->FrameArena) = Indices[Index];
+        *RR_PUSH_SLICE(&Window->Indices, gContext->FrameArena) = Indices[Index];
     }
 
     return ReservedQuad;
@@ -298,12 +297,13 @@ static inline void Rr_DrawQuad(Rr_UIWindow *Window, Rr_UIVertex *Vertices)
     };
     for(size_t Index = 0; Index < 4; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Vertices, Global->FrameArena) = Vertices[Index];
+        *RR_PUSH_SLICE(&Window->Vertices, gContext->FrameArena) =
+            Vertices[Index];
     }
 
     for(size_t Index = 0; Index < 6; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Indices, Global->FrameArena) = Indices[Index];
+        *RR_PUSH_SLICE(&Window->Indices, gContext->FrameArena) = Indices[Index];
     }
 }
 
@@ -359,13 +359,14 @@ static inline void Rr_DrawSolidTriangle(
     };
     for(size_t Index = 0; Index < 3; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Indices, Global->FrameArena) =
+        *RR_PUSH_SLICE(&Window->Indices, gContext->FrameArena) =
             Window->Vertices.Count + Index;
     }
 
     for(size_t Index = 0; Index < 3; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Vertices, Global->FrameArena) = Vertices[Index];
+        *RR_PUSH_SLICE(&Window->Vertices, gContext->FrameArena) =
+            Vertices[Index];
     }
 }
 
@@ -448,8 +449,8 @@ static inline void Rr_DrawText(
     Rr_String *String,
     Rr_Vec4 *Color)
 {
-    Rr_Font *Font = Global->Font;
-    float FontSize = Global->FontSize;
+    Rr_Font *Font = gContext->Font;
+    float FontSize = gContext->FontSize;
     float LineHeight = Font->LineHeight * FontSize;
     float CurrentX = 0.0f;
     float CurrentY = 0.0f;
@@ -471,7 +472,7 @@ static inline void Rr_DrawText(
 
         if(Codepoint == ' ')
         {
-            CurrentX += Global->Font->Advances[Codepoint] * FontSize;
+            CurrentX += gContext->Font->Advances[Codepoint] * FontSize;
             continue;
         }
 
@@ -497,7 +498,7 @@ static inline void Rr_DrawText(
             Color,
             UVs);
 
-        CurrentX += Global->Font->Advances[Codepoint] * FontSize;
+        CurrentX += gContext->Font->Advances[Codepoint] * FontSize;
     }
 }
 
@@ -505,11 +506,11 @@ static inline Rr_Vec2 Rr_GetMinWindowSize(Rr_UIWindowFlags Flags)
 {
     if(RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT))
     {
-        return Global->MinWindowSizeNoTitle;
+        return gContext->MinWindowSizeNoTitle;
     }
     else
     {
-        return Global->MinWindowSize;
+        return gContext->MinWindowSize;
     }
 }
 
@@ -522,17 +523,17 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
 
     Rr_UIWindow **WindowRef =
-        RR_UPSERT(&Global->WindowMap, Hash, Global->Arena);
+        RR_UPSERT(&gContext->WindowMap, Hash, gContext->Arena);
     Rr_UIWindow *Window = *WindowRef;
 
     if(Window == NULL)
     {
-        Window = RR_ALLOC_TYPE(Global->Arena, Rr_UIWindow);
-        Window->ZOrder = Global->TotalWindowCount++;
-        Window->Title = Rr_CreateString(Title, TitleLength, Global->Arena);
+        Window = RR_ALLOC_TYPE(gContext->Arena, Rr_UIWindow);
+        Window->ZOrder = gContext->TotalWindowCount++;
+        Window->Title = Rr_CreateString(Title, TitleLength, gContext->Arena);
         Window->Position = (Rr_Vec2){
-            .X = Global->FontSize,
-            .Y = Global->FontSize,
+            .X = gContext->FontSize,
+            .Y = gContext->FontSize,
         };
         const Rr_Vec2 DEFAULT_WINDOW_SIZE = { 300.0f, 500.0f };
         Window->Size =
@@ -548,65 +549,66 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Window->Flags = Flags;
 
-    *RR_PUSH_SLICE(&Global->Windows, Global->FrameArena) = Window;
+    *RR_PUSH_SLICE(&gContext->Windows, gContext->FrameArena) = Window;
     Window->Added = true;
 
     RR_ZERO(Window->Vertices);
     RR_RESERVE_SLICE(
         &Window->Vertices,
         Window->LastVertexCount ? Window->LastVertexCount : (4 * 32),
-        Global->FrameArena);
+        gContext->FrameArena);
 
     RR_ZERO(Window->Indices);
     RR_RESERVE_SLICE(
         &Window->Indices,
         Window->LastIndexCount ? Window->LastIndexCount : (6 * 32),
-        Global->FrameArena);
+        gContext->FrameArena);
 
     Rr_UIQuad _ =
         Rr_ReserveQuad(Window); /* Reserved contents background quad. */
     (void)_;
 
-    Global->Cursor = Rr_AddV2(Window->Position, Global->ContentsPadding);
+    gContext->Cursor = Rr_AddV2(Window->Position, gContext->ContentsPadding);
     if(HasTitle)
     {
-        Global->Cursor.Y += Global->WindowTitleHeight;
+        gContext->Cursor.Y += gContext->WindowTitleHeight;
     }
 
-    Global->CurrentWindow = Window;
+    gContext->CurrentWindow = Window;
 }
 
 void Rr_EndWindow(void)
 {
     RR_UI_ASSERT_WINDOW();
 
-    Global->CurrentWindow = NULL;
+    gContext->CurrentWindow = NULL;
 }
 
 void Rr_BeginHorizontal(void)
 {
-    Global->Horizontal = true;
-    *RR_PUSH_SLICE(&Global->HorizontalX, Global->FrameArena) = Global->Cursor.X;
+    gContext->Horizontal = true;
+    *RR_PUSH_SLICE(&gContext->HorizontalX, gContext->FrameArena) =
+        gContext->Cursor.X;
 }
 
 void Rr_EndHorizontal(void)
 {
-    Global->Horizontal = false;
-    Global->Cursor.X = RR_POP_SLICE(&Global->HorizontalX);
-    Global->Cursor.Y += Global->HorizontalMaxHeight;
+    gContext->Horizontal = false;
+    gContext->Cursor.X = RR_POP_SLICE(&gContext->HorizontalX);
+    gContext->Cursor.Y += gContext->HorizontalMaxHeight;
 }
 
 static inline void Rr_Advance(Rr_Vec2 Size)
 {
-    if(Global->Horizontal)
+    if(gContext->Horizontal)
     {
-        Global->Cursor.X += Size.Width + Global->HorizontalMargin;
-        Global->HorizontalMaxHeight =
-            RR_MAX(Global->HorizontalMaxHeight, Size.Height);
+        gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
+        gContext->HorizontalMaxHeight =
+            RR_MAX(gContext->HorizontalMaxHeight, Size.Height);
     }
     else
     {
-        Global->Cursor.Y += Size.Height;
+        gContext->Cursor.Y += Size.Height;
     }
 }
 
@@ -614,21 +616,21 @@ void Rr_Separator(void)
 {
     RR_UI_ASSERT_WINDOW();
 
-    Rr_UIWindow *Window = Global->CurrentWindow;
+    Rr_UIWindow *Window = gContext->CurrentWindow;
 
     Rr_Vec2 Size = {
-        Window->Size.X - (Global->ContentsPadding.X * 2.0f),
-        Global->FrameThickness,
+        Window->Size.X - (gContext->ContentsPadding.X * 2.0f),
+        gContext->FrameThickness,
     };
     Rr_Vec2 Position = {
-        Global->Cursor.X,
-        Global->Cursor.Y + (Global->SeparatorLineHeight / 2.0f -
-                            Global->FrameThickness / 2.0f),
+        gContext->Cursor.X,
+        gContext->Cursor.Y + (gContext->SeparatorLineHeight / 2.0f -
+                              gContext->FrameThickness / 2.0f),
     };
-    Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, 0.75f);
+    Rr_Vec4 Color = Rr_MulV4F(gContext->Style.Foreground, 0.75f);
     Rr_DrawSolidQuad(Window, Position, Size, &Color);
 
-    Global->Cursor.Y += Global->SeparatorLineHeight;
+    gContext->Cursor.Y += gContext->SeparatorLineHeight;
 }
 
 void Rr_Label(const char *Text)
@@ -637,13 +639,17 @@ void Rr_Label(const char *Text)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = Global->CurrentWindow;
+    Rr_UIWindow *Window = gContext->CurrentWindow;
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize =
-        Rr_CalculateTextSize(Global->Font, Global->FontSize, &TextString);
+        Rr_CalculateTextSize(gContext->Font, gContext->FontSize, &TextString);
 
-    Rr_DrawText(Window, Global->Cursor, &TextString, &Global->Style.Foreground);
+    Rr_DrawText(
+        Window,
+        gContext->Cursor,
+        &TextString,
+        &gContext->Style.Foreground);
 
     Rr_Advance(TextSize);
 
@@ -679,18 +685,18 @@ static inline void Rr_ButtonBehavior(
     bool *Clicked,
     bool *Hovered)
 {
-    if(Window == Global->HoveredWindow &&
-       Rr_RectContains(Position, Size, Global->MousePosition))
+    if(Window == gContext->HoveredWindow &&
+       Rr_RectContains(Position, Size, gContext->MousePosition))
     {
-        if(Global->LeftMouseButtonDown)
+        if(gContext->LeftMouseButtonDown)
         {
-            Global->MovingWindow = NULL;
+            gContext->MovingWindow = NULL;
             if(Clicked)
             {
                 *Clicked = true;
             }
         }
-        else if(!Global->MovingWindow && !Global->ResizingWindow)
+        else if(!gContext->MovingWindow && !gContext->ResizingWindow)
         {
             if(Hovered)
             {
@@ -706,15 +712,15 @@ bool Rr_Button(const char *Text)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = Global->CurrentWindow;
+    Rr_UIWindow *Window = gContext->CurrentWindow;
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize =
-        Rr_CalculateTextSize(Global->Font, Global->FontSize, &TextString);
+        Rr_CalculateTextSize(gContext->Font, gContext->FontSize, &TextString);
 
     Rr_Vec2 ButtonSize =
-        Rr_AddV2(TextSize, Rr_MulV2F(Global->ButtonPadding, 2.0f));
-    Rr_Vec2 ButtonPosition = Global->Cursor;
+        Rr_AddV2(TextSize, Rr_MulV2F(gContext->ButtonPadding, 2.0f));
+    Rr_Vec2 ButtonPosition = gContext->Cursor;
 
     bool Clicked = false;
     bool Hovered = false;
@@ -724,16 +730,16 @@ bool Rr_Button(const char *Text)
         Window,
         ButtonPosition,
         ButtonSize,
-        &Global->Style.Foreground);
+        &gContext->Style.Foreground);
 
     if(Clicked)
     {
-        Rr_Vec4 ClickedColor = Rr_MulV4F(Global->Style.Foreground, 0.5f);
+        Rr_Vec4 ClickedColor = Rr_MulV4F(gContext->Style.Foreground, 0.5f);
         Rr_DrawSolidQuad(Window, ButtonPosition, ButtonSize, &ClickedColor);
     }
     else if(Hovered)
     {
-        Rr_Vec4 HoveredColor = Rr_MulV4F(Global->Style.Foreground, 0.75f);
+        Rr_Vec4 HoveredColor = Rr_MulV4F(gContext->Style.Foreground, 0.75f);
         Rr_DrawSolidQuad(Window, ButtonPosition, ButtonSize, &HoveredColor);
     }
     else
@@ -742,11 +748,11 @@ bool Rr_Button(const char *Text)
             Window,
             ButtonPosition,
             ButtonSize,
-            &Global->Style.Foreground);
+            &gContext->Style.Foreground);
     }
 
-    Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, Global->ButtonPadding);
-    Rr_DrawText(Window, TextPosition, &TextString, &Global->Style.Background);
+    Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, gContext->ButtonPadding);
+    Rr_DrawText(Window, TextPosition, &TextString, &gContext->Style.Background);
 
     Rr_Advance(ButtonSize);
 
@@ -761,16 +767,16 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = Global->CurrentWindow;
+    Rr_UIWindow *Window = gContext->CurrentWindow;
 
     Rr_Vec2 ContentsPadding =
-        Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
+        Rr_MulV2F(gContext->Style.ContentsPadding, gContext->FontSize);
 
     Rr_Vec2 FramePosition = Rr_AddV2(
-        Global->Cursor,
+        gContext->Cursor,
         (Rr_Vec2){
-            Global->FrameThickness,
-            Global->LineHeight / 2.0f - Global->CheckboxSize.Y / 2.0f,
+            gContext->FrameThickness,
+            gContext->LineHeight / 2.0f - gContext->CheckboxSize.Y / 2.0f,
         });
 
     bool Clicked = false;
@@ -778,7 +784,7 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
     Rr_ButtonBehavior(
         Window,
         FramePosition,
-        Global->CheckboxSize,
+        gContext->CheckboxSize,
         &Clicked,
         &Hovered);
 
@@ -787,39 +793,40 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
         *Checked = !*Checked;
     }
 
-    Rr_Vec4 Color = Rr_MulV4F(Global->Style.Foreground, Hovered ? 0.75f : 1.0f);
+    Rr_Vec4 Color =
+        Rr_MulV4F(gContext->Style.Foreground, Hovered ? 0.75f : 1.0f);
 
     Rr_DrawFrameQuad(
         Window,
         FramePosition,
-        Global->CheckboxSize,
-        Global->FrameThickness,
+        gContext->CheckboxSize,
+        gContext->FrameThickness,
         &Color);
 
     if(*Checked)
     {
         Rr_Vec2 Inset = (Rr_Vec2){
-            Global->FrameThickness * 4.0f,
-            Global->FrameThickness * 4.0f,
+            gContext->FrameThickness * 4.0f,
+            gContext->FrameThickness * 4.0f,
         };
         Rr_Vec2 CheckmarkPosition = Rr_AddV2(FramePosition, Inset);
         Rr_Vec2 CheckmarkSize =
-            Rr_SubV2(Global->CheckboxSize, Rr_MulV2F(Inset, 2.0f));
+            Rr_SubV2(gContext->CheckboxSize, Rr_MulV2F(Inset, 2.0f));
         Rr_DrawSolidQuad(Window, CheckmarkPosition, CheckmarkSize, &Color);
     }
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize =
-        Rr_CalculateTextSize(Global->Font, Global->FontSize, &TextString);
+        Rr_CalculateTextSize(gContext->Font, gContext->FontSize, &TextString);
 
     Rr_Vec2 TextPosition = Rr_AddV2(
-        Global->Cursor,
-        (Rr_Vec2){ ContentsPadding.X + Global->CheckboxSize.X, 0.0f });
-    Rr_DrawText(Window, TextPosition, &TextString, &Global->Style.Foreground);
+        gContext->Cursor,
+        (Rr_Vec2){ ContentsPadding.X + gContext->CheckboxSize.X, 0.0f });
+    Rr_DrawText(Window, TextPosition, &TextString, &gContext->Style.Foreground);
 
     Rr_Vec2 TotalSize = {
-        Global->CheckboxSize.X + TextSize.X + ContentsPadding.X,
-        RR_MAX(Global->CheckboxSize.Y, TextSize.Y),
+        gContext->CheckboxSize.X + TextSize.X + ContentsPadding.X,
+        RR_MAX(gContext->CheckboxSize.Y, TextSize.Y),
     };
     Rr_Advance(TotalSize);
 
@@ -830,7 +837,8 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
 bool Rr_WantMouseCapture(void)
 {
-    return Global && (Global->MouseButtonCapture || Global->HoveredWindow);
+    return gContext &&
+           (gContext->MouseButtonCapture || gContext->HoveredWindow);
 }
 
 bool Rr_WantKeyboardCapture(void)
@@ -838,14 +846,13 @@ bool Rr_WantKeyboardCapture(void)
     return false;
 }
 
-Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
+Rr_UIContext *Rr_CreateUIContext(void)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     Rr_UIContext *Context = RR_ALLOC(Arena, sizeof(Rr_UIContext));
-    Context->App = App;
     Context->Arena = Arena;
 
     Context->NextFontSize =
@@ -954,9 +961,9 @@ Rr_UIContext *Rr_CreateUIContext(Rr_App *App)
     return Context;
 }
 
-void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *Context)
+void Rr_DestroyUIContext(Rr_UIContext *Context)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = gApp->Renderer;
     Rr_DestroyBuffer(Renderer, Context->VertexBuffer);
     Rr_DestroyBuffer(Renderer, Context->IndexBuffer);
     Rr_DestroyBuffer(Renderer, Context->UniformBuffer);
@@ -967,9 +974,9 @@ void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *Context)
     Rr_DestroyArena(Context->Arena);
 }
 
-void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event)
+void Rr_ProcessUIEvent(Rr_Event *Event)
 {
-    if(Global == NULL)
+    if(gContext == NULL)
     {
         return;
     }
@@ -982,7 +989,7 @@ void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event)
         {
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                Global->LeftMouseButtonDown = true;
+                gContext->LeftMouseButtonDown = true;
             }
         }
         break;
@@ -990,7 +997,7 @@ void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event)
         {
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                Global->LeftMouseButtonUp = true;
+                gContext->LeftMouseButtonUp = true;
             }
         }
         break;
@@ -1006,63 +1013,62 @@ void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event)
 void Rr_BeginUI(Rr_UIContext *Context)
 {
     assert(Context);
-    assert(Context->App);
 
-    Rr_App *App = Context->App;
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = gApp->Renderer;
 
-    Global = Context;
-    Global->FrameNumber = Renderer->FrameNumber;
-    Global->FrameArena = Rr_GetFrameArena(Renderer);
+    gContext = Context;
+    gContext->FrameNumber = Renderer->FrameNumber;
+    gContext->FrameArena = Rr_GetFrameArena(Renderer);
 
-    if(Global->NextFontSize != 0.0f)
+    if(gContext->NextFontSize != 0.0f)
     {
-        Global->FontSize = Global->NextFontSize;
-        Global->NextFontSize = 0.0f;
+        gContext->FontSize = gContext->NextFontSize;
+        gContext->NextFontSize = 0.0f;
 
-        Global->LineHeight = Global->FontSize * Global->Font->LineHeight;
-        Global->ContentsPadding =
-            Rr_MulV2F(Global->Style.ContentsPadding, Global->FontSize);
-        Global->HorizontalMargin = Global->FontSize * 0.5f;
+        gContext->LineHeight = gContext->FontSize * gContext->Font->LineHeight;
+        gContext->ContentsPadding =
+            Rr_MulV2F(gContext->Style.ContentsPadding, gContext->FontSize);
+        gContext->HorizontalMargin = gContext->FontSize * 0.5f;
 
-        Global->WindowTitleHeight =
-            Global->Style.TitlePadding.Y * Global->FontSize * 2.0f +
-            Global->LineHeight;
-        Global->MinWindowSizeNoTitle = Rr_MulV2F(Global->ContentsPadding, 2.0f);
-        Global->MinWindowSizeNoTitle.X += Global->FontSize;
-        Global->MinWindowSizeNoTitle.Y += Global->FontSize;
-        Global->MinWindowSize = Global->MinWindowSizeNoTitle;
-        Global->MinWindowSize.Y += Global->WindowTitleHeight;
+        gContext->WindowTitleHeight =
+            gContext->Style.TitlePadding.Y * gContext->FontSize * 2.0f +
+            gContext->LineHeight;
+        gContext->MinWindowSizeNoTitle =
+            Rr_MulV2F(gContext->ContentsPadding, 2.0f);
+        gContext->MinWindowSizeNoTitle.X += gContext->FontSize;
+        gContext->MinWindowSizeNoTitle.Y += gContext->FontSize;
+        gContext->MinWindowSize = gContext->MinWindowSizeNoTitle;
+        gContext->MinWindowSize.Y += gContext->WindowTitleHeight;
 
-        Global->FrameThickness =
-            floorf(RR_MAX(1.0f, Global->FontSize * 0.075f));
-        Global->ResizeHandleSize = Global->FontSize * 0.75f;
-        Global->SeparatorLineHeight = Global->LineHeight * 0.5f;
-        Global->ButtonPadding = (Rr_Vec2){ Global->LineHeight * 0.25f,
-                                           Global->LineHeight * 0.125f };
-        Global->CheckboxSize =
-            (Rr_Vec2){ Global->LineHeight * 0.75f, Global->LineHeight * 0.75f };
+        gContext->FrameThickness =
+            floorf(RR_MAX(1.0f, gContext->FontSize * 0.075f));
+        gContext->ResizeHandleSize = gContext->FontSize * 0.75f;
+        gContext->SeparatorLineHeight = gContext->LineHeight * 0.5f;
+        gContext->ButtonPadding = (Rr_Vec2){ gContext->LineHeight * 0.25f,
+                                             gContext->LineHeight * 0.125f };
+        gContext->CheckboxSize = (Rr_Vec2){ gContext->LineHeight * 0.75f,
+                                            gContext->LineHeight * 0.75f };
     }
 
     Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
-    Global->MousePosition = Rr_GetMousePosition(App);
+    gContext->MousePosition = Rr_GetMousePosition();
 
-    Rr_UIWindow *OldHoveredWindow = Global->HoveredWindow;
-    Global->HoveredWindow = NULL;
-    for(int Index = Global->Windows.Count - 1; Index >= 0; --Index)
+    Rr_UIWindow *OldHoveredWindow = gContext->HoveredWindow;
+    gContext->HoveredWindow = NULL;
+    for(int Index = gContext->Windows.Count - 1; Index >= 0; --Index)
     {
-        Rr_UIWindow *Window = Global->Windows.Data[Index];
+        Rr_UIWindow *Window = gContext->Windows.Data[Index];
         if(Rr_RectContains(
                Window->Position,
                Window->Size,
-               Global->MousePosition))
+               gContext->MousePosition))
         {
-            Global->HoveredWindow = Window;
+            gContext->HoveredWindow = Window;
 
-            if(Global->LeftMouseButtonDown)
+            if(gContext->LeftMouseButtonDown)
             {
                 Rr_UIWindow *HighestWindow =
-                    Global->Windows.Data[Global->Windows.Count - 1];
+                    gContext->Windows.Data[gContext->Windows.Count - 1];
                 if(Window != HighestWindow)
                 {
                     int Temp = HighestWindow->ZOrder;
@@ -1070,87 +1076,87 @@ void Rr_BeginUI(Rr_UIContext *Context)
                     Window->ZOrder = Temp;
                 }
 
-                Global->MouseButtonCapture = true;
+                gContext->MouseButtonCapture = true;
             }
 
             break;
         }
     }
 
-    if(Global->MovingWindow)
+    if(gContext->MovingWindow)
     {
         if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_BIT))
         {
             Rr_Vec2 Delta =
-                Rr_SubV2(Global->MousePosition, Global->MovingStart);
-            Global->MovingWindow->Position =
-                Rr_AddV2(Global->MovingWindowStart, Delta);
-            Global->MovingWindow->Position =
-                Rr_FloorV2(Global->MovingWindow->Position);
+                Rr_SubV2(gContext->MousePosition, gContext->MovingStart);
+            gContext->MovingWindow->Position =
+                Rr_AddV2(gContext->MovingWindowStart, Delta);
+            gContext->MovingWindow->Position =
+                Rr_FloorV2(gContext->MovingWindow->Position);
         }
         else
         {
-            Global->MovingWindow = NULL;
+            gContext->MovingWindow = NULL;
         }
     }
-    else if(Global->ResizingWindow)
+    else if(gContext->ResizingWindow)
     {
         if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_BIT))
         {
             Rr_Vec2 Delta =
-                Rr_SubV2(Global->MousePosition, Global->ResizingStart);
+                Rr_SubV2(gContext->MousePosition, gContext->ResizingStart);
             Rr_Vec2 NewWindowSize =
-                Rr_AddV2(Global->ResizingWindowStart, Delta);
+                Rr_AddV2(gContext->ResizingWindowStart, Delta);
             Rr_Vec2 MinWindowSize =
-                Rr_GetMinWindowSize(Global->ResizingWindow->Flags);
+                Rr_GetMinWindowSize(gContext->ResizingWindow->Flags);
             NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
             NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
-            Global->ResizingWindow->Size = Rr_FloorV2(NewWindowSize);
+            gContext->ResizingWindow->Size = Rr_FloorV2(NewWindowSize);
         }
         else
         {
-            Global->ResizingWindow = NULL;
+            gContext->ResizingWindow = NULL;
         }
     }
-    else if(Global->HoveredWindow && Global->LeftMouseButtonDown)
+    else if(gContext->HoveredWindow && gContext->LeftMouseButtonDown)
     {
         Rr_Vec2 ResizeHandleSize = {
-            Global->ResizeHandleSize,
-            Global->ResizeHandleSize,
+            gContext->ResizeHandleSize,
+            gContext->ResizeHandleSize,
         };
         Rr_Vec2 ResizeHandlePosition = Rr_SubV2(
             Rr_AddV2(
-                Global->HoveredWindow->Position,
-                Global->HoveredWindow->Size),
+                gContext->HoveredWindow->Position,
+                gContext->HoveredWindow->Size),
             ResizeHandleSize);
 
         if(Rr_RectContains(
                ResizeHandlePosition,
                ResizeHandleSize,
-               Global->MousePosition))
+               gContext->MousePosition))
         {
-            Global->ResizingStart = Global->MousePosition;
-            Global->ResizingWindow = Global->HoveredWindow;
-            Global->ResizingWindowStart = Global->ResizingWindow->Size;
+            gContext->ResizingStart = gContext->MousePosition;
+            gContext->ResizingWindow = gContext->HoveredWindow;
+            gContext->ResizingWindowStart = gContext->ResizingWindow->Size;
         }
         else
         {
-            Global->MovingStart = Global->MousePosition;
-            Global->MovingWindow = Global->HoveredWindow;
-            Global->MovingWindowStart = Global->MovingWindow->Position;
+            gContext->MovingStart = gContext->MousePosition;
+            gContext->MovingWindow = gContext->HoveredWindow;
+            gContext->MovingWindowStart = gContext->MovingWindow->Position;
         }
     }
 
-    RR_ZERO(Global->Windows);
+    RR_ZERO(gContext->Windows);
     RR_RESERVE_SLICE(
-        &Global->Windows,
-        Global->LastWindowCount,
-        Global->FrameArena);
-    Global->CurrentWindow = NULL;
+        &gContext->Windows,
+        gContext->LastWindowCount,
+        gContext->FrameArena);
+    gContext->CurrentWindow = NULL;
 
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
-    Global->ScreenSize.Width = (float)SwapchainSize.Width;
-    Global->ScreenSize.Height = (float)SwapchainSize.Height;
+    gContext->ScreenSize.Width = (float)SwapchainSize.Width;
+    gContext->ScreenSize.Height = (float)SwapchainSize.Height;
 }
 
 static inline void Rr_DrawWindowTitle(Rr_UIWindow *Window)
@@ -1158,37 +1164,37 @@ static inline void Rr_DrawWindowTitle(Rr_UIWindow *Window)
     Rr_Vec2 TitlePosition = Window->Position;
     Rr_Vec2 TitleSize = {
         Window->Size.X,
-        Global->WindowTitleHeight,
+        gContext->WindowTitleHeight,
     };
     Rr_DrawSolidQuad(
         Window,
         TitlePosition,
         TitleSize,
-        &Global->Style.TitleBackground);
+        &gContext->Style.TitleBackground);
     Rr_DrawText(
         Window,
         Rr_AddV2(
             TitlePosition,
-            Rr_MulV2F(Global->Style.TitlePadding, Global->FontSize)),
+            Rr_MulV2F(gContext->Style.TitlePadding, gContext->FontSize)),
         &Window->Title,
-        &Global->Style.Foreground);
+        &gContext->Style.Foreground);
 }
 
 static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
 {
     Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
-    BottomRight.X -= Global->FrameThickness;
-    BottomRight.Y -= Global->FrameThickness;
+    BottomRight.X -= gContext->FrameThickness;
+    BottomRight.Y -= gContext->FrameThickness;
     Rr_Vec2 ResizeHandlePosition = {
-        BottomRight.X - Global->ResizeHandleSize,
-        BottomRight.Y - Global->ResizeHandleSize,
+        BottomRight.X - gContext->ResizeHandleSize,
+        BottomRight.Y - gContext->ResizeHandleSize,
     };
     Rr_Vec2 ResizeHandleSize = {
-        Global->ResizeHandleSize,
-        Global->ResizeHandleSize,
+        gContext->ResizeHandleSize,
+        gContext->ResizeHandleSize,
     };
 
-    Rr_Vec4 ResizeHandleColor = Global->Style.Foreground;
+    Rr_Vec4 ResizeHandleColor = gContext->Style.Foreground;
 
     bool Hovered = false;
     Rr_ButtonBehavior(
@@ -1198,15 +1204,15 @@ static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
         NULL,
         &Hovered);
 
-    if(Hovered || Global->ResizingWindow == Window)
+    if(Hovered || gContext->ResizingWindow == Window)
     {
         ResizeHandleColor = Rr_MulV4F(ResizeHandleColor, 0.75f);
     }
 
     Rr_DrawSolidTriangle(
         Window,
-        (Rr_Vec2){ BottomRight.X - Global->ResizeHandleSize, BottomRight.Y },
-        (Rr_Vec2){ BottomRight.X, BottomRight.Y - Global->ResizeHandleSize },
+        (Rr_Vec2){ BottomRight.X - gContext->ResizeHandleSize, BottomRight.Y },
+        (Rr_Vec2){ BottomRight.X, BottomRight.Y - gContext->ResizeHandleSize },
         (Rr_Vec2){ BottomRight.X, BottomRight.Y },
         &ResizeHandleColor);
 }
@@ -1223,36 +1229,35 @@ void Rr_EndUI(void)
 {
     RR_UI_ASSERT_NO_WINDOW();
 
-    Global->LastWindowCount = Global->Windows.Count;
+    gContext->LastWindowCount = gContext->Windows.Count;
 
-    if(Global->Windows.Count == 0)
+    if(gContext->Windows.Count == 0)
     {
-        Global = NULL;
+        gContext = NULL;
         return;
     }
 
-    Rr_App *App = Global->App;
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = gApp->Renderer;
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
     Rr_UIUniformData UniformData = {
-        .ScreenSize = Global->ScreenSize,
-        .DistanceRange = Global->Font->DistanceRange,
-        .Time = Rr_GetTimeSeconds(App),
+        .ScreenSize = gContext->ScreenSize,
+        .DistanceRange = gContext->Font->DistanceRange,
+        .Time = Rr_GetTimeSeconds(),
     };
     char *MappedUniformData =
-        Rr_GetMappedBufferData(Renderer, Global->UniformBuffer);
+        Rr_GetMappedBufferData(Renderer, gContext->UniformBuffer);
     memcpy(MappedUniformData, &UniformData, sizeof(UniformData));
 
     Rr_UIVertex *VertexBufferDataStart;
     Rr_UIVertex *VertexBufferData;
     VertexBufferData = VertexBufferDataStart =
-        Rr_GetMappedBufferData(Renderer, Global->VertexBuffer);
+        Rr_GetMappedBufferData(Renderer, gContext->VertexBuffer);
 
     Rr_UIIndex *IndexBufferDataStart;
     Rr_UIIndex *IndexBufferData;
     IndexBufferData = IndexBufferDataStart =
-        Rr_GetMappedBufferData(Renderer, Global->IndexBuffer);
+        Rr_GetMappedBufferData(Renderer, gContext->IndexBuffer);
 
     Rr_ColorTarget ColorTarget = {
         .Slot = 0,
@@ -1267,37 +1272,37 @@ void Rr_EndUI(void)
         &SwapchainImage,
         NULL,
         NULL);
-    Rr_BindGraphicsPipeline(GraphicsNode, Global->GraphicsPipeline);
-    Rr_BindVertexBuffer(GraphicsNode, Global->VertexBuffer, 0, 0);
+    Rr_BindGraphicsPipeline(GraphicsNode, gContext->GraphicsPipeline);
+    Rr_BindVertexBuffer(GraphicsNode, gContext->VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(
         GraphicsNode,
-        Global->IndexBuffer,
+        gContext->IndexBuffer,
         0,
         0,
         RR_INDEX_TYPE_UINT16);
     Rr_BindUniformBuffer(
         GraphicsNode,
-        Global->UniformBuffer,
+        gContext->UniformBuffer,
         0,
         0,
         0,
         sizeof(Rr_UIUniformData));
     Rr_BindCombinedImageSampler(
         GraphicsNode,
-        Global->Font->Atlas,
-        Global->Sampler,
+        gContext->Font->Atlas,
+        gContext->Sampler,
         0,
         1);
 
     qsort(
-        Global->Windows.Data,
-        Global->Windows.Count,
+        gContext->Windows.Data,
+        gContext->Windows.Count,
         sizeof(Rr_UIWindow *),
         Rr_WindowSort);
 
-    for(size_t Index = 0; Index < Global->Windows.Count; ++Index)
+    for(size_t Index = 0; Index < gContext->Windows.Count; ++Index)
     {
-        Rr_UIWindow *Window = Global->Windows.Data[Index];
+        Rr_UIWindow *Window = gContext->Windows.Data[Index];
 
         bool HasTitle =
             RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
@@ -1310,7 +1315,7 @@ void Rr_EndUI(void)
         };
         if(HasTitle)
         {
-            ContentsPosition.Y += Global->WindowTitleHeight;
+            ContentsPosition.Y += gContext->WindowTitleHeight;
         }
         Rr_Vec2 ContentsSize = {
             Window->Size.X,
@@ -1318,14 +1323,14 @@ void Rr_EndUI(void)
         };
         if(HasTitle)
         {
-            ContentsSize.Y -= Global->WindowTitleHeight;
+            ContentsSize.Y -= gContext->WindowTitleHeight;
         }
         Rr_UIQuad ContentsBackgroundQuad = Window->Vertices.Data;
         Rr_SolidQuad(
             ContentsBackgroundQuad,
             ContentsPosition,
             ContentsSize,
-            &Global->Style.Background);
+            &gContext->Style.Background);
 
         if(HasTitle)
         {
@@ -1341,8 +1346,8 @@ void Rr_EndUI(void)
             Window,
             Window->Position,
             Window->Size,
-            Global->FrameThickness,
-            &Global->Style.Outline);
+            gContext->FrameThickness,
+            &gContext->Style.Outline);
 
         /* Finished generating geometry. */
 
@@ -1387,21 +1392,21 @@ void Rr_EndUI(void)
         Window->LastVertexCount = Window->Vertices.Count;
     }
 
-    if(Global->LeftMouseButtonUp)
+    if(gContext->LeftMouseButtonUp)
     {
-        Global->LeftMouseButtonHeld = false;
-        Global->MouseButtonCapture = false;
+        gContext->LeftMouseButtonHeld = false;
+        gContext->MouseButtonCapture = false;
     }
-    Global->LeftMouseButtonDown = false;
-    Global->LeftMouseButtonUp = false;
-    RR_ZERO(Global->HorizontalX);
+    gContext->LeftMouseButtonDown = false;
+    gContext->LeftMouseButtonUp = false;
+    RR_ZERO(gContext->HorizontalX);
 }
 
 void Rr_SetFontSize(float Size)
 {
-    if(Global)
+    if(gContext)
     {
-        Global->NextFontSize = Size;
+        gContext->NextFontSize = Size;
     }
 }
 
@@ -1412,20 +1417,20 @@ void Rr_DebugOverlay(void)
     static double Timer = 1.0f;
     static double FPSCount = 0.0f;
 
-    Timer += Rr_GetDeltaSeconds(Global->App);
+    Timer += Rr_GetDeltaSeconds();
 
     if(Timer > 0.25f)
     {
-        FPSCount = Rr_GetFramesPerSecond(Global->App);
+        FPSCount = Rr_GetFramesPerSecond();
         Timer = 0.0f;
     }
 
-    Rr_Renderer *Renderer = Global->App->Renderer;
+    Rr_Renderer *Renderer = gApp->Renderer;
 
     Rr_BeginWindow("Rr_DebugOverlay", RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
     Rr_LabelF("FPS: %.2f", FPSCount);
     Rr_Separator();
-    Rr_LabelF("Renderer Arena: %d", Global->App->Renderer->Arena->Commited);
+    Rr_LabelF("Renderer Arena: %d", gApp->Renderer->Arena->Commited);
     for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_Frame *Frame = Renderer->Frames + Index;

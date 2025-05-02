@@ -441,12 +441,6 @@ static void Rr_InitVMA(Rr_Renderer *Renderer)
         .vkCreateImage = Device->CreateImage,
         .vkDestroyImage = Device->DestroyImage,
         .vkCmdCopyBuffer = Device->CmdCopyBuffer,
-        // .vkGetBufferMemoryRequirements2KHR =
-        // Device->GetBufferMemoryRequirements2,
-        // .vkGetImageMemoryRequirements2KHR =
-        // Device->GetImageMemoryRequirements2, .vkBindBufferMemory2KHR =
-        // Device->BindBufferMemory2, .vkBindImageMemory2KHR =
-        // Device->BindImageMemory2,
     };
     VmaAllocatorCreateInfo AllocatorInfo = {
         .flags = 0,
@@ -539,23 +533,22 @@ static void Rr_CleanupTransientCommandPools(Rr_Renderer *Renderer)
         NULL);
 }
 
-Rr_Renderer *Rr_CreateRenderer(Rr_App *App)
+Rr_Renderer *Rr_CreateRenderer(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
+    SDL_Window *Window = gApp->Window;
+
     Rr_Renderer *Renderer = RR_ALLOC_TYPE(Arena, Rr_Renderer);
     Renderer->Arena = Arena;
-
-    SDL_Window *Window = App->Window;
     Renderer->Window = Window;
-    // Rr_AppConfig *Config = App->Config;
 
     Rr_InitLoader(&Renderer->Loader);
     Rr_InitInstance(
         &Renderer->Loader,
-        SDL_GetWindowTitle(App->Window),
+        SDL_GetWindowTitle(gApp->Window),
         &Renderer->Instance);
     Rr_InitSurface(Window, &Renderer->Instance, &Renderer->Surface);
     Rr_InitDeviceAndQueues(
@@ -711,7 +704,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
         {
             Rr_PendingLoad *PendingLoad =
                 &Renderer->PendingLoadsSlice.Data[Index];
-            PendingLoad->LoadingCallback(App, PendingLoad->UserData);
+            PendingLoad->LoadingCallback(PendingLoad->UserData);
         }
         RR_EMPTY_SLICE(&Renderer->PendingLoadsSlice);
 
@@ -719,9 +712,9 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
     }
 }
 
-void Rr_PrepareFrame(Rr_App *App)
+void Rr_PrepareFrame(void)
 {
-    Rr_Renderer *Renderer = App->Renderer;
+    Rr_Renderer *Renderer = gApp->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_ResetArena(Frame->Arena);
@@ -740,14 +733,14 @@ void Rr_PrepareFrame(Rr_App *App)
         Rr_GetGraphImageHandle(Frame->Graph, Frame->VirtualSwapchainImage)
             ->Values.Index;
 
-    Rr_ProcessPendingLoads(App);
+    Rr_ProcessPendingLoads(gApp);
 }
 
-void Rr_DrawFrame(Rr_App *App)
+void Rr_DrawFrame(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Renderer *Renderer = App->Renderer;
+    Rr_Renderer *Renderer = gApp->Renderer;
     Rr_Device *Device = &Renderer->Device;
     Rr_Swapchain *Swapchain = &Renderer->Swapchain;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
@@ -817,9 +810,7 @@ void Rr_DrawFrame(Rr_App *App)
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext = NULL,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-        .pInheritanceInfo = NULL,
     };
 
     /* Execute Frame Graph */

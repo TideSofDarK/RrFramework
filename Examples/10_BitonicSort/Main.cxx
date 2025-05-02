@@ -252,11 +252,11 @@ Rr_Buffer *StagingBuffer;
 SBitonicSorter *Sorter;
 SValidator *Validator;
 
-static void Init(Rr_App *App, void *UserData)
+static void Init(void *UserData)
 {
     std::srand((unsigned int)std::time(NULL));
 
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     RandomNumbers.resize(COUNT);
     SortedNumbers.resize(COUNT);
@@ -281,9 +281,9 @@ static void Init(Rr_App *App, void *UserData)
     Validator = new SValidator(Renderer);
 }
 
-static void Iterate(Rr_App *App, void *UserData)
+static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     /* Upload both sorted and unsorted buffers and validate results. */
 
@@ -336,9 +336,9 @@ static void Iterate(Rr_App *App, void *UserData)
         RR_IMAGE_ASPECT_COLOR_BIT);
 }
 
-static void Cleanup(Rr_App *App, void *UserData)
+static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     delete Sorter;
     delete Validator;

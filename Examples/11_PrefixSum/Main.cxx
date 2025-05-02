@@ -41,9 +41,9 @@ static uint32_t GetDispatchSize()
     return DispatchSize;
 }
 
-static void Init(Rr_App *App, void *UserData)
+static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
@@ -101,9 +101,9 @@ static void Init(Rr_App *App, void *UserData)
     std::cout << GetPrefixSum(COUNT - 1) << std::endl;
 }
 
-static void Iterate(Rr_App *App, void *UserData)
+static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     size_t NumbersSize = COUNT * sizeof(uint32_t);
 
@@ -146,9 +146,9 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_BindStorageBuffer(GraphicsNode, OutputBuffer, 0, 1, 0, NumbersSize);
 }
 
-static void Cleanup(Rr_App *App, void *UserData)
+static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Rr_DestroyBuffer(Renderer, InputBuffer);
     Rr_DestroyBuffer(Renderer, OutputBuffer);

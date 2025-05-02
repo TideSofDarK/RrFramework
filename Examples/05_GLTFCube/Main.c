@@ -27,14 +27,14 @@ static SUniformData UniformData;
 
 static bool Loaded;
 
-static void OnLoadComplete(Rr_App *App, void *UserData)
+static void OnLoadComplete(void *UserData)
 {
     Loaded = true;
 }
 
-static void Init(Rr_App *App, void *UserData)
+static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     /* Create simple sampler. */
 
@@ -133,11 +133,16 @@ static void Init(Rr_App *App, void *UserData)
 
     /* Create load thread and load glTF asset. */
 
-    LoadThread = Rr_CreateLoadThread(App);
+    LoadThread = Rr_CreateLoadThread();
     Rr_LoadTask Tasks[] = {
         Rr_LoadGLTFAssetTask(EXAMPLE_ASSET_CUBE_GLB, GLTFContext, &GLTFAsset),
     };
-    Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
+    Rr_LoadAsync(
+        LoadThread,
+        RR_ARRAY_COUNT(Tasks),
+        Tasks,
+        OnLoadComplete,
+        NULL);
 
     /* Create depth buffer. */
 
@@ -168,9 +173,9 @@ static void Init(Rr_App *App, void *UserData)
     UniformData.Model = Rr_M4D(1.0f);
 }
 
-static void DrawFirstGLTFPrimitive(Rr_App *App, Rr_GraphNode *GraphicsNode)
+static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
@@ -224,9 +229,9 @@ static void DrawFirstGLTFPrimitive(Rr_App *App, Rr_GraphNode *GraphicsNode)
     Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
 }
 
-static void Iterate(Rr_App *App, void *UserData)
+static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
@@ -253,15 +258,15 @@ static void Iterate(Rr_App *App, void *UserData)
         DepthAttachment);
     if(Loaded)
     {
-        DrawFirstGLTFPrimitive(App, GraphicsNode);
+        DrawFirstGLTFPrimitive(GraphicsNode);
     }
 }
 
-static void Cleanup(Rr_App *App, void *UserData)
+static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
-    Rr_DestroyLoadThread(App, LoadThread);
+    Rr_DestroyLoadThread(LoadThread);
     Rr_DestroyGLTFContext(GLTFContext);
     Rr_DestroyImage(Renderer, DepthAttachment);
     Rr_DestroyBuffer(Renderer, StagingBuffer);

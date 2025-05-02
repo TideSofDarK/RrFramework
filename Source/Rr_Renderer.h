@@ -115,7 +115,7 @@ struct Rr_Renderer
     Rr_Arena *Arena;
 };
 
-extern Rr_Renderer *Rr_CreateRenderer(Rr_App *App);
+extern Rr_Renderer *Rr_CreateRenderer(void);
 
 extern void Rr_WaitIdle(Rr_Renderer *Renderer);
 
@@ -123,9 +123,9 @@ extern void Rr_DestroyRenderer(Rr_Renderer *Renderer);
 
 extern void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty);
 
-extern void Rr_PrepareFrame(Rr_App *App);
+extern void Rr_PrepareFrame(void);
 
-extern void Rr_DrawFrame(Rr_App *App);
+extern void Rr_DrawFrame(void);
 
 extern VkCommandBuffer Rr_BeginImmediate(Rr_Renderer *Renderer);
 

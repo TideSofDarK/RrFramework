@@ -7,9 +7,9 @@ static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
 static Rr_Buffer *IndexBuffer;
 
-static void Init(Rr_App *App, void *UserData)
+static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     PipelineLayout = Rr_CreatePipelineLayout(Renderer, 0, NULL);
 
@@ -70,9 +70,9 @@ static void Init(Rr_App *App, void *UserData)
         RR_MAKE_DATA_ARRAY(IndexData));
 }
 
-static void Iterate(Rr_App *App, void *UserData)
+static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
@@ -96,9 +96,9 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
 }
 
-static void Cleanup(Rr_App *App, void *UserData)
+static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
     Rr_DestroyBuffer(Renderer, VertexBuffer);
     Rr_DestroyBuffer(Renderer, IndexBuffer);
     Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);

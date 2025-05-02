@@ -36,6 +36,7 @@ struct Rr_FrameTime
     double DeltaSeconds;
 };
 
+typedef struct Rr_App Rr_App;
 struct Rr_App
 {
     Rr_AppConfig *Config;
@@ -55,3 +56,5 @@ struct Rr_App
 
     Rr_Arena *Arena;
 };
+
+extern Rr_App *gApp;

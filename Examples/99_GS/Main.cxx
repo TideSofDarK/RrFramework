@@ -60,9 +60,9 @@ struct SCamera
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
     }
 
-    void Update(Rr_App *App, Rr_InputState *State)
+    void Update(Rr_InputState *State)
     {
-        float DeltaTime = Rr_GetDeltaSeconds(App);
+        float DeltaTime = Rr_GetDeltaSeconds();
 
         Rr_KeyStates Keys = State->Keys;
 
@@ -88,7 +88,7 @@ struct SCamera
 
         if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
-            Rr_SetRelativeMouseMode(App, true);
+            Rr_SetRelativeMouseMode(true);
             constexpr float Sensitivity = 0.2f;
             Yaw = Rr_WrapMax(
                 Yaw + (State->MousePositionDelta.X * Sensitivity),
@@ -100,7 +100,7 @@ struct SCamera
         }
         else
         {
-            Rr_SetRelativeMouseMode(App, false);
+            Rr_SetRelativeMouseMode(false);
         }
 
         float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
@@ -300,7 +300,7 @@ struct SSplatRenderer
         Rr_DestroyBuffer(Renderer, UniformBuffer);
     }
 
-    void Render(Rr_App *App, const SCamera &Camera, Rr_Image *ColorAttachment)
+    void Render(const SCamera &Camera, Rr_Image *ColorAttachment)
     {
         Sorter.Sort(
             Camera.ProjMatrix * Camera.ViewMatrix,
@@ -363,9 +363,9 @@ SCamera Camera;
 
 SSplatRenderer *SplatData;
 
-static void Init(Rr_App *App, void *UserData)
+static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Camera.Position = { 0.0f, -0.5f, -2.5f };
 
@@ -373,9 +373,9 @@ static void Init(Rr_App *App, void *UserData)
         new SSplatRenderer(Renderer, Rr_LoadAsset(EXAMPLE_ASSET_PLUSH_SPLAT));
 }
 
-static void Iterate(Rr_App *App, void *UserData)
+static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     static std::vector<Rr_InputMapping> InputMappings = {
         { RR_SCANCODE_W, RR_SCANCODE_UNKNOWN },
@@ -397,18 +397,18 @@ static void Iterate(Rr_App *App, void *UserData)
 
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
     Camera.SetPerspective(50.0f, SwapchainSize, 0.1f, 200.0f);
-    Camera.Update(App, &InputState);
+    Camera.Update(&InputState);
     if(Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
     {
-        Rr_ToggleFullscreen(App);
+        Rr_ToggleFullscreen();
     }
 
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
-    SplatData->Render(App, Camera, SwapchainImage);
+    SplatData->Render(Camera, SwapchainImage);
 }
 
-static void Cleanup(Rr_App *App, void *UserData)
+static void Cleanup(void *UserData)
 {
     delete SplatData;
 }

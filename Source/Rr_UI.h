@@ -5,11 +5,11 @@
 #include <Rr/Rr_String.h>
 #include <Rr/Rr_UI.h>
 
-extern Rr_UIContext *Rr_CreateUIContext(Rr_App *App);
+extern Rr_UIContext *Rr_CreateUIContext(void);
 
-extern void Rr_DestroyUIContext(Rr_App *App, Rr_UIContext *UI);
+extern void Rr_DestroyUIContext(Rr_UIContext *UI);
 
-extern void Rr_ProcessUIEvent(Rr_App *App, Rr_Event *Event);
+extern void Rr_ProcessUIEvent(Rr_Event *Event);
 
 extern void Rr_BeginUI(Rr_UIContext *UI);
 

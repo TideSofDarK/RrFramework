@@ -621,10 +621,10 @@ static SRect GetScreenRect()
              DeprojectedMax.Y };
 }
 
-static SPoint ConvertMousePosition(Rr_App *App)
+static SPoint ConvertMousePosition()
 {
-    Rr_Vec2 MousePosition = Rr_GetMousePosition(App);
-    Rr_IntVec2 WindowSize = Rr_GetWindowSize(App);
+    Rr_Vec2 MousePosition = Rr_GetMousePosition();
+    Rr_IntVec2 WindowSize = Rr_GetWindowSize();
     MousePosition.X /= (float)WindowSize.X;
     MousePosition.Y /= (float)WindowSize.Y;
     MousePosition *= 2.0f;
@@ -636,9 +636,9 @@ static SPoint ConvertMousePosition(Rr_App *App)
     return { Deprojected.X, Deprojected.Y };
 }
 
-static void Init(Rr_App *App, void *UserData)
+static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
@@ -694,7 +694,7 @@ static void Init(Rr_App *App, void *UserData)
     RebuildTree();
 }
 
-static void Event(Rr_App *App, Rr_Event *Event)
+static void Event(Rr_Event *Event)
 {
     switch(Event->Type)
     {
@@ -713,7 +713,7 @@ static void Event(Rr_App *App, Rr_Event *Event)
         {
             if(TrySelect)
             {
-                SelectEnd = ConvertMousePosition(App);
+                SelectEnd = ConvertMousePosition();
                 Selecting = std::fabs(SelectStart.X - SelectEnd.X) > 10.0f ||
                             std::fabs(SelectStart.Y - SelectEnd.Y) > 10.0f;
             }
@@ -728,7 +728,7 @@ static void Event(Rr_App *App, Rr_Event *Event)
 
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                SelectStart = ConvertMousePosition(App);
+                SelectStart = ConvertMousePosition();
                 TrySelect = true;
                 Selecting = false;
             }
@@ -736,7 +736,7 @@ static void Event(Rr_App *App, Rr_Event *Event)
             {
                 Dragging = true;
                 DragStartCamera = CameraPosition;
-                DragStartMouse = Rr_GetMousePosition(App);
+                DragStartMouse = Rr_GetMousePosition();
             }
         }
         break;
@@ -748,7 +748,7 @@ static void Event(Rr_App *App, Rr_Event *Event)
                 {
                     if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
                     {
-                        SPoint Point = ConvertMousePosition(App);
+                        SPoint Point = ConvertMousePosition();
                         SGPUDraw Draw{};
                         Draw.Width = GetRandomFloat(32.0f, 64.0f);
                         Draw.Height = Draw.Width;
@@ -775,17 +775,16 @@ static void Event(Rr_App *App, Rr_Event *Event)
     }
 }
 
-static void Update(Rr_App *App)
+static void Update()
 {
-    float DeltaTime = Rr_GetDeltaSeconds(App);
+    float DeltaTime = Rr_GetDeltaSeconds();
 
     Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
 
     if(Dragging)
     {
-        CameraPosition =
-            DragStartCamera -
-            (DragStartMouse - Rr_GetMousePosition(App)) * CameraZoom;
+        CameraPosition = DragStartCamera -
+                         (DragStartMouse - Rr_GetMousePosition()) * CameraZoom;
     }
 
     if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
@@ -830,11 +829,11 @@ static void Update(Rr_App *App)
     }
 }
 
-static void Render(Rr_App *App)
+static void Render()
 {
     auto Lock = std::unique_lock(Mutex, std::try_to_lock);
 
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
@@ -852,7 +851,7 @@ static void Render(Rr_App *App)
     CameraProjection = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, -1, 1);
     CameraView = Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
     UniformData.ViewProjection = CameraProjection * CameraView;
-    UniformData.Time = Rr_GetTimeSeconds(App);
+    UniformData.Time = Rr_GetTimeSeconds();
 
     char *StagingDataStart =
         (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
@@ -960,7 +959,7 @@ static void Reset()
     RenderResult.clear();
 }
 
-static void Iterate(Rr_App *App, void *UserData)
+static void Iterate(void *UserData)
 {
     Rr_DebugOverlay();
 
@@ -988,7 +987,7 @@ static void Iterate(Rr_App *App, void *UserData)
     if(Rr_Checkbox("Use VSync", &VSyncEnabled))
     {
         Rr_SetSwapchainPresentMode(
-            Rr_GetRenderer(App),
+            Rr_GetRenderer(),
             VSyncEnabled ? RR_PRESENT_MODE_FIFO : RR_PRESENT_MODE_IMMEDIATE);
     }
     Rr_EndHorizontal();
@@ -999,14 +998,14 @@ static void Iterate(Rr_App *App, void *UserData)
     Rr_Label("Multi\n line\n  text");
     Rr_EndWindow();
 
-    Update(App);
-    Render(App);
+    Update();
+    Render();
     Reset();
 }
 
-static void Cleanup(Rr_App *App, void *UserData)
+static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Rr_DestroyBuffer(Renderer, UniformBuffer);
     Rr_DestroyBuffer(Renderer, StorageBuffer);

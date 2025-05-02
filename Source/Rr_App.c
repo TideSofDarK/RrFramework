@@ -10,6 +10,10 @@
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_vulkan.h>
 
+#include <assert.h>
+
+Rr_App *gApp = NULL;
+
 static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
@@ -59,32 +63,32 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
     }
 }
 
-static void Rr_Iterate(Rr_App *App)
+static void Rr_Iterate(void)
 {
-    Rr_CalculateDeltaTime(&App->FrameTime);
+    Rr_CalculateDeltaTime(&gApp->FrameTime);
 
-    Rr_PrepareFrame(App);
+    Rr_PrepareFrame();
 
-    Rr_BeginUI(App->UI);
+    Rr_BeginUI(gApp->UI);
 
-    App->Config->IterateFunc(App, App->UserData);
+    gApp->Config->IterateFunc(gApp->UserData);
 
     Rr_EndUI();
 
-    bool Minimized = (SDL_GetWindowFlags(App->Window) & SDL_WINDOW_MINIMIZED);
+    bool Minimized = (SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_MINIMIZED);
     if(Minimized == true)
     {
         SDL_Delay(100);
     }
-    Rr_DrawFrame(App);
+    Rr_DrawFrame();
 
 #ifdef RR_PERFORMANCE_COUNTER
-    Rr_CalculateFPS(&App->FrameTime);
+    Rr_CalculateFPS(&gApp->FrameTime);
 #endif
 
-    if(App->FrameTime.EnableFrameLimiter)
+    if(gApp->FrameTime.EnableFrameLimiter)
     {
-        Rr_SimulateVSync(&App->FrameTime);
+        Rr_SimulateVSync(&gApp->FrameTime);
     }
 }
 
@@ -125,6 +129,8 @@ Rr_IntVec2 Rr_GetDefaultWindowSize(void)
 
 void Rr_Run(Rr_AppConfig *Config)
 {
+    assert(gApp == NULL && "You shouldn't call Rr_Run() more than once!");
+
     Rr_InitPlatform();
 
     SDL_SetAppMetadata(Config->Title, Config->Version, Config->Package);
@@ -137,45 +143,45 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    Rr_App *App = RR_ALLOC_TYPE(Arena, Rr_App);
-    App->Arena = Arena;
+    gApp = RR_ALLOC_TYPE(Arena, Rr_App);
+    gApp->Arena = Arena;
 
-    App->Config = Config;
-    App->Window = SDL_CreateWindow(
+    gApp->Config = Config;
+    gApp->Window = SDL_CreateWindow(
         Config->Title,
         WindowSize.Width,
         WindowSize.Height,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
             SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    App->SyncArena = Rr_CreateSyncArena();
-    App->UserData = Config->UserData;
+    gApp->SyncArena = Rr_CreateSyncArena();
+    gApp->UserData = Config->UserData;
 
-    Rr_SetScratchTLS(&App->ScratchArenaTLS);
+    Rr_SetScratchTLS(&gApp->ScratchArenaTLS);
 
     Rr_InitScratch(RR_MAIN_THREAD_SCRATCH_ARENA_SIZE);
 
-    Rr_InitFrameTime(&App->FrameTime, App->Window);
+    Rr_InitFrameTime(&gApp->FrameTime, gApp->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
 
-    App->Renderer = Rr_CreateRenderer(App);
-    App->UI = Rr_CreateUIContext(App);
+    gApp->Renderer = Rr_CreateRenderer();
+    gApp->UI = Rr_CreateUIContext();
 
-    Config->InitFunc(App, App->UserData);
+    Config->InitFunc(gApp->UserData);
 
-    SDL_ShowWindow(App->Window);
+    SDL_ShowWindow(gApp->Window);
 
-    while(Rr_GetAtomicInt(&App->QuitRequested) == false)
+    while(Rr_GetAtomicInt(&gApp->QuitRequested) == false)
     {
         for(Rr_Event Event; Rr_PollEvent(&Event);)
         {
-            Rr_ProcessUIEvent(App, &Event);
+            Rr_ProcessUIEvent(&Event);
 
             switch(Event.Type)
             {
                 case RR_EVENT_TYPE_QUIT:
                 {
-                    Rr_SetAtomicInt(&App->QuitRequested, true);
+                    Rr_SetAtomicInt(&gApp->QuitRequested, true);
                     break;
                 }
                 break;
@@ -185,87 +191,87 @@ void Rr_Run(Rr_AppConfig *Config)
 
             if(Config->EventFunc != NULL)
             {
-                Config->EventFunc(App, &Event);
+                Config->EventFunc(&Event);
             }
         }
 
-        Rr_Iterate(App);
+        Rr_Iterate();
     }
 
-    Rr_WaitIdle(App->Renderer);
+    Rr_WaitIdle(gApp->Renderer);
 
-    App->Config->CleanupFunc(App, App->UserData);
+    gApp->Config->CleanupFunc(gApp->UserData);
 
-    Rr_DestroyUIContext(App, App->UI);
+    Rr_DestroyUIContext(gApp->UI);
 
-    Rr_DestroyRenderer(App->Renderer);
+    Rr_DestroyRenderer(gApp->Renderer);
 
-    Rr_DestroySyncArena(&App->SyncArena);
+    Rr_DestroySyncArena(&gApp->SyncArena);
 
     SDL_CleanupTLS();
 
-    SDL_DestroyWindow(App->Window);
+    SDL_DestroyWindow(gApp->Window);
 
-    Rr_DestroyArena(App->Arena);
+    Rr_DestroyArena(gApp->Arena);
 
     SDL_Quit();
 }
 
-void Rr_SetFrameLimiterEnabled(Rr_App *App, bool Enabled)
+void Rr_SetFrameLimiterEnabled(bool Enabled)
 {
-    App->FrameTime.EnableFrameLimiter = Enabled;
+    gApp->FrameTime.EnableFrameLimiter = Enabled;
 }
 
-Rr_Renderer *Rr_GetRenderer(Rr_App *App)
+Rr_Renderer *Rr_GetRenderer(void)
 {
-    return App->Renderer;
+    return gApp->Renderer;
 }
 
-Rr_IntVec2 Rr_GetWindowSize(Rr_App *App)
+Rr_IntVec2 Rr_GetWindowSize(void)
 {
     Rr_IntVec2 Size;
-    SDL_GetWindowSizeInPixels(App->Window, &Size.X, &Size.Y);
+    SDL_GetWindowSizeInPixels(gApp->Window, &Size.X, &Size.Y);
     return Size;
 }
 
-void Rr_SetWindowTitle(Rr_App *App, const char *Title)
+void Rr_SetWindowTitle(const char *Title)
 {
-    SDL_SetWindowTitle(App->Window, Title);
+    SDL_SetWindowTitle(gApp->Window, Title);
 }
 
-double Rr_GetFramesPerSecond(Rr_App *App)
+double Rr_GetFramesPerSecond(void)
 {
-    return (float)App->FrameTime.PerformanceCounter.FPS;
+    return (float)gApp->FrameTime.PerformanceCounter.FPS;
 }
 
-static bool Rr_IsAnyFullscreen(SDL_Window *Window)
+static bool Rr_IsAnyFullscreen(void)
 {
-    return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
+    return (SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
-void Rr_ToggleFullscreen(Rr_App *App)
+void Rr_ToggleFullscreen(void)
 {
-    SDL_SetWindowFullscreen(App->Window, !Rr_IsAnyFullscreen(App->Window));
+    SDL_SetWindowFullscreen(gApp->Window, !Rr_IsAnyFullscreen());
 }
 
-float Rr_GetAspectRatio(Rr_App *App)
+float Rr_GetAspectRatio(void)
 {
-    Rr_Renderer *Renderer = App->Renderer;
+    Rr_Renderer *Renderer = gApp->Renderer;
     return (float)Renderer->Swapchain.Extent.width /
            (float)Renderer->Swapchain.Extent.height;
 }
 
-double Rr_GetDeltaSeconds(Rr_App *App)
+double Rr_GetDeltaSeconds(void)
 {
-    return App->FrameTime.DeltaSeconds;
+    return gApp->FrameTime.DeltaSeconds;
 }
 
-double Rr_GetTimeSeconds(Rr_App *App)
+double Rr_GetTimeSeconds(void)
 {
     return (double)SDL_GetTicks() / 1000.0;
 }
 
-void Rr_SetRelativeMouseMode(Rr_App *App, bool IsRelative)
+void Rr_SetRelativeMouseMode(bool IsRelative)
 {
-    SDL_SetWindowRelativeMouseMode(App->Window, IsRelative ? true : false);
+    SDL_SetWindowRelativeMouseMode(gApp->Window, IsRelative ? true : false);
 }

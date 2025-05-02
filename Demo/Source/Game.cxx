@@ -69,7 +69,7 @@ struct SCamera
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
     }
 
-    void Update(Rr_App *App, Rr_InputState *State)
+    void Update(Rr_InputState *State)
     {
         Rr_KeyStates Keys = State->Keys;
 
@@ -104,7 +104,7 @@ struct SCamera
 
                 if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
-                    Rr_SetRelativeMouseMode(App, true);
+                    Rr_SetRelativeMouseMode(true);
                     constexpr float Sensitivity = 0.2f;
                     Yaw = Rr_WrapMax(
                         Yaw - (State->MousePositionDelta.X * Sensitivity),
@@ -116,7 +116,7 @@ struct SCamera
                 }
                 else
                 {
-                    Rr_SetRelativeMouseMode(App, false);
+                    Rr_SetRelativeMouseMode(false);
                 }
 
                 float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
@@ -154,7 +154,7 @@ struct SCamera
             {
                 if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
-                    Rr_SetRelativeMouseMode(App, true);
+                    Rr_SetRelativeMouseMode(true);
                     constexpr float Sensitivity = 0.05f;
 
                     OrbitVelocity.X -=
@@ -164,7 +164,7 @@ struct SCamera
                 }
                 else
                 {
-                    Rr_SetRelativeMouseMode(App, false);
+                    Rr_SetRelativeMouseMode(false);
                 }
 
                 OrbitVelocity.X *= 0.9f;
@@ -197,14 +197,14 @@ struct SCamera
             {
                 if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
-                    Rr_SetRelativeMouseMode(App, true);
+                    Rr_SetRelativeMouseMode(true);
                     constexpr float Sensitivity = 0.1f;
                     TDPosition.X -= (State->MousePositionDelta.X * Sensitivity);
                     TDPosition.Z -= (State->MousePositionDelta.Y * Sensitivity);
                 }
                 else
                 {
-                    Rr_SetRelativeMouseMode(App, false);
+                    Rr_SetRelativeMouseMode(false);
                 }
 
                 ViewMatrix =
@@ -247,12 +247,9 @@ struct SCreepManager
     Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_Buffer *StorageBuffer;
 
-    Rr_App *App;
-
-    SCreepManager(Rr_App *App, size_t InitialCount)
-        : App(App)
+    SCreepManager(size_t InitialCount)
     {
-        Rr_Renderer *Renderer = Rr_GetRenderer(App);
+        Rr_Renderer *Renderer = Rr_GetRenderer();
         std::array VertexBindings = {
             Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
         };
@@ -317,7 +314,7 @@ struct SCreepManager
 
     void Cleanup()
     {
-        Rr_Renderer *Renderer = Rr_GetRenderer(App);
+        Rr_Renderer *Renderer = Rr_GetRenderer();
         Rr_DestroyBuffer(Renderer, StorageBuffer);
         Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
         Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
@@ -436,7 +433,7 @@ struct SCreepManager
         char *StagingData,
         size_t *StagingOffset)
     {
-        Rr_Renderer *Renderer = Rr_GetRenderer(App);
+        Rr_Renderer *Renderer = Rr_GetRenderer();
 
         /* Upload creeps to storage buffer. */
 
@@ -525,14 +522,14 @@ static bool Loaded;
 
 Rr_Vec4 BackgroundColor{ 0.1f, 0.1f, 0.1f, 1.0f };
 
-static void OnLoadComplete(Rr_App *App, void *UserData)
+static void OnLoadComplete(void *UserData)
 {
     Loaded = true;
 }
 
-static void Init(Rr_App *App, void *UserData)
+static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
     /* Create simple sampler. */
 
@@ -621,12 +618,17 @@ static void Init(Rr_App *App, void *UserData)
 
     /* Create load thread and load glTF asset. */
 
-    LoadThread = Rr_CreateLoadThread(App);
+    LoadThread = Rr_CreateLoadThread();
     Rr_LoadTask Tasks[] = {
         Rr_LoadGLTFAssetTask(DEMO_ASSET_TOWER_GLB, GLTFContext, &TowerAsset),
         Rr_LoadGLTFAssetTask(DEMO_ASSET_ARROW_GLB, GLTFContext, &ArrowAsset),
     };
-    Rr_LoadAsync(LoadThread, RR_ARRAY_COUNT(Tasks), Tasks, OnLoadComplete, App);
+    Rr_LoadAsync(
+        LoadThread,
+        RR_ARRAY_COUNT(Tasks),
+        Tasks,
+        OnLoadComplete,
+        NULL);
 
     /* Create main draw target. */
 
@@ -665,18 +667,15 @@ static void Init(Rr_App *App, void *UserData)
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
-    CreepManager = new SCreepManager(App, 64);
+    CreepManager = new SCreepManager(64);
     Camera.SetPerspective(60.0f, Rr_GetImageAspect2D(ColorAttachment));
 }
 
-static void Render(
-    Rr_App *App,
-    Rr_Image *ColorAttachment,
-    Rr_Image *DepthAttachment)
+static void Render(Rr_Image *ColorAttachment, Rr_Image *DepthAttachment)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
-    // double Time = Rr_GetTimeSeconds(App);
+    // double Time = Rr_GetTimeSeconds();
 
     SUniformData UniformData = {};
     UniformData.Projection =
@@ -799,7 +798,7 @@ static void Render(
     }
 }
 
-static void Iterate(Rr_App *App, void *UserData)
+static void Iterate(void *UserData)
 {
     {
         static std::vector<Rr_InputMapping> InputMappings = {
@@ -821,18 +820,18 @@ static void Iterate(Rr_App *App, void *UserData)
 
         Rr_KeyStates Keys = InputState.Keys;
 
-        Camera.Update(App, &InputState);
+        Camera.Update(&InputState);
         if(Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
         {
-            Rr_ToggleFullscreen(App);
+            Rr_ToggleFullscreen();
         }
     }
 
-    CreepManager->Update((float)Rr_GetDeltaSeconds(App));
+    CreepManager->Update((float)Rr_GetDeltaSeconds());
 
-    Render(App, ColorAttachment, DepthAttachment);
+    Render(ColorAttachment, DepthAttachment);
 
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
     Rr_IntVec2 SwapchainImageSize = Rr_GetSwapchainSize(Renderer);
     Rr_AddBlitNode(
@@ -845,11 +844,11 @@ static void Iterate(Rr_App *App, void *UserData)
         RR_IMAGE_ASPECT_COLOR_BIT);
 }
 
-static void Cleanup(Rr_App *App, void *UserData)
+static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer(App);
+    Rr_Renderer *Renderer = Rr_GetRenderer();
 
-    Rr_DestroyLoadThread(App, LoadThread);
+    Rr_DestroyLoadThread(LoadThread);
     CreepManager->Cleanup();
     Rr_DestroyGLTFContext(GLTFContext);
     Rr_DestroyImage(Renderer, BlitImage);

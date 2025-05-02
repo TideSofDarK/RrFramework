@@ -21,14 +21,11 @@ struct Rr_LoadThread
     SDL_Semaphore *Semaphore;
     SDL_Mutex *Mutex;
 
-    Rr_App *App;
-
     Rr_Arena *Arena;
 };
 
 struct Rr_LoadContext
 {
-    struct Rr_App *App;
     SDL_Semaphore *Semaphore;
     Rr_LoadCallback LoadingCallback;
     void *UserData;

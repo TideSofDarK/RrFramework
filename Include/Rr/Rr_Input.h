@@ -98,9 +98,9 @@ typedef uint32_t Rr_MouseButtonFlags;
 
 extern bool Rr_IsScancodePressed(Rr_Scancode Scancode);
 
-extern Rr_Vec2 Rr_GetMousePosition(struct Rr_App *App);
+extern Rr_Vec2 Rr_GetMousePosition(void);
 
-extern Rr_Vec2 Rr_GetMousePositionDelta(struct Rr_App *App);
+extern Rr_Vec2 Rr_GetMousePositionDelta(void);
 
 extern Rr_MouseButtonFlags Rr_GetMouseState(void);
 
