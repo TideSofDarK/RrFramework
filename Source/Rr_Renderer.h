@@ -7,14 +7,11 @@
 #include "Rr_Pipeline.h"
 #include "Rr_Vulkan.h"
 
-#include <SDL3/SDL_atomic.h>
-
 typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
 {
     VkImage Handle;
     VkImageView View;
-    VkFramebuffer Framebuffer;
 };
 
 typedef struct Rr_Swapchain Rr_Swapchain;
@@ -28,23 +25,6 @@ struct Rr_Swapchain
     Rr_AtomicInt RecreatePending;
 };
 
-typedef struct Rr_SwapchainCleanupData Rr_SwapchainCleanupData;
-struct Rr_SwapchainCleanupData
-{
-    VkSwapchainKHR Handle;
-    RR_SLICE(VkSemaphore) Semaphores;
-};
-
-typedef struct Rr_PresentInfo Rr_PresentInfo;
-struct Rr_PresentInfo
-{
-    VkFence CleanupFence;
-    VkSemaphore EarlySemaphore;
-    VkSemaphore LateSemaphore;
-    uint32_t ImageIndex;
-    RR_SLICE(Rr_SwapchainCleanupData) OldSwapchains;
-};
-
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;
 struct Rr_ImmediateMode
 {
@@ -56,7 +36,6 @@ typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
     Rr_Image *VirtualSwapchainImage;
-    RR_SLICE(Rr_SwapchainImage) SwapchainGarbage;
 
     VkCommandPool CommandPool;
     VkCommandBuffer EarlyCommandBuffer;
@@ -91,6 +70,8 @@ struct Rr_CachedRenderPass
 
 struct Rr_Renderer
 {
+    void *Window;
+
     Rr_VulkanLoader Loader;
     Rr_Instance Instance;
     Rr_PhysicalDevice PhysicalDevice;
@@ -99,8 +80,6 @@ struct Rr_Renderer
 
     Rr_Swapchain Swapchain;
     RR_SLICE(Rr_SwapchainImage) SwapchainImages;
-    RR_SLICE(Rr_SwapchainCleanupData) OldSwapchains;
-    RR_SLICE(Rr_PresentInfo) PresentHistory;
 
     Rr_Queue GraphicsQueue;
     Rr_Queue TransferQueue;
@@ -135,8 +114,6 @@ struct Rr_Renderer
 
     Rr_Arena *Arena;
 };
-
-extern bool Rr_RecreateSwapchain(Rr_App *App);
 
 extern Rr_Renderer *Rr_CreateRenderer(Rr_App *App);
 

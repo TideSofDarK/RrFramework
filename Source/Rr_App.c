@@ -72,10 +72,11 @@ static void Rr_Iterate(Rr_App *App)
     Rr_EndUI();
 
     bool Minimized = (SDL_GetWindowFlags(App->Window) & SDL_WINDOW_MINIMIZED);
-    if(Minimized == false)
+    if(Minimized == true)
     {
-        Rr_DrawFrame(App);
+        SDL_Delay(100);
     }
+    Rr_DrawFrame(App);
 
 #ifdef RR_PERFORMANCE_COUNTER
     Rr_CalculateFPS(&App->FrameTime);
@@ -85,26 +86,6 @@ static void Rr_Iterate(Rr_App *App)
     {
         Rr_SimulateVSync(&App->FrameTime);
     }
-}
-
-static _Bool SDLCALL Rr_EventWatch(void *UserData, SDL_Event *Event)
-{
-    Rr_App *App = (Rr_App *)UserData;
-    switch(Event->type)
-    {
-        case SDL_EVENT_WINDOW_EXPOSED:
-        case SDL_EVENT_WINDOW_RESIZED:
-        {
-            Rr_SetSwapchainDirty(Rr_GetRenderer(App), true);
-        }
-        break;
-        default:
-        {
-        }
-        break;
-    }
-
-    return 0;
 }
 
 static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
@@ -176,13 +157,8 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_InitFrameTime(&App->FrameTime, App->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
-    SDL_SetEventEnabled(SDL_EVENT_MOUSE_BUTTON_DOWN, true);
-    SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true);
-
-    SDL_AddEventWatch(Rr_EventWatch, App);
 
     App->Renderer = Rr_CreateRenderer(App);
-    Rr_RecreateSwapchain(App);
     App->UI = Rr_CreateUIContext(App);
 
     Config->InitFunc(App, App->UserData);
@@ -200,6 +176,7 @@ void Rr_Run(Rr_AppConfig *Config)
                 case RR_EVENT_TYPE_QUIT:
                 {
                     Rr_SetAtomicInt(&App->QuitRequested, true);
+                    break;
                 }
                 break;
                 default:
@@ -226,8 +203,6 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_DestroySyncArena(&App->SyncArena);
 
     SDL_CleanupTLS();
-
-    SDL_RemoveEventWatch((SDL_EventFilter)Rr_EventWatch, &App);
 
     SDL_DestroyWindow(App->Window);
 
