@@ -57,6 +57,8 @@ struct Rr_UIWindow
     Rr_String Title;
     Rr_Vec2 Position;
     Rr_Vec2 Size;
+    float YStart;
+    float YEnd;
     uint32_t LastVertexCount;
     RR_SLICE(Rr_UIVertex) Vertices;
     uint32_t LastIndexCount;
@@ -119,6 +121,8 @@ struct Rr_UIContext
     float HorizontalMargin;
     float FrameThickness;
     float SeparatorLineHeight;
+    float ScrollbarWidth;
+    float ScrollbarHandleWidth;
     Rr_Vec2 ButtonPadding;
     Rr_Vec2 CheckboxSize;
 
@@ -502,6 +506,34 @@ static inline void Rr_DrawText(
     }
 }
 
+static inline void Rr_ButtonBehavior(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    bool *Clicked,
+    bool *Hovered)
+{
+    if(Window == gContext->HoveredWindow &&
+       Rr_RectContains(Position, Size, gContext->MousePosition))
+    {
+        if(gContext->LeftMouseButtonDown)
+        {
+            gContext->MovingWindow = NULL;
+            if(Clicked)
+            {
+                *Clicked = true;
+            }
+        }
+        else if(!gContext->MovingWindow && !gContext->ResizingWindow)
+        {
+            if(Hovered)
+            {
+                *Hovered = true;
+            }
+        }
+    }
+}
+
 static inline Rr_Vec2 Rr_GetMinWindowSize(Rr_UIWindowFlags Flags)
 {
     if(RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT))
@@ -511,6 +543,118 @@ static inline Rr_Vec2 Rr_GetMinWindowSize(Rr_UIWindowFlags Flags)
     else
     {
         return gContext->MinWindowSize;
+    }
+}
+
+static inline void Rr_DrawWindowTitle(Rr_UIWindow *Window)
+{
+    Rr_Vec2 TitlePosition = Window->Position;
+    Rr_Vec2 TitleSize = {
+        Window->Size.X,
+        gContext->WindowTitleHeight,
+    };
+    Rr_DrawSolidQuad(
+        Window,
+        TitlePosition,
+        TitleSize,
+        &gContext->Style.TitleBackground);
+    Rr_DrawText(
+        Window,
+        Rr_AddV2(
+            TitlePosition,
+            Rr_MulV2F(gContext->Style.TitlePadding, gContext->FontSize)),
+        &Window->Title,
+        &gContext->Style.Foreground);
+}
+
+static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
+{
+    Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
+    BottomRight.X -= gContext->FrameThickness;
+    BottomRight.Y -= gContext->FrameThickness;
+    Rr_Vec2 ResizeHandlePosition = {
+        BottomRight.X - gContext->ResizeHandleSize,
+        BottomRight.Y - gContext->ResizeHandleSize,
+    };
+    Rr_Vec2 ResizeHandleSize = {
+        gContext->ResizeHandleSize,
+        gContext->ResizeHandleSize,
+    };
+
+    Rr_Vec4 ResizeHandleColor = gContext->Style.Foreground;
+
+    bool Hovered = false;
+    Rr_ButtonBehavior(
+        Window,
+        ResizeHandlePosition,
+        ResizeHandleSize,
+        NULL,
+        &Hovered);
+
+    if(Hovered || gContext->ResizingWindow == Window)
+    {
+        ResizeHandleColor = Rr_MulV4F(ResizeHandleColor, 0.75f);
+    }
+
+    Rr_DrawSolidTriangle(
+        Window,
+        (Rr_Vec2){ BottomRight.X - gContext->ResizeHandleSize, BottomRight.Y },
+        (Rr_Vec2){ BottomRight.X, BottomRight.Y - gContext->ResizeHandleSize },
+        (Rr_Vec2){ BottomRight.X, BottomRight.Y },
+        &ResizeHandleColor);
+}
+
+static inline void Rr_GetWindowContentsPositionAndSize(
+    Rr_UIWindow *Window,
+    Rr_Vec2 *OutPosition,
+    Rr_Vec2 *OutSize)
+{
+    bool HasTitle =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
+
+    *OutPosition = Window->Position;
+    *OutSize = Window->Size;
+
+    if(HasTitle)
+    {
+        OutPosition->Y += gContext->WindowTitleHeight;
+        OutSize->Y -= gContext->WindowTitleHeight;
+    }
+}
+
+static inline void Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
+{
+    Rr_Vec2 ContentsPosition;
+    Rr_Vec2 ContentsSize;
+    Rr_GetWindowContentsPositionAndSize(
+        Window,
+        &ContentsPosition,
+        &ContentsSize);
+    float ContentsHeight = Window->YEnd - Window->YStart;
+    float FillRatio = ContentsHeight / ContentsSize.Y;
+
+    if(FillRatio > 1.0f)
+    {
+        Rr_Vec2 ScrollbarPosition = ContentsPosition;
+        ScrollbarPosition.X += ContentsSize.Width - gContext->ScrollbarWidth;
+        Rr_Vec2 ScrollbarSize = { gContext->ScrollbarWidth,
+                                  ContentsSize.Height };
+        Rr_DrawSolidQuad(
+            Window,
+            ScrollbarPosition,
+            ScrollbarSize,
+            &gContext->Style.ScrollbarBackground);
+
+        ScrollbarPosition.X +=
+            (gContext->ScrollbarWidth - gContext->ScrollbarHandleWidth) / 2.0f;
+        ScrollbarSize.Width = gContext->ScrollbarHandleWidth;
+        ScrollbarSize.Height *= 1.0f / FillRatio;
+
+        Rr_DrawSolidQuad(
+            Window,
+            ScrollbarPosition,
+            ScrollbarSize,
+            &gContext->Style.ScrollbarForeground);
     }
 }
 
@@ -564,15 +708,60 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Window->LastIndexCount ? Window->LastIndexCount : (6 * 32),
         gContext->FrameArena);
 
-    Rr_UIQuad _ =
-        Rr_ReserveQuad(Window); /* Reserved contents background quad. */
-    (void)_;
+    Rr_Vec2 ContentsPosition = {
+        Window->Position.X,
+        Window->Position.Y,
+    };
+    if(HasTitle)
+    {
+        ContentsPosition.Y += gContext->WindowTitleHeight;
+    }
+    Rr_Vec2 ContentsSize = {
+        Window->Size.X,
+        Window->Size.Y,
+    };
+    if(HasTitle)
+    {
+        ContentsSize.Y -= gContext->WindowTitleHeight;
+    }
+    Rr_UIQuad ContentsBackgroundQuad = Window->Vertices.Data;
+    Rr_DrawSolidQuad(
+        Window,
+        ContentsPosition,
+        ContentsSize,
+        &gContext->Style.Background);
+
+    if(HasTitle)
+    {
+        Rr_DrawWindowTitle(Window);
+    }
+
+    if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
+    {
+        Rr_DrawResizeHandle(Window);
+    }
+
+    bool HasScrollbar =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
+    if(HasScrollbar)
+    {
+        Rr_DrawVerticalScrollbar(Window);
+    }
+
+    Rr_DrawFrameQuad(
+        Window,
+        Window->Position,
+        Window->Size,
+        gContext->FrameThickness,
+        &gContext->Style.Outline);
 
     gContext->Cursor = Rr_AddV2(Window->Position, gContext->ContentsPadding);
     if(HasTitle)
     {
         gContext->Cursor.Y += gContext->WindowTitleHeight;
     }
+
+    Window->YStart = Window->YEnd = gContext->Cursor.Y;
 
     gContext->CurrentWindow = Window;
 }
@@ -600,6 +789,8 @@ void Rr_EndHorizontal(void)
 
 static inline void Rr_Advance(Rr_Vec2 Size)
 {
+    RR_UI_ASSERT_WINDOW();
+
     if(gContext->Horizontal)
     {
         gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
@@ -610,6 +801,9 @@ static inline void Rr_Advance(Rr_Vec2 Size)
     {
         gContext->Cursor.Y += Size.Height;
     }
+
+    gContext->CurrentWindow->YEnd =
+        RR_MAX(gContext->CurrentWindow->YEnd, gContext->Cursor.Y);
 }
 
 void Rr_Separator(void)
@@ -676,34 +870,6 @@ void Rr_LabelF(const char *Format, ...)
     Rr_Label(Buffer);
 
     Rr_DestroyScratch(Scratch);
-}
-
-static inline void Rr_ButtonBehavior(
-    Rr_UIWindow *Window,
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
-    bool *Clicked,
-    bool *Hovered)
-{
-    if(Window == gContext->HoveredWindow &&
-       Rr_RectContains(Position, Size, gContext->MousePosition))
-    {
-        if(gContext->LeftMouseButtonDown)
-        {
-            gContext->MovingWindow = NULL;
-            if(Clicked)
-            {
-                *Clicked = true;
-            }
-        }
-        else if(!gContext->MovingWindow && !gContext->ResizingWindow)
-        {
-            if(Hovered)
-            {
-                *Hovered = true;
-            }
-        }
-    }
 }
 
 bool Rr_Button(const char *Text)
@@ -865,6 +1031,8 @@ Rr_UIContext *Rr_CreateUIContext(void)
         .Background = Rr_U32ToRGBA(0x292F33FA),
         .TitleBackground = Rr_U32ToRGBA(0xD54251FA),
         .Outline = Rr_U32ToRGBA(0x6C6F72FA),
+        .ScrollbarBackground = Rr_U32ToRGBA(0xFF0000FF),
+        .ScrollbarForeground = Rr_U32ToRGBA(0x00FF00FF),
     };
 
     Rr_PipelineBinding Bindings[] = {
@@ -1044,6 +1212,8 @@ void Rr_BeginUI(Rr_UIContext *Context)
             floorf(RR_MAX(1.0f, gContext->FontSize * 0.075f));
         gContext->ResizeHandleSize = gContext->FontSize * 0.75f;
         gContext->SeparatorLineHeight = gContext->LineHeight * 0.5f;
+        gContext->ScrollbarWidth = gContext->FontSize * 1.25f;
+        gContext->ScrollbarHandleWidth = gContext->FontSize * 1.0f;
         gContext->ButtonPadding = (Rr_Vec2){ gContext->LineHeight * 0.25f,
                                              gContext->LineHeight * 0.125f };
         gContext->CheckboxSize = (Rr_Vec2){ gContext->LineHeight * 0.75f,
@@ -1159,64 +1329,6 @@ void Rr_BeginUI(Rr_UIContext *Context)
     gContext->ScreenSize.Height = (float)SwapchainSize.Height;
 }
 
-static inline void Rr_DrawWindowTitle(Rr_UIWindow *Window)
-{
-    Rr_Vec2 TitlePosition = Window->Position;
-    Rr_Vec2 TitleSize = {
-        Window->Size.X,
-        gContext->WindowTitleHeight,
-    };
-    Rr_DrawSolidQuad(
-        Window,
-        TitlePosition,
-        TitleSize,
-        &gContext->Style.TitleBackground);
-    Rr_DrawText(
-        Window,
-        Rr_AddV2(
-            TitlePosition,
-            Rr_MulV2F(gContext->Style.TitlePadding, gContext->FontSize)),
-        &Window->Title,
-        &gContext->Style.Foreground);
-}
-
-static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
-{
-    Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
-    BottomRight.X -= gContext->FrameThickness;
-    BottomRight.Y -= gContext->FrameThickness;
-    Rr_Vec2 ResizeHandlePosition = {
-        BottomRight.X - gContext->ResizeHandleSize,
-        BottomRight.Y - gContext->ResizeHandleSize,
-    };
-    Rr_Vec2 ResizeHandleSize = {
-        gContext->ResizeHandleSize,
-        gContext->ResizeHandleSize,
-    };
-
-    Rr_Vec4 ResizeHandleColor = gContext->Style.Foreground;
-
-    bool Hovered = false;
-    Rr_ButtonBehavior(
-        Window,
-        ResizeHandlePosition,
-        ResizeHandleSize,
-        NULL,
-        &Hovered);
-
-    if(Hovered || gContext->ResizingWindow == Window)
-    {
-        ResizeHandleColor = Rr_MulV4F(ResizeHandleColor, 0.75f);
-    }
-
-    Rr_DrawSolidTriangle(
-        Window,
-        (Rr_Vec2){ BottomRight.X - gContext->ResizeHandleSize, BottomRight.Y },
-        (Rr_Vec2){ BottomRight.X, BottomRight.Y - gContext->ResizeHandleSize },
-        (Rr_Vec2){ BottomRight.X, BottomRight.Y },
-        &ResizeHandleColor);
-}
-
 int Rr_WindowSort(const void *A, const void *B)
 {
     const Rr_UIWindow *WindowA = *(Rr_UIWindow **)A;
@@ -1303,53 +1415,6 @@ void Rr_EndUI(void)
     for(size_t Index = 0; Index < gContext->Windows.Count; ++Index)
     {
         Rr_UIWindow *Window = gContext->Windows.Data[Index];
-
-        bool HasTitle =
-            RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
-
-        /* Contents background quad was already reserved. */
-
-        Rr_Vec2 ContentsPosition = {
-            Window->Position.X,
-            Window->Position.Y,
-        };
-        if(HasTitle)
-        {
-            ContentsPosition.Y += gContext->WindowTitleHeight;
-        }
-        Rr_Vec2 ContentsSize = {
-            Window->Size.X,
-            Window->Size.Y,
-        };
-        if(HasTitle)
-        {
-            ContentsSize.Y -= gContext->WindowTitleHeight;
-        }
-        Rr_UIQuad ContentsBackgroundQuad = Window->Vertices.Data;
-        Rr_SolidQuad(
-            ContentsBackgroundQuad,
-            ContentsPosition,
-            ContentsSize,
-            &gContext->Style.Background);
-
-        if(HasTitle)
-        {
-            Rr_DrawWindowTitle(Window);
-        }
-
-        if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
-        {
-            Rr_DrawResizeHandle(Window);
-        }
-
-        Rr_DrawFrameQuad(
-            Window,
-            Window->Position,
-            Window->Size,
-            gContext->FrameThickness,
-            &gContext->Style.Outline);
-
-        /* Finished generating geometry. */
 
         int32_t VertexOffset =
             (int32_t)(VertexBufferData - VertexBufferDataStart);

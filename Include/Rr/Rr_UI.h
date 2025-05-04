@@ -41,10 +41,13 @@ struct Rr_UIStyle
 {
     Rr_Vec2 TitlePadding;
     Rr_Vec2 ContentsPadding;
+
     Rr_Vec4 Foreground;
     Rr_Vec4 Background;
     Rr_Vec4 TitleBackground;
     Rr_Vec4 Outline;
+    Rr_Vec4 ScrollbarBackground;
+    Rr_Vec4 ScrollbarForeground;
 };
 
 extern Rr_Font *Rr_CreateFont(
@@ -64,6 +67,7 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT = (1 << 0),
     RR_UI_WINDOW_FLAGS_NO_TITLE_BIT = (1 << 1),
     RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT = (1 << 2),
+    RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT = (1 << 3),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
