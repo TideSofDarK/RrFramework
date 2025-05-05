@@ -839,7 +839,7 @@ static void Render()
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
     Rr_ColorTarget ColorTarget;
-    ColorTarget.Clear = { 1.0, 1.0, 1.0, 1.0 };
+    ColorTarget.Clear = { 0.1, 0.1, 0.1, 1.0 };
     ColorTarget.LoadOp = RR_LOAD_OP_CLEAR;
     ColorTarget.Slot = 0;
     ColorTarget.StoreOp = RR_STORE_OP_STORE;

@@ -93,6 +93,8 @@ struct Rr_UIContext
     Rr_UIWindow *CurrentWindow;
     Rr_UIWindow *HoveredWindow;
 
+    float AvailableContentsWidth;
+
     bool Horizontal;
     RR_SLICE(float) HorizontalX;
     float HorizontalMaxHeight;
@@ -813,6 +815,10 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Rr_DrawResizeHandle(Window);
     }
 
+    gContext->AvailableContentsWidth =
+        HasScrollbar ? Window->Size.Width - gContext->ScrollbarWidth
+                     : Window->Size.Width;
+
     gContext->Cursor = Rr_AddV2(Window->Position, gContext->ContentsPadding);
     if(HasTitle)
     {
@@ -869,7 +875,7 @@ void Rr_Separator(void)
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
     Rr_Vec2 Size = {
-        Window->Size.X - (gContext->ContentsPadding.X * 2.0f),
+        gContext->AvailableContentsWidth - (gContext->ContentsPadding.X * 2.0f),
         gContext->FrameThickness,
     };
     Rr_Vec2 Position = {

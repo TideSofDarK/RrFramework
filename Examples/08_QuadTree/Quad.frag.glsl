@@ -45,7 +45,7 @@ void main()
         float Total = max(
                 linearstep(1.0f - Feather.x, 1.0f, Hor),
                 linearstep(1.0f - Feather.y, 1.0f, Vert));
-        OutColor = vec4(0.0, 0.0, 0.0, Total);
+        OutColor = vec4(0.65, 0.65, 0.65, Total);
     }
     else if (Draw.Type == RECT_SELECTION)
     {
