@@ -51,6 +51,14 @@ struct Rr_UIUniformData
     float Time;
 };
 
+typedef struct Rr_UIClipRect Rr_UIClipRect;
+struct Rr_UIClipRect
+{
+    uint32_t FirstIndex;
+    Rr_Vec2 Position;
+    Rr_Vec2 Size;
+};
+
 typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
@@ -63,6 +71,8 @@ struct Rr_UIWindow
     RR_SLICE(Rr_UIVertex) Vertices;
     uint32_t LastIndexCount;
     RR_SLICE(Rr_UIIndex) Indices;
+    uint32_t LastClipRectCount;
+    RR_SLICE(Rr_UIClipRect) ClipRects;
     Rr_Map *WidgetMap;
     Rr_UIWindowFlags Flags;
     int ZOrder;
@@ -534,6 +544,19 @@ static inline void Rr_ButtonBehavior(
     }
 }
 
+static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
+{
+    RR_UI_ASSERT_WINDOW();
+
+    Rr_UIWindow *Window = gContext->CurrentWindow;
+
+    *RR_PUSH_SLICE(&Window->ClipRects, gContext->FrameArena) = (Rr_UIClipRect){
+        .FirstIndex = (uint32_t)(Window->Indices.Count),
+        .Position = Position,
+        .Size = Size,
+    };
+}
+
 static inline Rr_Vec2 Rr_GetMinWindowSize(Rr_UIWindowFlags Flags)
 {
     if(RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT))
@@ -609,21 +632,40 @@ static inline void Rr_GetWindowContentsPositionAndSize(
     Rr_Vec2 *OutPosition,
     Rr_Vec2 *OutSize)
 {
-    bool HasTitle =
-        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
-
     *OutPosition = Window->Position;
     *OutSize = Window->Size;
 
+    bool HasTitle =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
     if(HasTitle)
     {
         OutPosition->Y += gContext->WindowTitleHeight;
         OutSize->Y -= gContext->WindowTitleHeight;
     }
+
+    bool HasScrollbar =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
+    if(HasScrollbar)
+    {
+        float ContentsHeight = Window->YEnd - Window->YStart;
+        float FillRatio = ContentsHeight / OutSize->Y;
+
+        if(FillRatio > 1.0f)
+        {
+            OutSize->Width -= gContext->ScrollbarWidth;
+        }
+    }
 }
 
-static inline void Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
+static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
 {
+    bool HasScrollbar =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
+    if(HasScrollbar != true)
+    {
+        return false;
+    }
+
     Rr_Vec2 ContentsPosition;
     Rr_Vec2 ContentsSize;
     Rr_GetWindowContentsPositionAndSize(
@@ -636,7 +678,7 @@ static inline void Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
     if(FillRatio > 1.0f)
     {
         Rr_Vec2 ScrollbarPosition = ContentsPosition;
-        ScrollbarPosition.X += ContentsSize.Width - gContext->ScrollbarWidth;
+        ScrollbarPosition.X += ContentsSize.Width;
         Rr_Vec2 ScrollbarSize = { gContext->ScrollbarWidth,
                                   ContentsSize.Height };
         Rr_DrawSolidQuad(
@@ -655,7 +697,11 @@ static inline void Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
             ScrollbarPosition,
             ScrollbarSize,
             &gContext->Style.ScrollbarForeground);
+
+        return true;
     }
+
+    return false;
 }
 
 void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
@@ -691,9 +737,10 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             "There already is a window with this title!");
     }
 
-    Window->Flags = Flags;
-
     *RR_PUSH_SLICE(&gContext->Windows, gContext->FrameArena) = Window;
+    gContext->CurrentWindow = Window;
+
+    Window->Flags = Flags;
     Window->Added = true;
 
     RR_ZERO(Window->Vertices);
@@ -708,44 +755,27 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Window->LastIndexCount ? Window->LastIndexCount : (6 * 32),
         gContext->FrameArena);
 
-    Rr_Vec2 ContentsPosition = {
-        Window->Position.X,
-        Window->Position.Y,
-    };
-    if(HasTitle)
-    {
-        ContentsPosition.Y += gContext->WindowTitleHeight;
-    }
-    Rr_Vec2 ContentsSize = {
-        Window->Size.X,
-        Window->Size.Y,
-    };
-    if(HasTitle)
-    {
-        ContentsSize.Y -= gContext->WindowTitleHeight;
-    }
-    Rr_UIQuad ContentsBackgroundQuad = Window->Vertices.Data;
-    Rr_DrawSolidQuad(
-        Window,
-        ContentsPosition,
-        ContentsSize,
-        &gContext->Style.Background);
+    RR_ZERO(Window->ClipRects);
+    RR_RESERVE_SLICE(
+        &Window->ClipRects,
+        Window->LastClipRectCount ? Window->LastClipRectCount : 2,
+        gContext->FrameArena);
+
+    Rr_AddClipRect(Window->Position, Window->Size);
+
+    bool HasResize =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
 
     if(HasTitle)
     {
         Rr_DrawWindowTitle(Window);
     }
 
-    if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
+    bool HasScrollbar = Rr_DrawVerticalScrollbar(Window);
+
+    if(HasScrollbar && HasResize)
     {
         Rr_DrawResizeHandle(Window);
-    }
-
-    bool HasScrollbar =
-        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
-    if(HasScrollbar)
-    {
-        Rr_DrawVerticalScrollbar(Window);
     }
 
     Rr_DrawFrameQuad(
@@ -755,6 +785,25 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         gContext->FrameThickness,
         &gContext->Style.Outline);
 
+    Rr_Vec2 ContentsAreaPosition;
+    Rr_Vec2 ContentsAreaSize;
+    Rr_GetWindowContentsPositionAndSize(
+        Window,
+        &ContentsAreaPosition,
+        &ContentsAreaSize);
+    Rr_AddClipRect(ContentsAreaPosition, ContentsAreaSize);
+
+    Rr_DrawSolidQuad(
+        Window,
+        ContentsAreaPosition,
+        ContentsAreaSize,
+        &gContext->Style.Background);
+
+    if(HasScrollbar == false && HasResize)
+    {
+        Rr_DrawResizeHandle(Window);
+    }
+
     gContext->Cursor = Rr_AddV2(Window->Position, gContext->ContentsPadding);
     if(HasTitle)
     {
@@ -762,8 +811,6 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     }
 
     Window->YStart = Window->YEnd = gContext->Cursor.Y;
-
-    gContext->CurrentWindow = Window;
 }
 
 void Rr_EndWindow(void)
@@ -1418,43 +1465,60 @@ void Rr_EndUI(void)
 
         int32_t VertexOffset =
             (int32_t)(VertexBufferData - VertexBufferDataStart);
-
-        size_t FirstIndex = (size_t)(IndexBufferData - IndexBufferDataStart);
-
         memcpy(
             VertexBufferData,
             Window->Vertices.Data,
             sizeof(Rr_UIVertex) * Window->Vertices.Count);
         VertexBufferData += Window->Vertices.Count;
 
+        size_t FirstIndex = (size_t)(IndexBufferData - IndexBufferDataStart);
         memcpy(
             IndexBufferData,
             Window->Indices.Data,
             sizeof(Rr_UIIndex) * Window->Indices.Count);
         IndexBufferData += Window->Indices.Count;
 
-        Rr_SetScissor(
-            GraphicsNode,
-            (Rr_IntVec4){
-                (int)Window->Position.X,
-                (int)Window->Position.Y,
-                (int)ceilf(Window->Size.X),
-                (int)ceilf(Window->Size.Y),
-            });
+        for(size_t ClipRectIndex = 0; ClipRectIndex < Window->ClipRects.Count;
+            ++ClipRectIndex)
+        {
+            Rr_UIClipRect *ClipRect = Window->ClipRects.Data + ClipRectIndex;
 
-        Rr_DrawIndexed(
-            GraphicsNode,
-            Window->Indices.Count,
-            1,
-            FirstIndex,
-            VertexOffset,
-            0);
+            Rr_SetScissor(
+                GraphicsNode,
+                (Rr_IntVec4){
+                    (int)ClipRect->Position.X,
+                    (int)ClipRect->Position.Y,
+                    (int)ceilf(ClipRect->Size.X),
+                    (int)ceilf(ClipRect->Size.Y),
+                });
+
+            size_t IndexCount;
+            if(ClipRectIndex == Window->ClipRects.Count - 1)
+            {
+                IndexCount = Window->Indices.Count - ClipRect->FirstIndex;
+            }
+            else
+            {
+                IndexCount =
+                    Window->ClipRects.Data[ClipRectIndex + 1].FirstIndex -
+                    ClipRect->FirstIndex;
+            }
+
+            Rr_DrawIndexed(
+                GraphicsNode,
+                IndexCount,
+                1,
+                (size_t)ClipRect->FirstIndex + FirstIndex,
+                VertexOffset,
+                0);
+        }
 
         /* Prepare the window for the next frame. */
 
         Window->Added = false;
         Window->LastIndexCount = Window->Indices.Count;
         Window->LastVertexCount = Window->Vertices.Count;
+        Window->LastClipRectCount = Window->ClipRects.Count;
     }
 
     if(gContext->LeftMouseButtonUp)
