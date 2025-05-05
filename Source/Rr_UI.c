@@ -642,19 +642,28 @@ static inline void Rr_GetWindowContentsPositionAndSize(
         OutPosition->Y += gContext->WindowTitleHeight;
         OutSize->Y -= gContext->WindowTitleHeight;
     }
+    else
+    {
+        OutPosition->Y += gContext->FrameThickness;
+        OutSize->Height -= gContext->FrameThickness;
+    }
 
     bool HasScrollbar =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
-    if(HasScrollbar)
+    float ContentsHeight = Window->YEnd - Window->YStart;
+    float FillRatio = ContentsHeight / OutSize->Y;
+    if(HasScrollbar && FillRatio > 1.0f)
     {
-        float ContentsHeight = Window->YEnd - Window->YStart;
-        float FillRatio = ContentsHeight / OutSize->Y;
-
-        if(FillRatio > 1.0f)
-        {
-            OutSize->Width -= gContext->ScrollbarWidth;
-        }
+        OutSize->Width -= gContext->ScrollbarWidth;
     }
+    else
+    {
+        OutSize->Width -= gContext->FrameThickness;
+    }
+
+    OutPosition->X += gContext->FrameThickness;
+    OutSize->Width -= gContext->FrameThickness;
+    OutSize->Height -= gContext->FrameThickness;
 }
 
 static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
