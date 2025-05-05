@@ -627,7 +627,7 @@ static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
         &ResizeHandleColor);
 }
 
-static inline void Rr_GetWindowContentsPositionAndSize(
+static inline void Rr_GetWindowContentsAreaPositionAndSize(
     Rr_UIWindow *Window,
     Rr_Vec2 *OutPosition,
     Rr_Vec2 *OutSize)
@@ -677,7 +677,7 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
 
     Rr_Vec2 ContentsPosition;
     Rr_Vec2 ContentsSize;
-    Rr_GetWindowContentsPositionAndSize(
+    Rr_GetWindowContentsAreaPositionAndSize(
         Window,
         &ContentsPosition,
         &ContentsSize);
@@ -796,7 +796,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Rr_Vec2 ContentsAreaPosition;
     Rr_Vec2 ContentsAreaSize;
-    Rr_GetWindowContentsPositionAndSize(
+    Rr_GetWindowContentsAreaPositionAndSize(
         Window,
         &ContentsAreaPosition,
         &ContentsAreaSize);
