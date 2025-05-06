@@ -31,6 +31,16 @@ static inline void Rr_DestroySwapchainImage(
         Rr_ReturnSyncState(Renderer, (Rr_MapKey)SwapchainImage->Handle);
     }
 
+    if(SwapchainImage->EarlySemaphore)
+    {
+        Rr_ReturnVulkanSemaphore(Renderer, SwapchainImage->EarlySemaphore);
+    }
+
+    if(SwapchainImage->LateSemaphore)
+    {
+        Rr_ReturnVulkanSemaphore(Renderer, SwapchainImage->LateSemaphore);
+    }
+
     RR_ZERO_PTR(SwapchainImage);
 }
 
@@ -323,6 +333,9 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         Rr_SyncState *SyncState =
             Rr_GetSyncState(Renderer, (Rr_MapKey)Image->Handle);
         SyncState->StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
+        Image->EarlySemaphore = Rr_GetVulkanSemaphore(Renderer);
+        Image->LateSemaphore = Rr_GetVulkanSemaphore(Renderer);
     }
 
     Rr_SetSwapchainDirty(Renderer, false);
@@ -387,8 +400,6 @@ static void Rr_InitFrames(Rr_Renderer *Renderer)
             Renderer->Arena);
 
         Frame->AcquireSemaphore = Rr_GetVulkanSemaphore(Renderer);
-        Frame->EarlySemaphore = Rr_GetVulkanSemaphore(Renderer);
-        Frame->LateSemaphore = Rr_GetVulkanSemaphore(Renderer);
 
         Frame->Arena = Rr_CreateDefaultArena();
     }
@@ -408,8 +419,6 @@ static void Rr_CleanupFrames(Rr_Renderer *Renderer)
 
         Rr_ReturnVulkanFence(Renderer, Frame->SubmitFence);
         Rr_ReturnVulkanSemaphore(Renderer, Frame->AcquireSemaphore);
-        Rr_ReturnVulkanSemaphore(Renderer, Frame->EarlySemaphore);
-        Rr_ReturnVulkanSemaphore(Renderer, Frame->LateSemaphore);
 
         Rr_DestroyArena(Frame->Arena);
     }
@@ -789,8 +798,9 @@ void Rr_DrawFrame(void)
 
     Frame->SubmitFence = Rr_GetVulkanFence(Renderer);
 
-    VkImage SwapchainImage =
-        Renderer->SwapchainImages.Data[SwapchainImageIndex].Handle;
+    Rr_SwapchainImage *SwapchainImage =
+        &Renderer->SwapchainImages.Data[SwapchainImageIndex];
+    VkImage SwapchainImageHandle = SwapchainImage->Handle;
 
     /* Now that we acquired swapchain image index we can
      * put real handles to virtual swapchain image which
@@ -803,7 +813,7 @@ void Rr_DrawFrame(void)
         .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
         .AllocatedImages[0] = {
             .View = Renderer->SwapchainImages.Data[SwapchainImageIndex].View,
-            .Handle = SwapchainImage,
+            .Handle = SwapchainImageHandle,
             .Container = Frame->VirtualSwapchainImage,
         },
     };
@@ -829,7 +839,7 @@ void Rr_DrawFrame(void)
     /* Always transition swapchain image to present layout. */
 
     Rr_SyncState *SwapchainImageSyncState =
-        Rr_GetSyncState(Renderer, (Rr_MapKey)SwapchainImage);
+        Rr_GetSyncState(Renderer, (Rr_MapKey)SwapchainImageHandle);
     Device->CmdPipelineBarrier(
         Frame->LateCommandBuffer,
         SwapchainImageSyncState->StageMask,
@@ -842,7 +852,7 @@ void Rr_DrawFrame(void)
         1,
         &(VkImageMemoryBarrier){
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .image = SwapchainImage,
+            .image = SwapchainImageHandle,
             .oldLayout = SwapchainImageSyncState->Specific.Layout,
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             .srcAccessMask = SwapchainImageSyncState->AccessMask,
@@ -870,7 +880,7 @@ void Rr_DrawFrame(void)
             .commandBufferCount = 1,
             .pCommandBuffers = &Frame->EarlyCommandBuffer,
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &Frame->EarlySemaphore,
+            .pSignalSemaphores = &SwapchainImage->EarlySemaphore,
             .waitSemaphoreCount = 0,
             .pWaitSemaphores = NULL,
             .pWaitDstStageMask = NULL,
@@ -880,12 +890,12 @@ void Rr_DrawFrame(void)
             .commandBufferCount = 1,
             .pCommandBuffers = &Frame->LateCommandBuffer,
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &Frame->LateSemaphore,
+            .pSignalSemaphores = &SwapchainImage->LateSemaphore,
             .waitSemaphoreCount = 2,
             .pWaitSemaphores =
                 (VkSemaphore[]){
-                    Frame->EarlySemaphore,
                     Frame->AcquireSemaphore,
+                    SwapchainImage->EarlySemaphore,
                 },
             .pWaitDstStageMask =
                 (VkPipelineStageFlags[]){
@@ -906,7 +916,7 @@ void Rr_DrawFrame(void)
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &Frame->LateSemaphore,
+        .pWaitSemaphores = &SwapchainImage->LateSemaphore,
         .swapchainCount = 1,
         .pSwapchains = &Swapchain->Handle,
         .pImageIndices = &SwapchainImageIndex,

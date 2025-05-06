@@ -12,6 +12,8 @@ struct Rr_SwapchainImage
 {
     VkImage Handle;
     VkImageView View;
+    VkSemaphore EarlySemaphore;
+    VkSemaphore LateSemaphore;
 };
 
 typedef struct Rr_Swapchain Rr_Swapchain;
@@ -43,8 +45,6 @@ struct Rr_Frame
     size_t CommandBufferIndex;
 
     VkSemaphore AcquireSemaphore;
-    VkSemaphore EarlySemaphore;
-    VkSemaphore LateSemaphore;
     VkFence SubmitFence;
 
     Rr_DescriptorAllocator DescriptorAllocator;
