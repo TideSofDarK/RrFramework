@@ -57,6 +57,12 @@ extern Rr_Font *Rr_CreateFont(
 
 extern void Rr_DestroyFont(Rr_UIContext *Context, Rr_Font *Font);
 
+typedef enum
+{
+    RR_UI_TEXT_FLAGS_WRAPPED_BIT = (1 << 0),
+} Rr_UITextFlagsBits;
+typedef uint32_t Rr_UITextFlags;
+
 Rr_Vec2 Rr_CalculateTextSize(
     Rr_Font *Font,
     float FontSize,

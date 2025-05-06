@@ -1501,10 +1501,10 @@ void Rr_EndUI(void)
             Rr_SetScissor(
                 GraphicsNode,
                 (Rr_IntVec4){
-                    (int)ClipRect->Position.X,
-                    (int)ClipRect->Position.Y,
-                    (int)ceilf(ClipRect->Size.X),
-                    (int)ceilf(ClipRect->Size.Y),
+                    ClipRect->Position.X,
+                    ClipRect->Position.Y,
+                    ClipRect->Size.X,
+                    ClipRect->Size.Y,
                 });
 
             size_t IndexCount;
