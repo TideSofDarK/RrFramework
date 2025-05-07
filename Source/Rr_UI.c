@@ -409,6 +409,35 @@ static inline void Rr_DrawHorizontalGradientQuad(
     Rr_DrawQuad(Window, Vertices);
 }
 
+static inline void Rr_DrawOuterFrameQuad(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    float Thickness,
+    Rr_Vec4 *Color)
+{
+    Rr_DrawSolidQuad(
+        Window,
+        (Rr_Vec2){ Position.X, Position.Y - Thickness },
+        (Rr_Vec2){ Size.X, Thickness },
+        Color); /* Top */
+    Rr_DrawSolidQuad(
+        Window,
+        (Rr_Vec2){ Position.X, Position.Y + Size.Y },
+        (Rr_Vec2){ Size.X, Thickness },
+        Color); /* Bottom */
+    Rr_DrawSolidQuad(
+        Window,
+        (Rr_Vec2){ Position.X - Thickness, Position.Y - Thickness },
+        (Rr_Vec2){ Thickness, Size.Y + Thickness * 2.0f },
+        Color); /* Left */
+    Rr_DrawSolidQuad(
+        Window,
+        (Rr_Vec2){ Position.X + Size.X, Position.Y - Thickness },
+        (Rr_Vec2){ Thickness, Size.Y + Thickness * 2.0f },
+        Color); /* Right */
+}
+
 static inline void Rr_DrawFrameQuad(
     Rr_UIWindow *Window,
     Rr_Vec2 Position,
@@ -831,15 +860,6 @@ static inline void Rr_GetWindowContentsAreaPositionAndSize(
         OutPosition->Y += gContext->WindowTitleHeight;
         OutSize->Y -= gContext->WindowTitleHeight;
     }
-    else
-    {
-        OutPosition->Y += gContext->FrameThickness;
-        OutSize->Height -= gContext->FrameThickness;
-    }
-
-    OutPosition->X += gContext->FrameThickness;
-    OutSize->Width -= gContext->FrameThickness;
-    OutSize->Height -= gContext->FrameThickness;
 
     bool HasScrollbar =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
@@ -848,10 +868,6 @@ static inline void Rr_GetWindowContentsAreaPositionAndSize(
     if(HasScrollbar && FillRatio > 1.0f)
     {
         OutSize->Width -= gContext->ScrollbarWidth;
-    }
-    else
-    {
-        OutSize->Width -= gContext->FrameThickness;
     }
 }
 
@@ -978,7 +994,13 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Window->LastClipRectCount ? Window->LastClipRectCount : 2,
         gContext->FrameArena);
 
-    Rr_AddClipRect(Window->Position, Window->Size);
+    Rr_Vec2 ClipRectPosition = Window->Position;
+    ClipRectPosition.X -= gContext->FrameThickness;
+    ClipRectPosition.Y -= gContext->FrameThickness;
+    Rr_Vec2 ClipRectSize = Window->Size;
+    ClipRectSize.X += gContext->FrameThickness * 2.0f;
+    ClipRectSize.Y += gContext->FrameThickness * 2.0f;
+    Rr_AddClipRect(ClipRectPosition, ClipRectSize);
 
     bool HasResize =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
@@ -995,7 +1017,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Rr_DrawResizeHandle(Window);
     }
 
-    Rr_DrawFrameQuad(
+    Rr_DrawOuterFrameQuad(
         Window,
         Window->Position,
         Window->Size,
