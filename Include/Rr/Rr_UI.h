@@ -48,6 +48,11 @@ struct Rr_UIStyle
     Rr_Vec4 Outline;
     Rr_Vec4 ScrollbarBackground;
     Rr_Vec4 ScrollbarForeground;
+
+    Rr_Vec4 ButtonNormal;
+    Rr_Vec4 ButtonHovered;
+    Rr_Vec4 ButtonPressed;
+    Rr_Vec4 ButtonDisabled;
 };
 
 extern Rr_Font *Rr_CreateFont(
