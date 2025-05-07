@@ -1384,9 +1384,9 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     Rr_Vec4 Color = Rr_MulV4F(
         gContext->Style.Foreground,
-        Held      ? 0.5f
-        : Hovered ? 0.75f
-                  : 1.0f);
+        Held || Clicked ? 0.5f
+        : Hovered       ? 0.75f
+                        : 1.0f);
 
     Rr_DrawFrameQuad(
         Window,
