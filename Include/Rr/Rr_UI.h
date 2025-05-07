@@ -66,7 +66,9 @@ typedef uint32_t Rr_UITextFlags;
 Rr_Vec2 Rr_CalculateTextSize(
     Rr_Font *Font,
     float FontSize,
-    struct Rr_String *String);
+    struct Rr_String *String,
+    float AvailableWidth,
+    Rr_UITextFlags Flags);
 
 typedef enum
 {
@@ -82,6 +84,8 @@ extern void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags);
 extern void Rr_EndWindow(void);
 
 extern void Rr_Separator(void);
+
+extern void Rr_LabelEx(const char *Text, Rr_UITextFlags Flags);
 
 extern void Rr_Label(const char *Text);
 
