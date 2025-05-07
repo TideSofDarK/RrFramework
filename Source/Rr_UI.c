@@ -810,8 +810,6 @@ static inline void Rr_DrawWindowTitle(Rr_UIWindow *Window)
 static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
 {
     Rr_Vec2 BottomRight = Rr_AddV2(Window->Position, Window->Size);
-    BottomRight.X -= gContext->FrameThickness;
-    BottomRight.Y -= gContext->FrameThickness;
     Rr_Vec2 ResizeHandlePosition = {
         BottomRight.X - gContext->ResizeHandleSize,
         BottomRight.Y - gContext->ResizeHandleSize,
