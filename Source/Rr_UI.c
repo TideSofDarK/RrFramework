@@ -1593,6 +1593,7 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
                 gContext->LeftMouseButtonDown = true;
+                gContext->LeftMouseButtonHeld = true;
             }
         }
         break;
@@ -1601,6 +1602,7 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
                 gContext->LeftMouseButtonUp = true;
+                gContext->LeftMouseButtonHeld = false;
             }
         }
         break;
