@@ -54,7 +54,7 @@ struct Rr_UIUniformData
 typedef struct Rr_UIClipRect Rr_UIClipRect;
 struct Rr_UIClipRect
 {
-    uint32_t FirstIndex;
+    size_t FirstIndex;
     Rr_Vec2 Position;
     Rr_Vec2 Size;
 };
@@ -74,10 +74,6 @@ struct Rr_UIWindow
 
     Rr_Map *WidgetMap;
 
-    uint32_t LastVertexCount;
-    RR_SLICE(Rr_UIVertex) Vertices;
-    uint32_t LastIndexCount;
-    RR_SLICE(Rr_UIIndex) Indices;
     uint32_t LastClipRectCount;
     RR_SLICE(Rr_UIClipRect) ClipRects;
 };
@@ -148,6 +144,11 @@ struct Rr_UIContext
 
     Rr_Buffer *VertexBuffer;
     Rr_Buffer *IndexBuffer;
+
+    uint32_t LastVertexCount;
+    RR_SLICE(Rr_UIVertex) Vertices;
+    uint32_t LastIndexCount;
+    RR_SLICE(Rr_UIIndex) Indices;
 
     Rr_Buffer *UniformBuffer;
 
@@ -254,22 +255,21 @@ void Rr_DestroyFont(Rr_UIContext *Context, Rr_Font *Font)
 
 static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
 {
-    /* TODO: Bounds checking! */
-
-    Rr_UIIndex Base = Window->Vertices.Count;
+    Rr_UIIndex Base = gContext->Vertices.Count;
     Rr_UIIndex Indices[] = {
         Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
     };
 
-    Rr_UIQuad ReservedQuad = Window->Vertices.Data + Window->Vertices.Count;
+    Rr_UIQuad ReservedQuad = gContext->Vertices.Data + gContext->Vertices.Count;
     for(size_t Index = 0; Index < 4; ++Index)
     {
-        RR_PUSH_SLICE(&Window->Vertices, gContext->FrameArena);
+        RR_PUSH_SLICE(&gContext->Vertices, gContext->FrameArena);
     }
 
     for(size_t Index = 0; Index < 6; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Indices, gContext->FrameArena) = Indices[Index];
+        *RR_PUSH_SLICE(&gContext->Indices, gContext->FrameArena) =
+            Indices[Index];
     }
 
     return ReservedQuad;
@@ -277,19 +277,20 @@ static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
 
 static inline void Rr_DrawQuad(Rr_UIWindow *Window, Rr_UIVertex *Vertices)
 {
-    Rr_UIIndex Base = Window->Vertices.Count;
+    Rr_UIIndex Base = gContext->Vertices.Count;
     Rr_UIIndex Indices[] = {
         Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
     };
     for(size_t Index = 0; Index < 4; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Vertices, gContext->FrameArena) =
+        *RR_PUSH_SLICE(&gContext->Vertices, gContext->FrameArena) =
             Vertices[Index];
     }
 
     for(size_t Index = 0; Index < 6; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Indices, gContext->FrameArena) = Indices[Index];
+        *RR_PUSH_SLICE(&gContext->Indices, gContext->FrameArena) =
+            Indices[Index];
     }
 }
 
@@ -375,13 +376,13 @@ static inline void Rr_DrawSolidTriangle(
     };
     for(size_t Index = 0; Index < 3; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Indices, gContext->FrameArena) =
-            Window->Vertices.Count + Index;
+        *RR_PUSH_SLICE(&gContext->Indices, gContext->FrameArena) =
+            gContext->Vertices.Count + Index;
     }
 
     for(size_t Index = 0; Index < 3; ++Index)
     {
-        *RR_PUSH_SLICE(&Window->Vertices, gContext->FrameArena) =
+        *RR_PUSH_SLICE(&gContext->Vertices, gContext->FrameArena) =
             Vertices[Index];
     }
 }
@@ -763,7 +764,7 @@ static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
     *RR_PUSH_SLICE(&Window->ClipRects, gContext->FrameArena) = (Rr_UIClipRect){
-        .FirstIndex = (uint32_t)(Window->Indices.Count),
+        .FirstIndex = (uint32_t)(gContext->Indices.Count),
         .Position = Position,
         .Size = Size,
     };
@@ -973,18 +974,6 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Window->Flags = Flags;
     Window->Added = true;
-
-    RR_ZERO(Window->Vertices);
-    RR_RESERVE_SLICE(
-        &Window->Vertices,
-        Window->LastVertexCount ? Window->LastVertexCount : (4 * 32),
-        gContext->FrameArena);
-
-    RR_ZERO(Window->Indices);
-    RR_RESERVE_SLICE(
-        &Window->Indices,
-        Window->LastIndexCount ? Window->LastIndexCount : (6 * 32),
-        gContext->FrameArena);
 
     RR_ZERO(Window->ClipRects);
     RR_RESERVE_SLICE(
@@ -1764,6 +1753,18 @@ void Rr_BeginUI(Rr_UIContext *Context)
         }
     }
 
+    RR_ZERO(gContext->Vertices);
+    RR_RESERVE_SLICE(
+        &gContext->Vertices,
+        gContext->LastVertexCount,
+        gContext->FrameArena);
+
+    RR_ZERO(gContext->Indices);
+    RR_RESERVE_SLICE(
+        &gContext->Indices,
+        gContext->LastIndexCount,
+        gContext->FrameArena);
+
     RR_ZERO(gContext->Windows);
     RR_RESERVE_SLICE(
         &gContext->Windows,
@@ -1808,15 +1809,19 @@ void Rr_EndUI(void)
         Rr_GetMappedBufferData(Renderer, gContext->UniformBuffer);
     memcpy(MappedUniformData, &UniformData, sizeof(UniformData));
 
-    Rr_UIVertex *VertexBufferDataStart;
-    Rr_UIVertex *VertexBufferData;
-    VertexBufferData = VertexBufferDataStart =
+    Rr_UIVertex *VertexBufferData =
         Rr_GetMappedBufferData(Renderer, gContext->VertexBuffer);
+    memcpy(
+        VertexBufferData,
+        gContext->Vertices.Data,
+        sizeof(Rr_UIVertex) * gContext->Vertices.Count);
 
-    Rr_UIIndex *IndexBufferDataStart;
-    Rr_UIIndex *IndexBufferData;
-    IndexBufferData = IndexBufferDataStart =
+    Rr_UIIndex *IndexBufferData =
         Rr_GetMappedBufferData(Renderer, gContext->IndexBuffer);
+    memcpy(
+        IndexBufferData,
+        gContext->Indices.Data,
+        sizeof(Rr_UIIndex) * gContext->Indices.Count);
 
     Rr_ColorTarget ColorTarget = {
         .Slot = 0,
@@ -1863,21 +1868,6 @@ void Rr_EndUI(void)
     {
         Rr_UIWindow *Window = gContext->Windows.Data[Index];
 
-        int32_t VertexOffset =
-            (int32_t)(VertexBufferData - VertexBufferDataStart);
-        memcpy(
-            VertexBufferData,
-            Window->Vertices.Data,
-            sizeof(Rr_UIVertex) * Window->Vertices.Count);
-        VertexBufferData += Window->Vertices.Count;
-
-        size_t FirstIndex = (size_t)(IndexBufferData - IndexBufferDataStart);
-        memcpy(
-            IndexBufferData,
-            Window->Indices.Data,
-            sizeof(Rr_UIIndex) * Window->Indices.Count);
-        IndexBufferData += Window->Indices.Count;
-
         for(size_t ClipRectIndex = 0; ClipRectIndex < Window->ClipRects.Count;
             ++ClipRectIndex)
         {
@@ -1895,7 +1885,7 @@ void Rr_EndUI(void)
             size_t IndexCount;
             if(ClipRectIndex == Window->ClipRects.Count - 1)
             {
-                IndexCount = Window->Indices.Count - ClipRect->FirstIndex;
+                IndexCount = gContext->Indices.Count - ClipRect->FirstIndex;
             }
             else
             {
@@ -1908,16 +1898,14 @@ void Rr_EndUI(void)
                 GraphicsNode,
                 IndexCount,
                 1,
-                (size_t)ClipRect->FirstIndex + FirstIndex,
-                VertexOffset,
+                ClipRect->FirstIndex,
+                0,
                 0);
         }
 
         /* Prepare the window for the next frame. */
 
         Window->Added = false;
-        Window->LastIndexCount = Window->Indices.Count;
-        Window->LastVertexCount = Window->Vertices.Count;
         Window->LastClipRectCount = Window->ClipRects.Count;
     }
 
@@ -1928,6 +1916,8 @@ void Rr_EndUI(void)
     }
     gContext->LeftMouseButtonDown = false;
     gContext->LeftMouseButtonUp = false;
+    gContext->LastIndexCount = gContext->Indices.Count;
+    gContext->LastVertexCount = gContext->Vertices.Count;
     RR_ZERO(gContext->HorizontalX);
 }
 
