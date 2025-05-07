@@ -776,6 +776,10 @@ static inline void Rr_GetWindowContentsAreaPositionAndSize(
         OutSize->Height -= gContext->FrameThickness;
     }
 
+    OutPosition->X += gContext->FrameThickness;
+    OutSize->Width -= gContext->FrameThickness;
+    OutSize->Height -= gContext->FrameThickness;
+
     bool HasScrollbar =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
     float ContentsHeight = Window->YEnd - Window->YStart;
@@ -788,10 +792,6 @@ static inline void Rr_GetWindowContentsAreaPositionAndSize(
     {
         OutSize->Width -= gContext->FrameThickness;
     }
-
-    OutPosition->X += gContext->FrameThickness;
-    OutSize->Width -= gContext->FrameThickness;
-    OutSize->Height -= gContext->FrameThickness;
 }
 
 static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
@@ -812,7 +812,7 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
     float ContentsHeight = Window->YEnd - Window->YStart;
     float FillRatio = ContentsHeight / ContentsSize.Y;
 
-    if(FillRatio > 1.0f)
+    if(FillRatio >= 1.0f)
     {
         Rr_Vec2 ScrollbarPosition = ContentsPosition;
         ScrollbarPosition.X += ContentsSize.Width;
@@ -959,6 +959,7 @@ void Rr_EndWindow(void)
 {
     RR_UI_ASSERT_WINDOW();
 
+    gContext->CurrentWindow->YEnd += gContext->ContentsPadding.Y;
     gContext->CurrentWindow = NULL;
 }
 
@@ -1410,16 +1411,6 @@ void Rr_BeginUI(Rr_UIContext *Context)
             Rr_MulV2F(gContext->Style.ContentsPadding, gContext->FontSize);
         gContext->HorizontalMargin = gContext->FontSize * 0.5f;
 
-        gContext->WindowTitleHeight =
-            gContext->Style.TitlePadding.Y * gContext->FontSize * 2.0f +
-            gContext->LineHeight;
-        gContext->MinWindowSizeNoTitle =
-            Rr_MulV2F(gContext->ContentsPadding, 2.0f);
-        gContext->MinWindowSizeNoTitle.X += gContext->FontSize;
-        gContext->MinWindowSizeNoTitle.Y += gContext->FontSize;
-        gContext->MinWindowSize = gContext->MinWindowSizeNoTitle;
-        gContext->MinWindowSize.Y += gContext->WindowTitleHeight;
-
         gContext->FrameThickness =
             floorf(RR_MAX(1.0f, gContext->FontSize * 0.075f));
         gContext->ResizeHandleSize = gContext->FontSize * 0.75f;
@@ -1430,6 +1421,17 @@ void Rr_BeginUI(Rr_UIContext *Context)
                                              gContext->LineHeight * 0.125f };
         gContext->CheckboxSize = (Rr_Vec2){ gContext->LineHeight * 0.75f,
                                             gContext->LineHeight * 0.75f };
+
+        gContext->WindowTitleHeight =
+            gContext->Style.TitlePadding.Y * gContext->FontSize * 2.0f +
+            gContext->LineHeight;
+        gContext->MinWindowSizeNoTitle =
+            Rr_MulV2F(gContext->ContentsPadding, 2.0f);
+        gContext->MinWindowSizeNoTitle.X += gContext->ScrollbarWidth;
+        gContext->MinWindowSizeNoTitle.X += gContext->FontSize * 2.0f;
+        gContext->MinWindowSizeNoTitle.Y += gContext->FontSize * 2.0f;
+        gContext->MinWindowSize = gContext->MinWindowSizeNoTitle;
+        gContext->MinWindowSize.Y += gContext->WindowTitleHeight;
     }
 
     Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
