@@ -63,21 +63,23 @@ typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
     Rr_String Title;
+    Rr_UIWindowFlags Flags;
     Rr_Vec2 Position;
     Rr_Vec2 Size;
     float YStart;
     float YEnd;
+    int ZOrder;
+    bool Minimized;
+    bool Added;
+
+    Rr_Map *WidgetMap;
+
     uint32_t LastVertexCount;
     RR_SLICE(Rr_UIVertex) Vertices;
     uint32_t LastIndexCount;
     RR_SLICE(Rr_UIIndex) Indices;
     uint32_t LastClipRectCount;
     RR_SLICE(Rr_UIClipRect) ClipRects;
-    Rr_Map *WidgetMap;
-    Rr_UIWindowFlags Flags;
-    int ZOrder;
-    bool Minimized;
-    bool Added;
 };
 
 struct Rr_UIContext
@@ -98,6 +100,10 @@ struct Rr_UIContext
     bool Horizontal;
     RR_SLICE(float) HorizontalX;
     float HorizontalMaxHeight;
+
+    Rr_Vec2 TabCursor;
+    const char **SelectedTabRef;
+    const char *SelectedTab;
 
     bool MouseButtonCapture;
 
@@ -841,6 +847,25 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
     return false;
 }
 
+static inline void Rr_Advance(Rr_Vec2 Size)
+{
+    RR_UI_ASSERT_WINDOW();
+
+    if(gContext->Horizontal)
+    {
+        gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
+        gContext->HorizontalMaxHeight =
+            RR_MAX(gContext->HorizontalMaxHeight, Size.Height);
+    }
+    else
+    {
+        gContext->Cursor.Y += Size.Height;
+    }
+
+    gContext->CurrentWindow->YEnd =
+        RR_MAX(gContext->CurrentWindow->YEnd, gContext->Cursor.Y);
+}
+
 void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 {
     RR_UI_ASSERT_NO_WINDOW();
@@ -977,23 +1002,111 @@ void Rr_EndHorizontal(void)
     gContext->Cursor.Y += gContext->HorizontalMaxHeight;
 }
 
-static inline void Rr_Advance(Rr_Vec2 Size)
+void Rr_BeginTabs(const char *Title)
 {
     RR_UI_ASSERT_WINDOW();
 
-    if(gContext->Horizontal)
+    Rr_UIWindow *Window = gContext->CurrentWindow;
+
+    gContext->SelectedTabRef =
+        RR_UPSERT(&Window->WidgetMap, (uint64_t)Title, gContext->Arena);
+    gContext->SelectedTab = *gContext->SelectedTabRef;
+    gContext->TabCursor = gContext->Cursor;
+
+    Rr_Advance((Rr_Vec2){ 0.0f, gContext->LineHeight });
+
+    Rr_Vec2 SeparatorSize = {
+        gContext->AvailableContentsWidth,
+        gContext->FrameThickness,
+    };
+    Rr_Vec2 SeparatorPosition = {
+        gContext->Cursor.X,
+        gContext->Cursor.Y,
+    };
+    Rr_DrawSolidQuad(
+        Window,
+        SeparatorPosition,
+        SeparatorSize,
+        &gContext->Style.Foreground);
+
+    Rr_Advance((Rr_Vec2){ 0.0f, gContext->ContentsPadding.Y });
+}
+
+bool Rr_Tab(const char *Title)
+{
+    assert(
+        gContext->SelectedTabRef != NULL &&
+        "Did you forget to call Rr_BeginTabs()?");
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UIWindow *Window = gContext->CurrentWindow;
+
+    Rr_UIQuad TabQuad = NULL;
+
+    bool Selected = false;
+    if(gContext->SelectedTab == NULL)
     {
-        gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
-        gContext->HorizontalMaxHeight =
-            RR_MAX(gContext->HorizontalMaxHeight, Size.Height);
+        *gContext->SelectedTabRef = gContext->SelectedTab = Title;
+        Selected = true;
+    }
+    else if(strcmp(Title, gContext->SelectedTab) == 0)
+    {
+        Selected = true;
+    }
+
+    if(Selected)
+    {
+        TabQuad = Rr_ReserveQuad(Window);
+    }
+
+    Rr_String TextString = Rr_CreateString(Title, 0, Scratch.Arena);
+    Rr_Vec2 TextPosition = gContext->TabCursor;
+    Rr_Vec2 TextSize = Rr_DrawText(
+        Window,
+        TextPosition,
+        &TextString,
+        0.0f,
+        Selected ? &gContext->Style.Background : &gContext->Style.Foreground,
+        0);
+
+    gContext->TabCursor.X += gContext->HorizontalMargin + TextSize.Width;
+
+    bool Clicked = false;
+    bool Hovered = false;
+    Rr_ButtonBehavior(Window, TextPosition, TextSize, &Clicked, &Hovered);
+
+    if(Selected)
+    {
+        Rr_SolidQuad(
+            TabQuad,
+            TextPosition,
+            TextSize,
+            &gContext->Style.Foreground);
     }
     else
     {
-        gContext->Cursor.Y += Size.Height;
+        /* Rr_SolidQuad( */
+        /*     TabQuad, */
+        /*     TextPosition, */
+        /*     TextSize, */
+        /*     &(Rr_Vec4){ 0.1f, 0.1f, 0.1f, 1.0f }); */
     }
 
-    gContext->CurrentWindow->YEnd =
-        RR_MAX(gContext->CurrentWindow->YEnd, gContext->Cursor.Y);
+    if(Clicked)
+    {
+        *gContext->SelectedTabRef =
+            Title; /* Newly selected tab will be drawn next frame. */
+    }
+
+    Rr_DestroyScratch(Scratch);
+
+    return Selected;
+}
+
+void Rr_EndTabs(void)
+{
+    gContext->SelectedTabRef = NULL;
 }
 
 void Rr_Separator(void)
@@ -1235,7 +1348,7 @@ Rr_UIContext *Rr_CreateUIContext(void)
     Context->Arena = Arena;
 
     Context->NextFontSize =
-        24.0f; /* TODO: Calculate default font size based on DPI. */
+        36.0f; /* TODO: Calculate default font size based on DPI. */
 
     Context->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.25f },
@@ -1724,15 +1837,28 @@ void Rr_DebugOverlay(void)
     Rr_Renderer *Renderer = gApp->Renderer;
 
     Rr_BeginWindow("Rr_DebugOverlay", RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
-    Rr_LabelF("FPS: %.2f", FPSCount);
-    Rr_Separator();
-    Rr_LabelF("Renderer Arena: %d", gApp->Renderer->Arena->Commited);
-    for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    Rr_BeginTabs("DebugOverlayTabs");
+    if(Rr_Tab("General"))
     {
-        Rr_Frame *Frame = Renderer->Frames + Index;
-        Rr_LabelF("Frame#%d Arena: %d", Index, Frame->Arena->Commited);
+        Rr_LabelF("Time: %.2f", Rr_GetTimeSeconds());
+        Rr_LabelF("FPS: %.2f", FPSCount);
     }
-    Rr_Separator();
-    Rr_Label("More text...");
+    if(Rr_Tab("Memory"))
+    {
+        Rr_LabelF("Renderer Arena: %d", gApp->Renderer->Arena->Commited);
+        for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+        {
+            Rr_Frame *Frame = Renderer->Frames + Index;
+            Rr_LabelF("Frame#%d Arena: %d", Index, Frame->Arena->Commited);
+        }
+    }
+    if(Rr_Tab("Renderer"))
+    {
+        Rr_LabelF("Frame: %zu", gApp->Renderer->FrameNumber);
+        Rr_LabelF("RenderPasses: %zu", gApp->Renderer->RenderPasses.Count);
+        Rr_LabelF("Framebuffers: %zu", gApp->Renderer->Framebuffers.Count);
+        Rr_LabelF("SwapchainImages: %zu", gApp->Renderer->SwapchainImages.Count);
+    }
+    Rr_EndTabs();
     Rr_EndWindow();
 }

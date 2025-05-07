@@ -99,6 +99,12 @@ extern void Rr_BeginHorizontal(void);
 
 extern void Rr_EndHorizontal(void);
 
+extern void Rr_BeginTabs(const char *Title);
+
+extern bool Rr_Tab(const char *Title);
+
+extern void Rr_EndTabs(void);
+
 extern bool Rr_WantMouseCapture(void);
 
 extern bool Rr_WantKeyboardCapture(void);
