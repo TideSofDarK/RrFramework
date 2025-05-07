@@ -1923,17 +1923,6 @@ void Rr_DebugOverlay(void)
 {
     RR_UI_ASSERT_GLOBAL();
 
-    static double Timer = 1.0f;
-    static double FPSCount = 0.0f;
-
-    Timer += Rr_GetDeltaSeconds();
-
-    if(Timer > 0.25f)
-    {
-        FPSCount = Rr_GetFramesPerSecond();
-        Timer = 0.0f;
-    }
-
     Rr_Renderer *Renderer = gApp->Renderer;
 
     Rr_BeginWindow("Rr_DebugOverlay", RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
@@ -1941,7 +1930,7 @@ void Rr_DebugOverlay(void)
     if(Rr_Tab("General"))
     {
         Rr_LabelF("Time: %.2f", Rr_GetTimeSeconds());
-        Rr_LabelF("FPS: %.2f", FPSCount);
+        Rr_LabelF("FPS: %.2f", Rr_GetFramesPerSecond());
     }
     if(Rr_Tab("Memory"))
     {
