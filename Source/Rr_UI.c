@@ -56,8 +56,8 @@ struct Rr_UIClipRect
 {
     size_t IndexCount;
     size_t FirstIndex;
-    Rr_Vec2 Position;
-    Rr_Vec2 Size;
+    Rr_IntVec2 Position;
+    Rr_IntVec2 Size;
 };
 
 typedef struct Rr_UIWindow Rr_UIWindow;
@@ -755,7 +755,8 @@ static inline void Rr_ButtonBehavior(
     Rr_UIWindow *Window,
     Rr_Vec2 Position,
     Rr_Vec2 Size,
-    bool *Clicked,
+    bool *Down,
+    bool *Up,
     bool *Hovered,
     bool *Held)
 {
@@ -766,22 +767,20 @@ static inline void Rr_ButtonBehavior(
         {
             gContext->DragOpWindow = NULL;
         }
-        if(gContext->LeftMouseButtonUp)
+        if(gContext->DragOpWindow == NULL)
         {
-            if(Clicked)
+            if(gContext->LeftMouseButtonDown && Down)
             {
-                *Clicked = true;
+                *Down = true;
             }
-        }
-        if(gContext->LeftMouseButtonHeld)
-        {
-            if(Held)
+            if(gContext->LeftMouseButtonUp && Up)
+            {
+                *Up = true;
+            }
+            if(gContext->LeftMouseButtonHeld && Held)
             {
                 *Held = true;
             }
-        }
-        if(gContext->DragOpWindow == NULL)
-        {
             if(Hovered)
             {
                 *Hovered = true;
@@ -813,8 +812,9 @@ static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
 
     *ClipRect = (Rr_UIClipRect){
         .FirstIndex = gContext->Indices.Count,
-        .Position = Position,
-        .Size = Size,
+        .Position = { (int32_t)roundf(Position.X),
+                      (int32_t)roundf(Position.Y) },
+        .Size = { (int32_t)roundf(Size.X), (int32_t)roundf(Size.Y) },
     };
 }
 
@@ -954,6 +954,9 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
         return false;
     }
 
+    bool HasResize =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
+
     Rr_Vec2 ContentsAreaPosition;
     Rr_Vec2 ContentsAreaSize;
     Rr_GetWindowContentsAreaPositionAndSize(
@@ -998,18 +1001,33 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
 
         Rr_Vec2 ScrollbarButtonSize = ScrollbarHandleSize;
         ScrollbarButtonSize.Width = ScrollbarSize.Width;
-        bool Clicked = false;
+        if(HasResize)
+        {
+            /* This cuts a bit of height from the scrollbar hitbox so the resize
+             * handle is always on top. */
+
+            float AvailableResizeButtonHeight =
+                (ScrollbarPosition.Y + ScrollbarSize.Height -
+                 gContext->ResizeHandleSize) -
+                (ScrollbarHandlePosition.Y + ScrollbarHandleSize.Height);
+            if(AvailableResizeButtonHeight < 0.0f)
+            {
+                ScrollbarButtonSize.Height += AvailableResizeButtonHeight;
+            }
+        }
+        bool Down = false;
         bool Hovered = false;
         bool Held = false;
         Rr_ButtonBehavior(
             Window,
             ScrollbarHandlePosition,
             ScrollbarButtonSize,
-            &Clicked,
+            &Down,
+            NULL,
             &Hovered,
             &Held);
 
-        if(Clicked && gContext->DragOpWindow == NULL)
+        if(Down && gContext->DragOpWindow == NULL)
         {
             Rr_BeginDragOp(
                 RR_UI_DRAG_OP_SCROLL,
@@ -1257,14 +1275,15 @@ bool Rr_Tab(const char *Title)
 
     gContext->TabCursor.X += ButtonSize.Width;
 
-    bool Clicked = false;
+    bool Up = false;
     bool Hovered = false;
     bool Held = false;
     Rr_ButtonBehavior(
         Window,
         ButtonPosition,
         ButtonSize,
-        &Clicked,
+        NULL,
+        &Up,
         &Hovered,
         &Held);
 
@@ -1288,7 +1307,7 @@ bool Rr_Tab(const char *Title)
 
     Rr_SolidQuad(TabQuad, ButtonPosition, ButtonSize, TabButtonColor);
 
-    if(Clicked)
+    if(Up)
     {
         *gContext->SelectedTabRef =
             Title; /* Newly selected tab will be rendered next frame. */
@@ -1415,14 +1434,15 @@ bool Rr_Button(const char *Text)
     Rr_Vec2 ButtonSize =
         Rr_AddV2(TextSize, Rr_MulV2F(gContext->ButtonPadding, 2.0f));
 
-    bool Clicked = false;
+    bool Up = false;
     bool Hovered = false;
     bool Held = false;
     Rr_ButtonBehavior(
         Window,
         ButtonPosition,
         ButtonSize,
-        &Clicked,
+        NULL,
+        &Up,
         &Hovered,
         &Held);
 
@@ -1455,7 +1475,7 @@ bool Rr_Button(const char *Text)
 
     Rr_DestroyScratch(Scratch);
 
-    return Clicked;
+    return Up;
 }
 
 bool Rr_Checkbox(const char *Text, bool *Checked)
@@ -1476,27 +1496,28 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
             gContext->LineHeight / 2.0f - gContext->CheckboxSize.Y / 2.0f,
         });
 
-    bool Clicked = false;
+    bool Up = false;
     bool Hovered = false;
     bool Held = false;
     Rr_ButtonBehavior(
         Window,
         FramePosition,
         gContext->CheckboxSize,
-        &Clicked,
+        NULL,
+        &Up,
         &Hovered,
         &Held);
 
-    if(Clicked)
+    if(Up)
     {
         *Checked = !*Checked;
     }
 
     Rr_Vec4 Color = Rr_MulV4F(
         gContext->Style.Foreground,
-        Held || Clicked ? 0.5f
-        : Hovered       ? 0.75f
-                        : 1.0f);
+        Held || Up ? 0.5f
+        : Hovered  ? 0.75f
+                   : 1.0f);
 
     Rr_DrawFrameQuad(
         Window,
@@ -1537,7 +1558,7 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     Rr_DestroyScratch(Scratch);
 
-    return Clicked;
+    return Up;
 }
 
 bool Rr_WantMouseCapture(void)
@@ -1671,8 +1692,10 @@ Rr_UIContext *Rr_CreateUIContext(void)
             .MagFilter = RR_FILTER_LINEAR,
         });
 
-    Context->Font =
-        Rr_CreateFont(Context, RR_BUILTIN_IOSEVKA_PNG, RR_BUILTIN_IOSEVKA_JSON);
+    Context->Font = Rr_CreateFont(
+        Context,
+        RR_BUILTIN_SOURCESERIF4_PNG,
+        RR_BUILTIN_SOURCESERIF4_JSON);
 
     return Context;
 }
@@ -1756,10 +1779,10 @@ void Rr_BeginUI(Rr_UIContext *Context)
 
         gContext->FrameThickness =
             floorf(RR_MAX(1.0f, gContext->FontSize * 0.075f));
-        gContext->ResizeHandleSize = gContext->FontSize * 0.75f;
-        gContext->SeparatorLineHeight = gContext->LineHeight * 0.5f;
+        gContext->ResizeHandleSize = gContext->FontSize;
         gContext->ScrollbarWidth = gContext->ResizeHandleSize;
         gContext->ScrollbarHandleWidth = gContext->ResizeHandleSize * 0.5f;
+        gContext->SeparatorLineHeight = gContext->LineHeight * 0.5f;
         gContext->ButtonPadding = (Rr_Vec2){ gContext->LineHeight * 0.25f,
                                              gContext->LineHeight * 0.125f };
         gContext->CheckboxSize = (Rr_Vec2){ gContext->LineHeight * 0.75f,
@@ -1838,6 +1861,17 @@ void Rr_BeginUI(Rr_UIContext *Context)
                 break;
                 case RR_UI_DRAG_OP_SCROLL:
                 {
+                    Rr_Vec2 ContentsAreaPosition;
+                    Rr_Vec2 ContentsAreaSize;
+                    Rr_GetWindowContentsAreaPositionAndSize(
+                        gContext->DragOpWindow,
+                        &ContentsAreaPosition,
+                        &ContentsAreaSize);
+                    float ContentsHeight = gContext->DragOpWindow->YEnd -
+                                           gContext->DragOpWindow->YStart;
+                    float FillRatio = ContentsHeight / ContentsAreaSize.Y;
+                    gContext->DragOpWindow->VScroll =
+                        gContext->DragOpWindowStart.Y + (Delta.Y * FillRatio);
                 }
                 break;
                 default:
@@ -2001,10 +2035,10 @@ void Rr_EndUI(void)
             Rr_SetScissor(
                 GraphicsNode,
                 (Rr_IntVec4){
-                    (int32_t)ClipRect->Position.X,
-                    (int32_t)ClipRect->Position.Y,
-                    (int32_t)ClipRect->Size.X,
-                    (int32_t)ClipRect->Size.Y,
+                    ClipRect->Position.X,
+                    ClipRect->Position.Y,
+                    ClipRect->Size.X,
+                    ClipRect->Size.Y,
                 });
 
             Rr_DrawIndexed(
@@ -2039,7 +2073,8 @@ void Rr_SetFontSize(float Size)
 {
     if(gContext)
     {
-        gContext->NextFontSize = Size;
+        gContext->NextFontSize =
+            RR_CLAMP(8.0f, floorf(Size / 2.0f) * 2.0f, 96.0f);
     }
 }
 
@@ -2056,7 +2091,9 @@ void Rr_DebugOverlay(void)
         Rr_LabelF("Time: %.2f", Rr_GetTimeSeconds());
         Rr_Separator();
         Rr_LabelF("FPS: %.2f", Rr_GetFramesPerSecond());
-        Rr_Checkbox("Frame Limiter Enabled", &gApp->FrameTime.EnableFrameLimiter);
+        Rr_Checkbox(
+            "Frame Limiter Enabled",
+            &gApp->FrameTime.EnableFrameLimiter);
         Rr_LabelF("Frame Limit: %.2f", Rr_GetFramesPerSecond());
     }
     if(Rr_Tab("Memory"))
