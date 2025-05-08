@@ -69,6 +69,7 @@ struct Rr_UIWindow
     Rr_Vec2 Size;
     float YStart;
     float YEnd;
+    float YScroll;
     int ZOrder;
     bool Minimized;
     bool Added;
@@ -108,6 +109,7 @@ struct Rr_UIContext
     bool LeftMouseButtonHeld;
     bool LeftMouseButtonUp;
     Rr_Vec2 MousePosition;
+    Rr_Vec2 MouseWheelDelta;
 
     Rr_UIWindow *MovingWindow;
     Rr_Vec2 MovingStart;
@@ -722,6 +724,28 @@ Rr_Vec2 Rr_CalculateTextSize(
         Flags);
 }
 
+static inline bool Rr_ScrollBehavior(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Position,
+    Rr_Vec2 Size,
+    float *YScroll)
+{
+    if(Window == gContext->HoveredWindow &&
+       Rr_RectContains(Position, Size, gContext->MousePosition))
+    {
+        if(gContext->MouseWheelDelta.Y != 0.0f)
+        {
+            gContext->MovingWindow = NULL;
+            *YScroll =
+                *YScroll + gContext->MouseWheelDelta.Y * gContext->LineHeight;
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static inline void Rr_ButtonBehavior(
     Rr_UIWindow *Window,
     Rr_Vec2 Position,
@@ -896,21 +920,22 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
         return false;
     }
 
-    Rr_Vec2 ContentsPosition;
-    Rr_Vec2 ContentsSize;
+    Rr_Vec2 ContentsAreaPosition;
+    Rr_Vec2 ContentsAreaSize;
     Rr_GetWindowContentsAreaPositionAndSize(
         Window,
-        &ContentsPosition,
-        &ContentsSize);
+        &ContentsAreaPosition,
+        &ContentsAreaSize);
     float ContentsHeight = Window->YEnd - Window->YStart;
-    float FillRatio = ContentsHeight / ContentsSize.Y;
+    float FillRatio = ContentsAreaSize.Y / ContentsHeight;
+    float MaxYScroll = RR_MAX(0.0f, ContentsHeight - ContentsAreaSize.Height);
 
-    if(FillRatio >= 1.0f)
+    if(FillRatio < 1.0f)
     {
-        Rr_Vec2 ScrollbarPosition = ContentsPosition;
-        ScrollbarPosition.X += ContentsSize.Width;
+        Rr_Vec2 ScrollbarPosition = ContentsAreaPosition;
+        ScrollbarPosition.X += ContentsAreaSize.Width;
         Rr_Vec2 ScrollbarSize = { gContext->ScrollbarWidth,
-                                  ContentsSize.Height };
+                                  ContentsAreaSize.Height };
         Rr_DrawSolidQuad(
             Window,
             ScrollbarPosition,
@@ -922,7 +947,20 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
         ScrollbarHandlePosition.X +=
             (gContext->ScrollbarWidth - gContext->ScrollbarHandleWidth) / 2.0f;
         ScrollbarHandleSize.Width = gContext->ScrollbarHandleWidth;
-        ScrollbarHandleSize.Height *= 1.0f / FillRatio;
+        ScrollbarHandleSize.Height *= FillRatio;
+
+        Rr_Vec2 ScrollableArea = ContentsAreaSize;
+        ScrollableArea.Width += gContext->ScrollbarWidth;
+        if(Rr_ScrollBehavior(
+               Window,
+               ContentsAreaPosition,
+               ScrollableArea,
+               &Window->YScroll))
+        {
+        }
+        Window->YScroll = RR_CLAMP(0.0f, Window->YScroll, MaxYScroll);
+
+        ScrollbarHandlePosition.Y += (Window->YScroll * FillRatio);
 
         Rr_Vec2 ScrollbarButtonSize = ScrollbarHandleSize;
         ScrollbarButtonSize.Width = ScrollbarSize.Width;
@@ -931,7 +969,7 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
         bool Held = false;
         Rr_ButtonBehavior(
             Window,
-            ScrollbarPosition,
+            ScrollbarHandlePosition,
             ScrollbarButtonSize,
             &Clicked,
             &Hovered,
@@ -957,6 +995,10 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
             ScrollbarHandleColor);
 
         return true;
+    }
+    else
+    {
+        Window->YScroll = 0.0f;
     }
 
     return false;
@@ -1085,6 +1127,8 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     {
         gContext->Cursor.Y += gContext->WindowTitleHeight;
     }
+
+    gContext->Cursor.Y -= Window->YScroll;
 
     Window->YStart = Window->YEnd = gContext->Cursor.Y;
 }
@@ -1661,6 +1705,12 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
         {
         }
         break;
+        case RR_EVENT_TYPE_MOUSE_WHEEL:
+        {
+            gContext->MouseWheelDelta =
+                Rr_SubV2(gContext->MouseWheelDelta, Event->Wheel.Amount);
+        }
+        break;
         default:
             break;
     }
@@ -1956,6 +2006,7 @@ void Rr_EndUI(void)
     }
     gContext->LeftMouseButtonDown = false;
     gContext->LeftMouseButtonUp = false;
+    gContext->MouseWheelDelta = (Rr_Vec2){ 0 };
     gContext->LastIndexCount = (uint32_t)gContext->Indices.Count;
     gContext->LastVertexCount = (uint32_t)gContext->Vertices.Count;
     RR_ZERO(gContext->HorizontalX);
