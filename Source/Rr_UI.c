@@ -69,7 +69,7 @@ struct Rr_UIWindow
     Rr_Vec2 Size;
     float YStart;
     float YEnd;
-    float YScroll;
+    float VScroll;
     int ZOrder;
     bool Minimized;
     bool Added;
@@ -79,6 +79,14 @@ struct Rr_UIWindow
     size_t LastClipRectCount;
     RR_ARRAY(Rr_UIClipRect) ClipRects;
 };
+
+typedef enum
+{
+    RR_UI_DRAG_OP_NONE,
+    RR_UI_DRAG_OP_MOVE,
+    RR_UI_DRAG_OP_RESIZE,
+    RR_UI_DRAG_OP_VSCROLL,
+} Rr_UIDragOp;
 
 struct Rr_UIContext
 {
@@ -111,13 +119,10 @@ struct Rr_UIContext
     Rr_Vec2 MousePosition;
     Rr_Vec2 MouseWheelDelta;
 
-    Rr_UIWindow *MovingWindow;
-    Rr_Vec2 MovingStart;
-    Rr_Vec2 MovingWindowStart;
-
-    Rr_UIWindow *ResizingWindow;
-    Rr_Vec2 ResizingStart;
-    Rr_Vec2 ResizingWindowStart;
+    Rr_UIDragOp DragOp;
+    Rr_UIWindow *DragOpWindow;
+    Rr_Vec2 DragOpMouseStart;
+    Rr_Vec2 DragOpWindowStart;
 
     Rr_Vec2 ScreenSize;
 
@@ -730,12 +735,12 @@ static inline bool Rr_ScrollBehavior(
     Rr_Vec2 Size,
     float *YScroll)
 {
-    if(Window == gContext->HoveredWindow &&
+    if(Window == gContext->HoveredWindow && gContext->DragOpWindow == NULL &&
        Rr_RectContains(Position, Size, gContext->MousePosition))
     {
         if(gContext->MouseWheelDelta.Y != 0.0f)
         {
-            gContext->MovingWindow = NULL;
+            gContext->DragOpWindow = NULL;
             *YScroll =
                 *YScroll + gContext->MouseWheelDelta.Y * gContext->LineHeight;
 
@@ -754,12 +759,12 @@ static inline void Rr_ButtonBehavior(
     bool *Hovered,
     bool *Held)
 {
-    if(Window == gContext->HoveredWindow &&
+    if(Window == gContext->HoveredWindow && gContext->DragOpWindow == NULL &&
        Rr_RectContains(Position, Size, gContext->MousePosition))
     {
         if(gContext->LeftMouseButtonDown)
         {
-            gContext->MovingWindow = NULL;
+            gContext->DragOpWindow = NULL;
             if(Clicked)
             {
                 *Clicked = true;
@@ -767,13 +772,13 @@ static inline void Rr_ButtonBehavior(
         }
         else if(gContext->LeftMouseButtonHeld)
         {
-            gContext->MovingWindow = NULL;
+            gContext->DragOpWindow = NULL;
             if(Held)
             {
                 *Held = true;
             }
         }
-        else if(!gContext->MovingWindow && !gContext->ResizingWindow)
+        else if(gContext->DragOpWindow == NULL)
         {
             if(Hovered)
             {
@@ -872,7 +877,8 @@ static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
         &Hovered,
         NULL);
 
-    if(Hovered || gContext->ResizingWindow == Window)
+    if(Hovered || (gContext->DragOpWindow == Window &&
+                   gContext->DragOp == RR_UI_DRAG_OP_RESIZE))
     {
         ResizeHandleColor = Rr_MulV4F(ResizeHandleColor, 0.75f);
     }
@@ -955,12 +961,12 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
                Window,
                ContentsAreaPosition,
                ScrollableArea,
-               &Window->YScroll))
+               &Window->VScroll))
         {
         }
-        Window->YScroll = RR_CLAMP(0.0f, Window->YScroll, MaxYScroll);
+        Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
 
-        ScrollbarHandlePosition.Y += (Window->YScroll * FillRatio);
+        ScrollbarHandlePosition.Y += (Window->VScroll * FillRatio);
 
         Rr_Vec2 ScrollbarButtonSize = ScrollbarHandleSize;
         ScrollbarButtonSize.Width = ScrollbarSize.Width;
@@ -998,7 +1004,7 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
     }
     else
     {
-        Window->YScroll = 0.0f;
+        Window->VScroll = 0.0f;
     }
 
     return false;
@@ -1128,7 +1134,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         gContext->Cursor.Y += gContext->WindowTitleHeight;
     }
 
-    gContext->Cursor.Y -= Window->YScroll;
+    gContext->Cursor.Y -= Window->VScroll;
 
     Window->YStart = Window->YEnd = gContext->Cursor.Y;
 }
@@ -1138,7 +1144,7 @@ void Rr_EndWindow(void)
     RR_UI_ASSERT_WINDOW();
 
     Rr_SetLastClipRectIndexCount(gContext->CurrentWindow);
-    gContext->CurrentWindow->YEnd += gContext->ContentsPadding.Y;
+    gContext->CurrentWindow->YEnd += gContext->ContentsPadding.Y * 2.0f;
     gContext->CurrentWindow = NULL;
 }
 
@@ -1716,6 +1722,17 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
     }
 }
 
+static inline void Rr_BeginDragOp(Rr_UIDragOp DragOp, Rr_Vec2 WindowStart)
+{
+    assert(gContext->DragOpWindow == NULL);
+    assert(gContext->HoveredWindow != NULL);
+
+    gContext->DragOpMouseStart = gContext->MousePosition;
+    gContext->DragOpWindow = gContext->HoveredWindow;
+    gContext->DragOp = DragOp;
+    gContext->DragOpWindowStart = WindowStart;
+}
+
 void Rr_BeginUI(Rr_UIContext *Context)
 {
     assert(Context);
@@ -1791,39 +1808,46 @@ void Rr_BeginUI(Rr_UIContext *Context)
         }
     }
 
-    if(gContext->MovingWindow)
+    if(gContext->DragOpWindow)
     {
         if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_BIT))
         {
             Rr_Vec2 Delta =
-                Rr_SubV2(gContext->MousePosition, gContext->MovingStart);
-            gContext->MovingWindow->Position =
-                Rr_AddV2(gContext->MovingWindowStart, Delta);
-            gContext->MovingWindow->Position =
-                Rr_FloorV2(gContext->MovingWindow->Position);
+                Rr_SubV2(gContext->MousePosition, gContext->DragOpMouseStart);
+            switch(gContext->DragOp)
+            {
+                case RR_UI_DRAG_OP_MOVE:
+                {
+                    gContext->DragOpWindow->Position =
+                        Rr_AddV2(gContext->DragOpWindowStart, Delta);
+                    gContext->DragOpWindow->Position =
+                        Rr_FloorV2(gContext->DragOpWindow->Position);
+                }
+                break;
+                case RR_UI_DRAG_OP_RESIZE:
+                {
+                    Rr_Vec2 NewWindowSize =
+                        Rr_AddV2(gContext->DragOpWindowStart, Delta);
+                    Rr_Vec2 MinWindowSize =
+                        Rr_GetMinWindowSize(gContext->DragOpWindow->Flags);
+                    NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
+                    NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
+                    gContext->DragOpWindow->Size = Rr_FloorV2(NewWindowSize);
+                }
+                break;
+                case RR_UI_DRAG_OP_VSCROLL:
+                {
+                }
+                break;
+                default:
+                {
+                }
+                break;
+            }
         }
         else
         {
-            gContext->MovingWindow = NULL;
-        }
-    }
-    else if(gContext->ResizingWindow)
-    {
-        if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_BIT))
-        {
-            Rr_Vec2 Delta =
-                Rr_SubV2(gContext->MousePosition, gContext->ResizingStart);
-            Rr_Vec2 NewWindowSize =
-                Rr_AddV2(gContext->ResizingWindowStart, Delta);
-            Rr_Vec2 MinWindowSize =
-                Rr_GetMinWindowSize(gContext->ResizingWindow->Flags);
-            NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
-            NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
-            gContext->ResizingWindow->Size = Rr_FloorV2(NewWindowSize);
-        }
-        else
-        {
-            gContext->ResizingWindow = NULL;
+            gContext->DragOpWindow = NULL;
         }
     }
     else if(gContext->HoveredWindow && gContext->LeftMouseButtonDown)
@@ -1843,15 +1867,13 @@ void Rr_BeginUI(Rr_UIContext *Context)
                ResizeHandleSize,
                gContext->MousePosition))
         {
-            gContext->ResizingStart = gContext->MousePosition;
-            gContext->ResizingWindow = gContext->HoveredWindow;
-            gContext->ResizingWindowStart = gContext->ResizingWindow->Size;
+            Rr_BeginDragOp(RR_UI_DRAG_OP_RESIZE, gContext->HoveredWindow->Size);
         }
         else
         {
-            gContext->MovingStart = gContext->MousePosition;
-            gContext->MovingWindow = gContext->HoveredWindow;
-            gContext->MovingWindowStart = gContext->MovingWindow->Position;
+            Rr_BeginDragOp(
+                RR_UI_DRAG_OP_MOVE,
+                gContext->HoveredWindow->Position);
         }
     }
 
