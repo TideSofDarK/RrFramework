@@ -54,6 +54,7 @@ struct Rr_UIUniformData
 typedef struct Rr_UIClipRect Rr_UIClipRect;
 struct Rr_UIClipRect
 {
+    size_t IndexCount;
     size_t FirstIndex;
     Rr_Vec2 Position;
     Rr_Vec2 Size;
@@ -74,7 +75,7 @@ struct Rr_UIWindow
 
     Rr_Map *WidgetMap;
 
-    uint32_t LastClipRectCount;
+    size_t LastClipRectCount;
     RR_ARRAY(Rr_UIClipRect) ClipRects;
 };
 
@@ -757,14 +758,27 @@ static inline void Rr_ButtonBehavior(
     }
 }
 
+static inline void Rr_SetLastClipRectIndexCount(Rr_UIWindow *Window)
+{
+    if(Window->ClipRects.Count > 0)
+    {
+        Rr_UIClipRect *Last = &Window->ClipRects.Data[Window->ClipRects.Count - 1];
+        Last->IndexCount = gContext->Indices.Count - Last->FirstIndex;
+    }
+}
+
 static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
 {
     RR_UI_ASSERT_WINDOW();
 
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
-    *RR_PUSH_ARRAY(&Window->ClipRects, gContext->FrameArena) = (Rr_UIClipRect){
-        .FirstIndex = (uint32_t)(gContext->Indices.Count),
+    Rr_SetLastClipRectIndexCount(Window);
+
+    Rr_UIClipRect *ClipRect = RR_PUSH_ARRAY(&Window->ClipRects, gContext->FrameArena);
+
+    *ClipRect = (Rr_UIClipRect){
+        .FirstIndex = gContext->Indices.Count,
         .Position = Position,
         .Size = Size,
     };
@@ -1048,6 +1062,7 @@ void Rr_EndWindow(void)
 {
     RR_UI_ASSERT_WINDOW();
 
+    Rr_SetLastClipRectIndexCount(gContext->CurrentWindow);
     gContext->CurrentWindow->YEnd += gContext->ContentsPadding.Y;
     gContext->CurrentWindow = NULL;
 }
@@ -1884,21 +1899,9 @@ void Rr_EndUI(void)
                     ClipRect->Size.Y,
                 });
 
-            size_t IndexCount;
-            if(ClipRectIndex == Window->ClipRects.Count - 1)
-            {
-                IndexCount = gContext->Indices.Count - ClipRect->FirstIndex;
-            }
-            else
-            {
-                IndexCount =
-                    Window->ClipRects.Data[ClipRectIndex + 1].FirstIndex -
-                    ClipRect->FirstIndex;
-            }
-
             Rr_DrawIndexed(
                 GraphicsNode,
-                IndexCount,
+                ClipRect->IndexCount,
                 1,
                 ClipRect->FirstIndex,
                 0,
