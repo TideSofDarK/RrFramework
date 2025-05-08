@@ -85,7 +85,7 @@ typedef enum
     RR_UI_DRAG_OP_NONE,
     RR_UI_DRAG_OP_MOVE,
     RR_UI_DRAG_OP_RESIZE,
-    RR_UI_DRAG_OP_VSCROLL,
+    RR_UI_DRAG_OP_SCROLL,
 } Rr_UIDragOp;
 
 struct Rr_UIContext
@@ -759,26 +759,28 @@ static inline void Rr_ButtonBehavior(
     bool *Hovered,
     bool *Held)
 {
-    if(Window == gContext->HoveredWindow && gContext->DragOpWindow == NULL &&
+    if(Window == gContext->HoveredWindow &&
        Rr_RectContains(Position, Size, gContext->MousePosition))
     {
         if(gContext->LeftMouseButtonDown)
         {
             gContext->DragOpWindow = NULL;
+        }
+        if(gContext->LeftMouseButtonUp)
+        {
             if(Clicked)
             {
                 *Clicked = true;
             }
         }
-        else if(gContext->LeftMouseButtonHeld)
+        if(gContext->LeftMouseButtonHeld)
         {
-            gContext->DragOpWindow = NULL;
             if(Held)
             {
                 *Held = true;
             }
         }
-        else if(gContext->DragOpWindow == NULL)
+        if(gContext->DragOpWindow == NULL)
         {
             if(Hovered)
             {
@@ -868,14 +870,10 @@ static inline void Rr_DrawResizeHandle(Rr_UIWindow *Window)
 
     Rr_Vec4 ResizeHandleColor = gContext->Style.Foreground;
 
-    bool Hovered = false;
-    Rr_ButtonBehavior(
-        Window,
+    bool Hovered = Rr_RectContains(
         ResizeHandlePosition,
         ResizeHandleSize,
-        NULL,
-        &Hovered,
-        NULL);
+        gContext->MousePosition);
 
     if(Hovered || (gContext->DragOpWindow == Window &&
                    gContext->DragOp == RR_UI_DRAG_OP_RESIZE))
@@ -915,6 +913,36 @@ static inline void Rr_GetWindowContentsAreaPositionAndSize(
     {
         OutSize->Width -= gContext->ScrollbarWidth;
     }
+}
+
+static inline void Rr_BeginDragOp(Rr_UIDragOp DragOp, Rr_Vec2 WindowStart)
+{
+    assert(gContext->DragOpWindow == NULL);
+    assert(gContext->HoveredWindow != NULL);
+
+    gContext->DragOpMouseStart = gContext->MousePosition;
+    gContext->DragOpWindow = gContext->HoveredWindow;
+    gContext->DragOp = DragOp;
+    gContext->DragOpWindowStart = WindowStart;
+}
+
+static inline void Rr_Advance(Rr_Vec2 Size)
+{
+    RR_UI_ASSERT_WINDOW();
+
+    if(gContext->Horizontal)
+    {
+        gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
+        gContext->HorizontalMaxHeight =
+            RR_MAX(gContext->HorizontalMaxHeight, Size.Height);
+    }
+    else
+    {
+        gContext->Cursor.Y += Size.Height;
+    }
+
+    gContext->CurrentWindow->YEnd =
+        RR_MAX(gContext->CurrentWindow->YEnd, gContext->Cursor.Y);
 }
 
 static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
@@ -981,6 +1009,13 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
             &Hovered,
             &Held);
 
+        if(Clicked && gContext->DragOpWindow == NULL)
+        {
+            Rr_BeginDragOp(
+                RR_UI_DRAG_OP_SCROLL,
+                (Rr_Vec2){ 0.0f, Window->VScroll });
+        }
+
         Rr_Vec4 *ScrollbarHandleColor;
         if(Held)
         {
@@ -1008,25 +1043,6 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
     }
 
     return false;
-}
-
-static inline void Rr_Advance(Rr_Vec2 Size)
-{
-    RR_UI_ASSERT_WINDOW();
-
-    if(gContext->Horizontal)
-    {
-        gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
-        gContext->HorizontalMaxHeight =
-            RR_MAX(gContext->HorizontalMaxHeight, Size.Height);
-    }
-    else
-    {
-        gContext->Cursor.Y += Size.Height;
-    }
-
-    gContext->CurrentWindow->YEnd =
-        RR_MAX(gContext->CurrentWindow->YEnd, gContext->Cursor.Y);
 }
 
 void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
@@ -1243,43 +1259,39 @@ bool Rr_Tab(const char *Title)
 
     bool Clicked = false;
     bool Hovered = false;
+    bool Held = false;
     Rr_ButtonBehavior(
         Window,
         ButtonPosition,
         ButtonSize,
         &Clicked,
         &Hovered,
-        NULL);
+        &Held);
 
+    Rr_Vec4 *TabButtonColor;
     if(Selected)
     {
-        Rr_SolidQuad(
-            TabQuad,
-            ButtonPosition,
-            ButtonSize,
-            &gContext->Style.Foreground);
+        TabButtonColor = &gContext->Style.Foreground;
+    }
+    else if(Held)
+    {
+        TabButtonColor = &gContext->Style.ButtonHeld;
     }
     else if(Hovered)
     {
-        Rr_SolidQuad(
-            TabQuad,
-            ButtonPosition,
-            ButtonSize,
-            &gContext->Style.ButtonHovered);
+        TabButtonColor = &gContext->Style.ButtonHovered;
     }
     else
     {
-        Rr_SolidQuad(
-            TabQuad,
-            ButtonPosition,
-            ButtonSize,
-            &gContext->Style.Background);
+        TabButtonColor = &gContext->Style.Background;
     }
+
+    Rr_SolidQuad(TabQuad, ButtonPosition, ButtonSize, TabButtonColor);
 
     if(Clicked)
     {
         *gContext->SelectedTabRef =
-            Title; /* Newly selected tab will be drawn next frame. */
+            Title; /* Newly selected tab will be rendered next frame. */
     }
 
     Rr_DestroyScratch(Scratch);
@@ -1722,17 +1734,6 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
     }
 }
 
-static inline void Rr_BeginDragOp(Rr_UIDragOp DragOp, Rr_Vec2 WindowStart)
-{
-    assert(gContext->DragOpWindow == NULL);
-    assert(gContext->HoveredWindow != NULL);
-
-    gContext->DragOpMouseStart = gContext->MousePosition;
-    gContext->DragOpWindow = gContext->HoveredWindow;
-    gContext->DragOp = DragOp;
-    gContext->DragOpWindowStart = WindowStart;
-}
-
 void Rr_BeginUI(Rr_UIContext *Context)
 {
     assert(Context);
@@ -1810,7 +1811,7 @@ void Rr_BeginUI(Rr_UIContext *Context)
 
     if(gContext->DragOpWindow)
     {
-        if(RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_BIT))
+        if(gContext->LeftMouseButtonHeld)
         {
             Rr_Vec2 Delta =
                 Rr_SubV2(gContext->MousePosition, gContext->DragOpMouseStart);
@@ -1835,7 +1836,7 @@ void Rr_BeginUI(Rr_UIContext *Context)
                     gContext->DragOpWindow->Size = Rr_FloorV2(NewWindowSize);
                 }
                 break;
-                case RR_UI_DRAG_OP_VSCROLL:
+                case RR_UI_DRAG_OP_SCROLL:
                 {
                 }
                 break;
@@ -2053,7 +2054,10 @@ void Rr_DebugOverlay(void)
     if(Rr_Tab("General"))
     {
         Rr_LabelF("Time: %.2f", Rr_GetTimeSeconds());
+        Rr_Separator();
         Rr_LabelF("FPS: %.2f", Rr_GetFramesPerSecond());
+        Rr_Checkbox("Frame Limiter Enabled", &gApp->FrameTime.EnableFrameLimiter);
+        Rr_LabelF("Frame Limit: %.2f", Rr_GetFramesPerSecond());
     }
     if(Rr_Tab("Memory"))
     {
