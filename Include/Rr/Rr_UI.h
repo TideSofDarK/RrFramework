@@ -46,12 +46,15 @@ struct Rr_UIStyle
     Rr_Vec4 Background;
     Rr_Vec4 TitleBackground;
     Rr_Vec4 Outline;
+
     Rr_Vec4 ScrollbarBackground;
-    Rr_Vec4 ScrollbarForeground;
+    Rr_Vec4 ScrollbarNormal;
+    Rr_Vec4 ScrollbarHovered;
+    Rr_Vec4 ScrollbarHeld;
 
     Rr_Vec4 ButtonNormal;
     Rr_Vec4 ButtonHovered;
-    Rr_Vec4 ButtonPressed;
+    Rr_Vec4 ButtonHeld;
     Rr_Vec4 ButtonDisabled;
 };
 

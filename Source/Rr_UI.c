@@ -762,7 +762,8 @@ static inline void Rr_SetLastClipRectIndexCount(Rr_UIWindow *Window)
 {
     if(Window->ClipRects.Count > 0)
     {
-        Rr_UIClipRect *Last = &Window->ClipRects.Data[Window->ClipRects.Count - 1];
+        Rr_UIClipRect *Last =
+            &Window->ClipRects.Data[Window->ClipRects.Count - 1];
         Last->IndexCount = gContext->Indices.Count - Last->FirstIndex;
     }
 }
@@ -775,7 +776,8 @@ static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
 
     Rr_SetLastClipRectIndexCount(Window);
 
-    Rr_UIClipRect *ClipRect = RR_PUSH_ARRAY(&Window->ClipRects, gContext->FrameArena);
+    Rr_UIClipRect *ClipRect =
+        RR_PUSH_ARRAY(&Window->ClipRects, gContext->FrameArena);
 
     *ClipRect = (Rr_UIClipRect){
         .FirstIndex = gContext->Indices.Count,
@@ -914,16 +916,44 @@ static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
             ScrollbarSize,
             &gContext->Style.ScrollbarBackground);
 
-        ScrollbarPosition.X +=
+        Rr_Vec2 ScrollbarHandlePosition = ScrollbarPosition;
+        Rr_Vec2 ScrollbarHandleSize = ScrollbarSize;
+        ScrollbarHandlePosition.X +=
             (gContext->ScrollbarWidth - gContext->ScrollbarHandleWidth) / 2.0f;
-        ScrollbarSize.Width = gContext->ScrollbarHandleWidth;
-        ScrollbarSize.Height *= 1.0f / FillRatio;
+        ScrollbarHandleSize.Width = gContext->ScrollbarHandleWidth;
+        ScrollbarHandleSize.Height *= 1.0f / FillRatio;
 
-        Rr_DrawSolidQuad(
+        Rr_Vec2 ScrollbarButtonSize = ScrollbarHandleSize;
+        ScrollbarButtonSize.Width = ScrollbarSize.Width;
+        bool Clicked = false;
+        bool Hovered = false;
+        bool Held = false;
+        Rr_ButtonBehavior(
             Window,
             ScrollbarPosition,
-            ScrollbarSize,
-            &gContext->Style.ScrollbarForeground);
+            ScrollbarButtonSize,
+            &Clicked,
+            &Hovered,
+            &Held);
+
+        Rr_Vec4 *ScrollbarHandleColor;
+        if(Held)
+        {
+            ScrollbarHandleColor = &gContext->Style.ScrollbarHeld;
+        }
+        else if(Hovered)
+        {
+            ScrollbarHandleColor = &gContext->Style.ScrollbarHovered;
+        }
+        else
+        {
+            ScrollbarHandleColor = &gContext->Style.ScrollbarNormal;
+        }
+        Rr_DrawSolidQuad(
+            Window,
+            ScrollbarHandlePosition,
+            ScrollbarHandleSize,
+            ScrollbarHandleColor);
 
         return true;
     }
@@ -1337,7 +1367,7 @@ bool Rr_Button(const char *Text)
             ButtonQuad,
             ButtonPosition,
             ButtonSize,
-            &gContext->Style.ButtonPressed);
+            &gContext->Style.ButtonHeld);
     }
     else if(Hovered)
     {
@@ -1476,14 +1506,17 @@ Rr_UIContext *Rr_CreateUIContext(void)
         .Background = Rr_U32ToRGBA(0x292F33FA),
         .TitleBackground = Rr_U32ToRGBA(0xD54251FA),
         .Outline = Rr_U32ToRGBA(0x6C6F72FA),
-        .ScrollbarBackground = Rr_U32ToRGBA(0xFF0000FF),
-        .ScrollbarForeground = Rr_U32ToRGBA(0x00FF00FF),
 
         .ButtonNormal = Rr_U32ToRGBA(0x4c565dFF),
         .ButtonHovered = Rr_U32ToRGBA(0x687e8dFF),
-        .ButtonPressed = Rr_U32ToRGBA(0x435866FF),
+        .ButtonHeld = Rr_U32ToRGBA(0x435866FF),
         .ButtonDisabled = Rr_U32ToRGBA(0x191e22FF),
     };
+
+    Context->Style.ScrollbarBackground = Context->Style.ButtonDisabled;
+    Context->Style.ScrollbarNormal = Context->Style.ButtonNormal;
+    Context->Style.ScrollbarHovered = Context->Style.ButtonHovered;
+    Context->Style.ScrollbarHeld = Context->Style.ButtonHeld;
 
     Rr_PipelineBinding Bindings[] = {
         { 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
