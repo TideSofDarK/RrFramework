@@ -129,9 +129,7 @@ extern void Rr_ReserveArray(
      (Array)->Data + (Array)->Count++                                       \
      : (Array)->Data + (Array)->Count++)
 
-#define RR_POP_ARRAY(Array)                                                \
-    (Array)->Count > 0 ? ((Array)->Count--, (Array)->Data[(Array)->Count]) \
-                       : (int)0
+#define RR_POP_ARRAY(Array) ((Array)->Count--, (Array)->Data[(Array)->Count])
 
 #define RR_RESERVE_ARRAY(Array, ElementCount, Arena) \
     ((Array)->Capacity < (ElementCount)              \

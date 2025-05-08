@@ -206,7 +206,8 @@ Rr_Font *Rr_CreateFont(
     {
         cJSON *GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (int32_t)GlyphIndex);
 
-        uint32_t Codepoint = CJSON_GET_OBJECT_FLOAT(GlyphJSON, "unicode");
+        uint32_t Codepoint =
+            (uint32_t)CJSON_GET_OBJECT_FLOAT(GlyphJSON, "unicode");
 
         Rr_Glyph *Glyph = &Font->Glyphs[Codepoint];
 
@@ -256,7 +257,7 @@ void Rr_DestroyFont(Rr_UIContext *Context, Rr_Font *Font)
 
 static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
 {
-    Rr_UIIndex Base = gContext->Vertices.Count;
+    Rr_UIIndex Base = (Rr_UIIndex)gContext->Vertices.Count;
     Rr_UIIndex Indices[] = {
         Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
     };
@@ -278,7 +279,7 @@ static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
 
 static inline void Rr_DrawQuad(Rr_UIWindow *Window, Rr_UIVertex *Vertices)
 {
-    Rr_UIIndex Base = gContext->Vertices.Count;
+    Rr_UIIndex Base = (Rr_UIIndex)gContext->Vertices.Count;
     Rr_UIIndex Indices[] = {
         Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
     };
@@ -378,7 +379,7 @@ static inline void Rr_DrawSolidTriangle(
     for(size_t Index = 0; Index < 3; ++Index)
     {
         *RR_PUSH_ARRAY(&gContext->Indices, gContext->FrameArena) =
-            gContext->Vertices.Count + Index;
+            (Rr_UIIndex)(gContext->Vertices.Count + Index);
     }
 
     for(size_t Index = 0; Index < 3; ++Index)
@@ -1106,6 +1107,8 @@ void Rr_BeginHorizontal(void)
 
 void Rr_EndHorizontal(void)
 {
+    assert(
+        gContext->Horizontal && "Did you forget to call Rr_BeginHorizontal()?");
     gContext->Horizontal = false;
     gContext->Cursor.X = RR_POP_ARRAY(&gContext->HorizontalX);
     gContext->Cursor.Y += gContext->HorizontalMaxHeight;
@@ -1709,9 +1712,8 @@ void Rr_BeginUI(Rr_UIContext *Context)
     Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
     gContext->MousePosition = Rr_GetMousePosition();
 
-    Rr_UIWindow *OldHoveredWindow = gContext->HoveredWindow;
     gContext->HoveredWindow = NULL;
-    for(int Index = gContext->Windows.Count - 1; Index >= 0; --Index)
+    for(int Index = (int)gContext->Windows.Count - 1; Index >= 0; --Index)
     {
         Rr_UIWindow *Window = gContext->Windows.Data[Index];
         if(Rr_RectContains(
@@ -1853,7 +1855,7 @@ void Rr_EndUI(void)
     Rr_UIUniformData UniformData = {
         .ScreenSize = gContext->ScreenSize,
         .DistanceRange = gContext->Font->DistanceRange,
-        .Time = Rr_GetTimeSeconds(),
+        .Time = (float)Rr_GetTimeSeconds(),
     };
     char *MappedUniformData =
         Rr_GetMappedBufferData(Renderer, gContext->UniformBuffer);
@@ -1926,10 +1928,10 @@ void Rr_EndUI(void)
             Rr_SetScissor(
                 GraphicsNode,
                 (Rr_IntVec4){
-                    ClipRect->Position.X,
-                    ClipRect->Position.Y,
-                    ClipRect->Size.X,
-                    ClipRect->Size.Y,
+                    (int32_t)ClipRect->Position.X,
+                    (int32_t)ClipRect->Position.Y,
+                    (int32_t)ClipRect->Size.X,
+                    (int32_t)ClipRect->Size.Y,
                 });
 
             Rr_DrawIndexed(
@@ -1954,8 +1956,8 @@ void Rr_EndUI(void)
     }
     gContext->LeftMouseButtonDown = false;
     gContext->LeftMouseButtonUp = false;
-    gContext->LastIndexCount = gContext->Indices.Count;
-    gContext->LastVertexCount = gContext->Vertices.Count;
+    gContext->LastIndexCount = (uint32_t)gContext->Indices.Count;
+    gContext->LastVertexCount = (uint32_t)gContext->Vertices.Count;
     RR_ZERO(gContext->HorizontalX);
 }
 
