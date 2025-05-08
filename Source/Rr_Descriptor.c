@@ -141,7 +141,7 @@ VkDescriptorPool Rr_GetDescriptorPool(
     if(ReadyCount != 0)
     {
         NewPool = DescriptorAllocator->ReadyPools.Data[ReadyCount - 1];
-        RR_POP_ARRAY(&DescriptorAllocator->ReadyPools);
+        (void)RR_POP_ARRAY(&DescriptorAllocator->ReadyPools);
     }
     else
     {
