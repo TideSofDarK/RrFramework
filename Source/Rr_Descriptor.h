@@ -19,9 +19,9 @@ typedef struct Rr_DescriptorAllocator Rr_DescriptorAllocator;
 struct Rr_DescriptorAllocator
 {
     Rr_Arena *Arena;
-    RR_SLICE(Rr_DescriptorPoolSizeRatio) Ratios;
-    RR_SLICE(VkDescriptorPool) FullPools;
-    RR_SLICE(VkDescriptorPool) ReadyPools;
+    RR_ARRAY(Rr_DescriptorPoolSizeRatio) Ratios;
+    RR_ARRAY(VkDescriptorPool) FullPools;
+    RR_ARRAY(VkDescriptorPool) ReadyPools;
     uint32_t SetsPerPool;
 };
 
@@ -41,10 +41,10 @@ struct Rr_DescriptorWriterEntry
 typedef struct Rr_DescriptorWriter Rr_DescriptorWriter;
 struct Rr_DescriptorWriter
 {
-    RR_SLICE(VkDescriptorImageInfo) ImageInfos;
-    RR_SLICE(VkDescriptorBufferInfo) BufferInfos;
-    RR_SLICE(Rr_DescriptorWriterEntry) Entries;
-    RR_SLICE(VkWriteDescriptorSet) Writes;
+    RR_ARRAY(VkDescriptorImageInfo) ImageInfos;
+    RR_ARRAY(VkDescriptorBufferInfo) BufferInfos;
+    RR_ARRAY(Rr_DescriptorWriterEntry) Entries;
+    RR_ARRAY(VkWriteDescriptorSet) Writes;
     Rr_Arena *Arena;
 };
 

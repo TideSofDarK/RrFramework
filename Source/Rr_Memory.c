@@ -217,19 +217,19 @@ void Rr_DestroySyncArena(Rr_SyncArena *Arena)
     Rr_DestroyArena(Arena->Arena);
 }
 
-void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena)
+void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena)
 {
-    assert(Slice != NULL && "Attempt to grow a slice but it's NULL!");
-    assert(Arena != NULL && "Attempt to grow a slice but Arena is NULL!");
+    assert(Array != NULL && "Attempt to grow an array but it's NULL!");
+    assert(Arena != NULL && "Attempt to grow an array but Arena is NULL!");
 
-    RR_SLICE(void) Replica;
-    memcpy(&Replica, Slice, sizeof(Replica));
+    RR_ARRAY(void) Replica;
+    memcpy(&Replica, Array, sizeof(Replica));
 
     if(Replica.Data != NULL &&
        (uintptr_t)Replica.Data + Replica.Capacity * Size ==
            (uintptr_t)Arena + Arena->Position)
     {
-        /* Fast path: the slice is at the tip of an arena.
+        /* Fast path: the array is at the tip of an arena.
          * Works best with nicely aligned sizes. */
 
         RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
@@ -249,16 +249,16 @@ void Rr_GrowSlice(void *Slice, size_t Size, Rr_Arena *Arena)
         Replica.Data = Data;
     }
 
-    memcpy(Slice, &Replica, sizeof(Replica));
+    memcpy(Array, &Replica, sizeof(Replica));
 }
 
-void Rr_ReserveSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
+void Rr_ReserveArray(void *Array, size_t Size, size_t Count, Rr_Arena *Arena)
 {
-    assert(Slice != NULL && "Attempt to grow a slice but it's NULL!");
-    assert(Arena != NULL && "Attempt to grow a slice but Arena is NULL!");
+    assert(Array != NULL && "Attempt to grow an array but it's NULL!");
+    assert(Arena != NULL && "Attempt to grow an array but Arena is NULL!");
 
-    RR_SLICE(void) Replica;
-    memcpy(&Replica, Slice, sizeof(Replica));
+    RR_ARRAY(void) Replica;
+    memcpy(&Replica, Array, sizeof(Replica));
 
     void *Data = NULL;
 
@@ -271,7 +271,7 @@ void Rr_ReserveSlice(void *Slice, size_t Size, size_t Count, Rr_Arena *Arena)
     }
     Replica.Data = Data;
 
-    memcpy(Slice, &Replica, sizeof(Replica));
+    memcpy(Array, &Replica, sizeof(Replica));
 }
 
 void **Rr_UpsertMap(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)

@@ -6,11 +6,11 @@ typedef struct Rr_UploadContext Rr_UploadContext;
 struct Rr_UploadContext
 {
     VkCommandBuffer CommandBuffer;
-    RR_SLICE(struct Rr_Buffer *) StagingBuffers;
-    RR_SLICE(VkImageMemoryBarrier) ReleaseImageMemoryBarriers;
-    RR_SLICE(VkImageMemoryBarrier) AcquireImageMemoryBarriers;
-    RR_SLICE(VkBufferMemoryBarrier) ReleaseBufferMemoryBarriers;
-    RR_SLICE(VkBufferMemoryBarrier) AcquireBufferMemoryBarriers;
+    RR_ARRAY(struct Rr_Buffer *) StagingBuffers;
+    RR_ARRAY(VkImageMemoryBarrier) ReleaseImageMemoryBarriers;
+    RR_ARRAY(VkImageMemoryBarrier) AcquireImageMemoryBarriers;
+    RR_ARRAY(VkBufferMemoryBarrier) ReleaseBufferMemoryBarriers;
+    RR_ARRAY(VkBufferMemoryBarrier) AcquireBufferMemoryBarriers;
     bool UseAcquireBarriers;
     Rr_Arena *Arena;
 };

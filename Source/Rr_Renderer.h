@@ -79,7 +79,7 @@ struct Rr_Renderer
     VkSurfaceKHR Surface;
 
     Rr_Swapchain Swapchain;
-    RR_SLICE(Rr_SwapchainImage) SwapchainImages;
+    RR_ARRAY(Rr_SwapchainImage) SwapchainImages;
 
     Rr_Queue GraphicsQueue;
     Rr_Queue TransferQueue;
@@ -87,20 +87,20 @@ struct Rr_Renderer
 
     VmaAllocator Allocator;
 
-    RR_SLICE(VkSemaphore) Semaphores;
-    RR_SLICE(VkFence) Fences;
+    RR_ARRAY(VkSemaphore) Semaphores;
+    RR_ARRAY(VkFence) Fences;
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameNumber;
     size_t CurrentFrameIndex;
 
-    RR_SLICE(Rr_RenderPass) RenderPasses;
-    RR_SLICE(Rr_Framebuffer) Framebuffers;
-    RR_SLICE(Rr_DescriptorSetLayout) DescriptorSetLayouts;
+    RR_ARRAY(Rr_RenderPass) RenderPasses;
+    RR_ARRAY(Rr_Framebuffer) Framebuffers;
+    RR_ARRAY(Rr_DescriptorSetLayout) DescriptorSetLayouts;
 
     Rr_ImmediateMode ImmediateMode;
 
-    RR_SLICE(Rr_PendingLoad) PendingLoadsSlice;
+    RR_ARRAY(Rr_PendingLoad) PendingLoadsArray;
 
     Rr_Map *GlobalSync;
 

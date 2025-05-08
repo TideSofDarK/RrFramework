@@ -14,8 +14,8 @@ struct Rr_GLTFContext
 {
     Rr_Renderer *Renderer;
 
-    RR_SLICE(struct Rr_Buffer *) Buffers;
-    RR_SLICE(struct Rr_Image *) Images;
+    RR_ARRAY(struct Rr_Buffer *) Buffers;
+    RR_ARRAY(struct Rr_Image *) Images;
 
     size_t VertexInputBindingCount;
     Rr_GLTFVertexInputBinding *VertexInputBindings;

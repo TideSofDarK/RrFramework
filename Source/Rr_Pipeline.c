@@ -236,7 +236,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         RR_GET_FREE_LIST_ITEM(&Renderer->GraphicsPipelines, Renderer->Arena);
     Pipeline->Layout = Info->Layout;
 
-    RR_SLICE(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
+    RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
     if(Info->VertexShaderSPV.Pointer != NULL)
@@ -253,7 +253,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             NULL,
             &VertModule);
 
-        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) =
+        *RR_PUSH_ARRAY(&ShaderStages, Scratch.Arena) =
             (VkPipelineShaderStageCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .pNext = NULL,
@@ -277,7 +277,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             &ShaderModuleCreateInfo,
             NULL,
             &FragModule);
-        *RR_PUSH_SLICE(&ShaderStages, Scratch.Arena) =
+        *RR_PUSH_ARRAY(&ShaderStages, Scratch.Arena) =
             (VkPipelineShaderStageCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .pNext = NULL,
@@ -287,15 +287,15 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             };
     }
 
-    RR_SLICE(VkVertexInputBindingDescription) BindingDescriptions = { 0 };
-    RR_SLICE(VkVertexInputAttributeDescription) AttributeDescriptions = { 0 };
+    RR_ARRAY(VkVertexInputBindingDescription) BindingDescriptions = { 0 };
+    RR_ARRAY(VkVertexInputAttributeDescription) AttributeDescriptions = { 0 };
     for(size_t BindingIndex = 0; BindingIndex < Info->VertexInputBindingCount;
         ++BindingIndex)
     {
         Rr_VertexInputBinding *VertexInputBinding =
             Info->VertexInputBindings + BindingIndex;
 
-        RR_RESERVE_SLICE(
+        RR_RESERVE_ARRAY(
             &AttributeDescriptions,
             AttributeDescriptions.Count + VertexInputBinding->AttributeCount,
             Scratch.Arena);
@@ -307,7 +307,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
                 VertexInputBinding->Attributes + Index;
 
             VkVertexInputAttributeDescription *AttributeDescription =
-                RR_PUSH_SLICE(&AttributeDescriptions, Scratch.Arena);
+                RR_PUSH_ARRAY(&AttributeDescriptions, Scratch.Arena);
 
             AttributeDescription->location = Attribute->Location;
             AttributeDescription->format =
@@ -329,7 +329,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             if(BindingDescription == NULL)
             {
                 BindingDescription =
-                    RR_PUSH_SLICE(&BindingDescriptions, Scratch.Arena);
+                    RR_PUSH_ARRAY(&BindingDescriptions, Scratch.Arena);
                 BindingDescription->binding = (uint32_t)BindingIndex;
                 BindingDescription->inputRate =
                     VertexInputBinding->Rate == RR_VERTEX_INPUT_RATE_INSTANCE
@@ -402,12 +402,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .alphaToOneEnable = VK_FALSE,
     };
 
-    RR_SLICE(VkPipelineColorBlendAttachmentState) ColorAttachments = { 0 };
-    RR_RESERVE_SLICE(&ColorAttachments, Info->ColorTargetCount, Scratch.Arena);
+    RR_ARRAY(VkPipelineColorBlendAttachmentState) ColorAttachments = { 0 };
+    RR_RESERVE_ARRAY(&ColorAttachments, Info->ColorTargetCount, Scratch.Arena);
     for(size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {
         VkPipelineColorBlendAttachmentState *Attachment =
-            RR_PUSH_SLICE(&ColorAttachments, Scratch.Arena);
+            RR_PUSH_ARRAY(&ColorAttachments, Scratch.Arena);
         Rr_ColorTargetInfo *ColorTargetInfo = Info->ColorTargets + Index;
         Rr_ColorTargetBlend *Blend = &ColorTargetInfo->Blend;
 
@@ -580,7 +580,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
     }
 
     Rr_DescriptorSetLayout *DescriptorSetLayout =
-        RR_PUSH_SLICE(&Renderer->DescriptorSetLayouts, Renderer->Arena);
+        RR_PUSH_ARRAY(&Renderer->DescriptorSetLayouts, Renderer->Arena);
     DescriptorSetLayout->Hash = Hash;
     DescriptorSetLayout->Set = *Set;
     RR_ALLOC_COPY(

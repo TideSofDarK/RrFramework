@@ -79,7 +79,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
             Renderer,
             Renderer->SwapchainImages.Data + Index);
     }
-    RR_EMPTY_SLICE(&Renderer->SwapchainImages);
+    RR_EMPTY_ARRAY(&Renderer->SwapchainImages);
 
     VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
 
@@ -295,7 +295,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
 
     /* Create image views. */
 
-    RR_RESERVE_SLICE(&Renderer->SwapchainImages, ImageCount, Renderer->Arena);
+    RR_RESERVE_ARRAY(&Renderer->SwapchainImages, ImageCount, Renderer->Arena);
     Renderer->SwapchainImages.Count = ImageCount;
 
     VkImageViewCreateInfo ImageViewCreateInfo = {
@@ -708,14 +708,14 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
 
     if(Rr_TryLockSpinlock(&App->SyncArena.Lock))
     {
-        for(size_t Index = 0; Index < Renderer->PendingLoadsSlice.Count;
+        for(size_t Index = 0; Index < Renderer->PendingLoadsArray.Count;
             ++Index)
         {
             Rr_PendingLoad *PendingLoad =
-                &Renderer->PendingLoadsSlice.Data[Index];
+                &Renderer->PendingLoadsArray.Data[Index];
             PendingLoad->LoadingCallback(PendingLoad->UserData);
         }
-        RR_EMPTY_SLICE(&Renderer->PendingLoadsSlice);
+        RR_EMPTY_ARRAY(&Renderer->PendingLoadsArray);
 
         Rr_UnlockSpinlock(&App->SyncArena.Lock);
     }
@@ -1119,7 +1119,7 @@ VkRenderPass Rr_GetVulkanRenderPass(
         NULL,
         &RenderPass);
 
-    *RR_PUSH_SLICE(&Renderer->RenderPasses, Renderer->Arena) = (Rr_RenderPass){
+    *RR_PUSH_ARRAY(&Renderer->RenderPasses, Renderer->Arena) = (Rr_RenderPass){
         .Handle = RenderPass,
         .Hash = Hash,
     };
@@ -1181,7 +1181,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
     Device->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, &Framebuffer);
 
-    *RR_PUSH_SLICE(&Renderer->Framebuffers, Renderer->Arena) = (Rr_Framebuffer){
+    *RR_PUSH_ARRAY(&Renderer->Framebuffers, Renderer->Arena) = (Rr_Framebuffer){
         .Handle = Framebuffer,
         .Hash = Hash,
     };
@@ -1194,7 +1194,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
     Rr_SyncState **SyncStateRef =
-        RR_UPSERT(&Renderer->GlobalSync, Key, Renderer->Arena);
+        RR_UPSERT_MAP(&Renderer->GlobalSync, Key, Renderer->Arena);
     if(*SyncStateRef != NULL)
     {
         return *SyncStateRef;
@@ -1209,7 +1209,7 @@ Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
     Rr_SyncState **SyncStateRef =
-        RR_UPSERT(&Renderer->GlobalSync, Key, Renderer->Arena);
+        RR_UPSERT_MAP(&Renderer->GlobalSync, Key, Renderer->Arena);
     if(*SyncStateRef != NULL)
     {
         RR_RETURN_FREE_LIST_ITEM(&Renderer->SyncStates, *SyncStateRef);
@@ -1221,7 +1221,7 @@ VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer)
 {
     if(Renderer->Semaphores.Count > 0)
     {
-        return RR_POP_SLICE(&Renderer->Semaphores);
+        return RR_POP_ARRAY(&Renderer->Semaphores);
     }
 
     Rr_Device *Device = &Renderer->Device;
@@ -1241,14 +1241,14 @@ VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer)
 
 void Rr_ReturnVulkanSemaphore(Rr_Renderer *Renderer, VkSemaphore Semaphore)
 {
-    *RR_PUSH_SLICE(&Renderer->Semaphores, Renderer->Arena) = Semaphore;
+    *RR_PUSH_ARRAY(&Renderer->Semaphores, Renderer->Arena) = Semaphore;
 }
 
 VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer)
 {
     if(Renderer->Fences.Count > 0)
     {
-        return RR_POP_SLICE(&Renderer->Fences);
+        return RR_POP_ARRAY(&Renderer->Fences);
     }
 
     Rr_Device *Device = &Renderer->Device;
@@ -1269,6 +1269,6 @@ VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer)
 void Rr_ReturnVulkanFence(Rr_Renderer *Renderer, VkFence Fence)
 {
     Rr_Device *Device = &Renderer->Device;
-    *RR_PUSH_SLICE(&Renderer->Fences, Renderer->Arena) = Fence;
+    *RR_PUSH_ARRAY(&Renderer->Fences, Renderer->Arena) = Fence;
     Device->ResetFences(Device->Handle, 1, &Fence);
 }

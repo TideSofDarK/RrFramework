@@ -369,7 +369,7 @@ void Rr_SelectPhysicalDevice(
     RR_LOG("Selecting Vulkan device:");
 
     typedef char Rr_DeviceString[1024];
-    RR_SLICE(Rr_DeviceString) DeviceStrings = { 0 };
+    RR_ARRAY(Rr_DeviceString) DeviceStrings = { 0 };
     uint32_t BestDeviceIndex = UINT32_MAX;
     static const uint32_t PreferredDeviceType =
         VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
@@ -433,7 +433,7 @@ void Rr_SelectPhysicalDevice(
                     break;
             }
 
-            char *DstString = *RR_PUSH_SLICE(&DeviceStrings, Arena);
+            char *DstString = *RR_PUSH_ARRAY(&DeviceStrings, Arena);
             snprintf(
                 DstString,
                 sizeof(Rr_DeviceString),

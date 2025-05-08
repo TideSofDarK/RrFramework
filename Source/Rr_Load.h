@@ -15,7 +15,7 @@ struct Rr_PendingLoad
 
 struct Rr_LoadThread
 {
-    RR_SLICE(Rr_LoadContext) LoadContexts;
+    RR_ARRAY(Rr_LoadContext) LoadContexts;
 
     SDL_Thread *Handle;
     SDL_Semaphore *Semaphore;

@@ -66,8 +66,8 @@ struct Rr_ImageMemoryBarrier
 typedef struct Rr_BarrierBatch Rr_BarrierBatch;
 struct Rr_BarrierBatch
 {
-    RR_SLICE(Rr_ImageMemoryBarrier) ImageBarriers;
-    RR_SLICE(Rr_BufferMemoryBarrier) BufferBarriers;
+    RR_ARRAY(Rr_ImageMemoryBarrier) ImageBarriers;
+    RR_ARRAY(Rr_BufferMemoryBarrier) BufferBarriers;
     Rr_Map *VulkanHandleToBarrier;
 };
 

@@ -285,7 +285,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     Rr_LockSpinlock(&gApp->SyncArena.Lock);
 
     Rr_PendingLoad *PendingLoad =
-        RR_PUSH_SLICE(&Renderer->PendingLoadsSlice, gApp->SyncArena.Arena);
+        RR_PUSH_ARRAY(&Renderer->PendingLoadsArray, gApp->SyncArena.Arena);
     *PendingLoad = (Rr_PendingLoad){
         .LoadingCallback = LoadContext->LoadingCallback,
         .UserData = LoadContext->UserData,
@@ -504,7 +504,7 @@ Rr_LoadContext *Rr_LoadAsync(
         RR_ALLOC_TYPE_COUNT(LoadThread->Arena, Rr_LoadTask, TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
     Rr_LoadContext *LoadingContext =
-        RR_PUSH_SLICE(&LoadThread->LoadContexts, LoadThread->Arena);
+        RR_PUSH_ARRAY(&LoadThread->LoadContexts, LoadThread->Arena);
     *LoadingContext = (Rr_LoadContext){
         .Semaphore = SDL_CreateSemaphore(0),
         .LoadingCallback = LoadCallback,

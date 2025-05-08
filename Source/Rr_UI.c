@@ -75,7 +75,7 @@ struct Rr_UIWindow
     Rr_Map *WidgetMap;
 
     uint32_t LastClipRectCount;
-    RR_SLICE(Rr_UIClipRect) ClipRects;
+    RR_ARRAY(Rr_UIClipRect) ClipRects;
 };
 
 struct Rr_UIContext
@@ -86,7 +86,7 @@ struct Rr_UIContext
 
     Rr_Map *WindowMap;
     int TotalWindowCount;
-    RR_SLICE(Rr_UIWindow *) Windows;
+    RR_ARRAY(Rr_UIWindow *) Windows;
     size_t LastWindowCount;
     Rr_UIWindow *CurrentWindow;
     Rr_UIWindow *HoveredWindow;
@@ -94,7 +94,7 @@ struct Rr_UIContext
     float AvailableContentsWidth;
 
     bool Horizontal;
-    RR_SLICE(float) HorizontalX;
+    RR_ARRAY(float) HorizontalX;
     float HorizontalMaxHeight;
 
     Rr_Vec2 TabCursor;
@@ -146,9 +146,9 @@ struct Rr_UIContext
     Rr_Buffer *IndexBuffer;
 
     uint32_t LastVertexCount;
-    RR_SLICE(Rr_UIVertex) Vertices;
+    RR_ARRAY(Rr_UIVertex) Vertices;
     uint32_t LastIndexCount;
-    RR_SLICE(Rr_UIIndex) Indices;
+    RR_ARRAY(Rr_UIIndex) Indices;
 
     Rr_Buffer *UniformBuffer;
 
@@ -263,12 +263,12 @@ static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
     Rr_UIQuad ReservedQuad = gContext->Vertices.Data + gContext->Vertices.Count;
     for(size_t Index = 0; Index < 4; ++Index)
     {
-        RR_PUSH_SLICE(&gContext->Vertices, gContext->FrameArena);
+        RR_PUSH_ARRAY(&gContext->Vertices, gContext->FrameArena);
     }
 
     for(size_t Index = 0; Index < 6; ++Index)
     {
-        *RR_PUSH_SLICE(&gContext->Indices, gContext->FrameArena) =
+        *RR_PUSH_ARRAY(&gContext->Indices, gContext->FrameArena) =
             Indices[Index];
     }
 
@@ -283,13 +283,13 @@ static inline void Rr_DrawQuad(Rr_UIWindow *Window, Rr_UIVertex *Vertices)
     };
     for(size_t Index = 0; Index < 4; ++Index)
     {
-        *RR_PUSH_SLICE(&gContext->Vertices, gContext->FrameArena) =
+        *RR_PUSH_ARRAY(&gContext->Vertices, gContext->FrameArena) =
             Vertices[Index];
     }
 
     for(size_t Index = 0; Index < 6; ++Index)
     {
-        *RR_PUSH_SLICE(&gContext->Indices, gContext->FrameArena) =
+        *RR_PUSH_ARRAY(&gContext->Indices, gContext->FrameArena) =
             Indices[Index];
     }
 }
@@ -376,13 +376,13 @@ static inline void Rr_DrawSolidTriangle(
     };
     for(size_t Index = 0; Index < 3; ++Index)
     {
-        *RR_PUSH_SLICE(&gContext->Indices, gContext->FrameArena) =
+        *RR_PUSH_ARRAY(&gContext->Indices, gContext->FrameArena) =
             gContext->Vertices.Count + Index;
     }
 
     for(size_t Index = 0; Index < 3; ++Index)
     {
-        *RR_PUSH_SLICE(&gContext->Vertices, gContext->FrameArena) =
+        *RR_PUSH_ARRAY(&gContext->Vertices, gContext->FrameArena) =
             Vertices[Index];
     }
 }
@@ -763,7 +763,7 @@ static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
 
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
-    *RR_PUSH_SLICE(&Window->ClipRects, gContext->FrameArena) = (Rr_UIClipRect){
+    *RR_PUSH_ARRAY(&Window->ClipRects, gContext->FrameArena) = (Rr_UIClipRect){
         .FirstIndex = (uint32_t)(gContext->Indices.Count),
         .Position = Position,
         .Size = Size,
@@ -945,7 +945,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
 
     Rr_UIWindow **WindowRef =
-        RR_UPSERT(&gContext->WindowMap, Hash, gContext->Arena);
+        RR_UPSERT_MAP(&gContext->WindowMap, Hash, gContext->Arena);
     Rr_UIWindow *Window = *WindowRef;
 
     if(Window == NULL)
@@ -969,14 +969,14 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             "There already is a window with this title!");
     }
 
-    *RR_PUSH_SLICE(&gContext->Windows, gContext->FrameArena) = Window;
+    *RR_PUSH_ARRAY(&gContext->Windows, gContext->FrameArena) = Window;
     gContext->CurrentWindow = Window;
 
     Window->Flags = Flags;
     Window->Added = true;
 
     RR_ZERO(Window->ClipRects);
-    RR_RESERVE_SLICE(
+    RR_RESERVE_ARRAY(
         &Window->ClipRects,
         Window->LastClipRectCount ? Window->LastClipRectCount : 2,
         gContext->FrameArena);
@@ -1055,14 +1055,14 @@ void Rr_EndWindow(void)
 void Rr_BeginHorizontal(void)
 {
     gContext->Horizontal = true;
-    *RR_PUSH_SLICE(&gContext->HorizontalX, gContext->FrameArena) =
+    *RR_PUSH_ARRAY(&gContext->HorizontalX, gContext->FrameArena) =
         gContext->Cursor.X;
 }
 
 void Rr_EndHorizontal(void)
 {
     gContext->Horizontal = false;
-    gContext->Cursor.X = RR_POP_SLICE(&gContext->HorizontalX);
+    gContext->Cursor.X = RR_POP_ARRAY(&gContext->HorizontalX);
     gContext->Cursor.Y += gContext->HorizontalMaxHeight;
 }
 
@@ -1073,7 +1073,7 @@ void Rr_BeginTabs(const char *Title)
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
     gContext->SelectedTabRef =
-        RR_UPSERT(&Window->WidgetMap, (uint64_t)Title, gContext->Arena);
+        RR_UPSERT_MAP(&Window->WidgetMap, (uint64_t)Title, gContext->Arena);
     gContext->SelectedTab = *gContext->SelectedTabRef;
     gContext->TabCursor = gContext->Cursor;
 
@@ -1756,19 +1756,19 @@ void Rr_BeginUI(Rr_UIContext *Context)
     }
 
     RR_ZERO(gContext->Vertices);
-    RR_RESERVE_SLICE(
+    RR_RESERVE_ARRAY(
         &gContext->Vertices,
         gContext->LastVertexCount,
         gContext->FrameArena);
 
     RR_ZERO(gContext->Indices);
-    RR_RESERVE_SLICE(
+    RR_RESERVE_ARRAY(
         &gContext->Indices,
         gContext->LastIndexCount,
         gContext->FrameArena);
 
     RR_ZERO(gContext->Windows);
-    RR_RESERVE_SLICE(
+    RR_RESERVE_ARRAY(
         &gContext->Windows,
         gContext->LastWindowCount,
         gContext->FrameArena);

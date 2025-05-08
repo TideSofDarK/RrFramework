@@ -432,7 +432,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         Renderer,
         StagingDataSize,
         RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
-    *RR_PUSH_SLICE(&UploadContext->StagingBuffers, UploadContext->Arena) =
+    *RR_PUSH_ARRAY(&UploadContext->StagingBuffers, UploadContext->Arena) =
         StagingBuffer;
     char *StagingData = Rr_GetMappedBufferData(Renderer, StagingBuffer);
 
@@ -596,7 +596,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         Renderer,
         StagingDataSize,
         RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT);
-    *RR_PUSH_SLICE(&GLTFContext->Buffers, GLTFContext->Arena) =
+    *RR_PUSH_ARRAY(&GLTFContext->Buffers, GLTFContext->Arena) =
         GLTFAsset->Buffer;
 
     Rr_UploadStagingBuffer(
@@ -675,7 +675,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                                 ImageDataSize,
                                 ImageData);
 
-                        *RR_PUSH_SLICE(
+                        *RR_PUSH_ARRAY(
                             &GLTFContext->Images,
                             GLTFContext->Arena) =
                             GLTFAsset->Images[CurrentTextureIndex];

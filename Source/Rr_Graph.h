@@ -6,8 +6,8 @@
 
 struct Rr_Frame;
 
-typedef RR_SLICE(size_t) Rr_IndexSlice;
-typedef RR_SLICE(Rr_GraphNode *) Rr_NodeSlice;
+typedef RR_ARRAY(size_t) Rr_IndexArray;
+typedef RR_ARRAY(Rr_GraphNode *) Rr_NodeArray;
 
 typedef enum
 {
@@ -184,7 +184,7 @@ struct Rr_Transfer
 typedef struct Rr_TransferNode Rr_TransferNode;
 struct Rr_TransferNode
 {
-    RR_SLICE(Rr_Transfer) Transfers;
+    RR_ARRAY(Rr_Transfer) Transfers;
 };
 
 typedef struct Rr_BlitNode Rr_BlitNode;
@@ -218,7 +218,7 @@ struct Rr_GraphNode
     const char *Name;
     size_t OriginalIndex;
     size_t DependencyLevel;
-    RR_SLICE(Rr_NodeDependency) Dependencies;
+    RR_ARRAY(Rr_NodeDependency) Dependencies;
     Rr_Graph *Graph;
     bool UsesLateCommandBuffer;
 };
@@ -235,8 +235,8 @@ struct Rr_GraphResource
 
 struct Rr_Graph
 {
-    RR_SLICE(Rr_GraphNode *) Nodes;
-    RR_SLICE(Rr_GraphResource) Resources;
+    RR_ARRAY(Rr_GraphNode *) Nodes;
+    RR_ARRAY(Rr_GraphResource) Resources;
     Rr_Map *Handles;
     Rr_Map *ResourceWriteToNode;
     uint32_t SwapchainImageResourceIndex;
