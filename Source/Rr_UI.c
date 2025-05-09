@@ -1561,6 +1561,11 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
     return Up;
 }
 
+bool Rr_InputField(size_t BufferSize, char *Buffer, Rr_UIInputFieldFlags Flags)
+{
+    return false;
+}
+
 bool Rr_WantMouseCapture(void)
 {
     return gContext &&

@@ -87,6 +87,12 @@ typedef enum
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
+typedef enum
+{
+    RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT = (1 << 0),
+} Rr_UIInputFieldFlagsBits;
+typedef uint32_t Rr_UIInputFieldFlags;
+
 extern void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags);
 
 extern void Rr_EndWindow(void);
@@ -102,6 +108,8 @@ extern void Rr_LabelF(const char *Format, ...);
 extern bool Rr_Button(const char *Text);
 
 extern bool Rr_Checkbox(const char *Text, bool *Checked);
+
+extern bool Rr_InputField(size_t BufferSize, char *Buffer, Rr_UIInputFieldFlags Flags);
 
 extern void Rr_BeginHorizontal(void);
 
