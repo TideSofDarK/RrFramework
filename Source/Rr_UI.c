@@ -2094,7 +2094,7 @@ void Rr_DebugOverlay(void)
         Rr_Checkbox(
             "Frame Limiter Enabled",
             &gApp->FrameTime.EnableFrameLimiter);
-        Rr_LabelF("Frame Limit: %.2f", Rr_GetFramesPerSecond());
+        Rr_LabelF("Frame Limit: %d", gApp->FrameTime.TargetFramerate);
     }
     if(Rr_Tab("Memory"))
     {
