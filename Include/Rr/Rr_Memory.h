@@ -201,14 +201,16 @@ extern void Rr_ReturnFreeListItem(void *FreeList, void *Pointer);
 
 /*
  * Hive (aka Colony)
+ *
+ * Maintains a list of contiguous element groups.
+ * Doesn't reallocate and therefore doesn't invalidate pointers.
+ * Uses skiplists to skip erased elements during iteration.
  */
 
 #define RR_HIVE_GROW    2
 #define RR_HIVE_INITIAL 4
 
 typedef uint16_t Rr_HiveSkipType;
-
-typedef struct Rr_HiveGroup Rr_HiveGroup;
 
 #define RR_HIVE_GROUP(Type)                                     \
     struct                                                      \
@@ -250,7 +252,10 @@ extern void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena);
     (Rr_PushIntoHive(Hive, sizeof(*(Hive)->PushedElement), Arena), \
      (Hive)->PushedElement)
 
-extern void Rr_BeginHiveIterator(void *Hive, void *It);
+#define RR_BEGIN_HIVE_ITERATOR(Hive, It)    \
+    It.Group = (void *)(Hive)->Begin.Group; \
+    It.Skip = (Hive)->Begin.Skip;           \
+    It.Element = (Hive)->Begin.Element;
 
 #define RR_ADVANCE_HIVE_ITERATOR(Hive, It)                             \
     ((It)->Element += (1 + *(It)->Skip),                               \
@@ -259,11 +264,9 @@ extern void Rr_BeginHiveIterator(void *Hive, void *It);
             ((It)->Group ? (It)->Element = (It)->Group->Elements : 0)) \
          : 0)
 
-#define RR_FOR_EACH_IN_HIVE(Hive, ItName)       \
-    RR_HIVE_ITERATOR(Rr_Test) ItName;           \
-    ItName.Group = (void *)(Hive)->Begin.Group; \
-    ItName.Skip = (Hive)->Begin.Skip;           \
-    ItName.Element = (Hive)->Begin.Element;     \
+#define RR_FOR_EACH_IN_HIVE(Hive, ItName) \
+    RR_HIVE_ITERATOR(Rr_Test) ItName;     \
+    RR_BEGIN_HIVE_ITERATOR(Hive, ItName); \
     for(; It.Group != NULL; RR_ADVANCE_HIVE_ITERATOR((Hive), &ItName))
 
 extern void Rr_TestHive(void);

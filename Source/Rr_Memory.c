@@ -393,15 +393,6 @@ void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena)
     VoidHive->Count++;
 }
 
-void Rr_BeginHiveIterator(void *Hive, void *It)
-{
-    Rr_VoidHive *VoidHive = Hive;
-    Rr_VoidHiveIterator *VoidIt = It;
-    VoidIt->Group = (void *)VoidHive->Begin.Group;
-    VoidIt->Skip = VoidHive->Begin.Skip;
-    VoidIt->Element = VoidHive->Begin.Element;
-}
-
 void Rr_TestHive(void)
 {
     typedef struct Rr_Test Rr_Test;
