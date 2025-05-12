@@ -56,32 +56,44 @@ typedef enum Rr_EventType
     RR_EVENT_TYPE_QUIT,
 } Rr_EventType;
 
+typedef struct Rr_MouseMotionEvent Rr_MouseMotionEvent;
+struct Rr_MouseMotionEvent
+{
+    Rr_Vec2 Position;
+    Rr_Vec2 Delta;
+};
+
+typedef struct Rr_MouseButtonEvent Rr_MouseButtonEvent;
+struct Rr_MouseButtonEvent
+{
+    Rr_Vec2 Position;
+    uint8_t Button;
+    uint8_t Clicks;
+};
+
+typedef struct Rr_MouseWheelEvent Rr_MouseWheelEvent;
+struct Rr_MouseWheelEvent
+{
+    Rr_Vec2 Position;
+    Rr_Vec2 Amount;
+};
+
+typedef struct Rr_DropFileEvent Rr_DropFileEvent;
+struct Rr_DropFileEvent
+{
+    const char *Path;
+};
+
 typedef struct Rr_Event Rr_Event;
 struct Rr_Event
 {
     Rr_EventType Type;
     union
     {
-        struct
-        {
-            Rr_Vec2 Position;
-            Rr_Vec2 Delta;
-        } MouseMotion;
-        struct
-        {
-            Rr_Vec2 Position;
-            uint8_t Button;
-            uint8_t Clicks;
-        } MouseButton;
-        struct
-        {
-            Rr_Vec2 Position;
-            Rr_Vec2 Amount;
-        } Wheel;
-        struct
-        {
-            const char *Path;
-        } DropFile;
+        Rr_MouseMotionEvent MouseMotion;
+        Rr_MouseButtonEvent MouseButton;
+        Rr_MouseWheelEvent Wheel;
+        Rr_DropFileEvent DropFile;
     };
 };
 
