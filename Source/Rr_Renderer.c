@@ -721,7 +721,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
     }
 }
 
-void Rr_PrepareFrame(void)
+void Rr_NewFrame(void)
 {
     Rr_Renderer *Renderer = gApp->Renderer;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);

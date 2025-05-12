@@ -638,6 +638,7 @@ static SPoint ConvertMousePosition()
 
 static void Init(void *UserData)
 {
+    Rr_TestHive();
     Rr_Renderer *Renderer = Rr_GetRenderer();
 
     std::array Bindings = {

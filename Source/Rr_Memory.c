@@ -341,3 +341,97 @@ void Rr_ReturnFreeListItem(void *FreeList, void *Pointer)
     FreeListTyped->First = ((char *)Pointer) - sizeof(Rr_FreeListHeader);
     ((Rr_FreeListHeader *)FreeListTyped->First)->Next = OldFirst;
 }
+
+typedef RR_HIVE(void) Rr_VoidHive;
+typedef RR_HIVE_GROUP(void) Rr_VoidHiveGroup;
+typedef RR_HIVE_ITERATOR(void) Rr_VoidHiveIterator;
+
+void *Rr_AllocHiveGroup(
+    size_t ElementSize,
+    Rr_HiveSkipType ElementCount,
+    Rr_Arena *Arena)
+{
+    size_t ElementsSize = ElementSize * (size_t)ElementCount;
+    size_t SkipsSize = sizeof(Rr_HiveSkipType) * ((size_t)ElementCount + 1);
+    size_t TotalAllocSize = sizeof(Rr_VoidHiveGroup) + ElementSize + SkipsSize;
+    Rr_VoidHiveGroup *Group = RR_ALLOC(Arena, TotalAllocSize);
+    Group->Capacity = ElementCount;
+    Group->Elements = RR_ALLOC(Arena, ElementsSize);
+    Group->Skips =
+        RR_ALLOC_TYPE_COUNT(Arena, Rr_HiveSkipType, ElementCount + 1);
+    return Group;
+}
+
+void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena)
+{
+    Rr_VoidHive *VoidHive = Hive;
+
+    if(VoidHive->Last == NULL)
+    {
+        VoidHive->First =
+            Rr_AllocHiveGroup(ElementSize, RR_HIVE_INITIAL, Arena);
+        VoidHive->Last = (void *)VoidHive->First;
+
+        VoidHive->Begin.Element = VoidHive->First->Elements;
+        VoidHive->Begin.Group = (void *)VoidHive->First;
+        VoidHive->Begin.Skip = VoidHive->First->Skips;
+    }
+    else if(VoidHive->Last->Count == VoidHive->Last->Capacity)
+    {
+        VoidHive->Last->Next = Rr_AllocHiveGroup(
+            ElementSize,
+            VoidHive->Last->Capacity * RR_HIVE_GROW,
+            Arena);
+        VoidHive->Last = (void *)VoidHive->Last->Next;
+    }
+
+    Rr_VoidHiveGroup *Group = (Rr_VoidHiveGroup *)VoidHive->Last;
+
+    char *NewElement = (char *)Group->Elements + (Group->Count * ElementSize);
+    VoidHive->PushedElement = NewElement;
+    Group->Count++;
+    VoidHive->Count++;
+}
+
+void Rr_BeginHiveIterator(void *Hive, void *It)
+{
+    Rr_VoidHive *VoidHive = Hive;
+    Rr_VoidHiveIterator *VoidIt = It;
+    VoidIt->Group = (void *)VoidHive->Begin.Group;
+    VoidIt->Skip = VoidHive->Begin.Skip;
+    VoidIt->Element = VoidHive->Begin.Element;
+}
+
+void Rr_TestHive(void)
+{
+    typedef struct Rr_Test Rr_Test;
+    struct Rr_Test
+    {
+        uint64_t Test0;
+        char Test3;
+        uint64_t Test1;
+        short Test10;
+        double Test2;
+        float Test4;
+        char Test5;
+        float Test6;
+    };
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    RR_HIVE(Rr_Test) Hive = { 0 };
+
+    for(char Char = 'a'; Char != 'z' + 1; Char++)
+    {
+        *RR_PUSH_INTO_HIVE(&Hive, Scratch.Arena) = (Rr_Test){ .Test3 = Char };
+        RR_LOG("Pushed: %c", Char);
+    }
+
+    RR_FOR_EACH_IN_HIVE(&Hive, It)
+    {
+        Rr_Test *Element = It.Element;
+        RR_LOG("Iterating over: %c", Element->Test3);
+    }
+
+    Rr_DestroyScratch(Scratch);
+}

@@ -708,15 +708,6 @@ static inline bool Rr_AddNodeDependency(
     {
         if(*NodeInMap == NULL)
         {
-            /* Some algorithms may depend on root nodes
-             * list so it may be useful in future. */
-
-            // size_t NewCapacity =
-            //     RR_MAX(Handle->Values.Index + 1, Graph->RootNodes.Capacity);
-            // RR_RESERVE_ARRAY(&Graph->RootNodes, NewCapacity, Arena);
-            // Graph->RootNodes.Count = NewCapacity;
-            // Graph->RootNodes.Data[Handle->Values.Index] = Node;
-
             Handle->Values.Generation++;
 
             *NodeInMap = Node;

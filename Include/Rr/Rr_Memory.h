@@ -140,6 +140,15 @@ extern void Rr_ReserveArray(
                (Arena))                              \
          : (void)0)
 
+#define RR_RESET_ARRAY(Array, Arena)                               \
+    ((Array)->Count > 0 ? Rr_ReserveArray(                         \
+                              (Array),                             \
+                              sizeof(*(Array)->Data), /* NOLINT */ \
+                              (Array)->Capacity,                   \
+                              (Arena))                             \
+                        : (void)0),                                \
+        (Array)->Count = 0
+
 #define RR_EMPTY_ARRAY(Array) (Array)->Count = 0
 
 #define RR_COPY_ARRAY(Dst, Src, Arena)          \
@@ -189,6 +198,75 @@ extern void Rr_ReturnFreeListItem(void *FreeList, void *Pointer);
 
 #define RR_RETURN_FREE_LIST_ITEM(FreeList, Pointer) \
     Rr_ReturnFreeListItem((FreeList), Pointer)
+
+/*
+ * Hive (aka Colony)
+ */
+
+#define RR_HIVE_GROW    2
+#define RR_HIVE_INITIAL 4
+
+typedef uint16_t Rr_HiveSkipType;
+
+typedef struct Rr_HiveGroup Rr_HiveGroup;
+
+#define RR_HIVE_GROUP(Type)                                     \
+    struct                                                      \
+    {                                                           \
+        Rr_HiveSkipType *Skips; /* Contains Count + 1 skips. */ \
+        Rr_HiveGroup *Next;                                     \
+        Type *Elements;                                         \
+        Rr_HiveGroup *Previous;                                 \
+        Rr_HiveSkipType Capacity;                               \
+        Rr_HiveSkipType Count;                                  \
+        Rr_HiveGroup *NextFree;                                 \
+        Rr_HiveGroup *PreviousFree;                             \
+        size_t GroupNumber;                                     \
+    }
+
+#define RR_HIVE_ITERATOR(Type)       \
+    struct                           \
+    {                                \
+        RR_HIVE_GROUP(Type) * Group; \
+        Rr_HiveSkipType *Skip;       \
+        Type *Element;               \
+    }
+
+#define RR_HIVE(Type)                 \
+    struct                            \
+    {                                 \
+        size_t Count;                 \
+        size_t Capacity;              \
+        RR_HIVE_GROUP(Type) * First;  \
+        RR_HIVE_GROUP(Type) * Last;   \
+        RR_HIVE_ITERATOR(Type) Begin; \
+        RR_HIVE_ITERATOR(Type) End;   \
+        Type *PushedElement;          \
+    }
+
+extern void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena);
+
+#define RR_PUSH_INTO_HIVE(Hive, Arena)                             \
+    (Rr_PushIntoHive(Hive, sizeof(*(Hive)->PushedElement), Arena), \
+     (Hive)->PushedElement)
+
+extern void Rr_BeginHiveIterator(void *Hive, void *It);
+
+#define RR_ADVANCE_HIVE_ITERATOR(Hive, It)                             \
+    ((It)->Element += (1 + *(It)->Skip),                               \
+     ((It)->Element - (It)->Group->Elements >= (It)->Group->Count)     \
+         ? ((It)->Group = (void *)(It)->Group->Next,                   \
+            ((It)->Group ? (It)->Element = (It)->Group->Elements : 0)) \
+         : 0)
+
+#define RR_FOR_EACH_IN_HIVE(Hive, ItName)       \
+    RR_HIVE_ITERATOR(Rr_Test) ItName;           \
+    ItName.Group = (void *)(Hive)->Begin.Group; \
+    ItName.Skip = (Hive)->Begin.Skip;           \
+    ItName.Element = (Hive)->Begin.Element;     \
+    for(; It.Group != NULL; RR_ADVANCE_HIVE_ITERATOR((Hive), &ItName))
+
+extern void Rr_TestHive(void);
 
 #ifdef __cplusplus
 }

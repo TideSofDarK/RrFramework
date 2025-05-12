@@ -1,5 +1,6 @@
 #include "Rr_App.h"
 
+#include "Rr_Log.h"
 #include "Rr_Memory.h"
 
 #include <Rr/Rr_Input.h>
@@ -67,7 +68,7 @@ static void Rr_Iterate(void)
 {
     Rr_CalculateDeltaTime(&gApp->FrameTime);
 
-    Rr_PrepareFrame();
+    Rr_NewFrame();
 
     Rr_BeginUI(gApp->UI);
 
