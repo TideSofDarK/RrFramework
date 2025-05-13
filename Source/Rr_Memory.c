@@ -346,7 +346,8 @@ typedef RR_HIVE(void) Rr_VoidHive;
 typedef RR_HIVE_GROUP(void) Rr_VoidHiveGroup;
 typedef RR_HIVE_ITERATOR(void) Rr_VoidHiveIterator;
 
-void *Rr_AllocHiveGroup(
+static inline void *Rr_AllocHiveGroup(
+    Rr_VoidHive *Hive,
     size_t ElementSize,
     Rr_HiveSkipType ElementCount,
     Rr_Arena *Arena)
@@ -359,6 +360,14 @@ void *Rr_AllocHiveGroup(
     Group->Elements = RR_ALLOC(Arena, ElementsSize);
     Group->Skips =
         RR_ALLOC_TYPE_COUNT(Arena, Rr_HiveSkipType, ElementCount + 1);
+
+    if(Hive->Last != NULL)
+    {
+        Hive->Last->Next = Group;
+    }
+    Group->Previous = Hive->Last;
+    Hive->Last = (void *)Group;
+
     return Group;
 }
 
@@ -366,11 +375,10 @@ void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena)
 {
     Rr_VoidHive *VoidHive = Hive;
 
-    if(VoidHive->Last == NULL)
+    if(VoidHive->First == NULL)
     {
         VoidHive->First =
-            Rr_AllocHiveGroup(ElementSize, RR_HIVE_INITIAL, Arena);
-        VoidHive->Last = (void *)VoidHive->First;
+            Rr_AllocHiveGroup(VoidHive, ElementSize, RR_HIVE_INITIAL, Arena);
 
         VoidHive->Begin.Element = VoidHive->First->Elements;
         VoidHive->Begin.Group = (void *)VoidHive->First;
@@ -378,11 +386,11 @@ void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena)
     }
     else if(VoidHive->Last->Count == VoidHive->Last->Capacity)
     {
-        VoidHive->Last->Next = Rr_AllocHiveGroup(
+        Rr_AllocHiveGroup(
+            VoidHive,
             ElementSize,
             VoidHive->Last->Capacity * RR_HIVE_GROW,
             Arena);
-        VoidHive->Last = (void *)VoidHive->Last->Next;
     }
 
     Rr_VoidHiveGroup *Group = (Rr_VoidHiveGroup *)VoidHive->Last;
@@ -412,6 +420,15 @@ void Rr_TestHive(void)
 
     RR_HIVE(Rr_Test) Hive = { 0 };
 
+    for(char Char = '0'; Char != '9' + 1; Char++)
+    {
+        *RR_PUSH_INTO_HIVE(&Hive, Scratch.Arena) = (Rr_Test){ .Test3 = Char };
+        RR_LOG("Pushed: %c", Char);
+    }
+
+    Rr_Test *FirstElement = RR_PUSH_INTO_HIVE(&Hive, Scratch.Arena);
+    *FirstElement = (Rr_Test){ .Test3 = '$' };
+
     for(char Char = 'a'; Char != 'z' + 1; Char++)
     {
         *RR_PUSH_INTO_HIVE(&Hive, Scratch.Arena) = (Rr_Test){ .Test3 = Char };
@@ -421,7 +438,22 @@ void Rr_TestHive(void)
     RR_FOR_EACH_IN_HIVE(Rr_Test, It, &Hive)
     {
         Rr_Test *Element = It.Element;
-        RR_LOG("Iterating over: %c", Element->Test3);
+        RR_LOG("(0) Iterating over: %c", Element->Test3);
+    }
+
+    RR_HIVE_ITERATOR(Rr_Test) FirstElementIt = { 0 };
+    RR_GET_HIVE_ITERATOR(&Hive, &FirstElementIt, FirstElement);
+
+    if(FirstElementIt.Group)
+    {
+        RR_LOG("(!!!) Group Count: %d", FirstElementIt.Group->Count);
+        RR_LOG("(!!!) Group Capacity: %d", FirstElementIt.Group->Capacity);
+    }
+
+    RR_FOR_EACH_IN_HIVE(Rr_Test, It, &Hive)
+    {
+        Rr_Test *Element = It.Element;
+        RR_LOG("(1) Iterating over: %c", Element->Test3);
     }
 
     Rr_DestroyScratch(Scratch);

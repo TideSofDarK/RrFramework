@@ -213,18 +213,18 @@ extern void Rr_ReturnFreeListItem(void *FreeList, void *Pointer);
 
 typedef uint16_t Rr_HiveSkipType;
 
-#define RR_HIVE_GROUP(Type)                                     \
-    struct                                                      \
-    {                                                           \
-        Rr_HiveSkipType *Skips; /* Contains Count + 1 skips. */ \
-        void *Next;                                             \
-        Type *Elements;                                         \
-        void *Previous;                                         \
-        Rr_HiveSkipType Capacity;                               \
-        Rr_HiveSkipType Count;                                  \
-        void *NextFree;                                         \
-        void *PreviousFree;                                     \
-        size_t GroupNumber;                                     \
+#define RR_HIVE_GROUP(Type)       \
+    struct                        \
+    {                             \
+        Rr_HiveSkipType *Skips;   \
+        void *Next;               \
+        Type *Elements;           \
+        void *Previous;           \
+        Rr_HiveSkipType Capacity; \
+        Rr_HiveSkipType Count;    \
+        void *NextFree;           \
+        void *PreviousFree;       \
+        size_t GroupNumber;       \
     }
 
 #define RR_HIVE_ITERATOR(Type)       \
@@ -253,6 +253,29 @@ extern void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena);
     (Rr_PushIntoHive(Hive, sizeof(*(Hive)->PushedElement), Arena), \
      (Hive)->PushedElement)
 
+#define RR_GET_HIVE_ITERATOR(Hive, It, ElementPtr)                          \
+    do                                                                      \
+    {                                                                       \
+        if((Hive)->Last != NULL)                                            \
+        {                                                                   \
+            for(RR_HIVE_GROUP(void) *Group = (void *)(Hive)->Last;          \
+                Group != NULL;                                              \
+                Group = Group->Previous)                                    \
+            {                                                               \
+                if((char *)ElementPtr >= (char *)Group->Elements &&         \
+                   (char *)ElementPtr < (char *)Group->Skips)               \
+                {                                                           \
+                    (It)->Group = (void *)Group;                            \
+                    (It)->Skip = Group->Skips + ((char *)ElementPtr -       \
+                                                 (char *)Group->Elements) / \
+                                                    sizeof(*ElementPtr);    \
+                    (It)->Element = ElementPtr;                             \
+                }                                                           \
+            }                                                               \
+        }                                                                   \
+    }                                                                       \
+    while(0)
+
 #define RR_BEGIN_HIVE_ITERATOR(Hive, It)    \
     It.Group = (void *)(Hive)->Begin.Group; \
     It.Skip = (Hive)->Begin.Skip;           \
@@ -265,10 +288,12 @@ extern void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena);
             ((It)->Group ? (It)->Element = (It)->Group->Elements : 0)) \
          : 0)
 
-#define RR_FOR_EACH_IN_HIVE(Type, ItName, Hive) \
-    RR_HIVE_ITERATOR(Type) ItName;              \
-    RR_BEGIN_HIVE_ITERATOR(Hive, ItName);       \
-    for(; It.Group != NULL; RR_ADVANCE_HIVE_ITERATOR((Hive), &ItName))
+#define RR_FOR_EACH_IN_HIVE(Type, ItName, Hive)                        \
+    for(RR_HIVE_ITERATOR(Type) ItName = { (void *)(Hive)->Begin.Group, \
+                                          (Hive)->Begin.Skip,          \
+                                          (Hive)->Begin.Element };     \
+        It.Group != NULL;                                              \
+        RR_ADVANCE_HIVE_ITERATOR((Hive), &ItName))
 
 extern void Rr_TestHive(void);
 
