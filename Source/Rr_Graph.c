@@ -649,7 +649,7 @@ Rr_GraphNode *Rr_AddGraphNode(
 
     RR_RESERVE_ARRAY(&GraphNode->Dependencies, 2, Frame->Arena);
 
-    *RR_PUSH_ARRAY(&Frame->Graph->Nodes, Frame->Arena) = GraphNode;
+    *RR_PUSH_INTO_ARRAY(&Frame->Graph->Nodes, Frame->Arena) = GraphNode;
 
     return GraphNode;
 }
@@ -689,7 +689,7 @@ static inline bool Rr_AddNodeDependency(
     }
 
     Rr_Graph *Graph = Node->Graph;
-    Rr_Arena *Arena = Node->Graph->Arena;
+    Rr_Arena *Arena = Node->Graph->Frame->Arena;
 
     if(Handle->Values.Index == Graph->SwapchainImageResourceIndex)
     {
@@ -699,7 +699,7 @@ static inline bool Rr_AddNodeDependency(
     Rr_GraphHandle CurrentHandle = *Handle;
 
     Rr_GraphNode **NodeInMap =
-        RR_UPSERT_MAP(&Graph->ResourceWriteToNode, Handle->Hash, Arena);
+        RR_GET_MAP_VALUE(&Graph->ResourceWriteToNode, Handle->Hash, Arena);
 
     /* Treat any image read as a write for now due to layout transitions. */
 
@@ -718,7 +718,7 @@ static inline bool Rr_AddNodeDependency(
         }
     }
 
-    *RR_PUSH_ARRAY(&Node->Dependencies, Arena) = (Rr_NodeDependency){
+    *RR_PUSH_INTO_ARRAY(&Node->Dependencies, Arena) = (Rr_NodeDependency){
         .State = *State,
         .Handle = CurrentHandle,
     };
@@ -767,14 +767,15 @@ static void Rr_CreateGraphAdjacencyList(
 
             /* Artifical "read-before-write" dependency. */
 
-            Rr_GraphNode *Writer = RR_UPSERT_MAP_DEREF(
+            Rr_GraphNode *Writer = RR_GET_MAP_VALUE_DEREF(
                 &Graph->ResourceWriteToNode,
                 Dependency->Handle.Hash,
                 Arena);
             if(Writer != NULL && Writer != Node)
             {
-                *RR_PUSH_ARRAY(&AdjacencyList[Writer->OriginalIndex], Arena) =
-                    Node->OriginalIndex;
+                *RR_PUSH_INTO_ARRAY(
+                    &AdjacencyList[Writer->OriginalIndex],
+                    Arena) = Node->OriginalIndex;
             }
 
             /* If Generation is greater than zero
@@ -786,13 +787,13 @@ static void Rr_CreateGraphAdjacencyList(
             {
                 Rr_GraphHandle Handle = Dependency->Handle;
                 Handle.Values.Generation--;
-                Rr_GraphNode *Producer = RR_UPSERT_MAP_DEREF(
+                Rr_GraphNode *Producer = RR_GET_MAP_VALUE_DEREF(
                     &Graph->ResourceWriteToNode,
                     Handle.Hash,
                     Arena);
                 if(Producer != NULL)
                 {
-                    *RR_PUSH_ARRAY(&AdjacencyList[Index], Arena) =
+                    *RR_PUSH_INTO_ARRAY(&AdjacencyList[Index], Arena) =
                         Producer->OriginalIndex;
                 }
                 else
@@ -840,7 +841,7 @@ static void Rr_SortGraph(
             Out);
     }
 
-    *RR_PUSH_ARRAY(Out, NULL) = Nodes[CurrentNodeIndex];
+    *RR_PUSH_INTO_ARRAY(Out, NULL) = Nodes[CurrentNodeIndex];
 
     State[CurrentNodeIndex] &= ~OnStackBit;
 }
@@ -1074,14 +1075,15 @@ static void Rr_ApplyBarrierBatch(
             BarriersArray = (void *)&BufferBarriers;
         }
 
-        *RR_PUSH_ARRAY(BarriersArray, Scratch.Arena) = (VkBufferMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-            .buffer = BufferBarrier->Buffer,
-            .srcAccessMask = BufferBarrier->SrcAccessMask,
-            .dstAccessMask = BufferBarrier->DstAccessMask,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE,
-        };
+        *RR_PUSH_INTO_ARRAY(BarriersArray, Scratch.Arena) =
+            (VkBufferMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .buffer = BufferBarrier->Buffer,
+                .srcAccessMask = BufferBarrier->SrcAccessMask,
+                .dstAccessMask = BufferBarrier->DstAccessMask,
+                .offset = 0,
+                .size = VK_WHOLE_SIZE,
+            };
 
         Rr_SyncState *BufferState =
             Rr_GetSyncState(Renderer, (Rr_MapKey)BufferBarrier->Buffer);
@@ -1110,15 +1112,16 @@ static void Rr_ApplyBarrierBatch(
             BarriersArray = (void *)&ImageBarriers;
         }
 
-        *RR_PUSH_ARRAY(BarriersArray, Scratch.Arena) = (VkImageMemoryBarrier){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .image = ImageBarrier->Image,
-            .srcAccessMask = ImageBarrier->SrcAccessMask,
-            .dstAccessMask = ImageBarrier->DstAccessMask,
-            .oldLayout = ImageBarrier->OldLayout,
-            .newLayout = ImageBarrier->NewLayout,
-            .subresourceRange = ImageBarrier->SubresourceRange,
-        };
+        *RR_PUSH_INTO_ARRAY(BarriersArray, Scratch.Arena) =
+            (VkImageMemoryBarrier){
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .image = ImageBarrier->Image,
+                .srcAccessMask = ImageBarrier->SrcAccessMask,
+                .dstAccessMask = ImageBarrier->DstAccessMask,
+                .oldLayout = ImageBarrier->OldLayout,
+                .newLayout = ImageBarrier->NewLayout,
+                .subresourceRange = ImageBarrier->SubresourceRange,
+            };
 
         Rr_SyncState *ImageState =
             Rr_GetSyncState(Renderer, (Rr_MapKey)ImageBarrier->Image);
@@ -1249,14 +1252,14 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
                     }
                 }
 
-                Rr_ImageMemoryBarrier **ImageBarrierRef = RR_UPSERT_MAP(
+                Rr_ImageMemoryBarrier **ImageBarrierRef = RR_GET_MAP_VALUE(
                     &BarrierBatch.VulkanHandleToBarrier,
                     Image,
                     Scratch.Arena);
                 Rr_ImageMemoryBarrier *ImageBarrier = *ImageBarrierRef;
                 if(ImageBarrier == NULL)
                 {
-                    *ImageBarrierRef = RR_PUSH_ARRAY(
+                    *ImageBarrierRef = RR_PUSH_INTO_ARRAY(
                         &BarrierBatch.ImageBarriers,
                         Scratch.Arena);
                     ImageBarrier = *ImageBarrierRef;
@@ -1317,14 +1320,14 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
                     }
                 }
 
-                Rr_BufferMemoryBarrier **BufferBarrierRef = RR_UPSERT_MAP(
+                Rr_BufferMemoryBarrier **BufferBarrierRef = RR_GET_MAP_VALUE(
                     &BarrierBatch.VulkanHandleToBarrier,
                     Buffer,
                     Scratch.Arena);
                 Rr_BufferMemoryBarrier *BufferBarrier = *BufferBarrierRef;
                 if(BufferBarrier == NULL)
                 {
-                    *BufferBarrierRef = RR_PUSH_ARRAY(
+                    *BufferBarrierRef = RR_PUSH_INTO_ARRAY(
                         &BarrierBatch.BufferBarriers,
                         Scratch.Arena);
                     BufferBarrier = *BufferBarrierRef;
@@ -1401,19 +1404,35 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
 {
     assert(Container != NULL);
 
-    Rr_GraphHandle **GraphHandle =
-        RR_UPSERT_MAP(&Graph->Handles, (Rr_MapKey)Container, Graph->Arena);
+    Rr_GraphHandle **GraphHandle = RR_GET_MAP_VALUE(
+        &Graph->Handles,
+        (Rr_MapKey)Container,
+        Graph->Frame->Arena);
     if(*GraphHandle == NULL)
     {
         Rr_GraphImage Handle = {
             .Values.Index = (uint32_t)Graph->Resources.Count,
         };
-        *RR_PUSH_ARRAY(&Graph->Resources, Graph->Arena) = (Rr_GraphResource){
-            .Container = Container,
-            .IsImage = IsImage,
-        };
-        *GraphHandle = RR_ALLOC_TYPE(Graph->Arena, Rr_GraphHandle);
+        *RR_PUSH_INTO_ARRAY(&Graph->Resources, Graph->Frame->Arena) =
+            (Rr_GraphResource){
+                .Container = Container,
+                .IsImage = IsImage,
+            };
+        *GraphHandle = RR_ALLOC_TYPE(Graph->Frame->Arena, Rr_GraphHandle);
         **GraphHandle = Handle;
+
+        if(IsImage)
+        {
+            *RR_PUSH_INTO_ARRAY(
+                &Graph->Frame->UsedImages,
+                Graph->Frame->Arena) = Container;
+        }
+        else
+        {
+            *RR_PUSH_INTO_ARRAY(
+                &Graph->Frame->UsedBuffers,
+                Graph->Frame->Arena) = Container;
+        }
     }
 
     return *GraphHandle;
@@ -1457,7 +1476,7 @@ void Rr_TransferBufferData(
     Rr_GraphBuffer *DstBufferHandle =
         Rr_GetGraphBufferHandle(Node->Graph, DstBuffer);
 
-    *RR_PUSH_ARRAY(&TransferNode->Transfers, Node->Graph->Arena) =
+    *RR_PUSH_INTO_ARRAY(&TransferNode->Transfers, Node->Graph->Frame->Arena) =
         (Rr_Transfer){
             .Size = Size,
             .SrcOffset = SrcOffset,
@@ -1635,7 +1654,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 }
 
 #define RR_NODE_ENCODE(FunctionType, ArgsType)                         \
-    Rr_Arena *Arena = Node->Graph->Arena;                              \
+    Rr_Arena *Arena = Node->Graph->Frame->Arena;                       \
     Rr_Encoded *Encoded = (Rr_Encoded *)&Node->Union;                  \
     Encoded->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_NodeFunction)); \
     Encoded->Encoded = Encoded->Encoded->Next;                         \

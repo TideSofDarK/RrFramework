@@ -122,14 +122,15 @@ extern void Rr_ReserveArray(
         size_t Capacity; \
     }
 
-#define RR_PUSH_ARRAY(Array, Arena)                                         \
+#define RR_PUSH_INTO_ARRAY(Array, Arena)                                    \
     ((Array)->Count >= (Array)->Capacity                                    \
      ? Rr_GrowArray((Array), sizeof(*(Array)->Data), (Arena)), /* NOLINT */ \
      memset((Array)->Data + (Array)->Count, 0, sizeof(*(Array)->Data)),     \
      (Array)->Data + (Array)->Count++                                       \
      : (Array)->Data + (Array)->Count++)
 
-#define RR_POP_ARRAY(Array) ((Array)->Count--, (Array)->Data[(Array)->Count])
+#define RR_POP_FROM_ARRAY(Array) \
+    ((Array)->Count--, (Array)->Data[(Array)->Count])
 
 #define RR_RESERVE_ARRAY(Array, ElementCount, Arena) \
     ((Array)->Capacity < (ElementCount)              \
@@ -170,13 +171,13 @@ struct Rr_Map
     void *Value;
 };
 
-extern void **Rr_UpsertMap(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena);
+extern void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena);
 
-#define RR_UPSERT_MAP(Map, Key, Arena) \
-    ((void *)Rr_UpsertMap((Map), (uintptr_t)Key, Arena))
+#define RR_GET_MAP_VALUE(Map, Key, Arena) \
+    ((void *)Rr_GetMapValue((Map), (uintptr_t)Key, Arena))
 
-#define RR_UPSERT_MAP_DEREF(Map, Key, Arena) \
-    (*(void **)Rr_UpsertMap((Map), (uintptr_t)Key, Arena))
+#define RR_GET_MAP_VALUE_DEREF(Map, Key, Arena) \
+    (*(void **)Rr_GetMapValue((Map), (uintptr_t)Key, Arena))
 
 /*
  * Free List
@@ -216,13 +217,13 @@ typedef uint16_t Rr_HiveSkipType;
     struct                                                      \
     {                                                           \
         Rr_HiveSkipType *Skips; /* Contains Count + 1 skips. */ \
-        Rr_HiveGroup *Next;                                     \
+        void *Next;                                             \
         Type *Elements;                                         \
-        Rr_HiveGroup *Previous;                                 \
+        void *Previous;                                         \
         Rr_HiveSkipType Capacity;                               \
         Rr_HiveSkipType Count;                                  \
-        Rr_HiveGroup *NextFree;                                 \
-        Rr_HiveGroup *PreviousFree;                             \
+        void *NextFree;                                         \
+        void *PreviousFree;                                     \
         size_t GroupNumber;                                     \
     }
 
@@ -264,9 +265,9 @@ extern void Rr_PushIntoHive(void *Hive, size_t ElementSize, Rr_Arena *Arena);
             ((It)->Group ? (It)->Element = (It)->Group->Elements : 0)) \
          : 0)
 
-#define RR_FOR_EACH_IN_HIVE(Hive, ItName) \
-    RR_HIVE_ITERATOR(Rr_Test) ItName;     \
-    RR_BEGIN_HIVE_ITERATOR(Hive, ItName); \
+#define RR_FOR_EACH_IN_HIVE(Type, ItName, Hive) \
+    RR_HIVE_ITERATOR(Type) ItName;              \
+    RR_BEGIN_HIVE_ITERATOR(Hive, ItName);       \
     for(; It.Group != NULL; RR_ADVANCE_HIVE_ITERATOR((Hive), &ItName))
 
 extern void Rr_TestHive(void);

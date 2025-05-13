@@ -109,7 +109,10 @@ extern bool Rr_Button(const char *Text);
 
 extern bool Rr_Checkbox(const char *Text, bool *Checked);
 
-extern bool Rr_InputField(size_t BufferSize, char *Buffer, Rr_UIInputFieldFlags Flags);
+extern bool Rr_InputField(
+    size_t BufferSize,
+    char *Buffer,
+    Rr_UIInputFieldFlags Flags);
 
 extern void Rr_BeginHorizontal(void);
 

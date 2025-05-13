@@ -268,12 +268,12 @@ static inline Rr_UIQuad Rr_ReserveQuad(Rr_UIWindow *Window)
     Rr_UIQuad ReservedQuad = gContext->Vertices.Data + gContext->Vertices.Count;
     for(size_t Index = 0; Index < 4; ++Index)
     {
-        RR_PUSH_ARRAY(&gContext->Vertices, gContext->FrameArena);
+        RR_PUSH_INTO_ARRAY(&gContext->Vertices, gContext->FrameArena);
     }
 
     for(size_t Index = 0; Index < 6; ++Index)
     {
-        *RR_PUSH_ARRAY(&gContext->Indices, gContext->FrameArena) =
+        *RR_PUSH_INTO_ARRAY(&gContext->Indices, gContext->FrameArena) =
             Indices[Index];
     }
 
@@ -288,13 +288,13 @@ static inline void Rr_DrawQuad(Rr_UIWindow *Window, Rr_UIVertex *Vertices)
     };
     for(size_t Index = 0; Index < 4; ++Index)
     {
-        *RR_PUSH_ARRAY(&gContext->Vertices, gContext->FrameArena) =
+        *RR_PUSH_INTO_ARRAY(&gContext->Vertices, gContext->FrameArena) =
             Vertices[Index];
     }
 
     for(size_t Index = 0; Index < 6; ++Index)
     {
-        *RR_PUSH_ARRAY(&gContext->Indices, gContext->FrameArena) =
+        *RR_PUSH_INTO_ARRAY(&gContext->Indices, gContext->FrameArena) =
             Indices[Index];
     }
 }
@@ -381,13 +381,13 @@ static inline void Rr_DrawSolidTriangle(
     };
     for(size_t Index = 0; Index < 3; ++Index)
     {
-        *RR_PUSH_ARRAY(&gContext->Indices, gContext->FrameArena) =
+        *RR_PUSH_INTO_ARRAY(&gContext->Indices, gContext->FrameArena) =
             (Rr_UIIndex)(gContext->Vertices.Count + Index);
     }
 
     for(size_t Index = 0; Index < 3; ++Index)
     {
-        *RR_PUSH_ARRAY(&gContext->Vertices, gContext->FrameArena) =
+        *RR_PUSH_INTO_ARRAY(&gContext->Vertices, gContext->FrameArena) =
             Vertices[Index];
     }
 }
@@ -804,7 +804,7 @@ static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
     Rr_SetLastClipRectIndexCount(Window);
 
     Rr_UIClipRect *ClipRect =
-        RR_PUSH_ARRAY(&Window->ClipRects, gContext->FrameArena);
+        RR_PUSH_INTO_ARRAY(&Window->ClipRects, gContext->FrameArena);
 
     *ClipRect = (Rr_UIClipRect){
         .FirstIndex = gContext->Indices.Count,
@@ -1068,7 +1068,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
 
     Rr_UIWindow **WindowRef =
-        RR_UPSERT_MAP(&gContext->WindowMap, Hash, gContext->Arena);
+        RR_GET_MAP_VALUE(&gContext->WindowMap, Hash, gContext->Arena);
     Rr_UIWindow *Window = *WindowRef;
 
     if(Window == NULL)
@@ -1092,7 +1092,8 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             "There already is a window with this title!");
     }
 
-    *RR_PUSH_ARRAY(&gContext->ActiveWindows, gContext->FrameArena) = Window;
+    *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->FrameArena) =
+        Window;
     gContext->CurrentWindow = Window;
 
     Window->Flags = Flags;
@@ -1177,7 +1178,7 @@ void Rr_EndWindow(void)
 void Rr_BeginHorizontal(void)
 {
     gContext->Horizontal = true;
-    *RR_PUSH_ARRAY(&gContext->HorizontalX, gContext->FrameArena) =
+    *RR_PUSH_INTO_ARRAY(&gContext->HorizontalX, gContext->FrameArena) =
         gContext->Cursor.X;
 }
 
@@ -1186,7 +1187,7 @@ void Rr_EndHorizontal(void)
     assert(
         gContext->Horizontal && "Did you forget to call Rr_BeginHorizontal()?");
     gContext->Horizontal = false;
-    gContext->Cursor.X = RR_POP_ARRAY(&gContext->HorizontalX);
+    gContext->Cursor.X = RR_POP_FROM_ARRAY(&gContext->HorizontalX);
     gContext->Cursor.Y += gContext->HorizontalMaxHeight;
 }
 
@@ -1197,7 +1198,7 @@ void Rr_BeginTabs(const char *Title)
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
     gContext->SelectedTabRef =
-        RR_UPSERT_MAP(&Window->WidgetMap, (uint64_t)Title, gContext->Arena);
+        RR_GET_MAP_VALUE(&Window->WidgetMap, (uint64_t)Title, gContext->Arena);
     gContext->SelectedTab = *gContext->SelectedTabRef;
     gContext->TabCursor = gContext->Cursor;
 

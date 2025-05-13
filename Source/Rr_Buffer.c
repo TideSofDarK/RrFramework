@@ -224,7 +224,7 @@ void Rr_UploadStagingBuffer(
 
         if(UploadContext->UseAcquireBarriers)
         {
-            *RR_PUSH_ARRAY(
+            *RR_PUSH_INTO_ARRAY(
                 &UploadContext->ReleaseBufferMemoryBarriers,
                 UploadContext->Arena) = (VkBufferMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -238,7 +238,7 @@ void Rr_UploadStagingBuffer(
                 .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
             };
 
-            *RR_PUSH_ARRAY(
+            *RR_PUSH_INTO_ARRAY(
                 &UploadContext->AcquireBufferMemoryBarriers,
                 UploadContext->Arena) = (VkBufferMemoryBarrier){
                 .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -291,7 +291,7 @@ void Rr_UploadBuffer(
         Renderer,
         Data.Size,
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
-    *RR_PUSH_ARRAY(&UploadContext->StagingBuffers, UploadContext->Arena) =
+    *RR_PUSH_INTO_ARRAY(&UploadContext->StagingBuffers, UploadContext->Arena) =
         StagingBuffer;
 
     Rr_AllocatedBuffer *AllocatedStagingBuffer =

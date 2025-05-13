@@ -274,7 +274,7 @@ void Rr_ReserveArray(void *Array, size_t Size, size_t Count, Rr_Arena *Arena)
     memcpy(Array, &Replica, sizeof(Replica));
 }
 
-void **Rr_UpsertMap(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
+void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
 {
     if(*Map != NULL)
     {
@@ -418,7 +418,7 @@ void Rr_TestHive(void)
         RR_LOG("Pushed: %c", Char);
     }
 
-    RR_FOR_EACH_IN_HIVE(&Hive, It)
+    RR_FOR_EACH_IN_HIVE(Rr_Test, It, &Hive)
     {
         Rr_Test *Element = It.Element;
         RR_LOG("Iterating over: %c", Element->Test3);

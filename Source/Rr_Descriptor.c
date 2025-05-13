@@ -79,7 +79,7 @@ Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
     VkDescriptorPool NewPool =
         Rr_CreateDescriptorPool(Device, MaxSets, Ratios, RatioCount);
     RR_RESERVE_ARRAY(&DescriptorAllocator.ReadyPools, 1, Arena);
-    *RR_PUSH_ARRAY(&DescriptorAllocator.ReadyPools, Arena) = NewPool;
+    *RR_PUSH_INTO_ARRAY(&DescriptorAllocator.ReadyPools, Arena) = NewPool;
 
     RR_RESERVE_ARRAY(&DescriptorAllocator.FullPools, 1, Arena);
 
@@ -106,7 +106,7 @@ void Rr_ResetDescriptorAllocator(
         VkDescriptorPool FullPool = DescriptorAllocator->FullPools.Data[Index];
         Device->ResetDescriptorPool(Device->Handle, FullPool, 0);
 
-        *RR_PUSH_ARRAY(&DescriptorAllocator->ReadyPools, NULL) = FullPool;
+        *RR_PUSH_INTO_ARRAY(&DescriptorAllocator->ReadyPools, NULL) = FullPool;
     }
     RR_EMPTY_ARRAY(&DescriptorAllocator->FullPools);
 }
@@ -141,7 +141,7 @@ VkDescriptorPool Rr_GetDescriptorPool(
     if(ReadyCount != 0)
     {
         NewPool = DescriptorAllocator->ReadyPools.Data[ReadyCount - 1];
-        (void)RR_POP_ARRAY(&DescriptorAllocator->ReadyPools);
+        (void)RR_POP_FROM_ARRAY(&DescriptorAllocator->ReadyPools);
     }
     else
     {
@@ -186,7 +186,7 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
     if(Result == VK_ERROR_OUT_OF_POOL_MEMORY ||
        Result == VK_ERROR_FRAGMENTED_POOL)
     {
-        *RR_PUSH_ARRAY(
+        *RR_PUSH_INTO_ARRAY(
             &DescriptorAllocator->FullPools,
             DescriptorAllocator->Arena) = Pool;
 
@@ -199,7 +199,7 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
             &DescriptorSet);
     }
 
-    *RR_PUSH_ARRAY(
+    *RR_PUSH_INTO_ARRAY(
         &DescriptorAllocator->ReadyPools,
         DescriptorAllocator->Arena) = Pool;
     return DescriptorSet;
@@ -228,11 +228,11 @@ void Rr_WriteSamplerDescriptor(
 {
     Rr_Arena *Arena = Writer->Arena;
 
-    *RR_PUSH_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
+    *RR_PUSH_INTO_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
         .sampler = Sampler,
     };
 
-    *RR_PUSH_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
+    *RR_PUSH_INTO_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
         .descriptorCount = 1,
@@ -240,7 +240,7 @@ void Rr_WriteSamplerDescriptor(
         .dstArrayElement = Index,
     };
 
-    *RR_PUSH_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
+    *RR_PUSH_INTO_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
         .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
         .Index = Writer->ImageInfos.Count - 1,
     };
@@ -256,12 +256,12 @@ void Rr_WriteImageDescriptor(
 {
     Rr_Arena *Arena = Writer->Arena;
 
-    *RR_PUSH_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
+    *RR_PUSH_INTO_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
         .imageView = View,
         .imageLayout = Layout,
     };
 
-    *RR_PUSH_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
+    *RR_PUSH_INTO_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
         .descriptorCount = 1,
@@ -269,7 +269,7 @@ void Rr_WriteImageDescriptor(
         .dstArrayElement = Index,
     };
 
-    *RR_PUSH_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
+    *RR_PUSH_INTO_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
         .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
         .Index = Writer->ImageInfos.Count - 1,
     };
@@ -285,13 +285,13 @@ void Rr_WriteCombinedImageSamplerDescriptor(
 {
     Rr_Arena *Arena = Writer->Arena;
 
-    *RR_PUSH_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
+    *RR_PUSH_INTO_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
         .sampler = Sampler,
         .imageView = View,
         .imageLayout = Layout,
     };
 
-    *RR_PUSH_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
+    *RR_PUSH_INTO_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
         .descriptorCount = 1,
@@ -299,7 +299,7 @@ void Rr_WriteCombinedImageSamplerDescriptor(
         .dstArrayElement = Index,
     };
 
-    *RR_PUSH_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
+    *RR_PUSH_INTO_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
         .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
         .Index = Writer->ImageInfos.Count - 1,
     };
@@ -314,20 +314,20 @@ void Rr_WriteBufferDescriptor(
     VkDescriptorType Type,
     Rr_Arena *Arena)
 {
-    *RR_PUSH_ARRAY(&Writer->BufferInfos, Arena) = (VkDescriptorBufferInfo){
+    *RR_PUSH_INTO_ARRAY(&Writer->BufferInfos, Arena) = (VkDescriptorBufferInfo){
         .range = Size,
         .buffer = Buffer,
         .offset = Offset,
     };
 
-    *RR_PUSH_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
+    *RR_PUSH_INTO_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstBinding = Binding,
         .descriptorCount = 1,
         .descriptorType = Type,
     };
 
-    *RR_PUSH_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
+    *RR_PUSH_INTO_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
         .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER,
         .Index = Writer->BufferInfos.Count - 1,
     };

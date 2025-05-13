@@ -51,6 +51,9 @@ struct Rr_Frame
 
     Rr_Graph *Graph;
 
+    RR_ARRAY(Rr_Image *) UsedImages;
+    RR_ARRAY(Rr_Buffer *) UsedBuffers;
+
     Rr_Arena *Arena;
 };
 
