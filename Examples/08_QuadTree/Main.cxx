@@ -147,7 +147,8 @@ struct SRect
     {
     }
 
-    template<typename TIterator> SRect(TIterator Begin, TIterator End)
+    template <typename TIterator>
+    SRect(TIterator Begin, TIterator End)
     {
         *this = std::accumulate(Begin, End, SRect{}, std::bit_or());
     }
@@ -198,7 +199,7 @@ struct SGPUDraw
     }
 };
 
-template<
+template <
     typename TPayload,
     std::size_t MaxDepth = 12,
     typename =
