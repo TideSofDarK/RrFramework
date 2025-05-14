@@ -108,9 +108,9 @@ static void Cleanup(void *UserData)
 int main(int ArgC, char **ArgV)
 {
     Rr_AppConfig Config = {
-        .Title = "01_Triangle",
+        .Title = "Triangle",
         .Version = "1.0.0",
-        .Package = "com.rr.examples.01_triangle",
+        .Package = "com.rr.examples.triangle",
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
         .IterateFunc = Iterate,

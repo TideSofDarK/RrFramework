@@ -416,9 +416,9 @@ static void Cleanup(void *UserData)
 int main()
 {
     Rr_AppConfig Config = {};
-    Config.Title = "99_GS";
+    Config.Title = "GS";
     Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.99_gs";
+    Config.Package = "com.rr.examples.gs";
     Config.InitFunc = Init;
     Config.CleanupFunc = Cleanup;
     Config.IterateFunc = Iterate;

@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.28)
 # Setup project
 #
 
-project(08_QuadTree LANGUAGES CXX)
+project(PrefixSum LANGUAGES CXX)
 
 #
 # Add executable target
@@ -17,8 +17,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
 
 file(GLOB_RECURSE RR_EXAMPLE_ASSETS CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.vert.glsl"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.frag.glsl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.comp.glsl"
 )
 
 rr_embed_assets(

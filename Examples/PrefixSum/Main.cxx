@@ -161,9 +161,9 @@ static void Cleanup(void *UserData)
 int main()
 {
     Rr_AppConfig Config = {};
-    Config.Title = "11_PrefixSum";
+    Config.Title = "PrefixSum";
     Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.11_prefixsum";
+    Config.Package = "com.rr.examples.prefixsum";
     Config.InitFunc = Init;
     Config.CleanupFunc = Cleanup;
     Config.IterateFunc = Iterate;

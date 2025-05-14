@@ -351,9 +351,9 @@ static void Cleanup(void *UserData)
 int main()
 {
     Rr_AppConfig Config = {};
-    Config.Title = "10_BitonicSort";
+    Config.Title = "BitonicSort";
     Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.10_BitonicSort";
+    Config.Package = "com.rr.examples.bitonicsort";
     Config.InitFunc = Init;
     Config.CleanupFunc = Cleanup;
     Config.IterateFunc = Iterate;

@@ -639,7 +639,6 @@ static SPoint ConvertMousePosition()
 
 static void Init(void *UserData)
 {
-    Rr_TestHive();
     Rr_Renderer *Renderer = Rr_GetRenderer();
 
     std::array Bindings = {
@@ -1027,9 +1026,9 @@ static void Cleanup(void *UserData)
 int main()
 {
     Rr_AppConfig Config = {};
-    Config.Title = "08_QuadTree";
+    Config.Title = "QuadTree";
     Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.08_quadtree";
+    Config.Package = "com.rr.examples.quadtree";
     Config.InitFunc = Init;
     Config.EventFunc = Event;
     Config.IterateFunc = Iterate;

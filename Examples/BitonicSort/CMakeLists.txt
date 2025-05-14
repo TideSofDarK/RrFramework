@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.28)
 # Setup project
 #
 
-project(10_BitonicSort LANGUAGES CXX)
+project(BitonicSort LANGUAGES CXX)
 
 #
 # Add executable target

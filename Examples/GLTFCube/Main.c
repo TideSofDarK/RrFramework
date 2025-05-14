@@ -279,9 +279,9 @@ static void Cleanup(void *UserData)
 int main(int ArgC, char **ArgV)
 {
     Rr_AppConfig Config = {
-        .Title = "05_GLTFCube",
+        .Title = "GLTFCube",
         .Version = "1.0.0",
-        .Package = "com.rr.examples.05_gltfcube",
+        .Package = "com.rr.examples.gltfcube",
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
         .IterateFunc = Iterate,

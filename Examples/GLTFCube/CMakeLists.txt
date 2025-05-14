@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.28)
 # Setup project
 #
 
-project(01_Triangle LANGUAGES C)
+project(GLTFCube LANGUAGES C)
 
 #
 # Add executable target
@@ -17,6 +17,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
 file(GLOB_RECURSE RR_EXAMPLE_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.vert.glsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.frag.glsl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.glb"
 )
 
 rr_embed_assets(
