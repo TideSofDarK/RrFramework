@@ -16,6 +16,7 @@ typedef enum Rr_GraphNodeType
 {
     RR_GRAPH_NODE_TYPE_COMPUTE,
     RR_GRAPH_NODE_TYPE_GRAPHICS,
+    RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE,
     RR_GRAPH_NODE_TYPE_BLIT,
     RR_GRAPH_NODE_TYPE_TRANSFER,
 } Rr_GraphNodeType;
@@ -120,6 +121,12 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Image **ColorImages,
     Rr_DepthTarget *DepthTarget,
     Rr_Image *DepthImage);
+
+extern Rr_GraphNode *Rr_AddClearColorImageNode(
+    Rr_Renderer *Renderer,
+    const char *Name,
+    Rr_ColorClear *ColorClear,
+    Rr_Image *Image);
 
 extern void Rr_Draw(
     Rr_GraphNode *Node,

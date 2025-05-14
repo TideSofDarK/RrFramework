@@ -636,6 +636,31 @@ static void Rr_ExecuteGraphicsNode(
     Rr_DestroyScratch(Scratch);
 }
 
+static void Rr_ExecuteClearColorImageNode(
+    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
+    Rr_ClearColorImageNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Device *Device = &Renderer->Device;
+
+    Rr_AllocatedImage *ColorImage = Rr_GetGraphImage(Graph, Node->ColorImage);
+
+    Device->CmdClearColorImage(
+        CommandBuffer,
+        ColorImage->Handle,
+        VK_IMAGE_LAYOUT_GENERAL,
+        (void *)&Node->ColorClear,
+        1,
+        &(VkImageSubresourceRange){
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .baseArrayLayer = 0,
+            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+        });
+}
+
 Rr_GraphNode *Rr_AddGraphNode(
     Rr_Frame *Frame,
     Rr_GraphNodeType Type,
@@ -985,6 +1010,17 @@ static void Rr_ExecuteGraphNode(
                 Renderer,
                 Graph,
                 GraphicsNode,
+                CommandBuffer);
+        }
+        break;
+        case RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE:
+        {
+            Rr_ClearColorImageNode *ClearColorImageNode =
+                &Node->Union.ClearColorImage;
+            Rr_ExecuteClearColorImageNode(
+                Renderer,
+                Graph,
+                ClearColorImageNode,
                 CommandBuffer);
         }
         break;
@@ -1649,6 +1685,38 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     GraphicsNode->Encoded.Encoded =
         RR_ALLOC(Frame->Arena, sizeof(Rr_NodeFunction));
     GraphicsNode->Encoded.EncodedFirst = GraphicsNode->Encoded.Encoded;
+
+    return GraphNode;
+}
+
+Rr_GraphNode *Rr_AddClearColorImageNode(
+    Rr_Renderer *Renderer,
+    const char *Name,
+    Rr_ColorClear *ColorClear,
+    Rr_Image *Image)
+{
+    assert(ColorClear != NULL && Image != NULL);
+
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE, Name);
+
+    Rr_GraphImage *ColorImageHandle =
+        Rr_GetGraphImageHandle(Frame->Graph, Image);
+
+    Rr_AddNodeDependency(
+        GraphNode,
+        ColorImageHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .Specific.Layout = VK_IMAGE_LAYOUT_GENERAL,
+        });
+
+    GraphNode->Union.ClearColorImage =
+        (Rr_ClearColorImageNode){ .ColorClear = *ColorClear,
+                                  .ColorImage = *ColorImageHandle };
 
     return GraphNode;
 }

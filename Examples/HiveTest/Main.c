@@ -38,6 +38,14 @@ static void Init(void *UserData)
 
 static void Iterate(void *UserData)
 {
+    Rr_Renderer *Renderer = Rr_GetRenderer();
+
+    Rr_AddClearColorImageNode(
+        Renderer,
+        "clear",
+        &(Rr_ColorClear){ 0 },
+        Rr_GetSwapchainImage(Renderer));
+
     Rr_BeginWindow("Hive", 0);
     Rr_LabelF("Total Count: %d", Hive.Count);
     Rr_BeginHorizontal();

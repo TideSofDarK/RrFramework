@@ -62,6 +62,13 @@ struct Rr_GraphicsNode
     Rr_GraphImage DepthImage;
 };
 
+typedef struct Rr_ClearColorImageNode Rr_ClearColorImageNode;
+struct Rr_ClearColorImageNode
+{
+    Rr_ColorClear ColorClear;
+    Rr_GraphImage ColorImage;
+};
+
 typedef struct Rr_BindIndexBufferArgs Rr_BindIndexBufferArgs;
 struct Rr_BindIndexBufferArgs
 {
@@ -211,6 +218,7 @@ struct Rr_GraphNode
     {
         Rr_ComputeNode Compute;
         Rr_GraphicsNode Graphics;
+        Rr_ClearColorImageNode ClearColorImage;
         Rr_BlitNode Blit;
         Rr_TransferNode Transfer;
     } Union;
