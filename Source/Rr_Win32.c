@@ -1,5 +1,3 @@
-#if defined(_WIN32)
-
 #include <Rr/Rr_Platform.h>
 
 #define WIN32_LEAN_AND_MEAN
@@ -62,9 +60,3 @@ void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock)
     _ReadWriteBarrier();
     *Spinlock = 0;
 }
-
-#else
-
-static void Rr_Unused(void);
-
-#endif

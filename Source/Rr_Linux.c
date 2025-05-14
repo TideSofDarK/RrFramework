@@ -1,10 +1,10 @@
-#if defined(__linux__)
-
 #include <Rr/Rr_Platform.h>
 
 #include "Rr_Log.h"
 
 #include <assert.h>
+
+#define __USE_MISC
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -69,9 +69,3 @@ void Rr_UnlockSpinlock(Rr_Spinlock *SpinLock)
 {
     __sync_lock_release(SpinLock);
 }
-
-#else
-
-static void Rr_Unused(void);
-
-#endif

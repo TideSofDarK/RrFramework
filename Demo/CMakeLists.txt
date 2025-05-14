@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.28)
 
 #
 # Setup project
@@ -28,7 +28,7 @@ file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
-rr_enable_debug_options(${PROJECT_NAME})
+rr_enable_development_options(${PROJECT_NAME})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
