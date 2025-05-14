@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.28)
 
 #
 # Setup project
@@ -11,10 +11,10 @@ set(BUILD_SHARED_LIBS OFF)
 include(CMake/CPM.cmake)
 
 #
-# Setup warnings and sanitizers
+# Enable warnings and sanitizers
 #
 
-function(rr_enable_debug_options TARGET)
+function(rr_enable_development_options TARGET)
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
         target_compile_options(
             ${TARGET}
@@ -32,14 +32,14 @@ function(rr_enable_debug_options TARGET)
             target_compile_options(${TARGET} PRIVATE -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unsafe-buffer-usage -Wno-pre-c++20-compat-pedantic)
         endif ()
 
-        if (ENABLE_SANITIZERS)
+        if (RR_SANITIZERS)
             target_compile_options(${TARGET} PRIVATE -fsanitize=address,undefined)
             target_link_options(${TARGET} PRIVATE -fsanitize=address,undefined)
         endif ()
     elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
         target_compile_options(${TARGET} PRIVATE /W3)
 
-        if (ENABLE_SANITIZERS)
+        if (RR_SANITIZERS)
             target_compile_options(${TARGET} PRIVATE /fsanitize=address)
         endif ()
     endif ()
@@ -66,7 +66,7 @@ set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
 CPMAddPackage("gh:libsdl-org/SDL#main")
 
 #
-# Embed Function
+# Pre-C23 asset embedding support
 #
 
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
@@ -150,28 +150,12 @@ endfunction()
 # Add library
 #
 
-file(GLOB_RECURSE RR_SOURCES CONFIGURE_DEPENDS
-    "Source/*.c"
-    "Source/*.cxx"
-)
-
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
-
-rr_enable_debug_options(${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME} PUBLIC Include)
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE Vendor)
 
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
-
-target_sources(${PROJECT_NAME} PRIVATE Vendor/xxHash/xxhash.c Vendor/xxHash/xxh_x86dispatch.c)
-target_sources(${PROJECT_NAME} PRIVATE Vendor/cJSON/cJSON.c)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    Vulkan::Headers
-    SDL3::SDL3
-)
+set_target_properties(${PROJECT_NAME} PROPERTIES C_EXTENSIONS OFF)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     TINYEXR_USE_MINIZ=0
@@ -194,6 +178,72 @@ target_compile_definitions(
     "$<$<CONFIG:DEBUG>:-DRR_DEBUG>"
 )
 
+rr_enable_development_options(${PROJECT_NAME})
+
+target_sources(
+    ${PROJECT_NAME}
+    PRIVATE
+    Source/Rr_App.c
+    Source/Rr_Asset.c
+    Source/Rr_Buffer.c
+    Source/Rr_Dependencies.cxx
+    Source/Rr_Descriptor.c
+    Source/Rr_GLTF.c
+    Source/Rr_Graph.c
+    Source/Rr_Image.c
+    Source/Rr_Input.c
+    Source/Rr_InputMap.c
+    Source/Rr_Load.c
+    Source/Rr_Memory.c
+    Source/Rr_Pipeline.c
+    Source/Rr_Platform.c
+    Source/Rr_Renderer.c
+    Source/Rr_String.c
+    Source/Rr_UI.c
+    Source/Rr_Vulkan.c
+    Vendor/xxHash/xxhash.c
+    Vendor/xxHash/xxh_x86dispatch.c
+    Vendor/cJSON/cJSON.c
+    PUBLIC
+    FILE_SET HEADERS
+    BASE_DIRS Include
+    FILES
+    Include/Rr/Rr_App.h
+    Include/Rr/Rr_Asset.h
+    Include/Rr/Rr_Buffer.h
+    Include/Rr/Rr_Defines.h
+    Include/Rr/Rr_GLTF.h
+    Include/Rr/Rr_Graph.h
+    Include/Rr/Rr.h
+    Include/Rr/Rr_Image.h
+    Include/Rr/Rr_Input.h
+    Include/Rr/Rr_InputMap.h
+    Include/Rr/Rr_Load.h
+    Include/Rr/Rr_Math.h
+    Include/Rr/Rr_Memory.h
+    Include/Rr/Rr_Pipeline.h
+    Include/Rr/Rr_Platform.h
+    Include/Rr/Rr_Renderer.h
+    Include/Rr/Rr_String.h
+    Include/Rr/Rr_UI.h
+    Include/Rr/Rr_Utility.h
+)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Linux.c)
+endif ()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Win32.c)
+endif ()
+
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE Vendor)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    Vulkan::Headers
+    SDL3::SDL3
+)
+
 file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.png"
@@ -209,10 +259,18 @@ rr_embed_assets(
     "${RR_BUILTIN_ASSETS}"
 )
 
-add_subdirectory(Demo)
-add_subdirectory(Examples/01_Triangle)
-add_subdirectory(Examples/05_GLTFCube)
-add_subdirectory(Examples/08_QuadTree)
-add_subdirectory(Examples/10_BitonicSort)
-add_subdirectory(Examples/11_PrefixSum)
-add_subdirectory(Examples/99_GS)
+#
+# Examples
+#
+
+set(RR_EXAMPLES true CACHE BOOL "Build included examples")
+
+if (RR_EXAMPLES)
+    add_subdirectory(Demo)
+    add_subdirectory(Examples/01_Triangle)
+    add_subdirectory(Examples/05_GLTFCube)
+    add_subdirectory(Examples/08_QuadTree)
+    add_subdirectory(Examples/10_BitonicSort)
+    add_subdirectory(Examples/11_PrefixSum)
+    add_subdirectory(Examples/99_GS)
+endif ()
