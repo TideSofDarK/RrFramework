@@ -51,6 +51,9 @@ struct Rr_Frame
 
     Rr_Graph *Graph;
 
+    RR_ARRAY(Rr_Image *) UsedImages;
+    RR_ARRAY(Rr_Buffer *) UsedBuffers;
+
     Rr_Arena *Arena;
 };
 
@@ -123,7 +126,7 @@ extern void Rr_DestroyRenderer(Rr_Renderer *Renderer);
 
 extern void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty);
 
-extern void Rr_PrepareFrame(void);
+extern void Rr_NewFrame(void);
 
 extern void Rr_DrawFrame(void);
 

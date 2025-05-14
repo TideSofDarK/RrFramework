@@ -721,12 +721,21 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
     }
 }
 
-void Rr_PrepareFrame(void)
+void Rr_NewFrame(void)
 {
     Rr_Renderer *Renderer = gApp->Renderer;
+
+    Renderer->FrameNumber++;
+    Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
+
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
+    /* TODO: Decrement atomic refcounts on used resources. */
+
     Rr_ResetArena(Frame->Arena);
+
+    RR_RESET_ARRAY(&Frame->UsedImages, Frame->Arena);
+    RR_RESET_ARRAY(&Frame->UsedBuffers, Frame->Arena);
 
     Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image);
 
@@ -737,7 +746,7 @@ void Rr_PrepareFrame(void)
     Frame->VirtualSwapchainImage->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
-    Frame->Graph->Arena = Frame->Arena;
+    Frame->Graph->Frame = Frame;
     Frame->Graph->SwapchainImageResourceIndex =
         Rr_GetGraphImageHandle(Frame->Graph, Frame->VirtualSwapchainImage)
             ->Values.Index;
@@ -929,9 +938,6 @@ void Rr_DrawFrame(void)
 
     Rr_InitSwapchain(Renderer);
 
-    Renderer->FrameNumber++;
-    Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
-
     Rr_DestroyScratch(Scratch);
 }
 
@@ -1119,10 +1125,11 @@ VkRenderPass Rr_GetVulkanRenderPass(
         NULL,
         &RenderPass);
 
-    *RR_PUSH_ARRAY(&Renderer->RenderPasses, Renderer->Arena) = (Rr_RenderPass){
-        .Handle = RenderPass,
-        .Hash = Hash,
-    };
+    *RR_PUSH_INTO_ARRAY(&Renderer->RenderPasses, Renderer->Arena) =
+        (Rr_RenderPass){
+            .Handle = RenderPass,
+            .Hash = Hash,
+        };
 
     Rr_DestroyScratch(Scratch);
 
@@ -1181,10 +1188,11 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
     Device->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, &Framebuffer);
 
-    *RR_PUSH_ARRAY(&Renderer->Framebuffers, Renderer->Arena) = (Rr_Framebuffer){
-        .Handle = Framebuffer,
-        .Hash = Hash,
-    };
+    *RR_PUSH_INTO_ARRAY(&Renderer->Framebuffers, Renderer->Arena) =
+        (Rr_Framebuffer){
+            .Handle = Framebuffer,
+            .Hash = Hash,
+        };
 
     Rr_DestroyScratch(Scratch);
 
@@ -1194,7 +1202,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
     Rr_SyncState **SyncStateRef =
-        RR_UPSERT_MAP(&Renderer->GlobalSync, Key, Renderer->Arena);
+        RR_GET_MAP_VALUE(&Renderer->GlobalSync, Key, Renderer->Arena);
     if(*SyncStateRef != NULL)
     {
         return *SyncStateRef;
@@ -1209,7 +1217,7 @@ Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
     Rr_SyncState **SyncStateRef =
-        RR_UPSERT_MAP(&Renderer->GlobalSync, Key, Renderer->Arena);
+        RR_GET_MAP_VALUE(&Renderer->GlobalSync, Key, Renderer->Arena);
     if(*SyncStateRef != NULL)
     {
         RR_RETURN_FREE_LIST_ITEM(&Renderer->SyncStates, *SyncStateRef);
@@ -1221,7 +1229,7 @@ VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer)
 {
     if(Renderer->Semaphores.Count > 0)
     {
-        return RR_POP_ARRAY(&Renderer->Semaphores);
+        return RR_POP_FROM_ARRAY(&Renderer->Semaphores);
     }
 
     Rr_Device *Device = &Renderer->Device;
@@ -1241,14 +1249,14 @@ VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer)
 
 void Rr_ReturnVulkanSemaphore(Rr_Renderer *Renderer, VkSemaphore Semaphore)
 {
-    *RR_PUSH_ARRAY(&Renderer->Semaphores, Renderer->Arena) = Semaphore;
+    *RR_PUSH_INTO_ARRAY(&Renderer->Semaphores, Renderer->Arena) = Semaphore;
 }
 
 VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer)
 {
     if(Renderer->Fences.Count > 0)
     {
-        return RR_POP_ARRAY(&Renderer->Fences);
+        return RR_POP_FROM_ARRAY(&Renderer->Fences);
     }
 
     Rr_Device *Device = &Renderer->Device;
@@ -1269,6 +1277,6 @@ VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer)
 void Rr_ReturnVulkanFence(Rr_Renderer *Renderer, VkFence Fence)
 {
     Rr_Device *Device = &Renderer->Device;
-    *RR_PUSH_ARRAY(&Renderer->Fences, Renderer->Arena) = Fence;
+    *RR_PUSH_INTO_ARRAY(&Renderer->Fences, Renderer->Arena) = Fence;
     Device->ResetFences(Device->Handle, 1, &Fence);
 }

@@ -433,7 +433,7 @@ void Rr_SelectPhysicalDevice(
                     break;
             }
 
-            char *DstString = *RR_PUSH_ARRAY(&DeviceStrings, Arena);
+            char *DstString = *RR_PUSH_INTO_ARRAY(&DeviceStrings, Arena);
             snprintf(
                 DstString,
                 sizeof(Rr_DeviceString),

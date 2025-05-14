@@ -253,7 +253,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             NULL,
             &VertModule);
 
-        *RR_PUSH_ARRAY(&ShaderStages, Scratch.Arena) =
+        *RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena) =
             (VkPipelineShaderStageCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .pNext = NULL,
@@ -277,7 +277,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             &ShaderModuleCreateInfo,
             NULL,
             &FragModule);
-        *RR_PUSH_ARRAY(&ShaderStages, Scratch.Arena) =
+        *RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena) =
             (VkPipelineShaderStageCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .pNext = NULL,
@@ -307,7 +307,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
                 VertexInputBinding->Attributes + Index;
 
             VkVertexInputAttributeDescription *AttributeDescription =
-                RR_PUSH_ARRAY(&AttributeDescriptions, Scratch.Arena);
+                RR_PUSH_INTO_ARRAY(&AttributeDescriptions, Scratch.Arena);
 
             AttributeDescription->location = Attribute->Location;
             AttributeDescription->format =
@@ -329,7 +329,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             if(BindingDescription == NULL)
             {
                 BindingDescription =
-                    RR_PUSH_ARRAY(&BindingDescriptions, Scratch.Arena);
+                    RR_PUSH_INTO_ARRAY(&BindingDescriptions, Scratch.Arena);
                 BindingDescription->binding = (uint32_t)BindingIndex;
                 BindingDescription->inputRate =
                     VertexInputBinding->Rate == RR_VERTEX_INPUT_RATE_INSTANCE
@@ -407,7 +407,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     for(size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {
         VkPipelineColorBlendAttachmentState *Attachment =
-            RR_PUSH_ARRAY(&ColorAttachments, Scratch.Arena);
+            RR_PUSH_INTO_ARRAY(&ColorAttachments, Scratch.Arena);
         Rr_ColorTargetInfo *ColorTargetInfo = Info->ColorTargets + Index;
         Rr_ColorTargetBlend *Blend = &ColorTargetInfo->Blend;
 
@@ -580,7 +580,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
     }
 
     Rr_DescriptorSetLayout *DescriptorSetLayout =
-        RR_PUSH_ARRAY(&Renderer->DescriptorSetLayouts, Renderer->Arena);
+        RR_PUSH_INTO_ARRAY(&Renderer->DescriptorSetLayouts, Renderer->Arena);
     DescriptorSetLayout->Hash = Hash;
     DescriptorSetLayout->Set = *Set;
     RR_ALLOC_COPY(

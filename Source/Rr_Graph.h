@@ -240,7 +240,7 @@ struct Rr_Graph
     Rr_Map *Handles;
     Rr_Map *ResourceWriteToNode;
     uint32_t SwapchainImageResourceIndex;
-    Rr_Arena *Arena;
+    struct Rr_Frame *Frame;
 };
 
 extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
