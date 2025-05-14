@@ -24,6 +24,7 @@ typedef uint16_t Rr_HiveSkipType;
 
 #ifndef RR_HIVE_TYPE
 #error RR_HIVE_TYPE is not set!
+#define RR_HIVE_TYPE int
 #endif
 
 #ifndef RR_HIVE_TYPE_NAME
