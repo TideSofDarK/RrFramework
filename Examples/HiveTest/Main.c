@@ -49,6 +49,9 @@ static void Iterate(void *UserData)
     Rr_BeginWindow("Hive", 0);
     Rr_LabelF("Total Count: %d", Hive.Count);
     Rr_LabelF("Total Capacity: %d", Hive.Capacity);
+#ifdef RR_DEBUG
+    Rr_LabelF("Total Groups Allocated: %d", Hive.TotalGroups);
+#endif
     Rr_BeginHorizontal();
     if(Rr_Button("Add"))
     {

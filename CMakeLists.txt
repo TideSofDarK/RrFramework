@@ -174,7 +174,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 target_compile_definitions(
     ${PROJECT_NAME}
-    PRIVATE
+    PUBLIC
     "$<$<CONFIG:DEBUG>:-DRR_DEBUG>"
 )
 
