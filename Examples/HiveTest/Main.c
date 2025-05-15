@@ -30,7 +30,7 @@ static void Init(void *UserData)
 
     for(size_t Index = 0; Index < 12; ++Index)
     {
-        *PushMyStructIntoHive(&Hive, Arena) = (SMyStruct){
+        *PushMyStructIntoHive(&Hive, Arena).Element = (SMyStruct){
             .Test1 = (int)Index,
         };
     }
@@ -48,10 +48,11 @@ static void Iterate(void *UserData)
 
     Rr_BeginWindow("Hive", 0);
     Rr_LabelF("Total Count: %d", Hive.Count);
+    Rr_LabelF("Total Capacity: %d", Hive.Capacity);
     Rr_BeginHorizontal();
     if(Rr_Button("Add"))
     {
-        *PushMyStructIntoHive(&Hive, Arena) = (SMyStruct){
+        *PushMyStructIntoHive(&Hive, Arena).Element = (SMyStruct){
             .Test1 = rand(),
         };
     }
@@ -61,14 +62,22 @@ static void Iterate(void *UserData)
     Rr_EndHorizontal();
     Rr_Separator();
     int Index = 0;
-    for(SMyHiveIterator It = Hive.Begin; MyStructHiveIteratorValid(&It);
-        AdvanceMyStructHiveIterator(&It))
+    for(SMyHiveIterator It = Hive.Begin; It.Element != Hive.End.Element;)
     {
         Rr_BeginHorizontal();
-        Rr_LabelF("%d) Value == %d", Index, It.Element->Test1);
+        Rr_LabelF(
+            "%d) Group: %d, Skip: %d, Value: %d",
+            Index,
+            It.Group->GroupNumber,
+            *It.Skip,
+            It.Element->Test1);
         if(Rr_Button("Remove"))
         {
-            RemoveFromMyStructHive(&It);
+            RemoveFromMyStructHive(&Hive, &It);
+        }
+        else
+        {
+            AdvanceMyStructHiveIterator(&It);
         }
         Rr_EndHorizontal();
         Index++;
