@@ -106,6 +106,7 @@ struct RR_HIVE_NAME
     do                                                                    \
     {                                                                     \
         (*OutGroup_) = RR_ALLOC_TYPE((Arena), RR_HIVE_GROUP_NAME);        \
+        (*OutGroup_)->Previous = (Hive_)->End.Group;                      \
         (*OutGroup_)->Count = 1;                                          \
         (*OutGroup_)->FreeListHead = UINT16_MAX;                          \
         (*OutGroup_)->Capacity = (ElementCount_);                         \
@@ -652,8 +653,9 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
         It->Group->Previous->Next = NULL;
 
         Hive->End.Group = It->Group->Previous;
-        Hive->End.Element = It->Group->Elements + It->Group->Capacity;
-        Hive->End.Skip = It->Group->Skips + It->Group->Capacity;
+        Hive->End.Element =
+            Hive->End.Group->Elements + Hive->End.Group->Capacity;
+        Hive->End.Skip = Hive->End.Group->Skips + Hive->End.Group->Capacity;
 
         RR_MOVE_HIVE_GROUP_TO_UNUSED_LIST(Hive, It->Group);
 
