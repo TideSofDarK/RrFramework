@@ -150,7 +150,7 @@ extern void Rr_ReserveArray(
                         : (void)0),                                \
         (Array)->Count = 0
 
-#define RR_EMPTY_ARRAY(Array) (Array)->Count = 0
+#define RR_CLEAR_ARRAY(Array) (Array)->Count = 0
 
 #define RR_COPY_ARRAY(Dst, Src, Arena)          \
     Rr_ResizeArray((Dst), (Src)->Count, Arena), \

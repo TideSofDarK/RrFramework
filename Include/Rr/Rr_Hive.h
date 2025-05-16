@@ -432,6 +432,17 @@ static inline void RR_ADVANCE_HIVE_ITERATOR_NAME(RR_HIVE_ITERATOR_NAME *It)
     }                                                    \
     while(0)
 
+#define RR_RESET_ONLY_HIVE_GROUP_LEFT(Hive_, Group_)                     \
+    do                                                                   \
+    {                                                                    \
+        (Hive_)->FreeFirst = NULL;                                       \
+        RR_RESET_HIVE_GROUP((Group_), 0, NULL, NULL, 0);                 \
+        (Hive_)->End.Element = Hive->Begin.Element =                     \
+            Hive->Begin.Group->Elements;                                 \
+        (Hive_)->End.Skip = Hive->Begin.Skip = Hive->Begin.Group->Skips; \
+    }                                                                    \
+    while(0)
+
 #define RR_REMOVE_FROM_HIVE_NAME \
     RR_HIVE_EXPAND_CONCAT(       \
         RR_HIVE_PREFIX,          \
@@ -593,13 +604,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
 
     if(InBackBlock & InFrontBlock) /* Only block in hive. */
     {
-        Hive->FreeFirst = NULL;
-        RR_RESET_HIVE_GROUP(It->Group, 0, NULL, NULL, 0);
-        /* It->Group->FreeListHead = 0; */
-
-        Hive->End.Group = Hive->Begin.Group = It->Group;
-        Hive->End.Element = Hive->Begin.Element = Hive->Begin.Group->Elements;
-        Hive->End.Skip = Hive->Begin.Skip = Hive->Begin.Group->Skips;
+        RR_RESET_ONLY_HIVE_GROUP_LEFT(Hive, It->Group);
 
         *It = Hive->End;
     }
@@ -663,6 +668,33 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
     }
 }
 
+#define RR_CLEAR_HIVE_NAME     \
+    RR_HIVE_EXPAND_CONCAT(     \
+        RR_HIVE_PREFIX,        \
+        RR_HIVE_EXPAND_CONCAT( \
+            Clear,             \
+            RR_HIVE_EXPAND_CONCAT(RR_HIVE_TYPE_NAME, Hive)))
+
+static inline void RR_CLEAR_HIVE_NAME(RR_HIVE_NAME *Hive)
+{
+    if(Hive->Count == 0)
+    {
+        return;
+    }
+
+    if(Hive->Begin.Group != Hive->End.Group)
+    {
+        /* Move the rest of the groups to unused list. */
+
+        Hive->End.Group->Next = Hive->UnusedFirst;
+        Hive->UnusedFirst = Hive->End.Group->Next;
+        Hive->End.Group = Hive->Begin.Group;
+    }
+
+    RR_RESET_ONLY_HIVE_GROUP_LEFT(Hive, Hive->Begin.Group);
+    Hive->Count = 0;
+}
+
 #undef RR_HIVE_TYPE
 #undef RR_HIVE_TYPE_NAME
 #undef RR_HIVE_NAME
@@ -680,6 +712,8 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
 #undef RR_ADVANCE_HIVE_ITERATOR_NAME
 #undef RR_REMOVE_FROM_HIVE_NAME
 #undef RR_RESET_HIVE_GROUP
+#undef RR_CLEAR_HIVE_NAME
+#undef RR_RESET_ONLY_HIVE_GROUP_LEFT
 
 #ifdef __cplusplus
 }

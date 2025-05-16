@@ -61,6 +61,7 @@ static void Iterate(void *UserData)
     }
     if(Rr_Button("Clear"))
     {
+        ClearMyStructHive(&Hive);
     }
     Rr_EndHorizontal();
     Rr_Separator();

@@ -108,7 +108,7 @@ void Rr_ResetDescriptorAllocator(
 
         *RR_PUSH_INTO_ARRAY(&DescriptorAllocator->ReadyPools, NULL) = FullPool;
     }
-    RR_EMPTY_ARRAY(&DescriptorAllocator->FullPools);
+    RR_CLEAR_ARRAY(&DescriptorAllocator->FullPools);
 }
 
 void Rr_DestroyDescriptorAllocator(
@@ -122,7 +122,7 @@ void Rr_DestroyDescriptorAllocator(
             DescriptorAllocator->ReadyPools.Data[Index];
         Device->DestroyDescriptorPool(Device->Handle, ReadyPool, NULL);
     }
-    RR_EMPTY_ARRAY(&DescriptorAllocator->ReadyPools);
+    RR_CLEAR_ARRAY(&DescriptorAllocator->ReadyPools);
 
     Count = DescriptorAllocator->FullPools.Count;
     for(size_t Index = 0; Index < Count; Index++)
@@ -335,10 +335,10 @@ void Rr_WriteBufferDescriptor(
 
 void Rr_ResetDescriptorWriter(Rr_DescriptorWriter *Writer)
 {
-    RR_EMPTY_ARRAY(&Writer->ImageInfos);
-    RR_EMPTY_ARRAY(&Writer->BufferInfos);
-    RR_EMPTY_ARRAY(&Writer->Writes);
-    RR_EMPTY_ARRAY(&Writer->Entries);
+    RR_CLEAR_ARRAY(&Writer->ImageInfos);
+    RR_CLEAR_ARRAY(&Writer->BufferInfos);
+    RR_CLEAR_ARRAY(&Writer->Writes);
+    RR_CLEAR_ARRAY(&Writer->Entries);
 }
 
 void Rr_UpdateDescriptorSet(

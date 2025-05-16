@@ -79,7 +79,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
             Renderer,
             Renderer->SwapchainImages.Data + Index);
     }
-    RR_EMPTY_ARRAY(&Renderer->SwapchainImages);
+    RR_CLEAR_ARRAY(&Renderer->SwapchainImages);
 
     VkSwapchainKHR OldSwapchain = Renderer->Swapchain.Handle;
 
@@ -715,7 +715,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
                 &Renderer->PendingLoadsArray.Data[Index];
             PendingLoad->LoadingCallback(PendingLoad->UserData);
         }
-        RR_EMPTY_ARRAY(&Renderer->PendingLoadsArray);
+        RR_CLEAR_ARRAY(&Renderer->PendingLoadsArray);
 
         Rr_UnlockSpinlock(&App->SyncArena.Lock);
     }

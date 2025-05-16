@@ -1199,8 +1199,8 @@ static void Rr_ApplyBarrierBatch(
             ImageBarriers.Data);
     }
 
-    RR_EMPTY_ARRAY(&Barrier->ImageBarriers);
-    RR_EMPTY_ARRAY(&Barrier->BufferBarriers);
+    RR_CLEAR_ARRAY(&Barrier->ImageBarriers);
+    RR_CLEAR_ARRAY(&Barrier->BufferBarriers);
     Barrier->VulkanHandleToBarrier = NULL;
 
     Rr_DestroyScratch(Scratch);
