@@ -1,9 +1,5 @@
 #include <Rr/Rr.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-
-typedef struct SMyStruct SMyStruct;
 struct SMyStruct
 {
     uint64_t Test0;
@@ -40,10 +36,12 @@ static void Iterate(void *UserData)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer();
 
+    Rr_ColorClear ColorClear = {};
+
     Rr_AddClearColorImageNode(
         Renderer,
         "clear",
-        &(Rr_ColorClear){ 0 },
+        &ColorClear,
         Rr_GetSwapchainImage(Renderer));
 
     Rr_BeginWindow("Hive", 0);
@@ -70,10 +68,9 @@ static void Iterate(void *UserData)
     {
         Rr_BeginHorizontal();
         Rr_LabelF(
-            "%d) Group: %d, Skip: %d, Value: %d",
+            "%d) Group: %d, Value: %d",
             Index,
             It.Group->GroupNumber,
-            *It.Skip,
             It.Element->Test1);
         if(Rr_Button("Remove"))
         {
@@ -96,14 +93,13 @@ static void Cleanup(void *UserData)
 
 int main(int ArgC, char **ArgV)
 {
-    Rr_AppConfig Config = {
-        .Title = "HiveTest",
-        .Version = "1.0.0",
-        .Package = "com.rr.examples.hivetest",
-        .InitFunc = Init,
-        .CleanupFunc = Cleanup,
-        .IterateFunc = Iterate,
-    };
+    Rr_AppConfig Config = {};
+    Config.Title = "HiveTest";
+    Config.Version = "1.0.0";
+    Config.Package = "com.rr.examples.hivetest";
+    Config.InitFunc = Init;
+    Config.CleanupFunc = Cleanup;
+    Config.IterateFunc = Iterate;
     Rr_Run(&Config);
 
     return 0;
