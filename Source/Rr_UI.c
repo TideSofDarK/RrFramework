@@ -101,7 +101,6 @@ struct Rr_UIContext
 
     float AvailableContentsWidth;
 
-    bool Horizontal;
     RR_ARRAY(float) HorizontalX;
     float HorizontalMaxHeight;
 
@@ -163,6 +162,8 @@ struct Rr_UIContext
 };
 
 static Rr_UIContext *gContext;
+
+#define RR_UI_IS_HORIZONTAL() (gContext->HorizontalX.Count > 0)
 
 #define CJSON_GET_OBJECT_FLOAT(Object, Item) \
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
@@ -926,19 +927,23 @@ static inline void Rr_Advance(Rr_Vec2 Size)
 {
     RR_UI_ASSERT_WINDOW();
 
-    if(gContext->Horizontal)
+    if(RR_UI_IS_HORIZONTAL())
     {
         gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
         gContext->HorizontalMaxHeight =
             RR_MAX(gContext->HorizontalMaxHeight, Size.Height);
+
+        gContext->CurrentWindow->YEnd = RR_MAX(
+            gContext->CurrentWindow->YEnd,
+            gContext->Cursor.Y + gContext->HorizontalMaxHeight);
     }
     else
     {
         gContext->Cursor.Y += Size.Height;
-    }
 
-    gContext->CurrentWindow->YEnd =
-        RR_MAX(gContext->CurrentWindow->YEnd, gContext->Cursor.Y);
+        gContext->CurrentWindow->YEnd =
+            RR_MAX(gContext->CurrentWindow->YEnd, gContext->Cursor.Y);
+    }
 }
 
 static inline bool Rr_DrawVerticalScrollbar(Rr_UIWindow *Window)
@@ -1177,7 +1182,7 @@ void Rr_EndWindow(void)
 
 void Rr_BeginHorizontal(void)
 {
-    gContext->Horizontal = true;
+    gContext->HorizontalMaxHeight = 0;
     *RR_PUSH_INTO_ARRAY(&gContext->HorizontalX, gContext->FrameArena) =
         gContext->Cursor.X;
 }
@@ -1185,8 +1190,8 @@ void Rr_BeginHorizontal(void)
 void Rr_EndHorizontal(void)
 {
     assert(
-        gContext->Horizontal && "Did you forget to call Rr_BeginHorizontal()?");
-    gContext->Horizontal = false;
+        RR_UI_IS_HORIZONTAL() &&
+        "Did you forget to call Rr_BeginHorizontal()?");
     gContext->Cursor.X = RR_POP_FROM_ARRAY(&gContext->HorizontalX);
     gContext->Cursor.Y += gContext->HorizontalMaxHeight;
 }
