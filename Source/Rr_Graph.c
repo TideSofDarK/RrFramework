@@ -500,16 +500,16 @@ static void Rr_ExecuteGraphicsNode(
             break;
             case RR_NODE_FUNCTION_TYPE_SET_VIEWPORT:
             {
-                Rr_Vec4 *Viewport = Function->Args;
+                Rr_Rect *ViewportRect = Function->Args;
                 Device->CmdSetViewport(
                     CommandBuffer,
                     0,
                     1,
                     &(VkViewport){
-                        .x = Viewport->X,
-                        .y = Viewport->Y,
-                        .width = Viewport->Width,
-                        .height = Viewport->Height,
+                        .x = ViewportRect->Offset.X,
+                        .y = ViewportRect->Offset.Y,
+                        .width = ViewportRect->Extent.Width,
+                        .height = ViewportRect->Extent.Height,
                         .minDepth = 0.0f,
                         .maxDepth = 1.0f,
                     });
@@ -517,17 +517,15 @@ static void Rr_ExecuteGraphicsNode(
             break;
             case RR_NODE_FUNCTION_TYPE_SET_SCISSOR:
             {
-                Rr_IntVec4 *Scissor = Function->Args;
+                Rr_IntRect *ScissorRect = Function->Args;
+
+                /* NOTE: VkRect2D is the same as Rr_IntRect. */
+
                 Device->CmdSetScissor(
                     CommandBuffer,
                     0,
                     1,
-                    &(VkRect2D){
-                        .offset.x = Scissor->X,
-                        .offset.y = Scissor->Y,
-                        .extent.width = Scissor->Width,
-                        .extent.height = Scissor->Height,
-                    });
+                    (VkRect2D *)ScissorRect);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
@@ -1894,18 +1892,18 @@ void Rr_BindGraphicsPipeline(
         Rr_GraphicsPipeline *) = GraphicsPipeline;
 }
 
-void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect)
+void Rr_SetViewport(Rr_GraphNode *Node, Rr_Rect *Rect)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_VIEWPORT, Rr_Vec4) = Rect;
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_VIEWPORT, Rr_Rect) = *Rect;
 }
 
-void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect)
+void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntRect *Rect)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_SCISSOR, Rr_IntVec4) = Rect;
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_SCISSOR, Rr_IntRect) = *Rect;
 }
 
 void Rr_BindSampler(

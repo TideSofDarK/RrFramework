@@ -167,9 +167,9 @@ extern void Rr_BindGraphicsPipeline(
     Rr_GraphNode *Node,
     Rr_GraphicsPipeline *GraphicsPipeline);
 
-extern void Rr_SetViewport(Rr_GraphNode *Node, Rr_Vec4 Rect);
+extern void Rr_SetViewport(Rr_GraphNode *Node, Rr_Rect *Rect);
 
-extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntVec4 Rect);
+extern void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntRect *Rect);
 
 extern void Rr_BindSampler(
     Rr_GraphNode *Node,
