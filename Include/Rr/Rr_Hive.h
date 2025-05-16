@@ -686,7 +686,7 @@ static inline void RR_CLEAR_HIVE_NAME(RR_HIVE_NAME *Hive)
         /* Move the rest of the groups to unused list. */
 
         Hive->End.Group->Next = Hive->UnusedFirst;
-        Hive->UnusedFirst = Hive->End.Group->Next;
+        Hive->UnusedFirst = Hive->Begin.Group->Next;
         Hive->End.Group = Hive->Begin.Group;
     }
 
