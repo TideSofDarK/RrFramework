@@ -107,6 +107,10 @@ struct RR_HIVE_NAME
     {                                                                     \
         (*OutGroup_) = RR_ALLOC_TYPE((Arena), RR_HIVE_GROUP_NAME);        \
         (*OutGroup_)->Previous = (Hive_)->End.Group;                      \
+        (*OutGroup_)->GroupNumber =                                       \
+            ((Hive_)->End.Group) == NULL                                  \
+                ? 0                                                       \
+                : (((Hive_)->End.Group))->GroupNumber + 1u;               \
         (*OutGroup_)->Count = 1;                                          \
         (*OutGroup_)->FreeListHead = UINT16_MAX;                          \
         (*OutGroup_)->Capacity = (ElementCount_);                         \
