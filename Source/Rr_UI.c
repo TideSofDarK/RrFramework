@@ -69,8 +69,9 @@ struct Rr_UIWindow
     float YEnd;
     float VScroll;
     int ZOrder;
-    bool Minimized;
-    bool Added;
+    bool Minimized : 1;
+    bool Added : 1;
+    bool Closed : 1;
 
     Rr_Map *WidgetMap;
 
@@ -110,7 +111,7 @@ struct Rr_UIContext
     const char **SelectedTabRef;
     const char *SelectedTab;
 
-    bool MouseButtonCapture;
+    bool LeftMouseButtonDownOverWindow;
     bool MouseHoveredSomething;
 
     bool LeftMouseButtonDown;
@@ -139,6 +140,7 @@ struct Rr_UIContext
     Rr_Vec2 MinWindowSize;
     Rr_Vec2 MinWindowSizeNoTitle;
     float WindowTitleHeight;
+    float TitleButtonSize;
     float ResizeHandleSize;
     float HorizontalMargin;
     float FrameThickness;
@@ -168,12 +170,10 @@ static Rr_UIContext *gContext;
 
 #define RR_UI_IS_HORIZONTAL() (gContext->HorizontalX.Count > 0)
 
-#define RR_UI_CLIP_RECT()                                                    \
-    (gContext->CurrentWindow && gContext->CurrentWindow->ClipRects.Count > 0 \
-         ? &gContext->CurrentWindow->ClipRects                               \
-                .Data[gContext->CurrentWindow->ClipRects.Count - 1]          \
-                .Rect                                                        \
-         : &(Rr_Rect){ 0 })
+#define RR_UI_CLIP_RECT(Window)                                          \
+    ((Window) && (Window)->ClipRects.Count > 0                           \
+         ? &(Window)->ClipRects.Data[(Window)->ClipRects.Count - 1].Rect \
+         : &(Window)->Rect)
 
 #define CJSON_GET_OBJECT_FLOAT(Object, Item) \
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
@@ -310,29 +310,80 @@ static inline void Rr_DrawQuad(Rr_UIWindow *Window, Rr_UIVertex *Vertices)
     }
 }
 
-static inline void Rr_SolidQuad(
-    Rr_UIQuad Quad,
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
-    Rr_Vec4 *Color)
+static inline void Rr_SolidQuad(Rr_UIQuad Quad, Rr_Rect *Rect, Rr_Vec4 *Color)
 {
     memcpy(
         Quad,
         (Rr_UIVertex[]){
             {
-                .Position = Position,
+                .Position = Rect->Offset,
                 .Color = *Color,
             },
             {
-                .Position = { Position.X + Size.X, Position.Y },
+                .Position = { Rect->Offset.X + Rect->Extent.X, Rect->Offset.Y },
                 .Color = *Color,
             },
             {
-                .Position = { Position.X, Position.Y + Size.Y },
+                .Position = { Rect->Offset.X, Rect->Offset.Y + Rect->Extent.Y },
                 .Color = *Color,
             },
             {
-                .Position = { Position.X + Size.X, Position.Y + Size.Y },
+                .Position = { Rect->Offset.X + Rect->Extent.X,
+                              Rect->Offset.Y + Rect->Extent.Y },
+                .Color = *Color,
+            },
+        },
+        sizeof(Rr_UIVertex) * 4);
+}
+
+static inline void Rr_RotatedQuad(
+    Rr_UIQuad Quad,
+    Rr_Rect *Rect,
+    float Angle,
+    Rr_Vec4 *Color)
+{
+    Rr_Vec2 Center = Rr_RectCenter(Rect);
+
+    memcpy(
+        Quad,
+        (Rr_UIVertex[]){
+            {
+                .Position = Rr_AddV2(
+                    Center,
+                    Rr_RotateV2(Rr_SubV2(Rect->Offset, Center), Angle)),
+                .Color = *Color,
+            },
+            {
+                .Position = Rr_AddV2(
+                    Center,
+                    Rr_RotateV2(
+                        Rr_SubV2(
+                            (Rr_Vec2){ Rect->Offset.X + Rect->Extent.X,
+                                       Rect->Offset.Y },
+                            Center),
+                        Angle)),
+                .Color = *Color,
+            },
+            {
+                .Position = Rr_AddV2(
+                    Center,
+                    Rr_RotateV2(
+                        Rr_SubV2(
+                            (Rr_Vec2){ Rect->Offset.X,
+                                       Rect->Offset.Y + Rect->Extent.Y },
+                            Center),
+                        Angle)),
+                .Color = *Color,
+            },
+            {
+                .Position = Rr_AddV2(
+                    Center,
+                    Rr_RotateV2(
+                        Rr_SubV2(
+                            (Rr_Vec2){ Rect->Offset.X + Rect->Extent.X,
+                                       Rect->Offset.Y + Rect->Extent.Y },
+                            Center),
+                        Angle)),
                 .Color = *Color,
             },
         },
@@ -341,8 +392,7 @@ static inline void Rr_SolidQuad(
 
 static inline void Rr_HorizontalGradientQuad(
     Rr_UIQuad Quad,
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
+    Rr_Rect *Rect,
     Rr_Vec4 *ColorA,
     Rr_Vec4 *ColorB)
 {
@@ -350,19 +400,20 @@ static inline void Rr_HorizontalGradientQuad(
         Quad,
         (Rr_UIVertex[]){
             {
-                .Position = Position,
+                .Position = Rect->Offset,
                 .Color = *ColorA,
             },
             {
-                .Position = { Position.X + Size.X, Position.Y },
+                .Position = { Rect->Offset.X + Rect->Extent.X, Rect->Offset.Y },
                 .Color = *ColorB,
             },
             {
-                .Position = { Position.X, Position.Y + Size.Y },
+                .Position = { Rect->Offset.X, Rect->Offset.Y + Rect->Extent.Y },
                 .Color = *ColorA,
             },
             {
-                .Position = { Position.X + Size.X, Position.Y + Size.Y },
+                .Position = { Rect->Offset.X + Rect->Extent.X,
+                              Rect->Offset.Y + Rect->Extent.Y },
                 .Color = *ColorB,
             },
         },
@@ -405,110 +456,136 @@ static inline void Rr_DrawSolidTriangle(
 
 static inline void Rr_DrawSolidQuad(
     Rr_UIWindow *Window,
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
+    Rr_Rect *Rect,
     Rr_Vec4 *Color)
 {
     Rr_UIVertex Vertices[4];
-    Rr_SolidQuad(Vertices, Position, Size, Color);
+    Rr_SolidQuad(Vertices, Rect, Color);
+    Rr_DrawQuad(Window, Vertices);
+}
+
+static inline void Rr_DrawRotatedQuad(
+    Rr_UIWindow *Window,
+    Rr_Rect *Rect,
+    float Angle,
+    Rr_Vec4 *Color)
+{
+    Rr_UIVertex Vertices[4];
+    Rr_RotatedQuad(Vertices, Rect, Angle, Color);
     Rr_DrawQuad(Window, Vertices);
 }
 
 static inline void Rr_DrawHorizontalGradientQuad(
     Rr_UIWindow *Window,
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
+    Rr_Rect *Rect,
     Rr_Vec4 *ColorA,
     Rr_Vec4 *ColorB)
 {
     Rr_UIVertex Vertices[4];
-    Rr_HorizontalGradientQuad(Vertices, Position, Size, ColorA, ColorB);
+    Rr_HorizontalGradientQuad(Vertices, Rect, ColorA, ColorB);
     Rr_DrawQuad(Window, Vertices);
 }
 
 static inline void Rr_DrawOuterFrameQuad(
     Rr_UIWindow *Window,
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
+    Rr_Rect *Rect,
     float Thickness,
     Rr_Vec4 *Color)
 {
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X, Position.Y - Thickness },
-        (Rr_Vec2){ Size.X, Thickness },
+        &(Rr_Rect){
+            { Rect->Offset.X, Rect->Offset.Y - Thickness },
+            { Rect->Extent.Width, Thickness },
+        },
         Color); /* Top */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X, Position.Y + Size.Y },
-        (Rr_Vec2){ Size.X, Thickness },
+        &(Rr_Rect){
+            { Rect->Offset.X, Rect->Offset.Y + Rect->Extent.Height },
+            { Rect->Extent.Width, Thickness },
+        },
         Color); /* Bottom */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X - Thickness, Position.Y - Thickness },
-        (Rr_Vec2){ Thickness, Size.Y + Thickness * 2.0f },
+        &(Rr_Rect){
+            { Rect->Offset.X - Thickness, Rect->Offset.Y - Thickness },
+            { Thickness, Rect->Extent.Height + Thickness * 2.0f },
+        },
         Color); /* Left */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X + Size.X, Position.Y - Thickness },
-        (Rr_Vec2){ Thickness, Size.Y + Thickness * 2.0f },
+        &(Rr_Rect){
+            { Rect->Offset.X + Rect->Extent.Width, Rect->Offset.Y - Thickness },
+            { Thickness, Rect->Extent.Height + Thickness * 2.0f },
+        },
         Color); /* Right */
 }
 
 static inline void Rr_DrawFrameQuad(
     Rr_UIWindow *Window,
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
+    Rr_Rect *Rect,
     float Thickness,
     Rr_Vec4 *Color)
 {
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X, Position.Y },
-        (Rr_Vec2){ Size.X, Thickness },
+        &(Rr_Rect){
+            { Rect->Offset.X, Rect->Offset.Y },
+            { Rect->Extent.Width, Thickness },
+        },
         Color); /* Top */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X, Position.Y + Size.Y - Thickness },
-        (Rr_Vec2){ Size.X, Thickness },
+        &(Rr_Rect){
+            { Rect->Offset.X,
+              Rect->Offset.Y + Rect->Extent.Height - Thickness },
+            { Rect->Extent.Width, Thickness },
+        },
         Color); /* Bottom */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X, Position.Y + Thickness },
-        (Rr_Vec2){ Thickness, Size.Y - Thickness * 2.0f },
+        &(Rr_Rect){
+            { Rect->Offset.X, Rect->Offset.Y + Thickness },
+            { Thickness, Rect->Extent.Height - Thickness * 2.0f },
+        },
         Color); /* Left */
     Rr_DrawSolidQuad(
         Window,
-        (Rr_Vec2){ Position.X + Size.X - Thickness, Position.Y + Thickness },
-        (Rr_Vec2){ Thickness, Size.Y - Thickness * 2.0f },
+        &(Rr_Rect){
+            { Rect->Offset.X + Rect->Extent.Width - Thickness,
+              Rect->Offset.Y + Thickness },
+            { Thickness, Rect->Extent.Height - Thickness * 2.0f },
+        },
         Color); /* Right */
 }
 
 static inline void Rr_DrawTexturedQuad(
     Rr_UIWindow *Window,
-    Rr_Vec2 Position,
-    Rr_Vec2 Size,
+    Rr_Rect *Rect,
     Rr_Vec4 *Color,
     Rr_Vec2 *UVs)
 {
     Rr_UIVertex Vertices[] = {
         {
-            .Position = Position,
+            .Position = Rect->Offset,
             .UV = UVs[0],
             .Color = *Color,
         },
         {
-            .Position = { Position.X + Size.X, Position.Y },
+            .Position = { Rect->Offset.X + Rect->Extent.Width, Rect->Offset.Y },
             .UV = UVs[1],
             .Color = *Color,
         },
         {
-            .Position = { Position.X, Position.Y + Size.Y },
+            .Position = { Rect->Offset.X,
+                          Rect->Offset.Y + Rect->Extent.Height },
             .UV = UVs[2],
             .Color = *Color,
         },
         {
-            .Position = { Position.X + Size.X, Position.Y + Size.Y },
+            .Position = { Rect->Offset.X + Rect->Extent.Width,
+                          Rect->Offset.Y + Rect->Extent.Height },
             .UV = UVs[3],
             .Color = *Color,
         },
@@ -540,8 +617,10 @@ static inline void Rr_DrawGlyph(
 
     Rr_DrawTexturedQuad(
         Window,
-        Rr_AddV2(Position, (Rr_Vec2){ Left, Top }),
-        (Rr_Vec2){ Width, Height },
+        &(Rr_Rect){
+            Rr_AddV2(Position, (Rr_Vec2){ Left, Top }),
+            { Width, Height },
+        },
         Color,
         UVs);
 }
@@ -752,9 +831,12 @@ static inline void Rr_EndDragOp(void)
     gContext->DragOp = 0;
 }
 
-static inline bool Rr_RectContainsClipped(Rr_Rect *Rect, Rr_Vec2 Point)
+static inline bool Rr_RectContainsClipped(
+    Rr_UIWindow *Window,
+    Rr_Rect *Rect,
+    Rr_Vec2 Point)
 {
-    return Rr_RectContains(RR_UI_CLIP_RECT(), Point) &&
+    return Rr_RectContains(RR_UI_CLIP_RECT(Window), Point) &&
            Rr_RectContains(Rect, Point);
 }
 
@@ -764,7 +846,7 @@ static inline bool Rr_ScrollBehavior(
     float *YScroll)
 {
     if(Window == gContext->HoveredWindow && gContext->DragOpWindow == NULL &&
-       Rr_RectContainsClipped(Rect, gContext->MousePosition))
+       Rr_RectContainsClipped(Window, Rect, gContext->MousePosition))
     {
         if(gContext->MouseWheelDelta.Y != 0.0f)
         {
@@ -804,7 +886,7 @@ static inline void Rr_ButtonBehavior(
         *Held = false;
     }
     if(Window == gContext->HoveredWindow &&
-       Rr_RectContainsClipped(Rect, gContext->MousePosition))
+       Rr_RectContainsClipped(Window, Rect, gContext->MousePosition))
     {
         if(gContext->LeftMouseButtonDown)
         {
@@ -837,7 +919,8 @@ static inline bool Rr_DragBehavior(
     Rr_Vec2 Value,
     bool *Hovered)
 {
-    bool Contains = Rr_RectContainsClipped(Rect, gContext->MousePosition);
+    bool Contains =
+        Rr_RectContainsClipped(Window, Rect, gContext->MousePosition);
     if(Hovered)
     {
         *Hovered = Contains;
@@ -846,7 +929,7 @@ static inline bool Rr_DragBehavior(
     /* Two things to note:
      * 1) Dragging resize handle also overlaps with moving and scrolling. Take
      * that into accoutn and override current drag opertion.
-     * Watch for Rr_DragBehavior() order!
+     * Watch out for Rr_DragBehavior() order!
      * 2) Faster mouse movements may actually result in
      * Contains == false while the drag operation is still going. */
 
@@ -896,10 +979,10 @@ static inline void Rr_AddClipRect(Rr_Rect *Rect)
 
     *ClipRect = (Rr_UIClipRect){
         .FirstIndex = gContext->Indices.Count,
-        .Rect = { .Offset = { (int32_t)roundf(Rect->Offset.X),
-                              (int32_t)roundf(Rect->Offset.Y) },
-                  .Extent = { (int32_t)roundf(Rect->Extent.Width),
-                              (int32_t)roundf(Rect->Extent.Height) } },
+        .Rect = { { (int32_t)roundf(Rect->Offset.X),
+                    (int32_t)roundf(Rect->Offset.Y) },
+                  { (int32_t)roundf(Rect->Extent.Width),
+                    (int32_t)roundf(Rect->Extent.Height) } },
     };
 }
 
@@ -915,30 +998,89 @@ static inline Rr_Vec2 Rr_GetMinWindowSize(Rr_UIWindowFlags Flags)
     }
 }
 
-static inline void Rr_DrawWindowTitle(Rr_UIWindow *Window)
+static inline void Rr_AddCloseButton(Rr_UIWindow *Window, Rr_Rect *TitleRect)
 {
-    Rr_Vec2 TitlePosition = Window->Rect.Offset;
-    Rr_Vec2 TitleSize = {
-        Window->Rect.Extent.X,
-        gContext->WindowTitleHeight,
+    /* Assuming having title bar i.e. calling from Rr_AddWindowTitle(). */
+
+    bool HasClose = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
+    if(HasClose == false)
+    {
+        return;
+    }
+
+    /* Rr_Rect ButtonRect = { */
+
+    /* }; */
+
+    /* Rr_ButtonBehavior(Window, ) */
+
+    float Thickness = gContext->TitleButtonSize * 0.15f;
+    Rr_Rect BarRect;
+    Rr_Vec2 Margin = {
+        TitleRect->Extent.Width -
+            (TitleRect->Extent.Height + gContext->TitleButtonSize) * 0.5f,
+        TitleRect->Extent.Height * 0.5f - Thickness * 0.5f,
+    };
+    BarRect.Offset = Rr_AddV2(TitleRect->Offset, Margin);
+    BarRect.Extent = (Rr_Vec2){
+        gContext->TitleButtonSize,
+        Thickness,
+    };
+
+    Rr_Rect ButtonRect = BarRect;
+    ButtonRect.Offset.Y =
+        TitleRect->Offset.Y +
+        (TitleRect->Extent.Height - gContext->TitleButtonSize) * 0.5f;
+    ButtonRect.Extent.Height = gContext->TitleButtonSize;
+
+    Rr_Vec4 Color = gContext->Style.Foreground;
+
+    bool Down, Up, Held, Hovered;
+    Rr_ButtonBehavior(Window, &ButtonRect, &Down, &Up, &Hovered, &Held);
+    if(Down)
+    {
+        Window->Closed = true;
+    }
+    if(Hovered)
+    {
+        Color.W *= 0.5f;
+    }
+
+    /* Rr_DrawFrameQuad(Window, &ButtonRect, gContext->FrameThickness,
+     * &gContext->Style.Foreground); */
+
+    Rr_DrawRotatedQuad(Window, &BarRect, RR_ANGLE_DEG(45.0f), &Color);
+
+    Rr_DrawRotatedQuad(Window, &BarRect, RR_ANGLE_DEG(-45.0f), &Color);
+}
+
+static inline void Rr_AddWindowTitle(Rr_UIWindow *Window)
+{
+    Rr_Rect TitleRect = {
+        Window->Rect.Offset,
+        (Rr_Vec2){
+            Window->Rect.Extent.X,
+            gContext->WindowTitleHeight,
+        },
     };
     Rr_Vec4 ColorB = gContext->Style.TitleBackground;
     ColorB.RGB = Rr_LerpV3(ColorB.RGB, 0.2f, (Rr_Vec3){ 0.0f, 0.0f, 0.0f });
     Rr_DrawHorizontalGradientQuad(
         Window,
-        TitlePosition,
-        TitleSize,
+        &TitleRect,
         &gContext->Style.TitleBackground,
         &ColorB);
     Rr_DrawText(
         Window,
         Rr_AddV2(
-            TitlePosition,
+            TitleRect.Offset,
             Rr_MulV2F(gContext->Style.TitlePadding, gContext->FontSize)),
         &Window->Title,
         0.0f,
         &gContext->Style.Foreground,
         0);
+
+    Rr_AddCloseButton(Window, &TitleRect);
 }
 
 static inline bool Rr_AddResizeHandle(Rr_UIWindow *Window, bool Defer)
@@ -952,16 +1094,14 @@ static inline bool Rr_AddResizeHandle(Rr_UIWindow *Window, bool Defer)
 
     Rr_Vec2 BottomRight = Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent);
     Rr_Rect ResizeHandleRect = (Rr_Rect){
-        .Offset =
-            (Rr_Vec2){
-                BottomRight.X - gContext->ResizeHandleSize,
-                BottomRight.Y - gContext->ResizeHandleSize,
-            },
-        .Extent =
-            (Rr_Vec2){
-                gContext->ResizeHandleSize,
-                gContext->ResizeHandleSize,
-            },
+        {
+            BottomRight.X - gContext->ResizeHandleSize,
+            BottomRight.Y - gContext->ResizeHandleSize,
+        },
+        {
+            gContext->ResizeHandleSize,
+            gContext->ResizeHandleSize,
+        },
     };
 
     bool Hovered, Dragging = Rr_DragBehavior(
@@ -1094,8 +1234,10 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
                                   ContentsAreaRect.Extent.Height };
         Rr_DrawSolidQuad(
             Window,
-            ScrollbarPosition,
-            ScrollbarSize,
+            &(Rr_Rect){
+                ScrollbarPosition,
+                ScrollbarSize,
+            },
             &gContext->Style.ScrollbarBackground);
 
         Rr_Vec2 ScrollbarHandlePosition = ScrollbarPosition;
@@ -1110,8 +1252,8 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
         if(Rr_ScrollBehavior(
                Window,
                &(Rr_Rect){
-                   .Offset = ContentsAreaRect.Offset,
-                   .Extent = ScrollableArea,
+                   ContentsAreaRect.Offset,
+                   ScrollableArea,
                },
                &Window->VScroll))
         {
@@ -1140,8 +1282,8 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
         bool Hovered, Dragging = Rr_DragBehavior(
                           Window,
                           &(Rr_Rect){
-                              .Offset = ScrollbarHandlePosition,
-                              .Extent = ScrollbarButtonSize,
+                              ScrollbarHandlePosition,
+                              ScrollbarButtonSize,
                           },
                           RR_UI_DRAG_OP_SCROLL,
                           (Rr_Vec2){ 0.0f, Window->VScroll },
@@ -1174,8 +1316,10 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
         }
         Rr_DrawSolidQuad(
             Window,
-            ScrollbarHandlePosition,
-            ScrollbarHandleSize,
+            &(Rr_Rect){
+                ScrollbarHandlePosition,
+                ScrollbarHandleSize,
+            },
             ScrollbarHandleColor);
 
         return true;
@@ -1214,19 +1358,23 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             Rr_AddV2(Rr_GetMinWindowSize(Flags), DEFAULT_WINDOW_SIZE);
         *WindowRef = Window;
     }
-    else
+
+    Window->Flags = Flags;
+
+    if(!Window->Closed)
     {
         assert(
             Window->Added == false &&
             "There already is a window with this title!");
+
+        *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->FrameArena) =
+            Window;
+        Window->Added = true;
     }
 
-    *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->FrameArena) =
-        Window;
     gContext->CurrentWindow = Window;
 
-    Window->Flags = Flags;
-    Window->Added = true;
+    RR_RESET_ARRAY(&Window->ClipRects, gContext->FrameArena);
 
     bool Hovered, Dragging = Rr_DragBehavior(
                       Window,
@@ -1243,13 +1391,11 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
     }
 
-    RR_RESET_ARRAY(&Window->ClipRects, gContext->FrameArena);
-
     Rr_Rect ClipRect = {
-        .Offset = Rr_SubV2(
+        Rr_SubV2(
             Window->Rect.Offset,
             Rr_V2(gContext->FrameThickness, gContext->FrameThickness)),
-        .Extent = Rr_AddV2(
+        Rr_AddV2(
             Window->Rect.Extent,
             Rr_V2(
                 gContext->FrameThickness * 2.0f,
@@ -1261,7 +1407,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     if(HasTitle)
     {
-        Rr_DrawWindowTitle(Window);
+        Rr_AddWindowTitle(Window);
     }
 
     bool HasScrollbar = Rr_AddVerticalScrollbar(Window);
@@ -1269,8 +1415,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Rr_DrawOuterFrameQuad(
         Window,
-        Window->Rect.Offset,
-        Window->Rect.Extent,
+        &Window->Rect,
         gContext->FrameThickness,
         &gContext->Style.Outline);
 
@@ -1279,11 +1424,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     /* Clipped to contents. */
 
-    Rr_DrawSolidQuad(
-        Window,
-        ContentsAreaRect.Offset,
-        ContentsAreaRect.Extent,
-        &gContext->Style.Background);
+    Rr_DrawSolidQuad(Window, &ContentsAreaRect, &gContext->Style.Background);
 
     gContext->AvailableContentsWidth =
         HasScrollbar ? Window->Rect.Extent.Width - gContext->ScrollbarWidth
@@ -1360,8 +1501,10 @@ void Rr_BeginTabs(const char *Title)
     };
     Rr_DrawSolidQuad(
         Window,
-        SeparatorPosition,
-        SeparatorSize,
+        &(Rr_Rect){
+            SeparatorPosition,
+            SeparatorSize,
+        },
         &gContext->Style.Foreground);
 
     Rr_Advance((Rr_Vec2){ 0.0f, gContext->ContentsPadding.Y });
@@ -1420,8 +1563,8 @@ bool Rr_Tab(const char *Title)
     Rr_ButtonBehavior(
         Window,
         &(Rr_Rect){
-            .Offset = ButtonPosition,
-            .Extent = ButtonSize,
+            ButtonPosition,
+            ButtonSize,
         },
         NULL,
         &Up,
@@ -1446,7 +1589,13 @@ bool Rr_Tab(const char *Title)
         TabButtonColor = &gContext->Style.Background;
     }
 
-    Rr_SolidQuad(TabQuad, ButtonPosition, ButtonSize, TabButtonColor);
+    Rr_SolidQuad(
+        TabQuad,
+        &(Rr_Rect){
+            ButtonPosition,
+            ButtonSize,
+        },
+        TabButtonColor);
 
     if(Up)
     {
@@ -1480,7 +1629,7 @@ void Rr_Separator(void)
                               gContext->FrameThickness / 2.0f),
     };
     Rr_Vec4 Color = Rr_MulV4F(gContext->Style.Foreground, 0.75f);
-    Rr_DrawSolidQuad(Window, Position, Size, &Color);
+    Rr_DrawSolidQuad(Window, &(Rr_Rect){ Position, Size }, &Color);
 
     gContext->Cursor.Y += gContext->SeparatorLineHeight;
 }
@@ -1581,37 +1730,29 @@ bool Rr_Button(const char *Text)
     Rr_ButtonBehavior(
         Window,
         &(Rr_Rect){
-            .Offset = ButtonPosition,
-            .Extent = ButtonSize,
+            ButtonPosition,
+            ButtonSize,
         },
         NULL,
         &Up,
         &Hovered,
         &Held);
 
+    Rr_Rect ButtonRect = {
+        ButtonPosition,
+        ButtonSize,
+    };
     if(Held)
     {
-        Rr_SolidQuad(
-            ButtonQuad,
-            ButtonPosition,
-            ButtonSize,
-            &gContext->Style.ButtonHeld);
+        Rr_SolidQuad(ButtonQuad, &ButtonRect, &gContext->Style.ButtonHeld);
     }
     else if(Hovered)
     {
-        Rr_SolidQuad(
-            ButtonQuad,
-            ButtonPosition,
-            ButtonSize,
-            &gContext->Style.ButtonHovered);
+        Rr_SolidQuad(ButtonQuad, &ButtonRect, &gContext->Style.ButtonHovered);
     }
     else
     {
-        Rr_SolidQuad(
-            ButtonQuad,
-            ButtonPosition,
-            ButtonSize,
-            &gContext->Style.ButtonNormal);
+        Rr_SolidQuad(ButtonQuad, &ButtonRect, &gContext->Style.ButtonNormal);
     }
 
     Rr_Advance(ButtonSize);
@@ -1645,8 +1786,8 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
     Rr_ButtonBehavior(
         Window,
         &(Rr_Rect){
-            .Offset = FramePosition,
-            .Extent = gContext->CheckboxSize,
+            FramePosition,
+            gContext->CheckboxSize,
         },
         NULL,
         &Up,
@@ -1666,8 +1807,10 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     Rr_DrawFrameQuad(
         Window,
-        FramePosition,
-        gContext->CheckboxSize,
+        &(Rr_Rect){
+            FramePosition,
+            gContext->CheckboxSize,
+        },
         gContext->FrameThickness,
         &Color);
 
@@ -1680,7 +1823,10 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
         Rr_Vec2 CheckmarkPosition = Rr_AddV2(FramePosition, Inset);
         Rr_Vec2 CheckmarkSize =
             Rr_SubV2(gContext->CheckboxSize, Rr_MulV2F(Inset, 2.0f));
-        Rr_DrawSolidQuad(Window, CheckmarkPosition, CheckmarkSize, &Color);
+        Rr_DrawSolidQuad(
+            Window,
+            &(Rr_Rect){ CheckmarkPosition, CheckmarkSize },
+            &Color);
     }
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
@@ -1714,7 +1860,7 @@ bool Rr_InputField(size_t BufferSize, char *Buffer, Rr_UIInputFieldFlags Flags)
 bool Rr_WantMouseCapture(void)
 {
     return gContext &&
-           (gContext->MouseButtonCapture || gContext->HoveredWindow);
+           (gContext->LeftMouseButtonDownOverWindow || gContext->HoveredWindow);
 }
 
 bool Rr_WantKeyboardCapture(void)
@@ -1736,7 +1882,7 @@ Rr_UIContext *Rr_CreateUIContext(void)
 
     Context->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.25f },
-        .ContentsPadding = { 0.5f, 0.25f },
+        .ContentsPadding = { 0.5f, 0.5f },
 
         .Foreground = Rr_U32ToRGBA(0xD6D0B3FF),
         .Background = Rr_U32ToRGBA(0x292F33FA),
@@ -1941,6 +2087,7 @@ void Rr_BeginUI(Rr_UIContext *Context)
         gContext->WindowTitleHeight =
             gContext->Style.TitlePadding.Y * gContext->FontSize * 2.0f +
             gContext->LineHeight;
+        gContext->TitleButtonSize = gContext->WindowTitleHeight * 0.565f;
         gContext->MinWindowSizeNoTitle =
             Rr_MulV2F(gContext->ContentsPadding, 2.0f);
         gContext->MinWindowSizeNoTitle.X += gContext->ScrollbarWidth;
@@ -1973,102 +2120,12 @@ void Rr_BeginUI(Rr_UIContext *Context)
                     Window->ZOrder = Temp;
                 }
 
-                gContext->MouseButtonCapture = true;
+                gContext->LeftMouseButtonDownOverWindow = true;
             }
 
             break;
         }
     }
-
-    /* if(gContext->DragOpWindow) */
-    /* { */
-    /*     if(gContext->LeftMouseButtonHeld) */
-    /*     { */
-    /*         Rr_Vec2 Delta = */
-    /*             Rr_SubV2(gContext->MousePosition,
-     * gContext->DragOpMouseStart); */
-    /*         switch(gContext->DragOp) */
-    /*         { */
-    /*             case RR_UI_DRAG_OP_MOVE: */
-    /*             { */
-    /*                 gContext->DragOpWindow->Rect.Offset = */
-    /*                     Rr_AddV2(gContext->DragOpWindowStart, Delta); */
-    /*                 gContext->DragOpWindow->Rect.Offset = */
-    /*                     Rr_FloorV2(gContext->DragOpWindow->Rect.Offset); */
-    /*             } */
-    /*             break; */
-    /*             case RR_UI_DRAG_OP_RESIZE: */
-    /*             { */
-    /*                 Rr_Vec2 NewWindowSize = */
-    /*                     Rr_AddV2(gContext->DragOpWindowStart, Delta); */
-    /*                 Rr_Vec2 MinWindowSize = */
-    /*                     Rr_GetMinWindowSize(gContext->DragOpWindow->Flags);
-     */
-    /*                 NewWindowSize.X = RR_MAX(NewWindowSize.X,
-     * MinWindowSize.X); */
-    /*                 NewWindowSize.Y = RR_MAX(NewWindowSize.Y,
-     * MinWindowSize.Y); */
-    /*                 gContext->DragOpWindow->Rect.Extent = */
-    /*                     Rr_FloorV2(NewWindowSize); */
-    /*             } */
-    /*             break; */
-    /*             case RR_UI_DRAG_OP_SCROLL: */
-    /*             { */
-    /*                 Rr_Vec2 ContentsAreaPosition; */
-    /*                 Rr_Vec2 ContentsAreaSize; */
-    /*                 Rr_GetWindowContentsAreaPositionAndSize( */
-    /*                     gContext->DragOpWindow, */
-    /*                     &ContentsAreaPosition, */
-    /*                     &ContentsAreaSize); */
-    /*                 float ContentsHeight = gContext->DragOpWindow->YEnd - */
-    /*                                        gContext->DragOpWindow->YStart; */
-    /*                 float FillRatio = ContentsHeight / ContentsAreaSize.Y; */
-    /*                 gContext->DragOpWindow->VScroll = */
-    /*                     gContext->DragOpWindowStart.Y + (Delta.Y *
-     * FillRatio); */
-    /*             } */
-    /*             break; */
-    /*             default: */
-    /*             { */
-    /*             } */
-    /*             break; */
-    /*         } */
-    /*     } */
-    /*     else */
-    /*     { */
-    /*         gContext->DragOpWindow = NULL; */
-    /*     } */
-    /* } */
-    /* else if(gContext->HoveredWindow && gContext->LeftMouseButtonDown) */
-    /* { */
-    /*     Rr_Vec2 ResizeHandleSize = { */
-    /*         gContext->ResizeHandleSize, */
-    /*         gContext->ResizeHandleSize, */
-    /*     }; */
-    /*     Rr_Vec2 ResizeHandlePosition = Rr_SubV2( */
-    /*         Rr_AddV2( */
-    /*             gContext->HoveredWindow->Rect.Offset, */
-    /*             gContext->HoveredWindow->Rect.Extent), */
-    /*         ResizeHandleSize); */
-
-    /*     if(Rr_RectContains( */
-    /*            &(Rr_Rect){ */
-    /*                .Offset = ResizeHandlePosition, */
-    /*                .Extent = ResizeHandleSize, */
-    /*            }, */
-    /*            gContext->MousePosition)) */
-    /*     { */
-    /*         Rr_BeginDragOp( */
-    /*             RR_UI_DRAG_OP_RESIZE, */
-    /*             gContext->HoveredWindow->Rect.Extent); */
-    /*     } */
-    /*     else */
-    /*     { */
-    /*         Rr_BeginDragOp( */
-    /*             RR_UI_DRAG_OP_MOVE, */
-    /*             gContext->HoveredWindow->Rect.Offset); */
-    /*     } */
-    /* } */
 
     RR_RESET_ARRAY(&gContext->Vertices, gContext->FrameArena);
     RR_RESET_ARRAY(&gContext->Indices, gContext->FrameArena);
@@ -2176,10 +2233,10 @@ void Rr_EndUI(void)
             Rr_UIClipRect *ClipRect = Window->ClipRects.Data + ClipRectIndex;
 
             Rr_IntRect IntRect = {
-                .Offset = { (int32_t)roundf(ClipRect->Rect.Offset.X),
-                            (int32_t)roundf(ClipRect->Rect.Offset.Y) },
-                .Extent = { (int32_t)roundf(ClipRect->Rect.Extent.Width),
-                            (int32_t)roundf(ClipRect->Rect.Extent.Height) }
+                { (int32_t)roundf(ClipRect->Rect.Offset.X),
+                  (int32_t)roundf(ClipRect->Rect.Offset.Y) },
+                { (int32_t)roundf(ClipRect->Rect.Extent.Width),
+                  (int32_t)roundf(ClipRect->Rect.Extent.Height) }
             };
             Rr_SetScissor(GraphicsNode, &IntRect);
 
@@ -2200,7 +2257,7 @@ void Rr_EndUI(void)
     if(gContext->LeftMouseButtonUp)
     {
         gContext->LeftMouseButtonHeld = false;
-        gContext->MouseButtonCapture = false;
+        gContext->LeftMouseButtonDownOverWindow = false;
     }
     gContext->LeftMouseButtonDown = false;
     gContext->LeftMouseButtonUp = false;

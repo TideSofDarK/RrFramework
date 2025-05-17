@@ -84,6 +84,7 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_TITLE_BIT = (1 << 1),
     RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT = (1 << 2),
     RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT = (1 << 3),
+    RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 4),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 

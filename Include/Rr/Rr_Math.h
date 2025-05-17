@@ -728,90 +728,6 @@ static inline float Rr_Lerp(float A, float Time, float B)
 }
 
 /*
- * Rect Functions
- */
-
-static inline bool Rr_RectContains(Rr_Rect *Rect, Rr_Vec2 Point)
-{
-    return Point.X >= Rect->Offset.X &&
-           Point.X <= Rect->Offset.X + Rect->Extent.X &&
-           Point.Y >= Rect->Offset.Y &&
-           Point.Y <= Rect->Offset.Y + Rect->Extent.Y;
-}
-
-static inline Rr_Rect Rr_FitRect(Rr_Rect *Src, Rr_Rect *Dst)
-{
-    float X = 0;
-    float Y = 0;
-    float Width = 0;
-    float Height = 0;
-
-    float DstWidth = Dst->Extent.Width;
-    float DstHeight = Dst->Extent.Height;
-    float SrcWidth = Src->Extent.Width;
-    float SrcHeight = Src->Extent.Height;
-    float DstRatio = DstWidth / DstHeight;
-    float SrcRatio = SrcWidth / SrcHeight;
-
-    if(DstRatio > SrcRatio)
-    {
-        Width = (SrcWidth / SrcHeight) * DstHeight;
-        Height = DstHeight;
-    }
-    else
-    {
-        Width = DstWidth;
-        Height = (SrcHeight / SrcWidth) * DstWidth;
-    }
-    X = (DstWidth / 2.0f) - (Width / 2.0f);
-    Y = (DstHeight / 2.0f) - (Height / 2.0f);
-
-    Rr_Rect Result;
-    Result.Offset.X = X;
-    Result.Offset.Y = Y;
-    Result.Extent.Width = Width;
-    Result.Extent.Height = Height;
-
-    return Result;
-}
-
-static Rr_IntRect Rr_FitIntRect(Rr_IntRect *Src, Rr_IntRect *Dst)
-{
-    float X = 0;
-    float Y = 0;
-    float Width = 0;
-    float Height = 0;
-
-    float DstWidth = (float)Dst->Extent.Width;
-    float DstHeight = (float)Dst->Extent.Height;
-    float SrcWidth = (float)Src->Extent.Width;
-    float SrcHeight = (float)Src->Extent.Height;
-    float DstRatio = DstWidth / DstHeight;
-    float SrcRatio = SrcWidth / SrcHeight;
-
-    if(DstRatio > SrcRatio)
-    {
-        Width = (SrcWidth / SrcHeight) * DstHeight;
-        Height = DstHeight;
-    }
-    else
-    {
-        Width = DstWidth;
-        Height = (SrcHeight / SrcWidth) * DstWidth;
-    }
-    X = (DstWidth / 2.0f) - (Width / 2.0f);
-    Y = (DstHeight / 2.0f) - (Height / 2.0f);
-
-    Rr_IntRect Result;
-    Result.Offset.X = (int32_t)X;
-    Result.Offset.Y = (int32_t)Y;
-    Result.Extent.Width = (int32_t)Width;
-    Result.Extent.Height = (int32_t)Height;
-
-    return Result;
-}
-
-/*
  * Vector initialization
  */
 
@@ -2733,6 +2649,95 @@ static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
     float Angle)
 {
     return Rr_RotateV3Q(V, Rr_QFromAxisAngle_RH(Axis, Angle));
+}
+
+/*
+ * Rect Functions
+ */
+
+static inline bool Rr_RectContains(Rr_Rect *Rect, Rr_Vec2 Point)
+{
+    return Point.X >= Rect->Offset.X &&
+           Point.X <= Rect->Offset.X + Rect->Extent.X &&
+           Point.Y >= Rect->Offset.Y &&
+           Point.Y <= Rect->Offset.Y + Rect->Extent.Y;
+}
+
+static inline Rr_Vec2 Rr_RectCenter(Rr_Rect *Rect)
+{
+    return Rr_AddV2(Rect->Offset, Rr_MulV2F(Rect->Extent, 0.5f));
+}
+
+static inline Rr_Rect Rr_FitRect(Rr_Rect *Src, Rr_Rect *Dst)
+{
+    float X = 0;
+    float Y = 0;
+    float Width = 0;
+    float Height = 0;
+
+    float DstWidth = Dst->Extent.Width;
+    float DstHeight = Dst->Extent.Height;
+    float SrcWidth = Src->Extent.Width;
+    float SrcHeight = Src->Extent.Height;
+    float DstRatio = DstWidth / DstHeight;
+    float SrcRatio = SrcWidth / SrcHeight;
+
+    if(DstRatio > SrcRatio)
+    {
+        Width = (SrcWidth / SrcHeight) * DstHeight;
+        Height = DstHeight;
+    }
+    else
+    {
+        Width = DstWidth;
+        Height = (SrcHeight / SrcWidth) * DstWidth;
+    }
+    X = (DstWidth / 2.0f) - (Width / 2.0f);
+    Y = (DstHeight / 2.0f) - (Height / 2.0f);
+
+    Rr_Rect Result;
+    Result.Offset.X = X;
+    Result.Offset.Y = Y;
+    Result.Extent.Width = Width;
+    Result.Extent.Height = Height;
+
+    return Result;
+}
+
+static Rr_IntRect Rr_FitIntRect(Rr_IntRect *Src, Rr_IntRect *Dst)
+{
+    float X = 0;
+    float Y = 0;
+    float Width = 0;
+    float Height = 0;
+
+    float DstWidth = (float)Dst->Extent.Width;
+    float DstHeight = (float)Dst->Extent.Height;
+    float SrcWidth = (float)Src->Extent.Width;
+    float SrcHeight = (float)Src->Extent.Height;
+    float DstRatio = DstWidth / DstHeight;
+    float SrcRatio = SrcWidth / SrcHeight;
+
+    if(DstRatio > SrcRatio)
+    {
+        Width = (SrcWidth / SrcHeight) * DstHeight;
+        Height = DstHeight;
+    }
+    else
+    {
+        Width = DstWidth;
+        Height = (SrcHeight / SrcWidth) * DstWidth;
+    }
+    X = (DstWidth / 2.0f) - (Width / 2.0f);
+    Y = (DstHeight / 2.0f) - (Height / 2.0f);
+
+    Rr_IntRect Result;
+    Result.Offset.X = (int32_t)X;
+    Result.Offset.Y = (int32_t)Y;
+    Result.Extent.Width = (int32_t)Width;
+    Result.Extent.Height = (int32_t)Height;
+
+    return Result;
 }
 
 #ifdef __cplusplus

@@ -607,7 +607,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
 
         *It = Hive->End;
     }
-    else if((!InBackBlock) & InFrontBlock) /* Add first group to unused
+    else if((!InBackBlock) & InFrontBlock) /* Add the first group to unused
                                               list. */
     {
         It->Group->Next->Previous = NULL;
