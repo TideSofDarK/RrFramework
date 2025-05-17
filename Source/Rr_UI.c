@@ -56,7 +56,7 @@ struct Rr_UIClipRect
 {
     size_t IndexCount;
     size_t FirstIndex;
-    Rr_IntRect Rect;
+    Rr_Rect Rect;
 };
 
 typedef struct Rr_UIWindow Rr_UIWindow;
@@ -97,6 +97,10 @@ struct Rr_UIContext
     Rr_UIWindow *CurrentWindow;
     Rr_UIWindow *HoveredWindow;
 
+    bool DeferResizeHandle;
+    Rr_Vec2 DeferredResizeHandlePositions[3];
+    Rr_Vec4 DeferredResizeHandleColor;
+
     float AvailableContentsWidth;
 
     RR_ARRAY(float) HorizontalX;
@@ -107,6 +111,7 @@ struct Rr_UIContext
     const char *SelectedTab;
 
     bool MouseButtonCapture;
+    bool MouseHoveredSomething;
 
     bool LeftMouseButtonDown;
     bool LeftMouseButtonHeld;
@@ -163,12 +168,12 @@ static Rr_UIContext *gContext;
 
 #define RR_UI_IS_HORIZONTAL() (gContext->HorizontalX.Count > 0)
 
-#define RR_UI_CLIP_RECT()                                          \
-    (gContext->CurrentWindow->ClipRects.Count > 0                  \
-         ? gContext->CurrentWindow->ClipRects                      \
-               .Data[gContext->CurrentWindow->ClipRects.Count - 1] \
-               .Rect                                               \
-         : (Rr_Rect){ 0 })
+#define RR_UI_CLIP_RECT()                                                    \
+    (gContext->CurrentWindow && gContext->CurrentWindow->ClipRects.Count > 0 \
+         ? &gContext->CurrentWindow->ClipRects                               \
+                .Data[gContext->CurrentWindow->ClipRects.Count - 1]          \
+                .Rect                                                        \
+         : &(Rr_Rect){ 0 })
 
 #define CJSON_GET_OBJECT_FLOAT(Object, Item) \
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
@@ -747,13 +752,19 @@ static inline void Rr_EndDragOp(void)
     gContext->DragOp = 0;
 }
 
+static inline bool Rr_RectContainsClipped(Rr_Rect *Rect, Rr_Vec2 Point)
+{
+    return Rr_RectContains(RR_UI_CLIP_RECT(), Point) &&
+           Rr_RectContains(Rect, Point);
+}
+
 static inline bool Rr_ScrollBehavior(
     Rr_UIWindow *Window,
     Rr_Rect *Rect,
     float *YScroll)
 {
     if(Window == gContext->HoveredWindow && gContext->DragOpWindow == NULL &&
-       Rr_RectContains(Rect, gContext->MousePosition))
+       Rr_RectContainsClipped(Rect, gContext->MousePosition))
     {
         if(gContext->MouseWheelDelta.Y != 0.0f)
         {
@@ -793,7 +804,7 @@ static inline void Rr_ButtonBehavior(
         *Held = false;
     }
     if(Window == gContext->HoveredWindow &&
-       Rr_RectContains(Rect, gContext->MousePosition))
+       Rr_RectContainsClipped(Rect, gContext->MousePosition))
     {
         if(gContext->LeftMouseButtonDown)
         {
@@ -826,7 +837,7 @@ static inline bool Rr_DragBehavior(
     Rr_Vec2 Value,
     bool *Hovered)
 {
-    bool Contains = Rr_RectContains(Rect, gContext->MousePosition);
+    bool Contains = Rr_RectContainsClipped(Rect, gContext->MousePosition);
     if(Hovered)
     {
         *Hovered = Contains;
@@ -839,13 +850,15 @@ static inline bool Rr_DragBehavior(
      * 2) Faster mouse movements may actually result in
      * Contains == false while the drag operation is still going. */
 
-    if(Contains &&
-       (gContext->DragOpWindow == NULL || gContext->DragOpWindow == Window) &&
-       gContext->LeftMouseButtonDown)
+    if(Contains && gContext->LeftMouseButtonDown &&
+       (gContext->DragOpWindow == NULL || gContext->DragOpWindow == Window))
     {
         Rr_BeginDragOp(DragOp, Value);
+
+        return false;
     }
-    else if(gContext->DragOpWindow == Window && gContext->DragOp == DragOp)
+
+    if(gContext->DragOpWindow == Window && gContext->DragOp == DragOp)
     {
         if(gContext->LeftMouseButtonHeld)
         {
@@ -870,7 +883,7 @@ static inline void Rr_SetLastClipRectIndexCount(Rr_UIWindow *Window)
     }
 }
 
-static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
+static inline void Rr_AddClipRect(Rr_Rect *Rect)
 {
     RR_UI_ASSERT_WINDOW();
 
@@ -883,10 +896,10 @@ static inline void Rr_AddClipRect(Rr_Vec2 Position, Rr_Vec2 Size)
 
     *ClipRect = (Rr_UIClipRect){
         .FirstIndex = gContext->Indices.Count,
-        .Rect = { .Offset = { (int32_t)roundf(Position.X),
-                              (int32_t)roundf(Position.Y) },
-                  .Extent = { (int32_t)roundf(Size.X),
-                              (int32_t)roundf(Size.Y) } },
+        .Rect = { .Offset = { (int32_t)roundf(Rect->Offset.X),
+                              (int32_t)roundf(Rect->Offset.Y) },
+                  .Extent = { (int32_t)roundf(Rect->Extent.Width),
+                              (int32_t)roundf(Rect->Extent.Height) } },
     };
 }
 
@@ -928,8 +941,15 @@ static inline void Rr_DrawWindowTitle(Rr_UIWindow *Window)
         0);
 }
 
-static inline void Rr_AddResizeHandle(Rr_UIWindow *Window)
+static inline bool Rr_AddResizeHandle(Rr_UIWindow *Window, bool Defer)
 {
+    bool HasResize =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
+    if(HasResize == false)
+    {
+        return false;
+    }
+
     Rr_Vec2 BottomRight = Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent);
     Rr_Rect ResizeHandleRect = (Rr_Rect){
         .Offset =
@@ -943,8 +963,6 @@ static inline void Rr_AddResizeHandle(Rr_UIWindow *Window)
                 gContext->ResizeHandleSize,
             },
     };
-
-    Rr_Vec4 ResizeHandleColor = gContext->Style.Foreground;
 
     bool Hovered, Dragging = Rr_DragBehavior(
                       Window,
@@ -964,43 +982,67 @@ static inline void Rr_AddResizeHandle(Rr_UIWindow *Window)
         Window->Rect.Extent = Rr_FloorV2(NewWindowSize);
     }
 
-    if(Hovered || Dragging)
+    if(Defer)
     {
-        ResizeHandleColor = Rr_MulV4F(ResizeHandleColor, 0.75f);
+        gContext->DeferResizeHandle = true;
+        gContext->DeferredResizeHandlePositions[0] =
+            (Rr_Vec2){ BottomRight.X - gContext->ResizeHandleSize,
+                       BottomRight.Y };
+        gContext->DeferredResizeHandlePositions[1] =
+            (Rr_Vec2){ BottomRight.X,
+                       BottomRight.Y - gContext->ResizeHandleSize };
+        gContext->DeferredResizeHandlePositions[2] =
+            (Rr_Vec2){ BottomRight.X, BottomRight.Y };
+        gContext->DeferredResizeHandleColor = gContext->Style.Foreground;
+        if(Hovered || Dragging)
+        {
+            gContext->DeferredResizeHandleColor =
+                Rr_MulV4F(gContext->DeferredResizeHandleColor, 0.75f);
+        }
+    }
+    else
+    {
+        Rr_Vec4 ResizeHandleColor = gContext->Style.Foreground;
+        if(Hovered || Dragging)
+        {
+            ResizeHandleColor =
+                Rr_MulV4F(gContext->DeferredResizeHandleColor, 0.75f);
+        }
+        Rr_DrawSolidTriangle(
+            Window,
+            (Rr_Vec2){ BottomRight.X - gContext->ResizeHandleSize,
+                       BottomRight.Y },
+            (Rr_Vec2){ BottomRight.X,
+                       BottomRight.Y - gContext->ResizeHandleSize },
+            (Rr_Vec2){ BottomRight.X, BottomRight.Y },
+            &ResizeHandleColor);
     }
 
-    Rr_DrawSolidTriangle(
-        Window,
-        (Rr_Vec2){ BottomRight.X - gContext->ResizeHandleSize, BottomRight.Y },
-        (Rr_Vec2){ BottomRight.X, BottomRight.Y - gContext->ResizeHandleSize },
-        (Rr_Vec2){ BottomRight.X, BottomRight.Y },
-        &ResizeHandleColor);
+    return true;
 }
 
-static inline void Rr_GetWindowContentsAreaPositionAndSize(
-    Rr_UIWindow *Window,
-    Rr_Vec2 *OutPosition,
-    Rr_Vec2 *OutSize)
+static inline Rr_Rect Rr_GetWindowContentsAreaRect(Rr_UIWindow *Window)
 {
-    *OutPosition = Window->Rect.Offset;
-    *OutSize = Window->Rect.Extent;
+    Rr_Rect Rect = Window->Rect;
 
     bool HasTitle =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
     if(HasTitle)
     {
-        OutPosition->Y += gContext->WindowTitleHeight;
-        OutSize->Y -= gContext->WindowTitleHeight;
+        Rect.Offset.Y += gContext->WindowTitleHeight;
+        Rect.Extent.Height -= gContext->WindowTitleHeight;
     }
 
     bool HasScrollbar =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
     float ContentsHeight = Window->YEnd - Window->YStart;
-    float FillRatio = ContentsHeight / OutSize->Y;
+    float FillRatio = ContentsHeight / Rect.Extent.Height;
     if(HasScrollbar && FillRatio > 1.0f)
     {
-        OutSize->Width -= gContext->ScrollbarWidth;
+        Rect.Extent.Width -= gContext->ScrollbarWidth;
     }
+
+    return Rect;
 }
 
 static inline void Rr_Advance(Rr_Vec2 Size)
@@ -1038,22 +1080,18 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
     bool HasResize =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
 
-    Rr_Vec2 ContentsAreaPosition;
-    Rr_Vec2 ContentsAreaSize;
-    Rr_GetWindowContentsAreaPositionAndSize(
-        Window,
-        &ContentsAreaPosition,
-        &ContentsAreaSize);
+    Rr_Rect ContentsAreaRect = Rr_GetWindowContentsAreaRect(Window);
     float ContentsHeight = Window->YEnd - Window->YStart;
-    float FillRatio = ContentsAreaSize.Y / ContentsHeight;
-    float MaxYScroll = RR_MAX(0.0f, ContentsHeight - ContentsAreaSize.Height);
+    float FillRatio = ContentsAreaRect.Extent.Height / ContentsHeight;
+    float MaxYScroll =
+        RR_MAX(0.0f, ContentsHeight - ContentsAreaRect.Extent.Height);
 
     if(FillRatio < 1.0f)
     {
-        Rr_Vec2 ScrollbarPosition = ContentsAreaPosition;
-        ScrollbarPosition.X += ContentsAreaSize.Width;
+        Rr_Vec2 ScrollbarPosition = ContentsAreaRect.Offset;
+        ScrollbarPosition.X += ContentsAreaRect.Extent.Width;
         Rr_Vec2 ScrollbarSize = { gContext->ScrollbarWidth,
-                                  ContentsAreaSize.Height };
+                                  ContentsAreaRect.Extent.Height };
         Rr_DrawSolidQuad(
             Window,
             ScrollbarPosition,
@@ -1067,12 +1105,12 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
         ScrollbarHandleSize.Width = gContext->ScrollbarHandleWidth;
         ScrollbarHandleSize.Height *= FillRatio;
 
-        Rr_Vec2 ScrollableArea = ContentsAreaSize;
+        Rr_Vec2 ScrollableArea = ContentsAreaRect.Extent;
         ScrollableArea.Width += gContext->ScrollbarWidth;
         if(Rr_ScrollBehavior(
                Window,
                &(Rr_Rect){
-                   .Offset = ContentsAreaPosition,
+                   .Offset = ContentsAreaRect.Offset,
                    .Extent = ScrollableArea,
                },
                &Window->VScroll))
@@ -1114,7 +1152,7 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
             Rr_Vec2 Delta =
                 Rr_SubV2(gContext->MousePosition, gContext->DragOpMouseStart);
             float ContentsHeight = Window->YEnd - Window->YStart;
-            float FillRatio = ContentsHeight / ContentsAreaSize.Y;
+            float FillRatio = ContentsHeight / ContentsAreaRect.Extent.Height;
             Window->VScroll =
                 gContext->DragOpWindowStart.Y + (Delta.Y * FillRatio);
         }
@@ -1207,13 +1245,17 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     RR_RESET_ARRAY(&Window->ClipRects, gContext->FrameArena);
 
-    Rr_Vec2 ClipRectPosition = Window->Rect.Offset;
-    ClipRectPosition.X -= gContext->FrameThickness;
-    ClipRectPosition.Y -= gContext->FrameThickness;
-    Rr_Vec2 ClipRectSize = Window->Rect.Extent;
-    ClipRectSize.X += gContext->FrameThickness * 2.0f;
-    ClipRectSize.Y += gContext->FrameThickness * 2.0f;
-    Rr_AddClipRect(ClipRectPosition, ClipRectSize);
+    Rr_Rect ClipRect = {
+        .Offset = Rr_SubV2(
+            Window->Rect.Offset,
+            Rr_V2(gContext->FrameThickness, gContext->FrameThickness)),
+        .Extent = Rr_AddV2(
+            Window->Rect.Extent,
+            Rr_V2(
+                gContext->FrameThickness * 2.0f,
+                gContext->FrameThickness * 2.0f)),
+    };
+    Rr_AddClipRect(&ClipRect);
 
     /* Clipped to the whole window area. */
 
@@ -1223,13 +1265,7 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     }
 
     bool HasScrollbar = Rr_AddVerticalScrollbar(Window);
-    bool HasResize =
-        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
-
-    if(HasScrollbar && HasResize)
-    {
-        Rr_AddResizeHandle(Window);
-    }
+    bool HasResize = Rr_AddResizeHandle(Window, !HasScrollbar);
 
     Rr_DrawOuterFrameQuad(
         Window,
@@ -1238,26 +1274,16 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         gContext->FrameThickness,
         &gContext->Style.Outline);
 
-    Rr_Vec2 ContentsAreaPosition;
-    Rr_Vec2 ContentsAreaSize;
-    Rr_GetWindowContentsAreaPositionAndSize(
-        Window,
-        &ContentsAreaPosition,
-        &ContentsAreaSize);
-    Rr_AddClipRect(ContentsAreaPosition, ContentsAreaSize);
+    Rr_Rect ContentsAreaRect = Rr_GetWindowContentsAreaRect(Window);
+    Rr_AddClipRect(&ContentsAreaRect);
 
     /* Clipped to contents. */
 
     Rr_DrawSolidQuad(
         Window,
-        ContentsAreaPosition,
-        ContentsAreaSize,
+        ContentsAreaRect.Offset,
+        ContentsAreaRect.Extent,
         &gContext->Style.Background);
-
-    if(HasScrollbar == false && HasResize)
-    {
-        Rr_AddResizeHandle(Window);
-    }
 
     gContext->AvailableContentsWidth =
         HasScrollbar ? Window->Rect.Extent.Width - gContext->ScrollbarWidth
@@ -1278,6 +1304,17 @@ void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 void Rr_EndWindow(void)
 {
     RR_UI_ASSERT_WINDOW();
+
+    if(gContext->DeferResizeHandle)
+    {
+        Rr_DrawSolidTriangle(
+            gContext->CurrentWindow,
+            gContext->DeferredResizeHandlePositions[0],
+            gContext->DeferredResizeHandlePositions[1],
+            gContext->DeferredResizeHandlePositions[2],
+            &gContext->DeferredResizeHandleColor);
+        gContext->DeferResizeHandle = false;
+    }
 
     Rr_SetLastClipRectIndexCount(gContext->CurrentWindow);
     gContext->CurrentWindow->YEnd += gContext->ContentsPadding.Y * 2.0f;
@@ -2138,7 +2175,13 @@ void Rr_EndUI(void)
         {
             Rr_UIClipRect *ClipRect = Window->ClipRects.Data + ClipRectIndex;
 
-            Rr_SetScissor(GraphicsNode, &ClipRect->Rect);
+            Rr_IntRect IntRect = {
+                .Offset = { (int32_t)roundf(ClipRect->Rect.Offset.X),
+                            (int32_t)roundf(ClipRect->Rect.Offset.Y) },
+                .Extent = { (int32_t)roundf(ClipRect->Rect.Extent.Width),
+                            (int32_t)roundf(ClipRect->Rect.Extent.Height) }
+            };
+            Rr_SetScissor(GraphicsNode, &IntRect);
 
             Rr_DrawIndexed(
                 GraphicsNode,
