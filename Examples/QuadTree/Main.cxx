@@ -964,9 +964,10 @@ static void Iterate(void *UserData)
 {
     Rr_DebugOverlay();
 
-    Rr_BeginWindow("QuadTree", RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
-    Rr_LabelF("Circles: %zu", Tree.ElementsCount());
-    Rr_LabelF("Rebuilding: %d", Rebuilding);
+    Rr_BeginWindow(
+        "QuadTree",
+        RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
+    Rr_LabelF("Regenerating: %d", Rebuilding);
     if(Rr_Button("Regenerate Tree"))
     {
         if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
@@ -974,6 +975,8 @@ static void Iterate(void *UserData)
             RebuildTree();
         }
     }
+    Rr_Separator();
+    Rr_LabelF("Circles: %zu", Tree.ElementsCount());
     Rr_LabelF("Draw Count: %d", DrawCount);
     Rr_LabelF("Draws Size: %d", DrawsSize);
     Rr_LabelF("Box Select: %d", Selecting);
@@ -991,20 +994,6 @@ static void Iterate(void *UserData)
             Rr_GetRenderer(),
             VSyncEnabled ? RR_PRESENT_MODE_FIFO : RR_PRESENT_MODE_IMMEDIATE);
     }
-    Rr_EndHorizontal();
-    Rr_Separator();
-    Rr_LabelEx(
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
-        "do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-        "laboris nisi ut aliquip ex ea commodo consequat. Duis aute "
-        "irure dolor in reprehenderit in voluptate velit esse cillum "
-        "dolore eu fugiat nulla pariatur. Excepteur sint occaecat "
-        "cupidatat non proident, sunt in culpa qui officia deserunt "
-        "mollit anim id est laborum. ",
-        RR_UI_TEXT_FLAGS_WRAPPED_BIT);
-    Rr_Separator();
-    Rr_Label("Multi\n line\n  text");
     Rr_EndWindow();
 
     Update();

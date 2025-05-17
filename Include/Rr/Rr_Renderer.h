@@ -109,6 +109,8 @@ extern Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer);
 
 extern struct Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer);
 
+extern Rr_PresentMode Rr_GetSwapchainPresentMode(Rr_Renderer *Renderer);
+
 extern bool Rr_SetSwapchainPresentMode(
     Rr_Renderer *Renderer,
     Rr_PresentMode PresentMode);

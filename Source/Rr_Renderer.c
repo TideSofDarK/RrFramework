@@ -1003,6 +1003,12 @@ Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer)
     return Rr_GetCurrentFrame(Renderer)->VirtualSwapchainImage;
 }
 
+Rr_PresentMode Rr_GetSwapchainPresentMode(
+    Rr_Renderer *Renderer)
+{
+    return Renderer->Swapchain.PresentMode;
+}
+
 bool Rr_SetSwapchainPresentMode(
     Rr_Renderer *Renderer,
     Rr_PresentMode PresentMode)

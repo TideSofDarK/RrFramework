@@ -1236,7 +1236,8 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
             },
             &gContext->Style.ScrollbarBackground);
 
-        float ScrollbarHandleOffset = (gContext->ScrollbarWidth - gContext->ScrollbarHandleWidth) / 2.0f;
+        float ScrollbarHandleOffset =
+            (gContext->ScrollbarWidth - gContext->ScrollbarHandleWidth) / 2.0f;
 
         Rr_Vec2 ScrollbarHandlePosition = ScrollbarPosition;
         Rr_Vec2 ScrollbarHandleSize = ScrollbarSize;
@@ -1769,6 +1770,7 @@ bool Rr_Button(const char *Text)
 bool Rr_Checkbox(const char *Text, bool *Checked)
 {
     RR_UI_ASSERT_WINDOW();
+    assert(Checked != NULL);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -2290,11 +2292,24 @@ void Rr_DebugOverlay(void)
     {
         Rr_LabelF("Time: %.2f", Rr_GetTimeSeconds());
         Rr_Separator();
+        Rr_PresentMode PresentMode = Rr_GetSwapchainPresentMode(Renderer);
+        bool VSyncEnabled = PresentMode == RR_PRESENT_MODE_FIFO;
+        if(Rr_Checkbox("Use VSync", &VSyncEnabled))
+        {
+            Rr_SetSwapchainPresentMode(
+                Rr_GetRenderer(),
+                VSyncEnabled ? RR_PRESENT_MODE_FIFO
+                             : RR_PRESENT_MODE_IMMEDIATE);
+        }
         Rr_LabelF("FPS: %.2f", Rr_GetFramesPerSecond());
         Rr_Checkbox(
             "Frame Limiter Enabled",
             &gApp->FrameTime.EnableFrameLimiter);
         Rr_LabelF("Frame Limit: %d", gApp->FrameTime.TargetFramerate);
+        if(Rr_Button("Toggle Fullscreen"))
+        {
+            Rr_ToggleFullscreen();
+        }
     }
     if(Rr_Tab("Memory"))
     {
