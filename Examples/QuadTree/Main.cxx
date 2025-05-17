@@ -840,7 +840,7 @@ static void Render()
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
     Rr_ColorTarget ColorTarget;
-    ColorTarget.Clear = { 0.1, 0.1, 0.1, 1.0 };
+    ColorTarget.Clear = { 0.0, 0.0, 0.09, 1.0 };
     ColorTarget.LoadOp = RR_LOAD_OP_CLEAR;
     ColorTarget.Slot = 0;
     ColorTarget.StoreOp = RR_STORE_OP_STORE;
@@ -964,7 +964,7 @@ static void Iterate(void *UserData)
 {
     Rr_DebugOverlay();
 
-    Rr_BeginWindow("QuadTree", RR_UI_WINDOW_FLAGS_CLOSE_BIT);
+    Rr_BeginWindow("QuadTree", RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
     Rr_LabelF("Circles: %zu", Tree.ElementsCount());
     Rr_LabelF("Rebuilding: %d", Rebuilding);
     if(Rr_Button("Regenerate Tree"))

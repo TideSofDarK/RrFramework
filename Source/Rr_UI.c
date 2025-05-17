@@ -815,12 +815,13 @@ Rr_Vec2 Rr_CalculateTextSize(
         Flags);
 }
 
-static inline void Rr_BeginDragOp(Rr_UIDragOp DragOp, Rr_Vec2 WindowStart)
+static inline void Rr_BeginDragOp(
+    Rr_UIWindow *Window,
+    Rr_UIDragOp DragOp,
+    Rr_Vec2 WindowStart)
 {
-    assert(gContext->HoveredWindow != NULL);
-
     gContext->DragOpMouseStart = gContext->MousePosition;
-    gContext->DragOpWindow = gContext->HoveredWindow;
+    gContext->DragOpWindow = Window;
     gContext->DragOp = DragOp;
     gContext->DragOpWindowStart = WindowStart;
 }
@@ -934,9 +935,10 @@ static inline bool Rr_DragBehavior(
      * Contains == false while the drag operation is still going. */
 
     if(Contains && gContext->LeftMouseButtonDown &&
-       (gContext->DragOpWindow == NULL || gContext->DragOpWindow == Window))
+       (gContext->DragOpWindow == NULL || gContext->DragOpWindow == Window) &&
+       gContext->HoveredWindow == Window)
     {
-        Rr_BeginDragOp(DragOp, Value);
+        Rr_BeginDragOp(Window, DragOp, Value);
 
         return false;
     }
@@ -1007,12 +1009,6 @@ static inline void Rr_AddCloseButton(Rr_UIWindow *Window, Rr_Rect *TitleRect)
     {
         return;
     }
-
-    /* Rr_Rect ButtonRect = { */
-
-    /* }; */
-
-    /* Rr_ButtonBehavior(Window, ) */
 
     float Thickness = gContext->TitleButtonSize * 0.15f;
     Rr_Rect BarRect;
@@ -1240,10 +1236,11 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
             },
             &gContext->Style.ScrollbarBackground);
 
+        float ScrollbarHandleOffset = (gContext->ScrollbarWidth - gContext->ScrollbarHandleWidth) / 2.0f;
+
         Rr_Vec2 ScrollbarHandlePosition = ScrollbarPosition;
         Rr_Vec2 ScrollbarHandleSize = ScrollbarSize;
-        ScrollbarHandlePosition.X +=
-            (gContext->ScrollbarWidth - gContext->ScrollbarHandleWidth) / 2.0f;
+        ScrollbarHandlePosition.X += ScrollbarHandleOffset;
         ScrollbarHandleSize.Width = gContext->ScrollbarHandleWidth;
         ScrollbarHandleSize.Height *= FillRatio;
 
@@ -1260,7 +1257,14 @@ static inline bool Rr_AddVerticalScrollbar(Rr_UIWindow *Window)
             Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
         }
 
-        ScrollbarHandlePosition.Y += (Window->VScroll * FillRatio);
+        ScrollbarHandlePosition.Y += Window->VScroll * FillRatio;
+
+        /* Vertical margins. */
+
+        ScrollbarHandlePosition.Y += ScrollbarHandleOffset;
+        ScrollbarHandleSize.Y -= ScrollbarHandleOffset * 2.0f;
+
+        /* Hitbox is slightly adjusted for better experience. */
 
         Rr_Vec2 ScrollbarButtonSize = ScrollbarHandleSize;
         ScrollbarButtonSize.Width = ScrollbarSize.Width;
