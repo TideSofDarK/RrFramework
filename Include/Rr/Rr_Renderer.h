@@ -71,7 +71,6 @@ typedef enum
 
 typedef enum
 {
-    RR_COMPARE_OP_INVALID,
     RR_COMPARE_OP_NEVER,
     RR_COMPARE_OP_LESS,
     RR_COMPARE_OP_EQUAL,
