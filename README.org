@@ -1,0 +1,33 @@
+#+TITLE: RrFramework
+#+SUBTITLE: Cross-Platform Multimedia Application Framework
+
+#+begin_quote
+Not yet suitable for anything remotely serious.
+#+end_quote
+
+* Requirements
++ Windows or Linux computer
++ CMake 3.28+
++ C11/C++11 Compiler
+  - MSVC 17.8.4+
+  - GCC 13+
+  - Clang 17+
++ Vulkan SDK 1.1+
+
+* Using RrFramework
+You can find examples in =Examples/= folder.
+These don't use some shared framework and are designed to be standalone.
+Preferred build system is CMake. You can use built-in *FetchContent* or [[https://github.com/cpm-cmake/CPM.cmake][CPM.cmake]]
+to make *RrFramework* available to your project.
+Then simply link your application against it,
+#+BEGIN_SRC cmake
+  target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
+#+END_SRC
+
+* Acknowledgements
++ [[https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator][VulkanMemoryAllocator]]
++ [[https://github.com/libsdl-org/SDL][SDL]]
++ [[https://github.com/DaveGamble/cJSON][cJSON]]
++ [[https://github.com/jkuhlmann/cgltf][cgltf]]
++ [[https://github.com/Cyan4973/xxHash][xxHash]]
++ [[https://github.com/nothings/stb][stb]]

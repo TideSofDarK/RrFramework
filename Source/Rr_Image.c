@@ -6,8 +6,6 @@
 
 #include <stb/stb_image.h>
 
-#include <tinyexr/tinyexr.h>
-
 #include <assert.h>
 
 Rr_Sampler *Rr_CreateSampler(Rr_Renderer *Renderer, Rr_SamplerInfo *Info)

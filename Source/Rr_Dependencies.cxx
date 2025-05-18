@@ -8,9 +8,6 @@
 #define VMA_SYSTEM_ALIGNED_FREE      Rr_AlignedFree
 #include <vma/vk_mem_alloc.h>
 
-#define TINYEXR_IMPLEMENTATION
-#include <tinyexr/tinyexr.h>
-
 #define STB_IMAGE_IMPLEMENTATION
 // #define STBI_MALLOC  Rr_Malloc
 // #define STBI_REALLOC Rr_Realloc
