@@ -1,5 +1,6 @@
-#+TITLE: RrFramework
-#+SUBTITLE: Cross-Platform Multimedia Application Framework
+* What is RrFramework?
+RrFramework abstracts platform layer and exposes easy-to-use graph-based graphics API implemented on top of Vulkan API.
+It comes with its own IMGUI style API for quick prototyping of user interfaces and creating of development tooling.
 
 #+begin_quote
 Not yet suitable for anything remotely serious.
@@ -31,3 +32,6 @@ Then simply link your application against it,
 + [[https://github.com/jkuhlmann/cgltf][cgltf]]
 + [[https://github.com/Cyan4973/xxHash][xxHash]]
 + [[https://github.com/nothings/stb][stb]]
+
+* License
+[[LICENSE.org][MIT]]
