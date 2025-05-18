@@ -1,15 +1,22 @@
 #include <Rr/Rr.h>
 
+#include <cstdlib>
+
 struct SMyStruct
 {
-    uint64_t Test0;
-    char Test3;
+    uint64_t Test0{};
+    char Test3{};
     int Test1;
-    short Test10;
-    double Test2;
-    float Test4;
-    char Test5;
-    float Test6;
+    short Test10{};
+    double Test2{};
+    float Test4{};
+    char Test5{};
+    float Test6{};
+
+    SMyStruct(int InTest)
+        : Test1(InTest)
+    {
+    }
 };
 
 #define RR_HIVE_TYPE      SMyStruct
@@ -26,9 +33,7 @@ static void Init(void *UserData)
 
     for(size_t Index = 0; Index < 12; ++Index)
     {
-        *PushMyStructIntoHive(&Hive, Arena).Element = (SMyStruct){
-            .Test1 = (int)Index,
-        };
+        *PushMyStructIntoHive(&Hive, Arena).Element = SMyStruct((int)Index);
     }
 }
 
@@ -53,9 +58,7 @@ static void Iterate(void *UserData)
     Rr_BeginHorizontal();
     if(Rr_Button("Add"))
     {
-        *PushMyStructIntoHive(&Hive, Arena).Element = (SMyStruct){
-            .Test1 = rand(),
-        };
+        *PushMyStructIntoHive(&Hive, Arena).Element = SMyStruct(std::rand());
     }
     if(Rr_Button("Clear"))
     {

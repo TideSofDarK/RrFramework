@@ -221,7 +221,7 @@ struct RR_HIVE_NAME
         if((Hive_)->End.Group->GroupNumber == UINT16_MAX)           \
         {                                                           \
             RR_HIVE_GROUP_NAME *UpdateGroup = (Hive_)->Begin.Group; \
-            size_t CurrentGroupNumber;                              \
+            size_t CurrentGroupNumber = 0;                          \
             do                                                      \
             {                                                       \
                 UpdateGroup->GroupNumber = CurrentGroupNumber++;    \
@@ -493,12 +493,12 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
             RR_EDIT_HIVE_FREE_LIST_HEAD(It->Element, It->Group->FreeListHead);
             It->Group->FreeListHead = Index;
         }
-        else if(PrevSkip & (!AfterSkip))
+        else if(PrevSkip && (!AfterSkip))
         {
             *(It->Skip - *(It->Skip - 1)) = *It->Skip =
                 (Rr_HiveSkipType)(*(It->Skip - 1) + 1);
         }
-        else if((!PrevSkip) & AfterSkip)
+        else if((!PrevSkip) && AfterSkip)
         {
             Rr_HiveSkipType FollowingValue =
                 (Rr_HiveSkipType)(*(It->Skip + 1) + 1);
@@ -601,13 +601,13 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
     bool InBackBlock = It->Group->Next == NULL;
     bool InFrontBlock = It->Group == Hive->Begin.Group;
 
-    if(InBackBlock & InFrontBlock) /* Only block in hive. */
+    if(InBackBlock && InFrontBlock) /* Only block in hive. */
     {
         RR_RESET_ONLY_HIVE_GROUP_LEFT(Hive, It->Group);
 
         *It = Hive->End;
     }
-    else if((!InBackBlock) & InFrontBlock) /* Add the first group to unused
+    else if((!InBackBlock) && InFrontBlock) /* Add the first group to unused
                                               list. */
     {
         It->Group->Next->Previous = NULL;
@@ -626,7 +626,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
 
         *It = Hive->Begin;
     }
-    else if(!(InBackBlock | InFrontBlock)) /* Neither first, nor last group. */
+    else if(!(InBackBlock || InFrontBlock)) /* Neither first, nor last group. */
     {
         It->Group->Next->Previous = It->Group->Previous;
         RR_HIVE_GROUP_NAME *ReturnGroup = It->Group->Previous->Next =
