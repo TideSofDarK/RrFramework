@@ -1,0 +1,22 @@
+* Critical
+- [ ] Synchronization (?) bug with host written buffers (very apparent on Windows + NVidia hardware for some reason)
+- [ ] Hash collision handling across all usages of Rr_Map
+- [ ] Hashing objects such as VkFramebuffer looks very bad
+- [ ] Add deletion queues for Vulkan object
+
+* Features
+** Backend
+- [ ] Move to GLFW
+- [ ] Move to C11
+- [ ] Own implementation of Windows platform layer
+** User Interface
+- [ ] Keyboard input and related widgets
+- [ ] Color picker
+- [ ] Dropdown (combobox)
+- [ ] Radio buttons
+- [ ] AlwaysAutoResize equivalent
+- [ ] Nested windows
+** Debug Overlay
+- [ ] Very basic profilers for CPU/GPU
+- [ ] Memory arena registry and better tracking of what's happening there
+
