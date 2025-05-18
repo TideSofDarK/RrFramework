@@ -10,7 +10,7 @@ project(GLTFCube LANGUAGES C)
 # Add executable target
 #
 
-add_executable(${PROJECT_NAME} Main.c)
+add_executable(${PROJECT_NAME} GLTFCube.c)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
 

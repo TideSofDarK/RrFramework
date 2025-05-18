@@ -10,7 +10,7 @@ project(UITest LANGUAGES CXX)
 # Add executable target
 #
 
-add_executable(${PROJECT_NAME} Main.cxx)
+add_executable(${PROJECT_NAME} UITest.cxx)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)

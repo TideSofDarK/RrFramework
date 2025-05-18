@@ -88,8 +88,6 @@ typedef enum
 
 struct Rr_UIContext
 {
-    size_t FrameNumber;
-
     Rr_UIStyle Style;
 
     Rr_Map *WindowMap;
@@ -2066,7 +2064,6 @@ void Rr_BeginUI(Rr_UIContext *Context)
     Rr_Renderer *Renderer = gApp->Renderer;
 
     gContext = Context;
-    gContext->FrameNumber = Renderer->FrameNumber;
     gContext->FrameArena = Rr_GetFrameArena(Renderer);
 
     if(gContext->NextFontSize != 0.0f)

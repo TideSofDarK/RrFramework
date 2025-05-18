@@ -10,7 +10,7 @@ project(PrefixSum LANGUAGES CXX)
 # Add executable target
 #
 
-add_executable(${PROJECT_NAME} Main.cxx)
+add_executable(${PROJECT_NAME} PrefixSum.cxx)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
