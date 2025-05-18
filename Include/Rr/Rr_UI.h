@@ -139,6 +139,12 @@ extern bool Rr_InputField(
     char *Buffer,
     Rr_UIInputFieldFlags Flags);
 
+extern bool Rr_Combobox(
+    const char *Title,
+    uint32_t OptionCount,
+    const char **Options,
+    uint32_t *SelectedIndex);
+
 extern void Rr_BeginHorizontal(void);
 
 extern void Rr_EndHorizontal(void);

@@ -136,51 +136,41 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    uint32_t PresentModeCount;
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
-        &PresentModeCount,
+        &Renderer->Swapchain.AvailablePresentModeCount,
         NULL);
-    assert(PresentModeCount > 0);
+    assert(Renderer->Swapchain.AvailablePresentModeCount > 0);
 
-    VkPresentModeKHR *PresentModes =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkPresentModeKHR, PresentModeCount);
+    VkPresentModeKHR *PresentModes = RR_ALLOC_TYPE_COUNT(
+        Scratch.Arena,
+        VkPresentModeKHR,
+        Renderer->Swapchain.AvailablePresentModeCount);
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
-        &PresentModeCount,
+        &Renderer->Swapchain.AvailablePresentModeCount,
         PresentModes);
 
-    VkPresentModeKHR SwapchainPresentMode;
-    switch(Renderer->Swapchain.PresentMode)
-    {
-        case RR_PRESENT_MODE_FIFO_RELAXED:
-            SwapchainPresentMode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-            break;
-        case RR_PRESENT_MODE_IMMEDIATE:
-            SwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-            break;
-        case RR_PRESENT_MODE_MAILBOX:
-            SwapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-            break;
-        default:
-            SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-            break;
-    }
+    VkPresentModeKHR VulkanPresentMode =
+        Rr_ToVulkanPresentMode(Renderer->Swapchain.PresentMode);
     bool PresentModeAvailable = false;
-    for(uint32_t Index = 0; Index < PresentModeCount; Index++)
+    for(uint32_t Index = 0;
+        Index < Renderer->Swapchain.AvailablePresentModeCount;
+        Index++)
     {
-        if(PresentModes[Index] == SwapchainPresentMode)
+        Renderer->Swapchain.AvailablePresentModes[Index] =
+            Rr_ToPresentMode(PresentModes[Index]);
+        if(PresentModes[Index] == VulkanPresentMode)
         {
             PresentModeAvailable = true;
-            break;
         }
     }
     if(PresentModeAvailable == false)
     {
-        SwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-        Renderer->Swapchain.PresentMode = RR_PRESENT_MODE_FIFO;
+        VulkanPresentMode = PresentModes[0];
+        Renderer->Swapchain.PresentMode = Rr_ToPresentMode(VulkanPresentMode);
     }
 
     uint32_t DesiredNumberOfSwapchainImages =
@@ -272,7 +262,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .preTransform = PreTransform,
         .compositeAlpha = CompositeAlpha,
-        .presentMode = SwapchainPresentMode,
+        .presentMode = VulkanPresentMode,
         .clipped = VK_TRUE,
         .oldSwapchain = OldSwapchain,
     };
@@ -1011,7 +1001,7 @@ Rr_Arena *Rr_GetFrameArena(Rr_Renderer *Renderer)
 
 Rr_TextureFormat Rr_GetSwapchainFormat(Rr_Renderer *Renderer)
 {
-    return Rr_GetTextureFormat(Renderer->Swapchain.Format);
+    return Rr_ToTextureFormat(Renderer->Swapchain.Format);
 }
 
 Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer)
@@ -1027,15 +1017,37 @@ Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer)
     return Rr_GetCurrentFrame(Renderer)->VirtualSwapchainImage;
 }
 
-Rr_PresentMode Rr_GetSwapchainPresentMode(
-    Rr_Renderer *Renderer)
+Rr_PresentMode *Rr_GetAvailablePresentModes(
+    Rr_Renderer *Renderer,
+    size_t *Count)
+{
+    if(Count)
+    {
+        *Count = Renderer->Swapchain.AvailablePresentModeCount;
+    }
+    return Renderer->Swapchain.AvailablePresentModes;
+}
+
+Rr_PresentMode Rr_GetPresentMode(Rr_Renderer *Renderer)
 {
     return Renderer->Swapchain.PresentMode;
 }
 
-bool Rr_SetSwapchainPresentMode(
-    Rr_Renderer *Renderer,
-    Rr_PresentMode PresentMode)
+const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode)
+{
+    static const char *PresentModeStrings[] = {
+        "FIFO",
+        "FIFO_RELAXED",
+        "IMMEDIATE",
+        "MAILBOX",
+    };
+
+    assert((size_t)PresentMode < RR_ARRAY_COUNT(PresentModeStrings));
+
+    return PresentModeStrings[(size_t)PresentMode];
+}
+
+bool Rr_SetPresentMode(Rr_Renderer *Renderer, Rr_PresentMode PresentMode)
 {
     Renderer->Swapchain.PresentMode = PresentMode;
     Rr_SetSwapchainDirty(Renderer, true);
@@ -1097,8 +1109,8 @@ VkRenderPass Rr_GetVulkanRenderPass(
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 .flags = 0,
-                .loadOp = Rr_GetLoadOp(Attachment->LoadOp),
-                .storeOp = Rr_GetStoreOp(Attachment->StoreOp),
+                .loadOp = Rr_ToVulkanLoadOp(Attachment->LoadOp),
+                .storeOp = Rr_ToVulkanStoreOp(Attachment->StoreOp),
             };
         }
         else
@@ -1114,8 +1126,8 @@ VkRenderPass Rr_GetVulkanRenderPass(
                 .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .flags = 0,
-                .loadOp = Rr_GetLoadOp(Attachment->LoadOp),
-                .storeOp = Rr_GetStoreOp(Attachment->StoreOp),
+                .loadOp = Rr_ToVulkanLoadOp(Attachment->LoadOp),
+                .storeOp = Rr_ToVulkanStoreOp(Attachment->StoreOp),
             };
         }
     }

@@ -1587,7 +1587,7 @@ Rr_GraphNode *Rr_AddBlitNode(
         .DstRect = DstRect,
     };
 
-    BlitNode->AspectMask = Rr_GetVulkanImageAspect(ImageAspect);
+    BlitNode->AspectMask = Rr_ToVulkanImageAspect(ImageAspect);
 
     Rr_AddNodeDependency(
         GraphNode,
@@ -1893,7 +1893,7 @@ void Rr_BindIndexBuffer(
         .BufferHandle = *BufferHandle,
         .Slot = (uint32_t)Slot,
         .Offset = (uint32_t)Offset,
-        .Type = Rr_GetVulkanIndexType(Type),
+        .Type = Rr_ToVulkanIndexType(Type),
     };
 
     Rr_AddNodeDependency(

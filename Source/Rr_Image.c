@@ -44,20 +44,20 @@ Rr_Sampler *Rr_CreateSampler(Rr_Renderer *Renderer, Rr_SamplerInfo *Info)
     VkSamplerCreateInfo SamplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .pNext = NULL,
-        .magFilter = Rr_GetVulkanFilter(Info->MagFilter),
-        .minFilter = Rr_GetVulkanFilter(Info->MinFilter),
-        .mipmapMode = Rr_GetVulkanSamplerMipmapMode(Info->MipmapMode),
-        .addressModeU = Rr_GetVulkanSamplerAddressMode(Info->AddressModeU),
-        .addressModeV = Rr_GetVulkanSamplerAddressMode(Info->AddressModeV),
-        .addressModeW = Rr_GetVulkanSamplerAddressMode(Info->AddressModeW),
+        .magFilter = Rr_ToVulkanFilter(Info->MagFilter),
+        .minFilter = Rr_ToVulkanFilter(Info->MinFilter),
+        .mipmapMode = Rr_ToVulkanSamplerMipmapMode(Info->MipmapMode),
+        .addressModeU = Rr_ToVulkanSamplerAddressMode(Info->AddressModeU),
+        .addressModeV = Rr_ToVulkanSamplerAddressMode(Info->AddressModeV),
+        .addressModeW = Rr_ToVulkanSamplerAddressMode(Info->AddressModeW),
         .mipLodBias = Info->MipLodBias,
         .anisotropyEnable = Info->AnisotropyEnable,
         .maxAnisotropy = Info->MaxAnisotropy,
         .compareEnable = Info->CompareEnable,
-        .compareOp = Rr_GetVulkanCompareOp(Info->CompareOp),
+        .compareOp = Rr_ToVulkanCompareOp(Info->CompareOp),
         .minLod = Info->MinLod,
         .maxLod = Info->MaxLod,
-        .borderColor = Rr_GetVulkanBorderColor(Info->BorderColor),
+        .borderColor = Rr_ToVulkanBorderColor(Info->BorderColor),
         .unnormalizedCoordinates = Info->UnnormalizedCoordinates,
     };
 
@@ -260,7 +260,7 @@ Rr_Image *Rr_CreateImage(
 
     Rr_Image *Image = RR_GET_FREE_LIST_ITEM(&Renderer->Images, Renderer->Arena);
     Image->Flags = Flags;
-    Image->Format = Rr_GetVulkanTextureFormat(Format);
+    Image->Format = Rr_ToVulkanTextureFormat(Format);
     Image->Extent.width = Extent.Width;
     Image->Extent.height = Extent.Height;
     Image->Extent.depth = Extent.Depth;

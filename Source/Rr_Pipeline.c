@@ -49,14 +49,14 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
         Attachments[Index].LoadOp = RR_LOAD_OP_DONT_CARE;
         Attachments[Index].StoreOp = RR_STORE_OP_DONT_CARE;
         Attachments[Index].Format =
-            Rr_GetVulkanTextureFormat(Info->ColorTargets[Index].Format);
+            Rr_ToVulkanTextureFormat(Info->ColorTargets[Index].Format);
     }
     if(HasDepth)
     {
         Attachments[AttachmentCount - 1].LoadOp = RR_LOAD_OP_DONT_CARE;
         Attachments[AttachmentCount - 1].StoreOp = RR_STORE_OP_DONT_CARE;
         Attachments[AttachmentCount - 1].Format =
-            Rr_GetVulkanTextureFormat(Info->DepthStencil.Format);
+            Rr_ToVulkanTextureFormat(Info->DepthStencil.Format);
     }
 
     VkRenderPass RenderPass = Rr_GetVulkanRenderPass(
@@ -334,8 +334,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
                 RR_PUSH_INTO_ARRAY(&AttributeDescriptions, Scratch.Arena);
 
             AttributeDescription->location = Attribute->Location;
-            AttributeDescription->format =
-                Rr_GetVulkanFormat(Attribute->Format);
+            AttributeDescription->format = Rr_ToVulkanFormat(Attribute->Format);
             AttributeDescription->binding = (uint32_t)BindingIndex;
             VkVertexInputBindingDescription *BindingDescription = NULL;
             for(size_t BindingIndex = 0;
@@ -380,7 +379,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     VkPipelineInputAssemblyStateCreateInfo InputAssembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .pNext = NULL,
-        .topology = Rr_GetVulkanTopology(Info->Topology),
+        .topology = Rr_ToVulkanPrimitiveTopology(Info->Topology),
         .primitiveRestartEnable = VK_FALSE,
     };
 
@@ -397,9 +396,9 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .flags = 0,
         .depthClampEnable = Info->Rasterizer.EnableDepthClip,
         .rasterizerDiscardEnable = false,
-        .polygonMode = Rr_GetVulkanPolygonMode(Info->Rasterizer.PolygonMode),
-        .cullMode = Rr_GetVulkanCullMode(Info->Rasterizer.CullMode),
-        .frontFace = Rr_GetVulkanFrontFace(Info->Rasterizer.FrontFace),
+        .polygonMode = Rr_ToVulkanPolygonMode(Info->Rasterizer.PolygonMode),
+        .cullMode = Rr_ToVulkanCullMode(Info->Rasterizer.CullMode),
+        .frontFace = Rr_ToVulkanFrontFace(Info->Rasterizer.FrontFace),
         .depthBiasEnable = Info->Rasterizer.EnableDepthBias,
         .depthBiasConstantFactor = Info->Rasterizer.DepthBiasConstantFactor,
         .depthBiasClamp = Info->Rasterizer.DepthBiasClamp,
@@ -442,15 +441,15 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         }
         Attachment->blendEnable = Blend->BlendEnable;
         Attachment->srcColorBlendFactor =
-            Rr_GetVulkanBlendFactor(Blend->SrcColorBlendFactor);
+            Rr_ToVulkanBlendFactor(Blend->SrcColorBlendFactor);
         Attachment->dstColorBlendFactor =
-            Rr_GetVulkanBlendFactor(Blend->DstColorBlendFactor);
-        Attachment->colorBlendOp = Rr_GetVulkanBlendOp(Blend->ColorBlendOp);
+            Rr_ToVulkanBlendFactor(Blend->DstColorBlendFactor);
+        Attachment->colorBlendOp = Rr_ToVulkanBlendOp(Blend->ColorBlendOp);
         Attachment->srcAlphaBlendFactor =
-            Rr_GetVulkanBlendFactor(Blend->SrcAlphaBlendFactor);
+            Rr_ToVulkanBlendFactor(Blend->SrcAlphaBlendFactor);
         Attachment->dstAlphaBlendFactor =
-            Rr_GetVulkanBlendFactor(Blend->DstAlphaBlendFactor);
-        Attachment->alphaBlendOp = Rr_GetVulkanBlendOp(Blend->AlphaBlendOp);
+            Rr_ToVulkanBlendFactor(Blend->DstAlphaBlendFactor);
+        Attachment->alphaBlendOp = Rr_ToVulkanBlendOp(Blend->AlphaBlendOp);
         Attachment->colorWriteMask = ColorWriteMask;
     }
 
@@ -471,12 +470,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .flags = 0,
         .depthTestEnable = Info->DepthStencil.EnableDepthTest,
         .depthWriteEnable = Info->DepthStencil.EnableDepthWrite,
-        .depthCompareOp = Rr_GetVulkanCompareOp(Info->DepthStencil.CompareOp),
+        .depthCompareOp = Rr_ToVulkanCompareOp(Info->DepthStencil.CompareOp),
         .stencilTestEnable = Info->DepthStencil.EnableStencilTest,
-        .front = Rr_GetVulkanStencilOpState(
+        .front = Rr_ToVulkanStencilOpState(
             Info->DepthStencil.FrontStencilState,
             &Info->DepthStencil),
-        .back = Rr_GetVulkanStencilOpState(
+        .back = Rr_ToVulkanStencilOpState(
             Info->DepthStencil.BackStencilState,
             &Info->DepthStencil),
     };

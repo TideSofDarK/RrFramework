@@ -421,7 +421,7 @@ void Rr_AddDescriptor(
         .binding = Binding,
         .descriptorType = Rr_GetVulkanDescriptorType(Type),
         .descriptorCount = 1,
-        .stageFlags = Rr_GetVulkanShaderStageFlags(ShaderStage)
+        .stageFlags = Rr_ToVulkanShaderStageFlags(ShaderStage)
     };
     Builder->Count++;
 }
@@ -441,7 +441,7 @@ void Rr_AddDescriptorArray(
         .binding = Binding,
         .descriptorType = Rr_GetVulkanDescriptorType(Type),
         .descriptorCount = Count,
-        .stageFlags = Rr_GetVulkanShaderStageFlags(ShaderStage)
+        .stageFlags = Rr_ToVulkanShaderStageFlags(ShaderStage)
     };
     Builder->Count++;
 }

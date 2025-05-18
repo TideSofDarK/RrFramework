@@ -43,6 +43,8 @@ struct Rr_SwapchainImage
 typedef struct Rr_Swapchain Rr_Swapchain;
 struct Rr_Swapchain
 {
+    uint32_t AvailablePresentModeCount;
+    Rr_PresentMode AvailablePresentModes[8];
     Rr_PresentMode PresentMode;
     VkSwapchainKHR Handle;
     VkFormat Format;

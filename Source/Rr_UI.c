@@ -1885,6 +1885,80 @@ bool Rr_InputField(size_t BufferSize, char *Buffer, Rr_UIInputFieldFlags Flags)
     return false;
 }
 
+bool Rr_Combobox(
+    const char *Title,
+    uint32_t OptionCount,
+    const char **Options,
+    uint32_t *SelectedIndex)
+{
+    RR_UI_ASSERT_WINDOW();
+    assert(OptionCount > 0);
+    assert(Options != NULL);
+    assert(SelectedIndex != NULL);
+
+    /* Rr_Scratch Scratch = Rr_GetScratch(NULL); */
+
+    /* Rr_UIWindow *Window = gContext->CurrentWindow; */
+
+    /* Rr_Vec2 ButtonPosition = gContext->Cursor; */
+    /* Rr_UIQuad ButtonQuad = Rr_ReserveQuad(Window); */
+
+    /* Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena); */
+    /* Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, gContext->ButtonPadding);
+     */
+    /* Rr_Vec2 TextSize = Rr_DrawText( */
+    /*     Window, */
+    /*     TextPosition, */
+    /*     &TextString, */
+    /*     0.0f, */
+    /*     &gContext->Style.Foreground, */
+    /*     0); */
+
+    /* Rr_Vec2 ButtonSize = */
+    /*     Rr_AddV2(TextSize, Rr_MulV2F(gContext->ButtonPadding, 2.0f)); */
+
+    /* bool Up = false; */
+    /* bool Hovered = false; */
+    /* bool Held = false; */
+    /* Rr_ButtonBehavior( */
+    /*     Window, */
+    /*     &(Rr_Rect){ */
+    /*         ButtonPosition, */
+    /*         ButtonSize, */
+    /*     }, */
+    /*     NULL, */
+    /*     &Up, */
+    /*     &Hovered, */
+    /*     &Held); */
+
+    /* Rr_Rect ButtonRect = { */
+    /*     ButtonPosition, */
+    /*     ButtonSize, */
+    /* }; */
+    /* if(Held) */
+    /* { */
+    /*     Rr_SolidQuad(ButtonQuad, &ButtonRect, &gContext->Style.ButtonHeld);
+     */
+    /* } */
+    /* else if(Hovered) */
+    /* { */
+    /*     Rr_SolidQuad(ButtonQuad, &ButtonRect,
+     * &gContext->Style.ButtonHovered); */
+    /* } */
+    /* else */
+    /* { */
+    /*     Rr_SolidQuad(ButtonQuad, &ButtonRect, &gContext->Style.ButtonNormal);
+     */
+    /* } */
+
+    /* Rr_Advance(ButtonSize); */
+
+    /* Rr_DestroyScratch(Scratch); */
+
+    /* return Up; */
+    return false;
+}
+
 bool Rr_WantMouseCapture(void)
 {
     return gContext &&
@@ -2313,15 +2387,25 @@ void Rr_DebugOverlay(void)
     {
         Rr_LabelF("Time: %.2f", Rr_GetTimeSeconds());
         Rr_Separator();
-        Rr_PresentMode PresentMode = Rr_GetSwapchainPresentMode(Renderer);
-        bool VSyncEnabled = PresentMode == RR_PRESENT_MODE_FIFO;
-        if(Rr_Checkbox("Use VSync", &VSyncEnabled))
+        size_t PresentModeCount;
+        Rr_PresentMode *PresentModes =
+            Rr_GetAvailablePresentModes(Renderer, &PresentModeCount);
+        for(size_t Index = 0; Index < PresentModeCount; ++Index)
         {
-            Rr_SetSwapchainPresentMode(
-                Rr_GetRenderer(),
-                VSyncEnabled ? RR_PRESENT_MODE_FIFO
-                             : RR_PRESENT_MODE_IMMEDIATE);
+            if(Rr_Button(Rr_GetPresentModeString(PresentModes[Index])))
+            {
+                Rr_SetPresentMode(Renderer, PresentModes[Index]);
+            }
         }
+        /* Rr_PresentMode PresentMode = Rr_GetSwapchainPresentMode(Renderer); */
+        /* bool VSyncEnabled = PresentMode == RR_PRESENT_MODE_FIFO; */
+        /* if(Rr_Checkbox("Use VSync", &VSyncEnabled)) */
+        /* { */
+        /*     Rr_SetSwapchainPresentMode( */
+        /*         Rr_GetRenderer(), */
+        /*         VSyncEnabled ? RR_PRESENT_MODE_FIFO */
+        /*                      : RR_PRESENT_MODE_IMMEDIATE); */
+        /* } */
         Rr_LabelF("FPS: %.2f", Rr_GetFramesPerSecond());
         Rr_Checkbox(
             "Frame Limiter Enabled",

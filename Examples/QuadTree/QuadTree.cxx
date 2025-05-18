@@ -990,7 +990,7 @@ static void Iterate(void *UserData)
     Rr_Checkbox("Use Query", &UseQuery);
     if(Rr_Checkbox("Use VSync", &VSyncEnabled))
     {
-        Rr_SetSwapchainPresentMode(
+        Rr_SetPresentMode(
             Rr_GetRenderer(),
             VSyncEnabled ? RR_PRESENT_MODE_FIFO : RR_PRESENT_MODE_IMMEDIATE);
     }

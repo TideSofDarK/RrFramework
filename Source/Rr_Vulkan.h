@@ -35,6 +35,8 @@
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan.h>
 
+#include <assert.h>
+
 #define RR_VULKAN_VERSION VK_MAKE_API_VERSION(0, 1, 1, 0)
 
 #define RR_VULKAN_EARLY_STAGES             \
@@ -348,7 +350,7 @@ extern void Rr_BlitColorImage(
     Rr_IntVec4 DstRect,
     VkImageAspectFlags AspectMask);
 
-static inline VkStencilOp Rr_GetVulkanStencilOp(Rr_StencilOp StencilOp)
+static inline VkStencilOp Rr_ToVulkanStencilOp(Rr_StencilOp StencilOp)
 {
     switch(StencilOp)
     {
@@ -373,7 +375,7 @@ static inline VkStencilOp Rr_GetVulkanStencilOp(Rr_StencilOp StencilOp)
     }
 }
 
-static inline VkShaderStageFlags Rr_GetVulkanShaderStageFlags(
+static inline VkShaderStageFlags Rr_ToVulkanShaderStageFlags(
     Rr_ShaderStage ShaderStage)
 {
     VkShaderStageFlags ShaderStageFlags = 0;
@@ -392,7 +394,7 @@ static inline VkShaderStageFlags Rr_GetVulkanShaderStageFlags(
     return ShaderStageFlags;
 }
 
-static inline VkCompareOp Rr_GetVulkanCompareOp(Rr_CompareOp CompareOp)
+static inline VkCompareOp Rr_ToVulkanCompareOp(Rr_CompareOp CompareOp)
 {
     switch(CompareOp)
     {
@@ -413,28 +415,28 @@ static inline VkCompareOp Rr_GetVulkanCompareOp(Rr_CompareOp CompareOp)
         case RR_COMPARE_OP_ALWAYS:
             return VK_COMPARE_OP_ALWAYS;
         default:
-            return 0;
+            assert(0);
     }
 }
 
-static inline VkStencilOpState Rr_GetVulkanStencilOpState(
+static inline VkStencilOpState Rr_ToVulkanStencilOpState(
     Rr_StencilOpState State,
     Rr_DepthStencil *DepthStencil)
 {
     return (VkStencilOpState){
-        .compareOp = Rr_GetVulkanCompareOp(State.CompareOp),
-        .failOp = Rr_GetVulkanStencilOp(State.FailOp),
-        .passOp = Rr_GetVulkanStencilOp(State.PassOp),
-        .depthFailOp = Rr_GetVulkanStencilOp(State.DepthFailOp),
+        .compareOp = Rr_ToVulkanCompareOp(State.CompareOp),
+        .failOp = Rr_ToVulkanStencilOp(State.FailOp),
+        .passOp = Rr_ToVulkanStencilOp(State.PassOp),
+        .depthFailOp = Rr_ToVulkanStencilOp(State.DepthFailOp),
         .writeMask = DepthStencil->WriteMask,
         .compareMask = DepthStencil->CompareMask,
         .reference = 0,
     };
 }
 
-static inline VkPolygonMode Rr_GetVulkanPolygonMode(Rr_PolygonMode Mode)
+static inline VkPolygonMode Rr_ToVulkanPolygonMode(Rr_PolygonMode PolygonMode)
 {
-    switch(Mode)
+    switch(PolygonMode)
     {
         case RR_POLYGON_MODE_LINE:
             return VK_POLYGON_MODE_LINE;
@@ -443,9 +445,9 @@ static inline VkPolygonMode Rr_GetVulkanPolygonMode(Rr_PolygonMode Mode)
     }
 }
 
-static inline VkCullModeFlagBits Rr_GetVulkanCullMode(Rr_CullMode Mode)
+static inline VkCullModeFlagBits Rr_ToVulkanCullMode(Rr_CullMode CullMode)
 {
-    switch(Mode)
+    switch(CullMode)
     {
         case RR_CULL_MODE_FRONT:
             return VK_CULL_MODE_FRONT_BIT;
@@ -456,7 +458,7 @@ static inline VkCullModeFlagBits Rr_GetVulkanCullMode(Rr_CullMode Mode)
     }
 }
 
-static inline VkFrontFace Rr_GetVulkanFrontFace(Rr_FrontFace FrontFace)
+static inline VkFrontFace Rr_ToVulkanFrontFace(Rr_FrontFace FrontFace)
 {
     switch(FrontFace)
     {
@@ -467,7 +469,7 @@ static inline VkFrontFace Rr_GetVulkanFrontFace(Rr_FrontFace FrontFace)
     }
 }
 
-static inline VkBlendFactor Rr_GetVulkanBlendFactor(Rr_BlendFactor BlendFactor)
+static inline VkBlendFactor Rr_ToVulkanBlendFactor(Rr_BlendFactor BlendFactor)
 {
     switch(BlendFactor)
     {
@@ -502,7 +504,7 @@ static inline VkBlendFactor Rr_GetVulkanBlendFactor(Rr_BlendFactor BlendFactor)
     }
 }
 
-static inline VkBlendOp Rr_GetVulkanBlendOp(Rr_BlendOp BlendOp)
+static inline VkBlendOp Rr_ToVulkanBlendOp(Rr_BlendOp BlendOp)
 {
     switch(BlendOp)
     {
@@ -518,11 +520,12 @@ static inline VkBlendOp Rr_GetVulkanBlendOp(Rr_BlendOp BlendOp)
             return VK_BLEND_OP_MAX;
         case RR_BLEND_OP_INVALID:
         default:
-            return 0;
+            assert(0);
     }
 }
 
-static inline VkPrimitiveTopology Rr_GetVulkanTopology(Rr_Topology Topology)
+static inline VkPrimitiveTopology Rr_ToVulkanPrimitiveTopology(
+    Rr_Topology Topology)
 {
     switch(Topology)
     {
@@ -540,7 +543,7 @@ static inline VkPrimitiveTopology Rr_GetVulkanTopology(Rr_Topology Topology)
     }
 }
 
-static inline VkFormat Rr_GetVulkanFormat(Rr_Format Format)
+static inline VkFormat Rr_ToVulkanFormat(Rr_Format Format)
 {
     switch(Format)
     {
@@ -578,7 +581,7 @@ static inline size_t Rr_GetFormatSize(Rr_Format Format)
     }
 }
 
-static inline VkBorderColor Rr_GetVulkanBorderColor(Rr_BorderColor BorderColor)
+static inline VkBorderColor Rr_ToVulkanBorderColor(Rr_BorderColor BorderColor)
 {
     switch(BorderColor)
     {
@@ -597,7 +600,7 @@ static inline VkBorderColor Rr_GetVulkanBorderColor(Rr_BorderColor BorderColor)
     }
 }
 
-static inline VkSamplerAddressMode Rr_GetVulkanSamplerAddressMode(
+static inline VkSamplerAddressMode Rr_ToVulkanSamplerAddressMode(
     Rr_SamplerAddressMode SamplerAddressMode)
 {
     switch(SamplerAddressMode)
@@ -615,7 +618,7 @@ static inline VkSamplerAddressMode Rr_GetVulkanSamplerAddressMode(
     }
 }
 
-static inline VkSamplerMipmapMode Rr_GetVulkanSamplerMipmapMode(
+static inline VkSamplerMipmapMode Rr_ToVulkanSamplerMipmapMode(
     Rr_SamplerMipmapMode SamplerMipmapMode)
 {
     switch(SamplerMipmapMode)
@@ -627,7 +630,7 @@ static inline VkSamplerMipmapMode Rr_GetVulkanSamplerMipmapMode(
     }
 }
 
-static inline VkFilter Rr_GetVulkanFilter(Rr_Filter Filter)
+static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
 {
     switch(Filter)
     {
@@ -638,7 +641,7 @@ static inline VkFilter Rr_GetVulkanFilter(Rr_Filter Filter)
     }
 }
 
-static Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat)
+static Rr_TextureFormat Rr_ToTextureFormat(VkFormat TextureFormat)
 {
     switch(TextureFormat)
     {
@@ -657,7 +660,7 @@ static Rr_TextureFormat Rr_GetTextureFormat(VkFormat TextureFormat)
     }
 }
 
-static VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat)
+static VkFormat Rr_ToVulkanTextureFormat(Rr_TextureFormat TextureFormat)
 {
     switch(TextureFormat)
     {
@@ -680,11 +683,11 @@ static VkFormat Rr_GetVulkanTextureFormat(Rr_TextureFormat TextureFormat)
         case RR_TEXTURE_FORMAT_R32_SINT:
             return VK_FORMAT_R32_SINT;
         default:
-            return VK_FORMAT_UNDEFINED;
+            assert(false);
     }
 }
 
-static VkIndexType Rr_GetVulkanIndexType(Rr_IndexType Type)
+static inline VkIndexType Rr_ToVulkanIndexType(Rr_IndexType Type)
 {
     switch(Type)
     {
@@ -704,7 +707,7 @@ static inline bool Rr_IsVulkanDepthFormat(VkFormat Format)
            Format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-static inline VkImageAspectFlags Rr_GetVulkanImageAspect(Rr_ImageAspect Aspect)
+static inline VkImageAspectFlags Rr_ToVulkanImageAspect(Rr_ImageAspect Aspect)
 {
     VkImageAspectFlags Result = 0;
     if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_COLOR_BIT))
@@ -722,7 +725,7 @@ static inline VkImageAspectFlags Rr_GetVulkanImageAspect(Rr_ImageAspect Aspect)
     return Result;
 }
 
-static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
+static VkAttachmentLoadOp Rr_ToVulkanLoadOp(Rr_LoadOp LoadOp)
 {
     switch(LoadOp)
     {
@@ -735,7 +738,7 @@ static VkAttachmentLoadOp Rr_GetLoadOp(Rr_LoadOp LoadOp)
     }
 }
 
-static VkAttachmentStoreOp Rr_GetStoreOp(Rr_StoreOp StoreOp)
+static VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
 {
     switch(StoreOp)
     {
@@ -745,5 +748,41 @@ static VkAttachmentStoreOp Rr_GetStoreOp(Rr_StoreOp StoreOp)
             return VK_ATTACHMENT_STORE_OP_STORE;
         default:
             return VK_ATTACHMENT_STORE_OP_STORE;
+    }
+}
+
+static inline VkPresentModeKHR Rr_ToVulkanPresentMode(
+    Rr_PresentMode PresentMode)
+{
+    switch(PresentMode)
+    {
+        case RR_PRESENT_MODE_FIFO_RELAXED:
+            return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+        case RR_PRESENT_MODE_IMMEDIATE:
+            return VK_PRESENT_MODE_IMMEDIATE_KHR;
+        case RR_PRESENT_MODE_MAILBOX:
+            return VK_PRESENT_MODE_MAILBOX_KHR;
+        case RR_PRESENT_MODE_FIFO:
+            return VK_PRESENT_MODE_FIFO_KHR;
+        default:
+            assert(false);
+    }
+}
+
+static inline Rr_PresentMode Rr_ToPresentMode(
+    VkPresentModeKHR VulkanPresentMode)
+{
+    switch(VulkanPresentMode)
+    {
+        case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+            return RR_PRESENT_MODE_FIFO_RELAXED;
+        case VK_PRESENT_MODE_IMMEDIATE_KHR:
+            return RR_PRESENT_MODE_IMMEDIATE;
+        case VK_PRESENT_MODE_MAILBOX_KHR:
+            return RR_PRESENT_MODE_MAILBOX;
+        case VK_PRESENT_MODE_FIFO_KHR:
+            return RR_PRESENT_MODE_FIFO;
+        default:
+            assert(false);
     }
 }

@@ -133,9 +133,15 @@ extern Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer);
 
 extern struct Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer);
 
-extern Rr_PresentMode Rr_GetSwapchainPresentMode(Rr_Renderer *Renderer);
+extern Rr_PresentMode *Rr_GetAvailablePresentModes(
+    Rr_Renderer *Renderer,
+    size_t *Count);
 
-extern bool Rr_SetSwapchainPresentMode(
+extern Rr_PresentMode Rr_GetPresentMode(Rr_Renderer *Renderer);
+
+extern const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode);
+
+extern bool Rr_SetPresentMode(
     Rr_Renderer *Renderer,
     Rr_PresentMode PresentMode);
 
