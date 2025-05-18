@@ -1,6 +1,6 @@
 * What is RrFramework?
 RrFramework abstracts platform layer and exposes easy-to-use graph-based graphics API implemented on top of Vulkan API.
-It comes with its own IMGUI style API for quick prototyping of user interfaces and creating of development tooling.
+It comes with its own IMGUI style API for quick prototyping of user interfaces and creation of development tooling.
 
 #+begin_quote
 Not yet suitable for anything remotely serious.
@@ -18,8 +18,8 @@ Not yet suitable for anything remotely serious.
 * Using RrFramework
 You can find examples in =Examples/= folder.
 These don't use some shared framework and are designed to be standalone.
-Preferred build system is CMake. You can use built-in *FetchContent* or [[https://github.com/cpm-cmake/CPM.cmake][CPM.cmake]]
-to make *RrFramework* available to your project.
+Preferred build system is CMake. You can use built-in =FetchContent= or [[https://github.com/cpm-cmake/CPM.cmake][CPM.cmake]]
+to make RrFramework available to your project.
 Then simply link your application against it,
 #+BEGIN_SRC cmake
   target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
