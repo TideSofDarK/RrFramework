@@ -518,7 +518,6 @@ static inline VkBlendOp Rr_ToVulkanBlendOp(Rr_BlendOp BlendOp)
             return VK_BLEND_OP_MIN;
         case RR_BLEND_OP_MAX:
             return VK_BLEND_OP_MAX;
-        case RR_BLEND_OP_INVALID:
         default:
             assert(0);
     }

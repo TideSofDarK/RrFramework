@@ -127,7 +127,6 @@ typedef enum
 
 typedef enum
 {
-    RR_BLEND_OP_INVALID,
     RR_BLEND_OP_ADD,
     RR_BLEND_OP_SUBTRACT,
     RR_BLEND_OP_REVERSE_SUBTRACT,
