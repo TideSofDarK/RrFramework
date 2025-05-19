@@ -38,7 +38,7 @@ typedef struct Rr_Renderer Rr_Renderer;
 
 typedef enum
 {
-    RR_FORMAT_INVALID,
+    RR_FORMAT_UNDEFINED,
     RR_FORMAT_FLOAT,
     RR_FORMAT_UINT,
     RR_FORMAT_VEC2,
@@ -65,8 +65,6 @@ typedef enum
 {
     RR_STORE_OP_STORE,
     RR_STORE_OP_DONT_CARE,
-    RR_STORE_OP_RESOLVE,
-    RR_STORE_OP_RESOLVE_AND_STORE,
 } Rr_StoreOp;
 
 typedef enum

@@ -29,27 +29,6 @@
 
 #include <string.h>
 
-static VkDescriptorType Rr_GetVulkanDescriptorType(Rr_PipelineBindingType Type)
-{
-    switch(Type)
-    {
-        case RR_PIPELINE_BINDING_TYPE_SAMPLER:
-            return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE:
-            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
-            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        case RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER:
-            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
-            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        case RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE:
-            return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        default:
-            return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-    }
-}
-
 static VkDescriptorPool Rr_CreateDescriptorPool(
     Rr_Device *Device,
     uint32_t SetCount,
@@ -419,7 +398,7 @@ void Rr_AddDescriptor(
     }
     Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
         .binding = Binding,
-        .descriptorType = Rr_GetVulkanDescriptorType(Type),
+        .descriptorType = Rr_ToVulkanDescriptorType(Type),
         .descriptorCount = 1,
         .stageFlags = Rr_ToVulkanShaderStageFlags(ShaderStage)
     };
@@ -439,7 +418,7 @@ void Rr_AddDescriptorArray(
     }
     Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
         .binding = Binding,
-        .descriptorType = Rr_GetVulkanDescriptorType(Type),
+        .descriptorType = Rr_ToVulkanDescriptorType(Type),
         .descriptorCount = Count,
         .stageFlags = Rr_ToVulkanShaderStageFlags(ShaderStage)
     };
@@ -633,7 +612,7 @@ void Rr_ApplyDescriptorsState(
                         Binding->Buffer.Handle,
                         Binding->Buffer.Size,
                         0, /* We rely on dynamic offsets! */
-                        Rr_GetVulkanDescriptorType(Binding->Type),
+                        Rr_ToVulkanDescriptorType(Binding->Type),
                         Scratch.Arena);
                     DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
                     DynamicOffsetCount++;
@@ -647,7 +626,7 @@ void Rr_ApplyDescriptorsState(
                         Binding->Buffer.Handle,
                         Binding->Buffer.Size,
                         0, /* We rely on dynamic offsets! */
-                        Rr_GetVulkanDescriptorType(Binding->Type),
+                        Rr_ToVulkanDescriptorType(Binding->Type),
                         Scratch.Arena);
                     DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
                     DynamicOffsetCount++;

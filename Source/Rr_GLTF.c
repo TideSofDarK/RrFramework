@@ -118,7 +118,7 @@ static inline Rr_Format Rr_GLTFAttributeTypeToFormat(Rr_GLTFAttributeType Type)
         case RR_GLTF_ATTRIBUTE_TYPE_TANGENT:
             return RR_FORMAT_VEC3;
         default:
-            return RR_FORMAT_INVALID;
+            RR_ABORT("Invalid GLTF attribute type!");
     }
 }
 

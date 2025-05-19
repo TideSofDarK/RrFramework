@@ -38,7 +38,6 @@ typedef struct Rr_GraphicsPipeline Rr_GraphicsPipeline;
 
 typedef enum
 {
-    RR_STENCIL_OP_INVALID,
     RR_STENCIL_OP_KEEP,
     RR_STENCIL_OP_ZERO,
     RR_STENCIL_OP_REPLACE,
@@ -109,7 +108,6 @@ struct Rr_VertexInputBinding
 
 typedef enum
 {
-    RR_BLEND_FACTOR_INVALID,
     RR_BLEND_FACTOR_ZERO,
     RR_BLEND_FACTOR_ONE,
     RR_BLEND_FACTOR_SRC_COLOR,
