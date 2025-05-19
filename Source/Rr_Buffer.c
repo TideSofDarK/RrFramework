@@ -397,6 +397,6 @@ Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(
     Rr_Buffer *Buffer)
 {
     size_t AllocatedBufferIndex =
-        Renderer->CurrentFrameIndex % Buffer->AllocatedBufferCount;
+        Renderer->FrameNumber % Buffer->AllocatedBufferCount;
     return &Buffer->AllocatedBuffers[AllocatedBufferIndex];
 }

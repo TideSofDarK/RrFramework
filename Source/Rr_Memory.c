@@ -266,7 +266,7 @@ void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena)
         Replica.Capacity *= 2;
         Data = RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
 
-        if(Replica.Count)
+        if(Replica.Count && Replica.Data)
         {
             memcpy(Data, Replica.Data, Size * Replica.Count);
         }

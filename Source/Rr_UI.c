@@ -859,6 +859,7 @@ static inline bool Rr_RectContainsClipped(
     Rr_Rect *Rect,
     Rr_Vec2 Point)
 {
+    assert(Window != NULL);
     return Rr_RectContains(RR_UI_CLIP_RECT(Window), Point) &&
            Rr_RectContains(Rect, Point);
 }
@@ -1003,10 +1004,10 @@ static inline void Rr_AddClipRect(Rr_Rect *Rect)
 
     *ClipRect = (Rr_UIClipRect){
         .FirstIndex = gContext->Indices.Count,
-        .Rect = { { (int32_t)roundf(Rect->Offset.X),
-                    (int32_t)roundf(Rect->Offset.Y) },
-                  { (int32_t)roundf(Rect->Extent.Width),
-                    (int32_t)roundf(Rect->Extent.Height) } },
+        .Rect = { { floorf(Rect->Offset.X),
+                    floorf(Rect->Offset.Y) },
+                  { ceilf(Rect->Extent.Width),
+                    ceilf(Rect->Extent.Height) } },
     };
 }
 
