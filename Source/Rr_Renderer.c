@@ -830,10 +830,10 @@ void Rr_DrawFrame(void)
      * will be used by the graph. */
 
     *Frame->VirtualSwapchainImage = (Rr_Image){
-        .AllocatedImageCount = 1,
         .Extent = Renderer->Swapchain.Extent,
         .Format = Renderer->Swapchain.Format,
         .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
+        .AllocatedImageCount = 1,
         .AllocatedImages[0] = {
             .View = Renderer->SwapchainImages.Data[SwapchainImageIndex].View,
             .Handle = SwapchainImageHandle,

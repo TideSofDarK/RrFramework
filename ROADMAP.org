@@ -1,5 +1,6 @@
 * Critical
-- [ ] Synchronization (?) bug with host written buffers (very apparent on Windows + NVidia hardware for some reason)
+- [X] Synchronization (?) bug with host written buffers.
+      Turns out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame. Solution: add one more AllocatedBuffer for PER_FRAME buffers.
 - [ ] Hash collision handling across all usages of Rr_Map
 - [ ] Hashing objects such as VkFramebuffer looks very bad
 - [ ] Add deletion queues for Vulkan object
