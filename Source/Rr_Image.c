@@ -638,6 +638,6 @@ Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(
     Rr_Image *Image)
 {
     size_t AllocatedImageIndex =
-        Renderer->CurrentFrameIndex % Image->AllocatedImageCount;
+        Renderer->FrameIndex % Image->AllocatedImageCount;
     return &Image->AllocatedImages[AllocatedImageIndex];
 }

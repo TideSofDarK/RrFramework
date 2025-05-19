@@ -739,9 +739,6 @@ void Rr_NewFrame(void)
 {
     Rr_Renderer *Renderer = gApp->Renderer;
 
-    Renderer->FrameNumber++;
-    Renderer->CurrentFrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
-
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     /* TODO: Decrement atomic refcounts on used resources. */
@@ -952,12 +949,15 @@ void Rr_DrawFrame(void)
 
     Rr_InitSwapchain(Renderer);
 
+    Renderer->FrameNumber++;
+    Renderer->FrameIndex = Renderer->FrameNumber % RR_FRAME_OVERLAP;
+
     Rr_DestroyScratch(Scratch);
 }
 
 Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer)
 {
-    return &Renderer->Frames[Renderer->CurrentFrameIndex];
+    return &Renderer->Frames[Renderer->FrameIndex];
 }
 
 bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer)

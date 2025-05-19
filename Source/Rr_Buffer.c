@@ -107,7 +107,7 @@ Rr_Buffer *Rr_CreateBuffer(
     Buffer->AllocatedBufferCount = 1;
     if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_PER_FRAME_BIT))
     {
-        /* NOTE: Since both drawing/updating is done inside clients
+        /* NOTE: Since both drawing/updating is done inside users
          * Iterate() function we need one more buffer to accomodate
          * for host writes before waiting on SubmitFence.
          * Imaging this scenario:

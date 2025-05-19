@@ -120,8 +120,8 @@ struct Rr_Renderer
     RR_ARRAY(VkFence) Fences;
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
-    size_t FrameNumber;
-    size_t CurrentFrameIndex;
+    size_t FrameNumber; /* Total frames rendered */
+    size_t FrameIndex;  /* Current frame-in-flight index. */
 
     RR_ARRAY(Rr_RenderPass) RenderPasses;
     RR_ARRAY(Rr_Framebuffer) Framebuffers;
