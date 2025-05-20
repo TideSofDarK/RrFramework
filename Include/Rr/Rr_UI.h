@@ -82,12 +82,12 @@ struct Rr_UIStyle
     Rr_Vec4 ButtonDisabled;
 };
 
-extern Rr_UIFont *Rr_CreateFont(
+extern Rr_UIFont *Rr_UICreateFont(
     Rr_UIContext *Context,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef);
 
-extern void Rr_DestroyFont(Rr_UIContext *Context, Rr_UIFont *Font);
+extern void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font);
 
 typedef enum
 {

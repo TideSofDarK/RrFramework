@@ -199,7 +199,7 @@ static Rr_UIContext *gContext;
 #define CJSON_GET_OBJECT_FLOAT(Object, Item) \
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
 
-Rr_UIFont *Rr_CreateFont(
+Rr_UIFont *Rr_UICreateFont(
     Rr_UIContext *Context,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef)
@@ -283,7 +283,7 @@ Rr_UIFont *Rr_CreateFont(
     return Font;
 }
 
-void Rr_DestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
+void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
 {
     Rr_DestroyImage(gApp->Renderer, Font->Atlas);
 
@@ -942,8 +942,7 @@ static inline bool Rr_UIDragBehavior(
     Rr_Vec2 Value,
     bool *Hovered)
 {
-    bool Contains =
-        Rr_UIRectContains(Window, Rect, gContext->MousePosition);
+    bool Contains = Rr_UIRectContains(Window, Rect, gContext->MousePosition);
     if(Hovered)
     {
         *Hovered = Contains;
@@ -1893,7 +1892,10 @@ bool Rr_UICheckbox(const char *Text, bool *Checked)
     return Up;
 }
 
-bool Rr_UIInputField(size_t BufferSize, char *Buffer, Rr_UIInputFieldFlags Flags)
+bool Rr_UIInputField(
+    size_t BufferSize,
+    char *Buffer,
+    Rr_UIInputFieldFlags Flags)
 {
     return false;
 }
@@ -2189,7 +2191,7 @@ Rr_UIContext *Rr_UICreateContext(void)
             .MagFilter = RR_FILTER_LINEAR,
         });
 
-    Context->Font = Rr_CreateFont(
+    Context->Font = Rr_UICreateFont(
         Context,
         RR_BUILTIN_SOURCESERIF4_PNG,
         RR_BUILTIN_SOURCESERIF4_JSON);
@@ -2206,7 +2208,7 @@ void Rr_UIDestroyContext(Rr_UIContext *Context)
     Rr_DestroySampler(Renderer, Context->Sampler);
     Rr_DestroyPipelineLayout(Renderer, Context->PipelineLayout);
     Rr_DestroyGraphicsPipeline(Renderer, Context->GraphicsPipeline);
-    Rr_DestroyFont(Context, Context->Font);
+    Rr_UIDestroyFont(Context, Context->Font);
     Rr_DestroyArena(Context->Arena);
 }
 
