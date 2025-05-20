@@ -1035,16 +1035,9 @@ Rr_PresentMode Rr_GetPresentMode(Rr_Renderer *Renderer)
 
 const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode)
 {
-    static const char *PresentModeStrings[] = {
-        "FIFO",
-        "FIFO_RELAXED",
-        "IMMEDIATE",
-        "MAILBOX",
-    };
+    assert((size_t)PresentMode < RR_ARRAY_COUNT(RR_PRESENT_MODES));
 
-    assert((size_t)PresentMode < RR_ARRAY_COUNT(PresentModeStrings));
-
-    return PresentModeStrings[(size_t)PresentMode];
+    return RR_PRESENT_MODES[(size_t)PresentMode];
 }
 
 bool Rr_SetPresentMode(Rr_Renderer *Renderer, Rr_PresentMode PresentMode)

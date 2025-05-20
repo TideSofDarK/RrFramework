@@ -41,16 +41,37 @@ static void Iterate(void *UserData)
     }
 
     Rr_BeginWindow("Rr_UI.h", Flags);
-    Rr_Label("Checkboxes");
+    Rr_Label("Combobox");
+    static const char *ComboboxOptions[] = {
+        "Option A",
+        "Option B",
+        "Option C",
+        "Option D",
+    };
+    static uint32_t SelectedComboboxOption = 0;
+    if(Rr_Combobox(
+           "Title",
+           RR_ARRAY_COUNT(ComboboxOptions),
+           ComboboxOptions,
+           &SelectedComboboxOption))
+    {
+    }
+    Rr_Separator();
+    Rr_Label("Checkbox");
     Rr_Checkbox("Close Button", &CloseButton);
     Rr_Checkbox("No Resize", &NoResize);
     Rr_Checkbox("No Scrollbar", &NoScrollbar);
     Rr_Checkbox("No Title", &NoTitle);
     Rr_Separator();
-    Rr_Label("Buttons");
+    Rr_Label("Button");
+    Rr_BeginHorizontal();
+    if(Rr_Button("Show Style Editor"))
+    {
+    }
     if(Rr_Button("Show Another Window"))
     {
     }
+    Rr_EndHorizontal();
     Rr_Separator();
     Rr_Label("Text");
     Rr_Label("Multi\n line\n  text");
@@ -70,6 +91,9 @@ static void Iterate(void *UserData)
     static bool DoNothing;
     static bool DoNothing2;
     Rr_Checkbox("Do Nothing", &DoNothing);
+    if(Rr_Button("Do Something!"))
+    {
+    }
     Rr_Checkbox("Do Nothing 2", &DoNothing2);
     Rr_EndHorizontal();
     Rr_EndWindow();

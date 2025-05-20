@@ -170,7 +170,6 @@ struct Rr_UIContext
     float ScrollbarWidth;
     float ScrollbarHandleWidth;
     Rr_Vec2 ButtonPadding;
-    Rr_Vec2 CheckboxSize;
 
     Rr_Vec2 Cursor;
 
@@ -444,22 +443,22 @@ static inline void Rr_HorizontalGradientQuad(
 
 static inline void Rr_DrawSolidTriangle(
     Rr_UIWindow *Window,
-    Rr_Vec2 PositionA,
-    Rr_Vec2 PositionB,
-    Rr_Vec2 PositionC,
+    Rr_Vec2 *Positions,
     Rr_Vec4 *Color)
 {
+    assert(Positions != NULL);
+
     Rr_UIVertex Vertices[3] = {
         {
-            .Position = PositionA,
+            .Position = Positions[0],
             .Color = *Color,
         },
         {
-            .Position = PositionB,
+            .Position = Positions[1],
             .Color = *Color,
         },
         {
-            .Position = PositionC,
+            .Position = Positions[2],
             .Color = *Color,
         },
     };
@@ -1004,10 +1003,8 @@ static inline void Rr_AddClipRect(Rr_Rect *Rect)
 
     *ClipRect = (Rr_UIClipRect){
         .FirstIndex = gContext->Indices.Count,
-        .Rect = { { floorf(Rect->Offset.X),
-                    floorf(Rect->Offset.Y) },
-                  { ceilf(Rect->Extent.Width),
-                    ceilf(Rect->Extent.Height) } },
+        .Rect = { { floorf(Rect->Offset.X), floorf(Rect->Offset.Y) },
+                  { ceilf(Rect->Extent.Width), ceilf(Rect->Extent.Height) } },
     };
 }
 
@@ -1167,14 +1164,12 @@ static inline bool Rr_AddResizeHandle(Rr_UIWindow *Window, bool Defer)
             ResizeHandleColor =
                 Rr_MulV4F(gContext->DeferredResizeHandleColor, 0.75f);
         }
-        Rr_DrawSolidTriangle(
-            Window,
-            (Rr_Vec2){ BottomRight.X - gContext->ResizeHandleSize,
-                       BottomRight.Y },
-            (Rr_Vec2){ BottomRight.X,
-                       BottomRight.Y - gContext->ResizeHandleSize },
-            (Rr_Vec2){ BottomRight.X, BottomRight.Y },
-            &ResizeHandleColor);
+        Rr_Vec2 Positions[] = {
+            { BottomRight.X - gContext->ResizeHandleSize, BottomRight.Y },
+            { BottomRight.X, BottomRight.Y - gContext->ResizeHandleSize },
+            { BottomRight.X, BottomRight.Y },
+        };
+        Rr_DrawSolidTriangle(Window, Positions, &ResizeHandleColor);
     }
 
     return true;
@@ -1478,9 +1473,7 @@ void Rr_EndWindow(void)
     {
         Rr_DrawSolidTriangle(
             gContext->CurrentWindow,
-            gContext->DeferredResizeHandlePositions[0],
-            gContext->DeferredResizeHandlePositions[1],
-            gContext->DeferredResizeHandlePositions[2],
+            gContext->DeferredResizeHandlePositions,
             &gContext->DeferredResizeHandleColor);
         gContext->DeferResizeHandle = false;
     }
@@ -1659,6 +1652,12 @@ void Rr_Separator(void)
     Rr_Vec4 Color = Rr_MulV4F(gContext->Style.Foreground, 0.75f);
     Rr_DrawSolidQuad(Window, &(Rr_Rect){ Position, Size }, &Color);
 
+    {
+        Color.XYZ = Rr_MulV3F(Color.XYZ, 0.8f);
+        Position.Y += Size.Height;
+        Rr_DrawSolidQuad(Window, &(Rr_Rect){ Position, Size }, &Color);
+    }
+
     gContext->Cursor.Y += gContext->SeparatorLineHeight;
 }
 
@@ -1799,15 +1798,35 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
 
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
+    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
+    Rr_Vec2 TextPosition = gContext->Cursor;
+    TextPosition.Y += gContext->ButtonPadding.Height;
+    Rr_Vec2 TextSize = Rr_DrawText(
+        Window,
+        TextPosition,
+        &TextString,
+        0.0f,
+        &gContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = { 0 };
+    TotalSize.Width = RR_UI_IS_HORIZONTAL()
+                          ? TextSize.Width + gContext->ContentsPadding.Width +
+                                gContext->LineHeight
+                          : gContext->AvailableContentsWidth;
+    TotalSize.Height =
+        gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f;
+    Rr_Vec2 CheckboxSize = { gContext->LineHeight, gContext->LineHeight };
+
     Rr_Vec2 ContentsPadding =
         Rr_MulV2F(gContext->Style.ContentsPadding, gContext->FontSize);
 
-    Rr_Vec2 FramePosition = Rr_AddV2(
-        gContext->Cursor,
-        (Rr_Vec2){
-            gContext->FrameThickness,
-            gContext->LineHeight / 2.0f - gContext->CheckboxSize.Y / 2.0f,
-        });
+    Rr_Vec2 FramePosition = gContext->Cursor;
+    FramePosition.X +=
+        RR_UI_IS_HORIZONTAL()
+            ? (TextSize.Width + gContext->ContentsPadding.Width)
+            : (gContext->AvailableContentsWidth - gContext->LineHeight);
+    FramePosition.X += gContext->FrameThickness;
 
     bool Up = false;
     bool Hovered = false;
@@ -1816,7 +1835,7 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
         Window,
         &(Rr_Rect){
             FramePosition,
-            gContext->CheckboxSize,
+            CheckboxSize,
         },
         NULL,
         &Up,
@@ -1834,11 +1853,21 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
         : Hovered  ? 0.75f
                    : 1.0f);
 
+    Rr_Vec4 BackgroundColor = gContext->Style.Background;
+    BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
+    Rr_DrawSolidQuad(
+        Window,
+        &(Rr_Rect){
+            FramePosition,
+            CheckboxSize,
+        },
+        &BackgroundColor);
+
     Rr_DrawFrameQuad(
         Window,
         &(Rr_Rect){
             FramePosition,
-            gContext->CheckboxSize,
+            CheckboxSize,
         },
         gContext->FrameThickness,
         &Color);
@@ -1846,34 +1875,17 @@ bool Rr_Checkbox(const char *Text, bool *Checked)
     if(*Checked)
     {
         Rr_Vec2 Inset = (Rr_Vec2){
-            gContext->FrameThickness * 4.0f,
-            gContext->FrameThickness * 4.0f,
+            gContext->FrameThickness * 8.0f,
+            gContext->FrameThickness * 8.0f,
         };
         Rr_Vec2 CheckmarkPosition = Rr_AddV2(FramePosition, Inset);
-        Rr_Vec2 CheckmarkSize =
-            Rr_SubV2(gContext->CheckboxSize, Rr_MulV2F(Inset, 2.0f));
+        Rr_Vec2 CheckmarkSize = Rr_SubV2(CheckboxSize, Rr_MulV2F(Inset, 2.0f));
         Rr_DrawSolidQuad(
             Window,
             &(Rr_Rect){ CheckmarkPosition, CheckmarkSize },
             &Color);
     }
 
-    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
-    Rr_Vec2 TextPosition = Rr_AddV2(
-        gContext->Cursor,
-        (Rr_Vec2){ ContentsPadding.X + gContext->CheckboxSize.X, 0.0f });
-    Rr_Vec2 TextSize = Rr_DrawText(
-        Window,
-        TextPosition,
-        &TextString,
-        0.0f,
-        &gContext->Style.Foreground,
-        0);
-
-    Rr_Vec2 TotalSize = {
-        gContext->CheckboxSize.X + TextSize.X + ContentsPadding.X,
-        RR_MAX(gContext->CheckboxSize.Y, TextSize.Y),
-    };
     Rr_Advance(TotalSize);
 
     Rr_DestroyScratch(Scratch);
@@ -1897,66 +1909,151 @@ bool Rr_Combobox(
     assert(Options != NULL);
     assert(SelectedIndex != NULL);
 
-    /* Rr_Scratch Scratch = Rr_GetScratch(NULL); */
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    /* Rr_UIWindow *Window = gContext->CurrentWindow; */
+    Rr_UIWindow *Window = gContext->CurrentWindow;
 
-    /* Rr_Vec2 ButtonPosition = gContext->Cursor; */
-    /* Rr_UIQuad ButtonQuad = Rr_ReserveQuad(Window); */
+    /* Draw title first. */
 
-    /* Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena); */
-    /* Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, gContext->ButtonPadding);
-     */
-    /* Rr_Vec2 TextSize = Rr_DrawText( */
-    /*     Window, */
-    /*     TextPosition, */
-    /*     &TextString, */
-    /*     0.0f, */
-    /*     &gContext->Style.Foreground, */
-    /*     0); */
+    Rr_String TitleString = Rr_CreateString(Title, 0, Scratch.Arena);
+    Rr_Vec2 TitlePosition = {
+        gContext->Cursor.X,
+        gContext->Cursor.Y,
+    };
+    Rr_Vec2 TitleSize = Rr_DrawText(
+        Window,
+        TitlePosition,
+        &TitleString,
+        0.0f,
+        &gContext->Style.Foreground,
+        0);
 
-    /* Rr_Vec2 ButtonSize = */
-    /*     Rr_AddV2(TextSize, Rr_MulV2F(gContext->ButtonPadding, 2.0f)); */
+    Rr_UIQuad ButtonQuad = Rr_ReserveQuad(Window);
 
-    /* bool Up = false; */
-    /* bool Hovered = false; */
-    /* bool Held = false; */
-    /* Rr_ButtonBehavior( */
-    /*     Window, */
-    /*     &(Rr_Rect){ */
-    /*         ButtonPosition, */
-    /*         ButtonSize, */
-    /*     }, */
-    /*     NULL, */
-    /*     &Up, */
-    /*     &Hovered, */
-    /*     &Held); */
+    Rr_String SelectedString =
+        Rr_CreateString(Options[*SelectedIndex], 0, Scratch.Arena);
+    Rr_Vec2 SelectedTextSize = Rr_CalculateTextSize(
+        gContext->Font,
+        gContext->FontSize,
+        &SelectedString,
+        0.0f,
+        0);
 
-    /* Rr_Rect ButtonRect = { */
-    /*     ButtonPosition, */
-    /*     ButtonSize, */
-    /* }; */
-    /* if(Held) */
-    /* { */
-    /*     Rr_SolidQuad(ButtonQuad, &ButtonRect, &gContext->Style.ButtonHeld);
-     */
-    /* } */
-    /* else if(Hovered) */
-    /* { */
-    /*     Rr_SolidQuad(ButtonQuad, &ButtonRect,
-     * &gContext->Style.ButtonHovered); */
-    /* } */
-    /* else */
-    /* { */
-    /*     Rr_SolidQuad(ButtonQuad, &ButtonRect, &gContext->Style.ButtonNormal);
-     */
-    /* } */
+    Rr_Vec2 ButtonPosition = gContext->Cursor;
+    ButtonPosition.X += gContext->AvailableContentsWidth -
+                        SelectedTextSize.Width - gContext->LineHeight -
+                        gContext->ButtonPadding.Width * 2.0f;
 
-    /* Rr_Advance(ButtonSize); */
+    Rr_Vec2 SelectedTextPosition = ButtonPosition;
+    SelectedTextPosition.X += gContext->ButtonPadding.Width;
+    Rr_DrawText(
+        Window,
+        SelectedTextPosition,
+        &SelectedString,
+        0.0f,
+        &gContext->Style.Foreground,
+        0);
 
-    /* Rr_DestroyScratch(Scratch); */
+    Rr_Vec2 ButtonSize =
+        Rr_AddV2(SelectedTextSize, Rr_MulV2F(gContext->ButtonPadding, 2.0f));
+    ButtonSize.Height = gContext->LineHeight;
 
-    /* return Up; */
+    bool Up = false;
+    bool Hovered = false;
+    bool Held = false;
+    Rr_ButtonBehavior(
+        Window,
+        &(Rr_Rect){
+            ButtonPosition,
+            ButtonSize,
+        },
+        NULL,
+        &Up,
+        &Hovered,
+        &Held);
+
+    Rr_Rect ButtonRect = {
+        ButtonPosition,
+        ButtonSize,
+    };
+    Rr_Vec4 BackgroundColor = gContext->Style.Background;
+    BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
+    Rr_SolidQuad(ButtonQuad, &ButtonRect, &BackgroundColor);
+
+    /* Add handle. */
+    {
+        Rr_Vec4 *HandleBackground;
+        if(Held)
+        {
+            HandleBackground = &gContext->Style.ButtonHeld;
+        }
+        else if(Hovered)
+        {
+            HandleBackground = &gContext->Style.ButtonHovered;
+        }
+        else
+        {
+            HandleBackground = &gContext->Style.ButtonNormal;
+        }
+
+        float HandleSize = ButtonSize.Height;
+        Rr_Rect HandleRect = {
+            {
+                ButtonRect.Offset.X + ButtonRect.Extent.Width,
+                ButtonRect.Offset.Y,
+            },
+            {
+                HandleSize,
+                HandleSize,
+            },
+        };
+        Rr_DrawSolidQuad(Window, &HandleRect, &gContext->Style.ButtonHeld);
+
+        Rr_Vec2 HandleCenter = Rr_RectCenter(&HandleRect);
+        Rr_Vec2 TrianglePositions[] = {
+            Rr_AddV2(
+                HandleCenter,
+                Rr_MulV2F(
+                    (Rr_Vec2){ -1.0f, -1.0f },
+                    gContext->LineHeight / 4.0f)),
+            Rr_AddV2(
+                HandleCenter,
+                Rr_MulV2F(
+                    (Rr_Vec2){ 1.0f, -1.0f },
+                    gContext->LineHeight / 4.0f)),
+            Rr_AddV2(
+                HandleCenter,
+                Rr_MulV2F(
+                    (Rr_Vec2){ 0.0f, 1.0f },
+                    gContext->LineHeight / 4.0f)),
+        };
+        Rr_DrawSolidTriangle(
+            Window,
+            TrianglePositions,
+            &gContext->Style.Foreground);
+    }
+
+    /* Add border. */
+
+    Rr_Vec2 BorderSize = ButtonSize;
+    BorderSize.X += gContext->LineHeight;
+    Rr_DrawFrameQuad(
+        Window,
+        &(Rr_Rect){ ButtonPosition, BorderSize },
+        gContext->FrameThickness,
+        &gContext->Style.Foreground);
+
+    Rr_Vec2 TotalSize = { 0 };
+    TotalSize.Width = RR_UI_IS_HORIZONTAL()
+                          ? TitleSize.Width + gContext->ContentsPadding.Width +
+                                BorderSize.Width
+                          : gContext->AvailableContentsWidth;
+    TotalSize.Height =
+        gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f;
+    Rr_Advance(TotalSize);
+
+    Rr_DestroyScratch(Scratch);
+
     return false;
 }
 
@@ -2183,8 +2280,6 @@ void Rr_BeginUI(Rr_UIContext *Context)
         gContext->SeparatorLineHeight = gContext->LineHeight * 0.5f;
         gContext->ButtonPadding = (Rr_Vec2){ gContext->LineHeight * 0.25f,
                                              gContext->LineHeight * 0.125f };
-        gContext->CheckboxSize = (Rr_Vec2){ gContext->LineHeight * 0.75f,
-                                            gContext->LineHeight * 0.75f };
 
         gContext->WindowTitleHeight =
             gContext->Style.TitlePadding.Y * gContext->FontSize * 2.0f +
@@ -2391,22 +2486,18 @@ void Rr_DebugOverlay(void)
         size_t PresentModeCount;
         Rr_PresentMode *PresentModes =
             Rr_GetAvailablePresentModes(Renderer, &PresentModeCount);
-        for(size_t Index = 0; Index < PresentModeCount; ++Index)
+        uint32_t CurrentPresentModeIndex =
+            (uint32_t)Renderer->Swapchain.PresentMode;
+        if(Rr_Combobox(
+               "Present Mode",
+               PresentModeCount,
+               RR_PRESENT_MODES,
+               &CurrentPresentModeIndex))
         {
-            if(Rr_Button(Rr_GetPresentModeString(PresentModes[Index])))
-            {
-                Rr_SetPresentMode(Renderer, PresentModes[Index]);
-            }
+            Rr_SetPresentMode(
+                Renderer,
+                (Rr_PresentMode)CurrentPresentModeIndex);
         }
-        /* Rr_PresentMode PresentMode = Rr_GetSwapchainPresentMode(Renderer); */
-        /* bool VSyncEnabled = PresentMode == RR_PRESENT_MODE_FIFO; */
-        /* if(Rr_Checkbox("Use VSync", &VSyncEnabled)) */
-        /* { */
-        /*     Rr_SetSwapchainPresentMode( */
-        /*         Rr_GetRenderer(), */
-        /*         VSyncEnabled ? RR_PRESENT_MODE_FIFO */
-        /*                      : RR_PRESENT_MODE_IMMEDIATE); */
-        /* } */
         Rr_LabelF("FPS: %.2f", Rr_GetFramesPerSecond());
         Rr_Checkbox(
             "Frame Limiter Enabled",

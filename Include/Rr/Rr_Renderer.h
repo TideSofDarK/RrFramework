@@ -120,6 +120,13 @@ typedef enum
     RR_PRESENT_MODE_MAILBOX,
 } Rr_PresentMode;
 
+static const char *RR_PRESENT_MODES[] = {
+    "FIFO",
+    "FIFO_RELAXED",
+    "IMMEDIATE",
+    "MAILBOX",
+};
+
 extern struct Rr_Graph *Rr_GetGraph(Rr_Renderer *Renderer);
 
 extern Rr_Arena *Rr_GetFrameArena(Rr_Renderer *Renderer);

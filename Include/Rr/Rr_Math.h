@@ -823,12 +823,31 @@ static inline Rr_Vec2 Rr_AddV2(Rr_Vec2 Left, Rr_Vec2 Right)
     return Result;
 }
 
+static inline Rr_Vec2 Rr_AddV2F(Rr_Vec2 Left, float Right)
+{
+    Rr_Vec2 Result;
+    Result.X = Left.X + Right;
+    Result.Y = Left.Y + Right;
+
+    return Result;
+}
+
 static inline Rr_Vec3 Rr_AddV3(Rr_Vec3 Left, Rr_Vec3 Right)
 {
     Rr_Vec3 Result;
     Result.X = Left.X + Right.X;
     Result.Y = Left.Y + Right.Y;
     Result.Z = Left.Z + Right.Z;
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_AddV3F(Rr_Vec3 Left, float Right)
+{
+    Rr_Vec3 Result;
+    Result.X = Left.X + Right;
+    Result.Y = Left.Y + Right;
+    Result.Z = Left.Z + Right;
 
     return Result;
 }
@@ -851,11 +870,32 @@ static inline Rr_Vec4 Rr_AddV4(Rr_Vec4 Left, Rr_Vec4 Right)
     return Result;
 }
 
+static inline Rr_Vec4 Rr_AddV4F(Rr_Vec4 Left, float Right)
+{
+    Rr_Vec4 Result;
+
+    Result.X = Left.X + Right;
+    Result.Y = Left.Y + Right;
+    Result.Z = Left.Z + Right;
+    Result.W = Left.W + Right;
+
+    return Result;
+}
+
 static inline Rr_Vec2 Rr_SubV2(Rr_Vec2 Left, Rr_Vec2 Right)
 {
     Rr_Vec2 Result;
     Result.X = Left.X - Right.X;
     Result.Y = Left.Y - Right.Y;
+
+    return Result;
+}
+
+static inline Rr_Vec2 Rr_SubV2F(Rr_Vec2 Left, float Right)
+{
+    Rr_Vec2 Result;
+    Result.X = Left.X - Right;
+    Result.Y = Left.Y - Right;
 
     return Result;
 }
@@ -866,6 +906,16 @@ static inline Rr_Vec3 Rr_SubV3(Rr_Vec3 Left, Rr_Vec3 Right)
     Result.X = Left.X - Right.X;
     Result.Y = Left.Y - Right.Y;
     Result.Z = Left.Z - Right.Z;
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_SubV3F(Rr_Vec3 Left, float Right)
+{
+    Rr_Vec3 Result;
+    Result.X = Left.X - Right;
+    Result.Y = Left.Y - Right;
+    Result.Z = Left.Z - Right;
 
     return Result;
 }
@@ -884,6 +934,18 @@ static inline Rr_Vec4 Rr_SubV4(Rr_Vec4 Left, Rr_Vec4 Right)
     Result.Z = Left.Z - Right.Z;
     Result.W = Left.W - Right.W;
 #endif
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_SubV4F(Rr_Vec4 Left, float Right)
+{
+    Rr_Vec4 Result;
+
+    Result.X = Left.X - Right;
+    Result.Y = Left.Y - Right;
+    Result.Z = Left.Z - Right;
+    Result.W = Left.W - Right;
 
     return Result;
 }
