@@ -1958,6 +1958,9 @@ bool Rr_Combobox(
         Rr_AddV2(SelectedTextSize, Rr_MulV2F(gContext->ButtonPadding, 2.0f));
     ButtonSize.Height = gContext->LineHeight;
 
+    Rr_Vec2 BorderSize = ButtonSize;
+    BorderSize.X += gContext->LineHeight;
+
     bool Up = false;
     bool Hovered = false;
     bool Held = false;
@@ -1965,7 +1968,7 @@ bool Rr_Combobox(
         Window,
         &(Rr_Rect){
             ButtonPosition,
-            ButtonSize,
+            BorderSize,
         },
         NULL,
         &Up,
@@ -2007,7 +2010,7 @@ bool Rr_Combobox(
                 HandleSize,
             },
         };
-        Rr_DrawSolidQuad(Window, &HandleRect, &gContext->Style.ButtonHeld);
+        Rr_DrawSolidQuad(Window, &HandleRect, HandleBackground);
 
         Rr_Vec2 HandleCenter = Rr_RectCenter(&HandleRect);
         Rr_Vec2 TrianglePositions[] = {
@@ -2035,8 +2038,6 @@ bool Rr_Combobox(
 
     /* Add border. */
 
-    Rr_Vec2 BorderSize = ButtonSize;
-    BorderSize.X += gContext->LineHeight;
     Rr_DrawFrameQuad(
         Window,
         &(Rr_Rect){ ButtonPosition, BorderSize },
