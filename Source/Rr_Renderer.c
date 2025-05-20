@@ -136,47 +136,50 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    uint32_t AvailablePresentModeCount = 0;
-
+    uint32_t VulkanPresentModeCount = 0;
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
-        &AvailablePresentModeCount,
+        &VulkanPresentModeCount,
         NULL);
-    assert(AvailablePresentModeCount > 0);
+    assert(VulkanPresentModeCount > 0);
 
-    VkPresentModeKHR *PresentModes = RR_ALLOC_TYPE_COUNT(
+    VkPresentModeKHR *VulkanPresentModes = RR_ALLOC_TYPE_COUNT(
         Scratch.Arena,
         VkPresentModeKHR,
-        AvailablePresentModeCount);
+        VulkanPresentModeCount);
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
-        &AvailablePresentModeCount,
-        PresentModes);
+        &VulkanPresentModeCount,
+        VulkanPresentModes);
 
-    VkPresentModeKHR VulkanPresentMode =
+    VkPresentModeKHR DesiredVulkanPresentMode =
         Rr_ToVulkanPresentMode(Renderer->Swapchain.PresentMode);
-    bool PresentModeAvailable = false;
-    Renderer->Swapchain.AvailablePresentModeCount = 0;
+    bool VulkanPresentModeAvailable = false;
+    Renderer->Swapchain.PresentModeCount = 0;
     for(uint32_t Index = 0;
-        Index < AvailablePresentModeCount;
+        Index < VulkanPresentModeCount &&
+        Renderer->Swapchain.PresentModeCount <
+            RR_ARRAY_COUNT(Renderer->Swapchain.PresentModes);
         Index++)
     {
-        if(PresentModes[Index] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+        if(VulkanPresentModes[Index] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
         {
-            Renderer->Swapchain.AvailablePresentModes[Renderer->Swapchain.AvailablePresentModeCount++] =
-            Rr_ToPresentMode(PresentModes[Index]);
-            if(PresentModes[Index] == VulkanPresentMode)
+            Renderer->Swapchain
+                .PresentModes[Renderer->Swapchain.PresentModeCount++] =
+                Rr_ToPresentMode(VulkanPresentModes[Index]);
+            if(VulkanPresentModes[Index] == DesiredVulkanPresentMode)
             {
-                PresentModeAvailable = true;
+                VulkanPresentModeAvailable = true;
             }
         }
     }
-    if(PresentModeAvailable == false)
+    if(VulkanPresentModeAvailable == false)
     {
-        VulkanPresentMode = PresentModes[0];
-        Renderer->Swapchain.PresentMode = Rr_ToPresentMode(VulkanPresentMode);
+        DesiredVulkanPresentMode = VulkanPresentModes[0];
+        Renderer->Swapchain.PresentMode =
+            Rr_ToPresentMode(DesiredVulkanPresentMode);
     }
 
     uint32_t DesiredNumberOfSwapchainImages =
@@ -268,7 +271,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .preTransform = PreTransform,
         .compositeAlpha = CompositeAlpha,
-        .presentMode = VulkanPresentMode,
+        .presentMode = DesiredVulkanPresentMode,
         .clipped = VK_TRUE,
         .oldSwapchain = OldSwapchain,
     };
@@ -1032,9 +1035,9 @@ Rr_PresentMode *Rr_GetAvailablePresentModes(
 {
     if(Count)
     {
-        *Count = Renderer->Swapchain.AvailablePresentModeCount;
+        *Count = Renderer->Swapchain.PresentModeCount;
     }
-    return Renderer->Swapchain.AvailablePresentModes;
+    return Renderer->Swapchain.PresentModes;
 }
 
 Rr_PresentMode Rr_GetPresentMode(Rr_Renderer *Renderer)
