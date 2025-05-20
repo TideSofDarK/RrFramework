@@ -139,7 +139,7 @@ extern struct Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer);
 
 extern Rr_PresentMode *Rr_GetAvailablePresentModes(
     Rr_Renderer *Renderer,
-    size_t *Count);
+    uint32_t *Count);
 
 extern Rr_PresentMode Rr_GetPresentMode(Rr_Renderer *Renderer);
 

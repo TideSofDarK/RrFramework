@@ -1022,7 +1022,7 @@ Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer)
 
 Rr_PresentMode *Rr_GetAvailablePresentModes(
     Rr_Renderer *Renderer,
-    size_t *Count)
+    uint32_t *Count)
 {
     if(Count)
     {

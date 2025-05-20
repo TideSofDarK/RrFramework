@@ -1817,9 +1817,6 @@ bool Rr_UICheckbox(const char *Text, bool *Checked)
         gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f;
     Rr_Vec2 CheckboxSize = { gContext->LineHeight, gContext->LineHeight };
 
-    Rr_Vec2 ContentsPadding =
-        Rr_MulV2F(gContext->Style.ContentsPadding, gContext->FontSize);
-
     Rr_Vec2 FramePosition = gContext->Cursor;
     FramePosition.X +=
         RR_UI_IS_HORIZONTAL()
@@ -2486,7 +2483,7 @@ void Rr_UIDebugOverlay(void)
     {
         Rr_UILabelF("Time: %.2f", Rr_GetTimeSeconds());
         Rr_UISeparator();
-        size_t PresentModeCount;
+        uint32_t PresentModeCount;
         Rr_PresentMode *PresentModes =
             Rr_GetAvailablePresentModes(Renderer, &PresentModeCount);
         uint32_t CurrentPresentModeIndex =
