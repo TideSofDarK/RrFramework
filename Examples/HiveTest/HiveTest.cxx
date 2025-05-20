@@ -49,33 +49,33 @@ static void Iterate(void *UserData)
         &ColorClear,
         Rr_GetSwapchainImage(Renderer));
 
-    Rr_BeginWindow("Hive", 0);
-    Rr_LabelF("Total Count: %d", Hive.Count);
-    Rr_LabelF("Total Capacity: %d", Hive.Capacity);
+    Rr_UIBeginWindow("Hive", 0);
+    Rr_UILabelF("Total Count: %d", Hive.Count);
+    Rr_UILabelF("Total Capacity: %d", Hive.Capacity);
 #ifdef RR_DEBUG
-    Rr_LabelF("Total Groups Allocated: %d", Hive.TotalGroups);
+    Rr_UILabelF("Total Groups Allocated: %d", Hive.TotalGroups);
 #endif
-    Rr_BeginHorizontal();
-    if(Rr_Button("Add"))
+    Rr_UIBeginHorizontal();
+    if(Rr_UIButton("Add"))
     {
         *PushMyStructIntoHive(&Hive, Arena).Element = SMyStruct(std::rand());
     }
-    if(Rr_Button("Clear"))
+    if(Rr_UIButton("Clear"))
     {
         ClearMyStructHive(&Hive);
     }
-    Rr_EndHorizontal();
-    Rr_Separator();
+    Rr_UIEndHorizontal();
+    Rr_UISeparator();
     int Index = 0;
     for(SMyHiveIterator It = Hive.Begin; It.Element != Hive.End.Element;)
     {
-        Rr_BeginHorizontal();
-        Rr_LabelF(
+        Rr_UIBeginHorizontal();
+        Rr_UILabelF(
             "%d) Group: %d, Value: %d",
             Index,
             It.Group->GroupNumber,
             It.Element->Test1);
-        if(Rr_Button("Remove"))
+        if(Rr_UIButton("Remove"))
         {
             RemoveFromMyStructHive(&Hive, &It);
         }
@@ -83,10 +83,10 @@ static void Iterate(void *UserData)
         {
             AdvanceMyStructHiveIterator(&It);
         }
-        Rr_EndHorizontal();
+        Rr_UIEndHorizontal();
         Index++;
     }
-    Rr_EndWindow();
+    Rr_UIEndWindow();
 }
 
 static void Cleanup(void *UserData)

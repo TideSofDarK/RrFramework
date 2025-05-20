@@ -94,24 +94,20 @@ static void Rr_Iterate(void)
 
     Rr_NewFrame();
 
-    Rr_BeginUI(gApp->UI);
+    Rr_UIBegin(gApp->UI);
 
     gApp->Config->IterateFunc(gApp->UserData);
 
-    Rr_EndUI();
+    Rr_UIEnd();
 
-    bool Minimized = (SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_MINIMIZED);
-    if(Minimized == true)
-    {
-        SDL_Delay(100);
-    }
     Rr_DrawFrame();
 
 #ifdef RR_PERFORMANCE_COUNTER
     Rr_CalculateFPS(&gApp->FrameTime);
 #endif
 
-    if(gApp->FrameTime.EnableFrameLimiter)
+    bool Minimized = (SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_MINIMIZED);
+    if(gApp->FrameTime.EnableFrameLimiter || Minimized)
     {
         Rr_SimulateVSync(&gApp->FrameTime);
     }
@@ -154,6 +150,9 @@ Rr_IntVec2 Rr_GetDefaultWindowSize(void)
 void Rr_Run(Rr_AppConfig *Config)
 {
     assert(gApp == NULL && "You shouldn't call Rr_Run() more than once!");
+    assert(Config->InitFunc != NULL);
+    assert(Config->IterateFunc != NULL);
+    assert(Config->CleanupFunc != NULL);
 
     Rr_InitPlatform();
 
@@ -189,7 +188,7 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
 
     gApp->Renderer = Rr_CreateRenderer();
-    gApp->UI = Rr_CreateUIContext();
+    gApp->UI = Rr_UICreateContext();
 
     Config->InitFunc(gApp->UserData);
 
@@ -199,7 +198,7 @@ void Rr_Run(Rr_AppConfig *Config)
     {
         for(Rr_Event Event; Rr_PollEvent(&Event);)
         {
-            Rr_ProcessUIEvent(&Event);
+            Rr_UIProcessEvent(&Event);
 
             switch(Event.Type)
             {
@@ -226,7 +225,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     gApp->Config->CleanupFunc(gApp->UserData);
 
-    Rr_DestroyUIContext(gApp->UI);
+    Rr_UIDestroyContext(gApp->UI);
 
     Rr_DestroyRenderer(gApp->Renderer);
 

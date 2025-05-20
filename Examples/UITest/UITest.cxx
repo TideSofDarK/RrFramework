@@ -15,7 +15,7 @@ static void Iterate(void *UserData)
         &ColorClear,
         Rr_GetSwapchainImage(Renderer));
 
-    Rr_DebugOverlay();
+    Rr_UIDebugOverlay();
 
     static bool CloseButton = false;
     static bool NoResize = false;
@@ -40,8 +40,8 @@ static void Iterate(void *UserData)
         Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BIT;
     }
 
-    Rr_BeginWindow("Rr_UI.h", Flags);
-    Rr_Label("Combobox");
+    Rr_UIBeginWindow("Rr_UI.h", Flags);
+    Rr_UILabel("Combobox");
     static const char *ComboboxOptions[] = {
         "Option A",
         "Option B",
@@ -49,33 +49,33 @@ static void Iterate(void *UserData)
         "Option D",
     };
     static uint32_t SelectedComboboxOption = 0;
-    if(Rr_Combobox(
+    if(Rr_UICombobox(
            "Title",
            RR_ARRAY_COUNT(ComboboxOptions),
            ComboboxOptions,
            &SelectedComboboxOption))
     {
     }
-    Rr_Separator();
-    Rr_Label("Checkbox");
-    Rr_Checkbox("Close Button", &CloseButton);
-    Rr_Checkbox("No Resize", &NoResize);
-    Rr_Checkbox("No Scrollbar", &NoScrollbar);
-    Rr_Checkbox("No Title", &NoTitle);
-    Rr_Separator();
-    Rr_Label("Button");
-    Rr_BeginHorizontal();
-    if(Rr_Button("Show Style Editor"))
+    Rr_UISeparator();
+    Rr_UILabel("Checkbox");
+    Rr_UICheckbox("Close Button", &CloseButton);
+    Rr_UICheckbox("No Resize", &NoResize);
+    Rr_UICheckbox("No Scrollbar", &NoScrollbar);
+    Rr_UICheckbox("No Title", &NoTitle);
+    Rr_UISeparator();
+    Rr_UILabel("Button");
+    Rr_UIBeginHorizontal();
+    if(Rr_UIButton("Show Style Editor"))
     {
     }
-    if(Rr_Button("Show Another Window"))
+    if(Rr_UIButton("Show Another Window"))
     {
     }
-    Rr_EndHorizontal();
-    Rr_Separator();
-    Rr_Label("Text");
-    Rr_Label("Multi\n line\n  text");
-    Rr_LabelEx(
+    Rr_UIEndHorizontal();
+    Rr_UISeparator();
+    Rr_UILabel("Text");
+    Rr_UILabel("Multi\n line\n  text");
+    Rr_UILabelEx(
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
         "do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
         "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
@@ -85,18 +85,18 @@ static void Iterate(void *UserData)
         "cupidatat non proident, sunt in culpa qui officia deserunt "
         "mollit anim id est laborum. ",
         RR_UI_TEXT_FLAGS_WRAPPED_BIT);
-    Rr_Separator();
-    Rr_Label("Horizontal Layout");
-    Rr_BeginHorizontal();
+    Rr_UISeparator();
+    Rr_UILabel("Horizontal Layout");
+    Rr_UIBeginHorizontal();
     static bool DoNothing;
     static bool DoNothing2;
-    Rr_Checkbox("Do Nothing", &DoNothing);
-    if(Rr_Button("Do Something!"))
+    Rr_UICheckbox("Do Nothing", &DoNothing);
+    if(Rr_UIButton("Do Something!"))
     {
     }
-    Rr_Checkbox("Do Nothing 2", &DoNothing2);
-    Rr_EndHorizontal();
-    Rr_EndWindow();
+    Rr_UICheckbox("Do Nothing 2", &DoNothing2);
+    Rr_UIEndHorizontal();
+    Rr_UIEndWindow();
 }
 
 static void Cleanup(void *UserData)

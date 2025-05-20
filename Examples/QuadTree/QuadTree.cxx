@@ -701,7 +701,7 @@ static void Event(Rr_Event *Event)
     {
         case RR_EVENT_TYPE_MOUSE_WHEEL:
         {
-            if(Rr_WantMouseCapture())
+            if(Rr_UIWantMouseCapture())
             {
                 return;
             }
@@ -722,7 +722,7 @@ static void Event(Rr_Event *Event)
         break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
         {
-            if(Rr_WantMouseCapture())
+            if(Rr_UIWantMouseCapture())
             {
                 return;
             }
@@ -745,7 +745,7 @@ static void Event(Rr_Event *Event)
         {
             if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                if(Selecting == false && Rr_WantMouseCapture() == false)
+                if(Selecting == false && Rr_UIWantMouseCapture() == false)
                 {
                     if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
                     {
@@ -962,39 +962,39 @@ static void Reset()
 
 static void Iterate(void *UserData)
 {
-    Rr_DebugOverlay();
+    Rr_UIDebugOverlay();
 
-    Rr_BeginWindow(
+    Rr_UIBeginWindow(
         "QuadTree",
         RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
-    Rr_LabelF("Regenerating: %d", Rebuilding);
-    if(Rr_Button("Regenerate Tree"))
+    Rr_UILabelF("Regenerating: %d", Rebuilding);
+    if(Rr_UIButton("Regenerate Tree"))
     {
         if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
         {
             RebuildTree();
         }
     }
-    Rr_Separator();
-    Rr_LabelF("Circles: %zu", Tree.ElementsCount());
-    Rr_LabelF("Draw Count: %d", DrawCount);
-    Rr_LabelF("Draws Size: %d", DrawsSize);
-    Rr_LabelF("Box Select: %d", Selecting);
-    Rr_LabelF(
+    Rr_UISeparator();
+    Rr_UILabelF("Circles: %zu", Tree.ElementsCount());
+    Rr_UILabelF("Draw Count: %d", DrawCount);
+    Rr_UILabelF("Draws Size: %d", DrawsSize);
+    Rr_UILabelF("Box Select: %d", Selecting);
+    Rr_UILabelF(
         "Camera Position: %d %d",
         (int)CameraPosition.X,
         (int)CameraPosition.Y);
-    Rr_Separator();
-    Rr_Checkbox("Debug Draw", &DrawDebug);
-    Rr_BeginHorizontal();
-    Rr_Checkbox("Use Query", &UseQuery);
-    if(Rr_Checkbox("Use VSync", &VSyncEnabled))
+    Rr_UISeparator();
+    Rr_UICheckbox("Debug Draw", &DrawDebug);
+    Rr_UIBeginHorizontal();
+    Rr_UICheckbox("Use Query", &UseQuery);
+    if(Rr_UICheckbox("Use VSync", &VSyncEnabled))
     {
         Rr_SetPresentMode(
             Rr_GetRenderer(),
             VSyncEnabled ? RR_PRESENT_MODE_FIFO : RR_PRESENT_MODE_IMMEDIATE);
     }
-    Rr_EndWindow();
+    Rr_UIEndWindow();
 
     Update();
     Render();

@@ -738,6 +738,7 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
 void Rr_NewFrame(void)
 {
     Rr_Renderer *Renderer = gApp->Renderer;
+    Rr_Device *Device = &Renderer->Device;
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
@@ -763,22 +764,12 @@ void Rr_NewFrame(void)
             ->Values.Index;
 
     Rr_ProcessPendingLoads(gApp);
-}
 
-void Rr_DrawFrame(void)
-{
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_Renderer *Renderer = gApp->Renderer;
-    Rr_Device *Device = &Renderer->Device;
-    Rr_Swapchain *Swapchain = &Renderer->Swapchain;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
-
-    VkResult Result;
+    /* Wait for previous work associated with given frame index. */
 
     if(Frame->SubmitFence != VK_NULL_HANDLE)
     {
-        Result = Device->WaitForFences(
+        VkResult Result = Device->WaitForFences(
             Device->Handle,
             1,
             &Frame->SubmitFence,
@@ -791,6 +782,18 @@ void Rr_DrawFrame(void)
 
         Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Device);
     }
+}
+
+void Rr_DrawFrame(void)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Renderer *Renderer = gApp->Renderer;
+    Rr_Device *Device = &Renderer->Device;
+    Rr_Swapchain *Swapchain = &Renderer->Swapchain;
+    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+
+    VkResult Result;
 
     /* Acquire swapchain image. */
 

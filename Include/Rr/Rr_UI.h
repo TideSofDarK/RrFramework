@@ -36,22 +36,22 @@ struct Rr_String;
 
 typedef struct Rr_UIContext Rr_UIContext;
 
-typedef struct Rr_Font Rr_Font;
+typedef struct Rr_UIFont Rr_UIFont;
 
 #define RR_TEXT_BUFFER_SIZE (1024 * 1024)
 #define RR_TEXT_MAX_COLORS  8
 #define RR_TEXT_MAX_GLYPHS  2048
 
-typedef struct Rr_Glyph Rr_Glyph;
-struct Rr_Glyph
+typedef struct Rr_UIGlyph Rr_UIGlyph;
+struct Rr_UIGlyph
 {
     Rr_Vec4 AtlasBounds;
     Rr_Vec4 PlaneBounds;
 };
 
-struct Rr_Font
+struct Rr_UIFont
 {
-    Rr_Glyph Glyphs[RR_TEXT_MAX_GLYPHS];
+    Rr_UIGlyph Glyphs[RR_TEXT_MAX_GLYPHS];
     float Advances[RR_TEXT_MAX_GLYPHS];
     struct Rr_Image *Atlas;
     float LineHeight;
@@ -82,12 +82,12 @@ struct Rr_UIStyle
     Rr_Vec4 ButtonDisabled;
 };
 
-extern Rr_Font *Rr_CreateFont(
+extern Rr_UIFont *Rr_CreateFont(
     Rr_UIContext *Context,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef);
 
-extern void Rr_DestroyFont(Rr_UIContext *Context, Rr_Font *Font);
+extern void Rr_DestroyFont(Rr_UIContext *Context, Rr_UIFont *Font);
 
 typedef enum
 {
@@ -95,8 +95,8 @@ typedef enum
 } Rr_UITextFlagsBits;
 typedef uint32_t Rr_UITextFlags;
 
-Rr_Vec2 Rr_CalculateTextSize(
-    Rr_Font *Font,
+Rr_Vec2 Rr_UICalculateTextSize(
+    Rr_UIFont *Font,
     float FontSize,
     struct Rr_String *String,
     float AvailableWidth,
@@ -118,50 +118,50 @@ typedef enum
 } Rr_UIInputFieldFlagsBits;
 typedef uint32_t Rr_UIInputFieldFlags;
 
-extern void Rr_BeginWindow(const char *Title, Rr_UIWindowFlags Flags);
+extern void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags);
 
-extern void Rr_EndWindow(void);
+extern void Rr_UIEndWindow(void);
 
-extern void Rr_Separator(void);
+extern void Rr_UISeparator(void);
 
-extern void Rr_LabelEx(const char *Text, Rr_UITextFlags Flags);
+extern void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags);
 
-extern void Rr_Label(const char *Text);
+extern void Rr_UILabel(const char *Text);
 
-extern void Rr_LabelF(const char *Format, ...);
+extern void Rr_UILabelF(const char *Format, ...);
 
-extern bool Rr_Button(const char *Text);
+extern bool Rr_UIButton(const char *Text);
 
-extern bool Rr_Checkbox(const char *Text, bool *Checked);
+extern bool Rr_UICheckbox(const char *Text, bool *Checked);
 
-extern bool Rr_InputField(
+extern bool Rr_UIInputField(
     size_t BufferSize,
     char *Buffer,
     Rr_UIInputFieldFlags Flags);
 
-extern bool Rr_Combobox(
+extern bool Rr_UICombobox(
     const char *Title,
     uint32_t OptionCount,
     const char **Options,
     uint32_t *SelectedIndex);
 
-extern void Rr_BeginHorizontal(void);
+extern void Rr_UIBeginHorizontal(void);
 
-extern void Rr_EndHorizontal(void);
+extern void Rr_UIEndHorizontal(void);
 
-extern void Rr_BeginTabs(const char *Title);
+extern void Rr_UIBeginTabs(const char *Title);
 
-extern bool Rr_Tab(const char *Title);
+extern bool Rr_UITab(const char *Title);
 
-extern void Rr_EndTabs(void);
+extern void Rr_UIEndTabs(void);
 
-extern bool Rr_WantMouseCapture(void);
+extern bool Rr_UIWantMouseCapture(void);
 
-extern bool Rr_WantKeyboardCapture(void);
+extern bool Rr_UIWantKeyboardCapture(void);
 
-extern void Rr_SetFontSize(float Size);
+extern void Rr_UISetFontSize(float Size);
 
-extern void Rr_DebugOverlay(void);
+extern void Rr_UIDebugOverlay(void);
 
 #ifdef __cplusplus
 }

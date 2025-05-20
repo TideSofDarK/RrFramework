@@ -29,12 +29,12 @@
 #include <Rr/Rr_String.h>
 #include <Rr/Rr_UI.h>
 
-extern Rr_UIContext *Rr_CreateUIContext(void);
+extern Rr_UIContext *Rr_UICreateContext(void);
 
-extern void Rr_DestroyUIContext(Rr_UIContext *UI);
+extern void Rr_UIDestroyContext(Rr_UIContext *UI);
 
-extern void Rr_ProcessUIEvent(Rr_Event *Event);
+extern void Rr_UIProcessEvent(Rr_Event *Event);
 
-extern void Rr_BeginUI(Rr_UIContext *UI);
+extern void Rr_UIBegin(Rr_UIContext *UI);
 
-extern void Rr_EndUI(void);
+extern void Rr_UIEnd(void);
