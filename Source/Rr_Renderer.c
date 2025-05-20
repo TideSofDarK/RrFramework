@@ -136,35 +136,41 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
+    uint32_t AvailablePresentModeCount = 0;
+
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
-        &Renderer->Swapchain.AvailablePresentModeCount,
+        &AvailablePresentModeCount,
         NULL);
-    assert(Renderer->Swapchain.AvailablePresentModeCount > 0);
+    assert(AvailablePresentModeCount > 0);
 
     VkPresentModeKHR *PresentModes = RR_ALLOC_TYPE_COUNT(
         Scratch.Arena,
         VkPresentModeKHR,
-        Renderer->Swapchain.AvailablePresentModeCount);
+        AvailablePresentModeCount);
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         Renderer->PhysicalDevice.Handle,
         Renderer->Surface,
-        &Renderer->Swapchain.AvailablePresentModeCount,
+        &AvailablePresentModeCount,
         PresentModes);
 
     VkPresentModeKHR VulkanPresentMode =
         Rr_ToVulkanPresentMode(Renderer->Swapchain.PresentMode);
     bool PresentModeAvailable = false;
+    Renderer->Swapchain.AvailablePresentModeCount = 0;
     for(uint32_t Index = 0;
-        Index < Renderer->Swapchain.AvailablePresentModeCount;
+        Index < AvailablePresentModeCount;
         Index++)
     {
-        Renderer->Swapchain.AvailablePresentModes[Index] =
-            Rr_ToPresentMode(PresentModes[Index]);
-        if(PresentModes[Index] == VulkanPresentMode)
+        if(PresentModes[Index] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
         {
-            PresentModeAvailable = true;
+            Renderer->Swapchain.AvailablePresentModes[Renderer->Swapchain.AvailablePresentModeCount++] =
+            Rr_ToPresentMode(PresentModes[Index]);
+            if(PresentModes[Index] == VulkanPresentMode)
+            {
+                PresentModeAvailable = true;
+            }
         }
     }
     if(PresentModeAvailable == false)
