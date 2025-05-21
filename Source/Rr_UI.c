@@ -1559,6 +1559,9 @@ void Rr_UIEndHorizontal(void)
 void Rr_UIBeginTabs(const char *Title)
 {
     RR_UI_ASSERT_WINDOW();
+    assert(
+        gContext->HorizontalX.Count == 0 &&
+        "Tabs can't be aligned horizontally!");
 
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
@@ -1697,6 +1700,9 @@ void Rr_UIEndTabs(void)
 bool Rr_UIFold(const char *Title)
 {
     RR_UI_ASSERT_WINDOW();
+    assert(
+        gContext->HorizontalX.Count == 0 &&
+        "Fold can't be aligned horizontally!");
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -1715,8 +1721,6 @@ bool Rr_UIFold(const char *Title)
         *FoldValueRef = FoldValue;
     }
 
-    Rr_Vec2 TotalSize = { gContext->LineHeight, gContext->LineHeight };
-
     Rr_Vec2 TriangleCenter = gContext->Cursor;
     TriangleCenter.X += gContext->LineHeight / 2.0f;
     TriangleCenter.Y += gContext->LineHeight / 2.0f;
@@ -1728,7 +1732,7 @@ bool Rr_UIFold(const char *Title)
         TriangleCenter,
         gContext->LineHeight / 3.0f,
         &gContext->Style.Foreground,
-        RR_ANGLE_DEG(90.0f));
+        RR_ANGLE_DEG(*FoldValue ? 90.0f : 0.0f));
 
     Rr_Vec2 TitlePosition = gContext->Cursor;
     TitlePosition.X += gContext->LineHeight;
@@ -1739,6 +1743,9 @@ bool Rr_UIFold(const char *Title)
         0,
         &gContext->Style.Foreground,
         0);
+
+    Rr_Vec2 TotalSize = { gContext->AvailableContentsWidth,
+                          gContext->LineHeight };
 
     bool Up = false;
     bool Hovered = false;
@@ -1756,7 +1763,7 @@ bool Rr_UIFold(const char *Title)
 
     if(Up)
     {
-        *Checked = !*Checked;
+        *FoldValue = !*FoldValue;
     }
 
     Rr_UIAdvance(TotalSize);
