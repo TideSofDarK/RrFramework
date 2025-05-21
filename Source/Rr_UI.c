@@ -40,21 +40,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-#define RR_UI_ASSERT_GLOBAL() \
-    assert(gContext != NULL && "Did you forget to call Rr_BeginUI()?")
-
-#define RR_UI_ASSERT_NO_WINDOW()           \
-    RR_UI_ASSERT_GLOBAL();                 \
-    assert(                                \
-        gContext->CurrentWindow == NULL && \
-        "Did you forget to call Rr_EndWindow()?")
-
-#define RR_UI_ASSERT_WINDOW()              \
-    RR_UI_ASSERT_GLOBAL();                 \
-    assert(                                \
-        gContext->CurrentWindow != NULL && \
-        "Did you forget to call Rr_BeginWindow()?")
-
 typedef uint16_t Rr_UIIndex;
 
 typedef struct Rr_UIVertex Rr_UIVertex;
@@ -117,9 +102,13 @@ struct Rr_UIContext
     Rr_Map *WindowMap;
     int TotalWindowCount;
     RR_ARRAY(Rr_UIWindow *) ActiveWindows;
+    Rr_UIWindow *PopupWindow;
     Rr_UIWindow *HoveredWindow;
 
-    Rr_UIWindow *CurrentWindow;
+    RR_ARRAY(Rr_UIWindow *) WindowStack;
+    RR_ARRAY(float) HorizontalStack;
+    float HorizontalMaxHeight;
+
     Rr_Vec2 NextWindowSize;
 
     bool DeferResizeHandle;
@@ -127,9 +116,6 @@ struct Rr_UIContext
     Rr_Vec4 DeferredResizeHandleColor;
 
     float AvailableContentsWidth;
-
-    RR_ARRAY(float) HorizontalX;
-    float HorizontalMaxHeight;
 
     Rr_Vec2 TabCursor;
     const char **SelectedTabRef;
@@ -191,21 +177,41 @@ struct Rr_UIContext
 
 static Rr_UIContext *gContext;
 
-#define RR_UI_IS_HORIZONTAL() (gContext->HorizontalX.Count > 0)
+#define RR_UI_IS_HORIZONTAL() (gContext->HorizontalStack.Count > 0)
+
+#define RR_UI_CURRENT_WINDOW()                                         \
+    (gContext->WindowStack.Count > 0                                   \
+         ? gContext->WindowStack.Data[gContext->WindowStack.Count - 1] \
+         : NULL)
 
 #define RR_UI_CLIP_RECT(Window)                                          \
     ((Window) && (Window)->ClipRects.Count > 0                           \
          ? &(Window)->ClipRects.Data[(Window)->ClipRects.Count - 1].Rect \
          : &(Window)->Rect)
 
-#define CJSON_GET_OBJECT_FLOAT(Object, Item) \
-    ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
+#define RR_UI_ASSERT_GLOBAL() \
+    assert(gContext != NULL && "Did you forget to call Rr_BeginUI()?")
+
+#define RR_UI_ASSERT_NO_WINDOW()            \
+    RR_UI_ASSERT_GLOBAL();                  \
+    assert(                                 \
+        gContext->WindowStack.Count == 0 && \
+        "Did you forget to call Rr_EndWindow()?")
+
+#define RR_UI_ASSERT_WINDOW()               \
+    RR_UI_ASSERT_GLOBAL();                  \
+    assert(                                 \
+        gContext->WindowStack.Count != 0 && \
+        "Did you forget to call Rr_BeginWindow()?")
 
 Rr_UIFont *Rr_UICreateFont(
     Rr_UIContext *Context,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef)
 {
+#define CJSON_GET_OBJECT_FLOAT(Object, Item) \
+    ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
+
     Rr_Renderer *Renderer = gApp->Renderer;
 
     Rr_Image *Atlas;
@@ -286,6 +292,7 @@ Rr_UIFont *Rr_UICreateFont(
     cJSON_Delete(FontDataJSON);
 
     return Font;
+#undef CJSON_GET_OBJECT_FLOAT
 }
 
 void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
@@ -1011,11 +1018,9 @@ static inline void Rr_UISetLastClipRectIndexCount(Rr_UIWindow *Window)
     }
 }
 
-static inline void Rr_UIAddClipRect(Rr_Rect *Rect)
+static inline void Rr_UIAddClipRect(Rr_UIWindow *Window, Rr_Rect *Rect)
 {
     RR_UI_ASSERT_WINDOW();
-
-    Rr_UIWindow *Window = gContext->CurrentWindow;
 
     Rr_UISetLastClipRectIndexCount(Window);
 
@@ -1228,22 +1233,24 @@ static inline void Rr_UIAdvance(Rr_Vec2 Size)
 {
     RR_UI_ASSERT_WINDOW();
 
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+
     if(RR_UI_IS_HORIZONTAL())
     {
         gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
         gContext->HorizontalMaxHeight =
             RR_MAX(gContext->HorizontalMaxHeight, Size.Height);
 
-        gContext->CurrentWindow->YEnd = RR_MAX(
-            gContext->CurrentWindow->YEnd,
+        Window->YEnd = RR_MAX(
+            Window->YEnd,
             gContext->Cursor.Y + gContext->HorizontalMaxHeight);
     }
     else
     {
         gContext->Cursor.Y += Size.Height;
 
-        gContext->CurrentWindow->YEnd =
-            RR_MAX(gContext->CurrentWindow->YEnd, gContext->Cursor.Y);
+        Window->YEnd =
+            RR_MAX(Window->YEnd, gContext->Cursor.Y);
     }
 }
 
@@ -1445,18 +1452,18 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Window->Flags = Flags;
 
+    *RR_PUSH_INTO_ARRAY(&gContext->WindowStack, gContext->FrameArena) = Window;
+
     if(!Window->Closed)
     {
         assert(
             Window->Added == false &&
             "There already is a window with this title!");
 
-        *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->FrameArena) =
+        *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->Arena) =
             Window;
         Window->Added = true;
     }
-
-    gContext->CurrentWindow = Window;
 
     RR_RESET_ARRAY(&Window->ClipRects, gContext->FrameArena);
 
@@ -1479,7 +1486,7 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Rr_Rect WindowClipRect = Window->Rect;
     Rr_ResizeRect(&WindowClipRect, gContext->FrameThickness);
-    Rr_UIAddClipRect(&WindowClipRect);
+    Rr_UIAddClipRect(Window, &WindowClipRect);
 
     if(HasTitle)
     {
@@ -1496,7 +1503,7 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         &gContext->Style.Outline);
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window);
-    Rr_UIAddClipRect(&ContentsAreaRect);
+    Rr_UIAddClipRect(Window, &ContentsAreaRect);
 
     /* Clip to contents. */
 
@@ -1522,12 +1529,12 @@ void Rr_UIEndWindow(void)
 {
     RR_UI_ASSERT_WINDOW();
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     if(gContext->DeferResizeHandle)
     {
         Rr_UIDrawSolidTriangle(
-            gContext->CurrentWindow,
+            Window,
             gContext->DeferredResizeHandlePositions,
             &gContext->DeferredResizeHandleColor);
         gContext->DeferResizeHandle = false;
@@ -1535,15 +1542,15 @@ void Rr_UIEndWindow(void)
 
     Rr_UIApplyNextWindowSize(Window);
 
-    Rr_UISetLastClipRectIndexCount(gContext->CurrentWindow);
-    gContext->CurrentWindow->YEnd += gContext->ContentsPadding.Y * 2.0f;
-    gContext->CurrentWindow = NULL;
+    Rr_UISetLastClipRectIndexCount(Window);
+    Window->YEnd += gContext->ContentsPadding.Y * 2.0f;
+    (void)RR_POP_FROM_ARRAY(&gContext->WindowStack);
 }
 
 void Rr_UIBeginHorizontal(void)
 {
     gContext->HorizontalMaxHeight = 0;
-    *RR_PUSH_INTO_ARRAY(&gContext->HorizontalX, gContext->FrameArena) =
+    *RR_PUSH_INTO_ARRAY(&gContext->HorizontalStack, gContext->FrameArena) =
         gContext->Cursor.X;
 }
 
@@ -1552,7 +1559,7 @@ void Rr_UIEndHorizontal(void)
     assert(
         RR_UI_IS_HORIZONTAL() &&
         "Did you forget to call Rr_BeginHorizontal()?");
-    gContext->Cursor.X = RR_POP_FROM_ARRAY(&gContext->HorizontalX);
+    gContext->Cursor.X = RR_POP_FROM_ARRAY(&gContext->HorizontalStack);
     gContext->Cursor.Y += gContext->HorizontalMaxHeight;
 }
 
@@ -1560,10 +1567,10 @@ void Rr_UIBeginTabs(const char *Title)
 {
     RR_UI_ASSERT_WINDOW();
     assert(
-        gContext->HorizontalX.Count == 0 &&
+        gContext->HorizontalStack.Count == 0 &&
         "Tabs can't be aligned horizontally!");
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     size_t TitleLength = strlen(Title);
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
@@ -1602,7 +1609,7 @@ bool Rr_UITab(const char *Title)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     Rr_UIQuad TabQuad = NULL;
 
@@ -1701,12 +1708,12 @@ bool Rr_UIFold(const char *Title)
 {
     RR_UI_ASSERT_WINDOW();
     assert(
-        gContext->HorizontalX.Count == 0 &&
+        gContext->HorizontalStack.Count == 0 &&
         "Fold can't be aligned horizontally!");
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     size_t TitleLength = strlen(Title);
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
@@ -1777,7 +1784,7 @@ void Rr_UISeparator(void)
 {
     RR_UI_ASSERT_WINDOW();
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     Rr_Vec2 Size = {
         gContext->AvailableContentsWidth,
@@ -1806,7 +1813,7 @@ void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize = Rr_UIDrawText(
@@ -1828,7 +1835,7 @@ void Rr_UILabel(const char *Text)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize = Rr_UIDrawText(
@@ -1872,7 +1879,7 @@ bool Rr_UIButton(const char *Text)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     Rr_Vec2 ButtonPosition = gContext->Cursor;
     Rr_UIQuad ButtonQuad = Rr_UIReserveQuad(Window);
@@ -1935,7 +1942,7 @@ bool Rr_UICheckbox(const char *Text, bool *Checked)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextPosition = gContext->Cursor;
@@ -2050,7 +2057,7 @@ bool Rr_UICombobox(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = gContext->CurrentWindow;
+    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
 
     /* Draw title first. */
 
@@ -2438,37 +2445,55 @@ void Rr_UIBegin(Rr_UIContext *Context)
     gContext->MousePosition = Rr_GetMousePosition();
 
     gContext->HoveredWindow = NULL;
-    for(int Index = (int)gContext->ActiveWindows.Count - 1; Index >= 0; --Index)
+    if(gContext->PopupWindow)
     {
-        Rr_UIWindow *Window = gContext->ActiveWindows.Data[Index];
-        if(Rr_RectContains(&Window->Rect, gContext->MousePosition))
+        if(Rr_RectContains(
+               &gContext->PopupWindow->Rect,
+               gContext->MousePosition))
         {
-            gContext->HoveredWindow = Window;
+            gContext->HoveredWindow = gContext->PopupWindow;
 
             if(gContext->LeftMouseButtonDown)
             {
-                Rr_UIWindow *HighestWindow =
-                    gContext->ActiveWindows
-                        .Data[gContext->ActiveWindows.Count - 1];
-                if(Window != HighestWindow)
-                {
-                    int Temp = HighestWindow->ZOrder;
-                    HighestWindow->ZOrder = Window->ZOrder;
-                    Window->ZOrder = Temp;
-                }
-
                 gContext->LeftMouseButtonDownOverWindow = true;
             }
+        }
+        gContext->PopupWindow = NULL;
+    }
+    if(gContext->HoveredWindow == NULL)
+    {
+        for(int Index = (int)gContext->ActiveWindows.Count - 1; Index >= 0;
+            --Index)
+        {
+            Rr_UIWindow *Window = gContext->ActiveWindows.Data[Index];
+            if(Rr_RectContains(&Window->Rect, gContext->MousePosition))
+            {
+                gContext->HoveredWindow = Window;
 
-            break;
+                if(gContext->LeftMouseButtonDown)
+                {
+                    Rr_UIWindow *HighestWindow =
+                        gContext->ActiveWindows
+                            .Data[gContext->ActiveWindows.Count - 1];
+                    if(Window != HighestWindow)
+                    {
+                        int Temp = HighestWindow->ZOrder;
+                        HighestWindow->ZOrder = Window->ZOrder;
+                        Window->ZOrder = Temp;
+                    }
+
+                    gContext->LeftMouseButtonDownOverWindow = true;
+                }
+
+                break;
+            }
         }
     }
 
     RR_RESET_ARRAY(&gContext->Vertices, gContext->FrameArena);
     RR_RESET_ARRAY(&gContext->Indices, gContext->FrameArena);
-    RR_RESET_ARRAY(&gContext->ActiveWindows, gContext->FrameArena);
 
-    gContext->CurrentWindow = NULL;
+    RR_CLEAR_ARRAY(&gContext->ActiveWindows);
 
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
     gContext->ScreenSize.Width = (float)SwapchainSize.Width;
@@ -2481,6 +2506,36 @@ static inline int Rr_UIWindowSort(const void *A, const void *B)
     const Rr_UIWindow *WindowB = *(Rr_UIWindow **)B;
 
     return WindowA->ZOrder > WindowB->ZOrder;
+}
+
+static inline void Rr_UIDrawWindow(
+    Rr_UIWindow *Window,
+    Rr_GraphNode *GraphicsNode)
+{
+    for(size_t ClipRectIndex = 0; ClipRectIndex < Window->ClipRects.Count;
+        ++ClipRectIndex)
+    {
+        Rr_UIClipRect *ClipRect = Window->ClipRects.Data + ClipRectIndex;
+
+        Rr_IntRect IntRect = { { (int32_t)roundf(ClipRect->Rect.Offset.X),
+                                 (int32_t)roundf(ClipRect->Rect.Offset.Y) },
+                               { (int32_t)roundf(ClipRect->Rect.Extent.Width),
+                                 (int32_t)roundf(
+                                     ClipRect->Rect.Extent.Height) } };
+        Rr_SetScissor(GraphicsNode, &IntRect);
+
+        Rr_DrawIndexed(
+            GraphicsNode,
+            ClipRect->IndexCount,
+            1,
+            ClipRect->FirstIndex,
+            0,
+            0);
+    }
+
+    /* Prepare the window for the next frame. */
+
+    Window->Added = false;
 }
 
 void Rr_UIEnd(void)
@@ -2562,33 +2617,12 @@ void Rr_UIEnd(void)
 
     for(size_t Index = 0; Index < gContext->ActiveWindows.Count; ++Index)
     {
-        Rr_UIWindow *Window = gContext->ActiveWindows.Data[Index];
+        Rr_UIDrawWindow(gContext->ActiveWindows.Data[Index], GraphicsNode);
+    }
 
-        for(size_t ClipRectIndex = 0; ClipRectIndex < Window->ClipRects.Count;
-            ++ClipRectIndex)
-        {
-            Rr_UIClipRect *ClipRect = Window->ClipRects.Data + ClipRectIndex;
-
-            Rr_IntRect IntRect = {
-                { (int32_t)roundf(ClipRect->Rect.Offset.X),
-                  (int32_t)roundf(ClipRect->Rect.Offset.Y) },
-                { (int32_t)roundf(ClipRect->Rect.Extent.Width),
-                  (int32_t)roundf(ClipRect->Rect.Extent.Height) }
-            };
-            Rr_SetScissor(GraphicsNode, &IntRect);
-
-            Rr_DrawIndexed(
-                GraphicsNode,
-                ClipRect->IndexCount,
-                1,
-                ClipRect->FirstIndex,
-                0,
-                0);
-        }
-
-        /* Prepare the window for the next frame. */
-
-        Window->Added = false;
+    if(gContext->PopupWindow)
+    {
+        Rr_UIDrawWindow(gContext->PopupWindow, GraphicsNode);
     }
 
     if(gContext->LeftMouseButtonUp)
@@ -2600,7 +2634,8 @@ void Rr_UIEnd(void)
     gContext->LeftMouseButtonUp = false;
     gContext->MouseWheelDelta = (Rr_Vec2){ 0 };
     gContext->NextWindowSize = (Rr_Vec2){ 0 };
-    RR_ZERO(gContext->HorizontalX);
+    RR_ZERO(gContext->HorizontalStack);
+    RR_ZERO(gContext->WindowStack);
 }
 
 void Rr_UISetFontSize(float Size)
