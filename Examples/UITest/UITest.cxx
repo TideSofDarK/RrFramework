@@ -67,12 +67,14 @@ static void Iterate(void *UserData)
     {
     }
     Rr_UISeparator();
-    Rr_UILabel("Checkbox");
-    Rr_UICheckbox("Close Button", &CloseButton);
-    Rr_UICheckbox("No Resize", &NoResize);
-    Rr_UICheckbox("No Scrollbar", &NoScrollbar);
-    Rr_UICheckbox("No Title", &NoTitle);
-    Rr_UISeparator();
+    if(Rr_UIFold("Checkbox"))
+    {
+        Rr_UICheckbox("Close Button", &CloseButton);
+        Rr_UICheckbox("No Resize", &NoResize);
+        Rr_UICheckbox("No Scrollbar", &NoScrollbar);
+        Rr_UICheckbox("No Title", &NoTitle);
+        Rr_UISeparator();
+    }
     Rr_UILabel("Button");
     Rr_UIBeginHorizontal();
     if(Rr_UIButton("Show Style Editor"))

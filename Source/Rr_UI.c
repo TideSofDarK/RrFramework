@@ -232,6 +232,9 @@ Rr_UIFont *Rr_UICreateFont(
     *Font = (Rr_UIFont){
         .Atlas = Atlas,
         .LineHeight = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "lineHeight"),
+        .UnderlineY = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "underlineY"),
+        .UnderlineThickness =
+            CJSON_GET_OBJECT_FLOAT(MetricsJSON, "underlineThickness"),
         .DefaultSize = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "size"),
         .DistanceRange = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "distanceRange"),
     };
@@ -475,6 +478,23 @@ static inline void Rr_UIDrawSolidTriangle(
         *RR_PUSH_INTO_ARRAY(&gContext->Vertices, gContext->FrameArena) =
             Vertices[Index];
     }
+}
+
+static inline void Rr_UIDrawRotatedTriangle(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Center,
+    float Extent,
+    Rr_Vec4 *Color,
+    float Angle)
+{
+    Rr_Vec2 Base = { Extent, 0.0f };
+    float Third = RR_PI32 * 2.0f / 3.0f;
+    Rr_Vec2 Positions[3] = {
+        Rr_AddV2(Center, Rr_RotateV2(Base, Angle)),
+        Rr_AddV2(Center, Rr_RotateV2(Base, Angle + Third)),
+        Rr_AddV2(Center, Rr_RotateV2(Base, Angle + Third * 2.0f)),
+    };
+    Rr_UIDrawSolidTriangle(Window, Positions, Color);
 }
 
 static inline void Rr_UIDrawSolidQuad(
@@ -1542,8 +1562,11 @@ void Rr_UIBeginTabs(const char *Title)
 
     Rr_UIWindow *Window = gContext->CurrentWindow;
 
+    size_t TitleLength = strlen(Title);
+    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
+
     gContext->SelectedTabRef =
-        RR_GET_MAP_VALUE(&Window->WidgetMap, (uint64_t)Title, gContext->Arena);
+        RR_GET_MAP_VALUE(&Window->WidgetMap, Hash, gContext->Arena);
     gContext->SelectedTab = *gContext->SelectedTabRef;
     gContext->TabCursor = gContext->Cursor;
 
@@ -1669,6 +1692,78 @@ bool Rr_UITab(const char *Title)
 void Rr_UIEndTabs(void)
 {
     gContext->SelectedTabRef = NULL;
+}
+
+bool Rr_UIFold(const char *Title)
+{
+    RR_UI_ASSERT_WINDOW();
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UIWindow *Window = gContext->CurrentWindow;
+
+    size_t TitleLength = strlen(Title);
+    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
+    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
+
+    bool **FoldValueRef =
+        RR_GET_MAP_VALUE(&Window->WidgetMap, Hash, gContext->Arena);
+    bool *FoldValue = *FoldValueRef;
+    if(*FoldValueRef == NULL)
+    {
+        FoldValue = RR_ALLOC_TYPE(gContext->Arena, bool);
+        *FoldValueRef = FoldValue;
+    }
+
+    Rr_Vec2 TotalSize = { gContext->LineHeight, gContext->LineHeight };
+
+    Rr_Vec2 TriangleCenter = gContext->Cursor;
+    TriangleCenter.X += gContext->LineHeight / 2.0f;
+    TriangleCenter.Y += gContext->LineHeight / 2.0f;
+    TriangleCenter.Y +=
+        gContext->LineHeight *
+        (gContext->Font->UnderlineY - gContext->Font->UnderlineThickness);
+    Rr_UIDrawRotatedTriangle(
+        Window,
+        TriangleCenter,
+        gContext->LineHeight / 3.0f,
+        &gContext->Style.Foreground,
+        RR_ANGLE_DEG(90.0f));
+
+    Rr_Vec2 TitlePosition = gContext->Cursor;
+    TitlePosition.X += gContext->LineHeight;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        Window,
+        TitlePosition,
+        &TitleString,
+        0,
+        &gContext->Style.Foreground,
+        0);
+
+    bool Up = false;
+    bool Hovered = false;
+    bool Held = false;
+    Rr_UIButtonBehavior(
+        Window,
+        &(Rr_Rect){
+            gContext->Cursor,
+            TotalSize,
+        },
+        NULL,
+        &Up,
+        &Hovered,
+        &Held);
+
+    if(Up)
+    {
+        *Checked = !*Checked;
+    }
+
+    Rr_UIAdvance(TotalSize);
+
+    Rr_DestroyScratch(Scratch);
+
+    return *FoldValue;
 }
 
 void Rr_UISeparator(void)

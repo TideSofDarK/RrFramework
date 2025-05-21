@@ -58,6 +58,8 @@ struct Rr_UIFont
     float DefaultSize;
     float Advance;
     float DistanceRange;
+    float UnderlineY;
+    float UnderlineThickness;
 };
 
 typedef struct Rr_UIStyle Rr_UIStyle;
@@ -126,6 +128,8 @@ extern void Rr_UISetWindowClosed(const char *Title, bool Closed);
 extern void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags);
 
 extern void Rr_UIEndWindow(void);
+
+extern bool Rr_UIFold(const char *Title);
 
 extern void Rr_UISeparator(void);
 
