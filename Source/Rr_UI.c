@@ -117,8 +117,10 @@ struct Rr_UIContext
     Rr_Map *WindowMap;
     int TotalWindowCount;
     RR_ARRAY(Rr_UIWindow *) ActiveWindows;
-    Rr_UIWindow *CurrentWindow;
     Rr_UIWindow *HoveredWindow;
+
+    Rr_UIWindow *CurrentWindow;
+    Rr_Vec2 NextWindowSize;
 
     bool DeferResizeHandle;
     Rr_Vec2 DeferredResizeHandlePositions[3];
@@ -1050,13 +1052,17 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, Rr_Rect *TitleRect)
 
     Rr_Vec4 Color = gContext->Style.Foreground;
 
-    bool Down, Up, Held, Hovered;
-    Rr_UIButtonBehavior(Window, &ButtonRect, &Down, &Up, &Hovered, &Held);
-    if(Down)
+    bool Up, Held, Hovered;
+    Rr_UIButtonBehavior(Window, &ButtonRect, NULL, &Up, &Hovered, &Held);
+    if(Up)
     {
         Window->Closed = true;
     }
-    if(Hovered)
+    if(Held)
+    {
+        Color.W *= 0.25f;
+    }
+    else if(Hovered)
     {
         Color.W *= 0.5f;
     }
@@ -1126,7 +1132,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UIWindow *Window, bool Defer)
                       Window->Rect.Extent,
                       &Hovered);
 
-    if(Dragging)
+    if(Dragging && gContext->NextWindowSize.Width == 0)
     {
         Rr_Vec2 Delta =
             Rr_SubV2(gContext->MousePosition, gContext->DragOpMouseStart);
@@ -1134,7 +1140,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UIWindow *Window, bool Defer)
         Rr_Vec2 MinWindowSize = Rr_UIGetMinWindowSize(Window->Flags);
         NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
         NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
-        Window->Rect.Extent = Rr_FloorV2(NewWindowSize);
+        gContext->NextWindowSize = Rr_FloorV2(NewWindowSize);
     }
 
     if(Defer)
@@ -1354,6 +1360,35 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
     return false;
 }
 
+void Rr_UISetNextWindowSize(Rr_Vec2 Size)
+{
+    gContext->NextWindowSize = Size;
+}
+
+static inline bool Rr_UIApplyNextWindowSize(Rr_UIWindow *Window)
+{
+    if(gContext->NextWindowSize.X > 1.0f && gContext->NextWindowSize.Y > 1.0f)
+    {
+        Window->Rect.Extent = gContext->NextWindowSize;
+        gContext->NextWindowSize = (Rr_Vec2){ 0 };
+        return true;
+    }
+    return false;
+}
+
+void Rr_UISetWindowClosed(const char *Title, bool Closed)
+{
+    size_t TitleLength = strlen(Title);
+    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
+    Rr_UIWindow **WindowRef =
+        RR_GET_MAP_VALUE(&gContext->WindowMap, Hash, gContext->Arena);
+    Rr_UIWindow *Window = *WindowRef;
+    if(Window != NULL)
+    {
+        Window->Closed = Closed;
+    }
+}
+
 void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 {
     RR_UI_ASSERT_NO_WINDOW();
@@ -1375,9 +1410,16 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             .X = gContext->FontSize,
             .Y = gContext->FontSize,
         };
-        const Rr_Vec2 DEFAULT_WINDOW_SIZE = { 300.0f, 500.0f };
-        Window->Rect.Extent =
-            Rr_AddV2(Rr_UIGetMinWindowSize(Flags), DEFAULT_WINDOW_SIZE);
+        if(Rr_UIApplyNextWindowSize(Window) == false)
+        {
+            const Rr_Vec2 DEFAULT_WINDOW_SIZE = { 300.0f, 500.0f };
+            Window->Rect.Extent =
+                Rr_AddV2(Rr_UIGetMinWindowSize(Flags), DEFAULT_WINDOW_SIZE);
+        }
+        if(RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_CREATE_CLOSED_BIT))
+        {
+            Window->Closed = true;
+        }
         *WindowRef = Window;
     }
 
@@ -1413,19 +1455,11 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
     }
 
-    Rr_Rect ClipRect = {
-        Rr_SubV2(
-            Window->Rect.Offset,
-            Rr_V2(gContext->FrameThickness, gContext->FrameThickness)),
-        Rr_AddV2(
-            Window->Rect.Extent,
-            Rr_V2(
-                gContext->FrameThickness * 2.0f,
-                gContext->FrameThickness * 2.0f)),
-    };
-    Rr_UIAddClipRect(&ClipRect);
+    /* Clip to total window area. */
 
-    /* Clipped to the whole window area. */
+    Rr_Rect WindowClipRect = Window->Rect;
+    Rr_ResizeRect(&WindowClipRect, gContext->FrameThickness);
+    Rr_UIAddClipRect(&WindowClipRect);
 
     if(HasTitle)
     {
@@ -1444,7 +1478,7 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window);
     Rr_UIAddClipRect(&ContentsAreaRect);
 
-    /* Clipped to contents. */
+    /* Clip to contents. */
 
     Rr_UIDrawSolidQuad(Window, &ContentsAreaRect, &gContext->Style.Background);
 
@@ -1468,6 +1502,8 @@ void Rr_UIEndWindow(void)
 {
     RR_UI_ASSERT_WINDOW();
 
+    Rr_UIWindow *Window = gContext->CurrentWindow;
+
     if(gContext->DeferResizeHandle)
     {
         Rr_UIDrawSolidTriangle(
@@ -1476,6 +1512,8 @@ void Rr_UIEndWindow(void)
             &gContext->DeferredResizeHandleColor);
         gContext->DeferResizeHandle = false;
     }
+
+    Rr_UIApplyNextWindowSize(Window);
 
     Rr_UISetLastClipRectIndexCount(gContext->CurrentWindow);
     gContext->CurrentWindow->YEnd += gContext->ContentsPadding.Y * 2.0f;
@@ -2459,6 +2497,7 @@ void Rr_UIEnd(void)
     gContext->LeftMouseButtonDown = false;
     gContext->LeftMouseButtonUp = false;
     gContext->MouseWheelDelta = (Rr_Vec2){ 0 };
+    gContext->NextWindowSize = (Rr_Vec2){ 0 };
     RR_ZERO(gContext->HorizontalX);
 }
 

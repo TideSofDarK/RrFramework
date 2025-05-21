@@ -40,6 +40,16 @@ static void Iterate(void *UserData)
         Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BIT;
     }
 
+    {
+        Rr_UISetNextWindowSize({ 400, 400 });
+        Rr_UIBeginWindow(
+            "Fixed Size Window",
+            RR_UI_WINDOW_FLAGS_CLOSE_BIT |
+                RR_UI_WINDOW_FLAGS_CREATE_CLOSED_BIT);
+        Rr_UILabelF("Window Size: %dx%d", 400, 400);
+        Rr_UIEndWindow();
+    }
+
     Rr_UIBeginWindow("Rr_UI.h", Flags);
     Rr_UILabel("Combobox");
     static const char *ComboboxOptions[] = {
@@ -50,7 +60,7 @@ static void Iterate(void *UserData)
     };
     static uint32_t SelectedComboboxOption = 0;
     if(Rr_UICombobox(
-           "Title",
+           "Options",
            RR_ARRAY_COUNT(ComboboxOptions),
            ComboboxOptions,
            &SelectedComboboxOption))
@@ -70,6 +80,7 @@ static void Iterate(void *UserData)
     }
     if(Rr_UIButton("Show Another Window"))
     {
+        Rr_UISetWindowClosed("Fixed Size Window", false);
     }
     Rr_UIEndHorizontal();
     Rr_UISeparator();

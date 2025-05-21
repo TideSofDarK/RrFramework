@@ -2754,6 +2754,12 @@ static inline Rr_Vec2 Rr_RectCenter(Rr_Rect *Rect)
     return Rr_AddV2(Rect->Offset, Rr_MulV2F(Rect->Extent, 0.5f));
 }
 
+static inline void Rr_ResizeRect(Rr_Rect *Rect, float Amount)
+{
+    Rect->Offset = Rr_SubV2(Rect->Offset, Rr_V2(Amount, Amount));
+    Rect->Extent = Rr_AddV2(Rect->Extent, Rr_V2(Amount * 2.0f, Amount * 2.0f));
+}
+
 static inline Rr_Rect Rr_FitRect(Rr_Rect *Src, Rr_Rect *Dst)
 {
     float X = 0;
