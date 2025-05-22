@@ -332,10 +332,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
             VkVertexInputAttributeDescription *AttributeDescription =
                 RR_PUSH_INTO_ARRAY(&AttributeDescriptions, Scratch.Arena);
+            *AttributeDescription = (VkVertexInputAttributeDescription){
+                .location = Attribute->Location,
+                .format = Rr_ToVulkanFormat(Attribute->Format),
+                .binding = (uint32_t)BindingIndex,
+            };
 
-            AttributeDescription->location = Attribute->Location;
-            AttributeDescription->format = Rr_ToVulkanFormat(Attribute->Format);
-            AttributeDescription->binding = (uint32_t)BindingIndex;
             VkVertexInputBindingDescription *BindingDescription = NULL;
             for(size_t BindingIndex = 0;
                 BindingIndex < BindingDescriptions.Count;
@@ -353,11 +355,14 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             {
                 BindingDescription =
                     RR_PUSH_INTO_ARRAY(&BindingDescriptions, Scratch.Arena);
-                BindingDescription->binding = (uint32_t)BindingIndex;
-                BindingDescription->inputRate =
-                    VertexInputBinding->Rate == RR_VERTEX_INPUT_RATE_INSTANCE
-                        ? VK_VERTEX_INPUT_RATE_INSTANCE
-                        : VK_VERTEX_INPUT_RATE_VERTEX;
+                *BindingDescription = (VkVertexInputBindingDescription){
+                    .stride = 0,
+                    .binding = (uint32_t)BindingIndex,
+                    .inputRate = VertexInputBinding->Rate ==
+                                         RR_VERTEX_INPUT_RATE_INSTANCE
+                                     ? VK_VERTEX_INPUT_RATE_INSTANCE
+                                     : VK_VERTEX_INPUT_RATE_VERTEX,
+                };
             }
             size_t Size = Rr_GetFormatSize(Attribute->Format);
             AttributeDescription->offset = BindingDescription->stride;

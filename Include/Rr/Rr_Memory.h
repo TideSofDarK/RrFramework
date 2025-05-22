@@ -143,7 +143,6 @@ extern void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena);
 #define RR_PUSH_INTO_ARRAY(Array, Arena)                                    \
     ((Array)->Count >= (Array)->Capacity                                    \
      ? Rr_GrowArray((Array), sizeof(*(Array)->Data), (Arena)), /* NOLINT */ \
-     memset((Array)->Data + (Array)->Count, 0, sizeof(*(Array)->Data)),     \
      (Array)->Data + (Array)->Count++                                       \
      : (Array)->Data + (Array)->Count++)
 
@@ -171,22 +170,21 @@ extern void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena);
     }                                                         \
     while(0)
 
-#define RR_RESET_ARRAY(Array, Arena)                                      \
-    do                                                                    \
-    {                                                                     \
-        size_t Temp = (Array)->Count;                                     \
-        if(Temp > 0)                                                      \
-        {                                                                 \
-            (Array)->Data =                                               \
-                RR_ALLOC_NO_ZERO((Arena), sizeof(*(Array)->Data) * Temp); \
-            (Array)->Capacity = Temp;                                     \
-            (Array)->Count = 0;                                           \
-        }                                                                 \
-        else                                                              \
-        {                                                                 \
-            RR_ZERO_PTR((Array));                                         \
-        }                                                                 \
-    }                                                                     \
+#define RR_RESET_ARRAY(Array, Arena)                         \
+    do                                                       \
+    {                                                        \
+        if((Array)->Capacity > 0)                            \
+        {                                                    \
+            (Array)->Data = RR_ALLOC_NO_ZERO(                \
+                (Arena),                                     \
+                sizeof(*(Array)->Data) * (Array)->Capacity); \
+            (Array)->Count = 0;                              \
+        }                                                    \
+        else                                                 \
+        {                                                    \
+            RR_ZERO_PTR((Array));                            \
+        }                                                    \
+    }                                                        \
     while(0)
 
 #define RR_CLEAR_ARRAY(Array) (Array)->Count = 0

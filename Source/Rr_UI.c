@@ -1474,7 +1474,9 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Rr_UILayout *Layout =
         RR_PUSH_INTO_ARRAY(&gContext->Stack, gContext->FrameArena);
-    Layout->Window = Window;
+    *Layout = (Rr_UILayout){
+        .Window = Window,
+    };
 
     if(!Window->Closed)
     {
