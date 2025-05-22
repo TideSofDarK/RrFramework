@@ -132,12 +132,6 @@ extern Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
 
 extern void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena);
 
-extern void Rr_ReserveArray(
-    void *Array,
-    size_t Size,
-    size_t Count,
-    Rr_Arena *Arena);
-
 #define RR_ARRAY(Type)   \
     struct               \
     {                    \
@@ -156,23 +150,44 @@ extern void Rr_ReserveArray(
 #define RR_POP_FROM_ARRAY(Array) \
     ((Array)->Count--, (Array)->Data[(Array)->Count])
 
-#define RR_RESERVE_ARRAY(Array, ElementCount, Arena) \
-    ((Array)->Capacity < (ElementCount)              \
-         ? Rr_ReserveArray(                          \
-               (Array),                              \
-               sizeof(*(Array)->Data), /* NOLINT */  \
-               (ElementCount),                       \
-               (Arena))                              \
-         : (void)0)
+#define RR_RESERVE_ARRAY(Array, ElementCount, Arena)          \
+    do                                                        \
+    {                                                         \
+        if((Array)->Capacity < (ElementCount))                \
+        {                                                     \
+            void *OldData = (Array)->Data;                    \
+            (Array)->Data = RR_ALLOC_NO_ZERO(                 \
+                (Arena),                                      \
+                sizeof(*(Array)->Data) * (ElementCount));     \
+            (Array)->Capacity = (ElementCount);               \
+            if((Array)->Count > 0 && OldData)                 \
+            {                                                 \
+                memcpy(                                       \
+                    (Array)->Data,                            \
+                    OldData,                                  \
+                    sizeof(*(Array)->Data) * (Array)->Count); \
+            }                                                 \
+        }                                                     \
+    }                                                         \
+    while(0)
 
-#define RR_RESET_ARRAY(Array, Arena)                               \
-    ((Array)->Count > 0 ? Rr_ReserveArray(                         \
-                              (Array),                             \
-                              sizeof(*(Array)->Data), /* NOLINT */ \
-                              (Array)->Capacity,                   \
-                              (Arena))                             \
-                        : (void)0),                                \
-        (Array)->Count = 0
+#define RR_RESET_ARRAY(Array, Arena)                                      \
+    do                                                                    \
+    {                                                                     \
+        size_t Temp = (Array)->Count;                                     \
+        if(Temp > 0)                                                      \
+        {                                                                 \
+            (Array)->Data =                                               \
+                RR_ALLOC_NO_ZERO((Arena), sizeof(*(Array)->Data) * Temp); \
+            (Array)->Capacity = Temp;                                     \
+            (Array)->Count = 0;                                           \
+        }                                                                 \
+        else                                                              \
+        {                                                                 \
+            RR_ZERO_PTR((Array));                                         \
+        }                                                                 \
+    }                                                                     \
+    while(0)
 
 #define RR_CLEAR_ARRAY(Array) (Array)->Count = 0
 

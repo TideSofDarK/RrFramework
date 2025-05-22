@@ -276,28 +276,6 @@ void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena)
     memcpy(Array, &Replica, sizeof(Replica));
 }
 
-void Rr_ReserveArray(void *Array, size_t Size, size_t Count, Rr_Arena *Arena)
-{
-    assert(Array != NULL && "Attempt to grow an array but it's NULL!");
-    assert(Arena != NULL && "Attempt to grow an array but Arena is NULL!");
-
-    RR_ARRAY(void) Replica;
-    memcpy(&Replica, Array, sizeof(Replica));
-
-    void *Data = NULL;
-
-    Replica.Capacity = Count;
-    Data = RR_ALLOC_NO_ZERO(Arena, Size * Count);
-
-    if(Replica.Count)
-    {
-        memcpy(Data, Replica.Data, Size * Replica.Count);
-    }
-    Replica.Data = Data;
-
-    memcpy(Array, &Replica, sizeof(Replica));
-}
-
 void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
 {
     if(*Map != NULL)

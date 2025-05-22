@@ -95,6 +95,27 @@ typedef enum
     RR_UI_DRAG_OP_SCROLL,
 } Rr_UIDragOp;
 
+typedef struct Rr_UILayout Rr_UILayout;
+struct Rr_UILayout
+{
+    Rr_UIWindow *Window;
+
+    Rr_Vec2 Cursor;
+
+    float HorizontalX;
+    float HorizontalMaxHeight;
+
+    float AvailableContentsWidth;
+
+    bool DeferResizeHandle;
+    Rr_Vec2 DeferredResizeHandlePositions[3];
+    Rr_Vec4 DeferredResizeHandleColor;
+
+    Rr_Vec2 TabCursor;
+    const char **SelectedTabRef;
+    const char *SelectedTab;
+};
+
 struct Rr_UIContext
 {
     Rr_UIStyle Style;
@@ -105,24 +126,12 @@ struct Rr_UIContext
     Rr_UIWindow *PopupWindow;
     Rr_UIWindow *HoveredWindow;
 
-    RR_ARRAY(Rr_UIWindow *) WindowStack;
-    RR_ARRAY(float) HorizontalStack;
-    float HorizontalMaxHeight;
+    RR_ARRAY(Rr_UILayout) Stack;
 
     Rr_Vec2 NextWindowSize;
-
-    bool DeferResizeHandle;
-    Rr_Vec2 DeferredResizeHandlePositions[3];
-    Rr_Vec4 DeferredResizeHandleColor;
-
-    float AvailableContentsWidth;
-
-    Rr_Vec2 TabCursor;
-    const char **SelectedTabRef;
-    const char *SelectedTab;
+    Rr_Vec2 NextWindowPosition;
 
     bool LeftMouseButtonDownOverWindow;
-    bool MouseHoveredSomething;
 
     bool LeftMouseButtonDown;
     bool LeftMouseButtonHeld;
@@ -159,8 +168,6 @@ struct Rr_UIContext
     float ScrollbarHandleWidth;
     Rr_Vec2 ButtonPadding;
 
-    Rr_Vec2 Cursor;
-
     Rr_Buffer *VertexBuffer;
     Rr_Buffer *IndexBuffer;
 
@@ -177,31 +184,42 @@ struct Rr_UIContext
 
 static Rr_UIContext *gContext;
 
-#define RR_UI_IS_HORIZONTAL() (gContext->HorizontalStack.Count > 0)
+static inline Rr_UILayout *Rr_UICurrentLayout(void)
+{
+    return gContext->Stack.Count > 0
+               ? &gContext->Stack.Data[gContext->Stack.Count - 1]
+               : NULL;
+}
 
-#define RR_UI_CURRENT_WINDOW()                                         \
-    (gContext->WindowStack.Count > 0                                   \
-         ? gContext->WindowStack.Data[gContext->WindowStack.Count - 1] \
-         : NULL)
+static inline Rr_UIWindow *Rr_UICurrentWindow(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    return Layout ? Layout->Window : NULL;
+}
 
-#define RR_UI_CLIP_RECT(Window)                                          \
-    ((Window) && (Window)->ClipRects.Count > 0                           \
-         ? &(Window)->ClipRects.Data[(Window)->ClipRects.Count - 1].Rect \
-         : &(Window)->Rect)
+static inline Rr_Rect Rr_UICurrentRect(Rr_UIWindow *Window)
+{
+    return Window
+               ? (Window->ClipRects.Count > 0
+                      ? Window->ClipRects.Data[Window->ClipRects.Count - 1].Rect
+                      : Window->Rect)
+               : (Rr_Rect){ 0 };
+}
 
-#define RR_UI_ASSERT_GLOBAL() \
-    assert(gContext != NULL && "Did you forget to call Rr_BeginUI()?")
+static inline bool Rr_UIIsHorizontal(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    return Layout && Layout->HorizontalX != 0.0f;
+}
 
-#define RR_UI_ASSERT_NO_WINDOW()            \
-    RR_UI_ASSERT_GLOBAL();                  \
-    assert(                                 \
-        gContext->WindowStack.Count == 0 && \
+#define RR_UI_ASSERT_NO_WINDOW()        \
+    assert(                             \
+        Rr_UICurrentWindow() == NULL && \
         "Did you forget to call Rr_EndWindow()?")
 
-#define RR_UI_ASSERT_WINDOW()               \
-    RR_UI_ASSERT_GLOBAL();                  \
-    assert(                                 \
-        gContext->WindowStack.Count != 0 && \
+#define RR_UI_ASSERT_WINDOW()           \
+    assert(                             \
+        Rr_UICurrentWindow() != NULL && \
         "Did you forget to call Rr_BeginWindow()?")
 
 Rr_UIFont *Rr_UICreateFont(
@@ -888,8 +906,8 @@ static inline bool Rr_UIRectContains(
     Rr_Vec2 Point)
 {
     assert(Window != NULL);
-    return Rr_RectContains(RR_UI_CLIP_RECT(Window), Point) &&
-           Rr_RectContains(Rect, Point);
+    Rr_Rect CurrentRect = Rr_UICurrentRect(Window);
+    return Rr_RectContains(&CurrentRect, Point) && Rr_RectContains(Rect, Point);
 }
 
 static inline bool Rr_UIScrollBehavior(
@@ -1129,8 +1147,10 @@ static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window)
     Rr_UIAddCloseButton(Window, &TitleRect);
 }
 
-static inline bool Rr_UIAddResizeHandle(Rr_UIWindow *Window, bool Defer)
+static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout, bool Defer)
 {
+    Rr_UIWindow *Window = Layout->Window;
+
     bool HasResize =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
     if(HasResize == false)
@@ -1170,20 +1190,20 @@ static inline bool Rr_UIAddResizeHandle(Rr_UIWindow *Window, bool Defer)
 
     if(Defer)
     {
-        gContext->DeferResizeHandle = true;
-        gContext->DeferredResizeHandlePositions[0] =
+        Layout->DeferResizeHandle = true;
+        Layout->DeferredResizeHandlePositions[0] =
             (Rr_Vec2){ BottomRight.X - gContext->ResizeHandleSize,
                        BottomRight.Y };
-        gContext->DeferredResizeHandlePositions[1] =
+        Layout->DeferredResizeHandlePositions[1] =
             (Rr_Vec2){ BottomRight.X,
                        BottomRight.Y - gContext->ResizeHandleSize };
-        gContext->DeferredResizeHandlePositions[2] =
+        Layout->DeferredResizeHandlePositions[2] =
             (Rr_Vec2){ BottomRight.X, BottomRight.Y };
-        gContext->DeferredResizeHandleColor = gContext->Style.Foreground;
+        Layout->DeferredResizeHandleColor = gContext->Style.Foreground;
         if(Hovered || Dragging)
         {
-            gContext->DeferredResizeHandleColor =
-                Rr_MulV4F(gContext->DeferredResizeHandleColor, 0.75f);
+            Layout->DeferredResizeHandleColor =
+                Rr_MulV4F(Layout->DeferredResizeHandleColor, 0.75f);
         }
     }
     else
@@ -1192,7 +1212,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UIWindow *Window, bool Defer)
         if(Hovered || Dragging)
         {
             ResizeHandleColor =
-                Rr_MulV4F(gContext->DeferredResizeHandleColor, 0.75f);
+                Rr_MulV4F(Layout->DeferredResizeHandleColor, 0.75f);
         }
         Rr_Vec2 Positions[] = {
             { BottomRight.X - gContext->ResizeHandleSize, BottomRight.Y },
@@ -1233,24 +1253,24 @@ static inline void Rr_UIAdvance(Rr_Vec2 Size)
 {
     RR_UI_ASSERT_WINDOW();
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
-    if(RR_UI_IS_HORIZONTAL())
+    if(Rr_UIIsHorizontal())
     {
-        gContext->Cursor.X += Size.Width + gContext->HorizontalMargin;
-        gContext->HorizontalMaxHeight =
-            RR_MAX(gContext->HorizontalMaxHeight, Size.Height);
+        Layout->Cursor.X += Size.Width + gContext->HorizontalMargin;
+        Layout->HorizontalMaxHeight =
+            RR_MAX(Layout->HorizontalMaxHeight, Size.Height);
 
         Window->YEnd = RR_MAX(
             Window->YEnd,
-            gContext->Cursor.Y + gContext->HorizontalMaxHeight);
+            Layout->Cursor.Y + Layout->HorizontalMaxHeight);
     }
     else
     {
-        gContext->Cursor.Y += Size.Height;
+        Layout->Cursor.Y += Size.Height;
 
-        Window->YEnd =
-            RR_MAX(Window->YEnd, gContext->Cursor.Y);
+        Window->YEnd = RR_MAX(Window->YEnd, Layout->Cursor.Y);
     }
 }
 
@@ -1452,7 +1472,9 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Window->Flags = Flags;
 
-    *RR_PUSH_INTO_ARRAY(&gContext->WindowStack, gContext->FrameArena) = Window;
+    Rr_UILayout *Layout =
+        RR_PUSH_INTO_ARRAY(&gContext->Stack, gContext->FrameArena);
+    Layout->Window = Window;
 
     if(!Window->Closed)
     {
@@ -1460,8 +1482,7 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
             Window->Added == false &&
             "There already is a window with this title!");
 
-        *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->Arena) =
-            Window;
+        *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->Arena) = Window;
         Window->Added = true;
     }
 
@@ -1494,7 +1515,7 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     }
 
     bool HasScrollbar = Rr_UIAddVerticalScrollbar(Window);
-    bool HasResize = Rr_UIAddResizeHandle(Window, !HasScrollbar);
+    bool HasResize = Rr_UIAddResizeHandle(Layout, !HasScrollbar);
 
     Rr_UIDrawOuterFrame(
         Window,
@@ -1509,86 +1530,91 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
     Rr_UIDrawSolidQuad(Window, &ContentsAreaRect, &gContext->Style.Background);
 
-    gContext->AvailableContentsWidth =
+    Layout->AvailableContentsWidth =
         HasScrollbar ? Window->Rect.Extent.Width - gContext->ScrollbarWidth
                      : Window->Rect.Extent.Width;
-    gContext->AvailableContentsWidth -= gContext->ContentsPadding.X * 2.0f;
+    Layout->AvailableContentsWidth -= gContext->ContentsPadding.X * 2.0f;
 
-    gContext->Cursor = Rr_AddV2(Window->Rect.Offset, gContext->ContentsPadding);
+    Layout->Cursor = Rr_AddV2(Window->Rect.Offset, gContext->ContentsPadding);
     if(HasTitle)
     {
-        gContext->Cursor.Y += gContext->WindowTitleHeight;
+        Layout->Cursor.Y += gContext->WindowTitleHeight;
     }
 
-    gContext->Cursor.Y -= Window->VScroll;
+    Layout->Cursor.Y -= Window->VScroll;
 
-    Window->YStart = Window->YEnd = gContext->Cursor.Y;
+    Window->YStart = Window->YEnd = Layout->Cursor.Y;
 }
 
 void Rr_UIEndWindow(void)
 {
     RR_UI_ASSERT_WINDOW();
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
-    if(gContext->DeferResizeHandle)
+    if(Layout->DeferResizeHandle)
     {
         Rr_UIDrawSolidTriangle(
             Window,
-            gContext->DeferredResizeHandlePositions,
-            &gContext->DeferredResizeHandleColor);
-        gContext->DeferResizeHandle = false;
+            Layout->DeferredResizeHandlePositions,
+            &Layout->DeferredResizeHandleColor);
+        Layout->DeferResizeHandle = false;
     }
 
     Rr_UIApplyNextWindowSize(Window);
 
     Rr_UISetLastClipRectIndexCount(Window);
     Window->YEnd += gContext->ContentsPadding.Y * 2.0f;
-    (void)RR_POP_FROM_ARRAY(&gContext->WindowStack);
+    (void)RR_POP_FROM_ARRAY(&gContext->Stack);
 }
 
 void Rr_UIBeginHorizontal(void)
 {
-    gContext->HorizontalMaxHeight = 0;
-    *RR_PUSH_INTO_ARRAY(&gContext->HorizontalStack, gContext->FrameArena) =
-        gContext->Cursor.X;
+    assert(
+        Rr_UIIsHorizontal() == false &&
+        "Did you forget to call Rr_EndHorizontal()?");
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Layout->HorizontalMaxHeight = 0;
+    Layout->HorizontalX = Layout->Cursor.X;
 }
 
 void Rr_UIEndHorizontal(void)
 {
     assert(
-        RR_UI_IS_HORIZONTAL() &&
-        "Did you forget to call Rr_BeginHorizontal()?");
-    gContext->Cursor.X = RR_POP_FROM_ARRAY(&gContext->HorizontalStack);
-    gContext->Cursor.Y += gContext->HorizontalMaxHeight;
+        Rr_UIIsHorizontal() && "Did you forget to call Rr_BeginHorizontal()?");
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Layout->Cursor.X = Layout->HorizontalX;
+    Layout->Cursor.Y += Layout->HorizontalMaxHeight;
+    Layout->HorizontalX = 0.0f;
 }
 
 void Rr_UIBeginTabs(const char *Title)
 {
     RR_UI_ASSERT_WINDOW();
     assert(
-        gContext->HorizontalStack.Count == 0 &&
-        "Tabs can't be aligned horizontally!");
+        Rr_UIIsHorizontal() == false && "Tabs can't be aligned horizontally!");
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
     size_t TitleLength = strlen(Title);
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
 
-    gContext->SelectedTabRef =
+    Layout->SelectedTabRef =
         RR_GET_MAP_VALUE(&Window->WidgetMap, Hash, gContext->Arena);
-    gContext->SelectedTab = *gContext->SelectedTabRef;
-    gContext->TabCursor = gContext->Cursor;
+    Layout->SelectedTab = *Layout->SelectedTabRef;
+    Layout->TabCursor = Layout->Cursor;
 
     Rr_UIAdvance((Rr_Vec2){ 0.0f, gContext->LineHeight });
 
     Rr_Vec2 SeparatorSize = {
-        gContext->AvailableContentsWidth,
+        Layout->AvailableContentsWidth,
         gContext->FrameThickness,
     };
     Rr_Vec2 SeparatorPosition = {
-        gContext->Cursor.X,
-        gContext->Cursor.Y,
+        Layout->Cursor.X,
+        Layout->Cursor.Y,
     };
     Rr_UIDrawSolidQuad(
         Window,
@@ -1603,23 +1629,23 @@ void Rr_UIBeginTabs(const char *Title)
 
 bool Rr_UITab(const char *Title)
 {
-    assert(
-        gContext->SelectedTabRef != NULL &&
-        "Did you forget to call Rr_BeginTabs()?");
-
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    assert(
+        Layout->SelectedTabRef != NULL &&
+        "Did you forget to call Rr_BeginTabs()?");
+    Rr_UIWindow *Window = Layout->Window;
 
     Rr_UIQuad TabQuad = NULL;
 
     bool Selected = false;
-    if(gContext->SelectedTab == NULL)
+    if(Layout->SelectedTab == NULL)
     {
-        *gContext->SelectedTabRef = gContext->SelectedTab = Title;
+        *Layout->SelectedTabRef = Layout->SelectedTab = Title;
         Selected = true;
     }
-    else if(strcmp(Title, gContext->SelectedTab) == 0)
+    else if(strcmp(Title, Layout->SelectedTab) == 0)
     {
         Selected = true;
     }
@@ -1627,7 +1653,7 @@ bool Rr_UITab(const char *Title)
     TabQuad = Rr_UIReserveQuad(Window);
 
     Rr_String TextString = Rr_CreateString(Title, 0, Scratch.Arena);
-    Rr_Vec2 TextPosition = gContext->TabCursor;
+    Rr_Vec2 TextPosition = Layout->TabCursor;
     TextPosition.X += gContext->ButtonPadding.X;
     Rr_Vec2 TextSize = Rr_UIDrawText(
         Window,
@@ -1646,7 +1672,7 @@ bool Rr_UITab(const char *Title)
         ButtonSize.Y += gContext->FrameThickness;
     }
 
-    gContext->TabCursor.X += ButtonSize.Width;
+    Layout->TabCursor.X += ButtonSize.Width;
 
     bool Up = false;
     bool Hovered = false;
@@ -1690,7 +1716,7 @@ bool Rr_UITab(const char *Title)
 
     if(Up)
     {
-        *gContext->SelectedTabRef =
+        *Layout->SelectedTabRef =
             Title; /* Newly selected tab will be rendered next frame. */
     }
 
@@ -1701,19 +1727,20 @@ bool Rr_UITab(const char *Title)
 
 void Rr_UIEndTabs(void)
 {
-    gContext->SelectedTabRef = NULL;
+    /* TODO: Assertions. */
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Layout->SelectedTabRef = NULL;
 }
 
 bool Rr_UIFold(const char *Title)
 {
     RR_UI_ASSERT_WINDOW();
-    assert(
-        gContext->HorizontalStack.Count == 0 &&
-        "Fold can't be aligned horizontally!");
+    assert(Rr_UIIsHorizontal() == 0 && "Fold can't be aligned horizontally!");
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
     size_t TitleLength = strlen(Title);
     XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
@@ -1728,7 +1755,7 @@ bool Rr_UIFold(const char *Title)
         *FoldValueRef = FoldValue;
     }
 
-    Rr_Vec2 TriangleCenter = gContext->Cursor;
+    Rr_Vec2 TriangleCenter = Layout->Cursor;
     TriangleCenter.X += gContext->LineHeight / 2.0f;
     TriangleCenter.Y += gContext->LineHeight / 2.0f;
     TriangleCenter.Y +=
@@ -1741,7 +1768,7 @@ bool Rr_UIFold(const char *Title)
         &gContext->Style.Foreground,
         RR_ANGLE_DEG(*FoldValue ? 90.0f : 0.0f));
 
-    Rr_Vec2 TitlePosition = gContext->Cursor;
+    Rr_Vec2 TitlePosition = Layout->Cursor;
     TitlePosition.X += gContext->LineHeight;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         Window,
@@ -1751,7 +1778,7 @@ bool Rr_UIFold(const char *Title)
         &gContext->Style.Foreground,
         0);
 
-    Rr_Vec2 TotalSize = { gContext->AvailableContentsWidth,
+    Rr_Vec2 TotalSize = { Layout->AvailableContentsWidth,
                           gContext->LineHeight };
 
     bool Up = false;
@@ -1760,7 +1787,7 @@ bool Rr_UIFold(const char *Title)
     Rr_UIButtonBehavior(
         Window,
         &(Rr_Rect){
-            gContext->Cursor,
+            Layout->Cursor,
             TotalSize,
         },
         NULL,
@@ -1782,18 +1809,20 @@ bool Rr_UIFold(const char *Title)
 
 void Rr_UISeparator(void)
 {
+    /* TODO: Horizontal support. */
     RR_UI_ASSERT_WINDOW();
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
     Rr_Vec2 Size = {
-        gContext->AvailableContentsWidth,
+        Layout->AvailableContentsWidth,
         gContext->FrameThickness,
     };
     Rr_Vec2 Position = {
-        gContext->Cursor.X,
-        gContext->Cursor.Y + (gContext->SeparatorLineHeight / 2.0f -
-                              gContext->FrameThickness / 2.0f),
+        Layout->Cursor.X,
+        Layout->Cursor.Y + (gContext->SeparatorLineHeight / 2.0f -
+                            gContext->FrameThickness / 2.0f),
     };
     Rr_Vec4 Color = Rr_MulV4F(gContext->Style.Foreground, 0.75f);
     Rr_UIDrawSolidQuad(Window, &(Rr_Rect){ Position, Size }, &Color);
@@ -1804,7 +1833,7 @@ void Rr_UISeparator(void)
         Rr_UIDrawSolidQuad(Window, &(Rr_Rect){ Position, Size }, &Color);
     }
 
-    gContext->Cursor.Y += gContext->SeparatorLineHeight;
+    Layout->Cursor.Y += gContext->SeparatorLineHeight;
 }
 
 void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
@@ -1813,14 +1842,15 @@ void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize = Rr_UIDrawText(
         Window,
-        gContext->Cursor,
+        Layout->Cursor,
         &TextString,
-        gContext->AvailableContentsWidth,
+        Layout->AvailableContentsWidth,
         &gContext->Style.Foreground,
         Flags);
 
@@ -1835,12 +1865,13 @@ void Rr_UILabel(const char *Text)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize = Rr_UIDrawText(
         Window,
-        gContext->Cursor,
+        Layout->Cursor,
         &TextString,
         0.0f,
         &gContext->Style.Foreground,
@@ -1879,9 +1910,10 @@ bool Rr_UIButton(const char *Text)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
-    Rr_Vec2 ButtonPosition = gContext->Cursor;
+    Rr_Vec2 ButtonPosition = Layout->Cursor;
     Rr_UIQuad ButtonQuad = Rr_UIReserveQuad(Window);
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
@@ -1942,10 +1974,11 @@ bool Rr_UICheckbox(const char *Text, bool *Checked)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
     Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
-    Rr_Vec2 TextPosition = gContext->Cursor;
+    Rr_Vec2 TextPosition = Layout->Cursor;
     TextPosition.Y += gContext->ButtonPadding.Height;
     Rr_Vec2 TextSize = Rr_UIDrawText(
         Window,
@@ -1955,20 +1988,21 @@ bool Rr_UICheckbox(const char *Text, bool *Checked)
         &gContext->Style.Foreground,
         0);
 
+    bool IsHorizontal = Rr_UIIsHorizontal();
+
     Rr_Vec2 TotalSize = { 0 };
-    TotalSize.Width = RR_UI_IS_HORIZONTAL()
+    TotalSize.Width = IsHorizontal
                           ? TextSize.Width + gContext->ContentsPadding.Width +
                                 gContext->LineHeight
-                          : gContext->AvailableContentsWidth;
+                          : Layout->AvailableContentsWidth;
     TotalSize.Height =
         gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f;
     Rr_Vec2 CheckboxSize = { gContext->LineHeight, gContext->LineHeight };
 
-    Rr_Vec2 FramePosition = gContext->Cursor;
+    Rr_Vec2 FramePosition = Layout->Cursor;
     FramePosition.X +=
-        RR_UI_IS_HORIZONTAL()
-            ? (TextSize.Width + gContext->ContentsPadding.Width)
-            : (gContext->AvailableContentsWidth - gContext->LineHeight);
+        IsHorizontal ? (TextSize.Width + gContext->ContentsPadding.Width)
+                     : (Layout->AvailableContentsWidth - gContext->LineHeight);
     FramePosition.X += gContext->FrameThickness;
 
     bool Up = false;
@@ -2057,15 +2091,13 @@ bool Rr_UICombobox(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIWindow *Window = RR_UI_CURRENT_WINDOW();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
 
     /* Draw title first. */
 
     Rr_String TitleString = Rr_CreateString(Title, 0, Scratch.Arena);
-    Rr_Vec2 TitlePosition = {
-        gContext->Cursor.X,
-        gContext->Cursor.Y,
-    };
+    Rr_Vec2 TitlePosition = Layout->Cursor;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         Window,
         TitlePosition,
@@ -2085,8 +2117,8 @@ bool Rr_UICombobox(
         0.0f,
         0);
 
-    Rr_Vec2 ButtonPosition = gContext->Cursor;
-    ButtonPosition.X += gContext->AvailableContentsWidth -
+    Rr_Vec2 ButtonPosition = Layout->Cursor;
+    ButtonPosition.X += Layout->AvailableContentsWidth -
                         SelectedTextSize.Width - gContext->LineHeight -
                         gContext->ButtonPadding.Width * 2.0f;
 
@@ -2191,10 +2223,10 @@ bool Rr_UICombobox(
         &gContext->Style.Foreground);
 
     Rr_Vec2 TotalSize = { 0 };
-    TotalSize.Width = RR_UI_IS_HORIZONTAL()
+    TotalSize.Width = Rr_UIIsHorizontal()
                           ? TitleSize.Width + gContext->ContentsPadding.Width +
                                 BorderSize.Width
-                          : gContext->AvailableContentsWidth;
+                          : Layout->AvailableContentsWidth;
     TotalSize.Height =
         gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f;
     Rr_UIAdvance(TotalSize);
@@ -2458,7 +2490,6 @@ void Rr_UIBegin(Rr_UIContext *Context)
                 gContext->LeftMouseButtonDownOverWindow = true;
             }
         }
-        gContext->PopupWindow = NULL;
     }
     if(gContext->HoveredWindow == NULL)
     {
@@ -2492,6 +2523,7 @@ void Rr_UIBegin(Rr_UIContext *Context)
 
     RR_RESET_ARRAY(&gContext->Vertices, gContext->FrameArena);
     RR_RESET_ARRAY(&gContext->Indices, gContext->FrameArena);
+    RR_RESET_ARRAY(&gContext->Stack, gContext->FrameArena);
 
     RR_CLEAR_ARRAY(&gContext->ActiveWindows);
 
@@ -2542,6 +2574,7 @@ void Rr_UIEnd(void)
 {
     RR_UI_ASSERT_NO_WINDOW();
 
+    /* TODO: Consider active popup as well. */
     if(gContext->ActiveWindows.Count == 0)
     {
         gContext = NULL;
@@ -2634,8 +2667,6 @@ void Rr_UIEnd(void)
     gContext->LeftMouseButtonUp = false;
     gContext->MouseWheelDelta = (Rr_Vec2){ 0 };
     gContext->NextWindowSize = (Rr_Vec2){ 0 };
-    RR_ZERO(gContext->HorizontalStack);
-    RR_ZERO(gContext->WindowStack);
 }
 
 void Rr_UISetFontSize(float Size)
@@ -2647,10 +2678,17 @@ void Rr_UISetFontSize(float Size)
     }
 }
 
+static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, const char *Comment)
+{
+    Rr_UILabelF(
+        "%s: commited %d bytes, position %p",
+        Comment,
+        Arena->Commited,
+        (Arena + Arena->Position));
+}
+
 void Rr_UIDebugOverlay(void)
 {
-    RR_UI_ASSERT_GLOBAL();
-
     Rr_Renderer *Renderer = gApp->Renderer;
 
     Rr_UIBeginWindow("Rr_DebugOverlay", RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
@@ -2686,14 +2724,14 @@ void Rr_UIDebugOverlay(void)
     }
     if(Rr_UITab("Memory"))
     {
-        Rr_UILabelF("Application: %d bytes", gApp->Arena->Commited);
-        Rr_UILabelF("Renderer: %d bytes", gApp->Renderer->Arena->Commited);
+        Rr_UIDebugOverlayArena(gApp->Arena, "Application");
+        Rr_UIDebugOverlayArena(gApp->Renderer->Arena, "Renderer");
         for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
         {
             Rr_Frame *Frame = Renderer->Frames + Index;
-            Rr_UILabelF("Frame#%d: %d bytes", Index, Frame->Arena->Commited);
+            Rr_UIDebugOverlayArena(Frame->Arena, "Frame");
         }
-        Rr_UILabelF("UI: %d bytes", gContext->Arena->Commited);
+        Rr_UIDebugOverlayArena(gContext->Arena, "UI");
     }
     if(Rr_UITab("Renderer"))
     {
