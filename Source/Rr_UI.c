@@ -1916,7 +1916,7 @@ bool Rr_UIFold(const char *Title)
     Rr_Vec2 TitlePosition = Rr_V2(
         TriangleBaseX + TriangleHeight + gContext->ButtonPadding.Width,
         Layout->Cursor.Y);
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
+    Rr_UIDrawText(
         Window,
         TitlePosition,
         &TitleString,
@@ -1924,8 +1924,8 @@ bool Rr_UIFold(const char *Title)
         &gContext->Style.Foreground,
         0);
 
-    Rr_Vec2 TotalSize = { Layout->AvailableContentsWidth,
-                          gContext->LineHeight };
+    Rr_Vec2 TotalSize =
+        Rr_V2(Layout->AvailableContentsWidth, gContext->LineHeight);
 
     bool Up = false;
     bool Hovered = false;
@@ -3073,7 +3073,8 @@ void Rr_UIDebugOverlay(void)
         uint32_t PresentModeCount;
         Rr_PresentMode *PresentModes =
             Rr_GetAvailablePresentModes(Renderer, &PresentModeCount);
-        const char *PresentModeStrings[PresentModeCount];
+        const char **PresentModeStrings =
+            alloca(PresentModeCount * sizeof(const char *));
         uint32_t CurrentPresentModeIndex;
         for(uint32_t Index = 0; Index < PresentModeCount; ++Index)
         {
