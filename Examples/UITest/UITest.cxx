@@ -1,5 +1,7 @@
 #include <Rr/Rr.h>
 
+#include <array>
+
 static void Init(void *UserData)
 {
 }
@@ -52,7 +54,7 @@ static void Iterate(void *UserData)
 
     Rr_UIBeginWindow("Rr_UI.h", Flags);
     Rr_UILabel("Combobox");
-    static const char *ComboboxOptions[] = {
+    std::array ComboboxOptions = {
         "Option A",
         "Option B",
         "Option C",
@@ -61,8 +63,8 @@ static void Iterate(void *UserData)
     static uint32_t SelectedComboboxOption = 0;
     if(Rr_UICombobox(
            "Options",
-           RR_ARRAY_COUNT(ComboboxOptions),
-           ComboboxOptions,
+           ComboboxOptions.size(),
+           ComboboxOptions.data(),
            &SelectedComboboxOption))
     {
     }
