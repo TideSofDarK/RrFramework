@@ -41,6 +41,7 @@
 #include <float.h>
 #include <stdio.h>
 
+typedef uint64_t Rr_UIHash;
 typedef uint16_t Rr_UIIndex;
 
 typedef struct Rr_UIVertex Rr_UIVertex;
@@ -73,6 +74,7 @@ typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
     Rr_String Title;
+    Rr_UIHash Hash;
     Rr_UIWindowFlags Flags;
     Rr_Rect Rect;
     Rr_Vec2 ContentsStart;
@@ -140,6 +142,7 @@ struct Rr_UIContext
 
     bool LeftMouseButtonDownOverWindow : 1;
 
+    bool SkipLeftMouseButtonUp : 1;
     bool LeftMouseButtonDown : 1;
     bool LeftMouseButtonHeld : 1;
     bool LeftMouseButtonUp : 1;
@@ -190,44 +193,6 @@ struct Rr_UIContext
 };
 
 static Rr_UIContext *gContext;
-
-static inline Rr_UILayout *Rr_UICurrentLayout(void)
-{
-    return gContext->Stack.Count > 0
-               ? &gContext->Stack.Data[gContext->Stack.Count - 1]
-               : NULL;
-}
-
-static inline Rr_UIWindow *Rr_UICurrentWindow(void)
-{
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    return Layout ? Layout->Window : NULL;
-}
-
-static inline Rr_Rect Rr_UICurrentRect(Rr_UIWindow *Window)
-{
-    return Window
-               ? (Window->ClipRects.Count > 0
-                      ? Window->ClipRects.Data[Window->ClipRects.Count - 1].Rect
-                      : Window->Rect)
-               : (Rr_Rect){ 0 };
-}
-
-static inline bool Rr_UIIsHorizontal(void)
-{
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    return Layout && Layout->HorizontalX != INFINITY;
-}
-
-#define RR_UI_ASSERT_NO_WINDOW()        \
-    assert(                             \
-        Rr_UICurrentWindow() == NULL && \
-        "Did you forget to call Rr_EndWindow()?")
-
-#define RR_UI_ASSERT_WINDOW()           \
-    assert(                             \
-        Rr_UICurrentWindow() != NULL && \
-        "Did you forget to call Rr_BeginWindow()?")
 
 Rr_UIFont *Rr_UICreateFont(
     Rr_UIContext *Context,
@@ -325,6 +290,89 @@ void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
     Rr_DestroyImage(gApp->Renderer, Font->Atlas);
 
     RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
+}
+
+static inline Rr_UILayout *Rr_UICurrentLayout(void)
+{
+    return gContext->Stack.Count > 0
+               ? &gContext->Stack.Data[gContext->Stack.Count - 1]
+               : NULL;
+}
+
+static inline Rr_UIWindow *Rr_UICurrentWindow(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    return Layout ? Layout->Window : NULL;
+}
+
+static inline Rr_UIHash Rr_UICurrentHash(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    return Layout ? Layout->Window->Hash : 0;
+}
+
+static inline Rr_Rect Rr_UICurrentRect(Rr_UIWindow *Window)
+{
+    return Window
+               ? (Window->ClipRects.Count > 0
+                      ? Window->ClipRects.Data[Window->ClipRects.Count - 1].Rect
+                      : Window->Rect)
+               : (Rr_Rect){ 0 };
+}
+
+static inline bool Rr_UIIsHorizontal(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    return Layout && Layout->HorizontalX != INFINITY;
+}
+
+static inline void Rr_UIAssertNoWindow(void)
+{
+    assert(
+        Rr_UICurrentWindow() == NULL &&
+        "Did you forget to call Rr_EndWindow()?");
+}
+
+static inline void Rr_UIAssertWindow(void)
+{
+    assert(
+        Rr_UICurrentWindow() != NULL &&
+        "Did you forget to call Rr_BeginWindow()?");
+}
+
+static inline Rr_UIHash Rr_UIGetHash(
+    const char *String,
+    size_t Length,
+    Rr_UIHash Seed)
+{
+    return XXH3_64bits_withSeed(String, Length, ~Seed);
+}
+
+static inline Rr_UIHash Rr_UIGetTitleHash(
+    const char *CString,
+    size_t LengthHint)
+{
+    if(LengthHint == 0)
+    {
+        LengthHint = strlen(CString);
+    }
+    const char *ExplicitHash = strstr(CString, "###");
+    if(ExplicitHash)
+    {
+        ExplicitHash += 3;
+        assert(
+            ExplicitHash < (CString + LengthHint) &&
+            "Empty hash after ### sentinel!");
+
+        return Rr_UIGetHash(
+            ExplicitHash,
+            LengthHint - ((CString + LengthHint) - ExplicitHash),
+            Rr_UICurrentHash());
+    }
+    else
+    {
+        return Rr_UIGetHash(CString, LengthHint, Rr_UICurrentHash());
+    }
 }
 
 static inline Rr_UIQuad Rr_UIReserveQuad(Rr_UIWindow *Window)
@@ -1045,7 +1093,7 @@ static inline void Rr_UISetLastClipRectIndexCount(Rr_UIWindow *Window)
 
 static inline void Rr_UIAddClipRect(Rr_UIWindow *Window, Rr_Rect *Rect)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
 
     Rr_UISetLastClipRectIndexCount(Window);
 
@@ -1224,7 +1272,7 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(Rr_UIWindow *Window)
 
 static inline void Rr_UIAdvance(Rr_Vec2 Size)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -1436,11 +1484,14 @@ static inline void Rr_UISetWindowClosedEx(Rr_UIWindow *Window, bool Closed)
 void Rr_UISetWindowClosed(const char *Title, bool Closed)
 {
     size_t TitleLength = strlen(Title);
-    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
+    Rr_UIHash TitleHash = Rr_UIGetHash(Title, TitleLength, 0);
     Rr_UIWindow **WindowRef =
-        RR_GET_MAP_VALUE(&gContext->WindowMap, Hash, gContext->Arena);
+        RR_GET_MAP_VALUE(&gContext->WindowMap, TitleHash, gContext->Arena);
     Rr_UIWindow *Window = *WindowRef;
-    Rr_UISetWindowClosedEx(Window, Closed);
+    if(Window)
+    {
+        Rr_UISetWindowClosedEx(Window, Closed);
+    }
 }
 
 static inline void Rr_UIBeginWindowEx(Rr_UIWindow *Window)
@@ -1569,10 +1620,10 @@ static inline void Rr_UIClosePopupWindow(void)
 void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 {
     size_t TitleLength = strlen(Title);
-    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
 
     Rr_UIWindow **WindowRef =
-        RR_GET_MAP_VALUE(&gContext->WindowMap, Hash, gContext->Arena);
+        RR_GET_MAP_VALUE(&gContext->WindowMap, TitleHash, gContext->Arena);
     Rr_UIWindow *Window = *WindowRef;
 
     if(Window == NULL)
@@ -1581,6 +1632,7 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
         Window->Flags = Flags;
         Window->ZOrder = gContext->TotalWindowCount++;
         Window->Title = Rr_CreateString(Title, TitleLength, gContext->Arena);
+        Window->Hash = TitleHash;
         Window->Rect.Offset = Rr_V2F(gContext->FontSize);
         Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
         /* TODO: Wrapped text uses available width so we still need
@@ -1598,7 +1650,7 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
 
 void Rr_UIEndWindow(void)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -1655,7 +1707,7 @@ void Rr_UIEndHorizontal(void)
 
 void Rr_UIBeginTabs(const char *Title)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
     assert(
         Rr_UIIsHorizontal() == false && "Tabs can't be aligned horizontally!");
 
@@ -1663,10 +1715,10 @@ void Rr_UIBeginTabs(const char *Title)
     Rr_UIWindow *Window = Layout->Window;
 
     size_t TitleLength = strlen(Title);
-    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
 
     Layout->SelectedTabRef =
-        RR_GET_MAP_VALUE(&Window->WidgetMap, Hash, gContext->Arena);
+        RR_GET_MAP_VALUE(&Window->WidgetMap, TitleHash, gContext->Arena);
     Layout->SelectedTab = *Layout->SelectedTabRef;
     Layout->TabCursor = Layout->Cursor;
 
@@ -1791,7 +1843,7 @@ bool Rr_UITab(const char *Title)
 
 void Rr_UIEndTabs(void)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
 
@@ -1806,20 +1858,23 @@ void Rr_UIEndTabs(void)
 
 bool Rr_UIFold(const char *Title)
 {
-    RR_UI_ASSERT_WINDOW();
-    assert(Rr_UIIsHorizontal() == 0 && "Fold can't be aligned horizontally!");
+    Rr_UIAssertWindow();
+    assert(
+        Rr_UIIsHorizontal() == false && "Folds can't be aligned horizontally!");
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
+    Rr_UIQuad ButtonQuad = Rr_UIReserveQuad(Window);
+
     size_t TitleLength = strlen(Title);
-    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
     Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
 
     bool **FoldValueRef =
-        RR_GET_MAP_VALUE(&Window->WidgetMap, Hash, gContext->Arena);
+        RR_GET_MAP_VALUE(&Window->WidgetMap, TitleHash, gContext->Arena);
     bool *FoldValue = *FoldValueRef;
     if(*FoldValueRef == NULL)
     {
@@ -1827,21 +1882,41 @@ bool Rr_UIFold(const char *Title)
         *FoldValueRef = FoldValue;
     }
 
-    Rr_Vec2 TriangleCenter = Layout->Cursor;
-    TriangleCenter.X += gContext->LineHeight / 2.0f;
-    TriangleCenter.Y += gContext->LineHeight / 2.0f;
-    TriangleCenter.Y +=
+    float TriangleHeight = gContext->LineHeight * 0.575f;
+    float TriangleBaseX = Layout->Cursor.X + Layout->ContentsPadding.Width;
+    float TriangleBaseY =
+        Layout->Cursor.Y + gContext->LineHeight -
         gContext->LineHeight *
-        (gContext->Font->UnderlineY - gContext->Font->UnderlineThickness);
-    Rr_UIDrawRotatedTriangle(
+            (gContext->Font->UnderlineY + gContext->Font->UnderlineThickness) -
+        TriangleHeight / 2.0f;
+    Rr_Vec2 TrianglePositions[3];
+    if(*FoldValue)
+    {
+        TrianglePositions[0] =
+            Rr_V2(TriangleBaseX + TriangleHeight / 2.0f, TriangleBaseY);
+        TrianglePositions[1] =
+            Rr_V2(TriangleBaseX, TriangleBaseY - TriangleHeight);
+        TrianglePositions[2] = Rr_V2(
+            TriangleBaseX + TriangleHeight,
+            TriangleBaseY - TriangleHeight);
+    }
+    else
+    {
+        TrianglePositions[0] = Rr_V2(TriangleBaseX, TriangleBaseY);
+        TrianglePositions[1] =
+            Rr_V2(TriangleBaseX, TriangleBaseY - TriangleHeight);
+        TrianglePositions[2] = Rr_V2(
+            TriangleBaseX + TriangleHeight,
+            TriangleBaseY - TriangleHeight / 2.0f);
+    }
+    Rr_UIDrawSolidTriangle(
         Window,
-        TriangleCenter,
-        gContext->LineHeight / 3.0f,
-        &gContext->Style.Foreground,
-        RR_ANGLE_DEG(*FoldValue ? 90.0f : 0.0f));
+        TrianglePositions,
+        &gContext->Style.Foreground);
 
-    Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += gContext->LineHeight;
+    Rr_Vec2 TitlePosition = Rr_V2(
+        TriangleBaseX + TriangleHeight + gContext->ButtonPadding.Width,
+        Layout->Cursor.Y);
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         Window,
         TitlePosition,
@@ -1872,6 +1947,27 @@ bool Rr_UIFold(const char *Title)
         *FoldValue = !*FoldValue;
     }
 
+    Rr_Rect ButtonRect = {
+        Layout->Cursor,
+        TotalSize,
+    };
+    Rr_Vec4 ButtonColor = gContext->Style.TitleBackground;
+    if(Held)
+    {
+        ButtonColor.W *= 0.5f;
+    }
+    else if(Hovered)
+    {
+        ButtonColor.W *= 0.75f;
+    }
+    else
+    {
+        ButtonColor.W *= 0.85f;
+    }
+    Rr_UISolidQuad(ButtonQuad, &ButtonRect, &ButtonColor);
+
+    TotalSize.Height += Layout->ContentsPadding.Height;
+
     Rr_UIAdvance(TotalSize);
 
     Rr_DestroyScratch(Scratch);
@@ -1882,7 +1978,7 @@ bool Rr_UIFold(const char *Title)
 void Rr_UISeparator(void)
 {
     /* TODO: Horizontal support. */
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -1910,7 +2006,7 @@ void Rr_UISeparator(void)
 
 void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -1936,7 +2032,7 @@ void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
 
 void Rr_UILabel(const char *Text)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -1981,7 +2077,7 @@ void Rr_UILabelF(const char *Format, ...)
 
 bool Rr_UIButton(const char *Text)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -2042,9 +2138,9 @@ bool Rr_UIButton(const char *Text)
     return Up;
 }
 
-bool Rr_UICheckbox(const char *Text, bool *Checked)
+bool Rr_UICheckbox(const char *Title, bool *Checked)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
     assert(Checked != NULL);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -2052,13 +2148,13 @@ bool Rr_UICheckbox(const char *Text, bool *Checked)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
-    Rr_Vec2 TextPosition = Layout->Cursor;
-    TextPosition.Y += gContext->ButtonPadding.Height;
-    Rr_Vec2 TextSize = Rr_UIDrawText(
+    Rr_String TitleString = Rr_CreateString(Title, 0, Scratch.Arena);
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.Y += gContext->ButtonPadding.Height;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
         Window,
-        TextPosition,
-        &TextString,
+        TitlePosition,
+        &TitleString,
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -2067,18 +2163,16 @@ bool Rr_UICheckbox(const char *Text, bool *Checked)
 
     Rr_Vec2 TotalSize = { 0 };
     TotalSize.Width = IsHorizontal
-                          ? TextSize.Width + Layout->ContentsPadding.Width +
+                          ? TitleSize.Width + Layout->ContentsPadding.Width +
                                 gContext->LineHeight
                           : Layout->AvailableContentsWidth;
-    TotalSize.Height =
-        gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f;
+    TotalSize.Height = gContext->LineHeight + Layout->ContentsPadding.Height;
     Rr_Vec2 CheckboxSize = { gContext->LineHeight, gContext->LineHeight };
 
     Rr_Vec2 FramePosition = Layout->Cursor;
     FramePosition.X +=
-        IsHorizontal ? (TextSize.Width + Layout->ContentsPadding.Width)
+        IsHorizontal ? (TitleSize.Width + Layout->ContentsPadding.Width)
                      : (Layout->AvailableContentsWidth - gContext->LineHeight);
-    FramePosition.X += gContext->FrameThickness;
 
     bool Up = false;
     bool Hovered = false;
@@ -2156,7 +2250,8 @@ bool Rr_UICombobox(
     const char **Options,
     uint32_t *SelectedIndex)
 {
-    RR_UI_ASSERT_WINDOW();
+    Rr_UIAssertWindow();
+    assert(Title != NULL);
     assert(OptionCount > 0);
     assert(Options != NULL);
     assert(SelectedIndex != NULL);
@@ -2169,7 +2264,7 @@ bool Rr_UICombobox(
     /* Draw title first. */
 
     size_t TitleLength = strlen(Title);
-    XXH64_hash_t Hash = XXH3_64bits(Title, TitleLength);
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
     Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
     Rr_Vec2 TitlePosition = Layout->Cursor;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
@@ -2195,6 +2290,7 @@ bool Rr_UICombobox(
     ButtonPosition.X += Layout->AvailableContentsWidth -
                         SelectedTextSize.Width - gContext->LineHeight -
                         gContext->ButtonPadding.Width * 2.0f;
+    ButtonPosition.X -= gContext->FrameThickness;
 
     Rr_Vec2 SelectedTextPosition = ButtonPosition;
     SelectedTextPosition.X += gContext->ButtonPadding.Width;
@@ -2230,13 +2326,13 @@ bool Rr_UICombobox(
     if(Up)
     {
         gContext->PopupWindowParent = Window;
-        gContext->PopupWindowHash = Hash;
+        gContext->PopupWindowHash = TitleHash;
     }
 
     bool OptionChanged = false;
 
     if(gContext->PopupWindowParent == Window &&
-       gContext->PopupWindowHash == Hash)
+       gContext->PopupWindowHash == TitleHash)
     {
         Rr_Vec2 PopupPosition = ButtonPosition;
         PopupPosition.Y += BorderSize.Height;
@@ -2378,13 +2474,93 @@ bool Rr_UICombobox(
         Rr_UIIsHorizontal()
             ? TitleSize.Width + Layout->ContentsPadding.Width + BorderSize.Width
             : Layout->AvailableContentsWidth;
-    TotalSize.Height =
-        gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f;
+    TotalSize.Height = gContext->LineHeight + Layout->ContentsPadding.Height;
     Rr_UIAdvance(TotalSize);
 
     Rr_DestroyScratch(Scratch);
 
     return OptionChanged;
+}
+
+bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
+{
+    Rr_UIAssertWindow();
+    assert(Title != NULL);
+    assert(Color != NULL);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    size_t TitleLength = strlen(Title);
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        Window,
+        TitlePosition,
+        &TitleString,
+        0.0f,
+        &gContext->Style.Foreground,
+        0);
+
+    bool IsHorizontal = Rr_UIIsHorizontal();
+
+    Rr_Vec2 TotalSize = { 0 };
+    TotalSize.Width = IsHorizontal
+                          ? TitleSize.Width + Layout->ContentsPadding.Width +
+                                gContext->LineHeight
+                          : Layout->AvailableContentsWidth;
+    TotalSize.Height = gContext->LineHeight + Layout->ContentsPadding.Height;
+    Rr_Vec2 ColorBoxSize = { gContext->LineHeight, gContext->LineHeight };
+
+    Rr_Vec2 FramePosition = Layout->Cursor;
+    FramePosition.X +=
+        IsHorizontal ? (TitleSize.Width + Layout->ContentsPadding.Width)
+                     : (Layout->AvailableContentsWidth - gContext->LineHeight);
+
+    bool Up = false;
+    bool Hovered = false;
+    bool Held = false;
+    Rr_UIButtonBehavior(
+        Window,
+        &(Rr_Rect){
+            FramePosition,
+            ColorBoxSize,
+        },
+        NULL,
+        &Up,
+        &Hovered,
+        &Held);
+
+    if(Up)
+    {
+        /* TODO: Open popup window! */
+    }
+
+    Rr_UIDrawSolidQuad(
+        Window,
+        &(Rr_Rect){
+            FramePosition,
+            ColorBoxSize,
+        },
+        Color);
+
+    Rr_UIDrawInnerFrame(
+        Window,
+        &(Rr_Rect){
+            FramePosition,
+            ColorBoxSize,
+        },
+        gContext->FrameThickness,
+        &gContext->Style.Foreground);
+
+    Rr_UIAdvance(TotalSize);
+
+    Rr_DestroyScratch(Scratch);
+
+    return false;
 }
 
 bool Rr_UIWantMouseCapture(void)
@@ -2641,6 +2817,11 @@ void Rr_UIBegin(Rr_UIContext *Context)
     Rr_UIConsumeNextFontSize();
 
     gContext->MousePosition = Rr_GetMousePosition();
+    if(gContext->SkipLeftMouseButtonUp && gContext->LeftMouseButtonUp)
+    {
+        gContext->SkipLeftMouseButtonUp = false;
+        gContext->LeftMouseButtonUp = false;
+    }
 
     gContext->HoveredWindow = NULL;
     if(gContext->PopupWindowParent)
@@ -2659,12 +2840,13 @@ void Rr_UIBegin(Rr_UIContext *Context)
         else if(gContext->LeftMouseButtonDown)
         {
             Rr_UIClosePopupWindow();
+            gContext->SkipLeftMouseButtonUp = true;
         }
     }
-    if(gContext->HoveredWindow == NULL)
+    else if(gContext->HoveredWindow == NULL)
     {
-        for(int Index = (int)gContext->ActiveWindows.Count - 1; Index >= 0;
-            --Index)
+        int LastIndex = (int)gContext->ActiveWindows.Count - 1;
+        for(int Index = LastIndex; Index >= 0; --Index)
         {
             Rr_UIWindow *Window = gContext->ActiveWindows.Data[Index];
             if(Rr_RectContains(&Window->Rect, gContext->MousePosition))
@@ -2761,7 +2943,7 @@ static inline void Rr_UIDrawWindow(
 
 void Rr_UIEnd(void)
 {
-    RR_UI_ASSERT_NO_WINDOW();
+    Rr_UIAssertNoWindow();
 
     /* TODO: Consider active popup as well. */
     if(gContext->ActiveWindows.Count == 0)

@@ -146,9 +146,9 @@ extern void Rr_UILabel(const char *Text);
 
 extern void Rr_UILabelF(const char *Format, ...);
 
-extern bool Rr_UIButton(const char *Text);
+extern bool Rr_UIButton(const char *Title);
 
-extern bool Rr_UICheckbox(const char *Text, bool *Checked);
+extern bool Rr_UICheckbox(const char *Title, bool *Checked);
 
 extern bool Rr_UIInputField(
     size_t BufferSize,
@@ -160,6 +160,8 @@ extern bool Rr_UICombobox(
     uint32_t OptionCount,
     const char **Options,
     uint32_t *SelectedIndex);
+
+extern bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color);
 
 extern void Rr_UIBeginHorizontal(void);
 

@@ -1,6 +1,7 @@
 #include <Rr/Rr.h>
 
 #include <array>
+#include <iostream>
 
 static void Init(void *UserData)
 {
@@ -58,26 +59,35 @@ static void Iterate(void *UserData)
     FixedSizeWindow();
 
     Rr_UIBeginWindow("Rr_UI.h", Flags);
-    Rr_UILabel("Combobox");
-    std::array ComboboxOptions = {
-        "Option A", "Option B", "Option C", "Option D", "Longer Option E",
-    };
-    static uint32_t SelectedComboboxOption = 0;
-    if(Rr_UICombobox(
-           "Options",
-           ComboboxOptions.size(),
-           ComboboxOptions.data(),
-           &SelectedComboboxOption))
+    if(Rr_UIFold("Combobox"))
     {
+        std::array ComboboxOptions = {
+            "Option A", "Option B", "Option C", "Option D", "Longer Option E",
+        };
+        static uint32_t SelectedComboboxOption = 0;
+        if(Rr_UICombobox(
+               "Options",
+               ComboboxOptions.size(),
+               ComboboxOptions.data(),
+               &SelectedComboboxOption))
+        {
+            std::cout << "New option selected: "
+                      << ComboboxOptions[SelectedComboboxOption] << '\n';
+        }
     }
-    Rr_UISeparator();
     if(Rr_UIFold("Checkbox"))
     {
         Rr_UICheckbox("Close Button", &CloseButton);
         Rr_UICheckbox("No Resize", &NoResize);
         Rr_UICheckbox("No Scrollbar", &NoScrollbar);
         Rr_UICheckbox("No Title", &NoTitle);
-        Rr_UISeparator();
+    }
+    if(Rr_UIFold("Color Picker"))
+    {
+        static Rr_Vec4 ColorA = { 0.2f, 0.3f, 0.4f, 1.0f };
+        Rr_UIColorPicker("Color A", &ColorA);
+        static Rr_Vec4 ColorB = { 0.9f, 0.1f, 0.2f, 1.0f };
+        Rr_UIColorPicker("Color B", &ColorB);
     }
     Rr_UILabel("Button");
     Rr_UIBeginHorizontal();

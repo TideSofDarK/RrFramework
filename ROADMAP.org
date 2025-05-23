@@ -1,24 +1,24 @@
 * Critical
 - [X] Synchronization (?) bug with host written buffers.
-      Turns out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame.
+      Turned out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame.
       Solution: call Iterate() after waiting on the fence.
 - [ ] Hash collision handling across all usages of Rr_Map
 - [ ] Hashing objects such as VkFramebuffer looks very bad
 - [ ] Add deletion queues for Vulkan object
 
 * Features
-** Backend
-- [ ] Move to GLFW
-- [ ] Move to C11
-- [ ] Own implementation of Windows platform layer
 ** User Interface
+- [X] Combobox
+- [X] Auto-resizing windows
 - [ ] Keyboard input and related widgets
 - [ ] Color picker
-- [ ] Dropdown (combobox)
 - [ ] Radio buttons
-- [ ] AlwaysAutoResize equivalent
 - [ ] Nested windows
 ** Debug Overlay
 - [ ] Very basic profilers for CPU/GPU
 - [ ] Memory arena registry and better tracking of what's happening there
+** Backend (low-priority)
+- [ ] Move to GLFW
+- [ ] Move to C11
+- [ ] Own implementation of Windows platform layer
 
