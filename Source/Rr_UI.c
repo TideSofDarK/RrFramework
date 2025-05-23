@@ -1481,13 +1481,16 @@ static inline void Rr_UIBeginWindowEx(
         Rr_ResizeRect(&Window->Rect, gContext->FrameThickness);
     Rr_UIAddClipRect(Window, &WindowClipRect);
 
-    Rr_UIDrawOuterFrame(
-        Window,
-        &Window->Rect,
-        gContext->FrameThickness,
-        &gContext->Style.Outline);
+    if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT) == false)
+    {
+        Rr_UIDrawOuterFrame(
+            Window,
+            &Window->Rect,
+            gContext->FrameThickness,
+            &gContext->Style.Outline);
+    }
 
-    Layout->Cursor = Rr_AddV2(Window->Rect.Offset, gContext->ContentsPadding);
+    Layout->Cursor = Window->Rect.Offset;
 
     if(RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false)
     {
@@ -1502,7 +1505,12 @@ static inline void Rr_UIBeginWindowEx(
     Layout->AvailableContentsWidth =
         HasScrollbar ? Window->Rect.Extent.Width - gContext->ScrollbarWidth
                      : Window->Rect.Extent.Width;
-    Layout->AvailableContentsWidth -= gContext->ContentsPadding.X * 2.0f;
+
+    if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_PADDING_BIT) == false)
+    {
+        Layout->Cursor = Rr_AddV2(Layout->Cursor, gContext->ContentsPadding);
+        Layout->AvailableContentsWidth -= gContext->ContentsPadding.X * 2.0f;
+    }
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window);
     Rr_UIAddClipRect(Window, &ContentsAreaRect);
@@ -2246,7 +2254,7 @@ bool Rr_UICombobox(
 
     /* Add border. */
 
-    Rr_UIDrawInnerFrame(
+    Rr_UIDrawOuterFrame(
         Window,
         &(Rr_Rect){ ButtonPosition, BorderSize },
         gContext->FrameThickness,
@@ -2293,7 +2301,8 @@ Rr_UIContext *Rr_UICreateContext(void)
     Context->PopupWindow.Flags =
         RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
-        RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
+        RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_PADDING_BIT;
 
     Context->NextFontSize =
         24.0f; /* TODO: Calculate default font size based on DPI. */
@@ -2535,12 +2544,7 @@ void Rr_UIBegin(Rr_UIContext *Context)
         }
         else if(gContext->LeftMouseButtonDown)
         {
-            /* Consume a click to close popup window. */
-
             gContext->PopupWindowParent = NULL;
-            gContext->LeftMouseButtonDown = false;
-            gContext->LeftMouseButtonUp = false;
-            gContext->LeftMouseButtonHeld = false;
         }
     }
     if(gContext->HoveredWindow == NULL)
