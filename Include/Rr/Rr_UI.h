@@ -111,11 +111,10 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT = (1 << 2),
     RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT = (1 << 3),
     RR_UI_WINDOW_FLAGS_NO_MOVE_BIT = (1 << 4),
-    RR_UI_WINDOW_FLAGS_NO_PADDING_BIT = (1 << 5),
-    RR_UI_WINDOW_FLAGS_NO_BORDER_BIT = (1 << 6),
-    RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 7),
-    RR_UI_WINDOW_FLAGS_CREATE_CLOSED_BIT = (1 << 8),
-    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 9),
+    RR_UI_WINDOW_FLAGS_NO_BORDER_BIT = (1 << 5),
+    RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 6),
+    RR_UI_WINDOW_FLAGS_CREATE_CLOSED_BIT = (1 << 7),
+    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 8),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
@@ -128,6 +127,8 @@ typedef uint32_t Rr_UIInputFieldFlags;
 extern void Rr_UISetNextWindowPosition(Rr_Vec2 Position);
 
 extern void Rr_UISetNextWindowSize(Rr_Vec2 Size);
+
+extern void Rr_UISetNextWindowPadding(Rr_Vec2 Padding);
 
 extern void Rr_UISetWindowClosed(const char *Title, bool Closed);
 

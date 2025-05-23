@@ -764,12 +764,31 @@ static inline Rr_Vec2 Rr_V2(float X, float Y)
     return Result;
 }
 
+static inline Rr_Vec2 Rr_V2F(float X)
+{
+    Rr_Vec2 Result;
+    Result.X = X;
+    Result.Y = X;
+
+    return Result;
+}
+
 static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
 {
     Rr_Vec3 Result;
     Result.X = X;
     Result.Y = Y;
     Result.Z = Z;
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_V3F(float X)
+{
+    Rr_Vec3 Result;
+    Result.X = X;
+    Result.Y = X;
+    Result.Z = X;
 
     return Result;
 }
@@ -788,6 +807,24 @@ static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
     Result.Y = Y;
     Result.Z = Z;
     Result.W = W;
+#endif
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_V4F(float X)
+{
+    Rr_Vec4 Result;
+
+#ifdef RR_MATH__USE_SSE
+    Result.SSE = _mm_set1_ps(X);
+#elif defined(RR_MATH__USE_NEON)
+    Result.NEON = vdupq_n_f32(W);
+#else
+    Result.X = X;
+    Result.Y = X;
+    Result.Z = X;
+    Result.W = X;
 #endif
 
     return Result;

@@ -6,6 +6,19 @@ static void Init(void *UserData)
 {
 }
 
+static void FixedSizeWindow()
+{
+    Rr_UISetNextWindowSize({ 400, 400 });
+    Rr_UIBeginWindow(
+        "Fixed Size Window",
+        RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+            RR_UI_WINDOW_FLAGS_CREATE_CLOSED_BIT |
+            RR_UI_WINDOW_FLAGS_NO_BORDER_BIT);
+    Rr_UILabel("Border is disabled for this window.");
+    Rr_UILabelF("Window Size: %dx%d", 400, 400);
+    Rr_UIEndWindow();
+}
+
 static void Iterate(void *UserData)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer();
@@ -42,23 +55,12 @@ static void Iterate(void *UserData)
         Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BIT;
     }
 
-    {
-        Rr_UISetNextWindowSize({ 400, 400 });
-        Rr_UIBeginWindow(
-            "Fixed Size Window",
-            RR_UI_WINDOW_FLAGS_CLOSE_BIT |
-                RR_UI_WINDOW_FLAGS_CREATE_CLOSED_BIT);
-        Rr_UILabelF("Window Size: %dx%d", 400, 400);
-        Rr_UIEndWindow();
-    }
+    FixedSizeWindow();
 
     Rr_UIBeginWindow("Rr_UI.h", Flags);
     Rr_UILabel("Combobox");
     std::array ComboboxOptions = {
-        "Option A",
-        "Option B",
-        "Option C",
-        "Option D",
+        "Option A", "Option B", "Option C", "Option D", "Longer Option E",
     };
     static uint32_t SelectedComboboxOption = 0;
     if(Rr_UICombobox(
@@ -82,7 +84,7 @@ static void Iterate(void *UserData)
     if(Rr_UIButton("Show Style Editor"))
     {
     }
-    if(Rr_UIButton("Show Another Window"))
+    if(Rr_UIButton("Show Fixed Size Window"))
     {
         Rr_UISetWindowClosed("Fixed Size Window", false);
     }
