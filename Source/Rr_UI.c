@@ -38,7 +38,6 @@
 #include <cJSON/cJSON.h>
 
 #include <assert.h>
-#include <float.h>
 #include <stdio.h>
 
 typedef uint64_t Rr_UIHash;
@@ -1045,9 +1044,9 @@ static inline bool Rr_UIDragBehavior(
     bool *Hovered)
 {
     bool Contains = Rr_UIRectContains(Window, Rect, gContext->MousePosition);
-    if(Hovered && gContext->HoveredWindow == Window)
+    if(Hovered)
     {
-        *Hovered = Contains;
+        *Hovered = Contains && gContext->HoveredWindow == Window;
     }
 
     /* Two things to note:
