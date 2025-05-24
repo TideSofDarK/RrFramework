@@ -231,15 +231,7 @@ struct SSplatRenderer
 
         std::array<Rr_ColorTargetInfo, 1> ColorTargets = {};
         ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
-        ColorTargets[0].Blend.BlendEnable = true;
-        ColorTargets[0].Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
-        ColorTargets[0].Blend.DstColorBlendFactor =
-            RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        ColorTargets[0].Blend.ColorBlendOp = RR_BLEND_OP_ADD;
-        ColorTargets[0].Blend.SrcAlphaBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
-        ColorTargets[0].Blend.DstAlphaBlendFactor =
-            RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        ColorTargets[0].Blend.AlphaBlendOp = RR_BLEND_OP_ADD;
+        ColorTargets[0].Blend = Rr_AlphaBlend();
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;

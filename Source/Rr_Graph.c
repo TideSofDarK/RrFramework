@@ -1636,16 +1636,12 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Image *DepthImage)
 {
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
+    assert(DepthTarget == NULL || DepthImage != NULL);
 
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_GRAPHICS, Name);
-
-    // Rr_GraphImage *SrcImageHandle =
-    //     Rr_GetGraphImageHandle(&Frame->Graph, SrcImage);
-    // Rr_GraphImage *DstImageHandle =
-    //     Rr_GetGraphImageHandle(&Frame->Graph, DstImage);
 
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.Graphics;
     if(ColorTargetCount > 0)
@@ -1658,6 +1654,8 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 
         for(size_t Index = 0; Index < ColorTargetCount; ++Index)
         {
+            assert(ColorImages[Index] != NULL);
+
             Rr_GraphImage *ColorImageHandle =
                 Rr_GetGraphImageHandle(Frame->Graph, ColorImages[Index]);
 
@@ -1910,6 +1908,12 @@ void Rr_BindGraphicsPipeline(
     Rr_GraphicsPipeline *GraphicsPipeline)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
+    assert(
+        Node->Union.Graphics.ColorTargetCount ==
+        GraphicsPipeline->ColorAttachmentCount);
+    assert(
+        Node->Union.Graphics.DepthTarget != NULL ||
+        !GraphicsPipeline->HasDepthStencil);
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,

@@ -2569,29 +2569,31 @@ bool Rr_UIWantKeyboardCapture(void)
     return false;
 }
 
-Rr_UIContext *Rr_UICreateContext(void)
+void Rr_UIInit(void)
 {
+    assert(gContext == NULL);
+
     Rr_Renderer *Renderer = Rr_GetRenderer();
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    Rr_UIContext *Context = RR_ALLOC_TYPE(Arena, Rr_UIContext);
-    Context->Arena = Arena;
+    gContext = RR_ALLOC_TYPE(Arena, Rr_UIContext);
+    gContext->Arena = Arena;
 
-    Context->NextWindowPosition = Rr_V2F(INFINITY);
-    Context->NextWindowSize = Rr_V2F(INFINITY);
-    Context->NextWindowPadding = Rr_V2F(INFINITY);
+    gContext->NextWindowPosition = Rr_V2F(INFINITY);
+    gContext->NextWindowSize = Rr_V2F(INFINITY);
+    gContext->NextWindowPadding = Rr_V2F(INFINITY);
 
-    Context->PopupWindow.Flags =
+    gContext->PopupWindow.Flags =
         RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
         RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
-    Context->NextFontSize =
+    gContext->NextFontSize =
         24.0f; /* TODO: Calculate default font size based on DPI. */
 
-    Context->Style = (Rr_UIStyle){
+    gContext->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.25f },
         .ContentsPadding = { 0.5f, 0.5f },
 
@@ -2606,10 +2608,10 @@ Rr_UIContext *Rr_UICreateContext(void)
         .ButtonDisabled = Rr_U32ToRGBA(0x191e22FF),
     };
 
-    Context->Style.ScrollbarBackground = Context->Style.ButtonDisabled;
-    Context->Style.ScrollbarNormal = Context->Style.ButtonNormal;
-    Context->Style.ScrollbarHovered = Context->Style.ButtonHovered;
-    Context->Style.ScrollbarHeld = Context->Style.ButtonHeld;
+    gContext->Style.ScrollbarBackground = gContext->Style.ButtonDisabled;
+    gContext->Style.ScrollbarNormal = gContext->Style.ButtonNormal;
+    gContext->Style.ScrollbarHovered = gContext->Style.ButtonHovered;
+    gContext->Style.ScrollbarHeld = gContext->Style.ButtonHeld;
 
     Rr_PipelineBinding Bindings[] = {
         { 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
@@ -2622,7 +2624,7 @@ Rr_UIContext *Rr_UICreateContext(void)
             RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
         },
     };
-    Context->PipelineLayout = Rr_CreatePipelineLayout(
+    gContext->PipelineLayout = Rr_CreatePipelineLayout(
         Renderer,
         RR_ARRAY_COUNT(BindingSets),
         BindingSets);
@@ -2662,7 +2664,7 @@ Rr_UIContext *Rr_UICreateContext(void)
     };
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = {
-        .Layout = Context->PipelineLayout,
+        .Layout = gContext->PipelineLayout,
         .VertexShaderSPV = Rr_LoadAsset(RR_BUILTIN_UI_VERT_SPV),
         .FragmentShaderSPV = Rr_LoadAsset(RR_BUILTIN_UI_FRAG_SPV),
         .ColorTargetCount = RR_ARRAY_COUNT(ColorTargets),
@@ -2671,53 +2673,53 @@ Rr_UIContext *Rr_UICreateContext(void)
         .VertexInputBindings = &VertexInputBinding,
     };
 
-    Context->GraphicsPipeline =
+    gContext->GraphicsPipeline =
         Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
 
-    Context->VertexBuffer = Rr_CreateBuffer(
+    gContext->VertexBuffer = Rr_CreateBuffer(
         Renderer,
         RR_MEGABYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
-    Context->IndexBuffer = Rr_CreateBuffer(
+    gContext->IndexBuffer = Rr_CreateBuffer(
         Renderer,
         RR_MEGABYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
-    Context->UniformBuffer = Rr_CreateBuffer(
+    gContext->UniformBuffer = Rr_CreateBuffer(
         Renderer,
         sizeof(Rr_UIUniformData),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
-    Context->Sampler = Rr_CreateSampler(
+    gContext->Sampler = Rr_CreateSampler(
         Renderer,
         &(Rr_SamplerInfo){
             .MinFilter = RR_FILTER_LINEAR,
             .MagFilter = RR_FILTER_LINEAR,
         });
 
-    Context->Font = Rr_UICreateFont(
-        Context,
+    gContext->Font = Rr_UICreateFont(
+        gContext,
         RR_BUILTIN_SOURCESERIF4_PNG,
         RR_BUILTIN_SOURCESERIF4_JSON);
-
-    return Context;
 }
 
-void Rr_UIDestroyContext(Rr_UIContext *Context)
+void Rr_UICleanup(void)
 {
+    assert(gContext != NULL);
+
     Rr_Renderer *Renderer = gApp->Renderer;
-    Rr_DestroyBuffer(Renderer, Context->VertexBuffer);
-    Rr_DestroyBuffer(Renderer, Context->IndexBuffer);
-    Rr_DestroyBuffer(Renderer, Context->UniformBuffer);
-    Rr_DestroySampler(Renderer, Context->Sampler);
-    Rr_DestroyPipelineLayout(Renderer, Context->PipelineLayout);
-    Rr_DestroyGraphicsPipeline(Renderer, Context->GraphicsPipeline);
-    Rr_UIDestroyFont(Context, Context->Font);
-    Rr_DestroyArena(Context->Arena);
+    Rr_DestroyBuffer(Renderer, gContext->VertexBuffer);
+    Rr_DestroyBuffer(Renderer, gContext->IndexBuffer);
+    Rr_DestroyBuffer(Renderer, gContext->UniformBuffer);
+    Rr_DestroySampler(Renderer, gContext->Sampler);
+    Rr_DestroyPipelineLayout(Renderer, gContext->PipelineLayout);
+    Rr_DestroyGraphicsPipeline(Renderer, gContext->GraphicsPipeline);
+    Rr_UIDestroyFont(gContext, gContext->Font);
+    Rr_DestroyArena(gContext->Arena);
 }
 
 void Rr_UIProcessEvent(Rr_Event *Event)
@@ -2799,13 +2801,12 @@ static inline void Rr_UIConsumeNextFontSize(void)
     }
 }
 
-void Rr_UIBegin(Rr_UIContext *Context)
+void Rr_UIBegin(void)
 {
-    assert(Context);
+    assert(gContext != NULL);
 
     Rr_Renderer *Renderer = gApp->Renderer;
 
-    gContext = Context;
     gContext->FrameArena = Rr_GetFrameArena(Renderer);
 
     Rr_UIConsumeNextFontSize();
@@ -3066,6 +3067,13 @@ void Rr_UIDebugOverlay(void)
         if(Rr_UITab("General"))
         {
             Rr_UILabelF("Time: %.2f", Rr_GetTimeSeconds());
+            Rr_Vec2 MousePosition = Rr_GetMousePosition();
+            Rr_UILabelF(
+                "Mouse Position: %.1f %.1f",
+                MousePosition.X,
+                MousePosition.Y);
+            Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
+            Rr_UILabelF("Mouse Delta: %.1f %.1f", MouseDelta.X, MouseDelta.Y);
             Rr_UISeparator();
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =

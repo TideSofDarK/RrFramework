@@ -365,6 +365,9 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
 
     Rr_DestroyScratch(Scratch);
 
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
+
     return true;
 }
 

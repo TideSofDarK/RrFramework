@@ -55,8 +55,9 @@ struct Rr_ComputePipeline
 struct Rr_GraphicsPipeline
 {
     VkPipeline Handle;
-    uint32_t ColorAttachmentCount;
     Rr_PipelineLayout *Layout;
+    uint32_t ColorAttachmentCount;
+    bool HasDepthStencil;
 };
 
 extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(

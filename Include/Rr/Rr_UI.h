@@ -131,7 +131,10 @@ extern void Rr_UISetNextWindowSize(Rr_Vec2 Size);
 
 extern void Rr_UISetNextWindowPadding(Rr_Vec2 Padding);
 
-extern bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags);
+extern bool Rr_UIBeginWindow(
+    const char *Title,
+    bool *Open,
+    Rr_UIWindowFlags Flags);
 
 extern void Rr_UIEndWindow(void);
 

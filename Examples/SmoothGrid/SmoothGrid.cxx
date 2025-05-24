@@ -3,29 +3,64 @@
 #include <Rr/Rr.h>
 
 #include <array>
-#include <cfloat>
-#include <vector>
+#include <print>
+
+using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
 struct SCamera
 {
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position{};
+    float Near;
+    float Far;
+    float Aspect;
+    float FOVDegrees;
+    Rr_Vec3 Position;
 
     Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
-    void SetPerspective(
+    void UpdatePerspective()
+    {
+        ProjMatrix =
+            Rr_Perspective_RH_ZO(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
+    }
+
+    void UpdateView()
+    {
+        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
+        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
+        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
+        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
+
+        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
+        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
+        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
+
+        ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
+        ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
+        ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
+        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position),
+                                  -Rr_Dot(YAxis, Position),
+                                  -Rr_Dot(ZAxis, Position),
+                                  1.0f };
+        ViewMatrix = Rr_VulkanMatrix() * ViewMatrix;
+    }
+
+    SCamera(
+        Rr_Vec3 Position,
         float FOVDegrees,
         Rr_IntVec2 Size,
         float Near,
         float Far)
+        : Position(Position)
+        , FOVDegrees(FOVDegrees)
+        , Aspect((float)Size.X / (float)Size.Y)
+        , Near(Near)
+        , Far(Far)
     {
-        ProjMatrix = Rr_Perspective_LH_ZO(
-            RR_ANGLE_DEG(FOVDegrees),
-            (float)Size.X / (float)Size.Y,
-            Near,
-            Far);
+        UpdatePerspective();
+        UpdateView();
     }
 
     [[nodiscard]] Rr_Vec3 GetForwardVector() const
@@ -38,106 +73,223 @@ struct SCamera
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
     }
 
-    void Update(Rr_InputState *State)
+    void Update(const UScancodes &Scancodes)
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
-        // Rr_KeyStates Keys = State->Keys;
+        if(Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
+        {
+            Rr_SetRelativeMouseMode(true);
 
-        // Rr_Vec3 CameraForward = GetForwardVector();
-        // Rr_Vec3 CameraLeft = GetRightVector();
-        // constexpr float CameraSpeed = 5.0f;
-        // if(Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
-        // {
-        //     Position += CameraForward * CameraSpeed * DeltaTime;
-        // }
-        // if(Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
-        // {
-        //     Position -= CameraLeft * CameraSpeed * DeltaTime;
-        // }
-        // if(Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
-        // {
-        //     Position -= CameraForward * CameraSpeed * DeltaTime;
-        // }
-        // if(Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
-        // {
-        //     Position += CameraLeft * CameraSpeed * DeltaTime;
-        // }
+            constexpr float CameraSpeed = 5.0f;
+            Rr_Vec3 CameraForward = GetForwardVector();
+            Rr_Vec3 CameraLeft = GetRightVector();
+            if(Scancodes[RR_SCANCODE_W])
+            {
+                Position -= CameraForward * CameraSpeed * DeltaTime;
+            }
+            if(Scancodes[RR_SCANCODE_A])
+            {
+                Position -= CameraLeft * CameraSpeed * DeltaTime;
+            }
+            if(Scancodes[RR_SCANCODE_S])
+            {
+                Position += CameraForward * CameraSpeed * DeltaTime;
+            }
+            if(Scancodes[RR_SCANCODE_D])
+            {
+                Position += CameraLeft * CameraSpeed * DeltaTime;
+            }
 
-        // if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
-        // {
-        //     Rr_SetRelativeMouseMode(true);
-        //     constexpr float Sensitivity = 0.2f;
-        //     Yaw = Rr_WrapMax(
-        //         Yaw + (State->MousePositionDelta.X * Sensitivity),
-        //         360.0f);
-        //     Pitch = Rr_WrapMinMax(
-        //         Pitch - (State->MousePositionDelta.Y * Sensitivity),
-        //         -90.0f,
-        //         90.0f);
-        // }
-        // else
-        // {
-        //     Rr_SetRelativeMouseMode(false);
-        // }
+            Rr_Vec2 Delta = Rr_GetMousePositionDelta();
+            constexpr float Sensitivity = 0.2f;
+            Yaw += Delta.X * Sensitivity;
+            Pitch += Delta.Y * Sensitivity;
+        }
+        else
+        {
+            Rr_SetRelativeMouseMode(false);
+        }
 
-        // float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
-        // float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
-        // float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
-        // float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
+        Yaw = Rr_WrapMax(Yaw, 360.0f);
+        Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        // Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
-        // Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
-        // Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
-
-        // ViewMatrix = {
-        //     XAxis.X,
-        //     YAxis.X,
-        //     ZAxis.X,
-        //     0.0f,
-        //     XAxis.Y,
-        //     YAxis.Y,
-        //     ZAxis.Y,
-        //     0.0f,
-        //     XAxis.Z,
-        //     YAxis.Z,
-        //     ZAxis.Z,
-        //     0.0f,
-        //     -Rr_Dot(XAxis, Position),
-        //     -Rr_Dot(YAxis, Position),
-        //     -Rr_Dot(ZAxis, Position),
-        //     1.0f,
-        // };
+        UpdateView();
     }
+};
+
+struct SGPUUniform
+{
+    Rr_Mat4 View;
+    Rr_Mat4 Projection;
+    float GridSize;
 };
 
 struct SSmoothGrid
 {
-    SCamera Camera;
     Rr_Renderer *Renderer;
+
+    static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
+
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_GraphicsPipeline *GraphicsPipeline;
+
+    Rr_Image *DepthImage;
+    Rr_Buffer *UniformBuffer;
+
+    SCamera Camera;
+
+    UScancodes Scancodes{};
+
+    void InitPipeline()
+    {
+        std::array Bindings = {
+            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+        };
+        std::array Sets = {
+            Rr_PipelineBindingSet{
+                Bindings.size(),
+                Bindings.data(),
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        PipelineLayout = Rr_CreatePipelineLayout(
+            Renderer,
+            (uint32_t)Sets.size(),
+            Sets.data());
+
+        Rr_ColorTargetInfo ColorTarget = {};
+        ColorTarget.Format = Rr_GetSwapchainFormat(Renderer);
+        ColorTarget.Blend = Rr_AlphaBlend();
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
+        PipelineInfo.Layout = PipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_SMOOTHGRID_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_SMOOTHGRID_FRAG_SPV);
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = &ColorTarget;
+        PipelineInfo.DepthStencil.EnableDepthTest = true;
+        PipelineInfo.DepthStencil.EnableDepthWrite = true;
+        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
+        PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
+
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+    }
+
+    void InitUniformBuffer()
+    {
+        UniformBuffer = Rr_CreateBuffer(
+            Renderer,
+            sizeof(SGPUUniform),
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+    }
+
+    void InitDepthImage()
+    {
+        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+        DepthImage = Rr_CreateImage(
+            Renderer,
+            { SwapchainSize.X, SwapchainSize.Y, 1 },
+            DEPTH_FORMAT,
+            RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+    }
 
     SSmoothGrid()
         : Renderer(Rr_GetRenderer())
+        , Camera(
+              Rr_V3(0.0f, 1.0f, 0.0f),
+              90.0f,
+              Rr_GetSwapchainSize(Renderer),
+              0.01f,
+              100.0f)
     {
-        Camera.Position = { 0.0f, -0.5f, -2.5f };
+        InitPipeline();
+        InitUniformBuffer();
+        InitDepthImage();
     }
 
-    void Event()
+    void Event(Rr_Event *Event)
     {
-
+        switch(Event->Type)
+        {
+            case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
+            {
+                /* TODO: Recreate depth image! */
+                return;
+            }
+            case RR_EVENT_TYPE_KEY_DOWN:
+            case RR_EVENT_TYPE_KEY_UP:
+            {
+                Scancodes[Event->Key.Scancode] = Event->Key.Down;
+                return;
+            }
+            default:
+                return;
+        }
     }
 
     void Iterate()
     {
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
-        Camera.SetPerspective(50.0f, SwapchainSize, 0.1f, 200.0f);
-        // Camera.Update(&InputState);
+
+        Camera.Aspect = (float)SwapchainSize.X / (float)SwapchainSize.Y;
+        Camera.UpdatePerspective();
+        Camera.Update(Scancodes);
+
+        SGPUUniform Uniform = {
+            .View = Camera.ViewMatrix,
+            .Projection = Camera.ProjMatrix,
+            .GridSize = 1.0f,
+        };
+        std::memcpy(
+            Rr_GetMappedBufferData(Renderer, UniformBuffer),
+            &Uniform,
+            sizeof(SGPUUniform));
 
         Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+
+        Rr_ColorClear ColorClear = {};
+        Rr_ColorTarget ColorTarget = {
+            .Slot = 0,
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Clear = ColorClear,
+        };
+        Rr_DepthTarget DepthTarget = {
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Clear = Rr_DepthClear(1.0f, 0),
+        };
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+            Renderer,
+            "grid",
+            1,
+            &ColorTarget,
+            &SwapchainImage,
+            &DepthTarget,
+            DepthImage);
+        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        Rr_BindUniformBuffer(
+            GraphicsNode,
+            UniformBuffer,
+            0,
+            0,
+            0,
+            sizeof(SGPUUniform));
+        Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+
+        Rr_UIDebugOverlay();
     }
 
     ~SSmoothGrid()
     {
+        Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
+        Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
+        Rr_DestroyBuffer(Renderer, UniformBuffer);
+        Rr_DestroyImage(Renderer, DepthImage);
     }
 };
 
@@ -149,7 +301,7 @@ static void Init(void *UserData)
 static void Event(void *UserData, Rr_Event *Event)
 {
     auto SmoothGrid = std::bit_cast<SSmoothGrid *>(UserData);
-    SmoothGrid->Event();
+    SmoothGrid->Event(Event);
 }
 
 static void Iterate(void *UserData)
@@ -161,7 +313,7 @@ static void Iterate(void *UserData)
 static void Cleanup(void *UserData)
 {
     auto SmoothGrid = std::bit_cast<SSmoothGrid *>(UserData);
-    SmoothGrid->~SmoothGrid();
+    SmoothGrid->~SSmoothGrid();
 }
 
 int main()

@@ -50,6 +50,10 @@ typedef uint16_t Rr_HiveSkipType;
 #define RR_HIVE_CONCAT(a, b)        a##b
 #define RR_HIVE_EXPAND_CONCAT(a, b) RR_HIVE_CONCAT(a, b)
 
+#ifndef RR_HIVE_PREFIX
+#define RR_HIVE_PREFIX
+#endif
+
 #ifndef RR_HIVE_TYPE
 #error RR_HIVE_TYPE is not set!
 #define RR_HIVE_TYPE int
@@ -64,11 +68,11 @@ typedef uint16_t Rr_HiveSkipType;
 #endif
 
 #ifndef RR_HIVE_GROUP_NAME
-#define RR_HIVE_GROUP_NAME RR_HIVE_EXPAND_CONCAT(RR_HIVE_NAME, Group)
+#define RR_HIVE_GROUP_NAME RR_HIVE_EXPAND_CONCAT(RR_HIVE_TYPE, HiveGroup)
 #endif
 
 #ifndef RR_HIVE_ITERATOR_NAME
-#define RR_HIVE_ITERATOR_NAME RR_HIVE_EXPAND_CONCAT(RR_HIVE_NAME, Iterator)
+#define RR_HIVE_ITERATOR_NAME RR_HIVE_EXPAND_CONCAT(RR_HIVE_TYPE, HiveIterator)
 #endif
 
 #ifndef RR_HIVE_MIN_BLOCK_CAPACITY
@@ -77,10 +81,6 @@ typedef uint16_t Rr_HiveSkipType;
 
 #ifndef RR_HIVE_MAX_BLOCK_CAPACITY
 #define RR_HIVE_MAX_BLOCK_CAPACITY UINT16_MAX
-#endif
-
-#ifndef RR_HIVE_PREFIX
-#define RR_HIVE_PREFIX
 #endif
 
 typedef struct RR_HIVE_GROUP_NAME RR_HIVE_GROUP_NAME;

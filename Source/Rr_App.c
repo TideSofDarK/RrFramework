@@ -24,8 +24,9 @@
 
 #include "Rr_App.h"
 
-#include "Rr_Log.h"
 #include "Rr_Memory.h"
+#include "Rr_Renderer.h"
+#include "Rr_UI.h"
 
 #include <Rr/Rr_Input.h>
 #include <Rr/Rr_Platform.h>
@@ -94,7 +95,7 @@ static void Rr_Iterate(void)
 
     Rr_NewFrame();
 
-    Rr_UIBegin(gApp->UI);
+    Rr_UIBegin();
 
     gApp->Config->IterateFunc(gApp->UserData);
 
@@ -147,6 +148,24 @@ Rr_IntVec2 Rr_GetDefaultWindowSize(void)
     };
 }
 
+static inline bool Rr_PollEvent(Rr_Event *Event)
+{
+    if(Rr_PollPlatformEvent(Event))
+    {
+        return true;
+    }
+
+    for(Rr_EventHiveIterator It = gApp->EventHive.Begin;
+        It.Element != gApp->EventHive.End.Element;)
+    {
+        memcpy(Event, It.Element, sizeof(Rr_Event));
+        Rr_RemoveFromEventHive(&gApp->EventHive, &It);
+        return true;
+    }
+
+    return false;
+}
+
 void Rr_Run(Rr_AppConfig *Config)
 {
     assert(gApp == NULL && "You shouldn't call Rr_Run() more than once!");
@@ -188,7 +207,8 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
 
     gApp->Renderer = Rr_CreateRenderer();
-    gApp->UI = Rr_UICreateContext();
+
+    Rr_UIInit();
 
     Config->InitFunc(gApp->UserData);
 
@@ -225,7 +245,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     gApp->Config->CleanupFunc(gApp->UserData);
 
-    Rr_UIDestroyContext(gApp->UI);
+    Rr_UICleanup();
 
     Rr_DestroyRenderer(gApp->Renderer);
 
@@ -297,4 +317,11 @@ double Rr_GetTimeSeconds(void)
 void Rr_SetRelativeMouseMode(bool IsRelative)
 {
     SDL_SetWindowRelativeMouseMode(gApp->Window, IsRelative ? true : false);
+}
+
+Rr_Event *Rr_AddEvent(void)
+{
+    Rr_EventHiveIterator It =
+        Rr_PushEventIntoHive(&gApp->EventHive, gApp->Arena);
+    return It.Element;
 }

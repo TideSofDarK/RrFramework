@@ -21,11 +21,10 @@ struct SMyStruct
 
 #define RR_HIVE_TYPE      SMyStruct
 #define RR_HIVE_TYPE_NAME MyStruct
-#define RR_HIVE_NAME      SMyHive
 #include <Rr/Rr_Hive.h>
 
 static Rr_Arena *Arena;
-static SMyHive Hive;
+static SMyStructHive Hive;
 
 static void Init(void *UserData)
 {
@@ -49,44 +48,48 @@ static void Iterate(void *UserData)
         &ColorClear,
         Rr_GetSwapchainImage(Renderer));
 
-    Rr_UIBeginWindow("Hive", 0);
-    Rr_UILabelF("Total Count: %d", Hive.Count);
-    Rr_UILabelF("Total Capacity: %d", Hive.Capacity);
+    if(Rr_UIBeginWindow("Hive", NULL, 0))
+    {
+        Rr_UILabelF("Total Count: %d", Hive.Count);
+        Rr_UILabelF("Total Capacity: %d", Hive.Capacity);
 #ifdef RR_DEBUG
-    Rr_UILabelF("Total Groups Allocated: %d", Hive.TotalGroups);
+        Rr_UILabelF("Total Groups Allocated: %d", Hive.TotalGroups);
 #endif
-    Rr_UIBeginHorizontal();
-    if(Rr_UIButton("Add"))
-    {
-        *PushMyStructIntoHive(&Hive, Arena).Element = SMyStruct(std::rand());
-    }
-    if(Rr_UIButton("Clear"))
-    {
-        ClearMyStructHive(&Hive);
-    }
-    Rr_UIEndHorizontal();
-    Rr_UISeparator();
-    int Index = 0;
-    for(SMyHiveIterator It = Hive.Begin; It.Element != Hive.End.Element;)
-    {
         Rr_UIBeginHorizontal();
-        Rr_UILabelF(
-            "%d) Group: %d, Value: %d",
-            Index,
-            It.Group->GroupNumber,
-            It.Element->Test1);
-        if(Rr_UIButton("Remove"))
+        if(Rr_UIButton("Add"))
         {
-            RemoveFromMyStructHive(&Hive, &It);
+            *PushMyStructIntoHive(&Hive, Arena).Element =
+                SMyStruct(std::rand());
         }
-        else
+        if(Rr_UIButton("Clear"))
         {
-            AdvanceMyStructHiveIterator(&It);
+            ClearMyStructHive(&Hive);
         }
         Rr_UIEndHorizontal();
-        Index++;
+        Rr_UISeparator();
+        int Index = 0;
+        for(SMyStructHiveIterator It = Hive.Begin;
+            It.Element != Hive.End.Element;)
+        {
+            Rr_UIBeginHorizontal();
+            Rr_UILabelF(
+                "%d) Group: %d, Value: %d",
+                Index,
+                It.Group->GroupNumber,
+                It.Element->Test1);
+            if(Rr_UIButton("Remove"))
+            {
+                RemoveFromMyStructHive(&Hive, &It);
+            }
+            else
+            {
+                AdvanceMyStructHiveIterator(&It);
+            }
+            Rr_UIEndHorizontal();
+            Index++;
+        }
+        Rr_UIEndWindow();
     }
-    Rr_UIEndWindow();
 }
 
 static void Cleanup(void *UserData)

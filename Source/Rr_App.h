@@ -26,12 +26,17 @@
 
 #include <Rr/Rr_App.h>
 
-#include "Rr_Load.h"
-#include "Rr_Renderer.h"
-#include "Rr_UI.h"
+#include "Rr_Memory.h"
 
 #include <SDL3/SDL_thread.h>
 #include <SDL3/SDL_video.h>
+
+#define RR_HIVE_TYPE      Rr_Event
+#define RR_HIVE_TYPE_NAME Event
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+struct Rr_Renderer;
 
 typedef union Rr_Object Rr_Object;
 
@@ -50,11 +55,13 @@ struct Rr_FrameTime
 #endif
 
     /* Frame Limiter */
+
     uint64_t TargetFramerate;
     uint64_t StartTime;
     bool EnableFrameLimiter;
 
     /* Delta Time Calculation */
+
     uint64_t Last;
     uint64_t Now;
     double DeltaSeconds;
@@ -66,9 +73,7 @@ struct Rr_App
     Rr_AppConfig *Config;
     void *UserData;
 
-    Rr_Renderer *Renderer;
-
-    Rr_UIContext *UI;
+    struct Rr_Renderer *Renderer;
 
     Rr_FrameTime FrameTime;
 
@@ -78,7 +83,11 @@ struct Rr_App
 
     Rr_SyncArena SyncArena;
 
+    Rr_EventHive EventHive;
+
     Rr_Arena *Arena;
 };
+
+extern Rr_Event *Rr_AddEvent(void);
 
 extern Rr_App *gApp;

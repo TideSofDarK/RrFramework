@@ -259,6 +259,14 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_GraphicsPipeline *Pipeline =
         RR_GET_FREE_LIST_ITEM(&Renderer->GraphicsPipelines, Renderer->Arena);
     Pipeline->Layout = Info->Layout;
+    Pipeline->HasDepthStencil = Info->DepthStencil.EnableDepthTest ||
+                                Info->DepthStencil.EnableStencilTest ||
+                                Info->DepthStencil.EnableDepthWrite;
+
+    if(Pipeline->HasDepthStencil)
+    {
+        assert(Info->DepthStencil.Format != RR_TEXTURE_FORMAT_UNDEFINED);
+    }
 
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 

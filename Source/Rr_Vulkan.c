@@ -397,8 +397,8 @@ void Rr_SelectPhysicalDevice(
     uint32_t BestDeviceIndex = UINT32_MAX;
     static const uint32_t PreferredDeviceType =
         VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-    // static const uint32_t PreferredDeviceType =
-    // VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+    /* static const uint32_t PreferredDeviceType = */
+    /* VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU; */
     uint32_t BestDeviceType = 0;
     VkDeviceSize BestDeviceMemory = 0;
     for(uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)

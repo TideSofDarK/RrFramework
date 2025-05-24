@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <Rr/Rr_Input.h>
 #include <Rr/Rr_Math.h>
 
 #ifdef __cplusplus
@@ -69,16 +70,24 @@ extern void Rr_UnlockSpinlock(Rr_Spinlock *SpinLock);
 
 typedef enum Rr_EventType
 {
+    RR_EVENT_TYPE_SWAPCHAIN_CREATED,
+    RR_EVENT_TYPE_KEY_DOWN,
+    RR_EVENT_TYPE_KEY_UP,
     RR_EVENT_TYPE_MOUSE_MOTION,
     RR_EVENT_TYPE_MOUSE_WHEEL,
     RR_EVENT_TYPE_MOUSE_BUTTON_DOWN,
     RR_EVENT_TYPE_MOUSE_BUTTON_UP,
     RR_EVENT_TYPE_TEXT_INPUT,
-    RR_EVENT_TYPE_KEY_DOWN,
-    RR_EVENT_TYPE_KEY_UP,
     RR_EVENT_TYPE_DROP_FILE,
     RR_EVENT_TYPE_QUIT,
 } Rr_EventType;
+
+typedef struct Rr_KeyEvent Rr_KeyEvent;
+struct Rr_KeyEvent
+{
+    bool Down;
+    Rr_Scancode Scancode;
+};
 
 typedef struct Rr_MouseMotionEvent Rr_MouseMotionEvent;
 struct Rr_MouseMotionEvent
@@ -114,6 +123,7 @@ struct Rr_Event
     Rr_EventType Type;
     union
     {
+        Rr_KeyEvent Key;
         Rr_MouseMotionEvent MouseMotion;
         Rr_MouseButtonEvent MouseButton;
         Rr_MouseWheelEvent Wheel;
@@ -121,7 +131,7 @@ struct Rr_Event
     };
 };
 
-extern bool Rr_PollEvent(Rr_Event *Event);
+extern bool Rr_PollPlatformEvent(Rr_Event *Event);
 
 #ifdef __cplusplus
 }

@@ -1,35 +1,39 @@
 #version 450
 #extension GL_ARB_shading_language_include : require
 
-#include "GS.glsl"
+#include "SmoothGrid.glsl"
 
-layout(location = 0) in vec4 InColor;
-layout(location = 1) in vec3 InConic;
-layout(location = 2) in vec2 InCoords;
-layout(location = 3) in vec2 InUV;
+layout(location = 0) in vec3 InNear;
+layout(location = 1) in vec3 InFar;
 
 layout(location = 0) out vec4 OutColor;
 
 void main()
 {
-    float Power = -0.5f * (InConic.x * InCoords.x * InCoords.x + InConic.z * InCoords.y * InCoords.y) - InConic.y * InCoords.x * InCoords.y;
-    if (Power > 0.0f) discard;
-    float Alpha = min(0.99f, InColor.a * exp(Power));
-    if (Alpha < 1.f / 255.f) discard;
-    OutColor = vec4(InColor.rgb, Alpha);
+    float Alpha = -InNear.y / (InFar.y - InNear.y);
+    vec3 FragPos = InNear + (InFar - InNear) * Alpha;
 
-    // OutColor = vec4(InColor);
-    // vec2 NewUV = InUV * 2;
-    // float D = dot(NewUV, NewUV);
-    // float E = exp(-D);
-    // OutColor.a = E * InColor.a;
+    vec2 Coord = FragPos.xz * GridSize;
+    vec2 Derivative = fwidth(Coord);
+    vec2 Grid = abs(fract(Coord - 0.5) - 0.5) / Derivative;
+    float Line = min(Grid.x, Grid.y);
+    float MinZ = min(Derivative.y, 0.5);
+    float MinX = min(Derivative.x, 0.5);
+    vec4 Color = vec4(0.2, 0.2, 0.2, 1.0 - min(Line, 1.0));
 
-    // float V = length(InUV);
-    // float Vis = (step(V, 1.0));
-    // Vis -= (step(V, 0.98));
-    // if (Vis > 0.1)
-    // {
-    //     OutColor = vec4(InColor.rgb, 0.0);
-    //     OutColor.a = 1.0;
-    // }
+    if(FragPos.x > -MinX && FragPos.x < MinX)
+    {
+        Color.y = 1.0;
+    }
+
+    if(FragPos.z > -MinZ && FragPos.z < MinZ)
+    {
+        Color.x = 1.0;
+    }
+
+    vec4 ClipSpacePos = Projection * View * vec4(FragPos.xyz, 1.0);
+    gl_FragDepth = ClipSpacePos.z / ClipSpacePos.w;
+
+    Color.a *= float(Alpha > 0.0);
+    OutColor = Color;
 }

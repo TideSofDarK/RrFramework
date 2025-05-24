@@ -254,6 +254,20 @@ extern void Rr_DestroyComputePipeline(
     Rr_Renderer *Renderer,
     Rr_ComputePipeline *ComputePipeline);
 
+static inline Rr_ColorTargetBlend Rr_AlphaBlend(void)
+{
+    Rr_ColorTargetBlend Blend;
+    Blend.BlendEnable = true;
+    Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
+    Blend.DstColorBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    Blend.ColorBlendOp = RR_BLEND_OP_ADD;
+    Blend.SrcAlphaBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
+    Blend.DstAlphaBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    Blend.AlphaBlendOp = RR_BLEND_OP_ADD;
+    Blend.ColorWriteMask = RR_COLOR_COMPONENT_DEFAULT;
+    return Blend;
+}
+
 extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_Renderer *Renderer,
     Rr_GraphicsPipelineCreateInfo *CreateInfo);

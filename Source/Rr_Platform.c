@@ -43,7 +43,7 @@ void Rr_LockSpinlock(Rr_Spinlock *SpinLock)
     }
 }
 
-bool Rr_PollEvent(Rr_Event *Event)
+bool Rr_PollPlatformEvent(Rr_Event *Event)
 {
     static SDL_Event SDLEvent;
     if(SDL_PollEvent(&SDLEvent) == false)
@@ -53,6 +53,16 @@ bool Rr_PollEvent(Rr_Event *Event)
 
     switch(SDLEvent.type)
     {
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+        {
+            Event->Type = SDLEvent.type == SDL_EVENT_KEY_DOWN
+                              ? RR_EVENT_TYPE_KEY_DOWN
+                              : RR_EVENT_TYPE_KEY_UP;
+            Event->Key.Down = SDLEvent.key.down;
+            Event->Key.Scancode = (Rr_Scancode)SDLEvent.key.scancode;
+            return true;
+        }
         case SDL_EVENT_MOUSE_MOTION:
         {
             Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;

@@ -28,6 +28,7 @@
 #include "Rr_GLTF.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
+#include "Rr_Renderer.h"
 #include "Rr_UploadContext.h"
 
 #include <SDL3/SDL.h>
