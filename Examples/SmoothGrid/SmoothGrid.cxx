@@ -122,7 +122,10 @@ struct SGPUUniform
 {
     Rr_Mat4 View;
     Rr_Mat4 Projection;
-    float GridSize;
+    float Near;
+    float Far;
+    float GridSmall;
+    float GridBig;
 };
 
 struct SSmoothGrid
@@ -242,7 +245,10 @@ struct SSmoothGrid
         SGPUUniform Uniform = {
             .View = Camera.ViewMatrix,
             .Projection = Camera.ProjMatrix,
-            .GridSize = 1.0f,
+            .Near = Camera.Near,
+            .Far = Camera.Far,
+            .GridSmall = 1.0f,
+            .GridBig = 10.0f,
         };
         std::memcpy(
             Rr_GetMappedBufferData(Renderer, UniformBuffer),
