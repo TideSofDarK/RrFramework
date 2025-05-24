@@ -38,7 +38,7 @@ struct Rr_AppConfig
     const char *Version;
     const char *Package;
     void (*InitFunc)(void *UserData);
-    void (*EventFunc)(Rr_Event *Event);
+    void (*EventFunc)(void *UserData, Rr_Event *Event);
     void (*IterateFunc)(void *UserData);
     void (*CleanupFunc)(void *UserData);
     void *UserData;

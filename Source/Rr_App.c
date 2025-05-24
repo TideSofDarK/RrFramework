@@ -214,7 +214,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
             if(Config->EventFunc != NULL)
             {
-                Config->EventFunc(&Event);
+                Config->EventFunc(gApp->UserData, &Event);
             }
         }
 

@@ -695,7 +695,7 @@ static void Init(void *UserData)
     RebuildTree();
 }
 
-static void Event(Rr_Event *Event)
+static void Event(void *UserData, Rr_Event *Event)
 {
     switch(Event->Type)
     {
@@ -964,37 +964,41 @@ static void Iterate(void *UserData)
 {
     Rr_UIDebugOverlay();
 
-    Rr_UIBeginWindow(
-        "QuadTree",
-        RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
-    Rr_UILabelF("Regenerating: %d", Rebuilding);
-    if(Rr_UIButton("Regenerate Tree"))
+    if(Rr_UIBeginWindow(
+           "QuadTree",
+           NULL,
+           RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
     {
-        if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+        Rr_UILabelF("Regenerating: %d", Rebuilding);
+        if(Rr_UIButton("Regenerate Tree"))
         {
-            RebuildTree();
+            if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+            {
+                RebuildTree();
+            }
         }
+        Rr_UISeparator();
+        Rr_UILabelF("Circles: %zu", Tree.ElementsCount());
+        Rr_UILabelF("Draw Count: %d", DrawCount);
+        Rr_UILabelF("Draws Size: %d", DrawsSize);
+        Rr_UILabelF("Box Select: %d", Selecting);
+        Rr_UILabelF(
+            "Camera Position: %d %d",
+            (int)CameraPosition.X,
+            (int)CameraPosition.Y);
+        Rr_UISeparator();
+        Rr_UICheckbox("Debug Draw", &DrawDebug);
+        Rr_UIBeginHorizontal();
+        Rr_UICheckbox("Use Query", &UseQuery);
+        if(Rr_UICheckbox("Use VSync", &VSyncEnabled))
+        {
+            Rr_SetPresentMode(
+                Rr_GetRenderer(),
+                VSyncEnabled ? RR_PRESENT_MODE_FIFO
+                             : RR_PRESENT_MODE_IMMEDIATE);
+        }
+        Rr_UIEndWindow();
     }
-    Rr_UISeparator();
-    Rr_UILabelF("Circles: %zu", Tree.ElementsCount());
-    Rr_UILabelF("Draw Count: %d", DrawCount);
-    Rr_UILabelF("Draws Size: %d", DrawsSize);
-    Rr_UILabelF("Box Select: %d", Selecting);
-    Rr_UILabelF(
-        "Camera Position: %d %d",
-        (int)CameraPosition.X,
-        (int)CameraPosition.Y);
-    Rr_UISeparator();
-    Rr_UICheckbox("Debug Draw", &DrawDebug);
-    Rr_UIBeginHorizontal();
-    Rr_UICheckbox("Use Query", &UseQuery);
-    if(Rr_UICheckbox("Use VSync", &VSyncEnabled))
-    {
-        Rr_SetPresentMode(
-            Rr_GetRenderer(),
-            VSyncEnabled ? RR_PRESENT_MODE_FIFO : RR_PRESENT_MODE_IMMEDIATE);
-    }
-    Rr_UIEndWindow();
 
     Update();
     Render();
