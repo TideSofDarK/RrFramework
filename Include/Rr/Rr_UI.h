@@ -113,8 +113,7 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_MOVE_BIT = (1 << 4),
     RR_UI_WINDOW_FLAGS_NO_BORDER_BIT = (1 << 5),
     RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 6),
-    RR_UI_WINDOW_FLAGS_CREATE_CLOSED_BIT = (1 << 7),
-    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 8),
+    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 7),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
@@ -124,15 +123,15 @@ typedef enum
 } Rr_UIInputFieldFlagsBits;
 typedef uint32_t Rr_UIInputFieldFlags;
 
+extern Rr_UIStyle *Rr_UIGetStyle(void);
+
 extern void Rr_UISetNextWindowPosition(Rr_Vec2 Position);
 
 extern void Rr_UISetNextWindowSize(Rr_Vec2 Size);
 
 extern void Rr_UISetNextWindowPadding(Rr_Vec2 Padding);
 
-extern void Rr_UISetWindowClosed(const char *Title, bool Closed);
-
-extern void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags);
+extern bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags);
 
 extern void Rr_UIEndWindow(void);
 

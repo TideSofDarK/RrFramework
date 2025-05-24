@@ -82,8 +82,8 @@ struct Rr_UIWindow
     int ZOrder;
     bool Minimized : 1;
     bool Added : 1;
-    bool Closed : 1;
     bool SkipDueToAutoResize : 1;
+    bool Open : 1;
 
     Rr_Map *WidgetMap;
 
@@ -132,6 +132,7 @@ struct Rr_UIContext
     Rr_UIWindow PopupWindow;
     Rr_UIWindow *PopupWindowParent;
     uint64_t PopupWindowHash;
+    bool PopupWindowOpen;
 
     RR_ARRAY(Rr_UILayout) Stack;
 
@@ -1118,9 +1119,9 @@ static inline Rr_Vec2 Rr_UIGetMinWindowSize(Rr_UIWindowFlags Flags)
     }
 }
 
-static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, Rr_Rect *TitleRect)
+static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
 {
-    /* Assuming having title bar i.e. calling from Rr_AddWindowTitle(). */
+    /* Assuming having a title bar. */
 
     bool HasClose = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
     if(HasClose == false)
@@ -1129,13 +1130,15 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, Rr_Rect *TitleRect)
     }
 
     float Thickness = gContext->TitleButtonSize * 0.15f;
+    Rr_Rect TitleRect = Window->Rect;
+    TitleRect.Extent.Height = gContext->WindowTitleHeight;
     Rr_Rect BarRect;
     Rr_Vec2 Margin = {
-        TitleRect->Extent.Width -
-            (TitleRect->Extent.Height + gContext->TitleButtonSize) * 0.5f,
-        TitleRect->Extent.Height * 0.5f - Thickness * 0.5f,
+        TitleRect.Extent.Width -
+            (TitleRect.Extent.Height + gContext->TitleButtonSize) * 0.5f,
+        TitleRect.Extent.Height * 0.5f - Thickness * 0.5f,
     };
-    BarRect.Offset = Rr_AddV2(TitleRect->Offset, Margin);
+    BarRect.Offset = Rr_AddV2(TitleRect.Offset, Margin);
     BarRect.Extent = (Rr_Vec2){
         gContext->TitleButtonSize,
         Thickness,
@@ -1143,17 +1146,17 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, Rr_Rect *TitleRect)
 
     Rr_Rect ButtonRect = BarRect;
     ButtonRect.Offset.Y =
-        TitleRect->Offset.Y +
-        (TitleRect->Extent.Height - gContext->TitleButtonSize) * 0.5f;
+        TitleRect.Offset.Y +
+        (TitleRect.Extent.Height - gContext->TitleButtonSize) * 0.5f;
     ButtonRect.Extent.Height = gContext->TitleButtonSize;
 
     Rr_Vec4 Color = gContext->Style.Foreground;
 
     bool Up, Held, Hovered;
     Rr_UIButtonBehavior(Window, &ButtonRect, NULL, &Up, &Hovered, &Held);
-    if(Up)
+    if(Up && Open)
     {
-        Window->Closed = true;
+        *Open = false;
     }
     if(Held)
     {
@@ -1197,8 +1200,6 @@ static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window)
         0.0f,
         &gContext->Style.Foreground,
         0);
-
-    Rr_UIAddCloseButton(Window, &TitleRect);
 }
 
 static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
@@ -1431,6 +1432,11 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
     return false;
 }
 
+Rr_UIStyle *Rr_UIGetStyle(void)
+{
+    return &gContext->Style;
+}
+
 void Rr_UISetNextWindowPosition(Rr_Vec2 Position)
 {
     gContext->NextWindowPosition = Position;
@@ -1466,37 +1472,35 @@ static inline void Rr_UIConsumeNextWindowSize(Rr_UIWindow *Window)
     }
 }
 
-static inline void Rr_UISetWindowClosedEx(Rr_UIWindow *Window, bool Closed)
-{
-    assert(Window != NULL);
-    if(Window->Closed && !Closed &&
-       RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
-    {
-        Window->SkipDueToAutoResize = true;
-    }
-    if(Window != NULL)
-    {
-        Window->Closed = Closed;
-    }
-}
-
-void Rr_UISetWindowClosed(const char *Title, bool Closed)
-{
-    size_t TitleLength = strlen(Title);
-    Rr_UIHash TitleHash = Rr_UIGetHash(Title, TitleLength, 0);
-    Rr_UIWindow **WindowRef =
-        RR_GET_MAP_VALUE(&gContext->WindowMap, TitleHash, gContext->Arena);
-    Rr_UIWindow *Window = *WindowRef;
-    if(Window)
-    {
-        Rr_UISetWindowClosedEx(Window, Closed);
-    }
-}
-
-static inline void Rr_UIBeginWindowEx(Rr_UIWindow *Window)
+static inline bool Rr_UIBeginWindowEx(
+    Rr_UIWindow *Window,
+    bool *Open,
+    Rr_UIWindowFlags Flags)
 {
     Rr_UIConsumeNextWindowPosition(Window);
     Rr_UIConsumeNextWindowSize(Window);
+
+    Window->Flags = Flags;
+
+    bool WasClosed = Window->Open == false;
+    Window->Open = (Open == NULL || *Open == true);
+    if(Window->Open)
+    {
+        if(WasClosed &&
+           RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+        {
+            Window->SkipDueToAutoResize = true;
+        }
+    }
+    else
+    {
+        return false;
+    }
+
+    assert(
+        Window->Added == false && "There already is a window with this title!");
+    *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->Arena) = Window;
+    Window->Added = true;
 
     Rr_UILayout *Layout =
         RR_PUSH_INTO_ARRAY(&gContext->Stack, gContext->FrameArena);
@@ -1504,16 +1508,6 @@ static inline void Rr_UIBeginWindowEx(Rr_UIWindow *Window)
         .Window = Window,
         .HorizontalX = INFINITY,
     };
-
-    if(!Window->Closed)
-    {
-        assert(
-            Window->Added == false &&
-            "There already is a window with this title!");
-
-        *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->Arena) = Window;
-        Window->Added = true;
-    }
 
     RR_RESET_ARRAY(&Window->ClipRects, gContext->FrameArena);
 
@@ -1562,9 +1556,15 @@ static inline void Rr_UIBeginWindowEx(Rr_UIWindow *Window)
 
     Layout->Cursor = Window->Rect.Offset;
 
+    /* Add window title if necessary. */
+
     if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false)
     {
         Rr_UIAddWindowTitle(Window);
+        if(RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT) == true)
+        {
+            Rr_UIAddCloseButton(Window, Open);
+        }
         Layout->Cursor.Y += gContext->WindowTitleHeight;
     }
 
@@ -1599,24 +1599,24 @@ static inline void Rr_UIBeginWindowEx(Rr_UIWindow *Window)
     Rr_UIDrawSolidQuad(Window, &ContentsAreaRect, &gContext->Style.Background);
 
     Window->ContentsStart = Window->ContentsEnd = Layout->Cursor;
+
+    return true;
 }
 
 static inline void Rr_UIBeginPopupWindow(void)
 {
     Rr_UIWindow *Window = &gContext->PopupWindow;
-    Rr_UISetWindowClosedEx(Window, false);
-    RR_CLEAR_ARRAY(&Window->ClipRects);
-    Rr_UIBeginWindowEx(Window);
+    Rr_UIBeginWindowEx(Window, NULL, gContext->PopupWindow.Flags);
 }
 
 static inline void Rr_UIClosePopupWindow(void)
 {
     assert(gContext->PopupWindowParent != NULL);
     gContext->PopupWindowParent = NULL;
-    Rr_UISetWindowClosedEx(&gContext->PopupWindow, true);
+    gContext->PopupWindow.Open = false;
 }
 
-void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
+bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
     size_t TitleLength = strlen(Title);
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
@@ -1628,7 +1628,6 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
     if(Window == NULL)
     {
         Window = RR_ALLOC_TYPE(gContext->Arena, Rr_UIWindow);
-        Window->Flags = Flags;
         Window->ZOrder = gContext->TotalWindowCount++;
         Window->Title = Rr_CreateString(Title, TitleLength, gContext->Arena);
         Window->Hash = TitleHash;
@@ -1638,13 +1637,10 @@ void Rr_UIBeginWindow(const char *Title, Rr_UIWindowFlags Flags)
          * some baseline width. Probably should come up with better solution. */
         /* Window->Rect.Extent.Width += 300.0f; */
         Window->SkipDueToAutoResize = true;
-        Rr_UISetWindowClosedEx(
-            Window,
-            RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_CREATE_CLOSED_BIT));
         *WindowRef = Window;
     }
 
-    Rr_UIBeginWindowEx(Window);
+    return Rr_UIBeginWindowEx(Window, Open, Flags);
 }
 
 void Rr_UIEndWindow(void)
@@ -2586,7 +2582,6 @@ Rr_UIContext *Rr_UICreateContext(void)
     Context->NextWindowSize = Rr_V2F(INFINITY);
     Context->NextWindowPadding = Rr_V2F(INFINITY);
 
-    Context->PopupWindow.Closed = true;
     Context->PopupWindow.Flags =
         RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
@@ -3060,69 +3055,78 @@ void Rr_UIDebugOverlay(void)
 {
     Rr_Renderer *Renderer = gApp->Renderer;
 
-    Rr_UIBeginWindow(
-        "Rr_DebugOverlay",
-        RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
-            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
-            RR_UI_WINDOW_FLAGS_NO_MOVE_BIT);
-    Rr_UIBeginTabs("DebugOverlayTabs");
-    if(Rr_UITab("General"))
+    if(Rr_UIBeginWindow(
+           "Rr_DebugOverlay",
+           NULL,
+           RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+               RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
+               RR_UI_WINDOW_FLAGS_NO_MOVE_BIT))
     {
-        Rr_UILabelF("Time: %.2f", Rr_GetTimeSeconds());
-        Rr_UISeparator();
-        uint32_t PresentModeCount;
-        Rr_PresentMode *PresentModes =
-            Rr_GetAvailablePresentModes(Renderer, &PresentModeCount);
-        const char **PresentModeStrings =
-            alloca(PresentModeCount * sizeof(const char *));
-        uint32_t CurrentPresentModeIndex;
-        for(uint32_t Index = 0; Index < PresentModeCount; ++Index)
+        Rr_UIBeginTabs("DebugOverlayTabs");
+        if(Rr_UITab("General"))
         {
-            if(Renderer->Swapchain.PresentMode == PresentModes[Index])
+            Rr_UILabelF("Time: %.2f", Rr_GetTimeSeconds());
+            Rr_UISeparator();
+            uint32_t PresentModeCount;
+            Rr_PresentMode *PresentModes =
+                Rr_GetAvailablePresentModes(Renderer, &PresentModeCount);
+            const char **PresentModeStrings =
+                alloca(PresentModeCount * sizeof(const char *));
+            uint32_t CurrentPresentModeIndex;
+            for(uint32_t Index = 0; Index < PresentModeCount; ++Index)
             {
-                CurrentPresentModeIndex = Index;
+                if(Renderer->Swapchain.PresentMode == PresentModes[Index])
+                {
+                    CurrentPresentModeIndex = Index;
+                }
+                PresentModeStrings[Index] =
+                    Rr_GetPresentModeString(PresentModes[Index]);
             }
-            PresentModeStrings[Index] =
-                Rr_GetPresentModeString(PresentModes[Index]);
+            if(Rr_UICombobox(
+                   "Present Mode",
+                   PresentModeCount,
+                   PresentModeStrings,
+                   &CurrentPresentModeIndex))
+            {
+                Rr_SetPresentMode(
+                    Renderer,
+                    PresentModes[CurrentPresentModeIndex]);
+            }
+            Rr_UILabelF("FPS: %.2f", Rr_GetFramesPerSecond());
+            Rr_UICheckbox(
+                "Frame Limiter Enabled",
+                &gApp->FrameTime.EnableFrameLimiter);
+            Rr_UILabelF("Frame Limit: %d", gApp->FrameTime.TargetFramerate);
+            if(Rr_UIButton("Toggle Fullscreen"))
+            {
+                Rr_ToggleFullscreen();
+            }
         }
-        if(Rr_UICombobox(
-               "Present Mode",
-               PresentModeCount,
-               PresentModeStrings,
-               &CurrentPresentModeIndex))
+        if(Rr_UITab("Memory"))
         {
-            Rr_SetPresentMode(Renderer, PresentModes[CurrentPresentModeIndex]);
+            Rr_UIDebugOverlayArena(gApp->Arena, "Application");
+            Rr_UIDebugOverlayArena(gApp->Renderer->Arena, "Renderer");
+            for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+            {
+                Rr_Frame *Frame = Renderer->Frames + Index;
+                Rr_UIDebugOverlayArena(Frame->Arena, "Frame");
+            }
+            Rr_UIDebugOverlayArena(gContext->Arena, "UI");
         }
-        Rr_UILabelF("FPS: %.2f", Rr_GetFramesPerSecond());
-        Rr_UICheckbox(
-            "Frame Limiter Enabled",
-            &gApp->FrameTime.EnableFrameLimiter);
-        Rr_UILabelF("Frame Limit: %d", gApp->FrameTime.TargetFramerate);
-        if(Rr_UIButton("Toggle Fullscreen"))
+        if(Rr_UITab("Renderer"))
         {
-            Rr_ToggleFullscreen();
+            Rr_UILabelF("Frame: %zu", gApp->Renderer->FrameNumber);
+            Rr_UILabelF(
+                "RenderPasses: %zu",
+                gApp->Renderer->RenderPasses.Count);
+            Rr_UILabelF(
+                "Framebuffers: %zu",
+                gApp->Renderer->Framebuffers.Count);
+            Rr_UILabelF(
+                "SwapchainImages: %zu",
+                gApp->Renderer->SwapchainImages.Count);
         }
+        Rr_UIEndTabs();
+        Rr_UIEndWindow();
     }
-    if(Rr_UITab("Memory"))
-    {
-        Rr_UIDebugOverlayArena(gApp->Arena, "Application");
-        Rr_UIDebugOverlayArena(gApp->Renderer->Arena, "Renderer");
-        for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
-        {
-            Rr_Frame *Frame = Renderer->Frames + Index;
-            Rr_UIDebugOverlayArena(Frame->Arena, "Frame");
-        }
-        Rr_UIDebugOverlayArena(gContext->Arena, "UI");
-    }
-    if(Rr_UITab("Renderer"))
-    {
-        Rr_UILabelF("Frame: %zu", gApp->Renderer->FrameNumber);
-        Rr_UILabelF("RenderPasses: %zu", gApp->Renderer->RenderPasses.Count);
-        Rr_UILabelF("Framebuffers: %zu", gApp->Renderer->Framebuffers.Count);
-        Rr_UILabelF(
-            "SwapchainImages: %zu",
-            gApp->Renderer->SwapchainImages.Count);
-    }
-    Rr_UIEndTabs();
-    Rr_UIEndWindow();
 }
