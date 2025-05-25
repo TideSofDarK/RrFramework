@@ -1241,19 +1241,27 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(Rr_UIWindow *Window)
 
     bool HasTitle =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
+
     if (HasTitle)
     {
         Rect.Offset.Y += gContext->WindowTitleHeight;
         Rect.Extent.Height -= gContext->WindowTitleHeight;
     }
 
-    bool HasScrollbar =
-        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
-    float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
-    float FillRatio = ContentsHeight / Rect.Extent.Height;
-    if (HasScrollbar && FillRatio > 1.0f)
+    bool AutoResize =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+
+    if (AutoResize == false)
     {
-        Rect.Extent.Width -= gContext->ScrollbarWidth;
+        bool HasScrollbar =
+            RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) ==
+            false;
+        float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
+        float FillRatio = ContentsHeight / Rect.Extent.Height;
+        if (HasScrollbar && FillRatio > 1.0f)
+        {
+            Rect.Extent.Width -= gContext->ScrollbarWidth;
+        }
     }
 
     return Rect;
@@ -1469,12 +1477,16 @@ static inline bool Rr_UIBeginWindowEx(
 
     Window->Flags = Flags;
 
+    /* Return if closed. Also handle show after being closed. */
+
+    bool AutoResize =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+
     bool WasClosed = Window->Open == false;
     Window->Open = (Open == NULL || *Open == true);
     if (Window->Open)
     {
-        if (WasClosed &&
-            RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+        if (WasClosed && AutoResize)
         {
             Window->SkipDueToAutoResize = true;
         }
@@ -1500,7 +1512,9 @@ static inline bool Rr_UIBeginWindowEx(
     /* Move and resize behavior.
      * Handle these early so following code may access updated window rect. */
 
-    if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT) == false)
+    bool NoMove = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT);
+
+    if (NoMove == false)
     {
         bool Dragging = Rr_UIDragBehavior(
             Window,
@@ -1518,9 +1532,11 @@ static inline bool Rr_UIBeginWindowEx(
         }
     }
 
-    if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
+    bool NoResize = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
+
+    if (NoResize == false && AutoResize == false)
     {
-        /* Actual drawing occurs later on in Rr_UIEndWindow()! */
+        /* Defer drawing the handle to Rr_UIEndWindow()! */
 
         Rr_UIAddResizeHandle(Layout);
     }
@@ -1532,7 +1548,9 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_UIBeginClipRect(&WindowClipRect);
 
-    if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT) == false)
+    bool NoBorder = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT);
+
+    if (NoBorder == false)
     {
         Rr_UIDrawOuterFrame(
             &Window->Rect,
@@ -1544,7 +1562,9 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Add window title if necessary. */
 
-    if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false)
+    bool NoTitle = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
+
+    if (NoTitle == false)
     {
         Rr_UIAddWindowTitle(Window);
         if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT) == true)
@@ -1556,13 +1576,19 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Add vertical scrollbar if necessary. */
 
-    bool HasScrollbar = Rr_UIAddVerticalScrollbar(Window);
-    Layout->Cursor.Y -= Window->VScroll;
-    Layout->AvailableContentsWidth =
-        HasScrollbar ? Window->Rect.Extent.Width - gContext->ScrollbarWidth
-                     : Window->Rect.Extent.Width;
-
-    /* Apply contents padding. */
+    if (AutoResize)
+    {
+        Window->VScroll = 0;
+        Layout->AvailableContentsWidth = Window->Rect.Extent.Width;
+    }
+    else
+    {
+        bool HasScrollbar = Rr_UIAddVerticalScrollbar(Window);
+        Layout->Cursor.Y -= Window->VScroll;
+        Layout->AvailableContentsWidth =
+            HasScrollbar ? Window->Rect.Extent.Width - gContext->ScrollbarWidth
+                         : Window->Rect.Extent.Width;
+    }
 
     if (gContext->NextWindowPadding.Width != INFINITY &&
         gContext->NextWindowPadding.Height != INFINITY)
@@ -1649,7 +1675,9 @@ void Rr_UIEndWindow(void)
 
     Rr_UIEndClipRect();
 
-    if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false)
+    bool NoResize = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
+
+    if (NoResize == false)
     {
         Rr_UIBeginClipRect(&Window->Rect);
         Rr_Vec2 BottomRight =
@@ -1666,11 +1694,21 @@ void Rr_UIEndWindow(void)
     Window->ContentsEnd =
         Rr_AddV2(Rr_MulV2F(Layout->ContentsPadding, 2.0f), Window->ContentsEnd);
 
-    if (Window->SkipDueToAutoResize ||
-        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+    bool AutoResize =
+        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+
+    if (Window->SkipDueToAutoResize || AutoResize)
     {
         Window->Rect.Extent =
             Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
+
+        bool HasTitle =
+            RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT) == false;
+
+        if (HasTitle)
+        {
+            Window->Rect.Extent.Y += gContext->WindowTitleHeight;
+        }
     }
 
     (void)RR_POP_FROM_ARRAY(&gContext->Stack);
