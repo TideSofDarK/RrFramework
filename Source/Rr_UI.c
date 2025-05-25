@@ -2144,31 +2144,9 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_String TitleString = Rr_CreateString(Title, 0, Scratch.Arena);
-    Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.Y += gContext->ButtonPadding.Height;
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
-        TitlePosition,
-        &TitleString,
-        0.0f,
-        &gContext->Style.Foreground,
-        0);
-
-    bool IsHorizontal = Rr_UIIsHorizontal();
-
-    Rr_Vec2 TotalSize = { 0 };
-    TotalSize.Width = IsHorizontal
-                          ? TitleSize.Width + Layout->ContentsPadding.Width +
-                                gContext->LineHeight
-                          : Layout->AvailableContentsWidth;
-    TotalSize.Height = gContext->LineHeight + Layout->ContentsPadding.Height;
     Rr_Vec2 CheckboxSize = { gContext->LineHeight, gContext->LineHeight };
 
     Rr_Vec2 FramePosition = Layout->Cursor;
-    FramePosition.X +=
-        IsHorizontal ? (TitleSize.Width + Layout->ContentsPadding.Width)
-                     : (Layout->AvailableContentsWidth - gContext->LineHeight);
 
     bool Up = false;
     bool Hovered = false;
@@ -2222,6 +2200,23 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
             &Color);
     }
 
+    Rr_String TitleString = Rr_CreateString(Title, 0, Scratch.Arena);
+    Rr_Vec2 TitlePosition = FramePosition;
+    TitlePosition.Y += gContext->ButtonPadding.Height;
+    TitlePosition.X += CheckboxSize.X + gContext->ButtonPadding.Width;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        TitlePosition,
+        &TitleString,
+        0.0f,
+        &gContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = {
+        TitleSize.Width + Layout->ContentsPadding.Width + gContext->LineHeight,
+        gContext->LineHeight + Layout->ContentsPadding.Height,
+    };
+
     Rr_UIAdvance(TotalSize);
 
     Rr_DestroyScratch(Scratch);
@@ -2254,19 +2249,8 @@ bool Rr_UICombobox(
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    /* Draw title first. */
-
     size_t TitleLength = strlen(Title);
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
-    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
-    Rr_Vec2 TitlePosition = Layout->Cursor;
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
-        TitlePosition,
-        &TitleString,
-        0.0f,
-        &gContext->Style.Foreground,
-        0);
 
     Rr_UIQuad ButtonQuad = Rr_UIReserveQuad();
 
@@ -2280,10 +2264,6 @@ bool Rr_UICombobox(
         0);
 
     Rr_Vec2 ButtonPosition = Layout->Cursor;
-    ButtonPosition.X += Layout->AvailableContentsWidth -
-                        SelectedTextSize.Width - gContext->LineHeight -
-                        gContext->ButtonPadding.Width * 2.0f;
-    ButtonPosition.X -= gContext->FrameThickness;
 
     Rr_Vec2 SelectedTextPosition = ButtonPosition;
     SelectedTextPosition.X += gContext->ButtonPadding.Width;
@@ -2453,17 +2433,27 @@ bool Rr_UICombobox(
 
     /* Add border. */
 
-    Rr_UIDrawOuterFrame(
+    Rr_UIDrawInnerFrame(
         &(Rr_Rect){ ButtonPosition, BorderSize },
         gContext->FrameThickness,
         &gContext->Style.Foreground);
 
-    Rr_Vec2 TotalSize = { 0 };
-    TotalSize.Width =
-        Rr_UIIsHorizontal()
-            ? TitleSize.Width + Layout->ContentsPadding.Width + BorderSize.Width
-            : Layout->AvailableContentsWidth;
-    TotalSize.Height = gContext->LineHeight + Layout->ContentsPadding.Height;
+    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.X += gContext->ButtonPadding.Width + BorderSize.Width;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        TitlePosition,
+        &TitleString,
+        0.0f,
+        &gContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = {
+        TitleSize.Width + gContext->ButtonPadding.Width + BorderSize.Width,
+        gContext->LineHeight + Layout->ContentsPadding.Height,
+    };
+
     Rr_UIAdvance(TotalSize);
 
     Rr_DestroyScratch(Scratch);
@@ -2584,30 +2574,10 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
 
     size_t TitleLength = strlen(Title);
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
-    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
-    Rr_Vec2 TitlePosition = Layout->Cursor;
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
-        TitlePosition,
-        &TitleString,
-        0.0f,
-        &gContext->Style.Foreground,
-        0);
 
-    bool IsHorizontal = Rr_UIIsHorizontal();
-
-    Rr_Vec2 TotalSize = { 0 };
-    TotalSize.Width = IsHorizontal
-                          ? TitleSize.Width + Layout->ContentsPadding.Width +
-                                gContext->LineHeight
-                          : Layout->AvailableContentsWidth;
-    TotalSize.Height = gContext->LineHeight + Layout->ContentsPadding.Height;
-    Rr_Vec2 ColorBoxSize = { gContext->LineHeight, gContext->LineHeight };
+    Rr_Vec2 ColorBoxSize = Rr_V2F(gContext->LineHeight);
 
     Rr_Vec2 FramePosition = Layout->Cursor;
-    FramePosition.X +=
-        IsHorizontal ? (TitleSize.Width + Layout->ContentsPadding.Width)
-                     : (Layout->AvailableContentsWidth - gContext->LineHeight);
 
     bool Up = false;
     bool Hovered = false;
@@ -2653,6 +2623,22 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
         },
         gContext->FrameThickness,
         &gContext->Style.Foreground);
+
+    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.X += gContext->ButtonPadding.Width + ColorBoxSize.Width;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        TitlePosition,
+        &TitleString,
+        0.0f,
+        &gContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = {
+        TitleSize.Width + Layout->ContentsPadding.Width + gContext->LineHeight,
+        gContext->LineHeight + Layout->ContentsPadding.Height,
+    };
 
     Rr_UIAdvance(TotalSize);
 
