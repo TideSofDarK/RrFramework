@@ -73,36 +73,36 @@ struct SCamera
     {
         Rr_KeyStates Keys = State->Keys;
 
-        if(Rr_GetKeyState(Keys, EIA_CAMERA) == RR_KEYSTATE_PRESSED)
+        if (Rr_GetKeyState(Keys, EIA_CAMERA) == RR_KEYSTATE_PRESSED)
         {
             Type = (EType)(((uint32_t)Type + 1) % 3);
         }
 
-        switch(Type)
+        switch (Type)
         {
             case EType::FP:
             {
                 Rr_Vec3 CameraForward = GetForwardVector();
                 Rr_Vec3 CameraLeft = GetRightVector();
                 constexpr float CameraSpeed = 0.1f;
-                if(Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
+                if (Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
                 {
                     Position -= CameraForward * CameraSpeed;
                 }
-                if(Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
+                if (Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
                 {
                     Position -= CameraLeft * CameraSpeed;
                 }
-                if(Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
+                if (Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
                 {
                     Position += CameraForward * CameraSpeed;
                 }
-                if(Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
+                if (Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
                 {
                     Position += CameraLeft * CameraSpeed;
                 }
 
-                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
+                if (State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
                     Rr_SetRelativeMouseMode(true);
                     constexpr float Sensitivity = 0.2f;
@@ -152,7 +152,7 @@ struct SCamera
             break;
             case EType::ORBIT:
             {
-                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
+                if (State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
                     Rr_SetRelativeMouseMode(true);
                     constexpr float Sensitivity = 0.05f;
@@ -195,7 +195,7 @@ struct SCamera
             break;
             case EType::TOPDOWN:
             {
-                if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
+                if (State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
                 {
                     Rr_SetRelativeMouseMode(true);
                     constexpr float Sensitivity = 0.1f;
@@ -322,11 +322,11 @@ struct SCreepManager
 
     void Update(float DeltaTime)
     {
-        for(size_t Index = 0; Index < Creeps.size(); ++Index)
+        for (size_t Index = 0; Index < Creeps.size(); ++Index)
         {
             SCreep &Creep = Creeps[Index];
             Rr_Vec3 Wanted;
-            if(Creep.Flags)
+            if (Creep.Flags)
             {
                 Wanted =
                     Rr_NormV3(Rr_Vec3{ 0.0f, 4.0f, 0.0f } - Creep.Position);
@@ -337,13 +337,13 @@ struct SCreepManager
             }
             Wanted += GetCreepSeparationVelocity(Index);
             Creep.Velocity += Rr_NormV3(Wanted);
-            if(Rr_LenV3(Creep.Velocity) > Creep.Speed)
+            if (Rr_LenV3(Creep.Velocity) > Creep.Speed)
             {
                 Creep.Velocity = Rr_NormV3(Creep.Velocity) * Creep.Speed;
             }
             Creep.Position += Creep.Speed * Creep.Velocity * 0.01f;
 
-            if(Creep.Flags == 0 && Rr_LenV3(Creep.Position) < 1.75f)
+            if (Creep.Flags == 0 && Rr_LenV3(Creep.Position) < 1.75f)
             {
                 float Angle =
                     RR_PI32 * 2.0f * ((float)Index / float(Creeps.size()));
@@ -367,7 +367,7 @@ struct SCreepManager
         auto ColorDist = std::uniform_real_distribution<float>(0.2f, 1.0f);
         auto HeightDist = std::uniform_real_distribution<float>(2.0f, 5.0f);
 
-        for(size_t Index = 0; Index < Count; ++Index)
+        for (size_t Index = 0; Index < Count; ++Index)
         {
             // float Angle = Distribution(Gen);
             float Angle = RR_PI32 * 2.0f * ((float)Index / float(Count));
@@ -384,7 +384,7 @@ struct SCreepManager
                             (float)ColorDist(Gen),
                             (float)ColorDist(Gen) };
 
-            if((float)ColorDist(Gen) > 0.8f)
+            if ((float)ColorDist(Gen) > 0.8f)
             {
                 Creep.Flags = 1;
                 Creep.Position.Y = (float)HeightDist(Gen);
@@ -400,16 +400,16 @@ struct SCreepManager
         Rr_Vec3 &Position = Creeps[CreepIndex].Position;
         size_t Avoids = 0;
         Rr_Vec3 Result = {};
-        for(size_t Index = 0; Index < Creeps.size(); ++Index)
+        for (size_t Index = 0; Index < Creeps.size(); ++Index)
         {
-            if(CreepIndex == Index)
+            if (CreepIndex == Index)
             {
                 continue;
             }
 
             Rr_Vec3 A = Position - Creeps[Index].Position;
             float Distance = Rr_LenSqrV3(A);
-            if(Distance <= CreepRadius)
+            if (Distance <= CreepRadius)
             {
                 Rr_Vec3 Norm = Rr_NormV3(A);
                 Norm /= Distance;
@@ -417,7 +417,7 @@ struct SCreepManager
                 Avoids++;
             }
         }
-        if(Avoids > 0)
+        if (Avoids > 0)
         {
             Result /= (float)Avoids;
             Result *= SeparationFactor;
@@ -478,10 +478,11 @@ struct SCreepManager
             GLTFAsset->IndexBufferOffset,
             GLTFAsset->IndexType);
 
-        for(size_t MeshIndex = 0; MeshIndex < GLTFAsset->MeshCount; ++MeshIndex)
+        for (size_t MeshIndex = 0; MeshIndex < GLTFAsset->MeshCount;
+             ++MeshIndex)
         {
             Rr_GLTFMesh *Mesh = GLTFAsset->Meshes + MeshIndex;
-            for(size_t Index = 0; Index < Mesh->PrimitiveCount; ++Index)
+            for (size_t Index = 0; Index < Mesh->PrimitiveCount; ++Index)
             {
                 Rr_GLTFPrimitive *GLTFPrimitive = Mesh->Primitives + Index;
                 Rr_DrawIndexed(
@@ -729,7 +730,7 @@ static void Render(Rr_Image *ColorAttachment, Rr_Image *DepthAttachment)
         &OffscreenDepth,
         DepthAttachment);
 
-    if(Loaded)
+    if (Loaded)
     {
         Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
         Rr_BindUniformBuffer(
@@ -754,11 +755,11 @@ static void Render(Rr_Image *ColorAttachment, Rr_Image *DepthAttachment)
             TowerAsset->IndexBufferOffset,
             TowerAsset->IndexType);
 
-        for(size_t MeshIndex = 0; MeshIndex < TowerAsset->MeshCount;
-            ++MeshIndex)
+        for (size_t MeshIndex = 0; MeshIndex < TowerAsset->MeshCount;
+             ++MeshIndex)
         {
             Rr_GLTFMesh *Mesh = TowerAsset->Meshes + MeshIndex;
-            for(size_t Index = 0; Index < Mesh->PrimitiveCount; ++Index)
+            for (size_t Index = 0; Index < Mesh->PrimitiveCount; ++Index)
             {
                 Rr_GLTFPrimitive *GLTFPrimitive = Mesh->Primitives + Index;
                 Rr_DrawIndexed(
@@ -821,7 +822,7 @@ static void Iterate(void *UserData)
         Rr_KeyStates Keys = InputState.Keys;
 
         Camera.Update(&InputState);
-        if(Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
+        if (Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
         {
             Rr_ToggleFullscreen();
         }

@@ -130,7 +130,11 @@ extern Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
  * Dynamic Array
  */
 
-extern void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena);
+extern void Rr_GrowArray(
+    void *Array,
+    size_t Size,
+    size_t MinCount,
+    Rr_Arena *Arena);
 
 #define RR_ARRAY(Type)   \
     struct               \
@@ -140,26 +144,17 @@ extern void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena);
         size_t Capacity; \
     }
 
-#define RR_PUSH_INTO_ARRAY(Array, Arena)                                    \
-    ((Array)->Count >= (Array)->Capacity                                    \
-     ? Rr_GrowArray((Array), sizeof(*(Array)->Data), (Arena)), /* NOLINT */ \
-     (Array)->Data + (Array)->Count++                                       \
-     : (Array)->Data + (Array)->Count++)
-
-#define RR_POP_FROM_ARRAY(Array) \
-    ((Array)->Count--, (Array)->Data[(Array)->Count])
-
 #define RR_RESERVE_ARRAY(Array, ElementCount, Arena)          \
     do                                                        \
     {                                                         \
-        if((Array)->Capacity < (ElementCount))                \
+        if ((Array)->Capacity < (ElementCount))               \
         {                                                     \
             void *OldData = (Array)->Data;                    \
             (Array)->Data = RR_ALLOC_NO_ZERO(                 \
                 (Arena),                                      \
                 sizeof(*(Array)->Data) * (ElementCount));     \
             (Array)->Capacity = (ElementCount);               \
-            if((Array)->Count > 0 && OldData)                 \
+            if ((Array)->Count > 0 && OldData)                \
             {                                                 \
                 memcpy(                                       \
                     (Array)->Data,                            \
@@ -168,12 +163,32 @@ extern void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena);
             }                                                 \
         }                                                     \
     }                                                         \
-    while(0)
+    while (0)
+
+#define RR_PUSH_INTO_ARRAY(Array, Arena)                                       \
+    ((Array)->Count >= (Array)->Capacity                                       \
+     ? Rr_GrowArray((Array), sizeof(*(Array)->Data), 0, (Arena)), /* NOLINT */ \
+     (Array)->Data + (Array)->Count++                                          \
+     : (Array)->Data + (Array)->Count++)
+
+#define RR_PUSH_INTO_ARRAY_MANY(Array, ElementCount, Arena) \
+    (((Array)->Count + (ElementCount)) > (Array)->Capacity  \
+         ? Rr_GrowArray(                                    \
+               (Array),                                     \
+               sizeof(*(Array)->Data),                      \
+               (Array)->Count + (ElementCount),             \
+               (Arena)) /* NOLINT */                        \
+         : (void)0,                                         \
+     (Array)->Count += (ElementCount),                      \
+     (Array)->Data + ((Array)->Count - (ElementCount)))
+
+#define RR_POP_FROM_ARRAY(Array) \
+    ((Array)->Count--, (Array)->Data[(Array)->Count])
 
 #define RR_RESET_ARRAY(Array, Arena)                         \
     do                                                       \
     {                                                        \
-        if((Array)->Capacity > 0)                            \
+        if ((Array)->Capacity > 0)                           \
         {                                                    \
             (Array)->Data = RR_ALLOC_NO_ZERO(                \
                 (Arena),                                     \
@@ -185,7 +200,7 @@ extern void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena);
             RR_ZERO_PTR((Array));                            \
         }                                                    \
     }                                                        \
-    while(0)
+    while (0)
 
 #define RR_CLEAR_ARRAY(Array) (Array)->Count = 0
 

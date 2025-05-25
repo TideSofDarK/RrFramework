@@ -98,7 +98,7 @@ void Rr_ResetArena(Rr_Arena *Arena)
 
 void Rr_DestroyArena(Rr_Arena *Arena)
 {
-    if(Arena == NULL)
+    if (Arena == NULL)
     {
         return;
     }
@@ -118,7 +118,7 @@ void Rr_DestroyScratch(Rr_Scratch Scratch)
 static void SDLCALL Rr_CleanupScratchArena(void *ScratchArena)
 {
     Rr_Arena **Arenas = ScratchArena;
-    for(size_t Index = 0; Index < 2; ++Index)
+    for (size_t Index = 0; Index < 2; ++Index)
     {
         Rr_DestroyArena(Arenas[Index]);
     }
@@ -134,12 +134,12 @@ void Rr_SetScratchTLS(void *TLSID)
 
 void Rr_InitScratch(size_t Size)
 {
-    if(SDL_GetTLS(&ScratchArenaTLS) != 0)
+    if (SDL_GetTLS(&ScratchArenaTLS) != 0)
     {
         RR_ABORT("Scratch is already initialized for this thread!");
     }
     Rr_Arena **Arenas = Rr_Calloc(2, sizeof(Rr_Arena *));
-    for(size_t Index = 0; Index < 2; ++Index)
+    for (size_t Index = 0; Index < 2; ++Index)
     {
         Arenas[Index] = Rr_CreateDefaultArena();
     }
@@ -148,20 +148,20 @@ void Rr_InitScratch(size_t Size)
 
 Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
 {
-    if(ScratchArenaTLS.value == 0)
+    if (ScratchArenaTLS.value == 0)
     {
         RR_ABORT("ScratchArenaTLS is not set!");
     }
     Rr_Arena **Arenas = (Rr_Arena **)SDL_GetTLS(&ScratchArenaTLS);
-    if(Conflict == NULL)
+    if (Conflict == NULL)
     {
         return Rr_CreateScratch(Arenas[0]);
     }
     else
     {
-        for(size_t Index = 0; Index < 2; ++Index)
+        for (size_t Index = 0; Index < 2; ++Index)
         {
-            if(Arenas[Index] != Conflict)
+            if (Arenas[Index] != Conflict)
             {
                 return Rr_CreateScratch(Arenas[Index]);
             }
@@ -179,12 +179,12 @@ void *Rr_AllocArenaNoZero(
     size_t Align,
     size_t Count)
 {
-    if(Arena == NULL)
+    if (Arena == NULL)
     {
         RR_ABORT("Allocating from NULL arena!");
     }
 
-    if(Size == 0 || Count == 0)
+    if (Size == 0 || Count == 0)
     {
         RR_ABORT("Allocating 0 bytes from an arena is not allowed!");
     }
@@ -193,7 +193,7 @@ void *Rr_AllocArenaNoZero(
     uintptr_t PositionAligned = RR_ALIGN_POW2(Arena->Position, Align);
     uintptr_t Target = PositionAligned + TotalSize;
 
-    if(Arena->Commited < Target)
+    if (Arena->Commited < Target)
     {
         uintptr_t CommitTarget = Target + Arena->CommitSize - 1;
         CommitTarget -= CommitTarget % Arena->CommitSize;
@@ -205,7 +205,7 @@ void *Rr_AllocArenaNoZero(
     }
 
     char *Result = NULL;
-    if(Arena->Commited >= Target)
+    if (Arena->Commited >= Target)
     {
         Result = (char *)Arena + PositionAligned;
         Arena->Position = Target;
@@ -241,7 +241,7 @@ void Rr_DestroySyncArena(Rr_SyncArena *Arena)
     Rr_DestroyArena(Arena->Arena);
 }
 
-void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena)
+void Rr_GrowArray(void *Array, size_t Size, size_t MinCount, Rr_Arena *Arena)
 {
     assert(Array != NULL && "Attempt to grow an array but it's NULL!");
     assert(Arena != NULL && "Attempt to grow an array but Arena is NULL!");
@@ -249,40 +249,34 @@ void Rr_GrowArray(void *Array, size_t Size, Rr_Arena *Arena)
     RR_ARRAY(void) Replica;
     memcpy(&Replica, Array, sizeof(Replica));
 
-    if(Replica.Data != NULL &&
-       (uintptr_t)Replica.Data + Replica.Capacity * Size ==
-           (uintptr_t)Arena + Arena->Position)
+    void *Data = NULL;
+    Replica.Capacity = Replica.Capacity ? Replica.Capacity : 1;
+    if (MinCount)
     {
-        /* Fast path: the array is at the tip of an arena.
-         * Works best with nicely aligned sizes. */
-
-        RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
-        Replica.Capacity *= 2;
+        Replica.Capacity = RR_MAX(Replica.Capacity * 2, MinCount);
     }
     else
     {
-        void *Data = NULL;
-        Replica.Capacity = Replica.Capacity ? Replica.Capacity : 1;
         Replica.Capacity *= 2;
-        Data = RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
-
-        if(Replica.Count && Replica.Data)
-        {
-            memcpy(Data, Replica.Data, Size * Replica.Count);
-        }
-        Replica.Data = Data;
     }
+    Data = RR_ALLOC_NO_ZERO(Arena, Size * Replica.Capacity);
+
+    if (Replica.Count && Replica.Data)
+    {
+        memcpy(Data, Replica.Data, Size * Replica.Count);
+    }
+    Replica.Data = Data;
 
     memcpy(Array, &Replica, sizeof(Replica));
 }
 
 void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
 {
-    if(*Map != NULL)
+    if (*Map != NULL)
     {
-        for(Rr_MapKey Hash = Key; *Map; Hash <<= 2)
+        for (Rr_MapKey Hash = Key; *Map; Hash <<= 2)
         {
-            if(Key == (*Map)->Key)
+            if (Key == (*Map)->Key)
             {
                 return &(*Map)->Value;
             }
@@ -290,7 +284,7 @@ void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
             Map = &(*Map)->Child[Hash >> Shift];
         }
     }
-    if(Arena == NULL)
+    if (Arena == NULL)
     {
         return NULL;
     }
@@ -320,7 +314,7 @@ void *Rr_GetFreeListItem(void *FreeList, size_t Size, Rr_Arena *Arena)
     Rr_FreeList *FreeListTyped = FreeList;
     Rr_FreeListHeader *Header = NULL;
     Rr_FreeListHeader *OldFirst = FreeListTyped->First;
-    if(OldFirst == NULL)
+    if (OldFirst == NULL)
     {
         Header = RR_ALLOC(Arena, Size + sizeof(Rr_FreeListHeader));
         Header->Data = ((char *)Header) + sizeof(Rr_FreeListHeader);

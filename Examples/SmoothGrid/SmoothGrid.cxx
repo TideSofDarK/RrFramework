@@ -77,26 +77,26 @@ struct SCamera
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
-        if(Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
+        if (Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
             Rr_SetRelativeMouseMode(true);
 
             constexpr float CameraSpeed = 5.0f;
             Rr_Vec3 CameraForward = GetForwardVector();
             Rr_Vec3 CameraLeft = GetRightVector();
-            if(Scancodes[RR_SCANCODE_W])
+            if (Scancodes[RR_SCANCODE_W])
             {
                 Position -= CameraForward * CameraSpeed * DeltaTime;
             }
-            if(Scancodes[RR_SCANCODE_A])
+            if (Scancodes[RR_SCANCODE_A])
             {
                 Position -= CameraLeft * CameraSpeed * DeltaTime;
             }
-            if(Scancodes[RR_SCANCODE_S])
+            if (Scancodes[RR_SCANCODE_S])
             {
                 Position += CameraForward * CameraSpeed * DeltaTime;
             }
-            if(Scancodes[RR_SCANCODE_D])
+            if (Scancodes[RR_SCANCODE_D])
             {
                 Position += CameraLeft * CameraSpeed * DeltaTime;
             }
@@ -216,7 +216,7 @@ struct SSmoothGrid
 
     void Event(Rr_Event *Event)
     {
-        switch(Event->Type)
+        switch (Event->Type)
         {
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
@@ -258,6 +258,10 @@ struct SSmoothGrid
         Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
         Rr_ColorClear ColorClear = {};
+        ColorClear.Vec4 = { 13.0f / 255.0f,
+                            14.0f / 255.0f,
+                            28.0f / 255.0f,
+                            1.0f };
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
             .LoadOp = RR_LOAD_OP_CLEAR,

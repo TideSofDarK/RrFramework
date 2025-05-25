@@ -78,7 +78,7 @@ SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
-    AfterControlStatements: false
+    AfterControlStatements: true
     AfterFunctionDefinitionName: false
 SpaceAroundPointerQualifiers: Default
 SpaceInEmptyBlock: false

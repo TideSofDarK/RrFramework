@@ -59,16 +59,16 @@ static uint16_t Rr_FloatToHalf(uint32_t X)
     uint32_t ExponentField = X >> 23 & Mask(8);
     uint32_t SignificandField = X & Mask(23);
 
-    if(ExponentField == Mask(8))
+    if (ExponentField == Mask(8))
     {
-        if(SignificandField == 0)
+        if (SignificandField == 0)
         {
             return SignBit << 15 | Mask(5) << 10;
         }
         else
         {
             SignificandField >>= 23 - 10;
-            if(SignificandField == 0)
+            if (SignificandField == 0)
             {
                 SignificandField = 1;
             }
@@ -76,7 +76,7 @@ static uint16_t Rr_FloatToHalf(uint32_t X)
         }
     }
 
-    else if(ExponentField == 0)
+    else if (ExponentField == 0)
     {
         return SignBit << 15;
     }
@@ -84,26 +84,26 @@ static uint16_t Rr_FloatToHalf(uint32_t X)
     {
         int32_t Exponent = (int32_t)ExponentField - 127 + 15;
 
-        if(Exponent < -11)
+        if (Exponent < -11)
         {
             return SignBit << 15;
         }
 
         uint32_t Significand = Bit(23) | SignificandField;
 
-        if(Exponent < 1)
+        if (Exponent < 1)
         {
             uint32_t T = Significand << (32 - (1 - Exponent) - 13);
             Significand >>= 1 - Exponent + 13;
-            if(Bit(31) < T)
+            if (Bit(31) < T)
             {
                 ++Significand;
             }
-            if(Bit(31) == T)
+            if (Bit(31) == T)
             {
                 Significand += Significand & 1;
             }
-            if(Bit(10) <= Significand)
+            if (Bit(10) <= Significand)
             {
                 return SignBit << 15 | 1 << 10 | 0;
             }
@@ -111,18 +111,18 @@ static uint16_t Rr_FloatToHalf(uint32_t X)
         }
 
         uint32_t T = Significand & Mask(13);
-        if(Bit(12) < T || (Bit(12) == T && (Significand & Bit(13))))
+        if (Bit(12) < T || (Bit(12) == T && (Significand & Bit(13))))
         {
             Significand += Bit(13);
         }
         Significand >>= 13;
-        if(Bit(11) <= Significand)
+        if (Bit(11) <= Significand)
         {
             ++Exponent;
             Significand >>= 1;
         }
 
-        if(31 <= Exponent)
+        if (31 <= Exponent)
         {
             return SignBit << 15 | Mask(5) << 10;
         }

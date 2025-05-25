@@ -242,17 +242,17 @@ private:
         SRect &Bounds,
         std::unordered_set<TPayload> &Result) const
     {
-        if(Nodes.empty())
+        if (Nodes.empty())
         {
             return;
         }
 
         const SNode &Node = Nodes[NodeIndex];
 
-        if(Node.Count != -1)
+        if (Node.Count != -1)
         {
             UIndex ElementNodeIndex = Node.First;
-            while(ElementNodeIndex != NULL_NODE)
+            while (ElementNodeIndex != NULL_NODE)
             {
                 const auto ElementIndex =
                     ElementNodes[ElementNodeIndex].ElementIndex;
@@ -263,10 +263,10 @@ private:
         }
 
         auto Quadrants = Bounds.Quadrants();
-        for(auto Index = 0; Index < 4; ++Index)
+        for (auto Index = 0; Index < 4; ++Index)
         {
             SRect Quadrant = Quadrants[Index];
-            if(Rect.Intersects(Quadrant))
+            if (Rect.Intersects(Quadrant))
             {
                 QueryRect(Rect, Node.First + Index, Quadrant, Result);
             }
@@ -279,19 +279,19 @@ private:
         SRect &Bounds,
         const std::function<void(const SGPUDraw &)> &Callback)
     {
-        if(Nodes.empty())
+        if (Nodes.empty())
         {
             return;
         }
 
         const SNode &Node = Nodes[NodeIndex];
 
-        if(Node.Count != -1)
+        if (Node.Count != -1)
         {
             return;
         }
 
-        if(Node.Count == -1)
+        if (Node.Count == -1)
         {
             SGPUDraw Draw{};
             Draw.Width = Bounds.Right - Bounds.Left;
@@ -304,10 +304,10 @@ private:
         }
 
         auto Quadrants = Bounds.Quadrants();
-        for(auto Index = 0; Index < 4; ++Index)
+        for (auto Index = 0; Index < 4; ++Index)
         {
             SRect Quadrant = Quadrants[Index];
-            if(Rect.Intersects(Quadrant))
+            if (Rect.Intersects(Quadrant))
             {
                 ForEachDebugDrawInRect(
                     Rect,
@@ -321,7 +321,7 @@ private:
     UIndex AddFourNodes()
     {
         UIndex Current = (UIndex)Nodes.size();
-        for(auto Index = 0; Index < 4; ++Index)
+        for (auto Index = 0; Index < 4; ++Index)
         {
             Nodes.emplace_back();
         }
@@ -331,7 +331,7 @@ private:
     void AddElementToNode(SNode &Node, UIndex ElementIndex)
     {
         UIndex ElementNodeIndex;
-        if(NextElementNodeIndex != NULL_NODE)
+        if (NextElementNodeIndex != NULL_NODE)
         {
             ElementNodeIndex = NextElementNodeIndex;
             NextElementNodeIndex = ElementNodes[ElementNodeIndex].Next;
@@ -359,13 +359,13 @@ private:
          * bounds into account.*/
 
         auto Quadrants = Bounds.Quadrants();
-        while(ElementNodeIndex != NULL_NODE)
+        while (ElementNodeIndex != NULL_NODE)
         {
-            for(UIndex QuadrantIndex = 0; QuadrantIndex < 4; ++QuadrantIndex)
+            for (UIndex QuadrantIndex = 0; QuadrantIndex < 4; ++QuadrantIndex)
             {
                 auto &ElementNode = ElementNodes[ElementNodeIndex];
-                if(Quadrants[QuadrantIndex].Intersects(
-                       Elements[ElementNode.ElementIndex].Bounds))
+                if (Quadrants[QuadrantIndex].Intersects(
+                        Elements[ElementNode.ElementIndex].Bounds))
                 {
                     AddElementToNode(
                         Nodes[Current + QuadrantIndex],
@@ -394,12 +394,12 @@ private:
         std::size_t Depth)
     {
         const auto &ElementBounds = Elements[ElementIndex].Bounds;
-        if(Nodes[NodeIndex].Count == 0 || Depth == 0) /* It's a leaf node. */
+        if (Nodes[NodeIndex].Count == 0 || Depth == 0) /* It's a leaf node. */
         {
             AddElementToNode(Nodes[NodeIndex], ElementIndex);
             return;
         }
-        else if(Nodes[NodeIndex].Count > 0) /* Split the node. */
+        else if (Nodes[NodeIndex].Count > 0) /* Split the node. */
         {
             ConvertToBranch(NodeIndex, Bounds);
         }
@@ -407,9 +407,9 @@ private:
         /* It's a branch node. */
 
         auto Quadrants = Bounds.Quadrants();
-        for(UIndex Index = 0; Index < 4; ++Index)
+        for (UIndex Index = 0; Index < 4; ++Index)
         {
-            if(Quadrants[Index].Intersects(ElementBounds))
+            if (Quadrants[Index].Intersects(ElementBounds))
             {
                 InsertRecursive(
                     ElementIndex,
@@ -434,7 +434,7 @@ public:
 
     bool Insert(const TPayload &Payload, const SRect &ElementBounds)
     {
-        if(!Bounds.Contains(ElementBounds))
+        if (!Bounds.Contains(ElementBounds))
         {
             return false;
         }
@@ -460,7 +460,7 @@ public:
     void Query(const SRect &Rect, std::unordered_set<TPayload> &Result) const
     {
         SRect Bounds = this->Bounds;
-        if(Bounds.Intersects(Rect))
+        if (Bounds.Intersects(Rect))
         {
             QueryRect(Bounds.Clamp(Rect), RootIndex, Bounds, Result);
         }
@@ -471,7 +471,7 @@ public:
         const std::function<void(const SGPUDraw &)> &Callback)
     {
         SRect Bounds = this->Bounds;
-        if(Bounds.Intersects(Rect))
+        if (Bounds.Intersects(Rect))
         {
             ForEachDebugDrawInRect(
                 Bounds.Clamp(Rect),
@@ -557,7 +557,7 @@ static uint32_t GetRandomColor()
 
 static void RebuildTree()
 {
-    if(auto RebuildLock = std::unique_lock(RebuildMutex, std::try_to_lock))
+    if (auto RebuildLock = std::unique_lock(RebuildMutex, std::try_to_lock))
     {
         auto Thread = std::thread([&]() {
             auto RebuildLock = std::lock_guard(RebuildMutex);
@@ -574,7 +574,7 @@ static void RebuildTree()
             NewDraws.clear();
             NewTree.Reset(
                 { -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
-            for(auto Index = 0; Index < NUM_POINTS; ++Index)
+            for (auto Index = 0; Index < NUM_POINTS; ++Index)
             {
                 SGPUDraw Draw{};
                 Draw.Width = GetRandomFloat(96.0f, 128.0f);
@@ -591,7 +591,7 @@ static void RebuildTree()
                  * are being skipped. */
 
                 auto ElementIndex = NewDraws.size();
-                if(NewTree.Insert(ElementIndex, Draw.Bounds()))
+                if (NewTree.Insert(ElementIndex, Draw.Bounds()))
                 {
                     NewDraws.emplace_back(Draw);
                 }
@@ -689,11 +689,11 @@ static void Init(void *UserData)
 
 static void Event(void *UserData, Rr_Event *Event)
 {
-    switch(Event->Type)
+    switch (Event->Type)
     {
         case RR_EVENT_TYPE_MOUSE_WHEEL:
         {
-            if(Rr_UIWantMouseCapture())
+            if (Rr_UIWantMouseCapture())
             {
                 return;
             }
@@ -704,7 +704,7 @@ static void Event(void *UserData, Rr_Event *Event)
         break;
         case RR_EVENT_TYPE_MOUSE_MOTION:
         {
-            if(TrySelect)
+            if (TrySelect)
             {
                 SelectEnd = ConvertMousePosition();
                 Selecting = std::fabs(SelectStart.X - SelectEnd.X) > 10.0f ||
@@ -714,18 +714,18 @@ static void Event(void *UserData, Rr_Event *Event)
         break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
         {
-            if(Rr_UIWantMouseCapture())
+            if (Rr_UIWantMouseCapture())
             {
                 return;
             }
 
-            if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
+            if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
                 SelectStart = ConvertMousePosition();
                 TrySelect = true;
                 Selecting = false;
             }
-            else if(Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
+            else if (Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
             {
                 Dragging = true;
                 DragStartCamera = CameraPosition;
@@ -735,11 +735,11 @@ static void Event(void *UserData, Rr_Event *Event)
         break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_UP:
         {
-            if(Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
+            if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                if(Selecting == false && Rr_UIWantMouseCapture() == false)
+                if (Selecting == false && Rr_UIWantMouseCapture() == false)
                 {
-                    if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+                    if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
                     {
                         SPoint Point = ConvertMousePosition();
                         SGPUDraw Draw{};
@@ -748,7 +748,7 @@ static void Event(void *UserData, Rr_Event *Event)
                         Draw.X = Point.X - Draw.Width / 2.0f;
                         Draw.Y = Point.Y - Draw.Height / 2.0f;
                         Draw.Color = GetRandomColor();
-                        if(Tree.Insert(Draws.size(), Draw.Bounds()))
+                        if (Tree.Insert(Draws.size(), Draw.Bounds()))
                         {
                             Draws.emplace_back(Draw);
                         }
@@ -757,7 +757,7 @@ static void Event(void *UserData, Rr_Event *Event)
                 TrySelect = false;
                 Selecting = false;
             }
-            else if(Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
+            else if (Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
             {
                 Dragging = false;
             }
@@ -774,31 +774,31 @@ static void Update()
 
     Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
 
-    if(Dragging)
+    if (Dragging)
     {
         CameraPosition = DragStartCamera -
                          (DragStartMouse - Rr_GetMousePosition()) * CameraZoom;
     }
 
-    if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+    if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
     {
-        if(Rr_IsScancodePressed(RR_SCANCODE_SPACE))
+        if (Rr_IsScancodePressed(RR_SCANCODE_SPACE))
         {
             RebuildTree();
         }
 
-        if(Selecting)
+        if (Selecting)
         {
             const SRect QueryRect{ SelectStart, SelectEnd };
-            if(UseQuery)
+            if (UseQuery)
             {
                 Tree.Query(QueryRect, SelectResult);
-                for(auto Index : SelectResult)
+                for (auto Index : SelectResult)
                 {
                     auto Bounds = Draws[Index].Bounds();
                     auto Center = Bounds.Center();
                     auto Radius = Bounds.Extent().X;
-                    if(QueryRect.IntersectsCircle(Center, Radius))
+                    if (QueryRect.IntersectsCircle(Center, Radius))
                     {
                         Draws[Index].Param1 = 1.0f;
                     }
@@ -806,12 +806,12 @@ static void Update()
             }
             else
             {
-                for(auto Index = 0; Index < Draws.size(); ++Index)
+                for (auto Index = 0; Index < Draws.size(); ++Index)
                 {
                     auto Bounds = Draws[Index].Bounds();
                     auto Center = Bounds.Center();
                     auto Radius = Bounds.Extent().X;
-                    if(QueryRect.IntersectsCircle(Center, Radius))
+                    if (QueryRect.IntersectsCircle(Center, Radius))
                     {
                         Draws[Index].Param1 = 1.0f;
                         SelectResult.emplace(Index);
@@ -832,15 +832,18 @@ static void Render()
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
     Rr_ColorTarget ColorTarget;
-    ColorTarget.Clear = { 0.0, 0.0, 0.09, 1.0 };
+    ColorTarget.Clear = { 13.0f / 255.0f,
+                          14.0f / 255.0f,
+                          28.0f / 255.0f,
+                          1.0f };
     ColorTarget.LoadOp = RR_LOAD_OP_CLEAR;
     ColorTarget.Slot = 0;
     ColorTarget.StoreOp = RR_STORE_OP_STORE;
 
-    const float Left = -SwapchainSize.X / 2.0f * CameraZoom;
-    const float Right = SwapchainSize.X / 2.0f * CameraZoom;
-    const float Bottom = -SwapchainSize.Y / 2.0f * CameraZoom;
-    const float Top = SwapchainSize.Y / 2.0f * CameraZoom;
+    float Left = -SwapchainSize.X / 2.0f * CameraZoom;
+    float Right = SwapchainSize.X / 2.0f * CameraZoom;
+    float Bottom = -SwapchainSize.Y / 2.0f * CameraZoom;
+    float Top = SwapchainSize.Y / 2.0f * CameraZoom;
     CameraProjection = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, -1, 1);
     CameraView = Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
     UniformData.ViewProjection = CameraProjection * CameraView;
@@ -856,21 +859,21 @@ static void Render()
 
     DrawCount = DrawsSize = 0;
 
-    if(Lock.owns_lock())
+    if (Lock.owns_lock())
     {
         SRect ScreenRect = GetScreenRect();
         Tree.Query(ScreenRect, RenderResult);
-        if(RenderResult.size() > 0)
+        if (RenderResult.size() > 0)
         {
             DrawCount += RenderResult.size();
-            for(auto Index : RenderResult)
+            for (auto Index : RenderResult)
             {
                 std::memcpy(StagingData, &Draws[Index], sizeof(SGPUDraw));
                 StagingData += sizeof(SGPUDraw);
             }
         }
 
-        if(Selecting)
+        if (Selecting)
         {
             SRect SelectRect = { SelectStart, SelectEnd };
             SGPUDraw Draw{};
@@ -885,7 +888,7 @@ static void Render()
             DrawCount++;
         }
 
-        if(DrawDebug)
+        if (DrawDebug)
         {
             Tree.ForEachDebugDraw(ScreenRect, [&](const SGPUDraw &Draw) {
                 std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
@@ -900,7 +903,7 @@ static void Render()
         DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
     }
 
-    if(DrawCount > 0)
+    if (DrawCount > 0)
     {
         Rr_GraphNode *TransferNode = Rr_AddTransferNode(Renderer, "transfer");
         Rr_TransferBufferData(
@@ -928,7 +931,7 @@ static void Render()
         nullptr,
         nullptr);
     Rr_BindGraphicsPipeline(TreeNode, Pipeline);
-    if(DrawCount > 0)
+    if (DrawCount > 0)
     {
         Rr_BindUniformBuffer(
             TreeNode,
@@ -944,7 +947,7 @@ static void Render()
 
 static void Reset()
 {
-    for(auto Index : SelectResult)
+    for (auto Index : SelectResult)
     {
         Draws[Index].Param1 = 0.0f;
     }
@@ -956,15 +959,15 @@ static void Iterate(void *UserData)
 {
     Rr_UIDebugOverlay();
 
-    if(Rr_UIBeginWindow(
-           "QuadTree",
-           NULL,
-           RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+    if (Rr_UIBeginWindow(
+            "QuadTree",
+            NULL,
+            RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
     {
         Rr_UILabelF("Regenerating: %d", Rebuilding);
-        if(Rr_UIButton("Regenerate Tree"))
+        if (Rr_UIButton("Regenerate Tree"))
         {
-            if(auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+            if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
             {
                 RebuildTree();
             }
@@ -982,7 +985,7 @@ static void Iterate(void *UserData)
         Rr_UICheckbox("Debug Draw", &DrawDebug);
         Rr_UIBeginHorizontal();
         Rr_UICheckbox("Use Query", &UseQuery);
-        if(Rr_UICheckbox("Use VSync", &VSyncEnabled))
+        if (Rr_UICheckbox("Use VSync", &VSyncEnabled))
         {
             Rr_SetPresentMode(
                 Rr_GetRenderer(),

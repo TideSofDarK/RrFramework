@@ -52,8 +52,8 @@ static void Rr_CalculateFPS(Rr_FrameTime *FrameTime)
 {
     FrameTime->PerformanceCounter.Frames++;
     uint64_t CurrentTime = SDL_GetPerformanceCounter();
-    if(CurrentTime - FrameTime->PerformanceCounter.StartTime >=
-       FrameTime->PerformanceCounter.UpdateFrequency)
+    if (CurrentTime - FrameTime->PerformanceCounter.StartTime >=
+        FrameTime->PerformanceCounter.UpdateFrequency)
     {
         double Elapsed =
             (double)(CurrentTime - FrameTime->PerformanceCounter.StartTime) /
@@ -71,7 +71,7 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
     uint64_t Now = SDL_GetTicksNS();
     uint64_t Elapsed = Now - FrameTime->StartTime;
 
-    if(Elapsed < Interval)
+    if (Elapsed < Interval)
     {
         SDL_DelayNS(Interval - Elapsed);
         Now = SDL_GetTicksNS();
@@ -79,7 +79,7 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 
     Elapsed = Now - FrameTime->StartTime;
 
-    if(!FrameTime->StartTime || Elapsed > SDL_MS_TO_NS(1000))
+    if (!FrameTime->StartTime || Elapsed > SDL_MS_TO_NS(1000))
     {
         FrameTime->StartTime = Now;
     }
@@ -108,7 +108,7 @@ static void Rr_Iterate(void)
 #endif
 
     bool Minimized = (SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_MINIMIZED);
-    if(gApp->FrameTime.EnableFrameLimiter || Minimized)
+    if (gApp->FrameTime.EnableFrameLimiter || Minimized)
     {
         Rr_SimulateVSync(&gApp->FrameTime);
     }
@@ -150,13 +150,13 @@ Rr_IntVec2 Rr_GetDefaultWindowSize(void)
 
 static inline bool Rr_PollEvent(Rr_Event *Event)
 {
-    if(Rr_PollPlatformEvent(Event))
+    if (Rr_PollPlatformEvent(Event))
     {
         return true;
     }
 
-    for(Rr_EventHiveIterator It = gApp->EventHive.Begin;
-        It.Element != gApp->EventHive.End.Element;)
+    for (Rr_EventHiveIterator It = gApp->EventHive.Begin;
+         It.Element != gApp->EventHive.End.Element;)
     {
         memcpy(Event, It.Element, sizeof(Rr_Event));
         Rr_RemoveFromEventHive(&gApp->EventHive, &It);
@@ -214,13 +214,13 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_ShowWindow(gApp->Window);
 
-    while(Rr_GetAtomicInt(&gApp->QuitRequested) == false)
+    while (Rr_GetAtomicInt(&gApp->QuitRequested) == false)
     {
-        for(Rr_Event Event; Rr_PollEvent(&Event);)
+        for (Rr_Event Event; Rr_PollEvent(&Event);)
         {
             Rr_UIProcessEvent(&Event);
 
-            switch(Event.Type)
+            switch (Event.Type)
             {
                 case RR_EVENT_TYPE_QUIT:
                 {
@@ -232,7 +232,7 @@ void Rr_Run(Rr_AppConfig *Config)
                     break;
             }
 
-            if(Config->EventFunc != NULL)
+            if (Config->EventFunc != NULL)
             {
                 Config->EventFunc(gApp->UserData, &Event);
             }

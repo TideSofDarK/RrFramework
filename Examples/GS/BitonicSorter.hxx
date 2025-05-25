@@ -29,7 +29,7 @@ struct SSortList
         : Renderer(Renderer)
     {
         ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
-        if(RR_IS_POW2(ThreadsPerWorkgroup) != true)
+        if (RR_IS_POW2(ThreadsPerWorkgroup) != true)
         {
             ThreadsPerWorkgroup = Rr_NextPowerOfTwo(ThreadsPerWorkgroup) / 2;
         }
@@ -99,7 +99,7 @@ struct SSortList
         Rr_Buffer *EntriesBuffer)
     {
         uint32_t DispatchSize = AlignedCount / ThreadsPerWorkgroup;
-        if(DispatchSize == 0)
+        if (DispatchSize == 0)
         {
             return;
         }
@@ -177,12 +177,12 @@ struct SBitonicSorter
 
         Height *= 2;
 
-        for(; Height <= AlignedCount; Height *= 2)
+        for (; Height <= AlignedCount; Height *= 2)
         {
-            for(uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
-                DisperseHeight /= 2)
+            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
+                 DisperseHeight /= 2)
             {
-                if(DisperseHeight <= ThreadsPerWorkgroup * 2)
+                if (DisperseHeight <= ThreadsPerWorkgroup * 2)
                 {
                     Result++;
                     break;
@@ -207,7 +207,7 @@ struct SBitonicSorter
         , AlignedCount(AlignedCount)
     {
         ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
-        if(RR_IS_POW2(ThreadsPerWorkgroup) != true)
+        if (RR_IS_POW2(ThreadsPerWorkgroup) != true)
         {
             ThreadsPerWorkgroup = Rr_NextPowerOfTwo(ThreadsPerWorkgroup) / 2;
         }
@@ -336,14 +336,14 @@ struct SBitonicSorter
 
         Height *= 2;
 
-        for(; Height <= AlignedCount; Height *= 2)
+        for (; Height <= AlignedCount; Height *= 2)
         {
             Dispatch(Height, BIG_FLIP);
 
-            for(uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
-                DisperseHeight /= 2)
+            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
+                 DisperseHeight /= 2)
             {
-                if(DisperseHeight <= ThreadsPerWorkgroup * 2)
+                if (DisperseHeight <= ThreadsPerWorkgroup * 2)
                 {
                     Dispatch(DisperseHeight, LOCAL_DISPERSE);
                     break;

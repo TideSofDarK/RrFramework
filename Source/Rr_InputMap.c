@@ -34,15 +34,15 @@ static Rr_KeyState Rr_UpdateKeyState(
     bool CurrentlyPressed = KeyboardState[Scancode] == 1;
     bool WasPressed =
         OldKeyState == RR_KEYSTATE_HELD || OldKeyState == RR_KEYSTATE_PRESSED;
-    if(CurrentlyPressed)
+    if (CurrentlyPressed)
     {
-        if(WasPressed)
+        if (WasPressed)
         {
             return RR_KEYSTATE_HELD;
         }
         return RR_KEYSTATE_PRESSED;
     }
-    if(WasPressed)
+    if (WasPressed)
     {
         return RR_KEYSTATE_RELEASED;
     }
@@ -56,7 +56,7 @@ void Rr_UpdateInputState(
 {
     Rr_KeyStates NewKeys = State->Keys;
     const bool *KeyboardState = SDL_GetKeyboardState(NULL);
-    for(uint32_t Index = 0; Index < MappingCount; Index++)
+    for (uint32_t Index = 0; Index < MappingCount; Index++)
     {
         Rr_InputMapping *Mapping = &Mappings[Index];
 

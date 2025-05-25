@@ -39,23 +39,23 @@ Rr_Buffer *Rr_CreateBuffer(
     Buffer->Flags = Flags;
 
     Buffer->Usage = 0;
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_UNIFORM_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_UNIFORM_BIT))
     {
         Buffer->Usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STORAGE_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STORAGE_BIT))
     {
         Buffer->Usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_VERTEX_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_VERTEX_BIT))
     {
         Buffer->Usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_INDEX_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_INDEX_BIT))
     {
         Buffer->Usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_INDIRECT_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_INDIRECT_BIT))
     {
         Buffer->Usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
     }
@@ -76,40 +76,40 @@ Rr_Buffer *Rr_CreateBuffer(
     VmaAllocationCreateInfo AllocationInfo = { 0 };
     AllocationInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
     {
         AllocationInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_READBACK_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_READBACK_BIT))
     {
         AllocationInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
         AllocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     }
 
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_BIT))
     {
         AllocationInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        if(RR_HAS_BIT(
-               AllocationInfo.flags,
-               VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT) == false)
+        if (RR_HAS_BIT(
+                AllocationInfo.flags,
+                VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT) == false)
         {
 
             AllocationInfo.flags |=
                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
         }
     }
-    else if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT))
+    else if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT))
     {
         AllocationInfo.preferredFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
         AllocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     }
 
     Buffer->AllocatedBufferCount = 1;
-    if(RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_PER_FRAME_BIT))
+    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_PER_FRAME_BIT))
     {
         Buffer->AllocatedBufferCount = RR_FRAME_OVERLAP;
     }
-    for(size_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
+    for (size_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
         vmaCreateBuffer(
@@ -126,12 +126,12 @@ Rr_Buffer *Rr_CreateBuffer(
 
 void Rr_DestroyBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
 {
-    if(Buffer == NULL)
+    if (Buffer == NULL)
     {
         return;
     }
 
-    for(size_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
+    for (size_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
         vmaDestroyBuffer(
@@ -154,7 +154,7 @@ void *Rr_MapBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
 {
     Rr_AllocatedBuffer *AllocatedBuffer =
         Rr_GetCurrentAllocatedBuffer(Renderer, Buffer);
-    if(RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
+    if (RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
     {
         return AllocatedBuffer->AllocationInfo.pMappedData;
     }
@@ -165,7 +165,7 @@ void *Rr_MapBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
 
 void Rr_UnmapBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
 {
-    if(RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
+    if (RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
     {
         return;
     }
@@ -206,9 +206,9 @@ void Rr_UploadStagingBuffer(
     Rr_AllocatedBuffer *AllocatedStagingBuffer =
         StagingBuffer->AllocatedBuffers;
 
-    for(size_t AllocatedIndex = 0;
-        AllocatedIndex < Buffer->AllocatedBufferCount;
-        ++AllocatedIndex)
+    for (size_t AllocatedIndex = 0;
+         AllocatedIndex < Buffer->AllocatedBufferCount;
+         ++AllocatedIndex)
     {
         Rr_AllocatedBuffer *AllocatedBuffer =
             Buffer->AllocatedBuffers + AllocatedIndex;
@@ -246,7 +246,7 @@ void Rr_UploadStagingBuffer(
             1,
             &Copy);
 
-        if(UploadContext->UseAcquireBarriers)
+        if (UploadContext->UseAcquireBarriers)
         {
             *RR_PUSH_INTO_ARRAY(
                 &UploadContext->ReleaseBufferMemoryBarriers,
@@ -364,7 +364,7 @@ void Rr_UploadToDeviceBufferImmediate(
         .srcOffset = 0,
     };
 
-    for(size_t Index = 0; Index < DstBuffer->AllocatedBufferCount; ++Index)
+    for (size_t Index = 0; Index < DstBuffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *DstAllocatedBuffer =
             &DstBuffer->AllocatedBuffers[Index];

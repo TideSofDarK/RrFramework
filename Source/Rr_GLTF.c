@@ -39,7 +39,7 @@
 static inline Rr_IndexType Rr_CGLTFComponentTypeToIndexType(
     cgltf_component_type Type)
 {
-    switch(Type)
+    switch (Type)
     {
         case cgltf_component_type_r_16u:
             return RR_INDEX_TYPE_UINT16;
@@ -52,7 +52,7 @@ static inline Rr_IndexType Rr_CGLTFComponentTypeToIndexType(
 
 static inline size_t Rr_GetGLTFAttributeSize(Rr_GLTFAttributeType Type)
 {
-    switch(Type)
+    switch (Type)
     {
         case RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0:
             return 8;
@@ -69,7 +69,7 @@ static inline size_t Rr_GetGLTFAttributeSize(Rr_GLTFAttributeType Type)
 static inline cgltf_attribute_type Rr_GetCGLTFAttributeType(
     Rr_GLTFAttributeType Type)
 {
-    switch(Type)
+    switch (Type)
     {
         case RR_GLTF_ATTRIBUTE_TYPE_POSITION:
             return cgltf_attribute_type_position;
@@ -89,7 +89,7 @@ static inline cgltf_attribute_type Rr_GetCGLTFAttributeType(
 static inline Rr_GLTFAttributeType Rr_GetGLTFAttributeType(
     cgltf_attribute_type Type)
 {
-    switch(Type)
+    switch (Type)
     {
         case cgltf_attribute_type_position:
             return RR_GLTF_ATTRIBUTE_TYPE_POSITION;
@@ -108,7 +108,7 @@ static inline Rr_GLTFAttributeType Rr_GetGLTFAttributeType(
 
 static inline Rr_Format Rr_GLTFAttributeTypeToFormat(Rr_GLTFAttributeType Type)
 {
-    switch(Type)
+    switch (Type)
     {
         case RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0:
             return RR_FORMAT_VEC2;
@@ -134,8 +134,8 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     assert(VertexInputBindings != NULL);
     assert(GLTFVertexInputBindings != NULL);
 #if defined(RR_DEBUG)
-    for(size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
-        ++BindingIndex)
+    for (size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
+         ++BindingIndex)
     {
         Rr_VertexInputBinding *VertexInputBinding =
             VertexInputBindings + BindingIndex;
@@ -144,9 +144,9 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
         assert(
             VertexInputBinding->AttributeCount ==
             GLTFVertexInputBinding->AttributeTypeCount);
-        for(size_t AttributeIndex = 0;
-            AttributeIndex < VertexInputBinding->AttributeCount;
-            ++AttributeIndex)
+        for (size_t AttributeIndex = 0;
+             AttributeIndex < VertexInputBinding->AttributeCount;
+             ++AttributeIndex)
         {
             Rr_VertexInputAttribute *Attribute =
                 VertexInputBinding->Attributes + AttributeIndex;
@@ -173,8 +173,8 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
         GLTFContext->VertexInputBindings,
         GLTFVertexInputBindings,
         sizeof(Rr_GLTFVertexInputBinding) * VertexInputBindingCount);
-    for(size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
-        ++BindingIndex)
+    for (size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
+         ++BindingIndex)
     {
         Rr_GLTFVertexInputBinding *GLTFVertexInputBinding =
             GLTFContext->VertexInputBindings + BindingIndex;
@@ -185,9 +185,9 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
             sizeof(Rr_GLTFAttributeType) *
                 GLTFVertexInputBindings[BindingIndex].AttributeTypeCount);
 
-        for(size_t AttributeIndex = 0;
-            AttributeIndex < GLTFVertexInputBinding->AttributeTypeCount;
-            ++AttributeIndex)
+        for (size_t AttributeIndex = 0;
+             AttributeIndex < GLTFVertexInputBinding->AttributeTypeCount;
+             ++AttributeIndex)
         {
             GLTFContext->VertexInputStrides[BindingIndex] +=
                 Rr_GetGLTFAttributeSize(
@@ -206,14 +206,14 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
 
 void Rr_DestroyGLTFContext(Rr_GLTFContext *GLTFContext)
 {
-    for(size_t Index = 0; Index < GLTFContext->Buffers.Count; ++Index)
+    for (size_t Index = 0; Index < GLTFContext->Buffers.Count; ++Index)
     {
         Rr_DestroyBuffer(
             GLTFContext->Renderer,
             GLTFContext->Buffers.Data[Index]);
     }
 
-    for(size_t Index = 0; Index < GLTFContext->Images.Count; ++Index)
+    for (size_t Index = 0; Index < GLTFContext->Images.Count; ++Index)
     {
         Rr_DestroyImage(GLTFContext->Renderer, GLTFContext->Images.Data[Index]);
     }
@@ -285,24 +285,24 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
     Rr_GLTFVertexInputInfo *Out)
 {
     bool Found = false;
-    for(size_t BindingIndex = 0;
-        BindingIndex < Context->VertexInputBindingCount;
-        ++BindingIndex)
+    for (size_t BindingIndex = 0;
+         BindingIndex < Context->VertexInputBindingCount;
+         ++BindingIndex)
     {
         Rr_GLTFVertexInputBinding *Binding =
             Context->VertexInputBindings + BindingIndex;
         size_t Offset = 0;
-        for(size_t Index = 0; Index < Binding->AttributeTypeCount; ++Index)
+        for (size_t Index = 0; Index < Binding->AttributeTypeCount; ++Index)
         {
             Rr_GLTFAttributeType Type = Binding->AttributeTypes[Index];
-            if(Rr_GetCGLTFAttributeType(Type) == AttributeType)
+            if (Rr_GetCGLTFAttributeType(Type) == AttributeType)
             {
-                if(Found)
+                if (Found)
                 {
                     RR_ABORT("GLTF: Multiple mappings found for the same "
                              "attribute type!");
                 }
-                if(Out)
+                if (Out)
                 {
                     Out->Binding = BindingIndex;
                     Out->Offset = Offset;
@@ -311,9 +311,9 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
             }
             Offset += Rr_GetGLTFAttributeSize(Type);
         }
-        if(Found)
+        if (Found)
         {
-            if(Out)
+            if (Out)
             {
                 Out->Stride = Offset;
             }
@@ -329,9 +329,9 @@ static inline size_t Rr_GetStagingSizeForVertexCount(
     size_t VertexCount)
 {
     size_t StagingSize = 0;
-    for(size_t BindingIndex = 0;
-        BindingIndex < Context->VertexInputBindingCount;
-        ++BindingIndex)
+    for (size_t BindingIndex = 0;
+         BindingIndex < Context->VertexInputBindingCount;
+         ++BindingIndex)
     {
         StagingSize += Context->VertexInputStrides[BindingIndex] * VertexCount;
     }
@@ -344,7 +344,7 @@ static inline size_t Rr_GetFlatBindingOffset(
     size_t VertexCount)
 {
     size_t Result = 0;
-    for(size_t Index = 0; Index < BindingIndex; ++Index)
+    for (size_t Index = 0; Index < BindingIndex; ++Index)
     {
         Result += Context->VertexInputStrides[Index] * VertexCount;
     }
@@ -373,7 +373,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     cgltf_data *Data = NULL;
     cgltf_result Result =
         cgltf_parse(&Options, Asset.Pointer, Asset.Size, &Data);
-    if(Result != cgltf_result_success)
+    if (Result != cgltf_result_success)
     {
         RR_ABORT("GLTF: Parsing failed!");
     }
@@ -392,11 +392,11 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     /* Calculate how much memory is needed for vertices and indices. */
 
-    for(size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
+    for (size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
     {
         cgltf_mesh *Mesh = Data->meshes + MeshIndex;
-        for(size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count;
-            ++PrimitiveIndex)
+        for (size_t PrimitiveIndex = 0; PrimitiveIndex < Mesh->primitives_count;
+             ++PrimitiveIndex)
         {
             cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
             assert(Primitive->attributes_count > 0);
@@ -405,13 +405,13 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
             /* Quick check to make sure every attribute has the same count. */
 
-            for(size_t AttributeIndex = 1;
-                AttributeIndex < Primitive->attributes_count;
-                ++AttributeIndex)
+            for (size_t AttributeIndex = 1;
+                 AttributeIndex < Primitive->attributes_count;
+                 ++AttributeIndex)
             {
                 cgltf_attribute *Attribute =
                     Primitive->attributes + AttributeIndex;
-                if(VertexCount != Attribute->data->count)
+                if (VertexCount != Attribute->data->count)
                 {
                     RR_ABORT("GLTF: Attributes with different counts!");
                 }
@@ -429,15 +429,15 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         }
     }
     IndexDataSize = TotalIndexCount * MaxIndexSize;
-    if(MaxIndexSize == 1)
+    if (MaxIndexSize == 1)
     {
         GLTFAsset->IndexType = RR_INDEX_TYPE_UINT8;
     }
-    else if(MaxIndexSize == 2)
+    else if (MaxIndexSize == 2)
     {
         GLTFAsset->IndexType = RR_INDEX_TYPE_UINT16;
     }
-    else if(MaxIndexSize == 4)
+    else if (MaxIndexSize == 4)
     {
         GLTFAsset->IndexType = RR_INDEX_TYPE_UINT32;
     }
@@ -462,7 +462,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     /* Preallocate materials. */
 
-    if(Data->materials)
+    if (Data->materials)
     {
         GLTFAsset->Materials = RR_ALLOC_TYPE_COUNT(
             GLTFContext->Arena,
@@ -470,7 +470,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             Data->materials_count);
     }
 
-    if(Data->images)
+    if (Data->images)
     {
         GLTFAsset->Images = RR_ALLOC_TYPE_COUNT(
             GLTFContext->Arena,
@@ -487,7 +487,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         GLTFAsset->MeshCount);
     size_t FirstIndex = 0;
     size_t VertexOffset = 0;
-    for(size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
+    for (size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
     {
         cgltf_mesh *Mesh = Data->meshes + MeshIndex;
 
@@ -498,7 +498,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             Rr_GLTFPrimitive,
             GLTFMesh->PrimitiveCount);
 
-        if(Mesh->name)
+        if (Mesh->name)
         {
             RR_ALLOC_COPY(
                 GLTFContext->Arena,
@@ -507,9 +507,9 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 strlen(Mesh->name));
         }
 
-        for(size_t PrimitiveIndex = 0;
-            PrimitiveIndex < GLTFMesh->PrimitiveCount;
-            ++PrimitiveIndex)
+        for (size_t PrimitiveIndex = 0;
+             PrimitiveIndex < GLTFMesh->PrimitiveCount;
+             ++PrimitiveIndex)
         {
             cgltf_primitive *Primitive = Mesh->primitives + PrimitiveIndex;
 
@@ -521,7 +521,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 Rr_GLTFAttribute,
                 GLTFPrimitive->AttributeCount);
 
-            if(Primitive->material)
+            if (Primitive->material)
             {
                 GLTFPrimitive->Material =
                     GLTFAsset->Materials +
@@ -535,9 +535,9 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             GLTFPrimitive->FirstIndex = FirstIndex;
             GLTFPrimitive->VertexOffset = (int32_t)VertexOffset;
 
-            for(size_t AttributeIndex = 0;
-                AttributeIndex < GLTFPrimitive->AttributeCount;
-                ++AttributeIndex)
+            for (size_t AttributeIndex = 0;
+                 AttributeIndex < GLTFPrimitive->AttributeCount;
+                 ++AttributeIndex)
             {
                 cgltf_attribute *Attribute =
                     Primitive->attributes + AttributeIndex;
@@ -553,7 +553,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                     GLTFContext,
                     Attribute->type,
                     &Info);
-                if(Found)
+                if (Found)
                 {
                     /* Copy attribute values to staging data. */
 
@@ -569,8 +569,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                     char *DstBase =
                         (char *)StagingData + VertexDataOffset + BindingOffset;
 
-                    for(size_t VertexIndex = 0; VertexIndex < VertexCount;
-                        ++VertexIndex)
+                    for (size_t VertexIndex = 0; VertexIndex < VertexCount;
+                         ++VertexIndex)
                     {
                         void *Dst =
                             DstBase + Info.Offset + (Info.Stride * VertexIndex);
@@ -591,8 +591,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 cgltf_component_size(Primitive->indices->component_type);
             char *DstBase = (char *)StagingData + GLTFAsset->IndexBufferOffset +
                             (FirstIndex * MaxIndexSize);
-            for(size_t IndexIndex = 0; IndexIndex < GLTFPrimitive->IndexCount;
-                ++IndexIndex)
+            for (size_t IndexIndex = 0; IndexIndex < GLTFPrimitive->IndexCount;
+                 ++IndexIndex)
             {
                 void *Dst = DstBase + (MaxIndexSize * IndexIndex);
                 void *Src =
@@ -641,22 +641,22 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     /* Process materials, textures and images. */
 
-    if(Data->materials != NULL)
+    if (Data->materials != NULL)
     {
-        for(size_t MaterialIndex = 0; MaterialIndex < Data->materials_count;
-            ++MaterialIndex)
+        for (size_t MaterialIndex = 0; MaterialIndex < Data->materials_count;
+             ++MaterialIndex)
         {
             cgltf_material *Material = Data->materials + MaterialIndex;
-            if(Material == NULL)
+            if (Material == NULL)
             {
                 continue;
             }
 
             size_t TextureCount = 0;
 
-            if(Material->has_pbr_metallic_roughness &&
-               Material->pbr_metallic_roughness.base_color_texture.texture !=
-                   NULL)
+            if (Material->has_pbr_metallic_roughness &&
+                Material->pbr_metallic_roughness.base_color_texture.texture !=
+                    NULL)
             {
                 TextureCount++;
             }
@@ -673,18 +673,18 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
             size_t CurrentTextureIndex = 0;
 
-            if(Material->has_pbr_metallic_roughness &&
-               Material->pbr_metallic_roughness.base_color_texture.texture !=
-                   NULL)
+            if (Material->has_pbr_metallic_roughness &&
+                Material->pbr_metallic_roughness.base_color_texture.texture !=
+                    NULL)
             {
                 cgltf_texture *Texture =
                     Material->pbr_metallic_roughness.base_color_texture.texture;
-                if(strcmp(Texture->image->mime_type, "image/png") == 0 ||
-                   strcmp(Texture->image->mime_type, "image/jpeg") == 0)
+                if (strcmp(Texture->image->mime_type, "image/png") == 0 ||
+                    strcmp(Texture->image->mime_type, "image/jpeg") == 0)
                 {
                     GLTFMaterial->TextureTypes[CurrentTextureIndex] =
                         RR_GLTF_TEXTURE_TYPE_COLOR;
-                    if(GLTFAsset->Images[CurrentTextureIndex] == NULL)
+                    if (GLTFAsset->Images[CurrentTextureIndex] == NULL)
                     {
                         int32_t ImageDataSize =
                             (int32_t)Texture->image->buffer_view->size;

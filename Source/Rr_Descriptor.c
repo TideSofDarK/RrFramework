@@ -39,7 +39,7 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
 
     VkDescriptorPoolSize *PoolSizes =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkDescriptorPoolSize, RatioCount);
-    for(size_t Index = 0; Index < RatioCount; Index++)
+    for (size_t Index = 0; Index < RatioCount; Index++)
     {
         Rr_DescriptorPoolSizeRatio *Ratio = &Ratios[Index];
         PoolSizes[Index] = (VkDescriptorPoolSize){
@@ -96,7 +96,7 @@ void Rr_ResetDescriptorAllocator(
     Rr_Device *Device)
 {
     size_t Count = DescriptorAllocator->ReadyPools.Count;
-    for(size_t Index = 0; Index < Count; Index++)
+    for (size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool ReadyPool =
             DescriptorAllocator->ReadyPools.Data[Index];
@@ -104,7 +104,7 @@ void Rr_ResetDescriptorAllocator(
     }
 
     Count = DescriptorAllocator->FullPools.Count;
-    for(size_t Index = 0; Index < Count; Index++)
+    for (size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool FullPool = DescriptorAllocator->FullPools.Data[Index];
         Device->ResetDescriptorPool(Device->Handle, FullPool, 0);
@@ -119,7 +119,7 @@ void Rr_DestroyDescriptorAllocator(
     Rr_Device *Device)
 {
     size_t Count = DescriptorAllocator->ReadyPools.Count;
-    for(size_t Index = 0; Index < Count; Index++)
+    for (size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool ReadyPool =
             DescriptorAllocator->ReadyPools.Data[Index];
@@ -128,7 +128,7 @@ void Rr_DestroyDescriptorAllocator(
     RR_CLEAR_ARRAY(&DescriptorAllocator->ReadyPools);
 
     Count = DescriptorAllocator->FullPools.Count;
-    for(size_t Index = 0; Index < Count; Index++)
+    for (size_t Index = 0; Index < Count; Index++)
     {
         VkDescriptorPool FullPool = DescriptorAllocator->FullPools.Data[Index];
         Device->DestroyDescriptorPool(Device->Handle, FullPool, NULL);
@@ -141,7 +141,7 @@ VkDescriptorPool Rr_GetDescriptorPool(
 {
     VkDescriptorPool NewPool;
     size_t ReadyCount = DescriptorAllocator->ReadyPools.Count;
-    if(ReadyCount != 0)
+    if (ReadyCount != 0)
     {
         NewPool = DescriptorAllocator->ReadyPools.Data[ReadyCount - 1];
         (void)RR_POP_FROM_ARRAY(&DescriptorAllocator->ReadyPools);
@@ -157,7 +157,7 @@ VkDescriptorPool Rr_GetDescriptorPool(
         DescriptorAllocator->SetsPerPool =
             (size_t)((float)DescriptorAllocator->SetsPerPool * 1.5f);
 
-        if(DescriptorAllocator->SetsPerPool > 4096)
+        if (DescriptorAllocator->SetsPerPool > 4096)
         {
             DescriptorAllocator->SetsPerPool = 4096;
         }
@@ -186,8 +186,8 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
         &AllocateInfo,
         &DescriptorSet);
 
-    if(Result == VK_ERROR_OUT_OF_POOL_MEMORY ||
-       Result == VK_ERROR_FRAGMENTED_POOL)
+    if (Result == VK_ERROR_OUT_OF_POOL_MEMORY ||
+        Result == VK_ERROR_FRAGMENTED_POOL)
     {
         *RR_PUSH_INTO_ARRAY(
             &DescriptorAllocator->FullPools,
@@ -350,16 +350,16 @@ void Rr_UpdateDescriptorSet(
     VkDescriptorSet Set)
 {
     size_t WritesCount = Writer->Writes.Count;
-    if(WritesCount == 0)
+    if (WritesCount == 0)
     {
         return;
     }
-    for(size_t Index = 0; Index < WritesCount; ++Index)
+    for (size_t Index = 0; Index < WritesCount; ++Index)
     {
         Rr_DescriptorWriterEntry *Entry = &Writer->Entries.Data[Index];
         VkWriteDescriptorSet *Write = &Writer->Writes.Data[Index];
         Write->dstSet = Set;
-        switch(Entry->Type)
+        switch (Entry->Type)
         {
             case RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER:
             {
@@ -392,7 +392,7 @@ void Rr_AddDescriptor(
     Rr_PipelineBindingType Type,
     Rr_ShaderStage ShaderStage)
 {
-    if(Builder->Count >= RR_MAX_SETS)
+    if (Builder->Count >= RR_MAX_SETS)
     {
         return;
     }
@@ -412,7 +412,7 @@ void Rr_AddDescriptorArray(
     Rr_PipelineBindingType Type,
     Rr_ShaderStage ShaderStage)
 {
-    if(Builder->Count >= RR_MAX_SETS)
+    if (Builder->Count >= RR_MAX_SETS)
     {
         return;
     }
@@ -456,16 +456,16 @@ void Rr_InvalidateDescriptorState(
     Rr_PipelineLayout *PipelineLayout)
 {
     bool Disturbed = false;
-    for(size_t Index = 0; Index < PipelineLayout->SetLayoutCount; ++Index)
+    for (size_t Index = 0; Index < PipelineLayout->SetLayoutCount; ++Index)
     {
         Rr_DescriptorSetState *SetState = &State->SetStates[Index];
         VkDescriptorSetLayout Current = SetState->Layout;
         VkDescriptorSetLayout New = PipelineLayout->SetLayouts[Index]->Handle;
-        if(Current != New)
+        if (Current != New)
         {
             Disturbed = true;
         }
-        if(Disturbed)
+        if (Disturbed)
         {
             SetState->Layout = New;
             SetState->Flags = RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT;
@@ -497,10 +497,10 @@ static void Rr_ValidateNullSetBinding(
     Rr_PipelineBindingSet *Set,
     size_t Binding)
 {
-    for(size_t Index = 0; Index < Set->BindingCount; ++Index)
+    for (size_t Index = 0; Index < Set->BindingCount; ++Index)
     {
         Rr_PipelineBinding *PipelineBinding = &Set->Bindings[Index];
-        if(PipelineBinding->Binding == Binding && PipelineBinding->Count != 0)
+        if (PipelineBinding->Binding == Binding && PipelineBinding->Count != 0)
         {
             RR_ABORT("Missing layout binding %zu!", Binding);
         }
@@ -515,7 +515,7 @@ void Rr_ApplyDescriptorsState(
     VkCommandBuffer CommandBuffer,
     VkPipelineBindPoint PipelineBindPoint)
 {
-    if(State->Dirty == false)
+    if (State->Dirty == false)
     {
         return;
     }
@@ -533,7 +533,7 @@ void Rr_ApplyDescriptorsState(
     uint32_t DynamicOffsetCount = 0;
     uint32_t DynamicOffsets[RR_MAX_BINDINGS * RR_MAX_SETS];
 
-    for(uint32_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
+    for (uint32_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
     {
         Rr_DescriptorSetState *SetState = State->SetStates + SetIndex;
 
@@ -541,10 +541,10 @@ void Rr_ApplyDescriptorsState(
                          SetState->Flags,
                          RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT) == true;
 
-        if(Disturbed || Dirty)
+        if (Disturbed || Dirty)
         {
             Disturbed = true;
-            if(FirstSetSet == false)
+            if (FirstSetSet == false)
             {
                 FirstSet = SetIndex;
                 FirstSetSet = true;
@@ -555,13 +555,13 @@ void Rr_ApplyDescriptorsState(
             continue;
         }
 
-        for(uint32_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
-            ++BindingIndex)
+        for (uint32_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
+             ++BindingIndex)
         {
             Rr_DescriptorSetBinding *Binding =
                 SetState->Bindings + BindingIndex;
 
-            if(RR_HAS_BIT(SetState->Flags, (1 << BindingIndex)) != true)
+            if (RR_HAS_BIT(SetState->Flags, (1 << BindingIndex)) != true)
             {
 #if defined(RR_DEBUG)
                 Rr_ValidateNullSetBinding(
@@ -571,7 +571,7 @@ void Rr_ApplyDescriptorsState(
                 continue;
             }
 
-            switch(Binding->Type)
+            switch (Binding->Type)
             {
                 case RR_PIPELINE_BINDING_TYPE_SAMPLER:
                 {
@@ -662,7 +662,7 @@ void Rr_ApplyDescriptorsState(
         DescriptorSets[DescriptorSetCount++] = DescriptorSet;
 
         bool LastSet = SetIndex == PipelineLayout->SetLayoutCount - 1;
-        if(LastSet && DescriptorSetCount > 0)
+        if (LastSet && DescriptorSetCount > 0)
         {
             Device->CmdBindDescriptorSets(
                 CommandBuffer,

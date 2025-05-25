@@ -34,7 +34,7 @@
         fprintf(stderr, __VA_ARGS__);        \
         fprintf(stderr, "\n");               \
     }                                        \
-    while(0)
+    while (0)
 
 #define RR_ABORT(...)                        \
     do                                       \
@@ -44,4 +44,4 @@
         fprintf(stderr, "\n");               \
         abort();                             \
     }                                        \
-    while(0)
+    while (0)

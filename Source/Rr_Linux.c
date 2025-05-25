@@ -59,7 +59,7 @@ void Rr_ReleaseMemory(void *Data, size_t Size)
 
 bool Rr_CommitMemory(void *Data, size_t Size)
 {
-    if(mprotect(Data, Size, PROT_READ | PROT_WRITE))
+    if (mprotect(Data, Size, PROT_READ | PROT_WRITE))
     {
         return false;
     }

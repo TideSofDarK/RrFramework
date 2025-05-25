@@ -44,14 +44,14 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
         Rr_RenderPassAttachment,
         AttachmentCount);
 
-    for(uint32_t Index = 0; Index < Info->ColorTargetCount; ++Index)
+    for (uint32_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {
         Attachments[Index].LoadOp = RR_LOAD_OP_DONT_CARE;
         Attachments[Index].StoreOp = RR_STORE_OP_DONT_CARE;
         Attachments[Index].Format =
             Rr_ToVulkanTextureFormat(Info->ColorTargets[Index].Format);
     }
-    if(HasDepth)
+    if (HasDepth)
     {
         Attachments[AttachmentCount - 1].LoadOp = RR_LOAD_OP_DONT_CARE;
         Attachments[AttachmentCount - 1].StoreOp = RR_STORE_OP_DONT_CARE;
@@ -88,7 +88,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
 
-    for(size_t Index = 0; Index < SetCount; ++Index)
+    for (size_t Index = 0; Index < SetCount; ++Index)
     {
         Rr_PipelineBindingSet *Set = Sets + Index;
 
@@ -141,12 +141,12 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
         sizeof(VkSpecializationMapEntry) * SpecializationCount);
     uintptr_t ArenaPosition = Arena->Position;
     char *DataStart = NULL;
-    for(size_t Index = 0; Index < SpecializationCount; ++Index)
+    for (size_t Index = 0; Index < SpecializationCount; ++Index)
     {
         Rr_PipelineSpecialization *Specialization = Specializations + Index;
         char *SpecializationData =
             RR_ALLOC_NO_ZERO(Arena, Specialization->Data.Size);
-        if(DataStart == NULL)
+        if (DataStart == NULL)
         {
             DataStart = SpecializationData;
         }
@@ -207,7 +207,7 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         .pName = "main",
     };
 
-    if(CreateInfo->SpecializationCount > 0)
+    if (CreateInfo->SpecializationCount > 0)
     {
         ShaderStageCreateInfo.pSpecializationInfo =
             Rr_GetVulkanSpecializationInfo(
@@ -263,7 +263,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
                                 Info->DepthStencil.EnableStencilTest ||
                                 Info->DepthStencil.EnableDepthWrite;
 
-    if(Pipeline->HasDepthStencil)
+    if (Pipeline->HasDepthStencil)
     {
         assert(Info->DepthStencil.Format != RR_TEXTURE_FORMAT_UNDEFINED);
     }
@@ -271,7 +271,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
-    if(Info->VertexShaderSPV.Pointer != NULL)
+    if (Info->VertexShaderSPV.Pointer != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -296,7 +296,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
-    if(Info->FragmentShaderSPV.Pointer != NULL)
+    if (Info->FragmentShaderSPV.Pointer != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -321,8 +321,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     RR_ARRAY(VkVertexInputBindingDescription) BindingDescriptions = { 0 };
     RR_ARRAY(VkVertexInputAttributeDescription) AttributeDescriptions = { 0 };
-    for(size_t BindingIndex = 0; BindingIndex < Info->VertexInputBindingCount;
-        ++BindingIndex)
+    for (size_t BindingIndex = 0; BindingIndex < Info->VertexInputBindingCount;
+         ++BindingIndex)
     {
         Rr_VertexInputBinding *VertexInputBinding =
             Info->VertexInputBindings + BindingIndex;
@@ -332,8 +332,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             AttributeDescriptions.Count + VertexInputBinding->AttributeCount,
             Scratch.Arena);
 
-        for(size_t Index = 0; Index < VertexInputBinding->AttributeCount;
-            ++Index)
+        for (size_t Index = 0; Index < VertexInputBinding->AttributeCount;
+             ++Index)
         {
             Rr_VertexInputAttribute *Attribute =
                 VertexInputBinding->Attributes + Index;
@@ -347,19 +347,19 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             };
 
             VkVertexInputBindingDescription *BindingDescription = NULL;
-            for(size_t BindingIndex = 0;
-                BindingIndex < BindingDescriptions.Count;
-                ++BindingIndex)
+            for (size_t BindingIndex = 0;
+                 BindingIndex < BindingDescriptions.Count;
+                 ++BindingIndex)
             {
-                if(BindingDescriptions.Data[BindingIndex].binding ==
-                   BindingIndex)
+                if (BindingDescriptions.Data[BindingIndex].binding ==
+                    BindingIndex)
                 {
                     BindingDescription =
                         BindingDescriptions.Data + BindingIndex;
                     break;
                 }
             }
-            if(BindingDescription == NULL)
+            if (BindingDescription == NULL)
             {
                 BindingDescription =
                     RR_PUSH_INTO_ARRAY(&BindingDescriptions, Scratch.Arena);
@@ -440,7 +440,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     RR_ARRAY(VkPipelineColorBlendAttachmentState) ColorAttachments = { 0 };
     RR_RESERVE_ARRAY(&ColorAttachments, Info->ColorTargetCount, Scratch.Arena);
-    for(size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
+    for (size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
     {
         VkPipelineColorBlendAttachmentState *Attachment =
             RR_PUSH_INTO_ARRAY(&ColorAttachments, Scratch.Arena);
@@ -448,7 +448,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         Rr_ColorTargetBlend *Blend = &ColorTargetInfo->Blend;
 
         VkColorComponentFlags ColorWriteMask = Blend->ColorWriteMask;
-        if(Blend->ColorWriteMask == RR_COLOR_COMPONENT_DEFAULT)
+        if (Blend->ColorWriteMask == RR_COLOR_COMPONENT_DEFAULT)
         {
             ColorWriteMask = RR_COLOR_COMPONENT_ALL;
         }
@@ -518,12 +518,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         NULL,
         &Pipeline->Handle);
 
-    if(VertModule != VK_NULL_HANDLE)
+    if (VertModule != VK_NULL_HANDLE)
     {
         Device->DestroyShaderModule(Device->Handle, VertModule, NULL);
     }
 
-    if(FragModule != VK_NULL_HANDLE)
+    if (FragModule != VK_NULL_HANDLE)
     {
         Device->DestroyShaderModule(Device->Handle, FragModule, NULL);
     }
@@ -550,36 +550,36 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
 {
     uint32_t Hash =
         XXH32(Set->Bindings, sizeof(Rr_PipelineBinding) * Set->BindingCount, 0);
-    for(size_t LayoutIndex = 0;
-        LayoutIndex < Renderer->DescriptorSetLayouts.Count;
-        ++LayoutIndex)
+    for (size_t LayoutIndex = 0;
+         LayoutIndex < Renderer->DescriptorSetLayouts.Count;
+         ++LayoutIndex)
     {
         Rr_DescriptorSetLayout *DescriptorSetLayout =
             Renderer->DescriptorSetLayouts.Data + LayoutIndex;
-        if(DescriptorSetLayout == NULL)
+        if (DescriptorSetLayout == NULL)
         {
             continue;
         }
-        if(DescriptorSetLayout->Hash == Hash &&
-           DescriptorSetLayout->Set.BindingCount == Set->BindingCount &&
-           DescriptorSetLayout->Set.Stages == Set->Stages)
+        if (DescriptorSetLayout->Hash == Hash &&
+            DescriptorSetLayout->Set.BindingCount == Set->BindingCount &&
+            DescriptorSetLayout->Set.Stages == Set->Stages)
         {
             bool Fail = false;
-            for(size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
-                ++BindingIndex)
+            for (size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
+                 ++BindingIndex)
             {
                 Rr_PipelineBinding *BindingA = &Set->Bindings[BindingIndex];
                 Rr_PipelineBinding *BindingB =
                     &DescriptorSetLayout->Set.Bindings[BindingIndex];
-                if(BindingA->Binding != BindingB->Binding ||
-                   BindingA->Count != BindingB->Count ||
-                   BindingA->Type != BindingB->Type)
+                if (BindingA->Binding != BindingB->Binding ||
+                    BindingA->Count != BindingB->Count ||
+                    BindingA->Type != BindingB->Type)
                 {
                     Fail = true;
                     break;
                 }
             }
-            if(!Fail)
+            if (!Fail)
             {
 
                 return DescriptorSetLayout;
@@ -589,14 +589,14 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
 
     Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
 
-    for(size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
-        ++BindingIndex)
+    for (size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
+         ++BindingIndex)
     {
         Rr_PipelineBinding *Binding = Set->Bindings + BindingIndex;
 
         assert(Binding->Count > 0);
 
-        if(Binding->Count == 1)
+        if (Binding->Count == 1)
         {
             Rr_AddDescriptor(
                 &DescriptorLayoutBuilder,

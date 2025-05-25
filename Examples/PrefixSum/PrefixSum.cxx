@@ -24,7 +24,7 @@ static const uint32_t COUNT = 456456;
 static uint32_t GetPrefixSum(uint32_t Number)
 {
     uint32_t Result = 0;
-    for(uint32_t Index = 0; Index <= Number; ++Index)
+    for (uint32_t Index = 0; Index <= Number; ++Index)
     {
         Result = Index + Result;
     }
@@ -34,7 +34,7 @@ static uint32_t GetPrefixSum(uint32_t Number)
 static uint32_t GetDispatchSize()
 {
     uint32_t DispatchSize = COUNT / ThreadsPerWorkgroup;
-    if((COUNT % ThreadsPerWorkgroup) != 0)
+    if ((COUNT % ThreadsPerWorkgroup) != 0)
     {
         DispatchSize++;
     }

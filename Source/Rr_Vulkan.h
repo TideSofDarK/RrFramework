@@ -352,7 +352,7 @@ extern void Rr_BlitColorImage(
 
 static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_PipelineBindingType Type)
 {
-    switch(Type)
+    switch (Type)
     {
         case RR_PIPELINE_BINDING_TYPE_SAMPLER:
             return VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -373,7 +373,7 @@ static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_PipelineBindingType Type)
 
 static inline VkStencilOp Rr_ToVulkanStencilOp(Rr_StencilOp StencilOp)
 {
-    switch(StencilOp)
+    switch (StencilOp)
     {
         case RR_STENCIL_OP_KEEP:
             return VK_STENCIL_OP_KEEP;
@@ -400,15 +400,15 @@ static inline VkShaderStageFlags Rr_ToVulkanShaderStageFlags(
     Rr_ShaderStage ShaderStage)
 {
     VkShaderStageFlags ShaderStageFlags = 0;
-    if((ShaderStage & RR_SHADER_STAGE_VERTEX_BIT) != 0)
+    if ((ShaderStage & RR_SHADER_STAGE_VERTEX_BIT) != 0)
     {
         ShaderStageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
     }
-    if((ShaderStage & RR_SHADER_STAGE_FRAGMENT_BIT) != 0)
+    if ((ShaderStage & RR_SHADER_STAGE_FRAGMENT_BIT) != 0)
     {
         ShaderStageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
     }
-    if((ShaderStage & RR_SHADER_STAGE_COMPUTE_BIT) != 0)
+    if ((ShaderStage & RR_SHADER_STAGE_COMPUTE_BIT) != 0)
     {
         ShaderStageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
     }
@@ -417,7 +417,7 @@ static inline VkShaderStageFlags Rr_ToVulkanShaderStageFlags(
 
 static inline VkCompareOp Rr_ToVulkanCompareOp(Rr_CompareOp CompareOp)
 {
-    switch(CompareOp)
+    switch (CompareOp)
     {
         case RR_COMPARE_OP_NEVER:
             return VK_COMPARE_OP_NEVER;
@@ -457,7 +457,7 @@ static inline VkStencilOpState Rr_ToVulkanStencilOpState(
 
 static inline VkPolygonMode Rr_ToVulkanPolygonMode(Rr_PolygonMode PolygonMode)
 {
-    switch(PolygonMode)
+    switch (PolygonMode)
     {
         case RR_POLYGON_MODE_FILL:
             return VK_POLYGON_MODE_FILL;
@@ -470,7 +470,7 @@ static inline VkPolygonMode Rr_ToVulkanPolygonMode(Rr_PolygonMode PolygonMode)
 
 static inline VkCullModeFlagBits Rr_ToVulkanCullMode(Rr_CullMode CullMode)
 {
-    switch(CullMode)
+    switch (CullMode)
     {
         case RR_CULL_MODE_NONE:
             return VK_CULL_MODE_NONE;
@@ -485,7 +485,7 @@ static inline VkCullModeFlagBits Rr_ToVulkanCullMode(Rr_CullMode CullMode)
 
 static inline VkFrontFace Rr_ToVulkanFrontFace(Rr_FrontFace FrontFace)
 {
-    switch(FrontFace)
+    switch (FrontFace)
     {
         case RR_FRONT_FACE_COUNTER_CLOCKWISE:
             return VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -498,7 +498,7 @@ static inline VkFrontFace Rr_ToVulkanFrontFace(Rr_FrontFace FrontFace)
 
 static inline VkBlendFactor Rr_ToVulkanBlendFactor(Rr_BlendFactor BlendFactor)
 {
-    switch(BlendFactor)
+    switch (BlendFactor)
     {
         case RR_BLEND_FACTOR_ZERO:
             return VK_BLEND_FACTOR_ZERO;
@@ -533,7 +533,7 @@ static inline VkBlendFactor Rr_ToVulkanBlendFactor(Rr_BlendFactor BlendFactor)
 
 static inline VkBlendOp Rr_ToVulkanBlendOp(Rr_BlendOp BlendOp)
 {
-    switch(BlendOp)
+    switch (BlendOp)
     {
         case RR_BLEND_OP_ADD:
             return VK_BLEND_OP_ADD;
@@ -553,7 +553,7 @@ static inline VkBlendOp Rr_ToVulkanBlendOp(Rr_BlendOp BlendOp)
 static inline VkPrimitiveTopology Rr_ToVulkanPrimitiveTopology(
     Rr_Topology Topology)
 {
-    switch(Topology)
+    switch (Topology)
     {
         case RR_TOPOLOGY_POINT_LIST:
             return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
@@ -572,7 +572,7 @@ static inline VkPrimitiveTopology Rr_ToVulkanPrimitiveTopology(
 
 static inline VkFormat Rr_ToVulkanFormat(Rr_Format Format)
 {
-    switch(Format)
+    switch (Format)
     {
         case RR_FORMAT_UNDEFINED:
             return VK_FORMAT_UNDEFINED;
@@ -593,7 +593,7 @@ static inline VkFormat Rr_ToVulkanFormat(Rr_Format Format)
 
 static inline size_t Rr_GetFormatSize(Rr_Format Format)
 {
-    switch(Format)
+    switch (Format)
     {
         case RR_FORMAT_FLOAT:
             return sizeof(float);
@@ -612,7 +612,7 @@ static inline size_t Rr_GetFormatSize(Rr_Format Format)
 
 static inline VkBorderColor Rr_ToVulkanBorderColor(Rr_BorderColor BorderColor)
 {
-    switch(BorderColor)
+    switch (BorderColor)
     {
         case RR_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
             return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
@@ -634,7 +634,7 @@ static inline VkBorderColor Rr_ToVulkanBorderColor(Rr_BorderColor BorderColor)
 static inline VkSamplerAddressMode Rr_ToVulkanSamplerAddressMode(
     Rr_SamplerAddressMode SamplerAddressMode)
 {
-    switch(SamplerAddressMode)
+    switch (SamplerAddressMode)
     {
         case RR_SAMPLER_ADDRESS_MODE_REPEAT:
             return VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -654,7 +654,7 @@ static inline VkSamplerAddressMode Rr_ToVulkanSamplerAddressMode(
 static inline VkSamplerMipmapMode Rr_ToVulkanSamplerMipmapMode(
     Rr_SamplerMipmapMode SamplerMipmapMode)
 {
-    switch(SamplerMipmapMode)
+    switch (SamplerMipmapMode)
     {
         case RR_SAMPLER_MIPMAP_MODE_NEAREST:
             return VK_SAMPLER_MIPMAP_MODE_NEAREST;
@@ -667,7 +667,7 @@ static inline VkSamplerMipmapMode Rr_ToVulkanSamplerMipmapMode(
 
 static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
 {
-    switch(Filter)
+    switch (Filter)
     {
         case RR_FILTER_NEAREST:
             return VK_FILTER_NEAREST;
@@ -680,7 +680,7 @@ static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
 
 static Rr_TextureFormat Rr_ToTextureFormat(VkFormat TextureFormat)
 {
-    switch(TextureFormat)
+    switch (TextureFormat)
     {
         case VK_FORMAT_UNDEFINED:
             return RR_TEXTURE_FORMAT_UNDEFINED;
@@ -701,7 +701,7 @@ static Rr_TextureFormat Rr_ToTextureFormat(VkFormat TextureFormat)
 
 static VkFormat Rr_ToVulkanTextureFormat(Rr_TextureFormat TextureFormat)
 {
-    switch(TextureFormat)
+    switch (TextureFormat)
     {
         case RR_TEXTURE_FORMAT_UNDEFINED:
             return VK_FORMAT_UNDEFINED;
@@ -730,7 +730,7 @@ static VkFormat Rr_ToVulkanTextureFormat(Rr_TextureFormat TextureFormat)
 
 static inline VkIndexType Rr_ToVulkanIndexType(Rr_IndexType IndexType)
 {
-    switch(IndexType)
+    switch (IndexType)
     {
         case RR_INDEX_TYPE_UINT8:
             return VK_INDEX_TYPE_UINT8;
@@ -753,15 +753,15 @@ static inline bool Rr_IsVulkanDepthFormat(VkFormat Format)
 static inline VkImageAspectFlags Rr_ToVulkanImageAspect(Rr_ImageAspect Aspect)
 {
     VkImageAspectFlags Result = 0;
-    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_COLOR_BIT))
+    if (RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_COLOR_BIT))
     {
         Result |= VK_IMAGE_ASPECT_COLOR_BIT;
     }
-    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_DEPTH_BIT))
+    if (RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_DEPTH_BIT))
     {
         Result |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
-    if(RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_STENCIL_BIT))
+    if (RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_STENCIL_BIT))
     {
         Result |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }
@@ -770,7 +770,7 @@ static inline VkImageAspectFlags Rr_ToVulkanImageAspect(Rr_ImageAspect Aspect)
 
 static VkAttachmentLoadOp Rr_ToVulkanLoadOp(Rr_LoadOp LoadOp)
 {
-    switch(LoadOp)
+    switch (LoadOp)
     {
         case RR_LOAD_OP_CLEAR:
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -785,7 +785,7 @@ static VkAttachmentLoadOp Rr_ToVulkanLoadOp(Rr_LoadOp LoadOp)
 
 static VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
 {
-    switch(StoreOp)
+    switch (StoreOp)
     {
         case RR_STORE_OP_STORE:
             return VK_ATTACHMENT_STORE_OP_STORE;
@@ -799,7 +799,7 @@ static VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
 static inline VkPresentModeKHR Rr_ToVulkanPresentMode(
     Rr_PresentMode PresentMode)
 {
-    switch(PresentMode)
+    switch (PresentMode)
     {
         case RR_PRESENT_MODE_FIFO_RELAXED:
             return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
@@ -817,7 +817,7 @@ static inline VkPresentModeKHR Rr_ToVulkanPresentMode(
 static inline Rr_PresentMode Rr_ToPresentMode(
     VkPresentModeKHR VulkanPresentMode)
 {
-    switch(VulkanPresentMode)
+    switch (VulkanPresentMode)
     {
         case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
             return RR_PRESENT_MODE_FIFO_RELAXED;

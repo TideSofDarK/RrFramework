@@ -77,11 +77,11 @@ void Rr_InitInstance(
     uint32_t ExtensionCount = SDLExtensionCount + AppExtensionCount;
     const char **Extensions =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, const char *, ExtensionCount);
-    for(uint32_t Index = 0; Index < ExtensionCount; Index++)
+    for (uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = SDLExtensions[Index];
     }
-    for(uint32_t Index = 0; Index < AppExtensionCount; Index++)
+    for (uint32_t Index = 0; Index < AppExtensionCount; Index++)
     {
         Extensions[Index + SDLExtensionCount] = AppExtensions[Index];
     }
@@ -250,7 +250,7 @@ static bool Rr_CheckPhysicalDevice(
         NULL,
         &ExtensionCount,
         NULL);
-    if(ExtensionCount == 0)
+    if (ExtensionCount == 0)
     {
         return false;
     }
@@ -269,24 +269,25 @@ static bool Rr_CheckPhysicalDevice(
         &ExtensionCount,
         Extensions);
 
-    for(uint32_t Index = 0; Index < ExtensionCount; Index++)
+    for (uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
-        for(uint32_t TargetIndex = 0;
-            TargetIndex < SDL_arraysize(TargetExtensions);
-            ++TargetIndex)
+        for (uint32_t TargetIndex = 0;
+             TargetIndex < SDL_arraysize(TargetExtensions);
+             ++TargetIndex)
         {
-            if(strcmp(
-                   Extensions[Index].extensionName,
-                   TargetExtensions[TargetIndex]) == 0)
+            if (strcmp(
+                    Extensions[Index].extensionName,
+                    TargetExtensions[TargetIndex]) == 0)
             {
                 FoundExtensions[TargetIndex] = true;
             }
         }
     }
-    for(uint32_t TargetIndex = 0; TargetIndex < SDL_arraysize(TargetExtensions);
-        ++TargetIndex)
+    for (uint32_t TargetIndex = 0;
+         TargetIndex < SDL_arraysize(TargetExtensions);
+         ++TargetIndex)
     {
-        if(!FoundExtensions[TargetIndex])
+        if (!FoundExtensions[TargetIndex])
         {
             return false;
         }
@@ -297,7 +298,7 @@ static bool Rr_CheckPhysicalDevice(
         PhysicalDevice,
         &QueueFamilyCount,
         NULL);
-    if(QueueFamilyCount == 0)
+    if (QueueFamilyCount == 0)
     {
         return false;
     }
@@ -315,41 +316,41 @@ static bool Rr_CheckPhysicalDevice(
     uint32_t GraphicsQueueFamilyIndex = ~0U;
     uint32_t TransferQueueFamilyIndex = ~0U;
 
-    for(uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
+    for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
     {
         Instance->GetPhysicalDeviceSurfaceSupportKHR(
             PhysicalDevice,
             Index,
             Surface,
             &QueuePresentSupport[Index]);
-        if(QueuePresentSupport[Index] &&
-           QueueFamilyProperties[Index].queueCount > 0 &&
-           (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+        if (QueuePresentSupport[Index] &&
+            QueueFamilyProperties[Index].queueCount > 0 &&
+            (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_GRAPHICS_BIT))
         {
             GraphicsQueueFamilyIndex = Index;
             break;
         }
     }
 
-    if(GraphicsQueueFamilyIndex == ~0U)
+    if (GraphicsQueueFamilyIndex == ~0U)
     {
         return false;
     }
 
     bool ForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
 
-    if(!ForceDisableTransferQueue)
+    if (!ForceDisableTransferQueue)
     {
-        for(uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
+        for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
         {
-            if(Index == GraphicsQueueFamilyIndex)
+            if (Index == GraphicsQueueFamilyIndex)
             {
                 continue;
             }
 
-            if(QueueFamilyProperties[Index].queueCount > 0 &&
-               (QueueFamilyProperties[Index].queueFlags &
-                VK_QUEUE_TRANSFER_BIT))
+            if (QueueFamilyProperties[Index].queueCount > 0 &&
+                (QueueFamilyProperties[Index].queueFlags &
+                 VK_QUEUE_TRANSFER_BIT))
             {
                 TransferQueueFamilyIndex = Index;
                 break;
@@ -378,7 +379,7 @@ void Rr_SelectPhysicalDevice(
         Instance->Handle,
         &PhysicalDeviceCount,
         NULL);
-    if(PhysicalDeviceCount == 0)
+    if (PhysicalDeviceCount == 0)
     {
         RR_LOG("No device with Vulkan support found");
     }
@@ -401,18 +402,18 @@ void Rr_SelectPhysicalDevice(
     /* VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU; */
     uint32_t BestDeviceType = 0;
     VkDeviceSize BestDeviceMemory = 0;
-    for(uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
+    for (uint32_t Index = 0; Index < PhysicalDeviceCount; Index++)
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
         uint32_t GraphicsQueueFamilyIndex;
         uint32_t TransferQueueFamilyIndex;
-        if(Rr_CheckPhysicalDevice(
-               Instance,
-               PhysicalDeviceHandle,
-               Surface,
-               &GraphicsQueueFamilyIndex,
-               &TransferQueueFamilyIndex,
-               Arena))
+        if (Rr_CheckPhysicalDevice(
+                Instance,
+                PhysicalDeviceHandle,
+                Surface,
+                &GraphicsQueueFamilyIndex,
+                &TransferQueueFamilyIndex,
+                Arena))
         {
             VkPhysicalDeviceProperties2 Properties = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
@@ -427,15 +428,15 @@ void Rr_SelectPhysicalDevice(
                 &MemoryProperties);
 
             VkDeviceSize Memory = 0;
-            for(uint32_t MemoryHeapIndex = 0;
-                MemoryHeapIndex < MemoryProperties.memoryHeapCount;
-                ++MemoryHeapIndex)
+            for (uint32_t MemoryHeapIndex = 0;
+                 MemoryHeapIndex < MemoryProperties.memoryHeapCount;
+                 ++MemoryHeapIndex)
             {
                 Memory += MemoryProperties.memoryHeaps[MemoryHeapIndex].size;
             }
 
             const char *TypeString = NULL;
-            switch(Properties.properties.deviceType)
+            switch (Properties.properties.deviceType)
             {
                 case VK_PHYSICAL_DEVICE_TYPE_OTHER:
                     TypeString = "other";
@@ -467,7 +468,7 @@ void Rr_SelectPhysicalDevice(
                 TypeString,
                 Memory);
 
-            if(BestDeviceIndex == UINT32_MAX)
+            if (BestDeviceIndex == UINT32_MAX)
             {
             SetBestDevice:
                 BestDeviceIndex = Index;
@@ -478,11 +479,11 @@ void Rr_SelectPhysicalDevice(
             }
             else
             {
-                if(Properties.properties.deviceType == PreferredDeviceType)
+                if (Properties.properties.deviceType == PreferredDeviceType)
                 {
-                    if(BestDeviceType == PreferredDeviceType)
+                    if (BestDeviceType == PreferredDeviceType)
                     {
-                        if(Memory > BestDeviceMemory)
+                        if (Memory > BestDeviceMemory)
                         {
                             goto SetBestDevice;
                         }
@@ -495,17 +496,17 @@ void Rr_SelectPhysicalDevice(
             }
         }
     }
-    if(BestDeviceIndex == UINT32_MAX)
+    if (BestDeviceIndex == UINT32_MAX)
     {
         RR_LOG(
             "Could not select physical device based on the chosen properties!");
     }
 
     char *Mark;
-    for(size_t Index = 0; Index < DeviceStrings.Count; ++Index)
+    for (size_t Index = 0; Index < DeviceStrings.Count; ++Index)
     {
         Mark = strchr(DeviceStrings.Data[Index], '\\');
-        if(Index == BestDeviceIndex)
+        if (Index == BestDeviceIndex)
         {
             *Mark = '*';
         }
@@ -549,8 +550,8 @@ void Rr_SelectPhysicalDevice(
 
 void Rr_InitSurface(void *Window, Rr_Instance *Instance, VkSurfaceKHR *Surface)
 {
-    if(SDL_Vulkan_CreateSurface(Window, Instance->Handle, NULL, Surface) !=
-       true)
+    if (SDL_Vulkan_CreateSurface(Window, Instance->Handle, NULL, Surface) !=
+        true)
     {
         RR_ABORT("Failed to create Vulkan surface: %s", SDL_GetError());
     }
@@ -1079,7 +1080,7 @@ void Rr_InitDeviceAndQueues(
         GraphicsQueue->FamilyIndex,
         0,
         &GraphicsQueue->Handle);
-    if(UseTransferQueue)
+    if (UseTransferQueue)
     {
         Device->GetDeviceQueue(
             Device->Handle,

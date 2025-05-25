@@ -13,11 +13,11 @@ static void Init(void *UserData)
 static void FixedSizeWindow()
 {
     Rr_UISetNextWindowSize({ 400, 400 });
-    if(Rr_UIBeginWindow(
-           "Fixed Size Window",
-           &FixedSizeWindowOpen,
-           RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
-               RR_UI_WINDOW_FLAGS_NO_BORDER_BIT))
+    if (Rr_UIBeginWindow(
+            "Fixed Size Window",
+            &FixedSizeWindowOpen,
+            RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+                RR_UI_WINDOW_FLAGS_NO_BORDER_BIT))
     {
         Rr_UILabel("Border is disabled for this window.");
         Rr_UILabelF("Window Size: %dx%d", 400, 400);
@@ -27,10 +27,10 @@ static void FixedSizeWindow()
 
 static void StyleEditorWindow()
 {
-    if(Rr_UIBeginWindow(
-           "Style Editor",
-           &StyleEditorWindowOpen,
-           RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+    if (Rr_UIBeginWindow(
+            "Style Editor",
+            &StyleEditorWindowOpen,
+            RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
     {
         Rr_UIStyle *Style = Rr_UIGetStyle();
         Rr_UILabel("TEMPORARY LONG STRING -- WILL REMOVE");
@@ -72,19 +72,19 @@ static void Iterate(void *UserData)
     static bool NoTitle = false;
 
     Rr_UIWindowFlags Flags = 0;
-    if(CloseButton)
+    if (CloseButton)
     {
         Flags |= RR_UI_WINDOW_FLAGS_CLOSE_BIT;
     }
-    if(NoResize)
+    if (NoResize)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
     }
-    if(NoScrollbar)
+    if (NoScrollbar)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT;
     }
-    if(NoTitle)
+    if (NoTitle)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BIT;
     }
@@ -92,33 +92,33 @@ static void Iterate(void *UserData)
     FixedSizeWindow();
     StyleEditorWindow();
 
-    if(Rr_UIBeginWindow("Rr_UI.h", nullptr, Flags))
+    if (Rr_UIBeginWindow("Rr_UI.h", nullptr, Flags))
     {
-        if(Rr_UIFold("Combobox"))
+        if (Rr_UIFold("Combobox"))
         {
             std::array ComboboxOptions = {
                 "Option A", "Option B",        "Option C",
                 "Option D", "Longer Option E",
             };
             static uint32_t SelectedComboboxOption = 0;
-            if(Rr_UICombobox(
-                   "Options",
-                   ComboboxOptions.size(),
-                   ComboboxOptions.data(),
-                   &SelectedComboboxOption))
+            if (Rr_UICombobox(
+                    "Options",
+                    ComboboxOptions.size(),
+                    ComboboxOptions.data(),
+                    &SelectedComboboxOption))
             {
                 std::cout << "New option selected: "
                           << ComboboxOptions[SelectedComboboxOption] << '\n';
             }
         }
-        if(Rr_UIFold("Checkbox"))
+        if (Rr_UIFold("Checkbox"))
         {
             Rr_UICheckbox("Close Button", &CloseButton);
             Rr_UICheckbox("No Resize", &NoResize);
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
             Rr_UICheckbox("No Title", &NoTitle);
         }
-        if(Rr_UIFold("Color Picker"))
+        if (Rr_UIFold("Color Picker"))
         {
             static Rr_Vec4 ColorA = { 0.2f, 0.3f, 0.4f, 1.0f };
             Rr_UIColorPicker("Color A", &ColorA);
@@ -127,11 +127,11 @@ static void Iterate(void *UserData)
         }
         Rr_UILabel("Button");
         Rr_UIBeginHorizontal();
-        if(Rr_UIButton("Show Style Editor"))
+        if (Rr_UIButton("Show Style Editor"))
         {
             StyleEditorWindowOpen = true;
         }
-        if(Rr_UIButton("Show Fixed Size Window"))
+        if (Rr_UIButton("Show Fixed Size Window"))
         {
             FixedSizeWindowOpen = true;
         }
@@ -155,7 +155,7 @@ static void Iterate(void *UserData)
         static bool DoNothing;
         static bool DoNothing2;
         Rr_UICheckbox("Do Nothing", &DoNothing);
-        if(Rr_UIButton("Do Something!"))
+        if (Rr_UIButton("Do Something!"))
         {
         }
         Rr_UICheckbox("Do Nothing 2", &DoNothing2);

@@ -256,7 +256,7 @@ static void Iterate(void *UserData)
         &SwapchainImage,
         &DepthTarget,
         DepthAttachment);
-    if(Loaded)
+    if (Loaded)
     {
         DrawFirstGLTFPrimitive(GraphicsNode);
     }

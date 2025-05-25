@@ -34,9 +34,9 @@ void Rr_LockSpinlock(Rr_Spinlock *SpinLock)
 {
     int Loops = 0;
     const int MaxLoops = 1000000;
-    while(!Rr_TryLockSpinlock(SpinLock))
+    while (!Rr_TryLockSpinlock(SpinLock))
     {
-        if(Loops > MaxLoops)
+        if (Loops > MaxLoops)
         {
             RR_ABORT("Spin lock timeout!");
         }
@@ -46,12 +46,12 @@ void Rr_LockSpinlock(Rr_Spinlock *SpinLock)
 bool Rr_PollPlatformEvent(Rr_Event *Event)
 {
     static SDL_Event SDLEvent;
-    if(SDL_PollEvent(&SDLEvent) == false)
+    if (SDL_PollEvent(&SDLEvent) == false)
     {
         return false;
     }
 
-    switch(SDLEvent.type)
+    switch (SDLEvent.type)
     {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
@@ -89,23 +89,23 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
                               : RR_EVENT_TYPE_MOUSE_BUTTON_DOWN;
             Event->MouseButton.Position =
                 (Rr_Vec2){ SDLEvent.button.x, SDLEvent.button.y };
-            if(SDLEvent.button.button == SDL_BUTTON_LEFT)
+            if (SDLEvent.button.button == SDL_BUTTON_LEFT)
             {
                 Event->MouseButton.Button = RR_MOUSE_BUTTON_LEFT;
             }
-            else if(SDLEvent.button.button == SDL_BUTTON_RIGHT)
+            else if (SDLEvent.button.button == SDL_BUTTON_RIGHT)
             {
                 Event->MouseButton.Button = RR_MOUSE_BUTTON_RIGHT;
             }
-            else if(SDLEvent.button.button == SDL_BUTTON_MIDDLE)
+            else if (SDLEvent.button.button == SDL_BUTTON_MIDDLE)
             {
                 Event->MouseButton.Button = RR_MOUSE_BUTTON_MIDDLE;
             }
-            else if(SDLEvent.button.button == SDL_BUTTON_X1)
+            else if (SDLEvent.button.button == SDL_BUTTON_X1)
             {
                 Event->MouseButton.Button = RR_MOUSE_BUTTON_X1;
             }
-            else if(SDLEvent.button.button == SDL_BUTTON_X2)
+            else if (SDLEvent.button.button == SDL_BUTTON_X2)
             {
                 Event->MouseButton.Button = RR_MOUSE_BUTTON_X2;
             }

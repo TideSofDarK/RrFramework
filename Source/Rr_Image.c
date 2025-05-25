@@ -95,8 +95,8 @@ void Rr_UploadStagingImage(
     Rr_AllocatedBuffer *AllocatedStagingBuffer =
         StagingBuffer->AllocatedBuffers;
 
-    for(size_t AllocatedIndex = 0; AllocatedIndex < Image->AllocatedImageCount;
-        ++AllocatedIndex)
+    for (size_t AllocatedIndex = 0; AllocatedIndex < Image->AllocatedImageCount;
+         ++AllocatedIndex)
     {
         Rr_AllocatedImage *AllocatedImage =
             Image->AllocatedImages + AllocatedIndex;
@@ -176,7 +176,7 @@ void Rr_UploadStagingImage(
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             });
 
-        if(UploadContext->UseAcquireBarriers)
+        if (UploadContext->UseAcquireBarriers)
         {
             *RR_PUSH_INTO_ARRAY(
                 &UploadContext->ReleaseImageMemoryBarriers,
@@ -267,19 +267,19 @@ Rr_Image *Rr_CreateImage(
 
     VkImageType ImageType = VK_IMAGE_TYPE_3D;
     VkImageViewType ImageViewType = VK_IMAGE_VIEW_TYPE_3D;
-    if(Extent.Depth == 1)
+    if (Extent.Depth == 1)
     {
         ImageType = VK_IMAGE_TYPE_2D;
         ImageViewType = VK_IMAGE_VIEW_TYPE_2D;
     }
-    if(Extent.Height == 1)
+    if (Extent.Height == 1)
     {
         ImageType = VK_IMAGE_TYPE_1D;
         ImageViewType = VK_IMAGE_VIEW_TYPE_1D;
     }
 
     uint32_t MipLevels = 1;
-    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
     {
         MipLevels =
             (uint32_t)floorf(logf((float)RR_MAX(Extent.Width, Extent.Height))) +
@@ -287,32 +287,32 @@ Rr_Image *Rr_CreateImage(
     }
 
     Image->AllocatedImageCount = 1;
-    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_PER_FRAME_BIT) ||
-       RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_READBACK_BIT))
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_PER_FRAME_BIT) ||
+        RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_READBACK_BIT))
     {
         Image->AllocatedImageCount = RR_FRAME_OVERLAP;
     }
 
     VkImageUsageFlags UsageFlags = 0;
-    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_STORAGE_BIT))
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_STORAGE_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_SAMPLED_BIT))
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_SAMPLED_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT))
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT))
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
-    if(RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_TRANSFER_BIT))
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_TRANSFER_BIT))
     {
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -335,14 +335,14 @@ Rr_Image *Rr_CreateImage(
     };
 
     Image->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-    if(Image->Format == VK_FORMAT_D16_UNORM_S8_UINT ||
-       Image->Format == VK_FORMAT_D24_UNORM_S8_UINT ||
-       Image->Format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+    if (Image->Format == VK_FORMAT_D16_UNORM_S8_UINT ||
+        Image->Format == VK_FORMAT_D24_UNORM_S8_UINT ||
+        Image->Format == VK_FORMAT_D32_SFLOAT_S8_UINT)
     {
         Image->AspectFlags =
             VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
     }
-    else if(
+    else if (
         Image->Format == VK_FORMAT_D16_UNORM ||
         Image->Format == VK_FORMAT_D32_SFLOAT ||
         Image->Format == VK_FORMAT_X8_D24_UNORM_PACK32)
@@ -355,7 +355,7 @@ Rr_Image *Rr_CreateImage(
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
+    for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
         Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + Index;
         AllocatedImage->Container = Image;
@@ -395,14 +395,14 @@ Rr_Image *Rr_CreateImage(
 
 void Rr_DestroyImage(Rr_Renderer *Renderer, Rr_Image *Image)
 {
-    if(Image == NULL)
+    if (Image == NULL)
     {
         return;
     }
 
     Rr_Device *Device = &Renderer->Device;
 
-    for(size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
+    for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
         Device->DestroyImageView(
             Device->Handle,

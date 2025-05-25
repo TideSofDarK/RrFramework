@@ -46,11 +46,11 @@ static void Rr_LoadResourcesFromTasks(
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    for(size_t Index = 0; Index < TaskCount; ++Index)
+    for (size_t Index = 0; Index < TaskCount; ++Index)
     {
         Rr_LoadTask *Task = &Tasks[Index];
         void *Result = NULL;
-        switch(Task->LoadType)
+        switch (Task->LoadType)
         {
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
@@ -85,7 +85,7 @@ static void Rr_LoadResourcesFromTasks(
             }
         }
 
-        if(Task->Out.Any != NULL)
+        if (Task->Out.Any != NULL)
         {
             *Task->Out.Any = Result;
         }
@@ -94,7 +94,7 @@ static void Rr_LoadResourcesFromTasks(
             RR_LOG("Loaded asset leaked, provide correct \"Out\" pointer!");
         }
 
-        if(Semaphore)
+        if (Semaphore)
         {
             SDL_SignalSemaphore(Semaphore);
         }
@@ -192,7 +192,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 
     SDL_Delay(300);
 
-    if(!UseTransferQueue)
+    if (!UseTransferQueue)
     {
         Device->EndCommandBuffer(TransferCommandBuffer);
 
@@ -302,7 +302,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
         true,
         UINT64_MAX);
 
-    for(size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
+    for (size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
     {
         Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffers.Data[Index]);
     }
@@ -318,7 +318,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 
     Rr_UnlockSpinlock(&gApp->SyncArena.Lock);
 
-    if(LoadContext->Semaphore)
+    if (LoadContext->Semaphore)
     {
         SDL_DestroySemaphore(LoadContext->Semaphore);
         LoadContext->Semaphore = NULL;
@@ -354,7 +354,7 @@ static void Rr_InitLoadAsyncContext(
         },
         NULL,
         &LoadAsyncContext->Fence);
-    if(Rr_IsUsingTransferQueue(Renderer))
+    if (Rr_IsUsingTransferQueue(Renderer))
     {
         Device->CreateCommandPool(
             Device->Handle,
@@ -389,7 +389,7 @@ static void Rr_CleanupLoadAsyncContext(
         LoadAsyncContext->GraphicsCommandPool,
         NULL);
     Device->DestroyFence(Device->Handle, LoadAsyncContext->Fence, NULL);
-    if(LoadAsyncContext->TransferCommandPool != VK_NULL_HANDLE)
+    if (LoadAsyncContext->TransferCommandPool != VK_NULL_HANDLE)
     {
         Device->DestroyCommandPool(
             Device->Handle,
@@ -417,16 +417,16 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
 
     size_t CurrentLoadingContextIndex = 0;
 
-    while(true)
+    while (true)
     {
         SDL_WaitSemaphore(LoadThread->Semaphore);
 
-        if(Rr_GetAtomicInt(&gApp->QuitRequested) == true)
+        if (Rr_GetAtomicInt(&gApp->QuitRequested) == true)
         {
             break;
         }
 
-        if(LoadThread->LoadContexts.Count == 0)
+        if (LoadThread->LoadContexts.Count == 0)
         {
             continue;
         }
@@ -440,7 +440,7 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
             Device->Handle,
             LoadAsyncContext.GraphicsCommandPool,
             0);
-        if(LoadAsyncContext.TransferCommandPool != VK_NULL_HANDLE)
+        if (LoadAsyncContext.TransferCommandPool != VK_NULL_HANDLE)
         {
             Device->ResetCommandPool(
                 Device->Handle,
@@ -450,7 +450,7 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
         Device->ResetFences(Device->Handle, 1, &LoadAsyncContext.Fence);
 
         SDL_LockMutex(LoadThread->Mutex);
-        if(CurrentLoadingContextIndex >= LoadThread->LoadContexts.Count)
+        if (CurrentLoadingContextIndex >= LoadThread->LoadContexts.Count)
         {
             Rr_ResetArena(LoadThread->Arena);
             CurrentLoadingContextIndex = 0;
@@ -519,7 +519,7 @@ Rr_LoadContext *Rr_LoadAsync(
     Rr_LoadCallback LoadCallback,
     void *UserData)
 {
-    if(TaskCount == 0)
+    if (TaskCount == 0)
     {
         RR_ABORT("Submitted zero tasks to load procedure!");
     }
@@ -625,7 +625,7 @@ Rr_LoadResult Rr_LoadImmediate(
     Device->WaitForFences(Device->Handle, 1, &Fence, true, UINT64_MAX);
     Device->DestroyFence(Device->Handle, Fence, NULL);
 
-    for(size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
+    for (size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
     {
         Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffers.Data[Index]);
     }
@@ -646,15 +646,15 @@ void Rr_GetLoadProgress(
     size_t *OutCurrent,
     size_t *OutTotal)
 {
-    if(OutCurrent != NULL)
+    if (OutCurrent != NULL)
     {
-        if(LoadContext->Semaphore != NULL)
+        if (LoadContext->Semaphore != NULL)
         {
             *OutCurrent = (size_t)SDL_GetSemaphoreValue(LoadContext->Semaphore);
         }
         *OutCurrent = LoadContext->TaskCount;
     }
-    if(OutTotal != NULL)
+    if (OutTotal != NULL)
     {
         *OutTotal = LoadContext->TaskCount;
     }

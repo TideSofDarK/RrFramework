@@ -69,24 +69,24 @@ struct SCamera
         Rr_Vec3 CameraForward = GetForwardVector();
         Rr_Vec3 CameraLeft = GetRightVector();
         constexpr float CameraSpeed = 5.0f;
-        if(Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
+        if (Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
         {
             Position += CameraForward * CameraSpeed * DeltaTime;
         }
-        if(Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
+        if (Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
         {
             Position -= CameraLeft * CameraSpeed * DeltaTime;
         }
-        if(Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
+        if (Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
         {
             Position -= CameraForward * CameraSpeed * DeltaTime;
         }
-        if(Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
+        if (Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
         {
             Position += CameraLeft * CameraSpeed * DeltaTime;
         }
 
-        if(State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
+        if (State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
             Rr_SetRelativeMouseMode(true);
             constexpr float Sensitivity = 0.2f;
@@ -251,7 +251,7 @@ struct SSplatRenderer
 
         GPUSplats.resize(AlignedCount);
 
-        for(size_t Index = 0; Index < AliveCount; ++Index)
+        for (size_t Index = 0; Index < AliveCount; ++Index)
         {
             SSplat *Splat = ((SSplat *)Asset.Pointer) + Index;
             SGPUSplat &GPUSplat = GPUSplats[Index];
@@ -390,7 +390,7 @@ static void Iterate(void *UserData)
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
     Camera.SetPerspective(50.0f, SwapchainSize, 0.1f, 200.0f);
     Camera.Update(&InputState);
-    if(Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
+    if (Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
     {
         Rr_ToggleFullscreen();
     }

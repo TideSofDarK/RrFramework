@@ -45,22 +45,22 @@ static inline void Rr_DestroySwapchainImage(
 {
     Rr_Device *Device = &Renderer->Device;
 
-    if(SwapchainImage->View)
+    if (SwapchainImage->View)
     {
         Device->DestroyImageView(Device->Handle, SwapchainImage->View, NULL);
     }
 
-    if(SwapchainImage->Handle)
+    if (SwapchainImage->Handle)
     {
         Rr_ReturnSyncState(Renderer, (Rr_MapKey)SwapchainImage->Handle);
     }
 
-    if(SwapchainImage->EarlySemaphore)
+    if (SwapchainImage->EarlySemaphore)
     {
         Rr_ReturnVulkanSemaphore(Renderer, SwapchainImage->EarlySemaphore);
     }
 
-    if(SwapchainImage->LateSemaphore)
+    if (SwapchainImage->LateSemaphore)
     {
         Rr_ReturnVulkanSemaphore(Renderer, SwapchainImage->LateSemaphore);
     }
@@ -81,7 +81,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
     int32_t Width, Height;
     SDL_GetWindowSizeInPixels(Renderer->Window, &Width, &Height);
 
-    if(Width == 0 || Height == 0)
+    if (Width == 0 || Height == 0)
     {
         return false;
     }
@@ -90,14 +90,14 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
                     Renderer->Swapchain.Extent.height != (uint32_t)Height ||
                     Rr_GetAtomicInt(&Renderer->Swapchain.RecreatePending);
 
-    if(!Recreate)
+    if (!Recreate)
     {
         return true;
     }
 
     Rr_WaitIdle(Renderer);
 
-    for(size_t Index = 0; Index < Renderer->SwapchainImages.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->SwapchainImages.Count; ++Index)
     {
         Rr_DestroySwapchainImage(
             Renderer,
@@ -113,12 +113,12 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         Renderer->Surface,
         &SurfaceCapabilities);
 
-    if(SurfaceCapabilities.currentExtent.width == 0 ||
-       SurfaceCapabilities.currentExtent.height == 0)
+    if (SurfaceCapabilities.currentExtent.width == 0 ||
+        SurfaceCapabilities.currentExtent.height == 0)
     {
         return false;
     }
-    if(SurfaceCapabilities.currentExtent.width == UINT32_MAX)
+    if (SurfaceCapabilities.currentExtent.width == UINT32_MAX)
     {
         Renderer->Swapchain.Extent.width = Width;
         Renderer->Swapchain.Extent.height = Height;
@@ -158,24 +158,24 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         Rr_ToVulkanPresentMode(Renderer->Swapchain.PresentMode);
     bool VulkanPresentModeAvailable = false;
     Renderer->Swapchain.PresentModeCount = 0;
-    for(uint32_t Index = 0;
-        Index < VulkanPresentModeCount &&
-        Renderer->Swapchain.PresentModeCount <
-            RR_ARRAY_COUNT(Renderer->Swapchain.PresentModes);
-        Index++)
+    for (uint32_t Index = 0;
+         Index < VulkanPresentModeCount &&
+         Renderer->Swapchain.PresentModeCount <
+             RR_ARRAY_COUNT(Renderer->Swapchain.PresentModes);
+         Index++)
     {
-        if(VulkanPresentModes[Index] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+        if (VulkanPresentModes[Index] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
         {
             Renderer->Swapchain
                 .PresentModes[Renderer->Swapchain.PresentModeCount++] =
                 Rr_ToPresentMode(VulkanPresentModes[Index]);
-            if(VulkanPresentModes[Index] == DesiredVulkanPresentMode)
+            if (VulkanPresentModes[Index] == DesiredVulkanPresentMode)
             {
                 VulkanPresentModeAvailable = true;
             }
         }
     }
-    if(VulkanPresentModeAvailable == false)
+    if (VulkanPresentModeAvailable == false)
     {
         DesiredVulkanPresentMode = VulkanPresentModes[0];
         Renderer->Swapchain.PresentMode =
@@ -184,7 +184,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
 
     uint32_t DesiredNumberOfSwapchainImages =
         RR_MAX(SurfaceCapabilities.minImageCount, 3);
-    if(SurfaceCapabilities.maxImageCount > 0)
+    if (SurfaceCapabilities.maxImageCount > 0)
     {
         DesiredNumberOfSwapchainImages = RR_MIN(
             DesiredNumberOfSwapchainImages,
@@ -192,8 +192,8 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
     }
 
     VkSurfaceTransformFlagBitsKHR PreTransform;
-    if(SurfaceCapabilities.supportedTransforms &
-       VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+    if (SurfaceCapabilities.supportedTransforms &
+        VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
     {
         PreTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     }
@@ -219,12 +219,12 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         SurfaceFormats);
 
     bool PreferredFormatFound = false;
-    for(uint32_t Index = 0; Index < FormatCount; Index++)
+    for (uint32_t Index = 0; Index < FormatCount; Index++)
     {
         VkSurfaceFormatKHR *SurfaceFormat = &SurfaceFormats[Index];
 
-        if(SurfaceFormat->format == VK_FORMAT_B8G8R8A8_UNORM ||
-           SurfaceFormat->format == VK_FORMAT_R8G8B8A8_UNORM)
+        if (SurfaceFormat->format == VK_FORMAT_B8G8R8A8_UNORM ||
+            SurfaceFormat->format == VK_FORMAT_R8G8B8A8_UNORM)
         {
             Renderer->Swapchain.Format = SurfaceFormat->format;
             Renderer->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
@@ -233,7 +233,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         }
     }
 
-    if(!PreferredFormatFound)
+    if (!PreferredFormatFound)
     {
         RR_ABORT("No preferred surface format found!");
     }
@@ -246,12 +246,12 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
         VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
     };
-    for(uint32_t Index = 0; Index < RR_ARRAY_COUNT(CompositeAlphaFlags);
-        Index++)
+    for (uint32_t Index = 0; Index < RR_ARRAY_COUNT(CompositeAlphaFlags);
+         Index++)
     {
         VkCompositeAlphaFlagBitsKHR CompositeAlphaFlag =
             CompositeAlphaFlags[Index];
-        if(SurfaceCapabilities.supportedCompositeAlpha & CompositeAlphaFlag)
+        if (SurfaceCapabilities.supportedCompositeAlpha & CompositeAlphaFlag)
         {
             CompositeAlpha = CompositeAlphaFlag;
             break;
@@ -276,14 +276,14 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         .oldSwapchain = OldSwapchain,
     };
 
-    if(SurfaceCapabilities.supportedUsageFlags &
-       VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+    if (SurfaceCapabilities.supportedUsageFlags &
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
     {
         SwapchainCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     }
 
-    if(SurfaceCapabilities.supportedUsageFlags &
-       VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+    if (SurfaceCapabilities.supportedUsageFlags &
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT)
     {
         SwapchainCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
@@ -294,7 +294,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         NULL,
         &Renderer->Swapchain.Handle);
 
-    if(OldSwapchain != VK_NULL_HANDLE)
+    if (OldSwapchain != VK_NULL_HANDLE)
     {
         Device->DestroySwapchainKHR(Device->Handle, OldSwapchain, NULL);
     }
@@ -340,7 +340,7 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         },
     };
 
-    for(uint32_t Index = 0; Index < ImageCount; Index++)
+    for (uint32_t Index = 0; Index < ImageCount; Index++)
     {
         Rr_SwapchainImage *Image = Renderer->SwapchainImages.Data + Index;
 
@@ -376,7 +376,7 @@ static void Rr_InitFrames(Rr_Renderer *Renderer)
     Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frames = Renderer->Frames;
 
-    for(size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         Rr_Frame *Frame = &Frames[Index];
 
@@ -435,7 +435,7 @@ static void Rr_CleanupFrames(Rr_Renderer *Renderer)
 {
     Rr_Device *Device = &Renderer->Device;
 
-    for(size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_Frame *Frame = &Renderer->Frames[Index];
 
@@ -618,7 +618,7 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
 
     Rr_WaitIdle(Renderer);
 
-    for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
     {
         Device->DestroyRenderPass(
             Device->Handle,
@@ -626,7 +626,7 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
             NULL);
     }
 
-    for(size_t Index = 0; Index < Renderer->Framebuffers.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->Framebuffers.Count; ++Index)
     {
         Device->DestroyFramebuffer(
             Device->Handle,
@@ -636,14 +636,14 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
 
     Rr_CleanupFrames(Renderer);
 
-    for(size_t Index = 0; Index < Renderer->SwapchainImages.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->SwapchainImages.Count; ++Index)
     {
         Rr_DestroySwapchainImage(
             Renderer,
             &Renderer->SwapchainImages.Data[Index]);
     }
 
-    if(Renderer->Swapchain.Handle != VK_NULL_HANDLE)
+    if (Renderer->Swapchain.Handle != VK_NULL_HANDLE)
     {
         Device->DestroySwapchainKHR(
             Renderer->Device.Handle,
@@ -654,7 +654,8 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
     Rr_CleanupTransientCommandPools(Renderer);
     Rr_CleanupImmediateMode(Renderer);
 
-    for(size_t Index = 0; Index < Renderer->DescriptorSetLayouts.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->DescriptorSetLayouts.Count;
+         ++Index)
     {
         Rr_DescriptorSetLayout *DescriptorSetLayout =
             Renderer->DescriptorSetLayouts.Data + Index;
@@ -664,7 +665,7 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
             NULL);
     }
 
-    for(size_t Index = 0; Index < Renderer->Semaphores.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->Semaphores.Count; ++Index)
     {
         Device->DestroySemaphore(
             Device->Handle,
@@ -672,7 +673,7 @@ void Rr_DestroyRenderer(Rr_Renderer *Renderer)
             NULL);
     }
 
-    for(size_t Index = 0; Index < Renderer->Fences.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->Fences.Count; ++Index)
     {
         Device->DestroyFence(
             Device->Handle,
@@ -732,10 +733,10 @@ static void Rr_ProcessPendingLoads(Rr_App *App)
 {
     Rr_Renderer *Renderer = App->Renderer;
 
-    if(Rr_TryLockSpinlock(&App->SyncArena.Lock))
+    if (Rr_TryLockSpinlock(&App->SyncArena.Lock))
     {
-        for(size_t Index = 0; Index < Renderer->PendingLoadsArray.Count;
-            ++Index)
+        for (size_t Index = 0; Index < Renderer->PendingLoadsArray.Count;
+             ++Index)
         {
             Rr_PendingLoad *PendingLoad =
                 &Renderer->PendingLoadsArray.Data[Index];
@@ -779,7 +780,7 @@ void Rr_NewFrame(void)
 
     /* Wait for previous work associated with given frame index. */
 
-    if(Frame->SubmitFence != VK_NULL_HANDLE)
+    if (Frame->SubmitFence != VK_NULL_HANDLE)
     {
         VkResult Result = Device->WaitForFences(
             Device->Handle,
@@ -810,7 +811,7 @@ void Rr_DrawFrame(void)
     /* Acquire swapchain image. */
 
     uint32_t SwapchainImageIndex;
-    while(true)
+    while (true)
     {
         Result = Device->AcquireNextImageKHR(
             Device->Handle,
@@ -820,12 +821,12 @@ void Rr_DrawFrame(void)
             NULL,
             &SwapchainImageIndex);
         assert(Result != VK_TIMEOUT && "Swapchain image timeout!");
-        if(Result == VK_SUCCESS || Result == VK_SUBOPTIMAL_KHR)
+        if (Result == VK_SUCCESS || Result == VK_SUBOPTIMAL_KHR)
         {
             break;
         }
         Rr_SetSwapchainDirty(Renderer, true);
-        if(Rr_InitSwapchain(Renderer) == false)
+        if (Rr_InitSwapchain(Renderer) == false)
         {
             return;
         }
@@ -1036,7 +1037,7 @@ Rr_PresentMode *Rr_GetAvailablePresentModes(
     Rr_Renderer *Renderer,
     uint32_t *Count)
 {
-    if(Count)
+    if (Count)
     {
         *Count = Renderer->Swapchain.PresentModeCount;
     }
@@ -1074,9 +1075,9 @@ VkRenderPass Rr_GetVulkanRenderPass(
         sizeof(Rr_RenderPassAttachment) * Info->AttachmentCount,
         0);
 
-    for(size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->RenderPasses.Count; ++Index)
     {
-        if(Renderer->RenderPasses.Data[Index].Hash == Hash)
+        if (Renderer->RenderPasses.Data[Index].Hash == Hash)
         {
             return Renderer->RenderPasses.Data[Index].Handle;
         }
@@ -1096,12 +1097,12 @@ VkRenderPass Rr_GetVulkanRenderPass(
         Info->AttachmentCount);
     VkAttachmentReference *DepthReference = NULL;
 
-    for(uint32_t Index = 0; Index < Info->AttachmentCount; ++Index)
+    for (uint32_t Index = 0; Index < Info->AttachmentCount; ++Index)
     {
         Rr_RenderPassAttachment *Attachment = &Info->Attachments[Index];
-        if(Rr_IsVulkanDepthFormat(Attachment->Format))
+        if (Rr_IsVulkanDepthFormat(Attachment->Format))
         {
-            if(DepthReference != NULL)
+            if (DepthReference != NULL)
             {
                 RR_ABORT("Can't have more than one depth attachment!");
             }
@@ -1212,11 +1213,11 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
     VkFramebuffer Framebuffer = VK_NULL_HANDLE;
 
-    for(size_t Index = 0; Index < Renderer->Framebuffers.Count; ++Index)
+    for (size_t Index = 0; Index < Renderer->Framebuffers.Count; ++Index)
     {
         Rr_Framebuffer *CachedFramebuffer = Renderer->Framebuffers.Data + Index;
 
-        if(CachedFramebuffer->Hash == Hash)
+        if (CachedFramebuffer->Hash == Hash)
         {
             return CachedFramebuffer->Handle;
         }
@@ -1253,7 +1254,7 @@ Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
     Rr_SyncState **SyncStateRef =
         RR_GET_MAP_VALUE(&Renderer->GlobalSync, Key, Renderer->Arena);
-    if(*SyncStateRef != NULL)
+    if (*SyncStateRef != NULL)
     {
         return *SyncStateRef;
     }
@@ -1268,7 +1269,7 @@ void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 {
     Rr_SyncState **SyncStateRef =
         RR_GET_MAP_VALUE(&Renderer->GlobalSync, Key, Renderer->Arena);
-    if(*SyncStateRef != NULL)
+    if (*SyncStateRef != NULL)
     {
         RR_RETURN_FREE_LIST_ITEM(&Renderer->SyncStates, *SyncStateRef);
     }
@@ -1277,7 +1278,7 @@ void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key)
 
 VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer)
 {
-    if(Renderer->Semaphores.Count > 0)
+    if (Renderer->Semaphores.Count > 0)
     {
         return RR_POP_FROM_ARRAY(&Renderer->Semaphores);
     }
@@ -1304,7 +1305,7 @@ void Rr_ReturnVulkanSemaphore(Rr_Renderer *Renderer, VkSemaphore Semaphore)
 
 VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer)
 {
-    if(Renderer->Fences.Count > 0)
+    if (Renderer->Fences.Count > 0)
     {
         return RR_POP_FROM_ARRAY(&Renderer->Fences);
     }

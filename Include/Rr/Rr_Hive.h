@@ -141,7 +141,7 @@ struct RR_HIVE_NAME
             Rr_HiveSkipType,                                              \
             (ElementCount_) + 1);                                         \
     }                                                                     \
-    while(0)
+    while (0)
 
 #define RR_RESET_HIVE_GROUP(Group, Count_, Next_, Previous_, GroupNumber_) \
     do                                                                     \
@@ -158,7 +158,7 @@ struct RR_HIVE_NAME
             0,                                                             \
             sizeof(Rr_HiveSkipType) * (Group)->Capacity);                  \
     }                                                                      \
-    while(0)
+    while (0)
 
 #define RR_REUSE_UNUSED_HIVE_GROUP(Hive_, OutGroup_) \
     do                                               \
@@ -172,7 +172,7 @@ struct RR_HIVE_NAME
             (Hive_)->End.Group,                      \
             (Hive_)->End.Group->GroupNumber + 1u);   \
     }                                                \
-    while(0)
+    while (0)
 
 #define RR_EDIT_HIVE_FREE_LIST(Ptr_, Offset_, Value_) \
     *(((Rr_HiveSkipType *)(Ptr_)) + (Offset_)) = Value_;
@@ -184,20 +184,20 @@ struct RR_HIVE_NAME
         *(((Rr_HiveSkipType *)(Ptr))) = Value_;           \
         *(((Rr_HiveSkipType *)(Ptr)) + 1) = UINT16_MAX;   \
     }                                                     \
-    while(0)
+    while (0)
 
 #define RR_UPDATE_HIVE_SKIPS(Hive_, It_, PrevFreeListIndex_)              \
     do                                                                    \
     {                                                                     \
         Rr_HiveSkipType NewValue = (Rr_HiveSkipType)(*((It_)->Skip) - 1); \
                                                                           \
-        if(NewValue != 0)                                                 \
+        if (NewValue != 0)                                                \
         {                                                                 \
             *((It_)->Skip + NewValue) = *((It_)->Skip + 1) = NewValue;    \
                                                                           \
             ++((Hive_)->FreeFirst->FreeListHead);                         \
                                                                           \
-            if((PrevFreeListIndex_) != UINT16_MAX)                        \
+            if ((PrevFreeListIndex_) != UINT16_MAX)                       \
             {                                                             \
                 RR_EDIT_HIVE_FREE_LIST(                                   \
                     (It_)->Group->Elements + (PrevFreeListIndex_),        \
@@ -213,7 +213,7 @@ struct RR_HIVE_NAME
         {                                                                 \
             (Hive_)->FreeFirst->FreeListHead = (PrevFreeListIndex_);      \
                                                                           \
-            if((PrevFreeListIndex_) != UINT16_MAX)                        \
+            if ((PrevFreeListIndex_) != UINT16_MAX)                       \
             {                                                             \
                 RR_EDIT_HIVE_FREE_LIST(                                   \
                     (It_)->Group->Elements + (PrevFreeListIndex_),        \
@@ -229,20 +229,20 @@ struct RR_HIVE_NAME
         *((It_)->Skip) = 0;                                               \
         ++((It_)->Group->Count);                                          \
                                                                           \
-        if((It_)->Group == (Hive_)->Begin.Group &&                        \
-           (It_)->Element < (Hive_)->Begin.Element)                       \
+        if ((It_)->Group == (Hive_)->Begin.Group &&                       \
+            (It_)->Element < (Hive_)->Begin.Element)                      \
         {                                                                 \
             (Hive_)->Begin = *(It_);                                      \
         }                                                                 \
                                                                           \
         (Hive_)->Count++;                                                 \
     }                                                                     \
-    while(0)
+    while (0)
 
 #define RR_RESET_HIVE_GROUP_NUMBER(Hive_)                           \
     do                                                              \
     {                                                               \
-        if((Hive_)->End.Group->GroupNumber == UINT16_MAX)           \
+        if ((Hive_)->End.Group->GroupNumber == UINT16_MAX)          \
         {                                                           \
             RR_HIVE_GROUP_NAME *UpdateGroup = (Hive_)->Begin.Group; \
             size_t CurrentGroupNumber = 0;                          \
@@ -251,10 +251,10 @@ struct RR_HIVE_NAME
                 UpdateGroup->GroupNumber = CurrentGroupNumber++;    \
                 UpdateGroup = UpdateGroup->Next;                    \
             }                                                       \
-            while(UpdateGroup != NULL);                             \
+            while (UpdateGroup != NULL);                            \
         }                                                           \
     }                                                               \
-    while(0)
+    while (0)
 
 #define RR_PUSH_INTO_HIVE_NAME \
     RR_HIVE_EXPAND_CONCAT(     \
@@ -267,12 +267,12 @@ static inline RR_HIVE_ITERATOR_NAME RR_PUSH_INTO_HIVE_NAME(
     RR_HIVE_NAME *Hive,
     Rr_Arena *Arena)
 {
-    if(Hive->End.Element != NULL)
+    if (Hive->End.Element != NULL)
     {
-        if(Hive->FreeFirst == NULL)
+        if (Hive->FreeFirst == NULL)
         {
-            if(Hive->End.Element !=
-               (Hive->End.Group->Elements + Hive->End.Group->Capacity))
+            if (Hive->End.Element !=
+                (Hive->End.Group->Elements + Hive->End.Group->Capacity))
             {
                 RR_HIVE_ITERATOR_NAME ReturnIt = Hive->End;
                 Hive->End.Element++;
@@ -283,7 +283,7 @@ static inline RR_HIVE_ITERATOR_NAME RR_PUSH_INTO_HIVE_NAME(
             }
 
             RR_HIVE_GROUP_NAME *NextGroup;
-            if(Hive->UnusedFirst == NULL)
+            if (Hive->UnusedFirst == NULL)
             {
                 Rr_HiveSkipType NewCapacity = (Rr_HiveSkipType)(RR_MIN(
                     Hive->Count,
@@ -366,12 +366,12 @@ static inline RR_HIVE_ITERATOR_NAME RR_GET_HIVE_ITERATOR_NAME(
     RR_HIVE_NAME *Hive,
     RR_HIVE_TYPE *Element)
 {
-    if(Hive->End.Group != NULL)
+    if (Hive->End.Group != NULL)
     {
         /* TODO: Align element pointer! */
 
-        if(Element >= Hive->End.Group->Elements &&
-           Element < (Hive->End.Group->Elements + Hive->End.Group->Capacity))
+        if (Element >= Hive->End.Group->Elements &&
+            Element < (Hive->End.Group->Elements + Hive->End.Group->Capacity))
         {
             RR_HIVE_ITERATOR_NAME It;
             It.Group = Hive->End.Group;
@@ -382,11 +382,11 @@ static inline RR_HIVE_ITERATOR_NAME RR_GET_HIVE_ITERATOR_NAME(
             return It;
         }
 
-        for(RR_HIVE_GROUP_NAME *Group = Hive->End.Group; Group != NULL;
-            Group = Group->Previous)
+        for (RR_HIVE_GROUP_NAME *Group = Hive->End.Group; Group != NULL;
+             Group = Group->Previous)
         {
-            if(Element >= Group->Elements &&
-               Element < (Group->Elements + Group->Capacity))
+            if (Element >= Group->Elements &&
+                Element < (Group->Elements + Group->Capacity))
             {
                 RR_HIVE_ITERATOR_NAME It;
                 It.Group = Group;
@@ -413,9 +413,9 @@ static inline void RR_ADVANCE_HIVE_ITERATOR_NAME(RR_HIVE_ITERATOR_NAME *It)
     assert(It->Group != NULL);
     Rr_HiveSkipType Skip = *(++It->Skip);
 
-    if((It->Element += (size_t)(Skip) + 1u) ==
-           (It->Group->Elements + It->Group->Capacity) &&
-       It->Group->Next != NULL)
+    if ((It->Element += (size_t)(Skip) + 1u) ==
+            (It->Group->Elements + It->Group->Capacity) &&
+        It->Group->Next != NULL)
     {
         It->Group = It->Group->Next;
         RR_HIVE_TYPE *Elements = It->Group->Elements;
@@ -431,11 +431,11 @@ static inline void RR_ADVANCE_HIVE_ITERATOR_NAME(RR_HIVE_ITERATOR_NAME *It)
 #define RR_REMOVE_FROM_ERASURE_GROUPS(Hive_, Group_)                       \
     do                                                                     \
     {                                                                      \
-        if((Group_) != (Hive_)->FreeFirst)                                 \
+        if ((Group_) != (Hive_)->FreeFirst)                                \
         {                                                                  \
             (Group_)->PreviousFree->NextFree = (Group_)->NextFree;         \
                                                                            \
-            if((Group_)->NextFree != NULL)                                 \
+            if ((Group_)->NextFree != NULL)                                \
             {                                                              \
                 (Group_)->NextFree->PreviousFree = (Group_)->PreviousFree; \
             }                                                              \
@@ -445,7 +445,7 @@ static inline void RR_ADVANCE_HIVE_ITERATOR_NAME(RR_HIVE_ITERATOR_NAME *It)
             (Hive_)->FreeFirst = (Hive_)->FreeFirst->NextFree;             \
         }                                                                  \
     }                                                                      \
-    while(0)
+    while (0)
 
 #define RR_MOVE_HIVE_GROUP_TO_UNUSED_LIST(Hive_, Group_) \
     do                                                   \
@@ -453,7 +453,7 @@ static inline void RR_ADVANCE_HIVE_ITERATOR_NAME(RR_HIVE_ITERATOR_NAME *It)
         (Group_)->Next = (Hive_)->UnusedFirst;           \
         (Hive_)->UnusedFirst = (Group_);                 \
     }                                                    \
-    while(0)
+    while (0)
 
 #define RR_RESET_ONLY_HIVE_GROUP_LEFT(Hive_, Group_)                     \
     do                                                                   \
@@ -464,7 +464,7 @@ static inline void RR_ADVANCE_HIVE_ITERATOR_NAME(RR_HIVE_ITERATOR_NAME *It)
             Hive->Begin.Group->Elements;                                 \
         (Hive_)->End.Skip = Hive->Begin.Skip = Hive->Begin.Group->Skips; \
     }                                                                    \
-    while(0)
+    while (0)
 
 #define RR_REMOVE_FROM_HIVE_NAME \
     RR_HIVE_EXPAND_CONCAT(       \
@@ -484,18 +484,18 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
 
     Hive->Count--;
 
-    if(--(It->Group->Count) != 0) /* Not the last element in the group. */
+    if (--(It->Group->Count) != 0) /* Not the last element in the group. */
     {
         char PrevSkip = *(It->Skip - (It->Skip != It->Group->Skips)) != 0;
         char AfterSkip = *(It->Skip + 1) != 0;
         Rr_HiveSkipType UpdateValue = 1;
 
-        if(!(PrevSkip | AfterSkip))
+        if (!(PrevSkip | AfterSkip))
         {
             *It->Skip = 1;
             Rr_HiveSkipType Index =
                 (Rr_HiveSkipType)(It->Element - It->Group->Elements);
-            if(It->Group->FreeListHead != UINT16_MAX)
+            if (It->Group->FreeListHead != UINT16_MAX)
             {
                 RR_EDIT_HIVE_FREE_LIST(
                     It->Group->Elements + It->Group->FreeListHead,
@@ -506,7 +506,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
             {
                 It->Group->NextFree = Hive->FreeFirst;
 
-                if(Hive->FreeFirst != NULL)
+                if (Hive->FreeFirst != NULL)
                 {
                     Hive->FreeFirst->PreviousFree = It->Group;
                 }
@@ -517,12 +517,12 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
             RR_EDIT_HIVE_FREE_LIST_HEAD(It->Element, It->Group->FreeListHead);
             It->Group->FreeListHead = Index;
         }
-        else if(PrevSkip && (!AfterSkip))
+        else if (PrevSkip && (!AfterSkip))
         {
             *(It->Skip - *(It->Skip - 1)) = *It->Skip =
                 (Rr_HiveSkipType)(*(It->Skip - 1) + 1);
         }
-        else if((!PrevSkip) && AfterSkip)
+        else if ((!PrevSkip) && AfterSkip)
         {
             Rr_HiveSkipType FollowingValue =
                 (Rr_HiveSkipType)(*(It->Skip + 1) + 1);
@@ -538,7 +538,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
             Rr_HiveSkipType Index =
                 (Rr_HiveSkipType)(It->Element - It->Group->Elements);
 
-            if(FollowingPrevious != UINT16_MAX)
+            if (FollowingPrevious != UINT16_MAX)
             {
                 RR_EDIT_HIVE_FREE_LIST(
                     It->Group->Elements + FollowingPrevious,
@@ -546,7 +546,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
                     Index);
             }
 
-            if(FollowingNext != UINT16_MAX)
+            if (FollowingNext != UINT16_MAX)
             {
                 RR_EDIT_HIVE_FREE_LIST(
                     It->Group->Elements + FollowingNext,
@@ -575,7 +575,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
             Rr_HiveSkipType FollowingNext =
                 *((Rr_HiveSkipType *)(It->Element + 1) + 1);
 
-            if(FollowingPrevious != UINT16_MAX)
+            if (FollowingPrevious != UINT16_MAX)
             {
                 RR_EDIT_HIVE_FREE_LIST(
                     It->Group->Elements + FollowingPrevious,
@@ -583,7 +583,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
                     FollowingNext);
             }
 
-            if(FollowingNext != UINT16_MAX)
+            if (FollowingNext != UINT16_MAX)
             {
                 RR_EDIT_HIVE_FREE_LIST(
                     It->Group->Elements + FollowingNext,
@@ -603,8 +603,8 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
         ReturnIt.Element = It->Element + UpdateValue;
         ReturnIt.Skip = It->Skip + UpdateValue;
 
-        if(ReturnIt.Element == (It->Group->Elements + It->Group->Capacity) &&
-           It->Group != Hive->End.Group)
+        if (ReturnIt.Element == (It->Group->Elements + It->Group->Capacity) &&
+            It->Group != Hive->End.Group)
         {
             ReturnIt.Group = It->Group->Next;
             RR_HIVE_TYPE *Elements = ReturnIt.Group->Elements;
@@ -613,7 +613,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
             ReturnIt.Skip = Skips + *Skips;
         }
 
-        if(It->Element == Hive->Begin.Element)
+        if (It->Element == Hive->Begin.Element)
         {
             Hive->Begin = ReturnIt;
         }
@@ -625,19 +625,19 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
     bool InBackBlock = It->Group->Next == NULL;
     bool InFrontBlock = It->Group == Hive->Begin.Group;
 
-    if(InBackBlock && InFrontBlock) /* Only block in hive. */
+    if (InBackBlock && InFrontBlock) /* Only block in hive. */
     {
         RR_RESET_ONLY_HIVE_GROUP_LEFT(Hive, It->Group);
 
         *It = Hive->End;
     }
-    else if((!InBackBlock) && InFrontBlock) /* Add the first group to unused
-                                              list. */
+    else if ((!InBackBlock) && InFrontBlock) /* Add the first group to unused
+                                               list. */
     {
         It->Group->Next->Previous = NULL;
         Hive->Begin.Group = It->Group->Next; /* We can assume Next is valid. */
 
-        if(It->Group->FreeListHead != UINT16_MAX)
+        if (It->Group->FreeListHead != UINT16_MAX)
         {
             RR_REMOVE_FROM_ERASURE_GROUPS(Hive, It->Group);
         }
@@ -650,13 +650,14 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
 
         *It = Hive->Begin;
     }
-    else if(!(InBackBlock || InFrontBlock)) /* Neither first, nor last group. */
+    else if (!(InBackBlock ||
+               InFrontBlock)) /* Neither first, nor last group. */
     {
         It->Group->Next->Previous = It->Group->Previous;
         RR_HIVE_GROUP_NAME *ReturnGroup = It->Group->Previous->Next =
             It->Group->Next;
 
-        if(It->Group->FreeListHead != UINT16_MAX)
+        if (It->Group->FreeListHead != UINT16_MAX)
         {
             RR_REMOVE_FROM_ERASURE_GROUPS(Hive, It->Group);
         }
@@ -673,7 +674,7 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
     }
     else /* It's the final group. */
     {
-        if(It->Group->FreeListHead != UINT16_MAX)
+        if (It->Group->FreeListHead != UINT16_MAX)
         {
             RR_REMOVE_FROM_ERASURE_GROUPS(Hive, It->Group);
         }
@@ -700,12 +701,12 @@ static inline void RR_REMOVE_FROM_HIVE_NAME(
 
 static inline void RR_CLEAR_HIVE_NAME(RR_HIVE_NAME *Hive)
 {
-    if(Hive->Count == 0)
+    if (Hive->Count == 0)
     {
         return;
     }
 
-    if(Hive->Begin.Group != Hive->End.Group)
+    if (Hive->Begin.Group != Hive->End.Group)
     {
         /* Move the rest of the groups to unused list. */
 

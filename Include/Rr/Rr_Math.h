@@ -687,7 +687,7 @@ static inline float Rr_GetVerticalFoV(
 
 static inline void Rr_PerspectiveResize(float Aspect, Rr_Mat4 *Proj)
 {
-    if(Proj->Elements[0][0] == 0.0f)
+    if (Proj->Elements[0][0] == 0.0f)
     {
         return;
     }
@@ -2523,7 +2523,7 @@ static inline Rr_Quat Rr_SLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 
     float Cos_Theta = Rr_DotQ(Left, Right);
 
-    if(Cos_Theta < 0.0f)
+    if (Cos_Theta < 0.0f)
     { /* NOTE(lcf): Take shortest path on Hyper-sphere */
         Cos_Theta = -Cos_Theta;
         Right = Rr_Q(-Right.X, -Right.Y, -Right.Z, -Right.W);
@@ -2531,7 +2531,7 @@ static inline Rr_Quat Rr_SLerp(Rr_Quat Left, float Time, Rr_Quat Right)
 
     /* NOTE(lcf): Use Normalized Linear interpolation when vectors are roughly
      * not L.I. */
-    if(Cos_Theta > 0.9995f)
+    if (Cos_Theta > 0.9995f)
     {
         Result = Rr_NLerp(Left, Time, Right);
     }
@@ -2608,9 +2608,9 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
     float T;
     Rr_Quat Q;
 
-    if(M.Elements[2][2] < 0.0f)
+    if (M.Elements[2][2] < 0.0f)
     {
-        if(M.Elements[0][0] > M.Elements[1][1])
+        if (M.Elements[0][0] > M.Elements[1][1])
         {
             T = 1 + M.Elements[0][0] - M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
@@ -2631,7 +2631,7 @@ static inline Rr_Quat Rr_M4ToQ_RH(Rr_Mat4 M)
     }
     else
     {
-        if(M.Elements[0][0] < -M.Elements[1][1])
+        if (M.Elements[0][0] < -M.Elements[1][1])
         {
             T = 1 - M.Elements[0][0] - M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
@@ -2661,9 +2661,9 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
     float T;
     Rr_Quat Q;
 
-    if(M.Elements[2][2] < 0.0f)
+    if (M.Elements[2][2] < 0.0f)
     {
-        if(M.Elements[0][0] > M.Elements[1][1])
+        if (M.Elements[0][0] > M.Elements[1][1])
         {
             T = 1 + M.Elements[0][0] - M.Elements[1][1] - M.Elements[2][2];
             Q = Rr_Q(
@@ -2684,7 +2684,7 @@ static inline Rr_Quat Rr_M4ToQ_LH(Rr_Mat4 M)
     }
     else
     {
-        if(M.Elements[0][0] < -M.Elements[1][1])
+        if (M.Elements[0][0] < -M.Elements[1][1])
         {
             T = 1 - M.Elements[0][0] - M.Elements[1][1] + M.Elements[2][2];
             Q = Rr_Q(
@@ -2813,7 +2813,7 @@ static inline Rr_Rect Rr_FitRect(Rr_Rect *Src, Rr_Rect *Dst)
     float DstRatio = DstWidth / DstHeight;
     float SrcRatio = SrcWidth / SrcHeight;
 
-    if(DstRatio > SrcRatio)
+    if (DstRatio > SrcRatio)
     {
         Width = (SrcWidth / SrcHeight) * DstHeight;
         Height = DstHeight;
@@ -2849,7 +2849,7 @@ static Rr_IntRect Rr_FitIntRect(Rr_IntRect *Src, Rr_IntRect *Dst)
     float DstRatio = DstWidth / DstHeight;
     float SrcRatio = SrcWidth / SrcHeight;
 
-    if(DstRatio > SrcRatio)
+    if (DstRatio > SrcRatio)
     {
         Width = (SrcWidth / SrcHeight) * DstHeight;
         Height = DstHeight;

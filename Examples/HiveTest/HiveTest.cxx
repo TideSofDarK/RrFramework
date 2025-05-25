@@ -30,7 +30,7 @@ static void Init(void *UserData)
 {
     Arena = Rr_CreateDefaultArena();
 
-    for(size_t Index = 0; Index < 12; ++Index)
+    for (size_t Index = 0; Index < 12; ++Index)
     {
         *PushMyStructIntoHive(&Hive, Arena).Element = SMyStruct((int)Index);
     }
@@ -48,7 +48,7 @@ static void Iterate(void *UserData)
         &ColorClear,
         Rr_GetSwapchainImage(Renderer));
 
-    if(Rr_UIBeginWindow("Hive", NULL, 0))
+    if (Rr_UIBeginWindow("Hive", NULL, 0))
     {
         Rr_UILabelF("Total Count: %d", Hive.Count);
         Rr_UILabelF("Total Capacity: %d", Hive.Capacity);
@@ -56,20 +56,20 @@ static void Iterate(void *UserData)
         Rr_UILabelF("Total Groups Allocated: %d", Hive.TotalGroups);
 #endif
         Rr_UIBeginHorizontal();
-        if(Rr_UIButton("Add"))
+        if (Rr_UIButton("Add"))
         {
             *PushMyStructIntoHive(&Hive, Arena).Element =
                 SMyStruct(std::rand());
         }
-        if(Rr_UIButton("Clear"))
+        if (Rr_UIButton("Clear"))
         {
             ClearMyStructHive(&Hive);
         }
         Rr_UIEndHorizontal();
         Rr_UISeparator();
         int Index = 0;
-        for(SMyStructHiveIterator It = Hive.Begin;
-            It.Element != Hive.End.Element;)
+        for (SMyStructHiveIterator It = Hive.Begin;
+             It.Element != Hive.End.Element;)
         {
             Rr_UIBeginHorizontal();
             Rr_UILabelF(
@@ -77,7 +77,7 @@ static void Iterate(void *UserData)
                 Index,
                 It.Group->GroupNumber,
                 It.Element->Test1);
-            if(Rr_UIButton("Remove"))
+            if (Rr_UIButton("Remove"))
             {
                 RemoveFromMyStructHive(&Hive, &It);
             }

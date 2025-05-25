@@ -219,14 +219,14 @@ struct SBitonicSorter
 
         Height *= 2;
 
-        for(; Height <= Count; Height *= 2)
+        for (; Height <= Count; Height *= 2)
         {
             Dispatch(Height, BIG_FLIP);
 
-            for(uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
-                DisperseHeight /= 2)
+            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
+                 DisperseHeight /= 2)
             {
-                if(DisperseHeight <= ThreadsPerWorkgroup * 2)
+                if (DisperseHeight <= ThreadsPerWorkgroup * 2)
                 {
                     Dispatch(DisperseHeight, LOCAL_DISPERSE);
                     break;
