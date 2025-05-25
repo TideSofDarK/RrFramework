@@ -77,6 +77,8 @@ struct SCamera
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
+        Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
+
         if (Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
             Rr_SetRelativeMouseMode(true);
@@ -101,10 +103,9 @@ struct SCamera
                 Position += CameraLeft * CameraSpeed * DeltaTime;
             }
 
-            Rr_Vec2 Delta = Rr_GetMousePositionDelta();
             constexpr float Sensitivity = 0.2f;
-            Yaw += Delta.X * Sensitivity;
-            Pitch += Delta.Y * Sensitivity;
+            Yaw += MouseDelta.X * Sensitivity;
+            Pitch += MouseDelta.Y * Sensitivity;
         }
         else
         {
