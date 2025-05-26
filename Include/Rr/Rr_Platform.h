@@ -85,8 +85,9 @@ typedef enum Rr_EventType
 typedef struct Rr_KeyEvent Rr_KeyEvent;
 struct Rr_KeyEvent
 {
-    bool Down;
     Rr_Scancode Scancode;
+    Rr_KeymodFlags Keymod;
+    bool Down;
 };
 
 typedef struct Rr_MouseMotionEvent Rr_MouseMotionEvent;
@@ -130,8 +131,6 @@ struct Rr_Event
         Rr_DropFileEvent DropFile;
     };
 };
-
-extern bool Rr_PollPlatformEvent(Rr_Event *Event);
 
 #ifdef __cplusplus
 }

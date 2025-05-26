@@ -102,6 +102,14 @@ typedef enum Rr_Scancode
     RR_SCANCODE_COUNT = 512,
 } Rr_Scancode;
 
+typedef enum Rr_KeymodFlagsBits
+{
+    RR_KEYMOD_CTRL = (1 << 0),
+    RR_KEYMOD_SHIFT = (1 << 1),
+    RR_KEYMOD_ALT = (1 << 2),
+} Rr_KeymodFlagsBits;
+typedef uint16_t Rr_KeymodFlags;
+
 typedef enum Rr_MouseButton
 {
     RR_MOUSE_BUTTON_LEFT = 1,
@@ -111,7 +119,7 @@ typedef enum Rr_MouseButton
     RR_MOUSE_BUTTON_X2 = 5
 } Rr_MouseButton;
 
-typedef enum Rr_MouseButtonMask
+typedef enum Rr_MouseButtonFlagsBits
 {
     RR_MOUSE_BUTTON_LEFT_BIT = (1 << 0),
     RR_MOUSE_BUTTON_MIDDLE_BIT = (1 << 1),

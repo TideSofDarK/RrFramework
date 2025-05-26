@@ -24,17 +24,4 @@
 
 #include <Rr/Rr_Platform.h>
 
-#include "Rr_Log.h"
-
-void Rr_LockSpinlock(Rr_Spinlock *SpinLock)
-{
-    int Loops = 0;
-    const int MaxLoops = 1000000;
-    while (!Rr_TryLockSpinlock(SpinLock))
-    {
-        if (Loops > MaxLoops)
-        {
-            RR_ABORT("Spin lock timeout!");
-        }
-    }
-}
+extern bool Rr_PollPlatformEvent(Rr_Event *Event);

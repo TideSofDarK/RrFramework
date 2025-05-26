@@ -51,19 +51,22 @@ endfunction ()
 
 find_package(Vulkan)
 
-set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
-set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
-set(SDL_MISC OFF CACHE BOOL "" FORCE)
-set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
-set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
-set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
-set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-set(SDL_GPU OFF CACHE BOOL "" FORCE)
-set(SDL_RENDER OFF CACHE BOOL "" FORCE)
-set(SDL_POWER OFF CACHE BOOL "" FORCE)
-set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
-set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
-CPMAddPackage("gh:libsdl-org/SDL#main")
+option(RR_PLATFORM_SDL "" ON)
+if (RR_PLATFORM_SDL)
+    set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+    set(SDL_MISC OFF CACHE BOOL "" FORCE)
+    set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_GPU OFF CACHE BOOL "" FORCE)
+    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+    set(SDL_POWER OFF CACHE BOOL "" FORCE)
+    set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+    set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
+    CPMAddPackage("gh:libsdl-org/SDL#main")
+endif ()
 
 #
 # Pre-C23 asset embedding support
@@ -231,19 +234,24 @@ target_sources(
 )
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Linux.c)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Linux.c)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_LINUX)
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Win32.c)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Win32.c)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_WIN32)
+endif ()
+
+if (RR_PLATFORM_SDL)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_SDL.c)
+    target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_SDL)
 endif ()
 
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE Vendor)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    Vulkan::Headers
-    SDL3::SDL3
-)
+target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Headers)
 
 file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
@@ -264,8 +272,7 @@ rr_embed_assets(
 # Examples
 #
 
-set(RR_EXAMPLES true CACHE BOOL "Build included examples")
-
+option(RR_EXAMPLES "Build included examples" ON)
 if (RR_EXAMPLES)
     add_subdirectory(Demo)
     add_subdirectory(Examples/Triangle)
