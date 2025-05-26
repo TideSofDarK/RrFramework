@@ -159,11 +159,6 @@ typedef union Rr_Vec2
 
     struct
     {
-        float Left, Right;
-    };
-
-    struct
-    {
         float Width, Height;
     };
 
@@ -326,16 +321,6 @@ typedef union Rr_IntVec2
 
     struct
     {
-        int32_t U, V;
-    };
-
-    struct
-    {
-        int32_t Left, Right;
-    };
-
-    struct
-    {
         int32_t Width, Height;
     };
 
@@ -358,11 +343,6 @@ typedef union Rr_IntVec3
     struct
     {
         int32_t X, Y, Z;
-    };
-
-    struct
-    {
-        int32_t U, V, W;
     };
 
     struct

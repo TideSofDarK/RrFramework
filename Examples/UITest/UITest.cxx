@@ -118,6 +118,13 @@ static void Iterate(void *UserData)
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
             Rr_UICheckbox("No Title", &NoTitle);
         }
+        if (Rr_UIFold("Slider"))
+        {
+            static float Float01 = 0.5f;
+            Rr_UISliderFloat("Float 0 to 1", &Float01, 0.0f, 1.0f);
+            static float Float22 = -0.5f;
+            Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
+        }
         if (Rr_UIFold("Color Picker"))
         {
             static Rr_Vec4 ColorA = { 0.2f, 0.3f, 0.4f, 1.0f };

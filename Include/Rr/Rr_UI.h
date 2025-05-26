@@ -67,6 +67,8 @@ struct Rr_UIStyle
 {
     Rr_Vec2 TitlePadding;
     Rr_Vec2 ContentsPadding;
+    float BevelIntensityLight;
+    float BevelIntensityDark;
 
     Rr_Vec4 Foreground;
     Rr_Vec4 Background;
@@ -164,6 +166,8 @@ extern bool Rr_UICombobox(
     uint32_t *SelectedIndex);
 
 extern bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color);
+
+extern bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max);
 
 extern void Rr_UIBeginHorizontal(void);
 
