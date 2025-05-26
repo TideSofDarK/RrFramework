@@ -167,7 +167,11 @@ extern bool Rr_UICombobox(
 
 extern bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color);
 
-extern bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max);
+extern bool Rr_UISliderFloat(
+    const char *Title,
+    float *Value,
+    float Min,
+    float Max);
 
 extern void Rr_UIBeginHorizontal(void);
 

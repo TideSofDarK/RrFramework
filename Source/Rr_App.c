@@ -25,9 +25,9 @@
 #include "Rr_App.h"
 
 #include "Rr_Memory.h"
+#include "Rr_Platform.h"
 #include "Rr_Renderer.h"
 #include "Rr_UI.h"
-#include "Rr_Platform.h"
 
 #include <Rr/Rr_Input.h>
 
