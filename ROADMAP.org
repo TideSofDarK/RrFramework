@@ -10,6 +10,7 @@
 ** User Interface
 - [X] Combobox
 - [X] Auto-resizing windows
+- [X] Sliders
 - [ ] Keyboard input and related widgets
 - [ ] Color picker
 - [ ] Radio buttons

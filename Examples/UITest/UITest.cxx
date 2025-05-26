@@ -113,10 +113,14 @@ static void Iterate(void *UserData)
         }
         if (Rr_UIFold("Checkbox"))
         {
+            Rr_UIBeginHorizontal();
             Rr_UICheckbox("Close Button", &CloseButton);
             Rr_UICheckbox("No Resize", &NoResize);
+            Rr_UIEndHorizontal();
+            Rr_UIBeginHorizontal();
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
             Rr_UICheckbox("No Title", &NoTitle);
+            Rr_UIEndHorizontal();
         }
         if (Rr_UIFold("Slider"))
         {

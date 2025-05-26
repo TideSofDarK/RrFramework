@@ -163,6 +163,8 @@ struct Rr_UIContext
     Rr_UIHash DragOpHash;
     Rr_Vec2 DragOpMouseStart;
     Rr_Vec2 DragOpWindowStart;
+    bool DragOpBeganThisFrame;
+    bool DragOpEndedThisFrame;
 
     Rr_Vec2 ScreenSize;
 
@@ -1112,12 +1114,14 @@ static inline void Rr_UIBeginDragOp(
     gContext->DragOp = DragOp;
     gContext->DragOpWindowStart = WindowStart;
     gContext->DragOpHash = Hash;
+    gContext->DragOpBeganThisFrame = true;
 }
 
 static inline void Rr_UIEndDragOp(void)
 {
     gContext->DragOpWindow = NULL;
     gContext->DragOp = 0;
+    gContext->DragOpEndedThisFrame = true;
 }
 
 static inline bool Rr_UIRectContains(
@@ -1175,7 +1179,10 @@ static inline void Rr_UIButtonBehavior(
     {
         *Held = false;
     }
-    if (Window == gContext->HoveredWindow &&
+    bool BlockedByDragOp = (gContext->DragOpWindow != NULL &&
+                            gContext->DragOpBeganThisFrame == false) ||
+                           gContext->DragOpEndedThisFrame == true;
+    if (BlockedByDragOp == false && Window == gContext->HoveredWindow &&
         Rr_UIRectContains(Window, Rect, gContext->MousePosition))
     {
         if (gContext->LeftMouseButtonDown)
@@ -2367,21 +2374,11 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_Vec4 BackgroundColor = gContext->Style.Background;
     BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
 
-    Rr_Rect CheckboxRect = Rr_ResizeRect(
-        &(Rr_Rect){
-            FramePosition,
-            CheckboxSize,
-        },
-        -gContext->FrameThickness);
+    Rr_Rect CheckboxRect = {
+        FramePosition,
+        CheckboxSize,
+    };
     Rr_UIDrawBevel(&CheckboxRect, &BackgroundColor, Held || *Checked);
-
-    Rr_UIDrawInnerFrame(
-        &(Rr_Rect){
-            FramePosition,
-            CheckboxSize,
-        },
-        gContext->FrameThickness,
-        &gContext->Style.Foreground);
 
     if (*Checked)
     {
@@ -2392,7 +2389,6 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 
     Rr_String TitleString = Rr_CreateString(Title, 0, Scratch.Arena);
     Rr_Vec2 TitlePosition = FramePosition;
-    TitlePosition.Y += gContext->ButtonPadding.Height;
     TitlePosition.X += CheckboxSize.X + gContext->ButtonPadding.Width;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
@@ -2782,21 +2778,11 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
         Rr_UIColorPickerPopup(PopupCenter, Color);
     }
 
-    Rr_Rect BevelRect = Rr_ResizeRect(
-        &(Rr_Rect){
-            FramePosition,
-            ColorBoxSize,
-        },
-        -gContext->FrameThickness);
+    Rr_Rect BevelRect = {
+        FramePosition,
+        ColorBoxSize,
+    };
     Rr_UIDrawBevel(&BevelRect, Color, Held);
-
-    Rr_UIDrawInnerFrame(
-        &(Rr_Rect){
-            FramePosition,
-            ColorBoxSize,
-        },
-        gContext->FrameThickness,
-        &gContext->Style.Foreground);
 
     Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
     Rr_Vec2 TitlePosition = Layout->Cursor;
@@ -2821,7 +2807,11 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
     return ColorChanged;
 }
 
-static inline float Rr_UISlider(const char *Title, float Normalized)
+static inline float Rr_UISlider(
+    const char *Title,
+    float Normalized,
+    const char *ValueCString,
+    size_t ValueCStringLength)
 {
     Rr_UIAssertWindow();
     assert(Title != NULL);
@@ -2857,16 +2847,41 @@ static inline float Rr_UISlider(const char *Title, float Normalized)
     HandleRect = Rr_ResizeRect(&HandleRect, -gContext->BevelThickness);
     Rr_UIDrawBevel(&HandleRect, &gContext->Style.ButtonNormal, false);
 
+    if (ValueCString != NULL)
+    {
+        Rr_String ValueString =
+            Rr_CreateString(ValueCString, ValueCStringLength, Scratch.Arena);
+        Rr_Vec2 ValueSize =
+            Rr_UIDrawText(1, Rr_V2F(0.0f), &ValueString, 0.0f, NULL, 0);
+
+        Rr_Vec2 ValuePosition = Layout->Cursor;
+        ValuePosition.X = HandleRect.Offset.X + HandleWidth / 2.0f +
+                          gContext->ButtonPadding.Width;
+        if (ValuePosition.X + ValueSize.Width >
+            SliderRect.Offset.X + SliderRect.Extent.Width)
+        {
+            ValuePosition.X = HandleRect.Offset.X -
+                              gContext->ButtonPadding.Width - ValueSize.Width;
+        }
+        Rr_UIDrawText(
+            0,
+            ValuePosition,
+            &ValueString,
+            0.0f,
+            &gContext->Style.Foreground,
+            0);
+    }
+
     float HandleDragOffset =
         gContext->MousePosition.X - (HandleRect.Offset.X + HandleWidth / 2.0f);
 
-    bool Dragging = Rr_UIDragBehavior(
-        Window,
-        &SliderRect,
-        RR_UI_DRAG_OP_WIDGET,
-        TitleHash,
-        Rr_V2(HandleDragOffset, 0.0f),
-        NULL);
+    bool Hovered, Dragging = Rr_UIDragBehavior(
+                      Window,
+                      &SliderRect,
+                      RR_UI_DRAG_OP_WIDGET,
+                      TitleHash,
+                      Rr_V2(HandleDragOffset, 0.0f),
+                      &Hovered);
 
     if (Dragging)
     {
@@ -2876,6 +2891,14 @@ static inline float Rr_UISlider(const char *Title, float Normalized)
         Normalized =
             (gContext->MousePosition.X - SliderMin) / (SliderMax - SliderMin);
         Normalized = RR_CLAMP(0.0f, Normalized, 1.0f);
+    }
+    else if (Hovered)
+    {
+        if (gContext->MouseWheelDelta.X != 0.0f)
+        {
+            /* NOTE: Probably shouldn't be hardcoded to 30.0f. */
+            Normalized += gContext->MouseWheelDelta.X / 30.0f;
+        }
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
@@ -2904,9 +2927,13 @@ bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
 {
     assert(Value != NULL);
     assert(Max >= Min);
+
+    char Buffer[32];
+    int Length = snprintf(Buffer, 32, "%.4f", *Value);
+
     float In = RR_CLAMP(Min, *Value, Max);
     float InNormalized = (*Value - Min) / (Max - Min);
-    float OutNormalized = Rr_UISlider(Title, InNormalized);
+    float OutNormalized = Rr_UISlider(Title, InNormalized, Buffer, Length);
     float Out = OutNormalized * (Max - Min) + Min;
     *Value = Out;
     return false;
@@ -3394,6 +3421,8 @@ void Rr_UIEnd(void)
     gContext->LeftMouseButtonDown = false;
     gContext->LeftMouseButtonUp = false;
     gContext->MouseWheelDelta = Rr_V2F(0.0f);
+    gContext->DragOpBeganThisFrame = false;
+    gContext->DragOpEndedThisFrame = false;
 }
 
 void Rr_UISetFontSize(float Size)
