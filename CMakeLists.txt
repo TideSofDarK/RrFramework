@@ -201,7 +201,6 @@ target_sources(
     Source/Rr_Pipeline.c
     Source/Rr_Platform.c
     Source/Rr_Renderer.c
-    Source/Rr_String.c
     Source/Rr_UI.c
     Source/Rr_Vulkan.c
     Vendor/xxHash/xxhash.c
@@ -228,7 +227,6 @@ target_sources(
     Include/Rr/Rr_Pipeline.h
     Include/Rr/Rr_Platform.h
     Include/Rr/Rr_Renderer.h
-    Include/Rr/Rr_String.h
     Include/Rr/Rr_UI.h
     Include/Rr/Rr_Utility.h
 )

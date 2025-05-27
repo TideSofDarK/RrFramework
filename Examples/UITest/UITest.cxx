@@ -128,6 +128,8 @@ static void Iterate(void *UserData)
             Rr_UISliderFloat("Float 0 to 1", &Float01, 0.0f, 1.0f);
             static float Float22 = -0.5f;
             Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
+            static std::int32_t Int18 = 0;
+            Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
         }
         if (Rr_UIFold("Color Picker"))
         {
@@ -140,10 +142,9 @@ static void Iterate(void *UserData)
         {
             static char StringBuffer[64] = "Hello, World!";
             Rr_UIInputField("Simple UTF8 String", 64, StringBuffer, 0);
-            static char MultilineBuffer[64] = "Line A\nLine B <- Delete this!\nLine C!";
+            static char MultilineBuffer[64] =
+                "Line A\nLine B <- Delete this!\nLine C!";
             Rr_UIInputField("Multiline UTF8 String", 64, MultilineBuffer, 0);
-            // static char FloatBuffer[64] = "";
-            // Rr_UIInputField("Simple Float", 64, FloatBuffer, 0);
         }
         Rr_UILabel("Button");
         Rr_UIBeginHorizontal();

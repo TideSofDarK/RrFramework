@@ -17,6 +17,7 @@
 - [X] Combobox
 - [X] Auto-resizing windows
 - [X] Sliders
+- [ ] Horizontal scrollbar
 - [ ] Keyboard input and related widgets
 - [ ] Color picker
 - [ ] Radio buttons

@@ -73,6 +73,7 @@ struct Rr_UIStyle
     Rr_Vec4 Foreground;
     Rr_Vec4 Background;
     Rr_Vec4 TitleBackground;
+    Rr_Vec4 TitleButtonBackground;
     Rr_Vec4 Outline;
     Rr_Vec4 SelectedTextBackground;
 
@@ -161,6 +162,12 @@ extern bool Rr_UICombobox(
     uint32_t *SelectedIndex);
 
 extern bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color);
+
+extern bool Rr_UISliderInt(
+    const char *Title,
+    int32_t *Value,
+    int32_t Min,
+    int32_t Max);
 
 extern bool Rr_UISliderFloat(
     const char *Title,

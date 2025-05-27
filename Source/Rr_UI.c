@@ -462,15 +462,17 @@ static inline Rr_UIPrimitive Rr_UIReserveBevel(void)
         RR_UI_BEVEL_INDEX_COUNT);
 }
 
-static inline void Rr_UIBevel(
+static inline void Rr_UIBevelEx(
     Rr_UIPrimitive Primitive,
     Rr_Rect *Rect,
-    Rr_Vec4 *BaseColor,
+    Rr_Vec4 *Colors,
     bool Pressed)
 {
+    Rr_Vec4 BaseColor = Colors[0];
+
     Rr_Vec4 TopLeftColor;
     TopLeftColor.RGB = Rr_LerpV3(
-        BaseColor->RGB,
+        BaseColor.RGB,
         Pressed ? gContext->Style.BevelIntensityDark
                 : gContext->Style.BevelIntensityLight,
         Rr_V3F(Pressed ? 0.0f : 1.0f));
@@ -478,13 +480,13 @@ static inline void Rr_UIBevel(
     Rr_Vec4 BottomRightColor;
 
     BottomRightColor.RGB = Rr_LerpV3(
-        BaseColor->RGB,
+        BaseColor.RGB,
         Pressed ? gContext->Style.BevelIntensityLight
                 : gContext->Style.BevelIntensityDark,
         Rr_V3F(Pressed ? 1.0f : 0.0f));
     BottomRightColor.A = 1.0f;
 
-    Rr_Vec4 BackgroundColor = *BaseColor;
+    Rr_Vec4 BackgroundColor = BaseColor;
     if (Pressed)
     {
         BackgroundColor.RGB =
@@ -554,19 +556,19 @@ static inline void Rr_UIBevel(
 
     Vertices[12] = (Rr_UIVertex){
         .Position = Vertices[2].Position,
-        .Color = BackgroundColor,
+        .Color = Colors[0],
     };
     Vertices[13] = (Rr_UIVertex){
         .Position = Vertices[3].Position,
-        .Color = BackgroundColor,
+        .Color = Colors[1],
     };
     Vertices[14] = (Rr_UIVertex){
         .Position = Vertices[5].Position,
-        .Color = BackgroundColor,
+        .Color = Colors[2],
     };
     Vertices[15] = (Rr_UIVertex){
         .Position = Vertices[8].Position,
-        .Color = BackgroundColor,
+        .Color = Colors[3],
     };
 
     static const Rr_UIIndex BEVEL_INDICES[] = {
@@ -578,6 +580,16 @@ static inline void Rr_UIBevel(
     {
         Indices[Index] = Primitive.BaseVertex + BEVEL_INDICES[Index];
     }
+}
+
+static inline void Rr_UIBevel(
+    Rr_UIPrimitive Primitive,
+    Rr_Rect *Rect,
+    Rr_Vec4 *BaseColor,
+    bool Pressed)
+{
+    Rr_Vec4 Colors[4] = { *BaseColor, *BaseColor, *BaseColor, *BaseColor };
+    Rr_UIBevelEx(Primitive, Rect, Colors, Pressed);
 }
 
 static inline void Rr_UIDrawBevel(
@@ -1197,13 +1209,17 @@ static inline Rr_Vec2 Rr_UIDrawText(
     {
         Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-        Rr_String String = Rr_CreateString(CString, 0, Scratch.Arena);
         float CurrentWordWidth = 0.0f;
         size_t CurrentWordStart = 0;
 
-        for (size_t Index = 0; Index < String.Length; ++Index)
+        Rr_UTF8Decoder Decoder = { .CString = CString };
+        uint32_t *Decoded =
+            RR_ALLOC_NO_ZERO(Scratch.Arena, sizeof(uint32_t) * strlen(CString));
+        while (Rr_UTF8Decode(&Decoder) != '\0')
         {
-            uint32_t Codepoint = String.Data[Index];
+            uint32_t Codepoint = Decoder.Codepoint;
+            size_t CodepointIndex = Decoder.CodepointIndex - 1;
+            Decoded[CodepointIndex] = Codepoint;
 
             if (Codepoint >= RR_TEXT_MAX_GLYPHS)
             {
@@ -1217,9 +1233,9 @@ static inline Rr_Vec2 Rr_UIDrawText(
                 continue;
             }
 
-            if (Codepoint == ' ' || Index == String.Length - 1)
+            if (Codepoint == ' ' || Codepoint == '\0')
             {
-                size_t WordLength = Index - CurrentWordStart;
+                size_t WordLength = CodepointIndex - CurrentWordStart;
                 if (WordLength > 0)
                 {
                     if (CurrentWordWidth > AvailableWidth)
@@ -1227,10 +1243,10 @@ static inline Rr_Vec2 Rr_UIDrawText(
                         /* Fallback to per-character wrapping. */
 
                         for (size_t IndexInWord = CurrentWordStart;
-                             IndexInWord <= Index;
+                             IndexInWord <= CodepointIndex;
                              ++IndexInWord)
                         {
-                            Codepoint = String.Data[IndexInWord];
+                            Codepoint = Decoded[IndexInWord];
                             if (CurrentX > AvailableWidth)
                             {
                                 CurrentX = 0.0f;
@@ -1262,10 +1278,10 @@ static inline Rr_Vec2 Rr_UIDrawText(
                         Rr_Vec2 PositionInWord =
                             Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY });
                         for (size_t IndexInWord = CurrentWordStart;
-                             IndexInWord <= Index;
+                             IndexInWord <= CodepointIndex;
                              ++IndexInWord)
                         {
-                            Codepoint = String.Data[IndexInWord];
+                            Codepoint = Decoded[IndexInWord];
                             if (!CalculateOnly)
                             {
                                 Rr_UIDrawGlyph(
@@ -1289,7 +1305,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
                 MaxX = RR_MAX(MaxX, CurrentX);
 
                 CurrentWordWidth = 0.0f;
-                CurrentWordStart = Index + 1;
+                CurrentWordStart = CodepointIndex + 1;
             }
             else
             {
@@ -1577,7 +1593,7 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
         return;
     }
 
-    float Width = gContext->TitleButtonSize * 0.7f;
+    float Width = gContext->TitleButtonSize * 0.75f;
     float Thickness = gContext->TitleButtonSize * 0.15f;
     Rr_Rect TitleRect = Window->Rect;
     TitleRect.Extent.Height = gContext->WindowTitleHeight;
@@ -1608,7 +1624,7 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
         *Open = false;
     }
 
-    Rr_UIDrawBevel(&ButtonRect, &gContext->Style.TitleBackground, Held);
+    Rr_UIDrawBevel(&ButtonRect, &gContext->Style.TitleButtonBackground, Held);
 
     Rr_UIDrawRotatedQuad(
         &BarRect,
@@ -1629,12 +1645,19 @@ static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window, const char *Title)
             gContext->WindowTitleHeight,
         },
     };
+    bool HasClose = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
+    if (HasClose)
+    {
+        TitleRect.Extent.Width -= gContext->TitleButtonSize;
+    }
     Rr_Vec4 ColorB = gContext->Style.TitleBackground;
-    ColorB.RGB = Rr_LerpV3(ColorB.RGB, 0.2f, (Rr_Vec3){ 0.0f, 0.0f, 0.0f });
-    Rr_UIDrawHorizontalGradientQuad(
-        &TitleRect,
-        &gContext->Style.TitleBackground,
-        &ColorB);
+    ColorB.RGB = Rr_LerpV3(ColorB.RGB, 0.25f, (Rr_Vec3){ 0.0f, 0.0f, 0.0f });
+    Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
+    Rr_Vec4 Colors[4] = { ColorB,
+                          gContext->Style.TitleBackground,
+                          ColorB,
+                          gContext->Style.TitleBackground };
+    Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
     Rr_UIDrawText(
         0,
         Rr_AddV2(
@@ -1810,7 +1833,9 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
         /* Vertical margins. */
 
         ScrollbarHandlePosition.Y += ScrollbarHandleOffset;
-        ScrollbarHandleSize.Y -= ScrollbarHandleOffset * 2.0f;
+        ScrollbarHandleSize.Height -= ScrollbarHandleOffset * 2.0f;
+        ScrollbarHandleSize.Height =
+            RR_MAX(ScrollbarHandleSize.Height, gContext->BevelThickness * 3.0f);
 
         /* Hitbox is slightly adjusted for better experience. */
 
@@ -1818,7 +1843,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
         ScrollbarButtonSize.Width = ScrollbarSize.Width;
         if (HasResize)
         {
-            /* This cuts a bit of height from the scrollbar hitbox so the resize
+            /* This cuts a bix of height from the scrollbar hitbox so the resize
              * handle is always on top. */
 
             float AvailableResizeButtonHeight =
@@ -2027,18 +2052,19 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Add vertical scrollbar if necessary. */
 
+    Layout->AvailableContentsWidth = Window->Rect.Extent.Width;
     if (AutoResize)
     {
         Window->VScroll = 0;
-        Layout->AvailableContentsWidth = Window->Rect.Extent.Width;
     }
     else
     {
         bool HasScrollbar = Rr_UIAddVerticalScrollbar(Window);
         Layout->Cursor.Y -= Window->VScroll;
-        Layout->AvailableContentsWidth =
-            HasScrollbar ? Window->Rect.Extent.Width - gContext->ScrollbarWidth
-                         : Window->Rect.Extent.Width;
+        if (HasScrollbar)
+        {
+            Layout->AvailableContentsWidth -= gContext->ScrollbarWidth;
+        }
     }
 
     if (gContext->NextWindowPadding.Width != INFINITY &&
@@ -2097,9 +2123,9 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
         Window->Hash = TitleHash;
         Window->Rect.Offset = Rr_FloorV2(Rr_V2F(gContext->FontSize));
         Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
+        Window->Rect.Extent.Width += gContext->FontSize * 16.0f;
         /* TODO: Wrapped text uses available width so we still need
          * some baseline width. Probably should come up with better solution. */
-        /* Window->Rect.Extent.Width += 300.0f; */
         Window->SkipDueToAutoResize = true;
         *WindowRef = Window;
     }
@@ -2482,14 +2508,11 @@ void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    float AvailableContentsWidth =
-        Window->ContentsEnd.X - Window->ContentsStart.X;
-
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         Layout->Cursor,
         Text,
-        AvailableContentsWidth,
+        Layout->AvailableContentsWidth,
         &gContext->Style.Foreground,
         Flags);
 
@@ -2788,8 +2811,8 @@ bool Rr_UICombobox(
 
     Rr_Vec2 ButtonPosition = Layout->Cursor;
 
-    Rr_Vec2 SelectedTextPosition = ButtonPosition;
-    SelectedTextPosition.X += gContext->ButtonPadding.Width;
+    Rr_Vec2 SelectedTextPosition =
+        Rr_AddV2(ButtonPosition, gContext->ButtonPadding);
     Rr_UIDrawText(
         0,
         SelectedTextPosition,
@@ -2800,10 +2823,9 @@ bool Rr_UICombobox(
 
     Rr_Vec2 ButtonSize =
         Rr_AddV2(SelectedTextSize, Rr_MulV2F(gContext->ButtonPadding, 2.0f));
-    ButtonSize.Height = gContext->LineHeight;
 
     Rr_Vec2 BorderSize = ButtonSize;
-    BorderSize.X += gContext->LineHeight;
+    BorderSize.X += gContext->LineHeight + gContext->ButtonPadding.Width;
 
     bool Up = false;
     bool Hovered = false;
@@ -2832,7 +2854,7 @@ bool Rr_UICombobox(
     if (PopupOpen)
     {
         Rr_Vec2 PopupPosition = ButtonPosition;
-        PopupPosition.Y += BorderSize.Height;
+        PopupPosition.Y += BorderSize.Height + gContext->FrameThickness;
         PopupPosition.X += gContext->FrameThickness;
         Rr_UISetNextWindowPosition(PopupPosition);
         Rr_UISetNextWindowPadding(Rr_V2(gContext->ButtonPadding.Width, 0.0f));
@@ -2904,14 +2926,13 @@ bool Rr_UICombobox(
     Rr_Vec4 BackgroundColor = gContext->Style.Background;
     BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
 
-    Rr_UIBevel(Primitive, &ButtonRect, &BackgroundColor, false);
+    Rr_UIBevel(Primitive, &ButtonRect, &gContext->Style.ButtonDisabled, Held);
 
     /* Add handle. */
     {
         float HandleSize = ButtonSize.Height;
         Rr_Rect HandleRect = { ButtonRect.Offset, Rr_V2F(HandleSize) };
-        HandleRect.Offset.X +=
-            ButtonRect.Extent.Width - gContext->BevelThickness;
+        HandleRect.Offset.X += ButtonRect.Extent.Width;
 
         Rr_UIDrawBevel(&HandleRect, &gContext->Style.ButtonNormal, Held);
 
@@ -2936,6 +2957,7 @@ bool Rr_UICombobox(
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
     TitlePosition.X += gContext->ButtonPadding.Width + BorderSize.Width;
+    TitlePosition.Y += gContext->ButtonPadding.Height;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
@@ -2946,7 +2968,8 @@ bool Rr_UICombobox(
 
     Rr_Vec2 TotalSize = {
         TitleSize.Width + gContext->ButtonPadding.Width + BorderSize.Width,
-        gContext->LineHeight + Layout->ContentsPadding.Height,
+        gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f +
+            Layout->ContentsPadding.Height,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -3257,6 +3280,24 @@ static inline float Rr_UISlider(
     return Normalized;
 }
 
+bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
+{
+    assert(Value != NULL);
+    assert(Max >= Min);
+
+    char Buffer[32];
+    int Length = snprintf(Buffer, 32, "%d", *Value);
+
+    int32_t In = RR_CLAMP(Min, *Value, Max);
+    float InNormalized = (float)(*Value - Min) / (float)(Max - Min);
+    float OutNormalized = Rr_UISlider(Title, InNormalized, Buffer, Length);
+    OutNormalized =
+        roundf(OutNormalized * (float)(Max - Min)) / (float)(Max - Min);
+    int32_t Out = OutNormalized * (Max - Min) + Min;
+    *Value = Out;
+    return false;
+}
+
 bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
 {
     assert(Value != NULL);
@@ -3315,10 +3356,11 @@ void Rr_UIInit(void)
         .BevelIntensityDark = 0.7f,
 
         .Foreground = Rr_U32ToRGBA(0xD6D0B3FF),
-        .Background = Rr_U32ToRGBA(0x292F33FA),
-        .TitleBackground = Rr_U32ToRGBA(0xD54251FA),
-        .Outline = Rr_U32ToRGBA(0x6C6F72FA),
-        .SelectedTextBackground = Rr_U32ToRGBA(0x6EA5FEFA),
+        .Background = Rr_U32ToRGBA(0x292F33FF),
+        .TitleBackground = Rr_U32ToRGBA(0x5E2D96FF),
+        .TitleButtonBackground = Rr_U32ToRGBA(0xD54251FF),
+        .Outline = Rr_U32ToRGBA(0x6C6F72FF),
+        .SelectedTextBackground = Rr_U32ToRGBA(0x6EA5FEFF),
 
         .ButtonNormal = Rr_U32ToRGBA(0x4c565dFF),
         .ButtonHovered = Rr_U32ToRGBA(0x687e8dFF),
@@ -3508,10 +3550,9 @@ static inline void Rr_UIConsumeNextFontSize(void)
         gContext->BevelThickness = ceilf(gContext->FontSize * 0.1f);
 
         gContext->WindowTitleHeight = RR_UI_ROUND(
-            gContext->Style.TitlePadding.Y * gContext->FontSize * 2.0f +
+            gContext->Style.TitlePadding.Height * 2.0f * gContext->FontSize +
             gContext->LineHeight);
-        gContext->TitleButtonSize =
-            RR_UI_ROUND(gContext->WindowTitleHeight * 0.8f);
+        gContext->TitleButtonSize = RR_UI_ROUND(gContext->WindowTitleHeight);
         gContext->MinWindowSizeNoTitle =
             Rr_MulV2F(gContext->ContentsPadding, 2.0f);
         gContext->MinWindowSizeNoTitle.X += gContext->ScrollbarWidth;
