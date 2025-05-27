@@ -398,6 +398,8 @@ static void Iterate(void *UserData)
     Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
     SplatData->Render(Camera, SwapchainImage);
+
+    Rr_UIDebugOverlay();
 }
 
 static void Cleanup(void *UserData)

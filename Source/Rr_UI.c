@@ -2352,7 +2352,7 @@ bool Rr_UIFold(const char *Title)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_UIQuad ButtonQuad = Rr_UIReserveQuad();
+    Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
 
     size_t TitleLength = strlen(Title);
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
@@ -2369,7 +2369,8 @@ bool Rr_UIFold(const char *Title)
     float TriangleHeight = gContext->LineHeight * 0.575f;
     float TriangleBaseX = Layout->Cursor.X + Layout->ContentsPadding.Width;
     float TriangleBaseY =
-        Layout->Cursor.Y + gContext->LineHeight -
+        gContext->ButtonPadding.Height + Layout->Cursor.Y +
+        gContext->LineHeight -
         gContext->LineHeight *
             (gContext->Font->UnderlineY + gContext->Font->UnderlineThickness) -
         TriangleHeight / 2.0f;
@@ -2398,10 +2399,12 @@ bool Rr_UIFold(const char *Title)
     Rr_Vec2 TitlePosition = Rr_V2(
         TriangleBaseX + TriangleHeight + gContext->ButtonPadding.Width,
         Layout->Cursor.Y);
+    TitlePosition.Y += gContext->ButtonPadding.Height;
     Rr_UIDrawText(0, TitlePosition, Title, 0, &gContext->Style.Foreground, 0);
 
-    Rr_Vec2 TotalSize =
-        Rr_V2(Layout->AvailableContentsWidth, gContext->LineHeight);
+    Rr_Vec2 TotalSize = Rr_V2(
+        Layout->AvailableContentsWidth,
+        gContext->LineHeight + gContext->ButtonPadding.Height * 2.0f);
 
     bool Up = false;
     bool Hovered = false;
@@ -2426,20 +2429,11 @@ bool Rr_UIFold(const char *Title)
         Layout->Cursor,
         TotalSize,
     };
-    Rr_Vec4 ButtonColor = gContext->Style.TitleBackground;
-    if (Held)
-    {
-        ButtonColor.W *= 0.5f;
-    }
-    else if (Hovered)
-    {
-        ButtonColor.W *= 0.75f;
-    }
-    else
-    {
-        ButtonColor.W *= 0.85f;
-    }
-    Rr_UISolidQuad(ButtonQuad, &ButtonRect, &ButtonColor);
+    Rr_UIBevel(
+        BevelPrimitive,
+        &ButtonRect,
+        &gContext->Style.TitleBackground,
+        Held);
 
     TotalSize.Height += Layout->ContentsPadding.Height;
 
@@ -2696,6 +2690,7 @@ bool Rr_UIInputField(
 
     Rr_Vec2 BufferPosition = Layout->Cursor;
     BufferPosition.X += gContext->ButtonPadding.Width;
+    BufferPosition.Y += gContext->ButtonPadding.Height;
     size_t NewCursorEnd = gContext->TextInputCursorEnd;
     Rr_Vec2 BufferSize = Rr_UIDrawInteractiveText(
         Buffer,
@@ -2711,7 +2706,7 @@ bool Rr_UIInputField(
         Layout->Cursor,
         {
             BufferSize.Width + gContext->ButtonPadding.Width * 2.0f,
-            BufferSize.Height,
+            BufferSize.Height + gContext->ButtonPadding.Height * 2.0f,
         },
     };
     Rr_UIBevel(
@@ -2743,6 +2738,7 @@ bool Rr_UIInputField(
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
     TitlePosition.X += gContext->ButtonPadding.Width * 3.0f + BufferSize.Width;
+    TitlePosition.Y += gContext->ButtonPadding.Height;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
@@ -2754,7 +2750,7 @@ bool Rr_UIInputField(
     Rr_Vec2 TotalSize = {
         gContext->ButtonPadding.Width * 3.0f + BufferSize.Width +
             TitleSize.Width,
-        BufferSize.Height + Layout->ContentsPadding.Height,
+        BufferSize.Height + Layout->ContentsPadding.Height + gContext->ButtonPadding.Height * 2.0f,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -2912,17 +2908,9 @@ bool Rr_UICombobox(
     /* Add handle. */
     {
         float HandleSize = ButtonSize.Height;
-        Rr_Rect HandleRect = {
-            {
-                ButtonRect.Offset.X + ButtonRect.Extent.Width,
-                ButtonRect.Offset.Y,
-            },
-            {
-                HandleSize,
-                HandleSize,
-            },
-        };
-        HandleRect.Offset.X -= gContext->BevelThickness;
+        Rr_Rect HandleRect = { ButtonRect.Offset, Rr_V2F(HandleSize) };
+        HandleRect.Offset.X +=
+            ButtonRect.Extent.Width - gContext->BevelThickness;
 
         Rr_UIDrawBevel(&HandleRect, &gContext->Style.ButtonNormal, Held);
 
@@ -3676,7 +3664,6 @@ void Rr_UIEnd(void)
     /* TODO: Consider active popup as well. */
     if (gContext->ActiveWindows.Count == 0)
     {
-        gContext = NULL;
         return;
     }
 
