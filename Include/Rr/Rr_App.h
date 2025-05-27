@@ -64,6 +64,8 @@ extern double Rr_GetDeltaSeconds(void);
 
 extern double Rr_GetTimeSeconds(void);
 
+extern uint64_t Rr_GetTimeMS(void);
+
 extern void Rr_SetRelativeMouseMode(bool IsRelative);
 
 #ifdef __cplusplus

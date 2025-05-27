@@ -38,6 +38,7 @@
 #include <cJSON/cJSON.h>
 
 #include <assert.h>
+#include <float.h>
 #include <stdio.h>
 
 typedef uint64_t Rr_UIHash;
@@ -80,7 +81,6 @@ struct Rr_UIClipRect
 typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
-    Rr_String Title;
     Rr_UIHash Hash;
     Rr_UIWindowFlags Flags;
     Rr_Rect Rect;
@@ -158,6 +158,9 @@ struct Rr_UIContext
     Rr_Vec2 MousePosition;
     Rr_Vec2 MouseWheelDelta;
 
+    Rr_UIWindow *FocusWindow;
+    Rr_UIHash FocusHash;
+
     Rr_UIDragOp DragOp;
     Rr_UIWindow *DragOpWindow;
     Rr_UIHash DragOpHash;
@@ -165,6 +168,10 @@ struct Rr_UIContext
     Rr_Vec2 DragOpWindowStart;
     bool DragOpBeganThisFrame;
     bool DragOpEndedThisFrame;
+
+    size_t TextInputCursorBegin;
+    size_t TextInputCursorEnd;
+    uint64_t TextInputCursorBlinkTime;
 
     Rr_Vec2 ScreenSize;
 
@@ -790,6 +797,12 @@ static inline void Rr_UIDrawHorizontalGradientQuad(
     Rr_UIDrawQuad(Vertices);
 }
 
+static inline void Rr_UIDrawRect(Rr_Rect *Rect, Rr_Vec4 *Color)
+{
+    Rr_UIQuad Quad = Rr_UIReserveQuad();
+    Rr_UISolidQuad(Quad, Rect, Color);
+}
+
 static inline void Rr_UIDrawOuterFrame(
     Rr_Rect *Rect,
     float Thickness,
@@ -916,19 +929,256 @@ static inline void Rr_UIDrawGlyph(
         UVs);
 }
 
-static inline Rr_Vec2 Rr_UIDrawText(
-    bool CalculateOnly,
+static inline void Rr_UIDrawInteractiveTextCursor(
     Rr_Vec2 Position,
-    Rr_String *String,
+    Rr_Vec4 *Color)
+{
+    uint64_t TimeDelta = gContext->TextInputCursorBlinkTime - Rr_GetTimeMS();
+    if ((TimeDelta / 500) % 2 != 0)
+    {
+        Rr_UIDrawRect(
+            &(Rr_Rect){
+                Position,
+                Rr_V2(gContext->FrameThickness * 2.0f, gContext->LineHeight),
+            },
+            Color);
+    }
+}
+
+static inline Rr_Vec2 Rr_UIDrawInteractiveText(
+    const char *CString,
+    bool Active,
+    Rr_Vec2 Position,
+    size_t CursorBegin,
+    size_t *CursorEnd,
     float AvailableWidth,
     Rr_Vec4 *Color,
     Rr_UITextFlags Flags)
 {
-    if (String->Length == 0)
+    Rr_UIFont *Font = gContext->Font;
+    float FontSize = gContext->FontSize;
+    float LineHeight = Font->LineHeight * FontSize;
+    float MaxX = 0.0f;
+    float CurrentX = 0.0f;
+    float CurrentY = 0.0f;
+    uint32_t LineIndex = 0;
+
+    Rr_Vec2 MousePosition = gContext->MousePosition;
+    Rr_Vec2 MouseOffset = Rr_SubV2(MousePosition, Position);
+    uint32_t MouseLineIndex = RR_MAX(0, (uint32_t)(MouseOffset.Y / LineHeight));
+    float MouseCharacterDistance = FLT_MAX;
+
+    size_t NewCursorEnd = *CursorEnd;
+    size_t OldCursorMin = RR_MIN(CursorBegin, *CursorEnd);
+    size_t OldCursorMax = RR_MAX(CursorBegin, *CursorEnd);
+
+    bool Wrapped = RR_HAS_BIT(Flags, RR_UI_TEXT_FLAGS_WRAPPED_BIT);
+    assert(
+        (!Wrapped || AvailableWidth >= FontSize) &&
+        "Available width must be larger than font size!");
+
+    Rr_Vec2 ResultSize = { 0 };
+
+    if (Wrapped)
     {
-        return Rr_V2F(0.0f);
+        RR_NOT_IMPLEMENTED();
+        /* float CurrentWordWidth = 0.0f; */
+        /* size_t CurrentWordStart = 0; */
+
+        /* for (size_t Index = 0; Index < String->Length; ++Index) */
+        /* { */
+        /*     uint32_t Codepoint = String->Data[Index]; */
+
+        /*     if (Codepoint >= RR_TEXT_MAX_GLYPHS) */
+        /*     { */
+        /*         RR_ABORT("Codepoint is not within range!"); */
+        /*     } */
+
+        /*     if (Codepoint == '\n') */
+        /*     { */
+        /*         CurrentX = 0.0f; */
+        /*         CurrentY += LineHeight; */
+        /*         LineIndex++; */
+        /*         continue; */
+        /*     } */
+
+        /*     if (Codepoint == ' ' || Index == String->Length - 1) */
+        /*     { */
+        /*         size_t WordLength = Index - CurrentWordStart; */
+        /*         if (WordLength > 0) */
+        /*         { */
+        /*             if (CurrentWordWidth > AvailableWidth) */
+        /*             { */
+        /*                 /\* Fallback to per-character wrapping. *\/ */
+
+        /*                 for (size_t IndexInWord = CurrentWordStart; */
+        /*                      IndexInWord <= Index; */
+        /*                      ++IndexInWord) */
+        /*                 { */
+        /*                     Codepoint = String->Data[IndexInWord]; */
+        /*                     if (CurrentX > AvailableWidth) */
+        /*                     { */
+        /*                         CurrentX = 0.0f; */
+        /*                         CurrentY += LineHeight; */
+        /*                         LineIndex++; */
+        /*                     } */
+        /*                     if (!CalculateOnly) */
+        /*                     { */
+        /*                         Rr_UIDrawGlyph( */
+        /*                             Font, */
+        /*                             FontSize, */
+        /*                             &Font->Glyphs[Codepoint], */
+        /*                             Rr_AddV2( */
+        /*                                 Position, */
+        /*                                 (Rr_Vec2){ CurrentX, CurrentY }), */
+        /*                             Color); */
+        /*                     } */
+        /*                     CurrentX += */
+        /*                         gContext->Font->Advances[Codepoint] *
+         * FontSize; */
+        /*                 } */
+        /*             } */
+        /*             else */
+        /*             { */
+        /*                 if (CurrentX + CurrentWordWidth > AvailableWidth) */
+        /*                 { */
+        /*                     CurrentX = 0.0f; */
+        /*                     CurrentY += LineHeight; */
+        /*                     LineIndex++; */
+        /*                 } */
+
+        /*                 Rr_Vec2 PositionInWord = */
+        /*                     Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY
+         * }); */
+        /*                 for (size_t IndexInWord = CurrentWordStart; */
+        /*                      IndexInWord <= Index; */
+        /*                      ++IndexInWord) */
+        /*                 { */
+        /*                     Codepoint = String->Data[IndexInWord]; */
+        /*                     if (!CalculateOnly) */
+        /*                     { */
+        /*                         Rr_UIDrawGlyph( */
+        /*                             Font, */
+        /*                             FontSize, */
+        /*                             &Font->Glyphs[Codepoint], */
+        /*                             PositionInWord, */
+        /*                             Color); */
+        /*                     } */
+        /*                     CurrentX += */
+        /*                         gContext->Font->Advances[Codepoint] *
+         * FontSize; */
+        /*                     PositionInWord.X = Position.X + CurrentX; */
+        /*                 } */
+        /*             } */
+        /*         } */
+        /*         else */
+        /*         { */
+        /*             CurrentX += gContext->Font->Advances[Codepoint] *
+         * FontSize; */
+        /*         } */
+
+        /*         MaxX = RR_MAX(MaxX, CurrentX); */
+
+        /*         CurrentWordWidth = 0.0f; */
+        /*         CurrentWordStart = Index + 1; */
+        /*     } */
+        /*     else */
+        /*     { */
+        /*         CurrentWordWidth += */
+        /*             gContext->Font->Advances[Codepoint] * FontSize; */
+        /*     } */
+        /* } */
+    }
+    else
+    {
+        Rr_UTF8Decoder Decoder = { .CString = CString };
+        while (true)
+        {
+            Rr_UTF8Decode(&Decoder);
+            uint32_t Codepoint = Decoder.Codepoint;
+            size_t CodepointIndex = Decoder.CodepointIndex - 1;
+
+            if (Codepoint >= RR_TEXT_MAX_GLYPHS)
+            {
+                RR_ABORT("Codepoint is not within range!");
+            }
+
+            Rr_Vec2 GlyphPosition =
+                Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY });
+
+            if (LineIndex == MouseLineIndex)
+            {
+                float Distance = fabsf(GlyphPosition.X - MousePosition.X);
+                if (Distance < MouseCharacterDistance)
+                {
+                    MouseCharacterDistance = Distance;
+                    NewCursorEnd = CodepointIndex;
+                }
+            }
+
+            if (Active)
+            {
+                if ((OldCursorMin != OldCursorMax) &&
+                    (CodepointIndex >= OldCursorMin &&
+                     CodepointIndex < OldCursorMax))
+                {
+                    Rr_UIDrawRect(
+                        &(Rr_Rect){
+                            GlyphPosition,
+                            Rr_V2(
+                                gContext->Font->Advances[Codepoint] * FontSize,
+                                gContext->LineHeight),
+                        },
+                        &gContext->Style.SelectedTextBackground);
+                }
+
+                if (*CursorEnd == CodepointIndex)
+                {
+                    Rr_UIDrawInteractiveTextCursor(GlyphPosition, Color);
+                }
+            }
+
+            if (Codepoint == '\0')
+            {
+                break;
+            }
+
+            if (Codepoint == '\n')
+            {
+                CurrentX = 0.0f;
+                CurrentY += LineHeight;
+                LineIndex++;
+                continue;
+            }
+
+            if (Codepoint != ' ')
+            {
+                Rr_UIDrawGlyph(
+                    Font,
+                    FontSize,
+                    &Font->Glyphs[Codepoint],
+                    GlyphPosition,
+                    Color);
+            }
+
+            CurrentX += gContext->Font->Advances[Codepoint] * FontSize;
+            MaxX = RR_MAX(MaxX, CurrentX);
+        }
     }
 
+    *CursorEnd = NewCursorEnd;
+
+    return (Rr_Vec2){ .Width = MaxX, .Height = CurrentY + LineHeight };
+}
+
+static inline Rr_Vec2 Rr_UIDrawText(
+    bool CalculateOnly,
+    Rr_Vec2 Position,
+    const char *CString,
+    float AvailableWidth,
+    Rr_Vec4 *Color,
+    Rr_UITextFlags Flags)
+{
     Rr_UIFont *Font = gContext->Font;
     float FontSize = gContext->FontSize;
     float LineHeight = Font->LineHeight * FontSize;
@@ -945,12 +1195,15 @@ static inline Rr_Vec2 Rr_UIDrawText(
 
     if (Wrapped)
     {
+        Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+        Rr_String String = Rr_CreateString(CString, 0, Scratch.Arena);
         float CurrentWordWidth = 0.0f;
         size_t CurrentWordStart = 0;
 
-        for (size_t Index = 0; Index < String->Length; ++Index)
+        for (size_t Index = 0; Index < String.Length; ++Index)
         {
-            uint32_t Codepoint = String->Data[Index];
+            uint32_t Codepoint = String.Data[Index];
 
             if (Codepoint >= RR_TEXT_MAX_GLYPHS)
             {
@@ -964,7 +1217,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
                 continue;
             }
 
-            if (Codepoint == ' ' || Index == String->Length - 1)
+            if (Codepoint == ' ' || Index == String.Length - 1)
             {
                 size_t WordLength = Index - CurrentWordStart;
                 if (WordLength > 0)
@@ -977,7 +1230,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
                              IndexInWord <= Index;
                              ++IndexInWord)
                         {
-                            Codepoint = String->Data[IndexInWord];
+                            Codepoint = String.Data[IndexInWord];
                             if (CurrentX > AvailableWidth)
                             {
                                 CurrentX = 0.0f;
@@ -1012,7 +1265,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
                              IndexInWord <= Index;
                              ++IndexInWord)
                         {
-                            Codepoint = String->Data[IndexInWord];
+                            Codepoint = String.Data[IndexInWord];
                             if (!CalculateOnly)
                             {
                                 Rr_UIDrawGlyph(
@@ -1044,12 +1297,16 @@ static inline Rr_Vec2 Rr_UIDrawText(
                     gContext->Font->Advances[Codepoint] * FontSize;
             }
         }
+
+        Rr_DestroyScratch(Scratch);
     }
     else
     {
-        for (size_t Index = 0; Index < String->Length; ++Index)
+        Rr_UTF8Decoder Decoder = { .CString = CString };
+        while (Rr_UTF8Decode(&Decoder) != '\0')
         {
-            uint32_t Codepoint = String->Data[Index];
+            uint32_t Codepoint = Decoder.Codepoint;
+            size_t CodepointIndex = Decoder.CodepointIndex - 1;
 
             if (Codepoint >= RR_TEXT_MAX_GLYPHS)
             {
@@ -1087,22 +1344,6 @@ static inline Rr_Vec2 Rr_UIDrawText(
     return (Rr_Vec2){ .Width = MaxX, .Height = CurrentY + LineHeight };
 }
 
-Rr_Vec2 Rr_UICalculateTextSize(
-    Rr_UIFont *Font,
-    float FontSize,
-    Rr_String *String,
-    float AvailableWidth,
-    Rr_UITextFlags Flags)
-{
-    return Rr_UIDrawText(
-        1,
-        (Rr_Vec2){ 0 },
-        String,
-        AvailableWidth,
-        &(Rr_Vec4){ 0 },
-        Flags);
-}
-
 static inline void Rr_UIBeginDragOp(
     Rr_UIWindow *Window,
     Rr_UIDragOp DragOp,
@@ -1132,6 +1373,22 @@ static inline bool Rr_UIRectContains(
     assert(Window != NULL);
     Rr_Rect CurrentRect = Rr_UICurrentRect(Window);
     return Rr_RectContains(&CurrentRect, Point) && Rr_RectContains(Rect, Point);
+}
+
+static inline void Rr_UISetFocus(Rr_UIWindow *Window, Rr_UIHash Hash)
+{
+    gContext->FocusWindow = Window;
+    gContext->FocusHash = Hash;
+}
+
+static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
+{
+    return gContext->FocusWindow == Window && gContext->FocusHash == Hash;
+}
+
+static inline void Rr_UIResetFocus(void)
+{
+    gContext->FocusWindow = NULL;
 }
 
 static inline bool Rr_UIScrollBehavior(
@@ -1189,6 +1446,7 @@ static inline void Rr_UIButtonBehavior(
         {
             Rr_UIEndDragOp();
             gContext->DragOpWindow = NULL;
+            Rr_UIResetFocus();
         }
         if (Down)
         {
@@ -1215,12 +1473,17 @@ static inline bool Rr_UIDragBehavior(
     Rr_UIDragOp DragOp,
     Rr_UIHash Hash,
     Rr_Vec2 Value,
-    bool *Hovered)
+    bool *Hovered,
+    bool *Began)
 {
     bool Contains = Rr_UIRectContains(Window, Rect, gContext->MousePosition);
     if (Hovered)
     {
         *Hovered = Contains && gContext->HoveredWindow == Window;
+    }
+    if (Began)
+    {
+        *Began = false;
     }
 
     /* Two things to note:
@@ -1235,6 +1498,13 @@ static inline bool Rr_UIDragBehavior(
         gContext->HoveredWindow == Window)
     {
         Rr_UIBeginDragOp(Window, DragOp, Hash, Value);
+
+        Rr_UISetFocus(Window, Hash);
+
+        if (Began)
+        {
+            *Began = true;
+        }
 
         return false;
     }
@@ -1350,7 +1620,7 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
         &gContext->Style.Foreground);
 }
 
-static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window)
+static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window, const char *Title)
 {
     Rr_Rect TitleRect = {
         Window->Rect.Offset,
@@ -1370,7 +1640,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window)
         Rr_AddV2(
             TitleRect.Offset,
             Rr_MulV2F(gContext->Style.TitlePadding, gContext->FontSize)),
-        &Window->Title,
+        Title,
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -1398,7 +1668,8 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
                       RR_UI_DRAG_OP_RESIZE,
                       0,
                       Window->Rect.Extent,
-                      &Hovered);
+                      &Hovered,
+                      NULL);
 
     if (Dragging)
     {
@@ -1569,7 +1840,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
                           RR_UI_DRAG_OP_SCROLL,
                           0,
                           (Rr_Vec2){ 0.0f, Window->VScroll },
-                          &Hovered);
+                          &Hovered,
+                          NULL);
 
         if (Dragging)
         {
@@ -1643,6 +1915,7 @@ static inline void Rr_UIConsumeNextWindowSize(Rr_UIWindow *Window)
 }
 
 static inline bool Rr_UIBeginWindowEx(
+    const char *Title,
     Rr_UIWindow *Window,
     bool *Open,
     Rr_UIWindowFlags Flags)
@@ -1698,6 +1971,7 @@ static inline bool Rr_UIBeginWindowEx(
             RR_UI_DRAG_OP_MOVE,
             0,
             Window->Rect.Offset,
+            NULL,
             NULL);
 
         if (Dragging)
@@ -1743,7 +2017,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     if (NoTitle == false)
     {
-        Rr_UIAddWindowTitle(Window);
+        Rr_UIAddWindowTitle(Window, Title);
         if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT) == true)
         {
             Rr_UIAddCloseButton(Window, Open);
@@ -1797,7 +2071,7 @@ static inline bool Rr_UIBeginWindowEx(
 static inline void Rr_UIBeginPopupWindow(void)
 {
     Rr_UIWindow *Window = &gContext->PopupWindow;
-    Rr_UIBeginWindowEx(Window, NULL, gContext->PopupWindow.Flags);
+    Rr_UIBeginWindowEx("", Window, NULL, gContext->PopupWindow.Flags);
 }
 
 static inline void Rr_UIClosePopupWindow(void)
@@ -1820,7 +2094,6 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
     {
         Window = RR_ALLOC_TYPE(gContext->Arena, Rr_UIWindow);
         Window->ZOrder = gContext->TotalWindowCount++;
-        Window->Title = Rr_CreateString(Title, TitleLength, gContext->Arena);
         Window->Hash = TitleHash;
         Window->Rect.Offset = Rr_FloorV2(Rr_V2F(gContext->FontSize));
         Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
@@ -1833,7 +2106,7 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
 
     assert(
         Window->Added == false && "There already is a window with this title!");
-    if (Rr_UIBeginWindowEx(Window, Open, Flags))
+    if (Rr_UIBeginWindowEx(Title, Window, Open, Flags))
     {
         *RR_PUSH_INTO_ARRAY(&gContext->ActiveWindows, gContext->Arena) = Window;
         Window->Added = true;
@@ -1981,13 +2254,12 @@ bool Rr_UITab(const char *Title)
 
     TabQuad = Rr_UIReserveQuad();
 
-    Rr_String TextString = Rr_CreateString(Title, 0, Scratch.Arena);
     Rr_Vec2 TextPosition = Layout->TabCursor;
     TextPosition.X += gContext->ButtonPadding.X;
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         TextPosition,
-        &TextString,
+        Title,
         0.0f,
         Selected ? &gContext->Style.Background : &gContext->Style.Foreground,
         0);
@@ -2084,7 +2356,6 @@ bool Rr_UIFold(const char *Title)
 
     size_t TitleLength = strlen(Title);
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
-    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
 
     bool **FoldValueRef =
         RR_GET_MAP_VALUE(&Window->WidgetMap, TitleHash, gContext->Arena);
@@ -2127,13 +2398,7 @@ bool Rr_UIFold(const char *Title)
     Rr_Vec2 TitlePosition = Rr_V2(
         TriangleBaseX + TriangleHeight + gContext->ButtonPadding.Width,
         Layout->Cursor.Y);
-    Rr_UIDrawText(
-        0,
-        TitlePosition,
-        &TitleString,
-        0,
-        &gContext->Style.Foreground,
-        0);
+    Rr_UIDrawText(0, TitlePosition, Title, 0, &gContext->Style.Foreground, 0);
 
     Rr_Vec2 TotalSize =
         Rr_V2(Layout->AvailableContentsWidth, gContext->LineHeight);
@@ -2226,11 +2491,10 @@ void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
     float AvailableContentsWidth =
         Window->ContentsEnd.X - Window->ContentsStart.X;
 
-    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         Layout->Cursor,
-        &TextString,
+        Text,
         AvailableContentsWidth,
         &gContext->Style.Foreground,
         Flags);
@@ -2249,11 +2513,10 @@ void Rr_UILabel(const char *Text)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         Layout->Cursor,
-        &TextString,
+        Text,
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -2297,12 +2560,11 @@ bool Rr_UIButton(const char *Text)
     Rr_Vec2 ButtonPosition = Layout->Cursor;
     Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
 
-    Rr_String TextString = Rr_CreateString(Text, 0, Scratch.Arena);
     Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, gContext->ButtonPadding);
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         TextPosition,
-        &TextString,
+        Text,
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -2387,13 +2649,12 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         Rr_UIDrawSolidQuad(&Inset, &gContext->Style.Foreground);
     }
 
-    Rr_String TitleString = Rr_CreateString(Title, 0, Scratch.Arena);
     Rr_Vec2 TitlePosition = FramePosition;
     TitlePosition.X += CheckboxSize.X + gContext->ButtonPadding.Width;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
-        &TitleString,
+        Title,
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -2411,10 +2672,95 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 }
 
 bool Rr_UIInputField(
-    size_t BufferSize,
+    const char *Title,
+    size_t BufferLength,
     char *Buffer,
     Rr_UIInputFieldFlags Flags)
 {
+    Rr_UIAssertWindow();
+    assert(Title != NULL);
+    assert(BufferLength);
+    assert(Buffer != NULL);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    Rr_UIPrimitive FieldPrimitive = Rr_UIReserveBevel();
+
+    size_t TitleLength = strlen(Title);
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+
+    bool Active = Rr_UIIsFocused(Window, TitleHash);
+
+    Rr_Vec2 BufferPosition = Layout->Cursor;
+    BufferPosition.X += gContext->ButtonPadding.Width;
+    size_t NewCursorEnd = gContext->TextInputCursorEnd;
+    Rr_Vec2 BufferSize = Rr_UIDrawInteractiveText(
+        Buffer,
+        Active,
+        BufferPosition,
+        gContext->TextInputCursorBegin,
+        &NewCursorEnd,
+        0.0f,
+        &gContext->Style.Foreground,
+        0);
+
+    Rr_Rect FieldRect = {
+        Layout->Cursor,
+        {
+            BufferSize.Width + gContext->ButtonPadding.Width * 2.0f,
+            BufferSize.Height,
+        },
+    };
+    Rr_UIBevel(
+        FieldPrimitive,
+        &FieldRect,
+        &gContext->Style.ButtonDisabled,
+        true);
+
+    bool Hovered, Began,
+        Dragging = Rr_UIDragBehavior(
+            Window,
+            &FieldRect,
+            RR_UI_DRAG_OP_WIDGET,
+            TitleHash,
+            Rr_V2F(0.0f),
+            &Hovered,
+            &Began);
+
+    if (Began)
+    {
+        gContext->TextInputCursorBegin = NewCursorEnd;
+        gContext->TextInputCursorEnd = NewCursorEnd;
+    }
+    else if (Active && Dragging)
+    {
+        gContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
+        gContext->TextInputCursorEnd = NewCursorEnd;
+    }
+
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.X += gContext->ButtonPadding.Width * 3.0f + BufferSize.Width;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        TitlePosition,
+        Title,
+        0,
+        &gContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = {
+        gContext->ButtonPadding.Width * 3.0f + BufferSize.Width +
+            TitleSize.Width,
+        BufferSize.Height + Layout->ContentsPadding.Height,
+    };
+
+    Rr_UIAdvance(TotalSize);
+
+    Rr_DestroyScratch(Scratch);
+
     return false;
 }
 
@@ -2440,14 +2786,8 @@ bool Rr_UICombobox(
 
     Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
 
-    Rr_String SelectedString =
-        Rr_CreateString(Options[*SelectedIndex], 0, Scratch.Arena);
-    Rr_Vec2 SelectedTextSize = Rr_UICalculateTextSize(
-        gContext->Font,
-        gContext->FontSize,
-        &SelectedString,
-        0.0f,
-        0);
+    Rr_Vec2 SelectedTextSize =
+        Rr_UIDrawText(true, Rr_V2F(0.0f), Options[*SelectedIndex], 0, NULL, 0);
 
     Rr_Vec2 ButtonPosition = Layout->Cursor;
 
@@ -2456,7 +2796,7 @@ bool Rr_UICombobox(
     Rr_UIDrawText(
         0,
         SelectedTextPosition,
-        &SelectedString,
+        Options[*SelectedIndex],
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -2504,12 +2844,10 @@ bool Rr_UICombobox(
         for (uint32_t Index = 0; Index < OptionCount; ++Index)
         {
             Rr_UIQuad OptionButtonQuad = Rr_UIReserveQuad();
-            Rr_String OptionString =
-                Rr_CreateString(Options[Index], 0, Scratch.Arena);
             Rr_Vec2 OptionSize = Rr_UIDrawText(
                 0,
                 PopupLayout->Cursor,
-                &OptionString,
+                Options[Index],
                 0,
                 &gContext->Style.Foreground,
                 0);
@@ -2607,13 +2945,12 @@ bool Rr_UICombobox(
         Rr_UIDrawSolidTriangle(TrianglePositions, &gContext->Style.Foreground);
     }
 
-    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
     Rr_Vec2 TitlePosition = Layout->Cursor;
     TitlePosition.X += gContext->ButtonPadding.Width + BorderSize.Width;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
-        &TitleString,
+        Title,
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -2784,13 +3121,12 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
     };
     Rr_UIDrawBevel(&BevelRect, Color, Held);
 
-    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
     Rr_Vec2 TitlePosition = Layout->Cursor;
     TitlePosition.X += gContext->ButtonPadding.Width + ColorBoxSize.Width;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
-        &TitleString,
+        Title,
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -2823,10 +3159,9 @@ static inline float Rr_UISlider(
 
     size_t TitleLength = strlen(Title);
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
-    Rr_String TitleString = Rr_CreateString(Title, TitleLength, Scratch.Arena);
 
     Rr_Vec2 TitleSize =
-        Rr_UIDrawText(true, Layout->Cursor, &TitleString, 0.0f, NULL, 0);
+        Rr_UIDrawText(true, Layout->Cursor, Title, 0.0f, NULL, 0);
 
     float SliderWidth = Layout->AvailableContentsWidth -
                         gContext->ButtonPadding.Width - TitleSize.Width;
@@ -2849,10 +3184,8 @@ static inline float Rr_UISlider(
 
     if (ValueCString != NULL)
     {
-        Rr_String ValueString =
-            Rr_CreateString(ValueCString, ValueCStringLength, Scratch.Arena);
         Rr_Vec2 ValueSize =
-            Rr_UIDrawText(1, Rr_V2F(0.0f), &ValueString, 0.0f, NULL, 0);
+            Rr_UIDrawText(1, Rr_V2F(0.0f), ValueCString, 0.0f, NULL, 0);
 
         Rr_Vec2 ValuePosition = Layout->Cursor;
         ValuePosition.X = HandleRect.Offset.X + HandleWidth / 2.0f +
@@ -2866,7 +3199,7 @@ static inline float Rr_UISlider(
         Rr_UIDrawText(
             0,
             ValuePosition,
-            &ValueString,
+            ValueCString,
             0.0f,
             &gContext->Style.Foreground,
             0);
@@ -2881,7 +3214,8 @@ static inline float Rr_UISlider(
                       RR_UI_DRAG_OP_WIDGET,
                       TitleHash,
                       Rr_V2(HandleDragOffset, 0.0f),
-                      &Hovered);
+                      &Hovered,
+                      NULL);
 
     if (Dragging)
     {
@@ -2906,7 +3240,7 @@ static inline float Rr_UISlider(
     Rr_UIDrawText(
         0,
         TitlePosition,
-        &TitleString,
+        Title,
         0.0f,
         &gContext->Style.Foreground,
         0);
@@ -2984,6 +3318,7 @@ void Rr_UIInit(void)
         .Background = Rr_U32ToRGBA(0x292F33FA),
         .TitleBackground = Rr_U32ToRGBA(0xD54251FA),
         .Outline = Rr_U32ToRGBA(0x6C6F72FA),
+        .SelectedTextBackground = Rr_U32ToRGBA(0x6EA5FEFA),
 
         .ButtonNormal = Rr_U32ToRGBA(0x4c565dFF),
         .ButtonHovered = Rr_U32ToRGBA(0x687e8dFF),

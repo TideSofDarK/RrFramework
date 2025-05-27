@@ -179,6 +179,81 @@ static inline uint32_t Rr_RGBAtoU32(Rr_Vec4 Color)
     return Result;
 }
 
+typedef struct Rr_UTF8Decoder Rr_UTF8Decoder;
+struct Rr_UTF8Decoder
+{
+    size_t CodepointIndex;
+    size_t CStringIndex;
+    const char *CString;
+    uint32_t Codepoint;
+    uint8_t Carry;
+};
+
+static inline uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
+{
+    static const uint8_t READY = 128;
+    static const uint8_t TWO = 192;
+    static const uint8_t THREE = 224;
+    static const uint8_t FOUR = 240;
+    static const uint8_t FIVE = 248;
+
+    while (true)
+    {
+        if (Decoder->Carry > 0)
+        {
+            Decoder->Carry--;
+            Decoder->Codepoint |=
+                (uint8_t)((~TWO & Decoder->CString[Decoder->CStringIndex])
+                          << (Decoder->Carry * 6));
+
+            if (Decoder->Carry == 0)
+            {
+                Decoder->CodepointIndex++;
+                Decoder->CStringIndex++;
+                return Decoder->Codepoint;
+            }
+        }
+        else
+        {
+            if ((Decoder->CString[Decoder->CStringIndex] & FOUR) == FOUR)
+            {
+                Decoder->Codepoint =
+                    (uint8_t)(~FIVE & Decoder->CString[Decoder->CStringIndex]);
+                Decoder->Codepoint <<= 3 * 6;
+                Decoder->Carry = 3;
+                Decoder->CStringIndex++;
+                continue;
+            }
+            else if ((Decoder->CString[Decoder->CStringIndex] & THREE) == THREE)
+            {
+                Decoder->Codepoint =
+                    (uint8_t)(~FOUR & Decoder->CString[Decoder->CStringIndex]);
+                Decoder->Codepoint <<= 2 * 6;
+                Decoder->Carry = 2;
+                Decoder->CStringIndex++;
+                continue;
+            }
+            else if ((Decoder->CString[Decoder->CStringIndex] & TWO) == TWO)
+            {
+                Decoder->Codepoint =
+                    (uint8_t)(~THREE & Decoder->CString[Decoder->CStringIndex]);
+                Decoder->Codepoint <<= 1 * 6;
+                Decoder->Carry = 1;
+                Decoder->CStringIndex++;
+                continue;
+            }
+            else
+            {
+                Decoder->CodepointIndex++;
+                Decoder->Codepoint =
+                    Decoder->CString[Decoder->CStringIndex] & ~READY;
+                Decoder->CStringIndex++;
+                return Decoder->Codepoint;
+            }
+        }
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

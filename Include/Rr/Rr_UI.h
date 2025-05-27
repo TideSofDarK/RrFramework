@@ -74,6 +74,7 @@ struct Rr_UIStyle
     Rr_Vec4 Background;
     Rr_Vec4 TitleBackground;
     Rr_Vec4 Outline;
+    Rr_Vec4 SelectedTextBackground;
 
     Rr_Vec4 ScrollbarBackground;
     Rr_Vec4 ScrollbarNormal;
@@ -98,13 +99,6 @@ typedef enum
     RR_UI_TEXT_FLAGS_WRAPPED_BIT = (1 << 0),
 } Rr_UITextFlagsBits;
 typedef uint32_t Rr_UITextFlags;
-
-Rr_Vec2 Rr_UICalculateTextSize(
-    Rr_UIFont *Font,
-    float FontSize,
-    struct Rr_String *String,
-    float AvailableWidth,
-    Rr_UITextFlags Flags);
 
 typedef enum
 {
@@ -155,6 +149,7 @@ extern bool Rr_UIButton(const char *Title);
 extern bool Rr_UICheckbox(const char *Title, bool *Checked);
 
 extern bool Rr_UIInputField(
+    const char *Title,
     size_t BufferSize,
     char *Buffer,
     Rr_UIInputFieldFlags Flags);

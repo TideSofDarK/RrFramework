@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include <Rr/Rr_Platform.h>
+#include "Rr_Platform.h"
 
 #include <Rr/Rr_Input.h>
 
@@ -31,13 +31,16 @@
 bool Rr_PollPlatformEvent(Rr_Event *Event)
 {
     static SDL_Event SDLEvent;
-    if (SDL_PollEvent(&SDLEvent) == false)
-    {
-        return false;
-    }
+    SDL_PollEvent(&SDLEvent);
 
     switch (SDLEvent.type)
     {
+        case SDL_EVENT_TEXT_INPUT:
+        {
+            Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
+            Event->Text.Text = SDLEvent.text.text;
+            return true;
+        }
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
         {

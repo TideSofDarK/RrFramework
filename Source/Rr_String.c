@@ -34,11 +34,11 @@ static size_t Rr_UTF8ToUTF32(
     uint32_t *Buffer,
     size_t BufferLength)
 {
-    uint8_t Ready = 128;
-    uint8_t Two = 192;
-    uint8_t Three = 224;
-    uint8_t Four = 240;
-    uint8_t Five = 248;
+    static const uint8_t Ready = 128;
+    static const uint8_t Two = 192;
+    static const uint8_t Three = 224;
+    static const uint8_t Four = 240;
+    static const uint8_t Five = 248;
 
     uint8_t Carry = 0;
     size_t FinalIndex = 0;

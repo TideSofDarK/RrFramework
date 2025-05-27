@@ -136,6 +136,15 @@ static void Iterate(void *UserData)
             static Rr_Vec4 ColorB = { 0.9f, 0.1f, 0.2f, 1.0f };
             Rr_UIColorPicker("Color B", &ColorB);
         }
+        if (Rr_UIFold("Text Input"))
+        {
+            static char StringBuffer[64] = "Hello, World!";
+            Rr_UIInputField("Simple UTF8 String", 64, StringBuffer, 0);
+            static char MultilineBuffer[64] = "Line A\nLine B <- Delete this!\nLine C!";
+            Rr_UIInputField("Multiline UTF8 String", 64, MultilineBuffer, 0);
+            // static char FloatBuffer[64] = "";
+            // Rr_UIInputField("Simple Float", 64, FloatBuffer, 0);
+        }
         Rr_UILabel("Button");
         Rr_UIBeginHorizontal();
         if (Rr_UIButton("Show Style Editor"))

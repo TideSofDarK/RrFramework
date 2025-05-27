@@ -45,3 +45,11 @@
         abort();                             \
     }                                        \
     while (0)
+
+#define RR_NOT_IMPLEMENTED()                 \
+    do                                       \
+    {                                        \
+        fprintf(stderr, "Not implemented!"); \
+        abort();                             \
+    }                                        \
+    while (0)

@@ -1,4 +1,5 @@
-* What is RrFramework?
+* RrFramework
+
 RrFramework abstracts platform layer and exposes easy-to-use graph-based graphics API implemented on top of Vulkan API.
 It comes with its own IMGUI style API for quick prototyping of user interfaces and creation of development tooling.
 
@@ -7,6 +8,7 @@ Not yet suitable for anything remotely serious.
 #+end_quote
 
 * Requirements
+
 + Windows or Linux computer
 + CMake 3.28+
 + C11/C++11 Compiler
@@ -16,6 +18,7 @@ Not yet suitable for anything remotely serious.
 + Vulkan SDK 1.1+
 
 * Using RrFramework
+
 You can find examples in =Examples/= folder.
 These don't use some shared framework and are designed to be standalone.
 Preferred build system is CMake. You can use built-in =FetchContent= or [[https://github.com/cpm-cmake/CPM.cmake][CPM.cmake]]
@@ -26,6 +29,7 @@ Then simply link your application against it,
 #+END_SRC
 
 * Acknowledgements
+
 + [[https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator][VulkanMemoryAllocator]]
 + [[https://github.com/libsdl-org/SDL][SDL]]
 + [[https://github.com/DaveGamble/cJSON][cJSON]]
@@ -34,4 +38,5 @@ Then simply link your application against it,
 + [[https://github.com/nothings/stb][stb]]
 
 * License
+
 [[LICENSE.org][MIT]]

@@ -1,13 +1,19 @@
 * Critical
+
 - [X] Synchronization (?) bug with host written buffers.
       Turned out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame.
       Solution: call Iterate() after waiting on the fence.
 - [ ] Hash collision handling across all usages of Rr_Map
 - [ ] Hashing objects such as VkFramebuffer looks very bad
-- [ ] Add deletion queues for Vulkan object
+- [ ] Add deletion queues for Vulkan objects
+- [ ] MSAA support
+- [ ] 3D image support
+- [ ] Arbitrary asset loading within Rr_LoadingThread
 
 * Features
+
 ** User Interface
+
 - [X] Combobox
 - [X] Auto-resizing windows
 - [X] Sliders
@@ -15,11 +21,27 @@
 - [ ] Color picker
 - [ ] Radio buttons
 - [ ] Nested windows
+
 ** Debug Overlay
+
 - [ ] Very basic profilers for CPU/GPU
-- [ ] Memory arena registry and better tracking of what's happening there
-** Backend (low-priority)
+- [ ] Memory arena registry and maybe some kind of memory profiler
+
+** GLTF
+
+- [ ] Make sure current implementation makes sense
+- [ ] Add support for skeletal animation
+
+** Examples
+
+- [ ] Pre-rendered depth
+
+** Low-priority
+
 - [ ] Move to GLFW
 - [ ] Move to C11
-- [ ] Own implementation of Windows platform layer
-
+- [ ] Remove InputMap
+- [ ] Replace VMA with custom allocator
+- [ ] Own implementation of Windows/Linux platform layers
+- [ ] Macro-based stuff should probably be internal.
+      The goal is clean and minimal API that's 99% accessible from other languages.

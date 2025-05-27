@@ -205,6 +205,7 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_InitFrameTime(&gApp->FrameTime, gApp->Window);
 
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
+    SDL_StartTextInput(gApp->Window);
 
     gApp->Renderer = Rr_CreateRenderer();
 
@@ -312,6 +313,11 @@ double Rr_GetDeltaSeconds(void)
 double Rr_GetTimeSeconds(void)
 {
     return (double)SDL_GetTicks() / 1000.0;
+}
+
+uint64_t Rr_GetTimeMS(void)
+{
+    return SDL_GetTicks();
 }
 
 void Rr_SetRelativeMouseMode(bool IsRelative)

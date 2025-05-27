@@ -112,6 +112,12 @@ struct Rr_MouseWheelEvent
     Rr_Vec2 Amount;
 };
 
+typedef struct Rr_TextInputEvent Rr_TextInputEvent;
+struct Rr_TextInputEvent
+{
+    const char *Text;
+};
+
 typedef struct Rr_DropFileEvent Rr_DropFileEvent;
 struct Rr_DropFileEvent
 {
@@ -124,10 +130,11 @@ struct Rr_Event
     Rr_EventType Type;
     union
     {
-        Rr_KeyEvent Key;
         Rr_MouseMotionEvent MouseMotion;
-        Rr_MouseButtonEvent MouseButton;
         Rr_MouseWheelEvent Wheel;
+        Rr_MouseButtonEvent MouseButton;
+        Rr_KeyEvent Key;
+        Rr_TextInputEvent Text;
         Rr_DropFileEvent DropFile;
     };
 };
