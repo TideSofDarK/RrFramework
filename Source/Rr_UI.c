@@ -3190,19 +3190,28 @@ static inline float Rr_UISlider(
         Rr_Vec2 ValuePosition = Layout->Cursor;
         ValuePosition.X = HandleRect.Offset.X + HandleWidth / 2.0f +
                           gContext->ButtonPadding.Width;
+        bool ShowValue = true;
         if (ValuePosition.X + ValueSize.Width >
             SliderRect.Offset.X + SliderRect.Extent.Width)
         {
             ValuePosition.X = HandleRect.Offset.X -
                               gContext->ButtonPadding.Width - ValueSize.Width;
+            if (ValuePosition.X < SliderRect.Offset.X)
+            {
+                ShowValue = false;
+            }
         }
-        Rr_UIDrawText(
-            0,
-            ValuePosition,
-            ValueCString,
-            0.0f,
-            &gContext->Style.Foreground,
-            0);
+
+        if (ShowValue)
+        {
+            Rr_UIDrawText(
+                0,
+                ValuePosition,
+                ValueCString,
+                0.0f,
+                &gContext->Style.Foreground,
+                0);
+        }
     }
 
     float HandleDragOffset =
