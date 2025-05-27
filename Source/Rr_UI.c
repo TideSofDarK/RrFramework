@@ -1826,6 +1826,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
                 &Window->VScroll))
         {
             Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
+            Window->VScroll = roundf(Window->VScroll);
         }
 
         ScrollbarHandlePosition.Y += Window->VScroll * FillRatio;
@@ -1879,7 +1880,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
                 gContext->DragOpWindowStart.Y + (Delta.Y * FillRatio);
         }
 
-        Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
+        Window->VScroll = RR_CLAMP(0.0f, roundf(Window->VScroll), MaxYScroll);
 
         Rr_UIDrawBevel(
             &(Rr_Rect){
