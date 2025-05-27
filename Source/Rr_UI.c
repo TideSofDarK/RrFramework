@@ -2750,7 +2750,8 @@ bool Rr_UIInputField(
     Rr_Vec2 TotalSize = {
         gContext->ButtonPadding.Width * 3.0f + BufferSize.Width +
             TitleSize.Width,
-        BufferSize.Height + Layout->ContentsPadding.Height + gContext->ButtonPadding.Height * 2.0f,
+        BufferSize.Height + Layout->ContentsPadding.Height +
+            gContext->ButtonPadding.Height * 2.0f,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -3167,6 +3168,7 @@ static inline float Rr_UISlider(
     Rr_Rect HandleRect = { Layout->Cursor,
                            Rr_V2(HandleWidth, gContext->LineHeight) };
     HandleRect.Offset.X += Normalized * (SliderWidth - HandleWidth);
+    HandleRect.Offset.X = roundf(HandleRect.Offset.X);
     HandleRect = Rr_ResizeRect(&HandleRect, -gContext->BevelThickness);
     Rr_UIDrawBevel(&HandleRect, &gContext->Style.ButtonNormal, false);
 
@@ -3179,8 +3181,9 @@ static inline float Rr_UISlider(
         ValuePosition.X = HandleRect.Offset.X + HandleWidth / 2.0f +
                           gContext->ButtonPadding.Width;
         bool ShowValue = true;
-        if (ValuePosition.X + ValueSize.Width >
-            SliderRect.Offset.X + SliderRect.Extent.Width)
+        if (ValuePosition.X + ValueSize.Width > SliderRect.Offset.X +
+                                                    SliderRect.Extent.Width -
+                                                    gContext->BevelThickness)
         {
             ValuePosition.X = HandleRect.Offset.X -
                               gContext->ButtonPadding.Width - ValueSize.Width;
