@@ -70,6 +70,7 @@ static void Iterate(void *UserData)
     static bool NoResize = false;
     static bool NoScrollbar = false;
     static bool NoTitle = false;
+    static bool AutoResize = false;
 
     Rr_UIWindowFlags Flags = 0;
     if (CloseButton)
@@ -87,6 +88,10 @@ static void Iterate(void *UserData)
     if (NoTitle)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BIT;
+    }
+    if (AutoResize)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
     }
 
     FixedSizeWindow();
@@ -113,9 +118,10 @@ static void Iterate(void *UserData)
         }
         if (Rr_UIFold("Checkbox"))
         {
-            Rr_UIBeginHorizontal();
             Rr_UICheckbox("Close Button", &CloseButton);
+            Rr_UIBeginHorizontal();
             Rr_UICheckbox("No Resize", &NoResize);
+            Rr_UICheckbox("Auto Resize", &AutoResize);
             Rr_UIEndHorizontal();
             Rr_UIBeginHorizontal();
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
