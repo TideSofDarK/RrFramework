@@ -131,21 +131,15 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
     FrameTime->Now = SDL_GetPerformanceCounter();
 }
 
-Rr_IntVec2 Rr_GetDefaultWindowSize(void)
+static Rr_IntVec2 Rr_GetDefaultWindowSize(void)
 {
-    SDL_DisplayID DisplayID = SDL_GetPrimaryDisplay();
-
-    SDL_Rect UsableBounds;
-    SDL_GetDisplayUsableBounds(DisplayID, &UsableBounds);
+    Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
 
     float ScaleFactor = 0.75f;
 
-    return (Rr_IntVec2){
-        .Width =
-            (int32_t)((float)(UsableBounds.w - UsableBounds.x) * ScaleFactor),
-        .Height =
-            (int32_t)((float)(UsableBounds.h - UsableBounds.y) * ScaleFactor)
-    };
+    return (Rr_IntVec2){ .Width = (int32_t)(DisplaySize.Width * ScaleFactor),
+                         .Height =
+                             (int32_t)(DisplaySize.Height * ScaleFactor) };
 }
 
 static inline bool Rr_PollEvent(Rr_Event *Event)
@@ -181,8 +175,6 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_Vulkan_LoadLibrary(NULL);
 
-    Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
-
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     gApp = RR_ALLOC_TYPE(Arena, Rr_App);
@@ -191,12 +183,14 @@ void Rr_Run(Rr_AppConfig *Config)
     gApp->Config = Config;
     gApp->Window = SDL_CreateWindow(
         Config->Title,
-        WindowSize.Width,
-        WindowSize.Height,
+        0,
+        0,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
             SDL_WINDOW_HIGH_PIXEL_DENSITY);
     gApp->SyncArena = Rr_CreateSyncArena();
     gApp->UserData = Config->UserData;
+
+    Rr_SetWindowSize(Rr_GetDefaultWindowSize());
 
     Rr_SetScratchTLS(&gApp->ScratchArenaTLS);
 

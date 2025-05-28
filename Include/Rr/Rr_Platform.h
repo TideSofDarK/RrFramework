@@ -68,6 +68,10 @@ extern void Rr_LockSpinlock(Rr_Spinlock *SpinLock);
 
 extern void Rr_UnlockSpinlock(Rr_Spinlock *SpinLock);
 
+extern Rr_IntVec2 Rr_GetDisplaySize(void);
+
+extern void Rr_SetWindowSize(Rr_IntVec2 Size);
+
 typedef enum Rr_EventType
 {
     RR_EVENT_TYPE_SWAPCHAIN_CREATED,

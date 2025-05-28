@@ -24,6 +24,8 @@
 
 #include "Rr_Platform.h"
 
+#include "Rr_App.h"
+
 #include <Rr/Rr_Input.h>
 
 #include <SDL3/SDL.h>
@@ -133,4 +135,22 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
         default:
             return false;
     }
+}
+
+Rr_IntVec2 Rr_GetDisplaySize(void)
+{
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gApp->Window);
+    float Scale = SDL_GetWindowDisplayScale(gApp->Window);
+    SDL_Rect Rect;
+    SDL_GetDisplayBounds(DisplayID, &Rect);
+    return (Rr_IntVec2){ Scale * Rect.w, Scale * Rect.h };
+}
+
+void Rr_SetWindowSize(Rr_IntVec2 Size)
+{
+    float Scale = SDL_GetWindowDisplayScale(gApp->Window);
+    SDL_SetWindowSize(
+        gApp->Window,
+        (int32_t)(Size.Width / Scale),
+        (int32_t)(Size.Height / Scale));
 }

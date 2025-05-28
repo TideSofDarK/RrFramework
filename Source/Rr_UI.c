@@ -41,6 +41,9 @@
 #include <float.h>
 #include <stdio.h>
 
+#define RR_UI_MIN_FONT_SIZE (12.0f)
+#define RR_UI_MAX_FONT_SIZE (48.0f)
+
 typedef uint64_t Rr_UIHash;
 typedef uint16_t Rr_UIIndex;
 
@@ -3347,8 +3350,8 @@ void Rr_UIInit(void)
         RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
         RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
-    gContext->NextFontSize =
-        24.0f; /* TODO: Calculate default font size based on DPI. */
+    Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
+    Rr_UISetFontSize(DisplaySize.Width / 112.0f);
 
     gContext->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.125f },
@@ -3805,7 +3808,10 @@ void Rr_UISetFontSize(float Size)
 {
     if (gContext)
     {
-        gContext->NextFontSize = RR_CLAMP(8.0f, RR_UI_ROUND(Size), 96.0f);
+        gContext->NextFontSize = RR_CLAMP(
+            RR_UI_MIN_FONT_SIZE,
+            RR_UI_ROUND(Size),
+            RR_UI_MAX_FONT_SIZE);
     }
 }
 
@@ -3840,6 +3846,7 @@ void Rr_UIDebugOverlay(void)
                 MousePosition.Y);
             Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
             Rr_UILabelF("Mouse Delta: %.1f %.1f", MouseDelta.X, MouseDelta.Y);
+            Rr_UILabelF("UI Font Size: %.2f", gContext->FontSize);
             Rr_UISeparator();
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =
