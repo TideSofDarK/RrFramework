@@ -155,7 +155,10 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
     float Scale = SDL_GetWindowDisplayScale(gApp->Window);
     SDL_Rect Rect;
     SDL_GetDisplayBounds(DisplayID, &Rect);
-    return (Rr_IntVec2){ Scale * Rect.w, Scale * Rect.h };
+    return (Rr_IntVec2){
+        (int32_t)(Scale * Rect.w),
+        (int32_t)(Scale * Rect.h),
+    };
 }
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
