@@ -415,7 +415,7 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
     Rr_LoadAsyncContext LoadAsyncContext = { 0 };
     Rr_InitLoadAsyncContext(Renderer, &LoadAsyncContext);
 
-    size_t CurrentLoadingContextIndex = 0;
+    size_t CurrentLoadingUIContextIndex = 0;
 
     while (true)
     {
@@ -432,9 +432,9 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
         }
 
         Rr_ProcessLoadContext(
-            &LoadThread->LoadContexts.Data[CurrentLoadingContextIndex],
+            &LoadThread->LoadContexts.Data[CurrentLoadingUIContextIndex],
             LoadAsyncContext);
-        CurrentLoadingContextIndex++;
+        CurrentLoadingUIContextIndex++;
 
         Device->ResetCommandPool(
             Device->Handle,
@@ -450,10 +450,10 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
         Device->ResetFences(Device->Handle, 1, &LoadAsyncContext.Fence);
 
         SDL_LockMutex(LoadThread->Mutex);
-        if (CurrentLoadingContextIndex >= LoadThread->LoadContexts.Count)
+        if (CurrentLoadingUIContextIndex >= LoadThread->LoadContexts.Count)
         {
             Rr_ResetArena(LoadThread->Arena);
-            CurrentLoadingContextIndex = 0;
+            CurrentLoadingUIContextIndex = 0;
             RR_ZERO(LoadThread->LoadContexts);
         }
         SDL_UnlockMutex(LoadThread->Mutex);
@@ -528,9 +528,9 @@ Rr_LoadContext *Rr_LoadAsync(
     Rr_LoadTask *NewTasks =
         RR_ALLOC_TYPE_COUNT(LoadThread->Arena, Rr_LoadTask, TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
-    Rr_LoadContext *LoadingContext =
+    Rr_LoadContext *LoadingUIContext =
         RR_PUSH_INTO_ARRAY(&LoadThread->LoadContexts, LoadThread->Arena);
-    *LoadingContext = (Rr_LoadContext){
+    *LoadingUIContext = (Rr_LoadContext){
         .Semaphore = SDL_CreateSemaphore(0),
         .LoadingCallback = LoadCallback,
         .UserData = UserData,
@@ -540,7 +540,7 @@ Rr_LoadContext *Rr_LoadAsync(
     SDL_SignalSemaphore(LoadThread->Semaphore);
     SDL_UnlockMutex(LoadThread->Mutex);
 
-    return LoadingContext;
+    return LoadingUIContext;
 }
 
 Rr_LoadResult Rr_LoadImmediate(

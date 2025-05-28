@@ -137,6 +137,18 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
     }
 }
 
+Rr_IntVec2 Rr_GetWindowSize(void)
+{
+    Rr_IntVec2 Size;
+    SDL_GetWindowSizeInPixels(gApp->Window, &Size.X, &Size.Y);
+    return Size;
+}
+
+void Rr_SetWindowTitle(const char *Title)
+{
+    SDL_SetWindowTitle(gApp->Window, Title);
+}
+
 Rr_IntVec2 Rr_GetDisplaySize(void)
 {
     SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gApp->Window);
@@ -153,4 +165,33 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
         gApp->Window,
         (int32_t)(Size.Width / Scale),
         (int32_t)(Size.Height / Scale));
+}
+
+void Rr_SetCursor(Rr_CursorType Type)
+{
+    switch (Type)
+    {
+        case RR_UI_CURSOR_TYPE_NORMAL:
+        {
+            static SDL_Cursor *SDLCursor;
+            if (SDLCursor == NULL)
+            {
+                SDLCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+            }
+            SDL_SetCursor(SDLCursor);
+            return;
+        }
+        case RR_UI_CURSOR_TYPE_TEXT:
+        {
+            static SDL_Cursor *SDLCursor;
+            if (SDLCursor == NULL)
+            {
+                SDLCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
+            }
+            SDL_SetCursor(SDLCursor);
+            return;
+        }
+        default:
+            return;
+    }
 }

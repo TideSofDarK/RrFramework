@@ -34,6 +34,8 @@ extern void Rr_UICleanup(void);
 
 extern void Rr_UIProcessEvent(Rr_Event *Event);
 
+extern void Rr_UINewFrame(void);
+
 extern void Rr_UIBegin(void);
 
 extern void Rr_UIEnd(void);

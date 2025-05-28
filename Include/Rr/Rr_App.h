@@ -50,10 +50,6 @@ extern void Rr_SetFrameLimiterEnabled(bool Enabled);
 
 extern struct Rr_Renderer *Rr_GetRenderer(void);
 
-extern Rr_IntVec2 Rr_GetWindowSize(void);
-
-extern void Rr_SetWindowTitle(const char *Title);
-
 extern double Rr_GetFramesPerSecond(void);
 
 extern void Rr_ToggleFullscreen(void);

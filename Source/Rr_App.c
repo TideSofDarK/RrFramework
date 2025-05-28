@@ -89,31 +89,6 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
     }
 }
 
-static void Rr_Iterate(void)
-{
-    Rr_CalculateDeltaTime(&gApp->FrameTime);
-
-    Rr_NewFrame();
-
-    Rr_UIBegin();
-
-    gApp->Config->IterateFunc(gApp->UserData);
-
-    Rr_UIEnd();
-
-    Rr_DrawFrame();
-
-#ifdef RR_PERFORMANCE_COUNTER
-    Rr_CalculateFPS(&gApp->FrameTime);
-#endif
-
-    bool Minimized = (SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_MINIMIZED);
-    if (gApp->FrameTime.EnableFrameLimiter || Minimized)
-    {
-        Rr_SimulateVSync(&gApp->FrameTime);
-    }
-}
-
 static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
 {
 #ifdef RR_PERFORMANCE_COUNTER
@@ -211,6 +186,16 @@ void Rr_Run(Rr_AppConfig *Config)
 
     while (Rr_GetAtomicInt(&gApp->QuitRequested) == false)
     {
+        Rr_CalculateDeltaTime(&gApp->FrameTime);
+
+        /* NOTE: The reason Rr_NewFrame() is called before processing events
+         * is to allow event processing use temporary frame arena to buffer
+         * stuff such as text input.
+         * Currently the UI relies on it. */
+
+        Rr_NewFrame();
+        Rr_UINewFrame();
+
         for (Rr_Event Event; Rr_PollEvent(&Event);)
         {
             Rr_UIProcessEvent(&Event);
@@ -233,7 +218,24 @@ void Rr_Run(Rr_AppConfig *Config)
             }
         }
 
-        Rr_Iterate();
+        Rr_UIBegin();
+
+        gApp->Config->IterateFunc(gApp->UserData);
+
+        Rr_UIEnd();
+
+        Rr_DrawFrame();
+
+#ifdef RR_PERFORMANCE_COUNTER
+        Rr_CalculateFPS(&gApp->FrameTime);
+#endif
+
+        bool Minimized =
+            SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_MINIMIZED;
+        if (gApp->FrameTime.EnableFrameLimiter || Minimized)
+        {
+            Rr_SimulateVSync(&gApp->FrameTime);
+        }
     }
 
     Rr_WaitIdle(gApp->Renderer);
@@ -263,18 +265,6 @@ void Rr_SetFrameLimiterEnabled(bool Enabled)
 Rr_Renderer *Rr_GetRenderer(void)
 {
     return gApp->Renderer;
-}
-
-Rr_IntVec2 Rr_GetWindowSize(void)
-{
-    Rr_IntVec2 Size;
-    SDL_GetWindowSizeInPixels(gApp->Window, &Size.X, &Size.Y);
-    return Size;
-}
-
-void Rr_SetWindowTitle(const char *Title)
-{
-    SDL_SetWindowTitle(gApp->Window, Title);
 }
 
 double Rr_GetFramesPerSecond(void)

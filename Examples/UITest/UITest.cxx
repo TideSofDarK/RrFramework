@@ -16,10 +16,9 @@ static void FixedSizeWindow()
     if (Rr_UIBeginWindow(
             "Fixed Size Window",
             &FixedSizeWindowOpen,
-            RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
-                RR_UI_WINDOW_FLAGS_NO_BORDER_BIT))
+            RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT))
     {
-        Rr_UILabel("Border is disabled for this window.");
+        Rr_UILabel("Resize is disabled for this window.");
         Rr_UILabelF("Window Size: %dx%d", 400, 400);
         Rr_UIEndWindow();
     }
