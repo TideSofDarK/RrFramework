@@ -214,7 +214,7 @@ struct Rr_UIContext
 
 static Rr_UIContext *gContext;
 
-#define RR_UI_ROUND(Value) (ceil((Value) / 2.0f) * 2.0f)
+#define RR_UI_ROUND(Value) (ceilf((Value) / 2.0f) * 2.0f)
 
 #define RR_UI_ROUND_V2(Value) \
     (Rr_V2(RR_UI_ROUND((Value).X), RR_UI_ROUND((Value).Y)))
@@ -3294,7 +3294,7 @@ bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
     float OutNormalized = Rr_UISlider(Title, InNormalized, Buffer, Length);
     OutNormalized =
         roundf(OutNormalized * (float)(Max - Min)) / (float)(Max - Min);
-    int32_t Out = OutNormalized * (Max - Min) + Min;
+    int32_t Out = (int32_t)(OutNormalized * (Max - Min) + Min);
     *Value = Out;
     return false;
 }
