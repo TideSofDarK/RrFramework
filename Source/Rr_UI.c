@@ -2784,6 +2784,35 @@ static inline void Rr_UIConsumeTextInput(
     *CursorBegin = *CursorEnd;
 }
 
+static inline size_t Rr_UIThisLineCol(char *Buffer, size_t Cursor)
+{
+    if (Buffer[Cursor] == '\n')
+    {
+        size_t ThisLine = Rr_PreviousUTF8LFOffset(Buffer, Cursor);
+        size_t Col = Cursor - Rr_PreviousUTF8LFOffset(Buffer, Cursor - 1);
+        if (Col == ThisLine)
+        {
+            return Col;
+        }
+        else
+        {
+            return Col - 1;
+        }
+    }
+    else
+    {
+        size_t ThisLine = Rr_PreviousUTF8LFOffset(Buffer, Cursor);
+        if (ThisLine != 0)
+        {
+            return Cursor - ThisLine - 1;
+        }
+        else
+        {
+            return Cursor - ThisLine;
+        }
+    }
+}
+
 static void Rr_UIEditUTF8Buffer(
     size_t *CursorBegin,
     size_t *CursorEnd,
@@ -2822,6 +2851,7 @@ static void Rr_UIEditUTF8Buffer(
         CursorMax = RR_MAX(NewCursorBegin, NewCursorEnd);
 
         bool Edited = false;
+        bool ResetCol = false;
 
         if (Event->Scancode == RR_SCANCODE_ESCAPE)
         {
@@ -2841,6 +2871,7 @@ static void Rr_UIEditUTF8Buffer(
                     &NewCursorBegin,
                     &NewCursorEnd);
                 Edited = true;
+                ResetCol = true;
             }
         }
 
@@ -2849,35 +2880,20 @@ static void Rr_UIEditUTF8Buffer(
             if (NewCursorEnd > 0)
             {
                 size_t DesiredOffset = gUIContext->TextInputCursorMaxCol;
-                if (DesiredOffset > NewCursorEnd)
+                size_t ThisLineCol = Rr_UIThisLineCol(Buffer, NewCursorEnd);
+                size_t ThisLine = NewCursorEnd - ThisLineCol;
+                if (ThisLine == 0)
                 {
                     NewCursorEnd = 0;
                 }
                 else
                 {
-                    size_t ThisLine = NewCursorEnd - DesiredOffset;
-                    size_t PreviousLineOffset =
-                        Rr_PreviousUTF8LFOffset(Buffer, ThisLine);
-                    if (PreviousLineOffset > ThisLine)
-                    {
-                        if (PreviousLineOffset == NewCursorEnd)
-                        {
-                            NewCursorEnd = 0;
-                        }
-                        else if (PreviousLineOffset > DesiredOffset)
-                        {
-                            NewCursorEnd = DesiredOffset - 1;
-                        }
-                        else
-                        {
-                            NewCursorEnd = PreviousLineOffset - 1;
-                        }
-                    }
-                    else
-                    {
-                        size_t PreviousLine = ThisLine - PreviousLineOffset;
-                        NewCursorEnd = PreviousLine + DesiredOffset;
-                    }
+                    size_t PrevLineCol = Rr_UIThisLineCol(Buffer, ThisLine - 2);
+                    size_t PrevLine = ThisLine - 2 - PrevLineCol;
+                    size_t PrevLineLength = PrevLineCol + 1;
+                    NewCursorEnd = PrevLine + (DesiredOffset > PrevLineCol
+                                                   ? PrevLineCol + 1
+                                                   : DesiredOffset);
                 }
             }
             if (Event->Keymod != RR_KEYMOD_SHIFT)
@@ -2888,33 +2904,23 @@ static void Rr_UIEditUTF8Buffer(
         }
         if (Event->Scancode == RR_SCANCODE_DOWN)
         {
-            if (CursorMax < BufferLength)
+            if (NewCursorEnd < BufferLength)
             {
                 size_t DesiredOffset = gUIContext->TextInputCursorMaxCol;
-                size_t NextLine;
-                if (Buffer[NewCursorEnd] == '\n')
+                size_t NextLine = Rr_NextUTF8LFOffset(Buffer, NewCursorEnd);
+                if (NextLine == BufferLength)
                 {
-                    DesiredOffset--;
-                    NextLine = NewCursorEnd + 1;
+                    NewCursorEnd = BufferLength;
                 }
                 else
                 {
-                    size_t NextLineOffset =
-                        Rr_NextUTF8LFOffset(Buffer, NewCursorEnd);
-                    NextLine = NewCursorEnd + NextLineOffset;
+                    NextLine++;
+                    size_t NextNextLine = Rr_NextUTF8LFOffset(Buffer, NextLine);
+                    size_t NextLineLength = NextNextLine - NextLine;
+                    NewCursorEnd = NextLine + (DesiredOffset > NextLineLength
+                                                   ? NextLineLength
+                                                   : DesiredOffset);
                 }
-                size_t NextNextLineOffset =
-                    Rr_NextUTF8LFOffset(Buffer, NextLine);
-                size_t NextNextLine = NextLine + NextNextLineOffset;
-                if (NextLine + DesiredOffset > NextNextLine)
-                {
-                    NewCursorEnd = NextNextLine;
-                }
-                else
-                {
-                    NewCursorEnd = NextLine + DesiredOffset;
-                }
-                NewCursorEnd = RR_MIN(NewCursorEnd, BufferLength);
             }
             if (Event->Keymod != RR_KEYMOD_SHIFT)
             {
@@ -2942,9 +2948,8 @@ static void Rr_UIEditUTF8Buffer(
                     NewCursorEnd = NewCursorBegin = CursorMin;
                 }
             }
-            gUIContext->TextInputCursorMaxCol =
-                Rr_PreviousUTF8LFOffset(Buffer, NewCursorEnd);
             Edited = true;
+            ResetCol = true;
         }
         if (Event->Scancode == RR_SCANCODE_RIGHT)
         {
@@ -2964,9 +2969,8 @@ static void Rr_UIEditUTF8Buffer(
                     NewCursorBegin = NewCursorEnd = CursorMax;
                 }
             }
-            gUIContext->TextInputCursorMaxCol =
-                Rr_PreviousUTF8LFOffset(Buffer, NewCursorEnd);
             Edited = true;
+            ResetCol = true;
         }
 
         if (Event->Keymod == 0)
@@ -3011,6 +3015,12 @@ static void Rr_UIEditUTF8Buffer(
             *CursorEnd = NewCursorEnd;
             gUIContext->TextInputCursorBlinkTime = TimeMS;
         }
+
+        if (ResetCol)
+        {
+            gUIContext->TextInputCursorMaxCol =
+                Rr_UIThisLineCol(Buffer, NewCursorEnd);
+        }
     }
 
     for (size_t Index = 0; Index < gUIContext->TextInputBuffer.Count; ++Index)
@@ -3025,9 +3035,6 @@ static void Rr_UIEditUTF8Buffer(
 
         const char *CString = gUIContext->TextInputBuffer.Data[Index];
         size_t Length = strlen(CString);
-
-        // RR_LOG("%zu %zu", CursorMin, CursorMax);
-        // RR_LOG("%zu %zu", CursorMin, CursorMax);
 
         if (BufferLength + Length + 1 <= BufferCapacity)
         {
@@ -3050,6 +3057,8 @@ static void Rr_UIEditUTF8Buffer(
             *CursorBegin = NewCursorBegin;
             *CursorEnd = NewCursorEnd;
             gUIContext->TextInputCursorBlinkTime = TimeMS;
+            gUIContext->TextInputCursorMaxCol =
+                Rr_UIThisLineCol(Buffer, NewCursorEnd);
         }
     }
 
@@ -3125,7 +3134,7 @@ bool Rr_UIInputField(
         gUIContext->TextInputCursorBegin = NewCursorEnd;
         gUIContext->TextInputCursorEnd = NewCursorEnd;
         gUIContext->TextInputCursorMaxCol =
-            Rr_PreviousUTF8LFOffset(Buffer, NewCursorEnd);
+            Rr_UIThisLineCol(Buffer, NewCursorEnd);
     }
     else if (Active && Dragging)
     {

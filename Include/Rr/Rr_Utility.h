@@ -282,33 +282,23 @@ static inline size_t Rr_PreviousUTF8LFOffset(
     const char *CString,
     size_t CurrentOffset)
 {
-    size_t Total = 0;
-    do
+    while (CurrentOffset != 0 && *(CString + CurrentOffset) != '\n')
     {
-        Total++;
-        if (CurrentOffset == 0)
-        {
-            break;
-        }
         CurrentOffset--;
     }
-    while (*(CString + CurrentOffset) != '\n');
-    return Total;
+    return CurrentOffset;
 }
 
 static inline size_t Rr_NextUTF8LFOffset(
     const char *CString,
     size_t CurrentOffset)
 {
-    size_t Total = 0;
-    do
+    while (*(CString + CurrentOffset) != '\0' &&
+           *(CString + CurrentOffset) != '\n')
     {
         CurrentOffset++;
-        Total++;
     }
-    while (*(CString + CurrentOffset) != '\0' &&
-           *(CString + CurrentOffset) != '\n');
-    return Total;
+    return CurrentOffset;
 }
 
 #ifdef __cplusplus
