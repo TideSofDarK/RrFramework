@@ -84,6 +84,10 @@ typedef enum Rr_CursorType
 
 extern void Rr_SetCursor(Rr_CursorType Type);
 
+extern void Rr_SetClipboardText(const char *CString);
+
+extern const char *Rr_GetClipboardText(void);
+
 typedef enum Rr_EventType
 {
     RR_EVENT_TYPE_SWAPCHAIN_CREATED,

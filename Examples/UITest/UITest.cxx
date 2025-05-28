@@ -5,9 +5,23 @@
 
 static bool FixedSizeWindowOpen = false;
 static bool StyleEditorWindowOpen = false;
+static bool TextInputWindowOpen = false;
 
 static void Init(void *UserData)
 {
+}
+
+static void TextInputWindow()
+{
+    if (Rr_UIBeginWindow(
+            "Text Input Window",
+            &TextInputWindowOpen,
+            RR_UI_WINDOW_FLAGS_CLOSE_BIT))
+    {
+        static char StringBuffer[2048] = "Type here...";
+        Rr_UIInputField("UTF-8 String (2048 bytes)", 2048, StringBuffer, 0);
+        Rr_UIEndWindow();
+    }
 }
 
 static void FixedSizeWindow()
@@ -96,6 +110,7 @@ static void Iterate(void *UserData)
 
     FixedSizeWindow();
     StyleEditorWindow();
+    TextInputWindow();
 
     if (Rr_UIBeginWindow("Rr_UI.h", &Open, Flags))
     {
@@ -150,7 +165,11 @@ static void Iterate(void *UserData)
             Rr_UIInputField("UTF-8 String (16 bytes)", 16, StringBuffer, 0);
             static char MultilineBuffer[128] =
                 "Line A\nLine B <- Delete this!\nLine C!";
-            Rr_UIInputField("UTF-8 String (128 bytes)", 128, MultilineBuffer, 0);
+            Rr_UIInputField(
+                "UTF-8 String (128 bytes)",
+                128,
+                MultilineBuffer,
+                0);
         }
         Rr_UILabel("Button");
         Rr_UIBeginHorizontal();
@@ -163,6 +182,10 @@ static void Iterate(void *UserData)
             FixedSizeWindowOpen = true;
         }
         Rr_UIEndHorizontal();
+        if (Rr_UIButton("Show Text Input Window"))
+        {
+            TextInputWindowOpen = true;
+        }
         Rr_UISeparator();
         Rr_UILabel("Text");
         Rr_UILabel("Multi\n line\n  text");

@@ -198,3 +198,13 @@ void Rr_SetCursor(Rr_CursorType Type)
             return;
     }
 }
+
+void Rr_SetClipboardText(const char *CString)
+{
+    SDL_SetClipboardText(CString);
+}
+
+const char *Rr_GetClipboardText(void)
+{
+    return SDL_GetClipboardText();
+}

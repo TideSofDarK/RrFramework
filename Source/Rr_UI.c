@@ -2683,6 +2683,8 @@ bool Rr_UIButton(const char *Text)
 
     Rr_UIBevel(Primitive, &ButtonRect, &gUIContext->Style.ButtonNormal, Held);
 
+    ButtonSize.Height += gUIContext->ContentsPadding.Height;
+
     Rr_UIAdvance(ButtonSize);
 
     Rr_DestroyScratch(Scratch);
@@ -2762,26 +2764,35 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     return Up;
 }
 
-static inline void Rr_UIConsumeTextInput(
+static inline bool Rr_UIConsumeTextInput(
     size_t CStringLength,
     const char *CString,
     size_t *BufferLength,
+    size_t BufferCapacity,
     char *Buffer,
     size_t *CursorBegin,
     size_t *CursorEnd)
 {
-    size_t CursorMin = RR_MIN(*CursorBegin, *CursorEnd);
-    size_t CursorMax = RR_MAX(*CursorBegin, *CursorEnd);
-    memmove(
-        Buffer + CursorMin + CStringLength,
-        Buffer + CursorMax,
-        *BufferLength - CursorMax);
-    memcpy(Buffer + CursorMin, CString, CStringLength);
-    *BufferLength += CStringLength;
-    *BufferLength -= CursorMax - CursorMin;
-    Buffer[*BufferLength] = '\0';
-    *CursorEnd = CursorMin + CStringLength;
-    *CursorBegin = *CursorEnd;
+    if (*BufferLength + CStringLength + 1 <= BufferCapacity)
+    {
+        size_t CursorMin = RR_MIN(*CursorBegin, *CursorEnd);
+        size_t CursorMax = RR_MAX(*CursorBegin, *CursorEnd);
+        memmove(
+            Buffer + CursorMin + CStringLength,
+            Buffer + CursorMax,
+            *BufferLength - CursorMax);
+        if (CString != NULL)
+        {
+            memcpy(Buffer + CursorMin, CString, CStringLength);
+        }
+        *BufferLength += CStringLength;
+        *BufferLength -= CursorMax - CursorMin;
+        Buffer[*BufferLength] = '\0';
+        *CursorEnd = CursorMin + CStringLength;
+        *CursorBegin = *CursorEnd;
+        return true;
+    }
+    return false;
 }
 
 static inline size_t Rr_UIThisLineCol(char *Buffer, size_t Cursor)
@@ -2811,6 +2822,25 @@ static inline size_t Rr_UIThisLineCol(char *Buffer, size_t Cursor)
             return Cursor - ThisLine;
         }
     }
+}
+
+static inline size_t Rr_UILineStart(const char *Buffer, size_t Cursor)
+{
+    if (Buffer[Cursor] == '\n' && Cursor > 0)
+    {
+        Cursor--;
+    }
+    size_t LineStart = Rr_PreviousUTF8LFOffset(Buffer, Cursor);
+    if (LineStart != 0)
+    {
+        LineStart++;
+    }
+    return LineStart;
+}
+
+static inline size_t Rr_UILineEnd(const char *Buffer, size_t Cursor)
+{
+    return Rr_NextUTF8LFOffset(Buffer, Cursor);
 }
 
 static void Rr_UIEditUTF8Buffer(
@@ -2853,6 +2883,130 @@ static void Rr_UIEditUTF8Buffer(
         bool Edited = false;
         bool ResetCol = false;
 
+        if (Event->Scancode == RR_SCANCODE_C && Event->Keymod == RR_KEYMOD_CTRL)
+        {
+            Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+            char *ClipboardBuffer = NULL;
+            size_t ClipboardLength = 0;
+            if (CursorMin != CursorMax)
+            {
+                ClipboardLength = CursorMax - CursorMin;
+                ClipboardBuffer =
+                    RR_ALLOC_NO_ZERO(Scratch.Arena, ClipboardLength);
+                memcpy(ClipboardBuffer, Buffer + CursorMin, ClipboardLength);
+            }
+            else
+            {
+                size_t LineStart = Rr_UILineStart(Buffer, NewCursorEnd);
+                size_t LineEnd = Rr_UILineEnd(Buffer, NewCursorEnd);
+                if (LineEnd != BufferLength)
+                {
+                    LineEnd++;
+                }
+                ClipboardLength = LineEnd - LineStart;
+                if (ClipboardLength > 0)
+                {
+                    ClipboardBuffer =
+                        RR_ALLOC_NO_ZERO(Scratch.Arena, ClipboardLength);
+                    memcpy(
+                        ClipboardBuffer,
+                        Buffer + LineStart,
+                        ClipboardLength);
+                }
+            }
+            if (ClipboardBuffer != NULL)
+            {
+                ClipboardBuffer[ClipboardLength] = '\0';
+                Rr_SetClipboardText(ClipboardBuffer);
+            }
+
+            Rr_DestroyScratch(Scratch);
+        }
+        if (Event->Scancode == RR_SCANCODE_V && Event->Keymod == RR_KEYMOD_CTRL)
+        {
+            const char *ClipboardBuffer = Rr_GetClipboardText();
+            if (ClipboardBuffer != NULL)
+            {
+                size_t ClipboardLength = strlen(ClipboardBuffer);
+                Rr_UIConsumeTextInput(
+                    ClipboardLength,
+                    ClipboardBuffer,
+                    &BufferLength,
+                    BufferCapacity,
+                    Buffer,
+                    &NewCursorBegin,
+                    &NewCursorEnd);
+                Edited = true;
+                ResetCol = true;
+            }
+        }
+        if (Event->Scancode == RR_SCANCODE_X && Event->Keymod == RR_KEYMOD_CTRL)
+        {
+            Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+            char *ClipboardBuffer = NULL;
+            size_t ClipboardLength = 0;
+            if (CursorMin != CursorMax)
+            {
+                ClipboardLength = CursorMax - CursorMin;
+                ClipboardBuffer =
+                    RR_ALLOC_NO_ZERO(Scratch.Arena, ClipboardLength);
+                memcpy(ClipboardBuffer, Buffer + CursorMin, ClipboardLength);
+
+                Rr_UIConsumeTextInput(
+                    0,
+                    NULL,
+                    &BufferLength,
+                    BufferCapacity,
+                    Buffer,
+                    &NewCursorBegin,
+                    &NewCursorEnd);
+                Edited = true;
+                ResetCol = true;
+            }
+            else
+            {
+                size_t LineStart = Rr_UILineStart(Buffer, NewCursorEnd);
+                size_t LineEnd = Rr_UILineEnd(Buffer, NewCursorEnd);
+                if (LineEnd != BufferLength)
+                {
+                    LineEnd++;
+                }
+                ClipboardLength = LineEnd - LineStart;
+                if (ClipboardLength > 0)
+                {
+                    ClipboardBuffer =
+                        RR_ALLOC_NO_ZERO(Scratch.Arena, ClipboardLength);
+                    memcpy(
+                        ClipboardBuffer,
+                        Buffer + LineStart,
+                        ClipboardLength);
+                }
+
+                NewCursorBegin = LineStart;
+                NewCursorEnd = LineEnd;
+                Rr_UIConsumeTextInput(
+                    0,
+                    NULL,
+                    &BufferLength,
+                    BufferCapacity,
+                    Buffer,
+                    &NewCursorBegin,
+                    &NewCursorEnd);
+
+                Edited = true;
+                ResetCol = true;
+            }
+            if (ClipboardBuffer != NULL)
+            {
+                ClipboardBuffer[ClipboardLength] = '\0';
+                Rr_SetClipboardText(ClipboardBuffer);
+            }
+
+            Rr_DestroyScratch(Scratch);
+        }
+
         if (Event->Scancode == RR_SCANCODE_ESCAPE)
         {
             NewCursorBegin = NewCursorEnd;
@@ -2861,15 +3015,15 @@ static void Rr_UIEditUTF8Buffer(
         if (Event->Scancode == RR_SCANCODE_RETURN && Event->Keymod == 0 &&
             CursorMin > 0)
         {
-            if (BufferLength + 1 + 1 <= BufferCapacity)
-            {
-                Rr_UIConsumeTextInput(
+            if (Rr_UIConsumeTextInput(
                     1,
                     "\n",
                     &BufferLength,
+                    BufferCapacity,
                     Buffer,
                     &NewCursorBegin,
-                    &NewCursorEnd);
+                    &NewCursorEnd))
+            {
                 Edited = true;
                 ResetCol = true;
             }
@@ -2888,11 +3042,10 @@ static void Rr_UIEditUTF8Buffer(
                 }
                 else
                 {
-                    size_t PrevLineCol = Rr_UIThisLineCol(Buffer, ThisLine - 2);
-                    size_t PrevLine = ThisLine - 2 - PrevLineCol;
-                    size_t PrevLineLength = PrevLineCol + 1;
+                    size_t PrevLineCol = Rr_UIThisLineCol(Buffer, ThisLine - 1);
+                    size_t PrevLine = ThisLine - 1 - PrevLineCol;
                     NewCursorEnd = PrevLine + (DesiredOffset > PrevLineCol
-                                                   ? PrevLineCol + 1
+                                                   ? PrevLineCol
                                                    : DesiredOffset);
                 }
             }
@@ -2973,6 +3126,41 @@ static void Rr_UIEditUTF8Buffer(
             ResetCol = true;
         }
 
+        if (Event->Scancode == RR_SCANCODE_F6) // HOME
+        {
+            if (Event->Keymod == 0)
+            {
+                NewCursorEnd = Rr_UILineStart(Buffer, NewCursorEnd);
+            }
+            else if (Event->Keymod == RR_KEYMOD_CTRL)
+            {
+                NewCursorEnd = 0;
+            }
+            if (Event->Keymod != RR_KEYMOD_SHIFT)
+            {
+                NewCursorBegin = NewCursorEnd;
+            }
+            Edited = true;
+            ResetCol = true;
+        }
+        if (Event->Scancode == RR_SCANCODE_F7) // END
+        {
+            if (Event->Keymod == 0)
+            {
+                NewCursorEnd = Rr_UILineEnd(Buffer, NewCursorEnd);
+            }
+            else if (Event->Keymod == RR_KEYMOD_CTRL)
+            {
+                NewCursorEnd = 0;
+            }
+            if (Event->Keymod != RR_KEYMOD_SHIFT)
+            {
+                NewCursorBegin = NewCursorEnd;
+            }
+            Edited = true;
+            ResetCol = true;
+        }
+
         if (Event->Keymod == 0)
         {
             if (Event->Scancode == RR_SCANCODE_BACKSPACE && BufferLength > 0)
@@ -3025,8 +3213,6 @@ static void Rr_UIEditUTF8Buffer(
 
     for (size_t Index = 0; Index < gUIContext->TextInputBuffer.Count; ++Index)
     {
-        bool Edited = false;
-
         NewCursorBegin = *CursorBegin;
         NewCursorEnd = *CursorEnd;
 
@@ -3036,23 +3222,14 @@ static void Rr_UIEditUTF8Buffer(
         const char *CString = gUIContext->TextInputBuffer.Data[Index];
         size_t Length = strlen(CString);
 
-        if (BufferLength + Length + 1 <= BufferCapacity)
-        {
-            Rr_UIConsumeTextInput(
+        if (Rr_UIConsumeTextInput(
                 Length,
                 CString,
                 &BufferLength,
+                BufferCapacity,
                 Buffer,
                 &NewCursorBegin,
-                &NewCursorEnd);
-            Edited = true;
-        }
-        else
-        {
-            break;
-        }
-
-        if (Edited)
+                &NewCursorEnd))
         {
             *CursorBegin = NewCursorBegin;
             *CursorEnd = NewCursorEnd;
