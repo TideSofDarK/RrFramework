@@ -970,15 +970,14 @@ static inline void Rr_UIDrawInteractiveTextCursor(
     }
 }
 
-static inline Rr_Vec2 Rr_UIDrawInteractiveText(
+static inline Rr_Vec2 Rr_UIDrawInputText(
     const char *CString,
     bool Active,
     Rr_Vec2 Position,
     size_t CursorBegin,
     size_t *CursorEnd,
     float AvailableWidth,
-    Rr_Vec4 *Color,
-    Rr_UITextFlags Flags)
+    Rr_Vec4 *Color)
 {
     Rr_UIFont *Font = gUIContext->Font;
     float FontSize = gUIContext->FontSize;
@@ -997,220 +996,101 @@ static inline Rr_Vec2 Rr_UIDrawInteractiveText(
     size_t OldCursorMin = RR_MIN(CursorBegin, *CursorEnd);
     size_t OldCursorMax = RR_MAX(CursorBegin, *CursorEnd);
 
-    bool Wrapped = RR_HAS_BIT(Flags, RR_UI_TEXT_FLAGS_WRAPPED_BIT);
-    assert(
-        (!Wrapped || AvailableWidth >= FontSize) &&
-        "Available width must be larger than font size!");
-
     Rr_Vec2 ResultSize = { 0 };
 
-    if (Wrapped)
+    Rr_UTF8Decoder Decoder = { .CString = CString };
+    while (true)
     {
-        RR_NOT_IMPLEMENTED();
-        /* float CurrentWordWidth = 0.0f; */
-        /* size_t CurrentWordStart = 0; */
+        Rr_UTF8Decode(&Decoder);
+        uint32_t Codepoint = Decoder.Codepoint;
+        size_t CodepointIndex = Decoder.CodepointIndex - 1;
+        size_t CStringIndex = Decoder.CStringIndex - 1;
 
-        /* for (size_t Index = 0; Index < String->Length; ++Index) */
-        /* { */
-        /*     uint32_t Codepoint = String->Data[Index]; */
+        bool LineBreak = false;
 
-        /*     if (Codepoint >= RR_TEXT_MAX_GLYPHS) */
-        /*     { */
-        /*         RR_ABORT("Codepoint is not within range!"); */
-        /*     } */
-
-        /*     if (Codepoint == '\n') */
-        /*     { */
-        /*         CurrentX = 0.0f; */
-        /*         CurrentY += LineHeight; */
-        /*         LineIndex++; */
-        /*         continue; */
-        /*     } */
-
-        /*     if (Codepoint == ' ' || Index == String->Length - 1) */
-        /*     { */
-        /*         size_t WordLength = Index - CurrentWordStart; */
-        /*         if (WordLength > 0) */
-        /*         { */
-        /*             if (CurrentWordWidth > AvailableWidth) */
-        /*             { */
-        /*                 /\* Fallback to per-character wrapping. *\/ */
-
-        /*                 for (size_t IndexInWord = CurrentWordStart; */
-        /*                      IndexInWord <= Index; */
-        /*                      ++IndexInWord) */
-        /*                 { */
-        /*                     Codepoint = String->Data[IndexInWord]; */
-        /*                     if (CurrentX > AvailableWidth) */
-        /*                     { */
-        /*                         CurrentX = 0.0f; */
-        /*                         CurrentY += LineHeight; */
-        /*                         LineIndex++; */
-        /*                     } */
-        /*                     if (!CalculateOnly) */
-        /*                     { */
-        /*                         Rr_UIDrawGlyph( */
-        /*                             Font, */
-        /*                             FontSize, */
-        /*                             &Font->Glyphs[Codepoint], */
-        /*                             Rr_AddV2( */
-        /*                                 Position, */
-        /*                                 (Rr_Vec2){ CurrentX, CurrentY }), */
-        /*                             Color); */
-        /*                     } */
-        /*                     CurrentX += */
-        /*                         gUIContext->Font->Advances[Codepoint] *
-         * FontSize; */
-        /*                 } */
-        /*             } */
-        /*             else */
-        /*             { */
-        /*                 if (CurrentX + CurrentWordWidth > AvailableWidth) */
-        /*                 { */
-        /*                     CurrentX = 0.0f; */
-        /*                     CurrentY += LineHeight; */
-        /*                     LineIndex++; */
-        /*                 } */
-
-        /*                 Rr_Vec2 PositionInWord = */
-        /*                     Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY
-         * }); */
-        /*                 for (size_t IndexInWord = CurrentWordStart; */
-        /*                      IndexInWord <= Index; */
-        /*                      ++IndexInWord) */
-        /*                 { */
-        /*                     Codepoint = String->Data[IndexInWord]; */
-        /*                     if (!CalculateOnly) */
-        /*                     { */
-        /*                         Rr_UIDrawGlyph( */
-        /*                             Font, */
-        /*                             FontSize, */
-        /*                             &Font->Glyphs[Codepoint], */
-        /*                             PositionInWord, */
-        /*                             Color); */
-        /*                     } */
-        /*                     CurrentX += */
-        /*                         gUIContext->Font->Advances[Codepoint] *
-         * FontSize; */
-        /*                     PositionInWord.X = Position.X + CurrentX; */
-        /*                 } */
-        /*             } */
-        /*         } */
-        /*         else */
-        /*         { */
-        /*             CurrentX += gUIContext->Font->Advances[Codepoint] *
-         * FontSize; */
-        /*         } */
-
-        /*         MaxX = RR_MAX(MaxX, CurrentX); */
-
-        /*         CurrentWordWidth = 0.0f; */
-        /*         CurrentWordStart = Index + 1; */
-        /*     } */
-        /*     else */
-        /*     { */
-        /*         CurrentWordWidth += */
-        /*             gUIContext->Font->Advances[Codepoint] * FontSize; */
-        /*     } */
-        /* } */
-    }
-    else
-    {
-        Rr_UTF8Decoder Decoder = { .CString = CString };
-        while (true)
+        if (Codepoint >= RR_TEXT_MAX_GLYPHS)
         {
-            Rr_UTF8Decode(&Decoder);
-            uint32_t Codepoint = Decoder.Codepoint;
-            size_t CodepointIndex = Decoder.CodepointIndex - 1;
-            size_t CStringIndex = Decoder.CStringIndex - 1;
+            RR_ABORT("Codepoint is not within range!");
+        }
 
-            bool LineBreak = false;
+        if (Codepoint == '\n')
+        {
+            Codepoint = ' ';
+            LineBreak = true;
+        }
 
-            if (Codepoint >= RR_TEXT_MAX_GLYPHS)
+        Rr_Vec2 GlyphPosition =
+            Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY });
+
+        if (LineIndex == MouseLineIndex)
+        {
+            float Distance = fabsf(GlyphPosition.X - MousePosition.X);
+            if (Distance < MouseCharacterDistance)
             {
-                RR_ABORT("Codepoint is not within range!");
+                MouseCharacterDistance = Distance;
+                NewCursorEnd = CStringIndex;
             }
+        }
 
-            if (Codepoint == '\n')
+        if (Active)
+        {
+            if ((OldCursorMin != OldCursorMax) &&
+                (CodepointIndex >= OldCursorMin &&
+                 CodepointIndex < OldCursorMax))
             {
-                Codepoint = ' ';
-                LineBreak = true;
-            }
-
-            Rr_Vec2 GlyphPosition =
-                Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY });
-
-            if (LineIndex == MouseLineIndex)
-            {
-                float Distance = fabsf(GlyphPosition.X - MousePosition.X);
-                if (Distance < MouseCharacterDistance)
-                {
-                    MouseCharacterDistance = Distance;
-                    NewCursorEnd = CStringIndex;
-                }
-            }
-
-            if (Active)
-            {
-                if ((OldCursorMin != OldCursorMax) &&
-                    (CodepointIndex >= OldCursorMin &&
-                     CodepointIndex < OldCursorMax))
-                {
-                    Rr_UIDrawRect(
-                        &(Rr_Rect){
-                            GlyphPosition,
-                            Rr_V2(
-                                gUIContext->Font->Advances[Codepoint] *
-                                    FontSize,
-                                gUIContext->LineHeight),
-                        },
-                        &gUIContext->Style.SelectedTextBackground);
-                }
-
-                if (*CursorEnd == CStringIndex)
-                {
-                    Rr_UIDrawInteractiveTextCursor(GlyphPosition, Color);
-                }
-            }
-
-            if (Codepoint == '\0')
-            {
-                break;
-            }
-
-            if (gUIContext->Font->Advances[Codepoint] == 0.0f)
-            {
-                /* TODO: Proper missing glyph handling! */
-
-                CurrentX += FontSize;
-                MaxX = RR_MAX(MaxX, CurrentX);
-
-                Rr_Rect MissingGlyphRect = { GlyphPosition,
-                                             Rr_V2(FontSize, LineHeight) };
-                MissingGlyphRect = Rr_ResizeRect(&MissingGlyphRect, 1.0f);
-                Rr_UIDrawInnerFrame(&MissingGlyphRect, 1.0f, Color);
-            }
-            else
-            {
-                if (Codepoint != ' ')
-                {
-                    Rr_UIDrawGlyph(
-                        Font,
-                        FontSize,
-                        &Font->Glyphs[Codepoint],
+                Rr_UIDrawRect(
+                    &(Rr_Rect){
                         GlyphPosition,
-                        Color);
-                }
+                        Rr_V2(
+                            gUIContext->Font->Advances[Codepoint] * FontSize,
+                            gUIContext->LineHeight),
+                    },
+                    &gUIContext->Style.SelectedTextBackground);
+            }
 
-                CurrentX += gUIContext->Font->Advances[Codepoint] * FontSize;
-                MaxX = RR_MAX(MaxX, CurrentX);
+            if (*CursorEnd == CStringIndex)
+            {
+                Rr_UIDrawInteractiveTextCursor(GlyphPosition, Color);
+            }
+        }
 
-                if (LineBreak)
-                {
-                    CurrentX = 0.0f;
-                    CurrentY += LineHeight;
-                    LineIndex++;
-                }
+        if (Codepoint == '\0')
+        {
+            break;
+        }
+
+        if (gUIContext->Font->Advances[Codepoint] == 0.0f)
+        {
+            /* TODO: Proper missing glyph handling! */
+
+            CurrentX += FontSize;
+            MaxX = RR_MAX(MaxX, CurrentX);
+
+            Rr_Rect MissingGlyphRect = { GlyphPosition,
+                                         Rr_V2(FontSize, LineHeight) };
+            MissingGlyphRect = Rr_ResizeRect(&MissingGlyphRect, 1.0f);
+            Rr_UIDrawInnerFrame(&MissingGlyphRect, 1.0f, Color);
+        }
+        else
+        {
+            if (Codepoint != ' ')
+            {
+                Rr_UIDrawGlyph(
+                    Font,
+                    FontSize,
+                    &Font->Glyphs[Codepoint],
+                    GlyphPosition,
+                    Color);
+            }
+
+            CurrentX += gUIContext->Font->Advances[Codepoint] * FontSize;
+            MaxX = RR_MAX(MaxX, CurrentX);
+
+            if (LineBreak)
+            {
+                CurrentX = 0.0f;
+                CurrentY += LineHeight;
+                LineIndex++;
             }
         }
     }
@@ -3264,15 +3144,14 @@ bool Rr_UIInputField(
     BufferPosition.X += gUIContext->ButtonPadding.Width;
     BufferPosition.Y += gUIContext->ButtonPadding.Height;
     size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
-    Rr_Vec2 BufferSize = Rr_UIDrawInteractiveText(
+    Rr_Vec2 BufferSize = Rr_UIDrawInputText(
         Buffer,
         Active,
         BufferPosition,
         gUIContext->TextInputCursorBegin,
         &NewCursorEnd,
         0.0f,
-        &gUIContext->Style.Foreground,
-        0);
+        &gUIContext->Style.Foreground);
 
     const float MIN_FIELD_WIDTH = gUIContext->FontSize * 4.0f;
     if (BufferSize.Width < MIN_FIELD_WIDTH)
