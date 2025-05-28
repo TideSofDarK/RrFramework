@@ -3126,34 +3126,36 @@ static void Rr_UIEditUTF8Buffer(
             ResetCol = true;
         }
 
-        if (Event->Scancode == RR_SCANCODE_HOME)
+        if (Event->Scancode == RR_SCANCODE_HOME ||
+            Event->Scancode == RR_SCANCODE_KP_7)
         {
-            if (Event->Keymod == 0)
-            {
-                NewCursorEnd = Rr_UILineStart(Buffer, NewCursorEnd);
-            }
-            else if (Event->Keymod == RR_KEYMOD_CTRL)
+            if (Event->Keymod & RR_KEYMOD_CTRL)
             {
                 NewCursorEnd = 0;
             }
-            if (Event->Keymod != RR_KEYMOD_SHIFT)
+            else
+            {
+                NewCursorEnd = Rr_UILineStart(Buffer, NewCursorEnd);
+            }
+            if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
             {
                 NewCursorBegin = NewCursorEnd;
             }
             Edited = true;
             ResetCol = true;
         }
-        if (Event->Scancode == RR_SCANCODE_END)
+        if (Event->Scancode == RR_SCANCODE_END ||
+            Event->Scancode == RR_SCANCODE_KP_1)
         {
-            if (Event->Keymod == 0)
+            if (Event->Keymod & RR_KEYMOD_CTRL)
+            {
+                NewCursorEnd = BufferLength;
+            }
+            else
             {
                 NewCursorEnd = Rr_UILineEnd(Buffer, NewCursorEnd);
             }
-            else if (Event->Keymod == RR_KEYMOD_CTRL)
-            {
-                NewCursorEnd = 0;
-            }
-            if (Event->Keymod != RR_KEYMOD_SHIFT)
+            if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
             {
                 NewCursorBegin = NewCursorEnd;
             }

@@ -52,21 +52,21 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
             Event->Key.Down = SDLEvent.key.down;
             Event->Key.Scancode = (Rr_Scancode)SDLEvent.key.scancode;
             Event->Key.Keymod = 0;
-            if (SDLEvent.key.mod == SDL_KMOD_LCTRL ||
-                SDLEvent.key.mod == SDL_KMOD_RCTRL ||
-                SDLEvent.key.mod == SDL_KMOD_CTRL)
+            if ((SDLEvent.key.mod & SDL_KMOD_LCTRL) ||
+                (SDLEvent.key.mod & SDL_KMOD_RCTRL) ||
+                (SDLEvent.key.mod & SDL_KMOD_CTRL))
             {
                 Event->Key.Keymod |= RR_KEYMOD_CTRL;
             }
-            if (SDLEvent.key.mod == SDL_KMOD_LSHIFT ||
-                SDLEvent.key.mod == SDL_KMOD_RSHIFT ||
-                SDLEvent.key.mod == SDL_KMOD_SHIFT)
+            if ((SDLEvent.key.mod & SDL_KMOD_LSHIFT) ||
+                (SDLEvent.key.mod & SDL_KMOD_RSHIFT) ||
+                (SDLEvent.key.mod & SDL_KMOD_SHIFT))
             {
                 Event->Key.Keymod |= RR_KEYMOD_SHIFT;
             }
-            if (SDLEvent.key.mod == SDL_KMOD_LALT ||
-                SDLEvent.key.mod == SDL_KMOD_RALT ||
-                SDLEvent.key.mod == SDL_KMOD_ALT)
+            if ((SDLEvent.key.mod & SDL_KMOD_LALT) ||
+                (SDLEvent.key.mod & SDL_KMOD_RALT) ||
+                (SDLEvent.key.mod & SDL_KMOD_ALT))
             {
                 Event->Key.Keymod |= RR_KEYMOD_ALT;
             }
