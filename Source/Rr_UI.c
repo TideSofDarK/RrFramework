@@ -173,11 +173,16 @@ struct Rr_UIContext
     bool DragOpBeganThisFrame;
     bool DragOpEndedThisFrame;
 
+    /* NOTE: Cursors are stored as raw offsets into UTF-8 string. */
+
     size_t TextInputCursorBegin;
     size_t TextInputCursorEnd;
+    size_t TextInputCursorMaxCol;
     uint64_t TextInputCursorBlinkTime;
     bool MouseOverTextInput : 1;
     RR_ARRAY(const char *) TextInputBuffer;
+
+    RR_ARRAY(Rr_KeyEvent) KeyboardInputBuffer;
 
     Rr_Vec2 ScreenSize;
 
@@ -951,8 +956,8 @@ static inline void Rr_UIDrawInteractiveTextCursor(
     Rr_Vec2 Position,
     Rr_Vec4 *Color)
 {
-    uint64_t TimeDelta = gUIContext->TextInputCursorBlinkTime - Rr_GetTimeMS();
-    if ((TimeDelta / 500) % 2 != 0)
+    uint64_t TimeDelta = Rr_GetTimeMS() - gUIContext->TextInputCursorBlinkTime;
+    if ((TimeDelta / 500) % 2 == 0)
     {
         Rr_UIDrawRect(
             &(Rr_Rect){
@@ -1117,10 +1122,19 @@ static inline Rr_Vec2 Rr_UIDrawInteractiveText(
             Rr_UTF8Decode(&Decoder);
             uint32_t Codepoint = Decoder.Codepoint;
             size_t CodepointIndex = Decoder.CodepointIndex - 1;
+            size_t CStringIndex = Decoder.CStringIndex - 1;
+
+            bool LineBreak = false;
 
             if (Codepoint >= RR_TEXT_MAX_GLYPHS)
             {
                 RR_ABORT("Codepoint is not within range!");
+            }
+
+            if (Codepoint == '\n')
+            {
+                Codepoint = ' ';
+                LineBreak = true;
             }
 
             Rr_Vec2 GlyphPosition =
@@ -1132,7 +1146,7 @@ static inline Rr_Vec2 Rr_UIDrawInteractiveText(
                 if (Distance < MouseCharacterDistance)
                 {
                     MouseCharacterDistance = Distance;
-                    NewCursorEnd = CodepointIndex;
+                    NewCursorEnd = CStringIndex;
                 }
             }
 
@@ -1153,7 +1167,7 @@ static inline Rr_Vec2 Rr_UIDrawInteractiveText(
                         &gUIContext->Style.SelectedTextBackground);
                 }
 
-                if (*CursorEnd == CodepointIndex)
+                if (*CursorEnd == CStringIndex)
                 {
                     Rr_UIDrawInteractiveTextCursor(GlyphPosition, Color);
                 }
@@ -1164,26 +1178,40 @@ static inline Rr_Vec2 Rr_UIDrawInteractiveText(
                 break;
             }
 
-            if (Codepoint == '\n')
+            if (gUIContext->Font->Advances[Codepoint] == 0.0f)
             {
-                CurrentX = 0.0f;
-                CurrentY += LineHeight;
-                LineIndex++;
-                continue;
-            }
+                /* TODO: Proper missing glyph handling! */
 
-            if (Codepoint != ' ')
+                CurrentX += FontSize;
+                MaxX = RR_MAX(MaxX, CurrentX);
+
+                Rr_Rect MissingGlyphRect = { GlyphPosition,
+                                             Rr_V2(FontSize, LineHeight) };
+                MissingGlyphRect = Rr_ResizeRect(&MissingGlyphRect, 1.0f);
+                Rr_UIDrawInnerFrame(&MissingGlyphRect, 1.0f, Color);
+            }
+            else
             {
-                Rr_UIDrawGlyph(
-                    Font,
-                    FontSize,
-                    &Font->Glyphs[Codepoint],
-                    GlyphPosition,
-                    Color);
-            }
+                if (Codepoint != ' ')
+                {
+                    Rr_UIDrawGlyph(
+                        Font,
+                        FontSize,
+                        &Font->Glyphs[Codepoint],
+                        GlyphPosition,
+                        Color);
+                }
 
-            CurrentX += gUIContext->Font->Advances[Codepoint] * FontSize;
-            MaxX = RR_MAX(MaxX, CurrentX);
+                CurrentX += gUIContext->Font->Advances[Codepoint] * FontSize;
+                MaxX = RR_MAX(MaxX, CurrentX);
+
+                if (LineBreak)
+                {
+                    CurrentX = 0.0f;
+                    CurrentY += LineHeight;
+                    LineIndex++;
+                }
+            }
         }
     }
 
@@ -2734,15 +2762,310 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     return Up;
 }
 
+static inline void Rr_UIConsumeTextInput(
+    size_t CStringLength,
+    const char *CString,
+    size_t *BufferLength,
+    char *Buffer,
+    size_t *CursorBegin,
+    size_t *CursorEnd)
+{
+    size_t CursorMin = RR_MIN(*CursorBegin, *CursorEnd);
+    size_t CursorMax = RR_MAX(*CursorBegin, *CursorEnd);
+    memmove(
+        Buffer + CursorMin + CStringLength,
+        Buffer + CursorMax,
+        *BufferLength - CursorMax);
+    memcpy(Buffer + CursorMin, CString, CStringLength);
+    *BufferLength += CStringLength;
+    *BufferLength -= CursorMax - CursorMin;
+    Buffer[*BufferLength] = '\0';
+    *CursorEnd = CursorMin + CStringLength;
+    *CursorBegin = *CursorEnd;
+}
+
+static void Rr_UIEditUTF8Buffer(
+    size_t *CursorBegin,
+    size_t *CursorEnd,
+    size_t BufferCapacity,
+    char *Buffer)
+{
+    if (gUIContext->TextInputBuffer.Count == 0 &&
+        gUIContext->KeyboardInputBuffer.Count == 0)
+    {
+        return;
+    }
+
+    uint64_t TimeMS = Rr_GetTimeMS();
+    size_t BufferLength = strlen(Buffer);
+
+    size_t NewCursorBegin;
+    size_t NewCursorEnd;
+
+    size_t CursorMin;
+    size_t CursorMax;
+
+    for (size_t Index = 0; Index < gUIContext->KeyboardInputBuffer.Count;
+         ++Index)
+    {
+        Rr_KeyEvent *Event = gUIContext->KeyboardInputBuffer.Data + Index;
+
+        if (!Event->Down)
+        {
+            continue;
+        }
+
+        NewCursorBegin = *CursorBegin;
+        NewCursorEnd = *CursorEnd;
+
+        CursorMin = RR_MIN(NewCursorBegin, NewCursorEnd);
+        CursorMax = RR_MAX(NewCursorBegin, NewCursorEnd);
+
+        bool Edited = false;
+
+        if (Event->Scancode == RR_SCANCODE_ESCAPE)
+        {
+            NewCursorBegin = NewCursorEnd;
+            Edited = true;
+        }
+        if (Event->Scancode == RR_SCANCODE_RETURN && Event->Keymod == 0 &&
+            CursorMin > 0)
+        {
+            if (BufferLength + 1 + 1 <= BufferCapacity)
+            {
+                Rr_UIConsumeTextInput(
+                    1,
+                    "\n",
+                    &BufferLength,
+                    Buffer,
+                    &NewCursorBegin,
+                    &NewCursorEnd);
+                Edited = true;
+            }
+        }
+
+        if (Event->Scancode == RR_SCANCODE_UP)
+        {
+            if (NewCursorEnd > 0)
+            {
+                size_t DesiredOffset = gUIContext->TextInputCursorMaxCol;
+                if (DesiredOffset > NewCursorEnd)
+                {
+                    NewCursorEnd = 0;
+                }
+                else
+                {
+                    size_t ThisLine = NewCursorEnd - DesiredOffset;
+                    size_t PreviousLineOffset =
+                        Rr_PreviousUTF8LFOffset(Buffer, ThisLine);
+                    if (PreviousLineOffset > ThisLine)
+                    {
+                        if (PreviousLineOffset == NewCursorEnd)
+                        {
+                            NewCursorEnd = 0;
+                        }
+                        else if (PreviousLineOffset > DesiredOffset)
+                        {
+                            NewCursorEnd = DesiredOffset - 1;
+                        }
+                        else
+                        {
+                            NewCursorEnd = PreviousLineOffset - 1;
+                        }
+                    }
+                    else
+                    {
+                        size_t PreviousLine = ThisLine - PreviousLineOffset;
+                        NewCursorEnd = PreviousLine + DesiredOffset;
+                    }
+                }
+            }
+            if (Event->Keymod != RR_KEYMOD_SHIFT)
+            {
+                NewCursorBegin = NewCursorEnd;
+            }
+            Edited = true;
+        }
+        if (Event->Scancode == RR_SCANCODE_DOWN)
+        {
+            if (CursorMax < BufferLength)
+            {
+                size_t DesiredOffset = gUIContext->TextInputCursorMaxCol;
+                size_t NextLine;
+                if (Buffer[NewCursorEnd] == '\n')
+                {
+                    DesiredOffset--;
+                    NextLine = NewCursorEnd + 1;
+                }
+                else
+                {
+                    size_t NextLineOffset =
+                        Rr_NextUTF8LFOffset(Buffer, NewCursorEnd);
+                    NextLine = NewCursorEnd + NextLineOffset;
+                }
+                size_t NextNextLineOffset =
+                    Rr_NextUTF8LFOffset(Buffer, NextLine);
+                size_t NextNextLine = NextLine + NextNextLineOffset;
+                if (NextLine + DesiredOffset > NextNextLine)
+                {
+                    NewCursorEnd = NextNextLine;
+                }
+                else
+                {
+                    NewCursorEnd = NextLine + DesiredOffset;
+                }
+                NewCursorEnd = RR_MIN(NewCursorEnd, BufferLength);
+            }
+            if (Event->Keymod != RR_KEYMOD_SHIFT)
+            {
+                NewCursorBegin = NewCursorEnd;
+            }
+            Edited = true;
+        }
+
+        if (Event->Scancode == RR_SCANCODE_LEFT)
+        {
+            if (Event->Keymod == RR_KEYMOD_SHIFT && NewCursorEnd > 0)
+            {
+                NewCursorEnd =
+                    Rr_PreviousUTF8CodepointOffset(Buffer, NewCursorEnd);
+            }
+            else if (Event->Keymod == 0 && CursorMin > 0)
+            {
+                if (CursorMin == CursorMax)
+                {
+                    NewCursorBegin = NewCursorEnd =
+                        Rr_PreviousUTF8CodepointOffset(Buffer, NewCursorEnd);
+                }
+                else
+                {
+                    NewCursorEnd = NewCursorBegin = CursorMin;
+                }
+            }
+            gUIContext->TextInputCursorMaxCol =
+                Rr_PreviousUTF8LFOffset(Buffer, NewCursorEnd);
+            Edited = true;
+        }
+        if (Event->Scancode == RR_SCANCODE_RIGHT)
+        {
+            if (Event->Keymod == RR_KEYMOD_SHIFT && NewCursorEnd < BufferLength)
+            {
+                NewCursorEnd = Rr_NextUTF8CodepointOffset(Buffer, NewCursorEnd);
+            }
+            else if (Event->Keymod == 0 && CursorMax < BufferLength)
+            {
+                if (CursorMin == CursorMax)
+                {
+                    NewCursorBegin = NewCursorEnd =
+                        Rr_NextUTF8CodepointOffset(Buffer, CursorMax);
+                }
+                else
+                {
+                    NewCursorBegin = NewCursorEnd = CursorMax;
+                }
+            }
+            gUIContext->TextInputCursorMaxCol =
+                Rr_PreviousUTF8LFOffset(Buffer, NewCursorEnd);
+            Edited = true;
+        }
+
+        if (Event->Keymod == 0)
+        {
+            if (Event->Scancode == RR_SCANCODE_BACKSPACE && BufferLength > 0)
+            {
+                if (CursorMin == 0 && CursorMax == BufferLength)
+                {
+                    Buffer[0] = '\0';
+                    NewCursorEnd = NewCursorBegin = 0;
+                    BufferLength = 0;
+                }
+                else if (CursorMin != CursorMax)
+                {
+                    memmove(
+                        Buffer + CursorMin,
+                        Buffer + CursorMax,
+                        BufferLength - CursorMax);
+                    BufferLength -= CursorMax - CursorMin;
+                    Buffer[BufferLength] = '\0';
+                    NewCursorEnd = NewCursorBegin = CursorMin;
+                }
+                else
+                {
+                    CursorMin =
+                        Rr_PreviousUTF8CodepointOffset(Buffer, CursorMin);
+                    memmove(
+                        Buffer + CursorMin,
+                        Buffer + CursorMax,
+                        BufferLength - CursorMax);
+                    BufferLength -= CursorMax - CursorMin;
+                    Buffer[BufferLength] = '\0';
+                    NewCursorEnd = NewCursorBegin = CursorMin;
+                }
+                Edited = true;
+            }
+        }
+
+        if (Edited)
+        {
+            *CursorBegin = NewCursorBegin;
+            *CursorEnd = NewCursorEnd;
+            gUIContext->TextInputCursorBlinkTime = TimeMS;
+        }
+    }
+
+    for (size_t Index = 0; Index < gUIContext->TextInputBuffer.Count; ++Index)
+    {
+        bool Edited = false;
+
+        NewCursorBegin = *CursorBegin;
+        NewCursorEnd = *CursorEnd;
+
+        CursorMin = RR_MIN(NewCursorBegin, NewCursorEnd);
+        CursorMax = RR_MAX(NewCursorBegin, NewCursorEnd);
+
+        const char *CString = gUIContext->TextInputBuffer.Data[Index];
+        size_t Length = strlen(CString);
+
+        // RR_LOG("%zu %zu", CursorMin, CursorMax);
+        // RR_LOG("%zu %zu", CursorMin, CursorMax);
+
+        if (BufferLength + Length + 1 <= BufferCapacity)
+        {
+            Rr_UIConsumeTextInput(
+                Length,
+                CString,
+                &BufferLength,
+                Buffer,
+                &NewCursorBegin,
+                &NewCursorEnd);
+            Edited = true;
+        }
+        else
+        {
+            break;
+        }
+
+        if (Edited)
+        {
+            *CursorBegin = NewCursorBegin;
+            *CursorEnd = NewCursorEnd;
+            gUIContext->TextInputCursorBlinkTime = TimeMS;
+        }
+    }
+
+    RR_CLEAR_ARRAY(&gUIContext->TextInputBuffer);
+    RR_CLEAR_ARRAY(&gUIContext->KeyboardInputBuffer);
+}
+
 bool Rr_UIInputField(
     const char *Title,
-    size_t BufferLength,
+    size_t BufferCapacity,
     char *Buffer,
     Rr_UIInputFieldFlags Flags)
 {
     Rr_UIAssertWindow();
     assert(Title != NULL);
-    assert(BufferLength);
+    assert(BufferCapacity);
     assert(Buffer != NULL);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -2771,6 +3094,12 @@ bool Rr_UIInputField(
         &gUIContext->Style.Foreground,
         0);
 
+    const float MIN_FIELD_WIDTH = gUIContext->FontSize * 4.0f;
+    if (BufferSize.Width < MIN_FIELD_WIDTH)
+    {
+        BufferSize.Width = MIN_FIELD_WIDTH;
+    }
+
     Rr_Rect FieldRect = {
         Layout->Cursor,
         Rr_AddV2(BufferSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f)),
@@ -2780,10 +3109,6 @@ bool Rr_UIInputField(
         &FieldRect,
         &gUIContext->Style.ButtonDisabled,
         true);
-
-    if (Active)
-    {
-    }
 
     bool Hovered, Began,
         Dragging = Rr_UIDragBehavior(
@@ -2799,6 +3124,8 @@ bool Rr_UIInputField(
     {
         gUIContext->TextInputCursorBegin = NewCursorEnd;
         gUIContext->TextInputCursorEnd = NewCursorEnd;
+        gUIContext->TextInputCursorMaxCol =
+            Rr_PreviousUTF8LFOffset(Buffer, NewCursorEnd);
     }
     else if (Active && Dragging)
     {
@@ -2831,6 +3158,15 @@ bool Rr_UIInputField(
     };
 
     Rr_UIAdvance(TotalSize);
+
+    if (Active)
+    {
+        Rr_UIEditUTF8Buffer(
+            &gUIContext->TextInputCursorBegin,
+            &gUIContext->TextInputCursorEnd,
+            BufferCapacity,
+            Buffer);
+    }
 
     Rr_DestroyScratch(Scratch);
 
@@ -3559,6 +3895,14 @@ void Rr_UIProcessEvent(Rr_Event *Event)
                 gUIContext->FrameArena) = Text;
         }
         break;
+        case RR_EVENT_TYPE_KEY_DOWN:
+        case RR_EVENT_TYPE_KEY_UP:
+        {
+            *RR_PUSH_INTO_ARRAY(
+                &gUIContext->KeyboardInputBuffer,
+                gUIContext->FrameArena) = Event->Key;
+        }
+        break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
         {
             if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
@@ -3876,6 +4220,7 @@ void Rr_UIEnd(void)
     }
     gUIContext->MouseOverTextInput = false;
     RR_ZERO(gUIContext->TextInputBuffer);
+    RR_ZERO(gUIContext->KeyboardInputBuffer);
 }
 
 void Rr_UISetFontSize(float Size)

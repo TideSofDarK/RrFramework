@@ -254,6 +254,63 @@ static inline uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
     }
 }
 
+static inline size_t Rr_PreviousUTF8CodepointOffset(
+    const char *CString,
+    size_t CurrentOffset)
+{
+    do
+    {
+        CurrentOffset--;
+    }
+    while ((*(CString + CurrentOffset) & 0xC0) == 0x80);
+    return CurrentOffset;
+}
+
+static inline size_t Rr_NextUTF8CodepointOffset(
+    const char *CString,
+    size_t CurrentOffset)
+{
+    do
+    {
+        CurrentOffset++;
+    }
+    while ((*(CString + CurrentOffset) & 0xC0) == 0x80);
+    return CurrentOffset;
+}
+
+static inline size_t Rr_PreviousUTF8LFOffset(
+    const char *CString,
+    size_t CurrentOffset)
+{
+    size_t Total = 0;
+    do
+    {
+        Total++;
+        if (CurrentOffset == 0)
+        {
+            break;
+        }
+        CurrentOffset--;
+    }
+    while (*(CString + CurrentOffset) != '\n');
+    return Total;
+}
+
+static inline size_t Rr_NextUTF8LFOffset(
+    const char *CString,
+    size_t CurrentOffset)
+{
+    size_t Total = 0;
+    do
+    {
+        CurrentOffset++;
+        Total++;
+    }
+    while (*(CString + CurrentOffset) != '\0' &&
+           *(CString + CurrentOffset) != '\n');
+    return Total;
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -22,6 +22,7 @@
 - [ ] Color picker
 - [ ] Radio buttons
 - [ ] Nested windows
+- [ ] Swap font rendering with stb_truetype
 
 ** Debug Overlay
 
@@ -36,6 +37,7 @@
 ** Examples
 
 - [ ] Pre-rendered depth
+- [ ] Dissolving text
 
 ** Low-priority
 

@@ -65,7 +65,8 @@ static void Iterate(void *UserData)
 
     Rr_UIDebugOverlay();
 
-    static bool CloseButton = false;
+    static bool Open = true;
+    static bool CloseButton = true;
     static bool NoResize = false;
     static bool NoScrollbar = false;
     static bool NoTitle = false;
@@ -96,7 +97,7 @@ static void Iterate(void *UserData)
     FixedSizeWindow();
     StyleEditorWindow();
 
-    if (Rr_UIBeginWindow("Rr_UI.h", nullptr, Flags))
+    if (Rr_UIBeginWindow("Rr_UI.h", &Open, Flags))
     {
         if (Rr_UIFold("Combobox"))
         {
@@ -145,11 +146,11 @@ static void Iterate(void *UserData)
         }
         if (Rr_UIFold("Text Input"))
         {
-            static char StringBuffer[64] = "Hello, World!";
-            Rr_UIInputField("Simple UTF8 String", 64, StringBuffer, 0);
-            static char MultilineBuffer[64] =
+            static char StringBuffer[16] = "Hello, World!";
+            Rr_UIInputField("UTF-8 String (16 bytes)", 16, StringBuffer, 0);
+            static char MultilineBuffer[128] =
                 "Line A\nLine B <- Delete this!\nLine C!";
-            Rr_UIInputField("Multiline UTF8 String", 64, MultilineBuffer, 0);
+            Rr_UIInputField("UTF-8 String (128 bytes)", 128, MultilineBuffer, 0);
         }
         Rr_UILabel("Button");
         Rr_UIBeginHorizontal();
