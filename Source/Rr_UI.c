@@ -2883,6 +2883,14 @@ static void Rr_UIEditUTF8Buffer(
         bool Edited = false;
         bool ResetCol = false;
 
+        if (Event->Scancode == RR_SCANCODE_A && Event->Keymod == RR_KEYMOD_CTRL)
+        {
+            NewCursorBegin = 0;
+            NewCursorEnd = BufferLength;
+            Edited = true;
+            ResetCol = true;
+        }
+
         if (Event->Scancode == RR_SCANCODE_C && Event->Keymod == RR_KEYMOD_CTRL)
         {
             Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -3084,43 +3092,27 @@ static void Rr_UIEditUTF8Buffer(
 
         if (Event->Scancode == RR_SCANCODE_LEFT)
         {
-            if (Event->Keymod == RR_KEYMOD_SHIFT && NewCursorEnd > 0)
+            if (NewCursorEnd > 0)
             {
                 NewCursorEnd =
                     Rr_PreviousUTF8CodepointOffset(Buffer, NewCursorEnd);
             }
-            else if (Event->Keymod == 0 && CursorMin > 0)
+            if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
             {
-                if (CursorMin == CursorMax)
-                {
-                    NewCursorBegin = NewCursorEnd =
-                        Rr_PreviousUTF8CodepointOffset(Buffer, NewCursorEnd);
-                }
-                else
-                {
-                    NewCursorEnd = NewCursorBegin = CursorMin;
-                }
+                NewCursorBegin = NewCursorEnd;
             }
             Edited = true;
             ResetCol = true;
         }
         if (Event->Scancode == RR_SCANCODE_RIGHT)
         {
-            if (Event->Keymod == RR_KEYMOD_SHIFT && NewCursorEnd < BufferLength)
+            if (NewCursorEnd < BufferLength)
             {
                 NewCursorEnd = Rr_NextUTF8CodepointOffset(Buffer, NewCursorEnd);
             }
-            else if (Event->Keymod == 0 && CursorMax < BufferLength)
+            if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
             {
-                if (CursorMin == CursorMax)
-                {
-                    NewCursorBegin = NewCursorEnd =
-                        Rr_NextUTF8CodepointOffset(Buffer, CursorMax);
-                }
-                else
-                {
-                    NewCursorBegin = NewCursorEnd = CursorMax;
-                }
+                NewCursorBegin = NewCursorEnd;
             }
             Edited = true;
             ResetCol = true;
