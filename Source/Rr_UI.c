@@ -3126,7 +3126,7 @@ static void Rr_UIEditUTF8Buffer(
             ResetCol = true;
         }
 
-        if (Event->Scancode == RR_SCANCODE_F6) // HOME
+        if (Event->Scancode == RR_SCANCODE_HOME)
         {
             if (Event->Keymod == 0)
             {
@@ -3143,7 +3143,7 @@ static void Rr_UIEditUTF8Buffer(
             Edited = true;
             ResetCol = true;
         }
-        if (Event->Scancode == RR_SCANCODE_F7) // END
+        if (Event->Scancode == RR_SCANCODE_END)
         {
             if (Event->Keymod == 0)
             {
