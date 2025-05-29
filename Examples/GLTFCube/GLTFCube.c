@@ -16,7 +16,7 @@ struct SUniformData
 static Rr_LoadThread *LoadThread;
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
-static Rr_Image *DepthAttachment;
+static Rr_Image2D *DepthAttachment;
 static Rr_Buffer *StagingBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
@@ -148,9 +148,9 @@ static void Init(void *UserData)
 
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
-    DepthAttachment = Rr_CreateImage(
+    DepthAttachment = Rr_CreateImage2D(
         Renderer,
-        (Rr_IntVec3){ SwapchainSize.Width, SwapchainSize.Height, 1 },
+        (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
         RR_TEXTURE_FORMAT_D32_SFLOAT,
         RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
             RR_IMAGE_FLAGS_TRANSFER_BIT);
@@ -233,7 +233,7 @@ static void Iterate(void *UserData)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer();
 
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
     Rr_ColorTarget ColorTarget = {
         .Slot = 0,
@@ -268,7 +268,7 @@ static void Cleanup(void *UserData)
 
     Rr_DestroyLoadThread(LoadThread);
     Rr_DestroyGLTFContext(GLTFContext);
-    Rr_DestroyImage(Renderer, DepthAttachment);
+    Rr_DestroyImage2D(Renderer, DepthAttachment);
     Rr_DestroyBuffer(Renderer, StagingBuffer);
     Rr_DestroyBuffer(Renderer, UniformBuffer);
     Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);

@@ -138,7 +138,7 @@ struct SSmoothGrid
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
 
-    Rr_Image *DepthImage;
+    Rr_Image2D *DepthImage;
     Rr_Buffer *UniformBuffer;
 
     SCamera Camera;
@@ -194,9 +194,9 @@ struct SSmoothGrid
     void InitDepthImage()
     {
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
-        DepthImage = Rr_CreateImage(
+        DepthImage = Rr_CreateImage2D(
             Renderer,
-            { SwapchainSize.X, SwapchainSize.Y, 1 },
+            { SwapchainSize.X, SwapchainSize.Y },
             DEPTH_FORMAT,
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
@@ -256,7 +256,7 @@ struct SSmoothGrid
             &Uniform,
             sizeof(SGPUUniform));
 
-        Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
         Rr_ColorClear ColorClear = {};
         ColorClear.Vec4 = { 13.0f / 255.0f,
@@ -300,7 +300,7 @@ struct SSmoothGrid
         Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
         Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
         Rr_DestroyBuffer(Renderer, UniformBuffer);
-        Rr_DestroyImage(Renderer, DepthImage);
+        Rr_DestroyImage2D(Renderer, DepthImage);
     }
 };
 

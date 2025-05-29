@@ -96,7 +96,11 @@ extern Rr_Sampler *Rr_CreateSampler(
 
 extern void Rr_DestroySampler(Rr_Renderer *Renderer, Rr_Sampler *Sampler);
 
-typedef struct Rr_Image Rr_Image;
+typedef struct Rr_Image2D Rr_Image2D;
+typedef struct Rr_Image2DArray Rr_Image2DArray;
+typedef struct Rr_Image3D Rr_Image3D;
+typedef struct Rr_Image3DArray Rr_Image3DArray;
+typedef struct Rr_Cubemap Rr_Cubemap;
 
 typedef enum
 {
@@ -112,23 +116,17 @@ typedef enum
 } Rr_ImageFlagsBits;
 typedef uint32_t Rr_ImageFlags;
 
-extern Rr_Image *Rr_CreateImage(
+extern Rr_Image2D *Rr_CreateImage2D(
     Rr_Renderer *Renderer,
-    Rr_IntVec3 Extent,
+    Rr_IntVec2 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags);
 
-extern void Rr_DestroyImage(Rr_Renderer *Renderer, Rr_Image *Image);
+extern void Rr_DestroyImage2D(Rr_Renderer *Renderer, Rr_Image2D *Image);
 
-extern Rr_IntVec3 Rr_GetImageExtent3D(Rr_Image *Image);
+extern Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image);
 
-extern Rr_IntVec2 Rr_GetImageExtent2D(Rr_Image *Image);
-
-extern float Rr_GetImageAspect2D(Rr_Image *Image);
-
-extern Rr_Image *Rr_GetDummyColorTexture(Rr_Renderer *Renderer);
-
-extern Rr_Image *Rr_GetDummyNormalTexture(Rr_Renderer *Renderer);
+extern float Rr_GetImage2DAspect(Rr_Image2D *Image);
 
 #ifdef __cplusplus
 }

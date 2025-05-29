@@ -119,8 +119,8 @@ extern void Rr_TransferBufferData(
 extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_Renderer *Renderer,
     const char *Name,
-    Rr_Image *SrcImage,
-    Rr_Image *DstImage,
+    Rr_Image2D *SrcImage,
+    Rr_Image2D *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_ImageAspect ImageAspect);
@@ -142,15 +142,15 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
-    Rr_Image **ColorImages,
+    Rr_Image2D **ColorImages,
     Rr_DepthTarget *DepthTarget,
-    Rr_Image *DepthImage);
+    Rr_Image2D *DepthImage);
 
 extern Rr_GraphNode *Rr_AddClearColorImageNode(
     Rr_Renderer *Renderer,
     const char *Name,
     Rr_ColorClear *ColorClear,
-    Rr_Image *Image);
+    Rr_Image2D *Image);
 
 extern void Rr_Draw(
     Rr_GraphNode *Node,
@@ -203,13 +203,13 @@ extern void Rr_BindSampler(
 
 extern void Rr_BindSampledImage(
     Rr_GraphNode *Node,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     size_t Set,
     size_t Binding);
 
 extern void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     Rr_Sampler *Sampler,
     size_t Set,
     size_t Binding);
@@ -232,7 +232,7 @@ extern void Rr_BindStorageBuffer(
 
 extern void Rr_BindStorageImage(
     Rr_GraphNode *Node,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     size_t Set,
     size_t Binding);
 

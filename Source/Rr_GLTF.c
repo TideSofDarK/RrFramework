@@ -215,7 +215,9 @@ void Rr_DestroyGLTFContext(Rr_GLTFContext *GLTFContext)
 
     for (size_t Index = 0; Index < GLTFContext->Images.Count; ++Index)
     {
-        Rr_DestroyImage(GLTFContext->Renderer, GLTFContext->Images.Data[Index]);
+        Rr_DestroyImage2D(
+            GLTFContext->Renderer,
+            GLTFContext->Images.Data[Index]);
     }
 
     Rr_DestroyArena(GLTFContext->Arena);
@@ -474,7 +476,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     {
         GLTFAsset->Images = RR_ALLOC_TYPE_COUNT(
             GLTFContext->Arena,
-            Rr_Image *,
+            Rr_Image2D *,
             Data->images_count);
     }
 
@@ -693,7 +695,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                             Texture->image->buffer_view->offset;
 
                         GLTFAsset->Images[CurrentTextureIndex] =
-                            Rr_CreateImageRGBA8FromPNG(
+                            Rr_CreateImage2DRGBA8FromPNG(
                                 Renderer,
                                 UploadContext,
                                 ImageDataSize,

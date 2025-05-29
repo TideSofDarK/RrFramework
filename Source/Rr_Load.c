@@ -55,20 +55,13 @@ static void Rr_LoadResourcesFromTasks(
             case RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG:
             {
                 Rr_Asset Asset = Rr_LoadAsset(Task->AssetRef);
-                Result = Rr_CreateImageRGBA8FromPNG(
+                Result = Rr_CreateImage2DRGBA8FromPNG(
                     Renderer,
                     UploadContext,
                     Asset.Size,
                     Asset.Pointer);
             }
             break;
-            // case RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ:
-            // {
-            //     Result =
-            //         Rr_CreateStaticMeshOBJ(App, UploadContext,
-            //         Task->AssetRef, Scratch.Arena);
-            // }
-            // break;
             case RR_LOAD_TYPE_GLTF_ASSET:
             {
                 Rr_LoadGLTFOptions *Options = &Task->Options.GLTF;
@@ -103,7 +96,9 @@ static void Rr_LoadResourcesFromTasks(
     Rr_DestroyScratch(Scratch);
 }
 
-Rr_LoadTask Rr_LoadImageRGBA8FromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage)
+Rr_LoadTask Rr_LoadImageRGBA8FromPNG(
+    Rr_AssetRef AssetRef,
+    Rr_Image2D **OutImage)
 {
     return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
@@ -111,31 +106,6 @@ Rr_LoadTask Rr_LoadImageRGBA8FromPNG(Rr_AssetRef AssetRef, Rr_Image **OutImage)
         .Out = (void **)OutImage,
     };
 }
-
-// Rr_LoadTask Rr_LoadStaticMeshFromOBJ(Rr_AssetRef AssetRef, Rr_StaticMesh
-// **OutStaticMesh)
-// {
-//     return (Rr_LoadTask){
-//         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_OBJ,
-//         .AssetRef = AssetRef,
-//         .Out = (void **)OutStaticMesh,
-//     };
-// }
-
-// Rr_LoadTask Rr_LoadStaticMeshFromGLTF(
-//     Rr_AssetRef AssetRef,
-//     Rr_GLTFLoader *Loader,
-//     size_t MeshIndex,
-//     Rr_StaticMesh **OutStaticMesh)
-// {
-//     return (Rr_LoadTask){
-//         .LoadType = RR_LOAD_TYPE_STATIC_MESH_FROM_GLTF,
-//         .AssetRef = AssetRef,
-//         .Out = (void **)OutStaticMesh,
-//         .Options = (Rr_MeshGLTFOptions){ .MeshIndex = MeshIndex, .Loader =
-//         *Loader },
-//     };
-// }
 
 static Rr_LoadResult Rr_ProcessLoadContext(
     Rr_LoadContext *LoadContext,
@@ -152,7 +122,6 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     /* Create appropriate upload context. */
 
     bool UseTransferQueue = Rr_IsUsingTransferQueue(Renderer);
-    /* TODO: Simplify checks */
     VkCommandPool CommandPool = UseTransferQueue
                                     ? LoadAsyncContext.TransferCommandPool
                                     : LoadAsyncContext.GraphicsCommandPool;
@@ -503,7 +472,7 @@ Rr_LoadTask Rr_LoadGLTFAssetTask(
     };
 }
 
-Rr_LoadTask Rr_LoadImageRGBA8FromPNGTask(Rr_AssetRef AssetRef, Rr_Image **Out)
+Rr_LoadTask Rr_LoadImageRGBA8FromPNGTask(Rr_AssetRef AssetRef, Rr_Image2D **Out)
 {
     return (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,

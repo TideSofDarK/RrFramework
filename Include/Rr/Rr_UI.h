@@ -53,7 +53,7 @@ struct Rr_UIFont
 {
     Rr_UIGlyph Glyphs[RR_TEXT_MAX_GLYPHS];
     float Advances[RR_TEXT_MAX_GLYPHS];
-    struct Rr_Image *Atlas;
+    struct Rr_Image2D *Atlas;
     float LineHeight;
     float DefaultSize;
     float Advance;

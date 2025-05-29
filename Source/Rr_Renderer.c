@@ -132,7 +132,6 @@ static bool Rr_InitSwapchain(Rr_Renderer *Renderer)
         Width = SurfaceCapabilities.currentExtent.width;
         Height = SurfaceCapabilities.currentExtent.height;
     }
-    Renderer->Swapchain.Extent.depth = 1;
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -762,7 +761,7 @@ void Rr_NewFrame(void)
     RR_RESET_ARRAY(&Frame->UsedImages, Frame->Arena);
     RR_RESET_ARRAY(&Frame->UsedBuffers, Frame->Arena);
 
-    Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image);
+    Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image2D);
 
     /* These are applied again just before graph execution. */
 
@@ -842,7 +841,7 @@ void Rr_DrawFrame(void)
      * put real handles to virtual swapchain image which
      * will be used by the graph. */
 
-    *Frame->VirtualSwapchainImage = (Rr_Image){
+    *Frame->VirtualSwapchainImage = (Rr_Image2D){
         .Extent = Renderer->Swapchain.Extent,
         .Format = Renderer->Swapchain.Format,
         .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -1028,7 +1027,7 @@ Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer)
     };
 }
 
-Rr_Image *Rr_GetSwapchainImage(Rr_Renderer *Renderer)
+Rr_Image2D *Rr_GetSwapchainImage(Rr_Renderer *Renderer)
 {
     return Rr_GetCurrentFrame(Renderer)->VirtualSwapchainImage;
 }

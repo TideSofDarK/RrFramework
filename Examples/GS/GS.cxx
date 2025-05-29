@@ -292,7 +292,7 @@ struct SSplatRenderer
         Rr_DestroyBuffer(Renderer, UniformBuffer);
     }
 
-    void Render(const SCamera &Camera, Rr_Image *ColorAttachment)
+    void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)
     {
         Sorter.Sort(
             Camera.ProjMatrix * Camera.ViewMatrix,
@@ -395,7 +395,7 @@ static void Iterate(void *UserData)
         Rr_ToggleFullscreen();
     }
 
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
     SplatData->Render(Camera, SwapchainImage);
 

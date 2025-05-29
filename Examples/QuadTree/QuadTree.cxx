@@ -828,7 +828,7 @@ static void Render()
 
     Rr_Renderer *Renderer = Rr_GetRenderer();
 
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
 
     Rr_ColorTarget ColorTarget;

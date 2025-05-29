@@ -77,10 +77,10 @@ void Rr_DestroySampler(Rr_Renderer *Renderer, Rr_Sampler *Sampler)
     RR_RETURN_FREE_LIST_ITEM(&Renderer->Samplers, Sampler);
 }
 
-void Rr_UploadStagingImage(
+void Rr_UploadStagingImage2D(
     Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     VkImageAspectFlags Aspect,
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
@@ -98,10 +98,10 @@ void Rr_UploadStagingImage(
     for (size_t AllocatedIndex = 0; AllocatedIndex < Image->AllocatedImageCount;
          ++AllocatedIndex)
     {
-        Rr_AllocatedImage *AllocatedImage =
+        Rr_AllocatedImage2D *AllocatedImage =
             Image->AllocatedImages + AllocatedIndex;
 
-        VkImageSubresourceRange SubresourceRange = (VkImageSubresourceRange){
+        VkImageSubresourceRange SubresourceRange = {
             .aspectMask = Aspect,
             .baseMipLevel = 0,
             .levelCount = 1,
@@ -142,7 +142,7 @@ void Rr_UploadStagingImage(
                 .baseArrayLayer = 0,
                 .layerCount = 1,
             },
-            .imageExtent = Image->Extent,
+            .imageExtent = (VkExtent3D){ Image->Extent.width, Image->Extent.height, 1},
         };
 
         Device->CmdCopyBufferToImage(
@@ -211,10 +211,10 @@ void Rr_UploadStagingImage(
     }
 }
 
-void Rr_UploadImage(
+void Rr_UploadImage2D(
     Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     VkImageAspectFlags Aspect,
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
@@ -234,7 +234,7 @@ void Rr_UploadImage(
         Data.Pointer,
         Data.Size);
 
-    Rr_UploadStagingImage(
+    Rr_UploadStagingImage2D(
         Renderer,
         UploadContext,
         Image,
@@ -246,36 +246,35 @@ void Rr_UploadImage(
         0);
 }
 
-Rr_Image *Rr_CreateImage(
+Rr_Image2D *Rr_CreateImage2D(
     Rr_Renderer *Renderer,
-    Rr_IntVec3 Extent,
+    Rr_IntVec2 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags)
 {
     assert(Extent.Width >= 1);
     assert(Extent.Height >= 1);
-    assert(Extent.Depth >= 1);
 
     Rr_Device *Device = &Renderer->Device;
 
-    Rr_Image *Image = RR_GET_FREE_LIST_ITEM(&Renderer->Images, Renderer->Arena);
+    Rr_Image2D *Image =
+        RR_GET_FREE_LIST_ITEM(&Renderer->Images, Renderer->Arena);
     Image->Flags = Flags;
     Image->Format = Rr_ToVulkanTextureFormat(Format);
     Image->Extent.width = Extent.Width;
     Image->Extent.height = Extent.Height;
-    Image->Extent.depth = Extent.Depth;
 
     VkImageType ImageType = VK_IMAGE_TYPE_3D;
     VkImageViewType ImageViewType = VK_IMAGE_VIEW_TYPE_3D;
-    if (Extent.Depth == 1)
-    {
-        ImageType = VK_IMAGE_TYPE_2D;
-        ImageViewType = VK_IMAGE_VIEW_TYPE_2D;
-    }
     if (Extent.Height == 1)
     {
         ImageType = VK_IMAGE_TYPE_1D;
         ImageViewType = VK_IMAGE_VIEW_TYPE_1D;
+    }
+    else
+    {
+        ImageType = VK_IMAGE_TYPE_2D;
+        ImageViewType = VK_IMAGE_VIEW_TYPE_2D;
     }
 
     uint32_t MipLevels = 1;
@@ -325,7 +324,7 @@ Rr_Image *Rr_CreateImage(
         .pNext = NULL,
         .imageType = ImageType,
         .format = Image->Format,
-        .extent = Image->Extent,
+        .extent = (VkExtent3D){ Image->Extent.width, Image->Extent.height, 1 },
         .mipLevels = MipLevels,
         .arrayLayers = 1,
         .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -357,7 +356,7 @@ Rr_Image *Rr_CreateImage(
 
     for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
-        Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + Index;
+        Rr_AllocatedImage2D *AllocatedImage = Image->AllocatedImages + Index;
         AllocatedImage->Container = Image;
 
         vmaCreateImage(
@@ -393,7 +392,7 @@ Rr_Image *Rr_CreateImage(
     return Image;
 }
 
-void Rr_DestroyImage(Rr_Renderer *Renderer, Rr_Image *Image)
+void Rr_DestroyImage2D(Rr_Renderer *Renderer, Rr_Image2D *Image)
 {
     if (Image == NULL)
     {
@@ -417,16 +416,16 @@ void Rr_DestroyImage(Rr_Renderer *Renderer, Rr_Image *Image)
     RR_RETURN_FREE_LIST_ITEM(&Renderer->Images, Image);
 }
 
-Rr_IntVec3 Rr_GetImageExtent3D(Rr_Image *Image)
-{
-    return (Rr_IntVec3){
-        .Width = Image->Extent.width,
-        .Height = Image->Extent.height,
-        .Depth = Image->Extent.depth,
-    };
-}
+/* Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image) */
+/* { */
+/*     return (Rr_IntVec3){ */
+/*         .Width = Image->Extent.width, */
+/*         .Height = Image->Extent.height, */
+/*         .Depth = Image->Extent.depth, */
+/*     }; */
+/* } */
 
-Rr_IntVec2 Rr_GetImageExtent2D(Rr_Image *Image)
+Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image)
 {
     return (Rr_IntVec2){
         .Width = Image->Extent.width,
@@ -434,7 +433,7 @@ Rr_IntVec2 Rr_GetImageExtent2D(Rr_Image *Image)
     };
 }
 
-float Rr_GetImageAspect2D(Rr_Image *Image)
+float Rr_GetImage2DAspect(Rr_Image2D *Image)
 {
     return (float)Image->Extent.width / (float)Image->Extent.height;
 }
@@ -455,7 +454,7 @@ size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)
     return Width * Height * DesiredChannels;
 }
 
-Rr_Image *Rr_CreateImageRGBA8(
+Rr_Image2D *Rr_CreateImage2DRGBA8(
     Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     char *Data,
@@ -463,16 +462,16 @@ Rr_Image *Rr_CreateImageRGBA8(
     uint32_t Height)
 {
     int32_t DesiredChannels = 4;
-    Rr_IntVec3 Extent = { .Width = Width, .Height = Height, .Depth = 1 };
+    Rr_IntVec2 Extent = { .Width = Width, .Height = Height };
     size_t DataSize = Extent.Width * Extent.Height * DesiredChannels;
 
-    Rr_Image *ColorImage = Rr_CreateImage(
+    Rr_Image2D *ColorImage = Rr_CreateImage2D(
         Renderer,
         Extent,
         RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
-    Rr_UploadImage(
+    Rr_UploadImage2D(
         Renderer,
         UploadContext,
         ColorImage,
@@ -490,7 +489,7 @@ Rr_Image *Rr_CreateImageRGBA8(
     return ColorImage;
 }
 
-Rr_Image *Rr_CreateImageRGBA8FromPNG(
+Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
@@ -498,7 +497,7 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
 {
     int32_t DesiredChannels = 4;
     int32_t Channels;
-    Rr_IntVec3 Extent = { .Depth = 1 };
+    Rr_IntVec2 Extent;
     stbi_uc *ParsedData = stbi_load_from_memory(
         (stbi_uc *)Data,
         (int32_t)DataSize,
@@ -508,13 +507,13 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
         DesiredChannels);
     size_t ParsedSize = Extent.Width * Extent.Height * DesiredChannels;
 
-    Rr_Image *ColorImage = Rr_CreateImage(
+    Rr_Image2D *ColorImage = Rr_CreateImage2D(
         Renderer,
         Extent,
         RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
-    Rr_UploadImage(
+    Rr_UploadImage2D(
         Renderer,
         UploadContext,
         ColorImage,
@@ -633,9 +632,9 @@ Rr_Image *Rr_CreateImageRGBA8FromPNG(
 //     return App->Renderer.NullTextures.Normal;
 // }
 
-Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(
+Rr_AllocatedImage2D *Rr_GetCurrentAllocatedImage2D(
     Rr_Renderer *Renderer,
-    Rr_Image *Image)
+    Rr_Image2D *Image)
 {
     size_t AllocatedImageIndex =
         Renderer->FrameIndex % Image->AllocatedImageCount;

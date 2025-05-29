@@ -279,7 +279,9 @@ extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
     Rr_Graph *Graph,
     Rr_Buffer *Buffer);
 
-extern Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, Rr_Image *Image);
+extern Rr_GraphImage *Rr_GetGraphImageHandle(
+    Rr_Graph *Graph,
+    Rr_Image2D *Image);
 
 extern Rr_GraphNode *Rr_AddGraphNode(
     struct Rr_Frame *Frame,

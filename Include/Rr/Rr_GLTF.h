@@ -111,7 +111,7 @@ struct Rr_GLTFAsset
     Rr_GLTFMesh *Meshes;
     Rr_Buffer *Buffer;
     size_t ImageCount;
-    Rr_Image **Images;
+    Rr_Image2D **Images;
     size_t MaterialCount;
     Rr_GLTFMaterial *Materials;
     size_t VertexBufferOffset;

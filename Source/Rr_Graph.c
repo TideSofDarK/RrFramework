@@ -39,7 +39,7 @@ static Rr_AllocatedBuffer *Rr_GetGraphBuffer(
     return Graph->Resources.Data[Handle.Values.Index].Allocated;
 }
 
-static Rr_AllocatedImage *Rr_GetGraphImage(
+static Rr_AllocatedImage2D *Rr_GetGraphImage(
     Rr_Graph *Graph,
     Rr_GraphImage Handle)
 {
@@ -71,7 +71,7 @@ static void Rr_ExecuteTransferNode(
     }
 }
 
-static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
+static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent2D *Extent)
 {
     Rect->X = RR_CLAMP(0, Rect->X, (int)Extent->width);
     Rect->Y = RR_CLAMP(0, Rect->Y, (int)Extent->height);
@@ -90,9 +90,9 @@ static void Rr_ExecuteBlitNode(
     Rr_Device *Device = &Renderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
 
-    Rr_AllocatedImage *SrcImage =
+    Rr_AllocatedImage2D *SrcImage =
         Rr_GetGraphImage(Frame->Graph, Node->SrcImageHandle);
-    Rr_AllocatedImage *DstImage =
+    Rr_AllocatedImage2D *DstImage =
         Rr_GetGraphImage(Frame->Graph, Node->DstImageHandle);
 
     if (Rr_ClampBlitRect(&Node->SrcRect, &SrcImage->Container->Extent) &&
@@ -315,7 +315,7 @@ static void Rr_ExecuteGraphicsNode(
         Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
         VkClearValue *ClearValue = &ClearValues[ColorTarget->Slot];
         memcpy(ClearValue, &ColorTarget->Clear, sizeof(VkClearValue));
-        Rr_AllocatedImage *ColorImage =
+        Rr_AllocatedImage2D *ColorImage =
             Rr_GetGraphImage(Graph, Node->ColorImages[Index]);
         Attachments[ColorTarget->Slot] = (Rr_RenderPassAttachment){
             .LoadOp = ColorTarget->LoadOp,
@@ -337,7 +337,7 @@ static void Rr_ExecuteGraphicsNode(
         Rr_DepthTarget *DepthTarget = Node->DepthTarget;
         VkClearValue *ClearValue = &ClearValues[DepthIndex];
         memcpy(ClearValue, &DepthTarget->Clear, sizeof(VkClearValue));
-        Rr_AllocatedImage *DepthImage =
+        Rr_AllocatedImage2D *DepthImage =
             Rr_GetGraphImage(Graph, Node->DepthImage);
         Attachments[DepthIndex] = (Rr_RenderPassAttachment){
             .LoadOp = DepthTarget->LoadOp,
@@ -666,7 +666,7 @@ static void Rr_ExecuteClearColorImageNode(
 {
     Rr_Device *Device = &Renderer->Device;
 
-    Rr_AllocatedImage *ColorImage = Rr_GetGraphImage(Graph, Node->ColorImage);
+    Rr_AllocatedImage2D *ColorImage = Rr_GetGraphImage(Graph, Node->ColorImage);
 
     Device->CmdClearColorImage(
         CommandBuffer,
@@ -1247,7 +1247,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
         if (Resource->IsImage)
         {
             Resource->Allocated =
-                Rr_GetCurrentAllocatedImage(Renderer, Resource->Container);
+                Rr_GetCurrentAllocatedImage2D(Renderer, Resource->Container);
         }
         else
         {
@@ -1281,7 +1281,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
             {
                 /* Image Synchronization */
 
-                Rr_AllocatedImage *AllocatedImage =
+                Rr_AllocatedImage2D *AllocatedImage =
                     Rr_GetGraphImage(Graph, Dependency->Handle);
                 VkImage Image = AllocatedImage->Handle;
 
@@ -1501,7 +1501,7 @@ Rr_GraphBuffer *Rr_GetGraphBufferHandle(Rr_Graph *Graph, Rr_Buffer *Buffer)
     return Rr_GetGraphHandle(Graph, Buffer, false);
 }
 
-Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, Rr_Image *Image)
+Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, Rr_Image2D *Image)
 {
     return Rr_GetGraphHandle(Graph, Image, true);
 }
@@ -1563,8 +1563,8 @@ void Rr_TransferBufferData(
 Rr_GraphNode *Rr_AddBlitNode(
     Rr_Renderer *Renderer,
     const char *Name,
-    Rr_Image *SrcImage,
-    Rr_Image *DstImage,
+    Rr_Image2D *SrcImage,
+    Rr_Image2D *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_ImageAspect ImageAspect)
@@ -1631,9 +1631,9 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
-    Rr_Image **ColorImages,
+    Rr_Image2D **ColorImages,
     Rr_DepthTarget *DepthTarget,
-    Rr_Image *DepthImage)
+    Rr_Image2D *DepthImage)
 {
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
     assert(DepthTarget == NULL || DepthImage != NULL);
@@ -1713,7 +1713,7 @@ Rr_GraphNode *Rr_AddClearColorImageNode(
     Rr_Renderer *Renderer,
     const char *Name,
     Rr_ColorClear *ColorClear,
-    Rr_Image *Image)
+    Rr_Image2D *Image)
 {
     assert(ColorClear != NULL && Image != NULL);
 
@@ -1954,7 +1954,7 @@ void Rr_BindSampler(
 
 void Rr_BindSampledImage(
     Rr_GraphNode *Node,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     size_t Set,
     size_t Binding)
 {
@@ -1990,7 +1990,7 @@ void Rr_BindSampledImage(
 
 void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     Rr_Sampler *Sampler,
     size_t Set,
     size_t Binding)
@@ -2130,7 +2130,7 @@ void Rr_BindStorageBuffer(
 
 void Rr_BindStorageImage(
     Rr_GraphNode *Node,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     size_t Set,
     size_t Binding)
 {

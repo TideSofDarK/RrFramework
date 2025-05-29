@@ -508,9 +508,9 @@ static Rr_LoadThread *LoadThread;
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *TowerAsset;
 static Rr_GLTFAsset *ArrowAsset;
-static Rr_Image *BlitImage;
-static Rr_Image *ColorAttachment;
-static Rr_Image *DepthAttachment;
+static Rr_Image2D *BlitImage;
+static Rr_Image2D *ColorAttachment;
+static Rr_Image2D *DepthAttachment;
 static Rr_Buffer *StagingBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
@@ -633,22 +633,22 @@ static void Init(void *UserData)
 
     /* Create main draw target. */
 
-    BlitImage = Rr_CreateImage(
+    BlitImage = Rr_CreateImage2D(
         Renderer,
-        { 128, 128, 1 },
+        { 128, 128 },
         Rr_GetSwapchainFormat(Renderer),
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
-    ColorAttachment = Rr_CreateImage(
+    ColorAttachment = Rr_CreateImage2D(
         Renderer,
-        { 320, 240, 1 },
+        { 320, 240 },
         Rr_GetSwapchainFormat(Renderer),
         RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
             RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-    DepthAttachment = Rr_CreateImage(
+    DepthAttachment = Rr_CreateImage2D(
         Renderer,
-        { 320, 240, 1 },
+        { 320, 240 },
         RR_TEXTURE_FORMAT_D32_SFLOAT,
         RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
             RR_IMAGE_FLAGS_TRANSFER_BIT);
@@ -669,10 +669,10 @@ static void Init(void *UserData)
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
     CreepManager = new SCreepManager(64);
-    Camera.SetPerspective(60.0f, Rr_GetImageAspect2D(ColorAttachment));
+    Camera.SetPerspective(60.0f, Rr_GetImage2DAspect(ColorAttachment));
 }
 
-static void Render(Rr_Image *ColorAttachment, Rr_Image *DepthAttachment)
+static void Render(Rr_Image2D *ColorAttachment, Rr_Image2D *DepthAttachment)
 {
     Rr_Renderer *Renderer = Rr_GetRenderer();
 
@@ -833,7 +833,7 @@ static void Iterate(void *UserData)
     Render(ColorAttachment, DepthAttachment);
 
     Rr_Renderer *Renderer = Rr_GetRenderer();
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
     Rr_IntVec2 SwapchainImageSize = Rr_GetSwapchainSize(Renderer);
     Rr_AddBlitNode(
         Renderer,
@@ -852,9 +852,9 @@ static void Cleanup(void *UserData)
     Rr_DestroyLoadThread(LoadThread);
     CreepManager->Cleanup();
     Rr_DestroyGLTFContext(GLTFContext);
-    Rr_DestroyImage(Renderer, BlitImage);
-    Rr_DestroyImage(Renderer, ColorAttachment);
-    Rr_DestroyImage(Renderer, DepthAttachment);
+    Rr_DestroyImage2D(Renderer, BlitImage);
+    Rr_DestroyImage2D(Renderer, ColorAttachment);
+    Rr_DestroyImage2D(Renderer, DepthAttachment);
     Rr_DestroyBuffer(Renderer, StagingBuffer);
     Rr_DestroyBuffer(Renderer, UniformBuffer);
     Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);

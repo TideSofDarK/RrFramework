@@ -68,7 +68,7 @@ struct Rr_LoadTask
     union
     {
         void **Any;
-        Rr_Image **Image;
+        Rr_Image2D **Image;
         Rr_GLTFAsset **GLTFAsset;
     } Out;
 };
@@ -86,7 +86,7 @@ extern Rr_LoadTask Rr_LoadGLTFAssetTask(
 
 extern Rr_LoadTask Rr_LoadImageRGBA8FromPNGTask(
     Rr_AssetRef AssetRef,
-    Rr_Image **Out);
+    Rr_Image2D **Out);
 
 extern Rr_LoadContext *Rr_LoadAsync(
     Rr_LoadThread *LoadThread,

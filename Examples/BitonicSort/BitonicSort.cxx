@@ -18,7 +18,7 @@ struct SValidator
     uint32_t ThreadsPerWorkgroup;
     Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
-    Rr_Image *ResultImage;
+    Rr_Image2D *ResultImage;
 
     explicit SValidator(Rr_Renderer *Renderer)
         : Renderer(Renderer)
@@ -56,9 +56,9 @@ struct SValidator
 
         Pipeline = Rr_CreateComputePipeline(Renderer, &PipelineCreateInfo);
 
-        ResultImage = Rr_CreateImage(
+        ResultImage = Rr_CreateImage2D(
             Renderer,
-            { 2, 2, 1 },
+            { 2, 2 },
             RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     }
@@ -67,10 +67,10 @@ struct SValidator
     {
         Rr_DestroyComputePipeline(Renderer, Pipeline);
         Rr_DestroyPipelineLayout(Renderer, Layout);
-        Rr_DestroyImage(Renderer, ResultImage);
+        Rr_DestroyImage2D(Renderer, ResultImage);
     }
 
-    Rr_Image *Validate(
+    Rr_Image2D *Validate(
         uint32_t Count,
         Rr_Buffer *SortedBuffer,
         Rr_Buffer *UnsortedBuffer)
@@ -321,10 +321,10 @@ static void Iterate(void *UserData)
 
     Sorter->Sort(COUNT, RandomNumbersBuffer);
 
-    Rr_Image *ResultImage =
+    Rr_Image2D *ResultImage =
         Validator->Validate(COUNT, SortedNumbersBuffer, RandomNumbersBuffer);
 
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
     Rr_AddBlitNode(
         Renderer,

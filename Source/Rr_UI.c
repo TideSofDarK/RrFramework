@@ -240,7 +240,7 @@ Rr_UIFont *Rr_UICreateFont(
 
     Rr_Renderer *Renderer = gApp->Renderer;
 
-    Rr_Image *Atlas;
+    Rr_Image2D *Atlas;
     Rr_LoadTask ImageLoadTask = (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
         .AssetRef = FontPNGRef,
@@ -323,7 +323,7 @@ Rr_UIFont *Rr_UICreateFont(
 
 void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
 {
-    Rr_DestroyImage(gApp->Renderer, Font->Atlas);
+    Rr_DestroyImage2D(gApp->Renderer, Font->Atlas);
 
     RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
 }
@@ -4286,7 +4286,7 @@ void Rr_UIEnd(void)
     }
 
     Rr_Renderer *Renderer = gApp->Renderer;
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
     Rr_UIUniformData UniformData = {
         .ScreenSize = gUIContext->ScreenSize,

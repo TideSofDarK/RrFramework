@@ -38,29 +38,29 @@ struct Rr_Sampler
     VkSampler Handle;
 };
 
-typedef struct Rr_AllocatedImage Rr_AllocatedImage;
-struct Rr_AllocatedImage
+typedef struct Rr_AllocatedImage2D Rr_AllocatedImage2D;
+struct Rr_AllocatedImage2D
 {
     VkImage Handle;
     VkImageView View;
     VmaAllocation Allocation;
-    Rr_Image *Container;
+    Rr_Image2D *Container;
 };
 
-struct Rr_Image
+struct Rr_Image2D
 {
-    VkExtent3D Extent;
+    VkExtent2D Extent;
     VkImageAspectFlags AspectFlags;
     VkFormat Format;
     Rr_ImageFlags Flags;
     size_t AllocatedImageCount;
-    Rr_AllocatedImage AllocatedImages[RR_MAX_FRAME_OVERLAP];
+    Rr_AllocatedImage2D AllocatedImages[RR_MAX_FRAME_OVERLAP];
 };
 
-extern void Rr_UploadStagingImage(
+extern void Rr_UploadStagingImage2D(
     Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     VkImageAspectFlags Aspect,
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
@@ -68,23 +68,23 @@ extern void Rr_UploadStagingImage(
     size_t StagingOffset,
     size_t StagingSize);
 
-extern void Rr_UploadImage(
+extern void Rr_UploadImage2D(
     Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
-    Rr_Image *Image,
+    Rr_Image2D *Image,
     VkImageAspectFlags Aspect,
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
     Rr_Data Data);
 
-extern Rr_Image *Rr_CreateImageRGBA8(
+extern Rr_Image2D *Rr_CreateImage2DRGBA8(
     Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     char *Data,
     uint32_t Width,
     uint32_t Height);
 
-Rr_Image *Rr_CreateImageRGBA8FromPNG(
+Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
@@ -104,6 +104,6 @@ extern size_t Rr_GetImagePNGRGBA8Size(
 // extern void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena,
 // Rr_LoadSize *OutLoadSize);
 
-extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(
+extern Rr_AllocatedImage2D *Rr_GetCurrentAllocatedImage2D(
     Rr_Renderer *Renderer,
-    Rr_Image *Image);
+    Rr_Image2D *Image);

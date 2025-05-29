@@ -49,7 +49,7 @@ struct Rr_Swapchain
     VkSwapchainKHR Handle;
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
-    VkExtent3D Extent;
+    VkExtent2D Extent;
     Rr_AtomicInt RecreatePending;
 };
 
@@ -63,7 +63,7 @@ struct Rr_ImmediateMode
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    Rr_Image *VirtualSwapchainImage;
+    Rr_Image2D *VirtualSwapchainImage;
 
     VkCommandPool CommandPool;
     VkCommandBuffer EarlyCommandBuffer;
@@ -77,7 +77,7 @@ struct Rr_Frame
 
     Rr_Graph *Graph;
 
-    RR_ARRAY(Rr_Image *) UsedImages;
+    RR_ARRAY(Rr_Image2D *) UsedImages;
     RR_ARRAY(Rr_Buffer *) UsedBuffers;
 
     Rr_Arena *Arena;
@@ -134,7 +134,7 @@ struct Rr_Renderer
     Rr_Map *GlobalSync;
 
     RR_FREE_LIST(Rr_Buffer) Buffers;
-    RR_FREE_LIST(Rr_Image) Images;
+    RR_FREE_LIST(Rr_Image2D) Images;
     RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
     RR_FREE_LIST(Rr_ComputePipeline) ComputePipelines;
     RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;

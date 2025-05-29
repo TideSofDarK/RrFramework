@@ -126,7 +126,7 @@ static void Iterate(void *UserData)
         GetDispatchSize() * sizeof(uint32_t));
     Rr_Dispatch(ComputeNode, GetDispatchSize(), 1, 1);
 
-    Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
 
     Rr_ColorTarget ColorTarget;
     ColorTarget.Clear = { 0.5, 0.0, 0.5, 1.0 };
