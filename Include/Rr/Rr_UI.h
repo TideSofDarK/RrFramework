@@ -71,6 +71,7 @@ struct Rr_UIStyle
     float BevelIntensityDark;
 
     Rr_Vec4 Foreground;
+    Rr_Vec4 ForegroundDimmed;
     Rr_Vec4 Background;
     Rr_Vec4 TitleBackground;
     Rr_Vec4 TitleButtonBackground;

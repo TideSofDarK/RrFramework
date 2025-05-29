@@ -18,7 +18,7 @@ static void TextInputWindow()
             &TextInputWindowOpen,
             RR_UI_WINDOW_FLAGS_CLOSE_BIT))
     {
-        static char StringBuffer[2048] = "sdf";
+        static char StringBuffer[2048] = "";
         Rr_UIInputFieldEx(
             "###LargeString",
             2048,

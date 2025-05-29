@@ -3220,6 +3220,18 @@ bool Rr_UIInputFieldEx(
         0.0f,
         &gUIContext->Style.Foreground);
 
+    if (BufferSize.X == 0.0f && Placeholder != NULL && !Active)
+    {
+        BufferSize = Rr_UIDrawText(
+            false,
+            BufferPosition,
+            SIZE_MAX,
+            Placeholder,
+            0.0f,
+            &gUIContext->Style.ForegroundDimmed,
+            0);
+    }
+
     const float MIN_FIELD_WIDTH = gUIContext->FontSize * 4.0f;
     if (BufferSize.Width < MIN_FIELD_WIDTH)
     {
@@ -3902,6 +3914,7 @@ void Rr_UIInit(void)
         .BevelIntensityDark = 0.7f,
 
         .Foreground = Rr_U32ToRGBA(0xD6D0B3FF),
+        .ForegroundDimmed = Rr_U32ToRGBA(0xA7A59CFF),
         .Background = Rr_U32ToRGBA(0x292F33FF),
         .TitleBackground = Rr_U32ToRGBA(0x5E2D96FF),
         .TitleButtonBackground = Rr_U32ToRGBA(0xD54251FF),
