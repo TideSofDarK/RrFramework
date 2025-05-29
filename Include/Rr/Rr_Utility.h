@@ -262,7 +262,7 @@ static inline size_t Rr_PreviousUTF8CodepointOffset(
     {
         CurrentOffset--;
     }
-    while ((*(CString + CurrentOffset) & 0xC0) == 0x80);
+    while ((CString[CurrentOffset] & 0xC0) == 0x80);
     return CurrentOffset;
 }
 
@@ -274,7 +274,85 @@ static inline size_t Rr_NextUTF8CodepointOffset(
     {
         CurrentOffset++;
     }
-    while ((*(CString + CurrentOffset) & 0xC0) == 0x80);
+    while ((CString[CurrentOffset] & 0xC0) == 0x80);
+    return CurrentOffset;
+}
+
+static inline size_t Rr_PreviousUTF8WordOffset(
+    const char *CString,
+    size_t CurrentOffset)
+{
+    bool ReachedSpace = false;
+    bool ReachedWord = false;
+    bool SkippingSpaces = false;
+    if (CurrentOffset > 0 && CString[CurrentOffset - 1] == '\n')
+    {
+        return CurrentOffset - 1;
+    }
+    while (CurrentOffset > 0)
+    {
+        if (ReachedWord)
+        {
+            if (CString[CurrentOffset - 1] == ' ')
+            {
+                break;
+            }
+            if (CString[CurrentOffset - 1] == '\n')
+            {
+                break;
+            }
+        }
+        CurrentOffset--;
+        if (ReachedSpace && CString[CurrentOffset] == '\n')
+        {
+            break;
+        }
+        if (CString[CurrentOffset] != ' ')
+        {
+            ReachedWord = true;
+        }
+        else
+        {
+            if (!ReachedSpace && CString[CurrentOffset] == ' ')
+            {
+                ReachedSpace = true;
+            }
+        }
+    }
+    return CurrentOffset;
+}
+
+static inline size_t Rr_NextUTF8WordOffset(
+    const char *CString,
+    size_t CurrentOffset)
+{
+    bool ReachedSpace = false;
+    if (CString[CurrentOffset] == '\n')
+    {
+        ReachedSpace = true;
+    }
+    while (CString[CurrentOffset] != '\0')
+    {
+        CurrentOffset++;
+        if (CString[CurrentOffset] == '\n')
+        {
+            break;
+        }
+        if (ReachedSpace)
+        {
+            if (CString[CurrentOffset] != ' ')
+            {
+                break;
+            }
+        }
+        else
+        {
+            if (CString[CurrentOffset] == ' ')
+            {
+                ReachedSpace = true;
+            }
+        }
+    }
     return CurrentOffset;
 }
 
@@ -282,7 +360,7 @@ static inline size_t Rr_PreviousUTF8LFOffset(
     const char *CString,
     size_t CurrentOffset)
 {
-    while (CurrentOffset != 0 && *(CString + CurrentOffset) != '\n')
+    while (CurrentOffset != 0 && CString[CurrentOffset] != '\n')
     {
         CurrentOffset--;
     }
@@ -293,8 +371,7 @@ static inline size_t Rr_NextUTF8LFOffset(
     const char *CString,
     size_t CurrentOffset)
 {
-    while (*(CString + CurrentOffset) != '\0' &&
-           *(CString + CurrentOffset) != '\n')
+    while (CString[CurrentOffset] != '\0' && CString[CurrentOffset] != '\n')
     {
         CurrentOffset++;
     }

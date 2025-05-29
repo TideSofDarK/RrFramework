@@ -2974,8 +2974,16 @@ static void Rr_UIEditUTF8Buffer(
         {
             if (NewCursorEnd > 0)
             {
-                NewCursorEnd =
-                    Rr_PreviousUTF8CodepointOffset(Buffer, NewCursorEnd);
+                if ((Event->Keymod & RR_KEYMOD_CTRL) == 0)
+                {
+                    NewCursorEnd =
+                        Rr_PreviousUTF8CodepointOffset(Buffer, NewCursorEnd);
+                }
+                else
+                {
+                    NewCursorEnd =
+                        Rr_PreviousUTF8WordOffset(Buffer, NewCursorEnd);
+                }
             }
             if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
             {
@@ -2988,7 +2996,15 @@ static void Rr_UIEditUTF8Buffer(
         {
             if (NewCursorEnd < BufferLength)
             {
-                NewCursorEnd = Rr_NextUTF8CodepointOffset(Buffer, NewCursorEnd);
+                if ((Event->Keymod & RR_KEYMOD_CTRL) == 0)
+                {
+                    NewCursorEnd =
+                        Rr_NextUTF8CodepointOffset(Buffer, NewCursorEnd);
+                }
+                else
+                {
+                    NewCursorEnd = Rr_NextUTF8WordOffset(Buffer, NewCursorEnd);
+                }
             }
             if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
             {
