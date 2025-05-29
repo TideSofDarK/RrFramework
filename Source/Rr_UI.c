@@ -84,6 +84,7 @@ struct Rr_UIClipRect
 typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
+    const char *Title;
     Rr_UIHash Hash;
     Rr_UIWindowFlags Flags;
     Rr_Rect Rect;
@@ -128,8 +129,7 @@ struct Rr_UILayout
     Rr_Vec4 DeferredResizeHandleColor;
 
     Rr_Vec2 TabCursor;
-    const char **SelectedTabRef;
-    const char *SelectedTab;
+    Rr_UIHash *SelectedTabHash;
 };
 
 struct Rr_UIContext
@@ -386,29 +386,38 @@ static inline Rr_UIHash Rr_UIGetHash(
 
 static inline Rr_UIHash Rr_UIGetTitleHash(
     const char *CString,
-    size_t LengthHint)
+    size_t *OutLength)
 {
-    if (LengthHint == 0)
+    Rr_UIHash Hash;
+    size_t FullLength = strlen(CString);
+    const char *ExplicitID = strstr(CString, "###");
+    if (ExplicitID)
     {
-        LengthHint = strlen(CString);
-    }
-    const char *ExplicitHash = strstr(CString, "###");
-    if (ExplicitHash)
-    {
-        ExplicitHash += 3;
+        ExplicitID += 3;
         assert(
-            ExplicitHash < (CString + LengthHint) &&
-            "Empty hash after ### sentinel!");
+            (ExplicitID < (CString + FullLength)) &&
+            "Empty ID after ### sentinel!");
 
-        return Rr_UIGetHash(
-            ExplicitHash,
-            LengthHint - ((CString + LengthHint) - ExplicitHash),
-            Rr_UICurrentHash());
+        size_t IDLength = FullLength - (ExplicitID - CString);
+
+        Hash = Rr_UIGetHash(ExplicitID, IDLength, Rr_UICurrentHash());
+
+        if (OutLength)
+        {
+            *OutLength = FullLength - IDLength - 3;
+        }
     }
     else
     {
-        return Rr_UIGetHash(CString, LengthHint, Rr_UICurrentHash());
+        Hash = Rr_UIGetHash(CString, FullLength, Rr_UICurrentHash());
+
+        if (OutLength)
+        {
+            *OutLength = FullLength;
+        }
     }
+
+    return Hash;
 }
 
 static inline Rr_UIPrimitive Rr_UIReservePrimitive(
@@ -1103,11 +1112,23 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
 static inline Rr_Vec2 Rr_UIDrawText(
     bool CalculateOnly,
     Rr_Vec2 Position,
-    const char *CString,
+    size_t UTF8StringLength,
+    const char *UTF8String,
     float AvailableWidth,
     Rr_Vec4 *Color,
     Rr_UITextFlags Flags)
 {
+    if (UTF8StringLength == 0)
+    {
+        return Rr_V2F(0.0f);
+    }
+
+    bool NullTerminated = false;
+    if (UTF8StringLength == SIZE_MAX)
+    {
+        NullTerminated = true;
+    }
+
     Rr_UIFont *Font = gUIContext->Font;
     float FontSize = gUIContext->FontSize;
     float LineHeight = Font->LineHeight * FontSize;
@@ -1129,10 +1150,14 @@ static inline Rr_Vec2 Rr_UIDrawText(
         float CurrentWordWidth = 0.0f;
         size_t CurrentWordStart = 0;
 
-        Rr_UTF8Decoder Decoder = { .CString = CString };
-        uint32_t *Decoded =
-            RR_ALLOC_NO_ZERO(Scratch.Arena, sizeof(uint32_t) * strlen(CString));
-        while (Rr_UTF8Decode(&Decoder) != '\0')
+        /* TODO: See if it's possible to avoid allocating this much upfront */
+
+        Rr_UTF8Decoder Decoder = { .CString = UTF8String };
+        uint32_t *Decoded = RR_ALLOC_NO_ZERO(
+            Scratch.Arena,
+            sizeof(uint32_t) * UTF8StringLength);
+        while (Rr_UTF8Decode(&Decoder) != '\0' &&
+               (NullTerminated || Decoder.CStringIndex <= UTF8StringLength))
         {
             uint32_t Codepoint = Decoder.Codepoint;
             size_t CodepointIndex = Decoder.CodepointIndex - 1;
@@ -1236,8 +1261,9 @@ static inline Rr_Vec2 Rr_UIDrawText(
     }
     else
     {
-        Rr_UTF8Decoder Decoder = { .CString = CString };
-        while (Rr_UTF8Decode(&Decoder) != '\0')
+        Rr_UTF8Decoder Decoder = { .CString = UTF8String };
+        while (Rr_UTF8Decode(&Decoder) != '\0' &&
+               (NullTerminated || Decoder.CStringIndex <= UTF8StringLength))
         {
             uint32_t Codepoint = Decoder.Codepoint;
             size_t CodepointIndex = Decoder.CodepointIndex - 1;
@@ -1556,7 +1582,7 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
         &gUIContext->Style.Foreground);
 }
 
-static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window, const char *Title)
+static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window)
 {
     Rr_Rect TitleRect = {
         Window->Rect.Offset,
@@ -1578,15 +1604,18 @@ static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window, const char *Title)
                           ColorB,
                           gUIContext->Style.TitleBackground };
     Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
-    Rr_UIDrawText(
-        0,
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        false,
         Rr_AddV2(
             TitleRect.Offset,
             Rr_MulV2F(gUIContext->Style.TitlePadding, gUIContext->FontSize)),
-        Title,
+        SIZE_MAX,
+        Window->Title,
         0.0f,
         &gUIContext->Style.Foreground,
         0);
+
+    /* Window->ContentsStart */
 }
 
 static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
@@ -1970,6 +1999,8 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Clip to total window area. */
 
+    Layout->Cursor = Window->Rect.Offset;
+
     Rr_Rect WindowClipRect =
         Rr_ResizeRect(&Window->Rect, gUIContext->FrameThickness);
 
@@ -1985,15 +2016,13 @@ static inline bool Rr_UIBeginWindowEx(
             &gUIContext->Style.Outline);
     }
 
-    Layout->Cursor = Window->Rect.Offset;
-
     /* Add window title if necessary. */
 
     bool NoTitle = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
 
     if (NoTitle == false)
     {
-        Rr_UIAddWindowTitle(Window, Title);
+        Rr_UIAddWindowTitle(Window);
         if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT) == true)
         {
             Rr_UIAddCloseButton(Window, Open);
@@ -2060,8 +2089,8 @@ static inline void Rr_UIClosePopupWindow(void)
 
 bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
-    size_t TitleLength = strlen(Title);
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     Rr_UIWindow **WindowRef =
         RR_GET_MAP_VALUE(&gUIContext->WindowMap, TitleHash, gUIContext->Arena);
@@ -2070,14 +2099,22 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
     if (Window == NULL)
     {
         Window = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIWindow);
+        Window->Title = memcpy(
+            RR_ALLOC(gUIContext->Arena, TitleLength),
+            Title,
+            TitleLength);
         Window->Z = gUIContext->TotalWindowCount++;
         Window->Hash = TitleHash;
         Window->Rect.Offset = Rr_FloorV2(Rr_V2F(gUIContext->FontSize));
         Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
         Window->Rect.Extent.Width += gUIContext->FontSize * 16.0f;
+
         /* TODO: Wrapped text uses available width so we still need
          * some baseline width. Probably should come up with better solution. */
+        Window->Rect.Extent.Width += gUIContext->FontSize * 16.0f;
+
         Window->SkipDueToAutoResize = true;
+
         *WindowRef = Window;
     }
 
@@ -2179,12 +2216,15 @@ void Rr_UIBeginTabs(const char *Title)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    size_t TitleLength = strlen(Title);
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, NULL);
 
-    Layout->SelectedTabRef =
+    Rr_UIHash **SelectedTabHashRef =
         RR_GET_MAP_VALUE(&Window->WidgetMap, TitleHash, gUIContext->Arena);
-    Layout->SelectedTab = *Layout->SelectedTabRef;
+    if (*SelectedTabHashRef == NULL)
+    {
+        *SelectedTabHashRef = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIHash);
+    }
+    Layout->SelectedTabHash = *SelectedTabHashRef;
     Layout->TabCursor = Layout->Cursor;
 
     Rr_UIAdvance((Rr_Vec2){ 0.0f, gUIContext->LineHeight });
@@ -2212,31 +2252,31 @@ bool Rr_UITab(const char *Title)
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    assert(
-        Layout->SelectedTabRef != NULL &&
-        "Did you forget to call Rr_BeginTabs()?");
+    assert(Layout->SelectedTabHash && "Did you forget to call Rr_BeginTabs()?");
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_UIQuad TabQuad = NULL;
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     bool Selected = false;
-    if (Layout->SelectedTab == NULL)
+    if (*Layout->SelectedTabHash == TitleHash)
     {
-        *Layout->SelectedTabRef = Layout->SelectedTab = Title;
         Selected = true;
     }
-    else if (strcmp(Title, Layout->SelectedTab) == 0)
+    else if (*Layout->SelectedTabHash == 0)
     {
+        *Layout->SelectedTabHash = TitleHash;
         Selected = true;
     }
 
-    TabQuad = Rr_UIReserveQuad();
+    Rr_UIQuad TabQuad = Rr_UIReserveQuad();
 
     Rr_Vec2 TextPosition = Layout->TabCursor;
     TextPosition.X += gUIContext->ButtonPadding.X;
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         TextPosition,
+        TitleLength,
         Title,
         0.0f,
         Selected ? &gUIContext->Style.Background
@@ -2296,8 +2336,8 @@ bool Rr_UITab(const char *Title)
 
     if (Up)
     {
-        *Layout->SelectedTabRef =
-            Title; /* Newly selected tab will be rendered next frame. */
+        /* Newly selected tab will be rendered next frame. */
+        *Layout->SelectedTabHash = TitleHash;
     }
 
     Rr_DestroyScratch(Scratch);
@@ -2312,10 +2352,10 @@ void Rr_UIEndTabs(void)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
 
     assert(
-        Layout->SelectedTabRef != NULL &&
+        Layout->SelectedTabHash != NULL &&
         "Did you forget to call Rr_UIBeginTabs()?");
 
-    Layout->SelectedTabRef = NULL;
+    Layout->SelectedTabHash = NULL;
     Layout->Window->ContentsEnd.X =
         RR_MAX(Layout->Window->ContentsEnd.X, Layout->TabCursor.X);
 }
@@ -2333,8 +2373,8 @@ bool Rr_UIFold(const char *Title)
 
     Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
 
-    size_t TitleLength = strlen(Title);
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     bool **FoldValueRef =
         RR_GET_MAP_VALUE(&Window->WidgetMap, TitleHash, gUIContext->Arena);
@@ -2379,7 +2419,14 @@ bool Rr_UIFold(const char *Title)
         TriangleBaseX + TriangleHeight + gUIContext->ButtonPadding.Width,
         Layout->Cursor.Y);
     TitlePosition.Y += gUIContext->ButtonPadding.Height;
-    Rr_UIDrawText(0, TitlePosition, Title, 0, &gUIContext->Style.Foreground, 0);
+    Rr_UIDrawText(
+        0,
+        TitlePosition,
+        TitleLength,
+        Title,
+        0,
+        &gUIContext->Style.Foreground,
+        0);
 
     Rr_Vec2 TotalSize = Rr_V2(
         Layout->AvailableContentsWidth,
@@ -2464,6 +2511,7 @@ void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         Layout->Cursor,
+        SIZE_MAX,
         Text,
         Layout->AvailableContentsWidth,
         &gUIContext->Style.Foreground,
@@ -2486,6 +2534,7 @@ void Rr_UILabel(const char *Text)
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         Layout->Cursor,
+        SIZE_MAX,
         Text,
         0.0f,
         &gUIContext->Style.Foreground,
@@ -2534,6 +2583,7 @@ bool Rr_UIButton(const char *Text)
     Rr_Vec2 TextSize = Rr_UIDrawText(
         0,
         TextPosition,
+        SIZE_MAX,
         Text,
         0.0f,
         &gUIContext->Style.Foreground,
@@ -2626,6 +2676,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
+        SIZE_MAX,
         Title,
         0.0f,
         &gUIContext->Style.Foreground,
@@ -2937,7 +2988,7 @@ static void Rr_UIEditUTF8Buffer(
                                                    : DesiredOffset);
                 }
             }
-            if (Event->Keymod != RR_KEYMOD_SHIFT)
+            if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
             {
                 NewCursorBegin = NewCursorEnd;
             }
@@ -2963,7 +3014,7 @@ static void Rr_UIEditUTF8Buffer(
                                                    : DesiredOffset);
                 }
             }
-            if (Event->Keymod != RR_KEYMOD_SHIFT)
+            if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
             {
                 NewCursorBegin = NewCursorEnd;
             }
@@ -3133,10 +3184,11 @@ static void Rr_UIEditUTF8Buffer(
     RR_CLEAR_ARRAY(&gUIContext->KeyboardInputBuffer);
 }
 
-bool Rr_UIInputField(
+bool Rr_UIInputFieldEx(
     const char *Title,
     size_t BufferCapacity,
     char *Buffer,
+    const char *Placeholder,
     Rr_UIInputFieldFlags Flags)
 {
     Rr_UIAssertWindow();
@@ -3151,14 +3203,13 @@ bool Rr_UIInputField(
 
     Rr_UIPrimitive FieldPrimitive = Rr_UIReserveBevel();
 
-    size_t TitleLength = strlen(Title);
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     bool Active = Rr_UIIsFocused(Window, TitleHash);
 
-    Rr_Vec2 BufferPosition = Layout->Cursor;
-    BufferPosition.X += gUIContext->ButtonPadding.Width;
-    BufferPosition.Y += gUIContext->ButtonPadding.Height;
+    Rr_Vec2 BufferPosition =
+        Rr_AddV2(Layout->Cursor, gUIContext->ButtonPadding);
     size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
     Rr_Vec2 BufferSize = Rr_UIDrawInputText(
         Buffer,
@@ -3220,6 +3271,7 @@ bool Rr_UIInputField(
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
+        TitleLength,
         Title,
         0,
         &gUIContext->Style.Foreground,
@@ -3248,6 +3300,15 @@ bool Rr_UIInputField(
     return false;
 }
 
+bool Rr_UIInputField(
+    const char *Title,
+    size_t BufferCapacity,
+    char *Buffer,
+    Rr_UIInputFieldFlags Flags)
+{
+    return Rr_UIInputFieldEx(Title, BufferCapacity, Buffer, NULL, Flags);
+}
+
 bool Rr_UICombobox(
     const char *Title,
     uint32_t OptionCount,
@@ -3265,13 +3326,19 @@ bool Rr_UICombobox(
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    size_t TitleLength = strlen(Title);
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
 
-    Rr_Vec2 SelectedTextSize =
-        Rr_UIDrawText(true, Rr_V2F(0.0f), Options[*SelectedIndex], 0, NULL, 0);
+    Rr_Vec2 SelectedTextSize = Rr_UIDrawText(
+        true,
+        Rr_V2F(0.0f),
+        SIZE_MAX,
+        Options[*SelectedIndex],
+        0,
+        NULL,
+        0);
 
     Rr_Vec2 ButtonPosition = Layout->Cursor;
 
@@ -3280,6 +3347,7 @@ bool Rr_UICombobox(
     Rr_UIDrawText(
         0,
         SelectedTextPosition,
+        SIZE_MAX,
         Options[*SelectedIndex],
         0.0f,
         &gUIContext->Style.Foreground,
@@ -3330,6 +3398,7 @@ bool Rr_UICombobox(
             Rr_Vec2 OptionSize = Rr_UIDrawText(
                 0,
                 PopupLayout->Cursor,
+                SIZE_MAX,
                 Options[Index],
                 0,
                 &gUIContext->Style.Foreground,
@@ -3427,6 +3496,7 @@ bool Rr_UICombobox(
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
+        TitleLength,
         Title,
         0.0f,
         &gUIContext->Style.Foreground,
@@ -3556,8 +3626,8 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    size_t TitleLength = strlen(Title);
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     Rr_Vec2 ColorBoxSize = Rr_V2F(gUIContext->LineHeight);
 
@@ -3604,6 +3674,7 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
         TitlePosition,
+        TitleLength,
         Title,
         0.0f,
         &gUIContext->Style.Foreground,
@@ -3636,11 +3707,11 @@ static inline float Rr_UISlider(
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    size_t TitleLength = strlen(Title);
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, TitleLength);
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     Rr_Vec2 TitleSize =
-        Rr_UIDrawText(true, Layout->Cursor, Title, 0.0f, NULL, 0);
+        Rr_UIDrawText(true, Layout->Cursor, TitleLength, Title, 0.0f, NULL, 0);
 
     float SliderWidth = Layout->AvailableContentsWidth -
                         gUIContext->ButtonPadding.Width - TitleSize.Width;
@@ -3664,8 +3735,14 @@ static inline float Rr_UISlider(
 
     if (ValueCString != NULL)
     {
-        Rr_Vec2 ValueSize =
-            Rr_UIDrawText(1, Rr_V2F(0.0f), ValueCString, 0.0f, NULL, 0);
+        Rr_Vec2 ValueSize = Rr_UIDrawText(
+            true,
+            Rr_V2F(0.0f),
+            SIZE_MAX,
+            ValueCString,
+            0.0f,
+            NULL,
+            0);
 
         Rr_Vec2 ValuePosition = Layout->Cursor;
         ValuePosition.X = HandleRect.Offset.X + HandleWidth / 2.0f +
@@ -3686,8 +3763,9 @@ static inline float Rr_UISlider(
         if (ShowValue)
         {
             Rr_UIDrawText(
-                0,
+                false,
                 ValuePosition,
+                SIZE_MAX,
                 ValueCString,
                 0.0f,
                 &gUIContext->Style.Foreground,
@@ -3730,6 +3808,7 @@ static inline float Rr_UISlider(
     Rr_UIDrawText(
         0,
         TitlePosition,
+        TitleLength,
         Title,
         0.0f,
         &gUIContext->Style.Foreground,

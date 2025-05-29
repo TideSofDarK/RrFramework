@@ -149,6 +149,13 @@ extern bool Rr_UIButton(const char *Title);
 
 extern bool Rr_UICheckbox(const char *Title, bool *Checked);
 
+extern bool Rr_UIInputFieldEx(
+    const char *Title,
+    size_t BufferCapacity,
+    char *Buffer,
+    const char *Placeholder,
+    Rr_UIInputFieldFlags Flags);
+
 extern bool Rr_UIInputField(
     const char *Title,
     size_t BufferCapacity,

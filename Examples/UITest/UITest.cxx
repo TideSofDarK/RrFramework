@@ -18,8 +18,13 @@ static void TextInputWindow()
             &TextInputWindowOpen,
             RR_UI_WINDOW_FLAGS_CLOSE_BIT))
     {
-        static char StringBuffer[2048] = "Type here...";
-        Rr_UIInputField("UTF-8 String (2048 bytes)", 2048, StringBuffer, 0);
+        static char StringBuffer[2048] = "sdf";
+        Rr_UIInputFieldEx(
+            "###LargeString",
+            2048,
+            StringBuffer,
+            "Type here...",
+            RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
         Rr_UIEndWindow();
     }
 }
