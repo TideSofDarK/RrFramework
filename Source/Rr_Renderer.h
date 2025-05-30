@@ -27,6 +27,7 @@
 #include <Rr/Rr_Renderer.h>
 
 #include "Rr_Graph.h"
+#include "Rr_Image.h"
 #include "Rr_Load.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Vulkan.h"
@@ -49,7 +50,7 @@ struct Rr_Swapchain
     VkSwapchainKHR Handle;
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
-    VkExtent2D Extent;
+    VkExtent3D Extent;
     Rr_AtomicInt RecreatePending;
 };
 
@@ -120,7 +121,7 @@ struct Rr_Renderer
     RR_ARRAY(VkFence) Fences;
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
-    size_t FrameNumber; /* Total frames rendered */
+    size_t FrameNumber; /* Total frames rendered. */
     size_t FrameIndex;  /* Current frame-in-flight index. */
 
     RR_ARRAY(Rr_RenderPass) RenderPasses;
@@ -134,7 +135,7 @@ struct Rr_Renderer
     Rr_Map *GlobalSync;
 
     RR_FREE_LIST(Rr_Buffer) Buffers;
-    RR_FREE_LIST(Rr_Image2D) Images;
+    RR_FREE_LIST(Rr_ImageContainer) Images;
     RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
     RR_FREE_LIST(Rr_ComputePipeline) ComputePipelines;
     RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;

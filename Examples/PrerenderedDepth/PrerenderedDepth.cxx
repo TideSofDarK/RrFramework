@@ -299,7 +299,7 @@ struct SPrerenderedDepth
 
         for (size_t Index = 0; Index < 100 * 100 * 4; Index += 4)
         {
-            *((uint32_t *)(StagingData + Index)) = 0xFF0000FF;
+            *((uint32_t *)(StagingData + Index)) = 0xFF00FFFF;
         }
 
         Rr_AddCopyToImage2DNode(
@@ -311,7 +311,11 @@ struct SPrerenderedDepth
             0);
 
         Rr_ColorClear ColorClear = {};
-        Rr_AddClearColorImageNode(Rr_GetGraph(),"clear",&ColorClear,Rr_GetSwapchainImage());
+        Rr_AddClearColorImageNode(
+            Rr_GetGraph(),
+            "clear",
+            &ColorClear,
+            Rr_GetSwapchainImage());
 
         Rr_AddBlitNode(
             Rr_GetGraph(),

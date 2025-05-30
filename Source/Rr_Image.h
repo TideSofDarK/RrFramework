@@ -38,24 +38,35 @@ struct Rr_Sampler
     VkSampler Handle;
 };
 
-typedef struct Rr_AllocatedImage2D Rr_AllocatedImage2D;
-struct Rr_AllocatedImage2D
+typedef struct Rr_Image Rr_Image;
+struct Rr_Image
 {
     VkImage Handle;
     VkImageView View;
     VmaAllocation Allocation;
-    Rr_Image2D *Container;
+    struct Rr_ImageContainer *Container;
 };
 
-struct Rr_Image2D
-{
-    VkExtent2D Extent;
-    VkImageAspectFlags AspectFlags;
-    VkFormat Format;
-    Rr_ImageFlags Flags;
-    size_t AllocatedImageCount;
-    Rr_AllocatedImage2D AllocatedImages[RR_MAX_FRAME_OVERLAP];
-};
+#define RR_DEFINE_IMAGE_TYPE(Name)                      \
+    struct Name                                         \
+    {                                                   \
+        VkExtent3D Extent;                              \
+        VkImageAspectFlags AspectFlags;                 \
+        VkFormat Format;                                \
+        Rr_ImageFlags Flags;                            \
+        size_t AllocatedImageCount;                     \
+        Rr_Image AllocatedImages[RR_MAX_FRAME_OVERLAP]; \
+    }
+
+typedef struct Rr_ImageContainer Rr_ImageContainer;
+RR_DEFINE_IMAGE_TYPE(Rr_ImageContainer);
+RR_DEFINE_IMAGE_TYPE(Rr_Image2D);
+RR_DEFINE_IMAGE_TYPE(Rr_Image2DArray);
+RR_DEFINE_IMAGE_TYPE(Rr_Image3D);
+RR_DEFINE_IMAGE_TYPE(Rr_Image3DArray);
+RR_DEFINE_IMAGE_TYPE(Rr_Cubemap);
+
+#undef RR_DEFINE_IMAGE_TYPE
 
 extern void Rr_UploadStagingImage2D(
     Rr_UploadContext *UploadContext,
@@ -91,4 +102,4 @@ extern size_t Rr_GetImagePNGRGBA8Size(
     char *Data,
     Rr_Arena *Arena);
 
-extern Rr_AllocatedImage2D *Rr_GetCurrentAllocatedImage2D(Rr_Image2D *Image);
+extern Rr_Image *Rr_GetCurrentImage(Rr_ImageContainer *Container);

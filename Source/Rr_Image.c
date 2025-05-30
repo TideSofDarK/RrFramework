@@ -97,8 +97,7 @@ void Rr_UploadStagingImage2D(
     for (size_t AllocatedIndex = 0; AllocatedIndex < Image->AllocatedImageCount;
          ++AllocatedIndex)
     {
-        Rr_AllocatedImage2D *AllocatedImage =
-            Image->AllocatedImages + AllocatedIndex;
+        Rr_Image *AllocatedImage = Image->AllocatedImages + AllocatedIndex;
 
         VkImageSubresourceRange SubresourceRange = {
             .aspectMask = Aspect,
@@ -252,7 +251,7 @@ Rr_Image2D *Rr_CreateImage2D(
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_Image2D *Image =
+    Rr_ImageContainer *Image =
         RR_GET_FREE_LIST_ITEM(&gRenderer->Images, gRenderer->Arena);
     Image->Flags = Flags;
     Image->Format = Rr_ToVulkanTextureFormat(Format);
@@ -351,7 +350,7 @@ Rr_Image2D *Rr_CreateImage2D(
 
     for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
-        Rr_AllocatedImage2D *AllocatedImage = Image->AllocatedImages + Index;
+        Rr_Image *AllocatedImage = Image->AllocatedImages + Index;
         AllocatedImage->Container = Image;
 
         vmaCreateImage(
@@ -384,7 +383,7 @@ Rr_Image2D *Rr_CreateImage2D(
             &AllocatedImage->View);
     }
 
-    return Image;
+    return (Rr_Image2D *)Image;
 }
 
 void Rr_DestroyImage2D(Rr_Image2D *Image)
@@ -522,7 +521,7 @@ Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     return ColorImage;
 }
 
-Rr_AllocatedImage2D *Rr_GetCurrentAllocatedImage2D(Rr_Image2D *Image)
+Rr_Image *Rr_GetCurrentImage(Rr_ImageContainer *Image)
 {
     size_t AllocatedImageIndex =
         gRenderer->FrameIndex % Image->AllocatedImageCount;

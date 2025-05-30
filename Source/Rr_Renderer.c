@@ -26,7 +26,6 @@
 
 #include "Rr_App.h"
 #include "Rr_BuiltinAssets.inc"
-#include "Rr_Image.h"
 #include "Rr_Log.h"
 
 #include <Rr/Rr_Graph.h>
@@ -762,7 +761,9 @@ void Rr_NewFrame(void)
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
     Frame->Graph->Frame = Frame;
     Frame->Graph->SwapchainImageResourceIndex =
-        Rr_GetGraphImageHandle(Frame->Graph, Frame->VirtualSwapchainImage)
+        Rr_GetGraphImageHandle(
+            Frame->Graph,
+            (Rr_ImageContainer *)Frame->VirtualSwapchainImage)
             ->Values.Index;
 
     Rr_ProcessPendingLoads();
@@ -838,7 +839,7 @@ void Rr_DrawFrame(void)
         .AllocatedImages[0] = {
             .View = gRenderer->SwapchainImages.Data[SwapchainImageIndex].View,
             .Handle = SwapchainImageHandle,
-            .Container = Frame->VirtualSwapchainImage,
+            .Container = (Rr_ImageContainer *)Frame->VirtualSwapchainImage,
         },
     };
 

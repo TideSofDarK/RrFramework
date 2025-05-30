@@ -26,6 +26,7 @@
 
 #include <Rr/Rr_Graph.h>
 
+#include "Rr_Image.h"
 #include "Rr_Vulkan.h"
 
 struct Rr_Frame;
@@ -291,7 +292,7 @@ extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
 
 extern Rr_GraphImage *Rr_GetGraphImageHandle(
     Rr_Graph *Graph,
-    Rr_Image2D *Image);
+    Rr_ImageContainer *ImageContainer);
 
 extern Rr_GraphNode *Rr_AddGraphNode(
     struct Rr_Frame *Frame,
