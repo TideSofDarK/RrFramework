@@ -54,10 +54,7 @@ struct Rr_SyncState
 {
     VkPipelineStageFlags StageMask;
     VkAccessFlags AccessMask;
-    union
-    {
-        VkImageLayout Layout;
-    } Specific;
+    VkImageLayout Layout;
 };
 
 typedef struct Rr_BufferMemoryBarrier Rr_BufferMemoryBarrier;

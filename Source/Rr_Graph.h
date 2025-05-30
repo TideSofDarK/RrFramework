@@ -93,6 +93,15 @@ struct Rr_ClearColorImageNode
     Rr_GraphImage ColorImage;
 };
 
+typedef struct Rr_CopyToImage2DNode Rr_CopyToImage2DNode;
+struct Rr_CopyToImage2DNode
+{
+    Rr_GraphBuffer Buffer;
+    size_t BufferOffset;
+    Rr_GraphImage Image;
+    size_t MipLevel;
+};
+
 typedef struct Rr_BindIndexBufferArgs Rr_BindIndexBufferArgs;
 struct Rr_BindIndexBufferArgs
 {
@@ -243,6 +252,7 @@ struct Rr_GraphNode
         Rr_ComputeNode Compute;
         Rr_GraphicsNode Graphics;
         Rr_ClearColorImageNode ClearColorImage;
+        Rr_CopyToImage2DNode CopyToImage2DNode;
         Rr_BlitNode Blit;
         Rr_TransferNode Transfer;
     } Union;

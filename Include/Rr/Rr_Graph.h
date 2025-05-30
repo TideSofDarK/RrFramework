@@ -43,6 +43,7 @@ typedef enum Rr_GraphNodeType
     RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE,
     RR_GRAPH_NODE_TYPE_BLIT,
     RR_GRAPH_NODE_TYPE_TRANSFER,
+    RR_GRAPH_NODE_TYPE_COPY_TO_IMAGE2D,
 } Rr_GraphNodeType;
 
 typedef union Rr_GraphHandle Rr_GraphBuffer;
@@ -113,6 +114,14 @@ extern void Rr_TransferBufferData(
     size_t SrcOffset,
     Rr_Buffer *DstBuffer,
     size_t DstOffset);
+
+extern Rr_GraphNode *Rr_AddCopyToImage2DNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_Image2D *Image,
+    uint32_t MipLevel);
 
 extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_Graph *Graph,

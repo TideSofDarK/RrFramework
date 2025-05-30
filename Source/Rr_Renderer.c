@@ -877,7 +877,7 @@ void Rr_DrawFrame(void)
         &(VkImageMemoryBarrier){
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .image = SwapchainImageHandle,
-            .oldLayout = SwapchainImageSyncState->Specific.Layout,
+            .oldLayout = SwapchainImageSyncState->Layout,
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             .srcAccessMask = SwapchainImageSyncState->AccessMask,
             .dstAccessMask = 0,
@@ -892,7 +892,7 @@ void Rr_DrawFrame(void)
     SwapchainImageSyncState->AccessMask = 0;
     SwapchainImageSyncState->StageMask =
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; /* Doesn't look right. */
-    SwapchainImageSyncState->Specific.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    SwapchainImageSyncState->Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     Device->EndCommandBuffer(Frame->LateCommandBuffer);
 

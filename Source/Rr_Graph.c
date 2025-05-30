@@ -677,6 +677,48 @@ static void Rr_ExecuteClearColorImageNode(
         });
 }
 
+static void Rr_ExecuteCopyToImage2DNode(
+    Rr_Graph *Graph,
+    Rr_CopyToImage2DNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    Rr_AllocatedImage2D *AllocatedImage2D =
+        Rr_GetGraphImage(Graph, Node->Image);
+    Rr_Image2D *Image2D = AllocatedImage2D->Container;
+
+    VkImage ImageHandle = AllocatedImage2D->Handle;
+    VkBuffer BufferHandle = Rr_GetGraphBuffer(Graph, Node->Buffer)->Handle;
+
+    VkBufferImageCopy BufferImageCopy = {
+        .bufferOffset = Node->BufferOffset,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource =
+            (VkImageSubresourceLayers){
+                .aspectMask = Image2D->AspectFlags,
+                .mipLevel = Node->MipLevel,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        .imageExtent =
+            (VkExtent3D){
+                Image2D->Extent.width,
+                Image2D->Extent.height,
+                1,
+            },
+    };
+
+    Device->CmdCopyBufferToImage(
+        CommandBuffer,
+        BufferHandle,
+        ImageHandle,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &BufferImageCopy);
+}
+
 Rr_GraphNode *Rr_AddGraphNode(
     Rr_Frame *Frame,
     Rr_GraphNodeType Type,
@@ -744,7 +786,7 @@ static inline bool Rr_AddNodeDependency(
 
     /* Treat any image read as a write for now due to layout transitions. */
 
-    if (State->Specific.Layout != VK_IMAGE_LAYOUT_UNDEFINED ||
+    if (State->Layout != VK_IMAGE_LAYOUT_UNDEFINED ||
         RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES))
     {
         if (*NodeInMap == NULL)
@@ -1014,36 +1056,38 @@ static void Rr_ExecuteGraphNode(
     {
         case RR_GRAPH_NODE_TYPE_COMPUTE:
         {
-            Rr_ComputeNode *ComputeNode = &Node->Union.Compute;
-            Rr_ExecuteComputeNode(Graph, ComputeNode, CommandBuffer);
+            Rr_ExecuteComputeNode(Graph, &Node->Union.Compute, CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_GRAPHICS:
         {
-            Rr_GraphicsNode *GraphicsNode = &Node->Union.Graphics;
-            Rr_ExecuteGraphicsNode(Graph, GraphicsNode, CommandBuffer);
+            Rr_ExecuteGraphicsNode(Graph, &Node->Union.Graphics, CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE:
         {
-            Rr_ClearColorImageNode *ClearColorImageNode =
-                &Node->Union.ClearColorImage;
             Rr_ExecuteClearColorImageNode(
                 Graph,
-                ClearColorImageNode,
+                &Node->Union.ClearColorImage,
+                CommandBuffer);
+        }
+        break;
+        case RR_GRAPH_NODE_TYPE_COPY_TO_IMAGE2D:
+        {
+            Rr_ExecuteCopyToImage2DNode(
+                Graph,
+                &Node->Union.CopyToImage2DNode,
                 CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_BLIT:
         {
-            Rr_BlitNode *BlitNode = &Node->Union.Blit;
-            Rr_ExecuteBlitNode(Graph, BlitNode, CommandBuffer);
+            Rr_ExecuteBlitNode(Graph, &Node->Union.Blit, CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_TRANSFER:
         {
-            Rr_TransferNode *TransferNode = &Node->Union.Transfer;
-            Rr_ExecuteTransferNode(Graph, TransferNode, CommandBuffer);
+            Rr_ExecuteTransferNode(Graph, &Node->Union.Transfer, CommandBuffer);
         }
         break;
         default:
@@ -1170,7 +1214,7 @@ static void Rr_ApplyBarrierBatch(
         *ImageState = (Rr_SyncState){
             .StageMask = ImageBarrier->DstStageMask,
             .AccessMask = ImageBarrier->DstAccessMask,
-            .Specific.Layout = ImageBarrier->NewLayout,
+            .Layout = ImageBarrier->NewLayout,
         };
     }
 
@@ -1260,7 +1304,7 @@ void Rr_ExecuteGraph(Rr_Graph *Graph, Rr_Arena *Arena)
             Rr_NodeDependency *Dependency = Node->Dependencies.Data + DepIndex;
             Rr_SyncState *State = &Dependency->State;
 
-            if (State->Specific.Layout != 0)
+            if (State->Layout != 0)
             {
                 /* Image Synchronization */
 
@@ -1277,8 +1321,7 @@ void Rr_ExecuteGraph(Rr_Graph *Graph, Rr_Arena *Arena)
                     RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES) == 0;
                 bool WasReadingBefore =
                     RR_HAS_BIT(PrevState->AccessMask, RR_VULKAN_WRITES) == 0;
-                bool IsSameLayout =
-                    State->Specific.Layout == PrevState->Specific.Layout;
+                bool IsSameLayout = State->Layout == PrevState->Layout;
                 if (IsReadingNow && WasReadingBefore && IsSameLayout)
                 {
                     bool IncludesPreviousAccessMask =
@@ -1311,8 +1354,8 @@ void Rr_ExecuteGraph(Rr_Graph *Graph, Rr_Arena *Arena)
                         .Image = Image,
                         .SrcAccessMask = PrevState->AccessMask,
                         .DstAccessMask = State->AccessMask,
-                        .OldLayout = PrevState->Specific.Layout,
-                        .NewLayout = State->Specific.Layout,
+                        .OldLayout = PrevState->Layout,
+                        .NewLayout = State->Layout,
                         .SubresourceRange =
                             (VkImageSubresourceRange){
                                 .aspectMask =
@@ -1572,7 +1615,7 @@ Rr_GraphNode *Rr_AddBlitNode(
         &(Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-            .Specific.Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         });
 
     Rr_AddNodeDependency(
@@ -1581,7 +1624,7 @@ Rr_GraphNode *Rr_AddBlitNode(
         &(Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-            .Specific.Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         });
 
     return GraphNode;
@@ -1650,7 +1693,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
                 &(Rr_SyncState){
                     .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                     .AccessMask = AccessMask,
-                    .Specific.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 });
         }
     }
@@ -1674,8 +1717,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
             &(Rr_SyncState){
                 .StageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                 .AccessMask = AccessMask,
-                .Specific.Layout =
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                .Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             });
     }
 
@@ -1708,12 +1750,59 @@ Rr_GraphNode *Rr_AddClearColorImageNode(
         &(Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-            .Specific.Layout = VK_IMAGE_LAYOUT_GENERAL,
+            .Layout = VK_IMAGE_LAYOUT_GENERAL,
         });
 
     GraphNode->Union.ClearColorImage =
         (Rr_ClearColorImageNode){ .ColorClear = *ColorClear,
                                   .ColorImage = *ColorImageHandle };
+
+    return GraphNode;
+}
+
+Rr_GraphNode *Rr_AddCopyToImage2DNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_Image2D *Image,
+    uint32_t MipLevel)
+{
+    assert(Graph != NULL && Buffer != NULL && Image != NULL);
+
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
+
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_COPY_TO_IMAGE2D, Name);
+
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Frame->Graph, Image);
+
+    Rr_GraphBuffer *BufferHandle =
+        Rr_GetGraphBufferHandle(Frame->Graph, Buffer);
+
+    Rr_AddNodeDependency(
+        GraphNode,
+        ImageHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        });
+
+    Rr_AddNodeDependency(
+        GraphNode,
+        BufferHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        });
+
+    GraphNode->Union.CopyToImage2DNode = (Rr_CopyToImage2DNode){
+        .Buffer = *BufferHandle,
+        .BufferOffset = BufferOffset,
+        .Image = *ImageHandle,
+        .MipLevel = MipLevel,
+    };
 
     return GraphNode;
 }
@@ -1961,7 +2050,7 @@ void Rr_BindSampledImage(
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
             .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            .Specific.Layout = Layout,
+            .Layout = Layout,
         });
 }
 
@@ -2000,7 +2089,7 @@ void Rr_BindCombinedImageSampler(
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
             .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            .Specific.Layout = Layout,
+            .Layout = Layout,
         });
 }
 
@@ -2137,7 +2226,7 @@ void Rr_BindStorageImage(
                 .AccessMask =
                     VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                 .StageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .Specific.Layout = Layout,
+                .Layout = Layout,
             });
     }
     else
@@ -2149,7 +2238,7 @@ void Rr_BindStorageImage(
                 .AccessMask = VK_ACCESS_SHADER_READ_BIT,
                 .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
                              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                .Specific.Layout = Layout,
+                .Layout = Layout,
             });
     }
 }

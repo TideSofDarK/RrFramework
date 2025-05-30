@@ -125,6 +125,7 @@ struct SPrerenderedDepth
     Rr_GraphicsPipeline *GraphicsPipeline;
 
     Rr_Buffer *UniformBuffer;
+    Rr_Buffer *StagingBuffer;
 
     Rr_Image2D *BackgroundColorImage;
     Rr_Image2D *BackgroundDepthImage;
@@ -225,6 +226,16 @@ struct SPrerenderedDepth
         InitPipeline();
         InitBackground();
         InitUniform(0.0f);
+
+        StagingBuffer = Rr_CreateBuffer(
+            100 * 100 * 4,
+            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT);
+
+        BackgroundColorImage = Rr_CreateImage2D(
+            { 100, 100 },
+            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
     }
 
     void Iterate()
@@ -284,15 +295,44 @@ struct SPrerenderedDepth
         //     sizeof(SGPUUniform));
         // Rr_Draw(GraphicsNode, 6, 1, 0, 0);
 
-        Rr_UIDebugOverlay();
+        char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+
+        for (size_t Index = 0; Index < 100 * 100 * 4; Index += 4)
+        {
+            *((uint32_t *)(StagingData + Index)) = 0xFF0000FF;
+        }
+
+        Rr_AddCopyToImage2DNode(
+            Rr_GetGraph(),
+            "copy",
+            StagingBuffer,
+            0,
+            BackgroundColorImage,
+            0);
+
+        Rr_ColorClear ColorClear = {};
+        Rr_AddClearColorImageNode(Rr_GetGraph(),"clear",&ColorClear,Rr_GetSwapchainImage());
+
+        Rr_AddBlitNode(
+            Rr_GetGraph(),
+            "blit",
+            BackgroundColorImage,
+            Rr_GetSwapchainImage(),
+            { 0, 0, 100, 100 },
+            { 20, 20, 100, 100 },
+            RR_IMAGE_ASPECT_COLOR_BIT);
+
+        // Rr_UIDebugOverlay();
     }
 
     ~SPrerenderedDepth()
     {
-        // Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
-        // Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
-        // Rr_DestroyBuffer(Renderer, UniformBuffer);
-        // Rr_DestroyImage(Renderer, DepthImage);
+        Rr_DestroyGraphicsPipeline(GraphicsPipeline);
+        Rr_DestroyPipelineLayout(PipelineLayout);
+        Rr_DestroyBuffer(UniformBuffer);
+        Rr_DestroyBuffer(StagingBuffer);
+        Rr_DestroyImage2D(BackgroundColorImage);
+        // Rr_DestroyImage(Rexderer, DepthImage);
     }
 };
 

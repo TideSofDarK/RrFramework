@@ -167,7 +167,7 @@ void Rr_UploadStagingImage2D(
                 .pNext = NULL,
                 .image = AllocatedImage->Handle,
                 .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .newLayout = DstState.Specific.Layout,
+                .newLayout = DstState.Layout,
                 .subresourceRange = SubresourceRange,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = DstState.AccessMask,
@@ -183,8 +183,8 @@ void Rr_UploadStagingImage2D(
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
                 .image = AllocatedImage->Handle,
-                .oldLayout = DstState.Specific.Layout,
-                .newLayout = DstState.Specific.Layout,
+                .oldLayout = DstState.Layout,
+                .newLayout = DstState.Layout,
                 .subresourceRange = SubresourceRange,
                 .srcAccessMask = DstState.AccessMask,
                 .dstAccessMask = 0,
@@ -198,8 +198,8 @@ void Rr_UploadStagingImage2D(
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = NULL,
                 .image = AllocatedImage->Handle,
-                .oldLayout = DstState.Specific.Layout,
-                .newLayout = DstState.Specific.Layout,
+                .oldLayout = DstState.Layout,
+                .newLayout = DstState.Layout,
                 .subresourceRange = SubresourceRange,
                 .srcAccessMask = 0,
                 .dstAccessMask = DstState.AccessMask,
@@ -474,7 +474,7 @@ Rr_Image2D *Rr_CreateImage2DRGBA8(
         (Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .Specific.Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         },
         RR_MAKE_DATA(DataSize, Data));
 
@@ -513,7 +513,7 @@ Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
         (Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .Specific.Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         },
         RR_MAKE_DATA(ParsedSize, ParsedData));
 
