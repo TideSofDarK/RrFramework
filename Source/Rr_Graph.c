@@ -47,12 +47,11 @@ static Rr_AllocatedImage2D *Rr_GetGraphImage(
 }
 
 static void Rr_ExecuteTransferNode(
-    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_TransferNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     for (size_t Index = 0; Index < Node->Transfers.Count; ++Index)
     {
@@ -82,13 +81,12 @@ static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent2D *Extent)
 }
 
 static void Rr_ExecuteBlitNode(
-    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_BlitNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &Renderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Device *Device = &gRenderer->Device;
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_AllocatedImage2D *SrcImage =
         Rr_GetGraphImage(Frame->Graph, Node->SrcImageHandle);
@@ -110,15 +108,14 @@ static void Rr_ExecuteBlitNode(
 }
 
 static void Rr_ExecuteComputeNode(
-    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_ComputeNode *Node,
     VkCommandBuffer CommandBuffer)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &Renderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Device *Device = &gRenderer->Device;
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_ComputePipeline *Pipeline = NULL;
     Rr_DescriptorsState DescriptorsState = { 0 };
@@ -283,15 +280,14 @@ static void Rr_ExecuteComputeNode(
 }
 
 static void Rr_ExecuteGraphicsNode(
-    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_GraphicsNode *Node,
     VkCommandBuffer CommandBuffer)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &Renderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Device *Device = &gRenderer->Device;
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_IntVec4 Viewport = { 0 };
     Viewport.Width = INT32_MAX;
@@ -360,9 +356,8 @@ static void Rr_ExecuteGraphicsNode(
         .AttachmentCount = AttachmentCount,
         .Attachments = Attachments,
     };
-    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(Renderer, &RenderPassInfo);
+    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassInfo);
     VkFramebuffer Framebuffer = Rr_GetVulkanFramebuffer(
-        Renderer,
         RenderPass,
         ImageViews,
         AttachmentCount,
@@ -659,12 +654,11 @@ static void Rr_ExecuteGraphicsNode(
 }
 
 static void Rr_ExecuteClearColorImageNode(
-    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_ClearColorImageNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_AllocatedImage2D *ColorImage = Rr_GetGraphImage(Graph, Node->ColorImage);
 
@@ -1012,7 +1006,6 @@ static void Rr_ProcessGraphNodes(
 }
 
 static void Rr_ExecuteGraphNode(
-    Rr_Renderer *Renderer,
     Rr_Graph *Graph,
     Rr_GraphNode *Node,
     VkCommandBuffer CommandBuffer)
@@ -1022,17 +1015,13 @@ static void Rr_ExecuteGraphNode(
         case RR_GRAPH_NODE_TYPE_COMPUTE:
         {
             Rr_ComputeNode *ComputeNode = &Node->Union.Compute;
-            Rr_ExecuteComputeNode(Renderer, Graph, ComputeNode, CommandBuffer);
+            Rr_ExecuteComputeNode(Graph, ComputeNode, CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_GRAPHICS:
         {
             Rr_GraphicsNode *GraphicsNode = &Node->Union.Graphics;
-            Rr_ExecuteGraphicsNode(
-                Renderer,
-                Graph,
-                GraphicsNode,
-                CommandBuffer);
+            Rr_ExecuteGraphicsNode(Graph, GraphicsNode, CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE:
@@ -1040,7 +1029,6 @@ static void Rr_ExecuteGraphNode(
             Rr_ClearColorImageNode *ClearColorImageNode =
                 &Node->Union.ClearColorImage;
             Rr_ExecuteClearColorImageNode(
-                Renderer,
                 Graph,
                 ClearColorImageNode,
                 CommandBuffer);
@@ -1049,17 +1037,13 @@ static void Rr_ExecuteGraphNode(
         case RR_GRAPH_NODE_TYPE_BLIT:
         {
             Rr_BlitNode *BlitNode = &Node->Union.Blit;
-            Rr_ExecuteBlitNode(Renderer, Graph, BlitNode, CommandBuffer);
+            Rr_ExecuteBlitNode(Graph, BlitNode, CommandBuffer);
         }
         break;
         case RR_GRAPH_NODE_TYPE_TRANSFER:
         {
             Rr_TransferNode *TransferNode = &Node->Union.Transfer;
-            Rr_ExecuteTransferNode(
-                Renderer,
-                Graph,
-                TransferNode,
-                CommandBuffer);
+            Rr_ExecuteTransferNode(Graph, TransferNode, CommandBuffer);
         }
         break;
         default:
@@ -1071,14 +1055,13 @@ static void Rr_ExecuteGraphNode(
 }
 
 static void Rr_ApplyBarrierBatch(
-    Rr_Renderer *Renderer,
     Rr_BarrierBatch *Barrier,
     VkCommandBuffer CommandBuffer,
     Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     size_t MaxPossibleBarriers =
         Barrier->BufferBarriers.Count + Barrier->ImageBarriers.Count;
@@ -1144,7 +1127,7 @@ static void Rr_ApplyBarrierBatch(
             };
 
         Rr_SyncState *BufferState =
-            Rr_GetSyncState(Renderer, (Rr_MapKey)BufferBarrier->Buffer);
+            Rr_GetSyncState((Rr_MapKey)BufferBarrier->Buffer);
         *BufferState = (Rr_SyncState){
             .StageMask = BufferBarrier->DstStageMask,
             .AccessMask = BufferBarrier->DstAccessMask,
@@ -1182,7 +1165,7 @@ static void Rr_ApplyBarrierBatch(
             };
 
         Rr_SyncState *ImageState =
-            Rr_GetSyncState(Renderer, (Rr_MapKey)ImageBarrier->Image);
+            Rr_GetSyncState((Rr_MapKey)ImageBarrier->Image);
 
         *ImageState = (Rr_SyncState){
             .StageMask = ImageBarrier->DstStageMask,
@@ -1228,11 +1211,11 @@ static void Rr_ApplyBarrierBatch(
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
+void Rr_ExecuteGraph(Rr_Graph *Graph, Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_NodeArray SortedNodes = { 0 };
     RR_RESERVE_ARRAY(&SortedNodes, Graph->Nodes.Count, Scratch.Arena);
@@ -1247,12 +1230,12 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
         if (Resource->IsImage)
         {
             Resource->Allocated =
-                Rr_GetCurrentAllocatedImage2D(Renderer, Resource->Container);
+                Rr_GetCurrentAllocatedImage2D(Resource->Container);
         }
         else
         {
             Resource->Allocated =
-                Rr_GetCurrentAllocatedBuffer(Renderer, Resource->Container);
+                Rr_GetCurrentAllocatedBuffer(Resource->Container);
         }
     }
 
@@ -1285,8 +1268,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
                     Rr_GetGraphImage(Graph, Dependency->Handle);
                 VkImage Image = AllocatedImage->Handle;
 
-                Rr_SyncState *PrevState =
-                    Rr_GetSyncState(Renderer, (Rr_MapKey)Image);
+                Rr_SyncState *PrevState = Rr_GetSyncState((Rr_MapKey)Image);
 
                 /* If reading again, just make sure the memory is "available" to
                  * this memory domain AND the image is in the same layout. */
@@ -1355,8 +1337,7 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
                     Rr_GetGraphBuffer(Graph, Dependency->Handle);
                 VkBuffer Buffer = AllocatedBuffer->Handle;
 
-                Rr_SyncState *PrevState =
-                    Rr_GetSyncState(Renderer, (Rr_MapKey)Buffer);
+                Rr_SyncState *PrevState = Rr_GetSyncState((Rr_MapKey)Buffer);
 
                 /* If reading again, just make sure the memory is "available" to
                  * this memory domain. */
@@ -1432,18 +1413,14 @@ void Rr_ExecuteGraph(Rr_Renderer *Renderer, Rr_Graph *Graph, Rr_Arena *Arena)
                                                 ? Frame->LateCommandBuffer
                                                 : Frame->EarlyCommandBuffer;
 
-            Rr_ApplyBarrierBatch(
-                Renderer,
-                &BarrierBatch,
-                CommandBuffer,
-                Scratch.Arena);
+            Rr_ApplyBarrierBatch(&BarrierBatch, CommandBuffer, Scratch.Arena);
 
             for (size_t NodeIndex = BatchStartIndex;
                  NodeIndex < BatchStartIndex + BatchSize;
                  ++NodeIndex)
             {
                 Rr_GraphNode *Node = SortedNodes.Data[NodeIndex];
-                Rr_ExecuteGraphNode(Renderer, Graph, Node, CommandBuffer);
+                Rr_ExecuteGraphNode(Graph, Node, CommandBuffer);
             }
 
             BatchStartIndex = Index + 1;
@@ -1506,9 +1483,9 @@ Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, Rr_Image2D *Image)
     return Rr_GetGraphHandle(Graph, Image, true);
 }
 
-Rr_GraphNode *Rr_AddTransferNode(Rr_Renderer *Renderer, const char *Name)
+Rr_GraphNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name)
 {
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_TRANSFER, Name);
@@ -1561,7 +1538,7 @@ void Rr_TransferBufferData(
 }
 
 Rr_GraphNode *Rr_AddBlitNode(
-    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
     const char *Name,
     Rr_Image2D *SrcImage,
     Rr_Image2D *DstImage,
@@ -1569,7 +1546,7 @@ Rr_GraphNode *Rr_AddBlitNode(
     Rr_IntVec4 DstRect,
     Rr_ImageAspect ImageAspect)
 {
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_BLIT, Name);
@@ -1610,9 +1587,9 @@ Rr_GraphNode *Rr_AddBlitNode(
     return GraphNode;
 }
 
-Rr_GraphNode *Rr_AddComputeNode(Rr_Renderer *Renderer, const char *Name)
+Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph, const char *Name)
 {
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_COMPUTE, Name);
@@ -1627,7 +1604,7 @@ Rr_GraphNode *Rr_AddComputeNode(Rr_Renderer *Renderer, const char *Name)
 }
 
 Rr_GraphNode *Rr_AddGraphicsNode(
-    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
@@ -1638,7 +1615,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
     assert(DepthTarget == NULL || DepthImage != NULL);
 
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_GRAPHICS, Name);
@@ -1710,14 +1687,14 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 }
 
 Rr_GraphNode *Rr_AddClearColorImageNode(
-    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
     const char *Name,
     Rr_ColorClear *ColorClear,
     Rr_Image2D *Image)
 {
     assert(ColorClear != NULL && Image != NULL);
 
-    Rr_Frame *Frame = Rr_GetCurrentFrame(Renderer);
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE, Name);

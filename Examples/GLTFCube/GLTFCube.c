@@ -34,14 +34,12 @@ static void OnLoadComplete(void *UserData)
 
 static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
     /* Create simple sampler. */
 
     Rr_SamplerInfo SamplerInfo = { 0 };
     SamplerInfo.MinFilter = RR_FILTER_NEAREST;
     SamplerInfo.MagFilter = RR_FILTER_NEAREST;
-    NearestSampler = Rr_CreateSampler(Renderer, &SamplerInfo);
+    NearestSampler = Rr_CreateSampler(&SamplerInfo);
 
     /* Create graphics pipeline. */
 
@@ -67,7 +65,7 @@ static void Init(void *UserData)
         .Bindings = Bindings,
         .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
     };
-    PipelineLayout = Rr_CreatePipelineLayout(Renderer, 1, &BindingSet);
+    PipelineLayout = Rr_CreatePipelineLayout(1, &BindingSet);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Format = RR_FORMAT_VEC3, .Location = 0 },
@@ -84,7 +82,7 @@ static void Init(void *UserData)
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
+    ColorTargets[0].Format = Rr_GetSwapchainFormat();
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
     PipelineInfo.Layout = PipelineLayout;
@@ -103,7 +101,7 @@ static void Init(void *UserData)
     PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
     PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
 
-    GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     /* Create GLTF context. */
 
@@ -124,7 +122,6 @@ static void Init(void *UserData)
         },
     };
     GLTFContext = Rr_CreateGLTFContext(
-        Renderer,
         RR_ARRAY_COUNT(VertexInputBindings),
         VertexInputBindings,
         &GLTFVertexInputBinding,
@@ -146,10 +143,9 @@ static void Init(void *UserData)
 
     /* Create depth buffer. */
 
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
     DepthAttachment = Rr_CreateImage2D(
-        Renderer,
         (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
         RR_TEXTURE_FORMAT_D32_SFLOAT,
         RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
@@ -157,15 +153,12 @@ static void Init(void *UserData)
 
     /* Create uniform buffer. */
 
-    UniformBuffer = Rr_CreateBuffer(
-        Renderer,
-        sizeof(UniformData),
-        RR_BUFFER_FLAGS_UNIFORM_BIT);
+    UniformBuffer =
+        Rr_CreateBuffer(sizeof(UniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
 
     /* Create staging buffer */
 
     StagingBuffer = Rr_CreateBuffer(
-        Renderer,
         RR_MEGABYTES(1),
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
@@ -175,9 +168,7 @@ static void Init(void *UserData)
 
 static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
     UniformData.Projection = Rr_Perspective_LH_ZO(
         0.7643276f,
@@ -190,12 +181,12 @@ static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
         Rr_Rotate_LH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }));
 
     memcpy(
-        Rr_GetMappedBufferData(Renderer, StagingBuffer),
+        Rr_GetMappedBufferData(StagingBuffer),
         &UniformData,
         sizeof(UniformData));
 
     Rr_GraphNode *TransferNode =
-        Rr_AddTransferNode(Renderer, "upload_uniform_buffer");
+        Rr_AddTransferNode(Rr_GetGraph(), "upload_uniform_buffer");
     Rr_TransferBufferData(
         TransferNode,
         sizeof(UniformData),
@@ -231,9 +222,7 @@ static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
 
 static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
     Rr_ColorTarget ColorTarget = {
         .Slot = 0,
@@ -249,7 +238,7 @@ static void Iterate(void *UserData)
         },
     };
     Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-        Renderer,
+        Rr_GetGraph(),
         "graphics",
         1,
         &ColorTarget,
@@ -264,16 +253,14 @@ static void Iterate(void *UserData)
 
 static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
     Rr_DestroyLoadThread(LoadThread);
     Rr_DestroyGLTFContext(GLTFContext);
-    Rr_DestroyImage2D(Renderer, DepthAttachment);
-    Rr_DestroyBuffer(Renderer, StagingBuffer);
-    Rr_DestroyBuffer(Renderer, UniformBuffer);
-    Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
-    Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
-    Rr_DestroySampler(Renderer, NearestSampler);
+    Rr_DestroyImage2D(DepthAttachment);
+    Rr_DestroyBuffer(StagingBuffer);
+    Rr_DestroyBuffer(UniformBuffer);
+    Rr_DestroyGraphicsPipeline(GraphicsPipeline);
+    Rr_DestroyPipelineLayout(PipelineLayout);
+    Rr_DestroySampler(NearestSampler);
 }
 
 int main(int ArgC, char **ArgV)

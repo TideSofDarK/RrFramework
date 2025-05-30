@@ -17,7 +17,6 @@ struct SSortList
         uint32_t AliveCount;
     };
 
-    Rr_Renderer *Renderer;
     uint32_t ThreadsPerWorkgroup{};
 
     Rr_PipelineLayout *Layout;
@@ -25,10 +24,9 @@ struct SSortList
     Rr_Buffer *UniformBuffer;
     Rr_Buffer *IndirectBuffer;
 
-    SSortList(Rr_Renderer *Renderer)
-        : Renderer(Renderer)
+    SSortList()
     {
-        ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
+        ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations();
         if (RR_IS_POW2(ThreadsPerWorkgroup) != true)
         {
             ThreadsPerWorkgroup = Rr_NextPowerOfTwo(ThreadsPerWorkgroup) / 2;
@@ -47,10 +45,8 @@ struct SSortList
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
-        Layout = Rr_CreatePipelineLayout(
-            Renderer,
-            BindingSets.size(),
-            BindingSets.data());
+        Layout =
+            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -65,16 +61,14 @@ struct SSortList
         PipelineCreateInfo.SpecializationCount = Specializations.size();
         PipelineCreateInfo.Specializations = Specializations.data();
 
-        Pipeline = Rr_CreateComputePipeline(Renderer, &PipelineCreateInfo);
+        Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            Renderer,
             sizeof(SUniformData),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
         IndirectBuffer = Rr_CreateBuffer(
-            Renderer,
             sizeof(Rr_DrawIndirectCommand),
             RR_BUFFER_FLAGS_INDIRECT_BIT | RR_BUFFER_FLAGS_STORAGE_BIT |
                 RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
@@ -83,10 +77,10 @@ struct SSortList
 
     ~SSortList()
     {
-        Rr_DestroyComputePipeline(Renderer, Pipeline);
-        Rr_DestroyPipelineLayout(Renderer, Layout);
-        Rr_DestroyBuffer(Renderer, UniformBuffer);
-        Rr_DestroyBuffer(Renderer, IndirectBuffer);
+        Rr_DestroyComputePipeline(Pipeline);
+        Rr_DestroyPipelineLayout(Layout);
+        Rr_DestroyBuffer(UniformBuffer);
+        Rr_DestroyBuffer(IndirectBuffer);
     }
 
     void Generate(
@@ -106,9 +100,9 @@ struct SSortList
 
         Rr_DrawIndirectCommand Command = { 0 };
         Command.VertexCount = 6;
-        // Command.InstanceCount = AliveCount;
+
         std::memcpy(
-            Rr_GetMappedBufferData(Renderer, IndirectBuffer),
+            Rr_GetMappedBufferData(IndirectBuffer),
             &Command,
             sizeof(Rr_DrawIndirectCommand));
 
@@ -117,12 +111,12 @@ struct SSortList
         UniformData.AliveCount = AliveCount;
 
         std::memcpy(
-            Rr_GetMappedBufferData(Renderer, UniformBuffer),
+            Rr_GetMappedBufferData(UniformBuffer),
             &UniformData,
             sizeof(SUniformData));
 
         Rr_GraphNode *ComputeNode =
-            Rr_AddComputeNode(Renderer, "generate_sort_list");
+            Rr_AddComputeNode(Rr_GetGraph(), "generate_sort_list");
         Rr_BindComputePipeline(ComputeNode, Pipeline);
         Rr_BindUniformBuffer(
             ComputeNode,
@@ -197,16 +191,11 @@ struct SBitonicSorter
         return Result;
     }
 
-    explicit SBitonicSorter(
-        Rr_Renderer *Renderer,
-        uint32_t AliveCount,
-        uint32_t AlignedCount)
-        : Renderer(Renderer)
-        , SortList(Renderer)
-        , AliveCount(AliveCount)
+    explicit SBitonicSorter(uint32_t AliveCount, uint32_t AlignedCount)
+        : AliveCount(AliveCount)
         , AlignedCount(AlignedCount)
     {
-        ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
+        ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations();
         if (RR_IS_POW2(ThreadsPerWorkgroup) != true)
         {
             ThreadsPerWorkgroup = Rr_NextPowerOfTwo(ThreadsPerWorkgroup) / 2;
@@ -233,10 +222,8 @@ struct SBitonicSorter
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
-        Layout = Rr_CreatePipelineLayout(
-            Renderer,
-            BindingSets.size(),
-            BindingSets.data());
+        Layout =
+            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -251,13 +238,10 @@ struct SBitonicSorter
         PipelineCreateInfo.SpecializationCount = Specializations.size();
         PipelineCreateInfo.Specializations = Specializations.data();
 
-        Pipeline = Rr_CreateComputePipeline(Renderer, &PipelineCreateInfo);
+        Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            Renderer,
-            RR_ALIGN_POW2(
-                sizeof(SGPUSortInfo),
-                Rr_GetUniformAlignment(Renderer)) *
+            RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment()) *
                 DispatchCount(),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
@@ -265,9 +249,9 @@ struct SBitonicSorter
 
     ~SBitonicSorter()
     {
-        Rr_DestroyComputePipeline(Renderer, Pipeline);
-        Rr_DestroyPipelineLayout(Renderer, Layout);
-        Rr_DestroyBuffer(Renderer, UniformBuffer);
+        Rr_DestroyComputePipeline(Pipeline);
+        Rr_DestroyPipelineLayout(Layout);
+        Rr_DestroyBuffer(UniformBuffer);
     }
 
     void Sort(
@@ -295,12 +279,12 @@ struct SBitonicSorter
             SortInfo.Height = Height;
             SortInfo.Algorithm = Algorithm;
 
-            char *Dst =
-                (char *)Rr_GetMappedBufferData(Renderer, UniformBuffer) +
-                UniformBufferOffset;
+            char *Dst = (char *)Rr_GetMappedBufferData(UniformBuffer) +
+                        UniformBufferOffset;
             std::memcpy(Dst, &SortInfo, sizeof(SGPUSortInfo));
 
-            Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Renderer, "compute");
+            Rr_GraphNode *ComputeNode =
+                Rr_AddComputeNode(Rr_GetGraph(), "compute");
             Rr_BindComputePipeline(ComputeNode, Pipeline);
             Rr_BindStorageBuffer(
                 ComputeNode,
@@ -325,9 +309,8 @@ struct SBitonicSorter
                 sizeof(SGPUSortInfo));
             Rr_Dispatch(ComputeNode, DispatchSize, 1, 1);
 
-            UniformBufferOffset += RR_ALIGN_POW2(
-                sizeof(SGPUSortInfo),
-                Rr_GetUniformAlignment(Renderer));
+            UniformBufferOffset +=
+                RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment());
         };
 
         uint32_t Height = ThreadsPerWorkgroup * 2;

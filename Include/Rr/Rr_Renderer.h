@@ -127,35 +127,31 @@ static const char *RR_PRESENT_MODES[] = {
     "MAILBOX",
 };
 
-extern struct Rr_Graph *Rr_GetGraph(Rr_Renderer *Renderer);
+extern struct Rr_Graph *Rr_GetGraph(void);
 
-extern Rr_Arena *Rr_GetFrameArena(Rr_Renderer *Renderer);
+extern Rr_Arena *Rr_GetFrameArena(void);
 
-extern Rr_TextureFormat Rr_GetSwapchainFormat(Rr_Renderer *Renderer);
+extern Rr_TextureFormat Rr_GetSwapchainFormat(void);
 
-extern Rr_IntVec2 Rr_GetSwapchainSize(Rr_Renderer *Renderer);
+extern Rr_IntVec2 Rr_GetSwapchainSize(void);
 
-extern struct Rr_Image2D *Rr_GetSwapchainImage(Rr_Renderer *Renderer);
+extern struct Rr_Image2D *Rr_GetSwapchainImage(void);
 
-extern Rr_PresentMode *Rr_GetAvailablePresentModes(
-    Rr_Renderer *Renderer,
-    uint32_t *Count);
+extern Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count);
 
-extern Rr_PresentMode Rr_GetPresentMode(Rr_Renderer *Renderer);
+extern Rr_PresentMode Rr_GetPresentMode(void);
 
 extern const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode);
 
-extern bool Rr_SetPresentMode(
-    Rr_Renderer *Renderer,
-    Rr_PresentMode PresentMode);
+extern bool Rr_SetPresentMode(Rr_PresentMode PresentMode);
 
-extern size_t Rr_GetUniformAlignment(Rr_Renderer *Renderer);
+extern size_t Rr_GetUniformAlignment(void);
 
-extern size_t Rr_GetStorageAlignment(Rr_Renderer *Renderer);
+extern size_t Rr_GetStorageAlignment(void);
 
-extern size_t Rr_GetMaxComputeSharedMemorySize(Rr_Renderer *Renderer);
+extern size_t Rr_GetMaxComputeSharedMemorySize(void);
 
-extern size_t Rr_GetMaxComputeWorkgroupInvocations(Rr_Renderer *Renderer);
+extern size_t Rr_GetMaxComputeWorkgroupInvocations(void);
 
 #ifdef __cplusplus
 }

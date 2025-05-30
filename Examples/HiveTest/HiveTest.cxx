@@ -38,15 +38,15 @@ static void Init(void *UserData)
 
 static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
+    Rr_Graph *Graph = Rr_GetGraph();
 
     Rr_ColorClear ColorClear = {};
 
     Rr_AddClearColorImageNode(
-        Renderer,
+        Graph,
         "clear",
         &ColorClear,
-        Rr_GetSwapchainImage(Renderer));
+        Rr_GetSwapchainImage());
 
     if (Rr_UIBeginWindow("Hive", NULL, 0))
     {

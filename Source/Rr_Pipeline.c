@@ -31,7 +31,6 @@
 #include <xxHash/xxhash.h>
 
 static VkRenderPass Rr_GetCompatibleRenderPass(
-    Rr_Renderer *Renderer,
     Rr_GraphicsPipelineCreateInfo *Info)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -59,12 +58,10 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
             Rr_ToVulkanTextureFormat(Info->DepthStencil.Format);
     }
 
-    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(
-        Renderer,
-        &(Rr_RenderPassInfo){
-            .AttachmentCount = AttachmentCount,
-            .Attachments = Attachments,
-        });
+    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&(Rr_RenderPassInfo){
+        .AttachmentCount = AttachmentCount,
+        .Attachments = Attachments,
+    });
 
     Rr_DestroyScratch(Scratch);
 
@@ -72,7 +69,6 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 }
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    Rr_Renderer *Renderer,
     uint32_t SetCount,
     Rr_PipelineBindingSet *Sets)
 {
@@ -80,10 +76,10 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_PipelineLayout *PipelineLayout =
-        RR_GET_FREE_LIST_ITEM(&Renderer->PipelineLayouts, Renderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, gRenderer->Arena);
     PipelineLayout->SetLayoutCount = SetCount;
 
     VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
@@ -92,8 +88,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     {
         Rr_PipelineBindingSet *Set = Sets + Index;
 
-        PipelineLayout->SetLayouts[Index] =
-            Rr_GetDescriptorSetLayout(Renderer, Set);
+        PipelineLayout->SetLayouts[Index] = Rr_GetDescriptorSetLayout(Set);
         Handles[Index] = PipelineLayout->SetLayouts[Index]->Handle;
     }
 
@@ -117,15 +112,13 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     return PipelineLayout;
 }
 
-void Rr_DestroyPipelineLayout(
-    Rr_Renderer *Renderer,
-    Rr_PipelineLayout *PipelineLayout)
+void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
 {
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
 
-    RR_RETURN_FREE_LIST_ITEM(&Renderer->PipelineLayouts, PipelineLayout);
+    RR_RETURN_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, PipelineLayout);
 }
 
 static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
@@ -169,7 +162,6 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
 }
 
 Rr_ComputePipeline *Rr_CreateComputePipeline(
-    Rr_Renderer *Renderer,
     Rr_ComputePipelineCreateInfo *CreateInfo)
 {
     assert(CreateInfo);
@@ -180,10 +172,10 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_ComputePipeline *Pipeline =
-        RR_GET_FREE_LIST_ITEM(&Renderer->ComputePipelines, Renderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->ComputePipelines, gRenderer->Arena);
     Pipeline->Layout = CreateInfo->Layout;
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
@@ -237,27 +229,24 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
     return Pipeline;
 }
 
-void Rr_DestroyComputePipeline(
-    Rr_Renderer *Renderer,
-    Rr_ComputePipeline *ComputePipeline)
+void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 {
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
 
-    RR_RETURN_FREE_LIST_ITEM(&Renderer->ComputePipelines, ComputePipeline);
+    RR_RETURN_FREE_LIST_ITEM(&gRenderer->ComputePipelines, ComputePipeline);
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_Renderer *Renderer,
     Rr_GraphicsPipelineCreateInfo *Info)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_GraphicsPipeline *Pipeline =
-        RR_GET_FREE_LIST_ITEM(&Renderer->GraphicsPipelines, Renderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->GraphicsPipelines, gRenderer->Arena);
     Pipeline->Layout = Info->Layout;
     Pipeline->HasDepthStencil = Info->DepthStencil.EnableDepthTest ||
                                 Info->DepthStencil.EnableStencilTest ||
@@ -507,7 +496,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .pDepthStencilState = &DepthStencil,
         .layout = Info->Layout->Handle,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = Rr_GetCompatibleRenderPass(Renderer, Info),
+        .renderPass = Rr_GetCompatibleRenderPass(Info),
     };
 
     Device->CreateGraphicsPipelines(
@@ -533,29 +522,25 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     return Pipeline;
 }
 
-void Rr_DestroyGraphicsPipeline(
-    Rr_Renderer *Renderer,
-    Rr_GraphicsPipeline *GraphicsPipeline)
+void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
-    RR_RETURN_FREE_LIST_ITEM(&Renderer->GraphicsPipelines, GraphicsPipeline);
+    RR_RETURN_FREE_LIST_ITEM(&gRenderer->GraphicsPipelines, GraphicsPipeline);
 }
 
-Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
-    Rr_Renderer *Renderer,
-    Rr_PipelineBindingSet *Set)
+Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
 {
     uint32_t Hash =
         XXH32(Set->Bindings, sizeof(Rr_PipelineBinding) * Set->BindingCount, 0);
     for (size_t LayoutIndex = 0;
-         LayoutIndex < Renderer->DescriptorSetLayouts.Count;
+         LayoutIndex < gRenderer->DescriptorSetLayouts.Count;
          ++LayoutIndex)
     {
         Rr_DescriptorSetLayout *DescriptorSetLayout =
-            Renderer->DescriptorSetLayouts.Data + LayoutIndex;
+            gRenderer->DescriptorSetLayouts.Data + LayoutIndex;
         if (DescriptorSetLayout == NULL)
         {
             continue;
@@ -616,16 +601,16 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
     }
 
     Rr_DescriptorSetLayout *DescriptorSetLayout =
-        RR_PUSH_INTO_ARRAY(&Renderer->DescriptorSetLayouts, Renderer->Arena);
+        RR_PUSH_INTO_ARRAY(&gRenderer->DescriptorSetLayouts, gRenderer->Arena);
     DescriptorSetLayout->Hash = Hash;
     DescriptorSetLayout->Set = *Set;
     RR_ALLOC_COPY(
-        Renderer->Arena,
+        gRenderer->Arena,
         DescriptorSetLayout->Set.Bindings,
         Set->Bindings,
         sizeof(Rr_PipelineBinding) * Set->BindingCount);
     DescriptorSetLayout->Handle =
-        Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, &Renderer->Device);
+        Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, &gRenderer->Device);
 
     return DescriptorSetLayout;
 }

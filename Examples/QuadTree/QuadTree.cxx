@@ -639,8 +639,6 @@ static SPoint ConvertMousePosition()
 
 static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
         Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
@@ -652,13 +650,10 @@ static void Init(void *UserData)
             RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
         },
     };
-    Layout = Rr_CreatePipelineLayout(
-        Renderer,
-        BindingSets.size(),
-        BindingSets.data());
+    Layout = Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
+    ColorTargets[0].Format = Rr_GetSwapchainFormat();
     ColorTargets[0].Blend = Rr_AlphaBlend();
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
@@ -668,18 +663,14 @@ static void Init(void *UserData)
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
 
-    Pipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+    Pipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
-    UniformBuffer = Rr_CreateBuffer(
-        Renderer,
-        sizeof(SGPUUniformData),
-        RR_BUFFER_FLAGS_UNIFORM_BIT);
+    UniformBuffer =
+        Rr_CreateBuffer(sizeof(SGPUUniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
     StorageBuffer = Rr_CreateBuffer(
-        Renderer,
         sizeof(SGPUDraw) * MAX_DRAWS,
         RR_BUFFER_FLAGS_STORAGE_BIT);
     StagingBuffer = Rr_CreateBuffer(
-        Renderer,
         RR_MEGABYTES(64),
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
@@ -826,10 +817,8 @@ static void Render()
 {
     auto Lock = std::unique_lock(Mutex, std::try_to_lock);
 
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
     Rr_ColorTarget ColorTarget;
     ColorTarget.Clear = { 13.0f / 255.0f,
@@ -849,8 +838,7 @@ static void Render()
     UniformData.ViewProjection = CameraProjection * CameraView;
     UniformData.Time = Rr_GetTimeSeconds();
 
-    char *StagingDataStart =
-        (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer);
+    char *StagingDataStart = (char *)Rr_GetMappedBufferData(StagingBuffer);
     char *StagingData = StagingDataStart;
     std::memcpy(StagingData, &UniformData, sizeof(UniformData));
     StagingData += sizeof(UniformData);
@@ -903,9 +891,11 @@ static void Render()
         DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
     }
 
+    Rr_Graph *Graph = Rr_GetGraph();
+
     if (DrawCount > 0)
     {
-        Rr_GraphNode *TransferNode = Rr_AddTransferNode(Renderer, "transfer");
+        Rr_GraphNode *TransferNode = Rr_AddTransferNode(Graph, "transfer");
         Rr_TransferBufferData(
             TransferNode,
             sizeof(UniformData),
@@ -923,7 +913,7 @@ static void Render()
     }
 
     Rr_GraphNode *TreeNode = Rr_AddGraphicsNode(
-        Renderer,
+        Graph,
         "tree",
         1,
         &ColorTarget,
@@ -988,7 +978,6 @@ static void Iterate(void *UserData)
         if (Rr_UICheckbox("Use VSync", &VSyncEnabled))
         {
             Rr_SetPresentMode(
-                Rr_GetRenderer(),
                 VSyncEnabled ? RR_PRESENT_MODE_FIFO
                              : RR_PRESENT_MODE_IMMEDIATE);
         }
@@ -1002,13 +991,11 @@ static void Iterate(void *UserData)
 
 static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
-    Rr_DestroyBuffer(Renderer, UniformBuffer);
-    Rr_DestroyBuffer(Renderer, StorageBuffer);
-    Rr_DestroyBuffer(Renderer, StagingBuffer);
-    Rr_DestroyGraphicsPipeline(Renderer, Pipeline);
-    Rr_DestroyPipelineLayout(Renderer, Layout);
+    Rr_DestroyBuffer(UniformBuffer);
+    Rr_DestroyBuffer(StorageBuffer);
+    Rr_DestroyBuffer(StagingBuffer);
+    Rr_DestroyGraphicsPipeline(Pipeline);
+    Rr_DestroyPipelineLayout(Layout);
 }
 
 int main()

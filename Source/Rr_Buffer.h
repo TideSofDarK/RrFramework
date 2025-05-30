@@ -46,7 +46,6 @@ struct Rr_Buffer
 };
 
 extern void Rr_UploadStagingBuffer(
-    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Buffer *Buffer,
     Rr_SyncState SrcState,
@@ -56,13 +55,10 @@ extern void Rr_UploadStagingBuffer(
     size_t StagingSize);
 
 extern void Rr_UploadBuffer(
-    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Buffer *Buffer,
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
     Rr_Data Data);
 
-extern Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(
-    Rr_Renderer *Renderer,
-    Rr_Buffer *Buffer);
+extern Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer);

@@ -144,25 +144,25 @@ struct Rr_Renderer
     Rr_Arena *Arena;
 };
 
-extern Rr_Renderer *Rr_CreateRenderer(void);
+extern void Rr_InitRenderer(void);
 
-extern void Rr_WaitIdle(Rr_Renderer *Renderer);
+extern void Rr_WaitIdle(void);
 
-extern void Rr_DestroyRenderer(Rr_Renderer *Renderer);
+extern void Rr_CleanupRenderer(void);
 
-extern void Rr_SetSwapchainDirty(Rr_Renderer *Renderer, bool Dirty);
+extern void Rr_SetSwapchainDirty(bool Dirty);
 
 extern void Rr_NewFrame(void);
 
 extern void Rr_DrawFrame(void);
 
-extern VkCommandBuffer Rr_BeginImmediate(Rr_Renderer *Renderer);
+extern VkCommandBuffer Rr_BeginImmediate(void);
 
-extern void Rr_EndImmediate(Rr_Renderer *Renderer);
+extern void Rr_EndImmediate(void);
 
-extern Rr_Frame *Rr_GetCurrentFrame(Rr_Renderer *Renderer);
+extern Rr_Frame *Rr_GetCurrentFrame(void);
 
-extern bool Rr_IsUsingTransferQueue(Rr_Renderer *Renderer);
+extern bool Rr_IsUsingTransferQueue(void);
 
 typedef struct Rr_RenderPassAttachment Rr_RenderPassAttachment;
 struct Rr_RenderPassAttachment
@@ -179,27 +179,24 @@ struct Rr_RenderPassInfo
     size_t AttachmentCount;
 };
 
-extern VkRenderPass Rr_GetVulkanRenderPass(
-    Rr_Renderer *Renderer,
-    Rr_RenderPassInfo *Info);
+extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info);
 
 extern VkFramebuffer Rr_GetVulkanFramebuffer(
-    Rr_Renderer *Renderer,
     VkRenderPass RenderPass,
     VkImageView *ImageViews,
     size_t ImageViewCount,
     VkExtent3D Extent);
 
-extern Rr_SyncState *Rr_GetSyncState(Rr_Renderer *Renderer, Rr_MapKey Key);
+extern Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key);
 
-extern void Rr_ReturnSyncState(Rr_Renderer *Renderer, Rr_MapKey Key);
+extern void Rr_ReturnSyncState(Rr_MapKey Key);
 
-extern VkSemaphore Rr_GetVulkanSemaphore(Rr_Renderer *Renderer);
+extern VkSemaphore Rr_GetVulkanSemaphore(void);
 
-extern void Rr_ReturnVulkanSemaphore(
-    Rr_Renderer *Renderer,
-    VkSemaphore Semaphore);
+extern void Rr_ReturnVulkanSemaphore(VkSemaphore Semaphore);
 
-extern VkFence Rr_GetVulkanFence(Rr_Renderer *Renderer);
+extern VkFence Rr_GetVulkanFence(void);
 
-extern void Rr_ReturnVulkanFence(Rr_Renderer *Renderer, VkFence Fence);
+extern void Rr_ReturnVulkanFence(VkFence Fence);
+
+extern Rr_Renderer *gRenderer;

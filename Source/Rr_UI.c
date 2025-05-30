@@ -238,15 +238,13 @@ Rr_UIFont *Rr_UICreateFont(
 #define CJSON_GET_OBJECT_FLOAT(Object, Item) \
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
 
-    Rr_Renderer *Renderer = gApp->Renderer;
-
     Rr_Image2D *Atlas;
     Rr_LoadTask ImageLoadTask = (Rr_LoadTask){
         .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
         .AssetRef = FontPNGRef,
         .Out.Image = &Atlas,
     };
-    Rr_LoadImmediate(Renderer, 1, &ImageLoadTask);
+    Rr_LoadImmediate(1, &ImageLoadTask);
 
     Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
 
@@ -323,7 +321,7 @@ Rr_UIFont *Rr_UICreateFont(
 
 void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
 {
-    Rr_DestroyImage2D(gApp->Renderer, Font->Atlas);
+    Rr_DestroyImage2D(Font->Atlas);
 
     RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
 }
@@ -3887,8 +3885,6 @@ void Rr_UIInit(void)
 {
     assert(gUIContext == NULL);
 
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     gUIContext = RR_ALLOC_TYPE(Arena, Rr_UIContext);
@@ -3943,14 +3939,12 @@ void Rr_UIInit(void)
             RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
         },
     };
-    gUIContext->PipelineLayout = Rr_CreatePipelineLayout(
-        Renderer,
-        RR_ARRAY_COUNT(BindingSets),
-        BindingSets);
+    gUIContext->PipelineLayout =
+        Rr_CreatePipelineLayout(RR_ARRAY_COUNT(BindingSets), BindingSets);
 
     Rr_ColorTargetInfo ColorTargets[] = {
         {
-            .Format = Rr_GetSwapchainFormat(Renderer),
+            .Format = Rr_GetSwapchainFormat(),
             .Blend.BlendEnable = true,
             .Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA,
             .Blend.DstColorBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -3992,33 +3986,27 @@ void Rr_UIInit(void)
         .VertexInputBindings = &VertexInputBinding,
     };
 
-    gUIContext->GraphicsPipeline =
-        Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+    gUIContext->GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     gUIContext->VertexBuffer = Rr_CreateBuffer(
-        Renderer,
         RR_MEGABYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     gUIContext->IndexBuffer = Rr_CreateBuffer(
-        Renderer,
         RR_MEGABYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     gUIContext->UniformBuffer = Rr_CreateBuffer(
-        Renderer,
         sizeof(Rr_UIUniformData),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
-    gUIContext->Sampler = Rr_CreateSampler(
-        Renderer,
-        &(Rr_SamplerInfo){
-            .MinFilter = RR_FILTER_LINEAR,
-            .MagFilter = RR_FILTER_LINEAR,
-        });
+    gUIContext->Sampler = Rr_CreateSampler(&(Rr_SamplerInfo){
+        .MinFilter = RR_FILTER_LINEAR,
+        .MagFilter = RR_FILTER_LINEAR,
+    });
 
     gUIContext->Font = Rr_UICreateFont(
         gUIContext,
@@ -4030,13 +4018,12 @@ void Rr_UICleanup(void)
 {
     assert(gUIContext != NULL);
 
-    Rr_Renderer *Renderer = gApp->Renderer;
-    Rr_DestroyBuffer(Renderer, gUIContext->VertexBuffer);
-    Rr_DestroyBuffer(Renderer, gUIContext->IndexBuffer);
-    Rr_DestroyBuffer(Renderer, gUIContext->UniformBuffer);
-    Rr_DestroySampler(Renderer, gUIContext->Sampler);
-    Rr_DestroyPipelineLayout(Renderer, gUIContext->PipelineLayout);
-    Rr_DestroyGraphicsPipeline(Renderer, gUIContext->GraphicsPipeline);
+    Rr_DestroyBuffer(gUIContext->VertexBuffer);
+    Rr_DestroyBuffer(gUIContext->IndexBuffer);
+    Rr_DestroyBuffer(gUIContext->UniformBuffer);
+    Rr_DestroySampler(gUIContext->Sampler);
+    Rr_DestroyPipelineLayout(gUIContext->PipelineLayout);
+    Rr_DestroyGraphicsPipeline(gUIContext->GraphicsPipeline);
     Rr_UIDestroyFont(gUIContext, gUIContext->Font);
     Rr_DestroyArena(gUIContext->Arena);
 }
@@ -4149,15 +4136,13 @@ static inline void Rr_UIConsumeNextFontSize(void)
 
 void Rr_UINewFrame(void)
 {
-    Rr_Renderer *Renderer = gApp->Renderer;
-
-    gUIContext->FrameArena = Rr_GetFrameArena(Renderer);
+    gUIContext->FrameArena = Rr_GetFrameArena();
 
     RR_RESET_ARRAY(&gUIContext->Vertices, gUIContext->FrameArena);
     RR_RESET_ARRAY(&gUIContext->Indices, gUIContext->FrameArena);
     RR_RESET_ARRAY(&gUIContext->Stack, gUIContext->FrameArena);
 
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
     gUIContext->ScreenSize.Width = (float)SwapchainSize.Width;
     gUIContext->ScreenSize.Height = (float)SwapchainSize.Height;
 }
@@ -4285,27 +4270,25 @@ void Rr_UIEnd(void)
         return;
     }
 
-    Rr_Renderer *Renderer = gApp->Renderer;
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
     Rr_UIUniformData UniformData = {
         .ScreenSize = gUIContext->ScreenSize,
         .DistanceRange = gUIContext->Font->DistanceRange,
         .Time = (float)Rr_GetTimeSeconds(),
     };
-    char *MappedUniformData =
-        Rr_GetMappedBufferData(Renderer, gUIContext->UniformBuffer);
+    char *MappedUniformData = Rr_GetMappedBufferData(gUIContext->UniformBuffer);
     memcpy(MappedUniformData, &UniformData, sizeof(UniformData));
 
     Rr_UIVertex *VertexBufferData =
-        Rr_GetMappedBufferData(Renderer, gUIContext->VertexBuffer);
+        Rr_GetMappedBufferData(gUIContext->VertexBuffer);
     memcpy(
         VertexBufferData,
         gUIContext->Vertices.Data,
         sizeof(Rr_UIVertex) * gUIContext->Vertices.Count);
 
     Rr_UIIndex *IndexBufferData =
-        Rr_GetMappedBufferData(Renderer, gUIContext->IndexBuffer);
+        Rr_GetMappedBufferData(gUIContext->IndexBuffer);
     memcpy(
         IndexBufferData,
         gUIContext->Indices.Data,
@@ -4317,7 +4300,7 @@ void Rr_UIEnd(void)
         .StoreOp = RR_STORE_OP_STORE,
     };
     Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-        Renderer,
+        Rr_GetGraph(),
         "ui",
         1,
         &ColorTarget,
@@ -4412,8 +4395,6 @@ static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, const char *Comment)
 
 void Rr_UIDebugOverlay(void)
 {
-    Rr_Renderer *Renderer = gApp->Renderer;
-
     if (Rr_UIBeginWindow(
             "Rr_DebugOverlay",
             NULL,
@@ -4436,13 +4417,13 @@ void Rr_UIDebugOverlay(void)
             Rr_UISeparator();
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =
-                Rr_GetAvailablePresentModes(Renderer, &PresentModeCount);
+                Rr_GetAvailablePresentModes(&PresentModeCount);
             const char **PresentModeStrings =
                 alloca(PresentModeCount * sizeof(const char *));
             uint32_t CurrentPresentModeIndex;
             for (uint32_t Index = 0; Index < PresentModeCount; ++Index)
             {
-                if (Renderer->Swapchain.PresentMode == PresentModes[Index])
+                if (gRenderer->Swapchain.PresentMode == PresentModes[Index])
                 {
                     CurrentPresentModeIndex = Index;
                 }
@@ -4455,9 +4436,7 @@ void Rr_UIDebugOverlay(void)
                     PresentModeStrings,
                     &CurrentPresentModeIndex))
             {
-                Rr_SetPresentMode(
-                    Renderer,
-                    PresentModes[CurrentPresentModeIndex]);
+                Rr_SetPresentMode(PresentModes[CurrentPresentModeIndex]);
             }
             Rr_UILabelF("FPS: %.2f", Rr_GetFramesPerSecond());
             Rr_UICheckbox(
@@ -4472,26 +4451,22 @@ void Rr_UIDebugOverlay(void)
         if (Rr_UITab("Memory"))
         {
             Rr_UIDebugOverlayArena(gApp->Arena, "Application");
-            Rr_UIDebugOverlayArena(gApp->Renderer->Arena, "Renderer");
+            Rr_UIDebugOverlayArena(gRenderer->Arena, "Renderer");
             for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
             {
-                Rr_Frame *Frame = Renderer->Frames + Index;
+                Rr_Frame *Frame = gRenderer->Frames + Index;
                 Rr_UIDebugOverlayArena(Frame->Arena, "Frame");
             }
             Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
         }
         if (Rr_UITab("Renderer"))
         {
-            Rr_UILabelF("Frame: %zu", gApp->Renderer->FrameNumber);
-            Rr_UILabelF(
-                "RenderPasses: %zu",
-                gApp->Renderer->RenderPasses.Count);
-            Rr_UILabelF(
-                "Framebuffers: %zu",
-                gApp->Renderer->Framebuffers.Count);
+            Rr_UILabelF("Frame: %zu", gRenderer->FrameNumber);
+            Rr_UILabelF("RenderPasses: %zu", gRenderer->RenderPasses.Count);
+            Rr_UILabelF("Framebuffers: %zu", gRenderer->Framebuffers.Count);
             Rr_UILabelF(
                 "SwapchainImages: %zu",
-                gApp->Renderer->SwapchainImages.Count);
+                gRenderer->SwapchainImages.Count);
         }
         Rr_UIEndTabs();
         Rr_UIEndWindow();

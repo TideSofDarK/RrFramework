@@ -61,5 +61,4 @@ struct Rr_GraphicsPipeline
 };
 
 extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
-    Rr_Renderer *Renderer,
     Rr_PipelineBindingSet *Set);

@@ -9,9 +9,7 @@ static Rr_Buffer *IndexBuffer;
 
 static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
-    PipelineLayout = Rr_CreatePipelineLayout(Renderer, 0, NULL);
+    PipelineLayout = Rr_CreatePipelineLayout(0, NULL);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Format = RR_FORMAT_VEC3, .Location = 0 },
@@ -27,7 +25,7 @@ static void Init(void *UserData)
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
+    ColorTargets[0].Format = Rr_GetSwapchainFormat();
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
     PipelineInfo.Layout = PipelineLayout;
@@ -40,19 +38,16 @@ static void Init(void *UserData)
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
 
-    GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     float VertexData[] = {
         -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
         0.0f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,  1.0f,
     };
 
-    VertexBuffer = Rr_CreateBuffer(
-        Renderer,
-        sizeof(VertexData),
-        RR_BUFFER_FLAGS_VERTEX_BIT);
+    VertexBuffer =
+        Rr_CreateBuffer(sizeof(VertexData), RR_BUFFER_FLAGS_VERTEX_BIT);
     Rr_UploadToDeviceBufferImmediate(
-        Renderer,
         VertexBuffer,
         RR_MAKE_DATA_ARRAY(VertexData));
 
@@ -62,19 +57,15 @@ static void Init(void *UserData)
         0,
     };
 
-    IndexBuffer =
-        Rr_CreateBuffer(Renderer, sizeof(IndexData), RR_BUFFER_FLAGS_INDEX_BIT);
+    IndexBuffer = Rr_CreateBuffer(sizeof(IndexData), RR_BUFFER_FLAGS_INDEX_BIT);
     Rr_UploadToDeviceBufferImmediate(
-        Renderer,
         IndexBuffer,
         RR_MAKE_DATA_ARRAY(IndexData));
 }
 
 static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
     Rr_ColorTarget OffscreenTarget = {
         .Slot = 0,
@@ -83,7 +74,7 @@ static void Iterate(void *UserData)
         .Clear = (Rr_ColorClear){ 0 },
     };
     Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
-        Renderer,
+        Rr_GetGraph(),
         "offscreen",
         1,
         &OffscreenTarget,
@@ -94,15 +85,16 @@ static void Iterate(void *UserData)
     Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
     Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
+
+    Rr_UIDebugOverlay();
 }
 
 static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-    Rr_DestroyBuffer(Renderer, VertexBuffer);
-    Rr_DestroyBuffer(Renderer, IndexBuffer);
-    Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
-    Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
+    Rr_DestroyBuffer(VertexBuffer);
+    Rr_DestroyBuffer(IndexBuffer);
+    Rr_DestroyGraphicsPipeline(GraphicsPipeline);
+    Rr_DestroyPipelineLayout(PipelineLayout);
 }
 
 int main(int ArgC, char **ArgV)

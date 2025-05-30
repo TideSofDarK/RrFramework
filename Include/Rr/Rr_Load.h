@@ -95,10 +95,7 @@ extern Rr_LoadContext *Rr_LoadAsync(
     Rr_LoadCallback LoadCallback,
     void *UserData);
 
-extern Rr_LoadResult Rr_LoadImmediate(
-    Rr_Renderer *Renderer,
-    size_t TaskCount,
-    Rr_LoadTask *Tasks);
+extern Rr_LoadResult Rr_LoadImmediate(size_t TaskCount, Rr_LoadTask *Tasks);
 
 extern void Rr_GetLoadProgress(
     Rr_LoadContext *LoadContext,

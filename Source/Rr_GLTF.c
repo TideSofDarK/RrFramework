@@ -123,7 +123,6 @@ static inline Rr_Format Rr_GLTFAttributeTypeToFormat(Rr_GLTFAttributeType Type)
 }
 
 Rr_GLTFContext *Rr_CreateGLTFContext(
-    Rr_Renderer *Renderer,
     size_t VertexInputBindingCount,
     Rr_VertexInputBinding *VertexInputBindings,
     Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
@@ -163,7 +162,6 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
 
     Rr_GLTFContext *GLTFContext = RR_ALLOC_TYPE(Arena, Rr_GLTFContext);
     GLTFContext->Arena = Arena;
-    GLTFContext->Renderer = Renderer;
 
     GLTFContext->VertexInputStrides =
         RR_ALLOC_TYPE_COUNT(Arena, size_t, VertexInputBindingCount);
@@ -208,16 +206,12 @@ void Rr_DestroyGLTFContext(Rr_GLTFContext *GLTFContext)
 {
     for (size_t Index = 0; Index < GLTFContext->Buffers.Count; ++Index)
     {
-        Rr_DestroyBuffer(
-            GLTFContext->Renderer,
-            GLTFContext->Buffers.Data[Index]);
+        Rr_DestroyBuffer(GLTFContext->Buffers.Data[Index]);
     }
 
     for (size_t Index = 0; Index < GLTFContext->Images.Count; ++Index)
     {
-        Rr_DestroyImage2D(
-            GLTFContext->Renderer,
-            GLTFContext->Images.Data[Index]);
+        Rr_DestroyImage2D(GLTFContext->Images.Data[Index]);
     }
 
     Rr_DestroyArena(GLTFContext->Arena);
@@ -361,7 +355,6 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    Rr_Renderer *Renderer = GLTFContext->Renderer;
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
     cgltf_options Options = {
@@ -455,12 +448,11 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                       RR_ALIGN_POW2(IndexDataSize, SafeAlignment);
 
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        Renderer,
         StagingDataSize,
         RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     *RR_PUSH_INTO_ARRAY(&UploadContext->StagingBuffers, UploadContext->Arena) =
         StagingBuffer;
-    char *StagingData = Rr_GetMappedBufferData(Renderer, StagingBuffer);
+    char *StagingData = Rr_GetMappedBufferData(StagingBuffer);
 
     /* Preallocate materials. */
 
@@ -616,17 +608,15 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     // assert(StagingDataOffset == GeometryDataSize);
 
-    Rr_FlushBufferRange(Renderer, StagingBuffer, 0, StagingDataSize);
+    Rr_FlushBufferRange(StagingBuffer, 0, StagingDataSize);
 
     GLTFAsset->Buffer = Rr_CreateBuffer(
-        Renderer,
         StagingDataSize,
         RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT);
     *RR_PUSH_INTO_ARRAY(&GLTFContext->Buffers, GLTFContext->Arena) =
         GLTFAsset->Buffer;
 
     Rr_UploadStagingBuffer(
-        Renderer,
         UploadContext,
         GLTFAsset->Buffer,
         (Rr_SyncState){
@@ -696,7 +686,6 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
                         GLTFAsset->Images[CurrentTextureIndex] =
                             Rr_CreateImage2DRGBA8FromPNG(
-                                Renderer,
                                 UploadContext,
                                 ImageDataSize,
                                 ImageData);

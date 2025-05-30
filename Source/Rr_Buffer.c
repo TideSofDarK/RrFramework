@@ -29,13 +29,10 @@
 
 #include <assert.h>
 
-Rr_Buffer *Rr_CreateBuffer(
-    Rr_Renderer *Renderer,
-    size_t Size,
-    Rr_BufferFlags Flags)
+Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags)
 {
     Rr_Buffer *Buffer =
-        RR_GET_FREE_LIST_ITEM(&Renderer->Buffers, Renderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->Buffers, gRenderer->Arena);
     Buffer->Flags = Flags;
 
     Buffer->Usage = 0;
@@ -113,7 +110,7 @@ Rr_Buffer *Rr_CreateBuffer(
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
         vmaCreateBuffer(
-            Renderer->Allocator,
+            gRenderer->Allocator,
             &BufferCreateInfo,
             &AllocationInfo,
             &AllocatedBuffer->Handle,
@@ -124,7 +121,7 @@ Rr_Buffer *Rr_CreateBuffer(
     return Buffer;
 }
 
-void Rr_DestroyBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
+void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 {
     if (Buffer == NULL)
     {
@@ -135,62 +132,56 @@ void Rr_DestroyBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
         vmaDestroyBuffer(
-            Renderer->Allocator,
+            gRenderer->Allocator,
             AllocatedBuffer->Handle,
             AllocatedBuffer->Allocation);
     }
 
-    RR_RETURN_FREE_LIST_ITEM(&Renderer->Buffers, Buffer);
+    RR_RETURN_FREE_LIST_ITEM(&gRenderer->Buffers, Buffer);
 }
 
-void *Rr_GetMappedBufferData(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
+void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
 {
-    Rr_AllocatedBuffer *AllocatedBuffer =
-        Rr_GetCurrentAllocatedBuffer(Renderer, Buffer);
+    Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
     return AllocatedBuffer->AllocationInfo.pMappedData;
 }
 
-void *Rr_MapBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
+void *Rr_MapBuffer(Rr_Buffer *Buffer)
 {
-    Rr_AllocatedBuffer *AllocatedBuffer =
-        Rr_GetCurrentAllocatedBuffer(Renderer, Buffer);
+    Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
     if (RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
     {
         return AllocatedBuffer->AllocationInfo.pMappedData;
     }
     void *MappedData;
-    vmaMapMemory(Renderer->Allocator, AllocatedBuffer->Allocation, &MappedData);
+    vmaMapMemory(
+        gRenderer->Allocator,
+        AllocatedBuffer->Allocation,
+        &MappedData);
     return MappedData;
 }
 
-void Rr_UnmapBuffer(Rr_Renderer *Renderer, Rr_Buffer *Buffer)
+void Rr_UnmapBuffer(Rr_Buffer *Buffer)
 {
     if (RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
     {
         return;
     }
-    Rr_AllocatedBuffer *AllocatedBuffer =
-        Rr_GetCurrentAllocatedBuffer(Renderer, Buffer);
-    vmaUnmapMemory(Renderer->Allocator, AllocatedBuffer->Allocation);
+    Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
+    vmaUnmapMemory(gRenderer->Allocator, AllocatedBuffer->Allocation);
 }
 
-void Rr_FlushBufferRange(
-    Rr_Renderer *Renderer,
-    Rr_Buffer *Buffer,
-    size_t Offset,
-    size_t Size)
+void Rr_FlushBufferRange(Rr_Buffer *Buffer, size_t Offset, size_t Size)
 {
-    Rr_AllocatedBuffer *AllocatedBuffer =
-        Rr_GetCurrentAllocatedBuffer(Renderer, Buffer);
+    Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
     vmaFlushAllocation(
-        Renderer->Allocator,
+        gRenderer->Allocator,
         AllocatedBuffer->Allocation,
         Offset,
         Size);
 }
 
 void Rr_UploadStagingBuffer(
-    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Buffer *Buffer,
     Rr_SyncState SrcState,
@@ -199,7 +190,7 @@ void Rr_UploadStagingBuffer(
     size_t StagingOffset,
     size_t StagingSize)
 {
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
 
@@ -258,8 +249,8 @@ void Rr_UploadStagingBuffer(
                 .size = VK_WHOLE_SIZE,
                 .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
                 .dstAccessMask = 0,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+                .srcQueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
             };
 
             *RR_PUSH_INTO_ARRAY(
@@ -272,8 +263,8 @@ void Rr_UploadStagingBuffer(
                 .size = VK_WHOLE_SIZE,
                 .srcAccessMask = 0,
                 .dstAccessMask = DstState.AccessMask,
-                .srcQueueFamilyIndex = Renderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = Renderer->GraphicsQueue.FamilyIndex,
+                .srcQueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
+                .dstQueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
             };
         }
         else
@@ -304,7 +295,6 @@ void Rr_UploadStagingBuffer(
 }
 
 void Rr_UploadBuffer(
-    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Buffer *Buffer,
     Rr_SyncState SrcState,
@@ -312,7 +302,6 @@ void Rr_UploadBuffer(
     Rr_Data Data)
 {
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        Renderer,
         Data.Size,
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     *RR_PUSH_INTO_ARRAY(&UploadContext->StagingBuffers, UploadContext->Arena) =
@@ -326,7 +315,6 @@ void Rr_UploadBuffer(
         Data.Size);
 
     Rr_UploadStagingBuffer(
-        Renderer,
         UploadContext,
         Buffer,
         SrcState,
@@ -336,23 +324,19 @@ void Rr_UploadBuffer(
         Data.Size);
 }
 
-void Rr_UploadToDeviceBufferImmediate(
-    Rr_Renderer *Renderer,
-    Rr_Buffer *DstBuffer,
-    Rr_Data Data)
+void Rr_UploadToDeviceBufferImmediate(Rr_Buffer *DstBuffer, Rr_Data Data)
 {
     assert(DstBuffer != NULL);
 
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
-    VkCommandBuffer CommandBuffer = Rr_BeginImmediate(Renderer);
+    VkCommandBuffer CommandBuffer = Rr_BeginImmediate();
 
     Rr_Buffer *SrcBuffer = Rr_CreateBuffer(
-        Renderer,
         Data.Size,
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     Rr_AllocatedBuffer *SrcAllocatedBuffer =
-        Rr_GetCurrentAllocatedBuffer(Renderer, SrcBuffer);
+        Rr_GetCurrentAllocatedBuffer(SrcBuffer);
     memcpy(
         SrcAllocatedBuffer->AllocationInfo.pMappedData,
         Data.Pointer,
@@ -376,16 +360,14 @@ void Rr_UploadToDeviceBufferImmediate(
             &BufferCopy);
     }
 
-    Rr_EndImmediate(Renderer);
+    Rr_EndImmediate();
 
-    Rr_DestroyBuffer(Renderer, SrcBuffer);
+    Rr_DestroyBuffer(SrcBuffer);
 }
 
-Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(
-    Rr_Renderer *Renderer,
-    Rr_Buffer *Buffer)
+Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer)
 {
     size_t AllocatedBufferIndex =
-        Renderer->FrameIndex % Buffer->AllocatedBufferCount;
+        gRenderer->FrameIndex % Buffer->AllocatedBufferCount;
     return &Buffer->AllocatedBuffers[AllocatedBufferIndex];
 }

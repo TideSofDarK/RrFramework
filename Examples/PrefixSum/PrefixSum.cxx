@@ -43,8 +43,6 @@ static uint32_t GetDispatchSize()
 
 static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
         Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
@@ -58,12 +56,9 @@ static void Init(void *UserData)
             RR_SHADER_STAGE_COMPUTE_BIT,
         },
     };
-    Layout = Rr_CreatePipelineLayout(
-        Renderer,
-        BindingSets.size(),
-        BindingSets.data());
+    Layout = Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
-    ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations(Renderer);
+    ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations();
     std::array Specializations = {
         Rr_PipelineSpecialization{ 0,
                                    RR_MAKE_DATA_STRUCT(ThreadsPerWorkgroup) },
@@ -76,24 +71,20 @@ static void Init(void *UserData)
     PipelineCreateInfo.SpecializationCount = Specializations.size();
     PipelineCreateInfo.Specializations = Specializations.data();
 
-    Pipeline = Rr_CreateComputePipeline(Renderer, &PipelineCreateInfo);
+    Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
 
     Numbers.resize(COUNT);
     std::iota(Numbers.begin(), Numbers.end(), 0);
     size_t NumbersSize = sizeof(uint32_t) * Numbers.size();
-    InputBuffer =
-        Rr_CreateBuffer(Renderer, NumbersSize, RR_BUFFER_FLAGS_STORAGE_BIT);
+    InputBuffer = Rr_CreateBuffer(NumbersSize, RR_BUFFER_FLAGS_STORAGE_BIT);
 
-    OutputBuffer =
-        Rr_CreateBuffer(Renderer, NumbersSize, RR_BUFFER_FLAGS_STORAGE_BIT);
+    OutputBuffer = Rr_CreateBuffer(NumbersSize, RR_BUFFER_FLAGS_STORAGE_BIT);
 
     WorkgroupBuffer = Rr_CreateBuffer(
-        Renderer,
         GetDispatchSize() * sizeof(uint32_t),
         RR_BUFFER_FLAGS_STORAGE_BIT);
 
     UniformBuffer = Rr_CreateBuffer(
-        Renderer,
         sizeof(Rr_IntVec4),
         RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
@@ -103,16 +94,16 @@ static void Init(void *UserData)
 
 static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
+    Rr_Graph *Graph = Rr_GetGraph();
 
     size_t NumbersSize = COUNT * sizeof(uint32_t);
 
     std::memcpy(
-        Rr_GetMappedBufferData(Renderer, UniformBuffer),
+        Rr_GetMappedBufferData(UniformBuffer),
         &COUNT,
         sizeof(uint32_t));
 
-    Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Renderer, "compute");
+    Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Graph, "compute");
     Rr_BindComputePipeline(ComputeNode, Pipeline);
     Rr_BindUniformBuffer(ComputeNode, UniformBuffer, 0, 0, 0, sizeof(uint32_t));
     Rr_BindStorageBuffer(ComputeNode, InputBuffer, 0, 1, 0, NumbersSize);
@@ -126,7 +117,7 @@ static void Iterate(void *UserData)
         GetDispatchSize() * sizeof(uint32_t));
     Rr_Dispatch(ComputeNode, GetDispatchSize(), 1, 1);
 
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
     Rr_ColorTarget ColorTarget;
     ColorTarget.Clear = { 0.5, 0.0, 0.5, 1.0 };
@@ -135,7 +126,7 @@ static void Iterate(void *UserData)
     ColorTarget.StoreOp = RR_STORE_OP_STORE;
 
     Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-        Renderer,
+        Graph,
         "clear",
         1,
         &ColorTarget,
@@ -148,14 +139,12 @@ static void Iterate(void *UserData)
 
 static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
-    Rr_DestroyBuffer(Renderer, InputBuffer);
-    Rr_DestroyBuffer(Renderer, OutputBuffer);
-    Rr_DestroyBuffer(Renderer, WorkgroupBuffer);
-    Rr_DestroyBuffer(Renderer, UniformBuffer);
-    Rr_DestroyComputePipeline(Renderer, Pipeline);
-    Rr_DestroyPipelineLayout(Renderer, Layout);
+    Rr_DestroyBuffer(InputBuffer);
+    Rr_DestroyBuffer(OutputBuffer);
+    Rr_DestroyBuffer(WorkgroupBuffer);
+    Rr_DestroyBuffer(UniformBuffer);
+    Rr_DestroyComputePipeline(Pipeline);
+    Rr_DestroyPipelineLayout(Layout);
 }
 
 int main()

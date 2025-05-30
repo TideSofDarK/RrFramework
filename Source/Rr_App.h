@@ -73,8 +73,6 @@ struct Rr_App
     Rr_AppConfig *Config;
     void *UserData;
 
-    struct Rr_Renderer *Renderer;
-
     Rr_FrameTime FrameTime;
 
     SDL_TLSID ScratchArenaTLS;

@@ -195,7 +195,6 @@ target_sources(
     Source/Rr_Graph.c
     Source/Rr_Image.c
     Source/Rr_Input.c
-    Source/Rr_InputMap.c
     Source/Rr_Load.c
     Source/Rr_Memory.c
     Source/Rr_Pipeline.c
@@ -220,7 +219,6 @@ target_sources(
     Include/Rr/Rr_Hive.h
     Include/Rr/Rr_Image.h
     Include/Rr/Rr_Input.h
-    Include/Rr/Rr_InputMap.h
     Include/Rr/Rr_Load.h
     Include/Rr/Rr_Math.h
     Include/Rr/Rr_Memory.h
@@ -272,7 +270,6 @@ rr_embed_assets(
 
 option(RR_EXAMPLES "Build included examples" ON)
 if (RR_EXAMPLES)
-    add_subdirectory(Demo)
     add_subdirectory(Examples/Triangle)
     add_subdirectory(Examples/GLTFCube)
     add_subdirectory(Examples/QuadTree)

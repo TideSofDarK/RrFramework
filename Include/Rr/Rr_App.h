@@ -48,13 +48,9 @@ extern void Rr_Run(Rr_AppConfig *Config);
 
 extern void Rr_SetFrameLimiterEnabled(bool Enabled);
 
-extern struct Rr_Renderer *Rr_GetRenderer(void);
-
 extern double Rr_GetFramesPerSecond(void);
 
 extern void Rr_ToggleFullscreen(void);
-
-extern float Rr_GetAspectRatio(void);
 
 extern double Rr_GetDeltaSeconds(void);
 

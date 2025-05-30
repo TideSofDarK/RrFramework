@@ -238,21 +238,15 @@ struct Rr_PipelineBindingSet
 };
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    Rr_Renderer *Renderer,
     uint32_t SetCount,
     Rr_PipelineBindingSet *Sets);
 
-extern void Rr_DestroyPipelineLayout(
-    Rr_Renderer *Renderer,
-    Rr_PipelineLayout *PipelineLayout);
+extern void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout);
 
 extern Rr_ComputePipeline *Rr_CreateComputePipeline(
-    Rr_Renderer *Renderer,
     Rr_ComputePipelineCreateInfo *CreateInfo);
 
-extern void Rr_DestroyComputePipeline(
-    Rr_Renderer *Renderer,
-    Rr_ComputePipeline *ComputePipeline);
+extern void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
 static inline Rr_ColorTargetBlend Rr_AlphaBlend(void)
 {
@@ -269,12 +263,9 @@ static inline Rr_ColorTargetBlend Rr_AlphaBlend(void)
 }
 
 extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_Renderer *Renderer,
     Rr_GraphicsPipelineCreateInfo *CreateInfo);
 
-extern void Rr_DestroyGraphicsPipeline(
-    Rr_Renderer *Renderer,
-    Rr_GraphicsPipeline *GraphicsPipelin);
+extern void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
 
 #ifdef __cplusplus
 }

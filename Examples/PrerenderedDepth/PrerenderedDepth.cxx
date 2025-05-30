@@ -119,8 +119,6 @@ struct SGPUUniform
 
 struct SPrerenderedDepth
 {
-    Rr_Renderer *Renderer;
-
     static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
 
     Rr_PipelineLayout *PipelineLayout;
@@ -147,13 +145,11 @@ struct SPrerenderedDepth
                 RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
-        PipelineLayout = Rr_CreatePipelineLayout(
-            Renderer,
-            (uint32_t)Sets.size(),
-            Sets.data());
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat(Renderer);
+        ColorTarget.Format = Rr_GetSwapchainFormat();
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
@@ -169,7 +165,7 @@ struct SPrerenderedDepth
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitBackground()
@@ -201,10 +197,8 @@ struct SPrerenderedDepth
 
     void InitUniform(float Aspect)
     {
-        UniformBuffer = Rr_CreateBuffer(
-            Renderer,
-            sizeof(Uniform),
-            RR_BUFFER_FLAGS_UNIFORM_BIT);
+        UniformBuffer =
+            Rr_CreateBuffer(sizeof(Uniform), RR_BUFFER_FLAGS_UNIFORM_BIT);
 
         Uniform.Projection =
             Rr_Perspective_LH_ZO(RR_ANGLE_DEG(43.7927f), Aspect, 0.5f, 50.0f);
@@ -212,7 +206,6 @@ struct SPrerenderedDepth
                        Rr_Translate({ -7.35889f, -4.0f, -6.92579f });
 
         Rr_UploadToDeviceBufferImmediate(
-            Rr_GetRenderer(),
             UniformBuffer,
             RR_MAKE_DATA_STRUCT(Uniform));
     }
@@ -228,7 +221,6 @@ struct SPrerenderedDepth
     }
 
     SPrerenderedDepth()
-        : Renderer(Rr_GetRenderer())
     {
         InitPipeline();
         InitBackground();

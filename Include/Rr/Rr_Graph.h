@@ -104,9 +104,7 @@ struct Rr_DrawIndirectCommand
     uint32_t FirstInstance;
 };
 
-extern Rr_GraphNode *Rr_AddTransferNode(
-    Rr_Renderer *Renderer,
-    const char *Name);
+extern Rr_GraphNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name);
 
 extern void Rr_TransferBufferData(
     Rr_GraphNode *Node,
@@ -117,7 +115,7 @@ extern void Rr_TransferBufferData(
     size_t DstOffset);
 
 extern Rr_GraphNode *Rr_AddBlitNode(
-    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
     const char *Name,
     Rr_Image2D *SrcImage,
     Rr_Image2D *DstImage,
@@ -125,7 +123,7 @@ extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_IntVec4 DstRect,
     Rr_ImageAspect ImageAspect);
 
-extern Rr_GraphNode *Rr_AddComputeNode(Rr_Renderer *Renderer, const char *Name);
+extern Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph, const char *Name);
 
 extern void Rr_BindComputePipeline(
     Rr_GraphNode *Node,
@@ -138,7 +136,7 @@ extern void Rr_Dispatch(
     uint32_t GroupCountZ);
 
 extern Rr_GraphNode *Rr_AddGraphicsNode(
-    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
@@ -147,7 +145,7 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Image2D *DepthImage);
 
 extern Rr_GraphNode *Rr_AddClearColorImageNode(
-    Rr_Renderer *Renderer,
+    Rr_Graph *Graph,
     const char *Name,
     Rr_ColorClear *ColorClear,
     Rr_Image2D *Image);

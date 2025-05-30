@@ -135,7 +135,6 @@ struct Rr_GLTFTextureMapping
 };
 
 extern Rr_GLTFContext *Rr_CreateGLTFContext(
-    Rr_Renderer *Renderer,
     size_t VertexInputBindingCount,
     Rr_VertexInputBinding *VertexInputBindings,
     Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,

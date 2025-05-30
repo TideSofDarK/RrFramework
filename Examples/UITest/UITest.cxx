@@ -73,14 +73,14 @@ static void StyleEditorWindow()
 
 static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
+    Rr_Graph *Graph = Rr_GetGraph();
 
     Rr_ColorClear ColorClear = {};
     Rr_AddClearColorImageNode(
-        Renderer,
+        Graph,
         "clear",
         &ColorClear,
-        Rr_GetSwapchainImage(Renderer));
+        Rr_GetSwapchainImage());
 
     Rr_UIDebugOverlay();
 

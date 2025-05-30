@@ -20,9 +20,8 @@ struct SValidator
     Rr_ComputePipeline *Pipeline;
     Rr_Image2D *ResultImage;
 
-    explicit SValidator(Rr_Renderer *Renderer)
-        : Renderer(Renderer)
-        , ThreadsPerWorkgroup(Rr_GetMaxComputeWorkgroupInvocations(Renderer))
+    explicit SValidator()
+        : ThreadsPerWorkgroup(Rr_GetMaxComputeWorkgroupInvocations())
     {
         std::array Bindings = {
             Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
@@ -36,10 +35,8 @@ struct SValidator
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
-        Layout = Rr_CreatePipelineLayout(
-            Renderer,
-            BindingSets.size(),
-            BindingSets.data());
+        Layout =
+            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -54,10 +51,9 @@ struct SValidator
         PipelineCreateInfo.SpecializationCount = Specializations.size();
         PipelineCreateInfo.Specializations = Specializations.data();
 
-        Pipeline = Rr_CreateComputePipeline(Renderer, &PipelineCreateInfo);
+        Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
 
         ResultImage = Rr_CreateImage2D(
-            Renderer,
             { 2, 2 },
             RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
@@ -65,9 +61,9 @@ struct SValidator
 
     ~SValidator()
     {
-        Rr_DestroyComputePipeline(Renderer, Pipeline);
-        Rr_DestroyPipelineLayout(Renderer, Layout);
-        Rr_DestroyImage2D(Renderer, ResultImage);
+        Rr_DestroyComputePipeline(Pipeline);
+        Rr_DestroyPipelineLayout(Layout);
+        Rr_DestroyImage2D(ResultImage);
     }
 
     Rr_Image2D *Validate(
@@ -77,7 +73,8 @@ struct SValidator
     {
         assert(RR_IS_POW2(Count));
 
-        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Renderer, "validate");
+        Rr_GraphNode *ComputeNode =
+            Rr_AddComputeNode(Rr_GetGraph(), "validate");
         Rr_BindComputePipeline(ComputeNode, Pipeline);
         Rr_BindStorageBuffer(
             ComputeNode,
@@ -114,18 +111,14 @@ struct SBitonicSorter
         uint32_t Algorithm;
     };
 
-    Rr_Renderer *Renderer;
     uint32_t ThreadsPerWorkgroup;
     Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
     Rr_Buffer *UniformBuffer;
 
-    explicit SBitonicSorter(Rr_Renderer *Renderer)
-        : Renderer(Renderer)
-        , ThreadsPerWorkgroup(
-              Rr_NextPowerOfTwo(
-                  Rr_GetMaxComputeWorkgroupInvocations(Renderer)) /
-              2)
+    explicit SBitonicSorter()
+        : ThreadsPerWorkgroup(
+              Rr_NextPowerOfTwo(Rr_GetMaxComputeWorkgroupInvocations()) / 2)
     {
         std::array Bindings = {
             Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
@@ -138,10 +131,8 @@ struct SBitonicSorter
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
-        Layout = Rr_CreatePipelineLayout(
-            Renderer,
-            BindingSets.size(),
-            BindingSets.data());
+        Layout =
+            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -156,10 +147,9 @@ struct SBitonicSorter
         PipelineCreateInfo.SpecializationCount = Specializations.size();
         PipelineCreateInfo.Specializations = Specializations.data();
 
-        Pipeline = Rr_CreateComputePipeline(Renderer, &PipelineCreateInfo);
+        Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            Renderer,
             sizeof(uint32_t) * 1024,
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
@@ -167,9 +157,9 @@ struct SBitonicSorter
 
     ~SBitonicSorter()
     {
-        Rr_DestroyComputePipeline(Renderer, Pipeline);
-        Rr_DestroyPipelineLayout(Renderer, Layout);
-        Rr_DestroyBuffer(Renderer, UniformBuffer);
+        Rr_DestroyComputePipeline(Pipeline);
+        Rr_DestroyPipelineLayout(Layout);
+        Rr_DestroyBuffer(UniformBuffer);
     }
 
     void Sort(uint32_t Count, Rr_Buffer *Buffer)
@@ -185,12 +175,12 @@ struct SBitonicSorter
             SortInfo.Height = Height;
             SortInfo.Algorithm = Algorithm;
 
-            char *Dst =
-                (char *)Rr_GetMappedBufferData(Renderer, UniformBuffer) +
-                InfoBufferOffset;
+            char *Dst = (char *)Rr_GetMappedBufferData(UniformBuffer) +
+                        InfoBufferOffset;
             std::memcpy(Dst, &SortInfo, sizeof(SGPUSortInfo));
 
-            Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Renderer, "compute");
+            Rr_GraphNode *ComputeNode =
+                Rr_AddComputeNode(Rr_GetGraph(), "compute");
             Rr_BindComputePipeline(ComputeNode, Pipeline);
             Rr_BindStorageBuffer(
                 ComputeNode,
@@ -208,9 +198,8 @@ struct SBitonicSorter
                 sizeof(SGPUSortInfo));
             Rr_Dispatch(ComputeNode, DispatchSize, 1, 1);
 
-            InfoBufferOffset += RR_ALIGN_POW2(
-                sizeof(SGPUSortInfo),
-                Rr_GetUniformAlignment(Renderer));
+            InfoBufferOffset +=
+                RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment());
         };
 
         uint32_t Height = ThreadsPerWorkgroup * 2;
@@ -256,34 +245,27 @@ static void Init(void *UserData)
 {
     std::srand((unsigned int)std::time(NULL));
 
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
     RandomNumbers.resize(COUNT);
     SortedNumbers.resize(COUNT);
 
-    RandomNumbersBuffer = Rr_CreateBuffer(
-        Renderer,
-        sizeof(uint32_t) * COUNT,
-        RR_BUFFER_FLAGS_STORAGE_BIT);
+    RandomNumbersBuffer =
+        Rr_CreateBuffer(sizeof(uint32_t) * COUNT, RR_BUFFER_FLAGS_STORAGE_BIT);
 
-    SortedNumbersBuffer = Rr_CreateBuffer(
-        Renderer,
-        sizeof(uint32_t) * COUNT,
-        RR_BUFFER_FLAGS_STORAGE_BIT);
+    SortedNumbersBuffer =
+        Rr_CreateBuffer(sizeof(uint32_t) * COUNT, RR_BUFFER_FLAGS_STORAGE_BIT);
 
     StagingBuffer = Rr_CreateBuffer(
-        Renderer,
         sizeof(uint32_t) * COUNT * 2,
         RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
-    Sorter = new SBitonicSorter(Renderer);
-    Validator = new SValidator(Renderer);
+    Sorter = new SBitonicSorter();
+    Validator = new SValidator();
 }
 
 static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
+    Rr_Graph *Graph = Rr_GetGraph();
 
     /* Upload both sorted and unsorted buffers and validate results. */
 
@@ -295,15 +277,15 @@ static void Iterate(void *UserData)
     std::sort(SortedNumbers.begin(), SortedNumbers.end());
 
     std::memcpy(
-        Rr_GetMappedBufferData(Renderer, StagingBuffer),
+        Rr_GetMappedBufferData(StagingBuffer),
         RandomNumbers.data(),
         TOTAL_SIZE);
     std::memcpy(
-        TOTAL_SIZE + (char *)Rr_GetMappedBufferData(Renderer, StagingBuffer),
+        TOTAL_SIZE + (char *)Rr_GetMappedBufferData(StagingBuffer),
         SortedNumbers.data(),
         TOTAL_SIZE);
 
-    Rr_GraphNode *TransferNode = Rr_AddTransferNode(Renderer, "upload");
+    Rr_GraphNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph(), "upload");
     Rr_TransferBufferData(
         TransferNode,
         TOTAL_SIZE,
@@ -324,10 +306,10 @@ static void Iterate(void *UserData)
     Rr_Image2D *ResultImage =
         Validator->Validate(COUNT, SortedNumbersBuffer, RandomNumbersBuffer);
 
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
     Rr_AddBlitNode(
-        Renderer,
+        Rr_GetGraph(),
         "blit",
         ResultImage,
         SwapchainImage,
@@ -338,14 +320,12 @@ static void Iterate(void *UserData)
 
 static void Cleanup(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
     delete Sorter;
     delete Validator;
 
-    Rr_DestroyBuffer(Renderer, RandomNumbersBuffer);
-    Rr_DestroyBuffer(Renderer, SortedNumbersBuffer);
-    Rr_DestroyBuffer(Renderer, StagingBuffer);
+    Rr_DestroyBuffer(RandomNumbersBuffer);
+    Rr_DestroyBuffer(SortedNumbersBuffer);
+    Rr_DestroyBuffer(StagingBuffer);
 }
 
 int main()

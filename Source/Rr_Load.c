@@ -37,7 +37,6 @@
 #include <assert.h>
 
 static void Rr_LoadResourcesFromTasks(
-    Rr_Renderer *Renderer,
     Rr_LoadTask *Tasks,
     size_t TaskCount,
     Rr_UploadContext *UploadContext,
@@ -56,7 +55,6 @@ static void Rr_LoadResourcesFromTasks(
             {
                 Rr_Asset Asset = Rr_LoadAsset(Task->AssetRef);
                 Result = Rr_CreateImage2DRGBA8FromPNG(
-                    Renderer,
                     UploadContext,
                     Asset.Size,
                     Asset.Pointer);
@@ -111,8 +109,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     Rr_LoadContext *LoadContext,
     Rr_LoadAsyncContext LoadAsyncContext)
 {
-    Rr_Renderer *Renderer = gApp->Renderer;
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -121,7 +118,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 
     /* Create appropriate upload context. */
 
-    bool UseTransferQueue = Rr_IsUsingTransferQueue(Renderer);
+    bool UseTransferQueue = Rr_IsUsingTransferQueue();
     VkCommandPool CommandPool = UseTransferQueue
                                     ? LoadAsyncContext.TransferCommandPool
                                     : LoadAsyncContext.GraphicsCommandPool;
@@ -152,7 +149,6 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     };
 
     Rr_LoadResourcesFromTasks(
-        Renderer,
         Tasks,
         TaskCount,
         &UploadContext,
@@ -165,10 +161,10 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     {
         Device->EndCommandBuffer(TransferCommandBuffer);
 
-        Rr_LockSpinlock(&Renderer->GraphicsQueue.Lock);
+        Rr_LockSpinlock(&gRenderer->GraphicsQueue.Lock);
 
         Device->QueueSubmit(
-            Renderer->GraphicsQueue.Handle,
+            gRenderer->GraphicsQueue.Handle,
             1,
             &(VkSubmitInfo){
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -177,7 +173,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
             },
             LoadAsyncContext.Fence);
 
-        Rr_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
+        Rr_UnlockSpinlock(&gRenderer->GraphicsQueue.Lock);
     }
     else
     {
@@ -196,7 +192,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
         Device->EndCommandBuffer(TransferCommandBuffer);
 
         Device->QueueSubmit(
-            Renderer->TransferQueue.Handle,
+            gRenderer->TransferQueue.Handle,
             1,
             &(VkSubmitInfo){
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -245,10 +241,10 @@ static Rr_LoadResult Rr_ProcessLoadContext(
             VkPipelineStageFlags WaitDstStageMask =
                 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
-            Rr_LockSpinlock(&Renderer->GraphicsQueue.Lock);
+            Rr_LockSpinlock(&gRenderer->GraphicsQueue.Lock);
 
             Device->QueueSubmit(
-                Renderer->GraphicsQueue.Handle,
+                gRenderer->GraphicsQueue.Handle,
                 1,
                 &(VkSubmitInfo){
                     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -260,7 +256,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
                 },
                 LoadAsyncContext.Fence);
 
-            Rr_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
+            Rr_UnlockSpinlock(&gRenderer->GraphicsQueue.Lock);
         }
     }
 
@@ -273,13 +269,14 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 
     for (size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
     {
-        Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffers.Data[Index]);
+        Rr_DestroyBuffer(UploadContext.StagingBuffers.Data[Index]);
     }
 
     Rr_LockSpinlock(&gApp->SyncArena.Lock);
 
-    Rr_PendingLoad *PendingLoad =
-        RR_PUSH_INTO_ARRAY(&Renderer->PendingLoadsArray, gApp->SyncArena.Arena);
+    Rr_PendingLoad *PendingLoad = RR_PUSH_INTO_ARRAY(
+        &gRenderer->PendingLoadsArray,
+        gApp->SyncArena.Arena);
     *PendingLoad = (Rr_PendingLoad){
         .LoadingCallback = LoadContext->LoadingCallback,
         .UserData = LoadContext->UserData,
@@ -323,7 +320,7 @@ static void Rr_InitLoadAsyncContext(
         },
         NULL,
         &LoadAsyncContext->Fence);
-    if (Rr_IsUsingTransferQueue(Renderer))
+    if (Rr_IsUsingTransferQueue())
     {
         Device->CreateCommandPool(
             Device->Handle,
@@ -376,13 +373,12 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
 {
     Rr_LoadThread *LoadThread = UserData;
 
-    Rr_Renderer *Renderer = gApp->Renderer;
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_InitScratch(RR_LOADING_THREAD_SCRATCH_SIZE);
 
     Rr_LoadAsyncContext LoadAsyncContext = { 0 };
-    Rr_InitLoadAsyncContext(Renderer, &LoadAsyncContext);
+    Rr_InitLoadAsyncContext(gRenderer, &LoadAsyncContext);
 
     size_t CurrentLoadingUIContextIndex = 0;
 
@@ -428,7 +424,7 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
         SDL_UnlockMutex(LoadThread->Mutex);
     }
 
-    Rr_CleanupLoadAsyncContext(Renderer, &LoadAsyncContext);
+    Rr_CleanupLoadAsyncContext(gRenderer, &LoadAsyncContext);
 
     SDL_CleanupTLS();
 
@@ -512,19 +508,16 @@ Rr_LoadContext *Rr_LoadAsync(
     return LoadingUIContext;
 }
 
-Rr_LoadResult Rr_LoadImmediate(
-    Rr_Renderer *Renderer,
-    size_t TaskCount,
-    Rr_LoadTask *Tasks)
+Rr_LoadResult Rr_LoadImmediate(size_t TaskCount, Rr_LoadTask *Tasks)
 {
     assert(TaskCount > 0 && Tasks != NULL);
 
-    Rr_Device *Device = &Renderer->Device;
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     VkCommandBuffer TransferCommandBuffer;
-    VkCommandPool CommandPool = Renderer->GraphicsQueue.TransientCommandPool;
+    VkCommandPool CommandPool = gRenderer->GraphicsQueue.TransientCommandPool;
     VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext = VK_NULL_HANDLE,
@@ -551,7 +544,6 @@ Rr_LoadResult Rr_LoadImmediate(
     };
 
     Rr_LoadResourcesFromTasks(
-        Renderer,
         Tasks,
         TaskCount,
         &UploadContext,
@@ -571,10 +563,10 @@ Rr_LoadResult Rr_LoadImmediate(
 
     Device->EndCommandBuffer(TransferCommandBuffer);
 
-    Rr_LockSpinlock(&Renderer->GraphicsQueue.Lock);
+    Rr_LockSpinlock(&gRenderer->GraphicsQueue.Lock);
 
     Device->QueueSubmit(
-        Renderer->GraphicsQueue.Handle,
+        gRenderer->GraphicsQueue.Handle,
         1,
         &(VkSubmitInfo){
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -589,14 +581,14 @@ Rr_LoadResult Rr_LoadImmediate(
         },
         Fence);
 
-    Rr_UnlockSpinlock(&Renderer->GraphicsQueue.Lock);
+    Rr_UnlockSpinlock(&gRenderer->GraphicsQueue.Lock);
 
     Device->WaitForFences(Device->Handle, 1, &Fence, true, UINT64_MAX);
     Device->DestroyFence(Device->Handle, Fence, NULL);
 
     for (size_t Index = 0; Index < UploadContext.StagingBuffers.Count; ++Index)
     {
-        Rr_DestroyBuffer(Renderer, UploadContext.StagingBuffers.Data[Index]);
+        Rr_DestroyBuffer(UploadContext.StagingBuffers.Data[Index]);
     }
 
     Device->FreeCommandBuffers(

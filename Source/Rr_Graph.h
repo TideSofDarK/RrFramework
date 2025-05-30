@@ -288,7 +288,4 @@ extern Rr_GraphNode *Rr_AddGraphNode(
     Rr_GraphNodeType Type,
     const char *Name);
 
-extern void Rr_ExecuteGraph(
-    Rr_Renderer *Renderer,
-    Rr_Graph *Graph,
-    Rr_Arena *Arena);
+extern void Rr_ExecuteGraph(Rr_Graph *Graph, Rr_Arena *Arena);

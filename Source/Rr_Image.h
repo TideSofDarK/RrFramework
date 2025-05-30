@@ -58,7 +58,6 @@ struct Rr_Image2D
 };
 
 extern void Rr_UploadStagingImage2D(
-    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Image2D *Image,
     VkImageAspectFlags Aspect,
@@ -69,7 +68,6 @@ extern void Rr_UploadStagingImage2D(
     size_t StagingSize);
 
 extern void Rr_UploadImage2D(
-    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     Rr_Image2D *Image,
     VkImageAspectFlags Aspect,
@@ -78,32 +76,19 @@ extern void Rr_UploadImage2D(
     Rr_Data Data);
 
 extern Rr_Image2D *Rr_CreateImage2DRGBA8(
-    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     char *Data,
     uint32_t Width,
     uint32_t Height);
 
 Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
-    Rr_Renderer *Renderer,
     Rr_UploadContext *UploadContext,
     size_t DataSize,
     char *Data);
-
-// extern Rr_Image *Rr_CreateDepthImageFromEXR(
-//     Rr_App *App,
-//     Rr_UploadContext *UploadContext,
-//     Rr_AssetRef AssetRef,
-//     Rr_Arena *Arena);
 
 extern size_t Rr_GetImagePNGRGBA8Size(
     size_t DataSize,
     char *Data,
     Rr_Arena *Arena);
 
-// extern void Rr_GetImageSizeEXR(Rr_AssetRef AssetRef, Rr_Arena *Arena,
-// Rr_LoadSize *OutLoadSize);
-
-extern Rr_AllocatedImage2D *Rr_GetCurrentAllocatedImage2D(
-    Rr_Renderer *Renderer,
-    Rr_Image2D *Image);
+extern Rr_AllocatedImage2D *Rr_GetCurrentAllocatedImage2D(Rr_Image2D *Image);

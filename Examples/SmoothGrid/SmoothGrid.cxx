@@ -131,8 +131,6 @@ struct SGPUUniform
 
 struct SSmoothGrid
 {
-    Rr_Renderer *Renderer;
-
     static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
 
     Rr_PipelineLayout *PipelineLayout;
@@ -157,13 +155,11 @@ struct SSmoothGrid
                 RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
-        PipelineLayout = Rr_CreatePipelineLayout(
-            Renderer,
-            (uint32_t)Sets.size(),
-            Sets.data());
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat(Renderer);
+        ColorTarget.Format = Rr_GetSwapchainFormat();
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
@@ -179,13 +175,12 @@ struct SSmoothGrid
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitUniformBuffer()
     {
         UniformBuffer = Rr_CreateBuffer(
-            Renderer,
             sizeof(SGPUUniform),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
@@ -193,20 +188,18 @@ struct SSmoothGrid
 
     void InitDepthImage()
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
         DepthImage = Rr_CreateImage2D(
-            Renderer,
             { SwapchainSize.X, SwapchainSize.Y },
             DEPTH_FORMAT,
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
     SSmoothGrid()
-        : Renderer(Rr_GetRenderer())
-        , Camera(
+        : Camera(
               Rr_V3(0.0f, 1.0f, 0.0f),
               90.0f,
-              Rr_GetSwapchainSize(Renderer),
+              Rr_GetSwapchainSize(),
               0.01f,
               100.0f)
     {
@@ -237,7 +230,9 @@ struct SSmoothGrid
 
     void Iterate()
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+        Rr_Graph *Graph = Rr_GetGraph();
+
+        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
         Camera.Aspect = (float)SwapchainSize.X / (float)SwapchainSize.Y;
         Camera.UpdatePerspective();
@@ -252,11 +247,11 @@ struct SSmoothGrid
             .GridBig = 10.0f,
         };
         std::memcpy(
-            Rr_GetMappedBufferData(Renderer, UniformBuffer),
+            Rr_GetMappedBufferData(UniformBuffer),
             &Uniform,
             sizeof(SGPUUniform));
 
-        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         Rr_ColorClear ColorClear = {};
         ColorClear.Vec4 = { 13.0f / 255.0f,
@@ -275,7 +270,7 @@ struct SSmoothGrid
             .Clear = Rr_DepthClear(1.0f, 0),
         };
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Renderer,
+            Graph,
             "grid",
             1,
             &ColorTarget,
@@ -297,10 +292,10 @@ struct SSmoothGrid
 
     ~SSmoothGrid()
     {
-        Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
-        Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
-        Rr_DestroyBuffer(Renderer, UniformBuffer);
-        Rr_DestroyImage2D(Renderer, DepthImage);
+        Rr_DestroyGraphicsPipeline(GraphicsPipeline);
+        Rr_DestroyPipelineLayout(PipelineLayout);
+        Rr_DestroyBuffer(UniformBuffer);
+        Rr_DestroyImage2D(DepthImage);
     }
 };
 

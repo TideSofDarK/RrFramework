@@ -176,7 +176,7 @@ void Rr_Run(Rr_AppConfig *Config)
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
     SDL_StartTextInput(gApp->Window);
 
-    gApp->Renderer = Rr_CreateRenderer();
+    Rr_InitRenderer();
 
     Rr_UIInit();
 
@@ -238,13 +238,13 @@ void Rr_Run(Rr_AppConfig *Config)
         }
     }
 
-    Rr_WaitIdle(gApp->Renderer);
+    Rr_WaitIdle();
 
     gApp->Config->CleanupFunc(gApp->UserData);
 
     Rr_UICleanup();
 
-    Rr_DestroyRenderer(gApp->Renderer);
+    Rr_CleanupRenderer();
 
     Rr_DestroySyncArena(&gApp->SyncArena);
 
@@ -262,11 +262,6 @@ void Rr_SetFrameLimiterEnabled(bool Enabled)
     gApp->FrameTime.EnableFrameLimiter = Enabled;
 }
 
-Rr_Renderer *Rr_GetRenderer(void)
-{
-    return gApp->Renderer;
-}
-
 double Rr_GetFramesPerSecond(void)
 {
     return (float)gApp->FrameTime.PerformanceCounter.FPS;
@@ -280,13 +275,6 @@ static bool Rr_IsAnyFullscreen(void)
 void Rr_ToggleFullscreen(void)
 {
     SDL_SetWindowFullscreen(gApp->Window, !Rr_IsAnyFullscreen());
-}
-
-float Rr_GetAspectRatio(void)
-{
-    Rr_Renderer *Renderer = gApp->Renderer;
-    return (float)Renderer->Swapchain.Extent.width /
-           (float)Renderer->Swapchain.Extent.height;
 }
 
 double Rr_GetDeltaSeconds(void)

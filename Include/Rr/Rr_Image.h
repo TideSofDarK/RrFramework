@@ -90,11 +90,9 @@ struct Rr_SamplerInfo
     bool UnnormalizedCoordinates;
 };
 
-extern Rr_Sampler *Rr_CreateSampler(
-    Rr_Renderer *Renderer,
-    Rr_SamplerInfo *Info);
+extern Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info);
 
-extern void Rr_DestroySampler(Rr_Renderer *Renderer, Rr_Sampler *Sampler);
+extern void Rr_DestroySampler(Rr_Sampler *Sampler);
 
 typedef struct Rr_Image2D Rr_Image2D;
 typedef struct Rr_Image2DArray Rr_Image2DArray;
@@ -117,12 +115,11 @@ typedef enum
 typedef uint32_t Rr_ImageFlags;
 
 extern Rr_Image2D *Rr_CreateImage2D(
-    Rr_Renderer *Renderer,
     Rr_IntVec2 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags);
 
-extern void Rr_DestroyImage2D(Rr_Renderer *Renderer, Rr_Image2D *Image);
+extern void Rr_DestroyImage2D(Rr_Image2D *Image);
 
 extern Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image);
 

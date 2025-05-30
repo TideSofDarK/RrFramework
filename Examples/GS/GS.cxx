@@ -4,21 +4,11 @@
 
 #include <Rr/Rr.h>
 
-#include <cfloat>
+#include <array>
 #include <vector>
 
-enum EInputAction
-{
-    EIA_UP,
-    EIA_DOWN,
-    EIA_LEFT,
-    EIA_RIGHT,
-    EIA_FULLSCREEN,
-    EIA_DEBUGOVERLAY,
-    EIA_TEST,
-    EIA_CAMERA,
-    EIA_COUNT,
-};
+using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
+UScancodes Scancodes{};
 
 struct SCamera
 {
@@ -50,6 +40,26 @@ struct SCamera
         FocalZ = (float)Size.Y / (2 * HTanY);
     }
 
+    void UpdateView()
+    {
+        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
+        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
+        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
+        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
+
+        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
+        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
+        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
+
+        ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
+        ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
+        ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
+        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position),
+                                  -Rr_Dot(YAxis, Position),
+                                  -Rr_Dot(ZAxis, Position),
+                                  1.0f };
+    }
+
     [[nodiscard]] Rr_Vec3 GetForwardVector() const
     {
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
@@ -60,76 +70,49 @@ struct SCamera
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
     }
 
-    void Update(Rr_InputState *State)
+    void Update()
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
-        Rr_KeyStates Keys = State->Keys;
+        Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
 
-        Rr_Vec3 CameraForward = GetForwardVector();
-        Rr_Vec3 CameraLeft = GetRightVector();
-        constexpr float CameraSpeed = 5.0f;
-        if (Rr_GetKeyState(Keys, EIA_UP) == RR_KEYSTATE_HELD)
-        {
-            Position += CameraForward * CameraSpeed * DeltaTime;
-        }
-        if (Rr_GetKeyState(Keys, EIA_LEFT) == RR_KEYSTATE_HELD)
-        {
-            Position -= CameraLeft * CameraSpeed * DeltaTime;
-        }
-        if (Rr_GetKeyState(Keys, EIA_DOWN) == RR_KEYSTATE_HELD)
-        {
-            Position -= CameraForward * CameraSpeed * DeltaTime;
-        }
-        if (Rr_GetKeyState(Keys, EIA_RIGHT) == RR_KEYSTATE_HELD)
-        {
-            Position += CameraLeft * CameraSpeed * DeltaTime;
-        }
-
-        if (State->MouseState & RR_MOUSE_BUTTON_RIGHT_BIT)
+        if (Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
             Rr_SetRelativeMouseMode(true);
+
+            constexpr float CameraSpeed = 5.0f;
+            Rr_Vec3 CameraForward = GetForwardVector();
+            Rr_Vec3 CameraLeft = GetRightVector();
+            if (Scancodes[RR_SCANCODE_W])
+            {
+                Position += CameraForward * CameraSpeed * DeltaTime;
+            }
+            if (Scancodes[RR_SCANCODE_A])
+            {
+                Position -= CameraLeft * CameraSpeed * DeltaTime;
+            }
+            if (Scancodes[RR_SCANCODE_S])
+            {
+                Position -= CameraForward * CameraSpeed * DeltaTime;
+            }
+            if (Scancodes[RR_SCANCODE_D])
+            {
+                Position += CameraLeft * CameraSpeed * DeltaTime;
+            }
+
             constexpr float Sensitivity = 0.2f;
-            Yaw = Rr_WrapMax(
-                Yaw + (State->MousePositionDelta.X * Sensitivity),
-                360.0f);
-            Pitch = Rr_WrapMinMax(
-                Pitch - (State->MousePositionDelta.Y * Sensitivity),
-                -90.0f,
-                90.0f);
+            Yaw += MouseDelta.X * Sensitivity;
+            Pitch -= MouseDelta.Y * Sensitivity;
         }
         else
         {
             Rr_SetRelativeMouseMode(false);
         }
 
-        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
-        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
-        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
-        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
+        Yaw = Rr_WrapMax(Yaw, 360.0f);
+        Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
-        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
-        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
-
-        ViewMatrix = {
-            XAxis.X,
-            YAxis.X,
-            ZAxis.X,
-            0.0f,
-            XAxis.Y,
-            YAxis.Y,
-            ZAxis.Y,
-            0.0f,
-            XAxis.Z,
-            YAxis.Z,
-            ZAxis.Z,
-            0.0f,
-            -Rr_Dot(XAxis, Position),
-            -Rr_Dot(YAxis, Position),
-            -Rr_Dot(ZAxis, Position),
-            1.0f,
-        };
+        UpdateView();
     }
 };
 
@@ -198,11 +181,10 @@ struct SSplatRenderer
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
 
-    SSplatRenderer(Rr_Renderer *Renderer, Rr_Asset Asset)
-        : Renderer(Renderer)
-        , AliveCount(Asset.Size / 32)
+    SSplatRenderer(Rr_Asset Asset)
+        : AliveCount(Asset.Size / 32)
         , AlignedCount(Rr_NextPowerOfTwo(AliveCount))
-        , Sorter(Renderer, AliveCount, AlignedCount)
+        , Sorter(AliveCount, AlignedCount)
     {
         /* Setup graphics pipeline. */
 
@@ -218,10 +200,8 @@ struct SSplatRenderer
                 RR_SHADER_STAGE_VERTEX_BIT,
             },
         };
-        PipelineLayout = Rr_CreatePipelineLayout(
-            Renderer,
-            BindingSets.size(),
-            BindingSets.data());
+        PipelineLayout =
+            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
         Rr_VertexInputBinding VertexInputBinding = {
             RR_VERTEX_INPUT_RATE_VERTEX,
@@ -230,7 +210,7 @@ struct SSplatRenderer
         };
 
         std::array<Rr_ColorTargetInfo, 1> ColorTargets = {};
-        ColorTargets[0].Format = Rr_GetSwapchainFormat(Renderer);
+        ColorTargets[0].Format = Rr_GetSwapchainFormat();
         ColorTargets[0].Blend = Rr_AlphaBlend();
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
@@ -245,7 +225,7 @@ struct SSplatRenderer
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(Renderer, &PipelineInfo);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         /* Parse and upload splats. */
 
@@ -263,21 +243,17 @@ struct SSplatRenderer
         }
 
         SplatsBuffer = Rr_CreateBuffer(
-            Renderer,
             sizeof(SGPUSplat) * AlignedCount,
             RR_BUFFER_FLAGS_STORAGE_BIT);
         Rr_UploadToDeviceBufferImmediate(
-            Renderer,
             SplatsBuffer,
             RR_MAKE_DATA(sizeof(SGPUSplat) * AlignedCount, GPUSplats.data()));
 
         EntriesBuffer = Rr_CreateBuffer(
-            Renderer,
             sizeof(SGPUEntry) * AlignedCount,
             RR_BUFFER_FLAGS_STORAGE_BIT);
 
         UniformBuffer = Rr_CreateBuffer(
-            Renderer,
             sizeof(SUniformData),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
                 RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
@@ -285,11 +261,11 @@ struct SSplatRenderer
 
     ~SSplatRenderer()
     {
-        Rr_DestroyGraphicsPipeline(Renderer, GraphicsPipeline);
-        Rr_DestroyPipelineLayout(Renderer, PipelineLayout);
-        Rr_DestroyBuffer(Renderer, SplatsBuffer);
-        Rr_DestroyBuffer(Renderer, EntriesBuffer);
-        Rr_DestroyBuffer(Renderer, UniformBuffer);
+        Rr_DestroyGraphicsPipeline(GraphicsPipeline);
+        Rr_DestroyPipelineLayout(PipelineLayout);
+        Rr_DestroyBuffer(SplatsBuffer);
+        Rr_DestroyBuffer(EntriesBuffer);
+        Rr_DestroyBuffer(UniformBuffer);
     }
 
     void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)
@@ -307,7 +283,7 @@ struct SSplatRenderer
         UniformData.HFOVFocal = { Camera.HTanX, Camera.HTanY, Camera.FocalZ };
 
         std::memcpy(
-            Rr_GetMappedBufferData(Renderer, UniformBuffer),
+            Rr_GetMappedBufferData(UniformBuffer),
             &UniformData,
             sizeof(SUniformData));
 
@@ -318,7 +294,7 @@ struct SSplatRenderer
             {},
         };
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Renderer,
+            Rr_GetGraph(),
             "graphics",
             1,
             &ColorTarget,
@@ -357,45 +333,33 @@ SSplatRenderer *SplatData;
 
 static void Init(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
     Camera.Position = { 0.0f, -0.5f, -2.5f };
 
-    SplatData =
-        new SSplatRenderer(Renderer, Rr_LoadAsset(EXAMPLE_ASSET_PLUSH_SPLAT));
+    SplatData = new SSplatRenderer(Rr_LoadAsset(EXAMPLE_ASSET_PLUSH_SPLAT));
+}
+
+static void Event(void *UserData, Rr_Event *Event)
+{
+    switch (Event->Type)
+    {
+        case RR_EVENT_TYPE_KEY_DOWN:
+        case RR_EVENT_TYPE_KEY_UP:
+        {
+            Scancodes[Event->Key.Scancode] = Event->Key.Down;
+            return;
+        }
+        default:
+            return;
+    }
 }
 
 static void Iterate(void *UserData)
 {
-    Rr_Renderer *Renderer = Rr_GetRenderer();
-
-    static std::vector<Rr_InputMapping> InputMappings = {
-        { RR_SCANCODE_W, RR_SCANCODE_UNKNOWN },
-        { RR_SCANCODE_S, RR_SCANCODE_UNKNOWN },
-        { RR_SCANCODE_A, RR_SCANCODE_UNKNOWN },
-        { RR_SCANCODE_D, RR_SCANCODE_UNKNOWN },
-        { RR_SCANCODE_F11, RR_SCANCODE_UNKNOWN },
-        { RR_SCANCODE_F1, RR_SCANCODE_UNKNOWN },
-        { RR_SCANCODE_F2, RR_SCANCODE_UNKNOWN },
-        { RR_SCANCODE_F3, RR_SCANCODE_UNKNOWN },
-    };
-    static Rr_InputState InputState;
-    Rr_UpdateInputState(
-        InputMappings.size(),
-        InputMappings.data(),
-        &InputState);
-
-    Rr_KeyStates Keys = InputState.Keys;
-
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
     Camera.SetPerspective(50.0f, SwapchainSize, 0.1f, 200.0f);
-    Camera.Update(&InputState);
-    if (Rr_GetKeyState(Keys, EIA_FULLSCREEN) == RR_KEYSTATE_PRESSED)
-    {
-        Rr_ToggleFullscreen();
-    }
+    Camera.Update();
 
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage(Renderer);
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
     SplatData->Render(Camera, SwapchainImage);
 
@@ -414,6 +378,7 @@ int main()
     Config.Version = "1.0.0";
     Config.Package = "com.rr.examples.gs";
     Config.InitFunc = Init;
+    Config.EventFunc = Event;
     Config.CleanupFunc = Cleanup;
     Config.IterateFunc = Iterate;
     Rr_Run(&Config);
