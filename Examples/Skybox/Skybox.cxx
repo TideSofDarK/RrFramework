@@ -133,6 +133,7 @@ struct SPNGImage
     int32_t Width;
     int32_t Height;
     void *Data;
+
     SPNGImage(Rr_AssetRef AssetRef)
     {
         Rr_Asset Asset = Rr_LoadAsset(AssetRef);
@@ -145,25 +146,29 @@ struct SPNGImage
             &Channels,
             DesiredChannels);
     }
+
     ~SPNGImage()
     {
         stbi_image_free(Data);
     }
+
     SPNGImage(const SPNGImage &) = default;
     SPNGImage(SPNGImage &&) = delete;
     SPNGImage &operator=(const SPNGImage &) = default;
     SPNGImage &operator=(SPNGImage &&) = delete;
 };
 
-struct SCubemap
+struct SSkybox
 {
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
 
     Rr_Buffer *UniformBuffer;
     Rr_Buffer *StagingBuffer;
-    Rr_ImageCube *CubemapImage;
+    Rr_ImageCube *SkyboxImage;
     Rr_Sampler *Sampler;
+    Rr_GLTFContext *GLTFContext;
+    Rr_GLTFAsset *GLTFAsset;
 
     SCamera Camera;
 
@@ -188,6 +193,18 @@ struct SCubemap
         PipelineLayout =
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
+        std::array VertexAttributes = {
+            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+        };
+
+        std::array VertexInputBindings = {
+            Rr_VertexInputBinding{
+                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+                .AttributeCount = VertexAttributes.size(),
+                .Attributes = VertexAttributes.data(),
+            },
+        };
+
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetSwapchainFormat();
         ColorTarget.Blend = Rr_AlphaBlend();
@@ -195,13 +212,32 @@ struct SCubemap
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_CUBEMAP_VERT_SPV);
+            Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_VERT_SPV);
         PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_CUBEMAP_FRAG_SPV);
+            Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_FRAG_SPV);
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
+        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
+        PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
+        PipelineInfo.VertexInputBindings = VertexInputBindings.data();
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+
+        std::array GLTFAttributeTypes = {
+            RR_GLTF_ATTRIBUTE_TYPE_POSITION,
+        };
+
+        Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
+            .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
+            .AttributeTypes = GLTFAttributeTypes.data(),
+        };
+
+        GLTFContext = Rr_CreateGLTFContext(
+            VertexInputBindings.size(),
+            VertexInputBindings.data(),
+            &GLTFVertexInputBinding,
+            0,
+            NULL);
     }
 
     void InitUniformBuffer()
@@ -220,19 +256,19 @@ struct SCubemap
 
     void InitCubemapImage()
     {
-        SPNGImage Front{ EXAMPLE_ASSET_FRONT_PNG };
-        SPNGImage Back{ EXAMPLE_ASSET_BACK_PNG };
-        SPNGImage Up{ EXAMPLE_ASSET_UP_PNG };
-        SPNGImage Down{ EXAMPLE_ASSET_DOWN_PNG };
         SPNGImage Right{ EXAMPLE_ASSET_RIGHT_PNG };
         SPNGImage Left{ EXAMPLE_ASSET_LEFT_PNG };
+        SPNGImage Up{ EXAMPLE_ASSET_UP_PNG };
+        SPNGImage Down{ EXAMPLE_ASSET_DOWN_PNG };
+        SPNGImage Front{ EXAMPLE_ASSET_FRONT_PNG };
+        SPNGImage Back{ EXAMPLE_ASSET_BACK_PNG };
 
         int32_t Width = Up.Width;
         int32_t Height = Up.Height;
 
         int32_t LayerSize = Width * Height * 4;
 
-        CubemapImage = Rr_CreateCubemap(
+        SkyboxImage = Rr_CreateCubemap(
             { Width, Height },
             RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
@@ -242,27 +278,38 @@ struct SCubemap
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
         char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
-        std::memcpy(StagingData + (LayerSize * 0), Front.Data, LayerSize);
-        std::memcpy(StagingData + (LayerSize * 1), Back.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 0), Right.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 1), Left.Data, LayerSize);
         std::memcpy(StagingData + (LayerSize * 2), Up.Data, LayerSize);
         std::memcpy(StagingData + (LayerSize * 3), Down.Data, LayerSize);
-        std::memcpy(StagingData + (LayerSize * 4), Right.Data, LayerSize);
-        std::memcpy(StagingData + (LayerSize * 5), Left.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 4), Front.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 5), Back.Data, LayerSize);
 
         Rr_AddCopyBufferToImageCubeNodeEx(
             Rr_GetGraph(),
             "copy",
             StagingBuffer,
             (LayerSize * 0),
-            CubemapImage,
+            SkyboxImage,
             RR_IMAGE_CUBE_FACE_FIRST,
             RR_IMAGE_CUBE_FACE_LAST,
             0);
     }
 
-    SCubemap()
+    void InitSkyboxMesh()
+    {
+        std::array Tasks = {
+            Rr_LoadGLTFAssetTask(
+                EXAMPLE_ASSET_SKYBOX_GLB,
+                GLTFContext,
+                &GLTFAsset),
+        };
+        Rr_LoadImmediate(Tasks.size(), Tasks.data());
+    }
+
+    SSkybox()
         : Camera(
-              Rr_V3(0.0f, 1.0f, 0.0f),
+              Rr_V3(0.0f, 0.0f, 0.0f),
               90.0f,
               Rr_GetSwapchainSize(),
               0.01f,
@@ -272,6 +319,7 @@ struct SCubemap
         InitUniformBuffer();
         InitSampler();
         InitCubemapImage();
+        InitSkyboxMesh();
     }
 
     void Event(Rr_Event *Event)
@@ -330,6 +378,17 @@ struct SCubemap
             NULL,
             NULL);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        Rr_BindVertexBuffer(
+            GraphicsNode,
+            GLTFAsset->Buffer,
+            0,
+            GLTFAsset->VertexBufferOffset);
+        Rr_BindIndexBuffer(
+            GraphicsNode,
+            GLTFAsset->Buffer,
+            0,
+            GLTFAsset->IndexBufferOffset,
+            GLTFAsset->IndexType);
         Rr_BindUniformBuffer(
             GraphicsNode,
             UniformBuffer,
@@ -337,58 +396,55 @@ struct SCubemap
             0,
             0,
             sizeof(SGPUUniform));
-        Rr_BindCombinedCubemapSampler(
-            GraphicsNode,
-            CubemapImage,
-            Sampler,
-            0,
-            1);
-        Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+        Rr_BindCombinedCubemapSampler(GraphicsNode, SkyboxImage, Sampler, 0, 1);
+        Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
+        Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
 
         Rr_UIDebugOverlay();
     }
 
-    ~SCubemap()
+    ~SSkybox()
     {
         Rr_DestroyGraphicsPipeline(GraphicsPipeline);
         Rr_DestroyPipelineLayout(PipelineLayout);
         Rr_DestroyBuffer(UniformBuffer);
         Rr_DestroyBuffer(StagingBuffer);
         Rr_DestroySampler(Sampler);
-        Rr_DestroyCubemap(CubemapImage);
+        Rr_DestroyCubemap(SkyboxImage);
+        Rr_DestroyGLTFContext(GLTFContext);
     }
 };
 
 static void Init(void *UserData)
 {
-    new (UserData) SCubemap();
+    new (UserData) SSkybox();
 }
 
 static void Event(void *UserData, Rr_Event *Event)
 {
-    auto SmoothGrid = std::bit_cast<SCubemap *>(UserData);
+    auto SmoothGrid = std::bit_cast<SSkybox *>(UserData);
     SmoothGrid->Event(Event);
 }
 
 static void Iterate(void *UserData)
 {
-    auto SmoothGrid = std::bit_cast<SCubemap *>(UserData);
+    auto SmoothGrid = std::bit_cast<SSkybox *>(UserData);
     SmoothGrid->Iterate();
 }
 
 static void Cleanup(void *UserData)
 {
-    auto SmoothGrid = std::bit_cast<SCubemap *>(UserData);
-    SmoothGrid->~SCubemap();
+    auto SmoothGrid = std::bit_cast<SSkybox *>(UserData);
+    SmoothGrid->~SSkybox();
 }
 
 int main()
 {
-    alignas(SCubemap) std::array<std::byte, sizeof(SCubemap)> SmoothGrid;
+    alignas(SSkybox) std::array<std::byte, sizeof(SSkybox)> SmoothGrid;
     Rr_AppConfig Config = {};
-    Config.Title = "SmoothGrid";
+    Config.Title = "Skybox";
     Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.smoothgrid";
+    Config.Package = "com.rr.examples.skybox";
     Config.InitFunc = Init;
     Config.EventFunc = Event;
     Config.IterateFunc = Iterate;

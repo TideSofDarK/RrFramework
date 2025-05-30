@@ -193,11 +193,14 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
         }
     }
 
-    RR_ALLOC_COPY(
-        Arena,
-        GLTFContext->TextureMappings,
-        GLTFTextureMappings,
-        sizeof(Rr_GLTFTextureMapping) * GLTFTextureMappingCount);
+    if(GLTFTextureMappingCount > 0)
+    {
+        RR_ALLOC_COPY(
+            Arena,
+            GLTFContext->TextureMappings,
+            GLTFTextureMappings,
+            sizeof(Rr_GLTFTextureMapping) * GLTFTextureMappingCount);
+    }
 
     return GLTFContext;
 }
