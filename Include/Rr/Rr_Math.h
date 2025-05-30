@@ -1861,37 +1861,11 @@ static inline Rr_Mat4 Rr_InvGeneralM4(Rr_Mat4 Matrix)
  * Common graphics transformations
  */
 
-// Produces a right-handed orthographic projection matrix with Z ranging from -1
-// to 1 (the GL convention). Left, Right, Bottom, and Top specify the
-// coordinates of their respective clipping planes. Near and Far specify the
-// distances to the near and far clipping planes.
-static inline Rr_Mat4 Rr_Orthographic_RH_NO(
-    float Left,
-    float Right,
-    float Bottom,
-    float Top,
-    float Near,
-    float Far)
-{
-    Rr_Mat4 Result = { 0 };
-
-    Result.Elements[0][0] = 2.0f / (Right - Left);
-    Result.Elements[1][1] = 2.0f / (Top - Bottom);
-    Result.Elements[2][2] = 2.0f / (Near - Far);
-    Result.Elements[3][3] = 1.0f;
-
-    Result.Elements[3][0] = (Left + Right) / (Left - Right);
-    Result.Elements[3][1] = (Bottom + Top) / (Bottom - Top);
-    Result.Elements[3][2] = (Near + Far) / (Near - Far);
-
-    return Result;
-}
-
 // Produces a right-handed orthographic projection matrix with Z ranging from 0
 // to 1 (the DirectX convention). Left, Right, Bottom, and Top specify the
 // coordinates of their respective clipping planes. Near and Far specify the
 // distances to the near and far clipping planes.
-static inline Rr_Mat4 Rr_Orthographic_RH_ZO(
+static inline Rr_Mat4 Rr_Orthographic_RH(
     float Left,
     float Right,
     float Bottom,
@@ -1913,29 +1887,11 @@ static inline Rr_Mat4 Rr_Orthographic_RH_ZO(
     return Result;
 }
 
-// Produces a left-handed orthographic projection matrix with Z ranging from -1
-// to 1 (the GL convention). Left, Right, Bottom, and Top specify the
-// coordinates of their respective clipping planes. Near and Far specify the
-// distances to the near and far clipping planes.
-static inline Rr_Mat4 Rr_Orthographic_LH_NO(
-    float Left,
-    float Right,
-    float Bottom,
-    float Top,
-    float Near,
-    float Far)
-{
-    Rr_Mat4 Result = Rr_Orthographic_RH_NO(Left, Right, Bottom, Top, Near, Far);
-    Result.Elements[2][2] = -Result.Elements[2][2];
-
-    return Result;
-}
-
 // Produces a left-handed orthographic projection matrix with Z ranging from 0
 // to 1 (the DirectX convention). Left, Right, Bottom, and Top specify the
 // coordinates of their respective clipping planes. Near and Far specify the
 // distances to the near and far clipping planes.
-static inline Rr_Mat4 Rr_Orthographic_LH_ZO(
+static inline Rr_Mat4 Rr_Orthographic_LH(
     float Left,
     float Right,
     float Bottom,
@@ -1943,7 +1899,7 @@ static inline Rr_Mat4 Rr_Orthographic_LH_ZO(
     float Near,
     float Far)
 {
-    Rr_Mat4 Result = Rr_Orthographic_RH_ZO(Left, Right, Bottom, Top, Near, Far);
+    Rr_Mat4 Result = Rr_Orthographic_RH(Left, Right, Bottom, Top, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
 
     return Result;
@@ -1967,29 +1923,7 @@ static inline Rr_Mat4 Rr_InvOrthographic(Rr_Mat4 OrthoMatrix)
     return Result;
 }
 
-static inline Rr_Mat4 Rr_Perspective_RH_NO(
-    float FOV,
-    float AspectRatio,
-    float Near,
-    float Far)
-{
-    Rr_Mat4 Result = { 0 };
-
-    // See
-    // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
-
-    float Cotangent = 1.0f / Rr_TanF(FOV / 2.0f);
-    Result.Elements[0][0] = Cotangent / AspectRatio;
-    Result.Elements[1][1] = Cotangent;
-    Result.Elements[2][3] = -1.0f;
-
-    Result.Elements[2][2] = (Near + Far) / (Near - Far);
-    Result.Elements[3][2] = (2.0f * Near * Far) / (Near - Far);
-
-    return Result;
-}
-
-static inline Rr_Mat4 Rr_Perspective_RH_ZO(
+static inline Rr_Mat4 Rr_Perspective_RH(
     float FOV,
     float AspectRatio,
     float Near,
@@ -2011,26 +1945,13 @@ static inline Rr_Mat4 Rr_Perspective_RH_ZO(
     return Result;
 }
 
-static inline Rr_Mat4 Rr_Perspective_LH_NO(
+static inline Rr_Mat4 Rr_Perspective_LH(
     float FOV,
     float AspectRatio,
     float Near,
     float Far)
 {
-    Rr_Mat4 Result = Rr_Perspective_RH_NO(FOV, AspectRatio, Near, Far);
-    Result.Elements[2][2] = -Result.Elements[2][2];
-    Result.Elements[2][3] = -Result.Elements[2][3];
-
-    return Result;
-}
-
-static inline Rr_Mat4 Rr_Perspective_LH_ZO(
-    float FOV,
-    float AspectRatio,
-    float Near,
-    float Far)
-{
-    Rr_Mat4 Result = Rr_Perspective_RH_ZO(FOV, AspectRatio, Near, Far);
+    Rr_Mat4 Result = Rr_Perspective_RH(FOV, AspectRatio, Near, Far);
     Result.Elements[2][2] = -Result.Elements[2][2];
     Result.Elements[2][3] = -Result.Elements[2][3];
 

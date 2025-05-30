@@ -23,7 +23,7 @@ struct SCamera
     void UpdatePerspective()
     {
         ProjMatrix =
-            Rr_Perspective_RH_ZO(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
+            Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
     }
 
     void UpdateView()

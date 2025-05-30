@@ -170,7 +170,7 @@ static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
 {
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
-    UniformData.Projection = Rr_Perspective_LH_ZO(
+    UniformData.Projection = Rr_Perspective_LH(
         0.7643276f,
         SwapchainSize.Width / (float)SwapchainSize.Height,
         0.5f,

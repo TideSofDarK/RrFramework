@@ -1807,7 +1807,7 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNode(
     return GraphNode;
 }
 
-Rr_GraphNode *Rr_AddCopyToImage2DNode(
+Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,

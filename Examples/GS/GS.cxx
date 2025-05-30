@@ -29,7 +29,7 @@ struct SCamera
         float Near,
         float Far)
     {
-        ProjMatrix = Rr_Perspective_LH_ZO(
+        ProjMatrix = Rr_Perspective_LH(
             RR_ANGLE_DEG(FOVDegrees),
             (float)Size.X / (float)Size.Y,
             Near,

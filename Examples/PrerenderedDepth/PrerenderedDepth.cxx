@@ -202,7 +202,7 @@ struct SPrerenderedDepth
             Rr_CreateBuffer(sizeof(Uniform), RR_BUFFER_FLAGS_UNIFORM_BIT);
 
         Uniform.Projection =
-            Rr_Perspective_LH_ZO(RR_ANGLE_DEG(43.7927f), Aspect, 0.5f, 50.0f);
+            Rr_Perspective_LH(RR_ANGLE_DEG(43.7927f), Aspect, 0.5f, 50.0f);
         Uniform.View = Rr_EulerXYZ({ 90.0f - 63.5593f, -46.6919f, 0.0f }) *
                        Rr_Translate({ -7.35889f, -4.0f, -6.92579f });
 
@@ -302,7 +302,7 @@ struct SPrerenderedDepth
             *((uint32_t *)(StagingData + Index)) = 0xFF00FFFF;
         }
 
-        Rr_AddCopyToImage2DNode(
+        Rr_AddCopyBufferToImage2DNode(
             Rr_GetGraph(),
             "copy",
             StagingBuffer,
