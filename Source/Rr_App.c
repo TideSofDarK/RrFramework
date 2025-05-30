@@ -180,6 +180,9 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_UIInit();
 
+    /* NOTE: Call these early so user-provided Init function may access Graph
+     * and UI. */
+
     Rr_NewFrame();
     Rr_UINewFrame();
 

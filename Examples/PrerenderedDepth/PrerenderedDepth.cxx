@@ -2,112 +2,150 @@
 
 #include <Rr/Rr.h>
 
+#include "../../Vendor/stb/stb_image.h"
+#include "../../Vendor/stb/stb_image_write.h"
+#define TINYEXR_IMPLEMENTATION
+#define TINYEXR_USE_STB_ZLIB 1
+#define TINYEXR_USE_MINIZ    0
 #include "tinyexr.h"
 
+#include <algorithm>
 #include <array>
 #include <print>
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
-// Rr_Image *Rr_CreateDepthImageFromEXR(Rr_AssetRef AssetRef)
-// {
-// Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
+{
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-// const char *Error;
+    const char *Error;
 
-// EXRVersion Version;
-// int32_t Result = ParseEXRVersionFromMemory(
-// &Version,
-// (unsigned char *)Asset.Pointer,
-// Asset.Size);
-// if (Result != 0)
-// {
-// std::println("Error opening EXR file!");
-// }
+    EXRVersion Version;
+    int32_t Result = ParseEXRVersionFromMemory(
+        &Version,
+        (unsigned char *)Asset.Pointer,
+        Asset.Size);
+    if (Result != 0)
+    {
+        std::println("Error opening EXR file!");
+    }
 
-// EXRHeader Header;
-// Result = ParseEXRHeaderFromMemory(
-// &Header,
-// &Version,
-// (unsigned char *)Asset.Pointer,
-// Asset.Size,
-// &Error);
-// if (Result != 0)
-// {
-// std::println("Error opening EXR file: %s", Error);
-// // FreeEXRErrorMessage(Error);
-// }
+    EXRHeader Header;
+    Result = ParseEXRHeaderFromMemory(
+        &Header,
+        &Version,
+        (unsigned char *)Asset.Pointer,
+        Asset.Size,
+        &Error);
+    if (Result != 0)
+    {
+        std::println("Error opening EXR file: %s", Error);
+        std::abort();
+    }
 
-// EXRImage Image;
-// InitEXRImage(&Image);
+    EXRImage Image;
+    InitEXRImage(&Image);
 
-// Result = LoadEXRImageFromMemory(
-// &Image,
-// &Header,
-// (unsigned char *)Asset.Pointer,
-// Asset.Size,
-// &Error);
-// if (Result != 0)
-// {
-// std::println("Error opening EXR file: %s", Error);
-// // FreeEXRHeader(&Header);
-// // FreeEXRErrorMessage(Error);
-// }
+    Result = LoadEXRImageFromMemory(
+        &Image,
+        &Header,
+        (unsigned char *)Asset.Pointer,
+        Asset.Size,
+        &Error);
+    if (Result != 0)
+    {
+        std::println("Error opening EXR file: %s", Error);
+        std::abort();
+    }
 
-// /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
+    /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
 
-// float Near = 0.5f;
-// float Far = 50.0f;
-// float FarPlusNear = Far + Near;
-// float FarMinusNear = Far - Near;
-// float FTimesNear = Far * Near;
-// for (int32_t Index = 0; Index < Image.width * Image.height; Index++)
-// {
-// float *Current = (float *)Image.images[0] + Index;
-// float ZReciprocal = 1.0f / *Current;
-// float Depth = FarPlusNear / FarMinusNear +
-// ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
-// Depth = (Depth + 1.0f) / 2.0f;
-// if (Depth > 1.0f)
-// {
-// Depth = 1.0f;
-// }
-// *Current = Depth;
-// }
+    float FarPlusNear = Far + Near;
+    float FarMinusNear = Far - Near;
+    float FTimesNear = Far * Near;
+    for (int32_t Index = 0; Index < Image.width * Image.height; Index++)
+    {
+        float *Current = (float *)Image.images[0] + Index;
+        float ZReciprocal = 1.0f / *Current;
+        float Depth = FarPlusNear / FarMinusNear +
+                      ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
+        Depth = (Depth + 1.0f) / 2.0f;
+        Depth = std::clamp(Depth, 0.0f, 1.0f);
+        *Current = Depth;
+    }
 
-// Rr_IntVec3 Extent = {
-// .Width = Image.width,
-// .Height = Image.height,
-// .Depth = 1,
-// };
+    Rr_IntVec2 Extent = {
+        .Width = Image.width,
+        .Height = Image.height,
+    };
 
-// // size_t DataSize = Extent.Width * Extent.Height * sizeof(float);
+    size_t DataSize = Extent.Width * Extent.Height * sizeof(float);
 
-// // Rr_Image *DepthImage = Rr_CreateImage(
-// //     App,
-// //     Extent,
-// //     RR_TEXTURE_FORMAT_D32_SFLOAT,
-// //     RR_IMAGE_USAGE_SAMPLED | RR_IMAGE_USAGE_TRANSFER,
-// //     false);
+    Rr_Image2D *DepthImage = Rr_CreateImage2D(
+        Extent,
+        RR_TEXTURE_FORMAT_D32_SFLOAT,
+        RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-// // Rr_UploadImage(
-// //     App,
-// //     UploadContext,
-// //     DepthImage->AllocatedImages[0].Handle,
-// //     Rr_GetVulkanExtent3D(&Extent),
-// //     VK_IMAGE_ASPECT_DEPTH_BIT,
-// //     VK_PIPELINE_STAGE_TRANSFER_BIT,
-// //     VK_ACCESS_TRANSFER_READ_BIT,
-// //     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-// //     Image.images[0],
-// //     DataSize);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        DataSize,
+        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
-// FreeEXRHeader(&Header);
-// FreeEXRImage(&Image);
+    std::memcpy(
+        Rr_GetMappedBufferData(StagingBuffer),
+        Image.images[0],
+        DataSize);
 
-// // return DepthImage;
-// return nullptr;
-// }
+    Rr_AddCopyBufferToImage2DNode(
+        Rr_GetGraph(),
+        "copy",
+        StagingBuffer,
+        0,
+        DepthImage,
+        0);
+
+    FreeEXRHeader(&Header);
+    FreeEXRImage(&Image);
+
+    return DepthImage;
+}
+
+Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
+{
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+    int32_t DesiredChannels = 4;
+    int32_t Width, Height, Channels;
+    char *Data = (char *)stbi_load_from_memory(
+        (stbi_uc *)Asset.Pointer,
+        (int32_t)Asset.Size,
+        &Width,
+        &Height,
+        &Channels,
+        DesiredChannels);
+
+    Rr_Image2D *ColorImage = Rr_CreateImage2D(
+        { Width, Height },
+        RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+        RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+
+    size_t Size = Width * Height * DesiredChannels;
+
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        Size,
+        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+
+    std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
+
+    Rr_AddCopyBufferToImage2DNode(
+        Rr_GetGraph(),
+        "copy",
+        StagingBuffer,
+        0,
+        ColorImage,
+        0);
+
+    return ColorImage;
+}
 
 struct SGPUUniform
 {
@@ -127,8 +165,12 @@ struct SPrerenderedDepth
     Rr_Buffer *UniformBuffer;
     Rr_Buffer *StagingBuffer;
 
+    Rr_Image2D *ColorImage;
+    Rr_Image2D *DepthImage;
+
     Rr_Image2D *BackgroundColorImage;
     Rr_Image2D *BackgroundDepthImage;
+    Rr_IntVec2 BackgroundExtent;
 
     UScancodes Scancodes{};
 
@@ -171,29 +213,13 @@ struct SPrerenderedDepth
 
     void InitBackground()
     {
-        // Create Rr_LoadingThread
-        // Add custom loading task: a callback and a payload (ID?)
-        // Submit task(s)
-        // The thread calls the callback and passes Rr_UploadContext
-        // From here it should be possible to create buffers/images
-        // And upload data to them
-        // After processing all of the tasks notify the user with OnComplete
-        // callback
-
-        // Rr_UploadContext shouldn't be exclusive to threaded loading
-        // Options:
-        // 1) Rr_LoadImmediate
-        //    This will require the same setup as above meaning callbacks etc
-        // 2) Extend Rr_BeginImmediate
-        //    This function could return Rr_UploadContext
-        //    As such no callbacks needed
-
-        // Currently Rr_Load.c implements PNG and GLTF loading
-        // by using functions that take Rr_UploadContext
-        // These function should become public since Rr_UploadContext
-        // is being exposed to the user
-
-        // Let's do this !!
+        BackgroundDepthImage = CreateDepthImageFromEXR(
+            0.5f,
+            50.0f,
+            EXAMPLE_ASSET_PRERENDEREDDEPTH_EXR);
+        BackgroundColorImage =
+            CreateColorImageFromPNG(EXAMPLE_ASSET_PRERENDEREDDEPTH_PNG);
+        BackgroundExtent = Rr_GetImage2DExtent(BackgroundColorImage);
     }
 
     void InitUniform(float Aspect)
@@ -201,8 +227,10 @@ struct SPrerenderedDepth
         UniformBuffer =
             Rr_CreateBuffer(sizeof(Uniform), RR_BUFFER_FLAGS_UNIFORM_BIT);
 
+        /* NOTE: Hardcoded values from PrerenderedDepth.blend scene. */
+
         Uniform.Projection =
-            Rr_Perspective_LH(RR_ANGLE_DEG(43.7927f), Aspect, 0.5f, 50.0f);
+            Rr_Perspective_RH(RR_ANGLE_DEG(43.7927f), Aspect, 0.5f, 50.0f);
         Uniform.View = Rr_EulerXYZ({ 90.0f - 63.5593f, -46.6919f, 0.0f }) *
                        Rr_Translate({ -7.35889f, -4.0f, -6.92579f });
 
@@ -211,122 +239,81 @@ struct SPrerenderedDepth
             RR_MAKE_DATA_STRUCT(Uniform));
     }
 
-    void InitDepthImage()
+    void InitRenderTarget()
     {
-        // Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
-        // DepthImage = Rr_CreateImage(
-        //     Renderer,
-        //     { SwapchainSize.X, SwapchainSize.Y, 1 },
-        //     DEPTH_FORMAT,
-        //     RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+        ColorImage = Rr_CreateImage2D(
+            BackgroundExtent,
+            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
+        DepthImage = Rr_CreateImage2D(
+            BackgroundExtent,
+            DEPTH_FORMAT,
+            RR_IMAGE_FLAGS_TRANSFER_BIT |
+                RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
     SPrerenderedDepth()
     {
         InitPipeline();
         InitBackground();
-        InitUniform(0.0f);
-
-        StagingBuffer = Rr_CreateBuffer(
-            100 * 100 * 4,
-            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT);
-
-        BackgroundColorImage = Rr_CreateImage2D(
-            { 100, 100 },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+        InitUniform(
+            (float)BackgroundExtent.Width / (float)BackgroundExtent.Height);
+        InitRenderTarget();
     }
 
     void Iterate()
     {
-        // Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize(Renderer);
-
-        // Camera.Aspect = (float)SwapchainSize.X / (float)SwapchainSize.Y;
-        // Camera.UpdatePerspective();
-        // Camera.Update(Scancodes);
-
-        // SGPUUniform Uniform = {
-        //     .View = Camera.ViewMatrix,
-        //     .Projection = Camera.ProjMatrix,
-        //     .Near = Camera.Near,
-        //     .Far = Camera.Far,
-        //     .GridSmall = 1.0f,
-        //     .GridBig = 10.0f,
-        // };
-        // std::memcpy(
-        //     Rr_GetMappedBufferData(Renderer, UniformBuffer),
-        //     &Uniform,
-        //     sizeof(SGPUUniform));
-
-        // Rr_Image *SwapchainImage = Rr_GetSwapchainImage(Renderer);
-
-        // Rr_ColorClear ColorClear = {};
-        // ColorClear.Vec4 = { 13.0f / 255.0f,
-        //                     14.0f / 255.0f,
-        //                     28.0f / 255.0f,
-        //                     1.0f };
-        // Rr_ColorTarget ColorTarget = {
-        //     .Slot = 0,
-        //     .LoadOp = RR_LOAD_OP_CLEAR,
-        //     .StoreOp = RR_STORE_OP_STORE,
-        //     .Clear = ColorClear,
-        // };
-        // Rr_DepthTarget DepthTarget = {
-        //     .LoadOp = RR_LOAD_OP_CLEAR,
-        //     .StoreOp = RR_STORE_OP_STORE,
-        //     .Clear = Rr_DepthClear(1.0f, 0),
-        // };
-        // Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-        //     Renderer,
-        //     "grid",
-        //     1,
-        //     &ColorTarget,
-        //     &SwapchainImage,
-        //     &DepthTarget,
-        //     DepthImage);
-        // Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        // Rr_BindUniformBuffer(
-        //     GraphicsNode,
-        //     UniformBuffer,
-        //     0,
-        //     0,
-        //     0,
-        //     sizeof(SGPUUniform));
-        // Rr_Draw(GraphicsNode, 6, 1, 0, 0);
-
-        char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
-
-        for (size_t Index = 0; Index < 100 * 100 * 4; Index += 4)
-        {
-            *((uint32_t *)(StagingData + Index)) = 0xFF00FFFF;
-        }
-
-        Rr_AddCopyBufferToImage2DNode(
+        Rr_AddCopyImage2DNode(
             Rr_GetGraph(),
-            "copy",
-            StagingBuffer,
-            0,
+            "copy_color",
             BackgroundColorImage,
+            { 0 },
+            ColorImage,
+            { 0 },
+            BackgroundExtent,
             0);
 
-        Rr_ColorClear ColorClear = {};
-        Rr_AddClearColorImageNode(
+        Rr_AddCopyImage2DNode(
             Rr_GetGraph(),
-            "clear",
-            &ColorClear,
-            Rr_GetSwapchainImage());
+            "copy_depth",
+            BackgroundDepthImage,
+            { 0 },
+            DepthImage,
+            { 0 },
+            BackgroundExtent,
+            0);
+
+        Rr_ColorTarget ColorTarget = {
+            .Slot = 0,
+            .LoadOp = RR_LOAD_OP_LOAD,
+            .StoreOp = RR_STORE_OP_STORE,
+        };
+        Rr_DepthTarget DepthTarget = {
+            .LoadOp = RR_LOAD_OP_LOAD,
+            .StoreOp = RR_STORE_OP_STORE,
+        };
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+            Rr_GetGraph(),
+            "graphics",
+            1,
+            &ColorTarget,
+            &ColorImage,
+            &DepthTarget,
+            DepthImage);
+
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
 
         Rr_AddBlitNode(
             Rr_GetGraph(),
             "blit",
-            BackgroundColorImage,
-            Rr_GetSwapchainImage(),
-            { 0, 0, 100, 100 },
-            { 20, 20, 100, 100 },
+            ColorImage,
+            SwapchainImage,
+            { 0, 0, BackgroundExtent.Width, BackgroundExtent.Height },
+            { 0, 0, SwapchainExtent.Width, SwapchainExtent.Height },
             RR_IMAGE_ASPECT_COLOR_BIT);
 
-        // Rr_UIDebugOverlay();
+        Rr_UIDebugOverlay();
     }
 
     ~SPrerenderedDepth()
@@ -336,7 +323,9 @@ struct SPrerenderedDepth
         Rr_DestroyBuffer(UniformBuffer);
         Rr_DestroyBuffer(StagingBuffer);
         Rr_DestroyImage2D(BackgroundColorImage);
-        // Rr_DestroyImage(Rexderer, DepthImage);
+        Rr_DestroyImage2D(BackgroundDepthImage);
+        Rr_DestroyImage2D(ColorImage);
+        Rr_DestroyImage2D(DepthImage);
     }
 };
 

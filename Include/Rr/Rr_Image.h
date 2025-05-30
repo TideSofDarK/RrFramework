@@ -139,7 +139,7 @@ extern Rr_Image3D *Rr_CreateImage3D(
 
 extern void Rr_DestroyImage3D(Rr_Image3D *Image);
 
-extern Rr_ImageCube *Rr_CreateCubemap(
+extern Rr_ImageCube *Rr_CreateImageCube(
     Rr_IntVec2 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags);

@@ -31,7 +31,6 @@
 extern "C" {
 #endif
 
-struct Rr_Image;
 struct Rr_Graph;
 
 typedef struct Rr_Renderer Rr_Renderer;

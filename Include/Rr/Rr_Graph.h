@@ -132,6 +132,16 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
     Rr_ImageCubeFace LastFace,
     uint32_t MipLevel);
 
+extern Rr_GraphNode *Rr_AddCopyImage2DNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Image2D *SrcImage,
+    Rr_IntVec2 SrcOffset,
+    Rr_Image2D *DstImage,
+    Rr_IntVec2 DstOffset,
+    Rr_IntVec2 Extent,
+    uint32_t MipLevel);
+
 extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_Graph *Graph,
     const char *Name,

@@ -268,7 +268,7 @@ struct SSkybox
 
         int32_t LayerSize = Width * Height * 4;
 
-        SkyboxImage = Rr_CreateCubemap(
+        SkyboxImage = Rr_CreateImageCube(
             { Width, Height },
             RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);

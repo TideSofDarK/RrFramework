@@ -455,7 +455,7 @@ void Rr_DestroyImage3D(Rr_Image3D *Image)
     Rr_DestroyImageContainer((Rr_ImageContainer *)Image);
 }
 
-Rr_ImageCube *Rr_CreateCubemap(
+Rr_ImageCube *Rr_CreateImageCube(
     Rr_IntVec2 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags)

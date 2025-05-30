@@ -717,6 +717,55 @@ static void Rr_ExecuteCopyBufferToImageNode(
         &BufferImageCopy);
 }
 
+static void Rr_ExecuteCopyImageNode(
+    Rr_Graph *Graph,
+    Rr_CopyImageNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    Rr_AllocatedImage *SrcImage = Rr_GetGraphImage(Graph, Node->SrcImage);
+    Rr_ImageContainer *SrcImageContainer = SrcImage->Container;
+
+    Rr_AllocatedImage *DstImage = Rr_GetGraphImage(Graph, Node->DstImage);
+    Rr_ImageContainer *DstImageContainer = DstImage->Container;
+
+    assert(SrcImageContainer->AspectFlags == DstImageContainer->AspectFlags);
+
+    VkImageCopy ImageCopy = {
+        .srcSubresource =
+            (VkImageSubresourceLayers){
+                .aspectMask = SrcImageContainer->AspectFlags,
+                .mipLevel = Node->MipLevel,
+                .baseArrayLayer = Node->BaseLayer,
+                .layerCount = Node->LayerCount,
+            },
+        .srcOffset = { Node->SrcOffset.X,
+                       Node->SrcOffset.Y,
+                       Node->SrcOffset.Z },
+        .dstSubresource =
+            (VkImageSubresourceLayers){
+                .aspectMask = DstImageContainer->AspectFlags,
+                .mipLevel = Node->MipLevel,
+                .baseArrayLayer = Node->BaseLayer,
+                .layerCount = Node->LayerCount,
+            },
+        .dstOffset = { Node->DstOffset.X,
+                       Node->DstOffset.Y,
+                       Node->DstOffset.Z },
+        .extent = { Node->Extent.Width, Node->Extent.Height, Node->Extent.Depth, },
+    };
+
+    Device->CmdCopyImage(
+        CommandBuffer,
+        SrcImage->Handle,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        DstImage->Handle,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &ImageCopy);
+}
+
 Rr_GraphNode *Rr_AddGraphNode(
     Rr_Frame *Frame,
     Rr_GraphNodeType Type,
@@ -1075,6 +1124,14 @@ static void Rr_ExecuteGraphNode(
             Rr_ExecuteCopyBufferToImageNode(
                 Graph,
                 &Node->Union.CopyBufferToImage,
+                CommandBuffer);
+        }
+        break;
+        case RR_GRAPH_NODE_TYPE_COPY_IMAGE:
+        {
+            Rr_ExecuteCopyImageNode(
+                Graph,
+                &Node->Union.CopyImage,
                 CommandBuffer);
         }
         break;
@@ -1877,6 +1934,89 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
         (Rr_ImageContainer *)ImageCube,
         (uint32_t)FirstFace,
         1 + ((uint32_t)LastFace - (uint32_t)FirstFace),
+        MipLevel);
+}
+
+static inline Rr_GraphNode *Rr_AddCopyImageNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_ImageContainer *SrcImage,
+    Rr_IntVec3 SrcOffset,
+    Rr_ImageContainer *DstImage,
+    Rr_IntVec3 DstOffset,
+    Rr_IntVec3 Extent,
+    uint32_t BaseLayer,
+    uint32_t LayerCount,
+    uint32_t MipLevel)
+{
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
+
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_COPY_IMAGE, Name);
+
+    Rr_GraphImage *SrcImageHandle =
+        Rr_GetGraphImageHandle(Frame->Graph, SrcImage);
+    Rr_GraphImage *DstImageHandle =
+        Rr_GetGraphImageHandle(Frame->Graph, DstImage);
+
+    Rr_AddNodeDependency(
+        GraphNode,
+        SrcImageHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        });
+
+    Rr_AddNodeDependency(
+        GraphNode,
+        DstImageHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        });
+
+    GraphNode->Union.CopyImage = (Rr_CopyImageNode){
+        .SrcImage = *SrcImageHandle,
+        .SrcOffset = SrcOffset,
+        .DstImage = *DstImageHandle,
+        .DstOffset = DstOffset,
+        .Extent = Extent,
+        .BaseLayer = BaseLayer,
+        .LayerCount = LayerCount,
+        .MipLevel = MipLevel,
+    };
+
+    return GraphNode;
+}
+
+Rr_GraphNode *Rr_AddCopyImage2DNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Image2D *SrcImage,
+    Rr_IntVec2 SrcOffset,
+    Rr_Image2D *DstImage,
+    Rr_IntVec2 DstOffset,
+    Rr_IntVec2 Extent,
+    uint32_t MipLevel)
+{
+    assert(Graph);
+    assert(SrcImage);
+    assert(DstImage);
+    assert(Extent.Width >= 1);
+    assert(Extent.Height >= 1);
+
+    return Rr_AddCopyImageNode(
+        Graph,
+        Name,
+        (Rr_ImageContainer *)SrcImage,
+        (Rr_IntVec3){ SrcOffset.X, SrcOffset.Y, 0 },
+        (Rr_ImageContainer *)DstImage,
+        (Rr_IntVec3){ DstOffset.X, DstOffset.Y, 0 },
+        (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
+        0,
+        1,
         MipLevel);
 }
 

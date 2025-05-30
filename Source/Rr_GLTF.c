@@ -193,7 +193,7 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
         }
     }
 
-    if(GLTFTextureMappingCount > 0)
+    if (GLTFTextureMappingCount > 0)
     {
         RR_ALLOC_COPY(
             Arena,
