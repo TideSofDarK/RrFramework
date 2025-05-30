@@ -180,22 +180,15 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_UIInit();
 
+    Rr_NewFrame();
+    Rr_UINewFrame();
+
     Config->InitFunc(gApp->UserData);
 
     SDL_ShowWindow(gApp->Window);
 
-    while (Rr_GetAtomicInt(&gApp->QuitRequested) == false)
+    while (true)
     {
-        Rr_CalculateDeltaTime(&gApp->FrameTime);
-
-        /* NOTE: The reason Rr_NewFrame() is called before processing events
-         * is to allow event processing use temporary frame arena to buffer
-         * stuff such as text input.
-         * Currently the UI relies on it. */
-
-        Rr_NewFrame();
-        Rr_UINewFrame();
-
         for (Rr_Event Event; Rr_PollEvent(&Event);)
         {
             Rr_UIProcessEvent(&Event);
@@ -236,6 +229,21 @@ void Rr_Run(Rr_AppConfig *Config)
         {
             Rr_SimulateVSync(&gApp->FrameTime);
         }
+
+        Rr_CalculateDeltaTime(&gApp->FrameTime);
+
+        if (Rr_GetAtomicInt(&gApp->QuitRequested))
+        {
+            break;
+        }
+
+        /* NOTE: The reason Rr_NewFrame() is called before processing events
+         * is to allow event processing use temporary frame arena to buffer
+         * stuff such as text input.
+         * Currently the UI relies on it. */
+
+        Rr_NewFrame();
+        Rr_UINewFrame();
     }
 
     Rr_WaitIdle();

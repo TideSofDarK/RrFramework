@@ -47,7 +47,7 @@ struct Rr_AllocatedImage
     struct Rr_ImageContainer *Container;
 };
 
-#define RR_DEFINE_IMAGE_TYPE(Name)                               \
+#define RR_DEFINE_IMAGE_STRUCT(Name)                             \
     struct Name                                                  \
     {                                                            \
         VkExtent3D Extent;                                       \
@@ -59,12 +59,12 @@ struct Rr_AllocatedImage
     }
 
 typedef struct Rr_ImageContainer Rr_ImageContainer;
-RR_DEFINE_IMAGE_TYPE(Rr_ImageContainer);
-RR_DEFINE_IMAGE_TYPE(Rr_Image2D);
-RR_DEFINE_IMAGE_TYPE(Rr_Image2DArray);
-RR_DEFINE_IMAGE_TYPE(Rr_Image3D);
-RR_DEFINE_IMAGE_TYPE(Rr_Image3DArray);
-RR_DEFINE_IMAGE_TYPE(Rr_Cubemap);
+RR_DEFINE_IMAGE_STRUCT(Rr_ImageContainer);
+RR_DEFINE_IMAGE_STRUCT(Rr_Image2D);
+RR_DEFINE_IMAGE_STRUCT(Rr_Image2DArray);
+RR_DEFINE_IMAGE_STRUCT(Rr_Image3D);
+RR_DEFINE_IMAGE_STRUCT(Rr_Image3DArray);
+RR_DEFINE_IMAGE_STRUCT(Rr_ImageCube);
 
 #undef RR_DEFINE_IMAGE_TYPE
 

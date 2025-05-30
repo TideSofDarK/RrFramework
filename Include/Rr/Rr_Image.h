@@ -70,6 +70,18 @@ typedef enum
     RR_BORDER_COLOR_INT_OPAQUE_WHITE = 5,
 } Rr_BorderColor;
 
+typedef enum Rr_ImageCubeFace
+{
+    RR_IMAGE_CUBE_FACE_FIRST,
+    RR_IMAGE_CUBE_FACE_FRONT = RR_IMAGE_CUBE_FACE_FIRST,
+    RR_IMAGE_CUBE_FACE_BACK,
+    RR_IMAGE_CUBE_FACE_UP,
+    RR_IMAGE_CUBE_FACE_DOWN,
+    RR_IMAGE_CUBE_FACE_RIGHT,
+    RR_IMAGE_CUBE_FACE_LEFT,
+    RR_IMAGE_CUBE_FACE_LAST = RR_IMAGE_CUBE_FACE_LEFT,
+} Rr_ImageCubeFace;
+
 typedef struct Rr_SamplerInfo Rr_SamplerInfo;
 struct Rr_SamplerInfo
 {
@@ -98,7 +110,7 @@ typedef struct Rr_Image2D Rr_Image2D;
 typedef struct Rr_Image2DArray Rr_Image2DArray;
 typedef struct Rr_Image3D Rr_Image3D;
 typedef struct Rr_Image3DArray Rr_Image3DArray;
-typedef struct Rr_Cubemap Rr_Cubemap;
+typedef struct Rr_ImageCube Rr_ImageCube;
 
 typedef enum
 {
@@ -110,7 +122,6 @@ typedef enum
     RR_IMAGE_FLAGS_READBACK_BIT = (1 << 5),
     RR_IMAGE_FLAGS_PER_FRAME_BIT = (1 << 6),
     RR_IMAGE_FLAGS_MIP_MAPPED_BIT = (1 << 7),
-    RR_IMAGE_FLAGS_CUBE_BIT = (1 << 8),
 } Rr_ImageFlagsBits;
 typedef uint32_t Rr_ImageFlags;
 
@@ -120,6 +131,20 @@ extern Rr_Image2D *Rr_CreateImage2D(
     Rr_ImageFlags Flags);
 
 extern void Rr_DestroyImage2D(Rr_Image2D *Image);
+
+extern Rr_Image3D *Rr_CreateImage3D(
+    Rr_IntVec3 Extent,
+    Rr_TextureFormat Format,
+    Rr_ImageFlags Flags);
+
+extern void Rr_DestroyImage3D(Rr_Image3D *Image);
+
+extern Rr_ImageCube *Rr_CreateCubemap(
+    Rr_IntVec2 Extent,
+    Rr_TextureFormat Format,
+    Rr_ImageFlags Flags);
+
+extern void Rr_DestroyCubemap(Rr_ImageCube *Cubemap);
 
 extern Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image);
 

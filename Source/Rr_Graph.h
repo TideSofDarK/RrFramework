@@ -34,6 +34,16 @@ struct Rr_Frame;
 typedef RR_ARRAY(size_t) Rr_IndexArray;
 typedef RR_ARRAY(Rr_GraphNode *) Rr_NodeArray;
 
+typedef enum Rr_GraphNodeType
+{
+    RR_GRAPH_NODE_TYPE_COMPUTE,
+    RR_GRAPH_NODE_TYPE_GRAPHICS,
+    RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE,
+    RR_GRAPH_NODE_TYPE_BLIT,
+    RR_GRAPH_NODE_TYPE_TRANSFER,
+    RR_GRAPH_NODE_TYPE_COPY_BUFFER_TO_IMAGE,
+} Rr_GraphNodeType;
+
 typedef enum
 {
     RR_NODE_FUNCTION_TYPE_NO_OP,
@@ -94,13 +104,15 @@ struct Rr_ClearColorImageNode
     Rr_GraphImage ColorImage;
 };
 
-typedef struct Rr_CopyToImage2DNode Rr_CopyToImage2DNode;
-struct Rr_CopyToImage2DNode
+typedef struct Rr_CopyBufferToImageNode Rr_CopyBufferToImageNode;
+struct Rr_CopyBufferToImageNode
 {
     Rr_GraphBuffer Buffer;
     size_t BufferOffset;
     Rr_GraphImage Image;
-    size_t MipLevel;
+    uint32_t BaseLayer;
+    uint32_t LayerCount;
+    uint32_t MipLevel;
 };
 
 typedef struct Rr_BindIndexBufferArgs Rr_BindIndexBufferArgs;
@@ -253,7 +265,7 @@ struct Rr_GraphNode
         Rr_ComputeNode Compute;
         Rr_GraphicsNode Graphics;
         Rr_ClearColorImageNode ClearColorImage;
-        Rr_CopyToImage2DNode CopyToImage2DNode;
+        Rr_CopyBufferToImageNode CopyBufferToImage;
         Rr_BlitNode Blit;
         Rr_TransferNode Transfer;
     } Union;
@@ -290,9 +302,7 @@ extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
     Rr_Graph *Graph,
     void *Container);
 
-extern Rr_GraphImage *Rr_GetGraphImageHandle(
-    Rr_Graph *Graph,
-    void *Container);
+extern Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, void *Container);
 
 extern Rr_GraphNode *Rr_AddGraphNode(
     struct Rr_Frame *Frame,

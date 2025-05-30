@@ -677,9 +677,9 @@ static void Rr_ExecuteClearColorImageNode(
         });
 }
 
-static void Rr_ExecuteCopyToImage2DNode(
+static void Rr_ExecuteCopyBufferToImageNode(
     Rr_Graph *Graph,
-    Rr_CopyToImage2DNode *Node,
+    Rr_CopyBufferToImageNode *Node,
     VkCommandBuffer CommandBuffer)
 {
     Rr_Device *Device = &gRenderer->Device;
@@ -697,8 +697,8 @@ static void Rr_ExecuteCopyToImage2DNode(
             (VkImageSubresourceLayers){
                 .aspectMask = ImageContainer->AspectFlags,
                 .mipLevel = Node->MipLevel,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
+                .baseArrayLayer = Node->BaseLayer,
+                .layerCount = Node->LayerCount,
             },
         .imageExtent =
             (VkExtent3D){
@@ -1070,11 +1070,11 @@ static void Rr_ExecuteGraphNode(
                 CommandBuffer);
         }
         break;
-        case RR_GRAPH_NODE_TYPE_COPY_TO_IMAGE2D:
+        case RR_GRAPH_NODE_TYPE_COPY_BUFFER_TO_IMAGE:
         {
-            Rr_ExecuteCopyToImage2DNode(
+            Rr_ExecuteCopyBufferToImageNode(
                 Graph,
-                &Node->Union.CopyToImage2DNode,
+                &Node->Union.CopyBufferToImage,
                 CommandBuffer);
         }
         break;
@@ -1758,20 +1758,20 @@ Rr_GraphNode *Rr_AddClearColorImageNode(
     return GraphNode;
 }
 
-Rr_GraphNode *Rr_AddCopyToImage2DNode(
+static inline Rr_GraphNode *Rr_AddCopyBufferToImageNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
-    Rr_Image2D *Image,
+    Rr_ImageContainer *Image,
+    uint32_t BaseLayer,
+    uint32_t LayerCount,
     uint32_t MipLevel)
 {
-    assert(Graph != NULL && Buffer != NULL && Image != NULL);
-
     Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_GraphNode *GraphNode =
-        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_COPY_TO_IMAGE2D, Name);
+        Rr_AddGraphNode(Frame, RR_GRAPH_NODE_TYPE_COPY_BUFFER_TO_IMAGE, Name);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Frame->Graph, Image);
 
@@ -1795,14 +1795,89 @@ Rr_GraphNode *Rr_AddCopyToImage2DNode(
             .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
         });
 
-    GraphNode->Union.CopyToImage2DNode = (Rr_CopyToImage2DNode){
+    GraphNode->Union.CopyBufferToImage = (Rr_CopyBufferToImageNode){
         .Buffer = *BufferHandle,
         .BufferOffset = BufferOffset,
         .Image = *ImageHandle,
+        .BaseLayer = BaseLayer,
+        .LayerCount = LayerCount,
         .MipLevel = MipLevel,
     };
 
     return GraphNode;
+}
+
+Rr_GraphNode *Rr_AddCopyToImage2DNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_Image2D *Image,
+    uint32_t MipLevel)
+{
+    assert(Graph != NULL && Buffer != NULL && Image != NULL);
+
+    return Rr_AddCopyBufferToImageNode(
+        Graph,
+        Name,
+        Buffer,
+        BufferOffset,
+        (Rr_ImageContainer *)Image,
+        0,
+        1,
+        MipLevel);
+}
+
+Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_ImageCube *ImageCube,
+    Rr_ImageCubeFace Face,
+    uint32_t MipLevel)
+{
+    assert(Graph != NULL);
+    assert(Buffer != NULL);
+    assert(ImageCube != NULL);
+
+    return Rr_AddCopyBufferToImageNode(
+        Graph,
+        Name,
+        Buffer,
+        BufferOffset,
+        (Rr_ImageContainer *)ImageCube,
+        (uint32_t)Face,
+        1,
+        MipLevel);
+}
+
+Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_ImageCube *ImageCube,
+    Rr_ImageCubeFace FirstFace,
+    Rr_ImageCubeFace LastFace,
+    uint32_t MipLevel)
+{
+    assert(Graph != NULL);
+    assert(Buffer != NULL);
+    assert(ImageCube != NULL);
+    assert(FirstFace <= LastFace);
+    assert(FirstFace >= RR_IMAGE_CUBE_FACE_FIRST);
+    assert(LastFace <= RR_IMAGE_CUBE_FACE_LAST);
+
+    return Rr_AddCopyBufferToImageNode(
+        Graph,
+        Name,
+        Buffer,
+        BufferOffset,
+        (Rr_ImageContainer *)ImageCube,
+        (uint32_t)FirstFace,
+        1 + ((uint32_t)LastFace - (uint32_t)FirstFace),
+        MipLevel);
 }
 
 #define RR_NODE_ENCODE(FunctionType, ArgsType)                         \
@@ -2065,6 +2140,45 @@ void Rr_BindCombinedImageSampler(
     assert(Image);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
+
+    VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
+        Rr_BindCombinedImageSamplerArgs) = (Rr_BindCombinedImageSamplerArgs){
+        .ImageHandle = *ImageHandle,
+        .Layout = Layout,
+        .Sampler = Sampler,
+        .Set = (uint32_t)Set,
+        .Binding = (uint32_t)Binding,
+    };
+
+    /* TODO: Stage mask can be infered from pipeline layout. */
+
+    Rr_AddNodeDependency(
+        Node,
+        ImageHandle,
+        &(Rr_SyncState){
+            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .Layout = Layout,
+        });
+}
+
+void Rr_BindCombinedCubemapSampler(
+    Rr_GraphNode *Node,
+    Rr_ImageCube *Cubemap,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding)
+{
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(Sampler != NULL);
+    assert(Cubemap);
+
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Cubemap);
 
     VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 

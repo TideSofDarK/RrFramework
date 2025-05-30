@@ -97,7 +97,8 @@ void Rr_UploadStagingImage2D(
     for (size_t AllocatedIndex = 0; AllocatedIndex < Image->AllocatedImageCount;
          ++AllocatedIndex)
     {
-        Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + AllocatedIndex;
+        Rr_AllocatedImage *AllocatedImage =
+            Image->AllocatedImages + AllocatedIndex;
 
         VkImageSubresourceRange SubresourceRange = {
             .aspectMask = Aspect,
@@ -241,14 +242,13 @@ void Rr_UploadImage2D(
         0);
 }
 
-Rr_Image2D *Rr_CreateImage2D(
-    Rr_IntVec2 Extent,
+static Rr_ImageContainer *Rr_CreateImageContainer(
+    Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
-    Rr_ImageFlags Flags)
+    Rr_ImageFlags Flags,
+    uint32_t LayerCount,
+    VkImageCreateFlags AdditionalFlags)
 {
-    assert(Extent.Width >= 1);
-    assert(Extent.Height >= 1);
-
     Rr_Device *Device = &gRenderer->Device;
 
     Rr_ImageContainer *Image =
@@ -260,7 +260,13 @@ Rr_Image2D *Rr_CreateImage2D(
 
     VkImageType ImageType = VK_IMAGE_TYPE_3D;
     VkImageViewType ImageViewType = VK_IMAGE_VIEW_TYPE_3D;
-    if (Extent.Height == 1)
+    if (RR_HAS_BIT(AdditionalFlags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
+    {
+        ImageType = VK_IMAGE_TYPE_2D;
+        ImageViewType = VK_IMAGE_VIEW_TYPE_CUBE;
+        assert(LayerCount == 6 && "Cubemap requires exactly 6 layers!");
+    }
+    else if (Extent.Height == 1)
     {
         ImageType = VK_IMAGE_TYPE_1D;
         ImageViewType = VK_IMAGE_VIEW_TYPE_1D;
@@ -316,11 +322,12 @@ Rr_Image2D *Rr_CreateImage2D(
     VkImageCreateInfo ImageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = NULL,
+        .flags = AdditionalFlags,
         .imageType = ImageType,
         .format = Image->Format,
         .extent = (VkExtent3D){ Image->Extent.width, Image->Extent.height, 1 },
         .mipLevels = MipLevels,
-        .arrayLayers = 1,
+        .arrayLayers = LayerCount,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = UsageFlags,
@@ -369,10 +376,10 @@ Rr_Image2D *Rr_CreateImage2D(
             .format = Image->Format,
             .subresourceRange = {
                 .aspectMask = Image->AspectFlags,
-                .baseMipLevel = 0,
-                .layerCount = MipLevels,
                 .baseArrayLayer = 0,
-                .levelCount = VK_REMAINING_ARRAY_LAYERS,
+                .layerCount = LayerCount,
+                .baseMipLevel = 0,
+                .levelCount = MipLevels,
             },
         };
 
@@ -383,10 +390,10 @@ Rr_Image2D *Rr_CreateImage2D(
             &AllocatedImage->View);
     }
 
-    return (Rr_Image2D *)Image;
+    return (Rr_ImageContainer *)Image;
 }
 
-void Rr_DestroyImage2D(Rr_Image2D *Image)
+void Rr_DestroyImageContainer(Rr_ImageContainer *Image)
 {
     if (Image == NULL)
     {
@@ -408,6 +415,65 @@ void Rr_DestroyImage2D(Rr_Image2D *Image)
     }
 
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->Images, Image);
+}
+
+Rr_Image2D *Rr_CreateImage2D(
+    Rr_IntVec2 Extent,
+    Rr_TextureFormat Format,
+    Rr_ImageFlags Flags)
+{
+    assert(Extent.Width >= 1);
+    assert(Extent.Height >= 1);
+
+    return (Rr_Image2D *)Rr_CreateImageContainer(
+        (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
+        Format,
+        Flags,
+        1,
+        0);
+}
+
+void Rr_DestroyImage2D(Rr_Image2D *Image)
+{
+    Rr_DestroyImageContainer((Rr_ImageContainer *)Image);
+}
+
+Rr_Image3D *Rr_CreateImage3D(
+    Rr_IntVec3 Extent,
+    Rr_TextureFormat Format,
+    Rr_ImageFlags Flags)
+{
+    assert(Extent.Width >= 1);
+    assert(Extent.Height >= 1);
+    assert(Extent.Depth >= 1);
+
+    return (Rr_Image3D *)Rr_CreateImageContainer(Extent, Format, Flags, 1, 0);
+}
+
+void Rr_DestroyImage3D(Rr_Image3D *Image)
+{
+    Rr_DestroyImageContainer((Rr_ImageContainer *)Image);
+}
+
+Rr_ImageCube *Rr_CreateCubemap(
+    Rr_IntVec2 Extent,
+    Rr_TextureFormat Format,
+    Rr_ImageFlags Flags)
+{
+    assert(Extent.Width >= 1);
+    assert(Extent.Height >= 1);
+
+    return (Rr_ImageCube *)Rr_CreateImageContainer(
+        (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
+        Format,
+        Flags,
+        6,
+        VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+}
+
+void Rr_DestroyCubemap(Rr_ImageCube *Cubemap)
+{
+    Rr_DestroyImageContainer((Rr_ImageContainer *)Cubemap);
 }
 
 /* Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image) */

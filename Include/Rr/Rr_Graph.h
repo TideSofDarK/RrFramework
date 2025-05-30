@@ -36,16 +36,6 @@ extern "C" {
 typedef struct Rr_Graph Rr_Graph;
 typedef struct Rr_GraphNode Rr_GraphNode;
 
-typedef enum Rr_GraphNodeType
-{
-    RR_GRAPH_NODE_TYPE_COMPUTE,
-    RR_GRAPH_NODE_TYPE_GRAPHICS,
-    RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE,
-    RR_GRAPH_NODE_TYPE_BLIT,
-    RR_GRAPH_NODE_TYPE_TRANSFER,
-    RR_GRAPH_NODE_TYPE_COPY_TO_IMAGE2D,
-} Rr_GraphNodeType;
-
 typedef union Rr_GraphHandle Rr_GraphBuffer;
 typedef union Rr_GraphHandle Rr_GraphImage;
 typedef union Rr_GraphHandle Rr_GraphHandle;
@@ -115,12 +105,31 @@ extern void Rr_TransferBufferData(
     Rr_Buffer *DstBuffer,
     size_t DstOffset);
 
-extern Rr_GraphNode *Rr_AddCopyToImage2DNode(
+extern Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
     Rr_Image2D *Image,
+    uint32_t MipLevel);
+
+extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_ImageCube *ImageCube,
+    Rr_ImageCubeFace Face,
+    uint32_t MipLevel);
+
+extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_ImageCube *ImageCube,
+    Rr_ImageCubeFace FirstFace,
+    Rr_ImageCubeFace LastFace,
     uint32_t MipLevel);
 
 extern Rr_GraphNode *Rr_AddBlitNode(
@@ -217,6 +226,13 @@ extern void Rr_BindSampledImage(
 extern void Rr_BindCombinedImageSampler(
     Rr_GraphNode *Node,
     Rr_Image2D *Image,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding);
+
+extern void Rr_BindCombinedCubemapSampler(
+    Rr_GraphNode *Node,
+    Rr_ImageCube *Cubemap,
     Rr_Sampler *Sampler,
     size_t Set,
     size_t Binding);
