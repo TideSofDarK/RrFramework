@@ -38,8 +38,8 @@ struct Rr_Sampler
     VkSampler Handle;
 };
 
-typedef struct Rr_Image Rr_Image;
-struct Rr_Image
+typedef struct Rr_AllocatedImage Rr_AllocatedImage;
+struct Rr_AllocatedImage
 {
     VkImage Handle;
     VkImageView View;
@@ -47,15 +47,15 @@ struct Rr_Image
     struct Rr_ImageContainer *Container;
 };
 
-#define RR_DEFINE_IMAGE_TYPE(Name)                      \
-    struct Name                                         \
-    {                                                   \
-        VkExtent3D Extent;                              \
-        VkImageAspectFlags AspectFlags;                 \
-        VkFormat Format;                                \
-        Rr_ImageFlags Flags;                            \
-        size_t AllocatedImageCount;                     \
-        Rr_Image AllocatedImages[RR_MAX_FRAME_OVERLAP]; \
+#define RR_DEFINE_IMAGE_TYPE(Name)                               \
+    struct Name                                                  \
+    {                                                            \
+        VkExtent3D Extent;                                       \
+        VkImageAspectFlags AspectFlags;                          \
+        VkFormat Format;                                         \
+        Rr_ImageFlags Flags;                                     \
+        size_t AllocatedImageCount;                              \
+        Rr_AllocatedImage AllocatedImages[RR_MAX_FRAME_OVERLAP]; \
     }
 
 typedef struct Rr_ImageContainer Rr_ImageContainer;
@@ -102,4 +102,4 @@ extern size_t Rr_GetImagePNGRGBA8Size(
     char *Data,
     Rr_Arena *Arena);
 
-extern Rr_Image *Rr_GetCurrentImage(Rr_ImageContainer *Container);
+extern Rr_AllocatedImage *Rr_GetCurrentImage(Rr_ImageContainer *Container);

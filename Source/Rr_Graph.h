@@ -288,11 +288,11 @@ struct Rr_Graph
 
 extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
     Rr_Graph *Graph,
-    Rr_Buffer *Buffer);
+    void *Container);
 
 extern Rr_GraphImage *Rr_GetGraphImageHandle(
     Rr_Graph *Graph,
-    Rr_ImageContainer *ImageContainer);
+    void *Container);
 
 extern Rr_GraphNode *Rr_AddGraphNode(
     struct Rr_Frame *Frame,

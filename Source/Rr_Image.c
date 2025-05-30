@@ -97,7 +97,7 @@ void Rr_UploadStagingImage2D(
     for (size_t AllocatedIndex = 0; AllocatedIndex < Image->AllocatedImageCount;
          ++AllocatedIndex)
     {
-        Rr_Image *AllocatedImage = Image->AllocatedImages + AllocatedIndex;
+        Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + AllocatedIndex;
 
         VkImageSubresourceRange SubresourceRange = {
             .aspectMask = Aspect,
@@ -350,7 +350,7 @@ Rr_Image2D *Rr_CreateImage2D(
 
     for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
-        Rr_Image *AllocatedImage = Image->AllocatedImages + Index;
+        Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + Index;
         AllocatedImage->Container = Image;
 
         vmaCreateImage(
@@ -521,7 +521,7 @@ Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     return ColorImage;
 }
 
-Rr_Image *Rr_GetCurrentImage(Rr_ImageContainer *Image)
+Rr_AllocatedImage *Rr_GetCurrentImage(Rr_ImageContainer *Image)
 {
     size_t AllocatedImageIndex =
         gRenderer->FrameIndex % Image->AllocatedImageCount;
