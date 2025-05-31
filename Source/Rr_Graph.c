@@ -143,7 +143,7 @@ static void Rr_ExecuteComputeNode(
                 assert(Pipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
-                    &Frame->DescriptorAllocator,
+                    Frame->DescriptorAllocator,
                     Pipeline->Layout,
                     Device,
                     CommandBuffer,
@@ -430,7 +430,7 @@ static void Rr_ExecuteGraphicsNode(
                 assert(GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
-                    &Frame->DescriptorAllocator,
+                    Frame->DescriptorAllocator,
                     GraphicsPipeline->Layout,
                     Device,
                     CommandBuffer,
@@ -449,7 +449,7 @@ static void Rr_ExecuteGraphicsNode(
                 assert(GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
-                    &Frame->DescriptorAllocator,
+                    Frame->DescriptorAllocator,
                     GraphicsPipeline->Layout,
                     Device,
                     CommandBuffer,
@@ -469,7 +469,7 @@ static void Rr_ExecuteGraphicsNode(
                 assert(GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
-                    &Frame->DescriptorAllocator,
+                    Frame->DescriptorAllocator,
                     GraphicsPipeline->Layout,
                     Device,
                     CommandBuffer,

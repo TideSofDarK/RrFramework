@@ -64,29 +64,32 @@ static VkDescriptorPool Rr_CreateDescriptorPool(
     return NewPool;
 }
 
-Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
+Rr_DescriptorAllocator *Rr_CreateDescriptorAllocator(
     Rr_Device *Device,
     uint32_t MaxSets,
     Rr_DescriptorPoolSizeRatio *Ratios,
-    uint32_t RatioCount,
-    Rr_Arena *Arena)
+    uint32_t RatioCount)
 {
-    Rr_DescriptorAllocator DescriptorAllocator = { 0 };
-    DescriptorAllocator.Arena = Arena;
-    RR_RESERVE_ARRAY(&DescriptorAllocator.Ratios, RatioCount, Arena);
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
+
+    Rr_DescriptorAllocator *DescriptorAllocator =
+        RR_ALLOC_TYPE(Arena, Rr_DescriptorAllocator);
+    DescriptorAllocator->Arena = Arena;
+
+    RR_RESERVE_ARRAY(&DescriptorAllocator->Ratios, RatioCount, Arena);
     memcpy(
-        DescriptorAllocator.Ratios.Data,
+        DescriptorAllocator->Ratios.Data,
         Ratios,
         RatioCount * sizeof(Rr_DescriptorPoolSizeRatio));
+    DescriptorAllocator->Ratios.Count = RatioCount;
 
     VkDescriptorPool NewPool =
         Rr_CreateDescriptorPool(Device, MaxSets, Ratios, RatioCount);
-    RR_RESERVE_ARRAY(&DescriptorAllocator.ReadyPools, 1, Arena);
-    *RR_PUSH_INTO_ARRAY(&DescriptorAllocator.ReadyPools, Arena) = NewPool;
+    *RR_PUSH_INTO_ARRAY(&DescriptorAllocator->ReadyPools, Arena) = NewPool;
 
-    RR_RESERVE_ARRAY(&DescriptorAllocator.FullPools, 1, Arena);
+    RR_RESERVE_ARRAY(&DescriptorAllocator->FullPools, 1, Arena);
 
-    DescriptorAllocator.SetsPerPool = (size_t)((float)MaxSets * 1.5f);
+    DescriptorAllocator->SetsPerPool = (size_t)((float)MaxSets * 1.5f);
 
     return DescriptorAllocator;
 }
@@ -133,6 +136,8 @@ void Rr_DestroyDescriptorAllocator(
         VkDescriptorPool FullPool = DescriptorAllocator->FullPools.Data[Index];
         Device->DestroyDescriptorPool(Device->Handle, FullPool, NULL);
     }
+
+    Rr_DestroyArena(DescriptorAllocator->Arena);
 }
 
 VkDescriptorPool Rr_GetDescriptorPool(

@@ -38,8 +38,12 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 
     Rr_Device *Device = &gRenderer->Device;
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_Sampler *Sampler =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->Samplers, gRenderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->Samplers, gRenderer->tArena);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 
     VkSamplerCreateInfo SamplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -74,7 +78,11 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 
     Device->DestroySampler(Device->Handle, Sampler->Handle, NULL);
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->Samplers, Sampler);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 void Rr_UploadStagingImage2D(
@@ -251,8 +259,13 @@ static Rr_ImageContainer *Rr_CreateImageContainer(
 {
     Rr_Device *Device = &gRenderer->Device;
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_ImageContainer *Image =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->Images, gRenderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->Images, gRenderer->tArena);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     Image->Flags = Flags;
     Image->Format = Rr_ToVulkanTextureFormat(Format);
     Image->Extent.width = Extent.Width;
@@ -414,7 +427,11 @@ void Rr_DestroyImageContainer(Rr_ImageContainer *Image)
             Image->AllocatedImages[Index].Allocation);
     }
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->Images, Image);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 Rr_Image2D *Rr_CreateImage2D(

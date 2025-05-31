@@ -314,7 +314,18 @@ static bool Rr_InitSwapchain(void)
 
     /* Create image views. */
 
-    RR_RESERVE_ARRAY(&gRenderer->SwapchainImages, ImageCount, gRenderer->Arena);
+    if (gRenderer->SwapchainImages.Capacity < ImageCount)
+    {
+        Rr_LockSpinlock(&gRenderer->Lock);
+
+        RR_RESERVE_ARRAY(
+            &gRenderer->SwapchainImages,
+            ImageCount,
+            gRenderer->tArena);
+
+        Rr_UnlockSpinlock(&gRenderer->Lock);
+    }
+
     gRenderer->SwapchainImages.Count = ImageCount;
 
     VkImageViewCreateInfo ImageViewCreateInfo = {
@@ -375,6 +386,8 @@ static void Rr_InitFrames(void)
     {
         Rr_Frame *Frame = &Frames[Index];
 
+        Frame->Arena = Rr_CreateDefaultArena();
+
         VkCommandPoolCreateInfo CommandPoolCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
@@ -417,12 +430,9 @@ static void Rr_InitFrames(void)
             Device,
             1024,
             Ratios,
-            RR_ARRAY_COUNT(Ratios),
-            gRenderer->Arena);
+            RR_ARRAY_COUNT(Ratios));
 
         Frame->AcquireSemaphore = Rr_GetVulkanSemaphore();
-
-        Frame->Arena = Rr_CreateDefaultArena();
     }
 }
 
@@ -436,7 +446,7 @@ static void Rr_CleanupFrames(void)
 
         Device->DestroyCommandPool(Device->Handle, Frame->CommandPool, NULL);
 
-        Rr_DestroyDescriptorAllocator(&Frame->DescriptorAllocator, Device);
+        Rr_DestroyDescriptorAllocator(Frame->DescriptorAllocator, Device);
 
         Rr_ReturnVulkanFence(Frame->SubmitFence);
         Rr_ReturnVulkanSemaphore(Frame->AcquireSemaphore);
@@ -570,7 +580,7 @@ void Rr_InitRenderer(void)
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     gRenderer = RR_ALLOC_TYPE(Arena, Rr_Renderer);
-    gRenderer->Arena = Arena;
+    gRenderer->tArena = Arena;
 
     SDL_Window *Window = gApp->Window;
     gRenderer->Window = Window;
@@ -679,7 +689,7 @@ void Rr_CleanupRenderer(void)
 
     Instance->DestroyInstance(Instance->Handle, NULL);
 
-    Rr_DestroyArena(gRenderer->Arena);
+    Rr_DestroyArena(gRenderer->tArena);
 }
 
 VkCommandBuffer Rr_BeginImmediate(void)
@@ -722,7 +732,7 @@ void Rr_EndImmediate(void)
 
 static void Rr_ProcessPendingLoads(void)
 {
-    if (Rr_TryLockSpinlock(&gApp->SyncArena.Lock))
+    if (Rr_TryLockSpinlock(&gRenderer->Lock))
     {
         for (size_t Index = 0; Index < gRenderer->PendingLoadsArray.Count;
              ++Index)
@@ -733,7 +743,7 @@ static void Rr_ProcessPendingLoads(void)
         }
         RR_CLEAR_ARRAY(&gRenderer->PendingLoadsArray);
 
-        Rr_UnlockSpinlock(&gApp->SyncArena.Lock);
+        Rr_UnlockSpinlock(&gRenderer->Lock);
     }
 }
 
@@ -742,6 +752,24 @@ void Rr_NewFrame(void)
     Rr_Device *Device = &gRenderer->Device;
 
     Rr_Frame *Frame = Rr_GetCurrentFrame();
+
+    /* Wait for previous work associated with given frame index. */
+
+    if (Frame->SubmitFence != VK_NULL_HANDLE)
+    {
+        VkResult Result = Device->WaitForFences(
+            Device->Handle,
+            1,
+            &Frame->SubmitFence,
+            true,
+            1000000000);
+        assert(Result != VK_TIMEOUT && "Submit fence timeout!");
+
+        Rr_ReturnVulkanFence(Frame->SubmitFence);
+        Frame->SubmitFence = VK_NULL_HANDLE;
+
+        Rr_ResetDescriptorAllocator(Frame->DescriptorAllocator, Device);
+    }
 
     /* TODO: Decrement atomic refcounts on used resources. */
 
@@ -767,24 +795,6 @@ void Rr_NewFrame(void)
             ->Values.Index;
 
     Rr_ProcessPendingLoads();
-
-    /* Wait for previous work associated with given frame index. */
-
-    if (Frame->SubmitFence != VK_NULL_HANDLE)
-    {
-        VkResult Result = Device->WaitForFences(
-            Device->Handle,
-            1,
-            &Frame->SubmitFence,
-            true,
-            1000000000);
-        assert(Result != VK_TIMEOUT && "Submit fence timeout!");
-
-        Rr_ReturnVulkanFence(Frame->SubmitFence);
-        Frame->SubmitFence = VK_NULL_HANDLE;
-
-        Rr_ResetDescriptorAllocator(&Frame->DescriptorAllocator, Device);
-    }
 }
 
 void Rr_DrawFrame(void)
@@ -1161,11 +1171,15 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info)
         NULL,
         &RenderPass);
 
-    *RR_PUSH_INTO_ARRAY(&gRenderer->RenderPasses, gRenderer->Arena) =
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    *RR_PUSH_INTO_ARRAY(&gRenderer->RenderPasses, gRenderer->tArena) =
         (Rr_RenderPass){
             .Handle = RenderPass,
             .Hash = Hash,
         };
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 
     Rr_DestroyScratch(Scratch);
 
@@ -1224,11 +1238,15 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
     Device->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, &Framebuffer);
 
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Framebuffers, gRenderer->Arena) =
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    *RR_PUSH_INTO_ARRAY(&gRenderer->Framebuffers, gRenderer->tArena) =
         (Rr_Framebuffer){
             .Handle = Framebuffer,
             .Hash = Hash,
         };
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 
     Rr_DestroyScratch(Scratch);
 
@@ -1237,82 +1255,123 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
 Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key)
 {
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_SyncState **SyncStateRef =
-        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->Arena);
+        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->tArena);
+
     if (*SyncStateRef != NULL)
     {
+        Rr_UnlockSpinlock(&gRenderer->Lock);
         return *SyncStateRef;
     }
+
     *SyncStateRef =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->SyncStates, gRenderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->SyncStates, gRenderer->tArena);
     Rr_SyncState *SyncState = *SyncStateRef;
     RR_ZERO_PTR(SyncState);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     return SyncState;
 }
 
 void Rr_ReturnSyncState(Rr_MapKey Key)
 {
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_SyncState **SyncStateRef =
-        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->Arena);
+        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->tArena);
+
     if (*SyncStateRef != NULL)
     {
         RR_RETURN_FREE_LIST_ITEM(&gRenderer->SyncStates, *SyncStateRef);
     }
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     *SyncStateRef = NULL;
 }
 
 VkSemaphore Rr_GetVulkanSemaphore(void)
 {
-    if (gRenderer->Semaphores.Count > 0)
-    {
-        return RR_POP_FROM_ARRAY(&gRenderer->Semaphores);
-    }
-
-    Rr_Device *Device = &gRenderer->Device;
-
     VkSemaphore Semaphore;
 
-    Device->CreateSemaphore(
-        Device->Handle,
-        &(VkSemaphoreCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        },
-        NULL,
-        &Semaphore);
+    bool Locked = Rr_TryLockSpinlock(&gRenderer->Lock);
+
+    if (Locked && gRenderer->Semaphores.Count > 0)
+    {
+        Semaphore = RR_POP_FROM_ARRAY(&gRenderer->Semaphores);
+    }
+    else
+    {
+        Rr_Device *Device = &gRenderer->Device;
+
+        Device->CreateSemaphore(
+            Device->Handle,
+            &(VkSemaphoreCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            },
+            NULL,
+            &Semaphore);
+    }
+
+    if (Locked)
+    {
+        Rr_UnlockSpinlock(&gRenderer->Lock);
+    }
 
     return Semaphore;
 }
 
 void Rr_ReturnVulkanSemaphore(VkSemaphore Semaphore)
 {
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Semaphores, gRenderer->Arena) = Semaphore;
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    *RR_PUSH_INTO_ARRAY(&gRenderer->Semaphores, gRenderer->tArena) = Semaphore;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 VkFence Rr_GetVulkanFence(void)
 {
-    if (gRenderer->Fences.Count > 0)
-    {
-        return RR_POP_FROM_ARRAY(&gRenderer->Fences);
-    }
-
-    Rr_Device *Device = &gRenderer->Device;
-
     VkFence Fence;
 
-    Device->CreateFence(
-        Device->Handle,
-        &(VkFenceCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        },
-        NULL,
-        &Fence);
+    bool Locked = Rr_TryLockSpinlock(&gRenderer->Lock);
+
+    if (Locked && gRenderer->Fences.Count > 0)
+    {
+        Fence = RR_POP_FROM_ARRAY(&gRenderer->Fences);
+    }
+    else
+    {
+        Rr_Device *Device = &gRenderer->Device;
+
+        Device->CreateFence(
+            Device->Handle,
+            &(VkFenceCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            },
+            NULL,
+            &Fence);
+    }
+
+    if (Locked)
+    {
+        Rr_UnlockSpinlock(&gRenderer->Lock);
+    }
 
     return Fence;
 }
 
 void Rr_ReturnVulkanFence(VkFence Fence)
 {
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_Device *Device = &gRenderer->Device;
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Fences, gRenderer->Arena) = Fence;
+    *RR_PUSH_INTO_ARRAY(&gRenderer->Fences, gRenderer->tArena) = Fence;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     Device->ResetFences(Device->Handle, 1, &Fence);
 }

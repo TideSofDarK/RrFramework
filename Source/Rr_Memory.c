@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include "Rr_Memory.h"
+#include <Rr/Rr_Memory.h>
 
 #include "Rr_Log.h"
 
@@ -53,16 +53,6 @@ void *Rr_Realloc(void *Ptr, size_t Bytes)
 void Rr_Free(void *Ptr)
 {
     SDL_free(Ptr);
-}
-
-void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes)
-{
-    return SDL_aligned_alloc(Alignment, Bytes);
-}
-
-void Rr_AlignedFree(void *Ptr)
-{
-    SDL_aligned_free(Ptr);
 }
 
 Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
@@ -229,16 +219,6 @@ void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
 void Rr_PopArena(Rr_Arena *Arena, size_t Amount)
 {
     Arena->Position -= Amount;
-}
-
-Rr_SyncArena Rr_CreateSyncArena(void)
-{
-    return (Rr_SyncArena){ .Arena = Rr_CreateDefaultArena() };
-}
-
-void Rr_DestroySyncArena(Rr_SyncArena *Arena)
-{
-    Rr_DestroyArena(Arena->Arena);
 }
 
 void Rr_GrowArray(void *Array, size_t Size, size_t MinCount, Rr_Arena *Arena)

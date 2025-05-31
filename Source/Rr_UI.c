@@ -4451,7 +4451,7 @@ void Rr_UIDebugOverlay(void)
         if (Rr_UITab("Memory"))
         {
             Rr_UIDebugOverlayArena(gApp->Arena, "Application");
-            Rr_UIDebugOverlayArena(gRenderer->Arena, "Renderer");
+            Rr_UIDebugOverlayArena(gRenderer->tArena, "Renderer");
             for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
             {
                 Rr_Frame *Frame = gRenderer->Frames + Index;

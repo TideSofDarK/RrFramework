@@ -272,17 +272,16 @@ static Rr_LoadResult Rr_ProcessLoadContext(
         Rr_DestroyBuffer(UploadContext.StagingBuffers.Data[Index]);
     }
 
-    Rr_LockSpinlock(&gApp->SyncArena.Lock);
+    Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_PendingLoad *PendingLoad = RR_PUSH_INTO_ARRAY(
-        &gRenderer->PendingLoadsArray,
-        gApp->SyncArena.Arena);
+    Rr_PendingLoad *PendingLoad =
+        RR_PUSH_INTO_ARRAY(&gRenderer->PendingLoadsArray, gRenderer->tArena);
     *PendingLoad = (Rr_PendingLoad){
         .LoadingCallback = LoadContext->LoadingCallback,
         .UserData = LoadContext->UserData,
     };
 
-    Rr_UnlockSpinlock(&gApp->SyncArena.Lock);
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 
     if (LoadContext->Semaphore)
     {

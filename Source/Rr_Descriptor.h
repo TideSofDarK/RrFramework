@@ -24,9 +24,9 @@
 
 #pragma once
 
-#include "Rr_Memory.h"
 #include "Rr_Vulkan.h"
 
+#include <Rr/Rr_Memory.h>
 #include <Rr/Rr_Pipeline.h>
 
 #define RR_MAX_BINDINGS 16
@@ -72,12 +72,11 @@ struct Rr_DescriptorWriter
     Rr_Arena *Arena;
 };
 
-extern Rr_DescriptorAllocator Rr_CreateDescriptorAllocator(
+extern Rr_DescriptorAllocator *Rr_CreateDescriptorAllocator(
     Rr_Device *Device,
     uint32_t MaxSets,
     Rr_DescriptorPoolSizeRatio *Ratios,
-    uint32_t RatioCount,
-    Rr_Arena *Arena);
+    uint32_t RatioCount);
 
 extern VkDescriptorSet Rr_AllocateDescriptorSet(
     Rr_DescriptorAllocator *DescriptorAllocator,

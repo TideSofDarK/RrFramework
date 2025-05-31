@@ -24,12 +24,12 @@
 
 #include "Rr_App.h"
 
-#include "Rr_Memory.h"
 #include "Rr_Platform.h"
 #include "Rr_Renderer.h"
 #include "Rr_UI.h"
 
 #include <Rr/Rr_Input.h>
+#include <Rr/Rr_Memory.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_atomic.h>
@@ -162,7 +162,6 @@ void Rr_Run(Rr_AppConfig *Config)
         0,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
             SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    gApp->SyncArena = Rr_CreateSyncArena();
     gApp->UserData = Config->UserData;
 
     Rr_SetWindowSize(Rr_GetDefaultWindowSize());
@@ -256,8 +255,6 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_UICleanup();
 
     Rr_CleanupRenderer();
-
-    Rr_DestroySyncArena(&gApp->SyncArena);
 
     SDL_CleanupTLS();
 

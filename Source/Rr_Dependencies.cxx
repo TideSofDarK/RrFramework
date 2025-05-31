@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include "Rr_Memory.h"
+#include "Rr_Platform.h"
 
 #define VMA_IMPLEMENTATION
 #define VMA_VULKAN_VERSION           1001000

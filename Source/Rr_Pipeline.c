@@ -76,11 +76,16 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_PipelineLayout *PipelineLayout =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, gRenderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, gRenderer->tArena);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     PipelineLayout->SetLayoutCount = SetCount;
+
+    Rr_Device *Device = &gRenderer->Device;
 
     VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
 
@@ -118,7 +123,11 @@ void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
 
     Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, PipelineLayout);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
@@ -174,8 +183,13 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_Device *Device = &gRenderer->Device;
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_ComputePipeline *Pipeline =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->ComputePipelines, gRenderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->ComputePipelines, gRenderer->tArena);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     Pipeline->Layout = CreateInfo->Layout;
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
@@ -235,7 +249,11 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->ComputePipelines, ComputePipeline);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
@@ -245,8 +263,13 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_Device *Device = &gRenderer->Device;
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_GraphicsPipeline *Pipeline =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->GraphicsPipelines, gRenderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->GraphicsPipelines, gRenderer->tArena);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     Pipeline->Layout = Info->Layout;
     Pipeline->HasDepthStencil = Info->DepthStencil.EnableDepthTest ||
                                 Info->DepthStencil.EnableStencilTest ||
@@ -600,17 +623,22 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
         }
     }
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_DescriptorSetLayout *DescriptorSetLayout =
-        RR_PUSH_INTO_ARRAY(&gRenderer->DescriptorSetLayouts, gRenderer->Arena);
+        RR_PUSH_INTO_ARRAY(&gRenderer->DescriptorSetLayouts, gRenderer->tArena);
+
     DescriptorSetLayout->Hash = Hash;
     DescriptorSetLayout->Set = *Set;
     RR_ALLOC_COPY(
-        gRenderer->Arena,
+        gRenderer->tArena,
         DescriptorSetLayout->Set.Bindings,
         Set->Bindings,
         sizeof(Rr_PipelineBinding) * Set->BindingCount);
     DescriptorSetLayout->Handle =
         Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, &gRenderer->Device);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 
     return DescriptorSetLayout;
 }

@@ -26,7 +26,7 @@
 
 #include <Rr/Rr_App.h>
 
-#include "Rr_Memory.h"
+#include <Rr/Rr_Memory.h>
 
 #include <SDL3/SDL_thread.h>
 #include <SDL3/SDL_video.h>
@@ -78,8 +78,6 @@ struct Rr_App
     SDL_TLSID ScratchArenaTLS;
     SDL_Window *Window;
     Rr_AtomicInt QuitRequested;
-
-    Rr_SyncArena SyncArena;
 
     Rr_EventHive EventHive;
 

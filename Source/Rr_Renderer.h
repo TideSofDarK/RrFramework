@@ -74,7 +74,7 @@ struct Rr_Frame
     VkSemaphore AcquireSemaphore;
     VkFence SubmitFence;
 
-    Rr_DescriptorAllocator DescriptorAllocator;
+    Rr_DescriptorAllocator *DescriptorAllocator;
 
     Rr_Graph *Graph;
 
@@ -97,6 +97,11 @@ struct Rr_CachedRenderPass
     VkRenderPass Handle;
     uint32_t Hash;
 };
+
+/* #define RR_HIVE_TYPE      Rr_Event */
+/* #define RR_HIVE_TYPE_NAME Event */
+/* #define RR_HIVE_PREFIX    Rr_ */
+/* #include <Rr/Rr_Hive.h> */
 
 struct Rr_Renderer
 {
@@ -121,8 +126,8 @@ struct Rr_Renderer
     RR_ARRAY(VkFence) Fences;
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
-    size_t FrameNumber; /* Total frames rendered. */
     size_t FrameIndex;  /* Current frame-in-flight index. */
+    size_t FrameNumber; /* Total frames rendered. */
 
     RR_ARRAY(Rr_RenderPass) RenderPasses;
     RR_ARRAY(Rr_Framebuffer) Framebuffers;
@@ -131,7 +136,6 @@ struct Rr_Renderer
     Rr_ImmediateMode ImmediateMode;
 
     RR_ARRAY(Rr_PendingLoad) PendingLoadsArray;
-
     Rr_Map *GlobalSync;
 
     RR_FREE_LIST(Rr_Buffer) Buffers;
@@ -142,7 +146,8 @@ struct Rr_Renderer
     RR_FREE_LIST(Rr_Sampler) Samplers;
     RR_FREE_LIST(Rr_SyncState) SyncStates;
 
-    Rr_Arena *Arena;
+    Rr_Spinlock Lock;
+    Rr_Arena *tArena;
 };
 
 extern void Rr_InitRenderer(void);

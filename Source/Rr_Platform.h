@@ -24,4 +24,18 @@
 
 #include <Rr/Rr_Platform.h>
 
+/* NOTE: VMA (which is a C++ dependency) needs aligned allocation functions. */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern bool Rr_PollPlatformEvent(Rr_Event *Event);
+
+extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
+
+extern void Rr_AlignedFree(void *Ptr);
+
+#ifdef __cplusplus
+}
+#endif

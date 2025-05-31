@@ -31,8 +31,13 @@
 
 Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags)
 {
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     Rr_Buffer *Buffer =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->Buffers, gRenderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->Buffers, gRenderer->tArena);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     Buffer->Flags = Flags;
 
     Buffer->Usage = 0;
@@ -137,7 +142,11 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
             AllocatedBuffer->Allocation);
     }
 
+    Rr_LockSpinlock(&gRenderer->Lock);
+
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->Buffers, Buffer);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)

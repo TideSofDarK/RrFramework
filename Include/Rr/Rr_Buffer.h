@@ -31,7 +31,6 @@ extern "C" {
 #endif
 
 typedef struct Rr_Buffer Rr_Buffer;
-typedef struct Rr_StagingBuffer Rr_StagingBuffer;
 
 typedef enum
 {
