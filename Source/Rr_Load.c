@@ -275,7 +275,7 @@ static Rr_LoadResult Rr_ProcessLoadContext(
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_PendingLoad *PendingLoad =
-        RR_PUSH_INTO_ARRAY(&gRenderer->PendingLoadsArray, gRenderer->tArena);
+        RR_PUSH_INTO_ARRAY(&gRenderer->PendingLoadsArray, gRenderer->Arena);
     *PendingLoad = (Rr_PendingLoad){
         .LoadingCallback = LoadContext->LoadingCallback,
         .UserData = LoadContext->UserData,

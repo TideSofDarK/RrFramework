@@ -41,7 +41,7 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_Sampler *Sampler =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->Samplers, gRenderer->tArena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->Samplers, gRenderer->Arena);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -234,10 +234,7 @@ void Rr_UploadImage2D(
 
     Rr_AllocatedBuffer *AllocatedStagingBuffer =
         StagingBuffer->AllocatedBuffers;
-    memcpy(
-        AllocatedStagingBuffer->AllocationInfo.pMappedData,
-        Data.Pointer,
-        Data.Size);
+    memcpy(AllocatedStagingBuffer->MappedData, Data.Pointer, Data.Size);
 
     Rr_UploadStagingImage2D(
         UploadContext,
@@ -250,7 +247,7 @@ void Rr_UploadImage2D(
         0);
 }
 
-static Rr_ImageContainer *Rr_CreateImageContainer(
+static Rr_Image *Rr_CreateImage(
     Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags,
@@ -261,8 +258,9 @@ static Rr_ImageContainer *Rr_CreateImageContainer(
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_ImageContainer *Image =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->Images, gRenderer->tArena);
+    Rr_ImageHiveIterator It =
+        Rr_PushImageIntoHive(&gRenderer->ImageHive, gRenderer->Arena);
+    Rr_Image *Image = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -368,7 +366,7 @@ static Rr_ImageContainer *Rr_CreateImageContainer(
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
+    for (uint32_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
         Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + Index;
         AllocatedImage->Container = Image;
@@ -403,10 +401,10 @@ static Rr_ImageContainer *Rr_CreateImageContainer(
             &AllocatedImage->View);
     }
 
-    return (Rr_ImageContainer *)Image;
+    return (Rr_Image *)Image;
 }
 
-void Rr_DestroyImageContainer(Rr_ImageContainer *Image)
+void Rr_DestroyImage(Rr_Image *Image)
 {
     if (Image == NULL)
     {
@@ -415,7 +413,7 @@ void Rr_DestroyImageContainer(Rr_ImageContainer *Image)
 
     Rr_Device *Device = &gRenderer->Device;
 
-    for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
+    for (uint32_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
         Device->DestroyImageView(
             Device->Handle,
@@ -429,7 +427,9 @@ void Rr_DestroyImageContainer(Rr_ImageContainer *Image)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    RR_RETURN_FREE_LIST_ITEM(&gRenderer->Images, Image);
+    Rr_ImageHiveIterator It =
+        Rr_GetImageHiveIterator(&gRenderer->ImageHive, Image);
+    Rr_RemoveFromImageHive(&gRenderer->ImageHive, &It);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -442,7 +442,7 @@ Rr_Image2D *Rr_CreateImage2D(
     assert(Extent.Width >= 1);
     assert(Extent.Height >= 1);
 
-    return (Rr_Image2D *)Rr_CreateImageContainer(
+    return (Rr_Image2D *)Rr_CreateImage(
         (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
         Format,
         Flags,
@@ -452,7 +452,7 @@ Rr_Image2D *Rr_CreateImage2D(
 
 void Rr_DestroyImage2D(Rr_Image2D *Image)
 {
-    Rr_DestroyImageContainer((Rr_ImageContainer *)Image);
+    Rr_DestroyImage((Rr_Image *)Image);
 }
 
 Rr_Image3D *Rr_CreateImage3D(
@@ -464,12 +464,12 @@ Rr_Image3D *Rr_CreateImage3D(
     assert(Extent.Height >= 1);
     assert(Extent.Depth >= 1);
 
-    return (Rr_Image3D *)Rr_CreateImageContainer(Extent, Format, Flags, 1, 0);
+    return (Rr_Image3D *)Rr_CreateImage(Extent, Format, Flags, 1, 0);
 }
 
 void Rr_DestroyImage3D(Rr_Image3D *Image)
 {
-    Rr_DestroyImageContainer((Rr_ImageContainer *)Image);
+    Rr_DestroyImage((Rr_Image *)Image);
 }
 
 Rr_ImageCube *Rr_CreateImageCube(
@@ -480,7 +480,7 @@ Rr_ImageCube *Rr_CreateImageCube(
     assert(Extent.Width >= 1);
     assert(Extent.Height >= 1);
 
-    return (Rr_ImageCube *)Rr_CreateImageContainer(
+    return (Rr_ImageCube *)Rr_CreateImage(
         (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
         Format,
         Flags,
@@ -490,7 +490,7 @@ Rr_ImageCube *Rr_CreateImageCube(
 
 void Rr_DestroyCubemap(Rr_ImageCube *Cubemap)
 {
-    Rr_DestroyImageContainer((Rr_ImageContainer *)Cubemap);
+    Rr_DestroyImage((Rr_Image *)Cubemap);
 }
 
 /* Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image) */
@@ -604,9 +604,9 @@ Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     return ColorImage;
 }
 
-Rr_AllocatedImage *Rr_GetCurrentImage(Rr_ImageContainer *Image)
+Rr_AllocatedImage *Rr_GetCurrentImage(Rr_Image *Image)
 {
-    size_t AllocatedImageIndex =
+    uint32_t AllocatedImageIndex =
         gRenderer->FrameIndex % Image->AllocatedImageCount;
     return &Image->AllocatedImages[AllocatedImageIndex];
 }

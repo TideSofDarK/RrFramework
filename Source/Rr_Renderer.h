@@ -27,6 +27,7 @@
 #include <Rr/Rr_Renderer.h>
 
 #include "Rr_Graph.h"
+#include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Load.h"
 #include "Rr_Pipeline.h"
@@ -98,10 +99,15 @@ struct Rr_CachedRenderPass
     uint32_t Hash;
 };
 
-/* #define RR_HIVE_TYPE      Rr_Event */
-/* #define RR_HIVE_TYPE_NAME Event */
-/* #define RR_HIVE_PREFIX    Rr_ */
-/* #include <Rr/Rr_Hive.h> */
+#define RR_HIVE_TYPE      Rr_Buffer
+#define RR_HIVE_TYPE_NAME Buffer
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+#define RR_HIVE_TYPE      Rr_Image
+#define RR_HIVE_TYPE_NAME Image
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
 
 struct Rr_Renderer
 {
@@ -138,8 +144,8 @@ struct Rr_Renderer
     RR_ARRAY(Rr_PendingLoad) PendingLoadsArray;
     Rr_Map *GlobalSync;
 
-    RR_FREE_LIST(Rr_Buffer) Buffers;
-    RR_FREE_LIST(Rr_ImageContainer) Images;
+    Rr_BufferHive BufferHive;
+    Rr_ImageHive ImageHive;
     RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
     RR_FREE_LIST(Rr_ComputePipeline) ComputePipelines;
     RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;
@@ -147,7 +153,7 @@ struct Rr_Renderer
     RR_FREE_LIST(Rr_SyncState) SyncStates;
 
     Rr_Spinlock Lock;
-    Rr_Arena *tArena;
+    Rr_Arena *Arena;
 };
 
 extern void Rr_InitRenderer(void);

@@ -36,6 +36,7 @@
 struct Rr_Sampler
 {
     VkSampler Handle;
+    Rr_AtomicInt RefCount;
 };
 
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
@@ -44,22 +45,23 @@ struct Rr_AllocatedImage
     VkImage Handle;
     VkImageView View;
     VmaAllocation Allocation;
-    struct Rr_ImageContainer *Container;
+    struct Rr_Image *Container;
 };
 
-#define RR_DEFINE_IMAGE_STRUCT(Name)                             \
-    struct Name                                                  \
-    {                                                            \
-        VkExtent3D Extent;                                       \
-        VkImageAspectFlags AspectFlags;                          \
-        VkFormat Format;                                         \
-        Rr_ImageFlags Flags;                                     \
-        size_t AllocatedImageCount;                              \
-        Rr_AllocatedImage AllocatedImages[RR_MAX_FRAME_OVERLAP]; \
+#define RR_DEFINE_IMAGE_STRUCT(Name)                         \
+    struct Name                                              \
+    {                                                        \
+        VkExtent3D Extent;                                   \
+        VkImageAspectFlags AspectFlags;                      \
+        VkFormat Format;                                     \
+        Rr_ImageFlags Flags;                                 \
+        uint32_t AllocatedImageCount;                        \
+        Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP]; \
+        Rr_AtomicInt RefCount;                               \
     }
 
-typedef struct Rr_ImageContainer Rr_ImageContainer;
-RR_DEFINE_IMAGE_STRUCT(Rr_ImageContainer);
+typedef struct Rr_Image Rr_Image;
+RR_DEFINE_IMAGE_STRUCT(Rr_Image);
 RR_DEFINE_IMAGE_STRUCT(Rr_Image2D);
 RR_DEFINE_IMAGE_STRUCT(Rr_Image2DArray);
 RR_DEFINE_IMAGE_STRUCT(Rr_Image3D);
@@ -102,4 +104,4 @@ extern size_t Rr_GetImagePNGRGBA8Size(
     char *Data,
     Rr_Arena *Arena);
 
-extern Rr_AllocatedImage *Rr_GetCurrentImage(Rr_ImageContainer *Container);
+extern Rr_AllocatedImage *Rr_GetCurrentImage(Rr_Image *Image);

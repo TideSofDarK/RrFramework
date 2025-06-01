@@ -79,7 +79,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_PipelineLayout *PipelineLayout =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, gRenderer->tArena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, gRenderer->Arena);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -186,7 +186,7 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_ComputePipeline *Pipeline =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->ComputePipelines, gRenderer->tArena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->ComputePipelines, gRenderer->Arena);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -266,7 +266,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_GraphicsPipeline *Pipeline =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->GraphicsPipelines, gRenderer->tArena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->GraphicsPipelines, gRenderer->Arena);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -626,12 +626,12 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_DescriptorSetLayout *DescriptorSetLayout =
-        RR_PUSH_INTO_ARRAY(&gRenderer->DescriptorSetLayouts, gRenderer->tArena);
+        RR_PUSH_INTO_ARRAY(&gRenderer->DescriptorSetLayouts, gRenderer->Arena);
 
     DescriptorSetLayout->Hash = Hash;
     DescriptorSetLayout->Set = *Set;
     RR_ALLOC_COPY(
-        gRenderer->tArena,
+        gRenderer->Arena,
         DescriptorSetLayout->Set.Bindings,
         Set->Bindings,
         sizeof(Rr_PipelineBinding) * Set->BindingCount);

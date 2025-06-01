@@ -33,16 +33,17 @@ typedef struct Rr_AllocatedBuffer Rr_AllocatedBuffer;
 struct Rr_AllocatedBuffer
 {
     VkBuffer Handle;
-    VmaAllocationInfo AllocationInfo;
     VmaAllocation Allocation;
+    void *MappedData;
 };
 
 struct Rr_Buffer
 {
     Rr_BufferFlags Flags;
     VkBufferUsageFlags Usage;
-    size_t AllocatedBufferCount;
-    Rr_AllocatedBuffer AllocatedBuffers[RR_MAX_FRAME_OVERLAP];
+    uint32_t AllocatedBufferCount;
+    Rr_AllocatedBuffer AllocatedBuffers[RR_FRAME_OVERLAP];
+    Rr_AtomicInt RefCount;
 };
 
 extern void Rr_UploadStagingBuffer(

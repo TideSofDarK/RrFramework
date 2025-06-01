@@ -321,7 +321,7 @@ static bool Rr_InitSwapchain(void)
         RR_RESERVE_ARRAY(
             &gRenderer->SwapchainImages,
             ImageCount,
-            gRenderer->tArena);
+            gRenderer->Arena);
 
         Rr_UnlockSpinlock(&gRenderer->Lock);
     }
@@ -580,7 +580,7 @@ void Rr_InitRenderer(void)
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     gRenderer = RR_ALLOC_TYPE(Arena, Rr_Renderer);
-    gRenderer->tArena = Arena;
+    gRenderer->Arena = Arena;
 
     SDL_Window *Window = gApp->Window;
     gRenderer->Window = Window;
@@ -689,7 +689,7 @@ void Rr_CleanupRenderer(void)
 
     Instance->DestroyInstance(Instance->Handle, NULL);
 
-    Rr_DestroyArena(gRenderer->tArena);
+    Rr_DestroyArena(gRenderer->Arena);
 }
 
 VkCommandBuffer Rr_BeginImmediate(void)
@@ -791,7 +791,7 @@ void Rr_NewFrame(void)
     Frame->Graph->SwapchainImageResourceIndex =
         Rr_GetGraphImageHandle(
             Frame->Graph,
-            (Rr_ImageContainer *)Frame->VirtualSwapchainImage)
+            (Rr_Image *)Frame->VirtualSwapchainImage)
             ->Values.Index;
 
     Rr_ProcessPendingLoads();
@@ -849,7 +849,7 @@ void Rr_DrawFrame(void)
         .AllocatedImages[0] = {
             .View = gRenderer->SwapchainImages.Data[SwapchainImageIndex].View,
             .Handle = SwapchainImageHandle,
-            .Container = (Rr_ImageContainer *)Frame->VirtualSwapchainImage,
+            .Container = (Rr_Image *)Frame->VirtualSwapchainImage,
         },
     };
 
@@ -1173,7 +1173,7 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    *RR_PUSH_INTO_ARRAY(&gRenderer->RenderPasses, gRenderer->tArena) =
+    *RR_PUSH_INTO_ARRAY(&gRenderer->RenderPasses, gRenderer->Arena) =
         (Rr_RenderPass){
             .Handle = RenderPass,
             .Hash = Hash,
@@ -1240,7 +1240,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Framebuffers, gRenderer->tArena) =
+    *RR_PUSH_INTO_ARRAY(&gRenderer->Framebuffers, gRenderer->Arena) =
         (Rr_Framebuffer){
             .Handle = Framebuffer,
             .Hash = Hash,
@@ -1258,7 +1258,7 @@ Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key)
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_SyncState **SyncStateRef =
-        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->tArena);
+        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->Arena);
 
     if (*SyncStateRef != NULL)
     {
@@ -1267,7 +1267,7 @@ Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key)
     }
 
     *SyncStateRef =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->SyncStates, gRenderer->tArena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->SyncStates, gRenderer->Arena);
     Rr_SyncState *SyncState = *SyncStateRef;
     RR_ZERO_PTR(SyncState);
 
@@ -1281,7 +1281,7 @@ void Rr_ReturnSyncState(Rr_MapKey Key)
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_SyncState **SyncStateRef =
-        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->tArena);
+        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->Arena);
 
     if (*SyncStateRef != NULL)
     {
@@ -1328,7 +1328,7 @@ void Rr_ReturnVulkanSemaphore(VkSemaphore Semaphore)
 {
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Semaphores, gRenderer->tArena) = Semaphore;
+    *RR_PUSH_INTO_ARRAY(&gRenderer->Semaphores, gRenderer->Arena) = Semaphore;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -1369,7 +1369,7 @@ void Rr_ReturnVulkanFence(VkFence Fence)
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_Device *Device = &gRenderer->Device;
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Fences, gRenderer->tArena) = Fence;
+    *RR_PUSH_INTO_ARRAY(&gRenderer->Fences, gRenderer->Arena) = Fence;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 

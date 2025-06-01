@@ -44,12 +44,14 @@ struct Rr_PipelineLayout
     VkPipelineLayout Handle;
     size_t SetLayoutCount;
     Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
+    Rr_AtomicInt RefCount;
 };
 
 struct Rr_ComputePipeline
 {
     VkPipeline Handle;
     Rr_PipelineLayout *Layout;
+    Rr_AtomicInt RefCount;
 };
 
 struct Rr_GraphicsPipeline
@@ -58,6 +60,7 @@ struct Rr_GraphicsPipeline
     Rr_PipelineLayout *Layout;
     uint32_t ColorAttachmentCount;
     bool HasDepthStencil;
+    Rr_AtomicInt RefCount;
 };
 
 extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(

@@ -684,8 +684,8 @@ static void Rr_ExecuteCopyBufferToImageNode(
 {
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_AllocatedImage *Image = Rr_GetGraphImage(Graph, Node->Image);
-    Rr_ImageContainer *ImageContainer = Image->Container;
+    Rr_AllocatedImage *AllocatedImage = Rr_GetGraphImage(Graph, Node->Image);
+    Rr_Image *Image = AllocatedImage->Container;
 
     VkBuffer BufferHandle = Rr_GetGraphBuffer(Graph, Node->Buffer)->Handle;
 
@@ -695,15 +695,15 @@ static void Rr_ExecuteCopyBufferToImageNode(
         .bufferImageHeight = 0,
         .imageSubresource =
             (VkImageSubresourceLayers){
-                .aspectMask = ImageContainer->AspectFlags,
+                .aspectMask = Image->AspectFlags,
                 .mipLevel = Node->MipLevel,
                 .baseArrayLayer = Node->BaseLayer,
                 .layerCount = Node->LayerCount,
             },
         .imageExtent =
             (VkExtent3D){
-                ImageContainer->Extent.width,
-                ImageContainer->Extent.height,
+                Image->Extent.width,
+                Image->Extent.height,
                 1,
             },
     };
@@ -711,7 +711,7 @@ static void Rr_ExecuteCopyBufferToImageNode(
     Device->CmdCopyBufferToImage(
         CommandBuffer,
         BufferHandle,
-        Image->Handle,
+        AllocatedImage->Handle,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &BufferImageCopy);
@@ -724,18 +724,20 @@ static void Rr_ExecuteCopyImageNode(
 {
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_AllocatedImage *SrcImage = Rr_GetGraphImage(Graph, Node->SrcImage);
-    Rr_ImageContainer *SrcImageContainer = SrcImage->Container;
+    Rr_AllocatedImage *SrcAllocatedImage =
+        Rr_GetGraphImage(Graph, Node->SrcImage);
+    Rr_Image *SrcImage = SrcAllocatedImage->Container;
 
-    Rr_AllocatedImage *DstImage = Rr_GetGraphImage(Graph, Node->DstImage);
-    Rr_ImageContainer *DstImageContainer = DstImage->Container;
+    Rr_AllocatedImage *DstAllocatedImage =
+        Rr_GetGraphImage(Graph, Node->DstImage);
+    Rr_Image *DstImage = DstAllocatedImage->Container;
 
-    assert(SrcImageContainer->AspectFlags == DstImageContainer->AspectFlags);
+    assert(SrcImage->AspectFlags == DstImage->AspectFlags);
 
     VkImageCopy ImageCopy = {
         .srcSubresource =
             (VkImageSubresourceLayers){
-                .aspectMask = SrcImageContainer->AspectFlags,
+                .aspectMask = SrcImage->AspectFlags,
                 .mipLevel = Node->MipLevel,
                 .baseArrayLayer = Node->BaseLayer,
                 .layerCount = Node->LayerCount,
@@ -745,7 +747,7 @@ static void Rr_ExecuteCopyImageNode(
                        Node->SrcOffset.Z },
         .dstSubresource =
             (VkImageSubresourceLayers){
-                .aspectMask = DstImageContainer->AspectFlags,
+                .aspectMask = DstImage->AspectFlags,
                 .mipLevel = Node->MipLevel,
                 .baseArrayLayer = Node->BaseLayer,
                 .layerCount = Node->LayerCount,
@@ -758,9 +760,9 @@ static void Rr_ExecuteCopyImageNode(
 
     Device->CmdCopyImage(
         CommandBuffer,
-        SrcImage->Handle,
+        SrcAllocatedImage->Handle,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        DstImage->Handle,
+        DstAllocatedImage->Handle,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &ImageCopy);
@@ -1753,9 +1755,8 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     }
     if (DepthTarget != NULL)
     {
-        Rr_GraphImage *DepthImageHandle = Rr_GetGraphImageHandle(
-            Frame->Graph,
-            (Rr_ImageContainer *)DepthImage);
+        Rr_GraphImage *DepthImageHandle =
+            Rr_GetGraphImageHandle(Frame->Graph, (Rr_Image *)DepthImage);
 
         GraphicsNode->DepthTarget = RR_ALLOC_TYPE(Frame->Arena, Rr_DepthTarget);
         *GraphicsNode->DepthTarget = *DepthTarget;
@@ -1820,7 +1821,7 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
-    Rr_ImageContainer *Image,
+    Rr_Image *Image,
     uint32_t BaseLayer,
     uint32_t LayerCount,
     uint32_t MipLevel)
@@ -1879,7 +1880,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
         Name,
         Buffer,
         BufferOffset,
-        (Rr_ImageContainer *)Image,
+        (Rr_Image *)Image,
         0,
         1,
         MipLevel);
@@ -1903,7 +1904,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
         Name,
         Buffer,
         BufferOffset,
-        (Rr_ImageContainer *)ImageCube,
+        (Rr_Image *)ImageCube,
         (uint32_t)Face,
         1,
         MipLevel);
@@ -1931,7 +1932,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
         Name,
         Buffer,
         BufferOffset,
-        (Rr_ImageContainer *)ImageCube,
+        (Rr_Image *)ImageCube,
         (uint32_t)FirstFace,
         1 + ((uint32_t)LastFace - (uint32_t)FirstFace),
         MipLevel);
@@ -1940,9 +1941,9 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
 static inline Rr_GraphNode *Rr_AddCopyImageNode(
     Rr_Graph *Graph,
     const char *Name,
-    Rr_ImageContainer *SrcImage,
+    Rr_Image *SrcImage,
     Rr_IntVec3 SrcOffset,
-    Rr_ImageContainer *DstImage,
+    Rr_Image *DstImage,
     Rr_IntVec3 DstOffset,
     Rr_IntVec3 Extent,
     uint32_t BaseLayer,
@@ -2010,9 +2011,9 @@ Rr_GraphNode *Rr_AddCopyImage2DNode(
     return Rr_AddCopyImageNode(
         Graph,
         Name,
-        (Rr_ImageContainer *)SrcImage,
+        (Rr_Image *)SrcImage,
         (Rr_IntVec3){ SrcOffset.X, SrcOffset.Y, 0 },
-        (Rr_ImageContainer *)DstImage,
+        (Rr_Image *)DstImage,
         (Rr_IntVec3){ DstOffset.X, DstOffset.Y, 0 },
         (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
         0,
