@@ -26,7 +26,6 @@
 
 #include <Rr/Rr_Graph.h>
 
-#include "Rr_Image.h"
 #include "Rr_Vulkan.h"
 
 struct Rr_Frame;

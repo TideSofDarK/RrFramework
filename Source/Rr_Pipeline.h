@@ -47,12 +47,16 @@ struct Rr_PipelineLayout
     Rr_AtomicInt RefCount;
 };
 
+extern void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout);
+
 struct Rr_ComputePipeline
 {
     VkPipeline Handle;
     Rr_PipelineLayout *Layout;
     Rr_AtomicInt RefCount;
 };
+
+extern void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
 struct Rr_GraphicsPipeline
 {
@@ -62,6 +66,8 @@ struct Rr_GraphicsPipeline
     bool HasDepthStencil;
     Rr_AtomicInt RefCount;
 };
+
+extern void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
 
 extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
     Rr_PipelineBindingSet *Set);

@@ -405,13 +405,13 @@ struct SSkybox
 
     ~SSkybox()
     {
-        Rr_DestroyGraphicsPipeline(GraphicsPipeline);
-        Rr_DestroyPipelineLayout(PipelineLayout);
-        Rr_DestroyBuffer(UniformBuffer);
-        Rr_DestroyBuffer(StagingBuffer);
-        Rr_DestroySampler(Sampler);
-        Rr_DestroyCubemap(SkyboxImage);
-        Rr_DestroyGLTFContext(GLTFContext);
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleaseBuffer(StagingBuffer);
+        Rr_ReleaseSampler(Sampler);
+        Rr_ReleaseImageCube(SkyboxImage);
+        Rr_ReleaseGLTFContext(GLTFContext);
     }
 };
 

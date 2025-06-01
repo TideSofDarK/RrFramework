@@ -33,6 +33,28 @@
 #include "Rr_Pipeline.h"
 #include "Rr_Vulkan.h"
 
+typedef enum
+{
+    RR_RENDERER_OBJECT_BUFFER,
+    RR_RENDERER_OBJECT_IMAGE,
+    RR_RENDERER_OBJECT_PIPELINE_LAYOUT,
+    RR_RENDERER_OBJECT_COMPUTE_PIPELINE,
+    RR_RENDERER_OBJECT_GRAPHICS_PIPELINE,
+    RR_RENDERER_OBJECT_SAMPLER,
+} Rr_RendererObjectType;
+
+typedef struct Rr_RendererObject Rr_RendererObject;
+struct Rr_RendererObject
+{
+    void *Ptr;
+    Rr_RendererObjectType Type;
+};
+
+#define RR_HIVE_TYPE      Rr_RendererObject
+#define RR_HIVE_TYPE_NAME RendererObject
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
 typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
 {
@@ -171,6 +193,9 @@ struct Rr_Renderer
     Rr_GraphicsPipelineHive GraphicsPipelineHive;
     Rr_SamplerHive SamplerHive;
     RR_FREE_LIST(Rr_SyncState) SyncStates;
+
+    Rr_Spinlock ReleasedObjectsLock;
+    Rr_RendererObjectHive ReleasedObjects;
 
     Rr_Spinlock Lock;
     Rr_Arena *Arena;

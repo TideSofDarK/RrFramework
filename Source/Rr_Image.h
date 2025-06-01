@@ -39,6 +39,8 @@ struct Rr_Sampler
     Rr_AtomicInt RefCount;
 };
 
+extern void Rr_DestroySampler(Rr_Sampler *Sampler);
+
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
 struct Rr_AllocatedImage
 {
@@ -69,6 +71,8 @@ RR_DEFINE_IMAGE_STRUCT(Rr_Image3DArray);
 RR_DEFINE_IMAGE_STRUCT(Rr_ImageCube);
 
 #undef RR_DEFINE_IMAGE_TYPE
+
+extern void Rr_DestroyImage(Rr_Image *Image);
 
 extern void Rr_UploadStagingImage2D(
     Rr_UploadContext *UploadContext,

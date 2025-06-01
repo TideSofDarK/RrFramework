@@ -614,12 +614,101 @@ void Rr_WaitIdle(void)
     Device->DeviceWaitIdle(Device->Handle);
 }
 
+static inline void Rr_ProcessReleasedObjects(void)
+{
+    static const char *Names[] = {
+        "buffer",
+        "image",
+        "pipeline layout",
+        "compute pipeline",
+        "graphics pipeline",
+        "sampler",
+    };
+
+    for (Rr_RendererObjectHiveIterator It = gRenderer->ReleasedObjects.Begin;
+         It.Element != gRenderer->ReleasedObjects.End.Element;)
+    {
+        Rr_RendererObject Object = *It.Element;
+        switch (Object.Type)
+        {
+            case RR_RENDERER_OBJECT_BUFFER:
+            {
+                Rr_Buffer *Buffer = Object.Ptr;
+                if (Rr_GetAtomicInt(&Buffer->RefCount) == 0)
+                {
+                    Rr_DestroyBuffer(Buffer);
+                    goto ObjectDeleted;
+                }
+            }
+            break;
+            case RR_RENDERER_OBJECT_IMAGE:
+            {
+                Rr_Image *Image = Object.Ptr;
+                if (Rr_GetAtomicInt(&Image->RefCount) == 0)
+                {
+                    Rr_DestroyImage(Image);
+                    goto ObjectDeleted;
+                }
+            }
+            break;
+            case RR_RENDERER_OBJECT_PIPELINE_LAYOUT:
+            {
+                Rr_PipelineLayout *PipelineLayout = Object.Ptr;
+                if (Rr_GetAtomicInt(&PipelineLayout->RefCount) == 0)
+                {
+                    Rr_DestroyPipelineLayout(PipelineLayout);
+                    goto ObjectDeleted;
+                }
+            }
+            break;
+            case RR_RENDERER_OBJECT_COMPUTE_PIPELINE:
+            {
+                Rr_ComputePipeline *ComputePipeline = Object.Ptr;
+                if (Rr_GetAtomicInt(&ComputePipeline->RefCount) == 0)
+                {
+                    Rr_DestroyComputePipeline(ComputePipeline);
+                    goto ObjectDeleted;
+                }
+            }
+            break;
+            case RR_RENDERER_OBJECT_GRAPHICS_PIPELINE:
+            {
+                Rr_GraphicsPipeline *GraphicsPipeline = Object.Ptr;
+                if (Rr_GetAtomicInt(&GraphicsPipeline->RefCount) == 0)
+                {
+                    Rr_DestroyGraphicsPipeline(GraphicsPipeline);
+                    goto ObjectDeleted;
+                }
+            }
+            break;
+            case RR_RENDERER_OBJECT_SAMPLER:
+            {
+                Rr_Sampler *Sampler = Object.Ptr;
+                if (Rr_GetAtomicInt(&Sampler->RefCount) == 0)
+                {
+                    Rr_DestroySampler(Sampler);
+                    goto ObjectDeleted;
+                }
+            }
+            break;
+            default:
+                RR_ABORT("Invalid renderer object type in deletion queue!");
+        }
+        Rr_AdvanceRendererObjectHiveIterator(&It);
+    ObjectDeleted:
+        RR_LOG("Destroying %s with address %p", Names[Object.Type], Object.Ptr);
+        Rr_RemoveFromRendererObjectHive(&gRenderer->ReleasedObjects, &It);
+    }
+}
+
 void Rr_CleanupRenderer(void)
 {
     Rr_Instance *Instance = &gRenderer->Instance;
     Rr_Device *Device = &gRenderer->Device;
 
     Rr_WaitIdle();
+
+    Rr_ProcessReleasedObjects();
 
     for (size_t Index = 0; Index < gRenderer->RenderPasses.Count; ++Index)
     {
@@ -690,6 +779,8 @@ void Rr_CleanupRenderer(void)
     Instance->DestroyInstance(Instance->Handle, NULL);
 
     Rr_DestroyArena(gRenderer->Arena);
+
+    gRenderer = NULL;
 }
 
 VkCommandBuffer Rr_BeginImmediate(void)
@@ -770,6 +861,8 @@ void Rr_NewFrame(void)
 
         Rr_ResetDescriptorAllocator(Frame->DescriptorAllocator, Device);
     }
+
+    Rr_ProcessReleasedObjects();
 
     /* TODO: Decrement atomic refcounts on used resources. */
 

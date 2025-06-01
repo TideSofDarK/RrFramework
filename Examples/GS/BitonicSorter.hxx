@@ -77,10 +77,10 @@ struct SSortList
 
     ~SSortList()
     {
-        Rr_DestroyComputePipeline(Pipeline);
-        Rr_DestroyPipelineLayout(Layout);
-        Rr_DestroyBuffer(UniformBuffer);
-        Rr_DestroyBuffer(IndirectBuffer);
+        Rr_ReleaseComputePipeline(Pipeline);
+        Rr_ReleasePipelineLayout(Layout);
+        Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleaseBuffer(IndirectBuffer);
     }
 
     void Generate(
@@ -249,9 +249,9 @@ struct SBitonicSorter
 
     ~SBitonicSorter()
     {
-        Rr_DestroyComputePipeline(Pipeline);
-        Rr_DestroyPipelineLayout(Layout);
-        Rr_DestroyBuffer(UniformBuffer);
+        Rr_ReleaseComputePipeline(Pipeline);
+        Rr_ReleasePipelineLayout(Layout);
+        Rr_ReleaseBuffer(UniformBuffer);
     }
 
     void Sort(

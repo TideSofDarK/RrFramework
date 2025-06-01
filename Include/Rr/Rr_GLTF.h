@@ -141,7 +141,7 @@ extern Rr_GLTFContext *Rr_CreateGLTFContext(
     size_t GLTFTextureMappingCount,
     Rr_GLTFTextureMapping *GLTFTextureMappings);
 
-extern void Rr_DestroyGLTFContext(Rr_GLTFContext *GLTFContext);
+extern void Rr_ReleaseGLTFContext(Rr_GLTFContext *GLTFContext);
 
 #ifdef __cplusplus
 }

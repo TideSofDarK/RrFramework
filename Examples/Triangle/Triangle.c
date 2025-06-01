@@ -91,10 +91,10 @@ static void Iterate(void *UserData)
 
 static void Cleanup(void *UserData)
 {
-    Rr_DestroyBuffer(VertexBuffer);
-    Rr_DestroyBuffer(IndexBuffer);
-    Rr_DestroyGraphicsPipeline(GraphicsPipeline);
-    Rr_DestroyPipelineLayout(PipelineLayout);
+    Rr_ReleaseBuffer(VertexBuffer);
+    Rr_ReleaseBuffer(IndexBuffer);
+    Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+    Rr_ReleasePipelineLayout(PipelineLayout);
 }
 
 int main(int ArgC, char **ArgV)

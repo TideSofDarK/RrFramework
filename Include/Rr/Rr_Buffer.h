@@ -49,7 +49,7 @@ typedef uint32_t Rr_BufferFlags;
 
 extern Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags);
 
-extern void Rr_DestroyBuffer(Rr_Buffer *Buffer);
+extern void Rr_ReleaseBuffer(Rr_Buffer *Buffer);
 
 extern void *Rr_GetMappedBufferData(Rr_Buffer *Buffer);
 

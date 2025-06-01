@@ -991,11 +991,11 @@ static void Iterate(void *UserData)
 
 static void Cleanup(void *UserData)
 {
-    Rr_DestroyBuffer(UniformBuffer);
-    Rr_DestroyBuffer(StorageBuffer);
-    Rr_DestroyBuffer(StagingBuffer);
-    Rr_DestroyGraphicsPipeline(Pipeline);
-    Rr_DestroyPipelineLayout(Layout);
+    Rr_ReleaseBuffer(UniformBuffer);
+    Rr_ReleaseBuffer(StorageBuffer);
+    Rr_ReleaseBuffer(StagingBuffer);
+    Rr_ReleaseGraphicsPipeline(Pipeline);
+    Rr_ReleasePipelineLayout(Layout);
 }
 
 int main()

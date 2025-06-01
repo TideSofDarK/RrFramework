@@ -321,7 +321,7 @@ Rr_UIFont *Rr_UICreateFont(
 
 void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
 {
-    Rr_DestroyImage2D(Font->Atlas);
+    Rr_ReleaseImage2D(Font->Atlas);
 
     RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
 }
@@ -3881,7 +3881,7 @@ bool Rr_UIWantKeyboardCapture(void)
     return false;
 }
 
-void Rr_UIInit(void)
+void Rr_InitUI(void)
 {
     assert(gUIContext == NULL);
 
@@ -4014,7 +4014,7 @@ void Rr_UIInit(void)
         RR_BUILTIN_SOURCESERIF4_JSON);
 }
 
-void Rr_UICleanup(void)
+void Rr_CleanupUI(void)
 {
     assert(gUIContext != NULL);
 
@@ -4026,9 +4026,11 @@ void Rr_UICleanup(void)
     Rr_DestroyGraphicsPipeline(gUIContext->GraphicsPipeline);
     Rr_UIDestroyFont(gUIContext, gUIContext->Font);
     Rr_DestroyArena(gUIContext->Arena);
+
+    gUIContext = NULL;
 }
 
-void Rr_UIProcessEvent(Rr_Event *Event)
+void Rr_ProcessUIEvent(Rr_Event *Event)
 {
     if (gUIContext == NULL)
     {
@@ -4134,7 +4136,7 @@ static inline void Rr_UIConsumeNextFontSize(void)
     }
 }
 
-void Rr_UINewFrame(void)
+void Rr_NewUIFrame(void)
 {
     gUIContext->FrameArena = Rr_GetFrameArena();
 
@@ -4147,7 +4149,7 @@ void Rr_UINewFrame(void)
     gUIContext->ScreenSize.Height = (float)SwapchainSize.Height;
 }
 
-void Rr_UIBegin(void)
+void Rr_BeginUI(void)
 {
     Rr_UIConsumeNextFontSize();
 
@@ -4260,7 +4262,7 @@ static inline void Rr_UIDrawWindow(
     }
 }
 
-void Rr_UIEnd(void)
+void Rr_EndUI(void)
 {
     Rr_UIAssertNoWindow();
 
@@ -4462,6 +4464,30 @@ void Rr_UIDebugOverlay(void)
         if (Rr_UITab("Renderer"))
         {
             Rr_UILabelF("Frame: %zu", gRenderer->FrameNumber);
+            Rr_UILabelF(
+                "Images: %zu/%zu",
+                gRenderer->ImageHive.Count,
+                gRenderer->ImageHive.Capacity);
+            Rr_UILabelF(
+                "Buffers: %zu/%zu",
+                gRenderer->BufferHive.Count,
+                gRenderer->BufferHive.Capacity);
+            Rr_UILabelF(
+                "PipelineLayouts: %zu/%zu",
+                gRenderer->PipelineLayoutHive.Count,
+                gRenderer->PipelineLayoutHive.Capacity);
+            Rr_UILabelF(
+                "ComputePipelines: %zu/%zu",
+                gRenderer->ComputePipelineHive.Count,
+                gRenderer->ComputePipelineHive.Capacity);
+            Rr_UILabelF(
+                "GraphicsPipelines: %zu/%zu",
+                gRenderer->GraphicsPipelineHive.Count,
+                gRenderer->GraphicsPipelineHive.Capacity);
+            Rr_UILabelF(
+                "Samplers: %zu/%zu",
+                gRenderer->SamplerHive.Count,
+                gRenderer->SamplerHive.Capacity);
             Rr_UILabelF("RenderPasses: %zu", gRenderer->RenderPasses.Count);
             Rr_UILabelF("Framebuffers: %zu", gRenderer->Framebuffers.Count);
             Rr_UILabelF(

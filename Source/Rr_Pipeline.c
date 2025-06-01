@@ -119,6 +119,24 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     return PipelineLayout;
 }
 
+void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
+{
+    if (PipelineLayout == NULL)
+    {
+        return;
+    }
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
+        &gRenderer->ReleasedObjects,
+        gRenderer->Arena);
+    It.Element->Ptr = PipelineLayout;
+    It.Element->Type = RR_RENDERER_OBJECT_PIPELINE_LAYOUT;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+}
+
 void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
 {
     Rr_Device *Device = &gRenderer->Device;
@@ -248,6 +266,24 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
     Rr_DestroyScratch(Scratch);
 
     return Pipeline;
+}
+
+void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
+{
+    if (ComputePipeline == NULL)
+    {
+        return;
+    }
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
+        &gRenderer->ReleasedObjects,
+        gRenderer->Arena);
+    It.Element->Ptr = ComputePipeline;
+    It.Element->Type = RR_RENDERER_OBJECT_COMPUTE_PIPELINE;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
@@ -555,6 +591,24 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_DestroyScratch(Scratch);
 
     return Pipeline;
+}
+
+void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
+{
+    if (GraphicsPipeline == NULL)
+    {
+        return;
+    }
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
+        &gRenderer->ReleasedObjects,
+        gRenderer->Arena);
+    It.Element->Ptr = GraphicsPipeline;
+    It.Element->Type = RR_RENDERER_OBJECT_GRAPHICS_PIPELINE;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)

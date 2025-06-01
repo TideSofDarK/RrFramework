@@ -177,13 +177,13 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitRenderer();
 
-    Rr_UIInit();
+    Rr_InitUI();
 
     /* NOTE: Call these early so user-provided Init function may access Graph
      * and UI. */
 
     Rr_NewFrame();
-    Rr_UINewFrame();
+    Rr_NewUIFrame();
 
     Config->InitFunc(gApp->UserData);
 
@@ -193,7 +193,7 @@ void Rr_Run(Rr_AppConfig *Config)
     {
         for (Rr_Event Event; Rr_PollEvent(&Event);)
         {
-            Rr_UIProcessEvent(&Event);
+            Rr_ProcessUIEvent(&Event);
 
             switch (Event.Type)
             {
@@ -213,11 +213,11 @@ void Rr_Run(Rr_AppConfig *Config)
             }
         }
 
-        Rr_UIBegin();
+        Rr_BeginUI();
 
         gApp->Config->IterateFunc(gApp->UserData);
 
-        Rr_UIEnd();
+        Rr_EndUI();
 
         Rr_DrawFrame();
 
@@ -245,14 +245,14 @@ void Rr_Run(Rr_AppConfig *Config)
          * Currently the UI relies on it. */
 
         Rr_NewFrame();
-        Rr_UINewFrame();
+        Rr_NewUIFrame();
     }
 
     Rr_WaitIdle();
 
     gApp->Config->CleanupFunc(gApp->UserData);
 
-    Rr_UICleanup();
+    Rr_CleanupUI();
 
     Rr_CleanupRenderer();
 

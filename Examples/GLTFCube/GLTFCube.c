@@ -256,13 +256,13 @@ static void Iterate(void *UserData)
 static void Cleanup(void *UserData)
 {
     Rr_DestroyLoadThread(LoadThread);
-    Rr_DestroyGLTFContext(GLTFContext);
-    Rr_DestroyImage2D(DepthAttachment);
-    Rr_DestroyBuffer(StagingBuffer);
-    Rr_DestroyBuffer(UniformBuffer);
-    Rr_DestroyGraphicsPipeline(GraphicsPipeline);
-    Rr_DestroyPipelineLayout(PipelineLayout);
-    Rr_DestroySampler(NearestSampler);
+    Rr_ReleaseGLTFContext(GLTFContext);
+    Rr_ReleaseImage2D(DepthAttachment);
+    Rr_ReleaseBuffer(StagingBuffer);
+    Rr_ReleaseBuffer(UniformBuffer);
+    Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+    Rr_ReleasePipelineLayout(PipelineLayout);
+    Rr_ReleaseSampler(NearestSampler);
 }
 
 int main(int ArgC, char **ArgV)

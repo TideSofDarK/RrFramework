@@ -292,10 +292,10 @@ struct SSmoothGrid
 
     ~SSmoothGrid()
     {
-        Rr_DestroyGraphicsPipeline(GraphicsPipeline);
-        Rr_DestroyPipelineLayout(PipelineLayout);
-        Rr_DestroyBuffer(UniformBuffer);
-        Rr_DestroyImage2D(DepthImage);
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleaseImage2D(DepthImage);
     }
 };
 

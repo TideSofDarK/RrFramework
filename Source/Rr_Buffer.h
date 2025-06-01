@@ -46,6 +46,8 @@ struct Rr_Buffer
     Rr_AtomicInt RefCount;
 };
 
+extern void Rr_DestroyBuffer(Rr_Buffer *Buffer);
+
 extern void Rr_UploadStagingBuffer(
     Rr_UploadContext *UploadContext,
     Rr_Buffer *Buffer,

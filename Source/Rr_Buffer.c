@@ -33,7 +33,8 @@ Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags)
 {
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_BufferHiveIterator It = Rr_PushBufferIntoHive(&gRenderer->BufferHive, gRenderer->Arena);
+    Rr_BufferHiveIterator It =
+        Rr_PushBufferIntoHive(&gRenderer->BufferHive, gRenderer->Arena);
     Rr_Buffer *Buffer = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
@@ -131,6 +132,24 @@ Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags)
     }
 
     return Buffer;
+}
+
+void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
+{
+    if (Buffer == NULL)
+    {
+        return;
+    }
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
+        &gRenderer->ReleasedObjects,
+        gRenderer->Arena);
+    It.Element->Ptr = Buffer;
+    It.Element->Type = RR_RENDERER_OBJECT_BUFFER;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 void Rr_DestroyBuffer(Rr_Buffer *Buffer)

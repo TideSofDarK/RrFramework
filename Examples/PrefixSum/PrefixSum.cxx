@@ -139,12 +139,12 @@ static void Iterate(void *UserData)
 
 static void Cleanup(void *UserData)
 {
-    Rr_DestroyBuffer(InputBuffer);
-    Rr_DestroyBuffer(OutputBuffer);
-    Rr_DestroyBuffer(WorkgroupBuffer);
-    Rr_DestroyBuffer(UniformBuffer);
-    Rr_DestroyComputePipeline(Pipeline);
-    Rr_DestroyPipelineLayout(Layout);
+    Rr_ReleaseBuffer(InputBuffer);
+    Rr_ReleaseBuffer(OutputBuffer);
+    Rr_ReleaseBuffer(WorkgroupBuffer);
+    Rr_ReleaseBuffer(UniformBuffer);
+    Rr_ReleaseComputePipeline(Pipeline);
+    Rr_ReleasePipelineLayout(Layout);
 }
 
 int main()

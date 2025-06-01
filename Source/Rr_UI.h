@@ -28,14 +28,14 @@
 #include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_UI.h>
 
-extern void Rr_UIInit(void);
+extern void Rr_InitUI(void);
 
-extern void Rr_UICleanup(void);
+extern void Rr_CleanupUI(void);
 
-extern void Rr_UIProcessEvent(Rr_Event *Event);
+extern void Rr_ProcessUIEvent(Rr_Event *Event);
 
-extern void Rr_UINewFrame(void);
+extern void Rr_NewUIFrame(void);
 
-extern void Rr_UIBegin(void);
+extern void Rr_BeginUI(void);
 
-extern void Rr_UIEnd(void);
+extern void Rr_EndUI(void);

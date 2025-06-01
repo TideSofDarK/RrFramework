@@ -318,14 +318,14 @@ struct SPrerenderedDepth
 
     ~SPrerenderedDepth()
     {
-        Rr_DestroyGraphicsPipeline(GraphicsPipeline);
-        Rr_DestroyPipelineLayout(PipelineLayout);
-        Rr_DestroyBuffer(UniformBuffer);
-        Rr_DestroyBuffer(StagingBuffer);
-        Rr_DestroyImage2D(BackgroundColorImage);
-        Rr_DestroyImage2D(BackgroundDepthImage);
-        Rr_DestroyImage2D(ColorImage);
-        Rr_DestroyImage2D(DepthImage);
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleaseBuffer(StagingBuffer);
+        Rr_ReleaseImage2D(BackgroundColorImage);
+        Rr_ReleaseImage2D(BackgroundDepthImage);
+        Rr_ReleaseImage2D(ColorImage);
+        Rr_ReleaseImage2D(DepthImage);
     }
 };
 

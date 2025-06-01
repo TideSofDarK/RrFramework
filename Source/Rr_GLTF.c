@@ -27,6 +27,7 @@
 #include "Rr_Buffer.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
+#include "Rr_Renderer.h"
 #include "Rr_UploadContext.h"
 
 #include <stb/stb_image.h>
@@ -205,16 +206,16 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     return GLTFContext;
 }
 
-void Rr_DestroyGLTFContext(Rr_GLTFContext *GLTFContext)
+void Rr_ReleaseGLTFContext(Rr_GLTFContext *GLTFContext)
 {
     for (size_t Index = 0; Index < GLTFContext->Buffers.Count; ++Index)
     {
-        Rr_DestroyBuffer(GLTFContext->Buffers.Data[Index]);
+        Rr_ReleaseBuffer(GLTFContext->Buffers.Data[Index]);
     }
 
     for (size_t Index = 0; Index < GLTFContext->Images.Count; ++Index)
     {
-        Rr_DestroyImage2D(GLTFContext->Images.Data[Index]);
+        Rr_ReleaseImage2D(GLTFContext->Images.Data[Index]);
     }
 
     Rr_DestroyArena(GLTFContext->Arena);

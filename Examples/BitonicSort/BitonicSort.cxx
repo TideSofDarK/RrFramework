@@ -61,9 +61,9 @@ struct SValidator
 
     ~SValidator()
     {
-        Rr_DestroyComputePipeline(Pipeline);
-        Rr_DestroyPipelineLayout(Layout);
-        Rr_DestroyImage2D(ResultImage);
+        Rr_ReleaseComputePipeline(Pipeline);
+        Rr_ReleasePipelineLayout(Layout);
+        Rr_ReleaseImage2D(ResultImage);
     }
 
     Rr_Image2D *Validate(
@@ -157,9 +157,9 @@ struct SBitonicSorter
 
     ~SBitonicSorter()
     {
-        Rr_DestroyComputePipeline(Pipeline);
-        Rr_DestroyPipelineLayout(Layout);
-        Rr_DestroyBuffer(UniformBuffer);
+        Rr_ReleaseComputePipeline(Pipeline);
+        Rr_ReleasePipelineLayout(Layout);
+        Rr_ReleaseBuffer(UniformBuffer);
     }
 
     void Sort(uint32_t Count, Rr_Buffer *Buffer)
@@ -323,9 +323,9 @@ static void Cleanup(void *UserData)
     delete Sorter;
     delete Validator;
 
-    Rr_DestroyBuffer(RandomNumbersBuffer);
-    Rr_DestroyBuffer(SortedNumbersBuffer);
-    Rr_DestroyBuffer(StagingBuffer);
+    Rr_ReleaseBuffer(RandomNumbersBuffer);
+    Rr_ReleaseBuffer(SortedNumbersBuffer);
+    Rr_ReleaseBuffer(StagingBuffer);
 }
 
 int main()

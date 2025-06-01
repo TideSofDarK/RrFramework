@@ -71,6 +71,24 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
     return Sampler;
 }
 
+void Rr_ReleaseSampler(Rr_Sampler *Sampler)
+{
+    if (Sampler == NULL)
+    {
+        return;
+    }
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
+        &gRenderer->ReleasedObjects,
+        gRenderer->Arena);
+    It.Element->Ptr = Sampler;
+    It.Element->Type = RR_RENDERER_OBJECT_SAMPLER;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+}
+
 void Rr_DestroySampler(Rr_Sampler *Sampler)
 {
     assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
@@ -81,7 +99,8 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_SamplerHiveIterator It = Rr_GetSamplerHiveIterator(&gRenderer->SamplerHive, Sampler);
+    Rr_SamplerHiveIterator It =
+        Rr_GetSamplerHiveIterator(&gRenderer->SamplerHive, Sampler);
     Rr_RemoveFromSamplerHive(&gRenderer->SamplerHive, &It);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
@@ -406,6 +425,24 @@ static Rr_Image *Rr_CreateImage(
     return (Rr_Image *)Image;
 }
 
+static inline void Rr_ReleaseImage(Rr_Image *Image)
+{
+    if (Image == NULL)
+    {
+        return;
+    }
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
+        &gRenderer->ReleasedObjects,
+        gRenderer->Arena);
+    It.Element->Ptr = Image;
+    It.Element->Type = RR_RENDERER_OBJECT_IMAGE;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+}
+
 void Rr_DestroyImage(Rr_Image *Image)
 {
     if (Image == NULL)
@@ -452,9 +489,9 @@ Rr_Image2D *Rr_CreateImage2D(
         0);
 }
 
-void Rr_DestroyImage2D(Rr_Image2D *Image)
+void Rr_ReleaseImage2D(Rr_Image2D *Image)
 {
-    Rr_DestroyImage((Rr_Image *)Image);
+    Rr_ReleaseImage((Rr_Image *)Image);
 }
 
 Rr_Image3D *Rr_CreateImage3D(
@@ -469,9 +506,9 @@ Rr_Image3D *Rr_CreateImage3D(
     return (Rr_Image3D *)Rr_CreateImage(Extent, Format, Flags, 1, 0);
 }
 
-void Rr_DestroyImage3D(Rr_Image3D *Image)
+void Rr_ReleaseImage3D(Rr_Image3D *Image)
 {
-    Rr_DestroyImage((Rr_Image *)Image);
+    Rr_ReleaseImage((Rr_Image *)Image);
 }
 
 Rr_ImageCube *Rr_CreateImageCube(
@@ -490,9 +527,9 @@ Rr_ImageCube *Rr_CreateImageCube(
         VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
 }
 
-void Rr_DestroyCubemap(Rr_ImageCube *Cubemap)
+void Rr_ReleaseImageCube(Rr_ImageCube *Cubemap)
 {
-    Rr_DestroyImage((Rr_Image *)Cubemap);
+    Rr_ReleaseImage((Rr_Image *)Cubemap);
 }
 
 /* Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image) */
