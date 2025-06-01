@@ -129,7 +129,7 @@ struct SGPUUniform
     float GridBig;
 };
 
-struct SSmoothGrid
+struct SApp
 {
     static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
 
@@ -195,7 +195,7 @@ struct SSmoothGrid
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
-    SSmoothGrid()
+    SApp()
         : Camera(
               Rr_V3(0.0f, 1.0f, 0.0f),
               90.0f,
@@ -290,7 +290,7 @@ struct SSmoothGrid
         Rr_UIDebugOverlay();
     }
 
-    ~SSmoothGrid()
+    ~SApp()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -301,30 +301,30 @@ struct SSmoothGrid
 
 static void Init(void *UserData)
 {
-    new (UserData) SSmoothGrid();
+    new (UserData) SApp();
 }
 
 static void Event(void *UserData, Rr_Event *Event)
 {
-    auto SmoothGrid = std::bit_cast<SSmoothGrid *>(UserData);
+    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
     SmoothGrid->Event(Event);
 }
 
 static void Iterate(void *UserData)
 {
-    auto SmoothGrid = std::bit_cast<SSmoothGrid *>(UserData);
+    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
     SmoothGrid->Iterate();
 }
 
 static void Cleanup(void *UserData)
 {
-    auto SmoothGrid = std::bit_cast<SSmoothGrid *>(UserData);
-    SmoothGrid->~SSmoothGrid();
+    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
+    SmoothGrid->~SApp();
 }
 
 int main()
 {
-    alignas(SSmoothGrid) std::array<std::byte, sizeof(SSmoothGrid)> SmoothGrid;
+    alignas(SApp) std::array<std::byte, sizeof(SApp)> SmoothGrid;
     Rr_AppConfig Config = {};
     Config.Title = "SmoothGrid";
     Config.Version = "1.0.0";

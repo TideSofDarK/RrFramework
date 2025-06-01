@@ -159,7 +159,7 @@ struct SGPUUniform
     float Far;
 };
 
-struct SPrerenderedDepth
+struct SApp
 {
     static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
 
@@ -255,7 +255,7 @@ struct SPrerenderedDepth
                 RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
-    SPrerenderedDepth()
+    SApp()
     {
         InitPipeline();
         InitBackground();
@@ -319,7 +319,7 @@ struct SPrerenderedDepth
         Rr_UIDebugOverlay();
     }
 
-    ~SPrerenderedDepth()
+    ~SApp()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -333,25 +333,24 @@ struct SPrerenderedDepth
 
 static void Init(void *UserData)
 {
-    new (UserData) SPrerenderedDepth();
+    new (UserData) SApp();
 }
 
 static void Iterate(void *UserData)
 {
-    auto SmoothGrid = std::bit_cast<SPrerenderedDepth *>(UserData);
+    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
     SmoothGrid->Iterate();
 }
 
 static void Cleanup(void *UserData)
 {
-    auto SmoothGrid = std::bit_cast<SPrerenderedDepth *>(UserData);
-    SmoothGrid->~SPrerenderedDepth();
+    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
+    SmoothGrid->~SApp();
 }
 
 int main()
 {
-    alignas(SPrerenderedDepth) std::array<std::byte, sizeof(SPrerenderedDepth)>
-        SmoothGrid;
+    alignas(SApp) std::array<std::byte, sizeof(SApp)> SmoothGrid;
     Rr_AppConfig Config = {};
     Config.Title = "PrerenderedDepth";
     Config.Version = "1.0.0";

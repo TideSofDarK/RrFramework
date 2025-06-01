@@ -158,7 +158,7 @@ struct SPNGImage
     SPNGImage &operator=(SPNGImage &&) = delete;
 };
 
-struct SSkybox
+struct SApp
 {
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
@@ -307,7 +307,7 @@ struct SSkybox
         Rr_LoadImmediate(Tasks.size(), Tasks.data());
     }
 
-    SSkybox()
+    SApp()
         : Camera(
               Rr_V3(0.0f, 0.0f, 0.0f),
               90.0f,
@@ -403,7 +403,7 @@ struct SSkybox
         Rr_UIDebugOverlay();
     }
 
-    ~SSkybox()
+    ~SApp()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -417,30 +417,30 @@ struct SSkybox
 
 static void Init(void *UserData)
 {
-    new (UserData) SSkybox();
+    new (UserData) SApp();
 }
 
 static void Event(void *UserData, Rr_Event *Event)
 {
-    auto SmoothGrid = std::bit_cast<SSkybox *>(UserData);
+    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
     SmoothGrid->Event(Event);
 }
 
 static void Iterate(void *UserData)
 {
-    auto SmoothGrid = std::bit_cast<SSkybox *>(UserData);
+    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
     SmoothGrid->Iterate();
 }
 
 static void Cleanup(void *UserData)
 {
-    auto SmoothGrid = std::bit_cast<SSkybox *>(UserData);
-    SmoothGrid->~SSkybox();
+    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
+    SmoothGrid->~SApp();
 }
 
 int main()
 {
-    alignas(SSkybox) std::array<std::byte, sizeof(SSkybox)> SmoothGrid;
+    alignas(SApp) std::array<std::byte, sizeof(SApp)> SmoothGrid;
     Rr_AppConfig Config = {};
     Config.Title = "Skybox";
     Config.Version = "1.0.0";

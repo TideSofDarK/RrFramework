@@ -495,511 +495,546 @@ public:
     }
 };
 
-const uint32_t MAX_DRAWS = 1 << 14;
-
-static Rr_PipelineLayout *Layout;
-static Rr_GraphicsPipeline *Pipeline;
-static Rr_Buffer *UniformBuffer;
-static Rr_Buffer *StorageBuffer;
-static Rr_Buffer *StagingBuffer;
-
-static SGPUUniformData UniformData;
-
-static CQuadTree<std::size_t> Tree;
-static std::vector<SGPUDraw> Draws;
-
-static Rr_Mat4 CameraProjection;
-static Rr_Mat4 CameraView;
-static float CameraZoom = 1.0f;
-static Rr_Vec2 CameraPosition;
-static std::unordered_set<std::size_t> RenderResult;
-
-static bool Dragging;
-static Rr_Vec2 DragStartMouse;
-static Rr_Vec2 DragStartCamera;
-
-static bool Selecting;
-static bool TrySelect;
-static SPoint SelectStart;
-static SPoint SelectEnd;
-static std::unordered_set<std::size_t> SelectResult;
-
-static bool DrawDebug = true;
-static bool UseQuery = true;
-static bool VSyncEnabled = true;
-static std::default_random_engine RandomEngine;
-
-static std::size_t DrawCount = 0;
-static std::size_t DrawsSize = 0;
-
-std::mutex Mutex;
-bool Rebuilding;
-std::mutex RebuildMutex;
-
-static float GetRandomFloat(float Min, float Max)
+struct SApp
 {
-    std::uniform_real_distribution<double> Distribution(Min, Max);
+    const uint32_t MAX_DRAWS = 1 << 14;
 
-    return Distribution(RandomEngine);
-}
+    Rr_PipelineLayout *Layout{};
+    Rr_GraphicsPipeline *Pipeline{};
+    Rr_Buffer *UniformBuffer{};
+    Rr_Buffer *StorageBuffer{};
+    Rr_Buffer *StagingBuffer{};
 
-static uint32_t GetRandomColor()
-{
-    static std::uniform_int_distribution<std::uint32_t> Distribution(
-        0,
-        std::numeric_limits<unsigned char>::max());
+    SGPUUniformData UniformData{};
 
-    std::uint32_t Color = (Distribution(RandomEngine) << 0) |
-                          (Distribution(RandomEngine) << 8) |
-                          (Distribution(RandomEngine) << 16);
-    return Color;
-}
+    CQuadTree<std::size_t> Tree;
+    std::vector<SGPUDraw> Draws;
 
-static void RebuildTree()
-{
-    if (auto RebuildLock = std::unique_lock(RebuildMutex, std::try_to_lock))
+    Rr_Mat4 CameraProjection;
+    Rr_Mat4 CameraView;
+    float CameraZoom = 1.0f;
+    Rr_Vec2 CameraPosition{};
+    std::unordered_set<std::size_t> RenderResult;
+
+    bool Dragging{};
+    Rr_Vec2 DragStartMouse{};
+    Rr_Vec2 DragStartCamera{};
+
+    bool Selecting{};
+    bool TrySelect{};
+    SPoint SelectStart{};
+    SPoint SelectEnd{};
+    std::unordered_set<std::size_t> SelectResult;
+
+    bool DrawDebug = true;
+    bool UseQuery = true;
+    bool VSyncEnabled = true;
+    std::default_random_engine RandomEngine;
+
+    std::size_t DrawCount = 0;
+    std::size_t DrawsSize = 0;
+
+    std::mutex Mutex;
+    bool Rebuilding{};
+    std::mutex RebuildMutex;
+
+    void Reset()
     {
-        auto Thread = std::thread([&]() {
-            auto RebuildLock = std::lock_guard(RebuildMutex);
+        for (auto Index : SelectResult)
+        {
+            Draws[Index].Param1 = 0.0f;
+        }
+        SelectResult.clear();
+        RenderResult.clear();
+    }
 
-            Rebuilding = true;
+    float GetRandomFloat(float Min, float Max)
+    {
+        std::uniform_real_distribution<double> Distribution(Min, Max);
 
-            CQuadTree<std::size_t> NewTree;
-            std::vector<SGPUDraw> NewDraws;
+        return Distribution(RandomEngine);
+    }
 
-            const uint32_t NUM_POINTS = 400000;
-            const float AREA_WIDTH = 80000.0f;
-            const float AREA_HEIGHT = 50000.0f;
-            NewDraws.reserve(NUM_POINTS);
-            NewDraws.clear();
-            NewTree.Reset(
-                { -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
-            for (auto Index = 0; Index < NUM_POINTS; ++Index)
-            {
-                SGPUDraw Draw{};
-                Draw.Width = GetRandomFloat(96.0f, 128.0f);
-                Draw.Height = Draw.Width;
-                Draw.X = GetRandomFloat(-AREA_WIDTH, AREA_WIDTH);
-                Draw.Y = GetRandomFloat(-AREA_HEIGHT, AREA_HEIGHT);
-                Draw.Color = GetRandomColor();
-                Draw.Type = EDrawType::CIRCLE;
+    uint32_t GetRandomColor()
+    {
+        static std::uniform_int_distribution<std::uint32_t> Distribution(
+            0,
+            std::numeric_limits<unsigned char>::max());
 
-                /* Some points may not be eligble for the tree.
-                 * It's important to use Draws.size() as index
-                 * because "Index" iterator doesn't refer
-                 * to real index in the vector if some points
-                 * are being skipped. */
+        std::uint32_t Color = (Distribution(RandomEngine) << 0) |
+                              (Distribution(RandomEngine) << 8) |
+                              (Distribution(RandomEngine) << 16);
+        return Color;
+    }
 
-                auto ElementIndex = NewDraws.size();
-                if (NewTree.Insert(ElementIndex, Draw.Bounds()))
+    void RebuildTree()
+    {
+        if (auto RebuildLock = std::unique_lock(RebuildMutex, std::try_to_lock))
+        {
+            auto Thread = std::thread([&]() {
+                auto RebuildLock = std::lock_guard(RebuildMutex);
+
+                Rebuilding = true;
+
+                CQuadTree<std::size_t> NewTree;
+                std::vector<SGPUDraw> NewDraws;
+
+                const uint32_t NUM_POINTS = 400000;
+                const float AREA_WIDTH = 80000.0f;
+                const float AREA_HEIGHT = 50000.0f;
+                NewDraws.reserve(NUM_POINTS);
+                NewDraws.clear();
+                NewTree.Reset(
+                    { -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
+                for (auto Index = 0; Index < NUM_POINTS; ++Index)
                 {
-                    NewDraws.emplace_back(Draw);
+                    SGPUDraw Draw{};
+                    Draw.Width = GetRandomFloat(96.0f, 128.0f);
+                    Draw.Height = Draw.Width;
+                    Draw.X = GetRandomFloat(-AREA_WIDTH, AREA_WIDTH);
+                    Draw.Y = GetRandomFloat(-AREA_HEIGHT, AREA_HEIGHT);
+                    Draw.Color = GetRandomColor();
+                    Draw.Type = EDrawType::CIRCLE;
+
+                    /* Some points may not be eligble for the tree.
+                     * It's important to use Draws.size() as index
+                     * because "Index" iterator doesn't refer
+                     * to real index in the vector if some points
+                     * are being skipped. */
+
+                    auto ElementIndex = NewDraws.size();
+                    if (NewTree.Insert(ElementIndex, Draw.Bounds()))
+                    {
+                        NewDraws.emplace_back(Draw);
+                    }
+                }
+
+                auto Lock = std::lock_guard(Mutex);
+                Tree = std::move(NewTree);
+                Draws = std::move(NewDraws);
+
+                Rebuilding = false;
+            });
+            Thread.detach();
+        }
+    }
+
+    SRect GetScreenRect()
+    {
+        Rr_Vec4 DeprojectedMin = Rr_InvGeneralM4(CameraProjection) *
+                                 Rr_Vec4{ -1.0f, -1.0f, 0.0f, 1.0f };
+        DeprojectedMin = Rr_InvGeneralM4(CameraView) * DeprojectedMin;
+
+        Rr_Vec4 DeprojectedMax = Rr_InvGeneralM4(CameraProjection) *
+                                 Rr_Vec4{ 1.0f, 1.0f, 0.0f, 1.0f };
+        DeprojectedMax = Rr_InvGeneralM4(CameraView) * DeprojectedMax;
+        return { DeprojectedMin.X,
+                 DeprojectedMin.Y,
+                 DeprojectedMax.X,
+                 DeprojectedMax.Y };
+    }
+
+    SPoint ConvertMousePosition()
+    {
+        Rr_Vec2 MousePosition = Rr_GetMousePosition();
+        Rr_IntVec2 WindowSize = Rr_GetWindowSize();
+        MousePosition.X /= (float)WindowSize.X;
+        MousePosition.Y /= (float)WindowSize.Y;
+        MousePosition *= 2.0f;
+        MousePosition -= Rr_Vec2{ 1.0f, 1.0f };
+        Rr_Vec4 Deprojected =
+            Rr_InvGeneralM4(CameraProjection) *
+            Rr_Vec4{ MousePosition.X, MousePosition.Y, 0.0f, 1.0f };
+        Deprojected = Rr_InvGeneralM4(CameraView) * Deprojected;
+        return { Deprojected.X, Deprojected.Y };
+    }
+
+    SApp()
+    {
+        std::array Bindings = {
+            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+        };
+        std::array BindingSets = {
+            Rr_PipelineBindingSet{
+                Bindings.size(),
+                Bindings.data(),
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        Layout =
+            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
+
+        Rr_ColorTargetInfo ColorTargets[1] = { 0 };
+        ColorTargets[0].Format = Rr_GetSwapchainFormat();
+        ColorTargets[0].Blend = Rr_AlphaBlend();
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
+        PipelineInfo.Layout = Layout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = ColorTargets;
+
+        Pipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+
+        UniformBuffer = Rr_CreateBuffer(
+            sizeof(SGPUUniformData),
+            RR_BUFFER_FLAGS_UNIFORM_BIT);
+        StorageBuffer = Rr_CreateBuffer(
+            sizeof(SGPUDraw) * MAX_DRAWS,
+            RR_BUFFER_FLAGS_STORAGE_BIT);
+        StagingBuffer = Rr_CreateBuffer(
+            RR_MEGABYTES(64),
+            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT);
+
+        RebuildTree();
+    }
+
+    void Event(Rr_Event *Event)
+    {
+        switch (Event->Type)
+        {
+            case RR_EVENT_TYPE_MOUSE_WHEEL:
+            {
+                if (Rr_UIWantMouseCapture())
+                {
+                    return;
+                }
+
+                CameraZoom += Event->Wheel.Amount.Y * -0.5f;
+                CameraZoom = RR_CLAMP(0.1f, CameraZoom, 100.0f);
+            }
+            break;
+            case RR_EVENT_TYPE_MOUSE_MOTION:
+            {
+                if (TrySelect)
+                {
+                    SelectEnd = ConvertMousePosition();
+                    Selecting =
+                        std::fabs(SelectStart.X - SelectEnd.X) > 10.0f ||
+                        std::fabs(SelectStart.Y - SelectEnd.Y) > 10.0f;
+                }
+            }
+            break;
+            case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
+            {
+                if (Rr_UIWantMouseCapture())
+                {
+                    return;
+                }
+
+                if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
+                {
+                    SelectStart = ConvertMousePosition();
+                    TrySelect = true;
+                    Selecting = false;
+                }
+                else if (Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
+                {
+                    Dragging = true;
+                    DragStartCamera = CameraPosition;
+                    DragStartMouse = Rr_GetMousePosition();
+                }
+            }
+            break;
+            case RR_EVENT_TYPE_MOUSE_BUTTON_UP:
+            {
+                if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
+                {
+                    if (Selecting == false && Rr_UIWantMouseCapture() == false)
+                    {
+                        if (auto Lock =
+                                std::unique_lock(Mutex, std::try_to_lock))
+                        {
+                            SPoint Point = ConvertMousePosition();
+                            SGPUDraw Draw{};
+                            Draw.Width = GetRandomFloat(32.0f, 64.0f);
+                            Draw.Height = Draw.Width;
+                            Draw.X = Point.X - Draw.Width / 2.0f;
+                            Draw.Y = Point.Y - Draw.Height / 2.0f;
+                            Draw.Color = GetRandomColor();
+                            if (Tree.Insert(Draws.size(), Draw.Bounds()))
+                            {
+                                Draws.emplace_back(Draw);
+                            }
+                        }
+                    }
+                    TrySelect = false;
+                    Selecting = false;
+                }
+                else if (Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
+                {
+                    Dragging = false;
+                }
+            }
+            break;
+            default:
+                break;
+        }
+    }
+
+    void Update()
+    {
+        float DeltaTime = Rr_GetDeltaSeconds();
+
+        Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
+
+        if (Dragging)
+        {
+            CameraPosition =
+                DragStartCamera -
+                (DragStartMouse - Rr_GetMousePosition()) * CameraZoom;
+        }
+
+        if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+        {
+            if (Rr_IsScancodePressed(RR_SCANCODE_SPACE))
+            {
+                RebuildTree();
+            }
+
+            if (Selecting)
+            {
+                const SRect QueryRect{ SelectStart, SelectEnd };
+                if (UseQuery)
+                {
+                    Tree.Query(QueryRect, SelectResult);
+                    for (auto Index : SelectResult)
+                    {
+                        auto Bounds = Draws[Index].Bounds();
+                        auto Center = Bounds.Center();
+                        auto Radius = Bounds.Extent().X;
+                        if (QueryRect.IntersectsCircle(Center, Radius))
+                        {
+                            Draws[Index].Param1 = 1.0f;
+                        }
+                    }
+                }
+                else
+                {
+                    for (auto Index = 0; Index < Draws.size(); ++Index)
+                    {
+                        auto Bounds = Draws[Index].Bounds();
+                        auto Center = Bounds.Center();
+                        auto Radius = Bounds.Extent().X;
+                        if (QueryRect.IntersectsCircle(Center, Radius))
+                        {
+                            Draws[Index].Param1 = 1.0f;
+                            SelectResult.emplace(Index);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void Render()
+    {
+        auto Lock = std::unique_lock(Mutex, std::try_to_lock);
+
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+
+        Rr_ColorTarget ColorTarget;
+        ColorTarget.Clear = { 13.0f / 255.0f,
+                              14.0f / 255.0f,
+                              28.0f / 255.0f,
+                              1.0f };
+        ColorTarget.LoadOp = RR_LOAD_OP_CLEAR;
+        ColorTarget.Slot = 0;
+        ColorTarget.StoreOp = RR_STORE_OP_STORE;
+
+        float Left = -SwapchainSize.X / 2.0f * CameraZoom;
+        float Right = SwapchainSize.X / 2.0f * CameraZoom;
+        float Bottom = -SwapchainSize.Y / 2.0f * CameraZoom;
+        float Top = SwapchainSize.Y / 2.0f * CameraZoom;
+        CameraProjection = Rr_Orthographic_RH(Left, Right, Bottom, Top, -1, 1);
+        CameraView = Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
+        UniformData.ViewProjection = CameraProjection * CameraView;
+        UniformData.Time = Rr_GetTimeSeconds();
+
+        char *StagingDataStart = (char *)Rr_GetMappedBufferData(StagingBuffer);
+        char *StagingData = StagingDataStart;
+        std::memcpy(StagingData, &UniformData, sizeof(UniformData));
+        StagingData += sizeof(UniformData);
+
+        /* Query screen rect and populate draws. */
+
+        DrawCount = DrawsSize = 0;
+
+        if (Lock.owns_lock())
+        {
+            SRect ScreenRect = GetScreenRect();
+            Tree.Query(ScreenRect, RenderResult);
+            if (RenderResult.size() > 0)
+            {
+                DrawCount += RenderResult.size();
+                for (auto Index : RenderResult)
+                {
+                    std::memcpy(StagingData, &Draws[Index], sizeof(SGPUDraw));
+                    StagingData += sizeof(SGPUDraw);
                 }
             }
 
-            auto Lock = std::lock_guard(Mutex);
-            Tree = std::move(NewTree);
-            Draws = std::move(NewDraws);
+            if (Selecting)
+            {
+                SRect SelectRect = { SelectStart, SelectEnd };
+                SGPUDraw Draw{};
+                Draw.X = SelectRect.Left;
+                Draw.Y = SelectRect.Top;
+                Draw.Width = SelectRect.Size().X;
+                Draw.Height = SelectRect.Size().Y;
+                Draw.Type = EDrawType::RECT_SELECTION;
+                Draw.Color = 0xffecc5ad;
+                std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
+                StagingData += sizeof(SGPUDraw);
+                DrawCount++;
+            }
 
-            Rebuilding = false;
-        });
-        Thread.detach();
+            if (DrawDebug)
+            {
+                Tree.ForEachDebugDraw(ScreenRect, [&](const SGPUDraw &Draw) {
+                    std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
+                    StagingData += sizeof(SGPUDraw);
+                    DrawCount++;
+                });
+            }
+
+            DrawsSize = RR_MIN(
+                StagingData - StagingDataStart - sizeof(SGPUUniformData),
+                MAX_DRAWS * sizeof(SGPUDraw));
+            DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
+        }
+
+        Rr_Graph *Graph = Rr_GetGraph();
+
+        if (DrawCount > 0)
+        {
+            Rr_GraphNode *TransferNode = Rr_AddTransferNode(Graph, "transfer");
+            Rr_TransferBufferData(
+                TransferNode,
+                sizeof(UniformData),
+                StagingBuffer,
+                0,
+                UniformBuffer,
+                0);
+            Rr_TransferBufferData(
+                TransferNode,
+                DrawsSize,
+                StagingBuffer,
+                sizeof(UniformData),
+                StorageBuffer,
+                0);
+        }
+
+        Rr_GraphNode *TreeNode = Rr_AddGraphicsNode(
+            Graph,
+            "tree",
+            1,
+            &ColorTarget,
+            &SwapchainImage,
+            nullptr,
+            nullptr);
+        Rr_BindGraphicsPipeline(TreeNode, Pipeline);
+        if (DrawCount > 0)
+        {
+            Rr_BindUniformBuffer(
+                TreeNode,
+                UniformBuffer,
+                0,
+                0,
+                0,
+                sizeof(UniformData));
+            Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
+            Rr_Draw(TreeNode, 6, DrawCount, 0, 0);
+        }
     }
-}
 
-static SRect GetScreenRect()
-{
-    Rr_Vec4 DeprojectedMin =
-        Rr_InvGeneralM4(CameraProjection) * Rr_Vec4{ -1.0f, -1.0f, 0.0f, 1.0f };
-    DeprojectedMin = Rr_InvGeneralM4(CameraView) * DeprojectedMin;
+    void Iterate()
+    {
+        Rr_UIDebugOverlay();
 
-    Rr_Vec4 DeprojectedMax =
-        Rr_InvGeneralM4(CameraProjection) * Rr_Vec4{ 1.0f, 1.0f, 0.0f, 1.0f };
-    DeprojectedMax = Rr_InvGeneralM4(CameraView) * DeprojectedMax;
-    return { DeprojectedMin.X,
-             DeprojectedMin.Y,
-             DeprojectedMax.X,
-             DeprojectedMax.Y };
-}
+        if (Rr_UIBeginWindow(
+                "QuadTree",
+                NULL,
+                RR_UI_WINDOW_FLAGS_CLOSE_BIT |
+                    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+        {
+            Rr_UILabelF("Regenerating: %d", Rebuilding);
+            if (Rr_UIButton("Regenerate Tree"))
+            {
+                if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
+                {
+                    RebuildTree();
+                }
+            }
+            Rr_UISeparator();
+            Rr_UILabelF("Circles: %zu", Tree.ElementsCount());
+            Rr_UILabelF("Draw Count: %d", DrawCount);
+            Rr_UILabelF("Draws Size: %d", DrawsSize);
+            Rr_UILabelF("Box Select: %d", Selecting);
+            Rr_UILabelF(
+                "Camera Position: %d %d",
+                (int)CameraPosition.X,
+                (int)CameraPosition.Y);
+            Rr_UISeparator();
+            Rr_UICheckbox("Debug Draw", &DrawDebug);
+            Rr_UIBeginHorizontal();
+            Rr_UICheckbox("Use Query", &UseQuery);
+            if (Rr_UICheckbox("Use VSync", &VSyncEnabled))
+            {
+                Rr_SetPresentMode(
+                    VSyncEnabled ? RR_PRESENT_MODE_FIFO
+                                 : RR_PRESENT_MODE_IMMEDIATE);
+            }
+            Rr_UIEndWindow();
+        }
 
-static SPoint ConvertMousePosition()
-{
-    Rr_Vec2 MousePosition = Rr_GetMousePosition();
-    Rr_IntVec2 WindowSize = Rr_GetWindowSize();
-    MousePosition.X /= (float)WindowSize.X;
-    MousePosition.Y /= (float)WindowSize.Y;
-    MousePosition *= 2.0f;
-    MousePosition -= Rr_Vec2{ 1.0f, 1.0f };
-    Rr_Vec4 Deprojected =
-        Rr_InvGeneralM4(CameraProjection) *
-        Rr_Vec4{ MousePosition.X, MousePosition.Y, 0.0f, 1.0f };
-    Deprojected = Rr_InvGeneralM4(CameraView) * Deprojected;
-    return { Deprojected.X, Deprojected.Y };
-}
+        Update();
+        Render();
+        Reset();
+    }
+
+    ~SApp()
+    {
+        Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleaseBuffer(StorageBuffer);
+        Rr_ReleaseBuffer(StagingBuffer);
+        Rr_ReleaseGraphicsPipeline(Pipeline);
+        Rr_ReleasePipelineLayout(Layout);
+    }
+};
 
 static void Init(void *UserData)
 {
-    std::array Bindings = {
-        Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
-        Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-    };
-    std::array BindingSets = {
-        Rr_PipelineBindingSet{
-            Bindings.size(),
-            Bindings.data(),
-            RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-        },
-    };
-    Layout = Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-
-    Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Format = Rr_GetSwapchainFormat();
-    ColorTargets[0].Blend = Rr_AlphaBlend();
-
-    Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
-    PipelineInfo.Layout = Layout;
-    PipelineInfo.VertexShaderSPV = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
-    PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
-    PipelineInfo.ColorTargetCount = 1;
-    PipelineInfo.ColorTargets = ColorTargets;
-
-    Pipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
-
-    UniformBuffer =
-        Rr_CreateBuffer(sizeof(SGPUUniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
-    StorageBuffer = Rr_CreateBuffer(
-        sizeof(SGPUDraw) * MAX_DRAWS,
-        RR_BUFFER_FLAGS_STORAGE_BIT);
-    StagingBuffer = Rr_CreateBuffer(
-        RR_MEGABYTES(64),
-        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-            RR_BUFFER_FLAGS_PER_FRAME_BIT);
-
-    RebuildTree();
+    new (UserData) SApp();
 }
 
 static void Event(void *UserData, Rr_Event *Event)
 {
-    switch (Event->Type)
-    {
-        case RR_EVENT_TYPE_MOUSE_WHEEL:
-        {
-            if (Rr_UIWantMouseCapture())
-            {
-                return;
-            }
-
-            CameraZoom += Event->Wheel.Amount.Y * -0.5f;
-            CameraZoom = RR_CLAMP(0.1f, CameraZoom, 100.0f);
-        }
-        break;
-        case RR_EVENT_TYPE_MOUSE_MOTION:
-        {
-            if (TrySelect)
-            {
-                SelectEnd = ConvertMousePosition();
-                Selecting = std::fabs(SelectStart.X - SelectEnd.X) > 10.0f ||
-                            std::fabs(SelectStart.Y - SelectEnd.Y) > 10.0f;
-            }
-        }
-        break;
-        case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
-        {
-            if (Rr_UIWantMouseCapture())
-            {
-                return;
-            }
-
-            if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
-            {
-                SelectStart = ConvertMousePosition();
-                TrySelect = true;
-                Selecting = false;
-            }
-            else if (Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
-            {
-                Dragging = true;
-                DragStartCamera = CameraPosition;
-                DragStartMouse = Rr_GetMousePosition();
-            }
-        }
-        break;
-        case RR_EVENT_TYPE_MOUSE_BUTTON_UP:
-        {
-            if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
-            {
-                if (Selecting == false && Rr_UIWantMouseCapture() == false)
-                {
-                    if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
-                    {
-                        SPoint Point = ConvertMousePosition();
-                        SGPUDraw Draw{};
-                        Draw.Width = GetRandomFloat(32.0f, 64.0f);
-                        Draw.Height = Draw.Width;
-                        Draw.X = Point.X - Draw.Width / 2.0f;
-                        Draw.Y = Point.Y - Draw.Height / 2.0f;
-                        Draw.Color = GetRandomColor();
-                        if (Tree.Insert(Draws.size(), Draw.Bounds()))
-                        {
-                            Draws.emplace_back(Draw);
-                        }
-                    }
-                }
-                TrySelect = false;
-                Selecting = false;
-            }
-            else if (Event->MouseButton.Button == RR_MOUSE_BUTTON_RIGHT)
-            {
-                Dragging = false;
-            }
-        }
-        break;
-        default:
-            break;
-    }
-}
-
-static void Update()
-{
-    float DeltaTime = Rr_GetDeltaSeconds();
-
-    Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
-
-    if (Dragging)
-    {
-        CameraPosition = DragStartCamera -
-                         (DragStartMouse - Rr_GetMousePosition()) * CameraZoom;
-    }
-
-    if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
-    {
-        if (Rr_IsScancodePressed(RR_SCANCODE_SPACE))
-        {
-            RebuildTree();
-        }
-
-        if (Selecting)
-        {
-            const SRect QueryRect{ SelectStart, SelectEnd };
-            if (UseQuery)
-            {
-                Tree.Query(QueryRect, SelectResult);
-                for (auto Index : SelectResult)
-                {
-                    auto Bounds = Draws[Index].Bounds();
-                    auto Center = Bounds.Center();
-                    auto Radius = Bounds.Extent().X;
-                    if (QueryRect.IntersectsCircle(Center, Radius))
-                    {
-                        Draws[Index].Param1 = 1.0f;
-                    }
-                }
-            }
-            else
-            {
-                for (auto Index = 0; Index < Draws.size(); ++Index)
-                {
-                    auto Bounds = Draws[Index].Bounds();
-                    auto Center = Bounds.Center();
-                    auto Radius = Bounds.Extent().X;
-                    if (QueryRect.IntersectsCircle(Center, Radius))
-                    {
-                        Draws[Index].Param1 = 1.0f;
-                        SelectResult.emplace(Index);
-                    }
-                }
-            }
-        }
-    }
-}
-
-static void Render()
-{
-    auto Lock = std::unique_lock(Mutex, std::try_to_lock);
-
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-
-    Rr_ColorTarget ColorTarget;
-    ColorTarget.Clear = { 13.0f / 255.0f,
-                          14.0f / 255.0f,
-                          28.0f / 255.0f,
-                          1.0f };
-    ColorTarget.LoadOp = RR_LOAD_OP_CLEAR;
-    ColorTarget.Slot = 0;
-    ColorTarget.StoreOp = RR_STORE_OP_STORE;
-
-    float Left = -SwapchainSize.X / 2.0f * CameraZoom;
-    float Right = SwapchainSize.X / 2.0f * CameraZoom;
-    float Bottom = -SwapchainSize.Y / 2.0f * CameraZoom;
-    float Top = SwapchainSize.Y / 2.0f * CameraZoom;
-    CameraProjection = Rr_Orthographic_RH(Left, Right, Bottom, Top, -1, 1);
-    CameraView = Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
-    UniformData.ViewProjection = CameraProjection * CameraView;
-    UniformData.Time = Rr_GetTimeSeconds();
-
-    char *StagingDataStart = (char *)Rr_GetMappedBufferData(StagingBuffer);
-    char *StagingData = StagingDataStart;
-    std::memcpy(StagingData, &UniformData, sizeof(UniformData));
-    StagingData += sizeof(UniformData);
-
-    /* Query screen rect and populate draws. */
-
-    DrawCount = DrawsSize = 0;
-
-    if (Lock.owns_lock())
-    {
-        SRect ScreenRect = GetScreenRect();
-        Tree.Query(ScreenRect, RenderResult);
-        if (RenderResult.size() > 0)
-        {
-            DrawCount += RenderResult.size();
-            for (auto Index : RenderResult)
-            {
-                std::memcpy(StagingData, &Draws[Index], sizeof(SGPUDraw));
-                StagingData += sizeof(SGPUDraw);
-            }
-        }
-
-        if (Selecting)
-        {
-            SRect SelectRect = { SelectStart, SelectEnd };
-            SGPUDraw Draw{};
-            Draw.X = SelectRect.Left;
-            Draw.Y = SelectRect.Top;
-            Draw.Width = SelectRect.Size().X;
-            Draw.Height = SelectRect.Size().Y;
-            Draw.Type = EDrawType::RECT_SELECTION;
-            Draw.Color = 0xffecc5ad;
-            std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
-            StagingData += sizeof(SGPUDraw);
-            DrawCount++;
-        }
-
-        if (DrawDebug)
-        {
-            Tree.ForEachDebugDraw(ScreenRect, [&](const SGPUDraw &Draw) {
-                std::memcpy(StagingData, &Draw, sizeof(SGPUDraw));
-                StagingData += sizeof(SGPUDraw);
-                DrawCount++;
-            });
-        }
-
-        DrawsSize = RR_MIN(
-            StagingData - StagingDataStart - sizeof(SGPUUniformData),
-            MAX_DRAWS * sizeof(SGPUDraw));
-        DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
-    }
-
-    Rr_Graph *Graph = Rr_GetGraph();
-
-    if (DrawCount > 0)
-    {
-        Rr_GraphNode *TransferNode = Rr_AddTransferNode(Graph, "transfer");
-        Rr_TransferBufferData(
-            TransferNode,
-            sizeof(UniformData),
-            StagingBuffer,
-            0,
-            UniformBuffer,
-            0);
-        Rr_TransferBufferData(
-            TransferNode,
-            DrawsSize,
-            StagingBuffer,
-            sizeof(UniformData),
-            StorageBuffer,
-            0);
-    }
-
-    Rr_GraphNode *TreeNode = Rr_AddGraphicsNode(
-        Graph,
-        "tree",
-        1,
-        &ColorTarget,
-        &SwapchainImage,
-        nullptr,
-        nullptr);
-    Rr_BindGraphicsPipeline(TreeNode, Pipeline);
-    if (DrawCount > 0)
-    {
-        Rr_BindUniformBuffer(
-            TreeNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(UniformData));
-        Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
-        Rr_Draw(TreeNode, 6, DrawCount, 0, 0);
-    }
-}
-
-static void Reset()
-{
-    for (auto Index : SelectResult)
-    {
-        Draws[Index].Param1 = 0.0f;
-    }
-    SelectResult.clear();
-    RenderResult.clear();
+    auto App = std::bit_cast<SApp *>(UserData);
+    App->Event(Event);
 }
 
 static void Iterate(void *UserData)
 {
-    Rr_UIDebugOverlay();
-
-    if (Rr_UIBeginWindow(
-            "QuadTree",
-            NULL,
-            RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
-    {
-        Rr_UILabelF("Regenerating: %d", Rebuilding);
-        if (Rr_UIButton("Regenerate Tree"))
-        {
-            if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
-            {
-                RebuildTree();
-            }
-        }
-        Rr_UISeparator();
-        Rr_UILabelF("Circles: %zu", Tree.ElementsCount());
-        Rr_UILabelF("Draw Count: %d", DrawCount);
-        Rr_UILabelF("Draws Size: %d", DrawsSize);
-        Rr_UILabelF("Box Select: %d", Selecting);
-        Rr_UILabelF(
-            "Camera Position: %d %d",
-            (int)CameraPosition.X,
-            (int)CameraPosition.Y);
-        Rr_UISeparator();
-        Rr_UICheckbox("Debug Draw", &DrawDebug);
-        Rr_UIBeginHorizontal();
-        Rr_UICheckbox("Use Query", &UseQuery);
-        if (Rr_UICheckbox("Use VSync", &VSyncEnabled))
-        {
-            Rr_SetPresentMode(
-                VSyncEnabled ? RR_PRESENT_MODE_FIFO
-                             : RR_PRESENT_MODE_IMMEDIATE);
-        }
-        Rr_UIEndWindow();
-    }
-
-    Update();
-    Render();
-    Reset();
+    auto App = std::bit_cast<SApp *>(UserData);
+    App->Iterate();
 }
 
 static void Cleanup(void *UserData)
 {
-    Rr_ReleaseBuffer(UniformBuffer);
-    Rr_ReleaseBuffer(StorageBuffer);
-    Rr_ReleaseBuffer(StagingBuffer);
-    Rr_ReleaseGraphicsPipeline(Pipeline);
-    Rr_ReleasePipelineLayout(Layout);
+    auto App = std::bit_cast<SApp *>(UserData);
+    App->~SApp();
 }
 
 int main()
 {
+    alignas(SApp) std::array<std::byte, sizeof(SApp)> App;
     Rr_AppConfig Config = {};
     Config.Title = "QuadTree";
     Config.Version = "1.0.0";
@@ -1008,5 +1043,6 @@ int main()
     Config.EventFunc = Event;
     Config.IterateFunc = Iterate;
     Config.CleanupFunc = Cleanup;
+    Config.UserData = App.data();
     Rr_Run(&Config);
 }
