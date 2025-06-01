@@ -616,7 +616,7 @@ void Rr_WaitIdle(void)
 
 static inline void Rr_ProcessReleasedObjects(void)
 {
-    static const char *Names[] = {
+    static const char *RENDERER_OBJECT_NAMES[] = {
         "buffer",
         "image",
         "pipeline layout",
@@ -696,7 +696,10 @@ static inline void Rr_ProcessReleasedObjects(void)
         }
         Rr_AdvanceRendererObjectHiveIterator(&It);
     ObjectDeleted:
-        RR_LOG("Destroying %s with address %p", Names[Object.Type], Object.Ptr);
+        RR_LOG(
+            "Destroying %s with address %p",
+            RENDERER_OBJECT_NAMES[Object.Type],
+            Object.Ptr);
         Rr_RemoveFromRendererObjectHive(&gRenderer->ReleasedObjects, &It);
     }
 }

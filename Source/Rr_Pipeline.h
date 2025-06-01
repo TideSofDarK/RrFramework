@@ -47,6 +47,11 @@ struct Rr_PipelineLayout
     Rr_AtomicInt RefCount;
 };
 
+#define RR_HIVE_TYPE      Rr_PipelineLayout
+#define RR_HIVE_TYPE_NAME PipelineLayout
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
 extern void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout);
 
 struct Rr_ComputePipeline
@@ -55,6 +60,11 @@ struct Rr_ComputePipeline
     Rr_PipelineLayout *Layout;
     Rr_AtomicInt RefCount;
 };
+
+#define RR_HIVE_TYPE      Rr_ComputePipeline
+#define RR_HIVE_TYPE_NAME ComputePipeline
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
 
 extern void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
@@ -66,6 +76,11 @@ struct Rr_GraphicsPipeline
     bool HasDepthStencil;
     Rr_AtomicInt RefCount;
 };
+
+#define RR_HIVE_TYPE      Rr_GraphicsPipeline
+#define RR_HIVE_TYPE_NAME GraphicsPipeline
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
 
 extern void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
 

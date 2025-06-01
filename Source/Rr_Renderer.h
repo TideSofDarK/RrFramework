@@ -121,36 +121,6 @@ struct Rr_CachedRenderPass
     uint32_t Hash;
 };
 
-#define RR_HIVE_TYPE      Rr_Buffer
-#define RR_HIVE_TYPE_NAME Buffer
-#define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
-
-#define RR_HIVE_TYPE      Rr_Image
-#define RR_HIVE_TYPE_NAME Image
-#define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
-
-#define RR_HIVE_TYPE      Rr_PipelineLayout
-#define RR_HIVE_TYPE_NAME PipelineLayout
-#define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
-
-#define RR_HIVE_TYPE      Rr_ComputePipeline
-#define RR_HIVE_TYPE_NAME ComputePipeline
-#define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
-
-#define RR_HIVE_TYPE      Rr_GraphicsPipeline
-#define RR_HIVE_TYPE_NAME GraphicsPipeline
-#define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
-
-#define RR_HIVE_TYPE      Rr_Sampler
-#define RR_HIVE_TYPE_NAME Sampler
-#define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
-
 struct Rr_Renderer
 {
     void *Window;

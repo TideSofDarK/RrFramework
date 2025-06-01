@@ -39,6 +39,11 @@ struct Rr_Sampler
     Rr_AtomicInt RefCount;
 };
 
+#define RR_HIVE_TYPE      Rr_Sampler
+#define RR_HIVE_TYPE_NAME Sampler
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
 extern void Rr_DestroySampler(Rr_Sampler *Sampler);
 
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
@@ -71,6 +76,11 @@ RR_DEFINE_IMAGE_STRUCT(Rr_Image3DArray);
 RR_DEFINE_IMAGE_STRUCT(Rr_ImageCube);
 
 #undef RR_DEFINE_IMAGE_TYPE
+
+#define RR_HIVE_TYPE      Rr_Image
+#define RR_HIVE_TYPE_NAME Image
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
 
 extern void Rr_DestroyImage(Rr_Image *Image);
 
