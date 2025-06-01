@@ -26,8 +26,8 @@
 
 #include <Rr/Rr_Renderer.h>
 
-#include "Rr_Graph.h"
 #include "Rr_Buffer.h"
+#include "Rr_Graph.h"
 #include "Rr_Image.h"
 #include "Rr_Load.h"
 #include "Rr_Pipeline.h"
@@ -109,6 +109,26 @@ struct Rr_CachedRenderPass
 #define RR_HIVE_PREFIX    Rr_
 #include <Rr/Rr_Hive.h>
 
+#define RR_HIVE_TYPE      Rr_PipelineLayout
+#define RR_HIVE_TYPE_NAME PipelineLayout
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+#define RR_HIVE_TYPE      Rr_ComputePipeline
+#define RR_HIVE_TYPE_NAME ComputePipeline
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+#define RR_HIVE_TYPE      Rr_GraphicsPipeline
+#define RR_HIVE_TYPE_NAME GraphicsPipeline
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+#define RR_HIVE_TYPE      Rr_Sampler
+#define RR_HIVE_TYPE_NAME Sampler
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
 struct Rr_Renderer
 {
     void *Window;
@@ -146,10 +166,10 @@ struct Rr_Renderer
 
     Rr_BufferHive BufferHive;
     Rr_ImageHive ImageHive;
-    RR_FREE_LIST(Rr_PipelineLayout) PipelineLayouts;
-    RR_FREE_LIST(Rr_ComputePipeline) ComputePipelines;
-    RR_FREE_LIST(Rr_GraphicsPipeline) GraphicsPipelines;
-    RR_FREE_LIST(Rr_Sampler) Samplers;
+    Rr_PipelineLayoutHive PipelineLayoutHive;
+    Rr_ComputePipelineHive ComputePipelineHive;
+    Rr_GraphicsPipelineHive GraphicsPipelineHive;
+    Rr_SamplerHive SamplerHive;
     RR_FREE_LIST(Rr_SyncState) SyncStates;
 
     Rr_Spinlock Lock;

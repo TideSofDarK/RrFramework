@@ -78,8 +78,10 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_PipelineLayout *PipelineLayout =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, gRenderer->Arena);
+    Rr_PipelineLayoutHiveIterator It = Rr_PushPipelineLayoutIntoHive(
+        &gRenderer->PipelineLayoutHive,
+        gRenderer->Arena);
+    Rr_PipelineLayout *PipelineLayout = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -125,7 +127,10 @@ void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    RR_RETURN_FREE_LIST_ITEM(&gRenderer->PipelineLayouts, PipelineLayout);
+    Rr_PipelineLayoutHiveIterator It = Rr_GetPipelineLayoutHiveIterator(
+        &gRenderer->PipelineLayoutHive,
+        PipelineLayout);
+    Rr_RemoveFromPipelineLayoutHive(&gRenderer->PipelineLayoutHive, &It);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -185,8 +190,10 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_ComputePipeline *Pipeline =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->ComputePipelines, gRenderer->Arena);
+    Rr_ComputePipelineHiveIterator It = Rr_PushComputePipelineIntoHive(
+        &gRenderer->ComputePipelineHive,
+        gRenderer->Arena);
+    Rr_ComputePipeline *Pipeline = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -251,7 +258,10 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    RR_RETURN_FREE_LIST_ITEM(&gRenderer->ComputePipelines, ComputePipeline);
+    Rr_ComputePipelineHiveIterator It = Rr_GetComputePipelineHiveIterator(
+        &gRenderer->ComputePipelineHive,
+        ComputePipeline);
+    Rr_RemoveFromComputePipelineHive(&gRenderer->ComputePipelineHive, &It);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -265,8 +275,10 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_GraphicsPipeline *Pipeline =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->GraphicsPipelines, gRenderer->Arena);
+    Rr_GraphicsPipelineHiveIterator It = Rr_PushGraphicsPipelineIntoHive(
+        &gRenderer->GraphicsPipelineHive,
+        gRenderer->Arena);
+    Rr_GraphicsPipeline *Pipeline = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -551,7 +563,14 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
-    RR_RETURN_FREE_LIST_ITEM(&gRenderer->GraphicsPipelines, GraphicsPipeline);
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_GraphicsPipelineHiveIterator It = Rr_GetGraphicsPipelineHiveIterator(
+        &gRenderer->GraphicsPipelineHive,
+        GraphicsPipeline);
+    Rr_RemoveFromGraphicsPipelineHive(&gRenderer->GraphicsPipelineHive, &It);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)

@@ -40,8 +40,9 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_Sampler *Sampler =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->Samplers, gRenderer->Arena);
+    Rr_SamplerHiveIterator It =
+        Rr_PushSamplerIntoHive(&gRenderer->SamplerHive, gRenderer->Arena);
+    Rr_Sampler *Sampler = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -80,7 +81,8 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    RR_RETURN_FREE_LIST_ITEM(&gRenderer->Samplers, Sampler);
+    Rr_SamplerHiveIterator It = Rr_GetSamplerHiveIterator(&gRenderer->SamplerHive, Sampler);
+    Rr_RemoveFromSamplerHive(&gRenderer->SamplerHive, &It);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
