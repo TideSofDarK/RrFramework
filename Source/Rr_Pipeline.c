@@ -79,7 +79,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_PipelineLayoutHiveIterator It = Rr_PushPipelineLayoutIntoHive(
-        &gRenderer->PipelineLayoutHive,
+        &gRenderer->PipelineLayouts,
         gRenderer->Arena);
     Rr_PipelineLayout *PipelineLayout = It.Element;
 
@@ -126,15 +126,11 @@ void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
     Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
         &gRenderer->ReleasedObjects,
         gRenderer->Arena);
     It.Element->Ptr = PipelineLayout;
     It.Element->Type = RR_RENDERER_OBJECT_PIPELINE_LAYOUT;
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
@@ -143,14 +139,10 @@ void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
 
     Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
     Rr_PipelineLayoutHiveIterator It = Rr_GetPipelineLayoutHiveIterator(
-        &gRenderer->PipelineLayoutHive,
+        &gRenderer->PipelineLayouts,
         PipelineLayout);
-    Rr_RemoveFromPipelineLayoutHive(&gRenderer->PipelineLayoutHive, &It);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_RemoveFromPipelineLayoutHive(&gRenderer->PipelineLayouts, &It);
 }
 
 static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
@@ -209,11 +201,13 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_ComputePipelineHiveIterator It = Rr_PushComputePipelineIntoHive(
-        &gRenderer->ComputePipelineHive,
+        &gRenderer->ComputePipelines,
         gRenderer->Arena);
     Rr_ComputePipeline *Pipeline = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
+
+    RR_INCREMENT_ATOMIC_INT(&CreateInfo->Layout->RefCount);
 
     Pipeline->Layout = CreateInfo->Layout;
 
@@ -292,19 +286,20 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    (void)RR_DECREMENT_ATOMIC_INT(&ComputePipeline->Layout->RefCount);
 
     Rr_ComputePipelineHiveIterator It = Rr_GetComputePipelineHiveIterator(
-        &gRenderer->ComputePipelineHive,
+        &gRenderer->ComputePipelines,
         ComputePipeline);
-    Rr_RemoveFromComputePipelineHive(&gRenderer->ComputePipelineHive, &It);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_RemoveFromComputePipelineHive(&gRenderer->ComputePipelines, &It);
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_GraphicsPipelineCreateInfo *Info)
+    Rr_GraphicsPipelineCreateInfo *CreateInfo)
 {
+    assert(CreateInfo);
+    assert(CreateInfo->Layout);
+
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = &gRenderer->Device;
@@ -312,32 +307,34 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_GraphicsPipelineHiveIterator It = Rr_PushGraphicsPipelineIntoHive(
-        &gRenderer->GraphicsPipelineHive,
+        &gRenderer->GraphicsPipelines,
         gRenderer->Arena);
     Rr_GraphicsPipeline *Pipeline = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    Pipeline->Layout = Info->Layout;
-    Pipeline->HasDepthStencil = Info->DepthStencil.EnableDepthTest ||
-                                Info->DepthStencil.EnableStencilTest ||
-                                Info->DepthStencil.EnableDepthWrite;
+    RR_INCREMENT_ATOMIC_INT(&CreateInfo->Layout->RefCount);
+
+    Pipeline->Layout = CreateInfo->Layout;
+    Pipeline->HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
+                                CreateInfo->DepthStencil.EnableStencilTest ||
+                                CreateInfo->DepthStencil.EnableDepthWrite;
 
     if (Pipeline->HasDepthStencil)
     {
-        assert(Info->DepthStencil.Format != RR_TEXTURE_FORMAT_UNDEFINED);
+        assert(CreateInfo->DepthStencil.Format != RR_TEXTURE_FORMAT_UNDEFINED);
     }
 
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
-    if (Info->VertexShaderSPV.Pointer != NULL)
+    if (CreateInfo->VertexShaderSPV.Pointer != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .codeSize = Info->VertexShaderSPV.Size,
-            .pCode = (uint32_t *)Info->VertexShaderSPV.Pointer,
+            .codeSize = CreateInfo->VertexShaderSPV.Size,
+            .pCode = (uint32_t *)CreateInfo->VertexShaderSPV.Pointer,
         };
         Device->CreateShaderModule(
             Device->Handle,
@@ -356,13 +353,13 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
-    if (Info->FragmentShaderSPV.Pointer != NULL)
+    if (CreateInfo->FragmentShaderSPV.Pointer != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .codeSize = Info->FragmentShaderSPV.Size,
-            .pCode = (uint32_t *)Info->FragmentShaderSPV.Pointer,
+            .codeSize = CreateInfo->FragmentShaderSPV.Size,
+            .pCode = (uint32_t *)CreateInfo->FragmentShaderSPV.Pointer,
         };
         Device->CreateShaderModule(
             Device->Handle,
@@ -381,11 +378,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     RR_ARRAY(VkVertexInputBindingDescription) BindingDescriptions = { 0 };
     RR_ARRAY(VkVertexInputAttributeDescription) AttributeDescriptions = { 0 };
-    for (size_t BindingIndex = 0; BindingIndex < Info->VertexInputBindingCount;
+    for (size_t BindingIndex = 0;
+         BindingIndex < CreateInfo->VertexInputBindingCount;
          ++BindingIndex)
     {
         Rr_VertexInputBinding *VertexInputBinding =
-            Info->VertexInputBindings + BindingIndex;
+            CreateInfo->VertexInputBindings + BindingIndex;
 
         RR_RESERVE_ARRAY(
             &AttributeDescriptions,
@@ -452,7 +450,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     VkPipelineInputAssemblyStateCreateInfo InputAssembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .pNext = NULL,
-        .topology = Rr_ToVulkanPrimitiveTopology(Info->Topology),
+        .topology = Rr_ToVulkanPrimitiveTopology(CreateInfo->Topology),
         .primitiveRestartEnable = VK_FALSE,
     };
 
@@ -467,15 +465,17 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .depthClampEnable = Info->Rasterizer.EnableDepthClip,
+        .depthClampEnable = CreateInfo->Rasterizer.EnableDepthClip,
         .rasterizerDiscardEnable = false,
-        .polygonMode = Rr_ToVulkanPolygonMode(Info->Rasterizer.PolygonMode),
-        .cullMode = Rr_ToVulkanCullMode(Info->Rasterizer.CullMode),
-        .frontFace = Rr_ToVulkanFrontFace(Info->Rasterizer.FrontFace),
-        .depthBiasEnable = Info->Rasterizer.EnableDepthBias,
-        .depthBiasConstantFactor = Info->Rasterizer.DepthBiasConstantFactor,
-        .depthBiasClamp = Info->Rasterizer.DepthBiasClamp,
-        .depthBiasSlopeFactor = Info->Rasterizer.DepthBiasSlopeFactor,
+        .polygonMode =
+            Rr_ToVulkanPolygonMode(CreateInfo->Rasterizer.PolygonMode),
+        .cullMode = Rr_ToVulkanCullMode(CreateInfo->Rasterizer.CullMode),
+        .frontFace = Rr_ToVulkanFrontFace(CreateInfo->Rasterizer.FrontFace),
+        .depthBiasEnable = CreateInfo->Rasterizer.EnableDepthBias,
+        .depthBiasConstantFactor =
+            CreateInfo->Rasterizer.DepthBiasConstantFactor,
+        .depthBiasClamp = CreateInfo->Rasterizer.DepthBiasClamp,
+        .depthBiasSlopeFactor = CreateInfo->Rasterizer.DepthBiasSlopeFactor,
         .lineWidth = 1.0f,
     };
 
@@ -499,12 +499,15 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     };
 
     RR_ARRAY(VkPipelineColorBlendAttachmentState) ColorAttachments = { 0 };
-    RR_RESERVE_ARRAY(&ColorAttachments, Info->ColorTargetCount, Scratch.Arena);
-    for (size_t Index = 0; Index < Info->ColorTargetCount; ++Index)
+    RR_RESERVE_ARRAY(
+        &ColorAttachments,
+        CreateInfo->ColorTargetCount,
+        Scratch.Arena);
+    for (size_t Index = 0; Index < CreateInfo->ColorTargetCount; ++Index)
     {
         VkPipelineColorBlendAttachmentState *Attachment =
             RR_PUSH_INTO_ARRAY(&ColorAttachments, Scratch.Arena);
-        Rr_ColorTargetInfo *ColorTargetInfo = Info->ColorTargets + Index;
+        Rr_ColorTargetInfo *ColorTargetInfo = CreateInfo->ColorTargets + Index;
         Rr_ColorTargetBlend *Blend = &ColorTargetInfo->Blend;
 
         VkColorComponentFlags ColorWriteMask = Blend->ColorWriteMask;
@@ -526,7 +529,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         Attachment->colorWriteMask = ColorWriteMask;
     }
 
-    Pipeline->ColorAttachmentCount = (uint32_t)Info->ColorTargetCount;
+    Pipeline->ColorAttachmentCount = (uint32_t)CreateInfo->ColorTargetCount;
 
     VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -541,16 +544,17 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .depthTestEnable = Info->DepthStencil.EnableDepthTest,
-        .depthWriteEnable = Info->DepthStencil.EnableDepthWrite,
-        .depthCompareOp = Rr_ToVulkanCompareOp(Info->DepthStencil.CompareOp),
-        .stencilTestEnable = Info->DepthStencil.EnableStencilTest,
+        .depthTestEnable = CreateInfo->DepthStencil.EnableDepthTest,
+        .depthWriteEnable = CreateInfo->DepthStencil.EnableDepthWrite,
+        .depthCompareOp =
+            Rr_ToVulkanCompareOp(CreateInfo->DepthStencil.CompareOp),
+        .stencilTestEnable = CreateInfo->DepthStencil.EnableStencilTest,
         .front = Rr_ToVulkanStencilOpState(
-            Info->DepthStencil.FrontStencilState,
-            &Info->DepthStencil),
+            CreateInfo->DepthStencil.FrontStencilState,
+            &CreateInfo->DepthStencil),
         .back = Rr_ToVulkanStencilOpState(
-            Info->DepthStencil.BackStencilState,
-            &Info->DepthStencil),
+            CreateInfo->DepthStencil.BackStencilState,
+            &CreateInfo->DepthStencil),
     };
 
     VkGraphicsPipelineCreateInfo PipelineInfo = {
@@ -565,9 +569,9 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .pMultisampleState = &Multisampling,
         .pColorBlendState = &ColorBlendInfo,
         .pDepthStencilState = &DepthStencil,
-        .layout = Info->Layout->Handle,
+        .layout = CreateInfo->Layout->Handle,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = Rr_GetCompatibleRenderPass(Info),
+        .renderPass = Rr_GetCompatibleRenderPass(CreateInfo),
     };
 
     Device->CreateGraphicsPipelines(
@@ -617,14 +621,12 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    (void)RR_DECREMENT_ATOMIC_INT(&GraphicsPipeline->Layout->RefCount);
 
     Rr_GraphicsPipelineHiveIterator It = Rr_GetGraphicsPipelineHiveIterator(
-        &gRenderer->GraphicsPipelineHive,
+        &gRenderer->GraphicsPipelines,
         GraphicsPipeline);
-    Rr_RemoveFromGraphicsPipelineHive(&gRenderer->GraphicsPipelineHive, &It);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_RemoveFromGraphicsPipelineHive(&gRenderer->GraphicsPipelines, &It);
 }
 
 Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)

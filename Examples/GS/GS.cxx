@@ -261,11 +261,11 @@ struct SSplatRenderer
 
     ~SSplatRenderer()
     {
-        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(SplatsBuffer);
         Rr_ReleaseBuffer(EntriesBuffer);
         Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     }
 
     void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)

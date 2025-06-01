@@ -84,6 +84,11 @@ int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value)
     return __sync_lock_test_and_set(&AtomicInt->Value, Value);
 }
 
+int Rr_AddAtomicInt(Rr_AtomicInt *AtomicInt, int Value)
+{
+    return __sync_fetch_and_add(&AtomicInt->Value, Value);
+}
+
 bool Rr_TryLockSpinlock(Rr_Spinlock *SpinLock)
 {
     return __sync_lock_test_and_set(SpinLock, 1) == 0;

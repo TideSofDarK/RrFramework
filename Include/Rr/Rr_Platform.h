@@ -60,6 +60,13 @@ extern int Rr_GetAtomicInt(Rr_AtomicInt *AtomicInt);
 
 extern int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value);
 
+extern int Rr_AddAtomicInt(Rr_AtomicInt *AtomicInt, int Value);
+
+#define RR_INCREMENT_ATOMIC_INT(AtomicInt) (Rr_AddAtomicInt((AtomicInt), 1))
+
+#define RR_DECREMENT_ATOMIC_INT(AtomicInt) \
+    (Rr_AddAtomicInt((AtomicInt), -1) == 1)
+
 typedef int Rr_Spinlock;
 
 extern bool Rr_TryLockSpinlock(Rr_Spinlock *SpinLock);

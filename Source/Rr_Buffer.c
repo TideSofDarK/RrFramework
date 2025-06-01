@@ -34,7 +34,7 @@ Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags)
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_BufferHiveIterator It =
-        Rr_PushBufferIntoHive(&gRenderer->BufferHive, gRenderer->Arena);
+        Rr_PushBufferIntoHive(&gRenderer->Buffers, gRenderer->Arena);
     Rr_Buffer *Buffer = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
@@ -168,13 +168,9 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
             AllocatedBuffer->Allocation);
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
     Rr_BufferHiveIterator It =
-        Rr_GetBufferHiveIterator(&gRenderer->BufferHive, Buffer);
-    Rr_RemoveFromBufferHive(&gRenderer->BufferHive, &It);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+        Rr_GetBufferHiveIterator(&gRenderer->Buffers, Buffer);
+    Rr_RemoveFromBufferHive(&gRenderer->Buffers, &It);
 }
 
 void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)

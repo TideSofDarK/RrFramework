@@ -92,7 +92,6 @@ struct Rr_Frame
     VkCommandPool CommandPool;
     VkCommandBuffer EarlyCommandBuffer;
     VkCommandBuffer LateCommandBuffer;
-    size_t CommandBufferIndex;
 
     VkSemaphore AcquireSemaphore;
     VkFence SubmitFence;
@@ -101,11 +100,31 @@ struct Rr_Frame
 
     Rr_Graph *Graph;
 
-    RR_ARRAY(Rr_Image2D *) UsedImages;
-    RR_ARRAY(Rr_Buffer *) UsedBuffers;
+    struct
+    {
+        RR_ARRAY(Rr_Buffer *) Buffers;
+        RR_ARRAY(Rr_Image *) Images;
+        RR_ARRAY(Rr_Sampler *) Samplers;
+        RR_ARRAY(Rr_ComputePipeline *) ComputePipelines;
+        RR_ARRAY(Rr_GraphicsPipeline *) GraphicsPipelines;
+    } UsedObjects;
 
     Rr_Arena *Arena;
 };
+
+extern void Rr_MarkBufferUsed(Rr_Frame *Frame, Rr_Buffer *Buffer);
+
+extern void Rr_MarkImageUsed(Rr_Frame *Frame, Rr_Image *Image);
+
+extern void Rr_MarkSamplerUsed(Rr_Frame *Frame, Rr_Sampler *Sampler);
+
+extern void Rr_MarkComputePipelineUsed(
+    Rr_Frame *Frame,
+    Rr_ComputePipeline *ComputePipeline);
+
+extern void Rr_MarkGraphicsPipelineUsed(
+    Rr_Frame *Frame,
+    Rr_GraphicsPipeline *GraphicsPipeline);
 
 typedef struct Rr_CachedFramebuffer Rr_Framebuffer;
 struct Rr_CachedFramebuffer
@@ -153,18 +172,18 @@ struct Rr_Renderer
 
     Rr_ImmediateMode ImmediateMode;
 
-    RR_ARRAY(Rr_PendingLoad) PendingLoadsArray;
-    Rr_Map *GlobalSync;
+    RR_ARRAY(Rr_PendingLoad) PendingLoads;
 
-    Rr_BufferHive BufferHive;
-    Rr_ImageHive ImageHive;
-    Rr_PipelineLayoutHive PipelineLayoutHive;
-    Rr_ComputePipelineHive ComputePipelineHive;
-    Rr_GraphicsPipelineHive GraphicsPipelineHive;
-    Rr_SamplerHive SamplerHive;
+    Rr_Map *GlobalSync;
     RR_FREE_LIST(Rr_SyncState) SyncStates;
 
-    Rr_Spinlock ReleasedObjectsLock;
+    Rr_BufferHive Buffers;
+    Rr_ImageHive Images;
+    Rr_PipelineLayoutHive PipelineLayouts;
+    Rr_ComputePipelineHive ComputePipelines;
+    Rr_GraphicsPipelineHive GraphicsPipelines;
+    Rr_SamplerHive Samplers;
+
     Rr_RendererObjectHive ReleasedObjects;
 
     Rr_Spinlock Lock;

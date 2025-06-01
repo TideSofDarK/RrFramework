@@ -41,7 +41,7 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_SamplerHiveIterator It =
-        Rr_PushSamplerIntoHive(&gRenderer->SamplerHive, gRenderer->Arena);
+        Rr_PushSamplerIntoHive(&gRenderer->Samplers, gRenderer->Arena);
     Rr_Sampler *Sampler = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
@@ -97,13 +97,9 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 
     Device->DestroySampler(Device->Handle, Sampler->Handle, NULL);
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
     Rr_SamplerHiveIterator It =
-        Rr_GetSamplerHiveIterator(&gRenderer->SamplerHive, Sampler);
-    Rr_RemoveFromSamplerHive(&gRenderer->SamplerHive, &It);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+        Rr_GetSamplerHiveIterator(&gRenderer->Samplers, Sampler);
+    Rr_RemoveFromSamplerHive(&gRenderer->Samplers, &It);
 }
 
 void Rr_UploadStagingImage2D(
@@ -280,7 +276,7 @@ static Rr_Image *Rr_CreateImage(
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_ImageHiveIterator It =
-        Rr_PushImageIntoHive(&gRenderer->ImageHive, gRenderer->Arena);
+        Rr_PushImageIntoHive(&gRenderer->Images, gRenderer->Arena);
     Rr_Image *Image = It.Element;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
@@ -464,13 +460,9 @@ void Rr_DestroyImage(Rr_Image *Image)
             Image->AllocatedImages[Index].Allocation);
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
     Rr_ImageHiveIterator It =
-        Rr_GetImageHiveIterator(&gRenderer->ImageHive, Image);
-    Rr_RemoveFromImageHive(&gRenderer->ImageHive, &It);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+        Rr_GetImageHiveIterator(&gRenderer->Images, Image);
+    Rr_RemoveFromImageHive(&gRenderer->Images, &It);
 }
 
 Rr_Image2D *Rr_CreateImage2D(

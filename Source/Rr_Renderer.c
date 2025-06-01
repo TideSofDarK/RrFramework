@@ -40,6 +40,42 @@
 
 Rr_Renderer *gRenderer;
 
+void Rr_MarkBufferUsed(Rr_Frame *Frame, Rr_Buffer *Buffer)
+{
+    RR_INCREMENT_ATOMIC_INT(&Buffer->RefCount);
+    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Buffers, Frame->Arena) = Buffer;
+}
+
+void Rr_MarkImageUsed(Rr_Frame *Frame, Rr_Image *Image)
+{
+    RR_INCREMENT_ATOMIC_INT(&Image->RefCount);
+    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Images, Frame->Arena) = Image;
+}
+
+void Rr_MarkSamplerUsed(Rr_Frame *Frame, Rr_Sampler *Sampler)
+{
+    RR_INCREMENT_ATOMIC_INT(&Sampler->RefCount);
+    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Samplers, Frame->Arena) = Sampler;
+}
+
+void Rr_MarkComputePipelineUsed(
+    Rr_Frame *Frame,
+    Rr_ComputePipeline *ComputePipeline)
+{
+    RR_INCREMENT_ATOMIC_INT(&ComputePipeline->RefCount);
+    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.ComputePipelines, Frame->Arena) =
+        ComputePipeline;
+}
+
+void Rr_MarkGraphicsPipelineUsed(
+    Rr_Frame *Frame,
+    Rr_GraphicsPipeline *GraphicsPipeline)
+{
+    RR_INCREMENT_ATOMIC_INT(&GraphicsPipeline->RefCount);
+    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.GraphicsPipelines, Frame->Arena) =
+        GraphicsPipeline;
+}
+
 static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 {
     Rr_Device *Device = &gRenderer->Device;
@@ -614,6 +650,41 @@ void Rr_WaitIdle(void)
     Device->DeviceWaitIdle(Device->Handle);
 }
 
+static void Rr_DecrementRefCounts(Rr_Frame *Frame)
+{
+    for (size_t Index = 0; Index < Frame->UsedObjects.Buffers.Count; ++Index)
+    {
+        (void)RR_DECREMENT_ATOMIC_INT(
+            &Frame->UsedObjects.Buffers.Data[Index]->RefCount);
+    }
+
+    for (size_t Index = 0; Index < Frame->UsedObjects.Images.Count; ++Index)
+    {
+        (void)RR_DECREMENT_ATOMIC_INT(
+            &Frame->UsedObjects.Images.Data[Index]->RefCount);
+    }
+
+    for (size_t Index = 0; Index < Frame->UsedObjects.Samplers.Count; ++Index)
+    {
+        (void)RR_DECREMENT_ATOMIC_INT(
+            &Frame->UsedObjects.Samplers.Data[Index]->RefCount);
+    }
+
+    for (size_t Index = 0; Index < Frame->UsedObjects.ComputePipelines.Count;
+         ++Index)
+    {
+        (void)RR_DECREMENT_ATOMIC_INT(
+            &Frame->UsedObjects.ComputePipelines.Data[Index]->RefCount);
+    }
+
+    for (size_t Index = 0; Index < Frame->UsedObjects.GraphicsPipelines.Count;
+         ++Index)
+    {
+        (void)RR_DECREMENT_ATOMIC_INT(
+            &Frame->UsedObjects.GraphicsPipelines.Data[Index]->RefCount);
+    }
+}
+
 static inline void Rr_ProcessReleasedObjects(void)
 {
     static const char *RENDERER_OBJECT_NAMES[] = {
@@ -651,6 +722,16 @@ static inline void Rr_ProcessReleasedObjects(void)
                 }
             }
             break;
+            case RR_RENDERER_OBJECT_SAMPLER:
+            {
+                Rr_Sampler *Sampler = Object.Ptr;
+                if (Rr_GetAtomicInt(&Sampler->RefCount) == 0)
+                {
+                    Rr_DestroySampler(Sampler);
+                    goto ObjectDeleted;
+                }
+            }
+            break;
             case RR_RENDERER_OBJECT_PIPELINE_LAYOUT:
             {
                 Rr_PipelineLayout *PipelineLayout = Object.Ptr;
@@ -681,20 +762,11 @@ static inline void Rr_ProcessReleasedObjects(void)
                 }
             }
             break;
-            case RR_RENDERER_OBJECT_SAMPLER:
-            {
-                Rr_Sampler *Sampler = Object.Ptr;
-                if (Rr_GetAtomicInt(&Sampler->RefCount) == 0)
-                {
-                    Rr_DestroySampler(Sampler);
-                    goto ObjectDeleted;
-                }
-            }
-            break;
             default:
                 RR_ABORT("Invalid renderer object type in deletion queue!");
         }
         Rr_AdvanceRendererObjectHiveIterator(&It);
+        continue;
     ObjectDeleted:
         RR_LOG(
             "Destroying %s with address %p",
@@ -704,6 +776,16 @@ static inline void Rr_ProcessReleasedObjects(void)
     }
 }
 
+static void Rr_ProcessPendingLoads(void)
+{
+    for (size_t Index = 0; Index < gRenderer->PendingLoads.Count; ++Index)
+    {
+        Rr_PendingLoad *PendingLoad = &gRenderer->PendingLoads.Data[Index];
+        PendingLoad->LoadingCallback(PendingLoad->UserData);
+    }
+    RR_CLEAR_ARRAY(&gRenderer->PendingLoads);
+}
+
 void Rr_CleanupRenderer(void)
 {
     Rr_Instance *Instance = &gRenderer->Instance;
@@ -711,7 +793,15 @@ void Rr_CleanupRenderer(void)
 
     Rr_WaitIdle();
 
-    Rr_ProcessReleasedObjects();
+    for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+    {
+        Rr_DecrementRefCounts(&gRenderer->Frames[Index]);
+    }
+
+    while (gRenderer->ReleasedObjects.Count > 0)
+    {
+        Rr_ProcessReleasedObjects();
+    }
 
     for (size_t Index = 0; Index < gRenderer->RenderPasses.Count; ++Index)
     {
@@ -824,23 +914,6 @@ void Rr_EndImmediate(void)
     Rr_ReturnVulkanFence(Fence);
 }
 
-static void Rr_ProcessPendingLoads(void)
-{
-    if (Rr_TryLockSpinlock(&gRenderer->Lock))
-    {
-        for (size_t Index = 0; Index < gRenderer->PendingLoadsArray.Count;
-             ++Index)
-        {
-            Rr_PendingLoad *PendingLoad =
-                &gRenderer->PendingLoadsArray.Data[Index];
-            PendingLoad->LoadingCallback(PendingLoad->UserData);
-        }
-        RR_CLEAR_ARRAY(&gRenderer->PendingLoadsArray);
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
-    }
-}
-
 void Rr_NewFrame(void)
 {
     Rr_Device *Device = &gRenderer->Device;
@@ -865,14 +938,27 @@ void Rr_NewFrame(void)
         Rr_ResetDescriptorAllocator(Frame->DescriptorAllocator, Device);
     }
 
-    Rr_ProcessReleasedObjects();
+    Rr_DecrementRefCounts(Frame);
 
-    /* TODO: Decrement atomic refcounts on used resources. */
+    /* TODO: Probably should use mutex instead. */
+
+    if (Rr_TryLockSpinlock(&gRenderer->Lock))
+    {
+        Rr_ProcessPendingLoads();
+        Rr_ProcessReleasedObjects();
+
+        Rr_UnlockSpinlock(&gRenderer->Lock);
+    }
+
+    /* Reset everything allocated last time. */
 
     Rr_ResetArena(Frame->Arena);
 
-    RR_RESET_ARRAY(&Frame->UsedImages, Frame->Arena);
-    RR_RESET_ARRAY(&Frame->UsedBuffers, Frame->Arena);
+    RR_RESET_ARRAY(&Frame->UsedObjects.Buffers, Frame->Arena);
+    RR_RESET_ARRAY(&Frame->UsedObjects.Images, Frame->Arena);
+    RR_RESET_ARRAY(&Frame->UsedObjects.Samplers, Frame->Arena);
+    RR_RESET_ARRAY(&Frame->UsedObjects.ComputePipelines, Frame->Arena);
+    RR_RESET_ARRAY(&Frame->UsedObjects.GraphicsPipelines, Frame->Arena);
 
     Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image2D);
 
@@ -889,8 +975,6 @@ void Rr_NewFrame(void)
             Frame->Graph,
             (Rr_Image *)Frame->VirtualSwapchainImage)
             ->Values.Index;
-
-    Rr_ProcessPendingLoads();
 }
 
 void Rr_DrawFrame(void)

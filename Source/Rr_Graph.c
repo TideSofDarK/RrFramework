@@ -1557,15 +1557,11 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
 
         if (IsImage)
         {
-            *RR_PUSH_INTO_ARRAY(
-                &Graph->Frame->UsedImages,
-                Graph->Frame->Arena) = Container;
+            Rr_MarkImageUsed(Graph->Frame, Container);
         }
         else
         {
-            *RR_PUSH_INTO_ARRAY(
-                &Graph->Frame->UsedBuffers,
-                Graph->Frame->Arena) = Container;
+            Rr_MarkBufferUsed(Graph->Frame, Container);
         }
     }
 
@@ -2037,6 +2033,8 @@ void Rr_BindComputePipeline(
     assert(ComputePipeline != NULL);
     assert(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE);
 
+    Rr_MarkComputePipelineUsed(Node->Graph->Frame, ComputePipeline);
+
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
         Rr_ComputePipeline *) = ComputePipeline;
@@ -2195,6 +2193,8 @@ void Rr_BindGraphicsPipeline(
         Node->Union.Graphics.DepthTarget != NULL ||
         !GraphicsPipeline->HasDepthStencil);
 
+    Rr_MarkGraphicsPipelineUsed(Node->Graph->Frame, GraphicsPipeline);
+
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
         Rr_GraphicsPipeline *) = GraphicsPipeline;
@@ -2223,6 +2223,8 @@ void Rr_BindSampler(
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
     assert(Sampler != NULL);
+
+    Rr_MarkSamplerUsed(Node->Graph->Frame, Sampler);
 
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_BIND_SAMPLER, Rr_BindSamplerArgs) =
         (Rr_BindSamplerArgs){
@@ -2280,6 +2282,8 @@ void Rr_BindCombinedImageSampler(
     assert(Sampler != NULL);
     assert(Image);
 
+    Rr_MarkSamplerUsed(Node->Graph->Frame, Sampler);
+
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
 
     VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2318,6 +2322,8 @@ void Rr_BindCombinedCubemapSampler(
     assert(Binding < RR_MAX_BINDINGS);
     assert(Sampler != NULL);
     assert(Cubemap);
+
+    Rr_MarkSamplerUsed(Node->Graph->Frame, Sampler);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Cubemap);
 

@@ -3,11 +3,12 @@
 - [X] Synchronization (?) bug with host written buffers.
       Turned out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame.
       Solution: call Iterate() after waiting on the fence.
+- [X] Add deletion queues for Vulkan objects
 - [ ] Hash collision handling across all usages of Rr_Map
 - [ ] Hashing objects such as VkFramebuffer looks very bad
-- [ ] Add deletion queues for Vulkan objects
 - [ ] MSAA support
 - [ ] 3D image support
+- [ ] Image array support
 - [ ] Arbitrary asset loading within Rr_LoadingThread
 
 * Features
@@ -31,8 +32,8 @@
 
 ** GLTF
 
-- [ ] Make sure current implementation makes sense
 - [ ] Add support for skeletal animation
+- [ ] Examine current implementation and see if it's good enough
 
 ** Examples
 

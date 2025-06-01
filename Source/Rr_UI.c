@@ -4466,28 +4466,28 @@ void Rr_UIDebugOverlay(void)
             Rr_UILabelF("Frame: %zu", gRenderer->FrameNumber);
             Rr_UILabelF(
                 "Images: %zu/%zu",
-                gRenderer->ImageHive.Count,
-                gRenderer->ImageHive.Capacity);
+                gRenderer->Images.Count,
+                gRenderer->Images.Capacity);
             Rr_UILabelF(
                 "Buffers: %zu/%zu",
-                gRenderer->BufferHive.Count,
-                gRenderer->BufferHive.Capacity);
+                gRenderer->Buffers.Count,
+                gRenderer->Buffers.Capacity);
             Rr_UILabelF(
                 "PipelineLayouts: %zu/%zu",
-                gRenderer->PipelineLayoutHive.Count,
-                gRenderer->PipelineLayoutHive.Capacity);
+                gRenderer->PipelineLayouts.Count,
+                gRenderer->PipelineLayouts.Capacity);
             Rr_UILabelF(
                 "ComputePipelines: %zu/%zu",
-                gRenderer->ComputePipelineHive.Count,
-                gRenderer->ComputePipelineHive.Capacity);
+                gRenderer->ComputePipelines.Count,
+                gRenderer->ComputePipelines.Capacity);
             Rr_UILabelF(
                 "GraphicsPipelines: %zu/%zu",
-                gRenderer->GraphicsPipelineHive.Count,
-                gRenderer->GraphicsPipelineHive.Capacity);
+                gRenderer->GraphicsPipelines.Count,
+                gRenderer->GraphicsPipelines.Capacity);
             Rr_UILabelF(
                 "Samplers: %zu/%zu",
-                gRenderer->SamplerHive.Count,
-                gRenderer->SamplerHive.Capacity);
+                gRenderer->Samplers.Count,
+                gRenderer->Samplers.Capacity);
             Rr_UILabelF("RenderPasses: %zu", gRenderer->RenderPasses.Count);
             Rr_UILabelF("Framebuffers: %zu", gRenderer->Framebuffers.Count);
             Rr_UILabelF(
