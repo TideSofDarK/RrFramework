@@ -107,6 +107,8 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
     FreeEXRHeader(&Header);
     FreeEXRImage(&Image);
 
+    Rr_ReleaseBuffer(StagingBuffer);
+
     return DepthImage;
 }
 
@@ -144,6 +146,8 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
         ColorImage,
         0);
 
+    Rr_ReleaseBuffer(StagingBuffer);
+
     return ColorImage;
 }
 
@@ -163,7 +167,6 @@ struct SPrerenderedDepth
     Rr_GraphicsPipeline *GraphicsPipeline;
 
     Rr_Buffer *UniformBuffer;
-    Rr_Buffer *StagingBuffer;
 
     Rr_Image2D *ColorImage;
     Rr_Image2D *DepthImage;
@@ -321,7 +324,6 @@ struct SPrerenderedDepth
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseBuffer(StagingBuffer);
         Rr_ReleaseImage2D(BackgroundColorImage);
         Rr_ReleaseImage2D(BackgroundDepthImage);
         Rr_ReleaseImage2D(ColorImage);
