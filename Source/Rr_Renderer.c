@@ -114,7 +114,7 @@ static bool Rr_InitSwapchain(void)
     Rr_Device *Device = &gRenderer->Device;
 
     int32_t Width, Height;
-    SDL_GetWindowSizeInPixels(gRenderer->Window, &Width, &Height);
+    SDL_GetWindowSizeInPixels(gApp->Window, &Width, &Height);
 
     if (Width == 0 || Height == 0)
     {
@@ -618,15 +618,12 @@ void Rr_InitRenderer(void)
     gRenderer = RR_ALLOC_TYPE(Arena, Rr_Renderer);
     gRenderer->Arena = Arena;
 
-    SDL_Window *Window = gApp->Window;
-    gRenderer->Window = Window;
-
     Rr_InitLoader(&gRenderer->Loader);
     Rr_InitInstance(
         &gRenderer->Loader,
-        SDL_GetWindowTitle(gApp->Window),
+        gApp->Config->Title,
         &gRenderer->Instance);
-    Rr_InitSurface(Window, &gRenderer->Instance, &gRenderer->Surface);
+    Rr_InitSurface(gApp->Window, &gRenderer->Instance, &gRenderer->Surface);
     Rr_InitDeviceAndQueues(
         &gRenderer->Instance,
         gRenderer->Surface,
@@ -702,7 +699,7 @@ static inline void Rr_ProcessReleasedObjects(void)
         Rr_RendererObject Object = *It.Element;
         switch (Object.Type)
         {
-            case RR_RENDERER_OBJECT_BUFFER:
+            case RR_RENDERER_OBJECT_TYPE_BUFFER:
             {
                 Rr_Buffer *Buffer = Object.Ptr;
                 if (Rr_GetAtomicInt(&Buffer->RefCount) == 0)
@@ -712,7 +709,7 @@ static inline void Rr_ProcessReleasedObjects(void)
                 }
             }
             break;
-            case RR_RENDERER_OBJECT_IMAGE:
+            case RR_RENDERER_OBJECT_TYPE_IMAGE:
             {
                 Rr_Image *Image = Object.Ptr;
                 if (Rr_GetAtomicInt(&Image->RefCount) == 0)
@@ -722,7 +719,7 @@ static inline void Rr_ProcessReleasedObjects(void)
                 }
             }
             break;
-            case RR_RENDERER_OBJECT_SAMPLER:
+            case RR_RENDERER_OBJECT_TYPE_SAMPLER:
             {
                 Rr_Sampler *Sampler = Object.Ptr;
                 if (Rr_GetAtomicInt(&Sampler->RefCount) == 0)
@@ -732,7 +729,7 @@ static inline void Rr_ProcessReleasedObjects(void)
                 }
             }
             break;
-            case RR_RENDERER_OBJECT_PIPELINE_LAYOUT:
+            case RR_RENDERER_OBJECT_TYPE_PIPELINE_LAYOUT:
             {
                 Rr_PipelineLayout *PipelineLayout = Object.Ptr;
                 if (Rr_GetAtomicInt(&PipelineLayout->RefCount) == 0)
@@ -742,7 +739,7 @@ static inline void Rr_ProcessReleasedObjects(void)
                 }
             }
             break;
-            case RR_RENDERER_OBJECT_COMPUTE_PIPELINE:
+            case RR_RENDERER_OBJECT_TYPE_COMPUTE_PIPELINE:
             {
                 Rr_ComputePipeline *ComputePipeline = Object.Ptr;
                 if (Rr_GetAtomicInt(&ComputePipeline->RefCount) == 0)
@@ -752,7 +749,7 @@ static inline void Rr_ProcessReleasedObjects(void)
                 }
             }
             break;
-            case RR_RENDERER_OBJECT_GRAPHICS_PIPELINE:
+            case RR_RENDERER_OBJECT_TYPE_GRAPHICS_PIPELINE:
             {
                 Rr_GraphicsPipeline *GraphicsPipeline = Object.Ptr;
                 if (Rr_GetAtomicInt(&GraphicsPipeline->RefCount) == 0)

@@ -37,6 +37,7 @@ struct Rr_AppConfig
     const char *Title;
     const char *Version;
     const char *Package;
+    Rr_WindowFlags WindowFlags;
     void (*InitFunc)(void *UserData);
     void (*EventFunc)(void *UserData, Rr_Event *Event);
     void (*IterateFunc)(void *UserData);

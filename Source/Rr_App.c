@@ -138,6 +138,7 @@ static inline bool Rr_PollEvent(Rr_Event *Event)
 void Rr_Run(Rr_AppConfig *Config)
 {
     assert(gApp == NULL && "You shouldn't call Rr_Run() more than once!");
+    assert(Config->Title != NULL);
     assert(Config->InitFunc != NULL);
     assert(Config->IterateFunc != NULL);
     assert(Config->CleanupFunc != NULL);
@@ -156,12 +157,7 @@ void Rr_Run(Rr_AppConfig *Config)
     gApp->Arena = Arena;
 
     gApp->Config = Config;
-    gApp->Window = SDL_CreateWindow(
-        Config->Title,
-        0,
-        0,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN |
-            SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    gApp->Window = Rr_CreateWindow(Config->Title, Config->WindowFlags);
     gApp->UserData = Config->UserData;
 
     Rr_SetWindowSize(Rr_GetDefaultWindowSize());
@@ -171,9 +167,6 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_InitScratch(RR_MAIN_THREAD_SCRATCH_ARENA_SIZE);
 
     Rr_InitFrameTime(&gApp->FrameTime, gApp->Window);
-
-    SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
-    SDL_StartTextInput(gApp->Window);
 
     Rr_InitRenderer();
 
@@ -187,7 +180,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Config->InitFunc(gApp->UserData);
 
-    SDL_ShowWindow(gApp->Window);
+    Rr_ShowWindow(gApp->Window);
 
     while (true)
     {
@@ -258,7 +251,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     SDL_CleanupTLS();
 
-    SDL_DestroyWindow(gApp->Window);
+    Rr_DestroyWindow(gApp->Window);
 
     Rr_DestroyArena(gApp->Arena);
 

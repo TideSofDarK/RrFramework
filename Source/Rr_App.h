@@ -76,7 +76,7 @@ struct Rr_App
     Rr_FrameTime FrameTime;
 
     SDL_TLSID ScratchArenaTLS;
-    SDL_Window *Window;
+    Rr_Window Window;
     Rr_AtomicInt QuitRequested;
 
     Rr_EventHive EventHive;

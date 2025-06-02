@@ -35,12 +35,12 @@
 
 typedef enum
 {
-    RR_RENDERER_OBJECT_BUFFER,
-    RR_RENDERER_OBJECT_IMAGE,
-    RR_RENDERER_OBJECT_PIPELINE_LAYOUT,
-    RR_RENDERER_OBJECT_COMPUTE_PIPELINE,
-    RR_RENDERER_OBJECT_GRAPHICS_PIPELINE,
-    RR_RENDERER_OBJECT_SAMPLER,
+    RR_RENDERER_OBJECT_TYPE_BUFFER,
+    RR_RENDERER_OBJECT_TYPE_IMAGE,
+    RR_RENDERER_OBJECT_TYPE_PIPELINE_LAYOUT,
+    RR_RENDERER_OBJECT_TYPE_COMPUTE_PIPELINE,
+    RR_RENDERER_OBJECT_TYPE_GRAPHICS_PIPELINE,
+    RR_RENDERER_OBJECT_TYPE_SAMPLER,
 } Rr_RendererObjectType;
 
 typedef struct Rr_RendererObject Rr_RendererObject;
@@ -142,8 +142,6 @@ struct Rr_CachedRenderPass
 
 struct Rr_Renderer
 {
-    void *Window;
-
     Rr_VulkanLoader Loader;
     Rr_Instance Instance;
     Rr_PhysicalDevice PhysicalDevice;

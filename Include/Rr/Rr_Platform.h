@@ -75,6 +75,14 @@ extern void Rr_LockSpinlock(Rr_Spinlock *SpinLock);
 
 extern void Rr_UnlockSpinlock(Rr_Spinlock *SpinLock);
 
+typedef void *Rr_Window;
+
+typedef enum
+{
+    RR_WINDOW_FLAGS_RESIZE_BIT = (1 << 0),
+} Rr_WindowFlagsBits;
+typedef uint32_t Rr_WindowFlags;
+
 extern Rr_IntVec2 Rr_GetWindowSize(void);
 
 extern void Rr_SetWindowTitle(const char *Title);

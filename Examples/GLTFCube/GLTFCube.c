@@ -32,6 +32,22 @@ static void OnLoadComplete(void *UserData)
     Loaded = true;
 }
 
+static void InitDepthImage(void)
+{
+    if (DepthAttachment != NULL)
+    {
+        Rr_ReleaseImage2D(DepthAttachment);
+    }
+
+    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+
+    DepthAttachment = Rr_CreateImage2D(
+        (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
+        RR_TEXTURE_FORMAT_D32_SFLOAT,
+        RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
+            RR_IMAGE_FLAGS_TRANSFER_BIT);
+}
+
 static void Init(void *UserData)
 {
     /* Create simple sampler. */
@@ -141,16 +157,6 @@ static void Init(void *UserData)
         OnLoadComplete,
         NULL);
 
-    /* Create depth buffer. */
-
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-
-    DepthAttachment = Rr_CreateImage2D(
-        (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
-        RR_TEXTURE_FORMAT_D32_SFLOAT,
-        RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
-            RR_IMAGE_FLAGS_TRANSFER_BIT);
-
     /* Create uniform buffer. */
 
     UniformBuffer =
@@ -164,6 +170,22 @@ static void Init(void *UserData)
             RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
     UniformData.Model = Rr_M4D(1.0f);
+
+    InitDepthImage();
+}
+
+static void Event(void *UserData, Rr_Event *Event)
+{
+    switch (Event->Type)
+    {
+        case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
+        {
+            InitDepthImage();
+            return;
+        }
+        default:
+            return;
+    }
 }
 
 static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
@@ -269,9 +291,9 @@ int main(int ArgC, char **ArgV)
 {
     Rr_AppConfig Config = {
         .Title = "GLTFCube",
-        .Version = "1.0.0",
-        .Package = "com.rr.examples.gltfcube",
+        .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
         .InitFunc = Init,
+        .EventFunc = Event,
         .CleanupFunc = Cleanup,
         .IterateFunc = Iterate,
     };

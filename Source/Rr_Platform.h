@@ -30,11 +30,17 @@
 extern "C" {
 #endif
 
-extern bool Rr_PollPlatformEvent(Rr_Event *Event);
-
 extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
 
 extern void Rr_AlignedFree(void *Ptr);
+
+extern bool Rr_PollPlatformEvent(Rr_Event *Event);
+
+extern Rr_Window Rr_CreateWindow(const char *Title, Rr_WindowFlags Flags);
+
+extern void Rr_DestroyWindow(Rr_Window Window);
+
+extern void Rr_ShowWindow(Rr_Window Window);
 
 #ifdef __cplusplus
 }

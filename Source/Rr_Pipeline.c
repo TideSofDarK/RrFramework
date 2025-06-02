@@ -130,7 +130,7 @@ void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
         &gRenderer->ReleasedObjects,
         gRenderer->Arena);
     It.Element->Ptr = PipelineLayout;
-    It.Element->Type = RR_RENDERER_OBJECT_PIPELINE_LAYOUT;
+    It.Element->Type = RR_RENDERER_OBJECT_TYPE_PIPELINE_LAYOUT;
 }
 
 void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
@@ -275,7 +275,7 @@ void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
         &gRenderer->ReleasedObjects,
         gRenderer->Arena);
     It.Element->Ptr = ComputePipeline;
-    It.Element->Type = RR_RENDERER_OBJECT_COMPUTE_PIPELINE;
+    It.Element->Type = RR_RENDERER_OBJECT_TYPE_COMPUTE_PIPELINE;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -610,7 +610,7 @@ void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
         &gRenderer->ReleasedObjects,
         gRenderer->Arena);
     It.Element->Ptr = GraphicsPipeline;
-    It.Element->Type = RR_RENDERER_OBJECT_GRAPHICS_PIPELINE;
+    It.Element->Type = RR_RENDERER_OBJECT_TYPE_GRAPHICS_PIPELINE;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }

@@ -147,7 +147,7 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
         &gRenderer->ReleasedObjects,
         gRenderer->Arena);
     It.Element->Ptr = Buffer;
-    It.Element->Type = RR_RENDERER_OBJECT_BUFFER;
+    It.Element->Type = RR_RENDERER_OBJECT_TYPE_BUFFER;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }

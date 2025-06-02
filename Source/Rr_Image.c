@@ -84,7 +84,7 @@ void Rr_ReleaseSampler(Rr_Sampler *Sampler)
         &gRenderer->ReleasedObjects,
         gRenderer->Arena);
     It.Element->Ptr = Sampler;
-    It.Element->Type = RR_RENDERER_OBJECT_SAMPLER;
+    It.Element->Type = RR_RENDERER_OBJECT_TYPE_SAMPLER;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -434,7 +434,7 @@ static inline void Rr_ReleaseImage(Rr_Image *Image)
         &gRenderer->ReleasedObjects,
         gRenderer->Arena);
     It.Element->Ptr = Image;
-    It.Element->Type = RR_RENDERER_OBJECT_IMAGE;
+    It.Element->Type = RR_RENDERER_OBJECT_TYPE_IMAGE;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }

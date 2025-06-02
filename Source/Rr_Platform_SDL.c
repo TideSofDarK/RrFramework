@@ -137,6 +137,30 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
     }
 }
 
+Rr_Window Rr_CreateWindow(const char *Title, Rr_WindowFlags Flags)
+{
+    SDL_WindowFlags SDLWindowFlags =
+        SDL_WINDOW_HIDDEN | SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    if (RR_HAS_BIT(Flags, RR_WINDOW_FLAGS_RESIZE_BIT))
+    {
+        SDLWindowFlags |= SDL_WINDOW_RESIZABLE;
+    }
+    SDL_Window *Window = SDL_CreateWindow(Title, 0, 0, SDLWindowFlags);
+    SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
+    SDL_StartTextInput(Window);
+    return Window;
+}
+
+void Rr_DestroyWindow(Rr_Window Window)
+{
+    SDL_DestroyWindow(Window);
+}
+
+void Rr_ShowWindow(Rr_Window Window)
+{
+    SDL_ShowWindow(Window);
+}
+
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
     Rr_IntVec2 Size;
