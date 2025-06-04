@@ -49,19 +49,6 @@ struct Rr_UIGlyph
     Rr_Vec4 PlaneBounds;
 };
 
-struct Rr_UIFont
-{
-    Rr_UIGlyph Glyphs[RR_TEXT_MAX_GLYPHS];
-    float Advances[RR_TEXT_MAX_GLYPHS];
-    struct Rr_Image2D *Atlas;
-    float LineHeight;
-    float DefaultSize;
-    float Advance;
-    float DistanceRange;
-    float UnderlineY;
-    float UnderlineThickness;
-};
-
 typedef struct Rr_UIStyle Rr_UIStyle;
 struct Rr_UIStyle
 {

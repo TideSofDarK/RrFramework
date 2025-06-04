@@ -324,10 +324,10 @@ struct SApp
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseImage2D(BackgroundColorImage);
-        Rr_ReleaseImage2D(BackgroundDepthImage);
-        Rr_ReleaseImage2D(ColorImage);
-        Rr_ReleaseImage2D(DepthImage);
+        Rr_ReleaseImage(BackgroundColorImage);
+        Rr_ReleaseImage(BackgroundDepthImage);
+        Rr_ReleaseImage(ColorImage);
+        Rr_ReleaseImage(DepthImage);
     }
 };
 

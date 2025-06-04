@@ -106,11 +106,11 @@ extern Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info);
 
 extern void Rr_ReleaseSampler(Rr_Sampler *Sampler);
 
-typedef struct Rr_Image2D Rr_Image2D;
-typedef struct Rr_Image2DArray Rr_Image2DArray;
-typedef struct Rr_Image3D Rr_Image3D;
-typedef struct Rr_Image3DArray Rr_Image3DArray;
-typedef struct Rr_ImageCube Rr_ImageCube;
+typedef struct Rr_Image Rr_Image2D;
+typedef struct Rr_Image Rr_Image2DArray;
+typedef struct Rr_Image Rr_Image3D;
+typedef struct Rr_Image Rr_Image3DArray;
+typedef struct Rr_Image Rr_ImageCube;
 
 typedef enum
 {
@@ -130,21 +130,17 @@ extern Rr_Image2D *Rr_CreateImage2D(
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags);
 
-extern void Rr_ReleaseImage2D(Rr_Image2D *Image);
-
 extern Rr_Image3D *Rr_CreateImage3D(
     Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags);
-
-extern void Rr_ReleaseImage3D(Rr_Image3D *Image);
 
 extern Rr_ImageCube *Rr_CreateImageCube(
     Rr_IntVec2 Extent,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags);
 
-extern void Rr_ReleaseImageCube(Rr_ImageCube *ImageCube);
+extern void Rr_ReleaseImage(struct Rr_Image *Image);
 
 extern Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image);
 

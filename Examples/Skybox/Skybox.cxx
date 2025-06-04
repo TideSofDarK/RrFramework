@@ -410,7 +410,7 @@ struct SApp
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(StagingBuffer);
         Rr_ReleaseSampler(Sampler);
-        Rr_ReleaseImageCube(SkyboxImage);
+        Rr_ReleaseImage(SkyboxImage);
         Rr_ReleaseGLTFContext(GLTFContext);
     }
 };

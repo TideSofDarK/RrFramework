@@ -421,7 +421,7 @@ static Rr_Image *Rr_CreateImage(
     return (Rr_Image *)Image;
 }
 
-static inline void Rr_ReleaseImage(Rr_Image *Image)
+void Rr_ReleaseImage(Rr_Image *Image)
 {
     if (Image == NULL)
     {
@@ -481,11 +481,6 @@ Rr_Image2D *Rr_CreateImage2D(
         0);
 }
 
-void Rr_ReleaseImage2D(Rr_Image2D *Image)
-{
-    Rr_ReleaseImage((Rr_Image *)Image);
-}
-
 Rr_Image3D *Rr_CreateImage3D(
     Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
@@ -496,11 +491,6 @@ Rr_Image3D *Rr_CreateImage3D(
     assert(Extent.Depth >= 1);
 
     return (Rr_Image3D *)Rr_CreateImage(Extent, Format, Flags, 1, 0);
-}
-
-void Rr_ReleaseImage3D(Rr_Image3D *Image)
-{
-    Rr_ReleaseImage((Rr_Image *)Image);
 }
 
 Rr_ImageCube *Rr_CreateImageCube(
@@ -517,11 +507,6 @@ Rr_ImageCube *Rr_CreateImageCube(
         Flags,
         6,
         VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-}
-
-void Rr_ReleaseImageCube(Rr_ImageCube *Cubemap)
-{
-    Rr_ReleaseImage((Rr_Image *)Cubemap);
 }
 
 /* Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image) */

@@ -295,7 +295,7 @@ struct SApp
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseImage2D(DepthImage);
+        Rr_ReleaseImage(DepthImage);
     }
 };
 

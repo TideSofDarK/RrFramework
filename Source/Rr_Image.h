@@ -55,27 +55,18 @@ struct Rr_AllocatedImage
     struct Rr_Image *Container;
 };
 
-#define RR_DEFINE_IMAGE_STRUCT(Name)                         \
-    struct Name                                              \
-    {                                                        \
-        VkExtent3D Extent;                                   \
-        VkImageAspectFlags AspectFlags;                      \
-        VkFormat Format;                                     \
-        Rr_ImageFlags Flags;                                 \
-        uint32_t AllocatedImageCount;                        \
-        Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP]; \
-        Rr_AtomicInt RefCount;                               \
-    }
+struct Rr_Image
+{
+    VkExtent3D Extent;
+    VkImageAspectFlags AspectFlags;
+    VkFormat Format;
+    Rr_ImageFlags Flags;
+    uint32_t AllocatedImageCount;
+    Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP];
+    Rr_AtomicInt RefCount;
+};
 
 typedef struct Rr_Image Rr_Image;
-RR_DEFINE_IMAGE_STRUCT(Rr_Image);
-RR_DEFINE_IMAGE_STRUCT(Rr_Image2D);
-RR_DEFINE_IMAGE_STRUCT(Rr_Image2DArray);
-RR_DEFINE_IMAGE_STRUCT(Rr_Image3D);
-RR_DEFINE_IMAGE_STRUCT(Rr_Image3DArray);
-RR_DEFINE_IMAGE_STRUCT(Rr_ImageCube);
-
-#undef RR_DEFINE_IMAGE_TYPE
 
 #define RR_HIVE_TYPE      Rr_Image
 #define RR_HIVE_TYPE_NAME Image

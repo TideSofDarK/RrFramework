@@ -215,7 +215,7 @@ void Rr_ReleaseGLTFContext(Rr_GLTFContext *GLTFContext)
 
     for (size_t Index = 0; Index < GLTFContext->Images.Count; ++Index)
     {
-        Rr_ReleaseImage2D(GLTFContext->Images.Data[Index]);
+        Rr_ReleaseImage(GLTFContext->Images.Data[Index]);
     }
 
     Rr_DestroyArena(GLTFContext->Arena);

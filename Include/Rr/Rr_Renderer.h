@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 struct Rr_Graph;
+struct Rr_Image;
 
 typedef struct Rr_Renderer Rr_Renderer;
 
@@ -134,7 +135,7 @@ extern Rr_TextureFormat Rr_GetSwapchainFormat(void);
 
 extern Rr_IntVec2 Rr_GetSwapchainSize(void);
 
-extern struct Rr_Image2D *Rr_GetSwapchainImage(void);
+extern struct Rr_Image *Rr_GetSwapchainImage(void);
 
 extern Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count);
 

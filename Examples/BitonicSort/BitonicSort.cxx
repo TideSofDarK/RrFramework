@@ -63,7 +63,7 @@ struct SValidator
     {
         Rr_ReleaseComputePipeline(Pipeline);
         Rr_ReleasePipelineLayout(Layout);
-        Rr_ReleaseImage2D(ResultImage);
+        Rr_ReleaseImage(ResultImage);
     }
 
     Rr_Image2D *Validate(

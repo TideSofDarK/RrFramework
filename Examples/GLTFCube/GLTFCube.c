@@ -36,7 +36,7 @@ static void InitDepthImage(void)
 {
     if (DepthAttachment != NULL)
     {
-        Rr_ReleaseImage2D(DepthAttachment);
+        Rr_ReleaseImage(DepthAttachment);
     }
 
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
@@ -279,7 +279,7 @@ static void Cleanup(void *UserData)
 {
     Rr_DestroyLoadThread(LoadThread);
     Rr_ReleaseGLTFContext(GLTFContext);
-    Rr_ReleaseImage2D(DepthAttachment);
+    Rr_ReleaseImage(DepthAttachment);
     Rr_ReleaseBuffer(StagingBuffer);
     Rr_ReleaseBuffer(UniformBuffer);
     Rr_ReleaseGraphicsPipeline(GraphicsPipeline);

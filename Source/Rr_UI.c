@@ -230,6 +230,19 @@ static Rr_UIContext *gUIContext;
 #define RR_UI_ROUND_V2(Value) \
     (Rr_V2(RR_UI_ROUND((Value).X), RR_UI_ROUND((Value).Y)))
 
+struct Rr_UIFont
+{
+    Rr_UIGlyph Glyphs[RR_TEXT_MAX_GLYPHS];
+    float Advances[RR_TEXT_MAX_GLYPHS];
+    Rr_Image2D *Atlas;
+    float LineHeight;
+    float DefaultSize;
+    float Advance;
+    float DistanceRange;
+    float UnderlineY;
+    float UnderlineThickness;
+};
+
 Rr_UIFont *Rr_UICreateFont(
     Rr_UIContext *Context,
     Rr_AssetRef FontPNGRef,
@@ -321,7 +334,7 @@ Rr_UIFont *Rr_UICreateFont(
 
 void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
 {
-    Rr_ReleaseImage2D(Font->Atlas);
+    Rr_ReleaseImage(Font->Atlas);
 
     RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
 }

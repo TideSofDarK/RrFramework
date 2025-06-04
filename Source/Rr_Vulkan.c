@@ -548,7 +548,10 @@ void Rr_SelectPhysicalDevice(
         UseTransferQueue ? "dedicated" : "unified");
 }
 
-void Rr_InitSurface(Rr_Window Window, Rr_Instance *Instance, VkSurfaceKHR *Surface)
+void Rr_InitSurface(
+    Rr_Window Window,
+    Rr_Instance *Instance,
+    VkSurfaceKHR *Surface)
 {
     if (SDL_Vulkan_CreateSurface(Window, Instance->Handle, NULL, Surface) !=
         true)
