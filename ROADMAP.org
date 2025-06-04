@@ -3,49 +3,55 @@
 - [X] Synchronization (?) bug with host written buffers.
       Turned out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame.
       Solution: call Iterate() after waiting on the fence.
-- [X] Add deletion queues for Vulkan objects
-- [ ] Hash collision handling across all usages of Rr_Map
-- [ ] Hashing objects such as VkFramebuffer looks very bad
-- [ ] MSAA support
-- [ ] 3D image support
-- [ ] Image array support
-- [ ] Arbitrary asset loading within Rr_LoadingThread
+- [X] Add deletion queues for Vulkan objects.
+- [ ] Hash collision handling across all usages of Rr_Map.
+- [ ] Hashing objects such as VkFramebuffer looks very bad.
+- [ ] MSAA support.
+- [ ] 3D image support.
+- [ ] Image array support.
+- [ ] Things such as rendering to cubemap requires more advanced image view handling.
+      A hive of wrapped image views + hash?
+- [ ] Should referenced pipelines and samplers be hashed to optimize decrement references pass? 
+- [ ] Arbitrary asset loading within Rr_LoadingThread.
+      Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
 
 * Features
 
 ** User Interface
 
-- [X] Combobox
-- [X] Auto-resizing windows
-- [X] Sliders
-- [ ] Horizontal scrollbar
-- [ ] Keyboard input and related widgets
-- [ ] Color picker
-- [ ] Radio buttons
-- [ ] Nested windows
-- [ ] Swap font rendering with stb_truetype
+- [X] Combobox.
+- [X] Auto-resizing windows.
+- [X] Sliders.
+- [ ] Horizontal scrollbar.
+- [ ] Keyboard input and related widgets.
+- [ ] Color picker.
+- [ ] Radio buttons.
+- [ ] Nested windows.
+- [ ] Swap font rendering with stb_truetype.
 
 ** Debug Overlay
 
-- [ ] Very basic profilers for CPU/GPU
-- [ ] Memory arena registry and maybe some kind of memory profiler
+- [ ] Very basic profilers for CPU/GPU.
+- [ ] Memory arena registry and maybe some kind of memory profiler.
 
 ** GLTF
 
-- [ ] Add support for skeletal animation
-- [ ] Examine current implementation and see if it's good enough
+- [ ] Add support for skeletal animation.
+- [ ] Examine current implementation and see if it's good enough.
 
 ** Examples
 
-- [ ] Pre-rendered depth
-- [ ] Dissolving text
+- [ ] Pre-rendered depth.
+- [ ] Dissolving text.
+- [ ] Rendering to cubemap.
+- [ ] Shadows.
 
 ** Low-priority
 
-- [ ] Move to GLFW
-- [ ] Move to C11
-- [ ] Remove InputMap
-- [ ] Replace VMA with custom allocator
-- [ ] Own implementation of Windows/Linux platform layers
+- [ ] Move to GLFW.
+- [ ] Move to C11.
+- [ ] Remove InputMap.
+- [ ] Replace VMA with custom allocator.
+- [ ] Own implementation of Windows/Linux platform layers.
 - [ ] Macro-based stuff should probably be internal.
       The goal is clean and minimal API that's 99% accessible from other languages.
