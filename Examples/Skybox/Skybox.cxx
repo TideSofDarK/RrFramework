@@ -396,7 +396,12 @@ struct SApp
             0,
             0,
             sizeof(SGPUUniform));
-        Rr_BindCombinedCubemapSampler(GraphicsNode, SkyboxImage, Sampler, 0, 1);
+        Rr_BindCombinedImageCubeSampler(
+            GraphicsNode,
+            SkyboxImage,
+            Sampler,
+            0,
+            1);
         Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
         Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
 

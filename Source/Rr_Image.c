@@ -30,6 +30,8 @@
 
 #include <stb/stb_image.h>
 
+#include <xxHash/xxhash.h>
+
 #include <assert.h>
 
 Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
@@ -100,6 +102,99 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
     Rr_SamplerHiveIterator It =
         Rr_GetSamplerHiveIterator(&gRenderer->Samplers, Sampler);
     Rr_RemoveFromSamplerHive(&gRenderer->Samplers, &It);
+}
+
+static inline Rr_ImageView *Rr_FindInImageViewMap(
+    Rr_ImageViewStorage *Storage,
+    Rr_ImageViewKey *Key)
+{
+    Rr_ImageViewMap **MapRef = &Storage->Map;
+    for (uint64_t Hash = XXH64(Key, sizeof(Rr_ImageViewKey), 0); *MapRef;
+         Hash <<= 2)
+    {
+        if (memcmp(&(*MapRef)->Key, Key, sizeof(Rr_ImageViewKey)) == 0)
+        {
+            return &(*MapRef)->Value;
+        }
+        MapRef = &(*MapRef)->Children[Hash >> 62];
+    }
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    *MapRef =
+        Rr_PushImageViewMapIntoHive(&Storage->Hive, gRenderer->Arena).Element;
+    RR_ZERO_PTR(*MapRef);
+    (*MapRef)->Key = *Key;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
+    return &(*MapRef)->Value;
+}
+
+Rr_ImageViewStorage *Rr_CreateImageViewStorage(void)
+{
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_ImageViewStorage *ViewStorage =
+        RR_GET_FREE_LIST_ITEM(&gRenderer->ImageViewStorage, gRenderer->Arena);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
+    ViewStorage->Map = NULL;
+    Rr_ClearImageViewMapHive(&ViewStorage->Hive);
+
+    return ViewStorage;
+}
+
+void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    for (Rr_ImageViewMapHiveIterator It = ViewStorage->Hive.Begin;
+         It.Element != ViewStorage->Hive.End.Element;)
+    {
+        if (It.Element->Value.Handle != VK_NULL_HANDLE)
+        {
+            Device->DestroyImageView(
+                Device->Handle,
+                It.Element->Value.Handle,
+                NULL);
+            It.Element->Value.Handle = VK_NULL_HANDLE;
+        }
+        Rr_AdvanceImageViewMapHiveIterator(&It);
+    }
+
+    RR_RETURN_FREE_LIST_ITEM(&gRenderer->ImageViewStorage, ViewStorage);
+}
+
+Rr_ImageView *Rr_FetchImageView(
+    Rr_AllocatedImage *AllocatedImage,
+    Rr_ImageViewKey *Key)
+{
+    Rr_ImageView *Result =
+        Rr_FindInImageViewMap(AllocatedImage->ViewStorage, Key);
+    if (Result->Handle != VK_NULL_HANDLE)
+    {
+        return Result;
+    }
+
+    Rr_Device *Device = &gRenderer->Device;
+
+    VkImageViewCreateInfo ImageViewCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = AllocatedImage->Handle,
+        .viewType = Key->Type,
+        .format = AllocatedImage->Container->Format,
+        .subresourceRange = Key->SubresourceRange,
+    };
+
+    Device->CreateImageView(
+        Device->Handle,
+        &ImageViewCreateInfo,
+        NULL,
+        &Result->Handle);
+
+    return Result;
 }
 
 void Rr_UploadStagingImage2D(
@@ -285,24 +380,21 @@ static Rr_Image *Rr_CreateImage(
     Image->Format = Rr_ToVulkanTextureFormat(Format);
     Image->Extent.width = Extent.Width;
     Image->Extent.height = Extent.Height;
+    Image->Extent.depth = Extent.Depth;
 
     VkImageType ImageType = VK_IMAGE_TYPE_3D;
-    VkImageViewType ImageViewType = VK_IMAGE_VIEW_TYPE_3D;
     if (RR_HAS_BIT(AdditionalFlags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
     {
         ImageType = VK_IMAGE_TYPE_2D;
-        ImageViewType = VK_IMAGE_VIEW_TYPE_CUBE;
         assert(LayerCount == 6 && "Cubemap requires exactly 6 layers!");
     }
     else if (Extent.Height == 1)
     {
         ImageType = VK_IMAGE_TYPE_1D;
-        ImageViewType = VK_IMAGE_VIEW_TYPE_1D;
     }
     else
     {
         ImageType = VK_IMAGE_TYPE_2D;
-        ImageViewType = VK_IMAGE_VIEW_TYPE_2D;
     }
 
     uint32_t MipLevels = 1;
@@ -353,7 +445,7 @@ static Rr_Image *Rr_CreateImage(
         .flags = AdditionalFlags,
         .imageType = ImageType,
         .format = Image->Format,
-        .extent = (VkExtent3D){ Image->Extent.width, Image->Extent.height, 1 },
+        .extent = Image->Extent,
         .mipLevels = MipLevels,
         .arrayLayers = LayerCount,
         .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -396,26 +488,7 @@ static Rr_Image *Rr_CreateImage(
             &AllocatedImage->Allocation,
             NULL);
 
-        VkImageViewCreateInfo ImageViewCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext = NULL,
-            .image = AllocatedImage->Handle,
-            .viewType = ImageViewType,
-            .format = Image->Format,
-            .subresourceRange = {
-                .aspectMask = Image->AspectFlags,
-                .baseArrayLayer = 0,
-                .layerCount = LayerCount,
-                .baseMipLevel = 0,
-                .levelCount = MipLevels,
-            },
-        };
-
-        Device->CreateImageView(
-            Device->Handle,
-            &ImageViewCreateInfo,
-            NULL,
-            &AllocatedImage->View);
+        AllocatedImage->ViewStorage = Rr_CreateImageViewStorage();
     }
 
     return (Rr_Image *)Image;
@@ -450,10 +523,8 @@ void Rr_DestroyImage(Rr_Image *Image)
 
     for (uint32_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
-        Device->DestroyImageView(
-            Device->Handle,
-            Image->AllocatedImages[Index].View,
-            NULL);
+        Rr_DestroyImageViewStorage(Image->AllocatedImages[Index].ViewStorage);
+
         vmaDestroyImage(
             gRenderer->Allocator,
             Image->AllocatedImages[Index].Handle,

@@ -90,7 +90,7 @@ struct SValidator
             1,
             0,
             sizeof(uint32_t) * Count);
-        Rr_BindStorageImage(ComputeNode, ResultImage, 0, 2);
+        Rr_BindStorageImage2D(ComputeNode, ResultImage, 0, 2);
         Rr_Dispatch(ComputeNode, Count / ThreadsPerWorkgroup, 1, 1);
 
         return ResultImage;

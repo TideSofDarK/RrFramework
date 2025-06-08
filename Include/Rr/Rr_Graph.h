@@ -227,22 +227,22 @@ extern void Rr_BindSampler(
     size_t Set,
     size_t Binding);
 
-extern void Rr_BindSampledImage(
+extern void Rr_BindSampledImage2D(
     Rr_GraphNode *Node,
-    Rr_Image2D *Image,
+    Rr_Image2D *Image2D,
     size_t Set,
     size_t Binding);
 
-extern void Rr_BindCombinedImageSampler(
+extern void Rr_BindCombinedImage2DSampler(
     Rr_GraphNode *Node,
-    Rr_Image2D *Image,
+    Rr_Image2D *Image2D,
     Rr_Sampler *Sampler,
     size_t Set,
     size_t Binding);
 
-extern void Rr_BindCombinedCubemapSampler(
+extern void Rr_BindCombinedImageCubeSampler(
     Rr_GraphNode *Node,
-    Rr_ImageCube *Cubemap,
+    Rr_ImageCube *ImageCube,
     Rr_Sampler *Sampler,
     size_t Set,
     size_t Binding);
@@ -263,9 +263,9 @@ extern void Rr_BindStorageBuffer(
     size_t Offset,
     size_t Size);
 
-extern void Rr_BindStorageImage(
+extern void Rr_BindStorageImage2D(
     Rr_GraphNode *Node,
-    Rr_Image2D *Image,
+    Rr_Image2D *Image2D,
     size_t Set,
     size_t Binding);
 

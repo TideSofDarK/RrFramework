@@ -172,8 +172,14 @@ static void Rr_ExecuteComputeNode(
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
             {
                 Rr_BindSampledImageArgs *Args = Function->Args;
-                VkImageView ImageView =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_AllocatedImage *AllocatedImage =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle);
+                Rr_ImageView *ImageView = Rr_FetchImageView(
+                    AllocatedImage,
+                    &(Rr_ImageViewKey){
+                        .SubresourceRange = Args->SubresourceRange,
+                        .Type = Args->ViewType,
+                    });
                 Rr_UpdateDescriptorsState(
                     &DescriptorsState,
                     Args->Set,
@@ -182,7 +188,7 @@ static void Rr_ExecuteComputeNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
                         .Image =
                             {
-                                .View = ImageView,
+                                .View = ImageView->Handle,
                                 .Layout = Args->Layout,
                             },
                     });
@@ -191,8 +197,14 @@ static void Rr_ExecuteComputeNode(
             case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
             {
                 Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
-                VkImageView ImageView =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_AllocatedImage *AllocatedImage =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle);
+                Rr_ImageView *ImageView = Rr_FetchImageView(
+                    AllocatedImage,
+                    &(Rr_ImageViewKey){
+                        .SubresourceRange = Args->SubresourceRange,
+                        .Type = Args->ViewType,
+                    });
                 Rr_UpdateDescriptorsState(
                     &DescriptorsState,
                     Args->Set,
@@ -201,7 +213,7 @@ static void Rr_ExecuteComputeNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
                         .Image =
                             {
-                                .View = ImageView,
+                                .View = ImageView->Handle,
                                 .Sampler = Args->Sampler->Handle,
                                 .Layout = Args->Layout,
                             },
@@ -253,8 +265,14 @@ static void Rr_ExecuteComputeNode(
             case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE:
             {
                 Rr_BindStorageImageArgs *Args = Function->Args;
-                VkImageView ImageView =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_AllocatedImage *AllocatedImage =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle);
+                Rr_ImageView *ImageView = Rr_FetchImageView(
+                    AllocatedImage,
+                    &(Rr_ImageViewKey){
+                        .SubresourceRange = Args->SubresourceRange,
+                        .Type = Args->ViewType,
+                    });
                 Rr_UpdateDescriptorsState(
                     &DescriptorsState,
                     Args->Set,
@@ -263,7 +281,7 @@ static void Rr_ExecuteComputeNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE,
                         .Image =
                             {
-                                .View = ImageView,
+                                .View = ImageView->Handle,
                                 .Layout = VK_IMAGE_LAYOUT_GENERAL,
                             },
                     });
@@ -318,7 +336,21 @@ static void Rr_ExecuteGraphicsNode(
             .StoreOp = ColorTarget->StoreOp,
             .Format = ColorImage->Container->Format,
         };
-        ImageViews[ColorTarget->Slot] = ColorImage->View;
+        ImageViews[ColorTarget->Slot] =
+            Rr_FetchImageView(
+                ColorImage,
+                &(Rr_ImageViewKey){
+                    .SubresourceRange =
+                        (VkImageSubresourceRange){
+                            .aspectMask = ColorImage->Container->AspectFlags,
+                            .baseArrayLayer = 0,
+                            .layerCount = 1,
+                            .baseMipLevel = 0,
+                            .levelCount = 1,
+                        },
+                    .Type = VK_IMAGE_VIEW_TYPE_2D,
+                })
+                ->Handle;
 
         Viewport.Width = RR_MIN(
             Viewport.Width,
@@ -340,7 +372,21 @@ static void Rr_ExecuteGraphicsNode(
             .StoreOp = DepthTarget->StoreOp,
             .Format = DepthImage->Container->Format,
         };
-        ImageViews[DepthIndex] = DepthImage->View;
+        ImageViews[DepthIndex] =
+            Rr_FetchImageView(
+                DepthImage,
+                &(Rr_ImageViewKey){
+                    .SubresourceRange =
+                        (VkImageSubresourceRange){
+                            .aspectMask = DepthImage->Container->AspectFlags,
+                            .baseArrayLayer = 0,
+                            .layerCount = 1,
+                            .baseMipLevel = 0,
+                            .levelCount = 1,
+                        },
+                    .Type = VK_IMAGE_VIEW_TYPE_2D,
+                })
+                ->Handle;
 
         Viewport.Width = RR_MIN(
             Viewport.Width,
@@ -563,8 +609,14 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
             {
                 Rr_BindSampledImageArgs *Args = Function->Args;
-                VkImageView ImageView =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_AllocatedImage *AllocatedImage =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle);
+                Rr_ImageView *ImageView = Rr_FetchImageView(
+                    AllocatedImage,
+                    &(Rr_ImageViewKey){
+                        .SubresourceRange = Args->SubresourceRange,
+                        .Type = Args->ViewType,
+                    });
                 Rr_UpdateDescriptorsState(
                     &DescriptorsState,
                     Args->Set,
@@ -573,7 +625,7 @@ static void Rr_ExecuteGraphicsNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
                         .Image =
                             {
-                                .View = ImageView,
+                                .View = ImageView->Handle,
                                 .Layout = Args->Layout,
                             },
                     });
@@ -582,8 +634,14 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
             {
                 Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
-                VkImageView ImageView =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle)->View;
+                Rr_AllocatedImage *AllocatedImage =
+                    Rr_GetGraphImage(Graph, Args->ImageHandle);
+                Rr_ImageView *ImageView = Rr_FetchImageView(
+                    AllocatedImage,
+                    &(Rr_ImageViewKey){
+                        .SubresourceRange = Args->SubresourceRange,
+                        .Type = Args->ViewType,
+                    });
                 Rr_UpdateDescriptorsState(
                     &DescriptorsState,
                     Args->Set,
@@ -592,7 +650,7 @@ static void Rr_ExecuteGraphicsNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
                         .Image =
                             {
-                                .View = ImageView,
+                                .View = ImageView->Handle,
                                 .Sampler = Args->Sampler->Handle,
                                 .Layout = Args->Layout,
                             },
@@ -2234,17 +2292,17 @@ void Rr_BindSampler(
         };
 }
 
-void Rr_BindSampledImage(
+void Rr_BindSampledImage2D(
     Rr_GraphNode *Node,
-    Rr_Image2D *Image,
+    Rr_Image2D *Image2D,
     size_t Set,
     size_t Binding)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
-    assert(Image);
+    assert(Image2D);
 
-    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image2D);
 
     VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -2255,6 +2313,15 @@ void Rr_BindSampledImage(
         .Layout = Layout,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
+        .ViewType = VK_IMAGE_VIEW_TYPE_2D,
+        .SubresourceRange =
+            (VkImageSubresourceRange){
+                .aspectMask = Image2D->AspectFlags,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
     };
 
     /* TODO: Stage mask can be infered from pipeline layout. */
@@ -2270,9 +2337,9 @@ void Rr_BindSampledImage(
         });
 }
 
-void Rr_BindCombinedImageSampler(
+void Rr_BindCombinedImage2DSampler(
     Rr_GraphNode *Node,
-    Rr_Image2D *Image,
+    Rr_Image2D *Image2D,
     Rr_Sampler *Sampler,
     size_t Set,
     size_t Binding)
@@ -2280,11 +2347,11 @@ void Rr_BindCombinedImageSampler(
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
     assert(Sampler != NULL);
-    assert(Image);
+    assert(Image2D);
 
     Rr_MarkSamplerUsed(Node->Graph->Frame, Sampler);
 
-    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image2D);
 
     VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -2296,6 +2363,15 @@ void Rr_BindCombinedImageSampler(
         .Sampler = Sampler,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
+        .ViewType = VK_IMAGE_VIEW_TYPE_2D,
+        .SubresourceRange =
+            (VkImageSubresourceRange){
+                .aspectMask = Image2D->AspectFlags,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
     };
 
     /* TODO: Stage mask can be infered from pipeline layout. */
@@ -2311,9 +2387,9 @@ void Rr_BindCombinedImageSampler(
         });
 }
 
-void Rr_BindCombinedCubemapSampler(
+void Rr_BindCombinedImageCubeSampler(
     Rr_GraphNode *Node,
-    Rr_ImageCube *Cubemap,
+    Rr_ImageCube *ImageCube,
     Rr_Sampler *Sampler,
     size_t Set,
     size_t Binding)
@@ -2321,11 +2397,11 @@ void Rr_BindCombinedCubemapSampler(
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
     assert(Sampler != NULL);
-    assert(Cubemap);
+    assert(ImageCube);
 
     Rr_MarkSamplerUsed(Node->Graph->Frame, Sampler);
 
-    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Cubemap);
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, ImageCube);
 
     VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -2337,6 +2413,15 @@ void Rr_BindCombinedCubemapSampler(
         .Sampler = Sampler,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
+        .ViewType = VK_IMAGE_VIEW_TYPE_CUBE,
+        .SubresourceRange =
+            (VkImageSubresourceRange){
+                .aspectMask = ImageCube->AspectFlags,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = 6,
+            },
     };
 
     /* TODO: Stage mask can be infered from pipeline layout. */
@@ -2453,16 +2538,16 @@ void Rr_BindStorageBuffer(
     }
 }
 
-void Rr_BindStorageImage(
+void Rr_BindStorageImage2D(
     Rr_GraphNode *Node,
-    Rr_Image2D *Image,
+    Rr_Image2D *Image2D,
     size_t Set,
     size_t Binding)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
 
-    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image2D);
 
     VkImageLayout Layout = VK_IMAGE_LAYOUT_GENERAL;
 
@@ -2472,6 +2557,15 @@ void Rr_BindStorageImage(
         .ImageHandle = *ImageHandle,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
+        .ViewType = VK_IMAGE_VIEW_TYPE_2D,
+        .SubresourceRange =
+            (VkImageSubresourceRange){
+                .aspectMask = Image2D->AspectFlags,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
     };
 
     /* TODO: Proper read/write stuff. */

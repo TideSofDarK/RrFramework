@@ -80,9 +80,9 @@ static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 {
     Rr_Device *Device = &gRenderer->Device;
 
-    if (SwapchainImage->View)
+    if (SwapchainImage->ViewStorage)
     {
-        Device->DestroyImageView(Device->Handle, SwapchainImage->View, NULL);
+        Rr_DestroyImageViewStorage(SwapchainImage->ViewStorage);
     }
 
     if (SwapchainImage->Handle)
@@ -364,37 +364,13 @@ static bool Rr_InitSwapchain(void)
 
     gRenderer->SwapchainImages.Count = ImageCount;
 
-    VkImageViewCreateInfo ImageViewCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = gRenderer->Swapchain.Format,
-        .components = {
-            .r = VK_COMPONENT_SWIZZLE_R,
-            .g = VK_COMPONENT_SWIZZLE_G,
-            .b = VK_COMPONENT_SWIZZLE_B,
-            .a = VK_COMPONENT_SWIZZLE_A,
-        },
-        .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-
     for (uint32_t Index = 0; Index < ImageCount; Index++)
     {
         Rr_SwapchainImage *Image = gRenderer->SwapchainImages.Data + Index;
 
         Image->Handle = Images[Index];
 
-        ImageViewCreateInfo.image = Image->Handle;
-        Device->CreateImageView(
-            gRenderer->Device.Handle,
-            &ImageViewCreateInfo,
-            NULL,
-            &Image->View);
+        Image->ViewStorage = Rr_CreateImageViewStorage();
 
         Rr_SyncState *SyncState = Rr_GetSyncState((Rr_MapKey)Image->Handle);
         SyncState->StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
@@ -1024,7 +1000,7 @@ void Rr_DrawFrame(void)
         .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
         .AllocatedImageCount = 1,
         .AllocatedImages[0] = {
-            .View = gRenderer->SwapchainImages.Data[SwapchainImageIndex].View,
+            .ViewStorage = gRenderer->SwapchainImages.Data[SwapchainImageIndex].ViewStorage,
             .Handle = SwapchainImageHandle,
             .Container = (Rr_Image *)Frame->VirtualSwapchainImage,
         },
@@ -1440,6 +1416,7 @@ Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key)
     if (*SyncStateRef != NULL)
     {
         Rr_UnlockSpinlock(&gRenderer->Lock);
+
         return *SyncStateRef;
     }
 

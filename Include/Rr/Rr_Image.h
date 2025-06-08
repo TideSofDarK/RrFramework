@@ -109,7 +109,6 @@ extern void Rr_ReleaseSampler(Rr_Sampler *Sampler);
 typedef struct Rr_Image Rr_Image2D;
 typedef struct Rr_Image Rr_Image2DArray;
 typedef struct Rr_Image Rr_Image3D;
-typedef struct Rr_Image Rr_Image3DArray;
 typedef struct Rr_Image Rr_ImageCube;
 
 typedef enum

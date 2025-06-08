@@ -59,7 +59,7 @@ typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
 {
     VkImage Handle;
-    VkImageView View;
+    Rr_ImageViewStorage *ViewStorage;
     VkSemaphore EarlySemaphore;
     VkSemaphore LateSemaphore;
 };
@@ -174,6 +174,8 @@ struct Rr_Renderer
 
     Rr_Map *GlobalSync;
     RR_FREE_LIST(Rr_SyncState) SyncStates;
+
+    RR_FREE_LIST(Rr_ImageViewStorage) ImageViewStorage;
 
     Rr_BufferHive Buffers;
     Rr_ImageHive Images;

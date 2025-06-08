@@ -4337,7 +4337,7 @@ void Rr_EndUI(void)
         0,
         0,
         sizeof(Rr_UIUniformData));
-    Rr_BindCombinedImageSampler(
+    Rr_BindCombinedImage2DSampler(
         GraphicsNode,
         gUIContext->Font->Atlas,
         gUIContext->Sampler,

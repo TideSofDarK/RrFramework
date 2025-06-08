@@ -31,6 +31,8 @@
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Asset.h>
 
+#include <xxHash/xxhash.h>
+
 #include <vma/vk_mem_alloc.h>
 
 struct Rr_Sampler
@@ -46,14 +48,55 @@ struct Rr_Sampler
 
 extern void Rr_DestroySampler(Rr_Sampler *Sampler);
 
+typedef struct Rr_ImageViewKey Rr_ImageViewKey;
+struct Rr_ImageViewKey
+{
+    VkImageSubresourceRange SubresourceRange;
+    VkImageViewType Type;
+};
+
+typedef struct Rr_ImageView Rr_ImageView;
+struct Rr_ImageView
+{
+    VkImageView Handle;
+};
+
+typedef struct Rr_ImageViewMap Rr_ImageViewMap;
+struct Rr_ImageViewMap
+{
+    Rr_ImageViewMap *Children[4];
+    Rr_ImageViewKey Key;
+    Rr_ImageView Value;
+};
+
+#define RR_HIVE_TYPE      Rr_ImageViewMap
+#define RR_HIVE_TYPE_NAME ImageViewMap
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+typedef struct Rr_ImageViewStorage Rr_ImageViewStorage;
+struct Rr_ImageViewStorage
+{
+    Rr_ImageViewMapHive Hive;
+    Rr_ImageViewMap *Map;
+};
+
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
 struct Rr_AllocatedImage
 {
     VkImage Handle;
-    VkImageView View;
+    Rr_ImageViewStorage *ViewStorage;
     VmaAllocation Allocation;
     struct Rr_Image *Container;
 };
+
+extern Rr_ImageViewStorage *Rr_CreateImageViewStorage(void);
+
+extern void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage);
+
+extern Rr_ImageView *Rr_FetchImageView(
+    Rr_AllocatedImage *AllocatedImage,
+    Rr_ImageViewKey *Key);
 
 struct Rr_Image
 {
