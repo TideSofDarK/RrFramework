@@ -155,7 +155,7 @@ endfunction()
 
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 
-target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
+target_compile_features(${PROJECT_NAME} PRIVATE c_std_11)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 set_target_properties(${PROJECT_NAME} PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
@@ -194,7 +194,6 @@ target_sources(
     Source/Rr_GLTF.c
     Source/Rr_Graph.c
     Source/Rr_Image.c
-    Source/Rr_Input.c
     Source/Rr_Load.c
     Source/Rr_Memory.c
     Source/Rr_Pipeline.c
@@ -218,7 +217,6 @@ target_sources(
     Include/Rr/Rr.h
     Include/Rr/Rr_Hive.h
     Include/Rr/Rr_Image.h
-    Include/Rr/Rr_Input.h
     Include/Rr/Rr_Load.h
     Include/Rr/Rr_Math.h
     Include/Rr/Rr_Memory.h

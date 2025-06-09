@@ -207,7 +207,10 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    RR_INCREMENT_ATOMIC_INT(&CreateInfo->Layout->RefCount);
+    atomic_fetch_add_explicit(
+        &CreateInfo->Layout->RefCount,
+        1,
+        memory_order_relaxed);
 
     Pipeline->Layout = CreateInfo->Layout;
 
@@ -286,7 +289,10 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
 
-    (void)RR_DECREMENT_ATOMIC_INT(&ComputePipeline->Layout->RefCount);
+    atomic_fetch_sub_explicit(
+        &ComputePipeline->Layout->RefCount,
+        1,
+        memory_order_relaxed);
 
     Rr_ComputePipelineHiveIterator It = Rr_GetComputePipelineHiveIterator(
         &gRenderer->ComputePipelines,
@@ -313,7 +319,10 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    RR_INCREMENT_ATOMIC_INT(&CreateInfo->Layout->RefCount);
+    atomic_fetch_add_explicit(
+        &CreateInfo->Layout->RefCount,
+        1,
+        memory_order_relaxed);
 
     Pipeline->Layout = CreateInfo->Layout;
     Pipeline->HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
@@ -485,7 +494,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .pNext = NULL,
         .pDynamicStates = DynamicStates,
-        .dynamicStateCount = SDL_arraysize(DynamicStates),
+        .dynamicStateCount = RR_ARRAY_COUNT(DynamicStates),
     };
 
     VkPipelineMultisampleStateCreateInfo Multisampling = {
@@ -621,7 +630,10 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
-    (void)RR_DECREMENT_ATOMIC_INT(&GraphicsPipeline->Layout->RefCount);
+    atomic_fetch_sub_explicit(
+        &GraphicsPipeline->Layout->RefCount,
+        1,
+        memory_order_relaxed);
 
     Rr_GraphicsPipelineHiveIterator It = Rr_GetGraphicsPipelineHiveIterator(
         &gRenderer->GraphicsPipelines,

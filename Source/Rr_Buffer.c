@@ -67,7 +67,7 @@ Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags)
 
     /* Fixing VMA issues with small buffers. */
 
-    Size = SDL_max(Size, 128);
+    Size = RR_MAX(Size, 128);
 
     VkBufferCreateInfo BufferCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,

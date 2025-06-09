@@ -22,19 +22,28 @@
  * SOFTWARE.
  */
 
-#include <Rr/Rr_Platform.h>
+#include "Rr_Platform.h"
 
-#include "Rr_Log.h"
-
-void Rr_LockSpinlock(Rr_Spinlock *SpinLock)
+void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
 {
-    int Loops = 0;
-    const int MaxLoops = 1000000;
-    while (!Rr_TryLockSpinlock(SpinLock))
+    for (;;)
     {
-        if (Loops > MaxLoops)
+        if (!atomic_exchange_explicit(Spinlock, true, memory_order_acquire))
         {
-            RR_ABORT("Spin lock timeout!");
+            return;
         }
+        while (atomic_load_explicit(Spinlock, memory_order_relaxed))
+            ;
     }
+}
+
+bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock)
+{
+    return !atomic_load_explicit(Spinlock, memory_order_relaxed) &&
+           !atomic_exchange_explicit(Spinlock, true, memory_order_acquire);
+}
+
+void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock)
+{
+    atomic_store_explicit(Spinlock, false, memory_order_release);
 }

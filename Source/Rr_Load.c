@@ -31,16 +31,12 @@
 #include "Rr_Renderer.h"
 #include "Rr_UploadContext.h"
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_atomic.h>
-
 #include <assert.h>
 
 static void Rr_LoadResourcesFromTasks(
     Rr_LoadTask *Tasks,
     size_t TaskCount,
     Rr_UploadContext *UploadContext,
-    SDL_Semaphore *Semaphore,
     Rr_Arena *Arena)
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
@@ -83,11 +79,6 @@ static void Rr_LoadResourcesFromTasks(
         else
         {
             RR_LOG("Loaded asset leaked, provide correct \"Out\" pointer!");
-        }
-
-        if (Semaphore)
-        {
-            SDL_SignalSemaphore(Semaphore);
         }
     }
 
@@ -148,14 +139,10 @@ static Rr_LoadResult Rr_ProcessLoadContext(
         .UseAcquireBarriers = UseTransferQueue,
     };
 
-    Rr_LoadResourcesFromTasks(
-        Tasks,
-        TaskCount,
-        &UploadContext,
-        LoadContext->Semaphore,
-        Scratch.Arena);
+    Rr_LoadResourcesFromTasks(Tasks, TaskCount, &UploadContext, Scratch.Arena);
 
-    SDL_Delay(300);
+    /* TODO: Remove this. */
+    thrd_sleep(&(struct timespec){ .tv_nsec = 300000000 }, NULL);
 
     if (!UseTransferQueue)
     {
@@ -283,12 +270,6 @@ static Rr_LoadResult Rr_ProcessLoadContext(
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    if (LoadContext->Semaphore)
-    {
-        SDL_DestroySemaphore(LoadContext->Semaphore);
-        LoadContext->Semaphore = NULL;
-    }
-
     Rr_DestroyScratch(Scratch);
 
     return RR_LOAD_RESULT_READY;
@@ -368,13 +349,13 @@ static void Rr_CleanupLoadAsyncContext(
     RR_ZERO_PTR(LoadAsyncContext);
 }
 
-static int SDLCALL Rr_LoadThreadProc(void *UserData)
+static int Rr_LoadThreadProc(void *UserData)
 {
     Rr_LoadThread *LoadThread = UserData;
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_InitScratch(RR_LOADING_THREAD_SCRATCH_SIZE);
+    Rr_InitScratchArena();
 
     Rr_LoadAsyncContext LoadAsyncContext = { 0 };
     Rr_InitLoadAsyncContext(gRenderer, &LoadAsyncContext);
@@ -383,49 +364,59 @@ static int SDLCALL Rr_LoadThreadProc(void *UserData)
 
     while (true)
     {
-        SDL_WaitSemaphore(LoadThread->Semaphore);
+        if (atomic_load_explicit(
+                &LoadThread->QuitRequested,
+                memory_order_relaxed))
+        {
+            break;
+        }
 
-        if (Rr_GetAtomicInt(&gApp->QuitRequested) == true)
+        if (atomic_load_explicit(&gApp->QuitRequested, memory_order_relaxed))
         {
             break;
         }
 
         if (LoadThread->LoadContexts.Count == 0)
         {
-            continue;
+            mtx_lock(&LoadThread->Mutex);
+            cnd_wait(&LoadThread->Condition, &LoadThread->Mutex);
         }
-
-        Rr_ProcessLoadContext(
-            &LoadThread->LoadContexts.Data[CurrentLoadingUIContextIndex],
-            LoadAsyncContext);
-        CurrentLoadingUIContextIndex++;
-
-        Device->ResetCommandPool(
-            Device->Handle,
-            LoadAsyncContext.GraphicsCommandPool,
-            0);
-        if (LoadAsyncContext.TransferCommandPool != VK_NULL_HANDLE)
+        else
         {
+            Rr_ProcessLoadContext(
+                &LoadThread->LoadContexts.Data[CurrentLoadingUIContextIndex],
+                LoadAsyncContext);
+            CurrentLoadingUIContextIndex++;
+
             Device->ResetCommandPool(
                 Device->Handle,
-                LoadAsyncContext.TransferCommandPool,
+                LoadAsyncContext.GraphicsCommandPool,
                 0);
-        }
-        Device->ResetFences(Device->Handle, 1, &LoadAsyncContext.Fence);
+            if (LoadAsyncContext.TransferCommandPool != VK_NULL_HANDLE)
+            {
+                Device->ResetCommandPool(
+                    Device->Handle,
+                    LoadAsyncContext.TransferCommandPool,
+                    0);
+            }
+            Device->ResetFences(Device->Handle, 1, &LoadAsyncContext.Fence);
 
-        SDL_LockMutex(LoadThread->Mutex);
-        if (CurrentLoadingUIContextIndex >= LoadThread->LoadContexts.Count)
-        {
-            Rr_ResetArena(LoadThread->Arena);
-            CurrentLoadingUIContextIndex = 0;
-            RR_ZERO(LoadThread->LoadContexts);
+            mtx_lock(&LoadThread->Mutex);
+
+            if (CurrentLoadingUIContextIndex >= LoadThread->LoadContexts.Count)
+            {
+                Rr_ResetArena(LoadThread->Arena);
+                CurrentLoadingUIContextIndex = 0;
+                RR_ZERO(LoadThread->LoadContexts);
+            }
+
+            mtx_unlock(&LoadThread->Mutex);
         }
-        SDL_UnlockMutex(LoadThread->Mutex);
     }
 
     Rr_CleanupLoadAsyncContext(gRenderer, &LoadAsyncContext);
 
-    SDL_CleanupTLS();
+    Rr_CleanupScratchArena();
 
     return 0;
 }
@@ -435,20 +426,24 @@ Rr_LoadThread *Rr_CreateLoadThread(void)
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
     Rr_LoadThread *LoadThread = RR_ALLOC_TYPE(Arena, Rr_LoadThread);
-    LoadThread->Mutex = SDL_CreateMutex();
-    LoadThread->Semaphore = SDL_CreateSemaphore(0);
     LoadThread->Arena = Arena;
-    LoadThread->Handle = SDL_CreateThread(Rr_LoadThreadProc, "lt", LoadThread);
+    mtx_init(&LoadThread->Mutex, 0);
+    cnd_init(&LoadThread->Condition);
+    thrd_create(&LoadThread->Handle, Rr_LoadThreadProc, LoadThread);
 
     return LoadThread;
 }
 
 void Rr_DestroyLoadThread(Rr_LoadThread *LoadThread)
 {
-    SDL_SignalSemaphore(LoadThread->Semaphore);
-    SDL_WaitThread(LoadThread->Handle, NULL);
-    SDL_DestroySemaphore(LoadThread->Semaphore);
-    SDL_DestroyMutex(LoadThread->Mutex);
+    atomic_store_explicit(
+        &LoadThread->QuitRequested,
+        true,
+        memory_order_relaxed);
+    cnd_signal(&LoadThread->Condition);
+    thrd_join(LoadThread->Handle, NULL);
+    cnd_destroy(&LoadThread->Condition);
+    mtx_destroy(&LoadThread->Mutex);
     Rr_DestroyArena(LoadThread->Arena);
 }
 
@@ -488,21 +483,20 @@ Rr_LoadContext *Rr_LoadAsync(
         RR_ABORT("Submitted zero tasks to load procedure!");
     }
 
-    SDL_LockMutex(LoadThread->Mutex);
+    mtx_lock(&LoadThread->Mutex);
     Rr_LoadTask *NewTasks =
         RR_ALLOC_TYPE_COUNT(LoadThread->Arena, Rr_LoadTask, TaskCount);
     memcpy(NewTasks, Tasks, sizeof(Rr_LoadTask) * TaskCount);
     Rr_LoadContext *LoadingUIContext =
         RR_PUSH_INTO_ARRAY(&LoadThread->LoadContexts, LoadThread->Arena);
     *LoadingUIContext = (Rr_LoadContext){
-        .Semaphore = SDL_CreateSemaphore(0),
         .LoadingCallback = LoadCallback,
         .UserData = UserData,
         .Tasks = NewTasks,
         .TaskCount = TaskCount,
     };
-    SDL_SignalSemaphore(LoadThread->Semaphore);
-    SDL_UnlockMutex(LoadThread->Mutex);
+    mtx_unlock(&LoadThread->Mutex);
+    cnd_signal(&LoadThread->Condition);
 
     return LoadingUIContext;
 }
@@ -542,12 +536,7 @@ Rr_LoadResult Rr_LoadImmediate(size_t TaskCount, Rr_LoadTask *Tasks)
         .Arena = Scratch.Arena,
     };
 
-    Rr_LoadResourcesFromTasks(
-        Tasks,
-        TaskCount,
-        &UploadContext,
-        NULL,
-        Scratch.Arena);
+    Rr_LoadResourcesFromTasks(Tasks, TaskCount, &UploadContext, Scratch.Arena);
 
     VkFence Fence;
     Device->CreateFence(
@@ -608,10 +597,6 @@ void Rr_GetLoadProgress(
 {
     if (OutCurrent != NULL)
     {
-        if (LoadContext->Semaphore != NULL)
-        {
-            *OutCurrent = (size_t)SDL_GetSemaphoreValue(LoadContext->Semaphore);
-        }
         *OutCurrent = LoadContext->TaskCount;
     }
     if (OutTotal != NULL)

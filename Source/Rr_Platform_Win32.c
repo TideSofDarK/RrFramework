@@ -44,6 +44,20 @@ Rr_PlatformInfo *Rr_GetPlatformInfo()
     return &PlatformInfo;
 }
 
+uint64_t Rr_GetPerformanceCounter(void)
+{
+    LARGE_INTEGER Counter;
+    QueryPerformanceCounter(&Counter);
+    return (uint64_t)Counter.QuadPart;
+}
+
+uint64_t Rr_GetPerformanceFrequency(void)
+{
+    LARGE_INTEGER Frequency;
+    QueryPerformanceFrequency(&Frequency);
+    return (uint64_t)Frequency.QuadPart;
+}
+
 void *Rr_ReserveMemory(size_t Size)
 {
     return VirtualAlloc(0, Size, MEM_RESERVE, PAGE_READWRITE);
@@ -62,30 +76,4 @@ bool Rr_CommitMemory(void *Data, size_t Size)
 void Rr_DecommitMemory(void *Data, size_t Size)
 {
     VirtualFree(Data, Size, MEM_DECOMMIT);
-}
-
-int Rr_GetAtomicInt(Rr_AtomicInt *AtomicInt)
-{
-    return _InterlockedOr((long *)&AtomicInt->Value, 0);
-}
-
-int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value)
-{
-    return _InterlockedExchange((long *)&AtomicInt->Value, Value);
-}
-
-int Rr_AddAtomicInt(Rr_AtomicInt *AtomicInt, int Value)
-{
-    return _InterlockedExchangeAdd((long *)&AtomicInt->Value, Value);
-}
-
-bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock)
-{
-    return InterlockedExchange((long *)Spinlock, 1) == 0;
-}
-
-void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock)
-{
-    _ReadWriteBarrier();
-    *Spinlock = 0;
 }

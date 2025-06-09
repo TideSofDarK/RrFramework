@@ -29,30 +29,28 @@
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Platform.h>
 
-#include <SDL3/SDL_atomic.h>
-#include <SDL3/SDL_thread.h>
-
 #include <assert.h>
 #include <limits.h>
+#include <string.h>
 
 void *Rr_Malloc(size_t Bytes)
 {
-    return SDL_malloc(Bytes);
+    return malloc(Bytes);
 }
 
 void *Rr_Calloc(size_t Num, size_t Bytes)
 {
-    return SDL_calloc(Num, Bytes);
+    return calloc(Num, Bytes);
 }
 
 void *Rr_Realloc(void *Ptr, size_t Bytes)
 {
-    return SDL_realloc(Ptr, Bytes);
+    return realloc(Ptr, Bytes);
 }
 
 void Rr_Free(void *Ptr)
 {
-    SDL_free(Ptr);
+    free(Ptr);
 }
 
 Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
@@ -105,55 +103,42 @@ void Rr_DestroyScratch(Rr_Scratch Scratch)
     Scratch.Arena->Position = Scratch.Position;
 }
 
-static void SDLCALL Rr_CleanupScratchArena(void *ScratchArena)
+static _Thread_local Rr_Arena *ScratchArenas[2] = { 0 };
+
+void Rr_CleanupScratchArena(void)
 {
-    Rr_Arena **Arenas = ScratchArena;
     for (size_t Index = 0; Index < 2; ++Index)
     {
-        Rr_DestroyArena(Arenas[Index]);
+        Rr_DestroyArena(ScratchArenas[Index]);
     }
-    Rr_Free(ScratchArena);
 }
 
-static SDL_TLSID ScratchArenaTLS;
-
-void Rr_SetScratchTLS(void *TLSID)
+void Rr_InitScratchArena(void)
 {
-    ScratchArenaTLS = *((SDL_TLSID *)TLSID);
-}
-
-void Rr_InitScratch(size_t Size)
-{
-    if (SDL_GetTLS(&ScratchArenaTLS) != 0)
-    {
-        RR_ABORT("Scratch is already initialized for this thread!");
-    }
-    Rr_Arena **Arenas = Rr_Calloc(2, sizeof(Rr_Arena *));
+    assert(
+        ScratchArenas[0] == NULL &&
+        "Scratch is already initialized for this thread!");
     for (size_t Index = 0; Index < 2; ++Index)
     {
-        Arenas[Index] = Rr_CreateDefaultArena();
+        ScratchArenas[Index] = Rr_CreateDefaultArena();
     }
-    SDL_SetTLS(&ScratchArenaTLS, Arenas, Rr_CleanupScratchArena);
 }
 
 Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
 {
-    if (ScratchArenaTLS.value == 0)
-    {
-        RR_ABORT("ScratchArenaTLS is not set!");
-    }
-    Rr_Arena **Arenas = (Rr_Arena **)SDL_GetTLS(&ScratchArenaTLS);
+    assert(
+        ScratchArenas[0] != NULL && "Did you forget to call Rr_InitScratch()?");
     if (Conflict == NULL)
     {
-        return Rr_CreateScratch(Arenas[0]);
+        return Rr_CreateScratch(ScratchArenas[0]);
     }
     else
     {
         for (size_t Index = 0; Index < 2; ++Index)
         {
-            if (Arenas[Index] != Conflict)
+            if (ScratchArenas[Index] != Conflict)
             {
-                return Rr_CreateScratch(Arenas[Index]);
+                return Rr_CreateScratch(ScratchArenas[Index]);
             }
         }
     }

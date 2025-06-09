@@ -22,7 +22,12 @@
  * SOFTWARE.
  */
 
-#include "Rr_Platform.h"
+#include <Rr/Rr_Defines.h>
+
+extern "C" {
+extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
+extern void Rr_AlignedFree(void *Ptr);
+}
 
 #define VMA_IMPLEMENTATION
 #define VMA_VULKAN_VERSION           1001000

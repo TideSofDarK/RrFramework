@@ -39,6 +39,7 @@
 
 #include <assert.h>
 #include <float.h>
+#include <stdarg.h>
 #include <stdio.h>
 
 #define RR_UI_MIN_FONT_SIZE (12.0f)
@@ -4410,6 +4411,8 @@ static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, const char *Comment)
 
 void Rr_UIDebugOverlay(void)
 {
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
     if (Rr_UIBeginWindow(
             "Rr_DebugOverlay",
             NULL,
@@ -4433,8 +4436,9 @@ void Rr_UIDebugOverlay(void)
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =
                 Rr_GetAvailablePresentModes(&PresentModeCount);
-            const char **PresentModeStrings =
-                alloca(PresentModeCount * sizeof(const char *));
+            const char **PresentModeStrings = RR_ALLOC(
+                Scratch.Arena,
+                PresentModeCount * sizeof(const char *));
             uint32_t CurrentPresentModeIndex;
             for (uint32_t Index = 0; Index < PresentModeCount; ++Index)
             {
@@ -4510,4 +4514,6 @@ void Rr_UIDebugOverlay(void)
         Rr_UIEndTabs();
         Rr_UIEndWindow();
     }
+
+    Rr_DestroyScratch(Scratch);
 }

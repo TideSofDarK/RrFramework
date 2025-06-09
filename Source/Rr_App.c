@@ -28,13 +28,7 @@
 #include "Rr_Renderer.h"
 #include "Rr_UI.h"
 
-#include <Rr/Rr_Input.h>
 #include <Rr/Rr_Memory.h>
-
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_atomic.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_vulkan.h>
 
 #include <assert.h>
 
@@ -43,15 +37,15 @@ Rr_App *gApp = NULL;
 static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
-    FrameTime->Now = SDL_GetPerformanceCounter();
+    FrameTime->Now = Rr_GetPerformanceCounter();
     FrameTime->DeltaSeconds = (double)(FrameTime->Now - FrameTime->Last) /
-                              (double)SDL_GetPerformanceFrequency();
+                              (double)Rr_GetPerformanceFrequency();
 }
 
 static void Rr_CalculateFPS(Rr_FrameTime *FrameTime)
 {
     FrameTime->PerformanceCounter.Frames++;
-    uint64_t CurrentTime = SDL_GetPerformanceCounter();
+    uint64_t CurrentTime = Rr_GetPerformanceCounter();
     if (CurrentTime - FrameTime->PerformanceCounter.StartTime >=
         FrameTime->PerformanceCounter.UpdateFrequency)
     {
@@ -67,19 +61,19 @@ static void Rr_CalculateFPS(Rr_FrameTime *FrameTime)
 
 static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 {
-    uint64_t Interval = SDL_MS_TO_NS(1000) / FrameTime->TargetFramerate;
-    uint64_t Now = SDL_GetTicksNS();
+    uint64_t Interval = 1000000000 / FrameTime->TargetFramerate;
+    uint64_t Now = Rr_GetPerformanceCounter();
     uint64_t Elapsed = Now - FrameTime->StartTime;
 
     if (Elapsed < Interval)
     {
-        SDL_DelayNS(Interval - Elapsed);
-        Now = SDL_GetTicksNS();
+        thrd_sleep(&(struct timespec){ .tv_nsec = Interval - Elapsed }, NULL);
+        Now = Rr_GetPerformanceCounter();
     }
 
     Elapsed = Now - FrameTime->StartTime;
 
-    if (!FrameTime->StartTime || Elapsed > SDL_MS_TO_NS(1000))
+    if (!FrameTime->StartTime || Elapsed > 1000000000)
     {
         FrameTime->StartTime = Now;
     }
@@ -89,21 +83,22 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
     }
 }
 
-static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, SDL_Window *Window)
+static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, Rr_Window Window)
 {
+    uint64_t Now = Rr_GetPerformanceCounter();
 #ifdef RR_PERFORMANCE_COUNTER
-    FrameTime->PerformanceCounter.StartTime = SDL_GetPerformanceCounter();
+    FrameTime->PerformanceCounter.StartTime = Now;
     FrameTime->PerformanceCounter.UpdateFrequency =
-        SDL_GetPerformanceFrequency() / 2;
+        Rr_GetPerformanceFrequency() / 2;
     FrameTime->PerformanceCounter.CountPerSecond =
-        (double)SDL_GetPerformanceFrequency();
+        (double)Rr_GetPerformanceFrequency();
 #endif
 
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
-    const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
-    FrameTime->TargetFramerate = (uint64_t)Mode->refresh_rate;
-    FrameTime->StartTime = SDL_GetTicksNS();
-    FrameTime->Now = SDL_GetPerformanceCounter();
+    FrameTime->TargetFramerate = Rr_GetDisplayRefreshRate(Window);
+    FrameTime->StartTime = Now;
+    FrameTime->Now = Now;
+
+    FrameTime->InitTime = Now;
 }
 
 static Rr_IntVec2 Rr_GetDefaultWindowSize(void)
@@ -144,12 +139,7 @@ void Rr_Run(Rr_AppConfig *Config)
     assert(Config->CleanupFunc != NULL);
 
     Rr_InitPlatform();
-
-    SDL_SetAppMetadata(Config->Title, Config->Version, Config->Package);
-    SDL_SetLogPriorities(SDL_LOG_PRIORITY_CRITICAL);
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-
-    SDL_Vulkan_LoadLibrary(NULL);
+    Rr_InitPlatformLibrary(Config);
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
@@ -162,9 +152,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_SetWindowSize(Rr_GetDefaultWindowSize());
 
-    Rr_SetScratchTLS(&gApp->ScratchArenaTLS);
-
-    Rr_InitScratch(RR_MAIN_THREAD_SCRATCH_ARENA_SIZE);
+    Rr_InitScratchArena();
 
     Rr_InitFrameTime(&gApp->FrameTime, gApp->Window);
 
@@ -192,7 +180,10 @@ void Rr_Run(Rr_AppConfig *Config)
             {
                 case RR_EVENT_TYPE_QUIT:
                 {
-                    Rr_SetAtomicInt(&gApp->QuitRequested, true);
+                    atomic_store_explicit(
+                        &gApp->QuitRequested,
+                        true,
+                        memory_order_relaxed);
                     break;
                 }
                 break;
@@ -218,8 +209,8 @@ void Rr_Run(Rr_AppConfig *Config)
         Rr_CalculateFPS(&gApp->FrameTime);
 #endif
 
-        bool Minimized =
-            SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_MINIMIZED;
+        bool Minimized = Rr_IsWindowMinimized(gApp->Window);
+
         if (gApp->FrameTime.EnableFrameLimiter || Minimized)
         {
             Rr_SimulateVSync(&gApp->FrameTime);
@@ -227,7 +218,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
         Rr_CalculateDeltaTime(&gApp->FrameTime);
 
-        if (Rr_GetAtomicInt(&gApp->QuitRequested))
+        if (atomic_load_explicit(&gApp->QuitRequested, memory_order_relaxed))
         {
             break;
         }
@@ -249,13 +240,13 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_CleanupRenderer();
 
-    SDL_CleanupTLS();
+    Rr_CleanupScratchArena();
 
     Rr_DestroyWindow(gApp->Window);
 
     Rr_DestroyArena(gApp->Arena);
 
-    SDL_Quit();
+    Rr_CleanupPlatformLibrary();
 }
 
 void Rr_SetFrameLimiterEnabled(bool Enabled)
@@ -268,14 +259,9 @@ double Rr_GetFramesPerSecond(void)
     return (float)gApp->FrameTime.PerformanceCounter.FPS;
 }
 
-static bool Rr_IsAnyFullscreen(void)
-{
-    return (SDL_GetWindowFlags(gApp->Window) & SDL_WINDOW_FULLSCREEN) != 0;
-}
-
 void Rr_ToggleFullscreen(void)
 {
-    SDL_SetWindowFullscreen(gApp->Window, !Rr_IsAnyFullscreen());
+    Rr_SetWindowFullscreen(gApp->Window, !Rr_IsWindowFullscreen(gApp->Window));
 }
 
 double Rr_GetDeltaSeconds(void)
@@ -285,17 +271,19 @@ double Rr_GetDeltaSeconds(void)
 
 double Rr_GetTimeSeconds(void)
 {
-    return (double)SDL_GetTicks() / 1000.0;
+    return (double)(Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime) /
+           1000000000.0;
 }
 
 uint64_t Rr_GetTimeMS(void)
 {
-    return SDL_GetTicks();
+    return (double)(Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime) /
+           1000000.0;
 }
 
-void Rr_SetRelativeMouseMode(bool IsRelative)
+void Rr_SetRelativeMouseMode(bool Relative)
 {
-    SDL_SetWindowRelativeMouseMode(gApp->Window, IsRelative ? true : false);
+    Rr_SetWindowRelativeMouseMode(gApp->Window, Relative);
 }
 
 Rr_Event *Rr_AddEvent(void)

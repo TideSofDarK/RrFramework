@@ -28,7 +28,7 @@
 
 #include "Rr_Vulkan.h"
 
-#include <SDL3/SDL_mutex.h>
+#include <threads.h>
 
 typedef struct Rr_PendingLoad Rr_PendingLoad;
 struct Rr_PendingLoad
@@ -41,16 +41,17 @@ struct Rr_LoadThread
 {
     RR_ARRAY(Rr_LoadContext) LoadContexts;
 
-    SDL_Thread *Handle;
-    SDL_Semaphore *Semaphore;
-    SDL_Mutex *Mutex;
+    thrd_t Handle;
+    mtx_t Mutex;
+    cnd_t Condition;
+    atomic_bool QuitRequested;
 
+    Rr_Spinlock Lock;
     Rr_Arena *Arena;
 };
 
 struct Rr_LoadContext
 {
-    SDL_Semaphore *Semaphore;
     Rr_LoadCallback LoadingCallback;
     void *UserData;
     Rr_LoadTask *Tasks;

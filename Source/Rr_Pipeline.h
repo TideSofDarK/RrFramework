@@ -44,7 +44,7 @@ struct Rr_PipelineLayout
     VkPipelineLayout Handle;
     size_t SetLayoutCount;
     Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
-    Rr_AtomicInt RefCount;
+    atomic_uint RefCount;
 };
 
 #define RR_HIVE_TYPE      Rr_PipelineLayout
@@ -58,7 +58,7 @@ struct Rr_ComputePipeline
 {
     VkPipeline Handle;
     Rr_PipelineLayout *Layout;
-    Rr_AtomicInt RefCount;
+    atomic_uint RefCount;
 };
 
 #define RR_HIVE_TYPE      Rr_ComputePipeline
@@ -74,7 +74,7 @@ struct Rr_GraphicsPipeline
     Rr_PipelineLayout *Layout;
     uint32_t ColorAttachmentCount;
     bool HasDepthStencil;
-    Rr_AtomicInt RefCount;
+    atomic_uint RefCount;
 };
 
 #define RR_HIVE_TYPE      Rr_GraphicsPipeline

@@ -26,16 +26,14 @@
 
 #include "Rr_Log.h"
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
-
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void Rr_InitLoader(Rr_VulkanLoader *Loader)
 {
     Loader->GetInstanceProcAddr =
-        (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
+        (PFN_vkGetInstanceProcAddr)Rr_GetVkGetInstanceProcAddr();
 
     Loader->CreateInstance = (PFN_vkCreateInstance)Loader->GetInstanceProcAddr(
         NULL,
@@ -70,20 +68,20 @@ void Rr_InitInstance(
     uint32_t AppExtensionCount = RR_ARRAY_COUNT(AppExtensions);
     AppExtensionCount = 0; /* Use Vulkan Configurator! */
 
-    uint32_t SDLExtensionCount;
-    const char *const *SDLExtensions =
-        SDL_Vulkan_GetInstanceExtensions(&SDLExtensionCount);
+    uint32_t PlatformExtensionCount;
+    const char *const *PlatformExtensions =
+        Rr_GetVulkanExtensions(&PlatformExtensionCount);
 
-    uint32_t ExtensionCount = SDLExtensionCount + AppExtensionCount;
+    uint32_t ExtensionCount = PlatformExtensionCount + AppExtensionCount;
     const char **Extensions =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, const char *, ExtensionCount);
     for (uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
-        Extensions[Index] = SDLExtensions[Index];
+        Extensions[Index] = PlatformExtensions[Index];
     }
     for (uint32_t Index = 0; Index < AppExtensionCount; Index++)
     {
-        Extensions[Index + SDLExtensionCount] = AppExtensions[Index];
+        Extensions[Index + PlatformExtensionCount] = AppExtensions[Index];
     }
 
     /* Create Vulkan instance. */
@@ -272,7 +270,7 @@ static bool Rr_CheckPhysicalDevice(
     for (uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
         for (uint32_t TargetIndex = 0;
-             TargetIndex < SDL_arraysize(TargetExtensions);
+             TargetIndex < RR_ARRAY_COUNT(TargetExtensions);
              ++TargetIndex)
         {
             if (strcmp(
@@ -284,7 +282,7 @@ static bool Rr_CheckPhysicalDevice(
         }
     }
     for (uint32_t TargetIndex = 0;
-         TargetIndex < SDL_arraysize(TargetExtensions);
+         TargetIndex < RR_ARRAY_COUNT(TargetExtensions);
          ++TargetIndex)
     {
         if (!FoundExtensions[TargetIndex])
@@ -553,10 +551,10 @@ void Rr_InitSurface(
     Rr_Instance *Instance,
     VkSurfaceKHR *Surface)
 {
-    if (SDL_Vulkan_CreateSurface(Window, Instance->Handle, NULL, Surface) !=
+    if (Rr_CreateVulkanSurface(Window, Instance->Handle, (void *)Surface) !=
         true)
     {
-        RR_ABORT("Failed to create Vulkan surface: %s", SDL_GetError());
+        RR_ABORT("Failed to create Vulkan surface!");
     }
 }
 
@@ -603,7 +601,7 @@ void Rr_InitDeviceAndQueues(
         .pNext = NULL,
         .queueCreateInfoCount = UseTransferQueue ? 2 : 1,
         .pQueueCreateInfos = QueueInfos,
-        .enabledExtensionCount = SDL_arraysize(DeviceExtensions),
+        .enabledExtensionCount = RR_ARRAY_COUNT(DeviceExtensions),
         .ppEnabledExtensionNames = DeviceExtensions,
     };
 

@@ -24,11 +24,32 @@
 
 #include <Rr/Rr_Platform.h>
 
-/* NOTE: VMA (which is a C++ dependency) needs aligned allocation functions. */
+#include <Rr/Rr_Memory.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+struct Rr_AppConfig;
+
+extern bool Rr_InitPlatform(void);
+
+extern bool Rr_InitPlatformLibrary(struct Rr_AppConfig *Config);
+
+extern bool Rr_CleanupPlatformLibrary(void);
+
+extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
+
+extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
+
+extern bool Rr_CreateVulkanSurface(
+    Rr_Window Window,
+    void *Instance,
+    void **Surface);
+
+typedef atomic_bool Rr_Spinlock;
+
+extern void Rr_LockSpinlock(Rr_Spinlock *Spinlock);
+
+extern bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock);
+
+extern void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock);
 
 extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
 
@@ -42,6 +63,12 @@ extern void Rr_DestroyWindow(Rr_Window Window);
 
 extern void Rr_ShowWindow(Rr_Window Window);
 
-#ifdef __cplusplus
-}
-#endif
+extern bool Rr_IsWindowMinimized(Rr_Window Window);
+
+extern bool Rr_IsWindowFullscreen(Rr_Window Window);
+
+extern void Rr_SetWindowFullscreen(Rr_Window Window, bool Fullscreen);
+
+extern void Rr_SetWindowRelativeMouseMode(Rr_Window Window, bool Relative);
+
+extern float Rr_GetDisplayRefreshRate(Rr_Window Window);

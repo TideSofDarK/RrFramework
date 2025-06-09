@@ -28,9 +28,6 @@
 
 #include <Rr/Rr_Memory.h>
 
-#include <SDL3/SDL_thread.h>
-#include <SDL3/SDL_video.h>
-
 #define RR_HIVE_TYPE      Rr_Event
 #define RR_HIVE_TYPE_NAME Event
 #define RR_HIVE_PREFIX    Rr_
@@ -65,6 +62,8 @@ struct Rr_FrameTime
     uint64_t Last;
     uint64_t Now;
     double DeltaSeconds;
+
+    uint64_t InitTime;
 };
 
 typedef struct Rr_App Rr_App;
@@ -75,9 +74,8 @@ struct Rr_App
 
     Rr_FrameTime FrameTime;
 
-    SDL_TLSID ScratchArenaTLS;
     Rr_Window Window;
-    Rr_AtomicInt QuitRequested;
+    atomic_bool QuitRequested;
 
     Rr_EventHive EventHive;
 

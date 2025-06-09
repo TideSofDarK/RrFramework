@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include <Rr/Rr_Input.h>
 #include <Rr/Rr_Platform.h>
 
 #ifdef __cplusplus
@@ -59,7 +58,7 @@ extern double Rr_GetTimeSeconds(void);
 
 extern uint64_t Rr_GetTimeMS(void);
 
-extern void Rr_SetRelativeMouseMode(bool IsRelative);
+extern void Rr_SetRelativeMouseMode(bool Relative);
 
 #ifdef __cplusplus
 }

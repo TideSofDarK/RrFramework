@@ -31,9 +31,6 @@
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
-
 #include <xxHash/xxhash.h>
 
 #include <assert.h>
@@ -42,19 +39,19 @@ Rr_Renderer *gRenderer;
 
 void Rr_MarkBufferUsed(Rr_Frame *Frame, Rr_Buffer *Buffer)
 {
-    RR_INCREMENT_ATOMIC_INT(&Buffer->RefCount);
+    atomic_fetch_add_explicit(&Buffer->RefCount, 1, memory_order_relaxed);
     *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Buffers, Frame->Arena) = Buffer;
 }
 
 void Rr_MarkImageUsed(Rr_Frame *Frame, Rr_Image *Image)
 {
-    RR_INCREMENT_ATOMIC_INT(&Image->RefCount);
+    atomic_fetch_add_explicit(&Image->RefCount, 1, memory_order_relaxed);
     *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Images, Frame->Arena) = Image;
 }
 
 void Rr_MarkSamplerUsed(Rr_Frame *Frame, Rr_Sampler *Sampler)
 {
-    RR_INCREMENT_ATOMIC_INT(&Sampler->RefCount);
+    atomic_fetch_add_explicit(&Sampler->RefCount, 1, memory_order_relaxed);
     *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Samplers, Frame->Arena) = Sampler;
 }
 
@@ -62,7 +59,10 @@ void Rr_MarkComputePipelineUsed(
     Rr_Frame *Frame,
     Rr_ComputePipeline *ComputePipeline)
 {
-    RR_INCREMENT_ATOMIC_INT(&ComputePipeline->RefCount);
+    atomic_fetch_add_explicit(
+        &ComputePipeline->RefCount,
+        1,
+        memory_order_relaxed);
     *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.ComputePipelines, Frame->Arena) =
         ComputePipeline;
 }
@@ -71,7 +71,10 @@ void Rr_MarkGraphicsPipelineUsed(
     Rr_Frame *Frame,
     Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    RR_INCREMENT_ATOMIC_INT(&GraphicsPipeline->RefCount);
+    atomic_fetch_add_explicit(
+        &GraphicsPipeline->RefCount,
+        1,
+        memory_order_relaxed);
     *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.GraphicsPipelines, Frame->Arena) =
         GraphicsPipeline;
 }
@@ -105,7 +108,10 @@ static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 
 void Rr_SetSwapchainDirty(bool Dirty)
 {
-    Rr_SetAtomicInt(&gRenderer->Swapchain.RecreatePending, Dirty);
+    atomic_store_explicit(
+        &gRenderer->Swapchain.RecreatePending,
+        Dirty,
+        memory_order_relaxed);
 }
 
 static bool Rr_InitSwapchain(void)
@@ -113,17 +119,19 @@ static bool Rr_InitSwapchain(void)
     Rr_Instance *Instance = &gRenderer->Instance;
     Rr_Device *Device = &gRenderer->Device;
 
-    int32_t Width, Height;
-    SDL_GetWindowSizeInPixels(gApp->Window, &Width, &Height);
+    Rr_IntVec2 WindowSize = Rr_GetWindowSize();
 
-    if (Width == 0 || Height == 0)
+    if (WindowSize.Width == 0 || WindowSize.Height == 0)
     {
         return false;
     }
 
-    bool Recreate = gRenderer->Swapchain.Extent.width != (uint32_t)Width ||
-                    gRenderer->Swapchain.Extent.height != (uint32_t)Height ||
-                    Rr_GetAtomicInt(&gRenderer->Swapchain.RecreatePending);
+    bool Recreate =
+        gRenderer->Swapchain.Extent.width != (uint32_t)WindowSize.Width ||
+        gRenderer->Swapchain.Extent.height != (uint32_t)WindowSize.Height ||
+        atomic_load_explicit(
+            &gRenderer->Swapchain.RecreatePending,
+            memory_order_relaxed);
 
     if (!Recreate)
     {
@@ -153,8 +161,8 @@ static bool Rr_InitSwapchain(void)
     }
     if (SurfaceCapabilities.currentExtent.width == UINT32_MAX)
     {
-        gRenderer->Swapchain.Extent.width = Width;
-        gRenderer->Swapchain.Extent.height = Height;
+        gRenderer->Swapchain.Extent.width = WindowSize.Width;
+        gRenderer->Swapchain.Extent.height = WindowSize.Height;
     }
     else
     {
@@ -162,8 +170,6 @@ static bool Rr_InitSwapchain(void)
             SurfaceCapabilities.currentExtent.width;
         gRenderer->Swapchain.Extent.height =
             SurfaceCapabilities.currentExtent.height;
-        Width = SurfaceCapabilities.currentExtent.width;
-        Height = SurfaceCapabilities.currentExtent.height;
     }
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -627,34 +633,44 @@ static void Rr_DecrementRefCounts(Rr_Frame *Frame)
 {
     for (size_t Index = 0; Index < Frame->UsedObjects.Buffers.Count; ++Index)
     {
-        (void)RR_DECREMENT_ATOMIC_INT(
-            &Frame->UsedObjects.Buffers.Data[Index]->RefCount);
+        atomic_fetch_sub_explicit(
+            &Frame->UsedObjects.Buffers.Data[Index]->RefCount,
+            1,
+            memory_order_relaxed);
     }
 
     for (size_t Index = 0; Index < Frame->UsedObjects.Images.Count; ++Index)
     {
-        (void)RR_DECREMENT_ATOMIC_INT(
-            &Frame->UsedObjects.Images.Data[Index]->RefCount);
+        atomic_fetch_sub_explicit(
+            &Frame->UsedObjects.Images.Data[Index]->RefCount,
+            1,
+            memory_order_relaxed);
     }
 
     for (size_t Index = 0; Index < Frame->UsedObjects.Samplers.Count; ++Index)
     {
-        (void)RR_DECREMENT_ATOMIC_INT(
-            &Frame->UsedObjects.Samplers.Data[Index]->RefCount);
+        atomic_fetch_sub_explicit(
+            &Frame->UsedObjects.Samplers.Data[Index]->RefCount,
+            1,
+            memory_order_relaxed);
     }
 
     for (size_t Index = 0; Index < Frame->UsedObjects.ComputePipelines.Count;
          ++Index)
     {
-        (void)RR_DECREMENT_ATOMIC_INT(
-            &Frame->UsedObjects.ComputePipelines.Data[Index]->RefCount);
+        atomic_fetch_sub_explicit(
+            &Frame->UsedObjects.ComputePipelines.Data[Index]->RefCount,
+            1,
+            memory_order_relaxed);
     }
 
     for (size_t Index = 0; Index < Frame->UsedObjects.GraphicsPipelines.Count;
          ++Index)
     {
-        (void)RR_DECREMENT_ATOMIC_INT(
-            &Frame->UsedObjects.GraphicsPipelines.Data[Index]->RefCount);
+        atomic_fetch_sub_explicit(
+            &Frame->UsedObjects.GraphicsPipelines.Data[Index]->RefCount,
+            1,
+            memory_order_relaxed);
     }
 }
 
@@ -678,7 +694,10 @@ static inline void Rr_ProcessReleasedObjects(void)
             case RR_RENDERER_OBJECT_TYPE_BUFFER:
             {
                 Rr_Buffer *Buffer = Object.Ptr;
-                if (Rr_GetAtomicInt(&Buffer->RefCount) == 0)
+
+                if (!atomic_load_explicit(
+                        &Buffer->RefCount,
+                        memory_order_relaxed))
                 {
                     Rr_DestroyBuffer(Buffer);
                     goto ObjectDeleted;
@@ -688,7 +707,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             case RR_RENDERER_OBJECT_TYPE_IMAGE:
             {
                 Rr_Image *Image = Object.Ptr;
-                if (Rr_GetAtomicInt(&Image->RefCount) == 0)
+                if (!atomic_load_explicit(
+                        &Image->RefCount,
+                        memory_order_relaxed))
                 {
                     Rr_DestroyImage(Image);
                     goto ObjectDeleted;
@@ -698,7 +719,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             case RR_RENDERER_OBJECT_TYPE_SAMPLER:
             {
                 Rr_Sampler *Sampler = Object.Ptr;
-                if (Rr_GetAtomicInt(&Sampler->RefCount) == 0)
+                if (!atomic_load_explicit(
+                        &Sampler->RefCount,
+                        memory_order_relaxed))
                 {
                     Rr_DestroySampler(Sampler);
                     goto ObjectDeleted;
@@ -708,7 +731,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             case RR_RENDERER_OBJECT_TYPE_PIPELINE_LAYOUT:
             {
                 Rr_PipelineLayout *PipelineLayout = Object.Ptr;
-                if (Rr_GetAtomicInt(&PipelineLayout->RefCount) == 0)
+                if (!atomic_load_explicit(
+                        &PipelineLayout->RefCount,
+                        memory_order_relaxed))
                 {
                     Rr_DestroyPipelineLayout(PipelineLayout);
                     goto ObjectDeleted;
@@ -718,7 +743,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             case RR_RENDERER_OBJECT_TYPE_COMPUTE_PIPELINE:
             {
                 Rr_ComputePipeline *ComputePipeline = Object.Ptr;
-                if (Rr_GetAtomicInt(&ComputePipeline->RefCount) == 0)
+                if (!atomic_load_explicit(
+                        &ComputePipeline->RefCount,
+                        memory_order_relaxed))
                 {
                     Rr_DestroyComputePipeline(ComputePipeline);
                     goto ObjectDeleted;
@@ -728,7 +755,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             case RR_RENDERER_OBJECT_TYPE_GRAPHICS_PIPELINE:
             {
                 Rr_GraphicsPipeline *GraphicsPipeline = Object.Ptr;
-                if (Rr_GetAtomicInt(&GraphicsPipeline->RefCount) == 0)
+                if (!atomic_load_explicit(
+                        &GraphicsPipeline->RefCount,
+                        memory_order_relaxed))
                 {
                     Rr_DestroyGraphicsPipeline(GraphicsPipeline);
                     goto ObjectDeleted;

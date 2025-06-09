@@ -24,8 +24,9 @@
 
 #pragma once
 
-#include <Rr/Rr_Input.h>
 #include <Rr/Rr_Math.h>
+
+#include <stdatomic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,9 +39,11 @@ struct Rr_PlatformInfo
     int AllocationGranularity;
 };
 
-extern bool Rr_InitPlatform(void);
-
 extern Rr_PlatformInfo *Rr_GetPlatformInfo(void);
+
+extern uint64_t Rr_GetPerformanceCounter(void);
+
+extern uint64_t Rr_GetPerformanceFrequency(void);
 
 extern void *Rr_ReserveMemory(size_t Size);
 
@@ -50,30 +53,126 @@ extern bool Rr_CommitMemory(void *Data, size_t Size);
 
 extern void Rr_DecommitMemory(void *Data, size_t Size);
 
-typedef struct Rr_AtomicInt Rr_AtomicInt;
-struct Rr_AtomicInt
+typedef enum Rr_Scancode
 {
-    int Value;
-};
+    RR_SCANCODE_UNKNOWN = 0,
+    RR_SCANCODE_A = 4,
+    RR_SCANCODE_B = 5,
+    RR_SCANCODE_C = 6,
+    RR_SCANCODE_D = 7,
+    RR_SCANCODE_E = 8,
+    RR_SCANCODE_F = 9,
+    RR_SCANCODE_G = 10,
+    RR_SCANCODE_H = 11,
+    RR_SCANCODE_I = 12,
+    RR_SCANCODE_J = 13,
+    RR_SCANCODE_K = 14,
+    RR_SCANCODE_L = 15,
+    RR_SCANCODE_M = 16,
+    RR_SCANCODE_N = 17,
+    RR_SCANCODE_O = 18,
+    RR_SCANCODE_P = 19,
+    RR_SCANCODE_Q = 20,
+    RR_SCANCODE_R = 21,
+    RR_SCANCODE_S = 22,
+    RR_SCANCODE_T = 23,
+    RR_SCANCODE_U = 24,
+    RR_SCANCODE_V = 25,
+    RR_SCANCODE_W = 26,
+    RR_SCANCODE_X = 27,
+    RR_SCANCODE_Y = 28,
+    RR_SCANCODE_Z = 29,
+    RR_SCANCODE_1 = 30,
+    RR_SCANCODE_2 = 31,
+    RR_SCANCODE_3 = 32,
+    RR_SCANCODE_4 = 33,
+    RR_SCANCODE_5 = 34,
+    RR_SCANCODE_6 = 35,
+    RR_SCANCODE_7 = 36,
+    RR_SCANCODE_8 = 37,
+    RR_SCANCODE_9 = 38,
+    RR_SCANCODE_0 = 39,
+    RR_SCANCODE_RETURN = 40,
+    RR_SCANCODE_ESCAPE = 41,
+    RR_SCANCODE_BACKSPACE = 42,
+    RR_SCANCODE_TAB = 43,
+    RR_SCANCODE_SPACE = 44,
+    RR_SCANCODE_CAPSLOCK = 57,
+    RR_SCANCODE_F1 = 58,
+    RR_SCANCODE_F2 = 59,
+    RR_SCANCODE_F3 = 60,
+    RR_SCANCODE_F4 = 61,
+    RR_SCANCODE_F5 = 62,
+    RR_SCANCODE_F6 = 63,
+    RR_SCANCODE_F7 = 64,
+    RR_SCANCODE_F8 = 65,
+    RR_SCANCODE_F9 = 66,
+    RR_SCANCODE_F10 = 67,
+    RR_SCANCODE_F11 = 68,
+    RR_SCANCODE_F12 = 69,
+    RR_SCANCODE_HOME = 74,
+    RR_SCANCODE_PAGEUP = 75,
+    RR_SCANCODE_DELETE = 76,
+    RR_SCANCODE_END = 77,
+    RR_SCANCODE_PAGEDOWN = 78,
+    RR_SCANCODE_RIGHT = 79,
+    RR_SCANCODE_LEFT = 80,
+    RR_SCANCODE_DOWN = 81,
+    RR_SCANCODE_UP = 82,
+    RR_SCANCODE_NUMLOCKCLEAR = 83,
+    RR_SCANCODE_KP_DIVIDE = 84,
+    RR_SCANCODE_KP_MULTIPLY = 85,
+    RR_SCANCODE_KP_MINUS = 86,
+    RR_SCANCODE_KP_PLUS = 87,
+    RR_SCANCODE_KP_ENTER = 88,
+    RR_SCANCODE_KP_1 = 89,
+    RR_SCANCODE_KP_2 = 90,
+    RR_SCANCODE_KP_3 = 91,
+    RR_SCANCODE_KP_4 = 92,
+    RR_SCANCODE_KP_5 = 93,
+    RR_SCANCODE_KP_6 = 94,
+    RR_SCANCODE_KP_7 = 95,
+    RR_SCANCODE_KP_8 = 96,
+    RR_SCANCODE_KP_9 = 97,
+    RR_SCANCODE_KP_0 = 98,
+    RR_SCANCODE_KP_PERIOD = 99,
+    RR_SCANCODE_COUNT = 512,
+} Rr_Scancode;
 
-extern int Rr_GetAtomicInt(Rr_AtomicInt *AtomicInt);
+typedef enum Rr_KeymodFlagsBits
+{
+    RR_KEYMOD_CTRL = (1 << 0),
+    RR_KEYMOD_SHIFT = (1 << 1),
+    RR_KEYMOD_ALT = (1 << 2),
+} Rr_KeymodFlagsBits;
+typedef uint16_t Rr_KeymodFlags;
 
-extern int Rr_SetAtomicInt(Rr_AtomicInt *AtomicInt, int Value);
+typedef enum Rr_MouseButton
+{
+    RR_MOUSE_BUTTON_LEFT = 1,
+    RR_MOUSE_BUTTON_MIDDLE = 2,
+    RR_MOUSE_BUTTON_RIGHT = 3,
+    RR_MOUSE_BUTTON_X1 = 4,
+    RR_MOUSE_BUTTON_X2 = 5
+} Rr_MouseButton;
 
-extern int Rr_AddAtomicInt(Rr_AtomicInt *AtomicInt, int Value);
+typedef enum Rr_MouseButtonFlagsBits
+{
+    RR_MOUSE_BUTTON_LEFT_BIT = (1 << 0),
+    RR_MOUSE_BUTTON_MIDDLE_BIT = (1 << 1),
+    RR_MOUSE_BUTTON_RIGHT_BIT = (1 << 2),
+    RR_MOUSE_BUTTON_X1_BIT = (1 << 3),
+    RR_MOUSE_BUTTON_X2_BIT = (1 << 4),
+} Rr_MouseButtonFlagsBits;
+typedef uint32_t Rr_MouseButtonFlags;
 
-#define RR_INCREMENT_ATOMIC_INT(AtomicInt) (Rr_AddAtomicInt((AtomicInt), 1))
+extern bool Rr_IsScancodePressed(Rr_Scancode Scancode);
 
-#define RR_DECREMENT_ATOMIC_INT(AtomicInt) \
-    (Rr_AddAtomicInt((AtomicInt), -1) == 1)
+extern Rr_Vec2 Rr_GetMousePosition(void);
 
-typedef int Rr_Spinlock;
+extern Rr_Vec2 Rr_GetMousePositionDelta(void);
 
-extern bool Rr_TryLockSpinlock(Rr_Spinlock *SpinLock);
-
-extern void Rr_LockSpinlock(Rr_Spinlock *SpinLock);
-
-extern void Rr_UnlockSpinlock(Rr_Spinlock *SpinLock);
+extern Rr_MouseButtonFlags Rr_GetMouseState(void);
 
 typedef void *Rr_Window;
 

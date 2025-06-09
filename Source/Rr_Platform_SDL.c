@@ -26,9 +26,85 @@
 
 #include "Rr_App.h"
 
-#include <Rr/Rr_Input.h>
-
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
+
+bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
+{
+    SDL_SetAppMetadata(Config->Title, Config->Version, Config->Package);
+    SDL_SetLogPriorities(SDL_LOG_PRIORITY_CRITICAL);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+
+    SDL_Vulkan_LoadLibrary(NULL);
+
+    return true;
+}
+
+bool Rr_CleanupPlatformLibrary(void)
+{
+    SDL_Quit();
+
+    return true;
+}
+
+void (*Rr_GetVkGetInstanceProcAddr(void))(void)
+{
+    return SDL_Vulkan_GetVkGetInstanceProcAddr();
+}
+
+const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
+{
+    return SDL_Vulkan_GetInstanceExtensions(Count);
+}
+
+bool Rr_CreateVulkanSurface(Rr_Window Window, void *Instance, void **Surface)
+{
+    return SDL_Vulkan_CreateSurface(
+        Window,
+        (VkInstance)Instance,
+        NULL,
+        (VkSurfaceKHR *)Surface);
+}
+
+bool Rr_IsScancodePressed(Rr_Scancode Scancode)
+{
+    return SDL_GetKeyboardState(NULL)[Scancode];
+}
+
+Rr_Vec2 Rr_GetMousePosition(void)
+{
+    Rr_Vec2 MousePosition;
+    SDL_GetMouseState(&MousePosition.X, &MousePosition.Y);
+
+    Rr_IntVec2 WindowSize;
+    SDL_GetWindowSize(gApp->Window, &WindowSize.X, &WindowSize.Y);
+
+    Rr_IntVec2 WindowSizeInPixels;
+    SDL_GetWindowSizeInPixels(
+        gApp->Window,
+        &WindowSizeInPixels.X,
+        &WindowSizeInPixels.Y);
+
+    MousePosition.X /= (float)WindowSize.X;
+    MousePosition.Y /= (float)WindowSize.Y;
+
+    MousePosition.X *= (float)WindowSizeInPixels.X;
+    MousePosition.Y *= (float)WindowSizeInPixels.Y;
+
+    return MousePosition;
+}
+
+Rr_Vec2 Rr_GetMousePositionDelta(void)
+{
+    Rr_Vec2 MousePositionDelta;
+    SDL_GetRelativeMouseState(&MousePositionDelta.X, &MousePositionDelta.Y);
+    return MousePositionDelta;
+}
+
+Rr_MouseButtonFlags Rr_GetMouseState(void)
+{
+    return SDL_GetMouseState(NULL, NULL);
+}
 
 bool Rr_PollPlatformEvent(Rr_Event *Event)
 {
@@ -159,6 +235,33 @@ void Rr_DestroyWindow(Rr_Window Window)
 void Rr_ShowWindow(Rr_Window Window)
 {
     SDL_ShowWindow(Window);
+}
+
+bool Rr_IsWindowMinimized(Rr_Window Window)
+{
+    return SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
+}
+
+bool Rr_IsWindowFullscreen(Rr_Window Window)
+{
+    return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
+}
+
+void Rr_SetWindowFullscreen(Rr_Window Window, bool Fullscreen)
+{
+    SDL_SetWindowFullscreen(Window, Fullscreen);
+}
+
+void Rr_SetWindowRelativeMouseMode(Rr_Window Window, bool Relative)
+{
+    SDL_SetWindowRelativeMouseMode(gApp->Window, Relative);
+}
+
+float Rr_GetDisplayRefreshRate(Rr_Window Window)
+{
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
+    const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
+    return Mode->refresh_rate;
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)

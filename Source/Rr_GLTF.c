@@ -299,8 +299,9 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
             {
                 if (Found)
                 {
-                    RR_ABORT("GLTF: Multiple mappings found for the same "
-                             "attribute type!");
+                    RR_ABORT(
+                        "GLTF: Multiple mappings found for the same "
+                        "attribute type!");
                 }
                 if (Out)
                 {

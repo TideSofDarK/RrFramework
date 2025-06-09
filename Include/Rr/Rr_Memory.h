@@ -120,9 +120,9 @@ extern Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena);
 
 extern void Rr_DestroyScratch(Rr_Scratch Scratch);
 
-extern void Rr_SetScratchTLS(void *TLSID);
+extern void Rr_InitScratchArena(void);
 
-extern void Rr_InitScratch(size_t Size);
+extern void Rr_CleanupScratchArena(void);
 
 extern Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
 
