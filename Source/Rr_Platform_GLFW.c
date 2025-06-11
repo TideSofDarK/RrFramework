@@ -94,11 +94,6 @@ Rr_Vec2 Rr_GetMousePosition(void)
     return (Rr_Vec2){ (float)X, (float)Y };
 }
 
-Rr_Vec2 Rr_GetMousePositionDelta(void)
-{
-    return gWindow->MousePositionDelta;
-}
-
 Rr_MouseButtonFlags Rr_GetMouseState(void)
 {
     Rr_MouseButtonFlags Result = 0;
@@ -471,11 +466,6 @@ float Rr_GetDisplayRefreshRate(void)
 {
     const GLFWvidmode *Mode = glfwGetVideoMode(Rr_GetGLFWMonitor());
     return (float)Mode->refreshRate;
-}
-
-void Rr_ToggleWindowFullscreen(void)
-{
-    Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)

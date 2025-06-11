@@ -24,10 +24,13 @@
 
 #include "Rr_Platform.h"
 
-#include "Rr_App.h"
+#include <Rr/Rr_App.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
+
+#include <assert.h>
+#include <stdio.h>
 
 bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
@@ -77,11 +80,11 @@ Rr_Vec2 Rr_GetMousePosition(void)
     SDL_GetMouseState(&MousePosition.X, &MousePosition.Y);
 
     Rr_IntVec2 WindowSize;
-    SDL_GetWindowSize(gApp->Window, &WindowSize.X, &WindowSize.Y);
+    SDL_GetWindowSize(gWindow->Handle, &WindowSize.X, &WindowSize.Y);
 
     Rr_IntVec2 WindowSizeInPixels;
     SDL_GetWindowSizeInPixels(
-        gApp->Window,
+        gWindow->Handle,
         &WindowSizeInPixels.X,
         &WindowSizeInPixels.Y);
 
@@ -92,13 +95,6 @@ Rr_Vec2 Rr_GetMousePosition(void)
     MousePosition.Y *= (float)WindowSizeInPixels.Y;
 
     return MousePosition;
-}
-
-Rr_Vec2 Rr_GetMousePositionDelta(void)
-{
-    Rr_Vec2 MousePositionDelta;
-    SDL_GetRelativeMouseState(&MousePositionDelta.X, &MousePositionDelta.Y);
-    return MousePositionDelta;
 }
 
 Rr_MouseButtonFlags Rr_GetMouseState(void)
@@ -153,8 +149,6 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
             Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
             Event->MouseMotion.Position =
                 (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y };
-            Event->MouseMotion.Delta =
-                (Rr_Vec2){ SDLEvent.motion.xrel, SDLEvent.motion.yrel };
             return true;
         }
         case SDL_EVENT_MOUSE_WHEEL:
@@ -162,8 +156,6 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
             Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
             Event->MouseMotion.Position =
                 (Rr_Vec2){ SDLEvent.wheel.mouse_x, SDLEvent.wheel.mouse_y };
-            Event->MouseMotion.Delta =
-                (Rr_Vec2){ SDLEvent.wheel.x, SDLEvent.wheel.y };
             return true;
         }
         case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -206,6 +198,7 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
         case SDL_EVENT_QUIT:
         {
             Event->Type = RR_EVENT_TYPE_QUIT;
+            Rr_Quit();
             return true;
         }
         default:
@@ -213,78 +206,88 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
     }
 }
 
-Rr_Window Rr_CreateWindow(const char *Title, Rr_WindowFlags Flags)
+bool Rr_InitWindow(Rr_AppConfig *Config)
 {
     SDL_WindowFlags SDLWindowFlags =
         SDL_WINDOW_HIDDEN | SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    if (RR_HAS_BIT(Flags, RR_WINDOW_FLAGS_RESIZE_BIT))
+    if (RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT))
     {
         SDLWindowFlags |= SDL_WINDOW_RESIZABLE;
     }
-    SDL_Window *Window = SDL_CreateWindow(Title, 0, 0, SDLWindowFlags);
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
+    gWindow = RR_ALLOC_TYPE(Arena, Rr_Window);
+    gWindow->Arena = Arena;
+    gWindow->EventScratch =
+        (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
+    gWindow->Handle = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
-    SDL_StartTextInput(Window);
-    return Window;
+    SDL_StartTextInput(gWindow->Handle);
+    Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
+    SDL_SetWindowSize(gWindow->Handle, WindowSize.X, WindowSize.Y);
+    SDL_SetWindowPosition(
+        gWindow->Handle,
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED);
+
+    return true;
 }
 
-void Rr_DestroyWindow(Rr_Window Window)
+void Rr_CleanupWindow(void)
 {
-    SDL_DestroyWindow(Window);
+    assert(gWindow != NULL);
+
+    SDL_DestroyWindow(gWindow->Handle);
 }
 
-void Rr_ShowWindow(Rr_Window Window)
+void Rr_ShowWindow(void)
 {
-    SDL_ShowWindow(Window);
+    SDL_ShowWindow(gWindow->Handle);
 }
 
-bool Rr_IsWindowMinimized(Rr_Window Window)
+bool Rr_IsWindowMinimized(void)
 {
-    return SDL_GetWindowFlags(Window) & SDL_WINDOW_MINIMIZED;
+    return SDL_GetWindowFlags(gWindow->Handle) & SDL_WINDOW_MINIMIZED;
 }
 
-bool Rr_IsWindowFullscreen(Rr_Window Window)
+bool Rr_IsWindowFullscreen(void)
 {
-    return (SDL_GetWindowFlags(Window) & SDL_WINDOW_FULLSCREEN) != 0;
+    return (SDL_GetWindowFlags(gWindow->Handle) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
-void Rr_SetWindowFullscreen(Rr_Window Window, bool Fullscreen)
+void Rr_SetWindowFullscreen(bool Fullscreen)
 {
-    SDL_SetWindowFullscreen(Window, Fullscreen);
+    SDL_SetWindowFullscreen(gWindow->Handle, Fullscreen);
 }
 
-void Rr_SetRelativeMouseMode(Rr_Window Window, bool Relative)
+void Rr_SetRelativeMouseMode(bool Relative)
 {
-    SDL_SetWindowRelativeMouseMode(gApp->Window, Relative);
+    SDL_SetWindowRelativeMouseMode(gWindow->Handle, Relative);
 }
 
-float Rr_GetDisplayRefreshRate(Rr_Window Window)
+float Rr_GetDisplayRefreshRate(void)
 {
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gWindow->Handle);
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
     return Mode->refresh_rate;
-}
-
-void Rr_ToggleWindowFullscreen(void)
-{
-    Rr_SetWindowFullscreen(gApp->Window, !Rr_IsWindowFullscreen(gApp->Window));
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
     Rr_IntVec2 Size;
-    SDL_GetWindowSizeInPixels(gApp->Window, &Size.X, &Size.Y);
+    SDL_GetWindowSizeInPixels(gWindow->Handle, &Size.X, &Size.Y);
     return Size;
 }
 
 void Rr_SetWindowTitle(const char *Title)
 {
-    SDL_SetWindowTitle(gApp->Window, Title);
+    SDL_SetWindowTitle(gWindow->Handle, Title);
 }
 
 Rr_IntVec2 Rr_GetDisplaySize(void)
 {
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gApp->Window);
-    float Scale = SDL_GetWindowDisplayScale(gApp->Window);
+    assert(gWindow && gWindow->Handle);
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gWindow->Handle);
+    float Scale = SDL_GetWindowPixelDensity(gWindow->Handle);
     SDL_Rect Rect;
     SDL_GetDisplayBounds(DisplayID, &Rect);
     return (Rr_IntVec2){
@@ -295,9 +298,9 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
-    float Scale = SDL_GetWindowDisplayScale(gApp->Window);
+    float Scale = SDL_GetWindowDisplayScale(gWindow->Handle);
     SDL_SetWindowSize(
-        gApp->Window,
+        gWindow->Handle,
         (int32_t)(Size.Width / Scale),
         (int32_t)(Size.Height / Scale));
 }

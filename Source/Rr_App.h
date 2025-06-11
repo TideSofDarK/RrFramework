@@ -28,8 +28,6 @@
 
 #include <Rr/Rr_Memory.h>
 
-#include "Rr_Platform.h"
-
 #define RR_HIVE_TYPE      Rr_Event
 #define RR_HIVE_TYPE_NAME Event
 #define RR_HIVE_PREFIX    Rr_

@@ -41,6 +41,16 @@ Rr_IntVec2 Rr_GetDefaultWindowSize(void)
                              (int32_t)(DisplaySize.Height * ScaleFactor) };
 }
 
+Rr_Vec2 Rr_GetMousePositionDelta(void)
+{
+    return gWindow->MousePositionDelta;
+}
+
+void Rr_ToggleWindowFullscreen(void)
+{
+    Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
+}
+
 void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
 {
     for (;;)
