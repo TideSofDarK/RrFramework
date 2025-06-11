@@ -546,13 +546,9 @@ void Rr_SelectPhysicalDevice(
         UseTransferQueue ? "dedicated" : "unified");
 }
 
-void Rr_InitSurface(
-    Rr_Window Window,
-    Rr_Instance *Instance,
-    VkSurfaceKHR *Surface)
+void Rr_InitSurface(Rr_Instance *Instance, VkSurfaceKHR *Surface)
 {
-    if (Rr_CreateVulkanSurface(Window, Instance->Handle, (void *)Surface) !=
-        true)
+    if (Rr_CreateVulkanSurface(Instance->Handle, (void *)Surface) != true)
     {
         RR_ABORT("Failed to create Vulkan surface!");
     }

@@ -35,7 +35,6 @@
 #include "Rr_Log.h"
 
 #include <vma/vk_mem_alloc.h>
-#include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan.h>
 
 #define RR_VULKAN_VERSION VK_MAKE_API_VERSION(0, 1, 1, 0)
@@ -326,10 +325,7 @@ extern void Rr_InitInstance(
     const char *ApplicationName,
     Rr_Instance *Instance);
 
-extern void Rr_InitSurface(
-    void *Window,
-    Rr_Instance *Instance,
-    VkSurfaceKHR *Surface);
+extern void Rr_InitSurface(Rr_Instance *Instance, VkSurfaceKHR *Surface);
 
 extern void Rr_InitDeviceAndQueues(
     Rr_Instance *Instance,

@@ -50,15 +50,13 @@ extern void Rr_SetFrameLimiterEnabled(bool Enabled);
 
 extern double Rr_GetFramesPerSecond(void);
 
-extern void Rr_ToggleFullscreen(void);
-
 extern double Rr_GetDeltaSeconds(void);
 
 extern double Rr_GetTimeSeconds(void);
 
 extern uint64_t Rr_GetTimeMS(void);
 
-extern void Rr_SetRelativeMouseMode(bool Relative);
+extern void Rr_Quit(void);
 
 #ifdef __cplusplus
 }

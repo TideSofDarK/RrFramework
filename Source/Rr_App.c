@@ -83,7 +83,7 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
     }
 }
 
-static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, Rr_Window Window)
+static void Rr_InitFrameTime(Rr_FrameTime *FrameTime)
 {
     uint64_t Now = Rr_GetPerformanceCounter();
 #ifdef RR_PERFORMANCE_COUNTER
@@ -94,22 +94,11 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime, Rr_Window Window)
         (double)Rr_GetPerformanceFrequency();
 #endif
 
-    FrameTime->TargetFramerate = Rr_GetDisplayRefreshRate(Window);
+    FrameTime->TargetFramerate = Rr_GetDisplayRefreshRate();
     FrameTime->StartTime = Now;
     FrameTime->Now = Now;
 
     FrameTime->InitTime = Now;
-}
-
-static Rr_IntVec2 Rr_GetDefaultWindowSize(void)
-{
-    Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
-
-    float ScaleFactor = 0.75f;
-
-    return (Rr_IntVec2){ .Width = (int32_t)(DisplaySize.Width * ScaleFactor),
-                         .Height =
-                             (int32_t)(DisplaySize.Height * ScaleFactor) };
 }
 
 static inline bool Rr_PollEvent(Rr_Event *Event)
@@ -140,6 +129,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitPlatform();
     Rr_InitPlatformLibrary(Config);
+    Rr_InitWindow(Config);
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
@@ -147,14 +137,11 @@ void Rr_Run(Rr_AppConfig *Config)
     gApp->Arena = Arena;
 
     gApp->Config = Config;
-    gApp->Window = Rr_CreateWindow(Config->Title, Config->WindowFlags);
     gApp->UserData = Config->UserData;
-
-    Rr_SetWindowSize(Rr_GetDefaultWindowSize());
 
     Rr_InitScratchArena();
 
-    Rr_InitFrameTime(&gApp->FrameTime, gApp->Window);
+    Rr_InitFrameTime(&gApp->FrameTime);
 
     Rr_InitRenderer();
 
@@ -168,7 +155,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Config->InitFunc(gApp->UserData);
 
-    Rr_ShowWindow(gApp->Window);
+    Rr_ShowWindow();
 
     while (true)
     {
@@ -176,26 +163,18 @@ void Rr_Run(Rr_AppConfig *Config)
         {
             Rr_ProcessUIEvent(&Event);
 
-            switch (Event.Type)
-            {
-                case RR_EVENT_TYPE_QUIT:
-                {
-                    atomic_store_explicit(
-                        &gApp->QuitRequested,
-                        true,
-                        memory_order_relaxed);
-                    break;
-                }
-                break;
-                default:
-                    break;
-            }
-
             if (Config->EventFunc != NULL)
             {
                 Config->EventFunc(gApp->UserData, &Event);
             }
         }
+
+        Rr_Vec2 MousePosition = Rr_GetMousePosition();
+        gWindow->MousePositionDelta =
+            Rr_SubV2(MousePosition, gWindow->LastMousePosition);
+        gWindow->LastMousePosition = MousePosition;
+
+        Rr_DestroyScratch(gWindow->EventScratch);
 
         Rr_BeginUI();
 
@@ -209,7 +188,7 @@ void Rr_Run(Rr_AppConfig *Config)
         Rr_CalculateFPS(&gApp->FrameTime);
 #endif
 
-        bool Minimized = Rr_IsWindowMinimized(gApp->Window);
+        bool Minimized = Rr_IsWindowMinimized();
 
         if (gApp->FrameTime.EnableFrameLimiter || Minimized)
         {
@@ -242,7 +221,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_CleanupScratchArena();
 
-    Rr_DestroyWindow(gApp->Window);
+    Rr_CleanupWindow();
 
     Rr_DestroyArena(gApp->Arena);
 
@@ -257,11 +236,6 @@ void Rr_SetFrameLimiterEnabled(bool Enabled)
 double Rr_GetFramesPerSecond(void)
 {
     return (float)gApp->FrameTime.PerformanceCounter.FPS;
-}
-
-void Rr_ToggleFullscreen(void)
-{
-    Rr_SetWindowFullscreen(gApp->Window, !Rr_IsWindowFullscreen(gApp->Window));
 }
 
 double Rr_GetDeltaSeconds(void)
@@ -281,9 +255,9 @@ uint64_t Rr_GetTimeMS(void)
            1000000.0;
 }
 
-void Rr_SetRelativeMouseMode(bool Relative)
+void Rr_Quit(void)
 {
-    Rr_SetWindowRelativeMouseMode(gApp->Window, Relative);
+    atomic_store_explicit(&gApp->QuitRequested, true, memory_order_relaxed);
 }
 
 Rr_Event *Rr_AddEvent(void)

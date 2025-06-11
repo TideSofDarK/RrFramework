@@ -57,10 +57,10 @@ const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
     return SDL_Vulkan_GetInstanceExtensions(Count);
 }
 
-bool Rr_CreateVulkanSurface(Rr_Window Window, void *Instance, void **Surface)
+bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
 {
     return SDL_Vulkan_CreateSurface(
-        Window,
+        gWindow->Handle,
         (VkInstance)Instance,
         NULL,
         (VkSurfaceKHR *)Surface);
@@ -252,7 +252,7 @@ void Rr_SetWindowFullscreen(Rr_Window Window, bool Fullscreen)
     SDL_SetWindowFullscreen(Window, Fullscreen);
 }
 
-void Rr_SetWindowRelativeMouseMode(Rr_Window Window, bool Relative)
+void Rr_SetRelativeMouseMode(Rr_Window Window, bool Relative)
 {
     SDL_SetWindowRelativeMouseMode(gApp->Window, Relative);
 }
@@ -262,6 +262,11 @@ float Rr_GetDisplayRefreshRate(Rr_Window Window)
     SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Window);
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
     return Mode->refresh_rate;
+}
+
+void Rr_ToggleWindowFullscreen(void)
+{
+    Rr_SetWindowFullscreen(gApp->Window, !Rr_IsWindowFullscreen(gApp->Window));
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
@@ -334,14 +339,4 @@ void Rr_SetClipboardText(const char *CString)
 const char *Rr_GetClipboardText(void)
 {
     return SDL_GetClipboardText();
-}
-
-void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes)
-{
-    return SDL_aligned_alloc(Alignment, Bytes);
-}
-
-void Rr_AlignedFree(void *Ptr)
-{
-    SDL_aligned_free(Ptr);
 }

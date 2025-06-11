@@ -174,13 +174,15 @@ extern Rr_Vec2 Rr_GetMousePositionDelta(void);
 
 extern Rr_MouseButtonFlags Rr_GetMouseState(void);
 
-typedef void *Rr_Window;
+typedef struct Rr_Window Rr_Window;
 
 typedef enum
 {
     RR_WINDOW_FLAGS_RESIZE_BIT = (1 << 0),
 } Rr_WindowFlagsBits;
 typedef uint32_t Rr_WindowFlags;
+
+extern void Rr_ToggleWindowFullscreen(void);
 
 extern Rr_IntVec2 Rr_GetWindowSize(void);
 
@@ -189,6 +191,8 @@ extern void Rr_SetWindowTitle(const char *Title);
 extern Rr_IntVec2 Rr_GetDisplaySize(void);
 
 extern void Rr_SetWindowSize(Rr_IntVec2 Size);
+
+extern void Rr_SetRelativeMouseMode(bool Relative);
 
 typedef enum Rr_CursorType
 {
@@ -228,7 +232,6 @@ typedef struct Rr_MouseMotionEvent Rr_MouseMotionEvent;
 struct Rr_MouseMotionEvent
 {
     Rr_Vec2 Position;
-    Rr_Vec2 Delta;
 };
 
 typedef struct Rr_MouseButtonEvent Rr_MouseButtonEvent;

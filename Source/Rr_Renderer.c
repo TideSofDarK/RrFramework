@@ -605,7 +605,7 @@ void Rr_InitRenderer(void)
         &gRenderer->Loader,
         gApp->Config->Title,
         &gRenderer->Instance);
-    Rr_InitSurface(gApp->Window, &gRenderer->Instance, &gRenderer->Surface);
+    Rr_InitSurface(&gRenderer->Instance, &gRenderer->Surface);
     Rr_InitDeviceAndQueues(
         &gRenderer->Instance,
         gRenderer->Surface,

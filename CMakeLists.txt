@@ -51,22 +51,7 @@ endfunction ()
 
 find_package(Vulkan)
 
-option(RR_PLATFORM_SDL "" ON)
-if (RR_PLATFORM_SDL)
-    set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
-    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
-    set(SDL_MISC OFF CACHE BOOL "" FORCE)
-    set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
-    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-    set(SDL_GPU OFF CACHE BOOL "" FORCE)
-    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
-    set(SDL_POWER OFF CACHE BOOL "" FORCE)
-    set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
-    set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
-    CPMAddPackage("gh:libsdl-org/SDL#main")
-endif ()
+set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either SDL or GLFW)")
 
 #
 # Pre-C23 asset embedding support
@@ -237,10 +222,38 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_WIN32)
 endif ()
 
-if (RR_PLATFORM_SDL)
+if(RR_PLATFORM_LIBRARY STREQUAL "SDL")
+    set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+    set(SDL_MISC OFF CACHE BOOL "" FORCE)
+    set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_GPU OFF CACHE BOOL "" FORCE)
+    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+    set(SDL_POWER OFF CACHE BOOL "" FORCE)
+    set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+    set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
+    CPMAddPackage("gh:libsdl-org/SDL#main")
+
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_SDL.c)
     target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_SDL)
+endif ()
+
+if(RR_PLATFORM_LIBRARY STREQUAL "GLFW")
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+    set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+    # Can't use Wayland for now.
+    # glfwGetMonitorContentScale doesn't support fractional scaling.
+    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_X11 ON CACHE BOOL "" FORCE)
+    CPMAddPackage("gh:glfw/glfw#master")
+
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_GLFW.c)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_GLFW)
 endif ()
 
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE Vendor)

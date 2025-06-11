@@ -24,6 +24,23 @@
 
 #include "Rr_Platform.h"
 
+#include "Rr_App.h"
+
+#include "stdlib.h"
+
+Rr_Window *gWindow = NULL;
+
+Rr_IntVec2 Rr_GetDefaultWindowSize(void)
+{
+    Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
+
+    float ScaleFactor = 0.75f;
+
+    return (Rr_IntVec2){ .Width = (int32_t)(DisplaySize.Width * ScaleFactor),
+                         .Height =
+                             (int32_t)(DisplaySize.Height * ScaleFactor) };
+}
+
 void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
 {
     for (;;)

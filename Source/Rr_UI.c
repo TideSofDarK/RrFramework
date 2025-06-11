@@ -4464,7 +4464,7 @@ void Rr_UIDebugOverlay(void)
             Rr_UILabelF("Frame Limit: %d", gApp->FrameTime.TargetFramerate);
             if (Rr_UIButton("Toggle Fullscreen"))
             {
-                Rr_ToggleFullscreen();
+                Rr_ToggleWindowFullscreen();
             }
         }
         if (Rr_UITab("Memory"))
@@ -4477,6 +4477,7 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIDebugOverlayArena(Frame->Arena, "Frame");
             }
             Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
+            Rr_UIDebugOverlayArena(gWindow->Arena, "Window");
         }
         if (Rr_UITab("Renderer"))
         {

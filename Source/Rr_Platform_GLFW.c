@@ -1,0 +1,548 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2024-2025 Alexandr Semenov
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include "Rr_Platform.h"
+
+#include "Rr_App.h"
+#include "Rr_Vulkan.h"
+
+#include <GLFW/glfw3.h>
+
+static inline GLFWmonitor *Rr_GetGLFWMonitor(void)
+{
+    GLFWmonitor *Monitor;
+
+    if (!gWindow->Handle)
+    {
+        Monitor = glfwGetPrimaryMonitor();
+    }
+    else
+    {
+        Monitor = glfwGetWindowMonitor(gWindow->Handle);
+    }
+    if (!Monitor)
+    {
+
+        Monitor = glfwGetPrimaryMonitor();
+    }
+
+    return Monitor;
+}
+
+bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
+{
+    return glfwInit();
+}
+
+bool Rr_CleanupPlatformLibrary(void)
+{
+    glfwTerminate();
+
+    return true;
+}
+
+void (*Rr_GetVkGetInstanceProcAddr(void))(void)
+{
+    return (void (*)(void))&glfwGetInstanceProcAddress;
+}
+
+const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
+{
+    return glfwGetRequiredInstanceExtensions(Count);
+}
+
+bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
+{
+    return glfwCreateWindowSurface(
+               (VkInstance)Instance,
+               gWindow->Handle,
+               NULL,
+               (VkSurfaceKHR *)Surface) == VK_SUCCESS;
+}
+
+bool Rr_IsScancodePressed(Rr_Scancode Scancode)
+{
+    return glfwGetKey(gWindow->Handle, Scancode);
+}
+
+Rr_Vec2 Rr_GetMousePosition(void)
+{
+    double X, Y;
+    glfwGetCursorPos(gWindow->Handle, &X, &Y);
+
+    return (Rr_Vec2){ (float)X, (float)Y };
+}
+
+Rr_Vec2 Rr_GetMousePositionDelta(void)
+{
+    return gWindow->MousePositionDelta;
+}
+
+Rr_MouseButtonFlags Rr_GetMouseState(void)
+{
+    Rr_MouseButtonFlags Result = 0;
+    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_1))
+    {
+        Result |= RR_MOUSE_BUTTON_LEFT_BIT;
+    }
+    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_2))
+    {
+        Result |= RR_MOUSE_BUTTON_RIGHT_BIT;
+    }
+    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_3))
+    {
+        Result |= RR_MOUSE_BUTTON_MIDDLE_BIT;
+    }
+    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_4))
+    {
+        Result |= RR_MOUSE_BUTTON_X1_BIT;
+    }
+    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_5))
+    {
+        Result |= RR_MOUSE_BUTTON_X2_BIT;
+    }
+    return Result;
+}
+
+bool Rr_PollPlatformEvent(Rr_Event *Event)
+{
+    glfwPollEvents();
+    return false;
+}
+
+static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
+{
+    Rr_Window *RrWindow = glfwGetWindowUserPointer(Window);
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
+    Event->MouseMotion.Position = (Rr_Vec2){ (float)X, (float)Y };
+}
+
+static const Rr_Scancode GLFWScancodes[GLFW_KEY_LAST + 1] = {
+    [GLFW_KEY_A] = RR_SCANCODE_A,
+    [GLFW_KEY_B] = RR_SCANCODE_B,
+    [GLFW_KEY_C] = RR_SCANCODE_C,
+    [GLFW_KEY_D] = RR_SCANCODE_D,
+    [GLFW_KEY_E] = RR_SCANCODE_E,
+    [GLFW_KEY_F] = RR_SCANCODE_F,
+    [GLFW_KEY_G] = RR_SCANCODE_G,
+    [GLFW_KEY_H] = RR_SCANCODE_H,
+    [GLFW_KEY_I] = RR_SCANCODE_I,
+    [GLFW_KEY_J] = RR_SCANCODE_J,
+    [GLFW_KEY_K] = RR_SCANCODE_K,
+    [GLFW_KEY_L] = RR_SCANCODE_L,
+    [GLFW_KEY_M] = RR_SCANCODE_M,
+    [GLFW_KEY_N] = RR_SCANCODE_N,
+    [GLFW_KEY_O] = RR_SCANCODE_O,
+    [GLFW_KEY_P] = RR_SCANCODE_P,
+    [GLFW_KEY_Q] = RR_SCANCODE_Q,
+    [GLFW_KEY_R] = RR_SCANCODE_R,
+    [GLFW_KEY_S] = RR_SCANCODE_S,
+    [GLFW_KEY_T] = RR_SCANCODE_T,
+    [GLFW_KEY_U] = RR_SCANCODE_U,
+    [GLFW_KEY_V] = RR_SCANCODE_V,
+    [GLFW_KEY_W] = RR_SCANCODE_W,
+    [GLFW_KEY_X] = RR_SCANCODE_X,
+    [GLFW_KEY_Y] = RR_SCANCODE_Y,
+    [GLFW_KEY_Z] = RR_SCANCODE_Z,
+    [GLFW_KEY_1] = RR_SCANCODE_1,
+    [GLFW_KEY_2] = RR_SCANCODE_2,
+    [GLFW_KEY_3] = RR_SCANCODE_3,
+    [GLFW_KEY_4] = RR_SCANCODE_4,
+    [GLFW_KEY_5] = RR_SCANCODE_5,
+    [GLFW_KEY_6] = RR_SCANCODE_6,
+    [GLFW_KEY_7] = RR_SCANCODE_7,
+    [GLFW_KEY_8] = RR_SCANCODE_8,
+    [GLFW_KEY_9] = RR_SCANCODE_9,
+    [GLFW_KEY_0] = RR_SCANCODE_0,
+    [GLFW_KEY_ENTER] = RR_SCANCODE_RETURN,
+    [GLFW_KEY_ESCAPE] = RR_SCANCODE_ESCAPE,
+    [GLFW_KEY_BACKSPACE] = RR_SCANCODE_BACKSPACE,
+    [GLFW_KEY_TAB] = RR_SCANCODE_TAB,
+    [GLFW_KEY_SPACE] = RR_SCANCODE_SPACE,
+    [GLFW_KEY_CAPS_LOCK] = RR_SCANCODE_CAPSLOCK,
+    [GLFW_KEY_F1] = RR_SCANCODE_F1,
+    [GLFW_KEY_F2] = RR_SCANCODE_F2,
+    [GLFW_KEY_F3] = RR_SCANCODE_F3,
+    [GLFW_KEY_F4] = RR_SCANCODE_F4,
+    [GLFW_KEY_F5] = RR_SCANCODE_F5,
+    [GLFW_KEY_F6] = RR_SCANCODE_F6,
+    [GLFW_KEY_F7] = RR_SCANCODE_F7,
+    [GLFW_KEY_F8] = RR_SCANCODE_F8,
+    [GLFW_KEY_F9] = RR_SCANCODE_F9,
+    [GLFW_KEY_F10] = RR_SCANCODE_F10,
+    [GLFW_KEY_F11] = RR_SCANCODE_F11,
+    [GLFW_KEY_F12] = RR_SCANCODE_F12,
+    [GLFW_KEY_HOME] = RR_SCANCODE_HOME,
+    [GLFW_KEY_PAGE_UP] = RR_SCANCODE_PAGEUP,
+    [GLFW_KEY_DELETE] = RR_SCANCODE_DELETE,
+    [GLFW_KEY_END] = RR_SCANCODE_END,
+    [GLFW_KEY_PAGE_DOWN] = RR_SCANCODE_PAGEDOWN,
+    [GLFW_KEY_RIGHT] = RR_SCANCODE_RIGHT,
+    [GLFW_KEY_LEFT] = RR_SCANCODE_LEFT,
+    [GLFW_KEY_DOWN] = RR_SCANCODE_DOWN,
+    [GLFW_KEY_UP] = RR_SCANCODE_UP,
+    [GLFW_KEY_NUM_LOCK] = RR_SCANCODE_NUMLOCKCLEAR,
+    [GLFW_KEY_KP_DIVIDE] = RR_SCANCODE_KP_DIVIDE,
+    [GLFW_KEY_KP_MULTIPLY] = RR_SCANCODE_KP_MULTIPLY,
+    [GLFW_KEY_KP_SUBTRACT] = RR_SCANCODE_KP_MINUS,
+    [GLFW_KEY_KP_ADD] = RR_SCANCODE_KP_PLUS,
+    [GLFW_KEY_KP_ENTER] = RR_SCANCODE_KP_ENTER,
+    [GLFW_KEY_KP_1] = RR_SCANCODE_KP_1,
+    [GLFW_KEY_KP_2] = RR_SCANCODE_KP_2,
+    [GLFW_KEY_KP_3] = RR_SCANCODE_KP_3,
+    [GLFW_KEY_KP_4] = RR_SCANCODE_KP_4,
+    [GLFW_KEY_KP_5] = RR_SCANCODE_KP_5,
+    [GLFW_KEY_KP_6] = RR_SCANCODE_KP_6,
+    [GLFW_KEY_KP_7] = RR_SCANCODE_KP_7,
+    [GLFW_KEY_KP_8] = RR_SCANCODE_KP_8,
+    [GLFW_KEY_KP_9] = RR_SCANCODE_KP_9,
+    [GLFW_KEY_KP_0] = RR_SCANCODE_KP_0,
+    [GLFW_KEY_KP_DECIMAL] = RR_SCANCODE_KP_PERIOD,
+};
+
+static void Rr_GLFWKeyCallback(
+    GLFWwindow *Window,
+    int Key,
+    int Scancode,
+    int Action,
+    int Mods)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type =
+        Action == GLFW_PRESS ? RR_EVENT_TYPE_KEY_DOWN : RR_EVENT_TYPE_KEY_UP;
+    Event->Key.Down = Action == GLFW_PRESS;
+    Event->Key.Scancode = GLFWScancodes[Key];
+    Event->Key.Keymod = 0;
+    if (Mods & GLFW_MOD_CONTROL)
+    {
+        Event->Key.Keymod |= RR_KEYMOD_CTRL;
+    }
+    if (Mods & GLFW_MOD_SHIFT)
+    {
+        Event->Key.Keymod |= RR_KEYMOD_SHIFT;
+    }
+    if (Mods & GLFW_MOD_ALT)
+    {
+        Event->Key.Keymod |= RR_KEYMOD_ALT;
+    }
+}
+
+static void Rr_GLFWScrollCallback(GLFWwindow *Window, double X, double Y)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
+    double MouseX, MouseY;
+    glfwGetCursorPos(Window, &MouseX, &MouseY);
+    Event->Wheel.Position = (Rr_Vec2){ (float)MouseX, (float)MouseY };
+    Event->Wheel.Amount = (Rr_Vec2){ (float)X, (float)Y };
+}
+
+static void Rr_GLFWDropCallback(
+    GLFWwindow *Window,
+    int32_t Count,
+    const char *Paths[])
+{
+    Rr_Window *RrWindow = glfwGetWindowUserPointer(Window);
+    for (int32_t Index = 0; Index < Count; ++Index)
+    {
+        size_t Length = strlen(Paths[Index]);
+        char *Path = RR_ALLOC_NO_ZERO(RrWindow->EventScratch.Arena, Length);
+        memcpy(Path, Paths[Index], Length);
+
+        Rr_Event *Event = Rr_AddEvent();
+        Event->Type = RR_EVENT_TYPE_DROP_FILE;
+        Event->DropFile.Path = Path;
+    }
+}
+
+static void Rr_GLFWWindowSizeCallback(GLFWwindow *Window, int Width, int Height)
+{
+}
+
+static void Rr_GLFWMouseButtonCallback(
+    GLFWwindow *Window,
+    int Button,
+    int Action,
+    int Mods)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = Action == GLFW_RELEASE ? RR_EVENT_TYPE_MOUSE_BUTTON_UP
+                                         : RR_EVENT_TYPE_MOUSE_BUTTON_DOWN;
+    double MouseX, MouseY;
+    glfwGetCursorPos(Window, &MouseX, &MouseY);
+    Event->MouseButton.Position = (Rr_Vec2){ (float)MouseX, (float)MouseY };
+    switch (Button)
+    {
+        case GLFW_MOUSE_BUTTON_1:
+            Event->MouseButton.Button = RR_MOUSE_BUTTON_LEFT;
+            break;
+        case GLFW_MOUSE_BUTTON_2:
+            Event->MouseButton.Button = RR_MOUSE_BUTTON_RIGHT;
+            break;
+        case GLFW_MOUSE_BUTTON_3:
+            Event->MouseButton.Button = RR_MOUSE_BUTTON_MIDDLE;
+            break;
+        case GLFW_MOUSE_BUTTON_4:
+            Event->MouseButton.Button = RR_MOUSE_BUTTON_X1;
+            break;
+        case GLFW_MOUSE_BUTTON_5:
+            Event->MouseButton.Button = RR_MOUSE_BUTTON_X2;
+            break;
+        default:
+            Event->MouseButton.Button = UINT8_MAX;
+            break;
+    }
+    Event->MouseButton.Clicks = 1;
+}
+
+static inline void Rr_CodepointToUTF8(uint32_t Codepoint, char Buffer[5])
+{
+    if (Codepoint < 0x80)
+    {
+        Buffer[0] = Codepoint;
+        Buffer[1] = '\0';
+    }
+    else if (Codepoint < 0x800)
+    {
+        Buffer[0] = (0xC0 | (Codepoint >> 6));
+        Buffer[1] = (0x80 | (Codepoint & 0x3f));
+        Buffer[2] = '\0';
+    }
+    else if (Codepoint < 0x10000)
+    {
+        Buffer[0] = (0xE0 | (Codepoint >> 12));
+        Buffer[1] = (0x80 | ((Codepoint >> 6) & 0x3f));
+        Buffer[2] = (0x80 | (Codepoint & 0x3f));
+        Buffer[3] = '\0';
+    }
+    else if (Codepoint < 0x200000)
+    {
+        Buffer[0] = (0xF0 | (Codepoint >> 18));
+        Buffer[1] = (0x80 | ((Codepoint >> 12) & 0x3f));
+        Buffer[2] = (0x80 | ((Codepoint >> 6) & 0x3f));
+        Buffer[3] = (0x80 | (Codepoint & 0x3f));
+        Buffer[4] = '\0';
+    }
+}
+
+static void Rr_GLFWCharCallback(GLFWwindow *Window, uint32_t Codepoint)
+{
+    Rr_Window *RrWindow = glfwGetWindowUserPointer(Window);
+    char *Buffer = RR_ALLOC_NO_ZERO(RrWindow->Arena, 5);
+    Rr_CodepointToUTF8(Codepoint, Buffer);
+
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
+    Event->Text.Text = Buffer;
+}
+
+static void Rr_GLFWWindowCloseCallback(GLFWwindow *Window)
+{
+    Rr_Quit();
+}
+
+bool Rr_InitWindow(Rr_AppConfig *Config)
+{
+    assert(gWindow == NULL);
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
+    glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE);
+    if (RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT))
+    {
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    }
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
+    gWindow = RR_ALLOC_TYPE(Arena, Rr_Window);
+    gWindow->Arena = Arena;
+    gWindow->EventScratch =
+        (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
+    Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
+    gWindow->Handle =
+        glfwCreateWindow(WindowSize.X, WindowSize.Y, Config->Title, NULL, NULL);
+    glfwSetWindowUserPointer(gWindow->Handle, gWindow);
+    glfwSetCursorPosCallback(gWindow->Handle, &Rr_GLFWCursorCallback);
+    glfwSetKeyCallback(gWindow->Handle, &Rr_GLFWKeyCallback);
+    glfwSetScrollCallback(gWindow->Handle, &Rr_GLFWScrollCallback);
+    glfwSetDropCallback(gWindow->Handle, &Rr_GLFWDropCallback);
+    glfwSetWindowSizeCallback(gWindow->Handle, &Rr_GLFWWindowSizeCallback);
+    glfwSetMouseButtonCallback(gWindow->Handle, &Rr_GLFWMouseButtonCallback);
+    glfwSetCharCallback(gWindow->Handle, &Rr_GLFWCharCallback);
+    glfwSetWindowCloseCallback(gWindow->Handle, &Rr_GLFWWindowCloseCallback);
+
+    return true;
+}
+
+void Rr_CleanupWindow(void)
+{
+    assert(gWindow != NULL);
+
+    glfwDestroyWindow(gWindow->Handle);
+    Rr_DestroyArena(gWindow->Arena);
+    gWindow = NULL;
+}
+
+void Rr_ShowWindow(void)
+{
+    glfwShowWindow(gWindow->Handle);
+}
+
+bool Rr_IsWindowMinimized(void)
+{
+    return false;
+}
+
+bool Rr_IsWindowFullscreen(void)
+{
+    return gWindow->WindowedFullscreen;
+}
+
+void Rr_SetWindowFullscreen(bool Fullscreen)
+{
+    if (Fullscreen)
+    {
+        if (gWindow->WindowedFullscreen == false)
+        {
+            glfwGetWindowPos(
+                gWindow->Handle,
+                &gWindow->WindowedOffset.X,
+                &gWindow->WindowedOffset.Y);
+            glfwGetWindowSize(
+                gWindow->Handle,
+                &gWindow->WindowedExtent.X,
+                &gWindow->WindowedExtent.Y);
+        }
+        const GLFWvidmode *Mode = glfwGetVideoMode(Rr_GetGLFWMonitor());
+        glfwSetWindowMonitor(
+            gWindow->Handle,
+            Rr_GetGLFWMonitor(),
+            0,
+            0,
+            Mode->width,
+            Mode->height,
+            GLFW_DONT_CARE);
+    }
+    else
+    {
+        glfwSetWindowMonitor(
+            gWindow->Handle,
+            NULL,
+            gWindow->WindowedOffset.X,
+            gWindow->WindowedOffset.Y,
+            gWindow->WindowedExtent.Width,
+            gWindow->WindowedExtent.Height,
+            GLFW_DONT_CARE);
+    }
+    gWindow->WindowedFullscreen = Fullscreen;
+}
+
+void Rr_SetRelativeMouseMode(bool Relative)
+{
+    glfwSetInputMode(
+        gWindow->Handle,
+        GLFW_CURSOR,
+        Relative ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+}
+
+float Rr_GetDisplayRefreshRate(void)
+{
+    const GLFWvidmode *Mode = glfwGetVideoMode(Rr_GetGLFWMonitor());
+    return (float)Mode->refreshRate;
+}
+
+void Rr_ToggleWindowFullscreen(void)
+{
+    Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
+}
+
+Rr_IntVec2 Rr_GetWindowSize(void)
+{
+    Rr_IntVec2 Size;
+    glfwGetWindowSize(gWindow->Handle, &Size.X, &Size.Y);
+    return Size;
+}
+
+void Rr_SetWindowTitle(const char *Title)
+{
+    glfwSetWindowTitle(gWindow->Handle, Title);
+}
+
+Rr_IntVec2 Rr_GetDisplaySize(void)
+{
+    Rr_IntVec2 Result;
+    glfwGetMonitorWorkarea(
+        Rr_GetGLFWMonitor(),
+        NULL,
+        NULL,
+        &Result.X,
+        &Result.Y);
+
+    return Result;
+}
+
+void Rr_SetWindowSize(Rr_IntVec2 Size)
+{
+    glfwSetWindowSize(gWindow->Handle, Size.X, Size.Y);
+}
+
+void Rr_SetCursor(Rr_CursorType Type)
+{
+    switch (Type)
+    {
+        case RR_UI_CURSOR_TYPE_NORMAL:
+        {
+            static GLFWcursor *GLFWCursor;
+            if (GLFWCursor == NULL)
+            {
+                GLFWCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+            }
+            glfwSetCursor(gWindow->Handle, GLFWCursor);
+            return;
+        }
+        case RR_UI_CURSOR_TYPE_TEXT:
+        {
+            static GLFWcursor *GLFWCursor;
+            if (GLFWCursor == NULL)
+            {
+                GLFWCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+            }
+            glfwSetCursor(gWindow->Handle, GLFWCursor);
+            return;
+        }
+        default:
+            return;
+    }
+}
+
+void Rr_SetClipboardText(const char *CString)
+{
+    glfwSetClipboardString(gWindow->Handle, CString);
+}
+
+const char *Rr_GetClipboardText(void)
+{
+    return glfwGetClipboardString(gWindow->Handle);
+}

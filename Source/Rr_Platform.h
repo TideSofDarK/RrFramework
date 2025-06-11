@@ -22,9 +22,23 @@
  * SOFTWARE.
  */
 
+#pragma once
+
 #include <Rr/Rr_Platform.h>
 
 #include <Rr/Rr_Memory.h>
+
+struct Rr_Window
+{
+    void *Handle;
+    bool WindowedFullscreen;
+    Rr_IntVec2 WindowedOffset;
+    Rr_IntVec2 WindowedExtent;
+    Rr_Vec2 LastMousePosition;
+    Rr_Vec2 MousePositionDelta;
+    Rr_Scratch EventScratch;
+    Rr_Arena *Arena;
+};
 
 struct Rr_AppConfig;
 
@@ -34,14 +48,15 @@ extern bool Rr_InitPlatformLibrary(struct Rr_AppConfig *Config);
 
 extern bool Rr_CleanupPlatformLibrary(void);
 
+extern bool Rr_InitWindow(struct Rr_AppConfig *Config);
+
+extern void Rr_CleanupWindow(void);
+
 extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
 
 extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
 
-extern bool Rr_CreateVulkanSurface(
-    Rr_Window Window,
-    void *Instance,
-    void **Surface);
+extern bool Rr_CreateVulkanSurface(void *Instance, void **Surface);
 
 typedef atomic_bool Rr_Spinlock;
 
@@ -57,18 +72,16 @@ extern void Rr_AlignedFree(void *Ptr);
 
 extern bool Rr_PollPlatformEvent(Rr_Event *Event);
 
-extern Rr_Window Rr_CreateWindow(const char *Title, Rr_WindowFlags Flags);
+extern Rr_IntVec2 Rr_GetDefaultWindowSize(void);
 
-extern void Rr_DestroyWindow(Rr_Window Window);
+extern void Rr_ShowWindow(void);
 
-extern void Rr_ShowWindow(Rr_Window Window);
+extern bool Rr_IsWindowMinimized(void);
 
-extern bool Rr_IsWindowMinimized(Rr_Window Window);
+extern bool Rr_IsWindowFullscreen(void);
 
-extern bool Rr_IsWindowFullscreen(Rr_Window Window);
+extern void Rr_SetWindowFullscreen(bool Fullscreen);
 
-extern void Rr_SetWindowFullscreen(Rr_Window Window, bool Fullscreen);
+extern float Rr_GetDisplayRefreshRate(void);
 
-extern void Rr_SetWindowRelativeMouseMode(Rr_Window Window, bool Relative);
-
-extern float Rr_GetDisplayRefreshRate(Rr_Window Window);
+extern Rr_Window *gWindow;

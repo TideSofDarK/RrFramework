@@ -42,7 +42,7 @@ extern void *Rr_Realloc(void *Ptr, size_t Bytes);
 
 extern void Rr_Free(void *Ptr);
 
-extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
+extern void *Rr_AlignedAlloc(size_t Size, size_t Alignment);
 
 extern void Rr_AlignedFree(void *Ptr);
 
