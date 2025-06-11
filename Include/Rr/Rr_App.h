@@ -56,6 +56,8 @@ extern double Rr_GetTimeSeconds(void);
 
 extern uint64_t Rr_GetTimeMS(void);
 
+extern uint64_t Rr_GetTimeNS(void);
+
 extern void Rr_Quit(void);
 
 #ifdef __cplusplus

@@ -28,6 +28,8 @@
 
 #include <Rr/Rr_Memory.h>
 
+#include <stdatomic.h>
+
 struct Rr_Window
 {
     void *Handle;

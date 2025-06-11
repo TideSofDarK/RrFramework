@@ -53,16 +53,6 @@ void Rr_Free(void *Ptr)
     free(Ptr);
 }
 
-void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
-{
-    return aligned_alloc(Alignment, Size);
-}
-
-void Rr_AlignedFree(void *Ptr)
-{
-    free(Ptr);
-}
-
 Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
 {
     size_t PageSize = Rr_GetPlatformInfo()->PageSize;

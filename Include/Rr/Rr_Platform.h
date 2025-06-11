@@ -26,8 +26,6 @@
 
 #include <Rr/Rr_Math.h>
 
-#include <stdatomic.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

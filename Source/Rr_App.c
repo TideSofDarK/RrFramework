@@ -67,7 +67,9 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 
     if (Elapsed < Interval)
     {
-        thrd_sleep(&(struct timespec){ .tv_nsec = Interval - Elapsed }, NULL);
+        thrd_sleep(
+            &(struct timespec){ .tv_nsec = (long)(Interval - Elapsed) },
+            NULL);
         Now = Rr_GetPerformanceCounter();
     }
 
@@ -94,7 +96,7 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime)
         (double)Rr_GetPerformanceFrequency();
 #endif
 
-    FrameTime->TargetFramerate = Rr_GetDisplayRefreshRate();
+    FrameTime->TargetFramerate = (uint64_t)Rr_GetDisplayRefreshRate();
     FrameTime->StartTime = Now;
     FrameTime->Now = Now;
 
@@ -245,14 +247,17 @@ double Rr_GetDeltaSeconds(void)
 
 double Rr_GetTimeSeconds(void)
 {
-    return (double)(Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime) /
-           1000000000.0;
+    return (double)(Rr_GetTimeNS()) / 1000000000.0;
 }
 
 uint64_t Rr_GetTimeMS(void)
 {
-    return (double)(Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime) /
-           1000000.0;
+    return Rr_GetTimeNS() / 1000000;
+}
+
+uint64_t Rr_GetTimeNS(void)
+{
+    return Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime;
 }
 
 void Rr_Quit(void)

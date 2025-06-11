@@ -93,3 +93,13 @@ void Rr_DecommitMemory(void *Data, size_t Size)
     madvise(Data, Size, MADV_DONTNEED);
     mprotect(Data, Size, PROT_NONE);
 }
+
+void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
+{
+    return aligned_alloc(Alignment, Size);
+}
+
+void Rr_AlignedFree(void *Ptr)
+{
+    free(Ptr);
+}

@@ -51,7 +51,7 @@ endfunction ()
 
 find_package(Vulkan)
 
-set(RR_PLATFORM_LIBRARY "SDL" CACHE STRING "Platform library (either SDL or GLFW)")
+set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either SDL or GLFW)")
 
 #
 # Pre-C23 asset embedding support
@@ -146,8 +146,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    TINYEXR_USE_MINIZ=0
-    TINYEXR_USE_STB_ZLIB=1
     STBI_NO_STDIO
     STBI_NO_GIF
     STBI_NO_BMP
@@ -220,6 +218,9 @@ endif ()
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Win32.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_WIN32)
+    if ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+        target_compile_options(${PROJECT_NAME} PRIVATE /experimental:c11atomics /std:c11)
+    endif ()
 endif ()
 
 if(RR_PLATFORM_LIBRARY STREQUAL "SDL")

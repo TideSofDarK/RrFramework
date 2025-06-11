@@ -1616,7 +1616,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window)
                           ColorB,
                           gUIContext->Style.TitleBackground };
     Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
+    Rr_UIDrawText(
         false,
         Rr_AddV2(
             TitleRect.Offset,
@@ -1626,8 +1626,6 @@ static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window)
         0.0f,
         &gUIContext->Style.Foreground,
         0);
-
-    /* Window->ContentsStart */
 }
 
 static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)

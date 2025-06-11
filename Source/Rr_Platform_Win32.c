@@ -77,3 +77,13 @@ void Rr_DecommitMemory(void *Data, size_t Size)
 {
     VirtualFree(Data, Size, MEM_DECOMMIT);
 }
+
+void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
+{
+    return _aligned_malloc(Size, Alignment);
+}
+
+void Rr_AlignedFree(void *Ptr)
+{
+    _aligned_free(Ptr);
+}
