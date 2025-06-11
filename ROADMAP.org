@@ -4,13 +4,15 @@
       Turned out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame.
       Solution: call Iterate() after waiting on the fence.
 - [X] Add deletion queues for Vulkan objects.
+- [X] Things such as rendering to cubemap requires more advanced image view handling.
+      A hive of wrapped image views + hash?
+      Solution: implemented custom storage for views that combines a hive and a map.
+      Any image view gets created on demand unless it's already cached in storage.
 - [ ] Hash collision handling across all usages of Rr_Map.
 - [ ] Hashing objects such as VkFramebuffer looks very bad.
 - [ ] MSAA support.
 - [ ] 3D image support.
 - [ ] Image array support.
-- [ ] Things such as rendering to cubemap requires more advanced image view handling.
-      A hive of wrapped image views + hash?
 - [ ] Should referenced pipelines and samplers be hashed to optimize decrement references pass? 
 - [ ] Arbitrary asset loading within Rr_LoadingThread.
       Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
@@ -48,9 +50,9 @@
 
 ** Low-priority
 
-- [ ] Move to GLFW.
-- [ ] Move to C11.
-- [ ] Remove InputMap.
+- [X] Move to GLFW.
+- [X] Move to C11.
+- [X] Remove InputMap.
 - [ ] Replace VMA with custom allocator.
 - [ ] Own implementation of Windows/Linux platform layers.
 - [ ] Macro-based stuff should probably be internal.
