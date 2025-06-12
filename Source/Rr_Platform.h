@@ -50,10 +50,6 @@ extern bool Rr_InitPlatformLibrary(struct Rr_AppConfig *Config);
 
 extern bool Rr_CleanupPlatformLibrary(void);
 
-extern bool Rr_InitWindow(struct Rr_AppConfig *Config);
-
-extern void Rr_CleanupWindow(void);
-
 extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
 
 extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);

@@ -50,82 +50,6 @@ static inline GLFWmonitor *Rr_GetGLFWMonitor(void)
     return Monitor;
 }
 
-bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
-{
-    return glfwInit();
-}
-
-bool Rr_CleanupPlatformLibrary(void)
-{
-    glfwTerminate();
-
-    return true;
-}
-
-void (*Rr_GetVkGetInstanceProcAddr(void))(void)
-{
-    return (void (*)(void))&glfwGetInstanceProcAddress;
-}
-
-const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
-{
-    return glfwGetRequiredInstanceExtensions(Count);
-}
-
-bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
-{
-    return glfwCreateWindowSurface(
-               (VkInstance)Instance,
-               gPlatform->Window,
-               NULL,
-               (VkSurfaceKHR *)Surface) == VK_SUCCESS;
-}
-
-bool Rr_IsScancodePressed(Rr_Scancode Scancode)
-{
-    return glfwGetKey(gPlatform->Window, Scancode);
-}
-
-Rr_Vec2 Rr_GetMousePosition(void)
-{
-    double X, Y;
-    glfwGetCursorPos(gPlatform->Window, &X, &Y);
-
-    return (Rr_Vec2){ (float)X, (float)Y };
-}
-
-Rr_MouseButtonFlags Rr_GetMouseState(void)
-{
-    Rr_MouseButtonFlags Result = 0;
-    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_1))
-    {
-        Result |= RR_MOUSE_BUTTON_LEFT_BIT;
-    }
-    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_2))
-    {
-        Result |= RR_MOUSE_BUTTON_RIGHT_BIT;
-    }
-    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_3))
-    {
-        Result |= RR_MOUSE_BUTTON_MIDDLE_BIT;
-    }
-    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_4))
-    {
-        Result |= RR_MOUSE_BUTTON_X1_BIT;
-    }
-    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_5))
-    {
-        Result |= RR_MOUSE_BUTTON_X2_BIT;
-    }
-    return Result;
-}
-
-bool Rr_PollPlatformEvent(Rr_Event *Event)
-{
-    glfwPollEvents();
-    return false;
-}
-
 static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
 {
     Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
@@ -358,9 +282,11 @@ static void Rr_GLFWWindowCloseCallback(GLFWwindow *Window)
     Rr_Quit();
 }
 
-bool Rr_InitWindow(Rr_AppConfig *Config)
+bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
     assert(gPlatform == NULL);
+
+    glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -391,13 +317,81 @@ bool Rr_InitWindow(Rr_AppConfig *Config)
     return true;
 }
 
-void Rr_CleanupWindow(void)
+bool Rr_CleanupPlatformLibrary(void)
 {
     assert(gPlatform != NULL);
 
     glfwDestroyWindow(gPlatform->Window);
     Rr_DestroyArena(gPlatform->Arena);
     gPlatform = NULL;
+
+    glfwTerminate();
+
+    return true;
+}
+
+void (*Rr_GetVkGetInstanceProcAddr(void))(void)
+{
+    return (void (*)(void))&glfwGetInstanceProcAddress;
+}
+
+const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
+{
+    return glfwGetRequiredInstanceExtensions(Count);
+}
+
+bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
+{
+    return glfwCreateWindowSurface(
+               (VkInstance)Instance,
+               gPlatform->Window,
+               NULL,
+               (VkSurfaceKHR *)Surface) == VK_SUCCESS;
+}
+
+bool Rr_IsScancodePressed(Rr_Scancode Scancode)
+{
+    return glfwGetKey(gPlatform->Window, Scancode);
+}
+
+Rr_Vec2 Rr_GetMousePosition(void)
+{
+    double X, Y;
+    glfwGetCursorPos(gPlatform->Window, &X, &Y);
+
+    return (Rr_Vec2){ (float)X, (float)Y };
+}
+
+Rr_MouseButtonFlags Rr_GetMouseState(void)
+{
+    Rr_MouseButtonFlags Result = 0;
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_1))
+    {
+        Result |= RR_MOUSE_BUTTON_LEFT_BIT;
+    }
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_2))
+    {
+        Result |= RR_MOUSE_BUTTON_RIGHT_BIT;
+    }
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_3))
+    {
+        Result |= RR_MOUSE_BUTTON_MIDDLE_BIT;
+    }
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_4))
+    {
+        Result |= RR_MOUSE_BUTTON_X1_BIT;
+    }
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_5))
+    {
+        Result |= RR_MOUSE_BUTTON_X2_BIT;
+    }
+    return Result;
+}
+
+bool Rr_PollPlatformEvent(Rr_Event *Event)
+{
+    glfwPollEvents();
+    return false;
 }
 
 void Rr_ShowWindow(void)

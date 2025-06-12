@@ -131,7 +131,6 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitPlatform();
     Rr_InitPlatformLibrary(Config);
-    Rr_InitWindow(Config);
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
@@ -222,8 +221,6 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_CleanupRenderer();
 
     Rr_CleanupScratchArena();
-
-    Rr_CleanupWindow();
 
     Rr_DestroyArena(gApp->Arena);
 
