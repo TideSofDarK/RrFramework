@@ -483,12 +483,9 @@ void Rr_SetWindowTitle(const char *Title)
 Rr_IntVec2 Rr_GetDisplaySize(void)
 {
     Rr_IntVec2 Result;
-    glfwGetMonitorWorkarea(
-        Rr_GetGLFWMonitor(),
-        NULL,
-        NULL,
-        &Result.X,
-        &Result.Y);
+    const GLFWvidmode *Mode = glfwGetVideoMode(Rr_GetGLFWMonitor());
+    Result.Width = Mode->width;
+    Result.Height = Mode->height;
 
     return Result;
 }
