@@ -227,7 +227,7 @@ static void Rr_GLFWKeyCallback(
     Rr_Event *Event = Rr_AddEvent();
     Event->Type =
         Action == GLFW_PRESS ? RR_EVENT_TYPE_KEY_DOWN : RR_EVENT_TYPE_KEY_UP;
-    Event->Key.Down = Action == GLFW_PRESS;
+    Event->Key.Down = Action == GLFW_PRESS || Action == GLFW_REPEAT;
     Event->Key.Scancode = GLFWScancodes[Key];
     Event->Key.Keymod = 0;
     if (Mods & GLFW_MOD_CONTROL)
