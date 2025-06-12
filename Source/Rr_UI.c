@@ -4475,7 +4475,7 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIDebugOverlayArena(Frame->Arena, "Frame");
             }
             Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
-            Rr_UIDebugOverlayArena(gWindow->Arena, "Window");
+            Rr_UIDebugOverlayArena(gPlatform->Arena, "Window");
         }
         if (Rr_UITab("Renderer"))
         {

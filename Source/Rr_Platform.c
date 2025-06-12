@@ -28,7 +28,7 @@
 
 #include "stdlib.h"
 
-Rr_Window *gWindow = NULL;
+Rr_Platform *gPlatform = NULL;
 
 Rr_IntVec2 Rr_GetDefaultWindowSize(void)
 {
@@ -43,7 +43,7 @@ Rr_IntVec2 Rr_GetDefaultWindowSize(void)
 
 Rr_Vec2 Rr_GetMousePositionDelta(void)
 {
-    return gWindow->MousePositionDelta;
+    return gPlatform->MousePositionDelta;
 }
 
 void Rr_ToggleWindowFullscreen(void)

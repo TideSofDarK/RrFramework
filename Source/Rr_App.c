@@ -172,11 +172,11 @@ void Rr_Run(Rr_AppConfig *Config)
         }
 
         Rr_Vec2 MousePosition = Rr_GetMousePosition();
-        gWindow->MousePositionDelta =
-            Rr_SubV2(MousePosition, gWindow->LastMousePosition);
-        gWindow->LastMousePosition = MousePosition;
+        gPlatform->MousePositionDelta =
+            Rr_SubV2(MousePosition, gPlatform->LastMousePosition);
+        gPlatform->LastMousePosition = MousePosition;
 
-        Rr_DestroyScratch(gWindow->EventScratch);
+        Rr_DestroyScratch(gPlatform->EventScratch);
 
         Rr_BeginUI();
 

@@ -33,13 +33,13 @@ static inline GLFWmonitor *Rr_GetGLFWMonitor(void)
 {
     GLFWmonitor *Monitor;
 
-    if (!gWindow->Handle)
+    if (!gPlatform->Window)
     {
         Monitor = glfwGetPrimaryMonitor();
     }
     else
     {
-        Monitor = glfwGetWindowMonitor(gWindow->Handle);
+        Monitor = glfwGetWindowMonitor(gPlatform->Window);
     }
     if (!Monitor)
     {
@@ -76,20 +76,20 @@ bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
 {
     return glfwCreateWindowSurface(
                (VkInstance)Instance,
-               gWindow->Handle,
+               gPlatform->Window,
                NULL,
                (VkSurfaceKHR *)Surface) == VK_SUCCESS;
 }
 
 bool Rr_IsScancodePressed(Rr_Scancode Scancode)
 {
-    return glfwGetKey(gWindow->Handle, Scancode);
+    return glfwGetKey(gPlatform->Window, Scancode);
 }
 
 Rr_Vec2 Rr_GetMousePosition(void)
 {
     double X, Y;
-    glfwGetCursorPos(gWindow->Handle, &X, &Y);
+    glfwGetCursorPos(gPlatform->Window, &X, &Y);
 
     return (Rr_Vec2){ (float)X, (float)Y };
 }
@@ -97,23 +97,23 @@ Rr_Vec2 Rr_GetMousePosition(void)
 Rr_MouseButtonFlags Rr_GetMouseState(void)
 {
     Rr_MouseButtonFlags Result = 0;
-    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_1))
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_1))
     {
         Result |= RR_MOUSE_BUTTON_LEFT_BIT;
     }
-    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_2))
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_2))
     {
         Result |= RR_MOUSE_BUTTON_RIGHT_BIT;
     }
-    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_3))
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_3))
     {
         Result |= RR_MOUSE_BUTTON_MIDDLE_BIT;
     }
-    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_4))
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_4))
     {
         Result |= RR_MOUSE_BUTTON_X1_BIT;
     }
-    if (glfwGetMouseButton(gWindow->Handle, GLFW_MOUSE_BUTTON_5))
+    if (glfwGetMouseButton(gPlatform->Window, GLFW_MOUSE_BUTTON_5))
     {
         Result |= RR_MOUSE_BUTTON_X2_BIT;
     }
@@ -128,7 +128,7 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
 
 static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
 {
-    Rr_Window *RrWindow = glfwGetWindowUserPointer(Window);
+    Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
     Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
     Event->MouseMotion.Position = (Rr_Vec2){ (float)X, (float)Y };
@@ -259,7 +259,7 @@ static void Rr_GLFWDropCallback(
     int32_t Count,
     const char *Paths[])
 {
-    Rr_Window *RrWindow = glfwGetWindowUserPointer(Window);
+    Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
     for (int32_t Index = 0; Index < Count; ++Index)
     {
         size_t Length = strlen(Paths[Index]);
@@ -344,7 +344,7 @@ static inline void Rr_CodepointToUTF8(uint32_t Codepoint, char Buffer[5])
 
 static void Rr_GLFWCharCallback(GLFWwindow *Window, uint32_t Codepoint)
 {
-    Rr_Window *RrWindow = glfwGetWindowUserPointer(Window);
+    Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
     char *Buffer = RR_ALLOC_NO_ZERO(RrWindow->Arena, 5);
     Rr_CodepointToUTF8(Codepoint, Buffer);
 
@@ -360,7 +360,7 @@ static void Rr_GLFWWindowCloseCallback(GLFWwindow *Window)
 
 bool Rr_InitWindow(Rr_AppConfig *Config)
 {
-    assert(gWindow == NULL);
+    assert(gPlatform == NULL);
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -371,38 +371,38 @@ bool Rr_InitWindow(Rr_AppConfig *Config)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     }
     Rr_Arena *Arena = Rr_CreateDefaultArena();
-    gWindow = RR_ALLOC_TYPE(Arena, Rr_Window);
-    gWindow->Arena = Arena;
-    gWindow->EventScratch =
+    gPlatform = RR_ALLOC_TYPE(Arena, Rr_Platform);
+    gPlatform->Arena = Arena;
+    gPlatform->EventScratch =
         (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
-    gWindow->Handle =
+    gPlatform->Window =
         glfwCreateWindow(WindowSize.X, WindowSize.Y, Config->Title, NULL, NULL);
-    glfwSetWindowUserPointer(gWindow->Handle, gWindow);
-    glfwSetCursorPosCallback(gWindow->Handle, &Rr_GLFWCursorCallback);
-    glfwSetKeyCallback(gWindow->Handle, &Rr_GLFWKeyCallback);
-    glfwSetScrollCallback(gWindow->Handle, &Rr_GLFWScrollCallback);
-    glfwSetDropCallback(gWindow->Handle, &Rr_GLFWDropCallback);
-    glfwSetWindowSizeCallback(gWindow->Handle, &Rr_GLFWWindowSizeCallback);
-    glfwSetMouseButtonCallback(gWindow->Handle, &Rr_GLFWMouseButtonCallback);
-    glfwSetCharCallback(gWindow->Handle, &Rr_GLFWCharCallback);
-    glfwSetWindowCloseCallback(gWindow->Handle, &Rr_GLFWWindowCloseCallback);
+    glfwSetWindowUserPointer(gPlatform->Window, gPlatform);
+    glfwSetCursorPosCallback(gPlatform->Window, &Rr_GLFWCursorCallback);
+    glfwSetKeyCallback(gPlatform->Window, &Rr_GLFWKeyCallback);
+    glfwSetScrollCallback(gPlatform->Window, &Rr_GLFWScrollCallback);
+    glfwSetDropCallback(gPlatform->Window, &Rr_GLFWDropCallback);
+    glfwSetWindowSizeCallback(gPlatform->Window, &Rr_GLFWWindowSizeCallback);
+    glfwSetMouseButtonCallback(gPlatform->Window, &Rr_GLFWMouseButtonCallback);
+    glfwSetCharCallback(gPlatform->Window, &Rr_GLFWCharCallback);
+    glfwSetWindowCloseCallback(gPlatform->Window, &Rr_GLFWWindowCloseCallback);
 
     return true;
 }
 
 void Rr_CleanupWindow(void)
 {
-    assert(gWindow != NULL);
+    assert(gPlatform != NULL);
 
-    glfwDestroyWindow(gWindow->Handle);
-    Rr_DestroyArena(gWindow->Arena);
-    gWindow = NULL;
+    glfwDestroyWindow(gPlatform->Window);
+    Rr_DestroyArena(gPlatform->Arena);
+    gPlatform = NULL;
 }
 
 void Rr_ShowWindow(void)
 {
-    glfwShowWindow(gWindow->Handle);
+    glfwShowWindow(gPlatform->Window);
 }
 
 bool Rr_IsWindowMinimized(void)
@@ -412,27 +412,27 @@ bool Rr_IsWindowMinimized(void)
 
 bool Rr_IsWindowFullscreen(void)
 {
-    return gWindow->WindowedFullscreen;
+    return gPlatform->WindowedFullscreen;
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
     if (Fullscreen)
     {
-        if (gWindow->WindowedFullscreen == false)
+        if (gPlatform->WindowedFullscreen == false)
         {
             glfwGetWindowPos(
-                gWindow->Handle,
-                &gWindow->WindowedOffset.X,
-                &gWindow->WindowedOffset.Y);
+                gPlatform->Window,
+                &gPlatform->WindowedOffset.X,
+                &gPlatform->WindowedOffset.Y);
             glfwGetWindowSize(
-                gWindow->Handle,
-                &gWindow->WindowedExtent.X,
-                &gWindow->WindowedExtent.Y);
+                gPlatform->Window,
+                &gPlatform->WindowedExtent.X,
+                &gPlatform->WindowedExtent.Y);
         }
         const GLFWvidmode *Mode = glfwGetVideoMode(Rr_GetGLFWMonitor());
         glfwSetWindowMonitor(
-            gWindow->Handle,
+            gPlatform->Window,
             Rr_GetGLFWMonitor(),
             0,
             0,
@@ -443,21 +443,21 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
     else
     {
         glfwSetWindowMonitor(
-            gWindow->Handle,
+            gPlatform->Window,
             NULL,
-            gWindow->WindowedOffset.X,
-            gWindow->WindowedOffset.Y,
-            gWindow->WindowedExtent.Width,
-            gWindow->WindowedExtent.Height,
+            gPlatform->WindowedOffset.X,
+            gPlatform->WindowedOffset.Y,
+            gPlatform->WindowedExtent.Width,
+            gPlatform->WindowedExtent.Height,
             GLFW_DONT_CARE);
     }
-    gWindow->WindowedFullscreen = Fullscreen;
+    gPlatform->WindowedFullscreen = Fullscreen;
 }
 
 void Rr_SetRelativeMouseMode(bool Relative)
 {
     glfwSetInputMode(
-        gWindow->Handle,
+        gPlatform->Window,
         GLFW_CURSOR,
         Relative ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 }
@@ -471,13 +471,13 @@ float Rr_GetDisplayRefreshRate(void)
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
     Rr_IntVec2 Size;
-    glfwGetWindowSize(gWindow->Handle, &Size.X, &Size.Y);
+    glfwGetWindowSize(gPlatform->Window, &Size.X, &Size.Y);
     return Size;
 }
 
 void Rr_SetWindowTitle(const char *Title)
 {
-    glfwSetWindowTitle(gWindow->Handle, Title);
+    glfwSetWindowTitle(gPlatform->Window, Title);
 }
 
 Rr_IntVec2 Rr_GetDisplaySize(void)
@@ -492,7 +492,7 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
-    glfwSetWindowSize(gWindow->Handle, Size.X, Size.Y);
+    glfwSetWindowSize(gPlatform->Window, Size.X, Size.Y);
 }
 
 void Rr_SetCursor(Rr_CursorType Type)
@@ -506,7 +506,7 @@ void Rr_SetCursor(Rr_CursorType Type)
             {
                 GLFWCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
             }
-            glfwSetCursor(gWindow->Handle, GLFWCursor);
+            glfwSetCursor(gPlatform->Window, GLFWCursor);
             return;
         }
         case RR_UI_CURSOR_TYPE_TEXT:
@@ -516,7 +516,7 @@ void Rr_SetCursor(Rr_CursorType Type)
             {
                 GLFWCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
             }
-            glfwSetCursor(gWindow->Handle, GLFWCursor);
+            glfwSetCursor(gPlatform->Window, GLFWCursor);
             return;
         }
         default:
@@ -526,10 +526,10 @@ void Rr_SetCursor(Rr_CursorType Type)
 
 void Rr_SetClipboardText(const char *CString)
 {
-    glfwSetClipboardString(gWindow->Handle, CString);
+    glfwSetClipboardString(gPlatform->Window, CString);
 }
 
 const char *Rr_GetClipboardText(void)
 {
-    return glfwGetClipboardString(gWindow->Handle);
+    return glfwGetClipboardString(gPlatform->Window);
 }

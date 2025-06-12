@@ -30,9 +30,9 @@
 
 #include <stdatomic.h>
 
-struct Rr_Window
+struct Rr_Platform
 {
-    void *Handle;
+    void *Window;
     bool WindowedFullscreen;
     Rr_IntVec2 WindowedOffset;
     Rr_IntVec2 WindowedExtent;
@@ -86,4 +86,4 @@ extern void Rr_SetWindowFullscreen(bool Fullscreen);
 
 extern float Rr_GetDisplayRefreshRate(void);
 
-extern Rr_Window *gWindow;
+extern Rr_Platform *gPlatform;

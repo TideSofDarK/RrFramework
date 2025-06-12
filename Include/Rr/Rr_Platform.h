@@ -172,7 +172,7 @@ extern Rr_Vec2 Rr_GetMousePositionDelta(void);
 
 extern Rr_MouseButtonFlags Rr_GetMouseState(void);
 
-typedef struct Rr_Window Rr_Window;
+typedef struct Rr_Platform Rr_Platform;
 
 typedef enum
 {
