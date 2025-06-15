@@ -150,6 +150,10 @@ extern bool Rr_UIInputField(
     char *Buffer,
     Rr_UIInputFieldFlags Flags);
 
+extern bool Rr_UIInputFloat(
+    const char *Title,
+    float *Value);
+
 extern bool Rr_UICombobox(
     const char *Title,
     uint32_t OptionCount,

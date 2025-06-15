@@ -1,6 +1,7 @@
 #include <Rr/Rr.h>
 
 #include <array>
+#include <print>
 #include <iostream>
 
 static bool FixedSizeWindowOpen = false;
@@ -19,12 +20,15 @@ static void TextInputWindow()
             RR_UI_WINDOW_FLAGS_CLOSE_BIT))
     {
         static char StringBuffer[2048] = "";
-        Rr_UIInputFieldEx(
-            "###LargeString",
-            2048,
-            StringBuffer,
-            "Type here...",
-            RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
+        if (Rr_UIInputFieldEx(
+                "###LargeString",
+                2048,
+                StringBuffer,
+                "Type here...",
+                RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT))
+        {
+            std::println("{}", StringBuffer);
+        }
         Rr_UIEndWindow();
     }
 }

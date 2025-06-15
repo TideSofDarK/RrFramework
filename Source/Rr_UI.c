@@ -165,6 +165,8 @@ struct Rr_UIContext
 
     Rr_UIWindow *FocusWindow;
     Rr_UIHash FocusHash;
+    Rr_UIWindow *PrevFocusWindow;
+    Rr_UIHash PrevFocusHash;
 
     Rr_UIDragOp DragOp;
     Rr_UIWindow *DragOpWindow;
@@ -1349,6 +1351,14 @@ static inline bool Rr_UIRectContains(
 
 static inline void Rr_UISetFocus(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
+    if (gUIContext->FocusWindow)
+    {
+        if (gUIContext->FocusWindow != Window || gUIContext->FocusHash != Hash)
+        {
+            gUIContext->PrevFocusWindow = gUIContext->FocusWindow;
+            gUIContext->PrevFocusHash = gUIContext->FocusHash;
+        }
+    }
     gUIContext->FocusWindow = Window;
     gUIContext->FocusHash = Hash;
 }
@@ -1358,9 +1368,16 @@ static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
     return gUIContext->FocusWindow == Window && gUIContext->FocusHash == Hash;
 }
 
-static inline void Rr_UIResetFocus(void)
+static inline bool Rr_UIWasFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
-    gUIContext->FocusWindow = NULL;
+    bool Result = gUIContext->PrevFocusWindow == Window &&
+                  gUIContext->PrevFocusHash == Hash;
+    if (Result)
+    {
+        gUIContext->PrevFocusWindow = NULL;
+    }
+
+    return Result;
 }
 
 static inline bool Rr_UIScrollBehavior(
@@ -1419,7 +1436,7 @@ static inline void Rr_UIButtonBehavior(
         {
             Rr_UIEndDragOp();
             gUIContext->DragOpWindow = NULL;
-            Rr_UIResetFocus();
+            /* Rr_UIResetFocus(); */
         }
         if (Down)
         {
@@ -2784,17 +2801,20 @@ static inline size_t Rr_UILineEnd(const char *Buffer, size_t Cursor)
     return Rr_NextUTF8LFOffset(Buffer, Cursor);
 }
 
-static void Rr_UIEditUTF8Buffer(
+static bool Rr_UIEditUTF8Buffer(
     size_t *CursorBegin,
     size_t *CursorEnd,
     size_t BufferCapacity,
-    char *Buffer)
+    char *Buffer,
+    bool EnterToConfirm)
 {
     if (gUIContext->TextInputBuffer.Count == 0 &&
         gUIContext->KeyboardInputBuffer.Count == 0)
     {
-        return;
+        return false;
     }
+
+    bool ChangesConfirmed = false;
 
     uint64_t TimeMS = Rr_GetTimeMS();
     size_t BufferLength = strlen(Buffer);
@@ -2960,21 +2980,29 @@ static void Rr_UIEditUTF8Buffer(
         {
             NewCursorBegin = NewCursorEnd;
             Edited = true;
+            ChangesConfirmed = true;
         }
-        if (Event->Scancode == RR_SCANCODE_RETURN && Event->Keymod == 0 &&
-            CursorMin > 0)
+
+        if (Event->Scancode == RR_SCANCODE_RETURN)
         {
-            if (Rr_UIConsumeTextInput(
-                    1,
-                    "\n",
-                    &BufferLength,
-                    BufferCapacity,
-                    Buffer,
-                    &NewCursorBegin,
-                    &NewCursorEnd))
+            if (EnterToConfirm)
             {
-                Edited = true;
-                ResetCol = true;
+                ChangesConfirmed = true;
+            }
+            else if (Event->Keymod == 0 && CursorMin > 0)
+            {
+                if (Rr_UIConsumeTextInput(
+                        1,
+                        "\n",
+                        &BufferLength,
+                        BufferCapacity,
+                        Buffer,
+                        &NewCursorBegin,
+                        &NewCursorEnd))
+                {
+                    Edited = true;
+                    ResetCol = true;
+                }
             }
         }
 
@@ -3192,6 +3220,8 @@ static void Rr_UIEditUTF8Buffer(
 
     RR_CLEAR_ARRAY(&gUIContext->TextInputBuffer);
     RR_CLEAR_ARRAY(&gUIContext->KeyboardInputBuffer);
+
+    return ChangesConfirmed;
 }
 
 bool Rr_UIInputFieldEx(
@@ -3217,6 +3247,7 @@ bool Rr_UIInputFieldEx(
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     bool Active = Rr_UIIsFocused(Window, TitleHash);
+    bool WasActive = !Active && Rr_UIWasFocused(Window, TitleHash);
 
     Rr_Vec2 BufferPosition =
         Rr_AddV2(Layout->Cursor, gUIContext->ButtonPadding);
@@ -3308,18 +3339,29 @@ bool Rr_UIInputFieldEx(
 
     Rr_UIAdvance(TotalSize);
 
+    bool ChangesConfirmed = false;
+
     if (Active)
     {
-        Rr_UIEditUTF8Buffer(
+        ChangesConfirmed = Rr_UIEditUTF8Buffer(
             &gUIContext->TextInputCursorBegin,
             &gUIContext->TextInputCursorEnd,
             BufferCapacity,
-            Buffer);
+            Buffer,
+            !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT));
+        if (ChangesConfirmed)
+        {
+            gUIContext->FocusWindow = NULL;
+        }
+    }
+    else
+    {
+        ChangesConfirmed |= WasActive;
     }
 
     Rr_DestroyScratch(Scratch);
 
-    return false;
+    return ChangesConfirmed;
 }
 
 bool Rr_UIInputField(
@@ -3329,6 +3371,15 @@ bool Rr_UIInputField(
     Rr_UIInputFieldFlags Flags)
 {
     return Rr_UIInputFieldEx(Title, BufferCapacity, Buffer, NULL, Flags);
+}
+
+bool Rr_UIInputFloat(const char *Title, float *Value)
+{
+    char Buffer[64];
+    snprintf(Buffer, 64, "%g", *Value);
+    bool Changed = Rr_UIInputFieldEx(Title, 64, Buffer, NULL, 0);
+    *Value = atof(Buffer);
+    return Changed;
 }
 
 bool Rr_UICombobox(
@@ -4459,7 +4510,15 @@ void Rr_UIDebugOverlay(void)
             Rr_UICheckbox(
                 "Frame Limiter Enabled",
                 &gApp->FrameTime.EnableFrameLimiter);
-            Rr_UILabelF("Frame Limit: %d", gApp->FrameTime.TargetFramerate);
+            static float TargetFramerate = INFINITY;
+            if (TargetFramerate == INFINITY)
+            {
+                TargetFramerate = (float)gApp->FrameTime.TargetFramerate;
+            }
+            if (Rr_UIInputFloat("Frame Limit", &TargetFramerate))
+            {
+                gApp->FrameTime.TargetFramerate = (uint64_t)TargetFramerate;
+            }
             if (Rr_UIButton("Toggle Fullscreen"))
             {
                 Rr_ToggleWindowFullscreen();
