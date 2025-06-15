@@ -3378,7 +3378,7 @@ bool Rr_UIInputFloat(const char *Title, float *Value)
     char Buffer[64];
     snprintf(Buffer, 64, "%g", *Value);
     bool Changed = Rr_UIInputFieldEx(Title, 64, Buffer, NULL, 0);
-    *Value = atof(Buffer);
+    *Value = (float)atof(Buffer);
     return Changed;
 }
 
