@@ -50,6 +50,18 @@ static inline GLFWmonitor *Rr_GetGLFWMonitor(void)
     return Monitor;
 }
 
+static inline Rr_Vec2 Rr_GetGLFWCursorPos(void)
+{
+    double MouseX, MouseY;
+    glfwGetCursorPos(gPlatform->Window, &MouseX, &MouseY);
+    if (gPlatform->WindowScaled)
+    {
+        return (Rr_Vec2){ (float)MouseX * gPlatform->WindowScale.X,
+                          (float)MouseY * gPlatform->WindowScale.Y };
+    }
+    return (Rr_Vec2){ (float)MouseX, (float)MouseY };
+}
+
 static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
 {
     Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
@@ -172,9 +184,7 @@ static void Rr_GLFWScrollCallback(GLFWwindow *Window, double X, double Y)
 {
     Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
-    double MouseX, MouseY;
-    glfwGetCursorPos(Window, &MouseX, &MouseY);
-    Event->Wheel.Position = (Rr_Vec2){ (float)MouseX, (float)MouseY };
+    Event->Wheel.Position = Rr_GetGLFWCursorPos();
     Event->Wheel.Amount = (Rr_Vec2){ (float)X, (float)Y };
 }
 
@@ -209,9 +219,7 @@ static void Rr_GLFWMouseButtonCallback(
     Rr_Event *Event = Rr_AddEvent();
     Event->Type = Action == GLFW_RELEASE ? RR_EVENT_TYPE_MOUSE_BUTTON_UP
                                          : RR_EVENT_TYPE_MOUSE_BUTTON_DOWN;
-    double MouseX, MouseY;
-    glfwGetCursorPos(Window, &MouseX, &MouseY);
-    Event->MouseButton.Position = (Rr_Vec2){ (float)MouseX, (float)MouseY };
+    Event->MouseButton.Position = Rr_GetGLFWCursorPos();
     switch (Button)
     {
         case GLFW_MOUSE_BUTTON_1:
@@ -282,28 +290,65 @@ static void Rr_GLFWWindowCloseCallback(GLFWwindow *Window)
     Rr_Quit();
 }
 
+static void Rr_GLFWWindowContentScaleCallback(
+    GLFWwindow *Window,
+    float X,
+    float Y)
+{
+    gPlatform->WindowScale.X = X;
+    gPlatform->WindowScale.Y = Y;
+}
+
 bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
     assert(gPlatform == NULL);
 
+    bool WindowScaled = false;
+
+#ifdef __linux__
+    int32_t GLFWPlatform;
+    if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
+    {
+        GLFWPlatform = GLFW_PLATFORM_WAYLAND;
+    }
+    else
+    {
+        GLFWPlatform = GLFW_PLATFORM_X11;
+    }
+    WindowScaled = GLFWPlatform == GLFW_PLATFORM_WAYLAND;
+    glfwInitHint(GLFW_PLATFORM, GLFWPlatform);
+#endif
+
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
-    glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE);
-    if (RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT))
-    {
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    }
+    /* NOTE: glfwGetWindowContentScale wouldn't return correct value if
+     * GLFW_VISIBLE is set to false. */
+    /* glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); */
+    /* glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE); */
+    glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_TRUE);
+    glfwWindowHint(
+        GLFW_RESIZABLE,
+        (int)RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT));
+
     Rr_Arena *Arena = Rr_CreateDefaultArena();
     gPlatform = RR_ALLOC_TYPE(Arena, Rr_Platform);
     gPlatform->Arena = Arena;
     gPlatform->EventScratch =
         (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
-    gPlatform->Window =
-        glfwCreateWindow(WindowSize.X, WindowSize.Y, Config->Title, NULL, NULL);
+    gPlatform->Window = glfwCreateWindow(
+        WindowSize.Width,
+        WindowSize.Height,
+        Config->Title,
+        NULL,
+        NULL);
+    gPlatform->WindowScaled = WindowScaled;
+    glfwGetWindowContentScale(
+        gPlatform->Window,
+        &gPlatform->WindowScale.X,
+        &gPlatform->WindowScale.Y);
+
     glfwSetWindowUserPointer(gPlatform->Window, gPlatform);
     glfwSetCursorPosCallback(gPlatform->Window, &Rr_GLFWCursorCallback);
     glfwSetKeyCallback(gPlatform->Window, &Rr_GLFWKeyCallback);
@@ -313,6 +358,14 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     glfwSetMouseButtonCallback(gPlatform->Window, &Rr_GLFWMouseButtonCallback);
     glfwSetCharCallback(gPlatform->Window, &Rr_GLFWCharCallback);
     glfwSetWindowCloseCallback(gPlatform->Window, &Rr_GLFWWindowCloseCallback);
+    glfwSetWindowContentScaleCallback(
+        gPlatform->Window,
+        &Rr_GLFWWindowContentScaleCallback);
+
+    if (gPlatform->WindowScaled)
+    {
+        Rr_SetWindowSize(WindowSize);
+    }
 
     return true;
 }
@@ -356,10 +409,7 @@ bool Rr_IsScancodePressed(Rr_Scancode Scancode)
 
 Rr_Vec2 Rr_GetMousePosition(void)
 {
-    double X, Y;
-    glfwGetCursorPos(gPlatform->Window, &X, &Y);
-
-    return (Rr_Vec2){ (float)X, (float)Y };
+    return Rr_GetGLFWCursorPos();
 }
 
 Rr_MouseButtonFlags Rr_GetMouseState(void)
@@ -465,7 +515,7 @@ float Rr_GetDisplayRefreshRate(void)
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
     Rr_IntVec2 Size;
-    glfwGetWindowSize(gPlatform->Window, &Size.X, &Size.Y);
+    glfwGetFramebufferSize(gPlatform->Window, &Size.X, &Size.Y);
     return Size;
 }
 
@@ -486,7 +536,17 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
-    glfwSetWindowSize(gPlatform->Window, Size.X, Size.Y);
+    if (gPlatform->WindowScaled)
+    {
+        glfwSetWindowSize(
+            gPlatform->Window,
+            (int32_t)(Size.X / gPlatform->WindowScale.X),
+            (int32_t)(Size.Y / gPlatform->WindowScale.Y));
+    }
+    else
+    {
+        glfwSetWindowSize(gPlatform->Window, Size.X, Size.Y);
+    }
 }
 
 void Rr_SetCursor(Rr_CursorType Type)

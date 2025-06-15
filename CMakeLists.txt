@@ -223,7 +223,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     endif ()
 endif ()
 
-if(RR_PLATFORM_LIBRARY STREQUAL "SDL")
+if (RR_PLATFORM_LIBRARY STREQUAL "SDL")
     set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
     set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
     set(SDL_MISC OFF CACHE BOOL "" FORCE)
@@ -243,13 +243,9 @@ if(RR_PLATFORM_LIBRARY STREQUAL "SDL")
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_SDL)
 endif ()
 
-if(RR_PLATFORM_LIBRARY STREQUAL "GLFW")
+if (RR_PLATFORM_LIBRARY STREQUAL "GLFW")
     set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
     set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
-    # Can't use Wayland for now.
-    # glfwGetMonitorContentScale doesn't support fractional scaling.
-    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_X11 ON CACHE BOOL "" FORCE)
     CPMAddPackage("gh:glfw/glfw#master")
 
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_GLFW.c)
