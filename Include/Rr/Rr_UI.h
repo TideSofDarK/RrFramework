@@ -154,6 +154,10 @@ extern bool Rr_UIInputFloat(
     const char *Title,
     float *Value);
 
+extern bool Rr_UIInputInt(
+    const char *Title,
+    int32_t *Value);
+
 extern bool Rr_UICombobox(
     const char *Title,
     uint32_t OptionCount,

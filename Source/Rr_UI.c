@@ -1991,28 +1991,21 @@ static inline bool Rr_UIBeginWindowEx(
     /* Move and resize behavior.
      * Handle these early so following code may access updated window rect. */
 
-    bool NoMove = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT);
+    bool Dragging = Rr_UIDragBehavior(
+        Window,
+        &Window->Rect,
+        RR_UI_DRAG_OP_MOVE,
+        0,
+        Window->Rect.Offset,
+        NULL,
+        NULL);
 
-    if (NoMove == false)
+    if (Dragging && !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT))
     {
-        bool Dragging = Rr_UIDragBehavior(
-            Window,
-            &Window->Rect,
-            RR_UI_DRAG_OP_MOVE,
-            0,
-            Window->Rect.Offset,
-            NULL,
-            NULL);
-
-        if (Dragging)
-        {
-            Rr_Vec2 Delta = Rr_SubV2(
-                gUIContext->MousePosition,
-                gUIContext->DragOpMouseStart);
-            Window->Rect.Offset =
-                Rr_AddV2(gUIContext->DragOpWindowStart, Delta);
-            Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
-        }
+        Rr_Vec2 Delta =
+            Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
+        Window->Rect.Offset = Rr_AddV2(gUIContext->DragOpWindowStart, Delta);
+        Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
     }
 
     bool NoResize = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
@@ -3273,7 +3266,7 @@ bool Rr_UIInputFieldEx(
             0);
     }
 
-    const float MIN_FIELD_WIDTH = gUIContext->FontSize * 4.0f;
+    const float MIN_FIELD_WIDTH = gUIContext->FontSize;
     if (BufferSize.Width < MIN_FIELD_WIDTH)
     {
         BufferSize.Width = MIN_FIELD_WIDTH;
@@ -3379,6 +3372,15 @@ bool Rr_UIInputFloat(const char *Title, float *Value)
     snprintf(Buffer, 64, "%g", *Value);
     bool Changed = Rr_UIInputFieldEx(Title, 64, Buffer, NULL, 0);
     *Value = (float)atof(Buffer);
+    return Changed;
+}
+
+bool Rr_UIInputInt(const char *Title, int32_t *Value)
+{
+    char Buffer[64];
+    snprintf(Buffer, 64, "%d", *Value);
+    bool Changed = Rr_UIInputFieldEx(Title, 64, Buffer, NULL, 0);
+    *Value = (int32_t)atoi(Buffer);
     return Changed;
 }
 
@@ -4465,7 +4467,7 @@ void Rr_UIDebugOverlay(void)
     if (Rr_UIBeginWindow(
             "Rr_DebugOverlay",
             NULL,
-            RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_TITLE_BIT |
                 RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
                 RR_UI_WINDOW_FLAGS_NO_MOVE_BIT))
     {
