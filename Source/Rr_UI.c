@@ -183,9 +183,10 @@ struct Rr_UIContext
     size_t TextInputCursorMaxCol;
     uint64_t TextInputCursorBlinkTime;
     bool MouseOverTextInput : 1;
-    RR_ARRAY(const char *) TextInputBuffer;
+    RR_ARRAY(const char *) TextInputEvents;
+    RR_ARRAY(char) TextInputBuffer;
 
-    RR_ARRAY(Rr_KeyEvent) KeyboardInputBuffer;
+    RR_ARRAY(Rr_KeyEvent) KeyboardInputEvents;
 
     Rr_Vec2 ScreenSize;
 
@@ -2721,29 +2722,34 @@ static inline bool Rr_UIConsumeTextInput(
     size_t *BufferLength,
     size_t BufferCapacity,
     char *Buffer,
+    Rr_UIInputFieldFilterFunc FilterFunc,
     size_t *CursorBegin,
     size_t *CursorEnd)
 {
-    if (*BufferLength + CStringLength + 1 <= BufferCapacity)
+    if (*BufferLength + CStringLength + 1 > BufferCapacity)
     {
-        size_t CursorMin = RR_MIN(*CursorBegin, *CursorEnd);
-        size_t CursorMax = RR_MAX(*CursorBegin, *CursorEnd);
-        memmove(
-            Buffer + CursorMin + CStringLength,
-            Buffer + CursorMax,
-            *BufferLength - CursorMax);
-        if (CString != NULL)
-        {
-            memcpy(Buffer + CursorMin, CString, CStringLength);
-        }
-        *BufferLength += CStringLength;
-        *BufferLength -= CursorMax - CursorMin;
-        Buffer[*BufferLength] = '\0';
-        *CursorEnd = CursorMin + CStringLength;
-        *CursorBegin = *CursorEnd;
-        return true;
+        return false;
     }
-    return false;
+    if (FilterFunc && !FilterFunc(CStringLength, CString))
+    {
+        return false;
+    }
+    size_t CursorMin = RR_MIN(*CursorBegin, *CursorEnd);
+    size_t CursorMax = RR_MAX(*CursorBegin, *CursorEnd);
+    memmove(
+        Buffer + CursorMin + CStringLength,
+        Buffer + CursorMax,
+        *BufferLength - CursorMax);
+    if (CString != NULL)
+    {
+        memcpy(Buffer + CursorMin, CString, CStringLength);
+    }
+    *BufferLength += CStringLength;
+    *BufferLength -= CursorMax - CursorMin;
+    Buffer[*BufferLength] = '\0';
+    *CursorEnd = CursorMin + CStringLength;
+    *CursorBegin = *CursorEnd;
+    return true;
 }
 
 static inline size_t Rr_UIThisLineCol(char *Buffer, size_t Cursor)
@@ -2799,10 +2805,11 @@ static bool Rr_UIEditUTF8Buffer(
     size_t *CursorEnd,
     size_t BufferCapacity,
     char *Buffer,
+    Rr_UIInputFieldFilterFunc FilterFunc,
     bool EnterToConfirm)
 {
-    if (gUIContext->TextInputBuffer.Count == 0 &&
-        gUIContext->KeyboardInputBuffer.Count == 0)
+    if (gUIContext->TextInputEvents.Count == 0 &&
+        gUIContext->KeyboardInputEvents.Count == 0)
     {
         return false;
     }
@@ -2818,10 +2825,10 @@ static bool Rr_UIEditUTF8Buffer(
     size_t CursorMin;
     size_t CursorMax;
 
-    for (size_t Index = 0; Index < gUIContext->KeyboardInputBuffer.Count;
+    for (size_t Index = 0; Index < gUIContext->KeyboardInputEvents.Count;
          ++Index)
     {
-        Rr_KeyEvent *Event = gUIContext->KeyboardInputBuffer.Data + Index;
+        Rr_KeyEvent *Event = gUIContext->KeyboardInputEvents.Data + Index;
 
         if (!Event->Down)
         {
@@ -2897,6 +2904,7 @@ static bool Rr_UIEditUTF8Buffer(
                     &BufferLength,
                     BufferCapacity,
                     Buffer,
+                    FilterFunc,
                     &NewCursorBegin,
                     &NewCursorEnd);
                 Edited = true;
@@ -2922,6 +2930,7 @@ static bool Rr_UIEditUTF8Buffer(
                     &BufferLength,
                     BufferCapacity,
                     Buffer,
+                    FilterFunc,
                     &NewCursorBegin,
                     &NewCursorEnd);
                 Edited = true;
@@ -2954,6 +2963,7 @@ static bool Rr_UIEditUTF8Buffer(
                     &BufferLength,
                     BufferCapacity,
                     Buffer,
+                    FilterFunc,
                     &NewCursorBegin,
                     &NewCursorEnd);
 
@@ -2990,6 +3000,7 @@ static bool Rr_UIEditUTF8Buffer(
                         &BufferLength,
                         BufferCapacity,
                         Buffer,
+                        FilterFunc,
                         &NewCursorBegin,
                         &NewCursorEnd))
                 {
@@ -3183,7 +3194,7 @@ static bool Rr_UIEditUTF8Buffer(
         }
     }
 
-    for (size_t Index = 0; Index < gUIContext->TextInputBuffer.Count; ++Index)
+    for (size_t Index = 0; Index < gUIContext->TextInputEvents.Count; ++Index)
     {
         NewCursorBegin = *CursorBegin;
         NewCursorEnd = *CursorEnd;
@@ -3191,7 +3202,7 @@ static bool Rr_UIEditUTF8Buffer(
         CursorMin = RR_MIN(NewCursorBegin, NewCursorEnd);
         CursorMax = RR_MAX(NewCursorBegin, NewCursorEnd);
 
-        const char *CString = gUIContext->TextInputBuffer.Data[Index];
+        const char *CString = gUIContext->TextInputEvents.Data[Index];
         size_t Length = strlen(CString);
 
         if (Rr_UIConsumeTextInput(
@@ -3200,6 +3211,7 @@ static bool Rr_UIEditUTF8Buffer(
                 &BufferLength,
                 BufferCapacity,
                 Buffer,
+                FilterFunc,
                 &NewCursorBegin,
                 &NewCursorEnd))
         {
@@ -3211,8 +3223,8 @@ static bool Rr_UIEditUTF8Buffer(
         }
     }
 
-    RR_CLEAR_ARRAY(&gUIContext->TextInputBuffer);
-    RR_CLEAR_ARRAY(&gUIContext->KeyboardInputBuffer);
+    RR_CLEAR_ARRAY(&gUIContext->TextInputEvents);
+    RR_CLEAR_ARRAY(&gUIContext->KeyboardInputEvents);
 
     return ChangesConfirmed;
 }
@@ -3222,6 +3234,7 @@ bool Rr_UIInputFieldEx(
     size_t BufferCapacity,
     char *Buffer,
     const char *Placeholder,
+    Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags)
 {
     Rr_UIAssertWindow();
@@ -3236,6 +3249,9 @@ bool Rr_UIInputFieldEx(
 
     Rr_UIPrimitive FieldPrimitive = Rr_UIReserveBevel();
 
+    bool UsePersistentBuffer =
+        RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
+
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
@@ -3246,7 +3262,8 @@ bool Rr_UIInputFieldEx(
         Rr_AddV2(Layout->Cursor, gUIContext->ButtonPadding);
     size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
     Rr_Vec2 BufferSize = Rr_UIDrawInputText(
-        Buffer,
+        UsePersistentBuffer && Active ? gUIContext->TextInputBuffer.Data
+                                      : Buffer,
         Active,
         BufferPosition,
         gUIContext->TextInputCursorBegin,
@@ -3254,22 +3271,27 @@ bool Rr_UIInputFieldEx(
         0.0f,
         &gUIContext->Style.Foreground);
 
-    if (BufferSize.X == 0.0f && Placeholder != NULL && !Active)
+    if (BufferSize.X == 0.0f)
     {
-        BufferSize = Rr_UIDrawText(
-            false,
-            BufferPosition,
-            SIZE_MAX,
-            Placeholder,
-            0.0f,
-            &gUIContext->Style.ForegroundDimmed,
-            0);
-    }
-
-    const float MIN_FIELD_WIDTH = gUIContext->FontSize;
-    if (BufferSize.Width < MIN_FIELD_WIDTH)
-    {
-        BufferSize.Width = MIN_FIELD_WIDTH;
+        if (Placeholder != NULL && !Active)
+        {
+            BufferSize = Rr_UIDrawText(
+                false,
+                BufferPosition,
+                SIZE_MAX,
+                Placeholder,
+                0.0f,
+                &gUIContext->Style.ForegroundDimmed,
+                0);
+        }
+        else
+        {
+            const float MIN_FIELD_WIDTH = gUIContext->FontSize / 2.0f;
+            if (BufferSize.Width < MIN_FIELD_WIDTH)
+            {
+                BufferSize.Width = MIN_FIELD_WIDTH;
+            }
+        }
     }
 
     Rr_Rect FieldRect = {
@@ -3298,6 +3320,19 @@ bool Rr_UIInputFieldEx(
         gUIContext->TextInputCursorEnd = NewCursorEnd;
         gUIContext->TextInputCursorMaxCol =
             Rr_UIThisLineCol(Buffer, NewCursorEnd);
+
+        if (UsePersistentBuffer)
+        {
+            /* NOTE: May waste quite a bit of memory. */
+            if (gUIContext->TextInputBuffer.Capacity < BufferCapacity ||
+                !gUIContext->TextInputBuffer.Data)
+            {
+                gUIContext->TextInputBuffer.Data =
+                    RR_ALLOC_NO_ZERO(gUIContext->Arena, BufferCapacity);
+                gUIContext->TextInputBuffer.Capacity = BufferCapacity;
+            }
+            memcpy(gUIContext->TextInputBuffer.Data, Buffer, BufferCapacity);
+        }
     }
     else if (Active && Dragging)
     {
@@ -3340,7 +3375,8 @@ bool Rr_UIInputFieldEx(
             &gUIContext->TextInputCursorBegin,
             &gUIContext->TextInputCursorEnd,
             BufferCapacity,
-            Buffer,
+            UsePersistentBuffer ? gUIContext->TextInputBuffer.Data : Buffer,
+            FilterFunc,
             !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT));
         if (ChangesConfirmed)
         {
@@ -3350,6 +3386,11 @@ bool Rr_UIInputFieldEx(
     else
     {
         ChangesConfirmed |= WasActive;
+    }
+
+    if (ChangesConfirmed && UsePersistentBuffer)
+    {
+        memcpy(Buffer, gUIContext->TextInputBuffer.Data, BufferCapacity);
     }
 
     Rr_DestroyScratch(Scratch);
@@ -3363,24 +3404,101 @@ bool Rr_UIInputField(
     char *Buffer,
     Rr_UIInputFieldFlags Flags)
 {
-    return Rr_UIInputFieldEx(Title, BufferCapacity, Buffer, NULL, Flags);
+    return Rr_UIInputFieldEx(Title, BufferCapacity, Buffer, NULL, NULL, Flags);
+}
+
+static inline bool Rr_UIFloatFilter(size_t Length, const char *UTF8String)
+{
+    for (size_t Index = 0; Index < Length; ++Index)
+    {
+        uint8_t Char = UTF8String[Index];
+        bool InRange = Char >= '0' && Char <= '9';
+        bool Minus = Char == '-';
+        bool Dot = Char == '.';
+        if (!(InRange || Minus || Dot))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool Rr_UIInputFloat(const char *Title, float *Value)
 {
     char Buffer[64];
     snprintf(Buffer, 64, "%g", *Value);
-    bool Changed = Rr_UIInputFieldEx(Title, 64, Buffer, NULL, 0);
-    *Value = (float)atof(Buffer);
+    bool Changed = Rr_UIInputFieldEx(
+        Title,
+        64,
+        Buffer,
+        NULL,
+        Rr_UIFloatFilter,
+        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
+    if (Changed)
+    {
+        sscanf(Buffer, "%f", Value);
+    }
     return Changed;
+}
+
+bool Rr_UIInputFloat3(const char *Title, float *Values)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    size_t Length = 1 + strlen(Title) + 3 + 2;
+    bool Edited = false;
+
+    Rr_UIBeginHorizontal();
+    const char *Titles[] = { "X", "Y", "Z" };
+    for (int Index = 0; Index < 3; ++Index)
+    {
+        char *CurrentTitle = RR_ALLOC_NO_ZERO(Scratch.Arena, Length);
+        snprintf(
+            CurrentTitle,
+            Length,
+            "%s###%s%d",
+            Titles[Index],
+            Title,
+            Index);
+        Edited |= Rr_UIInputFloat(CurrentTitle, &Values[Index]);
+    }
+    Rr_UIEndHorizontal();
+
+    Rr_DestroyScratch(Scratch);
+
+    return Edited;
+}
+
+static inline bool Rr_UIIntegerFilter(size_t Length, const char *UTF8String)
+{
+    for (size_t Index = 0; Index < Length; ++Index)
+    {
+        uint8_t Char = UTF8String[Index];
+        bool InRange = Char >= '0' && Char <= '9';
+        bool Minus = Char == '-';
+        if (!(InRange || Minus))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool Rr_UIInputInt(const char *Title, int32_t *Value)
 {
     char Buffer[64];
     snprintf(Buffer, 64, "%d", *Value);
-    bool Changed = Rr_UIInputFieldEx(Title, 64, Buffer, NULL, 0);
-    *Value = (int32_t)atoi(Buffer);
+    bool Changed = Rr_UIInputFieldEx(
+        Title,
+        64,
+        Buffer,
+        NULL,
+        Rr_UIIntegerFilter,
+        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
+    if (Changed)
+    {
+        sscanf(Buffer, "%d", Value);
+    }
     return Changed;
 }
 
@@ -4112,7 +4230,7 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
             char *Text = RR_ALLOC_NO_ZERO(gUIContext->FrameArena, Length + 1);
             memcpy(Text, Event->Text.Text, Length + 1);
             *RR_PUSH_INTO_ARRAY(
-                &gUIContext->TextInputBuffer,
+                &gUIContext->TextInputEvents,
                 gUIContext->FrameArena) = Text;
         }
         break;
@@ -4120,7 +4238,7 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
         case RR_EVENT_TYPE_KEY_UP:
         {
             *RR_PUSH_INTO_ARRAY(
-                &gUIContext->KeyboardInputBuffer,
+                &gUIContext->KeyboardInputEvents,
                 gUIContext->FrameArena) = Event->Key;
         }
         break;
@@ -4436,8 +4554,8 @@ void Rr_EndUI(void)
         Rr_SetCursor(RR_UI_CURSOR_TYPE_NORMAL);
     }
     gUIContext->MouseOverTextInput = false;
-    RR_ZERO(gUIContext->TextInputBuffer);
-    RR_ZERO(gUIContext->KeyboardInputBuffer);
+    RR_ZERO(gUIContext->TextInputEvents);
+    RR_ZERO(gUIContext->KeyboardInputEvents);
 }
 
 void Rr_UISetFontSize(float Size)

@@ -105,8 +105,11 @@ typedef uint32_t Rr_UIWindowFlags;
 typedef enum
 {
     RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT = (1 << 0),
+    RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT = (1 << 1),
 } Rr_UIInputFieldFlagsBits;
 typedef uint32_t Rr_UIInputFieldFlags;
+
+typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, const char *);
 
 extern Rr_UIStyle *Rr_UIGetStyle(void);
 
@@ -142,6 +145,7 @@ extern bool Rr_UIInputFieldEx(
     size_t BufferCapacity,
     char *Buffer,
     const char *Placeholder,
+    Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags);
 
 extern bool Rr_UIInputField(
@@ -153,6 +157,10 @@ extern bool Rr_UIInputField(
 extern bool Rr_UIInputFloat(
     const char *Title,
     float *Value);
+
+extern bool Rr_UIInputFloat3(
+    const char *Title,
+    float *Values);
 
 extern bool Rr_UIInputInt(
     const char *Title,

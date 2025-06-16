@@ -1,8 +1,8 @@
 #include <Rr/Rr.h>
 
 #include <array>
-#include <print>
 #include <iostream>
+#include <print>
 
 static bool FixedSizeWindowOpen = false;
 static bool StyleEditorWindowOpen = false;
@@ -25,6 +25,7 @@ static void TextInputWindow()
                 2048,
                 StringBuffer,
                 "Type here...",
+                NULL,
                 RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT))
         {
             std::println("{}", StringBuffer);
@@ -179,6 +180,12 @@ static void Iterate(void *UserData)
                 128,
                 MultilineBuffer,
                 0);
+            static int32_t TestInt = 1337;
+            Rr_UIInputInt("Integer Input", &TestInt);
+            static float TestFloat = 123.456f;
+            Rr_UIInputFloat("Float Input", &TestFloat);
+            static Rr_Vec3 TestVec3 = { 1.0f, 0.0f, 1.0f };
+            Rr_UIInputFloat3("Vec3 Input", TestVec3.Elements);
         }
         Rr_UILabel("Button");
         Rr_UIBeginHorizontal();
