@@ -3262,8 +3262,9 @@ bool Rr_UIInputFieldEx(
         Rr_AddV2(Layout->Cursor, gUIContext->ButtonPadding);
     size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
     Rr_Vec2 BufferSize = Rr_UIDrawInputText(
-        UsePersistentBuffer && Active ? gUIContext->TextInputBuffer.Data
-                                      : Buffer,
+        UsePersistentBuffer && (Active || WasActive)
+            ? gUIContext->TextInputBuffer.Data
+            : Buffer,
         Active,
         BufferPosition,
         gUIContext->TextInputCursorBegin,
@@ -3321,7 +3322,10 @@ bool Rr_UIInputFieldEx(
         gUIContext->TextInputCursorMaxCol =
             Rr_UIThisLineCol(Buffer, NewCursorEnd);
 
-        if (UsePersistentBuffer)
+        /* NOTE: A bit hacky way to make sure initial memcpy to persistent
+         * buffer occurs only once. */
+
+        if (UsePersistentBuffer && !Active && !WasActive)
         {
             /* NOTE: May waste quite a bit of memory. */
             if (gUIContext->TextInputBuffer.Capacity < BufferCapacity ||
@@ -3398,13 +3402,15 @@ bool Rr_UIInputFieldEx(
     return ChangesConfirmed;
 }
 
-bool Rr_UIInputField(
-    const char *Title,
-    size_t BufferCapacity,
-    char *Buffer,
-    Rr_UIInputFieldFlags Flags)
+bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
 {
-    return Rr_UIInputFieldEx(Title, BufferCapacity, Buffer, NULL, NULL, Flags);
+    return Rr_UIInputFieldEx(
+        Title,
+        BufferCapacity,
+        Buffer,
+        NULL,
+        NULL,
+        RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
 }
 
 static inline bool Rr_UIFloatFilter(size_t Length, const char *UTF8String)

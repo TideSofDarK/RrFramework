@@ -172,14 +172,13 @@ static void Iterate(void *UserData)
         if (Rr_UIFold("Text Input"))
         {
             static char StringBuffer[16] = "Hello, World!";
-            Rr_UIInputField("UTF-8 String (16 bytes)", 16, StringBuffer, 0);
+            Rr_UIInputText("UTF-8 String (16 bytes)", 16, StringBuffer);
             static char MultilineBuffer[128] =
                 "Line A\nLine B <- Delete this!\nLine C!";
-            Rr_UIInputField(
+            Rr_UIInputText(
                 "UTF-8 String (128 bytes)",
                 128,
-                MultilineBuffer,
-                0);
+                MultilineBuffer);
             static int32_t TestInt = 1337;
             Rr_UIInputInt("Integer Input", &TestInt);
             static float TestFloat = 123.456f;

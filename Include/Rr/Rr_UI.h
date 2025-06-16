@@ -148,11 +148,10 @@ extern bool Rr_UIInputFieldEx(
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags);
 
-extern bool Rr_UIInputField(
+extern bool Rr_UIInputText(
     const char *Title,
     size_t BufferCapacity,
-    char *Buffer,
-    Rr_UIInputFieldFlags Flags);
+    char *Buffer);
 
 extern bool Rr_UIInputFloat(
     const char *Title,
