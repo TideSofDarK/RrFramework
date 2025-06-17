@@ -140,7 +140,7 @@ extern bool Rr_UIButton(const char *Title);
 
 extern bool Rr_UICheckbox(const char *Title, bool *Checked);
 
-extern bool Rr_UIInputFieldEx(
+extern bool Rr_UIInputField(
     const char *Title,
     size_t BufferCapacity,
     char *Buffer,
@@ -171,8 +171,6 @@ extern bool Rr_UICombobox(
     const char **Options,
     uint32_t *SelectedIndex);
 
-extern bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color);
-
 extern bool Rr_UISliderInt(
     const char *Title,
     int32_t *Value,
@@ -184,6 +182,8 @@ extern bool Rr_UISliderFloat(
     float *Value,
     float Min,
     float Max);
+
+extern bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color);
 
 extern void Rr_UIBeginHorizontal(void);
 

@@ -20,7 +20,7 @@ static void TextInputWindow()
             RR_UI_WINDOW_FLAGS_CLOSE_BIT))
     {
         static char StringBuffer[2048] = "";
-        if (Rr_UIInputFieldEx(
+        if (Rr_UIInputField(
                 "###LargeString",
                 2048,
                 StringBuffer,

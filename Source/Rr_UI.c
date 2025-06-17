@@ -2717,8 +2717,8 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 }
 
 static inline bool Rr_UIConsumeTextInput(
-    size_t CStringLength,
-    const char *CString,
+    size_t UTF8StringLength,
+    const char *UTF8String,
     size_t *BufferLength,
     size_t BufferCapacity,
     char *Buffer,
@@ -2726,28 +2726,31 @@ static inline bool Rr_UIConsumeTextInput(
     size_t *CursorBegin,
     size_t *CursorEnd)
 {
-    if (*BufferLength + CStringLength + 1 > BufferCapacity)
-    {
-        return false;
-    }
-    if (FilterFunc && !FilterFunc(CStringLength, CString))
+    if (FilterFunc && !FilterFunc(UTF8StringLength, UTF8String))
     {
         return false;
     }
     size_t CursorMin = RR_MIN(*CursorBegin, *CursorEnd);
     size_t CursorMax = RR_MAX(*CursorBegin, *CursorEnd);
+    /* Take selected range into account since it will be replaced by input
+     * string. */
+    size_t Diff = CursorMax - CursorMin;
+    if (*BufferLength + UTF8StringLength + 1 - Diff > BufferCapacity)
+    {
+        return false;
+    }
     memmove(
-        Buffer + CursorMin + CStringLength,
+        Buffer + CursorMin + UTF8StringLength,
         Buffer + CursorMax,
         *BufferLength - CursorMax);
-    if (CString != NULL)
+    if (UTF8String != NULL)
     {
-        memcpy(Buffer + CursorMin, CString, CStringLength);
+        memcpy(Buffer + CursorMin, UTF8String, UTF8StringLength);
     }
-    *BufferLength += CStringLength;
+    *BufferLength += UTF8StringLength;
     *BufferLength -= CursorMax - CursorMin;
     Buffer[*BufferLength] = '\0';
-    *CursorEnd = CursorMin + CStringLength;
+    *CursorEnd = CursorMin + UTF8StringLength;
     *CursorBegin = *CursorEnd;
     return true;
 }
@@ -3199,8 +3202,8 @@ static bool Rr_UIEditUTF8Buffer(
         NewCursorBegin = *CursorBegin;
         NewCursorEnd = *CursorEnd;
 
-        CursorMin = RR_MIN(NewCursorBegin, NewCursorEnd);
-        CursorMax = RR_MAX(NewCursorBegin, NewCursorEnd);
+        /* CursorMin = RR_MIN(NewCursorBegin, NewCursorEnd); */
+        /* CursorMax = RR_MAX(NewCursorBegin, NewCursorEnd); */
 
         const char *CString = gUIContext->TextInputEvents.Data[Index];
         size_t Length = strlen(CString);
@@ -3229,19 +3232,17 @@ static bool Rr_UIEditUTF8Buffer(
     return ChangesConfirmed;
 }
 
-bool Rr_UIInputFieldEx(
-    const char *Title,
+/* Generic input field widget allows us to combine it with other widgets. */
+static inline bool Rr_UIGenericInputField(
+    Rr_UIHash Hash,
+    Rr_Vec2 Offset,
     size_t BufferCapacity,
     char *Buffer,
     const char *Placeholder,
     Rr_UIInputFieldFilterFunc FilterFunc,
-    Rr_UIInputFieldFlags Flags)
+    Rr_UIInputFieldFlags Flags,
+    Rr_Vec2 *OutExtent)
 {
-    Rr_UIAssertWindow();
-    assert(Title != NULL);
-    assert(BufferCapacity);
-    assert(Buffer != NULL);
-
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -3252,14 +3253,10 @@ bool Rr_UIInputFieldEx(
     bool UsePersistentBuffer =
         RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
 
-    size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+    bool Active = Rr_UIIsFocused(Window, Hash);
+    bool WasActive = !Active && Rr_UIWasFocused(Window, Hash);
 
-    bool Active = Rr_UIIsFocused(Window, TitleHash);
-    bool WasActive = !Active && Rr_UIWasFocused(Window, TitleHash);
-
-    Rr_Vec2 BufferPosition =
-        Rr_AddV2(Layout->Cursor, gUIContext->ButtonPadding);
+    Rr_Vec2 BufferPosition = Rr_AddV2(Offset, gUIContext->ButtonPadding);
     size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
     Rr_Vec2 BufferSize = Rr_UIDrawInputText(
         UsePersistentBuffer && (Active || WasActive)
@@ -3296,9 +3293,13 @@ bool Rr_UIInputFieldEx(
     }
 
     Rr_Rect FieldRect = {
-        Layout->Cursor,
+        Offset,
         Rr_AddV2(BufferSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f)),
     };
+    if (OutExtent)
+    {
+        *OutExtent = FieldRect.Extent;
+    }
     Rr_UIBevel(
         FieldPrimitive,
         &FieldRect,
@@ -3310,7 +3311,7 @@ bool Rr_UIInputFieldEx(
             Window,
             &FieldRect,
             RR_UI_DRAG_OP_WIDGET,
-            TitleHash,
+            Hash,
             Rr_V2F(0.0f),
             &Hovered,
             &Began);
@@ -3349,28 +3350,6 @@ bool Rr_UIInputFieldEx(
         gUIContext->MouseOverTextInput = true;
     }
 
-    Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X +=
-        gUIContext->ButtonPadding.Width * 3.0f + BufferSize.Width;
-    TitlePosition.Y += gUIContext->ButtonPadding.Height;
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
-        TitlePosition,
-        TitleLength,
-        Title,
-        0,
-        &gUIContext->Style.Foreground,
-        0);
-
-    Rr_Vec2 TotalSize = {
-        gUIContext->ButtonPadding.Width * 3.0f + BufferSize.Width +
-            TitleSize.Width,
-        BufferSize.Height + Layout->ContentsPadding.Height +
-            gUIContext->ButtonPadding.Height * 2.0f,
-    };
-
-    Rr_UIAdvance(TotalSize);
-
     bool ChangesConfirmed = false;
 
     if (Active)
@@ -3402,9 +3381,66 @@ bool Rr_UIInputFieldEx(
     return ChangesConfirmed;
 }
 
+bool Rr_UIInputField(
+    const char *Title,
+    size_t BufferCapacity,
+    char *Buffer,
+    const char *Placeholder,
+    Rr_UIInputFieldFilterFunc FilterFunc,
+    Rr_UIInputFieldFlags Flags)
+{
+    Rr_UIAssertWindow();
+    assert(Title != NULL);
+    assert(BufferCapacity);
+    assert(Buffer != NULL);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+    Rr_Vec2 FieldExtent;
+    bool ChangesConfirmed = Rr_UIGenericInputField(
+        TitleHash,
+        Layout->Cursor,
+        BufferCapacity,
+        Buffer,
+        Placeholder,
+        FilterFunc,
+        Flags,
+        &FieldExtent);
+
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.X += gUIContext->ButtonPadding.Width + FieldExtent.Width;
+    TitlePosition.Y += gUIContext->ButtonPadding.Height;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        TitlePosition,
+        TitleLength,
+        Title,
+        0,
+        &gUIContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = {
+        gUIContext->ButtonPadding.Width + FieldExtent.Width + TitleSize.Width,
+        FieldExtent.Height + Layout->ContentsPadding.Height +
+            gUIContext->ButtonPadding.Height * 2.0f,
+    };
+
+    Rr_UIAdvance(TotalSize);
+
+    Rr_DestroyScratch(Scratch);
+
+    return ChangesConfirmed;
+}
+
 bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
 {
-    return Rr_UIInputFieldEx(
+    return Rr_UIInputField(
         Title,
         BufferCapacity,
         Buffer,
@@ -3433,7 +3469,7 @@ bool Rr_UIInputFloat(const char *Title, float *Value)
 {
     char Buffer[64];
     snprintf(Buffer, 64, "%g", *Value);
-    bool Changed = Rr_UIInputFieldEx(
+    bool Changed = Rr_UIInputField(
         Title,
         64,
         Buffer,
@@ -3475,6 +3511,22 @@ bool Rr_UIInputFloat3(const char *Title, float *Values)
     return Edited;
 }
 
+static inline bool Rr_UIHexFilter(size_t Length, const char *UTF8String)
+{
+    for (size_t Index = 0; Index < Length; ++Index)
+    {
+        uint8_t Char = UTF8String[Index];
+        bool InRange1 = Char >= '0' && Char <= '9';
+        bool InRange2 = Char >= 'a' && Char <= 'f';
+        bool InRange3 = Char >= 'A' && Char <= 'F';
+        if (!(InRange1 || InRange2 || InRange3))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 static inline bool Rr_UIIntegerFilter(size_t Length, const char *UTF8String)
 {
     for (size_t Index = 0; Index < Length; ++Index)
@@ -3494,7 +3546,7 @@ bool Rr_UIInputInt(const char *Title, int32_t *Value)
 {
     char Buffer[64];
     snprintf(Buffer, 64, "%d", *Value);
-    bool Changed = Rr_UIInputFieldEx(
+    bool Changed = Rr_UIInputField(
         Title,
         64,
         Buffer,
@@ -3814,84 +3866,6 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
     Rr_UIEndWindow();
 }
 
-bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
-{
-    Rr_UIAssertWindow();
-    assert(Title != NULL);
-    assert(Color != NULL);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
-
-    size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
-    Rr_Vec2 ColorBoxSize = Rr_V2F(gUIContext->LineHeight);
-
-    Rr_Vec2 FramePosition = Layout->Cursor;
-
-    bool Up = false;
-    bool Hovered = false;
-    bool Held = false;
-    Rr_UIButtonBehavior(
-        Window,
-        &(Rr_Rect){
-            FramePosition,
-            ColorBoxSize,
-        },
-        NULL,
-        &Up,
-        &Hovered,
-        &Held);
-
-    if (Up)
-    {
-        gUIContext->PopupWindowParent = Window;
-        gUIContext->PopupWindowHash = TitleHash;
-    }
-
-    bool ColorChanged = false;
-
-    if (gUIContext->PopupWindowParent == Window &&
-        gUIContext->PopupWindowHash == TitleHash)
-    {
-        Rr_Vec2 PopupCenter =
-            Rr_AddV2(FramePosition, Rr_DivV2F(ColorBoxSize, 2.0f));
-        Rr_UIColorPickerPopup(PopupCenter, Color);
-    }
-
-    Rr_Rect BevelRect = {
-        FramePosition,
-        ColorBoxSize,
-    };
-    Rr_UIDrawBevel(&BevelRect, Color, Held);
-
-    Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += gUIContext->ButtonPadding.Width + ColorBoxSize.Width;
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
-        TitlePosition,
-        TitleLength,
-        Title,
-        0.0f,
-        &gUIContext->Style.Foreground,
-        0);
-
-    Rr_Vec2 TotalSize = {
-        TitleSize.Width + Layout->ContentsPadding.Width +
-            gUIContext->LineHeight,
-        gUIContext->LineHeight + Layout->ContentsPadding.Height,
-    };
-
-    Rr_UIAdvance(TotalSize);
-
-    Rr_DestroyScratch(Scratch);
-
-    return ColorChanged;
-}
-
 static inline float Rr_UISlider(
     const char *Title,
     float Normalized,
@@ -4057,6 +4031,119 @@ bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
     float Out = OutNormalized * (Max - Min) + Min;
     *Value = Out;
     return false;
+}
+
+static inline void Rr_UIRGBAToHexString(Rr_Vec4 *Color, char *Buffer)
+{
+    for (size_t Index = 0; Index < 4; ++Index)
+    {
+        float FloatValue = Color->Elements[Index];
+        uint8_t Value = (uint8_t)(RR_CLAMP(0.0f, FloatValue, 1.0f) * 255.0f);
+        sprintf(Buffer + (Index * 2), "%02X", Value);
+    }
+    Buffer[8] = '\0';
+}
+
+bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
+{
+    Rr_UIAssertWindow();
+    assert(Title != NULL);
+    assert(Color != NULL);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+    char Buffer[8 + 1];
+    Rr_UIRGBAToHexString(Color, Buffer);
+
+    Rr_Vec2 FieldExtent;
+    bool ChangesConfirmed = Rr_UIGenericInputField(
+        TitleHash,
+        Layout->Cursor,
+        9,
+        Buffer,
+        NULL,
+        Rr_UIHexFilter,
+        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT,
+        &FieldExtent);
+    if (ChangesConfirmed)
+    {
+        uint32_t NewColor;
+        sscanf(Buffer, "%x", &NewColor);
+        *Color = Rr_U32ToRGBA(NewColor);
+    }
+
+    Rr_Vec2 ColorBoxSize = Rr_V2F(FieldExtent.Height);
+
+    Rr_Vec2 ColorBoxPosition = Layout->Cursor;
+    ColorBoxPosition.X += FieldExtent.Width;
+    ColorBoxPosition.X -= gUIContext->BevelThickness;
+
+    bool Up = false;
+    bool Hovered = false;
+    bool Held = false;
+    Rr_UIButtonBehavior(
+        Window,
+        &(Rr_Rect){
+            ColorBoxPosition,
+            ColorBoxSize,
+        },
+        NULL,
+        &Up,
+        &Hovered,
+        &Held);
+
+    if (Up)
+    {
+        gUIContext->PopupWindowParent = Window;
+        gUIContext->PopupWindowHash = TitleHash;
+    }
+
+    bool ColorChanged = false;
+
+    if (gUIContext->PopupWindowParent == Window &&
+        gUIContext->PopupWindowHash == TitleHash)
+    {
+        Rr_Vec2 PopupCenter =
+            Rr_AddV2(ColorBoxPosition, Rr_DivV2F(ColorBoxSize, 2.0f));
+        Rr_UIColorPickerPopup(PopupCenter, Color);
+    }
+
+    Rr_Rect BevelRect = {
+        ColorBoxPosition,
+        ColorBoxSize,
+    };
+    Rr_UIDrawBevel(&BevelRect, Color, Held);
+
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.Y += gUIContext->ButtonPadding.Height;
+    TitlePosition.X += gUIContext->ButtonPadding.Width + ColorBoxSize.Width +
+                       FieldExtent.Width;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        TitlePosition,
+        TitleLength,
+        Title,
+        0.0f,
+        &gUIContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = {
+        TitleSize.Width + Layout->ContentsPadding.Width +
+            gUIContext->LineHeight,
+        FieldExtent.Height + Layout->ContentsPadding.Height,
+    };
+
+    Rr_UIAdvance(TotalSize);
+
+    Rr_DestroyScratch(Scratch);
+
+    return ColorChanged;
 }
 
 bool Rr_UIWantMouseCapture(void)
