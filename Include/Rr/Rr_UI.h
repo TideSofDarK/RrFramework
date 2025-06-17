@@ -157,7 +157,15 @@ extern bool Rr_UIInputFloat(
     const char *Title,
     float *Value);
 
+extern bool Rr_UIInputFloat2(
+    const char *Title,
+    float *Values);
+
 extern bool Rr_UIInputFloat3(
+    const char *Title,
+    float *Values);
+
+extern bool Rr_UIInputFloat4(
     const char *Title,
     float *Values);
 

@@ -3483,7 +3483,10 @@ bool Rr_UIInputFloat(const char *Title, float *Value)
     return Changed;
 }
 
-bool Rr_UIInputFloat3(const char *Title, float *Values)
+static inline bool Rr_UIInputFloatMulti(
+    const char *Title,
+    float *Values,
+    int Count)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -3491,8 +3494,8 @@ bool Rr_UIInputFloat3(const char *Title, float *Values)
     bool Edited = false;
 
     Rr_UIBeginHorizontal();
-    const char *Titles[] = { "X", "Y", "Z" };
-    for (int Index = 0; Index < 3; ++Index)
+    const char *Titles[] = { "X", "Y", "Z", "W" };
+    for (int Index = 0; Index < Count; ++Index)
     {
         char *CurrentTitle = RR_ALLOC_NO_ZERO(Scratch.Arena, Length);
         snprintf(
@@ -3509,6 +3512,21 @@ bool Rr_UIInputFloat3(const char *Title, float *Values)
     Rr_DestroyScratch(Scratch);
 
     return Edited;
+}
+
+bool Rr_UIInputFloat2(const char *Title, float *Values)
+{
+    return Rr_UIInputFloatMulti(Title, Values, 2);
+}
+
+bool Rr_UIInputFloat3(const char *Title, float *Values)
+{
+    return Rr_UIInputFloatMulti(Title, Values, 3);
+}
+
+bool Rr_UIInputFloat4(const char *Title, float *Values)
+{
+    return Rr_UIInputFloatMulti(Title, Values, 4);
 }
 
 static inline bool Rr_UIHexFilter(size_t Length, const char *UTF8String)

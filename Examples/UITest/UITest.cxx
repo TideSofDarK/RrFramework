@@ -175,16 +175,17 @@ static void Iterate(void *UserData)
             Rr_UIInputText("UTF-8 String (16 bytes)", 16, StringBuffer);
             static char MultilineBuffer[128] =
                 "Line A\nLine B <- Delete this!\nLine C!";
-            Rr_UIInputText(
-                "UTF-8 String (128 bytes)",
-                128,
-                MultilineBuffer);
+            Rr_UIInputText("UTF-8 String (128 bytes)", 128, MultilineBuffer);
             static int32_t TestInt = 1337;
             Rr_UIInputInt("Integer Input", &TestInt);
             static float TestFloat = 123.456f;
             Rr_UIInputFloat("Float Input", &TestFloat);
+            static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };
+            Rr_UIInputFloat2("Vec2 Input", TestVec2.Elements);
             static Rr_Vec3 TestVec3 = { 1.0f, 0.0f, 1.0f };
             Rr_UIInputFloat3("Vec3 Input", TestVec3.Elements);
+            static Rr_Vec4 TestVec4 = { 1.0f, 0.0f, 1.0f, 1.0f };
+            Rr_UIInputFloat4("Vec4 Input", TestVec4.Elements);
         }
         Rr_UILabel("Button");
         Rr_UIBeginHorizontal();
