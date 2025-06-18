@@ -250,22 +250,23 @@ static void Rr_GLFWMouseButtonCallback(
             Event->MouseButton.Button = UINT8_MAX;
             break;
     }
-    static uint8_t Clicks;
+    /* For each mouse button. */
+    static uint64_t LastClickTime[5] = { 0 };
+    static uint8_t Clicks[5] = { 0 };
     if (Action == GLFW_PRESS)
     {
-        static uint64_t LastPressedTime;
         uint64_t Now = Rr_GetTimeMS();
-        uint64_t Diff = Now - LastPressedTime;
+        uint64_t Diff = Now - LastClickTime[Event->MouseButton.Button];
         if (Diff < RR_DOUBLE_CLICK_TIME_MS)
         {
-            Clicks++;
+            Clicks[Event->MouseButton.Button]++;
         }
         else
         {
-            Clicks = 0;
+            Clicks[Event->MouseButton.Button] = 0;
         }
-        Event->MouseButton.Clicks = Clicks + 1;
-        LastPressedTime = Now;
+        Event->MouseButton.Clicks = Clicks[Event->MouseButton.Button] + 1;
+        LastClickTime[Event->MouseButton.Button] = Now;
     }
     else
     {

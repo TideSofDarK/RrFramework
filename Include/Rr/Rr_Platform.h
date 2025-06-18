@@ -147,11 +147,11 @@ typedef uint16_t Rr_KeymodFlags;
 
 typedef enum Rr_MouseButton
 {
-    RR_MOUSE_BUTTON_LEFT = 1,
-    RR_MOUSE_BUTTON_MIDDLE = 2,
-    RR_MOUSE_BUTTON_RIGHT = 3,
-    RR_MOUSE_BUTTON_X1 = 4,
-    RR_MOUSE_BUTTON_X2 = 5
+    RR_MOUSE_BUTTON_LEFT = 0,
+    RR_MOUSE_BUTTON_MIDDLE = 1,
+    RR_MOUSE_BUTTON_RIGHT = 2,
+    RR_MOUSE_BUTTON_X1 = 3,
+    RR_MOUSE_BUTTON_X2 = 4
 } Rr_MouseButton;
 
 typedef enum Rr_MouseButtonFlagsBits
