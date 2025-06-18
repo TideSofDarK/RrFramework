@@ -67,7 +67,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     sprintf(DoubleClickTimeString, "%d", RR_DOUBLE_CLICK_TIME_MS);
     SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME, DoubleClickTimeString);
 
-    RR_LOG("Using GLFW platform library");
+    RR_LOG("Using SDL platform library");
 
     return true;
 }
