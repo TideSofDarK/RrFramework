@@ -101,11 +101,8 @@ bool Rr_IsScancodePressed(Rr_Scancode Scancode)
     return SDL_GetKeyboardState(NULL)[Scancode];
 }
 
-Rr_Vec2 Rr_GetMousePosition(void)
+static inline Rr_Vec2 Rr_SDLConvertMousePosition(Rr_Vec2 Scaled)
 {
-    Rr_Vec2 MousePosition;
-    SDL_GetMouseState(&MousePosition.X, &MousePosition.Y);
-
     Rr_IntVec2 WindowSize;
     SDL_GetWindowSize(gPlatform->Window, &WindowSize.X, &WindowSize.Y);
 
@@ -115,13 +112,21 @@ Rr_Vec2 Rr_GetMousePosition(void)
         &WindowSizeInPixels.X,
         &WindowSizeInPixels.Y);
 
-    MousePosition.X /= (float)WindowSize.X;
-    MousePosition.Y /= (float)WindowSize.Y;
+    Scaled.X /= (float)WindowSize.X;
+    Scaled.Y /= (float)WindowSize.Y;
 
-    MousePosition.X *= (float)WindowSizeInPixels.X;
-    MousePosition.Y *= (float)WindowSizeInPixels.Y;
+    Scaled.X *= (float)WindowSizeInPixels.X;
+    Scaled.Y *= (float)WindowSizeInPixels.Y;
 
-    return MousePosition;
+    return Scaled;
+}
+
+Rr_Vec2 Rr_GetMousePosition(void)
+{
+    Rr_Vec2 MousePosition;
+    SDL_GetMouseState(&MousePosition.X, &MousePosition.Y);
+
+    return Rr_SDLConvertMousePosition(MousePosition);
 }
 
 Rr_MouseButtonFlags Rr_GetMouseState(void)
@@ -136,6 +141,10 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
 
     switch (SDLEvent.type)
     {
+        case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+        {
+            return false;
+        }
         case SDL_EVENT_TEXT_INPUT:
         {
             Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
@@ -174,15 +183,17 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
         case SDL_EVENT_MOUSE_MOTION:
         {
             Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-            Event->MouseMotion.Position =
-                (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y };
+            Event->MouseMotion.Position = Rr_SDLConvertMousePosition(
+                (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y });
             return true;
         }
         case SDL_EVENT_MOUSE_WHEEL:
         {
             Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
-            Event->MouseMotion.Position =
-                (Rr_Vec2){ SDLEvent.wheel.mouse_x, SDLEvent.wheel.mouse_y };
+            Event->Wheel.Position = Rr_SDLConvertMousePosition(
+                (Rr_Vec2){ SDLEvent.wheel.mouse_x, SDLEvent.wheel.mouse_y });
+            Event->Wheel.Amount =
+                (Rr_Vec2){ SDLEvent.wheel.x, SDLEvent.wheel.y };
             return true;
         }
         case SDL_EVENT_MOUSE_BUTTON_UP:
