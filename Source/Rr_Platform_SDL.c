@@ -26,6 +26,8 @@
 
 #include <Rr/Rr_App.h>
 
+#include "Rr_Log.h"
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 
@@ -64,6 +66,8 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     char DoubleClickTimeString[32];
     sprintf(DoubleClickTimeString, "%d", RR_DOUBLE_CLICK_TIME_MS);
     SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME, DoubleClickTimeString);
+
+    RR_LOG("Using GLFW platform library");
 
     return true;
 }

@@ -396,6 +396,8 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         Rr_SetWindowSize(WindowSize);
     }
 
+    RR_LOG("Using GLFW platform library");
+
     return true;
 }
 
