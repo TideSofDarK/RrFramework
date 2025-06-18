@@ -164,6 +164,8 @@ typedef enum Rr_MouseButtonFlagsBits
 } Rr_MouseButtonFlagsBits;
 typedef uint32_t Rr_MouseButtonFlags;
 
+#define RR_DOUBLE_CLICK_TIME_MS (200)
+
 extern bool Rr_IsScancodePressed(Rr_Scancode Scancode);
 
 extern Rr_Vec2 Rr_GetMousePosition(void);

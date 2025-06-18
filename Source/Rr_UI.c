@@ -160,13 +160,16 @@ struct Rr_UIContext
     bool LeftMouseButtonDown : 1;
     bool LeftMouseButtonHeld : 1;
     bool LeftMouseButtonUp : 1;
+    uint8_t LeftMouseButtonClicks;
+    uint32_t LeftMouseButtonClickId;
+    bool MouseMoved : 1;
     Rr_Vec2 MousePosition;
     Rr_Vec2 MouseWheelDelta;
 
-    Rr_UIWindow *FocusWindow;
-    Rr_UIHash FocusHash;
-    Rr_UIWindow *PrevFocusWindow;
-    Rr_UIHash PrevFocusHash;
+    Rr_UIWindow *FocusedWindow;
+    Rr_UIHash FocusedWidgetHash;
+    Rr_UIWindow *PrevFocusedWindow;
+    Rr_UIHash PrevFocusedWidgetHash;
 
     Rr_UIDragOp DragOp;
     Rr_UIWindow *DragOpWindow;
@@ -182,6 +185,7 @@ struct Rr_UIContext
     size_t TextInputCursorEnd;
     size_t TextInputCursorMaxCol;
     uint64_t TextInputCursorBlinkTime;
+    uint32_t TextInputClickId;
     bool MouseOverTextInput : 1;
     RR_ARRAY(const char *) TextInputEvents;
     RR_ARRAY(char) TextInputBuffer;
@@ -1350,35 +1354,38 @@ static inline bool Rr_UIRectContains(
     return Rr_RectContains(&CurrentRect, Point) && Rr_RectContains(Rect, Point);
 }
 
-static inline void Rr_UISetFocus(Rr_UIWindow *Window, Rr_UIHash Hash)
-{
-    if (gUIContext->FocusWindow)
-    {
-        if (gUIContext->FocusWindow != Window || gUIContext->FocusHash != Hash)
-        {
-            gUIContext->PrevFocusWindow = gUIContext->FocusWindow;
-            gUIContext->PrevFocusHash = gUIContext->FocusHash;
-        }
-    }
-    gUIContext->FocusWindow = Window;
-    gUIContext->FocusHash = Hash;
-}
-
 static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
-    return gUIContext->FocusWindow == Window && gUIContext->FocusHash == Hash;
+    return gUIContext->FocusedWindow == Window &&
+           gUIContext->FocusedWidgetHash == Hash;
 }
 
 static inline bool Rr_UIWasFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
-    bool Result = gUIContext->PrevFocusWindow == Window &&
-                  gUIContext->PrevFocusHash == Hash;
+    bool Result = gUIContext->PrevFocusedWindow == Window &&
+                  gUIContext->PrevFocusedWidgetHash == Hash;
     if (Result)
     {
-        gUIContext->PrevFocusWindow = NULL;
+        gUIContext->PrevFocusedWindow = NULL;
     }
 
     return Result;
+}
+
+static inline void Rr_UISetFocus(Rr_UIWindow *Window, Rr_UIHash Hash)
+{
+    if (Rr_UIIsFocused(Window, Hash))
+    {
+        return;
+    }
+    if (gUIContext->FocusedWindow != Window ||
+        gUIContext->FocusedWidgetHash != Hash)
+    {
+        gUIContext->PrevFocusedWindow = gUIContext->FocusedWindow;
+        gUIContext->PrevFocusedWidgetHash = gUIContext->FocusedWidgetHash;
+    }
+    gUIContext->FocusedWindow = Window;
+    gUIContext->FocusedWidgetHash = Hash;
 }
 
 static inline bool Rr_UIScrollBehavior(
@@ -1477,12 +1484,11 @@ static inline bool Rr_UIDragBehavior(
         *Began = false;
     }
 
-    /* Two things to note:
-     * 1) Dragging resize handle also overlaps with moving and scrolling. Take
-     * that into accoutn and override current drag opertion.
-     * Watch out for Rr_DragBehavior() order!
-     * 2) Faster mouse movements may actually result in
-     * Contains == false while the drag operation is still going. */
+    /* NOTE: Dragging resize handle also overlaps with moving and scrolling.
+     * Take that into accoutn and override current drag opertion. Watch out for
+     * Rr_DragBehavior() order!
+     * Also, faster mouse movements may actually result in Contains == false
+     * while the drag operation is still going. */
 
     if (Contains && gUIContext->LeftMouseButtonDown &&
         (gUIContext->DragOpWindow == NULL ||
@@ -1506,7 +1512,7 @@ static inline bool Rr_UIDragBehavior(
     {
         if (gUIContext->LeftMouseButtonHeld)
         {
-            return true;
+            return gUIContext->MouseMoved;
         }
         else
         {
@@ -3232,7 +3238,8 @@ static bool Rr_UIEditUTF8Buffer(
     return ChangesConfirmed;
 }
 
-/* Generic input field widget allows us to combine it with other widgets. */
+/* NOTE: Generic input field is a building block for other widgets. It doesn't
+ * alter the layout on its own. */
 static inline bool Rr_UIGenericInputField(
     Rr_UIHash Hash,
     Rr_Vec2 Offset,
@@ -3253,16 +3260,16 @@ static inline bool Rr_UIGenericInputField(
     bool UsePersistentBuffer =
         RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
 
-    bool Active = Rr_UIIsFocused(Window, Hash);
-    bool WasActive = !Active && Rr_UIWasFocused(Window, Hash);
+    bool Focused = Rr_UIIsFocused(Window, Hash);
+    bool WasFocused = !Focused && Rr_UIWasFocused(Window, Hash);
 
     Rr_Vec2 BufferPosition = Rr_AddV2(Offset, gUIContext->ButtonPadding);
     size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
     Rr_Vec2 BufferSize = Rr_UIDrawInputText(
-        UsePersistentBuffer && (Active || WasActive)
+        UsePersistentBuffer && (Focused || WasFocused)
             ? gUIContext->TextInputBuffer.Data
             : Buffer,
-        Active,
+        Focused,
         BufferPosition,
         gUIContext->TextInputCursorBegin,
         &NewCursorEnd,
@@ -3271,7 +3278,7 @@ static inline bool Rr_UIGenericInputField(
 
     if (BufferSize.X == 0.0f)
     {
-        if (Placeholder != NULL && !Active)
+        if (Placeholder != NULL && !Focused)
         {
             BufferSize = Rr_UIDrawText(
                 false,
@@ -3316,17 +3323,64 @@ static inline bool Rr_UIGenericInputField(
             &Hovered,
             &Began);
 
+    bool Autoselect = RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT);
+
     if (Began)
     {
-        gUIContext->TextInputCursorBegin = NewCursorEnd;
-        gUIContext->TextInputCursorEnd = NewCursorEnd;
+        size_t BufferLength = strlen(Buffer);
+
+        if (Autoselect && !Focused && !WasFocused)
+        {
+            /* Select all on first click. */
+
+            gUIContext->TextInputCursorBegin = 0;
+            gUIContext->TextInputCursorEnd = BufferLength;
+            gUIContext->TextInputClickId = gUIContext->LeftMouseButtonClickId;
+        }
+        else
+        {
+            uint8_t Clicks = (gUIContext->LeftMouseButtonClicks - 1) % 3;
+            if (Clicks == 2)
+            {
+                /* Select whole line. */
+
+                gUIContext->TextInputCursorBegin =
+                    Rr_UILineStart(Buffer, NewCursorEnd);
+                gUIContext->TextInputCursorEnd =
+                    Rr_UILineEnd(Buffer, NewCursorEnd);
+            }
+            else if (Clicks == 1)
+            {
+                /* Select word under cursor. */
+
+                if (!(NewCursorEnd > 0 && Buffer[NewCursorEnd - 1] == ' '))
+                {
+                    gUIContext->TextInputCursorBegin =
+                        Rr_PreviousUTF8WordOffset(Buffer, NewCursorEnd);
+                }
+                gUIContext->TextInputCursorEnd = Rr_LastUTF8CharInWordOffset(
+                    Buffer,
+                    gUIContext->TextInputCursorBegin);
+
+                gUIContext->TextInputCursorEnd = RR_CLAMP(
+                    gUIContext->TextInputCursorBegin,
+                    gUIContext->TextInputCursorEnd,
+                    BufferCapacity);
+            }
+            else if (Clicks == 0)
+            {
+                gUIContext->TextInputCursorBegin = NewCursorEnd;
+                gUIContext->TextInputCursorEnd = NewCursorEnd;
+            }
+        }
+
         gUIContext->TextInputCursorMaxCol =
-            Rr_UIThisLineCol(Buffer, NewCursorEnd);
+            Rr_UIThisLineCol(Buffer, gUIContext->TextInputCursorEnd);
 
         /* NOTE: A bit hacky way to make sure initial memcpy to persistent
          * buffer occurs only once. */
 
-        if (UsePersistentBuffer && !Active && !WasActive)
+        if (UsePersistentBuffer && !Focused && !WasFocused)
         {
             /* NOTE: May waste quite a bit of memory. */
             if (gUIContext->TextInputBuffer.Capacity < BufferCapacity ||
@@ -3336,13 +3390,17 @@ static inline bool Rr_UIGenericInputField(
                     RR_ALLOC_NO_ZERO(gUIContext->Arena, BufferCapacity);
                 gUIContext->TextInputBuffer.Capacity = BufferCapacity;
             }
-            memcpy(gUIContext->TextInputBuffer.Data, Buffer, BufferCapacity);
+            memcpy(gUIContext->TextInputBuffer.Data, Buffer, BufferLength + 1);
         }
     }
-    else if (Active && Dragging)
+    else if (Focused && Dragging)
     {
-        gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
-        gUIContext->TextInputCursorEnd = NewCursorEnd;
+        if (!Autoselect ||
+            gUIContext->LeftMouseButtonClickId > gUIContext->TextInputClickId)
+        {
+            gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
+            gUIContext->TextInputCursorEnd = NewCursorEnd;
+        }
     }
 
     if (Hovered)
@@ -3352,7 +3410,7 @@ static inline bool Rr_UIGenericInputField(
 
     bool ChangesConfirmed = false;
 
-    if (Active)
+    if (Focused)
     {
         ChangesConfirmed = Rr_UIEditUTF8Buffer(
             &gUIContext->TextInputCursorBegin,
@@ -3363,12 +3421,12 @@ static inline bool Rr_UIGenericInputField(
             !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT));
         if (ChangesConfirmed)
         {
-            gUIContext->FocusWindow = NULL;
+            gUIContext->FocusedWindow = NULL;
         }
     }
     else
     {
-        ChangesConfirmed |= WasActive;
+        ChangesConfirmed |= WasFocused;
     }
 
     if (ChangesConfirmed && UsePersistentBuffer)
@@ -3475,10 +3533,11 @@ bool Rr_UIInputFloat(const char *Title, float *Value)
         Buffer,
         NULL,
         Rr_UIFloatFilter,
-        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
+        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
+            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT);
     if (Changed)
     {
-        sscanf(Buffer, "%f", Value);
+        sscanf(Buffer, "%g", Value);
     }
     return Changed;
 }
@@ -3490,8 +3549,14 @@ static inline bool Rr_UIInputFloatMulti(
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
     size_t Length = 1 + strlen(Title) + 3 + 2;
     bool Edited = false;
+
+    Rr_Vec2 Cursor = Layout->Cursor;
+    Rr_Vec2 TotalSize = { 0 };
 
     Rr_UIBeginHorizontal();
     const char *Titles[] = { "X", "Y", "Z", "W" };
@@ -3505,9 +3570,46 @@ static inline bool Rr_UIInputFloatMulti(
             Titles[Index],
             Title,
             Index);
-        Edited |= Rr_UIInputFloat(CurrentTitle, &Values[Index]);
+        size_t CurrentTitleLength;
+        Rr_UIHash CurrentHash = Rr_UIGetTitleHash(CurrentTitle, NULL);
+        char Buffer[64];
+        snprintf(Buffer, 64, "%.2f", Values[Index]);
+        Rr_Vec2 FieldExtent;
+        Edited |= Rr_UIGenericInputField(
+            CurrentHash,
+            Cursor,
+            64,
+            Buffer,
+            NULL,
+            Rr_UIFloatFilter,
+            RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
+                RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT,
+            &FieldExtent);
+        if (Edited)
+        {
+            sscanf(Buffer, "%g", &Values[Index]);
+        }
+        TotalSize.Width += FieldExtent.Width;
+        TotalSize.Height = RR_MAX(TotalSize.Height, FieldExtent.Height);
+        Cursor.X += FieldExtent.Width;
+        Cursor.X += gUIContext->BevelThickness * 2.0f;
     }
     Rr_UIEndHorizontal();
+
+    Cursor = Rr_AddV2(Cursor, gUIContext->ButtonPadding);
+
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        Cursor,
+        strlen(Title),
+        Title,
+        0,
+        &gUIContext->Style.Foreground,
+        0);
+
+    TotalSize.Width += TitleSize.Width;
+
+    Rr_UIAdvance(TotalSize);
 
     Rr_DestroyScratch(Scratch);
 
@@ -3570,7 +3672,8 @@ bool Rr_UIInputInt(const char *Title, int32_t *Value)
         Buffer,
         NULL,
         Rr_UIIntegerFilter,
-        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
+        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
+            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT);
     if (Changed)
     {
         sscanf(Buffer, "%d", Value);
@@ -4357,6 +4460,7 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
         {
             if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
+                gUIContext->LeftMouseButtonClicks = Event->MouseButton.Clicks;
                 gUIContext->LeftMouseButtonDown = true;
                 gUIContext->LeftMouseButtonHeld = true;
             }
@@ -4368,11 +4472,14 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
             {
                 gUIContext->LeftMouseButtonUp = true;
                 gUIContext->LeftMouseButtonHeld = false;
+                gUIContext->LeftMouseButtonClickId++;
             }
         }
         break;
         case RR_EVENT_TYPE_MOUSE_MOTION:
         {
+            gUIContext->MouseMoved = true;
+            gUIContext->MousePosition = Event->MouseMotion.Position;
         }
         break;
         case RR_EVENT_TYPE_MOUSE_WHEEL:
@@ -4447,7 +4554,6 @@ void Rr_BeginUI(void)
 {
     Rr_UIConsumeNextFontSize();
 
-    gUIContext->MousePosition = Rr_GetMousePosition();
     if (gUIContext->SkipLeftMouseButtonUp && gUIContext->LeftMouseButtonUp)
     {
         gUIContext->SkipLeftMouseButtonUp = false;
@@ -4651,6 +4757,8 @@ void Rr_EndUI(void)
         gUIContext->LeftMouseButtonHeld = false;
         gUIContext->LeftMouseButtonDownOverWindow = false;
     }
+    gUIContext->MouseMoved = false;
+    gUIContext->LeftMouseButtonClicks = 0;
     gUIContext->LeftMouseButtonDown = false;
     gUIContext->LeftMouseButtonUp = false;
     gUIContext->MouseWheelDelta = Rr_V2F(0.0f);

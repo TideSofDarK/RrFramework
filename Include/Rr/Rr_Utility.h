@@ -356,6 +356,18 @@ static inline size_t Rr_NextUTF8WordOffset(
     return CurrentOffset;
 }
 
+static inline size_t Rr_LastUTF8CharInWordOffset(
+    const char *CString,
+    size_t CurrentOffset)
+{
+    while (CString[CurrentOffset] != '\0' && CString[CurrentOffset] != '\n' &&
+           CString[CurrentOffset] != ' ')
+    {
+        CurrentOffset++;
+    }
+    return CurrentOffset;
+}
+
 static inline size_t Rr_PreviousUTF8LFOffset(
     const char *CString,
     size_t CurrentOffset)

@@ -67,7 +67,16 @@ static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
     Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
     Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-    Event->MouseMotion.Position = (Rr_Vec2){ (float)X, (float)Y };
+    if (gPlatform->WindowScaled)
+    {
+        Event->MouseMotion.Position =
+            (Rr_Vec2){ (float)X * gPlatform->WindowScale.X,
+                       (float)Y * gPlatform->WindowScale.Y };
+    }
+    else
+    {
+        Event->MouseMotion.Position = (Rr_Vec2){ (float)X, (float)Y };
+    }
 }
 
 static const Rr_Scancode GLFWScancodes[GLFW_KEY_LAST + 1] = {
@@ -241,7 +250,27 @@ static void Rr_GLFWMouseButtonCallback(
             Event->MouseButton.Button = UINT8_MAX;
             break;
     }
-    Event->MouseButton.Clicks = 1;
+    static uint8_t Clicks;
+    if (Action == GLFW_PRESS)
+    {
+        static uint64_t LastPressedTime;
+        uint64_t Now = Rr_GetTimeMS();
+        uint64_t Diff = Now - LastPressedTime;
+        if (Diff < RR_DOUBLE_CLICK_TIME_MS)
+        {
+            Clicks++;
+        }
+        else
+        {
+            Clicks = 0;
+        }
+        Event->MouseButton.Clicks = Clicks + 1;
+        LastPressedTime = Now;
+    }
+    else
+    {
+        Event->MouseButton.Clicks = 1;
+    }
 }
 
 static inline void Rr_CodepointToUTF8(uint32_t Codepoint, char Buffer[5])
@@ -325,7 +354,6 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     /* NOTE: glfwGetWindowContentScale wouldn't return correct value if
      * GLFW_VISIBLE is set to false. */
     /* glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); */
-    /* glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE); */
     glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_TRUE);
     glfwWindowHint(
         GLFW_RESIZABLE,

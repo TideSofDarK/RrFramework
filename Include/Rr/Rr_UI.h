@@ -106,6 +106,7 @@ typedef enum
 {
     RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT = (1 << 0),
     RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT = (1 << 1),
+    RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT = (1 << 2),
 } Rr_UIInputFieldFlagsBits;
 typedef uint32_t Rr_UIInputFieldFlags;
 

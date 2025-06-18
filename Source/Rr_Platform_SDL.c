@@ -61,6 +61,10 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED);
 
+    char DoubleClickTimeString[32];
+    sprintf(DoubleClickTimeString, "%d", RR_DOUBLE_CLICK_TIME_MS);
+    SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME, DoubleClickTimeString);
+
     return true;
 }
 
