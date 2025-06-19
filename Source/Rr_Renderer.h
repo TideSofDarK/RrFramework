@@ -33,6 +33,8 @@
 #include "Rr_Pipeline.h"
 #include "Rr_Vulkan.h"
 
+#include <xxHash/xxhash.h>
+
 typedef enum
 {
     RR_RENDERER_OBJECT_TYPE_BUFFER,
@@ -126,12 +128,46 @@ extern void Rr_MarkGraphicsPipelineUsed(
     Rr_Frame *Frame,
     Rr_GraphicsPipeline *GraphicsPipeline);
 
-typedef struct Rr_CachedFramebuffer Rr_Framebuffer;
-struct Rr_CachedFramebuffer
+/* NOTE: To pass various attachment configurations around we use the following
+ * order of image views:
+ * 1) N color attachments
+ * 2) M resolve attachments
+ * 3) Depth/stencil attachment
+ * M must be less or equal to N. Depth/stencil attachment may not be present. */
+
+typedef struct Rr_FramebufferMapKey Rr_FramebufferMapKey;
+struct Rr_FramebufferMapKey
 {
-    VkFramebuffer Handle;
-    uint32_t Hash;
+    VkExtent3D Extent;
+    uint8_t ColorAttachmentCount;
+    uint8_t ResolveAttachmentCount;
+    bool DepthStencil : 1;
+    VkImageView ImageViews[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
 };
+
+typedef struct Rr_FramebufferMap Rr_FramebufferMap;
+struct Rr_FramebufferMap
+{
+    Rr_FramebufferMapKey Key;
+    VkFramebuffer Value;
+    Rr_FramebufferMap *Children[4];
+};
+
+#define RR_HIVE_TYPE      Rr_FramebufferMap
+#define RR_HIVE_TYPE_NAME FramebufferMap
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+typedef struct Rr_FramebufferStorage Rr_FramebufferStorage;
+struct Rr_FramebufferStorage
+{
+    Rr_FramebufferMap *Map;
+    Rr_FramebufferMapHive Hive;
+};
+
+extern VkFramebuffer Rr_GetVulkanFramebuffer(
+    VkRenderPass RenderPass,
+    Rr_FramebufferMapKey *Key);
 
 typedef struct Rr_CachedRenderPass Rr_RenderPass;
 struct Rr_CachedRenderPass
@@ -164,8 +200,8 @@ struct Rr_Renderer
     size_t FrameIndex;  /* Current frame-in-flight index. */
     size_t FrameNumber; /* Total frames rendered. */
 
+    Rr_FramebufferStorage FramebufferStorage;
     RR_ARRAY(Rr_RenderPass) RenderPasses;
-    RR_ARRAY(Rr_Framebuffer) Framebuffers;
     RR_ARRAY(Rr_DescriptorSetLayout) DescriptorSetLayouts;
 
     Rr_ImmediateMode ImmediateMode;
@@ -226,12 +262,6 @@ struct Rr_RenderPassInfo
 };
 
 extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info);
-
-extern VkFramebuffer Rr_GetVulkanFramebuffer(
-    VkRenderPass RenderPass,
-    VkImageView *ImageViews,
-    size_t ImageViewCount,
-    VkExtent3D Extent);
 
 extern Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key);
 

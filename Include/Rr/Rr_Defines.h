@@ -123,6 +123,7 @@ struct Rr_Data
 #define RR_MAX_OBJECTS                  128
 #define RR_FRAME_OVERLAP                2
 #define RR_STAGING_BUFFER_SIZE          RR_MEGABYTES(16)
+#define RR_MAX_COLOR_ATTACHMENTS        4
 
 /* Arenas */
 

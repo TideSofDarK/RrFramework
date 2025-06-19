@@ -4903,7 +4903,10 @@ void Rr_UIDebugOverlay(void)
                 gRenderer->Samplers.Count,
                 gRenderer->Samplers.Capacity);
             Rr_UILabelF("RenderPasses: %zu", gRenderer->RenderPasses.Count);
-            Rr_UILabelF("Framebuffers: %zu", gRenderer->Framebuffers.Count);
+            Rr_UILabelF(
+                "Framebuffers: %zu/%zu",
+                gRenderer->FramebufferStorage.Hive.Count,
+                gRenderer->FramebufferStorage.Hive.Capacity);
             Rr_UILabelF(
                 "SwapchainImages: %zu",
                 gRenderer->SwapchainImages.Count);

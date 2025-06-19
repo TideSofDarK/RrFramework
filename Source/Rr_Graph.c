@@ -403,15 +403,22 @@ static void Rr_ExecuteGraphicsNode(
         .Attachments = Attachments,
     };
     VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassInfo);
-    VkFramebuffer Framebuffer = Rr_GetVulkanFramebuffer(
-        RenderPass,
+    Rr_FramebufferMapKey Key = {
+        .Extent =
+            (VkExtent3D){
+                .width = Viewport.Width,
+                .height = Viewport.Height,
+                .depth = 1,
+            },
+        .ColorAttachmentCount = Node->ColorTargetCount,
+        .ResolveAttachmentCount = 0,
+        .DepthStencil = Node->DepthTarget != NULL,
+    };
+    memcpy(
+        &Key.ImageViews[0],
         ImageViews,
-        AttachmentCount,
-        (VkExtent3D){
-            .width = Viewport.Width,
-            .height = Viewport.Height,
-            .depth = 1,
-        });
+        AttachmentCount * sizeof(VkImageView));
+    VkFramebuffer Framebuffer = Rr_GetVulkanFramebuffer(RenderPass, &Key);
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,

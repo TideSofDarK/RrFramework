@@ -25,6 +25,7 @@
 #include "Rr_Platform.h"
 
 #include "Rr_App.h"
+#include "Rr_Log.h"
 
 #include "stdlib.h"
 
@@ -60,14 +61,17 @@ void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
             return;
         }
         while (atomic_load_explicit(Spinlock, memory_order_relaxed))
-            ;
+        {
+        }
     }
 }
 
 bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock)
 {
-    return !atomic_load_explicit(Spinlock, memory_order_relaxed) &&
-           !atomic_exchange_explicit(Spinlock, true, memory_order_acquire);
+    bool Locked =
+        !atomic_load_explicit(Spinlock, memory_order_relaxed) &&
+        !atomic_exchange_explicit(Spinlock, true, memory_order_acquire);
+    return Locked;
 }
 
 void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock)

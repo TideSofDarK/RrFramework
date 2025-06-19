@@ -813,13 +813,13 @@ void Rr_CleanupRenderer(void)
             NULL);
     }
 
-    for (size_t Index = 0; Index < gRenderer->Framebuffers.Count; ++Index)
-    {
-        Device->DestroyFramebuffer(
-            Device->Handle,
-            gRenderer->Framebuffers.Data[Index].Handle,
-            NULL);
-    }
+    /* for (size_t Index = 0; Index < gRenderer->Framebuffers.Count; ++Index) */
+    /* { */
+    /*     Device->DestroyFramebuffer( */
+    /*         Device->Handle, */
+    /*         gRenderer->Framebuffers.Data[Index].Handle, */
+    /*         NULL); */
+    /* } */
 
     Rr_CleanupFrames();
 
@@ -1370,69 +1370,61 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info)
 
 VkFramebuffer Rr_GetVulkanFramebuffer(
     VkRenderPass RenderPass,
-    VkImageView *ImageViews,
-    size_t ImageViewCount,
-    VkExtent3D Extent)
+    Rr_FramebufferMapKey *Key)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+    VkFramebuffer *FramebufferRef = NULL;
 
-    size_t QuerySize = sizeof(VkImageView) * ImageViewCount +
-                       sizeof(VkExtent3D) + sizeof(VkRenderPass);
-    void *Query = RR_ALLOC(Scratch.Arena, QuerySize);
-    memcpy(Query, ImageViews, sizeof(VkImageView) * ImageViewCount);
-    memcpy(
-        ((char *)Query) + sizeof(VkImageView) * ImageViewCount,
-        &Extent,
-        sizeof(VkExtent3D));
-    memcpy(
-        ((char *)Query) + sizeof(VkImageView) * ImageViewCount + sizeof(Extent),
-        &RenderPass,
-        sizeof(VkRenderPass));
+    Rr_LockSpinlock(&gRenderer->Lock);
 
-    uint32_t Hash = XXH32(Query, QuerySize, 0);
-
-    VkFramebuffer Framebuffer = VK_NULL_HANDLE;
-
-    for (size_t Index = 0; Index < gRenderer->Framebuffers.Count; ++Index)
+    Rr_FramebufferMap **Map = &gRenderer->FramebufferStorage.Map;
+    for (uint64_t Hash = XXH64(Key, sizeof(*Key), 0); *Map; Hash <<= 2)
     {
-        Rr_Framebuffer *CachedFramebuffer =
-            gRenderer->Framebuffers.Data + Index;
-
-        if (CachedFramebuffer->Hash == Hash)
+        if (memcmp(Key, &(*Map)->Key, sizeof(*Key)) == 0)
         {
-            return CachedFramebuffer->Handle;
+            FramebufferRef = &(*Map)->Value;
+
+            goto Found;
         }
+        Map = &(*Map)->Children[Hash >> 62];
     }
+    *Map = Rr_PushFramebufferMapIntoHive(
+               &gRenderer->FramebufferStorage.Hive,
+               gRenderer->Arena)
+               .Element;
+    (*Map)->Key = *Key;
+    RR_ZERO_PTR(&(*Map)->Value);
+    RR_ZERO_PTR((*Map)->Children);
+    FramebufferRef = &(*Map)->Value;
+
+Found:
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
+    if (*FramebufferRef)
+    {
+        return *FramebufferRef;
+    }
+
+    uint32_t AttachmentCount = Key->ColorAttachmentCount +
+                               Key->ResolveAttachmentCount +
+                               (uint32_t)Key->DepthStencil;
 
     VkFramebufferCreateInfo CreateInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
         .renderPass = RenderPass,
-        .height = Extent.height,
-        .width = Extent.width,
-        .layers = Extent.depth,
-        .attachmentCount = (uint32_t)ImageViewCount,
-        .pAttachments = ImageViews,
+        .width = Key->Extent.width,
+        .height = Key->Extent.height,
+        .layers = Key->Extent.depth,
+        .attachmentCount = AttachmentCount,
+        .pAttachments = Key->ImageViews,
     };
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Device->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, &Framebuffer);
+    Device
+        ->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, FramebufferRef);
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Framebuffers, gRenderer->Arena) =
-        (Rr_Framebuffer){
-            .Handle = Framebuffer,
-            .Hash = Hash,
-        };
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
-
-    Rr_DestroyScratch(Scratch);
-
-    return Framebuffer;
+    return *FramebufferRef;
 }
 
 Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key)

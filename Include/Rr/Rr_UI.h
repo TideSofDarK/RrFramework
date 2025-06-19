@@ -154,25 +154,15 @@ extern bool Rr_UIInputText(
     size_t BufferCapacity,
     char *Buffer);
 
-extern bool Rr_UIInputFloat(
-    const char *Title,
-    float *Value);
+extern bool Rr_UIInputFloat(const char *Title, float *Value);
 
-extern bool Rr_UIInputFloat2(
-    const char *Title,
-    float *Values);
+extern bool Rr_UIInputFloat2(const char *Title, float *Values);
 
-extern bool Rr_UIInputFloat3(
-    const char *Title,
-    float *Values);
+extern bool Rr_UIInputFloat3(const char *Title, float *Values);
 
-extern bool Rr_UIInputFloat4(
-    const char *Title,
-    float *Values);
+extern bool Rr_UIInputFloat4(const char *Title, float *Values);
 
-extern bool Rr_UIInputInt(
-    const char *Title,
-    int32_t *Value);
+extern bool Rr_UIInputInt(const char *Title, int32_t *Value);
 
 extern bool Rr_UICombobox(
     const char *Title,
