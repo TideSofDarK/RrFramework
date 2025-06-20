@@ -11,6 +11,7 @@ struct SUniformData
     Rr_Mat4 Model;
     Rr_Mat4 View;
     Rr_Mat4 Projection;
+    float Time;
 };
 
 static Rr_LoadThread *LoadThread;
@@ -201,6 +202,7 @@ static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
     UniformData.Model = Rr_MulM4(
         UniformData.Model,
         Rr_Rotate_LH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }));
+    UniformData.Time = (float)Rr_GetTimeSeconds();
 
     memcpy(
         Rr_GetMappedBufferData(StagingBuffer),

@@ -1411,32 +1411,32 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_FramebufferMap **Map = &gRenderer->FramebufferStorage.Map;
-    for (uint64_t Hash = XXH64(Key, sizeof(*Key), 0); *Map; Hash <<= 2)
+    Rr_FramebufferMap **MapRef = &gRenderer->FramebufferStorage.Map;
+    for (uint64_t Hash = XXH64(Key, sizeof(*Key), 0); *MapRef; Hash <<= 2)
     {
-        if ((*Map)->Value == VK_NULL_HANDLE)
+        if ((*MapRef)->Value == VK_NULL_HANDLE)
         {
-            (*Map)->Key = *Key;
-            FramebufferRef = &(*Map)->Value;
+            (*MapRef)->Key = *Key;
+            FramebufferRef = &(*MapRef)->Value;
 
             goto Found;
         }
-        else if (memcmp(Key, &(*Map)->Key, sizeof(*Key)) == 0)
+        else if (memcmp(Key, &(*MapRef)->Key, sizeof(*Key)) == 0)
         {
-            FramebufferRef = &(*Map)->Value;
+            FramebufferRef = &(*MapRef)->Value;
 
             goto Found;
         }
-        Map = &(*Map)->Children[Hash >> 62];
+        MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *Map = Rr_PushFramebufferMapIntoHive(
-               &gRenderer->FramebufferStorage.Hive,
-               gRenderer->Arena)
-               .Element;
-    (*Map)->Key = *Key;
-    (*Map)->Value = VK_NULL_HANDLE;
-    RR_ZERO_PTR((*Map)->Children);
-    FramebufferRef = &(*Map)->Value;
+    *MapRef = Rr_PushFramebufferMapIntoHive(
+                  &gRenderer->FramebufferStorage.Hive,
+                  gRenderer->Arena)
+                  .Element;
+    (*MapRef)->Key = *Key;
+    (*MapRef)->Value = VK_NULL_HANDLE;
+    RR_ZERO_PTR((*MapRef)->Children);
+    FramebufferRef = &(*MapRef)->Value;
 
 Found:
 

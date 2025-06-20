@@ -104,33 +104,6 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
     Rr_RemoveFromSamplerHive(&gRenderer->Samplers, &It);
 }
 
-static inline Rr_ImageView *Rr_FindInImageViewMap(
-    Rr_ImageViewStorage *Storage,
-    Rr_ImageViewKey *Key)
-{
-    Rr_ImageViewMap **MapRef = &Storage->Map;
-    for (uint64_t Hash = XXH64(Key, sizeof(Rr_ImageViewKey), 0); *MapRef;
-         Hash <<= 2)
-    {
-        if (memcmp(&(*MapRef)->Key, Key, sizeof(Rr_ImageViewKey)) == 0)
-        {
-            return &(*MapRef)->Value;
-        }
-        MapRef = &(*MapRef)->Children[Hash >> 62];
-    }
-
-    Rr_LockSpinlock(&gRenderer->Lock);
-
-    *MapRef =
-        Rr_PushImageViewMapIntoHive(&Storage->Hive, gRenderer->Arena).Element;
-    RR_ZERO_PTR(*MapRef);
-    (*MapRef)->Key = *Key;
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
-
-    return &(*MapRef)->Value;
-}
-
 Rr_ImageViewStorage *Rr_CreateImageViewStorage(void)
 {
     Rr_LockSpinlock(&gRenderer->Lock);
@@ -170,11 +143,45 @@ Rr_ImageView *Rr_GetVulkanImageView(
     Rr_AllocatedImage *AllocatedImage,
     Rr_ImageViewKey *Key)
 {
-    Rr_ImageView *Result =
-        Rr_FindInImageViewMap(AllocatedImage->ViewStorage, Key);
-    if (Result->Handle != VK_NULL_HANDLE)
+    Rr_ImageView *ImageViewRef = NULL;
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_ImageViewMap **MapRef = &AllocatedImage->ViewStorage->Map;
+    for (uint64_t Hash = XXH64(Key, sizeof(Rr_ImageViewKey), 0); *MapRef;
+         Hash <<= 2)
     {
-        return Result;
+        if ((*MapRef)->Value.Handle == VK_NULL_HANDLE)
+        {
+            (*MapRef)->Key = *Key;
+            ImageViewRef = &(*MapRef)->Value;
+
+            goto Found;
+        }
+        else if (memcmp(&(*MapRef)->Key, Key, sizeof(Rr_ImageViewKey)) == 0)
+        {
+            ImageViewRef = &(*MapRef)->Value;
+
+            goto Found;
+        }
+        MapRef = &(*MapRef)->Children[Hash >> 62];
+    }
+    *MapRef = Rr_PushImageViewMapIntoHive(
+                  &AllocatedImage->ViewStorage->Hive,
+                  gRenderer->Arena)
+                  .Element;
+    (*MapRef)->Key = *Key;
+    RR_ZERO((*MapRef)->Value);
+    RR_ZERO_PTR((*MapRef)->Children);
+    ImageViewRef = &(*MapRef)->Value;
+
+Found:
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
+    if (ImageViewRef->Handle != VK_NULL_HANDLE)
+    {
+        return ImageViewRef;
     }
 
     Rr_Device *Device = &gRenderer->Device;
@@ -191,9 +198,9 @@ Rr_ImageView *Rr_GetVulkanImageView(
         Device->Handle,
         &ImageViewCreateInfo,
         NULL,
-        &Result->Handle);
+        &ImageViewRef->Handle);
 
-    return Result;
+    return ImageViewRef;
 }
 
 void Rr_UploadStagingImage2D(
