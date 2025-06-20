@@ -174,7 +174,7 @@ static void Rr_ExecuteComputeNode(
                 Rr_BindSampledImageArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_FetchImageView(
+                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -199,7 +199,7 @@ static void Rr_ExecuteComputeNode(
                 Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_FetchImageView(
+                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -267,7 +267,7 @@ static void Rr_ExecuteComputeNode(
                 Rr_BindStorageImageArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_FetchImageView(
+                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -337,7 +337,7 @@ static void Rr_ExecuteGraphicsNode(
             .Format = ColorImage->Container->Format,
         };
         ImageViews[ColorTarget->Slot] =
-            Rr_FetchImageView(
+            Rr_GetVulkanImageView(
                 ColorImage,
                 &(Rr_ImageViewKey){
                     .SubresourceRange =
@@ -373,7 +373,7 @@ static void Rr_ExecuteGraphicsNode(
             .Format = DepthImage->Container->Format,
         };
         ImageViews[DepthIndex] =
-            Rr_FetchImageView(
+            Rr_GetVulkanImageView(
                 DepthImage,
                 &(Rr_ImageViewKey){
                     .SubresourceRange =
@@ -618,7 +618,7 @@ static void Rr_ExecuteGraphicsNode(
                 Rr_BindSampledImageArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_FetchImageView(
+                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -643,7 +643,7 @@ static void Rr_ExecuteGraphicsNode(
                 Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_FetchImageView(
+                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,

@@ -1368,6 +1368,41 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info)
     return RenderPass;
 }
 
+void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    for (Rr_FramebufferMapHiveIterator It =
+             gRenderer->FramebufferStorage.Hive.Begin;
+         It.Element != gRenderer->FramebufferStorage.Hive.End.Element;)
+    {
+        Rr_FramebufferMap *Map = It.Element;
+        if (Map->Value != VK_NULL_HANDLE)
+        {
+            bool Destroy = false;
+            size_t Boundary = Map->Key.ColorAttachmentCount +
+                              Map->Key.ResolveAttachmentCount +
+                              (size_t)Map->Key.DepthStencil;
+            for (size_t Index = 0; Index < Boundary; ++Index)
+            {
+                if (Map->Key.ImageViews[Index] == ImageView)
+                {
+                    Destroy = true;
+                    break;
+                }
+            }
+
+            if (Destroy)
+            {
+                Device->DestroyFramebuffer(Device->Handle, Map->Value, NULL);
+                Map->Value = VK_NULL_HANDLE;
+            }
+        }
+
+        Rr_AdvanceFramebufferMapHiveIterator(&It);
+    }
+}
+
 VkFramebuffer Rr_GetVulkanFramebuffer(
     VkRenderPass RenderPass,
     Rr_FramebufferMapKey *Key)
@@ -1379,7 +1414,14 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
     Rr_FramebufferMap **Map = &gRenderer->FramebufferStorage.Map;
     for (uint64_t Hash = XXH64(Key, sizeof(*Key), 0); *Map; Hash <<= 2)
     {
-        if (memcmp(Key, &(*Map)->Key, sizeof(*Key)) == 0)
+        if ((*Map)->Value == VK_NULL_HANDLE)
+        {
+            (*Map)->Key = *Key;
+            FramebufferRef = &(*Map)->Value;
+
+            goto Found;
+        }
+        else if (memcmp(Key, &(*Map)->Key, sizeof(*Key)) == 0)
         {
             FramebufferRef = &(*Map)->Value;
 
@@ -1392,7 +1434,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
                gRenderer->Arena)
                .Element;
     (*Map)->Key = *Key;
-    RR_ZERO_PTR(&(*Map)->Value);
+    (*Map)->Value = VK_NULL_HANDLE;
     RR_ZERO_PTR((*Map)->Children);
     FramebufferRef = &(*Map)->Value;
 
@@ -1400,7 +1442,7 @@ Found:
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    if (*FramebufferRef)
+    if (*FramebufferRef != VK_NULL_HANDLE)
     {
         return *FramebufferRef;
     }

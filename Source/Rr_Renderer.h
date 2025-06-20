@@ -165,6 +165,8 @@ struct Rr_FramebufferStorage
     Rr_FramebufferMapHive Hive;
 };
 
+extern void Rr_DestroyVulkanFramebuffers(VkImageView ImageView);
+
 extern VkFramebuffer Rr_GetVulkanFramebuffer(
     VkRenderPass RenderPass,
     Rr_FramebufferMapKey *Key);

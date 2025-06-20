@@ -94,7 +94,7 @@ extern Rr_ImageViewStorage *Rr_CreateImageViewStorage(void);
 
 extern void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage);
 
-extern Rr_ImageView *Rr_FetchImageView(
+extern Rr_ImageView *Rr_GetVulkanImageView(
     Rr_AllocatedImage *AllocatedImage,
     Rr_ImageViewKey *Key);
 

@@ -153,13 +153,12 @@ void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage)
     for (Rr_ImageViewMapHiveIterator It = ViewStorage->Hive.Begin;
          It.Element != ViewStorage->Hive.End.Element;)
     {
-        if (It.Element->Value.Handle != VK_NULL_HANDLE)
+        Rr_ImageViewMap *Map = It.Element;
+        if (Map->Value.Handle != VK_NULL_HANDLE)
         {
-            Device->DestroyImageView(
-                Device->Handle,
-                It.Element->Value.Handle,
-                NULL);
-            It.Element->Value.Handle = VK_NULL_HANDLE;
+            Rr_DestroyVulkanFramebuffers(Map->Value.Handle);
+            Device->DestroyImageView(Device->Handle, Map->Value.Handle, NULL);
+            Map->Value.Handle = VK_NULL_HANDLE;
         }
         Rr_AdvanceImageViewMapHiveIterator(&It);
     }
@@ -167,7 +166,7 @@ void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage)
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->ImageViewStorage, ViewStorage);
 }
 
-Rr_ImageView *Rr_FetchImageView(
+Rr_ImageView *Rr_GetVulkanImageView(
     Rr_AllocatedImage *AllocatedImage,
     Rr_ImageViewKey *Key)
 {
