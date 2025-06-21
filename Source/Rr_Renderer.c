@@ -805,21 +805,17 @@ void Rr_CleanupRenderer(void)
         Rr_ProcessReleasedObjects();
     }
 
-    for (size_t Index = 0; Index < gRenderer->RenderPasses.Count; ++Index)
-    {
-        Device->DestroyRenderPass(
-            Device->Handle,
-            gRenderer->RenderPasses.Data[Index].Handle,
-            NULL);
-    }
+    /* NOTE: Framebuffers are destroyed along with image views.
+     * For now, we don't care for destroying render passes unless it's
+     * application shutdown. */
 
-    /* for (size_t Index = 0; Index < gRenderer->Framebuffers.Count; ++Index) */
-    /* { */
-    /*     Device->DestroyFramebuffer( */
-    /*         Device->Handle, */
-    /*         gRenderer->Framebuffers.Data[Index].Handle, */
-    /*         NULL); */
-    /* } */
+    for (Rr_RenderPassMapHiveIterator It =
+             gRenderer->RenderPassStorage.Hive.Begin;
+         It.Element != gRenderer->RenderPassStorage.Hive.End.Element;)
+    {
+        Device->DestroyRenderPass(Device->Handle, It.Element->Value, NULL);
+        Rr_AdvanceRenderPassMapHiveIterator(&It);
+    }
 
     Rr_CleanupFrames();
 
@@ -1243,107 +1239,149 @@ bool Rr_SetPresentMode(Rr_PresentMode PresentMode)
     return true;
 }
 
-VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info)
+VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
 {
-    assert(Info != NULL);
+    VkRenderPass *RenderPassRef = NULL;
 
-    uint32_t Hash = XXH32(
-        Info->Attachments,
-        sizeof(Rr_RenderPassAttachment) * Info->AttachmentCount,
-        0);
+    Rr_LockSpinlock(&gRenderer->Lock);
 
-    for (size_t Index = 0; Index < gRenderer->RenderPasses.Count; ++Index)
+    uint32_t AttachmentCount = Key->ColorAttachmentCount +
+                               Key->ResolveAttachmentCount +
+                               (uint32_t)Key->DepthStencil;
+
+    Rr_RenderPassMap **MapRef = &gRenderer->RenderPassStorage.Map;
+    for (uint64_t Hash = XXH64(Key, sizeof(*Key), 0); *MapRef; Hash <<= 2)
     {
-        if (gRenderer->RenderPasses.Data[Index].Hash == Hash)
+        if (memcmp(Key, &(*MapRef)->Key, sizeof(*Key)) == 0)
         {
-            return gRenderer->RenderPasses.Data[Index].Handle;
+            RenderPassRef = &(*MapRef)->Value;
+
+            goto Found;
         }
+        MapRef = &(*MapRef)->Children[Hash >> 62];
+    }
+    *MapRef = Rr_PushRenderPassMapIntoHive(
+                  &gRenderer->RenderPassStorage.Hive,
+                  gRenderer->Arena)
+                  .Element;
+    (*MapRef)->Key = *Key;
+    (*MapRef)->Value = VK_NULL_HANDLE;
+    RR_ZERO_PTR((*MapRef)->Children);
+    RenderPassRef = &(*MapRef)->Value;
+
+Found:
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
+    if (*RenderPassRef != VK_NULL_HANDLE)
+    {
+        return *RenderPassRef;
     }
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    VkAttachmentDescription *Attachments = RR_ALLOC_TYPE_COUNT(
-        Scratch.Arena,
-        VkAttachmentDescription,
-        Info->AttachmentCount);
+    uint32_t ColorAttachmentCount = Key->ColorAttachmentCount;
+    uint32_t ResolveAttachmentCount = Key->ResolveAttachmentCount;
 
-    size_t ColorCount = 0;
-    VkAttachmentReference *ColorReferences = RR_ALLOC_TYPE_COUNT(
-        Scratch.Arena,
-        VkAttachmentReference,
-        Info->AttachmentCount);
+    VkAttachmentReference *ColorReferences = NULL;
+    VkAttachmentReference *ResolveReferences = NULL;
     VkAttachmentReference *DepthReference = NULL;
 
-    for (uint32_t Index = 0; Index < Info->AttachmentCount; ++Index)
+    VkAttachmentDescription *Descriptions = RR_ALLOC_TYPE_COUNT(
+        Scratch.Arena,
+        VkAttachmentDescription,
+        AttachmentCount);
+
+    size_t AttachmentIndex = 0;
+    size_t Boundary = Key->ColorAttachmentCount;
+
+    if (ColorAttachmentCount > 0)
     {
-        Rr_RenderPassAttachment *Attachment = &Info->Attachments[Index];
-        if (Rr_IsVulkanDepthFormat(Attachment->Format))
+        ColorReferences = RR_ALLOC_TYPE_COUNT(
+            Scratch.Arena,
+            VkAttachmentReference,
+            Key->ColorAttachmentCount);
+
+        for (; AttachmentIndex < Boundary; ++AttachmentIndex)
         {
-            if (DepthReference != NULL)
-            {
-                RR_ABORT("Can't have more than one depth attachment!");
-            }
-            DepthReference =
-                RR_ALLOC(Scratch.Arena, sizeof(VkAttachmentDescription));
-            DepthReference->attachment = Index;
-            DepthReference->layout =
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            Attachments[Index] = (VkAttachmentDescription){
-                .samples = 1,
-                .format = Attachment->Format,
-                .initialLayout =
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                .flags = 0,
-                .loadOp = Rr_ToVulkanLoadOp(Attachment->LoadOp),
-                .storeOp = Rr_ToVulkanStoreOp(Attachment->StoreOp),
-            };
-        }
-        else
-        {
-            ColorCount++;
-            ColorReferences[Index] = (VkAttachmentReference){
-                .attachment = Index,
-                .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            };
-            Attachments[Index] = (VkAttachmentDescription){
-                .samples = 1,
-                .format = Attachment->Format,
+            Descriptions[AttachmentIndex] = (VkAttachmentDescription){
+                .samples = Key->Attachments[AttachmentIndex].Samples,
+                .format = Key->Attachments[AttachmentIndex].Format,
                 .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                .flags = 0,
-                .loadOp = Rr_ToVulkanLoadOp(Attachment->LoadOp),
-                .storeOp = Rr_ToVulkanStoreOp(Attachment->StoreOp),
+                .loadOp = Key->Attachments[AttachmentIndex].LoadOp,
+                .storeOp = Key->Attachments[AttachmentIndex].StoreOp,
+            };
+
+            ColorReferences[AttachmentIndex] = (VkAttachmentReference){
+                .attachment = AttachmentIndex,
+                .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             };
         }
     }
 
+    if (ResolveAttachmentCount > 0)
+    {
+        ResolveReferences = RR_ALLOC_TYPE_COUNT(
+            Scratch.Arena,
+            VkAttachmentReference,
+            Key->ResolveAttachmentCount);
+
+        Boundary += Key->ResolveAttachmentCount;
+
+        for (; AttachmentIndex < Boundary; ++AttachmentIndex)
+        {
+            Descriptions[AttachmentIndex] = (VkAttachmentDescription){
+                .samples = Key->Attachments[AttachmentIndex].Samples,
+                .format = Key->Attachments[AttachmentIndex].Format,
+                .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .loadOp = Key->Attachments[AttachmentIndex].LoadOp,
+                .storeOp = Key->Attachments[AttachmentIndex].StoreOp,
+            };
+
+            ColorReferences[AttachmentIndex] = (VkAttachmentReference){
+                .attachment = AttachmentIndex,
+                .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            };
+        }
+    }
+
+    if (Key->DepthStencil)
+    {
+        Descriptions[AttachmentIndex] = (VkAttachmentDescription){
+            .samples = 1,
+            .format = Key->Attachments[AttachmentIndex].Format,
+            .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .loadOp = Key->Attachments[AttachmentIndex].LoadOp,
+            .storeOp = Key->Attachments[AttachmentIndex].StoreOp,
+        };
+        DepthReference =
+            RR_ALLOC_NO_ZERO(Scratch.Arena, sizeof(VkAttachmentReference));
+        *DepthReference = (VkAttachmentReference){
+            .attachment = AttachmentIndex,
+            .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        };
+    }
+
     VkSubpassDescription SubpassDescription = {
-        .flags = 0,
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = (uint32_t)ColorCount,
+        .colorAttachmentCount = Key->ColorAttachmentCount,
         .pColorAttachments = ColorReferences,
+        .pResolveAttachments = ResolveReferences,
         .pDepthStencilAttachment = DepthReference,
-        .pResolveAttachments = NULL,
-        .inputAttachmentCount = 0,
-        .pInputAttachments = NULL,
-        .preserveAttachmentCount = 0,
-        .pPreserveAttachments = NULL,
     };
 
     VkRenderPassCreateInfo RenderPassCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = 0,
-        .attachmentCount = (uint32_t)Info->AttachmentCount,
-        .pAttachments = Attachments,
+        .attachmentCount = AttachmentCount,
+        .pAttachments = Descriptions,
         .subpassCount = 1,
         .pSubpasses = &SubpassDescription,
         .dependencyCount = 0,
         .pDependencies = NULL,
     };
-
-    VkRenderPass RenderPass = VK_NULL_HANDLE;
 
     Rr_Device *Device = &gRenderer->Device;
 
@@ -1351,56 +1389,11 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info)
         Device->Handle,
         &RenderPassCreateInfo,
         NULL,
-        &RenderPass);
-
-    Rr_LockSpinlock(&gRenderer->Lock);
-
-    *RR_PUSH_INTO_ARRAY(&gRenderer->RenderPasses, gRenderer->Arena) =
-        (Rr_RenderPass){
-            .Handle = RenderPass,
-            .Hash = Hash,
-        };
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+        RenderPassRef);
 
     Rr_DestroyScratch(Scratch);
 
-    return RenderPass;
-}
-
-void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
-{
-    Rr_Device *Device = &gRenderer->Device;
-
-    for (Rr_FramebufferMapHiveIterator It =
-             gRenderer->FramebufferStorage.Hive.Begin;
-         It.Element != gRenderer->FramebufferStorage.Hive.End.Element;)
-    {
-        Rr_FramebufferMap *Map = It.Element;
-        if (Map->Value != VK_NULL_HANDLE)
-        {
-            bool Destroy = false;
-            size_t Boundary = Map->Key.ColorAttachmentCount +
-                              Map->Key.ResolveAttachmentCount +
-                              (size_t)Map->Key.DepthStencil;
-            for (size_t Index = 0; Index < Boundary; ++Index)
-            {
-                if (Map->Key.ImageViews[Index] == ImageView)
-                {
-                    Destroy = true;
-                    break;
-                }
-            }
-
-            if (Destroy)
-            {
-                Device->DestroyFramebuffer(Device->Handle, Map->Value, NULL);
-                Map->Value = VK_NULL_HANDLE;
-            }
-        }
-
-        Rr_AdvanceFramebufferMapHiveIterator(&It);
-    }
+    return *RenderPassRef;
 }
 
 VkFramebuffer Rr_GetVulkanFramebuffer(
@@ -1467,6 +1460,41 @@ Found:
         ->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, FramebufferRef);
 
     return *FramebufferRef;
+}
+
+void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    for (Rr_FramebufferMapHiveIterator It =
+             gRenderer->FramebufferStorage.Hive.Begin;
+         It.Element != gRenderer->FramebufferStorage.Hive.End.Element;)
+    {
+        Rr_FramebufferMap *Map = It.Element;
+        if (Map->Value != VK_NULL_HANDLE)
+        {
+            bool Destroy = false;
+            size_t Boundary = Map->Key.ColorAttachmentCount +
+                              Map->Key.ResolveAttachmentCount +
+                              (size_t)Map->Key.DepthStencil;
+            for (size_t Index = 0; Index < Boundary; ++Index)
+            {
+                if (Map->Key.ImageViews[Index] == ImageView)
+                {
+                    Destroy = true;
+                    break;
+                }
+            }
+
+            if (Destroy)
+            {
+                Device->DestroyFramebuffer(Device->Handle, Map->Value, NULL);
+                Map->Value = VK_NULL_HANDLE;
+            }
+        }
+
+        Rr_AdvanceFramebufferMapHiveIterator(&It);
+    }
 }
 
 Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key)

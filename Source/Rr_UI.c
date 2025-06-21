@@ -4902,7 +4902,10 @@ void Rr_UIDebugOverlay(void)
                 "Samplers: %zu/%zu",
                 gRenderer->Samplers.Count,
                 gRenderer->Samplers.Capacity);
-            Rr_UILabelF("RenderPasses: %zu", gRenderer->RenderPasses.Count);
+            Rr_UILabelF(
+                "Render Passes: %zu/%zu",
+                gRenderer->RenderPassStorage.Hive.Count,
+                gRenderer->RenderPassStorage.Hive.Capacity);
             Rr_UILabelF(
                 "Framebuffers: %zu/%zu",
                 gRenderer->FramebufferStorage.Hive.Count,

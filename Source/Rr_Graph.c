@@ -311,31 +311,38 @@ static void Rr_ExecuteGraphicsNode(
     Viewport.Width = INT32_MAX;
     Viewport.Height = INT32_MAX;
 
-    /* Line up appropriate clear values. */
-
     size_t AttachmentCount =
         Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
-    Rr_RenderPassAttachment *Attachments = RR_ALLOC_TYPE_COUNT(
-        Scratch.Arena,
-        Rr_RenderPassAttachment,
-        AttachmentCount);
+    Rr_RenderPassMapKey RenderPassKey = { 0 };
+    RenderPassKey.ColorAttachmentCount = Node->ColorTargetCount;
+    RenderPassKey.ResolveAttachmentCount = 0;
+    RenderPassKey.DepthStencil = Node->DepthTarget != NULL;
+
     VkImageView *ImageViews =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
+
     VkClearValue *ClearValues =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
+
     for (uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
         Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
+
         VkClearValue *ClearValue = &ClearValues[ColorTarget->Slot];
         memcpy(ClearValue, &ColorTarget->Clear, sizeof(VkClearValue));
+
         Rr_AllocatedImage *ColorImage =
             Rr_GetGraphImage(Graph, Node->ColorImages[Index]);
-        Attachments[ColorTarget->Slot] = (Rr_RenderPassAttachment){
-            .LoadOp = ColorTarget->LoadOp,
-            .StoreOp = ColorTarget->StoreOp,
-            .Format = ColorImage->Container->Format,
-        };
+
+        RenderPassKey.Attachments[ColorTarget->Slot].Samples = 1;
+        RenderPassKey.Attachments[ColorTarget->Slot].Format =
+            ColorImage->Container->Format;
+        RenderPassKey.Attachments[ColorTarget->Slot].LoadOp =
+            Rr_ToVulkanLoadOp(ColorTarget->LoadOp);
+        RenderPassKey.Attachments[ColorTarget->Slot].StoreOp =
+            Rr_ToVulkanStoreOp(ColorTarget->StoreOp);
+
         ImageViews[ColorTarget->Slot] = Rr_GetVulkanImageView(
             ColorImage,
             &(Rr_ImageViewKey){
@@ -360,16 +367,23 @@ static void Rr_ExecuteGraphicsNode(
     if (Node->DepthTarget != NULL)
     {
         size_t DepthIndex = AttachmentCount - 1;
+
         Rr_DepthTarget *DepthTarget = Node->DepthTarget;
+
         VkClearValue *ClearValue = &ClearValues[DepthIndex];
         memcpy(ClearValue, &DepthTarget->Clear, sizeof(VkClearValue));
+
         Rr_AllocatedImage *DepthImage =
             Rr_GetGraphImage(Graph, Node->DepthImage);
-        Attachments[DepthIndex] = (Rr_RenderPassAttachment){
-            .LoadOp = DepthTarget->LoadOp,
-            .StoreOp = DepthTarget->StoreOp,
-            .Format = DepthImage->Container->Format,
-        };
+
+        RenderPassKey.Attachments[DepthIndex].Samples = 1;
+        RenderPassKey.Attachments[DepthIndex].Format =
+            DepthImage->Container->Format;
+        RenderPassKey.Attachments[DepthIndex].LoadOp =
+            Rr_ToVulkanLoadOp(DepthTarget->LoadOp);
+        RenderPassKey.Attachments[DepthIndex].StoreOp =
+            Rr_ToVulkanStoreOp(DepthTarget->StoreOp);
+
         ImageViews[DepthIndex] = Rr_GetVulkanImageView(
             DepthImage,
             &(Rr_ImageViewKey){
@@ -394,12 +408,8 @@ static void Rr_ExecuteGraphicsNode(
 
     /* Begin render pass. */
 
-    Rr_RenderPassInfo RenderPassInfo = {
-        .AttachmentCount = AttachmentCount,
-        .Attachments = Attachments,
-    };
-    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassInfo);
-    Rr_FramebufferMapKey Key = {
+    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassKey);
+    Rr_FramebufferMapKey FramebufferKey = {
         .Extent =
             (VkExtent3D){
                 .width = Viewport.Width,
@@ -411,10 +421,11 @@ static void Rr_ExecuteGraphicsNode(
         .DepthStencil = Node->DepthTarget != NULL,
     };
     memcpy(
-        &Key.ImageViews[0],
+        &FramebufferKey.ImageViews[0],
         ImageViews,
         AttachmentCount * sizeof(VkImageView));
-    VkFramebuffer Framebuffer = Rr_GetVulkanFramebuffer(RenderPass, &Key);
+    VkFramebuffer Framebuffer =
+        Rr_GetVulkanFramebuffer(RenderPass, &FramebufferKey);
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,

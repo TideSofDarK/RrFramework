@@ -33,39 +33,45 @@
 static VkRenderPass Rr_GetCompatibleRenderPass(
     Rr_GraphicsPipelineCreateInfo *Info)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+    Rr_RenderPassMapKey Key = { 0 };
+    Key.ColorAttachmentCount = Info->ColorTargetCount;
+    Key.ResolveAttachmentCount = 0;
+    Key.DepthStencil = Info->DepthStencil.EnableDepthTest ||
+                       Info->DepthStencil.EnableStencilTest ||
+                       Info->DepthStencil.EnableDepthWrite;
+    size_t AttachmentCount = Key.ColorAttachmentCount +
+                             Key.ResolveAttachmentCount +
+                             (size_t)Key.DepthStencil;
 
-    bool HasDepth = Info->DepthStencil.EnableDepthWrite ||
-                    Info->DepthStencil.EnableDepthTest;
-    size_t AttachmentCount = Info->ColorTargetCount + (HasDepth ? 1 : 0);
-    Rr_RenderPassAttachment *Attachments = RR_ALLOC_TYPE_COUNT(
-        Scratch.Arena,
-        Rr_RenderPassAttachment,
-        AttachmentCount);
+    size_t AttachmentIndex = 0;
+    size_t Boundary = Info->ColorTargetCount;
 
-    for (uint32_t Index = 0; Index < Info->ColorTargetCount; ++Index)
+    if (Info->ColorTargetCount > 0)
     {
-        Attachments[Index].LoadOp = RR_LOAD_OP_DONT_CARE;
-        Attachments[Index].StoreOp = RR_STORE_OP_DONT_CARE;
-        Attachments[Index].Format =
-            Rr_ToVulkanTextureFormat(Info->ColorTargets[Index].Format);
+        for (; AttachmentIndex < Boundary; ++AttachmentIndex)
+        {
+            Key.Attachments[AttachmentIndex].Format = Rr_ToVulkanTextureFormat(
+                Info->ColorTargets[AttachmentIndex].Format);
+            Key.Attachments[AttachmentIndex].Samples = 1;
+            Key.Attachments[AttachmentIndex].LoadOp =
+                VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            Key.Attachments[AttachmentIndex].StoreOp =
+                VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        }
     }
-    if (HasDepth)
+
+    if (Key.DepthStencil)
     {
-        Attachments[AttachmentCount - 1].LoadOp = RR_LOAD_OP_DONT_CARE;
-        Attachments[AttachmentCount - 1].StoreOp = RR_STORE_OP_DONT_CARE;
-        Attachments[AttachmentCount - 1].Format =
+        Key.Attachments[AttachmentIndex].Format =
             Rr_ToVulkanTextureFormat(Info->DepthStencil.Format);
+        Key.Attachments[AttachmentIndex].Samples = 1;
+        Key.Attachments[AttachmentIndex].LoadOp =
+            VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        Key.Attachments[AttachmentIndex].StoreOp =
+            VK_ATTACHMENT_STORE_OP_DONT_CARE;
     }
 
-    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&(Rr_RenderPassInfo){
-        .AttachmentCount = AttachmentCount,
-        .Attachments = Attachments,
-    });
-
-    Rr_DestroyScratch(Scratch);
-
-    return RenderPass;
+    return Rr_GetVulkanRenderPass(&Key);
 }
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(

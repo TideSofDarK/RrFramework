@@ -129,7 +129,7 @@ extern void Rr_MarkGraphicsPipelineUsed(
     Rr_GraphicsPipeline *GraphicsPipeline);
 
 /* NOTE: To pass various attachment configurations around we use the following
- * order of image views:
+ * order of image views (a.k.a. attachments):
  * 1) N color attachments
  * 2) M resolve attachments
  * 3) Depth/stencil attachment
@@ -165,18 +165,51 @@ struct Rr_FramebufferStorage
     Rr_FramebufferMapHive Hive;
 };
 
-extern void Rr_DestroyVulkanFramebuffers(VkImageView ImageView);
-
 extern VkFramebuffer Rr_GetVulkanFramebuffer(
     VkRenderPass RenderPass,
     Rr_FramebufferMapKey *Key);
 
-typedef struct Rr_CachedRenderPass Rr_RenderPass;
-struct Rr_CachedRenderPass
+extern void Rr_DestroyVulkanFramebuffers(VkImageView ImageView);
+
+typedef struct Rr_RenderPassAttachment Rr_RenderPassAttachment;
+struct Rr_RenderPassAttachment
 {
-    VkRenderPass Handle;
-    uint32_t Hash;
+    VkSampleCountFlagBits Samples;
+    VkFormat Format;
+    VkAttachmentLoadOp LoadOp;
+    VkAttachmentStoreOp StoreOp;
 };
+
+typedef struct Rr_RenderPassMapKey Rr_RenderPassMapKey;
+struct Rr_RenderPassMapKey
+{
+    uint8_t ColorAttachmentCount;
+    uint8_t ResolveAttachmentCount;
+    bool DepthStencil;
+    Rr_RenderPassAttachment Attachments[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
+};
+
+typedef struct Rr_RenderPassMap Rr_RenderPassMap;
+struct Rr_RenderPassMap
+{
+    Rr_RenderPassMapKey Key;
+    VkRenderPass Value;
+    Rr_RenderPassMap *Children[4];
+};
+
+#define RR_HIVE_TYPE      Rr_RenderPassMap
+#define RR_HIVE_TYPE_NAME RenderPassMap
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+typedef struct Rr_RenderPassStorage Rr_RenderPassStorage;
+struct Rr_RenderPassStorage
+{
+    Rr_RenderPassMap *Map;
+    Rr_RenderPassMapHive Hive;
+};
+
+extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key);
 
 struct Rr_Renderer
 {
@@ -203,7 +236,8 @@ struct Rr_Renderer
     size_t FrameNumber; /* Total frames rendered. */
 
     Rr_FramebufferStorage FramebufferStorage;
-    RR_ARRAY(Rr_RenderPass) RenderPasses;
+    Rr_RenderPassStorage RenderPassStorage;
+
     RR_ARRAY(Rr_DescriptorSetLayout) DescriptorSetLayouts;
 
     Rr_ImmediateMode ImmediateMode;
@@ -247,23 +281,6 @@ extern void Rr_EndImmediate(void);
 extern Rr_Frame *Rr_GetCurrentFrame(void);
 
 extern bool Rr_IsUsingTransferQueue(void);
-
-typedef struct Rr_RenderPassAttachment Rr_RenderPassAttachment;
-struct Rr_RenderPassAttachment
-{
-    VkFormat Format;
-    Rr_LoadOp LoadOp;
-    Rr_StoreOp StoreOp;
-};
-
-typedef struct Rr_RenderPassInfo Rr_RenderPassInfo;
-struct Rr_RenderPassInfo
-{
-    Rr_RenderPassAttachment *Attachments;
-    size_t AttachmentCount;
-};
-
-extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassInfo *Info);
 
 extern Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key);
 
