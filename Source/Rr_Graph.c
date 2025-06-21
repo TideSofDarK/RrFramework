@@ -174,7 +174,7 @@ static void Rr_ExecuteComputeNode(
                 Rr_BindSampledImageArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
+                VkImageView ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -188,7 +188,7 @@ static void Rr_ExecuteComputeNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
                         .Image =
                             {
-                                .View = ImageView->Handle,
+                                .View = ImageView,
                                 .Layout = Args->Layout,
                             },
                     });
@@ -199,7 +199,7 @@ static void Rr_ExecuteComputeNode(
                 Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
+                VkImageView ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -213,7 +213,7 @@ static void Rr_ExecuteComputeNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
                         .Image =
                             {
-                                .View = ImageView->Handle,
+                                .View = ImageView,
                                 .Sampler = Args->Sampler->Handle,
                                 .Layout = Args->Layout,
                             },
@@ -267,7 +267,7 @@ static void Rr_ExecuteComputeNode(
                 Rr_BindStorageImageArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
+                VkImageView ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -281,7 +281,7 @@ static void Rr_ExecuteComputeNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE,
                         .Image =
                             {
-                                .View = ImageView->Handle,
+                                .View = ImageView,
                                 .Layout = VK_IMAGE_LAYOUT_GENERAL,
                             },
                     });
@@ -336,21 +336,19 @@ static void Rr_ExecuteGraphicsNode(
             .StoreOp = ColorTarget->StoreOp,
             .Format = ColorImage->Container->Format,
         };
-        ImageViews[ColorTarget->Slot] =
-            Rr_GetVulkanImageView(
-                ColorImage,
-                &(Rr_ImageViewKey){
-                    .SubresourceRange =
-                        (VkImageSubresourceRange){
-                            .aspectMask = ColorImage->Container->AspectFlags,
-                            .baseArrayLayer = 0,
-                            .layerCount = 1,
-                            .baseMipLevel = 0,
-                            .levelCount = 1,
-                        },
-                    .Type = VK_IMAGE_VIEW_TYPE_2D,
-                })
-                ->Handle;
+        ImageViews[ColorTarget->Slot] = Rr_GetVulkanImageView(
+            ColorImage,
+            &(Rr_ImageViewKey){
+                .SubresourceRange =
+                    (VkImageSubresourceRange){
+                        .aspectMask = ColorImage->Container->AspectFlags,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                    },
+                .Type = VK_IMAGE_VIEW_TYPE_2D,
+            });
 
         Viewport.Width = RR_MIN(
             Viewport.Width,
@@ -372,21 +370,19 @@ static void Rr_ExecuteGraphicsNode(
             .StoreOp = DepthTarget->StoreOp,
             .Format = DepthImage->Container->Format,
         };
-        ImageViews[DepthIndex] =
-            Rr_GetVulkanImageView(
-                DepthImage,
-                &(Rr_ImageViewKey){
-                    .SubresourceRange =
-                        (VkImageSubresourceRange){
-                            .aspectMask = DepthImage->Container->AspectFlags,
-                            .baseArrayLayer = 0,
-                            .layerCount = 1,
-                            .baseMipLevel = 0,
-                            .levelCount = 1,
-                        },
-                    .Type = VK_IMAGE_VIEW_TYPE_2D,
-                })
-                ->Handle;
+        ImageViews[DepthIndex] = Rr_GetVulkanImageView(
+            DepthImage,
+            &(Rr_ImageViewKey){
+                .SubresourceRange =
+                    (VkImageSubresourceRange){
+                        .aspectMask = DepthImage->Container->AspectFlags,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                    },
+                .Type = VK_IMAGE_VIEW_TYPE_2D,
+            });
 
         Viewport.Width = RR_MIN(
             Viewport.Width,
@@ -618,7 +614,7 @@ static void Rr_ExecuteGraphicsNode(
                 Rr_BindSampledImageArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
+                VkImageView ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -632,7 +628,7 @@ static void Rr_ExecuteGraphicsNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
                         .Image =
                             {
-                                .View = ImageView->Handle,
+                                .View = ImageView,
                                 .Layout = Args->Layout,
                             },
                     });
@@ -643,7 +639,7 @@ static void Rr_ExecuteGraphicsNode(
                 Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
                 Rr_AllocatedImage *AllocatedImage =
                     Rr_GetGraphImage(Graph, Args->ImageHandle);
-                Rr_ImageView *ImageView = Rr_GetVulkanImageView(
+                VkImageView ImageView = Rr_GetVulkanImageView(
                     AllocatedImage,
                     &(Rr_ImageViewKey){
                         .SubresourceRange = Args->SubresourceRange,
@@ -657,7 +653,7 @@ static void Rr_ExecuteGraphicsNode(
                         .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
                         .Image =
                             {
-                                .View = ImageView->Handle,
+                                .View = ImageView,
                                 .Sampler = Args->Sampler->Handle,
                                 .Layout = Args->Layout,
                             },

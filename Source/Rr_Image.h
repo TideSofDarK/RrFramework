@@ -55,18 +55,12 @@ struct Rr_ImageViewKey
     VkImageViewType Type;
 };
 
-typedef struct Rr_ImageView Rr_ImageView;
-struct Rr_ImageView
-{
-    VkImageView Handle;
-};
-
 typedef struct Rr_ImageViewMap Rr_ImageViewMap;
 struct Rr_ImageViewMap
 {
     Rr_ImageViewMap *Children[4];
     Rr_ImageViewKey Key;
-    Rr_ImageView Value;
+    VkImageView Value;
 };
 
 #define RR_HIVE_TYPE      Rr_ImageViewMap
@@ -94,7 +88,7 @@ extern Rr_ImageViewStorage *Rr_CreateImageViewStorage(void);
 
 extern void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage);
 
-extern Rr_ImageView *Rr_GetVulkanImageView(
+extern VkImageView Rr_GetVulkanImageView(
     Rr_AllocatedImage *AllocatedImage,
     Rr_ImageViewKey *Key);
 

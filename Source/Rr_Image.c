@@ -127,11 +127,11 @@ void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage)
          It.Element != ViewStorage->Hive.End.Element;)
     {
         Rr_ImageViewMap *Map = It.Element;
-        if (Map->Value.Handle != VK_NULL_HANDLE)
+        if (Map->Value != VK_NULL_HANDLE)
         {
-            Rr_DestroyVulkanFramebuffers(Map->Value.Handle);
-            Device->DestroyImageView(Device->Handle, Map->Value.Handle, NULL);
-            Map->Value.Handle = VK_NULL_HANDLE;
+            Rr_DestroyVulkanFramebuffers(Map->Value);
+            Device->DestroyImageView(Device->Handle, Map->Value, NULL);
+            Map->Value = VK_NULL_HANDLE;
         }
         Rr_AdvanceImageViewMapHiveIterator(&It);
     }
@@ -139,11 +139,11 @@ void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage)
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->ImageViewStorage, ViewStorage);
 }
 
-Rr_ImageView *Rr_GetVulkanImageView(
+VkImageView Rr_GetVulkanImageView(
     Rr_AllocatedImage *AllocatedImage,
     Rr_ImageViewKey *Key)
 {
-    Rr_ImageView *ImageViewRef = NULL;
+    VkImageView *ImageViewRef = NULL;
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
@@ -151,7 +151,7 @@ Rr_ImageView *Rr_GetVulkanImageView(
     for (uint64_t Hash = XXH64(Key, sizeof(Rr_ImageViewKey), 0); *MapRef;
          Hash <<= 2)
     {
-        if ((*MapRef)->Value.Handle == VK_NULL_HANDLE)
+        if ((*MapRef)->Value == VK_NULL_HANDLE)
         {
             (*MapRef)->Key = *Key;
             ImageViewRef = &(*MapRef)->Value;
@@ -171,7 +171,7 @@ Rr_ImageView *Rr_GetVulkanImageView(
                   gRenderer->Arena)
                   .Element;
     (*MapRef)->Key = *Key;
-    RR_ZERO((*MapRef)->Value);
+    (*MapRef)->Value = VK_NULL_HANDLE;
     RR_ZERO_PTR((*MapRef)->Children);
     ImageViewRef = &(*MapRef)->Value;
 
@@ -179,9 +179,9 @@ Found:
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    if (ImageViewRef->Handle != VK_NULL_HANDLE)
+    if (*ImageViewRef != VK_NULL_HANDLE)
     {
-        return ImageViewRef;
+        return *ImageViewRef;
     }
 
     Rr_Device *Device = &gRenderer->Device;
@@ -198,9 +198,9 @@ Found:
         Device->Handle,
         &ImageViewCreateInfo,
         NULL,
-        &ImageViewRef->Handle);
+        ImageViewRef);
 
-    return ImageViewRef;
+    return *ImageViewRef;
 }
 
 void Rr_UploadStagingImage2D(
