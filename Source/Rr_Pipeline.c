@@ -33,7 +33,7 @@
 static VkRenderPass Rr_GetCompatibleRenderPass(
     Rr_GraphicsPipelineCreateInfo *Info)
 {
-    Rr_RenderPassMapKey Key = { 0 };
+    Rr_RenderPassMapKey Key;
     Key.ColorAttachmentCount = Info->ColorTargetCount;
     Key.ResolveAttachmentCount = 0;
     Key.DepthStencil = Info->DepthStencil.EnableDepthTest ||

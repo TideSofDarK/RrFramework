@@ -314,7 +314,7 @@ static void Rr_ExecuteGraphicsNode(
     size_t AttachmentCount =
         Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
-    Rr_RenderPassMapKey RenderPassKey = { 0 };
+    Rr_RenderPassMapKey RenderPassKey;
     RenderPassKey.ColorAttachmentCount = Node->ColorTargetCount;
     RenderPassKey.ResolveAttachmentCount = 0;
     RenderPassKey.DepthStencil = Node->DepthTarget != NULL;
@@ -409,23 +409,24 @@ static void Rr_ExecuteGraphicsNode(
     /* Begin render pass. */
 
     VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassKey);
-    Rr_FramebufferMapKey FramebufferKey = {
-        .Extent =
-            (VkExtent3D){
-                .width = Viewport.Width,
-                .height = Viewport.Height,
-                .depth = 1,
-            },
-        .ColorAttachmentCount = Node->ColorTargetCount,
-        .ResolveAttachmentCount = 0,
-        .DepthStencil = Node->DepthTarget != NULL,
+
+    Rr_FramebufferMapKey FramebufferKey;
+    FramebufferKey.Extent = (VkExtent3D){
+        .width = Viewport.Width,
+        .height = Viewport.Height,
+        .depth = 1,
     };
+    FramebufferKey.ColorAttachmentCount = Node->ColorTargetCount;
+    FramebufferKey.ResolveAttachmentCount = 0;
+    FramebufferKey.DepthStencil = Node->DepthTarget != NULL;
     memcpy(
         &FramebufferKey.ImageViews[0],
         ImageViews,
         AttachmentCount * sizeof(VkImageView));
+
     VkFramebuffer Framebuffer =
         Rr_GetVulkanFramebuffer(RenderPass, &FramebufferKey);
+
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,

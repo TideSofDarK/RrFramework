@@ -1246,13 +1246,15 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
     Rr_LockSpinlock(&gRenderer->Lock);
 
     uint32_t AttachmentCount = Key->ColorAttachmentCount +
-                               Key->ResolveAttachmentCount +
-                               (uint32_t)Key->DepthStencil;
+                               Key->ResolveAttachmentCount + Key->DepthStencil;
+
+    size_t HashSize = offsetof(Rr_RenderPassMapKey, Attachments) +
+                      AttachmentCount * sizeof(Rr_RenderPassAttachment);
 
     Rr_RenderPassMap **MapRef = &gRenderer->RenderPassStorage.Map;
-    for (uint64_t Hash = XXH64(Key, sizeof(*Key), 0); *MapRef; Hash <<= 2)
+    for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
     {
-        if (memcmp(Key, &(*MapRef)->Key, sizeof(*Key)) == 0)
+        if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
         {
             RenderPassRef = &(*MapRef)->Value;
 
@@ -1404,8 +1406,14 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
+    uint32_t AttachmentCount = Key->ColorAttachmentCount +
+                               Key->ResolveAttachmentCount + Key->DepthStencil;
+
+    size_t HashSize = offsetof(Rr_FramebufferMapKey, ImageViews) +
+                      AttachmentCount * sizeof(VkImageView);
+
     Rr_FramebufferMap **MapRef = &gRenderer->FramebufferStorage.Map;
-    for (uint64_t Hash = XXH64(Key, sizeof(*Key), 0); *MapRef; Hash <<= 2)
+    for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
     {
         if ((*MapRef)->Value == VK_NULL_HANDLE)
         {
@@ -1414,7 +1422,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
             goto Found;
         }
-        else if (memcmp(Key, &(*MapRef)->Key, sizeof(*Key)) == 0)
+        else if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
         {
             FramebufferRef = &(*MapRef)->Value;
 
@@ -1439,10 +1447,6 @@ Found:
     {
         return *FramebufferRef;
     }
-
-    uint32_t AttachmentCount = Key->ColorAttachmentCount +
-                               Key->ResolveAttachmentCount +
-                               (uint32_t)Key->DepthStencil;
 
     VkFramebufferCreateInfo CreateInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,

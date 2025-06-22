@@ -139,9 +139,9 @@ typedef struct Rr_FramebufferMapKey Rr_FramebufferMapKey;
 struct Rr_FramebufferMapKey
 {
     VkExtent3D Extent;
-    uint8_t ColorAttachmentCount;
-    uint8_t ResolveAttachmentCount;
-    bool DepthStencil : 1;
+    uint32_t ColorAttachmentCount;
+    uint32_t ResolveAttachmentCount;
+    uint32_t DepthStencil;
     VkImageView ImageViews[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
 };
 
@@ -183,9 +183,9 @@ struct Rr_RenderPassAttachment
 typedef struct Rr_RenderPassMapKey Rr_RenderPassMapKey;
 struct Rr_RenderPassMapKey
 {
-    uint8_t ColorAttachmentCount;
-    uint8_t ResolveAttachmentCount;
-    bool DepthStencil;
+    uint32_t ColorAttachmentCount;
+    uint32_t ResolveAttachmentCount;
+    uint32_t DepthStencil;
     Rr_RenderPassAttachment Attachments[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
 };
 
