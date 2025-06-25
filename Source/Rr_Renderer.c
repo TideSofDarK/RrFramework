@@ -868,7 +868,7 @@ void Rr_NewFrame(void)
     Frame->VirtualSwapchainImage->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
-    Frame->Graph->Frame = Frame;
+    Frame->Graph->Arena = Frame->Arena;
     Frame->Graph->SwapchainImageResourceIndex =
         Rr_GetGraphImageHandle(
             Frame->Graph,

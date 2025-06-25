@@ -902,7 +902,7 @@ static inline bool Rr_AddNodeDependency(
     }
 
     Rr_Graph *Graph = Node->Graph;
-    Rr_Arena *Arena = Node->Graph->Frame->Arena;
+    Rr_Arena *Arena = Node->Graph->Arena;
 
     if (Handle->Values.Index == Graph->SwapchainImageResourceIndex)
     {
@@ -1619,21 +1619,19 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
 {
     assert(Container != NULL);
 
-    Rr_GraphHandle **GraphHandle = RR_GET_MAP_VALUE(
-        &Graph->Handles,
-        (Rr_MapKey)Container,
-        Graph->Frame->Arena);
+    Rr_GraphHandle **GraphHandle =
+        RR_GET_MAP_VALUE(&Graph->Handles, (Rr_MapKey)Container, Graph->Arena);
     if (*GraphHandle == NULL)
     {
         Rr_GraphImage Handle = {
             .Values.Index = (uint32_t)Graph->Resources.Count,
         };
-        *RR_PUSH_INTO_ARRAY(&Graph->Resources, Graph->Frame->Arena) =
+        *RR_PUSH_INTO_ARRAY(&Graph->Resources, Graph->Arena) =
             (Rr_GraphResource){
                 .Container = Container,
                 .IsImage = IsImage,
             };
-        *GraphHandle = RR_ALLOC_TYPE(Graph->Frame->Arena, Rr_GraphHandle);
+        *GraphHandle = RR_ALLOC_TYPE(Graph->Arena, Rr_GraphHandle);
         **GraphHandle = Handle;
 
         if (IsImage)
@@ -1652,19 +1650,19 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
 void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer)
 {
     atomic_fetch_add_explicit(&Buffer->RefCount, 1, memory_order_relaxed);
-    Rr_AddHandle(&Graph->Buffers, Buffer, Graph->Frame->Arena);
+    Rr_AddHandleToSet(&Graph->Buffers, Buffer, Graph->Arena);
 }
 
 void Rr_MarkImageUsed(Rr_Graph *Graph, Rr_Image *Image)
 {
     atomic_fetch_add_explicit(&Image->RefCount, 1, memory_order_relaxed);
-    Rr_AddHandle(&Graph->Images, Image, Graph->Frame->Arena);
+    Rr_AddHandleToSet(&Graph->Images, Image, Graph->Arena);
 }
 
 void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler)
 {
     atomic_fetch_add_explicit(&Sampler->RefCount, 1, memory_order_relaxed);
-    Rr_AddHandle(&Graph->Samplers, Sampler, Graph->Frame->Arena);
+    Rr_AddHandleToSet(&Graph->Samplers, Sampler, Graph->Arena);
 }
 
 void Rr_MarkComputePipelineUsed(
@@ -1675,10 +1673,7 @@ void Rr_MarkComputePipelineUsed(
         &ComputePipeline->RefCount,
         1,
         memory_order_relaxed);
-    Rr_AddHandle(
-        &Graph->ComputePipelines,
-        ComputePipeline,
-        Graph->Frame->Arena);
+    Rr_AddHandleToSet(&Graph->ComputePipelines, ComputePipeline, Graph->Arena);
 }
 
 void Rr_MarkGraphicsPipelineUsed(
@@ -1689,10 +1684,10 @@ void Rr_MarkGraphicsPipelineUsed(
         &GraphicsPipeline->RefCount,
         1,
         memory_order_relaxed);
-    Rr_AddHandle(
+    Rr_AddHandleToSet(
         &Graph->GraphicsPipelines,
         GraphicsPipeline,
-        Graph->Frame->Arena);
+        Graph->Arena);
 }
 
 void Rr_DecrementRefCounts(Rr_Graph *Graph)
@@ -1702,36 +1697,36 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
         return;
     }
 
-    for (Rr_HandleSetHiveIterator It = Graph->Buffers.Hive.Begin;
+    for (Rr_HandleTrieHiveIterator It = Graph->Buffers.Hive.Begin;
          It.Element != Graph->Buffers.Hive.End.Element;
-         Rr_AdvanceHandleSetHiveIterator(&It))
+         Rr_AdvanceHandleTrieHiveIterator(&It))
     {
         Rr_Buffer *Buffer = (Rr_Buffer *)It.Element->Handle;
         atomic_fetch_sub_explicit(&Buffer->RefCount, 1, memory_order_relaxed);
     }
-    Rr_ClearHandleSetHive(&Graph->Buffers.Hive);
+    Rr_ClearHandleTrieHive(&Graph->Buffers.Hive);
 
-    for (Rr_HandleSetHiveIterator It = Graph->Images.Hive.Begin;
+    for (Rr_HandleTrieHiveIterator It = Graph->Images.Hive.Begin;
          It.Element != Graph->Images.Hive.End.Element;
-         Rr_AdvanceHandleSetHiveIterator(&It))
+         Rr_AdvanceHandleTrieHiveIterator(&It))
     {
         Rr_Image *Image = (Rr_Image *)It.Element->Handle;
         atomic_fetch_sub_explicit(&Image->RefCount, 1, memory_order_relaxed);
     }
-    Rr_ClearHandleSetHive(&Graph->Images.Hive);
+    Rr_ClearHandleTrieHive(&Graph->Images.Hive);
 
-    for (Rr_HandleSetHiveIterator It = Graph->Samplers.Hive.Begin;
+    for (Rr_HandleTrieHiveIterator It = Graph->Samplers.Hive.Begin;
          It.Element != Graph->Samplers.Hive.End.Element;
-         Rr_AdvanceHandleSetHiveIterator(&It))
+         Rr_AdvanceHandleTrieHiveIterator(&It))
     {
         Rr_Sampler *Sampler = (Rr_Sampler *)It.Element->Handle;
         atomic_fetch_sub_explicit(&Sampler->RefCount, 1, memory_order_relaxed);
     }
-    Rr_ClearHandleSetHive(&Graph->Samplers.Hive);
+    Rr_ClearHandleTrieHive(&Graph->Samplers.Hive);
 
-    for (Rr_HandleSetHiveIterator It = Graph->ComputePipelines.Hive.Begin;
+    for (Rr_HandleTrieHiveIterator It = Graph->ComputePipelines.Hive.Begin;
          It.Element != Graph->ComputePipelines.Hive.End.Element;
-         Rr_AdvanceHandleSetHiveIterator(&It))
+         Rr_AdvanceHandleTrieHiveIterator(&It))
     {
         Rr_ComputePipeline *ComputePipeline =
             (Rr_ComputePipeline *)It.Element->Handle;
@@ -1740,11 +1735,11 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
             1,
             memory_order_relaxed);
     }
-    Rr_ClearHandleSetHive(&Graph->ComputePipelines.Hive);
+    Rr_ClearHandleTrieHive(&Graph->ComputePipelines.Hive);
 
-    for (Rr_HandleSetHiveIterator It = Graph->GraphicsPipelines.Hive.Begin;
+    for (Rr_HandleTrieHiveIterator It = Graph->GraphicsPipelines.Hive.Begin;
          It.Element != Graph->GraphicsPipelines.Hive.End.Element;
-         Rr_AdvanceHandleSetHiveIterator(&It))
+         Rr_AdvanceHandleTrieHiveIterator(&It))
     {
         Rr_GraphicsPipeline *GraphicsPipeline =
             (Rr_GraphicsPipeline *)It.Element->Handle;
@@ -1753,7 +1748,7 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
             1,
             memory_order_relaxed);
     }
-    Rr_ClearHandleSetHive(&Graph->GraphicsPipelines.Hive);
+    Rr_ClearHandleTrieHive(&Graph->GraphicsPipelines.Hive);
 }
 
 Rr_GraphBuffer *Rr_GetGraphBufferHandle(Rr_Graph *Graph, void *Container)
@@ -1794,7 +1789,7 @@ void Rr_TransferBufferData(
     Rr_GraphBuffer *DstBufferHandle =
         Rr_GetGraphBufferHandle(Node->Graph, DstBuffer);
 
-    *RR_PUSH_INTO_ARRAY(&TransferNode->Transfers, Node->Graph->Frame->Arena) =
+    *RR_PUSH_INTO_ARRAY(&TransferNode->Transfers, Node->Graph->Arena) =
         (Rr_Transfer){
             .Size = Size,
             .SrcOffset = SrcOffset,
@@ -2206,7 +2201,7 @@ Rr_GraphNode *Rr_AddCopyImage2DNode(
 }
 
 #define RR_NODE_ENCODE(FunctionType, ArgsType)                         \
-    Rr_Arena *Arena = Node->Graph->Frame->Arena;                       \
+    Rr_Arena *Arena = Node->Graph->Arena;                              \
     Rr_Encoded *Encoded = (Rr_Encoded *)&Node->Union;                  \
     Encoded->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_NodeFunction)); \
     Encoded->Encoded = Encoded->Encoded->Next;                         \

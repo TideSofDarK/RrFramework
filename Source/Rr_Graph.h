@@ -319,13 +319,13 @@ struct Rr_Graph
     Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_ComputePipeline *ComputePipeline;
 
-    Rr_HandleStorage Buffers;
-    Rr_HandleStorage Images;
-    Rr_HandleStorage ComputePipelines;
-    Rr_HandleStorage GraphicsPipelines;
-    Rr_HandleStorage Samplers;
+    Rr_HandleSet Buffers;
+    Rr_HandleSet Images;
+    Rr_HandleSet ComputePipelines;
+    Rr_HandleSet GraphicsPipelines;
+    Rr_HandleSet Samplers;
 
-    struct Rr_Frame *Frame;
+    Rr_Arena *Arena;
 };
 
 extern void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer);

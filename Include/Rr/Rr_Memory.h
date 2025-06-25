@@ -246,27 +246,27 @@ typedef void *Rr_Handle;
  * Handle Set
  */
 
-typedef struct Rr_HandleSet Rr_HandleSet;
-struct Rr_HandleSet
+typedef struct Rr_HandleTrie Rr_HandleTrie;
+struct Rr_HandleTrie
 {
     void *Handle;
-    Rr_HandleSet *Children[4];
+    Rr_HandleTrie *Children[4];
 };
 
-#define RR_HIVE_TYPE      Rr_HandleSet
-#define RR_HIVE_TYPE_NAME HandleSet
+#define RR_HIVE_TYPE      Rr_HandleTrie
+#define RR_HIVE_TYPE_NAME HandleTrie
 #define RR_HIVE_PREFIX    Rr_
 #include <Rr/Rr_Hive.h>
 
-typedef struct Rr_HandleStorage Rr_HandleStorage;
-struct Rr_HandleStorage
+typedef struct Rr_HandleSet Rr_HandleSet;
+struct Rr_HandleSet
 {
-    Rr_HandleSet *Set;
-    Rr_HandleSetHive Hive;
+    Rr_HandleTrie *Trie;
+    Rr_HandleTrieHive Hive;
 };
 
-extern void Rr_AddHandle(
-    Rr_HandleStorage *Storage,
+extern void Rr_AddHandleToSet(
+    Rr_HandleSet *Set,
     Rr_Handle Handle,
     Rr_Arena *Arena);
 
