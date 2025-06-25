@@ -29,6 +29,8 @@
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Platform.h>
 
+#include <xxHash/xxhash.h>
+
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
@@ -256,6 +258,28 @@ void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
     *Map = (Rr_Map *)RR_ALLOC(Arena, sizeof(Rr_Map));
     (*Map)->Key = Key;
     return &(*Map)->Value;
+}
+
+void Rr_AddHandle(Rr_HandleStorage *Storage, Rr_Handle Handle, Rr_Arena *Arena)
+{
+    Rr_HandleSet **Set = &Storage->Set;
+    if (*Set != NULL)
+    {
+        for (uint64_t Hash = XXH64(&Handle, sizeof(Handle), 0); *Set;
+             Hash <<= 2)
+        {
+            if (Handle == (*Set)->Handle)
+            {
+                return;
+            }
+            static const int Shift = (sizeof(Rr_MapKey) * CHAR_BIT) - 2;
+            Set = &(*Set)->Children[Hash >> Shift];
+        }
+    }
+    assert(Arena != NULL && "Arena is NULL!");
+    *Set = Rr_PushHandleSetIntoHive(&Storage->Hive, Arena).Element;
+    RR_ZERO_PTR(*Set);
+    (*Set)->Handle = Handle;
 }
 
 typedef struct Rr_FreeList Rr_FreeList;

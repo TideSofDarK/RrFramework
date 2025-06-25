@@ -340,7 +340,7 @@ Rr_UIFont *Rr_UICreateFont(
 #undef CJSON_GET_OBJECT_FLOAT
 }
 
-void Rr_UIDestroyFont(Rr_UIContext *Context, Rr_UIFont *Font)
+void Rr_UIReleaseFont(Rr_UIContext *Context, Rr_UIFont *Font)
 {
     Rr_ReleaseImage(Font->Atlas);
 
@@ -4415,13 +4415,15 @@ void Rr_CleanupUI(void)
 {
     assert(gUIContext != NULL);
 
-    Rr_DestroyBuffer(gUIContext->VertexBuffer);
-    Rr_DestroyBuffer(gUIContext->IndexBuffer);
-    Rr_DestroyBuffer(gUIContext->UniformBuffer);
-    Rr_DestroySampler(gUIContext->Sampler);
-    Rr_DestroyPipelineLayout(gUIContext->PipelineLayout);
-    Rr_DestroyGraphicsPipeline(gUIContext->GraphicsPipeline);
-    Rr_UIDestroyFont(gUIContext, gUIContext->Font);
+    Rr_ReleaseBuffer(gUIContext->VertexBuffer);
+    Rr_ReleaseBuffer(gUIContext->IndexBuffer);
+    Rr_ReleaseBuffer(gUIContext->UniformBuffer);
+    Rr_ReleaseSampler(gUIContext->Sampler);
+    Rr_ReleasePipelineLayout(gUIContext->PipelineLayout);
+    Rr_ReleaseGraphicsPipeline(gUIContext->GraphicsPipeline);
+
+    Rr_UIReleaseFont(gUIContext, gUIContext->Font);
+
     Rr_DestroyArena(gUIContext->Arena);
 
     gUIContext = NULL;

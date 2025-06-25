@@ -232,6 +232,45 @@ extern void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena);
     (*(void **)Rr_GetMapValue((Map), (uintptr_t)Key, Arena))
 
 /*
+ * Handle Hive
+ */
+
+typedef void *Rr_Handle;
+
+#define RR_HIVE_TYPE      Rr_Handle
+#define RR_HIVE_TYPE_NAME Handle
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+/*
+ * Handle Set
+ */
+
+typedef struct Rr_HandleSet Rr_HandleSet;
+struct Rr_HandleSet
+{
+    void *Handle;
+    Rr_HandleSet *Children[4];
+};
+
+#define RR_HIVE_TYPE      Rr_HandleSet
+#define RR_HIVE_TYPE_NAME HandleSet
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+typedef struct Rr_HandleStorage Rr_HandleStorage;
+struct Rr_HandleStorage
+{
+    Rr_HandleSet *Set;
+    Rr_HandleSetHive Hive;
+};
+
+extern void Rr_AddHandle(
+    Rr_HandleStorage *Storage,
+    Rr_Handle Handle,
+    Rr_Arena *Arena);
+
+/*
  * Free List
  */
 

@@ -132,11 +132,14 @@ void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
         return;
     }
 
-    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
-        &gRenderer->ReleasedObjects,
-        gRenderer->Arena);
-    It.Element->Ptr = PipelineLayout;
-    It.Element->Type = RR_RENDERER_OBJECT_TYPE_PIPELINE_LAYOUT;
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    *Rr_PushHandleIntoHive(
+         &gRenderer->ReleasedPipelineLayouts,
+         gRenderer->Arena)
+         .Element = PipelineLayout;
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 }
 
 void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
@@ -149,6 +152,8 @@ void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
         &gRenderer->PipelineLayouts,
         PipelineLayout);
     Rr_RemoveFromPipelineLayoutHive(&gRenderer->PipelineLayouts, &It);
+
+    RR_LOG("Destroyed pipeline layout with address %p", (void *)PipelineLayout);
 }
 
 static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
@@ -280,11 +285,10 @@ void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
-        &gRenderer->ReleasedObjects,
-        gRenderer->Arena);
-    It.Element->Ptr = ComputePipeline;
-    It.Element->Type = RR_RENDERER_OBJECT_TYPE_COMPUTE_PIPELINE;
+    *Rr_PushHandleIntoHive(
+         &gRenderer->ReleasedComputePipelines,
+         gRenderer->Arena)
+         .Element = ComputePipeline;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -304,6 +308,10 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
         &gRenderer->ComputePipelines,
         ComputePipeline);
     Rr_RemoveFromComputePipelineHive(&gRenderer->ComputePipelines, &It);
+
+    RR_LOG(
+        "Destroyed compute pipeline with address %p",
+        (void *)ComputePipeline);
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
@@ -621,11 +629,10 @@ void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
-        &gRenderer->ReleasedObjects,
-        gRenderer->Arena);
-    It.Element->Ptr = GraphicsPipeline;
-    It.Element->Type = RR_RENDERER_OBJECT_TYPE_GRAPHICS_PIPELINE;
+    *Rr_PushHandleIntoHive(
+         &gRenderer->ReleasedGraphicsPipelines,
+         gRenderer->Arena)
+         .Element = GraphicsPipeline;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -645,6 +652,10 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
         &gRenderer->GraphicsPipelines,
         GraphicsPipeline);
     Rr_RemoveFromGraphicsPipelineHive(&gRenderer->GraphicsPipelines, &It);
+
+    RR_LOG(
+        "Destroyed graphics pipeline with address %p",
+        (void *)GraphicsPipeline);
 }
 
 Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)

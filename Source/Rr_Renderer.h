@@ -35,28 +35,6 @@
 
 #include <xxHash/xxhash.h>
 
-typedef enum
-{
-    RR_RENDERER_OBJECT_TYPE_BUFFER,
-    RR_RENDERER_OBJECT_TYPE_IMAGE,
-    RR_RENDERER_OBJECT_TYPE_PIPELINE_LAYOUT,
-    RR_RENDERER_OBJECT_TYPE_COMPUTE_PIPELINE,
-    RR_RENDERER_OBJECT_TYPE_GRAPHICS_PIPELINE,
-    RR_RENDERER_OBJECT_TYPE_SAMPLER,
-} Rr_RendererObjectType;
-
-typedef struct Rr_RendererObject Rr_RendererObject;
-struct Rr_RendererObject
-{
-    void *Ptr;
-    Rr_RendererObjectType Type;
-};
-
-#define RR_HIVE_TYPE      Rr_RendererObject
-#define RR_HIVE_TYPE_NAME RendererObject
-#define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
-
 typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
 {
@@ -102,31 +80,8 @@ struct Rr_Frame
 
     Rr_Graph *Graph;
 
-    struct
-    {
-        RR_ARRAY(Rr_Buffer *) Buffers;
-        RR_ARRAY(Rr_Image *) Images;
-        RR_ARRAY(Rr_Sampler *) Samplers;
-        RR_ARRAY(Rr_ComputePipeline *) ComputePipelines;
-        RR_ARRAY(Rr_GraphicsPipeline *) GraphicsPipelines;
-    } UsedObjects;
-
     Rr_Arena *Arena;
 };
-
-extern void Rr_MarkBufferUsed(Rr_Frame *Frame, Rr_Buffer *Buffer);
-
-extern void Rr_MarkImageUsed(Rr_Frame *Frame, Rr_Image *Image);
-
-extern void Rr_MarkSamplerUsed(Rr_Frame *Frame, Rr_Sampler *Sampler);
-
-extern void Rr_MarkComputePipelineUsed(
-    Rr_Frame *Frame,
-    Rr_ComputePipeline *ComputePipeline);
-
-extern void Rr_MarkGraphicsPipelineUsed(
-    Rr_Frame *Frame,
-    Rr_GraphicsPipeline *GraphicsPipeline);
 
 /* NOTE: To pass various attachment configurations around we use the following
  * order of image views (a.k.a. attachments):
@@ -256,7 +211,12 @@ struct Rr_Renderer
     Rr_GraphicsPipelineHive GraphicsPipelines;
     Rr_SamplerHive Samplers;
 
-    Rr_RendererObjectHive ReleasedObjects;
+    Rr_HandleHive ReleasedBuffers;
+    Rr_HandleHive ReleasedImages;
+    Rr_HandleHive ReleasedSamplers;
+    Rr_HandleHive ReleasedPipelineLayouts;
+    Rr_HandleHive ReleasedComputePipelines;
+    Rr_HandleHive ReleasedGraphicsPipelines;
 
     Rr_Spinlock Lock;
     Rr_Arena *Arena;

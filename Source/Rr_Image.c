@@ -82,11 +82,8 @@ void Rr_ReleaseSampler(Rr_Sampler *Sampler)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
-        &gRenderer->ReleasedObjects,
-        gRenderer->Arena);
-    It.Element->Ptr = Sampler;
-    It.Element->Type = RR_RENDERER_OBJECT_TYPE_SAMPLER;
+    *Rr_PushHandleIntoHive(&gRenderer->ReleasedSamplers, gRenderer->Arena)
+         .Element = Sampler;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -102,6 +99,8 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
     Rr_SamplerHiveIterator It =
         Rr_GetSamplerHiveIterator(&gRenderer->Samplers, Sampler);
     Rr_RemoveFromSamplerHive(&gRenderer->Samplers, &It);
+
+    RR_LOG("Destroyed sampler with address %p", (void *)Sampler);
 }
 
 Rr_ImageViewStorage *Rr_CreateImageViewStorage(void)
@@ -509,11 +508,8 @@ void Rr_ReleaseImage(Rr_Image *Image)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
-        &gRenderer->ReleasedObjects,
-        gRenderer->Arena);
-    It.Element->Ptr = Image;
-    It.Element->Type = RR_RENDERER_OBJECT_TYPE_IMAGE;
+    *Rr_PushHandleIntoHive(&gRenderer->ReleasedImages, gRenderer->Arena)
+         .Element = Image;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -540,6 +536,8 @@ void Rr_DestroyImage(Rr_Image *Image)
     Rr_ImageHiveIterator It =
         Rr_GetImageHiveIterator(&gRenderer->Images, Image);
     Rr_RemoveFromImageHive(&gRenderer->Images, &It);
+
+    RR_LOG("Destroyed image with address %p", (void *)Image);
 }
 
 Rr_Image2D *Rr_CreateImage2D(

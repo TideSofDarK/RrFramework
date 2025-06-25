@@ -143,11 +143,8 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_RendererObjectHiveIterator It = Rr_PushRendererObjectIntoHive(
-        &gRenderer->ReleasedObjects,
-        gRenderer->Arena);
-    It.Element->Ptr = Buffer;
-    It.Element->Type = RR_RENDERER_OBJECT_TYPE_BUFFER;
+    *Rr_PushHandleIntoHive(&gRenderer->ReleasedBuffers, gRenderer->Arena)
+         .Element = Buffer;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 }
@@ -171,6 +168,8 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
     Rr_BufferHiveIterator It =
         Rr_GetBufferHiveIterator(&gRenderer->Buffers, Buffer);
     Rr_RemoveFromBufferHive(&gRenderer->Buffers, &It);
+
+    RR_LOG("Destroyed buffer with address %p", (void *)Buffer);
 }
 
 void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)

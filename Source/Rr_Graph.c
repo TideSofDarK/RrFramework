@@ -117,7 +117,6 @@ static void Rr_ExecuteComputeNode(
     Rr_Device *Device = &gRenderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame();
 
-    Rr_ComputePipeline *Pipeline = NULL;
     Rr_DescriptorsState DescriptorsState = { 0 };
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
@@ -128,23 +127,28 @@ static void Rr_ExecuteComputeNode(
         {
             case RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE:
             {
-                Pipeline = *(Rr_ComputePipeline **)Function->Args;
-                Device->CmdBindPipeline(
-                    CommandBuffer,
-                    VK_PIPELINE_BIND_POINT_COMPUTE,
-                    Pipeline->Handle);
-                Rr_InvalidateDescriptorState(
-                    &DescriptorsState,
-                    Pipeline->Layout);
+                Rr_ComputePipeline *ComputePipeline =
+                    *(Rr_ComputePipeline **)Function->Args;
+                if (Graph->ComputePipeline != ComputePipeline)
+                {
+                    Device->CmdBindPipeline(
+                        CommandBuffer,
+                        VK_PIPELINE_BIND_POINT_COMPUTE,
+                        ComputePipeline->Handle);
+                    Rr_InvalidateDescriptorState(
+                        &DescriptorsState,
+                        ComputePipeline->Layout);
+                    Graph->ComputePipeline = ComputePipeline;
+                }
             }
             break;
             case RR_NODE_FUNCTION_TYPE_DISPATCH:
             {
-                assert(Pipeline != NULL);
+                assert(Graph->ComputePipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     Frame->DescriptorAllocator,
-                    Pipeline->Layout,
+                    Graph->ComputePipeline->Layout,
                     Device,
                     CommandBuffer,
                     VK_PIPELINE_BIND_POINT_COMPUTE);
@@ -477,7 +481,6 @@ static void Rr_ExecuteGraphicsNode(
             .extent.height = Viewport.Height,
         });
 
-    Rr_GraphicsPipeline *GraphicsPipeline = NULL;
     Rr_DescriptorsState DescriptorsState = { 0 };
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
@@ -488,11 +491,11 @@ static void Rr_ExecuteGraphicsNode(
         {
             case RR_NODE_FUNCTION_TYPE_DRAW:
             {
-                assert(GraphicsPipeline != NULL);
+                assert(Graph->GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     Frame->DescriptorAllocator,
-                    GraphicsPipeline->Layout,
+                    Graph->GraphicsPipeline->Layout,
                     Device,
                     CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
@@ -507,11 +510,11 @@ static void Rr_ExecuteGraphicsNode(
             break;
             case RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT:
             {
-                assert(GraphicsPipeline != NULL);
+                assert(Graph->GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     Frame->DescriptorAllocator,
-                    GraphicsPipeline->Layout,
+                    Graph->GraphicsPipeline->Layout,
                     Device,
                     CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
@@ -527,11 +530,11 @@ static void Rr_ExecuteGraphicsNode(
             break;
             case RR_NODE_FUNCTION_TYPE_DRAW_INDEXED:
             {
-                assert(GraphicsPipeline != NULL);
+                assert(Graph->GraphicsPipeline != NULL);
                 Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     Frame->DescriptorAllocator,
-                    GraphicsPipeline->Layout,
+                    Graph->GraphicsPipeline->Layout,
                     Device,
                     CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
@@ -568,14 +571,19 @@ static void Rr_ExecuteGraphicsNode(
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE:
             {
-                GraphicsPipeline = *(Rr_GraphicsPipeline **)Function->Args;
-                Device->CmdBindPipeline(
-                    CommandBuffer,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    GraphicsPipeline->Handle);
-                Rr_InvalidateDescriptorState(
-                    &DescriptorsState,
-                    GraphicsPipeline->Layout);
+                Rr_GraphicsPipeline *GraphicsPipeline =
+                    *(Rr_GraphicsPipeline **)Function->Args;
+                if (Graph->GraphicsPipeline != GraphicsPipeline)
+                {
+                    Device->CmdBindPipeline(
+                        CommandBuffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        GraphicsPipeline->Handle);
+                    Rr_InvalidateDescriptorState(
+                        &DescriptorsState,
+                        GraphicsPipeline->Layout);
+                    Graph->GraphicsPipeline = GraphicsPipeline;
+                }
             }
             break;
             case RR_NODE_FUNCTION_TYPE_SET_VIEWPORT:
@@ -983,7 +991,7 @@ static void Rr_CreateGraphAdjacencyList(
                     Arena) = Node->OriginalIndex;
             }
 
-            /* If Generation is greater than zero
+            /* If generation is greater than zero
              * it means we should lookup another node that
              * produces that state of the resource and add
              * that node as a dependency. */
@@ -1630,15 +1638,122 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
 
         if (IsImage)
         {
-            Rr_MarkImageUsed(Graph->Frame, Container);
+            Rr_MarkImageUsed(Graph, Container);
         }
         else
         {
-            Rr_MarkBufferUsed(Graph->Frame, Container);
+            Rr_MarkBufferUsed(Graph, Container);
         }
     }
 
     return *GraphHandle;
+}
+
+void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer)
+{
+    atomic_fetch_add_explicit(&Buffer->RefCount, 1, memory_order_relaxed);
+    Rr_AddHandle(&Graph->Buffers, Buffer, Graph->Frame->Arena);
+}
+
+void Rr_MarkImageUsed(Rr_Graph *Graph, Rr_Image *Image)
+{
+    atomic_fetch_add_explicit(&Image->RefCount, 1, memory_order_relaxed);
+    Rr_AddHandle(&Graph->Images, Image, Graph->Frame->Arena);
+}
+
+void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler)
+{
+    atomic_fetch_add_explicit(&Sampler->RefCount, 1, memory_order_relaxed);
+    Rr_AddHandle(&Graph->Samplers, Sampler, Graph->Frame->Arena);
+}
+
+void Rr_MarkComputePipelineUsed(
+    Rr_Graph *Graph,
+    Rr_ComputePipeline *ComputePipeline)
+{
+    atomic_fetch_add_explicit(
+        &ComputePipeline->RefCount,
+        1,
+        memory_order_relaxed);
+    Rr_AddHandle(
+        &Graph->ComputePipelines,
+        ComputePipeline,
+        Graph->Frame->Arena);
+}
+
+void Rr_MarkGraphicsPipelineUsed(
+    Rr_Graph *Graph,
+    Rr_GraphicsPipeline *GraphicsPipeline)
+{
+    atomic_fetch_add_explicit(
+        &GraphicsPipeline->RefCount,
+        1,
+        memory_order_relaxed);
+    Rr_AddHandle(
+        &Graph->GraphicsPipelines,
+        GraphicsPipeline,
+        Graph->Frame->Arena);
+}
+
+void Rr_DecrementRefCounts(Rr_Graph *Graph)
+{
+    if (Graph == NULL)
+    {
+        return;
+    }
+
+    for (Rr_HandleSetHiveIterator It = Graph->Buffers.Hive.Begin;
+         It.Element != Graph->Buffers.Hive.End.Element;
+         Rr_AdvanceHandleSetHiveIterator(&It))
+    {
+        Rr_Buffer *Buffer = (Rr_Buffer *)It.Element->Handle;
+        atomic_fetch_sub_explicit(&Buffer->RefCount, 1, memory_order_relaxed);
+    }
+    Rr_ClearHandleSetHive(&Graph->Buffers.Hive);
+
+    for (Rr_HandleSetHiveIterator It = Graph->Images.Hive.Begin;
+         It.Element != Graph->Images.Hive.End.Element;
+         Rr_AdvanceHandleSetHiveIterator(&It))
+    {
+        Rr_Image *Image = (Rr_Image *)It.Element->Handle;
+        atomic_fetch_sub_explicit(&Image->RefCount, 1, memory_order_relaxed);
+    }
+    Rr_ClearHandleSetHive(&Graph->Images.Hive);
+
+    for (Rr_HandleSetHiveIterator It = Graph->Samplers.Hive.Begin;
+         It.Element != Graph->Samplers.Hive.End.Element;
+         Rr_AdvanceHandleSetHiveIterator(&It))
+    {
+        Rr_Sampler *Sampler = (Rr_Sampler *)It.Element->Handle;
+        atomic_fetch_sub_explicit(&Sampler->RefCount, 1, memory_order_relaxed);
+    }
+    Rr_ClearHandleSetHive(&Graph->Samplers.Hive);
+
+    for (Rr_HandleSetHiveIterator It = Graph->ComputePipelines.Hive.Begin;
+         It.Element != Graph->ComputePipelines.Hive.End.Element;
+         Rr_AdvanceHandleSetHiveIterator(&It))
+    {
+        Rr_ComputePipeline *ComputePipeline =
+            (Rr_ComputePipeline *)It.Element->Handle;
+        atomic_fetch_sub_explicit(
+            &ComputePipeline->RefCount,
+            1,
+            memory_order_relaxed);
+    }
+    Rr_ClearHandleSetHive(&Graph->ComputePipelines.Hive);
+
+    for (Rr_HandleSetHiveIterator It = Graph->GraphicsPipelines.Hive.Begin;
+         It.Element != Graph->GraphicsPipelines.Hive.End.Element;
+         Rr_AdvanceHandleSetHiveIterator(&It))
+    {
+        Rr_GraphicsPipeline *GraphicsPipeline =
+            (Rr_GraphicsPipeline *)It.Element->Handle;
+        atomic_fetch_sub_explicit(
+            &GraphicsPipeline->RefCount,
+            1,
+            memory_order_relaxed);
+    }
+    Rr_ClearHandleSetHive(&Graph->GraphicsPipelines.Hive);
 }
 
 Rr_GraphBuffer *Rr_GetGraphBufferHandle(Rr_Graph *Graph, void *Container)
@@ -2106,7 +2221,7 @@ void Rr_BindComputePipeline(
     assert(ComputePipeline != NULL);
     assert(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE);
 
-    Rr_MarkComputePipelineUsed(Node->Graph->Frame, ComputePipeline);
+    Rr_MarkComputePipelineUsed(Node->Graph, ComputePipeline);
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
@@ -2266,7 +2381,7 @@ void Rr_BindGraphicsPipeline(
         Node->Union.Graphics.DepthTarget != NULL ||
         !GraphicsPipeline->HasDepthStencil);
 
-    Rr_MarkGraphicsPipelineUsed(Node->Graph->Frame, GraphicsPipeline);
+    Rr_MarkGraphicsPipelineUsed(Node->Graph, GraphicsPipeline);
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
@@ -2297,7 +2412,7 @@ void Rr_BindSampler(
     assert(Binding < RR_MAX_BINDINGS);
     assert(Sampler != NULL);
 
-    Rr_MarkSamplerUsed(Node->Graph->Frame, Sampler);
+    Rr_MarkSamplerUsed(Node->Graph, Sampler);
 
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_BIND_SAMPLER, Rr_BindSamplerArgs) =
         (Rr_BindSamplerArgs){
@@ -2364,7 +2479,7 @@ void Rr_BindCombinedImage2DSampler(
     assert(Sampler != NULL);
     assert(Image2D);
 
-    Rr_MarkSamplerUsed(Node->Graph->Frame, Sampler);
+    Rr_MarkSamplerUsed(Node->Graph, Sampler);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image2D);
 
@@ -2414,7 +2529,7 @@ void Rr_BindCombinedImageCubeSampler(
     assert(Sampler != NULL);
     assert(ImageCube);
 
-    Rr_MarkSamplerUsed(Node->Graph->Frame, Sampler);
+    Rr_MarkSamplerUsed(Node->Graph, Sampler);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, ImageCube);
 

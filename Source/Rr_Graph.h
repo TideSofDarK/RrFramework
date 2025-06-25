@@ -315,8 +315,34 @@ struct Rr_Graph
     Rr_Map *Handles;
     Rr_Map *ResourceWriteToNode;
     uint32_t SwapchainImageResourceIndex;
+
+    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_ComputePipeline *ComputePipeline;
+
+    Rr_HandleStorage Buffers;
+    Rr_HandleStorage Images;
+    Rr_HandleStorage ComputePipelines;
+    Rr_HandleStorage GraphicsPipelines;
+    Rr_HandleStorage Samplers;
+
     struct Rr_Frame *Frame;
 };
+
+extern void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer);
+
+extern void Rr_MarkImageUsed(Rr_Graph *Graph, struct Rr_Image *Image);
+
+extern void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler);
+
+extern void Rr_MarkComputePipelineUsed(
+    Rr_Graph *Graph,
+    Rr_ComputePipeline *ComputePipeline);
+
+extern void Rr_MarkGraphicsPipelineUsed(
+    Rr_Graph *Graph,
+    Rr_GraphicsPipeline *GraphicsPipeline);
+
+extern void Rr_DecrementRefCounts(Rr_Graph *Graph);
 
 extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
     Rr_Graph *Graph,

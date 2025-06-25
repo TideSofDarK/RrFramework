@@ -37,48 +37,6 @@
 
 Rr_Renderer *gRenderer;
 
-void Rr_MarkBufferUsed(Rr_Frame *Frame, Rr_Buffer *Buffer)
-{
-    atomic_fetch_add_explicit(&Buffer->RefCount, 1, memory_order_relaxed);
-    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Buffers, Frame->Arena) = Buffer;
-}
-
-void Rr_MarkImageUsed(Rr_Frame *Frame, Rr_Image *Image)
-{
-    atomic_fetch_add_explicit(&Image->RefCount, 1, memory_order_relaxed);
-    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Images, Frame->Arena) = Image;
-}
-
-void Rr_MarkSamplerUsed(Rr_Frame *Frame, Rr_Sampler *Sampler)
-{
-    atomic_fetch_add_explicit(&Sampler->RefCount, 1, memory_order_relaxed);
-    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.Samplers, Frame->Arena) = Sampler;
-}
-
-void Rr_MarkComputePipelineUsed(
-    Rr_Frame *Frame,
-    Rr_ComputePipeline *ComputePipeline)
-{
-    atomic_fetch_add_explicit(
-        &ComputePipeline->RefCount,
-        1,
-        memory_order_relaxed);
-    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.ComputePipelines, Frame->Arena) =
-        ComputePipeline;
-}
-
-void Rr_MarkGraphicsPipelineUsed(
-    Rr_Frame *Frame,
-    Rr_GraphicsPipeline *GraphicsPipeline)
-{
-    atomic_fetch_add_explicit(
-        &GraphicsPipeline->RefCount,
-        1,
-        memory_order_relaxed);
-    *RR_PUSH_INTO_ARRAY(&Frame->UsedObjects.GraphicsPipelines, Frame->Arena) =
-        GraphicsPipeline;
-}
-
 static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 {
     Rr_Device *Device = &gRenderer->Device;
@@ -629,152 +587,104 @@ void Rr_WaitIdle(void)
     Device->DeviceWaitIdle(Device->Handle);
 }
 
-static void Rr_DecrementRefCounts(Rr_Frame *Frame)
-{
-    for (size_t Index = 0; Index < Frame->UsedObjects.Buffers.Count; ++Index)
-    {
-        atomic_fetch_sub_explicit(
-            &Frame->UsedObjects.Buffers.Data[Index]->RefCount,
-            1,
-            memory_order_relaxed);
-    }
-
-    for (size_t Index = 0; Index < Frame->UsedObjects.Images.Count; ++Index)
-    {
-        atomic_fetch_sub_explicit(
-            &Frame->UsedObjects.Images.Data[Index]->RefCount,
-            1,
-            memory_order_relaxed);
-    }
-
-    for (size_t Index = 0; Index < Frame->UsedObjects.Samplers.Count; ++Index)
-    {
-        atomic_fetch_sub_explicit(
-            &Frame->UsedObjects.Samplers.Data[Index]->RefCount,
-            1,
-            memory_order_relaxed);
-    }
-
-    for (size_t Index = 0; Index < Frame->UsedObjects.ComputePipelines.Count;
-         ++Index)
-    {
-        atomic_fetch_sub_explicit(
-            &Frame->UsedObjects.ComputePipelines.Data[Index]->RefCount,
-            1,
-            memory_order_relaxed);
-    }
-
-    for (size_t Index = 0; Index < Frame->UsedObjects.GraphicsPipelines.Count;
-         ++Index)
-    {
-        atomic_fetch_sub_explicit(
-            &Frame->UsedObjects.GraphicsPipelines.Data[Index]->RefCount,
-            1,
-            memory_order_relaxed);
-    }
-}
-
 static inline void Rr_ProcessReleasedObjects(void)
 {
-    static const char *RENDERER_OBJECT_NAMES[] = {
-        "buffer",
-        "image",
-        "pipeline layout",
-        "compute pipeline",
-        "graphics pipeline",
-        "sampler",
-    };
-
-    for (Rr_RendererObjectHiveIterator It = gRenderer->ReleasedObjects.Begin;
-         It.Element != gRenderer->ReleasedObjects.End.Element;)
+    for (Rr_HandleHiveIterator It = gRenderer->ReleasedBuffers.Begin;
+         It.Element != gRenderer->ReleasedBuffers.End.Element;)
     {
-        Rr_RendererObject Object = *It.Element;
-        switch (Object.Type)
+        Rr_Buffer *Buffer = *(Rr_Buffer **)It.Element;
+        if (!atomic_load_explicit(&Buffer->RefCount, memory_order_relaxed))
         {
-            case RR_RENDERER_OBJECT_TYPE_BUFFER:
-            {
-                Rr_Buffer *Buffer = Object.Ptr;
-
-                if (!atomic_load_explicit(
-                        &Buffer->RefCount,
-                        memory_order_relaxed))
-                {
-                    Rr_DestroyBuffer(Buffer);
-                    goto ObjectDeleted;
-                }
-            }
-            break;
-            case RR_RENDERER_OBJECT_TYPE_IMAGE:
-            {
-                Rr_Image *Image = Object.Ptr;
-                if (!atomic_load_explicit(
-                        &Image->RefCount,
-                        memory_order_relaxed))
-                {
-                    Rr_DestroyImage(Image);
-                    goto ObjectDeleted;
-                }
-            }
-            break;
-            case RR_RENDERER_OBJECT_TYPE_SAMPLER:
-            {
-                Rr_Sampler *Sampler = Object.Ptr;
-                if (!atomic_load_explicit(
-                        &Sampler->RefCount,
-                        memory_order_relaxed))
-                {
-                    Rr_DestroySampler(Sampler);
-                    goto ObjectDeleted;
-                }
-            }
-            break;
-            case RR_RENDERER_OBJECT_TYPE_PIPELINE_LAYOUT:
-            {
-                Rr_PipelineLayout *PipelineLayout = Object.Ptr;
-                if (!atomic_load_explicit(
-                        &PipelineLayout->RefCount,
-                        memory_order_relaxed))
-                {
-                    Rr_DestroyPipelineLayout(PipelineLayout);
-                    goto ObjectDeleted;
-                }
-            }
-            break;
-            case RR_RENDERER_OBJECT_TYPE_COMPUTE_PIPELINE:
-            {
-                Rr_ComputePipeline *ComputePipeline = Object.Ptr;
-                if (!atomic_load_explicit(
-                        &ComputePipeline->RefCount,
-                        memory_order_relaxed))
-                {
-                    Rr_DestroyComputePipeline(ComputePipeline);
-                    goto ObjectDeleted;
-                }
-            }
-            break;
-            case RR_RENDERER_OBJECT_TYPE_GRAPHICS_PIPELINE:
-            {
-                Rr_GraphicsPipeline *GraphicsPipeline = Object.Ptr;
-                if (!atomic_load_explicit(
-                        &GraphicsPipeline->RefCount,
-                        memory_order_relaxed))
-                {
-                    Rr_DestroyGraphicsPipeline(GraphicsPipeline);
-                    goto ObjectDeleted;
-                }
-            }
-            break;
-            default:
-                RR_ABORT("Invalid renderer object type in deletion queue!");
+            Rr_DestroyBuffer(Buffer);
+            Rr_RemoveFromHandleHive(&gRenderer->ReleasedBuffers, &It);
         }
-        Rr_AdvanceRendererObjectHiveIterator(&It);
-        continue;
-    ObjectDeleted:
-        RR_LOG(
-            "Destroying %s with address %p",
-            RENDERER_OBJECT_NAMES[Object.Type],
-            Object.Ptr);
-        Rr_RemoveFromRendererObjectHive(&gRenderer->ReleasedObjects, &It);
+        else
+        {
+            Rr_AdvanceHandleHiveIterator(&It);
+        }
+    }
+
+    for (Rr_HandleHiveIterator It = gRenderer->ReleasedImages.Begin;
+         It.Element != gRenderer->ReleasedImages.End.Element;)
+    {
+        Rr_Image *Image = *(Rr_Image **)It.Element;
+        if (!atomic_load_explicit(&Image->RefCount, memory_order_relaxed))
+        {
+            Rr_DestroyImage(Image);
+            Rr_RemoveFromHandleHive(&gRenderer->ReleasedImages, &It);
+        }
+        else
+        {
+            Rr_AdvanceHandleHiveIterator(&It);
+        }
+    }
+
+    for (Rr_HandleHiveIterator It = gRenderer->ReleasedSamplers.Begin;
+         It.Element != gRenderer->ReleasedSamplers.End.Element;)
+    {
+        Rr_Sampler *Sampler = *(Rr_Sampler **)It.Element;
+        if (!atomic_load_explicit(&Sampler->RefCount, memory_order_relaxed))
+        {
+            Rr_DestroySampler(Sampler);
+            Rr_RemoveFromHandleHive(&gRenderer->ReleasedSamplers, &It);
+        }
+        else
+        {
+            Rr_AdvanceHandleHiveIterator(&It);
+        }
+    }
+
+    for (Rr_HandleHiveIterator It = gRenderer->ReleasedComputePipelines.Begin;
+         It.Element != gRenderer->ReleasedComputePipelines.End.Element;)
+    {
+        Rr_ComputePipeline *ComputePipeline =
+            *(Rr_ComputePipeline **)It.Element;
+        if (!atomic_load_explicit(
+                &ComputePipeline->RefCount,
+                memory_order_relaxed))
+        {
+            Rr_DestroyComputePipeline(ComputePipeline);
+            Rr_RemoveFromHandleHive(&gRenderer->ReleasedComputePipelines, &It);
+        }
+        else
+        {
+            Rr_AdvanceHandleHiveIterator(&It);
+        }
+    }
+
+    for (Rr_HandleHiveIterator It = gRenderer->ReleasedGraphicsPipelines.Begin;
+         It.Element != gRenderer->ReleasedGraphicsPipelines.End.Element;)
+    {
+        Rr_GraphicsPipeline *GraphicsPipeline =
+            *(Rr_GraphicsPipeline **)It.Element;
+        if (!atomic_load_explicit(
+                &GraphicsPipeline->RefCount,
+                memory_order_relaxed))
+        {
+            Rr_DestroyGraphicsPipeline(GraphicsPipeline);
+            Rr_RemoveFromHandleHive(&gRenderer->ReleasedGraphicsPipelines, &It);
+        }
+        else
+        {
+            Rr_AdvanceHandleHiveIterator(&It);
+        }
+    }
+
+    for (Rr_HandleHiveIterator It = gRenderer->ReleasedPipelineLayouts.Begin;
+         It.Element != gRenderer->ReleasedPipelineLayouts.End.Element;)
+    {
+        Rr_PipelineLayout *PipelineLayout = *(Rr_PipelineLayout **)It.Element;
+        if (!atomic_load_explicit(
+                &PipelineLayout->RefCount,
+                memory_order_relaxed))
+        {
+            Rr_DestroyPipelineLayout(PipelineLayout);
+            Rr_RemoveFromHandleHive(&gRenderer->ReleasedPipelineLayouts, &It);
+        }
+        else
+        {
+            Rr_AdvanceHandleHiveIterator(&It);
+        }
     }
 }
 
@@ -797,13 +707,10 @@ void Rr_CleanupRenderer(void)
 
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_DecrementRefCounts(&gRenderer->Frames[Index]);
+        Rr_DecrementRefCounts(gRenderer->Frames[Index].Graph);
     }
 
-    while (gRenderer->ReleasedObjects.Count > 0)
-    {
-        Rr_ProcessReleasedObjects();
-    }
+    Rr_ProcessReleasedObjects();
 
     /* NOTE: Framebuffers are destroyed along with image views.
      * For now, we don't care for destroying render passes unless it's
@@ -936,7 +843,7 @@ void Rr_NewFrame(void)
         Rr_ResetDescriptorAllocator(Frame->DescriptorAllocator, Device);
     }
 
-    Rr_DecrementRefCounts(Frame);
+    Rr_DecrementRefCounts(Frame->Graph);
 
     /* TODO: Probably should use mutex instead. */
 
@@ -951,12 +858,6 @@ void Rr_NewFrame(void)
     /* Reset everything allocated last time. */
 
     Rr_ResetArena(Frame->Arena);
-
-    RR_RESET_ARRAY(&Frame->UsedObjects.Buffers, Frame->Arena);
-    RR_RESET_ARRAY(&Frame->UsedObjects.Images, Frame->Arena);
-    RR_RESET_ARRAY(&Frame->UsedObjects.Samplers, Frame->Arena);
-    RR_RESET_ARRAY(&Frame->UsedObjects.ComputePipelines, Frame->Arena);
-    RR_RESET_ARRAY(&Frame->UsedObjects.GraphicsPipelines, Frame->Arena);
 
     Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image2D);
 
