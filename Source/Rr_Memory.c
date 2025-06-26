@@ -278,7 +278,7 @@ void Rr_AddHandleToSet(Rr_HandleSet *Set, Rr_Handle Handle, Rr_Arena *Arena)
     }
     assert(Arena != NULL && "Arena is NULL!");
     *Trie = Rr_PushHandleTrieIntoHive(&Set->Hive, Arena).Element;
-    RR_ZERO_PTR(*Trie);
+    RR_ZERO((*Trie)->Children);
     (*Trie)->Handle = Handle;
 }
 

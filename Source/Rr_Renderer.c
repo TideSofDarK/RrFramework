@@ -1169,7 +1169,7 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
                   .Element;
     (*MapRef)->Key = *Key;
     (*MapRef)->Value = VK_NULL_HANDLE;
-    RR_ZERO_PTR((*MapRef)->Children);
+    RR_ZERO((*MapRef)->Children);
     RenderPassRef = &(*MapRef)->Value;
 
 Found:
@@ -1337,7 +1337,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
                   .Element;
     (*MapRef)->Key = *Key;
     (*MapRef)->Value = VK_NULL_HANDLE;
-    RR_ZERO_PTR((*MapRef)->Children);
+    RR_ZERO((*MapRef)->Children);
     FramebufferRef = &(*MapRef)->Value;
 
 Found:
