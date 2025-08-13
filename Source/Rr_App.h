@@ -69,8 +69,10 @@ struct Rr_FrameTime
 typedef struct Rr_App Rr_App;
 struct Rr_App
 {
-    Rr_AppConfig *Config;
-    void *UserData;
+    void (*InitFunc)(void);
+    void (*EventFunc)(Rr_Event *Event);
+    void (*IterateFunc)(void);
+    void (*CleanupFunc)(void);
 
     _Atomic bool QuitRequested;
 

@@ -49,7 +49,7 @@ static void InitDepthImage(void)
             RR_IMAGE_FLAGS_TRANSFER_BIT);
 }
 
-static void Init(void *UserData)
+static void Init(void)
 {
     /* Create simple sampler. */
 
@@ -175,7 +175,7 @@ static void Init(void *UserData)
     InitDepthImage();
 }
 
-static void Event(void *UserData, Rr_Event *Event)
+static void Event(Rr_Event *Event)
 {
     switch (Event->Type)
     {
@@ -246,7 +246,7 @@ static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
     Rr_UIDebugOverlay();
 }
 
-static void Iterate(void *UserData)
+static void Iterate(void)
 {
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
@@ -277,7 +277,7 @@ static void Iterate(void *UserData)
     }
 }
 
-static void Cleanup(void *UserData)
+static void Cleanup(void)
 {
     Rr_DestroyLoadThread(LoadThread);
     Rr_ReleaseGLTFContext(GLTFContext);

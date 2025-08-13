@@ -549,7 +549,7 @@ static void Rr_CleanupTransientCommandPools(void)
         NULL);
 }
 
-void Rr_InitRenderer(void)
+void Rr_InitRenderer(const char *Title)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -559,10 +559,7 @@ void Rr_InitRenderer(void)
     gRenderer->Arena = Arena;
 
     Rr_InitLoader(&gRenderer->Loader);
-    Rr_InitInstance(
-        &gRenderer->Loader,
-        gApp->Config->Title,
-        &gRenderer->Instance);
+    Rr_InitInstance(&gRenderer->Loader, Title, &gRenderer->Instance);
     Rr_InitSurface(&gRenderer->Instance, &gRenderer->Surface);
     Rr_InitDeviceAndQueues(
         &gRenderer->Instance,

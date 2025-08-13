@@ -34,14 +34,11 @@ typedef struct Rr_AppConfig Rr_AppConfig;
 struct Rr_AppConfig
 {
     const char *Title;
-    const char *Version;
-    const char *Package;
     Rr_WindowFlags WindowFlags;
-    void (*InitFunc)(void *UserData);
-    void (*EventFunc)(void *UserData, Rr_Event *Event);
-    void (*IterateFunc)(void *UserData);
-    void (*CleanupFunc)(void *UserData);
-    void *UserData;
+    void (*InitFunc)(void);
+    void (*EventFunc)(Rr_Event *Event);
+    void (*IterateFunc)(void);
+    void (*CleanupFunc)(void);
 };
 
 extern void Rr_Run(Rr_AppConfig *Config);

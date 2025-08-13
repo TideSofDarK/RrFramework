@@ -26,7 +26,7 @@ struct SMyStruct
 static Rr_Arena *Arena;
 static SMyStructHive Hive;
 
-static void Init(void *UserData)
+static void Init()
 {
     Arena = Rr_CreateDefaultArena();
 
@@ -36,7 +36,7 @@ static void Init(void *UserData)
     }
 }
 
-static void Iterate(void *UserData)
+static void Iterate()
 {
     Rr_Graph *Graph = Rr_GetGraph();
 
@@ -92,7 +92,7 @@ static void Iterate(void *UserData)
     }
 }
 
-static void Cleanup(void *UserData)
+static void Cleanup()
 {
     Rr_DestroyArena(Arena);
 }
@@ -101,8 +101,6 @@ int main(int ArgC, char **ArgV)
 {
     Rr_AppConfig Config = {};
     Config.Title = "HiveTest";
-    Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.hivetest";
     Config.InitFunc = Init;
     Config.CleanupFunc = Cleanup;
     Config.IterateFunc = Iterate;

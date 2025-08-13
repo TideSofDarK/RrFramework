@@ -255,7 +255,7 @@ struct SApp
                 RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
-    SApp()
+    void Init()
     {
         InitPipeline();
         InitBackground();
@@ -319,7 +319,7 @@ struct SApp
         Rr_UIDebugOverlay();
     }
 
-    ~SApp()
+    void Cleanup()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -331,33 +331,14 @@ struct SApp
     }
 };
 
-static void Init(void *UserData)
-{
-    new (UserData) SApp();
-}
-
-static void Iterate(void *UserData)
-{
-    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
-    SmoothGrid->Iterate();
-}
-
-static void Cleanup(void *UserData)
-{
-    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
-    SmoothGrid->~SApp();
-}
-
 int main()
 {
-    alignas(SApp) std::array<std::byte, sizeof(SApp)> SmoothGrid;
+    static SApp App;
+
     Rr_AppConfig Config = {};
     Config.Title = "PrerenderedDepth";
-    Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.prerendereddepth";
-    Config.InitFunc = Init;
-    Config.IterateFunc = Iterate;
-    Config.CleanupFunc = Cleanup;
-    Config.UserData = SmoothGrid.data();
+    Config.InitFunc = []() { App.Init(); };
+    Config.IterateFunc = []() { App.Iterate(); };
+    Config.CleanupFunc = []() { App.Cleanup(); };
     Rr_Run(&Config);
 }

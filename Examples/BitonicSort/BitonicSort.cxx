@@ -241,7 +241,7 @@ Rr_Buffer *StagingBuffer;
 SBitonicSorter *Sorter;
 SValidator *Validator;
 
-static void Init(void *UserData)
+static void Init()
 {
     std::srand((unsigned int)std::time(NULL));
 
@@ -263,7 +263,7 @@ static void Init(void *UserData)
     Validator = new SValidator();
 }
 
-static void Iterate(void *UserData)
+static void Iterate()
 {
     Rr_Graph *Graph = Rr_GetGraph();
 
@@ -318,7 +318,7 @@ static void Iterate(void *UserData)
         RR_IMAGE_ASPECT_COLOR_BIT);
 }
 
-static void Cleanup(void *UserData)
+static void Cleanup()
 {
     delete Sorter;
     delete Validator;
@@ -332,8 +332,6 @@ int main()
 {
     Rr_AppConfig Config = {};
     Config.Title = "BitonicSort";
-    Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.bitonicsort";
     Config.InitFunc = Init;
     Config.CleanupFunc = Cleanup;
     Config.IterateFunc = Iterate;

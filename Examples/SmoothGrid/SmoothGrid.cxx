@@ -9,58 +9,20 @@ using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
 struct SCamera
 {
+    float Near = 0.01f;
+    float Far = 100.0f;
+    float FOVDegrees = 90.0f;
     float Pitch{};
     float Yaw{};
-    float Near;
-    float Far;
-    float Aspect;
-    float FOVDegrees;
     Rr_Vec3 Position;
 
     Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
-    void UpdatePerspective()
+    void UpdatePerspective(float Aspect)
     {
         ProjMatrix =
             Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
-    }
-
-    void UpdateView()
-    {
-        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
-        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
-        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
-        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
-
-        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
-        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
-        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
-
-        ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
-        ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
-        ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
-        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position),
-                                  -Rr_Dot(YAxis, Position),
-                                  -Rr_Dot(ZAxis, Position),
-                                  1.0f };
-        ViewMatrix = Rr_VulkanMatrix() * ViewMatrix;
-    }
-
-    SCamera(
-        Rr_Vec3 Position,
-        float FOVDegrees,
-        Rr_IntVec2 Size,
-        float Near,
-        float Far)
-        : Position(Position)
-        , FOVDegrees(FOVDegrees)
-        , Aspect((float)Size.X / (float)Size.Y)
-        , Near(Near)
-        , Far(Far)
-    {
-        UpdatePerspective();
-        UpdateView();
     }
 
     [[nodiscard]] Rr_Vec3 GetForwardVector() const
@@ -115,7 +77,23 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        UpdateView();
+        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
+        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
+        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
+        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
+
+        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
+        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
+        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
+
+        ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
+        ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
+        ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
+        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position),
+                                  -Rr_Dot(YAxis, Position),
+                                  -Rr_Dot(ZAxis, Position),
+                                  1.0f };
+        ViewMatrix = Rr_VulkanMatrix() * ViewMatrix;
     }
 };
 
@@ -131,7 +109,8 @@ struct SGPUUniform
 
 struct SApp
 {
-    static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
+    static constexpr Rr_TextureFormat DEPTH_FORMAT =
+        RR_TEXTURE_FORMAT_D32_SFLOAT;
 
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
@@ -188,6 +167,7 @@ struct SApp
 
     void InitDepthImage()
     {
+        Rr_ReleaseImage(DepthImage);
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
         DepthImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
@@ -195,17 +175,21 @@ struct SApp
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
-    SApp()
-        : Camera(
-              Rr_V3(0.0f, 1.0f, 0.0f),
-              90.0f,
-              Rr_GetSwapchainSize(),
-              0.01f,
-              100.0f)
+    void InitCamera()
     {
+        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        float Aspect = (float)SwapchainSize.Width / SwapchainSize.Height;
+        Camera.UpdatePerspective(Aspect);
+    }
+
+    void Init()
+    {
+        InitCamera();
         InitPipeline();
         InitUniformBuffer();
         InitDepthImage();
+
+        Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
     }
 
     void Event(Rr_Event *Event)
@@ -214,7 +198,8 @@ struct SApp
         {
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
-                /* TODO: Recreate depth image! */
+                InitDepthImage();
+                InitCamera();
                 return;
             }
             case RR_EVENT_TYPE_KEY_DOWN:
@@ -234,8 +219,6 @@ struct SApp
 
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
-        Camera.Aspect = (float)SwapchainSize.X / (float)SwapchainSize.Y;
-        Camera.UpdatePerspective();
         Camera.Update(Scancodes);
 
         SGPUUniform Uniform = {
@@ -254,10 +237,12 @@ struct SApp
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         Rr_ColorClear ColorClear = {};
-        ColorClear.Vec4 = { 13.0f / 255.0f,
-                            14.0f / 255.0f,
-                            28.0f / 255.0f,
-                            1.0f };
+        ColorClear.Vec4 = {
+            13.0f / 255.0f,
+            14.0f / 255.0f,
+            28.0f / 255.0f,
+            1.0f,
+        };
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
             .LoadOp = RR_LOAD_OP_CLEAR,
@@ -290,7 +275,7 @@ struct SApp
         Rr_UIDebugOverlay();
     }
 
-    ~SApp()
+    void Cleanup()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -299,40 +284,16 @@ struct SApp
     }
 };
 
-static void Init(void *UserData)
-{
-    new (UserData) SApp();
-}
-
-static void Event(void *UserData, Rr_Event *Event)
-{
-    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
-    SmoothGrid->Event(Event);
-}
-
-static void Iterate(void *UserData)
-{
-    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
-    SmoothGrid->Iterate();
-}
-
-static void Cleanup(void *UserData)
-{
-    auto SmoothGrid = std::bit_cast<SApp *>(UserData);
-    SmoothGrid->~SApp();
-}
-
 int main()
 {
-    alignas(SApp) std::array<std::byte, sizeof(SApp)> SmoothGrid;
+    static SApp App;
+
     Rr_AppConfig Config = {};
     Config.Title = "SmoothGrid";
-    Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.smoothgrid";
-    Config.InitFunc = Init;
-    Config.EventFunc = Event;
-    Config.IterateFunc = Iterate;
-    Config.CleanupFunc = Cleanup;
-    Config.UserData = SmoothGrid.data();
+    Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
+    Config.InitFunc = []() { App.Init(); };
+    Config.EventFunc = [](Rr_Event *Event) { App.Event(Event); };
+    Config.IterateFunc = []() { App.Iterate(); };
+    Config.CleanupFunc = []() { App.Cleanup(); };
     Rr_Run(&Config);
 }

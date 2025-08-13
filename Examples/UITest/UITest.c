@@ -1,16 +1,10 @@
 #include <Rr/Rr.h>
 
-#include <array>
-#include <iostream>
-#include <print>
+#include <stdio.h>
 
 static bool FixedSizeWindowOpen = false;
 static bool StyleEditorWindowOpen = false;
 static bool TextInputWindowOpen = false;
-
-static void Init(void *UserData)
-{
-}
 
 static void TextInputWindow()
 {
@@ -28,7 +22,7 @@ static void TextInputWindow()
                 NULL,
                 RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT))
         {
-            std::println("{}", StringBuffer);
+            fprintf(stderr, "%s\n", StringBuffer);
         }
         Rr_UIEndWindow();
     }
@@ -36,7 +30,7 @@ static void TextInputWindow()
 
 static void FixedSizeWindow()
 {
-    Rr_UISetNextWindowSize({ 400, 400 });
+    Rr_UISetNextWindowSize(Rr_V2(400, 400));
     if (Rr_UIBeginWindow(
             "Fixed Size Window",
             &FixedSizeWindowOpen,
@@ -76,7 +70,7 @@ static void StyleEditorWindow()
     }
 }
 
-static void Iterate(void *UserData)
+static void Iterate(void)
 {
     Rr_Graph *Graph = Rr_GetGraph();
 
@@ -126,19 +120,21 @@ static void Iterate(void *UserData)
     {
         if (Rr_UIFold("Combobox"))
         {
-            std::array ComboboxOptions = {
+            const char *ComboboxOptions[5] = {
                 "Option A", "Option B",        "Option C",
                 "Option D", "Longer Option E",
             };
             static uint32_t SelectedComboboxOption = 0;
             if (Rr_UICombobox(
                     "Options",
-                    ComboboxOptions.size(),
-                    ComboboxOptions.data(),
+                    RR_ARRAY_COUNT(ComboboxOptions),
+                    ComboboxOptions,
                     &SelectedComboboxOption))
             {
-                std::cout << "New option selected: "
-                          << ComboboxOptions[SelectedComboboxOption] << '\n';
+                fprintf(
+                    stderr,
+                    "New option selected: %s\n",
+                    ComboboxOptions[SelectedComboboxOption]);
             }
         }
         if (Rr_UIFold("Checkbox"))
@@ -159,7 +155,7 @@ static void Iterate(void *UserData)
             Rr_UISliderFloat("Float 0 to 1", &Float01, 0.0f, 1.0f);
             static float Float22 = -0.5f;
             Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
-            static std::int32_t Int18 = 0;
+            static int32_t Int18 = 0;
             Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
         }
         if (Rr_UIFold("Color Picker"))
@@ -230,19 +226,12 @@ static void Iterate(void *UserData)
     }
 }
 
-static void Cleanup(void *UserData)
-{
-}
-
 int main(int ArgC, char **ArgV)
 {
-    Rr_AppConfig Config = {};
-    Config.Title = "UITest";
-    Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.uitest";
-    Config.InitFunc = Init;
-    Config.CleanupFunc = Cleanup;
-    Config.IterateFunc = Iterate;
+    Rr_AppConfig Config = {
+        .Title = "UITest",
+        .IterateFunc = Iterate,
+    };
     Rr_Run(&Config);
 
     return 0;

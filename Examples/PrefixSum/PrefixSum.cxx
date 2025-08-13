@@ -41,7 +41,7 @@ static uint32_t GetDispatchSize()
     return DispatchSize;
 }
 
-static void Init(void *UserData)
+static void Init()
 {
     std::array Bindings = {
         Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
@@ -92,7 +92,7 @@ static void Init(void *UserData)
     std::cout << GetPrefixSum(COUNT - 1) << std::endl;
 }
 
-static void Iterate(void *UserData)
+static void Iterate()
 {
     Rr_Graph *Graph = Rr_GetGraph();
 
@@ -137,7 +137,7 @@ static void Iterate(void *UserData)
     Rr_BindStorageBuffer(GraphicsNode, OutputBuffer, 0, 1, 0, NumbersSize);
 }
 
-static void Cleanup(void *UserData)
+static void Cleanup()
 {
     Rr_ReleaseBuffer(InputBuffer);
     Rr_ReleaseBuffer(OutputBuffer);
@@ -151,8 +151,6 @@ int main()
 {
     Rr_AppConfig Config = {};
     Config.Title = "PrefixSum";
-    Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.prefixsum";
     Config.InitFunc = Init;
     Config.CleanupFunc = Cleanup;
     Config.IterateFunc = Iterate;

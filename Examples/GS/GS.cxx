@@ -8,7 +8,6 @@
 #include <vector>
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
-UScancodes Scancodes{};
 
 struct SCamera
 {
@@ -70,7 +69,7 @@ struct SCamera
         return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
     }
 
-    void Update()
+    void Update(const UScancodes &Scancodes)
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
@@ -116,7 +115,7 @@ struct SCamera
     }
 };
 
-struct SSplatRenderer
+struct SApp
 {
     struct SUniformData
     {
@@ -167,10 +166,13 @@ struct SSplatRenderer
         }
     };
 
-    Rr_Renderer *Renderer;
+    SCamera Camera;
+
+    UScancodes Scancodes{};
+
     size_t AliveCount;
     size_t AlignedCount;
-    SBitonicSorter Sorter;
+    SBitonicSorter *Sorter;
 
     std::vector<SGPUSplat> GPUSplats;
 
@@ -181,11 +183,74 @@ struct SSplatRenderer
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
 
-    SSplatRenderer(Rr_Asset Asset)
-        : AliveCount(Asset.Size / 32)
-        , AlignedCount(Rr_NextPowerOfTwo(AliveCount))
-        , Sorter(AliveCount, AlignedCount)
+    void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)
     {
+        Sorter->Sort(
+            Camera.ProjMatrix * Camera.ViewMatrix,
+            sizeof(SGPUSplat) * AlignedCount,
+            SplatsBuffer,
+            sizeof(SGPUEntry) * AlignedCount,
+            EntriesBuffer);
+
+        SUniformData UniformData = {};
+        UniformData.Projection = Camera.ProjMatrix;
+        UniformData.View = Camera.ViewMatrix;
+        UniformData.HFOVFocal = { Camera.HTanX, Camera.HTanY, Camera.FocalZ };
+
+        std::memcpy(
+            Rr_GetMappedBufferData(UniformBuffer),
+            &UniformData,
+            sizeof(SUniformData));
+
+        Rr_ColorTarget ColorTarget = {
+            0,
+            RR_LOAD_OP_CLEAR,
+            RR_STORE_OP_STORE,
+            {},
+        };
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+            Rr_GetGraph(),
+            "graphics",
+            1,
+            &ColorTarget,
+            &ColorAttachment,
+            nullptr,
+            nullptr);
+        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        Rr_BindUniformBuffer(
+            GraphicsNode,
+            UniformBuffer,
+            0,
+            0,
+            0,
+            sizeof(UniformData));
+        Rr_BindStorageBuffer(
+            GraphicsNode,
+            SplatsBuffer,
+            0,
+            1,
+            0,
+            sizeof(SGPUSplat) * AliveCount);
+        Rr_BindStorageBuffer(
+            GraphicsNode,
+            EntriesBuffer,
+            0,
+            2,
+            0,
+            sizeof(SGPUEntry) * AliveCount);
+        Rr_DrawIndirect(GraphicsNode, Sorter->SortList.IndirectBuffer, 0, 1, 0);
+    }
+
+    void Init()
+    {
+        Camera.Position = { 0.0f, -0.5f, -2.5f };
+
+        Rr_Asset Asset = Rr_LoadAsset(EXAMPLE_ASSET_PLUSH_SPLAT);
+
+        AliveCount = Asset.Size / 32;
+        AlignedCount = Rr_NextPowerOfTwo(AliveCount);
+        Sorter = new SBitonicSorter(AliveCount, AlignedCount);
+
         /* Setup graphics pipeline. */
 
         std::array Bindings = {
@@ -259,127 +324,54 @@ struct SSplatRenderer
                 RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
-    ~SSplatRenderer()
+    void Event(Rr_Event *Event)
     {
+        switch (Event->Type)
+        {
+            case RR_EVENT_TYPE_KEY_DOWN:
+            case RR_EVENT_TYPE_KEY_UP:
+            {
+                Scancodes[Event->Key.Scancode] = Event->Key.Down;
+                return;
+            }
+            default:
+                return;
+        }
+    }
+
+    void Iterate()
+    {
+        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        Camera.SetPerspective(50.0f, SwapchainSize, 0.1f, 200.0f);
+        Camera.Update(Scancodes);
+
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+
+        Render(Camera, SwapchainImage);
+
+        Rr_UIDebugOverlay();
+    }
+
+    void Cleanup()
+    {
+        delete Sorter;
         Rr_ReleaseBuffer(SplatsBuffer);
         Rr_ReleaseBuffer(EntriesBuffer);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     }
-
-    void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)
-    {
-        Sorter.Sort(
-            Camera.ProjMatrix * Camera.ViewMatrix,
-            sizeof(SGPUSplat) * AlignedCount,
-            SplatsBuffer,
-            sizeof(SGPUEntry) * AlignedCount,
-            EntriesBuffer);
-
-        SUniformData UniformData = {};
-        UniformData.Projection = Camera.ProjMatrix;
-        UniformData.View = Camera.ViewMatrix;
-        UniformData.HFOVFocal = { Camera.HTanX, Camera.HTanY, Camera.FocalZ };
-
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &UniformData,
-            sizeof(SUniformData));
-
-        Rr_ColorTarget ColorTarget = {
-            0,
-            RR_LOAD_OP_CLEAR,
-            RR_STORE_OP_STORE,
-            {},
-        };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Rr_GetGraph(),
-            "graphics",
-            1,
-            &ColorTarget,
-            &ColorAttachment,
-            nullptr,
-            nullptr);
-        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(UniformData));
-        Rr_BindStorageBuffer(
-            GraphicsNode,
-            SplatsBuffer,
-            0,
-            1,
-            0,
-            sizeof(SGPUSplat) * AliveCount);
-        Rr_BindStorageBuffer(
-            GraphicsNode,
-            EntriesBuffer,
-            0,
-            2,
-            0,
-            sizeof(SGPUEntry) * AliveCount);
-        Rr_DrawIndirect(GraphicsNode, Sorter.SortList.IndirectBuffer, 0, 1, 0);
-    }
 };
-
-SCamera Camera;
-
-SSplatRenderer *SplatData;
-
-static void Init(void *UserData)
-{
-    Camera.Position = { 0.0f, -0.5f, -2.5f };
-
-    SplatData = new SSplatRenderer(Rr_LoadAsset(EXAMPLE_ASSET_PLUSH_SPLAT));
-}
-
-static void Event(void *UserData, Rr_Event *Event)
-{
-    switch (Event->Type)
-    {
-        case RR_EVENT_TYPE_KEY_DOWN:
-        case RR_EVENT_TYPE_KEY_UP:
-        {
-            Scancodes[Event->Key.Scancode] = Event->Key.Down;
-            return;
-        }
-        default:
-            return;
-    }
-}
-
-static void Iterate(void *UserData)
-{
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-    Camera.SetPerspective(50.0f, SwapchainSize, 0.1f, 200.0f);
-    Camera.Update();
-
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-
-    SplatData->Render(Camera, SwapchainImage);
-
-    Rr_UIDebugOverlay();
-}
-
-static void Cleanup(void *UserData)
-{
-    delete SplatData;
-}
 
 int main()
 {
+    static SApp App;
+
     Rr_AppConfig Config = {};
     Config.Title = "GS";
-    Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.gs";
-    Config.InitFunc = Init;
-    Config.EventFunc = Event;
-    Config.CleanupFunc = Cleanup;
-    Config.IterateFunc = Iterate;
+    Config.InitFunc = []() { App.Init(); };
+    Config.EventFunc = [](Rr_Event *Event) { App.Event(Event); };
+    Config.IterateFunc = []() { App.Iterate(); };
+    Config.CleanupFunc = []() { App.Cleanup(); };
     Rr_Run(&Config);
 }

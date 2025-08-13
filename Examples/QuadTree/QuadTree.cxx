@@ -649,7 +649,7 @@ struct SApp
         return { Deprojected.X, Deprojected.Y };
     }
 
-    SApp()
+    void Init()
     {
         std::array Bindings = {
             Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
@@ -999,7 +999,7 @@ struct SApp
         Reset();
     }
 
-    ~SApp()
+    void Cleanup()
     {
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(StorageBuffer);
@@ -1009,40 +1009,15 @@ struct SApp
     }
 };
 
-static void Init(void *UserData)
-{
-    new (UserData) SApp();
-}
-
-static void Event(void *UserData, Rr_Event *Event)
-{
-    auto App = std::bit_cast<SApp *>(UserData);
-    App->Event(Event);
-}
-
-static void Iterate(void *UserData)
-{
-    auto App = std::bit_cast<SApp *>(UserData);
-    App->Iterate();
-}
-
-static void Cleanup(void *UserData)
-{
-    auto App = std::bit_cast<SApp *>(UserData);
-    App->~SApp();
-}
-
 int main()
 {
-    alignas(SApp) std::array<std::byte, sizeof(SApp)> App;
+    static SApp App;
+
     Rr_AppConfig Config = {};
     Config.Title = "QuadTree";
-    Config.Version = "1.0.0";
-    Config.Package = "com.rr.examples.quadtree";
-    Config.InitFunc = Init;
-    Config.EventFunc = Event;
-    Config.IterateFunc = Iterate;
-    Config.CleanupFunc = Cleanup;
-    Config.UserData = App.data();
+    Config.InitFunc = []() { App.Init(); };
+    Config.EventFunc = [](Rr_Event *Event) { App.Event(Event); };
+    Config.IterateFunc = []() { App.Iterate(); };
+    Config.CleanupFunc = []() { App.Cleanup(); };
     Rr_Run(&Config);
 }

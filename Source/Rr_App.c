@@ -125,9 +125,7 @@ void Rr_Run(Rr_AppConfig *Config)
 {
     assert(gApp == NULL && "You shouldn't call Rr_Run() more than once!");
     assert(Config->Title != NULL);
-    assert(Config->InitFunc != NULL);
     assert(Config->IterateFunc != NULL);
-    assert(Config->CleanupFunc != NULL);
 
     Rr_InitPlatform();
     Rr_InitPlatformLibrary(Config);
@@ -137,14 +135,16 @@ void Rr_Run(Rr_AppConfig *Config)
     gApp = RR_ALLOC_TYPE(Arena, Rr_App);
     gApp->Arena = Arena;
 
-    gApp->Config = Config;
-    gApp->UserData = Config->UserData;
+    gApp->InitFunc = Config->InitFunc;
+    gApp->EventFunc = Config->EventFunc;
+    gApp->IterateFunc = Config->IterateFunc;
+    gApp->CleanupFunc = Config->CleanupFunc;
 
     Rr_InitScratchArena();
 
     Rr_InitFrameTime(&gApp->FrameTime);
 
-    Rr_InitRenderer();
+    Rr_InitRenderer(Config->Title);
 
     Rr_InitUI();
 
@@ -154,7 +154,10 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_NewFrame();
     Rr_NewUIFrame();
 
-    Config->InitFunc(gApp->UserData);
+    if (gApp->InitFunc)
+    {
+        gApp->InitFunc();
+    }
 
     Rr_ShowWindow();
 
@@ -166,7 +169,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
             if (Config->EventFunc != NULL)
             {
-                Config->EventFunc(gApp->UserData, &Event);
+                gApp->EventFunc(&Event);
             }
         }
 
@@ -179,7 +182,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
         Rr_BeginUI();
 
-        gApp->Config->IterateFunc(gApp->UserData);
+        gApp->IterateFunc();
 
         Rr_EndUI();
 
@@ -214,7 +217,10 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_WaitIdle();
 
-    gApp->Config->CleanupFunc(gApp->UserData);
+    if (gApp->CleanupFunc)
+    {
+        gApp->CleanupFunc();
+    }
 
     Rr_CleanupUI();
 

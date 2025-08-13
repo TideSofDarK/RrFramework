@@ -7,7 +7,7 @@ static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
 static Rr_Buffer *IndexBuffer;
 
-static void Init(void *UserData)
+static void Init(void)
 {
     PipelineLayout = Rr_CreatePipelineLayout(0, NULL);
 
@@ -63,7 +63,7 @@ static void Init(void *UserData)
         RR_MAKE_DATA_ARRAY(IndexData));
 }
 
-static void Iterate(void *UserData)
+static void Iterate(void)
 {
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
@@ -89,7 +89,7 @@ static void Iterate(void *UserData)
     Rr_UIDebugOverlay();
 }
 
-static void Cleanup(void *UserData)
+static void Cleanup(void)
 {
     Rr_ReleaseBuffer(VertexBuffer);
     Rr_ReleaseBuffer(IndexBuffer);
@@ -101,8 +101,6 @@ int main(int ArgC, char **ArgV)
 {
     Rr_AppConfig Config = {
         .Title = "Triangle",
-        .Version = "1.0.0",
-        .Package = "com.rr.examples.triangle",
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
         .IterateFunc = Iterate,

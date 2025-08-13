@@ -222,7 +222,7 @@ struct Rr_Renderer
     Rr_Arena *Arena;
 };
 
-extern void Rr_InitRenderer(void);
+extern void Rr_InitRenderer(const char *Title);
 
 extern void Rr_WaitIdle(void);
 
