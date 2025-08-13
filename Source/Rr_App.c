@@ -42,23 +42,6 @@ static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
                               (double)Rr_GetPerformanceFrequency();
 }
 
-static void Rr_CalculateFPS(Rr_FrameTime *FrameTime)
-{
-    FrameTime->PerformanceCounter.Frames++;
-    uint64_t CurrentTime = Rr_GetPerformanceCounter();
-    if (CurrentTime - FrameTime->PerformanceCounter.StartTime >=
-        FrameTime->PerformanceCounter.UpdateFrequency)
-    {
-        double Elapsed =
-            (double)(CurrentTime - FrameTime->PerformanceCounter.StartTime) /
-            FrameTime->PerformanceCounter.CountPerSecond;
-        FrameTime->PerformanceCounter.FPS =
-            (double)FrameTime->PerformanceCounter.Frames / Elapsed;
-        FrameTime->PerformanceCounter.StartTime = CurrentTime;
-        FrameTime->PerformanceCounter.Frames = 0;
-    }
-}
-
 static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 {
     uint64_t Interval = 1000000000 / FrameTime->TargetFramerate;
@@ -88,19 +71,14 @@ static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 static void Rr_InitFrameTime(Rr_FrameTime *FrameTime)
 {
     uint64_t Now = Rr_GetPerformanceCounter();
-#ifdef RR_PERFORMANCE_COUNTER
-    FrameTime->PerformanceCounter.StartTime = Now;
-    FrameTime->PerformanceCounter.UpdateFrequency =
-        Rr_GetPerformanceFrequency() / 2;
-    FrameTime->PerformanceCounter.CountPerSecond =
-        (double)Rr_GetPerformanceFrequency();
-#endif
 
     FrameTime->TargetFramerate = (uint64_t)Rr_GetDisplayRefreshRate();
     FrameTime->StartTime = Now;
     FrameTime->Now = Now;
 
     FrameTime->InitTime = Now;
+    assert(Rr_GetPerformanceFrequency() <= 1000000000);
+    FrameTime->QPCToNS = 1000000000 / Rr_GetPerformanceFrequency();
 }
 
 static inline bool Rr_PollEvent(Rr_Event *Event)
@@ -188,10 +166,6 @@ void Rr_Run(Rr_AppConfig *Config)
 
         Rr_DrawFrame();
 
-#ifdef RR_PERFORMANCE_COUNTER
-        Rr_CalculateFPS(&gApp->FrameTime);
-#endif
-
         bool Minimized = Rr_IsWindowMinimized();
 
         if (gApp->FrameTime.EnableFrameLimiter || Minimized)
@@ -238,11 +212,6 @@ void Rr_SetFrameLimiterEnabled(bool Enabled)
     gApp->FrameTime.EnableFrameLimiter = Enabled;
 }
 
-double Rr_GetFramesPerSecond(void)
-{
-    return (float)gApp->FrameTime.PerformanceCounter.FPS;
-}
-
 double Rr_GetDeltaSeconds(void)
 {
     return gApp->FrameTime.DeltaSeconds;
@@ -260,7 +229,8 @@ uint64_t Rr_GetTimeMS(void)
 
 uint64_t Rr_GetTimeNS(void)
 {
-    return Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime;
+    return (Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime) *
+           gApp->FrameTime.QPCToNS;
 }
 
 void Rr_Quit(void)

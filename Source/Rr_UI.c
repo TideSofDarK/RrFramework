@@ -4847,7 +4847,23 @@ void Rr_UIDebugOverlay(void)
             {
                 Rr_SetPresentMode(PresentModes[CurrentPresentModeIndex]);
             }
-            Rr_UILabelF("FPS: %.2f", Rr_GetFramesPerSecond());
+
+            {
+                static double SamplingFreq = 0.5;
+                static double LastSample = 0;
+                static double LastFPS = 0;
+                static uint64_t Frames = 0;
+                Frames++;
+                double Now = Rr_GetTimeSeconds();
+                if (Now - LastSample > SamplingFreq)
+                {
+                    LastFPS = (double)Frames / SamplingFreq;
+                    LastSample = Now;
+                    Frames = 0;
+                }
+                Rr_UILabelF("FPS: %.2f", LastFPS);
+            }
+
             Rr_UICheckbox(
                 "Frame Limiter Enabled",
                 &gApp->FrameTime.EnableFrameLimiter);

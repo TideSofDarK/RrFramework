@@ -35,6 +35,7 @@ struct Rr_PlatformInfo
 {
     int PageSize;
     int AllocationGranularity;
+    uint64_t PerformanceFrequency;
 };
 
 extern Rr_PlatformInfo *Rr_GetPlatformInfo(void);

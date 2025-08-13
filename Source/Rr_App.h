@@ -40,17 +40,6 @@ typedef union Rr_Object Rr_Object;
 typedef struct Rr_FrameTime Rr_FrameTime;
 struct Rr_FrameTime
 {
-#ifdef RR_PERFORMANCE_COUNTER
-    struct
-    {
-        double FPS;
-        uint64_t Frames;
-        uint64_t StartTime;
-        uint64_t UpdateFrequency;
-        double CountPerSecond;
-    } PerformanceCounter;
-#endif
-
     /* Frame Limiter */
 
     uint64_t TargetFramerate;
@@ -64,6 +53,7 @@ struct Rr_FrameTime
     double DeltaSeconds;
 
     uint64_t InitTime;
+    uint64_t QPCToNS;
 };
 
 typedef struct Rr_App Rr_App;

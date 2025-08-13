@@ -36,6 +36,10 @@ bool Rr_InitPlatform()
     PlatformInfo.PageSize = SystemInfo.dwPageSize;
     PlatformInfo.AllocationGranularity = SystemInfo.dwAllocationGranularity;
 
+    LARGE_INTEGER Frequency;
+    QueryPerformanceFrequency(&Frequency);
+    PlatformInfo.PerformanceFrequency = (uint64_t)Frequency.QuadPart;
+
     return true;
 }
 
@@ -53,9 +57,7 @@ uint64_t Rr_GetPerformanceCounter(void)
 
 uint64_t Rr_GetPerformanceFrequency(void)
 {
-    LARGE_INTEGER Frequency;
-    QueryPerformanceFrequency(&Frequency);
-    return (uint64_t)Frequency.QuadPart;
+    return PlatformInfo.PerformanceFrequency;
 }
 
 void *Rr_ReserveMemory(size_t Size)
