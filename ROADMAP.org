@@ -16,6 +16,7 @@
 - [ ] 3D image support.
 - [ ] Image array support.
 - [ ] MSAA support.
+- [ ] Check if descriptor set layouts are properly hashed.
 
 * Features
 

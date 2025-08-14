@@ -36,7 +36,6 @@
 
 bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
-    SDL_SetAppMetadata(Config->Title, Config->Version, Config->Package);
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_CRITICAL);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
