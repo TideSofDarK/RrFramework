@@ -21,7 +21,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     Rr_Image2D *ColorImage = Rr_CreateImage2D(
         { Width, Height },
-        RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+        RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     size_t Size = Width * Height * DesiredChannels;
@@ -69,11 +69,7 @@ struct SApp
             Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
             Rr_PipelineBinding{
                 1,
-                1,
-                RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER },
-            Rr_PipelineBinding{
                 2,
-                1,
                 RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER },
         };
         std::array Sets = {
@@ -170,18 +166,17 @@ struct SApp
             0,
             0,
             sizeof(SGPUUniform));
-        Rr_BindCombinedImage2DSampler(
-            GraphicsNode,
-            FadeMaskImage,
-            Sampler,
-            0,
-            1);
-        Rr_BindCombinedImage2DSampler(
-            GraphicsNode,
-            ColorMaskImage,
-            Sampler,
-            0,
-            2);
+        std::array Masks = { FadeMaskImage, ColorMaskImage };
+        for (std::uint32_t Index = 0; Index < Masks.size(); ++Index)
+        {
+            Rr_BindCombinedImage2DSamplerAt(
+                GraphicsNode,
+                Masks[Index],
+                Sampler,
+                0,
+                1,
+                Index);
+        }
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 
@@ -192,6 +187,7 @@ struct SApp
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseImage(FadeMaskImage);
         Rr_ReleaseImage(ColorMaskImage);
+        Rr_ReleaseSampler(Sampler);
     }
 };
 

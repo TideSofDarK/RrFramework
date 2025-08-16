@@ -117,7 +117,11 @@ static void Rr_ExecuteComputeNode(
     Rr_Device *Device = &gRenderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame();
 
-    Rr_DescriptorsState DescriptorsState = { 0 };
+    Rr_DescriptorsState DescriptorsState = {
+        .Device = Device,
+        .CommandBuffer = CommandBuffer,
+        .Allocator = Frame->DescriptorAllocator,
+    };
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
          Function != NULL;
@@ -135,22 +139,18 @@ static void Rr_ExecuteComputeNode(
                         CommandBuffer,
                         VK_PIPELINE_BIND_POINT_COMPUTE,
                         ComputePipeline->Handle);
-                    Rr_InvalidateDescriptorState(
-                        &DescriptorsState,
-                        ComputePipeline->Layout);
                     Graph->ComputePipeline = ComputePipeline;
                 }
+                Rr_InvalidateDescriptorsStateV2(
+                    &DescriptorsState,
+                    ComputePipeline->Layout);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_DISPATCH:
             {
                 assert(Graph->ComputePipeline != NULL);
-                Rr_ApplyDescriptorsState(
+                Rr_ApplyDescriptorsStateV2(
                     &DescriptorsState,
-                    Frame->DescriptorAllocator,
-                    Graph->ComputePipeline->Layout,
-                    Device,
-                    CommandBuffer,
                     VK_PIPELINE_BIND_POINT_COMPUTE);
                 Rr_DispatchArgs *Args = Function->Args;
                 Device->CmdDispatch(
@@ -163,14 +163,12 @@ static void Rr_ExecuteComputeNode(
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
             {
                 Rr_BindSamplerArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
+                Rr_WriteSamplerDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
-                        .Sampler = Args->Sampler->Handle,
-                    });
+                    0,
+                    Args->Sampler->Handle);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
@@ -184,18 +182,15 @@ static void Rr_ExecuteComputeNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_UpdateDescriptorsState(
+                Rr_WriteImageDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
-                        .Image =
-                            {
-                                .View = ImageView,
-                                .Layout = Args->Layout,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                    ImageView,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    NULL);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
@@ -209,61 +204,43 @@ static void Rr_ExecuteComputeNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_UpdateDescriptorsState(
+                Rr_WriteImageDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .Image =
-                            {
-                                .View = ImageView,
-                                .Sampler = Args->Sampler->Handle,
-                                .Layout = Args->Layout,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    ImageView,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    Args->Sampler->Handle);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
             {
                 Rr_BindUniformBufferArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
+                Rr_WriteBufferDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
-                        .Buffer =
-                            {
-                                .Handle = Rr_GetGraphBuffer(
-                                              Graph,
-                                              Args->BufferHandle)
-                                              ->Handle,
-                                .Size = Args->Size,
-                                .Offset = Args->Offset,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                    Args->Size,
+                    Args->Offset);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
             {
                 Rr_BindStorageBufferArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
+                Rr_WriteBufferDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER,
-                        .Buffer =
-                            {
-                                .Handle = Rr_GetGraphBuffer(
-                                              Graph,
-                                              Args->BufferHandle)
-                                              ->Handle,
-                                .Size = Args->Size,
-                                .Offset = Args->Offset,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                    Args->Size,
+                    Args->Offset);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE:
@@ -277,18 +254,15 @@ static void Rr_ExecuteComputeNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_UpdateDescriptorsState(
+                Rr_WriteImageDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE,
-                        .Image =
-                            {
-                                .View = ImageView,
-                                .Layout = VK_IMAGE_LAYOUT_GENERAL,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                    ImageView,
+                    VK_IMAGE_LAYOUT_GENERAL,
+                    NULL);
             }
             break;
             default:
@@ -481,7 +455,11 @@ static void Rr_ExecuteGraphicsNode(
             .extent.height = Viewport.Height,
         });
 
-    Rr_DescriptorsState DescriptorsState = { 0 };
+    Rr_DescriptorsState DescriptorsState = {
+        .Device = Device,
+        .CommandBuffer = CommandBuffer,
+        .Allocator = Frame->DescriptorAllocator,
+    };
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
          Function != NULL;
@@ -492,12 +470,8 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_DRAW:
             {
                 assert(Graph->GraphicsPipeline != NULL);
-                Rr_ApplyDescriptorsState(
+                Rr_ApplyDescriptorsStateV2(
                     &DescriptorsState,
-                    Frame->DescriptorAllocator,
-                    Graph->GraphicsPipeline->Layout,
-                    Device,
-                    CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawArgs *Args = (Rr_DrawArgs *)Function->Args;
                 Device->CmdDraw(
@@ -511,12 +485,8 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT:
             {
                 assert(Graph->GraphicsPipeline != NULL);
-                Rr_ApplyDescriptorsState(
+                Rr_ApplyDescriptorsStateV2(
                     &DescriptorsState,
-                    Frame->DescriptorAllocator,
-                    Graph->GraphicsPipeline->Layout,
-                    Device,
-                    CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawIndirectArgs *Args =
                     (Rr_DrawIndirectArgs *)Function->Args;
@@ -531,12 +501,8 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_DRAW_INDEXED:
             {
                 assert(Graph->GraphicsPipeline != NULL);
-                Rr_ApplyDescriptorsState(
+                Rr_ApplyDescriptorsStateV2(
                     &DescriptorsState,
-                    Frame->DescriptorAllocator,
-                    Graph->GraphicsPipeline->Layout,
-                    Device,
-                    CommandBuffer,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
                 Device->CmdDrawIndexed(
@@ -579,11 +545,11 @@ static void Rr_ExecuteGraphicsNode(
                         CommandBuffer,
                         VK_PIPELINE_BIND_POINT_GRAPHICS,
                         GraphicsPipeline->Handle);
-                    Rr_InvalidateDescriptorState(
-                        &DescriptorsState,
-                        GraphicsPipeline->Layout);
                     Graph->GraphicsPipeline = GraphicsPipeline;
                 }
+                Rr_InvalidateDescriptorsStateV2(
+                    &DescriptorsState,
+                    GraphicsPipeline->Layout);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_SET_VIEWPORT:
@@ -619,14 +585,12 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
             {
                 Rr_BindSamplerArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
+                Rr_WriteSamplerDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
-                        .Sampler = Args->Sampler->Handle,
-                    });
+                    0,
+                    Args->Sampler->Handle);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
@@ -640,18 +604,15 @@ static void Rr_ExecuteGraphicsNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_UpdateDescriptorsState(
+                Rr_WriteImageDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
-                        .Image =
-                            {
-                                .View = ImageView,
-                                .Layout = Args->Layout,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                    ImageView,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    NULL);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
@@ -665,61 +626,43 @@ static void Rr_ExecuteGraphicsNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_UpdateDescriptorsState(
+                Rr_WriteImageDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .Image =
-                            {
-                                .View = ImageView,
-                                .Sampler = Args->Sampler->Handle,
-                                .Layout = Args->Layout,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    ImageView,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    Args->Sampler->Handle);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
             {
                 Rr_BindUniformBufferArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
+                Rr_WriteBufferDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
-                        .Buffer =
-                            {
-                                .Handle = Rr_GetGraphBuffer(
-                                              Graph,
-                                              Args->BufferHandle)
-                                              ->Handle,
-                                .Size = Args->Size,
-                                .Offset = Args->Offset,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                    Args->Size,
+                    Args->Offset);
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
             {
                 Rr_BindStorageBufferArgs *Args = Function->Args;
-                Rr_UpdateDescriptorsState(
+                Rr_WriteBufferDescriptorV2(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
-                    &(Rr_DescriptorSetBinding){
-                        .Type = RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER,
-                        .Buffer =
-                            {
-                                .Handle = Rr_GetGraphBuffer(
-                                              Graph,
-                                              Args->BufferHandle)
-                                              ->Handle,
-                                .Size = Args->Size,
-                                .Offset = Args->Offset,
-                            },
-                    });
+                    Args->ArrayIndex,
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                    Args->Size,
+                    Args->Offset);
             }
             break;
             default:
@@ -1649,45 +1592,58 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
 
 void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer)
 {
-    atomic_fetch_add_explicit(&Buffer->RefCount, 1, memory_order_relaxed);
-    Rr_AddHandleToSet(&Graph->Buffers, Buffer, Graph->Arena);
+    if (Rr_AddHandleToSet(&Graph->Buffers, Buffer, Graph->Arena))
+    {
+        atomic_fetch_add_explicit(&Buffer->RefCount, 1, memory_order_relaxed);
+    }
 }
 
 void Rr_MarkImageUsed(Rr_Graph *Graph, Rr_Image *Image)
 {
-    atomic_fetch_add_explicit(&Image->RefCount, 1, memory_order_relaxed);
-    Rr_AddHandleToSet(&Graph->Images, Image, Graph->Arena);
+    if (Rr_AddHandleToSet(&Graph->Images, Image, Graph->Arena))
+    {
+        atomic_fetch_add_explicit(&Image->RefCount, 1, memory_order_relaxed);
+    }
 }
 
 void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler)
 {
-    atomic_fetch_add_explicit(&Sampler->RefCount, 1, memory_order_relaxed);
-    Rr_AddHandleToSet(&Graph->Samplers, Sampler, Graph->Arena);
+    if (Rr_AddHandleToSet(&Graph->Samplers, Sampler, Graph->Arena))
+    {
+        atomic_fetch_add_explicit(&Sampler->RefCount, 1, memory_order_relaxed);
+    }
 }
 
 void Rr_MarkComputePipelineUsed(
     Rr_Graph *Graph,
     Rr_ComputePipeline *ComputePipeline)
 {
-    atomic_fetch_add_explicit(
-        &ComputePipeline->RefCount,
-        1,
-        memory_order_relaxed);
-    Rr_AddHandleToSet(&Graph->ComputePipelines, ComputePipeline, Graph->Arena);
+    if (Rr_AddHandleToSet(
+            &Graph->ComputePipelines,
+            ComputePipeline,
+            Graph->Arena))
+    {
+        atomic_fetch_add_explicit(
+            &ComputePipeline->RefCount,
+            1,
+            memory_order_relaxed);
+    }
 }
 
 void Rr_MarkGraphicsPipelineUsed(
     Rr_Graph *Graph,
     Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    atomic_fetch_add_explicit(
-        &GraphicsPipeline->RefCount,
-        1,
-        memory_order_relaxed);
-    Rr_AddHandleToSet(
-        &Graph->GraphicsPipelines,
-        GraphicsPipeline,
-        Graph->Arena);
+    if (Rr_AddHandleToSet(
+            &Graph->GraphicsPipelines,
+            GraphicsPipeline,
+            Graph->Arena))
+    {
+        atomic_fetch_add_explicit(
+            &GraphicsPipeline->RefCount,
+            1,
+            memory_order_relaxed);
+    }
 }
 
 void Rr_DecrementRefCounts(Rr_Graph *Graph)
@@ -2429,13 +2385,10 @@ void Rr_BindSampledImage2D(
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image2D);
 
-    VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
         Rr_BindSampledImageArgs) = (Rr_BindSampledImageArgs){
         .ImageHandle = *ImageHandle,
-        .Layout = Layout,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
         .ViewType = VK_IMAGE_VIEW_TYPE_2D,
@@ -2458,7 +2411,46 @@ void Rr_BindSampledImage2D(
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
             .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            .Layout = Layout,
+            .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        });
+}
+
+static void Rr_BindCombinedImageSamplerEx(
+    Rr_GraphNode *Node,
+    Rr_Image *Image,
+    Rr_Sampler *Sampler,
+    VkImageViewType ViewType,
+    VkImageSubresourceRange *SubresourceRange,
+    size_t Set,
+    size_t Binding,
+    uint32_t ArrayIndex)
+{
+    Rr_MarkSamplerUsed(Node->Graph, Sampler);
+
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
+
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
+        Rr_BindCombinedImageSamplerArgs) = (Rr_BindCombinedImageSamplerArgs){
+        .ImageHandle = *ImageHandle,
+        .Sampler = Sampler,
+        .ViewType = ViewType,
+        .SubresourceRange = *SubresourceRange,
+        .Set = (uint32_t)Set,
+        .Binding = (uint32_t)Binding,
+        .ArrayIndex = ArrayIndex,
+    };
+
+    /* TODO: Stage mask can be infered from pipeline layout. */
+
+    Rr_AddNodeDependency(
+        Node,
+        ImageHandle,
+        &(Rr_SyncState){
+            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         });
 }
 
@@ -2474,42 +2466,51 @@ void Rr_BindCombinedImage2DSampler(
     assert(Sampler != NULL);
     assert(Image2D);
 
-    Rr_MarkSamplerUsed(Node->Graph, Sampler);
-
-    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image2D);
-
-    VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    RR_NODE_ENCODE(
-        RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
-        Rr_BindCombinedImageSamplerArgs) = (Rr_BindCombinedImageSamplerArgs){
-        .ImageHandle = *ImageHandle,
-        .Layout = Layout,
-        .Sampler = Sampler,
-        .Set = (uint32_t)Set,
-        .Binding = (uint32_t)Binding,
-        .ViewType = VK_IMAGE_VIEW_TYPE_2D,
-        .SubresourceRange =
-            (VkImageSubresourceRange){
-                .aspectMask = Image2D->AspectFlags,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-    };
-
-    /* TODO: Stage mask can be infered from pipeline layout. */
-
-    Rr_AddNodeDependency(
+    Rr_BindCombinedImageSamplerEx(
         Node,
-        ImageHandle,
-        &(Rr_SyncState){
-            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            .Layout = Layout,
-        });
+        Image2D,
+        Sampler,
+        VK_IMAGE_VIEW_TYPE_2D,
+        &(VkImageSubresourceRange){
+            .aspectMask = Image2D->AspectFlags,
+            .baseMipLevel = 0,
+            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        Set,
+        Binding,
+        0);
+}
+
+void Rr_BindCombinedImage2DSamplerAt(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding,
+    uint32_t ArrayIndex)
+{
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(Sampler != NULL);
+    assert(Image2D);
+
+    Rr_BindCombinedImageSamplerEx(
+        Node,
+        Image2D,
+        Sampler,
+        VK_IMAGE_VIEW_TYPE_2D,
+        &(VkImageSubresourceRange){
+            .aspectMask = Image2D->AspectFlags,
+            .baseMipLevel = 0,
+            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        Set,
+        Binding,
+        ArrayIndex);
 }
 
 void Rr_BindCombinedImageCubeSampler(
@@ -2524,42 +2525,21 @@ void Rr_BindCombinedImageCubeSampler(
     assert(Sampler != NULL);
     assert(ImageCube);
 
-    Rr_MarkSamplerUsed(Node->Graph, Sampler);
-
-    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, ImageCube);
-
-    VkImageLayout Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    RR_NODE_ENCODE(
-        RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
-        Rr_BindCombinedImageSamplerArgs) = (Rr_BindCombinedImageSamplerArgs){
-        .ImageHandle = *ImageHandle,
-        .Layout = Layout,
-        .Sampler = Sampler,
-        .Set = (uint32_t)Set,
-        .Binding = (uint32_t)Binding,
-        .ViewType = VK_IMAGE_VIEW_TYPE_CUBE,
-        .SubresourceRange =
-            (VkImageSubresourceRange){
-                .aspectMask = ImageCube->AspectFlags,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = 6,
-            },
-    };
-
-    /* TODO: Stage mask can be infered from pipeline layout. */
-
-    Rr_AddNodeDependency(
+    Rr_BindCombinedImageSamplerEx(
         Node,
-        ImageHandle,
-        &(Rr_SyncState){
-            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            .Layout = Layout,
-        });
+        ImageCube,
+        Sampler,
+        VK_IMAGE_VIEW_TYPE_CUBE,
+        &(VkImageSubresourceRange){
+            .aspectMask = ImageCube->AspectFlags,
+            .baseMipLevel = 0,
+            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .baseArrayLayer = 0,
+            .layerCount = 6,
+        },
+        Set,
+        Binding,
+        0);
 }
 
 void Rr_BindUniformBuffer(
@@ -2567,6 +2547,18 @@ void Rr_BindUniformBuffer(
     Rr_Buffer *Buffer,
     size_t Set,
     size_t Binding,
+    size_t Offset,
+    size_t Size)
+{
+    Rr_BindUniformBufferAt(Node, Buffer, Set, Binding, 0, Offset, Size);
+}
+
+void Rr_BindUniformBufferAt(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex,
     size_t Offset,
     size_t Size)
 {
@@ -2580,17 +2572,17 @@ void Rr_BindUniformBuffer(
         RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
         Rr_BindUniformBufferArgs) = (Rr_BindUniformBufferArgs){
         .BufferHandle = *BufferHandle,
+        .Size = (uint32_t)Size,
+        .Offset = (uint32_t)Offset,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
-        .Offset = (uint32_t)Offset,
-        .Size = (uint32_t)Size,
+        .ArrayIndex = (uint32_t)ArrayIndex,
     };
 
     /* TODO: Proper stage can be infered from pipeline layout. */
 
     if (Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
     {
-
         Rr_AddNodeDependency(
             Node,
             BufferHandle,
@@ -2601,7 +2593,6 @@ void Rr_BindUniformBuffer(
     }
     else
     {
-
         Rr_AddNodeDependency(
             Node,
             BufferHandle,

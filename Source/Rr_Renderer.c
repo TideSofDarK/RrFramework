@@ -214,25 +214,28 @@ static bool Rr_InitSwapchain(void)
         &FormatCount,
         SurfaceFormats);
 
-    bool PreferredFormatFound = false;
+    VkSurfaceFormatKHR *PrefferedFormat = NULL;
+    VkSurfaceFormatKHR *FallbackFormat = SurfaceFormats;
     for (uint32_t Index = 0; Index < FormatCount; Index++)
     {
         VkSurfaceFormatKHR *SurfaceFormat = &SurfaceFormats[Index];
 
-        if (SurfaceFormat->format == VK_FORMAT_B8G8R8A8_UNORM ||
-            SurfaceFormat->format == VK_FORMAT_R8G8B8A8_UNORM)
+        if (SurfaceFormat->format == VK_FORMAT_B8G8R8A8_SRGB ||
+            SurfaceFormat->format == VK_FORMAT_R8G8B8A8_SRGB ||
+            SurfaceFormat->format == VK_FORMAT_A8B8G8R8_SRGB_PACK32)
         {
-            gRenderer->Swapchain.Format = SurfaceFormat->format;
-            gRenderer->Swapchain.ColorSpace = SurfaceFormat->colorSpace;
-            PreferredFormatFound = true;
+            PrefferedFormat = SurfaceFormat;
             break;
         }
     }
-
-    if (!PreferredFormatFound)
+    VkSurfaceFormatKHR *SelectedFormat =
+        PrefferedFormat ? PrefferedFormat : FallbackFormat;
+    if (!SelectedFormat)
     {
-        RR_ABORT("No preferred surface format found!");
+        RR_ABORT("No suitable surface format found!");
     }
+    gRenderer->Swapchain.Format = SelectedFormat->format;
+    gRenderer->Swapchain.ColorSpace = SelectedFormat->colorSpace;
 
     VkCompositeAlphaFlagBitsKHR CompositeAlpha =
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -709,7 +712,7 @@ void Rr_CleanupRenderer(void)
 
     Rr_ProcessReleasedObjects();
 
-    /* NOTE: Framebuffers are destroyed along with image views.
+    /* NOTE: VkFramebuffers are destroyed along with VkImageViews.
      * For now, we don't care for destroying render passes unless it's
      * application shutdown. */
 

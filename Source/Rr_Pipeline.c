@@ -78,7 +78,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     uint32_t SetCount,
     Rr_PipelineBindingSet *Sets)
 {
-    assert(SetCount < RR_MAX_SETS);
+    assert(SetCount <= RR_MAX_SETS);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -683,7 +683,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
                 Rr_PipelineBinding *BindingA = &Set->Bindings[BindingIndex];
                 Rr_PipelineBinding *BindingB =
                     &DescriptorSetLayout->Set.Bindings[BindingIndex];
-                if (BindingA->Binding != BindingB->Binding ||
+                if (BindingA->Index != BindingB->Index ||
                     BindingA->Count != BindingB->Count ||
                     BindingA->Type != BindingB->Type)
                 {
@@ -712,7 +712,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
         {
             Rr_AddDescriptor(
                 &DescriptorLayoutBuilder,
-                Binding->Binding,
+                Binding->Index,
                 Binding->Type,
                 Set->Stages);
         }
@@ -720,7 +720,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
         {
             Rr_AddDescriptorArray(
                 &DescriptorLayoutBuilder,
-                Binding->Binding,
+                Binding->Index,
                 Binding->Count,
                 Binding->Type,
                 Set->Stages);

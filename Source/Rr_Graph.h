@@ -194,11 +194,11 @@ typedef struct Rr_BindSampledImageArgs Rr_BindSampledImageArgs;
 struct Rr_BindSampledImageArgs
 {
     Rr_GraphImage ImageHandle;
-    VkImageLayout Layout;
     VkImageViewType ViewType;
     VkImageSubresourceRange SubresourceRange;
     uint32_t Set;
     uint32_t Binding;
+    uint32_t ArrayIndex;
 };
 
 typedef struct Rr_BindCombinedImageSamplerArgs Rr_BindCombinedImageSamplerArgs;
@@ -206,31 +206,33 @@ struct Rr_BindCombinedImageSamplerArgs
 {
     Rr_GraphImage ImageHandle;
     Rr_Sampler *Sampler;
-    VkImageLayout Layout;
     VkImageViewType ViewType;
     VkImageSubresourceRange SubresourceRange;
     uint32_t Set;
     uint32_t Binding;
+    uint32_t ArrayIndex;
 };
 
 typedef struct Rr_BindUniformBufferArgs Rr_BindUniformBufferArgs;
 struct Rr_BindUniformBufferArgs
 {
     Rr_GraphBuffer BufferHandle;
-    uint32_t Offset;
     uint32_t Size;
+    uint32_t Offset;
     uint32_t Set;
     uint32_t Binding;
+    uint32_t ArrayIndex;
 };
 
 typedef struct Rr_BindStorageBufferArgs Rr_BindStorageBufferArgs;
 struct Rr_BindStorageBufferArgs
 {
     Rr_GraphBuffer BufferHandle;
+    uint32_t Size;
+    uint32_t Offset;
     uint32_t Set;
     uint32_t Binding;
-    uint32_t Offset;
-    uint32_t Size;
+    uint32_t ArrayIndex;
 };
 
 typedef struct Rr_BindStorageImageArgs Rr_BindStorageImageArgs;
@@ -241,6 +243,7 @@ struct Rr_BindStorageImageArgs
     VkImageSubresourceRange SubresourceRange;
     uint32_t Set;
     uint32_t Binding;
+    uint32_t ArrayIndex;
 };
 
 typedef struct Rr_Transfer Rr_Transfer;

@@ -355,9 +355,9 @@ static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_PipelineBindingType Type)
         case RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
             return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         case RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER:
-            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
-            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         case RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE:
             return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         default:
@@ -680,8 +680,12 @@ static Rr_TextureFormat Rr_ToTextureFormat(VkFormat TextureFormat)
             return RR_TEXTURE_FORMAT_UNDEFINED;
         case VK_FORMAT_R8G8B8A8_UNORM:
             return RR_TEXTURE_FORMAT_R8G8B8A8_UNORM;
+        case VK_FORMAT_R8G8B8A8_SRGB:
+            return RR_TEXTURE_FORMAT_R8G8B8A8_SRGB;
         case VK_FORMAT_B8G8R8A8_UNORM:
             return RR_TEXTURE_FORMAT_B8G8R8A8_UNORM;
+        case VK_FORMAT_B8G8R8A8_SRGB:
+            return RR_TEXTURE_FORMAT_B8G8R8A8_SRGB;
         case VK_FORMAT_D32_SFLOAT:
             return RR_TEXTURE_FORMAT_D32_SFLOAT;
         case VK_FORMAT_D24_UNORM_S8_UINT:
@@ -701,8 +705,12 @@ static VkFormat Rr_ToVulkanTextureFormat(Rr_TextureFormat TextureFormat)
             return VK_FORMAT_UNDEFINED;
         case RR_TEXTURE_FORMAT_R8G8B8A8_UNORM:
             return VK_FORMAT_R8G8B8A8_UNORM;
+        case RR_TEXTURE_FORMAT_R8G8B8A8_SRGB:
+            return VK_FORMAT_R8G8B8A8_SRGB;
         case RR_TEXTURE_FORMAT_B8G8R8A8_UNORM:
             return VK_FORMAT_B8G8R8A8_UNORM;
+        case RR_TEXTURE_FORMAT_B8G8R8A8_SRGB:
+            return VK_FORMAT_B8G8R8A8_SRGB;
         case RR_TEXTURE_FORMAT_D32_SFLOAT:
             return VK_FORMAT_D32_SFLOAT;
         case RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT:

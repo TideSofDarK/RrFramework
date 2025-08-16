@@ -260,7 +260,7 @@ void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
     return &(*Map)->Value;
 }
 
-void Rr_AddHandleToSet(Rr_HandleSet *Set, Rr_Handle Handle, Rr_Arena *Arena)
+bool Rr_AddHandleToSet(Rr_HandleSet *Set, Rr_Handle Handle, Rr_Arena *Arena)
 {
     Rr_HandleTrie **Trie = &Set->Trie;
     if (*Trie != NULL)
@@ -270,7 +270,7 @@ void Rr_AddHandleToSet(Rr_HandleSet *Set, Rr_Handle Handle, Rr_Arena *Arena)
         {
             if (Handle == (*Trie)->Handle)
             {
-                return;
+                return false;
             }
             static const int Shift = (sizeof(Rr_MapKey) * CHAR_BIT) - 2;
             Trie = &(*Trie)->Children[Hash >> Shift];
@@ -280,6 +280,7 @@ void Rr_AddHandleToSet(Rr_HandleSet *Set, Rr_Handle Handle, Rr_Arena *Arena)
     *Trie = Rr_PushHandleTrieIntoHive(&Set->Hive, Arena).Element;
     RR_ZERO((*Trie)->Children);
     (*Trie)->Handle = Handle;
+    return true;
 }
 
 typedef struct Rr_FreeList Rr_FreeList;

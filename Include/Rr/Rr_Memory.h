@@ -265,7 +265,7 @@ struct Rr_HandleSet
     Rr_HandleTrieHive Hive;
 };
 
-extern void Rr_AddHandleToSet(
+extern bool Rr_AddHandleToSet(
     Rr_HandleSet *Set,
     Rr_Handle Handle,
     Rr_Arena *Arena);

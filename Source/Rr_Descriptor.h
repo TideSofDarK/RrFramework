@@ -91,55 +91,6 @@ extern void Rr_DestroyDescriptorAllocator(
     Rr_DescriptorAllocator *DescriptorAllocator,
     Rr_Device *Device);
 
-extern Rr_DescriptorWriter *Rr_CreateDescriptorWriter(
-    size_t SamplerCount,
-    size_t ImageCount,
-    size_t BufferCount,
-    Rr_Arena *Arena);
-
-extern void Rr_WriteSamplerDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    uint32_t Index,
-    VkSampler Sampler);
-
-extern void Rr_WriteImageDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    uint32_t Index,
-    VkImageView View,
-    VkImageLayout Layout,
-    VkDescriptorType Type);
-
-extern void Rr_WriteCombinedImageSamplerDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    uint32_t Index,
-    VkImageView View,
-    VkSampler Sampler,
-    VkImageLayout Layout);
-
-extern void Rr_WriteUniformBufferDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    VkBuffer Buffer,
-    size_t Size,
-    size_t Offset);
-
-extern void Rr_WriteStorageBufferDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    VkBuffer Buffer,
-    size_t Size,
-    size_t Offset);
-
-extern void Rr_ResetDescriptorWriter(Rr_DescriptorWriter *Writer);
-
-extern void Rr_UpdateDescriptorSet(
-    Rr_DescriptorWriter *Writer,
-    Rr_Device *Device,
-    VkDescriptorSet Set);
-
 typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
 struct Rr_DescriptorLayoutBuilder
 {
@@ -168,72 +119,48 @@ extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(
 
 /* */
 
-typedef struct Rr_DescriptorSetImageBinding Rr_DescriptorSetImageBinding;
-struct Rr_DescriptorSetImageBinding
-{
-    VkImageView View;
-    VkSampler Sampler;
-    VkImageLayout Layout;
-};
-
-typedef struct Rr_DescriptorSetBufferBinding Rr_DescriptorSetBufferBinding;
-struct Rr_DescriptorSetBufferBinding
-{
-    VkBuffer Handle;
-    uint32_t Size;
-    uint32_t Offset;
-};
-
-typedef struct Rr_DescriptorSetBinding Rr_DescriptorSetBinding;
-struct Rr_DescriptorSetBinding
-{
-    union
-    {
-        Rr_DescriptorSetImageBinding Image;
-        Rr_DescriptorSetBufferBinding Buffer;
-        VkSampler Sampler;
-    };
-    Rr_PipelineBindingType Type;
-};
-
-typedef enum
-{
-    RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT = (1 << RR_MAX_BINDINGS),
-    RR_DESCRIPTOR_SET_STATE_FLAG_USED_BIT = (1 << (RR_MAX_BINDINGS + 1)),
-} Rr_DescriptorSetStateFlagsBits;
-typedef uint32_t Rr_DescriptorSetStateFlags;
-
-typedef struct Rr_DescriptorSetState Rr_DescriptorSetState;
-struct Rr_DescriptorSetState
-{
-    Rr_DescriptorSetBinding Bindings[RR_MAX_BINDINGS];
-    VkDescriptorSetLayout Layout;
-    Rr_DescriptorSetStateFlags Flags; /* First RR_MAX_BINDINGS bits
-                                         are reserved for "used bindings"
-                                         flags. */
-};
-
 typedef struct Rr_DescriptorsState Rr_DescriptorsState;
 struct Rr_DescriptorsState
 {
-    Rr_DescriptorSetState SetStates[RR_MAX_SETS];
-    bool Dirty;
+    Rr_Device *Device;
+    VkCommandBuffer CommandBuffer;
+    Rr_DescriptorAllocator *Allocator;
+    Rr_PipelineLayout *Layout;
+    VkDescriptorSet Sets[RR_MAX_SETS];
+    bool Dirty[RR_MAX_SETS];
 };
 
-extern void Rr_InvalidateDescriptorState(
+extern void Rr_InvalidateDescriptorsStateV2(
     Rr_DescriptorsState *State,
-    Rr_PipelineLayout *PipelineLayout);
+    Rr_PipelineLayout *Layout);
 
-extern void Rr_UpdateDescriptorsState(
+extern void Rr_WriteImageDescriptorV2(
     Rr_DescriptorsState *State,
-    size_t SetIndex,
-    size_t BindingIndex,
-    Rr_DescriptorSetBinding *Binding);
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkDescriptorType Type,
+    VkImageView View,
+    VkImageLayout Layout,
+    VkSampler Sampler);
 
-extern void Rr_ApplyDescriptorsState(
+extern void Rr_WriteBufferDescriptorV2(
     Rr_DescriptorsState *State,
-    Rr_DescriptorAllocator *DescriptorAllocator,
-    Rr_PipelineLayout *PipelineLayout,
-    Rr_Device *Device,
-    VkCommandBuffer CommandBuffer,
-    VkPipelineBindPoint PipelineBindPoint);
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkDescriptorType Type,
+    VkBuffer Handle,
+    uint32_t Size,
+    uint32_t Offset);
+
+extern void Rr_WriteSamplerDescriptorV2(
+    Rr_DescriptorsState *State,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkSampler Sampler);
+
+extern void Rr_ApplyDescriptorsStateV2(
+    Rr_DescriptorsState *State,
+    VkPipelineBindPoint BindPoint);

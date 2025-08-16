@@ -5,6 +5,7 @@
 #include <Rr/Rr.h>
 
 #include <array>
+#include <cmath>
 #include <vector>
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
@@ -158,9 +159,9 @@ struct SApp
         Rr_Vec4 Color() const
         {
             return Rr_Vec4{
-                (float)R / 255.0f,
-                (float)G / 255.0f,
-                (float)B / 255.0f,
+                std::pow((float)R / 255.0f, 2.2f),
+                std::pow((float)G / 255.0f, 2.2f),
+                std::pow((float)B / 255.0f, 2.2f),
                 (float)A / 255.0f,
             };
         }

@@ -224,7 +224,7 @@ typedef enum
 typedef struct Rr_PipelineBinding Rr_PipelineBinding;
 struct Rr_PipelineBinding
 {
-    uint32_t Binding;
+    uint32_t Index;
     uint32_t Count;
     Rr_PipelineBindingType Type;
 };

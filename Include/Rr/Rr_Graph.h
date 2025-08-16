@@ -240,6 +240,14 @@ extern void Rr_BindCombinedImage2DSampler(
     size_t Set,
     size_t Binding);
 
+extern void Rr_BindCombinedImage2DSamplerAt(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding,
+    uint32_t ArrayIndex);
+
 extern void Rr_BindCombinedImageCubeSampler(
     Rr_GraphNode *Node,
     Rr_ImageCube *ImageCube,
@@ -252,6 +260,15 @@ extern void Rr_BindUniformBuffer(
     Rr_Buffer *Buffer,
     size_t Set,
     size_t Binding,
+    size_t Offset,
+    size_t Size);
+
+extern void Rr_BindUniformBufferAt(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex,
     size_t Offset,
     size_t Size);
 

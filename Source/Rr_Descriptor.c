@@ -456,233 +456,218 @@ VkDescriptorSetLayout Rr_BuildDescriptorLayout(
     return DescriptorSetLayout;
 }
 
-void Rr_InvalidateDescriptorState(
+void Rr_InvalidateDescriptorsStateV2(
     Rr_DescriptorsState *State,
-    Rr_PipelineLayout *PipelineLayout)
+    Rr_PipelineLayout *Layout)
 {
-    bool Disturbed = false;
-    for (size_t Index = 0; Index < PipelineLayout->SetLayoutCount; ++Index)
+    if (State->Layout != NULL)
     {
-        Rr_DescriptorSetState *SetState = &State->SetStates[Index];
-        VkDescriptorSetLayout Current = SetState->Layout;
-        VkDescriptorSetLayout New = PipelineLayout->SetLayouts[Index]->Handle;
-        if (Current != New)
+        for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
         {
-            Disturbed = true;
-        }
-        if (Disturbed)
-        {
-            SetState->Layout = New;
-            SetState->Flags = RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT;
-            memset(
-                SetState->Bindings,
-                0,
-                sizeof(Rr_DescriptorSetBinding) * RR_MAX_BINDINGS);
-        }
-    }
-    State->Dirty = true;
-}
-
-void Rr_UpdateDescriptorsState(
-    Rr_DescriptorsState *State,
-    size_t SetIndex,
-    size_t BindingIndex,
-    Rr_DescriptorSetBinding *Binding)
-{
-    memcpy(
-        &State->SetStates[SetIndex].Bindings[BindingIndex],
-        Binding,
-        sizeof(Rr_DescriptorSetBinding));
-    State->SetStates[SetIndex].Flags |= RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT;
-    State->SetStates[SetIndex].Flags |= (1 << BindingIndex);
-    State->Dirty = true;
-}
-
-static void Rr_ValidateNullSetBinding(
-    Rr_PipelineBindingSet *Set,
-    size_t Binding)
-{
-    for (size_t Index = 0; Index < Set->BindingCount; ++Index)
-    {
-        Rr_PipelineBinding *PipelineBinding = &Set->Bindings[Index];
-        if (PipelineBinding->Binding == Binding && PipelineBinding->Count != 0)
-        {
-            RR_ABORT("Missing layout binding %zu!", Binding);
-        }
-    }
-}
-
-void Rr_ApplyDescriptorsState(
-    Rr_DescriptorsState *State,
-    Rr_DescriptorAllocator *DescriptorAllocator,
-    Rr_PipelineLayout *PipelineLayout,
-    Rr_Device *Device,
-    VkCommandBuffer CommandBuffer,
-    VkPipelineBindPoint PipelineBindPoint)
-{
-    if (State->Dirty == false)
-    {
-        return;
-    }
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_DescriptorWriter *Writer =
-        Rr_CreateDescriptorWriter(0, 0, 0, Scratch.Arena);
-
-    bool FirstSetSet = false;
-    bool Disturbed = false;
-    uint32_t FirstSet = 0;
-    uint32_t DescriptorSetCount = 0;
-    VkDescriptorSet DescriptorSets[RR_MAX_SETS];
-    uint32_t DynamicOffsetCount = 0;
-    uint32_t DynamicOffsets[RR_MAX_BINDINGS * RR_MAX_SETS];
-
-    for (uint32_t SetIndex = 0; SetIndex < RR_MAX_SETS; ++SetIndex)
-    {
-        Rr_DescriptorSetState *SetState = State->SetStates + SetIndex;
-
-        bool Dirty = RR_HAS_BIT(
-                         SetState->Flags,
-                         RR_DESCRIPTOR_SET_STATE_FLAG_DIRTY_BIT) == true;
-
-        if (Disturbed || Dirty)
-        {
-            Disturbed = true;
-            if (FirstSetSet == false)
+            VkDescriptorSetLayout OldLayout =
+                State->Layout->SetLayouts[Index]->Handle;
+            VkDescriptorSetLayout NewLayout = Layout->SetLayouts[Index]->Handle;
+            if (OldLayout == NewLayout)
             {
-                FirstSet = SetIndex;
-                FirstSetSet = true;
-            }
-        }
-        else
-        {
-            continue;
-        }
-
-        for (uint32_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
-             ++BindingIndex)
-        {
-            Rr_DescriptorSetBinding *Binding =
-                SetState->Bindings + BindingIndex;
-
-            if (RR_HAS_BIT(SetState->Flags, (1 << BindingIndex)) != true)
-            {
-#if defined(RR_DEBUG)
-                Rr_ValidateNullSetBinding(
-                    &PipelineLayout->SetLayouts[SetIndex]->Set,
-                    BindingIndex);
-#endif
                 continue;
             }
-
-            switch (Binding->Type)
+            for (; Index < RR_MAX_SETS; ++Index)
             {
-                case RR_PIPELINE_BINDING_TYPE_SAMPLER:
-                {
-                    Rr_WriteSamplerDescriptor(
-                        Writer,
-                        BindingIndex,
-                        0,
-                        Binding->Sampler);
-                }
-                break;
-                case RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE:
-                {
-                    Rr_WriteImageDescriptor(
-                        Writer,
-                        BindingIndex,
-                        0,
-                        Binding->Image.View,
-                        Binding->Image.Layout,
-                        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-                }
-                break;
-                case RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
-                {
-                    Rr_WriteCombinedImageSamplerDescriptor(
-                        Writer,
-                        BindingIndex,
-                        0,
-                        Binding->Image.View,
-                        Binding->Image.Sampler,
-                        Binding->Image.Layout);
-                }
-                break;
-                case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
-                {
-                    Rr_WriteBufferDescriptor(
-                        Writer,
-                        BindingIndex,
-                        Binding->Buffer.Handle,
-                        Binding->Buffer.Size,
-                        0, /* We rely on dynamic offsets! */
-                        Rr_ToVulkanDescriptorType(Binding->Type),
-                        Scratch.Arena);
-                    DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
-                    DynamicOffsetCount++;
-                }
-                break;
-                case RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER:
-                {
-                    Rr_WriteBufferDescriptor(
-                        Writer,
-                        BindingIndex,
-                        Binding->Buffer.Handle,
-                        Binding->Buffer.Size,
-                        0, /* We rely on dynamic offsets! */
-                        Rr_ToVulkanDescriptorType(Binding->Type),
-                        Scratch.Arena);
-                    DynamicOffsets[DynamicOffsetCount] = Binding->Buffer.Offset;
-                    DynamicOffsetCount++;
-                }
-                break;
-                case RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE:
-                {
-                    Rr_WriteImageDescriptor(
-                        Writer,
-                        BindingIndex,
-                        0,
-                        Binding->Image.View,
-                        Binding->Image.Layout,
-                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-                }
-                break;
-                default:
-                {
-                    RR_ABORT("Not implemented!");
-                }
-                break;
+                State->Sets[Index] = VK_NULL_HANDLE;
             }
-        }
-
-        VkDescriptorSet DescriptorSet = Rr_AllocateDescriptorSet(
-            DescriptorAllocator,
-            Device,
-            PipelineLayout->SetLayouts[SetIndex]->Handle);
-
-        Rr_UpdateDescriptorSet(Writer, Device, DescriptorSet);
-        Rr_ResetDescriptorWriter(Writer);
-
-        DescriptorSets[DescriptorSetCount++] = DescriptorSet;
-
-        bool LastSet = SetIndex == PipelineLayout->SetLayoutCount - 1;
-        if (LastSet && DescriptorSetCount > 0)
-        {
-            Device->CmdBindDescriptorSets(
-                CommandBuffer,
-                PipelineBindPoint,
-                PipelineLayout->Handle,
-                FirstSet,
-                DescriptorSetCount,
-                DescriptorSets,
-                DynamicOffsetCount,
-                DynamicOffsets);
             break;
         }
     }
 
-    State->Dirty = false;
+    State->Layout = Layout;
+}
+
+static inline void Rr_CopyDescriptorSet(
+    VkDescriptorSet Dst,
+    VkDescriptorSet Src,
+    Rr_Device *Device,
+    Rr_DescriptorSetLayout *Layout)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    VkCopyDescriptorSet *Copies = RR_ALLOC_NO_ZERO(
+        Scratch.Arena,
+        Layout->Set.BindingCount * sizeof(VkCopyDescriptorSet));
+
+    for (uint32_t Index = 0; Index < Layout->Set.BindingCount; ++Index)
+    {
+        Rr_PipelineBinding *Binding = &Layout->Set.Bindings[Index];
+
+        Copies[Index] = (VkCopyDescriptorSet){
+            .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
+            .srcSet = Src,
+            .srcBinding = Binding->Index,
+            .srcArrayElement = 0,
+            .dstSet = Dst,
+            .dstBinding = Binding->Index,
+            .dstArrayElement = 0,
+            .descriptorCount = Binding->Count,
+        };
+    }
+
+    Device->UpdateDescriptorSets(
+        Device->Handle,
+        0,
+        NULL,
+        Layout->Set.BindingCount,
+        Copies);
 
     Rr_DestroyScratch(Scratch);
+}
+
+static inline VkDescriptorSet Rr_GetDescriptorSet(
+    Rr_DescriptorsState *State,
+    uint32_t SetIndex)
+{
+    if (State->Sets[SetIndex] == VK_NULL_HANDLE || !State->Dirty[SetIndex])
+    {
+        VkDescriptorSet OldSet = State->Sets[SetIndex];
+
+        State->Sets[SetIndex] = Rr_AllocateDescriptorSet(
+            State->Allocator,
+            State->Device,
+            State->Layout->SetLayouts[SetIndex]->Handle);
+
+        if (OldSet)
+        {
+            Rr_Device *Device = State->Device;
+            Rr_CopyDescriptorSet(
+                State->Sets[SetIndex],
+                OldSet,
+                State->Device,
+                State->Layout->SetLayouts[SetIndex]);
+        }
+
+        State->Dirty[SetIndex] = true;
+    }
+
+    return State->Sets[SetIndex];
+}
+
+void Rr_WriteImageDescriptorV2(
+    Rr_DescriptorsState *State,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkDescriptorType Type,
+    VkImageView View,
+    VkImageLayout Layout,
+    VkSampler Sampler)
+{
+    Rr_Device *Device = State->Device;
+
+    VkDescriptorImageInfo ImageInfo = {
+        .sampler = Sampler,
+        .imageView = View,
+        .imageLayout = Layout,
+    };
+
+    VkWriteDescriptorSet Write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = Rr_GetDescriptorSet(State, Set),
+        .dstBinding = Binding,
+        .dstArrayElement = ArrayIndex,
+        .descriptorCount = 1,
+        .descriptorType = Type,
+        .pImageInfo = &ImageInfo,
+    };
+
+    Device->UpdateDescriptorSets(Device->Handle, 1, &Write, 0, NULL);
+}
+
+void Rr_WriteBufferDescriptorV2(
+    Rr_DescriptorsState *State,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkDescriptorType Type,
+    VkBuffer Handle,
+    uint32_t Size,
+    uint32_t Offset)
+{
+    Rr_Device *Device = State->Device;
+
+    VkDescriptorBufferInfo BufferInfo = {
+        .buffer = Handle,
+        .offset = Offset,
+        .range = Size,
+    };
+
+    VkWriteDescriptorSet Write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = Rr_GetDescriptorSet(State, Set),
+        .dstBinding = Binding,
+        .dstArrayElement = ArrayIndex,
+        .descriptorCount = 1,
+        .descriptorType = Type,
+        .pBufferInfo = &BufferInfo,
+    };
+
+    Device->UpdateDescriptorSets(Device->Handle, 1, &Write, 0, NULL);
+}
+
+void Rr_WriteSamplerDescriptorV2(
+    Rr_DescriptorsState *State,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkSampler Sampler)
+{
+    Rr_Device *Device = State->Device;
+
+    VkDescriptorImageInfo ImageInfo = {
+        .sampler = Sampler,
+    };
+
+    VkWriteDescriptorSet Write = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = Rr_GetDescriptorSet(State, Set),
+        .dstBinding = Binding,
+        .dstArrayElement = ArrayIndex,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+        .pImageInfo = &ImageInfo,
+    };
+
+    Device->UpdateDescriptorSets(Device->Handle, 1, &Write, 0, NULL);
+}
+
+void Rr_ApplyDescriptorsStateV2(
+    Rr_DescriptorsState *State,
+    VkPipelineBindPoint BindPoint)
+{
+    Rr_Device *Device = State->Device;
+
+    for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
+    {
+        if (State->Layout->SetLayouts[Index])
+        {
+            if (State->Dirty[Index])
+            {
+                uint32_t Count = State->Layout->SetLayoutCount - Index;
+
+                Device->CmdBindDescriptorSets(
+                    State->CommandBuffer,
+                    BindPoint,
+                    State->Layout->Handle,
+                    Index,
+                    Count,
+                    &State->Sets[Index],
+                    0,
+                    NULL);
+
+                break;
+            }
+        }
+    }
+
+    for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
+    {
+        State->Dirty[Index] = false;
+    }
 }

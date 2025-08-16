@@ -62,17 +62,17 @@ static void Init(void)
 
     Rr_PipelineBinding Bindings[] = {
         {
-            .Binding = 0,
+            .Index = 0,
             .Count = 1,
             .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
         },
         {
-            .Binding = 1,
+            .Index = 1,
             .Count = 1,
             .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
         },
         {
-            .Binding = 2,
+            .Index = 2,
             .Count = 1,
             .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
         },
