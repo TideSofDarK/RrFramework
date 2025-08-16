@@ -693,7 +693,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                             Rr_CreateImage2DRGBA8FromPNG(
                                 UploadContext,
                                 ImageDataSize,
-                                ImageData);
+                                ImageData,
+                                false);
 
                         *RR_PUSH_INTO_ARRAY(
                             &GLTFContext->Images,

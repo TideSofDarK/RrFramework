@@ -133,8 +133,8 @@ static void Iterate()
         &SwapchainImage,
         nullptr,
         nullptr);
-    Rr_BindStorageBuffer(GraphicsNode, InputBuffer, 0, 0, 0, NumbersSize);
-    Rr_BindStorageBuffer(GraphicsNode, OutputBuffer, 0, 1, 0, NumbersSize);
+    // Rr_BindStorageBuffer(GraphicsNode, InputBuffer, 0, 0, 0, NumbersSize);
+    // Rr_BindStorageBuffer(GraphicsNode, OutputBuffer, 0, 1, 0, NumbersSize);
 }
 
 static void Cleanup()

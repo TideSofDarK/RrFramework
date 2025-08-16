@@ -49,29 +49,6 @@ struct Rr_DescriptorAllocator
     uint32_t SetsPerPool;
 };
 
-typedef enum Rr_DescriptorWriterEntryType
-{
-    RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER,
-    RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE
-} Rr_DescriptorWriterEntryType;
-
-typedef struct Rr_DescriptorWriterEntry Rr_DescriptorWriterEntry;
-struct Rr_DescriptorWriterEntry
-{
-    Rr_DescriptorWriterEntryType Type;
-    size_t Index;
-};
-
-typedef struct Rr_DescriptorWriter Rr_DescriptorWriter;
-struct Rr_DescriptorWriter
-{
-    RR_ARRAY(VkDescriptorImageInfo) ImageInfos;
-    RR_ARRAY(VkDescriptorBufferInfo) BufferInfos;
-    RR_ARRAY(Rr_DescriptorWriterEntry) Entries;
-    RR_ARRAY(VkWriteDescriptorSet) Writes;
-    Rr_Arena *Arena;
-};
-
 extern Rr_DescriptorAllocator *Rr_CreateDescriptorAllocator(
     Rr_Device *Device,
     uint32_t MaxSets,
@@ -134,7 +111,7 @@ extern void Rr_InvalidateDescriptorsStateV2(
     Rr_DescriptorsState *State,
     Rr_PipelineLayout *Layout);
 
-extern void Rr_WriteImageDescriptorV2(
+extern void Rr_WriteImageDescriptor(
     Rr_DescriptorsState *State,
     uint32_t Set,
     uint32_t Binding,
@@ -144,7 +121,7 @@ extern void Rr_WriteImageDescriptorV2(
     VkImageLayout Layout,
     VkSampler Sampler);
 
-extern void Rr_WriteBufferDescriptorV2(
+extern void Rr_WriteBufferDescriptor(
     Rr_DescriptorsState *State,
     uint32_t Set,
     uint32_t Binding,
@@ -154,13 +131,13 @@ extern void Rr_WriteBufferDescriptorV2(
     uint32_t Size,
     uint32_t Offset);
 
-extern void Rr_WriteSamplerDescriptorV2(
+extern void Rr_WriteSamplerDescriptor(
     Rr_DescriptorsState *State,
     uint32_t Set,
     uint32_t Binding,
     uint32_t ArrayIndex,
     VkSampler Sampler);
 
-extern void Rr_ApplyDescriptorsStateV2(
+extern void Rr_ApplyDescriptorsState(
     Rr_DescriptorsState *State,
     VkPipelineBindPoint BindPoint);

@@ -139,7 +139,8 @@ extern Rr_Image2D *Rr_CreateImage2DRGBA8(
 Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     Rr_UploadContext *UploadContext,
     size_t DataSize,
-    char *Data);
+    char *Data,
+    bool Linear);
 
 extern size_t Rr_GetImagePNGRGBA8Size(
     size_t DataSize,

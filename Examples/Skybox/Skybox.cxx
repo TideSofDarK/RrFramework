@@ -248,7 +248,7 @@ struct SApp
 
         SkyboxImage = Rr_CreateImageCube(
             { Width, Height },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
         StagingBuffer = Rr_CreateBuffer(

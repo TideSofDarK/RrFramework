@@ -149,7 +149,7 @@ static void Rr_ExecuteComputeNode(
             case RR_NODE_FUNCTION_TYPE_DISPATCH:
             {
                 assert(Graph->ComputePipeline != NULL);
-                Rr_ApplyDescriptorsStateV2(
+                Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     VK_PIPELINE_BIND_POINT_COMPUTE);
                 Rr_DispatchArgs *Args = Function->Args;
@@ -163,7 +163,7 @@ static void Rr_ExecuteComputeNode(
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
             {
                 Rr_BindSamplerArgs *Args = Function->Args;
-                Rr_WriteSamplerDescriptorV2(
+                Rr_WriteSamplerDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -182,7 +182,7 @@ static void Rr_ExecuteComputeNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_WriteImageDescriptorV2(
+                Rr_WriteImageDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -204,7 +204,7 @@ static void Rr_ExecuteComputeNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_WriteImageDescriptorV2(
+                Rr_WriteImageDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -218,7 +218,7 @@ static void Rr_ExecuteComputeNode(
             case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
             {
                 Rr_BindUniformBufferArgs *Args = Function->Args;
-                Rr_WriteBufferDescriptorV2(
+                Rr_WriteBufferDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -232,7 +232,7 @@ static void Rr_ExecuteComputeNode(
             case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
             {
                 Rr_BindStorageBufferArgs *Args = Function->Args;
-                Rr_WriteBufferDescriptorV2(
+                Rr_WriteBufferDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -254,7 +254,7 @@ static void Rr_ExecuteComputeNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_WriteImageDescriptorV2(
+                Rr_WriteImageDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -470,7 +470,7 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_DRAW:
             {
                 assert(Graph->GraphicsPipeline != NULL);
-                Rr_ApplyDescriptorsStateV2(
+                Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawArgs *Args = (Rr_DrawArgs *)Function->Args;
@@ -485,7 +485,7 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT:
             {
                 assert(Graph->GraphicsPipeline != NULL);
-                Rr_ApplyDescriptorsStateV2(
+                Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawIndirectArgs *Args =
@@ -501,7 +501,7 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_DRAW_INDEXED:
             {
                 assert(Graph->GraphicsPipeline != NULL);
-                Rr_ApplyDescriptorsStateV2(
+                Rr_ApplyDescriptorsState(
                     &DescriptorsState,
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawIndexedArgs *Args = (Rr_DrawIndexedArgs *)Function->Args;
@@ -585,7 +585,7 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
             {
                 Rr_BindSamplerArgs *Args = Function->Args;
-                Rr_WriteSamplerDescriptorV2(
+                Rr_WriteSamplerDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -604,7 +604,7 @@ static void Rr_ExecuteGraphicsNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_WriteImageDescriptorV2(
+                Rr_WriteImageDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -626,7 +626,7 @@ static void Rr_ExecuteGraphicsNode(
                         .SubresourceRange = Args->SubresourceRange,
                         .Type = Args->ViewType,
                     });
-                Rr_WriteImageDescriptorV2(
+                Rr_WriteImageDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -640,7 +640,7 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
             {
                 Rr_BindUniformBufferArgs *Args = Function->Args;
-                Rr_WriteBufferDescriptorV2(
+                Rr_WriteBufferDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,
@@ -654,7 +654,7 @@ static void Rr_ExecuteGraphicsNode(
             case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
             {
                 Rr_BindStorageBufferArgs *Args = Function->Args;
-                Rr_WriteBufferDescriptorV2(
+                Rr_WriteBufferDescriptor(
                     &DescriptorsState,
                     Args->Set,
                     Args->Binding,

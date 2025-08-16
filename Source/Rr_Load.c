@@ -53,7 +53,8 @@ static void Rr_LoadResourcesFromTasks(
                 Result = Rr_CreateImage2DRGBA8FromPNG(
                     UploadContext,
                     Asset.Size,
-                    Asset.Pointer);
+                    Asset.Pointer,
+                    true);
             }
             break;
             case RR_LOAD_TYPE_GLTF_ASSET:

@@ -213,184 +213,6 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
     return DescriptorSet;
 }
 
-Rr_DescriptorWriter *Rr_CreateDescriptorWriter(
-    size_t SamplerCount,
-    size_t ImageCount,
-    size_t BufferCount,
-    Rr_Arena *Arena)
-{
-    Rr_DescriptorWriter *Writer = RR_ALLOC_TYPE(Arena, Rr_DescriptorWriter);
-    Writer->Arena = Arena;
-    RR_RESERVE_ARRAY(&Writer->ImageInfos, ImageCount, Arena);
-    RR_RESERVE_ARRAY(&Writer->BufferInfos, BufferCount, Arena);
-    RR_RESERVE_ARRAY(&Writer->Writes, ImageCount + BufferCount, Arena);
-    RR_RESERVE_ARRAY(&Writer->Entries, ImageCount + BufferCount, Arena);
-    return Writer;
-}
-
-void Rr_WriteSamplerDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    uint32_t Index,
-    VkSampler Sampler)
-{
-    Rr_Arena *Arena = Writer->Arena;
-
-    *RR_PUSH_INTO_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
-        .sampler = Sampler,
-    };
-
-    *RR_PUSH_INTO_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = Binding,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-        .dstArrayElement = Index,
-    };
-
-    *RR_PUSH_INTO_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
-        .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
-        .Index = Writer->ImageInfos.Count - 1,
-    };
-}
-
-void Rr_WriteImageDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    uint32_t Index,
-    VkImageView View,
-    VkImageLayout Layout,
-    VkDescriptorType Type)
-{
-    Rr_Arena *Arena = Writer->Arena;
-
-    *RR_PUSH_INTO_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
-        .imageView = View,
-        .imageLayout = Layout,
-    };
-
-    *RR_PUSH_INTO_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = Binding,
-        .descriptorCount = 1,
-        .descriptorType = Type,
-        .dstArrayElement = Index,
-    };
-
-    *RR_PUSH_INTO_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
-        .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
-        .Index = Writer->ImageInfos.Count - 1,
-    };
-}
-
-void Rr_WriteCombinedImageSamplerDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    uint32_t Index,
-    VkImageView View,
-    VkSampler Sampler,
-    VkImageLayout Layout)
-{
-    Rr_Arena *Arena = Writer->Arena;
-
-    *RR_PUSH_INTO_ARRAY(&Writer->ImageInfos, Arena) = (VkDescriptorImageInfo){
-        .sampler = Sampler,
-        .imageView = View,
-        .imageLayout = Layout,
-    };
-
-    *RR_PUSH_INTO_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = Binding,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .dstArrayElement = Index,
-    };
-
-    *RR_PUSH_INTO_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
-        .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE,
-        .Index = Writer->ImageInfos.Count - 1,
-    };
-}
-
-void Rr_WriteBufferDescriptor(
-    Rr_DescriptorWriter *Writer,
-    uint32_t Binding,
-    VkBuffer Buffer,
-    size_t Size,
-    size_t Offset,
-    VkDescriptorType Type,
-    Rr_Arena *Arena)
-{
-    *RR_PUSH_INTO_ARRAY(&Writer->BufferInfos, Arena) = (VkDescriptorBufferInfo){
-        .range = Size,
-        .buffer = Buffer,
-        .offset = Offset,
-    };
-
-    *RR_PUSH_INTO_ARRAY(&Writer->Writes, Arena) = (VkWriteDescriptorSet){
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstBinding = Binding,
-        .descriptorCount = 1,
-        .descriptorType = Type,
-    };
-
-    *RR_PUSH_INTO_ARRAY(&Writer->Entries, Arena) = (Rr_DescriptorWriterEntry){
-        .Type = RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER,
-        .Index = Writer->BufferInfos.Count - 1,
-    };
-}
-
-void Rr_ResetDescriptorWriter(Rr_DescriptorWriter *Writer)
-{
-    RR_CLEAR_ARRAY(&Writer->ImageInfos);
-    RR_CLEAR_ARRAY(&Writer->BufferInfos);
-    RR_CLEAR_ARRAY(&Writer->Writes);
-    RR_CLEAR_ARRAY(&Writer->Entries);
-}
-
-void Rr_UpdateDescriptorSet(
-    Rr_DescriptorWriter *Writer,
-    Rr_Device *Device,
-    VkDescriptorSet Set)
-{
-    size_t WritesCount = Writer->Writes.Count;
-    if (WritesCount == 0)
-    {
-        return;
-    }
-    for (size_t Index = 0; Index < WritesCount; ++Index)
-    {
-        Rr_DescriptorWriterEntry *Entry = &Writer->Entries.Data[Index];
-        VkWriteDescriptorSet *Write = &Writer->Writes.Data[Index];
-        Write->dstSet = Set;
-        switch (Entry->Type)
-        {
-            case RR_DESCRIPTOR_WRITER_ENTRY_TYPE_BUFFER:
-            {
-                Write->pBufferInfo = &Writer->BufferInfos.Data[Entry->Index];
-            }
-            break;
-            case RR_DESCRIPTOR_WRITER_ENTRY_TYPE_IMAGE:
-            {
-                Write->pImageInfo = &Writer->ImageInfos.Data[Entry->Index];
-            }
-            break;
-            default:
-            {
-            }
-            break;
-        }
-    }
-
-    Device->UpdateDescriptorSets(
-        Device->Handle,
-        (uint32_t)WritesCount,
-        Writer->Writes.Data,
-        0,
-        NULL);
-}
-
 void Rr_AddDescriptor(
     Rr_DescriptorLayoutBuilder *Builder,
     uint32_t Binding,
@@ -494,6 +316,9 @@ static inline void Rr_CopyDescriptorSet(
         Scratch.Arena,
         Layout->Set.BindingCount * sizeof(VkCopyDescriptorSet));
 
+    /* TODO: It's probably possible to copy whole set at once by setting
+     * descriptorCount to match total binding count (including arrays). */
+
     for (uint32_t Index = 0; Index < Layout->Set.BindingCount; ++Index)
     {
         Rr_PipelineBinding *Binding = &Layout->Set.Bindings[Index];
@@ -549,7 +374,18 @@ static inline VkDescriptorSet Rr_GetDescriptorSet(
     return State->Sets[SetIndex];
 }
 
-void Rr_WriteImageDescriptorV2(
+#define RR_RETURN_IF_NO_LAYOUT(State)                                        \
+    {                                                                        \
+        if (!State->Layout)                                                  \
+        {                                                                    \
+            RR_LOG(                                                          \
+                "Attempting to bind a resource but current layout is NULL, " \
+                "forgot to bind a pipeline?");                               \
+            return;                                                          \
+        }                                                                    \
+    }
+
+void Rr_WriteImageDescriptor(
     Rr_DescriptorsState *State,
     uint32_t Set,
     uint32_t Binding,
@@ -559,6 +395,8 @@ void Rr_WriteImageDescriptorV2(
     VkImageLayout Layout,
     VkSampler Sampler)
 {
+    RR_RETURN_IF_NO_LAYOUT(State);
+
     Rr_Device *Device = State->Device;
 
     VkDescriptorImageInfo ImageInfo = {
@@ -580,7 +418,7 @@ void Rr_WriteImageDescriptorV2(
     Device->UpdateDescriptorSets(Device->Handle, 1, &Write, 0, NULL);
 }
 
-void Rr_WriteBufferDescriptorV2(
+void Rr_WriteBufferDescriptor(
     Rr_DescriptorsState *State,
     uint32_t Set,
     uint32_t Binding,
@@ -590,6 +428,8 @@ void Rr_WriteBufferDescriptorV2(
     uint32_t Size,
     uint32_t Offset)
 {
+    RR_RETURN_IF_NO_LAYOUT(State);
+
     Rr_Device *Device = State->Device;
 
     VkDescriptorBufferInfo BufferInfo = {
@@ -611,13 +451,15 @@ void Rr_WriteBufferDescriptorV2(
     Device->UpdateDescriptorSets(Device->Handle, 1, &Write, 0, NULL);
 }
 
-void Rr_WriteSamplerDescriptorV2(
+void Rr_WriteSamplerDescriptor(
     Rr_DescriptorsState *State,
     uint32_t Set,
     uint32_t Binding,
     uint32_t ArrayIndex,
     VkSampler Sampler)
 {
+    RR_RETURN_IF_NO_LAYOUT(State);
+
     Rr_Device *Device = State->Device;
 
     VkDescriptorImageInfo ImageInfo = {
@@ -637,10 +479,12 @@ void Rr_WriteSamplerDescriptorV2(
     Device->UpdateDescriptorSets(Device->Handle, 1, &Write, 0, NULL);
 }
 
-void Rr_ApplyDescriptorsStateV2(
+void Rr_ApplyDescriptorsState(
     Rr_DescriptorsState *State,
     VkPipelineBindPoint BindPoint)
 {
+    RR_RETURN_IF_NO_LAYOUT(State);
+
     Rr_Device *Device = State->Device;
 
     for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)

@@ -127,7 +127,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     Rr_Image2D *ColorImage = Rr_CreateImage2D(
         { Width, Height },
-        RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+        RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     size_t Size = Width * Height * DesiredChannels;
@@ -246,7 +246,7 @@ struct SApp
     {
         ColorImage = Rr_CreateImage2D(
             BackgroundExtent,
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
         DepthImage = Rr_CreateImage2D(
             BackgroundExtent,

@@ -657,7 +657,8 @@ Rr_Image2D *Rr_CreateImage2DRGBA8(
 Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     Rr_UploadContext *UploadContext,
     size_t DataSize,
-    char *Data)
+    char *Data,
+    bool Linear)
 {
     int32_t DesiredChannels = 4;
     int32_t Channels;
@@ -673,7 +674,8 @@ Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
 
     Rr_Image2D *ColorImage = Rr_CreateImage2D(
         Extent,
-        RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+        Linear ? RR_TEXTURE_FORMAT_R8G8B8A8_UNORM
+               : RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
     Rr_UploadImage2D(
