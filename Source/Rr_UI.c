@@ -4278,6 +4278,22 @@ bool Rr_UIWantKeyboardCapture(void)
     return false;
 }
 
+static inline Rr_Vec4 Rr_U32ToSRGB(uint32_t Color)
+{
+    Rr_Vec4 Result;
+
+    Result.R = (float)(Color >> 24) / 255.0f;
+    Result.G = (float)((Color >> 16) & (0x000000FF)) / 255.0f;
+    Result.B = (float)((Color >> 8) & (0x000000FF)) / 255.0f;
+    Result.A = (float)(Color & (0x000000FF)) / 255.0f;
+
+    Result.R = powf(Result.R, 2.2);
+    Result.G = powf(Result.G, 2.2);
+    Result.B = powf(Result.B, 2.2);
+
+    return Result;
+}
+
 void Rr_InitUI(void)
 {
     assert(gUIContext == NULL);
@@ -4306,18 +4322,18 @@ void Rr_InitUI(void)
         .BevelIntensityLight = 0.3f,
         .BevelIntensityDark = 0.7f,
 
-        .Foreground = Rr_U32ToRGBA(0xD6D0B3FF),
-        .ForegroundDimmed = Rr_U32ToRGBA(0xA7A59CFF),
-        .Background = Rr_U32ToRGBA(0x292F33FF),
-        .TitleBackground = Rr_U32ToRGBA(0x5E2D96FF),
-        .TitleButtonBackground = Rr_U32ToRGBA(0xD54251FF),
-        .Outline = Rr_U32ToRGBA(0x6C6F72FF),
-        .SelectedTextBackground = Rr_U32ToRGBA(0x6EA5FEFF),
+        .Foreground = Rr_U32ToSRGB(0xD6D0B3FF),
+        .ForegroundDimmed = Rr_U32ToSRGB(0xA7A59CFF),
+        .Background = Rr_U32ToSRGB(0x292F33FF),
+        .TitleBackground = Rr_U32ToSRGB(0x5E2D96FF),
+        .TitleButtonBackground = Rr_U32ToSRGB(0xD54251FF),
+        .Outline = Rr_U32ToSRGB(0x6C6F72FF),
+        .SelectedTextBackground = Rr_U32ToSRGB(0x6EA5FEFF),
 
-        .ButtonNormal = Rr_U32ToRGBA(0x4c565dFF),
-        .ButtonHovered = Rr_U32ToRGBA(0x687e8dFF),
-        .ButtonHeld = Rr_U32ToRGBA(0x435866FF),
-        .ButtonDisabled = Rr_U32ToRGBA(0x191e22FF),
+        .ButtonNormal = Rr_U32ToSRGB(0x4c565dFF),
+        .ButtonHovered = Rr_U32ToSRGB(0x687e8dFF),
+        .ButtonHeld = Rr_U32ToSRGB(0x435866FF),
+        .ButtonDisabled = Rr_U32ToSRGB(0x191e22FF),
     };
 
     gUIContext->Style.ScrollbarBackground = gUIContext->Style.ButtonDisabled;
