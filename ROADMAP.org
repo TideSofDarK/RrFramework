@@ -10,9 +10,7 @@
       Any image view gets created on demand unless it's already cached in storage.
 - [X] Hash collision handling across all usages of Rr_Map.
 - [X] Hashing objects such as VkFramebuffer looks very bad.
-- [ ] Simplify pipeline layout creation.
-      Make Rr_PipelineBinding specify which set it belongs to.
-      Consider making binding type enums shorter.
+- [X] Simplify pipeline layout creation.
 - [ ] Inter-node sync, e.g., sequential compute dispatches writing to the same resource.
 - [ ] Remove Rr_LoadingThread.
       Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
