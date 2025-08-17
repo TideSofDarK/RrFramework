@@ -54,30 +54,18 @@ static void Init(void)
     /* Create simple sampler. */
 
     Rr_SamplerInfo SamplerInfo = { 0 };
-    SamplerInfo.MinFilter = RR_FILTER_NEAREST;
-    SamplerInfo.MagFilter = RR_FILTER_NEAREST;
+    SamplerInfo.MinFilter = RR_FILTER_LINEAR;
+    SamplerInfo.MagFilter = RR_FILTER_LINEAR;
     NearestSampler = Rr_CreateSampler(&SamplerInfo);
 
     /* Create graphics pipeline. */
 
-    Rr_PipelineBinding Bindings[] = {
-        {
-            .Index = 0,
-            .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
-        },
-        {
-            .Index = 1,
-            .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLER,
-        },
-        {
-            .Index = 2,
-            .Count = 1,
-            .Type = RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
-        },
+    Rr_Binding Bindings[] = {
+        { .Index = 0, .Type = RR_BINDING_TYPE_UNIFORM_BUFFER },
+        { .Index = 1, .Type = RR_BINDING_TYPE_SAMPLER },
+        { .Index = 2, .Type = RR_BINDING_TYPE_SAMPLED_IMAGE },
     };
-    Rr_PipelineBindingSet BindingSet = {
+    Rr_BindingSet BindingSet = {
         .BindingCount = RR_ARRAY_COUNT(Bindings),
         .Bindings = Bindings,
         .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,

@@ -213,72 +213,7 @@ VkDescriptorSet Rr_AllocateDescriptorSet(
     return DescriptorSet;
 }
 
-void Rr_AddDescriptor(
-    Rr_DescriptorLayoutBuilder *Builder,
-    uint32_t Binding,
-    Rr_PipelineBindingType Type,
-    Rr_ShaderStage ShaderStage)
-{
-    if (Builder->Count >= RR_MAX_SETS)
-    {
-        return;
-    }
-    Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
-        .binding = Binding,
-        .descriptorType = Rr_ToVulkanDescriptorType(Type),
-        .descriptorCount = 1,
-        .stageFlags = Rr_ToVulkanShaderStageFlags(ShaderStage)
-    };
-    Builder->Count++;
-}
-
-void Rr_AddDescriptorArray(
-    Rr_DescriptorLayoutBuilder *Builder,
-    uint32_t Binding,
-    uint32_t Count,
-    Rr_PipelineBindingType Type,
-    Rr_ShaderStage ShaderStage)
-{
-    if (Builder->Count >= RR_MAX_SETS)
-    {
-        return;
-    }
-    Builder->Bindings[Builder->Count] = (VkDescriptorSetLayoutBinding){
-        .binding = Binding,
-        .descriptorType = Rr_ToVulkanDescriptorType(Type),
-        .descriptorCount = Count,
-        .stageFlags = Rr_ToVulkanShaderStageFlags(ShaderStage)
-    };
-    Builder->Count++;
-}
-
-void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder *Builder)
-{
-    *Builder = (Rr_DescriptorLayoutBuilder){ 0 };
-}
-
-VkDescriptorSetLayout Rr_BuildDescriptorLayout(
-    Rr_DescriptorLayoutBuilder *Builder,
-    Rr_Device *Device)
-{
-    VkDescriptorSetLayoutCreateInfo Info = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .flags = 0,
-        .bindingCount = Builder->Count,
-        .pBindings = Builder->Bindings,
-    };
-
-    VkDescriptorSetLayout DescriptorSetLayout;
-    Device->CreateDescriptorSetLayout(
-        Device->Handle,
-        &Info,
-        NULL,
-        &DescriptorSetLayout);
-
-    return DescriptorSetLayout;
-}
-
-void Rr_InvalidateDescriptorsStateV2(
+void Rr_InvalidateDescriptorsState(
     Rr_DescriptorsState *State,
     Rr_PipelineLayout *Layout)
 {
@@ -321,7 +256,7 @@ static inline void Rr_CopyDescriptorSet(
 
     for (uint32_t Index = 0; Index < Layout->Set.BindingCount; ++Index)
     {
-        Rr_PipelineBinding *Binding = &Layout->Set.Bindings[Index];
+        Rr_Binding *Binding = &Layout->Set.Bindings[Index];
 
         Copies[Index] = (VkCopyDescriptorSet){
             .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,

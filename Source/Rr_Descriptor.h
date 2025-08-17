@@ -68,34 +68,6 @@ extern void Rr_DestroyDescriptorAllocator(
     Rr_DescriptorAllocator *DescriptorAllocator,
     Rr_Device *Device);
 
-typedef struct Rr_DescriptorLayoutBuilder Rr_DescriptorLayoutBuilder;
-struct Rr_DescriptorLayoutBuilder
-{
-    VkDescriptorSetLayoutBinding Bindings[RR_MAX_SETS];
-    uint32_t Count;
-};
-
-extern void Rr_AddDescriptor(
-    Rr_DescriptorLayoutBuilder *Builder,
-    uint32_t Binding,
-    Rr_PipelineBindingType Type,
-    Rr_ShaderStage ShaderStage);
-
-extern void Rr_AddDescriptorArray(
-    Rr_DescriptorLayoutBuilder *Builder,
-    uint32_t Binding,
-    uint32_t Count,
-    Rr_PipelineBindingType Type,
-    Rr_ShaderStage ShaderStage);
-
-extern void Rr_ClearDescriptors(Rr_DescriptorLayoutBuilder *Builder);
-
-extern VkDescriptorSetLayout Rr_BuildDescriptorLayout(
-    Rr_DescriptorLayoutBuilder *Builder,
-    Rr_Device *Device);
-
-/* */
-
 typedef struct Rr_DescriptorsState Rr_DescriptorsState;
 struct Rr_DescriptorsState
 {
@@ -107,7 +79,7 @@ struct Rr_DescriptorsState
     bool Dirty[RR_MAX_SETS];
 };
 
-extern void Rr_InvalidateDescriptorsStateV2(
+extern void Rr_InvalidateDescriptorsState(
     Rr_DescriptorsState *State,
     Rr_PipelineLayout *Layout);
 

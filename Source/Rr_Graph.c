@@ -141,7 +141,7 @@ static void Rr_ExecuteComputeNode(
                         ComputePipeline->Handle);
                     Graph->ComputePipeline = ComputePipeline;
                 }
-                Rr_InvalidateDescriptorsStateV2(
+                Rr_InvalidateDescriptorsState(
                     &DescriptorsState,
                     ComputePipeline->Layout);
             }
@@ -547,7 +547,7 @@ static void Rr_ExecuteGraphicsNode(
                         GraphicsPipeline->Handle);
                     Graph->GraphicsPipeline = GraphicsPipeline;
                 }
-                Rr_InvalidateDescriptorsStateV2(
+                Rr_InvalidateDescriptorsState(
                     &DescriptorsState,
                     GraphicsPipeline->Layout);
             }

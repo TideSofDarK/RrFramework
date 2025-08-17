@@ -53,7 +53,7 @@ static void Rr_LoadResourcesFromTasks(
                 Result = Rr_CreateImage2DRGBA8FromPNG(
                     UploadContext,
                     Asset.Size,
-                    Asset.Pointer,
+                    (void *)Asset.Pointer,
                     true);
             }
             break;

@@ -344,21 +344,21 @@ extern void Rr_BlitColorImage(
     Rr_IntVec4 DstRect,
     VkImageAspectFlags AspectMask);
 
-static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_PipelineBindingType Type)
+static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_BindingType Type)
 {
     switch (Type)
     {
-        case RR_PIPELINE_BINDING_TYPE_SAMPLER:
+        case RR_BINDING_TYPE_SAMPLER:
             return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE:
+        case RR_BINDING_TYPE_SAMPLED_IMAGE:
             return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
+        case RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
             return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        case RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER:
+        case RR_BINDING_TYPE_STORAGE_BUFFER:
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER:
+        case RR_BINDING_TYPE_UNIFORM_BUFFER:
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE:
+        case RR_BINDING_TYPE_STORAGE_IMAGE:
             return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         default:
             RR_ABORT("Invalid pipeline binding type!");

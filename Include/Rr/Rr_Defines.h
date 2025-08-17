@@ -82,7 +82,7 @@ typedef struct Rr_Data Rr_Data;
 struct Rr_Data
 {
     size_t Size;
-    void *Pointer;
+    const void *Pointer;
 };
 
 /* Make Data Helper */

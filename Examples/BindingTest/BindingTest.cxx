@@ -46,35 +46,33 @@ struct SApp
     void InitPipeline()
     {
         std::array Set0Bindings = {
-            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 0, RR_BINDING_TYPE_STORAGE_BUFFER },
         };
         std::array Set1Bindings = {
-            Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{ 1, RR_BINDING_TYPE_UNIFORM_BUFFER },
         };
         std::array Set2Bindings = {
-            Rr_PipelineBinding{ 2, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_PipelineBinding{ 4, 4, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{ 2, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 4, RR_BINDING_TYPE_UNIFORM_BUFFER, 4 },
         };
         std::array Set3Bindings = {
-            Rr_PipelineBinding{ 13, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE },
+            Rr_Binding{ 13, RR_BINDING_TYPE_STORAGE_IMAGE },
         };
         std::array Sets = {
-            Rr_PipelineBindingSet{
-                Set0Bindings.size(),
-                Set0Bindings.data(),
-                RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_PipelineBindingSet{
+            Rr_BindingSet{ Set0Bindings.size(),
+                           Set0Bindings.data(),
+                           RR_SHADER_STAGE_COMPUTE_BIT },
+            Rr_BindingSet{
                 Set1Bindings.size(),
                 Set1Bindings.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
-            Rr_PipelineBindingSet{
+            Rr_BindingSet{
                 Set2Bindings.size(),
                 Set2Bindings.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
-            Rr_PipelineBindingSet{
+            Rr_BindingSet{
                 Set3Bindings.size(),
                 Set3Bindings.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,

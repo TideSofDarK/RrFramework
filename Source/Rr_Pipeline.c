@@ -76,7 +76,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(
     uint32_t SetCount,
-    Rr_PipelineBindingSet *Sets)
+    Rr_BindingSet *BindingSets)
 {
     assert(SetCount <= RR_MAX_SETS);
 
@@ -99,7 +99,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     for (size_t Index = 0; Index < SetCount; ++Index)
     {
-        Rr_PipelineBindingSet *Set = Sets + Index;
+        Rr_BindingSet *Set = BindingSets + Index;
 
         PipelineLayout->SetLayouts[Index] = Rr_GetDescriptorSetLayout(Set);
         Handles[Index] = PipelineLayout->SetLayouts[Index]->Handle;
@@ -658,10 +658,12 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
         (void *)GraphicsPipeline);
 }
 
-Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
+Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_BindingSet *BindingSet)
 {
-    uint32_t Hash =
-        XXH32(Set->Bindings, sizeof(Rr_PipelineBinding) * Set->BindingCount, 0);
+    uint32_t Hash = XXH32(
+        BindingSet->Bindings,
+        sizeof(Rr_Binding) * BindingSet->BindingCount,
+        0);
     for (size_t LayoutIndex = 0;
          LayoutIndex < gRenderer->DescriptorSetLayouts.Count;
          ++LayoutIndex)
@@ -673,15 +675,16 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
             continue;
         }
         if (DescriptorSetLayout->Hash == Hash &&
-            DescriptorSetLayout->Set.BindingCount == Set->BindingCount &&
-            DescriptorSetLayout->Set.Stages == Set->Stages)
+            DescriptorSetLayout->Set.BindingCount == BindingSet->BindingCount &&
+            DescriptorSetLayout->Set.Stages == BindingSet->Stages)
         {
             bool Fail = false;
-            for (size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
+            for (size_t BindingIndex = 0;
+                 BindingIndex < BindingSet->BindingCount;
                  ++BindingIndex)
             {
-                Rr_PipelineBinding *BindingA = &Set->Bindings[BindingIndex];
-                Rr_PipelineBinding *BindingB =
+                Rr_Binding *BindingA = &BindingSet->Bindings[BindingIndex];
+                Rr_Binding *BindingB =
                     &DescriptorSetLayout->Set.Bindings[BindingIndex];
                 if (BindingA->Index != BindingB->Index ||
                     BindingA->Count != BindingB->Count ||
@@ -699,33 +702,31 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
         }
     }
 
-    Rr_DescriptorLayoutBuilder DescriptorLayoutBuilder = { 0 };
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    for (size_t BindingIndex = 0; BindingIndex < Set->BindingCount;
+    Rr_Device *Device = &gRenderer->Device;
+
+    RR_ARRAY(VkDescriptorSetLayoutBinding) Bindings = { 0 };
+
+    for (size_t BindingIndex = 0; BindingIndex < BindingSet->BindingCount;
          ++BindingIndex)
     {
-        Rr_PipelineBinding *Binding = Set->Bindings + BindingIndex;
+        Rr_Binding *Binding = BindingSet->Bindings + BindingIndex;
 
-        assert(Binding->Count > 0);
-
-        if (Binding->Count == 1)
-        {
-            Rr_AddDescriptor(
-                &DescriptorLayoutBuilder,
-                Binding->Index,
-                Binding->Type,
-                Set->Stages);
-        }
-        else
-        {
-            Rr_AddDescriptorArray(
-                &DescriptorLayoutBuilder,
-                Binding->Index,
-                Binding->Count,
-                Binding->Type,
-                Set->Stages);
-        }
+        *RR_PUSH_INTO_ARRAY(&Bindings, Scratch.Arena) =
+            (VkDescriptorSetLayoutBinding){
+                .binding = Binding->Index,
+                .descriptorType = Rr_ToVulkanDescriptorType(Binding->Type),
+                .descriptorCount = Binding->Count > 0 ? Binding->Count : 1,
+                .stageFlags = Rr_ToVulkanShaderStageFlags(BindingSet->Stages),
+            };
     }
+
+    VkDescriptorSetLayoutCreateInfo CreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = Bindings.Count,
+        .pBindings = Bindings.Data,
+    };
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
@@ -733,16 +734,21 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_PipelineBindingSet *Set)
         RR_PUSH_INTO_ARRAY(&gRenderer->DescriptorSetLayouts, gRenderer->Arena);
 
     DescriptorSetLayout->Hash = Hash;
-    DescriptorSetLayout->Set = *Set;
+    DescriptorSetLayout->Set = *BindingSet;
     RR_ALLOC_COPY(
         gRenderer->Arena,
         DescriptorSetLayout->Set.Bindings,
-        Set->Bindings,
-        sizeof(Rr_PipelineBinding) * Set->BindingCount);
-    DescriptorSetLayout->Handle =
-        Rr_BuildDescriptorLayout(&DescriptorLayoutBuilder, &gRenderer->Device);
+        BindingSet->Bindings,
+        sizeof(Rr_Binding) * BindingSet->BindingCount);
+    Device->CreateDescriptorSetLayout(
+        Device->Handle,
+        &CreateInfo,
+        NULL,
+        &DescriptorSetLayout->Handle);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
+
+    Rr_DestroyScratch(Scratch);
 
     return DescriptorSetLayout;
 }

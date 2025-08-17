@@ -44,13 +44,13 @@ static uint32_t GetDispatchSize()
 static void Init()
 {
     std::array Bindings = {
-        Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
-        Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-        Rr_PipelineBinding{ 2, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-        Rr_PipelineBinding{ 3, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+        Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
+        Rr_Binding{ 1, RR_BINDING_TYPE_STORAGE_BUFFER },
+        Rr_Binding{ 2, RR_BINDING_TYPE_STORAGE_BUFFER },
+        Rr_Binding{ 3, RR_BINDING_TYPE_STORAGE_BUFFER },
     };
     std::array BindingSets = {
-        Rr_PipelineBindingSet{
+        Rr_BindingSet{
             Bindings.size(),
             Bindings.data(),
             RR_SHADER_STAGE_COMPUTE_BIT,

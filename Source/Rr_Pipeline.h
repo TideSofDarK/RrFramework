@@ -34,7 +34,7 @@
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
 struct Rr_DescriptorSetLayout
 {
-    Rr_PipelineBindingSet Set;
+    Rr_BindingSet Set;
     VkDescriptorSetLayout Handle;
     uint32_t Hash;
 };
@@ -84,5 +84,4 @@ struct Rr_GraphicsPipeline
 
 extern void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
 
-extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
-    Rr_PipelineBindingSet *Set);
+extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_BindingSet *Set);

@@ -9,27 +9,27 @@
 #include <ctime>
 #include <vector>
 
-const uint32_t COUNT = 1 << 15;
+const uint32_t COUNT_SQRT = 256;
+const uint32_t COUNT = COUNT_SQRT * COUNT_SQRT;
 const uint32_t TOTAL_SIZE = sizeof(uint32_t) * COUNT;
 
 struct SValidator
 {
     Rr_Renderer *Renderer;
-    uint32_t ThreadsPerWorkgroup;
+    uint32_t DispatchSize;
     Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
     Rr_Image2D *ResultImage;
 
     explicit SValidator()
-        : ThreadsPerWorkgroup(Rr_GetMaxComputeWorkgroupInvocations())
     {
         std::array Bindings = {
-            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_PipelineBinding{ 2, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE },
+            Rr_Binding{ 0, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 1, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 2, RR_BINDING_TYPE_STORAGE_IMAGE },
         };
         std::array BindingSets = {
-            Rr_PipelineBindingSet{
+            Rr_BindingSet{
                 Bindings.size(),
                 Bindings.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,
@@ -38,10 +38,13 @@ struct SValidator
         Layout =
             Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
+        uint32_t LocalSize = std::sqrt(Rr_GetMaxComputeWorkgroupInvocations());
+        DispatchSize = COUNT_SQRT / LocalSize;
+
         std::array Specializations = {
-            Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(ThreadsPerWorkgroup) },
+            Rr_PipelineSpecialization{ 0, RR_MAKE_DATA_STRUCT(LocalSize) },
+            Rr_PipelineSpecialization{ 1, RR_MAKE_DATA_STRUCT(LocalSize) },
+            Rr_PipelineSpecialization{ 2, RR_MAKE_DATA_STRUCT(COUNT_SQRT) },
         };
 
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
@@ -54,7 +57,7 @@ struct SValidator
         Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
 
         ResultImage = Rr_CreateImage2D(
-            { 2, 2 },
+            { COUNT_SQRT, COUNT_SQRT },
             RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     }
@@ -91,7 +94,7 @@ struct SValidator
             0,
             sizeof(uint32_t) * Count);
         Rr_BindStorageImage2D(ComputeNode, ResultImage, 0, 2);
-        Rr_Dispatch(ComputeNode, Count / ThreadsPerWorkgroup, 1, 1);
+        Rr_Dispatch(ComputeNode, DispatchSize, DispatchSize, 1);
 
         return ResultImage;
     }
@@ -121,11 +124,11 @@ struct SBitonicSorter
               Rr_NextPowerOfTwo(Rr_GetMaxComputeWorkgroupInvocations()) / 2)
     {
         std::array Bindings = {
-            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{ 0, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 1, RR_BINDING_TYPE_UNIFORM_BUFFER },
         };
         std::array BindingSets = {
-            Rr_PipelineBindingSet{
+            Rr_BindingSet{
                 Bindings.size(),
                 Bindings.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,
@@ -313,7 +316,7 @@ static void Iterate()
         "blit",
         ResultImage,
         SwapchainImage,
-        { 0, 0, 2, 2 },
+        { 0, 0, COUNT_SQRT, COUNT_SQRT },
         { 0, 0, SwapchainSize.Width, SwapchainSize.Height },
         RR_IMAGE_ASPECT_COLOR_BIT);
 }

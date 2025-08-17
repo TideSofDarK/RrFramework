@@ -125,10 +125,10 @@ struct SApp
     void InitPipeline()
     {
         std::array Bindings = {
-            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
         };
         std::array Sets = {
-            Rr_PipelineBindingSet{
+            Rr_BindingSet{
                 Bindings.size(),
                 Bindings.data(),
                 RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,

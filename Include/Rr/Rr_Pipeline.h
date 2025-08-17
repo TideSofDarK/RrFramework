@@ -212,34 +212,34 @@ struct Rr_ComputePipelineCreateInfo
 
 typedef enum
 {
-    RR_PIPELINE_BINDING_TYPE_INVALID,
-    RR_PIPELINE_BINDING_TYPE_SAMPLER,
-    RR_PIPELINE_BINDING_TYPE_SAMPLED_IMAGE,
-    RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-    RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER,
-    RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER,
-    RR_PIPELINE_BINDING_TYPE_STORAGE_IMAGE,
-} Rr_PipelineBindingType;
+    RR_BINDING_TYPE_INVALID,
+    RR_BINDING_TYPE_SAMPLER,
+    RR_BINDING_TYPE_SAMPLED_IMAGE,
+    RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+    RR_BINDING_TYPE_UNIFORM_BUFFER,
+    RR_BINDING_TYPE_STORAGE_BUFFER,
+    RR_BINDING_TYPE_STORAGE_IMAGE,
+} Rr_BindingType;
 
-typedef struct Rr_PipelineBinding Rr_PipelineBinding;
-struct Rr_PipelineBinding
+typedef struct Rr_Binding Rr_Binding;
+struct Rr_Binding
 {
     uint32_t Index;
+    Rr_BindingType Type;
     uint32_t Count;
-    Rr_PipelineBindingType Type;
 };
 
-typedef struct Rr_PipelineBindingSet Rr_PipelineBindingSet;
-struct Rr_PipelineBindingSet
+typedef struct Rr_BindingSet Rr_BindingSet;
+struct Rr_BindingSet
 {
     size_t BindingCount;
-    Rr_PipelineBinding *Bindings;
+    Rr_Binding *Bindings;
     Rr_ShaderStage Stages;
 };
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
     uint32_t SetCount,
-    Rr_PipelineBindingSet *Sets);
+    Rr_BindingSet *BindingSets);
 
 extern void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
 

@@ -4341,11 +4341,11 @@ void Rr_InitUI(void)
     gUIContext->Style.ScrollbarHovered = gUIContext->Style.ButtonHovered;
     gUIContext->Style.ScrollbarHeld = gUIContext->Style.ButtonHeld;
 
-    Rr_PipelineBinding Bindings[] = {
-        { 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
-        { 1, 1, RR_PIPELINE_BINDING_TYPE_COMBINED_IMAGE_SAMPLER },
+    Rr_Binding Bindings[] = {
+        { .Index = 0, .Type = RR_BINDING_TYPE_UNIFORM_BUFFER },
+        { .Index = 1, .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER },
     };
-    Rr_PipelineBindingSet BindingSets[] = {
+    Rr_BindingSet BindingSets[] = {
         {
             RR_ARRAY_COUNT(Bindings),
             Bindings,
@@ -4358,13 +4358,7 @@ void Rr_InitUI(void)
     Rr_ColorTargetInfo ColorTargets[] = {
         {
             .Format = Rr_GetSwapchainFormat(),
-            .Blend.BlendEnable = true,
-            .Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA,
-            .Blend.DstColorBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-            .Blend.ColorBlendOp = RR_BLEND_OP_ADD,
-            .Blend.SrcAlphaBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA,
-            .Blend.DstAlphaBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-            .Blend.AlphaBlendOp = RR_BLEND_OP_ADD,
+            .Blend = Rr_AlphaBlend(),
         },
     };
 

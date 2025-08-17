@@ -33,13 +33,13 @@ struct SSortList
         }
 
         std::array Bindings = {
-            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
-            Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_PipelineBinding{ 2, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_PipelineBinding{ 3, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{ 1, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 2, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 3, RR_BINDING_TYPE_STORAGE_BUFFER },
         };
         std::array BindingSets = {
-            Rr_PipelineBindingSet{
+            Rr_BindingSet{
                 Bindings.size(),
                 Bindings.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,
@@ -203,22 +203,22 @@ struct SBitonicSorter
 
         /* Create compute pipeline. */
 
-        std::array BindingsA = {
-            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_PipelineBinding{ 1, 1, RR_PIPELINE_BINDING_TYPE_STORAGE_BUFFER },
+        std::array Bindings0 = {
+            Rr_Binding{ 0, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 1, RR_BINDING_TYPE_STORAGE_BUFFER },
         };
-        std::array BindingsB = {
-            Rr_PipelineBinding{ 0, 1, RR_PIPELINE_BINDING_TYPE_UNIFORM_BUFFER },
+        std::array Bindings1 = {
+            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
         };
         std::array BindingSets = {
-            Rr_PipelineBindingSet{
-                BindingsA.size(),
-                BindingsA.data(),
+            Rr_BindingSet{
+                Bindings0.size(),
+                Bindings0.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
-            Rr_PipelineBindingSet{
-                BindingsB.size(),
-                BindingsB.data(),
+            Rr_BindingSet{
+                Bindings1.size(),
+                Bindings1.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
