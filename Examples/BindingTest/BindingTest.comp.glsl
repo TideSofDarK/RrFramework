@@ -2,7 +2,10 @@
 
 // Contrived example of various binding techniques.
 
-layout(local_size_x_id = 0, local_size_y_id = 0) in;
+layout(constant_id = 0) const uint LocalX = 1;
+layout(constant_id = 1) const uint LocalY = 1;
+
+layout(local_size_x_id = 0, local_size_y_id = 1) in;
 
 struct SS0B0Element
 {
