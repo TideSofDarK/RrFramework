@@ -12,7 +12,7 @@ layout(set = 0, binding = 0) buffer SortData
     uint Values[];
 };
 
-layout(set = 0, binding = 1) uniform SortInfo
+layout(set = 1, binding = 0) uniform SortInfo
 {
     uint Count;
     uint Height;

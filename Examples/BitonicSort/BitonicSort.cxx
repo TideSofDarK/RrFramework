@@ -123,14 +123,21 @@ struct SBitonicSorter
         : ThreadsPerWorkgroup(
               Rr_NextPowerOfTwo(Rr_GetMaxComputeWorkgroupInvocations()) / 2)
     {
-        std::array Bindings = {
+        std::array Bindings0 = {
             Rr_Binding{ 0, RR_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_Binding{ 1, RR_BINDING_TYPE_UNIFORM_BUFFER },
+        };
+        std::array Bindings1 = {
+            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
         };
         std::array BindingSets = {
             Rr_BindingSet{
-                Bindings.size(),
-                Bindings.data(),
+                Bindings0.size(),
+                Bindings0.data(),
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_BindingSet{
+                Bindings1.size(),
+                Bindings1.data(),
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
@@ -169,8 +176,17 @@ struct SBitonicSorter
     {
         assert(RR_IS_POW2(Count));
 
-        uint32_t DispatchSize = Count / 2 / ThreadsPerWorkgroup;
+        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph(), "compute");
+        Rr_BindComputePipeline(ComputeNode, Pipeline);
+        Rr_BindStorageBuffer(
+            ComputeNode,
+            Buffer,
+            0,
+            0,
+            0,
+            sizeof(uint32_t) * Count);
 
+        uint32_t DispatchSize = Count / 2 / ThreadsPerWorkgroup;
         size_t InfoBufferOffset = 0;
         auto Dispatch = [&](uint32_t Height, uint32_t Algorithm) {
             SGPUSortInfo SortInfo;
@@ -182,24 +198,15 @@ struct SBitonicSorter
                         InfoBufferOffset;
             std::memcpy(Dst, &SortInfo, sizeof(SGPUSortInfo));
 
-            Rr_GraphNode *ComputeNode =
-                Rr_AddComputeNode(Rr_GetGraph(), "compute");
-            Rr_BindComputePipeline(ComputeNode, Pipeline);
-            Rr_BindStorageBuffer(
-                ComputeNode,
-                Buffer,
-                0,
-                0,
-                0,
-                sizeof(uint32_t) * Count);
             Rr_BindUniformBuffer(
                 ComputeNode,
                 UniformBuffer,
-                0,
                 1,
+                0,
                 InfoBufferOffset,
                 sizeof(SGPUSortInfo));
             Rr_Dispatch(ComputeNode, DispatchSize, 1, 1);
+            Rr_ComputeBarrier(ComputeNode);
 
             InfoBufferOffset +=
                 RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment());
