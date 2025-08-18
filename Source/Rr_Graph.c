@@ -160,6 +160,28 @@ static void Rr_ExecuteComputeNode(
                     Args->GroupCountZ);
             }
             break;
+            case RR_NODE_FUNCTION_TYPE_COMPUTE_BARRIER:
+            {
+                VkMemoryBarrier MemoryBarrier = {
+                    .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                    .srcAccessMask =
+                        VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+                    .dstAccessMask =
+                        VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+                };
+                Device->CmdPipelineBarrier(
+                    CommandBuffer,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    0,
+                    1,
+                    &MemoryBarrier,
+                    0,
+                    NULL,
+                    0,
+                    NULL);
+            }
+            break;
             case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
             {
                 Rr_BindSamplerArgs *Args = Function->Args;
@@ -810,6 +832,63 @@ Rr_GraphNode *Rr_AddGraphNode(
     return GraphNode;
 }
 
+static inline bool Rr_AddStorageDependency(
+    Rr_GraphNode *Node,
+    Rr_GraphHandle *Handle,
+    Rr_SyncState *State)
+{
+    for (size_t Index = 0; Index < Node->Dependencies.Count; ++Index)
+    {
+        Rr_NodeDependency *Dependency = Node->Dependencies.Data + Index;
+
+        if (Dependency->Handle.Values.Index == Handle->Values.Index)
+        {
+            Dependency->State.StageMask |= State->StageMask;
+            Dependency->State.AccessMask |= State->AccessMask;
+
+            return true;
+        }
+    }
+
+    Rr_Graph *Graph = Node->Graph;
+    Rr_Arena *Arena = Node->Graph->Arena;
+
+    if (Handle->Values.Index == Graph->SwapchainImageResourceIndex)
+    {
+        Node->UsesLateCommandBuffer = true;
+    }
+
+    Rr_GraphHandle CurrentHandle = *Handle;
+
+    Rr_GraphNode **NodeInMap =
+        RR_GET_MAP_VALUE(&Graph->ResourceWriteToNode, Handle->Hash, Arena);
+
+    if (State->Layout != VK_IMAGE_LAYOUT_UNDEFINED ||
+        RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES))
+    {
+        if (*NodeInMap == NULL)
+        {
+            Handle->Values.Generation++;
+
+            *NodeInMap = Node;
+        }
+        else
+        {
+            RR_LOG(
+                "Node \"%s\": another node already writes to the versioned "
+                "resource!",
+                Node->Name);
+        }
+    }
+
+    *RR_PUSH_INTO_ARRAY(&Node->Dependencies, Arena) = (Rr_NodeDependency){
+        .State = *State,
+        .Handle = CurrentHandle,
+    };
+
+    return true;
+}
+
 static inline bool Rr_AddNodeDependency(
     Rr_GraphNode *Node,
     Rr_GraphHandle *Handle,
@@ -823,13 +902,13 @@ static inline bool Rr_AddNodeDependency(
         {
             if (RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES))
             {
-                goto CantWriteWrite;
+                goto WriteAfterWrite;
             }
             else
             {
                 if (RR_HAS_BIT(Dependency->State.AccessMask, RR_VULKAN_WRITES))
                 {
-                    goto CantReadWrite;
+                    goto ReadAfterWrite;
                 }
                 else
                 {
@@ -881,7 +960,7 @@ static inline bool Rr_AddNodeDependency(
 
     return true;
 
-CantWriteWrite:
+WriteAfterWrite:
 
     RR_LOG(
         "Node \"%s\": already writing to the versioned resource!",
@@ -889,7 +968,7 @@ CantWriteWrite:
 
     return false;
 
-CantReadWrite:
+ReadAfterWrite:
 
     RR_LOG(
         "Node \"%s\": trying to read and write a versioned resource at the "
@@ -2177,6 +2256,8 @@ void Rr_BindComputePipeline(
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
         Rr_ComputePipeline *) = ComputePipeline;
+
+    Node->CurrentLayout = ComputePipeline->Layout;
 }
 
 void Rr_Dispatch(
@@ -2192,11 +2273,17 @@ void Rr_Dispatch(
 
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DISPATCH, Rr_DispatchArgs) =
         (Rr_DispatchArgs){
-
             .GroupCountX = GroupCountX,
             .GroupCountY = GroupCountY,
             .GroupCountZ = GroupCountZ,
         };
+}
+
+void Rr_ComputeBarrier(Rr_GraphNode *Node)
+{
+    assert(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE);
+
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_COMPUTE_BARRIER, uint32_t) = 0;
 }
 
 void Rr_Draw(
@@ -2337,6 +2424,8 @@ void Rr_BindGraphicsPipeline(
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
         Rr_GraphicsPipeline *) = GraphicsPipeline;
+
+    Node->CurrentLayout = GraphicsPipeline->Layout;
 }
 
 void Rr_SetViewport(Rr_GraphNode *Node, Rr_Rect *Rect)
@@ -2373,11 +2462,44 @@ void Rr_BindSampler(
         };
 }
 
+VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSet(
+    Rr_GraphNode *Node,
+    uint32_t Set)
+{
+    VkPipelineStageFlags StageMask = 0;
+    if (Node->CurrentLayout->Stages[Set] & VK_SHADER_STAGE_COMPUTE_BIT)
+    {
+        StageMask |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    }
+    else
+    {
+        if (Node->CurrentLayout->Stages[Set] & VK_SHADER_STAGE_VERTEX_BIT)
+        {
+            StageMask |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        }
+        if (Node->CurrentLayout->Stages[Set] & VK_SHADER_STAGE_FRAGMENT_BIT)
+        {
+            StageMask |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        }
+    }
+    return StageMask;
+}
+
 void Rr_BindSampledImage2D(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
     size_t Set,
     size_t Binding)
+{
+    Rr_BindSampledImage2DAt(Node, Image2D, Set, Binding, 0);
+}
+
+void Rr_BindSampledImage2DAt(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -2391,6 +2513,7 @@ void Rr_BindSampledImage2D(
         .ImageHandle = *ImageHandle,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
+        .ArrayIndex = (uint32_t)Binding,
         .ViewType = VK_IMAGE_VIEW_TYPE_2D,
         .SubresourceRange =
             (VkImageSubresourceRange){
@@ -2402,15 +2525,12 @@ void Rr_BindSampledImage2D(
             },
     };
 
-    /* TODO: Stage mask can be infered from pipeline layout. */
-
     Rr_AddNodeDependency(
         Node,
         ImageHandle,
         &(Rr_SyncState){
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
             .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         });
 }
@@ -2441,15 +2561,12 @@ static void Rr_BindCombinedImageSamplerEx(
         .ArrayIndex = ArrayIndex,
     };
 
-    /* TODO: Stage mask can be infered from pipeline layout. */
-
     Rr_AddNodeDependency(
         Node,
         ImageHandle,
         &(Rr_SyncState){
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
             .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         });
 }
@@ -2579,29 +2696,13 @@ void Rr_BindUniformBufferAt(
         .ArrayIndex = (uint32_t)ArrayIndex,
     };
 
-    /* TODO: Proper stage can be infered from pipeline layout. */
-
-    if (Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
-    {
-        Rr_AddNodeDependency(
-            Node,
-            BufferHandle,
-            &(Rr_SyncState){
-                .AccessMask = VK_ACCESS_UNIFORM_READ_BIT,
-                .StageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            });
-    }
-    else
-    {
-        Rr_AddNodeDependency(
-            Node,
-            BufferHandle,
-            &(Rr_SyncState){
-                .AccessMask = VK_ACCESS_UNIFORM_READ_BIT,
-                .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            });
-    }
+    Rr_AddNodeDependency(
+        Node,
+        BufferHandle,
+        &(Rr_SyncState){
+            .AccessMask = VK_ACCESS_UNIFORM_READ_BIT,
+            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
+        });
 }
 
 void Rr_BindStorageBuffer(
@@ -2609,6 +2710,18 @@ void Rr_BindStorageBuffer(
     Rr_Buffer *Buffer,
     size_t Set,
     size_t Binding,
+    size_t Offset,
+    size_t Size)
+{
+    Rr_BindStorageBufferAt(Node, Buffer, Set, Binding, 0, Offset, Size);
+}
+
+void Rr_BindStorageBufferAt(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex,
     size_t Offset,
     size_t Size)
 {
@@ -2624,34 +2737,19 @@ void Rr_BindStorageBuffer(
         .BufferHandle = *BufferHandle,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
+        .ArrayIndex = (uint32_t)ArrayIndex,
         .Offset = (uint32_t)Offset,
         .Size = (uint32_t)Size,
     };
 
-    /* TODO: Proper read/write stuff. */
-
-    if (Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
-    {
-        Rr_AddNodeDependency(
-            Node,
-            BufferHandle,
-            &(Rr_SyncState){
-                .AccessMask =
-                    VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-                .StageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            });
-    }
-    else
-    {
-        Rr_AddNodeDependency(
-            Node,
-            BufferHandle,
-            &(Rr_SyncState){
-                .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-                .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            });
-    }
+    Rr_AddStorageDependency(
+        Node,
+        BufferHandle,
+        &(Rr_SyncState){
+            .AccessMask =
+                VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
+        });
 }
 
 void Rr_BindStorageImage2D(
@@ -2659,6 +2757,16 @@ void Rr_BindStorageImage2D(
     Rr_Image2D *Image2D,
     size_t Set,
     size_t Binding)
+{
+    Rr_BindStorageImage2DAt(Node, Image2D, Set, Binding, 0);
+}
+
+void Rr_BindStorageImage2DAt(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -2673,6 +2781,7 @@ void Rr_BindStorageImage2D(
         .ImageHandle = *ImageHandle,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
+        .ArrayIndex = (uint32_t)ArrayIndex,
         .ViewType = VK_IMAGE_VIEW_TYPE_2D,
         .SubresourceRange =
             (VkImageSubresourceRange){
@@ -2684,30 +2793,13 @@ void Rr_BindStorageImage2D(
             },
     };
 
-    /* TODO: Proper read/write stuff. */
-
-    if (Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE)
-    {
-        Rr_AddNodeDependency(
-            Node,
-            ImageHandle,
-            &(Rr_SyncState){
-                .AccessMask =
-                    VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-                .StageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .Layout = Layout,
-            });
-    }
-    else
-    {
-        Rr_AddNodeDependency(
-            Node,
-            ImageHandle,
-            &(Rr_SyncState){
-                .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-                .StageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                .Layout = Layout,
-            });
-    }
+    Rr_AddStorageDependency(
+        Node,
+        ImageHandle,
+        &(Rr_SyncState){
+            .AccessMask =
+                VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
+            .Layout = Layout,
+        });
 }

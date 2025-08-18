@@ -44,6 +44,7 @@ struct Rr_PipelineLayout
     VkPipelineLayout Handle;
     size_t SetLayoutCount;
     Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
+    VkShaderStageFlags Stages[RR_MAX_SETS];
     atomic_uint RefCount;
 };
 

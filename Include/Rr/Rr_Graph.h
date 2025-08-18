@@ -163,6 +163,8 @@ extern void Rr_Dispatch(
     uint32_t GroupCountY,
     uint32_t GroupCountZ);
 
+extern void Rr_ComputeBarrier(Rr_GraphNode *Node);
+
 extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Graph *Graph,
     const char *Name,
@@ -233,6 +235,13 @@ extern void Rr_BindSampledImage2D(
     size_t Set,
     size_t Binding);
 
+extern void Rr_BindSampledImage2DAt(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex);
+
 extern void Rr_BindCombinedImage2DSampler(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
@@ -280,11 +289,27 @@ extern void Rr_BindStorageBuffer(
     size_t Offset,
     size_t Size);
 
+extern void Rr_BindStorageBufferAt(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex,
+    size_t Offset,
+    size_t Size);
+
 extern void Rr_BindStorageImage2D(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
     size_t Set,
     size_t Binding);
+
+extern void Rr_BindStorageImage2DAt(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex);
 
 #ifdef __cplusplus
 }

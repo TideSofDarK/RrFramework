@@ -102,16 +102,15 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
         Rr_BindingSet *Set = BindingSets + Index;
 
         PipelineLayout->SetLayouts[Index] = Rr_GetDescriptorSetLayout(Set);
+        PipelineLayout->Stages[Index] =
+            Rr_ToVulkanShaderStageFlags(Set->Stages);
         Handles[Index] = PipelineLayout->SetLayouts[Index]->Handle;
     }
 
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = NULL,
         .setLayoutCount = SetCount,
         .pSetLayouts = Handles,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = NULL,
     };
 
     Device->CreatePipelineLayout(

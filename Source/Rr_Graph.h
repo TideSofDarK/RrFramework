@@ -49,6 +49,7 @@ typedef enum
     RR_NODE_FUNCTION_TYPE_NO_OP,
     RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
     RR_NODE_FUNCTION_TYPE_DISPATCH,
+    RR_NODE_FUNCTION_TYPE_COMPUTE_BARRIER,
     RR_NODE_FUNCTION_TYPE_DRAW,
     RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT,
     RR_NODE_FUNCTION_TYPE_DRAW_INDEXED,
@@ -299,6 +300,7 @@ struct Rr_GraphNode
     RR_ARRAY(Rr_NodeDependency) Dependencies;
     Rr_Graph *Graph;
     bool UsesLateCommandBuffer;
+    Rr_PipelineLayout *CurrentLayout;
 };
 
 typedef struct Rr_GraphResource Rr_GraphResource;
