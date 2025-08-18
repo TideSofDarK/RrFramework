@@ -219,7 +219,7 @@ struct SApp
             1,
             0,
             sizeof(SS1B1Element) * 8);
-        Rr_BindStorageBuffer(
+        Rr_BindStorageBufferRW(
             ComputeNode,
             StorageBuffer,
             2,
@@ -238,7 +238,7 @@ struct SApp
                 Index * UniformAlignment,
                 sizeof(SS2B4Element));
         }
-        Rr_BindStorageImage2D(ComputeNode, StorageImageA, 3, 13);
+        Rr_BindStorageImage2DRW(ComputeNode, StorageImageA, 3, 13);
         Rr_Dispatch(ComputeNode, 16, 16, 1);
         Rr_BindUniformBufferAt(
             ComputeNode,
@@ -248,7 +248,7 @@ struct SApp
             1,
             4 * UniformAlignment,
             sizeof(SS2B4Element));
-        Rr_BindStorageImage2D(ComputeNode, StorageImageB, 3, 13);
+        Rr_BindStorageImage2DRW(ComputeNode, StorageImageB, 3, 13);
         Rr_Dispatch(ComputeNode, 16, 16, 1);
 
         Rr_AddBlitNode(

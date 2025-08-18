@@ -106,9 +106,9 @@ static void Iterate()
     Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Graph, "compute");
     Rr_BindComputePipeline(ComputeNode, Pipeline);
     Rr_BindUniformBuffer(ComputeNode, UniformBuffer, 0, 0, 0, sizeof(uint32_t));
-    Rr_BindStorageBuffer(ComputeNode, InputBuffer, 0, 1, 0, NumbersSize);
-    Rr_BindStorageBuffer(ComputeNode, OutputBuffer, 0, 2, 0, NumbersSize);
-    Rr_BindStorageBuffer(
+    Rr_BindStorageBufferRW(ComputeNode, InputBuffer, 0, 1, 0, NumbersSize);
+    Rr_BindStorageBufferRW(ComputeNode, OutputBuffer, 0, 2, 0, NumbersSize);
+    Rr_BindStorageBufferRW(
         ComputeNode,
         WorkgroupBuffer,
         0,

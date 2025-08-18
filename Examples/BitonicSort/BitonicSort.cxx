@@ -93,7 +93,7 @@ struct SValidator
             1,
             0,
             sizeof(uint32_t) * Count);
-        Rr_BindStorageImage2D(ComputeNode, ResultImage, 0, 2);
+        Rr_BindStorageImage2DRW(ComputeNode, ResultImage, 0, 2);
         Rr_Dispatch(ComputeNode, DispatchSize, DispatchSize, 1);
 
         return ResultImage;
@@ -178,7 +178,7 @@ struct SBitonicSorter
 
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph(), "compute");
         Rr_BindComputePipeline(ComputeNode, Pipeline);
-        Rr_BindStorageBuffer(
+        Rr_BindStorageBufferRW(
             ComputeNode,
             Buffer,
             0,

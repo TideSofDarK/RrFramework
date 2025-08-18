@@ -41,10 +41,12 @@ struct Rr_DescriptorSetLayout
 
 struct Rr_PipelineLayout
 {
-    VkPipelineLayout Handle;
     size_t SetLayoutCount;
     Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
     VkShaderStageFlags Stages[RR_MAX_SETS];
+
+    VkPipelineLayout Handle;
+
     atomic_uint RefCount;
 };
 

@@ -11,7 +11,10 @@
 - [X] Hash collision handling across all usages of Rr_Map.
 - [X] Hashing objects such as VkFramebuffer looks very bad.
 - [X] Simplify pipeline layout creation.
-- [ ] Inter-node sync, e.g., sequential compute dispatches writing to the same resource.
+- [X] Inter-node sync, e.g., sequential compute dispatches writing to the same resource.
+      Added RW versions of BindStorageXXX commands for better synchronization opportunities.
+      Added Rr_ComputeBarrier() for compute nodes.
+      Since you can't put barriers amidst render passes, it's user responsibility to avoid undefined behavior.
 - [ ] Remove Rr_LoadingThread.
       Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
       For now, make transfer-only graphs that can be submitted from secondary threads.

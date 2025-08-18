@@ -2513,7 +2513,7 @@ void Rr_BindSampledImage2DAt(
         .ImageHandle = *ImageHandle,
         .Set = (uint32_t)Set,
         .Binding = (uint32_t)Binding,
-        .ArrayIndex = (uint32_t)Binding,
+        .ArrayIndex = (uint32_t)ArrayIndex,
         .ViewType = VK_IMAGE_VIEW_TYPE_2D,
         .SubresourceRange =
             (VkImageSubresourceRange){
@@ -2545,6 +2545,11 @@ static void Rr_BindCombinedImageSamplerEx(
     size_t Binding,
     uint32_t ArrayIndex)
 {
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(Sampler != NULL);
+    assert(Image);
+
     Rr_MarkSamplerUsed(Node->Graph, Sampler);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
@@ -2578,11 +2583,6 @@ void Rr_BindCombinedImage2DSampler(
     size_t Set,
     size_t Binding)
 {
-    assert(Set < RR_MAX_SETS);
-    assert(Binding < RR_MAX_BINDINGS);
-    assert(Sampler != NULL);
-    assert(Image2D);
-
     Rr_BindCombinedImageSamplerEx(
         Node,
         Image2D,
@@ -2608,11 +2608,6 @@ void Rr_BindCombinedImage2DSamplerAt(
     size_t Binding,
     uint32_t ArrayIndex)
 {
-    assert(Set < RR_MAX_SETS);
-    assert(Binding < RR_MAX_BINDINGS);
-    assert(Sampler != NULL);
-    assert(Image2D);
-
     Rr_BindCombinedImageSamplerEx(
         Node,
         Image2D,
@@ -2705,23 +2700,13 @@ void Rr_BindUniformBufferAt(
         });
 }
 
-void Rr_BindStorageBuffer(
-    Rr_GraphNode *Node,
-    Rr_Buffer *Buffer,
-    size_t Set,
-    size_t Binding,
-    size_t Offset,
-    size_t Size)
-{
-    Rr_BindStorageBufferAt(Node, Buffer, Set, Binding, 0, Offset, Size);
-}
-
-void Rr_BindStorageBufferAt(
+static void Rr_BindStorageBufferEx(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
     size_t Set,
     size_t Binding,
     size_t ArrayIndex,
+    bool ReadWrite,
     size_t Offset,
     size_t Size)
 {
@@ -2742,38 +2727,95 @@ void Rr_BindStorageBufferAt(
         .Size = (uint32_t)Size,
     };
 
+    VkAccessFlags AccessMask = VK_ACCESS_SHADER_READ_BIT;
+    if (ReadWrite)
+    {
+        AccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
+    }
+
     Rr_AddStorageDependency(
         Node,
         BufferHandle,
         &(Rr_SyncState){
-            .AccessMask =
-                VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            .AccessMask = AccessMask,
             .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
         });
 }
 
-void Rr_BindStorageImage2D(
+void Rr_BindStorageBuffer(
     Rr_GraphNode *Node,
-    Rr_Image2D *Image2D,
+    Rr_Buffer *Buffer,
     size_t Set,
-    size_t Binding)
+    size_t Binding,
+    size_t Offset,
+    size_t Size)
 {
-    Rr_BindStorageImage2DAt(Node, Image2D, Set, Binding, 0);
+    Rr_BindStorageBufferEx(Node, Buffer, Set, Binding, 0, false, Offset, Size);
 }
 
-void Rr_BindStorageImage2DAt(
+void Rr_BindStorageBufferAt(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex,
+    size_t Offset,
+    size_t Size)
+{
+    Rr_BindStorageBufferEx(
+        Node,
+        Buffer,
+        Set,
+        Binding,
+        ArrayIndex,
+        false,
+        Offset,
+        Size);
+}
+
+void Rr_BindStorageBufferRW(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    size_t Set,
+    size_t Binding,
+    size_t Offset,
+    size_t Size)
+{
+    Rr_BindStorageBufferEx(Node, Buffer, Set, Binding, 0, true, Offset, Size);
+}
+
+void Rr_BindStorageBufferRWAt(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex,
+    size_t Offset,
+    size_t Size)
+{
+    Rr_BindStorageBufferEx(
+        Node,
+        Buffer,
+        Set,
+        Binding,
+        ArrayIndex,
+        true,
+        Offset,
+        Size);
+}
+
+static void Rr_BindStorageImage2DEx(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
     size_t Set,
     size_t Binding,
-    size_t ArrayIndex)
+    size_t ArrayIndex,
+    bool ReadWrite)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image2D);
-
-    VkImageLayout Layout = VK_IMAGE_LAYOUT_GENERAL;
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
@@ -2793,13 +2835,56 @@ void Rr_BindStorageImage2DAt(
             },
     };
 
+    VkAccessFlags AccessMask = VK_ACCESS_SHADER_READ_BIT;
+    if (ReadWrite)
+    {
+        AccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
+    }
+
     Rr_AddStorageDependency(
         Node,
         ImageHandle,
         &(Rr_SyncState){
-            .AccessMask =
-                VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+            .AccessMask = AccessMask,
             .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
-            .Layout = Layout,
+            .Layout = VK_IMAGE_LAYOUT_GENERAL,
         });
+}
+
+void Rr_BindStorageImage2D(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding)
+{
+    Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, 0, false);
+}
+
+void Rr_BindStorageImage2DAt(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex)
+{
+    Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, ArrayIndex, false);
+}
+
+void Rr_BindStorageImage2DRW(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding)
+{
+    Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, 0, true);
+}
+
+void Rr_BindStorageImage2DRWAt(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex)
+{
+    Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, ArrayIndex, true);
 }

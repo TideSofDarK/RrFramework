@@ -939,9 +939,9 @@ struct SApp
             &SwapchainImage,
             nullptr,
             nullptr);
-        Rr_BindGraphicsPipeline(TreeNode, Pipeline);
         if (DrawCount > 0)
         {
+            Rr_BindGraphicsPipeline(TreeNode, Pipeline);
             Rr_BindUniformBuffer(
                 TreeNode,
                 UniformBuffer,
