@@ -2235,14 +2235,22 @@ Rr_GraphNode *Rr_AddCopyImage2DNode(
         MipLevel);
 }
 
-#define RR_NODE_ENCODE(FunctionType, ArgsType)                         \
-    Rr_Arena *Arena = Node->Graph->Arena;                              \
-    Rr_Encoded *Encoded = (Rr_Encoded *)&Node->Union;                  \
-    Encoded->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_NodeFunction)); \
-    Encoded->Encoded = Encoded->Encoded->Next;                         \
-    Encoded->Encoded->Type = FunctionType;                             \
-    Encoded->Encoded->Args = RR_ALLOC(Arena, sizeof(ArgsType));        \
-    *(ArgsType *)Encoded->Encoded->Args
+#define RR_NODE_ENCODE(FunctionType, Struct)                               \
+    do                                                                     \
+    {                                                                      \
+        Rr_Arena *Arena = Node->Graph->Arena;                              \
+        Rr_Encoded *Encoded = (Rr_Encoded *)&Node->Union;                  \
+        Encoded->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_NodeFunction)); \
+        Encoded->Encoded = Encoded->Encoded->Next;                         \
+        Encoded->Encoded->Type = FunctionType;                             \
+        Encoded->Encoded->Args =                                           \
+            RR_ALLOC_NO_ZERO(Arena, sizeof(Struct)); /* NOLINT */          \
+        memcpy(                                                            \
+            Encoded->Encoded->Args,                                        \
+            &(Struct),                                                     \
+            sizeof(Struct)); /* NOLINT */                                  \
+    }                                                                      \
+    while (0)
 
 void Rr_BindComputePipeline(
     Rr_GraphNode *Node,
@@ -2255,7 +2263,7 @@ void Rr_BindComputePipeline(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
-        Rr_ComputePipeline *) = ComputePipeline;
+        ComputePipeline);
 
     Node->CurrentLayout = ComputePipeline->Layout;
 }
@@ -2271,19 +2279,20 @@ void Rr_Dispatch(
     assert(GroupCountY >= 1);
     assert(GroupCountZ >= 1);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DISPATCH, Rr_DispatchArgs) =
-        (Rr_DispatchArgs){
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_DISPATCH,
+        ((Rr_DispatchArgs){
             .GroupCountX = GroupCountX,
             .GroupCountY = GroupCountY,
             .GroupCountZ = GroupCountZ,
-        };
+        }));
 }
 
 void Rr_ComputeBarrier(Rr_GraphNode *Node)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_COMPUTE_BARRIER, uint32_t) = 0;
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_COMPUTE_BARRIER, ((uint32_t){ 0 }));
 }
 
 void Rr_Draw(
@@ -2295,12 +2304,14 @@ void Rr_Draw(
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW, Rr_DrawArgs) = (Rr_DrawArgs){
-        .VertexCount = (uint32_t)VertexCount,
-        .InstanceCount = (uint32_t)InstanceCount,
-        .FirstVertex = (uint32_t)FirstVertex,
-        .FirstInstance = (uint32_t)FirstInstance,
-    };
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_DRAW,
+        ((Rr_DrawArgs){
+            .VertexCount = (uint32_t)VertexCount,
+            .InstanceCount = (uint32_t)InstanceCount,
+            .FirstVertex = (uint32_t)FirstVertex,
+            .FirstInstance = (uint32_t)FirstInstance,
+        }));
 }
 
 void Rr_DrawIndirect(
@@ -2314,13 +2325,14 @@ void Rr_DrawIndirect(
 
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT, Rr_DrawIndirectArgs) =
-        (Rr_DrawIndirectArgs){
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT,
+        ((Rr_DrawIndirectArgs){
             .BufferHandle = *BufferHandle,
             .Offset = (uint32_t)Offset,
             .Count = (uint32_t)Count,
             .Stride = (uint32_t)Stride,
-        };
+        }));
 
     Rr_AddNodeDependency(
         Node,
@@ -2341,14 +2353,15 @@ void Rr_DrawIndexed(
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DRAW_INDEXED, Rr_DrawIndexedArgs) =
-        (Rr_DrawIndexedArgs){
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_DRAW_INDEXED,
+        ((Rr_DrawIndexedArgs){
             .IndexCount = (uint32_t)IndexCount,
             .InstanceCount = (uint32_t)InstanceCount,
             .FirstIndex = (uint32_t)FirstIndex,
             .VertexOffset = VertexOffset,
             .FirstInstance = (uint32_t)FirstInstance,
-        };
+        }));
 }
 
 void Rr_BindVertexBuffer(
@@ -2363,11 +2376,11 @@ void Rr_BindVertexBuffer(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
-        Rr_BindIndexBufferArgs) = (Rr_BindIndexBufferArgs){
-        .BufferHandle = *BufferHandle,
-        .Slot = (uint32_t)Slot,
-        .Offset = (uint32_t)Offset,
-    };
+        ((Rr_BindIndexBufferArgs){
+            .BufferHandle = *BufferHandle,
+            .Slot = (uint32_t)Slot,
+            .Offset = (uint32_t)Offset,
+        }));
 
     Rr_AddNodeDependency(
         Node,
@@ -2391,12 +2404,12 @@ void Rr_BindIndexBuffer(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
-        Rr_BindIndexBufferArgs) = (Rr_BindIndexBufferArgs){
-        .BufferHandle = *BufferHandle,
-        .Slot = (uint32_t)Slot,
-        .Offset = (uint32_t)Offset,
-        .Type = Rr_ToVulkanIndexType(Type),
-    };
+        ((Rr_BindIndexBufferArgs){
+            .BufferHandle = *BufferHandle,
+            .Slot = (uint32_t)Slot,
+            .Offset = (uint32_t)Offset,
+            .Type = Rr_ToVulkanIndexType(Type),
+        }));
 
     Rr_AddNodeDependency(
         Node,
@@ -2423,7 +2436,7 @@ void Rr_BindGraphicsPipeline(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
-        Rr_GraphicsPipeline *) = GraphicsPipeline;
+        ((Rr_GraphicsPipeline *){ GraphicsPipeline }));
 
     Node->CurrentLayout = GraphicsPipeline->Layout;
 }
@@ -2432,14 +2445,14 @@ void Rr_SetViewport(Rr_GraphNode *Node, Rr_Rect *Rect)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_VIEWPORT, Rr_Rect) = *Rect;
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_VIEWPORT, *Rect);
 }
 
 void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntRect *Rect)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_SCISSOR, Rr_IntRect) = *Rect;
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_SCISSOR, *Rect);
 }
 
 void Rr_BindSampler(
@@ -2454,12 +2467,13 @@ void Rr_BindSampler(
 
     Rr_MarkSamplerUsed(Node->Graph, Sampler);
 
-    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_BIND_SAMPLER, Rr_BindSamplerArgs) =
-        (Rr_BindSamplerArgs){
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_SAMPLER,
+        ((Rr_BindSamplerArgs){
             .Sampler = Sampler,
             .Set = (uint32_t)Set,
             .Binding = (uint32_t)Binding,
-        };
+        }));
 }
 
 VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSet(
@@ -2509,21 +2523,21 @@ void Rr_BindSampledImage2DAt(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
-        Rr_BindSampledImageArgs) = (Rr_BindSampledImageArgs){
-        .ImageHandle = *ImageHandle,
-        .Set = (uint32_t)Set,
-        .Binding = (uint32_t)Binding,
-        .ArrayIndex = (uint32_t)ArrayIndex,
-        .ViewType = VK_IMAGE_VIEW_TYPE_2D,
-        .SubresourceRange =
-            (VkImageSubresourceRange){
-                .aspectMask = Image2D->AspectFlags,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-    };
+        ((Rr_BindSampledImageArgs){
+            .ImageHandle = *ImageHandle,
+            .Set = (uint32_t)Set,
+            .Binding = (uint32_t)Binding,
+            .ArrayIndex = (uint32_t)ArrayIndex,
+            .ViewType = VK_IMAGE_VIEW_TYPE_2D,
+            .SubresourceRange =
+                (VkImageSubresourceRange){
+                    .aspectMask = Image2D->AspectFlags,
+                    .baseMipLevel = 0,
+                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+        }));
 
     Rr_AddNodeDependency(
         Node,
@@ -2556,15 +2570,15 @@ static void Rr_BindCombinedImageSamplerEx(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
-        Rr_BindCombinedImageSamplerArgs) = (Rr_BindCombinedImageSamplerArgs){
-        .ImageHandle = *ImageHandle,
-        .Sampler = Sampler,
-        .ViewType = ViewType,
-        .SubresourceRange = *SubresourceRange,
-        .Set = (uint32_t)Set,
-        .Binding = (uint32_t)Binding,
-        .ArrayIndex = ArrayIndex,
-    };
+        ((Rr_BindCombinedImageSamplerArgs){
+            .ImageHandle = *ImageHandle,
+            .Sampler = Sampler,
+            .ViewType = ViewType,
+            .SubresourceRange = *SubresourceRange,
+            .Set = (uint32_t)Set,
+            .Binding = (uint32_t)Binding,
+            .ArrayIndex = ArrayIndex,
+        }));
 
     Rr_AddNodeDependency(
         Node,
@@ -2682,14 +2696,14 @@ void Rr_BindUniformBufferAt(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
-        Rr_BindUniformBufferArgs) = (Rr_BindUniformBufferArgs){
-        .BufferHandle = *BufferHandle,
-        .Size = (uint32_t)Size,
-        .Offset = (uint32_t)Offset,
-        .Set = (uint32_t)Set,
-        .Binding = (uint32_t)Binding,
-        .ArrayIndex = (uint32_t)ArrayIndex,
-    };
+        ((Rr_BindUniformBufferArgs){
+            .BufferHandle = *BufferHandle,
+            .Size = (uint32_t)Size,
+            .Offset = (uint32_t)Offset,
+            .Set = (uint32_t)Set,
+            .Binding = (uint32_t)Binding,
+            .ArrayIndex = (uint32_t)ArrayIndex,
+        }));
 
     Rr_AddNodeDependency(
         Node,
@@ -2718,14 +2732,14 @@ static void Rr_BindStorageBufferEx(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
-        Rr_BindStorageBufferArgs) = (Rr_BindStorageBufferArgs){
-        .BufferHandle = *BufferHandle,
-        .Set = (uint32_t)Set,
-        .Binding = (uint32_t)Binding,
-        .ArrayIndex = (uint32_t)ArrayIndex,
-        .Offset = (uint32_t)Offset,
-        .Size = (uint32_t)Size,
-    };
+        ((Rr_BindStorageBufferArgs){
+            .BufferHandle = *BufferHandle,
+            .Set = (uint32_t)Set,
+            .Binding = (uint32_t)Binding,
+            .ArrayIndex = (uint32_t)ArrayIndex,
+            .Offset = (uint32_t)Offset,
+            .Size = (uint32_t)Size,
+        }));
 
     VkAccessFlags AccessMask = VK_ACCESS_SHADER_READ_BIT;
     if (ReadWrite)
@@ -2819,21 +2833,21 @@ static void Rr_BindStorageImage2DEx(
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
-        Rr_BindStorageImageArgs) = (Rr_BindStorageImageArgs){
-        .ImageHandle = *ImageHandle,
-        .Set = (uint32_t)Set,
-        .Binding = (uint32_t)Binding,
-        .ArrayIndex = (uint32_t)ArrayIndex,
-        .ViewType = VK_IMAGE_VIEW_TYPE_2D,
-        .SubresourceRange =
-            (VkImageSubresourceRange){
-                .aspectMask = Image2D->AspectFlags,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-    };
+        ((Rr_BindStorageImageArgs){
+            .ImageHandle = *ImageHandle,
+            .Set = (uint32_t)Set,
+            .Binding = (uint32_t)Binding,
+            .ArrayIndex = (uint32_t)ArrayIndex,
+            .ViewType = VK_IMAGE_VIEW_TYPE_2D,
+            .SubresourceRange =
+                (VkImageSubresourceRange){
+                    .aspectMask = Image2D->AspectFlags,
+                    .baseMipLevel = 0,
+                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+        }));
 
     VkAccessFlags AccessMask = VK_ACCESS_SHADER_READ_BIT;
     if (ReadWrite)
