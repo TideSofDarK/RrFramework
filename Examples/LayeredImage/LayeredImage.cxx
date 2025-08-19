@@ -73,6 +73,9 @@ Rr_Image2DArray *CreateColorImageArrayFromPNGs(
 
 struct SLayeredImageApp
 {
+    static constexpr std::int32_t IMAGE_WIDTH = 800;
+    static constexpr std::int32_t IMAGE_HEIGHT = 600;
+
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_Sampler *Sampler;
@@ -120,8 +123,8 @@ struct SLayeredImageApp
     void InitImageArray()
     {
         ImageArray = CreateColorImageArrayFromPNGs(
-            800,
-            600,
+            IMAGE_WIDTH,
+            IMAGE_HEIGHT,
             std::array{
                 EXAMPLE_ASSET_IMAGE0_PNG,
                 EXAMPLE_ASSET_IMAGE1_PNG,
@@ -183,6 +186,14 @@ struct SLayeredImageApp
             &SwapchainImage,
             NULL,
             NULL);
+
+        Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
+        Rr_Rect SwapchainRect{ 0,
+                               0,
+                               (float)SwapchainExtent.Width,
+                               (float)SwapchainExtent.Height };
+        Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
+        Rr_SetViewport(GraphicsNode, &Viewport);
 
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, 16);

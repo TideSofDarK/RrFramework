@@ -369,6 +369,7 @@ static Rr_Image *Rr_CreateImage(
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags,
     uint32_t LayerCount,
+    VkImageType ImageType,
     VkImageCreateFlags AdditionalFlags)
 {
     Rr_Device *Device = &gRenderer->Device;
@@ -386,21 +387,6 @@ static Rr_Image *Rr_CreateImage(
     Image->Extent.width = Extent.Width;
     Image->Extent.height = Extent.Height;
     Image->Extent.depth = Extent.Depth;
-
-    VkImageType ImageType = VK_IMAGE_TYPE_3D;
-    if (RR_HAS_BIT(AdditionalFlags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
-    {
-        ImageType = VK_IMAGE_TYPE_2D;
-        assert(LayerCount == 6 && "Cubemap requires exactly 6 layers!");
-    }
-    else if (Extent.Height == 1)
-    {
-        ImageType = VK_IMAGE_TYPE_1D;
-    }
-    else
-    {
-        ImageType = VK_IMAGE_TYPE_2D;
-    }
 
     uint32_t MipLevels = 1;
     if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
@@ -552,6 +538,7 @@ Rr_Image2D *Rr_CreateImage2D(
         Format,
         Flags,
         1,
+        VK_IMAGE_TYPE_2D,
         0);
 }
 
@@ -570,6 +557,7 @@ Rr_Image2DArray *Rr_CreateImage2DArray(
         Format,
         Flags,
         ArrayCount,
+        VK_IMAGE_TYPE_2D,
         0);
 }
 
@@ -582,7 +570,8 @@ Rr_Image3D *Rr_CreateImage3D(
     assert(Extent.Height >= 1);
     assert(Extent.Depth >= 1);
 
-    return (Rr_Image3D *)Rr_CreateImage(Extent, Format, Flags, 1, 0);
+    return (Rr_Image3D *)
+        Rr_CreateImage(Extent, Format, Flags, 1, VK_IMAGE_TYPE_3D, 0);
 }
 
 Rr_ImageCube *Rr_CreateImageCube(
@@ -598,29 +587,30 @@ Rr_ImageCube *Rr_CreateImageCube(
         Format,
         Flags,
         6,
+        VK_IMAGE_TYPE_2D,
         VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
 }
 
-/* Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image) */
-/* { */
-/*     return (Rr_IntVec3){ */
-/*         .Width = Image->Extent.width, */
-/*         .Height = Image->Extent.height, */
-/*         .Depth = Image->Extent.depth, */
-/*     }; */
-/* } */
-
-Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image)
+Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image2D)
 {
     return (Rr_IntVec2){
-        .Width = Image->Extent.width,
-        .Height = Image->Extent.height,
+        .Width = Image2D->Extent.width,
+        .Height = Image2D->Extent.height,
     };
 }
 
 float Rr_GetImage2DAspect(Rr_Image2D *Image)
 {
     return (float)Image->Extent.width / (float)Image->Extent.height;
+}
+
+Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image3D)
+{
+    return (Rr_IntVec3){
+        .Width = Image3D->Extent.width,
+        .Height = Image3D->Extent.height,
+        .Depth = Image3D->Extent.depth,
+    };
 }
 
 size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)

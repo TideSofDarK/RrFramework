@@ -20,8 +20,9 @@
       For now, make transfer-only graphs that can be submitted from secondary threads.
 - [ ] Should referenced pipelines and samplers be hashed to optimize decrement references pass? 
 - [ ] Binding arrays support.
-- [ ] 3D image support.
-- [ ] Image array support.
+- [X] 3D image support.
+- [X] Image array support.
+- [ ] Get rid of duplicated code in ExecuteCompute and ExecuteGraphics functions.
 - [ ] MSAA support.
 - [ ] Check if descriptor set layouts are properly hashed.
 

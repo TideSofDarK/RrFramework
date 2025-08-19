@@ -189,6 +189,7 @@ struct Rr_BindSamplerArgs
     VkImageLayout Layout;
     uint32_t Set;
     uint32_t Binding;
+    uint32_t ArrayIndex;
 };
 
 typedef struct Rr_BindSampledImageArgs Rr_BindSampledImageArgs;

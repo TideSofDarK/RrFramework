@@ -122,6 +122,14 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
     uint32_t ArrayIndex,
     uint32_t MipLevel);
 
+extern Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_Image3D *Image3D,
+    uint32_t MipLevel);
+
 extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     Rr_Graph *Graph,
     const char *Name,
@@ -238,6 +246,13 @@ extern void Rr_BindSampler(
     size_t Set,
     size_t Binding);
 
+extern void Rr_BindSamplerAt(
+    Rr_GraphNode *Node,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding,
+    uint32_t ArrayIndex);
+
 extern void Rr_BindSampledImage2D(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
@@ -247,6 +262,45 @@ extern void Rr_BindSampledImage2D(
 extern void Rr_BindSampledImage2DAt(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex);
+
+extern void Rr_BindSampledImage2DArray(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    size_t Set,
+    size_t Binding);
+
+extern void Rr_BindSampledImage2DArrayAt(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex);
+
+extern void Rr_BindSampledImage3D(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    size_t Set,
+    size_t Binding);
+
+extern void Rr_BindSampledImage3DAt(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex);
+
+extern void Rr_BindSampledImageCube(
+    Rr_GraphNode *Node,
+    Rr_ImageCube *ImageCube,
+    size_t Set,
+    size_t Binding);
+
+extern void Rr_BindSampledImageCubeAt(
+    Rr_GraphNode *Node,
+    Rr_ImageCube *ImageCube,
     size_t Set,
     size_t Binding,
     size_t ArrayIndex);
@@ -273,12 +327,43 @@ extern void Rr_BindCombinedImage2DArraySampler(
     size_t Set,
     size_t Binding);
 
+extern void Rr_BindCombinedImage2DArraySamplerAt(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding,
+    size_t ArrayIndex);
+
+extern void Rr_BindCombinedImage3DSampler(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding);
+
+extern void Rr_BindCombinedImage3DSamplerAt(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding,
+    uint32_t ArrayIndex);
+
 extern void Rr_BindCombinedImageCubeSampler(
     Rr_GraphNode *Node,
     Rr_ImageCube *ImageCube,
     Rr_Sampler *Sampler,
     size_t Set,
     size_t Binding);
+
+extern void Rr_BindCombinedImageCubeSamplerAt(
+    Rr_GraphNode *Node,
+    Rr_ImageCube *ImageCube,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding,
+    uint32_t ArrayIndex);
 
 extern void Rr_BindUniformBuffer(
     Rr_GraphNode *Node,

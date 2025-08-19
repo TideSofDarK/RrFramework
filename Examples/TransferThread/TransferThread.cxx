@@ -9,7 +9,7 @@
 #include <iostream>
 
 template <size_t ImageCount>
-Rr_Image2DArray *CreateColorImageArrayFromPNGs(
+Rr_Image3D *CreateColorImage3DFromPNGs(
     std::int32_t Width,
     std::int32_t Height,
     const std::array<Rr_AssetRef, ImageCount> &Assets)
@@ -48,36 +48,34 @@ Rr_Image2DArray *CreateColorImageArrayFromPNGs(
         stbi_image_free(Data);
     }
 
-    Rr_Image2DArray *ImageArray = Rr_CreateImage2DArray(
-        { Width, Height },
-        ImageCount,
+    Rr_Image3D *Image3D = Rr_CreateImage3D(
+        { Width, Height, ImageCount },
         RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-    for (std::uint32_t Index = 0; Index < ImageCount; ++Index)
-    {
-        Rr_AddCopyBufferToImage2DArrayNode(
-            Rr_GetGraph(),
-            "copy",
-            StagingBuffer,
-            LayerSize * Index,
-            ImageArray,
-            Index,
-            0);
-    }
+    Rr_AddCopyBufferToImage3DNode(
+        Rr_GetGraph(),
+        "copy",
+        StagingBuffer,
+        0,
+        Image3D,
+        0);
 
     Rr_ReleaseBuffer(StagingBuffer);
 
-    return ImageArray;
+    return Image3D;
 }
 
 struct STransferThreadApp
 {
+    static constexpr std::int32_t IMAGE_WIDTH = 800;
+    static constexpr std::int32_t IMAGE_HEIGHT = 600;
+
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_Sampler *Sampler;
     Rr_Buffer *UniformBuffer;
-    Rr_Image2DArray *ImageArray;
+    Rr_Image3D *Image3D;
 
     void InitPipeline()
     {
@@ -114,20 +112,23 @@ struct STransferThreadApp
     void InitSampler()
     {
         Rr_SamplerInfo SamplerInfo = {};
+        SamplerInfo.MagFilter = RR_FILTER_LINEAR;
+        SamplerInfo.MinFilter = RR_FILTER_LINEAR;
+        SamplerInfo.AddressModeW = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         Sampler = Rr_CreateSampler(&SamplerInfo);
     }
 
     void InitImageArray()
     {
-        ImageArray = CreateColorImageArrayFromPNGs(
-            800,
-            600,
+        Image3D = CreateColorImage3DFromPNGs(
+            IMAGE_WIDTH,
+            IMAGE_HEIGHT,
             std::array{
                 EXAMPLE_ASSET_IMAGE0_PNG,
                 EXAMPLE_ASSET_IMAGE1_PNG,
                 EXAMPLE_ASSET_IMAGE2_PNG,
             });
-        if (!ImageArray)
+        if (!Image3D)
         {
             std::cerr << "Unable to load images!\n";
             std::abort();
@@ -184,14 +185,17 @@ struct STransferThreadApp
             NULL,
             NULL);
 
+        Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
+        Rr_Rect SwapchainRect{ 0,
+                               0,
+                               (float)SwapchainExtent.Width,
+                               (float)SwapchainExtent.Height };
+        Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
+        Rr_SetViewport(GraphicsNode, &Viewport);
+
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, 16);
-        Rr_BindCombinedImage2DArraySampler(
-            GraphicsNode,
-            ImageArray,
-            Sampler,
-            0,
-            1);
+        Rr_BindCombinedImage3DSampler(GraphicsNode, Image3D, Sampler, 0, 1);
 
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
@@ -201,7 +205,7 @@ struct STransferThreadApp
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseImage(ImageArray);
+        Rr_ReleaseImage(Image3D);
         Rr_ReleaseSampler(Sampler);
     }
 };

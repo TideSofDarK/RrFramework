@@ -151,6 +151,8 @@ extern Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image);
 
 extern float Rr_GetImage2DAspect(Rr_Image2D *Image);
 
+extern Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image3D);
+
 #ifdef __cplusplus
 }
 #endif
