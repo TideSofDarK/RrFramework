@@ -116,7 +116,7 @@ struct SCamera
     }
 };
 
-struct SApp
+struct SGSApp
 {
     struct SUniformData
     {
@@ -366,7 +366,7 @@ struct SApp
 
 int main()
 {
-    static SApp App;
+    static SGSApp App;
 
     Rr_AppConfig Config = {};
     Config.Title = "GS";

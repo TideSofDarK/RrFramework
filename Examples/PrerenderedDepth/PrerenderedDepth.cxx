@@ -159,7 +159,7 @@ struct SGPUUniform
     float Far;
 };
 
-struct SApp
+struct SPrerenderedDepthApp
 {
     static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
 
@@ -333,7 +333,7 @@ struct SApp
 
 int main()
 {
-    static SApp App;
+    static SPrerenderedDepthApp App;
 
     Rr_AppConfig Config = {};
     Config.Title = "PrerenderedDepth";

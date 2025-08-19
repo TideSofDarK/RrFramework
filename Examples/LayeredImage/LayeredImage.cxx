@@ -1,0 +1,219 @@
+#include "ExampleAssets.inc"
+
+#include <Rr/Rr.h>
+
+#include "../../Vendor/stb/stb_image.h"
+
+#include <array>
+#include <cassert>
+#include <iostream>
+
+template <size_t ImageCount>
+Rr_Image2DArray *CreateColorImageArrayFromPNGs(
+    std::int32_t Width,
+    std::int32_t Height,
+    const std::array<Rr_AssetRef, ImageCount> &Assets)
+{
+    std::uint32_t LayerSize = Width * Height * 4;
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        LayerSize * ImageCount,
+        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+    std::uint32_t StagingOffset{};
+
+    for (auto &AssetRef : Assets)
+    {
+        auto Asset = Rr_LoadAsset(AssetRef);
+        std::int32_t ImageWidth;
+        std::int32_t ImageHeight;
+        std::int32_t ImageChannels;
+        char *Data = (char *)stbi_load_from_memory(
+            (stbi_uc *)Asset.Pointer,
+            (int32_t)Asset.Size,
+            &ImageWidth,
+            &ImageHeight,
+            &ImageChannels,
+            4);
+
+        if (ImageWidth != Width || ImageHeight != Height)
+        {
+            stbi_image_free(Data);
+            Rr_ReleaseBuffer(StagingBuffer);
+            return nullptr;
+        }
+
+        std::memcpy(StagingData + StagingOffset, Data, LayerSize);
+        StagingOffset += LayerSize;
+
+        stbi_image_free(Data);
+    }
+
+    Rr_Image2DArray *ImageArray = Rr_CreateImage2DArray(
+        { Width, Height },
+        ImageCount,
+        RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+        RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+
+    for (std::uint32_t Index = 0; Index < ImageCount; ++Index)
+    {
+        Rr_AddCopyBufferToImage2DArrayNode(
+            Rr_GetGraph(),
+            "copy",
+            StagingBuffer,
+            LayerSize * Index,
+            ImageArray,
+            Index,
+            0);
+    }
+
+    Rr_ReleaseBuffer(StagingBuffer);
+
+    return ImageArray;
+}
+
+struct SLayeredImageApp
+{
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_Sampler *Sampler;
+    Rr_Buffer *UniformBuffer;
+    Rr_Image2DArray *ImageArray;
+
+    void InitPipeline()
+    {
+        std::array Bindings = {
+            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{ 1, RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER },
+        };
+        std::array Sets = {
+            Rr_BindingSet{
+                Bindings.size(),
+                Bindings.data(),
+                RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        Rr_ColorTargetInfo ColorTarget = {};
+        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Blend = Rr_AlphaBlend();
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
+        PipelineInfo.Layout = PipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_LAYEREDIMAGE_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_LAYEREDIMAGE_FRAG_SPV);
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = &ColorTarget;
+
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    }
+
+    void InitSampler()
+    {
+        Rr_SamplerInfo SamplerInfo = {};
+        Sampler = Rr_CreateSampler(&SamplerInfo);
+    }
+
+    void InitImageArray()
+    {
+        ImageArray = CreateColorImageArrayFromPNGs(
+            800,
+            600,
+            std::array{
+                EXAMPLE_ASSET_IMAGE0_PNG,
+                EXAMPLE_ASSET_IMAGE1_PNG,
+                EXAMPLE_ASSET_IMAGE2_PNG,
+            });
+        if (!ImageArray)
+        {
+            std::cerr << "Unable to load images!\n";
+            std::abort();
+        }
+    }
+
+    void InitUniformBuffer()
+    {
+        UniformBuffer = Rr_CreateBuffer(
+            16,
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    }
+
+    void Init()
+    {
+        InitSampler();
+        InitPipeline();
+        InitImageArray();
+        InitUniformBuffer();
+    }
+
+    void Iterate()
+    {
+        Rr_UIDebugOverlay();
+
+        Rr_ColorTarget ColorTarget = {
+            .Slot = 0,
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Clear = Rr_ColorClear{ 1.0f, 1.0f, 1.0f, 1.0f },
+        };
+
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
+
+        struct
+        {
+            float Time = (float)Rr_GetTimeSeconds();
+            std::uint32_t ImageCount = 3;
+        } UniformData;
+
+        std::memcpy(
+            Rr_GetMappedBufferData(UniformBuffer),
+            &UniformData,
+            sizeof(UniformData));
+
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+            Rr_GetGraph(),
+            "graphics",
+            1,
+            &ColorTarget,
+            &SwapchainImage,
+            NULL,
+            NULL);
+
+        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, 16);
+        Rr_BindCombinedImage2DArraySampler(
+            GraphicsNode,
+            ImageArray,
+            Sampler,
+            0,
+            1);
+
+        Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+    }
+
+    void Cleanup()
+    {
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleaseImage(ImageArray);
+        Rr_ReleaseSampler(Sampler);
+    }
+};
+
+int main()
+{
+    static SLayeredImageApp App;
+
+    Rr_AppConfig Config = {};
+    Config.Title = "LayeredImage";
+    Config.InitFunc = []() { App.Init(); };
+    Config.IterateFunc = []() { App.Iterate(); };
+    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Run(&Config);
+}

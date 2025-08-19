@@ -28,7 +28,7 @@ struct alignas(16) SS2B4Element
     std::uint32_t U32;
 };
 
-struct SApp
+struct SBindingTestApp
 {
     Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *ComputePipeline;
@@ -288,7 +288,7 @@ struct SApp
 
 int main()
 {
-    static SApp App;
+    static SBindingTestApp App;
 
     Rr_AppConfig Config = {};
     Config.Title = "BindingTest";

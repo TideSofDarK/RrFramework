@@ -107,7 +107,7 @@ struct SGPUUniform
     float GridBig;
 };
 
-struct SApp
+struct SSmoothGridApp
 {
     static constexpr Rr_TextureFormat DEPTH_FORMAT =
         RR_TEXTURE_FORMAT_D32_SFLOAT;
@@ -286,7 +286,7 @@ struct SApp
 
 int main()
 {
-    static SApp App;
+    static SSmoothGridApp App;
 
     Rr_AppConfig Config = {};
     Config.Title = "SmoothGrid";

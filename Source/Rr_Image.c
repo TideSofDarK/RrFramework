@@ -446,7 +446,6 @@ static Rr_Image *Rr_CreateImage(
 
     VkImageCreateInfo ImageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = NULL,
         .flags = AdditionalFlags,
         .imageType = ImageType,
         .format = Image->Format,
@@ -553,6 +552,24 @@ Rr_Image2D *Rr_CreateImage2D(
         Format,
         Flags,
         1,
+        0);
+}
+
+Rr_Image2DArray *Rr_CreateImage2DArray(
+    Rr_IntVec2 Extent,
+    size_t ArrayCount,
+    Rr_TextureFormat Format,
+    Rr_ImageFlags Flags)
+{
+    assert(Extent.Width >= 1);
+    assert(Extent.Height >= 1);
+    assert(ArrayCount >= 1);
+
+    return (Rr_Image2DArray *)Rr_CreateImage(
+        (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
+        Format,
+        Flags,
+        ArrayCount,
         0);
 }
 

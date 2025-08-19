@@ -136,7 +136,7 @@ struct SPNGImage
     SPNGImage &operator=(SPNGImage &&) = delete;
 };
 
-struct SApp
+struct SSkyboxApp
 {
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
@@ -401,7 +401,7 @@ struct SApp
 
 int main()
 {
-    static SApp App;
+    static SSkyboxApp App;
 
     Rr_AppConfig Config = {};
     Config.Title = "Skybox";

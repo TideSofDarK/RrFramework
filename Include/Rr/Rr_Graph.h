@@ -113,6 +113,15 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     Rr_Image2D *Image,
     uint32_t MipLevel);
 
+extern Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t ArrayIndex,
+    uint32_t MipLevel);
+
 extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     Rr_Graph *Graph,
     const char *Name,
@@ -256,6 +265,13 @@ extern void Rr_BindCombinedImage2DSamplerAt(
     size_t Set,
     size_t Binding,
     uint32_t ArrayIndex);
+
+extern void Rr_BindCombinedImage2DArraySampler(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding);
 
 extern void Rr_BindCombinedImageCubeSampler(
     Rr_GraphNode *Node,

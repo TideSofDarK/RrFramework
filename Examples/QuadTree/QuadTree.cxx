@@ -495,7 +495,7 @@ public:
     }
 };
 
-struct SApp
+struct SQuadTreeApp
 {
     const uint32_t MAX_DRAWS = 1 << 14;
 
@@ -1011,7 +1011,7 @@ struct SApp
 
 int main()
 {
-    static SApp App;
+    static SQuadTreeApp App;
 
     Rr_AppConfig Config = {};
     Config.Title = "QuadTree";

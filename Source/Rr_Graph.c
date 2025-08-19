@@ -2025,7 +2025,7 @@ Rr_GraphNode *Rr_AddClearColorImageNode(
     return GraphNode;
 }
 
-static inline Rr_GraphNode *Rr_AddCopyBufferToImageNode(
+static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -2082,15 +2082,41 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     Rr_Image2D *Image,
     uint32_t MipLevel)
 {
-    assert(Graph != NULL && Buffer != NULL && Image != NULL);
+    assert(Graph != NULL);
+    assert(Buffer != NULL);
+    assert(Image != NULL);
 
-    return Rr_AddCopyBufferToImageNode(
+    return Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
         BufferOffset,
         (Rr_Image *)Image,
         0,
+        1,
+        MipLevel);
+}
+
+Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_Buffer *Buffer,
+    size_t BufferOffset,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t ArrayIndex,
+    uint32_t MipLevel)
+{
+    assert(Graph != NULL);
+    assert(Buffer != NULL);
+    assert(Image2DArray != NULL);
+
+    return Rr_AddCopyBufferToImageNodeEx(
+        Graph,
+        Name,
+        Buffer,
+        BufferOffset,
+        (Rr_Image *)Image2DArray,
+        ArrayIndex,
         1,
         MipLevel);
 }
@@ -2108,7 +2134,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     assert(Buffer != NULL);
     assert(ImageCube != NULL);
 
-    return Rr_AddCopyBufferToImageNode(
+    return Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
@@ -2136,7 +2162,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
     assert(FirstFace >= RR_IMAGE_CUBE_FACE_FIRST);
     assert(LastFace <= RR_IMAGE_CUBE_FACE_LAST);
 
-    return Rr_AddCopyBufferToImageNode(
+    return Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
@@ -2632,6 +2658,30 @@ void Rr_BindCombinedImage2DSamplerAt(
         Set,
         Binding,
         ArrayIndex);
+}
+
+void Rr_BindCombinedImage2DArraySampler(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    Rr_Sampler *Sampler,
+    size_t Set,
+    size_t Binding)
+{
+    Rr_BindCombinedImageSamplerEx(
+        Node,
+        Image2DArray,
+        Sampler,
+        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+        &(VkImageSubresourceRange){
+            .aspectMask = Image2DArray->AspectFlags,
+            .baseMipLevel = 0,
+            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .baseArrayLayer = 0,
+            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+        },
+        Set,
+        Binding,
+        0);
 }
 
 void Rr_BindCombinedImageCubeSampler(

@@ -52,7 +52,7 @@ struct SGPUUniform
     float Smoothstep;
 };
 
-struct SApp
+struct SBrushFadeApp
 {
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
@@ -190,7 +190,7 @@ struct SApp
 
 int main()
 {
-    static SApp App;
+    static SBrushFadeApp App;
 
     Rr_AppConfig Config = {};
     Config.Title = "BrushFade";
