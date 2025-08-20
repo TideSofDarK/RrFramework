@@ -68,9 +68,8 @@ void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
 
 bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock)
 {
-    bool Locked =
-        !Rr_LoadAtomicRelaxed(Spinlock) &&
-        !Rr_ExchangeAtomicAcquire(Spinlock, 1);
+    bool Locked = !Rr_LoadAtomicRelaxed(Spinlock) &&
+                  !Rr_ExchangeAtomicAcquire(Spinlock, 1);
     return Locked;
 }
 

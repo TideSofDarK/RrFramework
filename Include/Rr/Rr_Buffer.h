@@ -57,7 +57,10 @@ extern void *Rr_MapBuffer(Rr_Buffer *Buffer);
 
 extern void Rr_UnmapBuffer(Rr_Buffer *Buffer);
 
-extern void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size);
+extern void Rr_FlushBufferRange(
+    Rr_Buffer *Buffer,
+    uint64_t Offset,
+    uint64_t Size);
 
 extern void Rr_UploadToDeviceBufferImmediate(
     Rr_Buffer *DstBuffer,

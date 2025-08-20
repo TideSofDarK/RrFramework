@@ -87,9 +87,9 @@ extern void Rr_StoreAtomicRelease(Rr_AtomicInt *AtomicInt, int Value);
 
 extern void Rr_StoreAtomicRelaxed(Rr_AtomicInt *AtomicInt, int Value);
 
-extern int Rr_IncrementAtomicRelaxed(Rr_AtomicInt* AtomicInt);
+extern int Rr_IncrementAtomicRelaxed(Rr_AtomicInt *AtomicInt);
 
-extern int Rr_DecrementAtomicRelaxed(Rr_AtomicInt* AtomicInt);
+extern int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt);
 
 typedef Rr_AtomicInt Rr_Spinlock;
 
