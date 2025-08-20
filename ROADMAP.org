@@ -16,6 +16,7 @@
       Added Rr_ComputeBarrier() for compute nodes.
       Since you can't put barriers amidst render passes, it's user responsibility to avoid undefined behavior.
 - [ ] Remove Rr_LoadingThread.
+      Remove Rr_UploadImageXXX stuff which is going to be replaced by graph nodes.
       Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
       For now, make transfer-only graphs that can be submitted from secondary threads.
 - [X] Should referenced pipelines and samplers be hashed to optimize decrement references pass? 

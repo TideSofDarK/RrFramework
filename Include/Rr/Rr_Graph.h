@@ -110,6 +110,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec2 Extent,
     Rr_Image2D *Image,
     uint32_t MipLevel);
 
@@ -118,6 +119,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec2 Extent,
     Rr_Image2DArray *Image2DArray,
     uint32_t ArrayIndex,
     uint32_t MipLevel);
@@ -127,6 +129,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec3 Extent,
     Rr_Image3D *Image3D,
     uint32_t MipLevel);
 
@@ -135,6 +138,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec2 Extent,
     Rr_ImageCube *ImageCube,
     Rr_ImageCubeFace Face,
     uint32_t MipLevel);
@@ -144,6 +148,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec2 Extent,
     Rr_ImageCube *ImageCube,
     Rr_ImageCubeFace FirstFace,
     Rr_ImageCubeFace LastFace,

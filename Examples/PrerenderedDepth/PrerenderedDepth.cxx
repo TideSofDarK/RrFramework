@@ -101,6 +101,7 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
         "copy",
         StagingBuffer,
         0,
+        Extent,
         DepthImage,
         0);
 
@@ -143,6 +144,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
         "copy",
         StagingBuffer,
         0,
+        { Width, Height },
         ColorImage,
         0);
 

@@ -111,6 +111,7 @@ struct Rr_CopyBufferToImageNode
     Rr_GraphBuffer Buffer;
     size_t BufferOffset;
     Rr_GraphImage Image;
+    VkExtent3D Extent;
     uint32_t BaseLayer;
     uint32_t LayerCount;
     uint32_t MipLevel;

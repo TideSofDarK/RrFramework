@@ -61,6 +61,7 @@ Rr_Image2DArray *CreateColorImageArrayFromPNGs(
             "copy",
             StagingBuffer,
             LayerSize * Index,
+            { Width, Height },
             ImageArray,
             Index,
             0);

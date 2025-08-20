@@ -746,9 +746,7 @@ static void Rr_ExecuteCopyBufferToImageNode(
                 .baseArrayLayer = Node->BaseLayer,
                 .layerCount = Node->LayerCount,
             },
-        .imageExtent = (VkExtent3D){ Image->Extent.width,
-                                     Image->Extent.height,
-                                     Image->Extent.depth },
+        .imageExtent = Node->Extent,
     };
 
     Device->CmdCopyBufferToImage(
@@ -2027,11 +2025,16 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec3 Extent,
     Rr_Image *Image,
     uint32_t BaseLayer,
     uint32_t LayerCount,
     uint32_t MipLevel)
 {
+    assert(Graph != NULL);
+    assert(Buffer != NULL);
+    assert(Image != NULL);
+
     Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_GraphNode *GraphNode =
@@ -2063,6 +2066,12 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
         .Buffer = *BufferHandle,
         .BufferOffset = BufferOffset,
         .Image = *ImageHandle,
+        .Extent =
+            (VkExtent3D){
+                Extent.Width,
+                Extent.Height,
+                Extent.Depth,
+            },
         .BaseLayer = BaseLayer,
         .LayerCount = LayerCount,
         .MipLevel = MipLevel,
@@ -2076,18 +2085,16 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec2 Extent,
     Rr_Image2D *Image,
     uint32_t MipLevel)
 {
-    assert(Graph != NULL);
-    assert(Buffer != NULL);
-    assert(Image != NULL);
-
     return Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
         BufferOffset,
+        (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
         (Rr_Image *)Image,
         0,
         1,
@@ -2099,19 +2106,17 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec2 Extent,
     Rr_Image2DArray *Image2DArray,
     uint32_t ArrayIndex,
     uint32_t MipLevel)
 {
-    assert(Graph != NULL);
-    assert(Buffer != NULL);
-    assert(Image2DArray != NULL);
-
     return Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
         BufferOffset,
+        (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
         (Rr_Image *)Image2DArray,
         ArrayIndex,
         1,
@@ -2123,18 +2128,20 @@ Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec3 Extent,
     Rr_Image3D *Image3D,
     uint32_t MipLevel)
 {
-    assert(Graph != NULL);
-    assert(Buffer != NULL);
-    assert(Image3D != NULL);
-
     return Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
         BufferOffset,
+        (Rr_IntVec3){
+            Extent.Width,
+            Extent.Height,
+            Extent.Depth,
+        },
         (Rr_Image *)Image3D,
         0,
         1,
@@ -2146,19 +2153,20 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec2 Extent,
     Rr_ImageCube *ImageCube,
     Rr_ImageCubeFace Face,
     uint32_t MipLevel)
 {
-    assert(Graph != NULL);
-    assert(Buffer != NULL);
-    assert(ImageCube != NULL);
+    assert(Face >= RR_IMAGE_CUBE_FACE_FIRST);
+    assert(Face <= RR_IMAGE_CUBE_FACE_LAST);
 
     return Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
         BufferOffset,
+        (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
         (Rr_Image *)ImageCube,
         (uint32_t)Face,
         1,
@@ -2170,14 +2178,12 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
     const char *Name,
     Rr_Buffer *Buffer,
     size_t BufferOffset,
+    Rr_IntVec2 Extent,
     Rr_ImageCube *ImageCube,
     Rr_ImageCubeFace FirstFace,
     Rr_ImageCubeFace LastFace,
     uint32_t MipLevel)
 {
-    assert(Graph != NULL);
-    assert(Buffer != NULL);
-    assert(ImageCube != NULL);
     assert(FirstFace <= LastFace);
     assert(FirstFace >= RR_IMAGE_CUBE_FACE_FIRST);
     assert(LastFace <= RR_IMAGE_CUBE_FACE_LAST);
@@ -2187,6 +2193,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
         Name,
         Buffer,
         BufferOffset,
+        (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
         (Rr_Image *)ImageCube,
         (uint32_t)FirstFace,
         1 + ((uint32_t)LastFace - (uint32_t)FirstFace),

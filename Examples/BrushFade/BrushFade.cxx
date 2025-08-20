@@ -37,6 +37,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
         "copy",
         StagingBuffer,
         0,
+        { Width, Height },
         ColorImage,
         0);
 

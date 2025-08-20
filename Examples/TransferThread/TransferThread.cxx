@@ -58,6 +58,7 @@ Rr_Image3D *CreateColorImage3DFromPNGs(
         "copy",
         StagingBuffer,
         0,
+        { Width, Height, (std::int32_t)ImageCount },
         Image3D,
         0);
 

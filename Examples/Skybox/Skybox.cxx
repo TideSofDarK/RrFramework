@@ -265,6 +265,7 @@ struct SSkyboxApp
             "copy",
             StagingBuffer,
             (LayerSize * 0),
+            { Width, Height },
             SkyboxImage,
             RR_IMAGE_CUBE_FACE_FIRST,
             RR_IMAGE_CUBE_FACE_LAST,
