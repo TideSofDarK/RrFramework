@@ -22,6 +22,10 @@
  * SOFTWARE.
  */
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "Rr_UI.h"
 
 #include "Rr_BuiltinAssets.inc"
@@ -77,8 +81,8 @@ struct Rr_UIUniformData
 typedef struct Rr_UIClipRect Rr_UIClipRect;
 struct Rr_UIClipRect
 {
-    size_t IndexCount;
-    size_t FirstIndex;
+    uint32_t IndexCount;
+    uint32_t FirstIndex;
     Rr_Rect Rect;
 };
 
@@ -1533,7 +1537,7 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
         RR_PUSH_INTO_ARRAY(&Window->ClipRects, gUIContext->FrameArena);
 
     *ClipRect = (Rr_UIClipRect){
-        .FirstIndex = gUIContext->Indices.Count,
+        .FirstIndex = (uint32_t)gUIContext->Indices.Count,
         .Rect = { { Rect->Offset.X, Rect->Offset.Y },
                   { Rect->Extent.Width, Rect->Extent.Height } },
     };
@@ -1548,7 +1552,8 @@ static inline void Rr_UIEndClipRect(void)
         {
             Rr_UIClipRect *Last =
                 &Window->ClipRects.Data[Window->ClipRects.Count - 1];
-            Last->IndexCount = gUIContext->Indices.Count - Last->FirstIndex;
+            Last->IndexCount =
+                (uint32_t)gUIContext->Indices.Count - Last->FirstIndex;
         }
     }
 }

@@ -1184,8 +1184,8 @@ Found:
         VkAttachmentDescription,
         AttachmentCount);
 
-    size_t AttachmentIndex = 0;
-    size_t Boundary = Key->ColorAttachmentCount;
+    uint32_t AttachmentIndex = 0;
+    uint32_t Boundary = Key->ColorAttachmentCount;
 
     if (ColorAttachmentCount > 0)
     {

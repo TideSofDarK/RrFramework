@@ -544,7 +544,7 @@ Rr_Image2D *Rr_CreateImage2D(
 
 Rr_Image2DArray *Rr_CreateImage2DArray(
     Rr_IntVec2 Extent,
-    size_t ArrayCount,
+    uint32_t ArrayCount,
     Rr_TextureFormat Format,
     Rr_ImageFlags Flags)
 {

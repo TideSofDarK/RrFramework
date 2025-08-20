@@ -274,7 +274,7 @@ static inline void Rr_CopyDescriptorSet(
         Device->Handle,
         0,
         NULL,
-        Layout->Set.BindingCount,
+        (uint32_t)Layout->Set.BindingCount,
         Copies);
 
     Rr_DestroyScratch(Scratch);
@@ -422,13 +422,14 @@ void Rr_ApplyDescriptorsState(
 
     Rr_Device *Device = State->Device;
 
-    for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
+    for (uint32_t Index = 0; Index < RR_MAX_SETS; ++Index)
     {
         if (State->Layout->SetLayouts[Index])
         {
             if (State->Dirty[Index])
             {
-                uint32_t Count = State->Layout->SetLayoutCount - Index;
+                uint32_t Count =
+                    (uint32_t)State->Layout->SetLayoutCount - Index;
 
                 Device->CmdBindDescriptorSets(
                     State->CommandBuffer,

@@ -34,7 +34,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     Rr_GraphicsPipelineCreateInfo *Info)
 {
     Rr_RenderPassMapKey Key;
-    Key.ColorAttachmentCount = Info->ColorTargetCount;
+    Key.ColorAttachmentCount = (uint32_t)Info->ColorTargetCount;
     Key.ResolveAttachmentCount = 0;
     Key.DepthStencil = Info->DepthStencil.EnableDepthTest ||
                        Info->DepthStencil.EnableStencilTest ||
@@ -711,7 +711,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_BindingSet *BindingSet)
 
     VkDescriptorSetLayoutCreateInfo CreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = Bindings.Count,
+        .bindingCount = (uint32_t)Bindings.Count,
         .pBindings = Bindings.Data,
     };
 

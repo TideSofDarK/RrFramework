@@ -33,6 +33,19 @@ struct Rr_Frame;
 typedef RR_ARRAY(size_t) Rr_IndexArray;
 typedef RR_ARRAY(Rr_GraphNode *) Rr_NodeArray;
 
+typedef union Rr_GraphHandle Rr_GraphBuffer;
+typedef union Rr_GraphHandle Rr_GraphImage;
+typedef union Rr_GraphHandle Rr_GraphHandle;
+union Rr_GraphHandle
+{
+    struct
+    {
+        uint32_t Index;
+        uint32_t Generation;
+    } Values;
+    Rr_MapKey Hash;
+};
+
 typedef enum Rr_GraphNodeType
 {
     RR_GRAPH_NODE_TYPE_COMPUTE,
@@ -91,7 +104,7 @@ typedef struct Rr_GraphicsNode Rr_GraphicsNode;
 struct Rr_GraphicsNode
 {
     Rr_Encoded Encoded;
-    size_t ColorTargetCount;
+    uint32_t ColorTargetCount;
     Rr_ColorTarget *ColorTargets;
     Rr_GraphImage *ColorImages;
     Rr_DepthTarget *DepthTarget;
@@ -135,7 +148,7 @@ struct Rr_BindIndexBufferArgs
 {
     Rr_GraphBuffer BufferHandle;
     uint32_t Slot;
-    uint32_t Offset;
+    uint64_t Offset;
     VkIndexType Type;
 };
 
@@ -144,7 +157,7 @@ struct Rr_BindBufferArgs
 {
     Rr_GraphBuffer BufferHandle;
     uint32_t Slot;
-    uint32_t Offset;
+    uint64_t Offset;
 };
 
 typedef struct Rr_DispatchArgs Rr_DispatchArgs;
@@ -168,7 +181,7 @@ typedef struct Rr_DrawIndirectArgs Rr_DrawIndirectArgs;
 struct Rr_DrawIndirectArgs
 {
     Rr_GraphBuffer BufferHandle;
-    uint32_t Offset;
+    uint64_t Offset;
     uint32_t Count;
     uint32_t Stride;
 };

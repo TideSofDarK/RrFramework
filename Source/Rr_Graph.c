@@ -1914,7 +1914,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.Graphics;
     if (ColorTargetCount > 0)
     {
-        GraphicsNode->ColorTargetCount = ColorTargetCount;
+        GraphicsNode->ColorTargetCount = (uint32_t)ColorTargetCount;
         GraphicsNode->ColorTargets =
             RR_ALLOC_TYPE_COUNT(Frame->Arena, Rr_ColorTarget, ColorTargetCount);
         GraphicsNode->ColorImages =
@@ -2279,12 +2279,8 @@ Rr_GraphNode *Rr_AddCopyImage2DNode(
         Encoded->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_NodeFunction)); \
         Encoded->Encoded = Encoded->Encoded->Next;                         \
         Encoded->Encoded->Type = FunctionType;                             \
-        Encoded->Encoded->Args =                                           \
-            RR_ALLOC_NO_ZERO(Arena, sizeof(Struct)); /* NOLINT */          \
-        memcpy(                                                            \
-            Encoded->Encoded->Args,                                        \
-            &(Struct),                                                     \
-            sizeof(Struct)); /* NOLINT */                                  \
+        Encoded->Encoded->Args = RR_ALLOC_NO_ZERO(Arena, sizeof(Struct));  \
+        memcpy(Encoded->Encoded->Args, &(Struct), sizeof(Struct));         \
     }                                                                      \
     while (0)
 
@@ -2333,29 +2329,29 @@ void Rr_ComputeBarrier(Rr_GraphNode *Node)
 
 void Rr_Draw(
     Rr_GraphNode *Node,
-    size_t VertexCount,
-    size_t InstanceCount,
-    size_t FirstVertex,
-    size_t FirstInstance)
+    uint32_t VertexCount,
+    uint32_t InstanceCount,
+    uint32_t FirstVertex,
+    uint32_t FirstInstance)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_DRAW,
         ((Rr_DrawArgs){
-            .VertexCount = (uint32_t)VertexCount,
-            .InstanceCount = (uint32_t)InstanceCount,
-            .FirstVertex = (uint32_t)FirstVertex,
-            .FirstInstance = (uint32_t)FirstInstance,
+            .VertexCount = VertexCount,
+            .InstanceCount = InstanceCount,
+            .FirstVertex = FirstVertex,
+            .FirstInstance = FirstInstance,
         }));
 }
 
 void Rr_DrawIndirect(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Offset,
-    size_t Count,
-    size_t Stride)
+    uint64_t Offset,
+    uint32_t Count,
+    uint32_t Stride)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
@@ -2365,9 +2361,9 @@ void Rr_DrawIndirect(
         RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT,
         ((Rr_DrawIndirectArgs){
             .BufferHandle = *BufferHandle,
-            .Offset = (uint32_t)Offset,
-            .Count = (uint32_t)Count,
-            .Stride = (uint32_t)Stride,
+            .Offset = Offset,
+            .Count = Count,
+            .Stride = Stride,
         }));
 
     Rr_AddNodeDependency(
@@ -2381,30 +2377,30 @@ void Rr_DrawIndirect(
 
 void Rr_DrawIndexed(
     Rr_GraphNode *Node,
-    size_t IndexCount,
-    size_t InstanceCount,
-    size_t FirstIndex,
+    uint32_t IndexCount,
+    uint32_t InstanceCount,
+    uint32_t FirstIndex,
     int32_t VertexOffset,
-    size_t FirstInstance)
+    uint32_t FirstInstance)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_DRAW_INDEXED,
         ((Rr_DrawIndexedArgs){
-            .IndexCount = (uint32_t)IndexCount,
-            .InstanceCount = (uint32_t)InstanceCount,
-            .FirstIndex = (uint32_t)FirstIndex,
+            .IndexCount = IndexCount,
+            .InstanceCount = InstanceCount,
+            .FirstIndex = FirstIndex,
             .VertexOffset = VertexOffset,
-            .FirstInstance = (uint32_t)FirstInstance,
+            .FirstInstance = FirstInstance,
         }));
 }
 
 void Rr_BindVertexBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Slot,
-    size_t Offset)
+    uint32_t Slot,
+    uint64_t Offset)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
 
@@ -2414,8 +2410,8 @@ void Rr_BindVertexBuffer(
         RR_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
         ((Rr_BindIndexBufferArgs){
             .BufferHandle = *BufferHandle,
-            .Slot = (uint32_t)Slot,
-            .Offset = (uint32_t)Offset,
+            .Slot = Slot,
+            .Offset = Offset,
         }));
 
     Rr_AddNodeDependency(
@@ -2430,8 +2426,8 @@ void Rr_BindVertexBuffer(
 void Rr_BindIndexBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Slot,
-    size_t Offset,
+    uint32_t Slot,
+    uint64_t Offset,
     Rr_IndexType Type)
 {
     assert(Node->Type == RR_GRAPH_NODE_TYPE_GRAPHICS);
@@ -2442,8 +2438,8 @@ void Rr_BindIndexBuffer(
         RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
         ((Rr_BindIndexBufferArgs){
             .BufferHandle = *BufferHandle,
-            .Slot = (uint32_t)Slot,
-            .Offset = (uint32_t)Offset,
+            .Slot = Slot,
+            .Offset = Offset,
             .Type = Rr_ToVulkanIndexType(Type),
         }));
 
@@ -2494,8 +2490,8 @@ void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntRect *Rect)
 void Rr_BindSampler(
     Rr_GraphNode *Node,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindSamplerAt(Node, Sampler, Set, Binding, 0);
 }
@@ -2503,8 +2499,8 @@ void Rr_BindSampler(
 void Rr_BindSamplerAt(
     Rr_GraphNode *Node,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding,
+    uint32_t Set,
+    uint32_t Binding,
     uint32_t ArrayIndex)
 {
     assert(Set < RR_MAX_SETS);
@@ -2551,8 +2547,8 @@ static void Rr_BindSampledImageEx(
     Rr_Image *Image,
     VkImageViewType ViewType,
     VkImageSubresourceRange *SubresourceRange,
-    size_t Set,
-    size_t Binding,
+    uint32_t Set,
+    uint32_t Binding,
     uint32_t ArrayIndex)
 {
     assert(Set < RR_MAX_SETS);
@@ -2585,8 +2581,8 @@ static void Rr_BindSampledImageEx(
 void Rr_BindSampledImage2D(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindSampledImage2DAt(Node, Image2D, Set, Binding, 0);
 }
@@ -2594,9 +2590,9 @@ void Rr_BindSampledImage2D(
 void Rr_BindSampledImage2DAt(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
 {
     Rr_BindSampledImageEx(
         Node,
@@ -2617,8 +2613,8 @@ void Rr_BindSampledImage2DAt(
 void Rr_BindSampledImage2DArray(
     Rr_GraphNode *Node,
     Rr_Image2DArray *Image2DArray,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
 
     Rr_BindSampledImage2DArrayAt(Node, Image2DArray, Set, Binding, 0);
@@ -2627,9 +2623,9 @@ void Rr_BindSampledImage2DArray(
 void Rr_BindSampledImage2DArrayAt(
     Rr_GraphNode *Node,
     Rr_Image2DArray *Image2DArray,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
 {
     Rr_BindSampledImageEx(
         Node,
@@ -2650,8 +2646,8 @@ void Rr_BindSampledImage2DArrayAt(
 void Rr_BindSampledImage3D(
     Rr_GraphNode *Node,
     Rr_Image3D *Image3D,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
 
     Rr_BindSampledImage3DAt(Node, Image3D, Set, Binding, 0);
@@ -2660,9 +2656,9 @@ void Rr_BindSampledImage3D(
 void Rr_BindSampledImage3DAt(
     Rr_GraphNode *Node,
     Rr_Image3D *Image3D,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
 {
     Rr_BindSampledImageEx(
         Node,
@@ -2683,8 +2679,8 @@ void Rr_BindSampledImage3DAt(
 void Rr_BindSampledImageCube(
     Rr_GraphNode *Node,
     Rr_ImageCube *ImageCube,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindSampledImageCubeAt(Node, ImageCube, Set, Binding, 0);
 }
@@ -2692,9 +2688,9 @@ void Rr_BindSampledImageCube(
 void Rr_BindSampledImageCubeAt(
     Rr_GraphNode *Node,
     Rr_ImageCube *ImageCube,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
 {
     Rr_BindSampledImageEx(
         Node,
@@ -2718,8 +2714,8 @@ static void Rr_BindCombinedImageSamplerEx(
     Rr_Sampler *Sampler,
     VkImageViewType ViewType,
     VkImageSubresourceRange *SubresourceRange,
-    size_t Set,
-    size_t Binding,
+    uint32_t Set,
+    uint32_t Binding,
     uint32_t ArrayIndex)
 {
     assert(Set < RR_MAX_SETS);
@@ -2757,8 +2753,8 @@ void Rr_BindCombinedImage2DSampler(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindCombinedImage2DSamplerAt(Node, Image2D, Sampler, Set, Binding, 0);
 }
@@ -2767,8 +2763,8 @@ void Rr_BindCombinedImage2DSamplerAt(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding,
+    uint32_t Set,
+    uint32_t Binding,
     uint32_t ArrayIndex)
 {
     Rr_BindCombinedImageSamplerEx(
@@ -2792,8 +2788,8 @@ void Rr_BindCombinedImage2DArraySampler(
     Rr_GraphNode *Node,
     Rr_Image2DArray *Image2DArray,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindCombinedImage2DArraySamplerAt(
         Node,
@@ -2808,9 +2804,9 @@ void Rr_BindCombinedImage2DArraySamplerAt(
     Rr_GraphNode *Node,
     Rr_Image2DArray *Image2DArray,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
 {
     Rr_BindCombinedImageSamplerEx(
         Node,
@@ -2833,8 +2829,8 @@ void Rr_BindCombinedImage3DSampler(
     Rr_GraphNode *Node,
     Rr_Image3D *Image3D,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindCombinedImage3DSamplerAt(Node, Image3D, Sampler, Set, Binding, 0);
 }
@@ -2843,8 +2839,8 @@ void Rr_BindCombinedImage3DSamplerAt(
     Rr_GraphNode *Node,
     Rr_Image3D *Image3D,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding,
+    uint32_t Set,
+    uint32_t Binding,
     uint32_t ArrayIndex)
 {
     Rr_BindCombinedImageSamplerEx(
@@ -2868,8 +2864,8 @@ void Rr_BindCombinedImageCubeSampler(
     Rr_GraphNode *Node,
     Rr_ImageCube *ImageCube,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindCombinedImageCubeSamplerAt(
         Node,
@@ -2884,8 +2880,8 @@ void Rr_BindCombinedImageCubeSamplerAt(
     Rr_GraphNode *Node,
     Rr_ImageCube *ImageCube,
     Rr_Sampler *Sampler,
-    size_t Set,
-    size_t Binding,
+    uint32_t Set,
+    uint32_t Binding,
     uint32_t ArrayIndex)
 {
     Rr_BindCombinedImageSamplerEx(
@@ -2908,10 +2904,10 @@ void Rr_BindCombinedImageCubeSamplerAt(
 void Rr_BindUniformBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Set,
-    size_t Binding,
-    size_t Offset,
-    size_t Size)
+    uint32_t Set,
+    uint32_t Binding,
+    uint64_t Offset,
+    uint64_t Size)
 {
     Rr_BindUniformBufferAt(Node, Buffer, Set, Binding, 0, Offset, Size);
 }
@@ -2919,11 +2915,11 @@ void Rr_BindUniformBuffer(
 void Rr_BindUniformBufferAt(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex,
-    size_t Offset,
-    size_t Size)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    uint64_t Offset,
+    uint64_t Size)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -2954,12 +2950,12 @@ void Rr_BindUniformBufferAt(
 static void Rr_BindStorageBufferEx(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
     bool ReadWrite,
-    size_t Offset,
-    size_t Size)
+    uint64_t Offset,
+    uint64_t Size)
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
@@ -2996,10 +2992,10 @@ static void Rr_BindStorageBufferEx(
 void Rr_BindStorageBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Set,
-    size_t Binding,
-    size_t Offset,
-    size_t Size)
+    uint32_t Set,
+    uint32_t Binding,
+    uint64_t Offset,
+    uint64_t Size)
 {
     Rr_BindStorageBufferEx(Node, Buffer, Set, Binding, 0, false, Offset, Size);
 }
@@ -3007,11 +3003,11 @@ void Rr_BindStorageBuffer(
 void Rr_BindStorageBufferAt(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex,
-    size_t Offset,
-    size_t Size)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    uint64_t Offset,
+    uint64_t Size)
 {
     Rr_BindStorageBufferEx(
         Node,
@@ -3027,10 +3023,10 @@ void Rr_BindStorageBufferAt(
 void Rr_BindStorageBufferRW(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Set,
-    size_t Binding,
-    size_t Offset,
-    size_t Size)
+    uint32_t Set,
+    uint32_t Binding,
+    uint64_t Offset,
+    uint64_t Size)
 {
     Rr_BindStorageBufferEx(Node, Buffer, Set, Binding, 0, true, Offset, Size);
 }
@@ -3038,11 +3034,11 @@ void Rr_BindStorageBufferRW(
 void Rr_BindStorageBufferRWAt(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex,
-    size_t Offset,
-    size_t Size)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    uint64_t Offset,
+    uint64_t Size)
 {
     Rr_BindStorageBufferEx(
         Node,
@@ -3058,9 +3054,9 @@ void Rr_BindStorageBufferRWAt(
 static void Rr_BindStorageImage2DEx(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
     bool ReadWrite)
 {
     assert(Set < RR_MAX_SETS);
@@ -3105,8 +3101,8 @@ static void Rr_BindStorageImage2DEx(
 void Rr_BindStorageImage2D(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, 0, false);
 }
@@ -3114,9 +3110,9 @@ void Rr_BindStorageImage2D(
 void Rr_BindStorageImage2DAt(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
 {
     Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, ArrayIndex, false);
 }
@@ -3124,8 +3120,8 @@ void Rr_BindStorageImage2DAt(
 void Rr_BindStorageImage2DRW(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
-    size_t Set,
-    size_t Binding)
+    uint32_t Set,
+    uint32_t Binding)
 {
     Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, 0, true);
 }
@@ -3133,9 +3129,9 @@ void Rr_BindStorageImage2DRW(
 void Rr_BindStorageImage2DRWAt(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
-    size_t Set,
-    size_t Binding,
-    size_t ArrayIndex)
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
 {
     Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, ArrayIndex, true);
 }
