@@ -24,7 +24,7 @@
 - [X] Binding arrays support.
 - [X] 3D image support.
 - [X] Image array support.
-- [ ] Get rid of duplicated code in ExecuteCompute and ExecuteGraphics functions.
+- [X] Get rid of duplicated code in ExecuteCompute and ExecuteGraphics functions.
 - [ ] MSAA support.
 - [ ] Check if descriptor set layouts are properly hashed.
 - [ ] Minimal error handling pass.

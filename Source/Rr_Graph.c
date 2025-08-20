@@ -107,6 +107,123 @@ static void Rr_ExecuteBlitNode(
     }
 }
 
+static inline void Rr_ExecuteGenericEncodedCommands(
+    Rr_Graph *Graph,
+    Rr_NodeFunction *Function,
+    Rr_DescriptorsState *DescriptorsState)
+{
+    switch (Function->Type)
+    {
+        case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
+        {
+            Rr_BindSamplerArgs *Args = Function->Args;
+            Rr_WriteSamplerDescriptor(
+                DescriptorsState,
+                Args->Set,
+                Args->Binding,
+                Args->ArrayIndex,
+                Args->Sampler->Handle);
+        }
+        break;
+        case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
+        {
+            Rr_BindSampledImageArgs *Args = Function->Args;
+            Rr_AllocatedImage *AllocatedImage =
+                Rr_GetGraphImage(Graph, Args->ImageHandle);
+            VkImageView ImageView = Rr_GetVulkanImageView(
+                AllocatedImage,
+                &(Rr_ImageViewKey){
+                    .SubresourceRange = Args->SubresourceRange,
+                    .Type = Args->ViewType,
+                });
+            Rr_WriteImageDescriptor(
+                DescriptorsState,
+                Args->Set,
+                Args->Binding,
+                Args->ArrayIndex,
+                VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                ImageView,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                NULL);
+        }
+        break;
+        case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
+        {
+            Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
+            Rr_AllocatedImage *AllocatedImage =
+                Rr_GetGraphImage(Graph, Args->ImageHandle);
+            VkImageView ImageView = Rr_GetVulkanImageView(
+                AllocatedImage,
+                &(Rr_ImageViewKey){
+                    .SubresourceRange = Args->SubresourceRange,
+                    .Type = Args->ViewType,
+                });
+            Rr_WriteImageDescriptor(
+                DescriptorsState,
+                Args->Set,
+                Args->Binding,
+                Args->ArrayIndex,
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                ImageView,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                Args->Sampler->Handle);
+        }
+        break;
+        case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
+        {
+            Rr_BindUniformBufferArgs *Args = Function->Args;
+            Rr_WriteBufferDescriptor(
+                DescriptorsState,
+                Args->Set,
+                Args->Binding,
+                Args->ArrayIndex,
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                Args->Size,
+                Args->Offset);
+        }
+        break;
+        case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
+        {
+            Rr_BindStorageBufferArgs *Args = Function->Args;
+            Rr_WriteBufferDescriptor(
+                DescriptorsState,
+                Args->Set,
+                Args->Binding,
+                Args->ArrayIndex,
+                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                Args->Size,
+                Args->Offset);
+        }
+        break;
+        case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE:
+        {
+            Rr_BindStorageImageArgs *Args = Function->Args;
+            Rr_AllocatedImage *AllocatedImage =
+                Rr_GetGraphImage(Graph, Args->ImageHandle);
+            VkImageView ImageView = Rr_GetVulkanImageView(
+                AllocatedImage,
+                &(Rr_ImageViewKey){
+                    .SubresourceRange = Args->SubresourceRange,
+                    .Type = Args->ViewType,
+                });
+            Rr_WriteImageDescriptor(
+                DescriptorsState,
+                Args->Set,
+                Args->Binding,
+                Args->ArrayIndex,
+                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                ImageView,
+                VK_IMAGE_LAYOUT_GENERAL,
+                NULL);
+        }
+        break;
+        default:
+            break;
+    }
+}
+
 static void Rr_ExecuteComputeNode(
     Rr_Graph *Graph,
     Rr_ComputeNode *Node,
@@ -182,113 +299,12 @@ static void Rr_ExecuteComputeNode(
                     NULL);
             }
             break;
-            case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
-            {
-                Rr_BindSamplerArgs *Args = Function->Args;
-                Rr_WriteSamplerDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    Args->Sampler->Handle);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
-            {
-                Rr_BindSampledImageArgs *Args = Function->Args;
-                Rr_AllocatedImage *AllocatedImage =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle);
-                VkImageView ImageView = Rr_GetVulkanImageView(
-                    AllocatedImage,
-                    &(Rr_ImageViewKey){
-                        .SubresourceRange = Args->SubresourceRange,
-                        .Type = Args->ViewType,
-                    });
-                Rr_WriteImageDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                    ImageView,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    NULL);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
-            {
-                Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
-                Rr_AllocatedImage *AllocatedImage =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle);
-                VkImageView ImageView = Rr_GetVulkanImageView(
-                    AllocatedImage,
-                    &(Rr_ImageViewKey){
-                        .SubresourceRange = Args->SubresourceRange,
-                        .Type = Args->ViewType,
-                    });
-                Rr_WriteImageDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                    ImageView,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    Args->Sampler->Handle);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
-            {
-                Rr_BindUniformBufferArgs *Args = Function->Args;
-                Rr_WriteBufferDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
-                    Args->Size,
-                    Args->Offset);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
-            {
-                Rr_BindStorageBufferArgs *Args = Function->Args;
-                Rr_WriteBufferDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
-                    Args->Size,
-                    Args->Offset);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE:
-            {
-                Rr_BindStorageImageArgs *Args = Function->Args;
-                Rr_AllocatedImage *AllocatedImage =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle);
-                VkImageView ImageView = Rr_GetVulkanImageView(
-                    AllocatedImage,
-                    &(Rr_ImageViewKey){
-                        .SubresourceRange = Args->SubresourceRange,
-                        .Type = Args->ViewType,
-                    });
-                Rr_WriteImageDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                    ImageView,
-                    VK_IMAGE_LAYOUT_GENERAL,
-                    NULL);
-            }
-            break;
             default:
             {
+                Rr_ExecuteGenericEncodedCommands(
+                    Graph,
+                    Function,
+                    &DescriptorsState);
             }
             break;
         }
@@ -595,100 +611,24 @@ static void Rr_ExecuteGraphicsNode(
             {
                 Rr_IntRect *ScissorRect = Function->Args;
 
-                /* NOTE: VkRect2D is the same as Rr_IntRect. */
-
                 Device->CmdSetScissor(
                     CommandBuffer,
                     0,
                     1,
-                    (VkRect2D *)ScissorRect);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_SAMPLER:
-            {
-                Rr_BindSamplerArgs *Args = Function->Args;
-                Rr_WriteSamplerDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    Args->Sampler->Handle);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
-            {
-                Rr_BindSampledImageArgs *Args = Function->Args;
-                Rr_AllocatedImage *AllocatedImage =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle);
-                VkImageView ImageView = Rr_GetVulkanImageView(
-                    AllocatedImage,
-                    &(Rr_ImageViewKey){
-                        .SubresourceRange = Args->SubresourceRange,
-                        .Type = Args->ViewType,
+                    &(VkRect2D){
+                        .offset = { ScissorRect->Offset.X,
+                                    ScissorRect->Offset.Y },
+                        .extent = { ScissorRect->Extent.Width,
+                                    ScissorRect->Extent.Height },
                     });
-                Rr_WriteImageDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                    ImageView,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    NULL);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
-            {
-                Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
-                Rr_AllocatedImage *AllocatedImage =
-                    Rr_GetGraphImage(Graph, Args->ImageHandle);
-                VkImageView ImageView = Rr_GetVulkanImageView(
-                    AllocatedImage,
-                    &(Rr_ImageViewKey){
-                        .SubresourceRange = Args->SubresourceRange,
-                        .Type = Args->ViewType,
-                    });
-                Rr_WriteImageDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                    ImageView,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    Args->Sampler->Handle);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
-            {
-                Rr_BindUniformBufferArgs *Args = Function->Args;
-                Rr_WriteBufferDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
-                    Args->Size,
-                    Args->Offset);
-            }
-            break;
-            case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER:
-            {
-                Rr_BindStorageBufferArgs *Args = Function->Args;
-                Rr_WriteBufferDescriptor(
-                    &DescriptorsState,
-                    Args->Set,
-                    Args->Binding,
-                    Args->ArrayIndex,
-                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
-                    Args->Size,
-                    Args->Offset);
             }
             break;
             default:
             {
+                Rr_ExecuteGenericEncodedCommands(
+                    Graph,
+                    Function,
+                    &DescriptorsState);
             }
             break;
         }

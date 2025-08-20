@@ -265,11 +265,11 @@ struct Rr_BindStorageImageArgs
 typedef struct Rr_Transfer Rr_Transfer;
 struct Rr_Transfer
 {
-    size_t Size;
+    uint64_t Size;
     Rr_GraphBuffer SrcBuffer;
-    size_t SrcOffset;
+    uint64_t SrcOffset;
     Rr_GraphBuffer DstBuffer;
-    size_t DstOffset;
+    uint64_t DstOffset;
 };
 
 typedef struct Rr_TransferNode Rr_TransferNode;
