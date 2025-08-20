@@ -47,7 +47,7 @@ typedef enum
 } Rr_BufferFlagsBits;
 typedef uint32_t Rr_BufferFlags;
 
-extern Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags);
+extern Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags);
 
 extern void Rr_ReleaseBuffer(Rr_Buffer *Buffer);
 
@@ -57,7 +57,7 @@ extern void *Rr_MapBuffer(Rr_Buffer *Buffer);
 
 extern void Rr_UnmapBuffer(Rr_Buffer *Buffer);
 
-extern void Rr_FlushBufferRange(Rr_Buffer *Buffer, size_t Offset, size_t Size);
+extern void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size);
 
 extern void Rr_UploadToDeviceBufferImmediate(
     Rr_Buffer *DstBuffer,

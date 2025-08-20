@@ -209,8 +209,8 @@ void Rr_UploadStagingImage2D(
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
     Rr_Buffer *StagingBuffer,
-    size_t StagingOffset,
-    size_t StagingSize)
+    uint64_t StagingOffset,
+    uint64_t StagingSize)
 {
     Rr_Device *Device = &gRenderer->Device;
 
@@ -663,7 +663,7 @@ Rr_Image2D *Rr_CreateImage2DRGBA8(
 
 Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     Rr_UploadContext *UploadContext,
-    size_t DataSize,
+    uint64_t DataSize,
     char *Data,
     bool Linear)
 {

@@ -73,7 +73,9 @@
 - [X] Move to GLFW.
 - [X] Move to C11.
 - [X] Remove InputMap.
-- [ ] Decide where it makes sense to use size_t instead of uint32_t. Also VK_DEVICE_SIZE etc.
+- [X] Decide where it makes sense to use size_t instead of uint32_t. Also VK_DEVICE_SIZE etc.
+      Solution: use size_t for user-provided counts (i.e. number of color targets).
+      Otherwise stick to types that correspond to underlying Vulkan structs.
 - [ ] Replace VMA with custom allocator.
 - [ ] Own implementation of Windows/Linux platform layers.
 - [ ] Macro-based stuff should probably be internal.

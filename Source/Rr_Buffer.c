@@ -29,7 +29,7 @@
 
 #include <assert.h>
 
-Rr_Buffer *Rr_CreateBuffer(size_t Size, Rr_BufferFlags Flags)
+Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 {
     Rr_LockSpinlock(&gRenderer->Lock);
 
@@ -203,7 +203,7 @@ void Rr_UnmapBuffer(Rr_Buffer *Buffer)
     vmaUnmapMemory(gRenderer->Allocator, AllocatedBuffer->Allocation);
 }
 
-void Rr_FlushBufferRange(Rr_Buffer *Buffer, size_t Offset, size_t Size)
+void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
     vmaFlushAllocation(
@@ -219,8 +219,8 @@ void Rr_UploadStagingBuffer(
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
     Rr_Buffer *StagingBuffer,
-    size_t StagingOffset,
-    size_t StagingSize)
+    uint64_t StagingOffset,
+    uint64_t StagingSize)
 {
     Rr_Device *Device = &gRenderer->Device;
 
@@ -229,7 +229,7 @@ void Rr_UploadStagingBuffer(
     Rr_AllocatedBuffer *AllocatedStagingBuffer =
         StagingBuffer->AllocatedBuffers;
 
-    for (size_t AllocatedIndex = 0;
+    for (uint32_t AllocatedIndex = 0;
          AllocatedIndex < Buffer->AllocatedBufferCount;
          ++AllocatedIndex)
     {
@@ -350,7 +350,7 @@ void Rr_UploadBuffer(
         DstState,
         StagingBuffer,
         0,
-        Data.Size);
+        (uint64_t)Data.Size);
 }
 
 void Rr_UploadToDeviceBufferImmediate(Rr_Buffer *DstBuffer, Rr_Data Data)
@@ -370,7 +370,7 @@ void Rr_UploadToDeviceBufferImmediate(Rr_Buffer *DstBuffer, Rr_Data Data)
 
     VkBufferCopy BufferCopy = {
         .dstOffset = 0,
-        .size = Data.Size,
+        .size = (VkDeviceSize)Data.Size,
         .srcOffset = 0,
     };
 

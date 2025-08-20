@@ -122,7 +122,7 @@ typedef struct Rr_CopyBufferToImageNode Rr_CopyBufferToImageNode;
 struct Rr_CopyBufferToImageNode
 {
     Rr_GraphBuffer Buffer;
-    size_t BufferOffset;
+    uint64_t BufferOffset;
     Rr_GraphImage Image;
     VkExtent3D Extent;
     uint32_t BaseLayer;

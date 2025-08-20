@@ -60,8 +60,8 @@ extern void Rr_UploadStagingBuffer(
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
     Rr_Buffer *StagingBuffer,
-    size_t StagingOffset,
-    size_t StagingSize);
+    uint64_t StagingOffset,
+    uint64_t StagingSize);
 
 extern void Rr_UploadBuffer(
     Rr_UploadContext *UploadContext,

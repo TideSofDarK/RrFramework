@@ -120,8 +120,8 @@ extern void Rr_UploadStagingImage2D(
     Rr_SyncState SrcState,
     Rr_SyncState DstState,
     struct Rr_Buffer *StagingBuffer,
-    size_t StagingOffset,
-    size_t StagingSize);
+    uint64_t StagingOffset,
+    uint64_t StagingSize);
 
 extern void Rr_UploadImage2D(
     Rr_UploadContext *UploadContext,
@@ -139,7 +139,7 @@ extern Rr_Image2D *Rr_CreateImage2DRGBA8(
 
 Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
     Rr_UploadContext *UploadContext,
-    size_t DataSize,
+    uint64_t DataSize,
     char *Data,
     bool Linear);
 

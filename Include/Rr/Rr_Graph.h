@@ -86,17 +86,17 @@ extern Rr_GraphNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name);
 
 extern void Rr_TransferBufferData(
     Rr_GraphNode *Node,
-    size_t Size,
+    uint64_t Size,
     Rr_Buffer *SrcBuffer,
-    size_t SrcOffset,
+    uint64_t SrcOffset,
     Rr_Buffer *DstBuffer,
-    size_t DstOffset);
+    uint64_t DstOffset);
 
 extern Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec2 Extent,
     Rr_Image2D *Image,
     uint32_t MipLevel);
@@ -105,7 +105,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec2 Extent,
     Rr_Image2DArray *Image2DArray,
     uint32_t ArrayIndex,
@@ -115,7 +115,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec3 Extent,
     Rr_Image3D *Image3D,
     uint32_t MipLevel);
@@ -124,7 +124,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec2 Extent,
     Rr_ImageCube *ImageCube,
     Rr_ImageCubeFace Face,
@@ -134,7 +134,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec2 Extent,
     Rr_ImageCube *ImageCube,
     Rr_ImageCubeFace FirstFace,

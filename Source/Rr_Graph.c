@@ -311,7 +311,7 @@ static void Rr_ExecuteGraphicsNode(
     Viewport.Width = INT32_MAX;
     Viewport.Height = INT32_MAX;
 
-    size_t AttachmentCount =
+    uint32_t AttachmentCount =
         Node->ColorTargetCount + (Node->DepthTarget ? 1 : 0);
 
     Rr_RenderPassMapKey RenderPassKey;
@@ -366,7 +366,7 @@ static void Rr_ExecuteGraphicsNode(
     }
     if (Node->DepthTarget != NULL)
     {
-        size_t DepthIndex = AttachmentCount - 1;
+        uint32_t DepthIndex = AttachmentCount - 1;
 
         Rr_DepthTarget *DepthTarget = Node->DepthTarget;
 
@@ -1262,8 +1262,8 @@ static void Rr_ApplyBarrierBatch(
 
     Rr_Device *Device = &gRenderer->Device;
 
-    size_t MaxPossibleBarriers =
-        Barrier->BufferBarriers.Count + Barrier->ImageBarriers.Count;
+    uint32_t MaxPossibleBarriers = (uint32_t)Barrier->BufferBarriers.Count +
+                                   (uint32_t)Barrier->ImageBarriers.Count;
 
     if (MaxPossibleBarriers == 0)
     {
@@ -1789,11 +1789,11 @@ Rr_GraphNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name)
 
 void Rr_TransferBufferData(
     Rr_GraphNode *Node,
-    size_t Size,
+    uint64_t Size,
     Rr_Buffer *SrcBuffer,
-    size_t SrcOffset,
+    uint64_t SrcOffset,
     Rr_Buffer *DstBuffer,
-    size_t DstOffset)
+    uint64_t DstOffset)
 {
     Rr_TransferNode *TransferNode = &Node->Union.Transfer;
 
@@ -2012,7 +2012,7 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec3 Extent,
     Rr_Image *Image,
     uint32_t BaseLayer,
@@ -2072,7 +2072,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec2 Extent,
     Rr_Image2D *Image,
     uint32_t MipLevel)
@@ -2093,7 +2093,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec2 Extent,
     Rr_Image2DArray *Image2DArray,
     uint32_t ArrayIndex,
@@ -2115,7 +2115,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec3 Extent,
     Rr_Image3D *Image3D,
     uint32_t MipLevel)
@@ -2140,7 +2140,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec2 Extent,
     Rr_ImageCube *ImageCube,
     Rr_ImageCubeFace Face,
@@ -2165,7 +2165,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
-    size_t BufferOffset,
+    uint64_t BufferOffset,
     Rr_IntVec2 Extent,
     Rr_ImageCube *ImageCube,
     Rr_ImageCubeFace FirstFace,
