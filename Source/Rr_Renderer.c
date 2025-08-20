@@ -66,10 +66,7 @@ static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 
 void Rr_SetSwapchainDirty(bool Dirty)
 {
-    atomic_store_explicit(
-        &gRenderer->Swapchain.RecreatePending,
-        Dirty,
-        memory_order_relaxed);
+    Rr_StoreAtomicRelaxed(&gRenderer->Swapchain.RecreatePending, Dirty);
 }
 
 static bool Rr_InitSwapchain(void)
@@ -87,9 +84,7 @@ static bool Rr_InitSwapchain(void)
     bool Recreate =
         gRenderer->Swapchain.Extent.width != (uint32_t)WindowSize.Width ||
         gRenderer->Swapchain.Extent.height != (uint32_t)WindowSize.Height ||
-        atomic_load_explicit(
-            &gRenderer->Swapchain.RecreatePending,
-            memory_order_relaxed);
+        Rr_LoadAtomicRelaxed(&gRenderer->Swapchain.RecreatePending);
 
     if (!Recreate)
     {
@@ -593,7 +588,7 @@ static inline void Rr_ProcessReleasedObjects(void)
          It.Element != gRenderer->ReleasedBuffers.End.Element;)
     {
         Rr_Buffer *Buffer = *(Rr_Buffer **)It.Element;
-        if (!atomic_load_explicit(&Buffer->RefCount, memory_order_relaxed))
+        if (!Rr_LoadAtomicRelaxed(&Buffer->RefCount))
         {
             Rr_DestroyBuffer(Buffer);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedBuffers, &It);
@@ -608,7 +603,7 @@ static inline void Rr_ProcessReleasedObjects(void)
          It.Element != gRenderer->ReleasedImages.End.Element;)
     {
         Rr_Image *Image = *(Rr_Image **)It.Element;
-        if (!atomic_load_explicit(&Image->RefCount, memory_order_relaxed))
+        if (!Rr_LoadAtomicRelaxed(&Image->RefCount))
         {
             Rr_DestroyImage(Image);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedImages, &It);
@@ -623,7 +618,7 @@ static inline void Rr_ProcessReleasedObjects(void)
          It.Element != gRenderer->ReleasedSamplers.End.Element;)
     {
         Rr_Sampler *Sampler = *(Rr_Sampler **)It.Element;
-        if (!atomic_load_explicit(&Sampler->RefCount, memory_order_relaxed))
+        if (!Rr_LoadAtomicRelaxed(&Sampler->RefCount))
         {
             Rr_DestroySampler(Sampler);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedSamplers, &It);
@@ -639,9 +634,7 @@ static inline void Rr_ProcessReleasedObjects(void)
     {
         Rr_ComputePipeline *ComputePipeline =
             *(Rr_ComputePipeline **)It.Element;
-        if (!atomic_load_explicit(
-                &ComputePipeline->RefCount,
-                memory_order_relaxed))
+        if (!Rr_LoadAtomicRelaxed(&ComputePipeline->RefCount))
         {
             Rr_DestroyComputePipeline(ComputePipeline);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedComputePipelines, &It);
@@ -657,9 +650,7 @@ static inline void Rr_ProcessReleasedObjects(void)
     {
         Rr_GraphicsPipeline *GraphicsPipeline =
             *(Rr_GraphicsPipeline **)It.Element;
-        if (!atomic_load_explicit(
-                &GraphicsPipeline->RefCount,
-                memory_order_relaxed))
+        if (!Rr_LoadAtomicRelaxed(&GraphicsPipeline->RefCount))
         {
             Rr_DestroyGraphicsPipeline(GraphicsPipeline);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedGraphicsPipelines, &It);
@@ -674,9 +665,7 @@ static inline void Rr_ProcessReleasedObjects(void)
          It.Element != gRenderer->ReleasedPipelineLayouts.End.Element;)
     {
         Rr_PipelineLayout *PipelineLayout = *(Rr_PipelineLayout **)It.Element;
-        if (!atomic_load_explicit(
-                &PipelineLayout->RefCount,
-                memory_order_relaxed))
+        if (!Rr_LoadAtomicRelaxed(&PipelineLayout->RefCount))
         {
             Rr_DestroyPipelineLayout(PipelineLayout);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedPipelineLayouts, &It);

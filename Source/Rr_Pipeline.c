@@ -217,10 +217,7 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    atomic_fetch_add_explicit(
-        &CreateInfo->Layout->RefCount,
-        1,
-        memory_order_relaxed);
+    Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
 
     Pipeline->Layout = CreateInfo->Layout;
 
@@ -298,10 +295,7 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
 
-    atomic_fetch_sub_explicit(
-        &ComputePipeline->Layout->RefCount,
-        1,
-        memory_order_relaxed);
+    Rr_DecrementAtomicRelaxed(&ComputePipeline->Layout->RefCount);
 
     Rr_ComputePipelineHiveIterator It = Rr_GetComputePipelineHiveIterator(
         &gRenderer->ComputePipelines,
@@ -332,10 +326,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    atomic_fetch_add_explicit(
-        &CreateInfo->Layout->RefCount,
-        1,
-        memory_order_relaxed);
+    Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
 
     Pipeline->Layout = CreateInfo->Layout;
     Pipeline->HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
@@ -642,10 +633,7 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
-    atomic_fetch_sub_explicit(
-        &GraphicsPipeline->Layout->RefCount,
-        1,
-        memory_order_relaxed);
+    Rr_DecrementAtomicRelaxed(&GraphicsPipeline->Layout->RefCount);
 
     Rr_GraphicsPipelineHiveIterator It = Rr_GetGraphicsPipelineHiveIterator(
         &gRenderer->GraphicsPipelines,

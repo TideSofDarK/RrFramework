@@ -44,7 +44,7 @@ struct Rr_LoadThread
     thrd_t Handle;
     mtx_t Mutex;
     cnd_t Condition;
-    atomic_bool QuitRequested;
+    Rr_AtomicInt QuitRequested;
 
     Rr_Spinlock Lock;
     Rr_Arena *Arena;

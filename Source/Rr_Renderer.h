@@ -54,7 +54,7 @@ struct Rr_Swapchain
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
     VkExtent3D Extent;
-    atomic_bool RecreatePending;
+    Rr_AtomicInt RecreatePending;
 };
 
 typedef struct Rr_ImmediateMode Rr_ImmediateMode;

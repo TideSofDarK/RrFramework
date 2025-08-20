@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include <Rr/Rr_Platform.h>
+#include "Rr_Platform.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -88,4 +88,37 @@ void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
 void Rr_AlignedFree(void *Ptr)
 {
     _aligned_free(Ptr);
+}
+
+/* TODO: Figure out *NoFence function. */
+
+int Rr_LoadAtomicRelaxed(Rr_AtomicInt *AtomicInt)
+{
+    /* return _InterlockedOr((long *)&AtomicInt->Value, 0); */
+    return AtomicInt->Value;
+}
+
+int Rr_ExchangeAtomicAcquire(Rr_AtomicInt *AtomicInt, int Value)
+{
+    return _InterlockedExchange(&AtomicInt->Value, Value);
+}
+
+void Rr_StoreAtomicRelease(Rr_AtomicInt *AtomicInt, int Value)
+{
+    _InterlockedExchange(&AtomicInt->Value, Value);
+}
+
+void Rr_StoreAtomicRelaxed(Rr_AtomicInt *AtomicInt, int Value)
+{
+    AtomicInt->Value = Value;
+}
+
+int Rr_IncrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
+{
+    return _InterlockedIncrement(&AtomicInt->Value);
+}
+
+int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
+{
+    return _InterlockedDecrement(&AtomicInt->Value);
 }

@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include <Rr/Rr_Platform.h>
+#include "Rr_Platform.h"
 
 #define __USE_POSIX199309
 #include <assert.h>
@@ -102,4 +102,34 @@ void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
 void Rr_AlignedFree(void *Ptr)
 {
     free(Ptr);
+}
+
+int Rr_LoadAtomicRelaxed(Rr_AtomicInt *AtomicInt)
+{
+    return __atomic_load_n(&AtomicInt->Value, __ATOMIC_RELAXED);
+}
+
+int Rr_ExchangeAtomicAcquire(Rr_AtomicInt *AtomicInt, int Value)
+{
+    return __atomic_exchange_n(&AtomicInt->Value, Value, __ATOMIC_ACQUIRE);
+}
+
+void Rr_StoreAtomicRelease(Rr_AtomicInt *AtomicInt, int Value)
+{
+    __atomic_store_n(&AtomicInt->Value, Value, __ATOMIC_RELEASE);
+}
+
+void Rr_StoreAtomicRelaxed(Rr_AtomicInt *AtomicInt, int Value)
+{
+    __atomic_store_n(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
+}
+
+int Rr_IncrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
+{
+    return __atomic_fetch_add(&AtomicInt->Value, 1, __ATOMIC_RELAXED);
+}
+
+int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
+{
+    return __atomic_fetch_sub(&AtomicInt->Value, 1, __ATOMIC_RELAXED);
 }

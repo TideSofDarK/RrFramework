@@ -33,6 +33,8 @@
 #define RR_HIVE_PREFIX    Rr_
 #include <Rr/Rr_Hive.h>
 
+#include "Rr_Platform.h"
+
 struct Rr_Renderer;
 
 typedef union Rr_Object Rr_Object;
@@ -64,7 +66,7 @@ struct Rr_App
     void (*IterateFunc)(void);
     void (*CleanupFunc)(void);
 
-    _Atomic bool QuitRequested;
+    Rr_AtomicInt QuitRequested;
 
     Rr_FrameTime FrameTime;
 

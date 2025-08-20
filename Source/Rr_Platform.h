@@ -28,8 +28,6 @@
 
 #include <Rr/Rr_Memory.h>
 
-#include <stdatomic.h>
-
 struct Rr_Platform
 {
     void *Window;
@@ -58,14 +56,6 @@ extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
 
 extern bool Rr_CreateVulkanSurface(void *Instance, void **Surface);
 
-typedef atomic_bool Rr_Spinlock;
-
-extern void Rr_LockSpinlock(Rr_Spinlock *Spinlock);
-
-extern bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock);
-
-extern void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock);
-
 extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
 
 extern void Rr_AlignedFree(void *Ptr);
@@ -83,5 +73,30 @@ extern bool Rr_IsWindowFullscreen(void);
 extern void Rr_SetWindowFullscreen(bool Fullscreen);
 
 extern float Rr_GetDisplayRefreshRate(void);
+
+typedef struct Rr_AtomicInt
+{
+    int Value;
+} Rr_AtomicInt;
+
+extern int Rr_LoadAtomicRelaxed(Rr_AtomicInt *AtomicInt);
+
+extern int Rr_ExchangeAtomicAcquire(Rr_AtomicInt *AtomicInt, int Value);
+
+extern void Rr_StoreAtomicRelease(Rr_AtomicInt *AtomicInt, int Value);
+
+extern void Rr_StoreAtomicRelaxed(Rr_AtomicInt *AtomicInt, int Value);
+
+extern int Rr_IncrementAtomicRelaxed(Rr_AtomicInt* AtomicInt);
+
+extern int Rr_DecrementAtomicRelaxed(Rr_AtomicInt* AtomicInt);
+
+typedef Rr_AtomicInt Rr_Spinlock;
+
+extern void Rr_LockSpinlock(Rr_Spinlock *Spinlock);
+
+extern bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock);
+
+extern void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock);
 
 extern Rr_Platform *gPlatform;

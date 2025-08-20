@@ -3570,7 +3570,6 @@ static inline bool Rr_UIInputFloatMulti(
             Titles[Index],
             Title,
             Index);
-        size_t CurrentTitleLength;
         Rr_UIHash CurrentHash = Rr_UIGetTitleHash(CurrentTitle, NULL);
         char Buffer[64];
         snprintf(Buffer, 64, "%.2f", Values[Index]);
@@ -4287,9 +4286,9 @@ static inline Rr_Vec4 Rr_U32ToSRGB(uint32_t Color)
     Result.B = (float)((Color >> 8) & (0x000000FF)) / 255.0f;
     Result.A = (float)(Color & (0x000000FF)) / 255.0f;
 
-    Result.R = powf(Result.R, 2.2);
-    Result.G = powf(Result.G, 2.2);
-    Result.B = powf(Result.B, 2.2);
+    Result.R = powf(Result.R, 2.2f);
+    Result.G = powf(Result.G, 2.2f);
+    Result.B = powf(Result.B, 2.2f);
 
     return Result;
 }

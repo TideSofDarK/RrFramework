@@ -43,7 +43,8 @@ struct Rr_Buffer
     VkBufferUsageFlags Usage;
     uint32_t AllocatedBufferCount;
     Rr_AllocatedBuffer AllocatedBuffers[RR_FRAME_OVERLAP];
-    atomic_uint RefCount;
+
+    Rr_AtomicInt RefCount;
 };
 
 #define RR_HIVE_TYPE      Rr_Buffer

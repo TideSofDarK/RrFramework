@@ -219,7 +219,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Win32.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_WIN32)
     if ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
-        target_compile_options(${PROJECT_NAME} PRIVATE /experimental:c11atomics /std:c11)
+        target_compile_options(${PROJECT_NAME} PRIVATE /std:c11)
     endif ()
 endif ()
 

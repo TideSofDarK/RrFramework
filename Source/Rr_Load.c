@@ -365,14 +365,12 @@ static int Rr_LoadThreadProc(void *UserData)
 
     while (true)
     {
-        if (atomic_load_explicit(
-                &LoadThread->QuitRequested,
-                memory_order_relaxed))
+        if (Rr_LoadAtomicRelaxed(&LoadThread->QuitRequested))
         {
             break;
         }
 
-        if (atomic_load_explicit(&gApp->QuitRequested, memory_order_relaxed))
+        if (Rr_LoadAtomicRelaxed(&gApp->QuitRequested))
         {
             break;
         }
@@ -437,10 +435,7 @@ Rr_LoadThread *Rr_CreateLoadThread(void)
 
 void Rr_DestroyLoadThread(Rr_LoadThread *LoadThread)
 {
-    atomic_store_explicit(
-        &LoadThread->QuitRequested,
-        true,
-        memory_order_relaxed);
+    Rr_StoreAtomicRelaxed(&LoadThread->QuitRequested, true);
     cnd_signal(&LoadThread->Condition);
     thrd_join(LoadThread->Handle, NULL);
     cnd_destroy(&LoadThread->Condition);

@@ -38,7 +38,7 @@
 struct Rr_Sampler
 {
     VkSampler Handle;
-    atomic_uint RefCount;
+    Rr_AtomicInt RefCount;
 };
 
 #define RR_HIVE_TYPE      Rr_Sampler
@@ -100,7 +100,8 @@ struct Rr_Image
     Rr_ImageFlags Flags;
     uint32_t AllocatedImageCount;
     Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP];
-    atomic_uint RefCount;
+
+    Rr_AtomicInt RefCount;
 };
 
 typedef struct Rr_Image Rr_Image;

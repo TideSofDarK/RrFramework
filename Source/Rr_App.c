@@ -175,7 +175,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
         Rr_CalculateDeltaTime(&gApp->FrameTime);
 
-        if (atomic_load_explicit(&gApp->QuitRequested, memory_order_relaxed))
+        if (Rr_LoadAtomicRelaxed(&gApp->QuitRequested))
         {
             break;
         }
@@ -235,7 +235,7 @@ uint64_t Rr_GetTimeNS(void)
 
 void Rr_Quit(void)
 {
-    atomic_store_explicit(&gApp->QuitRequested, true, memory_order_relaxed);
+    Rr_StoreAtomicRelaxed(&gApp->QuitRequested, 1);
 }
 
 Rr_Event *Rr_AddEvent(void)

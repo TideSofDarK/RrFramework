@@ -56,11 +56,11 @@ void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
 {
     for (;;)
     {
-        if (!atomic_exchange_explicit(Spinlock, true, memory_order_acquire))
+        if (!Rr_ExchangeAtomicAcquire(Spinlock, 1))
         {
             return;
         }
-        while (atomic_load_explicit(Spinlock, memory_order_relaxed))
+        while (Rr_LoadAtomicRelaxed(Spinlock))
         {
         }
     }
@@ -69,12 +69,12 @@ void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
 bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock)
 {
     bool Locked =
-        !atomic_load_explicit(Spinlock, memory_order_relaxed) &&
-        !atomic_exchange_explicit(Spinlock, true, memory_order_acquire);
+        !Rr_LoadAtomicRelaxed(Spinlock) &&
+        !Rr_ExchangeAtomicAcquire(Spinlock, 1);
     return Locked;
 }
 
 void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock)
 {
-    atomic_store_explicit(Spinlock, false, memory_order_release);
+    Rr_StoreAtomicRelease(Spinlock, 0);
 }
