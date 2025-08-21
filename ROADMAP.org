@@ -13,7 +13,7 @@
 - [X] Simplify pipeline layout creation.
       In the end it had to be more complex though.
 - [X] Inter-node sync, e.g., sequential compute dispatches writing to the same resource.
-      Added RW versions of BindStorageXXX commands for better synchronization opportunities.
+      Added RW versions of Rr_BindStorageXXX commands for better synchronization opportunities.
       Added Rr_ComputeBarrier() for compute nodes.
       Since you can't put barriers amidst render passes, it's user responsibility to avoid undefined behavior.
 - [ ] Remove Rr_LoadingThread.
@@ -25,7 +25,7 @@
 - [X] Binding arrays support.
 - [X] 3D image support.
 - [X] Image array support.
-- [X] Refactor duplicated code in ExecuteComputeNode and ExecuteGraphicsNode functions.
+- [X] Refactor duplicated code in Rr_ExecuteComputeNode and Rr_ExecuteGraphicsNode functions.
 - [ ] MSAA support.
 - [X] Check if descriptor set layouts are properly hashed.
 - [ ] Minimal error handling pass.
@@ -33,6 +33,7 @@
       1) Image/buffer creation.
       2) Graph node creation.
       3) Binding resources.
+- [ ] Refactor Rr_AddXXXNode functions to ensure better type safety.
 
 * Features
 
