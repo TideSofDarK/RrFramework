@@ -4906,10 +4906,12 @@ void Rr_UIDebugOverlay(void)
         {
             Rr_UIDebugOverlayArena(gApp->Arena, "Application");
             Rr_UIDebugOverlayArena(gRenderer->Arena, "Renderer");
-            for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+            for (uint32_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
             {
                 Rr_Frame *Frame = gRenderer->Frames + Index;
-                Rr_UIDebugOverlayArena(Frame->Arena, "Frame");
+                char FrameString[64];
+                sprintf(FrameString, "Frame#%d", Index);
+                Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
             }
             Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
             Rr_UIDebugOverlayArena(gPlatform->Arena, "Window");
