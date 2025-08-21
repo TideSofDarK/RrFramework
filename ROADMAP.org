@@ -11,6 +11,7 @@
 - [X] Hash collision handling across all usages of Rr_Map.
 - [X] Hashing objects such as VkFramebuffer looks very bad.
 - [X] Simplify pipeline layout creation.
+      In the end it had to be more complex though.
 - [X] Inter-node sync, e.g., sequential compute dispatches writing to the same resource.
       Added RW versions of BindStorageXXX commands for better synchronization opportunities.
       Added Rr_ComputeBarrier() for compute nodes.
@@ -24,15 +25,14 @@
 - [X] Binding arrays support.
 - [X] 3D image support.
 - [X] Image array support.
-- [X] Get rid of duplicated code in ExecuteCompute and ExecuteGraphics functions.
+- [X] Refactor duplicated code in ExecuteComputeNode and ExecuteGraphicsNode functions.
 - [ ] MSAA support.
-- [ ] Check if descriptor set layouts are properly hashed.
+- [X] Check if descriptor set layouts are properly hashed.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
       1) Image/buffer creation.
       2) Graph node creation.
       3) Binding resources.
-
 
 * Features
 
@@ -72,6 +72,7 @@
 
 - [X] Move to GLFW.
 - [X] Move to C11.
+- [ ] Move back to C99?
 - [X] Remove InputMap.
 - [X] Decide where it makes sense to use size_t instead of uint32_t. Also VK_DEVICE_SIZE etc.
       Solution: use size_t for user-provided counts (i.e. number of color targets).

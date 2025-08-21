@@ -652,14 +652,21 @@ struct SQuadTreeApp
     void Init()
     {
         std::array Bindings = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
-            Rr_Binding{ 1, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
         };
         std::array BindingSets = {
             Rr_BindingSet{
                 Bindings.size(),
                 Bindings.data(),
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
         Layout =

@@ -75,12 +75,14 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 }
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    uint32_t SetCount,
+    size_t BindingSetCount,
     Rr_BindingSet *BindingSets)
 {
-    assert(SetCount <= RR_MAX_SETS);
+    assert(BindingSetCount <= RR_MAX_SETS);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
@@ -91,25 +93,50 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-    PipelineLayout->SetLayoutCount = SetCount;
-
-    Rr_Device *Device = &gRenderer->Device;
-
+    Rr_DescriptorSetLayoutKey Keys[RR_MAX_SETS] = { 0 };
     VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
 
-    for (size_t Index = 0; Index < SetCount; ++Index)
+    for (size_t SetIndex = 0; SetIndex < BindingSetCount; ++SetIndex)
     {
-        Rr_BindingSet *Set = BindingSets + Index;
+        Rr_BindingSet *Set = BindingSets + SetIndex;
 
-        PipelineLayout->SetLayouts[Index] = Rr_GetDescriptorSetLayout(Set);
-        PipelineLayout->Stages[Index] =
-            Rr_ToVulkanShaderStageFlags(Set->Stages);
-        Handles[Index] = PipelineLayout->SetLayouts[Index]->Handle;
+        assert(Set->BindingCount > 0);
+        assert(Set->BindingCount < RR_MAX_BINDINGS);
+
+        for (uint32_t Index = 0; Index < Set->BindingCount; ++Index)
+        {
+            Rr_Binding *Binding = Set->Bindings + Index;
+
+            assert(Binding->Type != RR_BINDING_TYPE_INVALID);
+            assert(Binding->Stages != 0);
+            assert(Binding->Index < RR_MAX_BINDINGS);
+
+            Rr_PackedBinding *PackedBinding =
+                &Keys[SetIndex].Bindings[Binding->Index];
+
+            /* NOTE: Allows to omit explicitly setting Count to 1. */
+            uint8_t BindingCount = Binding->Count == 0 ? 1 : Binding->Count;
+
+            PackedBinding->Index = (uint8_t)Binding->Index;
+            PackedBinding->Type =
+                (uint8_t)Rr_ToVulkanDescriptorType(Binding->Type);
+            PackedBinding->Count = BindingCount;
+            PackedBinding->Stages =
+                (uint8_t)Rr_ToVulkanShaderStageFlags(Binding->Stages);
+
+            Keys[SetIndex].TotalBindingCount++;
+        }
+
+        Rr_DescriptorSetLayout *DescriptorSetLayout =
+            Rr_GetDescriptorSetLayout(&Keys[SetIndex]);
+        PipelineLayout->SetLayouts[SetIndex] = DescriptorSetLayout;
+        PipelineLayout->SetLayoutCount++;
+        Handles[SetIndex] = DescriptorSetLayout->Handle;
     }
 
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = SetCount,
+        .setLayoutCount = BindingSetCount,
         .pSetLayouts = Handles,
     };
 
@@ -572,7 +599,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     VkGraphicsPipelineCreateInfo PipelineInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = NULL,
         .stageCount = (uint32_t)ShaderStages.Count,
         .pStages = ShaderStages.Data,
         .pVertexInputState = &VertexInputInfo,
@@ -645,97 +671,90 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
         (void *)GraphicsPipeline);
 }
 
-Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_BindingSet *BindingSet)
+Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
+    Rr_DescriptorSetLayoutKey *Key)
 {
-    uint32_t Hash = XXH32(
-        BindingSet->Bindings,
-        sizeof(Rr_Binding) * BindingSet->BindingCount,
-        0);
-    for (size_t LayoutIndex = 0;
-         LayoutIndex < gRenderer->DescriptorSetLayouts.Count;
-         ++LayoutIndex)
-    {
-        Rr_DescriptorSetLayout *DescriptorSetLayout =
-            gRenderer->DescriptorSetLayouts.Data + LayoutIndex;
-        if (DescriptorSetLayout == NULL)
-        {
-            continue;
-        }
-        if (DescriptorSetLayout->Hash == Hash &&
-            DescriptorSetLayout->Set.BindingCount == BindingSet->BindingCount &&
-            DescriptorSetLayout->Set.Stages == BindingSet->Stages)
-        {
-            bool Fail = false;
-            for (size_t BindingIndex = 0;
-                 BindingIndex < BindingSet->BindingCount;
-                 ++BindingIndex)
-            {
-                Rr_Binding *BindingA = &BindingSet->Bindings[BindingIndex];
-                Rr_Binding *BindingB =
-                    &DescriptorSetLayout->Set.Bindings[BindingIndex];
-                if (BindingA->Index != BindingB->Index ||
-                    BindingA->Count != BindingB->Count ||
-                    BindingA->Type != BindingB->Type)
-                {
-                    Fail = true;
-                    break;
-                }
-            }
-            if (!Fail)
-            {
+    VkDescriptorSetLayout *HandleRef = NULL;
 
-                return DescriptorSetLayout;
-            }
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    size_t HashSize = sizeof(Rr_DescriptorSetLayoutKey);
+
+    Rr_DescriptorSetLayout **MapRef =
+        &gRenderer->DescriptorSetLayoutStorage.Map;
+    for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
+    {
+        if ((*MapRef)->Handle == VK_NULL_HANDLE)
+        {
+            (*MapRef)->Key = *Key;
+            HandleRef = &(*MapRef)->Handle;
+
+            goto Found;
         }
+        else if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
+        {
+            HandleRef = &(*MapRef)->Handle;
+
+            goto Found;
+        }
+        MapRef = &(*MapRef)->Children[Hash >> 62];
+    }
+    *MapRef = Rr_PushDescriptorSetLayoutIntoHive(
+                  &gRenderer->DescriptorSetLayoutStorage.Hive,
+                  gRenderer->Arena)
+                  .Element;
+    (*MapRef)->Key = *Key;
+    (*MapRef)->Handle = VK_NULL_HANDLE;
+    RR_ZERO((*MapRef)->Children);
+    HandleRef = &(*MapRef)->Handle;
+
+Found:
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
+    if (*HandleRef != VK_NULL_HANDLE)
+    {
+        return *MapRef;
     }
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = &gRenderer->Device;
 
-    RR_ARRAY(VkDescriptorSetLayoutBinding) Bindings = { 0 };
+    RR_ARRAY(VkDescriptorSetLayoutBinding) VkBindings = { 0 };
 
-    for (size_t BindingIndex = 0; BindingIndex < BindingSet->BindingCount;
+    for (size_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
          ++BindingIndex)
     {
-        Rr_Binding *Binding = BindingSet->Bindings + BindingIndex;
+        Rr_PackedBinding *Binding = Key->Bindings + BindingIndex;
 
-        *RR_PUSH_INTO_ARRAY(&Bindings, Scratch.Arena) =
+        if (Binding->Count == 0)
+        {
+            continue;
+        }
+
+        *RR_PUSH_INTO_ARRAY(&VkBindings, Scratch.Arena) =
             (VkDescriptorSetLayoutBinding){
                 .binding = Binding->Index,
-                .descriptorType = Rr_ToVulkanDescriptorType(Binding->Type),
-                .descriptorCount = Binding->Count > 0 ? Binding->Count : 1,
-                .stageFlags = Rr_ToVulkanShaderStageFlags(BindingSet->Stages),
+                .descriptorType = Binding->Type,
+                .descriptorCount = Binding->Count,
+                .stageFlags = Binding->Stages,
             };
     }
 
     VkDescriptorSetLayoutCreateInfo CreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = (uint32_t)Bindings.Count,
-        .pBindings = Bindings.Data,
+        .bindingCount = (uint32_t)VkBindings.Count,
+        .pBindings = VkBindings.Data,
     };
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
-    Rr_DescriptorSetLayout *DescriptorSetLayout =
-        RR_PUSH_INTO_ARRAY(&gRenderer->DescriptorSetLayouts, gRenderer->Arena);
-
-    DescriptorSetLayout->Hash = Hash;
-    DescriptorSetLayout->Set = *BindingSet;
-    RR_ALLOC_COPY(
-        gRenderer->Arena,
-        DescriptorSetLayout->Set.Bindings,
-        BindingSet->Bindings,
-        sizeof(Rr_Binding) * BindingSet->BindingCount);
     Device->CreateDescriptorSetLayout(
         Device->Handle,
         &CreateInfo,
         NULL,
-        &DescriptorSetLayout->Handle);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+        HandleRef);
 
     Rr_DestroyScratch(Scratch);
 
-    return DescriptorSetLayout;
+    return *MapRef;
 }

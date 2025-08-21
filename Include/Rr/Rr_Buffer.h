@@ -62,10 +62,6 @@ extern void Rr_FlushBufferRange(
     uint64_t Offset,
     uint64_t Size);
 
-extern void Rr_UploadToDeviceBufferImmediate(
-    Rr_Buffer *DstBuffer,
-    Rr_Data Data);
-
 #ifdef __cplusplus
 }
 #endif

@@ -31,19 +31,49 @@
 
 #include <Rr/Rr_Platform.h>
 
+typedef struct Rr_PackedBinding Rr_PackedBinding;
+struct Rr_PackedBinding
+{
+    uint8_t Index;
+    uint8_t Type;
+    uint8_t Count;
+    uint8_t Stages;
+};
+
+typedef struct Rr_DescriptorSetLayoutKey Rr_DescriptorSetLayoutKey;
+struct Rr_DescriptorSetLayoutKey
+{
+    uint32_t TotalBindingCount;
+    Rr_PackedBinding Bindings[RR_MAX_BINDINGS];
+};
+
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
 struct Rr_DescriptorSetLayout
 {
-    Rr_BindingSet Set;
+    Rr_DescriptorSetLayoutKey Key;
     VkDescriptorSetLayout Handle;
-    uint32_t Hash;
+    Rr_DescriptorSetLayout *Children[4];
 };
+
+#define RR_HIVE_TYPE      Rr_DescriptorSetLayout
+#define RR_HIVE_TYPE_NAME DescriptorSetLayout
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+typedef struct Rr_DescriptorSetLayoutStorage Rr_DescriptorSetLayoutStorage;
+struct Rr_DescriptorSetLayoutStorage
+{
+    Rr_DescriptorSetLayout *Map;
+    Rr_DescriptorSetLayoutHive Hive;
+};
+
+extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
+    Rr_DescriptorSetLayoutKey *Key);
 
 struct Rr_PipelineLayout
 {
-    size_t SetLayoutCount;
+    uint32_t SetLayoutCount;
     Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
-    VkShaderStageFlags Stages[RR_MAX_SETS];
 
     VkPipelineLayout Handle;
 
@@ -88,5 +118,3 @@ struct Rr_GraphicsPipeline
 #include <Rr/Rr_Hive.h>
 
 extern void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
-
-extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(Rr_BindingSet *Set);

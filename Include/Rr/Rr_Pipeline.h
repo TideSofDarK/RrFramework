@@ -226,6 +226,7 @@ struct Rr_Binding
 {
     uint32_t Index;
     Rr_BindingType Type;
+    Rr_ShaderStage Stages;
     uint32_t Count;
 };
 
@@ -234,12 +235,11 @@ struct Rr_BindingSet
 {
     size_t BindingCount;
     Rr_Binding *Bindings;
-    Rr_ShaderStage Stages;
 };
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    uint32_t SetCount,
-    Rr_BindingSet *BindingSets);
+    size_t BindingSetCount,
+    Rr_BindingSet *BindingSet);
 
 extern void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
 

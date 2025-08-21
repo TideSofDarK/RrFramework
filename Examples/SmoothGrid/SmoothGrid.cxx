@@ -125,14 +125,14 @@ struct SSmoothGridApp
     void InitPipeline()
     {
         std::array Bindings = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
-        };
-        std::array Sets = {
-            Rr_BindingSet{
-                Bindings.size(),
-                Bindings.data(),
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
                 RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
         };
         PipelineLayout =
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());

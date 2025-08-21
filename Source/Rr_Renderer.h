@@ -190,12 +190,9 @@ struct Rr_Renderer
     size_t FrameIndex;  /* Current frame-in-flight index. */
     size_t FrameNumber; /* Total frames rendered. */
 
+    Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
     Rr_FramebufferStorage FramebufferStorage;
     Rr_RenderPassStorage RenderPassStorage;
-
-    RR_ARRAY(Rr_DescriptorSetLayout) DescriptorSetLayouts;
-
-    Rr_ImmediateMode ImmediateMode;
 
     RR_ARRAY(Rr_PendingLoad) PendingLoads;
 
@@ -233,10 +230,6 @@ extern void Rr_SetSwapchainDirty(bool Dirty);
 extern void Rr_NewFrame(void);
 
 extern void Rr_DrawFrame(void);
-
-extern VkCommandBuffer Rr_BeginImmediate(void);
-
-extern void Rr_EndImmediate(void);
 
 extern Rr_Frame *Rr_GetCurrentFrame(void);
 

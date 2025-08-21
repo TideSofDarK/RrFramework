@@ -353,44 +353,6 @@ void Rr_UploadBuffer(
         (uint64_t)Data.Size);
 }
 
-void Rr_UploadToDeviceBufferImmediate(Rr_Buffer *DstBuffer, Rr_Data Data)
-{
-    assert(DstBuffer != NULL);
-
-    Rr_Device *Device = &gRenderer->Device;
-
-    VkCommandBuffer CommandBuffer = Rr_BeginImmediate();
-
-    Rr_Buffer *SrcBuffer = Rr_CreateBuffer(
-        Data.Size,
-        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
-    Rr_AllocatedBuffer *SrcAllocatedBuffer =
-        Rr_GetCurrentAllocatedBuffer(SrcBuffer);
-    memcpy(SrcAllocatedBuffer->MappedData, Data.Pointer, Data.Size);
-
-    VkBufferCopy BufferCopy = {
-        .dstOffset = 0,
-        .size = (VkDeviceSize)Data.Size,
-        .srcOffset = 0,
-    };
-
-    for (size_t Index = 0; Index < DstBuffer->AllocatedBufferCount; ++Index)
-    {
-        Rr_AllocatedBuffer *DstAllocatedBuffer =
-            &DstBuffer->AllocatedBuffers[Index];
-        Device->CmdCopyBuffer(
-            CommandBuffer,
-            SrcAllocatedBuffer->Handle,
-            DstAllocatedBuffer->Handle,
-            1,
-            &BufferCopy);
-    }
-
-    Rr_EndImmediate();
-
-    Rr_DestroyBuffer(SrcBuffer);
-}
-
 Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer)
 {
     uint32_t AllocatedBufferIndex =

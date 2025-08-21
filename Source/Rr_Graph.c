@@ -2459,22 +2459,25 @@ void Rr_BindSamplerAt(
         }));
 }
 
-VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSet(
+VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSetBinding(
     Rr_GraphNode *Node,
-    uint32_t Set)
+    uint32_t Set,
+    uint32_t SetBinding)
 {
     VkPipelineStageFlags StageMask = 0;
-    if (Node->CurrentLayout->Stages[Set] & VK_SHADER_STAGE_COMPUTE_BIT)
+    VkShaderStageFlags ShaderMask =
+        Node->CurrentLayout->SetLayouts[Set]->Key.Bindings[SetBinding].Stages;
+    if (ShaderMask & VK_SHADER_STAGE_COMPUTE_BIT)
     {
         StageMask |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     }
     else
     {
-        if (Node->CurrentLayout->Stages[Set] & VK_SHADER_STAGE_VERTEX_BIT)
+        if (ShaderMask & VK_SHADER_STAGE_VERTEX_BIT)
         {
             StageMask |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
         }
-        if (Node->CurrentLayout->Stages[Set] & VK_SHADER_STAGE_FRAGMENT_BIT)
+        if (ShaderMask & VK_SHADER_STAGE_FRAGMENT_BIT)
         {
             StageMask |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         }
@@ -2513,7 +2516,8 @@ static void Rr_BindSampledImageEx(
         ImageHandle,
         &(Rr_SyncState){
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
+            .StageMask =
+                Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
             .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         });
 }
@@ -2684,7 +2688,8 @@ static void Rr_BindCombinedImageSamplerEx(
         ImageHandle,
         &(Rr_SyncState){
             .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
+            .StageMask =
+                Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
             .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         });
 }
@@ -2883,7 +2888,8 @@ void Rr_BindUniformBufferAt(
         BufferHandle,
         &(Rr_SyncState){
             .AccessMask = VK_ACCESS_UNIFORM_READ_BIT,
-            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
+            .StageMask =
+                Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
         });
 }
 
@@ -2925,7 +2931,8 @@ static void Rr_BindStorageBufferEx(
         BufferHandle,
         &(Rr_SyncState){
             .AccessMask = AccessMask,
-            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
+            .StageMask =
+                Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
         });
 }
 
@@ -3033,7 +3040,8 @@ static void Rr_BindStorageImage2DEx(
         ImageHandle,
         &(Rr_SyncState){
             .AccessMask = AccessMask,
-            .StageMask = Rr_GetVulkanPipelineStageMaskForSet(Node, Set),
+            .StageMask =
+                Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
             .Layout = VK_IMAGE_LAYOUT_GENERAL,
         });
 }

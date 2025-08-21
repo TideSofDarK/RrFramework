@@ -255,16 +255,24 @@ struct SGSApp
         /* Setup graphics pipeline. */
 
         std::array Bindings = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
-            Rr_Binding{ 1, RR_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_Binding{ 2, RR_BINDING_TYPE_STORAGE_BUFFER },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{
-                Bindings.size(),
-                Bindings.data(),
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
                 RR_SHADER_STAGE_VERTEX_BIT,
             },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT,
+            },
+            Rr_Binding{
+                2,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT,
+            },
+        };
+        std::array BindingSets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
         };
         PipelineLayout =
             Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
@@ -308,12 +316,30 @@ struct SGSApp
             GPUSplat.Color = Splat->Color();
         }
 
-        SplatsBuffer = Rr_CreateBuffer(
-            sizeof(SGPUSplat) * AlignedCount,
-            RR_BUFFER_FLAGS_STORAGE_BIT);
-        Rr_UploadToDeviceBufferImmediate(
-            SplatsBuffer,
-            RR_MAKE_DATA(sizeof(SGPUSplat) * AlignedCount, GPUSplats.data()));
+        std::uint64_t SplatsDataSize = sizeof(SGPUSplat) * AlignedCount;
+        SplatsBuffer =
+            Rr_CreateBuffer(SplatsDataSize, RR_BUFFER_FLAGS_STORAGE_BIT);
+        {
+            Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+                SplatsDataSize,
+                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            std::memcpy(
+                Rr_GetMappedBufferData(StagingBuffer),
+                GPUSplats.data(),
+                SplatsDataSize);
+
+            Rr_GraphNode *TransferNode =
+                Rr_AddTransferNode(Rr_GetGraph(), "transfer");
+            Rr_TransferBufferData(
+                TransferNode,
+                SplatsDataSize,
+                StagingBuffer,
+                0,
+                SplatsBuffer,
+                0);
+
+            Rr_ReleaseBuffer(StagingBuffer);
+        }
 
         EntriesBuffer = Rr_CreateBuffer(
             sizeof(SGPUEntry) * AlignedCount,

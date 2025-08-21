@@ -155,15 +155,19 @@ struct SSkyboxApp
     void InitPipeline()
     {
         std::array Bindings = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
-            Rr_Binding{ 1, RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER },
-        };
-        std::array Sets = {
-            Rr_BindingSet{
-                Bindings.size(),
-                Bindings.data(),
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
                 RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
         };
         PipelineLayout =
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());

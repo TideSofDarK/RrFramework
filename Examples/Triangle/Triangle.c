@@ -45,11 +45,14 @@ static void Init(void)
         0.0f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,  1.0f,
     };
 
-    VertexBuffer =
-        Rr_CreateBuffer(sizeof(VertexData), RR_BUFFER_FLAGS_VERTEX_BIT);
-    Rr_UploadToDeviceBufferImmediate(
-        VertexBuffer,
-        RR_MAKE_DATA_ARRAY(VertexData));
+    VertexBuffer = Rr_CreateBuffer(
+        sizeof(VertexData),
+        RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
+            RR_BUFFER_FLAGS_MAPPED_BIT);
+    memcpy(
+        Rr_GetMappedBufferData(VertexBuffer),
+        VertexData,
+        sizeof(VertexData));
 
     uint32_t IndexData[] = {
         2,
@@ -57,10 +60,11 @@ static void Init(void)
         0,
     };
 
-    IndexBuffer = Rr_CreateBuffer(sizeof(IndexData), RR_BUFFER_FLAGS_INDEX_BIT);
-    Rr_UploadToDeviceBufferImmediate(
-        IndexBuffer,
-        RR_MAKE_DATA_ARRAY(IndexData));
+    IndexBuffer = Rr_CreateBuffer(
+        sizeof(IndexData),
+        RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
+            RR_BUFFER_FLAGS_MAPPED_BIT);
+    memcpy(Rr_GetMappedBufferData(IndexBuffer), IndexData, sizeof(IndexData));
 }
 
 static void Iterate(void)

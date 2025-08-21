@@ -4346,14 +4346,21 @@ void Rr_InitUI(void)
     gUIContext->Style.ScrollbarHeld = gUIContext->Style.ButtonHeld;
 
     Rr_Binding Bindings[] = {
-        { .Index = 0, .Type = RR_BINDING_TYPE_UNIFORM_BUFFER },
-        { .Index = 1, .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER },
+        {
+            .Index = 0,
+            .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+            .Stages = RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+        },
+        {
+            .Index = 1,
+            .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+            .Stages = RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+        },
     };
     Rr_BindingSet BindingSets[] = {
         {
             RR_ARRAY_COUNT(Bindings),
             Bindings,
-            RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
         },
     };
     gUIContext->PipelineLayout =
@@ -4918,6 +4925,10 @@ void Rr_UIDebugOverlay(void)
                 "Buffers: %zu/%zu",
                 gRenderer->Buffers.Count,
                 gRenderer->Buffers.Capacity);
+            Rr_UILabelF(
+                "DescriptorSetLayouts: %zu/%zu",
+                gRenderer->DescriptorSetLayoutStorage.Hive.Count,
+                gRenderer->DescriptorSetLayoutStorage.Hive.Capacity);
             Rr_UILabelF(
                 "PipelineLayouts: %zu/%zu",
                 gRenderer->PipelineLayouts.Count,

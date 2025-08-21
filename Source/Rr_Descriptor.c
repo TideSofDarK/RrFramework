@@ -249,32 +249,36 @@ static inline void Rr_CopyDescriptorSet(
 
     VkCopyDescriptorSet *Copies = RR_ALLOC_NO_ZERO(
         Scratch.Arena,
-        Layout->Set.BindingCount * sizeof(VkCopyDescriptorSet));
+        sizeof(VkCopyDescriptorSet) * Layout->Key.TotalBindingCount);
 
-    /* TODO: It's probably possible to copy whole set at once by setting
-     * descriptorCount to match total binding count (including arrays). */
+    uint32_t CurrentCopyIndex = 0;
 
-    for (uint32_t Index = 0; Index < Layout->Set.BindingCount; ++Index)
+    /* TODO: It's slow and it's on the hot path. */
+
+    for (uint32_t Index = 0; Index < RR_MAX_BINDINGS; ++Index)
     {
-        Rr_Binding *Binding = &Layout->Set.Bindings[Index];
+        Rr_PackedBinding *Binding = &Layout->Key.Bindings[Index];
 
-        Copies[Index] = (VkCopyDescriptorSet){
-            .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
-            .srcSet = Src,
-            .srcBinding = Binding->Index,
-            .srcArrayElement = 0,
-            .dstSet = Dst,
-            .dstBinding = Binding->Index,
-            .dstArrayElement = 0,
-            .descriptorCount = Binding->Count,
-        };
+        if (Binding->Count > 0)
+        {
+            Copies[CurrentCopyIndex++] = (VkCopyDescriptorSet){
+                .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
+                .srcSet = Src,
+                .srcBinding = Binding->Index,
+                .srcArrayElement = 0,
+                .dstSet = Dst,
+                .dstBinding = Binding->Index,
+                .dstArrayElement = 0,
+                .descriptorCount = Binding->Count,
+            };
+        }
     }
 
     Device->UpdateDescriptorSets(
         Device->Handle,
         0,
         NULL,
-        (uint32_t)Layout->Set.BindingCount,
+        CurrentCopyIndex,
         Copies);
 
     Rr_DestroyScratch(Scratch);

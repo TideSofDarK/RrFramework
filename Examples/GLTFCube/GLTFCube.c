@@ -61,14 +61,25 @@ static void Init(void)
     /* Create graphics pipeline. */
 
     Rr_Binding Bindings[] = {
-        { .Index = 0, .Type = RR_BINDING_TYPE_UNIFORM_BUFFER },
-        { .Index = 1, .Type = RR_BINDING_TYPE_SAMPLER },
-        { .Index = 2, .Type = RR_BINDING_TYPE_SAMPLED_IMAGE },
+        {
+            .Index = 0,
+            .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+            .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
+        },
+        {
+            .Index = 1,
+            .Type = RR_BINDING_TYPE_SAMPLER,
+            .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
+        },
+        {
+            .Index = 2,
+            .Type = RR_BINDING_TYPE_SAMPLED_IMAGE,
+            .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
+        },
     };
     Rr_BindingSet BindingSet = {
         .BindingCount = RR_ARRAY_COUNT(Bindings),
         .Bindings = Bindings,
-        .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
     };
     PipelineLayout = Rr_CreatePipelineLayout(1, &BindingSet);
 

@@ -153,14 +153,6 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
     return ColorImage;
 }
 
-struct SGPUUniform
-{
-    Rr_Mat4 View;
-    Rr_Mat4 Projection;
-    float Near;
-    float Far;
-};
-
 struct SPrerenderedDepthApp
 {
     static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
@@ -179,18 +171,19 @@ struct SPrerenderedDepthApp
 
     UScancodes Scancodes{};
 
-    SGPUUniform Uniform;
-
     void InitPipeline()
     {
         std::array Bindings = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
         };
         std::array Sets = {
             Rr_BindingSet{
                 Bindings.size(),
                 Bindings.data(),
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
         PipelineLayout =
@@ -229,19 +222,32 @@ struct SPrerenderedDepthApp
 
     void InitUniform(float Aspect)
     {
-        UniformBuffer =
-            Rr_CreateBuffer(sizeof(Uniform), RR_BUFFER_FLAGS_UNIFORM_BIT);
-
         /* NOTE: Hardcoded values from PrerenderedDepth.blend scene. */
 
-        Uniform.Projection =
-            Rr_Perspective_RH(RR_ANGLE_DEG(43.7927f), Aspect, 0.5f, 50.0f);
-        Uniform.View = Rr_EulerXYZ({ 90.0f - 63.5593f, -46.6919f, 0.0f }) *
-                       Rr_Translate({ -7.35889f, -4.0f, -6.92579f });
+        struct
+        {
+            Rr_Mat4 View;
+            Rr_Mat4 Projection;
+            float Near;
+            float Far;
+        } UniformData;
 
-        Rr_UploadToDeviceBufferImmediate(
-            UniformBuffer,
-            RR_MAKE_DATA_STRUCT(Uniform));
+        UniformData.View = Rr_EulerXYZ({ 90.0f - 63.5593f, -46.6919f, 0.0f }) *
+                           Rr_Translate({ -7.35889f, -4.0f, -6.92579f });
+        UniformData.Projection =
+            Rr_Perspective_RH(RR_ANGLE_DEG(43.7927f), Aspect, 0.5f, 50.0f);
+        UniformData.Near = 0.5f;
+        UniformData.Far = 50.0f;
+
+        UniformBuffer = Rr_CreateBuffer(
+            sizeof(UniformData),
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
+                RR_BUFFER_FLAGS_MAPPED_BIT);
+
+        std::memcpy(
+            Rr_GetMappedBufferData(UniformBuffer),
+            &UniformData,
+            sizeof(UniformData));
     }
 
     void InitRenderTarget()

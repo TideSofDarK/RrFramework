@@ -46,37 +46,34 @@ struct SBindingTestApp
     void InitPipeline()
     {
         std::array Set0Bindings = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{ 0,
+                        RR_BINDING_TYPE_STORAGE_BUFFER,
+                        RR_SHADER_STAGE_COMPUTE_BIT },
         };
         std::array Set1Bindings = {
-            Rr_Binding{ 1, RR_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{ 1,
+                        RR_BINDING_TYPE_UNIFORM_BUFFER,
+                        RR_SHADER_STAGE_COMPUTE_BIT },
         };
         std::array Set2Bindings = {
-            Rr_Binding{ 2, RR_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_Binding{ 4, RR_BINDING_TYPE_UNIFORM_BUFFER, 4 },
+            Rr_Binding{ 2,
+                        RR_BINDING_TYPE_STORAGE_BUFFER,
+                        RR_SHADER_STAGE_COMPUTE_BIT },
+            Rr_Binding{ 4,
+                        RR_BINDING_TYPE_UNIFORM_BUFFER,
+                        RR_SHADER_STAGE_COMPUTE_BIT,
+                        4 },
         };
         std::array Set3Bindings = {
-            Rr_Binding{ 13, RR_BINDING_TYPE_STORAGE_IMAGE },
+            Rr_Binding{ 13,
+                        RR_BINDING_TYPE_STORAGE_IMAGE,
+                        RR_SHADER_STAGE_COMPUTE_BIT },
         };
         std::array Sets = {
-            Rr_BindingSet{ Set0Bindings.size(),
-                           Set0Bindings.data(),
-                           RR_SHADER_STAGE_COMPUTE_BIT },
-            Rr_BindingSet{
-                Set1Bindings.size(),
-                Set1Bindings.data(),
-                RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_BindingSet{
-                Set2Bindings.size(),
-                Set2Bindings.data(),
-                RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_BindingSet{
-                Set3Bindings.size(),
-                Set3Bindings.data(),
-                RR_SHADER_STAGE_COMPUTE_BIT,
-            },
+            Rr_BindingSet{ Set0Bindings.size(), Set0Bindings.data() },
+            Rr_BindingSet{ Set1Bindings.size(), Set1Bindings.data() },
+            Rr_BindingSet{ Set2Bindings.size(), Set2Bindings.data() },
+            Rr_BindingSet{ Set3Bindings.size(), Set3Bindings.data() },
         };
         PipelineLayout =
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
@@ -202,6 +199,8 @@ struct SBindingTestApp
 
     void Iterate()
     {
+        Rr_UIDebugOverlay();
+
         Rr_GraphNode *ComputeNode =
             Rr_AddComputeNode(Rr_GetGraph(), "compute_a");
         Rr_BindComputePipeline(ComputeNode, ComputePipeline);

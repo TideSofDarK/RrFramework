@@ -466,46 +466,6 @@ static void Rr_InitVMA(void)
     vmaCreateAllocator(&AllocatorInfo, &gRenderer->Allocator);
 }
 
-static void Rr_InitImmediateMode(void)
-{
-    Rr_Device *Device = &gRenderer->Device;
-    Rr_ImmediateMode *ImmediateMode = &gRenderer->ImmediateMode;
-
-    VkCommandPoolCreateInfo CommandPoolInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
-    };
-    Device->CreateCommandPool(
-        Device->Handle,
-        &CommandPoolInfo,
-        NULL,
-        &ImmediateMode->CommandPool);
-
-    VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext = VK_NULL_HANDLE,
-        .commandPool = ImmediateMode->CommandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-    Device->AllocateCommandBuffers(
-        Device->Handle,
-        &CommandBufferAllocateInfo,
-        &ImmediateMode->CommandBuffer);
-}
-
-static void Rr_CleanupImmediateMode(void)
-{
-    Rr_Device *Device = &gRenderer->Device;
-
-    Device->DestroyCommandPool(
-        Device->Handle,
-        gRenderer->ImmediateMode.CommandPool,
-        NULL);
-}
-
 /* TODO: Move to queue initialization? */
 static void Rr_InitTransientCommandPools(void)
 {
@@ -570,7 +530,6 @@ void Rr_InitRenderer(const char *Title)
     Rr_InitVMA();
     Rr_InitTransientCommandPools();
     Rr_InitFrames();
-    Rr_InitImmediateMode();
     Rr_InitSwapchain();
 
     Rr_DestroyScratch(Scratch);
@@ -705,6 +664,17 @@ void Rr_CleanupRenderer(void)
      * For now, we don't care for destroying render passes unless it's
      * application shutdown. */
 
+    for (Rr_DescriptorSetLayoutHiveIterator It =
+             gRenderer->DescriptorSetLayoutStorage.Hive.Begin;
+         It.Element != gRenderer->DescriptorSetLayoutStorage.Hive.End.Element;)
+    {
+        Device->DestroyDescriptorSetLayout(
+            Device->Handle,
+            It.Element->Handle,
+            NULL);
+        Rr_AdvanceDescriptorSetLayoutHiveIterator(&It);
+    }
+
     for (Rr_RenderPassMapHiveIterator It =
              gRenderer->RenderPassStorage.Hive.Begin;
          It.Element != gRenderer->RenderPassStorage.Hive.End.Element;)
@@ -729,18 +699,6 @@ void Rr_CleanupRenderer(void)
     }
 
     Rr_CleanupTransientCommandPools();
-    Rr_CleanupImmediateMode();
-
-    for (size_t Index = 0; Index < gRenderer->DescriptorSetLayouts.Count;
-         ++Index)
-    {
-        Rr_DescriptorSetLayout *DescriptorSetLayout =
-            gRenderer->DescriptorSetLayouts.Data + Index;
-        Device->DestroyDescriptorSetLayout(
-            Device->Handle,
-            DescriptorSetLayout->Handle,
-            NULL);
-    }
 
     for (size_t Index = 0; Index < gRenderer->Semaphores.Count; ++Index)
     {
@@ -768,44 +726,6 @@ void Rr_CleanupRenderer(void)
     Rr_DestroyArena(gRenderer->Arena);
 
     gRenderer = NULL;
-}
-
-VkCommandBuffer Rr_BeginImmediate(void)
-{
-    Rr_Device *Device = &gRenderer->Device;
-
-    Rr_ImmediateMode *ImmediateMode = &gRenderer->ImmediateMode;
-    Device->ResetCommandBuffer(ImmediateMode->CommandBuffer, 0);
-
-    VkCommandBufferBeginInfo BeginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    Device->BeginCommandBuffer(ImmediateMode->CommandBuffer, &BeginInfo);
-
-    return ImmediateMode->CommandBuffer;
-}
-
-void Rr_EndImmediate(void)
-{
-    Rr_Device *Device = &gRenderer->Device;
-
-    Rr_ImmediateMode *ImmediateMode = &gRenderer->ImmediateMode;
-
-    Device->EndCommandBuffer(ImmediateMode->CommandBuffer);
-
-    VkFence Fence = Rr_GetVulkanFence();
-
-    VkSubmitInfo SubmitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &ImmediateMode->CommandBuffer,
-    };
-
-    Device->QueueSubmit(gRenderer->GraphicsQueue.Handle, 1, &SubmitInfo, Fence);
-    Device->WaitForFences(Device->Handle, 1, &Fence, true, UINT64_MAX);
-
-    Rr_ReturnVulkanFence(Fence);
 }
 
 void Rr_NewFrame(void)

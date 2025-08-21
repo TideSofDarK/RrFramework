@@ -33,17 +33,29 @@ struct SSortList
         }
 
         std::array Bindings = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
-            Rr_Binding{ 1, RR_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_Binding{ 2, RR_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_Binding{ 3, RR_BINDING_TYPE_STORAGE_BUFFER },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{
-                Bindings.size(),
-                Bindings.data(),
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
                 RR_SHADER_STAGE_COMPUTE_BIT,
             },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_Binding{
+                2,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_Binding{
+                3,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+        };
+        std::array BindingSets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
         };
         Layout =
             Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
@@ -210,23 +222,27 @@ struct SBitonicSorter
         /* Create compute pipeline. */
 
         std::array Bindings0 = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_STORAGE_BUFFER },
-            Rr_Binding{ 1, RR_BINDING_TYPE_STORAGE_BUFFER },
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
         };
         std::array Bindings1 = {
-            Rr_Binding{ 0, RR_BINDING_TYPE_UNIFORM_BUFFER },
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
         };
         std::array BindingSets = {
-            Rr_BindingSet{
-                Bindings0.size(),
-                Bindings0.data(),
-                RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_BindingSet{
-                Bindings1.size(),
-                Bindings1.data(),
-                RR_SHADER_STAGE_COMPUTE_BIT,
-            },
+            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
+            Rr_BindingSet{ Bindings1.size(), Bindings1.data() },
         };
         Layout =
             Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
