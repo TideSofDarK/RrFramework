@@ -136,7 +136,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = BindingSetCount,
+        .setLayoutCount = (uint32_t)BindingSetCount,
         .pSetLayouts = Handles,
     };
 
