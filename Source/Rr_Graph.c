@@ -1951,9 +1951,20 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
     Rr_DecrementRefCounts(Graph);
 
     /* TODO: Semaphores! */
+    /* TODO: Proper graph reset! */
 
-    Graph->Arena->Position = Graph->ResetArenaPosition;
-    Rr_Arena *Arena = Graph->Arena;
+    {
+        Graph->Arena->Position = Graph->ResetArenaPosition;
+        size_t ResetPosition = Graph->ResetArenaPosition;
+        Rr_Arena *Arena = Graph->Arena;
+        VkCommandPool GraphicsCommandPool = Graph->GraphicsCommandPool;
+        VkCommandPool TransferCommandPool = Graph->TransferCommandPool;
+        RR_ZERO_PTR(Graph);
+        Graph->ResetArenaPosition = ResetPosition;
+        Graph->Arena = Arena;
+        Graph->GraphicsCommandPool = GraphicsCommandPool;
+        Graph->TransferCommandPool = TransferCommandPool;
+    }
 
     Rr_DestroyScratch(Scratch);
 }

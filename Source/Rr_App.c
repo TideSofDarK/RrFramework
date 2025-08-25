@@ -241,6 +241,11 @@ void Rr_Quit(void)
     Rr_StoreAtomicRelaxed(&gApp->QuitRequested, 1);
 }
 
+bool Rr_QuitRequested(void)
+{
+    return Rr_LoadAtomicRelaxed(&gApp->QuitRequested);
+}
+
 Rr_Event *Rr_AddEvent(void)
 {
     Rr_EventHiveIterator It =

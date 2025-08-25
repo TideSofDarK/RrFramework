@@ -221,12 +221,16 @@ void Rr_InvalidateDescriptorsState(
     {
         for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
         {
-            VkDescriptorSetLayout OldLayout =
-                State->Layout->SetLayouts[Index]->Handle;
-            VkDescriptorSetLayout NewLayout = Layout->SetLayouts[Index]->Handle;
-            if (OldLayout == NewLayout)
+            if (Index < State->Layout->SetLayoutCount)
             {
-                continue;
+                VkDescriptorSetLayout OldLayout =
+                    State->Layout->SetLayouts[Index]->Handle;
+                VkDescriptorSetLayout NewLayout =
+                    Layout->SetLayouts[Index]->Handle;
+                if (OldLayout == NewLayout)
+                {
+                    continue;
+                }
             }
             for (; Index < RR_MAX_SETS; ++Index)
             {

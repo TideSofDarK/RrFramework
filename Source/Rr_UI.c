@@ -2133,9 +2133,9 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
     {
         Window = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIWindow);
         Window->Title = memcpy(
-            RR_ALLOC(gUIContext->Arena, TitleLength),
+            RR_ALLOC(gUIContext->Arena, TitleLength + 1),
             Title,
-            TitleLength);
+            TitleLength + 1);
         Window->Z = gUIContext->TotalWindowCount++;
         Window->Hash = TitleHash;
         Window->Rect.Offset = Rr_FloorV2(Rr_V2F(gUIContext->FontSize));

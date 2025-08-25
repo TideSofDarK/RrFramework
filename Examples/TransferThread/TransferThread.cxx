@@ -7,112 +7,115 @@
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <condition_variable>
 #include <iostream>
+#include <queue>
+#include <string>
 #include <thread>
+#include <vector>
 
-static constexpr std::int32_t IMAGE_WIDTH = 800;
-static constexpr std::int32_t IMAGE_HEIGHT = 600;
-
-template <size_t ImageCount>
-Rr_Image3D *CreateColorImage3DFromPNGs(
-    Rr_Graph *Graph,
-    std::int32_t Width,
-    std::int32_t Height,
-    const std::array<Rr_AssetRef, ImageCount> &Assets)
+Rr_Image2D *CreateImage2D(Rr_Graph *Graph, const char *Path)
 {
-    std::uint32_t LayerSize = Width * Height * 4;
+    std::int32_t ImageWidth;
+    std::int32_t ImageHeight;
+    std::int32_t ImageChannels;
+    char *Data =
+        (char *)stbi_load(Path, &ImageWidth, &ImageHeight, &ImageChannels, 4);
+
+    std::size_t ImageDataSize = ImageWidth * ImageHeight * 4;
+
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        LayerSize * ImageCount,
+        ImageDataSize,
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
-    char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
-    std::uint32_t StagingOffset{};
 
-    for (auto &AssetRef : Assets)
-    {
-        auto Asset = Rr_LoadAsset(AssetRef);
-        std::int32_t ImageWidth;
-        std::int32_t ImageHeight;
-        std::int32_t ImageChannels;
-        char *Data = (char *)stbi_load_from_memory(
-            (stbi_uc *)Asset.Pointer,
-            (int32_t)Asset.Size,
-            &ImageWidth,
-            &ImageHeight,
-            &ImageChannels,
-            4);
+    std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, ImageDataSize);
 
-        if (ImageWidth != Width || ImageHeight != Height)
-        {
-            stbi_image_free(Data);
-            Rr_ReleaseBuffer(StagingBuffer);
-            return nullptr;
-        }
+    stbi_image_free(Data);
 
-        std::memcpy(StagingData + StagingOffset, Data, LayerSize);
-        StagingOffset += LayerSize;
-
-        stbi_image_free(Data);
-    }
-
-    Rr_Image3D *Image3D = Rr_CreateImage3D(
-        { Width, Height, ImageCount },
+    Rr_Image2D *Image2D = Rr_CreateImage2D(
+        { ImageWidth, ImageHeight },
         RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-    Rr_AddCopyBufferToImage3DNode(
+    Rr_AddCopyBufferToImage2DNode(
         Graph,
         "copy",
         StagingBuffer,
         0,
-        { Width, Height, (std::int32_t)ImageCount },
-        Image3D,
+        { ImageWidth, ImageHeight },
+        Image2D,
         0);
 
     Rr_ReleaseBuffer(StagingBuffer);
 
-    return Image3D;
-}
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
-void TransferThreadProc(std::atomic<Rr_Image3D *> &Result)
-{
-    Rr_InitThreadContext();
-
-    Rr_Graph *Graph = Rr_CreateGraph();
-
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(2s);
-
-    Rr_Image3D *Image3D = CreateColorImage3DFromPNGs(
-        Graph,
-        IMAGE_WIDTH,
-        IMAGE_HEIGHT,
-        std::array{
-            EXAMPLE_ASSET_IMAGE0_PNG,
-            EXAMPLE_ASSET_IMAGE1_PNG,
-            EXAMPLE_ASSET_IMAGE2_PNG,
-        });
-    if (!Image3D)
-    {
-        std::cerr << "Unable to load images!\n";
-        std::abort();
-    }
-
-    Rr_SubmitGraph(Graph);
-
-    Result.store(Image3D);
-
-    Rr_DestroyGraph(Graph);
-
-    Rr_CleanupThreadContext();
+    return Image2D;
 }
 
 struct STransferThreadApp
 {
+    Rr_PipelineLayout *PlaceholderLayout;
+    Rr_GraphicsPipeline *PlaceholderPipeline;
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_Sampler *Sampler;
     Rr_Buffer *UniformBuffer;
-    std::atomic<Rr_Image3D *> Image3D{};
+    std::vector<Rr_Image2D *> Images;
+
+    std::int32_t CurrentImageIndex{};
+
+    std::thread Thread;
+
+    std::mutex ImagesMutex;
+    std::queue<Rr_Image2D *> ImagesQueue;
+
+    std::queue<std::string> PathsQueue;
+    std::mutex PathsMutex;
+    std::condition_variable PathsCondVar;
+
+    std::atomic_bool Loading;
+
+    static void TransferThreadProc(STransferThreadApp *App)
+    {
+        Rr_InitThreadContext();
+
+        Rr_Graph *Graph = Rr_CreateGraph();
+
+        while (!Rr_QuitRequested())
+        {
+            App->Loading.store(false, std::memory_order_relaxed);
+
+            std::string Path;
+            {
+                std::unique_lock Lock{ App->PathsMutex };
+                App->PathsCondVar.wait(Lock, [&]() {
+                    return !App->PathsQueue.empty();
+                });
+                Path = std::move(App->PathsQueue.front());
+                App->PathsQueue.pop();
+            }
+
+            App->Loading.store(true, std::memory_order_relaxed);
+
+            Rr_Image2D *Image2D = CreateImage2D(Graph, Path.c_str());
+
+            if (!Image2D)
+            {
+                std::cerr << "Unable to create Image2D!\n";
+                std::abort();
+            }
+
+            Rr_SubmitGraph(Graph);
+
+            std::unique_lock Lock{ App->ImagesMutex };
+            App->ImagesQueue.push(Image2D);
+        }
+
+        Rr_DestroyGraph(Graph);
+
+        Rr_CleanupThreadContext();
+    }
 
     void InitPipeline()
     {
@@ -159,12 +162,6 @@ struct STransferThreadApp
         Sampler = Rr_CreateSampler(&SamplerInfo);
     }
 
-    void InitImageArray()
-    {
-        std::thread Thread{ TransferThreadProc, std::ref(Image3D) };
-        Thread.detach();
-    }
-
     void InitUniformBuffer()
     {
         UniformBuffer = Rr_CreateBuffer(
@@ -173,23 +170,95 @@ struct STransferThreadApp
                 RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
+    void InitPlaceholder()
+    {
+        std::array Bindings = {
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
+                RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
+        };
+        PlaceholderLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        Rr_ColorTargetInfo ColorTarget = {};
+        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Blend = Rr_AlphaBlend();
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
+        PipelineInfo.Layout = PipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_FRAG_SPV);
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = &ColorTarget;
+
+        PlaceholderPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    }
+
+    void InitThread()
+    {
+        Thread = std::thread{ TransferThreadProc, this };
+        Thread.detach();
+    }
+
     void Init()
     {
         InitSampler();
         InitPipeline();
-        InitImageArray();
         InitUniformBuffer();
+        InitPlaceholder();
+        InitThread();
+    }
+
+    void Event(Rr_Event *Event)
+    {
+        if (Event->Type == RR_EVENT_TYPE_DROP_FILE)
+        {
+            std::unique_lock Lock{ PathsMutex };
+            PathsQueue.push(Event->DropFile.Path);
+            PathsCondVar.notify_all();
+        }
     }
 
     void Iterate()
     {
-        Rr_UIDebugOverlay();
+        Rr_UIBeginWindow(
+            "TransferThread.cxx",
+            nullptr,
+            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UILabel(
+            "This example demonstrates loading images from another thread.");
+        if (Images.size() > 1)
+        {
+            Rr_UISliderInt(
+                "Selected Image",
+                &CurrentImageIndex,
+                0,
+                Images.size() - 1);
+        }
+        Rr_UIEndWindow();
+
+        {
+            std::unique_lock Lock{ ImagesMutex };
+            while (!ImagesQueue.empty())
+            {
+                Images.push_back(ImagesQueue.front());
+                ImagesQueue.pop();
+                CurrentImageIndex = Images.size() - 1;
+            }
+        }
 
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
-            .Clear = Rr_ColorClear{ 1.0f, 1.0f, 1.0f, 1.0f },
+            .Clear = Rr_ColorClear{ 0.0f, 0.0f, 0.0f, 1.0f },
         };
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
@@ -203,49 +272,74 @@ struct STransferThreadApp
             NULL,
             NULL);
 
-        Rr_Image3D *Image3DL = Image3D.load();
-        if (Image3DL)
+        struct
         {
+            float Time = (float)Rr_GetTimeSeconds();
+            std::uint32_t ImageCount = 3;
+        } UniformData;
+
+        std::memcpy(
+            Rr_GetMappedBufferData(UniformBuffer),
+            &UniformData,
+            sizeof(UniformData));
+
+        if (!Images.empty())
+        {
+            Rr_Image2D *Image2D = Images.at(CurrentImageIndex);
+
+            Rr_IntVec2 ImageSize = Rr_GetImage2DExtent(Image2D);
+            Rr_Rect ImageRect{
+                0,
+                0,
+                (float)ImageSize.Width,
+                (float)ImageSize.Height,
+            };
             Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
-
-            struct
-            {
-                float Time = (float)Rr_GetTimeSeconds();
-                std::uint32_t ImageCount = 3;
-            } UniformData;
-
-            std::memcpy(
-                Rr_GetMappedBufferData(UniformBuffer),
-                &UniformData,
-                sizeof(UniformData));
-
-            Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
-            Rr_Rect SwapchainRect{ 0,
-                                   0,
-                                   (float)SwapchainExtent.Width,
-                                   (float)SwapchainExtent.Height };
+            Rr_Rect SwapchainRect{
+                0,
+                0,
+                (float)SwapchainExtent.Width,
+                (float)SwapchainExtent.Height,
+            };
             Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
             Rr_SetViewport(GraphicsNode, &Viewport);
-
             Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-            Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, 16);
-            Rr_BindCombinedImage3DSampler(
+            Rr_BindUniformBuffer(
                 GraphicsNode,
-                Image3DL,
-                Sampler,
+                UniformBuffer,
                 0,
-                1);
+                0,
+                0,
+                sizeof(UniformData));
+            Rr_BindCombinedImage2DSampler(GraphicsNode, Image2D, Sampler, 0, 1);
+            Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+        }
 
+        if (Loading.load(std::memory_order_relaxed))
+        {
+            Rr_BindGraphicsPipeline(GraphicsNode, PlaceholderPipeline);
+            Rr_BindUniformBuffer(
+                GraphicsNode,
+                UniformBuffer,
+                0,
+                0,
+                0,
+                sizeof(UniformData));
             Rr_Draw(GraphicsNode, 6, 1, 0, 0);
         }
     }
 
     void Cleanup()
     {
+        Rr_ReleaseGraphicsPipeline(PlaceholderPipeline);
+        Rr_ReleasePipelineLayout(PlaceholderLayout);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseImage(Image3D.load());
+        for (auto Image : Images)
+        {
+            Rr_ReleaseImage(Image);
+        }
         Rr_ReleaseSampler(Sampler);
     }
 };
@@ -257,6 +351,7 @@ int main()
     Rr_AppConfig Config = {};
     Config.Title = "TransferThread";
     Config.InitFunc = []() { App.Init(); };
+    Config.EventFunc = [](Rr_Event *Event) { App.Event(Event); };
     Config.IterateFunc = []() { App.Iterate(); };
     Config.CleanupFunc = []() { App.Cleanup(); };
     Rr_Run(&Config);

@@ -57,6 +57,8 @@ extern uint64_t Rr_GetTimeNS(void);
 
 extern void Rr_Quit(void);
 
+extern bool Rr_QuitRequested(void);
+
 #ifdef __cplusplus
 }
 #endif

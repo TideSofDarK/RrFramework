@@ -34,6 +34,7 @@
       2) Graph node creation.
       3) Binding resources.
 - [ ] Refactor Rr_AddXXXNode functions to ensure better type safety.
+- [ ] See if it's possible to get rid of descriptor allocator arenas.
 
 * Features
 
