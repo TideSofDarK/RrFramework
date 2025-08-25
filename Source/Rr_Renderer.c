@@ -914,6 +914,7 @@ void Rr_DrawFrame(void)
         .AccessMask = 0,
         .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         .Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .QueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
     };
 
     Rr_UnlockSpinlock(&gRenderer->Lock);

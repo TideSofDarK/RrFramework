@@ -9,6 +9,7 @@
 #include <cassert>
 #include <condition_variable>
 #include <iostream>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
@@ -244,8 +245,9 @@ struct STransferThreadApp
         }
         Rr_UIEndWindow();
 
+        if (std::unique_lock Lock{ ImagesMutex, std::try_to_lock };
+            Lock.owns_lock())
         {
-            std::unique_lock Lock{ ImagesMutex };
             while (!ImagesQueue.empty())
             {
                 Images.push_back(ImagesQueue.front());

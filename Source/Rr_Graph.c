@@ -128,11 +128,6 @@ static inline bool Rr_AddNodeDependency(
     Rr_Graph *Graph = Node->Graph;
     Rr_Arena *Arena = Node->Graph->Arena;
 
-    if (Handle->Values.Index == Graph->SwapchainImageResourceIndex)
-    {
-        Node->UsesLateCommandBuffer = true;
-    }
-
     Rr_GraphHandle CurrentHandle = *Handle;
 
     Rr_GraphNode **NodeInMap =
@@ -201,6 +196,11 @@ static inline bool Rr_AddImageDependency(
     Rr_GraphHandle *Handle,
     Rr_SyncState *State)
 {
+    if (Handle->Values.Index == Node->Graph->SwapchainImageResourceIndex)
+    {
+        Node->UsesLateCommandBuffer = true;
+    }
+
     return Rr_AddNodeDependency(
         Node,
         &Node->ImageDeps,
@@ -215,6 +215,11 @@ static inline bool Rr_AddStorageImageDependency(
     Rr_GraphHandle *Handle,
     Rr_SyncState *State)
 {
+    if (Handle->Values.Index == Node->Graph->SwapchainImageResourceIndex)
+    {
+        Node->UsesLateCommandBuffer = true;
+    }
+
     return Rr_AddNodeDependency(
         Node,
         &Node->ImageDeps,
@@ -1385,15 +1390,18 @@ void Rr_ExecuteGraph(
     for (size_t Index = 0; Index < Graph->BufferResources.Count; ++Index)
     {
         Rr_GraphResource *Resource = Graph->BufferResources.Data + Index;
-        Resource->Allocated = Rr_GetCurrentAllocatedBuffer(Resource->Container);
+        Rr_AllocatedBuffer *AllocatedBuffer =
+            Rr_GetCurrentAllocatedBuffer(Resource->Container);
+        Resource->Allocated = AllocatedBuffer;
 
         if (SyncStateLock)
         {
             Rr_LockSpinlock(SyncStateLock);
         }
 
-        Resource->SyncState =
-            Rr_GetSyncState(SyncStateStorage, (uint64_t)Resource->Allocated);
+        Resource->SyncState = Rr_GetSyncState(
+            SyncStateStorage,
+            (uint64_t)AllocatedBuffer->Handle);
 
         if (SyncStateLock)
         {
@@ -1404,7 +1412,9 @@ void Rr_ExecuteGraph(
     for (size_t Index = 0; Index < Graph->ImageResources.Count; ++Index)
     {
         Rr_GraphResource *Resource = Graph->ImageResources.Data + Index;
-        Resource->Allocated = Rr_GetCurrentAllocatedImage(Resource->Container);
+        Rr_AllocatedImage *AllocatedImage =
+            Rr_GetCurrentAllocatedImage(Resource->Container);
+        Resource->Allocated = AllocatedImage;
 
         if (SyncStateLock)
         {
@@ -1412,7 +1422,7 @@ void Rr_ExecuteGraph(
         }
 
         Resource->SyncState =
-            Rr_GetSyncState(SyncStateStorage, (uint64_t)Resource->Allocated);
+            Rr_GetSyncState(SyncStateStorage, (uint64_t)AllocatedImage->Handle);
 
         if (SyncStateLock)
         {
@@ -1652,6 +1662,7 @@ void Rr_ExecuteGraph(
     for (size_t Index = 0; Index < Graph->BufferResources.Count; ++Index)
     {
         Rr_GraphResource *Resource = Graph->BufferResources.Data + Index;
+        Rr_AllocatedBuffer *AllocatedBuffer = Resource->Allocated;
 
         if (SyncStateLock)
         {
@@ -1660,7 +1671,7 @@ void Rr_ExecuteGraph(
 
         *Rr_FindSyncState(
             SyncStateStorage,
-            (uint64_t)Resource->Allocated,
+            (uint64_t)AllocatedBuffer->Handle,
             SyncStateArena) = Resource->SyncState;
 
         if (SyncStateLock)
@@ -1672,6 +1683,7 @@ void Rr_ExecuteGraph(
     for (size_t Index = 0; Index < Graph->ImageResources.Count; ++Index)
     {
         Rr_GraphResource *Resource = Graph->ImageResources.Data + Index;
+        Rr_AllocatedImage *AllocatedImage = Resource->Allocated;
 
         if (SyncStateLock)
         {
@@ -1680,7 +1692,7 @@ void Rr_ExecuteGraph(
 
         *Rr_FindSyncState(
             SyncStateStorage,
-            (uint64_t)Resource->Allocated,
+            (uint64_t)AllocatedImage->Handle,
             SyncStateArena) = Resource->SyncState;
 
         if (SyncStateLock)

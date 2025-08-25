@@ -347,12 +347,18 @@ void Rr_DestroyImage(Rr_Image *Image)
 
     for (uint32_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
-        Rr_DestroyImageViewStorage(Image->AllocatedImages[Index].ViewStorage);
+        Rr_AllocatedImage *AllocatedImage = &Image->AllocatedImages[Index];
+
+        Rr_DestroyImageViewStorage(AllocatedImage->ViewStorage);
+
+        Rr_EraseSyncState(
+            &gRenderer->SyncStateStorage,
+            (uint64_t)AllocatedImage->Handle);
 
         vmaDestroyImage(
             gRenderer->Allocator,
-            Image->AllocatedImages[Index].Handle,
-            Image->AllocatedImages[Index].Allocation);
+            AllocatedImage->Handle,
+            AllocatedImage->Allocation);
     }
 
     Rr_ImageHiveIterator It =
