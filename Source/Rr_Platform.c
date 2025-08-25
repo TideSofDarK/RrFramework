@@ -62,6 +62,7 @@ void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
         }
         while (Rr_LoadAtomicRelaxed(Spinlock))
         {
+            _mm_pause();
         }
     }
 }

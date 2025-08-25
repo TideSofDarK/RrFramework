@@ -22,6 +22,10 @@
  * SOFTWARE.
  */
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "Rr_Graph.h"
 
 #include "Rr_Buffer.h"
@@ -68,7 +72,7 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
     Rr_GraphNode *GraphNode = RR_ALLOC(Graph->Arena, sizeof(Rr_GraphNode));
     GraphNode->Type = Type;
     strncpy(GraphNode->Name, Name, sizeof(GraphNode->Name));
-    GraphNode->OriginalIndex = Graph->Nodes.Count;
+    GraphNode->OriginalIndex = (uint32_t)Graph->Nodes.Count;
     GraphNode->Graph = Graph;
 
     RR_RESERVE_ARRAY(&GraphNode->BufferDeps, 2, Graph->Arena);
