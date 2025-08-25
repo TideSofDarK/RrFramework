@@ -143,6 +143,12 @@ extern Rr_GLTFContext *Rr_CreateGLTFContext(
 
 extern void Rr_ReleaseGLTFContext(Rr_GLTFContext *GLTFContext);
 
+extern Rr_GLTFAsset *Rr_CreateGLTFAsset(
+    Rr_GLTFContext *GLTFContext,
+    struct Rr_Graph *Graph,
+    size_t GLBDataSize,
+    const void *GLBData);
+
 #ifdef __cplusplus
 }
 #endif

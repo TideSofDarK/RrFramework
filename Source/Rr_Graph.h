@@ -29,6 +29,7 @@
 #include "Rr_Vulkan.h"
 
 struct Rr_Frame;
+struct Rr_SyncStateStorage;
 
 typedef RR_ARRAY(size_t) Rr_IndexArray;
 typedef RR_ARRAY(Rr_GraphNode *) Rr_NodeArray;
@@ -296,6 +297,8 @@ struct Rr_NodeDependency
     Rr_GraphHandle Handle;
 };
 
+typedef RR_ARRAY(Rr_NodeDependency) Rr_NodeDependencyArray;
+
 struct Rr_GraphNode
 {
     union
@@ -309,13 +312,18 @@ struct Rr_GraphNode
         Rr_TransferNode Transfer;
     } Union;
     Rr_GraphNodeType Type;
-    const char *Name;
-    size_t OriginalIndex;
-    size_t DependencyLevel;
-    RR_ARRAY(Rr_NodeDependency) Dependencies;
-    Rr_Graph *Graph;
+
+    char Name[32];
+
+    uint32_t OriginalIndex;
+    uint32_t DependencyLevel;
+    Rr_NodeDependencyArray BufferDeps;
+    Rr_NodeDependencyArray ImageDeps;
+
     bool UsesLateCommandBuffer;
     Rr_PipelineLayout *CurrentLayout;
+
+    Rr_Graph *Graph;
 };
 
 typedef struct Rr_GraphResource Rr_GraphResource;
@@ -325,19 +333,23 @@ struct Rr_GraphResource
     void *Container;
     void *Allocated;
     uint32_t Generation;
-    bool IsImage;
+    Rr_SyncState SyncState;
 };
+
+typedef RR_ARRAY(Rr_GraphResource) Rr_GraphResourceArray;
 
 struct Rr_Graph
 {
     RR_ARRAY(Rr_GraphNode *) Nodes;
-    RR_ARRAY(Rr_GraphResource) Resources;
-    Rr_Map *Handles;
-    Rr_Map *ResourceWriteToNode;
-    uint32_t SwapchainImageResourceIndex;
 
-    Rr_GraphicsPipeline *GraphicsPipeline;
-    Rr_ComputePipeline *ComputePipeline;
+    Rr_GraphResourceArray BufferResources;
+    Rr_Map *BufferWriteToNode;
+    Rr_Map *BufferHandles;
+    Rr_GraphResourceArray ImageResources;
+    Rr_Map *ImageWriteToNode;
+    Rr_Map *ImageHandles;
+
+    uint32_t SwapchainImageResourceIndex;
 
     Rr_HandleSet Buffers;
     Rr_HandleSet Images;
@@ -345,7 +357,12 @@ struct Rr_Graph
     Rr_HandleSet GraphicsPipelines;
     Rr_HandleSet Samplers;
 
+    VkCommandPool GraphicsCommandPool;
+    VkCommandPool TransferCommandPool;
+    /* VkCommandPool ComputeCommandPool; */
+
     Rr_Arena *Arena;
+    size_t ResetArenaPosition;
 };
 
 extern void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer);
@@ -370,9 +387,11 @@ extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
 
 extern Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, void *Container);
 
-extern Rr_GraphNode *Rr_AddGraphNode(
-    struct Rr_Frame *Frame,
-    Rr_GraphNodeType Type,
-    const char *Name);
-
-extern void Rr_ExecuteGraph(Rr_Graph *Graph, Rr_Arena *Arena);
+extern void Rr_ExecuteGraph(
+    Rr_Graph *Graph,
+    struct Rr_SyncStateStorage *SyncStateStorage,
+    Rr_Spinlock *SyncStateLock,
+    Rr_Arena *SyncStateArena,
+    uint32_t QueueFamilyIndex,
+    VkCommandBuffer EarlyCommandBuffer,
+    VkCommandBuffer LateCommandBuffer);

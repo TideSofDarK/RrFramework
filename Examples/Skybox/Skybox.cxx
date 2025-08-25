@@ -278,13 +278,12 @@ struct SSkyboxApp
 
     void InitSkyboxMesh()
     {
-        std::array Tasks = {
-            Rr_LoadGLTFAssetTask(
-                EXAMPLE_ASSET_SKYBOX_GLB,
-                GLTFContext,
-                &GLTFAsset),
-        };
-        Rr_LoadImmediate(Tasks.size(), Tasks.data());
+        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_GLB);
+        GLTFAsset = Rr_CreateGLTFAsset(
+            GLTFContext,
+            Rr_GetGraph(),
+            LoadedAsset.Size,
+            LoadedAsset.Pointer);
     }
 
     void InitCamera()

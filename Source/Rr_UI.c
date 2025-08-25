@@ -41,6 +41,8 @@
 
 #include <cJSON/cJSON.h>
 
+#include <stb/stb_image.h>
+
 #include <assert.h>
 #include <float.h>
 #include <stdarg.h>
@@ -257,19 +259,12 @@ struct Rr_UIFont
 
 Rr_UIFont *Rr_UICreateFont(
     Rr_UIContext *Context,
+    Rr_Graph *Graph,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef)
 {
 #define CJSON_GET_OBJECT_FLOAT(Object, Item) \
     ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
-
-    Rr_Image2D *Atlas;
-    Rr_LoadTask ImageLoadTask = (Rr_LoadTask){
-        .LoadType = RR_LOAD_TYPE_IMAGE_RGBA8_FROM_PNG,
-        .AssetRef = FontPNGRef,
-        .Out.Image = &Atlas,
-    };
-    Rr_LoadImmediate(1, &ImageLoadTask);
 
     Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
 
@@ -283,9 +278,15 @@ Rr_UIFont *Rr_UICreateFont(
     AtlasSize.X = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "width");
     AtlasSize.Y = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "height");
 
+    Rr_Asset ImageAsset = Rr_LoadAsset(FontPNGRef);
+
     Rr_UIFont *Font = RR_GET_FREE_LIST_ITEM(&Context->Fonts, Context->Arena);
     *Font = (Rr_UIFont){
-        .Atlas = Atlas,
+        .Atlas = Rr_CreateSTBImage2D(
+            Rr_GetGraph(),
+            RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+            ImageAsset.Size,
+            ImageAsset.Pointer),
         .LineHeight = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "lineHeight"),
         .UnderlineY = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "underlineY"),
         .UnderlineThickness =
@@ -4428,6 +4429,7 @@ void Rr_InitUI(void)
 
     gUIContext->Font = Rr_UICreateFont(
         gUIContext,
+        Rr_GetGraph(),
         RR_BUILTIN_SOURCESERIF4_PNG,
         RR_BUILTIN_SOURCESERIF4_JSON);
 }

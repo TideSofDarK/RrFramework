@@ -14,7 +14,6 @@ struct SUniformData
     float Time;
 };
 
-static Rr_LoadThread *LoadThread;
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
 static Rr_Image2D *DepthAttachment;
@@ -25,13 +24,6 @@ static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Sampler *NearestSampler;
 
 static SUniformData UniformData;
-
-static bool Loaded;
-
-static void OnLoadComplete(void *UserData)
-{
-    Loaded = true;
-}
 
 static void InitDepthImage(void)
 {
@@ -144,18 +136,12 @@ static void Init(void)
         RR_ARRAY_COUNT(GLTFTextureMappings),
         GLTFTextureMappings);
 
-    /* Create load thread and load glTF asset. */
-
-    LoadThread = Rr_CreateLoadThread();
-    Rr_LoadTask Tasks[] = {
-        Rr_LoadGLTFAssetTask(EXAMPLE_ASSET_CUBE_GLB, GLTFContext, &GLTFAsset),
-    };
-    Rr_LoadAsync(
-        LoadThread,
-        RR_ARRAY_COUNT(Tasks),
-        Tasks,
-        OnLoadComplete,
-        NULL);
+    Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_GLB);
+    GLTFAsset = Rr_CreateGLTFAsset(
+        GLTFContext,
+        Rr_GetGraph(),
+        LoadedAsset.Size,
+        LoadedAsset.Pointer);
 
     /* Create uniform buffer. */
 
@@ -270,15 +256,12 @@ static void Iterate(void)
         &SwapchainImage,
         &DepthTarget,
         DepthAttachment);
-    if (Loaded)
-    {
-        DrawFirstGLTFPrimitive(GraphicsNode);
-    }
+
+    DrawFirstGLTFPrimitive(GraphicsNode);
 }
 
 static void Cleanup(void)
 {
-    Rr_DestroyLoadThread(LoadThread);
     Rr_ReleaseGLTFContext(GLTFContext);
     Rr_ReleaseImage(DepthAttachment);
     Rr_ReleaseBuffer(StagingBuffer);

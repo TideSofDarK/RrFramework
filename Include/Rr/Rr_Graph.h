@@ -183,7 +183,7 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_DepthTarget *DepthTarget,
     Rr_Image2D *DepthImage);
 
-extern Rr_GraphNode *Rr_AddClearColorImageNode(
+extern Rr_GraphNode *Rr_AddClearColorImage2DNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_ColorClear *ColorClear,

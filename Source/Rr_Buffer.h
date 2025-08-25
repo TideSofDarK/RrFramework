@@ -26,7 +26,6 @@
 
 #include <Rr/Rr_Buffer.h>
 
-#include "Rr_UploadContext.h"
 #include "Rr_Vulkan.h"
 
 typedef struct Rr_AllocatedBuffer Rr_AllocatedBuffer;
@@ -53,21 +52,5 @@ struct Rr_Buffer
 #include <Rr/Rr_Hive.h>
 
 extern void Rr_DestroyBuffer(Rr_Buffer *Buffer);
-
-extern void Rr_UploadStagingBuffer(
-    Rr_UploadContext *UploadContext,
-    Rr_Buffer *Buffer,
-    Rr_SyncState SrcState,
-    Rr_SyncState DstState,
-    Rr_Buffer *StagingBuffer,
-    uint64_t StagingOffset,
-    uint64_t StagingSize);
-
-extern void Rr_UploadBuffer(
-    Rr_UploadContext *UploadContext,
-    Rr_Buffer *Buffer,
-    Rr_SyncState SrcState,
-    Rr_SyncState DstState,
-    Rr_Data Data);
 
 extern Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer);

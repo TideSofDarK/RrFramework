@@ -48,7 +48,13 @@ static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 
     if (SwapchainImage->Handle)
     {
-        Rr_ReturnSyncState((Rr_MapKey)SwapchainImage->Handle);
+        Rr_LockSpinlock(&gRenderer->Lock);
+
+        Rr_EraseSyncState(
+            &gRenderer->SyncStateStorage,
+            (uint64_t)SwapchainImage->Handle);
+
+        Rr_UnlockSpinlock(&gRenderer->Lock);
     }
 
     if (SwapchainImage->EarlySemaphore)
@@ -333,12 +339,18 @@ static bool Rr_InitSwapchain(void)
         Image->Handle = Images[Index];
 
         Image->ViewStorage = Rr_CreateImageViewStorage();
-
-        Rr_SyncState *SyncState = Rr_GetSyncState((Rr_MapKey)Image->Handle);
-        SyncState->StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-
         Image->EarlySemaphore = Rr_GetVulkanSemaphore();
         Image->LateSemaphore = Rr_GetVulkanSemaphore();
+
+        Rr_LockSpinlock(&gRenderer->Lock);
+
+        Rr_FindSyncState(
+            &gRenderer->SyncStateStorage,
+            (uint64_t)Image->Handle,
+            gRenderer->Arena)
+            ->StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
+        Rr_UnlockSpinlock(&gRenderer->Lock);
     }
 
     Rr_SetSwapchainDirty(false);
@@ -636,16 +648,6 @@ static inline void Rr_ProcessReleasedObjects(void)
     }
 }
 
-static void Rr_ProcessPendingLoads(void)
-{
-    for (size_t Index = 0; Index < gRenderer->PendingLoads.Count; ++Index)
-    {
-        Rr_PendingLoad *PendingLoad = &gRenderer->PendingLoads.Data[Index];
-        PendingLoad->LoadingCallback(PendingLoad->UserData);
-    }
-    RR_CLEAR_ARRAY(&gRenderer->PendingLoads);
-}
-
 void Rr_CleanupRenderer(void)
 {
     Rr_Instance *Instance = &gRenderer->Instance;
@@ -758,7 +760,6 @@ void Rr_NewFrame(void)
 
     if (Rr_TryLockSpinlock(&gRenderer->Lock))
     {
-        Rr_ProcessPendingLoads();
         Rr_ProcessReleasedObjects();
 
         Rr_UnlockSpinlock(&gRenderer->Lock);
@@ -855,17 +856,30 @@ void Rr_DrawFrame(void)
         Frame->LateCommandBuffer,
         &CommandBufferBeginInfo);
 
-    Rr_ExecuteGraph(Frame->Graph, Scratch.Arena);
+    Rr_ExecuteGraph(
+        Frame->Graph,
+        &gRenderer->SyncStateStorage,
+        &gRenderer->Lock,
+        gRenderer->Arena,
+        gRenderer->GraphicsQueue.FamilyIndex,
+        Frame->EarlyCommandBuffer,
+        Frame->LateCommandBuffer);
 
     Device->EndCommandBuffer(Frame->EarlyCommandBuffer);
 
     /* Always transition swapchain image to present layout. */
 
-    Rr_SyncState *SwapchainImageSyncState =
-        Rr_GetSyncState((Rr_MapKey)SwapchainImageHandle);
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_SyncState SwapchainImageSyncState = Rr_GetSyncState(
+        &gRenderer->SyncStateStorage,
+        (uint64_t)SwapchainImageHandle);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+
     Device->CmdPipelineBarrier(
         Frame->LateCommandBuffer,
-        SwapchainImageSyncState->StageMask,
+        SwapchainImageSyncState.StageMask,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,
         0,
@@ -876,9 +890,9 @@ void Rr_DrawFrame(void)
         &(VkImageMemoryBarrier){
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .image = SwapchainImageHandle,
-            .oldLayout = SwapchainImageSyncState->Layout,
+            .oldLayout = SwapchainImageSyncState.Layout,
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcAccessMask = SwapchainImageSyncState->AccessMask,
+            .srcAccessMask = SwapchainImageSyncState.AccessMask,
             .dstAccessMask = 0,
             .subresourceRange = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -888,10 +902,21 @@ void Rr_DrawFrame(void)
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
         });
-    SwapchainImageSyncState->AccessMask = 0;
-    SwapchainImageSyncState->StageMask =
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; /* Doesn't look right. */
-    SwapchainImageSyncState->Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    /* TODO: Make sure stage mask is correct here. */
+
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    *Rr_FindSyncState(
+        &gRenderer->SyncStateStorage,
+        (uint64_t)SwapchainImageHandle,
+        gRenderer->Arena) = (Rr_SyncState){
+        .AccessMask = 0,
+        .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        .Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    };
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
 
     Device->EndCommandBuffer(Frame->LateCommandBuffer);
 
@@ -1311,45 +1336,65 @@ void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
     }
 }
 
-Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key)
+Rr_SyncState *Rr_FindSyncState(
+    Rr_SyncStateStorage *Storage,
+    uint64_t VulkanHandle,
+    Rr_Arena *Arena)
 {
-    Rr_LockSpinlock(&gRenderer->Lock);
-
-    Rr_SyncState **SyncStateRef =
-        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->Arena);
-
-    if (*SyncStateRef != NULL)
+    Rr_SyncStateMap **MapRef = &Storage->Map;
+    uint64_t Hash = XXH64(&VulkanHandle, sizeof(uint64_t), 0);
+    for (; *MapRef; Hash <<= 2)
     {
-        Rr_UnlockSpinlock(&gRenderer->Lock);
-
-        return *SyncStateRef;
+        uint64_t Key = (*MapRef)->Key;
+        if (VulkanHandle == Key || Key == (uint64_t)VK_NULL_HANDLE)
+        {
+            return &(*MapRef)->Value;
+        }
+        MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-
-    *SyncStateRef =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->SyncStates, gRenderer->Arena);
-    Rr_SyncState *SyncState = *SyncStateRef;
-    RR_ZERO_PTR(SyncState);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
-
-    return SyncState;
+    assert(Arena);
+    *MapRef = Rr_PushSyncStateMapIntoHive(&Storage->Hive, Arena).Element;
+    RR_ZERO((*MapRef)->Children);
+    (*MapRef)->Value =
+        (Rr_SyncState){ .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED };
+    (*MapRef)->Key = (uint64_t)VulkanHandle;
+    return &(*MapRef)->Value;
 }
 
-void Rr_ReturnSyncState(Rr_MapKey Key)
+Rr_SyncState Rr_GetSyncState(
+    Rr_SyncStateStorage *Storage,
+    uint64_t VulkanHandle)
 {
-    Rr_LockSpinlock(&gRenderer->Lock);
-
-    Rr_SyncState **SyncStateRef =
-        RR_GET_MAP_VALUE(&gRenderer->GlobalSync, Key, gRenderer->Arena);
-
-    if (*SyncStateRef != NULL)
+    Rr_SyncStateMap **MapRef = &Storage->Map;
+    uint64_t Hash = XXH64(&VulkanHandle, sizeof(uint64_t), 0);
+    for (; *MapRef; Hash <<= 2)
     {
-        RR_RETURN_FREE_LIST_ITEM(&gRenderer->SyncStates, *SyncStateRef);
+        if (VulkanHandle == (*MapRef)->Key)
+        {
+            return (*MapRef)->Value;
+        }
+        MapRef = &(*MapRef)->Children[Hash >> 62];
     }
+    return (Rr_SyncState){
+        .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    };
+}
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
-
-    *SyncStateRef = NULL;
+void Rr_EraseSyncState(Rr_SyncStateStorage *Storage, uint64_t VulkanHandle)
+{
+    Rr_SyncStateMap **MapRef = &Storage->Map;
+    uint64_t Hash = XXH64(&VulkanHandle, sizeof(uint64_t), 0);
+    for (; *MapRef; Hash <<= 2)
+    {
+        if (VulkanHandle == (*MapRef)->Key)
+        {
+            (*MapRef)->Key = (uint64_t)VK_NULL_HANDLE;
+            (*MapRef)->Value = (Rr_SyncState){
+                .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            };
+        }
+        MapRef = &(*MapRef)->Children[Hash >> 62];
+    }
 }
 
 VkSemaphore Rr_GetVulkanSemaphore(void)
@@ -1433,4 +1478,14 @@ void Rr_ReturnVulkanFence(VkFence Fence)
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
     Device->ResetFences(Device->Handle, 1, &Fence);
+}
+
+void Rr_InitThreadContext(void)
+{
+    Rr_InitScratchArena();
+}
+
+void Rr_CleanupThreadContext(void)
+{
+    Rr_CleanupScratchArena();
 }

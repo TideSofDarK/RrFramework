@@ -155,6 +155,16 @@ extern size_t Rr_GetMaxComputeSharedMemorySize(void);
 
 extern size_t Rr_GetMaxComputeWorkgroupInvocations(void);
 
+extern void Rr_InitThreadContext(void);
+
+extern void Rr_CleanupThreadContext(void);
+
+extern struct Rr_Graph *Rr_CreateGraph(void);
+
+extern void Rr_DestroyGraph(struct Rr_Graph *Graph);
+
+extern void Rr_SubmitGraph(struct Rr_Graph *Graph);
+
 #ifdef __cplusplus
 }
 #endif

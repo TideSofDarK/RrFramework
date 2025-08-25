@@ -49,14 +49,6 @@
      VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT |           \
      VK_ACCESS_MEMORY_WRITE_BIT)
 
-typedef struct Rr_SyncState Rr_SyncState;
-struct Rr_SyncState
-{
-    VkPipelineStageFlags StageMask;
-    VkAccessFlags AccessMask;
-    VkImageLayout Layout;
-};
-
 typedef struct Rr_BufferMemoryBarrier Rr_BufferMemoryBarrier;
 struct Rr_BufferMemoryBarrier
 {
@@ -92,6 +84,15 @@ struct Rr_BarrierBatch
     RR_ARRAY(Rr_ImageMemoryBarrier) ImageBarriers;
     RR_ARRAY(Rr_BufferMemoryBarrier) BufferBarriers;
     Rr_Map *VulkanHandleToBarrier;
+};
+
+typedef struct Rr_SyncState Rr_SyncState;
+struct Rr_SyncState
+{
+    VkPipelineStageFlags StageMask;
+    VkAccessFlags AccessMask;
+    VkImageLayout Layout;
+    uint32_t QueueFamilyIndex;
 };
 
 typedef struct Rr_Queue Rr_Queue;

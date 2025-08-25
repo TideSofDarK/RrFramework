@@ -78,6 +78,7 @@ struct Rr_UIStyle
 
 extern Rr_UIFont *Rr_UICreateFont(
     Rr_UIContext *Context,
+    struct Rr_Graph *Graph,
     Rr_AssetRef FontPNGRef,
     Rr_AssetRef FontJSONRef);
 

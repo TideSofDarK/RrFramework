@@ -28,7 +28,6 @@
 #include "Rr_Image.h"
 #include "Rr_Log.h"
 #include "Rr_Renderer.h"
-#include "Rr_UploadContext.h"
 
 #include <stb/stb_image.h>
 
@@ -354,13 +353,11 @@ static inline size_t Rr_GetFlatBindingOffset(
 
 Rr_GLTFAsset *Rr_CreateGLTFAsset(
     Rr_GLTFContext *GLTFContext,
-    Rr_UploadContext *UploadContext,
-    Rr_AssetRef AssetRef,
-    Rr_Arena *Arena)
+    struct Rr_Graph *Graph,
+    size_t GLBDataSize,
+    const void *GLBData)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(Arena);
-
-    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     cgltf_options Options = {
         .memory =
@@ -371,8 +368,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
             },
     };
     cgltf_data *Data = NULL;
-    cgltf_result Result =
-        cgltf_parse(&Options, Asset.Pointer, Asset.Size, &Data);
+    cgltf_result Result = cgltf_parse(&Options, GLBData, GLBDataSize, &Data);
     if (Result != cgltf_result_success)
     {
         RR_ABORT("GLTF: Parsing failed!");
@@ -455,8 +451,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
         StagingDataSize,
         RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
-    *RR_PUSH_INTO_ARRAY(&UploadContext->StagingBuffers, UploadContext->Arena) =
-        StagingBuffer;
+    Rr_ReleaseBuffer(StagingBuffer);
     char *StagingData = Rr_GetMappedBufferData(StagingBuffer);
 
     /* Preallocate materials. */
@@ -621,20 +616,14 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     *RR_PUSH_INTO_ARRAY(&GLTFContext->Buffers, GLTFContext->Arena) =
         GLTFAsset->Buffer;
 
-    Rr_UploadStagingBuffer(
-        UploadContext,
-        GLTFAsset->Buffer,
-        (Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        },
-        (Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-            .AccessMask =
-                VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        },
+    Rr_GraphNode *TransferNode = Rr_AddTransferNode(Graph, "transfer_gltf");
+    Rr_TransferBufferData(
+        TransferNode,
+        StagingDataSize,
         StagingBuffer,
         0,
-        StagingDataSize);
+        GLTFAsset->Buffer,
+        0);
 
     /* Process materials, textures and images. */
 
@@ -690,11 +679,11 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                             Texture->image->buffer_view->offset;
 
                         GLTFAsset->Images[CurrentTextureIndex] =
-                            Rr_CreateImage2DRGBA8FromPNG(
-                                UploadContext,
+                            Rr_CreateSTBImage2D(
+                                Graph,
+                                RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
                                 ImageDataSize,
-                                ImageData,
-                                false);
+                                ImageData);
 
                         *RR_PUSH_INTO_ARRAY(
                             &GLTFContext->Images,

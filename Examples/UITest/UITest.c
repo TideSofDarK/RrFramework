@@ -75,7 +75,7 @@ static void Iterate(void)
     Rr_Graph *Graph = Rr_GetGraph();
 
     Rr_ColorClear ColorClear = {};
-    Rr_AddClearColorImageNode(
+    Rr_AddClearColorImage2DNode(
         Graph,
         "clear",
         &ColorClear,

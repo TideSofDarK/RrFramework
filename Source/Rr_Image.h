@@ -26,14 +26,14 @@
 
 #include <Rr/Rr_Image.h>
 
-#include "Rr_UploadContext.h"
-
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Asset.h>
 
 #include <xxHash/xxhash.h>
 
 #include <vma/vk_mem_alloc.h>
+
+#include "Rr_Platform.h"
 
 struct Rr_Sampler
 {
@@ -113,39 +113,15 @@ typedef struct Rr_Image Rr_Image;
 
 extern void Rr_DestroyImage(Rr_Image *Image);
 
-extern void Rr_UploadStagingImage2D(
-    Rr_UploadContext *UploadContext,
-    Rr_Image2D *Image,
-    VkImageAspectFlags Aspect,
-    Rr_SyncState SrcState,
-    Rr_SyncState DstState,
-    struct Rr_Buffer *StagingBuffer,
-    uint64_t StagingOffset,
-    uint64_t StagingSize);
-
-extern void Rr_UploadImage2D(
-    Rr_UploadContext *UploadContext,
-    Rr_Image2D *Image,
-    VkImageAspectFlags Aspect,
-    Rr_SyncState SrcState,
-    Rr_SyncState DstState,
-    Rr_Data Data);
-
-extern Rr_Image2D *Rr_CreateImage2DRGBA8(
-    Rr_UploadContext *UploadContext,
-    char *Data,
-    uint32_t Width,
-    uint32_t Height);
-
-Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
-    Rr_UploadContext *UploadContext,
-    uint64_t DataSize,
-    char *Data,
-    bool Linear);
-
 extern size_t Rr_GetImagePNGRGBA8Size(
     size_t DataSize,
     char *Data,
     Rr_Arena *Arena);
 
-extern Rr_AllocatedImage *Rr_GetCurrentImage(Rr_Image *Image);
+extern Rr_Image2D *Rr_CreateSTBImage2D(
+    struct Rr_Graph *Graph,
+    Rr_TextureFormat Format,
+    size_t DataSize,
+    const char *Data);
+
+extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_Image *Image);

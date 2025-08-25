@@ -42,7 +42,7 @@ static void Iterate()
 
     Rr_ColorClear ColorClear = {};
 
-    Rr_AddClearColorImageNode(
+    Rr_AddClearColorImage2DNode(
         Graph,
         "clear",
         &ColorClear,

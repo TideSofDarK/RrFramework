@@ -29,7 +29,6 @@
 #include "Rr_Buffer.h"
 #include "Rr_Graph.h"
 #include "Rr_Image.h"
-#include "Rr_Load.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Vulkan.h"
 
@@ -55,13 +54,6 @@ struct Rr_Swapchain
     VkColorSpaceKHR ColorSpace;
     VkExtent3D Extent;
     Rr_AtomicInt RecreatePending;
-};
-
-typedef struct Rr_ImmediateMode Rr_ImmediateMode;
-struct Rr_ImmediateMode
-{
-    VkCommandBuffer CommandBuffer;
-    VkCommandPool CommandPool;
 };
 
 typedef struct Rr_Frame Rr_Frame;
@@ -166,6 +158,39 @@ struct Rr_RenderPassStorage
 
 extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key);
 
+typedef struct Rr_SyncStateMap Rr_SyncStateMap;
+struct Rr_SyncStateMap
+{
+    uint64_t Key;
+    Rr_SyncState Value;
+    Rr_SyncStateMap *Children[4];
+};
+
+#define RR_HIVE_TYPE      Rr_SyncStateMap
+#define RR_HIVE_TYPE_NAME SyncStateMap
+#define RR_HIVE_PREFIX    Rr_
+#include <Rr/Rr_Hive.h>
+
+typedef struct Rr_SyncStateStorage Rr_SyncStateStorage;
+struct Rr_SyncStateStorage
+{
+    Rr_SyncStateMap *Map;
+    Rr_SyncStateMapHive Hive;
+};
+
+extern Rr_SyncState *Rr_FindSyncState(
+    Rr_SyncStateStorage *Storage,
+    uint64_t VulkanHandle,
+    Rr_Arena *Arena);
+
+extern Rr_SyncState Rr_GetSyncState(
+    Rr_SyncStateStorage *Storage,
+    uint64_t VulkanHandle);
+
+extern void Rr_EraseSyncState(
+    Rr_SyncStateStorage *Storage,
+    uint64_t VulkanHandle);
+
 struct Rr_Renderer
 {
     Rr_VulkanLoader Loader;
@@ -193,11 +218,7 @@ struct Rr_Renderer
     Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
     Rr_FramebufferStorage FramebufferStorage;
     Rr_RenderPassStorage RenderPassStorage;
-
-    RR_ARRAY(Rr_PendingLoad) PendingLoads;
-
-    Rr_Map *GlobalSync;
-    RR_FREE_LIST(Rr_SyncState) SyncStates;
+    Rr_SyncStateStorage SyncStateStorage;
 
     RR_FREE_LIST(Rr_ImageViewStorage) ImageViewStorage;
 
@@ -234,10 +255,6 @@ extern void Rr_DrawFrame(void);
 extern Rr_Frame *Rr_GetCurrentFrame(void);
 
 extern bool Rr_IsUsingTransferQueue(void);
-
-extern Rr_SyncState *Rr_GetSyncState(Rr_MapKey Key);
-
-extern void Rr_ReturnSyncState(Rr_MapKey Key);
 
 extern VkSemaphore Rr_GetVulkanSemaphore(void);
 

@@ -4,25 +4,25 @@
 
 #include <array>
 
-struct alignas(16) SS0B0Element
+struct SS0B0Element
 {
     Rr_Vec4 ZeroVector;
     Rr_Vec4 OneVector;
 };
 
-struct alignas(16) SS1B1Element
+struct SS1B1Element
 {
     Rr_Vec4 TwoVector;
     std::uint32_t ThousandU32;
 };
 
-struct alignas(16) SS2Element
+struct SS2Element
 {
     Rr_Vec4 Vector;
     std::uint32_t U32;
 };
 
-struct alignas(16) SS2B4Element
+struct SS2B4Element
 {
     Rr_Vec4 Vector;
     std::uint32_t U32;

@@ -5,11 +5,17 @@
 #include "../../Vendor/stb/stb_image.h"
 
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <iostream>
+#include <thread>
+
+static constexpr std::int32_t IMAGE_WIDTH = 800;
+static constexpr std::int32_t IMAGE_HEIGHT = 600;
 
 template <size_t ImageCount>
 Rr_Image3D *CreateColorImage3DFromPNGs(
+    Rr_Graph *Graph,
     std::int32_t Width,
     std::int32_t Height,
     const std::array<Rr_AssetRef, ImageCount> &Assets)
@@ -54,7 +60,7 @@ Rr_Image3D *CreateColorImage3DFromPNGs(
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     Rr_AddCopyBufferToImage3DNode(
-        Rr_GetGraph(),
+        Graph,
         "copy",
         StagingBuffer,
         0,
@@ -67,16 +73,46 @@ Rr_Image3D *CreateColorImage3DFromPNGs(
     return Image3D;
 }
 
+void TransferThreadProc(std::atomic<Rr_Image3D *> &Result)
+{
+    Rr_InitThreadContext();
+
+    Rr_Graph *Graph = Rr_CreateGraph();
+
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(2s);
+
+    Rr_Image3D *Image3D = CreateColorImage3DFromPNGs(
+        Graph,
+        IMAGE_WIDTH,
+        IMAGE_HEIGHT,
+        std::array{
+            EXAMPLE_ASSET_IMAGE0_PNG,
+            EXAMPLE_ASSET_IMAGE1_PNG,
+            EXAMPLE_ASSET_IMAGE2_PNG,
+        });
+    if (!Image3D)
+    {
+        std::cerr << "Unable to load images!\n";
+        std::abort();
+    }
+
+    Rr_SubmitGraph(Graph);
+
+    Result.store(Image3D);
+
+    Rr_DestroyGraph(Graph);
+
+    Rr_CleanupThreadContext();
+}
+
 struct STransferThreadApp
 {
-    static constexpr std::int32_t IMAGE_WIDTH = 800;
-    static constexpr std::int32_t IMAGE_HEIGHT = 600;
-
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_Sampler *Sampler;
     Rr_Buffer *UniformBuffer;
-    Rr_Image3D *Image3D;
+    std::atomic<Rr_Image3D *> Image3D{};
 
     void InitPipeline()
     {
@@ -125,19 +161,8 @@ struct STransferThreadApp
 
     void InitImageArray()
     {
-        Image3D = CreateColorImage3DFromPNGs(
-            IMAGE_WIDTH,
-            IMAGE_HEIGHT,
-            std::array{
-                EXAMPLE_ASSET_IMAGE0_PNG,
-                EXAMPLE_ASSET_IMAGE1_PNG,
-                EXAMPLE_ASSET_IMAGE2_PNG,
-            });
-        if (!Image3D)
-        {
-            std::cerr << "Unable to load images!\n";
-            std::abort();
-        }
+        std::thread Thread{ TransferThreadProc, std::ref(Image3D) };
+        Thread.detach();
     }
 
     void InitUniformBuffer()
@@ -168,18 +193,6 @@ struct STransferThreadApp
         };
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
-
-        struct
-        {
-            float Time = (float)Rr_GetTimeSeconds();
-            std::uint32_t ImageCount = 3;
-        } UniformData;
-
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &UniformData,
-            sizeof(UniformData));
 
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
             Rr_GetGraph(),
@@ -190,19 +203,41 @@ struct STransferThreadApp
             NULL,
             NULL);
 
-        Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
-        Rr_Rect SwapchainRect{ 0,
-                               0,
-                               (float)SwapchainExtent.Width,
-                               (float)SwapchainExtent.Height };
-        Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
-        Rr_SetViewport(GraphicsNode, &Viewport);
+        Rr_Image3D *Image3DL = Image3D.load();
+        if (Image3DL)
+        {
+            Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
 
-        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, 16);
-        Rr_BindCombinedImage3DSampler(GraphicsNode, Image3D, Sampler, 0, 1);
+            struct
+            {
+                float Time = (float)Rr_GetTimeSeconds();
+                std::uint32_t ImageCount = 3;
+            } UniformData;
 
-        Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+            std::memcpy(
+                Rr_GetMappedBufferData(UniformBuffer),
+                &UniformData,
+                sizeof(UniformData));
+
+            Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
+            Rr_Rect SwapchainRect{ 0,
+                                   0,
+                                   (float)SwapchainExtent.Width,
+                                   (float)SwapchainExtent.Height };
+            Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
+            Rr_SetViewport(GraphicsNode, &Viewport);
+
+            Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+            Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, 16);
+            Rr_BindCombinedImage3DSampler(
+                GraphicsNode,
+                Image3DL,
+                Sampler,
+                0,
+                1);
+
+            Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+        }
     }
 
     void Cleanup()
@@ -210,7 +245,7 @@ struct STransferThreadApp
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseImage(Image3D);
+        Rr_ReleaseImage(Image3D.load());
         Rr_ReleaseSampler(Sampler);
     }
 };

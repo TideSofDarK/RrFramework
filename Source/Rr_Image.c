@@ -26,7 +26,6 @@
 
 #include "Rr_Buffer.h"
 #include "Rr_Renderer.h"
-#include "Rr_UploadContext.h"
 
 #include <stb/stb_image.h>
 
@@ -200,168 +199,6 @@ Found:
         ImageViewRef);
 
     return *ImageViewRef;
-}
-
-void Rr_UploadStagingImage2D(
-    Rr_UploadContext *UploadContext,
-    Rr_Image2D *Image,
-    VkImageAspectFlags Aspect,
-    Rr_SyncState SrcState,
-    Rr_SyncState DstState,
-    Rr_Buffer *StagingBuffer,
-    uint64_t StagingOffset,
-    uint64_t StagingSize)
-{
-    Rr_Device *Device = &gRenderer->Device;
-
-    VkCommandBuffer CommandBuffer = UploadContext->CommandBuffer;
-
-    Rr_AllocatedBuffer *AllocatedStagingBuffer =
-        StagingBuffer->AllocatedBuffers;
-
-    for (size_t AllocatedIndex = 0; AllocatedIndex < Image->AllocatedImageCount;
-         ++AllocatedIndex)
-    {
-        Rr_AllocatedImage *AllocatedImage =
-            Image->AllocatedImages + AllocatedIndex;
-
-        VkImageSubresourceRange SubresourceRange = {
-            .aspectMask = Aspect,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = VK_REMAINING_ARRAY_LAYERS,
-        };
-
-        Device->CmdPipelineBarrier(
-            CommandBuffer,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0,
-            0,
-            NULL,
-            0,
-            NULL,
-            1,
-            &(VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = AllocatedImage->Handle,
-                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = 0,
-                .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            });
-
-        VkBufferImageCopy BufferImageCopy = {
-            .bufferOffset = 0,
-            .bufferRowLength = 0,
-            .bufferImageHeight = 0,
-            .imageSubresource = {
-                .aspectMask = Aspect,
-                .mipLevel = 0,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-            .imageExtent = (VkExtent3D){ Image->Extent.width, Image->Extent.height, 1},
-        };
-
-        Device->CmdCopyBufferToImage(
-            CommandBuffer,
-            AllocatedStagingBuffer->Handle,
-            AllocatedImage->Handle,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1,
-            &BufferImageCopy);
-
-        Device->CmdPipelineBarrier(
-            CommandBuffer,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            DstState.StageMask,
-            0,
-            0,
-            NULL,
-            0,
-            NULL,
-            1,
-            &(VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = AllocatedImage->Handle,
-                .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                .newLayout = DstState.Layout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = DstState.AccessMask,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            });
-
-        if (UploadContext->UseAcquireBarriers)
-        {
-            *RR_PUSH_INTO_ARRAY(
-                &UploadContext->ReleaseImageMemoryBarriers,
-                UploadContext->Arena) = (VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = AllocatedImage->Handle,
-                .oldLayout = DstState.Layout,
-                .newLayout = DstState.Layout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = DstState.AccessMask,
-                .dstAccessMask = 0,
-                .srcQueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
-            };
-
-            *RR_PUSH_INTO_ARRAY(
-                &UploadContext->AcquireImageMemoryBarriers,
-                UploadContext->Arena) = (VkImageMemoryBarrier){
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = NULL,
-                .image = AllocatedImage->Handle,
-                .oldLayout = DstState.Layout,
-                .newLayout = DstState.Layout,
-                .subresourceRange = SubresourceRange,
-                .srcAccessMask = 0,
-                .dstAccessMask = DstState.AccessMask,
-                .srcQueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
-                .dstQueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
-            };
-        }
-    }
-}
-
-void Rr_UploadImage2D(
-    Rr_UploadContext *UploadContext,
-    Rr_Image2D *Image,
-    VkImageAspectFlags Aspect,
-    Rr_SyncState SrcState,
-    Rr_SyncState DstState,
-    Rr_Data Data)
-{
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        Data.Size,
-        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
-    *RR_PUSH_INTO_ARRAY(&UploadContext->StagingBuffers, UploadContext->Arena) =
-        StagingBuffer;
-
-    Rr_AllocatedBuffer *AllocatedStagingBuffer =
-        StagingBuffer->AllocatedBuffers;
-    memcpy(AllocatedStagingBuffer->MappedData, Data.Pointer, Data.Size);
-
-    Rr_UploadStagingImage2D(
-        UploadContext,
-        Image,
-        Aspect,
-        SrcState,
-        DstState,
-        StagingBuffer,
-        0,
-        0);
 }
 
 static Rr_Image *Rr_CreateImage(
@@ -629,82 +466,58 @@ size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)
     return Width * Height * DesiredChannels;
 }
 
-Rr_Image2D *Rr_CreateImage2DRGBA8(
-    Rr_UploadContext *UploadContext,
-    char *Data,
-    uint32_t Width,
-    uint32_t Height)
+Rr_Image2D *Rr_CreateSTBImage2D(
+    struct Rr_Graph *Graph,
+    Rr_TextureFormat Format,
+    size_t DataSize,
+    const char *Data)
 {
-    int32_t DesiredChannels = 4;
-    Rr_IntVec2 Extent = { .Width = Width, .Height = Height };
-    size_t DataSize = Extent.Width * Extent.Height * DesiredChannels;
+    assert(
+        Format == RR_TEXTURE_FORMAT_R8G8B8A8_SRGB ||
+        Format == RR_TEXTURE_FORMAT_R8G8B8A8_UNORM ||
+        Format == RR_TEXTURE_FORMAT_B8G8R8A8_UNORM);
 
-    Rr_Image2D *ColorImage = Rr_CreateImage2D(
-        Extent,
-        RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
-        RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
-
-    Rr_UploadImage2D(
-        UploadContext,
-        ColorImage,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        (Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        },
-        (Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        },
-        RR_MAKE_DATA(DataSize, Data));
-
-    return ColorImage;
-}
-
-Rr_Image2D *Rr_CreateImage2DRGBA8FromPNG(
-    Rr_UploadContext *UploadContext,
-    uint64_t DataSize,
-    char *Data,
-    bool Linear)
-{
-    int32_t DesiredChannels = 4;
-    int32_t Channels;
-    Rr_IntVec2 Extent;
-    stbi_uc *ParsedData = stbi_load_from_memory(
+    Rr_IntVec2 ImageSize;
+    int32_t ImageChannels;
+    char *ImageData = (char *)stbi_load_from_memory(
         (stbi_uc *)Data,
         (int32_t)DataSize,
-        (int32_t *)&Extent.Width,
-        (int32_t *)&Extent.Height,
-        &Channels,
-        DesiredChannels);
-    size_t ParsedSize = Extent.Width * Extent.Height * DesiredChannels;
+        &ImageSize.Width,
+        &ImageSize.Height,
+        &ImageChannels,
+        4);
 
-    Rr_Image2D *ColorImage = Rr_CreateImage2D(
-        Extent,
-        Linear ? RR_TEXTURE_FORMAT_R8G8B8A8_UNORM
-               : RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
-        RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+    int32_t ImageDataSize = 4 * ImageSize.Width * ImageSize.Height;
 
-    Rr_UploadImage2D(
-        UploadContext,
-        ColorImage,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        (Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        },
-        (Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-            .AccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        },
-        RR_MAKE_DATA(ParsedSize, ParsedData));
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        ImageDataSize,
+        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
 
-    stbi_image_free(ParsedData);
+    Rr_Image2D *Image2D = Rr_CreateImage2D(
+        ImageSize,
+        Format,
+        RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-    return ColorImage;
+    memcpy(Rr_GetMappedBufferData(StagingBuffer), ImageData, ImageDataSize);
+
+    stbi_image_free(ImageData);
+
+    Rr_AddTransferNode(Rr_GetGraph(), "create_png_image");
+    Rr_AddCopyBufferToImage2DNode(
+        Rr_GetGraph(),
+        "copy_font_texture",
+        StagingBuffer,
+        0,
+        ImageSize,
+        Image2D,
+        0);
+
+    Rr_ReleaseBuffer(StagingBuffer);
+
+    return Image2D;
 }
 
-Rr_AllocatedImage *Rr_GetCurrentImage(Rr_Image *Image)
+Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_Image *Image)
 {
     uint32_t AllocatedImageIndex =
         gRenderer->FrameIndex % Image->AllocatedImageCount;

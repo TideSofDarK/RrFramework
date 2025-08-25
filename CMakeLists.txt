@@ -177,7 +177,6 @@ target_sources(
     Source/Rr_GLTF.c
     Source/Rr_Graph.c
     Source/Rr_Image.c
-    Source/Rr_Load.c
     Source/Rr_Memory.c
     Source/Rr_Pipeline.c
     Source/Rr_Platform.c
@@ -200,7 +199,6 @@ target_sources(
     Include/Rr/Rr.h
     Include/Rr/Rr_Hive.h
     Include/Rr/Rr_Image.h
-    Include/Rr/Rr_Load.h
     Include/Rr/Rr_Math.h
     Include/Rr/Rr_Memory.h
     Include/Rr/Rr_Pipeline.h

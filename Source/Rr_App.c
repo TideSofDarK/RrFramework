@@ -31,6 +31,7 @@
 #include <Rr/Rr_Memory.h>
 
 #include <assert.h>
+#include <threads.h>
 
 Rr_App *gApp = NULL;
 
@@ -124,12 +125,14 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitRenderer(Config->Title);
 
-    Rr_InitUI();
-
-    /* NOTE: Call these early so user-provided Init function may access Graph
-     * and UI. */
+    /* NOTE: Order is very important! UI initialization will create GPU
+     * resources so it must have access to the graph. User provided Init
+     * function also must have access. */
 
     Rr_NewFrame();
+
+    Rr_InitUI();
+
     Rr_NewUIFrame();
 
     if (gApp->InitFunc)
