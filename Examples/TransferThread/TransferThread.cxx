@@ -54,20 +54,8 @@ Rr_Image2D *CreateImage2D(Rr_Graph *Graph, const char *Path)
     return Image2D;
 }
 
-struct STransferThreadApp
+struct STransferThread
 {
-    Rr_PipelineLayout *PlaceholderLayout;
-    Rr_GraphicsPipeline *PlaceholderPipeline;
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
-    Rr_Sampler *Sampler;
-    Rr_Buffer *UniformBuffer;
-    std::vector<Rr_Image2D *> Images;
-
-    std::int32_t CurrentImageIndex{};
-
-    std::thread Thread;
-
     std::mutex ImagesMutex;
     std::queue<Rr_Image2D *> ImagesQueue;
 
@@ -75,9 +63,9 @@ struct STransferThreadApp
     std::mutex PathsMutex;
     std::condition_variable PathsCondVar;
 
-    std::atomic_bool Loading;
+    std::atomic_bool IsBusy;
 
-    static void TransferThreadProc(STransferThreadApp *App)
+    static void ThreadProc(STransferThread *Thread)
     {
         Rr_InitThreadContext();
 
@@ -85,19 +73,19 @@ struct STransferThreadApp
 
         while (!Rr_QuitRequested())
         {
-            App->Loading.store(false, std::memory_order_relaxed);
+            Thread->IsBusy.store(false, std::memory_order_relaxed);
 
             std::string Path;
             {
-                std::unique_lock Lock{ App->PathsMutex };
-                App->PathsCondVar.wait(Lock, [&]() {
-                    return !App->PathsQueue.empty();
+                std::unique_lock Lock{ Thread->PathsMutex };
+                Thread->PathsCondVar.wait(Lock, [&]() {
+                    return !Thread->PathsQueue.empty();
                 });
-                Path = std::move(App->PathsQueue.front());
-                App->PathsQueue.pop();
+                Path = std::move(Thread->PathsQueue.front());
+                Thread->PathsQueue.pop();
             }
 
-            App->Loading.store(true, std::memory_order_relaxed);
+            Thread->IsBusy.store(true, std::memory_order_relaxed);
 
             Rr_Image2D *Image2D = CreateImage2D(Graph, Path.c_str());
 
@@ -109,14 +97,56 @@ struct STransferThreadApp
 
             Rr_SubmitGraph(Graph);
 
-            std::unique_lock Lock{ App->ImagesMutex };
-            App->ImagesQueue.push(Image2D);
+            std::unique_lock Lock{ Thread->ImagesMutex };
+            Thread->ImagesQueue.push(Image2D);
         }
 
         Rr_DestroyGraph(Graph);
 
         Rr_CleanupThreadContext();
     }
+
+    void Run()
+    {
+        auto Thread = std::thread{ ThreadProc, this };
+        Thread.detach();
+    }
+
+    void AddToQueue(const char *Path)
+    {
+        std::unique_lock Lock{ PathsMutex };
+        PathsQueue.push(Path);
+        PathsCondVar.notify_all();
+    }
+
+    bool AcquireLoadedImages(std::vector<Rr_Image2D *> &OutImages)
+    {
+        bool Acquired = false;
+        std::unique_lock Lock{ ImagesMutex, std::try_to_lock };
+        if (Lock.owns_lock())
+        {
+            while (!ImagesQueue.empty())
+            {
+                OutImages.push_back(ImagesQueue.front());
+                ImagesQueue.pop();
+                Acquired = true;
+            }
+        }
+        return Acquired;
+    }
+};
+
+struct STransferThreadApp
+{
+    Rr_PipelineLayout *PlaceholderLayout;
+    Rr_GraphicsPipeline *PlaceholderPipeline;
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_Sampler *Sampler;
+    Rr_Buffer *UniformBuffer;
+    STransferThread Thread;
+    std::vector<Rr_Image2D *> Images;
+    std::int32_t CurrentImageIndex{};
 
     void InitPipeline()
     {
@@ -202,28 +232,21 @@ struct STransferThreadApp
         PlaceholderPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
-    void InitThread()
-    {
-        Thread = std::thread{ TransferThreadProc, this };
-        Thread.detach();
-    }
-
     void Init()
     {
         InitSampler();
         InitPipeline();
         InitUniformBuffer();
         InitPlaceholder();
-        InitThread();
+
+        Thread.Run();
     }
 
     void Event(Rr_Event *Event)
     {
         if (Event->Type == RR_EVENT_TYPE_DROP_FILE)
         {
-            std::unique_lock Lock{ PathsMutex };
-            PathsQueue.push(Event->DropFile.Path);
-            PathsCondVar.notify_all();
+            Thread.AddToQueue(Event->DropFile.Path);
         }
     }
 
@@ -245,15 +268,9 @@ struct STransferThreadApp
         }
         Rr_UIEndWindow();
 
-        if (std::unique_lock Lock{ ImagesMutex, std::try_to_lock };
-            Lock.owns_lock())
+        if (Thread.AcquireLoadedImages(Images))
         {
-            while (!ImagesQueue.empty())
-            {
-                Images.push_back(ImagesQueue.front());
-                ImagesQueue.pop();
-                CurrentImageIndex = Images.size() - 1;
-            }
+            CurrentImageIndex = Images.size() - 1;
         }
 
         Rr_ColorTarget ColorTarget = {
@@ -317,7 +334,7 @@ struct STransferThreadApp
             Rr_Draw(GraphicsNode, 6, 1, 0, 0);
         }
 
-        if (Loading.load(std::memory_order_relaxed))
+        if (Thread.IsBusy.load(std::memory_order_relaxed))
         {
             Rr_BindGraphicsPipeline(GraphicsNode, PlaceholderPipeline);
             Rr_BindUniformBuffer(

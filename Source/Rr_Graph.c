@@ -1776,11 +1776,15 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
 
     Rr_Device *Device = &gRenderer->Device;
 
-    VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
     bool UseTransferQueue = Rr_IsUsingTransferQueue();
+    Rr_Queue *Queue = UseTransferQueue ? &gRenderer->TransferQueue
+                                       : &gRenderer->GraphicsQueue;
+    VkCommandPool CommandPool = UseTransferQueue ? Graph->TransferCommandPool
+                                                 : Graph->GraphicsCommandPool;
     uint32_t QueueFamilyIndex = UseTransferQueue
                                     ? gRenderer->TransferQueue.FamilyIndex
                                     : gRenderer->GraphicsQueue.FamilyIndex;
+    VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
 
     Device->AllocateCommandBuffers(
         Device->Handle,
@@ -1791,6 +1795,15 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
             .commandBufferCount = 1,
         },
         &CommandBuffer);
+
+    VkCommandBufferBeginInfo CommandBufferBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    Device->BeginCommandBuffer(
+        CommandBuffer,
+        &CommandBufferBeginInfo);
 
     Rr_SyncStateStorage *SyncStateStorage =
         RR_ALLOC(Graph->Arena, sizeof(Rr_SyncStateStorage));
@@ -1886,7 +1899,7 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
             {
                 ReleaseStageMask |= SrcState.StageMask;
                 ImageBarriers[ImageBarrierIndex++] = (VkImageMemoryBarrier){
-                    .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                     .image = AllocatedImage->Handle,
                     .oldLayout = SrcState.Layout,
                     .newLayout = SrcState.Layout,
@@ -1941,10 +1954,9 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
             ImageBarriers);
     }
 
-    VkFence Fence = Rr_GetVulkanFence();
+    Device->EndCommandBuffer(CommandBuffer);
 
-    Rr_Queue *Queue = UseTransferQueue ? &gRenderer->TransferQueue
-                                       : &gRenderer->GraphicsQueue;
+    VkFence Fence = Rr_GetVulkanFence();
 
     Rr_LockSpinlock(&Queue->Lock);
 
