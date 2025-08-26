@@ -1337,6 +1337,11 @@ void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
     }
 }
 
+static const Rr_SyncState RR_EMPTY_SYNC = {
+    .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+};
+
 Rr_SyncState *Rr_FindSyncState(
     Rr_SyncStateStorage *Storage,
     uint64_t VulkanHandle,
@@ -1356,8 +1361,7 @@ Rr_SyncState *Rr_FindSyncState(
     assert(Arena);
     *MapRef = Rr_PushSyncStateMapIntoHive(&Storage->Hive, Arena).Element;
     RR_ZERO((*MapRef)->Children);
-    (*MapRef)->Value =
-        (Rr_SyncState){ .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED };
+    (*MapRef)->Value = RR_EMPTY_SYNC;
     (*MapRef)->Key = (uint64_t)VulkanHandle;
     return &(*MapRef)->Value;
 }
@@ -1376,9 +1380,7 @@ Rr_SyncState Rr_GetSyncState(
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    return (Rr_SyncState){
-        .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    };
+    return RR_EMPTY_SYNC;
 }
 
 void Rr_EraseSyncState(Rr_SyncStateStorage *Storage, uint64_t VulkanHandle)
@@ -1390,9 +1392,7 @@ void Rr_EraseSyncState(Rr_SyncStateStorage *Storage, uint64_t VulkanHandle)
         if (VulkanHandle == (*MapRef)->Key)
         {
             (*MapRef)->Key = (uint64_t)VK_NULL_HANDLE;
-            (*MapRef)->Value = (Rr_SyncState){
-                .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            };
+            (*MapRef)->Value = RR_EMPTY_SYNC;
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
@@ -1479,14 +1479,4 @@ void Rr_ReturnVulkanFence(VkFence Fence)
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
     Device->ResetFences(Device->Handle, 1, &Fence);
-}
-
-void Rr_InitThreadContext(void)
-{
-    Rr_InitScratchArena();
-}
-
-void Rr_CleanupThreadContext(void)
-{
-    Rr_CleanupScratchArena();
 }

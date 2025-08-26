@@ -62,7 +62,9 @@ void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
         }
         while (Rr_LoadAtomicRelaxed(Spinlock))
         {
+#ifdef __SSE2__
             _mm_pause();
+#endif
         }
     }
 }

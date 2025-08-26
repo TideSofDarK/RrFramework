@@ -59,6 +59,10 @@ extern void Rr_Quit(void);
 
 extern bool Rr_QuitRequested(void);
 
+extern void Rr_InitThreadContext(void);
+
+extern void Rr_CleanupThreadContext(void);
+
 #ifdef __cplusplus
 }
 #endif

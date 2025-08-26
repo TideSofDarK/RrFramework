@@ -239,7 +239,6 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
         case SDL_EVENT_QUIT:
         {
             Event->Type = RR_EVENT_TYPE_QUIT;
-            Rr_Quit();
             return true;
         }
         default:

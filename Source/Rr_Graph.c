@@ -1436,7 +1436,7 @@ void Rr_ExecuteGraph(
 
     size_t DependencyLevel = SortedNodes.Data[0]->DependencyLevel;
 
-    /* TODO: Pre-allocate barrier arrays. */
+    /* TODO: Use scratch for barrier map/arrays. */
 
     Rr_BarrierBatch BarrierBatch = { 0 };
 
@@ -1499,17 +1499,13 @@ void Rr_ExecuteGraph(
                     Scratch.Arena);
                 BufferBarrier = *BufferBarrierRef;
                 *BufferBarrier = (Rr_BufferMemoryBarrier){
-                    .SrcStageMask = SrcState->StageMask != 0
-                                        ? SrcState->StageMask
-                                        : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    .SrcStageMask = SrcState->StageMask,
                     .DstStageMask = DstState->StageMask,
                     .Buffer = Buffer,
                     .SrcAccessMask = SrcState->AccessMask,
                     .DstAccessMask = DstState->AccessMask,
                     .Offset = 0,
                     .Size = VK_WHOLE_SIZE,
-                    .SrcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .DstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 };
             }
             else
@@ -1520,17 +1516,20 @@ void Rr_ExecuteGraph(
                 BufferBarrier->DstAccessMask |= DstState->AccessMask;
             }
 
-            SrcState->StageMask = BufferBarrier->DstStageMask;
-            SrcState->AccessMask = BufferBarrier->DstAccessMask;
-            SrcState->QueueFamilyIndex = QueueFamilyIndex;
-
             if (TransferOwnership)
             {
-                BufferBarrier->SrcAccessMask = 0;
+                /* BufferBarrier->SrcAccessMask = 0; */
                 BufferBarrier->SrcQueueFamilyIndex = SrcState->QueueFamilyIndex;
                 BufferBarrier->DstQueueFamilyIndex = QueueFamilyIndex;
             }
+            else
+            {
+                BufferBarrier->SrcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                BufferBarrier->DstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            }
 
+            SrcState->StageMask = BufferBarrier->DstStageMask;
+            SrcState->AccessMask = BufferBarrier->DstAccessMask;
             SrcState->QueueFamilyIndex = QueueFamilyIndex;
         }
 
@@ -1584,9 +1583,7 @@ void Rr_ExecuteGraph(
                     Scratch.Arena);
                 ImageBarrier = *ImageBarrierRef;
                 *ImageBarrier = (Rr_ImageMemoryBarrier){
-                    .SrcStageMask = SrcState->StageMask != 0
-                                        ? SrcState->StageMask
-                                        : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    .SrcStageMask = SrcState->StageMask,
                     .DstStageMask = DstState->StageMask,
                     .Image = Image,
                     .SrcAccessMask = SrcState->AccessMask,
@@ -1602,8 +1599,6 @@ void Rr_ExecuteGraph(
                             .baseArrayLayer = 0,
                             .layerCount = VK_REMAINING_ARRAY_LAYERS,
                         },
-                    .SrcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .DstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 };
             }
             else
@@ -1611,17 +1606,21 @@ void Rr_ExecuteGraph(
                 RR_ABORT("Multiple image layout transitions!");
             }
 
-            SrcState->StageMask = ImageBarrier->DstStageMask;
-            SrcState->AccessMask = ImageBarrier->DstAccessMask;
-            SrcState->Layout = ImageBarrier->NewLayout;
-
             if (TransferOwnership)
             {
-                ImageBarrier->SrcAccessMask = 0;
+                /* ImageBarrier->SrcAccessMask = 0; */
                 ImageBarrier->SrcQueueFamilyIndex = SrcState->QueueFamilyIndex;
                 ImageBarrier->DstQueueFamilyIndex = QueueFamilyIndex;
             }
+            else
+            {
+                ImageBarrier->SrcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                ImageBarrier->DstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            }
 
+            SrcState->StageMask = ImageBarrier->DstStageMask;
+            SrcState->AccessMask = ImageBarrier->DstAccessMask;
+            SrcState->Layout = ImageBarrier->NewLayout;
             SrcState->QueueFamilyIndex = QueueFamilyIndex;
         }
 
@@ -1801,9 +1800,7 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
 
-    Device->BeginCommandBuffer(
-        CommandBuffer,
-        &CommandBufferBeginInfo);
+    Device->BeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
     Rr_SyncStateStorage *SyncStateStorage =
         RR_ALLOC(Graph->Arena, sizeof(Rr_SyncStateStorage));

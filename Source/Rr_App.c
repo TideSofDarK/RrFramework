@@ -146,6 +146,13 @@ void Rr_Run(Rr_AppConfig *Config)
     {
         for (Rr_Event Event; Rr_PollEvent(&Event);)
         {
+            if(Event.Type == RR_EVENT_TYPE_QUIT)
+            {
+                /* TODO: Should have an option to ignore it. */
+
+                Rr_Quit();
+            }
+
             Rr_ProcessUIEvent(&Event);
 
             if (Config->EventFunc != NULL)
@@ -244,6 +251,16 @@ void Rr_Quit(void)
 bool Rr_QuitRequested(void)
 {
     return Rr_LoadAtomicRelaxed(&gApp->QuitRequested);
+}
+
+void Rr_InitThreadContext(void)
+{
+    Rr_InitScratchArena();
+}
+
+void Rr_CleanupThreadContext(void)
+{
+    Rr_CleanupScratchArena();
 }
 
 Rr_Event *Rr_AddEvent(void)

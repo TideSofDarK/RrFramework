@@ -317,7 +317,8 @@ static void Rr_GLFWCharCallback(GLFWwindow *Window, uint32_t Codepoint)
 
 static void Rr_GLFWWindowCloseCallback(GLFWwindow *Window)
 {
-    Rr_Quit();
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_QUIT;
 }
 
 static void Rr_GLFWWindowContentScaleCallback(
