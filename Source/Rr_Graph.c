@@ -71,7 +71,7 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
 {
     Rr_GraphNode *GraphNode = RR_ALLOC(Graph->Arena, sizeof(Rr_GraphNode));
     GraphNode->Type = Type;
-    strncpy(GraphNode->Name, Name, sizeof(GraphNode->Name));
+    strncpy(GraphNode->Name, Name, sizeof(GraphNode->Name) - 1);
     GraphNode->OriginalIndex = (uint32_t)Graph->Nodes.Count;
     GraphNode->Graph = Graph;
 

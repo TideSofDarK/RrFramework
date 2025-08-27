@@ -33,6 +33,7 @@ extern "C" {
 
 struct Rr_Renderer;
 struct Rr_String;
+struct Rr_Graph;
 
 typedef struct Rr_UIContext Rr_UIContext;
 
