@@ -42,13 +42,13 @@ struct Rr_DescriptorPoolList
 
 extern Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void);
 
+extern void Rr_ReleaseDescriptorPoolList(Rr_DescriptorPoolList *List);
+
 extern void Rr_AllocateDescriptorSets(
     Rr_DescriptorPoolList **ListRef,
     uint32_t Count,
     VkDescriptorSetLayout *Layouts,
     VkDescriptorSet *OutSets);
-
-extern void Rr_ResetDescriptorPools(Rr_DescriptorPoolList *List);
 
 typedef struct Rr_DescriptorsState Rr_DescriptorsState;
 struct Rr_DescriptorsState

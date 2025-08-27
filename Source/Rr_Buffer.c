@@ -158,6 +158,11 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
+
+        Rr_EraseSyncState(
+            &gRenderer->SyncStateStorage,
+            (uint64_t)AllocatedBuffer->Handle);
+
         vmaDestroyBuffer(
             gRenderer->Allocator,
             AllocatedBuffer->Handle,

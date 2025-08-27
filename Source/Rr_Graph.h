@@ -357,6 +357,8 @@ struct Rr_Graph
     Rr_HandleSet GraphicsPipelines;
     Rr_HandleSet Samplers;
 
+    struct Rr_DescriptorPoolList *DescriptorPoolList;
+
     VkCommandPool GraphicsCommandPool;
     VkCommandPool TransferCommandPool;
     /* VkCommandPool ComputeCommandPool; */
@@ -395,3 +397,5 @@ extern void Rr_ExecuteGraph(
     uint32_t QueueFamilyIndex,
     VkCommandBuffer EarlyCommandBuffer,
     VkCommandBuffer LateCommandBuffer);
+
+extern void Rr_FinalizeGraph(Rr_Graph *Graph);

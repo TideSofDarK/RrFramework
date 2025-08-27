@@ -639,9 +639,7 @@ void Rr_CleanupRenderer(void)
 
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_Frame *Frame = &gRenderer->Frames[Index];
-        Rr_ResetDescriptorPools(Frame->DescriptorPoolList);
-        Rr_DecrementRefCounts(Frame->Graph);
+        Rr_FinalizeGraph(gRenderer->Frames[Index].Graph);
     }
 
     for (Rr_DescriptorPoolList *List = gRenderer->DescriptorPoolList; List;
@@ -740,10 +738,9 @@ void Rr_NewFrame(void)
 
         Rr_ReturnVulkanFence(Frame->SubmitFence);
         Frame->SubmitFence = VK_NULL_HANDLE;
-    }
 
-    Rr_ResetDescriptorPools(Frame->DescriptorPoolList);
-    Rr_DecrementRefCounts(Frame->Graph);
+        Rr_FinalizeGraph(Frame->Graph);
+    }
 
     /* TODO: Probably should use mutex instead. */
 
@@ -773,7 +770,7 @@ void Rr_NewFrame(void)
             Frame->Graph,
             (Rr_Image *)Frame->VirtualSwapchainImage)
             ->Values.Index;
-    Frame->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+    Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
 }
 
 void Rr_DrawFrame(void)

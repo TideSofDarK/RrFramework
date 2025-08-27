@@ -659,7 +659,7 @@ static void Rr_ExecuteComputeNode(
     Rr_DescriptorsState DescriptorsState = {
         .Device = Device,
         .CommandBuffer = CommandBuffer,
-        .ListRef = &Frame->DescriptorPoolList,
+        .ListRef = &Graph->DescriptorPoolList,
     };
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
@@ -913,7 +913,7 @@ static void Rr_ExecuteGraphicsNode(
     Rr_DescriptorsState DescriptorsState = {
         .Device = Device,
         .CommandBuffer = CommandBuffer,
-        .ListRef = &Frame->DescriptorPoolList,
+        .ListRef = &Graph->DescriptorPoolList,
     };
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
@@ -1783,8 +1783,8 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
     uint32_t QueueFamilyIndex = UseTransferQueue
                                     ? gRenderer->TransferQueue.FamilyIndex
                                     : gRenderer->GraphicsQueue.FamilyIndex;
-    VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
 
+    VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
     Device->AllocateCommandBuffers(
         Device->Handle,
         &(VkCommandBufferAllocateInfo){
@@ -1794,13 +1794,13 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
             .commandBufferCount = 1,
         },
         &CommandBuffer);
-
     VkCommandBufferBeginInfo CommandBufferBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
-
     Device->BeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
+
+    Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
 
     Rr_SyncStateStorage *SyncStateStorage =
         RR_ALLOC(Graph->Arena, sizeof(Rr_SyncStateStorage));
@@ -1973,7 +1973,7 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
 
     Rr_ReturnVulkanFence(Fence);
 
-    Rr_DecrementRefCounts(Graph);
+    Rr_FinalizeGraph(Graph);
 
     /* TODO: Semaphores! */
     /* TODO: Proper graph reset! */
@@ -1992,6 +1992,12 @@ void Rr_SubmitGraph(Rr_Graph *Graph)
     }
 
     Rr_DestroyScratch(Scratch);
+}
+
+extern void Rr_FinalizeGraph(Rr_Graph *Graph)
+{
+    Rr_ReleaseDescriptorPoolList(Graph->DescriptorPoolList);
+    Rr_DecrementRefCounts(Graph);
 }
 
 static inline Rr_GraphImage *Rr_GetGraphHandle(

@@ -82,7 +82,36 @@ Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void)
         gRenderer->DescriptorPoolListCount++;
     }
 
+    Result->Next = NULL;
+
     return Result;
+}
+
+void Rr_ReleaseDescriptorPoolList(Rr_DescriptorPoolList *List)
+{
+    if (List == NULL)
+    {
+        return;
+    }
+
+    Rr_Device *Device = &gRenderer->Device;
+
+    Rr_DescriptorPoolList *First = List;
+
+    while (List->Next)
+    {
+        Device->ResetDescriptorPool(Device->Handle, List->Handle, 0);
+        List = List->Next;
+    }
+
+    Device->ResetDescriptorPool(Device->Handle, List->Handle, 0);
+
+    Rr_LockSpinlock(&gRenderer->DescriptorPoolListLock);
+
+    List->Next = gRenderer->DescriptorPoolList;
+    gRenderer->DescriptorPoolList = First;
+
+    Rr_UnlockSpinlock(&gRenderer->DescriptorPoolListLock);
 }
 
 void Rr_AllocateDescriptorSets(
@@ -123,33 +152,6 @@ void Rr_AllocateDescriptorSets(
     assert(
         Result == VK_SUCCESS &&
         "Failed to allocate descriptor sets, too many descriptors requested?");
-}
-
-void Rr_ResetDescriptorPools(Rr_DescriptorPoolList *List)
-{
-    if (List == NULL)
-    {
-        return;
-    }
-
-    Rr_Device *Device = &gRenderer->Device;
-
-    Rr_DescriptorPoolList *First = List;
-
-    while (List->Next)
-    {
-        Device->ResetDescriptorPool(Device->Handle, List->Handle, 0);
-        List = List->Next;
-    }
-
-    Device->ResetDescriptorPool(Device->Handle, List->Handle, 0);
-
-    Rr_LockSpinlock(&gRenderer->DescriptorPoolListLock);
-
-    List->Next = gRenderer->DescriptorPoolList;
-    gRenderer->DescriptorPoolList = First;
-
-    Rr_UnlockSpinlock(&gRenderer->DescriptorPoolListLock);
 }
 
 void Rr_InvalidateDescriptorsState(

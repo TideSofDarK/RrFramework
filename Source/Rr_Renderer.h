@@ -66,7 +66,6 @@ struct Rr_Frame
     VkSemaphore AcquireSemaphore;
     VkFence SubmitFence;
 
-    Rr_DescriptorPoolList *DescriptorPoolList;
     Rr_Image2D *VirtualSwapchainImage;
 
     Rr_Graph *Graph;
