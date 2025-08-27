@@ -4934,6 +4934,9 @@ void Rr_UIDebugOverlay(void)
                 gRenderer->DescriptorSetLayoutStorage.Hive.Count,
                 gRenderer->DescriptorSetLayoutStorage.Hive.Capacity);
             Rr_UILabelF(
+                "DescriptorPools: %zu",
+                gRenderer->DescriptorPoolListCount);
+            Rr_UILabelF(
                 "PipelineLayouts: %zu/%zu",
                 gRenderer->PipelineLayouts.Count,
                 gRenderer->PipelineLayouts.Capacity);

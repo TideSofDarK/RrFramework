@@ -146,7 +146,7 @@ void Rr_Run(Rr_AppConfig *Config)
     {
         for (Rr_Event Event; Rr_PollEvent(&Event);)
         {
-            if(Event.Type == RR_EVENT_TYPE_QUIT)
+            if (Event.Type == RR_EVENT_TYPE_QUIT)
             {
                 /* TODO: Should have an option to ignore it. */
 

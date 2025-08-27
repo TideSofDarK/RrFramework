@@ -59,8 +59,6 @@ struct Rr_Swapchain
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    Rr_Image2D *VirtualSwapchainImage;
-
     VkCommandPool CommandPool;
     VkCommandBuffer EarlyCommandBuffer;
     VkCommandBuffer LateCommandBuffer;
@@ -68,7 +66,8 @@ struct Rr_Frame
     VkSemaphore AcquireSemaphore;
     VkFence SubmitFence;
 
-    Rr_DescriptorAllocator *DescriptorAllocator;
+    Rr_DescriptorPoolList *DescriptorPoolList;
+    Rr_Image2D *VirtualSwapchainImage;
 
     Rr_Graph *Graph;
 
@@ -210,6 +209,10 @@ struct Rr_Renderer
 
     RR_ARRAY(VkSemaphore) Semaphores;
     RR_ARRAY(VkFence) Fences;
+
+    Rr_DescriptorPoolList *DescriptorPoolList;
+    Rr_Spinlock DescriptorPoolListLock;
+    uint32_t DescriptorPoolListCount;
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameIndex;  /* Current frame-in-flight index. */

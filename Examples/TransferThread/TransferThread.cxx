@@ -56,12 +56,16 @@ Rr_Image2D *CreateImage2D(Rr_Graph *Graph, const char *Path)
 
 struct STransferThread
 {
-    std::mutex Mutex;
+    std::mutex PathsMutex;
     std::condition_variable CondVar;
+    std::queue<std::string> PathsQueue;
+
     std::mutex StopMutex;
     std::condition_variable StopCondVar;
+
+    std::mutex ImagesMutex;
     std::queue<Rr_Image2D *> ImagesQueue;
-    std::queue<std::string> PathsQueue;
+
     std::atomic_bool IsBusy;
     std::atomic_bool IsRunning;
     std::atomic_bool StopRequested;
@@ -78,8 +82,8 @@ struct STransferThread
         {
             Thread->IsBusy = false;
 
-            std::unique_lock Lock{ Thread->Mutex };
-            Thread->CondVar.wait(Lock, [&]() {
+            std::unique_lock PathsLock{ Thread->PathsMutex };
+            Thread->CondVar.wait(PathsLock, [&]() {
                 return !Thread->PathsQueue.empty() || Thread->StopRequested;
             });
             if (Thread->StopRequested)
@@ -102,6 +106,7 @@ struct STransferThread
 
             Rr_SubmitGraph(Graph);
 
+            std::unique_lock ImagesLock{ Thread->ImagesMutex };
             Thread->ImagesQueue.push(Image2D);
         }
 
@@ -124,7 +129,7 @@ struct STransferThread
     void Stop()
     {
         {
-            std::unique_lock Lock{ Mutex };
+            std::unique_lock Lock{ PathsMutex };
             StopRequested = true;
             CondVar.notify_all();
         }
@@ -135,7 +140,7 @@ struct STransferThread
 
     void AddToQueue(const char *Path)
     {
-        std::unique_lock Lock{ Mutex };
+        std::unique_lock Lock{ PathsMutex };
         PathsQueue.push(Path);
         CondVar.notify_all();
     }
@@ -143,7 +148,7 @@ struct STransferThread
     bool AcquireLoadedImages(std::vector<Rr_Image2D *> &OutImages)
     {
         bool Acquired = false;
-        std::unique_lock Lock{ Mutex, std::try_to_lock };
+        std::unique_lock Lock{ ImagesMutex, std::try_to_lock };
         if (Lock.owns_lock())
         {
             while (!ImagesQueue.empty())
@@ -278,6 +283,7 @@ struct STransferThreadApp
 
     void Iterate()
     {
+        Rr_UIDebugOverlay();
         Rr_UIBeginWindow(
             "TransferThread.cxx",
             nullptr,

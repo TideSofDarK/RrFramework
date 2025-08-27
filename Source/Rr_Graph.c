@@ -659,7 +659,7 @@ static void Rr_ExecuteComputeNode(
     Rr_DescriptorsState DescriptorsState = {
         .Device = Device,
         .CommandBuffer = CommandBuffer,
-        .Allocator = Frame->DescriptorAllocator,
+        .ListRef = &Frame->DescriptorPoolList,
     };
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
@@ -913,7 +913,7 @@ static void Rr_ExecuteGraphicsNode(
     Rr_DescriptorsState DescriptorsState = {
         .Device = Device,
         .CommandBuffer = CommandBuffer,
-        .Allocator = Frame->DescriptorAllocator,
+        .ListRef = &Frame->DescriptorPoolList,
     };
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;

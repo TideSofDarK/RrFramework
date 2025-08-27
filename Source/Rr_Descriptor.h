@@ -29,51 +29,33 @@
 #include <Rr/Rr_Memory.h>
 #include <Rr/Rr_Pipeline.h>
 
-#define RR_MAX_BINDINGS 16
-#define RR_MAX_SETS     4
+#define RR_MAX_BINDINGS         16
+#define RR_MAX_SETS             4
+#define RR_DESCRIPTOR_POOL_SIZE 128
 
-typedef struct Rr_DescriptorPoolSizeRatio Rr_DescriptorPoolSizeRatio;
-struct Rr_DescriptorPoolSizeRatio
+typedef struct Rr_DescriptorPoolList Rr_DescriptorPoolList;
+struct Rr_DescriptorPoolList
 {
-    VkDescriptorType Type;
-    float Ratio;
+    VkDescriptorPool Handle;
+    Rr_DescriptorPoolList *Next;
 };
 
-typedef struct Rr_DescriptorAllocator Rr_DescriptorAllocator;
-struct Rr_DescriptorAllocator
-{
-    Rr_Arena *Arena;
-    RR_ARRAY(Rr_DescriptorPoolSizeRatio) Ratios;
-    RR_ARRAY(VkDescriptorPool) FullPools;
-    RR_ARRAY(VkDescriptorPool) ReadyPools;
-    uint32_t SetsPerPool;
-};
+extern Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void);
 
-extern Rr_DescriptorAllocator *Rr_CreateDescriptorAllocator(
-    Rr_Device *Device,
-    uint32_t MaxSets,
-    Rr_DescriptorPoolSizeRatio *Ratios,
-    uint32_t RatioCount);
+extern void Rr_AllocateDescriptorSets(
+    Rr_DescriptorPoolList **ListRef,
+    uint32_t Count,
+    VkDescriptorSetLayout *Layouts,
+    VkDescriptorSet *OutSets);
 
-extern VkDescriptorSet Rr_AllocateDescriptorSet(
-    Rr_DescriptorAllocator *DescriptorAllocator,
-    Rr_Device *Device,
-    VkDescriptorSetLayout Layout);
-
-extern void Rr_ResetDescriptorAllocator(
-    Rr_DescriptorAllocator *DescriptorAllocator,
-    Rr_Device *Device);
-
-extern void Rr_DestroyDescriptorAllocator(
-    Rr_DescriptorAllocator *DescriptorAllocator,
-    Rr_Device *Device);
+extern void Rr_ResetDescriptorPools(Rr_DescriptorPoolList *List);
 
 typedef struct Rr_DescriptorsState Rr_DescriptorsState;
 struct Rr_DescriptorsState
 {
     Rr_Device *Device;
     VkCommandBuffer CommandBuffer;
-    Rr_DescriptorAllocator *Allocator;
+    Rr_DescriptorPoolList **ListRef;
     Rr_PipelineLayout *Layout;
     VkDescriptorSet Sets[RR_MAX_SETS];
     bool Dirty[RR_MAX_SETS];

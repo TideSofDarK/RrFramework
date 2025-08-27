@@ -402,22 +402,6 @@ static void Rr_InitFrames(void)
             &CommandBufferAllocateInfo,
             &Frame->LateCommandBuffer);
 
-        Rr_DescriptorPoolSizeRatio Ratios[] = {
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 32 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 32 },
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32 },
-            { VK_DESCRIPTOR_TYPE_SAMPLER, 32 },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32 },
-        };
-        Frame->DescriptorAllocator = Rr_CreateDescriptorAllocator(
-            Device,
-            1024,
-            Ratios,
-            RR_ARRAY_COUNT(Ratios));
-
         Frame->AcquireSemaphore = Rr_GetVulkanSemaphore();
     }
 }
@@ -431,8 +415,6 @@ static void Rr_CleanupFrames(void)
         Rr_Frame *Frame = &gRenderer->Frames[Index];
 
         Device->DestroyCommandPool(Device->Handle, Frame->CommandPool, NULL);
-
-        Rr_DestroyDescriptorAllocator(Frame->DescriptorAllocator, Device);
 
         Rr_ReturnVulkanFence(Frame->SubmitFence);
         Rr_ReturnVulkanSemaphore(Frame->AcquireSemaphore);
@@ -657,7 +639,15 @@ void Rr_CleanupRenderer(void)
 
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_DecrementRefCounts(gRenderer->Frames[Index].Graph);
+        Rr_Frame *Frame = &gRenderer->Frames[Index];
+        Rr_ResetDescriptorPools(Frame->DescriptorPoolList);
+        Rr_DecrementRefCounts(Frame->Graph);
+    }
+
+    for (Rr_DescriptorPoolList *List = gRenderer->DescriptorPoolList; List;
+         List = List->Next)
+    {
+        Device->DestroyDescriptorPool(Device->Handle, List->Handle, NULL);
     }
 
     Rr_ProcessReleasedObjects();
@@ -750,10 +740,9 @@ void Rr_NewFrame(void)
 
         Rr_ReturnVulkanFence(Frame->SubmitFence);
         Frame->SubmitFence = VK_NULL_HANDLE;
-
-        Rr_ResetDescriptorAllocator(Frame->DescriptorAllocator, Device);
     }
 
+    Rr_ResetDescriptorPools(Frame->DescriptorPoolList);
     Rr_DecrementRefCounts(Frame->Graph);
 
     /* TODO: Probably should use mutex instead. */
@@ -784,6 +773,7 @@ void Rr_NewFrame(void)
             Frame->Graph,
             (Rr_Image *)Frame->VirtualSwapchainImage)
             ->Values.Index;
+    Frame->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
 }
 
 void Rr_DrawFrame(void)
