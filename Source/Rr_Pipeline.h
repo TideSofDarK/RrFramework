@@ -58,7 +58,7 @@ struct Rr_DescriptorSetLayout
 #define RR_HIVE_TYPE      Rr_DescriptorSetLayout
 #define RR_HIVE_TYPE_NAME DescriptorSetLayout
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 typedef struct Rr_DescriptorSetLayoutStorage Rr_DescriptorSetLayoutStorage;
 struct Rr_DescriptorSetLayoutStorage
@@ -83,7 +83,7 @@ struct Rr_PipelineLayout
 #define RR_HIVE_TYPE      Rr_PipelineLayout
 #define RR_HIVE_TYPE_NAME PipelineLayout
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 extern void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout);
 
@@ -98,7 +98,7 @@ struct Rr_ComputePipeline
 #define RR_HIVE_TYPE      Rr_ComputePipeline
 #define RR_HIVE_TYPE_NAME ComputePipeline
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 extern void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
@@ -115,6 +115,6 @@ struct Rr_GraphicsPipeline
 #define RR_HIVE_TYPE      Rr_GraphicsPipeline
 #define RR_HIVE_TYPE_NAME GraphicsPipeline
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 extern void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);

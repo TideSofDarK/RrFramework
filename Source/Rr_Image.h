@@ -26,14 +26,9 @@
 
 #include <Rr/Rr_Image.h>
 
-#include <Rr/Rr_App.h>
-#include <Rr/Rr_Asset.h>
-
-#include <xxHash/xxhash.h>
+#include "Rr_Platform.h"
 
 #include <vma/vk_mem_alloc.h>
-
-#include "Rr_Platform.h"
 
 struct Rr_Sampler
 {
@@ -44,7 +39,7 @@ struct Rr_Sampler
 #define RR_HIVE_TYPE      Rr_Sampler
 #define RR_HIVE_TYPE_NAME Sampler
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 extern void Rr_DestroySampler(Rr_Sampler *Sampler);
 
@@ -66,13 +61,14 @@ struct Rr_ImageViewMap
 #define RR_HIVE_TYPE      Rr_ImageViewMap
 #define RR_HIVE_TYPE_NAME ImageViewMap
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 typedef struct Rr_ImageViewStorage Rr_ImageViewStorage;
 struct Rr_ImageViewStorage
 {
     Rr_ImageViewMapHive Hive;
     Rr_ImageViewMap *Map;
+    Rr_Spinlock Lock;
 };
 
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
@@ -109,7 +105,7 @@ typedef struct Rr_Image Rr_Image;
 #define RR_HIVE_TYPE      Rr_Image
 #define RR_HIVE_TYPE_NAME Image
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 extern void Rr_DestroyImage(Rr_Image *Image);
 

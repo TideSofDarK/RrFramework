@@ -22,15 +22,12 @@
  * SOFTWARE.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef RR_HIVE_H
 #define RR_HIVE_H
 
+#include "Rr_Platform.h"
+
 #include <Rr/Rr_Math.h>
-#include <Rr/Rr_Memory.h>
 
 #include <assert.h>
 #include <string.h>
@@ -256,16 +253,17 @@ struct RR_HIVE_NAME
     }                                                               \
     while (0)
 
-#define RR_PUSH_INTO_HIVE_NAME \
-    RR_HIVE_EXPAND_CONCAT(     \
-        RR_HIVE_PREFIX,        \
-        RR_HIVE_EXPAND_CONCAT( \
-            Push,              \
-            RR_HIVE_EXPAND_CONCAT(RR_HIVE_TYPE_NAME, IntoHive)))
+#define RR_PUSH_INTO_HIVE_LOCKED_NAME \
+    RR_HIVE_EXPAND_CONCAT(            \
+        RR_HIVE_PREFIX,               \
+        RR_HIVE_EXPAND_CONCAT(        \
+            Push,                     \
+            RR_HIVE_EXPAND_CONCAT(RR_HIVE_TYPE_NAME, IntoHiveLocked)))
 
-static inline RR_HIVE_ITERATOR_NAME RR_PUSH_INTO_HIVE_NAME(
+static inline RR_HIVE_ITERATOR_NAME RR_PUSH_INTO_HIVE_LOCKED_NAME(
     RR_HIVE_NAME *Hive,
-    Rr_Arena *Arena)
+    Rr_Arena *Arena,
+    Rr_Spinlock *Lock)
 {
     if (Hive->End.Element != NULL)
     {
@@ -289,7 +287,19 @@ static inline RR_HIVE_ITERATOR_NAME RR_PUSH_INTO_HIVE_NAME(
                     Hive->Count,
                     (size_t)(RR_HIVE_MAX_BLOCK_CAPACITY)));
                 RR_RESET_HIVE_GROUP_NUMBER(Hive);
+
+                if (Lock)
+                {
+                    Rr_LockSpinlock(Lock);
+                }
+
                 RR_ALLOC_HIVE_GROUP(Hive, &NextGroup, NewCapacity, Arena);
+
+                if (Lock)
+                {
+                    Rr_UnlockSpinlock(Lock);
+                }
+
 #ifdef RR_DEBUG
                 Hive->TotalGroups++;
 #endif
@@ -331,11 +341,22 @@ static inline RR_HIVE_ITERATOR_NAME RR_PUSH_INTO_HIVE_NAME(
     }
     else
     {
+        if (Lock)
+        {
+            Rr_LockSpinlock(Lock);
+        }
+
         RR_ALLOC_HIVE_GROUP(
             Hive,
             &Hive->Begin.Group,
             RR_HIVE_MIN_BLOCK_CAPACITY,
             Arena);
+
+        if (Lock)
+        {
+            Rr_UnlockSpinlock(Lock);
+        }
+
         Hive->End.Group = Hive->Begin.Group;
 
 #ifdef RR_DEBUG
@@ -353,6 +374,20 @@ static inline RR_HIVE_ITERATOR_NAME RR_PUSH_INTO_HIVE_NAME(
 
         return Hive->Begin;
     }
+}
+
+#define RR_PUSH_INTO_HIVE_NAME \
+    RR_HIVE_EXPAND_CONCAT(     \
+        RR_HIVE_PREFIX,        \
+        RR_HIVE_EXPAND_CONCAT( \
+            Push,              \
+            RR_HIVE_EXPAND_CONCAT(RR_HIVE_TYPE_NAME, IntoHive)))
+
+static inline RR_HIVE_ITERATOR_NAME RR_PUSH_INTO_HIVE_NAME(
+    RR_HIVE_NAME *Hive,
+    Rr_Arena *Arena)
+{
+    return RR_PUSH_INTO_HIVE_LOCKED_NAME(Hive, Arena, NULL);
 }
 
 #define RR_GET_HIVE_ITERATOR_NAME \
@@ -731,13 +766,10 @@ static inline void RR_CLEAR_HIVE_NAME(RR_HIVE_NAME *Hive)
 #undef RR_REUSE_UNUSED_HIVE_GROUP
 #undef RR_UPDATE_HIVE_SKIPS
 #undef RR_PUSH_INTO_HIVE_NAME
+#undef RR_PUSH_INTO_HIVE_LOCKED_NAME
 #undef RR_GET_HIVE_ITERATOR_NAME
 #undef RR_ADVANCE_HIVE_ITERATOR_NAME
 #undef RR_REMOVE_FROM_HIVE_NAME
 #undef RR_RESET_HIVE_GROUP
 #undef RR_CLEAR_HIVE_NAME
 #undef RR_RESET_ONLY_HIVE_GROUP_LEFT
-
-#ifdef __cplusplus
-}
-#endif

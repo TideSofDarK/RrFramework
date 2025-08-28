@@ -30,13 +30,15 @@
 
 Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 {
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->BuffersLock);
 
-    Rr_BufferHiveIterator It =
-        Rr_PushBufferIntoHive(&gRenderer->Buffers, gRenderer->Arena);
-    Rr_Buffer *Buffer = It.Element;
+    Rr_Buffer *Buffer = Rr_PushBufferIntoHiveLocked(
+                            &gRenderer->Buffers,
+                            gRenderer->Arena,
+                            &gRenderer->Lock)
+                            .Element;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->BuffersLock);
 
     Buffer->Flags = Flags;
 
@@ -140,12 +142,15 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->ReleasedBuffersLock);
 
-    *Rr_PushHandleIntoHive(&gRenderer->ReleasedBuffers, gRenderer->Arena)
+    *Rr_PushHandleIntoHiveLocked(
+         &gRenderer->ReleasedBuffers,
+         gRenderer->Arena,
+         &gRenderer->Lock)
          .Element = Buffer;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ReleasedBuffersLock);
 }
 
 void Rr_DestroyBuffer(Rr_Buffer *Buffer)
@@ -159,9 +164,13 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
 
+        Rr_LockSpinlock(&gRenderer->SyncStateStorageLock);
+
         Rr_EraseSyncState(
             &gRenderer->SyncStateStorage,
             (uint64_t)AllocatedBuffer->Handle);
+
+        Rr_UnlockSpinlock(&gRenderer->SyncStateStorageLock);
 
         vmaDestroyBuffer(
             gRenderer->Allocator,
@@ -169,9 +178,13 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
             AllocatedBuffer->Allocation);
     }
 
+    Rr_LockSpinlock(&gRenderer->BuffersLock);
+
     Rr_BufferHiveIterator It =
         Rr_GetBufferHiveIterator(&gRenderer->Buffers, Buffer);
     Rr_RemoveFromBufferHive(&gRenderer->Buffers, &It);
+
+    Rr_UnlockSpinlock(&gRenderer->BuffersLock);
 
     RR_LOG("Destroyed buffer with address %p", (void *)Buffer);
 }

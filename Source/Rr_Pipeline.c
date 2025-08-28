@@ -84,14 +84,15 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->PipelineLayoutsLock);
 
-    Rr_PipelineLayoutHiveIterator It = Rr_PushPipelineLayoutIntoHive(
-        &gRenderer->PipelineLayouts,
-        gRenderer->Arena);
-    Rr_PipelineLayout *PipelineLayout = It.Element;
+    Rr_PipelineLayout *PipelineLayout = Rr_PushPipelineLayoutIntoHiveLocked(
+                                            &gRenderer->PipelineLayouts,
+                                            gRenderer->Arena,
+                                            &gRenderer->Lock)
+                                            .Element;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->PipelineLayoutsLock);
 
     Rr_DescriptorSetLayoutKey Keys[RR_MAX_SETS] = { 0 };
     VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
@@ -158,14 +159,15 @@ void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
 
-    *Rr_PushHandleIntoHive(
+    *Rr_PushHandleIntoHiveLocked(
          &gRenderer->ReleasedPipelineLayouts,
-         gRenderer->Arena)
+         gRenderer->Arena,
+         &gRenderer->Lock)
          .Element = PipelineLayout;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
 }
 
 void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
@@ -174,10 +176,14 @@ void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
 
     Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
 
+    Rr_LockSpinlock(&gRenderer->PipelineLayoutsLock);
+
     Rr_PipelineLayoutHiveIterator It = Rr_GetPipelineLayoutHiveIterator(
         &gRenderer->PipelineLayouts,
         PipelineLayout);
     Rr_RemoveFromPipelineLayoutHive(&gRenderer->PipelineLayouts, &It);
+
+    Rr_UnlockSpinlock(&gRenderer->PipelineLayoutsLock);
 
     RR_LOG("Destroyed pipeline layout with address %p", (void *)PipelineLayout);
 }
@@ -235,14 +241,15 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
 
-    Rr_ComputePipelineHiveIterator It = Rr_PushComputePipelineIntoHive(
-        &gRenderer->ComputePipelines,
-        gRenderer->Arena);
-    Rr_ComputePipeline *Pipeline = It.Element;
+    Rr_ComputePipeline *Pipeline = Rr_PushComputePipelineIntoHiveLocked(
+                                       &gRenderer->ComputePipelines,
+                                       gRenderer->Arena,
+                                       &gRenderer->Lock)
+                                       .Element;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
 
     Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
 
@@ -306,14 +313,15 @@ void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
 
-    *Rr_PushHandleIntoHive(
+    *Rr_PushHandleIntoHiveLocked(
          &gRenderer->ReleasedComputePipelines,
-         gRenderer->Arena)
+         gRenderer->Arena,
+         &gRenderer->Lock)
          .Element = ComputePipeline;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
 }
 
 void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
@@ -324,10 +332,14 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Rr_DecrementAtomicRelaxed(&ComputePipeline->Layout->RefCount);
 
+    Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
+
     Rr_ComputePipelineHiveIterator It = Rr_GetComputePipelineHiveIterator(
         &gRenderer->ComputePipelines,
         ComputePipeline);
     Rr_RemoveFromComputePipelineHive(&gRenderer->ComputePipelines, &It);
+
+    Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
 
     RR_LOG(
         "Destroyed compute pipeline with address %p",
@@ -344,14 +356,15 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
-    Rr_GraphicsPipelineHiveIterator It = Rr_PushGraphicsPipelineIntoHive(
-        &gRenderer->GraphicsPipelines,
-        gRenderer->Arena);
-    Rr_GraphicsPipeline *Pipeline = It.Element;
+    Rr_GraphicsPipeline *Pipeline = Rr_PushGraphicsPipelineIntoHiveLocked(
+                                        &gRenderer->GraphicsPipelines,
+                                        gRenderer->Arena,
+                                        &gRenderer->Lock)
+                                        .Element;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
     Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
 
@@ -372,7 +385,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
             .codeSize = CreateInfo->VertexShaderSPV.Size,
             .pCode = (uint32_t *)CreateInfo->VertexShaderSPV.Pointer,
         };
@@ -385,7 +397,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         *RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena) =
             (VkPipelineShaderStageCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .pNext = NULL,
                 .pName = "main",
                 .stage = VK_SHADER_STAGE_VERTEX_BIT,
                 .module = VertModule,
@@ -643,14 +654,15 @@ void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
 
-    *Rr_PushHandleIntoHive(
+    *Rr_PushHandleIntoHiveLocked(
          &gRenderer->ReleasedGraphicsPipelines,
-         gRenderer->Arena)
+         gRenderer->Arena,
+         &gRenderer->Lock)
          .Element = GraphicsPipeline;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
 }
 
 void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
@@ -661,10 +673,14 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
     Rr_DecrementAtomicRelaxed(&GraphicsPipeline->Layout->RefCount);
 
+    Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
+
     Rr_GraphicsPipelineHiveIterator It = Rr_GetGraphicsPipelineHiveIterator(
         &gRenderer->GraphicsPipelines,
         GraphicsPipeline);
     Rr_RemoveFromGraphicsPipelineHive(&gRenderer->GraphicsPipelines, &It);
+
+    Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
     RR_LOG(
         "Destroyed graphics pipeline with address %p",
@@ -676,7 +692,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
 {
     VkDescriptorSetLayout *HandleRef = NULL;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->DescriptorSetLayoutStorageLock);
 
     size_t HashSize = sizeof(Rr_DescriptorSetLayoutKey);
 
@@ -699,9 +715,10 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *MapRef = Rr_PushDescriptorSetLayoutIntoHive(
+    *MapRef = Rr_PushDescriptorSetLayoutIntoHiveLocked(
                   &gRenderer->DescriptorSetLayoutStorage.Hive,
-                  gRenderer->Arena)
+                  gRenderer->Arena,
+                  &gRenderer->Lock)
                   .Element;
     (*MapRef)->Key = *Key;
     (*MapRef)->Handle = VK_NULL_HANDLE;
@@ -710,7 +727,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
 
 Found:
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->DescriptorSetLayoutStorageLock);
 
     if (*HandleRef != VK_NULL_HANDLE)
     {

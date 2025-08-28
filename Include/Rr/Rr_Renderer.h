@@ -25,7 +25,6 @@
 #pragma once
 
 #include <Rr/Rr_App.h>
-#include <Rr/Rr_Memory.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,8 +129,6 @@ static const char *RR_PRESENT_MODES[] = {
 };
 
 extern struct Rr_Graph *Rr_GetGraph(void);
-
-extern Rr_Arena *Rr_GetFrameArena(void);
 
 extern Rr_TextureFormat Rr_GetSwapchainFormat(void);
 

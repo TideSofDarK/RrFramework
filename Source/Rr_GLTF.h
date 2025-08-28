@@ -28,6 +28,7 @@
 
 #include <Rr/Rr_Asset.h>
 
+#include "Rr_Memory.h"
 #include "Rr_Platform.h"
 
 struct Rr_UploadContext;

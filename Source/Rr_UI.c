@@ -4564,7 +4564,7 @@ static inline void Rr_UIConsumeNextFontSize(void)
 
 void Rr_NewUIFrame(void)
 {
-    gUIContext->FrameArena = Rr_GetFrameArena();
+    gUIContext->FrameArena = gRenderer->Frames[gRenderer->FrameIndex].Arena;
 
     RR_RESET_ARRAY(&gUIContext->Vertices, gUIContext->FrameArena);
     RR_RESET_ARRAY(&gUIContext->Indices, gUIContext->FrameArena);

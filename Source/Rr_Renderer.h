@@ -101,7 +101,7 @@ struct Rr_FramebufferMap
 #define RR_HIVE_TYPE      Rr_FramebufferMap
 #define RR_HIVE_TYPE_NAME FramebufferMap
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 typedef struct Rr_FramebufferStorage Rr_FramebufferStorage;
 struct Rr_FramebufferStorage
@@ -145,7 +145,7 @@ struct Rr_RenderPassMap
 #define RR_HIVE_TYPE      Rr_RenderPassMap
 #define RR_HIVE_TYPE_NAME RenderPassMap
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 typedef struct Rr_RenderPassStorage Rr_RenderPassStorage;
 struct Rr_RenderPassStorage
@@ -167,7 +167,7 @@ struct Rr_SyncStateMap
 #define RR_HIVE_TYPE      Rr_SyncStateMap
 #define RR_HIVE_TYPE_NAME SyncStateMap
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 typedef struct Rr_SyncStateStorage Rr_SyncStateStorage;
 struct Rr_SyncStateStorage
@@ -204,42 +204,65 @@ struct Rr_Renderer
     Rr_Queue TransferQueue;
     // Rr_Queue ComputeQueue;
 
+    /* TODO: Make sure this doesn't need synchronization in general case. */
     VmaAllocator Allocator;
 
     RR_ARRAY(VkSemaphore) Semaphores;
     RR_ARRAY(VkFence) Fences;
 
-    Rr_DescriptorPoolList *DescriptorPoolList;
-    Rr_Spinlock DescriptorPoolListLock;
-    uint32_t DescriptorPoolListCount;
-
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameIndex;  /* Current frame-in-flight index. */
     size_t FrameNumber; /* Total frames rendered. */
 
-    Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
-    Rr_FramebufferStorage FramebufferStorage;
-    Rr_RenderPassStorage RenderPassStorage;
-    Rr_SyncStateStorage SyncStateStorage;
-
-    RR_FREE_LIST(Rr_ImageViewStorage) ImageViewStorage;
-
     Rr_BufferHive Buffers;
-    Rr_ImageHive Images;
-    Rr_PipelineLayoutHive PipelineLayouts;
-    Rr_ComputePipelineHive ComputePipelines;
-    Rr_GraphicsPipelineHive GraphicsPipelines;
-    Rr_SamplerHive Samplers;
-
+    Rr_Spinlock BuffersLock;
     Rr_HandleHive ReleasedBuffers;
-    Rr_HandleHive ReleasedImages;
-    Rr_HandleHive ReleasedSamplers;
-    Rr_HandleHive ReleasedPipelineLayouts;
-    Rr_HandleHive ReleasedComputePipelines;
-    Rr_HandleHive ReleasedGraphicsPipelines;
+    Rr_Spinlock ReleasedBuffersLock;
 
-    Rr_Spinlock Lock;
+    Rr_ImageHive Images;
+    Rr_Spinlock ImagesLock;
+    Rr_HandleHive ReleasedImages;
+    Rr_Spinlock ReleasedImagesLock;
+    RR_FREE_LIST(Rr_ImageViewStorage) ImageViewStorage;
+    Rr_Spinlock ImageViewStorageLock;
+    Rr_FramebufferStorage FramebufferStorage;
+    Rr_Spinlock FramebufferStorageLock;
+
+    Rr_PipelineLayoutHive PipelineLayouts;
+    Rr_Spinlock PipelineLayoutsLock;
+    Rr_HandleHive ReleasedPipelineLayouts;
+    Rr_Spinlock ReleasedPipelineLayoutsLock;
+
+    Rr_ComputePipelineHive ComputePipelines;
+    Rr_Spinlock ComputePipelinesLock;
+    Rr_HandleHive ReleasedComputePipelines;
+    Rr_Spinlock ReleasedComputePipelinesLock;
+
+    Rr_GraphicsPipelineHive GraphicsPipelines;
+    Rr_Spinlock GraphicsPipelinesLock;
+    Rr_HandleHive ReleasedGraphicsPipelines;
+    Rr_Spinlock ReleasedGraphicsPipelinesLock;
+
+    Rr_SamplerHive Samplers;
+    Rr_Spinlock SamplersLock;
+    Rr_HandleHive ReleasedSamplers;
+    Rr_Spinlock ReleasedSamplersLock;
+
+    Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
+    Rr_Spinlock DescriptorSetLayoutStorageLock;
+
+    Rr_RenderPassStorage RenderPassStorage;
+    Rr_Spinlock RenderPassStorageLock;
+
+    Rr_DescriptorPoolList *DescriptorPoolList;
+    Rr_Spinlock DescriptorPoolListLock;
+    uint32_t DescriptorPoolListCount;
+
+    Rr_SyncStateStorage SyncStateStorage;
+    Rr_Spinlock SyncStateStorageLock;
+
     Rr_Arena *Arena;
+    Rr_Spinlock Lock;
 };
 
 extern void Rr_InitRenderer(const char *Title);

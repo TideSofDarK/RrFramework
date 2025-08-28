@@ -177,6 +177,7 @@ target_sources(
     Source/Rr_GLTF.c
     Source/Rr_Graph.c
     Source/Rr_Image.c
+    Source/Rr_Arena.c
     Source/Rr_Memory.c
     Source/Rr_Pipeline.c
     Source/Rr_Platform.c
@@ -197,10 +198,8 @@ target_sources(
     Include/Rr/Rr_GLTF.h
     Include/Rr/Rr_Graph.h
     Include/Rr/Rr.h
-    Include/Rr/Rr_Hive.h
     Include/Rr/Rr_Image.h
     Include/Rr/Rr_Math.h
-    Include/Rr/Rr_Memory.h
     Include/Rr/Rr_Pipeline.h
     Include/Rr/Rr_Platform.h
     Include/Rr/Rr_Renderer.h
@@ -284,7 +283,6 @@ if (RR_EXAMPLES)
     add_subdirectory(Examples/Skybox)
     add_subdirectory(Examples/BitonicSort)
     add_subdirectory(Examples/PrefixSum)
-    add_subdirectory(Examples/HiveTest)
     add_subdirectory(Examples/GS)
     add_subdirectory(Examples/BrushFade)
     add_subdirectory(Examples/TransferThread)

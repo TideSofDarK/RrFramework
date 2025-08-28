@@ -49,7 +49,7 @@ struct Rr_Buffer
 #define RR_HIVE_TYPE      Rr_Buffer
 #define RR_HIVE_TYPE_NAME Buffer
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 extern void Rr_DestroyBuffer(Rr_Buffer *Buffer);
 

@@ -26,7 +26,6 @@
 
 #include "Rr_Vulkan.h"
 
-#include <Rr/Rr_Memory.h>
 #include <Rr/Rr_Pipeline.h>
 
 #define RR_MAX_BINDINGS         16

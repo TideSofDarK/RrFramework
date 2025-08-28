@@ -25,7 +25,6 @@
 #include "Rr_Renderer.h"
 
 #include "Rr_App.h"
-#include "Rr_BuiltinAssets.inc"
 #include "Rr_Log.h"
 
 #include <Rr/Rr_Graph.h>
@@ -338,11 +337,6 @@ static bool Rr_InitSwapchain(void)
 
         Image->Handle = Images[Index];
 
-        RR_LOG(
-            "New swapchain image!! %p settint stage to %d",
-            (void *)Image->Handle,
-            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-
         Image->ViewStorage = Rr_CreateImageViewStorage();
         Image->EarlySemaphore = Rr_GetVulkanSemaphore();
         Image->LateSemaphore = Rr_GetVulkanSemaphore();
@@ -542,6 +536,7 @@ void Rr_WaitIdle(void)
 
 static inline void Rr_ProcessReleasedObjects(void)
 {
+    Rr_LockSpinlock(&gRenderer->ReleasedBuffersLock);
     for (Rr_HandleHiveIterator It = gRenderer->ReleasedBuffers.Begin;
          It.Element != gRenderer->ReleasedBuffers.End.Element;)
     {
@@ -556,7 +551,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             Rr_AdvanceHandleHiveIterator(&It);
         }
     }
+    Rr_UnlockSpinlock(&gRenderer->ReleasedBuffersLock);
 
+    Rr_LockSpinlock(&gRenderer->ReleasedImagesLock);
     for (Rr_HandleHiveIterator It = gRenderer->ReleasedImages.Begin;
          It.Element != gRenderer->ReleasedImages.End.Element;)
     {
@@ -571,7 +568,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             Rr_AdvanceHandleHiveIterator(&It);
         }
     }
+    Rr_UnlockSpinlock(&gRenderer->ReleasedImagesLock);
 
+    Rr_LockSpinlock(&gRenderer->ReleasedSamplersLock);
     for (Rr_HandleHiveIterator It = gRenderer->ReleasedSamplers.Begin;
          It.Element != gRenderer->ReleasedSamplers.End.Element;)
     {
@@ -586,7 +585,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             Rr_AdvanceHandleHiveIterator(&It);
         }
     }
+    Rr_UnlockSpinlock(&gRenderer->ReleasedSamplersLock);
 
+    Rr_LockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
     for (Rr_HandleHiveIterator It = gRenderer->ReleasedComputePipelines.Begin;
          It.Element != gRenderer->ReleasedComputePipelines.End.Element;)
     {
@@ -602,7 +603,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             Rr_AdvanceHandleHiveIterator(&It);
         }
     }
+    Rr_UnlockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
 
+    Rr_LockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
     for (Rr_HandleHiveIterator It = gRenderer->ReleasedGraphicsPipelines.Begin;
          It.Element != gRenderer->ReleasedGraphicsPipelines.End.Element;)
     {
@@ -618,7 +621,9 @@ static inline void Rr_ProcessReleasedObjects(void)
             Rr_AdvanceHandleHiveIterator(&It);
         }
     }
+    Rr_UnlockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
 
+    Rr_LockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
     for (Rr_HandleHiveIterator It = gRenderer->ReleasedPipelineLayouts.Begin;
          It.Element != gRenderer->ReleasedPipelineLayouts.End.Element;)
     {
@@ -633,6 +638,8 @@ static inline void Rr_ProcessReleasedObjects(void)
             Rr_AdvanceHandleHiveIterator(&It);
         }
     }
+
+    Rr_UnlockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
 }
 
 void Rr_CleanupRenderer(void)
@@ -645,12 +652,6 @@ void Rr_CleanupRenderer(void)
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_FinalizeGraph(gRenderer->Frames[Index].Graph);
-    }
-
-    for (Rr_DescriptorPoolList *List = gRenderer->DescriptorPoolList; List;
-         List = List->Next)
-    {
-        Device->DestroyDescriptorPool(Device->Handle, List->Handle, NULL);
     }
 
     Rr_ProcessReleasedObjects();
@@ -676,6 +677,12 @@ void Rr_CleanupRenderer(void)
     {
         Device->DestroyRenderPass(Device->Handle, It.Element->Value, NULL);
         Rr_AdvanceRenderPassMapHiveIterator(&It);
+    }
+
+    for (Rr_DescriptorPoolList *List = gRenderer->DescriptorPoolList; List;
+         List = List->Next)
+    {
+        Device->DestroyDescriptorPool(Device->Handle, List->Handle, NULL);
     }
 
     Rr_CleanupFrames();
@@ -747,14 +754,7 @@ void Rr_NewFrame(void)
         Rr_FinalizeGraph(Frame->Graph);
     }
 
-    /* TODO: Probably should use mutex instead. */
-
-    if (Rr_TryLockSpinlock(&gRenderer->Lock))
-    {
-        Rr_ProcessReleasedObjects();
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
-    }
+    Rr_ProcessReleasedObjects();
 
     /* Reset everything allocated last time. */
 
@@ -1012,11 +1012,6 @@ Rr_Graph *Rr_GetGraph(void)
     return Rr_GetCurrentFrame()->Graph;
 }
 
-Rr_Arena *Rr_GetFrameArena(void)
-{
-    return Rr_GetCurrentFrame()->Arena;
-}
-
 Rr_TextureFormat Rr_GetSwapchainFormat(void)
 {
     return Rr_ToTextureFormat(gRenderer->Swapchain.Format);
@@ -1068,7 +1063,7 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
 {
     VkRenderPass *RenderPassRef = NULL;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->RenderPassStorageLock);
 
     uint32_t AttachmentCount = Key->ColorAttachmentCount +
                                Key->ResolveAttachmentCount + Key->DepthStencil;
@@ -1087,9 +1082,10 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *MapRef = Rr_PushRenderPassMapIntoHive(
+    *MapRef = Rr_PushRenderPassMapIntoHiveLocked(
                   &gRenderer->RenderPassStorage.Hive,
-                  gRenderer->Arena)
+                  gRenderer->Arena,
+                  &gRenderer->Lock)
                   .Element;
     (*MapRef)->Key = *Key;
     (*MapRef)->Value = VK_NULL_HANDLE;
@@ -1098,7 +1094,7 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
 
 Found:
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->RenderPassStorageLock);
 
     if (*RenderPassRef != VK_NULL_HANDLE)
     {
@@ -1229,7 +1225,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 {
     VkFramebuffer *FramebufferRef = NULL;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->FramebufferStorageLock);
 
     uint32_t AttachmentCount = Key->ColorAttachmentCount +
                                Key->ResolveAttachmentCount + Key->DepthStencil;
@@ -1255,9 +1251,10 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *MapRef = Rr_PushFramebufferMapIntoHive(
+    *MapRef = Rr_PushFramebufferMapIntoHiveLocked(
                   &gRenderer->FramebufferStorage.Hive,
-                  gRenderer->Arena)
+                  gRenderer->Arena,
+                  &gRenderer->Lock)
                   .Element;
     (*MapRef)->Key = *Key;
     (*MapRef)->Value = VK_NULL_HANDLE;
@@ -1266,7 +1263,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
 Found:
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->FramebufferStorageLock);
 
     if (*FramebufferRef != VK_NULL_HANDLE)
     {
@@ -1294,6 +1291,8 @@ Found:
 void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
 {
     Rr_Device *Device = &gRenderer->Device;
+
+    Rr_LockSpinlock(&gRenderer->FramebufferStorageLock);
 
     for (Rr_FramebufferMapHiveIterator It =
              gRenderer->FramebufferStorage.Hive.Begin;
@@ -1324,6 +1323,8 @@ void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
 
         Rr_AdvanceFramebufferMapHiveIterator(&It);
     }
+
+    Rr_UnlockSpinlock(&gRenderer->FramebufferStorageLock);
 }
 
 static const Rr_SyncState RR_EMPTY_SYNC = {

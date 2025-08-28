@@ -24,107 +24,11 @@
 
 #pragma once
 
-#include <Rr/Rr_Defines.h>
+#include "Rr_Arena.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/*
- * Common Memory Functions
- */
-
-extern void *Rr_Malloc(size_t Bytes);
-
-extern void *Rr_Calloc(size_t Num, size_t Bytes);
-
-extern void *Rr_Realloc(void *Ptr, size_t Bytes);
-
-extern void Rr_Free(void *Ptr);
-
-extern void *Rr_AlignedAlloc(size_t Size, size_t Alignment);
-
-extern void Rr_AlignedFree(void *Ptr);
-
-/*
- * Arena
- */
-
-#define RR_ARENA_RESERVE_DEFAULT RR_GIGABYTES(8)
-#define RR_ARENA_COMMIT_DEFAULT  RR_KILOBYTES(64)
-
-typedef struct Rr_Arena Rr_Arena;
-struct Rr_Arena
-{
-    uintptr_t Position;
-    uintptr_t ReserveSize;
-    uintptr_t CommitSize;
-    uintptr_t Reserved;
-    uintptr_t Commited;
-};
-
-extern Rr_Arena *Rr_CreateArena(size_t Reserve, size_t Commit);
-
-extern Rr_Arena *Rr_CreateDefaultArena(void);
-
-extern void Rr_ResetArena(Rr_Arena *Arena);
-
-extern void Rr_DestroyArena(Rr_Arena *Arena);
-
-extern void *Rr_AllocArenaNoZero(
-    Rr_Arena *Arena,
-    size_t Size,
-    size_t Align,
-    size_t Count);
-
-extern void *Rr_AllocArena(
-    Rr_Arena *Arena,
-    size_t Size,
-    size_t Align,
-    size_t Count);
-
-#define RR_ALLOC(Arena, Size) Rr_AllocArena(Arena, Size, RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_NO_ZERO(Arena, Size) \
-    Rr_AllocArenaNoZero(Arena, Size, RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_TYPE(Arena, Type) \
-    (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_TYPE_COUNT(Arena, Type, Count) \
-    (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, Count)
-#define RR_ALLOC_COPY(Arena, Dst, Src, Size) \
-    Dst = RR_ALLOC_NO_ZERO(Arena, Size);     \
-    memcpy(Dst, Src, Size)
-
-extern void Rr_PopArena(Rr_Arena *Arena, size_t Amount);
-
-static void *Rr_GenericArenaAlloc(void *Arena, size_t Size)
-{
-    return RR_ALLOC_NO_ZERO((Rr_Arena *)Arena, Size);
-}
-
-static void Rr_GenericArenaFree(void *Arena, void *Ptr)
-{
-}
-
-/*
- * Scratch Arena
- */
-
-typedef struct Rr_Scratch Rr_Scratch;
-struct Rr_Scratch
-{
-    Rr_Arena *Arena;
-    uintptr_t Position;
-};
-
-extern Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena);
-
-extern void Rr_DestroyScratch(Rr_Scratch Scratch);
-
-extern void Rr_InitScratchArena(void);
-
-extern void Rr_CleanupScratchArena(void);
-
-extern Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
 
 /*
  * Dynamic Array
@@ -240,7 +144,7 @@ typedef void *Rr_Handle;
 #define RR_HIVE_TYPE      Rr_Handle
 #define RR_HIVE_TYPE_NAME Handle
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 /*
  * Handle Set
@@ -256,7 +160,7 @@ struct Rr_HandleTrie
 #define RR_HIVE_TYPE      Rr_HandleTrie
 #define RR_HIVE_TYPE_NAME HandleTrie
 #define RR_HIVE_PREFIX    Rr_
-#include <Rr/Rr_Hive.h>
+#include "Rr_Hive.h"
 
 typedef struct Rr_HandleSet Rr_HandleSet;
 struct Rr_HandleSet

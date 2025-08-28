@@ -39,13 +39,15 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->SamplersLock);
 
-    Rr_SamplerHiveIterator It =
-        Rr_PushSamplerIntoHive(&gRenderer->Samplers, gRenderer->Arena);
+    Rr_SamplerHiveIterator It = Rr_PushSamplerIntoHiveLocked(
+        &gRenderer->Samplers,
+        gRenderer->Arena,
+        &gRenderer->Lock);
     Rr_Sampler *Sampler = It.Element;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->SamplersLock);
 
     VkSamplerCreateInfo SamplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -79,12 +81,15 @@ void Rr_ReleaseSampler(Rr_Sampler *Sampler)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->ReleasedSamplersLock);
 
-    *Rr_PushHandleIntoHive(&gRenderer->ReleasedSamplers, gRenderer->Arena)
+    *Rr_PushHandleIntoHiveLocked(
+         &gRenderer->ReleasedSamplers,
+         gRenderer->Arena,
+         &gRenderer->Lock)
          .Element = Sampler;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ReleasedSamplersLock);
 }
 
 void Rr_DestroySampler(Rr_Sampler *Sampler)
@@ -95,21 +100,27 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 
     Device->DestroySampler(Device->Handle, Sampler->Handle, NULL);
 
+    Rr_LockSpinlock(&gRenderer->SamplersLock);
+
     Rr_SamplerHiveIterator It =
         Rr_GetSamplerHiveIterator(&gRenderer->Samplers, Sampler);
     Rr_RemoveFromSamplerHive(&gRenderer->Samplers, &It);
+
+    Rr_UnlockSpinlock(&gRenderer->SamplersLock);
 
     RR_LOG("Destroyed sampler with address %p", (void *)Sampler);
 }
 
 Rr_ImageViewStorage *Rr_CreateImageViewStorage(void)
 {
+    Rr_LockSpinlock(&gRenderer->ImageViewStorageLock);
     Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_ImageViewStorage *ViewStorage =
         RR_GET_FREE_LIST_ITEM(&gRenderer->ImageViewStorage, gRenderer->Arena);
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ImageViewStorageLock);
 
     ViewStorage->Map = NULL;
     Rr_ClearImageViewMapHive(&ViewStorage->Hive);
@@ -134,7 +145,11 @@ void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage)
         Rr_AdvanceImageViewMapHiveIterator(&It);
     }
 
+    Rr_LockSpinlock(&gRenderer->ImageViewStorageLock);
+
     RR_RETURN_FREE_LIST_ITEM(&gRenderer->ImageViewStorage, ViewStorage);
+
+    Rr_UnlockSpinlock(&gRenderer->ImageViewStorageLock);
 }
 
 VkImageView Rr_GetVulkanImageView(
@@ -143,7 +158,7 @@ VkImageView Rr_GetVulkanImageView(
 {
     VkImageView *ImageViewRef = NULL;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&AllocatedImage->ViewStorage->Lock);
 
     Rr_ImageViewMap **MapRef = &AllocatedImage->ViewStorage->Map;
     for (uint64_t Hash = XXH64(Key, sizeof(Rr_ImageViewKey), 0); *MapRef;
@@ -164,9 +179,10 @@ VkImageView Rr_GetVulkanImageView(
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *MapRef = Rr_PushImageViewMapIntoHive(
+    *MapRef = Rr_PushImageViewMapIntoHiveLocked(
                   &AllocatedImage->ViewStorage->Hive,
-                  gRenderer->Arena)
+                  gRenderer->Arena,
+                  &gRenderer->Lock)
                   .Element;
     (*MapRef)->Key = *Key;
     (*MapRef)->Value = VK_NULL_HANDLE;
@@ -175,7 +191,7 @@ VkImageView Rr_GetVulkanImageView(
 
 Found:
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&AllocatedImage->ViewStorage->Lock);
 
     if (*ImageViewRef != VK_NULL_HANDLE)
     {
@@ -211,13 +227,15 @@ static Rr_Image *Rr_CreateImage(
 {
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->ImagesLock);
 
-    Rr_ImageHiveIterator It =
-        Rr_PushImageIntoHive(&gRenderer->Images, gRenderer->Arena);
+    Rr_ImageHiveIterator It = Rr_PushImageIntoHiveLocked(
+        &gRenderer->Images,
+        gRenderer->Arena,
+        &gRenderer->Lock);
     Rr_Image *Image = It.Element;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ImagesLock);
 
     Image->Flags = Flags;
     Image->Format = Rr_ToVulkanTextureFormat(Format);
@@ -328,12 +346,15 @@ void Rr_ReleaseImage(Rr_Image *Image)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->Lock);
+    Rr_LockSpinlock(&gRenderer->ReleasedImagesLock);
 
-    *Rr_PushHandleIntoHive(&gRenderer->ReleasedImages, gRenderer->Arena)
+    *Rr_PushHandleIntoHiveLocked(
+         &gRenderer->ReleasedImages,
+         gRenderer->Arena,
+         &gRenderer->Lock)
          .Element = Image;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->ReleasedImagesLock);
 }
 
 void Rr_DestroyImage(Rr_Image *Image)
@@ -351,9 +372,13 @@ void Rr_DestroyImage(Rr_Image *Image)
 
         Rr_DestroyImageViewStorage(AllocatedImage->ViewStorage);
 
+        Rr_LockSpinlock(&gRenderer->SyncStateStorageLock);
+
         Rr_EraseSyncState(
             &gRenderer->SyncStateStorage,
             (uint64_t)AllocatedImage->Handle);
+
+        Rr_UnlockSpinlock(&gRenderer->SyncStateStorageLock);
 
         vmaDestroyImage(
             gRenderer->Allocator,
@@ -361,9 +386,13 @@ void Rr_DestroyImage(Rr_Image *Image)
             AllocatedImage->Allocation);
     }
 
+    Rr_LockSpinlock(&gRenderer->ImagesLock);
+
     Rr_ImageHiveIterator It =
         Rr_GetImageHiveIterator(&gRenderer->Images, Image);
     Rr_RemoveFromImageHive(&gRenderer->Images, &It);
+
+    Rr_UnlockSpinlock(&gRenderer->ImagesLock);
 
     RR_LOG("Destroyed image with address %p", (void *)Image);
 }

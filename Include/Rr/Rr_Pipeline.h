@@ -25,7 +25,6 @@
 #pragma once
 
 #include <Rr/Rr_App.h>
-#include <Rr/Rr_Memory.h>
 #include <Rr/Rr_Renderer.h>
 
 #ifdef __cplusplus
