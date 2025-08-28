@@ -35,6 +35,7 @@ extern "C" {
 
 typedef struct Rr_Graph Rr_Graph;
 typedef struct Rr_GraphNode Rr_GraphNode;
+typedef struct Rr_TransferNode Rr_TransferNode;
 
 typedef enum Rr_BlitMode
 {
@@ -82,17 +83,17 @@ struct Rr_DrawIndirectCommand
     uint32_t FirstInstance;
 };
 
-extern Rr_GraphNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name);
+extern Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name);
 
 extern void Rr_TransferBufferData(
-    Rr_GraphNode *Node,
+    Rr_TransferNode *Node,
     uint64_t Size,
     Rr_Buffer *SrcBuffer,
     uint64_t SrcOffset,
     Rr_Buffer *DstBuffer,
     uint64_t DstOffset);
 
-extern Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
+extern void Rr_CopyBufferToImage2D(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -101,7 +102,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     Rr_Image2D *Image,
     uint32_t MipLevel);
 
-extern Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
+extern void Rr_CopyBufferToImage2DArray(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -111,7 +112,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
     uint32_t ArrayIndex,
     uint32_t MipLevel);
 
-extern Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
+extern void Rr_CopyBufferToImage3D(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -120,7 +121,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
     Rr_Image3D *Image3D,
     uint32_t MipLevel);
 
-extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
+extern void Rr_CopyBufferToImageCube(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -130,7 +131,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     Rr_ImageCubeFace Face,
     uint32_t MipLevel);
 
-extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
+extern void Rr_CopyBufferToImageCubeEx(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -141,7 +142,7 @@ extern Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
     Rr_ImageCubeFace LastFace,
     uint32_t MipLevel);
 
-extern Rr_GraphNode *Rr_AddCopyImage2DNode(
+extern void Rr_CopyImage2D(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Image2D *SrcImage,
@@ -151,7 +152,7 @@ extern Rr_GraphNode *Rr_AddCopyImage2DNode(
     Rr_IntVec2 Extent,
     uint32_t MipLevel);
 
-extern Rr_GraphNode *Rr_AddBlitNode(
+extern void Rr_BlitImage2D(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Image2D *SrcImage,
@@ -159,6 +160,12 @@ extern Rr_GraphNode *Rr_AddBlitNode(
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_ImageAspect ImageAspect);
+
+extern void Rr_AddClearColorImage2DNode(
+    Rr_Graph *Graph,
+    const char *Name,
+    Rr_ColorClear *ColorClear,
+    Rr_Image2D *Image);
 
 extern Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph, const char *Name);
 
@@ -182,12 +189,6 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Image2D **ColorImages,
     Rr_DepthTarget *DepthTarget,
     Rr_Image2D *DepthImage);
-
-extern Rr_GraphNode *Rr_AddClearColorImage2DNode(
-    Rr_Graph *Graph,
-    const char *Name,
-    Rr_ColorClear *ColorClear,
-    Rr_Image2D *Image);
 
 extern void Rr_Draw(
     Rr_GraphNode *Node,

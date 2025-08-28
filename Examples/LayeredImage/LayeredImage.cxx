@@ -58,7 +58,7 @@ void CreateImagesFromPNGs(
     *OutImage2DArray = Image2DArray;
     for (std::uint32_t Index = 0; Index < ImageCount; ++Index)
     {
-        Rr_AddCopyBufferToImage2DArrayNode(
+        Rr_CopyBufferToImage2DArray(
             Rr_GetGraph(),
             "copy",
             StagingBuffer,
@@ -74,7 +74,7 @@ void CreateImagesFromPNGs(
         RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
     *OutImage3D = Image3D;
-    Rr_AddCopyBufferToImage3DNode(
+    Rr_CopyBufferToImage3D(
         Rr_GetGraph(),
         "copy",
         StagingBuffer,

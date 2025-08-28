@@ -250,7 +250,7 @@ struct SBindingTestApp
         Rr_BindStorageImage2DRW(ComputeNode, StorageImageB, 3, 13);
         Rr_Dispatch(ComputeNode, 16, 16, 1);
 
-        Rr_AddBlitNode(
+        Rr_BlitImage2D(
             Rr_GetGraph(),
             "blit_a",
             StorageImageA,
@@ -259,7 +259,7 @@ struct SBindingTestApp
             { 0, 0, Rr_GetSwapchainSize().Width, Rr_GetSwapchainSize().Height },
             RR_IMAGE_ASPECT_COLOR_BIT);
 
-        Rr_AddBlitNode(
+        Rr_BlitImage2D(
             Rr_GetGraph(),
             "blit_b",
             StorageImageB,

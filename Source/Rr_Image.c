@@ -509,7 +509,7 @@ Rr_Image2D *Rr_CreateSTBImage2D(
     stbi_image_free(ImageData);
 
     Rr_AddTransferNode(Rr_GetGraph(), "create_png_image");
-    Rr_AddCopyBufferToImage2DNode(
+    Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
         "copy_font_texture",
         StagingBuffer,

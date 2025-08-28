@@ -264,7 +264,7 @@ struct SSkyboxApp
         std::memcpy(StagingData + (LayerSize * 4), Front.Data, LayerSize);
         std::memcpy(StagingData + (LayerSize * 5), Back.Data, LayerSize);
 
-        Rr_AddCopyBufferToImageCubeNodeEx(
+        Rr_CopyBufferToImageCubeEx(
             Rr_GetGraph(),
             "copy",
             StagingBuffer,

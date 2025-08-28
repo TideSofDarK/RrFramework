@@ -304,7 +304,7 @@ static void Iterate()
         SortedNumbers.data(),
         TOTAL_SIZE);
 
-    Rr_GraphNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph(), "upload");
+    Rr_TransferNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph(), "upload");
     Rr_TransferBufferData(
         TransferNode,
         TOTAL_SIZE,
@@ -327,7 +327,7 @@ static void Iterate()
 
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-    Rr_AddBlitNode(
+    Rr_BlitImage2D(
         Rr_GetGraph(),
         "blit",
         ResultImage,

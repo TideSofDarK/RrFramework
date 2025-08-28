@@ -2143,7 +2143,7 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
     }
 }
 
-Rr_GraphNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name)
+Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name)
 {
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_TRANSFER, Name);
@@ -2151,18 +2151,18 @@ Rr_GraphNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name)
     Rr_TransferNode *TransferNode = &GraphNode->Union.Transfer;
     RR_RESERVE_ARRAY(&TransferNode->Transfers, 2, Graph->Arena);
 
-    return GraphNode;
+    return &GraphNode->Union.Transfer;
 }
 
 void Rr_TransferBufferData(
-    Rr_GraphNode *Node,
+    Rr_TransferNode *TransferNode,
     uint64_t Size,
     Rr_Buffer *SrcBuffer,
     uint64_t SrcOffset,
     Rr_Buffer *DstBuffer,
     uint64_t DstOffset)
 {
-    Rr_TransferNode *TransferNode = &Node->Union.Transfer;
+    Rr_GraphNode *Node = (Rr_GraphNode *)TransferNode;
 
     Rr_GraphBuffer *SrcBufferHandle =
         Rr_GetGraphBufferHandle(Node->Graph, SrcBuffer);
@@ -2199,7 +2199,7 @@ void Rr_TransferBufferData(
     Rr_MarkBufferUsed(Node->Graph, DstBuffer);
 }
 
-Rr_GraphNode *Rr_AddBlitNode(
+void Rr_BlitImage2D(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Image2D *SrcImage,
@@ -2245,8 +2245,6 @@ Rr_GraphNode *Rr_AddBlitNode(
         });
 
     Rr_MarkImageUsed(Graph, DstImage);
-
-    return GraphNode;
 }
 
 Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph, const char *Name)
@@ -2345,7 +2343,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     return GraphNode;
 }
 
-Rr_GraphNode *Rr_AddClearColorImage2DNode(
+void Rr_AddClearColorImage2DNode(
     Rr_Graph *Graph,
     const char *Name,
     Rr_ColorClear *ColorClear,
@@ -2372,8 +2370,6 @@ Rr_GraphNode *Rr_AddClearColorImage2DNode(
     GraphNode->Union.ClearColorImage =
         (Rr_ClearColorImageNode){ .ColorClear = *ColorClear,
                                   .ColorImage = *ColorImageHandle };
-
-    return GraphNode;
 }
 
 static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
@@ -2433,7 +2429,7 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
     return GraphNode;
 }
 
-Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
+void Rr_CopyBufferToImage2D(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -2442,7 +2438,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
     Rr_Image2D *Image,
     uint32_t MipLevel)
 {
-    return Rr_AddCopyBufferToImageNodeEx(
+    Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
@@ -2454,7 +2450,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DNode(
         MipLevel);
 }
 
-Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
+void Rr_CopyBufferToImage2DArray(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -2464,7 +2460,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
     uint32_t ArrayIndex,
     uint32_t MipLevel)
 {
-    return Rr_AddCopyBufferToImageNodeEx(
+    Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
@@ -2476,7 +2472,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage2DArrayNode(
         MipLevel);
 }
 
-Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
+void Rr_CopyBufferToImage3D(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -2485,7 +2481,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
     Rr_Image3D *Image3D,
     uint32_t MipLevel)
 {
-    return Rr_AddCopyBufferToImageNodeEx(
+    Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
@@ -2501,7 +2497,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImage3DNode(
         MipLevel);
 }
 
-Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
+void Rr_CopyBufferToImageCube(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -2514,7 +2510,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
     assert(Face >= RR_IMAGE_CUBE_FACE_FIRST);
     assert(Face <= RR_IMAGE_CUBE_FACE_LAST);
 
-    return Rr_AddCopyBufferToImageNodeEx(
+    Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
@@ -2526,7 +2522,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNode(
         MipLevel);
 }
 
-Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
+void Rr_CopyBufferToImageCubeEx(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Buffer *Buffer,
@@ -2541,7 +2537,7 @@ Rr_GraphNode *Rr_AddCopyBufferToImageCubeNodeEx(
     assert(FirstFace >= RR_IMAGE_CUBE_FACE_FIRST);
     assert(LastFace <= RR_IMAGE_CUBE_FACE_LAST);
 
-    return Rr_AddCopyBufferToImageNodeEx(
+    Rr_AddCopyBufferToImageNodeEx(
         Graph,
         Name,
         Buffer,
@@ -2607,7 +2603,7 @@ static inline Rr_GraphNode *Rr_AddCopyImageNode(
     return GraphNode;
 }
 
-Rr_GraphNode *Rr_AddCopyImage2DNode(
+void Rr_CopyImage2D(
     Rr_Graph *Graph,
     const char *Name,
     Rr_Image2D *SrcImage,
@@ -2623,7 +2619,7 @@ Rr_GraphNode *Rr_AddCopyImage2DNode(
     assert(Extent.Width >= 1);
     assert(Extent.Height >= 1);
 
-    return Rr_AddCopyImageNode(
+    Rr_AddCopyImageNode(
         Graph,
         Name,
         (Rr_Image *)SrcImage,

@@ -328,7 +328,7 @@ struct SGSApp
                 GPUSplats.data(),
                 SplatsDataSize);
 
-            Rr_GraphNode *TransferNode =
+            Rr_TransferNode *TransferNode =
                 Rr_AddTransferNode(Rr_GetGraph(), "transfer");
             Rr_TransferBufferData(
                 TransferNode,

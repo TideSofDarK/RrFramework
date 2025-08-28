@@ -194,7 +194,7 @@ static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
         &UniformData,
         sizeof(UniformData));
 
-    Rr_GraphNode *TransferNode =
+    Rr_TransferNode *TransferNode =
         Rr_AddTransferNode(Rr_GetGraph(), "upload_uniform_buffer");
     Rr_TransferBufferData(
         TransferNode,
@@ -239,7 +239,7 @@ static void Iterate(void)
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
-        .Clear = (Rr_ColorClear){ { 0.1f, 0.1f, 0.1f, 1.0f } },
+        .Clear = (Rr_ColorClear){ { 0.03f, 0.03f, 0.04f, 1.0f } },
     };
     Rr_DepthTarget DepthTarget = {
         .LoadOp = RR_LOAD_OP_CLEAR,

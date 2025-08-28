@@ -24,10 +24,9 @@
 
 #include "Rr_GLTF.h"
 
-#include "Rr_Buffer.h"
+#include "Rr_Graph.h"
 #include "Rr_Image.h"
 #include "Rr_Log.h"
-#include "Rr_Renderer.h"
 
 #include <stb/stb_image.h>
 
@@ -616,7 +615,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     *RR_PUSH_INTO_ARRAY(&GLTFContext->Buffers, GLTFContext->Arena) =
         GLTFAsset->Buffer;
 
-    Rr_GraphNode *TransferNode = Rr_AddTransferNode(Graph, "transfer_gltf");
+    Rr_TransferNode *TransferNode = Rr_AddTransferNode(Graph, "transfer_gltf");
     Rr_TransferBufferData(
         TransferNode,
         StagingDataSize,

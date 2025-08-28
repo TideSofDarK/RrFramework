@@ -273,7 +273,6 @@ struct Rr_Transfer
     uint64_t DstOffset;
 };
 
-typedef struct Rr_TransferNode Rr_TransferNode;
 struct Rr_TransferNode
 {
     RR_ARRAY(Rr_Transfer) Transfers;

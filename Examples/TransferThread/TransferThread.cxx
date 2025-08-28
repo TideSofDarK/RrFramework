@@ -38,7 +38,7 @@ Rr_Image2D *CreateImage2D(Rr_Graph *Graph, const char *Path)
         RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-    Rr_AddCopyBufferToImage2DNode(
+    Rr_CopyBufferToImage2D(
         Graph,
         "copy",
         StagingBuffer,

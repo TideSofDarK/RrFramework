@@ -32,7 +32,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
 
-    Rr_AddCopyBufferToImage2DNode(
+    Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
         "copy",
         StagingBuffer,

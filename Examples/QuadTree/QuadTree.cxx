@@ -921,7 +921,8 @@ struct SQuadTreeApp
 
         if (DrawCount > 0)
         {
-            Rr_GraphNode *TransferNode = Rr_AddTransferNode(Graph, "transfer");
+            Rr_TransferNode *TransferNode =
+                Rr_AddTransferNode(Graph, "transfer");
             Rr_TransferBufferData(
                 TransferNode,
                 sizeof(UniformData),

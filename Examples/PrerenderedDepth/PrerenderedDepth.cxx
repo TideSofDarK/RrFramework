@@ -96,7 +96,7 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
         Image.images[0],
         DataSize);
 
-    Rr_AddCopyBufferToImage2DNode(
+    Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
         "copy",
         StagingBuffer,
@@ -139,7 +139,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
 
-    Rr_AddCopyBufferToImage2DNode(
+    Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
         "copy",
         StagingBuffer,
@@ -274,7 +274,7 @@ struct SPrerenderedDepthApp
 
     void Iterate()
     {
-        Rr_AddCopyImage2DNode(
+        Rr_CopyImage2D(
             Rr_GetGraph(),
             "copy_color",
             BackgroundColorImage,
@@ -284,7 +284,7 @@ struct SPrerenderedDepthApp
             BackgroundExtent,
             0);
 
-        Rr_AddCopyImage2DNode(
+        Rr_CopyImage2D(
             Rr_GetGraph(),
             "copy_depth",
             BackgroundDepthImage,
@@ -315,7 +315,7 @@ struct SPrerenderedDepthApp
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
 
-        Rr_AddBlitNode(
+        Rr_BlitImage2D(
             Rr_GetGraph(),
             "blit",
             ColorImage,
