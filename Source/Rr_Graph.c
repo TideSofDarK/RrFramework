@@ -200,7 +200,7 @@ static inline bool Rr_AddImageDependency(
     Rr_GraphHandle *Handle,
     Rr_SyncState *State)
 {
-    if (Handle->Values.Index == Node->Graph->SwapchainImageResourceIndex)
+    if (Handle == Node->Graph->SwapchainImageHandle)
     {
         Node->UsesLateCommandBuffer = true;
     }
@@ -219,7 +219,7 @@ static inline bool Rr_AddStorageImageDependency(
     Rr_GraphHandle *Handle,
     Rr_SyncState *State)
 {
-    if (Handle->Values.Index == Node->Graph->SwapchainImageResourceIndex)
+    if (Handle == Node->Graph->SwapchainImageHandle)
     {
         Node->UsesLateCommandBuffer = true;
     }

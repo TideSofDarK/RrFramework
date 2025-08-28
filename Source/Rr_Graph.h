@@ -349,7 +349,7 @@ struct Rr_Graph
     Rr_Map *ImageWriteToNode;
     Rr_Map *ImageHandles;
 
-    uint32_t SwapchainImageResourceIndex;
+    Rr_GraphImage *SwapchainImageHandle;
 
     Rr_HandleSet Buffers;
     Rr_HandleSet Images;

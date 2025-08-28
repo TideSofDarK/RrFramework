@@ -771,13 +771,8 @@ void Rr_NewFrame(void)
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
     Frame->Graph->Arena = Frame->Arena;
     Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
-
-    /* First image added to graph is going to be the swapchain image.
-     * Frame->Graph->SwapchainImageResourceIndex is initialized to zero so these
-     * match. */
-
-    (void)Rr_GetGraphImageHandle(Frame->Graph, Frame->VirtualSwapchainImage)
-        ->Values.Index;
+    Frame->Graph->SwapchainImageHandle =
+        Rr_GetGraphImageHandle(Frame->Graph, Frame->VirtualSwapchainImage);
 }
 
 void Rr_DrawFrame(void)
