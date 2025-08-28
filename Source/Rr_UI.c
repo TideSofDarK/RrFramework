@@ -4963,6 +4963,10 @@ void Rr_UIDebugOverlay(void)
             Rr_UILabelF(
                 "SwapchainImages: %zu",
                 gRenderer->SwapchainImages.Count);
+            Rr_UILabelF(
+                "SyncStates: %zu/%zu",
+                gRenderer->SyncStateStorage.Hive.Count,
+                gRenderer->SyncStateStorage.Hive.Capacity);
         }
         Rr_UIEndTabs();
         Rr_UIEndWindow();
