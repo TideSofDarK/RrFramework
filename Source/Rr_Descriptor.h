@@ -45,7 +45,7 @@ extern Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void);
 extern void Rr_ReleaseDescriptorPoolList(Rr_DescriptorPoolList *List);
 
 extern void Rr_AllocateDescriptorSets(
-    Rr_DescriptorPoolList **ListRef,
+    Rr_DescriptorPoolList *List,
     uint32_t Count,
     VkDescriptorSetLayout *Layouts,
     VkDescriptorSet *OutSets);
@@ -55,7 +55,7 @@ struct Rr_DescriptorsState
 {
     Rr_Device *Device;
     VkCommandBuffer CommandBuffer;
-    Rr_DescriptorPoolList **ListRef;
+    Rr_DescriptorPoolList *DescriptorPoolList;
     Rr_PipelineLayout *Layout;
     VkDescriptorSet Sets[RR_MAX_SETS];
     bool Dirty[RR_MAX_SETS];

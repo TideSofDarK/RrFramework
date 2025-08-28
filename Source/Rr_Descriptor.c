@@ -115,14 +115,12 @@ void Rr_ReleaseDescriptorPoolList(Rr_DescriptorPoolList *List)
 }
 
 void Rr_AllocateDescriptorSets(
-    Rr_DescriptorPoolList **ListRef,
+    Rr_DescriptorPoolList *List,
     uint32_t Count,
     VkDescriptorSetLayout *Layouts,
     VkDescriptorSet *OutSets)
 {
     Rr_Device *Device = &gRenderer->Device;
-
-    Rr_DescriptorPoolList *List = *ListRef;
 
     VkDescriptorSetAllocateInfo AllocateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -130,7 +128,6 @@ void Rr_AllocateDescriptorSets(
         .descriptorSetCount = Count,
         .pSetLayouts = Layouts,
     };
-
     VkResult Result =
         Device->AllocateDescriptorSets(Device->Handle, &AllocateInfo, OutSets);
 
@@ -142,10 +139,13 @@ void Rr_AllocateDescriptorSets(
     /* TODO: Consider caching descriptor sets. */
     /* TODO: Consider iterating through "failed" pools as well. */
 
-    *ListRef = Rr_AcquireDescriptorPoolList();
-    (*ListRef)->Next = List;
-    AllocateInfo.descriptorPool = (*ListRef)->Handle;
+    Rr_DescriptorPoolList *NewList = Rr_AcquireDescriptorPoolList();
+    List->Handle = NewList->Handle;
+    NewList->Next = List->Next;
+    List->Next = NewList;
+    NewList->Handle = AllocateInfo.descriptorPool;
 
+    AllocateInfo.descriptorPool = List->Handle;
     Result =
         Device->AllocateDescriptorSets(Device->Handle, &AllocateInfo, OutSets);
 
@@ -238,7 +238,7 @@ static inline VkDescriptorSet Rr_GetDescriptorSet(
         VkDescriptorSet OldSet = State->Sets[SetIndex];
 
         Rr_AllocateDescriptorSets(
-            State->ListRef,
+            State->DescriptorPoolList,
             1,
             &State->Layout->SetLayouts[SetIndex]->Handle,
             &State->Sets[SetIndex]);

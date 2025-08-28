@@ -313,6 +313,13 @@ struct STransferThreadApp
         };
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
+        Rr_Rect SwapchainRect{
+            0,
+            0,
+            (float)SwapchainExtent.Width,
+            (float)SwapchainExtent.Height,
+        };
 
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
             Rr_GetGraph(),
@@ -345,13 +352,6 @@ struct STransferThreadApp
                 (float)ImageSize.Width,
                 (float)ImageSize.Height,
             };
-            Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
-            Rr_Rect SwapchainRect{
-                0,
-                0,
-                (float)SwapchainExtent.Width,
-                (float)SwapchainExtent.Height,
-            };
             Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
             Rr_SetViewport(GraphicsNode, &Viewport);
             Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
@@ -368,6 +368,9 @@ struct STransferThreadApp
 
         if (Thread.IsBusy)
         {
+            Rr_Rect ImageRect{ 0, 0, 1, 1 };
+            Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
+            Rr_SetViewport(GraphicsNode, &Viewport);
             Rr_BindGraphicsPipeline(GraphicsNode, PlaceholderPipeline);
             Rr_BindUniformBuffer(
                 GraphicsNode,

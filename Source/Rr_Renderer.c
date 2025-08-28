@@ -338,6 +338,11 @@ static bool Rr_InitSwapchain(void)
 
         Image->Handle = Images[Index];
 
+        RR_LOG(
+            "New swapchain image!! %p settint stage to %d",
+            (void *)Image->Handle,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+
         Image->ViewStorage = Rr_CreateImageViewStorage();
         Image->EarlySemaphore = Rr_GetVulkanSemaphore();
         Image->LateSemaphore = Rr_GetVulkanSemaphore();
@@ -765,12 +770,14 @@ void Rr_NewFrame(void)
 
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
     Frame->Graph->Arena = Frame->Arena;
-    Frame->Graph->SwapchainImageResourceIndex =
-        Rr_GetGraphImageHandle(
-            Frame->Graph,
-            (Rr_Image *)Frame->VirtualSwapchainImage)
-            ->Values.Index;
     Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+
+    /* First image added to graph is going to be the swapchain image.
+     * Frame->Graph->SwapchainImageResourceIndex is initialized to zero so these
+     * match. */
+
+    (void)Rr_GetGraphImageHandle(Frame->Graph, Frame->VirtualSwapchainImage)
+        ->Values.Index;
 }
 
 void Rr_DrawFrame(void)
@@ -1341,6 +1348,7 @@ Rr_SyncState *Rr_FindSyncState(
         uint64_t Key = (*MapRef)->Key;
         if (VulkanHandle == Key || Key == (uint64_t)VK_NULL_HANDLE)
         {
+            (*MapRef)->Key = VulkanHandle;
             return &(*MapRef)->Value;
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
