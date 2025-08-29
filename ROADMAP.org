@@ -39,7 +39,7 @@
       3) Binding resources.
 - [X] Refactor Rr_AddXXXNode functions to ensure better type safety.
 - [X] See if it's possible to get rid of descriptor allocator arenas.
-- [ ] Make locking more granular. gRenderer->Lock should only be locked when allocating.
+- [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
 - [ ] Support for immutable buffers/images that don't require synchronization.
 
 * Features

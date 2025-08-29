@@ -1393,7 +1393,7 @@ VkSemaphore Rr_GetVulkanSemaphore(void)
 {
     VkSemaphore Semaphore;
 
-    bool Locked = Rr_TryLockSpinlock(&gRenderer->Lock);
+    bool Locked = Rr_TryLockSpinlock(&gRenderer->SemaphoresLock);
 
     if (Locked && gRenderer->Semaphores.Count > 0)
     {
@@ -1414,7 +1414,7 @@ VkSemaphore Rr_GetVulkanSemaphore(void)
 
     if (Locked)
     {
-        Rr_UnlockSpinlock(&gRenderer->Lock);
+        Rr_UnlockSpinlock(&gRenderer->SemaphoresLock);
     }
 
     return Semaphore;
@@ -1422,18 +1422,20 @@ VkSemaphore Rr_GetVulkanSemaphore(void)
 
 void Rr_ReturnVulkanSemaphore(VkSemaphore Semaphore)
 {
+    Rr_LockSpinlock(&gRenderer->SemaphoresLock);
     Rr_LockSpinlock(&gRenderer->Lock);
 
     *RR_PUSH_INTO_ARRAY(&gRenderer->Semaphores, gRenderer->Arena) = Semaphore;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->SemaphoresLock);
 }
 
 VkFence Rr_GetVulkanFence(void)
 {
     VkFence Fence;
 
-    bool Locked = Rr_TryLockSpinlock(&gRenderer->Lock);
+    bool Locked = Rr_TryLockSpinlock(&gRenderer->FencesLock);
 
     if (Locked && gRenderer->Fences.Count > 0)
     {
@@ -1454,7 +1456,7 @@ VkFence Rr_GetVulkanFence(void)
 
     if (Locked)
     {
-        Rr_UnlockSpinlock(&gRenderer->Lock);
+        Rr_UnlockSpinlock(&gRenderer->FencesLock);
     }
 
     return Fence;
@@ -1462,12 +1464,15 @@ VkFence Rr_GetVulkanFence(void)
 
 void Rr_ReturnVulkanFence(VkFence Fence)
 {
+    Rr_Device *Device = &gRenderer->Device;
+
+    Rr_LockSpinlock(&gRenderer->FencesLock);
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_Device *Device = &gRenderer->Device;
     *RR_PUSH_INTO_ARRAY(&gRenderer->Fences, gRenderer->Arena) = Fence;
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&gRenderer->FencesLock);
 
     Device->ResetFences(Device->Handle, 1, &Fence);
 }

@@ -208,7 +208,10 @@ struct Rr_Renderer
     VmaAllocator Allocator;
 
     RR_ARRAY(VkSemaphore) Semaphores;
+    Rr_Spinlock SemaphoresLock;
+
     RR_ARRAY(VkFence) Fences;
+    Rr_Spinlock FencesLock;
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameIndex;  /* Current frame-in-flight index. */
