@@ -541,7 +541,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 GLTFAttribute->Type = Rr_GetGLTFAttributeType(Attribute->type);
                 assert(GLTFAttribute->Type != RR_GLTF_ATTRIBUTE_TYPE_INVALID);
 
-                Rr_GLTFVertexInputInfo Info;
+                Rr_GLTFVertexInputInfo Info = { 0 };
                 bool Found = Rr_GetGLTFVertexInputInfoForAttribute(
                     GLTFContext,
                     Attribute->type,
@@ -692,6 +692,111 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                     CurrentTextureIndex++;
                 }
             }
+        }
+    }
+
+    /* Process nodes. */
+
+    GLTFAsset->NodeCount = Data->nodes_count;
+    GLTFAsset->Nodes = RR_ALLOC_TYPE_COUNT(
+        GLTFContext->Arena,
+        Rr_GLTFNode,
+        GLTFAsset->NodeCount);
+    for (uint32_t NodeIndex = 0; NodeIndex < GLTFAsset->NodeCount; ++NodeIndex)
+    {
+        cgltf_node *Node = &Data->nodes[NodeIndex];
+        Rr_GLTFNode *GLTFNode = &GLTFAsset->Nodes[NodeIndex];
+
+        uint32_t NameLength = strlen(Node->name);
+        GLTFNode->Name = RR_ALLOC_NO_ZERO(GLTFContext->Arena, NameLength + 1);
+        strcpy(GLTFNode->Name, Node->name);
+
+        if (Node->has_matrix)
+        {
+            memcpy(&GLTFNode->Transform, Node->matrix, sizeof(Rr_Mat4));
+        }
+        else
+        {
+            Rr_Mat4 Transform = Rr_M4D(1.0f);
+            if (Node->has_scale)
+            {
+                Rr_Vec3 Scale;
+                memcpy(&Scale, Node->scale, sizeof(Rr_Vec3));
+                Transform = Rr_MulM4(Rr_Scale(Scale), Transform);
+            }
+            if (Node->has_rotation)
+            {
+                Rr_Quat Quat;
+                memcpy(&Quat, Node->rotation, sizeof(Rr_Quat));
+                Transform = Rr_MulM4(Rr_QToM4(Quat), Transform);
+            }
+            if (Node->has_translation)
+            {
+                Rr_Vec3 Translation;
+                memcpy(&Translation, Node->translation, sizeof(Rr_Vec3));
+                Transform = Rr_MulM4(Rr_Translate(Translation), Transform);
+            }
+            GLTFNode->Transform = Transform;
+        }
+
+        if (Node->mesh)
+        {
+            size_t MeshIndex = cgltf_mesh_index(Data, Node->mesh);
+            GLTFNode->Mesh = &GLTFAsset->Meshes[MeshIndex];
+        }
+
+        if (Node->parent)
+        {
+            size_t ParentIndex = cgltf_node_index(Data, Node->parent);
+            GLTFNode->Parent = &GLTFAsset->Nodes[ParentIndex];
+        }
+
+        if (Node->children)
+        {
+            GLTFNode->ChildrenCount = Node->children_count;
+            GLTFNode->Children = RR_ALLOC_TYPE_COUNT(
+                GLTFContext->Arena,
+                Rr_GLTFNode *,
+                Node->children_count);
+            for (uint32_t ChildIndex = 0; ChildIndex < Node->children_count;
+                 ++ChildIndex)
+            {
+                GLTFNode->Children[ChildIndex] =
+                    &GLTFAsset->Nodes[cgltf_node_index(
+                        Data,
+                        Node->children[ChildIndex])];
+            }
+        }
+    }
+
+    /* Process scenes. */
+
+    GLTFAsset->SceneCount = Data->scenes_count;
+    GLTFAsset->Scenes = RR_ALLOC_TYPE_COUNT(
+        GLTFContext->Arena,
+        Rr_GLTFScene,
+        GLTFAsset->SceneCount);
+    for (uint32_t SceneIndex = 0; SceneIndex < Data->scenes_count; ++SceneIndex)
+    {
+        cgltf_scene *Scene = &Data->scenes[SceneIndex];
+        Rr_GLTFScene *GLTFScene = &GLTFAsset->Scenes[SceneIndex];
+
+        uint32_t NameLength = strlen(Scene->name);
+        GLTFScene->Name = RR_ALLOC_NO_ZERO(GLTFContext->Arena, NameLength + 1);
+        strcpy(GLTFScene->Name, Scene->name);
+
+        GLTFScene->NodeCount = Scene->nodes_count;
+        GLTFScene->Nodes = RR_ALLOC_TYPE_COUNT(
+            GLTFContext->Arena,
+            Rr_GLTFNode *,
+            GLTFScene->NodeCount);
+
+        for (uint32_t NodeIndex = 0; NodeIndex < Scene->nodes_count;
+             ++NodeIndex)
+        {
+            GLTFScene->Nodes[NodeIndex] =
+                &GLTFAsset
+                     ->Nodes[cgltf_node_index(Data, Scene->nodes[NodeIndex])];
         }
     }
 

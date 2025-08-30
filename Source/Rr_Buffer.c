@@ -30,6 +30,8 @@
 
 Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 {
+    assert(Size > 0 && "Buffer size is zero!");
+
     Rr_LockSpinlock(&gRenderer->BuffersLock);
 
     Rr_Buffer *Buffer = Rr_PushBufferIntoHiveLocked(

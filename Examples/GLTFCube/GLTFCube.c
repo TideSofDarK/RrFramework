@@ -76,9 +76,9 @@ static void Init(void)
     PipelineLayout = Rr_CreatePipelineLayout(1, &BindingSet);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
-        { .Format = RR_FORMAT_VEC3, .Location = 0 },
-        { .Format = RR_FORMAT_VEC2, .Location = 1 },
-        { .Format = RR_FORMAT_VEC3, .Location = 2 },
+        { .Location = 0, .Format = RR_FORMAT_VEC3 },
+        { .Location = 1, .Format = RR_FORMAT_VEC2 },
+        { .Location = 2, .Format = RR_FORMAT_VEC3 },
     };
 
     Rr_VertexInputBinding VertexInputBindings[] = {

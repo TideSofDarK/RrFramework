@@ -74,8 +74,8 @@ struct Rr_GLTFPrimitive
     size_t VertexCount;
     size_t AttributeCount;
     Rr_GLTFAttribute *Attributes;
-    size_t IndexCount;
     Rr_GLTFMaterial *Material;
+    size_t IndexCount;
     int32_t VertexOffset;
     size_t FirstIndex;
 };
@@ -91,15 +91,20 @@ struct Rr_GLTFMesh
 typedef struct Rr_GLTFNode Rr_GLTFNode;
 struct Rr_GLTFNode
 {
-    size_t MeshIndex;
     char *Name;
+    Rr_GLTFNode *Parent;
+    size_t ChildrenCount;
+    Rr_GLTFNode **Children;
+    Rr_GLTFMesh *Mesh;
+    Rr_Mat4 Transform;
 };
 
 typedef struct Rr_GLTFScene Rr_GLTFScene;
 struct Rr_GLTFScene
 {
+    char *Name;
     size_t NodeCount;
-    Rr_GLTFNode *Nodes;
+    Rr_GLTFNode **Nodes;
 };
 
 typedef struct Rr_GLTFAsset Rr_GLTFAsset;
@@ -109,6 +114,8 @@ struct Rr_GLTFAsset
     Rr_GLTFScene *Scenes;
     size_t MeshCount;
     Rr_GLTFMesh *Meshes;
+    size_t NodeCount;
+    Rr_GLTFNode *Nodes;
     Rr_Buffer *Buffer;
     size_t ImageCount;
     Rr_Image2D **Images;

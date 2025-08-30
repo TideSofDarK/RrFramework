@@ -160,7 +160,8 @@ void Rr_InvalidateDescriptorsState(
     {
         for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
         {
-            if (Index < State->Layout->SetLayoutCount)
+            if (Index < State->Layout->SetLayoutCount &&
+                Index < Layout->SetLayoutCount)
             {
                 VkDescriptorSetLayout OldLayout =
                     State->Layout->SetLayouts[Index]->Handle;
