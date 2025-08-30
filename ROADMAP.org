@@ -20,10 +20,9 @@
       Remove Rr_UploadImageXXX stuff which is going to be replaced by graph nodes.
       Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
       For now, make transfer-only graphs that can be submitted from secondary threads.
-- [ ] Finalize said decoupling:
+- [X] Finalize said decoupling:
       1) Track graph capabilities.
-      2) Reasses Rr_SyncStateStorage usage.
-      3) Move arena and command pools to thread context.
+      2) Move arena and command pools to thread context.
 - [X] Should referenced pipelines and samplers be hashed to optimize decrement references pass? 
       Solution: put handles to hash set.
 - [X] Binding arrays support.
