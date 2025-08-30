@@ -22,6 +22,10 @@
  * SOFTWARE.
  */
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "Rr_GLTF.h"
 
 #include "Rr_Graph.h"
@@ -707,7 +711,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         cgltf_node *Node = &Data->nodes[NodeIndex];
         Rr_GLTFNode *GLTFNode = &GLTFAsset->Nodes[NodeIndex];
 
-        uint32_t NameLength = strlen(Node->name);
+        size_t NameLength = strlen(Node->name);
         GLTFNode->Name = RR_ALLOC_NO_ZERO(GLTFContext->Arena, NameLength + 1);
         strcpy(GLTFNode->Name, Node->name);
 
@@ -781,7 +785,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         cgltf_scene *Scene = &Data->scenes[SceneIndex];
         Rr_GLTFScene *GLTFScene = &GLTFAsset->Scenes[SceneIndex];
 
-        uint32_t NameLength = strlen(Scene->name);
+        size_t NameLength = strlen(Scene->name);
         GLTFScene->Name = RR_ALLOC_NO_ZERO(GLTFContext->Arena, NameLength + 1);
         strcpy(GLTFScene->Name, Scene->name);
 
