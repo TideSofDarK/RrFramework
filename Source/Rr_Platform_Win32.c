@@ -90,7 +90,7 @@ void Rr_AlignedFree(void *Ptr)
     _aligned_free(Ptr);
 }
 
-/* TODO: Figure out *NoFence function. */
+/* TODO: Figure out *NoFence functions. */
 
 int Rr_LoadAtomicRelaxed(Rr_AtomicInt *AtomicInt)
 {
@@ -125,5 +125,12 @@ int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
 
 void Rr_SleepNS(uint64_t Nanoseconds)
 {
-    Sleep(Nanoseconds / 1000000);
+    uint64_t Microseconds = Nanoseconds / 1000;
+    HANDLE Timer;
+    LARGE_INTEGER Period;
+    Period.QuadPart = (LONGLONG)(-10 * Microseconds);
+    Timer = CreateWaitableTimer(NULL, TRUE, NULL);
+    SetWaitableTimer(Timer, &Period, 0, NULL, NULL, 0);
+    WaitForSingleObject(Timer, INFINITE);
+    CloseHandle(Timer);
 }
