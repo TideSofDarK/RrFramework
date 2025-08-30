@@ -80,17 +80,20 @@ struct STransferThread
         {
             Thread->IsBusy = false;
 
-            std::unique_lock PathsLock{ Thread->PathsMutex };
-            Thread->CondVar.wait(PathsLock, [&]() {
-                return !Thread->PathsQueue.empty() || Thread->StopRequested;
-            });
-            if (Thread->StopRequested)
+            std::string Path;
             {
-                break;
-            }
+                std::unique_lock PathsLock{ Thread->PathsMutex };
+                Thread->CondVar.wait(PathsLock, [&]() {
+                    return !Thread->PathsQueue.empty() || Thread->StopRequested;
+                });
+                if (Thread->StopRequested)
+                {
+                    break;
+                }
 
-            std::string Path = std::move(Thread->PathsQueue.front());
-            Thread->PathsQueue.pop();
+                Path = std::move(Thread->PathsQueue.front());
+                Thread->PathsQueue.pop();
+            }
 
             Thread->IsBusy = true;
 
