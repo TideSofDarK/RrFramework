@@ -33,9 +33,22 @@
 extern "C" {
 #endif
 
+typedef enum
+{
+    RR_GRAPH_FLAGS_GRAPHICS_BIT = (1 << 0),
+    RR_GRAPH_FLAGS_TRANSFER_BIT = (1 << 1),
+    RR_GRAPH_FLAGS_COMPUTE_BIT = (1 << 2),
+} Rr_GraphFlagsBits;
+
+typedef uint32_t Rr_GraphFlags;
+
 typedef struct Rr_Graph Rr_Graph;
-typedef struct Rr_GraphNode Rr_GraphNode;
-typedef struct Rr_TransferNode Rr_TransferNode;
+
+extern struct Rr_Graph *Rr_GetGraph(void);
+
+extern struct Rr_Graph *Rr_GetSubGraph(Rr_GraphFlags Flags);
+
+extern void Rr_SubmitSubGraph(struct Rr_Graph *Graph);
 
 typedef enum Rr_BlitMode
 {
@@ -82,6 +95,9 @@ struct Rr_DrawIndirectCommand
     uint32_t FirstVertex;
     uint32_t FirstInstance;
 };
+
+typedef struct Rr_GraphNode Rr_GraphNode;
+typedef struct Rr_TransferNode Rr_TransferNode;
 
 extern Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name);
 

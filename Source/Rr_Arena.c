@@ -26,7 +26,7 @@
 
 #include "Rr_Log.h"
 
-#include <Rr/Rr_Platform.h>
+#include "Rr_Platform.h"
 
 #include <assert.h>
 #include <string.h>
@@ -81,10 +81,15 @@ void Rr_DestroyScratch(Rr_Scratch Scratch)
     Scratch.Arena->Position = Scratch.Position;
 }
 
-static _Thread_local Rr_Arena *ScratchArenas[2] = { 0 };
+static RR_THREAD_LOCAL Rr_Arena *ScratchArenas[2] = { 0 };
+static RR_THREAD_LOCAL bool ScratchInitialized = false;
 
 void Rr_CleanupScratchArena(void)
 {
+    if (!ScratchInitialized)
+    {
+        return;
+    }
     for (size_t Index = 0; Index < 2; ++Index)
     {
         Rr_DestroyArena(ScratchArenas[Index]);
@@ -93,9 +98,10 @@ void Rr_CleanupScratchArena(void)
 
 void Rr_InitScratchArena(void)
 {
-    assert(
-        ScratchArenas[0] == NULL &&
-        "Scratch is already initialized for this thread!");
+    if (ScratchInitialized)
+    {
+        return;
+    }
     for (size_t Index = 0; Index < 2; ++Index)
     {
         ScratchArenas[Index] = Rr_CreateDefaultArena();

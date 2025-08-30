@@ -28,6 +28,14 @@
 
 #include "Rr_Arena.h"
 
+#ifdef __linux__
+#define RR_THREAD_LOCAL __thread
+#elif _WIN32
+#define RR_THREAD_LOCAL __declspec(thread)
+#else
+#error Unsupported platform!
+#endif
+
 struct Rr_Platform
 {
     void *Window;
@@ -98,5 +106,7 @@ extern void Rr_LockSpinlock(Rr_Spinlock *Spinlock);
 extern bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock);
 
 extern void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock);
+
+extern void Rr_SleepNS(uint64_t Nanoseconds);
 
 extern Rr_Platform *gPlatform;

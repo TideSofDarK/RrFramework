@@ -30,7 +30,6 @@
 #include "Rr_UI.h"
 
 #include <assert.h>
-#include <threads.h>
 
 Rr_App *gApp = NULL;
 
@@ -45,15 +44,13 @@ static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
 {
     uint64_t Interval = 1000000000 / FrameTime->TargetFramerate;
-    uint64_t Now = Rr_GetPerformanceCounter();
+    uint64_t Now = Rr_GetTimeNS();
     uint64_t Elapsed = Now - FrameTime->StartTime;
 
     if (Elapsed < Interval)
     {
-        thrd_sleep(
-            &(struct timespec){ .tv_nsec = (long)(Interval - Elapsed) },
-            NULL);
-        Now = Rr_GetPerformanceCounter();
+        Rr_SleepNS(Interval - Elapsed);
+        Now = Rr_GetTimeNS();
     }
 
     Elapsed = Now - FrameTime->StartTime;
@@ -250,16 +247,6 @@ void Rr_Quit(void)
 bool Rr_QuitRequested(void)
 {
     return Rr_LoadAtomicRelaxed(&gApp->QuitRequested);
-}
-
-void Rr_InitThreadContext(void)
-{
-    Rr_InitScratchArena();
-}
-
-void Rr_CleanupThreadContext(void)
-{
-    Rr_CleanupScratchArena();
 }
 
 Rr_Event *Rr_AddEvent(void)

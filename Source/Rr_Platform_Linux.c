@@ -133,3 +133,13 @@ int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
 {
     return __atomic_fetch_sub(&AtomicInt->Value, 1, __ATOMIC_RELAXED);
 }
+
+void Rr_SleepNS(uint64_t Nanoseconds)
+{
+    struct timespec Requested, Remaining;
+    Remaining.tv_sec = (time_t)(Nanoseconds / 1000000000);
+    Remaining.tv_nsec = (long)(Nanoseconds % 1000000000);
+    Requested.tv_sec = Remaining.tv_sec;
+    Requested.tv_nsec = Remaining.tv_nsec;
+    nanosleep(&Requested, &Remaining);
+}

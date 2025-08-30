@@ -140,7 +140,7 @@ endfunction()
 
 add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 
-target_compile_features(${PROJECT_NAME} PRIVATE c_std_11)
+target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 set_target_properties(${PROJECT_NAME} PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
@@ -215,9 +215,6 @@ endif ()
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Win32.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_WIN32)
-    if ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
-        target_compile_options(${PROJECT_NAME} PRIVATE /std:c11)
-    endif ()
 endif ()
 
 if (RR_PLATFORM_LIBRARY STREQUAL "SDL")

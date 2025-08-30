@@ -58,12 +58,12 @@ static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 
     if (SwapchainImage->EarlySemaphore)
     {
-        Rr_ReturnVulkanSemaphore(SwapchainImage->EarlySemaphore);
+        Rr_ReleaseVulkanSemaphore(SwapchainImage->EarlySemaphore);
     }
 
     if (SwapchainImage->LateSemaphore)
     {
-        Rr_ReturnVulkanSemaphore(SwapchainImage->LateSemaphore);
+        Rr_ReleaseVulkanSemaphore(SwapchainImage->LateSemaphore);
     }
 
     RR_ZERO_PTR(SwapchainImage);
@@ -338,8 +338,8 @@ static bool Rr_InitSwapchain(void)
         Image->Handle = Images[Index];
 
         Image->ViewStorage = Rr_CreateImageViewStorage();
-        Image->EarlySemaphore = Rr_GetVulkanSemaphore();
-        Image->LateSemaphore = Rr_GetVulkanSemaphore();
+        Image->EarlySemaphore = Rr_AcquireVulkanSemaphore();
+        Image->LateSemaphore = Rr_AcquireVulkanSemaphore();
 
         Rr_LockSpinlock(&gRenderer->Lock);
 
@@ -366,29 +366,17 @@ static void Rr_InitFrames(void)
 {
     Rr_Device *Device = &gRenderer->Device;
     Rr_Frame *Frames = gRenderer->Frames;
+    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
 
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
         Rr_Frame *Frame = &Frames[Index];
-
         Frame->Arena = Rr_CreateDefaultArena();
-
-        VkCommandPoolCreateInfo CommandPoolCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
-        };
-        Device->CreateCommandPool(
-            Device->Handle,
-            &CommandPoolCreateInfo,
-            NULL,
-            &Frame->CommandPool);
-
+        Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .commandPool = Frame->CommandPool,
+            .commandPool = ThreadContext->CommandPools->Graphics,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
@@ -400,8 +388,6 @@ static void Rr_InitFrames(void)
             Device->Handle,
             &CommandBufferAllocateInfo,
             &Frame->LateCommandBuffer);
-
-        Frame->AcquireSemaphore = Rr_GetVulkanSemaphore();
     }
 }
 
@@ -412,12 +398,8 @@ static void Rr_CleanupFrames(void)
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
         Rr_Frame *Frame = &gRenderer->Frames[Index];
-
-        Device->DestroyCommandPool(Device->Handle, Frame->CommandPool, NULL);
-
-        Rr_ReturnVulkanFence(Frame->SubmitFence);
-        Rr_ReturnVulkanSemaphore(Frame->AcquireSemaphore);
-
+        Rr_ReleaseVulkanFence(Frame->SubmitFence);
+        Rr_ReleaseVulkanSemaphore(Frame->AcquireSemaphore);
         Rr_DestroyArena(Frame->Arena);
     }
 }
@@ -459,47 +441,6 @@ static void Rr_InitVMA(void)
     vmaCreateAllocator(&AllocatorInfo, &gRenderer->Allocator);
 }
 
-/* TODO: Move to queue initialization? */
-static void Rr_InitTransientCommandPools(void)
-{
-    Rr_Device *Device = &gRenderer->Device;
-
-    Device->CreateCommandPool(
-        Device->Handle,
-        &(VkCommandPoolCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            .queueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
-        },
-        NULL,
-        &gRenderer->GraphicsQueue.TransientCommandPool);
-
-    Device->CreateCommandPool(
-        Device->Handle,
-        &(VkCommandPoolCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
-            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            .queueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
-        },
-        NULL,
-        &gRenderer->TransferQueue.TransientCommandPool);
-}
-
-static void Rr_CleanupTransientCommandPools(void)
-{
-    Rr_Device *Device = &gRenderer->Device;
-    Device->DestroyCommandPool(
-        Device->Handle,
-        gRenderer->GraphicsQueue.TransientCommandPool,
-        NULL);
-    Device->DestroyCommandPool(
-        Device->Handle,
-        gRenderer->TransferQueue.TransientCommandPool,
-        NULL);
-}
-
 void Rr_InitRenderer(const char *Title)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -521,7 +462,7 @@ void Rr_InitRenderer(const char *Title)
         &gRenderer->TransferQueue);
 
     Rr_InitVMA();
-    Rr_InitTransientCommandPools();
+    Rr_InitThreadContext();
     Rr_InitFrames();
     Rr_InitSwapchain();
 
@@ -685,6 +626,7 @@ void Rr_CleanupRenderer(void)
         Device->DestroyDescriptorPool(Device->Handle, List->Handle, NULL);
     }
 
+    Rr_CleanupThreadContext();
     Rr_CleanupFrames();
 
     for (size_t Index = 0; Index < gRenderer->SwapchainImages.Count; ++Index)
@@ -700,7 +642,20 @@ void Rr_CleanupRenderer(void)
             NULL);
     }
 
-    Rr_CleanupTransientCommandPools();
+    for (Rr_CommandPools *CommandPools = gRenderer->CommandPools; CommandPools;
+         CommandPools = CommandPools->Next)
+    {
+        Device->DestroyCommandPool(
+            Device->Handle,
+            CommandPools->Graphics,
+            NULL);
+        Device->DestroyCommandPool(
+            Device->Handle,
+            CommandPools->Transfer,
+            NULL);
+        // Device->DestroyCommandPool(Device->Handle, CommandPools->Compute,
+        // NULL);
+    }
 
     for (size_t Index = 0; Index < gRenderer->Semaphores.Count; ++Index)
     {
@@ -722,7 +677,6 @@ void Rr_CleanupRenderer(void)
 
     Instance->DestroySurfaceKHR(Instance->Handle, gRenderer->Surface, NULL);
     Device->DestroyDevice(Device->Handle, NULL);
-
     Instance->DestroyInstance(Instance->Handle, NULL);
 
     Rr_DestroyArena(gRenderer->Arena);
@@ -748,7 +702,7 @@ void Rr_NewFrame(void)
             1000000000);
         assert(Result != VK_TIMEOUT && "Submit fence timeout!");
 
-        Rr_ReturnVulkanFence(Frame->SubmitFence);
+        Rr_ReleaseVulkanFence(Frame->SubmitFence);
         Frame->SubmitFence = VK_NULL_HANDLE;
 
         Rr_FinalizeGraph(Frame->Graph);
@@ -769,6 +723,9 @@ void Rr_NewFrame(void)
     Frame->VirtualSwapchainImage->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
+    Frame->Graph->Flags = RR_GRAPH_FLAGS_GRAPHICS_BIT |
+                          RR_GRAPH_FLAGS_COMPUTE_BIT |
+                          RR_GRAPH_FLAGS_TRANSFER_BIT;
     Frame->Graph->Arena = Frame->Arena;
     Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
     Frame->Graph->SwapchainImageHandle =
@@ -809,7 +766,7 @@ void Rr_DrawFrame(void)
         }
     }
 
-    Frame->SubmitFence = Rr_GetVulkanFence();
+    Frame->SubmitFence = Rr_AcquireVulkanFence();
 
     Rr_SwapchainImage *SwapchainImage =
         &gRenderer->SwapchainImages.Data[SwapchainImageIndex];
@@ -1005,11 +962,6 @@ size_t Rr_GetMaxComputeWorkgroupInvocations(void)
 {
     return gRenderer->PhysicalDevice.Properties.properties.limits
         .maxComputeWorkGroupInvocations;
-}
-
-Rr_Graph *Rr_GetGraph(void)
-{
-    return Rr_GetCurrentFrame()->Graph;
 }
 
 Rr_TextureFormat Rr_GetSwapchainFormat(void)
@@ -1338,7 +1290,7 @@ Rr_SyncState *Rr_FindSyncState(
     Rr_Arena *Arena)
 {
     Rr_SyncStateMap **MapRef = &Storage->Map;
-    uint64_t Hash = XXH64(&VulkanHandle, sizeof(uint64_t), 0);
+    uint64_t Hash = VulkanHandle;
     for (; *MapRef; Hash <<= 2)
     {
         uint64_t Key = (*MapRef)->Key;
@@ -1362,7 +1314,7 @@ Rr_SyncState Rr_GetSyncState(
     uint64_t VulkanHandle)
 {
     Rr_SyncStateMap **MapRef = &Storage->Map;
-    uint64_t Hash = XXH64(&VulkanHandle, sizeof(uint64_t), 0);
+    uint64_t Hash = VulkanHandle;
     for (; *MapRef; Hash <<= 2)
     {
         if (VulkanHandle == (*MapRef)->Key)
@@ -1377,7 +1329,7 @@ Rr_SyncState Rr_GetSyncState(
 void Rr_EraseSyncState(Rr_SyncStateStorage *Storage, uint64_t VulkanHandle)
 {
     Rr_SyncStateMap **MapRef = &Storage->Map;
-    uint64_t Hash = XXH64(&VulkanHandle, sizeof(uint64_t), 0);
+    uint64_t Hash = VulkanHandle;
     for (; *MapRef; Hash <<= 2)
     {
         if (VulkanHandle == (*MapRef)->Key)
@@ -1389,7 +1341,7 @@ void Rr_EraseSyncState(Rr_SyncStateStorage *Storage, uint64_t VulkanHandle)
     }
 }
 
-VkSemaphore Rr_GetVulkanSemaphore(void)
+VkSemaphore Rr_AcquireVulkanSemaphore(void)
 {
     VkSemaphore Semaphore;
 
@@ -1420,7 +1372,7 @@ VkSemaphore Rr_GetVulkanSemaphore(void)
     return Semaphore;
 }
 
-void Rr_ReturnVulkanSemaphore(VkSemaphore Semaphore)
+void Rr_ReleaseVulkanSemaphore(VkSemaphore Semaphore)
 {
     Rr_LockSpinlock(&gRenderer->SemaphoresLock);
     Rr_LockSpinlock(&gRenderer->Lock);
@@ -1431,7 +1383,7 @@ void Rr_ReturnVulkanSemaphore(VkSemaphore Semaphore)
     Rr_UnlockSpinlock(&gRenderer->SemaphoresLock);
 }
 
-VkFence Rr_GetVulkanFence(void)
+VkFence Rr_AcquireVulkanFence(void)
 {
     VkFence Fence;
 
@@ -1462,7 +1414,7 @@ VkFence Rr_GetVulkanFence(void)
     return Fence;
 }
 
-void Rr_ReturnVulkanFence(VkFence Fence)
+void Rr_ReleaseVulkanFence(VkFence Fence)
 {
     Rr_Device *Device = &gRenderer->Device;
 
@@ -1475,4 +1427,107 @@ void Rr_ReturnVulkanFence(VkFence Fence)
     Rr_UnlockSpinlock(&gRenderer->FencesLock);
 
     Device->ResetFences(Device->Handle, 1, &Fence);
+}
+
+Rr_CommandPools *Rr_AcquireCommandPools(void)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    Rr_CommandPools *CommandPools = NULL;
+
+    Rr_LockSpinlock(&gRenderer->CommandPoolsLock);
+
+    if (gRenderer->CommandPools)
+    {
+        CommandPools = gRenderer->CommandPools;
+        gRenderer->CommandPools = CommandPools->Next;
+
+        Rr_UnlockSpinlock(&gRenderer->CommandPoolsLock);
+    }
+    else
+    {
+        Rr_UnlockSpinlock(&gRenderer->CommandPoolsLock);
+
+        Rr_LockSpinlock(&gRenderer->Lock);
+        CommandPools =
+            RR_ALLOC_NO_ZERO(gRenderer->Arena, sizeof(Rr_CommandPools));
+        Rr_UnlockSpinlock(&gRenderer->Lock);
+
+        Device->CreateCommandPool(
+            Device->Handle,
+            &(VkCommandPoolCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                .queueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
+            },
+            NULL,
+            &CommandPools->Graphics);
+
+        Device->CreateCommandPool(
+            Device->Handle,
+            &(VkCommandPoolCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                .queueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
+            },
+            NULL,
+            &CommandPools->Transfer);
+
+        CommandPools->Compute = NULL;
+
+        // Device->CreateCommandPool(
+        //     Device->Handle,
+        //     &(VkCommandPoolCreateInfo){
+        //         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        //         .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        //         .queueFamilyIndex = gRenderer->ComputeQueue.FamilyIndex,
+        //     },
+        //     NULL,
+        //     &CommandPools->Compute);
+    }
+
+    CommandPools->Next = NULL;
+
+    return CommandPools;
+}
+
+void Rr_ReleaseCommandPools(Rr_CommandPools *CommandPools)
+{
+    Rr_LockSpinlock(&gRenderer->CommandPoolsLock);
+
+    CommandPools->Next = gRenderer->CommandPools;
+    gRenderer->CommandPools = CommandPools;
+
+    Rr_UnlockSpinlock(&gRenderer->CommandPoolsLock);
+}
+
+static RR_THREAD_LOCAL Rr_ThreadContext *ThreadContext = NULL;
+
+void Rr_InitThreadContext(void)
+{
+    Rr_InitScratchArena();
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
+
+    ThreadContext = RR_ALLOC(Arena, sizeof(Rr_ThreadContext));
+    ThreadContext->Arena = Arena;
+    ThreadContext->CommandPools = Rr_AcquireCommandPools();
+}
+
+void Rr_CleanupThreadContext(void)
+{
+    if (!ThreadContext)
+    {
+        return;
+    }
+
+    Rr_ReleaseCommandPools(ThreadContext->CommandPools);
+    Rr_DestroyArena(ThreadContext->Arena);
+    ThreadContext = NULL;
+
+    Rr_CleanupScratchArena();
+}
+
+Rr_ThreadContext *Rr_GetThreadContext(void)
+{
+    return ThreadContext;
 }

@@ -56,18 +56,24 @@ struct Rr_Swapchain
     Rr_AtomicInt RecreatePending;
 };
 
+typedef struct Rr_CommandPools Rr_CommandPools;
+struct Rr_CommandPools
+{
+    VkCommandPool Graphics;
+    VkCommandPool Transfer;
+    VkCommandPool Compute;
+    Rr_CommandPools *Next;
+};
+
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
-    VkCommandPool CommandPool;
     VkCommandBuffer EarlyCommandBuffer;
     VkCommandBuffer LateCommandBuffer;
-
     VkSemaphore AcquireSemaphore;
     VkFence SubmitFence;
 
     Rr_Image2D *VirtualSwapchainImage;
-
     Rr_Graph *Graph;
 
     Rr_Arena *Arena;
@@ -202,7 +208,7 @@ struct Rr_Renderer
 
     Rr_Queue GraphicsQueue;
     Rr_Queue TransferQueue;
-    // Rr_Queue ComputeQueue;
+    /* Rr_Queue ComputeQueue; */
 
     /* TODO: Make sure this doesn't need synchronization in general case. */
     VmaAllocator Allocator;
@@ -212,6 +218,9 @@ struct Rr_Renderer
 
     RR_ARRAY(VkFence) Fences;
     Rr_Spinlock FencesLock;
+
+    Rr_CommandPools *CommandPools;
+    Rr_Spinlock CommandPoolsLock;
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameIndex;  /* Current frame-in-flight index. */
@@ -284,12 +293,27 @@ extern Rr_Frame *Rr_GetCurrentFrame(void);
 
 extern bool Rr_IsUsingTransferQueue(void);
 
-extern VkSemaphore Rr_GetVulkanSemaphore(void);
+extern VkSemaphore Rr_AcquireVulkanSemaphore(void);
 
-extern void Rr_ReturnVulkanSemaphore(VkSemaphore Semaphore);
+extern void Rr_ReleaseVulkanSemaphore(VkSemaphore Semaphore);
 
-extern VkFence Rr_GetVulkanFence(void);
+extern VkFence Rr_AcquireVulkanFence(void);
 
-extern void Rr_ReturnVulkanFence(VkFence Fence);
+extern void Rr_ReleaseVulkanFence(VkFence Fence);
+
+extern Rr_CommandPools *Rr_AcquireCommandPools(void);
+
+extern void Rr_ReleaseCommandPools(Rr_CommandPools *CommandPools);
+
+typedef struct Rr_ThreadContext Rr_ThreadContext;
+struct Rr_ThreadContext
+{
+    Rr_Graph *Graph;
+    Rr_CommandPools *CommandPools;
+    Rr_Arena *Arena;
+    Rr_Scratch Scratch;
+};
+
+extern Rr_ThreadContext *Rr_GetThreadContext(void);
 
 extern Rr_Renderer *gRenderer;

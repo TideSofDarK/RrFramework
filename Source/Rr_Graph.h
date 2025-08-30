@@ -26,7 +26,7 @@
 
 #include <Rr/Rr_Graph.h>
 
-#include "Rr_Vulkan.h"
+#include "Rr_Descriptor.h"
 
 struct Rr_Frame;
 struct Rr_SyncStateStorage;
@@ -339,6 +339,8 @@ typedef RR_ARRAY(Rr_GraphResource) Rr_GraphResourceArray;
 
 struct Rr_Graph
 {
+    Rr_GraphFlags Flags;
+
     RR_ARRAY(Rr_GraphNode *) Nodes;
 
     Rr_GraphResourceArray BufferResources;
@@ -356,14 +358,9 @@ struct Rr_Graph
     Rr_HandleSet GraphicsPipelines;
     Rr_HandleSet Samplers;
 
-    struct Rr_DescriptorPoolList *DescriptorPoolList;
-
-    VkCommandPool GraphicsCommandPool;
-    VkCommandPool TransferCommandPool;
-    /* VkCommandPool ComputeCommandPool; */
+    Rr_DescriptorPoolList *DescriptorPoolList;
 
     Rr_Arena *Arena;
-    size_t ResetArenaPosition;
 };
 
 extern void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer);

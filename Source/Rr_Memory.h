@@ -189,11 +189,15 @@ extern void *Rr_GetFreeListItem(void *FreeList, size_t Size, Rr_Arena *Arena);
 
 extern void Rr_ReturnFreeListItem(void *FreeList, void *Pointer);
 
+extern void *Rr_NextFreeListItem(void *Pointer);
+
 #define RR_GET_FREE_LIST_ITEM(FreeList, Arena) \
     Rr_GetFreeListItem((FreeList), sizeof(*(FreeList)->SizeHint), Arena)
 
 #define RR_RETURN_FREE_LIST_ITEM(FreeList, Pointer) \
     Rr_ReturnFreeListItem((FreeList), Pointer)
+
+#define RR_NEXT_FREE_LIST_ITEM(Pointer) Rr_NextFreeListItem((Pointer))
 
 #ifdef __cplusplus
 }

@@ -36,6 +36,258 @@
 
 #include <assert.h>
 
+Rr_Graph *Rr_GetGraph(void)
+{
+    return Rr_GetCurrentFrame()->Graph;
+}
+
+Rr_Graph *Rr_GetSubGraph(Rr_GraphFlags Flags)
+{
+    assert(gRenderer);
+    assert(
+        Flags == RR_GRAPH_FLAGS_TRANSFER_BIT &&
+        "Only transfer graphs supported right now!");
+
+    Rr_Device *Device = &gRenderer->Device;
+
+    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+    assert(ThreadContext && "Call Rr_InitThreadContext first!");
+
+    if (ThreadContext->Graph)
+    {
+        assert(ThreadContext->Graph->Flags == Flags);
+        return ThreadContext->Graph;
+    }
+
+    ThreadContext->Scratch = Rr_CreateScratch(ThreadContext->Arena);
+
+    Rr_Graph *Graph = RR_ALLOC(ThreadContext->Arena, sizeof(Rr_Graph));
+    Graph->Arena = ThreadContext->Arena;
+    Graph->Flags = Flags;
+    Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+
+    return Graph;
+}
+
+void Rr_SubmitSubGraph(Rr_Graph *Graph)
+{
+    assert(Graph);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+
+    Rr_Device *Device = &gRenderer->Device;
+
+    bool UseTransferQueue = Rr_IsUsingTransferQueue();
+    Rr_Queue *Queue = UseTransferQueue ? &gRenderer->TransferQueue
+                                       : &gRenderer->GraphicsQueue;
+    VkCommandPool CommandPool = UseTransferQueue
+                                    ? ThreadContext->CommandPools->Transfer
+                                    : ThreadContext->CommandPools->Graphics;
+    uint32_t QueueFamilyIndex = Queue->FamilyIndex;
+
+    VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
+    Device->AllocateCommandBuffers(
+        Device->Handle,
+        &(VkCommandBufferAllocateInfo){
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = CommandPool,
+            .commandBufferCount = 1,
+        },
+        &CommandBuffer);
+    VkCommandBufferBeginInfo CommandBufferBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    Device->BeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
+
+    Rr_SyncStateStorage *SyncStateStorage =
+        RR_ALLOC(Graph->Arena, sizeof(Rr_SyncStateStorage));
+
+    Rr_ExecuteGraph(
+        Graph,
+        SyncStateStorage,
+        NULL,
+        Graph->Arena,
+        QueueFamilyIndex,
+        CommandBuffer,
+        VK_NULL_HANDLE);
+
+    /* TODO: Look into concurrent images/buffers. Apparently exclusive access
+     * only makes sense for attachment images. */
+    /* TODO: Throwaway buffers (i.e. staging) also get ownership transfer. */
+    /* TODO: Allocating too much here because it's not immediately known whether
+     * resource is double/triple buffered. */
+
+    VkPipelineStageFlags ReleaseStageMask = 0;
+
+    uint32_t BufferBarrierIndex = 0;
+    VkBufferMemoryBarrier *BufferBarriers = RR_ALLOC_NO_ZERO(
+        Scratch.Arena,
+        Graph->Buffers.Hive.Count * RR_FRAME_OVERLAP *
+            sizeof(VkBufferMemoryBarrier));
+    for (Rr_HandleTrieHiveIterator It = Graph->Buffers.Hive.Begin;
+         It.Element != Graph->Buffers.Hive.End.Element;
+         Rr_AdvanceHandleTrieHiveIterator(&It))
+    {
+        Rr_Buffer *Buffer = (Rr_Buffer *)It.Element->Handle;
+        for (size_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
+        {
+            Rr_AllocatedBuffer *AllocatedBuffer =
+                &Buffer->AllocatedBuffers[Index];
+            Rr_SyncState SrcState = Rr_GetSyncState(
+                SyncStateStorage,
+                (uint64_t)AllocatedBuffer->Handle);
+            if (UseTransferQueue)
+            {
+                ReleaseStageMask |= SrcState.StageMask;
+                BufferBarriers[BufferBarrierIndex++] = (VkBufferMemoryBarrier){
+                    .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                    .buffer = AllocatedBuffer->Handle,
+                    .offset = 0,
+                    .size = VK_WHOLE_SIZE,
+                    .srcAccessMask = SrcState.AccessMask,
+                    .dstAccessMask = 0,
+                    .srcQueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
+                    .dstQueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
+                };
+
+                Rr_LockSpinlock(&gRenderer->Lock);
+                *Rr_FindSyncState(
+                    &gRenderer->SyncStateStorage,
+                    (uint64_t)AllocatedBuffer->Handle,
+                    gRenderer->Arena) = (Rr_SyncState){
+                    .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    .AccessMask = 0,
+                    .QueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
+                };
+                Rr_UnlockSpinlock(&gRenderer->Lock);
+            }
+            else
+            {
+                Rr_LockSpinlock(&gRenderer->Lock);
+                *Rr_FindSyncState(
+                    &gRenderer->SyncStateStorage,
+                    (uint64_t)AllocatedBuffer->Handle,
+                    gRenderer->Arena) = SrcState;
+                Rr_UnlockSpinlock(&gRenderer->Lock);
+            }
+        }
+    }
+
+    uint32_t ImageBarrierIndex = 0;
+    VkImageMemoryBarrier *ImageBarriers = RR_ALLOC_NO_ZERO(
+        Scratch.Arena,
+        Graph->Images.Hive.Count * RR_FRAME_OVERLAP *
+            sizeof(VkImageMemoryBarrier));
+    for (Rr_HandleTrieHiveIterator It = Graph->Images.Hive.Begin;
+         It.Element != Graph->Images.Hive.End.Element;
+         Rr_AdvanceHandleTrieHiveIterator(&It))
+    {
+        Rr_Image *Image = (Rr_Image *)It.Element->Handle;
+        for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
+        {
+            Rr_AllocatedImage *AllocatedImage = &Image->AllocatedImages[Index];
+            Rr_SyncState SrcState = Rr_GetSyncState(
+                SyncStateStorage,
+                (uint64_t)AllocatedImage->Handle);
+            if (UseTransferQueue)
+            {
+                ReleaseStageMask |= SrcState.StageMask;
+                ImageBarriers[ImageBarrierIndex++] = (VkImageMemoryBarrier){
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    .image = AllocatedImage->Handle,
+                    .oldLayout = SrcState.Layout,
+                    .newLayout = SrcState.Layout,
+                    .subresourceRange =
+                        (VkImageSubresourceRange){
+                            .aspectMask = Image->AspectFlags,
+                            .levelCount = VK_REMAINING_MIP_LEVELS,
+                            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                        },
+                    .srcAccessMask = SrcState.AccessMask,
+                    .dstAccessMask = 0,
+                    .srcQueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
+                    .dstQueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
+                };
+
+                Rr_LockSpinlock(&gRenderer->Lock);
+                *Rr_FindSyncState(
+                    &gRenderer->SyncStateStorage,
+                    (uint64_t)AllocatedImage->Handle,
+                    gRenderer->Arena) = (Rr_SyncState){
+                    .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    .AccessMask = 0,
+                    .Layout = SrcState.Layout,
+                    .QueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
+                };
+                Rr_UnlockSpinlock(&gRenderer->Lock);
+            }
+            else
+            {
+                Rr_LockSpinlock(&gRenderer->Lock);
+                *Rr_FindSyncState(
+                    &gRenderer->SyncStateStorage,
+                    (uint64_t)AllocatedImage->Handle,
+                    gRenderer->Arena) = SrcState;
+                Rr_UnlockSpinlock(&gRenderer->Lock);
+            }
+        }
+    }
+
+    if (UseTransferQueue)
+    {
+        Device->CmdPipelineBarrier(
+            CommandBuffer,
+            ReleaseStageMask,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0,
+            0,
+            NULL,
+            BufferBarrierIndex,
+            BufferBarriers,
+            ImageBarrierIndex,
+            ImageBarriers);
+    }
+
+    Device->EndCommandBuffer(CommandBuffer);
+
+    VkFence Fence = Rr_AcquireVulkanFence();
+
+    Rr_LockSpinlock(&Queue->Lock);
+
+    Device->QueueSubmit(
+        Queue->Handle,
+        1,
+        &(VkSubmitInfo){
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &CommandBuffer,
+        },
+        Fence);
+
+    Rr_UnlockSpinlock(&Queue->Lock);
+
+    Device->WaitForFences(Device->Handle, 1, &Fence, VK_TRUE, UINT64_MAX);
+
+    Rr_ReleaseVulkanFence(Fence);
+
+    Device->ResetCommandPool(
+        Device->Handle,
+        CommandPool,
+        VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+
+    Rr_FinalizeGraph(Graph);
+
+    /* TODO: Semaphores! */
+
+    Rr_DestroyScratch(ThreadContext->Scratch);
+    ThreadContext->Graph = NULL;
+
+    Rr_DestroyScratch(Scratch);
+}
+
 static Rr_AllocatedBuffer *Rr_GetGraphBuffer(
     Rr_Graph *Graph,
     Rr_GraphBuffer Handle)
@@ -1707,294 +1959,7 @@ void Rr_ExecuteGraph(
     Rr_DestroyScratch(Scratch);
 }
 
-Rr_Graph *Rr_CreateGraph(void)
-{
-    assert(gRenderer);
-
-    Rr_Device *Device = &gRenderer->Device;
-
-    Rr_Arena *Arena = Rr_CreateDefaultArena();
-
-    Rr_Graph *Graph = RR_ALLOC(Arena, sizeof(Rr_Graph));
-    Graph->Arena = Arena;
-
-    Device->CreateCommandPool(
-        Device->Handle,
-        &(VkCommandPoolCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            .queueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
-        },
-        NULL,
-        &Graph->GraphicsCommandPool);
-
-    if (Rr_IsUsingTransferQueue())
-    {
-        Device->CreateCommandPool(
-            Device->Handle,
-            &(VkCommandPoolCreateInfo){
-                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                .queueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
-            },
-            NULL,
-            &Graph->TransferCommandPool);
-    }
-
-    Graph->ResetArenaPosition = Arena->Position;
-
-    return Graph;
-}
-
-void Rr_DestroyGraph(Rr_Graph *Graph)
-{
-    Rr_Device *Device = &gRenderer->Device;
-
-    Device->DestroyCommandPool(
-        Device->Handle,
-        Graph->GraphicsCommandPool,
-        NULL);
-
-    if (Graph->TransferCommandPool != VK_NULL_HANDLE)
-    {
-        Device->DestroyCommandPool(
-            Device->Handle,
-            Graph->TransferCommandPool,
-            NULL);
-    }
-
-    Rr_DestroyArena(Graph->Arena);
-}
-
-void Rr_SubmitGraph(Rr_Graph *Graph)
-{
-    assert(Graph);
-    assert(Graph->TransferCommandPool != VK_NULL_HANDLE);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_Device *Device = &gRenderer->Device;
-
-    bool UseTransferQueue = Rr_IsUsingTransferQueue();
-    Rr_Queue *Queue = UseTransferQueue ? &gRenderer->TransferQueue
-                                       : &gRenderer->GraphicsQueue;
-    VkCommandPool CommandPool = UseTransferQueue ? Graph->TransferCommandPool
-                                                 : Graph->GraphicsCommandPool;
-    uint32_t QueueFamilyIndex = UseTransferQueue
-                                    ? gRenderer->TransferQueue.FamilyIndex
-                                    : gRenderer->GraphicsQueue.FamilyIndex;
-
-    VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
-    Device->AllocateCommandBuffers(
-        Device->Handle,
-        &(VkCommandBufferAllocateInfo){
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = UseTransferQueue ? Graph->TransferCommandPool
-                                            : Graph->GraphicsCommandPool,
-            .commandBufferCount = 1,
-        },
-        &CommandBuffer);
-    VkCommandBufferBeginInfo CommandBufferBeginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    Device->BeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
-
-    Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
-
-    Rr_SyncStateStorage *SyncStateStorage =
-        RR_ALLOC(Graph->Arena, sizeof(Rr_SyncStateStorage));
-
-    Rr_ExecuteGraph(
-        Graph,
-        SyncStateStorage,
-        NULL,
-        Graph->Arena,
-        QueueFamilyIndex,
-        CommandBuffer,
-        VK_NULL_HANDLE);
-
-    /* TODO: Look into concurrent images/buffers. Apparently exclusive access
-     * only makes sense for attachment images. */
-    /* TODO: Throwaway buffers (i.e. staging) also get ownership transfer. */
-    /* TODO: Allocating too much here because it's not immediately known whether
-     * resource is double/triple buffered. */
-
-    VkPipelineStageFlags ReleaseStageMask = 0;
-
-    uint32_t BufferBarrierIndex = 0;
-    VkBufferMemoryBarrier *BufferBarriers = RR_ALLOC_NO_ZERO(
-        Scratch.Arena,
-        Graph->Buffers.Hive.Count * RR_FRAME_OVERLAP *
-            sizeof(VkBufferMemoryBarrier));
-    for (Rr_HandleTrieHiveIterator It = Graph->Buffers.Hive.Begin;
-         It.Element != Graph->Buffers.Hive.End.Element;
-         Rr_AdvanceHandleTrieHiveIterator(&It))
-    {
-        Rr_Buffer *Buffer = (Rr_Buffer *)It.Element->Handle;
-        for (size_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
-        {
-            Rr_AllocatedBuffer *AllocatedBuffer =
-                &Buffer->AllocatedBuffers[Index];
-            Rr_SyncState SrcState = Rr_GetSyncState(
-                SyncStateStorage,
-                (uint64_t)AllocatedBuffer->Handle);
-            if (UseTransferQueue)
-            {
-                ReleaseStageMask |= SrcState.StageMask;
-                BufferBarriers[BufferBarrierIndex++] = (VkBufferMemoryBarrier){
-                    .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                    .buffer = AllocatedBuffer->Handle,
-                    .offset = 0,
-                    .size = VK_WHOLE_SIZE,
-                    .srcAccessMask = SrcState.AccessMask,
-                    .dstAccessMask = 0,
-                    .srcQueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
-                    .dstQueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
-                };
-
-                Rr_LockSpinlock(&gRenderer->Lock);
-                *Rr_FindSyncState(
-                    &gRenderer->SyncStateStorage,
-                    (uint64_t)AllocatedBuffer->Handle,
-                    gRenderer->Arena) = (Rr_SyncState){
-                    .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                    .AccessMask = 0,
-                    .QueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
-                };
-                Rr_UnlockSpinlock(&gRenderer->Lock);
-            }
-            else
-            {
-                Rr_LockSpinlock(&gRenderer->Lock);
-                *Rr_FindSyncState(
-                    &gRenderer->SyncStateStorage,
-                    (uint64_t)AllocatedBuffer->Handle,
-                    gRenderer->Arena) = SrcState;
-                Rr_UnlockSpinlock(&gRenderer->Lock);
-            }
-        }
-    }
-
-    uint32_t ImageBarrierIndex = 0;
-    VkImageMemoryBarrier *ImageBarriers = RR_ALLOC_NO_ZERO(
-        Scratch.Arena,
-        Graph->Images.Hive.Count * RR_FRAME_OVERLAP *
-            sizeof(VkImageMemoryBarrier));
-    for (Rr_HandleTrieHiveIterator It = Graph->Images.Hive.Begin;
-         It.Element != Graph->Images.Hive.End.Element;
-         Rr_AdvanceHandleTrieHiveIterator(&It))
-    {
-        Rr_Image *Image = (Rr_Image *)It.Element->Handle;
-        for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
-        {
-            Rr_AllocatedImage *AllocatedImage = &Image->AllocatedImages[Index];
-            Rr_SyncState SrcState = Rr_GetSyncState(
-                SyncStateStorage,
-                (uint64_t)AllocatedImage->Handle);
-            if (UseTransferQueue)
-            {
-                ReleaseStageMask |= SrcState.StageMask;
-                ImageBarriers[ImageBarrierIndex++] = (VkImageMemoryBarrier){
-                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                    .image = AllocatedImage->Handle,
-                    .oldLayout = SrcState.Layout,
-                    .newLayout = SrcState.Layout,
-                    .subresourceRange =
-                        (VkImageSubresourceRange){
-                            .aspectMask = Image->AspectFlags,
-                            .levelCount = VK_REMAINING_MIP_LEVELS,
-                            .layerCount = VK_REMAINING_ARRAY_LAYERS,
-                        },
-                    .srcAccessMask = SrcState.AccessMask,
-                    .dstAccessMask = 0,
-                    .srcQueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
-                    .dstQueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
-                };
-
-                Rr_LockSpinlock(&gRenderer->Lock);
-                *Rr_FindSyncState(
-                    &gRenderer->SyncStateStorage,
-                    (uint64_t)AllocatedImage->Handle,
-                    gRenderer->Arena) = (Rr_SyncState){
-                    .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                    .AccessMask = 0,
-                    .Layout = SrcState.Layout,
-                    .QueueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
-                };
-                Rr_UnlockSpinlock(&gRenderer->Lock);
-            }
-            else
-            {
-                Rr_LockSpinlock(&gRenderer->Lock);
-                *Rr_FindSyncState(
-                    &gRenderer->SyncStateStorage,
-                    (uint64_t)AllocatedImage->Handle,
-                    gRenderer->Arena) = SrcState;
-                Rr_UnlockSpinlock(&gRenderer->Lock);
-            }
-        }
-    }
-
-    if (UseTransferQueue)
-    {
-        Device->CmdPipelineBarrier(
-            CommandBuffer,
-            ReleaseStageMask,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-            0,
-            0,
-            NULL,
-            BufferBarrierIndex,
-            BufferBarriers,
-            ImageBarrierIndex,
-            ImageBarriers);
-    }
-
-    Device->EndCommandBuffer(CommandBuffer);
-
-    VkFence Fence = Rr_GetVulkanFence();
-
-    Rr_LockSpinlock(&Queue->Lock);
-
-    Device->QueueSubmit(
-        Queue->Handle,
-        1,
-        &(VkSubmitInfo){
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &CommandBuffer,
-        },
-        Fence);
-
-    Rr_UnlockSpinlock(&Queue->Lock);
-
-    Device->WaitForFences(Device->Handle, 1, &Fence, VK_TRUE, UINT64_MAX);
-
-    Rr_ReturnVulkanFence(Fence);
-
-    Rr_FinalizeGraph(Graph);
-
-    /* TODO: Semaphores! */
-    /* TODO: Proper graph reset! */
-
-    {
-        Graph->Arena->Position = Graph->ResetArenaPosition;
-        size_t ResetPosition = Graph->ResetArenaPosition;
-        Rr_Arena *Arena = Graph->Arena;
-        VkCommandPool GraphicsCommandPool = Graph->GraphicsCommandPool;
-        VkCommandPool TransferCommandPool = Graph->TransferCommandPool;
-        RR_ZERO_PTR(Graph);
-        Graph->ResetArenaPosition = ResetPosition;
-        Graph->Arena = Arena;
-        Graph->GraphicsCommandPool = GraphicsCommandPool;
-        Graph->TransferCommandPool = TransferCommandPool;
-    }
-
-    Rr_DestroyScratch(Scratch);
-}
-
-extern void Rr_FinalizeGraph(Rr_Graph *Graph)
+void Rr_FinalizeGraph(Rr_Graph *Graph)
 {
     Rr_ReleaseDescriptorPoolList(Graph->DescriptorPoolList);
     Rr_DecrementRefCounts(Graph);
@@ -2208,6 +2173,10 @@ void Rr_BlitImage2D(
     Rr_IntVec4 DstRect,
     Rr_ImageAspect ImageAspect)
 {
+    assert(
+        (Graph->Flags & RR_GRAPH_FLAGS_GRAPHICS_BIT) &&
+        "This function requires a graph with graphics capabilities!");
+
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_BLIT, Name);
 
@@ -2249,6 +2218,10 @@ void Rr_BlitImage2D(
 
 Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph, const char *Name)
 {
+    assert(
+        (Graph->Flags & RR_GRAPH_FLAGS_COMPUTE_BIT) &&
+        "This function requires a graph with compute capabilities!");
+
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_COMPUTE, Name);
 
@@ -2270,6 +2243,9 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_DepthTarget *DepthTarget,
     Rr_Image2D *DepthImage)
 {
+    assert(
+        (Graph->Flags & RR_GRAPH_FLAGS_GRAPHICS_BIT) &&
+        "This function requires a graph with graphics capabilities!");
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
     assert(DepthTarget == NULL || DepthImage != NULL);
 
@@ -2349,6 +2325,11 @@ void Rr_AddClearColorImage2DNode(
     Rr_ColorClear *ColorClear,
     Rr_Image2D *Image)
 {
+    assert(
+        ((Graph->Flags & RR_GRAPH_FLAGS_GRAPHICS_BIT) ||
+         (Graph->Flags & RR_GRAPH_FLAGS_COMPUTE_BIT)) &&
+        "This function requires a graph with graphics or compute "
+        "capabilities!");
     assert(ColorClear != NULL && Image != NULL);
 
     Rr_GraphNode *GraphNode =

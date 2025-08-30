@@ -122,3 +122,8 @@ int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
 {
     return _InterlockedDecrement(&AtomicInt->Value);
 }
+
+void Rr_SleepNS(uint64_t Nanoseconds)
+{
+    Sleep(Nanoseconds / 1000000);
+}

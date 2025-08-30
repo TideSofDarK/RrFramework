@@ -71,10 +71,8 @@ Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void)
         Device->CreateDescriptorPool(Device->Handle, &CreateInfo, NULL, &Pool);
 
         Rr_LockSpinlock(&gRenderer->Lock);
-
         Result =
             RR_ALLOC_NO_ZERO(gRenderer->Arena, sizeof(Rr_DescriptorPoolList));
-
         Rr_UnlockSpinlock(&gRenderer->Lock);
 
         Result->Handle = Pool;

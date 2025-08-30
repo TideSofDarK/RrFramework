@@ -128,8 +128,6 @@ static const char *RR_PRESENT_MODES[] = {
     "MAILBOX",
 };
 
-extern struct Rr_Graph *Rr_GetGraph(void);
-
 extern Rr_TextureFormat Rr_GetSwapchainFormat(void);
 
 extern Rr_IntVec2 Rr_GetSwapchainSize(void);
@@ -152,11 +150,9 @@ extern size_t Rr_GetMaxComputeSharedMemorySize(void);
 
 extern size_t Rr_GetMaxComputeWorkgroupInvocations(void);
 
-extern struct Rr_Graph *Rr_CreateGraph(void);
+extern void Rr_InitThreadContext(void);
 
-extern void Rr_DestroyGraph(struct Rr_Graph *Graph);
-
-extern void Rr_SubmitGraph(struct Rr_Graph *Graph);
+extern void Rr_CleanupThreadContext(void);
 
 #ifdef __cplusplus
 }

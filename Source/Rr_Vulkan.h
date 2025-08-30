@@ -97,7 +97,6 @@ struct Rr_SyncState
 typedef struct Rr_Queue Rr_Queue;
 struct Rr_Queue
 {
-    VkCommandPool TransientCommandPool;
     VkQueue Handle;
     uint32_t FamilyIndex;
     Rr_Spinlock Lock;
