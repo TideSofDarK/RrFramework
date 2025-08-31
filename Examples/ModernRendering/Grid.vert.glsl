@@ -1,10 +1,17 @@
 #version 450
-#extension GL_ARB_shading_language_include : require
-
-#include "SmoothGrid.glsl"
 
 layout(location = 0) out vec3 OutNear;
 layout(location = 1) out vec3 OutFar;
+
+layout(set = 0, binding = 0) uniform Globals
+{
+    mat4 View;
+    mat4 Projection;
+    float Near;
+    float Far;
+    float GridSmall;
+    float GridBig;
+};
 
 const vec2 Positions[6] = vec2[6](
         vec2(1.0, 1.0),

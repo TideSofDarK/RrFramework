@@ -4,6 +4,7 @@
 
 #include <array>
 #include <print>
+#include <vector>
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
@@ -138,9 +139,9 @@ struct SGrid
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_SMOOTHGRID_VERT_SPV);
+            Rr_LoadAsset(EXAMPLE_ASSET_GRID_VERT_SPV);
         PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_SMOOTHGRID_FRAG_SPV);
+            Rr_LoadAsset(EXAMPLE_ASSET_GRID_FRAG_SPV);
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.DepthStencil.EnableDepthTest = true;
@@ -199,6 +200,196 @@ struct SGrid
     }
 };
 
+struct SGPUPointLight
+{
+    Rr_Vec4 Position;
+    Rr_Vec4 Ambient;
+    Rr_Vec4 Diffuse;
+    Rr_Vec4 Specular;
+    float Constant;
+    float Linear;
+    float Quadratic;
+    float Padding;
+};
+
+struct SLighting
+{
+    struct SGPUUniform
+    {
+        Rr_Vec4 LightPosition;
+        float FarPlane;
+    };
+
+    struct SGPUStorage
+    {
+        Rr_Mat4 ViewProjection;
+    };
+
+    static constexpr std::int32_t MAP_WIDTH = 512;
+    static constexpr std::int32_t MAP_HEIGHT = 512;
+
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_Buffer *UniformBuffer;
+    Rr_Buffer *LightsBuffer;
+    std::vector<SGPUPointLight> PointLights;
+    std::vector<Rr_ImageCube *> PointShadowMaps;
+
+    void Init()
+    {
+        std::array Bindings = {
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_STORAGE_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
+        };
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        std::array VertexAttributes = {
+            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+            Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_VEC2 },
+            Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_VEC3 },
+        };
+
+        std::array VertexInputBindings = {
+            Rr_VertexInputBinding{
+                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+                .AttributeCount = VertexAttributes.size(),
+                .Attributes = VertexAttributes.data(),
+            },
+        };
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
+        PipelineInfo.Layout = PipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_SHADOWMAP_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_SHADOWMAP_FRAG_SPV);
+        PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
+        PipelineInfo.VertexInputBindings = VertexInputBindings.data();
+        PipelineInfo.DepthStencil.EnableDepthTest = true;
+        PipelineInfo.DepthStencil.EnableDepthWrite = true;
+        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
+        PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
+
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+
+        UniformBuffer = Rr_CreateBuffer(
+            RR_MEGABYTES(2),
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT);
+
+        LightsBuffer = Rr_CreateBuffer(
+            RR_MEGABYTES(2),
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_STORAGE_BIT);
+    }
+
+    void Cleanup()
+    {
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        Rr_ReleaseBuffer(LightsBuffer);
+        Rr_ReleaseBuffer(UniformBuffer);
+        for (auto &ShadowMap : PointShadowMaps)
+        {
+            Rr_ReleaseImage(ShadowMap);
+        }
+    }
+
+    void AddPointLight()
+    {
+        SGPUPointLight PointLight = {
+            .Position = Rr_V4(0.0f, 1.0f, 0.0f, 1.0f),
+            .Ambient = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
+            .Diffuse = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
+            .Specular = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
+            .Constant = 1.0f,
+            .Linear = 0.07f,
+            .Quadratic = 0.017f,
+        };
+        PointLights.emplace_back(PointLight);
+
+        Rr_ImageCube *ShadowMap = Rr_CreateImageCube(
+            { MAP_WIDTH, MAP_HEIGHT },
+            RR_TEXTURE_FORMAT_D32_SFLOAT,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+        PointShadowMaps.emplace_back(ShadowMap);
+    }
+
+    void DrawShadowMaps(Rr_Graph *Graph)
+    {
+        Rr_DepthTarget DepthTarget = {
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Clear = Rr_DepthClear(1.0f, 0),
+        };
+        for (std::size_t Index = 0; Index < PointLights.size(); ++Index)
+        {
+            SGPUPointLight &Point = PointLights[Index];
+            Rr_ImageCube *PointShadowMap = PointShadowMaps[Index];
+
+            Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+                Graph,
+                "draw_shadow_maps",
+                0,
+                nullptr,
+                nullptr,
+                &DepthTarget,
+                PointShadowMap);
+            Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        }
+    }
+
+    void UpdateLightBuffer()
+    {
+        std::memcpy(
+            Rr_GetMappedBufferData(LightsBuffer),
+            PointLights.data(),
+            sizeof(SGPUPointLight) * PointLights.size());
+    }
+
+    void BindLights(
+        Rr_GraphNode *GraphicsNode,
+        std::uint32_t Set,
+        std::uint32_t Binding)
+    {
+        Rr_BindStorageBuffer(
+            GraphicsNode,
+            LightsBuffer,
+            Set,
+            Binding,
+            0,
+            sizeof(SGPUPointLight) * PointLights.size());
+    }
+
+    void UIPointLight(SGPUPointLight &PointLight)
+    {
+        Rr_UISliderFloat("Constant", &PointLight.Constant, 0.0f, 4.0f);
+        Rr_UISliderFloat("Linear", &PointLight.Linear, 0.0f, 4.0f);
+        Rr_UISliderFloat("Quadratic", &PointLight.Quadratic, 0.0f, 4.0f);
+    }
+
+    void UI()
+    {
+        for (auto &PointLight : PointLights)
+        {
+            UIPointLight(PointLight);
+        }
+    }
+};
+
 struct SModernRenderingApp
 {
     struct SGPUUniform
@@ -217,10 +408,11 @@ struct SModernRenderingApp
     Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_Image2D *DepthImage;
     Rr_Buffer *UniformBuffer;
-    Rr_Buffer *StorageBuffer;
+    Rr_Buffer *ModelBuffer;
     Rr_GLTFContext *GLTFContext;
     Rr_GLTFAsset *GLTFAsset;
 
+    SLighting Lighting;
     SCamera Camera;
     SGrid Grid;
 
@@ -240,6 +432,13 @@ struct SModernRenderingApp
             Rr_Binding{
                 .Index = 0,
                 .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array Bindings2 = {
+            Rr_Binding{
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
                 .Stages = RR_SHADER_STAGE_VERTEX_BIT,
             },
         };
@@ -251,6 +450,10 @@ struct SModernRenderingApp
             Rr_BindingSet{
                 .BindingCount = Bindings1.size(),
                 .Bindings = Bindings1.data(),
+            },
+            Rr_BindingSet{
+                .BindingCount = Bindings2.size(),
+                .Bindings = Bindings2.data(),
             },
         };
         PipelineLayout =
@@ -367,7 +570,7 @@ struct SModernRenderingApp
             LoadedAsset.Size,
             LoadedAsset.Pointer);
 
-        StorageBuffer =
+        ModelBuffer =
             Rr_CreateBuffer(RR_MEGABYTES(4), RR_BUFFER_FLAGS_STORAGE_BIT);
 
         Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
@@ -393,7 +596,7 @@ struct SModernRenderingApp
             StagingData - StagingDataStart,
             StagingBuffer,
             0,
-            StorageBuffer,
+            ModelBuffer,
             0);
 
         Rr_ReleaseBuffer(StagingBuffer);
@@ -408,6 +611,8 @@ struct SModernRenderingApp
         InitUniform();
         InitCamera();
         Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
+        Lighting.Init();
+        Lighting.AddPointLight();
     }
 
     void Event(Rr_Event *Event)
@@ -459,8 +664,8 @@ struct SModernRenderingApp
         {
             Rr_BindStorageBuffer(
                 GraphicsNode,
-                StorageBuffer,
-                1,
+                ModelBuffer,
+                2,
                 0,
                 StorageIndex * sizeof(SGPUStorage),
                 sizeof(SGPUStorage));
@@ -509,11 +714,11 @@ struct SModernRenderingApp
             0,
             0,
             sizeof(SGPUUniform));
+        Lighting.BindLights(GraphicsNode, 1, 0);
 
-        Rr_GLTFScene *Scene = GLTFAsset->Scenes;
+        Rr_GLTFScene *Scene = &GLTFAsset->Scenes[0];
 
         std::size_t StorageIndex = 0;
-
         for (std::uint32_t NodeIndex = 0; NodeIndex < Scene->NodeCount;
              ++NodeIndex)
         {
@@ -523,6 +728,14 @@ struct SModernRenderingApp
 
     void Iterate()
     {
+        // Rr_UIDebugOverlay();
+
+        Rr_UIBeginWindow("ModernRendering.cxx", NULL, 0);
+        Lighting.UI();
+        Rr_UIEndWindow();
+
+        Lighting.UpdateLightBuffer();
+
         Rr_Graph *Graph = Rr_GetGraph();
 
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
@@ -561,19 +774,18 @@ struct SModernRenderingApp
         DrawGLTFAsset(GraphicsNode);
 
         Grid.Draw(Camera, GraphicsNode);
-
-        Rr_UIDebugOverlay();
     }
 
     void Cleanup()
     {
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseBuffer(StorageBuffer);
+        Rr_ReleaseBuffer(ModelBuffer);
         Rr_ReleaseGLTFContext(GLTFContext);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseImage(DepthImage);
         Grid.Cleanup();
+        Lighting.Cleanup();
     }
 };
 
