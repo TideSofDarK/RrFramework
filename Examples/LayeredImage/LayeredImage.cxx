@@ -204,15 +204,16 @@ struct SLayeredImageApp
         Rr_UICheckbox("Use Image3D", &UseImage3D);
         Rr_UIEndWindow();
 
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
+
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = Rr_ColorClear{ 1.0f, 1.0f, 1.0f, 1.0f },
+            .Image = SwapchainImage,
         };
-
-        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
 
         struct
         {
@@ -230,8 +231,6 @@ struct SLayeredImageApp
             "graphics",
             1,
             &ColorTarget,
-            &SwapchainImage,
-            NULL,
             NULL);
 
         Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };

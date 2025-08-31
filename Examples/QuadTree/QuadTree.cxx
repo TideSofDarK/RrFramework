@@ -854,6 +854,7 @@ struct SQuadTreeApp
         ColorTarget.LoadOp = RR_LOAD_OP_CLEAR;
         ColorTarget.Slot = 0;
         ColorTarget.StoreOp = RR_STORE_OP_STORE;
+        ColorTarget.Image = SwapchainImage;
 
         float Left = -SwapchainSize.X / 2.0f * CameraZoom;
         float Right = SwapchainSize.X / 2.0f * CameraZoom;
@@ -939,14 +940,8 @@ struct SQuadTreeApp
                 0);
         }
 
-        Rr_GraphNode *TreeNode = Rr_AddGraphicsNode(
-            Graph,
-            "tree",
-            1,
-            &ColorTarget,
-            &SwapchainImage,
-            nullptr,
-            nullptr);
+        Rr_GraphNode *TreeNode =
+            Rr_AddGraphicsNode(Graph, "tree", 1, &ColorTarget, nullptr);
         if (DrawCount > 0)
         {
             Rr_BindGraphicsPipeline(TreeNode, Pipeline);

@@ -35,9 +35,9 @@ struct SCamera
             Near,
             Far);
 
-        HTanY = tanf(RR_ANGLE_DEG(FOVDegrees) / 2.0);
+        HTanY = tanf(RR_ANGLE_DEG(FOVDegrees) / 2.0f);
         HTanX = HTanY / (float)Size.Y * (float)Size.X;
-        FocalZ = (float)Size.Y / (2 * HTanY);
+        FocalZ = (float)Size.Y / (2.0f * HTanY);
     }
 
     void UpdateView()
@@ -204,18 +204,13 @@ struct SGSApp
             sizeof(SUniformData));
 
         Rr_ColorTarget ColorTarget = {
-            0,
-            RR_LOAD_OP_CLEAR,
-            RR_STORE_OP_STORE,
-            {},
+            0, RR_LOAD_OP_CLEAR, RR_STORE_OP_STORE, {}, ColorAttachment,
         };
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
             Rr_GetGraph(),
             "graphics",
             1,
             &ColorTarget,
-            &ColorAttachment,
-            nullptr,
             nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(

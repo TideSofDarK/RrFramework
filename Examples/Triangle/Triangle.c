@@ -69,22 +69,15 @@ static void Init(void)
 
 static void Iterate(void)
 {
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-
-    Rr_ColorTarget OffscreenTarget = {
+    Rr_ColorTarget ColorTarget = {
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = (Rr_ColorClear){ 0 },
+        .Image = Rr_GetSwapchainImage(),
     };
-    Rr_GraphNode *OffscreenNode = Rr_AddGraphicsNode(
-        Rr_GetGraph(),
-        "offscreen",
-        1,
-        &OffscreenTarget,
-        &SwapchainImage,
-        NULL,
-        NULL);
+    Rr_GraphNode *OffscreenNode =
+        Rr_AddGraphicsNode(Rr_GetGraph(), "triangle", 1, &ColorTarget, NULL);
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
     Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);

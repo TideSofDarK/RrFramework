@@ -107,9 +107,7 @@ struct Rr_GraphicsNode
     Rr_Encoded Encoded;
     uint32_t ColorTargetCount;
     Rr_ColorTarget *ColorTargets;
-    Rr_GraphImage *ColorImages;
     Rr_DepthTarget *DepthTarget;
-    Rr_GraphImage DepthImage;
 };
 
 typedef struct Rr_ClearColorImageNode Rr_ClearColorImageNode;

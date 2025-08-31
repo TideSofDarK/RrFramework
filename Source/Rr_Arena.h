@@ -69,6 +69,8 @@ extern void *Rr_AllocArena(
 #define RR_ALLOC_COPY(Arena, Dst, Src, Size) \
     Dst = RR_ALLOC_NO_ZERO(Arena, Size);     \
     memcpy(Dst, Src, Size)
+#define RR_ALLOC_COPY_V2(Arena, Src, Size) \
+    (memcpy(RR_ALLOC_NO_ZERO(Arena, Size), Src, Size))
 
 extern void Rr_PopArena(Rr_Arena *Arena, size_t Amount);
 

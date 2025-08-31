@@ -6,13 +6,22 @@ layout(location = 2) in vec3 InNormal;
 
 layout(location = 0) out vec3 OutPosition;
 
-layout(set = 0, binding = 1) readonly buffer SGPUStorage
+layout(set = 0, binding = 0) uniform SGPUUniform
 {
     mat4 ViewProjection;
+    vec3 LightPosition;
+    float FarPlane;
+};
+
+layout(set = 1, binding = 0) readonly buffer SGPUStorage
+{
+    mat4 Model;
 };
 
 void main()
 {
-    gl_Position = ViewProjection * vec4(InPosition, 1.0);
-    OutPosition = gl_Position.xyz;
+    OutPosition = (Model * vec4(InPosition.xyz, 1.0)).xyz - LightPosition;
+    gl_Position = ViewProjection * Model * vec4(InPosition.xyz, 1.0);
+    gl_Position.x *= -1.0;
+    gl_Position.y *= -1.0;
 }

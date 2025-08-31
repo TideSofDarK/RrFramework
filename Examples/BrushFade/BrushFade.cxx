@@ -145,23 +145,22 @@ struct SBrushFadeApp
             &Uniform,
             sizeof(Uniform));
 
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
+
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = Rr_ColorClear{ 1.0f, 1.0f, 1.0f, 1.0f },
+            .Image = SwapchainImage,
         };
-
-        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
 
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
             Rr_GetGraph(),
             "graphics",
             1,
             &ColorTarget,
-            &SwapchainImage,
-            NULL,
             NULL);
 
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);

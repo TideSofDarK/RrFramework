@@ -306,13 +306,6 @@ struct STransferThreadApp
             CurrentImageIndex = Images.size() - 1;
         }
 
-        Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
-            .LoadOp = RR_LOAD_OP_CLEAR,
-            .StoreOp = RR_STORE_OP_STORE,
-            .Clear = Rr_ColorClear{ 0.0f, 0.0f, 0.0f, 1.0f },
-        };
-
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
         Rr_Rect SwapchainRect{
@@ -322,13 +315,19 @@ struct STransferThreadApp
             (float)SwapchainExtent.Height,
         };
 
+        Rr_ColorTarget ColorTarget = {
+            .Slot = 0,
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Clear = Rr_ColorClear{ 0.0f, 0.0f, 0.0f, 1.0f },
+            .Image = SwapchainImage,
+        };
+
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
             Rr_GetGraph(),
             "graphics",
             1,
             &ColorTarget,
-            &SwapchainImage,
-            NULL,
             NULL);
 
         struct

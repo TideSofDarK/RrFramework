@@ -80,6 +80,7 @@ typedef enum Rr_ImageCubeFace
     RR_IMAGE_CUBE_FACE_RIGHT,
     RR_IMAGE_CUBE_FACE_LEFT,
     RR_IMAGE_CUBE_FACE_LAST = RR_IMAGE_CUBE_FACE_LEFT,
+    RR_IMAGE_CUBE_FACE_COUNT,
 } Rr_ImageCubeFace;
 
 typedef struct Rr_SamplerInfo Rr_SamplerInfo;

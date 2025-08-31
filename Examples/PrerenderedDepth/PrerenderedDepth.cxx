@@ -298,19 +298,19 @@ struct SPrerenderedDepthApp
             .Slot = 0,
             .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
+            .Image = ColorImage,
         };
         Rr_DepthTarget DepthTarget = {
             .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
+            .Image = DepthImage,
         };
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
             Rr_GetGraph(),
             "graphics",
             1,
             &ColorTarget,
-            &ColorImage,
-            &DepthTarget,
-            DepthImage);
+            &DepthTarget);
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();

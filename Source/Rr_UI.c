@@ -4725,15 +4725,10 @@ void Rr_EndUI(void)
         .Slot = 0,
         .LoadOp = RR_LOAD_OP_LOAD,
         .StoreOp = RR_STORE_OP_STORE,
+        .Image = SwapchainImage,
     };
-    Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-        Rr_GetGraph(),
-        "ui",
-        1,
-        &ColorTarget,
-        &SwapchainImage,
-        NULL,
-        NULL);
+    Rr_GraphNode *GraphicsNode =
+        Rr_AddGraphicsNode(Rr_GetGraph(), "ui", 1, &ColorTarget, NULL);
     Rr_BindGraphicsPipeline(GraphicsNode, gUIContext->GraphicsPipeline);
     Rr_BindVertexBuffer(GraphicsNode, gUIContext->VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(

@@ -17,7 +17,6 @@ struct SUniformData
 static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
 static Rr_Image2D *DepthAttachment;
-static Rr_Buffer *StagingBuffer;
 static Rr_Buffer *UniformBuffer;
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
@@ -43,14 +42,10 @@ static void InitDepthImage(void)
 
 static void Init(void)
 {
-    /* Create simple sampler. */
-
     Rr_SamplerInfo SamplerInfo = { 0 };
     SamplerInfo.MinFilter = RR_FILTER_LINEAR;
     SamplerInfo.MagFilter = RR_FILTER_LINEAR;
     NearestSampler = Rr_CreateSampler(&SamplerInfo);
-
-    /* Create graphics pipeline. */
 
     Rr_Binding Bindings[] = {
         {
@@ -106,12 +101,10 @@ static void Init(void)
     PipelineInfo.DepthStencil.EnableDepthTest = true;
     PipelineInfo.DepthStencil.EnableDepthWrite = true;
     PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
-    PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
+    PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_CLOCKWISE;
     PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
 
     GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
-
-    /* Create GLTF context. */
 
     Rr_GLTFAttributeType GLTFAttributeTypes[] = {
         RR_GLTF_ATTRIBUTE_TYPE_POSITION,
@@ -143,19 +136,16 @@ static void Init(void)
         LoadedAsset.Size,
         LoadedAsset.Pointer);
 
-    /* Create uniform buffer. */
-
-    UniformBuffer =
-        Rr_CreateBuffer(sizeof(UniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
-
-    /* Create staging buffer */
-
-    StagingBuffer = Rr_CreateBuffer(
-        RR_MEGABYTES(1),
-        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-            RR_BUFFER_FLAGS_PER_FRAME_BIT);
+    UniformBuffer = Rr_CreateBuffer(
+        sizeof(UniformData),
+        RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
     UniformData.Model = Rr_M4D(1.0f);
+    UniformData.View = Rr_LookAt_RH(
+        Rr_V3(0.0f, 0.0f, -5.0f),
+        Rr_V3F(0.0f),
+        Rr_V3(0.0f, 1.0f, 0.0f));
 
     InitDepthImage();
 }
@@ -178,31 +168,20 @@ static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
 {
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
-    UniformData.Projection = Rr_Perspective_LH(
+    UniformData.Projection = Rr_Perspective_RH(
         0.7643276f,
         SwapchainSize.Width / (float)SwapchainSize.Height,
         0.5f,
         50.0f);
-    UniformData.View = Rr_Translate((Rr_Vec3){ 0.0f, 0.0f, 5.0f });
     UniformData.Model = Rr_MulM4(
-        UniformData.Model,
-        Rr_Rotate_LH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }));
+        Rr_Rotate_RH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }),
+        UniformData.Model);
     UniformData.Time = (float)Rr_GetTimeSeconds();
 
     memcpy(
-        Rr_GetMappedBufferData(StagingBuffer),
+        Rr_GetMappedBufferData(UniformBuffer),
         &UniformData,
         sizeof(UniformData));
-
-    Rr_TransferNode *TransferNode =
-        Rr_AddTransferNode(Rr_GetGraph(), "upload_uniform_buffer");
-    Rr_TransferBufferData(
-        TransferNode,
-        sizeof(UniformData),
-        StagingBuffer,
-        0,
-        UniformBuffer,
-        0);
 
     Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
     Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
@@ -240,6 +219,7 @@ static void Iterate(void)
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = (Rr_ColorClear){ { 0.03f, 0.03f, 0.04f, 1.0f } },
+        .Image = SwapchainImage,
     };
     Rr_DepthTarget DepthTarget = {
         .LoadOp = RR_LOAD_OP_CLEAR,
@@ -247,15 +227,14 @@ static void Iterate(void)
         .Clear = {
             .Depth = 1.0f,
         },
+        .Image = DepthAttachment,
     };
     Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
         Rr_GetGraph(),
         "graphics",
         1,
         &ColorTarget,
-        &SwapchainImage,
-        &DepthTarget,
-        DepthAttachment);
+        &DepthTarget);
 
     DrawFirstGLTFPrimitive(GraphicsNode);
 }
@@ -264,7 +243,6 @@ static void Cleanup(void)
 {
     Rr_ReleaseGLTFContext(GLTFContext);
     Rr_ReleaseImage(DepthAttachment);
-    Rr_ReleaseBuffer(StagingBuffer);
     Rr_ReleaseBuffer(UniformBuffer);
     Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     Rr_ReleasePipelineLayout(PipelineLayout);

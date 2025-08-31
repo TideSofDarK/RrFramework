@@ -338,11 +338,11 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
 #ifdef __linux__
     int32_t GLFWPlatform;
-    if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
-    {
-        GLFWPlatform = GLFW_PLATFORM_WAYLAND;
-    }
-    else
+    // if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
+    // {
+    //     GLFWPlatform = GLFW_PLATFORM_WAYLAND;
+    // }
+    // else
     {
         GLFWPlatform = GLFW_PLATFORM_X11;
     }

@@ -70,6 +70,8 @@ struct Rr_ColorTarget
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
     Rr_ColorClear Clear;
+    struct Rr_Image *Image;
+    uint32_t ImageLayerIndex;
 };
 
 typedef struct Rr_DepthClear Rr_DepthClear;
@@ -85,6 +87,8 @@ struct Rr_DepthTarget
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
     Rr_DepthClear Clear;
+    struct Rr_Image *Image;
+    uint32_t ImageLayerIndex;
 };
 
 typedef struct Rr_DrawIndirectCommand Rr_DrawIndirectCommand;
@@ -202,9 +206,7 @@ extern Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
-    Rr_Image2D **ColorImages,
-    Rr_DepthTarget *DepthTarget,
-    Rr_Image2D *DepthImage);
+    Rr_DepthTarget *DepthTarget);
 
 extern void Rr_Draw(
     Rr_GraphNode *Node,

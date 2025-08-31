@@ -58,10 +58,11 @@
 - [ ] Nested windows.
 - [ ] Swap font rendering with stb_truetype.
 
-** Debug Overlay
+** Debug
 
 - [ ] Very basic profilers for CPU/GPU.
 - [ ] Memory arena registry and maybe some kind of memory profiler.
+- [ ] Vulkan markers.
 
 ** GLTF
 

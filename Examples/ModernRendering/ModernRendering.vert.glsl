@@ -12,6 +12,7 @@ layout(set = 0, binding = 0) uniform SGPUUniform
 {
     mat4 View;
     mat4 Projection;
+    vec3 CameraPosition;
     float Time;
 };
 
@@ -23,6 +24,7 @@ layout(set = 2, binding = 0) readonly buffer SGPUStorage
 void main()
 {
     gl_Position = Projection * View * Model * vec4(InPosition, 1.0f);
+    gl_Position.y *= -1.0;
     OutNormal = mat3(transpose(inverse(mat4(1.0)))) * InNormal;
     OutUV = InUV;
     OutPosition = (Model * vec4(InPosition, 1.0f)).xyz;

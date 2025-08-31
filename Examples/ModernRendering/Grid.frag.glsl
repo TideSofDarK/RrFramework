@@ -31,13 +31,13 @@ vec4 AddGrid(in vec3 FragPos, in float Size, in bool HighlightAxis)
         float MinX = min(Derivative.x, 1.0);
         if (FragPos.x > -MinX && FragPos.x < MinX)
         {
-            Color.g = 1.0;
-            Color.r = Color.b = 0;
+            Color.b = 1.0;
+            Color.r = Color.g = 0;
             Color.a = 1.0 - min(Grid.x, 1.0);
         }
         if (FragPos.z > -MinZ && FragPos.z < MinZ)
         {
-            Color.g = Color.b = 0;
+            Color.b = Color.g = 0;
             Color.r = 1.0;
             Color.a = 1.0 - min(Grid.y, 1.0);
         }

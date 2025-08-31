@@ -351,15 +351,10 @@ struct SSkyboxApp
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = ColorClear,
+            .Image = SwapchainImage,
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Graph,
-            "grid",
-            1,
-            &ColorTarget,
-            &SwapchainImage,
-            NULL,
-            NULL);
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Graph, "grid", 1, &ColorTarget, NULL);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindVertexBuffer(
             GraphicsNode,

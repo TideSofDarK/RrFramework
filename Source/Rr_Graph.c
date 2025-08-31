@@ -1018,7 +1018,7 @@ static void Rr_ExecuteGraphicsNode(
         memcpy(ClearValue, &ColorTarget->Clear, sizeof(VkClearValue));
 
         Rr_AllocatedImage *ColorImage =
-            Rr_GetGraphImage(Graph, Node->ColorImages[Index]);
+            Rr_GetCurrentAllocatedImage(Node->ColorTargets[Index].Image);
 
         RenderPassKey.Attachments[ColorTarget->Slot].Samples = 1;
         RenderPassKey.Attachments[ColorTarget->Slot].Format =
@@ -1034,7 +1034,8 @@ static void Rr_ExecuteGraphicsNode(
                 .SubresourceRange =
                     (VkImageSubresourceRange){
                         .aspectMask = ColorImage->Container->AspectFlags,
-                        .baseArrayLayer = 0,
+                        .baseArrayLayer =
+                            Node->ColorTargets[Index].ImageLayerIndex,
                         .layerCount = 1,
                         .baseMipLevel = 0,
                         .levelCount = 1,
@@ -1059,7 +1060,7 @@ static void Rr_ExecuteGraphicsNode(
         memcpy(ClearValue, &DepthTarget->Clear, sizeof(VkClearValue));
 
         Rr_AllocatedImage *DepthImage =
-            Rr_GetGraphImage(Graph, Node->DepthImage);
+            Rr_GetCurrentAllocatedImage(Node->DepthTarget->Image);
 
         RenderPassKey.Attachments[DepthIndex].Samples = 1;
         RenderPassKey.Attachments[DepthIndex].Format =
@@ -1075,7 +1076,7 @@ static void Rr_ExecuteGraphicsNode(
                 .SubresourceRange =
                     (VkImageSubresourceRange){
                         .aspectMask = DepthImage->Container->AspectFlags,
-                        .baseArrayLayer = 0,
+                        .baseArrayLayer = Node->DepthTarget->ImageLayerIndex,
                         .layerCount = 1,
                         .baseMipLevel = 0,
                         .levelCount = 1,
@@ -2239,15 +2240,12 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
-    Rr_Image2D **ColorImages,
-    Rr_DepthTarget *DepthTarget,
-    Rr_Image2D *DepthImage)
+    Rr_DepthTarget *DepthTarget)
 {
     assert(
         (Graph->Flags & RR_GRAPH_FLAGS_GRAPHICS_BIT) &&
         "This function requires a graph with graphics capabilities!");
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
-    assert(DepthTarget == NULL || DepthImage != NULL);
 
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_GRAPHICS, Name);
@@ -2256,20 +2254,14 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     if (ColorTargetCount > 0)
     {
         GraphicsNode->ColorTargetCount = (uint32_t)ColorTargetCount;
-        GraphicsNode->ColorTargets =
-            RR_ALLOC_TYPE_COUNT(Graph->Arena, Rr_ColorTarget, ColorTargetCount);
-        GraphicsNode->ColorImages =
-            RR_ALLOC_TYPE_COUNT(Graph->Arena, Rr_GraphImage, ColorTargetCount);
+        GraphicsNode->ColorTargets = RR_ALLOC_COPY_V2(
+            Graph->Arena,
+            ColorTargets,
+            sizeof(Rr_ColorTarget) * ColorTargetCount);
 
         for (size_t Index = 0; Index < ColorTargetCount; ++Index)
         {
-            assert(ColorImages[Index] != NULL);
-
-            Rr_GraphImage *ColorImageHandle =
-                Rr_GetGraphImageHandle(Graph, ColorImages[Index]);
-
-            GraphicsNode->ColorTargets[Index] = ColorTargets[Index];
-            GraphicsNode->ColorImages[Index] = *ColorImageHandle;
+            Rr_ColorTarget *ColorTarget = &ColorTargets[Index];
 
             VkAccessFlags AccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
             if (ColorTargets[Index].LoadOp == RR_LOAD_OP_LOAD)
@@ -2278,23 +2270,19 @@ Rr_GraphNode *Rr_AddGraphicsNode(
             }
             Rr_AddImageDependency(
                 GraphNode,
-                ColorImageHandle,
+                Rr_GetGraphImageHandle(Graph, ColorTarget->Image),
                 &(Rr_SyncState){
                     .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                     .AccessMask = AccessMask,
                     .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 });
-            Rr_MarkImageUsed(Graph, ColorImages[Index]);
+            Rr_MarkImageUsed(Graph, ColorTarget->Image);
         }
     }
     if (DepthTarget != NULL)
     {
-        Rr_GraphImage *DepthImageHandle =
-            Rr_GetGraphImageHandle(Graph, (Rr_Image *)DepthImage);
-
         GraphicsNode->DepthTarget = RR_ALLOC_TYPE(Graph->Arena, Rr_DepthTarget);
         *GraphicsNode->DepthTarget = *DepthTarget;
-        GraphicsNode->DepthImage = *DepthImageHandle;
 
         VkAccessFlags AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         if (DepthTarget->LoadOp == RR_LOAD_OP_LOAD)
@@ -2303,13 +2291,13 @@ Rr_GraphNode *Rr_AddGraphicsNode(
         }
         Rr_AddImageDependency(
             GraphNode,
-            DepthImageHandle,
+            Rr_GetGraphImageHandle(Graph, DepthTarget->Image),
             &(Rr_SyncState){
                 .StageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                 .AccessMask = AccessMask,
                 .Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             });
-        Rr_MarkImageUsed(Graph, DepthImage);
+        Rr_MarkImageUsed(Graph, DepthTarget->Image);
     }
 
     GraphicsNode->Encoded.Encoded =
