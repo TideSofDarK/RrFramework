@@ -373,6 +373,80 @@ struct SGrid
     }
 };
 
+struct SVarianceShadowMapping
+{
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_ComputePipeline *ComputePipeline;
+    Rr_Image2D *TempTextureA;
+    Rr_Image2D *TempTextureB;
+    Rr_Sampler *Sampler;
+
+    void Init()
+    {
+        // Rr_SamplerInfo SamplerInfo = {};
+        // SamplerInfo.MinFilter = RR_FILTER_LINEAR;
+        // SamplerInfo.MagFilter = RR_FILTER_LINEAR;
+        // Sampler = Rr_CreateSampler(&SamplerInfo);
+
+        // std::array Bindings0 = {
+        //     Rr_Binding{
+        //         0,
+        //         RR_BINDING_TYPE_STORAGE_IMAGE,
+        //         RR_SHADER_STAGE_COMPUTE_BIT,
+        //     },
+        //     Rr_Binding{
+        //         1,
+        //         RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+        //         RR_SHADER_STAGE_COMPUTE_BIT,
+        //     },
+        // };
+        // std::array Sets = {
+        //     Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
+        // };
+        // PipelineLayout =
+        //     Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        // uint32_t LocalSize = 16;
+
+        // std::array Specializations = {
+        //     Rr_PipelineSpecialization{
+        //         0,
+        //         RR_MAKE_DATA_STRUCT(LocalSize),
+        //     },
+        //     Rr_PipelineSpecialization{
+        //         1,
+        //         RR_MAKE_DATA_STRUCT(LocalSize),
+        //     },
+        // };
+
+        // Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
+        // PipelineCreateInfo.Layout = PipelineLayout;
+        // PipelineCreateInfo.ShaderSPV =
+        // Rr_LoadAsset(EXAMPLE_ASSET_VSM_COMP_SPV);
+        // PipelineCreateInfo.SpecializationCount = Specializations.size();
+        // PipelineCreateInfo.Specializations = Specializations.data();
+
+        // ComputePipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
+
+        // TempTextureA = Rr_CreateImage2D(
+        //     { MAP_WIDTH, MAP_HEIGHT },
+        //     RR_TEXTURE_FORMAT_R32G32_SFLOAT,
+        //     RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+
+        // TempTextureB = Rr_CreateImage2D(
+        //     { MAP_WIDTH, MAP_HEIGHT },
+        //     RR_TEXTURE_FORMAT_R32G32_SFLOAT,
+        //     RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+    }
+
+    void Cleanup()
+    {
+        Rr_ReleaseImage(TempTextureA);
+        Rr_ReleaseImage(TempTextureB);
+        Rr_ReleaseSampler(Sampler);
+    }
+};
+
 struct SLighting
 {
     struct SGPUPointLight
@@ -402,6 +476,9 @@ struct SLighting
     Rr_Buffer *LightsBuffer;
     std::vector<SGPUPointLight> PointLights;
     std::vector<Rr_ImageCube *> PointShadowMaps;
+
+    SVarianceShadowMapping VarianceShadowMapping;
+    Rr_Image2D *DepthImage;
 
     void Init()
     {
@@ -447,6 +524,9 @@ struct SLighting
             },
         };
 
+        Rr_ColorTargetInfo ColorTargets[1] = { 0 };
+        ColorTargets[0].Format = RR_TEXTURE_FORMAT_R32G32_SFLOAT;
+
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderSPV =
@@ -455,6 +535,8 @@ struct SLighting
             Rr_LoadAsset(EXAMPLE_ASSET_SHADOWMAP_FRAG_SPV);
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = ColorTargets;
         PipelineInfo.DepthStencil.EnableDepthTest = true;
         PipelineInfo.DepthStencil.EnableDepthWrite = true;
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
@@ -473,10 +555,18 @@ struct SLighting
             RR_MEGABYTES(2),
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_STORAGE_BIT);
+
+        VarianceShadowMapping.Init();
+
+        DepthImage = Rr_CreateImage2D(
+            { MAP_WIDTH, MAP_HEIGHT },
+            DEPTH_FORMAT,
+            RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
     void Cleanup()
     {
+        Rr_ReleaseImage(DepthImage);
         Rr_ReleaseSampler(Sampler);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
@@ -486,6 +576,7 @@ struct SLighting
         {
             Rr_ReleaseImage(ShadowMap);
         }
+        VarianceShadowMapping.Cleanup();
     }
 
     void AddPointLight()
@@ -499,15 +590,15 @@ struct SLighting
             .Constant = 1.0f,
             .Linear = 0.07f,
             .Quadratic = 0.017f,
-            .Bias = 0.001f,
+            .Bias = 0.0175f,
         };
         PointLights.emplace_back(PointLight);
 
         Rr_ImageCube *ShadowMap = Rr_CreateImageCube(
             { MAP_WIDTH, MAP_HEIGHT },
-            RR_TEXTURE_FORMAT_D32_SFLOAT,
+            RR_TEXTURE_FORMAT_R32G32_SFLOAT,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
-                RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+                RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
         PointShadowMaps.emplace_back(ShadowMap);
     }
 
@@ -579,18 +670,25 @@ struct SLighting
                     &Uniform,
                     sizeof(Uniform));
 
+                Rr_ColorTarget ColorTarget = {
+                    .Slot = 0,
+                    .LoadOp = RR_LOAD_OP_CLEAR,
+                    .StoreOp = RR_STORE_OP_STORE,
+                    .Clear = { Rr_V4(1.0f, 1.0f, 0.0f, 0.0f) },
+                    .Image = PointShadowMap,
+                    .ImageLayerIndex = Face,
+                };
                 Rr_DepthTarget DepthTarget = {
                     .LoadOp = RR_LOAD_OP_CLEAR,
                     .StoreOp = RR_STORE_OP_STORE,
                     .Clear = Rr_DepthClear(1.0f, 0),
-                    .Image = PointShadowMap,
-                    .ImageLayerIndex = Face,
+                    .Image = DepthImage,
                 };
                 Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
                     Graph,
                     "draw_shadow_maps",
-                    0,
-                    nullptr,
+                    1,
+                    &ColorTarget,
                     &DepthTarget);
                 Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
                 Rr_BindUniformBuffer(
@@ -647,7 +745,7 @@ struct SLighting
         Rr_UISliderFloat("Constant", &PointLight.Constant, 0.0f, 4.0f);
         Rr_UISliderFloat("Linear", &PointLight.Linear, 0.0f, 4.0f);
         Rr_UISliderFloat("Quadratic", &PointLight.Quadratic, 0.0f, 4.0f);
-        Rr_UISliderFloat("Bias", &PointLight.Bias, 0.0f, 0.02f);
+        Rr_UISliderFloat("Bias", &PointLight.Bias, 0.0f, 0.15f);
     }
 
     void UI()

@@ -1034,8 +1034,7 @@ static void Rr_ExecuteGraphicsNode(
                 .SubresourceRange =
                     (VkImageSubresourceRange){
                         .aspectMask = ColorImage->Container->AspectFlags,
-                        .baseArrayLayer =
-                            Node->ColorTargets[Index].ImageLayerIndex,
+                        .baseArrayLayer = ColorTarget->ImageLayerIndex,
                         .layerCount = 1,
                         .baseMipLevel = 0,
                         .levelCount = 1,

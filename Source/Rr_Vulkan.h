@@ -691,6 +691,16 @@ static Rr_TextureFormat Rr_ToTextureFormat(VkFormat TextureFormat)
             return RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT;
         case VK_FORMAT_D32_SFLOAT_S8_UINT:
             return RR_TEXTURE_FORMAT_D32_SFLOAT_S8_UINT;
+        case VK_FORMAT_R8G8B8A8_UINT:
+            return RR_TEXTURE_FORMAT_R8G8B8A8_UINT;
+        case VK_FORMAT_R8G8B8A8_SINT:
+            return RR_TEXTURE_FORMAT_R8G8B8A8_SINT;
+        case VK_FORMAT_R32_UINT:
+            return RR_TEXTURE_FORMAT_R32_UINT;
+        case VK_FORMAT_R32_SINT:
+            return RR_TEXTURE_FORMAT_R32_SINT;
+        case VK_FORMAT_R32G32_SFLOAT:
+            return RR_TEXTURE_FORMAT_R32G32_SFLOAT;
         default:
             RR_ABORT("Invalid texture format!");
     }
@@ -724,6 +734,8 @@ static VkFormat Rr_ToVulkanTextureFormat(Rr_TextureFormat TextureFormat)
             return VK_FORMAT_R32_UINT;
         case RR_TEXTURE_FORMAT_R32_SINT:
             return VK_FORMAT_R32_SINT;
+        case RR_TEXTURE_FORMAT_R32G32_SFLOAT:
+            return VK_FORMAT_R32G32_SFLOAT;
         default:
             RR_ABORT("Invalid texture format!");
     }
