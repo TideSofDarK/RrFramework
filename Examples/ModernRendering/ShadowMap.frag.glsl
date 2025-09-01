@@ -11,5 +11,5 @@ layout(set = 0, binding = 0) uniform SGPUUniform
 
 void main()
 {
-    gl_FragDepth = length(InPosition) / FarPlane;
+    gl_FragDepth = length(InPosition - LightPosition) / FarPlane;
 }

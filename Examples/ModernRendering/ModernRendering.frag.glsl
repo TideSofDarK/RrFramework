@@ -3,6 +3,7 @@
 layout(location = 0) in vec2 InUV;
 layout(location = 1) in vec3 InNormal;
 layout(location = 2) in vec3 InPosition;
+layout(location = 3) in vec3 InNormalVS;
 
 layout(location = 0) out vec4 OutColor;
 
@@ -32,13 +33,13 @@ layout(set = 1, binding = 0) readonly buffer SGPULights
     SGPUPointLight PointLights[];
 };
 
-layout(set = 1, binding = 1) uniform samplerCube PointShadowMaps[4];
+layout(set = 1, binding = 1) uniform samplerCubeShadow PointShadowMaps[4];
 
 float PointPCF(
     in float CameraDistance,
     in vec3 FragToLight,
     in SGPUPointLight Light,
-    in samplerCube ShadowMap)
+    in samplerCubeShadow ShadowMap)
 {
     float CurrentDepth = length(FragToLight);
     float Shadow = 0.0;
@@ -51,10 +52,9 @@ float PointPCF(
         {
             for (float Z = -Offset; Z < Offset; Z += Step)
             {
-                float ClosestDepth = texture(ShadowMap,
-                        FragToLight + vec3(X, Y, Z)).r
-                        * Light.FarPlane;
-                Shadow += CurrentDepth - Light.Bias > ClosestDepth ? 1.0 : 0.0;
+                Shadow += texture(
+                        ShadowMap,
+                        vec4(FragToLight + vec3(X, Y, Z), (CurrentDepth / 100.0) - Light.Bias));
             }
         }
     }
@@ -64,7 +64,7 @@ float PointPCF(
 void main()
 {
     float CameraDistance = distance(CameraPosition, InPosition);
-    vec4 Result = vec4(vec3(0.5f), 1.0);
+    vec4 Result = vec4((InNormalVS + 0.5) * 0.5, 1.0);
     for (uint Index = 0; Index < PointLights.length(); ++Index)
     {
         SGPUPointLight Light = PointLights[Index];
@@ -75,13 +75,16 @@ void main()
                     Light.Quadratic * Distance * Distance);
 
         vec3 FragToLight = InPosition - Light.Position.xyz;
+        float CurrentDepth = length(FragToLight);
         float Shadow = PointPCF(
                 CameraDistance,
                 FragToLight,
                 Light,
                 PointShadowMaps[Index]);
 
-        Result.xyz = vec3(0.01) + (vec3(0.3) * Attenuation) * (1.0 - Shadow);
+        // Shadow *= max(0.0, -dot(InNormal, FragToLight));
+
+        Result.rgb = Result.rgb * 0.2 + (Result.rgb * 0.8 * Attenuation * Shadow);
     }
     OutColor = Result;
 }

@@ -10,12 +10,12 @@
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
-static constexpr Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
-static constexpr std::int32_t MAP_WIDTH = 1024;
-static constexpr std::int32_t MAP_HEIGHT = 1024;
-static constexpr float NEAR_PLANE = 0.1f;
-static constexpr float FAR_PLANE = 100.0f;
-static constexpr std::size_t MAX_POINT_LIGHTS = 4;
+constexpr Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
+constexpr std::int32_t MAP_WIDTH = 1024;
+constexpr std::int32_t MAP_HEIGHT = 1024;
+constexpr float NEAR_PLANE = 0.1f;
+constexpr float FAR_PLANE = 100.0f;
+constexpr std::size_t MAX_POINT_LIGHTS = 4;
 
 struct SCamera
 {
@@ -408,6 +408,8 @@ struct SLighting
         Rr_SamplerInfo SamplerInfo = {};
         SamplerInfo.MinFilter = RR_FILTER_LINEAR;
         SamplerInfo.MagFilter = RR_FILTER_LINEAR;
+        SamplerInfo.CompareEnable = true;
+        SamplerInfo.CompareOp = RR_COMPARE_OP_LESS;
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
         std::array Bindings0 = {
@@ -497,7 +499,7 @@ struct SLighting
             .Constant = 1.0f,
             .Linear = 0.07f,
             .Quadratic = 0.017f,
-            .Bias = 0.015f,
+            .Bias = 0.001f,
         };
         PointLights.emplace_back(PointLight);
 
@@ -645,7 +647,7 @@ struct SLighting
         Rr_UISliderFloat("Constant", &PointLight.Constant, 0.0f, 4.0f);
         Rr_UISliderFloat("Linear", &PointLight.Linear, 0.0f, 4.0f);
         Rr_UISliderFloat("Quadratic", &PointLight.Quadratic, 0.0f, 4.0f);
-        Rr_UISliderFloat("Bias", &PointLight.Bias, 0.0f, 0.015f);
+        Rr_UISliderFloat("Bias", &PointLight.Bias, 0.0f, 0.02f);
     }
 
     void UI()
