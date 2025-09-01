@@ -680,7 +680,7 @@ struct SLighting
                 };
                 Rr_DepthTarget DepthTarget = {
                     .LoadOp = RR_LOAD_OP_CLEAR,
-                    .StoreOp = RR_STORE_OP_STORE,
+                    .StoreOp = RR_STORE_OP_DONT_CARE,
                     .Clear = Rr_DepthClear(1.0f, 0),
                     .Image = DepthImage,
                 };
