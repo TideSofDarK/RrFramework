@@ -24,7 +24,6 @@
 
 #include "Rr_Image.h"
 
-#include "Rr_Buffer.h"
 #include "Rr_Renderer.h"
 
 #include <stb/stb_image.h>
@@ -217,6 +216,12 @@ Found:
     return *ImageViewRef;
 }
 
+static inline VkSampleCountFlagBits Rr_ToVulkanSampleCountFlagBits(
+    Rr_ImageFlags ImageFlags)
+{
+    return ImageFlags >> 8;
+}
+
 static Rr_Image *Rr_CreateImage(
     Rr_IntVec3 Extent,
     Rr_TextureFormat Format,
@@ -285,6 +290,12 @@ static Rr_Image *Rr_CreateImage(
 
     /* TODO: Some kind of real usage must be enforced aside from TRANSFER_*. */
 
+    VkSampleCountFlagBits SampleCountFlagBits =
+        Rr_ToVulkanSampleCountFlagBits(Flags);
+    if (SampleCountFlagBits == 0)
+    {
+        SampleCountFlagBits = VK_SAMPLE_COUNT_1_BIT;
+    }
     VkImageCreateInfo ImageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .flags = AdditionalFlags,
@@ -293,7 +304,7 @@ static Rr_Image *Rr_CreateImage(
         .extent = Image->Extent,
         .mipLevels = MipLevels,
         .arrayLayers = LayerCount,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .samples = SampleCountFlagBits,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = UsageFlags,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,

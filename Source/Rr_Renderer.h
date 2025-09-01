@@ -125,7 +125,7 @@ extern void Rr_DestroyVulkanFramebuffers(VkImageView ImageView);
 typedef struct Rr_RenderPassAttachment Rr_RenderPassAttachment;
 struct Rr_RenderPassAttachment
 {
-    VkSampleCountFlagBits Samples;
+    VkSampleCountFlags Samples;
     VkFormat Format;
     VkAttachmentLoadOp LoadOp;
     VkAttachmentStoreOp StoreOp;

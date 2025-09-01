@@ -30,13 +30,6 @@
 extern "C" {
 #endif
 
-typedef enum
-{
-    RR_IMAGE_ASPECT_COLOR_BIT = (1 << 0),
-    RR_IMAGE_ASPECT_DEPTH_BIT = (1 << 1),
-    RR_IMAGE_ASPECT_STENCIL_BIT = (1 << 2),
-} Rr_ImageAspect;
-
 typedef struct Rr_Sampler Rr_Sampler;
 
 typedef enum
@@ -70,19 +63,6 @@ typedef enum
     RR_BORDER_COLOR_INT_OPAQUE_WHITE = 5,
 } Rr_BorderColor;
 
-typedef enum Rr_ImageCubeFace
-{
-    RR_IMAGE_CUBE_FACE_FIRST,
-    RR_IMAGE_CUBE_FACE_FRONT = RR_IMAGE_CUBE_FACE_FIRST,
-    RR_IMAGE_CUBE_FACE_BACK,
-    RR_IMAGE_CUBE_FACE_UP,
-    RR_IMAGE_CUBE_FACE_DOWN,
-    RR_IMAGE_CUBE_FACE_RIGHT,
-    RR_IMAGE_CUBE_FACE_LEFT,
-    RR_IMAGE_CUBE_FACE_LAST = RR_IMAGE_CUBE_FACE_LEFT,
-    RR_IMAGE_CUBE_FACE_COUNT,
-} Rr_ImageCubeFace;
-
 typedef struct Rr_SamplerInfo Rr_SamplerInfo;
 struct Rr_SamplerInfo
 {
@@ -107,6 +87,26 @@ extern Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info);
 
 extern void Rr_ReleaseSampler(Rr_Sampler *Sampler);
 
+typedef enum Rr_ImageCubeFace
+{
+    RR_IMAGE_CUBE_FACE_FIRST,
+    RR_IMAGE_CUBE_FACE_FRONT = RR_IMAGE_CUBE_FACE_FIRST,
+    RR_IMAGE_CUBE_FACE_BACK,
+    RR_IMAGE_CUBE_FACE_UP,
+    RR_IMAGE_CUBE_FACE_DOWN,
+    RR_IMAGE_CUBE_FACE_RIGHT,
+    RR_IMAGE_CUBE_FACE_LEFT,
+    RR_IMAGE_CUBE_FACE_LAST = RR_IMAGE_CUBE_FACE_LEFT,
+    RR_IMAGE_CUBE_FACE_COUNT,
+} Rr_ImageCubeFace;
+
+typedef enum
+{
+    RR_IMAGE_ASPECT_COLOR_BIT = (1 << 0),
+    RR_IMAGE_ASPECT_DEPTH_BIT = (1 << 1),
+    RR_IMAGE_ASPECT_STENCIL_BIT = (1 << 2),
+} Rr_ImageAspect;
+
 typedef struct Rr_Image Rr_Image2D;
 typedef struct Rr_Image Rr_Image2DArray;
 typedef struct Rr_Image Rr_Image3D;
@@ -122,6 +122,11 @@ typedef enum
     RR_IMAGE_FLAGS_READBACK_BIT = (1 << 5),
     RR_IMAGE_FLAGS_PER_FRAME_BIT = (1 << 6),
     RR_IMAGE_FLAGS_MIP_MAPPED_BIT = (1 << 7),
+    RR_IMAGE_FLAGS_SAMPLE_COUNT_1 = (1 << 8),
+    RR_IMAGE_FLAGS_SAMPLE_COUNT_2 = (1 << 9),
+    RR_IMAGE_FLAGS_SAMPLE_COUNT_4 = (1 << 10),
+    RR_IMAGE_FLAGS_SAMPLE_COUNT_8 = (1 << 11),
+    RR_IMAGE_FLAGS_SAMPLE_COUNT_16 = (1 << 12),
 } Rr_ImageFlagsBits;
 typedef uint32_t Rr_ImageFlags;
 
