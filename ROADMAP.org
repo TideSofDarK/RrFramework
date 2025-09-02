@@ -21,8 +21,8 @@
       Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
       For now, make transfer-only graphs that can be submitted from secondary threads.
 - [X] Finalize said decoupling:
-      1) Track graph capabilities.
-      2) Move arena and command pools to thread context.
+  1) Track graph capabilities.
+  2) Move arena and command pools to thread context.
 - [X] Should referenced pipelines and samplers be hashed to optimize decrement references pass? 
       Solution: put handles to hash set.
 - [X] Binding arrays support.
@@ -33,13 +33,14 @@
 - [X] Check if descriptor set layouts are properly hashed.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
-      1) Image/buffer creation.
-      2) Graph node creation.
-      3) Binding resources.
+  1) Image/buffer creation.
+  2) Graph node creation.
+  3) Binding resources.
 - [X] Refactor Rr_AddXXXNode functions to ensure better type safety.
 - [X] See if it's possible to get rid of descriptor allocator arenas.
 - [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
 - [ ] Support for immutable buffers/images that don't require synchronization.
+- [ ] Public API should use const where applicable.
 
 * Features
 

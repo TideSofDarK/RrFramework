@@ -434,17 +434,16 @@ static inline VkCompareOp Rr_ToVulkanCompareOp(Rr_CompareOp CompareOp)
 }
 
 static inline VkStencilOpState Rr_ToVulkanStencilOpState(
-    Rr_StencilOpState State,
-    Rr_DepthStencil *DepthStencil)
+    const Rr_StencilOpState *State,
+    const Rr_DepthStencil *DepthStencil)
 {
     return (VkStencilOpState){
-        .compareOp = Rr_ToVulkanCompareOp(State.CompareOp),
-        .failOp = Rr_ToVulkanStencilOp(State.FailOp),
-        .passOp = Rr_ToVulkanStencilOp(State.PassOp),
-        .depthFailOp = Rr_ToVulkanStencilOp(State.DepthFailOp),
+        .compareOp = Rr_ToVulkanCompareOp(State->CompareOp),
+        .failOp = Rr_ToVulkanStencilOp(State->FailOp),
+        .passOp = Rr_ToVulkanStencilOp(State->PassOp),
+        .depthFailOp = Rr_ToVulkanStencilOp(State->DepthFailOp),
         .writeMask = DepthStencil->WriteMask,
         .compareMask = DepthStencil->CompareMask,
-        .reference = 0,
     };
 }
 

@@ -102,7 +102,7 @@ struct Rr_VertexInputBinding
 {
     Rr_VertexInputRate Rate;
     size_t AttributeCount;
-    Rr_VertexInputAttribute *Attributes;
+    const Rr_VertexInputAttribute *Attributes;
 };
 
 typedef enum
@@ -149,6 +149,7 @@ struct Rr_ColorTargetInfo
 {
     Rr_ColorTargetBlend Blend;
     Rr_TextureFormat Format;
+    bool Resolve;
 };
 
 typedef struct Rr_Rasterizer Rr_Rasterizer;
@@ -185,16 +186,23 @@ struct Rr_PipelineSpecialization
     Rr_Data Data;
 };
 
+typedef struct Rr_Multisampling Rr_Multisampling;
+struct Rr_Multisampling
+{
+    uint32_t SampleCount;
+};
+
 typedef struct Rr_GraphicsPipelineCreateInfo Rr_GraphicsPipelineCreateInfo;
 struct Rr_GraphicsPipelineCreateInfo
 {
     Rr_Data VertexShaderSPV;
     Rr_Data FragmentShaderSPV;
     size_t VertexInputBindingCount;
-    Rr_VertexInputBinding *VertexInputBindings;
+    const Rr_VertexInputBinding *VertexInputBindings;
     Rr_Topology Topology;
     size_t ColorTargetCount;
     Rr_ColorTargetInfo *ColorTargets;
+    Rr_Multisampling Multisampling;
     Rr_Rasterizer Rasterizer;
     Rr_DepthStencil DepthStencil;
     Rr_PipelineLayout *Layout;
@@ -262,7 +270,7 @@ static inline Rr_ColorTargetBlend Rr_AlphaBlend(void)
 }
 
 extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_GraphicsPipelineCreateInfo *CreateInfo);
+    const Rr_GraphicsPipelineCreateInfo *CreateInfo);
 
 extern void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
 

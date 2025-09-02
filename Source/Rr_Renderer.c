@@ -717,9 +717,11 @@ void Rr_NewFrame(void)
     Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image2D);
 
     /* These are applied again just before graph execution. */
+    /* TODO: Some of these could be set once. */
 
     Frame->VirtualSwapchainImage->Extent = gRenderer->Swapchain.Extent;
     Frame->VirtualSwapchainImage->Format = gRenderer->Swapchain.Format;
+    Frame->VirtualSwapchainImage->SampleCount = VK_SAMPLE_COUNT_1_BIT;
     Frame->VirtualSwapchainImage->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
@@ -779,6 +781,7 @@ void Rr_DrawFrame(void)
     *Frame->VirtualSwapchainImage = (Rr_Image2D){
         .Extent = gRenderer->Swapchain.Extent,
         .Format = gRenderer->Swapchain.Format,
+        .SampleCount = VK_SAMPLE_COUNT_1_BIT,
         .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
         .AllocatedImageCount = 1,
         .AllocatedImages[0] = {
@@ -1104,7 +1107,8 @@ Found:
 
         Boundary += Key->ResolveAttachmentCount;
 
-        for (; AttachmentIndex < Boundary; ++AttachmentIndex)
+        for (uint32_t ResolveAttachmentIndex = 0; AttachmentIndex < Boundary;
+             ++AttachmentIndex, ++ResolveAttachmentIndex)
         {
             Descriptions[AttachmentIndex] = (VkAttachmentDescription){
                 .samples = Key->Attachments[AttachmentIndex].Samples,
@@ -1115,7 +1119,7 @@ Found:
                 .storeOp = Key->Attachments[AttachmentIndex].StoreOp,
             };
 
-            ColorReferences[AttachmentIndex] = (VkAttachmentReference){
+            ResolveReferences[ResolveAttachmentIndex] = (VkAttachmentReference){
                 .attachment = AttachmentIndex,
                 .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             };
@@ -1125,7 +1129,7 @@ Found:
     if (Key->DepthStencil)
     {
         Descriptions[AttachmentIndex] = (VkAttachmentDescription){
-            .samples = 1,
+            .samples = Key->Attachments[AttachmentIndex].Samples,
             .format = Key->Attachments[AttachmentIndex].Format,
             .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -1154,8 +1158,6 @@ Found:
         .pAttachments = Descriptions,
         .subpassCount = 1,
         .pSubpasses = &SubpassDescription,
-        .dependencyCount = 0,
-        .pDependencies = NULL,
     };
 
     Rr_Device *Device = &gRenderer->Device;

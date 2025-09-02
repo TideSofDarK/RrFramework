@@ -3689,7 +3689,7 @@ bool Rr_UIInputInt(const char *Title, int32_t *Value)
 bool Rr_UICombobox(
     const char *Title,
     uint32_t OptionCount,
-    const char **Options,
+    const char *const *Options,
     uint32_t *SelectedIndex)
 {
     Rr_UIAssertWindow();

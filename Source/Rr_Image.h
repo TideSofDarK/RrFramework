@@ -93,6 +93,7 @@ struct Rr_Image
     VkExtent3D Extent;
     VkImageAspectFlags AspectFlags;
     VkFormat Format;
+    VkSampleCountFlags SampleCount;
     Rr_ImageFlags Flags;
     uint32_t AllocatedImageCount;
     Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP];

@@ -143,10 +143,10 @@ struct Rr_GLTFTextureMapping
 
 extern Rr_GLTFContext *Rr_CreateGLTFContext(
     size_t VertexInputBindingCount,
-    Rr_VertexInputBinding *VertexInputBindings,
-    Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
+    const Rr_VertexInputBinding *VertexInputBindings,
+    const Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
     size_t GLTFTextureMappingCount,
-    Rr_GLTFTextureMapping *GLTFTextureMappings);
+    const Rr_GLTFTextureMapping *GLTFTextureMappings);
 
 extern void Rr_ReleaseGLTFContext(Rr_GLTFContext *GLTFContext);
 

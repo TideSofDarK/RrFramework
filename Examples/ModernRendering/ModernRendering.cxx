@@ -22,7 +22,7 @@ struct SCamera
     float FOVDegrees = 90.0f;
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position;
+    Rr_Vec3 Position{};
 
     Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
@@ -333,13 +333,10 @@ struct SGrid
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
-    void Init()
-    {
-        InitPipeline();
-        InitUniformBuffer();
-    }
-
-    void Draw(const SCamera &Camera, Rr_GraphNode *GraphicsNode)
+    void Draw(
+        const SCamera &Camera,
+        Rr_Image2D *ColorImage,
+        Rr_Image2D *DepthImage)
     {
         SGPUUniform Uniform = {
             .View = Camera.ViewMatrix,
@@ -354,6 +351,22 @@ struct SGrid
             &Uniform,
             sizeof(SGPUUniform));
 
+        Rr_ColorTarget ColorTarget = {
+            .LoadOp = RR_LOAD_OP_LOAD,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Image = ColorImage,
+        };
+        Rr_DepthTarget DepthTarget = {
+            .LoadOp = RR_LOAD_OP_LOAD,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Image = DepthImage,
+        };
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+            Rr_GetGraph(),
+            "grid",
+            1,
+            &ColorTarget,
+            &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(
             GraphicsNode,
@@ -365,7 +378,13 @@ struct SGrid
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 
-    void Cleanup()
+    SGrid()
+    {
+        InitPipeline();
+        InitUniformBuffer();
+    }
+
+    ~SGrid()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -772,22 +791,43 @@ struct SModernRenderingApp
         Rr_Mat4 Model;
     };
 
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
-    Rr_Image2D *DepthImage;
-    Rr_Buffer *UniformBuffer;
-    Rr_Buffer *ModelBuffer;
-    Rr_GLTFContext *GLTFContext;
-    Rr_GLTFAsset *GLTFAsset;
+    static constexpr std::array VertexAttributes = {
+        Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+        Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_VEC2 },
+        Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_VEC3 },
+    };
 
-    SLighting Lighting;
+    static constexpr std::array VertexInputBindings = {
+        Rr_VertexInputBinding{
+            .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+            .AttributeCount = VertexAttributes.size(),
+            .Attributes = VertexAttributes.data(),
+        },
+    };
+
+    Rr_PipelineLayout *PipelineLayout{};
+    Rr_GraphicsPipeline *GraphicsPipeline{};
+    Rr_Buffer *UniformBuffer{};
+    Rr_Buffer *ModelBuffer{};
+    Rr_GLTFContext *GLTFContext{};
+    Rr_GLTFAsset *GLTFAsset{};
+    Rr_Image2D *ColorImage{};
+    Rr_Image2D *DepthImage{};
+
+    SLighting Lighting{};
     SCamera Camera;
     SGrid Grid;
-    SSkybox Skybox;
+    SSkybox Skybox{};
+
+    static constexpr std::array<const char *, 4> MSAA_OPTIONS = { "Disabled",
+                                                                  "2 Samples",
+                                                                  "4 Samples",
+                                                                  "8 Samples" };
+    std::uint32_t MSAAOptionIndex = 0;
 
     UScancodes Scancodes{};
 
-    void InitPipeline()
+    void InitPipelineLayout()
     {
         std::array Bindings0 = {
             Rr_Binding{
@@ -833,23 +873,18 @@ struct SModernRenderingApp
         };
         PipelineLayout =
             Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
+    }
 
-        std::array VertexAttributes = {
-            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
-            Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_VEC2 },
-            Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_VEC3 },
-        };
+    void InitPipeline()
+    {
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
 
-        std::array VertexInputBindings = {
-            Rr_VertexInputBinding{
-                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-                .AttributeCount = VertexAttributes.size(),
-                .Attributes = VertexAttributes.data(),
+        std::array ColorTargets = {
+            Rr_ColorTargetInfo{
+                .Format = Rr_GetSwapchainFormat(),
+                .Resolve = MSAAOptionIndex > 0,
             },
         };
-
-        Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-        ColorTargets[0].Format = Rr_GetSwapchainFormat();
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
         PipelineInfo.Layout = PipelineLayout;
@@ -859,49 +894,37 @@ struct SModernRenderingApp
             Rr_LoadAsset(EXAMPLE_ASSET_MODERNRENDERING_FRAG_SPV);
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = ColorTargets;
+        PipelineInfo.ColorTargetCount = ColorTargets.size();
+        PipelineInfo.ColorTargets = ColorTargets.data();
         PipelineInfo.DepthStencil.EnableDepthTest = true;
         PipelineInfo.DepthStencil.EnableDepthWrite = true;
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
+        PipelineInfo.Multisampling.SampleCount = 1 << MSAAOptionIndex;
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
-
-        std::array<Rr_GLTFAttributeType, 3> GLTFAttributeTypes = {
-            RR_GLTF_ATTRIBUTE_TYPE_POSITION,
-            RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0,
-            RR_GLTF_ATTRIBUTE_TYPE_NORMAL,
-        };
-        Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
-            .AttributeTypeCount = GLTFAttributeTypes.size(),
-            .AttributeTypes = GLTFAttributeTypes.data(),
-        };
-        std::array GLTFTextureMappings = {
-            Rr_GLTFTextureMapping{
-                .Set = 0,
-                .Binding = 1,
-                .TextureType = RR_GLTF_TEXTURE_TYPE_COLOR,
-            },
-        };
-        GLTFContext = Rr_CreateGLTFContext(
-            VertexInputBindings.size(),
-            VertexInputBindings.data(),
-            &GLTFVertexInputBinding,
-            GLTFTextureMappings.size(),
-            GLTFTextureMappings.data());
     }
 
-    void InitDepthImage()
+    void InitAttachments()
     {
-        Rr_ReleaseImage(DepthImage);
+        Rr_ImageFlags SampleCountFlag = RR_IMAGE_FLAGS_SAMPLE_COUNT_1
+                                        << MSAAOptionIndex;
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        Rr_TextureFormat SwapchainFormat = Rr_GetSwapchainFormat();
+
+        Rr_ReleaseImage(DepthImage);
         DepthImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
             DEPTH_FORMAT,
-            RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+            RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | SampleCountFlag);
+
+        Rr_ReleaseImage(ColorImage);
+        ColorImage = Rr_CreateImage2D(
+            { SwapchainSize.X, SwapchainSize.Y },
+            Rr_GetSwapchainFormat(),
+            RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
     }
 
     void InitCamera()
@@ -909,6 +932,7 @@ struct SModernRenderingApp
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
         float Aspect = (float)SwapchainSize.Width / SwapchainSize.Height;
         Camera.UpdatePerspective(Aspect);
+        Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
     }
 
     void InitUniform()
@@ -938,6 +962,29 @@ struct SModernRenderingApp
 
     void InitGLTFAsset()
     {
+        std::array<Rr_GLTFAttributeType, 3> GLTFAttributeTypes = {
+            RR_GLTF_ATTRIBUTE_TYPE_POSITION,
+            RR_GLTF_ATTRIBUTE_TYPE_TEXCOORD0,
+            RR_GLTF_ATTRIBUTE_TYPE_NORMAL,
+        };
+        Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
+            .AttributeTypeCount = GLTFAttributeTypes.size(),
+            .AttributeTypes = GLTFAttributeTypes.data(),
+        };
+        std::array GLTFTextureMappings = {
+            Rr_GLTFTextureMapping{
+                .Set = 0,
+                .Binding = 1,
+                .TextureType = RR_GLTF_TEXTURE_TYPE_COLOR,
+            },
+        };
+        GLTFContext = Rr_CreateGLTFContext(
+            VertexInputBindings.size(),
+            VertexInputBindings.data(),
+            &GLTFVertexInputBinding,
+            GLTFTextureMappings.size(),
+            GLTFTextureMappings.data());
+
         Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_CABIN_GLB);
         GLTFAsset = Rr_CreateGLTFAsset(
             GLTFContext,
@@ -977,27 +1024,14 @@ struct SModernRenderingApp
         Rr_ReleaseBuffer(StagingBuffer);
     }
 
-    void Init()
-    {
-        Grid.Init();
-        InitDepthImage();
-        InitPipeline();
-        InitGLTFAsset();
-        InitUniform();
-        InitCamera();
-        Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
-        Lighting.Init();
-        Lighting.AddPointLight();
-        Skybox.Init();
-    }
-
     void Event(Rr_Event *Event)
     {
         switch (Event->Type)
         {
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
-                InitDepthImage();
+                InitAttachments();
+                InitPipeline();
                 InitCamera();
                 return;
             }
@@ -1098,38 +1132,56 @@ struct SModernRenderingApp
         }
     }
 
-    void Iterate()
+    void UI()
     {
-        Rr_UIDebugOverlay();
-
         Rr_UIBeginWindow("ModernRendering.cxx", NULL, 0);
+        if (Rr_UICombobox(
+                "MSAA",
+                MSAA_OPTIONS.size(),
+                MSAA_OPTIONS.data(),
+                &MSAAOptionIndex))
+        {
+            InitAttachments();
+            InitPipeline();
+        }
+        Rr_UISeparator();
         Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
         Rr_Vec3 CameraForward = Camera.GetForwardVector();
         Rr_UIInputFloat3("Camera Forward", CameraForward.Elements);
         Rr_UISeparator();
         Lighting.UI();
         Rr_UIEndWindow();
+    }
+
+    void Iterate()
+    {
+        // Rr_UIDebugOverlay();
+
+        UI();
 
         Camera.Update(Scancodes);
 
         Rr_Graph *Graph = Rr_GetGraph();
 
         Lighting.UpdateLightBuffer();
-        Lighting.DrawShadowMaps(Camera, Graph, [&](Rr_GraphNode *Node) {
-            DrawGLTFAsset(Node, 1, 0);
-        });
+        // Lighting.DrawShadowMaps(Camera, Graph, [&](Rr_GraphNode *Node) {
+        //     DrawGLTFAsset(Node, 1, 0);
+        // });
 
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         /// MAIN PASS
+        Rr_Image2D *ColorAttachmentImage =
+            MSAAOptionIndex > 0 ? ColorImage : SwapchainImage;
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = { Rr_V4(0.005f, 0.007f, 0.015f, 1.0f) },
-            .Image = SwapchainImage,
+            .Image = ColorAttachmentImage,
+            .ResolveImage = SwapchainImage,
         };
         Rr_DepthTarget DepthTarget = {
             .LoadOp = RR_LOAD_OP_CLEAR,
@@ -1137,8 +1189,12 @@ struct SModernRenderingApp
             .Clear = Rr_DepthClear(1.0f, 0),
             .Image = DepthImage,
         };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, "grid", 1, &ColorTarget, &DepthTarget);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+            Graph,
+            "main_pass",
+            1,
+            &ColorTarget,
+            &DepthTarget);
 
         // Skybox.Draw(GraphicsNode, Camera, Lighting.PointShadowMaps[0]);
 
@@ -1164,10 +1220,23 @@ struct SModernRenderingApp
         Lighting.BindLights(GraphicsNode, 1);
         DrawGLTFAsset(GraphicsNode, 2, 0);
 
-        Grid.Draw(Camera, GraphicsNode);
+        Grid.Draw(Camera, SwapchainImage, DepthImage);
     }
 
-    void Cleanup()
+    SModernRenderingApp()
+    {
+        InitAttachments();
+        InitPipelineLayout();
+        InitPipeline();
+        InitGLTFAsset();
+        InitUniform();
+        InitCamera();
+        Lighting.Init();
+        Lighting.AddPointLight();
+        Skybox.Init();
+    }
+
+    ~SModernRenderingApp()
     {
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
@@ -1175,7 +1244,7 @@ struct SModernRenderingApp
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseImage(DepthImage);
-        Grid.Cleanup();
+        Rr_ReleaseImage(ColorImage);
         Lighting.Cleanup();
         Skybox.Cleanup();
     }
@@ -1183,14 +1252,14 @@ struct SModernRenderingApp
 
 int main()
 {
-    static SModernRenderingApp App;
+    static SModernRenderingApp *App{};
 
     Rr_AppConfig Config = {};
     Config.Title = "ModernRendering";
     Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
-    Config.InitFunc = []() { App.Init(); };
-    Config.EventFunc = [](Rr_Event *Event) { App.Event(Event); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Config.InitFunc = []() { App = new SModernRenderingApp(); };
+    Config.EventFunc = [](Rr_Event *Event) { App->Event(Event); };
+    Config.IterateFunc = []() { App->Iterate(); };
+    Config.CleanupFunc = []() { delete App; };
     Rr_Run(&Config);
 }

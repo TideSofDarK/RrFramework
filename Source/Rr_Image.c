@@ -290,11 +290,10 @@ static Rr_Image *Rr_CreateImage(
 
     /* TODO: Some kind of real usage must be enforced aside from TRANSFER_*. */
 
-    VkSampleCountFlagBits SampleCountFlagBits =
-        Rr_ToVulkanSampleCountFlagBits(Flags);
-    if (SampleCountFlagBits == 0)
+    Image->SampleCount = Rr_ToVulkanSampleCountFlagBits(Flags);
+    if (Image->SampleCount == 0)
     {
-        SampleCountFlagBits = VK_SAMPLE_COUNT_1_BIT;
+        Image->SampleCount = VK_SAMPLE_COUNT_1_BIT;
     }
     VkImageCreateInfo ImageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -304,7 +303,7 @@ static Rr_Image *Rr_CreateImage(
         .extent = Image->Extent,
         .mipLevels = MipLevels,
         .arrayLayers = LayerCount,
-        .samples = SampleCountFlagBits,
+        .samples = Image->SampleCount,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = UsageFlags,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,

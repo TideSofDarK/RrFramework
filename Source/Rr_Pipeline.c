@@ -31,27 +31,53 @@
 #include <xxHash/xxhash.h>
 
 static VkRenderPass Rr_GetCompatibleRenderPass(
-    Rr_GraphicsPipelineCreateInfo *Info)
+    uint32_t ColorTargetCount,
+    Rr_ColorTargetInfo *ColorTargets,
+    const Rr_DepthStencil *DepthStencil,
+    uint32_t SampleCount)
 {
     Rr_RenderPassMapKey Key;
-    Key.ColorAttachmentCount = (uint32_t)Info->ColorTargetCount;
+    Key.ColorAttachmentCount = ColorTargetCount;
     Key.ResolveAttachmentCount = 0;
-    Key.DepthStencil = Info->DepthStencil.EnableDepthTest ||
-                       Info->DepthStencil.EnableStencilTest ||
-                       Info->DepthStencil.EnableDepthWrite;
+    Key.DepthStencil = DepthStencil->EnableDepthTest ||
+                       DepthStencil->EnableStencilTest ||
+                       DepthStencil->EnableDepthWrite;
+    for (uint32_t Index = 0; Index < ColorTargetCount; ++Index)
+    {
+        if (ColorTargets[Index].Resolve)
+        {
+            Key.ResolveAttachmentCount++;
+        }
+    }
     size_t AttachmentCount = Key.ColorAttachmentCount +
                              Key.ResolveAttachmentCount +
                              (size_t)Key.DepthStencil;
 
     size_t AttachmentIndex = 0;
-    size_t Boundary = Info->ColorTargetCount;
+    size_t Boundary = ColorTargetCount;
 
-    if (Info->ColorTargetCount > 0)
+    if (ColorTargetCount > 0)
     {
         for (; AttachmentIndex < Boundary; ++AttachmentIndex)
         {
+            Key.Attachments[AttachmentIndex].Format =
+                Rr_ToVulkanTextureFormat(ColorTargets[AttachmentIndex].Format);
+            Key.Attachments[AttachmentIndex].Samples = SampleCount;
+            Key.Attachments[AttachmentIndex].LoadOp =
+                VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            Key.Attachments[AttachmentIndex].StoreOp =
+                VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        }
+    }
+
+    if (Key.ResolveAttachmentCount > 0)
+    {
+        Boundary += Key.ResolveAttachmentCount;
+        for (uint32_t ResolveAttachmentIndex = 0; AttachmentIndex < Boundary;
+             ++AttachmentIndex, ++ResolveAttachmentIndex)
+        {
             Key.Attachments[AttachmentIndex].Format = Rr_ToVulkanTextureFormat(
-                Info->ColorTargets[AttachmentIndex].Format);
+                ColorTargets[ResolveAttachmentIndex].Format);
             Key.Attachments[AttachmentIndex].Samples = 1;
             Key.Attachments[AttachmentIndex].LoadOp =
                 VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -63,8 +89,8 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     if (Key.DepthStencil)
     {
         Key.Attachments[AttachmentIndex].Format =
-            Rr_ToVulkanTextureFormat(Info->DepthStencil.Format);
-        Key.Attachments[AttachmentIndex].Samples = 1;
+            Rr_ToVulkanTextureFormat(DepthStencil->Format);
+        Key.Attachments[AttachmentIndex].Samples = SampleCount;
         Key.Attachments[AttachmentIndex].LoadOp =
             VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         Key.Attachments[AttachmentIndex].StoreOp =
@@ -347,7 +373,7 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_GraphicsPipelineCreateInfo *CreateInfo)
+    const Rr_GraphicsPipelineCreateInfo *CreateInfo)
 {
     assert(CreateInfo);
     assert(CreateInfo->Layout);
@@ -433,7 +459,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
          BindingIndex < CreateInfo->VertexInputBindingCount;
          ++BindingIndex)
     {
-        Rr_VertexInputBinding *VertexInputBinding =
+        const Rr_VertexInputBinding *VertexInputBinding =
             CreateInfo->VertexInputBindings + BindingIndex;
 
         RR_RESERVE_ARRAY(
@@ -444,7 +470,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         for (size_t Index = 0; Index < VertexInputBinding->AttributeCount;
              ++Index)
         {
-            Rr_VertexInputAttribute *Attribute =
+            const Rr_VertexInputAttribute *Attribute =
                 VertexInputBinding->Attributes + Index;
 
             VkVertexInputAttributeDescription *AttributeDescription =
@@ -489,8 +515,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
         .vertexAttributeDescriptionCount =
             (uint32_t)AttributeDescriptions.Count,
         .pVertexAttributeDescriptions = AttributeDescriptions.Data,
@@ -500,21 +524,18 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     VkPipelineInputAssemblyStateCreateInfo InputAssembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .pNext = NULL,
         .topology = Rr_ToVulkanPrimitiveTopology(CreateInfo->Topology),
         .primitiveRestartEnable = VK_FALSE,
     };
 
     VkPipelineViewportStateCreateInfo ViewportInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .pNext = NULL,
         .viewportCount = 1,
         .scissorCount = 1,
     };
 
     VkPipelineRasterizationStateCreateInfo Rasterizer = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .pNext = NULL,
         .flags = 0,
         .depthClampEnable = CreateInfo->Rasterizer.EnableDepthClip,
         .rasterizerDiscardEnable = false,
@@ -534,7 +555,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
                                        VK_DYNAMIC_STATE_SCISSOR };
     VkPipelineDynamicStateCreateInfo DynamicStateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .pNext = NULL,
         .pDynamicStates = DynamicStates,
         .dynamicStateCount = RR_ARRAY_COUNT(DynamicStates),
     };
@@ -542,12 +562,22 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     VkPipelineMultisampleStateCreateInfo Multisampling = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .sampleShadingEnable = VK_FALSE,
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
         .minSampleShading = 1.0f,
         .pSampleMask = NULL,
         .alphaToCoverageEnable = VK_FALSE,
         .alphaToOneEnable = VK_FALSE,
     };
+
+    if (RR_IS_POW2(CreateInfo->Multisampling.SampleCount) &&
+        CreateInfo->Multisampling.SampleCount != 0)
+    {
+        Multisampling.rasterizationSamples =
+            CreateInfo->Multisampling.SampleCount;
+    }
+    else
+    {
+        Multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    }
 
     RR_ARRAY(VkPipelineColorBlendAttachmentState) ColorAttachments = { 0 };
     RR_RESERVE_ARRAY(
@@ -601,10 +631,10 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             Rr_ToVulkanCompareOp(CreateInfo->DepthStencil.CompareOp),
         .stencilTestEnable = CreateInfo->DepthStencil.EnableStencilTest,
         .front = Rr_ToVulkanStencilOpState(
-            CreateInfo->DepthStencil.FrontStencilState,
+            &CreateInfo->DepthStencil.FrontStencilState,
             &CreateInfo->DepthStencil),
         .back = Rr_ToVulkanStencilOpState(
-            CreateInfo->DepthStencil.BackStencilState,
+            &CreateInfo->DepthStencil.BackStencilState,
             &CreateInfo->DepthStencil),
     };
 
@@ -621,7 +651,11 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .pDepthStencilState = &DepthStencil,
         .layout = CreateInfo->Layout->Handle,
         .pDynamicState = &DynamicStateInfo,
-        .renderPass = Rr_GetCompatibleRenderPass(CreateInfo),
+        .renderPass = Rr_GetCompatibleRenderPass(
+            CreateInfo->ColorTargetCount,
+            CreateInfo->ColorTargets,
+            &CreateInfo->DepthStencil,
+            Multisampling.rasterizationSamples),
     };
 
     Device->CreateGraphicsPipelines(

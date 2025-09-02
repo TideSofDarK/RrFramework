@@ -72,6 +72,8 @@ struct Rr_ColorTarget
     Rr_ColorClear Clear;
     struct Rr_Image *Image;
     uint32_t ImageLayerIndex;
+    struct Rr_Image *ResolveImage;
+    uint32_t ResolveImageLayerIndex;
 };
 
 typedef struct Rr_DepthClear Rr_DepthClear;

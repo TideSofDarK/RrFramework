@@ -95,6 +95,8 @@ struct Rr_Encoded
     Rr_NodeFunction *Encoded;
 };
 
+/* TODO: Encode macro expects Encoded field to be first. */
+
 typedef struct Rr_ComputeNode Rr_ComputeNode;
 struct Rr_ComputeNode
 {
@@ -105,6 +107,7 @@ typedef struct Rr_GraphicsNode Rr_GraphicsNode;
 struct Rr_GraphicsNode
 {
     Rr_Encoded Encoded;
+    uint32_t ResolveAttachmentCount;
     uint32_t ColorTargetCount;
     Rr_ColorTarget *ColorTargets;
     Rr_DepthTarget *DepthTarget;

@@ -127,10 +127,10 @@ static inline Rr_Format Rr_GLTFAttributeTypeToFormat(Rr_GLTFAttributeType Type)
 
 Rr_GLTFContext *Rr_CreateGLTFContext(
     size_t VertexInputBindingCount,
-    Rr_VertexInputBinding *VertexInputBindings,
-    Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
+    const Rr_VertexInputBinding *VertexInputBindings,
+    const Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
     size_t GLTFTextureMappingCount,
-    Rr_GLTFTextureMapping *GLTFTextureMappings)
+    const Rr_GLTFTextureMapping *GLTFTextureMappings)
 {
     assert(VertexInputBindingCount != 0);
     assert(VertexInputBindings != NULL);
@@ -139,9 +139,9 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     for (size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
          ++BindingIndex)
     {
-        Rr_VertexInputBinding *VertexInputBinding =
+        const Rr_VertexInputBinding *VertexInputBinding =
             VertexInputBindings + BindingIndex;
-        Rr_GLTFVertexInputBinding *GLTFVertexInputBinding =
+        const Rr_GLTFVertexInputBinding *GLTFVertexInputBinding =
             GLTFVertexInputBindings + BindingIndex;
         assert(
             VertexInputBinding->AttributeCount ==
@@ -150,7 +150,7 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
              AttributeIndex < VertexInputBinding->AttributeCount;
              ++AttributeIndex)
         {
-            Rr_VertexInputAttribute *Attribute =
+            const Rr_VertexInputAttribute *Attribute =
                 VertexInputBinding->Attributes + AttributeIndex;
             Rr_GLTFAttributeType GLTFAttributeType =
                 GLTFVertexInputBinding->AttributeTypes[AttributeIndex];
