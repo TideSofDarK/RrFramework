@@ -50,11 +50,7 @@ extern struct Rr_Graph *Rr_GetSubGraph(Rr_GraphFlags Flags);
 
 extern void Rr_SubmitSubGraph(struct Rr_Graph *Graph);
 
-typedef enum Rr_BlitMode
-{
-    RR_BLIT_MODE_COLOR,
-    RR_BLIT_MODE_DEPTH,
-} Rr_BlitMode;
+/* TODO: Move this enum. */
 
 typedef union Rr_ColorClear Rr_ColorClear;
 union Rr_ColorClear
@@ -105,7 +101,9 @@ struct Rr_DrawIndirectCommand
 typedef struct Rr_GraphNode Rr_GraphNode;
 typedef struct Rr_TransferNode Rr_TransferNode;
 
-extern Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name);
+extern void Rr_SetNextNodeName(Rr_Graph *Graph, const char *Name);
+
+extern Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph);
 
 extern void Rr_TransferBufferData(
     Rr_TransferNode *Node,
@@ -117,7 +115,6 @@ extern void Rr_TransferBufferData(
 
 extern void Rr_CopyBufferToImage2D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec2 Extent,
@@ -126,7 +123,6 @@ extern void Rr_CopyBufferToImage2D(
 
 extern void Rr_CopyBufferToImage2DArray(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec2 Extent,
@@ -136,7 +132,6 @@ extern void Rr_CopyBufferToImage2DArray(
 
 extern void Rr_CopyBufferToImage3D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec3 Extent,
@@ -145,7 +140,6 @@ extern void Rr_CopyBufferToImage3D(
 
 extern void Rr_CopyBufferToImageCube(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec2 Extent,
@@ -155,7 +149,6 @@ extern void Rr_CopyBufferToImageCube(
 
 extern void Rr_CopyBufferToImageCubeEx(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec2 Extent,
@@ -166,7 +159,6 @@ extern void Rr_CopyBufferToImageCubeEx(
 
 extern void Rr_CopyImage2D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Image2D *SrcImage,
     Rr_IntVec2 SrcOffset,
     Rr_Image2D *DstImage,
@@ -176,20 +168,26 @@ extern void Rr_CopyImage2D(
 
 extern void Rr_BlitImage2D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Image2D *SrcImage,
     Rr_Image2D *DstImage,
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_ImageAspect ImageAspect);
 
-extern void Rr_AddClearColorImage2DNode(
+extern void Rr_ClearColorImage2D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_ColorClear *ColorClear,
     Rr_Image2D *Image);
 
-extern Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph, const char *Name);
+extern void Rr_ResolveImage2D(
+    Rr_Graph *Graph,
+    Rr_Image2D *SrcImage,
+    uint32_t SrcImageLayerIndex,
+    Rr_Image2D *DstImage,
+    uint32_t DstImageLayerIndex,
+    Rr_ImageAspect Aspect);
+
+extern Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph);
 
 extern void Rr_BindComputePipeline(
     Rr_GraphNode *Node,
@@ -205,7 +203,6 @@ extern void Rr_ComputeBarrier(Rr_GraphNode *Node);
 
 extern Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Graph *Graph,
-    const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
     Rr_DepthTarget *DepthTarget);

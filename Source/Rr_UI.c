@@ -4728,7 +4728,7 @@ void Rr_EndUI(void)
         .Image = SwapchainImage,
     };
     Rr_GraphNode *GraphicsNode =
-        Rr_AddGraphicsNode(Rr_GetGraph(), "ui", 1, &ColorTarget, NULL);
+        Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
     Rr_BindGraphicsPipeline(GraphicsNode, gUIContext->GraphicsPipeline);
     Rr_BindVertexBuffer(GraphicsNode, gUIContext->VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(

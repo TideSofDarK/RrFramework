@@ -619,7 +619,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     *RR_PUSH_INTO_ARRAY(&GLTFContext->Buffers, GLTFContext->Arena) =
         GLTFAsset->Buffer;
 
-    Rr_TransferNode *TransferNode = Rr_AddTransferNode(Graph, "transfer_gltf");
+    Rr_TransferNode *TransferNode = Rr_AddTransferNode(Graph);
     Rr_TransferBufferData(
         TransferNode,
         StagingDataSize,

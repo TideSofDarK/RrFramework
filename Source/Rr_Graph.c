@@ -318,12 +318,18 @@ static Rr_GraphResource *Rr_GetGraphImageResource(
 
 static inline Rr_GraphNode *Rr_AddGraphNode(
     Rr_Graph *Graph,
-    Rr_GraphNodeType Type,
-    const char *Name)
+    Rr_GraphNodeType Type)
 {
     Rr_GraphNode *GraphNode = RR_ALLOC(Graph->Arena, sizeof(Rr_GraphNode));
     GraphNode->Type = Type;
-    strncpy(GraphNode->Name, Name, sizeof(GraphNode->Name) - 1);
+    if (Graph->NextNodeName[0] != '\0')
+    {
+        size_t NameLength = strlen(Graph->NextNodeName);
+        char *NodeName = RR_ALLOC_NO_ZERO(Graph->Arena, NameLength + 1);
+        memcpy(NodeName, Graph->NextNodeName, NameLength + 1);
+        GraphNode->Name = NodeName;
+        Graph->NextNodeName[0] = '\0';
+    }
     GraphNode->OriginalIndex = (uint32_t)Graph->Nodes.Count;
     GraphNode->Graph = Graph;
 
@@ -1371,6 +1377,54 @@ static void Rr_ExecuteClearColorImageNode(
         });
 }
 
+static void Rr_ExecuteResolveImageNode(
+    Rr_Graph *Graph,
+    Rr_ResolveImageNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    VkExtent3D MinExtent = { INT32_MAX, INT32_MAX, INT32_MAX };
+    MinExtent.width =
+        RR_MIN(Node->SrcImage->Extent.width, Node->DstImage->Extent.width);
+    MinExtent.height =
+        RR_MIN(Node->SrcImage->Extent.height, Node->DstImage->Extent.height);
+    MinExtent.depth =
+        RR_MIN(Node->SrcImage->Extent.depth, Node->DstImage->Extent.depth);
+
+    Rr_AllocatedImage *SrcAllocatedcImage =
+        Rr_GetCurrentAllocatedImage(Node->SrcImage);
+    Rr_AllocatedImage *DstAllocatedtImage =
+        Rr_GetCurrentAllocatedImage(Node->DstImage);
+
+    VkImageResolve Region = {
+        .srcSubresource =
+            (VkImageSubresourceLayers){
+                .aspectMask = Node->AspectFlags,
+                .baseArrayLayer = Node->SrcImageLayerIndex,
+                .layerCount = 1,
+            },
+        .srcOffset = { 0 },
+        .dstSubresource =
+            (VkImageSubresourceLayers){
+                .aspectMask = Node->AspectFlags,
+                .baseArrayLayer = Node->DstImageLayerIndex,
+                .layerCount = 1,
+            },
+        .dstOffset = { 0 },
+        .extent = MinExtent,
+    };
+
+    Device->CmdResolveImage(
+        CommandBuffer,
+        SrcAllocatedcImage->Handle,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        DstAllocatedtImage->Handle,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        1,
+        &Region);
+}
+
 static void Rr_ExecuteCopyBufferToImageNode(
     Rr_Graph *Graph,
     Rr_CopyBufferToImageNode *Node,
@@ -1479,6 +1533,14 @@ static void Rr_ExecuteGraphNode(
             Rr_ExecuteClearColorImageNode(
                 Graph,
                 &Node->Union.ClearColorImage,
+                CommandBuffer);
+        }
+        break;
+        case RR_GRAPH_NODE_TYPE_RESOLVE_IMAGE:
+        {
+            Rr_ExecuteResolveImageNode(
+                Graph,
+                &Node->Union.ResolveImage,
                 CommandBuffer);
         }
         break;
@@ -2154,10 +2216,15 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
     }
 }
 
-Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph, const char *Name)
+void Rr_SetNextNodeName(Rr_Graph *Graph, const char *Name)
+{
+    strncpy(Graph->NextNodeName, Name, sizeof(Graph->NextNodeName) - 1);
+}
+
+Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph)
 {
     Rr_GraphNode *GraphNode =
-        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_TRANSFER, Name);
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_TRANSFER);
 
     Rr_TransferNode *TransferNode = &GraphNode->Union.Transfer;
     RR_RESERVE_ARRAY(&TransferNode->Transfers, 2, Graph->Arena);
@@ -2212,7 +2279,6 @@ void Rr_TransferBufferData(
 
 void Rr_BlitImage2D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Image2D *SrcImage,
     Rr_Image2D *DstImage,
     Rr_IntVec4 SrcRect,
@@ -2223,8 +2289,7 @@ void Rr_BlitImage2D(
         (Graph->Flags & RR_GRAPH_FLAGS_GRAPHICS_BIT) &&
         "This function requires a graph with graphics capabilities!");
 
-    Rr_GraphNode *GraphNode =
-        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_BLIT, Name);
+    Rr_GraphNode *GraphNode = Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_BLIT);
 
     Rr_GraphImage *SrcImageHandle = Rr_GetGraphImageHandle(Graph, SrcImage);
     Rr_GraphImage *DstImageHandle = Rr_GetGraphImageHandle(Graph, DstImage);
@@ -2262,14 +2327,14 @@ void Rr_BlitImage2D(
     Rr_MarkImageUsed(Graph, DstImage);
 }
 
-Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph, const char *Name)
+Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph)
 {
     assert(
         (Graph->Flags & RR_GRAPH_FLAGS_COMPUTE_BIT) &&
         "This function requires a graph with compute capabilities!");
 
     Rr_GraphNode *GraphNode =
-        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_COMPUTE, Name);
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_COMPUTE);
 
     Rr_ComputeNode *ComputeNode = &GraphNode->Union.Compute;
 
@@ -2282,7 +2347,6 @@ Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph, const char *Name)
 
 Rr_GraphNode *Rr_AddGraphicsNode(
     Rr_Graph *Graph,
-    const char *Name,
     size_t ColorTargetCount,
     Rr_ColorTarget *ColorTargets,
     Rr_DepthTarget *DepthTarget)
@@ -2293,7 +2357,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     assert(ColorTargetCount > 0 || DepthTarget != NULL);
 
     Rr_GraphNode *GraphNode =
-        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_GRAPHICS, Name);
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_GRAPHICS);
 
     Rr_GraphicsNode *GraphicsNode = &GraphNode->Union.Graphics;
     if (ColorTargetCount > 0)
@@ -2370,9 +2434,8 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     return GraphNode;
 }
 
-void Rr_AddClearColorImage2DNode(
+void Rr_ClearColorImage2D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_ColorClear *ColorClear,
     Rr_Image2D *Image)
 {
@@ -2384,10 +2447,9 @@ void Rr_AddClearColorImage2DNode(
     assert(ColorClear != NULL && Image != NULL);
 
     Rr_GraphNode *GraphNode =
-        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE, Name);
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE);
 
     Rr_GraphImage *ColorImageHandle = Rr_GetGraphImageHandle(Graph, Image);
-
     Rr_AddImageDependency(
         GraphNode,
         ColorImageHandle,
@@ -2396,7 +2458,6 @@ void Rr_AddClearColorImage2DNode(
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .Layout = VK_IMAGE_LAYOUT_GENERAL,
         });
-
     Rr_MarkImageUsed(Graph, Image);
 
     GraphNode->Union.ClearColorImage =
@@ -2404,9 +2465,54 @@ void Rr_AddClearColorImage2DNode(
                                   .ColorImage = *ColorImageHandle };
 }
 
+void Rr_ResolveImage2D(
+    Rr_Graph *Graph,
+    Rr_Image2D *SrcImage,
+    uint32_t SrcImageLayerIndex,
+    Rr_Image2D *DstImage,
+    uint32_t DstImageLayerIndex,
+    Rr_ImageAspect Aspect)
+{
+    assert(
+        (Graph->Flags & RR_GRAPH_FLAGS_GRAPHICS_BIT) &&
+        "This function requires a graph with graphics capabilities!");
+    assert(SrcImage != NULL && DstImage != NULL);
+
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_RESOLVE_IMAGE);
+
+    Rr_ResolveImageNode *ResolveImageNode = (Rr_ResolveImageNode *)GraphNode;
+    ResolveImageNode->SrcImage = SrcImage;
+    ResolveImageNode->SrcImageLayerIndex = SrcImageLayerIndex;
+    ResolveImageNode->DstImage = DstImage;
+    ResolveImageNode->DstImageLayerIndex = DstImageLayerIndex;
+    ResolveImageNode->AspectFlags = Rr_ToVulkanImageAspect(Aspect);
+
+    Rr_GraphImage *SrcImageHandle = Rr_GetGraphImageHandle(Graph, SrcImage);
+    Rr_AddImageDependency(
+        GraphNode,
+        SrcImageHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .AccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+            .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        });
+    Rr_MarkImageUsed(Graph, SrcImage);
+
+    Rr_GraphImage *DstImageHandle = Rr_GetGraphImageHandle(Graph, DstImage);
+    Rr_AddImageDependency(
+        GraphNode,
+        DstImageHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .AccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        });
+    Rr_MarkImageUsed(Graph, DstImage);
+}
+
 static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec3 Extent,
@@ -2420,7 +2526,7 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
     assert(Image != NULL);
 
     Rr_GraphNode *GraphNode =
-        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_COPY_BUFFER_TO_IMAGE, Name);
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_COPY_BUFFER_TO_IMAGE);
 
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Graph, Buffer);
     Rr_AddBufferDependency(
@@ -2463,7 +2569,6 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
 
 void Rr_CopyBufferToImage2D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec2 Extent,
@@ -2472,7 +2577,6 @@ void Rr_CopyBufferToImage2D(
 {
     Rr_AddCopyBufferToImageNodeEx(
         Graph,
-        Name,
         Buffer,
         BufferOffset,
         (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
@@ -2484,7 +2588,6 @@ void Rr_CopyBufferToImage2D(
 
 void Rr_CopyBufferToImage2DArray(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec2 Extent,
@@ -2494,7 +2597,6 @@ void Rr_CopyBufferToImage2DArray(
 {
     Rr_AddCopyBufferToImageNodeEx(
         Graph,
-        Name,
         Buffer,
         BufferOffset,
         (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
@@ -2506,7 +2608,6 @@ void Rr_CopyBufferToImage2DArray(
 
 void Rr_CopyBufferToImage3D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec3 Extent,
@@ -2515,7 +2616,6 @@ void Rr_CopyBufferToImage3D(
 {
     Rr_AddCopyBufferToImageNodeEx(
         Graph,
-        Name,
         Buffer,
         BufferOffset,
         (Rr_IntVec3){
@@ -2531,7 +2631,6 @@ void Rr_CopyBufferToImage3D(
 
 void Rr_CopyBufferToImageCube(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec2 Extent,
@@ -2544,7 +2643,6 @@ void Rr_CopyBufferToImageCube(
 
     Rr_AddCopyBufferToImageNodeEx(
         Graph,
-        Name,
         Buffer,
         BufferOffset,
         (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
@@ -2556,7 +2654,6 @@ void Rr_CopyBufferToImageCube(
 
 void Rr_CopyBufferToImageCubeEx(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Buffer *Buffer,
     uint64_t BufferOffset,
     Rr_IntVec2 Extent,
@@ -2571,7 +2668,6 @@ void Rr_CopyBufferToImageCubeEx(
 
     Rr_AddCopyBufferToImageNodeEx(
         Graph,
-        Name,
         Buffer,
         BufferOffset,
         (Rr_IntVec3){ Extent.Width, Extent.Height, 1 },
@@ -2583,7 +2679,6 @@ void Rr_CopyBufferToImageCubeEx(
 
 static inline Rr_GraphNode *Rr_AddCopyImageNode(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Image *SrcImage,
     Rr_IntVec3 SrcOffset,
     Rr_Image *DstImage,
@@ -2594,7 +2689,7 @@ static inline Rr_GraphNode *Rr_AddCopyImageNode(
     uint32_t MipLevel)
 {
     Rr_GraphNode *GraphNode =
-        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_COPY_IMAGE, Name);
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_COPY_IMAGE);
 
     Rr_GraphImage *SrcImageHandle = Rr_GetGraphImageHandle(Graph, SrcImage);
     Rr_GraphImage *DstImageHandle = Rr_GetGraphImageHandle(Graph, DstImage);
@@ -2637,7 +2732,6 @@ static inline Rr_GraphNode *Rr_AddCopyImageNode(
 
 void Rr_CopyImage2D(
     Rr_Graph *Graph,
-    const char *Name,
     Rr_Image2D *SrcImage,
     Rr_IntVec2 SrcOffset,
     Rr_Image2D *DstImage,
@@ -2653,7 +2747,6 @@ void Rr_CopyImage2D(
 
     Rr_AddCopyImageNode(
         Graph,
-        Name,
         (Rr_Image *)SrcImage,
         (Rr_IntVec3){ SrcOffset.X, SrcOffset.Y, 0 },
         (Rr_Image *)DstImage,

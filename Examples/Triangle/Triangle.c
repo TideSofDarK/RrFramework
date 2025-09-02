@@ -77,7 +77,7 @@ static void Iterate(void)
         .Image = Rr_GetSwapchainImage(),
     };
     Rr_GraphNode *OffscreenNode =
-        Rr_AddGraphicsNode(Rr_GetGraph(), "triangle", 1, &ColorTarget, NULL);
+        Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
     Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
     Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);

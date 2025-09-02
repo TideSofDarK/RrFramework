@@ -52,6 +52,7 @@ typedef enum Rr_GraphNodeType
     RR_GRAPH_NODE_TYPE_COMPUTE,
     RR_GRAPH_NODE_TYPE_GRAPHICS,
     RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE,
+    RR_GRAPH_NODE_TYPE_RESOLVE_IMAGE,
     RR_GRAPH_NODE_TYPE_BLIT,
     RR_GRAPH_NODE_TYPE_TRANSFER,
     RR_GRAPH_NODE_TYPE_COPY_BUFFER_TO_IMAGE,
@@ -118,6 +119,16 @@ struct Rr_ClearColorImageNode
 {
     Rr_ColorClear ColorClear;
     Rr_GraphImage ColorImage;
+};
+
+typedef struct Rr_ResolveImageNode Rr_ResolveImageNode;
+struct Rr_ResolveImageNode
+{
+    struct Rr_Image *SrcImage;
+    uint32_t SrcImageLayerIndex;
+    struct Rr_Image *DstImage;
+    uint32_t DstImageLayerIndex;
+    VkImageAspectFlags AspectFlags;
 };
 
 typedef struct Rr_CopyBufferToImageNode Rr_CopyBufferToImageNode;
@@ -286,7 +297,6 @@ struct Rr_BlitNode
     Rr_GraphImage DstImageHandle;
     Rr_IntVec4 SrcRect;
     Rr_IntVec4 DstRect;
-    Rr_BlitMode Mode;
     VkImageAspectFlags AspectMask;
 };
 
@@ -306,6 +316,7 @@ struct Rr_GraphNode
         Rr_ComputeNode Compute;
         Rr_GraphicsNode Graphics;
         Rr_ClearColorImageNode ClearColorImage;
+        Rr_ResolveImageNode ResolveImage;
         Rr_CopyBufferToImageNode CopyBufferToImage;
         Rr_CopyImageNode CopyImage;
         Rr_BlitNode Blit;
@@ -313,7 +324,7 @@ struct Rr_GraphNode
     } Union;
     Rr_GraphNodeType Type;
 
-    char Name[32];
+    const char *Name;
 
     uint32_t OriginalIndex;
     uint32_t DependencyLevel;
@@ -360,6 +371,8 @@ struct Rr_Graph
     Rr_HandleSet Samplers;
 
     Rr_DescriptorPoolList *DescriptorPoolList;
+
+    char NextNodeName[32];
 
     Rr_Arena *Arena;
 };

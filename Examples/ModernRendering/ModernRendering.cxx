@@ -285,25 +285,14 @@ struct SGrid
         float GridBig;
     };
 
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_PipelineLayout *PipelineLayout{};
+    Rr_GraphicsPipeline *GraphicsPipeline{};
 
-    Rr_Buffer *UniformBuffer;
+    Rr_Buffer *UniformBuffer{};
 
-    void InitPipeline()
+    void RecreatePipeline(uint32_t SampleCount = 1)
     {
-        std::array Bindings = {
-            Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
 
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetSwapchainFormat();
@@ -321,16 +310,9 @@ struct SGrid
         PipelineInfo.DepthStencil.EnableDepthWrite = true;
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
+        PipelineInfo.Multisampling.SampleCount = SampleCount;
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
-    }
-
-    void InitUniformBuffer()
-    {
-        UniformBuffer = Rr_CreateBuffer(
-            sizeof(SGPUUniform),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
     void Draw(
@@ -361,12 +343,8 @@ struct SGrid
             .StoreOp = RR_STORE_OP_STORE,
             .Image = DepthImage,
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Rr_GetGraph(),
-            "grid",
-            1,
-            &ColorTarget,
-            &DepthTarget);
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(
             GraphicsNode,
@@ -378,10 +356,27 @@ struct SGrid
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 
-    SGrid()
+    SGrid(uint32_t MSAASampleCount)
     {
-        InitPipeline();
-        InitUniformBuffer();
+        UniformBuffer = Rr_CreateBuffer(
+            sizeof(SGPUUniform),
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+
+        std::array Bindings = {
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
+        };
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        RecreatePipeline(MSAASampleCount);
     }
 
     ~SGrid()
@@ -703,12 +698,8 @@ struct SLighting
                     .Clear = Rr_DepthClear(1.0f, 0),
                     .Image = DepthImage,
                 };
-                Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-                    Graph,
-                    "draw_shadow_maps",
-                    1,
-                    &ColorTarget,
-                    &DepthTarget);
+                Rr_GraphNode *GraphicsNode =
+                    Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
                 Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
                 Rr_BindUniformBuffer(
                     GraphicsNode,
@@ -827,6 +818,11 @@ struct SModernRenderingApp
 
     UScancodes Scancodes{};
 
+    auto GetMSAASampleCount() const -> uint32_t
+    {
+        return 1 << MSAAOptionIndex;
+    }
+
     void InitPipelineLayout()
     {
         std::array Bindings0 = {
@@ -902,7 +898,7 @@ struct SModernRenderingApp
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
-        PipelineInfo.Multisampling.SampleCount = 1 << MSAAOptionIndex;
+        PipelineInfo.Multisampling.SampleCount = GetMSAASampleCount();
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
@@ -932,7 +928,6 @@ struct SModernRenderingApp
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
         float Aspect = (float)SwapchainSize.Width / SwapchainSize.Height;
         Camera.UpdatePerspective(Aspect);
-        Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
     }
 
     void InitUniform()
@@ -1011,8 +1006,7 @@ struct SModernRenderingApp
                 Rr_M4D(1.0f));
         }
 
-        Rr_TransferNode *TransferNode =
-            Rr_AddTransferNode(Rr_GetGraph(), "upload_storage_buffer");
+        Rr_TransferNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph());
         Rr_TransferBufferData(
             TransferNode,
             StagingData - StagingDataStart,
@@ -1031,7 +1025,6 @@ struct SModernRenderingApp
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
                 InitAttachments();
-                InitPipeline();
                 InitCamera();
                 return;
             }
@@ -1141,6 +1134,7 @@ struct SModernRenderingApp
                 MSAA_OPTIONS.data(),
                 &MSAAOptionIndex))
         {
+            Grid.RecreatePipeline(GetMSAASampleCount());
             InitAttachments();
             InitPipeline();
         }
@@ -1169,19 +1163,15 @@ struct SModernRenderingApp
         // });
 
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         /// MAIN PASS
-        Rr_Image2D *ColorAttachmentImage =
-            MSAAOptionIndex > 0 ? ColorImage : SwapchainImage;
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = { Rr_V4(0.005f, 0.007f, 0.015f, 1.0f) },
-            .Image = ColorAttachmentImage,
-            .ResolveImage = SwapchainImage,
+            .Image = ColorImage,
         };
         Rr_DepthTarget DepthTarget = {
             .LoadOp = RR_LOAD_OP_CLEAR,
@@ -1189,12 +1179,8 @@ struct SModernRenderingApp
             .Clear = Rr_DepthClear(1.0f, 0),
             .Image = DepthImage,
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Graph,
-            "main_pass",
-            1,
-            &ColorTarget,
-            &DepthTarget);
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
 
         // Skybox.Draw(GraphicsNode, Camera, Lighting.PointShadowMaps[0]);
 
@@ -1220,20 +1206,49 @@ struct SModernRenderingApp
         Lighting.BindLights(GraphicsNode, 1);
         DrawGLTFAsset(GraphicsNode, 2, 0);
 
-        Grid.Draw(Camera, SwapchainImage, DepthImage);
+        Grid.Draw(Camera, ColorImage, DepthImage);
+
+        if (GetMSAASampleCount() > 1)
+        {
+            Rr_ResolveImage2D(
+                Graph,
+                ColorImage,
+                0,
+                SwapchainImage,
+                0,
+                RR_IMAGE_ASPECT_COLOR_BIT);
+        }
+        else
+        {
+            Rr_IntVec4 SwapchainRect = {
+                0,
+                0,
+                SwapchainSize.Width,
+                SwapchainSize.Height,
+            };
+            Rr_BlitImage2D(
+                Graph,
+                ColorImage,
+                SwapchainImage,
+                SwapchainRect,
+                SwapchainRect,
+                RR_IMAGE_ASPECT_COLOR_BIT);
+        }
     }
 
     SModernRenderingApp()
+        : Grid(GetMSAASampleCount())
     {
+        Lighting.Init();
+        Lighting.AddPointLight();
+        Skybox.Init();
         InitAttachments();
         InitPipelineLayout();
         InitPipeline();
         InitGLTFAsset();
         InitUniform();
         InitCamera();
-        Lighting.Init();
-        Lighting.AddPointLight();
-        Skybox.Init();
+        Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
     }
 
     ~SModernRenderingApp()
