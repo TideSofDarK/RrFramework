@@ -569,7 +569,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     VkPipelineRasterizationStateCreateInfo Rasterizer = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .flags = 0,
-        .depthClampEnable = CreateInfo->Rasterizer.EnableDepthClip,
+        .depthClampEnable = false,
         .rasterizerDiscardEnable = false,
         .polygonMode =
             Rr_ToVulkanPolygonMode(CreateInfo->Rasterizer.PolygonMode),

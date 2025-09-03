@@ -12,8 +12,7 @@
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
 constexpr Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
-constexpr std::int32_t MAP_WIDTH = 1024;
-constexpr std::int32_t MAP_HEIGHT = 1024;
+constexpr std::int32_t SHADOW_MAP_SIZE = 1024;
 constexpr float NEAR_PLANE = 0.1f;
 constexpr float FAR_PLANE = 100.0f;
 constexpr std::size_t MAX_POINT_LIGHTS = 4;
@@ -434,77 +433,95 @@ struct SGrid
     }
 };
 
-struct SVarianceShadowMapping
+struct SVSMBlur
 {
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_ComputePipeline *ComputePipeline;
-    Rr_Image2D *TempTextureA;
-    Rr_Image2D *TempTextureB;
-    Rr_Sampler *Sampler;
+    static constexpr std::uint32_t BLUR_RADIUS = 2;
+    static constexpr std::uint32_t BLUR_PASSES = 2;
 
-    void Init()
+    Rr_PipelineLayout *PipelineLayout{};
+    Rr_ComputePipeline *BlurXPipeline{};
+    Rr_ComputePipeline *BlurYPipeline{};
+    uint32_t LocalSize{};
+
+    void BlurImageCube(
+        Rr_Graph *Graph,
+        Rr_ImageCube *TargetImage,
+        Rr_ImageCube *IntermediateImage)
     {
-        // Rr_SamplerInfo SamplerInfo = {};
-        // SamplerInfo.MinFilter = RR_FILTER_LINEAR;
-        // SamplerInfo.MagFilter = RR_FILTER_LINEAR;
-        // Sampler = Rr_CreateSampler(&SamplerInfo);
-
-        // std::array Bindings0 = {
-        //     Rr_Binding{
-        //         0,
-        //         RR_BINDING_TYPE_STORAGE_IMAGE,
-        //         RR_SHADER_STAGE_COMPUTE_BIT,
-        //     },
-        //     Rr_Binding{
-        //         1,
-        //         RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-        //         RR_SHADER_STAGE_COMPUTE_BIT,
-        //     },
-        // };
-        // std::array Sets = {
-        //     Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
-        // };
-        // PipelineLayout =
-        //     Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
-        // uint32_t LocalSize = 16;
-
-        // std::array Specializations = {
-        //     Rr_PipelineSpecialization{
-        //         0,
-        //         RR_MAKE_DATA_STRUCT(LocalSize),
-        //     },
-        //     Rr_PipelineSpecialization{
-        //         1,
-        //         RR_MAKE_DATA_STRUCT(LocalSize),
-        //     },
-        // };
-
-        // Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
-        // PipelineCreateInfo.Layout = PipelineLayout;
-        // PipelineCreateInfo.ShaderSPV =
-        // Rr_LoadAsset(EXAMPLE_ASSET_VSM_COMP_SPV);
-        // PipelineCreateInfo.SpecializationCount = Specializations.size();
-        // PipelineCreateInfo.Specializations = Specializations.data();
-
-        // ComputePipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
-
-        // TempTextureA = Rr_CreateImage2D(
-        //     { MAP_WIDTH, MAP_HEIGHT },
-        //     RR_TEXTURE_FORMAT_R32G32_SFLOAT,
-        //     RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
-
-        // TempTextureB = Rr_CreateImage2D(
-        //     { MAP_WIDTH, MAP_HEIGHT },
-        //     RR_TEXTURE_FORMAT_R32G32_SFLOAT,
-        //     RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+        Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+        for (uint32_t Index = 0; Index < BLUR_PASSES; ++Index)
+        {
+            Rr_BindComputePipeline(Node, BlurXPipeline);
+            Rr_BindStorageImage2DArray(Node, TargetImage, 0, 0);
+            Rr_BindStorageImage2DArrayRW(Node, IntermediateImage, 0, 1);
+            Rr_Dispatch(Node, 1, SHADOW_MAP_SIZE / LocalSize, 6);
+            Rr_ComputeBarrier(Node);
+            Rr_BindComputePipeline(Node, BlurYPipeline);
+            Rr_BindStorageImage2DArray(Node, IntermediateImage, 0, 0);
+            Rr_BindStorageImage2DArrayRW(Node, TargetImage, 0, 1);
+            Rr_Dispatch(Node, SHADOW_MAP_SIZE / LocalSize, 1, 6);
+            Rr_ComputeBarrier(Node);
+        }
     }
 
-    void Cleanup()
+    Rr_ComputePipeline *CreateBlurPipeline(Rr_AssetRef ComputeSPV)
     {
-        Rr_ReleaseImage(TempTextureA);
-        Rr_ReleaseImage(TempTextureB);
-        Rr_ReleaseSampler(Sampler);
+        auto MaxSize = Rr_GetMaxComputeWorkgroupInvocations();
+        LocalSize = std::sqrt(MaxSize);
+
+        std::array Specializations = {
+            Rr_PipelineSpecialization{
+                0,
+                RR_MAKE_DATA_STRUCT(LocalSize),
+            },
+            Rr_PipelineSpecialization{
+                1,
+                RR_MAKE_DATA_STRUCT(SHADOW_MAP_SIZE),
+            },
+            Rr_PipelineSpecialization{
+                2,
+                RR_MAKE_DATA_STRUCT(BLUR_RADIUS),
+            },
+        };
+
+        Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
+        PipelineCreateInfo.Layout = PipelineLayout;
+        PipelineCreateInfo.ShaderSPV = Rr_LoadAsset(ComputeSPV);
+        PipelineCreateInfo.SpecializationCount = Specializations.size();
+        PipelineCreateInfo.Specializations = Specializations.data();
+
+        return Rr_CreateComputePipeline(&PipelineCreateInfo);
+    }
+
+    SVSMBlur()
+    {
+        std::array Bindings0 = {
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_STORAGE_IMAGE,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_STORAGE_IMAGE,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
+        };
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        BlurXPipeline = CreateBlurPipeline(EXAMPLE_ASSET_VSMBLURX_COMP_SPV);
+        BlurYPipeline = CreateBlurPipeline(EXAMPLE_ASSET_VSMBLURY_COMP_SPV);
+    }
+
+    ~SVSMBlur()
+    {
+        Rr_ReleaseComputePipeline(BlurXPipeline);
+        Rr_ReleaseComputePipeline(BlurYPipeline);
+        Rr_ReleasePipelineLayout(PipelineLayout);
     }
 };
 
@@ -517,9 +534,9 @@ struct SLighting
         Rr_Vec4 Ambient;
         Rr_Vec4 Diffuse;
         Rr_Vec4 Specular;
-        float Constant;
-        float Linear;
-        float Quadratic;
+        float Radius;
+        float Intensity;
+        float Falloff;
         float Bias;
     };
 
@@ -530,18 +547,203 @@ struct SLighting
         float FarPlane;
     };
 
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
-    Rr_Sampler *Sampler;
-    Rr_Buffer *UniformBuffer;
-    Rr_Buffer *LightsBuffer;
-    std::vector<SGPUPointLight> PointLights;
-    std::vector<Rr_ImageCube *> PointShadowMaps;
+    Rr_PipelineLayout *PipelineLayout{};
+    Rr_GraphicsPipeline *GraphicsPipeline{};
+    Rr_Sampler *Sampler{};
+    Rr_Buffer *UniformBuffer{};
+    Rr_Buffer *LightsBuffer{};
+    std::vector<SGPUPointLight> PointLights{};
+    std::vector<Rr_ImageCube *> PointShadowMaps{};
 
-    SVarianceShadowMapping VarianceShadowMapping;
     Rr_Image2D *DepthImage;
+    Rr_ImageCube *IntermediatePointShadowMap;
+    SVSMBlur VSMBlur;
 
-    void Init()
+    void AddPointLight()
+    {
+        SGPUPointLight PointLight = {
+            .Position = Rr_V3(0.0f, 1.0f, 0.0f),
+            .FarPlane = FAR_PLANE,
+            .Ambient = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
+            .Diffuse = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
+            .Specular = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
+            .Radius = 2.5f,
+            .Intensity = 3.8f,
+            .Falloff = 1.4f,
+            .Bias = 0.0175f,
+        };
+        PointLights.emplace_back(PointLight);
+
+        Rr_ImageCube *ShadowMap = Rr_CreateImageCube(
+            { SHADOW_MAP_SIZE, SHADOW_MAP_SIZE },
+            RR_TEXTURE_FORMAT_R32G32_SFLOAT,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT |
+                RR_IMAGE_FLAGS_STORAGE_BIT);
+        PointShadowMaps.emplace_back(ShadowMap);
+    }
+
+    Rr_Mat4 GetCubeView(Rr_ImageCubeFace Face, Rr_Vec3 Position)
+    {
+        switch (Face)
+        {
+            case RR_IMAGE_CUBE_FACE_FRONT:
+                return Rr_LookAt_RH(
+                    Position,
+                    Position + Rr_V3(1.0f, 0.0f, 0.0f),
+                    Rr_V3(0.0f, 1.0f, 0.0f));
+            case RR_IMAGE_CUBE_FACE_BACK:
+                return Rr_LookAt_RH(
+                    Position,
+                    Position + Rr_V3(-1.0f, 0.0f, 0.0f),
+                    Rr_V3(0.0f, 1.0f, 0.0f));
+            case RR_IMAGE_CUBE_FACE_UP:
+                return Rr_LookAt_RH(
+                    Position,
+                    Position + Rr_V3(0.0f, 1.0f, 0.0f),
+                    Rr_V3(0.0f, 0.0f, -1.0f));
+            case RR_IMAGE_CUBE_FACE_DOWN:
+                return Rr_LookAt_RH(
+                    Position,
+                    Position + Rr_V3(0.0f, -1.0f, 0.0f),
+                    Rr_V3(0.0f, 0.0f, 1.0f));
+            case RR_IMAGE_CUBE_FACE_RIGHT:
+                return Rr_LookAt_RH(
+                    Position,
+                    Position + Rr_V3(0.0f, 0.0f, 1.0f),
+                    Rr_V3(0.0f, 1.0f, 0.0f));
+            case RR_IMAGE_CUBE_FACE_LEFT:
+                return Rr_LookAt_RH(
+                    Position,
+                    Position + Rr_V3(0.0f, 0.0f, -1.0f),
+                    Rr_V3(0.0f, 1.0f, 0.0f));
+            default:
+                std::unreachable();
+        }
+    }
+
+    void DrawShadowMaps(
+        const SCamera &Camera,
+        Rr_Graph *Graph,
+        const std::function<void(Rr_GraphNode *Node)> &Callback)
+    {
+        UpdateLightBuffer();
+
+        Rr_Mat4 Perspective =
+            Rr_Perspective_RH(RR_ANGLE_DEG(90.0f), 1.0f, NEAR_PLANE, FAR_PLANE);
+        char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
+        std::size_t UniformOffset = 0;
+        for (std::size_t Index = 0; Index < PointLights.size(); ++Index)
+        {
+            SGPUPointLight &Point = PointLights[Index];
+            Rr_ImageCube *PointShadowMap = PointShadowMaps[Index];
+
+            for (std::uint32_t Face = 0; Face < RR_IMAGE_CUBE_FACE_COUNT;
+                 ++Face)
+            {
+                SGPUUniform Uniform = {
+                    .ViewProjection =
+                        Perspective *
+                        GetCubeView((Rr_ImageCubeFace)Face, Point.Position),
+                    .LightPosition = Point.Position,
+                    .FarPlane = FAR_PLANE,
+                };
+                std::memcpy(
+                    UniformData + UniformOffset,
+                    &Uniform,
+                    sizeof(Uniform));
+
+                Rr_ColorTarget ColorTarget = {
+                    .Slot = 0,
+                    .LoadOp = RR_LOAD_OP_CLEAR,
+                    .StoreOp = RR_STORE_OP_STORE,
+                    .Clear = { Rr_V4(1.0f, 1.0f, 0.0f, 0.0f) },
+                    .Image = PointShadowMap,
+                    .ImageLayerIndex = Face,
+                };
+                Rr_DepthTarget DepthTarget = {
+                    .LoadOp = RR_LOAD_OP_CLEAR,
+                    .StoreOp = RR_STORE_OP_DONT_CARE,
+                    .Clear = Rr_DepthClear(1.0f, 0),
+                    .Image = DepthImage,
+                };
+                Rr_GraphNode *GraphicsNode =
+                    Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
+                Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+                Rr_BindUniformBuffer(
+                    GraphicsNode,
+                    UniformBuffer,
+                    0,
+                    0,
+                    UniformOffset,
+                    sizeof(Uniform));
+                Callback(GraphicsNode);
+
+                UniformOffset +=
+                    RR_ALIGN_POW2(sizeof(Uniform), Rr_GetUniformAlignment());
+            }
+
+            VSMBlur.BlurImageCube(
+                Graph,
+                PointShadowMap,
+                IntermediatePointShadowMap);
+        }
+    }
+
+    void UpdateLightBuffer()
+    {
+        PointLights[0].Position.X = std::cosf(Rr_GetTimeSeconds()) / 2.0f;
+        PointLights[0].Position.Z = std::sinf(Rr_GetTimeSeconds()) / 2.0f;
+
+        std::memcpy(
+            Rr_GetMappedBufferData(LightsBuffer),
+            PointLights.data(),
+            sizeof(SGPUPointLight) * PointLights.size());
+    }
+
+    void BindLights(Rr_GraphNode *GraphicsNode, std::uint32_t Set)
+    {
+        Rr_BindStorageBuffer(
+            GraphicsNode,
+            LightsBuffer,
+            Set,
+            0,
+            0,
+            sizeof(SGPUPointLight) * PointLights.size());
+        for (std::uint32_t Index = 0; Index < MAX_POINT_LIGHTS; ++Index)
+        {
+            std::uint32_t ImageIndex = Index;
+            if (ImageIndex >= PointLights.size())
+            {
+                ImageIndex = PointLights.size() - 1;
+            }
+            Rr_BindCombinedImageCubeSamplerAt(
+                GraphicsNode,
+                PointShadowMaps[ImageIndex],
+                Sampler,
+                Set,
+                1,
+                Index);
+        }
+    }
+
+    void UIPointLight(SGPUPointLight &PointLight)
+    {
+        Rr_UISliderFloat("Radius", &PointLight.Radius, 0.0f, 8.0f);
+        Rr_UISliderFloat("Intensity", &PointLight.Intensity, 0.0f, 8.0f);
+        Rr_UISliderFloat("Falloff", &PointLight.Falloff, 0.0f, 8.0f);
+        Rr_UISliderFloat("Bias", &PointLight.Bias, 0.0f, 0.15f);
+    }
+
+    void UI()
+    {
+        for (auto &PointLight : PointLights)
+        {
+            UIPointLight(PointLight);
+        }
+    }
+
+    SLighting()
     {
         Rr_SamplerInfo SamplerInfo = {};
         SamplerInfo.MinFilter = RR_FILTER_LINEAR;
@@ -617,16 +819,21 @@ struct SLighting
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_STORAGE_BIT);
 
-        VarianceShadowMapping.Init();
-
         DepthImage = Rr_CreateImage2D(
-            { MAP_WIDTH, MAP_HEIGHT },
+            { SHADOW_MAP_SIZE, SHADOW_MAP_SIZE },
             DEPTH_FORMAT,
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+        IntermediatePointShadowMap = Rr_CreateImageCube(
+            { SHADOW_MAP_SIZE, SHADOW_MAP_SIZE },
+            RR_TEXTURE_FORMAT_R32G32_SFLOAT,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT |
+                RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
     }
 
-    void Cleanup()
+    ~SLighting()
     {
+        Rr_ReleaseImage(IntermediatePointShadowMap);
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseSampler(Sampler);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -636,180 +843,6 @@ struct SLighting
         for (auto &ShadowMap : PointShadowMaps)
         {
             Rr_ReleaseImage(ShadowMap);
-        }
-        VarianceShadowMapping.Cleanup();
-    }
-
-    void AddPointLight()
-    {
-        SGPUPointLight PointLight = {
-            .Position = Rr_V3(0.0f, 1.0f, 0.0f),
-            .FarPlane = 100.0f,
-            .Ambient = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
-            .Diffuse = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
-            .Specular = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
-            .Constant = 1.0f,
-            .Linear = 0.07f,
-            .Quadratic = 0.017f,
-            .Bias = 0.0175f,
-        };
-        PointLights.emplace_back(PointLight);
-
-        Rr_ImageCube *ShadowMap = Rr_CreateImageCube(
-            { MAP_WIDTH, MAP_HEIGHT },
-            RR_TEXTURE_FORMAT_R32G32_SFLOAT,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
-                RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
-        PointShadowMaps.emplace_back(ShadowMap);
-    }
-
-    Rr_Mat4 GetCubeView(Rr_ImageCubeFace Face, Rr_Vec3 Position)
-    {
-        switch (Face)
-        {
-            case RR_IMAGE_CUBE_FACE_FRONT:
-                return Rr_LookAt_RH(
-                    Position,
-                    Position + Rr_V3(1.0f, 0.0f, 0.0f),
-                    Rr_V3(0.0f, 1.0f, 0.0f));
-            case RR_IMAGE_CUBE_FACE_BACK:
-                return Rr_LookAt_RH(
-                    Position,
-                    Position + Rr_V3(-1.0f, 0.0f, 0.0f),
-                    Rr_V3(0.0f, 1.0f, 0.0f));
-            case RR_IMAGE_CUBE_FACE_UP:
-                return Rr_LookAt_RH(
-                    Position,
-                    Position + Rr_V3(0.0f, 1.0f, 0.0f),
-                    Rr_V3(0.0f, 0.0f, -1.0f));
-            case RR_IMAGE_CUBE_FACE_DOWN:
-                return Rr_LookAt_RH(
-                    Position,
-                    Position + Rr_V3(0.0f, -1.0f, 0.0f),
-                    Rr_V3(0.0f, 0.0f, 1.0f));
-            case RR_IMAGE_CUBE_FACE_RIGHT:
-                return Rr_LookAt_RH(
-                    Position,
-                    Position + Rr_V3(0.0f, 0.0f, 1.0f),
-                    Rr_V3(0.0f, 1.0f, 0.0f));
-            case RR_IMAGE_CUBE_FACE_LEFT:
-                return Rr_LookAt_RH(
-                    Position,
-                    Position + Rr_V3(0.0f, 0.0f, -1.0f),
-                    Rr_V3(0.0f, 1.0f, 0.0f));
-            default:
-                std::unreachable();
-        }
-    }
-
-    void DrawShadowMaps(
-        const SCamera &Camera,
-        Rr_Graph *Graph,
-        const std::function<void(Rr_GraphNode *Node)> &Callback)
-    {
-        Rr_Mat4 Perspective =
-            Rr_Perspective_RH(RR_ANGLE_DEG(90.0f), 1.0f, NEAR_PLANE, FAR_PLANE);
-        char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
-        std::size_t UniformOffset = 0;
-        for (std::size_t Index = 0; Index < PointLights.size(); ++Index)
-        {
-            SGPUPointLight &Point = PointLights[Index];
-            Rr_ImageCube *PointShadowMap = PointShadowMaps[Index];
-
-            for (std::uint32_t Face = 0; Face < RR_IMAGE_CUBE_FACE_COUNT;
-                 ++Face)
-            {
-                SGPUUniform Uniform = {
-                    .ViewProjection =
-                        Perspective *
-                        GetCubeView((Rr_ImageCubeFace)Face, Point.Position),
-                    .LightPosition = Point.Position,
-                    .FarPlane = FAR_PLANE,
-                };
-                std::memcpy(
-                    UniformData + UniformOffset,
-                    &Uniform,
-                    sizeof(Uniform));
-
-                Rr_ColorTarget ColorTarget = {
-                    .Slot = 0,
-                    .LoadOp = RR_LOAD_OP_CLEAR,
-                    .StoreOp = RR_STORE_OP_STORE,
-                    .Clear = { Rr_V4(1.0f, 1.0f, 0.0f, 0.0f) },
-                    .Image = PointShadowMap,
-                    .ImageLayerIndex = Face,
-                };
-                Rr_DepthTarget DepthTarget = {
-                    .LoadOp = RR_LOAD_OP_CLEAR,
-                    .StoreOp = RR_STORE_OP_DONT_CARE,
-                    .Clear = Rr_DepthClear(1.0f, 0),
-                    .Image = DepthImage,
-                };
-                Rr_GraphNode *GraphicsNode =
-                    Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
-                Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-                Rr_BindUniformBuffer(
-                    GraphicsNode,
-                    UniformBuffer,
-                    0,
-                    0,
-                    UniformOffset,
-                    sizeof(Uniform));
-                Callback(GraphicsNode);
-
-                UniformOffset +=
-                    RR_ALIGN_POW2(sizeof(Uniform), Rr_GetUniformAlignment());
-            }
-        }
-    }
-
-    void UpdateLightBuffer()
-    {
-        std::memcpy(
-            Rr_GetMappedBufferData(LightsBuffer),
-            PointLights.data(),
-            sizeof(SGPUPointLight) * PointLights.size());
-    }
-
-    void BindLights(Rr_GraphNode *GraphicsNode, std::uint32_t Set)
-    {
-        Rr_BindStorageBuffer(
-            GraphicsNode,
-            LightsBuffer,
-            Set,
-            0,
-            0,
-            sizeof(SGPUPointLight) * PointLights.size());
-        for (std::uint32_t Index = 0; Index < MAX_POINT_LIGHTS; ++Index)
-        {
-            std::uint32_t ImageIndex = Index;
-            if (ImageIndex >= PointLights.size())
-            {
-                ImageIndex = PointLights.size() - 1;
-            }
-            Rr_BindCombinedImageCubeSamplerAt(
-                GraphicsNode,
-                PointShadowMaps[ImageIndex],
-                Sampler,
-                Set,
-                1,
-                Index);
-        }
-    }
-
-    void UIPointLight(SGPUPointLight &PointLight)
-    {
-        Rr_UISliderFloat("Constant", &PointLight.Constant, 0.0f, 4.0f);
-        Rr_UISliderFloat("Linear", &PointLight.Linear, 0.0f, 4.0f);
-        Rr_UISliderFloat("Quadratic", &PointLight.Quadratic, 0.0f, 4.0f);
-        Rr_UISliderFloat("Bias", &PointLight.Bias, 0.0f, 0.15f);
-    }
-
-    void UI()
-    {
-        for (auto &PointLight : PointLights)
-        {
-            UIPointLight(PointLight);
         }
     }
 };
@@ -864,10 +897,10 @@ struct SModernRenderingApp
     Rr_PipelineLayout *BlitLayout;
     SFullscreenBlit FullscreenBlit;
 
-    SLighting Lighting{};
     SCamera Camera;
-    SGrid Grid;
+    SLighting Lighting;
     SSkybox Skybox{};
+    SGrid Grid;
 
     uint32_t GetMSAASampleCount() const
     {
@@ -1220,10 +1253,9 @@ struct SModernRenderingApp
 
         Rr_Graph *Graph = Rr_GetGraph();
 
-        Lighting.UpdateLightBuffer();
-        // Lighting.DrawShadowMaps(Camera, Graph, [&](Rr_GraphNode *Node) {
-        //     DrawGLTFAsset(Node, 1, 0);
-        // });
+        Lighting.DrawShadowMaps(Camera, Graph, [&](Rr_GraphNode *Node) {
+            DrawGLTFAsset(Node, 1, 0);
+        });
 
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
@@ -1310,7 +1342,6 @@ struct SModernRenderingApp
         , FullscreenBlit(BlitLayout, EXAMPLE_ASSET_FULLSCREENTRIANGLE_FRAG_SPV)
         , Grid(GetMSAASampleCount())
     {
-        Lighting.Init();
         Lighting.AddPointLight();
         Skybox.Init();
         InitAttachments();
@@ -1333,7 +1364,6 @@ struct SModernRenderingApp
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseImage(ColorImage);
         Rr_ReleaseImage(ColorImageResolved);
-        Lighting.Cleanup();
         Skybox.Cleanup();
     }
 };

@@ -162,7 +162,6 @@ struct Rr_Rasterizer
     float DepthBiasClamp;
     float DepthBiasSlopeFactor;
     bool EnableDepthBias;
-    bool EnableDepthClip;
 };
 
 typedef struct Rr_DepthStencil Rr_DepthStencil;

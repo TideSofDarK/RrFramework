@@ -712,6 +712,8 @@ static Rr_TextureFormat Rr_ToTextureFormat(VkFormat TextureFormat)
             return RR_TEXTURE_FORMAT_R32_UINT;
         case VK_FORMAT_R32_SINT:
             return RR_TEXTURE_FORMAT_R32_SINT;
+        case VK_FORMAT_R32_SFLOAT:
+            return RR_TEXTURE_FORMAT_R32_SFLOAT;
         case VK_FORMAT_R32G32_SFLOAT:
             return RR_TEXTURE_FORMAT_R32G32_SFLOAT;
         default:
@@ -747,6 +749,8 @@ static VkFormat Rr_ToVulkanTextureFormat(Rr_TextureFormat TextureFormat)
             return VK_FORMAT_R32_UINT;
         case RR_TEXTURE_FORMAT_R32_SINT:
             return VK_FORMAT_R32_SINT;
+        case RR_TEXTURE_FORMAT_R32_SFLOAT:
+            return VK_FORMAT_R32_SFLOAT;
         case RR_TEXTURE_FORMAT_R32G32_SFLOAT:
             return VK_FORMAT_R32G32_SFLOAT;
         default:

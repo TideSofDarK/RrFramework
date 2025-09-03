@@ -2420,7 +2420,8 @@ Rr_GraphNode *Rr_AddGraphicsNode(
             GraphNode,
             Rr_GetGraphImageHandle(Graph, DepthTarget->Image),
             &(Rr_SyncState){
-                .StageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                .StageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                             VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
                 .AccessMask = AccessMask,
                 .Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             });
@@ -3557,9 +3558,11 @@ void Rr_BindStorageBufferRWAt(
         Size);
 }
 
-static void Rr_BindStorageImage2DEx(
+static void Rr_BindStorageImageEx(
     Rr_GraphNode *Node,
-    Rr_Image2D *Image2D,
+    Rr_Image *Image,
+    VkImageViewType ViewType,
+    uint32_t LayerCount,
     uint32_t Set,
     uint32_t Binding,
     uint32_t ArrayIndex,
@@ -3568,7 +3571,7 @@ static void Rr_BindStorageImage2DEx(
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
 
-    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image2D);
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
@@ -3577,14 +3580,14 @@ static void Rr_BindStorageImage2DEx(
             .Set = (uint32_t)Set,
             .Binding = (uint32_t)Binding,
             .ArrayIndex = (uint32_t)ArrayIndex,
-            .ViewType = VK_IMAGE_VIEW_TYPE_2D,
+            .ViewType = ViewType,
             .SubresourceRange =
                 (VkImageSubresourceRange){
-                    .aspectMask = Image2D->AspectFlags,
+                    .aspectMask = Image->AspectFlags,
                     .baseMipLevel = 0,
                     .levelCount = VK_REMAINING_MIP_LEVELS,
                     .baseArrayLayer = 0,
-                    .layerCount = 1,
+                    .layerCount = LayerCount,
                 },
         }));
 
@@ -3604,7 +3607,7 @@ static void Rr_BindStorageImage2DEx(
             .Layout = VK_IMAGE_LAYOUT_GENERAL,
         });
 
-    Rr_MarkImageUsed(Node->Graph, Image2D);
+    Rr_MarkImageUsed(Node->Graph, Image);
 }
 
 void Rr_BindStorageImage2D(
@@ -3613,7 +3616,15 @@ void Rr_BindStorageImage2D(
     uint32_t Set,
     uint32_t Binding)
 {
-    Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, 0, false);
+    Rr_BindStorageImageEx(
+        Node,
+        Image2D,
+        VK_IMAGE_VIEW_TYPE_2D,
+        1,
+        Set,
+        Binding,
+        0,
+        false);
 }
 
 void Rr_BindStorageImage2DAt(
@@ -3623,7 +3634,15 @@ void Rr_BindStorageImage2DAt(
     uint32_t Binding,
     uint32_t ArrayIndex)
 {
-    Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, ArrayIndex, false);
+    Rr_BindStorageImageEx(
+        Node,
+        Image2D,
+        VK_IMAGE_VIEW_TYPE_2D,
+        1,
+        Set,
+        Binding,
+        ArrayIndex,
+        false);
 }
 
 void Rr_BindStorageImage2DRW(
@@ -3632,7 +3651,15 @@ void Rr_BindStorageImage2DRW(
     uint32_t Set,
     uint32_t Binding)
 {
-    Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, 0, true);
+    Rr_BindStorageImageEx(
+        Node,
+        Image2D,
+        VK_IMAGE_VIEW_TYPE_2D,
+        1,
+        Set,
+        Binding,
+        0,
+        true);
 }
 
 void Rr_BindStorageImage2DRWAt(
@@ -3642,5 +3669,83 @@ void Rr_BindStorageImage2DRWAt(
     uint32_t Binding,
     uint32_t ArrayIndex)
 {
-    Rr_BindStorageImage2DEx(Node, Image2D, Set, Binding, ArrayIndex, true);
+    Rr_BindStorageImageEx(
+        Node,
+        Image2D,
+        VK_IMAGE_VIEW_TYPE_2D,
+        1,
+        Set,
+        Binding,
+        ArrayIndex,
+        true);
+}
+
+void Rr_BindStorageImage2DArray(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image2DArray,
+        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+        VK_REMAINING_ARRAY_LAYERS,
+        Set,
+        Binding,
+        0,
+        false);
+}
+
+void Rr_BindStorageImage2DArrayAt(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image2DArray,
+        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+        VK_REMAINING_ARRAY_LAYERS,
+        Set,
+        Binding,
+        ArrayIndex,
+        false);
+}
+
+void Rr_BindStorageImage2DArrayRW(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image2DArray,
+        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+        VK_REMAINING_ARRAY_LAYERS,
+        Set,
+        Binding,
+        0,
+        true);
+}
+
+void Rr_BindStorageImage2DArrayRWAt(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image2DArray,
+        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+        VK_REMAINING_ARRAY_LAYERS,
+        Set,
+        Binding,
+        ArrayIndex,
+        true);
 }

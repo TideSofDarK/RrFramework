@@ -22,9 +22,9 @@ struct SGPUPointLight
     vec4 Ambient;
     vec4 Diffuse;
     vec4 Specular;
-    float Constant;
-    float Linear;
-    float Quadratic;
+    float Radius;
+    float Intensity;
+    float Falloff;
     float Bias;
 };
 
@@ -35,72 +35,52 @@ layout(set = 1, binding = 0) readonly buffer SGPULights
 
 layout(set = 1, binding = 1) uniform samplerCube PointShadowMaps[4];
 
-/* Unused. */
-float PointPCF(
-    in float FragToLightDistance,
-    in vec3 FragToLight,
-    in SGPUPointLight Light,
-    in samplerCube ShadowMap)
-{
-    float Shadow = 0.0;
-    const float Samples = 4.0;
-    const float Offset = 0.005;
-    const float Step = Offset / (Samples * 0.5);
-    for (float X = -Offset; X < Offset; X += Step)
-    {
-        for (float Y = -Offset; Y < Offset; Y += Step)
-        {
-            for (float Z = -Offset; Z < Offset; Z += Step)
-            {
-                float ClosestDepth = texture(ShadowMap,
-                        FragToLight + vec3(X, Y, Z)).r;
-                Shadow += FragToLightDistance - Light.Bias > ClosestDepth ? 1.0 : 0.0;
-            }
-        }
-    }
-    return Shadow / (Samples * Samples * Samples);
+float PointVSM(in vec2 Moments, in float CurrentDepth, in SGPUPointLight Light) {
+    float P = step(CurrentDepth, Moments.x + Light.Bias);
+    float Variance = max(Moments.y - Moments.x * Moments.x, 0.000001);
+    float Dist = CurrentDepth - Moments.x;
+    float PMax = Variance / (Variance + Dist * Dist);
+
+    return max(P, PMax);
 }
 
-float PointVSM(
-    in float FragToLightDistance,
-    in vec3 FragToLight,
-    in SGPUPointLight Light,
-    in samplerCube ShadowMap)
+float PointAttenuate(
+    in float Distance,
+    in SGPUPointLight Light)
 {
-    vec2 Moments = texture(ShadowMap, FragToLight).rg;
+    float S = Distance / Light.Radius;
 
-    float p = step(FragToLightDistance, Moments.x + Light.Bias);
+    if (S >= 1.0)
+        return 0.0;
 
-    float variance = max(Moments.y - Moments.x * Moments.x, 0.0001);
-    float dist = FragToLightDistance - Moments.x;
+    float S2 = S * S;
 
-    float p_max = variance / (variance + dist * dist);
-
-    return 1.0 - max(p, p_max);
+    return Light.Intensity * (1 - S2) * (1 - S2) / (1 + Light.Falloff * S);
 }
 
 void main()
 {
     float CameraDistance = distance(CameraPosition, InPosition);
-    vec4 Result = vec4((InNormal + 0.5) * 0.5, 1.0);
+    vec4 Result = vec4(0.0, 0.0, 0.0, 1.0);
+    vec3 BaseColor = (InNormal + 0.5) * 0.5;
     for (uint Index = 0; Index < PointLights.length(); ++Index)
     {
         SGPUPointLight Light = PointLights[Index];
 
-        float Distance = distance(Light.Position, InPosition);
-        float Attenuation = 1.0 / (Light.Constant +
-                    Light.Linear * Distance +
-                    Light.Quadratic * Distance * Distance);
+        vec3 LightToFrag = Light.Position.xyz - InPosition;
+        float LightToFragDistance = length(LightToFrag);
+        if (LightToFragDistance > Light.Radius) continue;
 
-        vec3 FragToLight = InPosition - Light.Position.xyz;
-        float FragToLightDistance = length(FragToLight);
-        // float Shadow = max(0.0, dot(InNormal, FragToLight));
-        float Shadow = PointVSM(FragToLightDistance, FragToLight, Light, PointShadowMaps[Index]);
-        // float Shadow = PointPCF(FragToLightDistance, FragToLight, Light, PointShadowMaps[Index]);
+        LightToFrag = normalize(LightToFrag);
+        float Shadow = PointVSM(
+                texture(PointShadowMaps[Index], -LightToFrag).rg,
+                LightToFragDistance,
+                Light);
+        float Lambert = max(0.0, dot(InNormal, LightToFrag));
+        float Attenuation = max(0.0, PointAttenuate(LightToFragDistance, Light));
+        Shadow = max(0.1, Shadow);
 
-        Shadow = clamp(Shadow, 0.0, 1.0);
-
-        Result.rgb = Result.rgb * 0.2 + (Result.rgb * 0.8 * Attenuation * (1.0 - Shadow));
+        Result.rgb += BaseColor * (Attenuation * Lambert * Shadow);
     }
     OutColor = Result;
 }

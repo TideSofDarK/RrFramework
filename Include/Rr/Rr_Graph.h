@@ -452,6 +452,32 @@ extern void Rr_BindStorageImage2DRWAt(
     uint32_t Binding,
     uint32_t ArrayIndex);
 
+extern void Rr_BindStorageImage2DArray(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t Set,
+    uint32_t Binding);
+
+extern void Rr_BindStorageImage2DArrayAt(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex);
+
+extern void Rr_BindStorageImage2DArrayRW(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t Set,
+    uint32_t Binding);
+
+extern void Rr_BindStorageImage2DArrayRWAt(
+    Rr_GraphNode *Node,
+    Rr_Image2DArray *Image2DArray,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex);
+
 #ifdef __cplusplus
 }
 #endif
