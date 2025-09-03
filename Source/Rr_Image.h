@@ -33,6 +33,9 @@
 struct Rr_Sampler
 {
     VkSampler Handle;
+
+    char Name[32];
+
     Rr_AtomicInt RefCount;
 };
 
@@ -97,6 +100,8 @@ struct Rr_Image
     Rr_ImageFlags Flags;
     uint32_t AllocatedImageCount;
     Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP];
+
+    char Name[32];
 
     Rr_AtomicInt RefCount;
 };

@@ -77,6 +77,8 @@ struct Rr_PipelineLayout
 
     VkPipelineLayout Handle;
 
+    char Name[32];
+
     Rr_AtomicInt RefCount;
 };
 
@@ -91,6 +93,8 @@ struct Rr_ComputePipeline
 {
     VkPipeline Handle;
     Rr_PipelineLayout *Layout;
+
+    char Name[32];
 
     Rr_AtomicInt RefCount;
 };
@@ -108,6 +112,8 @@ struct Rr_GraphicsPipeline
     Rr_PipelineLayout *Layout;
     uint32_t ColorAttachmentCount;
     bool HasDepthStencil;
+
+    char Name[32];
 
     Rr_AtomicInt RefCount;
 };

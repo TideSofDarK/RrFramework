@@ -120,6 +120,8 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     Rr_UnlockSpinlock(&gRenderer->PipelineLayoutsLock);
 
+    Rr_ConsumeNextObjectName(PipelineLayout->Name);
+
     Rr_DescriptorSetLayoutKey Keys[RR_MAX_SETS] = { 0 };
     VkDescriptorSetLayout Handles[RR_MAX_SETS] = { 0 };
 
@@ -167,11 +169,19 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
         .pSetLayouts = Handles,
     };
 
-    Device->CreatePipelineLayout(
+    VkResult Result = Device->CreatePipelineLayout(
         Device->Handle,
         &PipelineLayoutCreateInfo,
         NULL,
         &PipelineLayout->Handle);
+    assert(Result == VK_SUCCESS);
+
+#ifdef RR_DEBUG
+    Rr_SetVulkanObjectName(
+        VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+        (uint64_t)PipelineLayout->Handle,
+        PipelineLayout->Name);
+#endif
 
     Rr_DestroyScratch(Scratch);
 
@@ -198,6 +208,13 @@ void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
 
 void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
 {
+    assert(PipelineLayout && PipelineLayout->Handle != VK_NULL_HANDLE);
+
+    Rr_PrintDestroyMessage(
+        "Rr_PipelineLayout",
+        PipelineLayout->Name,
+        PipelineLayout);
+
     Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
@@ -210,8 +227,6 @@ void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
     Rr_RemoveFromPipelineLayoutHive(&gRenderer->PipelineLayouts, &It);
 
     Rr_UnlockSpinlock(&gRenderer->PipelineLayoutsLock);
-
-    RR_LOG("Destroyed pipeline layout with address %p", (void *)PipelineLayout);
 }
 
 static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
@@ -269,17 +284,19 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
 
-    Rr_ComputePipeline *Pipeline = Rr_PushComputePipelineIntoHiveLocked(
-                                       &gRenderer->ComputePipelines,
-                                       gRenderer->Arena,
-                                       &gRenderer->Lock)
-                                       .Element;
+    Rr_ComputePipeline *ComputePipeline = Rr_PushComputePipelineIntoHiveLocked(
+                                              &gRenderer->ComputePipelines,
+                                              gRenderer->Arena,
+                                              &gRenderer->Lock)
+                                              .Element;
 
     Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
 
     Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
 
-    Pipeline->Layout = CreateInfo->Layout;
+    ComputePipeline->Layout = CreateInfo->Layout;
+
+    Rr_ConsumeNextObjectName(ComputePipeline->Name);
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -317,19 +334,27 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         .stage = ShaderStageCreateInfo,
     };
 
-    Device->CreateComputePipelines(
+    VkResult Result = Device->CreateComputePipelines(
         Device->Handle,
         VK_NULL_HANDLE,
         1,
         &PipelineCreateInfo,
         NULL,
-        &Pipeline->Handle);
+        &ComputePipeline->Handle);
+    assert(Result == VK_SUCCESS);
+
+#ifdef RR_DEBUG
+    Rr_SetVulkanObjectName(
+        VK_OBJECT_TYPE_PIPELINE,
+        (uint64_t)ComputePipeline->Handle,
+        ComputePipeline->Name);
+#endif
 
     Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
 
     Rr_DestroyScratch(Scratch);
 
-    return Pipeline;
+    return ComputePipeline;
 }
 
 void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
@@ -352,6 +377,13 @@ void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
 void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 {
+    assert(ComputePipeline && ComputePipeline->Handle != VK_NULL_HANDLE);
+
+    Rr_PrintDestroyMessage(
+        "Rr_ComputePipeline",
+        ComputePipeline->Name,
+        ComputePipeline);
+
     Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
@@ -366,10 +398,6 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
     Rr_RemoveFromComputePipelineHive(&gRenderer->ComputePipelines, &It);
 
     Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
-
-    RR_LOG(
-        "Destroyed compute pipeline with address %p",
-        (void *)ComputePipeline);
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
@@ -384,25 +412,29 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
-    Rr_GraphicsPipeline *Pipeline = Rr_PushGraphicsPipelineIntoHiveLocked(
-                                        &gRenderer->GraphicsPipelines,
-                                        gRenderer->Arena,
-                                        &gRenderer->Lock)
-                                        .Element;
+    Rr_GraphicsPipeline *GraphicsPipeline =
+        Rr_PushGraphicsPipelineIntoHiveLocked(
+            &gRenderer->GraphicsPipelines,
+            gRenderer->Arena,
+            &gRenderer->Lock)
+            .Element;
 
     Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
     Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
 
-    Pipeline->Layout = CreateInfo->Layout;
-    Pipeline->HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
-                                CreateInfo->DepthStencil.EnableStencilTest ||
-                                CreateInfo->DepthStencil.EnableDepthWrite;
+    GraphicsPipeline->Layout = CreateInfo->Layout;
+    GraphicsPipeline->HasDepthStencil =
+        CreateInfo->DepthStencil.EnableDepthTest ||
+        CreateInfo->DepthStencil.EnableStencilTest ||
+        CreateInfo->DepthStencil.EnableDepthWrite;
 
-    if (Pipeline->HasDepthStencil)
+    if (GraphicsPipeline->HasDepthStencil)
     {
         assert(CreateInfo->DepthStencil.Format != RR_TEXTURE_FORMAT_UNDEFINED);
     }
+
+    Rr_ConsumeNextObjectName(GraphicsPipeline->Name);
 
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
@@ -610,7 +642,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         Attachment->colorWriteMask = ColorWriteMask;
     }
 
-    Pipeline->ColorAttachmentCount = (uint32_t)CreateInfo->ColorTargetCount;
+    GraphicsPipeline->ColorAttachmentCount =
+        (uint32_t)CreateInfo->ColorTargetCount;
 
     VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -658,13 +691,21 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             Multisampling.rasterizationSamples),
     };
 
-    Device->CreateGraphicsPipelines(
+    VkResult Result = Device->CreateGraphicsPipelines(
         Device->Handle,
         VK_NULL_HANDLE,
         1,
         &PipelineInfo,
         NULL,
-        &Pipeline->Handle);
+        &GraphicsPipeline->Handle);
+    assert(Result == VK_SUCCESS);
+
+#ifdef RR_DEBUG
+    Rr_SetVulkanObjectName(
+        VK_OBJECT_TYPE_PIPELINE,
+        (uint64_t)GraphicsPipeline->Handle,
+        GraphicsPipeline->Name);
+#endif
 
     if (VertModule != VK_NULL_HANDLE)
     {
@@ -678,7 +719,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_DestroyScratch(Scratch);
 
-    return Pipeline;
+    return GraphicsPipeline;
 }
 
 void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
@@ -701,6 +742,13 @@ void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
 void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 {
+    assert(GraphicsPipeline && GraphicsPipeline->Handle != VK_NULL_HANDLE);
+
+    Rr_PrintDestroyMessage(
+        "Rr_GraphicsPipeline",
+        GraphicsPipeline->Name,
+        GraphicsPipeline);
+
     Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
@@ -715,10 +763,6 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
     Rr_RemoveFromGraphicsPipelineHive(&gRenderer->GraphicsPipelines, &It);
 
     Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
-
-    RR_LOG(
-        "Destroyed graphics pipeline with address %p",
-        (void *)GraphicsPipeline);
 }
 
 Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(

@@ -48,6 +48,8 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 
     Rr_UnlockSpinlock(&gRenderer->SamplersLock);
 
+    Rr_ConsumeNextObjectName(Sampler->Name);
+
     VkSamplerCreateInfo SamplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .pNext = NULL,
@@ -68,7 +70,19 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
         .unnormalizedCoordinates = Info->UnnormalizedCoordinates,
     };
 
-    Device->CreateSampler(Device->Handle, &SamplerInfo, NULL, &Sampler->Handle);
+    VkResult Result = Device->CreateSampler(
+        Device->Handle,
+        &SamplerInfo,
+        NULL,
+        &Sampler->Handle);
+    assert(Result == VK_SUCCESS);
+
+#ifdef RR_DEBUG
+    Rr_SetVulkanObjectName(
+        VK_OBJECT_TYPE_SAMPLER,
+        (uint64_t)Sampler->Handle,
+        Sampler->Name);
+#endif
 
     return Sampler;
 }
@@ -95,6 +109,8 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 {
     assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
 
+    Rr_PrintDestroyMessage("Rr_Sampler", Sampler->Name, Sampler);
+
     Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroySampler(Device->Handle, Sampler->Handle, NULL);
@@ -106,8 +122,6 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
     Rr_RemoveFromSamplerHive(&gRenderer->Samplers, &It);
 
     Rr_UnlockSpinlock(&gRenderer->SamplersLock);
-
-    RR_LOG("Destroyed sampler with address %p", (void *)Sampler);
 }
 
 Rr_ImageViewStorage *Rr_CreateImageViewStorage(void)
@@ -248,6 +262,8 @@ static Rr_Image *Rr_CreateImage(
     Image->Extent.height = Extent.Height;
     Image->Extent.depth = Extent.Depth;
 
+    Rr_ConsumeNextObjectName(Image->Name);
+
     uint32_t MipLevels = 1;
     if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
     {
@@ -335,15 +351,32 @@ static Rr_Image *Rr_CreateImage(
         Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + Index;
         AllocatedImage->Container = Image;
 
-        vmaCreateImage(
+        VkResult Result = vmaCreateImage(
             gRenderer->Allocator,
             &ImageCreateInfo,
             &AllocationCreateInfo,
             &AllocatedImage->Handle,
             &AllocatedImage->Allocation,
             NULL);
+        assert(Result == VK_SUCCESS);
 
         AllocatedImage->ViewStorage = Rr_CreateImageViewStorage();
+
+#ifdef RR_DEBUG
+        char ObjectName[32];
+        if (snprintf(
+                ObjectName,
+                sizeof(ObjectName) - 1,
+                "%s#%d",
+                Image->Name,
+                Index))
+        {
+        }
+        Rr_SetVulkanObjectName(
+            VK_OBJECT_TYPE_IMAGE,
+            (uint64_t)AllocatedImage->Handle,
+            ObjectName);
+#endif
     }
 
     return (Rr_Image *)Image;
@@ -369,10 +402,9 @@ void Rr_ReleaseImage(Rr_Image *Image)
 
 void Rr_DestroyImage(Rr_Image *Image)
 {
-    if (Image == NULL)
-    {
-        return;
-    }
+    assert(Image && Image->AllocatedImageCount > 0);
+
+    Rr_PrintDestroyMessage("Rr_Image", Image->Name, Image);
 
     Rr_Device *Device = &gRenderer->Device;
 
@@ -403,8 +435,6 @@ void Rr_DestroyImage(Rr_Image *Image)
     Rr_RemoveFromImageHive(&gRenderer->Images, &It);
 
     Rr_UnlockSpinlock(&gRenderer->ImagesLock);
-
-    RR_LOG("Destroyed image with address %p", (void *)Image);
 }
 
 Rr_Image2D *Rr_CreateImage2D(

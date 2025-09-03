@@ -66,7 +66,10 @@ void Rr_InitInstance(
 
     const char *AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
     uint32_t AppExtensionCount = RR_ARRAY_COUNT(AppExtensions);
-    AppExtensionCount = 0; /* Use Vulkan Configurator! */
+
+#ifndef RR_DEBUG
+    AppExtensionCount = 0;
+#endif
 
     uint32_t PlatformExtensionCount;
     const char *const *PlatformExtensions =
@@ -230,6 +233,53 @@ void Rr_InitInstance(
         (PFN_vkGetPhysicalDeviceSurfaceSupportKHR)Loader->GetInstanceProcAddr(
             Instance->Handle,
             "vkGetPhysicalDeviceSurfaceSupportKHR");
+
+    /* VK_EXT_debug_utils */
+
+    Instance->CmdBeginDebugUtilsLabelEXT =
+        (PFN_vkCmdBeginDebugUtilsLabelEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkCmdBeginDebugUtilsLabelEXT");
+    Instance->CmdEndDebugUtilsLabelEXT =
+        (PFN_vkCmdEndDebugUtilsLabelEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkCmdEndDebugUtilsLabelEXT");
+    Instance->CmdInsertDebugUtilsLabelEXT =
+        (PFN_vkCmdInsertDebugUtilsLabelEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkCmdInsertDebugUtilsLabelEXT");
+    Instance->CreateDebugUtilsMessengerEXT =
+        (PFN_vkCreateDebugUtilsMessengerEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkCreateDebugUtilsMessengerEXT");
+    Instance->DestroyDebugUtilsMessengerEXT =
+        (PFN_vkDestroyDebugUtilsMessengerEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkDestroyDebugUtilsMessengerEXT");
+    Instance->QueueBeginDebugUtilsLabelEXT =
+        (PFN_vkQueueBeginDebugUtilsLabelEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkQueueBeginDebugUtilsLabelEXT");
+    Instance->QueueEndDebugUtilsLabelEXT =
+        (PFN_vkQueueEndDebugUtilsLabelEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkQueueEndDebugUtilsLabelEXT");
+    Instance->QueueInsertDebugUtilsLabelEXT =
+        (PFN_vkQueueInsertDebugUtilsLabelEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkQueueInsertDebugUtilsLabelEXT");
+    Instance->SetDebugUtilsObjectNameEXT =
+        (PFN_vkSetDebugUtilsObjectNameEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkSetDebugUtilsObjectNameEXT");
+    Instance->SetDebugUtilsObjectTagEXT =
+        (PFN_vkSetDebugUtilsObjectTagEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkSetDebugUtilsObjectTagEXT");
+    Instance->SubmitDebugUtilsMessageEXT =
+        (PFN_vkSubmitDebugUtilsMessageEXT)Loader->GetInstanceProcAddr(
+            Instance->Handle,
+            "vkSubmitDebugUtilsMessageEXT");
 
     Rr_DestroyScratch(Scratch);
 }

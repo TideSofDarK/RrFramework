@@ -303,6 +303,20 @@ struct Rr_Instance
     PFN_vkGetPhysicalDeviceSurfacePresentModesKHR
         GetPhysicalDeviceSurfacePresentModesKHR;
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR GetPhysicalDeviceSurfaceSupportKHR;
+
+    /* VK_EXT_debug_utils */
+
+    PFN_vkCmdBeginDebugUtilsLabelEXT CmdBeginDebugUtilsLabelEXT;
+    PFN_vkCmdEndDebugUtilsLabelEXT CmdEndDebugUtilsLabelEXT;
+    PFN_vkCmdInsertDebugUtilsLabelEXT CmdInsertDebugUtilsLabelEXT;
+    PFN_vkCreateDebugUtilsMessengerEXT CreateDebugUtilsMessengerEXT;
+    PFN_vkDestroyDebugUtilsMessengerEXT DestroyDebugUtilsMessengerEXT;
+    PFN_vkQueueBeginDebugUtilsLabelEXT QueueBeginDebugUtilsLabelEXT;
+    PFN_vkQueueEndDebugUtilsLabelEXT QueueEndDebugUtilsLabelEXT;
+    PFN_vkQueueInsertDebugUtilsLabelEXT QueueInsertDebugUtilsLabelEXT;
+    PFN_vkSetDebugUtilsObjectNameEXT SetDebugUtilsObjectNameEXT;
+    PFN_vkSetDebugUtilsObjectTagEXT SetDebugUtilsObjectTagEXT;
+    PFN_vkSubmitDebugUtilsMessageEXT SubmitDebugUtilsMessageEXT;
 };
 
 typedef struct Rr_VulkanLoader Rr_VulkanLoader;

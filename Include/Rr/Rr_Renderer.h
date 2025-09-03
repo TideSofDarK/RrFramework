@@ -155,6 +155,8 @@ extern void Rr_InitThreadContext(void);
 
 extern void Rr_CleanupThreadContext(void);
 
+extern void Rr_SetNextObjectName(const char *Name);
+
 #ifdef __cplusplus
 }
 #endif

@@ -41,6 +41,7 @@
 - [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
 - [ ] Support for immutable buffers/images that don't require synchronization.
 - [ ] Public API should use const where applicable.
+- [ ] Does PushXXXIntoHive need to return iterator?
 
 * Features
 

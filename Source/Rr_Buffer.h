@@ -43,6 +43,8 @@ struct Rr_Buffer
     uint32_t AllocatedBufferCount;
     Rr_AllocatedBuffer AllocatedBuffers[RR_FRAME_OVERLAP];
 
+    char Name[32];
+
     Rr_AtomicInt RefCount;
 };
 

@@ -44,6 +44,8 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 
     Buffer->Flags = Flags;
 
+    Rr_ConsumeNextObjectName(Buffer->Name);
+
     Buffer->Usage = 0;
     if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_UNIFORM_BIT))
     {
@@ -124,14 +126,33 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
         VmaAllocationInfo AllocationInfo;
-        vmaCreateBuffer(
+
+        VkResult Result = vmaCreateBuffer(
             gRenderer->Allocator,
             &BufferCreateInfo,
             &AllocationCreateInfo,
             &AllocatedBuffer->Handle,
             &AllocatedBuffer->Allocation,
             &AllocationInfo);
+        assert(Result == VK_SUCCESS);
+
         AllocatedBuffer->MappedData = AllocationInfo.pMappedData;
+
+#ifdef RR_DEBUG
+        char ObjectName[32];
+        if (snprintf(
+                ObjectName,
+                sizeof(ObjectName) - 1,
+                "%s#%d",
+                Buffer->Name,
+                Index))
+        {
+        }
+        Rr_SetVulkanObjectName(
+            VK_OBJECT_TYPE_BUFFER,
+            (uint64_t)AllocatedBuffer->Handle,
+            ObjectName);
+#endif
     }
 
     return Buffer;
@@ -157,10 +178,9 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
 
 void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 {
-    if (Buffer == NULL)
-    {
-        return;
-    }
+    assert(Buffer && Buffer->AllocatedBufferCount > 0);
+
+    Rr_PrintDestroyMessage("Rr_Buffer", Buffer->Name, Buffer);
 
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
@@ -187,8 +207,6 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
     Rr_RemoveFromBufferHive(&gRenderer->Buffers, &It);
 
     Rr_UnlockSpinlock(&gRenderer->BuffersLock);
-
-    RR_LOG("Destroyed buffer with address %p", (void *)Buffer);
 }
 
 void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)

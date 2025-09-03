@@ -22,6 +22,10 @@
  * SOFTWARE.
  */
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "Rr_Renderer.h"
 
 #include "Rr_App.h"
@@ -476,7 +480,7 @@ void Rr_WaitIdle(void)
     Device->DeviceWaitIdle(Device->Handle);
 }
 
-static inline void Rr_ProcessReleasedObjects(void)
+static inline void Rr_DestroyReleasedObjects(void)
 {
     Rr_LockSpinlock(&gRenderer->ReleasedBuffersLock);
     for (Rr_HandleHiveIterator It = gRenderer->ReleasedBuffers.Begin;
@@ -596,7 +600,7 @@ void Rr_CleanupRenderer(void)
         Rr_FinalizeGraph(gRenderer->Frames[Index].Graph);
     }
 
-    Rr_ProcessReleasedObjects();
+    Rr_DestroyReleasedObjects();
 
     /* NOTE: VkFramebuffers are destroyed along with VkImageViews.
      * For now, we don't care for destroying render passes unless it's
@@ -709,7 +713,7 @@ void Rr_NewFrame(void)
         Rr_FinalizeGraph(Frame->Graph);
     }
 
-    Rr_ProcessReleasedObjects();
+    Rr_DestroyReleasedObjects();
 
     /* Reset everything allocated last time. */
 
@@ -1533,4 +1537,45 @@ void Rr_CleanupThreadContext(void)
 Rr_ThreadContext *Rr_GetThreadContext(void)
 {
     return ThreadContext;
+}
+
+static RR_THREAD_LOCAL char NextObjectName[32] = { 0 };
+
+void Rr_SetNextObjectName(const char *Name)
+{
+    strncpy(NextObjectName, Name, sizeof(NextObjectName) - 1);
+}
+
+void Rr_ConsumeNextObjectName(char Dst[32])
+{
+    if (NextObjectName[0] != '\0')
+    {
+        strncpy(Dst, NextObjectName, sizeof(NextObjectName) - 1);
+        NextObjectName[0] = '\0';
+    }
+}
+
+void Rr_SetVulkanObjectName(
+    VkObjectType ObjectType,
+    uint64_t Handle,
+    const char *Name)
+{
+    VkDebugUtilsObjectNameInfoEXT ObjectNameInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = ObjectType,
+        .objectHandle = Handle,
+        .pObjectName = Name,
+    };
+    gRenderer->Instance.SetDebugUtilsObjectNameEXT(
+        gRenderer->Device.Handle,
+        &ObjectNameInfo);
+}
+
+void Rr_PrintDestroyMessage(const char *Type, const char *Name, void *Address)
+{
+    RR_LOG(
+        "Destroying %s: { name: \"%s\", address = %p }",
+        Type,
+        Name[0] != '\0' ? Name : "UNNAMED",
+        (void *)Address);
 }

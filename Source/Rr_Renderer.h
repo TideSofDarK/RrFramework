@@ -316,4 +316,16 @@ struct Rr_ThreadContext
 
 extern Rr_ThreadContext *Rr_GetThreadContext(void);
 
+extern void Rr_ConsumeNextObjectName(char Dst[32]);
+
+extern void Rr_SetVulkanObjectName(
+    VkObjectType ObjectType,
+    uint64_t Handle,
+    const char *Name);
+
+extern void Rr_PrintDestroyMessage(
+    const char *Type,
+    const char *Name,
+    void *Address);
+
 extern Rr_Renderer *gRenderer;

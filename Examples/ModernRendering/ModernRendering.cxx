@@ -3,6 +3,7 @@
 #include <Rr/Rr.h>
 
 #include <array>
+#include <format>
 #include <functional>
 #include <print>
 #include <utility>
@@ -974,6 +975,7 @@ struct SModernRenderingApp
                 RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
 
         Rr_ReleaseImage(ColorImageResolved);
+        ColorImageResolved = nullptr;
         if (GetMSAASampleCount() == 1)
         {
             return;
