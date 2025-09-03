@@ -107,6 +107,52 @@ struct SCamera
     }
 };
 
+struct SFullscreenBlit
+{
+    Rr_GraphicsPipeline *GraphicsPipeline{};
+    Rr_Sampler *Sampler{};
+
+    void Blit(Rr_Graph *Graph, Rr_Image2D *SrcImage, Rr_Image2D *DstImage)
+    {
+        Rr_ColorTarget ColorTarget = {
+            .LoadOp = RR_LOAD_OP_DONT_CARE,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Image = DstImage,
+        };
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        Rr_BindCombinedImage2DSampler(GraphicsNode, SrcImage, Sampler, 0, 0);
+        Rr_Draw(GraphicsNode, 3, 1, 0, 0);
+    }
+
+    SFullscreenBlit(Rr_PipelineLayout *PipelineLayout, Rr_AssetRef FragSPV)
+    {
+        Rr_SamplerInfo Info = {};
+        Sampler = Rr_CreateSampler(&Info);
+
+        Rr_ColorTargetInfo ColorTarget = {};
+        ColorTarget.Format = Rr_GetSwapchainFormat();
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
+        PipelineInfo.Layout = PipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_FULLSCREENTRIANGLE_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV = Rr_LoadAsset(FragSPV);
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = &ColorTarget;
+        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
+
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    }
+
+    ~SFullscreenBlit()
+    {
+        Rr_ReleaseSampler(Sampler);
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+    }
+};
+
 struct SSkybox
 {
     struct SGPUUniform
@@ -803,6 +849,7 @@ struct SModernRenderingApp
     Rr_GLTFContext *GLTFContext{};
     Rr_GLTFAsset *GLTFAsset{};
     Rr_Image2D *ColorImage{};
+    Rr_Image2D *ColorImageResolved{};
     Rr_Image2D *DepthImage{};
 
     static constexpr std::array<const char *, 4> MSAA_OPTIONS = { "Disabled",
@@ -812,6 +859,9 @@ struct SModernRenderingApp
     std::uint32_t MSAAOptionIndex = 0;
 
     UScancodes Scancodes{};
+
+    Rr_PipelineLayout *BlitLayout;
+    SFullscreenBlit FullscreenBlit;
 
     SLighting Lighting{};
     SCamera Camera;
@@ -920,8 +970,18 @@ struct SModernRenderingApp
         ColorImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
             Rr_GetSwapchainFormat(),
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT |
-                SampleCountFlag);
+            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
+                RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
+
+        Rr_ReleaseImage(ColorImageResolved);
+        if (GetMSAASampleCount() == 1)
+        {
+            return;
+        }
+        ColorImageResolved = Rr_CreateImage2D(
+            { SwapchainSize.X, SwapchainSize.Y },
+            Rr_GetSwapchainFormat(),
+            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     }
 
     void InitCamera()
@@ -1215,30 +1275,38 @@ struct SModernRenderingApp
                 Graph,
                 ColorImage,
                 0,
-                SwapchainImage,
+                ColorImageResolved,
                 0,
                 RR_IMAGE_ASPECT_COLOR_BIT);
+            FullscreenBlit.Blit(Graph, ColorImageResolved, SwapchainImage);
         }
         else
         {
-            Rr_IntVec4 SwapchainRect = {
-                0,
-                0,
-                SwapchainSize.Width,
-                SwapchainSize.Height,
-            };
-            Rr_BlitImage2D(
-                Graph,
-                ColorImage,
-                SwapchainImage,
-                SwapchainRect,
-                SwapchainRect,
-                RR_IMAGE_ASPECT_COLOR_BIT);
+            FullscreenBlit.Blit(Graph, ColorImage, SwapchainImage);
         }
     }
 
+    Rr_PipelineLayout *CreateBlitLayout()
+    {
+        std::array Bindings0 = {
+            Rr_Binding{
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array BindingSets = {
+            Rr_BindingSet{
+                .BindingCount = Bindings0.size(),
+                .Bindings = Bindings0.data(),
+            },
+        };
+        return Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
+    }
+
     SModernRenderingApp()
-        : Grid(GetMSAASampleCount())
+        : BlitLayout(CreateBlitLayout())
+        , FullscreenBlit(BlitLayout, EXAMPLE_ASSET_FULLSCREENTRIANGLE_FRAG_SPV)
+        , Grid(GetMSAASampleCount())
     {
         Lighting.Init();
         Lighting.AddPointLight();
@@ -1254,6 +1322,7 @@ struct SModernRenderingApp
 
     ~SModernRenderingApp()
     {
+        Rr_ReleasePipelineLayout(BlitLayout);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
         Rr_ReleaseGLTFContext(GLTFContext);
@@ -1261,6 +1330,7 @@ struct SModernRenderingApp
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseImage(ColorImage);
+        Rr_ReleaseImage(ColorImageResolved);
         Lighting.Cleanup();
         Skybox.Cleanup();
     }
