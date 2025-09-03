@@ -805,11 +805,6 @@ struct SModernRenderingApp
     Rr_Image2D *ColorImage{};
     Rr_Image2D *DepthImage{};
 
-    SLighting Lighting{};
-    SCamera Camera;
-    SGrid Grid;
-    SSkybox Skybox{};
-
     static constexpr std::array<const char *, 4> MSAA_OPTIONS = { "Disabled",
                                                                   "2 Samples",
                                                                   "4 Samples",
@@ -818,7 +813,12 @@ struct SModernRenderingApp
 
     UScancodes Scancodes{};
 
-    auto GetMSAASampleCount() const -> uint32_t
+    SLighting Lighting{};
+    SCamera Camera;
+    SGrid Grid;
+    SSkybox Skybox{};
+
+    uint32_t GetMSAASampleCount() const
     {
         return 1 << MSAAOptionIndex;
     }
@@ -920,7 +920,8 @@ struct SModernRenderingApp
         ColorImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
             Rr_GetSwapchainFormat(),
-            RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT |
+                SampleCountFlag);
     }
 
     void InitCamera()

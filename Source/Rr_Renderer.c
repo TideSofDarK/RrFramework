@@ -129,6 +129,7 @@ static bool Rr_InitSwapchain(void)
         gRenderer->Swapchain.Extent.height =
             SurfaceCapabilities.currentExtent.height;
     }
+    gRenderer->Swapchain.Extent.depth = 1;
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 

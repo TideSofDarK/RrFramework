@@ -75,11 +75,7 @@ static void Iterate(void)
     Rr_Graph *Graph = Rr_GetGraph();
 
     Rr_ColorClear ColorClear = {};
-    Rr_ClearColorImage2D(
-        Graph,
-        "clear",
-        &ColorClear,
-        Rr_GetSwapchainImage());
+    Rr_ClearColorImage2D(Graph, "clear", &ColorClear, Rr_GetSwapchainImage());
 
     Rr_UIDebugOverlay();
 

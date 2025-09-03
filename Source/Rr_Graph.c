@@ -1418,9 +1418,9 @@ static void Rr_ExecuteResolveImageNode(
     Device->CmdResolveImage(
         CommandBuffer,
         SrcAllocatedcImage->Handle,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         DstAllocatedtImage->Handle,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &Region);
 }
@@ -2493,9 +2493,9 @@ void Rr_ResolveImage2D(
         GraphNode,
         SrcImageHandle,
         &(Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .AccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
-            .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         });
     Rr_MarkImageUsed(Graph, SrcImage);
 
@@ -2504,9 +2504,9 @@ void Rr_ResolveImage2D(
         GraphNode,
         DstImageHandle,
         &(Rr_SyncState){
-            .StageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .AccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         });
     Rr_MarkImageUsed(Graph, DstImage);
 }
