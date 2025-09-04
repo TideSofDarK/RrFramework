@@ -66,11 +66,7 @@ extern void *Rr_AllocArena(
     (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, 1)
 #define RR_ALLOC_TYPE_COUNT(Arena, Type, Count) \
     (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, Count)
-/* TODO: Replace all instances with V2. */
-#define RR_ALLOC_COPY(Arena, Dst, Src, Size) \
-    Dst = RR_ALLOC_NO_ZERO(Arena, Size);     \
-    memcpy(Dst, Src, Size)
-#define RR_ALLOC_COPY_V2(Arena, Src, Size) \
+#define RR_ALLOC_COPY(Arena, Src, Size) \
     (memcpy(RR_ALLOC_NO_ZERO(Arena, Size), Src, Size))
 
 extern void Rr_PopArena(Rr_Arena *Arena, size_t Amount);

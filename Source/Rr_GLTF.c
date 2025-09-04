@@ -169,9 +169,8 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     GLTFContext->VertexInputStrides =
         RR_ALLOC_TYPE_COUNT(Arena, size_t, VertexInputBindingCount);
     GLTFContext->VertexInputBindingCount = VertexInputBindingCount;
-    RR_ALLOC_COPY(
+    GLTFContext->VertexInputBindings = RR_ALLOC_COPY(
         Arena,
-        GLTFContext->VertexInputBindings,
         GLTFVertexInputBindings,
         sizeof(Rr_GLTFVertexInputBinding) * VertexInputBindingCount);
     for (size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
@@ -179,9 +178,8 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     {
         Rr_GLTFVertexInputBinding *GLTFVertexInputBinding =
             GLTFContext->VertexInputBindings + BindingIndex;
-        RR_ALLOC_COPY(
+        GLTFVertexInputBinding->AttributeTypes = RR_ALLOC_COPY(
             Arena,
-            GLTFVertexInputBinding->AttributeTypes,
             GLTFVertexInputBindings[BindingIndex].AttributeTypes,
             sizeof(Rr_GLTFAttributeType) *
                 GLTFVertexInputBindings[BindingIndex].AttributeTypeCount);
@@ -198,9 +196,8 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
 
     if (GLTFTextureMappingCount > 0)
     {
-        RR_ALLOC_COPY(
+        GLTFContext->TextureMappings = RR_ALLOC_COPY(
             Arena,
-            GLTFContext->TextureMappings,
             GLTFTextureMappings,
             sizeof(Rr_GLTFTextureMapping) * GLTFTextureMappingCount);
     }
@@ -497,9 +494,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
         if (Mesh->name)
         {
-            RR_ALLOC_COPY(
+            GLTFMesh->Name = RR_ALLOC_COPY(
                 GLTFContext->Arena,
-                GLTFMesh->Name,
                 Mesh->name,
                 strlen(Mesh->name));
         }

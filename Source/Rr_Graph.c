@@ -2399,7 +2399,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     if (ColorTargetCount > 0)
     {
         GraphicsNode->ColorTargetCount = (uint32_t)ColorTargetCount;
-        GraphicsNode->ColorTargets = RR_ALLOC_COPY_V2(
+        GraphicsNode->ColorTargets = RR_ALLOC_COPY(
             Graph->Arena,
             ColorTargets,
             sizeof(Rr_ColorTarget) * ColorTargetCount);
