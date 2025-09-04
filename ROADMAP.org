@@ -29,7 +29,7 @@
 - [X] 3D image support.
 - [X] Image array support.
 - [X] Refactor duplicated code in Rr_ExecuteComputeNode and Rr_ExecuteGraphicsNode functions.
-- [ ] MSAA support.
+- [X] MSAA support.
 - [X] Check if descriptor set layouts are properly hashed.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
