@@ -60,6 +60,7 @@
 - [ ] Radio buttons.
 - [ ] Nested windows.
 - [ ] Swap font rendering with stb_truetype.
+- [ ] More nesting support. Tabs especially.
 
 ** Debug
 

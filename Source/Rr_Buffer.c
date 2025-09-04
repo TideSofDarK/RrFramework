@@ -211,6 +211,7 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 
 void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
 {
+    assert(Buffer);
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
     return AllocatedBuffer->MappedData;
 }
