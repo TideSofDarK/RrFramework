@@ -13,79 +13,79 @@ layout(constant_id = 2) const uint RADIUS = 4;
 
 layout(local_size_x = 1, local_size_y_id = 0, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, rg32f) restrict readonly uniform image2DArray image;
-layout(set = 0, binding = 1, rg32f) restrict writeonly uniform image2DArray image_out;
+layout(set = 0, binding = 0, rg32f) restrict readonly uniform image2DArray SrcImage;
+layout(set = 0, binding = 1, rg32f) restrict writeonly uniform image2DArray DstImage;
 
-ivec3 leading_face(uint x) {
-    uint face = gl_GlobalInvocationID.z;
-    uint y = gl_GlobalInvocationID.y;
+ivec3 LeadingFace(uint X) {
+    uint Face = gl_GlobalInvocationID.z;
+    uint Y = gl_GlobalInvocationID.y;
 
-    switch (face) {
+    switch (Face) {
         case POS_X:
-        return ivec3(x, y, POS_Z);
+        return ivec3(X, Y, POS_Z);
         case NEG_X:
-        return ivec3(x, y, NEG_Z);
+        return ivec3(X, Y, NEG_Z);
         case POS_Y:
-        return ivec3(y, IMAGE_SIZE - (x + 1), NEG_X);
+        return ivec3(Y, IMAGE_SIZE - (X + 1), NEG_X);
         case NEG_Y:
-        return ivec3(IMAGE_SIZE - (y + 1), x, NEG_X);
+        return ivec3(IMAGE_SIZE - (Y + 1), X, NEG_X);
         case POS_Z:
-        return ivec3(x, y, NEG_X);
+        return ivec3(X, Y, NEG_X);
         default:
-        return ivec3(x, y, POS_X);
+        return ivec3(X, Y, POS_X);
     }
 }
 
-ivec3 trailing_face(uint x) {
-    uint face = gl_GlobalInvocationID.z;
-    uint y = gl_GlobalInvocationID.y;
+ivec3 TrailingFace(uint X) {
+    uint Face = gl_GlobalInvocationID.z;
+    uint Y = gl_GlobalInvocationID.y;
 
-    switch (face) {
+    switch (Face) {
         case POS_X:
-        return ivec3(x, y, NEG_Z);
+        return ivec3(X, Y, NEG_Z);
         case NEG_X:
-        return ivec3(x, y, POS_Z);
+        return ivec3(X, Y, POS_Z);
         case POS_Y:
-        return ivec3(IMAGE_SIZE - (y + 1), x, POS_X);
+        return ivec3(IMAGE_SIZE - (Y + 1), X, POS_X);
         case NEG_Y:
-        return ivec3(y, IMAGE_SIZE - (x + 1), POS_X);
+        return ivec3(Y, IMAGE_SIZE - (X + 1), POS_X);
         case POS_Z:
-        return ivec3(x, y, POS_X);
+        return ivec3(X, Y, POS_X);
         default:
-        return ivec3(x, y, NEG_X);
+        return ivec3(X, Y, NEG_X);
     }
 }
 
 void main() {
-    uint face = gl_GlobalInvocationID.z;
-    uint y = gl_GlobalInvocationID.y;
+    uint Face = gl_GlobalInvocationID.z;
+    uint Y = gl_GlobalInvocationID.y;
 
-    vec2 accumulator = vec2(0.0);
-    float per_texel = 1.0 / float((RADIUS << 1) + 1);
+    vec2 Accumulator = vec2(0.0);
+    float PerTexel = 1.0 / float((RADIUS << 1) + 1);
 
-    for (uint x = IMAGE_SIZE - RADIUS; x < IMAGE_SIZE; x++) {
-        accumulator += imageLoad(image, leading_face(x)).rg;
+    for (uint X = IMAGE_SIZE - RADIUS; X < IMAGE_SIZE; X++) {
+        Accumulator += imageLoad(SrcImage, LeadingFace(X)).rg;
     }
 
-    for (uint x = 0; x < RADIUS; x++) {
-        accumulator += imageLoad(image, ivec3(x, y, face)).rg;
+    for (uint X = 0; X < RADIUS; X++) {
+        Accumulator += imageLoad(SrcImage, ivec3(X, Y, Face)).rg;
     }
 
-    for (uint x = 0; x < RADIUS; x++) {
-        accumulator += imageLoad(image, ivec3(x + RADIUS, y, face)).rg;
-        imageStore(image_out, ivec3(x, y, face), vec4(accumulator * per_texel, 0.0, 0.0));
-        accumulator -= imageLoad(image, leading_face((IMAGE_SIZE - RADIUS) + x)).rg;
+    for (uint X = 0; X < RADIUS; X++) {
+        Accumulator += imageLoad(SrcImage, ivec3(X + RADIUS, Y, Face)).rg;
+        imageStore(DstImage, ivec3(X, Y, Face), vec4(Accumulator * PerTexel, 0.0, 0.0));
+        Accumulator -= imageLoad(SrcImage, LeadingFace((IMAGE_SIZE - RADIUS) + X)).rg;
     }
 
-    for (uint x = RADIUS; x < IMAGE_SIZE - RADIUS; x++) {
-        accumulator += imageLoad(image, ivec3(x + RADIUS, y, face)).rg;
-        imageStore(image_out, ivec3(x, y, face), vec4(accumulator * per_texel, 0.0, 0.0));
-        accumulator -= imageLoad(image, ivec3(x - RADIUS, y, face)).rg;
+    for (uint X = RADIUS; X < IMAGE_SIZE - RADIUS; X++) {
+        Accumulator += imageLoad(SrcImage, ivec3(X + RADIUS, Y, Face)).rg;
+        imageStore(DstImage, ivec3(X, Y, Face), vec4(Accumulator * PerTexel, 0.0, 0.0));
+        Accumulator -= imageLoad(SrcImage, ivec3(X - RADIUS, Y, Face)).rg;
     }
 
-    for (uint x = IMAGE_SIZE - RADIUS; x < IMAGE_SIZE; x++) {
-        accumulator += imageLoad(image, trailing_face((x + RADIUS) - IMAGE_SIZE)).rg;
-        imageStore(image_out, ivec3(x, y, face), vec4(accumulator * per_texel, 0.0, 0.0));
-        accumulator -= imageLoad(image, ivec3(x - RADIUS, y, face)).rg;
+    for (uint X = IMAGE_SIZE - RADIUS; X < IMAGE_SIZE; X++) {
+        Accumulator += imageLoad(SrcImage, TrailingFace((X + RADIUS) - IMAGE_SIZE)).rg;
+        imageStore(DstImage, ivec3(X, Y, Face), vec4(Accumulator * PerTexel, 0.0, 0.0));
+        Accumulator -= imageLoad(SrcImage, ivec3(X - RADIUS, Y, Face)).rg;
     }
 }

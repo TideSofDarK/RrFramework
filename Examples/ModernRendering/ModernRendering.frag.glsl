@@ -47,7 +47,7 @@ float ReduceLightBleeding(float PMax, float Amount)
 
 float PointVSM(in vec2 Moments, in float CurrentDepth, in SGPUPointLight Light) {
     float P = step(CurrentDepth, Moments.x + Light.Bias);
-    float Variance = max(Moments.y - Moments.x * Moments.x, 0.000001);
+    float Variance = max(Moments.y - Moments.x * Moments.x, 0.001);
     float Dist = CurrentDepth - Moments.x;
     float PMax = Variance / (Variance + Dist * Dist);
     PMax = ReduceLightBleeding(PMax, Light.BleedReduction);

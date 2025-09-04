@@ -2437,7 +2437,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
 
 void Rr_ClearColorImage2D(
     Rr_Graph *Graph,
-    Rr_ColorClear *ColorClear,
+    Rr_ColorClear ColorClear,
     Rr_Image2D *Image)
 {
     assert(
@@ -2445,7 +2445,7 @@ void Rr_ClearColorImage2D(
          (Graph->Flags & RR_GRAPH_FLAGS_COMPUTE_BIT)) &&
         "This function requires a graph with graphics or compute "
         "capabilities!");
-    assert(ColorClear != NULL && Image != NULL);
+    assert(Image != NULL);
 
     Rr_GraphNode *GraphNode =
         Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_CLEAR_COLOR_IMAGE);
@@ -2462,7 +2462,7 @@ void Rr_ClearColorImage2D(
     Rr_MarkImageUsed(Graph, Image);
 
     GraphNode->Union.ClearColorImage =
-        (Rr_ClearColorImageNode){ .ColorClear = *ColorClear,
+        (Rr_ClearColorImageNode){ .ColorClear = ColorClear,
                                   .ColorImage = *ColorImageHandle };
 }
 

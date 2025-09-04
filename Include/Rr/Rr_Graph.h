@@ -176,7 +176,7 @@ extern void Rr_BlitImage2D(
 
 extern void Rr_ClearColorImage2D(
     Rr_Graph *Graph,
-    Rr_ColorClear *ColorClear,
+    Rr_ColorClear ColorClear,
     Rr_Image2D *Image);
 
 extern void Rr_ResolveImage2D(

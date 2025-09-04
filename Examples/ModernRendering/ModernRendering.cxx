@@ -162,46 +162,30 @@ struct SSkybox
         float Time;
     };
 
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_PipelineLayout *PipelineLayout{};
+    Rr_GraphicsPipeline *GraphicsPipeline{};
 
-    Rr_Buffer *UniformBuffer;
-    Rr_Buffer *StagingBuffer;
-    Rr_Sampler *Sampler;
-    Rr_GLTFContext *GLTFContext;
-    Rr_GLTFAsset *GLTFAsset;
+    Rr_Buffer *UniformBuffer{};
+    Rr_Buffer *StagingBuffer{};
+    Rr_Sampler *Sampler{};
+    Rr_GLTFContext *GLTFContext{};
+    Rr_GLTFAsset *GLTFAsset{};
 
-    void InitPipeline()
+    static constexpr std::array VertexAttributes = {
+        Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+    };
+
+    static constexpr std::array VertexInputBindings = {
+        Rr_VertexInputBinding{
+            .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+            .AttributeCount = VertexAttributes.size(),
+            .Attributes = VertexAttributes.data(),
+        },
+    };
+
+    void RecreatePipeline(uint32_t MSAASampleCount)
     {
-        std::array Bindings = {
-            Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                1,
-                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
-        std::array VertexAttributes = {
-            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
-        };
-
-        std::array VertexInputBindings = {
-            Rr_VertexInputBinding{
-                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-                .AttributeCount = VertexAttributes.size(),
-                .Attributes = VertexAttributes.data(),
-            },
-        };
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
 
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetSwapchainFormat();
@@ -218,24 +202,9 @@ struct SSkybox
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
+        PipelineInfo.Multisampling.SampleCount = MSAASampleCount;
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
-
-        std::array GLTFAttributeTypes = {
-            RR_GLTF_ATTRIBUTE_TYPE_POSITION,
-        };
-
-        Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
-            .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
-            .AttributeTypes = GLTFAttributeTypes.data(),
-        };
-
-        GLTFContext = Rr_CreateGLTFContext(
-            VertexInputBindings.size(),
-            VertexInputBindings.data(),
-            &GLTFVertexInputBinding,
-            0,
-            NULL);
     }
 
     void InitUniformBuffer()
@@ -249,11 +218,28 @@ struct SSkybox
     void InitSampler()
     {
         Rr_SamplerInfo Info = {};
+        Info.MinFilter = RR_FILTER_LINEAR;
+        Info.MagFilter = RR_FILTER_LINEAR;
         Sampler = Rr_CreateSampler(&Info);
     }
 
     void InitSkyboxMesh()
     {
+        std::array GLTFAttributeTypes = {
+            RR_GLTF_ATTRIBUTE_TYPE_POSITION,
+        };
+
+        Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
+            .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
+            .AttributeTypes = GLTFAttributeTypes.data(),
+        };
+        GLTFContext = Rr_CreateGLTFContext(
+            VertexInputBindings.size(),
+            VertexInputBindings.data(),
+            &GLTFVertexInputBinding,
+            0,
+            NULL);
+
         Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_GLB);
         GLTFAsset = Rr_CreateGLTFAsset(
             GLTFContext,
@@ -262,16 +248,9 @@ struct SSkybox
             LoadedAsset.Pointer);
     }
 
-    void Init()
-    {
-        InitPipeline();
-        InitUniformBuffer();
-        InitSampler();
-        InitSkyboxMesh();
-    }
-
     void Draw(
-        Rr_GraphNode *GraphicsNode,
+        Rr_Graph *Graph,
+        Rr_Image2D *ColorImage,
         const SCamera &Camera,
         Rr_ImageCube *ImageCube)
     {
@@ -283,6 +262,15 @@ struct SSkybox
             Rr_GetMappedBufferData(UniformBuffer),
             &Uniform,
             sizeof(SGPUUniform));
+
+        Rr_ColorTarget ColorTarget = {
+            .Slot = 0,
+            .LoadOp = RR_LOAD_OP_DONT_CARE,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Image = ColorImage,
+        };
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
 
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindVertexBuffer(
@@ -308,7 +296,33 @@ struct SSkybox
         Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
     }
 
-    void Cleanup()
+    SSkybox(uint32_t MSAASampleCount)
+    {
+        std::array Bindings = {
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
+        };
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        RecreatePipeline(MSAASampleCount);
+        InitUniformBuffer();
+        InitSampler();
+        InitSkyboxMesh();
+    }
+
+    ~SSkybox()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -555,6 +569,8 @@ struct SLighting
     std::vector<SGPUPointLight> PointLights{};
     std::vector<Rr_ImageCube *> PointShadowMaps{};
 
+    Rr_ImageCube *VisualizePointShadowMap{};
+
     Rr_Image2D *DepthImage;
     Rr_ImageCube *IntermediatePointShadowMap;
     SVSMBlur VSMBlur;
@@ -739,9 +755,16 @@ struct SLighting
 
     void UI()
     {
-        for (auto &PointLight : PointLights)
+        for (std::uint32_t Index = 0; Index < PointLights.size(); ++Index)
         {
-            UIPointLight(PointLight);
+            bool Visualize = VisualizePointShadowMap == PointShadowMaps[Index];
+            bool OldVisualize = Visualize;
+            if (Rr_UICheckbox("Visualize Shadow Map", &Visualize))
+            {
+                VisualizePointShadowMap =
+                    OldVisualize ? nullptr : PointShadowMaps[Index];
+            }
+            UIPointLight(PointLights[Index]);
         }
     }
 
@@ -888,10 +911,12 @@ struct SModernRenderingApp
     Rr_Image2D *ColorImageResolved{};
     Rr_Image2D *DepthImage{};
 
-    static constexpr std::array<const char *, 4> MSAA_OPTIONS = { "Disabled",
-                                                                  "2 Samples",
-                                                                  "4 Samples",
-                                                                  "8 Samples" };
+    static constexpr std::array<const char *, 4> MSAA_OPTIONS = {
+        "Disabled",
+        "2 Samples",
+        "4 Samples",
+        "8 Samples",
+    };
     std::uint32_t MSAAOptionIndex = 0;
 
     UScancodes Scancodes{};
@@ -901,8 +926,9 @@ struct SModernRenderingApp
 
     SCamera Camera;
     SLighting Lighting;
-    SSkybox Skybox{};
+    SSkybox Skybox;
     SGrid Grid;
+    bool DrawGrid = true;
 
     uint32_t GetMSAASampleCount() const
     {
@@ -1226,22 +1252,31 @@ struct SModernRenderingApp
     void UI()
     {
         Rr_UIBeginWindow("ModernRendering.cxx", NULL, 0);
-        if (Rr_UICombobox(
-                "MSAA",
-                MSAA_OPTIONS.size(),
-                MSAA_OPTIONS.data(),
-                &MSAAOptionIndex))
+        Rr_UIBeginTabs("Tabs");
+        if (Rr_UITab("General"))
         {
-            Grid.RecreatePipeline(GetMSAASampleCount());
-            InitAttachments();
-            InitPipeline();
+            Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
+            Rr_Vec3 CameraForward = Camera.GetForwardVector();
+            Rr_UIInputFloat3("Camera Forward", CameraForward.Elements);
+            Rr_UISeparator();
+            Rr_UICheckbox("Draw Grid", &DrawGrid);
+            if (Rr_UICombobox(
+                    "MSAA",
+                    MSAA_OPTIONS.size(),
+                    MSAA_OPTIONS.data(),
+                    &MSAAOptionIndex))
+            {
+                Skybox.RecreatePipeline(GetMSAASampleCount());
+                Grid.RecreatePipeline(GetMSAASampleCount());
+                InitAttachments();
+                InitPipeline();
+            }
         }
-        Rr_UISeparator();
-        Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
-        Rr_Vec3 CameraForward = Camera.GetForwardVector();
-        Rr_UIInputFloat3("Camera Forward", CameraForward.Elements);
-        Rr_UISeparator();
-        Lighting.UI();
+        if (Rr_UITab("Lighting"))
+        {
+            Lighting.UI();
+        }
+        Rr_UIEndTabs();
         Rr_UIEndWindow();
     }
 
@@ -1271,11 +1306,24 @@ struct SModernRenderingApp
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         /// MAIN PASS
+        Rr_ClearColorImage2D(
+            Graph,
+            { Rr_V4(0.005f, 0.007f, 0.015f, 1.0f) },
+            ColorImage);
+
+        if (Lighting.VisualizePointShadowMap)
+        {
+            Skybox.Draw(
+                Graph,
+                ColorImage,
+                Camera,
+                Lighting.VisualizePointShadowMap);
+        }
+
         Rr_ColorTarget ColorTarget = {
             .Slot = 0,
-            .LoadOp = RR_LOAD_OP_CLEAR,
+            .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
-            .Clear = { Rr_V4(0.005f, 0.007f, 0.015f, 1.0f) },
             .Image = ColorImage,
         };
         Rr_DepthTarget DepthTarget = {
@@ -1286,8 +1334,6 @@ struct SModernRenderingApp
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
-
-        // Skybox.Draw(GraphicsNode, Camera, Lighting.PointShadowMaps[0]);
 
         SGPUUniform Uniform = {
             .View = Camera.ViewMatrix,
@@ -1311,7 +1357,10 @@ struct SModernRenderingApp
         Lighting.BindLights(GraphicsNode, 1);
         DrawGLTFAsset(GraphicsNode, 2, 0);
 
-        Grid.Draw(Camera, ColorImage, DepthImage);
+        if (DrawGrid)
+        {
+            Grid.Draw(Camera, ColorImage, DepthImage);
+        }
 
         if (GetMSAASampleCount() > 1)
         {
@@ -1351,9 +1400,9 @@ struct SModernRenderingApp
         : BlitLayout(CreateBlitLayout())
         , FullscreenBlit(BlitLayout, EXAMPLE_ASSET_FULLSCREENTRIANGLE_FRAG_SPV)
         , Grid(GetMSAASampleCount())
+        , Skybox(GetMSAASampleCount())
     {
         Lighting.AddPointLight();
-        Skybox.Init();
         InitAttachments();
         InitPipelineLayout();
         InitPipeline();
@@ -1374,7 +1423,6 @@ struct SModernRenderingApp
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseImage(ColorImage);
         Rr_ReleaseImage(ColorImageResolved);
-        Skybox.Cleanup();
     }
 };
 
