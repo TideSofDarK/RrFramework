@@ -37,6 +37,21 @@ typedef struct Rr_Renderer Rr_Renderer;
 
 typedef enum
 {
+    RR_PRESENT_MODE_FIFO,
+    RR_PRESENT_MODE_FIFO_RELAXED,
+    RR_PRESENT_MODE_IMMEDIATE,
+    RR_PRESENT_MODE_MAILBOX,
+} Rr_PresentMode;
+
+static const char *RR_PRESENT_MODES[] = {
+    "FIFO",
+    "FIFO_RELAXED",
+    "IMMEDIATE",
+    "MAILBOX",
+};
+
+typedef enum
+{
     RR_FORMAT_UNDEFINED,
     RR_FORMAT_FLOAT,
     RR_FORMAT_UINT,
@@ -115,19 +130,50 @@ typedef enum
 } Rr_ShaderStageBits;
 typedef uint32_t Rr_ShaderStage;
 
-typedef enum
+typedef union Rr_ColorClear Rr_ColorClear;
+union Rr_ColorClear
 {
-    RR_PRESENT_MODE_FIFO,
-    RR_PRESENT_MODE_FIFO_RELAXED,
-    RR_PRESENT_MODE_IMMEDIATE,
-    RR_PRESENT_MODE_MAILBOX,
-} Rr_PresentMode;
+    Rr_Vec4 Vec4;
+    Rr_IntVec4 IntVec4;
+};
 
-static const char *RR_PRESENT_MODES[] = {
-    "FIFO",
-    "FIFO_RELAXED",
-    "IMMEDIATE",
-    "MAILBOX",
+typedef struct Rr_ColorTarget Rr_ColorTarget;
+struct Rr_ColorTarget
+{
+    uint32_t Slot;
+    Rr_LoadOp LoadOp;
+    Rr_StoreOp StoreOp;
+    Rr_ColorClear Clear;
+    struct Rr_Image *Image;
+    uint32_t ImageLayerIndex;
+    struct Rr_Image *ResolveImage;
+    uint32_t ResolveImageLayerIndex;
+};
+
+typedef struct Rr_DepthClear Rr_DepthClear;
+struct Rr_DepthClear
+{
+    float Depth;
+    uint32_t Stencil;
+};
+
+typedef struct Rr_DepthTarget Rr_DepthTarget;
+struct Rr_DepthTarget
+{
+    Rr_LoadOp LoadOp;
+    Rr_StoreOp StoreOp;
+    Rr_DepthClear Clear;
+    struct Rr_Image *Image;
+    uint32_t ImageLayerIndex;
+};
+
+typedef struct Rr_DrawIndirectCommand Rr_DrawIndirectCommand;
+struct Rr_DrawIndirectCommand
+{
+    uint32_t VertexCount;
+    uint32_t InstanceCount;
+    uint32_t FirstVertex;
+    uint32_t FirstInstance;
 };
 
 extern Rr_TextureFormat Rr_GetSwapchainFormat(void);

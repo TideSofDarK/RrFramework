@@ -462,6 +462,7 @@ struct SVSMBlur
         Rr_ImageCube *TargetImage,
         Rr_ImageCube *IntermediateImage)
     {
+        Rr_SetNextNodeName(Graph, "Blur");
         Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
         for (uint32_t Index = 0; Index < BLUR_PASSES; ++Index)
         {

@@ -201,8 +201,7 @@ struct SBindingTestApp
     {
         Rr_UIDebugOverlay();
 
-        Rr_GraphNode *ComputeNode =
-            Rr_AddComputeNode(Rr_GetGraph(), "compute_a");
+        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, ComputePipeline);
         Rr_BindStorageBuffer(
             ComputeNode,
@@ -252,7 +251,6 @@ struct SBindingTestApp
 
         Rr_BlitImage2D(
             Rr_GetGraph(),
-            "blit_a",
             StorageImageA,
             Rr_GetSwapchainImage(),
             { 0, 0, 256, 256 },
@@ -261,7 +259,6 @@ struct SBindingTestApp
 
         Rr_BlitImage2D(
             Rr_GetGraph(),
-            "blit_b",
             StorageImageB,
             Rr_GetSwapchainImage(),
             { 0, 0, 256, 256 },

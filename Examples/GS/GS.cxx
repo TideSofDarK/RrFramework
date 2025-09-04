@@ -206,12 +206,8 @@ struct SGSApp
         Rr_ColorTarget ColorTarget = {
             0, RR_LOAD_OP_CLEAR, RR_STORE_OP_STORE, {}, ColorAttachment,
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Rr_GetGraph(),
-            "graphics",
-            1,
-            &ColorTarget,
-            nullptr);
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(
             GraphicsNode,
@@ -323,8 +319,7 @@ struct SGSApp
                 GPUSplats.data(),
                 SplatsDataSize);
 
-            Rr_TransferNode *TransferNode =
-                Rr_AddTransferNode(Rr_GetGraph(), "transfer");
+            Rr_TransferNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph());
             Rr_TransferBufferData(
                 TransferNode,
                 SplatsDataSize,

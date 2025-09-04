@@ -257,7 +257,7 @@ struct SSmoothGridApp
             .Image = DepthImage,
         };
         Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, "grid", 1, &ColorTarget, &DepthTarget);
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(
             GraphicsNode,

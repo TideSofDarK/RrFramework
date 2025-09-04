@@ -266,7 +266,6 @@ struct SSkyboxApp
 
         Rr_CopyBufferToImageCubeEx(
             Rr_GetGraph(),
-            "copy",
             StagingBuffer,
             (LayerSize * 0),
             { Width, Height },
@@ -354,7 +353,7 @@ struct SSkyboxApp
             .Image = SwapchainImage,
         };
         Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, "grid", 1, &ColorTarget, NULL);
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindVertexBuffer(
             GraphicsNode,

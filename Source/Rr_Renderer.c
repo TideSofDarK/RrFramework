@@ -393,6 +393,12 @@ static void Rr_InitFrames(void)
             Device->Handle,
             &CommandBufferAllocateInfo,
             &Frame->LateCommandBuffer);
+        Frame->VirtualSwapchainImage.SampleCount = VK_SAMPLE_COUNT_1_BIT;
+        Frame->VirtualSwapchainImage.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+        Frame->VirtualSwapchainImage.AllocatedImageCount = 1;
+        Frame->VirtualSwapchainImage.AllocatedImages[0] = (Rr_AllocatedImage){
+            .Container = &Frame->VirtualSwapchainImage,
+        };
     }
 }
 
@@ -715,19 +721,14 @@ void Rr_NewFrame(void)
 
     Rr_DestroyReleasedObjects();
 
-    /* Reset everything allocated last time. */
+    /* NOTE: Resets everything allocated last time! */
 
     Rr_ResetArena(Frame->Arena);
 
-    Frame->VirtualSwapchainImage = RR_ALLOC_TYPE(Frame->Arena, Rr_Image2D);
+    /* Swapchain might have been recreated so fill in updated settings. */
 
-    /* These are applied again just before graph execution. */
-    /* TODO: Some of these could be set once. */
-
-    Frame->VirtualSwapchainImage->Extent = gRenderer->Swapchain.Extent;
-    Frame->VirtualSwapchainImage->Format = gRenderer->Swapchain.Format;
-    Frame->VirtualSwapchainImage->SampleCount = VK_SAMPLE_COUNT_1_BIT;
-    Frame->VirtualSwapchainImage->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+    Frame->VirtualSwapchainImage.Extent = gRenderer->Swapchain.Extent;
+    Frame->VirtualSwapchainImage.Format = gRenderer->Swapchain.Format;
 
     Frame->Graph = RR_ALLOC_TYPE(Frame->Arena, Rr_Graph);
     Frame->Graph->Flags = RR_GRAPH_FLAGS_GRAPHICS_BIT |
@@ -736,7 +737,7 @@ void Rr_NewFrame(void)
     Frame->Graph->Arena = Frame->Arena;
     Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
     Frame->Graph->SwapchainImageHandle =
-        Rr_GetGraphImageHandle(Frame->Graph, Frame->VirtualSwapchainImage);
+        Rr_GetGraphImageHandle(Frame->Graph, &Frame->VirtualSwapchainImage);
 }
 
 void Rr_DrawFrame(void)
@@ -783,18 +784,12 @@ void Rr_DrawFrame(void)
      * put real handles to virtual swapchain image which
      * will be used by the graph. */
 
-    *Frame->VirtualSwapchainImage = (Rr_Image2D){
-        .Extent = gRenderer->Swapchain.Extent,
-        .Format = gRenderer->Swapchain.Format,
-        .SampleCount = VK_SAMPLE_COUNT_1_BIT,
-        .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
-        .AllocatedImageCount = 1,
-        .AllocatedImages[0] = {
-            .ViewStorage = gRenderer->SwapchainImages.Data[SwapchainImageIndex].ViewStorage,
-            .Handle = SwapchainImageHandle,
-            .Container = (Rr_Image *)Frame->VirtualSwapchainImage,
-        },
-    };
+    Frame->VirtualSwapchainImage.Extent = gRenderer->Swapchain.Extent;
+    Frame->VirtualSwapchainImage.Format = gRenderer->Swapchain.Format;
+    Frame->VirtualSwapchainImage.AllocatedImages[0].ViewStorage =
+        gRenderer->SwapchainImages.Data[SwapchainImageIndex].ViewStorage;
+    Frame->VirtualSwapchainImage.AllocatedImages[0].Handle =
+        SwapchainImageHandle;
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -856,8 +851,6 @@ void Rr_DrawFrame(void)
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
         });
-
-    /* TODO: Make sure stage mask is correct here. */
 
     Rr_LockSpinlock(&gRenderer->Lock);
 
@@ -987,7 +980,7 @@ Rr_IntVec2 Rr_GetSwapchainSize(void)
 
 Rr_Image2D *Rr_GetSwapchainImage(void)
 {
-    return Rr_GetCurrentFrame()->VirtualSwapchainImage;
+    return &Rr_GetCurrentFrame()->VirtualSwapchainImage;
 }
 
 Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count)
@@ -1550,7 +1543,10 @@ void Rr_ConsumeNextObjectName(char Dst[32])
 {
     if (NextObjectName[0] != '\0')
     {
-        strncpy(Dst, NextObjectName, sizeof(NextObjectName) - 1);
+        for (uint32_t Index = 0; Index < 32; ++Index)
+        {
+            Dst[Index] = NextObjectName[Index];
+        }
         NextObjectName[0] = '\0';
     }
 }
@@ -1560,6 +1556,7 @@ void Rr_SetVulkanObjectName(
     uint64_t Handle,
     const char *Name)
 {
+#ifdef RR_DEBUG
     VkDebugUtilsObjectNameInfoEXT ObjectNameInfo = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .objectType = ObjectType,
@@ -1569,6 +1566,29 @@ void Rr_SetVulkanObjectName(
     gRenderer->Instance.SetDebugUtilsObjectNameEXT(
         gRenderer->Device.Handle,
         &ObjectNameInfo);
+#endif
+}
+
+void Rr_BeginVulkanCommandBufferLabel(
+    VkCommandBuffer CommandBuffer,
+    const char *Name)
+{
+#ifdef RR_DEBUG
+    Rr_Instance *Instance = &gRenderer->Instance;
+    VkDebugUtilsLabelEXT Label = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pLabelName = Name,
+    };
+    Instance->CmdBeginDebugUtilsLabelEXT(CommandBuffer, &Label);
+#endif
+}
+
+void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer)
+{
+#ifdef RR_DEBUG
+    Rr_Instance *Instance = &gRenderer->Instance;
+    Instance->CmdEndDebugUtilsLabelEXT(CommandBuffer);
+#endif
 }
 
 void Rr_PrintDestroyMessage(const char *Type, const char *Name, void *Address)

@@ -98,7 +98,6 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
 
     Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
-        "copy",
         StagingBuffer,
         0,
         Extent,
@@ -141,7 +140,6 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
-        "copy",
         StagingBuffer,
         0,
         { Width, Height },
@@ -276,7 +274,6 @@ struct SPrerenderedDepthApp
     {
         Rr_CopyImage2D(
             Rr_GetGraph(),
-            "copy_color",
             BackgroundColorImage,
             { 0 },
             ColorImage,
@@ -286,7 +283,6 @@ struct SPrerenderedDepthApp
 
         Rr_CopyImage2D(
             Rr_GetGraph(),
-            "copy_depth",
             BackgroundDepthImage,
             { 0 },
             DepthImage,
@@ -305,19 +301,14 @@ struct SPrerenderedDepthApp
             .StoreOp = RR_STORE_OP_STORE,
             .Image = DepthImage,
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Rr_GetGraph(),
-            "graphics",
-            1,
-            &ColorTarget,
-            &DepthTarget);
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
 
         Rr_BlitImage2D(
             Rr_GetGraph(),
-            "blit",
             ColorImage,
             SwapchainImage,
             { 0, 0, BackgroundExtent.Width, BackgroundExtent.Height },

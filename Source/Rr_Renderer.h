@@ -73,7 +73,8 @@ struct Rr_Frame
     VkSemaphore AcquireSemaphore;
     VkFence SubmitFence;
 
-    Rr_Image2D *VirtualSwapchainImage;
+    Rr_Image2D VirtualSwapchainImage;
+
     Rr_Graph *Graph;
 
     Rr_Arena *Arena;
@@ -322,6 +323,12 @@ extern void Rr_SetVulkanObjectName(
     VkObjectType ObjectType,
     uint64_t Handle,
     const char *Name);
+
+extern void Rr_BeginVulkanCommandBufferLabel(
+    VkCommandBuffer CommandBuffer,
+    const char *Name);
+
+extern void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer);
 
 extern void Rr_PrintDestroyMessage(
     const char *Type,

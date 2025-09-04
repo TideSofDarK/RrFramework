@@ -127,8 +127,7 @@ struct SSortList
             &UniformData,
             sizeof(SUniformData));
 
-        Rr_GraphNode *ComputeNode =
-            Rr_AddComputeNode(Rr_GetGraph(), "generate_sort_list");
+        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
         Rr_BindUniformBuffer(
             ComputeNode,
@@ -292,7 +291,7 @@ struct SBitonicSorter
             EntriesSize,
             EntriesBuffer);
 
-        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph(), "compute");
+        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
         Rr_BindStorageBuffer(ComputeNode, SplatsBuffer, 0, 0, 0, SplatsSize);
         Rr_BindStorageBufferRW(

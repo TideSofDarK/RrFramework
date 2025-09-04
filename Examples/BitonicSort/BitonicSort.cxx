@@ -85,8 +85,7 @@ struct SValidator
     {
         assert(RR_IS_POW2(Count));
 
-        Rr_GraphNode *ComputeNode =
-            Rr_AddComputeNode(Rr_GetGraph(), "validate");
+        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
         Rr_BindStorageBuffer(
             ComputeNode,
@@ -185,7 +184,7 @@ struct SBitonicSorter
     {
         assert(RR_IS_POW2(Count));
 
-        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph(), "compute");
+        Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
         Rr_BindStorageBufferRW(
             ComputeNode,
@@ -304,7 +303,7 @@ static void Iterate()
         SortedNumbers.data(),
         TOTAL_SIZE);
 
-    Rr_TransferNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph(), "upload");
+    Rr_TransferNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph());
     Rr_TransferBufferData(
         TransferNode,
         TOTAL_SIZE,
@@ -329,7 +328,6 @@ static void Iterate()
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
     Rr_BlitImage2D(
         Rr_GetGraph(),
-        "blit",
         ResultImage,
         SwapchainImage,
         { 0, 0, COUNT_SQRT, COUNT_SQRT },

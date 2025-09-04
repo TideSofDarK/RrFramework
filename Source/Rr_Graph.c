@@ -776,14 +776,38 @@ static void Rr_ExecuteBlitNode(
     if (Rr_ClampBlitRect(&Node->SrcRect, &SrcImage->Container->Extent) &&
         Rr_ClampBlitRect(&Node->DstRect, &DstImage->Container->Extent))
     {
-        Rr_BlitColorImage(
-            Device,
+        VkImageBlit ImageBlit = {
+            .srcSubresource = {
+                .aspectMask = Node->AspectMask,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .srcOffsets = {
+                { Node->SrcRect.X, Node->SrcRect.Y, 0, },
+                { Node->SrcRect.X + Node->SrcRect.Width, Node->SrcRect.Y + Node->SrcRect.Height, 1, },
+            },
+            .dstSubresource = {
+                .aspectMask = Node->AspectMask,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .dstOffsets = {
+                { Node->DstRect.X, Node->DstRect.Y, 0, },
+                { Node->DstRect.X + Node->DstRect.Width, Node->DstRect.Y + Node->DstRect.Height, 1, },
+            },
+        };
+
+        Device->CmdBlitImage(
             CommandBuffer,
             SrcImage->Handle,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             DstImage->Handle,
-            Node->SrcRect,
-            Node->DstRect,
-            Node->AspectMask);
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &ImageBlit,
+            VK_FILTER_LINEAR);
     }
 }
 
@@ -1516,6 +1540,13 @@ static void Rr_ExecuteGraphNode(
     Rr_GraphNode *Node,
     VkCommandBuffer CommandBuffer)
 {
+    bool SetVulkanMarker = Node->Name;
+
+    if (SetVulkanMarker)
+    {
+        Rr_BeginVulkanCommandBufferLabel(CommandBuffer, Node->Name);
+    }
+
     switch (Node->Type)
     {
         case RR_GRAPH_NODE_TYPE_COMPUTE:
@@ -1575,6 +1606,11 @@ static void Rr_ExecuteGraphNode(
             RR_ABORT("Unsupported node type!");
         }
         break;
+    }
+
+    if (SetVulkanMarker)
+    {
+        Rr_EndVulkanCommandBufferLabel(CommandBuffer);
     }
 }
 

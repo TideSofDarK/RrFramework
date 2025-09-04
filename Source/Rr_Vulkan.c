@@ -641,13 +641,14 @@ void Rr_InitDeviceAndQueues(
     };
 
     const char *DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    uint32_t DeviceExtensionCount = RR_ARRAY_COUNT(DeviceExtensions);
 
     VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = NULL,
         .queueCreateInfoCount = UseTransferQueue ? 2 : 1,
         .pQueueCreateInfos = QueueInfos,
-        .enabledExtensionCount = RR_ARRAY_COUNT(DeviceExtensions),
+        .enabledExtensionCount = DeviceExtensionCount,
         .ppEnabledExtensionNames = DeviceExtensions,
     };
 
@@ -1137,47 +1138,4 @@ void Rr_InitDeviceAndQueues(
     }
 
     Rr_DestroyScratch(Scratch);
-}
-
-void Rr_BlitColorImage(
-    Rr_Device *Device,
-    VkCommandBuffer CommandBuffer,
-    VkImage Source,
-    VkImage Destination,
-    Rr_IntVec4 SrcRect,
-    Rr_IntVec4 DstRect,
-    VkImageAspectFlags AspectMask)
-{
-    VkImageBlit ImageBlit = {
-        .srcSubresource = {
-            .aspectMask = AspectMask,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .srcOffsets = {
-            { SrcRect.X, SrcRect.Y, 0, },
-            { SrcRect.X + SrcRect.Width, SrcRect.Y + SrcRect.Height, 1, },
-        },
-        .dstSubresource = {
-            .aspectMask = AspectMask,
-            .mipLevel = 0,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-        .dstOffsets = {
-            { DstRect.X, DstRect.Y, 0, },
-            { DstRect.X + DstRect.Width, DstRect.Y + DstRect.Height, 1, },
-        },
-    };
-
-    Device->CmdBlitImage(
-        CommandBuffer,
-        Source,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        Destination,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &ImageBlit,
-        VK_FILTER_NEAREST);
 }

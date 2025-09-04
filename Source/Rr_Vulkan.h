@@ -348,15 +348,6 @@ extern void Rr_InitDeviceAndQueues(
     Rr_Queue *GraphicsQueue,
     Rr_Queue *TransferQueue);
 
-extern void Rr_BlitColorImage(
-    Rr_Device *Device,
-    VkCommandBuffer CommandBuffer,
-    VkImage Source,
-    VkImage Destination,
-    Rr_IntVec4 SrcRect,
-    Rr_IntVec4 DstRect,
-    VkImageAspectFlags AspectMask);
-
 static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_BindingType Type)
 {
     switch (Type)

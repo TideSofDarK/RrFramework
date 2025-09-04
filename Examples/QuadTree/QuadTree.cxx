@@ -922,8 +922,7 @@ struct SQuadTreeApp
 
         if (DrawCount > 0)
         {
-            Rr_TransferNode *TransferNode =
-                Rr_AddTransferNode(Graph, "transfer");
+            Rr_TransferNode *TransferNode = Rr_AddTransferNode(Graph);
             Rr_TransferBufferData(
                 TransferNode,
                 sizeof(UniformData),
@@ -941,7 +940,7 @@ struct SQuadTreeApp
         }
 
         Rr_GraphNode *TreeNode =
-            Rr_AddGraphicsNode(Graph, "tree", 1, &ColorTarget, nullptr);
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         if (DrawCount > 0)
         {
             Rr_BindGraphicsPipeline(TreeNode, Pipeline);

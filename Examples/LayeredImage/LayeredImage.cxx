@@ -60,7 +60,6 @@ void CreateImagesFromPNGs(
     {
         Rr_CopyBufferToImage2DArray(
             Rr_GetGraph(),
-            "copy",
             StagingBuffer,
             LayerSize * Index,
             { Width, Height },
@@ -76,7 +75,6 @@ void CreateImagesFromPNGs(
     *OutImage3D = Image3D;
     Rr_CopyBufferToImage3D(
         Rr_GetGraph(),
-        "copy",
         StagingBuffer,
         0,
         { Width, Height, (std::int32_t)ImageCount },
@@ -226,12 +224,8 @@ struct SLayeredImageApp
             &UniformData,
             sizeof(UniformData));
 
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Rr_GetGraph(),
-            "graphics",
-            1,
-            &ColorTarget,
-            NULL);
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
 
         Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
         Rr_Rect SwapchainRect{ 0,

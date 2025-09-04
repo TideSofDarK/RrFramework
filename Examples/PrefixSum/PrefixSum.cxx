@@ -115,7 +115,7 @@ static void Iterate()
         &COUNT,
         sizeof(uint32_t));
 
-    Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Graph, "compute");
+    Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Graph);
     Rr_BindComputePipeline(ComputeNode, Pipeline);
     Rr_BindUniformBuffer(ComputeNode, UniformBuffer, 0, 0, 0, sizeof(uint32_t));
     Rr_BindStorageBufferRW(ComputeNode, InputBuffer, 0, 1, 0, NumbersSize);
@@ -139,7 +139,7 @@ static void Iterate()
     ColorTarget.Image = SwapchainImage;
 
     Rr_GraphNode *GraphicsNode =
-        Rr_AddGraphicsNode(Graph, "clear", 1, &ColorTarget, nullptr);
+        Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
     // Rr_BindStorageBuffer(GraphicsNode, InputBuffer, 0, 0, 0, NumbersSize);
     // Rr_BindStorageBuffer(GraphicsNode, OutputBuffer, 0, 1, 0, NumbersSize);
 }

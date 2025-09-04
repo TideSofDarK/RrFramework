@@ -229,12 +229,8 @@ static void Iterate(void)
         },
         .Image = DepthAttachment,
     };
-    Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-        Rr_GetGraph(),
-        "graphics",
-        1,
-        &ColorTarget,
-        &DepthTarget);
+    Rr_GraphNode *GraphicsNode =
+        Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
 
     DrawFirstGLTFPrimitive(GraphicsNode);
 }

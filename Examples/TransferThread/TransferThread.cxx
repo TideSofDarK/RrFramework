@@ -40,7 +40,6 @@ Rr_Image2D *CreateImage2D(Rr_Graph *Graph, const char *Path)
 
     Rr_CopyBufferToImage2D(
         Graph,
-        "copy",
         StagingBuffer,
         0,
         { ImageWidth, ImageHeight },
@@ -323,12 +322,8 @@ struct STransferThreadApp
             .Image = SwapchainImage,
         };
 
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Rr_GetGraph(),
-            "graphics",
-            1,
-            &ColorTarget,
-            NULL);
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
 
         struct
         {

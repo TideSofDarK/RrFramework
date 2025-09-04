@@ -34,7 +34,6 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
-        "copy",
         StagingBuffer,
         0,
         { Width, Height },
@@ -156,12 +155,8 @@ struct SBrushFadeApp
             .Image = SwapchainImage,
         };
 
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Rr_GetGraph(),
-            "graphics",
-            1,
-            &ColorTarget,
-            NULL);
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
 
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(

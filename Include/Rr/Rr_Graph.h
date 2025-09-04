@@ -50,54 +50,6 @@ extern struct Rr_Graph *Rr_GetSubGraph(Rr_GraphFlags Flags);
 
 extern void Rr_SubmitSubGraph(struct Rr_Graph *Graph);
 
-/* TODO: Move this enum. */
-
-typedef union Rr_ColorClear Rr_ColorClear;
-union Rr_ColorClear
-{
-    Rr_Vec4 Vec4;
-    Rr_IntVec4 IntVec4;
-};
-
-typedef struct Rr_ColorTarget Rr_ColorTarget;
-struct Rr_ColorTarget
-{
-    uint32_t Slot;
-    Rr_LoadOp LoadOp;
-    Rr_StoreOp StoreOp;
-    Rr_ColorClear Clear;
-    struct Rr_Image *Image;
-    uint32_t ImageLayerIndex;
-    struct Rr_Image *ResolveImage;
-    uint32_t ResolveImageLayerIndex;
-};
-
-typedef struct Rr_DepthClear Rr_DepthClear;
-struct Rr_DepthClear
-{
-    float Depth;
-    uint32_t Stencil;
-};
-
-typedef struct Rr_DepthTarget Rr_DepthTarget;
-struct Rr_DepthTarget
-{
-    Rr_LoadOp LoadOp;
-    Rr_StoreOp StoreOp;
-    Rr_DepthClear Clear;
-    struct Rr_Image *Image;
-    uint32_t ImageLayerIndex;
-};
-
-typedef struct Rr_DrawIndirectCommand Rr_DrawIndirectCommand;
-struct Rr_DrawIndirectCommand
-{
-    uint32_t VertexCount;
-    uint32_t InstanceCount;
-    uint32_t FirstVertex;
-    uint32_t FirstInstance;
-};
-
 typedef struct Rr_GraphNode Rr_GraphNode;
 typedef struct Rr_TransferNode Rr_TransferNode;
 
