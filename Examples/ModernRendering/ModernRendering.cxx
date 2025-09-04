@@ -530,7 +530,7 @@ struct SLighting
     struct SGPUPointLight
     {
         Rr_Vec3 Position;
-        float FarPlane;
+        float BleedReduction;
         Rr_Vec4 Ambient;
         Rr_Vec4 Diffuse;
         Rr_Vec4 Specular;
@@ -563,14 +563,14 @@ struct SLighting
     {
         SGPUPointLight PointLight = {
             .Position = Rr_V3(0.0f, 1.0f, 0.0f),
-            .FarPlane = FAR_PLANE,
+            .BleedReduction = 0.7f,
             .Ambient = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
             .Diffuse = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
             .Specular = Rr_V4(0.5f, 0.5f, 0.5f, 1.0f),
             .Radius = 2.5f,
             .Intensity = 3.8f,
             .Falloff = 1.4f,
-            .Bias = 0.0175f,
+            .Bias = 0.005f,
         };
         PointLights.emplace_back(PointLight);
 
@@ -692,9 +692,6 @@ struct SLighting
 
     void UpdateLightBuffer()
     {
-        PointLights[0].Position.X = std::cosf(Rr_GetTimeSeconds()) / 2.0f;
-        PointLights[0].Position.Z = std::sinf(Rr_GetTimeSeconds()) / 2.0f;
-
         std::memcpy(
             Rr_GetMappedBufferData(LightsBuffer),
             PointLights.data(),
@@ -733,6 +730,11 @@ struct SLighting
         Rr_UISliderFloat("Intensity", &PointLight.Intensity, 0.0f, 8.0f);
         Rr_UISliderFloat("Falloff", &PointLight.Falloff, 0.0f, 8.0f);
         Rr_UISliderFloat("Bias", &PointLight.Bias, 0.0f, 0.15f);
+        Rr_UISliderFloat(
+            "Bleed Reduction",
+            &PointLight.BleedReduction,
+            0.0f,
+            8.0f);
     }
 
     void UI()
@@ -1252,6 +1254,14 @@ struct SModernRenderingApp
         Camera.Update(Scancodes);
 
         Rr_Graph *Graph = Rr_GetGraph();
+
+        if (!Scancodes[RR_SCANCODE_SPACE])
+        {
+            Lighting.PointLights[0].Position.X =
+                std::cosf(Rr_GetTimeSeconds()) / 2.0f;
+            Lighting.PointLights[0].Position.Z =
+                std::sinf(Rr_GetTimeSeconds()) / 2.0f;
+        }
 
         Lighting.DrawShadowMaps(Camera, Graph, [&](Rr_GraphNode *Node) {
             DrawGLTFAsset(Node, 1, 0);

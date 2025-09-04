@@ -18,7 +18,7 @@ layout(set = 0, binding = 0) uniform SGPUUniform
 struct SGPUPointLight
 {
     vec3 Position;
-    float FarPlane;
+    float BleedReduction;
     vec4 Ambient;
     vec4 Diffuse;
     vec4 Specular;
@@ -35,11 +35,22 @@ layout(set = 1, binding = 0) readonly buffer SGPULights
 
 layout(set = 1, binding = 1) uniform samplerCube PointShadowMaps[4];
 
+float Linstep(float Min, float Max, float V)
+{
+    return clamp((V - Min) / (Max - Min), 0.0, 1.0);
+}
+
+float ReduceLightBleeding(float PMax, float Amount)
+{
+    return Linstep(Amount, 1.0, PMax);
+}
+
 float PointVSM(in vec2 Moments, in float CurrentDepth, in SGPUPointLight Light) {
     float P = step(CurrentDepth, Moments.x + Light.Bias);
     float Variance = max(Moments.y - Moments.x * Moments.x, 0.000001);
     float Dist = CurrentDepth - Moments.x;
     float PMax = Variance / (Variance + Dist * Dist);
+    PMax = ReduceLightBleeding(PMax, Light.BleedReduction);
 
     return max(P, PMax);
 }
