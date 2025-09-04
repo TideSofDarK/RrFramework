@@ -102,7 +102,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(
     size_t BindingSetCount,
-    Rr_BindingSet *BindingSets)
+    const Rr_BindingSet *BindingSets)
 {
     assert(BindingSetCount <= RR_MAX_SETS);
 
@@ -127,7 +127,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     for (size_t SetIndex = 0; SetIndex < BindingSetCount; ++SetIndex)
     {
-        Rr_BindingSet *Set = BindingSets + SetIndex;
+        const Rr_BindingSet *Set = BindingSets + SetIndex;
 
         assert(Set->BindingCount > 0);
         assert(Set->BindingCount < RR_MAX_BINDINGS);
@@ -270,7 +270,7 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
 }
 
 Rr_ComputePipeline *Rr_CreateComputePipeline(
-    Rr_ComputePipelineCreateInfo *CreateInfo)
+    const Rr_ComputePipelineCreateInfo *CreateInfo)
 {
     assert(CreateInfo);
     assert(CreateInfo->Layout != NULL);
@@ -398,6 +398,20 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
     Rr_RemoveFromComputePipelineHive(&gRenderer->ComputePipelines, &It);
 
     Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
+}
+
+Rr_ColorTargetBlend Rr_AlphaBlend(void)
+{
+    Rr_ColorTargetBlend Blend;
+    Blend.BlendEnable = true;
+    Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
+    Blend.DstColorBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    Blend.ColorBlendOp = RR_BLEND_OP_ADD;
+    Blend.SrcAlphaBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
+    Blend.DstAlphaBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    Blend.AlphaBlendOp = RR_BLEND_OP_ADD;
+    Blend.ColorWriteMask = RR_COLOR_COMPONENT_DEFAULT;
+    return Blend;
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(

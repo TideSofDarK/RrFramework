@@ -245,28 +245,16 @@ struct Rr_BindingSet
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
     size_t BindingSetCount,
-    Rr_BindingSet *BindingSet);
+    const Rr_BindingSet *BindingSet);
 
 extern void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
 
 extern Rr_ComputePipeline *Rr_CreateComputePipeline(
-    Rr_ComputePipelineCreateInfo *CreateInfo);
+    const Rr_ComputePipelineCreateInfo *CreateInfo);
 
 extern void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
-static inline Rr_ColorTargetBlend Rr_AlphaBlend(void)
-{
-    Rr_ColorTargetBlend Blend;
-    Blend.BlendEnable = true;
-    Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
-    Blend.DstColorBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    Blend.ColorBlendOp = RR_BLEND_OP_ADD;
-    Blend.SrcAlphaBlendFactor = RR_BLEND_FACTOR_SRC_ALPHA;
-    Blend.DstAlphaBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    Blend.AlphaBlendOp = RR_BLEND_OP_ADD;
-    Blend.ColorWriteMask = RR_COLOR_COMPONENT_DEFAULT;
-    return Blend;
-}
+extern Rr_ColorTargetBlend Rr_AlphaBlend(void);
 
 extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     const Rr_GraphicsPipelineCreateInfo *CreateInfo);
