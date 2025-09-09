@@ -19,5 +19,4 @@ void main()
     mat4 Temp = View;
     Temp[3] = vec4(0.0, 0.0, 0.0, 1.0);
     gl_Position = Projection * Temp * vec4(InPosition, 1.0);
-    gl_Position.y *= -1.0;
 }

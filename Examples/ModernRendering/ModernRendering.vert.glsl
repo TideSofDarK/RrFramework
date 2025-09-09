@@ -25,7 +25,6 @@ layout(set = 2, binding = 0) readonly buffer SGPUStorage
 void main()
 {
     gl_Position = Projection * View * Model * vec4(InPosition, 1.0f);
-    gl_Position.y *= -1.0;
     OutNormal = mat3(transpose(inverse(Model))) * InNormal;
     OutNormalVS = mat3(transpose(inverse(View * Model))) * OutNormal;
     OutUV = InUV;

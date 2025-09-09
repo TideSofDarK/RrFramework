@@ -15,5 +15,5 @@ layout(set = 0, binding = 1) uniform samplerCube UniformCube;
 void main()
 {
     OutColor = vec4(0.0, 0.0, 0.0, 1.0);
-    OutColor.r = texture(UniformCube, InPosition).r / 100.0;
+    OutColor.r = texture(UniformCube, InPosition).r;
 }

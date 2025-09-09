@@ -689,6 +689,8 @@ static Rr_TextureFormat Rr_ToTextureFormat(VkFormat TextureFormat)
             return RR_TEXTURE_FORMAT_B8G8R8A8_UNORM;
         case VK_FORMAT_B8G8R8A8_SRGB:
             return RR_TEXTURE_FORMAT_B8G8R8A8_SRGB;
+        case VK_FORMAT_D16_UNORM:
+            return RR_TEXTURE_FORMAT_D16_UNORM;
         case VK_FORMAT_D32_SFLOAT:
             return RR_TEXTURE_FORMAT_D32_SFLOAT;
         case VK_FORMAT_D24_UNORM_S8_UINT:
@@ -726,6 +728,8 @@ static VkFormat Rr_ToVulkanTextureFormat(Rr_TextureFormat TextureFormat)
             return VK_FORMAT_B8G8R8A8_UNORM;
         case RR_TEXTURE_FORMAT_B8G8R8A8_SRGB:
             return VK_FORMAT_B8G8R8A8_SRGB;
+        case RR_TEXTURE_FORMAT_D16_UNORM:
+            return VK_FORMAT_D16_UNORM;
         case RR_TEXTURE_FORMAT_D32_SFLOAT:
             return VK_FORMAT_D32_SFLOAT;
         case RR_TEXTURE_FORMAT_D24_UNORM_S8_UINT:

@@ -22,6 +22,6 @@ void main()
 {
     OutPosition = (Model * vec4(InPosition.xyz, 1.0)).xyz;
     gl_Position = ViewProjection * Model * vec4(InPosition.xyz, 1.0);
-    gl_Position.x *= -1.0;
-    gl_Position.y *= -1.0;
+    // gl_Position.x *= -1.0;
+    // gl_Position.y *= -1.0;
 }

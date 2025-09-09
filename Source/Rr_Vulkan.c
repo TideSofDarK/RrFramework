@@ -64,27 +64,27 @@ void Rr_InitInstance(
 
     /* Gather required extensions. */
 
-    const char *AppExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
-    uint32_t AppExtensionCount = RR_ARRAY_COUNT(AppExtensions);
+    const char *InstanceExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+    uint32_t InstanceExtensionCount = RR_ARRAY_COUNT(InstanceExtensions);
 
 #ifndef RR_DEBUG
-    AppExtensionCount = 0;
+    InstanceExtensionCount = 0;
 #endif
 
     uint32_t PlatformExtensionCount;
     const char *const *PlatformExtensions =
         Rr_GetVulkanExtensions(&PlatformExtensionCount);
 
-    uint32_t ExtensionCount = PlatformExtensionCount + AppExtensionCount;
+    uint32_t ExtensionCount = PlatformExtensionCount + InstanceExtensionCount;
     const char **Extensions =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, const char *, ExtensionCount);
     for (uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
         Extensions[Index] = PlatformExtensions[Index];
     }
-    for (uint32_t Index = 0; Index < AppExtensionCount; Index++)
+    for (uint32_t Index = 0; Index < InstanceExtensionCount; Index++)
     {
-        Extensions[Index + PlatformExtensionCount] = AppExtensions[Index];
+        Extensions[Index + PlatformExtensionCount] = InstanceExtensions[Index];
     }
 
     /* Create Vulkan instance. */
