@@ -11,30 +11,24 @@ using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
 struct SCamera
 {
-    float Near = 0.01f;
-    float Far = 100.0f;
     float FOVDegrees = 90.0f;
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position;
+    Rr_Vec3 Position{};
 
-    Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
+    Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
     void UpdatePerspective(float Aspect)
     {
         ProjMatrix =
-            Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
+            Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, 0.1f, 100.0f);
+        ProjMatrix.Elements[1][1] *= -1.0f;
     }
 
-    [[nodiscard]] Rr_Vec3 GetForwardVector() const
+    [[nodiscard]] Rr_Mat4 GetViewMatrix() const
     {
-        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
-    }
-
-    [[nodiscard]] Rr_Vec3 GetRightVector() const
-    {
-        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
+        return Rr_InvGeneral(Transform);
     }
 
     void Update(const UScancodes &Scancodes)
@@ -46,30 +40,9 @@ struct SCamera
         if (Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
             Rr_SetRelativeMouseMode(true);
-
-            constexpr float CameraSpeed = 5.0f;
-            Rr_Vec3 CameraForward = GetForwardVector();
-            Rr_Vec3 CameraLeft = GetRightVector();
-            if (Scancodes[RR_SCANCODE_W])
-            {
-                Position -= CameraForward * CameraSpeed * DeltaTime;
-            }
-            if (Scancodes[RR_SCANCODE_A])
-            {
-                Position -= CameraLeft * CameraSpeed * DeltaTime;
-            }
-            if (Scancodes[RR_SCANCODE_S])
-            {
-                Position += CameraForward * CameraSpeed * DeltaTime;
-            }
-            if (Scancodes[RR_SCANCODE_D])
-            {
-                Position += CameraLeft * CameraSpeed * DeltaTime;
-            }
-
             constexpr float Sensitivity = 0.2f;
-            Yaw += MouseDelta.X * Sensitivity;
-            Pitch += MouseDelta.Y * Sensitivity;
+            Yaw -= MouseDelta.X * Sensitivity;
+            Pitch -= MouseDelta.Y * Sensitivity;
         }
         else
         {
@@ -79,23 +52,9 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
-        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
-        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
-        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
-
-        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
-        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
-        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
-
-        ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
-        ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
-        ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
-        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position),
-                                  -Rr_Dot(YAxis, Position),
-                                  -Rr_Dot(ZAxis, Position),
-                                  1.0f };
-        ViewMatrix = Rr_VulkanMatrix() * ViewMatrix;
+        Transform = Rr_Translate(Position) *
+                    Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
+                    Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
     }
 };
 
@@ -134,6 +93,117 @@ struct SPNGImage
     SPNGImage(SPNGImage &&) = delete;
     SPNGImage &operator=(const SPNGImage &) = delete;
     SPNGImage &operator=(SPNGImage &&) = delete;
+};
+
+struct SBlur2D
+{
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_ComputePipeline *Blur2DXPipeline{};
+    Rr_ComputePipeline *Blur2DYPipeline{};
+    Rr_Image2D *IntermediateImage;
+
+    Rr_TextureFormat Format;
+    std::uint32_t ImageSize;
+    std::uint32_t WorkgroupSize;
+
+    void Blur(Rr_Graph *Graph, Rr_Image2D *TargetImage, std::int32_t Passes)
+    {
+        Rr_SetNextNodeName(Graph, "Blur2D");
+        Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+        for (std::int32_t Index = 0; Index < Passes; ++Index)
+        {
+            Rr_BindComputePipeline(Node, Blur2DXPipeline);
+            Rr_BindStorageImage2D(Node, TargetImage, 0, 0);
+            Rr_BindStorageImage2DRW(Node, IntermediateImage, 0, 1);
+            Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 1);
+            Rr_ComputeBarrier(Node);
+            Rr_BindComputePipeline(Node, Blur2DYPipeline);
+            Rr_BindStorageImage2D(Node, IntermediateImage, 0, 0);
+            Rr_BindStorageImage2DRW(Node, TargetImage, 0, 1);
+            Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 1);
+            Rr_ComputeBarrier(Node);
+        }
+    }
+
+    Rr_ComputePipeline *CreateBlurPipeline(
+        Rr_AssetRef ComputeSPV,
+        std::uint32_t Radius)
+    {
+        std::array Specializations = {
+            Rr_PipelineSpecialization{
+                0,
+                RR_MAKE_DATA_STRUCT(WorkgroupSize),
+            },
+            Rr_PipelineSpecialization{
+                1,
+                RR_MAKE_DATA_STRUCT(ImageSize),
+            },
+            Rr_PipelineSpecialization{
+                2,
+                RR_MAKE_DATA_STRUCT(Radius),
+            },
+        };
+
+        Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
+        PipelineCreateInfo.Layout = PipelineLayout;
+        PipelineCreateInfo.ShaderSPV = Rr_LoadAsset(ComputeSPV);
+        PipelineCreateInfo.SpecializationCount = Specializations.size();
+        PipelineCreateInfo.Specializations = Specializations.data();
+
+        return Rr_CreateComputePipeline(&PipelineCreateInfo);
+    }
+
+    void RecreatePipelines(std::uint32_t Radius)
+    {
+        Rr_ReleaseComputePipeline(Blur2DXPipeline);
+        Blur2DXPipeline =
+            CreateBlurPipeline(EXAMPLE_ASSET_BLUR2DX_COMP_SPV, Radius);
+        Rr_ReleaseComputePipeline(Blur2DYPipeline);
+        Blur2DYPipeline =
+            CreateBlurPipeline(EXAMPLE_ASSET_BLUR2DY_COMP_SPV, Radius);
+    }
+
+    SBlur2D(
+        Rr_TextureFormat Format,
+        std::int32_t ImageSize,
+        std::uint32_t Radius)
+        : Format(Format)
+        , ImageSize(ImageSize)
+        , WorkgroupSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
+    {
+        std::array Bindings0 = {
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_STORAGE_IMAGE,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_STORAGE_IMAGE,
+                RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
+        };
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        RecreatePipelines(Radius);
+
+        IntermediateImage = Rr_CreateImage2D(
+            { ImageSize, ImageSize },
+            Format,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
+    }
+
+    ~SBlur2D()
+    {
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseComputePipeline(Blur2DXPipeline);
+        Rr_ReleaseComputePipeline(Blur2DYPipeline);
+        Rr_ReleaseImage(IntermediateImage);
+    }
 };
 
 struct SBlurCube
@@ -249,21 +319,27 @@ struct SBlurCube
 
 struct SBlurApp
 {
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
-
     Rr_Buffer *UniformBuffer;
-    Rr_Buffer *StagingBuffer;
     Rr_Sampler *Sampler;
     Rr_GLTFContext *GLTFContext;
     Rr_GLTFAsset *GLTFAsset;
 
     SCamera Camera;
 
+    Rr_PipelineLayout *QuadPipelineLayout;
+    Rr_GraphicsPipeline *QuadGraphicsPipeline;
+    Rr_Image2D *OriginalImage2D;
+    Rr_Image2D *BlurredImage2D;
+    std::int32_t Blur2DRadius = 32;
+    std::int32_t Blur2DPasses = 2;
+    SBlur2D Blur2D;
+
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_ImageCube *OriginalImageCube;
     Rr_ImageCube *BlurredImageCube;
-    std::int32_t BlurCubeRadius = 2;
-    std::int32_t BlurCubePasses = 2;
+    std::int32_t BlurCubeRadius = 4;
+    std::int32_t BlurCubePasses = 4;
     SBlurCube BlurCube;
 
     UScancodes Scancodes{};
@@ -349,7 +425,7 @@ struct SBlurApp
         Sampler = Rr_CreateSampler(&Info);
     }
 
-    void InitCubemapImage()
+    void InitImageCube()
     {
         SPNGImage Right{ EXAMPLE_ASSET_RIGHT_PNG };
         SPNGImage Left{ EXAMPLE_ASSET_LEFT_PNG };
@@ -369,7 +445,7 @@ struct SBlurApp
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
                 RR_IMAGE_FLAGS_STORAGE_BIT);
 
-        StagingBuffer = Rr_CreateBuffer(
+        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
             Width * Height * 4 * 6,
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
@@ -398,8 +474,87 @@ struct SBlurApp
                 RR_IMAGE_FLAGS_STORAGE_BIT);
 
         Rr_CopyImageCube(Rr_GetGraph(), OriginalImageCube, BlurredImageCube, 0);
-
         BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
+
+        Rr_ReleaseBuffer(StagingBuffer);
+    }
+
+    void InitQuadPipeline()
+    {
+        std::array Bindings = {
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
+        };
+        QuadPipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        Rr_ColorTargetInfo ColorTarget = {};
+        ColorTarget.Format = Rr_GetSwapchainFormat();
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
+        PipelineInfo.Layout = QuadPipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = &ColorTarget;
+
+        QuadGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    }
+
+    void InitImage2D()
+    {
+        SPNGImage PNGImage{ EXAMPLE_ASSET_BACK_PNG };
+
+        int32_t Width = PNGImage.Width;
+        int32_t Height = PNGImage.Height;
+
+        int32_t LayerSize = Width * Height * 4;
+
+        OriginalImage2D = Rr_CreateImage2D(
+            { Width, Height },
+            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+
+        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+            Width * Height * 4,
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+
+        char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+        std::memcpy(StagingData, PNGImage.Data, LayerSize);
+
+        Rr_CopyBufferToImage2D(
+            Rr_GetGraph(),
+            StagingBuffer,
+            0,
+            { Width, Height },
+            OriginalImage2D,
+            0);
+
+        BlurredImage2D = Rr_CreateImage2D(
+            { Width, Height },
+            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_STORAGE_BIT);
+
+        Rr_CopyImage2D(
+            Rr_GetGraph(),
+            OriginalImage2D,
+            Rr_IntVec2{},
+            BlurredImage2D,
+            Rr_IntVec2{},
+            Rr_IntVec2{ 512, 512 },
+            0);
+        Blur2D.Blur(Rr_GetGraph(), BlurredImage2D, Blur2DPasses);
+
+        Rr_ReleaseBuffer(StagingBuffer);
     }
 
     void InitSkyboxMesh()
@@ -441,112 +596,160 @@ struct SBlurApp
 
     void Iterate()
     {
-        // Rr_UIDebugOverlay();
-
-        Rr_UIBeginWindow("Blur.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-        Rr_UILabel(
-            "This example demonstrates bluring of Rr_Image2D and Rr_ImageCube "
-            "textures.");
-        if (Rr_UISliderInt("Blur Radius", &BlurCubeRadius, 2, 16))
-        {
-            BlurCube.RecreatePipelines(BlurCubeRadius);
-            Rr_CopyImageCube(
-                Rr_GetGraph(),
-                OriginalImageCube,
-                BlurredImageCube,
-                0);
-            BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
-        }
-        if (Rr_UISliderInt("Blur Passes", &BlurCubePasses, 0, 16))
-        {
-            Rr_CopyImageCube(
-                Rr_GetGraph(),
-                OriginalImageCube,
-                BlurredImageCube,
-                0);
-            BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
-        }
-        // Rr_UIInputInt
-        // Rr_UICheckbox("Use Image3D", &UseImage3D);
-        Rr_UIEndWindow();
-
         Rr_Graph *Graph = Rr_GetGraph();
 
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-
-        Camera.Update(Scancodes);
-
-        SGPUUniform Uniform = {
-            .View = Camera.ViewMatrix,
-            .Projection = Camera.ProjMatrix,
-        };
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &Uniform,
-            sizeof(SGPUUniform));
-
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
-        Rr_ColorClear ColorClear = {};
-        ColorClear.Vec4 = { 13.0f / 255.0f,
-                            14.0f / 255.0f,
-                            28.0f / 255.0f,
-                            1.0f };
-        Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
-            .LoadOp = RR_LOAD_OP_CLEAR,
-            .StoreOp = RR_STORE_OP_STORE,
-            .Clear = ColorClear,
-            .Image = SwapchainImage,
-        };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);
-        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindVertexBuffer(
-            GraphicsNode,
-            GLTFAsset->Buffer,
-            0,
-            GLTFAsset->VertexBufferOffset);
-        Rr_BindIndexBuffer(
-            GraphicsNode,
-            GLTFAsset->Buffer,
-            0,
-            GLTFAsset->IndexBufferOffset,
-            GLTFAsset->IndexType);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(SGPUUniform));
-        Rr_BindCombinedImageCubeSampler(
-            GraphicsNode,
-            BlurredImageCube,
-            Sampler,
-            0,
-            1);
-        Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
-        Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
+        Rr_UIBeginWindow("Blur.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UILabel(
+            "This example demonstrates blur compute shaders.\nBlurring "
+            "cubemaps requires its own algorithm to avoid seams between cube "
+            "faces.");
+        Rr_UISeparator();
+        const char *Modes[2] = { "Image2D", "ImageCube" };
+        static std::uint32_t SelectedModeIndex = 0;
+        Rr_UICombobox("Mode", 2, Modes, &SelectedModeIndex);
+        if (SelectedModeIndex == 0)
+        {
+            if (Rr_UISliderInt("Blur Radius", &Blur2DRadius, 8, 64))
+            {
+                Blur2D.RecreatePipelines(Blur2DRadius);
+                Rr_CopyImage2D(
+                    Rr_GetGraph(),
+                    OriginalImage2D,
+                    Rr_IntVec2{},
+                    BlurredImage2D,
+                    Rr_IntVec2{},
+                    Rr_IntVec2{ 512, 512 },
+                    0);
+                Blur2D.Blur(Rr_GetGraph(), BlurredImage2D, Blur2DPasses);
+            }
+            if (Rr_UISliderInt("Blur Passes", &Blur2DPasses, 0, 4))
+            {
+                Rr_CopyImage2D(
+                    Rr_GetGraph(),
+                    OriginalImage2D,
+                    Rr_IntVec2{},
+                    BlurredImage2D,
+                    Rr_IntVec2{},
+                    Rr_IntVec2{ 512, 512 },
+                    0);
+                Blur2D.Blur(Rr_GetGraph(), BlurredImage2D, Blur2DPasses);
+            }
+
+            Rr_ColorTarget ColorTarget = {
+                .Slot = 0,
+                .LoadOp = RR_LOAD_OP_DONT_CARE,
+                .StoreOp = RR_STORE_OP_STORE,
+                .Image = SwapchainImage,
+            };
+            Rr_GraphNode *GraphicsNode =
+                Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);
+            Rr_BindGraphicsPipeline(GraphicsNode, QuadGraphicsPipeline);
+            Rr_BindCombinedImage2DSampler(
+                GraphicsNode,
+                BlurredImage2D,
+                Sampler,
+                0,
+                0);
+            Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+        }
+        else
+        {
+            if (Rr_UISliderInt("Blur Radius", &BlurCubeRadius, 2, 16))
+            {
+                BlurCube.RecreatePipelines(BlurCubeRadius);
+                Rr_CopyImageCube(
+                    Rr_GetGraph(),
+                    OriginalImageCube,
+                    BlurredImageCube,
+                    0);
+                BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
+            }
+            if (Rr_UISliderInt("Blur Passes", &BlurCubePasses, 0, 16))
+            {
+                Rr_CopyImageCube(
+                    Rr_GetGraph(),
+                    OriginalImageCube,
+                    BlurredImageCube,
+                    0);
+                BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
+            }
+
+            Camera.Update(Scancodes);
+
+            SGPUUniform Uniform = {
+                .View = Camera.GetViewMatrix(),
+                .Projection = Camera.ProjMatrix,
+            };
+            std::memcpy(
+                Rr_GetMappedBufferData(UniformBuffer),
+                &Uniform,
+                sizeof(SGPUUniform));
+
+            Rr_ColorTarget ColorTarget = {
+                .Slot = 0,
+                .LoadOp = RR_LOAD_OP_DONT_CARE,
+                .StoreOp = RR_STORE_OP_STORE,
+                .Image = SwapchainImage,
+            };
+            Rr_GraphNode *GraphicsNode =
+                Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);
+            Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+            Rr_BindVertexBuffer(
+                GraphicsNode,
+                GLTFAsset->Buffer,
+                0,
+                GLTFAsset->VertexBufferOffset);
+            Rr_BindIndexBuffer(
+                GraphicsNode,
+                GLTFAsset->Buffer,
+                0,
+                GLTFAsset->IndexBufferOffset,
+                GLTFAsset->IndexType);
+            Rr_BindUniformBuffer(
+                GraphicsNode,
+                UniformBuffer,
+                0,
+                0,
+                0,
+                sizeof(SGPUUniform));
+            Rr_BindCombinedImageCubeSampler(
+                GraphicsNode,
+                BlurredImageCube,
+                Sampler,
+                0,
+                1);
+            Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
+            Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
+        }
+        Rr_UIEndWindow();
     }
 
     SBlurApp()
-        : BlurCube(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
+        : Blur2D(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, Blur2DRadius)
+        , BlurCube(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
     {
+        InitQuadPipeline();
         InitPipeline();
         InitUniformBuffer();
         InitSampler();
-        InitCubemapImage();
+        InitImage2D();
+        InitImageCube();
         InitSkyboxMesh();
     }
 
     ~SBlurApp()
     {
+        Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleaseSampler(Sampler);
+        Rr_ReleaseGraphicsPipeline(QuadGraphicsPipeline);
+        Rr_ReleasePipelineLayout(QuadPipelineLayout);
+        Rr_ReleaseImage(OriginalImage2D);
+        Rr_ReleaseImage(BlurredImage2D);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
-        Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseBuffer(StagingBuffer);
-        Rr_ReleaseSampler(Sampler);
         Rr_ReleaseImage(OriginalImageCube);
         Rr_ReleaseImage(BlurredImageCube);
         Rr_ReleaseGLTFContext(GLTFContext);
