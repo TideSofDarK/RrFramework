@@ -473,8 +473,7 @@ struct SLighting
     struct SGPUSpotLight
     {
         Rr_Mat4 Transform;
-        Rr_Mat4 View;
-        Rr_Mat4 Projection;
+        Rr_Mat4 ViewProjection;
         Rr_Vec3 Color;
         float Energy;
         Rr_Vec3 Padding;
@@ -619,13 +618,13 @@ struct SLighting
 
         for (auto &SpotLight : SpotLights)
         {
-            SpotLight.Projection = Rr_Perspective_RH(
-                                       RR_ANGLE_DEG(SpotLight.OuterCone),
-                                       1.0f,
-                                       0.5f,
-                                       FAR_PLANE) *
-                                   FLIP_Y_MATRIX;
-            SpotLight.View = Rr_InvGeneral(SpotLight.Transform);
+            SpotLight.ViewProjection = Rr_Perspective_RH(
+                                           RR_ANGLE_DEG(SpotLight.OuterCone),
+                                           1.0f,
+                                           0.5f,
+                                           FAR_PLANE) *
+                                       FLIP_Y_MATRIX *
+                                       Rr_InvGeneral(SpotLight.Transform);
             // SpotLight.Width = 1.0f;
             // SpotLight.WidthUV = 0.8f;
             // SpotLight.WidthUV =
@@ -714,7 +713,7 @@ struct SLighting
             Rr_Image2D *SpotShadowMap = SpotShadowMaps[Index];
 
             SGPUUniform Uniform = {
-                .ViewProjection = Spot.Projection * Spot.View,
+                .ViewProjection = Spot.ViewProjection,
                 .LightPosition = Spot.Transform.Columns[3].XYZ,
                 .FarPlane = FAR_PLANE,
             };

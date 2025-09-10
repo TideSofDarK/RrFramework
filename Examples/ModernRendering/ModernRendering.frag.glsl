@@ -42,8 +42,7 @@ struct SGPUPointLight
 struct SGPUSpotLight
 {
     mat4 Transform;
-    mat4 View;
-    mat4 Projection;
+    mat4 ViewProjection;
     vec3 Color;
     float Energy;
     vec3 Padding;
@@ -228,7 +227,7 @@ float SpotPCSS(in texture2D ShadowMap, in SGPUSpotLight Light, in vec3 FragPosit
     vec2 BiasOffsets = GetBiasOffsets(NDotL);
     vec3 NormalOffsetBias = FragNormal * Light.NormalBias * BiasOffsets.x;
 
-    vec4 FragLS = Light.Projection * Light.View * vec4(FragPosition + NormalOffsetBias, 1.0);
+    vec4 FragLS = Light.ViewProjection * vec4(FragPosition + NormalOffsetBias, 1.0);
     float Receiver = FragLS.z / FragLS.w;
     if (Receiver < 0.0 || 1.0 < Receiver)
     {
