@@ -72,40 +72,6 @@ layout(set = 1, binding = 3) uniform texture2D SpotShadowMaps[4];
 layout(set = 1, binding = 4) uniform sampler RegularSampler;
 layout(set = 1, binding = 5) uniform sampler ShadowSampler;
 
-float PointAttenuate(
-    in float Distance,
-    in SGPUPointLight Light)
-{
-    float S = Distance / Light.Radius;
-
-    if (S >= 1.0)
-        return 0.0;
-
-    float S2 = S * S;
-
-    return Light.Intensity * (1 - S2) * (1 - S2) / (1 + Light.Falloff * S);
-}
-
-float SpotAttenuate(in vec3 LightToFrag, in SGPUSpotLight Light)
-{
-    float Dot = dot(LightToFrag, Light.Transform[2].xyz);
-    float OuterConeCos = cos(Light.OuterCone * DEG_TO_RAD * 0.5);
-    float InnerConeCos = cos(Light.InnerCone * DEG_TO_RAD * 0.5);
-    float ActualCos = clamp(Dot, OuterConeCos, InnerConeCos);
-    return smoothstep(OuterConeCos, InnerConeCos, ActualCos);
-}
-
-float VectorToDepthValue(vec3 Vec)
-{
-    vec3 AbsVec = abs(Vec);
-    float LocalZcomp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));
-
-    const float f = 100.0;
-    const float n = 0.1;
-    float NormZComp = (f + n) / (f - n) - (2 * f * n) / (f - n) / LocalZcomp;
-    return (NormZComp + 1.0) * 0.5;
-}
-
 const vec2 POISSON16[] = vec2[16](
         vec2(-0.9420162, -0.39906216),
         vec2(0.94558609, -0.76890725),
@@ -159,6 +125,40 @@ const vec2 POISSON32[] = vec2[32](
         vec2(-0.04661255, 0.7995201),
         vec2(0.4402924, 0.3640312)
     );
+
+float PointAttenuate(
+    in float Distance,
+    in SGPUPointLight Light)
+{
+    float S = Distance / Light.Radius;
+
+    if (S >= 1.0)
+        return 0.0;
+
+    float S2 = S * S;
+
+    return Light.Intensity * (1 - S2) * (1 - S2) / (1 + Light.Falloff * S);
+}
+
+float SpotAttenuate(in vec3 LightToFrag, in SGPUSpotLight Light)
+{
+    float Dot = dot(LightToFrag, Light.Transform[2].xyz);
+    float OuterConeCos = cos(Light.OuterCone * DEG_TO_RAD * 0.5);
+    float InnerConeCos = cos(Light.InnerCone * DEG_TO_RAD * 0.5);
+    float ActualCos = clamp(Dot, OuterConeCos, InnerConeCos);
+    return smoothstep(OuterConeCos, InnerConeCos, ActualCos);
+}
+
+float VectorToDepthValue(vec3 Vec)
+{
+    vec3 AbsVec = abs(Vec);
+    float LocalZcomp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));
+
+    const float f = 100.0;
+    const float n = 0.1;
+    float NormZComp = (f + n) / (f - n) - (2 * f * n) / (f - n) / LocalZcomp;
+    return (NormZComp + 1.0) * 0.5;
+}
 
 vec2 Rotate2D(vec2 Vec, float Cos, float Sin)
 {
@@ -257,15 +257,15 @@ float SpotPCSS(in texture2D ShadowMap, in SGPUSpotLight Light, in vec3 FragPosit
     return Shadow / float(SHADOW_SAMPLES);
 }
 
-float DistributionGGX(float cosTheta, float alpha)
+float DistributionGGX(float CosTheta, float Alpha)
 {
     // Standard GGX/Trowbridge-Reitz distribution - optimized form
-    float a = cosTheta * alpha;
-    float k = alpha / (1.0 - cosTheta * cosTheta + a * a);
-    return k * k * (1.0 / PI);
+    float A = CosTheta * Alpha;
+    float K = Alpha / (1.0 - CosTheta * CosTheta + A * A);
+    return K * K * (1.0 / PI);
 }
 
-float GeometryGGX(float NdotL, float NdotV, float roughness)
+float GeometryGGX(float NDotL, float NDotV, float Roughness)
 {
     // Hammon's optimized approximation for GGX Smith geometry term
     // This version is an efficient approximation that:
@@ -273,51 +273,74 @@ float GeometryGGX(float NdotL, float NdotV, float roughness)
     // 2. Combines both G1 terms into a single expression
     // 3. Provides very close results to the exact version at a much lower cost
     // SEE: https://www.gdcvault.com/play/1024478/PBR-Diffuse-Lighting-for-GGX
-    return 0.5 / mix(2.0 * NdotL * NdotV, NdotL + NdotV, roughness);
+    return 0.5 / mix(2.0 * NDotL * NDotV, NDotL + NDotV, Roughness);
 }
 
-float SchlickFresnel(float u)
+float SchlickFresnel(float CosTheta)
 {
-    float m = 1.0 - u;
-    float m2 = m * m;
-    return m2 * m2 * m; // pow(m,5)
+    return pow(1.0 - CosTheta, 5.0);
 }
 
-float Diffuse(float cLdotH, float cNdotV, float cNdotL, float roughness)
+float ComputeDiffuse(float LDotH, float NDotV, float NDotL, float Roughness)
 {
-    float FD90_minus_1 = 2.0 * cLdotH * cLdotH * roughness - 0.5;
-    float FdV = 1.0 + FD90_minus_1 * SchlickFresnel(cNdotV);
-    float FdL = 1.0 + FD90_minus_1 * SchlickFresnel(cNdotL);
+    float FD90MinusOne = 2.0 * LDotH * LDotH * Roughness - 0.5;
+    float FdV = 1.0 + FD90MinusOne * SchlickFresnel(NDotV);
+    float FdL = 1.0 + FD90MinusOne * SchlickFresnel(NDotL);
 
-    return (1.0 / PI) * (FdV * FdL * cNdotL); // Diffuse BRDF (Burley)
+    return (1.0 / PI) * (FdV * FdL * NDotL); // Diffuse BRDF (Burley)
 }
 
-vec3 Specular(vec3 F0, float cLdotH, float cNdotH, float cNdotV, float cNdotL, float roughness)
+vec3 ComputeSpecular(vec3 F0, float LDotH, float NDotH, float NDotV, float NDotL, float Roughness)
 {
-    roughness = max(roughness, 1e-3);
+    Roughness = max(Roughness, 1e-3);
 
-    float alphaGGX = roughness * roughness;
-    float D = DistributionGGX(cNdotH, alphaGGX);
-    float G = GeometryGGX(cNdotL, cNdotV, alphaGGX);
+    float AlphaGGX = Roughness * Roughness;
+    float D = DistributionGGX(NDotH, AlphaGGX);
+    float G = GeometryGGX(NDotL, NDotV, AlphaGGX);
 
-    float cLdotH5 = SchlickFresnel(cLdotH);
+    float LDotH5 = SchlickFresnel(LDotH);
     float F90 = clamp(50.0 * F0.g, 0.0, 1.0);
-    vec3 F = F0 + (F90 - F0) * cLdotH5;
+    vec3 F = F0 + (F90 - F0) * LDotH5;
 
-    return cNdotL * D * F * G; // Specular BRDF (Schlick GGX)
+    return NDotL * D * F * G; // Specular BRDF (Schlick GGX)
 }
 
-vec3 ComputeF0(float metallic, float specular, vec3 albedo)
+vec3 ComputeF0(float Metallic, float Specular, vec3 Albedo)
 {
-    float dielectric = 0.16 * specular * specular;
+    float Dielectric = 0.16 * Specular * Specular;
     // use (albedo * metallic) as colored specular reflectance at 0 angle for metallic materials
     // SEE: https://google.github.io/filament/Filament.md.html
-    return mix(vec3(dielectric), albedo, vec3(metallic));
+    return mix(vec3(Dielectric), Albedo, vec3(Metallic));
 }
 
-const float ROUGHNESS = 0.3;
+struct SLightDots
+{
+    float NDotL;
+    float LDotH;
+    float NDotH;
+};
+
+SLightDots GetLightDots(in vec3 FragNormal, in vec3 FragViewDir, in vec3 FragToLight)
+{
+    SLightDots LightDots;
+
+    float NDotL = max(dot(FragNormal, FragToLight), 0.0);
+    LightDots.NDotL = min(NDotL, 1.0);
+
+    vec3 H = normalize(FragViewDir + FragToLight);
+
+    float LDotH = max(dot(FragToLight, H), 0.0);
+    LightDots.LDotH = min(dot(FragToLight, H), 1.0);
+
+    float NDotH = max(dot(FragNormal, H), 0.0);
+    LightDots.NDotH = min(NDotH, 1.0);
+
+    return LightDots;
+}
+
+const float ROUGHNESS = 0.2;
 const float METALLIC = 0.8;
-const vec3 AMBIENT = vec3(0.01);
+const vec3 AMBIENT = vec3(0.008);
 
 void main()
 {
@@ -330,8 +353,7 @@ void main()
     vec3 FragNormal = normalize(InNormal);
     vec3 FragViewDir = normalize(CameraPosition - InPosition);
 
-    float NdotV = dot(FragNormal, FragViewDir);
-    float cNdotV = max(NdotV, 1e-4);
+    float NDotV = max(dot(FragNormal, FragViewDir), 1e-4);
 
     vec3 F0 = ComputeF0(METALLIC, 0.5, BaseColor);
 
@@ -350,17 +372,11 @@ void main()
         float Shadow = PointPCSS(PointShadowMaps[Index], Light, InPosition, FragNormal);
         float Attenuation = max(0.0, PointAttenuate(LightToFragDistance, Light));
 
-        float NdotL = max(dot(FragNormal, FragToLight), 0.0);
-        float cNdotL = min(NdotL, 1.0);
-        vec3 H = normalize(FragViewDir + FragToLight);
-        float LdotH = max(dot(FragToLight, H), 0.0);
-        float cLdotH = min(dot(FragToLight, H), 1.0);
-        float NdotH = max(dot(FragNormal, H), 0.0);
-        float cNdotH = min(NdotH, 1.0);
+        SLightDots Dots = GetLightDots(FragNormal, FragViewDir, FragToLight);
 
         vec3 LightColorEnergy = Light.Color * Light.Energy;
-        vec3 DiffLight = LightColorEnergy * Diffuse(cLdotH, cNdotV, cNdotL, ROUGHNESS);
-        vec3 SpecLight = Specular(F0, cLdotH, cNdotH, cNdotV, cNdotL, ROUGHNESS);
+        vec3 DiffLight = LightColorEnergy * ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, ROUGHNESS);
+        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, ROUGHNESS);
         SpecLight *= LightColorEnergy * Light.Specular;
 
         TotalDiffuse += DiffLight * Shadow * Attenuation;
@@ -377,17 +393,11 @@ void main()
         float Shadow = SpotPCSS(SpotShadowMaps[Index], Light, InPosition, FragNormal);
         float Attenuation = SpotAttenuate(FragToLight, Light);
 
-        float NdotL = max(dot(FragNormal, FragToLight), 0.0);
-        float cNdotL = min(NdotL, 1.0);
-        vec3 H = normalize(FragViewDir + FragToLight);
-        float LdotH = max(dot(FragToLight, H), 0.0);
-        float cLdotH = min(dot(FragToLight, H), 1.0);
-        float NdotH = max(dot(FragNormal, H), 0.0);
-        float cNdotH = min(NdotH, 1.0);
+        SLightDots Dots = GetLightDots(FragNormal, FragViewDir, FragToLight);
 
         vec3 LightColorEnergy = Light.Color * Light.Energy;
-        vec3 DiffLight = LightColorEnergy * Diffuse(cLdotH, cNdotV, cNdotL, ROUGHNESS);
-        vec3 SpecLight = Specular(F0, cLdotH, cNdotH, cNdotV, cNdotL, ROUGHNESS);
+        vec3 DiffLight = LightColorEnergy * ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, ROUGHNESS);
+        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, ROUGHNESS);
         SpecLight *= LightColorEnergy * Light.Specular;
 
         TotalDiffuse += DiffLight * Shadow * Attenuation;
