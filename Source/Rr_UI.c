@@ -4140,7 +4140,7 @@ bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
         roundf(OutNormalized * (float)(Max - Min)) / (float)(Max - Min);
     int32_t Out = (int32_t)(OutNormalized * (Max - Min) + Min);
     *Value = Out;
-    return false;
+    return In != Out;
 }
 
 bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
@@ -4156,7 +4156,7 @@ bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
     float OutNormalized = Rr_UISlider(Title, InNormalized, Buffer, Length);
     float Out = OutNormalized * (Max - Min) + Min;
     *Value = Out;
-    return false;
+    return In != Out;
 }
 
 static inline void Rr_UIRGBAToHexString(Rr_Vec4 *Color, char *Buffer)

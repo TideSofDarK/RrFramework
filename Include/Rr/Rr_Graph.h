@@ -118,6 +118,12 @@ extern void Rr_CopyImage2D(
     Rr_IntVec2 Extent,
     uint32_t MipLevel);
 
+extern void Rr_CopyImageCube(
+    Rr_Graph *Graph,
+    Rr_ImageCube *SrcImage,
+    Rr_ImageCube *DstImage,
+    uint32_t MipLevel);
+
 extern void Rr_BlitImage2D(
     Rr_Graph *Graph,
     Rr_Image2D *SrcImage,

@@ -2794,6 +2794,30 @@ void Rr_CopyImage2D(
         MipLevel);
 }
 
+void Rr_CopyImageCube(
+    Rr_Graph *Graph,
+    Rr_ImageCube *SrcImage,
+    Rr_ImageCube *DstImage,
+    uint32_t MipLevel)
+{
+    assert(Graph);
+    assert(SrcImage);
+    assert(DstImage);
+    assert(
+        memcmp(&SrcImage->Extent, &DstImage->Extent, sizeof(VkExtent3D)) == 0);
+
+    Rr_AddCopyImageNode(
+        Graph,
+        (Rr_Image *)SrcImage,
+        (Rr_IntVec3){ 0, 0, 0 },
+        (Rr_Image *)DstImage,
+        (Rr_IntVec3){ 0, 0, 0 },
+        (Rr_IntVec3){ SrcImage->Extent.width, SrcImage->Extent.height, 1 },
+        0,
+        6,
+        MipLevel);
+}
+
 #define RR_NODE_ENCODE(FunctionType, Struct)                               \
     do                                                                     \
     {                                                                      \
