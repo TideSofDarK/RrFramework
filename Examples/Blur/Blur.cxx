@@ -127,7 +127,7 @@ struct SBlur2D
 
     Rr_ComputePipeline *CreateBlurPipeline(
         Rr_AssetRef ComputeSPV,
-        std::uint32_t Radius)
+        std::uint32_t KernelSize)
     {
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -140,7 +140,7 @@ struct SBlur2D
             },
             Rr_PipelineSpecialization{
                 2,
-                RR_MAKE_DATA_STRUCT(Radius),
+                RR_MAKE_DATA_STRUCT(KernelSize),
             },
         };
 
@@ -153,20 +153,20 @@ struct SBlur2D
         return Rr_CreateComputePipeline(&PipelineCreateInfo);
     }
 
-    void RecreatePipelines(std::uint32_t Radius)
+    void RecreatePipelines(std::uint32_t KernelSize)
     {
         Rr_ReleaseComputePipeline(Blur2DXPipeline);
         Blur2DXPipeline =
-            CreateBlurPipeline(EXAMPLE_ASSET_BLUR2DX_COMP_SPV, Radius);
+            CreateBlurPipeline(EXAMPLE_ASSET_BLUR2DX_COMP_SPV, KernelSize);
         Rr_ReleaseComputePipeline(Blur2DYPipeline);
         Blur2DYPipeline =
-            CreateBlurPipeline(EXAMPLE_ASSET_BLUR2DY_COMP_SPV, Radius);
+            CreateBlurPipeline(EXAMPLE_ASSET_BLUR2DY_COMP_SPV, KernelSize);
     }
 
     SBlur2D(
         Rr_TextureFormat Format,
         std::int32_t ImageSize,
-        std::uint32_t Radius)
+        std::uint32_t KernelSize)
         : Format(Format)
         , ImageSize(ImageSize)
         , WorkgroupSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
@@ -189,7 +189,7 @@ struct SBlur2D
         PipelineLayout =
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
-        RecreatePipelines(Radius);
+        RecreatePipelines(KernelSize);
 
         IntermediateImage = Rr_CreateImage2D(
             { ImageSize, ImageSize },
@@ -330,12 +330,12 @@ struct SBlurApp
     Rr_GraphicsPipeline *QuadGraphicsPipeline;
     Rr_Image2D *OriginalImage2D;
     Rr_Image2D *BlurredImage2D;
-    std::int32_t Blur2DRadius = 32;
+    std::int32_t Blur2DKernelSize = 32;
     std::int32_t Blur2DPasses = 2;
     SBlur2D Blur2D;
 
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_PipelineLayout *CubePipelineLayout;
+    Rr_GraphicsPipeline *CubeGraphicsPipeline;
     Rr_ImageCube *OriginalImageCube;
     Rr_ImageCube *BlurredImageCube;
     std::int32_t BlurCubeRadius = 4;
@@ -361,7 +361,7 @@ struct SBlurApp
         std::array Sets = {
             Rr_BindingSet{ Bindings.size(), Bindings.data() },
         };
-        PipelineLayout =
+        CubePipelineLayout =
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
         std::array VertexAttributes = {
@@ -381,7 +381,7 @@ struct SBlurApp
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
+        PipelineInfo.Layout = CubePipelineLayout;
         PipelineInfo.VertexShaderSPV =
             Rr_LoadAsset(EXAMPLE_ASSET_BLUR_VERT_SPV);
         PipelineInfo.FragmentShaderSPV =
@@ -392,7 +392,7 @@ struct SBlurApp
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        CubeGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         std::array GLTFAttributeTypes = {
             RR_GLTF_ATTRIBUTE_TYPE_POSITION,
@@ -604,7 +604,7 @@ struct SBlurApp
         Rr_UIBeginWindow("Blur.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UILabel(
             "This example demonstrates blur compute shaders.\nBlurring "
-            "cubemaps requires its own algorithm to avoid seams between cube "
+            "cubemaps requires different algorithm to avoid seams between cube "
             "faces.");
         Rr_UISeparator();
         const char *Modes[2] = { "Image2D", "ImageCube" };
@@ -612,9 +612,9 @@ struct SBlurApp
         Rr_UICombobox("Mode", 2, Modes, &SelectedModeIndex);
         if (SelectedModeIndex == 0)
         {
-            if (Rr_UISliderInt("Blur Radius", &Blur2DRadius, 8, 64))
+            if (Rr_UISliderInt("Kernel Size", &Blur2DKernelSize, 8, 64))
             {
-                Blur2D.RecreatePipelines(Blur2DRadius);
+                Blur2D.RecreatePipelines(Blur2DKernelSize);
                 Rr_CopyImage2D(
                     Rr_GetGraph(),
                     OriginalImage2D,
@@ -625,7 +625,7 @@ struct SBlurApp
                     0);
                 Blur2D.Blur(Rr_GetGraph(), BlurredImage2D, Blur2DPasses);
             }
-            if (Rr_UISliderInt("Blur Passes", &Blur2DPasses, 0, 4))
+            if (Rr_UISliderInt("Passes", &Blur2DPasses, 0, 4))
             {
                 Rr_CopyImage2D(
                     Rr_GetGraph(),
@@ -657,7 +657,7 @@ struct SBlurApp
         }
         else
         {
-            if (Rr_UISliderInt("Blur Radius", &BlurCubeRadius, 2, 16))
+            if (Rr_UISliderInt("Radius", &BlurCubeRadius, 2, 16))
             {
                 BlurCube.RecreatePipelines(BlurCubeRadius);
                 Rr_CopyImageCube(
@@ -667,7 +667,7 @@ struct SBlurApp
                     0);
                 BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
             }
-            if (Rr_UISliderInt("Blur Passes", &BlurCubePasses, 0, 16))
+            if (Rr_UISliderInt("Passes", &BlurCubePasses, 0, 16))
             {
                 Rr_CopyImageCube(
                     Rr_GetGraph(),
@@ -696,7 +696,7 @@ struct SBlurApp
             };
             Rr_GraphNode *GraphicsNode =
                 Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);
-            Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+            Rr_BindGraphicsPipeline(GraphicsNode, CubeGraphicsPipeline);
             Rr_BindVertexBuffer(
                 GraphicsNode,
                 GLTFAsset->Buffer,
@@ -728,7 +728,7 @@ struct SBlurApp
     }
 
     SBlurApp()
-        : Blur2D(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, Blur2DRadius)
+        : Blur2D(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, Blur2DKernelSize)
         , BlurCube(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
     {
         InitQuadPipeline();
@@ -748,8 +748,8 @@ struct SBlurApp
         Rr_ReleasePipelineLayout(QuadPipelineLayout);
         Rr_ReleaseImage(OriginalImage2D);
         Rr_ReleaseImage(BlurredImage2D);
-        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseGraphicsPipeline(CubeGraphicsPipeline);
+        Rr_ReleasePipelineLayout(CubePipelineLayout);
         Rr_ReleaseImage(OriginalImageCube);
         Rr_ReleaseImage(BlurredImageCube);
         Rr_ReleaseGLTFContext(GLTFContext);
@@ -761,7 +761,7 @@ int main()
     static SBlurApp *App{};
 
     Rr_AppConfig Config = {};
-    Config.Title = "Skybox";
+    Config.Title = "Blur";
     Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
     Config.InitFunc = []() { App = new SBlurApp(); };
     Config.EventFunc = [](Rr_Event *Event) { App->Event(Event); };
