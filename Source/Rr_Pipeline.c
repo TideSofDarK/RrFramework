@@ -699,7 +699,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .layout = CreateInfo->Layout->Handle,
         .pDynamicState = &DynamicStateInfo,
         .renderPass = Rr_GetCompatibleRenderPass(
-            CreateInfo->ColorTargetCount,
+            (uint32_t)CreateInfo->ColorTargetCount,
             CreateInfo->ColorTargets,
             &CreateInfo->DepthStencil,
             Multisampling.rasterizationSamples),
