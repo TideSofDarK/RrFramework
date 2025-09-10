@@ -16,10 +16,6 @@ constexpr Rr_Mat4 FLIP_Y_MATRIX = { 1.0f, 0.0f,  0.0f, 0.0f,
                                     0.0f, 0.0f,  1.0f, 0.0f, //
                                     0.0f, 0.0f,  0.0f, 1.0f };
 constexpr Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
-constexpr Rr_TextureFormat SHADOW_MAP_DEPTH_FORMAT =
-    RR_TEXTURE_FORMAT_D32_SFLOAT;
-constexpr std::int32_t POINT_SHADOW_MAP_SIZE = 2048;
-constexpr std::int32_t SPOT_SHADOW_MAP_SIZE = 4096;
 constexpr float NEAR_PLANE = 0.1f;
 constexpr float FAR_PLANE = 100.0f;
 constexpr std::size_t MAX_POINT_LIGHTS = 4;
@@ -450,8 +446,10 @@ struct SGrid
 
 struct SLighting
 {
-    static constexpr Rr_TextureFormat SHADOW_MAP_FORMAT =
-        RR_TEXTURE_FORMAT_R32G32_SFLOAT;
+    static constexpr Rr_TextureFormat SHADOW_MAP_DEPTH_FORMAT =
+        RR_TEXTURE_FORMAT_D32_SFLOAT;
+    static constexpr std::int32_t POINT_SHADOW_MAP_SIZE = 2048;
+    static constexpr std::int32_t SPOT_SHADOW_MAP_SIZE = 4096;
 
     struct SGPUPointLight
     {
@@ -467,6 +465,9 @@ struct SLighting
         float NormalBias;
         float LightSize;
         float TexelSize;
+        float NearPlane;
+        float FarPlane;
+        Rr_Vec2 Padding;
     };
 
     struct SGPUSpotLight
@@ -526,6 +527,8 @@ struct SLighting
             .NormalBias = 0.000f,
             .LightSize = 0.0037f,
             .TexelSize = 1.0f / (float)POINT_SHADOW_MAP_SIZE,
+            .NearPlane = NEAR_PLANE,
+            .FarPlane = FAR_PLANE,
         };
         PointLights.emplace_back(PointLight);
 
@@ -646,12 +649,16 @@ struct SLighting
         char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
         std::size_t UniformOffset = 0;
 
-        const Rr_Mat4 CubeFacePerspective =
-            Rr_Perspective_RH(RR_ANGLE_DEG(90.0f), 1.0f, NEAR_PLANE, FAR_PLANE);
         for (std::size_t Index = 0; Index < PointLights.size(); ++Index)
         {
             SGPUPointLight &Point = PointLights[Index];
             Rr_ImageCube *PointShadowMap = PointShadowMaps[Index];
+
+            const Rr_Mat4 CubeFacePerspective = Rr_Perspective_RH(
+                RR_ANGLE_DEG(90.0f),
+                1.0f,
+                Point.NearPlane,
+                Point.FarPlane);
 
             for (std::uint32_t Face = 0; Face < RR_IMAGE_CUBE_FACE_COUNT;
                  ++Face)

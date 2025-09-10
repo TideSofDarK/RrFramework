@@ -34,6 +34,9 @@ struct SGPUPointLight
     float NormalBias;
     float LightSize;
     float TexelSize;
+    float NearPlane;
+    float FarPlane;
+    vec2 Padding;
 };
 
 struct SGPUSpotLight
@@ -149,14 +152,12 @@ float SpotAttenuate(in vec3 LightToFrag, in SGPUSpotLight Light)
     return smoothstep(OuterConeCos, InnerConeCos, ActualCos);
 }
 
-float VectorToDepthValue(vec3 Vec)
+float VectorToDepthValue(in vec3 Vec, in float NearPlane, in float FarPlane)
 {
     vec3 AbsVec = abs(Vec);
     float LocalZcomp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));
 
-    const float f = 100.0;
-    const float n = 0.1;
-    float NormZComp = (f + n) / (f - n) - (2 * f * n) / (f - n) / LocalZcomp;
+    float NormZComp = (FarPlane + NearPlane) / (FarPlane - NearPlane) - (2 * FarPlane * NearPlane) / (FarPlane - NearPlane) / LocalZcomp;
     return (NormZComp + 1.0) * 0.5;
 }
 
@@ -193,7 +194,7 @@ float PointPCSS(
     float Bias = Light.ConstantBias * Light.TexelSize * (Light.ConstantBias + Light.SlopeBias * BiasOffsets.y);
 
     vec3 SampleDir = normalize(-FragToLightNormalized + NormalOffsetBias);
-    float Receiver = VectorToDepthValue(FragToLight);
+    float Receiver = VectorToDepthValue(FragToLight, Light.NearPlane, Light.FarPlane);
     float ReceiverBiased = Receiver - Bias;
 
     float AdaptiveRadius = Light.LightSize * sqrt(Receiver);
