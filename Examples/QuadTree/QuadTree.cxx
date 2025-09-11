@@ -848,15 +848,13 @@ struct SQuadTreeApp
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
-        Rr_ColorTarget ColorTarget;
-        ColorTarget.Clear = { 13.0f / 255.0f,
-                              14.0f / 255.0f,
-                              28.0f / 255.0f,
-                              1.0f };
-        ColorTarget.LoadOp = RR_LOAD_OP_CLEAR;
-        ColorTarget.Slot = 0;
-        ColorTarget.StoreOp = RR_STORE_OP_STORE;
-        ColorTarget.Image = SwapchainImage;
+        Rr_ColorTarget ColorTarget = {
+            .Slot = 0,
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Clear = { 13.0f / 255.0f, 14.0f / 255.0f, 28.0f / 255.0f, 1.0f },
+            .Image = SwapchainImage,
+        };
 
         float Left = -SwapchainSize.X / 2.0f * CameraZoom;
         float Right = SwapchainSize.X / 2.0f * CameraZoom;

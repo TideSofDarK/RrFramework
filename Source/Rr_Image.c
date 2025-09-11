@@ -217,7 +217,9 @@ Found:
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = AllocatedImage->Handle,
         .viewType = Key->Type,
-        .format = AllocatedImage->Container->Format,
+        .format = Key->Format != VK_FORMAT_UNDEFINED
+                      ? Key->Format
+                      : AllocatedImage->Container->Format,
         .subresourceRange = Key->SubresourceRange,
     };
 
@@ -233,7 +235,8 @@ Found:
 static inline VkSampleCountFlagBits Rr_ToVulkanSampleCountFlagBits(
     Rr_ImageFlags ImageFlags)
 {
-    return ImageFlags >> 8;
+    /* TODO: Hardcoded offset. */
+    return ImageFlags >> 9;
 }
 
 static Rr_Image *Rr_CreateImage(
@@ -257,7 +260,7 @@ static Rr_Image *Rr_CreateImage(
     Rr_UnlockSpinlock(&gRenderer->ImagesLock);
 
     Image->Flags = Flags;
-    Image->Format = Rr_ToVulkanTextureFormat(Format);
+    Image->Format = Rr_ToVulkanImageFormat(Format);
     Image->Extent.width = Extent.Width;
     Image->Extent.height = Extent.Height;
     Image->Extent.depth = Extent.Depth;
@@ -302,6 +305,11 @@ static Rr_Image *Rr_CreateImage(
     {
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
+
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MUTABLE_FORMAT_BIT))
+    {
+        AdditionalFlags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     }
 
     /* TODO: Some kind of real usage must be enforced aside from TRANSFER_*. */

@@ -51,6 +51,7 @@ struct Rr_ImageViewKey
 {
     VkImageSubresourceRange SubresourceRange;
     VkImageViewType Type;
+    VkFormat Format;
 };
 
 typedef struct Rr_ImageViewMap Rr_ImageViewMap;
@@ -74,6 +75,10 @@ struct Rr_ImageViewStorage
     Rr_Spinlock Lock;
 };
 
+extern Rr_ImageViewStorage *Rr_CreateImageViewStorage(void);
+
+extern void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage);
+
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
 struct Rr_AllocatedImage
 {
@@ -82,10 +87,6 @@ struct Rr_AllocatedImage
     VmaAllocation Allocation;
     struct Rr_Image *Container;
 };
-
-extern Rr_ImageViewStorage *Rr_CreateImageViewStorage(void);
-
-extern void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage);
 
 extern VkImageView Rr_GetVulkanImageView(
     Rr_AllocatedImage *AllocatedImage,

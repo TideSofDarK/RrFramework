@@ -61,7 +61,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
         for (; AttachmentIndex < Boundary; ++AttachmentIndex)
         {
             Key.Attachments[AttachmentIndex].Format =
-                Rr_ToVulkanTextureFormat(ColorTargets[AttachmentIndex].Format);
+                Rr_ToVulkanImageFormat(ColorTargets[AttachmentIndex].Format);
             Key.Attachments[AttachmentIndex].Samples = SampleCount;
             Key.Attachments[AttachmentIndex].LoadOp =
                 VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -76,7 +76,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
         for (uint32_t ResolveAttachmentIndex = 0; AttachmentIndex < Boundary;
              ++AttachmentIndex, ++ResolveAttachmentIndex)
         {
-            Key.Attachments[AttachmentIndex].Format = Rr_ToVulkanTextureFormat(
+            Key.Attachments[AttachmentIndex].Format = Rr_ToVulkanImageFormat(
                 ColorTargets[ResolveAttachmentIndex].Format);
             Key.Attachments[AttachmentIndex].Samples = 1;
             Key.Attachments[AttachmentIndex].LoadOp =
@@ -89,7 +89,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     if (Key.DepthStencil)
     {
         Key.Attachments[AttachmentIndex].Format =
-            Rr_ToVulkanTextureFormat(DepthStencil->Format);
+            Rr_ToVulkanImageFormat(DepthStencil->Format);
         Key.Attachments[AttachmentIndex].Samples = SampleCount;
         Key.Attachments[AttachmentIndex].LoadOp =
             VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -150,7 +150,8 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
                 (uint8_t)Rr_ToVulkanShaderStageFlags(Binding->Stages);
             /* NOTE: Allow to omit explicitly setting Count to 1. */
             PackedBinding->Count = Binding->Count == 0 ? 1 : Binding->Count;
-            PackedBinding->ImageFormat = (uint8_t)Binding->ImageFormat;
+            PackedBinding->ImageFormat =
+                (uint8_t)Rr_ToVulkanImageFormat(Binding->ImageFormat);
 
             Keys[SetIndex].TotalBindingCount++;
         }

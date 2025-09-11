@@ -100,29 +100,52 @@ struct SBlur2D
     Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *Blur2DXPipeline{};
     Rr_ComputePipeline *Blur2DYPipeline{};
-    Rr_Image2D *IntermediateImage;
+    Rr_Image2D *IntermediateImageA;
+    Rr_Image2D *IntermediateImageB;
 
     Rr_ImageFormat Format;
     std::uint32_t ImageSize;
     std::uint32_t WorkgroupSize;
 
-    void Blur(Rr_Graph *Graph, Rr_Image2D *TargetImage, std::int32_t Passes)
+    void Blur(
+        Rr_Graph *Graph,
+        Rr_Image2D *OriginalImage,
+        Rr_Image2D *TargetImage,
+        std::int32_t Passes)
     {
+        Rr_CopyImage2D(
+            Graph,
+            OriginalImage,
+            Rr_IntVec2{},
+            IntermediateImageA,
+            Rr_IntVec2{},
+            Rr_IntVec2{ (std::int32_t)ImageSize, (std::int32_t)ImageSize },
+            0);
+
         Rr_SetNextNodeName(Graph, "Blur2D");
         Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
         for (std::int32_t Index = 0; Index < Passes; ++Index)
         {
             Rr_BindComputePipeline(Node, Blur2DXPipeline);
-            Rr_BindStorageImage2D(Node, TargetImage, 0, 0);
-            Rr_BindStorageImage2DRW(Node, IntermediateImage, 0, 1);
+            Rr_BindStorageImage2D(Node, IntermediateImageA, 0, 0);
+            Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
             Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 1);
             Rr_ComputeBarrier(Node);
             Rr_BindComputePipeline(Node, Blur2DYPipeline);
-            Rr_BindStorageImage2D(Node, IntermediateImage, 0, 0);
-            Rr_BindStorageImage2DRW(Node, TargetImage, 0, 1);
+            Rr_BindStorageImage2D(Node, IntermediateImageB, 0, 0);
+            Rr_BindStorageImage2DRW(Node, IntermediateImageA, 0, 1);
             Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 1);
             Rr_ComputeBarrier(Node);
         }
+
+        Rr_CopyImage2D(
+            Graph,
+            IntermediateImageA,
+            Rr_IntVec2{},
+            TargetImage,
+            Rr_IntVec2{},
+            Rr_IntVec2{ (std::int32_t)ImageSize, (std::int32_t)ImageSize },
+            0);
     }
 
     Rr_ComputePipeline *CreateBlurPipeline(
@@ -191,7 +214,11 @@ struct SBlur2D
 
         RecreatePipelines(KernelSize);
 
-        IntermediateImage = Rr_CreateImage2D(
+        IntermediateImageA = Rr_CreateImage2D(
+            { ImageSize, ImageSize },
+            Format,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
+        IntermediateImageB = Rr_CreateImage2D(
             { ImageSize, ImageSize },
             Format,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
@@ -202,7 +229,8 @@ struct SBlur2D
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(Blur2DXPipeline);
         Rr_ReleaseComputePipeline(Blur2DYPipeline);
-        Rr_ReleaseImage(IntermediateImage);
+        Rr_ReleaseImage(IntermediateImageA);
+        Rr_ReleaseImage(IntermediateImageB);
     }
 };
 
@@ -211,29 +239,38 @@ struct SBlurCube
     Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *BlurCubeXPipeline{};
     Rr_ComputePipeline *BlurCubeYPipeline{};
-    Rr_ImageCube *IntermediateImage;
+    Rr_ImageCube *IntermediateImageA;
+    Rr_ImageCube *IntermediateImageB;
 
     Rr_ImageFormat Format;
     std::uint32_t ImageSize;
     std::uint32_t WorkgroupSize;
 
-    void Blur(Rr_Graph *Graph, Rr_ImageCube *TargetImage, std::int32_t Passes)
+    void Blur(
+        Rr_Graph *Graph,
+        Rr_ImageCube *OriginalImage,
+        Rr_ImageCube *BlurredImage,
+        std::int32_t Passes)
     {
+        Rr_CopyImageCube(Rr_GetGraph(), OriginalImage, IntermediateImageA, 0);
+
         Rr_SetNextNodeName(Graph, "BlurCube");
         Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
         for (std::int32_t Index = 0; Index < Passes; ++Index)
         {
             Rr_BindComputePipeline(Node, BlurCubeXPipeline);
-            Rr_BindStorageImage2DArray(Node, TargetImage, 0, 0);
-            Rr_BindStorageImage2DArrayRW(Node, IntermediateImage, 0, 1);
+            Rr_BindStorageImage2DArray(Node, IntermediateImageA, 0, 0);
+            Rr_BindStorageImage2DArrayRW(Node, IntermediateImageB, 0, 1);
             Rr_Dispatch(Node, 1, ImageSize / WorkgroupSize, 6);
             Rr_ComputeBarrier(Node);
             Rr_BindComputePipeline(Node, BlurCubeYPipeline);
-            Rr_BindStorageImage2DArray(Node, IntermediateImage, 0, 0);
-            Rr_BindStorageImage2DArrayRW(Node, TargetImage, 0, 1);
+            Rr_BindStorageImage2DArray(Node, IntermediateImageB, 0, 0);
+            Rr_BindStorageImage2DArrayRW(Node, IntermediateImageA, 0, 1);
             Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 6);
             Rr_ComputeBarrier(Node);
         }
+
+        Rr_CopyImageCube(Rr_GetGraph(), IntermediateImageA, BlurredImage, 0);
     }
 
     Rr_ComputePipeline *CreateBlurPipeline(
@@ -302,7 +339,11 @@ struct SBlurCube
 
         RecreatePipelines(Radius);
 
-        IntermediateImage = Rr_CreateImageCube(
+        IntermediateImageA = Rr_CreateImageCube(
+            { ImageSize, ImageSize },
+            Format,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
+        IntermediateImageB = Rr_CreateImageCube(
             { ImageSize, ImageSize },
             Format,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
@@ -313,7 +354,8 @@ struct SBlurCube
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(BlurCubeXPipeline);
         Rr_ReleaseComputePipeline(BlurCubeYPipeline);
-        Rr_ReleaseImage(IntermediateImage);
+        Rr_ReleaseImage(IntermediateImageA);
+        Rr_ReleaseImage(IntermediateImageB);
     }
 };
 
@@ -367,7 +409,6 @@ struct SBlurApp
                 .Index = 0,
                 .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
                 .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-                .ImageFormat = Rr_GetSwapchainFormat(),
             },
         };
         std::array Sets = {
@@ -402,7 +443,7 @@ struct SBlurApp
 
         OriginalImage2D = Rr_CreateImage2D(
             { Width, Height },
-            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
         Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
@@ -422,19 +463,10 @@ struct SBlurApp
 
         BlurredImage2D = Rr_CreateImage2D(
             { Width, Height },
-            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
-                RR_IMAGE_FLAGS_STORAGE_BIT);
-
-        Rr_CopyImage2D(
-            Rr_GetGraph(),
-            OriginalImage2D,
-            Rr_IntVec2{},
-            BlurredImage2D,
-            Rr_IntVec2{},
-            Rr_IntVec2{ 512, 512 },
-            0);
-        Blur2D.Blur(Rr_GetGraph(), BlurredImage2D, Blur2DPasses);
+            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+        Blur2D
+            .Blur(Rr_GetGraph(), OriginalImage2D, BlurredImage2D, Blur2DPasses);
 
         Rr_ReleaseBuffer(StagingBuffer);
     }
@@ -453,7 +485,6 @@ struct SBlurApp
                 .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
                 .Stages =
                     RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-                .ImageFormat = Rr_GetSwapchainFormat(),
             },
         };
         std::array Sets = {
@@ -525,9 +556,8 @@ struct SBlurApp
 
         OriginalImageCube = Rr_CreateImageCube(
             { Width, Height },
-            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
-                RR_IMAGE_FLAGS_STORAGE_BIT);
+            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+            RR_IMAGE_FLAGS_TRANSFER_BIT);
 
         Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
             Width * Height * 4 * 6,
@@ -553,12 +583,13 @@ struct SBlurApp
 
         BlurredImageCube = Rr_CreateImageCube(
             { Width, Height },
-            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
-                RR_IMAGE_FLAGS_STORAGE_BIT);
-
-        Rr_CopyImageCube(Rr_GetGraph(), OriginalImageCube, BlurredImageCube, 0);
-        BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
+            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+        BlurCube.Blur(
+            Rr_GetGraph(),
+            OriginalImageCube,
+            BlurredImageCube,
+            BlurCubePasses);
 
         Rr_ReleaseBuffer(StagingBuffer);
     }
@@ -621,27 +652,19 @@ struct SBlurApp
             if (Rr_UISliderInt("Kernel Size", &Blur2DKernelSize, 8, 64))
             {
                 Blur2D.RecreatePipelines(Blur2DKernelSize);
-                Rr_CopyImage2D(
+                Blur2D.Blur(
                     Rr_GetGraph(),
                     OriginalImage2D,
-                    Rr_IntVec2{},
                     BlurredImage2D,
-                    Rr_IntVec2{},
-                    Rr_IntVec2{ 512, 512 },
-                    0);
-                Blur2D.Blur(Rr_GetGraph(), BlurredImage2D, Blur2DPasses);
+                    Blur2DPasses);
             }
             if (Rr_UISliderInt("Passes", &Blur2DPasses, 0, 4))
             {
-                Rr_CopyImage2D(
+                Blur2D.Blur(
                     Rr_GetGraph(),
                     OriginalImage2D,
-                    Rr_IntVec2{},
                     BlurredImage2D,
-                    Rr_IntVec2{},
-                    Rr_IntVec2{ 512, 512 },
-                    0);
-                Blur2D.Blur(Rr_GetGraph(), BlurredImage2D, Blur2DPasses);
+                    Blur2DPasses);
             }
 
             Rr_ColorTarget ColorTarget = {
@@ -666,21 +689,19 @@ struct SBlurApp
             if (Rr_UISliderInt("Radius", &BlurCubeRadius, 2, 16))
             {
                 BlurCube.RecreatePipelines(BlurCubeRadius);
-                Rr_CopyImageCube(
+                BlurCube.Blur(
                     Rr_GetGraph(),
                     OriginalImageCube,
                     BlurredImageCube,
-                    0);
-                BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
+                    BlurCubePasses);
             }
             if (Rr_UISliderInt("Passes", &BlurCubePasses, 0, 16))
             {
-                Rr_CopyImageCube(
+                BlurCube.Blur(
                     Rr_GetGraph(),
                     OriginalImageCube,
                     BlurredImageCube,
-                    0);
-                BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
+                    BlurCubePasses);
             }
 
             Camera.Update(Scancodes);

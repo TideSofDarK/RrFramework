@@ -811,6 +811,18 @@ static void Rr_ExecuteBlitNode(
     }
 }
 
+static inline VkFormat Rr_GetImageFormatForBinding(
+    Rr_DescriptorsState *State,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    Rr_PipelineLayout *Layout = State->Layout;
+    assert(Layout);
+    Rr_DescriptorSetLayout *SetLayout = Layout->SetLayouts[Set];
+    assert(SetLayout);
+    return (VkFormat)SetLayout->Key.Bindings[Binding].ImageFormat;
+}
+
 static inline void Rr_ExecuteGenericEncodedCommands(
     Rr_Graph *Graph,
     Rr_NodeFunction *Function,
@@ -839,6 +851,10 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                 &(Rr_ImageViewKey){
                     .SubresourceRange = Args->SubresourceRange,
                     .Type = Args->ViewType,
+                    .Format = Rr_GetImageFormatForBinding(
+                        DescriptorsState,
+                        Args->Set,
+                        Args->Binding),
                 });
             Rr_WriteImageDescriptor(
                 DescriptorsState,
@@ -861,6 +877,10 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                 &(Rr_ImageViewKey){
                     .SubresourceRange = Args->SubresourceRange,
                     .Type = Args->ViewType,
+                    .Format = Rr_GetImageFormatForBinding(
+                        DescriptorsState,
+                        Args->Set,
+                        Args->Binding),
                 });
             Rr_WriteImageDescriptor(
                 DescriptorsState,

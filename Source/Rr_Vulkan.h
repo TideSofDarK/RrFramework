@@ -675,9 +675,9 @@ static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
     }
 }
 
-static Rr_ImageFormat Rr_ToTextureFormat(VkFormat TextureFormat)
+static Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
 {
-    switch (TextureFormat)
+    switch (ImageFormat)
     {
         case VK_FORMAT_UNDEFINED:
             return RR_IMAGE_FORMAT_UNDEFINED;
@@ -710,13 +710,13 @@ static Rr_ImageFormat Rr_ToTextureFormat(VkFormat TextureFormat)
         case VK_FORMAT_R32G32_SFLOAT:
             return RR_IMAGE_FORMAT_R32G32_SFLOAT;
         default:
-            RR_ABORT("Invalid texture format!");
+            RR_ABORT("Invalid image format!");
     }
 }
 
-static VkFormat Rr_ToVulkanTextureFormat(Rr_ImageFormat TextureFormat)
+static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
 {
-    switch (TextureFormat)
+    switch (ImageFormat)
     {
         case RR_IMAGE_FORMAT_UNDEFINED:
             return VK_FORMAT_UNDEFINED;
@@ -749,7 +749,7 @@ static VkFormat Rr_ToVulkanTextureFormat(Rr_ImageFormat TextureFormat)
         case RR_IMAGE_FORMAT_R32G32_SFLOAT:
             return VK_FORMAT_R32G32_SFLOAT;
         default:
-            RR_ABORT("Invalid texture format!");
+            RR_ABORT("Invalid image format!");
     }
 }
 

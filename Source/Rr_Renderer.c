@@ -967,7 +967,7 @@ size_t Rr_GetMaxComputeWorkgroupInvocations(void)
 
 Rr_ImageFormat Rr_GetSwapchainFormat(void)
 {
-    return Rr_ToTextureFormat(gRenderer->Swapchain.Format);
+    return Rr_ToImageFormat(gRenderer->Swapchain.Format);
 }
 
 Rr_IntVec2 Rr_GetSwapchainSize(void)
