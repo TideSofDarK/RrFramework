@@ -344,73 +344,6 @@ struct SBlurApp
 
     UScancodes Scancodes{};
 
-    void InitPipeline()
-    {
-        std::array Bindings = {
-            Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                1,
-                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        CubePipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
-        std::array VertexAttributes = {
-            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
-        };
-
-        std::array VertexInputBindings = {
-            Rr_VertexInputBinding{
-                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-                .AttributeCount = VertexAttributes.size(),
-                .Attributes = VertexAttributes.data(),
-            },
-        };
-
-        Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
-        ColorTarget.Blend = Rr_AlphaBlend();
-
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = CubePipelineLayout;
-        PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_BLUR_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_BLUR_FRAG_SPV);
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = &ColorTarget;
-        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
-        PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
-        PipelineInfo.VertexInputBindings = VertexInputBindings.data();
-
-        CubeGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
-
-        std::array GLTFAttributeTypes = {
-            RR_GLTF_ATTRIBUTE_TYPE_POSITION,
-        };
-
-        Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
-            .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
-            .AttributeTypes = GLTFAttributeTypes.data(),
-        };
-
-        GLTFContext = Rr_CreateGLTFContext(
-            VertexInputBindings.size(),
-            VertexInputBindings.data(),
-            &GLTFVertexInputBinding,
-            0,
-            NULL);
-    }
-
     void InitUniformBuffer()
     {
         UniformBuffer = Rr_CreateBuffer(
@@ -422,61 +355,9 @@ struct SBlurApp
     void InitSampler()
     {
         Rr_SamplerInfo Info = {};
+        Info.MinFilter = RR_FILTER_LINEAR;
+        Info.MagFilter = RR_FILTER_LINEAR;
         Sampler = Rr_CreateSampler(&Info);
-    }
-
-    void InitImageCube()
-    {
-        SPNGImage Right{ EXAMPLE_ASSET_RIGHT_PNG };
-        SPNGImage Left{ EXAMPLE_ASSET_LEFT_PNG };
-        SPNGImage Up{ EXAMPLE_ASSET_UP_PNG };
-        SPNGImage Down{ EXAMPLE_ASSET_DOWN_PNG };
-        SPNGImage Front{ EXAMPLE_ASSET_FRONT_PNG };
-        SPNGImage Back{ EXAMPLE_ASSET_BACK_PNG };
-
-        int32_t Width = Up.Width;
-        int32_t Height = Up.Height;
-
-        int32_t LayerSize = Width * Height * 4;
-
-        OriginalImageCube = Rr_CreateImageCube(
-            { Width, Height },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
-                RR_IMAGE_FLAGS_STORAGE_BIT);
-
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-            Width * Height * 4 * 6,
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
-
-        char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
-        std::memcpy(StagingData + (LayerSize * 0), Right.Data, LayerSize);
-        std::memcpy(StagingData + (LayerSize * 1), Left.Data, LayerSize);
-        std::memcpy(StagingData + (LayerSize * 2), Up.Data, LayerSize);
-        std::memcpy(StagingData + (LayerSize * 3), Down.Data, LayerSize);
-        std::memcpy(StagingData + (LayerSize * 4), Front.Data, LayerSize);
-        std::memcpy(StagingData + (LayerSize * 5), Back.Data, LayerSize);
-
-        Rr_CopyBufferToImageCubeEx(
-            Rr_GetGraph(),
-            StagingBuffer,
-            (LayerSize * 0),
-            { Width, Height },
-            OriginalImageCube,
-            RR_IMAGE_CUBE_FACE_FIRST,
-            RR_IMAGE_CUBE_FACE_LAST,
-            0);
-
-        BlurredImageCube = Rr_CreateImageCube(
-            { Width, Height },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
-                RR_IMAGE_FLAGS_STORAGE_BIT);
-
-        Rr_CopyImageCube(Rr_GetGraph(), OriginalImageCube, BlurredImageCube, 0);
-        BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
-
-        Rr_ReleaseBuffer(StagingBuffer);
     }
 
     void InitQuadPipeline()
@@ -553,6 +434,127 @@ struct SBlurApp
             Rr_IntVec2{ 512, 512 },
             0);
         Blur2D.Blur(Rr_GetGraph(), BlurredImage2D, Blur2DPasses);
+
+        Rr_ReleaseBuffer(StagingBuffer);
+    }
+
+    void InitCubePipeline()
+    {
+        std::array Bindings = {
+            Rr_Binding{
+                0,
+                RR_BINDING_TYPE_UNIFORM_BUFFER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+            Rr_Binding{
+                1,
+                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
+        };
+        CubePipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        std::array VertexAttributes = {
+            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+        };
+
+        std::array VertexInputBindings = {
+            Rr_VertexInputBinding{
+                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+                .AttributeCount = VertexAttributes.size(),
+                .Attributes = VertexAttributes.data(),
+            },
+        };
+
+        Rr_ColorTargetInfo ColorTarget = {};
+        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Blend = Rr_AlphaBlend();
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
+        PipelineInfo.Layout = CubePipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_BLUR_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_BLUR_FRAG_SPV);
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = &ColorTarget;
+        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
+        PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
+        PipelineInfo.VertexInputBindings = VertexInputBindings.data();
+
+        CubeGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+
+        std::array GLTFAttributeTypes = {
+            RR_GLTF_ATTRIBUTE_TYPE_POSITION,
+        };
+
+        Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
+            .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
+            .AttributeTypes = GLTFAttributeTypes.data(),
+        };
+
+        GLTFContext = Rr_CreateGLTFContext(
+            VertexInputBindings.size(),
+            VertexInputBindings.data(),
+            &GLTFVertexInputBinding,
+            0,
+            NULL);
+    }
+
+    void InitImageCube()
+    {
+        SPNGImage Right{ EXAMPLE_ASSET_RIGHT_PNG };
+        SPNGImage Left{ EXAMPLE_ASSET_LEFT_PNG };
+        SPNGImage Up{ EXAMPLE_ASSET_UP_PNG };
+        SPNGImage Down{ EXAMPLE_ASSET_DOWN_PNG };
+        SPNGImage Front{ EXAMPLE_ASSET_FRONT_PNG };
+        SPNGImage Back{ EXAMPLE_ASSET_BACK_PNG };
+
+        int32_t Width = Up.Width;
+        int32_t Height = Up.Height;
+
+        int32_t LayerSize = Width * Height * 4;
+
+        OriginalImageCube = Rr_CreateImageCube(
+            { Width, Height },
+            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_STORAGE_BIT);
+
+        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+            Width * Height * 4 * 6,
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+
+        char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+        std::memcpy(StagingData + (LayerSize * 0), Right.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 1), Left.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 2), Up.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 3), Down.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 4), Front.Data, LayerSize);
+        std::memcpy(StagingData + (LayerSize * 5), Back.Data, LayerSize);
+
+        Rr_CopyBufferToImageCubeEx(
+            Rr_GetGraph(),
+            StagingBuffer,
+            (LayerSize * 0),
+            { Width, Height },
+            OriginalImageCube,
+            RR_IMAGE_CUBE_FACE_FIRST,
+            RR_IMAGE_CUBE_FACE_LAST,
+            0);
+
+        BlurredImageCube = Rr_CreateImageCube(
+            { Width, Height },
+            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_STORAGE_BIT);
+
+        Rr_CopyImageCube(Rr_GetGraph(), OriginalImageCube, BlurredImageCube, 0);
+        BlurCube.Blur(Rr_GetGraph(), BlurredImageCube, BlurCubePasses);
 
         Rr_ReleaseBuffer(StagingBuffer);
     }
@@ -732,7 +734,7 @@ struct SBlurApp
         , BlurCube(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
     {
         InitQuadPipeline();
-        InitPipeline();
+        InitCubePipeline();
         InitUniformBuffer();
         InitSampler();
         InitImage2D();
