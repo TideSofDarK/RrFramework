@@ -680,7 +680,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                         GLTFAsset->Images[CurrentTextureIndex] =
                             Rr_CreateSTBImage2D(
                                 Graph,
-                                RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+                                RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
                                 ImageDataSize,
                                 ImageData);
 

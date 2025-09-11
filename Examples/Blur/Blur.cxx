@@ -102,7 +102,7 @@ struct SBlur2D
     Rr_ComputePipeline *Blur2DYPipeline{};
     Rr_Image2D *IntermediateImage;
 
-    Rr_TextureFormat Format;
+    Rr_ImageFormat Format;
     std::uint32_t ImageSize;
     std::uint32_t WorkgroupSize;
 
@@ -164,7 +164,7 @@ struct SBlur2D
     }
 
     SBlur2D(
-        Rr_TextureFormat Format,
+        Rr_ImageFormat Format,
         std::int32_t ImageSize,
         std::uint32_t KernelSize)
         : Format(Format)
@@ -173,14 +173,14 @@ struct SBlur2D
     {
         std::array Bindings0 = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_STORAGE_IMAGE,
-                RR_SHADER_STAGE_COMPUTE_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
             },
             Rr_Binding{
-                1,
-                RR_BINDING_TYPE_STORAGE_IMAGE,
-                RR_SHADER_STAGE_COMPUTE_BIT,
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
         std::array Sets = {
@@ -213,7 +213,7 @@ struct SBlurCube
     Rr_ComputePipeline *BlurCubeYPipeline{};
     Rr_ImageCube *IntermediateImage;
 
-    Rr_TextureFormat Format;
+    Rr_ImageFormat Format;
     std::uint32_t ImageSize;
     std::uint32_t WorkgroupSize;
 
@@ -275,7 +275,7 @@ struct SBlurCube
     }
 
     SBlurCube(
-        Rr_TextureFormat Format,
+        Rr_ImageFormat Format,
         std::int32_t ImageSize,
         std::uint32_t Radius)
         : Format(Format)
@@ -284,14 +284,14 @@ struct SBlurCube
     {
         std::array Bindings0 = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_STORAGE_IMAGE,
-                RR_SHADER_STAGE_COMPUTE_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
             },
             Rr_Binding{
-                1,
-                RR_BINDING_TYPE_STORAGE_IMAGE,
-                RR_SHADER_STAGE_COMPUTE_BIT,
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
             },
         };
         std::array Sets = {
@@ -364,9 +364,10 @@ struct SBlurApp
     {
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
+                .ImageFormat = Rr_GetSwapchainFormat(),
             },
         };
         std::array Sets = {
@@ -397,11 +398,11 @@ struct SBlurApp
         int32_t Width = PNGImage.Width;
         int32_t Height = PNGImage.Height;
 
-        int32_t LayerSize = Width * Height * 4;
+        int32_t ImageSize = Width * Height * 4;
 
         OriginalImage2D = Rr_CreateImage2D(
             { Width, Height },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
         Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
@@ -409,7 +410,7 @@ struct SBlurApp
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
         char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
-        std::memcpy(StagingData, PNGImage.Data, LayerSize);
+        std::memcpy(StagingData, PNGImage.Data, ImageSize);
 
         Rr_CopyBufferToImage2D(
             Rr_GetGraph(),
@@ -421,7 +422,7 @@ struct SBlurApp
 
         BlurredImage2D = Rr_CreateImage2D(
             { Width, Height },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
                 RR_IMAGE_FLAGS_STORAGE_BIT);
 
@@ -442,14 +443,17 @@ struct SBlurApp
     {
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
             Rr_Binding{
-                1,
-                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .ImageFormat = Rr_GetSwapchainFormat(),
             },
         };
         std::array Sets = {
@@ -521,7 +525,7 @@ struct SBlurApp
 
         OriginalImageCube = Rr_CreateImageCube(
             { Width, Height },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
                 RR_IMAGE_FLAGS_STORAGE_BIT);
 
@@ -549,7 +553,7 @@ struct SBlurApp
 
         BlurredImageCube = Rr_CreateImageCube(
             { Width, Height },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
                 RR_IMAGE_FLAGS_STORAGE_BIT);
 
@@ -730,8 +734,8 @@ struct SBlurApp
     }
 
     SBlurApp()
-        : Blur2D(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, Blur2DKernelSize)
-        , BlurCube(RR_TEXTURE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
+        : Blur2D(RR_IMAGE_FORMAT_R8G8B8A8_UNORM, 512, Blur2DKernelSize)
+        , BlurCube(RR_IMAGE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
     {
         InitQuadPipeline();
         InitCubePipeline();

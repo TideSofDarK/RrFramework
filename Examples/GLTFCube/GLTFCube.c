@@ -35,7 +35,7 @@ static void InitDepthImage(void)
 
     DepthAttachment = Rr_CreateImage2D(
         (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
-        RR_TEXTURE_FORMAT_D32_SFLOAT,
+        RR_IMAGE_FORMAT_D32_SFLOAT,
         RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
             RR_IMAGE_FLAGS_TRANSFER_BIT);
 }
@@ -97,7 +97,7 @@ static void Init(void)
     PipelineInfo.VertexInputBindings = VertexInputBindings;
     PipelineInfo.ColorTargetCount = RR_ARRAY_COUNT(ColorTargets);
     PipelineInfo.ColorTargets = ColorTargets;
-    PipelineInfo.DepthStencil.Format = RR_TEXTURE_FORMAT_D32_SFLOAT;
+    PipelineInfo.DepthStencil.Format = RR_IMAGE_FORMAT_D32_SFLOAT;
     PipelineInfo.DepthStencil.EnableDepthTest = true;
     PipelineInfo.DepthStencil.EnableDepthWrite = true;
     PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;

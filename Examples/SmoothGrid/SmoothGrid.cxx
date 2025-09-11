@@ -109,8 +109,7 @@ struct SGPUUniform
 
 struct SSmoothGridApp
 {
-    static constexpr Rr_TextureFormat DEPTH_FORMAT =
-        RR_TEXTURE_FORMAT_D32_SFLOAT;
+    static constexpr Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
@@ -126,9 +125,10 @@ struct SSmoothGridApp
     {
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
         std::array Sets = {

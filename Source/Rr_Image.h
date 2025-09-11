@@ -122,7 +122,7 @@ extern size_t Rr_GetImagePNGRGBA8Size(
 
 extern Rr_Image2D *Rr_CreateSTBImage2D(
     struct Rr_Graph *Graph,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     size_t DataSize,
     const char *Data);
 

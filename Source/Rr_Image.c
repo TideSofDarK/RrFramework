@@ -238,7 +238,7 @@ static inline VkSampleCountFlagBits Rr_ToVulkanSampleCountFlagBits(
 
 static Rr_Image *Rr_CreateImage(
     Rr_IntVec3 Extent,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags,
     uint32_t LayerCount,
     VkImageType ImageType,
@@ -439,7 +439,7 @@ void Rr_DestroyImage(Rr_Image *Image)
 
 Rr_Image2D *Rr_CreateImage2D(
     Rr_IntVec2 Extent,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags)
 {
     assert(Extent.Width >= 1);
@@ -457,7 +457,7 @@ Rr_Image2D *Rr_CreateImage2D(
 Rr_Image2DArray *Rr_CreateImage2DArray(
     Rr_IntVec2 Extent,
     uint32_t ArrayCount,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags)
 {
     assert(Extent.Width >= 1);
@@ -475,7 +475,7 @@ Rr_Image2DArray *Rr_CreateImage2DArray(
 
 Rr_Image3D *Rr_CreateImage3D(
     Rr_IntVec3 Extent,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags)
 {
     assert(Extent.Width >= 1);
@@ -488,7 +488,7 @@ Rr_Image3D *Rr_CreateImage3D(
 
 Rr_ImageCube *Rr_CreateImageCube(
     Rr_IntVec2 Extent,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags)
 {
     assert(Extent.Width >= 1);
@@ -543,14 +543,14 @@ size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)
 
 Rr_Image2D *Rr_CreateSTBImage2D(
     struct Rr_Graph *Graph,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     size_t DataSize,
     const char *Data)
 {
     assert(
-        Format == RR_TEXTURE_FORMAT_R8G8B8A8_SRGB ||
-        Format == RR_TEXTURE_FORMAT_R8G8B8A8_UNORM ||
-        Format == RR_TEXTURE_FORMAT_B8G8R8A8_UNORM);
+        Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
+        Format == RR_IMAGE_FORMAT_R8G8B8A8_UNORM ||
+        Format == RR_IMAGE_FORMAT_B8G8R8A8_UNORM);
 
     Rr_IntVec2 ImageSize;
     int32_t ImageChannels;

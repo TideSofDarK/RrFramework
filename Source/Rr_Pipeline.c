@@ -143,15 +143,14 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
             Rr_PackedBinding *PackedBinding =
                 &Keys[SetIndex].Bindings[Binding->Index];
 
-            /* NOTE: Allows to omit explicitly setting Count to 1. */
-            uint8_t BindingCount = Binding->Count == 0 ? 1 : Binding->Count;
-
             PackedBinding->Index = (uint8_t)Binding->Index;
             PackedBinding->Type =
                 (uint8_t)Rr_ToVulkanDescriptorType(Binding->Type);
-            PackedBinding->Count = BindingCount;
             PackedBinding->Stages =
                 (uint8_t)Rr_ToVulkanShaderStageFlags(Binding->Stages);
+            /* NOTE: Allow to omit explicitly setting Count to 1. */
+            PackedBinding->Count = Binding->Count == 0 ? 1 : Binding->Count;
+            PackedBinding->ImageFormat = (uint8_t)Binding->ImageFormat;
 
             Keys[SetIndex].TotalBindingCount++;
         }
@@ -445,7 +444,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     if (GraphicsPipeline->HasDepthStencil)
     {
-        assert(CreateInfo->DepthStencil.Format != RR_TEXTURE_FORMAT_UNDEFINED);
+        assert(CreateInfo->DepthStencil.Format != RR_IMAGE_FORMAT_UNDEFINED);
     }
 
     Rr_ConsumeNextObjectName(GraphicsPipeline->Name);

@@ -284,7 +284,7 @@ Rr_UIFont *Rr_UICreateFont(
     *Font = (Rr_UIFont){
         .Atlas = Rr_CreateSTBImage2D(
             Rr_GetGraph(),
-            RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
             ImageAsset.Size,
             ImageAsset.Pointer),
         .LineHeight = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "lineHeight"),

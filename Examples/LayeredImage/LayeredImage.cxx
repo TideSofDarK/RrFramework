@@ -53,7 +53,7 @@ void CreateImagesFromPNGs(
     Rr_Image2DArray *Image2DArray = Rr_CreateImage2DArray(
         { Width, Height },
         ImageCount,
-        RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+        RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
     *OutImage2DArray = Image2DArray;
     for (std::uint32_t Index = 0; Index < ImageCount; ++Index)
@@ -70,7 +70,7 @@ void CreateImagesFromPNGs(
 
     Rr_Image3D *Image3D = Rr_CreateImage3D(
         { Width, Height, ImageCount },
-        RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+        RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
     *OutImage3D = Image3D;
     Rr_CopyBufferToImage3D(
@@ -103,14 +103,14 @@ struct SLayeredImageApp
     {
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
             },
             Rr_Binding{
-                1,
-                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
         std::array Sets = {

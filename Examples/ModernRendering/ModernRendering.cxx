@@ -15,7 +15,7 @@ constexpr Rr_Mat4 FLIP_Y_MATRIX = { 1.0f, 0.0f,  0.0f, 0.0f,
                                     0.0f, -1.0f, 0.0f, 0.0f, //
                                     0.0f, 0.0f,  1.0f, 0.0f, //
                                     0.0f, 0.0f,  0.0f, 1.0f };
-constexpr Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
+constexpr Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 constexpr float NEAR_PLANE = 0.1f;
 constexpr float FAR_PLANE = 100.0f;
 constexpr std::size_t MAX_POINT_LIGHTS = 4;
@@ -297,14 +297,16 @@ struct SSkybox
     {
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
             Rr_Binding{
-                1,
-                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
         std::array Sets = {
@@ -422,9 +424,10 @@ struct SGrid
 
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
         std::array Sets = {
@@ -446,8 +449,8 @@ struct SGrid
 
 struct SLighting
 {
-    static constexpr Rr_TextureFormat SHADOW_MAP_DEPTH_FORMAT =
-        RR_TEXTURE_FORMAT_D32_SFLOAT;
+    static constexpr Rr_ImageFormat SHADOW_MAP_DEPTH_FORMAT =
+        RR_IMAGE_FORMAT_D32_SFLOAT;
     static constexpr std::int32_t POINT_SHADOW_MAP_SIZE = 2048;
     static constexpr std::int32_t SPOT_SHADOW_MAP_SIZE = 4096;
 
@@ -882,16 +885,17 @@ struct SLighting
 
         std::array Bindings0 = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages =
+                    RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
             },
         };
         std::array Bindings1 = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_STORAGE_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
+                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
             },
         };
         std::array Sets = {
@@ -1137,7 +1141,7 @@ struct SModernRenderingApp
         Rr_ImageFlags SampleCountFlag = RR_IMAGE_FLAGS_SAMPLE_COUNT_1
                                         << MSAAOptionIndex;
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-        Rr_TextureFormat SwapchainFormat = Rr_GetSwapchainFormat();
+        Rr_ImageFormat SwapchainFormat = Rr_GetSwapchainFormat();
 
         Rr_ReleaseImage(DepthImage);
         DepthImage = Rr_CreateImage2D(

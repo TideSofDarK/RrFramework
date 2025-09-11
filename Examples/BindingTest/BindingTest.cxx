@@ -46,28 +46,38 @@ struct SBindingTestApp
     void InitPipeline()
     {
         std::array Set0Bindings = {
-            Rr_Binding{ 0,
-                        RR_BINDING_TYPE_STORAGE_BUFFER,
-                        RR_SHADER_STAGE_COMPUTE_BIT },
+            Rr_Binding{
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+            },
         };
         std::array Set1Bindings = {
-            Rr_Binding{ 1,
-                        RR_BINDING_TYPE_UNIFORM_BUFFER,
-                        RR_SHADER_STAGE_COMPUTE_BIT },
+            Rr_Binding{
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+            },
         };
         std::array Set2Bindings = {
-            Rr_Binding{ 2,
-                        RR_BINDING_TYPE_STORAGE_BUFFER,
-                        RR_SHADER_STAGE_COMPUTE_BIT },
-            Rr_Binding{ 4,
-                        RR_BINDING_TYPE_UNIFORM_BUFFER,
-                        RR_SHADER_STAGE_COMPUTE_BIT,
-                        4 },
+            Rr_Binding{
+                .Index = 2,
+                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_Binding{
+                .Index = 4,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+                .Count = 4,
+            },
         };
         std::array Set3Bindings = {
-            Rr_Binding{ 13,
-                        RR_BINDING_TYPE_STORAGE_IMAGE,
-                        RR_SHADER_STAGE_COMPUTE_BIT },
+            Rr_Binding{
+                .Index = 13,
+                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+            },
         };
         std::array Sets = {
             Rr_BindingSet{ Set0Bindings.size(), Set0Bindings.data() },
@@ -182,11 +192,11 @@ struct SBindingTestApp
     {
         StorageImageA = Rr_CreateImage2D(
             { 256, 256 },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
         StorageImageB = Rr_CreateImage2D(
             { 256, 256 },
-            RR_TEXTURE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     }
 

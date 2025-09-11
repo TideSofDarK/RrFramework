@@ -21,7 +21,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     Rr_Image2D *ColorImage = Rr_CreateImage2D(
         { Width, Height },
-        RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+        RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     size_t Size = Width * Height * DesiredChannels;
@@ -67,15 +67,17 @@ struct SBrushFadeApp
     {
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
             Rr_Binding{
-                1,
-                RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-                2,
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Count = 2,
             },
         };
         std::array Sets = {

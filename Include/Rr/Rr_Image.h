@@ -132,23 +132,23 @@ typedef uint32_t Rr_ImageFlags;
 
 extern Rr_Image2D *Rr_CreateImage2D(
     Rr_IntVec2 Extent,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags);
 
 extern Rr_Image2DArray *Rr_CreateImage2DArray(
     Rr_IntVec2 Extent,
     uint32_t ArrayCount,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags);
 
 extern Rr_Image3D *Rr_CreateImage3D(
     Rr_IntVec3 Extent,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags);
 
 extern Rr_ImageCube *Rr_CreateImageCube(
     Rr_IntVec2 Extent,
-    Rr_TextureFormat Format,
+    Rr_ImageFormat Format,
     Rr_ImageFlags Flags);
 
 extern void Rr_ReleaseImage(struct Rr_Image *Image);

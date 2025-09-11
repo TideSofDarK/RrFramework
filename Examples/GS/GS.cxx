@@ -247,19 +247,19 @@ struct SGSApp
 
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
             },
             Rr_Binding{
-                1,
-                RR_BINDING_TYPE_STORAGE_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT,
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
+                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
             },
             Rr_Binding{
-                2,
-                RR_BINDING_TYPE_STORAGE_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT,
+                .Index = 2,
+                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
+                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
             },
         };
         std::array BindingSets = {

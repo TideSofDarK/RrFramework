@@ -84,7 +84,7 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
 
     Rr_Image2D *DepthImage = Rr_CreateImage2D(
         Extent,
-        RR_TEXTURE_FORMAT_D32_SFLOAT,
+        RR_IMAGE_FORMAT_D32_SFLOAT,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
@@ -127,7 +127,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     Rr_Image2D *ColorImage = Rr_CreateImage2D(
         { Width, Height },
-        RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+        RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
     size_t Size = Width * Height * DesiredChannels;
@@ -153,7 +153,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
 struct SPrerenderedDepthApp
 {
-    static const Rr_TextureFormat DEPTH_FORMAT = RR_TEXTURE_FORMAT_D32_SFLOAT;
+    static const Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
@@ -173,9 +173,10 @@ struct SPrerenderedDepthApp
     {
         std::array Bindings = {
             Rr_Binding{
-                0,
-                RR_BINDING_TYPE_UNIFORM_BUFFER,
-                RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages =
+                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
         std::array Sets = {
@@ -252,7 +253,7 @@ struct SPrerenderedDepthApp
     {
         ColorImage = Rr_CreateImage2D(
             BackgroundExtent,
-            RR_TEXTURE_FORMAT_R8G8B8A8_SRGB,
+            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
         DepthImage = Rr_CreateImage2D(
             BackgroundExtent,

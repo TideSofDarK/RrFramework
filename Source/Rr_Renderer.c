@@ -965,7 +965,7 @@ size_t Rr_GetMaxComputeWorkgroupInvocations(void)
         .maxComputeWorkGroupInvocations;
 }
 
-Rr_TextureFormat Rr_GetSwapchainFormat(void)
+Rr_ImageFormat Rr_GetSwapchainFormat(void)
 {
     return Rr_ToTextureFormat(gRenderer->Swapchain.Format);
 }

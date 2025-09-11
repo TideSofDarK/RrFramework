@@ -34,10 +34,11 @@
 typedef struct Rr_PackedBinding Rr_PackedBinding;
 struct Rr_PackedBinding
 {
-    uint8_t Index;
-    uint8_t Type;
+    uint16_t Index;
+    uint16_t Type;
+    uint16_t Stages;
     uint8_t Count;
-    uint8_t Stages;
+    uint8_t ImageFormat;
 };
 
 typedef struct Rr_DescriptorSetLayoutKey Rr_DescriptorSetLayoutKey;

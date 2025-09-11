@@ -31,14 +31,14 @@
 - [X] Refactor duplicated code in Rr_ExecuteComputeNode and Rr_ExecuteGraphicsNode functions.
 - [X] MSAA support.
 - [X] Check if descriptor set layouts are properly hashed.
+- [X] Refactor Rr_AddXXXNode functions to ensure better type safety.
+- [X] See if it's possible to get rid of descriptor allocator arenas.
+- [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
   1) Image/buffer creation.
   2) Graph node creation.
   3) Binding resources.
-- [X] Refactor Rr_AddXXXNode functions to ensure better type safety.
-- [X] See if it's possible to get rid of descriptor allocator arenas.
-- [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
 - [ ] Support for immutable buffers/images that don't require synchronization.
 - [ ] Public API should use const where applicable.
 - [ ] Does PushXXXIntoHive need to return iterator?
@@ -77,18 +77,18 @@
 
 - [ ] Pre-rendered depth.
 - [ ] Dissolving text.
-- [ ] Rendering to cubemap.
-- [ ] Shadows.
+- [ ] Modern rendering: shadows, rendering to cubemap, post-processing, etc.
 
 ** Low-priority
 
 - [X] Move to GLFW.
 - [X] Move to C11.
-- [ ] Move back to C99?
+- [X] Move back to C99!
 - [X] Remove InputMap.
 - [X] Decide where it makes sense to use size_t instead of uint32_t. Also VK_DEVICE_SIZE etc.
       Solution: use size_t for user-provided counts (i.e. number of color targets).
       Otherwise stick to types that correspond to underlying Vulkan structs.
+- [ ] With GLFW (need to check SDL) swapchain gets recreated immediately after launch.
 - [ ] Replace VMA with custom allocator.
 - [ ] Own implementation of Windows/Linux platform layers.
 - [ ] Macro-based stuff should probably be internal.

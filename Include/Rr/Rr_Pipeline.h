@@ -148,7 +148,7 @@ typedef struct Rr_ColorTargetInfo Rr_ColorTargetInfo;
 struct Rr_ColorTargetInfo
 {
     Rr_ColorTargetBlend Blend;
-    Rr_TextureFormat Format;
+    Rr_ImageFormat Format;
     bool Resolve;
 };
 
@@ -167,7 +167,7 @@ struct Rr_Rasterizer
 typedef struct Rr_DepthStencil Rr_DepthStencil;
 struct Rr_DepthStencil
 {
-    Rr_TextureFormat Format;
+    Rr_ImageFormat Format;
     Rr_CompareOp CompareOp;
     Rr_StencilOpState BackStencilState;
     Rr_StencilOpState FrontStencilState;
@@ -234,6 +234,7 @@ struct Rr_Binding
     Rr_BindingType Type;
     Rr_ShaderStage Stages;
     uint32_t Count;
+    Rr_ImageFormat ImageFormat;
 };
 
 typedef struct Rr_BindingSet Rr_BindingSet;
