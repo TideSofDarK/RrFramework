@@ -972,6 +972,81 @@ struct SLighting
     }
 };
 
+struct SSSAO
+{
+    Rr_Sampler *Sampler;
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_GraphicsPipeline *GraphicsPipeline;
+
+    void Apply(
+        Rr_Graph *Graph,
+        Rr_Image2D *ColorTargetImage,
+        Rr_Image2D *ColorImage,
+        Rr_Image2D *DepthImage)
+    {
+        Rr_ColorTarget ColorTarget = {
+            .LoadOp = RR_LOAD_OP_DONT_CARE,
+            .StoreOp = RR_STORE_OP_STORE,
+            .Image = ColorTargetImage,
+        };
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        Rr_BindCombinedImage2DSampler(GraphicsNode, ColorImage, Sampler, 0, 0);
+        Rr_BindCombinedImage2DSampler(GraphicsNode, DepthImage, Sampler, 0, 1);
+        Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+    }
+
+    SSSAO()
+    {
+        Rr_SamplerInfo SamplerInfo = {};
+        SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        SamplerInfo.MinFilter = RR_FILTER_LINEAR;
+        SamplerInfo.MagFilter = RR_FILTER_LINEAR;
+        Sampler = Rr_CreateSampler(&SamplerInfo);
+
+        std::array Bindings = {
+            Rr_Binding{
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+            Rr_Binding{
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings.size(), Bindings.data() },
+        };
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        Rr_ColorTargetInfo ColorTarget = {};
+        ColorTarget.Format = Rr_GetSwapchainFormat();
+
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
+        PipelineInfo.Layout = PipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_SSAO_FRAG_SPV);
+        PipelineInfo.ColorTargetCount = 1;
+        PipelineInfo.ColorTargets = &ColorTarget;
+
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    }
+
+    ~SSSAO()
+    {
+        Rr_ReleaseSampler(Sampler);
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+    }
+};
+
 struct SModernRenderingApp
 {
     struct SGPUUniform
@@ -1028,6 +1103,7 @@ struct SModernRenderingApp
     SLighting Lighting;
     SSkybox Skybox;
     SGrid Grid;
+    SSSAO SSAO;
     bool DrawGrid = true;
 
     uint32_t GetMSAASampleCount() const
@@ -1147,7 +1223,8 @@ struct SModernRenderingApp
         DepthImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
             DEPTH_FORMAT,
-            RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | SampleCountFlag);
+            RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | SampleCountFlag);
 
         Rr_ReleaseImage(ColorImage);
         ColorImage = Rr_CreateImage2D(
@@ -1509,7 +1586,8 @@ struct SModernRenderingApp
         }
         else
         {
-            FullscreenBlit.Blit(Graph, ColorImage, SwapchainImage);
+            SSAO.Apply(Graph, SwapchainImage, ColorImage, DepthImage);
+            // FullscreenBlit.Blit(Graph, ColorImage, SwapchainImage);
         }
     }
 
