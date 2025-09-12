@@ -125,104 +125,28 @@ int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
 
 static HANDLE SDL_GetWaitableEvent(void)
 {
-    static RR_THREAD_LOCAL HANDLE event = NULL;
-    if (!event)
+    static RR_THREAD_LOCAL HANDLE Event = NULL;
+    if (!Event)
     {
-        event = CreateEvent(NULL, FALSE, FALSE, NULL);
+        Event = CreateEvent(NULL, FALSE, FALSE, NULL);
     }
-    return event;
+    return Event;
 }
 
 #ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
 #define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x2
 #endif
 
-typedef HANDLE(WINAPI *pfnCreateWaitableTimerExW)(
-    LPSECURITY_ATTRIBUTES lpTimerAttributes,
-    LPCWSTR lpTimerName,
-    DWORD dwFlags,
-    DWORD dwDesiredAccess);
-static pfnCreateWaitableTimerExW PFNCreateWaitableTimerExW;
-
-#if WINVER < _WIN32_WINNT_WIN7
-typedef struct _REASON_CONTEXT REASON_CONTEXT;
-typedef REASON_CONTEXT *PREASON_CONTEXT;
-#endif
-typedef BOOL(WINAPI *pfnSetWaitableTimerEx)(
-    HANDLE,
-    const LARGE_INTEGER *,
-    LONG,
-    PTIMERAPCROUTINE,
-    LPVOID,
-    PREASON_CONTEXT,
-    ULONG);
-static pfnSetWaitableTimerEx PFNSetWaitableTimerEx;
-
-typedef HANDLE(
-    WINAPI *pfnCreateWaitableTimerW)(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR);
-static pfnCreateWaitableTimerW PFNCreateWaitableTimerW;
-
-typedef BOOL(WINAPI *pfnSetWaitableTimer)(
-    HANDLE,
-    const LARGE_INTEGER *,
-    LONG,
-    PTIMERAPCROUTINE,
-    LPVOID,
-    BOOL);
-static pfnSetWaitableTimer PFNSetWaitableTimer;
-
 static HANDLE Rr_GetWaitableTimer(void)
 {
     static RR_THREAD_LOCAL HANDLE Timer = NULL;
-    static bool Initialized;
-
-    if (!Initialized)
-    {
-        HMODULE Module = GetModuleHandle(TEXT("kernel32.dll"));
-        if (Module)
-        {
-            PFNCreateWaitableTimerExW =
-                (pfnCreateWaitableTimerExW)GetProcAddress(
-                    Module,
-                    "CreateWaitableTimerExW"); /* Windows 7 and up */
-            if (!PFNCreateWaitableTimerExW)
-            {
-                PFNCreateWaitableTimerW = (pfnCreateWaitableTimerW)
-                    GetProcAddress(Module, "CreateWaitableTimerW");
-            }
-            PFNSetWaitableTimerEx = (pfnSetWaitableTimerEx)GetProcAddress(
-                Module,
-                "SetWaitableTimerEx"); /* Windows Vista and up */
-            if (!PFNSetWaitableTimerEx)
-            {
-                PFNSetWaitableTimer = (pfnSetWaitableTimer)GetProcAddress(
-                    Module,
-                    "SetWaitableTimer");
-            }
-            Initialized =
-                (PFNCreateWaitableTimerExW || PFNCreateWaitableTimerW) &&
-                (PFNSetWaitableTimerEx || PFNSetWaitableTimer);
-        }
-        if (!Initialized)
-        {
-            return NULL;
-        }
-    }
-
     if (!Timer)
     {
-        if (PFNCreateWaitableTimerExW)
-        {
-            Timer = PFNCreateWaitableTimerExW(
-                NULL,
-                NULL,
-                CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
-                TIMER_ALL_ACCESS);
-        }
-        else
-        {
-            Timer = PFNCreateWaitableTimerW(NULL, TRUE, NULL);
-        }
+        Timer = CreateWaitableTimerExW(
+            NULL,
+            NULL,
+            CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
+            TIMER_ALL_ACCESS);
     }
     return Timer;
 }
@@ -234,9 +158,8 @@ void Rr_SleepNS(uint64_t Nanoseconds)
     {
         LARGE_INTEGER DueTime;
         DueTime.QuadPart = -((LONGLONG)Nanoseconds / 100);
-        if ((PFNSetWaitableTimerEx &&
-             PFNSetWaitableTimerEx(Timer, &DueTime, 0, NULL, NULL, NULL, 0)) ||
-            PFNSetWaitableTimer(Timer, &DueTime, 0, NULL, NULL, 0))
+        if ((SetWaitableTimerEx(Timer, &DueTime, 0, NULL, NULL, NULL, 0)) ||
+            SetWaitableTimer(Timer, &DueTime, 0, NULL, NULL, 0))
         {
             WaitForSingleObject(Timer, INFINITE);
         }
