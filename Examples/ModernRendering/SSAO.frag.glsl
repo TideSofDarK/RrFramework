@@ -1,6 +1,14 @@
 #version 450
 
+/* Scalable Ambient Obscurance https://research.nvidia.com/sites/default/files/pubs/2012-06_Scalable-Ambient-Obscurance/McGuire12SAO.pdf */
+/* Implementation adapted from https://github.com/mrdoob/three.js/pull/11458/files */
+
 #define PI 3.1415926
+#define PI_2 (PI * 2.0)
+#define NUM_SAMPLES 7
+#define INV_NUM_SAMPLES (1.0 / float(NUM_SAMPLES))
+#define NUM_RINGS 4
+#define ANGLE_STEP (PI_2 * float(NUM_RINGS) / float(NUM_SAMPLES))
 
 layout(location = 0) in vec2 InUV;
 
@@ -8,25 +16,20 @@ layout(location = 0) out vec4 OutColor;
 
 layout(set = 0, binding = 0) uniform sampler2D ColorImage;
 layout(set = 0, binding = 1) uniform sampler2D DepthImage;
-
-const vec2 POISSON16[] = vec2[16](
-        vec2(-0.9420162, -0.39906216),
-        vec2(0.94558609, -0.76890725),
-        vec2(-0.0941841, -0.92938870),
-        vec2(0.34495938, 0.29387760),
-        vec2(-0.91588581, 0.45771432),
-        vec2(-0.81544232, -0.87912464),
-        vec2(-0.38277543, 0.27676845),
-        vec2(0.97484398, 0.75648379),
-        vec2(0.44323325, -0.97511554),
-        vec2(0.53742981, -0.47373420),
-        vec2(-0.26496911, -0.41893023),
-        vec2(0.79197514, 0.19090188),
-        vec2(-0.24188840, 0.99706507),
-        vec2(-0.81409955, 0.91437590),
-        vec2(0.19984126, 0.78641367),
-        vec2(0.14383161, -0.14100790)
-    );
+layout(set = 0, binding = 2) uniform SGPUUniform {
+    mat4 Projection;
+    mat4 InvProjection;
+    float Bias;
+    float Intensity;
+    float Scale;
+    float KernelRadius;
+    float MinRes;
+    float CameraNear;
+    float CameraFar;
+    float DepthRange;
+    vec2 DepthParams;
+    vec2 ScreenRes;
+};
 
 float Hash12(vec2 Seed)
 {
@@ -45,48 +48,83 @@ float LinearizeDepth(in vec2 DepthParams, float Depth)
     return 1.0 / (Depth * DepthParams.x + DepthParams.y);
 }
 
-void main()
+vec3 GetViewNormal(in vec3 ViewPosition)
 {
-    OutColor = texture(ColorImage, InUV);
+    return normalize(cross(dFdx(ViewPosition), dFdy(ViewPosition)));
+}
 
-    const float DepthRange = (100.0 - 0.1);
-    const vec2 DepthParams = vec2((0.1 - 100.0) / (0.1 * 100.0), 1.0 / 0.1);
-    float Depth = texture(DepthImage, InUV).r;
-    float LinearDepth = LinearizeDepth(DepthParams, Depth);
-    // float DistanceDepth = LinearDepth / DepthRange;
+vec3 GetViewPosition(in vec2 ScreenPosition, in float Depth, in float ViewZ)
+{
+    float ClipW = Projection[2][3] * ViewZ + Projection[3][3];
+    vec4 ClipPosition = vec4((vec3(ScreenPosition, Depth) - 0.5) * 2.0, 1.0);
+    ClipPosition *= ClipW;
+    return (InvProjection * ClipPosition).xyz;
+}
 
-    float RotationAngle = Hash12(gl_FragCoord.xy) * 2.0 * PI;
-    float RCos = cos(RotationAngle);
-    float RSin = sin(RotationAngle);
+float GetOcclusion(
+    in vec3 CenterViewPosition,
+    in vec3 CenterViewNormal,
+    in vec3 SampleViewPosition,
+    in float ScaleDividedByCameraFar,
+    in float MinResTimesCameraFar)
+{
+    vec3 ViewDelta = SampleViewPosition - CenterViewPosition;
+    float ViewDistance = length(ViewDelta);
+    float ScaledScreenDistance = ScaleDividedByCameraFar * ViewDistance;
 
-    float Shadow = 0.0;
+    return max(0.0, (dot(CenterViewNormal, ViewDelta) - MinResTimesCameraFar) / ScaledScreenDistance - Bias) / (1.0 + pow(ScaledScreenDistance, 2.0));
+}
 
-    const int SAMPLES = 16;
-    const float SCALE_STEP = 1.0 + 2.4 / float(SAMPLES);
-    float Scale = 0.01;
-    float Accessibility = 0;
+float GetAmbientOcclusion(in vec3 CenterViewPosition)
+{
+    float ScaleDividedByCameraFar = Scale / 100.0;
+    float MinResTimesCameraFar = MinRes * 100.0;
+    vec3 CenterViewNormal = GetViewNormal(CenterViewPosition);
 
-    for (int Index = 0; Index < 16; ++Index)
+    float Angle = Hash12(InUV + gl_FragCoord.xy) * PI_2;
+    vec2 Radius = vec2(KernelRadius * INV_NUM_SAMPLES) / ScreenRes;
+    vec2 RadiusStep = Radius;
+
+    float OcclusionSum = 0.0;
+    float WeightSum = 0.0;
+
+    for (int Index = 0; Index < NUM_SAMPLES; ++Index)
     {
-        vec2 RotatedOffset = Rotate2D(POISSON16[Index], RCos, RSin);
-        vec2 SamplePos = InUV + RotatedOffset * Scale;
-        Scale *= SCALE_STEP;
+        vec2 SampleUV = InUV + vec2(cos(Angle), sin(Angle)) * Radius;
+        Radius += RadiusStep;
+        Angle += ANGLE_STEP;
 
-        float SampledDepth = texture(DepthImage, SamplePos.xy).r;
-        SampledDepth = LinearizeDepth(DepthParams, SampledDepth);
+        float SampleDepth = texture(DepthImage, SampleUV).r;
+        if (SampleDepth >= (1.0 - 0.0001))
+        {
+            continue;
+        }
 
-        float Threshold = LinearDepth + (RotatedOffset.x * Scale * 2.0);
+        float SampleViewZ = LinearizeDepth(DepthParams, SampleDepth) * DepthRange;
+        vec3 SampleViewPosition = GetViewPosition(SampleUV, SampleDepth, SampleViewZ);
+        OcclusionSum += GetOcclusion(CenterViewPosition, CenterViewNormal, SampleViewPosition, ScaleDividedByCameraFar, MinResTimesCameraFar);
 
-        float RangeIsInvalid = clamp(((LinearDepth -
-                    SampledDepth) / SampledDepth), 0.0, 1.0);
-        Accessibility += mix(float(SampledDepth > Threshold), 0.5,
-                RangeIsInvalid);
+        WeightSum += 1.0;
     }
 
-    Accessibility = Accessibility / float(SAMPLES);
+    if (WeightSum == 0.0) discard;
 
-    float SSAO = clamp(Accessibility, 0.0, 1.0);
+    return OcclusionSum * (Intensity / WeightSum);
+}
 
-    OutColor.rgb *= SSAO;
-    // OutColor.rgb = vec3(SSAO);
+void main()
+{
+    float CenterDepth = texture(DepthImage, InUV).r;
+    if (CenterDepth >= (1.0 - 0.0001))
+    {
+        discard;
+    }
+
+    float CenterViewZ = LinearizeDepth(DepthParams, CenterDepth) * DepthRange;
+    vec3 ViewPosition = GetViewPosition(InUV, CenterDepth, CenterViewZ);
+
+    float AmbientOcclusion = 1.0 - GetAmbientOcclusion(ViewPosition);
+
+    // OutColor.rgb = vec3(AmbientOcclusion);
+    OutColor.rgb = texture(ColorImage, InUV).rgb * AmbientOcclusion;
 }

@@ -977,13 +977,62 @@ struct SSSAO
     Rr_Sampler *Sampler;
     Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_Buffer *Buffer;
+
+    struct
+    {
+        Rr_Mat4 Projection;
+        Rr_Mat4 InvProjection;
+        float Bias = 0.5;
+        float Intensity = 0.0178;
+        float Scale = 1.0;
+        float KernelRadius = 25.0;
+        float MinRes = 0.0;
+        float CameraNear;
+        float CameraFar;
+        float DepthRange;
+        Rr_Vec2 DepthParams;
+        Rr_Vec2 ScreenRes;
+    } GPUUniform;
+
+    void UI()
+    {
+        if (Rr_UIFold("Scalable Ambient Obscurance (SAO)"))
+        {
+            Rr_UISliderFloat("Bias", &GPUUniform.Bias, 0.0, 1.0);
+            Rr_UISliderFloat("Intensity", &GPUUniform.Intensity, 0.0, 1.0);
+            Rr_UISliderFloat("Scale", &GPUUniform.Scale, 0.0, 1.0);
+            Rr_UISliderFloat(
+                "KernelRadius",
+                &GPUUniform.KernelRadius,
+                10.0,
+                200.0);
+            Rr_UISliderFloat("Min Resolution", &GPUUniform.MinRes, 0.0, 1.0);
+        }
+    }
 
     void Apply(
         Rr_Graph *Graph,
         Rr_Image2D *ColorTargetImage,
         Rr_Image2D *ColorImage,
-        Rr_Image2D *DepthImage)
+        Rr_Image2D *DepthImage,
+        const SCamera &Camera)
     {
+        GPUUniform.CameraNear = NEAR_PLANE;
+        GPUUniform.CameraFar = FAR_PLANE;
+        GPUUniform.DepthRange = FAR_PLANE - NEAR_PLANE;
+        GPUUniform.DepthParams = Rr_V2(
+            (NEAR_PLANE - FAR_PLANE) / (NEAR_PLANE * FAR_PLANE),
+            1.0 / NEAR_PLANE);
+        Rr_IntVec2 Extent = Rr_GetImage2DExtent(ColorTargetImage);
+        GPUUniform.ScreenRes = Rr_V2(Extent.Width, Extent.Height);
+        GPUUniform.Projection = Camera.ProjMatrix;
+        GPUUniform.InvProjection = Rr_InvGeneral(Camera.ProjMatrix);
+        std::memcpy(
+            Rr_GetMappedBufferData(Buffer),
+            &GPUUniform,
+            sizeof(GPUUniform));
+
         Rr_ColorTarget ColorTarget = {
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
@@ -994,6 +1043,7 @@ struct SSSAO
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindCombinedImage2DSampler(GraphicsNode, ColorImage, Sampler, 0, 0);
         Rr_BindCombinedImage2DSampler(GraphicsNode, DepthImage, Sampler, 0, 1);
+        Rr_BindUniformBuffer(GraphicsNode, Buffer, 0, 2, 0, sizeof(GPUUniform));
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 
@@ -1017,6 +1067,11 @@ struct SSSAO
                 .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
                 .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
             },
+            Rr_Binding{
+                .Index = 2,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
         };
         std::array Sets = {
             Rr_BindingSet{ Bindings.size(), Bindings.data() },
@@ -1037,6 +1092,11 @@ struct SSSAO
         PipelineInfo.ColorTargets = &ColorTarget;
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+
+        Buffer = Rr_CreateBuffer(
+            sizeof(GPUUniform),
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
     ~SSSAO()
@@ -1044,6 +1104,7 @@ struct SSSAO
         Rr_ReleaseSampler(Sampler);
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        Rr_ReleaseBuffer(Buffer);
     }
 };
 
@@ -1354,6 +1415,11 @@ struct SModernRenderingApp
             case RR_EVENT_TYPE_KEY_UP:
             {
                 Scancodes[Event->Key.Scancode] = Event->Key.Down;
+
+                if (Event->Key.Scancode == RR_SCANCODE_F11 && Event->Key.Down)
+                {
+                    Rr_ToggleWindowFullscreen();
+                }
                 return;
             }
             default:
@@ -1469,6 +1535,7 @@ struct SModernRenderingApp
                 InitAttachments();
                 InitPipeline();
             }
+            SSAO.UI();
         }
         if (Rr_UITab("Lighting"))
         {
@@ -1573,6 +1640,7 @@ struct SModernRenderingApp
             Grid.Draw(Camera, ColorImage, DepthImage);
         }
 
+        Rr_Image2D *FinalImage{};
         if (GetMSAASampleCount() > 1)
         {
             Rr_ResolveImage2D(
@@ -1582,13 +1650,15 @@ struct SModernRenderingApp
                 ColorImageResolved,
                 0,
                 RR_IMAGE_ASPECT_COLOR_BIT);
-            FullscreenBlit.Blit(Graph, ColorImageResolved, SwapchainImage);
+            FinalImage = ColorImageResolved;
         }
         else
         {
-            SSAO.Apply(Graph, SwapchainImage, ColorImage, DepthImage);
-            // FullscreenBlit.Blit(Graph, ColorImage, SwapchainImage);
+            FinalImage = ColorImage;
         }
+
+        // FullscreenBlit.Blit(Graph, ColorImageResolved, SwapchainImage);
+        SSAO.Apply(Graph, SwapchainImage, FinalImage, DepthImage, Camera);
     }
 
     Rr_PipelineLayout *CreateBlitLayout()
