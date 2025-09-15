@@ -149,7 +149,8 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
             PackedBinding->Stages =
                 (uint8_t)Rr_ToVulkanShaderStageFlags(Binding->Stages);
             /* NOTE: Allow to omit explicitly setting Count to 1. */
-            PackedBinding->Count = Binding->Count == 0 ? 1 : Binding->Count;
+            PackedBinding->Count =
+                Binding->Count == 0 ? 1 : (uint8_t)Binding->Count;
             PackedBinding->ImageFormat =
                 (uint8_t)Rr_ToVulkanImageFormat(Binding->ImageFormat);
 
@@ -255,11 +256,10 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
             SpecializationData,
             Specialization->Data.Pointer,
             Specialization->Data.Size);
-        size_t Offset = SpecializationData - DataStart;
         Entries[Index] = (VkSpecializationMapEntry){
             .constantID = Specialization->ConstantID,
             .size = Specialization->Data.Size,
-            .offset = (uint32_t)Offset,
+            .offset = (uint32_t)(SpecializationData - DataStart),
         };
     }
     SpecializationInfo->pMapEntries = Entries;

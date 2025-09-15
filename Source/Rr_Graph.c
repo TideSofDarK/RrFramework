@@ -1193,8 +1193,8 @@ static void Rr_ExecuteGraphicsNode(
 
     Rr_FramebufferMapKey FramebufferKey;
     FramebufferKey.Extent = (VkExtent3D){
-        .width = Viewport.Width,
-        .height = Viewport.Height,
+        .width = (uint32_t)Viewport.Width,
+        .height = (uint32_t)Viewport.Height,
         .depth = 1,
     };
     FramebufferKey.ColorAttachmentCount = Node->ColorTargetCount;
@@ -1219,8 +1219,8 @@ static void Rr_ExecuteGraphicsNode(
                     Viewport.Y,
                 },
                 {
-                    Viewport.Z,
-                    Viewport.W,
+                    (uint32_t)Viewport.Width,
+                    (uint32_t)Viewport.Height,
                 },
             },
         .renderPass = RenderPass,
@@ -1254,8 +1254,8 @@ static void Rr_ExecuteGraphicsNode(
         &(VkRect2D){
             .offset.x = Viewport.X,
             .offset.y = Viewport.Y,
-            .extent.width = Viewport.Width,
-            .extent.height = Viewport.Height,
+            .extent.width = (uint32_t)Viewport.Width,
+            .extent.height = (uint32_t)Viewport.Height,
         });
 
     Rr_DescriptorsState DescriptorsState = {
@@ -1376,8 +1376,8 @@ static void Rr_ExecuteGraphicsNode(
                     &(VkRect2D){
                         .offset = { ScissorRect->Offset.X,
                                     ScissorRect->Offset.Y },
-                        .extent = { ScissorRect->Extent.Width,
-                                    ScissorRect->Extent.Height },
+                        .extent = { (uint32_t)ScissorRect->Extent.Width,
+                                    (uint32_t)ScissorRect->Extent.Height },
                     });
             }
             break;
@@ -1542,7 +1542,11 @@ static void Rr_ExecuteCopyImageNode(
         .dstOffset = { Node->DstOffset.X,
                        Node->DstOffset.Y,
                        Node->DstOffset.Z },
-        .extent = { Node->Extent.Width, Node->Extent.Height, Node->Extent.Depth, },
+        .extent = {
+            (uint32_t)Node->Extent.Width,
+            (uint32_t)Node->Extent.Height,
+            (uint32_t)Node->Extent.Depth,
+        },
     };
 
     Device->CmdCopyImage(
@@ -2612,9 +2616,9 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
         .Image = *ImageHandle,
         .Extent =
             (VkExtent3D){
-                Extent.Width,
-                Extent.Height,
-                Extent.Depth,
+                (uint32_t)Extent.Width,
+                (uint32_t)Extent.Height,
+                (uint32_t)Extent.Depth,
             },
         .BaseLayer = BaseLayer,
         .LayerCount = LayerCount,
@@ -2832,7 +2836,11 @@ void Rr_CopyImageCube(
         (Rr_IntVec3){ 0, 0, 0 },
         (Rr_Image *)DstImage,
         (Rr_IntVec3){ 0, 0, 0 },
-        (Rr_IntVec3){ SrcImage->Extent.width, SrcImage->Extent.height, 1 },
+        (Rr_IntVec3){
+            (int32_t)SrcImage->Extent.width,
+            (int32_t)SrcImage->Extent.height,
+            1,
+        },
         0,
         6,
         MipLevel);

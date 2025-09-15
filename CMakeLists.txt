@@ -23,6 +23,7 @@ function(rr_enable_development_options TARGET)
             -Wall
             -Wextra
             -Wpedantic
+            -Wconversion
             -Wno-unused-function
             -Wno-unused-parameter
             -Wno-unused-variable

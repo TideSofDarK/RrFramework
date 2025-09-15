@@ -24,11 +24,6 @@
 
 #include "Rr_Platform.h"
 
-#include "Rr_App.h"
-#include "Rr_Log.h"
-
-#include "stdlib.h"
-
 Rr_Platform *gPlatform = NULL;
 
 Rr_IntVec2 Rr_GetDefaultWindowSize(void)
@@ -37,9 +32,10 @@ Rr_IntVec2 Rr_GetDefaultWindowSize(void)
 
     float ScaleFactor = 0.75f;
 
-    return (Rr_IntVec2){ .Width = (int32_t)(DisplaySize.Width * ScaleFactor),
-                         .Height =
-                             (int32_t)(DisplaySize.Height * ScaleFactor) };
+    return (Rr_IntVec2){
+        .Width = (int32_t)((float)DisplaySize.Width * ScaleFactor),
+        .Height = (int32_t)((float)DisplaySize.Height * ScaleFactor),
+    };
 }
 
 Rr_Vec2 Rr_GetMousePositionDelta(void)

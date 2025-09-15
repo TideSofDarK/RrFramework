@@ -116,11 +116,6 @@ typedef struct Rr_Image Rr_Image;
 
 extern void Rr_DestroyImage(Rr_Image *Image);
 
-extern size_t Rr_GetImagePNGRGBA8Size(
-    size_t DataSize,
-    char *Data,
-    Rr_Arena *Arena);
-
 extern Rr_Image2D *Rr_CreateSTBImage2D(
     struct Rr_Graph *Graph,
     Rr_ImageFormat Format,

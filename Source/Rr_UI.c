@@ -297,7 +297,7 @@ Rr_UIFont *Rr_UICreateFont(
 
     cJSON *GlyphsJSON = cJSON_GetObjectItem(FontDataJSON, "glyphs");
 
-    size_t GlyphCount = cJSON_GetArraySize(GlyphsJSON);
+    size_t GlyphCount = (size_t)cJSON_GetArraySize(GlyphsJSON);
     for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
     {
         cJSON *GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (int32_t)GlyphIndex);
@@ -422,7 +422,7 @@ static inline Rr_UIHash Rr_UIGetTitleHash(
             (ExplicitID < (CString + FullLength)) &&
             "Empty ID after ### sentinel!");
 
-        size_t IDLength = FullLength - (ExplicitID - CString);
+        size_t IDLength = FullLength - (size_t)(ExplicitID - CString);
 
         Hash = Rr_UIGetHash(ExplicitID, IDLength, Rr_UICurrentHash());
 
@@ -2589,10 +2589,10 @@ void Rr_UILabelF(const char *Format, ...)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    char *Buffer = RR_ALLOC_NO_ZERO(Scratch.Arena, BufferSize + 1);
+    char *Buffer = RR_ALLOC_NO_ZERO(Scratch.Arena, (size_t)BufferSize + 1);
 
     va_start(Args, Format);
-    BufferSize = vsnprintf(Buffer, BufferSize + 1, Format, Args);
+    BufferSize = vsnprintf(Buffer, (size_t)BufferSize + 1, Format, Args);
     va_end(Args);
 
     Rr_UILabel(Buffer);
@@ -3517,7 +3517,7 @@ static inline bool Rr_UIFloatFilter(size_t Length, const char *UTF8String)
 {
     for (size_t Index = 0; Index < Length; ++Index)
     {
-        uint8_t Char = UTF8String[Index];
+        char Char = UTF8String[Index];
         bool InRange = Char >= '0' && Char <= '9';
         bool Minus = Char == '-';
         bool Dot = Char == '.';
@@ -3640,7 +3640,7 @@ static inline bool Rr_UIHexFilter(size_t Length, const char *UTF8String)
 {
     for (size_t Index = 0; Index < Length; ++Index)
     {
-        uint8_t Char = UTF8String[Index];
+        char Char = UTF8String[Index];
         bool InRange1 = Char >= '0' && Char <= '9';
         bool InRange2 = Char >= 'a' && Char <= 'f';
         bool InRange3 = Char >= 'A' && Char <= 'F';
@@ -3656,7 +3656,7 @@ static inline bool Rr_UIIntegerFilter(size_t Length, const char *UTF8String)
 {
     for (size_t Index = 0; Index < Length; ++Index)
     {
-        uint8_t Char = UTF8String[Index];
+        char Char = UTF8String[Index];
         bool InRange = Char >= '0' && Char <= '9';
         bool Minus = Char == '-';
         if (!(InRange || Minus))
@@ -3921,23 +3921,23 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 
         Vertices[0].Color = *ColorA;
         Vertices[0].Position = Layout->Cursor;
-        Vertices[0].Position.X += Step * Index;
+        Vertices[0].Position.X += Step * (float)Index;
         Vertices[0].UV = Rr_V2F(0.0f);
 
         Vertices[1].Color = *ColorB;
         Vertices[1].Position = Layout->Cursor;
-        Vertices[1].Position.X += Step * Index + Step;
+        Vertices[1].Position.X += Step * (float)Index + Step;
         Vertices[1].UV = Rr_V2F(0.0f);
 
         Vertices[2].Color = *ColorA;
         Vertices[2].Position = Layout->Cursor;
         Vertices[2].Position.Y += TargetSize;
-        Vertices[2].Position.X += Step * Index;
+        Vertices[2].Position.X += Step * (float)Index;
         Vertices[2].UV = Rr_V2F(0.0f);
 
         Vertices[3].Color = *ColorB;
         Vertices[3].Position = Layout->Cursor;
-        Vertices[3].Position.X += Step * Index + Step;
+        Vertices[3].Position.X += Step * (float)Index + Step;
         Vertices[3].Position.Y += TargetSize;
         Vertices[3].UV = Rr_V2F(0.0f);
 
@@ -4131,14 +4131,14 @@ bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
     assert(Max >= Min);
 
     char Buffer[32];
-    int Length = snprintf(Buffer, 32, "%d", *Value);
+    size_t Length = (size_t)snprintf(Buffer, 32, "%d", *Value);
 
     int32_t In = RR_CLAMP(Min, *Value, Max);
     float InNormalized = (float)(*Value - Min) / (float)(Max - Min);
     float OutNormalized = Rr_UISlider(Title, InNormalized, Buffer, Length);
     OutNormalized =
         roundf(OutNormalized * (float)(Max - Min)) / (float)(Max - Min);
-    int32_t Out = (int32_t)(OutNormalized * (Max - Min) + Min);
+    int32_t Out = (int32_t)(OutNormalized * (float)((Max - Min) + Min));
     *Value = Out;
     return In != Out;
 }
@@ -4149,7 +4149,7 @@ bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
     assert(Max >= Min);
 
     char Buffer[32];
-    int Length = snprintf(Buffer, 32, "%.4f", *Value);
+    size_t Length = (size_t)snprintf(Buffer, 32, "%.4f", *Value);
 
     float In = RR_CLAMP(Min, *Value, Max);
     float InNormalized = (*Value - Min) / (Max - Min);
@@ -4319,7 +4319,7 @@ void Rr_InitUI(void)
         RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
     Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
-    Rr_UISetFontSize(DisplaySize.Width / 112.0f);
+    Rr_UISetFontSize((float)DisplaySize.Width / 112.0f);
 
     gUIContext->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.125f },

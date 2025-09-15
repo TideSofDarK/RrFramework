@@ -55,9 +55,9 @@ uint64_t Rr_GetPerformanceCounter(void)
     struct timespec Now;
 
     clock_gettime(CLOCK_MONOTONIC_RAW, &Now);
-    uint64_t Ticks = Now.tv_sec;
+    uint64_t Ticks = (uint64_t)Now.tv_sec;
     Ticks *= 1000000000;
-    Ticks += Now.tv_nsec;
+    Ticks += (uint64_t)Now.tv_nsec;
 
     return Ticks;
 }

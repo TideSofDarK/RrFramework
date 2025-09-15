@@ -442,7 +442,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         RR_ABORT("GLTF: Unsupported index type!");
     }
 
-    static const int SafeAlignment = 64;
+    /* @TODO: The fuck is this? */
+    static const size_t SafeAlignment = 64;
     GLTFAsset->VertexBufferOffset = 0;
     GLTFAsset->IndexBufferOffset = RR_ALIGN_POW2(VertexDataSize, SafeAlignment);
     StagingDataSize = GLTFAsset->IndexBufferOffset +
@@ -671,8 +672,8 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                         RR_GLTF_TEXTURE_TYPE_COLOR;
                     if (GLTFAsset->Images[CurrentTextureIndex] == NULL)
                     {
-                        int32_t ImageDataSize =
-                            (int32_t)Texture->image->buffer_view->size;
+                        size_t ImageDataSize =
+                            (size_t)Texture->image->buffer_view->size;
                         char *ImageData =
                             (char *)Texture->image->buffer_view->buffer->data +
                             Texture->image->buffer_view->offset;

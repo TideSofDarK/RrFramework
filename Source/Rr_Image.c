@@ -261,9 +261,9 @@ static Rr_Image *Rr_CreateImage(
 
     Image->Flags = Flags;
     Image->Format = Rr_ToVulkanImageFormat(Format);
-    Image->Extent.width = Extent.Width;
-    Image->Extent.height = Extent.Height;
-    Image->Extent.depth = Extent.Depth;
+    Image->Extent.width = (uint32_t)Extent.Width;
+    Image->Extent.height = (uint32_t)Extent.Height;
+    Image->Extent.depth = (uint32_t)Extent.Depth;
 
     Rr_ConsumeNextObjectName(Image->Name);
 
@@ -514,8 +514,8 @@ Rr_ImageCube *Rr_CreateImageCube(
 Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image2D)
 {
     return (Rr_IntVec2){
-        .Width = Image2D->Extent.width,
-        .Height = Image2D->Extent.height,
+        .Width = (int32_t)Image2D->Extent.width,
+        .Height = (int32_t)Image2D->Extent.height,
     };
 }
 
@@ -527,26 +527,10 @@ float Rr_GetImage2DAspect(Rr_Image2D *Image)
 Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image3D)
 {
     return (Rr_IntVec3){
-        .Width = Image3D->Extent.width,
-        .Height = Image3D->Extent.height,
-        .Depth = Image3D->Extent.depth,
+        .Width = (int32_t)Image3D->Extent.width,
+        .Height = (int32_t)Image3D->Extent.height,
+        .Depth = (int32_t)Image3D->Extent.depth,
     };
-}
-
-size_t Rr_GetImagePNGRGBA8Size(size_t DataSize, char *Data, Rr_Arena *Arena)
-{
-    int32_t DesiredChannels = 4;
-    int32_t Width;
-    int32_t Height;
-    int32_t Channels;
-    stbi_info_from_memory(
-        (stbi_uc *)Data,
-        (int32_t)DataSize,
-        &Width,
-        &Height,
-        &Channels);
-
-    return Width * Height * DesiredChannels;
 }
 
 Rr_Image2D *Rr_CreateSTBImage2D(
@@ -570,7 +554,7 @@ Rr_Image2D *Rr_CreateSTBImage2D(
         &ImageChannels,
         4);
 
-    int32_t ImageDataSize = 4 * ImageSize.Width * ImageSize.Height;
+    size_t ImageDataSize = 4 * (size_t)(ImageSize.Width * ImageSize.Height);
 
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
         ImageDataSize,

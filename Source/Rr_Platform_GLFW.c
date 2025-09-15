@@ -278,28 +278,28 @@ static inline void Rr_CodepointToUTF8(uint32_t Codepoint, char Buffer[5])
 {
     if (Codepoint < 0x80)
     {
-        Buffer[0] = Codepoint;
+        Buffer[0] = (char)Codepoint;
         Buffer[1] = '\0';
     }
     else if (Codepoint < 0x800)
     {
-        Buffer[0] = (0xC0 | (Codepoint >> 6));
-        Buffer[1] = (0x80 | (Codepoint & 0x3f));
+        Buffer[0] = (char)(0xC0 | (Codepoint >> 6));
+        Buffer[1] = (char)(0x80 | (Codepoint & 0x3f));
         Buffer[2] = '\0';
     }
     else if (Codepoint < 0x10000)
     {
-        Buffer[0] = (0xE0 | (Codepoint >> 12));
-        Buffer[1] = (0x80 | ((Codepoint >> 6) & 0x3f));
-        Buffer[2] = (0x80 | (Codepoint & 0x3f));
+        Buffer[0] = (char)(0xE0 | (Codepoint >> 12));
+        Buffer[1] = (char)(0x80 | ((Codepoint >> 6) & 0x3f));
+        Buffer[2] = (char)(0x80 | (Codepoint & 0x3f));
         Buffer[3] = '\0';
     }
     else if (Codepoint < 0x200000)
     {
-        Buffer[0] = (0xF0 | (Codepoint >> 18));
-        Buffer[1] = (0x80 | ((Codepoint >> 12) & 0x3f));
-        Buffer[2] = (0x80 | ((Codepoint >> 6) & 0x3f));
-        Buffer[3] = (0x80 | (Codepoint & 0x3f));
+        Buffer[0] = (char)(0xF0 | (Codepoint >> 18));
+        Buffer[1] = (char)(0x80 | ((Codepoint >> 12) & 0x3f));
+        Buffer[2] = (char)(0x80 | ((Codepoint >> 6) & 0x3f));
+        Buffer[3] = (char)(0x80 | (Codepoint & 0x3f));
         Buffer[4] = '\0';
     }
 }
@@ -436,7 +436,7 @@ bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
 
 bool Rr_IsScancodePressed(Rr_Scancode Scancode)
 {
-    return glfwGetKey(gPlatform->Window, Scancode);
+    return glfwGetKey(gPlatform->Window, (int)Scancode);
 }
 
 Rr_Vec2 Rr_GetMousePosition(void)
@@ -572,8 +572,8 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
     {
         glfwSetWindowSize(
             gPlatform->Window,
-            (int32_t)(Size.X / gPlatform->WindowScale.X),
-            (int32_t)(Size.Y / gPlatform->WindowScale.Y));
+            (int32_t)((float)Size.X / gPlatform->WindowScale.X),
+            (int32_t)((float)Size.Y / gPlatform->WindowScale.Y));
     }
     else
     {

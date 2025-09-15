@@ -33,7 +33,7 @@
 
 Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
 {
-    size_t PageSize = Rr_GetPlatformInfo()->PageSize;
+    size_t PageSize = (size_t)Rr_GetPlatformInfo()->PageSize;
     ReserveSize = RR_ALIGN_POW2(ReserveSize, PageSize);
     CommitSize = RR_ALIGN_POW2(CommitSize, PageSize);
 

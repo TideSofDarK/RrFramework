@@ -123,8 +123,8 @@ static bool Rr_InitSwapchain(void)
     }
     if (SurfaceCapabilities.currentExtent.width == UINT32_MAX)
     {
-        gRenderer->Swapchain.Extent.width = WindowSize.Width;
-        gRenderer->Swapchain.Extent.height = WindowSize.Height;
+        gRenderer->Swapchain.Extent.width = (uint32_t)WindowSize.Width;
+        gRenderer->Swapchain.Extent.height = (uint32_t)WindowSize.Height;
     }
     else
     {
