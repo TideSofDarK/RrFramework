@@ -584,7 +584,6 @@ Rr_Image2D *Rr_CreateSTBImage2D(
 
 Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_Image *Image)
 {
-    uint32_t AllocatedImageIndex =
-        gRenderer->FrameIndex % Image->AllocatedImageCount;
-    return &Image->AllocatedImages[AllocatedImageIndex];
+    return &Image->AllocatedImages
+                [gRenderer->FrameIndex % Image->AllocatedImageCount];
 }

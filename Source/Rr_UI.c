@@ -166,7 +166,7 @@ struct Rr_UIContext
     bool LeftMouseButtonDown : 1;
     bool LeftMouseButtonHeld : 1;
     bool LeftMouseButtonUp : 1;
-    uint8_t LeftMouseButtonClicks;
+    uint32_t LeftMouseButtonClicks;
     uint32_t LeftMouseButtonClickId;
     bool MouseMoved : 1;
     Rr_Vec2 MousePosition;
@@ -3345,7 +3345,7 @@ static inline bool Rr_UIGenericInputField(
         }
         else
         {
-            uint8_t Clicks = (gUIContext->LeftMouseButtonClicks - 1) % 3;
+            uint32_t Clicks = (gUIContext->LeftMouseButtonClicks - 1) % 3;
             if (Clicks == 2)
             {
                 /* Select whole line. */
@@ -4131,14 +4131,15 @@ bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
     assert(Max >= Min);
 
     char Buffer[32];
-    size_t Length = (size_t)snprintf(Buffer, 32, "%d", *Value);
+    int Length = snprintf(Buffer, 32, "%d", *Value);
 
     int32_t In = RR_CLAMP(Min, *Value, Max);
     float InNormalized = (float)(*Value - Min) / (float)(Max - Min);
-    float OutNormalized = Rr_UISlider(Title, InNormalized, Buffer, Length);
+    float OutNormalized =
+        Rr_UISlider(Title, InNormalized, Buffer, (size_t)Length);
     OutNormalized =
         roundf(OutNormalized * (float)(Max - Min)) / (float)(Max - Min);
-    int32_t Out = (int32_t)(OutNormalized * (float)((Max - Min) + Min));
+    int32_t Out = (int32_t)(OutNormalized * (float)(Max - Min)) + Min;
     *Value = Out;
     return In != Out;
 }
@@ -4149,11 +4150,12 @@ bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
     assert(Max >= Min);
 
     char Buffer[32];
-    size_t Length = (size_t)snprintf(Buffer, 32, "%.4f", *Value);
+    int Length = snprintf(Buffer, 32, "%.4f", *Value);
 
     float In = RR_CLAMP(Min, *Value, Max);
     float InNormalized = (*Value - Min) / (Max - Min);
-    float OutNormalized = Rr_UISlider(Title, InNormalized, Buffer, Length);
+    float OutNormalized =
+        Rr_UISlider(Title, InNormalized, Buffer, (size_t)Length);
     float Out = OutNormalized * (Max - Min) + Min;
     *Value = Out;
     return In != Out;

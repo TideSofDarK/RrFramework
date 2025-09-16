@@ -253,7 +253,6 @@ void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size)
 
 Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer)
 {
-    uint32_t AllocatedBufferIndex =
-        gRenderer->FrameIndex % Buffer->AllocatedBufferCount;
-    return &Buffer->AllocatedBuffers[AllocatedBufferIndex];
+    return &Buffer->AllocatedBuffers
+                [gRenderer->FrameIndex % Buffer->AllocatedBufferCount];
 }
