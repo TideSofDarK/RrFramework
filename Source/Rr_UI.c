@@ -4128,13 +4128,14 @@ static inline float Rr_UISlider(
 bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
 {
     assert(Value != NULL);
-    assert(Max >= Min);
+    assert(Max > Min);
 
     char Buffer[32];
     int Length = snprintf(Buffer, 32, "%d", *Value);
 
-    int32_t In = RR_CLAMP(Min, *Value, Max);
-    float InNormalized = (float)(*Value - Min) / (float)(Max - Min);
+    int32_t In = *Value;
+    int32_t Clamped = RR_CLAMP(Min, *Value, Max);
+    float InNormalized = (float)(Clamped - Min) / (float)(Max - Min);
     float OutNormalized =
         Rr_UISlider(Title, InNormalized, Buffer, (size_t)Length);
     OutNormalized =
@@ -4147,13 +4148,14 @@ bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
 bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
 {
     assert(Value != NULL);
-    assert(Max >= Min);
+    assert(Max > Min);
 
     char Buffer[32];
     int Length = snprintf(Buffer, 32, "%.4f", *Value);
 
-    float In = RR_CLAMP(Min, *Value, Max);
-    float InNormalized = (*Value - Min) / (Max - Min);
+    float In = *Value;
+    float Clamped = RR_CLAMP(Min, *Value, Max);
+    float InNormalized = (Clamped - Min) / (Max - Min);
     float OutNormalized =
         Rr_UISlider(Title, InNormalized, Buffer, (size_t)Length);
     float Out = OutNormalized * (Max - Min) + Min;

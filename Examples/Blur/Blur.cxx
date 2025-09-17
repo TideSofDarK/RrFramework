@@ -124,9 +124,9 @@ struct SBlur2D
 
         Rr_SetNextNodeName(Graph, "Blur2D");
         Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+        Rr_BindComputePipeline(Node, Blur2DXPipeline);
         for (std::int32_t Index = 0; Index < Passes; ++Index)
         {
-            Rr_BindComputePipeline(Node, Blur2DXPipeline);
             Rr_BindStorageImage2D(Node, IntermediateImageA, 0, 0);
             Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
             Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 1);
@@ -159,10 +159,6 @@ struct SBlur2D
             },
             Rr_PipelineSpecialization{
                 1,
-                RR_MAKE_DATA_STRUCT(ImageSize),
-            },
-            Rr_PipelineSpecialization{
-                2,
                 RR_MAKE_DATA_STRUCT(KernelSize),
             },
         };
@@ -372,7 +368,7 @@ struct SBlurApp
     Rr_GraphicsPipeline *QuadGraphicsPipeline;
     Rr_Image2D *OriginalImage2D;
     Rr_Image2D *BlurredImage2D;
-    std::int32_t Blur2DKernelSize = 32;
+    std::int32_t Blur2DKernelSize = 5;
     std::int32_t Blur2DPasses = 2;
     SBlur2D Blur2D;
 
@@ -649,7 +645,7 @@ struct SBlurApp
         Rr_UICombobox("Mode", 2, Modes, &SelectedModeIndex);
         if (SelectedModeIndex == 0)
         {
-            if (Rr_UISliderInt("Kernel Size", &Blur2DKernelSize, 8, 64))
+            if (Rr_UISliderInt("Kernel Size", &Blur2DKernelSize, 3, 9))
             {
                 Blur2D.RecreatePipelines(Blur2DKernelSize);
                 Blur2D.Blur(
