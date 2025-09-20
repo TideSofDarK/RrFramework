@@ -315,11 +315,10 @@ struct STransferThreadApp
         };
 
         Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
+            .Image = SwapchainImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = Rr_ColorClear{ 0.0f, 0.0f, 0.0f, 1.0f },
-            .Image = SwapchainImage,
         };
 
         Rr_GraphNode *GraphicsNode =

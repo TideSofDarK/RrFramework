@@ -121,6 +121,7 @@ typedef enum
     RR_IMAGE_FORMAT_R32_SINT,
     RR_IMAGE_FORMAT_R32_SFLOAT,
     RR_IMAGE_FORMAT_R32G32_SFLOAT,
+    RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
 } Rr_ImageFormat;
 
 typedef enum
@@ -141,14 +142,16 @@ union Rr_ColorClear
 typedef struct Rr_ColorTarget Rr_ColorTarget;
 struct Rr_ColorTarget
 {
-    uint32_t Slot;
+    struct Rr_Image *Image;
+    uint32_t ImageLayerIndex;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
     Rr_ColorClear Clear;
-    struct Rr_Image *Image;
-    uint32_t ImageLayerIndex;
     struct Rr_Image *ResolveImage;
     uint32_t ResolveImageLayerIndex;
+    Rr_LoadOp ResolveLoadOp;
+    Rr_StoreOp ResolveStoreOp;
+    Rr_ColorClear ResolveClear;
 };
 
 typedef struct Rr_DepthClear Rr_DepthClear;
@@ -161,11 +164,11 @@ struct Rr_DepthClear
 typedef struct Rr_DepthTarget Rr_DepthTarget;
 struct Rr_DepthTarget
 {
+    struct Rr_Image *Image;
+    uint32_t ImageLayerIndex;
     Rr_LoadOp LoadOp;
     Rr_StoreOp StoreOp;
     Rr_DepthClear Clear;
-    struct Rr_Image *Image;
-    uint32_t ImageLayerIndex;
 };
 
 typedef struct Rr_DrawIndirectCommand Rr_DrawIndirectCommand;

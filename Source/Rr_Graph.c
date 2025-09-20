@@ -1048,14 +1048,13 @@ static void Rr_ExecuteGraphicsNode(
         .Height = INT32_MAX,
     };
 
-    uint32_t AttachmentCount = Node->ColorTargetCount +
-                               Node->ResolveAttachmentCount +
-                               (Node->DepthTarget ? 1 : 0);
+    uint32_t AttachmentCount =
+        Node->ColorTargetCount * 2 + (Node->DepthTarget ? 1 : 0);
 
-    Rr_RenderPassMapKey RenderPassKey;
-    RenderPassKey.ColorAttachmentCount = Node->ColorTargetCount;
-    RenderPassKey.ResolveAttachmentCount = Node->ResolveAttachmentCount;
-    RenderPassKey.DepthStencil = Node->DepthTarget != NULL;
+    Rr_RenderPassMapKey RenderPassKey = {
+        .ColorAttachmentCount = (uint8_t)Node->ColorTargetCount,
+        .DepthStencil = Node->DepthTarget != NULL,
+    };
 
     VkImageView *ImageViews =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
@@ -1063,28 +1062,26 @@ static void Rr_ExecuteGraphicsNode(
     VkClearValue *ClearValues =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
 
+    uint32_t ResolveAttachmentIndex = Node->ColorTargetCount;
+
     for (uint32_t Index = 0; Index < Node->ColorTargetCount; ++Index)
     {
         Rr_ColorTarget *ColorTarget = &Node->ColorTargets[Index];
 
-        memcpy(
-            &ClearValues[ColorTarget->Slot],
-            &ColorTarget->Clear,
-            sizeof(VkClearValue));
+        memcpy(&ClearValues[Index], &ColorTarget->Clear, sizeof(VkClearValue));
 
         Rr_AllocatedImage *ColorImage =
             Rr_GetCurrentAllocatedImage(Node->ColorTargets[Index].Image);
 
-        RenderPassKey.Attachments[ColorTarget->Slot].Samples =
+        RenderPassKey.Attachments[Index].Samples =
             ColorImage->Container->SampleCount;
-        RenderPassKey.Attachments[ColorTarget->Slot].Format =
-            ColorImage->Container->Format;
-        RenderPassKey.Attachments[ColorTarget->Slot].LoadOp =
+        RenderPassKey.Attachments[Index].Format = ColorImage->Container->Format;
+        RenderPassKey.Attachments[Index].LoadOp =
             Rr_ToVulkanLoadOp(ColorTarget->LoadOp);
-        RenderPassKey.Attachments[ColorTarget->Slot].StoreOp =
+        RenderPassKey.Attachments[Index].StoreOp =
             Rr_ToVulkanStoreOp(ColorTarget->StoreOp);
 
-        ImageViews[ColorTarget->Slot] = Rr_GetVulkanImageView(
+        ImageViews[Index] = Rr_GetVulkanImageView(
             ColorImage,
             &(Rr_ImageViewKey){
                 .SubresourceRange =
@@ -1110,25 +1107,26 @@ static void Rr_ExecuteGraphicsNode(
             continue;
         }
 
-        uint32_t ResolveSlot = Node->ColorTargetCount + ColorTarget->Slot;
+        RenderPassKey.ResolveMask |= (uint8_t)(1 << Index);
+        RenderPassKey.ResolveAttachmentCount++;
 
         memcpy(
-            &ClearValues[ResolveSlot],
+            &ClearValues[ResolveAttachmentIndex],
             &ColorTarget->Clear,
             sizeof(VkClearValue));
 
         Rr_AllocatedImage *ResolveImage =
             Rr_GetCurrentAllocatedImage(Node->ColorTargets[Index].ResolveImage);
 
-        RenderPassKey.Attachments[ResolveSlot].Samples = 1;
-        RenderPassKey.Attachments[ResolveSlot].Format =
+        RenderPassKey.Attachments[ResolveAttachmentIndex].Samples = 1;
+        RenderPassKey.Attachments[ResolveAttachmentIndex].Format =
             ResolveImage->Container->Format;
-        RenderPassKey.Attachments[ResolveSlot].LoadOp =
-            Rr_ToVulkanLoadOp(ColorTarget->LoadOp);
-        RenderPassKey.Attachments[ResolveSlot].StoreOp =
-            Rr_ToVulkanStoreOp(ColorTarget->StoreOp);
+        RenderPassKey.Attachments[ResolveAttachmentIndex].LoadOp =
+            Rr_ToVulkanLoadOp(ColorTarget->ResolveLoadOp);
+        RenderPassKey.Attachments[ResolveAttachmentIndex].StoreOp =
+            Rr_ToVulkanStoreOp(ColorTarget->ResolveStoreOp);
 
-        ImageViews[ResolveSlot] = Rr_GetVulkanImageView(
+        ImageViews[ResolveAttachmentIndex] = Rr_GetVulkanImageView(
             ResolveImage,
             &(Rr_ImageViewKey){
                 .SubresourceRange =
@@ -1141,31 +1139,31 @@ static void Rr_ExecuteGraphicsNode(
                     },
                 .Type = VK_IMAGE_VIEW_TYPE_2D,
             });
+
+        ResolveAttachmentIndex++;
     }
     if (Node->DepthTarget != NULL)
     {
-        uint32_t DepthIndex = AttachmentCount - 1;
-
         Rr_DepthTarget *DepthTarget = Node->DepthTarget;
 
         memcpy(
-            &ClearValues[DepthIndex],
+            &ClearValues[ResolveAttachmentIndex],
             &DepthTarget->Clear,
             sizeof(VkClearValue));
 
         Rr_AllocatedImage *DepthImage =
             Rr_GetCurrentAllocatedImage(Node->DepthTarget->Image);
 
-        RenderPassKey.Attachments[DepthIndex].Samples =
+        RenderPassKey.Attachments[ResolveAttachmentIndex].Samples =
             DepthImage->Container->SampleCount;
-        RenderPassKey.Attachments[DepthIndex].Format =
+        RenderPassKey.Attachments[ResolveAttachmentIndex].Format =
             DepthImage->Container->Format;
-        RenderPassKey.Attachments[DepthIndex].LoadOp =
+        RenderPassKey.Attachments[ResolveAttachmentIndex].LoadOp =
             Rr_ToVulkanLoadOp(DepthTarget->LoadOp);
-        RenderPassKey.Attachments[DepthIndex].StoreOp =
+        RenderPassKey.Attachments[ResolveAttachmentIndex].StoreOp =
             Rr_ToVulkanStoreOp(DepthTarget->StoreOp);
 
-        ImageViews[DepthIndex] = Rr_GetVulkanImageView(
+        ImageViews[ResolveAttachmentIndex] = Rr_GetVulkanImageView(
             DepthImage,
             &(Rr_ImageViewKey){
                 .SubresourceRange =
@@ -1191,15 +1189,16 @@ static void Rr_ExecuteGraphicsNode(
 
     VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassKey);
 
-    Rr_FramebufferMapKey FramebufferKey;
+    Rr_FramebufferMapKey FramebufferKey = { 0 };
     FramebufferKey.Extent = (VkExtent3D){
         .width = (uint32_t)Viewport.Width,
         .height = (uint32_t)Viewport.Height,
         .depth = 1,
     };
-    FramebufferKey.ColorAttachmentCount = Node->ColorTargetCount;
-    FramebufferKey.ResolveAttachmentCount = Node->ResolveAttachmentCount;
-    FramebufferKey.DepthStencil = Node->DepthTarget != NULL;
+    FramebufferKey.ColorAttachmentCount = RenderPassKey.ColorAttachmentCount;
+    FramebufferKey.ResolveAttachmentCount =
+        RenderPassKey.ResolveAttachmentCount;
+    FramebufferKey.DepthStencil = RenderPassKey.DepthStencil;
     memcpy(
         &FramebufferKey.ImageViews[0],
         ImageViews,
@@ -2462,8 +2461,6 @@ Rr_GraphNode *Rr_AddGraphicsNode(
                     .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 });
             Rr_MarkImageUsed(Graph, ColorTarget->ResolveImage);
-
-            GraphicsNode->ResolveAttachmentCount++;
         }
     }
     if (DepthTarget != NULL)

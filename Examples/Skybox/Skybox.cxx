@@ -348,11 +348,10 @@ struct SSkyboxApp
                             28.0f / 255.0f,
                             1.0f };
         Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
+            .Image = SwapchainImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = ColorClear,
-            .Image = SwapchainImage,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);

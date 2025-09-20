@@ -664,10 +664,9 @@ struct SBlurApp
             }
 
             Rr_ColorTarget ColorTarget = {
-                .Slot = 0,
+                .Image = SwapchainImage,
                 .LoadOp = RR_LOAD_OP_DONT_CARE,
                 .StoreOp = RR_STORE_OP_STORE,
-                .Image = SwapchainImage,
             };
             Rr_GraphNode *GraphicsNode =
                 Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);
@@ -712,10 +711,9 @@ struct SBlurApp
                 sizeof(SGPUUniform));
 
             Rr_ColorTarget ColorTarget = {
-                .Slot = 0,
+                .Image = SwapchainImage,
                 .LoadOp = RR_LOAD_OP_DONT_CARE,
                 .StoreOp = RR_STORE_OP_STORE,
-                .Image = SwapchainImage,
             };
             Rr_GraphNode *GraphicsNode =
                 Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);

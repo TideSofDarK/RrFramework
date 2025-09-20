@@ -8,6 +8,7 @@ layout(location = 0) out vec2 OutUV;
 layout(location = 1) out vec3 OutNormal;
 layout(location = 2) out vec3 OutPosition;
 layout(location = 3) out vec3 OutNormalVS;
+layout(location = 4) out float OutDepth;
 
 layout(set = 0, binding = 0) uniform SGPUUniform
 {
@@ -29,4 +30,5 @@ void main()
     OutNormalVS = mat3(transpose(inverse(View * Model))) * OutNormal;
     OutUV = InUV;
     OutPosition = (Model * vec4(InPosition, 1.0f)).xyz;
+    OutDepth = gl_Position.z;
 }

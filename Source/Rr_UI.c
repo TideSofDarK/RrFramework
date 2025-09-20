@@ -4726,10 +4726,9 @@ void Rr_EndUI(void)
         sizeof(Rr_UIIndex) * gUIContext->Indices.Count);
 
     Rr_ColorTarget ColorTarget = {
-        .Slot = 0,
+        .Image = SwapchainImage,
         .LoadOp = RR_LOAD_OP_LOAD,
         .StoreOp = RR_STORE_OP_STORE,
-        .Image = SwapchainImage,
     };
     Rr_GraphNode *GraphicsNode =
         Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);

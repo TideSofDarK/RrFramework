@@ -15,7 +15,7 @@ layout(location = 0) in vec2 InUV;
 layout(location = 0) out vec4 OutColor;
 
 layout(set = 0, binding = 0) uniform sampler2D ColorImage;
-layout(set = 0, binding = 1) uniform sampler2D DepthImage;
+layout(set = 0, binding = 1) uniform sampler2D NormalDepthImage;
 layout(set = 0, binding = 2) uniform SGPUUniform {
     mat4 Projection;
     mat4 InvProjection;
@@ -56,7 +56,8 @@ vec3 GetViewNormal(in vec3 ViewPosition)
 vec3 GetViewPosition(in vec2 ScreenPosition, in float Depth, in float ViewZ)
 {
     float ClipW = Projection[2][3] * ViewZ + Projection[3][3];
-    vec4 ClipPosition = vec4((vec3(ScreenPosition, Depth) - 0.5) * 2.0, 1.0);
+    // vec4 ClipPosition = vec4((vec3(ScreenPosition, Depth) - 0.5) * 2.0, 1.0);
+    vec4 ClipPosition = vec4((ScreenPosition - 0.5) * 2.0, Depth, 1.0);
     ClipPosition *= ClipW;
     return (InvProjection * ClipPosition).xyz;
 }
@@ -94,7 +95,7 @@ float GetAmbientOcclusion(in vec3 CenterViewPosition)
         Radius += RadiusStep;
         Angle += ANGLE_STEP;
 
-        float SampleDepth = texture(DepthImage, SampleUV).r;
+        float SampleDepth = texture(NormalDepthImage, SampleUV).a;
         if (SampleDepth >= (1.0 - 0.0001))
         {
             continue;
@@ -114,7 +115,7 @@ float GetAmbientOcclusion(in vec3 CenterViewPosition)
 
 void main()
 {
-    float CenterDepth = texture(DepthImage, InUV).r;
+    float CenterDepth = texture(NormalDepthImage, InUV).a;
     if (CenterDepth >= (1.0 - 0.0001))
     {
         discard;

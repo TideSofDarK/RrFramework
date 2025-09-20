@@ -204,7 +204,9 @@ struct SGSApp
             sizeof(SUniformData));
 
         Rr_ColorTarget ColorTarget = {
-            0, RR_LOAD_OP_CLEAR, RR_STORE_OP_STORE, {}, ColorAttachment,
+            .Image = ColorAttachment,
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_STORE,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);

@@ -132,11 +132,10 @@ static void Iterate()
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
     Rr_ColorTarget ColorTarget = {
-        .Slot = 0,
+        .Image = SwapchainImage,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = { 0.5, 0.0, 0.5, 1.0 },
-        .Image = SwapchainImage,
     };
 
     Rr_GraphNode *GraphicsNode =

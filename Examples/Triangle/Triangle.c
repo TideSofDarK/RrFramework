@@ -70,11 +70,10 @@ static void Init(void)
 static void Iterate(void)
 {
     Rr_ColorTarget ColorTarget = {
-        .Slot = 0,
+        .Image = Rr_GetSwapchainImage(),
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = (Rr_ColorClear){ 0 },
-        .Image = Rr_GetSwapchainImage(),
     };
     Rr_GraphNode *OffscreenNode =
         Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);

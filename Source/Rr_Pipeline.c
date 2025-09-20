@@ -36,64 +36,51 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     const Rr_DepthStencil *DepthStencil,
     uint32_t SampleCount)
 {
-    Rr_RenderPassMapKey Key;
-    Key.ColorAttachmentCount = ColorTargetCount;
-    Key.ResolveAttachmentCount = 0;
-    Key.DepthStencil = DepthStencil->EnableDepthTest ||
-                       DepthStencil->EnableStencilTest ||
-                       DepthStencil->EnableDepthWrite;
+    Rr_RenderPassMapKey Key = {
+        .ColorAttachmentCount = (uint8_t)ColorTargetCount,
+        .DepthStencil = DepthStencil->EnableDepthTest ||
+                        DepthStencil->EnableStencilTest ||
+                        DepthStencil->EnableDepthWrite,
+    };
+
+    uint32_t ResolveAttachmentIndex = ColorTargetCount;
+
     for (uint32_t Index = 0; Index < ColorTargetCount; ++Index)
     {
-        if (ColorTargets[Index].Resolve)
-        {
-            Key.ResolveAttachmentCount++;
-        }
-    }
-    size_t AttachmentCount = Key.ColorAttachmentCount +
-                             Key.ResolveAttachmentCount +
-                             (size_t)Key.DepthStencil;
+        Rr_ColorTargetInfo *Info = &ColorTargets[Index];
 
-    size_t AttachmentIndex = 0;
-    size_t Boundary = ColorTargetCount;
+        Key.Attachments[Index].Format = Rr_ToVulkanImageFormat(Info->Format);
+        Key.Attachments[Index].Samples = SampleCount;
+        Key.Attachments[Index].LoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        Key.Attachments[Index].StoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-    if (ColorTargetCount > 0)
-    {
-        for (; AttachmentIndex < Boundary; ++AttachmentIndex)
+        if (!Info->Resolve)
         {
-            Key.Attachments[AttachmentIndex].Format =
-                Rr_ToVulkanImageFormat(ColorTargets[AttachmentIndex].Format);
-            Key.Attachments[AttachmentIndex].Samples = SampleCount;
-            Key.Attachments[AttachmentIndex].LoadOp =
-                VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            Key.Attachments[AttachmentIndex].StoreOp =
-                VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            continue;
         }
-    }
 
-    if (Key.ResolveAttachmentCount > 0)
-    {
-        Boundary += Key.ResolveAttachmentCount;
-        for (uint32_t ResolveAttachmentIndex = 0; AttachmentIndex < Boundary;
-             ++AttachmentIndex, ++ResolveAttachmentIndex)
-        {
-            Key.Attachments[AttachmentIndex].Format = Rr_ToVulkanImageFormat(
-                ColorTargets[ResolveAttachmentIndex].Format);
-            Key.Attachments[AttachmentIndex].Samples = 1;
-            Key.Attachments[AttachmentIndex].LoadOp =
-                VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            Key.Attachments[AttachmentIndex].StoreOp =
-                VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        }
+        Key.ResolveMask |= (uint8_t)(1 << Index);
+        Key.ResolveAttachmentCount++;
+
+        Key.Attachments[ResolveAttachmentIndex].Format =
+            Rr_ToVulkanImageFormat(Info->Format);
+        Key.Attachments[ResolveAttachmentIndex].Samples = 1;
+        Key.Attachments[ResolveAttachmentIndex].LoadOp =
+            VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        Key.Attachments[ResolveAttachmentIndex].StoreOp =
+            VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+        ResolveAttachmentIndex++;
     }
 
     if (Key.DepthStencil)
     {
-        Key.Attachments[AttachmentIndex].Format =
+        Key.Attachments[ResolveAttachmentIndex].Format =
             Rr_ToVulkanImageFormat(DepthStencil->Format);
-        Key.Attachments[AttachmentIndex].Samples = SampleCount;
-        Key.Attachments[AttachmentIndex].LoadOp =
+        Key.Attachments[ResolveAttachmentIndex].Samples = SampleCount;
+        Key.Attachments[ResolveAttachmentIndex].LoadOp =
             VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        Key.Attachments[AttachmentIndex].StoreOp =
+        Key.Attachments[ResolveAttachmentIndex].StoreOp =
             VK_ATTACHMENT_STORE_OP_DONT_CARE;
     }
 

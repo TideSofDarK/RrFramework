@@ -244,17 +244,16 @@ struct SSmoothGridApp
             1.0f,
         };
         Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
+            .Image = SwapchainImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = ColorClear,
-            .Image = SwapchainImage,
         };
         Rr_DepthTarget DepthTarget = {
+            .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = Rr_DepthClear(1.0f, 0),
-            .Image = DepthImage,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);

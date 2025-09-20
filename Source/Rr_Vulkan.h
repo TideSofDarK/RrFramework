@@ -709,6 +709,8 @@ static Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
             return RR_IMAGE_FORMAT_R32_SFLOAT;
         case VK_FORMAT_R32G32_SFLOAT:
             return RR_IMAGE_FORMAT_R32G32_SFLOAT;
+        case VK_FORMAT_R32G32B32A32_SFLOAT:
+            return RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT;
         default:
             RR_ABORT("Invalid image format!");
     }
@@ -748,6 +750,8 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
             return VK_FORMAT_R32_SFLOAT;
         case RR_IMAGE_FORMAT_R32G32_SFLOAT:
             return VK_FORMAT_R32G32_SFLOAT;
+        case RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT:
+            return VK_FORMAT_R32G32B32A32_SFLOAT;
         default:
             RR_ABORT("Invalid image format!");
     }

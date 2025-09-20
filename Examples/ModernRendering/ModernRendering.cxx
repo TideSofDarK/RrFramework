@@ -112,9 +112,9 @@ struct SFullscreenBlit
     void Blit(Rr_Graph *Graph, Rr_Image2D *SrcImage, Rr_Image2D *DstImage)
     {
         Rr_ColorTarget ColorTarget = {
+            .Image = DstImage,
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
-            .Image = DstImage,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
@@ -261,10 +261,9 @@ struct SSkybox
             sizeof(SGPUUniform));
 
         Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
+            .Image = ColorImage,
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
-            .Image = ColorImage,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
@@ -393,14 +392,14 @@ struct SGrid
             sizeof(SGPUUniform));
 
         Rr_ColorTarget ColorTarget = {
+            .Image = ColorImage,
             .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
-            .Image = ColorImage,
         };
         Rr_DepthTarget DepthTarget = {
+            .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
-            .Image = DepthImage,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
@@ -684,11 +683,11 @@ struct SLighting
                     sizeof(Uniform));
 
                 Rr_DepthTarget DepthTarget = {
+                    .Image = PointShadowMap,
+                    .ImageLayerIndex = Face,
                     .LoadOp = RR_LOAD_OP_CLEAR,
                     .StoreOp = RR_STORE_OP_STORE,
                     .Clear = Rr_DepthClear(1.0f, 0),
-                    .Image = PointShadowMap,
-                    .ImageLayerIndex = Face,
                 };
                 Rr_SetNextNodeName(
                     Graph,
@@ -723,10 +722,10 @@ struct SLighting
             std::memcpy(UniformData + UniformOffset, &Uniform, sizeof(Uniform));
 
             Rr_DepthTarget DepthTarget = {
+                .Image = SpotShadowMap,
                 .LoadOp = RR_LOAD_OP_CLEAR,
                 .StoreOp = RR_STORE_OP_STORE,
                 .Clear = Rr_DepthClear(1.0f, 0),
-                .Image = SpotShadowMap,
             };
             Rr_SetNextNodeName(
                 Graph,
@@ -799,75 +798,94 @@ struct SLighting
 
     void UI()
     {
-        // if (Rr_UIFold("Point Lights"))
-        // {
-        //     for (std::uint32_t Index = 0; Index < PointLights.size();
-        //     ++Index)
-        //     {
-        //         Rr_UISeparator();
-        //         auto &PointLight = PointLights[Index];
-        //         bool Visualize =
-        //             VisualizePointShadowMap == PointShadowMaps[Index];
-        //         bool OldVisualize = Visualize;
-        //         if (Rr_UICheckbox("Visualize Shadow Map", &Visualize))
-        //         {
-        //             VisualizePointShadowMap =
-        //                 OldVisualize ? nullptr : PointShadowMaps[Index];
-        //         }
-        //         Rr_UISliderFloat("Radius", &PointLight.Radius, 0.0f, 8.0f);
-        //         Rr_UISliderFloat(
-        //             "Intensity",
-        //             &PointLight.Intensity,
-        //             0.0f,
-        //             8.0f);
-        //         Rr_UISliderFloat("Falloff", &PointLight.Falloff, 0.0f, 8.0f);
-        //         Rr_UISliderFloat("Bias", &PointLight.Bias, 0.0001f, 0.1f);
-        //     }
-        // }
-
-        if (Rr_UIFold("Spot Lights"))
+        if (Rr_UIFold("Point Lights"))
         {
-            for (std::uint32_t Index = 0; Index < SpotLights.size(); ++Index)
+            for (std::uint32_t Index = 0; Index < PointLights.size(); ++Index)
             {
-                // Rr_UISeparator();
-                auto &SpotLight = SpotLights[Index];
-                Rr_UIInputFloat3(
-                    "Position",
-                    SpotLight.Transform.Columns[3].Elements);
+                Rr_UISeparator();
+                auto &PointLight = PointLights[Index];
+                bool Visualize =
+                    VisualizePointShadowMap == PointShadowMaps[Index];
+                bool OldVisualize = Visualize;
+                if (Rr_UICheckbox("Visualize Shadow Map", &Visualize))
+                {
+                    VisualizePointShadowMap =
+                        OldVisualize ? nullptr : PointShadowMaps[Index];
+                }
+                Rr_UISliderFloat("Radius", &PointLight.Radius, 0.0f, 8.0f);
                 Rr_UISliderFloat(
-                    "Inner Cone",
-                    &SpotLight.InnerCone,
+                    "Intensity",
+                    &PointLight.Intensity,
                     0.0f,
-                    90.0f);
-                Rr_UISliderFloat(
-                    "Outer Cone",
-                    &SpotLight.OuterCone,
-                    0.0f,
-                    90.0f);
-                Rr_UISliderFloat("Intensity", &SpotLight.Intensity, 0.0f, 8.0f);
-                // Rr_UISliderFloat("Falloff", &SpotLight.Falloff, 0.0f, 8.0f);
+                    8.0f);
+                Rr_UISliderFloat("Falloff", &PointLight.Falloff, 0.0f, 8.0f);
                 Rr_UISliderFloat(
                     "LightSize",
-                    &SpotLight.LightSize,
+                    &PointLight.LightSize,
                     0.0001f,
                     0.5f);
                 Rr_UISliderFloat(
                     "ConstantBias",
-                    &SpotLight.ConstantBias,
+                    &PointLight.ConstantBias,
                     0.0f,
                     1.0f);
                 Rr_UISliderFloat(
                     "SlopeBias",
-                    &SpotLight.SlopeBias,
+                    &PointLight.SlopeBias,
                     0.0f,
                     15.0f);
                 Rr_UISliderFloat(
                     "NormalBias",
-                    &SpotLight.NormalBias,
+                    &PointLight.NormalBias,
                     0.0f,
                     1.0f);
             }
         }
+
+        // if (Rr_UIFold("Spot Lights"))
+        // {
+        //     for (std::uint32_t Index = 0; Index < SpotLights.size(); ++Index)
+        //     {
+        //         // Rr_UISeparator();
+        //         auto &SpotLight = SpotLights[Index];
+        //         Rr_UIInputFloat3(
+        //             "Position",
+        //             SpotLight.Transform.Columns[3].Elements);
+        //         Rr_UISliderFloat(
+        //             "Inner Cone",
+        //             &SpotLight.InnerCone,
+        //             0.0f,
+        //             90.0f);
+        //         Rr_UISliderFloat(
+        //             "Outer Cone",
+        //             &SpotLight.OuterCone,
+        //             0.0f,
+        //             90.0f);
+        //         Rr_UISliderFloat("Intensity", &SpotLight.Intensity,
+        //         0.0f, 8.0f);
+        //         // Rr_UISliderFloat("Falloff", &SpotLight.Falloff,
+        //         0.0f, 8.0f); Rr_UISliderFloat(
+        //             "LightSize",
+        //             &SpotLight.LightSize,
+        //             0.0001f,
+        //             0.5f);
+        //         Rr_UISliderFloat(
+        //             "ConstantBias",
+        //             &SpotLight.ConstantBias,
+        //             0.0f,
+        //             1.0f);
+        //         Rr_UISliderFloat(
+        //             "SlopeBias",
+        //             &SpotLight.SlopeBias,
+        //             0.0f,
+        //             15.0f);
+        //         Rr_UISliderFloat(
+        //             "NormalBias",
+        //             &SpotLight.NormalBias,
+        //             0.0f,
+        //             1.0f);
+        //     }
+        // }
     }
 
     SLighting()
@@ -1034,9 +1052,9 @@ struct SSSAO
             sizeof(GPUUniform));
 
         Rr_ColorTarget ColorTarget = {
+            .Image = ColorTargetImage,
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
-            .Image = ColorTargetImage,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
@@ -1145,6 +1163,8 @@ struct SModernRenderingApp
     Rr_GLTFAsset *GLTFAsset{};
     Rr_Image2D *ColorImage{};
     Rr_Image2D *ColorImageResolved{};
+    Rr_Image2D *NormalDepthImage{};
+    Rr_Image2D *NormalDepthImageResolved{};
     Rr_Image2D *DepthImage{};
 
     static constexpr std::array<const char *, 4> MSAA_OPTIONS = {
@@ -1250,6 +1270,9 @@ struct SModernRenderingApp
                 .Format = Rr_GetSwapchainFormat(),
                 .Resolve = MSAAOptionIndex > 0,
             },
+            Rr_ColorTargetInfo{
+                .Format = RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
+            },
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
@@ -1294,16 +1317,36 @@ struct SModernRenderingApp
             RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
                 RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
 
+        Rr_ReleaseImage(NormalDepthImage);
+        Rr_SetNextObjectName("NormalDepthImage");
+        NormalDepthImage = Rr_CreateImage2D(
+            { SwapchainSize.X, SwapchainSize.Y },
+            RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
+            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
+                RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
+
         Rr_ReleaseImage(ColorImageResolved);
         ColorImageResolved = nullptr;
+
+        Rr_ReleaseImage(NormalDepthImageResolved);
+        NormalDepthImageResolved = nullptr;
+
         if (GetMSAASampleCount() == 1)
         {
             return;
         }
+
         ColorImageResolved = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
             Rr_GetSwapchainFormat(),
-            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
+                RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
+
+        NormalDepthImageResolved = Rr_CreateImage2D(
+            { SwapchainSize.X, SwapchainSize.Y },
+            RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
+            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
+                RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
     }
 
     void InitCamera()
@@ -1598,20 +1641,37 @@ struct SModernRenderingApp
                 Lighting.VisualizePointShadowMap);
         }
 
-        Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
-            .LoadOp = RR_LOAD_OP_LOAD,
-            .StoreOp = RR_STORE_OP_STORE,
-            .Image = ColorImage,
+        bool UseMSAA = GetMSAASampleCount() > 1;
+
+        std::array ColorTargets = {
+            Rr_ColorTarget{
+                .Image = ColorImage,
+                .LoadOp = RR_LOAD_OP_LOAD,
+                .StoreOp = UseMSAA ? RR_STORE_OP_DONT_CARE : RR_STORE_OP_STORE,
+                .ResolveImage = UseMSAA ? ColorImageResolved : nullptr,
+                .ResolveLoadOp = RR_LOAD_OP_DONT_CARE,
+                .ResolveStoreOp = RR_STORE_OP_STORE,
+            },
+            Rr_ColorTarget{
+                .Image = NormalDepthImage,
+                .LoadOp = RR_LOAD_OP_DONT_CARE,
+                .StoreOp = UseMSAA ? RR_STORE_OP_DONT_CARE : RR_STORE_OP_STORE,
+                .ResolveImage = UseMSAA ? NormalDepthImageResolved : nullptr,
+                .ResolveLoadOp = RR_LOAD_OP_DONT_CARE,
+                .ResolveStoreOp = RR_STORE_OP_STORE,
+            },
         };
         Rr_DepthTarget DepthTarget = {
+            .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = Rr_DepthClear(1.0f, 0),
-            .Image = DepthImage,
         };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+            Graph,
+            ColorTargets.size(),
+            ColorTargets.data(),
+            &DepthTarget);
 
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),
@@ -1637,28 +1697,31 @@ struct SModernRenderingApp
 
         if (DrawGrid)
         {
-            Grid.Draw(Camera, ColorImage, DepthImage);
+            // Grid.Draw(Camera, ColorImage, DepthImage);
         }
 
-        Rr_Image2D *FinalImage{};
-        if (GetMSAASampleCount() > 1)
+        Rr_Image2D *FinalColorImage{};
+        Rr_Image2D *FinalNormalDepthImage{};
+
+        if (UseMSAA)
         {
-            Rr_ResolveImage2D(
-                Graph,
-                ColorImage,
-                0,
-                ColorImageResolved,
-                0,
-                RR_IMAGE_ASPECT_COLOR_BIT);
-            FinalImage = ColorImageResolved;
+            FinalColorImage = ColorImageResolved;
+            FinalNormalDepthImage = NormalDepthImageResolved;
         }
         else
         {
-            FinalImage = ColorImage;
+            FinalColorImage = ColorImage;
+            FinalNormalDepthImage = NormalDepthImage;
         }
 
-        // FullscreenBlit.Blit(Graph, ColorImageResolved, SwapchainImage);
-        SSAO.Apply(Graph, SwapchainImage, FinalImage, DepthImage, Camera);
+        // FullscreenBlit.Blit(Graph, FinalColorImage, SwapchainImage);
+
+        SSAO.Apply(
+            Graph,
+            SwapchainImage,
+            FinalColorImage,
+            FinalNormalDepthImage,
+            Camera);
     }
 
     Rr_PipelineLayout *CreateBlitLayout()
@@ -1703,9 +1766,11 @@ struct SModernRenderingApp
         Rr_ReleaseGLTFContext(GLTFContext);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
-        Rr_ReleaseImage(DepthImage);
         Rr_ReleaseImage(ColorImage);
         Rr_ReleaseImage(ColorImageResolved);
+        Rr_ReleaseImage(NormalDepthImage);
+        Rr_ReleaseImage(NormalDepthImageResolved);
+        Rr_ReleaseImage(DepthImage);
     }
 };
 

@@ -135,9 +135,10 @@ struct Rr_RenderPassAttachment
 typedef struct Rr_RenderPassMapKey Rr_RenderPassMapKey;
 struct Rr_RenderPassMapKey
 {
-    uint32_t ColorAttachmentCount;
-    uint32_t ResolveAttachmentCount;
-    uint32_t DepthStencil;
+    uint8_t ColorAttachmentCount;
+    uint8_t ResolveAttachmentCount;
+    uint8_t ResolveMask;
+    uint8_t DepthStencil;
     Rr_RenderPassAttachment Attachments[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
 };
 

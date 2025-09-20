@@ -108,7 +108,6 @@ typedef struct Rr_GraphicsNode Rr_GraphicsNode;
 struct Rr_GraphicsNode
 {
     Rr_Encoded Encoded;
-    uint32_t ResolveAttachmentCount;
     uint32_t ColorTargetCount;
     Rr_ColorTarget *ColorTargets;
     Rr_DepthTarget *DepthTarget;

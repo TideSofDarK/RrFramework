@@ -1018,8 +1018,9 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
 
     Rr_LockSpinlock(&gRenderer->RenderPassStorageLock);
 
-    uint32_t AttachmentCount = Key->ColorAttachmentCount +
-                               Key->ResolveAttachmentCount + Key->DepthStencil;
+    uint32_t AttachmentCount =
+        (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
+                   Key->DepthStencil);
 
     size_t HashSize = offsetof(Rr_RenderPassMapKey, Attachments) +
                       AttachmentCount * sizeof(Rr_RenderPassAttachment);
@@ -1056,9 +1057,6 @@ Found:
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    uint32_t ColorAttachmentCount = Key->ColorAttachmentCount;
-    uint32_t ResolveAttachmentCount = Key->ResolveAttachmentCount;
-
     VkAttachmentReference *ColorReferences = NULL;
     VkAttachmentReference *ResolveReferences = NULL;
     VkAttachmentReference *DepthReference = NULL;
@@ -1068,76 +1066,81 @@ Found:
         VkAttachmentDescription,
         AttachmentCount);
 
-    uint32_t AttachmentIndex = 0;
-    uint32_t Boundary = Key->ColorAttachmentCount;
+    uint32_t ResolveDescriptionIndex = Key->ColorAttachmentCount;
 
-    if (ColorAttachmentCount > 0)
+    if (Key->ColorAttachmentCount > 0)
     {
         ColorReferences = RR_ALLOC_TYPE_COUNT(
             Scratch.Arena,
             VkAttachmentReference,
             Key->ColorAttachmentCount);
 
-        for (; AttachmentIndex < Boundary; ++AttachmentIndex)
-        {
-            Descriptions[AttachmentIndex] = (VkAttachmentDescription){
-                .samples = Key->Attachments[AttachmentIndex].Samples,
-                .format = Key->Attachments[AttachmentIndex].Format,
-                .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                .loadOp = Key->Attachments[AttachmentIndex].LoadOp,
-                .storeOp = Key->Attachments[AttachmentIndex].StoreOp,
-            };
-
-            ColorReferences[AttachmentIndex] = (VkAttachmentReference){
-                .attachment = AttachmentIndex,
-                .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            };
-        }
-    }
-
-    if (ResolveAttachmentCount > 0)
-    {
         ResolveReferences = RR_ALLOC_TYPE_COUNT(
             Scratch.Arena,
             VkAttachmentReference,
-            Key->ResolveAttachmentCount);
+            Key->ColorAttachmentCount);
 
-        Boundary += Key->ResolveAttachmentCount;
-
-        for (uint32_t ResolveAttachmentIndex = 0; AttachmentIndex < Boundary;
-             ++AttachmentIndex, ++ResolveAttachmentIndex)
+        for (uint32_t Index = 0; Index < Key->ColorAttachmentCount; ++Index)
         {
-            Descriptions[AttachmentIndex] = (VkAttachmentDescription){
-                .samples = Key->Attachments[AttachmentIndex].Samples,
-                .format = Key->Attachments[AttachmentIndex].Format,
+            Descriptions[Index] = (VkAttachmentDescription){
+                .samples = Key->Attachments[Index].Samples,
+                .format = Key->Attachments[Index].Format,
                 .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                .loadOp = Key->Attachments[AttachmentIndex].LoadOp,
-                .storeOp = Key->Attachments[AttachmentIndex].StoreOp,
+                .loadOp = Key->Attachments[Index].LoadOp,
+                .storeOp = Key->Attachments[Index].StoreOp,
             };
 
-            ResolveReferences[ResolveAttachmentIndex] = (VkAttachmentReference){
-                .attachment = AttachmentIndex,
+            ColorReferences[Index] = (VkAttachmentReference){
+                .attachment = Index,
                 .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             };
+
+            if (RR_HAS_BIT(Key->ResolveMask, 1 << Index))
+            {
+                Descriptions[ResolveDescriptionIndex] =
+                    (VkAttachmentDescription){
+                        .samples =
+                            Key->Attachments[ResolveDescriptionIndex].Samples,
+                        .format =
+                            Key->Attachments[ResolveDescriptionIndex].Format,
+                        .initialLayout =
+                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .loadOp =
+                            Key->Attachments[ResolveDescriptionIndex].LoadOp,
+                        .storeOp =
+                            Key->Attachments[ResolveDescriptionIndex].StoreOp,
+                    };
+
+                ResolveReferences[Index] = (VkAttachmentReference){
+                    .attachment = ResolveDescriptionIndex,
+                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                };
+
+                ResolveDescriptionIndex++;
+            }
+            else
+            {
+                ResolveReferences[Index].attachment = VK_ATTACHMENT_UNUSED;
+            }
         }
     }
 
     if (Key->DepthStencil)
     {
-        Descriptions[AttachmentIndex] = (VkAttachmentDescription){
-            .samples = Key->Attachments[AttachmentIndex].Samples,
-            .format = Key->Attachments[AttachmentIndex].Format,
+        Descriptions[ResolveDescriptionIndex] = (VkAttachmentDescription){
+            .samples = Key->Attachments[ResolveDescriptionIndex].Samples,
+            .format = Key->Attachments[ResolveDescriptionIndex].Format,
             .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            .loadOp = Key->Attachments[AttachmentIndex].LoadOp,
-            .storeOp = Key->Attachments[AttachmentIndex].StoreOp,
+            .loadOp = Key->Attachments[ResolveDescriptionIndex].LoadOp,
+            .storeOp = Key->Attachments[ResolveDescriptionIndex].StoreOp,
         };
         DepthReference =
             RR_ALLOC_NO_ZERO(Scratch.Arena, sizeof(VkAttachmentReference));
         *DepthReference = (VkAttachmentReference){
-            .attachment = AttachmentIndex,
+            .attachment = ResolveDescriptionIndex,
             .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         };
     }

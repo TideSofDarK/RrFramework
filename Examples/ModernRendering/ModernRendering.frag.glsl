@@ -9,8 +9,10 @@ layout(location = 0) in vec2 InUV;
 layout(location = 1) in vec3 InNormal;
 layout(location = 2) in vec3 InPosition;
 layout(location = 3) in vec3 InNormalVS;
+layout(location = 4) in float InZ;
 
 layout(location = 0) out vec4 OutColor;
+layout(location = 1) out vec4 OutNormalDepth;
 
 layout(set = 0, binding = 0) uniform SGPUUniform
 {
@@ -151,12 +153,20 @@ float SpotAttenuate(in vec3 LightToFrag, in SGPUSpotLight Light)
     return smoothstep(OuterConeCos, InnerConeCos, ActualCos);
 }
 
+float ZToDepthValue(in float Z, in float NearPlane, in float FarPlane)
+{
+    float FarPlusNear = FarPlane + NearPlane;
+    float FarMinusNear = FarPlane - NearPlane;
+    float FTimesNear = FarPlane * NearPlane;
+    float ZRec = 1.0 / Z;
+    return FarPlusNear / FarMinusNear + ZRec * ((-2.0f * FTimesNear) / FarMinusNear);
+}
+
 float VectorToDepthValue(in vec3 Vec, in float NearPlane, in float FarPlane)
 {
     vec3 AbsVec = abs(Vec);
-    float LocalZcomp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));
-
-    float NormZComp = (FarPlane + NearPlane) / (FarPlane - NearPlane) - (2 * FarPlane * NearPlane) / (FarPlane - NearPlane) / LocalZcomp;
+    float LocalZComp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));
+    float NormZComp = ZToDepthValue(LocalZComp, NearPlane, FarPlane);
     return (NormZComp + 1.0) * 0.5;
 }
 
@@ -408,4 +418,6 @@ void main()
 
     OutColor = vec4(TotalDiffuse + TotalSpecular, 1.0);
     // OutColor.rgb = BaseColor;
+
+    OutNormalDepth = vec4(FragNormal, ZToDepthValue(InZ, 0.1, 100.0));
 }

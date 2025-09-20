@@ -215,11 +215,10 @@ static void Iterate(void)
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
     Rr_ColorTarget ColorTarget = {
-        .Slot = 0,
+        .Image = SwapchainImage,
         .LoadOp = RR_LOAD_OP_CLEAR,
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = (Rr_ColorClear){ { 0.03f, 0.03f, 0.04f, 1.0f } },
-        .Image = SwapchainImage,
     };
     Rr_DepthTarget DepthTarget = {
         .LoadOp = RR_LOAD_OP_CLEAR,

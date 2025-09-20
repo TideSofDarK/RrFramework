@@ -292,15 +292,14 @@ struct SPrerenderedDepthApp
             0);
 
         Rr_ColorTarget ColorTarget = {
-            .Slot = 0,
+            .Image = ColorImage,
             .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
-            .Image = ColorImage,
         };
         Rr_DepthTarget DepthTarget = {
+            .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
-            .Image = DepthImage,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
