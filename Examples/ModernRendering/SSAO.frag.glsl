@@ -80,7 +80,8 @@ float GetAmbientOcclusion(in vec3 CenterViewPosition)
 {
     float ScaleDividedByCameraFar = Scale / 100.0;
     float MinResTimesCameraFar = MinRes * 100.0;
-    vec3 CenterViewNormal = GetViewNormal(CenterViewPosition);
+    // vec3 CenterViewNormal = GetViewNormal(CenterViewPosition);
+    vec3 CenterViewNormal = -texture(NormalDepthImage, InUV).rgb;
 
     float Angle = Hash12(InUV + gl_FragCoord.xy) * PI_2;
     vec2 Radius = vec2(KernelRadius * INV_NUM_SAMPLES) / ScreenRes;

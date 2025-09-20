@@ -9,7 +9,6 @@ layout(location = 0) in vec2 InUV;
 layout(location = 1) in vec3 InNormal;
 layout(location = 2) in vec3 InPosition;
 layout(location = 3) in vec3 InNormalVS;
-layout(location = 4) in float InZ;
 
 layout(location = 0) out vec4 OutColor;
 layout(location = 1) out vec4 OutNormalDepth;
@@ -419,5 +418,5 @@ void main()
     OutColor = vec4(TotalDiffuse + TotalSpecular, 1.0);
     // OutColor.rgb = BaseColor;
 
-    OutNormalDepth = vec4(FragNormal, ZToDepthValue(InZ, 0.1, 100.0));
+    OutNormalDepth = vec4(normalize(InNormalVS), gl_FragCoord.z);
 }
