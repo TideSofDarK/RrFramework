@@ -53,7 +53,8 @@ struct Rr_Swapchain
     VkFormat Format;
     VkColorSpaceKHR ColorSpace;
     VkExtent3D Extent;
-    Rr_AtomicInt RecreatePending;
+    bool RecreatePending;
+    bool RecreateEventPending;
 };
 
 typedef struct Rr_CommandPools Rr_CommandPools;

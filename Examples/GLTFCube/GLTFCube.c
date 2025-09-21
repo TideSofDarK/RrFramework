@@ -24,6 +24,8 @@ static Rr_Sampler *NearestSampler;
 
 static SUniformData UniformData;
 
+#include <stdio.h>
+
 static void InitDepthImage(void)
 {
     if (DepthAttachment != NULL)
@@ -33,6 +35,7 @@ static void InitDepthImage(void)
 
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
 
+    Rr_SetNextObjectName("DepthImage");
     DepthAttachment = Rr_CreateImage2D(
         (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
         RR_IMAGE_FORMAT_D32_SFLOAT,

@@ -30,7 +30,6 @@
 #define RR_LOG(...)                          \
     do                                       \
     {                                        \
-        fprintf(stderr, "%s(): ", __func__); \
         fprintf(stderr, __VA_ARGS__);        \
         fprintf(stderr, "\n");               \
     }                                        \
@@ -39,7 +38,6 @@
 #define RR_ABORT(...)                        \
     do                                       \
     {                                        \
-        fprintf(stderr, "%s(): ", __func__); \
         fprintf(stderr, __VA_ARGS__);        \
         fprintf(stderr, "\n");               \
         abort();                             \

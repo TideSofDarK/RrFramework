@@ -140,7 +140,21 @@ void Rr_Run(Rr_AppConfig *Config)
 
     while (true)
     {
-        for (Rr_Event Event; Rr_PollEvent(&Event);)
+        Rr_Event Event;
+
+        if (gRenderer->Swapchain.RecreateEventPending)
+        {
+            Event.Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
+
+            if (Config->EventFunc != NULL)
+            {
+                gApp->EventFunc(&Event);
+            }
+
+            gRenderer->Swapchain.RecreateEventPending = false;
+        }
+
+        while (Rr_PollEvent(&Event))
         {
             if (Event.Type == RR_EVENT_TYPE_QUIT)
             {

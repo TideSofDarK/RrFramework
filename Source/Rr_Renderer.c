@@ -28,7 +28,6 @@
 
 #include "Rr_Renderer.h"
 
-#include "Rr_App.h"
 #include "Rr_Log.h"
 
 #include <Rr/Rr_Graph.h>
@@ -75,7 +74,7 @@ static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 
 void Rr_SetSwapchainDirty(bool Dirty)
 {
-    Rr_StoreAtomicRelaxed(&gRenderer->Swapchain.RecreatePending, Dirty);
+    gRenderer->Swapchain.RecreatePending = Dirty;
 }
 
 static bool Rr_InitSwapchain(void)
@@ -361,7 +360,7 @@ static bool Rr_RecreateSwapchain(void)
     bool Recreate =
         gRenderer->Swapchain.Extent.width != (uint32_t)WindowSize.Width ||
         gRenderer->Swapchain.Extent.height != (uint32_t)WindowSize.Height ||
-        Rr_LoadAtomicRelaxed(&gRenderer->Swapchain.RecreatePending);
+        gRenderer->Swapchain.RecreatePending;
 
     if (!Recreate)
     {
@@ -372,8 +371,7 @@ static bool Rr_RecreateSwapchain(void)
 
     if (Recreated)
     {
-        Rr_Event *Event = Rr_AddEvent();
-        Event->Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
+        gRenderer->Swapchain.RecreateEventPending = true;
     }
 
     return Recreate;
