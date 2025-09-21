@@ -146,19 +146,6 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 set_target_properties(${PROJECT_NAME} PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-    # STBI_NO_STDIO
-    # STBI_NO_GIF
-    # STBI_NO_BMP
-    # STBI_NO_PSD
-    # STBI_NO_PIC
-    # STBI_NO_PNM
-    # STBI_NO_HDR
-    # STBI_NO_TGA
-    # STBI_NO_FAILURE_STRINGS
-    VK_NO_PROTOTYPES
-)
-
 target_compile_definitions(
     ${PROJECT_NAME}
     PUBLIC

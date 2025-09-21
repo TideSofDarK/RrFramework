@@ -29,6 +29,8 @@ extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
 extern void Rr_AlignedFree(void *Ptr);
 }
 
+#define VK_NO_PROTOTYPES
+
 #define VMA_IMPLEMENTATION
 #define VMA_VULKAN_VERSION           1001000
 #define VMA_STATIC_VULKAN_FUNCTIONS  0

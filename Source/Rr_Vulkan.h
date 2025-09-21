@@ -33,6 +33,8 @@
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Renderer.h>
 
+#define VK_NO_PROTOTYPES
+
 #include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
