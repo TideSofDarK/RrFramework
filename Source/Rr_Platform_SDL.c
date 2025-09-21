@@ -298,8 +298,8 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
     SDL_Rect Rect;
     SDL_GetDisplayBounds(DisplayID, &Rect);
     return (Rr_IntVec2){
-        (int32_t)(Scale * Rect.w),
-        (int32_t)(Scale * Rect.h),
+        (int32_t)(Scale * (float)Rect.w),
+        (int32_t)(Scale * (float)Rect.h),
     };
 }
 
@@ -308,8 +308,8 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
     float Scale = SDL_GetWindowDisplayScale(gPlatform->Window);
     SDL_SetWindowSize(
         gPlatform->Window,
-        (int32_t)(Size.Width / Scale),
-        (int32_t)(Size.Height / Scale));
+        (int32_t)((float)Size.Width / Scale),
+        (int32_t)((float)Size.Height / Scale));
 }
 
 void Rr_SetCursor(Rr_CursorType Type)

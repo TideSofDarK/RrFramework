@@ -67,7 +67,9 @@
 
 - [ ] Very basic profilers for CPU/GPU.
 - [ ] Memory arena registry and maybe some kind of memory profiler.
-- [ ] Vulkan markers.
+- [X] Vulkan markers.
+- [ ] Allow inserting debug markers not associated with nodes.
+- [ ] Separate define for Vulkan markers.
 
 ** GLTF
 
@@ -89,7 +91,7 @@
 - [X] Decide where it makes sense to use size_t instead of uint32_t. Also VK_DEVICE_SIZE etc.
       Solution: use size_t for user-provided counts (i.e. number of color targets).
       Otherwise stick to types that correspond to underlying Vulkan structs.
-- [ ] With GLFW (need to check SDL) swapchain gets recreated immediately after launch.
+- [X] With GLFW (need to check SDL) swapchain gets recreated immediately after launch.
 - [ ] Replace VMA with custom allocator.
 - [ ] Own implementation of Windows/Linux platform layers.
 - [ ] Macro-based stuff should probably be internal.
