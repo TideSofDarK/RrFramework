@@ -199,7 +199,7 @@ VkImageView Rr_GetVulkanImageView(
                   .Element;
     (*MapRef)->Key = *Key;
     (*MapRef)->Value = VK_NULL_HANDLE;
-    RR_ZERO_PTR((*MapRef)->Children);
+    RR_ZERO((*MapRef)->Children);
     ImageViewRef = &(*MapRef)->Value;
 
 Found:
