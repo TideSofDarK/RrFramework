@@ -96,6 +96,40 @@ static inline bool Rr_PollEvent(Rr_Event *Event)
     return false;
 }
 
+static inline void Rr_DispatchEvents(Rr_AppConfig *Config)
+{
+    Rr_Event Event;
+
+    if (gRenderer->Swapchain.RecreateEventPending)
+    {
+        Event.Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
+
+        if (Config->EventFunc != NULL)
+        {
+            gApp->EventFunc(&Event);
+        }
+
+        gRenderer->Swapchain.RecreateEventPending = false;
+    }
+
+    while (Rr_PollEvent(&Event))
+    {
+        if (Event.Type == RR_EVENT_TYPE_QUIT)
+        {
+            /* TODO: Should have an option to ignore it. */
+
+            Rr_Quit();
+        }
+
+        Rr_ProcessUIEvent(&Event);
+
+        if (Config->EventFunc != NULL)
+        {
+            gApp->EventFunc(&Event);
+        }
+    }
+}
+
 void Rr_Run(Rr_AppConfig *Config)
 {
     assert(gApp == NULL && "You shouldn't call Rr_Run() more than once!");
@@ -140,36 +174,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     while (true)
     {
-        Rr_Event Event;
-
-        if (gRenderer->Swapchain.RecreateEventPending)
-        {
-            Event.Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
-
-            if (Config->EventFunc != NULL)
-            {
-                gApp->EventFunc(&Event);
-            }
-
-            gRenderer->Swapchain.RecreateEventPending = false;
-        }
-
-        while (Rr_PollEvent(&Event))
-        {
-            if (Event.Type == RR_EVENT_TYPE_QUIT)
-            {
-                /* TODO: Should have an option to ignore it. */
-
-                Rr_Quit();
-            }
-
-            Rr_ProcessUIEvent(&Event);
-
-            if (Config->EventFunc != NULL)
-            {
-                gApp->EventFunc(&Event);
-            }
-        }
+        Rr_DispatchEvents(Config);
 
         Rr_Vec2 MousePosition = Rr_GetMousePosition();
         gPlatform->MousePositionDelta =
