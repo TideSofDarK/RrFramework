@@ -15,11 +15,12 @@ layout(set = 0, binding = 0) uniform SGPUUniform
 
 layout(set = 1, binding = 0) readonly buffer SGPUStorage
 {
-    mat4 Model;
+    mat4 ModelArray[];
 };
 
 void main()
 {
+    mat4 Model = ModelArray[gl_InstanceIndex];
     OutPosition = (Model * vec4(InPosition.xyz, 1.0)).xyz;
     gl_Position = ViewProjection * Model * vec4(InPosition.xyz, 1.0);
     // gl_Position.x *= -1.0;

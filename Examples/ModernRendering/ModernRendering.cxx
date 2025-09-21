@@ -1159,6 +1159,9 @@ struct SModernRenderingApp
     Rr_GraphicsPipeline *GraphicsPipeline{};
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *ModelBuffer{};
+    std::uint32_t ModelCount{};
+    Rr_Buffer *IndirectBuffer{};
+    std::uint32_t DrawCount{};
     Rr_GLTFContext *GLTFContext{};
     Rr_GLTFAsset *GLTFAsset{};
     Rr_Image2D *ColorImage{};
@@ -1365,19 +1368,43 @@ struct SModernRenderingApp
     }
 
     void UploadNodeStorage(
-        char *&StagingData,
+        char *&ModelStagingData,
+        char *&IndirectStagingData,
         Rr_GLTFNode *Node,
         Rr_Mat4 Transform)
     {
         if (Node->Mesh)
         {
             Transform = Transform * Node->Transform;
-            std::memcpy(StagingData, &Transform, sizeof(SGPUStorage));
-            StagingData += sizeof(SGPUStorage);
+            std::memcpy(ModelStagingData, &Transform, sizeof(SGPUStorage));
+            ModelStagingData += sizeof(SGPUStorage);
+
+            for (std::uint32_t PrimitiveIndex = 0;
+                 PrimitiveIndex < Node->Mesh->PrimitiveCount;
+                 ++PrimitiveIndex)
+            {
+                Rr_GLTFPrimitive *Primitive =
+                    &Node->Mesh->Primitives[PrimitiveIndex];
+                *(Rr_DrawIndexedIndirectCommand *)IndirectStagingData = {
+                    .IndexCount = Primitive->IndexCount,
+                    .InstanceCount = 1,
+                    .FirstIndex = Primitive->FirstIndex,
+                    .VertexOffset = Primitive->VertexOffset,
+                    .FirstInstance = ModelCount,
+                };
+                IndirectStagingData += sizeof(Rr_DrawIndexedIndirectCommand);
+                DrawCount++;
+            }
+
+            ModelCount++;
         }
         for (std::uint32_t Index = 0; Index < Node->ChildrenCount; ++Index)
         {
-            UploadNodeStorage(StagingData, Node->Children[Index], Transform);
+            UploadNodeStorage(
+                ModelStagingData,
+                IndirectStagingData,
+                Node->Children[Index],
+                Transform);
         }
     }
 
@@ -1416,18 +1443,30 @@ struct SModernRenderingApp
         ModelBuffer =
             Rr_CreateBuffer(RR_MEGABYTES(4), RR_BUFFER_FLAGS_STORAGE_BIT);
 
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        IndirectBuffer =
+            Rr_CreateBuffer(RR_MEGABYTES(4), RR_BUFFER_FLAGS_INDIRECT_BIT);
+
+        Rr_Buffer *ModelStagingBuffer = Rr_CreateBuffer(
             RR_MEGABYTES(4),
             RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
-        char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
-        char *StagingDataStart = StagingData;
+        char *ModelStagingData =
+            (char *)Rr_GetMappedBufferData(ModelStagingBuffer);
+        char *ModelStagingDataStart = ModelStagingData;
+
+        Rr_Buffer *IndirectStagingBuffer = Rr_CreateBuffer(
+            RR_MEGABYTES(4),
+            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+        char *IndirectStagingData =
+            (char *)Rr_GetMappedBufferData(IndirectStagingBuffer);
+        char *IndirectStagingDataStart = IndirectStagingData;
 
         Rr_GLTFScene *Scene = GLTFAsset->Scenes;
         for (std::uint32_t NodeIndex = 0; NodeIndex < Scene->NodeCount;
              ++NodeIndex)
         {
             UploadNodeStorage(
-                StagingData,
+                ModelStagingData,
+                IndirectStagingData,
                 Scene->Nodes[NodeIndex],
                 Rr_M4D(1.0f));
         }
@@ -1435,13 +1474,21 @@ struct SModernRenderingApp
         Rr_TransferNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph());
         Rr_TransferBufferData(
             TransferNode,
-            StagingData - StagingDataStart,
-            StagingBuffer,
+            ModelStagingData - ModelStagingDataStart,
+            ModelStagingBuffer,
             0,
             ModelBuffer,
             0);
+        Rr_TransferBufferData(
+            TransferNode,
+            IndirectStagingData - IndirectStagingDataStart,
+            IndirectStagingBuffer,
+            0,
+            IndirectBuffer,
+            0);
 
-        Rr_ReleaseBuffer(StagingBuffer);
+        Rr_ReleaseBuffer(ModelStagingBuffer);
+        Rr_ReleaseBuffer(IndirectStagingBuffer);
     }
 
     void Event(Rr_Event *Event)
@@ -1470,55 +1517,6 @@ struct SModernRenderingApp
         }
     }
 
-    void DrawGLTFMesh(Rr_GraphNode *GraphicsNode, Rr_GLTFMesh *Mesh)
-    {
-        for (std::uint32_t PrimitiveIndex = 0;
-             PrimitiveIndex < Mesh->PrimitiveCount;
-             ++PrimitiveIndex)
-        {
-            Rr_GLTFPrimitive *Primitive = &Mesh->Primitives[PrimitiveIndex];
-            // Rr_BindSampler(GraphicsNode, NearestSampler, 0, 1);
-            // Rr_BindSampledImage2D(GraphicsNode, GLTFAsset->Images[0], 0, 2);
-            Rr_DrawIndexed(
-                GraphicsNode,
-                Primitive->IndexCount,
-                1,
-                Primitive->FirstIndex,
-                Primitive->VertexOffset,
-                0);
-        }
-    }
-
-    void DrawGLTFNode(
-        Rr_GraphNode *GraphicsNode,
-        std::size_t &StorageIndex,
-        Rr_GLTFNode *Node,
-        uint32_t ModelSet,
-        uint32_t ModelBinding)
-    {
-        if (Node->Mesh)
-        {
-            Rr_BindStorageBuffer(
-                GraphicsNode,
-                ModelBuffer,
-                ModelSet,
-                ModelBinding,
-                StorageIndex * sizeof(SGPUStorage),
-                sizeof(SGPUStorage));
-            DrawGLTFMesh(GraphicsNode, Node->Mesh);
-            StorageIndex++;
-        }
-        for (std::uint32_t Index = 0; Index < Node->ChildrenCount; ++Index)
-        {
-            DrawGLTFNode(
-                GraphicsNode,
-                StorageIndex,
-                Node->Children[Index],
-                ModelSet,
-                ModelBinding);
-        }
-    }
-
     void DrawGLTFAsset(
         Rr_GraphNode *GraphicsNode,
         uint32_t ModelSet,
@@ -1540,20 +1538,19 @@ struct SModernRenderingApp
             0,
             GLTFAsset->IndexBufferOffset,
             GLTFAsset->IndexType);
-
-        Rr_GLTFScene *Scene = &GLTFAsset->Scenes[0];
-
-        std::size_t StorageIndex = 0;
-        for (std::uint32_t NodeIndex = 0; NodeIndex < Scene->NodeCount;
-             ++NodeIndex)
-        {
-            DrawGLTFNode(
-                GraphicsNode,
-                StorageIndex,
-                Scene->Nodes[NodeIndex],
-                ModelSet,
-                ModelBinding);
-        }
+        Rr_BindStorageBuffer(
+            GraphicsNode,
+            ModelBuffer,
+            ModelSet,
+            ModelBinding,
+            0,
+            RR_WHOLE_SIZE);
+        Rr_DrawIndexedIndirect(
+            GraphicsNode,
+            IndirectBuffer,
+            0,
+            DrawCount,
+            sizeof(Rr_DrawIndexedIndirectCommand));
     }
 
     void UI()
@@ -1697,7 +1694,7 @@ struct SModernRenderingApp
 
         if (DrawGrid)
         {
-            // Grid.Draw(Camera, ColorImage, DepthImage);
+            Grid.Draw(Camera, ColorImage, DepthImage);
         }
 
         Rr_Image2D *FinalColorImage{};
@@ -1763,6 +1760,7 @@ struct SModernRenderingApp
         Rr_ReleasePipelineLayout(BlitLayout);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
+        Rr_ReleaseBuffer(IndirectBuffer);
         Rr_ReleaseGLTFContext(GLTFContext);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);

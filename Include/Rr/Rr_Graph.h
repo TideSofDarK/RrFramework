@@ -187,6 +187,13 @@ extern void Rr_DrawIndexed(
     int32_t VertexOffset,
     uint32_t FirstInstance);
 
+extern void Rr_DrawIndexedIndirect(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    uint64_t Offset,
+    uint32_t Count,
+    uint32_t Stride);
+
 extern void Rr_BindVertexBuffer(
     Rr_GraphNode *Node,
     Rr_Buffer *Buffer,

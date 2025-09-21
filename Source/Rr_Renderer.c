@@ -1192,8 +1192,9 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
     Rr_LockSpinlock(&gRenderer->FramebufferStorageLock);
 
-    uint32_t AttachmentCount = Key->ColorAttachmentCount +
-                               Key->ResolveAttachmentCount + Key->DepthStencil;
+    uint32_t AttachmentCount =
+        (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
+                   Key->DepthStencil);
 
     size_t HashSize = offsetof(Rr_FramebufferMapKey, ImageViews) +
                       AttachmentCount * sizeof(VkImageView);

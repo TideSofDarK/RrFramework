@@ -81,8 +81,8 @@ extern void Rr_WriteBufferDescriptor(
     uint32_t ArrayIndex,
     VkDescriptorType Type,
     VkBuffer Handle,
-    uint32_t Size,
-    uint32_t Offset);
+    uint64_t Size,
+    uint64_t Offset);
 
 extern void Rr_WriteSamplerDescriptor(
     Rr_DescriptorsState *State,

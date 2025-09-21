@@ -71,13 +71,13 @@ struct Rr_GLTFAttribute
 typedef struct Rr_GLTFPrimitive Rr_GLTFPrimitive;
 struct Rr_GLTFPrimitive
 {
-    size_t VertexCount;
+    uint32_t VertexCount;
     size_t AttributeCount;
     Rr_GLTFAttribute *Attributes;
     Rr_GLTFMaterial *Material;
-    size_t IndexCount;
+    uint32_t IndexCount;
     int32_t VertexOffset;
-    size_t FirstIndex;
+    uint32_t FirstIndex;
 };
 
 typedef struct Rr_GLTFMesh Rr_GLTFMesh;

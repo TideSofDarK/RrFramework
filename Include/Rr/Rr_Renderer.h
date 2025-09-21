@@ -180,6 +180,16 @@ struct Rr_DrawIndirectCommand
     uint32_t FirstInstance;
 };
 
+typedef struct Rr_DrawIndexedIndirectCommand Rr_DrawIndexedIndirectCommand;
+struct Rr_DrawIndexedIndirectCommand
+{
+    uint32_t IndexCount;
+    uint32_t InstanceCount;
+    uint32_t FirstIndex;
+    int32_t VertexOffset;
+    uint32_t FirstInstance;
+};
+
 extern Rr_ImageFormat Rr_GetSwapchainFormat(void);
 
 extern Rr_IntVec2 Rr_GetSwapchainSize(void);

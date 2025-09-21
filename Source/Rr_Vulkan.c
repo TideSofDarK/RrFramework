@@ -292,6 +292,15 @@ static bool Rr_CheckPhysicalDevice(
     uint32_t *OutTransferQueueFamilyIndex,
     Rr_Arena *Arena)
 {
+    VkPhysicalDeviceFeatures Features;
+    Instance->GetPhysicalDeviceFeatures(PhysicalDevice, &Features);
+
+    if (!Features.drawIndirectFirstInstance || !Features.multiDrawIndirect ||
+        !Features.samplerAnisotropy)
+    {
+        return false;
+    }
+
     uint32_t ExtensionCount;
     Instance->EnumerateDeviceExtensionProperties(
         PhysicalDevice,
@@ -650,6 +659,7 @@ void Rr_InitDeviceAndQueues(
         .pQueueCreateInfos = QueueInfos,
         .enabledExtensionCount = DeviceExtensionCount,
         .ppEnabledExtensionNames = DeviceExtensions,
+        .pEnabledFeatures = &PhysicalDevice->Features,
     };
 
     Instance->CreateDevice(

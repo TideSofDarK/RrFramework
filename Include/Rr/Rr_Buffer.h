@@ -30,6 +30,8 @@
 extern "C" {
 #endif
 
+static const uint64_t RR_WHOLE_SIZE = ~0ULL;
+
 typedef struct Rr_Buffer Rr_Buffer;
 
 typedef enum

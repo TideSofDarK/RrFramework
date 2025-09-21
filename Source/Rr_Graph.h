@@ -68,6 +68,7 @@ typedef enum
     RR_NODE_FUNCTION_TYPE_DRAW,
     RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT,
     RR_NODE_FUNCTION_TYPE_DRAW_INDEXED,
+    RR_NODE_FUNCTION_TYPE_DRAW_INDEXED_INDIRECT,
     RR_NODE_FUNCTION_TYPE_BIND_VERTEX_BUFFER,
     RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER,
     RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
@@ -245,8 +246,8 @@ typedef struct Rr_BindUniformBufferArgs Rr_BindUniformBufferArgs;
 struct Rr_BindUniformBufferArgs
 {
     Rr_GraphBuffer BufferHandle;
-    uint32_t Size;
-    uint32_t Offset;
+    uint64_t Size;
+    uint64_t Offset;
     uint32_t Set;
     uint32_t Binding;
     uint32_t ArrayIndex;
@@ -256,8 +257,8 @@ typedef struct Rr_BindStorageBufferArgs Rr_BindStorageBufferArgs;
 struct Rr_BindStorageBufferArgs
 {
     Rr_GraphBuffer BufferHandle;
-    uint32_t Size;
-    uint32_t Offset;
+    uint64_t Size;
+    uint64_t Offset;
     uint32_t Set;
     uint32_t Binding;
     uint32_t ArrayIndex;

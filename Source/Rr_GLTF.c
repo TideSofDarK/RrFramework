@@ -524,9 +524,9 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
             size_t VertexCount = Primitive->attributes->data->count;
 
-            GLTFPrimitive->VertexCount = VertexCount;
-            GLTFPrimitive->IndexCount = Primitive->indices->count;
-            GLTFPrimitive->FirstIndex = FirstIndex;
+            GLTFPrimitive->VertexCount = (uint32_t)VertexCount;
+            GLTFPrimitive->IndexCount = (uint32_t)Primitive->indices->count;
+            GLTFPrimitive->FirstIndex = (uint32_t)FirstIndex;
             GLTFPrimitive->VertexOffset = (int32_t)VertexOffset;
 
             for (size_t AttributeIndex = 0;

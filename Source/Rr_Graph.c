@@ -1314,6 +1314,21 @@ static void Rr_ExecuteGraphicsNode(
                     Args->FirstInstance);
             }
             break;
+            case RR_NODE_FUNCTION_TYPE_DRAW_INDEXED_INDIRECT:
+            {
+                Rr_ApplyDescriptorsState(
+                    &DescriptorsState,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS);
+                Rr_DrawIndirectArgs *Args =
+                    (Rr_DrawIndirectArgs *)Function->Args;
+                Device->CmdDrawIndexedIndirect(
+                    CommandBuffer,
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
+                    Args->Offset,
+                    Args->Count,
+                    Args->Stride);
+            }
+            break;
             case RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:
             {
                 Rr_BindIndexBufferArgs *Args = Function->Args;
@@ -2919,8 +2934,9 @@ void Rr_Draw(
         }));
 }
 
-void Rr_DrawIndirect(
+static inline void Rr_DrawIndirectEx(
     Rr_GraphNode *Node,
+    Rr_NodeFunctionType Type,
     Rr_Buffer *Buffer,
     uint64_t Offset,
     uint32_t Count,
@@ -2931,7 +2947,7 @@ void Rr_DrawIndirect(
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);
 
     RR_NODE_ENCODE(
-        RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT,
+        Type,
         ((Rr_DrawIndirectArgs){
             .BufferHandle = *BufferHandle,
             .Offset = Offset,
@@ -2948,6 +2964,22 @@ void Rr_DrawIndirect(
         });
 
     Rr_MarkBufferUsed(Node->Graph, Buffer);
+}
+
+void Rr_DrawIndirect(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    uint64_t Offset,
+    uint32_t Count,
+    uint32_t Stride)
+{
+    Rr_DrawIndirectEx(
+        Node,
+        RR_NODE_FUNCTION_TYPE_DRAW_INDIRECT,
+        Buffer,
+        Offset,
+        Count,
+        Stride);
 }
 
 void Rr_DrawIndexed(
@@ -2969,6 +3001,22 @@ void Rr_DrawIndexed(
             .VertexOffset = VertexOffset,
             .FirstInstance = FirstInstance,
         }));
+}
+
+void Rr_DrawIndexedIndirect(
+    Rr_GraphNode *Node,
+    Rr_Buffer *Buffer,
+    uint64_t Offset,
+    uint32_t Count,
+    uint32_t Stride)
+{
+    Rr_DrawIndirectEx(
+        Node,
+        RR_NODE_FUNCTION_TYPE_DRAW_INDEXED_INDIRECT,
+        Buffer,
+        Offset,
+        Count,
+        Stride);
 }
 
 void Rr_BindVertexBuffer(
@@ -3518,11 +3566,11 @@ void Rr_BindUniformBufferAt(
         RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
         ((Rr_BindUniformBufferArgs){
             .BufferHandle = *BufferHandle,
-            .Size = (uint32_t)Size,
-            .Offset = (uint32_t)Offset,
-            .Set = (uint32_t)Set,
-            .Binding = (uint32_t)Binding,
-            .ArrayIndex = (uint32_t)ArrayIndex,
+            .Size = Size,
+            .Offset = Offset,
+            .Set = Set,
+            .Binding = Binding,
+            .ArrayIndex = ArrayIndex,
         }));
 
     Rr_AddBufferDependency(
@@ -3557,11 +3605,11 @@ static void Rr_BindStorageBufferEx(
         RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
         ((Rr_BindStorageBufferArgs){
             .BufferHandle = *BufferHandle,
-            .Set = (uint32_t)Set,
-            .Binding = (uint32_t)Binding,
-            .ArrayIndex = (uint32_t)ArrayIndex,
-            .Offset = (uint32_t)Offset,
-            .Size = (uint32_t)Size,
+            .Size = Size,
+            .Offset = Offset,
+            .Set = Set,
+            .Binding = Binding,
+            .ArrayIndex = ArrayIndex,
         }));
 
     VkAccessFlags AccessMask = VK_ACCESS_SHADER_READ_BIT;
