@@ -1590,7 +1590,7 @@ struct SModernRenderingApp
 
     void Iterate()
     {
-        // Rr_UIDebugOverlay();
+        Rr_UIDebugOverlay();
 
         UI();
 

@@ -48,6 +48,8 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 
     Rr_UnlockSpinlock(&gRenderer->SamplersLock);
 
+    RR_ZERO_PTR(Sampler);
+
     Rr_ConsumeNextObjectName(Sampler->Name);
 
     VkSamplerCreateInfo SamplerInfo = {
@@ -283,11 +285,13 @@ static Rr_Image *Rr_CreateImage(
 
     Rr_UnlockSpinlock(&gRenderer->ImagesLock);
 
-    Image->Flags = Flags;
-    Image->Format = Rr_ToVulkanImageFormat(Format);
-    Image->Extent.width = (uint32_t)Extent.Width;
-    Image->Extent.height = (uint32_t)Extent.Height;
-    Image->Extent.depth = (uint32_t)Extent.Depth;
+    *Image = (Rr_Image){
+        .Flags = Flags,
+        .Format = Rr_ToVulkanImageFormat(Format),
+        .Extent.width = (uint32_t)Extent.Width,
+        .Extent.height = (uint32_t)Extent.Height,
+        .Extent.depth = (uint32_t)Extent.Depth,
+    };
 
     Rr_ConsumeNextObjectName(Image->Name);
 

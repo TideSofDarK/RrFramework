@@ -107,6 +107,8 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     Rr_UnlockSpinlock(&gRenderer->PipelineLayoutsLock);
 
+    RR_ZERO_PTR(PipelineLayout);
+
     Rr_ConsumeNextObjectName(PipelineLayout->Name);
 
     Rr_DescriptorSetLayoutKey Keys[RR_MAX_SETS] = { 0 };
@@ -281,7 +283,9 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
 
-    ComputePipeline->Layout = CreateInfo->Layout;
+    *ComputePipeline = (Rr_ComputePipeline){
+        .Layout = CreateInfo->Layout,
+    };
 
     Rr_ConsumeNextObjectName(ComputePipeline->Name);
 
@@ -424,18 +428,19 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
 
-    GraphicsPipeline->Layout = CreateInfo->Layout;
-    GraphicsPipeline->HasDepthStencil =
-        CreateInfo->DepthStencil.EnableDepthTest ||
-        CreateInfo->DepthStencil.EnableStencilTest ||
-        CreateInfo->DepthStencil.EnableDepthWrite;
+    *GraphicsPipeline = (Rr_GraphicsPipeline){
+        .Layout = CreateInfo->Layout,
+        .HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
+                           CreateInfo->DepthStencil.EnableStencilTest ||
+                           CreateInfo->DepthStencil.EnableDepthWrite,
+    };
+
+    Rr_ConsumeNextObjectName(GraphicsPipeline->Name);
 
     if (GraphicsPipeline->HasDepthStencil)
     {
         assert(CreateInfo->DepthStencil.Format != RR_IMAGE_FORMAT_UNDEFINED);
     }
-
-    Rr_ConsumeNextObjectName(GraphicsPipeline->Name);
 
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 

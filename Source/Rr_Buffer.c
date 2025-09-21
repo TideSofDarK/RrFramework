@@ -42,7 +42,9 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 
     Rr_UnlockSpinlock(&gRenderer->BuffersLock);
 
-    Buffer->Flags = Flags;
+    *Buffer = (Rr_Buffer){
+        .Flags = Flags,
+    };
 
     Rr_ConsumeNextObjectName(Buffer->Name);
 
