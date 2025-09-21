@@ -156,59 +156,6 @@ void Rr_InitInstance(
                 Instance->Handle,
                 "vkGetPhysicalDeviceSparseImageFormatProperties");
 
-    /* Vulkan 1.1 */
-
-    Instance->EnumeratePhysicalDeviceGroups =
-        (PFN_vkEnumeratePhysicalDeviceGroups)Loader->GetInstanceProcAddr(
-            Instance->Handle,
-            "vkEnumeratePhysicalDeviceGroups");
-    Instance->GetPhysicalDeviceExternalBufferProperties =
-        (PFN_vkGetPhysicalDeviceExternalBufferProperties)
-            Loader->GetInstanceProcAddr(
-                Instance->Handle,
-                "vkGetPhysicalDeviceExternalBufferProperties");
-    Instance->GetPhysicalDeviceExternalFenceProperties =
-        (PFN_vkGetPhysicalDeviceExternalFenceProperties)
-            Loader->GetInstanceProcAddr(
-                Instance->Handle,
-                "vkGetPhysicalDeviceExternalFenceProperties");
-    Instance->GetPhysicalDeviceExternalSemaphoreProperties =
-        (PFN_vkGetPhysicalDeviceExternalSemaphoreProperties)
-            Loader->GetInstanceProcAddr(
-                Instance->Handle,
-                "vkGetPhysicalDeviceExternalSemaphoreProperties");
-    Instance->GetPhysicalDeviceFeatures2 =
-        (PFN_vkGetPhysicalDeviceFeatures2)Loader->GetInstanceProcAddr(
-            Instance->Handle,
-            "vkGetPhysicalDeviceFeatures2");
-    Instance->GetPhysicalDeviceFormatProperties2 =
-        (PFN_vkGetPhysicalDeviceFormatProperties2)Loader->GetInstanceProcAddr(
-            Instance->Handle,
-            "vkGetPhysicalDeviceFormatProperties2");
-    Instance->GetPhysicalDeviceImageFormatProperties2 =
-        (PFN_vkGetPhysicalDeviceImageFormatProperties2)
-            Loader->GetInstanceProcAddr(
-                Instance->Handle,
-                "vkGetPhysicalDeviceImageFormatProperties2");
-    Instance->GetPhysicalDeviceMemoryProperties2 =
-        (PFN_vkGetPhysicalDeviceMemoryProperties2)Loader->GetInstanceProcAddr(
-            Instance->Handle,
-            "vkGetPhysicalDeviceMemoryProperties2");
-    Instance->GetPhysicalDeviceProperties2 =
-        (PFN_vkGetPhysicalDeviceProperties2)Loader->GetInstanceProcAddr(
-            Instance->Handle,
-            "vkGetPhysicalDeviceProperties2");
-    Instance->GetPhysicalDeviceQueueFamilyProperties2 =
-        (PFN_vkGetPhysicalDeviceQueueFamilyProperties2)
-            Loader->GetInstanceProcAddr(
-                Instance->Handle,
-                "vkGetPhysicalDeviceQueueFamilyProperties2");
-    Instance->GetPhysicalDeviceSparseImageFormatProperties2 =
-        (PFN_vkGetPhysicalDeviceSparseImageFormatProperties2)
-            Loader->GetInstanceProcAddr(
-                Instance->Handle,
-                "vkGetPhysicalDeviceSparseImageFormatProperties2");
-
     /* VK_KHR_surface */
 
     Instance->DestroySurfaceKHR =
@@ -472,10 +419,8 @@ void Rr_SelectPhysicalDevice(
                 &TransferQueueFamilyIndex,
                 Arena))
         {
-            VkPhysicalDeviceProperties2 Properties = {
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-            };
-            Instance->GetPhysicalDeviceProperties2(
+            VkPhysicalDeviceProperties Properties;
+            Instance->GetPhysicalDeviceProperties(
                 PhysicalDeviceHandle,
                 &Properties);
 
@@ -493,7 +438,7 @@ void Rr_SelectPhysicalDevice(
             }
 
             const char *TypeString = NULL;
-            switch (Properties.properties.deviceType)
+            switch (Properties.deviceType)
             {
                 case VK_PHYSICAL_DEVICE_TYPE_OTHER:
                     TypeString = "other";
@@ -521,7 +466,7 @@ void Rr_SelectPhysicalDevice(
                 sizeof(Rr_DeviceString),
                 "(\\) GPU #%d: %s, type: %s, total memory: %zu",
                 Index,
-                Properties.properties.deviceName,
+                Properties.deviceName,
                 TypeString,
                 Memory);
 
@@ -529,14 +474,14 @@ void Rr_SelectPhysicalDevice(
             {
             SetBestDevice:
                 BestDeviceIndex = Index;
-                BestDeviceType = Properties.properties.deviceType;
+                BestDeviceType = Properties.deviceType;
                 BestDeviceMemory = Memory;
                 *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
                 *OutTransferQueueFamilyIndex = TransferQueueFamilyIndex;
             }
             else
             {
-                if (Properties.properties.deviceType == PreferredDeviceType)
+                if (Properties.deviceType == PreferredDeviceType)
                 {
                     if (BestDeviceType == PreferredDeviceType)
                     {
@@ -577,18 +522,7 @@ void Rr_SelectPhysicalDevice(
     bool UseTransferQueue =
         *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
 
-    *PhysicalDevice = (Rr_PhysicalDevice){
-        .SubgroupProperties =
-            (VkPhysicalDeviceSubgroupProperties){
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
-            },
-        .Properties =
-            (VkPhysicalDeviceProperties2){
-                .pNext = &PhysicalDevice->SubgroupProperties,
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-            },
-        .Handle = PhysicalDevices[BestDeviceIndex],
-    };
+    PhysicalDevice->Handle = PhysicalDevices[BestDeviceIndex];
 
     Instance->GetPhysicalDeviceFeatures(
         PhysicalDevices[BestDeviceIndex],
@@ -596,7 +530,7 @@ void Rr_SelectPhysicalDevice(
     Instance->GetPhysicalDeviceMemoryProperties(
         PhysicalDevices[BestDeviceIndex],
         &PhysicalDevice->MemoryProperties);
-    Instance->GetPhysicalDeviceProperties2(
+    Instance->GetPhysicalDeviceProperties(
         PhysicalDevices[BestDeviceIndex],
         &PhysicalDevice->Properties);
 

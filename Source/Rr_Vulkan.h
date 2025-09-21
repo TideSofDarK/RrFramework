@@ -110,9 +110,8 @@ struct Rr_PhysicalDevice
     VkPhysicalDevice Handle;
 
     VkPhysicalDeviceFeatures Features;
-    VkPhysicalDeviceProperties2 Properties;
+    VkPhysicalDeviceProperties Properties;
     VkPhysicalDeviceMemoryProperties MemoryProperties;
-    VkPhysicalDeviceSubgroupProperties SubgroupProperties;
 };
 
 typedef struct Rr_Device Rr_Device;
@@ -275,26 +274,6 @@ struct Rr_Instance
         GetPhysicalDeviceQueueFamilyProperties;
     PFN_vkGetPhysicalDeviceSparseImageFormatProperties
         GetPhysicalDeviceSparseImageFormatProperties;
-
-    /* Vulkan 1.1 */
-
-    PFN_vkEnumeratePhysicalDeviceGroups EnumeratePhysicalDeviceGroups;
-    PFN_vkGetPhysicalDeviceExternalBufferProperties
-        GetPhysicalDeviceExternalBufferProperties;
-    PFN_vkGetPhysicalDeviceExternalFenceProperties
-        GetPhysicalDeviceExternalFenceProperties;
-    PFN_vkGetPhysicalDeviceExternalSemaphoreProperties
-        GetPhysicalDeviceExternalSemaphoreProperties;
-    PFN_vkGetPhysicalDeviceFeatures2 GetPhysicalDeviceFeatures2;
-    PFN_vkGetPhysicalDeviceFormatProperties2 GetPhysicalDeviceFormatProperties2;
-    PFN_vkGetPhysicalDeviceImageFormatProperties2
-        GetPhysicalDeviceImageFormatProperties2;
-    PFN_vkGetPhysicalDeviceMemoryProperties2 GetPhysicalDeviceMemoryProperties2;
-    PFN_vkGetPhysicalDeviceProperties2 GetPhysicalDeviceProperties2;
-    PFN_vkGetPhysicalDeviceQueueFamilyProperties2
-        GetPhysicalDeviceQueueFamilyProperties2;
-    PFN_vkGetPhysicalDeviceSparseImageFormatProperties2
-        GetPhysicalDeviceSparseImageFormatProperties2;
 
     /* VK_KHR_surface */
 

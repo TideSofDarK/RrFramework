@@ -434,8 +434,6 @@ static void Rr_InitVMA(void)
         .vkGetPhysicalDeviceProperties = Instance->GetPhysicalDeviceProperties,
         .vkGetPhysicalDeviceMemoryProperties =
             Instance->GetPhysicalDeviceMemoryProperties,
-        .vkGetPhysicalDeviceMemoryProperties2KHR =
-            Instance->GetPhysicalDeviceMemoryProperties2,
         .vkAllocateMemory = Device->AllocateMemory,
         .vkFreeMemory = Device->FreeMemory,
         .vkMapMemory = Device->MapMemory,
@@ -953,25 +951,25 @@ bool Rr_IsUsingTransferQueue(void)
 
 size_t Rr_GetUniformAlignment(void)
 {
-    return gRenderer->PhysicalDevice.Properties.properties.limits
+    return gRenderer->PhysicalDevice.Properties.limits
         .minUniformBufferOffsetAlignment;
 }
 
 size_t Rr_GetStorageAlignment(void)
 {
-    return gRenderer->PhysicalDevice.Properties.properties.limits
+    return gRenderer->PhysicalDevice.Properties.limits
         .minStorageBufferOffsetAlignment;
 }
 
 size_t Rr_GetMaxComputeSharedMemorySize(void)
 {
-    return gRenderer->PhysicalDevice.Properties.properties.limits
+    return gRenderer->PhysicalDevice.Properties.limits
         .maxComputeSharedMemorySize;
 }
 
 size_t Rr_GetMaxComputeWorkgroupInvocations(void)
 {
-    return gRenderer->PhysicalDevice.Properties.properties.limits
+    return gRenderer->PhysicalDevice.Properties.limits
         .maxComputeWorkGroupInvocations;
 }
 
