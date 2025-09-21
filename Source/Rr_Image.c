@@ -223,11 +223,35 @@ Found:
         .subresourceRange = Key->SubresourceRange,
     };
 
-    Device->CreateImageView(
+    VkResult Result = Device->CreateImageView(
         Device->Handle,
         &ImageViewCreateInfo,
         NULL,
         ImageViewRef);
+    assert(Result == VK_SUCCESS);
+
+#ifdef RR_DEBUG
+    if (AllocatedImage->Container->Name[0] != '\0')
+    {
+        char NameBuffer[128];
+        snprintf(
+            NameBuffer,
+            63,
+            "%s_ImageView_%d^%d_%d^%d",
+            AllocatedImage->Container->Name,
+            Key->SubresourceRange.baseArrayLayer,
+            Key->SubresourceRange.baseArrayLayer +
+                Key->SubresourceRange.layerCount,
+            Key->SubresourceRange.baseMipLevel,
+            Key->SubresourceRange.baseMipLevel +
+                Key->SubresourceRange.levelCount);
+
+        Rr_SetVulkanObjectName(
+            VK_OBJECT_TYPE_IMAGE_VIEW,
+            (uint64_t)*ImageViewRef,
+            NameBuffer);
+    }
+#endif
 
     return *ImageViewRef;
 }
