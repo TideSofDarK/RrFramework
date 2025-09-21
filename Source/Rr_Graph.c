@@ -1189,18 +1189,19 @@ static void Rr_ExecuteGraphicsNode(
 
     VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassKey);
 
-    Rr_FramebufferMapKey FramebufferKey = { 0 };
-    FramebufferKey.Extent = (VkExtent3D){
-        .width = (uint32_t)Viewport.Width,
-        .height = (uint32_t)Viewport.Height,
-        .depth = 1,
+    Rr_FramebufferMapKey FramebufferKey = {
+        .Extent =
+            (VkExtent3D){
+                .width = (uint32_t)Viewport.Width,
+                .height = (uint32_t)Viewport.Height,
+                .depth = 1,
+            },
+        .ColorAttachmentCount = RenderPassKey.ColorAttachmentCount,
+        .ResolveAttachmentCount = RenderPassKey.ResolveAttachmentCount,
+        .DepthStencil = RenderPassKey.DepthStencil,
     };
-    FramebufferKey.ColorAttachmentCount = RenderPassKey.ColorAttachmentCount;
-    FramebufferKey.ResolveAttachmentCount =
-        RenderPassKey.ResolveAttachmentCount;
-    FramebufferKey.DepthStencil = RenderPassKey.DepthStencil;
     memcpy(
-        &FramebufferKey.ImageViews[0],
+        FramebufferKey.ImageViews,
         ImageViews,
         AttachmentCount * sizeof(VkImageView));
 
