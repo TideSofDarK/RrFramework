@@ -143,7 +143,9 @@ Rr_ImageViewStorage *Rr_CreateImageViewStorage(void)
     return ViewStorage;
 }
 
-void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage)
+void Rr_DestroyImageViewStorage(
+    Rr_ImageViewStorage *ViewStorage,
+    bool DestroyFramebuffers)
 {
     Rr_Device *Device = &gRenderer->Device;
 
@@ -153,7 +155,10 @@ void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage)
         Rr_ImageViewMap *Map = It.Element;
         if (Map->Value != VK_NULL_HANDLE)
         {
-            Rr_DestroyVulkanFramebuffers(Map->Value);
+            if (DestroyFramebuffers)
+            {
+                Rr_DestroyVulkanFramebuffers(Map->Value);
+            }
             Device->DestroyImageView(Device->Handle, Map->Value, NULL);
             Map->Value = VK_NULL_HANDLE;
         }
@@ -444,11 +449,17 @@ void Rr_DestroyImage(Rr_Image *Image)
 
     Rr_Device *Device = &gRenderer->Device;
 
+    bool DestroyFramebuffers =
+        RR_HAS_BIT(Image->Flags, RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT) ||
+        RR_HAS_BIT(Image->Flags, RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+
     for (uint32_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
         Rr_AllocatedImage *AllocatedImage = &Image->AllocatedImages[Index];
 
-        Rr_DestroyImageViewStorage(AllocatedImage->ViewStorage);
+        Rr_DestroyImageViewStorage(
+            AllocatedImage->ViewStorage,
+            DestroyFramebuffers);
 
         Rr_LockSpinlock(&gRenderer->SyncStateStorageLock);
 

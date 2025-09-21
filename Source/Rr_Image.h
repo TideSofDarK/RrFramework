@@ -77,7 +77,9 @@ struct Rr_ImageViewStorage
 
 extern Rr_ImageViewStorage *Rr_CreateImageViewStorage(void);
 
-extern void Rr_DestroyImageViewStorage(Rr_ImageViewStorage *ViewStorage);
+extern void Rr_DestroyImageViewStorage(
+    Rr_ImageViewStorage *ViewStorage,
+    bool DestroyFramebuffers);
 
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
 struct Rr_AllocatedImage

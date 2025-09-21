@@ -45,7 +45,7 @@ static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 
     if (SwapchainImage->ViewStorage)
     {
-        Rr_DestroyImageViewStorage(SwapchainImage->ViewStorage);
+        Rr_DestroyImageViewStorage(SwapchainImage->ViewStorage, true);
     }
 
     if (SwapchainImage->Handle)
