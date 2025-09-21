@@ -39,14 +39,5 @@ extern void Rr_AlignedFree(void *Ptr);
 #define VMA_SYSTEM_ALIGNED_FREE      Rr_AlignedFree
 #include <vma/vk_mem_alloc.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-// #define STBI_MALLOC  Rr_Malloc
-// #define STBI_REALLOC Rr_Realloc
-// #define STBI_FREE    Rr_Free
-#include <stb/stb_image.h>
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb/stb_image_write.h>
-
 #define CGLTF_IMPLEMENTATION
 #include <cgltf/cgltf.h>

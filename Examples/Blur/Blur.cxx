@@ -5,6 +5,7 @@
 #include <array>
 #include <print>
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "../../Vendor/stb/stb_image.h"
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
