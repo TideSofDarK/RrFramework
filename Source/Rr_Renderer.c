@@ -80,27 +80,12 @@ void Rr_SetSwapchainDirty(bool Dirty)
 
 static bool Rr_InitSwapchain(void)
 {
+    Rr_WaitIdle();
+
     Rr_Instance *Instance = &gRenderer->Instance;
     Rr_Device *Device = &gRenderer->Device;
 
     Rr_IntVec2 WindowSize = Rr_GetWindowSize();
-
-    if (WindowSize.Width == 0 || WindowSize.Height == 0)
-    {
-        return false;
-    }
-
-    bool Recreate =
-        gRenderer->Swapchain.Extent.width != (uint32_t)WindowSize.Width ||
-        gRenderer->Swapchain.Extent.height != (uint32_t)WindowSize.Height ||
-        Rr_LoadAtomicRelaxed(&gRenderer->Swapchain.RecreatePending);
-
-    if (!Recreate)
-    {
-        return true;
-    }
-
-    Rr_WaitIdle();
 
     for (size_t Index = 0; Index < gRenderer->SwapchainImages.Count; ++Index)
     {
@@ -361,10 +346,37 @@ static bool Rr_InitSwapchain(void)
 
     Rr_DestroyScratch(Scratch);
 
-    Rr_Event *Event = Rr_AddEvent();
-    Event->Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
-
     return true;
+}
+
+static bool Rr_RecreateSwapchain(void)
+{
+    Rr_IntVec2 WindowSize = Rr_GetWindowSize();
+
+    if (WindowSize.Width == 0 || WindowSize.Height == 0)
+    {
+        return false;
+    }
+
+    bool Recreate =
+        gRenderer->Swapchain.Extent.width != (uint32_t)WindowSize.Width ||
+        gRenderer->Swapchain.Extent.height != (uint32_t)WindowSize.Height ||
+        Rr_LoadAtomicRelaxed(&gRenderer->Swapchain.RecreatePending);
+
+    if (!Recreate)
+    {
+        return true;
+    }
+
+    bool Recreated = Rr_InitSwapchain();
+
+    if (Recreated)
+    {
+        Rr_Event *Event = Rr_AddEvent();
+        Event->Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
+    }
+
+    return Recreate;
 }
 
 static void Rr_InitFrames(void)
@@ -768,7 +780,7 @@ void Rr_DrawFrame(void)
             break;
         }
         Rr_SetSwapchainDirty(true);
-        if (Rr_InitSwapchain() == false)
+        if (Rr_RecreateSwapchain() == false)
         {
             return;
         }
@@ -923,7 +935,7 @@ void Rr_DrawFrame(void)
 
     Rr_UnlockSpinlock(&gRenderer->GraphicsQueue.Lock);
 
-    Rr_InitSwapchain();
+    Rr_RecreateSwapchain();
 
     gRenderer->FrameNumber++;
     gRenderer->FrameIndex = gRenderer->FrameNumber % RR_FRAME_OVERLAP;
