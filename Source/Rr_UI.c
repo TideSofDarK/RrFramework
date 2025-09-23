@@ -4736,6 +4736,8 @@ void Rr_EndUI(void)
         gUIContext->Indices.Data,
         sizeof(Rr_UIIndex) * gUIContext->Indices.Count);
 
+    Rr_BeginDebugLabel(Rr_GetGraph(), "Rr.UI");
+
     Rr_ColorTarget ColorTarget = {
         .Image = SwapchainImage,
         .LoadOp = RR_LOAD_OP_LOAD,
@@ -4785,6 +4787,8 @@ void Rr_EndUI(void)
     {
         Rr_UIDrawWindow(&gUIContext->PopupWindow, GraphicsNode);
     }
+
+    Rr_EndDebugLabel(Rr_GetGraph(), "Rr.UI");
 
     if (gUIContext->LeftMouseButtonUp)
     {

@@ -140,7 +140,7 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 
         AllocatedBuffer->MappedData = AllocationInfo.pMappedData;
 
-#ifdef RR_DEBUG
+#ifdef RR_USE_GPU_DEBUG_UTILS
         char ObjectName[32];
         if (snprintf(
                 ObjectName,

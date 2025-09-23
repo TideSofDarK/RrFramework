@@ -388,6 +388,7 @@ static void Rr_InitFrames(void)
         Rr_Frame *Frame = &Frames[Index];
         Frame->Arena = Rr_CreateDefaultArena();
         Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
+
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = VK_NULL_HANDLE,
@@ -403,6 +404,29 @@ static void Rr_InitFrames(void)
             Device->Handle,
             &CommandBufferAllocateInfo,
             &Frame->LateCommandBuffer);
+
+#ifdef RR_USE_GPU_DEBUG_UTILS
+        char NameBuffer[128];
+        snprintf(
+            NameBuffer,
+            sizeof(NameBuffer) - 1,
+            "Rr.Frame#%zu.EarlyCommandBuffer",
+            Index);
+        Rr_SetVulkanObjectName(
+            VK_OBJECT_TYPE_COMMAND_BUFFER,
+            (uint64_t)Frame->EarlyCommandBuffer,
+            NameBuffer);
+        snprintf(
+            NameBuffer,
+            sizeof(NameBuffer) - 1,
+            "Rr.Frame#%zu.LateCommandBuffer",
+            Index);
+        Rr_SetVulkanObjectName(
+            VK_OBJECT_TYPE_COMMAND_BUFFER,
+            (uint64_t)Frame->LateCommandBuffer,
+            NameBuffer);
+#endif
+
         Frame->VirtualSwapchainImage.SampleCount = VK_SAMPLE_COUNT_1_BIT;
         Frame->VirtualSwapchainImage.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
         Frame->VirtualSwapchainImage.AllocatedImageCount = 1;

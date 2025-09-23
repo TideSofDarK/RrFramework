@@ -443,6 +443,10 @@ extern void Rr_BindStorageImage2DArrayRWAt(
     uint32_t Binding,
     uint32_t ArrayIndex);
 
+extern void Rr_BeginDebugLabel(Rr_Graph *Graph, const char *Name);
+
+extern void Rr_EndDebugLabel(Rr_Graph *Graph, const char *Name);
+
 #ifdef __cplusplus
 }
 #endif

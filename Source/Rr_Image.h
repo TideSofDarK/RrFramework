@@ -101,6 +101,8 @@ struct Rr_Image
     VkFormat Format;
     VkSampleCountFlags SampleCount;
     Rr_ImageFlags Flags;
+    uint32_t LayerCount;
+    uint32_t LevelCount;
     uint32_t AllocatedImageCount;
     Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP];
 

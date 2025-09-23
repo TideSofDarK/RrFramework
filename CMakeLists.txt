@@ -152,6 +152,12 @@ target_compile_definitions(
     "$<$<CONFIG:DEBUG>:-DRR_DEBUG>"
 )
 
+target_compile_definitions(
+    ${PROJECT_NAME}
+    PUBLIC
+    "$<$<CONFIG:DEBUG>:-DRR_USE_GPU_DEBUG_UTILS>"
+)
+
 rr_enable_development_options(${PROJECT_NAME})
 
 target_sources(

@@ -90,7 +90,7 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
         &Sampler->Handle);
     assert(Result == VK_SUCCESS);
 
-#ifdef RR_DEBUG
+#ifdef RR_USE_GPU_DEBUG_UTILS
     Rr_SetVulkanObjectName(
         VK_OBJECT_TYPE_SAMPLER,
         (uint64_t)Sampler->Handle,
@@ -252,17 +252,23 @@ Found:
     if (AllocatedImage->Container->Name[0] != '\0')
     {
         char NameBuffer[128];
+        uint32_t LayerCount =
+            Key->SubresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS
+                ? AllocatedImage->Container->LayerCount
+                : Key->SubresourceRange.layerCount;
+        uint32_t LevelCount =
+            Key->SubresourceRange.levelCount == VK_REMAINING_MIP_LEVELS
+                ? AllocatedImage->Container->LevelCount
+                : Key->SubresourceRange.levelCount;
         snprintf(
             NameBuffer,
-            63,
-            "%s_ImageView_%d^%d_%d^%d",
+            sizeof(NameBuffer) - 1,
+            "Rr.Image.%s.View.%d-%d/%d-%d",
             AllocatedImage->Container->Name,
             Key->SubresourceRange.baseArrayLayer,
-            Key->SubresourceRange.baseArrayLayer +
-                Key->SubresourceRange.layerCount,
+            Key->SubresourceRange.baseArrayLayer + LayerCount,
             Key->SubresourceRange.baseMipLevel,
-            Key->SubresourceRange.baseMipLevel +
-                Key->SubresourceRange.levelCount);
+            Key->SubresourceRange.baseMipLevel + LevelCount);
 
         Rr_SetVulkanObjectName(
             VK_OBJECT_TYPE_IMAGE_VIEW,
@@ -299,6 +305,14 @@ static Rr_Image *Rr_CreateImage(
         &gRenderer->Lock);
     Rr_Image *Image = It.Element;
 
+    uint32_t LevelCount = 1;
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
+    {
+        LevelCount =
+            (uint32_t)floorf(logf((float)RR_MAX(Extent.Width, Extent.Height))) +
+            1;
+    }
+
     Rr_UnlockSpinlock(&gRenderer->ImagesLock);
 
     *Image = (Rr_Image){
@@ -307,17 +321,11 @@ static Rr_Image *Rr_CreateImage(
         .Extent.width = (uint32_t)Extent.Width,
         .Extent.height = (uint32_t)Extent.Height,
         .Extent.depth = (uint32_t)Extent.Depth,
+        .LayerCount = LayerCount,
+        .LevelCount = LevelCount,
     };
 
     Rr_ConsumeNextObjectName(Image->Name);
-
-    uint32_t MipLevels = 1;
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
-    {
-        MipLevels =
-            (uint32_t)floorf(logf((float)RR_MAX(Extent.Width, Extent.Height))) +
-            1;
-    }
 
     Image->AllocatedImageCount = 1;
     if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_PER_FRAME_BIT) ||
@@ -369,7 +377,7 @@ static Rr_Image *Rr_CreateImage(
         .imageType = ImageType,
         .format = Image->Format,
         .extent = Image->Extent,
-        .mipLevels = MipLevels,
+        .mipLevels = LevelCount,
         .arrayLayers = LayerCount,
         .samples = Image->SampleCount,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
@@ -414,7 +422,7 @@ static Rr_Image *Rr_CreateImage(
 
         AllocatedImage->ViewStorage = Rr_CreateImageViewStorage();
 
-#ifdef RR_DEBUG
+#ifdef RR_USE_GPU_DEBUG_UTILS
         char ObjectName[32];
         if (snprintf(
                 ObjectName,

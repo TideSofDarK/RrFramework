@@ -374,10 +374,13 @@ struct SGrid
     }
 
     void Draw(
+        Rr_Graph *Graph,
         const SCamera &Camera,
         Rr_Image2D *ColorImage,
         Rr_Image2D *DepthImage)
     {
+        Rr_BeginDebugLabel(Graph, "Grid");
+
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),
             .Projection = Camera.ProjMatrix,
@@ -402,7 +405,7 @@ struct SGrid
             .StoreOp = RR_STORE_OP_STORE,
         };
         Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(
             GraphicsNode,
@@ -412,6 +415,8 @@ struct SGrid
             0,
             sizeof(SGPUUniform));
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+
+        Rr_EndDebugLabel(Graph, "Grid");
     }
 
     SGrid(uint32_t MSAASampleCount)
@@ -641,11 +646,13 @@ struct SLighting
     }
 
     void Iterate(
-        const SCamera &Camera,
         Rr_Graph *Graph,
-        const std::function<void(Rr_GraphNode *Node)> &Callback)
+        const SCamera &Camera,
+        const std::function<void(Rr_GraphNode *Node)> &DrawSceneCallback)
     {
         UpdateLightBuffers();
+
+        Rr_BeginDebugLabel(Graph, "ShadowMaps");
 
         char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
         std::size_t UniformOffset = 0;
@@ -702,7 +709,7 @@ struct SLighting
                     0,
                     UniformOffset,
                     sizeof(Uniform));
-                Callback(GraphicsNode);
+                DrawSceneCallback(GraphicsNode);
 
                 UniformOffset +=
                     RR_ALIGN_POW2(sizeof(Uniform), Rr_GetUniformAlignment());
@@ -740,11 +747,13 @@ struct SLighting
                 0,
                 UniformOffset,
                 sizeof(Uniform));
-            Callback(GraphicsNode);
+            DrawSceneCallback(GraphicsNode);
 
             UniformOffset +=
                 RR_ALIGN_POW2(sizeof(Uniform), Rr_GetUniformAlignment());
         }
+
+        Rr_EndDebugLabel(Graph, "ShadowMaps");
     }
 
     void BindLights(Rr_GraphNode *GraphicsNode, std::uint32_t Set)
@@ -1587,13 +1596,15 @@ struct SModernRenderingApp
 
     void Iterate()
     {
+        Rr_Graph *Graph = Rr_GetGraph();
+
         Rr_UIDebugOverlay();
 
         UI();
 
-        Camera.Update(Scancodes);
+        Rr_BeginDebugLabel(Graph, "ModernRendering");
 
-        Rr_Graph *Graph = Rr_GetGraph();
+        Camera.Update(Scancodes);
 
         if (!Scancodes[RR_SCANCODE_SPACE])
         {
@@ -1616,14 +1627,15 @@ struct SModernRenderingApp
                     ));
         }
 
-        Lighting.Iterate(Camera, Graph, [&](Rr_GraphNode *Node) {
+        Lighting.Iterate(Graph, Camera, [&](Rr_GraphNode *Node) {
             DrawGLTFAsset(Node, 1, 0);
         });
 
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
-        /// MAIN PASS
+        Rr_BeginDebugLabel(Graph, "MainPass");
+
         Rr_ClearColorImage2D(
             Graph,
             { Rr_V4(0.005f, 0.007f, 0.015f, 1.0f) },
@@ -1692,9 +1704,11 @@ struct SModernRenderingApp
         Lighting.BindLights(GraphicsNode, 1);
         DrawGLTFAsset(GraphicsNode, 2, 0);
 
+        Rr_EndDebugLabel(Graph, "MainPass");
+
         if (DrawGrid)
         {
-            Grid.Draw(Camera, ColorImage, DepthImage);
+            Grid.Draw(Graph, Camera, ColorImage, DepthImage);
         }
 
         Rr_Image2D *FinalColorImage{};
@@ -1711,6 +1725,8 @@ struct SModernRenderingApp
             FinalNormalDepthImage = NormalDepthImage;
         }
 
+        Rr_BeginDebugLabel(Graph, "Compose");
+
         // FullscreenBlit.Blit(Graph, FinalColorImage, SwapchainImage);
 
         SSAO.Apply(
@@ -1719,6 +1735,10 @@ struct SModernRenderingApp
             FinalColorImage,
             FinalNormalDepthImage,
             Camera);
+
+        Rr_EndDebugLabel(Graph, "Compose");
+
+        Rr_EndDebugLabel(Graph, "ModernRendering");
     }
 
     Rr_PipelineLayout *CreateBlitLayout()

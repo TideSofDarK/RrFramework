@@ -80,6 +80,9 @@ typedef enum
     RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
     RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
     RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
+    // RR_NODE_FUNCTION_TYPE_BEGIN_DEBUG_LABEL,
+    // RR_NODE_FUNCTION_TYPE_END_DEBUG_LABEL,
+    // RR_NODE_FUNCTION_TYPE_INSERT_DEBUG_LABEL,
 } Rr_NodeFunctionType;
 
 typedef struct Rr_NodeFunction Rr_NodeFunction;
@@ -334,6 +337,11 @@ struct Rr_GraphNode
     bool UsesLateCommandBuffer;
     Rr_PipelineLayout *CurrentLayout;
 
+#ifdef RR_USE_GPU_DEBUG_UTILS
+    size_t DebugLabelCount;
+    bool *DebugLabelStates;
+#endif
+
     Rr_Graph *Graph;
 };
 
@@ -372,7 +380,12 @@ struct Rr_Graph
 
     Rr_DescriptorPoolList *DescriptorPoolList;
 
-    char NextNodeName[32];
+    const char *NextNodeName;
+
+#ifdef RR_USE_GPU_DEBUG_UTILS
+    RR_ARRAY(bool) DebugLabelStates;
+    RR_ARRAY(const char *) DebugLabelNames;
+#endif
 
     Rr_Arena *Arena;
 };

@@ -322,13 +322,10 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
 {
     Rr_GraphNode *GraphNode = RR_ALLOC(Graph->Arena, sizeof(Rr_GraphNode));
     GraphNode->Type = Type;
-    if (Graph->NextNodeName[0] != '\0')
+    if (Graph->NextNodeName)
     {
-        size_t NameLength = strlen(Graph->NextNodeName);
-        char *NodeName = RR_ALLOC_NO_ZERO(Graph->Arena, NameLength + 1);
-        memcpy(NodeName, Graph->NextNodeName, NameLength + 1);
-        GraphNode->Name = NodeName;
-        Graph->NextNodeName[0] = '\0';
+        GraphNode->Name = Graph->NextNodeName;
+        Graph->NextNodeName = NULL;
     }
     GraphNode->OriginalIndex = (uint32_t)Graph->Nodes.Count;
     GraphNode->Graph = Graph;
@@ -337,6 +334,17 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
     RR_RESERVE_ARRAY(&GraphNode->ImageDeps, 2, Graph->Arena);
 
     *RR_PUSH_INTO_ARRAY(&Graph->Nodes, Graph->Arena) = GraphNode;
+
+#ifdef RR_USE_GPU_DEBUG_UTILS
+    GraphNode->DebugLabelCount = Graph->DebugLabelNames.Count;
+    if (GraphNode->DebugLabelCount)
+    {
+        GraphNode->DebugLabelStates = RR_ALLOC_COPY(
+            Graph->Arena,
+            Graph->DebugLabelStates.Data,
+            sizeof(bool) * Graph->DebugLabelNames.Count);
+    }
+#endif
 
     return GraphNode;
 }
@@ -1579,12 +1587,14 @@ static void Rr_ExecuteGraphNode(
     Rr_GraphNode *Node,
     VkCommandBuffer CommandBuffer)
 {
+#ifdef RR_USE_GPU_DEBUG_UTILS
     bool SetVulkanMarker = Node->Name;
 
     if (SetVulkanMarker)
     {
         Rr_BeginVulkanCommandBufferLabel(CommandBuffer, Node->Name);
     }
+#endif
 
     switch (Node->Type)
     {
@@ -1647,10 +1657,12 @@ static void Rr_ExecuteGraphNode(
         break;
     }
 
+#ifdef RR_USE_GPU_DEBUG_UTILS
     if (SetVulkanMarker)
     {
         Rr_EndVulkanCommandBufferLabel(CommandBuffer);
     }
+#endif
 }
 
 static void Rr_ApplyBarrierBatch(
@@ -1823,6 +1835,22 @@ void Rr_ExecuteGraph(
     RR_RESERVE_ARRAY(&SortedNodes, Graph->Nodes.Count, Scratch.Arena);
 
     Rr_ProcessGraphNodes(Graph, &SortedNodes, Scratch.Arena);
+
+#ifdef RR_USE_GPU_DEBUG_UTILS
+    assert(Graph->DebugLabelNames.Count == Graph->DebugLabelStates.Count);
+    size_t DebugLabelCount = Graph->DebugLabelStates.Count;
+    size_t EarlyDebugLabelCount = 0;
+    bool *EarlyDebugLabelStates = NULL;
+    size_t LateDebugLabelCount = 0;
+    bool *LateDebugLabelStates = NULL;
+    if (DebugLabelCount)
+    {
+        EarlyDebugLabelStates =
+            RR_ALLOC(Scratch.Arena, sizeof(bool) * DebugLabelCount);
+        LateDebugLabelStates =
+            RR_ALLOC(Scratch.Arena, sizeof(bool) * DebugLabelCount);
+    }
+#endif
 
     /* Resolve all referenced resources. */
 
@@ -2086,6 +2114,35 @@ void Rr_ExecuteGraph(
                  ++NodeIndex)
             {
                 Rr_GraphNode *Node = SortedNodes.Data[NodeIndex];
+
+#ifdef RR_USE_GPU_DEBUG_UTILS
+                bool *BufferStates = UseLateCommandBuffer
+                                         ? LateDebugLabelStates
+                                         : EarlyDebugLabelStates;
+                size_t *BufferCount = UseLateCommandBuffer
+                                          ? &LateDebugLabelCount
+                                          : &EarlyDebugLabelCount;
+                for (size_t Index = 0; Index < Node->DebugLabelCount; ++Index)
+                {
+                    bool NodeLabelEnabled = Node->DebugLabelStates[Index];
+                    bool BufferLabelEnabled = BufferStates[Index];
+                    if (NodeLabelEnabled && !BufferLabelEnabled)
+                    {
+                        ++(*BufferCount);
+                        BufferStates[Index] = true;
+                        Rr_BeginVulkanCommandBufferLabel(
+                            CommandBuffer,
+                            Graph->DebugLabelNames.Data[Index]);
+                    }
+                    if (!NodeLabelEnabled && BufferLabelEnabled)
+                    {
+                        --(*BufferCount);
+                        BufferStates[Index] = false;
+                        Rr_EndVulkanCommandBufferLabel(CommandBuffer);
+                    }
+                }
+#endif
+
                 Rr_ExecuteGraphNode(Graph, Node, CommandBuffer);
             }
 
@@ -2094,6 +2151,17 @@ void Rr_ExecuteGraph(
             UseLateCommandBuffer = 0;
         }
     }
+
+#ifdef RR_USE_GPU_DEBUG_UTILS
+    for (size_t Index = 0; Index < EarlyDebugLabelCount; ++Index)
+    {
+        Rr_EndVulkanCommandBufferLabel(EarlyCommandBuffer);
+    }
+    for (size_t Index = 0; Index < LateDebugLabelCount; ++Index)
+    {
+        Rr_EndVulkanCommandBufferLabel(LateCommandBuffer);
+    }
+#endif
 
     /* Write updated sync state back to storage. */
 
@@ -2293,7 +2361,10 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
 
 void Rr_SetNextNodeName(Rr_Graph *Graph, const char *Name)
 {
-    strncpy(Graph->NextNodeName, Name, sizeof(Graph->NextNodeName) - 1);
+    size_t NameLength = strlen(Name);
+    char *NodeName = RR_ALLOC_NO_ZERO(Graph->Arena, NameLength + 1);
+    memcpy(NodeName, Name, NameLength + 1);
+    Graph->NextNodeName = NodeName;
 }
 
 Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph)
@@ -3882,4 +3953,57 @@ void Rr_BindStorageImage2DArrayRWAt(
         Binding,
         ArrayIndex,
         true);
+}
+
+void Rr_BeginDebugLabel(Rr_Graph *Graph, const char *Name)
+{
+    assert(Graph);
+    assert(Name);
+
+    for (size_t Index = 0; Index < Graph->DebugLabelNames.Count; ++Index)
+    {
+        const char *DebugLabel = Graph->DebugLabelNames.Data[Index];
+        if (strcmp(DebugLabel, Name) == 0)
+        {
+            if (Graph->DebugLabelStates.Data[Index])
+            {
+                RR_ABORT(
+                    "Trying to begin label \"%s\" which is already active!",
+                    Name);
+            }
+            Graph->DebugLabelStates.Data[Index] = true;
+            return;
+        }
+    }
+
+    size_t Length = strlen(Name);
+    char *Copy = RR_ALLOC_NO_ZERO(Graph->Arena, Length + 1);
+    strcpy(Copy, Name);
+
+    *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelNames, Graph->Arena) = Copy;
+    *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelStates, Graph->Arena) = true;
+}
+
+void Rr_EndDebugLabel(Rr_Graph *Graph, const char *Name)
+{
+    assert(Graph);
+    assert(Name);
+
+    for (size_t Index = 0; Index < Graph->DebugLabelNames.Count; ++Index)
+    {
+        const char *DebugLabel = Graph->DebugLabelNames.Data[Index];
+        if (strcmp(DebugLabel, Name) == 0)
+        {
+            if (!Graph->DebugLabelStates.Data[Index])
+            {
+                RR_ABORT(
+                    "Trying to end label \"%s\" which is already disabled!",
+                    Name);
+            }
+            Graph->DebugLabelStates.Data[Index] = false;
+            return;
+        }
+    }
+
+    RR_ABORT("Trying to end label \"%s\" which has never been used!", Name);
 }
