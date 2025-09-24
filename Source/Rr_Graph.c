@@ -3957,6 +3957,7 @@ void Rr_BindStorageImage2DArrayRWAt(
 
 void Rr_BeginDebugLabel(Rr_Graph *Graph, const char *Name)
 {
+#ifdef RR_USE_GPU_DEBUG_UTILS
     assert(Graph);
     assert(Name);
 
@@ -3982,10 +3983,12 @@ void Rr_BeginDebugLabel(Rr_Graph *Graph, const char *Name)
 
     *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelNames, Graph->Arena) = Copy;
     *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelStates, Graph->Arena) = true;
+#endif
 }
 
 void Rr_EndDebugLabel(Rr_Graph *Graph, const char *Name)
 {
+#ifdef RR_USE_GPU_DEBUG_UTILS
     assert(Graph);
     assert(Name);
 
@@ -4006,4 +4009,5 @@ void Rr_EndDebugLabel(Rr_Graph *Graph, const char *Name)
     }
 
     RR_ABORT("Trying to end label \"%s\" which has never been used!", Name);
+#endif
 }

@@ -285,6 +285,7 @@ struct Rr_Instance
         GetPhysicalDeviceSurfacePresentModesKHR;
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR GetPhysicalDeviceSurfaceSupportKHR;
 
+#ifdef RR_USE_GPU_DEBUG_UTILS
     /* VK_EXT_debug_utils */
 
     PFN_vkCmdBeginDebugUtilsLabelEXT CmdBeginDebugUtilsLabelEXT;
@@ -298,6 +299,7 @@ struct Rr_Instance
     PFN_vkSetDebugUtilsObjectNameEXT SetDebugUtilsObjectNameEXT;
     PFN_vkSetDebugUtilsObjectTagEXT SetDebugUtilsObjectTagEXT;
     PFN_vkSubmitDebugUtilsMessageEXT SubmitDebugUtilsMessageEXT;
+#endif
 };
 
 typedef struct Rr_VulkanLoader Rr_VulkanLoader;

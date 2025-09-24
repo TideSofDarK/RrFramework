@@ -67,7 +67,7 @@ void Rr_InitInstance(
     const char *InstanceExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
     uint32_t InstanceExtensionCount = RR_ARRAY_COUNT(InstanceExtensions);
 
-#ifndef RR_DEBUG
+#ifndef RR_USE_GPU_DEBUG_UTILS
     InstanceExtensionCount = 0;
 #endif
 
@@ -181,6 +181,7 @@ void Rr_InitInstance(
             Instance->Handle,
             "vkGetPhysicalDeviceSurfaceSupportKHR");
 
+#ifdef RR_USE_GPU_DEBUG_UTILS
     /* VK_EXT_debug_utils */
 
     Instance->CmdBeginDebugUtilsLabelEXT =
@@ -227,6 +228,7 @@ void Rr_InitInstance(
         (PFN_vkSubmitDebugUtilsMessageEXT)Loader->GetInstanceProcAddr(
             Instance->Handle,
             "vkSubmitDebugUtilsMessageEXT");
+#endif
 
     Rr_DestroyScratch(Scratch);
 }
