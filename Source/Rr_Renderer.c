@@ -1592,7 +1592,7 @@ void Rr_SetVulkanObjectName(
     uint64_t Handle,
     const char *Name)
 {
-#ifdef RR_DEBUG
+#ifdef RR_USE_GPU_DEBUG_UTILS
     VkDebugUtilsObjectNameInfoEXT ObjectNameInfo = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .objectType = ObjectType,
@@ -1609,7 +1609,7 @@ void Rr_BeginVulkanCommandBufferLabel(
     VkCommandBuffer CommandBuffer,
     const char *Name)
 {
-#ifdef RR_DEBUG
+#ifdef RR_USE_GPU_DEBUG_UTILS
     Rr_Instance *Instance = &gRenderer->Instance;
     VkDebugUtilsLabelEXT Label = {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
@@ -1621,7 +1621,7 @@ void Rr_BeginVulkanCommandBufferLabel(
 
 void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer)
 {
-#ifdef RR_DEBUG
+#ifdef RR_USE_GPU_DEBUG_UTILS
     Rr_Instance *Instance = &gRenderer->Instance;
     Instance->CmdEndDebugUtilsLabelEXT(CommandBuffer);
 #endif

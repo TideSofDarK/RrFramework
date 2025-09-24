@@ -166,12 +166,10 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
         &PipelineLayout->Handle);
     assert(Result == VK_SUCCESS);
 
-#ifdef RR_USE_GPU_DEBUG_UTILS
     Rr_SetVulkanObjectName(
         VK_OBJECT_TYPE_PIPELINE_LAYOUT,
         (uint64_t)PipelineLayout->Handle,
         PipelineLayout->Name);
-#endif
 
     Rr_DestroyScratch(Scratch);
 
@@ -334,12 +332,10 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         &ComputePipeline->Handle);
     assert(Result == VK_SUCCESS);
 
-#ifdef RR_USE_GPU_DEBUG_UTILS
     Rr_SetVulkanObjectName(
         VK_OBJECT_TYPE_PIPELINE,
         (uint64_t)ComputePipeline->Handle,
         ComputePipeline->Name);
-#endif
 
     Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
 
@@ -706,12 +702,10 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         &GraphicsPipeline->Handle);
     assert(Result == VK_SUCCESS);
 
-#ifdef RR_USE_GPU_DEBUG_UTILS
     Rr_SetVulkanObjectName(
         VK_OBJECT_TYPE_PIPELINE,
         (uint64_t)GraphicsPipeline->Handle,
         GraphicsPipeline->Name);
-#endif
 
     if (VertModule != VK_NULL_HANDLE)
     {

@@ -90,12 +90,10 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
         &Sampler->Handle);
     assert(Result == VK_SUCCESS);
 
-#ifdef RR_USE_GPU_DEBUG_UTILS
     Rr_SetVulkanObjectName(
         VK_OBJECT_TYPE_SAMPLER,
         (uint64_t)Sampler->Handle,
         Sampler->Name);
-#endif
 
     return Sampler;
 }
