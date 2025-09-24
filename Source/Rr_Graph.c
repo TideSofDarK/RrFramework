@@ -1329,12 +1329,29 @@ static void Rr_ExecuteGraphicsNode(
                     VK_PIPELINE_BIND_POINT_GRAPHICS);
                 Rr_DrawIndirectArgs *Args =
                     (Rr_DrawIndirectArgs *)Function->Args;
-                Device->CmdDrawIndexedIndirect(
-                    CommandBuffer,
-                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
-                    Args->Offset,
-                    Args->Count,
-                    Args->Stride);
+                VkBuffer BufferHandle =
+                    Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle;
+                if (gRenderer->PhysicalDevice.Features.multiDrawIndirect)
+                {
+                    Device->CmdDrawIndexedIndirect(
+                        CommandBuffer,
+                        BufferHandle,
+                        Args->Offset,
+                        Args->Count,
+                        Args->Stride);
+                }
+                else
+                {
+                    for (uint32_t Index = 0; Index < Args->Count; ++Index)
+                    {
+                        Device->CmdDrawIndexedIndirect(
+                            CommandBuffer,
+                            BufferHandle,
+                            Args->Offset + (Index * Args->Stride),
+                            1,
+                            0);
+                    }
+                }
             }
             break;
             case RR_NODE_FUNCTION_TYPE_BIND_INDEX_BUFFER:

@@ -244,8 +244,9 @@ static bool Rr_CheckPhysicalDevice(
     VkPhysicalDeviceFeatures Features;
     Instance->GetPhysicalDeviceFeatures(PhysicalDevice, &Features);
 
-    if (!Features.drawIndirectFirstInstance || !Features.multiDrawIndirect ||
-        !Features.samplerAnisotropy)
+    if (!Features.drawIndirectFirstInstance || !Features.samplerAnisotropy ||
+        !Features.independentBlend || !Features.imageCubeArray ||
+        !Features.depthBiasClamp)
     {
         return false;
     }
