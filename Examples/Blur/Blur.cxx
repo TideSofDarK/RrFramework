@@ -1029,7 +1029,10 @@ struct SBlurApp
         Rr_Graph *Graph = Rr_GetGraph();
 
         Rr_UIBeginWindow("Blur.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-        Rr_UILabel("This example demonstrates various blur algorithms.");
+        Rr_UILabel(
+            "This example demonstrates various blur algorithms.\nYou can drop "
+            "a PNG image into the window to blur it (works only with 2D "
+            "algorithms).");
         Rr_UISeparator();
         const char *BlurTypes[3] = { "Box 2D", "Dual Kawase 2D", "Box Cube" };
         if (Rr_UICombobox("Mode", 3, BlurTypes, (std::uint32_t *)&Type))
