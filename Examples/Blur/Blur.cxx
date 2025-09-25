@@ -1079,6 +1079,7 @@ struct SBlurApp
         , DualKawaseBlur2D(RR_IMAGE_FORMAT_R8G8B8A8_UNORM, 512)
         , BoxBlurCube(RR_IMAGE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
     {
+        InitCamera();
         InitQuadPipeline();
         InitCubePipeline();
         InitUniformBuffer();

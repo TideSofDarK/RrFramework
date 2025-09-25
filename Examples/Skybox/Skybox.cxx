@@ -297,6 +297,7 @@ struct SSkyboxApp
 
     void Init()
     {
+        InitCamera();
         InitPipeline();
         InitUniformBuffer();
         InitSampler();
