@@ -777,9 +777,9 @@ struct SBlurApp
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = CubePipelineLayout;
         PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_BLUR_VERT_SPV);
+            Rr_LoadAsset(EXAMPLE_ASSET_CUBE_VERT_SPV);
         PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_BLUR_FRAG_SPV);
+            Rr_LoadAsset(EXAMPLE_ASSET_CUBE_FRAG_SPV);
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
@@ -850,11 +850,6 @@ struct SBlurApp
             { Width, Height },
             RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
-        BoxBlurCube.Blur(
-            Rr_GetGraph(),
-            OriginalImageCube,
-            BlurredImageCube,
-            BlurCubePasses);
 
         Rr_ReleaseBuffer(StagingBuffer);
     }
@@ -960,6 +955,8 @@ struct SBlurApp
 
     void DrawCube(Rr_Graph *Graph)
     {
+        Rr_BeginDebugLabel(Graph, "DrawBlurCube");
+
         Camera.Update(Scancodes);
 
         SGPUUniform Uniform = {
@@ -1005,6 +1002,8 @@ struct SBlurApp
             1);
         Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
         Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
+
+        Rr_EndDebugLabel(Graph, "DrawBlurCube");
     }
 
     void Iterate()
