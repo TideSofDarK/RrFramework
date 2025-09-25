@@ -124,7 +124,6 @@ struct SBoxBlur2D
             Rr_IntVec2{ (std::int32_t)ImageSize, (std::int32_t)ImageSize },
             0);
 
-        Rr_SetNextNodeName(Graph, "Blur2D");
         Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
         Rr_BindComputePipeline(Node, Blur2DXPipeline);
         for (std::int32_t Index = 0; Index < Passes; ++Index)
@@ -506,7 +505,6 @@ struct SBoxBlurCube
 
         Rr_CopyImageCube(Rr_GetGraph(), OriginalImage, IntermediateImageA, 0);
 
-        Rr_SetNextNodeName(Graph, "BlurCube");
         Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
         for (std::int32_t Index = 0; Index < Passes; ++Index)
         {
@@ -639,7 +637,7 @@ struct SBlurApp
     SBoxBlur2D BoxBlur2D;
 
     std::int32_t DualKawaseBlur2DLevels = 1;
-    float DualKawaseBlur2DMultiplier = 1.0f;
+    float DualKawaseBlur2DMultiplier = 1.5f;
     SDualKawaseBlur2D DualKawaseBlur2D;
 
     Rr_PipelineLayout *CubePipelineLayout;
@@ -651,7 +649,7 @@ struct SBlurApp
     SBoxBlurCube BoxBlurCube;
 
     UScancodes Scancodes{};
-    EBlurType Type = EBlurType::DUAL_KAWASE_2D;
+    EBlurType Type = EBlurType::BOX_2D;
 
     void InitUniformBuffer()
     {
@@ -914,6 +912,7 @@ struct SBlurApp
                     DualKawaseBlur2DLevels,
                     DualKawaseBlur2DMultiplier);
             }
+            break;
             case EBlurType::BOX_CUBE:
             {
                 if (RecreatePipeline)
@@ -1024,46 +1023,38 @@ struct SBlurApp
             {
                 bool KernelChanged =
                     Rr_UISliderInt("Kernel Size", &Blur2DKernelSize, 3, 9);
-                bool PassesChanged =
-                    Rr_UISliderInt("Passes", &Blur2DPasses, 0, 4);
-                if (KernelChanged || PassesChanged)
-                {
-                    Reblur(Graph, KernelChanged);
-                }
+                Rr_UISliderInt("Passes", &Blur2DPasses, 0, 4);
+
+                Reblur(Graph, KernelChanged);
 
                 Draw2D(Graph);
             }
             break;
             case EBlurType::DUAL_KAWASE_2D:
             {
-                bool Changed = Rr_UISliderInt(
+                Rr_UISliderInt(
                     "Downsample Levels",
                     &DualKawaseBlur2DLevels,
                     0,
                     4);
-                Changed |= Rr_UISliderFloat(
+                Rr_UISliderFloat(
                     "Sampler Position Multiplier",
                     &DualKawaseBlur2DMultiplier,
                     0.1f,
                     25.0f);
-                if (Changed)
-                {
-                    Reblur(Graph);
-                }
+
+                Reblur(Graph);
 
                 Draw2D(Graph);
             }
             break;
             case EBlurType::BOX_CUBE:
             {
-                if (Rr_UISliderInt("Radius", &BlurCubeRadius, 2, 16))
-                {
-                    Reblur(Graph, true);
-                }
-                if (Rr_UISliderInt("Passes", &BlurCubePasses, 0, 16))
-                {
-                    Reblur(Graph);
-                }
+                bool RadiusChanged =
+                    Rr_UISliderInt("Radius", &BlurCubeRadius, 2, 16);
+                Rr_UISliderInt("Passes", &BlurCubePasses, 0, 16);
+
+                Reblur(Graph, RadiusChanged);
 
                 DrawCube(Graph);
             }
