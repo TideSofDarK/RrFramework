@@ -7,11 +7,13 @@ layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, rgba32f) restrict readonly uniform image2D SrcImage;
 layout(set = 0, binding = 1, rgba32f) restrict writeonly uniform image2D DstImage;
+layout(set = 0, binding = 2) uniform SGPUUniform {
+    ivec2 ImageSize;
+};
 
 void main()
 {
     int X = int(gl_GlobalInvocationID.x);
-    ivec2 ImageSize = imageSize(SrcImage);
 
     if (X >= ImageSize.x) return;
 

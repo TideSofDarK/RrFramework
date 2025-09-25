@@ -314,12 +314,14 @@ struct SSkyboxApp
                 InitCamera();
                 return;
             }
+            break;
             case RR_EVENT_TYPE_KEY_DOWN:
             case RR_EVENT_TYPE_KEY_UP:
             {
                 Scancodes[Event->Key.Scancode] = Event->Key.Down;
                 return;
             }
+            break;
             default:
                 return;
         }

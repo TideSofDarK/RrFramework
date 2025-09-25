@@ -7,6 +7,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../Vendor/stb/stb_image.h"
 
+static constexpr std::int32_t MAX_IMAGE_SIZE = 4096;
+
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
 struct SCamera
@@ -84,6 +86,17 @@ struct SPNGImage
             DesiredChannels);
     }
 
+    SPNGImage(const char *Path)
+    {
+        int32_t DesiredChannels = 4;
+        Data = stbi_load(
+            Path,
+            (int32_t *)&Width,
+            (int32_t *)&Height,
+            &Channels,
+            DesiredChannels);
+    }
+
     ~SPNGImage()
     {
         stbi_image_free(Data);
@@ -100,20 +113,21 @@ struct SBoxBlur2D
     Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *Blur2DXPipeline{};
     Rr_ComputePipeline *Blur2DYPipeline{};
-    Rr_Image2D *IntermediateImageA;
-    Rr_Image2D *IntermediateImageB;
+    Rr_Buffer *UniformBuffer;
 
-    Rr_ImageFormat Format;
-    std::uint32_t ImageSize;
-    std::uint32_t WorkgroupSize;
+    std::uint32_t LocalSizeX;
 
     void Blur(
         Rr_Graph *Graph,
         Rr_Image2D *OriginalImage,
+        Rr_Image2D *IntermediateImageA,
+        Rr_Image2D *IntermediateImageB,
         Rr_Image2D *TargetImage,
         std::int32_t Passes)
     {
         Rr_BeginDebugLabel(Graph, "BoxBlur2D");
+
+        Rr_IntVec2 ImageSize = Rr_GetImage2DExtent(OriginalImage);
 
         Rr_CopyImage2D(
             Graph,
@@ -121,21 +135,28 @@ struct SBoxBlur2D
             Rr_IntVec2{},
             IntermediateImageA,
             Rr_IntVec2{},
-            Rr_IntVec2{ (std::int32_t)ImageSize, (std::int32_t)ImageSize },
+            ImageSize,
             0);
+
+        std::memcpy(
+            Rr_GetMappedBufferData(UniformBuffer),
+            &ImageSize,
+            sizeof(ImageSize));
 
         Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
         Rr_BindComputePipeline(Node, Blur2DXPipeline);
+        Rr_BindUniformBuffer(Node, UniformBuffer, 0, 2, 0, sizeof(Rr_IntVec2));
         for (std::int32_t Index = 0; Index < Passes; ++Index)
         {
+            Rr_BindComputePipeline(Node, Blur2DXPipeline);
             Rr_BindStorageImage2D(Node, IntermediateImageA, 0, 0);
             Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
-            Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 1);
+            Rr_Dispatch(Node, ImageSize.Height / LocalSizeX + 1, 1, 1);
             Rr_ComputeBarrier(Node);
             Rr_BindComputePipeline(Node, Blur2DYPipeline);
             Rr_BindStorageImage2D(Node, IntermediateImageB, 0, 0);
             Rr_BindStorageImage2DRW(Node, IntermediateImageA, 0, 1);
-            Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 1);
+            Rr_Dispatch(Node, ImageSize.Width / LocalSizeX + 1, 1, 1);
             Rr_ComputeBarrier(Node);
         }
 
@@ -145,7 +166,7 @@ struct SBoxBlur2D
             Rr_IntVec2{},
             TargetImage,
             Rr_IntVec2{},
-            Rr_IntVec2{ (std::int32_t)ImageSize, (std::int32_t)ImageSize },
+            ImageSize,
             0);
 
         Rr_EndDebugLabel(Graph, "BoxBlur2D");
@@ -158,7 +179,7 @@ struct SBoxBlur2D
         std::array Specializations = {
             Rr_PipelineSpecialization{
                 0,
-                RR_MAKE_DATA_STRUCT(WorkgroupSize),
+                RR_MAKE_DATA_STRUCT(LocalSizeX),
             },
             Rr_PipelineSpecialization{
                 1,
@@ -185,13 +206,8 @@ struct SBoxBlur2D
             CreateBlurPipeline(EXAMPLE_ASSET_BOX2DY_COMP_SPV, KernelSize);
     }
 
-    SBoxBlur2D(
-        Rr_ImageFormat Format,
-        std::int32_t ImageSize,
-        std::uint32_t KernelSize)
-        : Format(Format)
-        , ImageSize(ImageSize)
-        , WorkgroupSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
+    SBoxBlur2D(std::uint32_t KernelSize)
+        : LocalSizeX(Rr_GetMaxComputeWorkgroupInvocations())
     {
         std::array Bindings0 = {
             Rr_Binding{
@@ -204,6 +220,11 @@ struct SBoxBlur2D
                 .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
                 .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
             },
+            Rr_Binding{
+                .Index = 2,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+            },
         };
         std::array Sets = {
             Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
@@ -213,14 +234,10 @@ struct SBoxBlur2D
 
         RecreatePipelines(KernelSize);
 
-        IntermediateImageA = Rr_CreateImage2D(
-            { ImageSize, ImageSize },
-            Format,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
-        IntermediateImageB = Rr_CreateImage2D(
-            { ImageSize, ImageSize },
-            Format,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
+        UniformBuffer = Rr_CreateBuffer(
+            RR_KILOBYTES(1),
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     ~SBoxBlur2D()
@@ -228,22 +245,24 @@ struct SBoxBlur2D
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(Blur2DXPipeline);
         Rr_ReleaseComputePipeline(Blur2DYPipeline);
-        Rr_ReleaseImage(IntermediateImageA);
-        Rr_ReleaseImage(IntermediateImageB);
+        Rr_ReleaseBuffer(UniformBuffer);
     }
 };
 
 struct SDualKawaseBlur2D
 {
+    struct SGPUUniform
+    {
+        Rr_IntVec2 SrcSize;
+        Rr_Vec2 TexelSizeUV;
+        float SamplerPosMultiplier;
+    };
+
     Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *DownPipeline{};
     Rr_ComputePipeline *UpPipeline{};
-    Rr_Image2D *IntermediateImageA;
-    Rr_Image2D *IntermediateImageB;
 
-    Rr_ImageFormat Format;
-    std::uint32_t ImageSize;
-    std::uint32_t WorkgroupSize;
+    std::uint32_t LocalSize;
 
     Rr_Sampler *Sampler;
     Rr_Buffer *UniformBuffer;
@@ -251,10 +270,14 @@ struct SDualKawaseBlur2D
     void Blur(
         Rr_Graph *Graph,
         Rr_Image2D *OriginalImage,
+        Rr_Image2D *IntermediateImageA,
+        Rr_Image2D *IntermediateImageB,
         Rr_Image2D *TargetImage,
         std::int32_t Levels,
         float SamplerPosMultiplier)
     {
+        Rr_IntVec2 OriginalSize = Rr_GetImage2DExtent(OriginalImage);
+
         if (Levels == 0)
         {
             Rr_CopyImage2D(
@@ -263,7 +286,7 @@ struct SDualKawaseBlur2D
                 Rr_IntVec2{},
                 TargetImage,
                 Rr_IntVec2{},
-                Rr_IntVec2{ (std::int32_t)ImageSize, (std::int32_t)ImageSize },
+                OriginalSize,
                 0);
 
             return;
@@ -277,7 +300,7 @@ struct SDualKawaseBlur2D
             Rr_IntVec2{},
             IntermediateImageA,
             Rr_IntVec2{},
-            Rr_IntVec2{ (std::int32_t)ImageSize, (std::int32_t)ImageSize },
+            OriginalSize,
             0);
 
         char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
@@ -286,18 +309,11 @@ struct SDualKawaseBlur2D
 
         Rr_BeginDebugLabel(Graph, "DualKawase2DDown");
 
-        struct
-        {
-            std::uint32_t SrcWidth;
-            std::uint32_t SrcHeight;
-            Rr_Vec2 TexelSizeUV;
-            float SamplerPosMultiplier;
-        } GPUUniform;
-
-        GPUUniform.SrcWidth = ImageSize;
-        GPUUniform.SrcHeight = ImageSize;
-        GPUUniform.TexelSizeUV = Rr_V2F(1.0f) / Rr_V2(ImageSize, ImageSize);
-        GPUUniform.SamplerPosMultiplier = SamplerPosMultiplier;
+        SGPUUniform GPUUniform = {
+            .SrcSize = OriginalSize,
+            .TexelSizeUV = Rr_V2F(1.0f) / Rr_V2(MAX_IMAGE_SIZE, MAX_IMAGE_SIZE),
+            .SamplerPosMultiplier = SamplerPosMultiplier,
+        };
 
         for (auto Level = 0; Level < Levels; ++Level)
         {
@@ -325,15 +341,15 @@ struct SDualKawaseBlur2D
                 sizeof(GPUUniform));
             Rr_Dispatch(
                 Node,
-                GPUUniform.SrcWidth / WorkgroupSize / 2,
-                GPUUniform.SrcHeight / WorkgroupSize / 2,
+                GPUUniform.SrcSize.Width / LocalSize / 2 + 1,
+                GPUUniform.SrcSize.Height / LocalSize / 2 + 1,
                 1);
 
             UniformOffset +=
                 RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
 
-            GPUUniform.SrcWidth = GPUUniform.SrcWidth >> 1;
-            GPUUniform.SrcHeight = GPUUniform.SrcHeight >> 1;
+            GPUUniform.SrcSize.Width >>= 1;
+            GPUUniform.SrcSize.Height >>= 1;
 
             std::swap(IntermediateImageA, IntermediateImageB);
         }
@@ -368,15 +384,17 @@ struct SDualKawaseBlur2D
                 sizeof(GPUUniform));
             Rr_Dispatch(
                 Node,
-                GPUUniform.SrcWidth * 2 / WorkgroupSize,
-                GPUUniform.SrcHeight * 2 / WorkgroupSize,
+                GPUUniform.SrcSize.Width * 2 / LocalSize + 1,
+                GPUUniform.SrcSize.Height * 2 / LocalSize + 1,
                 1);
 
             UniformOffset +=
                 RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
 
-            GPUUniform.SrcWidth = GPUUniform.SrcWidth << 1;
-            GPUUniform.SrcHeight = GPUUniform.SrcHeight << 1;
+            GPUUniform.SrcSize.Width =
+                RR_MIN(GPUUniform.SrcSize.Width << 1, OriginalSize.Width);
+            GPUUniform.SrcSize.Height =
+                RR_MIN(GPUUniform.SrcSize.Height << 1, OriginalSize.Width);
 
             std::swap(IntermediateImageA, IntermediateImageB);
         }
@@ -389,7 +407,7 @@ struct SDualKawaseBlur2D
             Rr_IntVec2{},
             TargetImage,
             Rr_IntVec2{},
-            Rr_IntVec2{ (std::int32_t)ImageSize, (std::int32_t)ImageSize },
+            OriginalSize,
             0);
 
         Rr_EndDebugLabel(Graph, "DualKawase2D");
@@ -400,7 +418,7 @@ struct SDualKawaseBlur2D
         std::array Specializations = {
             Rr_PipelineSpecialization{
                 0,
-                RR_MAKE_DATA_STRUCT(WorkgroupSize),
+                RR_MAKE_DATA_STRUCT(LocalSize),
             },
         };
 
@@ -413,10 +431,8 @@ struct SDualKawaseBlur2D
         return Rr_CreateComputePipeline(&PipelineCreateInfo);
     }
 
-    SDualKawaseBlur2D(Rr_ImageFormat Format, std::int32_t ImageSize)
-        : Format(Format)
-        , ImageSize(ImageSize)
-        , WorkgroupSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
+    SDualKawaseBlur2D()
+        : LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
     {
         std::array Bindings0 = {
             Rr_Binding{
@@ -445,24 +461,11 @@ struct SDualKawaseBlur2D
             CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DDOWN_COMP_SPV);
         UpPipeline = CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DUP_COMP_SPV);
 
-        IntermediateImageA = Rr_CreateImage2D(
-            { ImageSize, ImageSize },
-            Format,
-            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
-                RR_IMAGE_FLAGS_STORAGE_BIT);
-        IntermediateImageB = Rr_CreateImage2D(
-            { ImageSize, ImageSize },
-            Format,
-            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
-                RR_IMAGE_FLAGS_STORAGE_BIT);
-
         Rr_SamplerInfo SamplerInfo = {};
         SamplerInfo.MinFilter = RR_FILTER_LINEAR;
         SamplerInfo.MagFilter = RR_FILTER_LINEAR;
         SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        // SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-        // SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
         UniformBuffer = Rr_CreateBuffer(
@@ -476,8 +479,6 @@ struct SDualKawaseBlur2D
         Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(DownPipeline);
         Rr_ReleaseComputePipeline(UpPipeline);
-        Rr_ReleaseImage(IntermediateImageA);
-        Rr_ReleaseImage(IntermediateImageB);
         Rr_ReleaseSampler(Sampler);
         Rr_ReleaseBuffer(UniformBuffer);
     }
@@ -493,7 +494,7 @@ struct SBoxBlurCube
 
     Rr_ImageFormat Format;
     std::uint32_t ImageSize;
-    std::uint32_t WorkgroupSize;
+    std::uint32_t LocalSize;
 
     void Blur(
         Rr_Graph *Graph,
@@ -511,12 +512,12 @@ struct SBoxBlurCube
             Rr_BindComputePipeline(Node, BlurCubeXPipeline);
             Rr_BindStorageImage2DArray(Node, IntermediateImageA, 0, 0);
             Rr_BindStorageImage2DArrayRW(Node, IntermediateImageB, 0, 1);
-            Rr_Dispatch(Node, 1, ImageSize / WorkgroupSize, 6);
+            Rr_Dispatch(Node, 1, ImageSize / LocalSize, 6);
             Rr_ComputeBarrier(Node);
             Rr_BindComputePipeline(Node, BlurCubeYPipeline);
             Rr_BindStorageImage2DArray(Node, IntermediateImageB, 0, 0);
             Rr_BindStorageImage2DArrayRW(Node, IntermediateImageA, 0, 1);
-            Rr_Dispatch(Node, ImageSize / WorkgroupSize, 1, 6);
+            Rr_Dispatch(Node, ImageSize / LocalSize, 1, 6);
             Rr_ComputeBarrier(Node);
         }
 
@@ -532,7 +533,7 @@ struct SBoxBlurCube
         std::array Specializations = {
             Rr_PipelineSpecialization{
                 0,
-                RR_MAKE_DATA_STRUCT(WorkgroupSize),
+                RR_MAKE_DATA_STRUCT(LocalSize),
             },
             Rr_PipelineSpecialization{
                 1,
@@ -569,7 +570,7 @@ struct SBoxBlurCube
         std::uint32_t Radius)
         : Format(Format)
         , ImageSize(ImageSize)
-        , WorkgroupSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
+        , LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
     {
         std::array Bindings0 = {
             Rr_Binding{
@@ -627,10 +628,13 @@ struct SBlurApp
 
     SCamera Camera;
 
+    Rr_Image2D *IntermediateImageA;
+    Rr_Image2D *IntermediateImageB;
+
     Rr_PipelineLayout *QuadPipelineLayout;
     Rr_GraphicsPipeline *QuadGraphicsPipeline;
-    Rr_Image2D *OriginalImage2D;
-    Rr_Image2D *BlurredImage2D;
+    Rr_Image2D *OriginalImage2D{};
+    Rr_Image2D *BlurredImage2D{};
 
     std::int32_t Blur2DKernelSize = 5;
     std::int32_t Blur2DPasses = 2;
@@ -649,7 +653,7 @@ struct SBlurApp
     SBoxBlurCube BoxBlurCube;
 
     UScancodes Scancodes{};
-    EBlurType Type = EBlurType::BOX_2D;
+    EBlurType Type = EBlurType::DUAL_KAWASE_2D;
 
     void InitUniformBuffer()
     {
@@ -697,15 +701,14 @@ struct SBlurApp
         QuadGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
-    void InitImage2D()
+    void InitImage2D(const SPNGImage &PNGImage)
     {
-        SPNGImage PNGImage{ EXAMPLE_ASSET_BACK_PNG };
-
         int32_t Width = PNGImage.Width;
         int32_t Height = PNGImage.Height;
 
         int32_t ImageSize = Width * Height * 4;
 
+        Rr_ReleaseImage(OriginalImage2D);
         OriginalImage2D = Rr_CreateImage2D(
             { Width, Height },
             RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
@@ -726,6 +729,7 @@ struct SBlurApp
             OriginalImage2D,
             0);
 
+        Rr_ReleaseImage(BlurredImage2D);
         BlurredImage2D = Rr_CreateImage2D(
             { Width, Height },
             RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
@@ -873,17 +877,25 @@ struct SBlurApp
     {
         switch (Event->Type)
         {
+            case RR_EVENT_TYPE_DROP_FILE:
+            {
+                SPNGImage PNGImage{ Event->DropFile.Path };
+                InitImage2D(PNGImage);
+            }
+            break;
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
                 InitCamera();
                 return;
             }
+            break;
             case RR_EVENT_TYPE_KEY_DOWN:
             case RR_EVENT_TYPE_KEY_UP:
             {
                 Scancodes[Event->Key.Scancode] = Event->Key.Down;
                 return;
             }
+            break;
             default:
                 return;
         }
@@ -899,8 +911,13 @@ struct SBlurApp
                 {
                     BoxBlur2D.RecreatePipelines(Blur2DKernelSize);
                 }
-                BoxBlur2D
-                    .Blur(Graph, OriginalImage2D, BlurredImage2D, Blur2DPasses);
+                BoxBlur2D.Blur(
+                    Graph,
+                    OriginalImage2D,
+                    IntermediateImageA,
+                    IntermediateImageB,
+                    BlurredImage2D,
+                    Blur2DPasses);
             }
             break;
             case EBlurType::DUAL_KAWASE_2D:
@@ -908,6 +925,8 @@ struct SBlurApp
                 DualKawaseBlur2D.Blur(
                     Graph,
                     OriginalImage2D,
+                    IntermediateImageA,
+                    IntermediateImageB,
                     BlurredImage2D,
                     DualKawaseBlur2DLevels,
                     DualKawaseBlur2DMultiplier);
@@ -1065,17 +1084,32 @@ struct SBlurApp
         Rr_UIEndWindow();
     }
 
+    void InitIntermediateImages()
+    {
+        IntermediateImageA = Rr_CreateImage2D(
+            { MAX_IMAGE_SIZE, MAX_IMAGE_SIZE },
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT |
+                RR_IMAGE_FLAGS_SAMPLED_BIT);
+        IntermediateImageB = Rr_CreateImage2D(
+            { MAX_IMAGE_SIZE, MAX_IMAGE_SIZE },
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT |
+                RR_IMAGE_FLAGS_SAMPLED_BIT);
+    }
+
     SBlurApp()
-        : BoxBlur2D(RR_IMAGE_FORMAT_R8G8B8A8_UNORM, 512, Blur2DKernelSize)
-        , DualKawaseBlur2D(RR_IMAGE_FORMAT_R8G8B8A8_UNORM, 512)
+        : BoxBlur2D(Blur2DKernelSize)
+        , DualKawaseBlur2D()
         , BoxBlurCube(RR_IMAGE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
     {
         InitCamera();
+        InitIntermediateImages();
         InitQuadPipeline();
         InitCubePipeline();
         InitUniformBuffer();
         InitSampler();
-        InitImage2D();
+        InitImage2D(EXAMPLE_ASSET_BACK_PNG);
         InitImageCube();
         InitSkyboxMesh();
         Reblur(Rr_GetGraph());
@@ -1094,6 +1128,8 @@ struct SBlurApp
         Rr_ReleaseImage(OriginalImageCube);
         Rr_ReleaseImage(BlurredImageCube);
         Rr_ReleaseGLTFContext(GLTFContext);
+        Rr_ReleaseImage(IntermediateImageA);
+        Rr_ReleaseImage(IntermediateImageB);
     }
 };
 

@@ -206,8 +206,8 @@ static void Rr_GLFWDropCallback(
     for (int32_t Index = 0; Index < Count; ++Index)
     {
         size_t Length = strlen(Paths[Index]);
-        char *Path = RR_ALLOC_NO_ZERO(RrWindow->EventScratch.Arena, Length);
-        memcpy(Path, Paths[Index], Length);
+        char *Path = RR_ALLOC_NO_ZERO(RrWindow->EventScratch.Arena, Length + 1);
+        memcpy(Path, Paths[Index], Length + 1);
 
         Rr_Event *Event = Rr_AddEvent();
         Event->Type = RR_EVENT_TYPE_DROP_FILE;
