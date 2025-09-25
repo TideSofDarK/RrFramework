@@ -901,16 +901,12 @@ struct SBlurApp
         }
     }
 
-    void Reblur(Rr_Graph *Graph, bool RecreatePipeline = false)
+    void Reblur(Rr_Graph *Graph)
     {
         switch (Type)
         {
             case EBlurType::BOX_2D:
             {
-                if (RecreatePipeline)
-                {
-                    BoxBlur2D.RecreatePipelines(Blur2DKernelSize);
-                }
                 BoxBlur2D.Blur(
                     Graph,
                     OriginalImage2D,
@@ -934,10 +930,6 @@ struct SBlurApp
             break;
             case EBlurType::BOX_CUBE:
             {
-                if (RecreatePipeline)
-                {
-                    BoxBlurCube.RecreatePipelines(BlurCubeRadius);
-                }
                 BoxBlurCube.Blur(
                     Rr_GetGraph(),
                     OriginalImageCube,
@@ -1035,19 +1027,17 @@ struct SBlurApp
             "algorithms).");
         Rr_UISeparator();
         const char *BlurTypes[3] = { "Box 2D", "Dual Kawase 2D", "Box Cube" };
-        if (Rr_UICombobox("Mode", 3, BlurTypes, (std::uint32_t *)&Type))
-        {
-            Reblur(Graph);
-        }
+        Rr_UICombobox("Mode", 3, BlurTypes, (std::uint32_t *)&Type);
+        Reblur(Graph);
         switch (Type)
         {
             case EBlurType::BOX_2D:
             {
-                bool KernelChanged =
-                    Rr_UISliderInt("Kernel Size", &Blur2DKernelSize, 3, 9);
+                if (Rr_UISliderInt("Kernel Size", &Blur2DKernelSize, 3, 9))
+                {
+                    BoxBlur2D.RecreatePipelines(Blur2DKernelSize);
+                }
                 Rr_UISliderInt("Passes", &Blur2DPasses, 0, 4);
-
-                Reblur(Graph, KernelChanged);
 
                 Draw2D(Graph);
             }
@@ -1065,22 +1055,19 @@ struct SBlurApp
                     0.1f,
                     25.0f);
 
-                Reblur(Graph);
-
                 Draw2D(Graph);
             }
             break;
             case EBlurType::BOX_CUBE:
             {
-                bool RadiusChanged =
-                    Rr_UISliderInt("Radius", &BlurCubeRadius, 2, 16);
+                if (Rr_UISliderInt("Radius", &BlurCubeRadius, 2, 16))
+                {
+                    BoxBlurCube.RecreatePipelines(BlurCubeRadius);
+                }
                 Rr_UISliderInt("Passes", &BlurCubePasses, 0, 16);
-
-                Reblur(Graph, RadiusChanged);
 
                 DrawCube(Graph);
             }
-
             break;
         }
 
