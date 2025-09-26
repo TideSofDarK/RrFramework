@@ -497,10 +497,6 @@ static void Rr_InitVMA(void)
     vmaCreateAllocator(&AllocatorInfo, &gRenderer->Allocator);
 }
 
-static void Rr_InitTimestamps()
-{
-}
-
 void Rr_InitRenderer(const char *Title)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -525,7 +521,6 @@ void Rr_InitRenderer(const char *Title)
     Rr_InitThreadContext();
     Rr_InitFrames();
     Rr_InitSwapchain();
-    Rr_InitTimestamps();
 
     Rr_DestroyScratch(Scratch);
 }
