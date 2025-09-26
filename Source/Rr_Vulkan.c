@@ -238,7 +238,9 @@ static bool Rr_CheckPhysicalDevice(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
     uint32_t *OutGraphicsQueueFamilyIndex,
+    VkQueueFamilyProperties *OutGraphicsQueueFamilyProperties,
     uint32_t *OutTransferQueueFamilyIndex,
+    VkQueueFamilyProperties *OutTransferQueueFamilyProperties,
     Rr_Arena *Arena)
 {
     VkPhysicalDeviceFeatures Features;
@@ -366,9 +368,13 @@ static bool Rr_CheckPhysicalDevice(
     }
 
     *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
+    *OutGraphicsQueueFamilyProperties =
+        QueueFamilyProperties[GraphicsQueueFamilyIndex];
     *OutTransferQueueFamilyIndex = TransferQueueFamilyIndex == ~0U
                                        ? GraphicsQueueFamilyIndex
                                        : TransferQueueFamilyIndex;
+    *OutTransferQueueFamilyProperties =
+        QueueFamilyProperties[*OutTransferQueueFamilyIndex];
 
     return true;
 }
@@ -377,8 +383,8 @@ void Rr_SelectPhysicalDevice(
     Rr_Instance *Instance,
     VkSurfaceKHR Surface,
     Rr_PhysicalDevice *PhysicalDevice,
-    uint32_t *OutGraphicsQueueFamilyIndex,
-    uint32_t *OutTransferQueueFamilyIndex,
+    Rr_Queue *GraphicsQueue,
+    Rr_Queue *TransferQueue,
     Rr_Arena *Arena)
 {
     uint32_t PhysicalDeviceCount = 0;
@@ -413,13 +419,17 @@ void Rr_SelectPhysicalDevice(
     {
         VkPhysicalDevice PhysicalDeviceHandle = PhysicalDevices[Index];
         uint32_t GraphicsQueueFamilyIndex;
+        VkQueueFamilyProperties GraphicsQueueFamilyProperties;
         uint32_t TransferQueueFamilyIndex;
+        VkQueueFamilyProperties TransferQueueFamilyProperties;
         if (Rr_CheckPhysicalDevice(
                 Instance,
                 PhysicalDeviceHandle,
                 Surface,
                 &GraphicsQueueFamilyIndex,
+                &GraphicsQueueFamilyProperties,
                 &TransferQueueFamilyIndex,
+                &TransferQueueFamilyProperties,
                 Arena))
         {
             VkPhysicalDeviceProperties Properties;
@@ -479,8 +489,10 @@ void Rr_SelectPhysicalDevice(
                 BestDeviceIndex = Index;
                 BestDeviceType = Properties.deviceType;
                 BestDeviceMemory = Memory;
-                *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
-                *OutTransferQueueFamilyIndex = TransferQueueFamilyIndex;
+                GraphicsQueue->FamilyIndex = GraphicsQueueFamilyIndex;
+                GraphicsQueue->FamilyProperties = GraphicsQueueFamilyProperties;
+                TransferQueue->FamilyIndex = TransferQueueFamilyIndex;
+                TransferQueue->FamilyProperties = TransferQueueFamilyProperties;
             }
             else
             {
@@ -523,7 +535,7 @@ void Rr_SelectPhysicalDevice(
     }
 
     bool UseTransferQueue =
-        *OutGraphicsQueueFamilyIndex != *OutTransferQueueFamilyIndex;
+        GraphicsQueue->FamilyIndex != TransferQueue->FamilyIndex;
 
     PhysicalDevice->Handle = PhysicalDevices[BestDeviceIndex];
 
@@ -564,8 +576,8 @@ void Rr_InitDeviceAndQueues(
         Instance,
         Surface,
         PhysicalDevice,
-        &GraphicsQueue->FamilyIndex,
-        &TransferQueue->FamilyIndex,
+        GraphicsQueue,
+        TransferQueue,
         Scratch.Arena);
 
     bool UseTransferQueue =

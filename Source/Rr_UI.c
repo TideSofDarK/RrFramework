@@ -4900,6 +4900,10 @@ void Rr_UIDebugOverlay(void)
                 Rr_UILabelF("FPS: %.2f", LastFPS);
             }
 
+#ifdef RR_USE_GPU_TIMESTAMPS
+            Rr_UILabelF("GPU: %.2fms", gRenderer->LastFrameMS);
+#endif
+
             Rr_UICheckbox(
                 "Frame Limiter Enabled",
                 &gApp->FrameTime.EnableFrameLimiter);

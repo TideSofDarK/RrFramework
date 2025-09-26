@@ -100,6 +100,7 @@ typedef struct Rr_Queue Rr_Queue;
 struct Rr_Queue
 {
     VkQueue Handle;
+    VkQueueFamilyProperties FamilyProperties;
     uint32_t FamilyIndex;
     Rr_Spinlock Lock;
 };
