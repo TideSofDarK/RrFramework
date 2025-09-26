@@ -249,6 +249,183 @@ struct SBoxBlur2D
     }
 };
 
+struct SKawaseBlur2D
+{
+    struct SGPUUniform
+    {
+        Rr_IntVec2 SrcSize;
+        Rr_Vec2 TexelSizeUV;
+        float SamplerPosMultiplier;
+    };
+
+    Rr_PipelineLayout *PipelineLayout{};
+    Rr_ComputePipeline *Pipeline{};
+
+    std::uint32_t LocalSize{};
+
+    Rr_Sampler *Sampler{};
+    Rr_Buffer *UniformBuffer{};
+
+    void Blur(
+        Rr_Graph *Graph,
+        Rr_Image2D *OriginalImage,
+        Rr_Image2D *IntermediateImageA,
+        Rr_Image2D *IntermediateImageB,
+        Rr_Image2D *TargetImage,
+        std::int32_t Passes,
+        float SamplerPosMultiplier)
+    {
+        Rr_IntVec2 OriginalSize = Rr_GetImage2DExtent(OriginalImage);
+
+        if (Passes == 0)
+        {
+            Rr_CopyImage2D(
+                Graph,
+                OriginalImage,
+                Rr_IntVec2{},
+                TargetImage,
+                Rr_IntVec2{},
+                OriginalSize,
+                0);
+
+            return;
+        }
+
+        Rr_BeginDebugLabel(Graph, "Kawase2D");
+
+        Rr_CopyImage2D(
+            Graph,
+            OriginalImage,
+            Rr_IntVec2{},
+            IntermediateImageA,
+            Rr_IntVec2{},
+            OriginalSize,
+            0);
+
+        char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
+        std::size_t UniformOffset = 0;
+        std::size_t UniformAlignment = Rr_GetUniformAlignment();
+
+        SGPUUniform GPUUniform = {
+            .SrcSize = OriginalSize,
+            .TexelSizeUV = Rr_V2F(1.0f) / Rr_V2(MAX_IMAGE_SIZE, MAX_IMAGE_SIZE),
+        };
+
+        for (auto Pass = 0; Pass < Passes; ++Pass)
+        {
+            Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+            Rr_BindComputePipeline(Node, Pipeline);
+
+            GPUUniform.SamplerPosMultiplier =
+                float(Pass + 1) * SamplerPosMultiplier;
+
+            std::memcpy(
+                UniformData + UniformOffset,
+                &GPUUniform,
+                sizeof(GPUUniform));
+
+            Rr_BindCombinedImage2DSampler(
+                Node,
+                IntermediateImageA,
+                Sampler,
+                0,
+                0);
+            Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
+            Rr_BindUniformBuffer(
+                Node,
+                UniformBuffer,
+                0,
+                2,
+                UniformOffset,
+                sizeof(GPUUniform));
+            Rr_Dispatch(
+                Node,
+                OriginalSize.Width / LocalSize + 1,
+                OriginalSize.Height / LocalSize + 1,
+                1);
+
+            UniformOffset +=
+                RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
+
+            std::swap(IntermediateImageA, IntermediateImageB);
+        }
+
+        Rr_CopyImage2D(
+            Graph,
+            IntermediateImageA,
+            Rr_IntVec2{},
+            TargetImage,
+            Rr_IntVec2{},
+            OriginalSize,
+            0);
+
+        Rr_EndDebugLabel(Graph, "Kawase2D");
+    }
+
+    SKawaseBlur2D()
+        : LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
+    {
+        std::array Bindings0 = {
+            Rr_Binding{
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_Binding{
+                .Index = 1,
+                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+            Rr_Binding{
+                .Index = 2,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
+            },
+        };
+        std::array Sets = {
+            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
+        };
+        PipelineLayout =
+            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
+
+        std::array Specializations = {
+            Rr_PipelineSpecialization{
+                0,
+                RR_MAKE_DATA_STRUCT(LocalSize),
+            },
+        };
+
+        Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
+        PipelineCreateInfo.Layout = PipelineLayout;
+        PipelineCreateInfo.ShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_KAWASE2D_COMP_SPV);
+        PipelineCreateInfo.SpecializationCount = Specializations.size();
+        PipelineCreateInfo.Specializations = Specializations.data();
+
+        Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
+
+        Rr_SamplerInfo SamplerInfo = {};
+        SamplerInfo.MinFilter = RR_FILTER_LINEAR;
+        SamplerInfo.MagFilter = RR_FILTER_LINEAR;
+        SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        Sampler = Rr_CreateSampler(&SamplerInfo);
+
+        UniformBuffer = Rr_CreateBuffer(
+            RR_KILOBYTES(1),
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    }
+
+    ~SKawaseBlur2D()
+    {
+        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseComputePipeline(Pipeline);
+        Rr_ReleaseSampler(Sampler);
+        Rr_ReleaseBuffer(UniformBuffer);
+    }
+};
+
 struct SDualKawaseBlur2D
 {
     struct SGPUUniform
@@ -615,6 +792,7 @@ struct SBoxBlurCube
 enum class EBlurType : std::uint32_t
 {
     BOX_2D,
+    KAWASE_2D,
     DUAL_KAWASE_2D,
     BOX_CUBE,
 };
@@ -639,6 +817,10 @@ struct SBlurApp
     std::int32_t Blur2DKernelSize = 5;
     std::int32_t Blur2DPasses = 2;
     SBoxBlur2D BoxBlur2D;
+
+    std::int32_t KawaseBlur2DPasses = 5;
+    float KawaseBlur2DMultiplier = 1.0f;
+    SKawaseBlur2D KawaseBlur2D;
 
     std::int32_t DualKawaseBlur2DLevels = 1;
     float DualKawaseBlur2DMultiplier = 1.5f;
@@ -916,6 +1098,18 @@ struct SBlurApp
                     Blur2DPasses);
             }
             break;
+            case EBlurType::KAWASE_2D:
+            {
+                KawaseBlur2D.Blur(
+                    Graph,
+                    OriginalImage2D,
+                    IntermediateImageA,
+                    IntermediateImageB,
+                    BlurredImage2D,
+                    KawaseBlur2DPasses,
+                    KawaseBlur2DMultiplier);
+            }
+            break;
             case EBlurType::DUAL_KAWASE_2D:
             {
                 DualKawaseBlur2D.Blur(
@@ -1026,8 +1220,15 @@ struct SBlurApp
             "a PNG image into the window to blur it (works only with 2D "
             "algorithms).");
         Rr_UISeparator();
-        const char *BlurTypes[3] = { "Box 2D", "Dual Kawase 2D", "Box Cube" };
-        Rr_UICombobox("Mode", 3, BlurTypes, (std::uint32_t *)&Type);
+        std::array BlurTypes = { "Box 2D",
+                                 "Kawase 2D",
+                                 "Dual Kawase 2D",
+                                 "Box Cube" };
+        Rr_UICombobox(
+            "Mode",
+            BlurTypes.size(),
+            BlurTypes.data(),
+            (std::uint32_t *)&Type);
         Reblur(Graph);
         switch (Type)
         {
@@ -1042,6 +1243,18 @@ struct SBlurApp
                 Draw2D(Graph);
             }
             break;
+            case EBlurType::KAWASE_2D:
+            {
+                Rr_UISliderInt("Passes", &KawaseBlur2DPasses, 0, 9);
+                Rr_UISliderFloat(
+                    "Sample Position Multiplier",
+                    &KawaseBlur2DMultiplier,
+                    0.1f,
+                    25.0f);
+
+                Draw2D(Graph);
+            }
+            break;
             case EBlurType::DUAL_KAWASE_2D:
             {
                 Rr_UISliderInt(
@@ -1050,7 +1263,7 @@ struct SBlurApp
                     0,
                     4);
                 Rr_UISliderFloat(
-                    "Sampler Position Multiplier",
+                    "Sample Position Multiplier",
                     &DualKawaseBlur2DMultiplier,
                     0.1f,
                     25.0f);
