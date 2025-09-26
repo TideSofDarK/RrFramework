@@ -1285,8 +1285,6 @@ struct SBlurApp
         }
 
         Rr_UIEndWindow();
-
-        Rr_UIDebugOverlay();
     }
 
     void InitIntermediateImages()
