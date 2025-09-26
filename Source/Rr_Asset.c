@@ -31,7 +31,7 @@
 
 Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
-    HRSRC Resource = FindResource(NULL, AssetRef, "RRDATA");
+    HRSRC Resource = FindResource(NULL, AssetRef.Name, "RRDATA");
     HGLOBAL Memory = LoadResource(NULL, Resource);
 
     Rr_Asset Asset;

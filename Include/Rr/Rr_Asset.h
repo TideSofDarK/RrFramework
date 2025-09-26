@@ -34,7 +34,10 @@ typedef struct Rr_Data Rr_Asset;
 
 #if defined(RR_USE_RC)
 
-typedef const char *Rr_AssetRef;
+typedef struct Rr_AssetRef
+{
+    const char* Name;
+} Rr_AssetRef;
 
 #else
 

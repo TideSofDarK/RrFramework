@@ -606,7 +606,7 @@ struct SLighting
                     Position + Rr_V3(0.0f, 0.0f, -1.0f),
                     Rr_V3(0.0f, 1.0f, 0.0f));
             default:
-                std::unreachable();
+                std::abort();
         }
     }
 

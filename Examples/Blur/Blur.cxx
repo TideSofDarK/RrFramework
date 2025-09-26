@@ -3,6 +3,7 @@
 #include <Rr/Rr.h>
 
 #include <array>
+#include <cmath>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../Vendor/stb/stb_image.h"

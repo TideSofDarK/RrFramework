@@ -99,6 +99,7 @@ function(rr_embed_assets TARGET_NAME IDENTIFIER_PREFIX HEADER_NAME ASSETS_LIST)
         "${ASSET_HEADER_PATH}"
         COMMAND ${CMAKE_COMMAND}
         "-DASSET_HEADER_PATH=${ASSET_HEADER_PATH}"
+        "-DASSET_HEADER_NAME=${HEADER_NAME}"
         "-DASSETS_LIST=${ASSETS_LIST}"
         "-DIDENTIFIER_PREFIX=${IDENTIFIER_PREFIX}"
         "-DUSE_RC=${RR_USE_RC}"
@@ -126,7 +127,7 @@ function(rr_embed_assets TARGET_NAME IDENTIFIER_PREFIX HEADER_NAME ASSETS_LIST)
         set_source_files_properties(
             "${ASSET_HEADER_PATH}"
             PROPERTIES
-            COMPILE_DEFINITIONS "RR_DEFINE_ASSETS=1"
+            COMPILE_DEFINITIONS "RR_INCBIN_ASSETS=1"
         )
     endif ()
 
