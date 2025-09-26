@@ -34,9 +34,9 @@ void main()
 
         vec3 Color = vec3(0.0);
 
-        Color += Sample(MaxUV, CenterUV + vec2(0.0, -Offset.y)).rgb;
         Color += Sample(MaxUV, CenterUV + vec2(-Offset.x, 0.0)).rgb;
         Color += Sample(MaxUV, CenterUV + vec2(Offset.x, 0.0)).rgb;
+        Color += Sample(MaxUV, CenterUV + vec2(0.0, -Offset.y)).rgb;
         Color += Sample(MaxUV, CenterUV + vec2(0.0, Offset.y)).rgb;
 
         Color += Sample(MaxUV, CenterUV + vec2(-HalfOffset.x, -HalfOffset.y)).rgb * 2.0;
