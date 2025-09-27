@@ -834,7 +834,8 @@ static inline VkFormat Rr_GetImageFormatForBinding(
 static inline void Rr_ExecuteGenericEncodedCommands(
     Rr_Graph *Graph,
     Rr_NodeFunction *Function,
-    Rr_DescriptorsState *DescriptorsState)
+    Rr_DescriptorsState *DescriptorsState,
+    VkCommandBuffer CommandBuffer)
 {
     switch (Function->Type)
     {
@@ -951,6 +952,19 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                 NULL);
         }
         break;
+        case RR_NODE_FUNCTION_TYPE_DEBUG_LABEL:
+        {
+            const char *LabelName = *(const char **)Function->Args;
+            if (LabelName == NULL)
+            {
+                Rr_EndVulkanCommandBufferLabel(CommandBuffer);
+            }
+            else
+            {
+                Rr_BeginVulkanCommandBufferLabel(CommandBuffer, LabelName);
+            }
+        }
+        break;
         default:
             break;
     }
@@ -1031,7 +1045,8 @@ static void Rr_ExecuteComputeNode(
                 Rr_ExecuteGenericEncodedCommands(
                     Graph,
                     Function,
-                    &DescriptorsState);
+                    &DescriptorsState,
+                    CommandBuffer);
             }
             break;
         }
@@ -1426,7 +1441,8 @@ static void Rr_ExecuteGraphicsNode(
                 Rr_ExecuteGenericEncodedCommands(
                     Graph,
                     Function,
-                    &DescriptorsState);
+                    &DescriptorsState,
+                    CommandBuffer);
             }
             break;
         }
@@ -2382,6 +2398,63 @@ void Rr_SetNextNodeName(Rr_Graph *Graph, const char *Name)
     char *NodeName = RR_ALLOC_NO_ZERO(Graph->Arena, NameLength + 1);
     memcpy(NodeName, Name, NameLength + 1);
     Graph->NextNodeName = NodeName;
+}
+
+void Rr_BeginGraphLabel(Rr_Graph *Graph, const char *Name)
+{
+#ifdef RR_USE_GPU_DEBUG_UTILS
+    assert(Graph);
+    assert(Name);
+
+    for (size_t Index = 0; Index < Graph->DebugLabelNames.Count; ++Index)
+    {
+        const char *DebugLabel = Graph->DebugLabelNames.Data[Index];
+        if (strcmp(DebugLabel, Name) == 0)
+        {
+            if (Graph->DebugLabelStates.Data[Index])
+            {
+                RR_ABORT(
+                    "Trying to begin label \"%s\" which is already active!",
+                    Name);
+            }
+            Graph->DebugLabelStates.Data[Index] = true;
+            return;
+        }
+    }
+
+    size_t Length = strlen(Name);
+    char *Copy = RR_ALLOC_NO_ZERO(Graph->Arena, Length + 1);
+    strcpy(Copy, Name);
+
+    *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelNames, Graph->Arena) = Copy;
+    *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelStates, Graph->Arena) = true;
+#endif
+}
+
+void Rr_EndGraphLabel(Rr_Graph *Graph, const char *Name)
+{
+#ifdef RR_USE_GPU_DEBUG_UTILS
+    assert(Graph);
+    assert(Name);
+
+    for (size_t Index = 0; Index < Graph->DebugLabelNames.Count; ++Index)
+    {
+        const char *DebugLabel = Graph->DebugLabelNames.Data[Index];
+        if (strcmp(DebugLabel, Name) == 0)
+        {
+            if (!Graph->DebugLabelStates.Data[Index])
+            {
+                RR_ABORT(
+                    "Trying to end label \"%s\" which is already disabled!",
+                    Name);
+            }
+            Graph->DebugLabelStates.Data[Index] = false;
+            return;
+        }
+    }
+
+    RR_ABORT("Trying to end label \"%s\" which has never been used!", Name);
+#endif
 }
 
 Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph)
@@ -3972,59 +4045,26 @@ void Rr_BindStorageImage2DArrayRWAt(
         true);
 }
 
-void Rr_BeginDebugLabel(Rr_Graph *Graph, const char *Name)
+void Rr_BeginNodeLabel(Rr_GraphNode *Node, const char *Name)
 {
 #ifdef RR_USE_GPU_DEBUG_UTILS
-    assert(Graph);
-    assert(Name);
+    assert(Node);
 
-    for (size_t Index = 0; Index < Graph->DebugLabelNames.Count; ++Index)
-    {
-        const char *DebugLabel = Graph->DebugLabelNames.Data[Index];
-        if (strcmp(DebugLabel, Name) == 0)
-        {
-            if (Graph->DebugLabelStates.Data[Index])
-            {
-                RR_ABORT(
-                    "Trying to begin label \"%s\" which is already active!",
-                    Name);
-            }
-            Graph->DebugLabelStates.Data[Index] = true;
-            return;
-        }
-    }
+    size_t Length = strlen(Name) + 1;
+    char *NameBuffer = RR_ALLOC_NO_ZERO(Node->Graph->Arena, Length);
+    memcpy(NameBuffer, Name, Length);
 
-    size_t Length = strlen(Name);
-    char *Copy = RR_ALLOC_NO_ZERO(Graph->Arena, Length + 1);
-    strcpy(Copy, Name);
-
-    *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelNames, Graph->Arena) = Copy;
-    *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelStates, Graph->Arena) = true;
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DEBUG_LABEL, NameBuffer);
 #endif
 }
 
-void Rr_EndDebugLabel(Rr_Graph *Graph, const char *Name)
+void Rr_EndNodeLabel(Rr_GraphNode *Node)
 {
 #ifdef RR_USE_GPU_DEBUG_UTILS
-    assert(Graph);
-    assert(Name);
+    assert(Node);
 
-    for (size_t Index = 0; Index < Graph->DebugLabelNames.Count; ++Index)
-    {
-        const char *DebugLabel = Graph->DebugLabelNames.Data[Index];
-        if (strcmp(DebugLabel, Name) == 0)
-        {
-            if (!Graph->DebugLabelStates.Data[Index])
-            {
-                RR_ABORT(
-                    "Trying to end label \"%s\" which is already disabled!",
-                    Name);
-            }
-            Graph->DebugLabelStates.Data[Index] = false;
-            return;
-        }
-    }
+    char *NameBuffer = NULL;
 
-    RR_ABORT("Trying to end label \"%s\" which has never been used!", Name);
+    RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DEBUG_LABEL, NameBuffer);
 #endif
 }

@@ -4736,7 +4736,7 @@ void Rr_EndUI(void)
         gUIContext->Indices.Data,
         sizeof(Rr_UIIndex) * gUIContext->Indices.Count);
 
-    Rr_BeginDebugLabel(Rr_GetGraph(), "Rr.UI");
+    Rr_BeginGraphLabel(Rr_GetGraph(), "Rr.UI");
 
     Rr_ColorTarget ColorTarget = {
         .Image = SwapchainImage,
@@ -4788,7 +4788,7 @@ void Rr_EndUI(void)
         Rr_UIDrawWindow(&gUIContext->PopupWindow, GraphicsNode);
     }
 
-    Rr_EndDebugLabel(Rr_GetGraph(), "Rr.UI");
+    Rr_EndGraphLabel(Rr_GetGraph(), "Rr.UI");
 
     if (gUIContext->LeftMouseButtonUp)
     {
@@ -4906,7 +4906,9 @@ void Rr_UIDebugOverlay(void)
             }
             else
             {
-                Rr_UILabelF("GPU timestamps not supported!", gRenderer->LastFrameMS);
+                Rr_UILabelF(
+                    "GPU timestamps not supported!",
+                    gRenderer->LastFrameMS);
             }
 
             Rr_UICheckbox(

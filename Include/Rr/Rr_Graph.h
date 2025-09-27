@@ -55,6 +55,10 @@ typedef struct Rr_TransferNode Rr_TransferNode;
 
 extern void Rr_SetNextNodeName(Rr_Graph *Graph, const char *Name);
 
+extern void Rr_BeginGraphLabel(Rr_Graph *Graph, const char *Name);
+
+extern void Rr_EndGraphLabel(Rr_Graph *Graph, const char *Name);
+
 extern Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph);
 
 extern void Rr_TransferBufferData(
@@ -443,9 +447,9 @@ extern void Rr_BindStorageImage2DArrayRWAt(
     uint32_t Binding,
     uint32_t ArrayIndex);
 
-extern void Rr_BeginDebugLabel(Rr_Graph *Graph, const char *Name);
+extern void Rr_BeginNodeLabel(Rr_GraphNode *Node, const char *Name);
 
-extern void Rr_EndDebugLabel(Rr_Graph *Graph, const char *Name);
+extern void Rr_EndNodeLabel(Rr_GraphNode *Node);
 
 #ifdef __cplusplus
 }

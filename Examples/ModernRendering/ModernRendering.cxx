@@ -381,7 +381,7 @@ struct SGrid
         Rr_Image2D *ColorImage,
         Rr_Image2D *DepthImage)
     {
-        // Rr_BeginDebugLabel(Graph, "Grid");
+        Rr_BeginNodeLabel(GraphicsNode, "Grid");
 
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),
@@ -408,7 +408,7 @@ struct SGrid
             sizeof(SGPUUniform));
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
 
-        // Rr_EndDebugLabel(Graph, "Grid");
+        Rr_EndNodeLabel(GraphicsNode);
     }
 
     SGrid(uint32_t MSAASampleCount)
@@ -644,7 +644,7 @@ struct SLighting
     {
         UpdateLightBuffers();
 
-        Rr_BeginDebugLabel(Graph, "ShadowMaps");
+        Rr_BeginGraphLabel(Graph, "ShadowMaps");
 
         char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
         std::size_t UniformOffset = 0;
@@ -745,7 +745,7 @@ struct SLighting
                 RR_ALIGN_POW2(sizeof(Uniform), Rr_GetUniformAlignment());
         }
 
-        Rr_EndDebugLabel(Graph, "ShadowMaps");
+        Rr_EndGraphLabel(Graph, "ShadowMaps");
     }
 
     void BindLights(Rr_GraphNode *GraphicsNode, std::uint32_t Set)
@@ -1049,7 +1049,7 @@ struct SSSAO
         Rr_Image2D *NormalDepthImage,
         const SCamera &Camera)
     {
-        Rr_BeginDebugLabel(Graph, "AmbientOcclusion");
+        Rr_BeginGraphLabel(Graph, "AmbientOcclusion");
 
         char *UniformData = (char *)Rr_GetMappedBufferData(Buffer);
         std::size_t UniformOffset = 0;
@@ -1167,7 +1167,7 @@ struct SSSAO
             Rr_Draw(GraphicsNode, 6, 1, 0, 0);
         }
 
-        Rr_EndDebugLabel(Graph, "AmbientOcclusion");
+        Rr_EndGraphLabel(Graph, "AmbientOcclusion");
     }
 
     SSSAO()
@@ -1755,7 +1755,7 @@ struct SModernRenderingApp
 
         UI();
 
-        Rr_BeginDebugLabel(Graph, "ModernRendering");
+        Rr_BeginGraphLabel(Graph, "ModernRendering");
 
         Camera.Update(Scancodes);
 
@@ -1818,7 +1818,7 @@ struct SModernRenderingApp
 
         /* Normal/Depth Prepass */
         {
-            Rr_BeginDebugLabel(Graph, "NormalDepthPrepass");
+            Rr_BeginGraphLabel(Graph, "NormalDepthPrepass");
 
             std::array ColorTargets = {
                 Rr_ColorTarget{
@@ -1854,7 +1854,7 @@ struct SModernRenderingApp
                 sizeof(SGPUUniform));
             DrawGLTFAsset(GraphicsNode, 1, 0);
 
-            Rr_EndDebugLabel(Graph, "NormalDepthPrepass");
+            Rr_EndGraphLabel(Graph, "NormalDepthPrepass");
         }
 
         /* Ambient Occlusion */
@@ -1872,7 +1872,7 @@ struct SModernRenderingApp
 
         /* Forward Pass */
         {
-            Rr_BeginDebugLabel(Graph, "ForwardPass");
+            Rr_BeginGraphLabel(Graph, "ForwardPass");
 
             std::array ColorTargets = {
                 Rr_ColorTarget{
@@ -1913,18 +1913,18 @@ struct SModernRenderingApp
                 Grid.Draw(GraphicsNode, Camera, ColorImage, DepthImage);
             }
 
-            Rr_EndDebugLabel(Graph, "ForwardPass");
+            Rr_EndGraphLabel(Graph, "ForwardPass");
         }
 
         Rr_Image2D *FinalColorImage = UseMSAA ? ColorImageResolved : ColorImage;
 
-        Rr_BeginDebugLabel(Graph, "Compose");
+        Rr_BeginGraphLabel(Graph, "Compose");
 
         FullscreenBlit.Blit(Graph, FinalColorImage, SwapchainImage);
 
-        Rr_EndDebugLabel(Graph, "Compose");
+        Rr_EndGraphLabel(Graph, "Compose");
 
-        Rr_EndDebugLabel(Graph, "ModernRendering");
+        Rr_EndGraphLabel(Graph, "ModernRendering");
     }
 
     Rr_PipelineLayout *CreateBlitLayout()

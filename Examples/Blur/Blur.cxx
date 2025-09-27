@@ -126,7 +126,7 @@ struct SBoxBlur2D
         Rr_Image2D *TargetImage,
         std::int32_t Passes)
     {
-        Rr_BeginDebugLabel(Graph, "BoxBlur2D");
+        Rr_BeginGraphLabel(Graph, "BoxBlur2D");
 
         Rr_IntVec2 ImageSize = Rr_GetImage2DExtent(OriginalImage);
 
@@ -170,7 +170,7 @@ struct SBoxBlur2D
             ImageSize,
             0);
 
-        Rr_EndDebugLabel(Graph, "BoxBlur2D");
+        Rr_EndGraphLabel(Graph, "BoxBlur2D");
     }
 
     Rr_ComputePipeline *CreateBlurPipeline(
@@ -292,7 +292,7 @@ struct SKawaseBlur2D
             return;
         }
 
-        Rr_BeginDebugLabel(Graph, "Kawase2D");
+        Rr_BeginGraphLabel(Graph, "Kawase2D");
 
         Rr_CopyImage2D(
             Graph,
@@ -360,7 +360,7 @@ struct SKawaseBlur2D
             OriginalSize,
             0);
 
-        Rr_EndDebugLabel(Graph, "Kawase2D");
+        Rr_EndGraphLabel(Graph, "Kawase2D");
     }
 
     SKawaseBlur2D()
@@ -470,7 +470,7 @@ struct SDualKawaseBlur2D
             return;
         }
 
-        Rr_BeginDebugLabel(Graph, "DualKawase2D");
+        Rr_BeginGraphLabel(Graph, "DualKawase2D");
 
         Rr_CopyImage2D(
             Graph,
@@ -485,7 +485,7 @@ struct SDualKawaseBlur2D
         std::size_t UniformOffset = 0;
         std::size_t UniformAlignment = Rr_GetUniformAlignment();
 
-        Rr_BeginDebugLabel(Graph, "DualKawase2DDown");
+        Rr_BeginGraphLabel(Graph, "DualKawase2DDown");
 
         SGPUUniform GPUUniform = {
             .SrcSize = OriginalSize,
@@ -532,9 +532,9 @@ struct SDualKawaseBlur2D
             std::swap(IntermediateImageA, IntermediateImageB);
         }
 
-        Rr_EndDebugLabel(Graph, "DualKawase2DDown");
+        Rr_EndGraphLabel(Graph, "DualKawase2DDown");
 
-        Rr_BeginDebugLabel(Graph, "DualKawase2DUp");
+        Rr_BeginGraphLabel(Graph, "DualKawase2DUp");
 
         for (auto Level = 0; Level < Levels; ++Level)
         {
@@ -577,7 +577,7 @@ struct SDualKawaseBlur2D
             std::swap(IntermediateImageA, IntermediateImageB);
         }
 
-        Rr_EndDebugLabel(Graph, "DualKawase2DUp");
+        Rr_EndGraphLabel(Graph, "DualKawase2DUp");
 
         Rr_CopyImage2D(
             Graph,
@@ -588,7 +588,7 @@ struct SDualKawaseBlur2D
             OriginalSize,
             0);
 
-        Rr_EndDebugLabel(Graph, "DualKawase2D");
+        Rr_EndGraphLabel(Graph, "DualKawase2D");
     }
 
     Rr_ComputePipeline *CreateBlurPipeline(Rr_AssetRef ComputeSPV)
@@ -680,7 +680,7 @@ struct SBoxBlurCube
         Rr_ImageCube *BlurredImage,
         std::int32_t Passes)
     {
-        Rr_BeginDebugLabel(Graph, "BoxBlurCube");
+        Rr_BeginGraphLabel(Graph, "BoxBlurCube");
 
         Rr_CopyImageCube(Rr_GetGraph(), OriginalImage, IntermediateImageA, 0);
 
@@ -701,7 +701,7 @@ struct SBoxBlurCube
 
         Rr_CopyImageCube(Rr_GetGraph(), IntermediateImageA, BlurredImage, 0);
 
-        Rr_EndDebugLabel(Graph, "BoxBlurCube");
+        Rr_EndGraphLabel(Graph, "BoxBlurCube");
     }
 
     Rr_ComputePipeline *CreateBlurPipeline(
@@ -1137,7 +1137,7 @@ struct SBlurApp
 
     void Draw2D(Rr_Graph *Graph)
     {
-        Rr_BeginDebugLabel(Graph, "DrawBlur2D");
+        Rr_BeginGraphLabel(Graph, "DrawBlur2D");
 
         Rr_ColorTarget ColorTarget = {
             .Image = Rr_GetSwapchainImage(),
@@ -1155,12 +1155,12 @@ struct SBlurApp
             0);
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
 
-        Rr_EndDebugLabel(Graph, "DrawBlur2D");
+        Rr_EndGraphLabel(Graph, "DrawBlur2D");
     }
 
     void DrawCube(Rr_Graph *Graph)
     {
-        Rr_BeginDebugLabel(Graph, "DrawBlurCube");
+        Rr_BeginGraphLabel(Graph, "DrawBlurCube");
 
         Camera.Update(Scancodes);
 
@@ -1208,7 +1208,7 @@ struct SBlurApp
         Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
         Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
 
-        Rr_EndDebugLabel(Graph, "DrawBlurCube");
+        Rr_EndGraphLabel(Graph, "DrawBlurCube");
     }
 
     void Iterate()
