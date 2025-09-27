@@ -1040,9 +1040,8 @@ struct SSSAO
 
     void Apply(
         Rr_Graph *Graph,
-        Rr_Image2D *ColorTargetImage,
-        Rr_Image2D *ColorImage,
-        Rr_Image2D *DepthImage,
+        Rr_Image2D *TargetImage,
+        Rr_Image2D *NormalDepthImage,
         const SCamera &Camera)
     {
         GPUUniform.CameraNear = NEAR_PLANE;
@@ -1051,7 +1050,7 @@ struct SSSAO
         GPUUniform.DepthParams = Rr_V2(
             (NEAR_PLANE - FAR_PLANE) / (NEAR_PLANE * FAR_PLANE),
             1.0 / NEAR_PLANE);
-        Rr_IntVec2 Extent = Rr_GetImage2DExtent(ColorTargetImage);
+        Rr_IntVec2 Extent = Rr_GetImage2DExtent(TargetImage);
         GPUUniform.ScreenRes = Rr_V2(Extent.Width, Extent.Height);
         GPUUniform.Projection = Camera.ProjMatrix;
         GPUUniform.InvProjection = Rr_InvGeneral(Camera.ProjMatrix);
@@ -1061,16 +1060,20 @@ struct SSSAO
             sizeof(GPUUniform));
 
         Rr_ColorTarget ColorTarget = {
-            .Image = ColorTargetImage,
+            .Image = TargetImage,
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindCombinedImage2DSampler(GraphicsNode, ColorImage, Sampler, 0, 0);
-        Rr_BindCombinedImage2DSampler(GraphicsNode, DepthImage, Sampler, 0, 1);
-        Rr_BindUniformBuffer(GraphicsNode, Buffer, 0, 2, 0, sizeof(GPUUniform));
+        Rr_BindCombinedImage2DSampler(
+            GraphicsNode,
+            NormalDepthImage,
+            Sampler,
+            0,
+            0);
+        Rr_BindUniformBuffer(GraphicsNode, Buffer, 0, 1, 0, sizeof(GPUUniform));
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 
@@ -1091,11 +1094,6 @@ struct SSSAO
             },
             Rr_Binding{
                 .Index = 1,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 2,
                 .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
                 .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
             },
@@ -1107,7 +1105,7 @@ struct SSSAO
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = RR_IMAGE_FORMAT_R32_SFLOAT;
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
@@ -1143,6 +1141,7 @@ struct SModernRenderingApp
         Rr_Mat4 Projection;
         Rr_Vec3 CameraPosition;
         float Time;
+        Rr_Vec2 Resolution;
     };
 
     struct SGPUStorage
@@ -1180,6 +1179,7 @@ struct SModernRenderingApp
     Rr_Image2D *NormalDepthImage{};
     Rr_Image2D *NormalDepthImageResolved{};
     Rr_Image2D *DepthImage{};
+    Rr_Image2D *AmbientOcclusionImage{};
 
     static constexpr std::array<const char *, 4> MSAA_OPTIONS = {
         "Disabled",
@@ -1247,6 +1247,11 @@ struct SModernRenderingApp
             Rr_Binding{
                 .Index = 5,
                 .Type = RR_BINDING_TYPE_SAMPLER,
+                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
+            },
+            Rr_Binding{
+                .Index = 6,
+                .Type = RR_BINDING_TYPE_SAMPLED_IMAGE,
                 .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
             },
         };
@@ -1370,12 +1375,17 @@ struct SModernRenderingApp
                 RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
 
         Rr_ReleaseImage(NormalDepthImage);
-        Rr_SetNextObjectName("NormalDepthImage");
         NormalDepthImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
             RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
             RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
                 RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
+
+        Rr_ReleaseImage(AmbientOcclusionImage);
+        AmbientOcclusionImage = Rr_CreateImage2D(
+            { SwapchainSize.X, SwapchainSize.Y },
+            RR_IMAGE_FORMAT_R32_SFLOAT,
+            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
 
         Rr_ReleaseImage(ColorImageResolved);
         ColorImageResolved = nullptr;
@@ -1693,6 +1703,8 @@ struct SModernRenderingApp
             .Projection = Camera.ProjMatrix,
             .CameraPosition = Camera.Position,
             .Time = (float)Rr_GetTimeSeconds(),
+            .Resolution = { (float)SwapchainSize.Width,
+                            (float)SwapchainSize.Height },
         };
         std::memcpy(
             Rr_GetMappedBufferData(UniformBuffer),
@@ -1740,6 +1752,15 @@ struct SModernRenderingApp
             Rr_EndDebugLabel(Graph, "NormalDepthPrepass");
         }
 
+        /* Ambient Occlusion */
+        {
+            Rr_BeginDebugLabel(Graph, "AmbientOcclusion");
+
+            SSAO.Apply(Graph, AmbientOcclusionImage, NormalDepthImage, Camera);
+
+            Rr_EndDebugLabel(Graph, "AmbientOcclusion");
+        }
+
         /* Forward Pass */
         {
             Rr_BeginDebugLabel(Graph, "ForwardPass");
@@ -1775,6 +1796,7 @@ struct SModernRenderingApp
                 0,
                 sizeof(SGPUUniform));
             Lighting.BindLights(GraphicsNode, 1);
+            Rr_BindSampledImage2D(GraphicsNode, AmbientOcclusionImage, 1, 6);
             DrawGLTFAsset(GraphicsNode, 2, 0);
 
             Rr_EndDebugLabel(Graph, "ForwardPass");
@@ -1801,14 +1823,7 @@ struct SModernRenderingApp
 
         Rr_BeginDebugLabel(Graph, "Compose");
 
-        // FullscreenBlit.Blit(Graph, FinalColorImage, SwapchainImage);
-
-        SSAO.Apply(
-            Graph,
-            SwapchainImage,
-            FinalColorImage,
-            FinalNormalDepthImage,
-            Camera);
+        FullscreenBlit.Blit(Graph, FinalColorImage, SwapchainImage);
 
         Rr_EndDebugLabel(Graph, "Compose");
 
@@ -1866,6 +1881,7 @@ struct SModernRenderingApp
         Rr_ReleaseImage(NormalDepthImage);
         Rr_ReleaseImage(NormalDepthImageResolved);
         Rr_ReleaseImage(DepthImage);
+        Rr_ReleaseImage(AmbientOcclusionImage);
     }
 };
 

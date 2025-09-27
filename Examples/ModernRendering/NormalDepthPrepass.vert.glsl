@@ -15,6 +15,7 @@ layout(set = 0, binding = 0) uniform SGPUUniform
     mat4 Projection;
     vec3 CameraPosition;
     float Time;
+    vec2 Resolution;
 };
 
 layout(set = 1, binding = 0) readonly buffer SGPUStorage

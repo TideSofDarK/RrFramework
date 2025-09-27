@@ -12,11 +12,10 @@
 
 layout(location = 0) in vec2 InUV;
 
-layout(location = 0) out vec4 OutColor;
+layout(location = 0) out float OutAO;
 
-layout(set = 0, binding = 0) uniform sampler2D ColorImage;
-layout(set = 0, binding = 1) uniform sampler2D NormalDepthImage;
-layout(set = 0, binding = 2) uniform SGPUUniform {
+layout(set = 0, binding = 0) uniform sampler2D NormalDepthImage;
+layout(set = 0, binding = 1) uniform SGPUUniform {
     mat4 Projection;
     mat4 InvProjection;
     float Bias;
@@ -125,8 +124,5 @@ void main()
     float CenterViewZ = LinearizeDepth(DepthParams, CenterDepth) * DepthRange;
     vec3 ViewPosition = GetViewPosition(InUV, CenterDepth, CenterViewZ);
 
-    float AmbientOcclusion = 1.0 - GetAmbientOcclusion(ViewPosition);
-
-    // OutColor.rgb = vec3(AmbientOcclusion);
-    OutColor.rgb = texture(ColorImage, InUV).rgb * AmbientOcclusion;
+    OutAO = 1.0 - GetAmbientOcclusion(ViewPosition);
 }

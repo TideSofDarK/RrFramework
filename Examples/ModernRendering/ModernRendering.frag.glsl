@@ -18,6 +18,7 @@ layout(set = 0, binding = 0) uniform SGPUUniform
     mat4 Projection;
     vec3 CameraPosition;
     float Time;
+    vec2 Resolution;
 };
 
 struct SGPUPointLight
@@ -73,6 +74,7 @@ layout(set = 1, binding = 3) uniform texture2D SpotShadowMaps[4];
 
 layout(set = 1, binding = 4) uniform sampler RegularSampler;
 layout(set = 1, binding = 5) uniform sampler ShadowSampler;
+layout(set = 1, binding = 6) uniform texture2D AmbientOcclusionImage;
 
 const vec2 POISSON16[] = vec2[16](
         vec2(-0.9420162, -0.39906216),
@@ -348,7 +350,7 @@ SLightDots GetLightDots(in vec3 FragNormal, in vec3 FragViewDir, in vec3 FragToL
 
 const float ROUGHNESS = 0.2;
 const float METALLIC = 0.8;
-const vec3 AMBIENT = vec3(0.008);
+const vec3 AMBIENT = vec3(0.04);
 
 void main()
 {
@@ -412,7 +414,15 @@ void main()
         TotalSpecular += SpecLight * Shadow * Attenuation;
     }
 
-    TotalDiffuse = BaseColor * (TotalDiffuse + AMBIENT);
+    vec3 Ambient = AMBIENT;
+    Ambient = (1.0 - F0) * (1.0 - METALLIC) * Ambient;
+    Ambient += F0 * Ambient;
+
+    TotalDiffuse = BaseColor * (TotalDiffuse + Ambient);
 
     OutColor = vec4(TotalDiffuse + TotalSpecular, 1.0);
+
+    OutColor.rgb *= texture(
+            sampler2D(AmbientOcclusionImage, RegularSampler),
+            gl_FragCoord.xy / Resolution).r;
 }
