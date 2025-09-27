@@ -54,6 +54,7 @@ struct Rr_DescriptorsState
 {
     Rr_Device *Device;
     VkCommandBuffer CommandBuffer;
+    VkDescriptorSet EmptyDescriptorSet;
     Rr_DescriptorPoolList *DescriptorPoolList;
     Rr_PipelineLayout *Layout;
     VkDescriptorSet Sets[RR_MAX_SETS];

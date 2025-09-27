@@ -107,7 +107,9 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     Rr_UnlockSpinlock(&gRenderer->PipelineLayoutsLock);
 
-    RR_ZERO_PTR(PipelineLayout);
+    *PipelineLayout = (Rr_PipelineLayout){
+        .SetLayoutCount = (uint32_t)BindingSetCount,
+    };
 
     Rr_ConsumeNextObjectName(PipelineLayout->Name);
 
@@ -118,7 +120,6 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     {
         const Rr_BindingSet *Set = BindingSets + SetIndex;
 
-        assert(Set->BindingCount > 0);
         assert(Set->BindingCount < RR_MAX_BINDINGS);
 
         for (uint32_t Index = 0; Index < Set->BindingCount; ++Index)
@@ -149,13 +150,12 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
         Rr_DescriptorSetLayout *DescriptorSetLayout =
             Rr_GetDescriptorSetLayout(&Keys[SetIndex]);
         PipelineLayout->SetLayouts[SetIndex] = DescriptorSetLayout;
-        PipelineLayout->SetLayoutCount++;
         Handles[SetIndex] = DescriptorSetLayout->Handle;
     }
 
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = (uint32_t)BindingSetCount,
+        .setLayoutCount = PipelineLayout->SetLayoutCount,
         .pSetLayouts = Handles,
     };
 

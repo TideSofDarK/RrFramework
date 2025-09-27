@@ -316,6 +316,18 @@ static Rr_GraphResource *Rr_GetGraphImageResource(
     return &Graph->ImageResources.Data[Handle.Values.Index];
 }
 
+static inline Rr_DescriptorsState Rr_MakeDescriptorsState(
+    Rr_Graph *Graph,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_DescriptorsState DescriptorsState = { 0 };
+    DescriptorsState.Device = &gRenderer->Device;
+    DescriptorsState.CommandBuffer = CommandBuffer;
+    DescriptorsState.EmptyDescriptorSet = Graph->EmptyDescriptorSet;
+    DescriptorsState.DescriptorPoolList = Graph->DescriptorPoolList;
+    return DescriptorsState;
+}
+
 static inline Rr_GraphNode *Rr_AddGraphNode(
     Rr_Graph *Graph,
     Rr_GraphNodeType Type)
@@ -980,11 +992,8 @@ static void Rr_ExecuteComputeNode(
     Rr_Device *Device = &gRenderer->Device;
     Rr_Frame *Frame = Rr_GetCurrentFrame();
 
-    Rr_DescriptorsState DescriptorsState = {
-        .Device = Device,
-        .CommandBuffer = CommandBuffer,
-        .DescriptorPoolList = Graph->DescriptorPoolList,
-    };
+    Rr_DescriptorsState DescriptorsState =
+        Rr_MakeDescriptorsState(Graph, CommandBuffer);
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
          Function != NULL;
@@ -1281,11 +1290,8 @@ static void Rr_ExecuteGraphicsNode(
             .extent.height = (uint32_t)Viewport.Height,
         });
 
-    Rr_DescriptorsState DescriptorsState = {
-        .Device = Device,
-        .CommandBuffer = CommandBuffer,
-        .DescriptorPoolList = Graph->DescriptorPoolList,
-    };
+    Rr_DescriptorsState DescriptorsState =
+        Rr_MakeDescriptorsState(Graph, CommandBuffer);
 
     for (Rr_NodeFunction *Function = Node->Encoded.EncodedFirst;
          Function != NULL;
@@ -1853,6 +1859,31 @@ void Rr_ExecuteGraph(
         EarlyCommandBuffer != VK_NULL_HANDLE ||
         LateCommandBuffer != VK_NULL_HANDLE);
 
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Device *Device = &gRenderer->Device;
+
+    /* TODO: Technically this can be created just once. */
+    {
+        Rr_DescriptorSetLayoutKey EmptyDescriptorSetLayoutKey = { 0 };
+        VkDescriptorSetLayout EmptyDescriptorSetLayout =
+            Rr_GetDescriptorSetLayout(&EmptyDescriptorSetLayoutKey)->Handle;
+        VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = Graph->DescriptorPoolList->Handle,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &EmptyDescriptorSetLayout,
+        };
+        Device->AllocateDescriptorSets(
+            Device->Handle,
+            &DescriptorSetAllocateInfo,
+            &Graph->EmptyDescriptorSet);
+        Rr_SetVulkanObjectName(
+            VK_OBJECT_TYPE_DESCRIPTOR_SET,
+            (uint64_t)Graph->EmptyDescriptorSet,
+            "Rr.EmptyDescriptorSet");
+    }
+
     if (EarlyCommandBuffer == VK_NULL_HANDLE)
     {
         EarlyCommandBuffer = LateCommandBuffer;
@@ -1861,8 +1892,6 @@ void Rr_ExecuteGraph(
     {
         LateCommandBuffer = EarlyCommandBuffer;
     }
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_NodeArray SortedNodes = { 0 };
     RR_RESERVE_ARRAY(&SortedNodes, Graph->Nodes.Count, Scratch.Arena);

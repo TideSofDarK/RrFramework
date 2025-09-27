@@ -18,7 +18,7 @@ layout(set = 0, binding = 0) uniform SGPUUniform
     vec2 Resolution;
 };
 
-layout(set = 1, binding = 0) readonly buffer SGPUStorage
+layout(set = 2, binding = 0) readonly buffer SGPUStorage
 {
     mat4 ModelArray[];
 };

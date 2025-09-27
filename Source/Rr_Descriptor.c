@@ -156,28 +156,27 @@ void Rr_InvalidateDescriptorsState(
     Rr_DescriptorsState *State,
     Rr_PipelineLayout *Layout)
 {
+    size_t Index = 0;
+
     if (State->Layout != NULL)
     {
-        for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
+        for (; Index < RR_MAX_SETS; ++Index)
         {
-            if (Index < State->Layout->SetLayoutCount &&
-                Index < Layout->SetLayoutCount)
+            Rr_DescriptorSetLayout *OldLayout =
+                State->Layout->SetLayouts[Index];
+            Rr_DescriptorSetLayout *NewLayout = Layout->SetLayouts[Index];
+            if (OldLayout != NewLayout)
             {
-                VkDescriptorSetLayout OldLayout =
-                    State->Layout->SetLayouts[Index]->Handle;
-                VkDescriptorSetLayout NewLayout =
-                    Layout->SetLayouts[Index]->Handle;
-                if (OldLayout == NewLayout)
-                {
-                    continue;
-                }
+                break;
             }
-            for (; Index < RR_MAX_SETS; ++Index)
-            {
-                State->Sets[Index] = VK_NULL_HANDLE;
-            }
-            break;
         }
+    }
+
+    for (; Index < Layout->SetLayoutCount; ++Index)
+    {
+        Rr_DescriptorSetLayout *NewLayout = Layout->SetLayouts[Index];
+        State->Sets[Index] =
+            NewLayout->Key.TotalBindingCount ? NULL : State->EmptyDescriptorSet;
     }
 
     State->Layout = Layout;
@@ -373,30 +372,18 @@ void Rr_ApplyDescriptorsState(
 
     for (uint32_t Index = 0; Index < RR_MAX_SETS; ++Index)
     {
-        if (State->Layout->SetLayouts[Index])
+        if (State->Dirty[Index])
         {
-            if (State->Dirty[Index])
-            {
-                uint32_t Count =
-                    (uint32_t)State->Layout->SetLayoutCount - Index;
-
-                Device->CmdBindDescriptorSets(
-                    State->CommandBuffer,
-                    BindPoint,
-                    State->Layout->Handle,
-                    Index,
-                    Count,
-                    &State->Sets[Index],
-                    0,
-                    NULL);
-
-                break;
-            }
+            Device->CmdBindDescriptorSets(
+                State->CommandBuffer,
+                BindPoint,
+                State->Layout->Handle,
+                Index,
+                1,
+                &State->Sets[Index],
+                0,
+                NULL);
+            State->Dirty[Index] = false;
         }
-    }
-
-    for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
-    {
-        State->Dirty[Index] = false;
     }
 }

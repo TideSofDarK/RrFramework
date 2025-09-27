@@ -1388,7 +1388,7 @@ struct SModernRenderingApp
                 .Stages = RR_SHADER_STAGE_VERTEX_BIT,
             },
         };
-        std::array Bindings1 = {
+        std::array Bindings2 = {
             Rr_Binding{
                 .Index = 0,
                 .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
@@ -1400,9 +1400,10 @@ struct SModernRenderingApp
                 .BindingCount = Bindings0.size(),
                 .Bindings = Bindings0.data(),
             },
+            Rr_BindingSet{},
             Rr_BindingSet{
-                .BindingCount = Bindings1.size(),
-                .Bindings = Bindings1.data(),
+                .BindingCount = Bindings2.size(),
+                .Bindings = Bindings2.data(),
             },
         };
         NormalDepthPrepassPipelineLayout =
@@ -1852,7 +1853,7 @@ struct SModernRenderingApp
                 0,
                 0,
                 sizeof(SGPUUniform));
-            DrawGLTFAsset(GraphicsNode, 1, 0);
+            DrawGLTFAsset(GraphicsNode, 2, 0);
 
             Rr_EndGraphLabel(Graph, "NormalDepthPrepass");
         }

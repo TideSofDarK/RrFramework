@@ -377,6 +377,7 @@ struct Rr_Graph
     Rr_HandleSet Samplers;
 
     Rr_DescriptorPoolList *DescriptorPoolList;
+    VkDescriptorSet EmptyDescriptorSet;
 
     const char *NextNodeName;
 
