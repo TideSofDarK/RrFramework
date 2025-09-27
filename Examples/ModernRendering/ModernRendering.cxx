@@ -366,7 +366,7 @@ struct SGrid
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.DepthStencil.EnableDepthTest = true;
         PipelineInfo.DepthStencil.EnableDepthWrite = true;
-        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
+        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS_OR_EQUAL;
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
         PipelineInfo.Multisampling.SampleCount = SampleCount;
 
@@ -1689,11 +1689,11 @@ struct SModernRenderingApp
 
         if (Lighting.VisualizePointShadowMap)
         {
-            // Skybox.Draw(
-            //     Graph,
-            //     ColorImage,
-            //     Camera,
-            //     Lighting.VisualizePointShadowMap);
+            Skybox.Draw(
+                Graph,
+                ColorImage,
+                Camera,
+                Lighting.VisualizePointShadowMap);
         }
 
         bool UseMSAA = GetMSAASampleCount() > 1;
@@ -1754,9 +1754,16 @@ struct SModernRenderingApp
 
         /* Ambient Occlusion */
         {
+            Rr_Image2D *FinalNormalDepthImage =
+                UseMSAA ? NormalDepthImageResolved : NormalDepthImage;
+
             Rr_BeginDebugLabel(Graph, "AmbientOcclusion");
 
-            SSAO.Apply(Graph, AmbientOcclusionImage, NormalDepthImage, Camera);
+            SSAO.Apply(
+                Graph,
+                AmbientOcclusionImage,
+                FinalNormalDepthImage,
+                Camera);
 
             Rr_EndDebugLabel(Graph, "AmbientOcclusion");
         }
@@ -1765,10 +1772,15 @@ struct SModernRenderingApp
         {
             Rr_BeginDebugLabel(Graph, "ForwardPass");
 
+            if (DrawGrid)
+            {
+                Grid.Draw(Graph, Camera, ColorImage, DepthImage);
+            }
+
             std::array ColorTargets = {
                 Rr_ColorTarget{
                     .Image = ColorImage,
-                    .LoadOp = RR_LOAD_OP_DONT_CARE,
+                    .LoadOp = RR_LOAD_OP_LOAD,
                     .StoreOp =
                         UseMSAA ? RR_STORE_OP_DONT_CARE : RR_STORE_OP_STORE,
                     .ResolveImage = UseMSAA ? ColorImageResolved : nullptr,
@@ -1802,24 +1814,7 @@ struct SModernRenderingApp
             Rr_EndDebugLabel(Graph, "ForwardPass");
         }
 
-        if (DrawGrid)
-        {
-            // Grid.Draw(Graph, Camera, ColorImage, DepthImage);
-        }
-
-        Rr_Image2D *FinalColorImage{};
-        Rr_Image2D *FinalNormalDepthImage{};
-
-        if (UseMSAA)
-        {
-            FinalColorImage = ColorImageResolved;
-            FinalNormalDepthImage = NormalDepthImageResolved;
-        }
-        else
-        {
-            FinalColorImage = ColorImage;
-            FinalNormalDepthImage = NormalDepthImage;
-        }
+        Rr_Image2D *FinalColorImage = UseMSAA ? ColorImageResolved : ColorImage;
 
         Rr_BeginDebugLabel(Graph, "Compose");
 
