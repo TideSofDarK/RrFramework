@@ -1077,7 +1077,7 @@ struct SSSAO
             &GPUUniform,
             sizeof(GPUUniform));
 
-        /* Calculate AO and pack it 2x16 alogn with linear depth. */
+        /* Calculate AO and pack it 2x16 along with linear depth. */
         {
             Rr_ColorTarget ColorTarget = {
                 .Image = TargetImage,
