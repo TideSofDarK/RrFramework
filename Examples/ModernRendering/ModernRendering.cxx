@@ -1164,8 +1164,10 @@ struct SModernRenderingApp
         },
     };
 
-    Rr_PipelineLayout *PipelineLayout{};
-    Rr_GraphicsPipeline *GraphicsPipeline{};
+    Rr_PipelineLayout *ForwardPassPipelineLayout{};
+    Rr_GraphicsPipeline *ForwardPassPipeline{};
+    Rr_PipelineLayout *NormalDepthPrepassPipelineLayout{};
+    Rr_GraphicsPipeline *NormalDepthPrepassPipeline{};
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *ModelBuffer{};
     std::uint32_t ModelCount{};
@@ -1204,7 +1206,7 @@ struct SModernRenderingApp
         return 1 << MSAAOptionIndex;
     }
 
-    void InitPipelineLayout()
+    void InitForwardPassPipelineLayout()
     {
         std::array Bindings0 = {
             Rr_Binding{
@@ -1269,26 +1271,53 @@ struct SModernRenderingApp
                 .Bindings = Bindings2.data(),
             },
         };
-        PipelineLayout =
+        ForwardPassPipelineLayout =
             Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
     }
 
-    void InitPipeline()
+    void InitNormalDepthPrepassPipelineLayout()
     {
-        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        std::array Bindings0 = {
+            Rr_Binding{
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
+                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
+            },
+        };
+        std::array Bindings1 = {
+            Rr_Binding{
+                .Index = 0,
+                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
+                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
+            },
+        };
+        std::array BindingSets = {
+            Rr_BindingSet{
+                .BindingCount = Bindings0.size(),
+                .Bindings = Bindings0.data(),
+            },
+            Rr_BindingSet{
+                .BindingCount = Bindings1.size(),
+                .Bindings = Bindings1.data(),
+            },
+        };
+        NormalDepthPrepassPipelineLayout =
+            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
+    }
+
+    void InitPipelines()
+    {
+        Rr_ReleaseGraphicsPipeline(ForwardPassPipeline);
 
         std::array ColorTargets = {
             Rr_ColorTargetInfo{
                 .Format = Rr_GetSwapchainFormat(),
                 .Resolve = MSAAOptionIndex > 0,
             },
-            Rr_ColorTargetInfo{
-                .Format = RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
-            },
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
-        PipelineInfo.Layout = PipelineLayout;
+        PipelineInfo.Layout = ForwardPassPipelineLayout;
         PipelineInfo.VertexShaderSPV =
             Rr_LoadAsset(EXAMPLE_ASSET_MODERNRENDERING_VERT_SPV);
         PipelineInfo.FragmentShaderSPV =
@@ -1298,14 +1327,25 @@ struct SModernRenderingApp
         PipelineInfo.ColorTargetCount = ColorTargets.size();
         PipelineInfo.ColorTargets = ColorTargets.data();
         PipelineInfo.DepthStencil.EnableDepthTest = true;
-        PipelineInfo.DepthStencil.EnableDepthWrite = true;
-        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
+        PipelineInfo.DepthStencil.EnableDepthWrite = false;
+        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS_OR_EQUAL;
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
         PipelineInfo.Multisampling.SampleCount = GetMSAASampleCount();
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        ForwardPassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+
+        PipelineInfo.Layout = NormalDepthPrepassPipelineLayout;
+        PipelineInfo.VertexShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_NORMALDEPTHPREPASS_VERT_SPV);
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_NORMALDEPTHPREPASS_FRAG_SPV);
+        PipelineInfo.DepthStencil.EnableDepthWrite = true;
+        ColorTargets[0] = Rr_ColorTargetInfo{
+            .Format = RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
+        };
+        NormalDepthPrepassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitAttachments()
@@ -1580,7 +1620,7 @@ struct SModernRenderingApp
                 Skybox.RecreatePipeline(GetMSAASampleCount());
                 Grid.RecreatePipeline(GetMSAASampleCount());
                 InitAttachments();
-                InitPipeline();
+                InitPipelines();
             }
             SSAO.UI();
         }
@@ -1632,8 +1672,6 @@ struct SModernRenderingApp
         Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
-        Rr_BeginDebugLabel(Graph, "MainPass");
-
         Rr_ClearColorImage2D(
             Graph,
             { Rr_V4(0.005f, 0.007f, 0.015f, 1.0f) },
@@ -1641,44 +1679,14 @@ struct SModernRenderingApp
 
         if (Lighting.VisualizePointShadowMap)
         {
-            Skybox.Draw(
-                Graph,
-                ColorImage,
-                Camera,
-                Lighting.VisualizePointShadowMap);
+            // Skybox.Draw(
+            //     Graph,
+            //     ColorImage,
+            //     Camera,
+            //     Lighting.VisualizePointShadowMap);
         }
 
         bool UseMSAA = GetMSAASampleCount() > 1;
-
-        std::array ColorTargets = {
-            Rr_ColorTarget{
-                .Image = ColorImage,
-                .LoadOp = RR_LOAD_OP_LOAD,
-                .StoreOp = UseMSAA ? RR_STORE_OP_DONT_CARE : RR_STORE_OP_STORE,
-                .ResolveImage = UseMSAA ? ColorImageResolved : nullptr,
-                .ResolveLoadOp = RR_LOAD_OP_DONT_CARE,
-                .ResolveStoreOp = RR_STORE_OP_STORE,
-            },
-            Rr_ColorTarget{
-                .Image = NormalDepthImage,
-                .LoadOp = RR_LOAD_OP_DONT_CARE,
-                .StoreOp = UseMSAA ? RR_STORE_OP_DONT_CARE : RR_STORE_OP_STORE,
-                .ResolveImage = UseMSAA ? NormalDepthImageResolved : nullptr,
-                .ResolveLoadOp = RR_LOAD_OP_DONT_CARE,
-                .ResolveStoreOp = RR_STORE_OP_STORE,
-            },
-        };
-        Rr_DepthTarget DepthTarget = {
-            .Image = DepthImage,
-            .LoadOp = RR_LOAD_OP_CLEAR,
-            .StoreOp = RR_STORE_OP_STORE,
-            .Clear = Rr_DepthClear(1.0f, 0),
-        };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
-            Graph,
-            ColorTargets.size(),
-            ColorTargets.data(),
-            &DepthTarget);
 
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),
@@ -1691,22 +1699,90 @@ struct SModernRenderingApp
             &Uniform,
             sizeof(SGPUUniform));
 
-        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(SGPUUniform));
-        Lighting.BindLights(GraphicsNode, 1);
-        DrawGLTFAsset(GraphicsNode, 2, 0);
+        /* Normal/Depth Prepass */
+        {
+            Rr_BeginDebugLabel(Graph, "NormalDepthPrepass");
 
-        Rr_EndDebugLabel(Graph, "MainPass");
+            std::array ColorTargets = {
+                Rr_ColorTarget{
+                    .Image = NormalDepthImage,
+                    .LoadOp = RR_LOAD_OP_DONT_CARE,
+                    .StoreOp =
+                        UseMSAA ? RR_STORE_OP_DONT_CARE : RR_STORE_OP_STORE,
+                    .ResolveImage =
+                        UseMSAA ? NormalDepthImageResolved : nullptr,
+                    .ResolveLoadOp = RR_LOAD_OP_DONT_CARE,
+                    .ResolveStoreOp = RR_STORE_OP_STORE,
+                },
+            };
+            Rr_DepthTarget DepthTarget = {
+                .Image = DepthImage,
+                .LoadOp = RR_LOAD_OP_CLEAR,
+                .StoreOp = RR_STORE_OP_STORE,
+                .Clear = Rr_DepthClear(1.0f, 0),
+            };
+            Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+                Graph,
+                ColorTargets.size(),
+                ColorTargets.data(),
+                &DepthTarget);
+
+            Rr_BindGraphicsPipeline(GraphicsNode, NormalDepthPrepassPipeline);
+            Rr_BindUniformBuffer(
+                GraphicsNode,
+                UniformBuffer,
+                0,
+                0,
+                0,
+                sizeof(SGPUUniform));
+            DrawGLTFAsset(GraphicsNode, 1, 0);
+
+            Rr_EndDebugLabel(Graph, "NormalDepthPrepass");
+        }
+
+        /* Forward Pass */
+        {
+            Rr_BeginDebugLabel(Graph, "ForwardPass");
+
+            std::array ColorTargets = {
+                Rr_ColorTarget{
+                    .Image = ColorImage,
+                    .LoadOp = RR_LOAD_OP_DONT_CARE,
+                    .StoreOp =
+                        UseMSAA ? RR_STORE_OP_DONT_CARE : RR_STORE_OP_STORE,
+                    .ResolveImage = UseMSAA ? ColorImageResolved : nullptr,
+                    .ResolveLoadOp = RR_LOAD_OP_DONT_CARE,
+                    .ResolveStoreOp = RR_STORE_OP_STORE,
+                },
+            };
+            Rr_DepthTarget DepthTarget = {
+                .Image = DepthImage,
+                .LoadOp = RR_LOAD_OP_LOAD,
+                .StoreOp = RR_STORE_OP_DONT_CARE,
+            };
+            Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(
+                Graph,
+                ColorTargets.size(),
+                ColorTargets.data(),
+                &DepthTarget);
+
+            Rr_BindGraphicsPipeline(GraphicsNode, ForwardPassPipeline);
+            Rr_BindUniformBuffer(
+                GraphicsNode,
+                UniformBuffer,
+                0,
+                0,
+                0,
+                sizeof(SGPUUniform));
+            Lighting.BindLights(GraphicsNode, 1);
+            DrawGLTFAsset(GraphicsNode, 2, 0);
+
+            Rr_EndDebugLabel(Graph, "ForwardPass");
+        }
 
         if (DrawGrid)
         {
-            Grid.Draw(Graph, Camera, ColorImage, DepthImage);
+            // Grid.Draw(Graph, Camera, ColorImage, DepthImage);
         }
 
         Rr_Image2D *FinalColorImage{};
@@ -1765,8 +1841,9 @@ struct SModernRenderingApp
         Lighting.AddPointLight();
         Lighting.AddSpotLight();
         InitAttachments();
-        InitPipelineLayout();
-        InitPipeline();
+        InitForwardPassPipelineLayout();
+        InitNormalDepthPrepassPipelineLayout();
+        InitPipelines();
         InitGLTFAsset();
         InitUniform();
         InitCamera();
@@ -1780,8 +1857,10 @@ struct SModernRenderingApp
         Rr_ReleaseBuffer(ModelBuffer);
         Rr_ReleaseBuffer(IndirectBuffer);
         Rr_ReleaseGLTFContext(GLTFContext);
-        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
+        Rr_ReleaseGraphicsPipeline(ForwardPassPipeline);
+        Rr_ReleaseGraphicsPipeline(NormalDepthPrepassPipeline);
+        Rr_ReleasePipelineLayout(ForwardPassPipelineLayout);
+        Rr_ReleasePipelineLayout(NormalDepthPrepassPipelineLayout);
         Rr_ReleaseImage(ColorImage);
         Rr_ReleaseImage(ColorImageResolved);
         Rr_ReleaseImage(NormalDepthImage);
