@@ -458,6 +458,9 @@ static void Rr_CleanupFrames(void)
         Rr_Frame *Frame = &gRenderer->Frames[Index];
         Rr_ReleaseVulkanFence(Frame->SubmitFence);
         Rr_ReleaseVulkanSemaphore(Frame->AcquireSemaphore);
+#ifdef RR_USE_GPU_TIMESTAMPS
+        Device->DestroyQueryPool(Device->Handle, Frame->QueryPool, NULL);
+#endif
         Rr_DestroyArena(Frame->Arena);
     }
 }

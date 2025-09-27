@@ -158,9 +158,9 @@ struct SGSApp
 
     UScancodes Scancodes{};
 
-    size_t AliveCount;
-    size_t AlignedCount;
-    SBitonicSorter *Sorter;
+    size_t AliveCount{};
+    size_t AlignedCount{};
+    SBitonicSorter *Sorter{};
 
     std::vector<SGPUSplat> GPUSplats;
 
@@ -168,8 +168,8 @@ struct SGSApp
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *EntriesBuffer{};
 
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_PipelineLayout *PipelineLayout{};
+    Rr_GraphicsPipeline *GraphicsPipeline{};
 
     void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)
     {
@@ -222,7 +222,7 @@ struct SGSApp
         Rr_DrawIndirect(GraphicsNode, Sorter->SortList.IndirectBuffer, 0, 1, 0);
     }
 
-    void Init()
+    SGSApp()
     {
         Camera.UpdatePerspective(Rr_GetSwapchainSize());
         Camera.Position = { 0.0f, -0.5f, -2.5f };
@@ -362,7 +362,7 @@ struct SGSApp
         Rr_UIDebugOverlay();
     }
 
-    void Cleanup()
+    ~SGSApp()
     {
         delete Sorter;
         Rr_ReleaseBuffer(SplatsBuffer);
@@ -375,13 +375,13 @@ struct SGSApp
 
 int main()
 {
-    static SGSApp App;
+    static SGSApp *App{};
 
     Rr_AppConfig Config = {};
     Config.Title = "GS";
-    Config.InitFunc = []() { App.Init(); };
-    Config.EventFunc = [](Rr_Event *Event) { App.Event(Event); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Config.InitFunc = []() { App = new SGSApp(); };
+    Config.EventFunc = [](Rr_Event *Event) { App->Event(Event); };
+    Config.IterateFunc = []() { App->Iterate(); };
+    Config.CleanupFunc = []() { delete App; };
     Rr_Run(&Config);
 }
