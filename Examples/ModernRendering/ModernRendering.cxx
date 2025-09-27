@@ -336,7 +336,9 @@ struct SGrid
     struct SGPUUniform
     {
         Rr_Mat4 View;
+        Rr_Mat4 InvView;
         Rr_Mat4 Projection;
+        Rr_Mat4 InvProjection;
         float Near;
         float Far;
         float GridSmall;
@@ -374,16 +376,18 @@ struct SGrid
     }
 
     void Draw(
-        Rr_Graph *Graph,
+        Rr_GraphNode *GraphicsNode,
         const SCamera &Camera,
         Rr_Image2D *ColorImage,
         Rr_Image2D *DepthImage)
     {
-        Rr_BeginDebugLabel(Graph, "Grid");
+        // Rr_BeginDebugLabel(Graph, "Grid");
 
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),
+            .InvView = Camera.Transform,
             .Projection = Camera.ProjMatrix,
+            .InvProjection = Rr_InvPerspective_RH(Camera.ProjMatrix),
             .Near = NEAR_PLANE,
             .Far = FAR_PLANE,
             .GridSmall = 1.0f,
@@ -394,18 +398,6 @@ struct SGrid
             &Uniform,
             sizeof(SGPUUniform));
 
-        Rr_ColorTarget ColorTarget = {
-            .Image = ColorImage,
-            .LoadOp = RR_LOAD_OP_LOAD,
-            .StoreOp = RR_STORE_OP_STORE,
-        };
-        Rr_DepthTarget DepthTarget = {
-            .Image = DepthImage,
-            .LoadOp = RR_LOAD_OP_LOAD,
-            .StoreOp = RR_STORE_OP_STORE,
-        };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindUniformBuffer(
             GraphicsNode,
@@ -416,7 +408,7 @@ struct SGrid
             sizeof(SGPUUniform));
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
 
-        Rr_EndDebugLabel(Graph, "Grid");
+        // Rr_EndDebugLabel(Graph, "Grid");
     }
 
     SGrid(uint32_t MSAASampleCount)
@@ -1882,11 +1874,6 @@ struct SModernRenderingApp
         {
             Rr_BeginDebugLabel(Graph, "ForwardPass");
 
-            if (DrawGrid)
-            {
-                Grid.Draw(Graph, Camera, ColorImage, DepthImage);
-            }
-
             std::array ColorTargets = {
                 Rr_ColorTarget{
                     .Image = ColorImage,
@@ -1920,6 +1907,11 @@ struct SModernRenderingApp
             Lighting.BindLights(GraphicsNode, 1);
             Rr_BindSampledImage2D(GraphicsNode, AmbientOcclusionImage, 1, 6);
             DrawGLTFAsset(GraphicsNode, 2, 0);
+
+            if (DrawGrid)
+            {
+                Grid.Draw(GraphicsNode, Camera, ColorImage, DepthImage);
+            }
 
             Rr_EndDebugLabel(Graph, "ForwardPass");
         }

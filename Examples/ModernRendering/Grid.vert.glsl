@@ -6,7 +6,9 @@ layout(location = 1) out vec3 OutFar;
 layout(set = 0, binding = 0) uniform Globals
 {
     mat4 View;
+    mat4 InvView;
     mat4 Projection;
+    mat4 InvProjection;
     float Near;
     float Far;
     float GridSmall;
@@ -23,10 +25,10 @@ const vec2 Positions[6] = vec2[6](
 
 vec3 UnprojectPoint(in vec3 Point)
 {
-    mat4 InvView = inverse(View);
-    mat4 InvProj = inverse(Projection);
-    vec4 UnprojectedPoint = InvView * InvProj * vec4(Point, 1.0);
-    return UnprojectedPoint.xyz / UnprojectedPoint.w;
+    vec4 UnprojectedPoint = InvView * InvProjection * vec4(Point, 1.0);
+    vec3 Result = UnprojectedPoint.xyz / UnprojectedPoint.w;
+    Result.y -= 0.004f;
+    return Result;
 }
 
 void main()
