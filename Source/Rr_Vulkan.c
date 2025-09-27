@@ -549,6 +549,12 @@ void Rr_SelectPhysicalDevice(
         PhysicalDevices[BestDeviceIndex],
         &PhysicalDevice->Properties);
 
+    /* NOTE: timestampComputeAndGraphics guarantees that compute and graphics
+     * queues do support timestamps. */
+    GraphicsQueue->TimestampsEnabled =
+        PhysicalDevice->Properties.limits.timestampPeriod > 0.0f &&
+        PhysicalDevice->Properties.limits.timestampComputeAndGraphics;
+
     RR_LOG(
         "Using %s transfer queue.",
         UseTransferQueue ? "dedicated" : "unified");

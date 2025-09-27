@@ -159,12 +159,6 @@ target_compile_definitions(
     "$<$<CONFIG:DEBUG>:-DRR_USE_GPU_DEBUG_UTILS>"
 )
 
-target_compile_definitions(
-    ${PROJECT_NAME}
-    PUBLIC
-    "$<$<CONFIG:DEBUG>:-DRR_USE_GPU_TIMESTAMPS>"
-)
-
 rr_enable_development_options(${PROJECT_NAME})
 
 target_sources(

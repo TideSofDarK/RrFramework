@@ -38,6 +38,3 @@ extern void Rr_AlignedFree(void *Ptr);
 #define VMA_SYSTEM_ALIGNED_MALLOC    Rr_AlignedAlloc
 #define VMA_SYSTEM_ALIGNED_FREE      Rr_AlignedFree
 #include <vma/vk_mem_alloc.h>
-
-#define CGLTF_IMPLEMENTATION
-#include <cgltf/cgltf.h>

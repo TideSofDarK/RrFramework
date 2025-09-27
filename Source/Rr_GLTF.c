@@ -34,6 +34,7 @@
 
 #include <stb/stb_image.h>
 
+#define CGLTF_IMPLEMENTATION
 #include <cgltf/cgltf.h>
 
 #include <assert.h>

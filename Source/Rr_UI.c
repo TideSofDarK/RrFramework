@@ -4900,9 +4900,14 @@ void Rr_UIDebugOverlay(void)
                 Rr_UILabelF("FPS: %.2f", LastFPS);
             }
 
-#ifdef RR_USE_GPU_TIMESTAMPS
-            Rr_UILabelF("GPU: %.2fms", gRenderer->LastFrameMS);
-#endif
+            if (gRenderer->GraphicsQueue.TimestampsEnabled)
+            {
+                Rr_UILabelF("GPU: %.2fms", gRenderer->LastFrameMS);
+            }
+            else
+            {
+                Rr_UILabelF("GPU timestamps not supported!", gRenderer->LastFrameMS);
+            }
 
             Rr_UICheckbox(
                 "Frame Limiter Enabled",

@@ -427,18 +427,19 @@ static void Rr_InitFrames(void)
             NameBuffer);
 #endif
 
-#ifdef RR_USE_GPU_TIMESTAMPS
-        VkQueryPoolCreateInfo QueryPoolCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
-            .queryType = VK_QUERY_TYPE_TIMESTAMP,
-            .queryCount = 4,
-        };
-        Device->CreateQueryPool(
-            Device->Handle,
-            &QueryPoolCreateInfo,
-            NULL,
-            &Frame->QueryPool);
-#endif
+        if (gRenderer->GraphicsQueue.TimestampsEnabled)
+        {
+            VkQueryPoolCreateInfo QueryPoolCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+                .queryType = VK_QUERY_TYPE_TIMESTAMP,
+                .queryCount = 4,
+            };
+            Device->CreateQueryPool(
+                Device->Handle,
+                &QueryPoolCreateInfo,
+                NULL,
+                &Frame->QueryPool);
+        }
 
         Frame->VirtualSwapchainImage.SampleCount = VK_SAMPLE_COUNT_1_BIT;
         Frame->VirtualSwapchainImage.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -458,9 +459,10 @@ static void Rr_CleanupFrames(void)
         Rr_Frame *Frame = &gRenderer->Frames[Index];
         Rr_ReleaseVulkanFence(Frame->SubmitFence);
         Rr_ReleaseVulkanSemaphore(Frame->AcquireSemaphore);
-#ifdef RR_USE_GPU_TIMESTAMPS
-        Device->DestroyQueryPool(Device->Handle, Frame->QueryPool, NULL);
-#endif
+        if (Frame->QueryPool)
+        {
+            Device->DestroyQueryPool(Device->Handle, Frame->QueryPool, NULL);
+        }
         Rr_DestroyArena(Frame->Arena);
     }
 }
@@ -761,22 +763,24 @@ void Rr_NewFrame(void)
             1000000000);
         assert(Result != VK_TIMEOUT && "Submit fence timeout!");
 
-#ifdef RR_USE_GPU_TIMESTAMPS
-        uint64_t Timestamps[2];
-        Device->GetQueryPoolResults(
-            Device->Handle,
-            Frame->QueryPool,
-            0,
-            2,
-            sizeof(Timestamps),
-            Timestamps,
-            sizeof(uint64_t),
-            VK_QUERY_RESULT_64_BIT);
-        gRenderer->LastFrameMS =
-            (double)
-                gRenderer->PhysicalDevice.Properties.limits.timestampPeriod *
-            (double)(Timestamps[1] - Timestamps[0]) / 1000000.0;
-#endif
+        if (gRenderer->GraphicsQueue.TimestampsEnabled)
+        {
+            uint64_t Timestamps[2];
+            Device->GetQueryPoolResults(
+                Device->Handle,
+                Frame->QueryPool,
+                0,
+                2,
+                sizeof(Timestamps),
+                Timestamps,
+                sizeof(uint64_t),
+                VK_QUERY_RESULT_64_BIT);
+            double Period =
+                (double)
+                    gRenderer->PhysicalDevice.Properties.limits.timestampPeriod;
+            double DeltaNS = (double)(Timestamps[1] - Timestamps[0]);
+            gRenderer->LastFrameMS = Period * DeltaNS / 1000000.0;
+        }
 
         Rr_ReleaseVulkanFence(Frame->SubmitFence);
         Frame->SubmitFence = VK_NULL_HANDLE;
@@ -870,15 +874,19 @@ void Rr_DrawFrame(void)
         Frame->LateCommandBuffer,
         &CommandBufferBeginInfo);
 
-#ifdef RR_USE_GPU_TIMESTAMPS
-    Device
-        ->CmdResetQueryPool(Frame->EarlyCommandBuffer, Frame->QueryPool, 0, 4);
-    Device->CmdWriteTimestamp(
-        Frame->EarlyCommandBuffer,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        Frame->QueryPool,
-        0);
-#endif
+    if (gRenderer->GraphicsQueue.TimestampsEnabled)
+    {
+        Device->CmdResetQueryPool(
+            Frame->EarlyCommandBuffer,
+            Frame->QueryPool,
+            0,
+            4);
+        Device->CmdWriteTimestamp(
+            Frame->EarlyCommandBuffer,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            Frame->QueryPool,
+            0);
+    }
 
     Rr_ExecuteGraph(
         Frame->Graph,
@@ -941,13 +949,14 @@ void Rr_DrawFrame(void)
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
 
-#ifdef RR_USE_GPU_TIMESTAMPS
-    Device->CmdWriteTimestamp(
-        Frame->LateCommandBuffer,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-        Frame->QueryPool,
-        1);
-#endif
+    if (gRenderer->GraphicsQueue.TimestampsEnabled)
+    {
+        Device->CmdWriteTimestamp(
+            Frame->LateCommandBuffer,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            Frame->QueryPool,
+            1);
+    }
 
     Device->EndCommandBuffer(Frame->LateCommandBuffer);
 

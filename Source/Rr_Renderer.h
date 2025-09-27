@@ -73,10 +73,7 @@ struct Rr_Frame
     VkCommandBuffer LateCommandBuffer;
     VkSemaphore AcquireSemaphore;
     VkFence SubmitFence;
-
-#ifdef RR_USE_GPU_TIMESTAMPS
     VkQueryPool QueryPool;
-#endif
 
     Rr_Image2D VirtualSwapchainImage;
 
@@ -233,10 +230,7 @@ struct Rr_Renderer
     Rr_Frame Frames[RR_FRAME_OVERLAP];
     size_t FrameIndex;  /* Current frame-in-flight index. */
     size_t FrameNumber; /* Total frames rendered. */
-
-#ifdef RR_USE_GPU_TIMESTAMPS
     double LastFrameMS;
-#endif
 
     Rr_BufferHive Buffers;
     Rr_Spinlock BuffersLock;

@@ -102,6 +102,7 @@ struct Rr_Queue
     VkQueue Handle;
     VkQueueFamilyProperties FamilyProperties;
     uint32_t FamilyIndex;
+    bool TimestampsEnabled;
     Rr_Spinlock Lock;
 };
 
