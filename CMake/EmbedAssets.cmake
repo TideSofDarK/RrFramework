@@ -18,7 +18,7 @@ if(USE_RC)
         set(ASSET_FINAL_IDENTIFIER "${IDENTIFIER_PREFIX}${ASSET_IDENTIFIER}")
         file(
             APPEND "${ASSET_HEADER_PATH}"
-            "\"${ASSET_FINAL_IDENTIFIER}_ID\" RRDATA \"${AssetAbsolutePath}\"\n"
+            "${ASSET_FINAL_IDENTIFIER}_ID RRDATA \"${AssetAbsolutePath}\"\n"
         )
     endforeach (ASSET_PATH)
     file(

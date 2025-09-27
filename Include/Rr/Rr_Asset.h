@@ -36,7 +36,7 @@ typedef struct Rr_Data Rr_Asset;
 
 typedef struct Rr_AssetRef
 {
-    const char* Name;
+    const char *Name;
 } Rr_AssetRef;
 
 #else
