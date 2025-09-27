@@ -422,7 +422,11 @@ void main()
 
     OutColor = vec4(TotalDiffuse + TotalSpecular, 1.0);
 
-    OutColor.rgb *= texture(
+    float PackedAODepth = texture(
             sampler2D(AmbientOcclusionImage, RegularSampler),
             gl_FragCoord.xy / Resolution).r;
+    float AO = unpackHalf2x16(floatBitsToUint(PackedAODepth)).r;
+
+    OutColor.rgb *= AO;
+    // OutColor.rgb = vec3(AO);
 }

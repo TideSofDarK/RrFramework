@@ -1003,7 +1003,8 @@ struct SSSAO
 {
     Rr_Sampler *Sampler;
     Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_GraphicsPipeline *SSAOPipeline;
+    Rr_GraphicsPipeline *BlurPipeline;
     Rr_Buffer *Buffer;
 
     struct
@@ -1022,6 +1023,12 @@ struct SSSAO
         Rr_Vec2 ScreenRes;
     } GPUUniform;
 
+    struct
+    {
+        Rr_Vec2 InvResDir;
+        float Sharpness = 40.0f;
+    } GPUUniformBlur;
+
     void UI()
     {
         if (Rr_UIFold("Scalable Ambient Obscurance (SAO)"))
@@ -1035,15 +1042,26 @@ struct SSSAO
                 10.0,
                 200.0);
             Rr_UISliderFloat("Min Resolution", &GPUUniform.MinRes, 0.0, 1.0);
+            Rr_UISliderFloat(
+                "Blur Sharpness",
+                &GPUUniformBlur.Sharpness,
+                1.0f,
+                100.0f);
         }
     }
 
     void Apply(
         Rr_Graph *Graph,
         Rr_Image2D *TargetImage,
+        Rr_Image2D *IntermediateImage,
         Rr_Image2D *NormalDepthImage,
         const SCamera &Camera)
     {
+        Rr_BeginDebugLabel(Graph, "AmbientOcclusion");
+
+        char *UniformData = (char *)Rr_GetMappedBufferData(Buffer);
+        std::size_t UniformOffset = 0;
+
         GPUUniform.CameraNear = NEAR_PLANE;
         GPUUniform.CameraFar = FAR_PLANE;
         GPUUniform.DepthRange = FAR_PLANE - NEAR_PLANE;
@@ -1055,26 +1073,109 @@ struct SSSAO
         GPUUniform.Projection = Camera.ProjMatrix;
         GPUUniform.InvProjection = Rr_InvGeneral(Camera.ProjMatrix);
         std::memcpy(
-            Rr_GetMappedBufferData(Buffer),
+            UniformData + UniformOffset,
             &GPUUniform,
             sizeof(GPUUniform));
 
-        Rr_ColorTarget ColorTarget = {
-            .Image = TargetImage,
-            .LoadOp = RR_LOAD_OP_DONT_CARE,
-            .StoreOp = RR_STORE_OP_STORE,
-        };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
-        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindCombinedImage2DSampler(
-            GraphicsNode,
-            NormalDepthImage,
-            Sampler,
-            0,
-            0);
-        Rr_BindUniformBuffer(GraphicsNode, Buffer, 0, 1, 0, sizeof(GPUUniform));
-        Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+        /* Calculate AO and pack it 2x16 alogn with linear depth. */
+        {
+            Rr_ColorTarget ColorTarget = {
+                .Image = TargetImage,
+                .LoadOp = RR_LOAD_OP_DONT_CARE,
+                .StoreOp = RR_STORE_OP_STORE,
+            };
+            Rr_GraphNode *GraphicsNode =
+                Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+            Rr_BindGraphicsPipeline(GraphicsNode, SSAOPipeline);
+            Rr_BindCombinedImage2DSampler(
+                GraphicsNode,
+                NormalDepthImage,
+                Sampler,
+                0,
+                0);
+            Rr_BindUniformBuffer(
+                GraphicsNode,
+                Buffer,
+                0,
+                1,
+                UniformOffset,
+                sizeof(GPUUniform));
+            Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+        }
+
+        UniformOffset +=
+            RR_ALIGN_POW2(sizeof(GPUUniform), Rr_GetUniformAlignment());
+
+        GPUUniformBlur.InvResDir =
+            Rr_V2(1.0f / GPUUniform.ScreenRes.Width, 0.0f);
+        std::memcpy(
+            UniformData + UniformOffset,
+            &GPUUniformBlur,
+            sizeof(GPUUniformBlur));
+
+        /* Blur X */
+        {
+            Rr_ColorTarget ColorTarget = {
+                .Image = IntermediateImage,
+                .LoadOp = RR_LOAD_OP_DONT_CARE,
+                .StoreOp = RR_STORE_OP_STORE,
+            };
+            Rr_GraphNode *GraphicsNode =
+                Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+            Rr_BindGraphicsPipeline(GraphicsNode, BlurPipeline);
+            Rr_BindCombinedImage2DSampler(
+                GraphicsNode,
+                TargetImage,
+                Sampler,
+                0,
+                0);
+            Rr_BindUniformBuffer(
+                GraphicsNode,
+                Buffer,
+                0,
+                1,
+                UniformOffset,
+                sizeof(GPUUniformBlur));
+            Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+        }
+
+        UniformOffset +=
+            RR_ALIGN_POW2(sizeof(GPUUniformBlur), Rr_GetUniformAlignment());
+
+        GPUUniformBlur.InvResDir =
+            Rr_V2(0.0f, 1.0f / GPUUniform.ScreenRes.Height);
+        std::memcpy(
+            UniformData + UniformOffset,
+            &GPUUniformBlur,
+            sizeof(GPUUniformBlur));
+
+        /* Blur Y */
+        {
+            Rr_ColorTarget ColorTarget = {
+                .Image = TargetImage,
+                .LoadOp = RR_LOAD_OP_DONT_CARE,
+                .StoreOp = RR_STORE_OP_STORE,
+            };
+            Rr_GraphNode *GraphicsNode =
+                Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+            Rr_BindGraphicsPipeline(GraphicsNode, BlurPipeline);
+            Rr_BindCombinedImage2DSampler(
+                GraphicsNode,
+                IntermediateImage,
+                Sampler,
+                0,
+                0);
+            Rr_BindUniformBuffer(
+                GraphicsNode,
+                Buffer,
+                0,
+                1,
+                UniformOffset,
+                sizeof(GPUUniformBlur));
+            Rr_Draw(GraphicsNode, 6, 1, 0, 0);
+        }
+
+        Rr_EndDebugLabel(Graph, "AmbientOcclusion");
     }
 
     SSSAO()
@@ -1116,10 +1217,14 @@ struct SSSAO
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        SSAOPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+
+        PipelineInfo.FragmentShaderSPV =
+            Rr_LoadAsset(EXAMPLE_ASSET_SSAOBLUR_FRAG_SPV);
+        BlurPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         Buffer = Rr_CreateBuffer(
-            sizeof(GPUUniform),
+            RR_KILOBYTES(1),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
@@ -1128,7 +1233,8 @@ struct SSSAO
     {
         Rr_ReleaseSampler(Sampler);
         Rr_ReleasePipelineLayout(PipelineLayout);
-        Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        Rr_ReleaseGraphicsPipeline(SSAOPipeline);
+        Rr_ReleaseGraphicsPipeline(BlurPipeline);
         Rr_ReleaseBuffer(Buffer);
     }
 };
@@ -1180,6 +1286,7 @@ struct SModernRenderingApp
     Rr_Image2D *NormalDepthImageResolved{};
     Rr_Image2D *DepthImage{};
     Rr_Image2D *AmbientOcclusionImage{};
+    Rr_Image2D *AmbientOcclusionIntermediateImage{};
 
     static constexpr std::array<const char *, 4> MSAA_OPTIONS = {
         "Disabled",
@@ -1383,6 +1490,12 @@ struct SModernRenderingApp
 
         Rr_ReleaseImage(AmbientOcclusionImage);
         AmbientOcclusionImage = Rr_CreateImage2D(
+            { SwapchainSize.X, SwapchainSize.Y },
+            RR_IMAGE_FORMAT_R32_SFLOAT,
+            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
+
+        Rr_ReleaseImage(AmbientOcclusionIntermediateImage);
+        AmbientOcclusionIntermediateImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
             RR_IMAGE_FORMAT_R32_SFLOAT,
             RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
@@ -1757,15 +1870,12 @@ struct SModernRenderingApp
             Rr_Image2D *FinalNormalDepthImage =
                 UseMSAA ? NormalDepthImageResolved : NormalDepthImage;
 
-            Rr_BeginDebugLabel(Graph, "AmbientOcclusion");
-
             SSAO.Apply(
                 Graph,
                 AmbientOcclusionImage,
+                AmbientOcclusionIntermediateImage,
                 FinalNormalDepthImage,
                 Camera);
-
-            Rr_EndDebugLabel(Graph, "AmbientOcclusion");
         }
 
         /* Forward Pass */
@@ -1877,6 +1987,7 @@ struct SModernRenderingApp
         Rr_ReleaseImage(NormalDepthImageResolved);
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseImage(AmbientOcclusionImage);
+        Rr_ReleaseImage(AmbientOcclusionIntermediateImage);
     }
 };
 

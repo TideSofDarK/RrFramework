@@ -28,6 +28,7 @@ layout(set = 0, binding = 1) uniform SGPUUniform {
     float DepthRange;
     vec2 DepthParams;
     vec2 ScreenRes;
+    float BlurSharpness;
 };
 
 float Hash12(vec2 Seed)
@@ -121,8 +122,9 @@ void main()
         discard;
     }
 
-    float CenterViewZ = LinearizeDepth(DepthParams, CenterDepth) * DepthRange;
+    float CenterLinearDepth = LinearizeDepth(DepthParams, CenterDepth);
+    float CenterViewZ = CenterLinearDepth * DepthRange;
     vec3 ViewPosition = GetViewPosition(InUV, CenterDepth, CenterViewZ);
 
-    OutAO = 1.0 - GetAmbientOcclusion(ViewPosition);
+    OutAO = uintBitsToFloat(packHalf2x16(vec2(1.0 - GetAmbientOcclusion(ViewPosition), CenterLinearDepth)));
 }
