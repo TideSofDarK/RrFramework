@@ -10,64 +10,49 @@
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
+constexpr float NEAR_PLANE = 0.1f;
+constexpr float FAR_PLANE = 100.0f;
+
 struct SCamera
 {
+    float FOVDegrees = 90.0f;
     float Pitch{};
     float Yaw{};
     Rr_Vec3 Position{};
 
-    Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
+    Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
     float HTanY;
     float HTanX;
     float FocalZ;
 
-    void SetPerspective(
-        float FOVDegrees,
-        Rr_IntVec2 Size,
-        float Near,
-        float Far)
+    void UpdatePerspective(Rr_IntVec2 Size)
     {
         ProjMatrix = Rr_Perspective_LH(
             RR_ANGLE_DEG(FOVDegrees),
             (float)Size.X / (float)Size.Y,
-            Near,
-            Far);
+            NEAR_PLANE,
+            FAR_PLANE);
 
         HTanY = tanf(RR_ANGLE_DEG(FOVDegrees) / 2.0f);
         HTanX = HTanY / (float)Size.Y * (float)Size.X;
         FocalZ = (float)Size.Y / (2.0f * HTanY);
     }
 
-    void UpdateView()
+    [[nodiscard]] Rr_Mat4 GetViewMatrix() const
     {
-        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
-        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
-        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
-        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
-
-        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
-        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
-        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
-
-        ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
-        ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
-        ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
-        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position),
-                                  -Rr_Dot(YAxis, Position),
-                                  -Rr_Dot(ZAxis, Position),
-                                  1.0f };
+        return Rr_InvGeneral(Transform);
     }
 
     [[nodiscard]] Rr_Vec3 GetForwardVector() const
     {
-        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
+        return Rr_Norm(Transform.Columns[2].XYZ);
     }
 
     [[nodiscard]] Rr_Vec3 GetRightVector() const
     {
-        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
+        return Rr_Norm(Transform.Columns[0].XYZ);
     }
 
     void Update(const UScancodes &Scancodes)
@@ -112,7 +97,9 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        UpdateView();
+        Transform = Rr_Translate(Position) *
+                    Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
+                    Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
     }
 };
 
@@ -187,7 +174,7 @@ struct SGSApp
     void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)
     {
         Sorter->Sort(
-            Camera.ProjMatrix * Camera.ViewMatrix,
+            Camera.ProjMatrix * Camera.GetViewMatrix(),
             sizeof(SGPUSplat) * AlignedCount,
             SplatsBuffer,
             sizeof(SGPUEntry) * AlignedCount,
@@ -195,7 +182,7 @@ struct SGSApp
 
         SUniformData UniformData = {};
         UniformData.Projection = Camera.ProjMatrix;
-        UniformData.View = Camera.ViewMatrix;
+        UniformData.View = Camera.GetViewMatrix();
         UniformData.HFOVFocal = { Camera.HTanX, Camera.HTanY, Camera.FocalZ };
 
         std::memcpy(
@@ -237,6 +224,7 @@ struct SGSApp
 
     void Init()
     {
+        Camera.UpdatePerspective(Rr_GetSwapchainSize());
         Camera.Position = { 0.0f, -0.5f, -2.5f };
 
         Rr_Asset Asset = Rr_LoadAsset(EXAMPLE_ASSET_PLUSH_SPLAT);
@@ -347,6 +335,11 @@ struct SGSApp
     {
         switch (Event->Type)
         {
+            case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
+            {
+                Camera.UpdatePerspective(Rr_GetSwapchainSize());
+            }
+            break;
             case RR_EVENT_TYPE_KEY_DOWN:
             case RR_EVENT_TYPE_KEY_UP:
             {
@@ -360,8 +353,6 @@ struct SGSApp
 
     void Iterate()
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-        Camera.SetPerspective(50.0f, SwapchainSize, 0.1f, 200.0f);
         Camera.Update(Scancodes);
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();

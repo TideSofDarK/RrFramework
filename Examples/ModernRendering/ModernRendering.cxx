@@ -31,11 +31,11 @@ struct SCamera
     Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
-    void UpdatePerspective(float Aspect)
+    void UpdatePerspective(Rr_IntVec2 Size)
     {
         ProjMatrix = Rr_Perspective_RH(
                          RR_ANGLE_DEG(FOVDegrees),
-                         Aspect,
+                         (float)Size.X / (float)Size.Y,
                          NEAR_PLANE,
                          FAR_PLANE) *
                      FLIP_Y_MATRIX;
@@ -1363,9 +1363,7 @@ struct SModernRenderingApp
 
     void InitCamera()
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-        float Aspect = (float)SwapchainSize.Width / SwapchainSize.Height;
-        Camera.UpdatePerspective(Aspect);
+        Camera.UpdatePerspective(Rr_GetSwapchainSize());
     }
 
     void InitUniform()
