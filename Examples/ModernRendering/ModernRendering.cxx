@@ -1419,8 +1419,6 @@ struct SModernRenderingApp
 
     void InitPipelines()
     {
-        Rr_ReleaseGraphicsPipeline(ForwardPassPipeline);
-
         std::array ColorTargets = {
             Rr_ColorTargetInfo{
                 .Format = Rr_GetSwapchainFormat(),
@@ -1446,6 +1444,7 @@ struct SModernRenderingApp
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
         PipelineInfo.Multisampling.SampleCount = GetMSAASampleCount();
 
+        Rr_ReleaseGraphicsPipeline(ForwardPassPipeline);
         ForwardPassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         PipelineInfo.Layout = NormalDepthPrepassPipelineLayout;
@@ -1457,6 +1456,7 @@ struct SModernRenderingApp
         ColorTargets[0] = Rr_ColorTargetInfo{
             .Format = RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
         };
+        Rr_ReleaseGraphicsPipeline(NormalDepthPrepassPipeline);
         NormalDepthPrepassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
