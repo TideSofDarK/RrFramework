@@ -1,7 +1,16 @@
-#version 450
-#extension GL_ARB_shading_language_include : require
+#version 460
 
-#include "SmoothGrid.glsl"
+layout(set = 0, binding = 0) uniform Globals
+{
+    mat4 View;
+    mat4 InvView;
+    mat4 Projection;
+    mat4 InvProjection;
+    float Near;
+    float Far;
+    float GridSmall;
+    float GridBig;
+};
 
 layout(location = 0) out vec3 OutNear;
 layout(location = 1) out vec3 OutFar;
@@ -16,9 +25,7 @@ const vec2 Positions[6] = vec2[6](
 
 vec3 UnprojectPoint(in vec3 Point)
 {
-    mat4 InvView = inverse(View);
-    mat4 InvProj = inverse(Projection);
-    vec4 UnprojectedPoint = InvView * InvProj * vec4(Point, 1.0);
+    vec4 UnprojectedPoint = InvView * InvProjection * vec4(Point, 1.0);
     return UnprojectedPoint.xyz / UnprojectedPoint.w;
 }
 

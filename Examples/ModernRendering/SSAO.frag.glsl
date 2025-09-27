@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 /* Scalable Ambient Obscurance https://research.nvidia.com/sites/default/files/pubs/2012-06_Scalable-Ambient-Obscurance/McGuire12SAO.pdf */
 /* Implementation adapted from https://github.com/mrdoob/three.js/pull/11458/files */

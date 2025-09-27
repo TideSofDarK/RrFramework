@@ -3,36 +3,45 @@
 #include <Rr/Rr.h>
 
 #include <array>
-#include <print>
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
+constexpr float NEAR_PLANE = 0.1f;
+constexpr float FAR_PLANE = 100.0f;
+
 struct SCamera
 {
-    float Near = 0.01f;
-    float Far = 100.0f;
     float FOVDegrees = 90.0f;
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position;
+    Rr_Vec3 Position{};
 
-    Rr_Mat4 ViewMatrix = Rr_M4D(1.0f);
+    Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
-    void UpdatePerspective(float Aspect)
+    void UpdatePerspective(Rr_IntVec2 Size)
     {
-        ProjMatrix =
-            Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
+        ProjMatrix = Rr_Perspective_RH(
+            RR_ANGLE_DEG(FOVDegrees),
+            (float)Size.X / (float)Size.Y,
+            NEAR_PLANE,
+            FAR_PLANE);
+        ProjMatrix.Elements[1][1] *= -1.0f;
+    }
+
+    [[nodiscard]] Rr_Mat4 GetViewMatrix() const
+    {
+        return Rr_InvGeneral(Transform);
     }
 
     [[nodiscard]] Rr_Vec3 GetForwardVector() const
     {
-        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
+        return Rr_Norm(Transform.Columns[2].XYZ);
     }
 
     [[nodiscard]] Rr_Vec3 GetRightVector() const
     {
-        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
+        return Rr_Norm(Transform.Columns[0].XYZ);
     }
 
     void Update(const UScancodes &Scancodes)
@@ -66,8 +75,8 @@ struct SCamera
             }
 
             constexpr float Sensitivity = 0.2f;
-            Yaw += MouseDelta.X * Sensitivity;
-            Pitch += MouseDelta.Y * Sensitivity;
+            Yaw -= MouseDelta.X * Sensitivity;
+            Pitch -= MouseDelta.Y * Sensitivity;
         }
         else
         {
@@ -77,30 +86,18 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        float CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
-        float SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
-        float CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
-        float SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
-
-        Rr_Vec3 XAxis{ CosYaw, 0.0f, -SinYaw };
-        Rr_Vec3 YAxis{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
-        Rr_Vec3 ZAxis{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
-
-        ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
-        ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
-        ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
-        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position),
-                                  -Rr_Dot(YAxis, Position),
-                                  -Rr_Dot(ZAxis, Position),
-                                  1.0f };
-        ViewMatrix = Rr_VulkanMatrix() * ViewMatrix;
+        Transform = Rr_Translate(Position) *
+                    Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
+                    Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
     }
 };
 
 struct SGPUUniform
 {
     Rr_Mat4 View;
+    Rr_Mat4 InvView;
     Rr_Mat4 Projection;
+    Rr_Mat4 InvProjection;
     float Near;
     float Far;
     float GridSmall;
@@ -111,11 +108,11 @@ struct SSmoothGridApp
 {
     static constexpr Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_PipelineLayout *PipelineLayout{};
+    Rr_GraphicsPipeline *GraphicsPipeline{};
 
-    Rr_Image2D *DepthImage;
-    Rr_Buffer *UniformBuffer;
+    Rr_Image2D *DepthImage{};
+    Rr_Buffer *UniformBuffer{};
 
     SCamera Camera;
 
@@ -177,12 +174,10 @@ struct SSmoothGridApp
 
     void InitCamera()
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-        float Aspect = (float)SwapchainSize.Width / SwapchainSize.Height;
-        Camera.UpdatePerspective(Aspect);
+        Camera.UpdatePerspective(Rr_GetSwapchainSize());
     }
 
-    void Init()
+    SSmoothGridApp()
     {
         InitCamera();
         InitPipeline();
@@ -222,10 +217,12 @@ struct SSmoothGridApp
         Camera.Update(Scancodes);
 
         SGPUUniform Uniform = {
-            .View = Camera.ViewMatrix,
+            .View = Camera.GetViewMatrix(),
+            .InvView = Camera.Transform,
             .Projection = Camera.ProjMatrix,
-            .Near = Camera.Near,
-            .Far = Camera.Far,
+            .InvProjection = Rr_InvPerspective_RH(Camera.ProjMatrix),
+            .Near = NEAR_PLANE,
+            .Far = FAR_PLANE,
             .GridSmall = 1.0f,
             .GridBig = 10.0f,
         };
@@ -270,7 +267,7 @@ struct SSmoothGridApp
         Rr_UIDebugOverlay();
     }
 
-    void Cleanup()
+    ~SSmoothGridApp()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleasePipelineLayout(PipelineLayout);
@@ -281,14 +278,14 @@ struct SSmoothGridApp
 
 int main()
 {
-    static SSmoothGridApp App;
+    static SSmoothGridApp *App;
 
     Rr_AppConfig Config = {};
     Config.Title = "SmoothGrid";
     Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
-    Config.InitFunc = []() { App.Init(); };
-    Config.EventFunc = [](Rr_Event *Event) { App.Event(Event); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Config.InitFunc = []() { App = new SSmoothGridApp(); };
+    Config.EventFunc = [](Rr_Event *Event) { App->Event(Event); };
+    Config.IterateFunc = []() { App->Iterate(); };
+    Config.CleanupFunc = []() { delete App; };
     Rr_Run(&Config);
 }

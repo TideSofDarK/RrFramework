@@ -1,7 +1,16 @@
-#version 450
-#extension GL_ARB_shading_language_include : require
+#version 460
 
-#include "SmoothGrid.glsl"
+layout(set = 0, binding = 0) uniform Globals
+{
+    mat4 View;
+    mat4 InvView;
+    mat4 Projection;
+    mat4 InvProjection;
+    float Near;
+    float Far;
+    float GridSmall;
+    float GridBig;
+};
 
 layout(location = 0) in vec3 InNear;
 layout(location = 1) in vec3 InFar;
