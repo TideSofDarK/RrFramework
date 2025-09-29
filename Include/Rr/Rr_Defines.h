@@ -94,7 +94,6 @@ struct Rr_Data
 
 /* Renderer Configuration */
 
-
 /* Arenas */
 
 #define RR_PER_FRAME_ARENA_SIZE        RR_MEGABYTES(2)

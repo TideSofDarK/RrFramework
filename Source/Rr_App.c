@@ -158,8 +158,6 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitRenderer(Config->Title);
 
-    ThreadContext->CommandPools = Rr_AcquireCommandPools();
-
     Rr_NewFrame();
     RR_BEGIN_FRAME_SECTION("Rr.MainLoop");
 
@@ -247,10 +245,6 @@ void Rr_InitThreadContext(void)
 
     ThreadContext = RR_ALLOC(Arena, sizeof(Rr_ThreadContext));
     ThreadContext->Arena = Arena;
-    if (gRenderer)
-    {
-        ThreadContext->CommandPools = Rr_AcquireCommandPools();
-    }
 }
 
 void Rr_CleanupThreadContext(void)
@@ -260,9 +254,9 @@ void Rr_CleanupThreadContext(void)
         return;
     }
 
-    if (ThreadContext->CommandPools)
+    if (!IsMainThread)
     {
-        Rr_ReleaseCommandPools(ThreadContext->CommandPools);
+        Rr_ReleaseCommandPools();
     }
 
     Rr_DestroyArena(ThreadContext->Arena);

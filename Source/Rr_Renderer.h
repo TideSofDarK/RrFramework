@@ -236,7 +236,7 @@ struct Rr_Renderer
     RR_ARRAY(VkFence) Fences;
     Rr_Spinlock FencesLock;
 
-    Rr_CommandPools *CommandPools;
+    Rr_CommandPools *FreeCommandPools;
     Rr_Spinlock CommandPoolsLock;
 
     Rr_Frame Frames[RR_FRAME_OVERLAP];
@@ -323,7 +323,7 @@ extern void Rr_ReleaseVulkanFence(VkFence Fence);
 
 extern Rr_CommandPools *Rr_AcquireCommandPools(void);
 
-extern void Rr_ReleaseCommandPools(Rr_CommandPools *CommandPools);
+extern void Rr_ReleaseCommandPools(void);
 
 extern void Rr_ConsumeNextObjectName(char Dst[32]);
 

@@ -382,7 +382,7 @@ static void Rr_InitFrames(void)
 {
     Rr_Device *Device = &gRenderer->Device;
     Rr_Frame *Frames = gRenderer->Frames;
-    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+    Rr_CommandPools *CommandPools = Rr_AcquireCommandPools();
 
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; Index++)
     {
@@ -393,7 +393,7 @@ static void Rr_InitFrames(void)
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .commandPool = ThreadContext->CommandPools->Graphics,
+            .commandPool = CommandPools->Graphics,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1,
         };
@@ -524,7 +524,6 @@ void Rr_InitRenderer(const char *Title)
         &gRenderer->TransferQueue);
 
     Rr_InitVMA();
-    Rr_InitThreadContext();
     Rr_InitFrames();
     Rr_InitSwapchain();
 
@@ -688,7 +687,6 @@ void Rr_CleanupRenderer(void)
         Device->DestroyDescriptorPool(Device->Handle, List->Handle, NULL);
     }
 
-    Rr_CleanupThreadContext();
     Rr_CleanupFrames();
 
     for (size_t Index = 0; Index < gRenderer->SwapchainImages.Count; ++Index)
@@ -704,7 +702,10 @@ void Rr_CleanupRenderer(void)
             NULL);
     }
 
-    for (Rr_CommandPools *CommandPools = gRenderer->CommandPools; CommandPools;
+    Rr_ReleaseCommandPools();
+
+    for (Rr_CommandPools *CommandPools = gRenderer->FreeCommandPools;
+         CommandPools;
          CommandPools = CommandPools->Next)
     {
         Device->DestroyCommandPool(
@@ -1539,16 +1540,21 @@ void Rr_ReleaseVulkanFence(VkFence Fence)
 
 Rr_CommandPools *Rr_AcquireCommandPools(void)
 {
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
 
-    Rr_CommandPools *CommandPools = NULL;
+    if (ThreadContext->CommandPools)
+    {
+        return ThreadContext->CommandPools;
+    }
+
+    Rr_Device *Device = &gRenderer->Device;
 
     Rr_LockSpinlock(&gRenderer->CommandPoolsLock);
 
-    if (gRenderer->CommandPools)
+    if (gRenderer->FreeCommandPools)
     {
-        CommandPools = gRenderer->CommandPools;
-        gRenderer->CommandPools = CommandPools->Next;
+        ThreadContext->CommandPools = gRenderer->FreeCommandPools;
+        gRenderer->FreeCommandPools = ThreadContext->CommandPools->Next;
 
         Rr_UnlockSpinlock(&gRenderer->CommandPoolsLock);
     }
@@ -1557,7 +1563,7 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
         Rr_UnlockSpinlock(&gRenderer->CommandPoolsLock);
 
         Rr_LockSpinlock(&gRenderer->Lock);
-        CommandPools =
+        ThreadContext->CommandPools =
             RR_ALLOC_NO_ZERO(gRenderer->Arena, sizeof(Rr_CommandPools));
         Rr_UnlockSpinlock(&gRenderer->Lock);
 
@@ -1569,7 +1575,7 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
                 .queueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
             },
             NULL,
-            &CommandPools->Graphics);
+            &ThreadContext->CommandPools->Graphics);
 
         Device->CreateCommandPool(
             Device->Handle,
@@ -1579,9 +1585,9 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
                 .queueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
             },
             NULL,
-            &CommandPools->Transfer);
+            &ThreadContext->CommandPools->Transfer);
 
-        CommandPools->Compute = NULL;
+        ThreadContext->CommandPools->Compute = NULL;
 
         // Device->CreateCommandPool(
         //     Device->Handle,
@@ -1594,19 +1600,28 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
         //     &CommandPools->Compute);
     }
 
-    CommandPools->Next = NULL;
+    ThreadContext->CommandPools->Next = NULL;
 
-    return CommandPools;
+    return ThreadContext->CommandPools;
 }
 
-void Rr_ReleaseCommandPools(Rr_CommandPools *CommandPools)
+void Rr_ReleaseCommandPools(void)
 {
+    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+
+    if (!ThreadContext->CommandPools)
+    {
+        return;
+    }
+
     Rr_LockSpinlock(&gRenderer->CommandPoolsLock);
 
-    CommandPools->Next = gRenderer->CommandPools;
-    gRenderer->CommandPools = CommandPools;
+    ThreadContext->CommandPools->Next = gRenderer->FreeCommandPools;
+    gRenderer->FreeCommandPools = ThreadContext->CommandPools;
 
     Rr_UnlockSpinlock(&gRenderer->CommandPoolsLock);
+
+    ThreadContext->CommandPools = NULL;
 }
 
 static RR_THREAD_LOCAL char NextObjectName[32] = { 0 };

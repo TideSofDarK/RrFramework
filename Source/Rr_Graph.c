@@ -78,15 +78,15 @@ void Rr_EndGraph(Rr_Graph *Graph)
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+    Rr_CommandPools *CommandPools = Rr_AcquireCommandPools();
 
     Rr_Device *Device = &gRenderer->Device;
 
     bool UseTransferQueue = Rr_IsUsingTransferQueue();
     Rr_Queue *Queue = UseTransferQueue ? &gRenderer->TransferQueue
                                        : &gRenderer->GraphicsQueue;
-    VkCommandPool CommandPool = UseTransferQueue
-                                    ? ThreadContext->CommandPools->Transfer
-                                    : ThreadContext->CommandPools->Graphics;
+    VkCommandPool CommandPool =
+        UseTransferQueue ? CommandPools->Transfer : CommandPools->Graphics;
     uint32_t QueueFamilyIndex = Queue->FamilyIndex;
 
     VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;

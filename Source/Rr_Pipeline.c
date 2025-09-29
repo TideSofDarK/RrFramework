@@ -239,10 +239,7 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
         {
             DataStart = SpecializationData;
         }
-        memcpy(
-            SpecializationData,
-            Specialization->Data,
-            Specialization->Size);
+        memcpy(SpecializationData, Specialization->Data, Specialization->Size);
         Entries[Index] = (VkSpecializationMapEntry){
             .constantID = Specialization->ConstantID,
             .size = Specialization->Size,
