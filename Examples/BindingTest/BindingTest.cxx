@@ -92,12 +92,14 @@ struct SBindingTestApp
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(LocalSize),
+                .ConstantID = 0,
+                .Size = sizeof(LocalSize),
+                .Data = &LocalSize,
             },
             Rr_PipelineSpecialization{
-                1,
-                RR_MAKE_DATA_STRUCT(LocalSize),
+                .ConstantID = 1,
+                .Size = sizeof(LocalSize),
+                .Data = &LocalSize,
             },
         };
 

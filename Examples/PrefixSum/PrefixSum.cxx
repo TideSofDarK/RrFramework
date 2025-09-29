@@ -73,7 +73,8 @@ static void Init()
     ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations();
     std::array Specializations = {
         Rr_PipelineSpecialization{ 0,
-                                   RR_MAKE_DATA_STRUCT(ThreadsPerWorkgroup) },
+                                   sizeof(ThreadsPerWorkgroup),
+                                   &ThreadsPerWorkgroup },
     };
 
     Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};

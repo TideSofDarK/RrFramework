@@ -85,30 +85,6 @@ struct Rr_Data
     const void *Pointer;
 };
 
-/* Make Data Helper */
-
-#ifdef __cplusplus
-#define RR_MAKE_DATA_STRUCT(Struct) { sizeof(Struct), &(Struct) }
-#define RR_MAKE_DATA_ARRAY(Array)   { sizeof(Array), (Array) }
-#define RR_MAKE_DATA(Size, Pointer) { Size, Pointer }
-#else
-#define RR_MAKE_DATA_STRUCT(Struct) \
-    (Rr_Data)                       \
-    {                               \
-        sizeof(Struct), &(Struct)   \
-    }
-#define RR_MAKE_DATA_ARRAY(Struct) \
-    (Rr_Data)                      \
-    {                              \
-        sizeof(Struct), (Struct)   \
-    }
-#define RR_MAKE_DATA(Size, Pointer) \
-    (Rr_Data)                       \
-    {                               \
-        Size, Pointer               \
-    }
-#endif
-
 /* Alignment */
 
 #define RR_SAFE_ALIGNMENT 16

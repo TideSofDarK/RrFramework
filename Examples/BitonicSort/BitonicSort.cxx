@@ -51,9 +51,21 @@ struct SValidator
         DispatchSize = COUNT_SQRT / LocalSize;
 
         std::array Specializations = {
-            Rr_PipelineSpecialization{ 0, RR_MAKE_DATA_STRUCT(LocalSize) },
-            Rr_PipelineSpecialization{ 1, RR_MAKE_DATA_STRUCT(LocalSize) },
-            Rr_PipelineSpecialization{ 2, RR_MAKE_DATA_STRUCT(COUNT_SQRT) },
+            Rr_PipelineSpecialization{
+                .ConstantID = 0,
+                .Size = sizeof(LocalSize),
+                .Data = &LocalSize,
+            },
+            Rr_PipelineSpecialization{
+                .ConstantID = 1,
+                .Size = sizeof(LocalSize),
+                .Data = &LocalSize,
+            },
+            Rr_PipelineSpecialization{
+                .ConstantID = 2,
+                .Size = sizeof(COUNT_SQRT),
+                .Data = &COUNT_SQRT,
+            },
         };
 
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
@@ -154,8 +166,10 @@ struct SBitonicSorter
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(ThreadsPerWorkgroup) },
+                .ConstantID = 0,
+                .Size = sizeof(ThreadsPerWorkgroup),
+                .Data = &ThreadsPerWorkgroup,
+            },
         };
 
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};

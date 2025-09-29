@@ -182,7 +182,8 @@ typedef struct Rr_PipelineSpecialization Rr_PipelineSpecialization;
 struct Rr_PipelineSpecialization
 {
     uint32_t ConstantID;
-    Rr_Data Data;
+    uint32_t Size;
+    const void *Data;
 };
 
 typedef struct Rr_Multisampling Rr_Multisampling;

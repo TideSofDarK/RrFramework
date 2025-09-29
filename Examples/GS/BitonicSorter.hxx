@@ -62,8 +62,10 @@ struct SSortList
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(ThreadsPerWorkgroup) },
+                .ConstantID = 0,
+                .Size = sizeof(ThreadsPerWorkgroup),
+                .Data = &ThreadsPerWorkgroup,
+            },
         };
 
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
@@ -248,8 +250,10 @@ struct SBitonicSorter
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(ThreadsPerWorkgroup) },
+                .ConstantID = 0,
+                .Size = sizeof(ThreadsPerWorkgroup),
+                .Data = &ThreadsPerWorkgroup,
+            },
         };
 
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};

@@ -179,12 +179,14 @@ struct SBoxBlur2D
     {
         std::array Specializations = {
             Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(LocalSizeX),
+                .ConstantID = 0,
+                .Size = sizeof(LocalSizeX),
+                .Data = &LocalSizeX,
             },
             Rr_PipelineSpecialization{
-                1,
-                RR_MAKE_DATA_STRUCT(KernelSize),
+                .ConstantID = 1,
+                .Size = sizeof(KernelSize),
+                .Data = &KernelSize,
             },
         };
 
@@ -391,8 +393,9 @@ struct SKawaseBlur2D
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(LocalSize),
+                .ConstantID = 0,
+                .Size = sizeof(LocalSize),
+                .Data = &LocalSize,
             },
         };
 
@@ -595,8 +598,9 @@ struct SDualKawaseBlur2D
     {
         std::array Specializations = {
             Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(LocalSize),
+                .ConstantID = 0,
+                .Size = sizeof(LocalSize),
+                .Data = &LocalSize,
             },
         };
 
@@ -710,16 +714,19 @@ struct SBoxBlurCube
     {
         std::array Specializations = {
             Rr_PipelineSpecialization{
-                0,
-                RR_MAKE_DATA_STRUCT(LocalSize),
+                .ConstantID = 0,
+                .Size = sizeof(LocalSize),
+                .Data = &LocalSize,
             },
             Rr_PipelineSpecialization{
-                1,
-                RR_MAKE_DATA_STRUCT(ImageSize),
+                .ConstantID = 1,
+                .Size = sizeof(ImageSize),
+                .Data = &ImageSize,
             },
             Rr_PipelineSpecialization{
-                2,
-                RR_MAKE_DATA_STRUCT(Radius),
+                .ConstantID = 2,
+                .Size = sizeof(Radius),
+                .Data = &Radius,
             },
         };
 

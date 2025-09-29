@@ -234,18 +234,18 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
     {
         Rr_PipelineSpecialization *Specialization = Specializations + Index;
         char *SpecializationData =
-            RR_ALLOC_NO_ZERO(Arena, Specialization->Data.Size);
+            RR_ALLOC_NO_ZERO(Arena, Specialization->Size);
         if (DataStart == NULL)
         {
             DataStart = SpecializationData;
         }
         memcpy(
             SpecializationData,
-            Specialization->Data.Pointer,
-            Specialization->Data.Size);
+            Specialization->Data,
+            Specialization->Size);
         Entries[Index] = (VkSpecializationMapEntry){
             .constantID = Specialization->ConstantID,
-            .size = Specialization->Data.Size,
+            .size = Specialization->Size,
             .offset = (uint32_t)(SpecializationData - DataStart),
         };
     }
