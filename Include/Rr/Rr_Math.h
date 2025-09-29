@@ -145,6 +145,16 @@ extern "C" {
 #define RR_MOD(A, M)      (((A) % (M)) >= 0 ? ((A) % (M)) : (((A) % (M)) + (M)))
 #define RR_SQUARE(X)      ((X) * (X))
 
+#ifdef __cplusplus
+#define RR_REINTERPRET_CAST(Type, Expression) reinterpret_cast<Type>(Expression)
+#define RR_STATIC_CAST(Type, Expression)      static_cast<Type>(Expression)
+#define RR_CONST_CAST(Type, Expression)       const_cast<Type>(Expression)
+#else
+#define RR_REINTERPRET_CAST(Type, Expression) ((Type)(Expression))
+#define RR_STATIC_CAST(Type, Expression)      ((Type)(Expression))
+#define RR_CONST_CAST(Type, Expression)       ((Type)(Expression))
+#endif
+
 typedef union Rr_Vec2
 {
     struct

@@ -39,14 +39,6 @@
 #define RR_EXTERN extern
 #endif
 
-#if UINTPTR_MAX == UINT32_MAX
-#define RR_HALF_UINTPTR uint16_t
-#elif UINTPTR_MAX == UINT64_MAX
-#define RR_HALF_UINTPTR uint32_t
-#else
-#error "Unrecognized UINTPTR_MAX value!"
-#endif
-
 #define RR_UNUSED(Var) (void)Var
 
 #define RR_HAS_BIT(Value, Bit) ((Value & Bit) != 0)
@@ -58,27 +50,7 @@
 #define RR_MEGABYTES(Value) ((Value) * RR_KILOBYTES(1024))
 #define RR_GIGABYTES(Value) ((Value) * RR_MEGABYTES(1024))
 
-#ifdef __cplusplus
-#define RR_REINTERPRET_CAST(Type, Expression) reinterpret_cast<Type>(Expression)
-#define RR_STATIC_CAST(Type, Expression)      static_cast<Type>(Expression)
-#define RR_CONST_CAST(Type, Expression)       const_cast<Type>(Expression)
-#else
-#define RR_REINTERPRET_CAST(Type, Expression) ((Type)(Expression))
-#define RR_STATIC_CAST(Type, Expression)      ((Type)(Expression))
-#define RR_CONST_CAST(Type, Expression)       ((Type)(Expression))
-#endif
-
-#if defined(__GNUC__) || defined(__clang__)
-#define RR_DEPRECATED(msg) __attribute__((deprecated(msg)))
-#elif defined(_MSC_VER)
-#define RR_DEPRECATED(msg) __declspec(deprecated(msg))
-#else
-#define RR_DEPRECATED(msg)
-#endif
-
 #define RR_ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
-
-/* Alignment */
 
 #define RR_SAFE_ALIGNMENT 16
 #define RR_ALIGN_POW2(Num, Alignment) \
