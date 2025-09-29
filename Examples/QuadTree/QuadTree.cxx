@@ -678,12 +678,15 @@ struct SQuadTreeApp
         ColorTargets[0].Format = Rr_GetSwapchainFormat();
         ColorTargets[0].Blend = Rr_AlphaBlend();
 
+        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
+
         Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
         PipelineInfo.Layout = Layout;
-        PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
+        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
+        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
+        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = ColorTargets;
 

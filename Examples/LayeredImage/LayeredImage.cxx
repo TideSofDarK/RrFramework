@@ -124,19 +124,25 @@ struct SLayeredImageApp
         ColorTarget.Format = Rr_GetSwapchainFormat();
         ColorTarget.Blend = Rr_AlphaBlend();
 
+        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
+        Rr_Asset FragmentShader =
+            Rr_LoadAsset(EXAMPLE_ASSET_IMAGE2DARRAY_FRAG_SPV);
+
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_IMAGE2DARRAY_FRAG_SPV);
+        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
+        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
+        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
         Image2DArrayPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_IMAGE3D_FRAG_SPV);
+        FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_IMAGE3D_FRAG_SPV);
+
+        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
 
         Image3DPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }

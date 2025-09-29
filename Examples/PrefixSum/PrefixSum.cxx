@@ -77,10 +77,12 @@ static void Init()
                                    &ThreadsPerWorkgroup },
     };
 
+    Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_PREFIXSUM_COMP_SPV);
+
     Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
     PipelineCreateInfo.Layout = Layout;
-    PipelineCreateInfo.ShaderSPV =
-        Rr_LoadAsset(EXAMPLE_ASSET_PREFIXSUM_COMP_SPV);
+    PipelineCreateInfo.ShaderSPVSize = ComputeShader.Size;
+    PipelineCreateInfo.ShaderSPVData = ComputeShader.Pointer;
     PipelineCreateInfo.SpecializationCount = Specializations.size();
     PipelineCreateInfo.Specializations = Specializations.data();
 

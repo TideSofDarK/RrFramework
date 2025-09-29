@@ -268,11 +268,15 @@ struct SGSApp
         ColorTargets[0].Format = Rr_GetSwapchainFormat();
         ColorTargets[0].Blend = Rr_AlphaBlend();
 
+        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GS_VERT_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_GS_FRAG_SPV);
+
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPV = Rr_LoadAsset(EXAMPLE_ASSET_GS_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_GS_FRAG_SPV);
+        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
+        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
+        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
         PipelineInfo.VertexInputBindingCount = 1;
         PipelineInfo.VertexInputBindings = &VertexInputBinding;
         PipelineInfo.ColorTargetCount = ColorTargets.size();

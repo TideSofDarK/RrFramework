@@ -78,26 +78,9 @@
 
 #define RR_ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
-typedef struct Rr_Data Rr_Data;
-struct Rr_Data
-{
-    size_t Size;
-    const void *Pointer;
-};
-
 /* Alignment */
 
 #define RR_SAFE_ALIGNMENT 16
 #define RR_ALIGN_POW2(Num, Alignment) \
     (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 #define RR_IS_POW2(Num) (((Num - 1) & Num) == 0)
-
-/* Renderer Configuration */
-
-/* Arenas */
-
-#define RR_PER_FRAME_ARENA_SIZE        RR_MEGABYTES(2)
-#define RR_PERMANENT_ARENA_SIZE        RR_MEGABYTES(1)
-#define RR_SYNC_ARENA_SIZE             RR_MEGABYTES(1)
-#define RR_LOADING_THREAD_ARENA_SIZE   RR_MEGABYTES(1)
-#define RR_LOADING_THREAD_SCRATCH_SIZE RR_MEGABYTES(32)

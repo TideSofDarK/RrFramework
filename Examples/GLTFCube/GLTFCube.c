@@ -90,12 +90,15 @@ static void Init(void)
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
     ColorTargets[0].Format = Rr_GetSwapchainFormat();
 
+    Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_VERT_SPV);
+    Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_FRAG_SPV);
+
     Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
     PipelineInfo.Layout = PipelineLayout;
-    PipelineInfo.VertexShaderSPV =
-        Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_VERT_SPV);
-    PipelineInfo.FragmentShaderSPV =
-        Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_FRAG_SPV);
+    PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
+    PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
+    PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+    PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
     PipelineInfo.VertexInputBindingCount = RR_ARRAY_COUNT(VertexInputBindings);
     PipelineInfo.VertexInputBindings = VertexInputBindings;
     PipelineInfo.ColorTargetCount = RR_ARRAY_COUNT(ColorTargets);

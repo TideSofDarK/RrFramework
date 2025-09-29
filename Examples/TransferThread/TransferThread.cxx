@@ -199,12 +199,17 @@ struct STransferThreadApp
         ColorTarget.Format = Rr_GetSwapchainFormat();
         ColorTarget.Blend = Rr_AlphaBlend();
 
+        Rr_Asset VertexShader =
+            Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_VERT_SPV);
+        Rr_Asset FragmentShader =
+            Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_FRAG_SPV);
+
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_FRAG_SPV);
+        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
+        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
+        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
@@ -247,12 +252,17 @@ struct STransferThreadApp
         ColorTarget.Format = Rr_GetSwapchainFormat();
         ColorTarget.Blend = Rr_AlphaBlend();
 
+        Rr_Asset VertexShader =
+            Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_VERT_SPV);
+        Rr_Asset FragmentShader =
+            Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_FRAG_SPV);
+
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_FRAG_SPV);
+        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
+        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
+        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 

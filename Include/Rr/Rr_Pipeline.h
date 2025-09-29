@@ -195,8 +195,10 @@ struct Rr_Multisampling
 typedef struct Rr_GraphicsPipelineCreateInfo Rr_GraphicsPipelineCreateInfo;
 struct Rr_GraphicsPipelineCreateInfo
 {
-    Rr_Data VertexShaderSPV;
-    Rr_Data FragmentShaderSPV;
+    size_t VertexShaderSPVSize;
+    const void *VertexShaderSPVData;
+    size_t FragmentShaderSPVSize;
+    const void *FragmentShaderSPVData;
     size_t VertexInputBindingCount;
     const Rr_VertexInputBinding *VertexInputBindings;
     Rr_Topology Topology;
@@ -211,7 +213,8 @@ struct Rr_GraphicsPipelineCreateInfo
 typedef struct Rr_ComputePipelineCreateInfo Rr_ComputePipelineCreateInfo;
 struct Rr_ComputePipelineCreateInfo
 {
-    Rr_Data ShaderSPV;
+    size_t ShaderSPVSize;
+    const void *ShaderSPVData;
     Rr_PipelineLayout *Layout;
     size_t SpecializationCount;
     Rr_PipelineSpecialization *Specializations;

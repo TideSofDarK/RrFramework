@@ -30,7 +30,12 @@
 extern "C" {
 #endif
 
-typedef struct Rr_Data Rr_Asset;
+typedef struct Rr_Asset Rr_Asset;
+struct Rr_Asset
+{
+    size_t Size;
+    const void *Pointer;
+};
 
 #if defined(RR_USE_RC)
 

@@ -4410,10 +4410,15 @@ void Rr_InitUI(void)
         .Attributes = VertexInputAttributes,
     };
 
+    Rr_Asset VertexShader = Rr_LoadAsset(RR_BUILTIN_UI_VERT_SPV);
+    Rr_Asset FragmentShader = Rr_LoadAsset(RR_BUILTIN_UI_FRAG_SPV);
+
     Rr_GraphicsPipelineCreateInfo PipelineInfo = {
         .Layout = gUIContext->PipelineLayout,
-        .VertexShaderSPV = Rr_LoadAsset(RR_BUILTIN_UI_VERT_SPV),
-        .FragmentShaderSPV = Rr_LoadAsset(RR_BUILTIN_UI_FRAG_SPV),
+        .VertexShaderSPVSize = VertexShader.Size,
+        .VertexShaderSPVData = VertexShader.Pointer,
+        .FragmentShaderSPVSize = FragmentShader.Size,
+        .FragmentShaderSPVData = FragmentShader.Pointer,
         .ColorTargetCount = RR_ARRAY_COUNT(ColorTargets),
         .ColorTargets = ColorTargets,
         .VertexInputBindingCount = 1,

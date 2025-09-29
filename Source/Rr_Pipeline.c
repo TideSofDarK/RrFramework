@@ -286,8 +286,8 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = CreateInfo->ShaderSPV.Size,
-        .pCode = (uint32_t *)CreateInfo->ShaderSPV.Pointer,
+        .codeSize = CreateInfo->ShaderSPVSize,
+        .pCode = (uint32_t *)CreateInfo->ShaderSPVData,
     };
 
     VkShaderModule ShaderModule;
@@ -438,12 +438,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
-    if (CreateInfo->VertexShaderSPV.Pointer != NULL)
+    if (CreateInfo->VertexShaderSPVData != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .codeSize = CreateInfo->VertexShaderSPV.Size,
-            .pCode = (uint32_t *)CreateInfo->VertexShaderSPV.Pointer,
+            .codeSize = CreateInfo->VertexShaderSPVSize,
+            .pCode = (uint32_t *)CreateInfo->VertexShaderSPVData,
         };
         Device->CreateShaderModule(
             Device->Handle,
@@ -461,13 +461,13 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
-    if (CreateInfo->FragmentShaderSPV.Pointer != NULL)
+    if (CreateInfo->FragmentShaderSPVData != NULL)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .codeSize = CreateInfo->FragmentShaderSPV.Size,
-            .pCode = (uint32_t *)CreateInfo->FragmentShaderSPV.Pointer,
+            .codeSize = CreateInfo->FragmentShaderSPVSize,
+            .pCode = (uint32_t *)CreateInfo->FragmentShaderSPVData,
         };
         Device->CreateShaderModule(
             Device->Handle,

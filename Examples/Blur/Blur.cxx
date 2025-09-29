@@ -190,9 +190,12 @@ struct SBoxBlur2D
             },
         };
 
+        Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
+
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
         PipelineCreateInfo.Layout = PipelineLayout;
-        PipelineCreateInfo.ShaderSPV = Rr_LoadAsset(ComputeSPV);
+        PipelineCreateInfo.ShaderSPVSize = ComputeShader.Size;
+        PipelineCreateInfo.ShaderSPVData = ComputeShader.Pointer;
         PipelineCreateInfo.SpecializationCount = Specializations.size();
         PipelineCreateInfo.Specializations = Specializations.data();
 
@@ -399,10 +402,12 @@ struct SKawaseBlur2D
             },
         };
 
+        Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_KAWASE2D_COMP_SPV);
+
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
         PipelineCreateInfo.Layout = PipelineLayout;
-        PipelineCreateInfo.ShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_KAWASE2D_COMP_SPV);
+        PipelineCreateInfo.ShaderSPVSize = ComputeShader.Size;
+        PipelineCreateInfo.ShaderSPVData = ComputeShader.Pointer;
         PipelineCreateInfo.SpecializationCount = Specializations.size();
         PipelineCreateInfo.Specializations = Specializations.data();
 
@@ -604,9 +609,12 @@ struct SDualKawaseBlur2D
             },
         };
 
+        Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
+
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
         PipelineCreateInfo.Layout = PipelineLayout;
-        PipelineCreateInfo.ShaderSPV = Rr_LoadAsset(ComputeSPV);
+        PipelineCreateInfo.ShaderSPVSize = ComputeShader.Size;
+        PipelineCreateInfo.ShaderSPVData = ComputeShader.Pointer;
         PipelineCreateInfo.SpecializationCount = Specializations.size();
         PipelineCreateInfo.Specializations = Specializations.data();
 
@@ -730,9 +738,12 @@ struct SBoxBlurCube
             },
         };
 
+        Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
+
         Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
         PipelineCreateInfo.Layout = PipelineLayout;
-        PipelineCreateInfo.ShaderSPV = Rr_LoadAsset(ComputeSPV);
+        PipelineCreateInfo.ShaderSPVSize = ComputeShader.Size;
+        PipelineCreateInfo.ShaderSPVData = ComputeShader.Pointer;
         PipelineCreateInfo.SpecializationCount = Specializations.size();
         PipelineCreateInfo.Specializations = Specializations.data();
 
@@ -879,12 +890,15 @@ struct SBlurApp
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetSwapchainFormat();
 
+        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
+
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = QuadPipelineLayout;
-        PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
+        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
+        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
+        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
@@ -966,12 +980,15 @@ struct SBlurApp
         ColorTarget.Format = Rr_GetSwapchainFormat();
         ColorTarget.Blend = Rr_AlphaBlend();
 
+        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_VERT_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_FRAG_SPV);
+
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = CubePipelineLayout;
-        PipelineInfo.VertexShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_CUBE_VERT_SPV);
-        PipelineInfo.FragmentShaderSPV =
-            Rr_LoadAsset(EXAMPLE_ASSET_CUBE_FRAG_SPV);
+        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
+        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
+        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
+        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
