@@ -4900,9 +4900,19 @@ void Rr_UIDebugOverlay(void)
                 Rr_UILabelF("FPS: %.2f", LastFPS);
             }
 
+            Rr_UILabelF(
+                "Main Loop: %.3fms",
+                (double)(RR_GET_FRAME_SECTION("Rr.MainLoop") * 1000) /
+                    (double)Rr_GetPerformanceFrequency());
+
+            Rr_UILabelF(
+                "Frame Graph: %.3fms",
+                (double)(RR_GET_FRAME_SECTION("Rr.FrameGraph") * 1000) /
+                    (double)Rr_GetPerformanceFrequency());
+
             if (gRenderer->GraphicsQueue.TimestampsEnabled)
             {
-                Rr_UILabelF("GPU: %.2fms", gRenderer->LastFrameMS);
+                Rr_UILabelF("GPU: %.3fms", gRenderer->LastFrameMS);
             }
             else
             {
@@ -4930,7 +4940,7 @@ void Rr_UIDebugOverlay(void)
         }
         if (Rr_UITab("Memory"))
         {
-            Rr_UIDebugOverlayArena(gApp->Arena, "Application");
+            Rr_UIDebugOverlayArena(Rr_GetThreadContext()->Arena, "Main Thread");
             Rr_UIDebugOverlayArena(gRenderer->Arena, "Renderer");
             for (uint32_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
             {

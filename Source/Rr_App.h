@@ -70,9 +70,17 @@ struct Rr_App
     Rr_FrameTime FrameTime;
 
     Rr_EventHive EventHive;
+};
 
+typedef struct Rr_ThreadContext Rr_ThreadContext;
+struct Rr_ThreadContext
+{
+    struct Rr_Graph *Graph;
+    struct Rr_CommandPools *CommandPools;
     Rr_Arena *Arena;
 };
+
+extern Rr_ThreadContext *Rr_GetThreadContext(void);
 
 extern Rr_Event *Rr_AddEvent(void);
 

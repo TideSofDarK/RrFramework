@@ -387,6 +387,7 @@ struct Rr_Graph
 #endif
 
     Rr_Arena *Arena;
+    uintptr_t ArenaPosition;
 };
 
 extern void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer);

@@ -118,12 +118,6 @@ struct Rr_Data
 
 /* Renderer Configuration */
 
-#define RR_FORCE_DISABLE_TRANSFER_QUEUE 0
-#define RR_PERFORMANCE_COUNTER          1
-#define RR_MAX_OBJECTS                  128
-#define RR_FRAME_OVERLAP                2
-#define RR_STAGING_BUFFER_SIZE          RR_MEGABYTES(16)
-#define RR_MAX_COLOR_ATTACHMENTS        4
 
 /* Arenas */
 

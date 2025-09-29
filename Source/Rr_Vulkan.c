@@ -346,26 +346,22 @@ static bool Rr_CheckPhysicalDevice(
         return false;
     }
 
-    bool ForceDisableTransferQueue = RR_FORCE_DISABLE_TRANSFER_QUEUE;
-
-    if (!ForceDisableTransferQueue)
+#ifndef RR_DISABLE_TRANSFER_QUEUE
+    for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
     {
-        for (uint32_t Index = 0; Index < QueueFamilyCount; ++Index)
+        if (Index == GraphicsQueueFamilyIndex)
         {
-            if (Index == GraphicsQueueFamilyIndex)
-            {
-                continue;
-            }
+            continue;
+        }
 
-            if (QueueFamilyProperties[Index].queueCount > 0 &&
-                (QueueFamilyProperties[Index].queueFlags &
-                 VK_QUEUE_TRANSFER_BIT))
-            {
-                TransferQueueFamilyIndex = Index;
-                break;
-            }
+        if (QueueFamilyProperties[Index].queueCount > 0 &&
+            (QueueFamilyProperties[Index].queueFlags & VK_QUEUE_TRANSFER_BIT))
+        {
+            TransferQueueFamilyIndex = Index;
+            break;
         }
     }
+#endif
 
     *OutGraphicsQueueFamilyIndex = GraphicsQueueFamilyIndex;
     *OutGraphicsQueueFamilyProperties =

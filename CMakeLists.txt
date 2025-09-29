@@ -177,6 +177,7 @@ target_sources(
     Source/Rr_Pipeline.c
     Source/Rr_Platform.c
     Source/Rr_Renderer.c
+    Source/Rr_Profiler.c
     Source/Rr_UI.c
     Source/Rr_Vulkan.c
     Vendor/xxHash/xxhash.c

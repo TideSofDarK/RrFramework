@@ -33,6 +33,9 @@ extern "C" {
 struct Rr_Graph;
 struct Rr_Image;
 
+#define RR_FRAME_OVERLAP         2
+#define RR_MAX_COLOR_ATTACHMENTS 4
+
 typedef struct Rr_Renderer Rr_Renderer;
 
 typedef enum
@@ -211,10 +214,6 @@ extern size_t Rr_GetStorageAlignment(void);
 extern size_t Rr_GetMaxComputeSharedMemorySize(void);
 
 extern size_t Rr_GetMaxComputeWorkgroupInvocations(void);
-
-extern void Rr_InitThreadContext(void);
-
-extern void Rr_CleanupThreadContext(void);
 
 extern void Rr_SetNextObjectName(const char *Name);
 

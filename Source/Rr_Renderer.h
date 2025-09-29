@@ -30,6 +30,7 @@
 #include "Rr_Graph.h"
 #include "Rr_Image.h"
 #include "Rr_Pipeline.h"
+#include "Rr_Profiler.h"
 #include "Rr_Vulkan.h"
 
 #include <xxHash/xxhash.h>
@@ -66,6 +67,15 @@ struct Rr_CommandPools
     Rr_CommandPools *Next;
 };
 
+#define RR_BEGIN_FRAME_SECTION(Name) \
+    Rr_BeginSection(Rr_GetCurrentFrame()->Profiler, (Name))
+
+#define RR_END_FRAME_SECTION(Name) \
+    Rr_EndSection(Rr_GetCurrentFrame()->Profiler, (Name))
+
+#define RR_GET_FRAME_SECTION(Name) \
+    Rr_GetSectionTicks(Rr_GetPreviousFrame()->Profiler, (Name))
+
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {
@@ -78,6 +88,8 @@ struct Rr_Frame
     Rr_Image2D VirtualSwapchainImage;
 
     Rr_Graph *Graph;
+
+    Rr_Profiler *Profiler;
 
     Rr_Arena *Arena;
 };
@@ -295,6 +307,8 @@ extern void Rr_NewFrame(void);
 
 extern void Rr_DrawFrame(void);
 
+extern Rr_Frame *Rr_GetPreviousFrame(void);
+
 extern Rr_Frame *Rr_GetCurrentFrame(void);
 
 extern bool Rr_IsUsingTransferQueue(void);
@@ -310,17 +324,6 @@ extern void Rr_ReleaseVulkanFence(VkFence Fence);
 extern Rr_CommandPools *Rr_AcquireCommandPools(void);
 
 extern void Rr_ReleaseCommandPools(Rr_CommandPools *CommandPools);
-
-typedef struct Rr_ThreadContext Rr_ThreadContext;
-struct Rr_ThreadContext
-{
-    Rr_Graph *Graph;
-    Rr_CommandPools *CommandPools;
-    Rr_Arena *Arena;
-    Rr_Scratch Scratch;
-};
-
-extern Rr_ThreadContext *Rr_GetThreadContext(void);
 
 extern void Rr_ConsumeNextObjectName(char Dst[32]);
 

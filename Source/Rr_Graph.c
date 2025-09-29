@@ -28,6 +28,7 @@
 
 #include "Rr_Graph.h"
 
+#include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Image.h"
@@ -41,7 +42,7 @@ Rr_Graph *Rr_GetGraph(void)
     return Rr_GetCurrentFrame()->Graph;
 }
 
-Rr_Graph *Rr_GetSubGraph(Rr_GraphFlags Flags)
+Rr_Graph *Rr_BeginGraph(Rr_GraphFlags Flags)
 {
     assert(gRenderer);
     assert(
@@ -59,17 +60,18 @@ Rr_Graph *Rr_GetSubGraph(Rr_GraphFlags Flags)
         return ThreadContext->Graph;
     }
 
-    ThreadContext->Scratch = Rr_CreateScratch(ThreadContext->Arena);
+    size_t ArenaPosition = ThreadContext->Arena->Position;
 
-    Rr_Graph *Graph = RR_ALLOC(ThreadContext->Arena, sizeof(Rr_Graph));
-    Graph->Arena = ThreadContext->Arena;
-    Graph->Flags = Flags;
-    Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+    ThreadContext->Graph = RR_ALLOC(ThreadContext->Arena, sizeof(Rr_Graph));
+    ThreadContext->Graph->Arena = ThreadContext->Arena;
+    ThreadContext->Graph->Flags = Flags;
+    ThreadContext->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+    ThreadContext->Graph->ArenaPosition = ArenaPosition;
 
-    return Graph;
+    return ThreadContext->Graph;
 }
 
-void Rr_SubmitSubGraph(Rr_Graph *Graph)
+void Rr_EndGraph(Rr_Graph *Graph)
 {
     assert(Graph);
 
@@ -282,7 +284,7 @@ void Rr_SubmitSubGraph(Rr_Graph *Graph)
 
     /* TODO: Semaphores! */
 
-    Rr_DestroyScratch(ThreadContext->Scratch);
+    ThreadContext->Arena->Position = Graph->ArenaPosition;
     ThreadContext->Graph = NULL;
 
     Rr_DestroyScratch(Scratch);
@@ -1855,6 +1857,8 @@ void Rr_ExecuteGraph(
     VkCommandBuffer EarlyCommandBuffer,
     VkCommandBuffer LateCommandBuffer)
 {
+    RR_BEGIN_FRAME_SECTION("Rr.ExecuteGraph");
+
     assert(
         EarlyCommandBuffer != VK_NULL_HANDLE ||
         LateCommandBuffer != VK_NULL_HANDLE);
@@ -2270,6 +2274,8 @@ void Rr_ExecuteGraph(
     }
 
     Rr_DestroyScratch(Scratch);
+
+    RR_END_FRAME_SECTION("Rr.ExecuteGraph");
 }
 
 void Rr_FinalizeGraph(Rr_Graph *Graph)

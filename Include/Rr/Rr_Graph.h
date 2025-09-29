@@ -46,9 +46,9 @@ typedef struct Rr_Graph Rr_Graph;
 
 extern struct Rr_Graph *Rr_GetGraph(void);
 
-extern struct Rr_Graph *Rr_GetSubGraph(Rr_GraphFlags Flags);
+extern struct Rr_Graph *Rr_BeginGraph(Rr_GraphFlags Flags);
 
-extern void Rr_SubmitSubGraph(struct Rr_Graph *Graph);
+extern void Rr_EndGraph(struct Rr_Graph *Graph);
 
 typedef struct Rr_GraphNode Rr_GraphNode;
 typedef struct Rr_TransferNode Rr_TransferNode;

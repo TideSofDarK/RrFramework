@@ -24,45 +24,28 @@
 
 #pragma once
 
-#include <Rr/Rr_Platform.h>
+#include "Rr_Memory.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct Rr_AppConfig Rr_AppConfig;
-struct Rr_AppConfig
+typedef struct Rr_ProfilerSection Rr_ProfilerSection;
+struct Rr_ProfilerSection
 {
-    const char *Title;
-    Rr_WindowFlags WindowFlags;
-    void (*InitFunc)(void);
-    void (*EventFunc)(Rr_Event *Event);
-    void (*IterateFunc)(void);
-    void (*CleanupFunc)(void);
+    char *Name;
+    uint64_t TotalTicks;
+    uint64_t LastTicks;
+    Rr_ProfilerSection *Children[4];
 };
 
-extern void Rr_Run(Rr_AppConfig *Config);
+typedef struct Rr_Profiler Rr_Profiler;
+struct Rr_Profiler
+{
+    Rr_ProfilerSection *Section;
+    Rr_Arena *Arena;
+};
 
-extern void Rr_InitThreadContext(void);
+extern Rr_Profiler *Rr_CreateProfiler(Rr_Arena *Arena);
 
-extern void Rr_CleanupThreadContext(void);
+extern void Rr_BeginSection(Rr_Profiler *Profiler, const char * SectionName);
 
-extern void Rr_SetFrameLimiterEnabled(bool Enabled);
+extern void Rr_EndSection(Rr_Profiler *Profiler, const char * SectionName);
 
-extern double Rr_GetFramesPerSecond(void);
-
-extern double Rr_GetDeltaSeconds(void);
-
-extern double Rr_GetTimeSeconds(void);
-
-extern uint64_t Rr_GetTimeMS(void);
-
-extern uint64_t Rr_GetTimeNS(void);
-
-extern void Rr_Quit(void);
-
-extern bool Rr_QuitRequested(void);
-
-#ifdef __cplusplus
-}
-#endif
+extern uint64_t Rr_GetSectionTicks(Rr_Profiler *Profiler, const char *SectionName);

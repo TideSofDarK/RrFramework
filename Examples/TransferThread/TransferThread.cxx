@@ -97,7 +97,7 @@ struct STransferThread
 
             Thread->IsBusy = true;
 
-            Rr_Graph *Graph = Rr_GetSubGraph(RR_GRAPH_FLAGS_TRANSFER_BIT);
+            Rr_Graph *Graph = Rr_BeginGraph(RR_GRAPH_FLAGS_TRANSFER_BIT);
 
             Rr_Image2D *Image2D = CreateImage2D(Graph, Path.c_str());
 
@@ -107,7 +107,7 @@ struct STransferThread
                 std::abort();
             }
 
-            Rr_SubmitSubGraph(Graph);
+            Rr_EndGraph(Graph);
 
             std::unique_lock ImagesLock{ Thread->ImagesMutex };
             Thread->ImagesQueue.push(Image2D);

@@ -28,6 +28,7 @@
 
 #include "Rr_Renderer.h"
 
+#include "Rr_App.h"
 #include "Rr_Log.h"
 
 #include <Rr/Rr_Graph.h>
@@ -749,6 +750,9 @@ void Rr_NewFrame(void)
 {
     Rr_Device *Device = &gRenderer->Device;
 
+    gRenderer->FrameNumber++;
+    gRenderer->FrameIndex = gRenderer->FrameNumber % RR_FRAME_OVERLAP;
+
     Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     /* Wait for previous work associated with given frame index. */
@@ -793,6 +797,8 @@ void Rr_NewFrame(void)
     /* NOTE: Resets everything allocated last time! */
 
     Rr_ResetArena(Frame->Arena);
+
+    Frame->Profiler = Rr_CreateProfiler(Frame->Arena);
 
     /* Swapchain might have been recreated so fill in updated settings. */
 
@@ -888,6 +894,8 @@ void Rr_DrawFrame(void)
             0);
     }
 
+    RR_BEGIN_FRAME_SECTION("Rr.FrameGraph");
+
     Rr_ExecuteGraph(
         Frame->Graph,
         &gRenderer->SyncStateStorage,
@@ -896,6 +904,8 @@ void Rr_DrawFrame(void)
         gRenderer->GraphicsQueue.FamilyIndex,
         Frame->EarlyCommandBuffer,
         Frame->LateCommandBuffer);
+
+    RR_END_FRAME_SECTION("Rr.FrameGraph");
 
     Device->EndCommandBuffer(Frame->EarlyCommandBuffer);
 
@@ -1017,10 +1027,12 @@ void Rr_DrawFrame(void)
 
     Rr_RecreateSwapchain();
 
-    gRenderer->FrameNumber++;
-    gRenderer->FrameIndex = gRenderer->FrameNumber % RR_FRAME_OVERLAP;
-
     Rr_DestroyScratch(Scratch);
+}
+
+Rr_Frame *Rr_GetPreviousFrame(void)
+{
+    return &gRenderer->Frames[(gRenderer->FrameNumber - 1) % RR_FRAME_OVERLAP];
 }
 
 Rr_Frame *Rr_GetCurrentFrame(void)
@@ -1595,37 +1607,6 @@ void Rr_ReleaseCommandPools(Rr_CommandPools *CommandPools)
     gRenderer->CommandPools = CommandPools;
 
     Rr_UnlockSpinlock(&gRenderer->CommandPoolsLock);
-}
-
-static RR_THREAD_LOCAL Rr_ThreadContext *ThreadContext = NULL;
-
-void Rr_InitThreadContext(void)
-{
-    Rr_InitScratchArena();
-    Rr_Arena *Arena = Rr_CreateDefaultArena();
-
-    ThreadContext = RR_ALLOC(Arena, sizeof(Rr_ThreadContext));
-    ThreadContext->Arena = Arena;
-    ThreadContext->CommandPools = Rr_AcquireCommandPools();
-}
-
-void Rr_CleanupThreadContext(void)
-{
-    if (!ThreadContext)
-    {
-        return;
-    }
-
-    Rr_ReleaseCommandPools(ThreadContext->CommandPools);
-    Rr_DestroyArena(ThreadContext->Arena);
-    ThreadContext = NULL;
-
-    Rr_CleanupScratchArena();
-}
-
-Rr_ThreadContext *Rr_GetThreadContext(void)
-{
-    return ThreadContext;
 }
 
 static RR_THREAD_LOCAL char NextObjectName[32] = { 0 };
