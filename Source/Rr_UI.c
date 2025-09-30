@@ -109,13 +109,16 @@ struct Rr_UIWindow
     Rr_Vec2 ContentsStart;
     Rr_Vec2 ContentsEnd;
     float VScroll;
+    float HScroll;
     int32_t Z;
     bool Minimized : 1;
     bool Added : 1;
     bool SkipDueToAutoResize : 1;
     bool Open : 1;
+    bool Child : 1;
 
     Rr_Map *WidgetMap;
+    Rr_Map *ChildWindowMap;
 
     RR_ARRAY(Rr_UIClipRect) ClipRects;
 };
@@ -1582,6 +1585,61 @@ static inline Rr_Vec2 Rr_UIGetMinWindowSize(Rr_UIWindowFlags Flags)
     }
 }
 
+static inline bool Rr_UIWindowHasTitle(Rr_UIWindow *Window)
+{
+    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
+}
+
+static inline bool Rr_UIWindowAutoResize(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+}
+
+static inline bool Rr_UIWindowNoMove(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT);
+}
+
+static inline bool Rr_UIWindowNoBorder(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT);
+}
+
+static inline bool Rr_UIWindowHasVerticalScrollbar(Rr_UIWindow *Window)
+{
+    return !RR_HAS_BIT(
+        Window->Flags,
+        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT);
+}
+
+static inline void Rr_UIAdvance(Rr_Vec2 Size)
+{
+    Rr_UIAssertWindow();
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    if (Rr_UIIsHorizontal())
+    {
+        Layout->Cursor.X += Size.Width + gUIContext->HorizontalMargin;
+        Layout->HorizontalMaxHeight =
+            RR_MAX(Layout->HorizontalMaxHeight, Size.Height);
+
+        Window->ContentsEnd.Y = RR_MAX(
+            Window->ContentsEnd.Y,
+            Layout->Cursor.Y + Layout->HorizontalMaxHeight);
+        Window->ContentsEnd.X = RR_MAX(Window->ContentsEnd.X, Layout->Cursor.X);
+    }
+    else
+    {
+        Layout->Cursor.Y += Size.Height;
+
+        Window->ContentsEnd.Y = RR_MAX(Window->ContentsEnd.Y, Layout->Cursor.Y);
+        Window->ContentsEnd.X =
+            RR_MAX(Window->ContentsEnd.X, Layout->Cursor.X + Size.X);
+    }
+}
+
 static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
 {
     /* Assuming having a title bar. */
@@ -1635,38 +1693,45 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
         &gUIContext->Style.Foreground);
 }
 
-static inline void Rr_UIAddWindowTitle(Rr_UIWindow *Window)
+static inline float Rr_UIAddWindowTitle(Rr_UIWindow *Window, bool *Open)
 {
-    Rr_Rect TitleRect = {
-        Window->Rect.Offset,
-        (Rr_Vec2){
-            Window->Rect.Extent.X,
-            gUIContext->WindowTitleHeight,
-        },
-    };
-    bool HasClose = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
-    if (HasClose)
-    {
-        TitleRect.Extent.Width -= gUIContext->TitleButtonSize;
-    }
-    Rr_Vec4 ColorB = gUIContext->Style.TitleBackground;
-    ColorB.RGB = Rr_LerpV3(ColorB.RGB, 0.25f, (Rr_Vec3){ 0.0f, 0.0f, 0.0f });
     Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
-    Rr_Vec4 Colors[4] = { ColorB,
-                          gUIContext->Style.TitleBackground,
-                          ColorB,
-                          gUIContext->Style.TitleBackground };
-    Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
-    Rr_UIDrawText(
+
+    Rr_Vec2 TitlePadding =
+        Rr_MulV2F(gUIContext->Style.TitlePadding, gUIContext->FontSize);
+
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
-        Rr_AddV2(
-            TitleRect.Offset,
-            Rr_MulV2F(gUIContext->Style.TitlePadding, gUIContext->FontSize)),
+        Rr_AddV2(Window->Rect.Offset, TitlePadding),
         SIZE_MAX,
         Window->Title,
         0.0f,
         &gUIContext->Style.Foreground,
         0);
+
+    Rr_Rect TitleRect = {
+        Window->Rect.Offset,
+        Rr_V2(Window->Rect.Extent.Width, gUIContext->WindowTitleHeight),
+    };
+
+    bool HasClose = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
+    if (HasClose)
+    {
+        Rr_UIAddCloseButton(Window, Open);
+
+        TitleRect.Extent.Width -= gUIContext->TitleButtonSize;
+    }
+
+    Rr_Vec4 ColorB = gUIContext->Style.TitleBackground;
+    ColorB.RGB = Rr_LerpV3(ColorB.RGB, 0.25f, (Rr_Vec3){ 0.0f, 0.0f, 0.0f });
+    Rr_Vec4 Colors[4] = { ColorB,
+                          gUIContext->Style.TitleBackground,
+                          ColorB,
+                          gUIContext->Style.TitleBackground };
+    Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
+
+    return TitleSize.Width + TitlePadding.Width * 2 +
+           (HasClose ? gUIContext->TitleButtonSize : 0);
 }
 
 static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
@@ -1734,9 +1799,14 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(Rr_UIWindow *Window)
     if (AutoResize == false)
     {
         bool HasScrollbar =
-            RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) ==
-            false;
+            RR_HAS_BIT(
+                Window->Flags,
+                RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT) == false;
         float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
+        if (ContentsHeight == 0.0f)
+        {
+            return Rect;
+        }
         float FillRatio = ContentsHeight / Rect.Extent.Height;
         if (HasScrollbar && FillRatio > 1.0f)
         {
@@ -1747,48 +1817,17 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(Rr_UIWindow *Window)
     return Rect;
 }
 
-static inline void Rr_UIAdvance(Rr_Vec2 Size)
-{
-    Rr_UIAssertWindow();
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
-
-    if (Rr_UIIsHorizontal())
-    {
-        Layout->Cursor.X += Size.Width + gUIContext->HorizontalMargin;
-        Layout->HorizontalMaxHeight =
-            RR_MAX(Layout->HorizontalMaxHeight, Size.Height);
-
-        Window->ContentsEnd.Y = RR_MAX(
-            Window->ContentsEnd.Y,
-            Layout->Cursor.Y + Layout->HorizontalMaxHeight);
-        Window->ContentsEnd.X = RR_MAX(Window->ContentsEnd.X, Layout->Cursor.X);
-    }
-    else
-    {
-        Layout->Cursor.Y += Size.Height;
-
-        Window->ContentsEnd.Y = RR_MAX(Window->ContentsEnd.Y, Layout->Cursor.Y);
-        Window->ContentsEnd.X =
-            RR_MAX(Window->ContentsEnd.X, Layout->Cursor.X + Size.X);
-    }
-}
-
 static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
 {
-    bool HasScrollbar =
-        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT) == false;
-    if (HasScrollbar != true)
-    {
-        return false;
-    }
-
     bool HasResize =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window);
     float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
+    if (ContentsHeight == 0.0f)
+    {
+        return false;
+    }
     float FillRatio = ContentsAreaRect.Extent.Height / ContentsHeight;
     float MaxYScroll =
         RR_MAX(0.0f, ContentsHeight - ContentsAreaRect.Extent.Height);
@@ -1974,8 +2013,7 @@ static inline bool Rr_UIBeginWindowEx(
      * This will put window on top unless there is a flag
      * preventing that which is not currently implemented. */
 
-    bool AutoResize =
-        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+    bool AutoResize = Rr_UIWindowAutoResize(Window);
 
     bool WasClosed = Window->Open == false;
     Window->Open = (Open == NULL || *Open == true);
@@ -2015,16 +2053,14 @@ static inline bool Rr_UIBeginWindowEx(
     /* Move and resize behavior.
      * Handle these early so following code may access updated window rect. */
 
-    bool Dragging = Rr_UIDragBehavior(
-        Window,
-        &Window->Rect,
-        RR_UI_DRAG_OP_MOVE,
-        0,
-        Window->Rect.Offset,
-        NULL,
-        NULL);
-
-    if (Dragging && !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT))
+    if (!Rr_UIWindowNoMove(Window) && Rr_UIDragBehavior(
+                                          Window,
+                                          &Window->Rect,
+                                          RR_UI_DRAG_OP_MOVE,
+                                          0,
+                                          Window->Rect.Offset,
+                                          NULL,
+                                          NULL))
     {
         Rr_Vec2 Delta =
             Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
@@ -2032,9 +2068,7 @@ static inline bool Rr_UIBeginWindowEx(
         Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
     }
 
-    bool NoResize = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
-
-    if (NoResize == false && AutoResize == false)
+    if (!AutoResize)
     {
         /* Defer drawing the handle to Rr_UIEndWindow()! */
 
@@ -2050,27 +2084,14 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_UIBeginClipRect(&WindowClipRect);
 
-    bool NoBorder = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT);
-
-    if (NoBorder == false)
-    {
-        Rr_UIDrawOuterFrame(
-            &Window->Rect,
-            gUIContext->FrameThickness,
-            &gUIContext->Style.Outline);
-    }
-
     /* Add window title if necessary. */
 
-    bool NoTitle = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
-
+    bool NoTitle = !Rr_UIWindowHasTitle(Window);
+    float DesiredTitleWidth = 0;
     if (NoTitle == false)
     {
-        Rr_UIAddWindowTitle(Window);
-        if (RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT) == true)
-        {
-            Rr_UIAddCloseButton(Window, Open);
-        }
+        DesiredTitleWidth = Rr_UIAddWindowTitle(Window, Open);
+
         Layout->Cursor.Y += gUIContext->WindowTitleHeight;
     }
 
@@ -2083,13 +2104,31 @@ static inline bool Rr_UIBeginWindowEx(
     }
     else
     {
-        bool HasScrollbar = Rr_UIAddVerticalScrollbar(Window);
-        Layout->Cursor.Y -= Window->VScroll;
-        if (HasScrollbar)
+        bool HasVerticalScrollbar = Rr_UIWindowHasVerticalScrollbar(Window);
+        bool VerticalScrollbarAdded = false;
+        if (HasVerticalScrollbar)
+        {
+            VerticalScrollbarAdded = Rr_UIAddVerticalScrollbar(Window);
+        }
+        if (VerticalScrollbarAdded || Window->SkipDueToAutoResize)
         {
             Layout->AvailableContentsWidth -= gUIContext->ScrollbarWidth;
         }
+        Layout->Cursor.Y -= Window->VScroll;
     }
+
+    /* Add border if necessary. */
+
+    bool NoBorder = Rr_UIWindowNoBorder(Window);
+    if (NoBorder == false)
+    {
+        Rr_UIDrawOuterFrame(
+            &Window->Rect,
+            gUIContext->FrameThickness,
+            &gUIContext->Style.Outline);
+    }
+
+    /* Consume custom padding if necessary. */
 
     if (gUIContext->NextWindowPadding.Width != INFINITY &&
         gUIContext->NextWindowPadding.Height != INFINITY)
@@ -2101,8 +2140,8 @@ static inline bool Rr_UIBeginWindowEx(
     {
         Layout->ContentsPadding = gUIContext->ContentsPadding;
     }
-    Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->ContentsPadding);
     Layout->AvailableContentsWidth -= Layout->ContentsPadding.X * 2.0f;
+    Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->ContentsPadding);
 
     Rr_UIEndClipRect();
 
@@ -2114,6 +2153,14 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_UIDrawSolidQuad(&ContentsAreaRect, &gUIContext->Style.Background);
 
     Window->ContentsStart = Window->ContentsEnd = Layout->Cursor;
+
+    /* Consider title length when in auto size mode. */
+
+    if (!NoTitle && (AutoResize || Window->SkipDueToAutoResize))
+    {
+        Window->ContentsEnd.Width +=
+            DesiredTitleWidth - Layout->ContentsPadding.Width * 2;
+    }
 
     return true;
 }
@@ -2131,8 +2178,30 @@ static inline void Rr_UIClosePopupWindow(void)
     gUIContext->PopupWindow.Open = false;
 }
 
+static inline Rr_UIWindow *Rr_UICreateWindow(
+    size_t TitleLength,
+    const char *Title,
+    uint64_t TitleHash,
+    Rr_UIWindowFlags Flags)
+{
+    Rr_UIWindow *Window = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIWindow);
+    Window->Title = memcpy(
+        RR_ALLOC(gUIContext->Arena, TitleLength + 1),
+        Title,
+        TitleLength + 1);
+    Window->Hash = TitleHash;
+    Window->Flags = Flags;
+    Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
+
+    Window->SkipDueToAutoResize = true;
+
+    return Window;
+}
+
 bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
+    assert(Rr_UICurrentWindow() == NULL);
+
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
@@ -2142,23 +2211,12 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
 
     if (Window == NULL)
     {
-        Window = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIWindow);
-        Window->Title = memcpy(
-            RR_ALLOC(gUIContext->Arena, TitleLength + 1),
-            Title,
-            TitleLength + 1);
+        Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
         Window->Z = gUIContext->TotalWindowCount++;
-        Window->Hash = TitleHash;
         Window->Rect.Offset = Rr_FloorV2(Rr_V2F(gUIContext->FontSize));
-        Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
-        Window->Rect.Extent.Width += gUIContext->FontSize * 16.0f;
-
         /* TODO: Wrapped text uses available width so we still need
          * some baseline width. Probably should come up with better solution. */
-        Window->Rect.Extent.Width += gUIContext->FontSize * 16.0f;
-
-        Window->SkipDueToAutoResize = true;
-
+        Window->Rect.Extent.Width += gUIContext->FontSize * 32.0f;
         *WindowRef = Window;
     }
 
@@ -2202,6 +2260,9 @@ void Rr_UIEndWindow(void)
     Window->ContentsEnd =
         Rr_AddV2(Rr_MulV2F(Layout->ContentsPadding, 2.0f), Window->ContentsEnd);
 
+    Window->ContentsStart = Rr_FloorV2(Window->ContentsStart);
+    Window->ContentsEnd = Rr_FloorV2(Window->ContentsEnd);
+
     bool AutoResize =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
 
@@ -2219,16 +2280,73 @@ void Rr_UIEndWindow(void)
         }
     }
 
-    (void)RR_POP_FROM_ARRAY(&gUIContext->Stack);
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->Stack));
 
     /* Resume clip rect if there is a window on the stack. */
 
     Rr_UIWindow *CurrentWindow = Rr_UICurrentWindow();
-    if (CurrentWindow && CurrentWindow->ClipRects.Count)
+    if (CurrentWindow)
     {
-        Rr_Rect Rect = Rr_UICurrentRect(CurrentWindow);
-        Rr_UIBeginClipRect(&Rect);
+        Rr_UIAdvance(Window->Rect.Extent);
+
+        if (CurrentWindow->ClipRects.Count)
+        {
+            Rr_Rect Rect = Rr_UICurrentRect(CurrentWindow);
+            Rr_UIBeginClipRect(&Rect);
+        }
     }
+}
+
+bool Rr_UIBeginChild(const char *Title)
+{
+    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
+    assert(ParentLayout);
+
+    Rr_UIWindow *ParentWindow = ParentLayout->Window;
+    assert(ParentWindow);
+
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+    Rr_UIWindow **WindowRef = RR_GET_MAP_VALUE(
+        &ParentWindow->ChildWindowMap,
+        TitleHash,
+        gUIContext->Arena);
+    Rr_UIWindow *Window = *WindowRef;
+
+    if (Window == NULL)
+    {
+        const Rr_UIWindowFlags CHILD_FLAGS =
+            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
+        Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, CHILD_FLAGS);
+        Window->Child = true;
+        *WindowRef = Window;
+    }
+
+    Window->Rect.Offset = ParentLayout->Cursor;
+    Window->Z = ParentWindow->Z + 1;
+
+    assert(
+        Window->Added == false && "There already is a window with this title!");
+    if (Rr_UIBeginWindowEx(Title, Window, NULL, Window->Flags))
+    {
+        *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveWindows, gUIContext->Arena) =
+            Window;
+        Window->Added = true;
+        return true;
+    }
+    return false;
+}
+
+void Rr_UIEndChild(void)
+{
+    Rr_UIWindow *Window = Rr_UICurrentWindow();
+    assert(Window);
+    assert(Window->Child);
+
+    Rr_UIEndWindow();
 }
 
 void Rr_UIBeginHorizontal(void)
@@ -4330,8 +4448,8 @@ void Rr_InitUI(void)
     gUIContext->PopupWindow.Flags =
         RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
-        RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
-        RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
+        RR_UI_WINDOW_FLAGS_NO_MOVE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
     Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
     Rr_UISetFontSize((float)DisplaySize.Width / 112.0f);

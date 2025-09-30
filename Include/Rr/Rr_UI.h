@@ -96,7 +96,7 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT = (1 << 0),
     RR_UI_WINDOW_FLAGS_NO_TITLE_BIT = (1 << 1),
     RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT = (1 << 2),
-    RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT = (1 << 3),
+    RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT = (1 << 3),
     RR_UI_WINDOW_FLAGS_NO_MOVE_BIT = (1 << 4),
     RR_UI_WINDOW_FLAGS_NO_BORDER_BIT = (1 << 5),
     RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 6),
@@ -128,6 +128,10 @@ extern bool Rr_UIBeginWindow(
     Rr_UIWindowFlags Flags);
 
 extern void Rr_UIEndWindow(void);
+
+extern bool Rr_UIBeginChild(const char *Title);
+
+extern void Rr_UIEndChild(void);
 
 extern bool Rr_UIFold(const char *Title);
 

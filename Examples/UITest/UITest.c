@@ -76,7 +76,7 @@ static void Iterate(void)
 
     Rr_ClearColorImage2D(Graph, (Rr_ColorClear){ 0 }, Rr_GetSwapchainImage());
 
-    Rr_UIDebugOverlay();
+    /* Rr_UIDebugOverlay(); */
 
     static bool Open = true;
     static bool CloseButton = true;
@@ -96,7 +96,7 @@ static void Iterate(void)
     }
     if (NoScrollbar)
     {
-        Flags |= RR_UI_WINDOW_FLAGS_NO_SCROLLBAR_BIT;
+        Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
     }
     if (NoTitle)
     {
@@ -113,6 +113,25 @@ static void Iterate(void)
 
     if (Rr_UIBeginWindow("Rr_UI.h", &Open, Flags))
     {
+        if (Rr_UIFold("Child Windows"))
+        {
+            Rr_UIBeginHorizontal();
+            if (Rr_UIBeginChild("ChildWindow1"))
+            {
+                Rr_UILabel("1111");
+                Rr_UILabel("2222");
+                Rr_UILabel("3333");
+                Rr_UIEndChild();
+            }
+            if (Rr_UIBeginChild("ChildWindow2"))
+            {
+                Rr_UILabel("1111");
+                Rr_UILabel("2222");
+                Rr_UILabel("3333");
+                Rr_UIEndChild();
+            }
+            Rr_UIEndHorizontal();
+        }
         if (Rr_UIFold("Combobox"))
         {
             const char *ComboboxOptions[5] = {
