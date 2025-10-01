@@ -229,7 +229,6 @@ struct Rr_UIContext
     float WindowTitleHeight;
     float TitleButtonSize;
     float ResizeHandleSize;
-    float HorizontalMargin;
     float FrameThickness;
     float SeparatorLineHeight;
     float ScrollbarWidth;
@@ -404,14 +403,14 @@ static inline void Rr_UIAssertNoWindow(void)
 {
     assert(
         Rr_UICurrentWindow() == NULL &&
-        "Did you forget to call Rr_EndWindow()?");
+        "Did you forget to call Rr_UIEndWindow() or Rr_UIEndChild()?");
 }
 
 static inline void Rr_UIAssertWindow(void)
 {
     assert(
         Rr_UICurrentWindow() != NULL &&
-        "Did you forget to call Rr_BeginWindow()?");
+        "Did you forget to call Rr_UIBeginWindow() or Rr_UIBeginChild()?");
 }
 
 static inline Rr_UIHash Rr_UIGetHash(
@@ -1627,6 +1626,13 @@ static inline bool Rr_UIWindowHasVerticalScrollbar(Rr_UIWindow *Window)
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT);
 }
 
+typedef enum
+{
+    RR_UI_ADVANCE_TYPE_NORMAL,
+    RR_UI_ADVANCE_TYPE_TEXT,
+    RR_UI_ADVANCE_TYPE_END,
+} Rr_UIAdvanceType;
+
 static inline void Rr_UIAdvance(Rr_Vec2 Size)
 {
     Rr_UIAssertWindow();
@@ -1634,9 +1640,11 @@ static inline void Rr_UIAdvance(Rr_Vec2 Size)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
+    /* TODO: Can contents be updated later when ending the window? */
+
     if (Rr_UIIsHorizontal())
     {
-        Layout->Cursor.X += Size.Width + gUIContext->HorizontalMargin;
+        Layout->Cursor.X += Size.Width + Layout->ContentsPadding.Width;
         Layout->HorizontalMaxHeight =
             RR_MAX(Layout->HorizontalMaxHeight, Size.Height);
 
@@ -1647,7 +1655,7 @@ static inline void Rr_UIAdvance(Rr_Vec2 Size)
     }
     else
     {
-        Layout->Cursor.Y += Size.Height;
+        Layout->Cursor.Y += Size.Height + Layout->ContentsPadding.Height;
 
         Window->ContentsEnd.Y = RR_MAX(Window->ContentsEnd.Y, Layout->Cursor.Y);
         Window->ContentsEnd.X =
@@ -2224,7 +2232,7 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
 
 bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
-    assert(Rr_UICurrentWindow() == NULL);
+    Rr_UIAssertNoWindow();
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
@@ -2328,11 +2336,10 @@ void Rr_UIEndWindow(void)
 
 bool Rr_UIBeginChild(const char *Title)
 {
-    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
-    assert(ParentLayout);
+    Rr_UIAssertWindow();
 
+    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     Rr_UIWindow *ParentWindow = ParentLayout->Window;
-    assert(ParentWindow);
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
@@ -2371,8 +2378,9 @@ bool Rr_UIBeginChild(const char *Title)
 
 void Rr_UIEndChild(void)
 {
+    Rr_UIAssertWindow();
+
     Rr_UIWindow *Window = Rr_UICurrentWindow();
-    assert(Window);
     assert(Window->Child);
 
     Rr_UIEndWindow();
@@ -2381,8 +2389,7 @@ void Rr_UIEndChild(void)
 void Rr_UIBeginHorizontal(void)
 {
     assert(
-        Rr_UIIsHorizontal() == false &&
-        "Did you forget to call Rr_EndHorizontal()?");
+        !Rr_UIIsHorizontal() && "Did you forget to call Rr_EndHorizontal()?");
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Layout->HorizontalMaxHeight = 0;
     Layout->HorizontalX = Layout->Cursor.X;
@@ -2394,15 +2401,14 @@ void Rr_UIEndHorizontal(void)
         Rr_UIIsHorizontal() && "Did you forget to call Rr_BeginHorizontal()?");
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Layout->Cursor.X = Layout->HorizontalX;
-    Layout->Cursor.Y += Layout->HorizontalMaxHeight;
     Layout->HorizontalX = INFINITY;
+    Rr_UIAdvance(Rr_V2(0, Layout->HorizontalMaxHeight));
 }
 
 void Rr_UIBeginTabs(const char *Title)
 {
     Rr_UIAssertWindow();
-    assert(
-        Rr_UIIsHorizontal() == false && "Tabs can't be aligned horizontally!");
+    assert(!Rr_UIIsHorizontal() && "Tabs can't be aligned horizontally!");
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -2435,7 +2441,8 @@ void Rr_UIBeginTabs(const char *Title)
         },
         &gUIContext->Style.Foreground);
 
-    Rr_UIAdvance((Rr_Vec2){ 0.0f, Layout->ContentsPadding.Y });
+    /* TODO: Use window padding instead? */
+    Rr_UIAdvance(Rr_V2(0.0f, Layout->ContentsPadding.Y));
 }
 
 bool Rr_UITab(const char *Title)
@@ -2652,8 +2659,6 @@ bool Rr_UIFold(const char *Title)
         &gUIContext->Style.TitleBackground,
         Held);
 
-    TotalSize.Height += Layout->ContentsPadding.Height;
-
     Rr_UIAdvance(TotalSize);
 
     Rr_DestroyScratch(Scratch);
@@ -2665,6 +2670,7 @@ void Rr_UISeparator(void)
 {
     /* TODO: Horizontal support. */
     Rr_UIAssertWindow();
+    assert(Rr_UIIsHorizontal() == false);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -2675,17 +2681,11 @@ void Rr_UISeparator(void)
     };
     Rr_Vec2 Position = {
         Layout->Cursor.X,
-        Layout->Cursor.Y + (gUIContext->SeparatorLineHeight / 2.0f -
-                            gUIContext->FrameThickness / 2.0f),
+        Layout->Cursor.Y + Size.Height,
     };
-    Rr_Vec4 Color = Rr_MulV4F(gUIContext->Style.Foreground, 0.75f);
-    Rr_UIDrawSolidQuad(&(Rr_Rect){ Position, Size }, &Color);
-
-    {
-        Color.XYZ = Rr_MulV3F(Color.XYZ, 0.8f);
-        Position.Y += Size.Height;
-        Rr_UIDrawSolidQuad(&(Rr_Rect){ Position, Size }, &Color);
-    }
+    Rr_UIDrawSolidQuad(
+        &(Rr_Rect){ Position, Size },
+        &gUIContext->Style.Outline);
 
     Layout->Cursor.Y += gUIContext->SeparatorLineHeight;
 }
@@ -2804,8 +2804,6 @@ bool Rr_UIButton(const char *Text)
 
     Rr_UIBevel(Primitive, &ButtonRect, &gUIContext->Style.ButtonNormal, Held);
 
-    ButtonSize.Height += gUIContext->ContentsPadding.Height;
-
     Rr_UIAdvance(ButtonSize);
 
     Rr_DestroyScratch(Scratch);
@@ -2874,9 +2872,8 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         0);
 
     Rr_Vec2 TotalSize = {
-        TitleSize.Width + Layout->ContentsPadding.Width +
-            gUIContext->LineHeight,
-        gUIContext->LineHeight + Layout->ContentsPadding.Height,
+        TitleSize.Width + gUIContext->LineHeight,
+        gUIContext->LineHeight,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -3648,9 +3645,8 @@ bool Rr_UIInputField(
         0);
 
     Rr_Vec2 TotalSize = {
-        gUIContext->ButtonPadding.Width + FieldExtent.Width + TitleSize.Width,
-        FieldExtent.Height + Layout->ContentsPadding.Height +
-            gUIContext->ButtonPadding.Height * 2.0f,
+        FieldExtent.Width + gUIContext->ButtonPadding.Width + TitleSize.Width,
+        FieldExtent.Height + gUIContext->ButtonPadding.Height * 2.0f,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -4039,8 +4035,7 @@ bool Rr_UICombobox(
 
     Rr_Vec2 TotalSize = {
         TitleSize.Width + gUIContext->ButtonPadding.Width + BorderSize.Width,
-        gUIContext->LineHeight + gUIContext->ButtonPadding.Height * 2.0f +
-            Layout->ContentsPadding.Height,
+        gUIContext->LineHeight + gUIContext->ButtonPadding.Height * 2.0f,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -4273,7 +4268,7 @@ static inline float Rr_UISlider(
 
     Rr_Vec2 TotalSize = {
         Layout->AvailableContentsWidth,
-        gUIContext->LineHeight + Layout->ContentsPadding.Height,
+        gUIContext->LineHeight,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -4422,9 +4417,8 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
         0);
 
     Rr_Vec2 TotalSize = {
-        TitleSize.Width + Layout->ContentsPadding.Width +
-            gUIContext->LineHeight,
-        FieldExtent.Height + Layout->ContentsPadding.Height,
+        TitleSize.Width + gUIContext->LineHeight,
+        FieldExtent.Height,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -4696,7 +4690,6 @@ static inline void Rr_UIConsumeNextFontSize(void)
             gUIContext->FontSize * gUIContext->Font->LineHeight;
         gUIContext->ContentsPadding =
             Rr_MulV2F(gUIContext->Style.ContentsPadding, gUIContext->FontSize);
-        gUIContext->HorizontalMargin = gUIContext->FontSize * 0.5f;
 
         gUIContext->FrameThickness =
             floorf(RR_MAX(1.0f, gUIContext->FontSize * 0.075f));
