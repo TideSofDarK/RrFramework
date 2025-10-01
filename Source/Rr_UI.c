@@ -2152,7 +2152,7 @@ static inline bool Rr_UIBeginWindowEx(
     /* Add border if necessary. */
 
     bool NoBorder = Rr_UIWindowNoBorder(Window);
-    if (NoBorder == false)
+    if (!NoBorder)
     {
         Rr_UIDrawOuterFrame(
             &Window->Rect,
@@ -2870,7 +2870,8 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         0);
 
     Rr_Vec2 TotalSize = {
-        TitleSize.Width + gUIContext->LineHeight,
+        TitleSize.Width + gUIContext->LineHeight +
+            gUIContext->ButtonPadding.Width,
         gUIContext->LineHeight,
     };
 
@@ -3644,7 +3645,7 @@ bool Rr_UIInputField(
 
     Rr_Vec2 TotalSize = {
         FieldExtent.Width + gUIContext->ButtonPadding.Width + TitleSize.Width,
-        FieldExtent.Height + gUIContext->ButtonPadding.Height * 2.0f,
+        FieldExtent.Height,
     };
 
     Rr_UIAdvance(TotalSize);
@@ -3710,30 +3711,35 @@ static inline bool Rr_UIInputFloatMulti(
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    size_t Length = 1 + strlen(Title) + 3 + 2;
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+    size_t Length =
+        TitleLength + 1 + 3 + 2; /* Null terminator + ### + Component */
     bool Edited = false;
 
     Rr_Vec2 Cursor = Layout->Cursor;
+    float CursorXStart = Cursor.X;
     Rr_Vec2 TotalSize = { 0 };
 
-    Rr_UIBeginHorizontal();
     const char *Titles[] = { "X", "Y", "Z", "W" };
     for (int Index = 0; Index < Count; ++Index)
     {
-        char *CurrentTitle = RR_ALLOC_NO_ZERO(Scratch.Arena, Length);
-        snprintf(
-            CurrentTitle,
-            Length,
-            "%s###%s%d",
-            Titles[Index],
-            Title,
-            Index);
-        Rr_UIHash CurrentHash = Rr_UIGetTitleHash(CurrentTitle, NULL);
+        Rr_UIHash ComponentHash = Rr_UIGetHash(Titles[Index], 1, TitleHash);
+        /* char *CurrentTitle = RR_ALLOC_NO_ZERO(Scratch.Arena, Length); */
+        /* snprintf( */
+        /*     CurrentTitle, */
+        /*     Length, */
+        /*     "%s###%s%d", */
+        /*     Titles[Index], */
+        /*     Title, */
+        /*     Index); */
+        /* Rr_UIHash CurrentHash = Rr_UIGetTitleHash(CurrentTitle, NULL); */
         char Buffer[64];
         snprintf(Buffer, 64, "%.2f", Values[Index]);
         Rr_Vec2 FieldExtent;
         Edited |= Rr_UIGenericInputField(
-            CurrentHash,
+            ComponentHash,
             Cursor,
             64,
             Buffer,
@@ -3746,25 +3752,29 @@ static inline bool Rr_UIInputFloatMulti(
         {
             sscanf(Buffer, "%g", &Values[Index]);
         }
-        TotalSize.Width += FieldExtent.Width;
         TotalSize.Height = RR_MAX(TotalSize.Height, FieldExtent.Height);
-        Cursor.X += FieldExtent.Width;
-        Cursor.X += gUIContext->BevelThickness * 2.0f;
+        Cursor.X += FieldExtent.Width + gUIContext->BevelThickness * 2.0f;
     }
-    Rr_UIEndHorizontal();
 
-    Cursor = Rr_AddV2(Cursor, gUIContext->ButtonPadding);
+    /* NOTE: Undo last iterations advance. */
+    Cursor.X -= gUIContext->BevelThickness * 2.0f;
 
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
-        Cursor,
-        strlen(Title),
-        Title,
-        0,
-        &gUIContext->Style.Foreground,
-        0);
+    if (TitleLength > 0)
+    {
+        Cursor = Rr_AddV2(Cursor, gUIContext->ButtonPadding);
+        Rr_Vec2 TitleSize = Rr_UIDrawText(
+            0,
+            Cursor,
+            strlen(Title),
+            Title,
+            0,
+            &gUIContext->Style.Foreground,
+            0);
 
-    TotalSize.Width += TitleSize.Width;
+        TotalSize.Width = TitleSize.Width;
+    }
+
+    TotalSize.Width += Cursor.X - CursorXStart;
 
     Rr_UIAdvance(TotalSize);
 
@@ -4130,14 +4140,19 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
         &gUIContext->Style.Outline);
 
     Rr_UIAdvance(Rr_V2F(TargetSize));
-    Rr_UILabelF("%.2f %.2f %.2f %.2f", Color->X, Color->Y, Color->Z, Color->W);
+
+    /* Rr_UILabelF("%.2f %.2f %.2f %.2f", Color->X, Color->Y, Color->Z,
+     * Color->W); */
+
+    Rr_UIInputFloat4("###RGBA32", Color->Elements);
+    Rr_UIInputFloat3("###HSV32", Color->Elements);
 
     {
-        unsigned char R = (unsigned char)(Color->X * 255.0f);
-        unsigned char G = (unsigned char)(Color->Y * 255.0f);
-        unsigned char B = (unsigned char)(Color->Z * 255.0f);
-        unsigned char A = (unsigned char)(Color->W * 255.0f);
-        Rr_UILabelF("%d %d %d %d", R, G, B, A);
+        /* unsigned char R = (unsigned char)(Color->X * 255.0f); */
+        /* unsigned char G = (unsigned char)(Color->Y * 255.0f); */
+        /* unsigned char B = (unsigned char)(Color->Z * 255.0f); */
+        /* unsigned char A = (unsigned char)(Color->W * 255.0f); */
+        /* Rr_UILabelF("%d %d %d %d", R, G, B, A); */
     }
 
     Rr_UIEndWindow();
