@@ -4053,6 +4053,54 @@ bool Rr_UICombobox(
     return OptionChanged;
 }
 
+/* https://stackoverflow.com/a/17897228 */
+
+static inline Rr_Vec3 Rr_RGBToHSV(Rr_Vec3 *Color)
+{
+    const Rr_Vec4 K = Rr_V4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
+    Rr_Vec4 P;
+    if (Color->G >= Color->B)
+    {
+        P = Rr_V4(Color->G, Color->B, K.X, K.Y);
+    }
+    else
+    {
+        P = Rr_V4(Color->B, Color->G, K.W, K.Z);
+    }
+    Rr_Vec4 Q;
+    if (Color->R >= P.X)
+    {
+        Q = Rr_V4(Color->R, P.Y, P.Z, P.X);
+    }
+    else
+    {
+        Q = Rr_V4(P.X, P.Y, P.W, Color->R);
+    }
+    float D = Q.X - RR_MIN(Q.W, Q.Y);
+    float E = 1.0e-10f;
+    return Rr_V3(fabsf(Q.Z + (Q.W - Q.Y) / (6.0f * D + E)), D / (Q.X + E), Q.X);
+}
+
+static inline Rr_Vec3 Rr_HSVToRGB(Rr_Vec3 *HSV)
+{
+    const Rr_Vec4 K = Rr_V4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
+    Rr_Vec3 A = Rr_V3(HSV->X, HSV->X, HSV->X);
+    A = Rr_AddV3(A, K.RGB);
+    A.X = A.X - (float)(int)A.X;
+    A.Y = A.Y - (float)(int)A.Y;
+    A.Z = A.Z - (float)(int)A.Z;
+    A = Rr_MulV3F(A, 6.0f);
+    A = Rr_SubV3(A, Rr_V3(K.W, K.W, K.W));
+    A.X = fabsf(A.X);
+    A.Y = fabsf(A.Y);
+    A.Z = fabsf(A.Z);
+    Rr_Vec3 B = Rr_SubV3(A, Rr_V3(K.X, K.X, K.X));
+    B.X = RR_CLAMP(0.0f, B.X, 1.0f);
+    B.Y = RR_CLAMP(0.0f, B.Y, 1.0f);
+    B.Z = RR_CLAMP(0.0f, B.Z, 1.0f);
+    return Rr_MulV3F(Rr_LerpV3(Rr_V3(K.X, K.X, K.X), HSV->Y, B), HSV->Z);
+}
+
 static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 {
     float TargetSize = 200.0f;
@@ -4145,7 +4193,12 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
      * Color->W); */
 
     Rr_UIInputFloat4("###RGBA32", Color->Elements);
-    Rr_UIInputFloat3("###HSV32", Color->Elements);
+
+    Rr_Vec3 HSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements);
+    if (Rr_UIInputFloat3("###HSV32", HSV.Elements))
+    {
+        *(Rr_Vec3*)Color->Elements = Rr_HSVToRGB(&HSV);
+    }
 
     {
         /* unsigned char R = (unsigned char)(Color->X * 255.0f); */

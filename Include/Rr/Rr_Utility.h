@@ -63,7 +63,7 @@ static inline Rr_Vec4 Rr_U32ToRGBA(uint32_t Color)
     return Result;
 }
 
-static inline uint32_t Rr_RGBAtoU32(Rr_Vec4 Color)
+static inline uint32_t Rr_RGBAToU32(Rr_Vec4 Color)
 {
     uint32_t Result = 0;
 
