@@ -2424,15 +2424,13 @@ void Rr_UIBeginTabs(const char *Title)
     Layout->SelectedTabHash = *SelectedTabHashRef;
     Layout->TabCursor = Layout->Cursor;
 
-    Rr_UIAdvance((Rr_Vec2){ 0.0f, gUIContext->LineHeight });
-
     Rr_Vec2 SeparatorSize = {
         Layout->AvailableContentsWidth,
         gUIContext->FrameThickness,
     };
     Rr_Vec2 SeparatorPosition = {
         Layout->Cursor.X,
-        Layout->Cursor.Y,
+        Layout->Cursor.Y + gUIContext->LineHeight,
     };
     Rr_UIDrawSolidQuad(
         &(Rr_Rect){
@@ -2442,7 +2440,7 @@ void Rr_UIBeginTabs(const char *Title)
         &gUIContext->Style.Foreground);
 
     /* TODO: Use window padding instead? */
-    Rr_UIAdvance(Rr_V2(0.0f, Layout->ContentsPadding.Y));
+    Rr_UIAdvance(Rr_V2(0.0f, gUIContext->LineHeight));
 }
 
 bool Rr_UITab(const char *Title)
