@@ -113,7 +113,7 @@ struct Rr_UIWindow
     int32_t Z;
     bool Minimized : 1;
     bool Added : 1;
-    bool SkipDueToAutoResize : 1;
+    bool SkipAndAutoResize : 1;
     bool Open : 1;
     bool Child : 1;
 
@@ -1542,7 +1542,7 @@ static inline bool Rr_UIDragBehavior(
     return false;
 }
 
-static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
+static inline void Rr_UIBeginClipRect(Rr_Rect *Rect, Rr_Rect *ParentRect)
 {
     Rr_UIAssertWindow();
 
@@ -1551,11 +1551,21 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
     Rr_UIClipRect *ClipRect =
         RR_PUSH_INTO_ARRAY(&Window->ClipRects, gUIContext->FrameArena);
 
-    *ClipRect = (Rr_UIClipRect){
-        .FirstIndex = (uint32_t)gUIContext->Indices.Count,
-        .Rect = { { Rect->Offset.X, Rect->Offset.Y },
-                  { Rect->Extent.Width, Rect->Extent.Height } },
-    };
+    ClipRect->FirstIndex = (uint32_t)gUIContext->Indices.Count;
+
+    if (ParentRect)
+    {
+        ClipRect->Rect.Offset.X = RR_MAX(ParentRect->Offset.X, Rect->Offset.X);
+        ClipRect->Rect.Offset.Y = RR_MAX(ParentRect->Offset.Y, Rect->Offset.Y);
+        ClipRect->Rect.Extent.Width =
+            RR_MIN(ParentRect->Extent.Width, Rect->Extent.Width);
+        ClipRect->Rect.Extent.Height =
+            RR_MIN(ParentRect->Extent.Height, Rect->Extent.Height);
+    }
+    else
+    {
+        ClipRect->Rect = *Rect;
+    }
 }
 
 static inline void Rr_UIEndClipRect(void)
@@ -1593,6 +1603,11 @@ static inline bool Rr_UIWindowHasTitle(Rr_UIWindow *Window)
 static inline bool Rr_UIWindowAutoResize(Rr_UIWindow *Window)
 {
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+}
+
+static inline bool Rr_UIWindowNoResize(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
 }
 
 static inline bool Rr_UIWindowNoMove(Rr_UIWindow *Window)
@@ -2023,7 +2038,7 @@ static inline bool Rr_UIBeginWindowEx(
         {
             if (AutoResize)
             {
-                Window->SkipDueToAutoResize = true;
+                Window->SkipAndAutoResize = true;
             }
             if (gUIContext->HighestWindow)
             {
@@ -2034,6 +2049,15 @@ static inline bool Rr_UIBeginWindowEx(
     else
     {
         return false;
+    }
+
+    Rr_UIWindow *ParentWindow = Rr_UICurrentWindow();
+    Rr_Rect *ParentRect = NULL;
+    if (Window->Child && ParentWindow && ParentWindow->ClipRects.Count > 0)
+    {
+        ParentRect =
+            &ParentWindow->ClipRects.Data[ParentWindow->ClipRects.Count - 1]
+                 .Rect;
     }
 
     /* Have to access current window and finish its clip rect. */
@@ -2082,7 +2106,7 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_Rect WindowClipRect =
         Rr_ResizeRect(&Window->Rect, gUIContext->FrameThickness);
 
-    Rr_UIBeginClipRect(&WindowClipRect);
+    Rr_UIBeginClipRect(&WindowClipRect, ParentRect);
 
     /* Add window title if necessary. */
 
@@ -2110,7 +2134,7 @@ static inline bool Rr_UIBeginWindowEx(
         {
             VerticalScrollbarAdded = Rr_UIAddVerticalScrollbar(Window);
         }
-        if (VerticalScrollbarAdded || Window->SkipDueToAutoResize)
+        if (VerticalScrollbarAdded || Window->SkipAndAutoResize)
         {
             Layout->AvailableContentsWidth -= gUIContext->ScrollbarWidth;
         }
@@ -2148,7 +2172,7 @@ static inline bool Rr_UIBeginWindowEx(
     /* Clip to contents. */
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window);
-    Rr_UIBeginClipRect(&ContentsAreaRect);
+    Rr_UIBeginClipRect(&ContentsAreaRect, ParentRect);
 
     Rr_UIDrawSolidQuad(&ContentsAreaRect, &gUIContext->Style.Background);
 
@@ -2156,7 +2180,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Consider title length when in auto size mode. */
 
-    if (!NoTitle && (AutoResize || Window->SkipDueToAutoResize))
+    if (!NoTitle && (AutoResize || Window->SkipAndAutoResize))
     {
         Window->ContentsEnd.Width +=
             DesiredTitleWidth - Layout->ContentsPadding.Width * 2;
@@ -2193,7 +2217,7 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
     Window->Flags = Flags;
     Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
 
-    Window->SkipDueToAutoResize = true;
+    Window->SkipAndAutoResize = true;
 
     return Window;
 }
@@ -2241,11 +2265,10 @@ void Rr_UIEndWindow(void)
 
     Rr_UIEndClipRect();
 
-    bool NoResize = RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
-
-    if (NoResize == false)
+    if (!Rr_UIWindowNoResize(Window))
     {
-        Rr_UIBeginClipRect(&Window->Rect);
+        /* TODO: Maybe child windows need parent rect here? */
+        Rr_UIBeginClipRect(&Window->Rect, NULL);
         Rr_Vec2 BottomRight =
             Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent);
         Rr_Vec2 Positions[] = {
@@ -2260,13 +2283,14 @@ void Rr_UIEndWindow(void)
     Window->ContentsEnd =
         Rr_AddV2(Rr_MulV2F(Layout->ContentsPadding, 2.0f), Window->ContentsEnd);
 
+    /* NOTE: Flooring these fixed imprecise FillRatio calculation.
+     * If the bug ever returns it probably means the fix should be applied
+     * somewhere else. */
+
     Window->ContentsStart = Rr_FloorV2(Window->ContentsStart);
     Window->ContentsEnd = Rr_FloorV2(Window->ContentsEnd);
 
-    bool AutoResize =
-        RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-
-    if (Window->SkipDueToAutoResize || AutoResize)
+    if (Rr_UIWindowAutoResize(Window) || Window->SkipAndAutoResize)
     {
         Window->Rect.Extent =
             Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
@@ -2284,15 +2308,20 @@ void Rr_UIEndWindow(void)
 
     /* Resume clip rect if there is a window on the stack. */
 
-    Rr_UIWindow *CurrentWindow = Rr_UICurrentWindow();
-    if (CurrentWindow)
+    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
+    if (ParentLayout)
     {
-        Rr_UIAdvance(Window->Rect.Extent);
+        Rr_UIWindow *ParentWindow = ParentLayout->Window;
 
-        if (CurrentWindow->ClipRects.Count)
+        if (Window->Child)
         {
-            Rr_Rect Rect = Rr_UICurrentRect(CurrentWindow);
-            Rr_UIBeginClipRect(&Rect);
+            Rr_UIAdvance(Window->Rect.Extent);
+        }
+
+        if (ParentWindow->ClipRects.Count)
+        {
+            Rr_Rect Rect = Rr_UICurrentRect(ParentWindow);
+            Rr_UIBeginClipRect(&Rect, NULL);
         }
     }
 }
@@ -4782,9 +4811,9 @@ static inline void Rr_UIDrawWindow(
 {
     Window->Added = false;
 
-    if (Window->SkipDueToAutoResize)
+    if (Window->SkipAndAutoResize)
     {
-        Window->SkipDueToAutoResize = false;
+        Window->SkipAndAutoResize = false;
         return;
     }
 
@@ -4827,6 +4856,8 @@ static inline void Rr_UIDrawWindow(
 
 void Rr_EndUI(void)
 {
+    RR_BEGIN_FRAME_SECTION("Rr.UI");
+
     Rr_UIAssertNoWindow();
 
     /* TODO: Consider active popup as well. */
@@ -4936,6 +4967,8 @@ void Rr_EndUI(void)
     gUIContext->MouseOverTextInput = false;
     RR_ZERO(gUIContext->TextInputEvents);
     RR_ZERO(gUIContext->KeyboardInputEvents);
+
+    RR_END_FRAME_SECTION("Rr.UI");
 }
 
 void Rr_UISetFontSize(float Size)
@@ -5026,6 +5059,11 @@ void Rr_UIDebugOverlay(void)
             Rr_UILabelF(
                 "Main Loop: %.3fms",
                 (double)(RR_GET_FRAME_SECTION("Rr.MainLoop") * 1000) /
+                    (double)Rr_GetPerformanceFrequency());
+
+            Rr_UILabelF(
+                "UI: %.3fms",
+                (double)(RR_GET_FRAME_SECTION("Rr.UI") * 1000) /
                     (double)Rr_GetPerformanceFrequency());
 
             Rr_UILabelF(

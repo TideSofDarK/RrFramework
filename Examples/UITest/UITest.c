@@ -76,7 +76,7 @@ static void Iterate(void)
 
     Rr_ClearColorImage2D(Graph, (Rr_ColorClear){ 0 }, Rr_GetSwapchainImage());
 
-    /* Rr_UIDebugOverlay(); */
+    Rr_UIDebugOverlay();
 
     static bool Open = true;
     static bool CloseButton = true;
