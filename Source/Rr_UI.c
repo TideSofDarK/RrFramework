@@ -663,6 +663,46 @@ static inline void Rr_UIDrawBevel(
         Pressed);
 }
 
+static inline void Rr_UIDrawCircle(Rr_Vec2 Offset, float Radius)
+{
+    static const size_t SEGMENTS = 32;
+
+    Rr_UIPrimitive Primitive =
+        Rr_UIReservePrimitive(SEGMENTS + 1, SEGMENTS * 3);
+
+    Primitive.Vertices[0].Position = Offset;
+    Primitive.Vertices[0].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[0].Color = Rr_V4F(1.0f);
+
+    float Step = 2.0f * RR_PI32 / (float)SEGMENTS;
+
+    for (size_t Index = 0; Index < SEGMENTS; ++Index)
+    {
+        Primitive.Vertices[Index + 1].Position = Rr_AddV2(
+            Offset,
+            Rr_MulV2F(
+                Rr_V2(cosf((float)Index * Step), sinf((float)Index * Step)),
+                Radius));
+        Primitive.Vertices[Index + 1].UV = Rr_V2F(0.0f);
+        Primitive.Vertices[Index + 1].Color = Rr_V4F(1.0f);
+    }
+
+    for (size_t Index = 0; Index < SEGMENTS - 1; ++Index)
+    {
+        Primitive.Indices[Index * 3] = (Rr_UIIndex)(Primitive.BaseVertex);
+        Primitive.Indices[Index * 3 + 1] =
+            (Rr_UIIndex)(Primitive.BaseVertex + Index + 1);
+        Primitive.Indices[Index * 3 + 2] =
+            (Rr_UIIndex)(Primitive.BaseVertex + Index + 2);
+    }
+
+    Primitive.Indices[(SEGMENTS - 1) * 3] = (Rr_UIIndex)(Primitive.BaseVertex);
+    Primitive.Indices[(SEGMENTS - 1) * 3 + 1] =
+        (Rr_UIIndex)(Primitive.BaseVertex + (SEGMENTS - 1) + 1);
+    Primitive.Indices[(SEGMENTS - 1) * 3 + 2] =
+        (Rr_UIIndex)(Primitive.BaseVertex + 1);
+}
+
 static inline void Rr_UIDrawQuad(Rr_UIVertex *Vertices)
 {
     Rr_UIIndex Base = (Rr_UIIndex)gUIContext->Vertices.Count;
@@ -4161,6 +4201,10 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 
         Rr_UIDrawQuad(Vertices);
     }
+
+    Rr_UIDrawCircle(
+        Rr_AddV2(Position, Rr_V2(TargetSize / 2, TargetSize / 2)),
+        30);
 
     /* Rr_UIVertex *Vertices = Rr_UIReserveQuads(6); */
     /* Rr_Vec4 LightColors[6] = { */
