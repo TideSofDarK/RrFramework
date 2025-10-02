@@ -4101,6 +4101,10 @@ static inline Rr_Vec3 Rr_HSVToRGB(Rr_Vec3 *HSV)
     return Rr_MulV3F(Rr_LerpV3(Rr_V3(K.X, K.X, K.X), HSV->Y, B), HSV->Z);
 }
 
+static inline void Rr_UIDrawColorPickerQuad(Rr_Rect *Rect, Rr_Vec3 *Colors)
+{
+}
+
 static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 {
     float TargetSize = 200.0f;
@@ -4116,71 +4120,113 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 
     float Grayscale = (Color->X + Color->Y + Color->Z) / 3.0f;
 
-    Rr_UIVertex *Vertices = Rr_UIReserveQuads(6);
-    Rr_Vec4 LightColors[6] = {
-        Rr_V4(1.0f, 0.0f, 0.0f, 1.0f), Rr_V4(1.0f, 1.0f, 0.0f, 1.0f),
-        Rr_V4(0.0f, 1.0f, 0.0f, 1.0f), Rr_V4(0.0f, 1.0f, 1.0f, 1.0f),
-        Rr_V4(0.0f, 0.0f, 1.0f, 1.0f), Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
-    };
+    Rr_Vec3 ColorHSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements);
 
-    for (size_t Index = 0; Index < 6; ++Index)
-    {
-        Rr_Vec4 *ColorA = &LightColors[Index];
-        Rr_Vec4 *ColorB = &LightColors[(Index + 1) % 6];
-
-        Vertices[0].Color = *ColorA;
-        Vertices[0].Position = Layout->Cursor;
-        Vertices[0].Position.X += Step * (float)Index;
-        Vertices[0].UV = Rr_V2F(0.0f);
-
-        Vertices[1].Color = *ColorB;
-        Vertices[1].Position = Layout->Cursor;
-        Vertices[1].Position.X += Step * (float)Index + Step;
-        Vertices[1].UV = Rr_V2F(0.0f);
-
-        Vertices[2].Color = *ColorA;
-        Vertices[2].Position = Layout->Cursor;
-        Vertices[2].Position.Y += TargetSize;
-        Vertices[2].Position.X += Step * (float)Index;
-        Vertices[2].UV = Rr_V2F(0.0f);
-
-        Vertices[3].Color = *ColorB;
-        Vertices[3].Position = Layout->Cursor;
-        Vertices[3].Position.X += Step * (float)Index + Step;
-        Vertices[3].Position.Y += TargetSize;
-        Vertices[3].UV = Rr_V2F(0.0f);
-
-        Vertices += 4;
-    }
+    Rr_Vec3 TopRightColorHSV = ColorHSV;
+    TopRightColorHSV.Y = 1.0f;
+    TopRightColorHSV.Z = 1.0f;
+    Rr_Vec3 TopRightColor = Rr_HSVToRGB(&TopRightColorHSV);
 
     {
         Rr_UIVertex Vertices[4];
 
-        Rr_Vec4 ColorA = Rr_V4F(0.0f);
-        Rr_Vec4 ColorB = Rr_V4F(1.0f);
-
-        Vertices[0].Color = ColorA;
+        Vertices[0].Color = Rr_V4F(1.0f);
         Vertices[0].Position = Layout->Cursor;
         Vertices[0].UV = Rr_V2F(0.0f);
 
-        Vertices[1].Color = ColorA;
+        Vertices[1].Color =
+            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
         Vertices[1].Position = Layout->Cursor;
         Vertices[1].Position.X += TargetSize;
         Vertices[1].UV = Rr_V2F(0.0f);
 
-        Vertices[2].Color = ColorB;
+        Vertices[2].Color = Rr_V4F(1.0f);
         Vertices[2].Position = Layout->Cursor;
         Vertices[2].Position.Y += TargetSize;
         Vertices[2].UV = Rr_V2F(0.0f);
 
-        Vertices[3].Color = ColorB;
+        Vertices[3].Color =
+            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
         Vertices[3].Position = Layout->Cursor;
         Vertices[3].Position.X += TargetSize;
         Vertices[3].Position.Y += TargetSize;
         Vertices[3].UV = Rr_V2F(0.0f);
 
         Rr_UIDrawQuad(Vertices);
+
+        Vertices[0].Color = Rr_V4F(0.0f);
+        Vertices[1].Color = Rr_V4F(0.0f);
+        Vertices[2].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
+        Vertices[3].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
+
+        Rr_UIDrawQuad(Vertices);
     }
+
+    /* Rr_UIVertex *Vertices = Rr_UIReserveQuads(6); */
+    /* Rr_Vec4 LightColors[6] = { */
+    /*     Rr_V4(1.0f, 0.0f, 0.0f, 1.0f), Rr_V4(1.0f, 1.0f, 0.0f, 1.0f), */
+    /*     Rr_V4(0.0f, 1.0f, 0.0f, 1.0f), Rr_V4(0.0f, 1.0f, 1.0f, 1.0f), */
+    /*     Rr_V4(0.0f, 0.0f, 1.0f, 1.0f), Rr_V4(1.0f, 0.0f, 1.0f, 1.0f), */
+    /* }; */
+
+    /* for (size_t Index = 0; Index < 6; ++Index) */
+    /* { */
+    /*     Rr_Vec4 *ColorA = &LightColors[Index]; */
+    /*     Rr_Vec4 *ColorB = &LightColors[(Index + 1) % 6]; */
+
+    /*     Vertices[0].Color = *ColorA; */
+    /*     Vertices[0].Position = Layout->Cursor; */
+    /*     Vertices[0].Position.X += Step * (float)Index; */
+    /*     Vertices[0].UV = Rr_V2F(0.0f); */
+
+    /*     Vertices[1].Color = *ColorB; */
+    /*     Vertices[1].Position = Layout->Cursor; */
+    /*     Vertices[1].Position.X += Step * (float)Index + Step; */
+    /*     Vertices[1].UV = Rr_V2F(0.0f); */
+
+    /*     Vertices[2].Color = *ColorA; */
+    /*     Vertices[2].Position = Layout->Cursor; */
+    /*     Vertices[2].Position.Y += TargetSize; */
+    /*     Vertices[2].Position.X += Step * (float)Index; */
+    /*     Vertices[2].UV = Rr_V2F(0.0f); */
+
+    /*     Vertices[3].Color = *ColorB; */
+    /*     Vertices[3].Position = Layout->Cursor; */
+    /*     Vertices[3].Position.X += Step * (float)Index + Step; */
+    /*     Vertices[3].Position.Y += TargetSize; */
+    /*     Vertices[3].UV = Rr_V2F(0.0f); */
+
+    /*     Vertices += 4; */
+    /* } */
+
+    /* { */
+    /*     Rr_UIVertex Vertices[4]; */
+
+    /*     Rr_Vec4 ColorA = Rr_V4F(0.0f); */
+    /*     Rr_Vec4 ColorB = Rr_V4F(1.0f); */
+
+    /*     Vertices[0].Color = ColorA; */
+    /*     Vertices[0].Position = Layout->Cursor; */
+    /*     Vertices[0].UV = Rr_V2F(0.0f); */
+
+    /*     Vertices[1].Color = ColorA; */
+    /*     Vertices[1].Position = Layout->Cursor; */
+    /*     Vertices[1].Position.X += TargetSize; */
+    /*     Vertices[1].UV = Rr_V2F(0.0f); */
+
+    /*     Vertices[2].Color = ColorB; */
+    /*     Vertices[2].Position = Layout->Cursor; */
+    /*     Vertices[2].Position.Y += TargetSize; */
+    /*     Vertices[2].UV = Rr_V2F(0.0f); */
+
+    /*     Vertices[3].Color = ColorB; */
+    /*     Vertices[3].Position = Layout->Cursor; */
+    /*     Vertices[3].Position.X += TargetSize; */
+    /*     Vertices[3].Position.Y += TargetSize; */
+    /*     Vertices[3].UV = Rr_V2F(0.0f); */
+
+    /*     Rr_UIDrawQuad(Vertices); */
+    /* } */
 
     Rr_UIDrawInnerFrame(
         &(Rr_Rect){ Layout->Cursor, Rr_V2F(TargetSize) },
@@ -4194,10 +4240,9 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 
     Rr_UIInputFloat4("###RGBA32", Color->Elements);
 
-    Rr_Vec3 HSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements);
-    if (Rr_UIInputFloat3("###HSV32", HSV.Elements))
+    if (Rr_UIInputFloat3("###HSV32", ColorHSV.Elements))
     {
-        *(Rr_Vec3*)Color->Elements = Rr_HSVToRGB(&HSV);
+        *(Rr_Vec3 *)Color->Elements = Rr_HSVToRGB(&ColorHSV);
     }
 
     {
