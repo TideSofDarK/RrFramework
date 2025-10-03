@@ -73,8 +73,6 @@ struct Rr_UIVertex
     Rr_Vec4 Color;
 };
 
-typedef Rr_UIVertex *Rr_UIQuad; /* Implies 4 allocated vertices. */
-
 typedef struct Rr_UIPrimitive Rr_UIPrimitive;
 struct Rr_UIPrimitive
 {
@@ -475,36 +473,26 @@ static inline Rr_UIPrimitive Rr_UIReservePrimitive(
     };
 }
 
-static inline Rr_UIVertex *Rr_UIReserveQuads(size_t Count)
+static inline Rr_UIPrimitive Rr_UIReserveQuads(size_t Count)
 {
-    Rr_UIIndex Base = (Rr_UIIndex)gUIContext->Vertices.Count;
-    static const Rr_UIIndex QUAD_INDICES[] = { 0, 1, 2, 1, 3, 2 };
+    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(Count * 4, Count * 6);
 
-    Rr_UIVertex *FirstVertex = RR_PUSH_INTO_ARRAY_MANY(
-        &gUIContext->Vertices,
-        Count * 4,
-        gUIContext->FrameArena);
+    static const Rr_UIIndex QUAD_INDICES[] = { 0, 1, 2, 3, 0, 2 };
 
-    size_t IndexCount = Count * 6;
-    Rr_UIIndex *FirstIndex = RR_PUSH_INTO_ARRAY_MANY(
-        &gUIContext->Indices,
-        IndexCount,
-        gUIContext->FrameArena);
-
-    for (size_t QuadIndex = 0; QuadIndex < Count; ++QuadIndex)
+    Rr_UIIndex Base = Primitive.BaseVertex;
+    for (Rr_UIIndex QuadIndex = 0; QuadIndex < Count; ++QuadIndex)
     {
         for (size_t Index = 0; Index < 6; ++Index)
         {
-            *FirstIndex = Base + QUAD_INDICES[Index];
-            FirstIndex++;
+            Primitive.Indices[QuadIndex * 6 + Index] =
+                Base + QUAD_INDICES[Index];
         }
-        Base += 4;
     }
 
-    return FirstVertex;
+    return Primitive;
 }
 
-static inline Rr_UIQuad Rr_UIReserveQuad(void)
+static inline Rr_UIPrimitive Rr_UIReserveQuad(void)
 {
     return Rr_UIReserveQuads(1);
 }
@@ -663,31 +651,130 @@ static inline void Rr_UIDrawBevel(
         Pressed);
 }
 
-static inline void Rr_UIDrawCircle(Rr_Vec2 Offset, float Radius)
+static inline Rr_Vec2 Rr_UICalculateEdgeNormal(Rr_Vec2 A, Rr_Vec2 B)
+{
+    Rr_Vec2 C = Rr_NormV2(Rr_SubV2(B, A));
+    return Rr_V2(C.Y, -C.X);
+}
+
+static inline void Rr_UIFeatherConvexPrimitive(
+    Rr_UIPrimitive *SourcePrimitive,
+    int VertexCount,
+    float Amount)
+{
+#ifndef RR_UI_NO_FEATHERING
+    Rr_UIVertex *Vertices = SourcePrimitive->Vertices;
+
+    Rr_UIPrimitive Primitive =
+        Rr_UIReservePrimitive((size_t)VertexCount, (size_t)VertexCount * 6);
+
+    for (int Index = 0; Index < VertexCount; ++Index)
+    {
+        int NextIndex = (Index + 1) % VertexCount;
+
+        Rr_UIVertex Previous =
+            Vertices[(Index + VertexCount - 1) % VertexCount];
+        Rr_UIVertex Current = Vertices[Index];
+        Rr_UIVertex Next = Vertices[NextIndex];
+
+        Rr_Vec2 N0 =
+            Rr_UICalculateEdgeNormal(Previous.Position, Current.Position);
+        Rr_Vec2 N1 = Rr_UICalculateEdgeNormal(Current.Position, Next.Position);
+
+        Rr_Vec2 N = Rr_MulV2F(Rr_AddV2(N0, N1), 0.5f * Amount);
+        Rr_Vec2 Position = Rr_AddV2(Current.Position, N);
+
+        Primitive.Vertices[Index] = (Rr_UIVertex){
+            .Position = Position,
+            .UV = Rr_V2F(0.0f),
+            .Color = { Current.Color.X,
+                       Current.Color.Y,
+                       Current.Color.Z,
+                       0.0f, },
+        };
+
+        Primitive.Indices[Index * 6] =
+            SourcePrimitive->BaseVertex + (Rr_UIIndex)Index;
+        Primitive.Indices[Index * 6 + 1] =
+            SourcePrimitive->BaseVertex + (Rr_UIIndex)NextIndex;
+        Primitive.Indices[Index * 6 + 2] =
+            Primitive.BaseVertex + (Rr_UIIndex)NextIndex;
+        Primitive.Indices[Index * 6 + 3] =
+            Primitive.BaseVertex + (Rr_UIIndex)NextIndex;
+        Primitive.Indices[Index * 6 + 4] =
+            Primitive.BaseVertex + (Rr_UIIndex)Index;
+        Primitive.Indices[Index * 6 + 5] =
+            SourcePrimitive->BaseVertex + (Rr_UIIndex)Index;
+    }
+#endif
+}
+
+static inline void Rr_UIDrawCircle(
+    Rr_Vec2 Offset,
+    float Radius,
+    float Thickness)
+{
+    /* static const size_t SEGMENTS = 32; */
+
+    /* Rr_UIPrimitive Primitive = */
+    /*     Rr_UIReservePrimitive(SEGMENTS + 1, SEGMENTS * 3); */
+
+    /* Primitive.Vertices[0].Position = Offset; */
+    /* Primitive.Vertices[0].UV = Rr_V2F(0.0f); */
+    /* Primitive.Vertices[0].Color = Rr_V4F(1.0f); */
+
+    /* float Step = 2.0f * RR_PI32 / (float)SEGMENTS; */
+
+    /* for (size_t Index = 0; Index < SEGMENTS; ++Index) */
+    /* { */
+    /*     Primitive.Vertices[Index + 1].Position = Rr_AddV2( */
+    /*         Offset, */
+    /*         Rr_MulV2F( */
+    /*             Rr_V2(cosf((float)Index * Step), sinf((float)Index * Step)),
+     */
+    /*             Radius)); */
+    /*     Primitive.Vertices[Index + 1].UV = Rr_V2F(0.0f); */
+    /*     Primitive.Vertices[Index + 1].Color = Rr_V4F(1.0f); */
+    /* } */
+
+    /* for (size_t Index = 0; Index < SEGMENTS - 1; ++Index) */
+    /* { */
+    /*     Primitive.Indices[Index * 3] = (Rr_UIIndex)(Primitive.BaseVertex); */
+    /*     Primitive.Indices[Index * 3 + 1] = */
+    /*         (Rr_UIIndex)(Primitive.BaseVertex + Index + 1); */
+    /*     Primitive.Indices[Index * 3 + 2] = */
+    /*         (Rr_UIIndex)(Primitive.BaseVertex + Index + 2); */
+    /* } */
+
+    /* Primitive.Indices[(SEGMENTS - 1) * 3] =
+     * (Rr_UIIndex)(Primitive.BaseVertex); */
+    /* Primitive.Indices[(SEGMENTS - 1) * 3 + 1] = */
+    /*     (Rr_UIIndex)(Primitive.BaseVertex + (SEGMENTS - 1) + 1); */
+    /* Primitive.Indices[(SEGMENTS - 1) * 3 + 2] = */
+    /*     (Rr_UIIndex)(Primitive.BaseVertex + 1); */
+}
+
+static inline void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius)
 {
     static const size_t SEGMENTS = 32;
 
     Rr_UIPrimitive Primitive =
-        Rr_UIReservePrimitive(SEGMENTS + 1, SEGMENTS * 3);
+        Rr_UIReservePrimitive(SEGMENTS, (SEGMENTS - 2) * 3);
 
-    Primitive.Vertices[0].Position = Offset;
-    Primitive.Vertices[0].UV = Rr_V2F(0.0f);
-    Primitive.Vertices[0].Color = Rr_V4F(1.0f);
-
-    float Step = 2.0f * RR_PI32 / (float)SEGMENTS;
+    const float Step = 2.0f * RR_PI32 / (float)SEGMENTS;
 
     for (size_t Index = 0; Index < SEGMENTS; ++Index)
     {
-        Primitive.Vertices[Index + 1].Position = Rr_AddV2(
+        Primitive.Vertices[Index].Position = Rr_AddV2(
             Offset,
             Rr_MulV2F(
                 Rr_V2(cosf((float)Index * Step), sinf((float)Index * Step)),
                 Radius));
-        Primitive.Vertices[Index + 1].UV = Rr_V2F(0.0f);
-        Primitive.Vertices[Index + 1].Color = Rr_V4F(1.0f);
+        Primitive.Vertices[Index].UV = Rr_V2F(0.0f);
+        Primitive.Vertices[Index].Color = Rr_V4F(1.0f);
     }
 
-    for (size_t Index = 0; Index < SEGMENTS - 1; ++Index)
+    for (size_t Index = 0; Index < SEGMENTS - 2; ++Index)
     {
         Primitive.Indices[Index * 3] = (Rr_UIIndex)(Primitive.BaseVertex);
         Primitive.Indices[Index * 3 + 1] =
@@ -696,36 +783,70 @@ static inline void Rr_UIDrawCircle(Rr_Vec2 Offset, float Radius)
             (Rr_UIIndex)(Primitive.BaseVertex + Index + 2);
     }
 
-    Primitive.Indices[(SEGMENTS - 1) * 3] = (Rr_UIIndex)(Primitive.BaseVertex);
-    Primitive.Indices[(SEGMENTS - 1) * 3 + 1] =
-        (Rr_UIIndex)(Primitive.BaseVertex + (SEGMENTS - 1) + 1);
-    Primitive.Indices[(SEGMENTS - 1) * 3 + 2] =
-        (Rr_UIIndex)(Primitive.BaseVertex + 1);
+    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, 2.0f);
+}
+
+static inline void Rr_UIDrawEquilateralTriangleFilled(
+    Rr_Vec2 Offset,
+    float Size,
+    float Angle,
+    Rr_Vec4 Color)
+{
+    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
+
+    /* NOTE: Find center of mass for equilateral triangle. */
+    float X = sqrtf(Size * Size / 2.0f);
+
+    Rr_Vec2 Positions[3];
+
+    Positions[0] = Rr_RotateV2(Rr_V2(X, 0), Angle);
+    Positions[1] = Rr_RotateV2(
+        Rr_MulV2F(
+            Rr_V2(
+                cosf(RR_PI32 * 0.3333f * 2.0f),
+                sinf(RR_PI32 * 0.3333f * 2.0f)),
+            X),
+        Angle);
+    Positions[2] = Rr_RotateV2(
+        Rr_MulV2F(
+            Rr_V2(
+                cosf(RR_PI32 * 0.6666f * 2.0f),
+                sinf(RR_PI32 * 0.6666f * 2.0f)),
+            X),
+        Angle);
+
+    Primitive.Vertices[0].Position = Rr_AddV2(Positions[0], Offset);
+    Primitive.Vertices[0].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[0].Color = Color;
+
+    Primitive.Vertices[1].Position = Rr_AddV2(Positions[1], Offset);
+    Primitive.Vertices[1].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[1].Color = Color;
+
+    Primitive.Vertices[2].Position = Rr_AddV2(Positions[2], Offset);
+    Primitive.Vertices[2].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[2].Color = Color;
+
+    Primitive.Indices[0] = Primitive.BaseVertex;
+    Primitive.Indices[1] = Primitive.BaseVertex + 1;
+    Primitive.Indices[2] = Primitive.BaseVertex + 2;
+
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 4.0f);
 }
 
 static inline void Rr_UIDrawQuad(Rr_UIVertex *Vertices)
 {
-    Rr_UIIndex Base = (Rr_UIIndex)gUIContext->Vertices.Count;
-    Rr_UIIndex Indices[] = {
-        Base, Base + 1, Base + 2, Base + 1, Base + 3, Base + 2,
-    };
-    for (size_t Index = 0; Index < 4; ++Index)
-    {
-        *RR_PUSH_INTO_ARRAY(&gUIContext->Vertices, gUIContext->FrameArena) =
-            Vertices[Index];
-    }
-
-    for (size_t Index = 0; Index < 6; ++Index)
-    {
-        *RR_PUSH_INTO_ARRAY(&gUIContext->Indices, gUIContext->FrameArena) =
-            Indices[Index];
-    }
+    Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
+    memcpy(Primitive.Vertices, Vertices, sizeof(Rr_UIVertex) * 4);
 }
 
-static inline void Rr_UISolidQuad(Rr_UIQuad Quad, Rr_Rect *Rect, Rr_Vec4 *Color)
+static inline void Rr_UISolidQuad(
+    Rr_UIVertex *Vertices,
+    Rr_Rect *Rect,
+    Rr_Vec4 *Color)
 {
     memcpy(
-        Quad,
+        Vertices,
         (Rr_UIVertex[]){
             {
                 .Position = Rect->Offset,
@@ -736,12 +857,12 @@ static inline void Rr_UISolidQuad(Rr_UIQuad Quad, Rr_Rect *Rect, Rr_Vec4 *Color)
                 .Color = *Color,
             },
             {
-                .Position = { Rect->Offset.X, Rect->Offset.Y + Rect->Extent.Y },
+                .Position = { Rect->Offset.X + Rect->Extent.X,
+                              Rect->Offset.Y + Rect->Extent.Y },
                 .Color = *Color,
             },
             {
-                .Position = { Rect->Offset.X + Rect->Extent.X,
-                              Rect->Offset.Y + Rect->Extent.Y },
+                .Position = { Rect->Offset.X, Rect->Offset.Y + Rect->Extent.Y },
                 .Color = *Color,
             },
         },
@@ -749,7 +870,7 @@ static inline void Rr_UISolidQuad(Rr_UIQuad Quad, Rr_Rect *Rect, Rr_Vec4 *Color)
 }
 
 static inline void Rr_UIRotatedQuad(
-    Rr_UIQuad Quad,
+    Rr_UIVertex *Vertices,
     Rr_Rect *Rect,
     float Angle,
     Rr_Vec4 *Color)
@@ -757,7 +878,7 @@ static inline void Rr_UIRotatedQuad(
     Rr_Vec2 Center = Rr_RectCenter(Rect);
 
     memcpy(
-        Quad,
+        Vertices,
         (Rr_UIVertex[]){
             {
                 .Position = Rr_AddV2(
@@ -781,7 +902,7 @@ static inline void Rr_UIRotatedQuad(
                     Center,
                     Rr_RotateV2(
                         Rr_SubV2(
-                            (Rr_Vec2){ Rect->Offset.X,
+                            (Rr_Vec2){ Rect->Offset.X + Rect->Extent.X,
                                        Rect->Offset.Y + Rect->Extent.Y },
                             Center),
                         Angle)),
@@ -792,7 +913,7 @@ static inline void Rr_UIRotatedQuad(
                     Center,
                     Rr_RotateV2(
                         Rr_SubV2(
-                            (Rr_Vec2){ Rect->Offset.X + Rect->Extent.X,
+                            (Rr_Vec2){ Rect->Offset.X,
                                        Rect->Offset.Y + Rect->Extent.Y },
                             Center),
                         Angle)),
@@ -803,13 +924,13 @@ static inline void Rr_UIRotatedQuad(
 }
 
 static inline void Rr_UIHorizontalGradientQuad(
-    Rr_UIQuad Quad,
+    Rr_UIVertex *Vertices,
     Rr_Rect *Rect,
     Rr_Vec4 *ColorA,
     Rr_Vec4 *ColorB)
 {
     memcpy(
-        Quad,
+        Vertices,
         (Rr_UIVertex[]){
             {
                 .Position = Rect->Offset,
@@ -820,12 +941,42 @@ static inline void Rr_UIHorizontalGradientQuad(
                 .Color = *ColorB,
             },
             {
+                .Position = { Rect->Offset.X + Rect->Extent.X,
+                              Rect->Offset.Y + Rect->Extent.Y },
+                .Color = *ColorB,
+            },
+            {
                 .Position = { Rect->Offset.X, Rect->Offset.Y + Rect->Extent.Y },
+                .Color = *ColorA,
+            },
+        },
+        sizeof(Rr_UIVertex) * 4);
+}
+
+static inline void Rr_UIVerticalGradientQuad(
+    Rr_UIVertex *Vertices,
+    Rr_Rect *Rect,
+    Rr_Vec4 *ColorA,
+    Rr_Vec4 *ColorB)
+{
+    memcpy(
+        Vertices,
+        (Rr_UIVertex[]){
+            {
+                .Position = Rect->Offset,
+                .Color = *ColorA,
+            },
+            {
+                .Position = { Rect->Offset.X + Rect->Extent.X, Rect->Offset.Y },
                 .Color = *ColorA,
             },
             {
                 .Position = { Rect->Offset.X + Rect->Extent.X,
                               Rect->Offset.Y + Rect->Extent.Y },
+                .Color = *ColorB,
+            },
+            {
+                .Position = { Rect->Offset.X, Rect->Offset.Y + Rect->Extent.Y },
                 .Color = *ColorB,
             },
         },
@@ -863,27 +1014,10 @@ static inline void Rr_UIDrawSolidTriangle(Rr_Vec2 *Positions, Rr_Vec4 *Color)
     }
 }
 
-static inline void Rr_UIDrawRotatedTriangle(
-    Rr_Vec2 Center,
-    float Extent,
-    Rr_Vec4 *Color,
-    float Angle)
-{
-    Rr_Vec2 Base = { Extent, 0.0f };
-    float Third = RR_PI32 * 2.0f / 3.0f;
-    Rr_Vec2 Positions[3] = {
-        Rr_AddV2(Center, Rr_RotateV2(Base, Angle)),
-        Rr_AddV2(Center, Rr_RotateV2(Base, Angle + Third)),
-        Rr_AddV2(Center, Rr_RotateV2(Base, Angle + Third * 2.0f)),
-    };
-    Rr_UIDrawSolidTriangle(Positions, Color);
-}
-
 static inline void Rr_UIDrawSolidQuad(Rr_Rect *Rect, Rr_Vec4 *Color)
 {
-    Rr_UIVertex Vertices[4];
-    Rr_UISolidQuad(Vertices, Rect, Color);
-    Rr_UIDrawQuad(Vertices);
+    Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
+    Rr_UISolidQuad(Primitive.Vertices, Rect, Color);
 }
 
 static inline void Rr_UIDrawRotatedQuad(
@@ -891,9 +1025,9 @@ static inline void Rr_UIDrawRotatedQuad(
     float Angle,
     Rr_Vec4 *Color)
 {
-    Rr_UIVertex Vertices[4];
-    Rr_UIRotatedQuad(Vertices, Rect, Angle, Color);
-    Rr_UIDrawQuad(Vertices);
+    Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
+    Rr_UIRotatedQuad(Primitive.Vertices, Rect, Angle, Color);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 4, 2.0f);
 }
 
 static inline void Rr_UIDrawHorizontalGradientQuad(
@@ -901,15 +1035,23 @@ static inline void Rr_UIDrawHorizontalGradientQuad(
     Rr_Vec4 *ColorA,
     Rr_Vec4 *ColorB)
 {
-    Rr_UIVertex Vertices[4];
-    Rr_UIHorizontalGradientQuad(Vertices, Rect, ColorA, ColorB);
-    Rr_UIDrawQuad(Vertices);
+    Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
+    Rr_UIHorizontalGradientQuad(Primitive.Vertices, Rect, ColorA, ColorB);
+}
+
+static inline void Rr_UIDrawVerticalGradientQuad(
+    Rr_Rect *Rect,
+    Rr_Vec4 *ColorA,
+    Rr_Vec4 *ColorB)
+{
+    Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
+    Rr_UIVerticalGradientQuad(Primitive.Vertices, Rect, ColorA, ColorB);
 }
 
 static inline void Rr_UIDrawRect(Rr_Rect *Rect, Rr_Vec4 *Color)
 {
-    Rr_UIQuad Quad = Rr_UIReserveQuad();
-    Rr_UISolidQuad(Quad, Rect, Color);
+    Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
+    Rr_UISolidQuad(Primitive.Vertices, Rect, Color);
 }
 
 static inline void Rr_UIDrawOuterFrame(
@@ -993,15 +1135,15 @@ static inline void Rr_UIDrawTexturedQuad(
             .Color = *Color,
         },
         {
-            .Position = { Rect->Offset.X,
-                          Rect->Offset.Y + Rect->Extent.Height },
-            .UV = UVs[2],
-            .Color = *Color,
-        },
-        {
             .Position = { Rect->Offset.X + Rect->Extent.Width,
                           Rect->Offset.Y + Rect->Extent.Height },
             .UV = UVs[3],
+            .Color = *Color,
+        },
+        {
+            .Position = { Rect->Offset.X,
+                          Rect->Offset.Y + Rect->Extent.Height },
+            .UV = UVs[2],
             .Color = *Color,
         },
     };
@@ -1843,7 +1985,9 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
     return Dragging;
 }
 
-static inline Rr_Rect Rr_UIGetWindowContentsArea(Rr_UIWindow *Window)
+static inline Rr_Rect Rr_UIGetWindowContentsArea(
+    Rr_UIWindow *Window,
+    float *OutFillRatio)
 {
     Rr_Rect Rect = Window->Rect;
 
@@ -1871,6 +2015,10 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(Rr_UIWindow *Window)
             return Rect;
         }
         float FillRatio = ContentsHeight / Rect.Extent.Height;
+        if (OutFillRatio)
+        {
+            *OutFillRatio = FillRatio;
+        }
         if (HasScrollbar && FillRatio > 1.0f)
         {
             Rect.Extent.Width -= gUIContext->ScrollbarWidth;
@@ -1885,7 +2033,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
     bool HasResize =
         RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT) == false;
 
-    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window);
+    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window, NULL);
     float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
     if (ContentsHeight == 0.0f)
     {
@@ -2169,6 +2317,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Add vertical scrollbar if necessary. */
 
+    bool VerticalScrollbarAdded = false;
     Layout->AvailableContentsWidth = Window->Rect.Extent.Width;
     if (AutoResize)
     {
@@ -2177,7 +2326,6 @@ static inline bool Rr_UIBeginWindowEx(
     else
     {
         bool HasVerticalScrollbar = Rr_UIWindowHasVerticalScrollbar(Window);
-        bool VerticalScrollbarAdded = false;
         if (HasVerticalScrollbar)
         {
             VerticalScrollbarAdded = Rr_UIAddVerticalScrollbar(Window);
@@ -2219,7 +2367,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Clip to contents. */
 
-    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window);
+    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window, NULL);
     Rr_UIBeginClipRect(&ContentsAreaRect, ParentRect);
 
     Rr_UIDrawSolidQuad(&ContentsAreaRect, &gUIContext->Style.Background);
@@ -2311,6 +2459,58 @@ void Rr_UIEndWindow(void)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
+    Window->ContentsEnd =
+        Rr_AddV2(Rr_MulV2F(Layout->ContentsPadding, 2.0f), Window->ContentsEnd);
+
+    /* NOTE: Flooring these fixed imprecise FillRatio calculation.
+     * If the bug ever returns it probably means the fix should be applied
+     * somewhere else. */
+
+    Window->ContentsStart = Rr_FloorV2(Window->ContentsStart);
+    Window->ContentsEnd = Rr_FloorV2(Window->ContentsEnd);
+
+    float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
+
+    float FillRatio = 0.0f;
+    Rr_Rect CurrentRect = Rr_UIGetWindowContentsArea(Window, &FillRatio);
+
+    if (FillRatio > 1.0f)
+    {
+        float DarkenSize = RR_MIN(gUIContext->FontSize, ContentsHeight);
+
+        Rr_Rect DarkenRect = CurrentRect;
+        DarkenRect.Extent.Height =
+            RR_MIN(CurrentRect.Extent.Height, DarkenSize);
+
+        float TopDarkenAlpha =
+            1.0f - RR_CLAMP(0.0f, gUIContext->FontSize / Window->VScroll, 1.0f);
+        if (TopDarkenAlpha > 0.0f)
+        {
+            Rr_UIDrawVerticalGradientQuad(
+                &DarkenRect,
+                &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, TopDarkenAlpha },
+                &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 0.0f });
+        }
+
+        float BottomDarkenAlpha = RR_CLAMP(
+            0.0f,
+            (ContentsHeight - CurrentRect.Extent.Height - Window->VScroll) /
+                DarkenSize,
+            1.0f);
+        if (BottomDarkenAlpha > 0.0f)
+        {
+            DarkenRect.Offset.Y =
+                CurrentRect.Offset.Y + CurrentRect.Extent.Y - DarkenSize;
+
+            Rr_UIDrawVerticalGradientQuad(
+                &DarkenRect,
+                &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 0.0f },
+                &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, BottomDarkenAlpha });
+        }
+    }
+
+    /* Finish contents clip rect. */
+
     Rr_UIEndClipRect();
 
     if (!Rr_UIWindowNoResize(Window))
@@ -2327,16 +2527,6 @@ void Rr_UIEndWindow(void)
         Rr_UIDrawSolidTriangle(Positions, &Layout->DeferredResizeHandleColor);
         Rr_UIEndClipRect();
     }
-
-    Window->ContentsEnd =
-        Rr_AddV2(Rr_MulV2F(Layout->ContentsPadding, 2.0f), Window->ContentsEnd);
-
-    /* NOTE: Flooring these fixed imprecise FillRatio calculation.
-     * If the bug ever returns it probably means the fix should be applied
-     * somewhere else. */
-
-    Window->ContentsStart = Rr_FloorV2(Window->ContentsStart);
-    Window->ContentsEnd = Rr_FloorV2(Window->ContentsEnd);
 
     if (Rr_UIWindowAutoResize(Window) || Window->SkipAndAutoResize)
     {
@@ -2505,7 +2695,7 @@ bool Rr_UITab(const char *Title)
         Selected = true;
     }
 
-    Rr_UIQuad TabQuad = Rr_UIReserveQuad();
+    Rr_UIPrimitive TabQuad = Rr_UIReserveQuad();
 
     Rr_Vec2 TextPosition = Layout->TabCursor;
     TextPosition.X += gUIContext->ButtonPadding.X;
@@ -2563,7 +2753,7 @@ bool Rr_UITab(const char *Title)
     }
 
     Rr_UISolidQuad(
-        TabQuad,
+        TabQuad.Vertices,
         &(Rr_Rect){
             ButtonPosition,
             ButtonSize,
@@ -2621,38 +2811,21 @@ bool Rr_UIFold(const char *Title)
         *FoldValueRef = FoldValue;
     }
 
-    float TriangleHeight = gUIContext->LineHeight * 0.575f;
-    float TriangleBaseX = Layout->Cursor.X + Layout->ContentsPadding.Width;
-    float TriangleBaseY =
-        gUIContext->ButtonPadding.Height + Layout->Cursor.Y +
-        gUIContext->LineHeight -
-        gUIContext->LineHeight * (gUIContext->Font->UnderlineY +
-                                  gUIContext->Font->UnderlineThickness) -
-        TriangleHeight / 2.0f;
-    Rr_Vec2 TrianglePositions[3];
-    if (*FoldValue)
-    {
-        TrianglePositions[0] =
-            Rr_V2(TriangleBaseX + TriangleHeight / 2.0f, TriangleBaseY);
-        TrianglePositions[1] =
-            Rr_V2(TriangleBaseX, TriangleBaseY - TriangleHeight);
-        TrianglePositions[2] = Rr_V2(
-            TriangleBaseX + TriangleHeight,
-            TriangleBaseY - TriangleHeight);
-    }
-    else
-    {
-        TrianglePositions[0] = Rr_V2(TriangleBaseX, TriangleBaseY);
-        TrianglePositions[1] =
-            Rr_V2(TriangleBaseX, TriangleBaseY - TriangleHeight);
-        TrianglePositions[2] = Rr_V2(
-            TriangleBaseX + TriangleHeight,
-            TriangleBaseY - TriangleHeight / 2.0f);
-    }
-    Rr_UIDrawSolidTriangle(TrianglePositions, &gUIContext->Style.Foreground);
+    float TriangleSize = gUIContext->LineHeight * 0.4f;
+    float TriangleOffset =
+        gUIContext->ButtonPadding.Height + gUIContext->LineHeight / 2.0f;
+    Rr_Vec2 TriangleCenter = Rr_V2(
+        Layout->Cursor.X + TriangleOffset,
+        Layout->Cursor.Y + TriangleOffset);
+
+    Rr_UIDrawEquilateralTriangleFilled(
+        TriangleCenter,
+        TriangleSize,
+        *FoldValue ? RR_ANGLE_DEG(90.0f) : 0.0f,
+        gUIContext->Style.Foreground);
 
     Rr_Vec2 TitlePosition = Rr_V2(
-        TriangleBaseX + TriangleHeight + gUIContext->ButtonPadding.Width,
+        TriangleCenter.X + TriangleSize + gUIContext->ButtonPadding.Width,
         Layout->Cursor.Y);
     TitlePosition.Y += gUIContext->ButtonPadding.Height;
     Rr_UIDrawText(
@@ -3973,7 +4146,7 @@ bool Rr_UICombobox(
         Rr_UILayout *PopupLayout = Rr_UICurrentLayout();
         for (uint32_t Index = 0; Index < OptionCount; ++Index)
         {
-            Rr_UIQuad OptionButtonQuad = Rr_UIReserveQuad();
+            Rr_UIPrimitive OptionButtonQuad = Rr_UIReserveQuad();
             Rr_Vec2 OptionSize = Rr_UIDrawText(
                 0,
                 PopupLayout->Cursor,
@@ -4023,7 +4196,7 @@ bool Rr_UICombobox(
                 }
             }
             Rr_UISolidQuad(
-                OptionButtonQuad,
+                OptionButtonQuad.Vertices,
                 &OptionButtonRect,
                 &OptionButtonColor);
             Rr_UIAdvance(OptionSize);
@@ -4147,7 +4320,7 @@ static inline void Rr_UIDrawColorPickerQuad(Rr_Rect *Rect, Rr_Vec3 *Colors)
 
 static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 {
-    float TargetSize = 200.0f;
+    float TargetSize = 250.0f;
     float Step = TargetSize / 6.0f;
 
     Rr_Vec2 Position = Center;
@@ -4180,15 +4353,15 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
         Vertices[1].Position.X += TargetSize;
         Vertices[1].UV = Rr_V2F(0.0f);
 
-        Vertices[2].Color = Rr_V4F(1.0f);
+        Vertices[2].Color =
+            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
         Vertices[2].Position = Layout->Cursor;
+        Vertices[2].Position.X += TargetSize;
         Vertices[2].Position.Y += TargetSize;
         Vertices[2].UV = Rr_V2F(0.0f);
 
-        Vertices[3].Color =
-            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
+        Vertices[3].Color = Rr_V4F(1.0f);
         Vertices[3].Position = Layout->Cursor;
-        Vertices[3].Position.X += TargetSize;
         Vertices[3].Position.Y += TargetSize;
         Vertices[3].UV = Rr_V2F(0.0f);
 
@@ -4202,16 +4375,9 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
         Rr_UIDrawQuad(Vertices);
     }
 
-    Rr_UIDrawCircle(
+    Rr_UIDrawCircleFilled(
         Rr_AddV2(Position, Rr_V2(TargetSize / 2, TargetSize / 2)),
         30);
-
-    /* Rr_UIVertex *Vertices = Rr_UIReserveQuads(6); */
-    /* Rr_Vec4 LightColors[6] = { */
-    /*     Rr_V4(1.0f, 0.0f, 0.0f, 1.0f), Rr_V4(1.0f, 1.0f, 0.0f, 1.0f), */
-    /*     Rr_V4(0.0f, 1.0f, 0.0f, 1.0f), Rr_V4(0.0f, 1.0f, 1.0f, 1.0f), */
-    /*     Rr_V4(0.0f, 0.0f, 1.0f, 1.0f), Rr_V4(1.0f, 0.0f, 1.0f, 1.0f), */
-    /* }; */
 
     /* for (size_t Index = 0; Index < 6; ++Index) */
     /* { */
