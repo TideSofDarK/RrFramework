@@ -50,7 +50,24 @@ static void StyleEditorWindow()
             RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
     {
         Rr_UIStyle *Style = Rr_UIGetStyle();
-        Rr_UILabel("TEMPORARY LONG STRING -- WILL REMOVE");
+        float FontSize = Rr_UIGetFontSize();
+        bool UpdateFontSize = false;
+        UpdateFontSize |= Rr_UIInputFloat("Font Size", &FontSize);
+        UpdateFontSize |= Rr_UIInputFloat2(
+            "Title Padding",
+            Style->TitlePadding.Elements);
+        UpdateFontSize |= Rr_UIInputFloat2(
+            "Contents Padding",
+            Style->ContentsPadding.Elements);
+        UpdateFontSize |= Rr_UIInputFloat(
+            "Bevel Intensity Light",
+            &Style->BevelIntensityLight);
+        UpdateFontSize |=
+            Rr_UIInputFloat("Bevel Intensity Dark", &Style->BevelIntensityDark);
+        if (UpdateFontSize)
+        {
+            Rr_UISetFontSize(FontSize);
+        }
         Rr_UISeparator();
         Rr_UIColorPicker("Foreground", &Style->Foreground);
         Rr_UIColorPicker("Foreground Dimmed", &Style->ForegroundDimmed);
@@ -59,7 +76,9 @@ static void StyleEditorWindow()
         Rr_UIColorPicker("Selected Text", &Style->SelectedTextBackground);
         Rr_UISeparator();
         Rr_UIColorPicker("Title Background", &Style->TitleBackground);
-        Rr_UIColorPicker("Title Close Button", &Style->TitleCloseButtonBackground);
+        Rr_UIColorPicker(
+            "Title Close Button",
+            &Style->TitleCloseButtonBackground);
         Rr_UISeparator();
         Rr_UIColorPicker("Scrollbar Background", &Style->ScrollbarBackground);
         Rr_UIColorPicker("Scrollbar Normal", &Style->ScrollbarNormal);

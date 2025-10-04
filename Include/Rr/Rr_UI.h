@@ -43,6 +43,9 @@ typedef struct Rr_UIFont Rr_UIFont;
 #define RR_TEXT_MAX_COLORS  8
 #define RR_TEXT_MAX_GLYPHS  2048
 
+#define RR_UI_MIN_FONT_SIZE (12.0f)
+#define RR_UI_MAX_FONT_SIZE (48.0f)
+
 typedef struct Rr_UIGlyph Rr_UIGlyph;
 struct Rr_UIGlyph
 {
@@ -204,6 +207,8 @@ extern void Rr_UIEndTabs(void);
 extern bool Rr_UIWantMouseCapture(void);
 
 extern bool Rr_UIWantKeyboardCapture(void);
+
+extern float Rr_UIGetFontSize(void);
 
 extern void Rr_UISetFontSize(float Size);
 

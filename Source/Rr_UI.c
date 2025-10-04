@@ -59,9 +59,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#define RR_UI_MIN_FONT_SIZE (12.0f)
-#define RR_UI_MAX_FONT_SIZE (48.0f)
-
 typedef uint64_t Rr_UIHash;
 typedef uint16_t Rr_UIIndex;
 
@@ -227,6 +224,7 @@ struct Rr_UIContext
     Rr_Vec2 MinWindowSize;
     Rr_Vec2 MinWindowSizeNoTitle;
     float WindowTitleHeight;
+    Rr_Vec2 TitlePadding;
     float TitleButtonSize;
     float ResizeHandleSize;
     float FrameThickness;
@@ -1917,8 +1915,8 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
         return;
     }
 
-    float Width = gUIContext->TitleButtonSize * 0.75f;
-    float Thickness = gUIContext->TitleButtonSize * 0.15f;
+    float Width = gUIContext->TitleButtonSize * 0.7f;
+    float Thickness = gUIContext->TitleButtonSize * 0.125f;
     Rr_Rect TitleRect = Window->Rect;
     TitleRect.Extent.Height = gUIContext->WindowTitleHeight;
     Rr_Rect BarRect;
@@ -1967,12 +1965,9 @@ static inline float Rr_UIAddWindowTitle(Rr_UIWindow *Window, bool *Open)
 {
     Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
 
-    Rr_Vec2 TitlePadding =
-        Rr_MulV2F(gUIContext->Style.TitlePadding, gUIContext->FontSize);
-
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
-        Rr_AddV2(Window->Rect.Offset, TitlePadding),
+        Rr_AddV2(Window->Rect.Offset, gUIContext->TitlePadding),
         SIZE_MAX,
         Window->Title,
         0.0f,
@@ -2000,7 +1995,7 @@ static inline float Rr_UIAddWindowTitle(Rr_UIWindow *Window, bool *Open)
                           gUIContext->Style.TitleBackground };
     Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
 
-    return TitleSize.Width + TitlePadding.Width * 2 +
+    return TitleSize.Width + gUIContext->TitlePadding.Width * 2 +
            (HasClose ? gUIContext->TitleButtonSize : 0);
 }
 
@@ -2888,12 +2883,13 @@ bool Rr_UIFold(const char *Title)
         *FoldValueRef = FoldValue;
     }
 
-    float TriangleSize = gUIContext->LineHeight * 0.4f;
-    float TriangleOffset =
-        gUIContext->ButtonPadding.Height + gUIContext->LineHeight / 2.0f;
+    float FoldButtonHeight = gUIContext->WindowTitleHeight;
+
+    float TriangleSize = FoldButtonHeight * 0.3f;
+    float TriangleOffset = TriangleSize * 0.5f;
     Rr_Vec2 TriangleCenter = Rr_V2(
-        Layout->Cursor.X + TriangleOffset,
-        Layout->Cursor.Y + TriangleOffset);
+        Layout->Cursor.X + TriangleOffset + gUIContext->TitlePadding.Width,
+        Layout->Cursor.Y + FoldButtonHeight * 0.5f);
 
     Rr_UIDrawFitTriangleFilled(
         TriangleCenter,
@@ -2901,10 +2897,11 @@ bool Rr_UIFold(const char *Title)
         *FoldValue ? RR_ANGLE_DEG(90.0f) : 0.0f,
         gUIContext->Style.Foreground);
 
-    Rr_Vec2 TitlePosition = Rr_V2(
-        TriangleCenter.X + TriangleSize + gUIContext->ButtonPadding.Width,
-        Layout->Cursor.Y);
-    TitlePosition.Y += gUIContext->ButtonPadding.Height;
+    Rr_Vec2 TitlePosition = Rr_AddV2(
+        Rr_V2(
+            Layout->Cursor.X + TriangleSize + gUIContext->ButtonPadding.Width,
+            Layout->Cursor.Y),
+        gUIContext->TitlePadding);
     Rr_UIDrawText(
         0,
         TitlePosition,
@@ -2914,9 +2911,7 @@ bool Rr_UIFold(const char *Title)
         &gUIContext->Style.Foreground,
         0);
 
-    Rr_Vec2 TotalSize = Rr_V2(
-        Layout->AvailableContentsWidth,
-        gUIContext->LineHeight + gUIContext->ButtonPadding.Height * 2.0f);
+    Rr_Vec2 TotalSize = Rr_V2(Layout->AvailableContentsWidth, FoldButtonHeight);
 
     bool Up = false;
     bool Hovered = false;
@@ -4931,7 +4926,8 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
         0);
 
     Rr_Vec2 TotalSize = {
-        TitleSize.Width + gUIContext->LineHeight,
+        FieldExtent.Width + ColorBoxSize.Width + TitleSize.Width +
+            gUIContext->ButtonPadding.Width,
         FieldExtent.Height,
     };
 
@@ -4992,7 +4988,7 @@ void Rr_InitUI(void)
     Rr_UISetFontSize((float)DisplaySize.Width / 112.0f);
 
     gUIContext->Style = (Rr_UIStyle){
-        .TitlePadding = { 0.5f, 0.125f },
+        .TitlePadding = { 0.5f, 0.03f },
         .ContentsPadding = { 0.5f, 0.5f },
         .BevelIntensityLight = 0.3f,
         .BevelIntensityDark = 0.7f,
@@ -5223,6 +5219,8 @@ static inline void Rr_UIConsumeNextFontSize(void)
             gUIContext->LineHeight);
         gUIContext->TitleButtonSize =
             RR_UI_ROUND(gUIContext->WindowTitleHeight);
+        gUIContext->TitlePadding =
+            Rr_MulV2F(gUIContext->Style.TitlePadding, gUIContext->FontSize);
         gUIContext->MinWindowSizeNoTitle =
             Rr_MulV2F(gUIContext->ContentsPadding, 2.0f);
         gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
@@ -5479,15 +5477,15 @@ void Rr_EndUI(void)
     RR_END_FRAME_SECTION("Rr.UI");
 }
 
+float Rr_UIGetFontSize(void)
+{
+    return gUIContext->FontSize;
+}
+
 void Rr_UISetFontSize(float Size)
 {
-    if (gUIContext)
-    {
-        gUIContext->NextFontSize = RR_CLAMP(
-            RR_UI_MIN_FONT_SIZE,
-            RR_UI_ROUND(Size),
-            RR_UI_MAX_FONT_SIZE);
-    }
+    gUIContext->NextFontSize =
+        RR_CLAMP(RR_UI_MIN_FONT_SIZE, RR_UI_ROUND(Size), RR_UI_MAX_FONT_SIZE);
 }
 
 static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, const char *Comment)
