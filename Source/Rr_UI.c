@@ -208,6 +208,7 @@ struct Rr_UIContext
     bool MouseOverTextInput : 1;
     RR_ARRAY(const char *) TextInputEvents;
     RR_ARRAY(char) TextInputBuffer;
+    bool DeferTextInputBufferCopy;
 
     RR_ARRAY(Rr_KeyEvent) KeyboardInputEvents;
 
@@ -719,7 +720,7 @@ static inline void Rr_UIDrawCircle(
     static const int SEGMENTS = 20;
 
     Rr_UIPrimitive Primitive =
-        Rr_UIReservePrimitive(SEGMENTS * 2, SEGMENTS * 6);
+        Rr_UIReservePrimitive((size_t)SEGMENTS * 2, (size_t)SEGMENTS * 6);
 
     float Step = 2.0f * RR_PI32 / (float)SEGMENTS;
 
@@ -759,7 +760,7 @@ static inline void Rr_UIDrawCircle(
 
     Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, 1.0f);
     /* NOTE: A hack to feather inner part of the circle. */
-    Primitive.BaseVertex += SEGMENTS;
+    Primitive.BaseVertex += (Rr_UIIndex)SEGMENTS;
     Primitive.Vertices += SEGMENTS;
     Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, -1.0f);
 }
@@ -772,7 +773,7 @@ static inline void Rr_UIDrawCircleFilled(
     static const size_t SEGMENTS = 20;
 
     Rr_UIPrimitive Primitive =
-        Rr_UIReservePrimitive(SEGMENTS, (SEGMENTS - 2) * 3);
+        Rr_UIReservePrimitive((size_t)SEGMENTS, (size_t)(SEGMENTS - 2) * 3);
 
     const float Step = 2.0f * RR_PI32 / (float)SEGMENTS;
 
@@ -796,7 +797,7 @@ static inline void Rr_UIDrawCircleFilled(
             (Rr_UIIndex)(Primitive.BaseVertex + Index + 2);
     }
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, 1.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, (int)SEGMENTS, 1.0f);
 }
 
 static inline void Rr_UIDrawEquilateralTriangleFilled(
@@ -1592,8 +1593,7 @@ static inline void Rr_UISetFocus(Rr_UIWindow *Window, Rr_UIHash Hash)
     {
         return;
     }
-    if (gUIContext->FocusedWindow != Window ||
-        gUIContext->FocusedWidgetHash != Hash)
+    if (gUIContext->FocusedWindow != NULL)
     {
         gUIContext->PrevFocusedWindow = gUIContext->FocusedWindow;
         gUIContext->PrevFocusedWidgetHash = gUIContext->FocusedWidgetHash;
@@ -1701,7 +1701,7 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
     Result.Hovered = Contains && gUIContext->HoveredWindow == Window;
 
     /* NOTE: Dragging resize handle also overlaps with moving and scrolling.
-     * Take that into accoutn and override current drag opertion. Watch out for
+     * Take that into accoutn and override current drag operation. Watch out for
      * Rr_DragBehavior() order!
      * Also, faster mouse movements may actually result in Contains == false
      * while the drag operation is still going. */
@@ -1713,7 +1713,14 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
     {
         Rr_UIBeginDragOp(Window, DragOp, Hash, Value);
 
-        Rr_UISetFocus(Window, Hash);
+        if (DragOp == RR_UI_DRAG_OP_WIDGET)
+        {
+            Rr_UISetFocus(Window, Hash);
+        }
+        else
+        {
+            Rr_UISetFocus(NULL, 0);
+        }
 
         Result.Began = true;
 
@@ -2285,26 +2292,23 @@ static inline bool Rr_UIBeginWindowEx(
     RR_RESET_ARRAY(&Window->ClipRects, gUIContext->FrameArena);
 
     /* Move and resize behavior.
-     * Handle these early so following code may access updated window rect. */
+     * Rr_UIDragBehavior() gets called even if the window is non-movable because
+     * this function resets widget focus.
+     * Handle these early so following code may access
+     * updated window rect. */
 
-    if (!Rr_UIWindowNoMove(Window))
+    Rr_UIDragResult Result = Rr_UIDragBehavior(
+        Window,
+        &Window->Rect,
+        RR_UI_DRAG_OP_MOVE,
+        0,
+        Window->Rect.Offset);
+    if (!Rr_UIWindowNoMove(Window) && Result.Moved)
     {
-        Rr_UIDragResult Result = Rr_UIDragBehavior(
-            Window,
-            &Window->Rect,
-            RR_UI_DRAG_OP_MOVE,
-            0,
-            Window->Rect.Offset);
-
-        if (Result.Moved)
-        {
-            Rr_Vec2 Delta = Rr_SubV2(
-                gUIContext->MousePosition,
-                gUIContext->DragOpMouseStart);
-            Window->Rect.Offset =
-                Rr_AddV2(gUIContext->DragOpWindowStart, Delta);
-            Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
-        }
+        Rr_Vec2 Delta =
+            Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
+        Window->Rect.Offset = Rr_AddV2(gUIContext->DragOpWindowStart, Delta);
+        Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
     }
 
     if (!AutoResize)
@@ -2414,7 +2418,13 @@ static inline void Rr_UIClosePopupWindow(void)
 {
     assert(gUIContext->PopupWindowParent != NULL);
     gUIContext->PopupWindowParent = NULL;
+    gUIContext->PopupWindowHash = 0;
     gUIContext->PopupWindow.Open = false;
+}
+
+static bool Rr_UIPopupWindowActive(void)
+{
+    return gUIContext->PopupWindowParent;
 }
 
 static inline Rr_UIWindow *Rr_UICreateWindow(
@@ -3660,6 +3670,25 @@ static inline bool Rr_UIGenericInputField(
     bool Focused = Rr_UIIsFocused(Window, Hash);
     bool WasFocused = !Focused && Rr_UIWasFocused(Window, Hash);
 
+    /* NOTE: A bit hacky way to make sure initial memcpy to persistent
+     * buffer occurs only once. Defering the copy also protects from issues
+     * coming from unfocusing an input field that goes after current one. */
+    if (UsePersistentBuffer && Focused && gUIContext->DeferTextInputBufferCopy)
+    {
+        /* NOTE: May waste quite a bit of memory. */
+        if (gUIContext->TextInputBuffer.Capacity < BufferCapacity ||
+            !gUIContext->TextInputBuffer.Data)
+        {
+            gUIContext->TextInputBuffer.Data =
+                RR_ALLOC_NO_ZERO(gUIContext->Arena, BufferCapacity);
+            gUIContext->TextInputBuffer.Capacity = BufferCapacity;
+        }
+        /* NOTE: It was BufferLength + 1 before. */
+        memcpy(gUIContext->TextInputBuffer.Data, Buffer, BufferCapacity);
+
+        gUIContext->DeferTextInputBufferCopy = false;
+    }
+
     Rr_Vec2 BufferPosition = Rr_AddV2(Offset, gUIContext->ButtonPadding);
     size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
     Rr_Vec2 BufferSize = Rr_UIDrawInputText(
@@ -3768,24 +3797,13 @@ static inline bool Rr_UIGenericInputField(
             }
         }
 
+        if (UsePersistentBuffer && !Focused)
+        {
+            gUIContext->DeferTextInputBufferCopy = true;
+        }
+
         gUIContext->TextInputCursorMaxCol =
             Rr_UIThisLineCol(Buffer, gUIContext->TextInputCursorEnd);
-
-        /* NOTE: A bit hacky way to make sure initial memcpy to persistent
-         * buffer occurs only once. */
-
-        if (UsePersistentBuffer && !Focused && !WasFocused)
-        {
-            /* NOTE: May waste quite a bit of memory. */
-            if (gUIContext->TextInputBuffer.Capacity < BufferCapacity ||
-                !gUIContext->TextInputBuffer.Data)
-            {
-                gUIContext->TextInputBuffer.Data =
-                    RR_ALLOC_NO_ZERO(gUIContext->Arena, BufferCapacity);
-                gUIContext->TextInputBuffer.Capacity = BufferCapacity;
-            }
-            memcpy(gUIContext->TextInputBuffer.Data, Buffer, BufferLength + 1);
-        }
     }
     else if (Focused && Result.Moved)
     {
@@ -3806,13 +3824,15 @@ static inline bool Rr_UIGenericInputField(
 
     if (Focused)
     {
+        bool EnterToConfirm =
+            !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
         ChangesConfirmed = Rr_UIEditUTF8Buffer(
             &gUIContext->TextInputCursorBegin,
             &gUIContext->TextInputCursorEnd,
             BufferCapacity,
             UsePersistentBuffer ? gUIContext->TextInputBuffer.Data : Buffer,
             FilterFunc,
-            !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT));
+            EnterToConfirm);
         if (ChangesConfirmed)
         {
             gUIContext->FocusedWindow = NULL;
@@ -3957,6 +3977,7 @@ static inline bool Rr_UIInputFloatMulti(
     Rr_Vec2 TotalSize = { 0 };
 
     const char *Titles[] = { "X", "Y", "Z", "W" };
+    char Buffer[64];
     for (int Index = 0; Index < Count; ++Index)
     {
         Rr_UIHash ComponentHash = Rr_UIGetHash(Titles[Index], 1, TitleHash);
@@ -3969,7 +3990,6 @@ static inline bool Rr_UIInputFloatMulti(
         /*     Title, */
         /*     Index); */
         /* Rr_UIHash CurrentHash = Rr_UIGetTitleHash(CurrentTitle, NULL); */
-        char Buffer[64];
         snprintf(Buffer, 64, "%.2f", Values[Index]);
         Rr_Vec2 FieldExtent;
         bool ThisComponentEdited = Rr_UIGenericInputField(
@@ -3985,10 +4005,15 @@ static inline bool Rr_UIInputFloatMulti(
         if (ThisComponentEdited)
         {
             Edited = true;
-            float ff;
-            sscanf(Buffer, "%g", &ff);
-            RR_LOG("%u UROD newbuffer: %s new: %f old: %f", Index, Buffer, ff, Values[Index]);
-            /* sscanf(Buffer, "%g", &Values[Index]); */
+            /* float ff; */
+            /* sscanf(Buffer, "%g", &ff); */
+            /* RR_LOG( */
+            /*     "%u UROD newbuffer: %s new: %f old: %f", */
+            /*     Index, */
+            /*     Buffer, */
+            /*     ff, */
+            /*     Values[Index]); */
+            sscanf(Buffer, "%g", &Values[Index]);
         }
         TotalSize.Height = RR_MAX(TotalSize.Height, FieldExtent.Height);
         Cursor.X += FieldExtent.Width + gUIContext->BevelThickness * 2.0f;
@@ -5185,7 +5210,7 @@ void Rr_BeginUI(void)
     }
 
     gUIContext->HoveredWindow = NULL;
-    if (gUIContext->PopupWindowParent)
+    if (Rr_UIPopupWindowActive())
     {
         if (Rr_RectContains(
                 &gUIContext->PopupWindow.Rect,
