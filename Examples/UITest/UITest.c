@@ -53,11 +53,15 @@ static void StyleEditorWindow()
         Rr_UILabel("TEMPORARY LONG STRING -- WILL REMOVE");
         Rr_UISeparator();
         Rr_UIColorPicker("Foreground", &Style->Foreground);
+        Rr_UIColorPicker("Foreground Dimmed", &Style->ForegroundDimmed);
         Rr_UIColorPicker("Background", &Style->Background);
-        Rr_UIColorPicker("Title Background", &Style->TitleBackground);
         Rr_UIColorPicker("Outline", &Style->Outline);
+        Rr_UIColorPicker("Selected Text", &Style->SelectedTextBackground);
         Rr_UISeparator();
-        Rr_UIColorPicker("Scrollbar Background", &Style->Outline);
+        Rr_UIColorPicker("Title Background", &Style->TitleBackground);
+        Rr_UIColorPicker("Title Close Button", &Style->TitleCloseButtonBackground);
+        Rr_UISeparator();
+        Rr_UIColorPicker("Scrollbar Background", &Style->ScrollbarBackground);
         Rr_UIColorPicker("Scrollbar Normal", &Style->ScrollbarNormal);
         Rr_UIColorPicker("Scrollbar Hovered", &Style->ScrollbarHovered);
         Rr_UIColorPicker("Scrollbar Held", &Style->ScrollbarHeld);

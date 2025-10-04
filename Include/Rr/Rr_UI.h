@@ -61,10 +61,11 @@ struct Rr_UIStyle
     Rr_Vec4 Foreground;
     Rr_Vec4 ForegroundDimmed;
     Rr_Vec4 Background;
-    Rr_Vec4 TitleBackground;
-    Rr_Vec4 TitleButtonBackground;
     Rr_Vec4 Outline;
     Rr_Vec4 SelectedTextBackground;
+
+    Rr_Vec4 TitleBackground;
+    Rr_Vec4 TitleCloseButtonBackground;
 
     Rr_Vec4 ScrollbarBackground;
     Rr_Vec4 ScrollbarNormal;

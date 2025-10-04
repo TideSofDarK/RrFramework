@@ -114,6 +114,7 @@ struct Rr_UIWindow
     bool SkipAndAutoResize : 1;
     bool Open : 1;
     bool Child : 1;
+    bool JustOpened : 1;
 
     Rr_Map *WidgetMap;
     Rr_Map *ChildWindowMap;
@@ -712,51 +713,63 @@ static inline void Rr_UIFeatherConvexPrimitive(
 static inline void Rr_UIDrawCircle(
     Rr_Vec2 Offset,
     float Radius,
-    float Thickness)
+    float Thickness,
+    Rr_Vec4 *Color)
 {
-    /* static const size_t SEGMENTS = 32; */
+    static const int SEGMENTS = 20;
 
-    /* Rr_UIPrimitive Primitive = */
-    /*     Rr_UIReservePrimitive(SEGMENTS + 1, SEGMENTS * 3); */
+    Rr_UIPrimitive Primitive =
+        Rr_UIReservePrimitive(SEGMENTS * 2, SEGMENTS * 6);
 
-    /* Primitive.Vertices[0].Position = Offset; */
-    /* Primitive.Vertices[0].UV = Rr_V2F(0.0f); */
-    /* Primitive.Vertices[0].Color = Rr_V4F(1.0f); */
+    float Step = 2.0f * RR_PI32 / (float)SEGMENTS;
 
-    /* float Step = 2.0f * RR_PI32 / (float)SEGMENTS; */
+    for (int Index = 0; Index < SEGMENTS; ++Index)
+    {
+        Rr_Vec2 Base =
+            Rr_V2(cosf((float)Index * Step), sinf((float)Index * Step));
 
-    /* for (size_t Index = 0; Index < SEGMENTS; ++Index) */
-    /* { */
-    /*     Primitive.Vertices[Index + 1].Position = Rr_AddV2( */
-    /*         Offset, */
-    /*         Rr_MulV2F( */
-    /*             Rr_V2(cosf((float)Index * Step), sinf((float)Index * Step)),
-     */
-    /*             Radius)); */
-    /*     Primitive.Vertices[Index + 1].UV = Rr_V2F(0.0f); */
-    /*     Primitive.Vertices[Index + 1].Color = Rr_V4F(1.0f); */
-    /* } */
+        int InnerIndex = Index + SEGMENTS;
 
-    /* for (size_t Index = 0; Index < SEGMENTS - 1; ++Index) */
-    /* { */
-    /*     Primitive.Indices[Index * 3] = (Rr_UIIndex)(Primitive.BaseVertex); */
-    /*     Primitive.Indices[Index * 3 + 1] = */
-    /*         (Rr_UIIndex)(Primitive.BaseVertex + Index + 1); */
-    /*     Primitive.Indices[Index * 3 + 2] = */
-    /*         (Rr_UIIndex)(Primitive.BaseVertex + Index + 2); */
-    /* } */
+        Primitive.Vertices[Index].Position =
+            Rr_AddV2(Offset, Rr_MulV2F(Base, Radius + Thickness / 2.0f));
+        Primitive.Vertices[Index].UV = Rr_V2F(0.0f);
+        Primitive.Vertices[Index].Color = *Color;
 
-    /* Primitive.Indices[(SEGMENTS - 1) * 3] =
-     * (Rr_UIIndex)(Primitive.BaseVertex); */
-    /* Primitive.Indices[(SEGMENTS - 1) * 3 + 1] = */
-    /*     (Rr_UIIndex)(Primitive.BaseVertex + (SEGMENTS - 1) + 1); */
-    /* Primitive.Indices[(SEGMENTS - 1) * 3 + 2] = */
-    /*     (Rr_UIIndex)(Primitive.BaseVertex + 1); */
+        Primitive.Vertices[InnerIndex].Position =
+            Rr_AddV2(Offset, Rr_MulV2F(Base, Radius - Thickness / 2.0f));
+        Primitive.Vertices[InnerIndex].UV = Rr_V2F(0.0f);
+        Primitive.Vertices[InnerIndex].Color = *Color;
+
+        int NextOuterIndex = (Index + 1) % SEGMENTS;
+        int NextInnerIndex = SEGMENTS + NextOuterIndex;
+
+        Primitive.Indices[Index * 6] =
+            (Rr_UIIndex)(Primitive.BaseVertex + NextInnerIndex);
+        Primitive.Indices[Index * 6 + 1] =
+            (Rr_UIIndex)(Primitive.BaseVertex + NextOuterIndex);
+        Primitive.Indices[Index * 6 + 2] =
+            (Rr_UIIndex)(Primitive.BaseVertex + Index);
+        Primitive.Indices[Index * 6 + 3] =
+            (Rr_UIIndex)(Primitive.BaseVertex + NextInnerIndex);
+        Primitive.Indices[Index * 6 + 4] =
+            (Rr_UIIndex)(Primitive.BaseVertex + Index);
+        Primitive.Indices[Index * 6 + 5] =
+            (Rr_UIIndex)(Primitive.BaseVertex + InnerIndex);
+    }
+
+    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, 1.0f);
+    /* NOTE: A hack to feather inner part of the circle. */
+    Primitive.BaseVertex += SEGMENTS;
+    Primitive.Vertices += SEGMENTS;
+    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, -1.0f);
 }
 
-static inline void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius)
+static inline void Rr_UIDrawCircleFilled(
+    Rr_Vec2 Offset,
+    float Radius,
+    Rr_Vec4 *Color)
 {
-    static const size_t SEGMENTS = 32;
+    static const size_t SEGMENTS = 20;
 
     Rr_UIPrimitive Primitive =
         Rr_UIReservePrimitive(SEGMENTS, (SEGMENTS - 2) * 3);
@@ -771,7 +784,7 @@ static inline void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius)
                 Rr_V2(cosf((float)Index * Step), sinf((float)Index * Step)),
                 Radius));
         Primitive.Vertices[Index].UV = Rr_V2F(0.0f);
-        Primitive.Vertices[Index].Color = Rr_V4F(1.0f);
+        Primitive.Vertices[Index].Color = *Color;
     }
 
     for (size_t Index = 0; Index < SEGMENTS - 2; ++Index)
@@ -783,7 +796,7 @@ static inline void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius)
             (Rr_UIIndex)(Primitive.BaseVertex + Index + 2);
     }
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, 2.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, 1.0f);
 }
 
 static inline void Rr_UIDrawEquilateralTriangleFilled(
@@ -1542,6 +1555,7 @@ static inline void Rr_UIEndDragOp(void)
     gUIContext->DragOpWindow = NULL;
     gUIContext->DragOp = 0;
     gUIContext->DragOpEndedThisFrame = true;
+    gUIContext->DragOpHash = 0;
 }
 
 static inline bool Rr_UIRectContains(
@@ -1665,24 +1679,26 @@ static inline void Rr_UIButtonBehavior(
     }
 }
 
-static inline bool Rr_UIDragBehavior(
+typedef struct Rr_UIDragResult Rr_UIDragResult;
+struct Rr_UIDragResult
+{
+    bool Moved;
+    bool Held;
+    bool Hovered;
+    bool Began;
+};
+
+static inline Rr_UIDragResult Rr_UIDragBehavior(
     Rr_UIWindow *Window,
     Rr_Rect *Rect,
     Rr_UIDragOp DragOp,
     Rr_UIHash Hash,
-    Rr_Vec2 Value,
-    bool *Hovered,
-    bool *Began)
+    Rr_Vec2 Value)
 {
     bool Contains = Rr_UIRectContains(Window, Rect, gUIContext->MousePosition);
-    if (Hovered)
-    {
-        *Hovered = Contains && gUIContext->HoveredWindow == Window;
-    }
-    if (Began)
-    {
-        *Began = false;
-    }
+
+    Rr_UIDragResult Result = { 0 };
+    Result.Hovered = Contains && gUIContext->HoveredWindow == Window;
 
     /* NOTE: Dragging resize handle also overlaps with moving and scrolling.
      * Take that into accoutn and override current drag opertion. Watch out for
@@ -1699,12 +1715,9 @@ static inline bool Rr_UIDragBehavior(
 
         Rr_UISetFocus(Window, Hash);
 
-        if (Began)
-        {
-            *Began = true;
-        }
+        Result.Began = true;
 
-        return false;
+        return Result;
     }
 
     if (gUIContext->DragOpWindow == Window && gUIContext->DragOp == DragOp &&
@@ -1712,7 +1725,8 @@ static inline bool Rr_UIDragBehavior(
     {
         if (gUIContext->LeftMouseButtonHeld)
         {
-            return gUIContext->MouseMoved;
+            Result.Moved = gUIContext->MouseMoved;
+            Result.Held = true;
         }
         else
         {
@@ -1720,7 +1734,7 @@ static inline bool Rr_UIDragBehavior(
         }
     }
 
-    return false;
+    return Result;
 }
 
 static inline void Rr_UIBeginClipRect(Rr_Rect *Rect, Rr_Rect *ParentRect)
@@ -1886,7 +1900,10 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
         *Open = false;
     }
 
-    Rr_UIDrawBevel(&ButtonRect, &gUIContext->Style.TitleButtonBackground, Held);
+    Rr_UIDrawBevel(
+        &ButtonRect,
+        &gUIContext->Style.TitleCloseButtonBackground,
+        Held);
 
     Rr_UIDrawRotatedQuad(
         &BarRect,
@@ -1955,16 +1972,14 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         },
     };
 
-    bool Hovered, Dragging = Rr_UIDragBehavior(
-                      Window,
-                      &ResizeHandleRect,
-                      RR_UI_DRAG_OP_RESIZE,
-                      0,
-                      Window->Rect.Extent,
-                      &Hovered,
-                      NULL);
+    Rr_UIDragResult Result = Rr_UIDragBehavior(
+        Window,
+        &ResizeHandleRect,
+        RR_UI_DRAG_OP_RESIZE,
+        0,
+        Window->Rect.Extent);
 
-    if (Dragging)
+    if (Result.Moved)
     {
         Rr_Vec2 Delta =
             Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
@@ -1976,13 +1991,13 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
     }
 
     Layout->DeferredResizeHandleColor = gUIContext->Style.Foreground;
-    if (Hovered || Dragging)
+    if (Result.Hovered || Result.Moved)
     {
         Layout->DeferredResizeHandleColor =
             Rr_MulV4F(Layout->DeferredResizeHandleColor, 0.75f);
     }
 
-    return Dragging;
+    return Result.Moved;
 }
 
 static inline Rr_Rect Rr_UIGetWindowContentsArea(
@@ -2109,19 +2124,17 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UIWindow *Window)
             }
         }
 
-        bool Hovered, Dragging = Rr_UIDragBehavior(
-                          Window,
-                          &(Rr_Rect){
-                              ScrollbarHandlePosition,
-                              ScrollbarButtonSize,
-                          },
-                          RR_UI_DRAG_OP_SCROLL,
-                          0,
-                          (Rr_Vec2){ 0.0f, Window->VScroll },
-                          &Hovered,
-                          NULL);
+        Rr_UIDragResult Result = Rr_UIDragBehavior(
+            Window,
+            &(Rr_Rect){
+                ScrollbarHandlePosition,
+                ScrollbarButtonSize,
+            },
+            RR_UI_DRAG_OP_SCROLL,
+            0,
+            (Rr_Vec2){ 0.0f, Window->VScroll });
 
-        if (Dragging)
+        if (Result.Moved)
         {
             Rr_Vec2 Delta = Rr_SubV2(
                 gUIContext->MousePosition,
@@ -2232,6 +2245,7 @@ static inline bool Rr_UIBeginWindowEx(
     {
         if (WasClosed)
         {
+            Window->JustOpened = true;
             if (AutoResize)
             {
                 Window->SkipAndAutoResize = true;
@@ -2273,19 +2287,24 @@ static inline bool Rr_UIBeginWindowEx(
     /* Move and resize behavior.
      * Handle these early so following code may access updated window rect. */
 
-    if (!Rr_UIWindowNoMove(Window) && Rr_UIDragBehavior(
-                                          Window,
-                                          &Window->Rect,
-                                          RR_UI_DRAG_OP_MOVE,
-                                          0,
-                                          Window->Rect.Offset,
-                                          NULL,
-                                          NULL))
+    if (!Rr_UIWindowNoMove(Window))
     {
-        Rr_Vec2 Delta =
-            Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
-        Window->Rect.Offset = Rr_AddV2(gUIContext->DragOpWindowStart, Delta);
-        Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
+        Rr_UIDragResult Result = Rr_UIDragBehavior(
+            Window,
+            &Window->Rect,
+            RR_UI_DRAG_OP_MOVE,
+            0,
+            Window->Rect.Offset);
+
+        if (Result.Moved)
+        {
+            Rr_Vec2 Delta = Rr_SubV2(
+                gUIContext->MousePosition,
+                gUIContext->DragOpMouseStart);
+            Window->Rect.Offset =
+                Rr_AddV2(gUIContext->DragOpWindowStart, Delta);
+            Window->Rect.Offset = Rr_FloorV2(Window->Rect.Offset);
+        }
     }
 
     if (!AutoResize)
@@ -3066,9 +3085,14 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 
     if (*Checked)
     {
-        Rr_Rect Inset =
-            Rr_ResizeRect(&CheckboxRect, -CheckboxRect.Extent.Width / 3.0f);
-        Rr_UIDrawSolidQuad(&Inset, &gUIContext->Style.Foreground);
+        /* Rr_Rect Inset = */
+        /*     Rr_ResizeRect(&CheckboxRect, -CheckboxRect.Extent.Width / 3.0f);
+         */
+        /* Rr_UIDrawSolidQuad(&Inset, &gUIContext->Style.Foreground); */
+        Rr_UIDrawCircleFilled(
+            Rr_AddV2(CheckboxRect.Offset, Rr_DivV2F(CheckboxSize, 2.0f)),
+            CheckboxSize.Width * 0.15f,
+            &gUIContext->Style.Foreground);
     }
 
     Rr_Vec2 TitlePosition = FramePosition;
@@ -3686,19 +3710,16 @@ static inline bool Rr_UIGenericInputField(
         &gUIContext->Style.ButtonDisabled,
         true);
 
-    bool Hovered, Began,
-        Dragging = Rr_UIDragBehavior(
-            Window,
-            &FieldRect,
-            RR_UI_DRAG_OP_WIDGET,
-            Hash,
-            Rr_V2F(0.0f),
-            &Hovered,
-            &Began);
+    Rr_UIDragResult Result = Rr_UIDragBehavior(
+        Window,
+        &FieldRect,
+        RR_UI_DRAG_OP_WIDGET,
+        Hash,
+        Rr_V2F(0.0f));
 
     bool Autoselect = RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT);
 
-    if (Began)
+    if (Result.Began)
     {
         size_t BufferLength = strlen(Buffer);
 
@@ -3766,7 +3787,7 @@ static inline bool Rr_UIGenericInputField(
             memcpy(gUIContext->TextInputBuffer.Data, Buffer, BufferLength + 1);
         }
     }
-    else if (Focused && Dragging)
+    else if (Focused && Result.Moved)
     {
         if (!Autoselect ||
             gUIContext->LeftMouseButtonClickId > gUIContext->TextInputClickId)
@@ -3776,7 +3797,7 @@ static inline bool Rr_UIGenericInputField(
         }
     }
 
-    if (Hovered)
+    if (Result.Hovered)
     {
         gUIContext->MouseOverTextInput = true;
     }
@@ -3951,7 +3972,7 @@ static inline bool Rr_UIInputFloatMulti(
         char Buffer[64];
         snprintf(Buffer, 64, "%.2f", Values[Index]);
         Rr_Vec2 FieldExtent;
-        Edited |= Rr_UIGenericInputField(
+        bool ThisComponentEdited = Rr_UIGenericInputField(
             ComponentHash,
             Cursor,
             64,
@@ -3961,9 +3982,13 @@ static inline bool Rr_UIInputFloatMulti(
             RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
                 RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT,
             &FieldExtent);
-        if (Edited)
+        if (ThisComponentEdited)
         {
-            sscanf(Buffer, "%g", &Values[Index]);
+            Edited = true;
+            float ff;
+            sscanf(Buffer, "%g", &ff);
+            RR_LOG("%u UROD newbuffer: %s new: %f old: %f", Index, Buffer, ff, Values[Index]);
+            /* sscanf(Buffer, "%g", &Values[Index]); */
         }
         TotalSize.Height = RR_MAX(TotalSize.Height, FieldExtent.Height);
         Cursor.X += FieldExtent.Width + gUIContext->BevelThickness * 2.0f;
@@ -3978,7 +4003,7 @@ static inline bool Rr_UIInputFloatMulti(
         Rr_Vec2 TitleSize = Rr_UIDrawText(
             0,
             Cursor,
-            strlen(Title),
+            TitleLength,
             Title,
             0,
             &gUIContext->Style.Foreground,
@@ -4314,13 +4339,9 @@ static inline Rr_Vec3 Rr_HSVToRGB(Rr_Vec3 *HSV)
     return Rr_MulV3F(Rr_LerpV3(Rr_V3(K.X, K.X, K.X), HSV->Y, B), HSV->Z);
 }
 
-static inline void Rr_UIDrawColorPickerQuad(Rr_Rect *Rect, Rr_Vec3 *Colors)
-{
-}
-
 static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 {
-    float TargetSize = 250.0f;
+    float TargetSize = 300.0f;
     float Step = TargetSize / 6.0f;
 
     Rr_Vec2 Position = Center;
@@ -4329,13 +4350,23 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
     Rr_UISetNextWindowPosition(Position);
     Rr_UIBeginPopupWindow();
 
+    Rr_UIWindow *Window = &gUIContext->PopupWindow;
+
     Rr_UILayout *Layout = Rr_UICurrentLayout();
 
-    float Grayscale = (Color->X + Color->Y + Color->Z) / 3.0f;
+    bool HSVChanged = false;
 
-    Rr_Vec3 ColorHSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements);
+    Rr_UIBeginHorizontal();
 
-    Rr_Vec3 TopRightColorHSV = ColorHSV;
+    /* Draw saturation and value selector. */
+
+    static Rr_Vec3 StaticHSV;
+    if (Window->JustOpened)
+    {
+        StaticHSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements);
+    }
+
+    Rr_Vec3 TopRightColorHSV = StaticHSV;
     TopRightColorHSV.Y = 1.0f;
     TopRightColorHSV.Z = 1.0f;
     Rr_Vec3 TopRightColor = Rr_HSVToRGB(&TopRightColorHSV);
@@ -4375,84 +4406,168 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
         Rr_UIDrawQuad(Vertices);
     }
 
-    Rr_UIDrawCircleFilled(
-        Rr_AddV2(Position, Rr_V2(TargetSize / 2, TargetSize / 2)),
-        30);
-
-    /* for (size_t Index = 0; Index < 6; ++Index) */
-    /* { */
-    /*     Rr_Vec4 *ColorA = &LightColors[Index]; */
-    /*     Rr_Vec4 *ColorB = &LightColors[(Index + 1) % 6]; */
-
-    /*     Vertices[0].Color = *ColorA; */
-    /*     Vertices[0].Position = Layout->Cursor; */
-    /*     Vertices[0].Position.X += Step * (float)Index; */
-    /*     Vertices[0].UV = Rr_V2F(0.0f); */
-
-    /*     Vertices[1].Color = *ColorB; */
-    /*     Vertices[1].Position = Layout->Cursor; */
-    /*     Vertices[1].Position.X += Step * (float)Index + Step; */
-    /*     Vertices[1].UV = Rr_V2F(0.0f); */
-
-    /*     Vertices[2].Color = *ColorA; */
-    /*     Vertices[2].Position = Layout->Cursor; */
-    /*     Vertices[2].Position.Y += TargetSize; */
-    /*     Vertices[2].Position.X += Step * (float)Index; */
-    /*     Vertices[2].UV = Rr_V2F(0.0f); */
-
-    /*     Vertices[3].Color = *ColorB; */
-    /*     Vertices[3].Position = Layout->Cursor; */
-    /*     Vertices[3].Position.X += Step * (float)Index + Step; */
-    /*     Vertices[3].Position.Y += TargetSize; */
-    /*     Vertices[3].UV = Rr_V2F(0.0f); */
-
-    /*     Vertices += 4; */
-    /* } */
-
-    /* { */
-    /*     Rr_UIVertex Vertices[4]; */
-
-    /*     Rr_Vec4 ColorA = Rr_V4F(0.0f); */
-    /*     Rr_Vec4 ColorB = Rr_V4F(1.0f); */
-
-    /*     Vertices[0].Color = ColorA; */
-    /*     Vertices[0].Position = Layout->Cursor; */
-    /*     Vertices[0].UV = Rr_V2F(0.0f); */
-
-    /*     Vertices[1].Color = ColorA; */
-    /*     Vertices[1].Position = Layout->Cursor; */
-    /*     Vertices[1].Position.X += TargetSize; */
-    /*     Vertices[1].UV = Rr_V2F(0.0f); */
-
-    /*     Vertices[2].Color = ColorB; */
-    /*     Vertices[2].Position = Layout->Cursor; */
-    /*     Vertices[2].Position.Y += TargetSize; */
-    /*     Vertices[2].UV = Rr_V2F(0.0f); */
-
-    /*     Vertices[3].Color = ColorB; */
-    /*     Vertices[3].Position = Layout->Cursor; */
-    /*     Vertices[3].Position.X += TargetSize; */
-    /*     Vertices[3].Position.Y += TargetSize; */
-    /*     Vertices[3].UV = Rr_V2F(0.0f); */
-
-    /*     Rr_UIDrawQuad(Vertices); */
-    /* } */
-
     Rr_UIDrawInnerFrame(
         &(Rr_Rect){ Layout->Cursor, Rr_V2F(TargetSize) },
         gUIContext->FrameThickness,
         &gUIContext->Style.Outline);
 
+    float SVSelectorCircleSize = TargetSize * 0.035f;
+
+    Rr_UIHash SVSelectorHash =
+        Rr_UIGetHash("SVSelector", sizeof("SVSelector"), Rr_UICurrentHash());
+
+    Rr_Rect SVSelectorRect = {
+        .Offset = Layout->Cursor,
+        .Extent = Rr_V2F(TargetSize),
+    };
+
+    Rr_UIDragResult Result = Rr_UIDragBehavior(
+        &gUIContext->PopupWindow,
+        &SVSelectorRect,
+        RR_UI_DRAG_OP_WIDGET,
+        SVSelectorHash,
+        Rr_V2F(0.0f));
+
+    if (Result.Began || Result.Held)
+    {
+        Rr_Vec2 Delta = Rr_SubV2(gUIContext->MousePosition, Layout->Cursor);
+        Delta = Rr_DivV2F(Delta, TargetSize);
+        Delta.X = RR_CLAMP(0.0f, Delta.X, 1.0f);
+        Delta.Y = RR_CLAMP(0.0f, Delta.Y, 1.0f);
+
+        StaticHSV.Y = Delta.X;
+        StaticHSV.Z = 1.0f - Delta.Y;
+
+        *(Rr_Vec3 *)Color->Elements = Rr_HSVToRGB(&StaticHSV);
+
+        SVSelectorCircleSize *= 1.5f;
+
+        HSVChanged = true;
+    }
+
+    Rr_Vec2 SVSelectorCircleOffset = Rr_AddV2(
+        Layout->Cursor,
+        Rr_V2(StaticHSV.Y * TargetSize, (1.0f - StaticHSV.Z) * TargetSize));
+
+    Rr_UIDrawCircle(
+        SVSelectorCircleOffset,
+        SVSelectorCircleSize,
+        3.0f,
+        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
+    Rr_UIDrawCircle(
+        SVSelectorCircleOffset,
+        SVSelectorCircleSize,
+        1.5f,
+        &gUIContext->Style.Foreground);
+    if (Result.Held)
+    {
+        Rr_UIDrawCircleFilled(
+            SVSelectorCircleOffset,
+            SVSelectorCircleSize * 0.9f - 1.5f,
+            Color);
+    }
+
     Rr_UIAdvance(Rr_V2F(TargetSize));
 
-    /* Rr_UILabelF("%.2f %.2f %.2f %.2f", Color->X, Color->Y, Color->Z,
-     * Color->W); */
+    Rr_UIHash HSelectorHash =
+        Rr_UIGetHash("HSelector", sizeof("HSelector"), Rr_UICurrentHash());
 
-    Rr_UIInputFloat4("###RGBA32", Color->Elements);
+    Rr_Vec4 HColors[6] = {
+        Rr_V4(1.0f, 0.0f, 0.0f, 1.0f), Rr_V4(1.0f, 1.0f, 0.0f, 1.0f),
+        Rr_V4(0.0f, 1.0f, 0.0f, 1.0f), Rr_V4(0.0f, 1.0f, 1.0f, 1.0f),
+        Rr_V4(0.0f, 0.0f, 1.0f, 1.0f), Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
+    };
 
-    if (Rr_UIInputFloat3("###HSV32", ColorHSV.Elements))
+    float HSelectorWidth = TargetSize * 0.15f;
+
+    Rr_Rect HSelectorRect = {
+        .Offset = Layout->Cursor,
+        .Extent = Rr_V2(HSelectorWidth, TargetSize),
+    };
+
+    for (size_t Index = 0; Index < 6; ++Index)
     {
-        *(Rr_Vec3 *)Color->Elements = Rr_HSVToRGB(&ColorHSV);
+        Rr_UIDrawVerticalGradientQuad(
+            &(Rr_Rect){
+                .Offset = Rr_V2(
+                    HSelectorRect.Offset.X,
+                    HSelectorRect.Offset.Y +
+                        (float)Index * HSelectorRect.Extent.Height / 6.0f),
+                .Extent = Rr_V2(
+                    HSelectorRect.Extent.Width,
+                    HSelectorRect.Extent.Height / 6.0f),
+            },
+            &HColors[Index],
+            &HColors[(Index + 1) % 6]);
+    }
+
+    Rr_UIDrawInnerFrame(
+        &HSelectorRect,
+        gUIContext->FrameThickness,
+        &gUIContext->Style.Outline);
+
+    /* Draw hue handles. */
+
+    float TriangleSize = TargetSize * 0.03f;
+    Rr_Vec2 LeftTriangleOffset =
+        Rr_V2(Layout->Cursor.X, Layout->Cursor.Y + StaticHSV.X * TargetSize);
+    Rr_UIDrawEquilateralTriangleFilled(
+        LeftTriangleOffset,
+        TriangleSize + 2.0f,
+        0.0f,
+        Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
+    Rr_UIDrawEquilateralTriangleFilled(
+        LeftTriangleOffset,
+        TriangleSize,
+        0.0f,
+        gUIContext->Style.Foreground);
+    Rr_Vec2 RightTriangleOffset = Rr_V2(
+        Layout->Cursor.X + HSelectorWidth,
+        Layout->Cursor.Y + StaticHSV.X * TargetSize);
+    Rr_UIDrawEquilateralTriangleFilled(
+        RightTriangleOffset,
+        TriangleSize + 2.0f,
+        RR_ANGLE_DEG(180.0f),
+        Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
+    Rr_UIDrawEquilateralTriangleFilled(
+        RightTriangleOffset,
+        TriangleSize,
+        RR_ANGLE_DEG(180.0f),
+        gUIContext->Style.Foreground);
+
+    Result = Rr_UIDragBehavior(
+        &gUIContext->PopupWindow,
+        &HSelectorRect,
+        RR_UI_DRAG_OP_WIDGET,
+        HSelectorHash,
+        Rr_V2F(0.0f));
+
+    if (Result.Began || Result.Held)
+    {
+        float Delta = gUIContext->MousePosition.Y - Layout->Cursor.Y;
+        Delta /= TargetSize;
+        Delta = RR_CLAMP(0.0f, Delta, 1.0f);
+
+        StaticHSV.X = Delta;
+
+        *(Rr_Vec3 *)Color->Elements = Rr_HSVToRGB(&StaticHSV);
+
+        HSVChanged = true;
+    }
+
+    Rr_UIAdvance(HSelectorRect.Extent);
+
+    Rr_UIEndHorizontal();
+
+    /* if (Rr_UIInputFloat4("###RGBA32", Color->Elements)) */
+    /* { */
+    /*     HSVChanged = false; */
+    /*     StaticHSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements); */
+    /* } */
+
+    if (Rr_UIInputFloat3("ff###HSV32", StaticHSV.Elements))
+    {
+        HSVChanged = true;
     }
 
     {
@@ -4461,6 +4576,11 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
         /* unsigned char B = (unsigned char)(Color->Z * 255.0f); */
         /* unsigned char A = (unsigned char)(Color->W * 255.0f); */
         /* Rr_UILabelF("%d %d %d %d", R, G, B, A); */
+    }
+
+    if (HSVChanged)
+    {
+        *(Rr_Vec3 *)Color->Elements = Rr_HSVToRGB(&StaticHSV);
     }
 
     Rr_UIEndWindow();
@@ -4549,16 +4669,14 @@ static inline float Rr_UISlider(
     float HandleDragOffset = gUIContext->MousePosition.X -
                              (HandleRect.Offset.X + HandleWidth / 2.0f);
 
-    bool Hovered, Dragging = Rr_UIDragBehavior(
-                      Window,
-                      &SliderRect,
-                      RR_UI_DRAG_OP_WIDGET,
-                      TitleHash,
-                      Rr_V2(HandleDragOffset, 0.0f),
-                      &Hovered,
-                      NULL);
+    Rr_UIDragResult Result = Rr_UIDragBehavior(
+        Window,
+        &SliderRect,
+        RR_UI_DRAG_OP_WIDGET,
+        TitleHash,
+        Rr_V2(HandleDragOffset, 0.0f));
 
-    if (Dragging)
+    if (Result.Moved)
     {
         float SliderMin = Layout->Cursor.X + HandleWidth / 2.0f;
         float SliderMax = SliderMin + SliderWidth - HandleWidth;
@@ -4567,7 +4685,7 @@ static inline float Rr_UISlider(
             (gUIContext->MousePosition.X - SliderMin) / (SliderMax - SliderMin);
         Normalized = RR_CLAMP(0.0f, Normalized, 1.0f);
     }
-    else if (Hovered)
+    else if (Result.Hovered)
     {
         if (gUIContext->MouseWheelDelta.X != 0.0f)
         {
@@ -4808,7 +4926,7 @@ void Rr_InitUI(void)
         .ForegroundDimmed = Rr_U32ToSRGB(0xA7A59CFF),
         .Background = Rr_U32ToSRGB(0x292F33FF),
         .TitleBackground = Rr_U32ToSRGB(0x5E2D96FF),
-        .TitleButtonBackground = Rr_U32ToSRGB(0xD54251FF),
+        .TitleCloseButtonBackground = Rr_U32ToSRGB(0xD54251FF),
         .Outline = Rr_U32ToSRGB(0x6C6F72FF),
         .SelectedTextBackground = Rr_U32ToSRGB(0x6EA5FEFF),
 
@@ -5124,6 +5242,7 @@ static inline void Rr_UIDrawWindow(
     Rr_GraphNode *GraphicsNode)
 {
     Window->Added = false;
+    Window->JustOpened = false;
 
     if (Window->SkipAndAutoResize)
     {
