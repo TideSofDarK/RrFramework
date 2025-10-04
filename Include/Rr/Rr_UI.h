@@ -69,6 +69,7 @@ struct Rr_UIStyle
 
     Rr_Vec4 TitleBackground;
     Rr_Vec4 TitleCloseButtonBackground;
+    Rr_Vec4 TitleCollapseButtonBackground;
 
     Rr_Vec4 ScrollbarBackground;
     Rr_Vec4 ScrollbarNormal;
@@ -103,8 +104,9 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT = (1 << 3),
     RR_UI_WINDOW_FLAGS_NO_MOVE_BIT = (1 << 4),
     RR_UI_WINDOW_FLAGS_NO_BORDER_BIT = (1 << 5),
-    RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 6),
-    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 7),
+    RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT = (1 << 6),
+    RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 7),
+    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 8),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 

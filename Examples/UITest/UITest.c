@@ -53,9 +53,8 @@ static void StyleEditorWindow()
         float FontSize = Rr_UIGetFontSize();
         bool UpdateFontSize = false;
         UpdateFontSize |= Rr_UIInputFloat("Font Size", &FontSize);
-        UpdateFontSize |= Rr_UIInputFloat2(
-            "Title Padding",
-            Style->TitlePadding.Elements);
+        UpdateFontSize |=
+            Rr_UIInputFloat2("Title Padding", Style->TitlePadding.Elements);
         UpdateFontSize |= Rr_UIInputFloat2(
             "Contents Padding",
             Style->ContentsPadding.Elements);
@@ -79,6 +78,9 @@ static void StyleEditorWindow()
         Rr_UIColorPicker(
             "Title Close Button",
             &Style->TitleCloseButtonBackground);
+        Rr_UIColorPicker(
+            "Title Collapse Button",
+            &Style->TitleCollapseButtonBackground);
         Rr_UISeparator();
         Rr_UIColorPicker("Scrollbar Background", &Style->ScrollbarBackground);
         Rr_UIColorPicker("Scrollbar Normal", &Style->ScrollbarNormal);
@@ -136,26 +138,36 @@ static void Iterate(void)
 
     if (Rr_UIBeginWindow("Rr_UI.h", &Open, Flags))
     {
-        if (Rr_UIFold("Child Windows"))
+        if (Rr_UIBeginChild("Child Windows"))
         {
             Rr_UIBeginHorizontal();
-            if (Rr_UIBeginChild("ChildWindow1"))
+            if (Rr_UIBeginChild("Child Window A"))
             {
-                Rr_UILabel("1111");
-                Rr_UILabel("2222");
-                Rr_UILabel("3333");
+                Rr_UIButton("Click Me!");
                 Rr_UIEndChild();
             }
-            if (Rr_UIBeginChild("ChildWindow2"))
+            if (Rr_UIBeginChild("Child Window B"))
             {
-                Rr_UILabel("1111");
-                Rr_UILabel("2222");
-                Rr_UILabel("3333");
+                static char Buffer[8] = { 0 };
+                Rr_UIInputField(
+                    "Tiny Buffer (8 bytes)",
+                    8,
+                    Buffer,
+                    "Type here...",
+                    NULL,
+                    0);
                 Rr_UIEndChild();
             }
             Rr_UIEndHorizontal();
+            if (Rr_UIBeginChild("Child Window C"))
+            {
+                Rr_UILabel("Label A");
+                Rr_UILabel("Label B");
+                Rr_UIEndChild();
+            }
+            Rr_UIEndChild();
         }
-        if (Rr_UIFold("Combobox"))
+        if (Rr_UIBeginChild("Combobox"))
         {
             const char *ComboboxOptions[5] = {
                 "Option A", "Option B",        "Option C",
@@ -173,8 +185,9 @@ static void Iterate(void)
                     "New option selected: %s\n",
                     ComboboxOptions[SelectedComboboxOption]);
             }
+            Rr_UIEndChild();
         }
-        if (Rr_UIFold("Checkbox"))
+        if (Rr_UIBeginChild("Checkbox"))
         {
             Rr_UICheckbox("Close Button", &CloseButton);
             Rr_UIBeginHorizontal();
@@ -185,8 +198,9 @@ static void Iterate(void)
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
             Rr_UICheckbox("No Title", &NoTitle);
             Rr_UIEndHorizontal();
+            Rr_UIEndChild();
         }
-        if (Rr_UIFold("Slider"))
+        if (Rr_UIBeginChild("Slider"))
         {
             static float Float01 = 0.5f;
             Rr_UISliderFloat("Float 0 to 1", &Float01, 0.0f, 1.0f);
@@ -194,15 +208,17 @@ static void Iterate(void)
             Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
             static int32_t Int18 = 0;
             Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
+            Rr_UIEndChild();
         }
-        if (Rr_UIFold("Color Picker"))
+        if (Rr_UIBeginChild("Color Picker"))
         {
             static Rr_Vec4 ColorA = { 0.2f, 0.3f, 0.4f, 1.0f };
             Rr_UIColorPicker("Color A", &ColorA);
             static Rr_Vec4 ColorB = { 0.9f, 0.1f, 0.2f, 1.0f };
             Rr_UIColorPicker("Color B", &ColorB);
+            Rr_UIEndChild();
         }
-        if (Rr_UIFold("Text Input"))
+        if (Rr_UIBeginChild("Text Input"))
         {
             static char StringBuffer[16] = "Hello, World!";
             Rr_UIInputText("UTF-8 String (16 bytes)", 16, StringBuffer);
@@ -219,46 +235,57 @@ static void Iterate(void)
             Rr_UIInputFloat3("3-Component Vector Input", TestVec3.Elements);
             static Rr_Vec4 TestVec4 = { 1.0f, 0.0f, 1.0f, 1.0f };
             Rr_UIInputFloat4("4-Component Vector Input", TestVec4.Elements);
+            Rr_UIEndChild();
         }
-        Rr_UILabel("Button");
-        Rr_UIBeginHorizontal();
-        if (Rr_UIButton("Show Style Editor"))
+        if (Rr_UIBeginChild("Button"))
         {
-            StyleEditorWindowOpen = true;
+            Rr_UIBeginHorizontal();
+            if (Rr_UIButton("Show Style Editor"))
+            {
+                StyleEditorWindowOpen = true;
+            }
+            if (Rr_UIButton("Show Fixed Size Window"))
+            {
+                FixedSizeWindowOpen = true;
+            }
+            Rr_UIEndHorizontal();
+            if (Rr_UIButton("Show Text Input Window"))
+            {
+                TextInputWindowOpen = true;
+            }
+            Rr_UIEndChild();
         }
-        if (Rr_UIButton("Show Fixed Size Window"))
+        if (Rr_UIBeginChild("Text"))
         {
-            FixedSizeWindowOpen = true;
+            Rr_UILabel("Text");
+            Rr_UILabel("Multi\n line\n  text");
+            Rr_UILabelEx(
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
+                "do eiusmod tempor incididunt ut labore et dolore magna "
+                "aliqua. "
+                "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
+                "laboris nisi ut aliquip ex ea commodo consequat. Duis aute "
+                "irure dolor in reprehenderit in voluptate velit esse cillum "
+                "dolore eu fugiat nulla pariatur. Excepteur sint occaecat "
+                "cupidatat non proident, sunt in culpa qui officia deserunt "
+                "mollit anim id est laborum. ",
+                RR_UI_TEXT_FLAGS_WRAPPED_BIT);
+            Rr_UIEndChild();
         }
-        Rr_UIEndHorizontal();
-        if (Rr_UIButton("Show Text Input Window"))
+        if (Rr_UIBeginChild("Horizontal Layout"))
         {
-            TextInputWindowOpen = true;
+            Rr_UILabel("Horizontal Layout");
+            Rr_UIBeginHorizontal();
+            static bool DoNothing;
+            static bool DoNothing2;
+            Rr_UICheckbox("Do Nothing", &DoNothing);
+            if (Rr_UIButton("Do Something!"))
+            {
+            }
+            Rr_UICheckbox("Do Nothing 2", &DoNothing2);
+            Rr_UIEndHorizontal();
+            Rr_UIEndChild();
         }
-        Rr_UISeparator();
-        Rr_UILabel("Text");
-        Rr_UILabel("Multi\n line\n  text");
-        Rr_UILabelEx(
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
-            "do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
-            "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute "
-            "irure dolor in reprehenderit in voluptate velit esse cillum "
-            "dolore eu fugiat nulla pariatur. Excepteur sint occaecat "
-            "cupidatat non proident, sunt in culpa qui officia deserunt "
-            "mollit anim id est laborum. ",
-            RR_UI_TEXT_FLAGS_WRAPPED_BIT);
-        Rr_UISeparator();
-        Rr_UILabel("Horizontal Layout");
-        Rr_UIBeginHorizontal();
-        static bool DoNothing;
-        static bool DoNothing2;
-        Rr_UICheckbox("Do Nothing", &DoNothing);
-        if (Rr_UIButton("Do Something!"))
-        {
-        }
-        Rr_UICheckbox("Do Nothing 2", &DoNothing2);
-        Rr_UIEndHorizontal();
         Rr_UIEndWindow();
     }
 }
