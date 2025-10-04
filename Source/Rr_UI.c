@@ -800,6 +800,47 @@ static inline void Rr_UIDrawCircleFilled(
     Rr_UIFeatherConvexPrimitive(&Primitive, (int)SEGMENTS, 1.0f);
 }
 
+static inline void Rr_UIDrawFitTriangleFilled(
+    Rr_Vec2 Offset,
+    float Size,
+    float Angle,
+    Rr_Vec4 Color)
+{
+    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
+
+    Rr_Vec2 Positions[3];
+
+    float HalfSize = Size * 0.5f;
+
+    Positions[0] = Rr_RotateV2(Rr_V2(-HalfSize, -HalfSize), Angle);
+    Positions[0].X = RR_CLAMP(-HalfSize, Positions[0].X, HalfSize);
+    Positions[0].Y = RR_CLAMP(-HalfSize, Positions[0].Y, HalfSize);
+    Positions[1] = Rr_RotateV2(Rr_V2(HalfSize, 0.0f), Angle);
+    Positions[1].X = RR_CLAMP(-HalfSize, Positions[1].X, HalfSize);
+    Positions[1].Y = RR_CLAMP(-HalfSize, Positions[1].Y, HalfSize);
+    Positions[2] = Rr_RotateV2(Rr_V2(-HalfSize, HalfSize), Angle);
+    Positions[2].X = RR_CLAMP(-HalfSize, Positions[2].X, HalfSize);
+    Positions[2].Y = RR_CLAMP(-HalfSize, Positions[2].Y, HalfSize);
+
+    Primitive.Vertices[0].Position = Rr_AddV2(Positions[0], Offset);
+    Primitive.Vertices[0].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[0].Color = Color;
+
+    Primitive.Vertices[1].Position = Rr_AddV2(Positions[1], Offset);
+    Primitive.Vertices[1].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[1].Color = Color;
+
+    Primitive.Vertices[2].Position = Rr_AddV2(Positions[2], Offset);
+    Primitive.Vertices[2].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[2].Color = Color;
+
+    Primitive.Indices[0] = Primitive.BaseVertex;
+    Primitive.Indices[1] = Primitive.BaseVertex + 1;
+    Primitive.Indices[2] = Primitive.BaseVertex + 2;
+
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 4.0f);
+}
+
 static inline void Rr_UIDrawEquilateralTriangleFilled(
     Rr_Vec2 Offset,
     float Size,
@@ -2505,7 +2546,8 @@ void Rr_UIEndWindow(void)
 
     if (FillRatio > 1.0f)
     {
-        float DarkenSize = RR_MIN(gUIContext->FontSize, ContentsHeight);
+        float DarkenSize = RR_MIN(gUIContext->FontSize / 2.0f, ContentsHeight);
+        float DarkenColor = 0.01f;
 
         Rr_Rect DarkenRect = CurrentRect;
         DarkenRect.Extent.Height =
@@ -2517,8 +2559,11 @@ void Rr_UIEndWindow(void)
         {
             Rr_UIDrawVerticalGradientQuad(
                 &DarkenRect,
-                &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, TopDarkenAlpha },
-                &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 0.0f });
+                &(Rr_Vec4){ DarkenColor,
+                            DarkenColor,
+                            DarkenColor,
+                            TopDarkenAlpha },
+                &(Rr_Vec4){ DarkenColor, DarkenColor, DarkenColor, 0.0f });
         }
 
         float BottomDarkenAlpha = RR_CLAMP(
@@ -2533,8 +2578,11 @@ void Rr_UIEndWindow(void)
 
             Rr_UIDrawVerticalGradientQuad(
                 &DarkenRect,
-                &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 0.0f },
-                &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, BottomDarkenAlpha });
+                &(Rr_Vec4){ DarkenColor, DarkenColor, DarkenColor, 0.0f },
+                &(Rr_Vec4){ DarkenColor,
+                            DarkenColor,
+                            DarkenColor,
+                            BottomDarkenAlpha });
         }
     }
 
@@ -2847,7 +2895,7 @@ bool Rr_UIFold(const char *Title)
         Layout->Cursor.X + TriangleOffset,
         Layout->Cursor.Y + TriangleOffset);
 
-    Rr_UIDrawEquilateralTriangleFilled(
+    Rr_UIDrawFitTriangleFilled(
         TriangleCenter,
         TriangleSize,
         *FoldValue ? RR_ANGLE_DEG(90.0f) : 0.0f,
@@ -4533,28 +4581,30 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 
     /* Draw hue handles. */
 
-    float TriangleSize = TargetSize * 0.03f;
-    Rr_Vec2 LeftTriangleOffset =
-        Rr_V2(Layout->Cursor.X, Layout->Cursor.Y + StaticHSV.X * TargetSize);
-    Rr_UIDrawEquilateralTriangleFilled(
+    float TriangleOutline = 2.0f;
+    float TriangleSize = TargetSize * 0.035f;
+    Rr_Vec2 LeftTriangleOffset = Rr_V2(
+        Layout->Cursor.X + TriangleSize * 0.5f,
+        Layout->Cursor.Y + StaticHSV.X * TargetSize);
+    Rr_UIDrawFitTriangleFilled(
         LeftTriangleOffset,
-        TriangleSize + 2.0f,
-        0.0f,
+        TriangleSize + TriangleOutline,
+        RR_ANGLE_DEG(0.0f),
         Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
-    Rr_UIDrawEquilateralTriangleFilled(
+    Rr_UIDrawFitTriangleFilled(
         LeftTriangleOffset,
         TriangleSize,
-        0.0f,
+        RR_ANGLE_DEG(0.0f),
         gUIContext->Style.Foreground);
     Rr_Vec2 RightTriangleOffset = Rr_V2(
-        Layout->Cursor.X + HSelectorWidth,
+        Layout->Cursor.X + HSelectorWidth - TriangleSize * 0.5f,
         Layout->Cursor.Y + StaticHSV.X * TargetSize);
-    Rr_UIDrawEquilateralTriangleFilled(
+    Rr_UIDrawFitTriangleFilled(
         RightTriangleOffset,
-        TriangleSize + 2.0f,
+        TriangleSize + TriangleOutline,
         RR_ANGLE_DEG(180.0f),
         Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
-    Rr_UIDrawEquilateralTriangleFilled(
+    Rr_UIDrawFitTriangleFilled(
         RightTriangleOffset,
         TriangleSize,
         RR_ANGLE_DEG(180.0f),
@@ -4584,13 +4634,13 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
 
     Rr_UIEndHorizontal();
 
-    /* if (Rr_UIInputFloat4("###RGBA32", Color->Elements)) */
-    /* { */
-    /*     HSVChanged = false; */
-    /*     StaticHSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements); */
-    /* } */
+    if (Rr_UIInputFloat4("RGBA###RGBA32", Color->Elements))
+    {
+        HSVChanged = false;
+        StaticHSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements);
+    }
 
-    if (Rr_UIInputFloat3("ff###HSV32", StaticHSV.Elements))
+    if (Rr_UIInputFloat3("HSV###HSV32", StaticHSV.Elements))
     {
         HSVChanged = true;
     }
