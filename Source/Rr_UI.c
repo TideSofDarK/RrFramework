@@ -106,6 +106,7 @@ struct Rr_UIWindow
     float VScroll;
     float HScroll;
     int32_t Z;
+
     bool Collapsed : 1;
     bool Added : 1;
     bool Open : 1;
@@ -388,13 +389,10 @@ static inline Rr_UIHash Rr_UICurrentHash(void)
     return Layout ? Layout->Window->Hash : 0;
 }
 
-static inline Rr_Rect *Rr_UICurrentRect(Rr_UIWindow *Window)
+static inline Rr_Rect *Rr_UICurrentClipRect(Rr_UIWindow *Window)
 {
-    return Window ? (Window->ClipRects.Count > 0
-                         ? &Window->ClipRects.Data[Window->ClipRects.Count - 1]
-                                .Rect
-                         : &Window->Rect)
-                  : NULL;
+    assert(Window->ClipRects.Count > 0);
+    return &Window->ClipRects.Data[Window->ClipRects.Count - 1].Rect;
 }
 
 static inline bool Rr_UIIsHorizontal(void)
@@ -1604,14 +1602,10 @@ static inline void Rr_UIEndDragOp(void)
     gUIContext->DragOpHash = 0;
 }
 
-static inline bool Rr_UIRectContains(
-    Rr_UIWindow *Window,
-    Rr_Rect *Rect,
-    Rr_Vec2 Point)
+static inline bool Rr_UIClipRectContains(Rr_UIWindow *Window, Rr_Vec2 Point)
 {
     assert(Window != NULL);
-    return Rr_RectContains(Rr_UICurrentRect(Window), Point) &&
-           Rr_RectContains(Rect, Point);
+    return Rr_RectContains(Rr_UICurrentClipRect(Window), Point);
 }
 
 static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
@@ -1654,7 +1648,7 @@ static inline bool Rr_UIScrollBehavior(
 {
     if (Window == gUIContext->HoveredWindow &&
         gUIContext->DragOpWindow == NULL &&
-        Rr_UIRectContains(Window, Rect, gUIContext->MousePosition))
+        Rr_RectContains(Rect, gUIContext->MousePosition))
     {
         if (gUIContext->MouseWheelDelta.Y != 0.0f)
         {
@@ -1697,7 +1691,7 @@ static inline void Rr_UIButtonBehavior(
                             gUIContext->DragOpBeganThisFrame == false) ||
                            gUIContext->DragOpEndedThisFrame == true;
     if (BlockedByDragOp == false && Window == gUIContext->HoveredWindow &&
-        Rr_UIRectContains(Window, Rect, gUIContext->MousePosition))
+        Rr_RectContains(Rect, gUIContext->MousePosition))
     {
         if (gUIContext->LeftMouseButtonDown)
         {
@@ -1740,7 +1734,7 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
     Rr_UIHash Hash,
     Rr_Vec2 Value)
 {
-    bool Contains = Rr_UIRectContains(Window, Rect, gUIContext->MousePosition);
+    bool Contains = Rr_RectContains(Rect, gUIContext->MousePosition);
 
     Rr_UIDragResult Result = { 0 };
     Result.Hovered = Contains && gUIContext->HoveredWindow == Window;
@@ -1806,10 +1800,13 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
     {
         ClipRect->Rect.Offset.X = RR_MAX(ParentRect->Offset.X, Rect->Offset.X);
         ClipRect->Rect.Offset.Y = RR_MAX(ParentRect->Offset.Y, Rect->Offset.Y);
-        ClipRect->Rect.Extent.Width =
-            RR_MIN(ParentRect->Extent.Width, Rect->Extent.Width);
-        ClipRect->Rect.Extent.Height =
-            RR_MIN(ParentRect->Extent.Height, Rect->Extent.Height);
+        Rr_Vec2 BottomRight = Rr_AddV2(Rect->Offset, Rect->Extent);
+        Rr_Vec2 ParentBottomRight =
+            Rr_AddV2(ParentRect->Offset, ParentRect->Extent);
+        Rr_Vec2 D = Rr_V2(
+            RR_MIN(BottomRight.X, ParentBottomRight.X),
+            RR_MIN(BottomRight.Y, ParentBottomRight.Y));
+        ClipRect->Rect.Extent = Rr_SubV2(D, ClipRect->Rect.Offset);
     }
     else
     {
@@ -2360,7 +2357,8 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     Rr_UIWindow *ParentWindow = Rr_UICurrentWindow();
-    Rr_Rect *ParentRect = Window->Child ? Rr_UICurrentRect(ParentWindow) : NULL;
+    Rr_Rect *ParentRect =
+        Window->Child ? Rr_UICurrentClipRect(ParentWindow) : NULL;
 
     Window->TopLevelParent =
         Window->Child ? ParentWindow->TopLevelParent : Window;
@@ -2740,7 +2738,7 @@ void Rr_UIEndWindow(void)
 
         if (ParentWindow->ClipRects.Count)
         {
-            Rr_UIBeginClipRect(Rr_UICurrentRect(ParentWindow));
+            Rr_UIBeginClipRect(Rr_UICurrentClipRect(ParentWindow));
         }
     }
 }
