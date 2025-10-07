@@ -255,23 +255,23 @@ static void Iterate(void)
             }
             Rr_UIEndChild();
         }
-        if (Rr_UIBeginChild("Text"))
-        {
-            Rr_UILabel("Text");
-            Rr_UILabel("Multi\n line\n  text");
-            Rr_UILabelEx(
-                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
-                "do eiusmod tempor incididunt ut labore et dolore magna "
-                "aliqua. "
-                "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-                "laboris nisi ut aliquip ex ea commodo consequat. Duis aute "
-                "irure dolor in reprehenderit in voluptate velit esse cillum "
-                "dolore eu fugiat nulla pariatur. Excepteur sint occaecat "
-                "cupidatat non proident, sunt in culpa qui officia deserunt "
-                "mollit anim id est laborum. ",
-                RR_UI_TEXT_FLAGS_WRAPPED_BIT);
-            Rr_UIEndChild();
-        }
+        /* if (Rr_UIBeginChild("Text")) */
+        /* { */
+        /*     Rr_UILabel("Text"); */
+        /*     Rr_UILabel("Multi\n line\n  text"); */
+        /*     Rr_UILabelEx( */
+        /*         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " */
+        /*         "do eiusmod tempor incididunt ut labore et dolore magna " */
+        /*         "aliqua. " */
+        /*         "Ut enim ad minim veniam, quis nostrud exercitation ullamco " */
+        /*         "laboris nisi ut aliquip ex ea commodo consequat. Duis aute " */
+        /*         "irure dolor in reprehenderit in voluptate velit esse cillum " */
+        /*         "dolore eu fugiat nulla pariatur. Excepteur sint occaecat " */
+        /*         "cupidatat non proident, sunt in culpa qui officia deserunt " */
+        /*         "mollit anim id est laborum. ", */
+        /*         RR_UI_TEXT_FLAGS_WRAPPED_BIT); */
+        /*     Rr_UIEndChild(); */
+        /* } */
         if (Rr_UIBeginChild("Horizontal Layout"))
         {
             Rr_UILabel("Horizontal Layout");
