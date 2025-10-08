@@ -94,6 +94,8 @@ struct Rr_UIClipRect
     Rr_Rect Rect;
 };
 
+typedef RR_ARRAY(Rr_UIClipRect) Rr_UIClipRectArray;
+
 typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
@@ -120,8 +122,8 @@ struct Rr_UIWindow
     Rr_Map *ChildWindowMap;
 
     Rr_UIWindow *TopLevelParent;
-
-    RR_ARRAY(Rr_UIClipRect) ClipRects;
+    Rr_UIClipRectArray *TopLevelClipRects;
+    Rr_UIClipRect *CurrentClipRect;
 };
 
 typedef enum
@@ -391,8 +393,10 @@ static inline Rr_UIHash Rr_UICurrentHash(void)
 
 static inline Rr_Rect *Rr_UICurrentClipRect(Rr_UIWindow *Window)
 {
-    assert(Window->ClipRects.Count > 0);
-    return &Window->ClipRects.Data[Window->ClipRects.Count - 1].Rect;
+    assert(Window->TopLevelClipRects->Count > 0);
+    return &Window->TopLevelClipRects
+                ->Data[Window->TopLevelClipRects->Count - 1]
+                .Rect;
 }
 
 static inline bool Rr_UIIsHorizontal(void)
@@ -1792,7 +1796,7 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_UIClipRect *ClipRect =
-        RR_PUSH_INTO_ARRAY(&Window->ClipRects, gUIContext->FrameArena);
+        RR_PUSH_INTO_ARRAY(Window->TopLevelClipRects, gUIContext->FrameArena);
 
     ClipRect->FirstIndex = (uint32_t)gUIContext->Indices.Count;
 
@@ -1812,6 +1816,8 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
     {
         ClipRect->Rect = *Rect;
     }
+
+    Window->CurrentClipRect = ClipRect;
 }
 
 static inline void Rr_UIEndClipRect(void)
@@ -1819,10 +1825,11 @@ static inline void Rr_UIEndClipRect(void)
     Rr_UIWindow *Window = Rr_UICurrentWindow();
     if (Window)
     {
-        if (Window->ClipRects.Count > 0)
+        if (Window->TopLevelClipRects->Count > 0)
         {
             Rr_UIClipRect *Last =
-                &Window->ClipRects.Data[Window->ClipRects.Count - 1];
+                &Window->TopLevelClipRects
+                     ->Data[Window->TopLevelClipRects->Count - 1];
             Last->IndexCount =
                 (uint32_t)gUIContext->Indices.Count - Last->FirstIndex;
         }
@@ -2360,12 +2367,20 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_Rect *ParentRect =
         Window->Child ? Rr_UICurrentClipRect(ParentWindow) : NULL;
 
-    Window->TopLevelParent =
-        Window->Child ? ParentWindow->TopLevelParent : Window;
+    if (Window->Child)
+    {
+        Window->TopLevelParent = ParentWindow->TopLevelParent;
+        Window->TopLevelClipRects = ParentWindow->TopLevelClipRects;
 
-    /* Have to access current window and finish its clip rect. */
-
-    Rr_UIEndClipRect();
+        /* Have to access current window and finish its clip rect. */
+        Rr_UIEndClipRect();
+    }
+    else
+    {
+        Window->TopLevelParent = Window;
+        Window->TopLevelClipRects =
+            RR_ALLOC_TYPE(gUIContext->FrameArena, Rr_UIClipRectArray);
+    }
 
     Rr_UILayout *Layout =
         RR_PUSH_INTO_ARRAY(&gUIContext->Stack, gUIContext->FrameArena);
@@ -2376,7 +2391,7 @@ static inline bool Rr_UIBeginWindowEx(
     };
 
     /* TODO: Make sure it's the correct call. */
-    RR_RESET_ARRAY(&Window->ClipRects, gUIContext->FrameArena);
+    /* RR_RESET_ARRAY(&Window->ClipRects, gUIContext->FrameArena); */
 
     /* BUG: Broken at the moment! */
     if (Window->Child)
@@ -2736,9 +2751,9 @@ void Rr_UIEndWindow(void)
 
         /* Resume clip rect if there is a window on the stack. */
 
-        if (ParentWindow->ClipRects.Count)
+        if (ParentWindow->CurrentClipRect)
         {
-            Rr_UIBeginClipRect(Rr_UICurrentClipRect(ParentWindow));
+            Rr_UIBeginClipRect(&ParentWindow->CurrentClipRect->Rect);
         }
     }
 }
@@ -5435,7 +5450,7 @@ static inline void Rr_UIDrawWindow(
         return;
     }
 
-    size_t ClipRectCount = Window->ClipRects.Count;
+    size_t ClipRectCount = Window->TopLevelClipRects->Count;
     if (Window->Collapsed)
     {
         ClipRectCount = 1;
@@ -5443,7 +5458,8 @@ static inline void Rr_UIDrawWindow(
     for (size_t ClipRectIndex = 0; ClipRectIndex < ClipRectCount;
          ++ClipRectIndex)
     {
-        Rr_UIClipRect *ClipRect = Window->ClipRects.Data + ClipRectIndex;
+        Rr_UIClipRect *ClipRect =
+            Window->TopLevelClipRects->Data + ClipRectIndex;
 
         Rr_IntRect IntRect = {
             { (int32_t)floorf(ClipRect->Rect.Offset.X),
