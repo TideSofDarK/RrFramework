@@ -122,6 +122,7 @@ struct Rr_UIWindow
     Rr_Map *ChildWindowMap;
 
     Rr_UIWindow *TopLevelParent;
+    struct Rr_UILayout *TopLevelLayout;
     Rr_UIClipRectArray *TopLevelClipRects;
     Rr_UIClipRect *CurrentClipRect;
 };
@@ -158,6 +159,8 @@ struct Rr_UILayout
 
     Rr_Vec2 TabCursor;
     Rr_UIHash *SelectedTabHash;
+
+    Rr_Vec2 DeferredWindowOffset;
 };
 
 struct Rr_UIContext
@@ -2115,21 +2118,16 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
 {
     Rr_Rect Rect = Window->Rect;
 
-    bool HasTitle = Rr_UIWindowHasTitle(Window);
-    if (HasTitle)
+    if (Rr_UIWindowHasTitle(Window))
     {
         Rect.Offset.Y += gUIContext->TitleHeight;
         Rect.Extent.Height -= gUIContext->TitleHeight;
     }
 
-    bool AutoResize = Window->AutoResizeThisFrame;
-    if (AutoResize == false)
+    if (!Window->AutoResizeThisFrame)
     {
-        bool HasScrollbar =
-            RR_HAS_BIT(
-                Window->Flags,
-                RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT) == false;
         float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
+        ContentsHeight += gUIContext->ContentsPadding.Height;
         if (ContentsHeight == 0.0f)
         {
             return Rect;
@@ -2139,7 +2137,7 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
         {
             *OutFillRatio = FillRatio;
         }
-        if (HasScrollbar && FillRatio > 1.0f)
+        if (Rr_UIWindowHasVerticalScrollbar(Window) && FillRatio > 1.0f)
         {
             Rect.Extent.Width -= gUIContext->ScrollbarWidth;
         }
@@ -2160,9 +2158,13 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
     {
         return false;
     }
+    ContentsHeight += Layout->ContentsPadding.Height;
     float FillRatio = ContentsAreaRect.Extent.Height / ContentsHeight;
+
     float MaxYScroll =
         RR_MAX(0.0f, ContentsHeight - ContentsAreaRect.Extent.Height);
+    Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
+    Window->VScroll = roundf(Window->VScroll);
 
     if (FillRatio < 1.0f)
     {
@@ -2186,20 +2188,6 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
         ScrollbarHandlePosition.X += ScrollbarHandleOffset;
         ScrollbarHandleSize.Width = gUIContext->ScrollbarHandleWidth;
         ScrollbarHandleSize.Height *= FillRatio;
-
-        Rr_Vec2 ScrollableArea = ContentsAreaRect.Extent;
-        ScrollableArea.Width += gUIContext->ScrollbarWidth;
-        /* if (Rr_UIScrollBehavior( */
-        /*         Window, */
-        /*         &(Rr_Rect){ */
-        /*             ContentsAreaRect.Offset, */
-        /*             ScrollableArea, */
-        /*         }, */
-        /*         &Window->VScroll)) */
-        /* { */
-        /*     Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll); */
-        /* Window->VScroll = roundf(Window->VScroll); */
-        /* } */
 
         ScrollbarHandlePosition.Y += Window->VScroll * FillRatio;
 
@@ -2312,6 +2300,22 @@ static inline void Rr_UIConsumeNextWindowSize(Rr_UIWindow *Window)
     }
 }
 
+static inline Rr_Vec2 Rr_UIConsumeNextWindowPadding(void)
+{
+    Rr_Vec2 ContentsPadding;
+    if (gUIContext->NextWindowPadding.Width != INFINITY &&
+        gUIContext->NextWindowPadding.Height != INFINITY)
+    {
+        ContentsPadding = gUIContext->NextWindowPadding;
+        gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
+    }
+    else
+    {
+        ContentsPadding = gUIContext->ContentsPadding;
+    }
+    return ContentsPadding;
+}
+
 static inline void Rr_UISwapWindowZ(Rr_UIWindow *WindowA, Rr_UIWindow *WindowB)
 {
     int32_t Temp = WindowA->Z;
@@ -2335,6 +2339,7 @@ static inline bool Rr_UIBeginWindowEx(
 {
     Rr_UIConsumeNextWindowPosition(Window);
     Rr_UIConsumeNextWindowSize(Window);
+    Rr_Vec2 ContentsPadding = Rr_UIConsumeNextWindowPadding();
 
     Window->Flags = Flags;
 
@@ -2392,7 +2397,9 @@ static inline bool Rr_UIBeginWindowEx(
     *Layout = (Rr_UILayout){
         .Window = Window,
         .HorizontalX = INFINITY,
+        .DeferredWindowOffset = Rr_V2F(INFINITY),
         .ParentRect = ParentRect,
+        .ContentsPadding = ContentsPadding,
     };
 
     /* TODO: Make sure it's the correct call. */
@@ -2417,7 +2424,7 @@ static inline bool Rr_UIBeginWindowEx(
      * Handle these early so following code may access
      * updated window rect. */
 
-    /* NOTE: Child windows should forward movement to the top-level parent. */
+    /* NOTE: Forward move behavior to the top-level parent. */
 
     Rr_UIDragResult Result = Rr_UIDragBehavior(
         Window,
@@ -2429,10 +2436,8 @@ static inline bool Rr_UIBeginWindowEx(
     {
         Rr_Vec2 Delta =
             Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
-        Window->TopLevelParent->Rect.Offset =
-            Rr_AddV2(gUIContext->DragOpWindowStart, Delta);
-        Window->TopLevelParent->Rect.Offset =
-            Rr_FloorV2(Window->TopLevelParent->Rect.Offset);
+        Layout->DeferredWindowOffset =
+            Rr_FloorV2(Rr_AddV2(gUIContext->DragOpWindowStart, Delta));
     }
 
     if (!Window->AutoResizeThisFrame)
@@ -2444,7 +2449,9 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Clip to the whole area. */
 
-    Rr_UIBeginClipRect(&Window->Rect);
+    Rr_Rect PaddedRect =
+        Rr_ResizeRect(&Window->Rect, gUIContext->FrameThickness);
+    Rr_UIBeginClipRect(&PaddedRect);
 
     Layout->Cursor = Window->Rect.Offset;
 
@@ -2458,6 +2465,17 @@ static inline bool Rr_UIBeginWindowEx(
         DesiredTitleWidth = Rr_UIAddWindowTitle(Window, Open);
 
         Layout->Cursor.Y += gUIContext->TitleHeight;
+    }
+
+    /* Add border if necessary. */
+
+    if (!Rr_UIWindowNoBorder(Window))
+    {
+        /* Rr_UIBeginClipRect(&PaddedRect); */
+        Rr_UIDrawInnerFrame(
+            &PaddedRect,
+            gUIContext->FrameThickness,
+            &gUIContext->Style.Outline);
     }
 
     /* Now that title is added, try to return early in case the window is
@@ -2500,18 +2518,6 @@ static inline bool Rr_UIBeginWindowEx(
         Layout->Cursor.Y -= Window->VScroll;
     }
 
-    /* Consume custom padding if necessary. */
-
-    if (gUIContext->NextWindowPadding.Width != INFINITY &&
-        gUIContext->NextWindowPadding.Height != INFINITY)
-    {
-        Layout->ContentsPadding = gUIContext->NextWindowPadding;
-        gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
-    }
-    else
-    {
-        Layout->ContentsPadding = gUIContext->ContentsPadding;
-    }
     Layout->AvailableContentsWidth -= Layout->ContentsPadding.X * 2.0f;
     Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->ContentsPadding);
 
@@ -2611,30 +2617,21 @@ void Rr_UIEndWindow(void)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_UIEndClipRect();
-
-    /* Begin last clip rect for stuff such as borders and resize handle. */
-
-    Rr_Rect Rect = Window->Rect;
-    if (Window->Collapsed)
-    {
-        Rect.Extent.Height = gUIContext->TitleHeight;
-    }
-    Rect = Rr_ResizeRect(&Rect, gUIContext->FrameThickness);
-
-    /* Add border if necessary. */
-
-    if (!Rr_UIWindowNoBorder(Window))
-    {
-        Rr_UIBeginClipRect(&Rect);
-        Rr_UIDrawInnerFrame(
-            &Rect,
-            gUIContext->FrameThickness,
-            &gUIContext->Style.Outline);
-    }
-
     if (!Window->Collapsed)
     {
+        Rr_UIEndClipRect();
+
+        /* Begin overlay clip rect for stuff such as borders and scroll area
+         * darkeners. */
+
+        Rr_Rect Rect = Window->Rect;
+        if (Window->Collapsed)
+        {
+            Rect.Extent.Height = gUIContext->TitleHeight;
+        }
+        Rect = Rr_ResizeRect(&Rect, gUIContext->FrameThickness);
+        Rr_UIBeginClipRect(&Rect);
+
         /* NOTE: Flooring these fixed imprecise FillRatio calculation.
          * If the bug ever returns it probably means the fix should be applied
          * somewhere else. */
@@ -2691,10 +2688,6 @@ void Rr_UIEndWindow(void)
             }
         }
 
-        /* Finish contents clip rect. */
-
-        Rr_UIEndClipRect();
-
         if (Rr_UIWindowHasResizeHandle(Window))
         {
             Rr_Vec2 BottomRight =
@@ -2713,13 +2706,6 @@ void Rr_UIEndWindow(void)
         {
             Window->Rect.Extent =
                 Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
-            /* if (!Window->Child) */
-            /* { */
-            /*     Window->Rect.Extent.X = */
-            /*         Window->ContentsEnd.X - Window->ContentsStart.X; */
-            /* } */
-            /* Window->Rect.Extent.Y = */
-            /*     Window->ContentsEnd.Y - Window->ContentsStart.Y; */
             Window->Rect.Extent.Width += Layout->ContentsPadding.Width * 2.0f;
             Window->Rect.Extent.Height += Layout->ContentsPadding.Height;
 
@@ -2745,15 +2731,17 @@ void Rr_UIEndWindow(void)
         {
             ScrollableArea = Rr_UIGetWindowContentsArea(Window, NULL);
         }
-        if (Rr_UIScrollBehavior(
-                Window,
-                &ScrollableArea,
-                &Window->TopLevelParent->VScroll))
-        {
-            /* Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll); */
-            Window->TopLevelParent->VScroll =
-                roundf(Window->TopLevelParent->VScroll);
-        }
+        Rr_UIScrollBehavior(
+            Window,
+            &ScrollableArea,
+            &Window->TopLevelParent->VScroll);
+    }
+
+    /* Apply deferred window offset. */
+
+    if (Layout->DeferredWindowOffset.X != INFINITY)
+    {
+        Window->TopLevelParent->Rect.Offset = Layout->DeferredWindowOffset;
     }
 
     /* Pop current layout from the stack. */
