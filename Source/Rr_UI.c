@@ -122,7 +122,6 @@ struct Rr_UIWindow
     Rr_Map *ChildWindowMap;
 
     Rr_UIWindow *TopLevelParent;
-    struct Rr_UILayout *TopLevelLayout;
     Rr_UIClipRectArray *TopLevelClipRects;
     Rr_UIClipRect *CurrentClipRect;
 };
@@ -161,6 +160,9 @@ struct Rr_UILayout
     Rr_UIHash *SelectedTabHash;
 
     Rr_Vec2 DeferredWindowOffset;
+    Rr_Vec2 DeferredWindowExtent;
+
+    Rr_UILayout *TopLevelLayout;
 };
 
 struct Rr_UIContext
@@ -2099,7 +2101,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         Rr_Vec2 MinWindowSize = Rr_UIGetMinWindowSize(Window->Flags);
         NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
         NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
-        Window->Rect.Extent = Rr_FloorV2(NewWindowSize);
+        Layout->DeferredWindowExtent = Rr_FloorV2(NewWindowSize);
     }
 
     Layout->DeferredResizeHandleColor = gUIContext->Style.Foreground;
@@ -2398,12 +2400,11 @@ static inline bool Rr_UIBeginWindowEx(
         .Window = Window,
         .HorizontalX = INFINITY,
         .DeferredWindowOffset = Rr_V2F(INFINITY),
+        .DeferredWindowExtent = Rr_V2F(INFINITY),
         .ParentRect = ParentRect,
         .ContentsPadding = ContentsPadding,
+        .TopLevelLayout = Window->Child ? ParentLayout->TopLevelLayout : Layout,
     };
-
-    /* TODO: Make sure it's the correct call. */
-    /* RR_RESET_ARRAY(&Window->ClipRects, gUIContext->FrameArena); */
 
     /* BUG: Broken at the moment! */
     if (Window->Child)
@@ -2419,10 +2420,9 @@ static inline bool Rr_UIBeginWindowEx(
     TitleClipRect.Extent.Height = gUIContext->TitleHeight;
 
     /* Move and resize behavior.
-     * Rr_UIDragBehavior() gets called even if the window is non-movable because
-     * this function resets widget focus.
-     * Handle these early so following code may access
-     * updated window rect. */
+     * Changes to window rect are deferred to Rr_UIEndWindow()!
+     * Rr_UIDragBehavior() gets called even if the window is
+     * non-movable because this function resets widget focus. */
 
     /* NOTE: Forward move behavior to the top-level parent. */
 
@@ -2436,13 +2436,14 @@ static inline bool Rr_UIBeginWindowEx(
     {
         Rr_Vec2 Delta =
             Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
-        Layout->DeferredWindowOffset =
+        Layout->TopLevelLayout->DeferredWindowOffset =
             Rr_FloorV2(Rr_AddV2(gUIContext->DragOpWindowStart, Delta));
     }
 
     if (!Window->AutoResizeThisFrame)
     {
         /* Defer drawing the handle to Rr_UIEndWindow()! */
+        /* TODO: Support resizing child windows. */
 
         Rr_UIAddResizeHandle(Layout);
     }
@@ -2471,9 +2472,8 @@ static inline bool Rr_UIBeginWindowEx(
 
     if (!Rr_UIWindowNoBorder(Window))
     {
-        /* Rr_UIBeginClipRect(&PaddedRect); */
-        Rr_UIDrawInnerFrame(
-            &PaddedRect,
+        Rr_UIDrawOuterFrame(
+            Window->Collapsed ? &TitleClipRect : &TotalClipRect,
             gUIContext->FrameThickness,
             &gUIContext->Style.Outline);
     }
@@ -2621,16 +2621,10 @@ void Rr_UIEndWindow(void)
     {
         Rr_UIEndClipRect();
 
-        /* Begin overlay clip rect for stuff such as borders and scroll area
-         * darkeners. */
+        /* Begin overlay clip rect for stuff such as resize handle and scroll
+         * area darkeners. */
 
-        Rr_Rect Rect = Window->Rect;
-        if (Window->Collapsed)
-        {
-            Rect.Extent.Height = gUIContext->TitleHeight;
-        }
-        Rect = Rr_ResizeRect(&Rect, gUIContext->FrameThickness);
-        Rr_UIBeginClipRect(&Rect);
+        Rr_UIBeginClipRect(&Window->Rect);
 
         /* NOTE: Flooring these fixed imprecise FillRatio calculation.
          * If the bug ever returns it probably means the fix should be applied
@@ -2648,15 +2642,14 @@ void Rr_UIEndWindow(void)
         {
             float DarkenSize =
                 RR_MIN(gUIContext->FontSize / 2.0f, ContentsHeight);
-            float DarkenColor = 0.01f;
+            float DarkenColor = 0.005f;
 
             Rr_Rect DarkenRect = CurrentRect;
             DarkenRect.Extent.Height =
                 RR_MIN(CurrentRect.Extent.Height, DarkenSize);
 
             float TopDarkenAlpha =
-                1.0f -
-                RR_CLAMP(0.0f, gUIContext->FontSize / Window->VScroll, 1.0f);
+                RR_CLAMP(0.0f, Window->VScroll / DarkenSize, 1.0f);
             if (TopDarkenAlpha > 0.0f)
             {
                 Rr_UIDrawVerticalGradientQuad(
@@ -2670,7 +2663,8 @@ void Rr_UIEndWindow(void)
 
             float BottomDarkenAlpha = RR_CLAMP(
                 0.0f,
-                (ContentsHeight - CurrentRect.Extent.Height - Window->VScroll) /
+                (ContentsHeight - CurrentRect.Extent.Height - Window->VScroll +
+                 Layout->ContentsPadding.Height) /
                     DarkenSize,
                 1.0f);
             if (BottomDarkenAlpha > 0.0f)
@@ -2688,6 +2682,8 @@ void Rr_UIEndWindow(void)
             }
         }
 
+        /* Add resize handle if necessary. */
+
         if (Rr_UIWindowHasResizeHandle(Window))
         {
             Rr_Vec2 BottomRight =
@@ -2700,19 +2696,6 @@ void Rr_UIEndWindow(void)
             Rr_UIDrawSolidTriangle(
                 Positions,
                 &Layout->DeferredResizeHandleColor);
-        }
-
-        if (Window->AutoResizeThisFrame)
-        {
-            Window->Rect.Extent =
-                Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
-            Window->Rect.Extent.Width += Layout->ContentsPadding.Width * 2.0f;
-            Window->Rect.Extent.Height += Layout->ContentsPadding.Height;
-
-            if (Rr_UIWindowHasTitle(Window))
-            {
-                Window->Rect.Extent.Y += gUIContext->TitleHeight;
-            }
         }
     }
 
@@ -2742,6 +2725,25 @@ void Rr_UIEndWindow(void)
     if (Layout->DeferredWindowOffset.X != INFINITY)
     {
         Window->TopLevelParent->Rect.Offset = Layout->DeferredWindowOffset;
+    }
+
+    /* Calculate window extent if necessary or apply manual resize. */
+
+    if (Window->AutoResizeThisFrame)
+    {
+        Window->Rect.Extent =
+            Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
+        Window->Rect.Extent.Width += Layout->ContentsPadding.Width * 2.0f;
+        Window->Rect.Extent.Height += Layout->ContentsPadding.Height;
+
+        if (Rr_UIWindowHasTitle(Window))
+        {
+            Window->Rect.Extent.Y += gUIContext->TitleHeight;
+        }
+    }
+    else if (Layout->DeferredWindowExtent.X != INFINITY)
+    {
+        Window->Rect.Extent = Layout->DeferredWindowExtent;
     }
 
     /* Pop current layout from the stack. */
