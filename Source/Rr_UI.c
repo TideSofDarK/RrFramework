@@ -2401,6 +2401,10 @@ static inline bool Rr_UIBeginWindowEx(
         }
     }
 
+    /* NOTE: Have to access current window and finish its clip rect. */
+
+    Rr_UIEndClipRect();
+
     Window->AutoResizeThisFrame |= Rr_UIWindowAutoResize(Window);
 
     *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveWindows, gUIContext->Arena) = Window;
@@ -2415,10 +2419,6 @@ static inline bool Rr_UIBeginWindowEx(
     {
         Window->TopLevelParent = ParentWindow->TopLevelParent;
         Window->TopLevelClipRects = ParentWindow->TopLevelClipRects;
-
-        /* Have to access current window and finish its clip rect. */
-        /* TODO: Make sure popup windows don't break with this. */
-        Rr_UIEndClipRect();
     }
     else
     {
@@ -2792,11 +2792,11 @@ void Rr_UIEndWindow(void)
                 WindowExtent.Height = gUIContext->TitleHeight;
             }
             Rr_UIAdvance(WindowExtent);
-
-            /* Resume clip rect. */
-
-            Rr_UIBeginClipRect(&ParentWindow->CurrentClipRect->Rect);
         }
+
+        /* Resume clip rect. */
+
+        Rr_UIBeginClipRect(&ParentWindow->CurrentClipRect->Rect);
     }
 }
 
