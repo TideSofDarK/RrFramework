@@ -401,14 +401,6 @@ static inline Rr_UIHash Rr_UICurrentHash(void)
     return Layout ? Layout->Window->Hash : 0;
 }
 
-static inline Rr_Rect *Rr_UICurrentClipRect(Rr_UIWindow *Window)
-{
-    assert(Window->TopLevelClipRects->Count > 0);
-    return &Window->TopLevelClipRects
-                ->Data[Window->TopLevelClipRects->Count - 1]
-                .Rect;
-}
-
 static inline bool Rr_UIIsHorizontal(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -1619,7 +1611,7 @@ static inline void Rr_UIEndDragOp(void)
 static inline bool Rr_UIClipRectContains(Rr_UIWindow *Window, Rr_Vec2 Point)
 {
     assert(Window != NULL);
-    return Rr_RectContains(Rr_UICurrentClipRect(Window), Point);
+    return Rr_RectContains(&Window->CurrentClipRect->Rect, Point);
 }
 
 static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
@@ -2412,13 +2404,13 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     Rr_UIWindow *ParentWindow = Rr_UICurrentWindow();
-    Rr_Rect *ParentRect =
-        Window->Child ? Rr_UICurrentClipRect(ParentWindow) : NULL;
+    Rr_Rect *ParentRect = NULL;
 
     if (Window->Child)
     {
         Window->TopLevelParent = ParentWindow->TopLevelParent;
         Window->TopLevelClipRects = ParentWindow->TopLevelClipRects;
+        ParentRect = &ParentWindow->CurrentClipRect->Rect;
     }
     else
     {
@@ -2449,19 +2441,19 @@ static inline bool Rr_UIBeginWindowEx(
         }
     }
 
-    Rr_Rect TotalClipRect = Window->Rect;
-    if (Window->Collapsed)
-    {
-        TotalClipRect.Extent.Height = gUIContext->TitleHeight;
-    }
+    bool WasCollapsed = Window->Collapsed;
 
     /* Clip to the whole area. */
 
+    Rr_Rect TotalClipRect = Window->Rect;
+    if (WasCollapsed)
+    {
+        TotalClipRect.Extent.Height = gUIContext->TitleHeight;
+    }
     Rr_Rect PaddedRect =
-        Rr_ResizeRect(&Window->Rect, gUIContext->FrameThickness);
+        Rr_ResizeRect(&TotalClipRect, gUIContext->FrameThickness);
     Rr_UIBeginClipRect(&PaddedRect);
-
-    Window->VisibleRect = *Rr_UICurrentClipRect(Window);
+    Window->VisibleRect = Window->CurrentClipRect->Rect;
 
     /* Move and resize behavior.
      * Changes to window rect are deferred to Rr_UIEndWindow()!
@@ -2487,7 +2479,6 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Add window title if necessary. */
 
-    bool WasCollapsed = Window->Collapsed;
     bool HasTitle = Rr_UIWindowHasTitle(Window);
     float DesiredTitleWidth = 0;
     if (HasTitle)
@@ -2495,6 +2486,22 @@ static inline bool Rr_UIBeginWindowEx(
         DesiredTitleWidth = Rr_UIAddWindowTitle(Layout, Open);
 
         Layout->Cursor.Y += gUIContext->TitleHeight;
+    }
+
+    /* Adding title might have changed collapsed state. */
+
+    if (Window->Collapsed != WasCollapsed)
+    {
+        Rr_UIEndClipRect();
+
+        TotalClipRect = Window->Rect;
+        if (Window->Collapsed)
+        {
+            TotalClipRect.Extent.Height = gUIContext->TitleHeight;
+        }
+        PaddedRect = Rr_ResizeRect(&TotalClipRect, gUIContext->FrameThickness);
+        Rr_UIBeginClipRect(&PaddedRect);
+        Window->VisibleRect = Window->CurrentClipRect->Rect;
     }
 
     /* Add border if necessary. */
@@ -5459,10 +5466,6 @@ static inline void Rr_UIDrawWindow(
     }
 
     size_t ClipRectCount = Window->TopLevelClipRects->Count;
-    if (Window->Collapsed)
-    {
-        ClipRectCount = 1;
-    }
     for (size_t ClipRectIndex = 0; ClipRectIndex < ClipRectCount;
          ++ClipRectIndex)
     {
