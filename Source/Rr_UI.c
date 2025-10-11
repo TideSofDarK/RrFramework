@@ -103,6 +103,7 @@ struct Rr_UIWindow
     Rr_UIHash Hash;
     Rr_UIWindowFlags Flags;
     Rr_Rect Rect;
+    Rr_Rect VisibleRect;
     Rr_Vec2 ContentsStart;
     Rr_Vec2 ContentsEnd;
     float VScroll;
@@ -1676,40 +1677,34 @@ static inline bool Rr_UIScrollBehavior(
     return false;
 }
 
-static inline void Rr_UIButtonBehavior(
+typedef struct Rr_UIButtonResult Rr_UIButtonResult;
+struct Rr_UIButtonResult
+{
+    bool Down;
+    bool Up;
+    bool Hovered;
+    bool Held;
+};
+
+static inline Rr_UIButtonResult Rr_UIButtonBehavior(
     Rr_UILayout *Layout,
-    Rr_Rect *Rect,
-    bool *Down,
-    bool *Up,
-    bool *Hovered,
-    bool *Held)
+    Rr_Rect *Rect)
 {
     Rr_UIWindow *Window = Layout->Window;
-    if (Down)
-    {
-        *Down = false;
-    }
-    if (Up)
-    {
-        *Up = false;
-    }
-    if (Hovered)
-    {
-        *Hovered = false;
-    }
-    if (Held)
-    {
-        *Held = false;
-    }
+
+    Rr_UIButtonResult Result = { 0 };
 
     if (!Layout->LeftMouseButtonInsideRect)
     {
-        return;
+        return Result;
     }
+
+    bool WindowHovered = Window == gUIContext->HoveredWindow;
     bool BlockedByDragOp = (gUIContext->DragOpWindow != NULL &&
                             gUIContext->DragOpBeganThisFrame == false) ||
                            gUIContext->DragOpEndedThisFrame == true;
-    if (BlockedByDragOp == false && Window == gUIContext->HoveredWindow &&
+
+    if (!BlockedByDragOp && WindowHovered &&
         Rr_RectContains(Rect, gUIContext->MousePosition))
     {
         if (gUIContext->LeftMouseButtonDown)
@@ -1717,23 +1712,15 @@ static inline void Rr_UIButtonBehavior(
             Rr_UIEndDragOp();
             gUIContext->DragOpWindow = NULL;
         }
-        if (Down)
-        {
-            *Down = gUIContext->LeftMouseButtonDown;
-        }
-        if (Up)
-        {
-            *Up = gUIContext->LeftMouseButtonUp;
-        }
-        if (Held)
-        {
-            *Held = gUIContext->LeftMouseButtonHeld;
-        }
-        if (Hovered)
-        {
-            *Hovered = true;
-        }
+
+        Result.Down = gUIContext->LeftMouseButtonDown;
+        Result.Up = gUIContext->LeftMouseButtonUp;
+        /* NOTE: Not actual click-and-held behavior! */
+        Result.Held = gUIContext->LeftMouseButtonHeld;
+        Result.Hovered = true;
     }
+
+    return Result;
 }
 
 typedef struct Rr_UIDragResult Rr_UIDragResult;
@@ -1754,6 +1741,7 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
 {
     Rr_UIWindow *Window = Layout->Window;
 
+    bool WindowHovered = Window == gUIContext->HoveredWindow;
     bool Contains = Rr_RectContains(Rect, gUIContext->MousePosition);
 
     Rr_UIDragResult Result = { 0 };
@@ -1767,7 +1755,7 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
     if (Contains && gUIContext->LeftMouseButtonDown &&
         (gUIContext->DragOpWindow == NULL ||
          gUIContext->DragOpWindow == Window) &&
-        gUIContext->HoveredWindow == Window)
+        WindowHovered)
     {
         if (!Layout->LeftMouseButtonInsideRect)
         {
@@ -1833,10 +1821,10 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
         Rr_Vec2 BottomRight = Rr_AddV2(Rect->Offset, Rect->Extent);
         Rr_Vec2 ParentBottomRight =
             Rr_AddV2(ParentRect->Offset, ParentRect->Extent);
-        Rr_Vec2 D = Rr_V2(
+        Rr_Vec2 Delta = Rr_V2(
             RR_MIN(BottomRight.X, ParentBottomRight.X),
             RR_MIN(BottomRight.Y, ParentBottomRight.Y));
-        ClipRect->Rect.Extent = Rr_SubV2(D, ClipRect->Rect.Offset);
+        ClipRect->Rect.Extent = Rr_SubV2(Delta, ClipRect->Rect.Offset);
     }
     else
     {
@@ -1845,9 +1833,8 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
 
     Window->CurrentClipRect = ClipRect;
 
-    Layout->LeftMouseButtonInsideRect = Rr_RectContains(
-        &ClipRect->Rect,
-        gUIContext->MousePosition);
+    Layout->LeftMouseButtonInsideRect =
+        Rr_RectContains(&ClipRect->Rect, gUIContext->MousePosition);
 }
 
 static inline void Rr_UIEndClipRect(void)
@@ -1971,9 +1958,8 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
     ButtonRect.Offset = Window->Rect.Offset;
     ButtonRect.Extent = Rr_V2F(gUIContext->TitleButtonSize);
 
-    bool Up, Held;
-    Rr_UIButtonBehavior(Layout, &ButtonRect, NULL, &Up, NULL, &Held);
-    if (Up)
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(Layout, &ButtonRect);
+    if (Result.Up)
     {
         Window->Collapsed = !Window->Collapsed;
     }
@@ -1981,7 +1967,7 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
     Rr_UIDrawBevel(
         &ButtonRect,
         &gUIContext->Style.TitleCollapseButtonBackground,
-        Held);
+        Result.Held);
 
     Rr_Vec2 TriangleCenter = Rr_AddV2(
         ButtonRect.Offset,
@@ -2024,9 +2010,8 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
         (TitleRect.Extent.Height - gUIContext->TitleButtonSize) * 0.5f;
     ButtonRect.Extent = Rr_V2F(gUIContext->TitleButtonSize);
 
-    bool Up, Held;
-    Rr_UIButtonBehavior(Layout, &ButtonRect, NULL, &Up, NULL, &Held);
-    if (Up && Open)
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(Layout, &ButtonRect);
+    if (Result.Up && Open)
     {
         *Open = false;
     }
@@ -2034,7 +2019,7 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
     Rr_UIDrawBevel(
         &ButtonRect,
         &gUIContext->Style.TitleCloseButtonBackground,
-        Held);
+        Result.Held);
 
     Rr_UIDrawRotatedQuad(
         &BarRect,
@@ -2465,14 +2450,18 @@ static inline bool Rr_UIBeginWindowEx(
     }
 
     Rr_Rect TotalClipRect = Window->Rect;
-    Rr_Rect TitleClipRect = Window->Rect;
-    TitleClipRect.Extent.Height = gUIContext->TitleHeight;
+    if (Window->Collapsed)
+    {
+        TotalClipRect.Extent.Height = gUIContext->TitleHeight;
+    }
 
     /* Clip to the whole area. */
 
     Rr_Rect PaddedRect =
         Rr_ResizeRect(&Window->Rect, gUIContext->FrameThickness);
     Rr_UIBeginClipRect(&PaddedRect);
+
+    Window->VisibleRect = *Rr_UICurrentClipRect(Window);
 
     /* Move and resize behavior.
      * Changes to window rect are deferred to Rr_UIEndWindow()!
@@ -2483,7 +2472,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_UIDragResult DragResult = Rr_UIDragBehavior(
         Layout,
-        Window->Collapsed ? &TitleClipRect : &TotalClipRect,
+        &TotalClipRect,
         RR_UI_DRAG_OP_MOVE,
         0,
         Window->TopLevelParent->Rect.Offset);
@@ -2513,7 +2502,7 @@ static inline bool Rr_UIBeginWindowEx(
     if (!Rr_UIWindowNoBorder(Window))
     {
         Rr_UIDrawOuterFrame(
-            Window->Collapsed ? &TitleClipRect : &TotalClipRect,
+            &TotalClipRect,
             gUIContext->FrameThickness,
             &gUIContext->Style.Outline);
     }
@@ -2964,16 +2953,12 @@ bool Rr_UITab(const char *Title)
     bool Up = false;
     bool Hovered = false;
     bool Held = false;
-    Rr_UIButtonBehavior(
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
             ButtonPosition,
             ButtonSize,
-        },
-        NULL,
-        &Up,
-        &Hovered,
-        &Held);
+        });
 
     Rr_Vec4 *TabButtonColor;
     if (Selected)
@@ -3082,21 +3067,14 @@ bool Rr_UIFold(const char *Title)
 
     Rr_Vec2 TotalSize = Rr_V2(Layout->AvailableContentsWidth, FoldButtonHeight);
 
-    bool Up = false;
-    bool Hovered = false;
-    bool Held = false;
-    Rr_UIButtonBehavior(
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
             Layout->Cursor,
             TotalSize,
-        },
-        NULL,
-        &Up,
-        &Hovered,
-        &Held);
+        });
 
-    if (Up)
+    if (Result.Up)
     {
         *FoldValue = !*FoldValue;
     }
@@ -3109,7 +3087,7 @@ bool Rr_UIFold(const char *Title)
         BevelPrimitive,
         &ButtonRect,
         &gUIContext->Style.TitleBackground,
-        Held);
+        Result.Held);
 
     Rr_UIAdvance(TotalSize);
 
@@ -3235,32 +3213,29 @@ bool Rr_UIButton(const char *Text)
     Rr_Vec2 ButtonSize =
         Rr_AddV2(TextSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f));
 
-    bool Up = false;
-    bool Hovered = false;
-    bool Held = false;
-    Rr_UIButtonBehavior(
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
             ButtonPosition,
             ButtonSize,
-        },
-        NULL,
-        &Up,
-        &Hovered,
-        &Held);
+        });
 
     Rr_Rect ButtonRect = {
         ButtonPosition,
         ButtonSize,
     };
 
-    Rr_UIBevel(Primitive, &ButtonRect, &gUIContext->Style.ButtonNormal, Held);
+    Rr_UIBevel(
+        Primitive,
+        &ButtonRect,
+        &gUIContext->Style.ButtonNormal,
+        Result.Held);
 
     Rr_UIAdvance(ButtonSize);
 
     Rr_DestroyScratch(Scratch);
 
-    return Up;
+    return Result.Up;
 }
 
 bool Rr_UICheckbox(const char *Title, bool *Checked)
@@ -3277,21 +3252,14 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 
     Rr_Vec2 FramePosition = Layout->Cursor;
 
-    bool Up = false;
-    bool Hovered = false;
-    bool Held = false;
-    Rr_UIButtonBehavior(
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
             FramePosition,
             CheckboxSize,
-        },
-        NULL,
-        &Up,
-        &Hovered,
-        &Held);
+        });
 
-    if (Up)
+    if (Result.Up)
     {
         *Checked = !*Checked;
     }
@@ -3303,7 +3271,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         FramePosition,
         CheckboxSize,
     };
-    Rr_UIDrawBevel(&CheckboxRect, &BackgroundColor, Held || *Checked);
+    Rr_UIDrawBevel(&CheckboxRect, &BackgroundColor, Result.Held || *Checked);
 
     if (*Checked)
     {
@@ -3338,7 +3306,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 
     Rr_DestroyScratch(Scratch);
 
-    return Up;
+    return Result.Up;
 }
 
 static inline bool Rr_UIConsumeTextInput(
@@ -4373,21 +4341,14 @@ bool Rr_UICombobox(
     Rr_Vec2 BorderSize = ButtonSize;
     BorderSize.X += gUIContext->LineHeight + gUIContext->ButtonPadding.Width;
 
-    bool Up = false;
-    bool Hovered = false;
-    bool Held = false;
-    Rr_UIButtonBehavior(
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
             ButtonPosition,
             BorderSize,
-        },
-        NULL,
-        &Up,
-        &Hovered,
-        &Held);
+        });
 
-    if (Up)
+    if (Result.Up)
     {
         gUIContext->PopupWindowParent = Window;
         gUIContext->PopupWindowHash = TitleHash;
@@ -4424,28 +4385,20 @@ bool Rr_UICombobox(
             OptionButtonRect.Extent.Width =
                 gUIContext->PopupWindow.Rect.Extent.Width;
             OptionButtonRect.Extent.Height = gUIContext->LineHeight;
-            bool Up = false;
-            bool Hovered = false;
-            bool Held = false;
-            Rr_UIButtonBehavior(
-                PopupLayout,
-                &OptionButtonRect,
-                NULL,
-                &Up,
-                &Hovered,
-                &Held);
-            if (Up)
+            Rr_UIButtonResult Result =
+                Rr_UIButtonBehavior(PopupLayout, &OptionButtonRect);
+            if (Result.Up)
             {
                 *SelectedIndex = Index;
                 Rr_UIClosePopupWindow();
                 OptionChanged = true;
             }
             Rr_Vec4 OptionButtonColor;
-            if (Held)
+            if (Result.Held)
             {
                 OptionButtonColor = gUIContext->Style.ButtonHeld;
             }
-            else if (Hovered)
+            else if (Result.Hovered)
             {
                 OptionButtonColor = gUIContext->Style.ButtonHovered;
             }
@@ -4473,7 +4426,11 @@ bool Rr_UICombobox(
     Rr_Vec4 BackgroundColor = gUIContext->Style.Background;
     BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
 
-    Rr_UIBevel(Primitive, &ButtonRect, &gUIContext->Style.ButtonDisabled, Held);
+    Rr_UIBevel(
+        Primitive,
+        &ButtonRect,
+        &gUIContext->Style.ButtonDisabled,
+        Result.Held);
 
     /* Add handle. */
     {
@@ -4481,7 +4438,10 @@ bool Rr_UICombobox(
         Rr_Rect HandleRect = { ButtonRect.Offset, Rr_V2F(HandleSize) };
         HandleRect.Offset.X += ButtonRect.Extent.Width;
 
-        Rr_UIDrawBevel(&HandleRect, &gUIContext->Style.ButtonNormal, Held);
+        Rr_UIDrawBevel(
+            &HandleRect,
+            &gUIContext->Style.ButtonNormal,
+            Result.Held);
 
         Rr_Vec2 HandleCenter = Rr_RectCenter(&HandleRect);
         Rr_Vec2 TrianglePositions[] = {
@@ -5045,21 +5005,14 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
     ColorBoxPosition.X += FieldExtent.Width;
     ColorBoxPosition.X -= gUIContext->BevelThickness;
 
-    bool Up = false;
-    bool Hovered = false;
-    bool Held = false;
-    Rr_UIButtonBehavior(
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
             ColorBoxPosition,
             ColorBoxSize,
-        },
-        NULL,
-        &Up,
-        &Hovered,
-        &Held);
+        });
 
-    if (Up)
+    if (Result.Up)
     {
         gUIContext->PopupWindowParent = Window;
         gUIContext->PopupWindowHash = TitleHash;
@@ -5079,7 +5032,7 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
         ColorBoxPosition,
         ColorBoxSize,
     };
-    Rr_UIDrawBevel(&BevelRect, Color, Held);
+    Rr_UIDrawBevel(&BevelRect, Color, Result.Held);
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
     TitlePosition.Y += gUIContext->ButtonPadding.Height;
@@ -5431,7 +5384,7 @@ void Rr_BeginUI(void)
     if (Rr_UIPopupWindowActive())
     {
         if (Rr_RectContains(
-                &gUIContext->PopupWindow.Rect,
+                &gUIContext->PopupWindow.VisibleRect,
                 gUIContext->MousePosition))
         {
             gUIContext->HoveredWindow = &gUIContext->PopupWindow;
@@ -5453,7 +5406,9 @@ void Rr_BeginUI(void)
         for (int Index = LastIndex; Index >= 0; --Index)
         {
             Rr_UIWindow *Window = gUIContext->ActiveWindows.Data[Index];
-            if (Rr_RectContains(&Window->Rect, gUIContext->MousePosition))
+            if (Rr_RectContains(
+                    &Window->VisibleRect,
+                    gUIContext->MousePosition))
             {
                 gUIContext->HoveredWindow = Window;
 
