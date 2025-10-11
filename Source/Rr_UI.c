@@ -5584,11 +5584,6 @@ void Rr_EndUI(void)
         Rr_UIDrawWindow(Window, GraphicsNode);
     }
 
-    if (gUIContext->PopupWindowParent)
-    {
-        Rr_UIDrawWindow(&gUIContext->PopupWindow, GraphicsNode);
-    }
-
     Rr_EndGraphLabel(Rr_GetGraph(), "Rr.UI");
 
     if (gUIContext->LeftMouseButtonUp)
