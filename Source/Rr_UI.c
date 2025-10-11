@@ -1844,6 +1844,10 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
     }
 
     Window->CurrentClipRect = ClipRect;
+
+    Layout->LeftMouseButtonInsideRect = Rr_RectContains(
+        &ClipRect->Rect,
+        gUIContext->MousePosition);
 }
 
 static inline void Rr_UIEndClipRect(void)
@@ -2448,8 +2452,6 @@ static inline bool Rr_UIBeginWindowEx(
         .ParentRect = ParentRect,
         .ContentsPadding = ContentsPadding,
         .TopLevelLayout = Window->Child ? ParentLayout->TopLevelLayout : Layout,
-        .LeftMouseButtonInsideRect =
-            Rr_RectContains(&Window->Rect, gUIContext->MousePosition),
         .Cursor = Window->Rect.Offset,
     };
 
@@ -2574,9 +2576,6 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window, NULL);
     Rr_UIBeginClipRect(&ContentsAreaRect);
-
-    Layout->LeftMouseButtonInsideRect =
-        Rr_RectContains(&ContentsAreaRect, gUIContext->MousePosition),
 
     Rr_UIDrawSolidQuad(&ContentsAreaRect, &gUIContext->Style.Background);
 
