@@ -109,14 +109,14 @@ struct Rr_UIWindow
     float HScroll;
     int32_t Z;
 
-    bool Collapsed : 1;
-    bool Added : 1;
-    bool Open : 1;
-    bool Child : 1;
+    bool Collapsed;
+    bool Added;
+    bool Open;
+    bool Child;
 
-    bool OpenedThisFrame : 1;
-    bool AutoResizeThisFrame : 1;
-    bool SkipThisFrame : 1;
+    bool OpenedThisFrame;
+    bool AutoResizeThisFrame;
+    bool SkipThisFrame;
 
     Rr_Map *WidgetMap;
     Rr_Map *ChildWindowMap;
@@ -153,6 +153,8 @@ struct Rr_UILayout
 
     Rr_Rect *ParentRect;
 
+    bool LeftMouseButtonInsideRect;
+
     /* TODO: See if there is a better way to do it. */
     Rr_Vec4 DeferredResizeHandleColor;
 
@@ -186,15 +188,15 @@ struct Rr_UIContext
     Rr_Vec2 NextWindowPosition;
     Rr_Vec2 NextWindowPadding;
 
-    bool LeftMouseButtonDownOverWindow : 1;
+    bool LeftMouseButtonDownOverWindow;
 
-    bool SkipLeftMouseButtonUp : 1;
-    bool LeftMouseButtonDown : 1;
-    bool LeftMouseButtonHeld : 1;
-    bool LeftMouseButtonUp : 1;
+    bool SkipLeftMouseButtonUp;
+    bool LeftMouseButtonDown;
+    bool LeftMouseButtonHeld;
+    bool LeftMouseButtonUp;
     uint32_t LeftMouseButtonClicks;
     uint32_t LeftMouseButtonClickId;
-    bool MouseMoved : 1;
+    bool MouseMoved;
     Rr_Vec2 MousePosition;
     Rr_Vec2 MouseWheelDelta;
 
@@ -218,7 +220,7 @@ struct Rr_UIContext
     size_t TextInputCursorMaxCol;
     uint64_t TextInputCursorBlinkTime;
     uint32_t TextInputClickId;
-    bool MouseOverTextInput : 1;
+    bool MouseOverTextInput;
     RR_ARRAY(const char *) TextInputEvents;
     RR_ARRAY(char) TextInputBuffer;
     bool DeferTextInputBufferCopy;
@@ -1675,13 +1677,14 @@ static inline bool Rr_UIScrollBehavior(
 }
 
 static inline void Rr_UIButtonBehavior(
-    Rr_UIWindow *Window,
+    Rr_UILayout *Layout,
     Rr_Rect *Rect,
     bool *Down,
     bool *Up,
     bool *Hovered,
     bool *Held)
 {
+    Rr_UIWindow *Window = Layout->Window;
     if (Down)
     {
         *Down = false;
@@ -1698,6 +1701,11 @@ static inline void Rr_UIButtonBehavior(
     {
         *Held = false;
     }
+
+    if (!Layout->LeftMouseButtonInsideRect)
+    {
+        return;
+    }
     bool BlockedByDragOp = (gUIContext->DragOpWindow != NULL &&
                             gUIContext->DragOpBeganThisFrame == false) ||
                            gUIContext->DragOpEndedThisFrame == true;
@@ -1708,7 +1716,6 @@ static inline void Rr_UIButtonBehavior(
         {
             Rr_UIEndDragOp();
             gUIContext->DragOpWindow = NULL;
-            /* Rr_UIResetFocus(); */
         }
         if (Down)
         {
@@ -1739,16 +1746,17 @@ struct Rr_UIDragResult
 };
 
 static inline Rr_UIDragResult Rr_UIDragBehavior(
-    Rr_UIWindow *Window,
+    Rr_UILayout *Layout,
     Rr_Rect *Rect,
     Rr_UIDragOp DragOp,
     Rr_UIHash Hash,
     Rr_Vec2 Value)
 {
+    Rr_UIWindow *Window = Layout->Window;
+
     bool Contains = Rr_RectContains(Rect, gUIContext->MousePosition);
 
     Rr_UIDragResult Result = { 0 };
-    Result.Hovered = Contains && gUIContext->HoveredWindow == Window;
 
     /* NOTE: Dragging resize handle also overlaps with moving and scrolling.
      * Take that into accoutn and override current drag operation. Watch out for
@@ -1761,6 +1769,13 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
          gUIContext->DragOpWindow == Window) &&
         gUIContext->HoveredWindow == Window)
     {
+        if (!Layout->LeftMouseButtonInsideRect)
+        {
+            return Result;
+        }
+
+        Result.Hovered = true;
+
         Rr_UIBeginDragOp(Window, DragOp, Hash, Value);
 
         if (DragOp == RR_UI_DRAG_OP_WIDGET)
@@ -1777,11 +1792,15 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
         return Result;
     }
 
+    Result.Hovered = Contains && gUIContext->HoveredWindow == Window &&
+                     Layout->LeftMouseButtonInsideRect;
+
     if (gUIContext->DragOpWindow == Window && gUIContext->DragOp == DragOp &&
         gUIContext->DragOpHash == Hash)
     {
         if (gUIContext->LeftMouseButtonHeld)
         {
+            Result.Hovered = true;
             Result.Moved = gUIContext->MouseMoved;
             Result.Held = true;
         }
@@ -1936,8 +1955,10 @@ static inline void Rr_UIAdvance(Rr_Vec2 Size)
     }
 }
 
-static inline void Rr_UIAddCollapseButton(Rr_UIWindow *Window)
+static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 {
+    Rr_UIWindow *Window = Layout->Window;
+
     /* Assuming having a title bar. */
 
     Rr_Rect TitleRect = Window->Rect;
@@ -1947,7 +1968,7 @@ static inline void Rr_UIAddCollapseButton(Rr_UIWindow *Window)
     ButtonRect.Extent = Rr_V2F(gUIContext->TitleButtonSize);
 
     bool Up, Held;
-    Rr_UIButtonBehavior(Window, &ButtonRect, NULL, &Up, NULL, &Held);
+    Rr_UIButtonBehavior(Layout, &ButtonRect, NULL, &Up, NULL, &Held);
     if (Up)
     {
         Window->Collapsed = !Window->Collapsed;
@@ -1969,8 +1990,10 @@ static inline void Rr_UIAddCollapseButton(Rr_UIWindow *Window)
         gUIContext->Style.Foreground);
 }
 
-static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
+static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
 {
+    Rr_UIWindow *Window = Layout->Window;
+
     /* Assuming having a title bar. */
 
     float Width = gUIContext->TitleButtonSize * 0.7f;
@@ -1998,7 +2021,7 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
     ButtonRect.Extent = Rr_V2F(gUIContext->TitleButtonSize);
 
     bool Up, Held;
-    Rr_UIButtonBehavior(Window, &ButtonRect, NULL, &Up, NULL, &Held);
+    Rr_UIButtonBehavior(Layout, &ButtonRect, NULL, &Up, NULL, &Held);
     if (Up && Open)
     {
         *Open = false;
@@ -2019,8 +2042,9 @@ static inline void Rr_UIAddCloseButton(Rr_UIWindow *Window, bool *Open)
         &gUIContext->Style.Foreground);
 }
 
-static inline float Rr_UIAddWindowTitle(Rr_UIWindow *Window, bool *Open)
+static inline float Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
 {
+    Rr_UIWindow *Window = Layout->Window;
     Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
 
     Rr_Rect TitleRect = {
@@ -2033,7 +2057,7 @@ static inline float Rr_UIAddWindowTitle(Rr_UIWindow *Window, bool *Open)
     bool HasCollapse = Rr_UIWindowHasCollapseButton(Window);
     if (HasCollapse)
     {
-        Rr_UIAddCollapseButton(Window);
+        Rr_UIAddCollapseButton(Layout);
 
         TitlePosition.X += gUIContext->TitleHeight;
         TitleRect.Offset.X += gUIContext->TitleHeight;
@@ -2052,7 +2076,7 @@ static inline float Rr_UIAddWindowTitle(Rr_UIWindow *Window, bool *Open)
     bool HasClose = Rr_UIWindowHasCloseButton(Window);
     if (HasClose)
     {
-        Rr_UIAddCloseButton(Window, Open);
+        Rr_UIAddCloseButton(Layout, Open);
 
         TitleRect.Extent.Width -= gUIContext->TitleButtonSize;
     }
@@ -2087,7 +2111,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
     };
 
     Rr_UIDragResult Result = Rr_UIDragBehavior(
-        Window,
+        Layout,
         &ResizeHandleRect,
         RR_UI_DRAG_OP_RESIZE,
         0,
@@ -2191,6 +2215,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
         ScrollbarHandleSize.Width = gUIContext->ScrollbarHandleWidth;
         ScrollbarHandleSize.Height *= FillRatio;
 
+        float ScrollbarHandleHeightUnpadded = ScrollbarHandleSize.Height;
+
         ScrollbarHandlePosition.Y += Window->VScroll * FillRatio;
 
         /* Vertical margins. */
@@ -2201,45 +2227,63 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             ScrollbarHandleSize.Height,
             gUIContext->BevelThickness * 3.0f);
 
-        /* Hitbox is slightly adjusted for better experience. */
+        /* This cuts a bix of height from the scrollbar hitbox so the resize
+         * handle is always on top. */
 
-        Rr_Vec2 ScrollbarButtonSize = ScrollbarHandleSize;
-        ScrollbarButtonSize.Width = ScrollbarSize.Width;
+        Rr_Rect ClickableRect = {
+            ScrollbarPosition,
+            ScrollbarSize,
+        };
         if (HasResize)
         {
-            /* This cuts a bix of height from the scrollbar hitbox so the resize
-             * handle is always on top. */
-
-            float AvailableResizeButtonHeight =
-                (ScrollbarPosition.Y + ScrollbarSize.Height -
-                 gUIContext->ResizeHandleSize) -
-                (ScrollbarHandlePosition.Y + ScrollbarHandleSize.Height);
-            if (AvailableResizeButtonHeight < 0.0f)
+            float ResizeHandleY = ScrollbarPosition.Y + ScrollbarSize.Y -
+                                  gUIContext->ResizeHandleSize;
+            if (gUIContext->MousePosition.Y >= ResizeHandleY)
             {
-                ScrollbarButtonSize.Height += AvailableResizeButtonHeight;
+                ClickableRect.Extent = Rr_V2F(-1.0f);
             }
         }
 
         Rr_UIDragResult Result = Rr_UIDragBehavior(
-            Window,
-            &(Rr_Rect){
-                ScrollbarHandlePosition,
-                ScrollbarButtonSize,
-            },
+            Layout,
+            &ClickableRect,
             RR_UI_DRAG_OP_SCROLL,
             0,
             (Rr_Vec2){ 0.0f, Window->VScroll });
 
+        if (Result.Began)
+        {
+            /* Handle clicking outside of the handle. */
+
+            if (gUIContext->MousePosition.Y >
+                ScrollbarHandlePosition.Y + ScrollbarHandleSize.Y)
+            {
+                Window->VScroll =
+                    (gUIContext->MousePosition.Y - ScrollbarPosition.Y -
+                     ScrollbarHandleOffset * 2.0f) /
+                        (ScrollbarSize.Y / ContentsHeight) -
+                    (ScrollbarHandleSize.Height / FillRatio);
+                gUIContext->DragOpWindowStart.Y = Window->VScroll;
+            }
+            else if (gUIContext->MousePosition.Y < ScrollbarHandlePosition.Y)
+            {
+                Window->VScroll =
+                    (gUIContext->MousePosition.Y - ScrollbarPosition.Y -
+                     ScrollbarHandleOffset * 2.0f) /
+                    ((ScrollbarSize.Y) / ContentsHeight);
+                gUIContext->DragOpWindowStart.Y = Window->VScroll;
+            }
+        }
+
         if (Result.Moved)
         {
-            Rr_Vec2 Delta = Rr_SubV2(
-                gUIContext->MousePosition,
-                gUIContext->DragOpMouseStart);
+            float Delta =
+                gUIContext->MousePosition.Y - gUIContext->DragOpMouseStart.Y;
             float ContentsHeight =
                 Window->ContentsEnd.Y - Window->ContentsStart.Y;
             float FillRatio = ContentsHeight / ContentsAreaRect.Extent.Height;
             Window->VScroll =
-                gUIContext->DragOpWindowStart.Y + (Delta.Y * FillRatio);
+                gUIContext->DragOpWindowStart.Y + (Delta * FillRatio);
         }
 
         Window->VScroll = RR_CLAMP(0.0f, roundf(Window->VScroll), MaxYScroll);
@@ -2404,6 +2448,9 @@ static inline bool Rr_UIBeginWindowEx(
         .ParentRect = ParentRect,
         .ContentsPadding = ContentsPadding,
         .TopLevelLayout = Window->Child ? ParentLayout->TopLevelLayout : Layout,
+        .LeftMouseButtonInsideRect =
+            Rr_RectContains(&Window->Rect, gUIContext->MousePosition),
+        .Cursor = Window->Rect.Offset,
     };
 
     /* BUG: Broken at the moment! */
@@ -2419,6 +2466,12 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_Rect TitleClipRect = Window->Rect;
     TitleClipRect.Extent.Height = gUIContext->TitleHeight;
 
+    /* Clip to the whole area. */
+
+    Rr_Rect PaddedRect =
+        Rr_ResizeRect(&Window->Rect, gUIContext->FrameThickness);
+    Rr_UIBeginClipRect(&PaddedRect);
+
     /* Move and resize behavior.
      * Changes to window rect are deferred to Rr_UIEndWindow()!
      * Rr_UIDragBehavior() gets called even if the window is
@@ -2426,35 +2479,20 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* NOTE: Forward move behavior to the top-level parent. */
 
-    Rr_UIDragResult Result = Rr_UIDragBehavior(
-        Window,
+    Rr_UIDragResult DragResult = Rr_UIDragBehavior(
+        Layout,
         Window->Collapsed ? &TitleClipRect : &TotalClipRect,
         RR_UI_DRAG_OP_MOVE,
         0,
         Window->TopLevelParent->Rect.Offset);
-    if (!Rr_UIWindowNoMove(Window->TopLevelParent) && Result.Moved)
+    bool Moved = DragResult.Moved || DragResult.Began;
+    if (!Rr_UIWindowNoMove(Window->TopLevelParent) && Moved)
     {
         Rr_Vec2 Delta =
             Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
         Layout->TopLevelLayout->DeferredWindowOffset =
             Rr_FloorV2(Rr_AddV2(gUIContext->DragOpWindowStart, Delta));
     }
-
-    if (!Window->AutoResizeThisFrame)
-    {
-        /* Defer drawing the handle to Rr_UIEndWindow()! */
-        /* TODO: Support resizing child windows. */
-
-        Rr_UIAddResizeHandle(Layout);
-    }
-
-    /* Clip to the whole area. */
-
-    Rr_Rect PaddedRect =
-        Rr_ResizeRect(&Window->Rect, gUIContext->FrameThickness);
-    Rr_UIBeginClipRect(&PaddedRect);
-
-    Layout->Cursor = Window->Rect.Offset;
 
     /* Add window title if necessary. */
 
@@ -2463,7 +2501,7 @@ static inline bool Rr_UIBeginWindowEx(
     float DesiredTitleWidth = 0;
     if (HasTitle)
     {
-        DesiredTitleWidth = Rr_UIAddWindowTitle(Window, Open);
+        DesiredTitleWidth = Rr_UIAddWindowTitle(Layout, Open);
 
         Layout->Cursor.Y += gUIContext->TitleHeight;
     }
@@ -2518,6 +2556,15 @@ static inline bool Rr_UIBeginWindowEx(
         Layout->Cursor.Y -= Window->VScroll;
     }
 
+    /* NOTE: Defer drawing the handle to Rr_UIEndWindow()! */
+
+    if (!Window->AutoResizeThisFrame)
+    {
+        /* TODO: Support resizing child windows. */
+
+        Rr_UIAddResizeHandle(Layout);
+    }
+
     Layout->AvailableContentsWidth -= Layout->ContentsPadding.X * 2.0f;
     Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->ContentsPadding);
 
@@ -2527,6 +2574,9 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window, NULL);
     Rr_UIBeginClipRect(&ContentsAreaRect);
+
+    Layout->LeftMouseButtonInsideRect =
+        Rr_RectContains(&ContentsAreaRect, gUIContext->MousePosition),
 
     Rr_UIDrawSolidQuad(&ContentsAreaRect, &gUIContext->Style.Background);
 
@@ -2705,18 +2755,9 @@ void Rr_UIEndWindow(void)
 
     if (!Window->Collapsed || Window->Child)
     {
-        Rr_Rect ScrollableArea;
-        if (Window->Child)
-        {
-            ScrollableArea = Window->Rect;
-        }
-        else
-        {
-            ScrollableArea = Rr_UIGetWindowContentsArea(Window, NULL);
-        }
         Rr_UIScrollBehavior(
             Window,
-            &ScrollableArea,
+            &Window->Rect,
             &Window->TopLevelParent->VScroll);
     }
 
@@ -2925,7 +2966,7 @@ bool Rr_UITab(const char *Title)
     bool Hovered = false;
     bool Held = false;
     Rr_UIButtonBehavior(
-        Window,
+        Layout,
         &(Rr_Rect){
             ButtonPosition,
             ButtonSize,
@@ -3046,7 +3087,7 @@ bool Rr_UIFold(const char *Title)
     bool Hovered = false;
     bool Held = false;
     Rr_UIButtonBehavior(
-        Window,
+        Layout,
         &(Rr_Rect){
             Layout->Cursor,
             TotalSize,
@@ -3199,7 +3240,7 @@ bool Rr_UIButton(const char *Text)
     bool Hovered = false;
     bool Held = false;
     Rr_UIButtonBehavior(
-        Window,
+        Layout,
         &(Rr_Rect){
             ButtonPosition,
             ButtonSize,
@@ -3241,7 +3282,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     bool Hovered = false;
     bool Held = false;
     Rr_UIButtonBehavior(
-        Window,
+        Layout,
         &(Rr_Rect){
             FramePosition,
             CheckboxSize,
@@ -3912,7 +3953,7 @@ static inline bool Rr_UIGenericInputField(
         true);
 
     Rr_UIDragResult Result = Rr_UIDragBehavior(
-        Window,
+        Layout,
         &FieldRect,
         RR_UI_DRAG_OP_WIDGET,
         Hash,
@@ -4337,7 +4378,7 @@ bool Rr_UICombobox(
     bool Hovered = false;
     bool Held = false;
     Rr_UIButtonBehavior(
-        Window,
+        Layout,
         &(Rr_Rect){
             ButtonPosition,
             BorderSize,
@@ -4388,7 +4429,7 @@ bool Rr_UICombobox(
             bool Hovered = false;
             bool Held = false;
             Rr_UIButtonBehavior(
-                &gUIContext->PopupWindow,
+                PopupLayout,
                 &OptionButtonRect,
                 NULL,
                 &Up,
@@ -4619,7 +4660,7 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
     };
 
     Rr_UIDragResult Result = Rr_UIDragBehavior(
-        &gUIContext->PopupWindow,
+        Layout,
         &SVSelectorRect,
         RR_UI_DRAG_OP_WIDGET,
         SVSelectorHash,
@@ -4735,7 +4776,7 @@ static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
         gUIContext->Style.Foreground);
 
     Result = Rr_UIDragBehavior(
-        &gUIContext->PopupWindow,
+        Layout,
         &HSelectorRect,
         RR_UI_DRAG_OP_WIDGET,
         HSelectorHash,
@@ -4869,7 +4910,7 @@ static inline float Rr_UISlider(
                              (HandleRect.Offset.X + HandleWidth / 2.0f);
 
     Rr_UIDragResult Result = Rr_UIDragBehavior(
-        Window,
+        Layout,
         &SliderRect,
         RR_UI_DRAG_OP_WIDGET,
         TitleHash,
@@ -5009,7 +5050,7 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
     bool Hovered = false;
     bool Held = false;
     Rr_UIButtonBehavior(
-        Window,
+        Layout,
         &(Rr_Rect){
             ColorBoxPosition,
             ColorBoxSize,
