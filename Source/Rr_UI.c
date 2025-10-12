@@ -116,7 +116,6 @@ struct Rr_UIWindow
     bool Child;
 
     bool OpenedThisFrame;
-    bool AutoResizeThisFrame;
     bool SkipThisFrame;
 
     Rr_Map *WidgetMap;
@@ -156,14 +155,13 @@ struct Rr_UILayout
 
     bool LeftMouseButtonInsideRect;
 
-    /* TODO: See if there is a better way to do it. */
-    Rr_Vec4 DeferredResizeHandleColor;
-
     Rr_Vec2 TabCursor;
     Rr_UIHash *SelectedTabHash;
 
     Rr_Vec2 DeferredWindowOffset;
     Rr_Vec2 DeferredWindowExtent;
+    Rr_Vec4 DeferredResizeHandleColor;
+    bool DeferredAutoResize;
 
     Rr_UILayout *TopLevelLayout;
 };
@@ -1892,9 +1890,9 @@ static inline bool Rr_UIWindowNoBorder(Rr_UIWindow *Window)
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT);
 }
 
-static inline bool Rr_UIWindowHasVerticalScrollbar(Rr_UIWindow *Window)
+static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
 {
-    return !RR_HAS_BIT(
+    return RR_HAS_BIT(
         Window->Flags,
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT);
 }
@@ -2120,9 +2118,11 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
 }
 
 static inline Rr_Rect Rr_UIGetWindowContentsArea(
-    Rr_UIWindow *Window,
+    Rr_UILayout *Layout,
     float *OutFillRatio)
 {
+    Rr_UIWindow *Window = Layout->Window;
+
     Rr_Rect Rect = Window->Rect;
 
     if (Rr_UIWindowHasTitle(Window))
@@ -2131,7 +2131,7 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
         Rect.Extent.Height -= gUIContext->TitleHeight;
     }
 
-    if (!Window->AutoResizeThisFrame)
+    if (!Layout->DeferredAutoResize)
     {
         float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
         ContentsHeight += gUIContext->ContentsPadding.Height;
@@ -2144,7 +2144,7 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
         {
             *OutFillRatio = FillRatio;
         }
-        if (Rr_UIWindowHasVerticalScrollbar(Window) && FillRatio > 1.0f)
+        if (!Rr_UIWindowNoVerticalScrollbar(Window) && FillRatio > 1.0f)
         {
             Rect.Extent.Width -= gUIContext->ScrollbarWidth;
         }
@@ -2159,7 +2159,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
 
     bool HasResize = Rr_UIWindowHasResizeHandle(Window);
 
-    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window, NULL);
+    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
     float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
     if (ContentsHeight == 0.0f)
     {
@@ -2171,7 +2171,6 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
     float MaxYScroll =
         RR_MAX(0.0f, ContentsHeight - ContentsAreaRect.Extent.Height);
     Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
-    Window->VScroll = roundf(Window->VScroll);
 
     if (FillRatio < 1.0f)
     {
@@ -2361,14 +2360,11 @@ static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
 static inline bool Rr_UIBeginWindowEx(
     const char *Title,
     Rr_UIWindow *Window,
-    bool *Open,
-    Rr_UIWindowFlags Flags)
+    bool *Open)
 {
     Rr_UIConsumeNextWindowPosition(Window);
     Rr_UIConsumeNextWindowSize(Window);
     Rr_Vec2 ContentsPadding = Rr_UIConsumeNextWindowPadding();
-
-    Window->Flags = Flags;
 
     /* Return if closed.
      * Also handle show after being closed.
@@ -2397,8 +2393,6 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_UIEndClipRect();
 
-    Window->AutoResizeThisFrame |= Rr_UIWindowAutoResize(Window);
-
     *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveWindows, gUIContext->Arena) = Window;
     Window->Added = true;
 
@@ -2426,6 +2420,7 @@ static inline bool Rr_UIBeginWindowEx(
         .HorizontalX = INFINITY,
         .DeferredWindowOffset = Rr_V2F(INFINITY),
         .DeferredWindowExtent = Rr_V2F(INFINITY),
+        .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
         .ParentRect = ParentRect,
         .ContentsPadding = ContentsPadding,
         .TopLevelLayout = Window->Child ? ParentLayout->TopLevelLayout : Layout,
@@ -2435,7 +2430,7 @@ static inline bool Rr_UIBeginWindowEx(
     /* BUG: Broken at the moment! */
     if (Window->Child)
     {
-        if (!ParentWindow->AutoResizeThisFrame)
+        if (!ParentLayout->DeferredAutoResize)
         {
             Window->Rect.Extent.Width = ParentLayout->AvailableContentsWidth;
         }
@@ -2504,6 +2499,8 @@ static inline bool Rr_UIBeginWindowEx(
         Window->VisibleRect = Window->CurrentClipRect->Rect;
     }
 
+    Layout->AvailableContentsWidth = TotalClipRect.Extent.Width;
+
     /* Add border if necessary. */
 
     if (!Rr_UIWindowNoBorder(Window))
@@ -2534,29 +2531,25 @@ static inline bool Rr_UIBeginWindowEx(
     /* Add vertical scrollbar if necessary. */
 
     bool VerticalScrollbarAdded = false;
-    Layout->AvailableContentsWidth = TotalClipRect.Extent.Width;
-    if (Window->AutoResizeThisFrame)
+    if (Layout->DeferredAutoResize || Rr_UIWindowNoVerticalScrollbar(Window))
     {
         Window->VScroll = 0;
     }
     else
     {
-        bool HasVerticalScrollbar = Rr_UIWindowHasVerticalScrollbar(Window);
-        if (HasVerticalScrollbar)
-        {
-            VerticalScrollbarAdded = Rr_UIAddVerticalScrollbar(Layout);
-        }
+        VerticalScrollbarAdded = Rr_UIAddVerticalScrollbar(Layout);
         if (VerticalScrollbarAdded ||
-            (Window->AutoResizeThisFrame && Window->SkipThisFrame))
+            (Layout->DeferredAutoResize && Window->SkipThisFrame))
         {
             Layout->AvailableContentsWidth -= gUIContext->ScrollbarWidth;
         }
+        Window->VScroll = roundf(Window->VScroll);
         Layout->Cursor.Y -= Window->VScroll;
     }
 
     /* NOTE: Defer drawing the handle to Rr_UIEndWindow()! */
 
-    if (!Window->AutoResizeThisFrame)
+    if (!Layout->DeferredAutoResize)
     {
         /* TODO: Support resizing child windows. */
 
@@ -2570,7 +2563,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Clip to contents. */
 
-    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Window, NULL);
+    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
     Rr_UIBeginClipRect(&ContentsAreaRect);
 
     Rr_UIDrawSolidQuad(&ContentsAreaRect, &gUIContext->Style.Background);
@@ -2579,7 +2572,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Consider title length when in auto size mode. */
 
-    if (HasTitle && Window->AutoResizeThisFrame)
+    if (HasTitle && Layout->DeferredAutoResize)
     {
         Window->ContentsEnd.Width +=
             DesiredTitleWidth - Layout->ContentsPadding.Width * 2;
@@ -2591,7 +2584,7 @@ static inline bool Rr_UIBeginWindowEx(
 static inline void Rr_UIBeginPopupWindow(void)
 {
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
-    Rr_UIBeginWindowEx("", Window, NULL, gUIContext->PopupWindow.Flags);
+    Rr_UIBeginWindowEx("", Window, NULL);
 }
 
 static inline void Rr_UIClosePopupWindow(void)
@@ -2623,7 +2616,7 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
     Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
 
     Window->SkipThisFrame = true;
-    Window->AutoResizeThisFrame = true;
+    Window->Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
     return Window;
 }
@@ -2649,10 +2642,14 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
         Window->Rect.Extent.Width += gUIContext->FontSize * 32.0f;
         *WindowRef = Window;
     }
+    else
+    {
+        Window->Flags = Flags;
+    }
 
     assert(
         Window->Added == false && "There already is a window with this title!");
-    return Rr_UIBeginWindowEx(Title, Window, Open, Flags);
+    return Rr_UIBeginWindowEx(Title, Window, Open);
 }
 
 void Rr_UIEndWindow(void)
@@ -2681,7 +2678,7 @@ void Rr_UIEndWindow(void)
         float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
 
         float FillRatio = 0.0f;
-        Rr_Rect CurrentRect = Rr_UIGetWindowContentsArea(Window, &FillRatio);
+        Rr_Rect CurrentRect = Rr_UIGetWindowContentsArea(Layout, &FillRatio);
 
         if (FillRatio > 1.0f)
         {
@@ -2752,7 +2749,7 @@ void Rr_UIEndWindow(void)
     {
         Rr_UIScrollBehavior(
             Window,
-            &Window->Rect,
+            &Window->VisibleRect,
             &Window->TopLevelParent->VScroll);
     }
 
@@ -2765,7 +2762,7 @@ void Rr_UIEndWindow(void)
 
     /* Calculate window extent if necessary or apply manual resize. */
 
-    if (Window->AutoResizeThisFrame)
+    if (Layout->DeferredAutoResize)
     {
         Window->Rect.Extent =
             Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
@@ -2823,15 +2820,19 @@ bool Rr_UIBeginChild(const char *Title)
         gUIContext->Arena);
     Rr_UIWindow *Window = *WindowRef;
 
+    const Rr_UIWindowFlags CHILD_FLAGS = RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
+                                         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
+                                         RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+                                         RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
     if (Window == NULL)
     {
-        const Rr_UIWindowFlags CHILD_FLAGS =
-            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
-            RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
-            RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
         Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, CHILD_FLAGS);
         Window->Child = true;
         *WindowRef = Window;
+    }
+    else
+    {
+        Window->Flags = CHILD_FLAGS;
     }
 
     Window->Rect.Offset = ParentLayout->Cursor;
@@ -2839,7 +2840,7 @@ bool Rr_UIBeginChild(const char *Title)
 
     assert(
         Window->Added == false && "There already is a window with this title!");
-    return Rr_UIBeginWindowEx(Title, Window, NULL, Window->Flags);
+    return Rr_UIBeginWindowEx(Title, Window, NULL);
 }
 
 void Rr_UIEndChild(void)
@@ -2957,9 +2958,6 @@ bool Rr_UITab(const char *Title)
 
     Layout->TabCursor.X += ButtonSize.Width;
 
-    bool Up = false;
-    bool Hovered = false;
-    bool Held = false;
     Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
@@ -2972,11 +2970,11 @@ bool Rr_UITab(const char *Title)
     {
         TabButtonColor = &gUIContext->Style.Foreground;
     }
-    else if (Held)
+    else if (Result.Held)
     {
         TabButtonColor = &gUIContext->Style.ButtonHeld;
     }
-    else if (Hovered)
+    else if (Result.Hovered)
     {
         TabButtonColor = &gUIContext->Style.ButtonHovered;
     }
@@ -2993,7 +2991,7 @@ bool Rr_UITab(const char *Title)
         },
         TabButtonColor);
 
-    if (Up)
+    if (Result.Up)
     {
         /* Newly selected tab will be rendered next frame. */
         *Layout->SelectedTabHash = TitleHash;
@@ -5448,11 +5446,6 @@ static inline void Rr_UIDrawWindow(
 {
     Window->Added = false;
     Window->OpenedThisFrame = false;
-
-    if (Window->AutoResizeThisFrame)
-    {
-        Window->AutoResizeThisFrame = false;
-    }
 
     if (Window->OpenedThisFrame)
     {
