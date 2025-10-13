@@ -190,6 +190,12 @@ extern bool Rr_UIInputInt3(const char *Title, int32_t *Values);
 
 extern bool Rr_UIInputInt4(const char *Title, int32_t *Values);
 
+extern bool Rr_UIInputUnsignedInt(const char *Title, uint32_t *Value);
+
+extern bool Rr_UIInputColor3(const char *Title, float *Channels);
+
+extern bool Rr_UIInputColor4(const char *Title, float *Channels);
+
 extern bool Rr_UICombobox(
     const char *Title,
     uint32_t OptionCount,
@@ -207,10 +213,6 @@ extern bool Rr_UISliderFloat(
     float *Value,
     float Min,
     float Max);
-
-extern bool Rr_UIInputColor3(const char *Title, Rr_Vec3 *Color);
-
-extern bool Rr_UIInputColor4(const char *Title, Rr_Vec4 *Color);
 
 extern void Rr_UIBeginHorizontal(void);
 

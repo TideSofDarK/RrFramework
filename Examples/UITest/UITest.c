@@ -68,31 +68,37 @@ static void StyleEditorWindow()
             Rr_UISetFontSize(FontSize);
         }
         Rr_UISeparator();
-        Rr_UIInputColor4("Foreground", &Style->Foreground);
-        Rr_UIInputColor4("Foreground Dimmed", &Style->ForegroundDimmed);
-        Rr_UIInputColor4("Background", &Style->Background);
-        Rr_UIInputColor4("Outline", &Style->Outline);
+        Rr_UIInputColor4("Foreground", Style->Foreground.Elements);
+        Rr_UIInputColor4("Foreground Dimmed", Style->ForegroundDimmed.Elements);
+        Rr_UIInputColor4("Background", Style->Background.Elements);
+        Rr_UIInputColor4("Outline", Style->Outline.Elements);
         Rr_UISeparator();
-        Rr_UIInputColor4("Title Background", &Style->TitleBackground);
+        Rr_UIInputColor4("Title Background", Style->TitleBackground.Elements);
         Rr_UIInputColor4(
             "Title Close Button",
-            &Style->TitleCloseButtonBackground);
+            Style->TitleCloseButtonBackground.Elements);
         Rr_UIInputColor4(
             "Title Collapse Button",
-            &Style->TitleCollapseButtonBackground);
+            Style->TitleCollapseButtonBackground.Elements);
         Rr_UISeparator();
-        Rr_UIInputColor4("Scrollbar Background", &Style->ScrollbarBackground);
-        Rr_UIInputColor4("Scrollbar Normal", &Style->ScrollbarNormal);
-        Rr_UIInputColor4("Scrollbar Hovered", &Style->ScrollbarHovered);
-        Rr_UIInputColor4("Scrollbar Held", &Style->ScrollbarHeld);
+        Rr_UIInputColor4(
+            "Scrollbar Background",
+            Style->ScrollbarBackground.Elements);
+        Rr_UIInputColor4("Scrollbar Normal", Style->ScrollbarNormal.Elements);
+        Rr_UIInputColor4("Scrollbar Hovered", Style->ScrollbarHovered.Elements);
+        Rr_UIInputColor4("Scrollbar Held", Style->ScrollbarHeld.Elements);
         Rr_UISeparator();
-        Rr_UIInputColor4("Button Normal", &Style->ButtonNormal);
-        Rr_UIInputColor4("Button Hovered", &Style->ButtonHovered);
-        Rr_UIInputColor4("Button Held", &Style->ButtonHeld);
-        Rr_UIInputColor4("Button Disabled", &Style->ButtonDisabled);
+        Rr_UIInputColor4("Button Normal", Style->ButtonNormal.Elements);
+        Rr_UIInputColor4("Button Hovered", Style->ButtonHovered.Elements);
+        Rr_UIInputColor4("Button Held", Style->ButtonHeld.Elements);
+        Rr_UIInputColor4("Button Disabled", Style->ButtonDisabled.Elements);
         Rr_UISeparator();
-        Rr_UIInputColor4("Selected Text", &Style->SelectedTextBackground);
-        Rr_UIInputColor4("Input Field Normal", &Style->InputFieldNormal);
+        Rr_UIInputColor4(
+            "Selected Text",
+            Style->SelectedTextBackground.Elements);
+        Rr_UIInputColor4(
+            "Input Field Normal",
+            Style->InputFieldNormal.Elements);
         Rr_UIEndWindow();
     }
 }
@@ -213,21 +219,21 @@ static void Iterate(void)
         Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
         /*     Rr_UIEndChild(); */
         /* } */
-        /* if (Rr_UIBeginChild("Color Picker")) */
+        /* if (Rr_UIBeginChild("Color Input")) */
         /* { */
-        static Rr_Vec3 ColorA = { 0.2f, 0.3f, 0.4f };
-        Rr_UIInputColor3("Color A", &ColorA);
-        static Rr_Vec4 ColorB = { 0.9f, 0.1f, 0.2f, 1.0f };
-        Rr_UIInputColor4("Color B", &ColorB);
+        static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
+        Rr_UIInputColor3("Color RBA", ColorRGB.Elements);
+        static Rr_Vec4 ColorRGBA = { 0.9f, 0.1f, 0.2f, 1.0f };
+        Rr_UIInputColor4("Color RGBA", ColorRGBA.Elements);
         /*     Rr_UIEndChild(); */
         /* } */
         /* if (Rr_UIBeginChild("Text Input")) */
         /* { */
         static char StringBuffer[16] = "Hello, World!";
-        Rr_UIInputText("UTF-8 String (16 bytes)", 16, StringBuffer);
+        Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
         static char MultilineBuffer[128] =
             "Line A\nLine B <- Delete this!\nLine C!";
-        Rr_UIInputText("UTF-8 String (128 bytes)", 128, MultilineBuffer);
+        Rr_UIInputText("String (128 bytes)", 128, MultilineBuffer);
         static int32_t TestInt = 1337;
         Rr_UIInputInt("Integer Input", &TestInt);
         static float TestFloat = 123.456f;

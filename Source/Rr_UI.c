@@ -4443,19 +4443,17 @@ static inline bool Rr_UIGenericInputFieldScalarMulti(
                 Rr_UIGetHash(COMPONENT_TITLES[Index], 2, Hash);
 
             Rr_Vec2 FieldExtent;
-            bool ThisComponentEdited = Rr_UIGenericInputField(
-                ComponentHash,
-                Cursor,
-                sizeof(Buffer),
-                Buffer,
-                NULL,
-                FilterFunc,
-                Flags,
-                SingleFieldWidth,
-                true,
-                &FieldExtent);
-
-            if (ThisComponentEdited)
+            if (Rr_UIGenericInputField(
+                    ComponentHash,
+                    Cursor,
+                    sizeof(Buffer),
+                    Buffer,
+                    NULL,
+                    FilterFunc,
+                    Flags,
+                    SingleFieldWidth,
+                    true,
+                    &FieldExtent))
             {
                 Edited = true;
                 sscanf(Buffer, ScanString, (void *)ElementData);
@@ -4707,6 +4705,487 @@ bool Rr_UIInputInt4(const char *Title, int32_t *Values)
         RR_UI_SCALAR_FORMAT_TYPE_INT);
 }
 
+bool Rr_UIInputUnsignedInt(const char *Title, uint32_t *Value)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        1,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_UINT);
+}
+
+static inline void Rr_UIRGBAToHexString(
+    char *Buffer,
+    int ChannelCount,
+    float *Channels)
+{
+    for (int Index = 0; Index < ChannelCount; ++Index)
+    {
+        float FloatValue = Channels[ChannelCount];
+        uint8_t Value = (uint8_t)(RR_CLAMP(0.0f, FloatValue, 1.0f) * 255.0f);
+        sprintf(Buffer + (Index * 2), "%02X", Value);
+    }
+    Buffer[ChannelCount * 2] = '\0';
+}
+
+/* https://stackoverflow.com/a/17897228 */
+static inline Rr_Vec3 Rr_UIRGBToHSV(Rr_Vec3 *Color)
+{
+    const Rr_Vec4 K = Rr_V4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
+    Rr_Vec4 P;
+    if (Color->G >= Color->B)
+    {
+        P = Rr_V4(Color->G, Color->B, K.X, K.Y);
+    }
+    else
+    {
+        P = Rr_V4(Color->B, Color->G, K.W, K.Z);
+    }
+    Rr_Vec4 Q;
+    if (Color->R >= P.X)
+    {
+        Q = Rr_V4(Color->R, P.Y, P.Z, P.X);
+    }
+    else
+    {
+        Q = Rr_V4(P.X, P.Y, P.W, Color->R);
+    }
+    float D = Q.X - RR_MIN(Q.W, Q.Y);
+    float E = 1.0e-10f;
+    return Rr_V3(fabsf(Q.Z + (Q.W - Q.Y) / (6.0f * D + E)), D / (Q.X + E), Q.X);
+}
+
+static inline Rr_Vec3 Rr_UIHSVToRGB(Rr_Vec3 *HSV)
+{
+    const Rr_Vec4 K = Rr_V4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
+    Rr_Vec3 A = Rr_V3(HSV->X, HSV->X, HSV->X);
+    A = Rr_AddV3(A, K.RGB);
+    A.X = A.X - (float)(int)A.X;
+    A.Y = A.Y - (float)(int)A.Y;
+    A.Z = A.Z - (float)(int)A.Z;
+    A = Rr_MulV3F(A, 6.0f);
+    A = Rr_SubV3(A, Rr_V3(K.W, K.W, K.W));
+    A.X = fabsf(A.X);
+    A.Y = fabsf(A.Y);
+    A.Z = fabsf(A.Z);
+    Rr_Vec3 B = Rr_SubV3(A, Rr_V3(K.X, K.X, K.X));
+    B.X = RR_CLAMP(0.0f, B.X, 1.0f);
+    B.Y = RR_CLAMP(0.0f, B.Y, 1.0f);
+    B.Z = RR_CLAMP(0.0f, B.Z, 1.0f);
+    return Rr_MulV3F(Rr_LerpV3(Rr_V3(K.X, K.X, K.X), HSV->Y, B), HSV->Z);
+}
+
+static inline void Rr_UIColorPickerPopup(
+    Rr_Vec2 Center,
+    int ChannelCount,
+    float *Channels)
+{
+    float TargetSize = 300.0f;
+    float Step = TargetSize / 6.0f;
+
+    Rr_Vec2 Position = Center;
+    Position.X -= (gUIContext->ContentsPadding.Width + TargetSize) / 2.0f;
+    Position.Y -= (gUIContext->ContentsPadding.Height + TargetSize) / 2.0f;
+    Rr_UISetNextWindowPosition(Position);
+    Rr_UIBeginPopupWindow();
+
+    Rr_UIWindow *Window = &gUIContext->PopupWindow;
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+
+    Rr_Vec4 OpaqueColor;
+    memcpy(&OpaqueColor, Channels, sizeof(float) * (size_t)ChannelCount);
+    OpaqueColor.A = 1.0f;
+
+    bool HSVChanged = false;
+
+    Rr_UIBeginHorizontal();
+
+    /* Draw saturation and value selector. */
+
+    static Rr_Vec3 StaticHSV;
+    if (Window->OpenedThisFrame)
+    {
+        StaticHSV = Rr_UIRGBToHSV((Rr_Vec3 *)Channels);
+    }
+
+    Rr_Vec3 TopRightColorHSV = StaticHSV;
+    TopRightColorHSV.Y = 1.0f;
+    TopRightColorHSV.Z = 1.0f;
+    Rr_Vec3 TopRightColor = Rr_UIHSVToRGB(&TopRightColorHSV);
+
+    {
+        Rr_UIVertex Vertices[4];
+
+        Vertices[0].Color = Rr_V4F(1.0f);
+        Vertices[0].Position = Layout->Cursor;
+        Vertices[0].UV = Rr_V2F(0.0f);
+
+        Vertices[1].Color =
+            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
+        Vertices[1].Position = Layout->Cursor;
+        Vertices[1].Position.X += TargetSize;
+        Vertices[1].UV = Rr_V2F(0.0f);
+
+        Vertices[2].Color =
+            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
+        Vertices[2].Position = Layout->Cursor;
+        Vertices[2].Position.X += TargetSize;
+        Vertices[2].Position.Y += TargetSize;
+        Vertices[2].UV = Rr_V2F(0.0f);
+
+        Vertices[3].Color = Rr_V4F(1.0f);
+        Vertices[3].Position = Layout->Cursor;
+        Vertices[3].Position.Y += TargetSize;
+        Vertices[3].UV = Rr_V2F(0.0f);
+
+        Rr_UIDrawQuad(Vertices);
+
+        Vertices[0].Color = Rr_V4F(0.0f);
+        Vertices[1].Color = Rr_V4F(0.0f);
+        Vertices[2].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
+        Vertices[3].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
+
+        Rr_UIDrawQuad(Vertices);
+    }
+
+    Rr_UIDrawInnerFrame(
+        &(Rr_Rect){ Layout->Cursor, Rr_V2F(TargetSize) },
+        gUIContext->FrameThickness,
+        &gUIContext->Style.Outline);
+
+    float SVSelectorCircleSize = TargetSize * 0.035f;
+
+    Rr_UIHash SVSelectorHash =
+        Rr_UIGetHash("SVSelector", sizeof("SVSelector"), Rr_UICurrentHash());
+
+    Rr_Rect SVSelectorRect = {
+        .Offset = Layout->Cursor,
+        .Extent = Rr_V2F(TargetSize),
+    };
+
+    Rr_UIDragResult Result = Rr_UIDragBehavior(
+        Layout,
+        &SVSelectorRect,
+        RR_UI_DRAG_OP_WIDGET,
+        SVSelectorHash,
+        Rr_V2F(0.0f));
+
+    if (Result.Began || Result.Held)
+    {
+        Rr_Vec2 Delta = Rr_SubV2(gUIContext->MousePosition, Layout->Cursor);
+        Delta = Rr_DivV2F(Delta, TargetSize);
+        Delta.X = RR_CLAMP(0.0f, Delta.X, 1.0f);
+        Delta.Y = RR_CLAMP(0.0f, Delta.Y, 1.0f);
+
+        StaticHSV.Y = Delta.X;
+        StaticHSV.Z = 1.0f - Delta.Y;
+
+        *(Rr_Vec3 *)Channels = Rr_UIHSVToRGB(&StaticHSV);
+
+        SVSelectorCircleSize *= 1.5f;
+
+        HSVChanged = true;
+    }
+
+    Rr_Vec2 SVSelectorCircleOffset = Rr_AddV2(
+        Layout->Cursor,
+        Rr_V2(StaticHSV.Y * TargetSize, (1.0f - StaticHSV.Z) * TargetSize));
+
+    Rr_UIDrawCircle(
+        SVSelectorCircleOffset,
+        SVSelectorCircleSize,
+        3.0f,
+        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
+    Rr_UIDrawCircle(
+        SVSelectorCircleOffset,
+        SVSelectorCircleSize,
+        1.5f,
+        &gUIContext->Style.Foreground);
+    if (Result.Held)
+    {
+        Rr_UIDrawCircleFilled(
+            SVSelectorCircleOffset,
+            SVSelectorCircleSize * 0.9f - 1.5f,
+            &OpaqueColor);
+    }
+
+    Rr_UIAdvance(Rr_V2F(TargetSize));
+
+    Rr_UIHash HSelectorHash =
+        Rr_UIGetHash("HSelector", sizeof("HSelector"), Rr_UICurrentHash());
+
+    Rr_Vec4 HColors[6] = {
+        Rr_V4(1.0f, 0.0f, 0.0f, 1.0f), Rr_V4(1.0f, 1.0f, 0.0f, 1.0f),
+        Rr_V4(0.0f, 1.0f, 0.0f, 1.0f), Rr_V4(0.0f, 1.0f, 1.0f, 1.0f),
+        Rr_V4(0.0f, 0.0f, 1.0f, 1.0f), Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
+    };
+
+    float HSelectorWidth = TargetSize * 0.15f;
+
+    Rr_Rect HSelectorRect = {
+        .Offset = Layout->Cursor,
+        .Extent = Rr_V2(HSelectorWidth, TargetSize),
+    };
+
+    for (size_t Index = 0; Index < 6; ++Index)
+    {
+        Rr_UIDrawVerticalGradientQuad(
+            &(Rr_Rect){
+                .Offset = Rr_V2(
+                    HSelectorRect.Offset.X,
+                    HSelectorRect.Offset.Y +
+                        (float)Index * HSelectorRect.Extent.Height / 6.0f),
+                .Extent = Rr_V2(
+                    HSelectorRect.Extent.Width,
+                    HSelectorRect.Extent.Height / 6.0f),
+            },
+            &HColors[Index],
+            &HColors[(Index + 1) % 6]);
+    }
+
+    Rr_UIDrawInnerFrame(
+        &HSelectorRect,
+        gUIContext->FrameThickness,
+        &gUIContext->Style.Outline);
+
+    /* Draw hue handles. */
+
+    float TriangleOutline = 2.0f;
+    float TriangleSize = TargetSize * 0.035f;
+    Rr_Vec2 LeftTriangleOffset = Rr_V2(
+        Layout->Cursor.X + TriangleSize * 0.5f,
+        Layout->Cursor.Y + StaticHSV.X * TargetSize);
+    Rr_UIDrawFitTriangleFilled(
+        LeftTriangleOffset,
+        TriangleSize + TriangleOutline,
+        RR_ANGLE_DEG(0.0f),
+        Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
+    Rr_UIDrawFitTriangleFilled(
+        LeftTriangleOffset,
+        TriangleSize,
+        RR_ANGLE_DEG(0.0f),
+        gUIContext->Style.Foreground);
+    Rr_Vec2 RightTriangleOffset = Rr_V2(
+        Layout->Cursor.X + HSelectorWidth - TriangleSize * 0.5f,
+        Layout->Cursor.Y + StaticHSV.X * TargetSize);
+    Rr_UIDrawFitTriangleFilled(
+        RightTriangleOffset,
+        TriangleSize + TriangleOutline,
+        RR_ANGLE_DEG(180.0f),
+        Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
+    Rr_UIDrawFitTriangleFilled(
+        RightTriangleOffset,
+        TriangleSize,
+        RR_ANGLE_DEG(180.0f),
+        gUIContext->Style.Foreground);
+
+    Result = Rr_UIDragBehavior(
+        Layout,
+        &HSelectorRect,
+        RR_UI_DRAG_OP_WIDGET,
+        HSelectorHash,
+        Rr_V2F(0.0f));
+
+    if (Result.Began || Result.Held)
+    {
+        float Delta = gUIContext->MousePosition.Y - Layout->Cursor.Y;
+        Delta /= TargetSize;
+        Delta = RR_CLAMP(0.0f, Delta, 1.0f);
+
+        StaticHSV.X = Delta;
+
+        *(Rr_Vec3 *)Channels = Rr_UIHSVToRGB(&StaticHSV);
+
+        HSVChanged = true;
+    }
+
+    Rr_UIAdvance(HSelectorRect.Extent);
+
+    Rr_UIEndHorizontal();
+
+    bool RGBChanged = ChannelCount == 3
+                          ? Rr_UIInputFloat3("RGB###RGB32", Channels)
+                          : Rr_UIInputFloat4("RGBA###RGBA32", Channels);
+
+    if (RGBChanged)
+    {
+        HSVChanged = false;
+        StaticHSV = Rr_UIRGBToHSV((Rr_Vec3 *)Channels);
+    }
+
+    if (Rr_UIInputFloat3("HSV###HSV32", StaticHSV.Elements))
+    {
+        HSVChanged = true;
+    }
+
+    /* char HexBuffer[8 + 1]; */
+    /* Rr_UIRGBAToHexString(HexBuffer, ChannelCount, Channels); */
+    /* if (Rr_UIInputField( */
+    /*     "RGB (Hex)", */
+    /*     sizeof(HexBuffer), */
+    /*     HexBuffer, */
+    /*     "", */
+    /*     Rr_UIHexFilter, */
+    /*     RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT | */
+    /*         RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT)) */
+    /* { */
+    /*     uint32_t NewColor; */
+    /*     sscanf(HexBuffer, "%x", &NewColor); */
+    /*     Rr_Vec4 NewColor  */
+    /*     *Color = Rr_U32ToRGBA(NewColor); */
+    /* } */
+
+    {
+        /* unsigned char R = (unsigned char)(Color->X * 255.0f); */
+        /* unsigned char G = (unsigned char)(Color->Y * 255.0f); */
+        /* unsigned char B = (unsigned char)(Color->Z * 255.0f); */
+        /* unsigned char A = (unsigned char)(Color->W * 255.0f); */
+        /* Rr_UILabelF("%d %d %d %d", R, G, B, A); */
+    }
+
+    if (HSVChanged)
+    {
+        *(Rr_Vec3 *)Channels = Rr_UIHSVToRGB(&StaticHSV);
+    }
+
+    Rr_UIEndWindow();
+}
+
+static inline bool Rr_UIInputColorEx(
+    const char *Title,
+    int ChannelCount,
+    float *Channels)
+{
+    Rr_UIAssertWindow();
+    assert(Title != NULL);
+    assert(Channels != NULL);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+    Rr_UIFlexibleWidgetLayout FlexibleWidgetLayout =
+        Rr_UICalculateFlexibleWidgetLayout(Layout, TitleLength, Title);
+
+    float FieldSpacing = gUIContext->BevelThickness * 2.0f;
+
+    Rr_Vec2 ColorBoxSize =
+        Rr_V2F(gUIContext->LineHeight + gUIContext->ButtonPadding.X);
+
+    float TotalFloatInputsWidth =
+        FlexibleWidgetLayout.WidgetWidth - ColorBoxSize.X - FieldSpacing;
+
+    Rr_Vec2 TotalExtent;
+    bool Edited = Rr_UIGenericInputFieldScalarMulti(
+        TitleHash,
+        Layout->Cursor,
+        ChannelCount,
+        1,
+        Channels,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2,
+        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
+            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT,
+        TotalFloatInputsWidth,
+        true,
+        &TotalExtent);
+
+    /* char Buffer[8 + 1]; */
+    /* Rr_UIRGBAToHexString(Color, Buffer); */
+
+    /* Rr_Vec2 FieldExtent; */
+    /* bool ChangesConfirmed = Rr_UIGenericInputField( */
+    /*     TitleHash, */
+    /*     Layout->Cursor, */
+    /*     9, */
+    /*     Buffer, */
+    /*     NULL, */
+    /*     Rr_UIHexFilter, */
+    /*     RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT, */
+    /*     INFINITY, */
+    /*     true, */
+    /*     &FieldExtent); */
+    /* if (ChangesConfirmed) */
+    /* { */
+    /*     uint32_t NewColor; */
+    /*     sscanf(Buffer, "%x", &NewColor); */
+    /*     *Color = Rr_U32ToRGBA(NewColor); */
+    /* } */
+
+    Rr_Vec2 ColorBoxPosition = Layout->Cursor;
+    ColorBoxPosition.X += TotalExtent.Width + FieldSpacing;
+
+    Rr_UIButtonResult Result = Rr_UIButtonBehavior(
+        Layout,
+        &(Rr_Rect){
+            ColorBoxPosition,
+            ColorBoxSize,
+        });
+
+    if (Result.Up)
+    {
+        gUIContext->PopupWindowParent = Window;
+        gUIContext->PopupWindowHash = TitleHash;
+    }
+
+    bool ColorChanged = false;
+
+    if (gUIContext->PopupWindowParent == Window &&
+        gUIContext->PopupWindowHash == TitleHash)
+    {
+        Rr_Vec2 PopupCenter =
+            Rr_AddV2(ColorBoxPosition, Rr_DivV2F(ColorBoxSize, 2.0f));
+        Rr_UIColorPickerPopup(PopupCenter, ChannelCount, Channels);
+    }
+
+    Rr_Rect ColorBoxRect = {
+        ColorBoxPosition,
+        ColorBoxSize,
+    };
+    Rr_Vec4 OpaqueColor;
+    memcpy(&OpaqueColor, Channels, sizeof(float) * (size_t)ChannelCount);
+    OpaqueColor.A = 1.0f;
+    Rr_UIDrawBevel(&ColorBoxRect, &OpaqueColor, Result.Held);
+
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.Y += gUIContext->ButtonPadding.Height;
+    TitlePosition.X += FlexibleWidgetLayout.TitleCursorOffsetX;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        TitlePosition,
+        TitleLength,
+        Title,
+        0.0f,
+        &gUIContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = {
+        Layout->AvailableContentsWidth,
+        TotalExtent.Height,
+    };
+
+    Rr_UIAdvance(TotalSize);
+
+    Rr_DestroyScratch(Scratch);
+
+    return ColorChanged;
+}
+
+bool Rr_UIInputColor3(const char *Title, float *Channels)
+{
+    return Rr_UIInputColorEx(Title, 3, Channels);
+}
+
+bool Rr_UIInputColor4(const char *Title, float *Channels)
+{
+    return Rr_UIInputColorEx(Title, 4, Channels);
+}
+
 bool Rr_UICombobox(
     const char *Title,
     uint32_t OptionCount,
@@ -4904,303 +5383,6 @@ bool Rr_UICombobox(
     return OptionChanged;
 }
 
-/* https://stackoverflow.com/a/17897228 */
-
-static inline Rr_Vec3 Rr_RGBToHSV(Rr_Vec3 *Color)
-{
-    const Rr_Vec4 K = Rr_V4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
-    Rr_Vec4 P;
-    if (Color->G >= Color->B)
-    {
-        P = Rr_V4(Color->G, Color->B, K.X, K.Y);
-    }
-    else
-    {
-        P = Rr_V4(Color->B, Color->G, K.W, K.Z);
-    }
-    Rr_Vec4 Q;
-    if (Color->R >= P.X)
-    {
-        Q = Rr_V4(Color->R, P.Y, P.Z, P.X);
-    }
-    else
-    {
-        Q = Rr_V4(P.X, P.Y, P.W, Color->R);
-    }
-    float D = Q.X - RR_MIN(Q.W, Q.Y);
-    float E = 1.0e-10f;
-    return Rr_V3(fabsf(Q.Z + (Q.W - Q.Y) / (6.0f * D + E)), D / (Q.X + E), Q.X);
-}
-
-static inline Rr_Vec3 Rr_HSVToRGB(Rr_Vec3 *HSV)
-{
-    const Rr_Vec4 K = Rr_V4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
-    Rr_Vec3 A = Rr_V3(HSV->X, HSV->X, HSV->X);
-    A = Rr_AddV3(A, K.RGB);
-    A.X = A.X - (float)(int)A.X;
-    A.Y = A.Y - (float)(int)A.Y;
-    A.Z = A.Z - (float)(int)A.Z;
-    A = Rr_MulV3F(A, 6.0f);
-    A = Rr_SubV3(A, Rr_V3(K.W, K.W, K.W));
-    A.X = fabsf(A.X);
-    A.Y = fabsf(A.Y);
-    A.Z = fabsf(A.Z);
-    Rr_Vec3 B = Rr_SubV3(A, Rr_V3(K.X, K.X, K.X));
-    B.X = RR_CLAMP(0.0f, B.X, 1.0f);
-    B.Y = RR_CLAMP(0.0f, B.Y, 1.0f);
-    B.Z = RR_CLAMP(0.0f, B.Z, 1.0f);
-    return Rr_MulV3F(Rr_LerpV3(Rr_V3(K.X, K.X, K.X), HSV->Y, B), HSV->Z);
-}
-
-static inline void Rr_UIColorPickerPopup(Rr_Vec2 Center, Rr_Vec4 *Color)
-{
-    float TargetSize = 300.0f;
-    float Step = TargetSize / 6.0f;
-
-    Rr_Vec2 Position = Center;
-    Position.X -= (gUIContext->ContentsPadding.Width + TargetSize) / 2.0f;
-    Position.Y -= (gUIContext->ContentsPadding.Height + TargetSize) / 2.0f;
-    Rr_UISetNextWindowPosition(Position);
-    Rr_UIBeginPopupWindow();
-
-    Rr_UIWindow *Window = &gUIContext->PopupWindow;
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-
-    bool HSVChanged = false;
-
-    Rr_UIBeginHorizontal();
-
-    /* Draw saturation and value selector. */
-
-    static Rr_Vec3 StaticHSV;
-    if (Window->OpenedThisFrame)
-    {
-        StaticHSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements);
-    }
-
-    Rr_Vec3 TopRightColorHSV = StaticHSV;
-    TopRightColorHSV.Y = 1.0f;
-    TopRightColorHSV.Z = 1.0f;
-    Rr_Vec3 TopRightColor = Rr_HSVToRGB(&TopRightColorHSV);
-
-    {
-        Rr_UIVertex Vertices[4];
-
-        Vertices[0].Color = Rr_V4F(1.0f);
-        Vertices[0].Position = Layout->Cursor;
-        Vertices[0].UV = Rr_V2F(0.0f);
-
-        Vertices[1].Color =
-            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
-        Vertices[1].Position = Layout->Cursor;
-        Vertices[1].Position.X += TargetSize;
-        Vertices[1].UV = Rr_V2F(0.0f);
-
-        Vertices[2].Color =
-            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
-        Vertices[2].Position = Layout->Cursor;
-        Vertices[2].Position.X += TargetSize;
-        Vertices[2].Position.Y += TargetSize;
-        Vertices[2].UV = Rr_V2F(0.0f);
-
-        Vertices[3].Color = Rr_V4F(1.0f);
-        Vertices[3].Position = Layout->Cursor;
-        Vertices[3].Position.Y += TargetSize;
-        Vertices[3].UV = Rr_V2F(0.0f);
-
-        Rr_UIDrawQuad(Vertices);
-
-        Vertices[0].Color = Rr_V4F(0.0f);
-        Vertices[1].Color = Rr_V4F(0.0f);
-        Vertices[2].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
-        Vertices[3].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
-
-        Rr_UIDrawQuad(Vertices);
-    }
-
-    Rr_UIDrawInnerFrame(
-        &(Rr_Rect){ Layout->Cursor, Rr_V2F(TargetSize) },
-        gUIContext->FrameThickness,
-        &gUIContext->Style.Outline);
-
-    float SVSelectorCircleSize = TargetSize * 0.035f;
-
-    Rr_UIHash SVSelectorHash =
-        Rr_UIGetHash("SVSelector", sizeof("SVSelector"), Rr_UICurrentHash());
-
-    Rr_Rect SVSelectorRect = {
-        .Offset = Layout->Cursor,
-        .Extent = Rr_V2F(TargetSize),
-    };
-
-    Rr_UIDragResult Result = Rr_UIDragBehavior(
-        Layout,
-        &SVSelectorRect,
-        RR_UI_DRAG_OP_WIDGET,
-        SVSelectorHash,
-        Rr_V2F(0.0f));
-
-    if (Result.Began || Result.Held)
-    {
-        Rr_Vec2 Delta = Rr_SubV2(gUIContext->MousePosition, Layout->Cursor);
-        Delta = Rr_DivV2F(Delta, TargetSize);
-        Delta.X = RR_CLAMP(0.0f, Delta.X, 1.0f);
-        Delta.Y = RR_CLAMP(0.0f, Delta.Y, 1.0f);
-
-        StaticHSV.Y = Delta.X;
-        StaticHSV.Z = 1.0f - Delta.Y;
-
-        *(Rr_Vec3 *)Color->Elements = Rr_HSVToRGB(&StaticHSV);
-
-        SVSelectorCircleSize *= 1.5f;
-
-        HSVChanged = true;
-    }
-
-    Rr_Vec2 SVSelectorCircleOffset = Rr_AddV2(
-        Layout->Cursor,
-        Rr_V2(StaticHSV.Y * TargetSize, (1.0f - StaticHSV.Z) * TargetSize));
-
-    Rr_UIDrawCircle(
-        SVSelectorCircleOffset,
-        SVSelectorCircleSize,
-        3.0f,
-        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
-    Rr_UIDrawCircle(
-        SVSelectorCircleOffset,
-        SVSelectorCircleSize,
-        1.5f,
-        &gUIContext->Style.Foreground);
-    if (Result.Held)
-    {
-        Rr_UIDrawCircleFilled(
-            SVSelectorCircleOffset,
-            SVSelectorCircleSize * 0.9f - 1.5f,
-            Color);
-    }
-
-    Rr_UIAdvance(Rr_V2F(TargetSize));
-
-    Rr_UIHash HSelectorHash =
-        Rr_UIGetHash("HSelector", sizeof("HSelector"), Rr_UICurrentHash());
-
-    Rr_Vec4 HColors[6] = {
-        Rr_V4(1.0f, 0.0f, 0.0f, 1.0f), Rr_V4(1.0f, 1.0f, 0.0f, 1.0f),
-        Rr_V4(0.0f, 1.0f, 0.0f, 1.0f), Rr_V4(0.0f, 1.0f, 1.0f, 1.0f),
-        Rr_V4(0.0f, 0.0f, 1.0f, 1.0f), Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
-    };
-
-    float HSelectorWidth = TargetSize * 0.15f;
-
-    Rr_Rect HSelectorRect = {
-        .Offset = Layout->Cursor,
-        .Extent = Rr_V2(HSelectorWidth, TargetSize),
-    };
-
-    for (size_t Index = 0; Index < 6; ++Index)
-    {
-        Rr_UIDrawVerticalGradientQuad(
-            &(Rr_Rect){
-                .Offset = Rr_V2(
-                    HSelectorRect.Offset.X,
-                    HSelectorRect.Offset.Y +
-                        (float)Index * HSelectorRect.Extent.Height / 6.0f),
-                .Extent = Rr_V2(
-                    HSelectorRect.Extent.Width,
-                    HSelectorRect.Extent.Height / 6.0f),
-            },
-            &HColors[Index],
-            &HColors[(Index + 1) % 6]);
-    }
-
-    Rr_UIDrawInnerFrame(
-        &HSelectorRect,
-        gUIContext->FrameThickness,
-        &gUIContext->Style.Outline);
-
-    /* Draw hue handles. */
-
-    float TriangleOutline = 2.0f;
-    float TriangleSize = TargetSize * 0.035f;
-    Rr_Vec2 LeftTriangleOffset = Rr_V2(
-        Layout->Cursor.X + TriangleSize * 0.5f,
-        Layout->Cursor.Y + StaticHSV.X * TargetSize);
-    Rr_UIDrawFitTriangleFilled(
-        LeftTriangleOffset,
-        TriangleSize + TriangleOutline,
-        RR_ANGLE_DEG(0.0f),
-        Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
-    Rr_UIDrawFitTriangleFilled(
-        LeftTriangleOffset,
-        TriangleSize,
-        RR_ANGLE_DEG(0.0f),
-        gUIContext->Style.Foreground);
-    Rr_Vec2 RightTriangleOffset = Rr_V2(
-        Layout->Cursor.X + HSelectorWidth - TriangleSize * 0.5f,
-        Layout->Cursor.Y + StaticHSV.X * TargetSize);
-    Rr_UIDrawFitTriangleFilled(
-        RightTriangleOffset,
-        TriangleSize + TriangleOutline,
-        RR_ANGLE_DEG(180.0f),
-        Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
-    Rr_UIDrawFitTriangleFilled(
-        RightTriangleOffset,
-        TriangleSize,
-        RR_ANGLE_DEG(180.0f),
-        gUIContext->Style.Foreground);
-
-    Result = Rr_UIDragBehavior(
-        Layout,
-        &HSelectorRect,
-        RR_UI_DRAG_OP_WIDGET,
-        HSelectorHash,
-        Rr_V2F(0.0f));
-
-    if (Result.Began || Result.Held)
-    {
-        float Delta = gUIContext->MousePosition.Y - Layout->Cursor.Y;
-        Delta /= TargetSize;
-        Delta = RR_CLAMP(0.0f, Delta, 1.0f);
-
-        StaticHSV.X = Delta;
-
-        *(Rr_Vec3 *)Color->Elements = Rr_HSVToRGB(&StaticHSV);
-
-        HSVChanged = true;
-    }
-
-    Rr_UIAdvance(HSelectorRect.Extent);
-
-    Rr_UIEndHorizontal();
-
-    if (Rr_UIInputFloat4("RGBA###RGBA32", Color->Elements))
-    {
-        HSVChanged = false;
-        StaticHSV = Rr_RGBToHSV((Rr_Vec3 *)Color->Elements);
-    }
-
-    if (Rr_UIInputFloat3("HSV###HSV32", StaticHSV.Elements))
-    {
-        HSVChanged = true;
-    }
-
-    {
-        /* unsigned char R = (unsigned char)(Color->X * 255.0f); */
-        /* unsigned char G = (unsigned char)(Color->Y * 255.0f); */
-        /* unsigned char B = (unsigned char)(Color->Z * 255.0f); */
-        /* unsigned char A = (unsigned char)(Color->W * 255.0f); */
-        /* Rr_UILabelF("%d %d %d %d", R, G, B, A); */
-    }
-
-    if (HSVChanged)
-    {
-        *(Rr_Vec3 *)Color->Elements = Rr_HSVToRGB(&StaticHSV);
-    }
-
-    Rr_UIEndWindow();
-}
-
 static inline float Rr_UISlider(
     const char *Title,
     float Normalized,
@@ -5366,126 +5548,6 @@ bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
     float Out = OutNormalized * (Max - Min) + Min;
     *Value = Out;
     return In != Out;
-}
-
-static inline void Rr_UIRGBAToHexString(Rr_Vec4 *Color, char *Buffer)
-{
-    for (size_t Index = 0; Index < 4; ++Index)
-    {
-        float FloatValue = Color->Elements[Index];
-        uint8_t Value = (uint8_t)(RR_CLAMP(0.0f, FloatValue, 1.0f) * 255.0f);
-        sprintf(Buffer + (Index * 2), "%02X", Value);
-    }
-    Buffer[8] = '\0';
-}
-
-bool Rr_UIInputColor3(const char *Title, Rr_Vec3 *Color)
-{
-    return false;
-}
-
-bool Rr_UIInputColor4(const char *Title, Rr_Vec4 *Color)
-{
-    Rr_UIAssertWindow();
-    assert(Title != NULL);
-    assert(Color != NULL);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
-
-    size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
-    Rr_UIFlexibleWidgetLayout FlexibleWidgetLayout =
-        Rr_UICalculateFlexibleWidgetLayout(Layout, TitleLength, Title);
-
-    float TotalFloatInputsWidth = FlexibleWidgetLayout.WidgetWidth -
-                                  gUIContext->LineHeight -
-                                  gUIContext->ButtonPadding.Y * 2.0f;
-
-    char Buffer[8 + 1];
-    Rr_UIRGBAToHexString(Color, Buffer);
-
-    Rr_Vec2 FieldExtent;
-    bool ChangesConfirmed = Rr_UIGenericInputField(
-        TitleHash,
-        Layout->Cursor,
-        9,
-        Buffer,
-        NULL,
-        Rr_UIHexFilter,
-        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT,
-        INFINITY,
-        true,
-        &FieldExtent);
-    if (ChangesConfirmed)
-    {
-        uint32_t NewColor;
-        sscanf(Buffer, "%x", &NewColor);
-        *Color = Rr_U32ToRGBA(NewColor);
-    }
-
-    Rr_Vec2 ColorBoxSize = Rr_V2F(FieldExtent.Height);
-
-    Rr_Vec2 ColorBoxPosition = Layout->Cursor;
-    ColorBoxPosition.X += FieldExtent.Width;
-    ColorBoxPosition.X -= gUIContext->BevelThickness;
-
-    Rr_UIButtonResult Result = Rr_UIButtonBehavior(
-        Layout,
-        &(Rr_Rect){
-            ColorBoxPosition,
-            ColorBoxSize,
-        });
-
-    if (Result.Up)
-    {
-        gUIContext->PopupWindowParent = Window;
-        gUIContext->PopupWindowHash = TitleHash;
-    }
-
-    bool ColorChanged = false;
-
-    if (gUIContext->PopupWindowParent == Window &&
-        gUIContext->PopupWindowHash == TitleHash)
-    {
-        Rr_Vec2 PopupCenter =
-            Rr_AddV2(ColorBoxPosition, Rr_DivV2F(ColorBoxSize, 2.0f));
-        Rr_UIColorPickerPopup(PopupCenter, Color);
-    }
-
-    Rr_Rect BevelRect = {
-        ColorBoxPosition,
-        ColorBoxSize,
-    };
-    Rr_UIDrawBevel(&BevelRect, Color, Result.Held);
-
-    Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.Y += gUIContext->ButtonPadding.Height;
-    TitlePosition.X += gUIContext->ButtonPadding.Width + ColorBoxSize.Width +
-                       FieldExtent.Width;
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
-        TitlePosition,
-        TitleLength,
-        Title,
-        0.0f,
-        &gUIContext->Style.Foreground,
-        0);
-
-    Rr_Vec2 TotalSize = {
-        FieldExtent.Width + ColorBoxSize.Width + TitleSize.Width +
-            gUIContext->ButtonPadding.Width,
-        FieldExtent.Height,
-    };
-
-    Rr_UIAdvance(TotalSize);
-
-    Rr_DestroyScratch(Scratch);
-
-    return ColorChanged;
 }
 
 bool Rr_UIWantMouseCapture(void)
