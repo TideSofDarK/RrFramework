@@ -51,6 +51,17 @@ static float Rr_WrapMinMax(float X, float Min, float Max)
     return Min + Rr_WrapMax(X - Min, Max - Min);
 }
 
+static inline Rr_Vec3 Rr_U32ToRGB(uint32_t Color)
+{
+    Rr_Vec3 Result;
+
+    Result.R = (float)(Color >> 24) / 255.0f;
+    Result.G = (float)((Color >> 16) & (0x000000FF)) / 255.0f;
+    Result.B = (float)((Color >> 8) & (0x000000FF)) / 255.0f;
+
+    return Result;
+}
+
 static inline Rr_Vec4 Rr_U32ToRGBA(uint32_t Color)
 {
     Rr_Vec4 Result;

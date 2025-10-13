@@ -2586,9 +2586,10 @@ static inline bool Rr_UIBeginWindowEx(
     return true;
 }
 
-static inline void Rr_UIBeginPopupWindow(void)
+static inline void Rr_UIBeginPopupWindow(Rr_UIWindowFlags Flags)
 {
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
+    Window->Flags = Flags;
     Rr_UIBeginWindowEx("", Window, NULL);
 }
 
@@ -4469,6 +4470,9 @@ static inline bool Rr_UIGenericInputFieldScalarMulti(
         Cursor.Y += MaxRowHeight + FieldSpacing;
     }
 
+    /* Undo last vertical margin */
+    TotalExtent.Height -= FieldSpacing;
+
     if (OutTotalExtent)
     {
         *OutTotalExtent = TotalExtent;
@@ -4722,7 +4726,7 @@ static inline void Rr_UIRGBAToHexString(
 {
     for (int Index = 0; Index < ChannelCount; ++Index)
     {
-        float FloatValue = Channels[ChannelCount];
+        float FloatValue = Channels[Index];
         uint8_t Value = (uint8_t)(RR_CLAMP(0.0f, FloatValue, 1.0f) * 255.0f);
         sprintf(Buffer + (Index * 2), "%02X", Value);
     }
@@ -4781,6 +4785,12 @@ static inline void Rr_UIColorPickerPopup(
     int ChannelCount,
     float *Channels)
 {
+    const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
+        RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
+        RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+
     float TargetSize = 300.0f;
     float Step = TargetSize / 6.0f;
 
@@ -4788,7 +4798,7 @@ static inline void Rr_UIColorPickerPopup(
     Position.X -= (gUIContext->ContentsPadding.Width + TargetSize) / 2.0f;
     Position.Y -= (gUIContext->ContentsPadding.Height + TargetSize) / 2.0f;
     Rr_UISetNextWindowPosition(Position);
-    Rr_UIBeginPopupWindow();
+    Rr_UIBeginPopupWindow(POPUP_WINDOW_FLAGS);
 
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
 
@@ -5020,22 +5030,30 @@ static inline void Rr_UIColorPickerPopup(
         HSVChanged = true;
     }
 
-    /* char HexBuffer[8 + 1]; */
-    /* Rr_UIRGBAToHexString(HexBuffer, ChannelCount, Channels); */
-    /* if (Rr_UIInputField( */
-    /*     "RGB (Hex)", */
-    /*     sizeof(HexBuffer), */
-    /*     HexBuffer, */
-    /*     "", */
-    /*     Rr_UIHexFilter, */
-    /*     RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT | */
-    /*         RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT)) */
-    /* { */
-    /*     uint32_t NewColor; */
-    /*     sscanf(HexBuffer, "%x", &NewColor); */
-    /*     Rr_Vec4 NewColor  */
-    /*     *Color = Rr_U32ToRGBA(NewColor); */
-    /* } */
+    char HexBuffer[8 + 1];
+    size_t HexBufferCapacity = (size_t)(ChannelCount * 2) + 1;
+    Rr_UIRGBAToHexString(HexBuffer, ChannelCount, Channels);
+    if (Rr_UIInputField(
+            "RGB (Hex)",
+            HexBufferCapacity,
+            HexBuffer,
+            "",
+            Rr_UIHexFilter,
+            RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
+                RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT))
+    {
+        uint32_t NewColor;
+        sscanf(HexBuffer, "%x", &NewColor);
+        if (ChannelCount == 3)
+        {
+            NewColor <<= 8;
+            *(Rr_Vec3 *)Channels = Rr_U32ToRGB(NewColor);
+        }
+        else if (ChannelCount == 4)
+        {
+            *(Rr_Vec4 *)Channels = Rr_U32ToRGBA(NewColor);
+        }
+    }
 
     {
         /* unsigned char R = (unsigned char)(Color->X * 255.0f); */
@@ -5255,12 +5273,18 @@ bool Rr_UICombobox(
 
     if (PopupOpen)
     {
+        const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
+            RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
+            RR_UI_WINDOW_FLAGS_NO_MOVE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+
         Rr_Vec2 PopupPosition = ButtonPosition;
         PopupPosition.Y += BorderSize.Height + gUIContext->FrameThickness;
         PopupPosition.X += gUIContext->FrameThickness;
         Rr_UISetNextWindowPosition(PopupPosition);
         Rr_UISetNextWindowPadding(Rr_V2(gUIContext->ButtonPadding.Width, 0.0f));
-        Rr_UIBeginPopupWindow();
+        Rr_UIBeginPopupWindow(POPUP_WINDOW_FLAGS);
         Rr_UILayout *PopupLayout = Rr_UICurrentLayout();
         for (uint32_t Index = 0; Index < OptionCount; ++Index)
         {
@@ -5589,12 +5613,6 @@ void Rr_InitUI(void)
     gUIContext->NextWindowPosition = Rr_V2F(INFINITY);
     gUIContext->NextWindowSize = Rr_V2F(INFINITY);
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
-
-    gUIContext->PopupWindow.Flags =
-        RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
-        RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
-        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
-        RR_UI_WINDOW_FLAGS_NO_MOVE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
     Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
     Rr_UISetFontSize((float)DisplaySize.Width / 112.0f);
