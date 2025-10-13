@@ -65,7 +65,6 @@ struct Rr_UIStyle
     Rr_Vec4 ForegroundDimmed;
     Rr_Vec4 Background;
     Rr_Vec4 Outline;
-    Rr_Vec4 SelectedTextBackground;
 
     Rr_Vec4 TitleBackground;
     Rr_Vec4 TitleCloseButtonBackground;
@@ -80,6 +79,9 @@ struct Rr_UIStyle
     Rr_Vec4 ButtonHovered;
     Rr_Vec4 ButtonHeld;
     Rr_Vec4 ButtonDisabled;
+
+    Rr_Vec4 SelectedTextBackground;
+    Rr_Vec4 InputFieldNormal;
 };
 
 extern Rr_UIFont *Rr_UICreateFont(
@@ -174,7 +176,19 @@ extern bool Rr_UIInputFloat3(const char *Title, float *Values);
 
 extern bool Rr_UIInputFloat4(const char *Title, float *Values);
 
+extern bool Rr_UIInputFloat2x2(const char *Title, float *Values);
+
+extern bool Rr_UIInputFloat3x3(const char *Title, float *Values);
+
+extern bool Rr_UIInputFloat4x4(const char *Title, float *Values);
+
 extern bool Rr_UIInputInt(const char *Title, int32_t *Value);
+
+extern bool Rr_UIInputInt2(const char *Title, int32_t *Values);
+
+extern bool Rr_UIInputInt3(const char *Title, int32_t *Values);
+
+extern bool Rr_UIInputInt4(const char *Title, int32_t *Values);
 
 extern bool Rr_UICombobox(
     const char *Title,
@@ -194,7 +208,9 @@ extern bool Rr_UISliderFloat(
     float Min,
     float Max);
 
-extern bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color);
+extern bool Rr_UIInputColor3(const char *Title, Rr_Vec3 *Color);
+
+extern bool Rr_UIInputColor4(const char *Title, Rr_Vec4 *Color);
 
 extern void Rr_UIBeginHorizontal(void);
 

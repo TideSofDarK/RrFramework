@@ -118,6 +118,8 @@ struct Rr_UIWindow
     bool OpenedThisFrame;
     bool SkipThisFrame;
 
+    float MaxFlexibleWidgetTitleWidth;
+
     Rr_Map *WidgetMap;
     Rr_Map *ChildWindowMap;
 
@@ -2425,16 +2427,18 @@ static inline bool Rr_UIBeginWindowEx(
         .ContentsPadding = ContentsPadding,
         .TopLevelLayout = Window->Child ? ParentLayout->TopLevelLayout : Layout,
         .Cursor = Window->Rect.Offset,
+        .AvailableContentsWidth = Window->Rect.Extent.Width,
     };
 
     /* BUG: Broken at the moment! */
-    if (Window->Child)
-    {
-        if (!ParentLayout->DeferredAutoResize)
-        {
-            Window->Rect.Extent.Width = ParentLayout->AvailableContentsWidth;
-        }
-    }
+    /* if (Window->Child) */
+    /* { */
+    /*     if (!ParentLayout->DeferredAutoResize) */
+    /*     { */
+    /*         Window->Rect.Extent.Width = ParentLayout->AvailableContentsWidth;
+     */
+    /*     } */
+    /* } */
 
     bool WasCollapsed = Window->Collapsed;
 
@@ -2498,8 +2502,6 @@ static inline bool Rr_UIBeginWindowEx(
         Rr_UIBeginClipRect(&PaddedRect);
         Window->VisibleRect = Window->CurrentClipRect->Rect;
     }
-
-    Layout->AvailableContentsWidth = TotalClipRect.Extent.Width;
 
     /* Add border if necessary. */
 
@@ -2574,8 +2576,11 @@ static inline bool Rr_UIBeginWindowEx(
 
     if (HasTitle && Layout->DeferredAutoResize)
     {
-        Window->ContentsEnd.Width +=
+        float TitleWidth =
             DesiredTitleWidth - Layout->ContentsPadding.Width * 2;
+        Window->ContentsEnd.Width += TitleWidth;
+        Layout->AvailableContentsWidth =
+            RR_MAX(Layout->AvailableContentsWidth, TitleWidth);
     }
 
     return true;
@@ -2637,9 +2642,6 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
         Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
         Window->Z = gUIContext->TotalWindowCount++;
         Window->Rect.Offset = Rr_FloorV2(Rr_V2F(gUIContext->FontSize));
-        /* TODO: Wrapped text uses available width so we still need
-         * some baseline width. Probably should come up with better solution. */
-        Window->Rect.Extent.Width += gUIContext->FontSize * 32.0f;
         *WindowRef = Window;
     }
     else
@@ -2871,6 +2873,39 @@ void Rr_UIEndHorizontal(void)
     Layout->HorizontalX = INFINITY;
     Rr_UIAdvance(
         Rr_V2(-Layout->ContentsPadding.Width, Layout->HorizontalMaxHeight));
+}
+
+typedef struct Rr_UIFlexibleWidgetLayout Rr_UIFlexibleWidgetLayout;
+struct Rr_UIFlexibleWidgetLayout
+{
+    Rr_Vec2 TitleSize;
+    float TitleCursorOffsetX;
+    float WidgetWidth;
+};
+
+static inline Rr_UIFlexibleWidgetLayout Rr_UICalculateFlexibleWidgetLayout(
+    Rr_UILayout *Layout,
+    size_t TitleLength,
+    const char *Title)
+{
+    Rr_UIWindow *Window = Layout->Window;
+
+    Rr_UIFlexibleWidgetLayout Result;
+
+    Result.TitleSize =
+        Rr_UIDrawText(true, Rr_V2F(0.0f), TitleLength, Title, 0.0f, NULL, 0);
+
+    Window->MaxFlexibleWidgetTitleWidth =
+        RR_MAX(Window->MaxFlexibleWidgetTitleWidth, Result.TitleSize.Width);
+
+    Result.TitleCursorOffsetX =
+        Layout->AvailableContentsWidth - Window->MaxFlexibleWidgetTitleWidth;
+
+    Result.WidgetWidth = Layout->AvailableContentsWidth -
+                         Window->MaxFlexibleWidgetTitleWidth -
+                         Layout->ContentsPadding.X;
+
+    return Result;
 }
 
 void Rr_UIBeginTabs(const char *Title)
@@ -3840,14 +3875,39 @@ static inline bool Rr_UIGenericInputField(
     const char *Placeholder,
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags,
-    Rr_Vec2 *OutExtent)
+    float FixedWidth,
+    bool DrawBackground,
+    Rr_Vec2 *OutFieldExtent)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_UIPrimitive FieldPrimitive = Rr_UIReserveBevel();
+    bool UseFixedExtent = FixedWidth != INFINITY;
+    Rr_UIClipRect *RestoreClipRect = NULL;
+
+    Rr_UIPrimitive BackgroundBevelPrimitive;
+    if (DrawBackground)
+    {
+        BackgroundBevelPrimitive = Rr_UIReserveBevel();
+    }
+
+    if (UseFixedExtent)
+    {
+        RestoreClipRect = Window->CurrentClipRect;
+
+        Rr_UIEndClipRect();
+
+        Rr_Vec2 ClipRectExtent = { FixedWidth, RestoreClipRect->Rect.Extent.Y };
+
+        /* BUG: DOESN'T TAKE PARENT RECT INTO ACCOUNT IN THIS CASE! */
+
+        Rr_UIBeginClipRect(
+            &(Rr_Rect){ .Offset = Offset, .Extent = ClipRectExtent });
+    }
+
+    /* Rr_UIPrimitive FieldPrimitive = Rr_UIReserveBevel(); */
 
     bool UsePersistentBuffer =
         RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
@@ -3914,15 +3974,22 @@ static inline bool Rr_UIGenericInputField(
         Offset,
         Rr_AddV2(BufferSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f)),
     };
-    if (OutExtent)
+    if (UseFixedExtent)
     {
-        *OutExtent = FieldRect.Extent;
+        FieldRect.Extent.X = FixedWidth;
     }
-    Rr_UIBevel(
-        FieldPrimitive,
-        &FieldRect,
-        &gUIContext->Style.ButtonDisabled,
-        true);
+    if (OutFieldExtent)
+    {
+        *OutFieldExtent = FieldRect.Extent;
+    }
+    if (DrawBackground)
+    {
+        Rr_UIBevel(
+            BackgroundBevelPrimitive,
+            &FieldRect,
+            &gUIContext->Style.ButtonDisabled,
+            true);
+    }
 
     Rr_UIDragResult Result = Rr_UIDragBehavior(
         Layout,
@@ -4033,218 +4100,37 @@ static inline bool Rr_UIGenericInputField(
         memcpy(Buffer, gUIContext->TextInputBuffer.Data, BufferCapacity);
     }
 
-    Rr_DestroyScratch(Scratch);
+    if (UseFixedExtent)
+    {
+        Rr_UIEndClipRect();
 
-    return ChangesConfirmed;
-}
-
-bool Rr_UIInputField(
-    const char *Title,
-    size_t BufferCapacity,
-    char *Buffer,
-    const char *Placeholder,
-    Rr_UIInputFieldFilterFunc FilterFunc,
-    Rr_UIInputFieldFlags Flags)
-{
-    Rr_UIAssertWindow();
-    assert(Title != NULL);
-    assert(BufferCapacity);
-    assert(Buffer != NULL);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
-
-    size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
-    Rr_Vec2 FieldExtent;
-    bool ChangesConfirmed = Rr_UIGenericInputField(
-        TitleHash,
-        Layout->Cursor,
-        BufferCapacity,
-        Buffer,
-        Placeholder,
-        FilterFunc,
-        Flags,
-        &FieldExtent);
-
-    Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += gUIContext->ButtonPadding.Width + FieldExtent.Width;
-    TitlePosition.Y += gUIContext->ButtonPadding.Height;
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
-        TitlePosition,
-        TitleLength,
-        Title,
-        0,
-        &gUIContext->Style.Foreground,
-        0);
-
-    Rr_Vec2 TotalSize = {
-        FieldExtent.Width + gUIContext->ButtonPadding.Width + TitleSize.Width,
-        FieldExtent.Height,
-    };
-
-    Rr_UIAdvance(TotalSize);
+        Rr_UIBeginClipRect(&RestoreClipRect->Rect);
+    }
 
     Rr_DestroyScratch(Scratch);
 
     return ChangesConfirmed;
 }
 
-bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
+typedef enum
 {
-    return Rr_UIInputField(
-        Title,
-        BufferCapacity,
-        Buffer,
-        NULL,
-        NULL,
-        RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
-}
-
-static inline bool Rr_UIFloatFilter(size_t Length, const char *UTF8String)
-{
-    for (size_t Index = 0; Index < Length; ++Index)
-    {
-        char Char = UTF8String[Index];
-        bool InRange = Char >= '0' && Char <= '9';
-        bool Minus = Char == '-';
-        bool Dot = Char == '.';
-        if (!(InRange || Minus || Dot))
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool Rr_UIInputFloat(const char *Title, float *Value)
-{
-    char Buffer[64];
-    snprintf(Buffer, 64, "%g", *Value);
-    bool Changed = Rr_UIInputField(
-        Title,
-        64,
-        Buffer,
-        NULL,
-        Rr_UIFloatFilter,
-        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT);
-    if (Changed)
-    {
-        sscanf(Buffer, "%g", Value);
-    }
-    return Changed;
-}
-
-static inline bool Rr_UIInputFloatMulti(
-    const char *Title,
-    float *Values,
-    int Count)
-{
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
-
-    size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
-    size_t Length =
-        TitleLength + 1 + 3 + 2; /* Null terminator + ### + Component */
-    bool Edited = false;
-
-    Rr_Vec2 Cursor = Layout->Cursor;
-    float CursorXStart = Cursor.X;
-    Rr_Vec2 TotalSize = { 0 };
-
-    const char *Titles[] = { "X", "Y", "Z", "W" };
-    char Buffer[64];
-    for (int Index = 0; Index < Count; ++Index)
-    {
-        Rr_UIHash ComponentHash = Rr_UIGetHash(Titles[Index], 1, TitleHash);
-        /* char *CurrentTitle = RR_ALLOC_NO_ZERO(Scratch.Arena, Length); */
-        /* snprintf( */
-        /*     CurrentTitle, */
-        /*     Length, */
-        /*     "%s###%s%d", */
-        /*     Titles[Index], */
-        /*     Title, */
-        /*     Index); */
-        /* Rr_UIHash CurrentHash = Rr_UIGetTitleHash(CurrentTitle, NULL); */
-        snprintf(Buffer, 64, "%.2f", Values[Index]);
-        Rr_Vec2 FieldExtent;
-        bool ThisComponentEdited = Rr_UIGenericInputField(
-            ComponentHash,
-            Cursor,
-            64,
-            Buffer,
-            NULL,
-            Rr_UIFloatFilter,
-            RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-                RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT,
-            &FieldExtent);
-        if (ThisComponentEdited)
-        {
-            Edited = true;
-            /* float ff; */
-            /* sscanf(Buffer, "%g", &ff); */
-            /* RR_LOG( */
-            /*     "%u UROD newbuffer: %s new: %f old: %f", */
-            /*     Index, */
-            /*     Buffer, */
-            /*     ff, */
-            /*     Values[Index]); */
-            sscanf(Buffer, "%g", &Values[Index]);
-        }
-        TotalSize.Height = RR_MAX(TotalSize.Height, FieldExtent.Height);
-        Cursor.X += FieldExtent.Width + gUIContext->BevelThickness * 2.0f;
-    }
-
-    /* NOTE: Undo last iterations advance. */
-    Cursor.X -= gUIContext->BevelThickness * 2.0f;
-
-    if (TitleLength > 0)
-    {
-        Cursor = Rr_AddV2(Cursor, gUIContext->ButtonPadding);
-        Rr_Vec2 TitleSize = Rr_UIDrawText(
-            0,
-            Cursor,
-            TitleLength,
-            Title,
-            0,
-            &gUIContext->Style.Foreground,
-            0);
-
-        TotalSize.Width = TitleSize.Width;
-    }
-
-    TotalSize.Width += Cursor.X - CursorXStart;
-
-    Rr_UIAdvance(TotalSize);
-
-    Rr_DestroyScratch(Scratch);
-
-    return Edited;
-}
-
-bool Rr_UIInputFloat2(const char *Title, float *Values)
-{
-    return Rr_UIInputFloatMulti(Title, Values, 2);
-}
-
-bool Rr_UIInputFloat3(const char *Title, float *Values)
-{
-    return Rr_UIInputFloatMulti(Title, Values, 3);
-}
-
-bool Rr_UIInputFloat4(const char *Title, float *Values)
-{
-    return Rr_UIInputFloatMulti(Title, Values, 4);
-}
+    RR_UI_SCALAR_FORMAT_TYPE_INT,
+    RR_UI_SCALAR_FORMAT_TYPE_UINT,
+    RR_UI_SCALAR_FORMAT_TYPE_FLOAT,
+    RR_UI_SCALAR_FORMAT_TYPE_FLOAT1,
+    RR_UI_SCALAR_FORMAT_TYPE_FLOAT2,
+    RR_UI_SCALAR_FORMAT_TYPE_FLOAT3,
+    RR_UI_SCALAR_FORMAT_TYPE_FLOAT4,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE1,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE2,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE3,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE4,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE5,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE6,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE7,
+    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE8,
+} Rr_UIScalarFormatType;
 
 static inline bool Rr_UIHexFilter(size_t Length, const char *UTF8String)
 {
@@ -4277,23 +4163,548 @@ static inline bool Rr_UIIntegerFilter(size_t Length, const char *UTF8String)
     return true;
 }
 
-bool Rr_UIInputInt(const char *Title, int32_t *Value)
+static inline bool Rr_UIUnsignedIntegerFilter(
+    size_t Length,
+    const char *UTF8String)
 {
+    for (size_t Index = 0; Index < Length; ++Index)
+    {
+        char Char = UTF8String[Index];
+        bool InRange = Char >= '0' && Char <= '9';
+        if (InRange)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static inline bool Rr_UIFloatFilter(size_t Length, const char *UTF8String)
+{
+    for (size_t Index = 0; Index < Length; ++Index)
+    {
+        char Char = UTF8String[Index];
+        bool InRange = Char >= '0' && Char <= '9';
+        bool Minus = Char == '-';
+        bool Dot = Char == '.';
+        if (!(InRange || Minus || Dot))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static inline bool Rr_UIGenericInputFieldScalarMulti(
+    Rr_UIHash Hash,
+    Rr_Vec2 Offset,
+    int Cols,
+    int Rows,
+    void *Data,
+    Rr_UIScalarFormatType ScalarFormatType,
+    Rr_UIInputFieldFlags Flags,
+    float FixedWidth,
+    bool DrawBackground,
+    Rr_Vec2 *OutTotalExtent)
+{
+    assert(Cols > 0 && Cols <= 4);
+    assert(Rows > 0 && Rows <= 4);
+
+    float FieldSpacing = gUIContext->BevelThickness * 2.0f;
+
+    float SingleFieldWidth = INFINITY;
+    if (FixedWidth != INFINITY)
+    {
+        SingleFieldWidth =
+            (FixedWidth - (FieldSpacing * (float)(Cols - 1))) / (float)Cols;
+    }
+
+    Rr_UIInputFieldFilterFunc FilterFunc;
+    size_t ElementSize;
+    const char *ScanString;
+    switch (ScalarFormatType)
+    {
+        case RR_UI_SCALAR_FORMAT_TYPE_INT:
+        {
+            ElementSize = sizeof(int);
+            FilterFunc = Rr_UIIntegerFilter;
+            ScanString = "%i";
+        }
+        break;
+        case RR_UI_SCALAR_FORMAT_TYPE_UINT:
+        {
+            ElementSize = sizeof(unsigned int);
+            FilterFunc = Rr_UIUnsignedIntegerFilter;
+            ScanString = "%u";
+        }
+        break;
+        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT:
+        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT1:
+        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT2:
+        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT3:
+        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT4:
+        {
+            ElementSize = sizeof(float);
+            FilterFunc = Rr_UIFloatFilter;
+            ScanString = "%g";
+        }
+        break;
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE:
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE1:
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE2:
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE3:
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE4:
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE5:
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE6:
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE7:
+        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE8:
+        {
+            ElementSize = sizeof(double);
+            FilterFunc = Rr_UIFloatFilter;
+            ScanString = "%lg";
+        }
+        break;
+        default:
+        {
+            RR_ABORT("Unsupported format type!");
+        }
+        break;
+    }
+
+    const char *COMPONENT_TITLES[] = {
+        "X0", "Y0", "Z0", "W0", //
+        "X1", "Y1", "Z1", "W1", //
+        "X2", "Y2", "Z2", "W2", //
+        "X3", "Y3", "Z3", "W3",
+    };
+    Rr_Vec2 Cursor = Offset;
+    float CursorXStart = Cursor.X;
+    Rr_Vec2 TotalExtent = { 0 };
     char Buffer[64];
-    snprintf(Buffer, 64, "%d", *Value);
-    bool Changed = Rr_UIInputField(
+    bool Edited = false;
+    for (int Row = 0; Row < Rows; ++Row)
+    {
+        float MaxRowHeight = 0.0f;
+        for (int Col = 0; Col < Cols; ++Col)
+        {
+            size_t Index = (size_t)(Col * Rows + Row);
+            char *ElementData = (char *)Data + Index * ElementSize;
+
+            switch (ScalarFormatType)
+            {
+                case RR_UI_SCALAR_FORMAT_TYPE_INT:
+                {
+                    snprintf(Buffer, sizeof(Buffer), "%d", *(int *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_UINT:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%u",
+                        *(unsigned int *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_FLOAT:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%f",
+                        *(float *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_FLOAT1:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.1f",
+                        *(float *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_FLOAT2:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.2f",
+                        *(float *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_FLOAT3:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.3f",
+                        *(float *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_FLOAT4:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.4f",
+                        *(float *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%f",
+                        *(double *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE1:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.1f",
+                        *(double *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE2:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.2f",
+                        *(double *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE3:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.3f",
+                        *(double *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE4:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.4f",
+                        *(double *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE5:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.5f",
+                        *(double *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE6:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.6f",
+                        *(double *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE7:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.7f",
+                        *(double *)ElementData);
+                }
+                break;
+                case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE8:
+                {
+                    snprintf(
+                        Buffer,
+                        sizeof(Buffer),
+                        "%.8f",
+                        *(double *)ElementData);
+                }
+                break;
+                default:
+                {
+                    RR_ABORT("Unsupported format type!");
+                }
+                break;
+            }
+
+            Rr_UIHash ComponentHash =
+                Rr_UIGetHash(COMPONENT_TITLES[Index], 2, Hash);
+
+            Rr_Vec2 FieldExtent;
+            bool ThisComponentEdited = Rr_UIGenericInputField(
+                ComponentHash,
+                Cursor,
+                sizeof(Buffer),
+                Buffer,
+                NULL,
+                FilterFunc,
+                Flags,
+                SingleFieldWidth,
+                true,
+                &FieldExtent);
+
+            if (ThisComponentEdited)
+            {
+                Edited = true;
+                sscanf(Buffer, ScanString, (void *)ElementData);
+            }
+
+            MaxRowHeight = RR_MAX(MaxRowHeight, FieldExtent.Height);
+            Cursor.X += FieldExtent.Width + FieldSpacing;
+        }
+        TotalExtent.Width =
+            RR_MAX(TotalExtent.Width, Cursor.X - CursorXStart - FieldSpacing);
+        TotalExtent.Height += MaxRowHeight + FieldSpacing;
+        Cursor.X = CursorXStart;
+        Cursor.Y += MaxRowHeight + FieldSpacing;
+    }
+
+    if (OutTotalExtent)
+    {
+        *OutTotalExtent = TotalExtent;
+    }
+
+    return Edited;
+}
+
+static inline bool Rr_UIInputScalarMulti(
+    const char *Title,
+    void *Data,
+    int Cols,
+    int Rows,
+    Rr_UIScalarFormatType ScalarFormatType)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+    Rr_UIFlexibleWidgetLayout FlexibleWidgetLayout =
+        Rr_UICalculateFlexibleWidgetLayout(Layout, TitleLength, Title);
+
+    Rr_Vec2 TotalExtent;
+    bool Edited = Rr_UIGenericInputFieldScalarMulti(
+        TitleHash,
+        Layout->Cursor,
+        Cols,
+        Rows,
+        Data,
+        ScalarFormatType,
+        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
+            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT,
+        FlexibleWidgetLayout.WidgetWidth,
+        true,
+        &TotalExtent);
+
+    Rr_Vec2 TitleOffset = Layout->Cursor;
+    TitleOffset.X += FlexibleWidgetLayout.TitleCursorOffsetX;
+    TitleOffset.Y += gUIContext->ButtonPadding.Y;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        false,
+        TitleOffset,
+        TitleLength,
         Title,
-        64,
+        0.0f,
+        &gUIContext->Style.Foreground,
+        0);
+
+    Rr_UIAdvance(Rr_V2(Layout->AvailableContentsWidth, TotalExtent.Height));
+
+    return Edited;
+}
+
+bool Rr_UIInputField(
+    const char *Title,
+    size_t BufferCapacity,
+    char *Buffer,
+    const char *Placeholder,
+    Rr_UIInputFieldFilterFunc FilterFunc,
+    Rr_UIInputFieldFlags Flags)
+{
+    Rr_UIAssertWindow();
+    assert(Title != NULL);
+    assert(BufferCapacity);
+    assert(Buffer != NULL);
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+    Rr_UIFlexibleWidgetLayout FlexibleWidgetLayout =
+        Rr_UICalculateFlexibleWidgetLayout(Layout, TitleLength, Title);
+
+    Rr_Vec2 FieldExtent;
+    bool ChangesConfirmed = Rr_UIGenericInputField(
+        TitleHash,
+        Layout->Cursor,
+        BufferCapacity,
+        Buffer,
+        Placeholder,
+        FilterFunc,
+        Flags,
+        FlexibleWidgetLayout.WidgetWidth,
+        true,
+        &FieldExtent);
+
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.X += FlexibleWidgetLayout.TitleCursorOffsetX;
+    TitlePosition.Y += gUIContext->ButtonPadding.Height;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        0,
+        TitlePosition,
+        TitleLength,
+        Title,
+        0,
+        &gUIContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalSize = {
+        Layout->AvailableContentsWidth,
+        FieldExtent.Height,
+    };
+
+    Rr_UIAdvance(TotalSize);
+
+    Rr_DestroyScratch(Scratch);
+
+    return ChangesConfirmed;
+}
+
+bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
+{
+    return Rr_UIInputField(
+        Title,
+        BufferCapacity,
         Buffer,
         NULL,
-        Rr_UIIntegerFilter,
-        RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT);
-    if (Changed)
-    {
-        sscanf(Buffer, "%d", Value);
-    }
-    return Changed;
+        NULL,
+        RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
+}
+
+bool Rr_UIInputFloat(const char *Title, float *Value)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        1,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+}
+
+bool Rr_UIInputFloat2(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        2,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+}
+
+bool Rr_UIInputFloat3(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        3,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+}
+
+bool Rr_UIInputFloat4(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        4,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+}
+
+bool Rr_UIInputFloat2x2(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        2,
+        2,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+}
+
+bool Rr_UIInputFloat3x3(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        3,
+        3,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+}
+
+bool Rr_UIInputFloat4x4(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        4,
+        4,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+}
+
+bool Rr_UIInputInt(const char *Title, int32_t *Value)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        1,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_INT);
+}
+
+bool Rr_UIInputInt2(const char *Title, int32_t *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        2,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_INT);
+}
+
+bool Rr_UIInputInt3(const char *Title, int32_t *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        3,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_INT);
+}
+
+bool Rr_UIInputInt4(const char *Title, int32_t *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        4,
+        1,
+        RR_UI_SCALAR_FORMAT_TYPE_INT);
 }
 
 bool Rr_UICombobox(
@@ -4802,16 +5213,14 @@ static inline float Rr_UISlider(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    Rr_Vec2 TitleSize =
-        Rr_UIDrawText(true, Layout->Cursor, TitleLength, Title, 0.0f, NULL, 0);
+    Rr_UIFlexibleWidgetLayout FlexibleWidgetLayout =
+        Rr_UICalculateFlexibleWidgetLayout(Layout, TitleLength, Title);
 
-    float SliderWidth = Layout->AvailableContentsWidth -
-                        gUIContext->ButtonPadding.Width - TitleSize.Width;
+    float SliderWidth = FlexibleWidgetLayout.WidgetWidth;
     Rr_Rect SliderRect = {
         Layout->Cursor,
         {
@@ -4899,7 +5308,7 @@ static inline float Rr_UISlider(
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += SliderWidth + gUIContext->ButtonPadding.Width;
+    TitlePosition.X += FlexibleWidgetLayout.TitleCursorOffsetX;
     Rr_UIDrawText(
         0,
         TitlePosition,
@@ -4970,7 +5379,12 @@ static inline void Rr_UIRGBAToHexString(Rr_Vec4 *Color, char *Buffer)
     Buffer[8] = '\0';
 }
 
-bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
+bool Rr_UIInputColor3(const char *Title, Rr_Vec3 *Color)
+{
+    return false;
+}
+
+bool Rr_UIInputColor4(const char *Title, Rr_Vec4 *Color)
 {
     Rr_UIAssertWindow();
     assert(Title != NULL);
@@ -4984,6 +5398,13 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
+    Rr_UIFlexibleWidgetLayout FlexibleWidgetLayout =
+        Rr_UICalculateFlexibleWidgetLayout(Layout, TitleLength, Title);
+
+    float TotalFloatInputsWidth = FlexibleWidgetLayout.WidgetWidth -
+                                  gUIContext->LineHeight -
+                                  gUIContext->ButtonPadding.Y * 2.0f;
+
     char Buffer[8 + 1];
     Rr_UIRGBAToHexString(Color, Buffer);
 
@@ -4996,6 +5417,8 @@ bool Rr_UIColorPicker(const char *Title, Rr_Vec4 *Color)
         NULL,
         Rr_UIHexFilter,
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT,
+        INFINITY,
+        true,
         &FieldExtent);
     if (ChangesConfirmed)
     {
@@ -5124,7 +5547,6 @@ void Rr_InitUI(void)
         .ForegroundDimmed = Rr_U32ToSRGB(0xA7A59CFF),
         .Background = Rr_U32ToSRGB(0x292F33FF),
         .Outline = Rr_U32ToSRGB(0x6C6F72FF),
-        .SelectedTextBackground = Rr_U32ToSRGB(0x6EA5FEFF),
 
         .TitleBackground = Rr_U32ToSRGB(0x5E2D96FF),
         .TitleCloseButtonBackground = Rr_U32ToSRGB(0xD54251FF),
@@ -5134,6 +5556,9 @@ void Rr_InitUI(void)
         .ButtonHovered = Rr_U32ToSRGB(0x687e8dFF),
         .ButtonHeld = Rr_U32ToSRGB(0x435866FF),
         .ButtonDisabled = Rr_U32ToSRGB(0x191e22FF),
+
+        .SelectedTextBackground = Rr_U32ToSRGB(0x6EA5FEFF),
+        .InputFieldNormal = Rr_U32ToSRGB(0x191e22FF),
     };
 
     gUIContext->Style.ScrollbarBackground = gUIContext->Style.ButtonDisabled;
