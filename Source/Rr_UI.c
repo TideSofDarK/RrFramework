@@ -4111,6 +4111,7 @@ static inline bool Rr_UIGenericInputField(
 
         gUIContext->TextInputCursorMaxCol =
             Rr_UIThisLineCol(Buffer, gUIContext->TextInputCursorEnd);
+        gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
     }
     else if (Focused && Result.Moved)
     {
