@@ -59,6 +59,9 @@ static void StyleEditorWindow()
             "Contents Padding",
             Style->ContentsPadding.Elements);
         UpdateFontSize |= Rr_UIInputFloat(
+            "Component Margin",
+            &Style->ComponentMargin);
+        UpdateFontSize |= Rr_UIInputFloat(
             "Bevel Intensity Light",
             &Style->BevelIntensityLight);
         UpdateFontSize |=

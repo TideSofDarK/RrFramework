@@ -187,6 +187,7 @@ struct Rr_UIContext
 
     Rr_Vec2 NextWindowSize;
     Rr_Vec2 NextWindowPosition;
+    Rr_Vec2 NextWindowOpenPosition;
     Rr_Vec2 NextWindowPadding;
 
     bool LeftMouseButtonDownOverWindow;
@@ -238,8 +239,9 @@ struct Rr_UIContext
     float FontSize;
     float NextFontSize;
 
-    Rr_Vec2 ContentsPadding;
     float LineHeight;
+    Rr_Vec2 ContentsPadding;
+    float ComponentMargin;
     Rr_Vec2 MinWindowSize;
     Rr_Vec2 MinWindowSizeNoTitle;
     float TitleHeight;
@@ -1586,6 +1588,21 @@ static inline Rr_Vec2 Rr_UIDrawText(
     return (Rr_Vec2){ .Width = MaxX, .Height = CurrentY + LineHeight };
 }
 
+static inline Rr_Vec2 Rr_UICalculateTextSize(
+    const char *UTF8String,
+    float AvailableWidth,
+    Rr_UITextFlags Flags)
+{
+    return Rr_UIDrawText(
+        true,
+        Rr_V2F(0.0f),
+        SIZE_MAX,
+        UTF8String,
+        AvailableWidth,
+        NULL,
+        Flags);
+}
+
 static inline void Rr_UIBeginDragOp(
     Rr_UIWindow *Window,
     Rr_UIDragOp DragOp,
@@ -2298,6 +2315,11 @@ void Rr_UISetNextWindowPosition(Rr_Vec2 Position)
     gUIContext->NextWindowPosition = Position;
 }
 
+void Rr_UISetNextWindowOpenPosition(Rr_Vec2 Position)
+{
+    gUIContext->NextWindowOpenPosition = Position;
+}
+
 void Rr_UISetNextWindowSize(Rr_Vec2 Size)
 {
     gUIContext->NextWindowSize = Size;
@@ -2315,6 +2337,16 @@ static inline void Rr_UIConsumeNextWindowPosition(Rr_UIWindow *Window)
     {
         Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowPosition);
         gUIContext->NextWindowPosition = Rr_V2F(INFINITY);
+    }
+}
+
+static inline void Rr_UIConsumeNextWindowOpenPosition(Rr_UIWindow *Window)
+{
+    if (gUIContext->NextWindowOpenPosition.X != INFINITY &&
+        gUIContext->NextWindowOpenPosition.Y != INFINITY)
+    {
+        Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowOpenPosition);
+        gUIContext->NextWindowOpenPosition = Rr_V2F(INFINITY);
     }
 }
 
@@ -2383,6 +2415,8 @@ static inline bool Rr_UIBeginWindowEx(
     }
     if (WasClosed)
     {
+        Rr_UIConsumeNextWindowOpenPosition(Window);
+
         Window->OpenedThisFrame = true;
         Window->SkipThisFrame = true;
         if (gUIContext->HighestWindow)
@@ -3873,7 +3907,7 @@ static inline bool Rr_UIGenericInputField(
     Rr_Vec2 Offset,
     size_t BufferCapacity,
     char *Buffer,
-    const char *Placeholder,
+    const char *PlaceholderString,
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags,
     float FixedWidth,
@@ -3885,7 +3919,10 @@ static inline bool Rr_UIGenericInputField(
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    bool UseFixedExtent = FixedWidth != INFINITY;
+    bool UseFixedWidth = FixedWidth != INFINITY;
+    bool Autocenter =
+        RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT) &&
+        UseFixedWidth;
     Rr_UIClipRect *RestoreClipRect = NULL;
 
     Rr_UIPrimitive BackgroundBevelPrimitive;
@@ -3894,7 +3931,7 @@ static inline bool Rr_UIGenericInputField(
         BackgroundBevelPrimitive = Rr_UIReserveBevel();
     }
 
-    if (UseFixedExtent)
+    if (UseFixedWidth)
     {
         RestoreClipRect = Window->CurrentClipRect;
 
@@ -3935,12 +3972,19 @@ static inline bool Rr_UIGenericInputField(
         gUIContext->DeferTextInputBufferCopy = false;
     }
 
-    Rr_Vec2 BufferPosition = Rr_AddV2(Offset, gUIContext->ButtonPadding);
     size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
-    Rr_Vec2 BufferSize = Rr_UIDrawInputText(
-        UsePersistentBuffer && (Focused || WasFocused)
-            ? gUIContext->TextInputBuffer.Data
-            : Buffer,
+    const char *BufferString = UsePersistentBuffer && (Focused || WasFocused)
+                                   ? gUIContext->TextInputBuffer.Data
+                                   : Buffer;
+    Rr_Vec2 BufferPosition = Rr_AddV2(Offset, gUIContext->ButtonPadding);
+    Rr_Vec2 BufferSize;
+    if (Autocenter)
+    {
+        BufferSize = Rr_UICalculateTextSize(BufferString, 0.0f, 0);
+        BufferPosition.X = Offset.X + FixedWidth * 0.5f - BufferSize.X * 0.5f;
+    }
+    BufferSize = Rr_UIDrawInputText(
+        BufferString,
         Focused,
         BufferPosition,
         gUIContext->TextInputCursorBegin,
@@ -3950,13 +3994,19 @@ static inline bool Rr_UIGenericInputField(
 
     if (BufferSize.X == 0.0f)
     {
-        if (Placeholder != NULL && !Focused)
+        if (PlaceholderString != NULL && !Focused)
         {
+            if (Autocenter)
+            {
+                BufferSize = Rr_UICalculateTextSize(PlaceholderString, 0.0f, 0);
+                BufferPosition.X =
+                    Offset.X + FixedWidth * 0.5f - BufferSize.X * 0.5f;
+            }
             BufferSize = Rr_UIDrawText(
                 false,
                 BufferPosition,
                 SIZE_MAX,
-                Placeholder,
+                PlaceholderString,
                 0.0f,
                 &gUIContext->Style.ForegroundDimmed,
                 0);
@@ -3975,7 +4025,7 @@ static inline bool Rr_UIGenericInputField(
         Offset,
         Rr_AddV2(BufferSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f)),
     };
-    if (UseFixedExtent)
+    if (UseFixedWidth)
     {
         FieldRect.Extent.X = FixedWidth;
     }
@@ -3988,7 +4038,7 @@ static inline bool Rr_UIGenericInputField(
         Rr_UIBevel(
             BackgroundBevelPrimitive,
             &FieldRect,
-            &gUIContext->Style.ButtonDisabled,
+            &gUIContext->Style.InputFieldNormal,
             true);
     }
 
@@ -4101,7 +4151,7 @@ static inline bool Rr_UIGenericInputField(
         memcpy(Buffer, gUIContext->TextInputBuffer.Data, BufferCapacity);
     }
 
-    if (UseFixedExtent)
+    if (UseFixedWidth)
     {
         Rr_UIEndClipRect();
 
@@ -4211,13 +4261,12 @@ static inline bool Rr_UIGenericInputFieldScalarMulti(
     assert(Cols > 0 && Cols <= 4);
     assert(Rows > 0 && Rows <= 4);
 
-    float FieldSpacing = gUIContext->BevelThickness * 2.0f;
-
     float SingleFieldWidth = INFINITY;
     if (FixedWidth != INFINITY)
     {
         SingleFieldWidth =
-            (FixedWidth - (FieldSpacing * (float)(Cols - 1))) / (float)Cols;
+            (FixedWidth - (gUIContext->ComponentMargin * (float)(Cols - 1))) /
+            (float)Cols;
     }
 
     Rr_UIInputFieldFilterFunc FilterFunc;
@@ -4461,17 +4510,18 @@ static inline bool Rr_UIGenericInputFieldScalarMulti(
             }
 
             MaxRowHeight = RR_MAX(MaxRowHeight, FieldExtent.Height);
-            Cursor.X += FieldExtent.Width + FieldSpacing;
+            Cursor.X += FieldExtent.Width + gUIContext->ComponentMargin;
         }
-        TotalExtent.Width =
-            RR_MAX(TotalExtent.Width, Cursor.X - CursorXStart - FieldSpacing);
-        TotalExtent.Height += MaxRowHeight + FieldSpacing;
+        TotalExtent.Width = RR_MAX(
+            TotalExtent.Width,
+            Cursor.X - CursorXStart - gUIContext->ComponentMargin);
+        TotalExtent.Height += MaxRowHeight + gUIContext->ComponentMargin;
         Cursor.X = CursorXStart;
-        Cursor.Y += MaxRowHeight + FieldSpacing;
+        Cursor.Y += MaxRowHeight + gUIContext->ComponentMargin;
     }
 
     /* Undo last vertical margin */
-    TotalExtent.Height -= FieldSpacing;
+    TotalExtent.Height -= gUIContext->ComponentMargin;
 
     if (OutTotalExtent)
     {
@@ -4506,7 +4556,8 @@ static inline bool Rr_UIInputScalarMulti(
         Data,
         ScalarFormatType,
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT,
+            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT |
+            RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT,
         FlexibleWidgetLayout.WidgetWidth,
         true,
         &TotalExtent);
@@ -4791,13 +4842,13 @@ static inline void Rr_UIColorPickerPopup(
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
         RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
-    float TargetSize = 300.0f;
+    float TargetSize = gUIContext->FontSize * 15.0f;
     float Step = TargetSize / 6.0f;
 
     Rr_Vec2 Position = Center;
     Position.X -= (gUIContext->ContentsPadding.Width + TargetSize) / 2.0f;
     Position.Y -= (gUIContext->ContentsPadding.Height + TargetSize) / 2.0f;
-    Rr_UISetNextWindowPosition(Position);
+    Rr_UISetNextWindowOpenPosition(Position);
     Rr_UIBeginPopupWindow(POPUP_WINDOW_FLAGS);
 
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
@@ -5040,7 +5091,8 @@ static inline void Rr_UIColorPickerPopup(
             "",
             Rr_UIHexFilter,
             RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-                RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT))
+                RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT |
+                RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT))
     {
         uint32_t NewColor;
         sscanf(HexBuffer, "%x", &NewColor);
@@ -5091,13 +5143,11 @@ static inline bool Rr_UIInputColorEx(
     Rr_UIFlexibleWidgetLayout FlexibleWidgetLayout =
         Rr_UICalculateFlexibleWidgetLayout(Layout, TitleLength, Title);
 
-    float FieldSpacing = gUIContext->BevelThickness * 2.0f;
-
     Rr_Vec2 ColorBoxSize =
         Rr_V2F(gUIContext->LineHeight + gUIContext->ButtonPadding.X);
 
-    float TotalFloatInputsWidth =
-        FlexibleWidgetLayout.WidgetWidth - ColorBoxSize.X - FieldSpacing;
+    float TotalFloatInputsWidth = FlexibleWidgetLayout.WidgetWidth -
+                                  ColorBoxSize.X - gUIContext->ComponentMargin;
 
     Rr_Vec2 TotalExtent;
     bool Edited = Rr_UIGenericInputFieldScalarMulti(
@@ -5108,35 +5158,14 @@ static inline bool Rr_UIInputColorEx(
         Channels,
         RR_UI_SCALAR_FORMAT_TYPE_FLOAT2,
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT,
+            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT |
+            RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT,
         TotalFloatInputsWidth,
         true,
         &TotalExtent);
 
-    /* char Buffer[8 + 1]; */
-    /* Rr_UIRGBAToHexString(Color, Buffer); */
-
-    /* Rr_Vec2 FieldExtent; */
-    /* bool ChangesConfirmed = Rr_UIGenericInputField( */
-    /*     TitleHash, */
-    /*     Layout->Cursor, */
-    /*     9, */
-    /*     Buffer, */
-    /*     NULL, */
-    /*     Rr_UIHexFilter, */
-    /*     RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT, */
-    /*     INFINITY, */
-    /*     true, */
-    /*     &FieldExtent); */
-    /* if (ChangesConfirmed) */
-    /* { */
-    /*     uint32_t NewColor; */
-    /*     sscanf(Buffer, "%x", &NewColor); */
-    /*     *Color = Rr_U32ToRGBA(NewColor); */
-    /* } */
-
     Rr_Vec2 ColorBoxPosition = Layout->Cursor;
-    ColorBoxPosition.X += TotalExtent.Width + FieldSpacing;
+    ColorBoxPosition.X += TotalExtent.Width + gUIContext->ComponentMargin;
 
     Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
@@ -5348,7 +5377,7 @@ bool Rr_UICombobox(
     Rr_UIBevel(
         Primitive,
         &ButtonRect,
-        &gUIContext->Style.ButtonDisabled,
+        &gUIContext->Style.InputFieldNormal,
         Result.Held);
 
     /* Add handle. */
@@ -5435,7 +5464,7 @@ static inline float Rr_UISlider(
         },
     };
 
-    Rr_UIDrawBevel(&SliderRect, &gUIContext->Style.ButtonDisabled, true);
+    Rr_UIDrawBevel(&SliderRect, &gUIContext->Style.InputFieldNormal, true);
 
     float HandleWidth = gUIContext->FontSize;
     Rr_Rect HandleRect = { Layout->Cursor,
@@ -5611,6 +5640,7 @@ void Rr_InitUI(void)
     gUIContext->Arena = Arena;
 
     gUIContext->NextWindowPosition = Rr_V2F(INFINITY);
+    gUIContext->NextWindowOpenPosition = Rr_V2F(INFINITY);
     gUIContext->NextWindowSize = Rr_V2F(INFINITY);
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
 
@@ -5620,6 +5650,7 @@ void Rr_InitUI(void)
     gUIContext->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.03f },
         .ContentsPadding = { 0.5f, 0.5f },
+        .ComponentMargin = 0.2f,
         .BevelIntensityLight = 0.3f,
         .BevelIntensityDark = 0.7f,
 
@@ -5830,10 +5861,14 @@ static inline void Rr_UIConsumeNextFontSize(void)
         gUIContext->FontSize = gUIContext->NextFontSize;
         gUIContext->NextFontSize = INFINITY;
 
+        Rr_UIStyle *Style = &gUIContext->Style;
+
         gUIContext->LineHeight =
             gUIContext->FontSize * gUIContext->Font->LineHeight;
         gUIContext->ContentsPadding =
             Rr_MulV2F(gUIContext->Style.ContentsPadding, gUIContext->FontSize);
+        gUIContext->ComponentMargin =
+            RR_UI_ROUND(Style->ComponentMargin * gUIContext->FontSize);
 
         gUIContext->FrameThickness =
             floorf(RR_MAX(1.0f, gUIContext->FontSize * 0.075f));

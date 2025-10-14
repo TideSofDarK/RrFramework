@@ -58,6 +58,7 @@ struct Rr_UIStyle
 {
     Rr_Vec2 TitlePadding;
     Rr_Vec2 ContentsPadding;
+    float ComponentMargin;
     float BevelIntensityLight;
     float BevelIntensityDark;
 
@@ -126,6 +127,8 @@ typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, const char *);
 extern Rr_UIStyle *Rr_UIGetStyle(void);
 
 extern void Rr_UISetNextWindowPosition(Rr_Vec2 Position);
+
+extern void Rr_UISetNextWindowOpenPosition(Rr_Vec2 Position);
 
 extern void Rr_UISetNextWindowSize(Rr_Vec2 Size);
 
