@@ -47,7 +47,9 @@ extern void Rr_InitThreadContext(void);
 
 extern void Rr_CleanupThreadContext(void);
 
-extern void Rr_SetFrameLimiterEnabled(bool Enabled);
+extern void Rr_SetTargetFrameRate(uint32_t FramesPerSecond);
+
+extern void Rr_SetBackgroundFrameRate(uint32_t FramesPerSecond);
 
 extern double Rr_GetFramesPerSecond(void);
 

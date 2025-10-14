@@ -38,9 +38,9 @@ struct Rr_FrameTime
 {
     /* Frame Limiter */
 
-    uint64_t TargetFramerate;
+    uint32_t TargetFrameRate;
+    uint32_t BackgroundFrameRate;
     uint64_t StartTime;
-    bool EnableFrameLimiter;
 
     /* Delta Time Calculation */
 

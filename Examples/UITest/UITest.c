@@ -197,19 +197,19 @@ static void Iterate(void)
         /*     } */
         /*     Rr_UIEndChild(); */
         /* } */
-        if (Rr_UIBeginChild("Checkbox"))
-        {
-            Rr_UICheckbox("Close Button", &CloseButton);
-            /* Rr_UIBeginHorizontal(); */
-            Rr_UICheckbox("No Resize", &NoResize);
-            Rr_UICheckbox("Auto Resize", &AutoResize);
-            /* Rr_UIEndHorizontal(); */
-            /* Rr_UIBeginHorizontal(); */
-            Rr_UICheckbox("No Scrollbar", &NoScrollbar);
-            Rr_UICheckbox("No Title", &NoTitle);
-            /* Rr_UIEndHorizontal(); */
-            Rr_UIEndChild();
-        }
+        /* if (Rr_UIBeginChild("Checkbox")) */
+        /* { */
+        /*     Rr_UICheckbox("Close Button", &CloseButton); */
+        /*     /\* Rr_UIBeginHorizontal(); *\/ */
+        /*     Rr_UICheckbox("No Resize", &NoResize); */
+        /*     Rr_UICheckbox("Auto Resize", &AutoResize); */
+        /*     /\* Rr_UIEndHorizontal(); *\/ */
+        /*     /\* Rr_UIBeginHorizontal(); *\/ */
+        /*     Rr_UICheckbox("No Scrollbar", &NoScrollbar); */
+        /*     Rr_UICheckbox("No Title", &NoTitle); */
+        /*     /\* Rr_UIEndHorizontal(); *\/ */
+        /*     Rr_UIEndChild(); */
+        /* } */
         /* if (Rr_UIBeginChild("Slider")) */
         /* { */
             static float Float01 = 0.5f;

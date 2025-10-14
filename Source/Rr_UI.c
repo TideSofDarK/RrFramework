@@ -2475,7 +2475,7 @@ static inline bool Rr_UIBeginWindowEx(
     /* BUG: Broken at the moment! */
     if (Window->Child)
     {
-        /* if (!ParentLayout->DeferredAutoResize) */
+        if (!ParentLayout->DeferredAutoResize)
         {
             Window->Rect.Extent.Width = ParentLayout->AvailableContentsWidth;
         }
@@ -5291,22 +5291,25 @@ bool Rr_UICombobox(
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
+    Rr_UIFlexibleWidgetLayout FlexibleWidgetLayout =
+        Rr_UICalculateFlexibleWidgetLayout(Layout, TitleLength, Title);
+
     Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
 
-    Rr_Vec2 SelectedTextSize = Rr_UIDrawText(
-        true,
-        Rr_V2F(0.0f),
-        SIZE_MAX,
-        Options[*SelectedIndex],
-        0,
-        NULL,
-        0);
+    /* Rr_Vec2 SelectedTextSize = Rr_UIDrawText( */
+    /*     true, */
+    /*     Rr_V2F(0.0f), */
+    /*     SIZE_MAX, */
+    /*     Options[*SelectedIndex], */
+    /*     0, */
+    /*     NULL, */
+    /*     0); */
 
     Rr_Vec2 ButtonPosition = Layout->Cursor;
 
     Rr_Vec2 SelectedTextPosition =
         Rr_AddV2(ButtonPosition, gUIContext->ButtonPadding);
-    Rr_UIDrawText(
+    Rr_Vec2 SelectedTextSize = Rr_UIDrawText(
         0,
         SelectedTextPosition,
         SIZE_MAX,
@@ -5315,17 +5318,15 @@ bool Rr_UICombobox(
         &gUIContext->Style.Foreground,
         0);
 
-    Rr_Vec2 ButtonSize =
-        Rr_AddV2(SelectedTextSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f));
-
-    Rr_Vec2 BorderSize = ButtonSize;
-    BorderSize.X += gUIContext->LineHeight + gUIContext->ButtonPadding.Width;
+    Rr_Vec2 ButtonSize = { FlexibleWidgetLayout.WidgetWidth,
+                           SelectedTextSize.Height +
+                               gUIContext->ButtonPadding.Y * 2.0f };
 
     Rr_UIButtonResult Result = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
             ButtonPosition,
-            BorderSize,
+            ButtonSize,
         });
 
     if (Result.Up)
@@ -5347,7 +5348,7 @@ bool Rr_UICombobox(
             RR_UI_WINDOW_FLAGS_NO_MOVE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
         Rr_Vec2 PopupPosition = ButtonPosition;
-        PopupPosition.Y += BorderSize.Height + gUIContext->FrameThickness;
+        PopupPosition.Y += ButtonSize.Height + gUIContext->FrameThickness;
         PopupPosition.X += gUIContext->FrameThickness;
         Rr_UISetNextWindowPosition(PopupPosition);
         Rr_UISetNextWindowPadding(Rr_V2(gUIContext->ButtonPadding.Width, 0.0f));
@@ -5422,7 +5423,10 @@ bool Rr_UICombobox(
     {
         float HandleSize = ButtonSize.Height;
         Rr_Rect HandleRect = { ButtonRect.Offset, Rr_V2F(HandleSize) };
-        HandleRect.Offset.X += ButtonRect.Extent.Width;
+        HandleRect.Offset.X += ButtonRect.Extent.Width - ButtonSize.Y;
+
+        /* ButtonRect.Offset.X = FlexibleWidgetLayout.WidgetWidth -
+         * ButtonSize.X; */
 
         Rr_UIDrawBevel(
             &HandleRect,
@@ -5451,7 +5455,7 @@ bool Rr_UICombobox(
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += gUIContext->ButtonPadding.Width + BorderSize.Width;
+    TitlePosition.X += FlexibleWidgetLayout.TitleCursorOffsetX;
     TitlePosition.Y += gUIContext->ButtonPadding.Height;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         0,
@@ -5463,7 +5467,7 @@ bool Rr_UICombobox(
         0);
 
     Rr_Vec2 TotalSize = {
-        TitleSize.Width + gUIContext->ButtonPadding.Width + BorderSize.Width,
+        Layout->AvailableContentsWidth,
         gUIContext->LineHeight + gUIContext->ButtonPadding.Height * 2.0f,
     };
 
@@ -5562,7 +5566,7 @@ static inline float Rr_UISlider(
         TitleHash,
         Rr_V2(HandleDragOffset, 0.0f));
 
-    if (Result.Moved)
+    if (Result.Moved || Result.Began)
     {
         float SliderMin = Layout->Cursor.X + HandleWidth / 2.0f;
         float SliderMax = SliderMin + SliderWidth - HandleWidth;
@@ -6261,6 +6265,9 @@ void Rr_UIDebugOverlay(void)
             {
                 Rr_SetPresentMode(PresentModes[CurrentPresentModeIndex]);
             }
+            Rr_UIInputUnsignedInt(
+                "Target Frame Rate",
+                &gApp->FrameTime.TargetFrameRate);
 
             {
                 static double SamplingFreq = 0.5;
@@ -6306,18 +6313,6 @@ void Rr_UIDebugOverlay(void)
                     gRenderer->LastFrameMS);
             }
 
-            Rr_UICheckbox(
-                "Frame Limiter Enabled",
-                &gApp->FrameTime.EnableFrameLimiter);
-            static float TargetFramerate = INFINITY;
-            if (TargetFramerate == INFINITY)
-            {
-                TargetFramerate = (float)gApp->FrameTime.TargetFramerate;
-            }
-            if (Rr_UIInputFloat("Frame Limit", &TargetFramerate))
-            {
-                gApp->FrameTime.TargetFramerate = (uint64_t)TargetFramerate;
-            }
             if (Rr_UIButton("Toggle Fullscreen"))
             {
                 Rr_ToggleWindowFullscreen();

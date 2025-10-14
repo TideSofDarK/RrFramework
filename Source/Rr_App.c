@@ -41,9 +41,9 @@ static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
                               (double)Rr_GetPerformanceFrequency();
 }
 
-static void Rr_SimulateVSync(Rr_FrameTime *FrameTime)
+static void Rr_SimulateVSync(Rr_FrameTime *FrameTime, uint32_t FrameRate)
 {
-    uint64_t Interval = 1000000000 / FrameTime->TargetFramerate;
+    uint64_t Interval = 1000000000 / FrameRate;
     uint64_t Now = Rr_GetTimeNS();
     uint64_t Elapsed = Now - FrameTime->StartTime;
 
@@ -69,7 +69,9 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime)
 {
     uint64_t Now = Rr_GetPerformanceCounter();
 
-    FrameTime->TargetFramerate = (uint64_t)Rr_GetDisplayRefreshRate();
+    FrameTime->TargetFrameRate = 0;
+    /* FrameTime->BackgroundFrameRate = (uint64_t)Rr_GetDisplayRefreshRate(); */
+    FrameTime->BackgroundFrameRate = 30;
     FrameTime->StartTime = Now;
     FrameTime->Now = Now;
 
@@ -197,9 +199,15 @@ void Rr_Run(Rr_AppConfig *Config)
 
         bool Minimized = Rr_IsWindowMinimized();
 
-        if (gApp->FrameTime.EnableFrameLimiter || Minimized)
+        if (Minimized)
         {
-            Rr_SimulateVSync(&gApp->FrameTime);
+            Rr_SimulateVSync(
+                &gApp->FrameTime,
+                gApp->FrameTime.BackgroundFrameRate);
+        }
+        else if (gApp->FrameTime.TargetFrameRate)
+        {
+            Rr_SimulateVSync(&gApp->FrameTime, gApp->FrameTime.TargetFrameRate);
         }
 
         Rr_CalculateDeltaTime(&gApp->FrameTime);
@@ -270,9 +278,14 @@ Rr_ThreadContext *Rr_GetThreadContext(void)
     return ThreadContext;
 }
 
-void Rr_SetFrameLimiterEnabled(bool Enabled)
+void Rr_SetTargetFrameRate(uint32_t FramesPerSecond)
 {
-    gApp->FrameTime.EnableFrameLimiter = Enabled;
+    gApp->FrameTime.TargetFrameRate = FramesPerSecond;
+}
+
+void Rr_SetBackgroundFrameRate(uint32_t FramesPerSecond)
+{
+    gApp->FrameTime.BackgroundFrameRate = FramesPerSecond;
 }
 
 double Rr_GetDeltaSeconds(void)
