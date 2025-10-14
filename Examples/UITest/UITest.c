@@ -239,6 +239,8 @@ static void Iterate(void)
         Rr_UIInputText("String (128 bytes)", 128, MultilineBuffer);
         static int32_t TestInt = 1337;
         Rr_UIInputInt("Integer Input", &TestInt);
+        static uint32_t TestUnsignedInt = 348579;
+        Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
         static float TestFloat = 123.456f;
         Rr_UIInputFloat("Float Input", &TestFloat);
         static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };

@@ -4227,7 +4227,7 @@ static inline bool Rr_UIUnsignedIntegerFilter(
     {
         char Char = UTF8String[Index];
         bool InRange = Char >= '0' && Char <= '9';
-        if (InRange)
+        if (!InRange)
         {
             return false;
         }
@@ -4281,14 +4281,14 @@ static inline bool Rr_UIGenericInputFieldScalarMulti(
     {
         case RR_UI_SCALAR_FORMAT_TYPE_INT:
         {
-            ElementSize = sizeof(int);
+            ElementSize = sizeof(int32_t);
             FilterFunc = Rr_UIIntegerFilter;
             ScanString = "%i";
         }
         break;
         case RR_UI_SCALAR_FORMAT_TYPE_UINT:
         {
-            ElementSize = sizeof(unsigned int);
+            ElementSize = sizeof(uint32_t);
             FilterFunc = Rr_UIUnsignedIntegerFilter;
             ScanString = "%u";
         }
