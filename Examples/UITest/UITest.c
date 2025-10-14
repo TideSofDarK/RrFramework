@@ -58,9 +58,8 @@ static void StyleEditorWindow()
         UpdateFontSize |= Rr_UIInputFloat2(
             "Contents Padding",
             Style->ContentsPadding.Elements);
-        UpdateFontSize |= Rr_UIInputFloat(
-            "Component Margin",
-            &Style->ComponentMargin);
+        UpdateFontSize |=
+            Rr_UIInputFloat("Component Margin", &Style->ComponentMargin);
         UpdateFontSize |= Rr_UIInputFloat(
             "Bevel Intensity Light",
             &Style->BevelIntensityLight);
@@ -149,7 +148,6 @@ static void Iterate(void)
 
     if (Rr_UIBeginWindow("Rr_UI.h", &Open, Flags))
     {
-        Rr_UILabel("asdfsdf sdfsdfsdfs");
         /* if (Rr_UIBeginChild("Child Windows")) */
         /* { */
         /*     Rr_UIBeginHorizontal(); */
@@ -199,28 +197,28 @@ static void Iterate(void)
         /*     } */
         /*     Rr_UIEndChild(); */
         /* } */
-        /* if (Rr_UIBeginChild("Checkbox")) */
-        /* { */
-        /*     Rr_UICheckbox("Close Button", &CloseButton); */
-        /*     Rr_UIBeginHorizontal(); */
-        /*     Rr_UICheckbox("No Resize", &NoResize); */
-        /*     Rr_UICheckbox("Auto Resize", &AutoResize); */
-        /*     Rr_UIEndHorizontal(); */
-        /*     Rr_UIBeginHorizontal(); */
-        /*     Rr_UICheckbox("No Scrollbar", &NoScrollbar); */
-        /*     Rr_UICheckbox("No Title", &NoTitle); */
-        /*     Rr_UIEndHorizontal(); */
-        /*     Rr_UIEndChild(); */
-        /* } */
+        if (Rr_UIBeginChild("Checkbox"))
+        {
+            Rr_UICheckbox("Close Button", &CloseButton);
+            /* Rr_UIBeginHorizontal(); */
+            Rr_UICheckbox("No Resize", &NoResize);
+            Rr_UICheckbox("Auto Resize", &AutoResize);
+            /* Rr_UIEndHorizontal(); */
+            /* Rr_UIBeginHorizontal(); */
+            Rr_UICheckbox("No Scrollbar", &NoScrollbar);
+            Rr_UICheckbox("No Title", &NoTitle);
+            /* Rr_UIEndHorizontal(); */
+            Rr_UIEndChild();
+        }
         /* if (Rr_UIBeginChild("Slider")) */
         /* { */
-        static float Float01 = 0.5f;
-        Rr_UISliderFloat("Float 0 to 1", &Float01, 0.0f, 1.0f);
-        static float Float22 = -0.5f;
-        Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
-        static int32_t Int18 = 0;
-        Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
-        /*     Rr_UIEndChild(); */
+            static float Float01 = 0.5f;
+            Rr_UISliderFloat("Float 0 to 1", &Float01, 0.0f, 1.0f);
+            static float Float22 = -0.5f;
+            Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
+            static int32_t Int18 = 0;
+            Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
+            /* Rr_UIEndChild(); */
         /* } */
         /* if (Rr_UIBeginChild("Color Input")) */
         /* { */
