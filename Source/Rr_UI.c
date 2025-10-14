@@ -1589,6 +1589,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
 }
 
 static inline Rr_Vec2 Rr_UICalculateTextSize(
+    size_t UTF8StringLength,
     const char *UTF8String,
     float AvailableWidth,
     Rr_UITextFlags Flags)
@@ -1596,7 +1597,7 @@ static inline Rr_Vec2 Rr_UICalculateTextSize(
     return Rr_UIDrawText(
         true,
         Rr_V2F(0.0f),
-        SIZE_MAX,
+        UTF8StringLength,
         UTF8String,
         AvailableWidth,
         NULL,
@@ -2927,8 +2928,7 @@ static inline Rr_UIFlexibleWidgetLayout Rr_UICalculateFlexibleWidgetLayout(
 
     Rr_UIFlexibleWidgetLayout Result;
 
-    Result.TitleSize =
-        Rr_UIDrawText(true, Rr_V2F(0.0f), TitleLength, Title, 0.0f, NULL, 0);
+    Result.TitleSize = Rr_UICalculateTextSize(TitleLength, Title, 0.0f, 0);
 
     Window->MaxFlexibleWidgetTitleWidth =
         RR_MAX(Window->MaxFlexibleWidgetTitleWidth, Result.TitleSize.Width);
@@ -3980,7 +3980,7 @@ static inline bool Rr_UIGenericInputField(
     Rr_Vec2 BufferSize;
     if (Autocenter)
     {
-        BufferSize = Rr_UICalculateTextSize(BufferString, 0.0f, 0);
+        BufferSize = Rr_UICalculateTextSize(SIZE_MAX, BufferString, 0.0f, 0);
         BufferPosition.X = Offset.X + FixedWidth * 0.5f - BufferSize.X * 0.5f;
     }
     BufferSize = Rr_UIDrawInputText(
@@ -3998,7 +3998,11 @@ static inline bool Rr_UIGenericInputField(
         {
             if (Autocenter)
             {
-                BufferSize = Rr_UICalculateTextSize(PlaceholderString, 0.0f, 0);
+                BufferSize = Rr_UICalculateTextSize(
+                    SIZE_MAX,
+                    PlaceholderString,
+                    0.0f,
+                    0);
                 BufferPosition.X =
                     Offset.X + FixedWidth * 0.5f - BufferSize.X * 0.5f;
             }
