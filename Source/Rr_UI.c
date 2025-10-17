@@ -2946,7 +2946,7 @@ void Rr_UIEndHorizontal(void)
         Rr_V2(-Layout->ContentsPadding.Width, Layout->HorizontalMaxHeight));
 }
 
-static inline float Rr_UICalculateFlexibleWidgetLayout(
+static inline float Rr_UICalculateFlexibleWidgetWidth(
     Rr_UILayout *Layout,
     size_t TitleLength,
     const char *Title,
@@ -4659,7 +4659,7 @@ static inline bool Rr_UIInputScalarMulti(
         Data,
         ScalarFormatType);
 
-    FieldsWidth = Rr_UICalculateFlexibleWidgetLayout(
+    FieldsWidth = Rr_UICalculateFlexibleWidgetWidth(
         Layout,
         TitleLength,
         Title,
@@ -4722,7 +4722,7 @@ bool Rr_UIInputField(
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    float FieldWidth = Rr_UICalculateFlexibleWidgetLayout(
+    float FieldWidth = Rr_UICalculateFlexibleWidgetWidth(
         Layout,
         TitleLength,
         Title,
@@ -5280,7 +5280,7 @@ static inline bool Rr_UIInputColorEx(
         RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
     FieldsWidth += ColorBoxWithMargin;
 
-    FieldsWidth = Rr_UICalculateFlexibleWidgetLayout(
+    FieldsWidth = Rr_UICalculateFlexibleWidgetWidth(
         Layout,
         TitleLength,
         Title,
@@ -5408,7 +5408,7 @@ bool Rr_UICombobox(
         &gUIContext->Style.Foreground,
         0);
 
-    float ButtonWidth = Rr_UICalculateFlexibleWidgetLayout(
+    float ButtonWidth = Rr_UICalculateFlexibleWidgetWidth(
         Layout,
         TitleLength,
         Title,
@@ -5598,7 +5598,7 @@ static inline float Rr_UISlider(
      * also use value text width. */
     float MinSliderWidth = gUIContext->FontSize * 10.0f;
 
-    float SliderWidth = Rr_UICalculateFlexibleWidgetLayout(
+    float SliderWidth = Rr_UICalculateFlexibleWidgetWidth(
         Layout,
         TitleLength,
         Title,
