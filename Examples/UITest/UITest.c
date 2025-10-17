@@ -177,134 +177,135 @@ static void Iterate(void)
         /*     } */
         /*     Rr_UIEndChild(); */
         /* } */
-        /* if (Rr_UIBeginChild("Combobox")) */
-        /* { */
-        /*     const char *ComboboxOptions[5] = { */
-        /*         "Option A", "Option B",        "Option C", */
-        /*         "Option D", "Longer Option E", */
-        /*     }; */
-        /*     static uint32_t SelectedComboboxOption = 0; */
-        /*     if (Rr_UICombobox( */
-        /*             "Options", */
-        /*             RR_ARRAY_COUNT(ComboboxOptions), */
-        /*             ComboboxOptions, */
-        /*             &SelectedComboboxOption)) */
-        /*     { */
-        /*         fprintf( */
-        /*             stderr, */
-        /*             "New option selected: %s\n", */
-        /*             ComboboxOptions[SelectedComboboxOption]); */
-        /*     } */
-        /*     Rr_UIEndChild(); */
-        /* } */
-        /* if (Rr_UIBeginChild("Checkbox")) */
-        /* { */
-        /*     Rr_UICheckbox("Close Button", &CloseButton); */
-        /*     /\* Rr_UIBeginHorizontal(); *\/ */
-        /*     Rr_UICheckbox("No Resize", &NoResize); */
-        /*     Rr_UICheckbox("Auto Resize", &AutoResize); */
-        /*     /\* Rr_UIEndHorizontal(); *\/ */
-        /*     /\* Rr_UIBeginHorizontal(); *\/ */
-        /*     Rr_UICheckbox("No Scrollbar", &NoScrollbar); */
-        /*     Rr_UICheckbox("No Title", &NoTitle); */
-        /*     /\* Rr_UIEndHorizontal(); *\/ */
-        /*     Rr_UIEndChild(); */
-        /* } */
-        /* if (Rr_UIBeginChild("Slider")) */
-        /* { */
+        if (Rr_UIBeginChild("Combobox"))
+        {
+            const char *ComboboxOptions[5] = {
+                "Option A", "Option B",        "Option C",
+                "Option D", "Longer Option E",
+            };
+            static uint32_t SelectedComboboxOption = 0;
+            if (Rr_UICombobox(
+                    "Options",
+                    RR_ARRAY_COUNT(ComboboxOptions),
+                    ComboboxOptions,
+                    &SelectedComboboxOption))
+            {
+                fprintf(
+                    stderr,
+                    "New option selected: %s\n",
+                    ComboboxOptions[SelectedComboboxOption]);
+            }
+            Rr_UIEndChild();
+        }
+        if (Rr_UIBeginChild("Checkbox"))
+        {
+            Rr_UICheckbox("Close Button", &CloseButton);
+            /* Rr_UIBeginHorizontal(); */
+            Rr_UICheckbox("No Resize", &NoResize);
+            Rr_UICheckbox("Auto Resize", &AutoResize);
+            /* Rr_UIEndHorizontal(); */
+            /* Rr_UIBeginHorizontal(); */
+            Rr_UICheckbox("No Scrollbar", &NoScrollbar);
+            Rr_UICheckbox("No Title", &NoTitle);
+            /* Rr_UIEndHorizontal(); */
+            Rr_UIEndChild();
+        }
+        if (Rr_UIBeginChild("Slider"))
+        {
             static float Float01 = 0.5f;
             Rr_UISliderFloat("Float 0 to 1", &Float01, 0.0f, 1.0f);
             static float Float22 = -0.5f;
             Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
             static int32_t Int18 = 0;
             Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
-            /* Rr_UIEndChild(); */
-        /* } */
-        /* if (Rr_UIBeginChild("Color Input")) */
-        /* { */
-        static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
-        Rr_UIInputColor3("Color RBA", ColorRGB.Elements);
-        static Rr_Vec4 ColorRGBA = { 0.9f, 0.1f, 0.2f, 1.0f };
-        Rr_UIInputColor4("Color RGBA", ColorRGBA.Elements);
-        /*     Rr_UIEndChild(); */
-        /* } */
-        /* if (Rr_UIBeginChild("Text Input")) */
-        /* { */
-        static char StringBuffer[16] = "Hello, World!";
-        Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
-        static char MultilineBuffer[128] =
-            "Line A\nLine B <- Delete this!\nLine C!";
-        Rr_UIInputText("String (128 bytes)", 128, MultilineBuffer);
-        static int32_t TestInt = 1337;
-        Rr_UIInputInt("Integer Input", &TestInt);
-        static uint32_t TestUnsignedInt = 348579;
-        Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
-        static float TestFloat = 123.456f;
-        Rr_UIInputFloat("Float Input", &TestFloat);
-        static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };
-        Rr_UIInputFloat2("Float2 Input", TestVec2.Elements);
-        static Rr_Vec3 TestVec3 = { 1.0f, 0.0f, 1.0f };
-        Rr_UIInputFloat3("Float3 Input", TestVec3.Elements);
-        static Rr_Vec4 TestVec4 = { 1.0f, 0.0f, 1.0f, 1.0f };
-        Rr_UIInputFloat4("Float4 Input", TestVec4.Elements);
-        static Rr_Mat2 TestMat2 = {
-            1.0f,
-            -1.0f, //
-            -1.0f,
-            1.0f, //
-        };
-        Rr_UIInputFloat2x2("Float2x2 Input", (float *)TestMat2.Elements);
-        static Rr_Mat3 TestMat3 = {
-            1.0f,  -1.0f, 1.0f,  //
-            -1.0f, 1.0f,  -1.0f, //
-            1.0f,  -1.0f, 1.0f,  //
-        };
-        Rr_UIInputFloat3x3("Float3x3 Input", (float *)TestMat3.Elements);
-        static Rr_Mat4 TestMat4 = {
-            1.0f,  -1.0f, 1.0f,  -1.0f, //
-            -1.0f, 1.0f,  -1.0f, 1.0f,  //
-            1.0f,  -1.0f, 1.0f,  -1.0f, //
-            -1.0f, 1.0f,  -1.0f, 1.0f,  //
-        };
-        Rr_UIInputFloat4x4("Float4x4 Input", (float *)TestMat4.Elements);
-        /*     Rr_UIEndChild(); */
-        /* } */
-        /* if (Rr_UIBeginChild("Button")) */
-        /* { */
-        /*     Rr_UIBeginHorizontal(); */
-        /*     if (Rr_UIButton("Show Style Editor")) */
-        /*     { */
-        /*         StyleEditorWindowOpen = true; */
-        /*     } */
-        /*     if (Rr_UIButton("Show Fixed Size Window")) */
-        /*     { */
-        /*         FixedSizeWindowOpen = true; */
-        /*     } */
-        /*     Rr_UIEndHorizontal(); */
-        /*     if (Rr_UIButton("Show Text Input Window")) */
-        /*     { */
-        /*         TextInputWindowOpen = true; */
-        /*     } */
-        /*     Rr_UIEndChild(); */
-        /* } */
+            Rr_UIEndChild();
+        }
+        if (Rr_UIBeginChild("Color Input"))
+        {
+            static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
+            Rr_UIInputColor3("Color RBA", ColorRGB.Elements);
+            static Rr_Vec4 ColorRGBA = { 0.9f, 0.2345f, 0.2f, 1.0f };
+            Rr_UIInputColor4("Color RGBA", ColorRGBA.Elements);
+            Rr_UIEndChild();
+        }
+        if (Rr_UIBeginChild("Input Fields"))
+        {
+            static char StringBuffer[16] = "Hello, World!";
+            Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
+            static char MultilineBuffer[128] =
+                "Line A\nLine B <- Delete this!\nLine C!";
+            Rr_UIInputText("String (128 bytes)", 128, MultilineBuffer);
+            static int32_t TestInt = 1337;
+            Rr_UIInputInt("Integer Input", &TestInt);
+            static uint32_t TestUnsignedInt = 348579;
+            Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
+            static float TestFloat = 123.456f;
+            Rr_UIInputFloat("Float Input", &TestFloat);
+            static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };
+            Rr_UIInputFloat2("Float2 Input", TestVec2.Elements);
+            static Rr_Vec3 TestVec3 = { 1.0f, 0.0f, 1.0f };
+            Rr_UIInputFloat3("Float3 Input", TestVec3.Elements);
+            static Rr_Vec4 TestVec4 = { 1.0f, 0.0f, 1.0f, 1.0f };
+            Rr_UIInputFloat4("Float4 Input", TestVec4.Elements);
+            static Rr_Mat2 TestMat2 = {
+                1.0f,
+                -1.0f, //
+                -1.0f,
+                1.0f, //
+            };
+            Rr_UIInputFloat2x2("Float2x2 Input", (float *)TestMat2.Elements);
+            static Rr_Mat3 TestMat3 = {
+                1.0f,  -1.0f, 1.0f,  //
+                -1.0f, 1.0f,  -1.0f, //
+                1.0f,  -1.0f, 1.0f,  //
+            };
+            Rr_UIInputFloat3x3("Float3x3 Input", (float *)TestMat3.Elements);
+            static Rr_Mat4 TestMat4 = {
+                1.0f,  -1.0f, 1.0f,  -1.0f, //
+                -1.0f, 1.0f,  -1.0f, 1.0f,  //
+                1.0f,  -1.0f, 1.0f,  -1.0f, //
+                -1.0f, 1.0f,  -1.0f, 1.0f,  //
+            };
+            Rr_UIInputFloat4x4("Float4x4 Input", (float *)TestMat4.Elements);
+            Rr_UIEndChild();
+        }
+        if (Rr_UIBeginChild("Button"))
+        {
+            Rr_UIBeginHorizontal();
+            if (Rr_UIButton("Show Style Editor"))
+            {
+                StyleEditorWindowOpen = true;
+            }
+            if (Rr_UIButton("Show Fixed Size Window"))
+            {
+                FixedSizeWindowOpen = true;
+            }
+            Rr_UIEndHorizontal();
+            if (Rr_UIButton("Show Text Input Window"))
+            {
+                TextInputWindowOpen = true;
+            }
+            Rr_UIEndChild();
+        }
         /* /\* if (Rr_UIBeginChild("Text")) *\/ */
         /* /\* { *\/ */
         /* /\*     Rr_UILabel("Text"); *\/ */
         /* /\*     Rr_UILabel("Multi\n line\n  text"); *\/ */
         /* /\*     Rr_UILabelEx( *\/ */
-        /* /\*         "Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-         * sed " *\/ */
-        /* /\*         "do eiusmod tempor incididunt ut labore et dolore magna "
+        /* /\*         "Lorem ipsum dolor sit amet, consectetur adipiscing
+         * elit, sed " *\/ */
+        /* /\*         "do eiusmod tempor incididunt ut labore et dolore
+         * magna "
          * *\/ */
         /* /\*         "aliqua. " *\/ */
         /* /\*         "Ut enim ad minim veniam, quis nostrud exercitation
          * ullamco " *\/ */
-        /* /\*         "laboris nisi ut aliquip ex ea commodo consequat. Duis
-         * aute " *\/ */
+        /* /\*         "laboris nisi ut aliquip ex ea commodo consequat.
+         * Duis aute " *\/ */
         /* /\*         "irure dolor in reprehenderit in voluptate velit esse
          * cillum " *\/ */
-        /* /\*         "dolore eu fugiat nulla pariatur. Excepteur sint occaecat
-         * " *\/ */
+        /* /\*         "dolore eu fugiat nulla pariatur. Excepteur sint
+         * occaecat " *\/ */
         /* /\*         "cupidatat non proident, sunt in culpa qui officia
          * deserunt " *\/ */
         /* /\*         "mollit anim id est laborum. ", *\/ */
