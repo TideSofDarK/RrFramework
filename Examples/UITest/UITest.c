@@ -65,16 +65,16 @@ static void StyleEditorWindow()
             &Style->BevelIntensityLight);
         UpdateFontSize |=
             Rr_UIInputFloat("Bevel Intensity Dark", &Style->BevelIntensityDark);
-        if (UpdateFontSize)
-        {
-            Rr_UISetFontSize(FontSize);
-        }
+
         Rr_UISeparator();
+
         Rr_UIInputColor4("Foreground", Style->Foreground.Elements);
         Rr_UIInputColor4("Foreground Dimmed", Style->ForegroundDimmed.Elements);
         Rr_UIInputColor4("Background", Style->Background.Elements);
         Rr_UIInputColor4("Outline", Style->Outline.Elements);
+
         Rr_UISeparator();
+
         Rr_UIInputColor4("Title Background", Style->TitleBackground.Elements);
         Rr_UIInputColor4(
             "Title Close Button",
@@ -82,25 +82,42 @@ static void StyleEditorWindow()
         Rr_UIInputColor4(
             "Title Collapse Button",
             Style->TitleCollapseButtonBackground.Elements);
+
         Rr_UISeparator();
+
         Rr_UIInputColor4(
             "Scrollbar Background",
             Style->ScrollbarBackground.Elements);
         Rr_UIInputColor4("Scrollbar Normal", Style->ScrollbarNormal.Elements);
         Rr_UIInputColor4("Scrollbar Hovered", Style->ScrollbarHovered.Elements);
         Rr_UIInputColor4("Scrollbar Held", Style->ScrollbarHeld.Elements);
+
         Rr_UISeparator();
+
+        UpdateFontSize |=
+            Rr_UIInputFloat2("Button Padding", Style->ButtonPadding.Elements);
         Rr_UIInputColor4("Button Normal", Style->ButtonNormal.Elements);
         Rr_UIInputColor4("Button Hovered", Style->ButtonHovered.Elements);
         Rr_UIInputColor4("Button Held", Style->ButtonHeld.Elements);
         Rr_UIInputColor4("Button Disabled", Style->ButtonDisabled.Elements);
+
         Rr_UISeparator();
-        Rr_UIInputColor4(
-            "Selected Text",
-            Style->SelectedTextBackground.Elements);
+
+        UpdateFontSize |= Rr_UIInputFloat2(
+            "Input Field Padding",
+            Style->InputFieldPadding.Elements);
         Rr_UIInputColor4(
             "Input Field Normal",
             Style->InputFieldNormal.Elements);
+        Rr_UIInputColor4(
+            "Selected Text",
+            Style->SelectedTextBackground.Elements);
+
+        if (UpdateFontSize)
+        {
+            Rr_UISetFontSize(FontSize);
+        }
+
         Rr_UIEndWindow();
     }
 }

@@ -255,6 +255,7 @@ struct Rr_UIContext
     float ScrollbarHandleWidth;
     Rr_Vec2 ButtonPadding;
     float BevelThickness;
+    Rr_Vec2 InputFieldPadding;
 
     Rr_Buffer *VertexBuffer;
     Rr_Buffer *IndexBuffer;
@@ -4010,7 +4011,7 @@ static inline bool Rr_UIGenericInputField(
     const char *BufferString = UsePersistentBuffer && (Focused || WasFocused)
                                    ? gUIContext->TextInputBuffer.Data
                                    : Buffer;
-    Rr_Vec2 BufferPosition = Rr_AddV2(Offset, gUIContext->ButtonPadding);
+    Rr_Vec2 BufferPosition = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
     Rr_Vec2 BufferSize;
     if (AutoCenter)
     {
@@ -4061,7 +4062,7 @@ static inline bool Rr_UIGenericInputField(
 
     Rr_Rect FieldRect = {
         Offset,
-        Rr_AddV2(BufferSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f)),
+        Rr_AddV2(BufferSize, Rr_MulV2F(gUIContext->InputFieldPadding, 2.0f)),
     };
     if (UseFixedWidth)
     {
@@ -4456,7 +4457,7 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
         }
     }
 
-    MaxTextWidth += gUIContext->ButtonPadding.X * 2.0f;
+    MaxTextWidth += gUIContext->InputFieldPadding.X * 2.0f;
 
     return MaxTextWidth * (float)Cols +
            gUIContext->ComponentMargin * (float)(Cols - 1);
@@ -4558,7 +4559,7 @@ static inline bool Rr_UIGenericInputScalarMulti(
     }
 
     float DesiredComponentWidth =
-        MaxTextWidth + gUIContext->ButtonPadding.X * 2.0f;
+        MaxTextWidth + gUIContext->InputFieldPadding.X * 2.0f;
     float TotalDesiredWidth = DesiredComponentWidth * (float)Cols +
                               gUIContext->ComponentMargin * (float)(Cols - 1);
 
@@ -4682,7 +4683,7 @@ static inline bool Rr_UIInputScalarMulti(
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += FieldsExtent.X + Layout->ContentsPadding.X;
-    TitleOffset.Y += gUIContext->ButtonPadding.Y;
+    TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
@@ -4727,7 +4728,7 @@ bool Rr_UIInputField(
         TitleLength,
         Title,
         Rr_UICalculateTextSize(SIZE_MAX, Buffer, 0.0f, 0).X +
-            gUIContext->ButtonPadding.X * 2.0f);
+            gUIContext->InputFieldPadding.X * 2.0f);
 
     Rr_Vec2 FieldExtent;
     bool ChangesConfirmed = Rr_UIGenericInputField(
@@ -4744,7 +4745,7 @@ bool Rr_UIInputField(
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += FieldExtent.X + Layout->ContentsPadding.X;
-    TitleOffset.Y += gUIContext->ButtonPadding.Height;
+    TitleOffset.Y += gUIContext->InputFieldPadding.Height;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         0,
         TitleOffset,
@@ -5266,7 +5267,7 @@ static inline bool Rr_UIInputColorEx(
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_Vec2 ColorBoxExtent =
-        Rr_V2F(gUIContext->LineHeight + gUIContext->ButtonPadding.X);
+        Rr_V2F(gUIContext->LineHeight + gUIContext->InputFieldPadding.X);
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
@@ -5339,7 +5340,7 @@ static inline bool Rr_UIInputColorEx(
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += FieldsExtent.Width + gUIContext->ComponentMargin +
                      ColorBoxExtent.X + Layout->ContentsPadding.X;
-    TitleOffset.Y += gUIContext->ButtonPadding.Height;
+    TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         0,
         TitleOffset,
@@ -5398,7 +5399,7 @@ bool Rr_UICombobox(
     Rr_Vec2 ButtonPosition = Layout->Cursor;
 
     Rr_Vec2 SelectedTextPosition =
-        Rr_AddV2(ButtonPosition, gUIContext->ButtonPadding);
+        Rr_AddV2(ButtonPosition, gUIContext->InputFieldPadding);
     Rr_Vec2 SelectedTextSize = Rr_UIDrawText(
         0,
         SelectedTextPosition,
@@ -5412,10 +5413,10 @@ bool Rr_UICombobox(
         Layout,
         TitleLength,
         Title,
-        SelectedTextSize.X + gUIContext->ButtonPadding.X * 2.0f +
-            gUIContext->LineHeight + gUIContext->ButtonPadding.Y * 2.0f);
+        SelectedTextSize.X + gUIContext->InputFieldPadding.X * 2.0f +
+            gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f);
     float ButtonHeight =
-        SelectedTextSize.Height + gUIContext->ButtonPadding.Y * 2.0f;
+        SelectedTextSize.Height + gUIContext->InputFieldPadding.Y * 2.0f;
 
     Rr_Vec2 ButtonExtent = {
         ButtonWidth,
@@ -5451,7 +5452,8 @@ bool Rr_UICombobox(
         PopupPosition.Y += ButtonExtent.Height + gUIContext->FrameThickness;
         PopupPosition.X += gUIContext->FrameThickness;
         Rr_UISetNextWindowPosition(PopupPosition);
-        Rr_UISetNextWindowPadding(Rr_V2(gUIContext->ButtonPadding.Width, 0.0f));
+        Rr_UISetNextWindowPadding(
+            Rr_V2(gUIContext->InputFieldPadding.Width, 0.0f));
         Rr_UIBeginPopupWindow(POPUP_WINDOW_FLAGS);
         Rr_UILayout *PopupLayout = Rr_UICurrentLayout();
         for (uint32_t Index = 0; Index < OptionCount; ++Index)
@@ -5468,7 +5470,7 @@ bool Rr_UICombobox(
             Rr_Rect OptionButtonRect;
             OptionButtonRect.Offset.Y = PopupLayout->Cursor.Y;
             OptionButtonRect.Offset.X =
-                PopupLayout->Cursor.X - gUIContext->ButtonPadding.Width;
+                PopupLayout->Cursor.X - gUIContext->InputFieldPadding.Width;
             OptionButtonRect.Extent.Width =
                 gUIContext->PopupWindow.Rect.Extent.Width;
             OptionButtonRect.Extent.Height = gUIContext->LineHeight;
@@ -5556,7 +5558,7 @@ bool Rr_UICombobox(
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
     TitlePosition.X += ButtonWidth + Layout->ContentsPadding.X;
-    TitlePosition.Y += gUIContext->ButtonPadding.Height;
+    TitlePosition.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         0,
         TitlePosition,
@@ -5568,7 +5570,7 @@ bool Rr_UICombobox(
 
     Rr_Vec2 TotalExtent = {
         ButtonExtent.X + Layout->ContentsPadding.X + TitleExtent.X,
-        gUIContext->LineHeight + gUIContext->ButtonPadding.Height * 2.0f,
+        gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
     };
 
     Rr_UIAdvance(TotalExtent);
@@ -5624,14 +5626,8 @@ static inline float Rr_UISlider(
 
     if (ValueCString != NULL)
     {
-        Rr_Vec2 ValueSize = Rr_UIDrawText(
-            true,
-            Rr_V2F(0.0f),
-            SIZE_MAX,
-            ValueCString,
-            0.0f,
-            NULL,
-            0);
+        Rr_Vec2 ValueSize =
+            Rr_UICalculateTextSize(ValueCStringLength, ValueCString, 0.0f, 0);
 
         Rr_Vec2 ValuePosition = Layout->Cursor;
         ValuePosition.X = HandleRect.Offset.X + HandleWidth / 2.0f +
@@ -5811,13 +5807,15 @@ void Rr_InitUI(void)
         .TitleCloseButtonBackground = Rr_U32ToSRGB(0xD54251FF),
         .TitleCollapseButtonBackground = Rr_U32ToSRGB(0x5E2D96FF),
 
+        .ButtonPadding = { 0.25f, 0.125f },
         .ButtonNormal = Rr_U32ToSRGB(0x4c565dFF),
         .ButtonHovered = Rr_U32ToSRGB(0x687e8dFF),
         .ButtonHeld = Rr_U32ToSRGB(0x435866FF),
         .ButtonDisabled = Rr_U32ToSRGB(0x191e22FF),
 
-        .SelectedTextBackground = Rr_U32ToSRGB(0x6EA5FEFF),
+        .InputFieldPadding = { 0.25f, 0.125f },
         .InputFieldNormal = Rr_U32ToSRGB(0x191e22FF),
+        .SelectedTextBackground = Rr_U32ToSRGB(0x6EA5FEFF),
     };
 
     gUIContext->Style.ScrollbarBackground = gUIContext->Style.ButtonDisabled;
@@ -6025,10 +6023,12 @@ static inline void Rr_UIConsumeNextFontSize(void)
         gUIContext->ScrollbarHandleWidth =
             RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
         gUIContext->SeparatorLineHeight = gUIContext->LineHeight * 0.5f;
-        gUIContext->ButtonPadding =
-            (Rr_Vec2){ gUIContext->LineHeight * 0.25f,
-                       gUIContext->LineHeight * 0.125f };
+        gUIContext->ButtonPadding = RR_UI_ROUND_V2(
+            Rr_MulV2F(gUIContext->Style.ButtonPadding, gUIContext->LineHeight));
         gUIContext->BevelThickness = ceilf(gUIContext->FontSize * 0.1f);
+        gUIContext->InputFieldPadding = RR_UI_ROUND_V2(Rr_MulV2F(
+            gUIContext->Style.InputFieldPadding,
+            gUIContext->LineHeight));
 
         gUIContext->TitleHeight = RR_UI_ROUND(
             gUIContext->Style.TitlePadding.Height * 2.0f *

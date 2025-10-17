@@ -76,13 +76,15 @@ struct Rr_UIStyle
     Rr_Vec4 ScrollbarHovered;
     Rr_Vec4 ScrollbarHeld;
 
+    Rr_Vec2 ButtonPadding;
     Rr_Vec4 ButtonNormal;
     Rr_Vec4 ButtonHovered;
     Rr_Vec4 ButtonHeld;
     Rr_Vec4 ButtonDisabled;
 
-    Rr_Vec4 SelectedTextBackground;
+    Rr_Vec2 InputFieldPadding;
     Rr_Vec4 InputFieldNormal;
+    Rr_Vec4 SelectedTextBackground;
 };
 
 extern Rr_UIFont *Rr_UICreateFont(
