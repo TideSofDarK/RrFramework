@@ -1977,8 +1977,6 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 
     /* Assuming having a title bar. */
 
-    Rr_Rect TitleRect = Window->Rect;
-
     Rr_Rect ButtonRect;
     ButtonRect.Offset = Window->Rect.Offset;
     ButtonRect.Extent = Rr_V2F(gUIContext->TitleButtonSize);
@@ -4392,7 +4390,7 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
     void *Data,
     Rr_UIScalarFormatType ScalarFormatType)
 {
-    const size_t COMPONENT_BUFFER_SIZE = 32;
+#define COMPONENT_BUFFER_SIZE 32
     char ComponentBuffer[COMPONENT_BUFFER_SIZE];
 
     size_t ComponentSize;
@@ -4461,6 +4459,8 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
 
     return MaxTextWidth * (float)Cols +
            gUIContext->ComponentMargin * (float)(Cols - 1);
+
+#undef COMPONENT_BUFFER_SIZE
 }
 
 static inline bool Rr_UIGenericInputScalarMulti(
@@ -4756,8 +4756,7 @@ bool Rr_UIInputField(
         0);
 
     Rr_Vec2 TotalExtent = {
-        FieldExtent.X + Layout->ContentsPadding.X +
-            Layout->Window->MaxFlexibleWidgetTitleWidth,
+        FieldExtent.X + Layout->ContentsPadding.X + TitleExtent.X,
         FieldExtent.Y,
     };
 
@@ -5351,9 +5350,8 @@ static inline bool Rr_UIInputColorEx(
         0);
 
     Rr_Vec2 TotalExtent = {
-        FieldsExtent.X + FieldsExtent.Height + gUIContext->ComponentMargin +
-            Layout->ContentsPadding.X +
-            Layout->Window->MaxFlexibleWidgetTitleWidth,
+        FieldsExtent.X + ColorBoxWithMargin + Layout->ContentsPadding.X +
+            TitleExtent.X,
         FieldsExtent.Height,
     };
 
