@@ -4302,7 +4302,7 @@ static inline void Rr_UIFormatScalar(
         {
             snprintf(
                 Buffer,
-                sizeof(Buffer),
+                BufferCapacity,
                 "%u",
                 *(unsigned int *)ElementData);
         }
@@ -5271,12 +5271,14 @@ static inline bool Rr_UIInputColorEx(
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
+    float ColorBoxWithMargin = gUIContext->ComponentMargin + ColorBoxExtent.X;
+
     float FieldsWidth = Rr_UICalculateGenericInputScalarMultiWidth(
         ChannelCount,
         1,
         Channels,
         RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
-    FieldsWidth += gUIContext->ComponentMargin + ColorBoxExtent.X;
+    FieldsWidth += ColorBoxWithMargin;
 
     FieldsWidth = Rr_UICalculateFlexibleWidgetLayout(
         Layout,
@@ -5295,7 +5297,7 @@ static inline bool Rr_UIInputColorEx(
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT,
-        FieldsWidth,
+        FieldsWidth - ColorBoxWithMargin,
         true,
         &FieldsExtent);
 
