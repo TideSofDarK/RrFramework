@@ -162,6 +162,7 @@ struct Rr_UILayout
     Rr_Vec2 DeferredWindowOffset;
     Rr_Vec2 DeferredWindowExtent;
     Rr_Vec4 DeferredResizeHandleColor;
+    float DeferredMaxFlexibleWidgetTitleWidth;
     float DeferredMaxFlexibleWidgetWidth;
     bool DeferredAutoResize;
 
@@ -2848,6 +2849,8 @@ void Rr_UIEndWindow(void)
         Window->Rect.Extent = Layout->DeferredWindowExtent;
     }
 
+    Window->MaxFlexibleWidgetTitleWidth =
+        Layout->DeferredMaxFlexibleWidgetTitleWidth;
     Window->MaxFlexibleWidgetWidth = Layout->DeferredMaxFlexibleWidgetWidth;
 
     /* Pop current layout from the stack. */
@@ -2952,18 +2955,16 @@ static inline float Rr_UICalculateFlexibleWidgetWidth(
     float DesiredWidgetWidth)
 {
     float TitleWidth = Rr_UICalculateTextSize(TitleLength, Title, 0.0f, 0).X;
-    Layout->Window->MaxFlexibleWidgetTitleWidth =
-        RR_MAX(Layout->Window->MaxFlexibleWidgetTitleWidth, TitleWidth);
+    Layout->DeferredMaxFlexibleWidgetTitleWidth =
+        RR_MAX(Layout->DeferredMaxFlexibleWidgetTitleWidth, TitleWidth);
 
     Layout->DeferredMaxFlexibleWidgetWidth =
         RR_MAX(Layout->DeferredMaxFlexibleWidgetWidth, DesiredWidgetWidth);
 
     if (Layout->DeferredAutoResize)
     {
-        if (Layout->Window->MaxFlexibleWidgetWidth > DesiredWidgetWidth)
-        {
-            DesiredWidgetWidth = Layout->Window->MaxFlexibleWidgetWidth;
-        }
+        DesiredWidgetWidth =
+            RR_MAX(DesiredWidgetWidth, Layout->Window->MaxFlexibleWidgetWidth);
     }
     else
     {
