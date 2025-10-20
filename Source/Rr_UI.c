@@ -6023,54 +6023,52 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
 
 static inline void Rr_UIConsumeNextFontSize(void)
 {
-    if (gUIContext->NextFontSize != INFINITY)
+    if (gUIContext->NextFontSize == INFINITY)
     {
-        gUIContext->FontSize = gUIContext->NextFontSize;
-        gUIContext->NextFontSize = INFINITY;
-
-        Rr_UIStyle *Style = &gUIContext->Style;
-
-        gUIContext->LineHeight =
-            gUIContext->FontSize * gUIContext->Font->LineHeight;
-        gUIContext->ContentsPadding =
-            Rr_MulV2F(gUIContext->Style.ContentsPadding, gUIContext->FontSize);
-        gUIContext->ComponentMargin =
-            RR_UI_ROUND(Style->ComponentMargin * gUIContext->FontSize);
-        gUIContext->FlexibleTitleMargin =
-            RR_UI_ROUND(Style->FlexibleTitleMargin * gUIContext->FontSize);
-
-        gUIContext->FrameThickness =
-            floorf(RR_MAX(1.0f, gUIContext->FontSize * 0.075f));
-        gUIContext->ResizeHandleSize = RR_UI_ROUND(gUIContext->FontSize);
-        gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
-        gUIContext->ScrollbarHandleWidth =
-            RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
-        gUIContext->SeparatorLineHeight = gUIContext->LineHeight * 0.5f;
-        gUIContext->ButtonPadding = RR_UI_ROUND_V2(
-            Rr_MulV2F(gUIContext->Style.ButtonPadding, gUIContext->LineHeight));
-        gUIContext->BevelThickness = ceilf(gUIContext->FontSize * 0.1f);
-        gUIContext->InputFieldPadding = RR_UI_ROUND_V2(Rr_MulV2F(
-            gUIContext->Style.InputFieldPadding,
-            gUIContext->LineHeight));
-
-        gUIContext->TitleHeight = RR_UI_ROUND(
-            gUIContext->Style.TitlePadding.Height * 2.0f *
-                gUIContext->FontSize +
-            gUIContext->LineHeight);
-        gUIContext->TitleButtonSize = RR_UI_ROUND(gUIContext->TitleHeight);
-        gUIContext->TitlePadding =
-            Rr_MulV2F(gUIContext->Style.TitlePadding, gUIContext->FontSize);
-        gUIContext->MinWindowSizeNoTitle =
-            Rr_MulV2F(gUIContext->ContentsPadding, 2.0f);
-        gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
-        gUIContext->MinWindowSizeNoTitle.X += gUIContext->FontSize * 2.0f;
-        gUIContext->MinWindowSizeNoTitle.Y += gUIContext->FontSize * 2.0f;
-        gUIContext->MinWindowSizeNoTitle =
-            RR_UI_ROUND_V2(gUIContext->MinWindowSizeNoTitle);
-        gUIContext->MinWindowSize = gUIContext->MinWindowSizeNoTitle;
-        gUIContext->MinWindowSize.Y += gUIContext->TitleHeight;
-        gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
+        return;
     }
+
+    Rr_UIStyle *Style = &gUIContext->Style;
+    float FontSize = gUIContext->NextFontSize;
+
+    gUIContext->NextFontSize = INFINITY;
+    gUIContext->FontSize = FontSize;
+    gUIContext->LineHeight = FontSize * gUIContext->Font->LineHeight;
+    gUIContext->ContentsPadding =
+        Rr_MulV2F(gUIContext->Style.ContentsPadding, FontSize);
+    gUIContext->ComponentMargin =
+        RR_UI_ROUND(Style->ComponentMargin * FontSize);
+    gUIContext->FlexibleTitleMargin =
+        RR_UI_ROUND(Style->FlexibleTitleMargin * FontSize);
+
+    gUIContext->FrameThickness = floorf(RR_MAX(1.0f, FontSize * 0.075f));
+    gUIContext->ResizeHandleSize = RR_UI_ROUND(FontSize);
+    gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
+    gUIContext->ScrollbarHandleWidth =
+        RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
+    gUIContext->SeparatorLineHeight = gUIContext->LineHeight * 0.5f;
+    gUIContext->ButtonPadding = RR_UI_ROUND_V2(
+        Rr_MulV2F(gUIContext->Style.ButtonPadding, gUIContext->LineHeight));
+    gUIContext->BevelThickness = ceilf(FontSize * 0.1f);
+    gUIContext->InputFieldPadding = RR_UI_ROUND_V2(
+        Rr_MulV2F(gUIContext->Style.InputFieldPadding, gUIContext->LineHeight));
+
+    gUIContext->TitleHeight = RR_UI_ROUND(
+        gUIContext->Style.TitlePadding.Height * 2.0f * FontSize +
+        gUIContext->LineHeight);
+    gUIContext->TitleButtonSize = RR_UI_ROUND(gUIContext->TitleHeight);
+    gUIContext->TitlePadding =
+        Rr_MulV2F(gUIContext->Style.TitlePadding, FontSize);
+    gUIContext->MinWindowSizeNoTitle =
+        Rr_MulV2F(gUIContext->ContentsPadding, 2.0f);
+    gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
+    gUIContext->MinWindowSizeNoTitle.X += FontSize * 2.0f;
+    gUIContext->MinWindowSizeNoTitle.Y += FontSize * 2.0f;
+    gUIContext->MinWindowSizeNoTitle =
+        RR_UI_ROUND_V2(gUIContext->MinWindowSizeNoTitle);
+    gUIContext->MinWindowSize = gUIContext->MinWindowSizeNoTitle;
+    gUIContext->MinWindowSize.Y += gUIContext->TitleHeight;
+    gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
 }
 
 void Rr_NewUIFrame(void)
