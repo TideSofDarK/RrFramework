@@ -3070,15 +3070,19 @@ static inline float Rr_UICalculateFlexibleWidgetWidth(
     Layout->DeferredMaxFlexibleWidgetWidth =
         RR_MAX(Layout->DeferredMaxFlexibleWidgetWidth, DesiredWidgetWidth);
 
+    Rr_UIWindow *Window = Layout->Window;
+
     if (Layout->DeferredAutoResize)
     {
-        DesiredWidgetWidth =
-            RR_MAX(DesiredWidgetWidth, Layout->Window->MaxFlexibleWidgetWidth);
+        DesiredWidgetWidth = RR_MAX(
+            Window->MaxRigidWidth - Window->MaxFlexibleWidgetTitleWidth -
+                gUIContext->FlexibleTitleMargin,
+            RR_MAX(DesiredWidgetWidth, Layout->Window->MaxFlexibleWidgetWidth));
     }
     else
     {
         DesiredWidgetWidth = Layout->AvailableContentsWidth -
-                             Layout->Window->MaxFlexibleWidgetTitleWidth -
+                             Window->MaxFlexibleWidgetTitleWidth -
                              gUIContext->FlexibleTitleMargin;
     }
 
