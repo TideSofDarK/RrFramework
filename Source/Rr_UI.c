@@ -4062,7 +4062,7 @@ static inline bool Rr_UIGenericInputField(
 
     bool UseFixedWidth = FixedWidth != 0.0f;
     bool AutoCenter =
-        RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT) &&
+        RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT) &&
         UseFixedWidth;
     Rr_UIClipRect *RestoreClipRect = NULL;
 
@@ -4194,13 +4194,14 @@ static inline bool Rr_UIGenericInputField(
         Hash,
         Rr_V2F(0.0f));
 
-    bool Autoselect = RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT);
+    bool AutoSelect =
+        RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT);
 
     if (Result.Began)
     {
         size_t BufferLength = strlen(Buffer);
 
-        if (Autoselect && !Focused && !WasFocused)
+        if (AutoSelect && !Focused && !WasFocused)
         {
             /* Select all on first click. */
 
@@ -4256,7 +4257,7 @@ static inline bool Rr_UIGenericInputField(
     }
     else if (Focused && Result.Moved)
     {
-        if (!Autoselect ||
+        if (!AutoSelect ||
             gUIContext->LeftMouseButtonClickId > gUIContext->TextInputClickId)
         {
             gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
@@ -4695,8 +4696,8 @@ static inline bool Rr_UIInputScalarMulti(
         Data,
         ScalarFormatType,
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT |
-            RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT,
+            RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
+            RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT,
         FieldsWidth,
         true,
         &FieldsExtent);
@@ -5239,8 +5240,8 @@ static inline void Rr_UIColorPickerPopup(
             "",
             Rr_UIHexFilter,
             RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-                RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT |
-                RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT))
+                RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
+                RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT))
     {
         uint32_t NewColor;
         sscanf(HexBuffer, "%x", &NewColor);
@@ -5315,8 +5316,8 @@ static inline bool Rr_UIInputColorEx(
         Channels,
         RR_UI_SCALAR_FORMAT_TYPE_FLOAT,
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
-            RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT |
-            RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT,
+            RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
+            RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT,
         FieldsWidth - ColorBoxWithMargin,
         true,
         &FieldsExtent);

@@ -53,6 +53,8 @@ static void StyleEditorWindow()
         float FontSize = Rr_UIGetFontSize();
         bool UpdateFontSize = false;
         UpdateFontSize |= Rr_UIInputFloat("Font Size", &FontSize);
+
+        Rr_UIPushFormatFloatDecimalPlaces(4);
         UpdateFontSize |=
             Rr_UIInputFloat2("Title Padding", Style->TitlePadding.Elements);
         UpdateFontSize |= Rr_UIInputFloat2(
@@ -65,6 +67,7 @@ static void StyleEditorWindow()
             &Style->BevelIntensityLight);
         UpdateFontSize |=
             Rr_UIInputFloat("Bevel Intensity Dark", &Style->BevelIntensityDark);
+        Rr_UIPopFormatFloatDecimalPlaces();
 
         Rr_UISeparator();
 
@@ -95,8 +98,11 @@ static void StyleEditorWindow()
 
         Rr_UISeparator();
 
+        Rr_UIPushFormatFloatDecimalPlaces(4);
         UpdateFontSize |=
             Rr_UIInputFloat2("Button Padding", Style->ButtonPadding.Elements);
+        Rr_UIPopFormatFloatDecimalPlaces();
+
         Rr_UIInputColor4("Button Normal", Style->ButtonNormal.Elements);
         Rr_UIInputColor4("Button Hovered", Style->ButtonHovered.Elements);
         Rr_UIInputColor4("Button Held", Style->ButtonHeld.Elements);
@@ -104,9 +110,12 @@ static void StyleEditorWindow()
 
         Rr_UISeparator();
 
+        Rr_UIPushFormatFloatDecimalPlaces(4);
         UpdateFontSize |= Rr_UIInputFloat2(
             "Input Field Padding",
             Style->InputFieldPadding.Elements);
+        Rr_UIPopFormatFloatDecimalPlaces();
+
         Rr_UIInputColor4(
             "Input Field Normal",
             Style->InputFieldNormal.Elements);
