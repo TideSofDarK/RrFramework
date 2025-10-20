@@ -1855,8 +1855,7 @@ static inline void Rr_UIPopClipRectBounds(void)
 
 static inline Rr_Rect *Rr_UIClipRectBounds(void)
 {
-    return gUIContext->ClipRectBoundsStack.Data +
-           (gUIContext->ClipRectBoundsStack.Count - 1);
+    return &RR_LAST_ARRAY_ELEMENT(&gUIContext->ClipRectBoundsStack);
 }
 
 static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
@@ -1885,8 +1884,7 @@ static inline void Rr_UIEndClipRect(void)
         if (Window->TopLevelClipRects->Count > 0)
         {
             Rr_UIClipRect *Last =
-                &Window->TopLevelClipRects
-                     ->Data[Window->TopLevelClipRects->Count - 1];
+                &RR_LAST_ARRAY_ELEMENT(Window->TopLevelClipRects);
             Last->IndexCount =
                 (uint32_t)gUIContext->Indices.Count - Last->FirstIndex;
         }
@@ -3057,7 +3055,7 @@ void Rr_UIEndHorizontal(void)
     Rr_UIAdvance(Layout->HorizontalMaxExtent);
 }
 
-static inline float Rr_UICalculateFlexibleWidgetWidth(
+static inline float Rr_UISetupFlexibleWidget(
     Rr_UILayout *Layout,
     size_t TitleLength,
     const char *Title,
@@ -3156,7 +3154,7 @@ bool Rr_UITab(const char *Title)
     Rr_Vec2 TextPosition = Layout->TabCursor;
     TextPosition.X += gUIContext->ButtonPadding.X;
     Rr_Vec2 TextSize = Rr_UIDrawText(
-        0,
+        false,
         TextPosition,
         TitleLength,
         Title,
@@ -3280,7 +3278,7 @@ bool Rr_UIFold(const char *Title)
             Layout->Cursor.Y),
         gUIContext->TitlePadding);
     Rr_UIDrawText(
-        0,
+        false,
         TitlePosition,
         TitleLength,
         Title,
@@ -3354,7 +3352,7 @@ void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_Vec2 TextSize = Rr_UIDrawText(
-        0,
+        false,
         Layout->Cursor,
         SIZE_MAX,
         Text,
@@ -3377,7 +3375,7 @@ void Rr_UILabel(const char *Text)
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_Vec2 TextSize = Rr_UIDrawText(
-        0,
+        false,
         Layout->Cursor,
         SIZE_MAX,
         Text,
@@ -3426,7 +3424,7 @@ bool Rr_UIButton(const char *Text)
 
     Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, gUIContext->ButtonPadding);
     Rr_Vec2 TextSize = Rr_UIDrawText(
-        0,
+        false,
         TextPosition,
         SIZE_MAX,
         Text,
@@ -3512,7 +3510,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_Vec2 TitlePosition = FramePosition;
     TitlePosition.X += CheckboxSize.X + gUIContext->ButtonPadding.Width;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
-        0,
+        false,
         TitlePosition,
         SIZE_MAX,
         Title,
@@ -4689,11 +4687,8 @@ static inline bool Rr_UIInputScalarMulti(
         Data,
         ScalarFormatType);
 
-    FieldsWidth = Rr_UICalculateFlexibleWidgetWidth(
-        Layout,
-        TitleLength,
-        Title,
-        FieldsWidth);
+    FieldsWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, FieldsWidth);
 
     Rr_Vec2 FieldsExtent;
     bool Edited = Rr_UIGenericInputScalarMulti(
@@ -4752,7 +4747,7 @@ bool Rr_UIInputField(
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    float FieldWidth = Rr_UICalculateFlexibleWidgetWidth(
+    float FieldWidth = Rr_UISetupFlexibleWidget(
         Layout,
         TitleLength,
         Title,
@@ -4776,7 +4771,7 @@ bool Rr_UIInputField(
     TitleOffset.X += FieldExtent.X + Layout->ContentsPadding.X;
     TitleOffset.Y += gUIContext->InputFieldPadding.Height;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
-        0,
+        false,
         TitleOffset,
         TitleLength,
         Title,
@@ -5301,11 +5296,8 @@ static inline bool Rr_UIInputColorEx(
         RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
     FieldsWidth += ColorBoxWithMargin;
 
-    FieldsWidth = Rr_UICalculateFlexibleWidgetWidth(
-        Layout,
-        TitleLength,
-        Title,
-        FieldsWidth);
+    FieldsWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, FieldsWidth);
 
     Rr_Vec2 FieldsExtent;
     bool Edited = Rr_UIGenericInputScalarMulti(
@@ -5362,7 +5354,7 @@ static inline bool Rr_UIInputColorEx(
                      ColorBoxExtent.X + Layout->ContentsPadding.X;
     TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
-        0,
+        false,
         TitleOffset,
         TitleLength,
         Title,
@@ -5420,7 +5412,7 @@ bool Rr_UICombobox(
     Rr_Vec2 SelectedTextPosition =
         Rr_AddV2(ButtonPosition, gUIContext->InputFieldPadding);
     Rr_Vec2 SelectedTextSize = Rr_UIDrawText(
-        0,
+        false,
         SelectedTextPosition,
         TitleLength,
         Options[*SelectedIndex],
@@ -5428,7 +5420,7 @@ bool Rr_UICombobox(
         &gUIContext->Style.Foreground,
         0);
 
-    float ButtonWidth = Rr_UICalculateFlexibleWidgetWidth(
+    float ButtonWidth = Rr_UISetupFlexibleWidget(
         Layout,
         TitleLength,
         Title,
@@ -5479,7 +5471,7 @@ bool Rr_UICombobox(
         {
             Rr_UIPrimitive OptionButtonQuad = Rr_UIReserveQuad();
             Rr_Vec2 OptionSize = Rr_UIDrawText(
-                0,
+                false,
                 PopupLayout->Cursor,
                 SIZE_MAX,
                 Options[Index],
@@ -5579,7 +5571,7 @@ bool Rr_UICombobox(
     TitlePosition.X += ButtonWidth + Layout->ContentsPadding.X;
     TitlePosition.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
-        0,
+        false,
         TitlePosition,
         TitleLength,
         Title,
@@ -5619,11 +5611,8 @@ static inline float Rr_UISlider(
      * also use value text width. */
     float MinSliderWidth = gUIContext->FontSize * 10.0f;
 
-    float SliderWidth = Rr_UICalculateFlexibleWidgetWidth(
-        Layout,
-        TitleLength,
-        Title,
-        MinSliderWidth);
+    float SliderWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, MinSliderWidth);
 
     Rr_Rect SliderRect = {
         Layout->Cursor,
@@ -5709,7 +5698,7 @@ static inline float Rr_UISlider(
     TitleOffset.X += SliderRect.Extent.X + Layout->ContentsPadding.X;
     TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
-        0,
+        false,
         TitleOffset,
         TitleLength,
         Title,
