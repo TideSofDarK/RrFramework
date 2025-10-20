@@ -741,6 +741,11 @@ static inline float Rr_Lerp(float A, float Time, float B)
     return (1.0f - Time) * A + Time * B;
 }
 
+static inline float Rr_Damp(float A, float Time, float B)
+{
+    return Rr_Lerp(A, 1.0f - expf(-Time), B);
+}
+
 /*
  * Vector initialization
  */

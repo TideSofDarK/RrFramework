@@ -107,6 +107,7 @@ struct Rr_UIWindow
     Rr_Vec2 ContentsStart;
     Rr_Vec2 ContentsEnd;
     float VScroll;
+    float VScrollTarget;
     float HScroll;
     int32_t Z;
 
@@ -2232,10 +2233,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
     }
     ContentsHeight += Layout->ContentsPadding.Height;
     float FillRatio = ContentsAreaRect.Extent.Height / ContentsHeight;
-
     float MaxYScroll =
         RR_MAX(0.0f, ContentsHeight - ContentsAreaRect.Extent.Height);
-    Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
 
     if (FillRatio < 1.0f)
     {
@@ -2262,7 +2261,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
 
         float ScrollbarHandleHeightUnpadded = ScrollbarHandleSize.Height;
 
-        ScrollbarHandlePosition.Y += Window->VScroll * FillRatio;
+        ScrollbarHandlePosition.Y += roundf(Window->VScroll * FillRatio);
 
         /* Vertical margins. */
 
@@ -2303,7 +2302,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             if (gUIContext->MousePosition.Y >
                 ScrollbarHandlePosition.Y + ScrollbarHandleSize.Y)
             {
-                Window->VScroll =
+                Window->VScroll = Window->VScrollTarget =
                     (gUIContext->MousePosition.Y - ScrollbarPosition.Y -
                      ScrollbarHandleOffset * 2.0f) /
                         (ScrollbarSize.Y / ContentsHeight) -
@@ -2312,7 +2311,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             }
             else if (gUIContext->MousePosition.Y < ScrollbarHandlePosition.Y)
             {
-                Window->VScroll =
+                Window->VScroll = Window->VScrollTarget =
                     (gUIContext->MousePosition.Y - ScrollbarPosition.Y -
                      ScrollbarHandleOffset * 2.0f) /
                     ((ScrollbarSize.Y) / ContentsHeight);
@@ -2327,11 +2326,9 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             float ContentsHeight =
                 Window->ContentsEnd.Y - Window->ContentsStart.Y;
             float FillRatio = ContentsHeight / ContentsAreaRect.Extent.Height;
-            Window->VScroll =
+            Window->VScroll = Window->VScrollTarget =
                 gUIContext->DragOpWindowStart.Y + (Delta * FillRatio);
         }
-
-        Window->VScroll = RR_CLAMP(0.0f, roundf(Window->VScroll), MaxYScroll);
 
         Rr_UIDrawBevel(
             &(Rr_Rect){
@@ -2340,15 +2337,18 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             },
             &gUIContext->Style.ScrollbarNormal,
             false);
-
-        return true;
     }
     else
     {
-        Window->VScroll = 0.0f;
+        /* Window->VScroll = 0.0f; */
+        Window->VScrollTarget = 0.0f;
     }
 
-    return false;
+    Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
+    Window->VScrollTarget =
+        RR_CLAMP(0.0f, roundf(Window->VScrollTarget), MaxYScroll);
+
+    return FillRatio < 1.0f;
 }
 
 Rr_UIStyle *Rr_UIGetStyle(void)
@@ -2677,9 +2677,12 @@ static inline bool Rr_UIBeginWindowEx(
             (Layout->DeferredAutoResize && Window->SkipThisFrame))
         {
             Layout->AvailableContentsWidth -= gUIContext->ScrollbarWidth;
-        }
-        Window->VScroll = roundf(Window->VScroll);
-        Layout->Cursor.Y -= Window->VScroll;
+        };
+        Window->VScroll = Rr_Damp(
+            Window->VScroll,
+            15.0f * (float)Rr_GetDeltaSeconds(),
+            Window->VScrollTarget);
+        Layout->Cursor.Y -= roundf(Window->VScroll);
     }
 
     /* NOTE: Defer drawing the handle to Rr_UIEndWindow()! */
@@ -2901,7 +2904,7 @@ void Rr_UIEndWindow(void)
         Rr_UIScrollBehavior(
             Window,
             &Window->VisibleRect,
-            &Window->TopLevelParent->VScroll);
+            &Window->TopLevelParent->VScrollTarget);
     }
 
     /* Apply deferred window offset. */
