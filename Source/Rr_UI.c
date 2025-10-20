@@ -2531,11 +2531,14 @@ static inline bool Rr_UIBeginWindowEx(
     *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveWindows, gUIContext->Arena) = Window;
     Window->Added = true;
 
-    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
-    Rr_UIWindow *ParentWindow = Rr_UICurrentWindow();
+    Rr_UILayout *ParentLayout = NULL;
+    Rr_UIWindow *ParentWindow = NULL;
 
     if (Window->Child)
     {
+        ParentLayout = Rr_UICurrentLayout();
+        ParentWindow = ParentLayout->Window;
+
         Window->TopLevelClipRects = ParentWindow->TopLevelClipRects;
     }
     else
@@ -2669,7 +2672,8 @@ static inline bool Rr_UIBeginWindowEx(
     bool VerticalScrollbarAdded = false;
     if (Layout->DeferredAutoResize || Rr_UIWindowNoVerticalScrollbar(Window))
     {
-        Window->VScroll = 0;
+        Window->VScroll = 0.0f;
+        Window->VScrollTarget = 0.0f;
     }
     else
     {
