@@ -156,8 +156,6 @@ struct Rr_UILayout
 
     float AvailableContentsWidth;
 
-    bool VerticalScrollbarAdded;
-
     bool LeftMouseButtonInsideRect;
 
     Rr_Vec2 TabCursor;
@@ -171,7 +169,9 @@ struct Rr_UILayout
     float DeferredMaxRigidWidth;
     bool DeferredAutoResize;
 
-    Rr_UILayout *TopLevelLayout;
+    Rr_UILayout *TopLevelParent;
+
+    Rr_UILayout *Previous;
 };
 
 struct Rr_UIContext
@@ -189,7 +189,9 @@ struct Rr_UIContext
     Rr_UIHash PopupWindowHash;
     bool PopupWindowOpen;
 
-    RR_ARRAY(Rr_UILayout) Stack;
+    /* TODO: We need nice stack data structure for these. */
+
+    Rr_UILayout *LayoutStack;
     RR_ARRAY(Rr_Rect) ClipRectBoundsStack;
     RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
@@ -396,9 +398,7 @@ void Rr_UIReleaseFont(Rr_UIContext *Context, Rr_UIFont *Font)
 
 static inline Rr_UILayout *Rr_UICurrentLayout(void)
 {
-    return gUIContext->Stack.Count > 0
-               ? &gUIContext->Stack.Data[gUIContext->Stack.Count - 1]
-               : NULL;
+    return gUIContext->LayoutStack;
 }
 
 static inline Rr_UIWindow *Rr_UICurrentWindow(void)
@@ -2544,8 +2544,7 @@ static inline bool Rr_UIBeginWindowEx(
             RR_ALLOC_TYPE(gUIContext->FrameArena, Rr_UIClipRectArray);
     }
 
-    Rr_UILayout *Layout =
-        RR_PUSH_INTO_ARRAY(&gUIContext->Stack, gUIContext->FrameArena);
+    Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
     *Layout = (Rr_UILayout){
         .Window = Window,
         .HorizontalX = INFINITY,
@@ -2553,10 +2552,12 @@ static inline bool Rr_UIBeginWindowEx(
         .DeferredWindowExtent = Rr_V2F(INFINITY),
         .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
         .ContentsPadding = ContentsPadding,
-        .TopLevelLayout = Window->Child ? ParentLayout->TopLevelLayout : Layout,
+        .TopLevelParent = Window->Child ? ParentLayout->TopLevelParent : Layout,
         .Cursor = Window->Rect.Offset,
         .AvailableContentsWidth = Window->Rect.Extent.Width,
+        .Previous = gUIContext->LayoutStack,
     };
+    gUIContext->LayoutStack = Layout;
 
     if (Window->Child)
     {
@@ -2604,7 +2605,7 @@ static inline bool Rr_UIBeginWindowEx(
     {
         Rr_Vec2 Delta =
             Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
-        Layout->TopLevelLayout->DeferredWindowOffset =
+        Layout->TopLevelParent->DeferredWindowOffset =
             Rr_FloorV2(Rr_AddV2(gUIContext->DragOpWindowStart, Delta));
     }
 
@@ -2961,7 +2962,7 @@ void Rr_UIEndWindow(void)
 
     /* Pop current layout from the stack. */
 
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->Stack));
+    gUIContext->LayoutStack = Layout->Previous;
 
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     if (ParentLayout)
@@ -6078,7 +6079,6 @@ void Rr_NewUIFrame(void)
 
     RR_RESET_ARRAY(&gUIContext->Vertices, gUIContext->FrameArena);
     RR_RESET_ARRAY(&gUIContext->Indices, gUIContext->FrameArena);
-    RR_RESET_ARRAY(&gUIContext->Stack, gUIContext->FrameArena);
 
     Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
     gUIContext->ScreenSize.Width = (float)SwapchainSize.Width;
@@ -6292,6 +6292,7 @@ void Rr_EndUI(void)
         Rr_EndGraphLabel(Rr_GetGraph(), "Rr.UI");
     }
 
+    gUIContext->LayoutStack = NULL;
     if (gUIContext->LeftMouseButtonUp)
     {
         gUIContext->LeftMouseButtonHeld = false;
