@@ -5264,14 +5264,6 @@ static inline void Rr_UIColorPickerPopup(
         }
     }
 
-    {
-        /* unsigned char R = (unsigned char)(Color->X * 255.0f); */
-        /* unsigned char G = (unsigned char)(Color->Y * 255.0f); */
-        /* unsigned char B = (unsigned char)(Color->Z * 255.0f); */
-        /* unsigned char A = (unsigned char)(Color->W * 255.0f); */
-        /* Rr_UILabelF("%d %d %d %d", R, G, B, A); */
-    }
-
     if (HSVChanged)
     {
         *(Rr_Vec3 *)Channels = Rr_UIHSVToRGB(&StaticHSV);
