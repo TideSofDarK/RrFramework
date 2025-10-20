@@ -1965,7 +1965,9 @@ static inline void Rr_UIAdvance(Rr_Vec2 Size)
         Layout->Cursor.X += Size.Width + Layout->ContentsPadding.Width;
 
         /* Horizontal mode is expected to be disabled when ending a window so
-         * these seem unimportant? */
+         * these seem unimportant?
+         * Basically I have to decide whether ContentsStart/End can be used
+         * directly when calculating something.*/
 
         Window->ContentsEnd.X = RR_MAX(
             Window->ContentsEnd.X,
@@ -1986,6 +1988,10 @@ static inline void Rr_UIAdvance(Rr_Vec2 Size)
         {
             Layout->DeferredMaxRigidWidth =
                 RR_MAX(Layout->DeferredMaxRigidWidth, Size.X);
+        }
+        else
+        {
+            Layout->NextAdvanceFlexible = false;
         }
     }
 }
@@ -2859,21 +2865,15 @@ void Rr_UIEndWindow(void)
                                 Window->ContentsStart.Y +
                                 Layout->ContentsPadding.Y;
 
-        Rr_UILayout *ParentLayout =
-            &gUIContext->Stack.Data[gUIContext->Stack.Count - 2];
-        if (ParentLayout->DeferredAutoResize)
-        /* if (Rr_UIWindowAutoResize(Window->TopLevelParent)) */
-        {
-            /* NOTE: Select between widths occupied by rigid widgets such as
-             * buttons and flexible widgets such as input fields. */
+        /* NOTE: Select between widths occupied by rigid widgets such as
+         * buttons and flexible widgets such as input fields. */
 
-            Window->Rect.Extent.X = RR_MAX(
-                Layout->DeferredMaxFlexibleWidgetTitleWidth +
-                    gUIContext->FlexibleTitleMargin +
-                    Layout->DeferredMaxFlexibleWidgetWidth,
-                Layout->DeferredMaxRigidWidth);
-            Window->Rect.Extent.X += Layout->ContentsPadding.X * 2.0f;
-        }
+        Window->Rect.Extent.X = RR_MAX(
+            Layout->DeferredMaxFlexibleWidgetTitleWidth +
+                gUIContext->FlexibleTitleMargin +
+                Layout->DeferredMaxFlexibleWidgetWidth,
+            Layout->DeferredMaxRigidWidth);
+        Window->Rect.Extent.X += Layout->ContentsPadding.X * 2.0f;
 
         if (Rr_UIWindowHasTitle(Window))
         {

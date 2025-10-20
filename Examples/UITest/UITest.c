@@ -218,14 +218,14 @@ static void Iterate(void)
         if (Rr_UIBeginChild("Checkbox"))
         {
             Rr_UICheckbox("Close Button", &CloseButton);
-            /* Rr_UIBeginHorizontal(); */
+            Rr_UIBeginHorizontal();
             Rr_UICheckbox("No Resize", &NoResize);
             Rr_UICheckbox("Auto Resize", &AutoResize);
-            /* Rr_UIEndHorizontal(); */
-            /* Rr_UIBeginHorizontal(); */
+            Rr_UIEndHorizontal();
+            Rr_UIBeginHorizontal();
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
             Rr_UICheckbox("No Title", &NoTitle);
-            /* Rr_UIEndHorizontal(); */
+            Rr_UIEndHorizontal();
             Rr_UIEndChild();
         }
         if (Rr_UIBeginChild("Slider"))
@@ -236,6 +236,7 @@ static void Iterate(void)
             Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
             static int32_t Int18 = 0;
             Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
+
             Rr_UIEndChild();
         }
         if (Rr_UIBeginChild("Color Input"))
@@ -244,6 +245,7 @@ static void Iterate(void)
             Rr_UIInputColor3("Color RBA", ColorRGB.Elements);
             static Rr_Vec4 ColorRGBA = { 0.9f, 0.2345f, 0.2f, 1.0f };
             Rr_UIInputColor4("Color RGBA", ColorRGBA.Elements);
+
             Rr_UIEndChild();
         }
         if (Rr_UIBeginChild("Input Fields"))
@@ -293,8 +295,10 @@ static void Iterate(void)
                 Rr_UIInputFloat4x4(
                     "Float4x4 Input",
                     (float *)TestMat4.Elements);
+
                 Rr_UIEndChild();
             }
+
             Rr_UIEndChild();
         }
         if (Rr_UIBeginChild("Button"))
@@ -313,6 +317,7 @@ static void Iterate(void)
             {
                 TextInputWindowOpen = true;
             }
+
             Rr_UIEndChild();
         }
         /* /\* if (Rr_UIBeginChild("Text")) *\/ */
