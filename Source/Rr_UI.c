@@ -5755,7 +5755,7 @@ bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
     assert(Max > Min);
 
     char Buffer[32];
-    int Length = snprintf(Buffer, 32, "%.4f", *Value);
+    int Length = snprintf(Buffer, 32, Rr_UICurrentFloatFormatString(), *Value);
 
     float In = *Value;
     float Clamped = RR_CLAMP(Min, *Value, Max);
