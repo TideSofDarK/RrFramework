@@ -190,6 +190,7 @@ struct Rr_UIContext
 
     RR_ARRAY(Rr_UILayout) Stack;
     RR_ARRAY(Rr_Rect) ClipRectBoundsStack;
+    RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
     Rr_Vec2 NextWindowSize;
     Rr_Vec2 NextWindowPosition;
@@ -2355,6 +2356,59 @@ Rr_UIStyle *Rr_UIGetStyle(void)
     return &gUIContext->Style;
 }
 
+void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places)
+{
+    *RR_PUSH_INTO_ARRAY(
+        &gUIContext->FormatFloatDecimalPlacesStack,
+        gUIContext->Arena) = Places;
+}
+
+void Rr_UIPopFormatFloatDecimalPlaces(void)
+{
+    assert(
+        gUIContext->FormatFloatDecimalPlacesStack.Count &&
+        "Did you forget to call Rr_UIPushFormatFloatDecimalPlaces()?");
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->FormatFloatDecimalPlacesStack));
+}
+
+static inline const char *Rr_UICurrentFloatFormatString(void)
+{
+    static const char *DEFAULT_STRING = "%.2f";
+
+    if (gUIContext->FormatFloatDecimalPlacesStack.Count > 0)
+    {
+        uint32_t Top =
+            RR_LAST_ARRAY_ELEMENT(&gUIContext->FormatFloatDecimalPlacesStack);
+        switch (Top)
+        {
+            case 0:
+                return "%.0f";
+            case 1:
+                return "%.1f";
+            case 2:
+                return "%.2f";
+            case 3:
+                return "%.3f";
+            case 4:
+                return "%.4f";
+            case 5:
+                return "%.5f";
+            case 6:
+                return "%.6f";
+            case 7:
+                return "%.7f";
+            case 8:
+                return "%.8f";
+            default:
+                return DEFAULT_STRING;
+        }
+    }
+    else
+    {
+        return DEFAULT_STRING;
+    }
+}
+
 void Rr_UISetNextWindowPosition(Rr_Vec2 Position)
 {
     gUIContext->NextWindowPosition = Position;
@@ -4256,19 +4310,7 @@ typedef enum
     RR_UI_SCALAR_FORMAT_TYPE_INT,
     RR_UI_SCALAR_FORMAT_TYPE_UINT,
     RR_UI_SCALAR_FORMAT_TYPE_FLOAT,
-    RR_UI_SCALAR_FORMAT_TYPE_FLOAT1,
-    RR_UI_SCALAR_FORMAT_TYPE_FLOAT2,
-    RR_UI_SCALAR_FORMAT_TYPE_FLOAT3,
-    RR_UI_SCALAR_FORMAT_TYPE_FLOAT4,
     RR_UI_SCALAR_FORMAT_TYPE_DOUBLE,
-    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE1,
-    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE2,
-    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE3,
-    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE4,
-    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE5,
-    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE6,
-    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE7,
-    RR_UI_SCALAR_FORMAT_TYPE_DOUBLE8,
 } Rr_UIScalarFormatType;
 
 static inline bool Rr_UIHexFilter(size_t Length, const char *UTF8String)
@@ -4358,72 +4400,20 @@ static inline void Rr_UIFormatScalar(
         break;
         case RR_UI_SCALAR_FORMAT_TYPE_FLOAT:
         {
-            snprintf(Buffer, BufferCapacity, "%f", *(float *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT1:
-        {
-            snprintf(Buffer, BufferCapacity, "%.1f", *(float *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT2:
-        {
-            snprintf(Buffer, BufferCapacity, "%.2f", *(float *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT3:
-        {
-            snprintf(Buffer, BufferCapacity, "%.3f", *(float *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT4:
-        {
-            snprintf(Buffer, BufferCapacity, "%.4f", *(float *)ElementData);
+            snprintf(
+                Buffer,
+                BufferCapacity,
+                Rr_UICurrentFloatFormatString(),
+                *(float *)ElementData);
         }
         break;
         case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE:
         {
-            snprintf(Buffer, BufferCapacity, "%f", *(double *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE1:
-        {
-            snprintf(Buffer, BufferCapacity, "%.1f", *(double *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE2:
-        {
-            snprintf(Buffer, BufferCapacity, "%.2f", *(double *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE3:
-        {
-            snprintf(Buffer, BufferCapacity, "%.3f", *(double *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE4:
-        {
-            snprintf(Buffer, BufferCapacity, "%.4f", *(double *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE5:
-        {
-            snprintf(Buffer, BufferCapacity, "%.5f", *(double *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE6:
-        {
-            snprintf(Buffer, BufferCapacity, "%.6f", *(double *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE7:
-        {
-            snprintf(Buffer, BufferCapacity, "%.7f", *(double *)ElementData);
-        }
-        break;
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE8:
-        {
-            snprintf(Buffer, BufferCapacity, "%.8f", *(double *)ElementData);
+            snprintf(
+                Buffer,
+                BufferCapacity,
+                Rr_UICurrentFloatFormatString(),
+                *(double *)ElementData);
         }
         break;
         default:
@@ -4457,23 +4447,11 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
         }
         break;
         case RR_UI_SCALAR_FORMAT_TYPE_FLOAT:
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT1:
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT2:
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT3:
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT4:
         {
             ComponentSize = sizeof(float);
         }
         break;
         case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE1:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE2:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE3:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE4:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE5:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE6:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE7:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE8:
         {
             ComponentSize = sizeof(double);
         }
@@ -4550,10 +4528,6 @@ static inline bool Rr_UIGenericInputScalarMulti(
         }
         break;
         case RR_UI_SCALAR_FORMAT_TYPE_FLOAT:
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT1:
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT2:
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT3:
-        case RR_UI_SCALAR_FORMAT_TYPE_FLOAT4:
         {
             ComponentSize = sizeof(float);
             FilterFunc = Rr_UIFloatFilter;
@@ -4561,14 +4535,6 @@ static inline bool Rr_UIGenericInputScalarMulti(
         }
         break;
         case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE1:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE2:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE3:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE4:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE5:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE6:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE7:
-        case RR_UI_SCALAR_FORMAT_TYPE_DOUBLE8:
         {
             ComponentSize = sizeof(double);
             FilterFunc = Rr_UIFloatFilter;
@@ -4835,7 +4801,7 @@ bool Rr_UIInputFloat(const char *Title, float *Value)
         Value,
         1,
         1,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat2(const char *Title, float *Values)
@@ -4845,7 +4811,7 @@ bool Rr_UIInputFloat2(const char *Title, float *Values)
         Values,
         2,
         1,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat3(const char *Title, float *Values)
@@ -4855,7 +4821,7 @@ bool Rr_UIInputFloat3(const char *Title, float *Values)
         Values,
         3,
         1,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat4(const char *Title, float *Values)
@@ -4865,7 +4831,7 @@ bool Rr_UIInputFloat4(const char *Title, float *Values)
         Values,
         4,
         1,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat2x2(const char *Title, float *Values)
@@ -4875,7 +4841,7 @@ bool Rr_UIInputFloat2x2(const char *Title, float *Values)
         Values,
         2,
         2,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat3x3(const char *Title, float *Values)
@@ -4885,7 +4851,7 @@ bool Rr_UIInputFloat3x3(const char *Title, float *Values)
         Values,
         3,
         3,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat4x4(const char *Title, float *Values)
@@ -4895,7 +4861,7 @@ bool Rr_UIInputFloat4x4(const char *Title, float *Values)
         Values,
         4,
         4,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
 }
 
 bool Rr_UIInputInt(const char *Title, int32_t *Value)
@@ -5327,7 +5293,7 @@ static inline bool Rr_UIInputColorEx(
         ChannelCount,
         1,
         Channels,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2);
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT);
     FieldsWidth += ColorBoxWithMargin;
 
     FieldsWidth = Rr_UICalculateFlexibleWidgetWidth(
@@ -5343,7 +5309,7 @@ static inline bool Rr_UIInputColorEx(
         ChannelCount,
         1,
         Channels,
-        RR_UI_SCALAR_FORMAT_TYPE_FLOAT2,
+        RR_UI_SCALAR_FORMAT_TYPE_FLOAT,
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTOSELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTOCENTER_BIT,
@@ -6236,94 +6202,92 @@ void Rr_EndUI(void)
 
     Rr_UIAssertNoWindow();
 
-    /* TODO: Consider active popup as well. */
-    if (gUIContext->ActiveWindows.Count == 0)
+    if (gUIContext->ActiveWindows.Count > 0)
     {
-        return;
-    }
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
-    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_UIUniformData UniformData = {
+            .ScreenSize = gUIContext->ScreenSize,
+            .DistanceRange = gUIContext->Font->DistanceRange,
+            .Time = (float)Rr_GetTimeSeconds(),
+        };
+        char *MappedUniformData =
+            Rr_GetMappedBufferData(gUIContext->UniformBuffer);
+        memcpy(MappedUniformData, &UniformData, sizeof(UniformData));
 
-    Rr_UIUniformData UniformData = {
-        .ScreenSize = gUIContext->ScreenSize,
-        .DistanceRange = gUIContext->Font->DistanceRange,
-        .Time = (float)Rr_GetTimeSeconds(),
-    };
-    char *MappedUniformData = Rr_GetMappedBufferData(gUIContext->UniformBuffer);
-    memcpy(MappedUniformData, &UniformData, sizeof(UniformData));
+        Rr_UIVertex *VertexBufferData =
+            Rr_GetMappedBufferData(gUIContext->VertexBuffer);
+        memcpy(
+            VertexBufferData,
+            gUIContext->Vertices.Data,
+            sizeof(Rr_UIVertex) * gUIContext->Vertices.Count);
 
-    Rr_UIVertex *VertexBufferData =
-        Rr_GetMappedBufferData(gUIContext->VertexBuffer);
-    memcpy(
-        VertexBufferData,
-        gUIContext->Vertices.Data,
-        sizeof(Rr_UIVertex) * gUIContext->Vertices.Count);
+        Rr_UIIndex *IndexBufferData =
+            Rr_GetMappedBufferData(gUIContext->IndexBuffer);
+        memcpy(
+            IndexBufferData,
+            gUIContext->Indices.Data,
+            sizeof(Rr_UIIndex) * gUIContext->Indices.Count);
 
-    Rr_UIIndex *IndexBufferData =
-        Rr_GetMappedBufferData(gUIContext->IndexBuffer);
-    memcpy(
-        IndexBufferData,
-        gUIContext->Indices.Data,
-        sizeof(Rr_UIIndex) * gUIContext->Indices.Count);
+        Rr_BeginGraphLabel(Rr_GetGraph(), "Rr.UI");
 
-    Rr_BeginGraphLabel(Rr_GetGraph(), "Rr.UI");
+        Rr_ColorTarget ColorTarget = {
+            .Image = SwapchainImage,
+            .LoadOp = RR_LOAD_OP_LOAD,
+            .StoreOp = RR_STORE_OP_STORE,
+        };
+        Rr_GraphNode *GraphicsNode =
+            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+        Rr_BindGraphicsPipeline(GraphicsNode, gUIContext->GraphicsPipeline);
+        Rr_BindVertexBuffer(GraphicsNode, gUIContext->VertexBuffer, 0, 0);
+        Rr_BindIndexBuffer(
+            GraphicsNode,
+            gUIContext->IndexBuffer,
+            0,
+            0,
+            RR_INDEX_TYPE_UINT16);
+        Rr_BindUniformBuffer(
+            GraphicsNode,
+            gUIContext->UniformBuffer,
+            0,
+            0,
+            0,
+            sizeof(Rr_UIUniformData));
+        Rr_BindCombinedImage2DSampler(
+            GraphicsNode,
+            gUIContext->Font->Atlas,
+            gUIContext->Sampler,
+            0,
+            1);
 
-    Rr_ColorTarget ColorTarget = {
-        .Image = SwapchainImage,
-        .LoadOp = RR_LOAD_OP_LOAD,
-        .StoreOp = RR_STORE_OP_STORE,
-    };
-    Rr_GraphNode *GraphicsNode =
-        Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
-    Rr_BindGraphicsPipeline(GraphicsNode, gUIContext->GraphicsPipeline);
-    Rr_BindVertexBuffer(GraphicsNode, gUIContext->VertexBuffer, 0, 0);
-    Rr_BindIndexBuffer(
-        GraphicsNode,
-        gUIContext->IndexBuffer,
-        0,
-        0,
-        RR_INDEX_TYPE_UINT16);
-    Rr_BindUniformBuffer(
-        GraphicsNode,
-        gUIContext->UniformBuffer,
-        0,
-        0,
-        0,
-        sizeof(Rr_UIUniformData));
-    Rr_BindCombinedImage2DSampler(
-        GraphicsNode,
-        gUIContext->Font->Atlas,
-        gUIContext->Sampler,
-        0,
-        1);
+        qsort(
+            gUIContext->ActiveWindows.Data,
+            gUIContext->ActiveWindows.Count,
+            sizeof(Rr_UIWindow *),
+            Rr_UIWindowSort);
 
-    qsort(
-        gUIContext->ActiveWindows.Data,
-        gUIContext->ActiveWindows.Count,
-        sizeof(Rr_UIWindow *),
-        Rr_UIWindowSort);
+        gUIContext->HighestWindow =
+            RR_LAST_ARRAY_ELEMENT(&gUIContext->ActiveWindows);
 
-    gUIContext->HighestWindow =
-        gUIContext->ActiveWindows.Data[gUIContext->ActiveWindows.Count - 1];
-
-    for (size_t Index = 0; Index < gUIContext->ActiveWindows.Count; ++Index)
-    {
-        Rr_UIWindow *Window = gUIContext->ActiveWindows.Data[Index];
-        Window->Z = (int32_t)Index;
-        Window->Added = false;
-        Window->OpenedThisFrame = false;
-        if (Window->SkipThisFrame)
+        for (size_t Index = 0; Index < gUIContext->ActiveWindows.Count; ++Index)
         {
-            Window->SkipThisFrame = false;
-            continue;
+            Rr_UIWindow *Window = gUIContext->ActiveWindows.Data[Index];
+            Window->Z = (int32_t)Index;
+            Window->Added = false;
+            Window->OpenedThisFrame = false;
+            if (Window->SkipThisFrame)
+            {
+                Window->SkipThisFrame = false;
+                continue;
+            }
+            if (Window->TopLevelParent == Window)
+            {
+                Rr_UIDrawWindow(Window, GraphicsNode);
+            }
         }
-        if (Window->TopLevelParent == Window)
-        {
-            Rr_UIDrawWindow(Window, GraphicsNode);
-        }
-    }
 
-    Rr_EndGraphLabel(Rr_GetGraph(), "Rr.UI");
+        Rr_EndGraphLabel(Rr_GetGraph(), "Rr.UI");
+    }
 
     if (gUIContext->LeftMouseButtonUp)
     {

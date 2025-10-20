@@ -89,6 +89,8 @@ extern void Rr_GrowArray(
 #define RR_POP_FROM_ARRAY(Array) \
     ((Array)->Count--, (Array)->Data[(Array)->Count])
 
+#define RR_LAST_ARRAY_ELEMENT(Array) ((Array)->Data[(Array)->Count - 1])
+
 #define RR_RESET_ARRAY(Array, Arena)                         \
     do                                                       \
     {                                                        \

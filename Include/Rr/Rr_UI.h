@@ -130,6 +130,10 @@ typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, const char *);
 
 extern Rr_UIStyle *Rr_UIGetStyle(void);
 
+extern void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
+
+extern void Rr_UIPopFormatFloatDecimalPlaces(void);
+
 extern void Rr_UISetNextWindowPosition(Rr_Vec2 Position);
 
 extern void Rr_UISetNextWindowOpenPosition(Rr_Vec2 Position);
