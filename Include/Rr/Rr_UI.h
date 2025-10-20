@@ -59,12 +59,14 @@ struct Rr_UIStyle
     Rr_Vec2 TitlePadding;
     Rr_Vec2 ContentsPadding;
     float ComponentMargin;
+    float FlexibleTitleMargin;
     float BevelIntensityLight;
     float BevelIntensityDark;
 
     Rr_Vec4 Foreground;
     Rr_Vec4 ForegroundDimmed;
     Rr_Vec4 Background;
+    Rr_Vec4 ChildBackground;
     Rr_Vec4 Outline;
 
     Rr_Vec4 TitleBackground;

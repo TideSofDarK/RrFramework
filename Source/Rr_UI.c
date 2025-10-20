@@ -120,6 +120,7 @@ struct Rr_UIWindow
 
     float MaxFlexibleWidgetTitleWidth;
     float MaxFlexibleWidgetWidth;
+    float MaxRigidWidth;
 
     Rr_Map *WidgetMap;
     Rr_Map *ChildWindowMap;
@@ -145,8 +146,10 @@ struct Rr_UILayout
 
     Rr_Vec2 Cursor;
 
+    bool NextAdvanceFlexible;
+
     float HorizontalX;
-    float HorizontalMaxHeight;
+    Rr_Vec2 HorizontalMaxExtent;
 
     Rr_Vec2 ContentsPadding;
 
@@ -164,6 +167,7 @@ struct Rr_UILayout
     Rr_Vec4 DeferredResizeHandleColor;
     float DeferredMaxFlexibleWidgetTitleWidth;
     float DeferredMaxFlexibleWidgetWidth;
+    float DeferredMaxRigidWidth;
     bool DeferredAutoResize;
 
     Rr_UILayout *TopLevelLayout;
@@ -244,6 +248,7 @@ struct Rr_UIContext
     float LineHeight;
     Rr_Vec2 ContentsPadding;
     float ComponentMargin;
+    float FlexibleTitleMargin;
     Rr_Vec2 MinWindowSize;
     Rr_Vec2 MinWindowSizeNoTitle;
     float TitleHeight;
@@ -424,6 +429,13 @@ static inline void Rr_UIAssertWindow(void)
     assert(
         Rr_UICurrentWindow() != NULL &&
         "Did you forget to call Rr_UIBeginWindow() or Rr_UIBeginChild()?");
+}
+
+static inline void Rr_UIAssertNoHorizontal(Rr_UILayout *Layout)
+{
+    assert(
+        Layout->HorizontalX == INFINITY &&
+        "Did you forget to call Rr_UIEndHorizontal()?");
 }
 
 static inline Rr_UIHash Rr_UIGetHash(
@@ -1944,30 +1956,36 @@ static inline void Rr_UIAdvance(Rr_Vec2 Size)
 
     if (Rr_UIIsHorizontal())
     {
-        Layout->Cursor.X += Size.Width + Layout->ContentsPadding.Width;
-        Layout->HorizontalMaxHeight =
-            RR_MAX(Layout->HorizontalMaxHeight, Size.Height);
+        Layout->HorizontalMaxExtent.Y =
+            RR_MAX(Layout->HorizontalMaxExtent.Y, Size.Height);
+        Layout->HorizontalMaxExtent.X = RR_MAX(
+            Layout->HorizontalMaxExtent.X,
+            Layout->Cursor.X + Size.X - Layout->HorizontalX);
 
+        Layout->Cursor.X += Size.Width + Layout->ContentsPadding.Width;
+
+        /* Horizontal mode is expected to be disabled when ending a window so
+         * these seem unimportant? */
+
+        Window->ContentsEnd.X = RR_MAX(
+            Window->ContentsEnd.X,
+            Layout->HorizontalX + Layout->HorizontalMaxExtent.X);
         Window->ContentsEnd.Y = RR_MAX(
             Window->ContentsEnd.Y,
-            Layout->Cursor.Y + Layout->HorizontalMaxHeight);
-        Window->ContentsEnd.X = RR_MAX(Window->ContentsEnd.X, Layout->Cursor.X);
+            Layout->Cursor.Y + Layout->HorizontalMaxExtent.Y);
     }
     else
     {
         Layout->Cursor.Y += Size.Height + Layout->ContentsPadding.Height;
 
         Window->ContentsEnd.Y = RR_MAX(Window->ContentsEnd.Y, Layout->Cursor.Y);
-        /* NOTE: Only used to undo horizontal padding after ending horizontal
-         * section. */
-        if (Size.X < 0.0f)
+        Window->ContentsEnd.X =
+            RR_MAX(Window->ContentsEnd.X, Layout->Cursor.X + Size.X);
+
+        if (!Layout->NextAdvanceFlexible)
         {
-            Window->ContentsEnd.X += Size.X;
-        }
-        else
-        {
-            Window->ContentsEnd.X =
-                RR_MAX(Window->ContentsEnd.X, Layout->Cursor.X + Size.X);
+            Layout->DeferredMaxRigidWidth =
+                RR_MAX(Layout->DeferredMaxRigidWidth, Size.X);
         }
     }
 }
@@ -2480,13 +2498,11 @@ static inline bool Rr_UIBeginWindowEx(
         .AvailableContentsWidth = Window->Rect.Extent.Width,
     };
 
-    /* BUG: Broken at the moment! */
     if (Window->Child)
     {
-        if (!ParentLayout->DeferredAutoResize)
-        {
-            Window->Rect.Extent.Width = ParentLayout->AvailableContentsWidth;
-        }
+        Layout->DeferredAutoResize = false;
+        Window->Rect.Extent.X = ParentLayout->AvailableContentsWidth;
+        Layout->AvailableContentsWidth = Window->Rect.Extent.X;
     }
 
     bool WasCollapsed = Window->Collapsed;
@@ -2628,7 +2644,10 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_UIPushClipRectBounds(&VisibleContentsAreaRect);
     Rr_UIBeginClipRect(&VisibleContentsAreaRect);
 
-    Rr_UIDrawSolidQuad(&ContentsAreaRect, &gUIContext->Style.Background);
+    Rr_Vec4 *BackgroundColor = Window->Child
+                                   ? &gUIContext->Style.ChildBackground
+                                   : &gUIContext->Style.Background;
+    Rr_UIDrawSolidQuad(&ContentsAreaRect, BackgroundColor);
 
     Window->ContentsStart = Window->ContentsEnd = Layout->Cursor;
 
@@ -2724,6 +2743,8 @@ void Rr_UIEndWindow(void)
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+
+    Rr_UIAssertNoHorizontal(Layout);
 
     if (!Window->Collapsed)
     {
@@ -2832,7 +2853,34 @@ void Rr_UIEndWindow(void)
 
     /* Calculate window extent if necessary or apply manual resize. */
 
-    if (Layout->DeferredAutoResize)
+    if (Window->Child)
+    {
+        Window->Rect.Extent.Y = Window->ContentsEnd.Y -
+                                Window->ContentsStart.Y +
+                                Layout->ContentsPadding.Y;
+
+        Rr_UILayout *ParentLayout =
+            &gUIContext->Stack.Data[gUIContext->Stack.Count - 2];
+        if (ParentLayout->DeferredAutoResize)
+        /* if (Rr_UIWindowAutoResize(Window->TopLevelParent)) */
+        {
+            /* NOTE: Select between widths occupied by rigid widgets such as
+             * buttons and flexible widgets such as input fields. */
+
+            Window->Rect.Extent.X = RR_MAX(
+                Layout->DeferredMaxFlexibleWidgetTitleWidth +
+                    gUIContext->FlexibleTitleMargin +
+                    Layout->DeferredMaxFlexibleWidgetWidth,
+                Layout->DeferredMaxRigidWidth);
+            Window->Rect.Extent.X += Layout->ContentsPadding.X * 2.0f;
+        }
+
+        if (Rr_UIWindowHasTitle(Window))
+        {
+            Window->Rect.Extent.Y += gUIContext->TitleHeight;
+        }
+    }
+    else if (Layout->DeferredAutoResize)
     {
         Window->Rect.Extent =
             Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
@@ -2852,6 +2900,7 @@ void Rr_UIEndWindow(void)
     Window->MaxFlexibleWidgetTitleWidth =
         Layout->DeferredMaxFlexibleWidgetTitleWidth;
     Window->MaxFlexibleWidgetWidth = Layout->DeferredMaxFlexibleWidgetWidth;
+    Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
 
     /* Pop current layout from the stack. */
 
@@ -2894,10 +2943,9 @@ bool Rr_UIBeginChild(const char *Title)
         gUIContext->Arena);
     Rr_UIWindow *Window = *WindowRef;
 
-    const Rr_UIWindowFlags CHILD_FLAGS = RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
-                                         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
-                                         RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
-                                         RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
+    const Rr_UIWindowFlags CHILD_FLAGS = // RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
     if (Window == NULL)
     {
         Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, CHILD_FLAGS);
@@ -2933,7 +2981,7 @@ void Rr_UIBeginHorizontal(void)
     assert(
         !Rr_UIIsHorizontal() && "Did you forget to call Rr_EndHorizontal()?");
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Layout->HorizontalMaxHeight = 0;
+    Layout->HorizontalMaxExtent = Rr_V2F(0.0f);
     Layout->HorizontalX = Layout->Cursor.X;
 }
 
@@ -2944,8 +2992,7 @@ void Rr_UIEndHorizontal(void)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Layout->Cursor.X = Layout->HorizontalX;
     Layout->HorizontalX = INFINITY;
-    Rr_UIAdvance(
-        Rr_V2(-Layout->ContentsPadding.Width, Layout->HorizontalMaxHeight));
+    Rr_UIAdvance(Layout->HorizontalMaxExtent);
 }
 
 static inline float Rr_UICalculateFlexibleWidgetWidth(
@@ -2970,8 +3017,10 @@ static inline float Rr_UICalculateFlexibleWidgetWidth(
     {
         DesiredWidgetWidth = Layout->AvailableContentsWidth -
                              Layout->Window->MaxFlexibleWidgetTitleWidth -
-                             Layout->ContentsPadding.X;
+                             gUIContext->FlexibleTitleMargin;
     }
+
+    Layout->NextAdvanceFlexible = true;
 
     return DesiredWidgetWidth;
 }
@@ -4695,7 +4744,7 @@ static inline bool Rr_UIInputScalarMulti(
         0);
 
     Rr_Vec2 TotalExtent = {
-        FieldsExtent.X + Layout->ContentsPadding.X + TitleExtent.X,
+        FieldsExtent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
         FieldsExtent.Y,
     };
 
@@ -4757,7 +4806,7 @@ bool Rr_UIInputField(
         0);
 
     Rr_Vec2 TotalExtent = {
-        FieldExtent.X + Layout->ContentsPadding.X + TitleExtent.X,
+        FieldExtent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
         FieldExtent.Y,
     };
 
@@ -5267,7 +5316,7 @@ static inline bool Rr_UIInputColorEx(
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_Vec2 ColorBoxExtent =
-        Rr_V2F(gUIContext->LineHeight + gUIContext->InputFieldPadding.X);
+        Rr_V2F(gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f);
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
@@ -5351,7 +5400,7 @@ static inline bool Rr_UIInputColorEx(
         0);
 
     Rr_Vec2 TotalExtent = {
-        FieldsExtent.X + ColorBoxWithMargin + Layout->ContentsPadding.X +
+        FieldsExtent.X + ColorBoxWithMargin + gUIContext->FlexibleTitleMargin +
             TitleExtent.X,
         FieldsExtent.Height,
     };
@@ -5568,7 +5617,7 @@ bool Rr_UICombobox(
         0);
 
     Rr_Vec2 TotalExtent = {
-        ButtonExtent.X + Layout->ContentsPadding.X + TitleExtent.X,
+        ButtonExtent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
         gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
     };
 
@@ -5609,7 +5658,7 @@ static inline float Rr_UISlider(
         Layout->Cursor,
         {
             SliderWidth,
-            gUIContext->LineHeight,
+            gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
         },
     };
 
@@ -5617,7 +5666,7 @@ static inline float Rr_UISlider(
 
     float HandleWidth = gUIContext->FontSize;
     Rr_Rect HandleRect = { Layout->Cursor,
-                           Rr_V2(HandleWidth, gUIContext->LineHeight) };
+                           Rr_V2(HandleWidth, SliderRect.Extent.Y) };
     HandleRect.Offset.X += Normalized * (SliderWidth - HandleWidth);
     HandleRect.Offset.X = roundf(HandleRect.Offset.X);
     HandleRect = Rr_ResizeRect(&HandleRect, -gUIContext->BevelThickness);
@@ -5687,6 +5736,7 @@ static inline float Rr_UISlider(
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += SliderRect.Extent.X + Layout->ContentsPadding.X;
+    TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         0,
         TitleOffset,
@@ -5697,8 +5747,8 @@ static inline float Rr_UISlider(
         0);
 
     Rr_Vec2 TotalExtent = {
-        SliderRect.Extent.X + Layout->ContentsPadding.X + TitleExtent.X,
-        gUIContext->LineHeight,
+        SliderRect.Extent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        SliderRect.Extent.Y,
     };
 
     Rr_UIAdvance(TotalExtent);
@@ -5794,12 +5844,14 @@ void Rr_InitUI(void)
         .TitlePadding = { 0.5f, 0.03f },
         .ContentsPadding = { 0.5f, 0.5f },
         .ComponentMargin = 0.2f,
+        .FlexibleTitleMargin = 0.5f,
         .BevelIntensityLight = 0.3f,
         .BevelIntensityDark = 0.7f,
 
         .Foreground = Rr_U32ToSRGB(0xD6D0B3FF),
         .ForegroundDimmed = Rr_U32ToSRGB(0xA7A59CFF),
         .Background = Rr_U32ToSRGB(0x292F33FF),
+        .ChildBackground = Rr_U32ToSRGB(0x292F33FF),
         .Outline = Rr_U32ToSRGB(0x6C6F72FF),
 
         .TitleBackground = Rr_U32ToSRGB(0x5E2D96FF),
@@ -5812,7 +5864,7 @@ void Rr_InitUI(void)
         .ButtonHeld = Rr_U32ToSRGB(0x435866FF),
         .ButtonDisabled = Rr_U32ToSRGB(0x191e22FF),
 
-        .InputFieldPadding = { 0.25f, 0.125f },
+        .InputFieldPadding = { 0.2f, 0.05f },
         .InputFieldNormal = Rr_U32ToSRGB(0x191e22FF),
         .SelectedTextBackground = Rr_U32ToSRGB(0x6EA5FEFF),
     };
@@ -6014,6 +6066,8 @@ static inline void Rr_UIConsumeNextFontSize(void)
             Rr_MulV2F(gUIContext->Style.ContentsPadding, gUIContext->FontSize);
         gUIContext->ComponentMargin =
             RR_UI_ROUND(Style->ComponentMargin * gUIContext->FontSize);
+        gUIContext->FlexibleTitleMargin =
+            RR_UI_ROUND(Style->FlexibleTitleMargin * gUIContext->FontSize);
 
         gUIContext->FrameThickness =
             floorf(RR_MAX(1.0f, gUIContext->FontSize * 0.075f));

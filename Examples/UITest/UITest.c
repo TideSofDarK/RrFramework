@@ -71,6 +71,7 @@ static void StyleEditorWindow()
         Rr_UIInputColor4("Foreground", Style->Foreground.Elements);
         Rr_UIInputColor4("Foreground Dimmed", Style->ForegroundDimmed.Elements);
         Rr_UIInputColor4("Background", Style->Background.Elements);
+        Rr_UIInputColor4("Child Background", Style->ChildBackground.Elements);
         Rr_UIInputColor4("Outline", Style->Outline.Elements);
 
         Rr_UISeparator();
@@ -258,32 +259,42 @@ static void Iterate(void)
             Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
             static float TestFloat = 123.456f;
             Rr_UIInputFloat("Float Input", &TestFloat);
-            static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };
-            Rr_UIInputFloat2("Float2 Input", TestVec2.Elements);
-            static Rr_Vec3 TestVec3 = { 1.0f, 0.0f, 1.0f };
-            Rr_UIInputFloat3("Float3 Input", TestVec3.Elements);
-            static Rr_Vec4 TestVec4 = { 1.0f, 0.0f, 1.0f, 1.0f };
-            Rr_UIInputFloat4("Float4 Input", TestVec4.Elements);
-            static Rr_Mat2 TestMat2 = {
-                1.0f,
-                -1.0f, //
-                -1.0f,
-                1.0f, //
-            };
-            Rr_UIInputFloat2x2("Float2x2 Input", (float *)TestMat2.Elements);
-            static Rr_Mat3 TestMat3 = {
-                1.0f,  -1.0f, 1.0f,  //
-                -1.0f, 1.0f,  -1.0f, //
-                1.0f,  -1.0f, 1.0f,  //
-            };
-            Rr_UIInputFloat3x3("Float3x3 Input", (float *)TestMat3.Elements);
-            static Rr_Mat4 TestMat4 = {
-                1.0f,  -1.0f, 1.0f,  -1.0f, //
-                -1.0f, 1.0f,  -1.0f, 1.0f,  //
-                1.0f,  -1.0f, 1.0f,  -1.0f, //
-                -1.0f, 1.0f,  -1.0f, 1.0f,  //
-            };
-            Rr_UIInputFloat4x4("Float4x4 Input", (float *)TestMat4.Elements);
+            if (Rr_UIBeginChild("Vectors and Matrices"))
+            {
+                static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };
+                Rr_UIInputFloat2("Float2 Input", TestVec2.Elements);
+                static Rr_Vec3 TestVec3 = { 1.0f, 0.0f, 1.0f };
+                Rr_UIInputFloat3("Float3 Input", TestVec3.Elements);
+                static Rr_Vec4 TestVec4 = { 1.0f, 0.0f, 1.0f, 1.0f };
+                Rr_UIInputFloat4("Float4 Input", TestVec4.Elements);
+                static Rr_Mat2 TestMat2 = {
+                    1.0f,
+                    -1.0f, //
+                    -1.0f,
+                    1.0f, //
+                };
+                Rr_UIInputFloat2x2(
+                    "Float2x2 Input",
+                    (float *)TestMat2.Elements);
+                static Rr_Mat3 TestMat3 = {
+                    1.0f,  -1.0f, 1.0f,  //
+                    -1.0f, 1.0f,  -1.0f, //
+                    1.0f,  -1.0f, 1.0f,  //
+                };
+                Rr_UIInputFloat3x3(
+                    "Float3x3 Input",
+                    (float *)TestMat3.Elements);
+                static Rr_Mat4 TestMat4 = {
+                    1.0f,  -1.0f, 1.0f,  -1.0f, //
+                    -1.0f, 1.0f,  -1.0f, 1.0f,  //
+                    1.0f,  -1.0f, 1.0f,  -1.0f, //
+                    -1.0f, 1.0f,  -1.0f, 1.0f,  //
+                };
+                Rr_UIInputFloat4x4(
+                    "Float4x4 Input",
+                    (float *)TestMat4.Elements);
+                Rr_UIEndChild();
+            }
             Rr_UIEndChild();
         }
         if (Rr_UIBeginChild("Button"))
