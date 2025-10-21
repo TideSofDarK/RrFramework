@@ -396,9 +396,79 @@ void Rr_UIReleaseFont(Rr_UIContext *Context, Rr_UIFont *Font)
     RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
 }
 
+static inline bool Rr_UIWindowHasTitle(Rr_UIWindow *Window)
+{
+    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
+}
+
+static inline bool Rr_UIWindowHasCloseButton(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
+}
+
+static inline bool Rr_UIWindowHasCollapseButton(Rr_UIWindow *Window)
+{
+    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT);
+}
+
+static inline bool Rr_UIWindowHasResizeHandle(Rr_UIWindow *Window)
+{
+    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
+}
+
+static inline bool Rr_UIWindowAutoResize(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+}
+
+static inline bool Rr_UIWindowNoMove(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT);
+}
+
+static inline bool Rr_UIWindowNoBorder(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT);
+}
+
+static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(
+        Window->Flags,
+        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT);
+}
+
 static inline Rr_UILayout *Rr_UICurrentLayout(void)
 {
     return gUIContext->LayoutStack;
+}
+
+static inline Rr_UILayout *Rr_UIPushLayout(
+    Rr_UIWindow *Window,
+    Rr_Vec2 ContentsPadding)
+{
+    Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
+    *Layout = (Rr_UILayout){
+        .Window = Window,
+        .HorizontalX = INFINITY,
+        .DeferredWindowOffset = Rr_V2F(INFINITY),
+        .DeferredWindowExtent = Rr_V2F(INFINITY),
+        .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
+        .ContentsPadding = ContentsPadding,
+        .TopLevelParent =
+            Window->Child ? gUIContext->LayoutStack->TopLevelParent : Layout,
+        .Cursor = Window->Rect.Offset,
+        .AvailableContentsWidth = Window->Rect.Extent.Width,
+        .Previous = gUIContext->LayoutStack,
+    };
+    gUIContext->LayoutStack = Layout;
+    return Layout;
+}
+
+static inline void Rr_UIPopLayout(void)
+{
+    assert(gUIContext->LayoutStack);
+    gUIContext->LayoutStack = gUIContext->LayoutStack->Previous;
 }
 
 static inline Rr_UIWindow *Rr_UICurrentWindow(void)
@@ -1923,48 +1993,6 @@ static inline Rr_Vec2 Rr_UIGetMinWindowSize(Rr_UIWindowFlags Flags)
     }
 }
 
-static inline bool Rr_UIWindowHasTitle(Rr_UIWindow *Window)
-{
-    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
-}
-
-static inline bool Rr_UIWindowHasCloseButton(Rr_UIWindow *Window)
-{
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
-}
-
-static inline bool Rr_UIWindowHasCollapseButton(Rr_UIWindow *Window)
-{
-    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT);
-}
-
-static inline bool Rr_UIWindowHasResizeHandle(Rr_UIWindow *Window)
-{
-    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
-}
-
-static inline bool Rr_UIWindowAutoResize(Rr_UIWindow *Window)
-{
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-}
-
-static inline bool Rr_UIWindowNoMove(Rr_UIWindow *Window)
-{
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT);
-}
-
-static inline bool Rr_UIWindowNoBorder(Rr_UIWindow *Window)
-{
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT);
-}
-
-static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
-{
-    return RR_HAS_BIT(
-        Window->Flags,
-        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT);
-}
-
 static inline void Rr_UIAdvance(Rr_Vec2 Size)
 {
     Rr_UIAssertWindow();
@@ -2565,20 +2593,7 @@ static inline bool Rr_UIBeginWindowEx(
             RR_ALLOC_TYPE(gUIContext->FrameArena, Rr_UIClipRectArray);
     }
 
-    Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
-    *Layout = (Rr_UILayout){
-        .Window = Window,
-        .HorizontalX = INFINITY,
-        .DeferredWindowOffset = Rr_V2F(INFINITY),
-        .DeferredWindowExtent = Rr_V2F(INFINITY),
-        .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
-        .ContentsPadding = ContentsPadding,
-        .TopLevelParent = Window->Child ? ParentLayout->TopLevelParent : Layout,
-        .Cursor = Window->Rect.Offset,
-        .AvailableContentsWidth = Window->Rect.Extent.Width,
-        .Previous = gUIContext->LayoutStack,
-    };
-    gUIContext->LayoutStack = Layout;
+    Rr_UILayout *Layout = Rr_UIPushLayout(Window, ContentsPadding);
 
     if (Window->Child)
     {
@@ -2983,12 +2998,9 @@ void Rr_UIEndWindow(void)
     Window->MaxFlexibleWidgetWidth = Layout->DeferredMaxFlexibleWidgetWidth;
     Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
 
-    /* Pop current layout from the stack. */
+    /* Pop whatever was pushed in Rr_UIBeginWindowEx(). */
 
-    gUIContext->LayoutStack = Layout->Previous;
-
-    /* Pop current Hash/ID from the stack. */
-
+    Rr_UIPopLayout();
     Rr_UIPopID();
 
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
