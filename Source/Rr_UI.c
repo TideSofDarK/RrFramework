@@ -100,7 +100,6 @@ typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
     const char *Title;
-    Rr_UIHash Hash;
     Rr_UIWindowFlags Flags;
     Rr_Rect Rect;
     Rr_Rect VisibleRect;
@@ -192,6 +191,7 @@ struct Rr_UIContext
     /* TODO: We need nice stack data structure for these. */
 
     Rr_UILayout *LayoutStack;
+    RR_ARRAY(Rr_UIHash) HashStack;
     RR_ARRAY(Rr_Rect) ClipRectBoundsStack;
     RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
@@ -407,12 +407,6 @@ static inline Rr_UIWindow *Rr_UICurrentWindow(void)
     return Layout ? Layout->Window : NULL;
 }
 
-static inline Rr_UIHash Rr_UICurrentHash(void)
-{
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    return Layout ? Layout->Window->Hash : 0;
-}
-
 static inline bool Rr_UIIsHorizontal(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -440,9 +434,16 @@ static inline void Rr_UIAssertNoHorizontal(Rr_UILayout *Layout)
         "Did you forget to call Rr_UIEndHorizontal()?");
 }
 
+static inline Rr_UIHash Rr_UICurrentHash(void)
+{
+    return gUIContext->HashStack.Count > 0
+               ? RR_LAST_ARRAY_ELEMENT(&gUIContext->HashStack)
+               : 0;
+}
+
 static inline Rr_UIHash Rr_UIGetHash(
-    const char *String,
     size_t Length,
+    const char *String,
     Rr_UIHash Seed)
 {
     return XXH3_64bits_withSeed(String, Length, ~Seed);
@@ -464,7 +465,7 @@ static inline Rr_UIHash Rr_UIGetTitleHash(
 
         size_t IDLength = FullLength - (size_t)(ExplicitID - CString);
 
-        Hash = Rr_UIGetHash(ExplicitID, IDLength, Rr_UICurrentHash());
+        Hash = Rr_UIGetHash(IDLength, ExplicitID, Rr_UICurrentHash());
 
         if (OutLength)
         {
@@ -473,7 +474,7 @@ static inline Rr_UIHash Rr_UIGetTitleHash(
     }
     else
     {
-        Hash = Rr_UIGetHash(CString, FullLength, Rr_UICurrentHash());
+        Hash = Rr_UIGetHash(FullLength, CString, Rr_UICurrentHash());
 
         if (OutLength)
         {
@@ -482,6 +483,25 @@ static inline Rr_UIHash Rr_UIGetTitleHash(
     }
 
     return Hash;
+}
+
+static inline void Rr_UIPushHash(Rr_UIHash Hash)
+{
+    *RR_PUSH_INTO_ARRAY(&gUIContext->HashStack, gUIContext->Arena) = Hash;
+}
+
+void Rr_UIPushID(const char *IDString)
+{
+    Rr_UIHash Hash =
+        Rr_UIGetHash(strlen(IDString), IDString, Rr_UICurrentHash());
+    Rr_UIPushHash(Hash);
+}
+
+void Rr_UIPopID(void)
+{
+    assert(
+        gUIContext->HashStack.Count && "Did you forget to call Rr_UIPushID()?");
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->HashStack));
 }
 
 static inline Rr_UIPrimitive Rr_UIReservePrimitive(
@@ -2489,7 +2509,7 @@ static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
 }
 
 static inline bool Rr_UIBeginWindowEx(
-    const char *Title,
+    Rr_UIHash Hash,
     Rr_UIWindow *Window,
     bool *Open)
 {
@@ -2566,6 +2586,8 @@ static inline bool Rr_UIBeginWindowEx(
         Window->Rect.Extent.X = ParentLayout->AvailableContentsWidth;
         Layout->AvailableContentsWidth = Window->Rect.Extent.X;
     }
+
+    Rr_UIPushHash(Hash);
 
     bool WasCollapsed = Window->Collapsed;
 
@@ -2731,12 +2753,12 @@ static inline bool Rr_UIBeginWindowEx(
     return true;
 }
 
-static inline void Rr_UIBeginPopupWindow(Rr_UIWindowFlags Flags)
+static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
 {
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
     Window->Flags = Flags;
     Window->TopLevelParent = Window;
-    Rr_UIBeginWindowEx("", Window, NULL);
+    Rr_UIBeginWindowEx(Hash, Window, NULL);
 }
 
 static inline void Rr_UIClosePopupWindow(void)
@@ -2763,7 +2785,6 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
         RR_ALLOC(gUIContext->Arena, TitleLength + 1),
         Title,
         TitleLength + 1);
-    Window->Hash = TitleHash;
     Window->Flags = Flags;
     Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
 
@@ -2800,7 +2821,7 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
 
     assert(
         Window->Added == false && "There already is a window with this title!");
-    return Rr_UIBeginWindowEx(Title, Window, Open);
+    return Rr_UIBeginWindowEx(TitleHash, Window, Open);
 }
 
 void Rr_UIEndWindow(void)
@@ -2966,6 +2987,10 @@ void Rr_UIEndWindow(void)
 
     gUIContext->LayoutStack = Layout->Previous;
 
+    /* Pop current Hash/ID from the stack. */
+
+    Rr_UIPopID();
+
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     if (ParentLayout)
     {
@@ -3023,7 +3048,7 @@ bool Rr_UIBeginChild(const char *Title)
 
     assert(
         Window->Added == false && "There already is a window with this title!");
-    return Rr_UIBeginWindowEx(Title, Window, NULL);
+    return Rr_UIBeginWindowEx(TitleHash, Window, NULL);
 }
 
 void Rr_UIEndChild(void)
@@ -4628,7 +4653,7 @@ static inline bool Rr_UIGenericInputScalarMulti(
             /*     ElementData); */
 
             Rr_UIHash ComponentHash =
-                Rr_UIGetHash(COMPONENT_TITLES[Index], 2, Hash);
+                Rr_UIGetHash(2, COMPONENT_TITLES[Index], Hash);
 
             Rr_Vec2 FieldExtent;
             if (Rr_UIGenericInputField(
@@ -4984,6 +5009,7 @@ static inline Rr_Vec3 Rr_UIHSVToRGB(Rr_Vec3 *HSV)
 }
 
 static inline void Rr_UIColorPickerPopup(
+    Rr_UIHash Hash,
     Rr_Vec2 Center,
     int ChannelCount,
     float *Channels)
@@ -5001,7 +5027,7 @@ static inline void Rr_UIColorPickerPopup(
     Position.X -= (gUIContext->ContentsPadding.Width + TargetSize) / 2.0f;
     Position.Y -= (gUIContext->ContentsPadding.Height + TargetSize) / 2.0f;
     Rr_UISetNextWindowOpenPosition(Position);
-    Rr_UIBeginPopupWindow(POPUP_WINDOW_FLAGS);
+    Rr_UIBeginPopupWindow(Hash, POPUP_WINDOW_FLAGS);
 
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
 
@@ -5071,7 +5097,7 @@ static inline void Rr_UIColorPickerPopup(
     float SVSelectorCircleSize = TargetSize * 0.035f;
 
     Rr_UIHash SVSelectorHash =
-        Rr_UIGetHash("SVSelector", sizeof("SVSelector"), Rr_UICurrentHash());
+        Rr_UIGetHash(sizeof("SVSelector"), "SVSelector", Rr_UICurrentHash());
 
     Rr_Rect SVSelectorRect = {
         .Offset = Layout->Cursor,
@@ -5127,7 +5153,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIAdvance(Rr_V2F(TargetSize));
 
     Rr_UIHash HSelectorHash =
-        Rr_UIGetHash("HSelector", sizeof("HSelector"), Rr_UICurrentHash());
+        Rr_UIGetHash(sizeof("HSelector"), "HSelector", Rr_UICurrentHash());
 
     Rr_Vec4 HColors[6] = {
         Rr_V4(1.0f, 0.0f, 0.0f, 1.0f), Rr_V4(1.0f, 1.0f, 0.0f, 1.0f),
@@ -5337,7 +5363,7 @@ static inline bool Rr_UIInputColorEx(
     {
         Rr_Vec2 PopupCenter =
             Rr_AddV2(ColorBoxOffset, Rr_DivV2F(ColorBoxExtent, 2.0f));
-        Rr_UIColorPickerPopup(PopupCenter, ChannelCount, Channels);
+        Rr_UIColorPickerPopup(TitleHash, PopupCenter, ChannelCount, Channels);
     }
 
     Rr_Rect ColorBoxRect = {
@@ -5465,7 +5491,7 @@ bool Rr_UICombobox(
         Rr_UISetNextWindowPosition(PopupPosition);
         Rr_UISetNextWindowPadding(
             Rr_V2(gUIContext->InputFieldPadding.Width, 0.0f));
-        Rr_UIBeginPopupWindow(POPUP_WINDOW_FLAGS);
+        Rr_UIBeginPopupWindow(TitleHash, POPUP_WINDOW_FLAGS);
         Rr_UILayout *PopupLayout = Rr_UICurrentLayout();
         for (uint32_t Index = 0; Index < OptionCount; ++Index)
         {
@@ -6189,6 +6215,10 @@ static inline void Rr_UIDrawWindow(
 
 void Rr_EndUI(void)
 {
+    assert(
+        gUIContext->HashStack.Count == 0 &&
+        "ID/Hash stack is not empty; did you forget to call Rr_UIPopID()?");
+
     RR_BEGIN_FRAME_SECTION("Rr.UI");
 
     Rr_UIAssertNoWindow();
@@ -6333,7 +6363,7 @@ void Rr_UIDebugOverlay(void)
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     if (Rr_UIBeginWindow(
-            "Rr_DebugOverlay",
+            "Rr.DebugOverlay",
             NULL,
             RR_UI_WINDOW_FLAGS_NO_TITLE_BIT |
                 RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
@@ -6347,14 +6377,12 @@ void Rr_UIDebugOverlay(void)
             Rr_UILabelF(
                 "Time: %.2f\n"
                 "Mouse Position: %.2f %.2f\n"
-                "Mouse Delta: %.2f %.2f\n"
-                "UI Font Size: %.2f",
+                "Mouse Delta: %.2f %.2f",
                 Rr_GetTimeSeconds(),
                 MousePosition.X,
                 MousePosition.Y,
                 MouseDelta.X,
-                MouseDelta.Y,
-                gUIContext->FontSize);
+                MouseDelta.Y);
             Rr_UISeparator();
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =
@@ -6432,6 +6460,24 @@ void Rr_UIDebugOverlay(void)
             {
                 Rr_ToggleWindowFullscreen();
             }
+        }
+        if (Rr_UITab("UI"))
+        {
+            Rr_UILabelF(
+                "UI Font Size: %.2f\n"
+                "Vertices Capacity: %zu\n"
+                "Indices Capacity: %zu",
+                gUIContext->FontSize,
+                gUIContext->Vertices.Capacity,
+                gUIContext->Indices.Capacity);
+            Rr_UILabelF(
+                "Hovered Window: %s\n"
+                "Active Windows: %b\n"
+                "Popup Window Open: %b",
+                gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title
+                                          : "NULL",
+                gUIContext->ActiveWindows.Count,
+                gUIContext->PopupWindowOpen);
         }
         if (Rr_UITab("Memory"))
         {

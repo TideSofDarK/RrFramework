@@ -49,7 +49,7 @@
 
 ** User Interface
 
-- [ ] Add separate ID/Hash stack.
+- [X] Add separate ID/Hash stack.
 - [ ] Fix broken clip rects.
 - [ ] Apply scalar changes immediately if possible.
 - [ ] Make drag behavior properly handle buttons and support double clicks.

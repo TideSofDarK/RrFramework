@@ -128,6 +128,10 @@ typedef uint32_t Rr_UIInputFieldFlags;
 
 typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, const char *);
 
+extern void Rr_UIPushID(const char *IDString);
+
+extern void Rr_UIPopID(void);
+
 extern Rr_UIStyle *Rr_UIGetStyle(void);
 
 extern void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
