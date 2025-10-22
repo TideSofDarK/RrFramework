@@ -145,7 +145,7 @@ static void Iterate(void)
     static bool NoResize = false;
     static bool NoScrollbar = false;
     static bool NoTitle = false;
-    static bool AutoResize = false;
+    static bool AutoResize = true;
 
     Rr_UIWindowFlags Flags = 0;
     if (CloseButton)
@@ -173,6 +173,7 @@ static void Iterate(void)
     StyleEditorWindow();
     TextInputWindow();
 
+    Rr_UISetNextWindowCreateCollapsed(true);
     if (Rr_UIBeginWindow("Rr_UI.h", &Open, Flags))
     {
         /* if (Rr_UIBeginChild("Child Windows")) */
@@ -204,6 +205,26 @@ static void Iterate(void)
         /*     } */
         /*     Rr_UIEndChild(); */
         /* } */
+        Rr_UISetNextWindowCreateCollapsed(false);
+        if (Rr_UIBeginChild("Button"))
+        {
+            Rr_UIBeginHorizontal();
+            if (Rr_UIButton("Show Style Editor"))
+            {
+                StyleEditorWindowOpen = true;
+            }
+            if (Rr_UIButton("Show Fixed Size Window"))
+            {
+                FixedSizeWindowOpen = true;
+            }
+            Rr_UIEndHorizontal();
+            if (Rr_UIButton("Show Text Input Window"))
+            {
+                TextInputWindowOpen = true;
+            }
+
+            Rr_UIEndChild();
+        }
         if (Rr_UIBeginChild("Combobox"))
         {
             const char *ComboboxOptions[5] = {
@@ -306,25 +327,6 @@ static void Iterate(void)
                     (float *)TestMat4.Elements);
 
                 Rr_UIEndChild();
-            }
-
-            Rr_UIEndChild();
-        }
-        if (Rr_UIBeginChild("Button"))
-        {
-            Rr_UIBeginHorizontal();
-            if (Rr_UIButton("Show Style Editor"))
-            {
-                StyleEditorWindowOpen = true;
-            }
-            if (Rr_UIButton("Show Fixed Size Window"))
-            {
-                FixedSizeWindowOpen = true;
-            }
-            Rr_UIEndHorizontal();
-            if (Rr_UIButton("Show Text Input Window"))
-            {
-                TextInputWindowOpen = true;
             }
 
             Rr_UIEndChild();

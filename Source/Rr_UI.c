@@ -115,6 +115,7 @@ struct Rr_UIWindow
     bool Open;
     bool Child;
 
+    bool CreatedThisFrame;
     bool OpenedThisFrame;
     bool SkipThisFrame;
 
@@ -128,6 +129,7 @@ struct Rr_UIWindow
     Rr_UIWindow *TopLevelParent;
     Rr_UIClipRectArray *TopLevelClipRects;
     Rr_UIClipRect *CurrentClipRect;
+    Rr_UIClipRect *ContentsClipRect;
 };
 
 typedef enum
@@ -144,7 +146,12 @@ struct Rr_UILayout
 {
     Rr_UIWindow *Window;
 
+    Rr_Rect Rect;
     Rr_Vec2 Cursor;
+
+    Rr_Vec2 ReservedExtent;
+
+    bool WasCollapsed;
 
     bool NextAdvanceFlexible;
 
@@ -192,13 +199,13 @@ struct Rr_UIContext
 
     Rr_UILayout *LayoutStack;
     RR_ARRAY(Rr_UIHash) HashStack;
-    RR_ARRAY(Rr_Rect) ClipRectBoundsStack;
     RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
     Rr_Vec2 NextWindowSize;
     Rr_Vec2 NextWindowPosition;
     Rr_Vec2 NextWindowOpenPosition;
     Rr_Vec2 NextWindowPadding;
+    int32_t NextWindowCreateCollapsed;
 
     bool LeftMouseButtonDownOverWindow;
 
@@ -426,9 +433,9 @@ static inline bool Rr_UIWindowNoMove(Rr_UIWindow *Window)
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT);
 }
 
-static inline bool Rr_UIWindowNoBorder(Rr_UIWindow *Window)
+static inline bool Rr_UIWindowNoBorders(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDER_BIT);
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT);
 }
 
 static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
@@ -518,8 +525,10 @@ static inline Rr_UILayout *Rr_UIPushLayout(
     Rr_UIWindow *Window,
     Rr_Vec2 ContentsPadding)
 {
+    /* TODO: Sort these. */
     Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
     *Layout = (Rr_UILayout){
+        .WasCollapsed = Window->Collapsed,
         .Window = Window,
         .HorizontalX = INFINITY,
         .DeferredWindowOffset = Rr_V2F(INFINITY),
@@ -531,6 +540,7 @@ static inline Rr_UILayout *Rr_UIPushLayout(
         .Cursor = Window->Rect.Offset,
         .AvailableContentsWidth = Window->Rect.Extent.Width,
         .Previous = gUIContext->LayoutStack,
+        .Rect = Window->Rect,
     };
     gUIContext->LayoutStack = Layout;
     Rr_UIPushIDHash(Hash);
@@ -1935,38 +1945,33 @@ static inline Rr_Rect Rr_UIRectIntersection(Rr_Rect *RectA, Rr_Rect *RectB)
     return Result;
 }
 
-static inline void Rr_UIPushClipRectBounds(Rr_Rect *Rect)
-{
-    *RR_PUSH_INTO_ARRAY(&gUIContext->ClipRectBoundsStack, gUIContext->Arena) =
-        *Rect;
-}
-
-static inline void Rr_UIPopClipRectBounds(void)
-{
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->ClipRectBoundsStack));
-}
-
-static inline Rr_Rect *Rr_UIClipRectBounds(void)
-{
-    return &RR_LAST_ARRAY_ELEMENT(&gUIContext->ClipRectBoundsStack);
-}
-
 static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
 {
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
-    Rr_Rect *ClipRectBounds = Rr_UIClipRectBounds();
 
     Rr_UIClipRect *ClipRect =
         RR_PUSH_INTO_ARRAY(Window->TopLevelClipRects, gUIContext->FrameArena);
     ClipRect->FirstIndex = (uint32_t)gUIContext->Indices.Count;
-    ClipRect->Rect = Rr_UIRectIntersection(Rect, ClipRectBounds);
+    ClipRect->Rect = *Rect;
 
     Window->CurrentClipRect = ClipRect;
     Layout->LeftMouseButtonInsideRect =
         Rr_RectContains(&ClipRect->Rect, gUIContext->MousePosition);
+}
+
+static inline void Rr_UIBeginVisibleClipRect(Rr_Rect *Rect)
+{
+    Rr_UIAssertWindow();
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    Rr_Rect VisibleRect = Rr_UIRectIntersection(Rect, &Window->VisibleRect);
+
+    Rr_UIBeginClipRect(&VisibleRect);
 }
 
 static inline void Rr_UIEndClipRect(void)
@@ -2054,7 +2059,7 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
     /* Assuming having a title bar. */
 
     Rr_Rect ButtonRect;
-    ButtonRect.Offset = Window->Rect.Offset;
+    ButtonRect.Offset = Layout->Rect.Offset;
     ButtonRect.Extent = Rr_V2F(gUIContext->TitleButtonSize);
 
     Rr_UIButtonResult Result = Rr_UIButtonBehavior(Layout, &ButtonRect);
@@ -2087,7 +2092,7 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
 
     float Width = gUIContext->TitleButtonSize * 0.7f;
     float Thickness = gUIContext->TitleButtonSize * 0.125f;
-    Rr_Rect TitleRect = Window->Rect;
+    Rr_Rect TitleRect = Layout->Rect;
     TitleRect.Extent.Height = gUIContext->TitleHeight;
     Rr_Rect BarRect;
     Rr_Vec2 Margin = {
@@ -2154,11 +2159,11 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
     Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
 
     Rr_Rect TitleRect = {
-        Window->Rect.Offset,
-        Rr_V2(Window->Rect.Extent.Width, gUIContext->TitleHeight),
+        Layout->Rect.Offset,
+        Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleHeight),
     };
     Rr_Vec2 TitlePosition =
-        Rr_AddV2(Window->Rect.Offset, gUIContext->TitlePadding);
+        Rr_AddV2(Layout->Rect.Offset, gUIContext->TitlePadding);
 
     bool HasCollapse = Rr_UIWindowHasCollapseButton(Window);
     if (HasCollapse)
@@ -2198,9 +2203,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
 
 static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
 {
-    Rr_UIWindow *Window = Layout->Window;
-
-    Rr_Vec2 BottomRight = Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent);
+    Rr_Vec2 BottomRight = Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
     Rr_Rect ResizeHandleRect = (Rr_Rect){
         {
             BottomRight.X - gUIContext->ResizeHandleSize,
@@ -2217,7 +2220,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         &ResizeHandleRect,
         RR_UI_DRAG_OP_RESIZE,
         0,
-        Window->Rect.Extent);
+        Layout->Rect.Extent);
 
     /* TODO: Add auto resize on double click. */
     /* if (Result.Began) */
@@ -2230,7 +2233,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         Rr_Vec2 Delta =
             Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
         Rr_Vec2 NewWindowSize = Rr_AddV2(gUIContext->DragOpWindowStart, Delta);
-        Rr_Vec2 MinWindowSize = Rr_UIGetMinWindowSize(Window->Flags);
+        Rr_Vec2 MinWindowSize = Rr_UIGetMinWindowSize(Layout->Window->Flags);
         NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
         NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
         Layout->DeferredWindowExtent = Rr_FloorV2(NewWindowSize);
@@ -2252,7 +2255,7 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
 {
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_Rect Rect = Window->Rect;
+    Rr_Rect Rect = Layout->Rect;
 
     if (Rr_UIWindowHasTitle(Window))
     {
@@ -2477,21 +2480,6 @@ void Rr_UISetNextWindowPosition(Rr_Vec2 Position)
     gUIContext->NextWindowPosition = Position;
 }
 
-void Rr_UISetNextWindowOpenPosition(Rr_Vec2 Position)
-{
-    gUIContext->NextWindowOpenPosition = Position;
-}
-
-void Rr_UISetNextWindowSize(Rr_Vec2 Size)
-{
-    gUIContext->NextWindowSize = Size;
-}
-
-void Rr_UISetNextWindowPadding(Rr_Vec2 Padding)
-{
-    gUIContext->NextWindowPadding = Padding;
-}
-
 static inline void Rr_UIConsumeNextWindowPosition(Rr_UIWindow *Window)
 {
     if (gUIContext->NextWindowPosition.X != INFINITY &&
@@ -2500,6 +2488,11 @@ static inline void Rr_UIConsumeNextWindowPosition(Rr_UIWindow *Window)
         Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowPosition);
         gUIContext->NextWindowPosition = Rr_V2F(INFINITY);
     }
+}
+
+void Rr_UISetNextWindowOpenPosition(Rr_Vec2 Position)
+{
+    gUIContext->NextWindowOpenPosition = Position;
 }
 
 static inline void Rr_UIConsumeNextWindowOpenPosition(Rr_UIWindow *Window)
@@ -2512,6 +2505,11 @@ static inline void Rr_UIConsumeNextWindowOpenPosition(Rr_UIWindow *Window)
     }
 }
 
+void Rr_UISetNextWindowSize(Rr_Vec2 Size)
+{
+    gUIContext->NextWindowSize = Size;
+}
+
 static inline void Rr_UIConsumeNextWindowSize(Rr_UIWindow *Window)
 {
     if (gUIContext->NextWindowSize.Width != INFINITY &&
@@ -2520,6 +2518,11 @@ static inline void Rr_UIConsumeNextWindowSize(Rr_UIWindow *Window)
         Window->Rect.Extent = Rr_FloorV2(gUIContext->NextWindowSize);
         gUIContext->NextWindowSize = Rr_V2F(INFINITY);
     }
+}
+
+void Rr_UISetNextWindowPadding(Rr_Vec2 Padding)
+{
+    gUIContext->NextWindowPadding = Padding;
 }
 
 static inline Rr_Vec2 Rr_UIConsumeNextWindowPadding(void)
@@ -2536,6 +2539,27 @@ static inline Rr_Vec2 Rr_UIConsumeNextWindowPadding(void)
         ContentsPadding = gUIContext->ContentsPadding;
     }
     return ContentsPadding;
+}
+
+void Rr_UISetNextWindowCreateCollapsed(bool Collapsed)
+{
+    gUIContext->NextWindowCreateCollapsed = Collapsed ? 1 : -1;
+}
+
+static inline void Rr_UIConsumeNextWindowCreateCollapsed(Rr_UIWindow *Window)
+{
+    if (Window->CreatedThisFrame)
+    {
+        if (Window->Child)
+        {
+            Window->Collapsed = true;
+        }
+        if (gUIContext->NextWindowCreateCollapsed != 0)
+        {
+            Window->Collapsed = gUIContext->NextWindowCreateCollapsed == 1;
+        }
+    }
+    gUIContext->NextWindowCreateCollapsed = 0;
 }
 
 static inline void Rr_UISwapWindowZ(Rr_UIWindow *WindowA, Rr_UIWindow *WindowB)
@@ -2558,6 +2582,7 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_UIWindow *Window,
     bool *Open)
 {
+    Rr_UIConsumeNextWindowCreateCollapsed(Window);
     Rr_UIConsumeNextWindowPosition(Window);
     Rr_UIConsumeNextWindowSize(Window);
     Rr_Vec2 ContentsPadding = Rr_UIConsumeNextWindowPadding();
@@ -2567,7 +2592,7 @@ static inline bool Rr_UIBeginWindowEx(
      * This will put window on top unless there is a flag
      * preventing that which is not currently implemented. */
 
-    bool NoBorder = Rr_UIWindowNoBorder(Window);
+    bool NoBorder = Rr_UIWindowNoBorders(Window);
 
     bool WasClosed = Window->Open == false;
     Window->Open = (Open == NULL || *Open == true);
@@ -2614,30 +2639,33 @@ static inline bool Rr_UIBeginWindowEx(
 
     if (Window->Child)
     {
-        Window->Rect.Extent.X = ParentLayout->AvailableContentsWidth;
-        Layout->AvailableContentsWidth = Window->Rect.Extent.X;
+        Layout->Rect.Extent.X = ParentLayout->AvailableContentsWidth;
+        Layout->AvailableContentsWidth = Layout->Rect.Extent.X;
     }
-
-    bool WasCollapsed = Window->Collapsed;
 
     /* Calculate total and visible extents. */
 
-    Rr_Rect TotalClipRect = Window->Rect;
-    if (WasCollapsed)
+    if (Window->Collapsed)
     {
-        TotalClipRect.Extent.Height = gUIContext->TitleHeight;
+        Layout->Rect.Extent.Y = gUIContext->TitleHeight;
     }
-    Rr_Rect TotalClipRectWithBorder =
-        Rr_ResizeRect(&TotalClipRect, gUIContext->FrameThickness);
+    Rr_Rect TotalClipRectWithBorders =
+        Rr_ResizeRect(&Layout->Rect, gUIContext->FrameThickness);
 
-    Window->VisibleRect =
-        Rr_UIRectIntersection(&TotalClipRectWithBorder, Rr_UIClipRectBounds());
+    if (Window->Child)
+    {
+        Window->VisibleRect = Rr_UIRectIntersection(
+            &TotalClipRectWithBorders,
+            &ParentWindow->ContentsClipRect->Rect);
 
-    Rr_UIPushClipRectBounds(&Window->VisibleRect);
+        Rr_UIBeginVisibleClipRect(&TotalClipRectWithBorders);
+    }
+    else
+    {
+        Window->VisibleRect = TotalClipRectWithBorders;
 
-    /* Clip to the whole area. */
-
-    Rr_UIBeginClipRect(&TotalClipRectWithBorder);
+        Rr_UIBeginClipRect(&TotalClipRectWithBorders);
+    }
 
     /* Move and resize behavior.
      * Changes to window rect are deferred to Rr_UIEndWindow()!
@@ -2648,10 +2676,10 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_UIDragResult DragResult = Rr_UIDragBehavior(
         Layout,
-        &TotalClipRect,
+        &Layout->Rect,
         RR_UI_DRAG_OP_MOVE,
         0,
-        Window->TopLevelParent->Rect.Offset);
+        Layout->TopLevelParent->Rect.Offset);
     bool Moved = DragResult.Moved || DragResult.Began;
     if (!Rr_UIWindowNoMove(Window->TopLevelParent) && Moved)
     {
@@ -2671,37 +2699,10 @@ static inline bool Rr_UIBeginWindowEx(
         Layout->Cursor.Y += gUIContext->TitleHeight;
     }
 
-    /* Adding title might have changed collapsed state. */
+    /* NOTE: This allows calculating proper extents before showing the window
+     * next frame. */
 
-    if (Window->Collapsed != WasCollapsed)
-    {
-        Rr_UIEndClipRect();
-
-        TotalClipRect = Window->Rect;
-        if (Window->Collapsed)
-        {
-            TotalClipRect.Extent.Height = gUIContext->TitleHeight;
-        }
-        TotalClipRectWithBorder =
-            Rr_ResizeRect(&TotalClipRect, gUIContext->FrameThickness);
-        Rr_UIBeginClipRect(&TotalClipRectWithBorder);
-        Window->VisibleRect = Window->CurrentClipRect->Rect;
-    }
-
-    /* Add border if necessary. */
-
-    if (!Rr_UIWindowNoBorder(Window))
-    {
-        Rr_UIDrawOuterFrame(
-            &TotalClipRect,
-            gUIContext->FrameThickness,
-            &gUIContext->Style.Outline);
-    }
-
-    /* Now that title is added, try to return early in case the window is
-     * collapsed. */
-
-    if (Window->Collapsed)
+    if (Window->Collapsed && Layout->WasCollapsed)
     {
         if (Window->Child)
         {
@@ -2757,8 +2758,12 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
     Rr_Rect VisibleContentsAreaRect =
         Rr_UIRectIntersection(&ContentsAreaRect, &Window->VisibleRect);
-    Rr_UIPushClipRectBounds(&VisibleContentsAreaRect);
-    Rr_UIBeginClipRect(&VisibleContentsAreaRect);
+    Rr_UIBeginVisibleClipRect(&VisibleContentsAreaRect);
+
+    Window->ContentsClipRect =
+        &RR_LAST_ARRAY_ELEMENT(Window->TopLevelClipRects);
+
+    /* Window->ContentsClipRect = Rr_UICurr */
 
     Rr_Vec4 *BackgroundColor = Window->Child
                                    ? &gUIContext->Style.ChildBackground
@@ -2817,6 +2822,7 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
         TitleLength + 1);
     Window->Flags = Flags;
     Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
+    Window->CreatedThisFrame = true;
 
     Window->SkipThisFrame = true;
     Window->Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
@@ -2863,17 +2869,25 @@ void Rr_UIEndWindow(void)
 
     Rr_UIAssertNoHorizontal(Layout);
 
+    Rr_UIEndClipRect();
+
+    /* Begin overlay clip rect for stuff such as borders, resize handle and
+     * scroll area darkeners. */
+
+    Rr_UIBeginVisibleClipRect(&Layout->Rect);
+
+    /* Add border if necessary. */
+
+    if (!Rr_UIWindowNoBorders(Window))
+    {
+        Rr_UIDrawInnerFrame(
+            &Layout->Rect,
+            gUIContext->FrameThickness,
+            &gUIContext->Style.Outline);
+    }
+
     if (!Window->Collapsed)
     {
-        Rr_UIEndClipRect();
-
-        Rr_UIPopClipRectBounds();
-
-        /* Begin overlay clip rect for stuff such as resize handle and scroll
-         * area darkeners. */
-
-        Rr_UIBeginClipRect(&Window->Rect);
-
         /* NOTE: Flooring these fixed imprecise FillRatio calculation.
          * If the bug ever returns it probably means the fix should be applied
          * somewhere else. */
@@ -2935,7 +2949,7 @@ void Rr_UIEndWindow(void)
         if (Rr_UIWindowHasResizeHandle(Window))
         {
             Rr_Vec2 BottomRight =
-                Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent);
+                Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
             Rr_Vec2 Positions[] = {
                 { BottomRight.X - gUIContext->ResizeHandleSize, BottomRight.Y },
                 { BottomRight.X, BottomRight.Y - gUIContext->ResizeHandleSize },
@@ -2948,8 +2962,6 @@ void Rr_UIEndWindow(void)
     }
 
     Rr_UIEndClipRect();
-
-    Rr_UIPopClipRectBounds();
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
 
@@ -2993,18 +3005,24 @@ void Rr_UIEndWindow(void)
         {
             Window->Rect.Extent.Y += gUIContext->TitleHeight;
         }
+
+        Window->Rect.Extent =
+            Rr_AddV2(Window->Rect.Extent, Layout->ReservedExtent);
     }
     else if (Layout->DeferredAutoResize)
     {
         Window->Rect.Extent =
             Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
-        Window->Rect.Extent.Width += Layout->ContentsPadding.Width * 2.0f;
-        Window->Rect.Extent.Height += Layout->ContentsPadding.Height;
+        Window->Rect.Extent.X += Layout->ContentsPadding.X * 2.0f;
+        Window->Rect.Extent.Y += Layout->ContentsPadding.Y;
 
         if (Rr_UIWindowHasTitle(Window))
         {
             Window->Rect.Extent.Y += gUIContext->TitleHeight;
         }
+
+        Window->Rect.Extent =
+            Rr_AddV2(Window->Rect.Extent, Layout->ReservedExtent);
     }
     else if (Layout->DeferredWindowExtent.X != INFINITY)
     {
@@ -3027,12 +3045,32 @@ void Rr_UIEndWindow(void)
 
         if (Window->Child)
         {
+            Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Window);
             Rr_Vec2 WindowExtent = Window->Rect.Extent;
-            if (Window->Collapsed)
+            bool CollapsedThisFrame =
+                Window->Collapsed && !Layout->WasCollapsed;
+            bool UncollapsedThisFrame =
+                !Window->Collapsed && Layout->WasCollapsed;
+            if (CollapsedThisFrame)
             {
-                WindowExtent.Height = gUIContext->TitleHeight;
+                ParentLayout->ReservedExtent.Y -= WindowExtent.Y - TitleSize.Y;
+                WindowExtent.X = TitleSize.X;
+                Rr_UIAdvance(WindowExtent);
             }
-            Rr_UIAdvance(WindowExtent);
+            else if (UncollapsedThisFrame)
+            {
+                ParentLayout->ReservedExtent.Y += WindowExtent.Y - TitleSize.Y;
+                WindowExtent.Y = TitleSize.Y;
+                Rr_UIAdvance(WindowExtent);
+            }
+            else if (Window->Collapsed)
+            {
+                Rr_UIAdvance(TitleSize);
+            }
+            else
+            {
+                Rr_UIAdvance(WindowExtent);
+            }
         }
 
         /* Resume clip rect. */
@@ -3059,7 +3097,8 @@ bool Rr_UIBeginChild(const char *Title)
 
     const Rr_UIWindowFlags CHILD_FLAGS = // RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
-        RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
+        RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
     if (Window == NULL)
     {
         Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, CHILD_FLAGS);
@@ -4140,9 +4179,7 @@ static inline bool Rr_UIGenericInputField(
 
         Rr_Vec2 ClipRectExtent = { FixedWidth, RestoreClipRect->Rect.Extent.Y };
 
-        /* BUG: DOESN'T TAKE PARENT RECT INTO ACCOUNT IN THIS CASE! */
-
-        Rr_UIBeginClipRect(
+        Rr_UIBeginVisibleClipRect(
             &(Rr_Rect){ .Offset = Offset, .Extent = ClipRectExtent });
     }
 
@@ -6132,12 +6169,6 @@ void Rr_BeginUI(void)
 {
     Rr_UIConsumeNextFontSize();
 
-    gUIContext->ClipRectBoundsStack.Count = 0;
-    Rr_UIPushClipRectBounds(&(Rr_Rect){
-        .Offset = Rr_V2F(0.0f),
-        .Extent = gUIContext->ScreenSize,
-    });
-
     if (gUIContext->SkipLeftMouseButtonUp && gUIContext->LeftMouseButtonUp)
     {
         gUIContext->SkipLeftMouseButtonUp = false;
@@ -6325,6 +6356,7 @@ void Rr_EndUI(void)
             Window->Z = (int32_t)Index;
             Window->Added = false;
             Window->OpenedThisFrame = false;
+            Window->CreatedThisFrame = false;
             if (Window->SkipThisFrame)
             {
                 Window->SkipThisFrame = false;
