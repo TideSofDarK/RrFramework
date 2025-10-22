@@ -204,7 +204,26 @@ static void Iterate(void)
         /*     } */
         /*     Rr_UIEndChild(); */
         /* } */
+
         Rr_UISetNextWindowCreateCollapsed(false);
+        if (Rr_UIBeginChild("Text"))
+        {
+            Rr_UILabel("Text");
+            Rr_UILabel("Multi\n line\n  text");
+            /* Rr_UILabelEx( */
+            /*     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " */
+            /*     "do eiusmod tempor incididunt ut labore et dolore magna " */
+            /*     "aliqua. " */
+            /*     "Ut enim ad minim veniam, quis nostrud exercitation ullamco " */
+            /*     "laboris nisi ut aliquip ex ea commodo consequat. Duis aute " */
+            /*     "irure dolor in reprehenderit in voluptate velit esse cillum " */
+            /*     "dolore eu fugiat nulla pariatur. Excepteur sint occaecat " */
+            /*     "cupidatat non proident, sunt in culpa qui officia deserunt " */
+            /*     "mollit anim id est laborum. ", */
+            /*     RR_UI_TEXT_FLAGS_WRAPPED_BIT); */
+            Rr_UIEndChild();
+        }
+
         if (Rr_UIBeginChild("Button"))
         {
             Rr_UIBeginHorizontal();
@@ -224,6 +243,7 @@ static void Iterate(void)
 
             Rr_UIEndChild();
         }
+
         if (Rr_UIBeginChild("Combobox"))
         {
             const char *ComboboxOptions[5] = {
@@ -244,6 +264,7 @@ static void Iterate(void)
             }
             Rr_UIEndChild();
         }
+
         if (Rr_UIBeginChild("Checkbox"))
         {
             Rr_UICheckbox("Close Button", &CloseButton);
@@ -257,6 +278,7 @@ static void Iterate(void)
             Rr_UIEndHorizontal();
             Rr_UIEndChild();
         }
+
         if (Rr_UIBeginChild("Slider"))
         {
             static float Float01 = 0.5f;
@@ -268,6 +290,7 @@ static void Iterate(void)
 
             Rr_UIEndChild();
         }
+
         if (Rr_UIBeginChild("Color Input"))
         {
             static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
@@ -277,6 +300,7 @@ static void Iterate(void)
 
             Rr_UIEndChild();
         }
+
         if (Rr_UIBeginChild("Input Fields"))
         {
             static char StringBuffer[16] = "Hello, World!";
@@ -290,6 +314,8 @@ static void Iterate(void)
             Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
             static float TestFloat = 123.456f;
             Rr_UIInputFloat("Float Input", &TestFloat);
+
+            Rr_UISetNextWindowCreateCollapsed(false);
             if (Rr_UIBeginChild("Vectors and Matrices"))
             {
                 static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };
@@ -330,31 +356,7 @@ static void Iterate(void)
 
             Rr_UIEndChild();
         }
-        /* /\* if (Rr_UIBeginChild("Text")) *\/ */
-        /* /\* { *\/ */
-        /* /\*     Rr_UILabel("Text"); *\/ */
-        /* /\*     Rr_UILabel("Multi\n line\n  text"); *\/ */
-        /* /\*     Rr_UILabelEx( *\/ */
-        /* /\*         "Lorem ipsum dolor sit amet, consectetur adipiscing
-         * elit, sed " *\/ */
-        /* /\*         "do eiusmod tempor incididunt ut labore et dolore
-         * magna "
-         * *\/ */
-        /* /\*         "aliqua. " *\/ */
-        /* /\*         "Ut enim ad minim veniam, quis nostrud exercitation
-         * ullamco " *\/ */
-        /* /\*         "laboris nisi ut aliquip ex ea commodo consequat.
-         * Duis aute " *\/ */
-        /* /\*         "irure dolor in reprehenderit in voluptate velit esse
-         * cillum " *\/ */
-        /* /\*         "dolore eu fugiat nulla pariatur. Excepteur sint
-         * occaecat " *\/ */
-        /* /\*         "cupidatat non proident, sunt in culpa qui officia
-         * deserunt " *\/ */
-        /* /\*         "mollit anim id est laborum. ", *\/ */
-        /* /\*         RR_UI_TEXT_FLAGS_WRAPPED_BIT); *\/ */
-        /* /\*     Rr_UIEndChild(); *\/ */
-        /* /\* } *\/ */
+
         /* if (Rr_UIBeginChild("Horizontal Layout")) */
         /* { */
         /*     Rr_UILabel("Horizontal Layout"); */
@@ -369,6 +371,7 @@ static void Iterate(void)
         /*     Rr_UIEndHorizontal(); */
         /*     Rr_UIEndChild(); */
         /* } */
+
         Rr_UIEndWindow();
     }
 }
