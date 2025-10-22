@@ -438,72 +438,6 @@ static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT);
 }
 
-static inline Rr_UILayout *Rr_UICurrentLayout(void)
-{
-    return gUIContext->LayoutStack;
-}
-
-static inline Rr_UILayout *Rr_UIPushLayout(
-    Rr_UIWindow *Window,
-    Rr_Vec2 ContentsPadding)
-{
-    Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
-    *Layout = (Rr_UILayout){
-        .Window = Window,
-        .HorizontalX = INFINITY,
-        .DeferredWindowOffset = Rr_V2F(INFINITY),
-        .DeferredWindowExtent = Rr_V2F(INFINITY),
-        .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
-        .ContentsPadding = ContentsPadding,
-        .TopLevelParent =
-            Window->Child ? gUIContext->LayoutStack->TopLevelParent : Layout,
-        .Cursor = Window->Rect.Offset,
-        .AvailableContentsWidth = Window->Rect.Extent.Width,
-        .Previous = gUIContext->LayoutStack,
-    };
-    gUIContext->LayoutStack = Layout;
-    return Layout;
-}
-
-static inline void Rr_UIPopLayout(void)
-{
-    assert(gUIContext->LayoutStack);
-    gUIContext->LayoutStack = gUIContext->LayoutStack->Previous;
-}
-
-static inline Rr_UIWindow *Rr_UICurrentWindow(void)
-{
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    return Layout ? Layout->Window : NULL;
-}
-
-static inline bool Rr_UIIsHorizontal(void)
-{
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    return Layout && Layout->HorizontalX != INFINITY;
-}
-
-static inline void Rr_UIAssertNoWindow(void)
-{
-    assert(
-        Rr_UICurrentWindow() == NULL &&
-        "Did you forget to call Rr_UIEndWindow() or Rr_UIEndChild()?");
-}
-
-static inline void Rr_UIAssertWindow(void)
-{
-    assert(
-        Rr_UICurrentWindow() != NULL &&
-        "Did you forget to call Rr_UIBeginWindow() or Rr_UIBeginChild()?");
-}
-
-static inline void Rr_UIAssertNoHorizontal(Rr_UILayout *Layout)
-{
-    assert(
-        Layout->HorizontalX == INFINITY &&
-        "Did you forget to call Rr_UIEndHorizontal()?");
-}
-
 static inline Rr_UIHash Rr_UICurrentHash(void)
 {
     return gUIContext->HashStack.Count > 0
@@ -555,7 +489,7 @@ static inline Rr_UIHash Rr_UIGetTitleHash(
     return Hash;
 }
 
-static inline void Rr_UIPushHash(Rr_UIHash Hash)
+static inline void Rr_UIPushIDHash(Rr_UIHash Hash)
 {
     *RR_PUSH_INTO_ARRAY(&gUIContext->HashStack, gUIContext->Arena) = Hash;
 }
@@ -564,7 +498,7 @@ void Rr_UIPushID(const char *IDString)
 {
     Rr_UIHash Hash =
         Rr_UIGetHash(strlen(IDString), IDString, Rr_UICurrentHash());
-    Rr_UIPushHash(Hash);
+    Rr_UIPushIDHash(Hash);
 }
 
 void Rr_UIPopID(void)
@@ -572,6 +506,75 @@ void Rr_UIPopID(void)
     assert(
         gUIContext->HashStack.Count && "Did you forget to call Rr_UIPushID()?");
     RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->HashStack));
+}
+
+static inline Rr_UILayout *Rr_UICurrentLayout(void)
+{
+    return gUIContext->LayoutStack;
+}
+
+static inline Rr_UILayout *Rr_UIPushLayout(
+    Rr_UIHash Hash,
+    Rr_UIWindow *Window,
+    Rr_Vec2 ContentsPadding)
+{
+    Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
+    *Layout = (Rr_UILayout){
+        .Window = Window,
+        .HorizontalX = INFINITY,
+        .DeferredWindowOffset = Rr_V2F(INFINITY),
+        .DeferredWindowExtent = Rr_V2F(INFINITY),
+        .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
+        .ContentsPadding = ContentsPadding,
+        .TopLevelParent =
+            Window->Child ? gUIContext->LayoutStack->TopLevelParent : Layout,
+        .Cursor = Window->Rect.Offset,
+        .AvailableContentsWidth = Window->Rect.Extent.Width,
+        .Previous = gUIContext->LayoutStack,
+    };
+    gUIContext->LayoutStack = Layout;
+    Rr_UIPushIDHash(Hash);
+    return Layout;
+}
+
+static inline void Rr_UIPopLayout(void)
+{
+    Rr_UIPopID();
+    assert(gUIContext->LayoutStack);
+    gUIContext->LayoutStack = gUIContext->LayoutStack->Previous;
+}
+
+static inline Rr_UIWindow *Rr_UICurrentWindow(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    return Layout ? Layout->Window : NULL;
+}
+
+static inline bool Rr_UIIsHorizontal(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    return Layout && Layout->HorizontalX != INFINITY;
+}
+
+static inline void Rr_UIAssertNoWindow(void)
+{
+    assert(
+        Rr_UICurrentWindow() == NULL &&
+        "Did you forget to call Rr_UIEndWindow() or Rr_UIEndChild()?");
+}
+
+static inline void Rr_UIAssertWindow(void)
+{
+    assert(
+        Rr_UICurrentWindow() != NULL &&
+        "Did you forget to call Rr_UIBeginWindow() or Rr_UIBeginChild()?");
+}
+
+static inline void Rr_UIAssertNoHorizontal(Rr_UILayout *Layout)
+{
+    assert(
+        Layout->HorizontalX == INFINITY &&
+        "Did you forget to call Rr_UIEndHorizontal()?");
 }
 
 static inline Rr_UIPrimitive Rr_UIReservePrimitive(
@@ -2127,7 +2130,25 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
         &gUIContext->Style.Foreground);
 }
 
-static inline float Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
+static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UIWindow *Window)
+{
+    if (!Rr_UIWindowHasTitle(Window))
+    {
+        return Rr_V2F(0.0f);
+    }
+
+    bool HasCollapse = Rr_UIWindowHasCollapseButton(Window);
+    bool HasClose = Rr_UIWindowHasCloseButton(Window);
+
+    return Rr_V2(
+        Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f, 0).X +
+            gUIContext->TitlePadding.Width * 2 +
+            (HasClose ? gUIContext->TitleButtonSize : 0) +
+            (HasCollapse ? gUIContext->TitleButtonSize : 0),
+        gUIContext->TitleHeight);
+}
+
+static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
 {
     Rr_UIWindow *Window = Layout->Window;
     Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
@@ -2173,10 +2194,6 @@ static inline float Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
                           ColorB,
                           gUIContext->Style.TitleBackground };
     Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
-
-    return TitleSize.Width + gUIContext->TitlePadding.Width * 2 +
-           (HasClose ? gUIContext->TitleButtonSize : 0) +
-           (HasCollapse ? gUIContext->TitleButtonSize : 0);
 }
 
 static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
@@ -2593,16 +2610,13 @@ static inline bool Rr_UIBeginWindowEx(
             RR_ALLOC_TYPE(gUIContext->FrameArena, Rr_UIClipRectArray);
     }
 
-    Rr_UILayout *Layout = Rr_UIPushLayout(Window, ContentsPadding);
+    Rr_UILayout *Layout = Rr_UIPushLayout(Hash, Window, ContentsPadding);
 
     if (Window->Child)
     {
-        Layout->DeferredAutoResize = false;
         Window->Rect.Extent.X = ParentLayout->AvailableContentsWidth;
         Layout->AvailableContentsWidth = Window->Rect.Extent.X;
     }
-
-    Rr_UIPushHash(Hash);
 
     bool WasCollapsed = Window->Collapsed;
 
@@ -2650,10 +2664,9 @@ static inline bool Rr_UIBeginWindowEx(
     /* Add window title if necessary. */
 
     bool HasTitle = Rr_UIWindowHasTitle(Window);
-    float DesiredTitleWidth = 0;
     if (HasTitle)
     {
-        DesiredTitleWidth = Rr_UIAddWindowTitle(Layout, Open);
+        Rr_UIAddWindowTitle(Layout, Open);
 
         Layout->Cursor.Y += gUIContext->TitleHeight;
     }
@@ -2754,15 +2767,17 @@ static inline bool Rr_UIBeginWindowEx(
 
     Window->ContentsStart = Window->ContentsEnd = Layout->Cursor;
 
-    /* Consider title length when in auto size mode. */
+    /* NOTE: Consider title length when in auto resize mode.
+     * This will be baseline width (e.g. when window only has wrapped text). */
 
     if (HasTitle && Layout->DeferredAutoResize)
     {
-        float TitleWidth =
-            DesiredTitleWidth - Layout->ContentsPadding.Width * 2;
-        Window->ContentsEnd.Width += TitleWidth;
+        Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Window);
+        float MinContentsWidth =
+            TitleSize.X - Layout->ContentsPadding.Width * 2.0f;
+        Window->ContentsEnd.X += MinContentsWidth;
         Layout->AvailableContentsWidth =
-            RR_MAX(Layout->AvailableContentsWidth, TitleWidth);
+            RR_MAX(Layout->AvailableContentsWidth, MinContentsWidth);
     }
 
     return true;
@@ -2964,12 +2979,15 @@ void Rr_UIEndWindow(void)
         /* NOTE: Select between widths occupied by rigid widgets such as
          * buttons and flexible widgets such as input fields. */
 
+        Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Window);
+
         Window->Rect.Extent.X = RR_MAX(
             Layout->DeferredMaxFlexibleWidgetTitleWidth +
                 gUIContext->FlexibleTitleMargin +
                 Layout->DeferredMaxFlexibleWidgetWidth,
             Layout->DeferredMaxRigidWidth);
         Window->Rect.Extent.X += Layout->ContentsPadding.X * 2.0f;
+        Window->Rect.Extent.X = RR_MAX(Window->Rect.Extent.X, TitleSize.X);
 
         if (Rr_UIWindowHasTitle(Window))
         {
@@ -3001,7 +3019,6 @@ void Rr_UIEndWindow(void)
     /* Pop whatever was pushed in Rr_UIBeginWindowEx(). */
 
     Rr_UIPopLayout();
-    Rr_UIPopID();
 
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     if (ParentLayout)
