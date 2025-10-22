@@ -2592,7 +2592,8 @@ static inline bool Rr_UIBeginWindowEx(
      * This will put window on top unless there is a flag
      * preventing that which is not currently implemented. */
 
-    bool NoBorder = Rr_UIWindowNoBorders(Window);
+    bool NoBorders = Rr_UIWindowNoBorders(Window);
+    bool HasTitle = Rr_UIWindowHasTitle(Window);
 
     bool WasClosed = Window->Open == false;
     Window->Open = (Open == NULL || *Open == true);
@@ -2640,8 +2641,17 @@ static inline bool Rr_UIBeginWindowEx(
     if (Window->Child)
     {
         Layout->Rect.Extent.X = ParentLayout->AvailableContentsWidth;
-        Layout->AvailableContentsWidth = Layout->Rect.Extent.X;
     }
+    else if (HasTitle && Layout->DeferredAutoResize)
+    {
+        /* NOTE: Consider title width when in auto resize mode. This will be
+         * the baseline width (e.g. when window only has wrapped text). */
+
+        Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Window);
+        Layout->Rect.Extent.X = RR_MAX(Layout->Rect.Extent.X, TitleSize.X);
+    }
+
+    Layout->AvailableContentsWidth = Layout->Rect.Extent.X;
 
     /* Calculate total and visible extents. */
 
@@ -2691,7 +2701,6 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Add window title if necessary. */
 
-    bool HasTitle = Rr_UIWindowHasTitle(Window);
     if (HasTitle)
     {
         Rr_UIAddWindowTitle(Layout, Open);
@@ -2771,19 +2780,6 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_UIDrawSolidQuad(&ContentsAreaRect, BackgroundColor);
 
     Window->ContentsStart = Window->ContentsEnd = Layout->Cursor;
-
-    /* NOTE: Consider title length when in auto resize mode.
-     * This will be baseline width (e.g. when window only has wrapped text). */
-
-    if (HasTitle && Layout->DeferredAutoResize)
-    {
-        Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Window);
-        float MinContentsWidth =
-            TitleSize.X - Layout->ContentsPadding.Width * 2.0f;
-        Window->ContentsEnd.X += MinContentsWidth;
-        Layout->AvailableContentsWidth =
-            RR_MAX(Layout->AvailableContentsWidth, MinContentsWidth);
-    }
 
     return true;
 }

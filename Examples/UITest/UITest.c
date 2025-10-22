@@ -173,7 +173,6 @@ static void Iterate(void)
     StyleEditorWindow();
     TextInputWindow();
 
-    Rr_UISetNextWindowCreateCollapsed(true);
     if (Rr_UIBeginWindow("Rr_UI.h", &Open, Flags))
     {
         /* if (Rr_UIBeginChild("Child Windows")) */
