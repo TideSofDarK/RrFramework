@@ -36,8 +36,8 @@ static void FixedSizeWindow()
             &FixedSizeWindowOpen,
             RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT))
     {
-        Rr_UILabel("Resizing is disabled for this window.");
-        Rr_UILabelF("Window Size: %dx%d", 400, 400);
+        Rr_UIText("Resizing is disabled for this window.");
+        Rr_UITextF("Window Size: %dx%d", 400, 400);
         Rr_UIEndWindow();
     }
 }
@@ -208,19 +208,19 @@ static void Iterate(void)
         Rr_UISetNextWindowCreateCollapsed(false);
         if (Rr_UIBeginChild("Text"))
         {
-            Rr_UILabel("Text");
-            Rr_UILabel("Multi\n line\n  text");
-            /* Rr_UILabelEx( */
-            /*     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " */
-            /*     "do eiusmod tempor incididunt ut labore et dolore magna " */
-            /*     "aliqua. " */
-            /*     "Ut enim ad minim veniam, quis nostrud exercitation ullamco " */
-            /*     "laboris nisi ut aliquip ex ea commodo consequat. Duis aute " */
-            /*     "irure dolor in reprehenderit in voluptate velit esse cillum " */
-            /*     "dolore eu fugiat nulla pariatur. Excepteur sint occaecat " */
-            /*     "cupidatat non proident, sunt in culpa qui officia deserunt " */
-            /*     "mollit anim id est laborum. ", */
-            /*     RR_UI_TEXT_FLAGS_WRAPPED_BIT); */
+            Rr_UIText("Simple Text");
+            Rr_UIText(
+                "Text widgets do support\nline breaks.\n - Leading spaces "
+                "are supported as well!");
+            Rr_UILabelText("Label", "* Line 1\n* Line 2\n* Line 3");
+            Rr_UIText("Wrapping makes the text rely on window width.");
+            Rr_UITextEx(
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
+                "do eiusmod tempor incididunt ut labore et dolore magna "
+                "aliqua. "
+                "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
+                "laboris nisi ut aliquip ex ea commodo consequat.",
+                RR_UI_TEXT_FLAGS_WRAPPED_BIT);
             Rr_UIEndChild();
         }
 

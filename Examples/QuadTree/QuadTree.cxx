@@ -968,7 +968,7 @@ struct SQuadTreeApp
                 RR_UI_WINDOW_FLAGS_CLOSE_BIT |
                     RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
         {
-            Rr_UILabelF("Regenerating: %d", Rebuilding);
+            Rr_UITextF("Regenerating: %d", Rebuilding);
             if (Rr_UIButton("Regenerate Tree"))
             {
                 if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
@@ -977,11 +977,11 @@ struct SQuadTreeApp
                 }
             }
             Rr_UISeparator();
-            Rr_UILabelF("Circles: %zu", Tree.ElementsCount());
-            Rr_UILabelF("Draw Count: %d", DrawCount);
-            Rr_UILabelF("Draws Size: %d", DrawsSize);
-            Rr_UILabelF("Box Select: %d", Selecting);
-            Rr_UILabelF(
+            Rr_UITextF("Circles: %zu", Tree.ElementsCount());
+            Rr_UITextF("Draw Count: %d", DrawCount);
+            Rr_UITextF("Draws Size: %d", DrawsSize);
+            Rr_UITextF("Box Select: %d", Selecting);
+            Rr_UITextF(
                 "Camera Position: %d %d",
                 (int)CameraPosition.X,
                 (int)CameraPosition.Y);

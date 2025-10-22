@@ -299,7 +299,7 @@ struct STransferThreadApp
             "TransferThread.cxx",
             nullptr,
             RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-        Rr_UILabel(
+        Rr_UIText(
             "This example demonstrates loading images from another thread.");
         if (Images.size() > 1)
         {

@@ -1240,7 +1240,7 @@ struct SBlurApp
         Rr_Graph *Graph = Rr_GetGraph();
 
         Rr_UIBeginWindow("Blur.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-        Rr_UILabel(
+        Rr_UIText(
             "This example demonstrates various blur algorithms.\nYou can drop "
             "a PNG image into the window to blur it (works only with 2D "
             "algorithms).");

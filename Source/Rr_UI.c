@@ -3431,11 +3431,9 @@ void Rr_UISeparator(void)
     Layout->Cursor.Y += gUIContext->SeparatorLineHeight;
 }
 
-void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
+void Rr_UITextEx(const char *Text, Rr_UITextFlags Flags)
 {
     Rr_UIAssertWindow();
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -3450,15 +3448,11 @@ void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags)
         Flags);
 
     Rr_UIAdvance(TextSize);
-
-    Rr_DestroyScratch(Scratch);
 }
 
-void Rr_UILabel(const char *Text)
+void Rr_UIText(const char *Text)
 {
     Rr_UIAssertWindow();
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -3473,11 +3467,9 @@ void Rr_UILabel(const char *Text)
         0);
 
     Rr_UIAdvance(TextSize);
-
-    Rr_DestroyScratch(Scratch);
 }
 
-void Rr_UILabelF(const char *Format, ...)
+void Rr_UITextF(const char *Format, ...)
 {
     int BufferSize;
     va_list Args;
@@ -3494,9 +3486,52 @@ void Rr_UILabelF(const char *Format, ...)
     BufferSize = vsnprintf(Buffer, (size_t)BufferSize + 1, Format, Args);
     va_end(Args);
 
-    Rr_UILabel(Buffer);
+    Rr_UIText(Buffer);
 
     Rr_DestroyScratch(Scratch);
+}
+
+void Rr_UILabelText(const char *Title, const char *Text)
+{
+    Rr_UIAssertWindow();
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    size_t TitleLength = strlen(Title);
+
+    float TextWidth = Rr_UISetupFlexibleWidget(
+        Layout,
+        TitleLength,
+        Title,
+        Rr_UICalculateTextSize(SIZE_MAX, Text, 0.0f, 0).X);
+
+    Rr_Vec2 TextSize = Rr_UIDrawText(
+        false,
+        Layout->Cursor,
+        SIZE_MAX,
+        Text,
+        0.0f,
+        &gUIContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TitleOffset = Layout->Cursor;
+    TitleOffset.X += TextWidth + Layout->ContentsPadding.X;
+    Rr_Vec2 TitleExtent = Rr_UIDrawText(
+        false,
+        TitleOffset,
+        TitleLength,
+        Title,
+        0,
+        &gUIContext->Style.Foreground,
+        0);
+
+    Rr_Vec2 TotalExtent = {
+        TextWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        TextSize.Y,
+    };
+
+    Rr_UIAdvance(TotalExtent);
 }
 
 bool Rr_UIButton(const char *Text)
@@ -6408,7 +6443,7 @@ void Rr_UISetFontSize(float Size)
 
 static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, const char *Comment)
 {
-    Rr_UILabelF(
+    Rr_UITextF(
         "%s: commited %d bytes, position %p",
         Comment,
         Arena->Commited,
@@ -6431,7 +6466,7 @@ void Rr_UIDebugOverlay(void)
         {
             Rr_Vec2 MousePosition = Rr_GetMousePosition();
             Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
-            Rr_UILabelF(
+            Rr_UITextF(
                 "Time: %.2f\n"
                 "Mouse Position: %.2f %.2f\n"
                 "Mouse Delta: %.2f %.2f",
@@ -6482,7 +6517,7 @@ void Rr_UIDebugOverlay(void)
                     LastSample = Now;
                     Frames = 0;
                 }
-                Rr_UILabelF("FPS: %.2f", LastFPS);
+                Rr_UITextF("FPS: %.2f", LastFPS);
             }
 
             double MainLoopMS =
@@ -6494,7 +6529,7 @@ void Rr_UIDebugOverlay(void)
                 (double)(RR_GET_FRAME_SECTION("Rr.FrameGraph") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
 
-            Rr_UILabelF(
+            Rr_UITextF(
                 "Main Loop: %.3fms\n"
                 "UI: %.3fms\n"
                 "Frame Graph: %.3fms",
@@ -6504,11 +6539,11 @@ void Rr_UIDebugOverlay(void)
 
             if (gRenderer->GraphicsQueue.TimestampsEnabled)
             {
-                Rr_UILabelF("GPU: %.3fms", gRenderer->LastFrameMS);
+                Rr_UITextF("GPU: %.3fms", gRenderer->LastFrameMS);
             }
             else
             {
-                Rr_UILabelF(
+                Rr_UITextF(
                     "GPU timestamps not supported!",
                     gRenderer->LastFrameMS);
             }
@@ -6520,14 +6555,14 @@ void Rr_UIDebugOverlay(void)
         }
         if (Rr_UITab("UI"))
         {
-            Rr_UILabelF(
+            Rr_UITextF(
                 "UI Font Size: %.2f\n"
                 "Vertices Capacity: %zu\n"
                 "Indices Capacity: %zu",
                 gUIContext->FontSize,
                 gUIContext->Vertices.Capacity,
                 gUIContext->Indices.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "Hovered Window: %s\n"
                 "Active Windows: %b\n"
                 "Popup Window Open: %b",
@@ -6552,50 +6587,50 @@ void Rr_UIDebugOverlay(void)
         }
         if (Rr_UITab("Renderer"))
         {
-            Rr_UILabelF("Frame: %zu", gRenderer->FrameNumber);
-            Rr_UILabelF(
+            Rr_UITextF("Frame: %zu", gRenderer->FrameNumber);
+            Rr_UITextF(
                 "Images: %zu/%zu",
                 gRenderer->Images.Count,
                 gRenderer->Images.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "Buffers: %zu/%zu",
                 gRenderer->Buffers.Count,
                 gRenderer->Buffers.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "DescriptorSetLayouts: %zu/%zu",
                 gRenderer->DescriptorSetLayoutStorage.Hive.Count,
                 gRenderer->DescriptorSetLayoutStorage.Hive.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "DescriptorPools: %zu",
                 gRenderer->DescriptorPoolListCount);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "PipelineLayouts: %zu/%zu",
                 gRenderer->PipelineLayouts.Count,
                 gRenderer->PipelineLayouts.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "ComputePipelines: %zu/%zu",
                 gRenderer->ComputePipelines.Count,
                 gRenderer->ComputePipelines.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "GraphicsPipelines: %zu/%zu",
                 gRenderer->GraphicsPipelines.Count,
                 gRenderer->GraphicsPipelines.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "Samplers: %zu/%zu",
                 gRenderer->Samplers.Count,
                 gRenderer->Samplers.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "Render Passes: %zu/%zu",
                 gRenderer->RenderPassStorage.Hive.Count,
                 gRenderer->RenderPassStorage.Hive.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "Framebuffers: %zu/%zu",
                 gRenderer->FramebufferStorage.Hive.Count,
                 gRenderer->FramebufferStorage.Hive.Capacity);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "SwapchainImages: %zu",
                 gRenderer->SwapchainImages.Count);
-            Rr_UILabelF(
+            Rr_UITextF(
                 "SyncStates: %zu/%zu",
                 gRenderer->SyncStateStorage.Hive.Count,
                 gRenderer->SyncStateStorage.Hive.Capacity);

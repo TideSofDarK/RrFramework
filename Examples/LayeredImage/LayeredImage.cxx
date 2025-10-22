@@ -203,7 +203,7 @@ struct SLayeredImageApp
             "LayeredImage.cxx",
             NULL,
             RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-        Rr_UILabel(
+        Rr_UIText(
             "This example demonstrates sampling of Rr_Image2DArray and "
             "Rr_Image3D objects.");
         Rr_UICheckbox("Use Image3D", &UseImage3D);

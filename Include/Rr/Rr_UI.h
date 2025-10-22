@@ -163,11 +163,13 @@ extern bool Rr_UIFold(const char *Title);
 
 extern void Rr_UISeparator(void);
 
-extern void Rr_UILabelEx(const char *Text, Rr_UITextFlags Flags);
+extern void Rr_UITextEx(const char *Text, Rr_UITextFlags Flags);
 
-extern void Rr_UILabel(const char *Text);
+extern void Rr_UIText(const char *Text);
 
-extern void Rr_UILabelF(const char *Format, ...);
+extern void Rr_UITextF(const char *Format, ...);
+
+extern void Rr_UILabelText(const char *Title, const char *Text);
 
 extern bool Rr_UIButton(const char *Title);
 
