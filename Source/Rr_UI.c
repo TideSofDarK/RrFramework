@@ -2872,16 +2872,6 @@ void Rr_UIEndWindow(void)
 
     Rr_UIBeginVisibleClipRect(&Layout->Rect);
 
-    /* Add border if necessary. */
-
-    if (!Rr_UIWindowNoBorders(Window))
-    {
-        Rr_UIDrawInnerFrame(
-            &Layout->Rect,
-            gUIContext->FrameThickness,
-            &gUIContext->Style.Outline);
-    }
-
     if (!Window->Collapsed)
     {
         /* NOTE: Flooring these fixed imprecise FillRatio calculation.
@@ -2955,6 +2945,16 @@ void Rr_UIEndWindow(void)
                 Positions,
                 &Layout->DeferredResizeHandleColor);
         }
+    }
+
+    /* Add border if necessary. */
+
+    if (!Rr_UIWindowNoBorders(Window))
+    {
+        Rr_UIDrawInnerFrame(
+            &Layout->Rect,
+            gUIContext->FrameThickness,
+            &gUIContext->Style.Outline);
     }
 
     Rr_UIEndClipRect();

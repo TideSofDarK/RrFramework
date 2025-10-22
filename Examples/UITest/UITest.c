@@ -210,10 +210,9 @@ static void Iterate(void)
         {
             Rr_UIText("Simple Text");
             Rr_UIText(
-                "Text widgets do support\nline breaks.\n - Leading spaces "
-                "are supported as well!");
+                " - Leading Spaces and Line Breaks 1\n - Leading Spaces and "
+                "Line Breaks 2");
             Rr_UILabelText("Label", "* Line 1\n* Line 2\n* Line 3");
-            Rr_UIText("Wrapping makes the text rely on window width.");
             Rr_UITextEx(
                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
                 "do eiusmod tempor incididunt ut labore et dolore magna "
