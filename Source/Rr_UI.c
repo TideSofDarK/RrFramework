@@ -1834,7 +1834,7 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
     bool Contains = Rr_RectContains(Rect, gUIContext->MousePosition);
 
     Rr_UIDragResult Result = { 0 };
-    Result.Hovered = Contains && Layout->MouseInsideClipRect;
+    Result.Hovered = WindowHovered && Contains && Layout->MouseInsideClipRect;
 
     if (DragOpMatch && WindowMatch && HashMatch)
     {
@@ -1876,9 +1876,9 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
         {
             Result.DoubleClicked = true;
 
-            Rr_UIEndDragOp();
+            /* Rr_UIEndDragOp(); */
 
-            return Result;
+            /* return Result; */
         }
 
         Rr_UIBeginDragOp(Window, DragOp, Hash, Value);
@@ -1896,23 +1896,6 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
 
         return Result;
     }
-
-    /* Result.Hovered = Contains && WindowHovered &&
-     * Layout->MouseInsideClipRect; */
-
-    /* if (WindowMatch && DragOpMatch && HashMatch) */
-    /* { */
-    /*     if (gUIContext->LeftMouseButtonHeld) */
-    /*     { */
-    /*         Result.Hovered = true; */
-    /*         Result.Moved = gUIContext->MouseMoved; */
-    /*         Result.Held = true; */
-    /*     } */
-    /*     else */
-    /*     { */
-    /*         Rr_UIEndDragOp(); */
-    /*     } */
-    /* } */
 
     return Result;
 }
@@ -3789,7 +3772,14 @@ static inline size_t Rr_UILineEnd(const char *Buffer, size_t Cursor)
     return Rr_NextUTF8LFOffset(Buffer, Cursor);
 }
 
-static bool Rr_UIEditUTF8Buffer(
+typedef struct Rr_UIEditResult Rr_UIEditResult;
+struct Rr_UIEditResult
+{
+    bool Edited;
+    bool Confirmed;
+};
+
+static Rr_UIEditResult Rr_UIEditUTF8Buffer(
     size_t *CursorBegin,
     size_t *CursorEnd,
     size_t BufferCapacity,
@@ -3797,13 +3787,13 @@ static bool Rr_UIEditUTF8Buffer(
     Rr_UIInputFieldFilterFunc FilterFunc,
     bool EnterToConfirm)
 {
+    Rr_UIEditResult Result = { 0 };
+
     if (gUIContext->TextInputEvents.Count == 0 &&
         gUIContext->KeyboardInputEvents.Count == 0)
     {
-        return false;
+        return Result;
     }
-
-    bool ChangesConfirmed = false;
 
     uint64_t TimeMS = Rr_GetTimeMS();
     size_t BufferLength = strlen(Buffer);
@@ -3972,14 +3962,14 @@ static bool Rr_UIEditUTF8Buffer(
         {
             NewCursorBegin = NewCursorEnd;
             Edited = true;
-            ChangesConfirmed = true;
+            Result.Confirmed = true;
         }
 
         if (Event->Scancode == RR_SCANCODE_RETURN)
         {
             if (EnterToConfirm)
             {
-                ChangesConfirmed = true;
+                Result.Confirmed = true;
             }
             else if (Event->Keymod == 0 && CursorMin > 0)
             {
@@ -4181,6 +4171,8 @@ static bool Rr_UIEditUTF8Buffer(
             gUIContext->TextInputCursorMaxCol =
                 Rr_UIThisLineCol(Buffer, NewCursorEnd);
         }
+
+        Result.Edited |= true;
     }
 
     for (size_t Index = 0; Index < gUIContext->TextInputEvents.Count; ++Index)
@@ -4209,18 +4201,26 @@ static bool Rr_UIEditUTF8Buffer(
             gUIContext->TextInputCursorBlinkTime = TimeMS;
             gUIContext->TextInputCursorMaxCol =
                 Rr_UIThisLineCol(Buffer, NewCursorEnd);
+            Result.Edited |= true;
         }
     }
 
     RR_CLEAR_ARRAY(&gUIContext->TextInputEvents);
     RR_CLEAR_ARRAY(&gUIContext->KeyboardInputEvents);
 
-    return ChangesConfirmed;
+    return Result;
 }
+
+typedef struct Rr_UIInputFieldResult Rr_UIInputFieldResult;
+struct Rr_UIInputFieldResult
+{
+    Rr_UIEditResult EditResult;
+    Rr_Vec2 Extent;
+};
 
 /* NOTE: Generic input field is a building block for other widgets. It doesn't
  * alter the layout on its own. */
-static inline bool Rr_UIGenericInputField(
+static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     Rr_UIHash Hash,
     Rr_Vec2 Offset,
     size_t BufferCapacity,
@@ -4229,11 +4229,8 @@ static inline bool Rr_UIGenericInputField(
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags,
     float FixedWidth,
-    bool DrawBackground,
-    Rr_Vec2 *OutFieldExtent)
+    bool DrawBackground)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
@@ -4349,10 +4346,6 @@ static inline bool Rr_UIGenericInputField(
     {
         FieldRect.Extent.X = FixedWidth;
     }
-    if (OutFieldExtent)
-    {
-        *OutFieldExtent = FieldRect.Extent;
-    }
     if (DrawBackground)
     {
         Rr_UIBevel(
@@ -4362,7 +4355,7 @@ static inline bool Rr_UIGenericInputField(
             true);
     }
 
-    Rr_UIDragResult Result = Rr_UIDragBehavior(
+    Rr_UIDragResult DragResult = Rr_UIDragBehavior(
         Layout,
         &FieldRect,
         RR_UI_DRAG_OP_WIDGET,
@@ -4372,7 +4365,7 @@ static inline bool Rr_UIGenericInputField(
     bool AutoSelect =
         RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT);
 
-    if (Result.Began)
+    if (DragResult.Began)
     {
         size_t BufferLength = strlen(Buffer);
 
@@ -4430,7 +4423,7 @@ static inline bool Rr_UIGenericInputField(
             Rr_UIThisLineCol(Buffer, gUIContext->TextInputCursorEnd);
         gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
     }
-    else if (Focused && Result.Moved)
+    else if (Focused && DragResult.Moved)
     {
         if (!AutoSelect ||
             gUIContext->LeftMouseButton.Id > gUIContext->TextInputClickId)
@@ -4440,35 +4433,35 @@ static inline bool Rr_UIGenericInputField(
         }
     }
 
-    if (Result.Hovered)
+    if (DragResult.Hovered)
     {
         gUIContext->MouseOverTextInput = true;
     }
 
-    bool ChangesConfirmed = false;
+    Rr_UIEditResult EditResult = { 0 };
 
     if (Focused)
     {
         bool EnterToConfirm =
             !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
-        ChangesConfirmed = Rr_UIEditUTF8Buffer(
+        EditResult = Rr_UIEditUTF8Buffer(
             &gUIContext->TextInputCursorBegin,
             &gUIContext->TextInputCursorEnd,
             BufferCapacity,
             UsePersistentBuffer ? gUIContext->TextInputBuffer.Data : Buffer,
             FilterFunc,
             EnterToConfirm);
-        if (ChangesConfirmed)
+        if (EditResult.Confirmed)
         {
             gUIContext->FocusedWindow = NULL;
         }
     }
     else
     {
-        ChangesConfirmed |= WasFocused;
+        EditResult.Confirmed |= WasFocused;
     }
 
-    if (ChangesConfirmed && UsePersistentBuffer)
+    if ((EditResult.Confirmed || EditResult.Edited) && UsePersistentBuffer)
     {
         memcpy(Buffer, gUIContext->TextInputBuffer.Data, BufferCapacity);
     }
@@ -4480,9 +4473,10 @@ static inline bool Rr_UIGenericInputField(
         Rr_UIBeginClipRect(&RestoreClipRect->Rect);
     }
 
-    Rr_DestroyScratch(Scratch);
-
-    return ChangesConfirmed;
+    return (Rr_UIInputFieldResult){
+        .EditResult = EditResult,
+        .Extent = FieldRect.Extent,
+    };
 }
 
 typedef enum
@@ -4610,8 +4604,7 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
     void *Data,
     Rr_UIScalarFormatType ScalarFormatType)
 {
-#define COMPONENT_BUFFER_SIZE 32
-    char ComponentBuffer[COMPONENT_BUFFER_SIZE];
+    char ComponentBuffer[32];
 
     size_t ComponentSize;
     switch (ScalarFormatType)
@@ -4652,7 +4645,7 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
             char *ComponentData = (char *)Data + Index * ComponentSize;
 
             Rr_UIFormatScalar(
-                COMPONENT_BUFFER_SIZE,
+                sizeof(ComponentBuffer),
                 ComponentBuffer,
                 ScalarFormatType,
                 ComponentData);
@@ -4667,11 +4660,9 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
 
     return MaxTextWidth * (float)Cols +
            gUIContext->ComponentMargin * (float)(Cols - 1);
-
-#undef COMPONENT_BUFFER_SIZE
 }
 
-static inline bool Rr_UIGenericInputScalarMulti(
+static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
     Rr_UIHash Hash,
     Rr_Vec2 Offset,
     int Cols,
@@ -4680,13 +4671,10 @@ static inline bool Rr_UIGenericInputScalarMulti(
     Rr_UIScalarFormatType ScalarFormatType,
     Rr_UIInputFieldFlags Flags,
     float FixedTotalWidth,
-    bool DrawBackground,
-    Rr_Vec2 *OutTotalExtent)
+    bool DrawBackground)
 {
     assert(Cols > 0 && Cols <= 4);
     assert(Rows > 0 && Rows <= 4);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UIInputFieldFilterFunc FilterFunc;
     size_t ComponentSize;
@@ -4728,47 +4716,12 @@ static inline bool Rr_UIGenericInputScalarMulti(
         break;
     }
 
-    const size_t COMPONENT_BUFFER_SIZE = 32;
-    char *Buffer = RR_ALLOC_NO_ZERO(
-        Scratch.Arena,
-        (size_t)(Rows * Cols) * sizeof(char) * COMPONENT_BUFFER_SIZE);
-
-    float MaxTextWidth = 0.0f;
-    for (int Row = 0; Row < Rows; ++Row)
-    {
-        for (int Col = 0; Col < Cols; ++Col)
-        {
-            size_t Index = (size_t)(Col * Rows + Row);
-            char *ComponentData = (char *)Data + Index * ComponentSize;
-            char *ComponentBuffer = Buffer + Index * COMPONENT_BUFFER_SIZE;
-
-            Rr_UIFormatScalar(
-                COMPONENT_BUFFER_SIZE,
-                ComponentBuffer,
-                ScalarFormatType,
-                ComponentData);
-
-            Rr_Vec2 TextExtent =
-                Rr_UICalculateTextSize(SIZE_MAX, ComponentBuffer, 0.0f, 0);
-            MaxTextWidth = RR_MAX(MaxTextWidth, TextExtent.X);
-        }
-    }
-
-    float DesiredComponentWidth =
-        MaxTextWidth + gUIContext->InputFieldPadding.X * 2.0f;
-    float TotalDesiredWidth = DesiredComponentWidth * (float)Cols +
-                              gUIContext->ComponentMargin * (float)(Cols - 1);
-
-    float SingleFieldWidth;
+    float SingleFieldWidth = 0.0f;
     if (FixedTotalWidth != 0.0f)
     {
         SingleFieldWidth = (FixedTotalWidth -
                             (gUIContext->ComponentMargin * (float)(Cols - 1))) /
                            (float)Cols;
-    }
-    else
-    {
-        SingleFieldWidth = DesiredComponentWidth;
     }
 
     const char *COMPONENT_TITLES[] = {
@@ -4780,7 +4733,7 @@ static inline bool Rr_UIGenericInputScalarMulti(
     Rr_Vec2 Cursor = Offset;
     float CursorXStart = Cursor.X;
     float MaxFieldHeight = 0.0f;
-    bool Edited = false;
+    Rr_UIInputFieldResult Result = { 0 };
     for (int Row = 0; Row < Rows; ++Row)
     {
         float MaxFieldHeightRow = 0.0f;
@@ -4788,35 +4741,39 @@ static inline bool Rr_UIGenericInputScalarMulti(
         {
             size_t Index = (size_t)(Col * Rows + Row);
             char *ComponentData = (char *)Data + Index * ComponentSize;
-            char *ComponentBuffer = Buffer + Index * COMPONENT_BUFFER_SIZE;
+            char ComponentBuffer[32];
 
-            /* Rr_UIFormatScalar( */
-            /*     sizeof(Buffer), */
-            /*     Buffer, */
-            /*     ScalarFormatType, */
-            /*     ElementData); */
+            Rr_UIFormatScalar(
+                sizeof(ComponentBuffer),
+                ComponentBuffer,
+                ScalarFormatType,
+                ComponentData);
 
             Rr_UIHash ComponentHash =
                 Rr_UIGetHash(2, COMPONENT_TITLES[Index], Hash);
 
-            Rr_Vec2 FieldExtent;
-            if (Rr_UIGenericInputField(
-                    ComponentHash,
-                    Cursor,
-                    COMPONENT_BUFFER_SIZE,
-                    ComponentBuffer,
-                    NULL,
-                    FilterFunc,
-                    Flags,
-                    SingleFieldWidth,
-                    true,
-                    &FieldExtent))
+            Rr_UIInputFieldResult ComponentResult = Rr_UIGenericInputField(
+                ComponentHash,
+                Cursor,
+                32,
+                ComponentBuffer,
+                NULL,
+                FilterFunc,
+                Flags,
+                SingleFieldWidth,
+                true);
+
+            Result.EditResult.Edited |= ComponentResult.EditResult.Edited;
+            Result.EditResult.Confirmed |= ComponentResult.EditResult.Confirmed;
+
+            if (ComponentResult.EditResult.Edited ||
+                ComponentResult.EditResult.Confirmed)
             {
-                Edited = true;
                 sscanf(ComponentBuffer, ScanString, (void *)ComponentData);
             }
 
-            MaxFieldHeightRow = RR_MAX(MaxFieldHeightRow, FieldExtent.Y);
+            MaxFieldHeightRow =
+                RR_MAX(MaxFieldHeightRow, ComponentResult.Extent.Y);
             Cursor.X += SingleFieldWidth + gUIContext->ComponentMargin;
         }
         MaxFieldHeight = RR_MAX(MaxFieldHeight, MaxFieldHeightRow);
@@ -4824,17 +4781,12 @@ static inline bool Rr_UIGenericInputScalarMulti(
         Cursor.Y += MaxFieldHeightRow + gUIContext->ComponentMargin;
     }
 
-    if (OutTotalExtent)
-    {
-        OutTotalExtent->X = SingleFieldWidth * (float)Cols +
-                            gUIContext->ComponentMargin * (float)(Cols - 1);
-        OutTotalExtent->Y = MaxFieldHeight * (float)Rows +
-                            gUIContext->ComponentMargin * (float)(Rows - 1);
-    }
+    Result.Extent.X = SingleFieldWidth * (float)Cols +
+                      gUIContext->ComponentMargin * (float)(Cols - 1);
+    Result.Extent.Y = MaxFieldHeight * (float)Rows +
+                      gUIContext->ComponentMargin * (float)(Rows - 1);
 
-    Rr_DestroyScratch(Scratch);
-
-    return Edited;
+    return Result;
 }
 
 static inline bool Rr_UIInputScalarMulti(
@@ -4859,8 +4811,7 @@ static inline bool Rr_UIInputScalarMulti(
     FieldsWidth =
         Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, FieldsWidth);
 
-    Rr_Vec2 FieldsExtent;
-    bool Edited = Rr_UIGenericInputScalarMulti(
+    Rr_UIInputFieldResult Result = Rr_UIGenericInputScalarMulti(
         TitleHash,
         Layout->Cursor,
         Cols,
@@ -4871,11 +4822,10 @@ static inline bool Rr_UIInputScalarMulti(
             RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT,
         FieldsWidth,
-        true,
-        &FieldsExtent);
+        true);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += FieldsExtent.X + Layout->ContentsPadding.X;
+    TitleOffset.X += Result.Extent.X + Layout->ContentsPadding.X;
     TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -4887,13 +4837,13 @@ static inline bool Rr_UIInputScalarMulti(
         0);
 
     Rr_Vec2 TotalExtent = {
-        FieldsExtent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
-        FieldsExtent.Y,
+        Result.Extent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        Result.Extent.Y,
     };
 
     Rr_UIAdvance(TotalExtent);
 
-    return Edited;
+    return Result.EditResult.Confirmed || Result.EditResult.Edited;
 }
 
 bool Rr_UIInputField(
@@ -4930,8 +4880,7 @@ bool Rr_UIInputField(
         Title,
         TextSize.X + gUIContext->InputFieldPadding.X * 2.0f);
 
-    Rr_Vec2 FieldExtent;
-    bool ChangesConfirmed = Rr_UIGenericInputField(
+    Rr_UIInputFieldResult Result = Rr_UIGenericInputField(
         TitleHash,
         Layout->Cursor,
         BufferCapacity,
@@ -4940,11 +4889,10 @@ bool Rr_UIInputField(
         FilterFunc,
         Flags,
         FieldWidth,
-        true,
-        &FieldExtent);
+        true);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += FieldExtent.X + Layout->ContentsPadding.X;
+    TitleOffset.X += Result.Extent.X + Layout->ContentsPadding.X;
     TitleOffset.Y += gUIContext->InputFieldPadding.Height;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -4956,15 +4904,15 @@ bool Rr_UIInputField(
         0);
 
     Rr_Vec2 TotalExtent = {
-        FieldExtent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
-        FieldExtent.Y,
+        Result.Extent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        Result.Extent.Y,
     };
 
     Rr_UIAdvance(TotalExtent);
 
     Rr_DestroyScratch(Scratch);
 
-    return ChangesConfirmed;
+    return Result.EditResult.Confirmed || Result.EditResult.Edited;
 }
 
 bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
@@ -5434,6 +5382,9 @@ static inline void Rr_UIColorPickerPopup(
         {
             *(Rr_Vec4 *)Channels = Rr_U32ToRGBA(NewColor);
         }
+
+        HSVChanged = false;
+        StaticHSV = Rr_UIRGBToHSV((Rr_Vec3 *)Channels);
     }
 
     if (HSVChanged)
@@ -5476,8 +5427,7 @@ static inline bool Rr_UIInputColorEx(
     FieldsWidth =
         Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, FieldsWidth);
 
-    Rr_Vec2 FieldsExtent;
-    bool Edited = Rr_UIGenericInputScalarMulti(
+    Rr_UIInputFieldResult InputResult = Rr_UIGenericInputScalarMulti(
         TitleHash,
         Layout->Cursor,
         ChannelCount,
@@ -5488,11 +5438,10 @@ static inline bool Rr_UIInputColorEx(
             RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT,
         FieldsWidth - ColorBoxWithMargin,
-        true,
-        &FieldsExtent);
+        true);
 
     Rr_Vec2 ColorBoxOffset = Layout->Cursor;
-    ColorBoxOffset.X += FieldsExtent.Width + gUIContext->ComponentMargin;
+    ColorBoxOffset.X += InputResult.Extent.X + gUIContext->ComponentMargin;
 
     Rr_UIDragResult Result = Rr_UIButtonBehavior(
         Layout,
@@ -5528,7 +5477,7 @@ static inline bool Rr_UIInputColorEx(
     Rr_UIDrawBevel(&ColorBoxRect, &OpaqueColor, Result.Held);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += FieldsExtent.Width + gUIContext->ComponentMargin +
+    TitleOffset.X += InputResult.Extent.X + gUIContext->ComponentMargin +
                      ColorBoxExtent.X + Layout->ContentsPadding.X;
     TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
@@ -5541,9 +5490,9 @@ static inline bool Rr_UIInputColorEx(
         0);
 
     Rr_Vec2 TotalExtent = {
-        FieldsExtent.X + ColorBoxWithMargin + gUIContext->FlexibleTitleMargin +
-            TitleExtent.X,
-        FieldsExtent.Height,
+        InputResult.Extent.X + ColorBoxWithMargin +
+            gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        InputResult.Extent.Y,
     };
 
     Rr_UIAdvance(TotalExtent);
