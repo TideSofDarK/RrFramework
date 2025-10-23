@@ -295,7 +295,7 @@ static void Iterate(void)
         {
             static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
             Rr_UIInputColor3("Color RBA", ColorRGB.Elements);
-            static Rr_Vec4 ColorRGBA = { 0.9f, 0.2345f, 0.2f, 1.0f };
+            static Rr_Vec4 ColorRGBA = { 0.9f, 0.2345f, 0.2f, 0.5f };
             Rr_UIInputColor4("Color RGBA", ColorRGBA.Elements);
 
             Rr_UIEndChild();

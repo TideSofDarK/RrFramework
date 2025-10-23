@@ -1035,7 +1035,7 @@ static inline void Rr_UIDrawQuad(Rr_UIVertex *Vertices)
 static inline void Rr_UISolidQuad(
     Rr_UIVertex *Vertices,
     Rr_Rect *Rect,
-    Rr_Vec4 *Color)
+    const Rr_Vec4 *Color)
 {
     memcpy(
         Vertices,
@@ -1201,7 +1201,7 @@ static inline void Rr_UIDrawTriangleFilled(Rr_Vec2 *Positions, Rr_Vec4 *Color)
     Rr_UIFeatherConvexPrimitive(&Primitive, 3, 8.0f);
 }
 
-static inline void Rr_UIDrawSolidQuad(Rr_Rect *Rect, Rr_Vec4 *Color)
+static inline void Rr_UIDrawSolidQuad(Rr_Rect *Rect, const Rr_Vec4 *Color)
 {
     Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
     Rr_UISolidQuad(Primitive.Vertices, Rect, Color);
@@ -1336,6 +1336,56 @@ static inline void Rr_UIDrawTexturedQuad(
     };
 
     Rr_UIDrawQuad(Vertices);
+}
+
+static inline void Rr_UIDrawCheckerQuad(Rr_Rect *Rect, float Size)
+{
+    static const Rr_Vec4 WHITE = { 1.0f, 1.0f, 1.0f, 1.0f };
+    static const Rr_Vec4 GRAY = { 0.15f, 0.15f, 0.15f, 1.0f };
+
+    Rr_Rect CurrectRect = {
+        .Offset = Rect->Offset,
+        .Extent = Rr_V2F(Size),
+    };
+
+    float XCount;
+    float XFrac = modff(Rect->Extent.X / Size, &XCount);
+    float YCount;
+    float YFrac = modff(Rect->Extent.Y / Size, &YCount);
+    int X = 0;
+    int Y = 0;
+    for (Y = 0; Y < (int)YCount; ++Y)
+    {
+        CurrectRect.Offset.X = Rect->Offset.X;
+        for (X = 0; X < (int)XCount; ++X)
+        {
+            Rr_UIDrawSolidQuad(&CurrectRect, X % 2 != Y % 2 ? &WHITE : &GRAY);
+            CurrectRect.Offset.X += Size;
+        }
+        CurrectRect.Offset.Y += Size;
+    }
+
+    CurrectRect.Offset.Y = Rect->Offset.Y;
+    CurrectRect.Extent.X = Size * XFrac;
+    CurrectRect.Extent.Y = Size;
+    for (Y = 0; Y < (int)YCount; ++Y)
+    {
+        Rr_UIDrawSolidQuad(&CurrectRect, X % 2 != Y % 2 ? &WHITE : &GRAY);
+        CurrectRect.Offset.Y += Size;
+    }
+
+    CurrectRect.Offset.X = Rect->Offset.X;
+    CurrectRect.Extent.X = Size;
+    CurrectRect.Extent.Y = Size * YFrac;
+    for (X = 0; X < (int)XCount; ++X)
+    {
+        Rr_UIDrawSolidQuad(&CurrectRect, X % 2 != Y % 2 ? &WHITE : &GRAY);
+        CurrectRect.Offset.X += Size;
+    }
+
+    CurrectRect.Extent.X = Size * XFrac;
+    CurrectRect.Extent.Y = Size * YFrac;
+    Rr_UIDrawSolidQuad(&CurrectRect, X % 2 != Y % 2 ? &WHITE : &GRAY);
 }
 
 static inline void Rr_UIDrawGlyph(
@@ -3235,8 +3285,6 @@ void Rr_UIBeginTabs(const char *Title)
 
 bool Rr_UITab(const char *Title)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     assert(Layout->SelectedTabHash && "Did you forget to call Rr_BeginTabs()?");
     Rr_UIWindow *Window = Layout->Window;
@@ -3320,8 +3368,6 @@ bool Rr_UITab(const char *Title)
         *Layout->SelectedTabHash = TitleHash;
     }
 
-    Rr_DestroyScratch(Scratch);
-
     return Selected;
 }
 
@@ -3345,8 +3391,6 @@ bool Rr_UIFold(const char *Title)
     Rr_UIAssertWindow();
     assert(
         Rr_UIIsHorizontal() == false && "Folds can't be aligned horizontally!");
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -3420,8 +3464,6 @@ bool Rr_UIFold(const char *Title)
         Result.Held);
 
     Rr_UIAdvance(TotalExtent);
-
-    Rr_DestroyScratch(Scratch);
 
     return *FoldValue;
 }
@@ -3557,8 +3599,6 @@ bool Rr_UIButton(const char *Text)
 {
     Rr_UIAssertWindow();
 
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
@@ -3602,8 +3642,6 @@ bool Rr_UIButton(const char *Text)
 
     Rr_UIAdvance(ButtonSize);
 
-    Rr_DestroyScratch(Scratch);
-
     return Result.Clicked;
 }
 
@@ -3611,8 +3649,6 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 {
     Rr_UIAssertWindow();
     assert(Checked != NULL);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -3671,8 +3707,6 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     }
 
     Rr_UIAdvance(ButtonRect.Extent);
-
-    Rr_DestroyScratch(Scratch);
 
     return Result.Clicked;
 }
@@ -5215,27 +5249,10 @@ static inline void Rr_UIColorPickerPopup(
         HSVChanged = true;
     }
 
+    bool SVSelectorHeld = Result.Held;
     Rr_Vec2 SVSelectorCircleOffset = Rr_AddV2(
         Layout->Cursor,
         Rr_V2(StaticHSV.Y * TargetSize, (1.0f - StaticHSV.Z) * TargetSize));
-
-    Rr_UIDrawCircle(
-        SVSelectorCircleOffset,
-        SVSelectorCircleSize,
-        3.0f,
-        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
-    Rr_UIDrawCircle(
-        SVSelectorCircleOffset,
-        SVSelectorCircleSize,
-        1.5f,
-        &gUIContext->Style.Foreground);
-    if (Result.Held)
-    {
-        Rr_UIDrawCircleFilled(
-            SVSelectorCircleOffset,
-            SVSelectorCircleSize * 0.9f - 1.5f,
-            &OpaqueColor);
-    }
 
     Rr_UIAdvance(Rr_V2F(TargetSize));
 
@@ -5331,6 +5348,29 @@ static inline void Rr_UIColorPickerPopup(
 
     Rr_UIEndHorizontal();
 
+    /* Draw saturation/value circle here so it's on top of hue selector. */
+
+    float CircleOutlineThickness = 3.0f;
+    if (SVSelectorHeld)
+    {
+        Rr_UIDrawCircleFilled(
+            SVSelectorCircleOffset,
+            SVSelectorCircleSize,
+            &OpaqueColor);
+    }
+    Rr_UIDrawCircle(
+        SVSelectorCircleOffset,
+        SVSelectorCircleSize,
+        CircleOutlineThickness,
+        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
+    Rr_UIDrawCircle(
+        SVSelectorCircleOffset,
+        SVSelectorCircleSize,
+        CircleOutlineThickness / 2.0f,
+        &gUIContext->Style.Foreground);
+
+    /* Various input fields. */
+
     bool RGBChanged = ChannelCount == 3
                           ? Rr_UIInputFloat3("RGB###RGB32", Channels)
                           : Rr_UIInputFloat4("RGBA###RGBA32", Channels);
@@ -5391,8 +5431,6 @@ static inline bool Rr_UIInputColorEx(
     Rr_UIAssertWindow();
     assert(Title != NULL);
     assert(Channels != NULL);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -5462,7 +5500,17 @@ static inline bool Rr_UIInputColorEx(
     Rr_Vec4 OpaqueColor;
     memcpy(&OpaqueColor, Channels, sizeof(float) * (size_t)ChannelCount);
     OpaqueColor.A = 1.0f;
-    Rr_UIDrawBevel(&ColorBoxRect, &OpaqueColor, Result.Held);
+    Rr_UIDrawBevel(&ColorBoxRect, &OpaqueColor, Result.Held && Result.Hovered);
+    if (ChannelCount == 4)
+    {
+        Rr_Rect InnerRect =
+            Rr_ResizeRect(&ColorBoxRect, -gUIContext->BevelThickness);
+        Rr_UIDrawCheckerQuad(&InnerRect, gUIContext->FontSize * 0.5f);
+        Rr_UIDrawVerticalGradientQuad(
+            &InnerRect,
+            (Rr_Vec4 *)Channels,
+            &OpaqueColor);
+    }
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += InputResult.Extent.X + gUIContext->ComponentMargin +
@@ -5484,8 +5532,6 @@ static inline bool Rr_UIInputColorEx(
     };
 
     Rr_UIAdvance(TotalExtent);
-
-    Rr_DestroyScratch(Scratch);
 
     return ColorChanged;
 }
@@ -5512,7 +5558,7 @@ bool Rr_UICombobox(
     assert(Options != NULL);
     assert(SelectedIndex != NULL);
 
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+    /* Rr_Scratch Scratch = Rr_GetScratch(NULL); */
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
@@ -5689,8 +5735,6 @@ bool Rr_UICombobox(
 
     Rr_UIAdvance(TotalExtent);
 
-    Rr_DestroyScratch(Scratch);
-
     return OptionChanged;
 }
 
@@ -5702,8 +5746,6 @@ static inline float Rr_UISlider(
 {
     Rr_UIAssertWindow();
     assert(Title != NULL);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
 
@@ -5815,8 +5857,6 @@ static inline float Rr_UISlider(
     };
 
     Rr_UIAdvance(TotalExtent);
-
-    Rr_DestroyScratch(Scratch);
 
     return Normalized;
 }
