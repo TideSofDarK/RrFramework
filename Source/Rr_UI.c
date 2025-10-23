@@ -135,14 +135,6 @@ struct Rr_UIWindow
 
 typedef enum
 {
-    RR_UI_FIXED_HASH_COLLAPSE,
-    RR_UI_FIXED_HASH_CLOSE,
-    RR_UI_FIXED_HASH_RESIZE,
-    RR_UI_FIXED_HASH_VERTICAL_SCROLLBAR,
-} Rr_UIFixedHash;
-
-typedef enum
-{
     RR_UI_DRAG_OP_NONE,
     RR_UI_DRAG_OP_MOVE,
     RR_UI_DRAG_OP_RESIZE,
