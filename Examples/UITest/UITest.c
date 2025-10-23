@@ -15,8 +15,8 @@ static void TextInputWindow()
     {
         static char StringBuffer[2048] = "";
         if (Rr_UIInputField(
-                "###LargeString",
-                2048,
+                "String (2048 bytes)",
+                sizeof(StringBuffer),
                 StringBuffer,
                 "Type here...",
                 NULL,
@@ -30,14 +30,15 @@ static void TextInputWindow()
 
 static void FixedSizeWindow()
 {
-    Rr_UISetNextWindowSize(Rr_V2(400, 400));
+    const Rr_Vec2 WINDOW_SIZE = Rr_V2(450.0f, 200.0f);
+    Rr_UISetNextWindowSize(WINDOW_SIZE);
     if (Rr_UIBeginWindow(
             "Fixed Size Window",
             &FixedSizeWindowOpen,
             RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT))
     {
         Rr_UIText("Resizing is disabled for this window.");
-        Rr_UITextF("Window Size: %dx%d", 400, 400);
+        Rr_UITextF("Window Size: %.0fx%.0f", WINDOW_SIZE.X, WINDOW_SIZE.Y);
         Rr_UIEndWindow();
     }
 }
