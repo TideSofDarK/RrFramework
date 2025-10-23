@@ -1815,7 +1815,6 @@ struct Rr_UIDragResult
     bool Hovered : 1;
     bool Began : 1;
     bool Clicked : 1;
-    bool DoubleClicked : 1;
 };
 
 static inline Rr_UIDragResult Rr_UIDragBehavior(
@@ -1872,15 +1871,6 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
     if (Contains && gUIContext->LeftMouseButton.Down &&
         (gUIContext->DragOpWindow == NULL || WindowMatch) && WindowHovered)
     {
-        if (gUIContext->LeftMouseButton.Clicks == 2)
-        {
-            Result.DoubleClicked = true;
-
-            /* Rr_UIEndDragOp(); */
-
-            /* return Result; */
-        }
-
         Rr_UIBeginDragOp(Window, DragOp, Hash, Value);
 
         if (DragOp == RR_UI_DRAG_OP_WIDGET)
@@ -2226,9 +2216,11 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         0,
         Layout->Rect.Extent);
 
-    if (Result.DoubleClicked)
+    if (Result.Began && gUIContext->LeftMouseButton.Clicks == 2)
     {
         Layout->DeferredAutoResize = true;
+
+        Rr_UIEndDragOp();
     }
 
     if (Result.Moved)
@@ -2775,7 +2767,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* NOTE: Defer drawing the handle to Rr_UIEndWindow()! */
 
-    if (!Layout->DeferredAutoResize)
+    if (!Layout->DeferredAutoResize && !Window->Child)
     {
         /* TODO: Support resizing child windows. */
 
