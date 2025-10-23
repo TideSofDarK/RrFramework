@@ -3788,7 +3788,6 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
     bool EnterToConfirm)
 {
     Rr_UIEditResult Result = { 0 };
-
     if (gUIContext->TextInputEvents.Count == 0 &&
         gUIContext->KeyboardInputEvents.Count == 0)
     {
@@ -3962,14 +3961,14 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             NewCursorBegin = NewCursorEnd;
             Edited = true;
-            Result.Confirmed = true;
+            Result.Confirmed |= true;
         }
 
         if (Event->Scancode == RR_SCANCODE_RETURN)
         {
             if (EnterToConfirm)
             {
-                Result.Confirmed = true;
+                Result.Confirmed |= true;
             }
             else if (Event->Keymod == 0 && CursorMin > 0)
             {
@@ -4164,6 +4163,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             *CursorBegin = NewCursorBegin;
             *CursorEnd = NewCursorEnd;
             gUIContext->TextInputCursorBlinkTime = TimeMS;
+            Result.Edited |= true;
         }
 
         if (ResetCol)
@@ -4171,8 +4171,6 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             gUIContext->TextInputCursorMaxCol =
                 Rr_UIThisLineCol(Buffer, NewCursorEnd);
         }
-
-        Result.Edited |= true;
     }
 
     for (size_t Index = 0; Index < gUIContext->TextInputEvents.Count; ++Index)
@@ -4214,8 +4212,8 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
 typedef struct Rr_UIInputFieldResult Rr_UIInputFieldResult;
 struct Rr_UIInputFieldResult
 {
-    Rr_UIEditResult EditResult;
     Rr_Vec2 Extent;
+    bool Edited;
 };
 
 /* NOTE: Generic input field is a building block for other widgets. It doesn't
@@ -4458,10 +4456,10 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     }
     else
     {
-        EditResult.Confirmed |= WasFocused;
+        EditResult.Edited |= WasFocused;
     }
 
-    if ((EditResult.Confirmed || EditResult.Edited) && UsePersistentBuffer)
+    if (EditResult.Edited && UsePersistentBuffer)
     {
         memcpy(Buffer, gUIContext->TextInputBuffer.Data, BufferCapacity);
     }
@@ -4474,8 +4472,8 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     }
 
     return (Rr_UIInputFieldResult){
-        .EditResult = EditResult,
         .Extent = FieldRect.Extent,
+        .Edited = EditResult.Edited,
     };
 }
 
@@ -4763,11 +4761,9 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
                 SingleFieldWidth,
                 true);
 
-            Result.EditResult.Edited |= ComponentResult.EditResult.Edited;
-            Result.EditResult.Confirmed |= ComponentResult.EditResult.Confirmed;
+            Result.Edited |= ComponentResult.Edited;
 
-            if (ComponentResult.EditResult.Edited ||
-                ComponentResult.EditResult.Confirmed)
+            if (Result.Edited)
             {
                 sscanf(ComponentBuffer, ScanString, (void *)ComponentData);
             }
@@ -4843,7 +4839,7 @@ static inline bool Rr_UIInputScalarMulti(
 
     Rr_UIAdvance(TotalExtent);
 
-    return Result.EditResult.Confirmed || Result.EditResult.Edited;
+    return Result.Edited;
 }
 
 bool Rr_UIInputField(
@@ -4912,7 +4908,7 @@ bool Rr_UIInputField(
 
     Rr_DestroyScratch(Scratch);
 
-    return Result.EditResult.Confirmed || Result.EditResult.Edited;
+    return Result.Edited;
 }
 
 bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
