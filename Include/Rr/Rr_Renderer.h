@@ -114,6 +114,8 @@ typedef enum
     RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
     RR_IMAGE_FORMAT_B8G8R8A8_UNORM,
     RR_IMAGE_FORMAT_B8G8R8A8_SRGB,
+    RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32,
+    RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32,
     RR_IMAGE_FORMAT_D16_UNORM,
     RR_IMAGE_FORMAT_D32_SFLOAT,
     RR_IMAGE_FORMAT_D24_UNORM_S8_UINT,
@@ -193,10 +195,6 @@ struct Rr_DrawIndexedIndirectCommand
     uint32_t FirstInstance;
 };
 
-extern Rr_ImageFormat Rr_GetSwapchainFormat(void);
-
-extern Rr_IntVec2 Rr_GetSwapchainSize(void);
-
 extern struct Rr_Image *Rr_GetSwapchainImage(void);
 
 extern Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count);
@@ -214,6 +212,8 @@ extern size_t Rr_GetStorageAlignment(void);
 extern size_t Rr_GetMaxComputeSharedMemorySize(void);
 
 extern size_t Rr_GetMaxComputeWorkgroupInvocations(void);
+
+extern bool Rr_IsSRGBFormat(Rr_ImageFormat Format);
 
 extern void Rr_SetNextObjectName(const char *Name);
 

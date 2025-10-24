@@ -567,6 +567,11 @@ Rr_ImageCube *Rr_CreateImageCube(
         VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
 }
 
+Rr_ImageFormat Rr_GetImageFormat(struct Rr_Image *Image)
+{
+    return Rr_ToImageFormat(Image->Format);
+}
+
 Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image2D)
 {
     return (Rr_IntVec2){

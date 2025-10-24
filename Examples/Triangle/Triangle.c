@@ -25,7 +25,7 @@ static void Init(void)
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Format = Rr_GetSwapchainFormat();
+    ColorTargets[0].Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
 
     Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_TRIANGLE_VERT_SPV);
     Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_TRIANGLE_FRAG_SPV);

@@ -674,6 +674,10 @@ static Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
             return RR_IMAGE_FORMAT_B8G8R8A8_UNORM;
         case VK_FORMAT_B8G8R8A8_SRGB:
             return RR_IMAGE_FORMAT_B8G8R8A8_SRGB;
+        case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+            return RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32;
+        case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+            return RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
         case VK_FORMAT_D16_UNORM:
             return RR_IMAGE_FORMAT_D16_UNORM;
         case VK_FORMAT_D32_SFLOAT:
@@ -715,6 +719,10 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
             return VK_FORMAT_B8G8R8A8_UNORM;
         case RR_IMAGE_FORMAT_B8G8R8A8_SRGB:
             return VK_FORMAT_B8G8R8A8_SRGB;
+        case RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32:
+            return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+        case RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32:
+            return VK_FORMAT_A8B8G8R8_SRGB_PACK32;
         case RR_IMAGE_FORMAT_D16_UNORM:
             return VK_FORMAT_D16_UNORM;
         case RR_IMAGE_FORMAT_D32_SFLOAT:

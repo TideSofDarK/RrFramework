@@ -129,7 +129,7 @@ struct SFullscreenBlit
         Sampler = Rr_CreateSampler(&Info);
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
 
         Rr_Asset VertexShader =
             Rr_LoadAsset(EXAMPLE_ASSET_FULLSCREENTRIANGLE_VERT_SPV);
@@ -190,7 +190,7 @@ struct SSkybox
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_VERT_SPV);
@@ -363,7 +363,7 @@ struct SGrid
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GRID_VERT_SPV);
@@ -1435,7 +1435,7 @@ struct SModernRenderingApp
     {
         std::array ColorTargets = {
             Rr_ColorTargetInfo{
-                .Format = Rr_GetSwapchainFormat(),
+                .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
                 .Resolve = MSAAOptionIndex > 0,
             },
         };
@@ -1487,8 +1487,9 @@ struct SModernRenderingApp
     {
         Rr_ImageFlags SampleCountFlag = RR_IMAGE_FLAGS_SAMPLE_COUNT_1
                                         << MSAAOptionIndex;
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
-        Rr_ImageFormat SwapchainFormat = Rr_GetSwapchainFormat();
+        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
+        Rr_ImageFormat SwapchainFormat = Rr_GetImageFormat(SwapchainImage);
 
         Rr_ReleaseImage(DepthImage);
         DepthImage = Rr_CreateImage2D(
@@ -1500,7 +1501,7 @@ struct SModernRenderingApp
         Rr_ReleaseImage(ColorImage);
         ColorImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
-            Rr_GetSwapchainFormat(),
+            SwapchainFormat,
             RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
                 RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | SampleCountFlag);
 
@@ -1536,7 +1537,7 @@ struct SModernRenderingApp
 
         ColorImageResolved = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
-            Rr_GetSwapchainFormat(),
+            SwapchainFormat,
             RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT |
                 RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
 
@@ -1549,7 +1550,7 @@ struct SModernRenderingApp
 
     void InitCamera()
     {
-        Camera.UpdatePerspective(Rr_GetSwapchainSize());
+        Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
     }
 
     void InitUniform()
@@ -1815,8 +1816,8 @@ struct SModernRenderingApp
             DrawGLTFAsset(Node, 1, 0);
         });
 
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
 
         Rr_ClearColorImage2D(
             Graph,

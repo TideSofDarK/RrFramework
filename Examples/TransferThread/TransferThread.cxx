@@ -196,7 +196,7 @@ struct STransferThreadApp
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader =
@@ -249,7 +249,7 @@ struct STransferThreadApp
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader =
@@ -317,7 +317,7 @@ struct STransferThreadApp
         }
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        Rr_IntVec2 SwapchainExtent = Rr_GetSwapchainSize();
+        Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
         Rr_Rect SwapchainRect{
             0,
             0,

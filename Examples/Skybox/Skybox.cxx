@@ -188,7 +188,7 @@ struct SSkyboxApp
         };
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_VERT_SPV);
@@ -293,7 +293,7 @@ struct SSkyboxApp
 
     void InitCamera()
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
         float Aspect = (float)SwapchainSize.Width / SwapchainSize.Height;
         Camera.UpdatePerspective(Aspect);
     }
@@ -334,7 +334,7 @@ struct SSkyboxApp
     {
         Rr_Graph *Graph = Rr_GetGraph();
 
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
         Camera.Update(Scancodes);
 

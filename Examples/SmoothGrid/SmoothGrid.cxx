@@ -135,7 +135,7 @@ struct SSmoothGridApp
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SMOOTHGRID_VERT_SPV);
@@ -169,7 +169,7 @@ struct SSmoothGridApp
     void InitDepthImage()
     {
         Rr_ReleaseImage(DepthImage);
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
         DepthImage = Rr_CreateImage2D(
             { SwapchainSize.X, SwapchainSize.Y },
             DEPTH_FORMAT,
@@ -178,7 +178,7 @@ struct SSmoothGridApp
 
     void InitCamera()
     {
-        Camera.UpdatePerspective(Rr_GetSwapchainSize());
+        Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
     }
 
     SSmoothGridApp()
@@ -216,7 +216,7 @@ struct SSmoothGridApp
     {
         Rr_Graph *Graph = Rr_GetGraph();
 
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
         Camera.Update(Scancodes);
 

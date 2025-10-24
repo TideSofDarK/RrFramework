@@ -33,7 +33,7 @@ static void InitDepthImage(void)
         Rr_ReleaseImage(DepthAttachment);
     }
 
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+    Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
     Rr_SetNextObjectName("DepthImage");
     DepthAttachment = Rr_CreateImage2D(
@@ -88,7 +88,7 @@ static void Init(void)
     };
 
     Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Format = Rr_GetSwapchainFormat();
+    ColorTargets[0].Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
 
     Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_VERT_SPV);
     Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_FRAG_SPV);
@@ -172,7 +172,7 @@ static void Event(Rr_Event *Event)
 
 static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
 {
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+    Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
     UniformData.Projection = Rr_Perspective_RH(
         0.7643276f,

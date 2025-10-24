@@ -675,7 +675,7 @@ struct SQuadTreeApp
             Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
         Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-        ColorTargets[0].Format = Rr_GetSwapchainFormat();
+        ColorTargets[0].Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTargets[0].Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
@@ -849,7 +849,7 @@ struct SQuadTreeApp
         auto Lock = std::unique_lock(Mutex, std::try_to_lock);
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
 
         Rr_ColorTarget ColorTarget = {
             .Image = SwapchainImage,

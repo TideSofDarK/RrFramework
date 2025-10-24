@@ -888,7 +888,7 @@ struct SBlurApp
             Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
         Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
@@ -977,7 +977,7 @@ struct SBlurApp
         };
 
         Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetSwapchainFormat();
+        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_VERT_SPV);
@@ -1075,7 +1075,7 @@ struct SBlurApp
 
     void InitCamera()
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
         float Aspect = (float)SwapchainSize.Width / SwapchainSize.Height;
         Camera.UpdatePerspective(Aspect);
     }

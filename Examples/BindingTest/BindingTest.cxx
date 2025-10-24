@@ -264,12 +264,14 @@ struct SBindingTestApp
         Rr_BindStorageImage2DRW(ComputeNode, StorageImageB, 3, 13);
         Rr_Dispatch(ComputeNode, 16, 16, 1);
 
+        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
+
         Rr_BlitImage2D(
             Rr_GetGraph(),
             StorageImageA,
             Rr_GetSwapchainImage(),
             { 0, 0, 256, 256 },
-            { 0, 0, Rr_GetSwapchainSize().Width, Rr_GetSwapchainSize().Height },
+            { 0, 0, SwapchainSize.Width, SwapchainSize.Height },
             RR_IMAGE_ASPECT_COLOR_BIT);
 
         Rr_BlitImage2D(
@@ -279,8 +281,8 @@ struct SBindingTestApp
             { 0, 0, 256, 256 },
             { 0,
               0,
-              Rr_GetSwapchainSize().Width / 2,
-              Rr_GetSwapchainSize().Height / 2 },
+              SwapchainSize.Width / 2,
+              SwapchainSize.Height / 2 },
             RR_IMAGE_ASPECT_COLOR_BIT);
     }
 

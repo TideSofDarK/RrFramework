@@ -154,6 +154,8 @@ extern Rr_ImageCube *Rr_CreateImageCube(
 
 extern void Rr_ReleaseImage(struct Rr_Image *Image);
 
+extern Rr_ImageFormat Rr_GetImageFormat(struct Rr_Image *Image);
+
 extern Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image);
 
 extern float Rr_GetImage2DAspect(Rr_Image2D *Image);

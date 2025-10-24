@@ -344,7 +344,7 @@ static void Iterate()
         Validator->Validate(COUNT, SortedNumbersBuffer, RandomNumbersBuffer);
 
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+    Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
     Rr_BlitImage2D(
         Rr_GetGraph(),
         ResultImage,

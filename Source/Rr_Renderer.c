@@ -1624,6 +1624,13 @@ void Rr_ReleaseCommandPools(void)
     ThreadContext->CommandPools = NULL;
 }
 
+bool Rr_IsSRGBFormat(Rr_ImageFormat Format)
+{
+    return Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
+           Format == RR_IMAGE_FORMAT_B8G8R8A8_SRGB ||
+           Format == RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
+}
+
 static RR_THREAD_LOCAL char NextObjectName[32] = { 0 };
 
 void Rr_SetNextObjectName(const char *Name)

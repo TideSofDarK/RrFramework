@@ -224,7 +224,7 @@ struct SGSApp
 
     SGSApp()
     {
-        Camera.UpdatePerspective(Rr_GetSwapchainSize());
+        Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
         Camera.Position = { 0.0f, -0.5f, -2.5f };
 
         Rr_Asset Asset = Rr_LoadAsset(EXAMPLE_ASSET_PLUSH_SPLAT);
@@ -265,7 +265,7 @@ struct SGSApp
         };
 
         std::array<Rr_ColorTargetInfo, 1> ColorTargets = {};
-        ColorTargets[0].Format = Rr_GetSwapchainFormat();
+        ColorTargets[0].Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTargets[0].Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GS_VERT_SPV);
@@ -341,7 +341,8 @@ struct SGSApp
         {
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
-                Camera.UpdatePerspective(Rr_GetSwapchainSize());
+                Camera.UpdatePerspective(
+                    Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
             }
             break;
             case RR_EVENT_TYPE_KEY_DOWN:

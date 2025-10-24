@@ -51,7 +51,13 @@ struct Rr_UIStyle
     float FlexibleTitleMargin;
     float BevelIntensityLight;
     float BevelIntensityDark;
+    Rr_Vec2 ButtonPadding;
+    Rr_Vec2 InputFieldPadding;
+};
 
+typedef struct Rr_UIColors Rr_UIColors;
+struct Rr_UIColors
+{
     Rr_Vec4 Foreground;
     Rr_Vec4 ForegroundDimmed;
     Rr_Vec4 Background;
@@ -67,13 +73,11 @@ struct Rr_UIStyle
     Rr_Vec4 ScrollbarHovered;
     Rr_Vec4 ScrollbarHeld;
 
-    Rr_Vec2 ButtonPadding;
     Rr_Vec4 ButtonNormal;
     Rr_Vec4 ButtonHovered;
     Rr_Vec4 ButtonHeld;
     Rr_Vec4 ButtonDisabled;
 
-    Rr_Vec2 InputFieldPadding;
     Rr_Vec4 InputFieldNormal;
     Rr_Vec4 SelectedTextBackground;
 };
@@ -116,6 +120,8 @@ extern void Rr_UIPushID(const char *IDString);
 extern void Rr_UIPopID(void);
 
 extern Rr_UIStyle *Rr_UIGetStyle(void);
+
+extern Rr_UIColors *Rr_UIGetColors(void);
 
 extern void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
 
@@ -239,6 +245,8 @@ extern bool Rr_UIWantKeyboardCapture(void);
 extern float Rr_UIGetFontSize(void);
 
 extern void Rr_UISetFontSize(float Size);
+
+extern void Rr_UIPrintColors(void);
 
 extern void Rr_UIDebugOverlay(void);
 

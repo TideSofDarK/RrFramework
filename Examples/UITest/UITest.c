@@ -51,6 +51,7 @@ static void StyleEditorWindow()
             RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
     {
         Rr_UIStyle *Style = Rr_UIGetStyle();
+        Rr_UIColors *Colors = Rr_UIGetColors();
         float FontSize = Rr_UIGetFontSize();
         bool UpdateFontSize = false;
         UpdateFontSize |= Rr_UIInputFloat("Font Size", &FontSize);
@@ -72,30 +73,34 @@ static void StyleEditorWindow()
 
         Rr_UISeparator();
 
-        Rr_UIInputColor4("Foreground", Style->Foreground.Elements);
-        Rr_UIInputColor4("Foreground Dimmed", Style->ForegroundDimmed.Elements);
-        Rr_UIInputColor4("Background", Style->Background.Elements);
-        Rr_UIInputColor4("Child Background", Style->ChildBackground.Elements);
-        Rr_UIInputColor4("Outline", Style->Outline.Elements);
+        Rr_UIInputColor4("Foreground", Colors->Foreground.Elements);
+        Rr_UIInputColor4(
+            "Foreground Dimmed",
+            Colors->ForegroundDimmed.Elements);
+        Rr_UIInputColor4("Background", Colors->Background.Elements);
+        Rr_UIInputColor4("Child Background", Colors->ChildBackground.Elements);
+        Rr_UIInputColor4("Outline", Colors->Outline.Elements);
 
         Rr_UISeparator();
 
-        Rr_UIInputColor4("Title Background", Style->TitleBackground.Elements);
+        Rr_UIInputColor4("Title Background", Colors->TitleBackground.Elements);
         Rr_UIInputColor4(
             "Title Close Button",
-            Style->TitleCloseButtonBackground.Elements);
+            Colors->TitleCloseButtonBackground.Elements);
         Rr_UIInputColor4(
             "Title Collapse Button",
-            Style->TitleCollapseButtonBackground.Elements);
+            Colors->TitleCollapseButtonBackground.Elements);
 
         Rr_UISeparator();
 
         Rr_UIInputColor4(
             "Scrollbar Background",
-            Style->ScrollbarBackground.Elements);
-        Rr_UIInputColor4("Scrollbar Normal", Style->ScrollbarNormal.Elements);
-        Rr_UIInputColor4("Scrollbar Hovered", Style->ScrollbarHovered.Elements);
-        Rr_UIInputColor4("Scrollbar Held", Style->ScrollbarHeld.Elements);
+            Colors->ScrollbarBackground.Elements);
+        Rr_UIInputColor4("Scrollbar Normal", Colors->ScrollbarNormal.Elements);
+        Rr_UIInputColor4(
+            "Scrollbar Hovered",
+            Colors->ScrollbarHovered.Elements);
+        Rr_UIInputColor4("Scrollbar Held", Colors->ScrollbarHeld.Elements);
 
         Rr_UISeparator();
 
@@ -104,10 +109,10 @@ static void StyleEditorWindow()
             Rr_UIInputFloat2("Button Padding", Style->ButtonPadding.Elements);
         Rr_UIPopFormatFloatDecimalPlaces();
 
-        Rr_UIInputColor4("Button Normal", Style->ButtonNormal.Elements);
-        Rr_UIInputColor4("Button Hovered", Style->ButtonHovered.Elements);
-        Rr_UIInputColor4("Button Held", Style->ButtonHeld.Elements);
-        Rr_UIInputColor4("Button Disabled", Style->ButtonDisabled.Elements);
+        Rr_UIInputColor4("Button Normal", Colors->ButtonNormal.Elements);
+        Rr_UIInputColor4("Button Hovered", Colors->ButtonHovered.Elements);
+        Rr_UIInputColor4("Button Held", Colors->ButtonHeld.Elements);
+        Rr_UIInputColor4("Button Disabled", Colors->ButtonDisabled.Elements);
 
         Rr_UISeparator();
 
@@ -119,10 +124,15 @@ static void StyleEditorWindow()
 
         Rr_UIInputColor4(
             "Input Field Normal",
-            Style->InputFieldNormal.Elements);
+            Colors->InputFieldNormal.Elements);
         Rr_UIInputColor4(
             "Selected Text",
-            Style->SelectedTextBackground.Elements);
+            Colors->SelectedTextBackground.Elements);
+
+        if (Rr_UIButton("Print Colors"))
+        {
+            Rr_UIPrintColors();
+        }
 
         if (UpdateFontSize)
         {

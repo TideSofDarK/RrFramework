@@ -196,6 +196,7 @@ struct Rr_UIMouseButton
 
 struct Rr_UIContext
 {
+    Rr_UIColors Colors;
     Rr_UIStyle Style;
 
     Rr_Map *WindowMap;
@@ -1642,7 +1643,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
                         GlyphPosition,
                         Rr_V2(Glyph->XAdvance, gUIContext->LineHeight),
                     },
-                    &gUIContext->Style.SelectedTextBackground);
+                    &gUIContext->Colors.SelectedTextBackground);
             }
 
             if (*CursorEnd == CStringIndex)
@@ -2232,7 +2233,7 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 
     Rr_UIDrawBevel(
         &ButtonRect,
-        &gUIContext->Style.TitleCollapseButtonBackground,
+        &gUIContext->Colors.TitleCollapseButtonBackground,
         Result.Held && Result.Hovered);
 
     Rr_Vec2 TriangleCenter = Rr_AddV2(
@@ -2243,7 +2244,7 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
         TriangleCenter,
         TriangleSize,
         !Window->Collapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
-        gUIContext->Style.Foreground);
+        gUIContext->Colors.Foreground);
 }
 
 static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
@@ -2287,17 +2288,17 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
 
     Rr_UIDrawBevel(
         &ButtonRect,
-        &gUIContext->Style.TitleCloseButtonBackground,
+        &gUIContext->Colors.TitleCloseButtonBackground,
         Result.Held && Result.Hovered);
 
     Rr_UIDrawRotatedQuad(
         &BarRect,
         RR_ANGLE_DEG(45.0f),
-        &gUIContext->Style.Foreground);
+        &gUIContext->Colors.Foreground);
     Rr_UIDrawRotatedQuad(
         &BarRect,
         RR_ANGLE_DEG(-45.0f),
-        &gUIContext->Style.Foreground);
+        &gUIContext->Colors.Foreground);
 }
 
 static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UIWindow *Window)
@@ -2346,7 +2347,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
         SIZE_MAX,
         Window->Title,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     bool HasClose = Rr_UIWindowHasCloseButton(Window);
@@ -2357,12 +2358,12 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
         TitleRect.Extent.Width -= gUIContext->TitleButtonSize;
     }
 
-    Rr_Vec4 ColorB = gUIContext->Style.TitleBackground;
+    Rr_Vec4 ColorB = gUIContext->Colors.TitleBackground;
     ColorB.RGB = Rr_LerpV3(ColorB.RGB, 0.25f, (Rr_Vec3){ 0.0f, 0.0f, 0.0f });
     Rr_Vec4 Colors[4] = { ColorB,
-                          gUIContext->Style.TitleBackground,
+                          gUIContext->Colors.TitleBackground,
                           ColorB,
-                          gUIContext->Style.TitleBackground };
+                          gUIContext->Colors.TitleBackground };
     Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
 }
 
@@ -2405,7 +2406,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         Layout->DeferredWindowExtent = Rr_FloorV2(NewWindowSize);
     }
 
-    Layout->DeferredResizeHandleColor = gUIContext->Style.Foreground;
+    Layout->DeferredResizeHandleColor = gUIContext->Colors.Foreground;
     if (Result.Hovered || Result.Moved)
     {
         Layout->DeferredResizeHandleColor =
@@ -2479,7 +2480,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
                 ScrollbarPosition,
                 ScrollbarSize,
             },
-            &gUIContext->Style.ScrollbarBackground);
+            &gUIContext->Colors.ScrollbarBackground);
 
         float ScrollbarHandleOffset =
             (gUIContext->ScrollbarWidth - gUIContext->ScrollbarHandleWidth) /
@@ -2567,7 +2568,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
                 ScrollbarHandlePosition,
                 ScrollbarHandleSize,
             },
-            &gUIContext->Style.ScrollbarNormal,
+            &gUIContext->Colors.ScrollbarNormal,
             false);
     }
     else
@@ -2586,6 +2587,11 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
 Rr_UIStyle *Rr_UIGetStyle(void)
 {
     return &gUIContext->Style;
+}
+
+Rr_UIColors *Rr_UIGetColors(void)
+{
+    return &gUIContext->Colors;
 }
 
 void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places)
@@ -2963,8 +2969,8 @@ static inline bool Rr_UIBeginWindowEx(
     /* Window->ContentsClipRect = Rr_UICurr */
 
     Rr_Vec4 *BackgroundColor = Window->Child
-                                   ? &gUIContext->Style.ChildBackground
-                                   : &gUIContext->Style.Background;
+                                   ? &gUIContext->Colors.ChildBackground
+                                   : &gUIContext->Colors.Background;
     Rr_UIDrawSolidQuad(&ContentsAreaRect, BackgroundColor);
 
     Window->ContentsStart = Window->ContentsEnd = Layout->Cursor;
@@ -3142,7 +3148,7 @@ void Rr_UIEndWindow(void)
         Rr_UIDrawInnerFrame(
             &Layout->Rect,
             gUIContext->FrameThickness,
-            &gUIContext->Style.Outline);
+            &gUIContext->Colors.Outline);
     }
 
     Rr_UIEndClipRect();
@@ -3398,7 +3404,7 @@ void Rr_UIBeginTabs(const char *Title)
             SeparatorPosition,
             SeparatorSize,
         },
-        &gUIContext->Style.Foreground);
+        &gUIContext->Colors.Foreground);
 
     /* TODO: Use window padding instead? */
     Rr_UIAdvance(Rr_V2(0.0f, gUIContext->LineHeight));
@@ -3434,8 +3440,8 @@ bool Rr_UITab(const char *Title)
         TitleLength,
         Title,
         0.0f,
-        Selected ? &gUIContext->Style.Background
-                 : &gUIContext->Style.Foreground,
+        Selected ? &gUIContext->Colors.Background
+                 : &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 ButtonPosition = TextPosition;
@@ -3460,19 +3466,19 @@ bool Rr_UITab(const char *Title)
     Rr_Vec4 *TabButtonColor;
     if (Selected)
     {
-        TabButtonColor = &gUIContext->Style.Foreground;
+        TabButtonColor = &gUIContext->Colors.Foreground;
     }
     else if (Result.Held)
     {
-        TabButtonColor = &gUIContext->Style.ButtonHeld;
+        TabButtonColor = &gUIContext->Colors.ButtonHeld;
     }
     else if (Result.Hovered)
     {
-        TabButtonColor = &gUIContext->Style.ButtonHovered;
+        TabButtonColor = &gUIContext->Colors.ButtonHovered;
     }
     else
     {
-        TabButtonColor = &gUIContext->Style.Background;
+        TabButtonColor = &gUIContext->Colors.Background;
     }
 
     Rr_UISolidQuad(
@@ -3542,7 +3548,7 @@ bool Rr_UIFold(const char *Title)
         TriangleCenter,
         TriangleSize,
         *FoldValue ? RR_ANGLE_DEG(90.0f) : 0.0f,
-        gUIContext->Style.Foreground);
+        gUIContext->Colors.Foreground);
 
     Rr_Vec2 TitlePosition = Rr_AddV2(
         Rr_V2(
@@ -3555,7 +3561,7 @@ bool Rr_UIFold(const char *Title)
         TitleLength,
         Title,
         0,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 TotalExtent =
@@ -3581,7 +3587,7 @@ bool Rr_UIFold(const char *Title)
     Rr_UIBevel(
         BevelPrimitive,
         &ButtonRect,
-        &gUIContext->Style.TitleBackground,
+        &gUIContext->Colors.TitleBackground,
         Result.Held);
 
     Rr_UIAdvance(TotalExtent);
@@ -3608,7 +3614,7 @@ void Rr_UISeparator(void)
     };
     Rr_UIDrawSolidQuad(
         &(Rr_Rect){ Position, Size },
-        &gUIContext->Style.Outline);
+        &gUIContext->Colors.Outline);
 
     Layout->Cursor.Y += gUIContext->SeparatorLineHeight;
 }
@@ -3626,7 +3632,7 @@ void Rr_UITextEx(const char *Text, Rr_UITextFlags Flags)
         SIZE_MAX,
         Text,
         Layout->AvailableContentsWidth,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         Flags);
 
     Rr_UIAdvance(TextSize);
@@ -3645,7 +3651,7 @@ void Rr_UIText(const char *Text)
         SIZE_MAX,
         Text,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_UIAdvance(TextSize);
@@ -3694,7 +3700,7 @@ void Rr_UILabelText(const char *Title, const char *Text)
         SIZE_MAX,
         Text,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
@@ -3705,7 +3711,7 @@ void Rr_UILabelText(const char *Title, const char *Text)
         TitleLength,
         Title,
         0,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 TotalExtent = {
@@ -3736,7 +3742,7 @@ bool Rr_UIButton(const char *Text)
         TitleLength,
         Text,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 ButtonSize =
@@ -3758,7 +3764,7 @@ bool Rr_UIButton(const char *Text)
     Rr_UIBevel(
         Primitive,
         &ButtonRect,
-        &gUIContext->Style.ButtonNormal,
+        &gUIContext->Colors.ButtonNormal,
         Result.Held && Result.Hovered);
 
     Rr_UIAdvance(ButtonSize);
@@ -3796,7 +3802,7 @@ bool Rr_UIRadioButton(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Rect ButtonRect = {
@@ -3822,23 +3828,23 @@ bool Rr_UIRadioButton(
     Rr_UIDrawCircleFilled(
         CircleOffset,
         OuterRadius,
-        &gUIContext->Style.ButtonNormal);
+        &gUIContext->Colors.ButtonNormal);
     if (Result.Hovered && Result.Held)
     {
         Rr_UIDrawCircleFilled(
             CircleOffset,
             InnerRadiusHeld,
-            &gUIContext->Style.Foreground);
+            &gUIContext->Colors.Foreground);
     }
     else if (Selected)
     {
         Rr_UIDrawCircleFilled(
             CircleOffset,
             InnerRadius,
-            &gUIContext->Style.Foreground);
+            &gUIContext->Colors.Foreground);
     }
 
-    Rr_Vec4 OutlineColor = gUIContext->Style.ButtonNormal;
+    Rr_Vec4 OutlineColor = gUIContext->Colors.ButtonNormal;
     OutlineColor.XYZ = Rr_MulV3F(
         OutlineColor.XYZ,
         1.0f + gUIContext->Style.BevelIntensityLight);
@@ -3876,7 +3882,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Rect ButtonRect = {
@@ -3894,7 +3900,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         *Checked = !*Checked;
     }
 
-    Rr_Vec4 BackgroundColor = gUIContext->Style.Background;
+    Rr_Vec4 BackgroundColor = gUIContext->Colors.Background;
     BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
 
     Rr_Rect CheckboxRect = {
@@ -3911,7 +3917,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         Rr_UIDrawCircleFilled(
             Rr_AddV2(CheckboxRect.Offset, Rr_DivV2F(CheckboxSize, 2.0f)),
             CheckboxSize.Width * 0.15f,
-            &gUIContext->Style.Foreground);
+            &gUIContext->Colors.Foreground);
     }
 
     Rr_UIAdvance(ButtonRect.Extent);
@@ -4535,7 +4541,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         gUIContext->TextInputCursorBegin,
         &NewCursorEnd,
         0.0f,
-        &gUIContext->Style.Foreground);
+        &gUIContext->Colors.Foreground);
 
     if (BufferSize.X == 0.0f)
     {
@@ -4557,7 +4563,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
                 SIZE_MAX,
                 PlaceholderString,
                 0.0f,
-                &gUIContext->Style.ForegroundDimmed,
+                &gUIContext->Colors.ForegroundDimmed,
                 0);
         }
         else
@@ -4583,7 +4589,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         Rr_UIBevel(
             BackgroundBevelPrimitive,
             &FieldRect,
-            &gUIContext->Style.InputFieldNormal,
+            &gUIContext->Colors.InputFieldNormal,
             true);
     }
 
@@ -5063,7 +5069,7 @@ static inline bool Rr_UIInputScalarMulti(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 TotalExtent = {
@@ -5130,7 +5136,7 @@ bool Rr_UIInputField(
         TitleLength,
         Title,
         0,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 TotalExtent = {
@@ -5421,7 +5427,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIDrawInnerFrame(
         &(Rr_Rect){ Layout->Cursor, Rr_V2F(TargetSize) },
         gUIContext->FrameThickness,
-        &gUIContext->Style.Outline);
+        &gUIContext->Colors.Outline);
 
     float SVSelectorCircleSize = TargetSize * 0.035f;
 
@@ -5499,7 +5505,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIDrawInnerFrame(
         &HSelectorRect,
         gUIContext->FrameThickness,
-        &gUIContext->Style.Outline);
+        &gUIContext->Colors.Outline);
 
     /* Draw hue handles. */
 
@@ -5517,7 +5523,7 @@ static inline void Rr_UIColorPickerPopup(
         LeftTriangleOffset,
         TriangleSize,
         RR_ANGLE_DEG(0.0f),
-        gUIContext->Style.Foreground);
+        gUIContext->Colors.Foreground);
     Rr_Vec2 RightTriangleOffset = Rr_V2(
         Layout->Cursor.X + HSelectorWidth - TriangleSize * 0.5f,
         Layout->Cursor.Y + StaticHSV.X * TargetSize);
@@ -5530,7 +5536,7 @@ static inline void Rr_UIColorPickerPopup(
         RightTriangleOffset,
         TriangleSize,
         RR_ANGLE_DEG(180.0f),
-        gUIContext->Style.Foreground);
+        gUIContext->Colors.Foreground);
 
     Result = Rr_UIDragBehavior(
         Layout,
@@ -5575,7 +5581,7 @@ static inline void Rr_UIColorPickerPopup(
         SVSelectorCircleOffset,
         SVSelectorCircleSize,
         CircleOutlineThickness / 2.0f,
-        &gUIContext->Style.Foreground);
+        &gUIContext->Colors.Foreground);
 
     /* Various input fields. */
 
@@ -5730,7 +5736,7 @@ static inline bool Rr_UIInputColorEx(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 TotalExtent = {
@@ -5786,7 +5792,7 @@ bool Rr_UICombobox(
         TitleLength,
         Options[*SelectedIndex],
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     float ButtonWidth = Rr_UISetupFlexibleWidget(
@@ -5848,7 +5854,7 @@ bool Rr_UICombobox(
                 OptionLength,
                 Options[Index],
                 0,
-                &gUIContext->Style.Foreground,
+                &gUIContext->Colors.Foreground,
                 0);
             Rr_Rect OptionButtonRect;
             OptionButtonRect.Offset.Y = PopupLayout->Cursor.Y;
@@ -5868,15 +5874,15 @@ bool Rr_UICombobox(
             Rr_Vec4 OptionButtonColor;
             if (Result.Held)
             {
-                OptionButtonColor = gUIContext->Style.ButtonHeld;
+                OptionButtonColor = gUIContext->Colors.ButtonHeld;
             }
             else if (Result.Hovered)
             {
-                OptionButtonColor = gUIContext->Style.ButtonHovered;
+                OptionButtonColor = gUIContext->Colors.ButtonHovered;
             }
             else
             {
-                OptionButtonColor = gUIContext->Style.ButtonNormal;
+                OptionButtonColor = gUIContext->Colors.ButtonNormal;
                 if (Index % 2 == 0)
                 {
                     OptionButtonColor = Rr_MulV4F(OptionButtonColor, 0.85f);
@@ -5895,13 +5901,13 @@ bool Rr_UICombobox(
         ButtonPosition,
         ButtonExtent,
     };
-    Rr_Vec4 BackgroundColor = gUIContext->Style.Background;
+    Rr_Vec4 BackgroundColor = gUIContext->Colors.Background;
     BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
 
     Rr_UIBevel(
         Primitive,
         &ButtonRect,
-        &gUIContext->Style.InputFieldNormal,
+        &gUIContext->Colors.InputFieldNormal,
         Result.Held);
 
     /* Add handle. */
@@ -5912,7 +5918,7 @@ bool Rr_UICombobox(
 
         Rr_UIDrawBevel(
             &HandleRect,
-            &gUIContext->Style.ButtonNormal,
+            &gUIContext->Colors.ButtonNormal,
             Result.Held);
 
         Rr_Vec2 TriangleCenter = Rr_RectCenter(&HandleRect);
@@ -5921,7 +5927,7 @@ bool Rr_UICombobox(
             TriangleCenter,
             TriangleSize,
             !Window->Collapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
-            gUIContext->Style.Foreground);
+            gUIContext->Colors.Foreground);
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
@@ -5933,7 +5939,7 @@ bool Rr_UICombobox(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 TotalExtent = {
@@ -5975,7 +5981,7 @@ static inline float Rr_UISlider(
         },
     };
 
-    Rr_UIDrawBevel(&SliderRect, &gUIContext->Style.InputFieldNormal, true);
+    Rr_UIDrawBevel(&SliderRect, &gUIContext->Colors.InputFieldNormal, true);
 
     float HandleWidth = gUIContext->FontSize;
     Rr_Rect HandleRect = { Layout->Cursor,
@@ -5983,7 +5989,7 @@ static inline float Rr_UISlider(
     HandleRect.Offset.X += Normalized * (SliderWidth - HandleWidth);
     HandleRect.Offset.X = roundf(HandleRect.Offset.X);
     HandleRect = Rr_ResizeRect(&HandleRect, -gUIContext->BevelThickness);
-    Rr_UIDrawBevel(&HandleRect, &gUIContext->Style.ButtonNormal, false);
+    Rr_UIDrawBevel(&HandleRect, &gUIContext->Colors.ButtonNormal, false);
 
     if (ValueCString != NULL)
     {
@@ -6014,7 +6020,7 @@ static inline float Rr_UISlider(
                 SIZE_MAX,
                 ValueCString,
                 0.0f,
-                &gUIContext->Style.Foreground,
+                &gUIContext->Colors.Foreground,
                 0);
         }
     }
@@ -6056,7 +6062,7 @@ static inline float Rr_UISlider(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Style.Foreground,
+        &gUIContext->Colors.Foreground,
         0);
 
     Rr_Vec2 TotalExtent = {
@@ -6134,6 +6140,69 @@ static inline Rr_Vec4 Rr_U32ToSRGB(uint32_t Color)
     return Result;
 }
 
+static inline float Rr_UIToLinear(float Value)
+{
+    return Value <= 0.0031308f ? Value * 12.92f
+                               : powf(Value, 1.0f / 2.4f) * 1.055f - 0.055f;
+}
+
+static inline void Rr_UIToLinearColor(Rr_Vec4 *Color)
+{
+    Color->R = Rr_UIToLinear(Color->R);
+    Color->G = Rr_UIToLinear(Color->G);
+    Color->B = Rr_UIToLinear(Color->B);
+}
+
+static inline float Rr_UIToSRGB(float Value)
+{
+    return Value <= 0.04045f ? Value / 12.92f
+                             : powf((Value + 0.055f) / 1.055f, 2.4f);
+}
+
+static inline void Rr_UIToSRGBColor(Rr_Vec4 *Color)
+{
+    Color->R = Rr_UIToSRGB(Color->R);
+    Color->G = Rr_UIToSRGB(Color->G);
+    Color->B = Rr_UIToSRGB(Color->B);
+}
+
+static void Rr_UIConvertColorsToSRGB(void)
+{
+    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
+    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUIContext->Colors;
+    for (size_t Index = 0; Index < ColorCount; ++Index)
+    {
+        Rr_UIToSRGBColor(&Colors[Index]);
+    }
+}
+
+static void Rr_UIConvertColorsToLinear(void)
+{
+    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
+    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUIContext->Colors;
+    for (size_t Index = 0; Index < ColorCount; ++Index)
+    {
+        Rr_UIToLinearColor(&Colors[Index]);
+    }
+}
+
+void Rr_UIPrintColors(void)
+{
+    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
+    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUIContext->Colors;
+    for (size_t Index = 0; Index < ColorCount; ++Index)
+    {
+        fprintf(
+            stdout,
+            "(Rr_Vec4){%ff,%ff,%ff,%ff},",
+            Colors[Index].R,
+            Colors[Index].G,
+            Colors[Index].B,
+            Colors[Index].A);
+    }
+    fprintf(stdout, "\n");
+}
+
 void Rr_InitUI(void)
 {
     assert(gUIContext == NULL);
@@ -6159,32 +6228,35 @@ void Rr_InitUI(void)
         .FlexibleTitleMargin = 0.5f,
         .BevelIntensityLight = 0.3f,
         .BevelIntensityDark = 0.7f,
-
-        .Foreground = Rr_U32ToSRGB(0xD6D0B3FF),
-        .ForegroundDimmed = Rr_U32ToSRGB(0xA7A59CFF),
-        .Background = Rr_U32ToSRGB(0x292F33FF),
-        .ChildBackground = Rr_U32ToSRGB(0x292F33FF),
-        .Outline = Rr_U32ToSRGB(0x6C6F72FF),
-
-        .TitleBackground = Rr_U32ToSRGB(0x5E2D96FF),
-        .TitleCloseButtonBackground = Rr_U32ToSRGB(0xD54251FF),
-        .TitleCollapseButtonBackground = Rr_U32ToSRGB(0x5E2D96FF),
-
         .ButtonPadding = { 0.25f, 0.03f },
-        .ButtonNormal = Rr_U32ToSRGB(0x4c565dFF),
-        .ButtonHovered = Rr_U32ToSRGB(0x687e8dFF),
-        .ButtonHeld = Rr_U32ToSRGB(0x435866FF),
-        .ButtonDisabled = Rr_U32ToSRGB(0x191e22FF),
-
         .InputFieldPadding = { 0.2f, 0.05f },
-        .InputFieldNormal = Rr_U32ToSRGB(0x191e22FF),
-        .SelectedTextBackground = Rr_U32ToSRGB(0x6EA5FEFF),
     };
 
-    gUIContext->Style.ScrollbarBackground = gUIContext->Style.ButtonDisabled;
-    gUIContext->Style.ScrollbarNormal = gUIContext->Style.ButtonNormal;
-    gUIContext->Style.ScrollbarHovered = gUIContext->Style.ButtonHovered;
-    gUIContext->Style.ScrollbarHeld = gUIContext->Style.ButtonHeld;
+    gUIContext->Colors = *(Rr_UIColors *)(&(Rr_Vec4[18]){
+        (Rr_Vec4){ 0.680020f, 0.638779f, 0.459080f, 1.000000f },
+        (Rr_Vec4){ 0.394083f, 0.383775f, 0.339223f, 1.000000f },
+        (Rr_Vec4){ 0.017936f, 0.024223f, 0.028991f, 1.000000f },
+        (Rr_Vec4){ 0.017936f, 0.024223f, 0.028991f, 1.000000f },
+        (Rr_Vec4){ 0.151058f, 0.160444f, 0.170138f, 1.000000f },
+        (Rr_Vec4){ 0.111299f, 0.022013f, 0.311181f, 1.000000f },
+        (Rr_Vec4){ 0.673049f, 0.051122f, 0.080219f, 1.000000f },
+        (Rr_Vec4){ 0.111299f, 0.022013f, 0.311181f, 1.000000f },
+        (Rr_Vec4){ 0.006041f, 0.009021f, 0.011881f, 1.000000f },
+        (Rr_Vec4){ 0.069727f, 0.091518f, 0.108711f, 1.000000f },
+        (Rr_Vec4){ 0.139022f, 0.212044f, 0.271577f, 1.000000f },
+        (Rr_Vec4){ 0.052842f, 0.096266f, 0.133209f, 1.000000f },
+        (Rr_Vec4){ 0.069727f, 0.091518f, 0.108711f, 1.000000f },
+        (Rr_Vec4){ 0.139022f, 0.212044f, 0.271577f, 1.000000f },
+        (Rr_Vec4){ 0.052842f, 0.096266f, 0.133209f, 1.000000f },
+        (Rr_Vec4){ 0.006041f, 0.009021f, 0.011881f, 1.000000f },
+        (Rr_Vec4){ 0.006041f, 0.009021f, 0.011881f, 1.000000f },
+        (Rr_Vec4){ 0.157281f, 0.383775f, 0.991393f, 1.000000f },
+    });
+
+    if (!Rr_IsSRGBFormat(Rr_GetImageFormat(Rr_GetSwapchainImage())))
+    {
+        Rr_UIConvertColorsToLinear();
+    }
 
     Rr_Binding Bindings[] = {
         {
@@ -6209,7 +6281,7 @@ void Rr_InitUI(void)
 
     Rr_ColorTargetInfo ColorTargets[] = {
         {
-            .Format = Rr_GetSwapchainFormat(),
+            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
             .Blend = Rr_AlphaBlend(),
         },
     };
@@ -6419,7 +6491,7 @@ void Rr_NewUIFrame(void)
     RR_RESET_ARRAY(&gUIContext->Vertices, gUIContext->FrameArena);
     RR_RESET_ARRAY(&gUIContext->Indices, gUIContext->FrameArena);
 
-    Rr_IntVec2 SwapchainSize = Rr_GetSwapchainSize();
+    Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
     gUIContext->ScreenSize.Width = (float)SwapchainSize.Width;
     gUIContext->ScreenSize.Height = (float)SwapchainSize.Height;
 }

@@ -53,7 +53,7 @@
 - [X] Fix broken clip rects.
 - [X] Apply scalar changes immediately if possible.
 - [X] Make drag behavior properly handle buttons and support double clicks.
-- [ ] Support for linear color space swapchains.
+- [X] Support for linear color space swapchains.
       Put colors into an array for easier conversion. 
 - [ ] Draggable scalars.
 - [ ] Better tabs.
