@@ -279,10 +279,7 @@ struct SBindingTestApp
             StorageImageB,
             Rr_GetSwapchainImage(),
             { 0, 0, 256, 256 },
-            { 0,
-              0,
-              SwapchainSize.Width / 2,
-              SwapchainSize.Height / 2 },
+            { 0, 0, SwapchainSize.Width / 2, SwapchainSize.Height / 2 },
             RR_IMAGE_ASPECT_COLOR_BIT);
     }
 
