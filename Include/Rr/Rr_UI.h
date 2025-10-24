@@ -39,19 +39,8 @@ typedef struct Rr_UIContext Rr_UIContext;
 
 typedef struct Rr_UIFont Rr_UIFont;
 
-#define RR_TEXT_BUFFER_SIZE (1024 * 1024)
-#define RR_TEXT_MAX_COLORS  8
-#define RR_TEXT_MAX_GLYPHS  2048
-
 #define RR_UI_MIN_FONT_SIZE (12.0f)
 #define RR_UI_MAX_FONT_SIZE (48.0f)
-
-typedef struct Rr_UIGlyph Rr_UIGlyph;
-struct Rr_UIGlyph
-{
-    Rr_Vec4 AtlasBounds;
-    Rr_Vec4 PlaneBounds;
-};
 
 typedef struct Rr_UIStyle Rr_UIStyle;
 struct Rr_UIStyle
@@ -89,13 +78,7 @@ struct Rr_UIStyle
     Rr_Vec4 SelectedTextBackground;
 };
 
-extern Rr_UIFont *Rr_UICreateFont(
-    Rr_UIContext *Context,
-    struct Rr_Graph *Graph,
-    Rr_AssetRef FontPNGRef,
-    Rr_AssetRef FontJSONRef);
-
-extern void Rr_UIReleaseFont(Rr_UIContext *Context, Rr_UIFont *Font);
+extern Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize);
 
 typedef enum
 {

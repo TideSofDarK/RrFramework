@@ -39,7 +39,9 @@
 
 #include <xxHash/xxhash.h>
 
-#include <cJSON/cJSON.h>
+#define STB_TRUETYPE_IMPLEMENTATION
+#define STBTT_STATIC
+#include <stb/stb_truetype.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
@@ -82,8 +84,6 @@ typedef struct Rr_UIUniformData Rr_UIUniformData;
 struct Rr_UIUniformData
 {
     Rr_Vec2 ScreenSize;
-    float DistanceRange;
-    float Time;
 };
 
 typedef struct Rr_UIClipRect Rr_UIClipRect;
@@ -302,112 +302,251 @@ static Rr_UIContext *gUIContext;
 #define RR_UI_ROUND_V2(Value) \
     (Rr_V2(RR_UI_ROUND((Value).X), RR_UI_ROUND((Value).Y)))
 
-struct Rr_UIFont
+typedef struct Rr_UIRange Rr_UIRange;
+struct Rr_UIRange
 {
-    Rr_UIGlyph Glyphs[RR_TEXT_MAX_GLYPHS];
-    float Advances[RR_TEXT_MAX_GLYPHS];
-    Rr_Image2D *Atlas;
-    float LineHeight;
-    float DefaultSize;
-    float Advance;
-    float DistanceRange;
-    float UnderlineY;
-    float UnderlineThickness;
+    int32_t First;
+    int32_t Last;
 };
 
-Rr_UIFont *Rr_UICreateFont(
-    Rr_UIContext *Context,
-    Rr_Graph *Graph,
-    Rr_AssetRef FontPNGRef,
-    Rr_AssetRef FontJSONRef)
+static const Rr_UIRange CodepointRanges[] = {
+    { .First = 0x0020, .Last = 0x007F }, /* Basic Latin */
+    { .First = 0x00A0, .Last = 0x00FF }, /* Latin-1 Supplement */
+    { .First = 0x0100, .Last = 0x017F }, /* Latin Extended-A */
+    { .First = 0x0180, .Last = 0x024F }, /* Latin Extended-B */
+    { .First = 0x0400, .Last = 0x04FF }, /* Basic Cyrillic */
+    { .First = 0x0500, .Last = 0x052F }, /* Cyrillic Supplementary */
+};
+
+typedef struct Rr_UIGlyph Rr_UIGlyph;
+struct Rr_UIGlyph
 {
-#define CJSON_GET_OBJECT_FLOAT(Object, Item) \
-    ((float)cJSON_GetNumberValue(cJSON_GetObjectItem(Object, Item)))
+    Rr_Vec2 Offset;
+    Rr_Vec2 Size;
+    Rr_Vec2 UVMin;
+    Rr_Vec2 UVMax;
+    float XAdvance;
+};
 
-    Rr_Asset FontJSON = Rr_LoadAsset(FontJSONRef);
+typedef struct Rr_UIFontRange Rr_UIFontRange;
+struct Rr_UIFontRange
+{
+    uint32_t First;
+    uint32_t Last;
+    Rr_UIGlyph *Glyphs;
+};
 
-    cJSON *FontDataJSON =
-        cJSON_ParseWithLength(FontJSON.Pointer, FontJSON.Size);
+struct Rr_UIFont
+{
+    Rr_Image2D *Image;
+    size_t RangeCount;
+    Rr_UIFontRange *Ranges;
+};
 
-    cJSON *AtlasJSON = cJSON_GetObjectItem(FontDataJSON, "atlas");
-    cJSON *MetricsJSON = cJSON_GetObjectItem(FontDataJSON, "metrics");
-
-    Rr_Vec2 AtlasSize;
-    AtlasSize.X = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "width");
-    AtlasSize.Y = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "height");
-
-    Rr_Asset ImageAsset = Rr_LoadAsset(FontPNGRef);
-
-    Rr_UIFont *Font = RR_GET_FREE_LIST_ITEM(&Context->Fonts, Context->Arena);
-    *Font = (Rr_UIFont){
-        .Atlas = Rr_CreateSTBImage2D(
-            Rr_GetGraph(),
-            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
-            ImageAsset.Size,
-            ImageAsset.Pointer),
-        .LineHeight = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "lineHeight"),
-        .UnderlineY = CJSON_GET_OBJECT_FLOAT(MetricsJSON, "underlineY"),
-        .UnderlineThickness =
-            CJSON_GET_OBJECT_FLOAT(MetricsJSON, "underlineThickness"),
-        .DefaultSize = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "size"),
-        .DistanceRange = CJSON_GET_OBJECT_FLOAT(AtlasJSON, "distanceRange"),
-    };
-
-    cJSON *GlyphsJSON = cJSON_GetObjectItem(FontDataJSON, "glyphs");
-
-    size_t GlyphCount = (size_t)cJSON_GetArraySize(GlyphsJSON);
-    for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
+static inline Rr_UIGlyph *Rr_UIGetGlyphForCodepoint(
+    Rr_UIFont *Font,
+    uint32_t Codepoint)
+{
+    for (size_t Index = 0; Index < Font->RangeCount; ++Index)
     {
-        cJSON *GlyphJSON = cJSON_GetArrayItem(GlyphsJSON, (int32_t)GlyphIndex);
-
-        uint32_t Codepoint =
-            (uint32_t)CJSON_GET_OBJECT_FLOAT(GlyphJSON, "unicode");
-
-        Rr_UIGlyph *Glyph = &Font->Glyphs[Codepoint];
-
-        cJSON *AtlasBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "atlasBounds");
-        if (cJSON_IsObject(AtlasBoundsJSON))
+        Rr_UIFontRange *Range = &Font->Ranges[Index];
+        if (Range->Last < Codepoint)
         {
-            Glyph->AtlasBounds.X =
-                CJSON_GET_OBJECT_FLOAT(AtlasBoundsJSON, "left") / AtlasSize.X;
-            Glyph->AtlasBounds.Y =
-                1.0f -
-                CJSON_GET_OBJECT_FLOAT(AtlasBoundsJSON, "bottom") / AtlasSize.Y;
-            Glyph->AtlasBounds.Z =
-                CJSON_GET_OBJECT_FLOAT(AtlasBoundsJSON, "right") / AtlasSize.X;
-            Glyph->AtlasBounds.W =
-                1.0f -
-                CJSON_GET_OBJECT_FLOAT(AtlasBoundsJSON, "top") / AtlasSize.Y;
+            continue;
         }
-
-        cJSON *PlaneBoundsJSON = cJSON_GetObjectItem(GlyphJSON, "planeBounds");
-        if (cJSON_IsObject(PlaneBoundsJSON))
+        if (Range->First > Codepoint)
         {
-            Glyph->PlaneBounds.X =
-                CJSON_GET_OBJECT_FLOAT(PlaneBoundsJSON, "left");
-            Glyph->PlaneBounds.Y =
-                CJSON_GET_OBJECT_FLOAT(PlaneBoundsJSON, "bottom");
-            Glyph->PlaneBounds.Z =
-                CJSON_GET_OBJECT_FLOAT(PlaneBoundsJSON, "right");
-            Glyph->PlaneBounds.W =
-                CJSON_GET_OBJECT_FLOAT(PlaneBoundsJSON, "top");
+            continue;
         }
-
-        Font->Advances[Codepoint] =
-            CJSON_GET_OBJECT_FLOAT(GlyphJSON, "advance");
+        return Range->Glyphs + (Codepoint - Range->First);
     }
-
-    cJSON_Delete(FontDataJSON);
-
-    return Font;
-#undef CJSON_GET_OBJECT_FLOAT
+    return NULL;
 }
 
-void Rr_UIReleaseFont(Rr_UIContext *Context, Rr_UIFont *Font)
+Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
 {
-    Rr_ReleaseImage(Font->Atlas);
+    FontSize *= 1.25f;
 
-    RR_RETURN_FREE_LIST_ITEM(&Context->Fonts, Font);
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    static int FontIndex = -1;
+    FontIndex++;
+
+    Rr_UIFont *Font = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIFont);
+
+    const int32_t ATLAS_SIZE = 1024;
+    static Rr_IntVec2 ATLAS_EXTENT = { ATLAS_SIZE, ATLAS_SIZE };
+
+    char FontNameBuffer[64];
+    snprintf(
+        FontNameBuffer,
+        sizeof(FontNameBuffer),
+        "Rr.UI.Font#%d",
+        FontIndex);
+    Rr_SetNextObjectName(FontNameBuffer);
+    Font->Image = Rr_CreateImage2D(
+        ATLAS_EXTENT,
+        RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+        RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+
+    unsigned char *GrayscaleBuffer =
+        RR_ALLOC_NO_ZERO(Scratch.Arena, (size_t)(ATLAS_SIZE * ATLAS_SIZE));
+
+    size_t AtlasBufferSize =
+        (size_t)(ATLAS_SIZE * ATLAS_SIZE) * sizeof(uint32_t);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        AtlasBufferSize,
+        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT);
+    uint32_t *StagingData = Rr_GetMappedBufferData(StagingBuffer);
+
+    Rr_Asset FontAsset = Rr_LoadAsset(AssetRef);
+    stbtt_fontinfo FontInfo;
+    int Result =
+        stbtt_InitFont(&FontInfo, (unsigned char *)FontAsset.Pointer, 0);
+    assert(Result && "Failed to parse .ttf file!");
+
+    stbtt_pack_context PackContext;
+    Result = stbtt_PackBegin(
+        &PackContext,
+        GrayscaleBuffer,
+        ATLAS_SIZE,
+        ATLAS_SIZE,
+        0,
+        2,
+        NULL);
+    assert(Result && "Failed to begin .ttf packing!");
+
+    stbtt_PackSetOversampling(&PackContext, 2, 2);
+
+    size_t RangeCount = RR_ARRAY_COUNT(CodepointRanges);
+
+    Font->RangeCount = RangeCount;
+    /* TODO: Could be single allocation. */
+    Font->Ranges =
+        RR_ALLOC_TYPE_COUNT(gUIContext->Arena, Rr_UIFontRange, RangeCount);
+
+    stbtt_pack_range *PackRanges =
+        RR_ALLOC_NO_ZERO(Scratch.Arena, RangeCount * sizeof(stbtt_pack_range));
+
+    size_t TotalCharCount = 0;
+    for (size_t Index = 0; Index < RangeCount; ++Index)
+    {
+        int32_t NumChars =
+            CodepointRanges[Index].Last - CodepointRanges[Index].First;
+
+        Font->Ranges[Index].First = (uint32_t)CodepointRanges[Index].First;
+        Font->Ranges[Index].Last = (uint32_t)CodepointRanges[Index].Last;
+        Font->Ranges[Index].Glyphs = RR_ALLOC_NO_ZERO(
+            gUIContext->Arena,
+            (size_t)NumChars * sizeof(Rr_UIGlyph));
+
+        PackRanges[Index] = (stbtt_pack_range){
+            .first_unicode_codepoint_in_range = CodepointRanges[Index].First,
+            .num_chars = NumChars,
+            .font_size = FontSize,
+            .chardata_for_range = RR_ALLOC_NO_ZERO(
+                Scratch.Arena,
+                (size_t)NumChars * sizeof(stbtt_packedchar)),
+        };
+
+        TotalCharCount += (size_t)NumChars;
+    }
+
+    stbrp_rect *Rects =
+        RR_ALLOC_NO_ZERO(Scratch.Arena, sizeof(stbrp_rect) * TotalCharCount);
+
+    int NumRects = stbtt_PackFontRangesGatherRects(
+        &PackContext,
+        &FontInfo,
+        PackRanges,
+        (int32_t)RangeCount,
+        Rects);
+    stbtt_PackFontRangesPackRects(&PackContext, Rects, NumRects);
+    stbtt_PackFontRangesRenderIntoRects(
+        &PackContext,
+        &FontInfo,
+        PackRanges,
+        (int32_t)RangeCount,
+        Rects);
+    stbtt_PackEnd(&PackContext);
+
+    /* Create glyph data. */
+
+    float FontScale = stbtt_ScaleForPixelHeight(&FontInfo, FontSize);
+
+    int UnscaledAscent, UnscaledDescent, UnscaledLineGap;
+    stbtt_GetFontVMetrics(
+        &FontInfo,
+        &UnscaledAscent,
+        &UnscaledDescent,
+        &UnscaledLineGap);
+
+    float Ascent = (float)UnscaledAscent * FontScale;
+    float Descent = (float)UnscaledDescent * FontScale;
+    float LineGap = (float)UnscaledLineGap * FontScale;
+
+    for (size_t Index = 0; Index < RangeCount; ++Index)
+    {
+        stbtt_pack_range *PackRange = PackRanges + Index;
+        Rr_UIFontRange *FontRange = Font->Ranges + Index;
+        size_t GlyphCount = FontRange->Last - FontRange->First;
+        for (size_t GlyphIndex = 0; GlyphIndex < GlyphCount; ++GlyphIndex)
+        {
+            Rr_UIGlyph *Glyph = &FontRange->Glyphs[GlyphIndex];
+
+            stbtt_packedchar *PackedChar =
+                PackRange->chardata_for_range + GlyphIndex;
+
+            float X = 0, Y = 0;
+            stbtt_aligned_quad Quad;
+            stbtt_GetPackedQuad(
+                PackRange->chardata_for_range,
+                ATLAS_SIZE,
+                ATLAS_SIZE,
+                (int32_t)GlyphIndex,
+                &X,
+                &Y,
+                &Quad,
+                0);
+            Glyph->Size = (Rr_Vec2){ Quad.x1 - Quad.x0, Quad.y1 - Quad.y0 };
+            Glyph->Offset = (Rr_Vec2){ Quad.x0, Quad.y0 + Ascent };
+            Glyph->UVMin = (Rr_Vec2){ Quad.s0, Quad.t0 };
+            Glyph->UVMax = (Rr_Vec2){ Quad.s1, Quad.t1 };
+            Glyph->XAdvance = PackedChar->xadvance;
+        }
+    }
+
+    /* Fill RGBA atlas. */
+
+    for (int32_t Y = 0; Y < ATLAS_SIZE; ++Y)
+    {
+        for (int32_t X = 0; X < ATLAS_SIZE; ++X)
+        {
+            unsigned char Grayscale = GrayscaleBuffer[Y * ATLAS_SIZE + X];
+            StagingData[Y * ATLAS_SIZE + X] =
+                ((uint32_t)Grayscale << 24) | 0x00FFFFFF;
+        }
+    }
+    StagingData[0] = 0xFFFFFFFF;
+    Rr_FlushBufferRange(StagingBuffer, 0, AtlasBufferSize);
+    Rr_CopyBufferToImage2D(
+        Rr_GetGraph(),
+        StagingBuffer,
+        0,
+        ATLAS_EXTENT,
+        Font->Image,
+        0);
+
+    Rr_ReleaseBuffer(StagingBuffer);
+
+    Rr_DestroyScratch(Scratch);
+
+    return Font;
+}
+
+static inline void Rr_UIReleaseFont(Rr_UIFont *Font)
+{
+    Rr_ReleaseImage(Font->Image);
 }
 
 static inline bool Rr_UIWindowHasTitle(Rr_UIWindow *Window)
@@ -1389,29 +1528,21 @@ static inline void Rr_UIDrawCheckerQuad(Rr_Rect *Rect, float Size)
 }
 
 static inline void Rr_UIDrawGlyph(
-    Rr_UIFont *Font,
-    float FontSize,
     Rr_UIGlyph *Glyph,
     Rr_Vec2 Position,
     Rr_Vec4 *Color)
 {
-    float Left = Glyph->PlaneBounds.X * FontSize;
-    float Width = (Glyph->PlaneBounds.Z - Glyph->PlaneBounds.X) * FontSize;
-
-    float Top = (1.0f - Glyph->PlaneBounds.W) * FontSize;
-    float Height = (Glyph->PlaneBounds.W - Glyph->PlaneBounds.Y) * FontSize;
-
-    Rr_Vec2 UVs[] = {
-        { Glyph->AtlasBounds.X, Glyph->AtlasBounds.W },
-        { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.W },
-        { Glyph->AtlasBounds.X, Glyph->AtlasBounds.Y },
-        { Glyph->AtlasBounds.Z, Glyph->AtlasBounds.Y },
+    Rr_Vec2 UVs[4] = {
+        { Glyph->UVMin.X, Glyph->UVMin.Y },
+        { Glyph->UVMax.X, Glyph->UVMin.Y },
+        { Glyph->UVMin.X, Glyph->UVMax.Y },
+        { Glyph->UVMax.X, Glyph->UVMax.Y },
     };
 
     Rr_UIDrawTexturedQuad(
         &(Rr_Rect){
-            Rr_AddV2(Position, (Rr_Vec2){ Left, Top }),
-            { Width, Height },
+            Rr_AddV2(Position, Glyph->Offset),
+            Glyph->Size,
         },
         Color,
         UVs);
@@ -1444,9 +1575,11 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
     float AvailableWidth,
     Rr_Vec4 *Color)
 {
+    RR_BEGIN_FRAME_SECTION("Rr.UI.DrawInputText");
+
     Rr_UIFont *Font = gUIContext->Font;
     float FontSize = gUIContext->FontSize;
-    float LineHeight = Font->LineHeight * FontSize;
+    float LineHeight = gUIContext->LineHeight;
     float MaxX = 0.0f;
     float CurrentX = 0.0f;
     float CurrentY = 0.0f;
@@ -1473,11 +1606,6 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
 
         bool LineBreak = false;
 
-        if (Codepoint >= RR_TEXT_MAX_GLYPHS)
-        {
-            RR_ABORT("Codepoint is not within range!");
-        }
-
         if (Codepoint == '\n')
         {
             Codepoint = ' ';
@@ -1497,6 +1625,8 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
             }
         }
 
+        Rr_UIGlyph *Glyph = Rr_UIGetGlyphForCodepoint(Font, Codepoint);
+
         if (Active)
         {
             if ((OldCursorMin != OldCursorMax) &&
@@ -1506,9 +1636,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
                 Rr_UIDrawRect(
                     &(Rr_Rect){
                         GlyphPosition,
-                        Rr_V2(
-                            gUIContext->Font->Advances[Codepoint] * FontSize,
-                            gUIContext->LineHeight),
+                        Rr_V2(Glyph->XAdvance, gUIContext->LineHeight),
                     },
                     &gUIContext->Style.SelectedTextBackground);
             }
@@ -1524,7 +1652,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
             break;
         }
 
-        if (gUIContext->Font->Advances[Codepoint] == 0.0f)
+        if (!Glyph)
         {
             /* TODO: Proper missing glyph handling! */
 
@@ -1540,15 +1668,10 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
         {
             if (Codepoint != ' ')
             {
-                Rr_UIDrawGlyph(
-                    Font,
-                    FontSize,
-                    &Font->Glyphs[Codepoint],
-                    GlyphPosition,
-                    Color);
+                Rr_UIDrawGlyph(Glyph, GlyphPosition, Color);
             }
 
-            CurrentX += gUIContext->Font->Advances[Codepoint] * FontSize;
+            CurrentX += Glyph->XAdvance;
             MaxX = RR_MAX(MaxX, CurrentX);
 
             if (LineBreak)
@@ -1561,6 +1684,8 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
     }
 
     *CursorEnd = NewCursorEnd;
+
+    RR_END_FRAME_SECTION("Rr.UI.DrawInputText");
 
     return (Rr_Vec2){ .Width = MaxX, .Height = CurrentY + LineHeight };
 }
@@ -1579,6 +1704,8 @@ static inline Rr_Vec2 Rr_UIDrawText(
         return Rr_V2F(0.0f);
     }
 
+    RR_BEGIN_FRAME_SECTION("Rr.UI.DrawText");
+
     bool NullTerminated = false;
     if (UTF8StringLength == SIZE_MAX)
     {
@@ -1587,7 +1714,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
 
     Rr_UIFont *Font = gUIContext->Font;
     float FontSize = gUIContext->FontSize;
-    float LineHeight = Font->LineHeight * FontSize;
+    float LineHeight = gUIContext->LineHeight;
     float MaxX = 0.0f;
     float CurrentX = 0.0f;
     float CurrentY = 0.0f;
@@ -1619,11 +1746,6 @@ static inline Rr_Vec2 Rr_UIDrawText(
             size_t CodepointIndex = Decoder.CodepointIndex - 1;
             Decoded[CodepointIndex] = Codepoint;
 
-            if (Codepoint >= RR_TEXT_MAX_GLYPHS)
-            {
-                RR_ABORT("Codepoint is not within range!");
-            }
-
             if (Codepoint == '\n')
             {
                 CurrentX = 0.0f;
@@ -1650,19 +1772,20 @@ static inline Rr_Vec2 Rr_UIDrawText(
                                 CurrentX = 0.0f;
                                 CurrentY += LineHeight;
                             }
+
+                            Rr_UIGlyph *Glyph =
+                                Rr_UIGetGlyphForCodepoint(Font, Codepoint);
+
                             if (!CalculateOnly)
                             {
                                 Rr_UIDrawGlyph(
-                                    Font,
-                                    FontSize,
-                                    &Font->Glyphs[Codepoint],
+                                    Glyph,
                                     Rr_AddV2(
                                         Position,
                                         (Rr_Vec2){ CurrentX, CurrentY }),
                                     Color);
                             }
-                            CurrentX += gUIContext->Font->Advances[Codepoint] *
-                                        FontSize;
+                            CurrentX += Glyph->XAdvance;
                         }
                     }
                     else
@@ -1680,25 +1803,22 @@ static inline Rr_Vec2 Rr_UIDrawText(
                              ++IndexInWord)
                         {
                             Codepoint = Decoded[IndexInWord];
+                            Rr_UIGlyph *Glyph =
+                                Rr_UIGetGlyphForCodepoint(Font, Codepoint);
                             if (!CalculateOnly)
                             {
-                                Rr_UIDrawGlyph(
-                                    Font,
-                                    FontSize,
-                                    &Font->Glyphs[Codepoint],
-                                    PositionInWord,
-                                    Color);
+                                Rr_UIDrawGlyph(Glyph, PositionInWord, Color);
                             }
-                            CurrentX += gUIContext->Font->Advances[Codepoint] *
-                                        FontSize;
+                            CurrentX += Glyph->XAdvance;
                             PositionInWord.X = Position.X + CurrentX;
                         }
                     }
                 }
                 else
                 {
-                    CurrentX +=
-                        gUIContext->Font->Advances[Codepoint] * FontSize;
+                    Rr_UIGlyph *Glyph =
+                        Rr_UIGetGlyphForCodepoint(Font, Codepoint);
+                    CurrentX += Glyph->XAdvance;
                 }
 
                 MaxX = RR_MAX(MaxX, CurrentX);
@@ -1708,8 +1828,8 @@ static inline Rr_Vec2 Rr_UIDrawText(
             }
             else
             {
-                CurrentWordWidth +=
-                    gUIContext->Font->Advances[Codepoint] * FontSize;
+                Rr_UIGlyph *Glyph = Rr_UIGetGlyphForCodepoint(Font, Codepoint);
+                CurrentWordWidth += Glyph->XAdvance;
             }
         }
 
@@ -1724,10 +1844,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
             uint32_t Codepoint = Decoder.Codepoint;
             size_t CodepointIndex = Decoder.CodepointIndex - 1;
 
-            if (Codepoint >= RR_TEXT_MAX_GLYPHS)
-            {
-                RR_ABORT("Codepoint is not within range!");
-            }
+            Rr_UIGlyph *Glyph = Rr_UIGetGlyphForCodepoint(Font, Codepoint);
 
             if (Codepoint == '\n')
             {
@@ -1738,24 +1855,24 @@ static inline Rr_Vec2 Rr_UIDrawText(
 
             if (Codepoint == ' ')
             {
-                CurrentX += gUIContext->Font->Advances[Codepoint] * FontSize;
+                CurrentX += Glyph->XAdvance;
                 continue;
             }
 
             if (!CalculateOnly)
             {
                 Rr_UIDrawGlyph(
-                    Font,
-                    FontSize,
-                    &Font->Glyphs[Codepoint],
+                    Glyph,
                     Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY }),
                     Color);
             }
 
-            CurrentX += gUIContext->Font->Advances[Codepoint] * FontSize;
+            CurrentX += Glyph->XAdvance;
             MaxX = RR_MAX(MaxX, CurrentX);
         }
     }
+
+    RR_END_FRAME_SECTION("Rr.UI.DrawText");
 
     return (Rr_Vec2){ .Width = MaxX, .Height = CurrentY + LineHeight };
 }
@@ -6028,7 +6145,8 @@ void Rr_InitUI(void)
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
 
     Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
-    Rr_UISetFontSize((float)DisplaySize.Width / 112.0f);
+    float DefaultFontSize = (float)DisplaySize.Width / 112.0f;
+    Rr_UISetFontSize(DefaultFontSize);
 
     gUIContext->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.03f },
@@ -6148,13 +6266,12 @@ void Rr_InitUI(void)
     gUIContext->Sampler = Rr_CreateSampler(&(Rr_SamplerInfo){
         .MinFilter = RR_FILTER_LINEAR,
         .MagFilter = RR_FILTER_LINEAR,
+        .AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
     });
 
-    gUIContext->Font = Rr_UICreateFont(
-        gUIContext,
-        Rr_GetGraph(),
-        RR_BUILTIN_SOURCESERIF4_PNG,
-        RR_BUILTIN_SOURCESERIF4_JSON);
+    gUIContext->Font =
+        Rr_UICreateFont(RR_BUILTIN_SOURCESERIF4_TTF, DefaultFontSize);
 }
 
 void Rr_CleanupUI(void)
@@ -6168,7 +6285,7 @@ void Rr_CleanupUI(void)
     Rr_ReleasePipelineLayout(gUIContext->PipelineLayout);
     Rr_ReleaseGraphicsPipeline(gUIContext->GraphicsPipeline);
 
-    Rr_UIReleaseFont(gUIContext, gUIContext->Font);
+    Rr_UIReleaseFont(gUIContext->Font);
 
     Rr_DestroyArena(gUIContext->Arena);
 
@@ -6253,7 +6370,7 @@ static inline void Rr_UIConsumeNextFontSize(void)
 
     gUIContext->NextFontSize = INFINITY;
     gUIContext->FontSize = FontSize;
-    gUIContext->LineHeight = FontSize * gUIContext->Font->LineHeight;
+    gUIContext->LineHeight = FontSize * 1.2f;
     gUIContext->ContentsPadding =
         Rr_MulV2F(gUIContext->Style.ContentsPadding, FontSize);
     gUIContext->ComponentMargin =
@@ -6417,18 +6534,16 @@ void Rr_EndUI(void)
         gUIContext->HashStack.Count == 0 &&
         "ID/Hash stack is not empty; did you forget to call Rr_UIPopID()?");
 
-    RR_BEGIN_FRAME_SECTION("Rr.UI");
-
     Rr_UIAssertNoWindow();
 
     if (gUIContext->ActiveWindows.Count > 0)
     {
+        RR_BEGIN_FRAME_SECTION("Rr.UI.DrawWindows");
+
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         Rr_UIUniformData UniformData = {
             .ScreenSize = gUIContext->ScreenSize,
-            .DistanceRange = gUIContext->Font->DistanceRange,
-            .Time = (float)Rr_GetTimeSeconds(),
         };
         char *MappedUniformData =
             Rr_GetMappedBufferData(gUIContext->UniformBuffer);
@@ -6474,7 +6589,7 @@ void Rr_EndUI(void)
             sizeof(Rr_UIUniformData));
         Rr_BindCombinedImage2DSampler(
             GraphicsNode,
-            gUIContext->Font->Atlas,
+            gUIContext->Font->Image,
             gUIContext->Sampler,
             0,
             1);
@@ -6508,6 +6623,8 @@ void Rr_EndUI(void)
         }
 
         Rr_EndGraphLabel(Rr_GetGraph(), "Rr.UI");
+
+        RR_END_FRAME_SECTION("Rr.UI.DrawWindows");
     }
 
     gUIContext->LayoutStack = NULL;
@@ -6532,8 +6649,6 @@ void Rr_EndUI(void)
     gUIContext->MouseOverTextInput = false;
     RR_ZERO(gUIContext->TextInputEvents);
     RR_ZERO(gUIContext->KeyboardInputEvents);
-
-    RR_END_FRAME_SECTION("Rr.UI");
 }
 
 float Rr_UIGetFontSize(void)
@@ -6629,18 +6744,14 @@ void Rr_UIDebugOverlay(void)
             double MainLoopMS =
                 (double)(RR_GET_FRAME_SECTION("Rr.MainLoop") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
-            double UIMS = (double)(RR_GET_FRAME_SECTION("Rr.UI") * 1000) /
-                          (double)Rr_GetPerformanceFrequency();
             double FrameGraphMS =
                 (double)(RR_GET_FRAME_SECTION("Rr.FrameGraph") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
 
             Rr_UITextF(
                 "Main Loop: %.3fms\n"
-                "UI: %.3fms\n"
                 "Frame Graph: %.3fms",
                 MainLoopMS,
-                UIMS,
                 FrameGraphMS);
 
             if (gRenderer->GraphicsQueue.TimestampsEnabled)
@@ -6668,6 +6779,24 @@ void Rr_UIDebugOverlay(void)
                 gUIContext->FontSize,
                 gUIContext->Vertices.Capacity,
                 gUIContext->Indices.Capacity);
+
+            double DrawWindowsMS =
+                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawWindows") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
+            double DrawTextMS =
+                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawText") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
+            double DrawInputTextMS =
+                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawInputText") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
+
+            Rr_UITextF(
+                "DrawWindows: %.3fms\n"
+                "DrawText: %.3fms\n"
+                "DrawInputText: %.3fms",
+                DrawWindowsMS,
+                DrawTextMS,
+                DrawInputTextMS);
 
             Rr_UITextF(
                 "Hovered Window: %s\n"
