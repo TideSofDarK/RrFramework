@@ -372,11 +372,41 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     static int FontIndex = -1;
     FontIndex++;
 
-    Rr_UIFont *Font = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIFont);
-
     const int32_t ATLAS_SIZE = 1024;
     static Rr_IntVec2 ATLAS_EXTENT = { ATLAS_SIZE, ATLAS_SIZE };
 
+    unsigned char *GrayscaleBuffer =
+        RR_ALLOC_NO_ZERO(Scratch.Arena, (size_t)(ATLAS_SIZE * ATLAS_SIZE));
+
+    Rr_Asset FontAsset = Rr_LoadAsset(AssetRef);
+    stbtt_fontinfo FontInfo;
+    if(!stbtt_InitFont(&FontInfo, (unsigned char *)FontAsset.Pointer, 0))
+    {
+        RR_LOG("Failed to parse .ttf file!");
+        Rr_DestroyScratch(Scratch);
+        return NULL;
+    }
+
+    stbtt_pack_context PackContext;
+    if(!stbtt_PackBegin(
+        &PackContext,
+        GrayscaleBuffer,
+        ATLAS_SIZE,
+        ATLAS_SIZE,
+        0,
+        2,
+        NULL))
+    {
+        RR_LOG("Failed to begin .ttf packing!");
+        Rr_DestroyScratch(Scratch);
+        return NULL;
+    }
+
+    stbtt_PackSetOversampling(&PackContext, 2, 2);
+
+    size_t RangeCount = RR_ARRAY_COUNT(CodepointRanges);
+
+    Rr_UIFont *Font = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIFont);
     char FontNameBuffer[64];
     snprintf(
         FontNameBuffer,
@@ -388,38 +418,6 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
         ATLAS_EXTENT,
         RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
-
-    unsigned char *GrayscaleBuffer =
-        RR_ALLOC_NO_ZERO(Scratch.Arena, (size_t)(ATLAS_SIZE * ATLAS_SIZE));
-
-    size_t AtlasBufferSize =
-        (size_t)(ATLAS_SIZE * ATLAS_SIZE) * sizeof(uint32_t);
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        AtlasBufferSize,
-        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT);
-    uint32_t *StagingData = Rr_GetMappedBufferData(StagingBuffer);
-
-    Rr_Asset FontAsset = Rr_LoadAsset(AssetRef);
-    stbtt_fontinfo FontInfo;
-    int Result =
-        stbtt_InitFont(&FontInfo, (unsigned char *)FontAsset.Pointer, 0);
-    assert(Result && "Failed to parse .ttf file!");
-
-    stbtt_pack_context PackContext;
-    Result = stbtt_PackBegin(
-        &PackContext,
-        GrayscaleBuffer,
-        ATLAS_SIZE,
-        ATLAS_SIZE,
-        0,
-        2,
-        NULL);
-    assert(Result && "Failed to begin .ttf packing!");
-
-    stbtt_PackSetOversampling(&PackContext, 2, 2);
-
-    size_t RangeCount = RR_ARRAY_COUNT(CodepointRanges);
-
     Font->RangeCount = RangeCount;
     /* TODO: Could be single allocation. */
     Font->Ranges =
@@ -518,6 +516,12 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
 
     /* Fill RGBA atlas. */
 
+    size_t AtlasBufferSize =
+        (size_t)(ATLAS_SIZE * ATLAS_SIZE) * sizeof(uint32_t);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        AtlasBufferSize,
+        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT);
+    uint32_t *StagingData = Rr_GetMappedBufferData(StagingBuffer);
     for (int32_t Y = 0; Y < ATLAS_SIZE; ++Y)
     {
         for (int32_t X = 0; X < ATLAS_SIZE; ++X)
