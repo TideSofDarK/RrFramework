@@ -53,21 +53,21 @@
 - [X] Fix broken clip rects.
 - [X] Apply scalar changes immediately if possible.
 - [X] Make drag behavior properly handle buttons and support double clicks.
-- [ ] Proper stack data structure.
+- [ ] Support for linear color space swapchains.
+      Put colors into an array for easier conversion. 
 - [ ] Draggable scalars.
-- [ ] Some options for horizontal child layouts + asserts.
 - [ ] Better tabs.
+- [ ] Some options for horizontal child layouts + asserts.
 - [X] Combobox.
 - [X] Auto-resizing windows.
 - [X] Sliders.
-- [ ] Support for linear color space swapchains.
-      Put colors into an array for easier conversion. 
-- [ ] Keyboard input and related widgets.
+- [X] Keyboard input and related widgets.
 - [X] Color picker.
 - [X] Radio buttons.
 - [X] Nested windows.
-- [ ] Swap font rendering with stb_truetype.
+- [X] Swap font rendering with stb_truetype.
 - [ ] More animations.
+- [ ] Proper stack data structure.
 - [ ] Horizontal scrollbar.
 
 ** Debug
