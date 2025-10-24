@@ -240,7 +240,7 @@ static void Iterate(void)
             }
 
             Rr_UIBeginHorizontal();
-            static int32_t SelectedRadioButton = -1;
+            static int32_t SelectedRadioButton = 0;
             Rr_UIRadioButton("Radio A", &SelectedRadioButton, 0);
             Rr_UIRadioButton("Radio B", &SelectedRadioButton, 1);
             Rr_UIRadioButton("Radio C", &SelectedRadioButton, 2);

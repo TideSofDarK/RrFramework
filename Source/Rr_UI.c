@@ -3663,6 +3663,7 @@ bool Rr_UIRadioButton(
     float OuterRadius = ButtonSize * 0.4f;
     float InnerRadius = OuterRadius * 0.6f;
     float InnerRadiusHeld = OuterRadius * 0.8f;
+    float OutlineThickness = gUIContext->FontSize / 24.0f * 0.5f;
 
     Rr_Vec2 Cursor = Layout->Cursor;
 
@@ -3720,7 +3721,11 @@ bool Rr_UIRadioButton(
     OutlineColor.XYZ = Rr_MulV3F(
         OutlineColor.XYZ,
         1.0f + gUIContext->Style.BevelIntensityLight);
-    Rr_UIDrawCircle(CircleOffset, OuterRadius - 0.5f, 0.5f, &OutlineColor);
+    Rr_UIDrawCircle(
+        CircleOffset,
+        OuterRadius - OutlineThickness,
+        OutlineThickness,
+        &OutlineColor);
 
     Rr_UIAdvance(ButtonRect.Extent);
 
