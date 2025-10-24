@@ -3645,6 +3645,88 @@ bool Rr_UIButton(const char *Text)
     return Result.Clicked;
 }
 
+bool Rr_UIRadioButton(
+    const char *Title,
+    int32_t *SelectedOption,
+    int32_t ThisOption)
+{
+    Rr_UIAssertWindow();
+    assert(SelectedOption != NULL);
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+    float ButtonSize = gUIContext->LineHeight;
+    float OuterRadius = ButtonSize * 0.4f;
+    float InnerRadius = OuterRadius * 0.6f;
+    float InnerRadiusHeld = OuterRadius * 0.8f;
+
+    Rr_Vec2 Cursor = Layout->Cursor;
+
+    Rr_Vec2 TitlePosition = Cursor;
+    TitlePosition.X += OuterRadius * 2.0f + gUIContext->FlexibleTitleMargin;
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
+        false,
+        TitlePosition,
+        TitleLength,
+        Title,
+        0.0f,
+        &gUIContext->Style.Foreground,
+        0);
+
+    Rr_Rect ButtonRect = {
+        Cursor,
+        Rr_V2(
+            TitleSize.X + gUIContext->FlexibleTitleMargin + OuterRadius * 2.0f,
+            TitleSize.Y),
+    };
+
+    Rr_UIDragResult Result =
+        Rr_UIButtonBehavior(Layout, &ButtonRect, TitleHash);
+
+    if (Result.Clicked)
+    {
+        *SelectedOption = ThisOption;
+    }
+
+    bool Selected = *SelectedOption == ThisOption;
+
+    Rr_Vec2 CircleOffset =
+        Rr_V2(Cursor.X + OuterRadius, Cursor.Y + ButtonSize * 0.5f);
+
+    Rr_UIDrawCircleFilled(
+        CircleOffset,
+        OuterRadius,
+        &gUIContext->Style.ButtonNormal);
+    if (Result.Hovered && Result.Held)
+    {
+        Rr_UIDrawCircleFilled(
+            CircleOffset,
+            InnerRadiusHeld,
+            &gUIContext->Style.Foreground);
+    }
+    else if (Selected)
+    {
+        Rr_UIDrawCircleFilled(
+            CircleOffset,
+            InnerRadius,
+            &gUIContext->Style.Foreground);
+    }
+
+    Rr_Vec4 OutlineColor = gUIContext->Style.ButtonNormal;
+    OutlineColor.XYZ = Rr_MulV3F(
+        OutlineColor.XYZ,
+        1.0f + gUIContext->Style.BevelIntensityLight);
+    Rr_UIDrawCircle(CircleOffset, OuterRadius - 0.5f, 0.5f, &OutlineColor);
+
+    Rr_UIAdvance(ButtonRect.Extent);
+
+    return Result.Clicked;
+}
+
 bool Rr_UICheckbox(const char *Title, bool *Checked)
 {
     Rr_UIAssertWindow();

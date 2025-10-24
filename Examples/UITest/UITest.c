@@ -226,7 +226,6 @@ static void Iterate(void)
 
         if (Rr_UIBeginChild("Button"))
         {
-            Rr_UIBeginHorizontal();
             if (Rr_UIButton("Show Style Editor"))
             {
                 StyleEditorWindowOpen = true;
@@ -235,11 +234,17 @@ static void Iterate(void)
             {
                 FixedSizeWindowOpen = true;
             }
-            Rr_UIEndHorizontal();
             if (Rr_UIButton("Show Text Input Window"))
             {
                 TextInputWindowOpen = true;
             }
+
+            Rr_UIBeginHorizontal();
+            static int32_t SelectedRadioButton = -1;
+            Rr_UIRadioButton("Radio A", &SelectedRadioButton, 0);
+            Rr_UIRadioButton("Radio B", &SelectedRadioButton, 1);
+            Rr_UIRadioButton("Radio C", &SelectedRadioButton, 2);
+            Rr_UIEndHorizontal();
 
             Rr_UIEndChild();
         }

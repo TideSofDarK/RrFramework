@@ -64,7 +64,7 @@
       Put colors into an array for easier conversion. 
 - [ ] Keyboard input and related widgets.
 - [X] Color picker.
-- [ ] Radio buttons.
+- [X] Radio buttons.
 - [X] Nested windows.
 - [ ] Swap font rendering with stb_truetype.
 - [ ] More animations.

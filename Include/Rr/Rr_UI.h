@@ -173,6 +173,11 @@ extern void Rr_UILabelText(const char *Title, const char *Text);
 
 extern bool Rr_UIButton(const char *Title);
 
+extern bool Rr_UIRadioButton(
+    const char *Title,
+    int32_t *SelectedOption,
+    int32_t ThisOption);
+
 extern bool Rr_UICheckbox(const char *Title, bool *Checked);
 
 extern bool Rr_UIInputField(
