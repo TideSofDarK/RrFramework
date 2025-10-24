@@ -373,14 +373,14 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     FontIndex++;
 
     const int32_t ATLAS_SIZE = 1024;
-    static Rr_IntVec2 ATLAS_EXTENT = { ATLAS_SIZE, ATLAS_SIZE };
+    const Rr_IntVec2 ATLAS_EXTENT = { ATLAS_SIZE, ATLAS_SIZE };
 
     unsigned char *GrayscaleBuffer =
         RR_ALLOC_NO_ZERO(Scratch.Arena, (size_t)(ATLAS_SIZE * ATLAS_SIZE));
 
     Rr_Asset FontAsset = Rr_LoadAsset(AssetRef);
     stbtt_fontinfo FontInfo;
-    if(!stbtt_InitFont(&FontInfo, (unsigned char *)FontAsset.Pointer, 0))
+    if (!stbtt_InitFont(&FontInfo, (unsigned char *)FontAsset.Pointer, 0))
     {
         RR_LOG("Failed to parse .ttf file!");
         Rr_DestroyScratch(Scratch);
@@ -388,14 +388,14 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     }
 
     stbtt_pack_context PackContext;
-    if(!stbtt_PackBegin(
-        &PackContext,
-        GrayscaleBuffer,
-        ATLAS_SIZE,
-        ATLAS_SIZE,
-        0,
-        2,
-        NULL))
+    if (!stbtt_PackBegin(
+            &PackContext,
+            GrayscaleBuffer,
+            ATLAS_SIZE,
+            ATLAS_SIZE,
+            0,
+            2,
+            NULL))
     {
         RR_LOG("Failed to begin .ttf packing!");
         Rr_DestroyScratch(Scratch);
@@ -2340,7 +2340,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
         TitleRect.Extent.Width -= gUIContext->TitleHeight;
     }
 
-    Rr_Vec2 TitleSize = Rr_UIDrawText(
+    Rr_UIDrawText(
         false,
         TitlePosition,
         SIZE_MAX,
