@@ -176,6 +176,7 @@ struct Rr_UILayout
     float DeferredMaxFlexibleWidgetWidth;
     float DeferredMaxRigidWidth;
     bool DeferredAutoResize;
+    bool DeferredClampOffsetToScreen;
 
     Rr_UILayout *TopLevelParent;
 
@@ -191,7 +192,7 @@ struct Rr_UIMouseButton
     bool Up;
     bool SkipUp;
     uint32_t Clicks;
-    uint32_t Id;
+    uint32_t ClickID;
 };
 
 struct Rr_UIContext
@@ -2994,7 +2995,10 @@ static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
     Window->Flags = Flags;
     Window->TopLevelParent = Window;
-    Rr_UIBeginWindowEx(Window, Hash, NULL);
+    if(Rr_UIBeginWindowEx(Window, Hash, NULL))
+    {
+        Rr_UICurrentLayout()->DeferredClampOffsetToScreen = true;
+    }
 }
 
 static inline void Rr_UIClosePopupWindow(void)
@@ -3174,13 +3178,6 @@ void Rr_UIEndWindow(void)
             &Window->TopLevelParent->VScrollTarget);
     }
 
-    /* Apply deferred window offset. */
-
-    if (Layout->DeferredWindowOffset.X != INFINITY)
-    {
-        Window->TopLevelParent->Rect.Offset = Layout->DeferredWindowOffset;
-    }
-
     /* Calculate window extent if necessary or apply manual resize. */
 
     if (Layout->DeferredWindowExtent.X != INFINITY)
@@ -3234,6 +3231,38 @@ void Rr_UIEndWindow(void)
         Layout->DeferredMaxFlexibleWidgetTitleWidth;
     Window->MaxFlexibleWidgetWidth = Layout->DeferredMaxFlexibleWidgetWidth;
     Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
+
+    /* Apply deferred window offset. */
+
+    if (Layout->DeferredWindowOffset.X != INFINITY)
+    {
+        Window->TopLevelParent->Rect.Offset = Layout->DeferredWindowOffset;
+    }
+    if(Layout->DeferredClampOffsetToScreen)
+    {
+        Rr_Vec2 *TopLevelOffset = &Window->TopLevelParent->Rect.Offset;
+        Rr_Vec2 *TopLevelExtent = &Window->TopLevelParent->Rect.Extent;
+
+        float MinOffset = Rr_UIWindowNoBorders(Window->TopLevelParent) ? 0.0f : gUIContext->FrameThickness;
+
+        if(TopLevelOffset->X < MinOffset)
+        {
+            TopLevelOffset->X = MinOffset;
+        }
+        else if (TopLevelOffset->X > gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset)
+        {
+            TopLevelOffset->X = gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset;
+        }
+
+        if(TopLevelOffset->Y < MinOffset)
+        {
+            TopLevelOffset->Y = MinOffset;
+        }
+        else if (TopLevelOffset->Y > gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset)
+        {
+            TopLevelOffset->Y = gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset;
+        }
+    }
 
     /* Pop whatever was pushed in Rr_UIBeginWindowEx(). */
 
@@ -4624,7 +4653,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
             gUIContext->TextInputCursorBegin = 0;
             gUIContext->TextInputCursorEnd = BufferLength;
-            gUIContext->TextInputClickId = gUIContext->LeftMouseButton.Id;
+            gUIContext->TextInputClickId = gUIContext->LeftMouseButton.ClickID;
         }
         else
         {
@@ -4675,7 +4704,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     else if (Focused && DragResult.Moved)
     {
         if (!AutoSelect ||
-            gUIContext->LeftMouseButton.Id > gUIContext->TextInputClickId)
+            gUIContext->LeftMouseButton.ClickID > gUIContext->TextInputClickId)
         {
             gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
             gUIContext->TextInputCursorEnd = NewCursorEnd;
@@ -6393,7 +6422,7 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
             {
                 gUIContext->LeftMouseButton.Up = true;
                 gUIContext->LeftMouseButton.Held = false;
-                gUIContext->LeftMouseButton.Id++;
+                gUIContext->LeftMouseButton.ClickID++;
             }
         }
         break;
