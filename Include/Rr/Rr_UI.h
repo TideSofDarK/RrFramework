@@ -35,12 +35,31 @@ struct Rr_Renderer;
 struct Rr_String;
 struct Rr_Graph;
 
+typedef uint64_t Rr_UIHash;
+typedef uint16_t Rr_UIIndex;
+
 typedef struct Rr_UIContext Rr_UIContext;
 
 typedef struct Rr_UIFont Rr_UIFont;
 
 #define RR_UI_MIN_FONT_SIZE (12.0f)
 #define RR_UI_MAX_FONT_SIZE (48.0f)
+
+typedef struct Rr_UIVertex Rr_UIVertex;
+struct Rr_UIVertex
+{
+    Rr_Vec2 Position;
+    Rr_Vec2 UV;
+    Rr_Vec4 Color;
+};
+
+typedef struct Rr_UIPrimitive Rr_UIPrimitive;
+struct Rr_UIPrimitive
+{
+    Rr_UIVertex *Vertices;
+    Rr_UIIndex *Indices;
+    Rr_UIIndex BaseVertex;
+};
 
 typedef struct Rr_UIStyle Rr_UIStyle;
 struct Rr_UIStyle
@@ -79,6 +98,7 @@ struct Rr_UIColors
     Rr_Vec4 ButtonDisabled;
 
     Rr_Vec4 InputFieldNormal;
+    Rr_Vec4 InputFieldActive;
     Rr_Vec4 SelectedTextBackground;
 };
 
@@ -115,13 +135,45 @@ typedef uint32_t Rr_UIInputFieldFlags;
 
 typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, const char *);
 
-extern void Rr_UIPushID(const char *IDString);
-
-extern void Rr_UIPopID(void);
-
 extern Rr_UIStyle *Rr_UIGetStyle(void);
 
 extern Rr_UIColors *Rr_UIGetColors(void);
+
+extern Rr_UIPrimitive Rr_UIReservePrimitive(
+    size_t VertexCount,
+    size_t IndexCount);
+
+extern void Rr_UIDrawTriangleFilled(Rr_Vec2 *Positions, Rr_Vec4 *Color);
+
+extern void Rr_UIDrawFitTriangleFilled(
+    Rr_Vec2 Offset,
+    float Size,
+    float Angle,
+    Rr_Vec4 *Color);
+
+extern void Rr_UIDrawEquilateralTriangleFilled(
+    Rr_Vec2 Offset,
+    float Size,
+    float Angle,
+    Rr_Vec4 *Color);
+
+extern void Rr_UIDrawCircle(
+    Rr_Vec2 Offset,
+    float Radius,
+    float Thickness,
+    Rr_Vec4 *Color);
+
+extern void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 *Color);
+
+extern void Rr_UIDrawQuad(Rr_UIVertex *Vertices);
+
+extern Rr_Vec2 Rr_UIGetCursor(void);
+
+extern void Rr_UIAdvance(Rr_Vec2 Size);
+
+extern void Rr_UIPushID(const char *IDString);
+
+extern void Rr_UIPopID(void);
 
 extern void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
 

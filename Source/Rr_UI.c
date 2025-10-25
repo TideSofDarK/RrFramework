@@ -61,25 +61,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-typedef uint64_t Rr_UIHash;
-typedef uint16_t Rr_UIIndex;
-
-typedef struct Rr_UIVertex Rr_UIVertex;
-struct Rr_UIVertex
-{
-    Rr_Vec2 Position;
-    Rr_Vec2 UV;
-    Rr_Vec4 Color;
-};
-
-typedef struct Rr_UIPrimitive Rr_UIPrimitive;
-struct Rr_UIPrimitive
-{
-    Rr_UIVertex *Vertices;
-    Rr_UIIndex *Indices;
-    Rr_UIIndex BaseVertex;
-};
-
 typedef struct Rr_UIUniformData Rr_UIUniformData;
 struct Rr_UIUniformData
 {
@@ -750,9 +731,7 @@ static inline void Rr_UIAssertNoHorizontal(Rr_UILayout *Layout)
         "Did you forget to call Rr_UIEndHorizontal()?");
 }
 
-static inline Rr_UIPrimitive Rr_UIReservePrimitive(
-    size_t VertexCount,
-    size_t IndexCount)
+Rr_UIPrimitive Rr_UIReservePrimitive(size_t VertexCount, size_t IndexCount)
 {
     Rr_UIIndex BaseVertex = (Rr_UIIndex)gUIContext->Vertices.Count;
     return (Rr_UIPrimitive){
@@ -1004,7 +983,122 @@ static inline void Rr_UIFeatherConvexPrimitive(
 #endif
 }
 
-static inline void Rr_UIDrawCircle(
+void Rr_UIDrawTriangleFilled(Rr_Vec2 *Positions, Rr_Vec4 *Color)
+{
+    assert(Positions != NULL);
+
+    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
+
+    Primitive.Vertices[0] = (Rr_UIVertex){
+        .Position = Positions[0],
+        .Color = *Color,
+    };
+    Primitive.Vertices[1] = (Rr_UIVertex){
+        .Position = Positions[1],
+        .Color = *Color,
+    };
+    Primitive.Vertices[2] = (Rr_UIVertex){
+        .Position = Positions[2],
+        .Color = *Color,
+    };
+
+    Primitive.Indices[0] = Primitive.BaseVertex;
+    Primitive.Indices[1] = Primitive.BaseVertex + 1;
+    Primitive.Indices[2] = Primitive.BaseVertex + 2;
+
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 8.0f);
+}
+
+void Rr_UIDrawFitTriangleFilled(
+    Rr_Vec2 Offset,
+    float Size,
+    float Angle,
+    Rr_Vec4 *Color)
+{
+    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
+
+    Rr_Vec2 Positions[3];
+
+    float HalfSize = Size * 0.5f;
+
+    Positions[0] = Rr_RotateV2(Rr_V2(-HalfSize, -HalfSize), Angle);
+    Positions[0].X = RR_CLAMP(-HalfSize, Positions[0].X, HalfSize);
+    Positions[0].Y = RR_CLAMP(-HalfSize, Positions[0].Y, HalfSize);
+    Positions[1] = Rr_RotateV2(Rr_V2(HalfSize, 0.0f), Angle);
+    Positions[1].X = RR_CLAMP(-HalfSize, Positions[1].X, HalfSize);
+    Positions[1].Y = RR_CLAMP(-HalfSize, Positions[1].Y, HalfSize);
+    Positions[2] = Rr_RotateV2(Rr_V2(-HalfSize, HalfSize), Angle);
+    Positions[2].X = RR_CLAMP(-HalfSize, Positions[2].X, HalfSize);
+    Positions[2].Y = RR_CLAMP(-HalfSize, Positions[2].Y, HalfSize);
+
+    Primitive.Vertices[0].Position = Rr_AddV2(Positions[0], Offset);
+    Primitive.Vertices[0].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[0].Color = *Color;
+
+    Primitive.Vertices[1].Position = Rr_AddV2(Positions[1], Offset);
+    Primitive.Vertices[1].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[1].Color = *Color;
+
+    Primitive.Vertices[2].Position = Rr_AddV2(Positions[2], Offset);
+    Primitive.Vertices[2].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[2].Color = *Color;
+
+    Primitive.Indices[0] = Primitive.BaseVertex;
+    Primitive.Indices[1] = Primitive.BaseVertex + 1;
+    Primitive.Indices[2] = Primitive.BaseVertex + 2;
+
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 4.0f);
+}
+
+void Rr_UIDrawEquilateralTriangleFilled(
+    Rr_Vec2 Offset,
+    float Size,
+    float Angle,
+    Rr_Vec4 *Color)
+{
+    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
+
+    /* NOTE: Find center of mass for equilateral triangle. */
+    float X = sqrtf(Size * Size / 2.0f);
+
+    Rr_Vec2 Positions[3];
+
+    Positions[0] = Rr_RotateV2(Rr_V2(X, 0), Angle);
+    Positions[1] = Rr_RotateV2(
+        Rr_MulV2F(
+            Rr_V2(
+                cosf(RR_PI32 * 0.3333f * 2.0f),
+                sinf(RR_PI32 * 0.3333f * 2.0f)),
+            X),
+        Angle);
+    Positions[2] = Rr_RotateV2(
+        Rr_MulV2F(
+            Rr_V2(
+                cosf(RR_PI32 * 0.6666f * 2.0f),
+                sinf(RR_PI32 * 0.6666f * 2.0f)),
+            X),
+        Angle);
+
+    Primitive.Vertices[0].Position = Rr_AddV2(Positions[0], Offset);
+    Primitive.Vertices[0].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[0].Color = *Color;
+
+    Primitive.Vertices[1].Position = Rr_AddV2(Positions[1], Offset);
+    Primitive.Vertices[1].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[1].Color = *Color;
+
+    Primitive.Vertices[2].Position = Rr_AddV2(Positions[2], Offset);
+    Primitive.Vertices[2].UV = Rr_V2F(0.0f);
+    Primitive.Vertices[2].Color = *Color;
+
+    Primitive.Indices[0] = Primitive.BaseVertex;
+    Primitive.Indices[1] = Primitive.BaseVertex + 1;
+    Primitive.Indices[2] = Primitive.BaseVertex + 2;
+
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 4.0f);
+}
+
+void Rr_UIDrawCircle(
     Rr_Vec2 Offset,
     float Radius,
     float Thickness,
@@ -1058,10 +1152,7 @@ static inline void Rr_UIDrawCircle(
     Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, -1.0f);
 }
 
-static inline void Rr_UIDrawCircleFilled(
-    Rr_Vec2 Offset,
-    float Radius,
-    Rr_Vec4 *Color)
+void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 *Color)
 {
     static const size_t SEGMENTS = 20;
 
@@ -1093,96 +1184,7 @@ static inline void Rr_UIDrawCircleFilled(
     Rr_UIFeatherConvexPrimitive(&Primitive, (int)SEGMENTS, 1.0f);
 }
 
-static inline void Rr_UIDrawFitTriangleFilled(
-    Rr_Vec2 Offset,
-    float Size,
-    float Angle,
-    Rr_Vec4 Color)
-{
-    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
-
-    Rr_Vec2 Positions[3];
-
-    float HalfSize = Size * 0.5f;
-
-    Positions[0] = Rr_RotateV2(Rr_V2(-HalfSize, -HalfSize), Angle);
-    Positions[0].X = RR_CLAMP(-HalfSize, Positions[0].X, HalfSize);
-    Positions[0].Y = RR_CLAMP(-HalfSize, Positions[0].Y, HalfSize);
-    Positions[1] = Rr_RotateV2(Rr_V2(HalfSize, 0.0f), Angle);
-    Positions[1].X = RR_CLAMP(-HalfSize, Positions[1].X, HalfSize);
-    Positions[1].Y = RR_CLAMP(-HalfSize, Positions[1].Y, HalfSize);
-    Positions[2] = Rr_RotateV2(Rr_V2(-HalfSize, HalfSize), Angle);
-    Positions[2].X = RR_CLAMP(-HalfSize, Positions[2].X, HalfSize);
-    Positions[2].Y = RR_CLAMP(-HalfSize, Positions[2].Y, HalfSize);
-
-    Primitive.Vertices[0].Position = Rr_AddV2(Positions[0], Offset);
-    Primitive.Vertices[0].UV = Rr_V2F(0.0f);
-    Primitive.Vertices[0].Color = Color;
-
-    Primitive.Vertices[1].Position = Rr_AddV2(Positions[1], Offset);
-    Primitive.Vertices[1].UV = Rr_V2F(0.0f);
-    Primitive.Vertices[1].Color = Color;
-
-    Primitive.Vertices[2].Position = Rr_AddV2(Positions[2], Offset);
-    Primitive.Vertices[2].UV = Rr_V2F(0.0f);
-    Primitive.Vertices[2].Color = Color;
-
-    Primitive.Indices[0] = Primitive.BaseVertex;
-    Primitive.Indices[1] = Primitive.BaseVertex + 1;
-    Primitive.Indices[2] = Primitive.BaseVertex + 2;
-
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 4.0f);
-}
-
-static inline void Rr_UIDrawEquilateralTriangleFilled(
-    Rr_Vec2 Offset,
-    float Size,
-    float Angle,
-    Rr_Vec4 Color)
-{
-    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
-
-    /* NOTE: Find center of mass for equilateral triangle. */
-    float X = sqrtf(Size * Size / 2.0f);
-
-    Rr_Vec2 Positions[3];
-
-    Positions[0] = Rr_RotateV2(Rr_V2(X, 0), Angle);
-    Positions[1] = Rr_RotateV2(
-        Rr_MulV2F(
-            Rr_V2(
-                cosf(RR_PI32 * 0.3333f * 2.0f),
-                sinf(RR_PI32 * 0.3333f * 2.0f)),
-            X),
-        Angle);
-    Positions[2] = Rr_RotateV2(
-        Rr_MulV2F(
-            Rr_V2(
-                cosf(RR_PI32 * 0.6666f * 2.0f),
-                sinf(RR_PI32 * 0.6666f * 2.0f)),
-            X),
-        Angle);
-
-    Primitive.Vertices[0].Position = Rr_AddV2(Positions[0], Offset);
-    Primitive.Vertices[0].UV = Rr_V2F(0.0f);
-    Primitive.Vertices[0].Color = Color;
-
-    Primitive.Vertices[1].Position = Rr_AddV2(Positions[1], Offset);
-    Primitive.Vertices[1].UV = Rr_V2F(0.0f);
-    Primitive.Vertices[1].Color = Color;
-
-    Primitive.Vertices[2].Position = Rr_AddV2(Positions[2], Offset);
-    Primitive.Vertices[2].UV = Rr_V2F(0.0f);
-    Primitive.Vertices[2].Color = Color;
-
-    Primitive.Indices[0] = Primitive.BaseVertex;
-    Primitive.Indices[1] = Primitive.BaseVertex + 1;
-    Primitive.Indices[2] = Primitive.BaseVertex + 2;
-
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 4.0f);
-}
-
-static inline void Rr_UIDrawQuad(Rr_UIVertex *Vertices)
+void Rr_UIDrawQuad(Rr_UIVertex *Vertices)
 {
     Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
     memcpy(Primitive.Vertices, Vertices, sizeof(Rr_UIVertex) * 4);
@@ -1329,32 +1331,6 @@ static inline void Rr_UIVerticalGradientQuad(
             },
         },
         sizeof(Rr_UIVertex) * 4);
-}
-
-static inline void Rr_UIDrawTriangleFilled(Rr_Vec2 *Positions, Rr_Vec4 *Color)
-{
-    assert(Positions != NULL);
-
-    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
-
-    Primitive.Vertices[0] = (Rr_UIVertex){
-        .Position = Positions[0],
-        .Color = *Color,
-    };
-    Primitive.Vertices[1] = (Rr_UIVertex){
-        .Position = Positions[1],
-        .Color = *Color,
-    };
-    Primitive.Vertices[2] = (Rr_UIVertex){
-        .Position = Positions[2],
-        .Color = *Color,
-    };
-
-    Primitive.Indices[0] = Primitive.BaseVertex;
-    Primitive.Indices[1] = Primitive.BaseVertex + 1;
-    Primitive.Indices[2] = Primitive.BaseVertex + 2;
-
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 8.0f);
 }
 
 static inline void Rr_UIDrawSolidQuad(Rr_Rect *Rect, const Rr_Vec4 *Color)
@@ -2157,7 +2133,14 @@ static inline Rr_Vec2 Rr_UIGetMinWindowSize(Rr_UIWindowFlags Flags)
     }
 }
 
-static inline void Rr_UIAdvance(Rr_Vec2 Size)
+Rr_Vec2 Rr_UIGetCursor(void)
+{
+    Rr_UIAssertWindow();
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    return Layout->Cursor;
+}
+
+void Rr_UIAdvance(Rr_Vec2 Size)
 {
     Rr_UIAssertWindow();
 
@@ -2256,7 +2239,7 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
         TriangleCenter,
         TriangleSize,
         !Window->Collapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
-        gUIContext->Colors.Foreground);
+        &gUIContext->Colors.Foreground);
 }
 
 static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
@@ -2995,7 +2978,7 @@ static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
     Window->Flags = Flags;
     Window->TopLevelParent = Window;
-    if(Rr_UIBeginWindowEx(Window, Hash, NULL))
+    if (Rr_UIBeginWindowEx(Window, Hash, NULL))
     {
         Rr_UICurrentLayout()->DeferredClampOffsetToScreen = true;
     }
@@ -3238,29 +3221,37 @@ void Rr_UIEndWindow(void)
     {
         Window->TopLevelParent->Rect.Offset = Layout->DeferredWindowOffset;
     }
-    if(Layout->DeferredClampOffsetToScreen)
+    if (Layout->DeferredClampOffsetToScreen)
     {
         Rr_Vec2 *TopLevelOffset = &Window->TopLevelParent->Rect.Offset;
         Rr_Vec2 *TopLevelExtent = &Window->TopLevelParent->Rect.Extent;
 
-        float MinOffset = Rr_UIWindowNoBorders(Window->TopLevelParent) ? 0.0f : gUIContext->FrameThickness;
+        float MinOffset = Rr_UIWindowNoBorders(Window->TopLevelParent)
+                              ? 0.0f
+                              : gUIContext->FrameThickness;
 
-        if(TopLevelOffset->X < MinOffset)
+        if (TopLevelOffset->X < MinOffset)
         {
             TopLevelOffset->X = MinOffset;
         }
-        else if (TopLevelOffset->X > gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset)
+        else if (
+            TopLevelOffset->X >
+            gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset)
         {
-            TopLevelOffset->X = gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset;
+            TopLevelOffset->X =
+                gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset;
         }
 
-        if(TopLevelOffset->Y < MinOffset)
+        if (TopLevelOffset->Y < MinOffset)
         {
             TopLevelOffset->Y = MinOffset;
         }
-        else if (TopLevelOffset->Y > gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset)
+        else if (
+            TopLevelOffset->Y >
+            gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset)
         {
-            TopLevelOffset->Y = gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset;
+            TopLevelOffset->Y =
+                gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset;
         }
     }
 
@@ -3588,7 +3579,7 @@ bool Rr_UIFold(const char *Title)
         TriangleCenter,
         TriangleSize,
         *FoldValue ? RR_ANGLE_DEG(90.0f) : 0.0f,
-        gUIContext->Colors.Foreground);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 TitlePosition = Rr_AddV2(
         Rr_V2(
@@ -4629,7 +4620,8 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         Rr_UIBevel(
             BackgroundBevelPrimitive,
             &FieldRect,
-            &gUIContext->Colors.InputFieldNormal,
+            Focused ? &gUIContext->Colors.InputFieldActive
+                    : &gUIContext->Colors.InputFieldNormal,
             true);
     }
 
@@ -5558,12 +5550,12 @@ static inline void Rr_UIColorPickerPopup(
         LeftTriangleOffset,
         TriangleSize + TriangleOutline,
         RR_ANGLE_DEG(0.0f),
-        Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
+        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
     Rr_UIDrawFitTriangleFilled(
         LeftTriangleOffset,
         TriangleSize,
         RR_ANGLE_DEG(0.0f),
-        gUIContext->Colors.Foreground);
+        &gUIContext->Colors.Foreground);
     Rr_Vec2 RightTriangleOffset = Rr_V2(
         Layout->Cursor.X + HSelectorWidth - TriangleSize * 0.5f,
         Layout->Cursor.Y + StaticHSV.X * TargetSize);
@@ -5571,12 +5563,12 @@ static inline void Rr_UIColorPickerPopup(
         RightTriangleOffset,
         TriangleSize + TriangleOutline,
         RR_ANGLE_DEG(180.0f),
-        Rr_V4(0.0f, 0.0f, 0.0f, 1.0f));
+        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
     Rr_UIDrawFitTriangleFilled(
         RightTriangleOffset,
         TriangleSize,
         RR_ANGLE_DEG(180.0f),
-        gUIContext->Colors.Foreground);
+        &gUIContext->Colors.Foreground);
 
     Result = Rr_UIDragBehavior(
         Layout,
@@ -5967,7 +5959,7 @@ bool Rr_UICombobox(
             TriangleCenter,
             TriangleSize,
             !Window->Collapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
-            gUIContext->Colors.Foreground);
+            &gUIContext->Colors.Foreground);
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
@@ -6184,21 +6176,51 @@ static void Rr_UIConvertColorsToLinear(void)
     }
 }
 
+static inline void Rr_UIPrintColor(const char *Name, Rr_Vec4 *Color)
+{
+    fprintf(
+        stdout,
+        ".%s = {%ff,%ff,%ff,%ff},\n",
+        Name,
+        Color->R,
+        Color->G,
+        Color->B,
+        Color->A);
+}
+
 void Rr_UIPrintColors(void)
 {
-    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
-    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUIContext->Colors;
-    for (size_t Index = 0; Index < ColorCount; ++Index)
-    {
-        fprintf(
-            stdout,
-            "(Rr_Vec4){%ff,%ff,%ff,%ff},",
-            Colors[Index].R,
-            Colors[Index].G,
-            Colors[Index].B,
-            Colors[Index].A);
-    }
-    fprintf(stdout, "\n");
+    Rr_UIPrintColor("Foreground", &gUIContext->Colors.Foreground);
+    Rr_UIPrintColor("ForegroundDimmed", &gUIContext->Colors.ForegroundDimmed);
+    Rr_UIPrintColor("Background", &gUIContext->Colors.Background);
+    Rr_UIPrintColor("ChildBackground", &gUIContext->Colors.ChildBackground);
+    Rr_UIPrintColor("Outline", &gUIContext->Colors.Outline);
+
+    Rr_UIPrintColor("TitleBackground", &gUIContext->Colors.TitleBackground);
+    Rr_UIPrintColor(
+        "TitleCloseButtonBackground",
+        &gUIContext->Colors.TitleCloseButtonBackground);
+    Rr_UIPrintColor(
+        "TitleCollapseButtonBackground",
+        &gUIContext->Colors.TitleCollapseButtonBackground);
+
+    Rr_UIPrintColor(
+        "ScrollbarBackground",
+        &gUIContext->Colors.ScrollbarBackground);
+    Rr_UIPrintColor("ScrollbarNormal", &gUIContext->Colors.ScrollbarNormal);
+    Rr_UIPrintColor("ScrollbarHovered", &gUIContext->Colors.ScrollbarHovered);
+    Rr_UIPrintColor("ScrollbarHeld", &gUIContext->Colors.ScrollbarHeld);
+
+    Rr_UIPrintColor("ButtonNormal", &gUIContext->Colors.ButtonNormal);
+    Rr_UIPrintColor("ButtonHovered", &gUIContext->Colors.ButtonHovered);
+    Rr_UIPrintColor("ButtonHeld", &gUIContext->Colors.ButtonHeld);
+    Rr_UIPrintColor("ButtonDisabled", &gUIContext->Colors.ButtonDisabled);
+
+    Rr_UIPrintColor("InputFieldNormal", &gUIContext->Colors.InputFieldNormal);
+    Rr_UIPrintColor("InputFieldActive", &gUIContext->Colors.InputFieldActive);
+    Rr_UIPrintColor(
+        "SelectedTextBackground",
+        &gUIContext->Colors.SelectedTextBackground);
 }
 
 void Rr_InitUI(void)
@@ -6230,26 +6252,36 @@ void Rr_InitUI(void)
         .InputFieldPadding = { 0.2f, 0.05f },
     };
 
-    gUIContext->Colors = *(Rr_UIColors *)(&(Rr_Vec4[18]){
-        (Rr_Vec4){ 0.899630f, 0.924908f, 0.933333f, 1.000000f },
-        (Rr_Vec4){ 0.617390f, 0.649893f, 0.660727f, 1.000000f },
-        (Rr_Vec4){ 0.142532f, 0.168879f, 0.186284f, 1.000000f },
-        (Rr_Vec4){ 0.100193f, 0.121744f, 0.136111f, 1.000000f },
-        (Rr_Vec4){ 0.556805f, 0.571476f, 0.586111f, 1.000000f },
-        (Rr_Vec4){ 0.123951f, 0.467914f, 0.697222f, 1.000000f },
-        (Rr_Vec4){ 0.839551f, 0.250613f, 0.313724f, 1.000000f },
-        (Rr_Vec4){ 0.121569f, 0.466667f, 0.694118f, 1.000000f },
-        (Rr_Vec4){ 0.070520f, 0.093346f, 0.111383f, 1.000000f },
-        (Rr_Vec4){ 0.292805f, 0.334535f, 0.363504f, 1.000000f },
-        (Rr_Vec4){ 0.408665f, 0.497836f, 0.557879f, 1.000000f },
-        (Rr_Vec4){ 0.254856f, 0.342832f, 0.400486f, 1.000000f },
-        (Rr_Vec4){ 0.165679f, 0.361108f, 0.488889f, 1.000000f },
-        (Rr_Vec4){ 0.408665f, 0.497836f, 0.557879f, 1.000000f },
-        (Rr_Vec4){ 0.254856f, 0.342832f, 0.400486f, 1.000000f },
-        (Rr_Vec4){ 0.070520f, 0.093346f, 0.111383f, 1.000000f },
-        (Rr_Vec4){ 0.074661f, 0.160192f, 0.227778f, 1.000000f },
-        (Rr_Vec4){ 0.433129f, 0.652866f, 0.996207f, 1.000000f },
-    });
+    gUIContext->Colors = (Rr_UIColors){
+        .Foreground = { 0.899630f, 0.924908f, 0.933333f, 1.000000f },
+        .ForegroundDimmed = { 0.617390f, 0.649893f, 0.660727f, 1.000000f },
+        .Background = { 0.142532f, 0.168879f, 0.186284f, 1.000000f },
+        .ChildBackground = { 0.100193f, 0.121744f, 0.136111f, 1.000000f },
+        .Outline = { 0.556805f, 0.571476f, 0.586111f, 1.000000f },
+        .TitleBackground = { 0.123951f, 0.467914f, 0.697222f, 1.000000f },
+        .TitleCloseButtonBackground = { 0.839551f,
+                                        0.250613f,
+                                        0.313724f,
+                                        1.000000f },
+        .TitleCollapseButtonBackground = { 0.121569f,
+                                           0.466667f,
+                                           0.694118f,
+                                           1.000000f },
+        .ScrollbarBackground = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
+        .ScrollbarNormal = { 0.292805f, 0.334535f, 0.363504f, 1.000000f },
+        .ScrollbarHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
+        .ScrollbarHeld = { 0.254856f, 0.342832f, 0.400486f, 1.000000f },
+        .ButtonNormal = { 0.165679f, 0.361108f, 0.488889f, 1.000000f },
+        .ButtonHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
+        .ButtonHeld = { 0.254856f, 0.342832f, 0.400486f, 1.000000f },
+        .ButtonDisabled = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
+        .InputFieldNormal = { 0.089074f, 0.160347f, 0.216667f, 1.000000f },
+        .InputFieldActive = { 0.070324f, 0.252329f, 0.408333f, 1.000000f },
+        .SelectedTextBackground = { 0.433129f,
+                                    0.652866f,
+                                    0.996207f,
+                                    1.000000f },
+    };
 
     Rr_Binding Bindings[] = {
         {

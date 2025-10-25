@@ -126,6 +126,9 @@ static void StyleEditorWindow()
             "Input Field Normal",
             Colors->InputFieldNormal.Elements);
         Rr_UIInputColor4(
+            "Input Field Active",
+            Colors->InputFieldActive.Elements);
+        Rr_UIInputColor4(
             "Selected Text",
             Colors->SelectedTextBackground.Elements);
 
@@ -372,20 +375,72 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
-        /* if (Rr_UIBeginChild("Horizontal Layout")) */
-        /* { */
-        /*     Rr_UILabel("Horizontal Layout"); */
-        /*     Rr_UIBeginHorizontal(); */
-        /*     static bool DoNothing; */
-        /*     static bool DoNothing2; */
-        /*     Rr_UICheckbox("Do Nothing", &DoNothing); */
-        /*     if (Rr_UIButton("Do Something!")) */
-        /*     { */
-        /*     } */
-        /*     Rr_UICheckbox("Do Nothing 2", &DoNothing2); */
-        /*     Rr_UIEndHorizontal(); */
-        /*     Rr_UIEndChild(); */
-        /* } */
+        if (Rr_UIBeginChild("Custom Draw"))
+        {
+            Rr_Vec2 Cursor = Rr_UIGetCursor();
+
+            const Rr_Vec2 AREA = Rr_V2(300.0f, 200.0f);
+
+            Rr_UIDrawCircleFilled(
+                Rr_AddV2(Cursor, Rr_V2(AREA.X * 0.25f, AREA.Y * 0.5f)),
+                AREA.X * 0.25f,
+                &Rr_UIGetColors()->Foreground);
+
+            Rr_UIDrawEquilateralTriangleFilled(
+                Rr_AddV2(
+                    Cursor,
+                    Rr_V2(AREA.X * 0.75f, AREA.Y - AREA.X * 0.4f * 0.5f)),
+                AREA.X * 0.4f,
+                RR_ANGLE_DEG(-90.0f),
+                &Rr_UIGetColors()->Foreground);
+
+            float PhaseA = 1.0f + cosf(Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseB =
+                1.0f + cosf(RR_PI * 0.25f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseC =
+                1.0f + cosf(RR_PI * 0.5f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseD =
+                1.0f + cosf(RR_PI * 0.75f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            Rr_UIVertex QuadVertices[4] = {
+                {
+                    .Position = Rr_AddV2(
+                        Cursor,
+                        Rr_V2(
+                            AREA.X * 0.25f * PhaseA,
+                            AREA.Y * 0.25f * PhaseB)),
+                    .Color = Rr_V4(1.0f, 0.0f, 0.0f, 1.0f),
+                },
+                {
+                    .Position = Rr_AddV2(
+                        Cursor,
+                        Rr_V2(
+                            AREA.X * 0.75f * PhaseB,
+                            AREA.Y * 0.25f * PhaseA)),
+                    .Color = Rr_V4(0.0f, 1.0f, 0.0f, 1.0f),
+                },
+                {
+                    .Position = Rr_AddV2(
+                        Cursor,
+                        Rr_V2(
+                            AREA.X * 0.75f * PhaseC,
+                            AREA.Y * 0.75f * PhaseD)),
+                    .Color = Rr_V4(0.0f, 1.0f, 1.0f, 1.0f),
+                },
+                {
+                    .Position = Rr_AddV2(
+                        Cursor,
+                        Rr_V2(
+                            AREA.X * 0.25f + PhaseD,
+                            AREA.Y * 0.75f * PhaseC)),
+                    .Color = Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
+                },
+            };
+            Rr_UIDrawQuad(QuadVertices);
+
+            Rr_UIAdvance(AREA);
+
+            Rr_UIEndChild();
+        }
 
         Rr_UIEndWindow();
     }
