@@ -51,6 +51,32 @@ static float Rr_WrapMinMax(float X, float Min, float Max)
     return Min + Rr_WrapMax(X - Min, Max - Min);
 }
 
+static inline float Rr_ToLinearChannel(float Value)
+{
+    return Value <= 0.0031308f ? Value * 12.92f
+                               : powf(Value, 1.0f / 2.4f) * 1.055f - 0.055f;
+}
+
+static inline float Rr_ToSRGBChannel(float Value)
+{
+    return Value <= 0.04045f ? Value / 12.92f
+                             : powf((Value + 0.055f) / 1.055f, 2.4f);
+}
+
+static inline void Rr_UIToLinearColor(Rr_Vec4 *Color)
+{
+    Color->R = Rr_ToLinearChannel(Color->R);
+    Color->G = Rr_ToLinearChannel(Color->G);
+    Color->B = Rr_ToLinearChannel(Color->B);
+}
+
+static inline void Rr_UIToSRGBColor(Rr_Vec4 *Color)
+{
+    Color->R = Rr_ToSRGBChannel(Color->R);
+    Color->G = Rr_ToSRGBChannel(Color->G);
+    Color->B = Rr_ToSRGBChannel(Color->B);
+}
+
 static inline Rr_Vec3 Rr_U32ToRGB(uint32_t Color)
 {
     Rr_Vec3 Result;

@@ -451,13 +451,22 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             NULL,
             &VertModule);
 
-        *RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena) =
-            (VkPipelineShaderStageCreateInfo){
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .pName = "main",
-                .stage = VK_SHADER_STAGE_VERTEX_BIT,
-                .module = VertModule,
-            };
+        VkPipelineShaderStageCreateInfo *PipelineShaderStageCreateInfo =
+            RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
+        *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pName = "main",
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = VertModule,
+        };
+        if (CreateInfo->VertexSpecializationCount)
+        {
+            PipelineShaderStageCreateInfo->pSpecializationInfo =
+                Rr_GetVulkanSpecializationInfo(
+                    CreateInfo->VertexSpecializationCount,
+                    CreateInfo->VertexSpecializations,
+                    Scratch.Arena);
+        }
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
@@ -474,14 +483,24 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             &ShaderModuleCreateInfo,
             NULL,
             &FragModule);
-        *RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena) =
-            (VkPipelineShaderStageCreateInfo){
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .pNext = NULL,
-                .pName = "main",
-                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .module = FragModule,
-            };
+
+        VkPipelineShaderStageCreateInfo *PipelineShaderStageCreateInfo =
+            RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
+        *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = NULL,
+            .pName = "main",
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = FragModule,
+        };
+        if (CreateInfo->FragmentSpecializationCount)
+        {
+            PipelineShaderStageCreateInfo->pSpecializationInfo =
+                Rr_GetVulkanSpecializationInfo(
+                    CreateInfo->FragmentSpecializationCount,
+                    CreateInfo->FragmentSpecializations,
+                    Scratch.Arena);
+        }
     }
 
     RR_ARRAY(VkVertexInputBindingDescription) BindingDescriptions = { 0 };

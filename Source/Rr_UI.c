@@ -254,9 +254,6 @@ struct Rr_UIContext
 
     Rr_Vec2 ScreenSize;
 
-    Rr_PipelineLayout *PipelineLayout;
-    Rr_GraphicsPipeline *GraphicsPipeline;
-
     RR_FREE_LIST(Rr_UIFont) Fonts;
     Rr_UIFont *Font;
     float FontSize;
@@ -280,14 +277,15 @@ struct Rr_UIContext
     float BevelThickness;
     Rr_Vec2 InputFieldPadding;
 
-    Rr_Buffer *VertexBuffer;
-    Rr_Buffer *IndexBuffer;
-
     RR_ARRAY(Rr_UIVertex) Vertices;
     RR_ARRAY(Rr_UIIndex) Indices;
 
+    Rr_PipelineLayout *PipelineLayout;
+    Rr_GraphicsPipeline *LinearPipeline;
+    Rr_GraphicsPipeline *SRGBPipeline;
+    Rr_Buffer *VertexBuffer;
+    Rr_Buffer *IndexBuffer;
     Rr_Buffer *UniformBuffer;
-
     Rr_Sampler *Sampler;
 
     bool VisualizeAdvances;
@@ -407,6 +405,10 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
 
     size_t RangeCount = RR_ARRAY_COUNT(CodepointRanges);
 
+    bool IsSRGBSwapchain =
+        Rr_IsSRGBFormat(Rr_GetImageFormat(Rr_GetSwapchainImage()));
+    Rr_ImageFormat ImageFormat = RR_IMAGE_FORMAT_R8G8B8A8_SRGB;
+
     Rr_UIFont *Font = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIFont);
     char FontNameBuffer[64];
     snprintf(
@@ -417,7 +419,7 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     Rr_SetNextObjectName(FontNameBuffer);
     Font->Image = Rr_CreateImage2D(
         ATLAS_EXTENT,
-        RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+        ImageFormat,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     Font->RangeCount = RangeCount;
     /* TODO: Could be single allocation. */
@@ -527,12 +529,18 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     {
         for (int32_t X = 0; X < ATLAS_SIZE; ++X)
         {
-            unsigned char Grayscale = GrayscaleBuffer[Y * ATLAS_SIZE + X];
+            uint8_t Grayscale = GrayscaleBuffer[Y * ATLAS_SIZE + X];
+            if (IsSRGBSwapchain)
+            {
+                Grayscale =
+                    (uint8_t)(Rr_ToSRGBChannel((float)Grayscale / 255.0f) *
+                              255.0f);
+            }
             StagingData[Y * ATLAS_SIZE + X] =
                 ((uint32_t)Grayscale << 24) | 0x00FFFFFF;
         }
     }
-    StagingData[0] = 0xFFFFFFFF;
+    StagingData[0] = 0xFFFFFFFF; /* Opaque pixel at [0,0]. */
     Rr_FlushBufferRange(StagingBuffer, 0, AtlasBufferSize);
     Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
@@ -6124,48 +6132,6 @@ bool Rr_UIWantKeyboardCapture(void)
     return false;
 }
 
-static inline Rr_Vec4 Rr_U32ToSRGB(uint32_t Color)
-{
-    Rr_Vec4 Result;
-
-    Result.R = (float)(Color >> 24) / 255.0f;
-    Result.G = (float)((Color >> 16) & (0x000000FF)) / 255.0f;
-    Result.B = (float)((Color >> 8) & (0x000000FF)) / 255.0f;
-    Result.A = (float)(Color & (0x000000FF)) / 255.0f;
-
-    Result.R = powf(Result.R, 2.2f);
-    Result.G = powf(Result.G, 2.2f);
-    Result.B = powf(Result.B, 2.2f);
-
-    return Result;
-}
-
-static inline float Rr_UIToLinear(float Value)
-{
-    return Value <= 0.0031308f ? Value * 12.92f
-                               : powf(Value, 1.0f / 2.4f) * 1.055f - 0.055f;
-}
-
-static inline void Rr_UIToLinearColor(Rr_Vec4 *Color)
-{
-    Color->R = Rr_UIToLinear(Color->R);
-    Color->G = Rr_UIToLinear(Color->G);
-    Color->B = Rr_UIToLinear(Color->B);
-}
-
-static inline float Rr_UIToSRGB(float Value)
-{
-    return Value <= 0.04045f ? Value / 12.92f
-                             : powf((Value + 0.055f) / 1.055f, 2.4f);
-}
-
-static inline void Rr_UIToSRGBColor(Rr_Vec4 *Color)
-{
-    Color->R = Rr_UIToSRGB(Color->R);
-    Color->G = Rr_UIToSRGB(Color->G);
-    Color->B = Rr_UIToSRGB(Color->B);
-}
-
 static void Rr_UIConvertColorsToSRGB(void)
 {
     size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
@@ -6233,30 +6199,25 @@ void Rr_InitUI(void)
     };
 
     gUIContext->Colors = *(Rr_UIColors *)(&(Rr_Vec4[18]){
-        (Rr_Vec4){ 0.680020f, 0.638779f, 0.459080f, 1.000000f },
-        (Rr_Vec4){ 0.394083f, 0.383775f, 0.339223f, 1.000000f },
-        (Rr_Vec4){ 0.017936f, 0.024223f, 0.028991f, 1.000000f },
-        (Rr_Vec4){ 0.017936f, 0.024223f, 0.028991f, 1.000000f },
-        (Rr_Vec4){ 0.151058f, 0.160444f, 0.170138f, 1.000000f },
-        (Rr_Vec4){ 0.111299f, 0.022013f, 0.311181f, 1.000000f },
-        (Rr_Vec4){ 0.673049f, 0.051122f, 0.080219f, 1.000000f },
-        (Rr_Vec4){ 0.111299f, 0.022013f, 0.311181f, 1.000000f },
-        (Rr_Vec4){ 0.006041f, 0.009021f, 0.011881f, 1.000000f },
-        (Rr_Vec4){ 0.069727f, 0.091518f, 0.108711f, 1.000000f },
-        (Rr_Vec4){ 0.139022f, 0.212044f, 0.271577f, 1.000000f },
-        (Rr_Vec4){ 0.052842f, 0.096266f, 0.133209f, 1.000000f },
-        (Rr_Vec4){ 0.069727f, 0.091518f, 0.108711f, 1.000000f },
-        (Rr_Vec4){ 0.139022f, 0.212044f, 0.271577f, 1.000000f },
-        (Rr_Vec4){ 0.052842f, 0.096266f, 0.133209f, 1.000000f },
-        (Rr_Vec4){ 0.006041f, 0.009021f, 0.011881f, 1.000000f },
-        (Rr_Vec4){ 0.006041f, 0.009021f, 0.011881f, 1.000000f },
-        (Rr_Vec4){ 0.157281f, 0.383775f, 0.991393f, 1.000000f },
+        (Rr_Vec4){ 0.843400f, 0.820283f, 0.707733f, 1.000000f },
+        (Rr_Vec4){ 0.660727f, 0.652866f, 0.617390f, 1.000000f },
+        (Rr_Vec4){ 0.142532f, 0.168879f, 0.186284f, 1.000000f },
+        (Rr_Vec4){ 0.142532f, 0.168879f, 0.186284f, 1.000000f },
+        (Rr_Vec4){ 0.424986f, 0.437195f, 0.449374f, 1.000000f },
+        (Rr_Vec4){ 0.367627f, 0.160131f, 0.593646f, 1.000000f },
+        (Rr_Vec4){ 0.839551f, 0.250613f, 0.313724f, 1.000000f },
+        (Rr_Vec4){ 0.367627f, 0.160131f, 0.593646f, 1.000000f },
+        (Rr_Vec4){ 0.070520f, 0.093346f, 0.111383f, 1.000000f },
+        (Rr_Vec4){ 0.292805f, 0.334535f, 0.363504f, 1.000000f },
+        (Rr_Vec4){ 0.408665f, 0.497836f, 0.557879f, 1.000000f },
+        (Rr_Vec4){ 0.254856f, 0.342832f, 0.400486f, 1.000000f },
+        (Rr_Vec4){ 0.292805f, 0.334535f, 0.363504f, 1.000000f },
+        (Rr_Vec4){ 0.408665f, 0.497836f, 0.557879f, 1.000000f },
+        (Rr_Vec4){ 0.254856f, 0.342832f, 0.400486f, 1.000000f },
+        (Rr_Vec4){ 0.070520f, 0.093346f, 0.111383f, 1.000000f },
+        (Rr_Vec4){ 0.070520f, 0.093346f, 0.111383f, 1.000000f },
+        (Rr_Vec4){ 0.433129f, 0.652866f, 0.996207f, 1.000000f },
     });
-
-    if (!Rr_IsSRGBFormat(Rr_GetImageFormat(Rr_GetSwapchainImage())))
-    {
-        Rr_UIConvertColorsToLinear();
-    }
 
     Rr_Binding Bindings[] = {
         {
@@ -6310,10 +6271,19 @@ void Rr_InitUI(void)
     Rr_Asset VertexShader = Rr_LoadAsset(RR_BUILTIN_UI_VERT_SPV);
     Rr_Asset FragmentShader = Rr_LoadAsset(RR_BUILTIN_UI_FRAG_SPV);
 
+    Rr_PipelineSpecialization Specializations[1] = {
+        {
+            .ConstantID = 0,
+            .Size = sizeof(uint32_t),
+        },
+    };
+
     Rr_GraphicsPipelineCreateInfo PipelineInfo = {
         .Layout = gUIContext->PipelineLayout,
         .VertexShaderSPVSize = VertexShader.Size,
         .VertexShaderSPVData = VertexShader.Pointer,
+        .VertexSpecializationCount = RR_ARRAY_COUNT(Specializations),
+        .VertexSpecializations = Specializations,
         .FragmentShaderSPVSize = FragmentShader.Size,
         .FragmentShaderSPVData = FragmentShader.Pointer,
         .ColorTargetCount = RR_ARRAY_COUNT(ColorTargets),
@@ -6322,7 +6292,13 @@ void Rr_InitUI(void)
         .VertexInputBindings = &VertexInputBinding,
     };
 
-    gUIContext->GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    const uint32_t DONT_CONVERT_TO_SRGB = 0;
+    Specializations[0].Data = &DONT_CONVERT_TO_SRGB;
+    gUIContext->LinearPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+
+    const uint32_t CONVERT_TO_SRGB = 1;
+    Specializations[0].Data = &CONVERT_TO_SRGB;
+    gUIContext->SRGBPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     gUIContext->VertexBuffer = Rr_CreateBuffer(
         RR_MEGABYTES(8),
@@ -6359,7 +6335,8 @@ void Rr_CleanupUI(void)
     Rr_ReleaseBuffer(gUIContext->UniformBuffer);
     Rr_ReleaseSampler(gUIContext->Sampler);
     Rr_ReleasePipelineLayout(gUIContext->PipelineLayout);
-    Rr_ReleaseGraphicsPipeline(gUIContext->GraphicsPipeline);
+    Rr_ReleaseGraphicsPipeline(gUIContext->LinearPipeline);
+    Rr_ReleaseGraphicsPipeline(gUIContext->SRGBPipeline);
 
     Rr_UIReleaseFont(gUIContext->Font);
 
@@ -6617,6 +6594,8 @@ void Rr_EndUI(void)
         RR_BEGIN_FRAME_SECTION("Rr.UI.DrawWindows");
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+        bool IsSRGBSwapchain =
+            Rr_IsSRGBFormat(Rr_GetImageFormat(SwapchainImage));
 
         Rr_UIUniformData UniformData = {
             .ScreenSize = gUIContext->ScreenSize,
@@ -6648,7 +6627,10 @@ void Rr_EndUI(void)
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
-        Rr_BindGraphicsPipeline(GraphicsNode, gUIContext->GraphicsPipeline);
+        Rr_BindGraphicsPipeline(
+            GraphicsNode,
+            IsSRGBSwapchain ? gUIContext->SRGBPipeline
+                            : gUIContext->LinearPipeline);
         Rr_BindVertexBuffer(GraphicsNode, gUIContext->VertexBuffer, 0, 0);
         Rr_BindIndexBuffer(
             GraphicsNode,

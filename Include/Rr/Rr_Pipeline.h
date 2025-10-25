@@ -197,8 +197,12 @@ struct Rr_GraphicsPipelineCreateInfo
 {
     size_t VertexShaderSPVSize;
     const void *VertexShaderSPVData;
+    size_t VertexSpecializationCount;
+    Rr_PipelineSpecialization *VertexSpecializations;
     size_t FragmentShaderSPVSize;
     const void *FragmentShaderSPVData;
+    size_t FragmentSpecializationCount;
+    Rr_PipelineSpecialization *FragmentSpecializations;
     size_t VertexInputBindingCount;
     const Rr_VertexInputBinding *VertexInputBindings;
     Rr_Topology Topology;

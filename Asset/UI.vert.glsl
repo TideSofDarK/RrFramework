@@ -1,5 +1,7 @@
 #version 460
 
+layout(constant_id = 0) const uint CONVERT_TO_SRGB = 0;
+
 layout(set = 0, binding = 0) uniform UniformGlobals
 {
     vec2 ScreenSize;
@@ -18,5 +20,12 @@ void main()
 {
     gl_Position = vec4((InPosition / ScreenSize) * 2.0 - 1.0, 0.0, 1.0);
     OutUV = InUV;
-    OutColor = InColor;
+    if (CONVERT_TO_SRGB == 1)
+    {
+        OutColor = vec4(pow(InColor.rgba, vec4(2.2f)));
+    }
+    else
+    {
+        OutColor = InColor;
+    }
 }
