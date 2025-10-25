@@ -2525,7 +2525,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
 
         if (Result.Began)
         {
-            /* Handle clicking outside of the handle. */
+            /* Handle clicking outside the handle. */
 
             if (gUIContext->MousePosition.Y >
                 ScrollbarHandlePosition.Y + ScrollbarHandleSize.Y)
