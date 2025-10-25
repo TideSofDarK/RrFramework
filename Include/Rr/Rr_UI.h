@@ -143,6 +143,8 @@ extern Rr_UIPrimitive Rr_UIReservePrimitive(
     size_t VertexCount,
     size_t IndexCount);
 
+extern void Rr_UIDrawTriangleVertices(Rr_UIVertex *Vertices);
+
 extern void Rr_UIDrawTriangleFilled(Rr_Vec2 *Positions, Rr_Vec4 *Color);
 
 extern void Rr_UIDrawFitTriangleFilled(
@@ -165,7 +167,7 @@ extern void Rr_UIDrawCircle(
 
 extern void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 *Color);
 
-extern void Rr_UIDrawQuad(Rr_UIVertex *Vertices);
+extern void Rr_UIDrawQuadVertices(Rr_UIVertex *Vertices);
 
 extern Rr_Vec2 Rr_UIGetCursor(void);
 
@@ -179,11 +181,11 @@ extern void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
 
 extern void Rr_UIPopFormatFloatDecimalPlaces(void);
 
-extern void Rr_UISetNextWindowPosition(Rr_Vec2 Position);
+extern void Rr_UISetNextWindowOffset(Rr_Vec2 Offset);
 
-extern void Rr_UISetNextWindowOpenPosition(Rr_Vec2 Position);
+extern void Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset);
 
-extern void Rr_UISetNextWindowSize(Rr_Vec2 Size);
+extern void Rr_UISetNextWindowExtent(Rr_Vec2 Extent);
 
 extern void Rr_UISetNextWindowPadding(Rr_Vec2 Padding);
 

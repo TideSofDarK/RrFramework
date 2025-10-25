@@ -31,7 +31,7 @@ static void TextInputWindow()
 static void FixedSizeWindow()
 {
     const Rr_Vec2 WINDOW_SIZE = Rr_V2(450.0f, 200.0f);
-    Rr_UISetNextWindowSize(WINDOW_SIZE);
+    Rr_UISetNextWindowExtent(WINDOW_SIZE);
     if (Rr_UIBeginWindow(
             "Fixed Size Window",
             &FixedSizeWindowOpen,
@@ -435,7 +435,7 @@ static void Iterate(void)
                     .Color = Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
                 },
             };
-            Rr_UIDrawQuad(QuadVertices);
+            Rr_UIDrawQuadVertices(QuadVertices);
 
             Rr_UIAdvance(AREA);
 

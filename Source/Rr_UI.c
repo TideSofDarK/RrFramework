@@ -198,9 +198,9 @@ struct Rr_UIContext
     RR_ARRAY(Rr_UIHash) HashStack;
     RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
-    Rr_Vec2 NextWindowSize;
-    Rr_Vec2 NextWindowPosition;
-    Rr_Vec2 NextWindowOpenPosition;
+    Rr_Vec2 NextWindowExtent;
+    Rr_Vec2 NextWindowOffset;
+    Rr_Vec2 NextWindowOpenOffset;
     Rr_Vec2 NextWindowPadding;
     int32_t NextWindowCreateCollapsed;
 
@@ -983,10 +983,21 @@ static inline void Rr_UIFeatherConvexPrimitive(
 #endif
 }
 
+void Rr_UIDrawTriangleVertices(Rr_UIVertex *Vertices)
+{
+    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
+
+    memcpy(Primitive.Vertices, Vertices, sizeof(Rr_UIVertex) * 3);
+
+    Primitive.Indices[0] = Primitive.BaseVertex;
+    Primitive.Indices[1] = Primitive.BaseVertex + 1;
+    Primitive.Indices[2] = Primitive.BaseVertex + 2;
+
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 8.0f);
+}
+
 void Rr_UIDrawTriangleFilled(Rr_Vec2 *Positions, Rr_Vec4 *Color)
 {
-    assert(Positions != NULL);
-
     Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
 
     Primitive.Vertices[0] = (Rr_UIVertex){
@@ -1184,7 +1195,7 @@ void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 *Color)
     Rr_UIFeatherConvexPrimitive(&Primitive, (int)SEGMENTS, 1.0f);
 }
 
-void Rr_UIDrawQuad(Rr_UIVertex *Vertices)
+void Rr_UIDrawQuadVertices(Rr_UIVertex *Vertices)
 {
     Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
     memcpy(Primitive.Vertices, Vertices, sizeof(Rr_UIVertex) * 4);
@@ -1467,7 +1478,7 @@ static inline void Rr_UIDrawTexturedQuad(
         },
     };
 
-    Rr_UIDrawQuad(Vertices);
+    Rr_UIDrawQuadVertices(Vertices);
 }
 
 static inline void Rr_UIDrawCheckerQuad(Rr_Rect *Rect, float Size)
@@ -2642,18 +2653,18 @@ static inline const char *Rr_UICurrentFloatFormatString(void)
     }
 }
 
-void Rr_UISetNextWindowPosition(Rr_Vec2 Position)
+void Rr_UISetNextWindowOffset(Rr_Vec2 Offset)
 {
-    gUIContext->NextWindowPosition = Position;
+    gUIContext->NextWindowOffset = Offset;
 }
 
-static inline bool Rr_UIConsumeNextWindowPosition(Rr_UIWindow *Window)
+static inline bool Rr_UIConsumeNextWindowOffset(Rr_UIWindow *Window)
 {
-    if (gUIContext->NextWindowPosition.X != INFINITY &&
-        gUIContext->NextWindowPosition.Y != INFINITY)
+    if (gUIContext->NextWindowOffset.X != INFINITY &&
+        gUIContext->NextWindowOffset.Y != INFINITY)
     {
-        Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowPosition);
-        gUIContext->NextWindowPosition = Rr_V2F(INFINITY);
+        Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowOffset);
+        gUIContext->NextWindowOffset = Rr_V2F(INFINITY);
 
         return true;
     }
@@ -2661,33 +2672,33 @@ static inline bool Rr_UIConsumeNextWindowPosition(Rr_UIWindow *Window)
     return false;
 }
 
-void Rr_UISetNextWindowOpenPosition(Rr_Vec2 Position)
+void Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset)
 {
-    gUIContext->NextWindowOpenPosition = Position;
+    gUIContext->NextWindowOpenOffset = Offset;
 }
 
-static inline void Rr_UIConsumeNextWindowOpenPosition(Rr_UIWindow *Window)
+static inline void Rr_UIConsumeNextWindowOpenOffset(Rr_UIWindow *Window)
 {
-    if (gUIContext->NextWindowOpenPosition.X != INFINITY &&
-        gUIContext->NextWindowOpenPosition.Y != INFINITY)
+    if (gUIContext->NextWindowOpenOffset.X != INFINITY &&
+        gUIContext->NextWindowOpenOffset.Y != INFINITY)
     {
-        Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowOpenPosition);
-        gUIContext->NextWindowOpenPosition = Rr_V2F(INFINITY);
+        Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowOpenOffset);
+        gUIContext->NextWindowOpenOffset = Rr_V2F(INFINITY);
     }
 }
 
-void Rr_UISetNextWindowSize(Rr_Vec2 Size)
+void Rr_UISetNextWindowExtent(Rr_Vec2 Extent)
 {
-    gUIContext->NextWindowSize = Size;
+    gUIContext->NextWindowExtent = Extent;
 }
 
 static inline bool Rr_UIConsumeNextWindowSize(Rr_UIWindow *Window)
 {
-    if (gUIContext->NextWindowSize.Width != INFINITY &&
-        gUIContext->NextWindowSize.Height != INFINITY)
+    if (gUIContext->NextWindowExtent.Width != INFINITY &&
+        gUIContext->NextWindowExtent.Height != INFINITY)
     {
-        Window->Rect.Extent = Rr_FloorV2(gUIContext->NextWindowSize);
-        gUIContext->NextWindowSize = Rr_V2F(INFINITY);
+        Window->Rect.Extent = Rr_FloorV2(gUIContext->NextWindowExtent);
+        gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
 
         return true;
     }
@@ -2758,7 +2769,7 @@ static inline bool Rr_UIBeginWindowEx(
     bool *Open)
 {
     Rr_UIConsumeNextWindowCreateCollapsed(Window);
-    bool WindowPositionConsumed = Rr_UIConsumeNextWindowPosition(Window);
+    bool WindowPositionConsumed = Rr_UIConsumeNextWindowOffset(Window);
     bool WindowSizeConsumed = Rr_UIConsumeNextWindowSize(Window);
     Rr_Vec2 ContentsPadding = Rr_UIConsumeNextWindowPadding();
 
@@ -2778,7 +2789,7 @@ static inline bool Rr_UIBeginWindowEx(
     }
     if (WasClosed)
     {
-        Rr_UIConsumeNextWindowOpenPosition(Window);
+        Rr_UIConsumeNextWindowOpenOffset(Window);
 
         Window->OpenedThisFrame = true;
         Window->SkipThisFrame = true;
@@ -5393,7 +5404,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_Vec2 Position = Center;
     Position.X -= (gUIContext->ContentsPadding.Width + TargetSize) / 2.0f;
     Position.Y -= (gUIContext->ContentsPadding.Height + TargetSize) / 2.0f;
-    Rr_UISetNextWindowOpenPosition(Position);
+    Rr_UISetNextWindowOpenOffset(Position);
     Rr_UIBeginPopupWindow(Hash, POPUP_WINDOW_FLAGS);
 
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
@@ -5446,14 +5457,14 @@ static inline void Rr_UIColorPickerPopup(
         Vertices[3].Position.Y += TargetSize;
         Vertices[3].UV = Rr_V2F(0.0f);
 
-        Rr_UIDrawQuad(Vertices);
+        Rr_UIDrawQuadVertices(Vertices);
 
         Vertices[0].Color = Rr_V4F(0.0f);
         Vertices[1].Color = Rr_V4F(0.0f);
         Vertices[2].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
         Vertices[3].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
 
-        Rr_UIDrawQuad(Vertices);
+        Rr_UIDrawQuadVertices(Vertices);
     }
 
     Rr_UIDrawInnerFrame(
@@ -5870,7 +5881,7 @@ bool Rr_UICombobox(
         Rr_Vec2 PopupPosition = ButtonPosition;
         PopupPosition.Y += ButtonExtent.Height + gUIContext->FrameThickness;
         PopupPosition.X += gUIContext->FrameThickness;
-        Rr_UISetNextWindowPosition(PopupPosition);
+        Rr_UISetNextWindowOffset(PopupPosition);
         Rr_UISetNextWindowPadding(Rr_V2(gUIContext->InputFieldPadding.X, 0.0f));
         Rr_UIBeginPopupWindow(TitleHash, POPUP_WINDOW_FLAGS);
         Rr_UILayout *PopupLayout = Rr_UICurrentLayout();
@@ -6013,7 +6024,7 @@ static inline float Rr_UISlider(
         },
     };
 
-    Rr_UIDrawBevel(&SliderRect, &gUIContext->Colors.InputFieldNormal, true);
+    Rr_UIPrimitive BackgroundBevel = Rr_UIReserveBevel();
 
     float HandleWidth = gUIContext->FontSize;
     Rr_Rect HandleRect = { Layout->Cursor,
@@ -6066,6 +6077,13 @@ static inline float Rr_UISlider(
         RR_UI_DRAG_OP_WIDGET,
         TitleHash,
         Rr_V2(HandleDragOffset, 0.0f));
+
+    Rr_UIBevel(
+        BackgroundBevel,
+        &SliderRect,
+        Result.Held ? &gUIContext->Colors.InputFieldActive
+                    : &gUIContext->Colors.InputFieldNormal,
+        true);
 
     if (Result.Moved || Result.Began)
     {
@@ -6232,9 +6250,9 @@ void Rr_InitUI(void)
     gUIContext = RR_ALLOC_TYPE(Arena, Rr_UIContext);
     gUIContext->Arena = Arena;
 
-    gUIContext->NextWindowPosition = Rr_V2F(INFINITY);
-    gUIContext->NextWindowOpenPosition = Rr_V2F(INFINITY);
-    gUIContext->NextWindowSize = Rr_V2F(INFINITY);
+    gUIContext->NextWindowOffset = Rr_V2F(INFINITY);
+    gUIContext->NextWindowOpenOffset = Rr_V2F(INFINITY);
+    gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
 
     Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
