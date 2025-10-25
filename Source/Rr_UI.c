@@ -337,6 +337,8 @@ struct Rr_UIFontRange
 
 struct Rr_UIFont
 {
+    /* TODO: Handle swapchains recreated with different color space. */
+    bool CreatedForSRGBSwapchain;
     Rr_Image2D *Image;
     size_t RangeCount;
     Rr_UIFontRange *Ranges;
@@ -410,6 +412,7 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     Rr_ImageFormat ImageFormat = RR_IMAGE_FORMAT_R8G8B8A8_SRGB;
 
     Rr_UIFont *Font = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIFont);
+    Font->CreatedForSRGBSwapchain = IsSRGBSwapchain;
     char FontNameBuffer[64];
     snprintf(
         FontNameBuffer,
@@ -6199,14 +6202,14 @@ void Rr_InitUI(void)
     };
 
     gUIContext->Colors = *(Rr_UIColors *)(&(Rr_Vec4[18]){
-        (Rr_Vec4){ 0.928704f, 0.969676f, 0.983333f, 1.000000f },
-        (Rr_Vec4){ 0.660727f, 0.652866f, 0.617390f, 1.000000f },
+        (Rr_Vec4){ 0.899630f, 0.924908f, 0.933333f, 1.000000f },
+        (Rr_Vec4){ 0.617390f, 0.649893f, 0.660727f, 1.000000f },
         (Rr_Vec4){ 0.142532f, 0.168879f, 0.186284f, 1.000000f },
-        (Rr_Vec4){ 0.142532f, 0.168879f, 0.186284f, 1.000000f },
+        (Rr_Vec4){ 0.100193f, 0.121744f, 0.136111f, 1.000000f },
         (Rr_Vec4){ 0.556805f, 0.571476f, 0.586111f, 1.000000f },
-        (Rr_Vec4){ 0.102238f, 0.482562f, 0.736111f, 1.000000f },
+        (Rr_Vec4){ 0.123951f, 0.467914f, 0.697222f, 1.000000f },
         (Rr_Vec4){ 0.839551f, 0.250613f, 0.313724f, 1.000000f },
-        (Rr_Vec4){ 0.101961f, 0.482353f, 0.733333f, 1.000000f },
+        (Rr_Vec4){ 0.121569f, 0.466667f, 0.694118f, 1.000000f },
         (Rr_Vec4){ 0.070520f, 0.093346f, 0.111383f, 1.000000f },
         (Rr_Vec4){ 0.292805f, 0.334535f, 0.363504f, 1.000000f },
         (Rr_Vec4){ 0.408665f, 0.497836f, 0.557879f, 1.000000f },
