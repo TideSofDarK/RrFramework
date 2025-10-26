@@ -517,11 +517,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             AttributeDescriptions.Count + VertexInputBinding->AttributeCount,
             Scratch.Arena);
 
-        for (size_t Index = 0; Index < VertexInputBinding->AttributeCount;
-             ++Index)
+        for (size_t AttributeIndex = 0;
+             AttributeIndex < VertexInputBinding->AttributeCount;
+             ++AttributeIndex)
         {
             const Rr_VertexInputAttribute *Attribute =
-                VertexInputBinding->Attributes + Index;
+                VertexInputBinding->Attributes + AttributeIndex;
 
             VkVertexInputAttributeDescription *AttributeDescription =
                 RR_PUSH_INTO_ARRAY(&AttributeDescriptions, Scratch.Arena);
@@ -532,15 +533,11 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             };
 
             VkVertexInputBindingDescription *BindingDescription = NULL;
-            for (size_t BindingIndex = 0;
-                 BindingIndex < BindingDescriptions.Count;
-                 ++BindingIndex)
+            for (size_t Index = 0; Index < BindingDescriptions.Count; ++Index)
             {
-                if (BindingDescriptions.Data[BindingIndex].binding ==
-                    BindingIndex)
+                if (BindingDescriptions.Data[Index].binding == Index)
                 {
-                    BindingDescription =
-                        BindingDescriptions.Data + BindingIndex;
+                    BindingDescription = BindingDescriptions.Data + Index;
                     break;
                 }
             }

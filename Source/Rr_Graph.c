@@ -2179,7 +2179,7 @@ void Rr_ExecuteGraph(
                  NodeIndex < BatchStartIndex + BatchSize;
                  ++NodeIndex)
             {
-                Rr_GraphNode *Node = SortedNodes.Data[NodeIndex];
+                Rr_GraphNode *BatchedNode = SortedNodes.Data[NodeIndex];
 
 #ifdef RR_USE_GPU_DEBUG_UTILS
                 bool *BufferStates = UseLateCommandBuffer
@@ -2188,28 +2188,31 @@ void Rr_ExecuteGraph(
                 size_t *BufferCount = UseLateCommandBuffer
                                           ? &LateDebugLabelCount
                                           : &EarlyDebugLabelCount;
-                for (size_t Index = 0; Index < Node->DebugLabelCount; ++Index)
+                for (size_t DebugLabelIndex = 0;
+                     DebugLabelIndex < BatchedNode->DebugLabelCount;
+                     ++DebugLabelIndex)
                 {
-                    bool NodeLabelEnabled = Node->DebugLabelStates[Index];
-                    bool BufferLabelEnabled = BufferStates[Index];
+                    bool NodeLabelEnabled =
+                        BatchedNode->DebugLabelStates[DebugLabelIndex];
+                    bool BufferLabelEnabled = BufferStates[DebugLabelIndex];
                     if (NodeLabelEnabled && !BufferLabelEnabled)
                     {
                         ++(*BufferCount);
-                        BufferStates[Index] = true;
+                        BufferStates[DebugLabelIndex] = true;
                         Rr_BeginVulkanCommandBufferLabel(
                             CommandBuffer,
-                            Graph->DebugLabelNames.Data[Index]);
+                            Graph->DebugLabelNames.Data[DebugLabelIndex]);
                     }
                     if (!NodeLabelEnabled && BufferLabelEnabled)
                     {
                         --(*BufferCount);
-                        BufferStates[Index] = false;
+                        BufferStates[DebugLabelIndex] = false;
                         Rr_EndVulkanCommandBufferLabel(CommandBuffer);
                     }
                 }
 #endif
 
-                Rr_ExecuteGraphNode(Graph, Node, CommandBuffer);
+                Rr_ExecuteGraphNode(Graph, BatchedNode, CommandBuffer);
             }
 
             BatchStartIndex = Index + 1;

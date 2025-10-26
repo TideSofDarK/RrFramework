@@ -2562,11 +2562,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
         {
             float Delta =
                 gUIContext->MousePosition.Y - gUIContext->DragOpMouseStart.Y;
-            float ContentsHeight =
-                Window->ContentsEnd.Y - Window->ContentsStart.Y;
-            float FillRatio = ContentsHeight / ContentsAreaRect.Extent.Height;
             Window->VScroll = Window->VScrollTarget =
-                gUIContext->DragOpWindowStart.Y + (Delta * FillRatio);
+                gUIContext->DragOpWindowStart.Y + (Delta * 1.0f / FillRatio);
         }
 
         Rr_UIDrawBevel(
@@ -5852,7 +5849,7 @@ bool Rr_UICombobox(
         ButtonHeight,
     };
 
-    Rr_UIDragResult Result = Rr_UIButtonBehavior(
+    Rr_UIDragResult ClickResult = Rr_UIButtonBehavior(
         Layout,
         &(Rr_Rect){
             ButtonPosition,
@@ -5860,7 +5857,7 @@ bool Rr_UICombobox(
         },
         TitleHash);
 
-    if (Result.Clicked)
+    if (ClickResult.Clicked)
     {
         gUIContext->PopupWindowParent = Window;
         gUIContext->PopupWindowHash = TitleHash;
@@ -5906,20 +5903,20 @@ bool Rr_UICombobox(
             OptionButtonRect.Extent.Width =
                 gUIContext->PopupWindow.Rect.Extent.Width;
             OptionButtonRect.Extent.Height = gUIContext->LineHeight;
-            Rr_UIDragResult Result =
+            Rr_UIDragResult OptionClickResult =
                 Rr_UIButtonBehavior(PopupLayout, &OptionButtonRect, OptionHash);
-            if (Result.Clicked)
+            if (OptionClickResult.Clicked)
             {
                 *SelectedIndex = Index;
                 Rr_UIClosePopupWindow();
                 OptionChanged = true;
             }
             Rr_Vec4 OptionButtonColor;
-            if (Result.Held)
+            if (OptionClickResult.Held)
             {
                 OptionButtonColor = gUIContext->Colors.ButtonHeld;
             }
-            else if (Result.Hovered)
+            else if (OptionClickResult.Hovered)
             {
                 OptionButtonColor = gUIContext->Colors.ButtonHovered;
             }
@@ -5951,7 +5948,7 @@ bool Rr_UICombobox(
         Primitive,
         &ButtonRect,
         &gUIContext->Colors.InputFieldNormal,
-        Result.Held);
+        ClickResult.Held);
 
     /* Add handle. */
     {
@@ -5962,7 +5959,7 @@ bool Rr_UICombobox(
         Rr_UIDrawBevel(
             &HandleRect,
             &gUIContext->Colors.ButtonNormal,
-            Result.Held);
+            ClickResult.Held);
 
         Rr_Vec2 TriangleCenter = Rr_RectCenter(&HandleRect);
         float TriangleSize = gUIContext->TitleHeight * 0.3f;

@@ -24,6 +24,7 @@ function(rr_enable_development_options TARGET)
             -Wextra
             -Wpedantic
             -Wconversion
+            -Wshadow
             -Wno-unused-function
             -Wno-unused-parameter
             -Wno-unused-variable
