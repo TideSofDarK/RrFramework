@@ -1978,8 +1978,8 @@ static inline bool Rr_UIScrollBehavior(
     return false;
 }
 
-typedef struct Rr_UIDragResult Rr_UIDragResult;
-struct Rr_UIDragResult
+typedef struct Rr_UIClickResult Rr_UIClickResult;
+struct Rr_UIClickResult
 {
     bool Moved : 1;
     bool Held : 1;
@@ -1988,7 +1988,7 @@ struct Rr_UIDragResult
     bool Clicked : 1;
 };
 
-static inline Rr_UIDragResult Rr_UIDragBehavior(
+static inline Rr_UIClickResult Rr_UIClickDrag(
     Rr_UILayout *Layout,
     Rr_Rect *Rect,
     Rr_UIDragOp DragOp,
@@ -2003,34 +2003,35 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
     bool DragOpMatch = DragOp == gUIContext->DragOp;
     bool Contains = Rr_RectContains(Rect, gUIContext->MousePosition);
 
-    Rr_UIDragResult Result = { 0 };
-    Result.Hovered = WindowHovered && Contains && Layout->MouseInsideClipRect;
+    Rr_UIClickResult ClickResult = { 0 };
+    ClickResult.Hovered =
+        WindowHovered && Contains && Layout->MouseInsideClipRect;
 
     if (DragOpMatch && WindowMatch && HashMatch)
     {
         if (gUIContext->LeftMouseButton.Up)
         {
-            Result.Moved = gUIContext->MouseMoved;
+            ClickResult.Moved = gUIContext->MouseMoved;
 
             if (Contains)
             {
-                Result.Clicked = true;
+                ClickResult.Clicked = true;
             }
 
             Rr_UIEndDragOp();
         }
         else if (gUIContext->LeftMouseButton.Held)
         {
-            Result.Moved = gUIContext->MouseMoved;
-            Result.Held = true;
+            ClickResult.Moved = gUIContext->MouseMoved;
+            ClickResult.Held = true;
         }
 
-        return Result;
+        return ClickResult;
     }
 
-    if (!Result.Hovered)
+    if (!ClickResult.Hovered)
     {
-        return Result;
+        return ClickResult;
     }
 
     /* NOTE: Dragging resize handle also overlaps with moving and scrolling.
@@ -2053,20 +2054,20 @@ static inline Rr_UIDragResult Rr_UIDragBehavior(
             Rr_UISetFocus(NULL, 0);
         }
 
-        Result.Began = true;
+        ClickResult.Began = true;
 
-        return Result;
+        return ClickResult;
     }
 
-    return Result;
+    return ClickResult;
 }
 
-static inline Rr_UIDragResult Rr_UIButtonBehavior(
+static inline Rr_UIClickResult Rr_UIClickSimple(
     Rr_UILayout *Layout,
     Rr_Rect *Rect,
     Rr_UIHash Hash)
 {
-    return Rr_UIDragBehavior(
+    return Rr_UIClickDrag(
         Layout,
         Rect,
         RR_UI_DRAG_OP_WIDGET,
@@ -2218,7 +2219,7 @@ void Rr_UIAdvance(Rr_Vec2 Size)
     }
 }
 
-static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
+static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 {
     Rr_UIWindow *Window = Layout->Window;
 
@@ -2231,8 +2232,8 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
     Rr_UIHash Hash =
         Rr_UIGetHash(sizeof("Rr.Collapse"), "Rr.Collapse", Rr_UICurrentHash());
 
-    Rr_UIDragResult Result = Rr_UIButtonBehavior(Layout, &ButtonRect, Hash);
-    if (Result.Clicked)
+    Rr_UIClickResult ClickResult = Rr_UIClickSimple(Layout, &ButtonRect, Hash);
+    if (ClickResult.Clicked)
     {
         Window->Collapsed = !Window->Collapsed;
     }
@@ -2240,7 +2241,7 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
     Rr_UIDrawBevel(
         &ButtonRect,
         &gUIContext->Colors.TitleCollapseButtonBackground,
-        Result.Held && Result.Hovered);
+        ClickResult.Held && ClickResult.Hovered);
 
     Rr_Vec2 TriangleCenter = Rr_AddV2(
         ButtonRect.Offset,
@@ -2251,6 +2252,8 @@ static inline void Rr_UIAddCollapseButton(Rr_UILayout *Layout)
         TriangleSize,
         !Window->Collapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
         &gUIContext->Colors.Foreground);
+
+    return ClickResult.Clicked;
 }
 
 static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
@@ -2286,8 +2289,8 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
     Rr_UIHash Hash =
         Rr_UIGetHash(sizeof("Rr.Close"), "Rr.Close", Rr_UICurrentHash());
 
-    Rr_UIDragResult Result = Rr_UIButtonBehavior(Layout, &ButtonRect, Hash);
-    if (Result.Clicked && Open)
+    Rr_UIClickResult ClickResult = Rr_UIClickSimple(Layout, &ButtonRect, Hash);
+    if (ClickResult.Clicked && Open)
     {
         *Open = false;
     }
@@ -2295,7 +2298,7 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
     Rr_UIDrawBevel(
         &ButtonRect,
         &gUIContext->Colors.TitleCloseButtonBackground,
-        Result.Held && Result.Hovered);
+        ClickResult.Held && ClickResult.Hovered);
 
     Rr_UIDrawRotatedQuad(
         &BarRect,
@@ -2338,9 +2341,10 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
         Rr_AddV2(Layout->Rect.Offset, gUIContext->TitlePadding);
 
     bool HasCollapse = Rr_UIWindowHasCollapseButton(Window);
+    bool CollapseButtonClicked = false;
     if (HasCollapse)
     {
-        Rr_UIAddCollapseButton(Layout);
+        CollapseButtonClicked = Rr_UIAddCollapseButton(Layout);
 
         TitlePosition.X += gUIContext->TitleHeight;
         TitleRect.Offset.X += gUIContext->TitleHeight;
@@ -2363,6 +2367,22 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
 
         TitleRect.Extent.Width -= gUIContext->TitleButtonSize;
     }
+
+    /* Allow double clicking the title bevel to toggle collapse state. */
+
+    // if (HasCollapse && !CollapseButtonClicked)
+    // {
+    //     Rr_UIHash Hash = Rr_UIGetHash(
+    //         sizeof("Rr.CollapseTitle"),
+    //         "Rr.CollapseTitle",
+    //         Rr_UICurrentHash());
+    //     Rr_UIClickResult ClickResult =
+    //         Rr_UIClickSimple(Layout, &TitleRect, Hash);
+    //     if (ClickResult.Began && gUIContext->LeftMouseButton.Clicks > 1)
+    //     {
+    //         Window->Collapsed = !Window->Collapsed;
+    //     }
+    // }
 
     Rr_Vec4 ColorB = gUIContext->Colors.TitleBackground;
     ColorB.RGB = Rr_LerpV3(ColorB.RGB, 0.25f, (Rr_Vec3){ 0.0f, 0.0f, 0.0f });
@@ -2387,21 +2407,21 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         },
     };
 
-    Rr_UIDragResult Result = Rr_UIDragBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickDrag(
         Layout,
         &ResizeHandleRect,
         RR_UI_DRAG_OP_RESIZE,
         0,
         Layout->Rect.Extent);
 
-    if (Result.Began && gUIContext->LeftMouseButton.Clicks == 2)
+    if (ClickResult.Began && gUIContext->LeftMouseButton.Clicks == 2)
     {
         Layout->DeferredAutoResize = true;
 
         Rr_UIEndDragOp();
     }
 
-    if (Result.Moved)
+    if (ClickResult.Moved)
     {
         Rr_Vec2 Delta =
             Rr_SubV2(gUIContext->MousePosition, gUIContext->DragOpMouseStart);
@@ -2413,13 +2433,13 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
     }
 
     Layout->DeferredResizeHandleColor = gUIContext->Colors.Foreground;
-    if (Result.Hovered || Result.Moved)
+    if (ClickResult.Hovered || ClickResult.Moved)
     {
         Layout->DeferredResizeHandleColor =
             Rr_MulV4F(Layout->DeferredResizeHandleColor, 0.75f);
     }
 
-    return Result.Moved;
+    return ClickResult.Moved;
 }
 
 static inline Rr_Rect Rr_UIGetWindowContentsArea(
@@ -2527,14 +2547,14 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             }
         }
 
-        Rr_UIDragResult Result = Rr_UIDragBehavior(
+        Rr_UIClickResult ClickResult = Rr_UIClickDrag(
             Layout,
             &ClickableRect,
             RR_UI_DRAG_OP_SCROLL,
             0,
             (Rr_Vec2){ 0.0f, Window->VScroll });
 
-        if (Result.Began)
+        if (ClickResult.Began)
         {
             /* Handle clicking outside the handle. */
 
@@ -2558,7 +2578,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             }
         }
 
-        if (Result.Moved)
+        if (ClickResult.Moved)
         {
             float Delta =
                 gUIContext->MousePosition.Y - gUIContext->DragOpMouseStart.Y;
@@ -2880,13 +2900,13 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* NOTE: Forward move behavior to the top-level parent. */
 
-    Rr_UIDragResult DragResult = Rr_UIDragBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickDrag(
         Layout,
         &Layout->Rect,
         RR_UI_DRAG_OP_MOVE,
         0,
         Layout->TopLevelParent->Rect.Offset);
-    bool Moved = DragResult.Moved || DragResult.Began;
+    bool Moved = ClickResult.Moved || ClickResult.Began;
     if (!Rr_UIWindowNoMove(Window->TopLevelParent) && !WindowPositionConsumed &&
         Moved)
     {
@@ -3494,7 +3514,7 @@ bool Rr_UITab(const char *Title)
 
     Layout->TabCursor.X += ButtonSize.Width;
 
-    Rr_UIDragResult Result = Rr_UIButtonBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
         &(Rr_Rect){
             ButtonPosition,
@@ -3507,11 +3527,11 @@ bool Rr_UITab(const char *Title)
     {
         TabButtonColor = &gUIContext->Colors.Foreground;
     }
-    else if (Result.Held)
+    else if (ClickResult.Held)
     {
         TabButtonColor = &gUIContext->Colors.ButtonHeld;
     }
-    else if (Result.Hovered)
+    else if (ClickResult.Hovered)
     {
         TabButtonColor = &gUIContext->Colors.ButtonHovered;
     }
@@ -3528,7 +3548,7 @@ bool Rr_UITab(const char *Title)
         },
         TabButtonColor);
 
-    if (Result.Clicked)
+    if (ClickResult.Clicked)
     {
         /* Newly selected tab will be rendered next frame. */
         *Layout->SelectedTabHash = TitleHash;
@@ -3606,7 +3626,7 @@ bool Rr_UIFold(const char *Title)
     Rr_Vec2 TotalExtent =
         Rr_V2(Layout->AvailableContentsWidth, FoldButtonHeight);
 
-    Rr_UIDragResult Result = Rr_UIButtonBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
         &(Rr_Rect){
             Layout->Cursor,
@@ -3614,7 +3634,7 @@ bool Rr_UIFold(const char *Title)
         },
         TitleHash);
 
-    if (Result.Clicked)
+    if (ClickResult.Clicked)
     {
         *FoldValue = !*FoldValue;
     }
@@ -3627,7 +3647,7 @@ bool Rr_UIFold(const char *Title)
         BevelPrimitive,
         &ButtonRect,
         &gUIContext->Colors.TitleBackground,
-        Result.Held);
+        ClickResult.Held);
 
     Rr_UIAdvance(TotalExtent);
 
@@ -3787,7 +3807,7 @@ bool Rr_UIButton(const char *Text)
     Rr_Vec2 ButtonSize =
         Rr_AddV2(TextSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f));
 
-    Rr_UIDragResult Result = Rr_UIButtonBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
         &(Rr_Rect){
             ButtonPosition,
@@ -3804,11 +3824,11 @@ bool Rr_UIButton(const char *Text)
         Primitive,
         &ButtonRect,
         &gUIContext->Colors.ButtonNormal,
-        Result.Held && Result.Hovered);
+        ClickResult.Held && ClickResult.Hovered);
 
     Rr_UIAdvance(ButtonSize);
 
-    return Result.Clicked;
+    return ClickResult.Clicked;
 }
 
 bool Rr_UIRadioButton(
@@ -3851,10 +3871,10 @@ bool Rr_UIRadioButton(
             TitleSize.Y),
     };
 
-    Rr_UIDragResult Result =
-        Rr_UIButtonBehavior(Layout, &ButtonRect, TitleHash);
+    Rr_UIClickResult ClickResult =
+        Rr_UIClickSimple(Layout, &ButtonRect, TitleHash);
 
-    if (Result.Clicked)
+    if (ClickResult.Clicked)
     {
         *SelectedOption = ThisOption;
     }
@@ -3868,7 +3888,7 @@ bool Rr_UIRadioButton(
         CircleOffset,
         OuterRadius,
         &gUIContext->Colors.ButtonNormal);
-    if (Result.Hovered && Result.Held)
+    if (ClickResult.Hovered && ClickResult.Held)
     {
         Rr_UIDrawCircleFilled(
             CircleOffset,
@@ -3895,7 +3915,7 @@ bool Rr_UIRadioButton(
 
     Rr_UIAdvance(ButtonRect.Extent);
 
-    return Result.Clicked;
+    return ClickResult.Clicked;
 }
 
 bool Rr_UICheckbox(const char *Title, bool *Checked)
@@ -3931,16 +3951,13 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
             TitleSize.Y),
     };
 
-    Rr_UIDragResult Result =
-        Rr_UIButtonBehavior(Layout, &ButtonRect, TitleHash);
+    Rr_UIClickResult ClickResult =
+        Rr_UIClickSimple(Layout, &ButtonRect, TitleHash);
 
-    if (Result.Clicked)
+    if (ClickResult.Clicked)
     {
         *Checked = !*Checked;
     }
-
-    Rr_Vec4 BackgroundColor = gUIContext->Colors.Background;
-    BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
 
     Rr_Rect CheckboxRect = {
         FramePosition,
@@ -3948,8 +3965,10 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     };
     Rr_UIDrawBevel(
         &CheckboxRect,
-        &BackgroundColor,
-        Result.Held && Result.Hovered);
+        ClickResult.Held && ClickResult.Hovered
+            ? &gUIContext->Colors.InputFieldActive
+            : &gUIContext->Colors.InputFieldNormal,
+        ClickResult.Held && ClickResult.Hovered);
 
     if (*Checked)
     {
@@ -3961,7 +3980,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 
     Rr_UIAdvance(ButtonRect.Extent);
 
-    return Result.Clicked;
+    return ClickResult.Clicked;
 }
 
 static inline bool Rr_UIConsumeTextInput(
@@ -4633,7 +4652,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             true);
     }
 
-    Rr_UIDragResult DragResult = Rr_UIDragBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickDrag(
         Layout,
         &FieldRect,
         RR_UI_DRAG_OP_WIDGET,
@@ -4643,7 +4662,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     bool AutoSelect =
         RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT);
 
-    if (DragResult.Began)
+    if (ClickResult.Began)
     {
         size_t BufferLength = strlen(Buffer);
 
@@ -4701,7 +4720,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             Rr_UIThisLineCol(Buffer, gUIContext->TextInputCursorEnd);
         gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
     }
-    else if (Focused && DragResult.Moved)
+    else if (Focused && ClickResult.Moved)
     {
         if (!AutoSelect ||
             gUIContext->LeftMouseButton.ClickID > gUIContext->TextInputClickId)
@@ -4711,7 +4730,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         }
     }
 
-    if (DragResult.Hovered)
+    if (ClickResult.Hovered)
     {
         gUIContext->MouseOverTextInput = true;
     }
@@ -5479,14 +5498,14 @@ static inline void Rr_UIColorPickerPopup(
         .Extent = Rr_V2F(TargetSize),
     };
 
-    Rr_UIDragResult Result = Rr_UIDragBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickDrag(
         Layout,
         &SVSelectorRect,
         RR_UI_DRAG_OP_WIDGET,
         SVSelectorHash,
         Rr_V2F(0.0f));
 
-    if (Result.Began || Result.Held)
+    if (ClickResult.Began || ClickResult.Held)
     {
         Rr_Vec2 Delta = Rr_SubV2(gUIContext->MousePosition, Layout->Cursor);
         Delta = Rr_DivV2F(Delta, TargetSize);
@@ -5503,7 +5522,7 @@ static inline void Rr_UIColorPickerPopup(
         HSVChanged = true;
     }
 
-    bool SVSelectorHeld = Result.Held;
+    bool SVSelectorHeld = ClickResult.Held;
     Rr_Vec2 SVSelectorCircleOffset = Rr_AddV2(
         Layout->Cursor,
         Rr_V2(StaticHSV.Y * TargetSize, (1.0f - StaticHSV.Z) * TargetSize));
@@ -5578,14 +5597,14 @@ static inline void Rr_UIColorPickerPopup(
         RR_ANGLE_DEG(180.0f),
         &gUIContext->Colors.Foreground);
 
-    Result = Rr_UIDragBehavior(
+    ClickResult = Rr_UIClickDrag(
         Layout,
         &HSelectorRect,
         RR_UI_DRAG_OP_WIDGET,
         HSelectorHash,
         Rr_V2F(0.0f));
 
-    if (Result.Began || Result.Held)
+    if (ClickResult.Began || ClickResult.Held)
     {
         float Delta = gUIContext->MousePosition.Y - Layout->Cursor.Y;
         Delta /= TargetSize;
@@ -5723,7 +5742,7 @@ static inline bool Rr_UIInputColorEx(
     Rr_Vec2 ColorBoxOffset = Layout->Cursor;
     ColorBoxOffset.X += InputResult.Extent.X + gUIContext->ComponentMargin;
 
-    Rr_UIDragResult Result = Rr_UIButtonBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
         &(Rr_Rect){
             ColorBoxOffset,
@@ -5731,7 +5750,7 @@ static inline bool Rr_UIInputColorEx(
         },
         TitleHash);
 
-    if (Result.Clicked)
+    if (ClickResult.Clicked)
     {
         gUIContext->PopupWindowParent = Window;
         gUIContext->PopupWindowHash = TitleHash;
@@ -5754,7 +5773,10 @@ static inline bool Rr_UIInputColorEx(
     Rr_Vec4 OpaqueColor;
     memcpy(&OpaqueColor, Channels, sizeof(float) * (size_t)ChannelCount);
     OpaqueColor.A = 1.0f;
-    Rr_UIDrawBevel(&ColorBoxRect, &OpaqueColor, Result.Held && Result.Hovered);
+    Rr_UIDrawBevel(
+        &ColorBoxRect,
+        &OpaqueColor,
+        ClickResult.Held && ClickResult.Hovered);
     if (ChannelCount == 4)
     {
         Rr_Rect InnerRect =
@@ -5849,7 +5871,7 @@ bool Rr_UICombobox(
         ButtonHeight,
     };
 
-    Rr_UIDragResult ClickResult = Rr_UIButtonBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
         &(Rr_Rect){
             ButtonPosition,
@@ -5903,8 +5925,8 @@ bool Rr_UICombobox(
             OptionButtonRect.Extent.Width =
                 gUIContext->PopupWindow.Rect.Extent.Width;
             OptionButtonRect.Extent.Height = gUIContext->LineHeight;
-            Rr_UIDragResult OptionClickResult =
-                Rr_UIButtonBehavior(PopupLayout, &OptionButtonRect, OptionHash);
+            Rr_UIClickResult OptionClickResult =
+                Rr_UIClickSimple(PopupLayout, &OptionButtonRect, OptionHash);
             if (OptionClickResult.Clicked)
             {
                 *SelectedIndex = Index;
@@ -6068,7 +6090,7 @@ static inline float Rr_UISlider(
     float HandleDragOffset = gUIContext->MousePosition.X -
                              (HandleRect.Offset.X + HandleWidth / 2.0f);
 
-    Rr_UIDragResult Result = Rr_UIDragBehavior(
+    Rr_UIClickResult ClickResult = Rr_UIClickDrag(
         Layout,
         &SliderRect,
         RR_UI_DRAG_OP_WIDGET,
@@ -6078,27 +6100,28 @@ static inline float Rr_UISlider(
     Rr_UIBevel(
         BackgroundBevel,
         &SliderRect,
-        Result.Held ? &gUIContext->Colors.InputFieldActive
-                    : &gUIContext->Colors.InputFieldNormal,
+        ClickResult.Held ? &gUIContext->Colors.InputFieldActive
+                         : &gUIContext->Colors.InputFieldNormal,
         true);
 
-    if (Result.Moved || Result.Began)
+    if (ClickResult.Moved || ClickResult.Began)
     {
         float SliderMin = Layout->Cursor.X + HandleWidth / 2.0f;
         float SliderMax = SliderMin + SliderWidth - HandleWidth;
 
         Normalized =
             (gUIContext->MousePosition.X - SliderMin) / (SliderMax - SliderMin);
-        Normalized = RR_CLAMP(0.0f, Normalized, 1.0f);
     }
-    else if (Result.Hovered)
+    else if (ClickResult.Hovered)
     {
-        if (gUIContext->MouseWheelDelta.X != 0.0f)
+        if (gUIContext->MouseWheelDelta.X != 0.0f &&
+            gUIContext->MouseWheelDelta.Y == 0.0f)
         {
             /* NOTE: Probably shouldn't be hardcoded to 30.0f. */
             Normalized += gUIContext->MouseWheelDelta.X / 30.0f;
         }
     }
+    Normalized = RR_CLAMP(0.0f, Normalized, 1.0f);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += SliderRect.Extent.X + Layout->ContentsPadding.X;
