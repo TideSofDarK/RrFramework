@@ -49,6 +49,9 @@
 
 ** User Interface
 
+- [ ] Upgrade click system to allow double clicking titles.
+      Also fix input field flicker.
+- [ ] Better tabs.
 - [X] Add separate ID/Hash stack.
 - [X] Fix broken clip rects.
 - [X] Apply scalar changes immediately if possible.
@@ -56,7 +59,6 @@
 - [X] Support for linear color space swapchains.
       Put colors into an array for easier conversion. 
 - [ ] Draggable scalars.
-- [ ] Better tabs.
 - [ ] Some options for horizontal child layouts + asserts.
 - [X] Combobox.
 - [X] Auto-resizing windows.
