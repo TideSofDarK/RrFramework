@@ -2370,6 +2370,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
 
     /* Allow double clicking the title bevel to toggle collapse state. */
 
+    RR_UNUSED(CollapseButtonClicked);
     // if (HasCollapse && !CollapseButtonClicked)
     // {
     //     Rr_UIHash Hash = Rr_UIGetHash(
