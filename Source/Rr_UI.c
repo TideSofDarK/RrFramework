@@ -173,7 +173,6 @@ struct Rr_UIMouseButton
     bool DownOverWindow;
     bool Held;
     bool Up;
-    bool SkipUp;
     uint32_t Clicks;
     uint32_t ClickID;
 };
@@ -6613,12 +6612,6 @@ void Rr_BeginUI(void)
 {
     Rr_UIConsumeNextFontSize();
 
-    if (gUIContext->LeftMouseButton.SkipUp && gUIContext->LeftMouseButton.Up)
-    {
-        gUIContext->LeftMouseButton.SkipUp = false;
-        gUIContext->LeftMouseButton.Up = false;
-    }
-
     gUIContext->HoveredWindow = NULL;
     if (Rr_UIPopupWindowActive())
     {
@@ -6636,7 +6629,6 @@ void Rr_BeginUI(void)
         else if (gUIContext->LeftMouseButton.Down)
         {
             Rr_UIClosePopupWindow();
-            gUIContext->LeftMouseButton.SkipUp = true;
         }
     }
     else
