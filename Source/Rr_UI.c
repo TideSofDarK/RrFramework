@@ -5829,7 +5829,7 @@ bool Rr_UICombobox(
     Rr_Vec2 SelectedTextSize = Rr_UIDrawText(
         false,
         SelectedTextPosition,
-        TitleLength,
+        SIZE_MAX,
         Options[*SelectedIndex],
         0.0f,
         &gUIContext->Colors.Foreground,
