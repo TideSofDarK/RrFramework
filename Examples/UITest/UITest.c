@@ -73,42 +73,34 @@ static void StyleEditorWindow()
 
         Rr_UISeparator();
 
-        Rr_UIInputLinearColor4("Foreground", Colors->Foreground.Elements);
-        Rr_UIInputLinearColor4(
+        Rr_UIInputColor4("Foreground", Colors->Foreground.Elements);
+        Rr_UIInputColor4(
             "Foreground Dimmed",
             Colors->ForegroundDimmed.Elements);
-        Rr_UIInputLinearColor4("Background", Colors->Background.Elements);
-        Rr_UIInputLinearColor4(
-            "Child Background",
-            Colors->ChildBackground.Elements);
-        Rr_UIInputLinearColor4("Outline", Colors->Outline.Elements);
+        Rr_UIInputColor4("Background", Colors->Background.Elements);
+        Rr_UIInputColor4("Child Background", Colors->ChildBackground.Elements);
+        Rr_UIInputColor4("Outline", Colors->Outline.Elements);
 
         Rr_UISeparator();
 
-        Rr_UIInputLinearColor4(
-            "Title Background",
-            Colors->TitleBackground.Elements);
-        Rr_UIInputLinearColor4(
+        Rr_UIInputColor4("Title Background", Colors->TitleBackground.Elements);
+        Rr_UIInputColor4(
             "Title Close Button",
             Colors->TitleCloseButtonBackground.Elements);
-        Rr_UIInputLinearColor4(
+        Rr_UIInputColor4(
             "Title Collapse Button",
             Colors->TitleCollapseButtonBackground.Elements);
 
         Rr_UISeparator();
 
-        Rr_UIInputLinearColor4(
+        Rr_UIInputColor4(
             "Scrollbar Background",
             Colors->ScrollbarBackground.Elements);
-        Rr_UIInputLinearColor4(
-            "Scrollbar Normal",
-            Colors->ScrollbarNormal.Elements);
-        Rr_UIInputLinearColor4(
+        Rr_UIInputColor4("Scrollbar Normal", Colors->ScrollbarNormal.Elements);
+        Rr_UIInputColor4(
             "Scrollbar Hovered",
             Colors->ScrollbarHovered.Elements);
-        Rr_UIInputLinearColor4(
-            "Scrollbar Held",
-            Colors->ScrollbarHeld.Elements);
+        Rr_UIInputColor4("Scrollbar Held", Colors->ScrollbarHeld.Elements);
 
         Rr_UISeparator();
 
@@ -117,14 +109,10 @@ static void StyleEditorWindow()
             Rr_UIInputFloat2("Button Padding", Style->ButtonPadding.Elements);
         Rr_UIPopFormatFloatDecimalPlaces();
 
-        Rr_UIInputLinearColor4("Button Normal", Colors->ButtonNormal.Elements);
-        Rr_UIInputLinearColor4(
-            "Button Hovered",
-            Colors->ButtonHovered.Elements);
-        Rr_UIInputLinearColor4("Button Held", Colors->ButtonHeld.Elements);
-        Rr_UIInputLinearColor4(
-            "Button Disabled",
-            Colors->ButtonDisabled.Elements);
+        Rr_UIInputColor4("Button Normal", Colors->ButtonNormal.Elements);
+        Rr_UIInputColor4("Button Hovered", Colors->ButtonHovered.Elements);
+        Rr_UIInputColor4("Button Held", Colors->ButtonHeld.Elements);
+        Rr_UIInputColor4("Button Disabled", Colors->ButtonDisabled.Elements);
 
         Rr_UISeparator();
 
@@ -134,13 +122,13 @@ static void StyleEditorWindow()
             Style->InputFieldPadding.Elements);
         Rr_UIPopFormatFloatDecimalPlaces();
 
-        Rr_UIInputLinearColor4(
+        Rr_UIInputColor4(
             "Input Field Normal",
             Colors->InputFieldNormal.Elements);
-        Rr_UIInputLinearColor4(
+        Rr_UIInputColor4(
             "Input Field Active",
             Colors->InputFieldActive.Elements);
-        Rr_UIInputLinearColor4(
+        Rr_UIInputColor4(
             "Selected Text",
             Colors->SelectedTextBackground.Elements);
 
@@ -162,11 +150,7 @@ static void Iterate(void)
 {
     Rr_Graph *Graph = Rr_GetGraph();
 
-    static Rr_Vec4 ClearColor = { 0, 0, 0, 1 };
-    Rr_ClearColorImage2D(
-        Graph,
-        (Rr_ColorClear){ .Vec4 = ClearColor },
-        Rr_GetSwapchainImage());
+    Rr_ClearColorImage2D(Graph, (Rr_ColorClear){ 0 }, Rr_GetSwapchainImage());
 
     Rr_UIDebugOverlay();
 
@@ -327,15 +311,10 @@ static void Iterate(void)
 
         if (Rr_UIBeginChild("Color Input"))
         {
-            /* Rr_UIInputColor4("Clear Color", ClearColor.Elements); */
-            static Rr_Vec3 SRGBColor3 = { 0.8f, 0.3f, 0.4f };
-            Rr_UIInputSRGBColor3("Color 3 (SRGB)", SRGBColor3.Elements);
-            static Rr_Vec4 SRGBColor4 = { 0.1f, 0.3f, 0.6f, 0.6f };
-            Rr_UIInputSRGBColor4("Color 4 (SRGB)", SRGBColor4.Elements);
-            static Rr_Vec3 LinearColor3 = { 0.2f, 0.05f, 0.4f };
-            Rr_UIInputLinearColor3("Color 3 (Linear)", LinearColor3.Elements);
-            static Rr_Vec4 LinearColor4 = { 0.9f, 0.2345f, 0.2f, 0.5f };
-            Rr_UIInputLinearColor4("Color 4 (Linear)", LinearColor4.Elements);
+            static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
+            Rr_UIInputColor3("Color RBA", ColorRGB.Elements);
+            static Rr_Vec4 ColorRGBA = { 0.9f, 0.2345f, 0.2f, 0.5f };
+            Rr_UIInputColor4("Color RGBA", ColorRGBA.Elements);
 
             Rr_UIEndChild();
         }
