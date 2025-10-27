@@ -1970,13 +1970,12 @@ static inline Rr_UIClickResult Rr_UIClickEx(
     bool Down = gUIContext->LeftMouseButton.Down;
     bool Held = gUIContext->LeftMouseButton.Held;
 
-    bool WindowHovered = Window == gUIContext->HoveredWindow;
-
     bool Contains = Layout->MouseInsideClipRect &&
+                    Window == gUIContext->HoveredWindow &&
                     Rr_RectContains(Rect, gUIContext->MousePosition);
 
     Rr_UIClickResult ClickResult = { 0 };
-    ClickResult.Hovered = WindowHovered && Contains;
+    ClickResult.Hovered = Contains;
 
     uint8_t ClickCount =
         (uint8_t)RR_CLAMP(1, gUIContext->LeftMouseButton.Clicks, UCHAR_MAX);
