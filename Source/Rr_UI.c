@@ -118,9 +118,8 @@ typedef enum
 {
     RR_UI_CLICK_TYPE_RELEASE,
     RR_UI_CLICK_TYPE_DOWN,
-    RR_UI_CLICK_TYPE_DOWN_MULTI,
     RR_UI_CLICK_TYPE_DRAG,
-    RR_UI_CLICK_TYPE_DRAG_MULTI,
+    RR_UI_CLICK_TYPE_DRAG_RELAXED, /* Only triggers on move. */
 } Rr_UIClickType;
 
 typedef struct Rr_UILayout Rr_UILayout;
@@ -210,15 +209,19 @@ struct Rr_UIContext
     Rr_Vec2 MousePosition;
     Rr_Vec2 MouseWheelDelta;
 
-    Rr_UIWindow *FocusedWindow;
+    Rr_UIWindow *FocusedWidgetParent;
     Rr_UIHash FocusedWidgetHash;
-    Rr_UIWindow *PrevFocusedWindow;
+    Rr_UIWindow *PrevFocusedWidgetParent;
     Rr_UIHash PrevFocusedWidgetHash;
 
-    Rr_UIWindow *ClickWindow;
+    Rr_UIWindow *DragParent;
+    Rr_UIHash DragHash;
+    bool DragConsumed;
+    Rr_Vec2 DragMouseStart;
+    Rr_Vec2 DragWindowStart;
+
+    Rr_UIWindow *ClickParent;
     Rr_UIHash ClickHash;
-    Rr_Vec2 ClickMouseStart;
-    Rr_Vec2 ClickWindowStart;
     bool ClickConsumed;
 
     /* NOTE: Cursors are stored as raw offsets into UTF-8 string. */
@@ -1898,23 +1901,6 @@ static inline Rr_Vec2 Rr_UICalculateTextSize(
         Flags);
 }
 
-static inline void Rr_UISetClick(
-    Rr_UIWindow *Window,
-    Rr_UIHash Hash,
-    Rr_Vec2 WindowStart)
-{
-    gUIContext->ClickMouseStart = gUIContext->MousePosition;
-    gUIContext->ClickWindow = Window;
-    gUIContext->ClickWindowStart = WindowStart;
-    gUIContext->ClickHash = Hash;
-}
-
-static inline void Rr_UIResetClick(void)
-{
-    gUIContext->ClickWindow = NULL;
-    gUIContext->ClickHash = 0;
-}
-
 static inline bool Rr_UIClipRectContains(Rr_UIWindow *Window, Rr_Vec2 Point)
 {
     assert(Window != NULL);
@@ -1923,17 +1909,17 @@ static inline bool Rr_UIClipRectContains(Rr_UIWindow *Window, Rr_Vec2 Point)
 
 static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
-    return gUIContext->FocusedWindow == Window &&
+    return gUIContext->FocusedWidgetParent == Window &&
            gUIContext->FocusedWidgetHash == Hash;
 }
 
 static inline bool Rr_UIWasFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
-    bool Result = gUIContext->PrevFocusedWindow == Window &&
+    bool Result = gUIContext->PrevFocusedWidgetParent == Window &&
                   gUIContext->PrevFocusedWidgetHash == Hash;
     if (Result)
     {
-        gUIContext->PrevFocusedWindow = NULL;
+        gUIContext->PrevFocusedWidgetParent = NULL;
     }
 
     return Result;
@@ -1945,35 +1931,21 @@ static inline void Rr_UISetFocus(Rr_UIWindow *Window, Rr_UIHash Hash)
     {
         return;
     }
-    if (gUIContext->FocusedWindow != NULL)
+    if (gUIContext->FocusedWidgetParent != NULL)
     {
-        gUIContext->PrevFocusedWindow = gUIContext->FocusedWindow;
+        gUIContext->PrevFocusedWidgetParent = gUIContext->FocusedWidgetParent;
         gUIContext->PrevFocusedWidgetHash = gUIContext->FocusedWidgetHash;
     }
-    gUIContext->FocusedWindow = Window;
+    gUIContext->FocusedWidgetParent = Window;
     gUIContext->FocusedWidgetHash = Hash;
 }
 
-static inline bool Rr_UIScrollBehavior(
-    Rr_UIWindow *Window,
-    Rr_Rect *Rect,
-    float *YScroll)
+static inline void Rr_UIResetClickAndDrag(void)
 {
-    if (Window == gUIContext->HoveredWindow &&
-        gUIContext->ClickConsumed == false &&
-        Rr_RectContains(Rect, gUIContext->MousePosition))
-    {
-        if (gUIContext->MouseWheelDelta.Y != 0.0f)
-        {
-            Rr_UIResetClick();
-            *YScroll = *YScroll +
-                       gUIContext->MouseWheelDelta.Y * gUIContext->LineHeight;
-
-            return true;
-        }
-    }
-
-    return false;
+    gUIContext->ClickParent = NULL;
+    gUIContext->ClickHash = 0;
+    gUIContext->DragParent = NULL;
+    gUIContext->DragHash = 0;
 }
 
 typedef struct Rr_UIClickResult Rr_UIClickResult;
@@ -1994,9 +1966,11 @@ static inline Rr_UIClickResult Rr_UIClickEx(
 {
     Rr_UIWindow *Window = Layout->Window;
 
+    bool Up = gUIContext->LeftMouseButton.Up;
+    bool Down = gUIContext->LeftMouseButton.Down;
+    bool Held = gUIContext->LeftMouseButton.Held;
+
     bool WindowHovered = Window == gUIContext->HoveredWindow;
-    bool WindowMatch = Window == gUIContext->ClickWindow;
-    bool HashMatch = Hash == gUIContext->ClickHash;
 
     bool Contains = Layout->MouseInsideClipRect &&
                     Rr_RectContains(Rect, gUIContext->MousePosition);
@@ -2004,76 +1978,143 @@ static inline Rr_UIClickResult Rr_UIClickEx(
     Rr_UIClickResult ClickResult = { 0 };
     ClickResult.Hovered = WindowHovered && Contains;
 
+    uint8_t ClickCount =
+        (uint8_t)RR_CLAMP(1, gUIContext->LeftMouseButton.Clicks, UCHAR_MAX);
+
+    bool DragMatch =
+        Window == gUIContext->DragParent && Hash == gUIContext->DragHash;
+    bool ClickMatch =
+        Window == gUIContext->ClickParent && Hash == gUIContext->ClickHash;
+
+    if (Type == RR_UI_CLICK_TYPE_DRAG_RELAXED)
+    {
+        if (Down && Contains && !gUIContext->DragConsumed)
+        {
+            gUIContext->DragParent = Window;
+            gUIContext->DragHash = Hash;
+            gUIContext->DragMouseStart = gUIContext->MousePosition;
+            gUIContext->DragWindowStart = Value;
+
+            if (!gUIContext->ClickConsumed)
+            {
+                gUIContext->ClickParent = Window;
+                gUIContext->ClickHash = Hash;
+            }
+
+            Rr_UISetFocus(NULL, 0);
+        }
+        else if (Up && (DragMatch || ClickMatch))
+        {
+            gUIContext->DragParent = NULL;
+        }
+        else if (Held && DragMatch)
+        {
+            if (gUIContext->MouseMoved)
+            {
+                gUIContext->ClickParent = Window;
+                gUIContext->ClickHash = Hash;
+            }
+
+            gUIContext->ClickConsumed = true;
+
+            ClickResult.Held = true;
+            ClickResult.Moved = gUIContext->MouseMoved;
+        }
+    }
+
     if (gUIContext->ClickConsumed)
     {
         return ClickResult;
     }
 
-    if (gUIContext->LeftMouseButton.Down)
+    if (Type == RR_UI_CLICK_TYPE_DOWN)
     {
-        uint8_t ClickCount =
-            (uint8_t)RR_CLAMP(1, gUIContext->LeftMouseButton.Clicks, UCHAR_MAX);
-
-        if (Contains && WindowHovered)
+        if (Down && Contains && !gUIContext->MouseMoved)
         {
-            if (Type == RR_UI_CLICK_TYPE_DOWN_MULTI)
+            if (ClickCount == 1 || (ClickCount > 1 && ClickMatch))
             {
-                if (ClickCount > 1)
-                {
-                    ClickResult.ClickCount = ClickCount;
+                gUIContext->ClickParent = Window;
+                gUIContext->ClickHash = Hash;
 
-                    Rr_UISetClick(Window, Hash, Value);
-                    Rr_UISetFocus(Window, Hash);
+                ClickResult.ClickCount = ClickCount;
 
-                    gUIContext->ClickConsumed = true;
-                }
+                gUIContext->ClickConsumed = true;
 
-                return ClickResult;
+                Rr_UISetFocus(NULL, 0);
             }
+        }
+    }
 
-            if (Type == RR_UI_CLICK_TYPE_DRAG_MULTI)
-            {
-                if (ClickCount > 1)
-                {
-                    ClickResult.ClickCount = ClickCount;
-                }
-            }
-            else if (Type != RR_UI_CLICK_TYPE_RELEASE)
+    if (Type == RR_UI_CLICK_TYPE_RELEASE)
+    {
+        if (Down && Contains)
+        {
+            gUIContext->DragParent = Window;
+            gUIContext->DragHash = Hash;
+            gUIContext->DragConsumed = true;
+
+            gUIContext->ClickParent = Window;
+            gUIContext->ClickHash = Hash;
+            gUIContext->ClickConsumed = true;
+
+            Rr_UISetFocus(NULL, 0);
+        }
+        else if (Up && DragMatch)
+        {
+            gUIContext->DragParent = NULL;
+            gUIContext->DragConsumed = true;
+
+            gUIContext->ClickConsumed = true;
+
+            if (Contains)
             {
                 ClickResult.ClickCount = 1;
             }
+        }
+        else if (Held && DragMatch)
+        {
+            gUIContext->ClickConsumed = true;
 
-            Rr_UISetClick(Window, Hash, Value);
+            gUIContext->DragConsumed = true;
+
+            ClickResult.Held = true;
+        }
+    }
+
+    if (Type == RR_UI_CLICK_TYPE_DRAG)
+    {
+        if (Down && Contains)
+        {
+            gUIContext->DragParent = Window;
+            gUIContext->DragHash = Hash;
+            gUIContext->DragMouseStart = gUIContext->MousePosition;
+            gUIContext->DragWindowStart = Value;
+            gUIContext->DragConsumed = true;
+
+            gUIContext->ClickParent = Window;
+            gUIContext->ClickHash = Hash;
+            gUIContext->ClickConsumed = true;
+
+            ClickResult.ClickCount = ClickCount;
+
             Rr_UISetFocus(Window, Hash);
+        }
+        else if (Up && DragMatch)
+        {
+            gUIContext->DragParent = NULL;
+            gUIContext->DragConsumed = true;
 
             gUIContext->ClickConsumed = true;
         }
-
-        return ClickResult;
-    }
-
-    if (gUIContext->LeftMouseButton.Up && Contains && WindowHovered)
-    {
-        if (Type == RR_UI_CLICK_TYPE_RELEASE)
+        else if (Held && DragMatch)
         {
-            if (WindowMatch && HashMatch)
-            {
-                ClickResult.ClickCount = 1;
-                ClickResult.Moved = gUIContext->MouseMoved;
+            gUIContext->DragConsumed = true;
 
-                gUIContext->ClickConsumed = true;
-            }
+            gUIContext->ClickConsumed = true;
+
+            ClickResult.Held = true;
+            ClickResult.Moved = gUIContext->MouseMoved;
         }
-
-        return ClickResult;
-    }
-
-    if (gUIContext->LeftMouseButton.Held && WindowMatch && HashMatch)
-    {
-        ClickResult.Held = true;
-        ClickResult.Moved = gUIContext->MouseMoved;
-
-        return ClickResult;
     }
 
     return ClickResult;
@@ -2109,9 +2150,31 @@ static inline Rr_UIClickResult Rr_UIClickDouble(
     return Rr_UIClickEx(
         Layout,
         Rect,
-        RR_UI_CLICK_TYPE_DOWN_MULTI,
+        RR_UI_CLICK_TYPE_DOWN,
         Hash,
         Rr_V2F(0.0f));
+}
+
+static inline bool Rr_UIScrollBehavior(
+    Rr_UIWindow *Window,
+    Rr_Rect *Rect,
+    float *YScroll)
+{
+    if (Window == gUIContext->HoveredWindow &&
+        gUIContext->ClickConsumed == false &&
+        Rr_RectContains(Rect, gUIContext->MousePosition))
+    {
+        if (gUIContext->MouseWheelDelta.Y != 0.0f)
+        {
+            Rr_UIResetClickAndDrag();
+            *YScroll = *YScroll +
+                       gUIContext->MouseWheelDelta.Y * gUIContext->LineHeight;
+
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static inline Rr_Rect Rr_UIRectIntersection(Rr_Rect *RectA, Rr_Rect *RectB)
@@ -2451,21 +2514,21 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
     Rr_UIClickResult ClickResult = Rr_UIClickEx(
         Layout,
         &ResizeHandleRect,
-        RR_UI_CLICK_TYPE_DRAG_MULTI,
+        RR_UI_CLICK_TYPE_DRAG,
         ResizeHash,
         Layout->Rect.Extent);
 
     if (ClickResult.ClickCount == 2)
     {
         Layout->DeferredAutoResize = true;
-        Rr_UIResetClick();
+        Rr_UIResetClickAndDrag();
     }
 
     if (ClickResult.Moved)
     {
         Rr_Vec2 Delta =
-            Rr_SubV2(gUIContext->MousePosition, gUIContext->ClickMouseStart);
-        Rr_Vec2 NewWindowSize = Rr_AddV2(gUIContext->ClickWindowStart, Delta);
+            Rr_SubV2(gUIContext->MousePosition, gUIContext->DragMouseStart);
+        Rr_Vec2 NewWindowSize = Rr_AddV2(gUIContext->DragWindowStart, Delta);
         Rr_Vec2 MinWindowSize = Rr_UIGetMinWindowSize(Layout->Window->Flags);
         NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
         NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
@@ -2605,7 +2668,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
                      ScrollbarHandleOffset * 2.0f) /
                         (ScrollbarSize.Y / ContentsHeight) -
                     (ScrollbarHandleSize.Height / FillRatio);
-                gUIContext->ClickWindowStart.Y = Window->VScroll;
+                gUIContext->DragWindowStart.Y = Window->VScroll;
             }
             else if (gUIContext->MousePosition.Y < ScrollbarHandlePosition.Y)
             {
@@ -2613,16 +2676,16 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
                     (gUIContext->MousePosition.Y - ScrollbarPosition.Y -
                      ScrollbarHandleOffset * 2.0f) /
                     ((ScrollbarSize.Y) / ContentsHeight);
-                gUIContext->ClickWindowStart.Y = Window->VScroll;
+                gUIContext->DragWindowStart.Y = Window->VScroll;
             }
         }
 
         if (ClickResult.Moved)
         {
             float Delta =
-                gUIContext->MousePosition.Y - gUIContext->ClickMouseStart.Y;
+                gUIContext->MousePosition.Y - gUIContext->DragMouseStart.Y;
             Window->VScroll = Window->VScrollTarget =
-                gUIContext->ClickWindowStart.Y + (Delta * 1.0f / FillRatio);
+                gUIContext->DragWindowStart.Y + (Delta * 1.0f / FillRatio);
         }
 
         Rr_UIDrawBevel(
@@ -3266,20 +3329,20 @@ void Rr_UIEndWindow(void)
 
     Rr_UIHash MoveHash =
         Rr_UIGetHash(sizeof("Rr.Move"), "Rr.Move", Rr_UICurrentHash());
-    Rr_UIClickResult ClickResult = Rr_UIClickDrag(
+    Rr_UIClickResult ClickResult = Rr_UIClickEx(
         Layout,
         &Layout->Rect,
+        RR_UI_CLICK_TYPE_DRAG_RELAXED,
         MoveHash,
         Layout->TopLevelParent->Rect.Offset);
     if (!Layout->LockOffset)
     {
         if (!Rr_UIWindowNoMove(Window->TopLevelParent) && ClickResult.Moved)
         {
-            Rr_Vec2 Delta = Rr_SubV2(
-                gUIContext->MousePosition,
-                gUIContext->ClickMouseStart);
+            Rr_Vec2 Delta =
+                Rr_SubV2(gUIContext->MousePosition, gUIContext->DragMouseStart);
             Layout->TopLevelParent->DeferredWindowOffset =
-                Rr_FloorV2(Rr_AddV2(gUIContext->ClickWindowStart, Delta));
+                Rr_FloorV2(Rr_AddV2(gUIContext->DragWindowStart, Delta));
         }
 
         if (Layout->DeferredWindowOffset.X != INFINITY)
@@ -4792,7 +4855,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             EnterToConfirm);
         if (EditResult.Confirmed)
         {
-            gUIContext->FocusedWindow = NULL;
+            gUIContext->FocusedWidgetParent = NULL;
         }
     }
     else
@@ -6658,7 +6721,7 @@ void Rr_BeginUI(void)
     if (!gUIContext->LeftMouseButton.DownOverWindow &&
         gUIContext->LeftMouseButton.Down)
     {
-        Rr_UIResetClick();
+        Rr_UIResetClickAndDrag();
     }
 
     RR_CLEAR_ARRAY(&gUIContext->ActiveWindows);
@@ -6821,6 +6884,7 @@ void Rr_EndUI(void)
 
     gUIContext->LayoutStack = NULL;
     gUIContext->ClickConsumed = false;
+    gUIContext->DragConsumed = false;
     if (gUIContext->LeftMouseButton.Up)
     {
         gUIContext->LeftMouseButton.Held = false;

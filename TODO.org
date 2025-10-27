@@ -49,9 +49,9 @@
 
 ** User Interface
 
-- [ ] Upgrade click system to allow double clicking titles.
-      Also fix input field flicker.
 - [ ] Better tabs.
+- [X] Upgrade click system to allow double clicking titles.
+      Also fix input field flicker.
 - [X] Add separate ID/Hash stack.
 - [X] Fix broken clip rects.
 - [X] Apply scalar changes immediately if possible.
