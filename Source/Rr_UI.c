@@ -274,6 +274,8 @@ struct Rr_UIContext
     Rr_Buffer *UniformBuffer;
     Rr_Sampler *Sampler;
 
+    bool SRGBSwapchain;
+
     bool VisualizeAdvances;
 
     Rr_Arena *FrameArena;
@@ -6519,6 +6521,10 @@ void Rr_InitUI(void)
         .AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
     });
 
+    Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+    gUIContext->SRGBSwapchain =
+        Rr_IsSRGBFormat(Rr_GetImageFormat(SwapchainImage));
+
     gUIContext->Font =
         Rr_UICreateFont(RR_BUILTIN_SOURCESERIF4_TTF, DefaultFontSize);
 }
@@ -6553,6 +6559,13 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
 
     switch (Event->Type)
     {
+        case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
+        {
+            Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
+            gUIContext->SRGBSwapchain =
+                Rr_IsSRGBFormat(Rr_GetImageFormat(SwapchainImage));
+        }
+        break;
         case RR_EVENT_TYPE_TEXT_INPUT:
         {
             size_t Length = strlen(Event->Text.Text);
@@ -6790,8 +6803,6 @@ void Rr_EndUI(void)
         RR_BEGIN_FRAME_SECTION("Rr.UI.DrawWindows");
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        bool IsSRGBSwapchain =
-            Rr_IsSRGBFormat(Rr_GetImageFormat(SwapchainImage));
 
         Rr_UIUniformData UniformData = {
             .ScreenSize = gUIContext->ScreenSize,
@@ -6825,8 +6836,8 @@ void Rr_EndUI(void)
             Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
         Rr_BindGraphicsPipeline(
             GraphicsNode,
-            IsSRGBSwapchain ? gUIContext->SRGBPipeline
-                            : gUIContext->LinearPipeline);
+            gUIContext->SRGBSwapchain ? gUIContext->SRGBPipeline
+                                      : gUIContext->LinearPipeline);
         Rr_BindVertexBuffer(GraphicsNode, gUIContext->VertexBuffer, 0, 0);
         Rr_BindIndexBuffer(
             GraphicsNode,
