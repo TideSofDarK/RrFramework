@@ -260,9 +260,13 @@ extern bool Rr_UIInputInt4(const char *Title, int32_t *Values);
 
 extern bool Rr_UIInputUnsignedInt(const char *Title, uint32_t *Value);
 
-extern bool Rr_UIInputColor3(const char *Title, float *Channels);
+extern bool Rr_UIInputLinearColor3(const char *Title, float *Channels);
 
-extern bool Rr_UIInputColor4(const char *Title, float *Channels);
+extern bool Rr_UIInputLinearColor4(const char *Title, float *Channels);
+
+extern bool Rr_UIInputSRGBColor3(const char *Title, float *Channels);
+
+extern bool Rr_UIInputSRGBColor4(const char *Title, float *Channels);
 
 extern bool Rr_UICombobox(
     const char *Title,

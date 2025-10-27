@@ -73,6 +73,7 @@ struct Rr_UIClipRect
     uint32_t IndexCount;
     uint32_t FirstIndex;
     Rr_Rect Rect;
+    bool LinearColors;
 };
 
 typedef RR_ARRAY(Rr_UIClipRect) Rr_UIClipRectArray;
@@ -2191,7 +2192,7 @@ static inline Rr_Rect Rr_UIRectIntersection(Rr_Rect *RectA, Rr_Rect *RectB)
     return Result;
 }
 
-static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
+static inline Rr_UIClipRect *Rr_UIBeginClipRect(Rr_Rect *Rect)
 {
     Rr_UIAssertWindow();
 
@@ -2202,10 +2203,13 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
         RR_PUSH_INTO_ARRAY(Window->TopLevelClipRects, gUIContext->FrameArena);
     ClipRect->FirstIndex = (uint32_t)gUIContext->Indices.Count;
     ClipRect->Rect = *Rect;
+    ClipRect->LinearColors = false;
 
     Window->CurrentClipRect = ClipRect;
     Layout->MouseInsideClipRect =
         Rr_RectContains(&ClipRect->Rect, gUIContext->MousePosition);
+
+    return ClipRect;
 }
 
 static inline void Rr_UIBeginVisibleClipRect(Rr_Rect *Rect)
@@ -5511,7 +5515,8 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIHash Hash,
     Rr_Vec2 Center,
     int ChannelCount,
-    float *Channels)
+    float *Channels,
+    bool Linear)
 {
     const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
         RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
@@ -5540,6 +5545,11 @@ static inline void Rr_UIColorPickerPopup(
 
     Rr_UIBeginHorizontal();
 
+    Rr_UIClipRect *RestoreClipRect = Window->CurrentClipRect;
+    Rr_UIEndClipRect();
+    Rr_UIClipRect *CorrectClipRect = Rr_UIBeginClipRect(&RestoreClipRect->Rect);
+    CorrectClipRect->LinearColors = Linear;
+
     /* Draw saturation and value selector. */
 
     static Rr_Vec3 StaticHSV;
@@ -5556,35 +5566,34 @@ static inline void Rr_UIColorPickerPopup(
     {
         Rr_UIVertex Vertices[4];
 
-        Vertices[0].Color = Rr_V4F(1.0f);
         Vertices[0].Position = Layout->Cursor;
         Vertices[0].UV = Rr_V2F(0.0f);
 
-        Vertices[1].Color =
-            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
         Vertices[1].Position = Layout->Cursor;
         Vertices[1].Position.X += TargetSize;
         Vertices[1].UV = Rr_V2F(0.0f);
 
-        Vertices[2].Color =
-            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
         Vertices[2].Position = Layout->Cursor;
         Vertices[2].Position.X += TargetSize;
         Vertices[2].Position.Y += TargetSize;
         Vertices[2].UV = Rr_V2F(0.0f);
 
-        Vertices[3].Color = Rr_V4F(1.0f);
         Vertices[3].Position = Layout->Cursor;
         Vertices[3].Position.Y += TargetSize;
         Vertices[3].UV = Rr_V2F(0.0f);
-
-        Rr_UIDrawQuadVertices(Vertices);
 
         Vertices[0].Color = Rr_V4F(0.0f);
         Vertices[1].Color = Rr_V4F(0.0f);
         Vertices[2].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
         Vertices[3].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
+        Rr_UIDrawQuadVertices(Vertices);
 
+        Vertices[0].Color = Rr_V4(1.0f, 1.0f, 1.0f, 1.0f);
+        Vertices[1].Color =
+            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
+        Vertices[2].Color =
+            Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 0.0f);
+        Vertices[3].Color = Rr_V4(1.0f, 1.0f, 1.0f, 0.0f);
         Rr_UIDrawQuadVertices(Vertices);
     }
 
@@ -5716,6 +5725,9 @@ static inline void Rr_UIColorPickerPopup(
 
     Rr_UIAdvance(HSelectorRect.Extent);
 
+    Rr_UIEndClipRect();
+    Rr_UIBeginClipRect(&RestoreClipRect->Rect);
+
     Rr_UIEndHorizontal();
 
     /* Draw saturation/value circle here so it's on top of hue selector. */
@@ -5796,7 +5808,8 @@ static inline void Rr_UIColorPickerPopup(
 static inline bool Rr_UIInputColorEx(
     const char *Title,
     int ChannelCount,
-    float *Channels)
+    float *Channels,
+    bool Linear)
 {
     Rr_UIAssertWindow();
     assert(Title != NULL);
@@ -5860,7 +5873,12 @@ static inline bool Rr_UIInputColorEx(
     {
         Rr_Vec2 PopupCenter =
             Rr_AddV2(ColorBoxOffset, Rr_DivV2F(ColorBoxExtent, 2.0f));
-        Rr_UIColorPickerPopup(TitleHash, PopupCenter, ChannelCount, Channels);
+        Rr_UIColorPickerPopup(
+            TitleHash,
+            PopupCenter,
+            ChannelCount,
+            Channels,
+            Linear);
     }
 
     Rr_Rect ColorBoxRect = {
@@ -5909,14 +5927,24 @@ static inline bool Rr_UIInputColorEx(
     return ColorChanged;
 }
 
-bool Rr_UIInputColor3(const char *Title, float *Channels)
+bool Rr_UIInputLinearColor3(const char *Title, float *Channels)
 {
-    return Rr_UIInputColorEx(Title, 3, Channels);
+    return Rr_UIInputColorEx(Title, 3, Channels, true);
 }
 
-bool Rr_UIInputColor4(const char *Title, float *Channels)
+bool Rr_UIInputLinearColor4(const char *Title, float *Channels)
 {
-    return Rr_UIInputColorEx(Title, 4, Channels);
+    return Rr_UIInputColorEx(Title, 4, Channels, true);
+}
+
+bool Rr_UIInputSRGBColor3(const char *Title, float *Channels)
+{
+    return Rr_UIInputColorEx(Title, 3, Channels, false);
+}
+
+bool Rr_UIInputSRGBColor4(const char *Title, float *Channels)
+{
+    return Rr_UIInputColorEx(Title, 4, Channels, false);
 }
 
 bool Rr_UICombobox(
@@ -6480,10 +6508,10 @@ void Rr_InitUI(void)
         .Layout = gUIContext->PipelineLayout,
         .VertexShaderSPVSize = VertexShader.Size,
         .VertexShaderSPVData = VertexShader.Pointer,
-        .VertexSpecializationCount = RR_ARRAY_COUNT(Specializations),
-        .VertexSpecializations = Specializations,
         .FragmentShaderSPVSize = FragmentShader.Size,
         .FragmentShaderSPVData = FragmentShader.Pointer,
+        .FragmentSpecializationCount = RR_ARRAY_COUNT(Specializations),
+        .FragmentSpecializations = Specializations,
         .ColorTargetCount = RR_ARRAY_COUNT(ColorTargets),
         .ColorTargets = ColorTargets,
         .VertexInputBindingCount = 1,
@@ -6737,7 +6765,8 @@ static inline int Rr_UIWindowSort(const void *A, const void *B)
 
 static inline void Rr_UIDrawWindow(
     Rr_UIWindow *Window,
-    Rr_GraphNode *GraphicsNode)
+    Rr_GraphNode *GraphicsNode,
+    bool IsSRGBSwapchain)
 {
     size_t ClipRectCount = Window->TopLevelClipRects->Count;
     for (size_t ClipRectIndex = 0; ClipRectIndex < ClipRectCount;
@@ -6768,6 +6797,14 @@ static inline void Rr_UIDrawWindow(
         }
         Rr_SetScissor(GraphicsNode, &IntRect);
 
+        if (ClipRect->LinearColors)
+        {
+            Rr_BindGraphicsPipeline(
+                GraphicsNode,
+                IsSRGBSwapchain ? gUIContext->LinearPipeline
+                                : gUIContext->SRGBPipeline);
+        }
+
         Rr_DrawIndexed(
             GraphicsNode,
             ClipRect->IndexCount,
@@ -6775,6 +6812,14 @@ static inline void Rr_UIDrawWindow(
             ClipRect->FirstIndex,
             0,
             0);
+
+        if (ClipRect->LinearColors)
+        {
+            Rr_BindGraphicsPipeline(
+                GraphicsNode,
+                IsSRGBSwapchain ? gUIContext->SRGBPipeline
+                                : gUIContext->LinearPipeline);
+        }
     }
 }
 
@@ -6872,7 +6917,7 @@ void Rr_EndUI(void)
             }
             if (Window->TopLevelParent == Window)
             {
-                Rr_UIDrawWindow(Window, GraphicsNode);
+                Rr_UIDrawWindow(Window, GraphicsNode, IsSRGBSwapchain);
                 Window->ShownAtLeastOnce = true;
             }
         }
