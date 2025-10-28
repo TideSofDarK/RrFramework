@@ -132,10 +132,18 @@ static void StyleEditorWindow()
             "Selected Text",
             Colors->SelectedTextBackground.Elements);
 
+        Rr_UISeparator();
+
+        Rr_UIBeginHorizontal();
         if (Rr_UIButton("Print Colors"))
         {
             Rr_UIPrintColors();
         }
+        if (Rr_UIButton("Randomize Colors"))
+        {
+            Rr_UIRandomizeColors();
+        }
+        Rr_UIEndHorizontal();
 
         if (UpdateFontSize)
         {
@@ -218,6 +226,63 @@ static void Iterate(void)
         /*     } */
         /*     Rr_UIEndChild(); */
         /* } */
+
+        if (Rr_UIBeginChild("Tree"))
+        {
+            Rr_UIBeginHorizontal();
+            if (Rr_UIButton("Expand All"))
+            {
+                Rr_UISetNextTreeExpanded();
+            }
+            if (Rr_UIButton("Collapse All"))
+            {
+                Rr_UISetNextTreeCollapsed();
+            }
+            Rr_UIEndHorizontal();
+
+            if (Rr_UIBeginTree("Tree #1"))
+            {
+                Rr_Vec2 Vec2 = {-75.0f, 125.0f};
+                Rr_UIInputFloat2("Float2 Input", Vec2.Elements);
+
+                if (Rr_UIBeginTree("Tree #2###0"))
+                {
+                    static int Count = 0;
+                    if (Rr_UIButton("Click me!"))
+                    {
+                        Count++;
+                    }
+                    if (Count)
+                    {
+                        Rr_UIText("Thanks for clicking me!");
+                    }
+
+                    if (Rr_UIBeginTree("Tree #3"))
+                    {
+                        static int Radio = -1;
+                        Rr_UIRadioButton("Radio A", &Radio, 0);
+                        Rr_UIRadioButton("Radio B", &Radio, 1);
+                        Rr_UIRadioButton("Radio C", &Radio, 2);
+
+                        Rr_UIEndTree();
+                    }
+
+                    Rr_UIEndTree();
+                }
+
+                if (Rr_UIBeginTree("Tree #2###1"))
+                {
+                    static bool Checked = false;
+                    Rr_UICheckbox("Checkbox", &Checked);
+
+                    Rr_UIEndTree();
+                }
+
+                Rr_UIEndTree();
+            }
+
+            Rr_UIEndChild();
+        }
 
         Rr_UISetNextWindowCreateCollapsed(false);
         if (Rr_UIBeginChild("Text"))

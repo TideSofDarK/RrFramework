@@ -810,94 +810,111 @@ struct SLighting
 
     void UI()
     {
-        if (Rr_UIFold("Point Lights"))
+        if (Rr_UIBeginTree("Lights"))
         {
-            for (std::uint32_t Index = 0; Index < PointLights.size(); ++Index)
+            if (Rr_UIBeginTree("Point Lights"))
             {
-                Rr_UISeparator();
-                auto &PointLight = PointLights[Index];
-                bool Visualize =
-                    VisualizePointShadowMap == PointShadowMaps[Index];
-                bool OldVisualize = Visualize;
-                if (Rr_UICheckbox("Visualize Shadow Map", &Visualize))
+                for (std::uint32_t Index = 0; Index < PointLights.size();
+                     ++Index)
                 {
-                    VisualizePointShadowMap =
-                        OldVisualize ? nullptr : PointShadowMaps[Index];
+                    auto &PointLight = PointLights[Index];
+                    bool Visualize =
+                        VisualizePointShadowMap == PointShadowMaps[Index];
+                    bool OldVisualize = Visualize;
+                    if (Rr_UICheckbox("Visualize Shadow Map", &Visualize))
+                    {
+                        VisualizePointShadowMap =
+                            OldVisualize ? nullptr : PointShadowMaps[Index];
+                    }
+                    Rr_UIInputColor3("Color", PointLight.Color.Elements);
+                    Rr_UISliderFloat("Radius", &PointLight.Radius, 0.0f, 8.0f);
+                    Rr_UISliderFloat(
+                        "Intensity",
+                        &PointLight.Intensity,
+                        0.0f,
+                        8.0f);
+                    Rr_UISliderFloat(
+                        "Falloff",
+                        &PointLight.Falloff,
+                        0.0f,
+                        8.0f);
+                    Rr_UISliderFloat(
+                        "LightSize",
+                        &PointLight.LightSize,
+                        0.0001f,
+                        0.5f);
+                    Rr_UISliderFloat(
+                        "ConstantBias",
+                        &PointLight.ConstantBias,
+                        0.0f,
+                        1.0f);
+                    Rr_UISliderFloat(
+                        "SlopeBias",
+                        &PointLight.SlopeBias,
+                        0.0f,
+                        15.0f);
+                    Rr_UISliderFloat(
+                        "NormalBias",
+                        &PointLight.NormalBias,
+                        0.0f,
+                        1.0f);
                 }
-                Rr_UISliderFloat("Radius", &PointLight.Radius, 0.0f, 8.0f);
-                Rr_UISliderFloat(
-                    "Intensity",
-                    &PointLight.Intensity,
-                    0.0f,
-                    8.0f);
-                Rr_UISliderFloat("Falloff", &PointLight.Falloff, 0.0f, 8.0f);
-                Rr_UISliderFloat(
-                    "LightSize",
-                    &PointLight.LightSize,
-                    0.0001f,
-                    0.5f);
-                Rr_UISliderFloat(
-                    "ConstantBias",
-                    &PointLight.ConstantBias,
-                    0.0f,
-                    1.0f);
-                Rr_UISliderFloat(
-                    "SlopeBias",
-                    &PointLight.SlopeBias,
-                    0.0f,
-                    15.0f);
-                Rr_UISliderFloat(
-                    "NormalBias",
-                    &PointLight.NormalBias,
-                    0.0f,
-                    1.0f);
-            }
-        }
 
-        // if (Rr_UIFold("Spot Lights"))
-        // {
-        //     for (std::uint32_t Index = 0; Index < SpotLights.size(); ++Index)
-        //     {
-        //         // Rr_UISeparator();
-        //         auto &SpotLight = SpotLights[Index];
-        //         Rr_UIInputFloat3(
-        //             "Position",
-        //             SpotLight.Transform.Columns[3].Elements);
-        //         Rr_UISliderFloat(
-        //             "Inner Cone",
-        //             &SpotLight.InnerCone,
-        //             0.0f,
-        //             90.0f);
-        //         Rr_UISliderFloat(
-        //             "Outer Cone",
-        //             &SpotLight.OuterCone,
-        //             0.0f,
-        //             90.0f);
-        //         Rr_UISliderFloat("Intensity", &SpotLight.Intensity,
-        //         0.0f, 8.0f);
-        //         // Rr_UISliderFloat("Falloff", &SpotLight.Falloff,
-        //         0.0f, 8.0f); Rr_UISliderFloat(
-        //             "LightSize",
-        //             &SpotLight.LightSize,
-        //             0.0001f,
-        //             0.5f);
-        //         Rr_UISliderFloat(
-        //             "ConstantBias",
-        //             &SpotLight.ConstantBias,
-        //             0.0f,
-        //             1.0f);
-        //         Rr_UISliderFloat(
-        //             "SlopeBias",
-        //             &SpotLight.SlopeBias,
-        //             0.0f,
-        //             15.0f);
-        //         Rr_UISliderFloat(
-        //             "NormalBias",
-        //             &SpotLight.NormalBias,
-        //             0.0f,
-        //             1.0f);
-        //     }
-        // }
+                Rr_UIEndTree();
+            }
+
+            if (Rr_UIBeginTree("Spot Lights"))
+            {
+                for (std::uint32_t Index = 0; Index < SpotLights.size();
+                     ++Index)
+                {
+                    auto &SpotLight = SpotLights[Index];
+                    Rr_UIInputColor3("Color", SpotLight.Color.Elements);
+                    Rr_UIInputFloat3(
+                        "Position",
+                        SpotLight.Transform.Columns[3].Elements);
+                    Rr_UISliderFloat(
+                        "Inner Cone",
+                        &SpotLight.InnerCone,
+                        0.0f,
+                        90.0f);
+                    Rr_UISliderFloat(
+                        "Outer Cone",
+                        &SpotLight.OuterCone,
+                        0.0f,
+                        90.0f);
+                    Rr_UISliderFloat(
+                        "Intensity",
+                        &SpotLight.Intensity,
+                        0.0f,
+                        8.0f);
+                    Rr_UISliderFloat(
+                        "LightSize",
+                        &SpotLight.LightSize,
+                        0.0001f,
+                        0.5f);
+                    Rr_UISliderFloat(
+                        "ConstantBias",
+                        &SpotLight.ConstantBias,
+                        0.0f,
+                        1.0f);
+                    Rr_UISliderFloat(
+                        "SlopeBias",
+                        &SpotLight.SlopeBias,
+                        0.0f,
+                        15.0f);
+                    Rr_UISliderFloat(
+                        "NormalBias",
+                        &SpotLight.NormalBias,
+                        0.0f,
+                        1.0f);
+                }
+
+                Rr_UIEndTree();
+            }
+
+            Rr_UIEndTree();
+        }
     }
 
     SLighting()
@@ -1038,7 +1055,7 @@ struct SSSAO
 
     void UI()
     {
-        if (Rr_UIFold("Scalable Ambient Obscurance (SAO)"))
+        if (Rr_UIBeginTree("Scalable Ambient Obscurance (SAO)"))
         {
             Rr_UISliderFloat("Bias", &GPUUniform.Bias, 0.0, 1.0);
             Rr_UISliderFloat("Intensity", &GPUUniform.Intensity, 0.0, 1.0);
@@ -1054,6 +1071,7 @@ struct SSSAO
                 &GPUUniformBlur.Sharpness,
                 1.0f,
                 100.0f);
+            Rr_UIEndTree();
         }
     }
 
@@ -1750,8 +1768,7 @@ struct SModernRenderingApp
     void UI()
     {
         Rr_UIBeginWindow("ModernRendering.cxx", NULL, 0);
-        Rr_UIBeginTabs("Tabs");
-        if (Rr_UITab("General"))
+        if (Rr_UIBeginTree("General"))
         {
             Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
             Rr_Vec3 CameraForward = Camera.GetForwardVector();
@@ -1770,12 +1787,9 @@ struct SModernRenderingApp
                 InitPipelines();
             }
             SSAO.UI();
+            Rr_UIEndTree();
         }
-        if (Rr_UITab("Lighting"))
-        {
-            Lighting.UI();
-        }
-        Rr_UIEndTabs();
+        Lighting.UI();
         Rr_UIEndWindow();
     }
 

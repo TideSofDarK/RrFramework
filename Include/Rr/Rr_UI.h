@@ -139,6 +139,8 @@ extern Rr_UIStyle *Rr_UIGetStyle(void);
 
 extern Rr_UIColors *Rr_UIGetColors(void);
 
+extern void Rr_UIRandomizeColors(void);
+
 extern Rr_UIPrimitive Rr_UIReservePrimitive(
     size_t VertexCount,
     size_t IndexCount);
@@ -202,7 +204,13 @@ extern bool Rr_UIBeginChild(const char *Title);
 
 extern void Rr_UIEndChild(void);
 
-extern bool Rr_UIFold(const char *Title);
+extern void Rr_UISetNextTreeExpanded(void);
+
+extern void Rr_UISetNextTreeCollapsed(void);
+
+extern bool Rr_UIBeginTree(const char *Title);
+
+extern void Rr_UIEndTree(void);
 
 extern void Rr_UISeparator(void);
 

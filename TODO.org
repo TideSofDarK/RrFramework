@@ -49,6 +49,7 @@
 
 ** User Interface
 
+- [ ] Input fields with custom clip rects happen to ignore parent bounds.
 - [ ] Better tabs.
 - [X] Upgrade click system to allow double clicking titles.
       Also fix input field flicker.

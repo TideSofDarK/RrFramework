@@ -122,27 +122,35 @@ typedef enum
     RR_UI_CLICK_TYPE_DRAG_RELAXED, /* Only triggers on move. */
 } Rr_UIClickType;
 
+typedef struct Rr_UITree Rr_UITree;
+struct Rr_UITree
+{
+    Rr_Vec2 ParentPoint;
+};
+
 typedef struct Rr_UILayout Rr_UILayout;
 struct Rr_UILayout
 {
     Rr_UIWindow *Window;
 
     Rr_Rect Rect;
+
+    Rr_Vec2 CursorStart;
     Rr_Vec2 Cursor;
-    uint32_t AdvanceCount;
+    float TotalAvailableContentsWidth;
+    float HorizontalX;
+    Rr_Vec2 HorizontalMaxExtent;
+    bool NextAdvanceFlexible;
+
+    RR_ARRAY(Rr_UITree) TreeStack;
+    int32_t TreeDepth;
+    int32_t TreeExpandCollapseDepth;
 
     Rr_Vec2 ReservedExtent;
 
     bool WasCollapsed;
 
-    bool NextAdvanceFlexible;
-
-    float HorizontalX;
-    Rr_Vec2 HorizontalMaxExtent;
-
     Rr_Vec2 ContentsPadding;
-
-    float AvailableContentsWidth;
 
     bool MouseInsideClipRect;
 
@@ -161,6 +169,8 @@ struct Rr_UILayout
     bool LockExtent;
 
     Rr_UILayout *TopLevelParent;
+
+    uint32_t AdvanceCount;
 
     Rr_UILayout *Previous;
 };
@@ -262,6 +272,8 @@ struct Rr_UIContext
     Rr_Vec2 ButtonPadding;
     float BevelThickness;
     Rr_Vec2 InputFieldPadding;
+    float TopLevelTreeOffset;
+    float TreeOffset;
 
     RR_ARRAY(Rr_UIVertex) Vertices;
     RR_ARRAY(Rr_UIIndex) Indices;
@@ -330,6 +342,8 @@ struct Rr_UIFont
     Rr_Image2D *Image;
     size_t RangeCount;
     Rr_UIFontRange *Ranges;
+    float Ascent;
+    float Descent;
 };
 
 static inline Rr_UIGlyph *Rr_UIGetGlyphForCodepoint(
@@ -476,6 +490,9 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     float Ascent = (float)UnscaledAscent * FontScale;
     float Descent = (float)UnscaledDescent * FontScale;
     float LineGap = (float)UnscaledLineGap * FontScale;
+
+    Font->Ascent = Ascent;
+    Font->Descent = Descent;
 
     for (size_t Index = 0; Index < RangeCount; ++Index)
     {
@@ -675,22 +692,21 @@ static inline Rr_UILayout *Rr_UIPushLayout(
     Rr_UIWindow *Window,
     Rr_Vec2 ContentsPadding)
 {
-    /* TODO: Sort these. */
     Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
     *Layout = (Rr_UILayout){
-        .WasCollapsed = Window->Collapsed,
         .Window = Window,
+        .Rect = Window->Rect,
+        .Cursor = Window->Rect.Offset,
+        .TotalAvailableContentsWidth = Window->Rect.Extent.Width,
+        .WasCollapsed = Window->Collapsed,
         .HorizontalX = INFINITY,
+        .ContentsPadding = ContentsPadding,
         .DeferredWindowOffset = Rr_V2F(INFINITY),
         .DeferredWindowExtent = Rr_V2F(INFINITY),
         .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
-        .ContentsPadding = ContentsPadding,
         .TopLevelParent =
             Window->Child ? gUIContext->LayoutStack->TopLevelParent : Layout,
-        .Cursor = Window->Rect.Offset,
-        .AvailableContentsWidth = Window->Rect.Extent.Width,
         .Previous = gUIContext->LayoutStack,
-        .Rect = Window->Rect,
     };
     gUIContext->LayoutStack = Layout;
     Rr_UIPushIDHash(Hash);
@@ -708,6 +724,12 @@ static inline Rr_UIWindow *Rr_UICurrentWindow(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     return Layout ? Layout->Window : NULL;
+}
+
+static inline float Rr_UIGetAvailableContentsWidth(Rr_UILayout *Layout)
+{
+    return Layout->TotalAvailableContentsWidth -
+           (Layout->Cursor.X - Layout->CursorStart.X);
 }
 
 static inline bool Rr_UIIsHorizontal(void)
@@ -2078,7 +2100,7 @@ static inline Rr_UIClickResult Rr_UIClickEx(
 
             gUIContext->DragConsumed = true;
 
-            ClickResult.Held = true;
+            ClickResult.Held = Contains;
         }
     }
 
@@ -2720,6 +2742,18 @@ Rr_UIColors *Rr_UIGetColors(void)
     return &gUIContext->Colors;
 }
 
+void Rr_UIRandomizeColors(void)
+{
+    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
+    Rr_Vec4 *Colors = (Rr_Vec4 *)Rr_UIGetColors();
+    for (size_t Index = 0; Index < ColorCount; ++Index)
+    {
+        Colors[Index].R = (float)rand() / (float)RAND_MAX;
+        Colors[Index].G = (float)rand() / (float)RAND_MAX;
+        Colors[Index].B = (float)rand() / (float)RAND_MAX;
+    }
+}
+
 void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places)
 {
     *RR_PUSH_INTO_ARRAY(
@@ -2950,7 +2984,8 @@ static inline bool Rr_UIBeginWindowEx(
     {
         if (Window->Child)
         {
-            Layout->Rect.Extent.X = ParentLayout->AvailableContentsWidth;
+            Layout->Rect.Extent.X =
+                Rr_UIGetAvailableContentsWidth(ParentLayout);
         }
         else
         {
@@ -2972,7 +3007,7 @@ static inline bool Rr_UIBeginWindowEx(
         }
     }
 
-    Layout->AvailableContentsWidth = Layout->Rect.Extent.X;
+    Layout->TotalAvailableContentsWidth = Layout->Rect.Extent.X;
 
     /* Calculate total and visible extents. */
 
@@ -3038,7 +3073,7 @@ static inline bool Rr_UIBeginWindowEx(
         if (VerticalScrollbarAdded ||
             (Layout->DeferredAutoResize && Window->SkipThisFrame))
         {
-            Layout->AvailableContentsWidth -= gUIContext->ScrollbarWidth;
+            Layout->TotalAvailableContentsWidth -= gUIContext->ScrollbarWidth;
         };
         Window->VScroll = Rr_Damp(
             Window->VScroll,
@@ -3056,7 +3091,7 @@ static inline bool Rr_UIBeginWindowEx(
         Rr_UIAddResizeHandle(Layout);
     }
 
-    Layout->AvailableContentsWidth -= Layout->ContentsPadding.X * 2.0f;
+    Layout->TotalAvailableContentsWidth -= Layout->ContentsPadding.X * 2.0f;
     Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->ContentsPadding);
 
     Rr_UIEndClipRect();
@@ -3078,7 +3113,9 @@ static inline bool Rr_UIBeginWindowEx(
                                    : &gUIContext->Colors.Background;
     Rr_UIDrawSolidQuad(&ContentsAreaRect, BackgroundColor);
 
-    Window->ContentsStart = Window->ContentsEnd = Layout->Cursor;
+    Window->ContentsStart = Layout->Cursor;
+    Window->ContentsEnd = Layout->Cursor;
+    Layout->CursorStart = Layout->Cursor;
 
     return true;
 }
@@ -3531,7 +3568,7 @@ static inline float Rr_UISetupFlexibleWidget(
     }
     else
     {
-        DesiredWidgetWidth = Layout->AvailableContentsWidth -
+        DesiredWidgetWidth = Rr_UIGetAvailableContentsWidth(Layout) -
                              Window->MaxFlexibleWidgetTitleWidth -
                              gUIContext->FlexibleTitleMargin;
     }
@@ -3561,7 +3598,7 @@ void Rr_UIBeginTabs(const char *Title)
     Layout->TabCursor = Layout->Cursor;
 
     Rr_Vec2 SeparatorSize = {
-        Layout->AvailableContentsWidth,
+        Layout->TotalAvailableContentsWidth,
         gUIContext->FrameThickness,
     };
     Rr_Vec2 SeparatorPosition = {
@@ -3682,49 +3719,121 @@ void Rr_UIEndTabs(void)
         RR_MAX(Layout->Window->ContentsEnd.X, Layout->TabCursor.X);
 }
 
-bool Rr_UIFold(const char *Title)
+void Rr_UISetNextTreeExpanded(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Layout->TreeExpandCollapseDepth = INT32_MAX - 1;
+}
+
+void Rr_UISetNextTreeCollapsed(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Layout->TreeExpandCollapseDepth = INT32_MIN + 1;
+}
+
+static inline float Rr_UIGetOffsetForTreeDepth(int32_t Depth)
+{
+    return gUIContext->TopLevelTreeOffset +
+           (float)(Depth - 1) * gUIContext->TreeOffset;
+}
+
+bool Rr_UIBeginTree(const char *Title)
 {
     Rr_UIAssertWindow();
     assert(
-        Rr_UIIsHorizontal() == false && "Folds can't be aligned horizontally!");
+        Rr_UIIsHorizontal() == false && "Trees can't be aligned horizontally!");
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
+    int32_t CurrentDepth = Layout->TreeDepth;
+    bool TopLevel = CurrentDepth == 0;
+
+    Rr_UIPrimitive BevelPrimitive;
+    if (TopLevel)
+    {
+        BevelPrimitive = Rr_UIReserveBevel();
+    }
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    bool **FoldValueRef =
+    bool **ExpandedRef =
         RR_GET_MAP_VALUE(&Window->WidgetMap, TitleHash, gUIContext->Arena);
-    bool *FoldValue = *FoldValueRef;
-    if (*FoldValueRef == NULL)
+    bool *Expanded = *ExpandedRef;
+    if (*ExpandedRef == NULL)
     {
-        FoldValue = RR_ALLOC_TYPE(gUIContext->Arena, bool);
-        *FoldValueRef = FoldValue;
+        Expanded = RR_ALLOC_TYPE(gUIContext->Arena, bool);
+        *ExpandedRef = Expanded;
     }
+    bool WasExpanded = *Expanded;
 
-    float FoldButtonHeight = gUIContext->TitleHeight;
+    float TreeButtonHeight =
+        TopLevel ? gUIContext->TitleHeight : gUIContext->LineHeight;
 
-    float TriangleSize = FoldButtonHeight * 0.3f;
-    float TriangleOffset = TriangleSize * 0.5f;
+    float TreeOffset =
+        TopLevel ? gUIContext->TopLevelTreeOffset : gUIContext->TreeOffset;
+
+    float TriangleSize =
+        (gUIContext->TreeOffset - gUIContext->ButtonPadding.X) * 0.6f;
+    float TriangleOffset = TopLevel ? gUIContext->ButtonPadding.X : 0.0f;
     Rr_Vec2 TriangleCenter = Rr_V2(
-        Layout->Cursor.X + TriangleOffset + gUIContext->TitlePadding.Width,
-        Layout->Cursor.Y + FoldButtonHeight * 0.5f);
+        Layout->Cursor.X + TriangleOffset + TriangleSize,
+        Layout->Cursor.Y + TreeButtonHeight * 0.5f);
 
     Rr_UIDrawFitTriangleFilled(
         TriangleCenter,
         TriangleSize,
-        *FoldValue ? RR_ANGLE_DEG(90.0f) : 0.0f,
+        WasExpanded ? RR_ANGLE_DEG(90.0f) : 0.0f,
         &gUIContext->Colors.Foreground);
 
-    Rr_Vec2 TitlePosition = Rr_AddV2(
-        Rr_V2(
-            Layout->Cursor.X + TriangleSize + gUIContext->ButtonPadding.Width,
-            Layout->Cursor.Y),
-        gUIContext->TitlePadding);
-    Rr_UIDrawText(
+    if (!TopLevel)
+    {
+        Rr_UITree *ParentTree = &RR_LAST_ARRAY_ELEMENT(&Layout->TreeStack);
+
+        Rr_Vec2 RectOffset = ParentTree->ParentPoint;
+        RectOffset.X -= gUIContext->FrameThickness;
+        if (CurrentDepth == 1)
+        {
+            RectOffset.Y += gUIContext->TitleHeight * 0.75f;
+        }
+        else
+        {
+            RectOffset.Y += TriangleSize;
+        }
+        Rr_Vec2 RectExtent = { gUIContext->FrameThickness,
+                               TriangleCenter.Y - ParentTree->ParentPoint.Y };
+        if (CurrentDepth == 1)
+        {
+            RectExtent.Y -= gUIContext->TitleHeight * 0.75f;
+        }
+        else
+        {
+            RectExtent.Y -= TriangleSize;
+        }
+        Rr_UIDrawSolidQuad(
+            &(Rr_Rect){ RectOffset, RectExtent },
+            &gUIContext->Colors.ForegroundDimmed);
+
+        RectOffset = ParentTree->ParentPoint;
+        RectOffset.X -= gUIContext->FrameThickness;
+        RectOffset.Y += TriangleCenter.Y - ParentTree->ParentPoint.Y;
+        RectExtent = (Rr_Vec2){ TriangleCenter.X - ParentTree->ParentPoint.X,
+                                gUIContext->FrameThickness };
+        RectExtent.X -= TriangleSize;
+
+        Rr_UIDrawSolidQuad(
+            &(Rr_Rect){ RectOffset, RectExtent },
+            &gUIContext->Colors.ForegroundDimmed);
+    }
+
+    Rr_Vec2 TitlePosition =
+        Rr_V2(Layout->Cursor.X + TreeOffset, Layout->Cursor.Y);
+    if (TopLevel)
+    {
+        TitlePosition.Y += gUIContext->ButtonPadding.Y;
+    }
+    Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
         TitlePosition,
         TitleLength,
@@ -3733,48 +3842,100 @@ bool Rr_UIFold(const char *Title)
         &gUIContext->Colors.Foreground,
         0);
 
-    Rr_Vec2 TotalExtent =
-        Rr_V2(Layout->AvailableContentsWidth, FoldButtonHeight);
-
-    Rr_UIClickResult ClickResult = Rr_UIClickSimple(
-        Layout,
-        &(Rr_Rect){
-            Layout->Cursor,
-            TotalExtent,
-        },
-        TitleHash);
-
-    if (ClickResult.ClickCount)
-    {
-        *FoldValue = !*FoldValue;
-    }
+    Rr_Vec2 TotalExtent;
+    TotalExtent.X = TitleSize.X + TreeOffset;
+    TotalExtent.Y = TreeButtonHeight;
 
     Rr_Rect ButtonRect = {
         Layout->Cursor,
         TotalExtent,
     };
-    Rr_UIBevel(
-        BevelPrimitive,
-        &ButtonRect,
-        &gUIContext->Colors.TitleBackground,
-        ClickResult.Held);
+
+    if (TopLevel)
+    {
+        ButtonRect.Extent.X = Layout->TotalAvailableContentsWidth;
+    }
+
+    Rr_UIClickResult ClickResult =
+        Rr_UIClickSimple(Layout, &ButtonRect, TitleHash);
+
+    if (ClickResult.ClickCount)
+    {
+        *Expanded = !*Expanded;
+    }
+
+    if (TopLevel)
+    {
+        ButtonRect.Extent.X = Layout->TotalAvailableContentsWidth;
+        Rr_UIBevel(
+            BevelPrimitive,
+            &ButtonRect,
+            ClickResult.Held ? &gUIContext->Colors.ButtonHeld
+                             : &gUIContext->Colors.ButtonNormal,
+            ClickResult.Held);
+    }
 
     Rr_UIAdvance(TotalExtent);
 
-    return *FoldValue;
+    if (Layout->TreeExpandCollapseDepth > 0 &&
+        Layout->TreeDepth < Layout->TreeExpandCollapseDepth)
+    {
+        *Expanded = true;
+    }
+    else if (
+        Layout->TreeExpandCollapseDepth < 0 &&
+        Layout->TreeDepth < -Layout->TreeExpandCollapseDepth)
+    {
+        *Expanded = false;
+    }
+
+    if (WasExpanded || *Expanded)
+    {
+        Layout->TreeDepth++;
+        Layout->Cursor.X = Layout->CursorStart.X +
+                           Rr_UIGetOffsetForTreeDepth(Layout->TreeDepth);
+
+        Rr_UIPushIDHash(TitleHash);
+
+        *RR_PUSH_INTO_ARRAY(&Layout->TreeStack, gUIContext->FrameArena) =
+            (Rr_UITree){
+                .ParentPoint = TriangleCenter,
+            };
+    }
+
+    return WasExpanded || *Expanded;
+}
+
+void Rr_UIEndTree(void)
+{
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    assert(Layout->TreeDepth > 0 && "Did you forget to call Rr_BeginTree()?");
+
+    RR_UNUSED(RR_POP_FROM_ARRAY(&Layout->TreeStack));
+
+    float TreeOffset = gUIContext->LineHeight;
+    Layout->TreeDepth--;
+    Layout->Cursor.X =
+        Layout->CursorStart.X + Rr_UIGetOffsetForTreeDepth(Layout->TreeDepth);
+
+    if (Layout->TreeDepth == 0)
+    {
+        Layout->TreeExpandCollapseDepth = 0;
+        Layout->Cursor.X = Layout->CursorStart.X;
+    }
+
+    Rr_UIPopID();
 }
 
 void Rr_UISeparator(void)
 {
-    /* TODO: Horizontal support. */
     Rr_UIAssertWindow();
-    assert(Rr_UIIsHorizontal() == false);
-
     Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIAssertNoHorizontal(Layout);
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_Vec2 Size = {
-        Layout->AvailableContentsWidth,
+        Layout->TotalAvailableContentsWidth,
         gUIContext->FrameThickness,
     };
     Rr_Vec2 Position = {
@@ -3800,7 +3961,7 @@ void Rr_UITextEx(const char *Text, Rr_UITextFlags Flags)
         Layout->Cursor,
         SIZE_MAX,
         Text,
-        Layout->AvailableContentsWidth,
+        Rr_UIGetAvailableContentsWidth(Layout),
         &gUIContext->Colors.Foreground,
         Flags);
 
@@ -3933,8 +4094,9 @@ bool Rr_UIButton(const char *Text)
     Rr_UIBevel(
         Primitive,
         &ButtonRect,
-        &gUIContext->Colors.ButtonNormal,
-        ClickResult.Held && ClickResult.Hovered);
+        ClickResult.Held ? &gUIContext->Colors.ButtonHeld
+                         : &gUIContext->Colors.ButtonNormal,
+        ClickResult.Held);
 
     Rr_UIAdvance(ButtonSize);
 
@@ -3994,18 +4156,19 @@ bool Rr_UIRadioButton(
     Rr_Vec2 CircleOffset =
         Rr_V2(Cursor.X + OuterRadius, Cursor.Y + ButtonSize * 0.5f);
 
-    Rr_UIDrawCircleFilled(
-        CircleOffset,
-        OuterRadius,
-        &gUIContext->Colors.ButtonNormal);
-    if (ClickResult.Hovered && ClickResult.Held)
-    {
-        Rr_UIDrawCircleFilled(
-            CircleOffset,
-            InnerRadiusHeld,
-            &gUIContext->Colors.Foreground);
-    }
-    else if (Selected)
+    Rr_Vec4 BaseColor = ClickResult.Held ? gUIContext->Colors.ButtonHeld
+                                         : gUIContext->Colors.ButtonNormal;
+
+    Rr_UIDrawCircleFilled(CircleOffset, OuterRadius, &BaseColor);
+    /* if (ClickResult.Held) */
+    /* { */
+    /*     Rr_UIDrawCircleFilled( */
+    /*         CircleOffset, */
+    /*         InnerRadiusHeld, */
+    /*         &gUIContext->Colors.Foreground); */
+    /* } */
+    /* else */
+    if (Selected)
     {
         Rr_UIDrawCircleFilled(
             CircleOffset,
@@ -4013,10 +4176,10 @@ bool Rr_UIRadioButton(
             &gUIContext->Colors.Foreground);
     }
 
-    Rr_Vec4 OutlineColor = gUIContext->Colors.ButtonNormal;
-    OutlineColor.XYZ = Rr_MulV3F(
-        OutlineColor.XYZ,
-        1.0f + gUIContext->Style.BevelIntensityLight);
+    Rr_Vec4 OutlineColor;
+    OutlineColor.XYZ =
+        Rr_MulV3F(BaseColor.XYZ, 1.0f + gUIContext->Style.BevelIntensityLight);
+    OutlineColor.A = 1.0f;
     Rr_UIDrawCircle(
         CircleOffset,
         OuterRadius - OutlineThickness,
@@ -4075,10 +4238,9 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     };
     Rr_UIDrawBevel(
         &CheckboxRect,
-        ClickResult.Held && ClickResult.Hovered
-            ? &gUIContext->Colors.InputFieldActive
-            : &gUIContext->Colors.InputFieldNormal,
-        ClickResult.Held && ClickResult.Hovered);
+        ClickResult.Held ? &gUIContext->Colors.ButtonHeld
+                         : &gUIContext->Colors.ButtonNormal,
+        ClickResult.Held);
 
     if (*Checked)
     {
@@ -6061,13 +6223,23 @@ bool Rr_UICombobox(
         ButtonPosition,
         ButtonExtent,
     };
-    Rr_Vec4 BackgroundColor = gUIContext->Colors.Background;
-    BackgroundColor.XYZ = Rr_MulV3F(BackgroundColor.XYZ, 0.9f);
+
+    Rr_Vec4 *SelectedOptionBackground;
+    if (PopupOpen)
+    {
+        SelectedOptionBackground = &gUIContext->Colors.InputFieldActive;
+    }
+    else
+    {
+        SelectedOptionBackground = ClickResult.Held
+                                       ? &gUIContext->Colors.InputFieldActive
+                                       : &gUIContext->Colors.InputFieldNormal;
+    }
 
     Rr_UIBevel(
         Primitive,
         &ButtonRect,
-        &gUIContext->Colors.InputFieldNormal,
+        SelectedOptionBackground,
         ClickResult.Held);
 
     /* Add handle. */
@@ -6078,7 +6250,8 @@ bool Rr_UICombobox(
 
         Rr_UIDrawBevel(
             &HandleRect,
-            &gUIContext->Colors.ButtonNormal,
+            ClickResult.Held ? &gUIContext->Colors.ButtonHeld
+                             : &gUIContext->Colors.ButtonNormal,
             ClickResult.Held);
 
         Rr_Vec2 TriangleCenter = Rr_RectCenter(&HandleRect);
@@ -6406,9 +6579,9 @@ void Rr_InitUI(void)
         .ScrollbarNormal = { 0.292805f, 0.334535f, 0.363504f, 1.000000f },
         .ScrollbarHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
         .ScrollbarHeld = { 0.254856f, 0.342832f, 0.400486f, 1.000000f },
-        .ButtonNormal = { 0.165679f, 0.361108f, 0.488889f, 1.000000f },
+        .ButtonNormal = { 0.182623f, 0.277109f, 0.338889f, 1.000000f },
         .ButtonHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
-        .ButtonHeld = { 0.254856f, 0.342832f, 0.400486f, 1.000000f },
+        .ButtonHeld = { 0.168210f, 0.404396f, 0.555556f, 1.000000f },
         .ButtonDisabled = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
         .InputFieldNormal = { 0.089074f, 0.160347f, 0.216667f, 1.000000f },
         .InputFieldActive = { 0.070324f, 0.252329f, 0.408333f, 1.000000f },
@@ -6669,6 +6842,10 @@ static inline void Rr_UIConsumeNextFontSize(void)
     gUIContext->MinWindowSize = gUIContext->MinWindowSizeNoTitle;
     gUIContext->MinWindowSize.Y += gUIContext->TitleHeight;
     gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
+
+    gUIContext->TopLevelTreeOffset =
+        gUIContext->ContentsPadding.X * 2.0f + gUIContext->ButtonPadding.X;
+    gUIContext->TreeOffset = gUIContext->ContentsPadding.X * 2.0f;
 }
 
 void Rr_NewUIFrame(void)
