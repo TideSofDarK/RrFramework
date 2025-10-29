@@ -863,8 +863,6 @@ struct SLighting
                 Rr_UIEndTree();
             }
 
-            Rr_UIText("sadfsdfsdfsd");
-
             if (Rr_UIBeginTree("Spot Lights"))
             {
                 for (std::uint32_t Index = 0; Index < SpotLights.size();

@@ -65,7 +65,8 @@ typedef struct Rr_UIStyle Rr_UIStyle;
 struct Rr_UIStyle
 {
     Rr_Vec2 TitlePadding;
-    Rr_Vec2 ContentsPadding;
+    Rr_Vec2 WindowPadding;
+    Rr_Vec2 ContentsMargin;
     float ComponentMargin;
     float FlexibleTitleMargin;
     float BevelIntensityLight;
@@ -179,6 +180,14 @@ extern void Rr_UIPushID(const char *IDString);
 
 extern void Rr_UIPopID(void);
 
+extern void Rr_UIPushWindowPadding(Rr_Vec2 WindowPadding);
+
+extern void Rr_UIPopWindowPadding(void);
+
+extern void Rr_UIPushContentsMargin(Rr_Vec2 ContentsMargin);
+
+extern void Rr_UIPopContentsMargin(void);
+
 extern void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
 
 extern void Rr_UIPopFormatFloatDecimalPlaces(void);
@@ -188,8 +197,6 @@ extern void Rr_UISetNextWindowOffset(Rr_Vec2 Offset);
 extern void Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset);
 
 extern void Rr_UISetNextWindowExtent(Rr_Vec2 Extent);
-
-extern void Rr_UISetNextWindowPadding(Rr_Vec2 Padding);
 
 extern void Rr_UISetNextWindowCreateCollapsed(bool Collapsed);
 
@@ -211,6 +218,10 @@ extern void Rr_UISetNextTreeCollapsed(void);
 extern bool Rr_UIBeginTree(const char *Title);
 
 extern void Rr_UIEndTree(void);
+
+extern void Rr_UIPushWidgetExtent(Rr_Vec2 Extent);
+
+extern void Rr_UIPopWidgetExtent(void);
 
 extern void Rr_UISeparator(void);
 

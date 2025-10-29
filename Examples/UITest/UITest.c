@@ -59,9 +59,11 @@ static void StyleEditorWindow()
         Rr_UIPushFormatFloatDecimalPlaces(4);
         UpdateFontSize |=
             Rr_UIInputFloat2("Title Padding", Style->TitlePadding.Elements);
+        UpdateFontSize |=
+            Rr_UIInputFloat2("Window Padding", Style->WindowPadding.Elements);
         UpdateFontSize |= Rr_UIInputFloat2(
-            "Contents Padding",
-            Style->ContentsPadding.Elements);
+            "Contents Margin",
+            Style->ContentsMargin.Elements);
         UpdateFontSize |=
             Rr_UIInputFloat("Component Margin", &Style->ComponentMargin);
         UpdateFontSize |= Rr_UIInputFloat(
@@ -316,6 +318,21 @@ static void Iterate(void)
             {
                 TextInputWindowOpen = true;
             }
+
+            Rr_UIBeginHorizontal();
+            Rr_UIPushContentsMargin(Rr_V2F(0.0f));
+            Rr_UIPushWidgetExtent(Rr_V2F(30.0f));
+            Rr_UIButton("X");
+            Rr_UIButton("Y");
+            Rr_UIButton("Z");
+            Rr_UIEndHorizontal();
+            Rr_UIBeginHorizontal();
+            Rr_UIButton("U");
+            Rr_UIButton("V");
+            Rr_UIButton("W");
+            Rr_UIPopWidgetExtent();
+            Rr_UIPopContentsMargin();
+            Rr_UIEndHorizontal();
 
             Rr_UIBeginHorizontal();
             static int32_t SelectedRadioButton = 0;

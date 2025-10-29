@@ -49,8 +49,8 @@
 
 ** User Interface
 
-- [ ] Separate window/contens padding.
-- [ ] Auto resize ignores title width.
+- [X] Separate window/contens padding.
+- [X] Auto resize ignores title width.
 - [ ] Input fields with custom clip rects happen to ignore parent bounds.
 - [ ] Better tabs.
 - [X] Upgrade click system to allow double clicking titles.

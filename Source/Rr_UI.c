@@ -132,6 +132,8 @@ struct Rr_UILayout
 {
     Rr_UIWindow *Window;
 
+    Rr_Vec2 WindowPadding;
+
     /* TODO: Seems useless. */
     Rr_Rect Rect;
 
@@ -148,8 +150,6 @@ struct Rr_UILayout
     Rr_Vec2 ReservedExtent;
 
     bool WasCollapsed;
-
-    Rr_Vec2 ContentsPadding;
 
     bool MouseInsideClipRect;
 
@@ -206,6 +206,9 @@ struct Rr_UIContext
 
     Rr_UILayout *LayoutStack;
     RR_ARRAY(Rr_UIHash) HashStack;
+    RR_ARRAY(Rr_Vec2) WindowPaddingStack;
+    RR_ARRAY(Rr_Vec2) ContentsMarginStack;
+    RR_ARRAY(Rr_Vec2) WidgetExtentStack;
     RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
     Rr_Vec2 NextWindowExtent;
@@ -258,7 +261,8 @@ struct Rr_UIContext
     float NextFontSize;
 
     float LineHeight;
-    Rr_Vec2 ContentsPadding;
+    Rr_Vec2 WindowPadding;
+    Rr_Vec2 ContentsMargin;
     float ComponentMargin;
     float FlexibleTitleMargin;
     Rr_Vec2 MinWindowSize;
@@ -667,7 +671,7 @@ static inline Rr_UIHash Rr_UIGetTitleHash(
 
 static inline void Rr_UIPushIDHash(Rr_UIHash Hash)
 {
-    *RR_PUSH_INTO_ARRAY(&gUIContext->HashStack, gUIContext->Arena) = Hash;
+    *RR_PUSH_INTO_ARRAY(&gUIContext->HashStack, gUIContext->FrameArena) = Hash;
 }
 
 void Rr_UIPushID(const char *IDString)
@@ -684,25 +688,60 @@ void Rr_UIPopID(void)
     RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->HashStack));
 }
 
+static inline Rr_Vec2 Rr_UICurrentWindowPadding(void)
+{
+    return gUIContext->WindowPaddingStack.Count
+               ? RR_LAST_ARRAY_ELEMENT(&gUIContext->WindowPaddingStack)
+               : gUIContext->WindowPadding;
+}
+
+void Rr_UIPushWindowPadding(Rr_Vec2 WindowPadding)
+{
+    *RR_PUSH_INTO_ARRAY(
+        &gUIContext->WindowPaddingStack,
+        gUIContext->FrameArena) = WindowPadding;
+}
+
+void Rr_UIPopWindowPadding(void)
+{
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->WindowPaddingStack));
+}
+
+static inline Rr_Vec2 Rr_UICurrentContentsMargin(void)
+{
+    return gUIContext->ContentsMarginStack.Count
+               ? RR_LAST_ARRAY_ELEMENT(&gUIContext->ContentsMarginStack)
+               : gUIContext->ContentsMargin;
+}
+
+void Rr_UIPushContentsMargin(Rr_Vec2 ContentsMargin)
+{
+    *RR_PUSH_INTO_ARRAY(
+        &gUIContext->ContentsMarginStack,
+        gUIContext->FrameArena) = ContentsMargin;
+}
+
+void Rr_UIPopContentsMargin(void)
+{
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->ContentsMarginStack));
+}
+
 static inline Rr_UILayout *Rr_UICurrentLayout(void)
 {
     return gUIContext->LayoutStack;
 }
 
-static inline Rr_UILayout *Rr_UIPushLayout(
-    Rr_UIHash Hash,
-    Rr_UIWindow *Window,
-    Rr_Vec2 ContentsPadding)
+static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
 {
     Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
     *Layout = (Rr_UILayout){
         .Window = Window,
+        .WindowPadding = Rr_UICurrentWindowPadding(),
         .Rect = Window->Rect,
         .Cursor = Window->Rect.Offset,
         .TotalAvailableContentsWidth = Window->Rect.Extent.Width,
         .WasCollapsed = Window->Collapsed,
         .HorizontalX = INFINITY,
-        .ContentsPadding = ContentsPadding,
         .DeferredWindowOffset = Rr_V2F(INFINITY),
         .DeferredWindowExtent = Rr_V2F(INFINITY),
         .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
@@ -2305,6 +2344,7 @@ void Rr_UIAdvance(Rr_Vec2 Size)
     /* TODO: Can contents be updated later when ending the window? */
 
     Rr_Rect *ContentsRect = &Layout->DeferredContentsRect;
+    Rr_Vec2 ContentsMargin = Rr_UICurrentContentsMargin();
 
     if (Rr_UIIsHorizontal())
     {
@@ -2314,15 +2354,15 @@ void Rr_UIAdvance(Rr_Vec2 Size)
             Layout->HorizontalMaxExtent.X,
             Layout->Cursor.X + Size.X - Layout->HorizontalX);
 
-        Layout->Cursor.X += Size.X + Layout->ContentsPadding.X;
+        Layout->Cursor.X += Size.X + ContentsMargin.X;
     }
     else
     {
-        Layout->Cursor.Y += Size.Y + Layout->ContentsPadding.Y;
-
         ContentsRect->Extent.Y = RR_MAX(
             ContentsRect->Extent.Y,
-            Layout->Cursor.Y - ContentsRect->Offset.Y);
+            Layout->Cursor.Y + Size.Y - ContentsRect->Offset.Y);
+
+        Layout->Cursor.Y += Size.Y + ContentsMargin.Y;
 
         float TotalWidth = (Layout->Cursor.X - ContentsRect->Offset.X) + Size.X;
         ContentsRect->Extent.X = RR_MAX(ContentsRect->Extent.X, TotalWidth);
@@ -2579,25 +2619,25 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
     if (Rr_UIWindowHasTitle(Window))
     {
         Rect.Offset.Y += gUIContext->TitleHeight;
-        Rect.Extent.Height -= gUIContext->TitleHeight;
+        Rect.Extent.Y -= gUIContext->TitleHeight;
     }
 
     if (!Layout->DeferredAutoResize)
     {
         float ContentsHeight = Window->ContentsRect.Extent.Y;
-        ContentsHeight += gUIContext->ContentsPadding.Height;
+        ContentsHeight += Layout->WindowPadding.Y;
         if (ContentsHeight == 0.0f)
         {
             return Rect;
         }
-        float FillRatio = ContentsHeight / Rect.Extent.Height;
+        float FillRatio = ContentsHeight / Rect.Extent.Y;
         if (OutFillRatio)
         {
             *OutFillRatio = FillRatio;
         }
         if (!Rr_UIWindowNoVerticalScrollbar(Window) && FillRatio > 1.0f)
         {
-            Rect.Extent.Width -= gUIContext->ScrollbarWidth;
+            Rect.Extent.X -= gUIContext->ScrollbarWidth;
         }
     }
 
@@ -2616,17 +2656,16 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
     {
         return false;
     }
-    ContentsHeight += Layout->ContentsPadding.Height;
-    float FillRatio = ContentsAreaRect.Extent.Height / ContentsHeight;
-    float MaxYScroll =
-        RR_MAX(0.0f, ContentsHeight - ContentsAreaRect.Extent.Height);
+    ContentsHeight += Layout->WindowPadding.Y;
+    float FillRatio = ContentsAreaRect.Extent.Y / ContentsHeight;
+    float MaxYScroll = RR_MAX(0.0f, ContentsHeight - ContentsAreaRect.Extent.Y);
 
     if (FillRatio < 1.0f)
     {
         Rr_Vec2 ScrollbarPosition = ContentsAreaRect.Offset;
-        ScrollbarPosition.X += ContentsAreaRect.Extent.Width;
+        ScrollbarPosition.X += ContentsAreaRect.Extent.X;
         Rr_Vec2 ScrollbarSize = { gUIContext->ScrollbarWidth,
-                                  ContentsAreaRect.Extent.Height };
+                                  ContentsAreaRect.Extent.Y };
         Rr_UIDrawSolidQuad(
             &(Rr_Rect){
                 ScrollbarPosition,
@@ -2641,20 +2680,19 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
         Rr_Vec2 ScrollbarHandlePosition = ScrollbarPosition;
         Rr_Vec2 ScrollbarHandleSize = ScrollbarSize;
         ScrollbarHandlePosition.X += ScrollbarHandleOffset;
-        ScrollbarHandleSize.Width = gUIContext->ScrollbarHandleWidth;
-        ScrollbarHandleSize.Height *= FillRatio;
+        ScrollbarHandleSize.X = gUIContext->ScrollbarHandleWidth;
+        ScrollbarHandleSize.Y *= FillRatio;
 
-        float ScrollbarHandleHeightUnpadded = ScrollbarHandleSize.Height;
+        float ScrollbarHandleHeightUnpadded = ScrollbarHandleSize.Y;
 
         ScrollbarHandlePosition.Y += roundf(Window->VScroll * FillRatio);
 
         /* Vertical margins. */
 
         ScrollbarHandlePosition.Y += ScrollbarHandleOffset;
-        ScrollbarHandleSize.Height -= ScrollbarHandleOffset * 2.0f;
-        ScrollbarHandleSize.Height = RR_MAX(
-            ScrollbarHandleSize.Height,
-            gUIContext->BevelThickness * 3.0f);
+        ScrollbarHandleSize.Y -= ScrollbarHandleOffset * 2.0f;
+        ScrollbarHandleSize.Y =
+            RR_MAX(ScrollbarHandleSize.Y, gUIContext->BevelThickness * 3.0f);
 
         /* This cuts a bix of height from the scrollbar hitbox so the resize
          * handle is always on top. */
@@ -2758,7 +2796,7 @@ void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places)
 {
     *RR_PUSH_INTO_ARRAY(
         &gUIContext->FormatFloatDecimalPlacesStack,
-        gUIContext->Arena) = Places;
+        gUIContext->FrameArena) = Places;
 }
 
 void Rr_UIPopFormatFloatDecimalPlaces(void)
@@ -2860,27 +2898,6 @@ static inline bool Rr_UIConsumeNextWindowExtent(Rr_UIWindow *Window)
     return false;
 }
 
-void Rr_UISetNextWindowPadding(Rr_Vec2 Padding)
-{
-    gUIContext->NextWindowPadding = Padding;
-}
-
-static inline Rr_Vec2 Rr_UIConsumeNextWindowPadding(void)
-{
-    Rr_Vec2 ContentsPadding;
-    if (gUIContext->NextWindowPadding.Width != INFINITY &&
-        gUIContext->NextWindowPadding.Height != INFINITY)
-    {
-        ContentsPadding = gUIContext->NextWindowPadding;
-        gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
-    }
-    else
-    {
-        ContentsPadding = gUIContext->ContentsPadding;
-    }
-    return ContentsPadding;
-}
-
 void Rr_UISetNextWindowCreateCollapsed(bool Collapsed)
 {
     gUIContext->NextWindowCreateCollapsed = Collapsed ? 1 : -1;
@@ -2925,7 +2942,6 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_UIConsumeNextWindowCreateCollapsed(Window);
     bool WindowOffsetConsumed = Rr_UIConsumeNextWindowOffset(Window);
     bool WindowExtentConsumed = Rr_UIConsumeNextWindowExtent(Window);
-    Rr_Vec2 ContentsPadding = Rr_UIConsumeNextWindowPadding();
 
     /* Return if closed.
      * Also handle show after being closed.
@@ -2976,7 +2992,7 @@ static inline bool Rr_UIBeginWindowEx(
             RR_ALLOC_TYPE(gUIContext->FrameArena, Rr_UIClipRectArray);
     }
 
-    Rr_UILayout *Layout = Rr_UIPushLayout(Hash, Window, ContentsPadding);
+    Rr_UILayout *Layout = Rr_UIPushLayout(Hash, Window);
     Layout->LockOffset = WindowOffsetConsumed;
     Layout->LockExtent = WindowExtentConsumed;
 
@@ -3080,8 +3096,8 @@ static inline bool Rr_UIBeginWindowEx(
         Rr_UIAddResizeHandle(Layout);
     }
 
-    Layout->TotalAvailableContentsWidth -= Layout->ContentsPadding.X * 2.0f;
-    Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->ContentsPadding);
+    Layout->TotalAvailableContentsWidth -= Layout->WindowPadding.X * 2.0f;
+    Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->WindowPadding);
 
     Rr_UIEndClipRect();
 
@@ -3191,6 +3207,8 @@ void Rr_UIEndWindow(void)
 
     Rr_UIAssertNoHorizontal(Layout);
 
+    Layout->DeferredContentsRect.Extent.Y += Layout->WindowPadding.Y;
+
     /* Apply deferred layout properties. */
 
     Window->MaxFlexibleWidgetTitleWidth =
@@ -3229,8 +3247,7 @@ void Rr_UIEndWindow(void)
             float DarkenColor = 0.005f;
 
             Rr_Rect DarkenRect = CurrentRect;
-            DarkenRect.Extent.Height =
-                RR_MIN(CurrentRect.Extent.Height, DarkenSize);
+            DarkenRect.Extent.Y = RR_MIN(CurrentRect.Extent.Y, DarkenSize);
 
             float TopDarkenAlpha =
                 RR_CLAMP(0.0f, Window->VScroll / DarkenSize, 1.0f);
@@ -3247,8 +3264,8 @@ void Rr_UIEndWindow(void)
 
             float BottomDarkenAlpha = RR_CLAMP(
                 0.0f,
-                (ContentsHeight - CurrentRect.Extent.Height - Window->VScroll +
-                 Layout->ContentsPadding.Height) /
+                (ContentsHeight - CurrentRect.Extent.Y - Window->VScroll +
+                 Layout->WindowPadding.Y) /
                     DarkenSize,
                 1.0f);
             if (BottomDarkenAlpha > 0.0f)
@@ -3316,7 +3333,7 @@ void Rr_UIEndWindow(void)
         else if (Window->Child)
         {
             Window->Rect.Extent.Y =
-                Window->ContentsRect.Extent.Y + Layout->ContentsPadding.Y;
+                Window->ContentsRect.Extent.Y + Layout->WindowPadding.Y;
 
             /* NOTE: Select between widths occupied by rigid widgets such as
              * buttons and flexible widgets such as input fields. */
@@ -3328,7 +3345,7 @@ void Rr_UIEndWindow(void)
                     gUIContext->FlexibleTitleMargin +
                     Layout->DeferredMaxFlexibleWidgetWidth,
                 Layout->DeferredMaxRigidWidth);
-            Window->Rect.Extent.X += Layout->ContentsPadding.X * 2.0f;
+            Window->Rect.Extent.X += Layout->WindowPadding.X * 2.0f;
             Window->Rect.Extent.X = RR_MAX(Window->Rect.Extent.X, TitleSize.X);
 
             if (Rr_UIWindowHasTitle(Window))
@@ -3343,8 +3360,8 @@ void Rr_UIEndWindow(void)
         {
             Rr_Vec2 Extent = { 0 };
 
-            Extent.X += Layout->ContentsPadding.X * 2.0f;
-            Extent.Y += Layout->ContentsPadding.Y;
+            Extent.X += Layout->WindowPadding.X * 2.0f;
+            Extent.Y += Layout->WindowPadding.Y;
 
             Extent = Rr_AddV2(Extent, Window->ContentsRect.Extent);
             Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
@@ -3928,6 +3945,28 @@ void Rr_UIEndTree(void)
     Rr_UIPopID();
 }
 
+static inline bool Rr_UIApplyWidgetExtent(Rr_Vec2 *OutExtent)
+{
+    if (gUIContext->WidgetExtentStack.Count)
+    {
+        *OutExtent = RR_LAST_ARRAY_ELEMENT(&gUIContext->WidgetExtentStack);
+        return true;
+    }
+    return false;
+}
+
+void Rr_UIPushWidgetExtent(Rr_Vec2 Extent)
+{
+    *RR_PUSH_INTO_ARRAY(
+        &gUIContext->WidgetExtentStack,
+        gUIContext->FrameArena) = Extent;
+}
+
+void Rr_UIPopWidgetExtent(void)
+{
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->WidgetExtentStack));
+}
+
 void Rr_UISeparator(void)
 {
     Rr_UIAssertWindow();
@@ -4035,7 +4074,7 @@ void Rr_UILabelText(const char *Title, const char *Text)
         0);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += TextWidth + Layout->ContentsPadding.X;
+    TitleOffset.X += TextWidth + gUIContext->FlexibleTitleMargin;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
@@ -4063,11 +4102,22 @@ bool Rr_UIButton(const char *Text)
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Text, &TitleLength);
 
+    Rr_Vec2 TitleSize = Rr_UICalculateTextSize(TitleLength, Text, 0.0f, 0);
+
+    Rr_Vec2 ButtonSize;
+    if (!Rr_UIApplyWidgetExtent(&ButtonSize))
+    {
+        ButtonSize =
+            Rr_AddV2(TitleSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f));
+    }
+
     Rr_Vec2 ButtonPosition = Layout->Cursor;
     Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
 
-    Rr_Vec2 TextPosition = Rr_AddV2(ButtonPosition, gUIContext->ButtonPadding);
-    Rr_Vec2 TextSize = Rr_UIDrawText(
+    Rr_Vec2 TextPosition = Rr_AddV2(
+        ButtonPosition,
+        Rr_SubV2(Rr_MulV2F(ButtonSize, 0.5f), Rr_MulV2F(TitleSize, 0.5f)));
+    Rr_UIDrawText(
         false,
         TextPosition,
         TitleLength,
@@ -4075,9 +4125,6 @@ bool Rr_UIButton(const char *Text)
         0.0f,
         &gUIContext->Colors.Foreground,
         0);
-
-    Rr_Vec2 ButtonSize =
-        Rr_AddV2(TextSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f));
 
     Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
@@ -4208,7 +4255,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_Vec2 FramePosition = Layout->Cursor;
 
     Rr_Vec2 TitlePosition = FramePosition;
-    TitlePosition.X += CheckboxSize.X + gUIContext->ContentsPadding.X;
+    TitlePosition.X += CheckboxSize.X + gUIContext->FlexibleTitleMargin;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
         TitlePosition,
@@ -4221,7 +4268,8 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_Rect ButtonRect = {
         FramePosition,
         Rr_V2(
-            TitleSize.X + Layout->ContentsPadding.X + gUIContext->LineHeight,
+            TitleSize.X + gUIContext->FlexibleTitleMargin +
+                gUIContext->LineHeight,
             TitleSize.Y),
     };
 
@@ -5389,7 +5437,7 @@ static inline bool Rr_UIInputScalarMulti(
         true);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += Result.Extent.X + Layout->ContentsPadding.X;
+    TitleOffset.X += Result.Extent.X + gUIContext->FlexibleTitleMargin;
     TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -5456,7 +5504,7 @@ bool Rr_UIInputField(
         true);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += Result.Extent.X + Layout->ContentsPadding.X;
+    TitleOffset.X += Result.Extent.X + gUIContext->FlexibleTitleMargin;
     TitleOffset.Y += gUIContext->InputFieldPadding.Height;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -5686,9 +5734,11 @@ static inline void Rr_UIColorPickerPopup(
     float TargetSize = gUIContext->FontSize * 15.0f;
     float Step = TargetSize / 6.0f;
 
+    Rr_Vec2 WindowPadding = Rr_UICurrentWindowPadding();
+
     Rr_Vec2 Position = Center;
-    Position.X -= (gUIContext->ContentsPadding.Width + TargetSize) / 2.0f;
-    Position.Y -= (gUIContext->ContentsPadding.Height + TargetSize) / 2.0f;
+    Position.X -= (WindowPadding.X + TargetSize) / 2.0f;
+    Position.Y -= (WindowPadding.Y + TargetSize) / 2.0f;
     Rr_UISetNextWindowOpenOffset(Position);
     Rr_UIBeginPopupWindow(Hash, POPUP_WINDOW_FLAGS);
 
@@ -6051,7 +6101,7 @@ static inline bool Rr_UIInputColorEx(
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += InputResult.Extent.X + gUIContext->ComponentMargin +
-                     ColorBoxExtent.X + Layout->ContentsPadding.X;
+                     ColorBoxExtent.X + gUIContext->FlexibleTitleMargin;
     TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -6161,8 +6211,8 @@ bool Rr_UICombobox(
         Rr_Vec2 PopupPosition = ButtonPosition;
         PopupPosition.Y += ButtonExtent.Height + gUIContext->FrameThickness;
         PopupPosition.X += gUIContext->FrameThickness;
+        Rr_UIPushWindowPadding(Rr_V2(gUIContext->InputFieldPadding.X, 0.0f));
         Rr_UISetNextWindowOffset(PopupPosition);
-        Rr_UISetNextWindowPadding(Rr_V2(gUIContext->InputFieldPadding.X, 0.0f));
         Rr_UIBeginPopupWindow(TitleHash, POPUP_WINDOW_FLAGS);
         Rr_UILayout *PopupLayout = Rr_UICurrentLayout();
         for (uint32_t Index = 0; Index < OptionCount; ++Index)
@@ -6218,6 +6268,7 @@ bool Rr_UICombobox(
             Rr_UIAdvance(OptionSize);
         }
         Rr_UIEndWindow();
+        Rr_UIPopWindowPadding();
     }
 
     Rr_Rect ButtonRect = {
@@ -6265,7 +6316,7 @@ bool Rr_UICombobox(
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += ButtonWidth + Layout->ContentsPadding.X;
+    TitlePosition.X += ButtonWidth + gUIContext->FlexibleTitleMargin;
     TitlePosition.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -6395,7 +6446,7 @@ static inline float Rr_UISlider(
     Normalized = RR_CLAMP(0.0f, Normalized, 1.0f);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += SliderRect.Extent.X + Layout->ContentsPadding.X;
+    TitleOffset.X += SliderRect.Extent.X + gUIContext->FlexibleTitleMargin;
     TitleOffset.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -6552,7 +6603,8 @@ void Rr_InitUI(void)
 
     gUIContext->Style = (Rr_UIStyle){
         .TitlePadding = { 0.5f, 0.03f },
-        .ContentsPadding = { 0.5f, 0.5f },
+        .WindowPadding = { 0.5f, 0.5f },
+        .ContentsMargin = { 0.25f, 0.25f },
         .ComponentMargin = 0.2f,
         .FlexibleTitleMargin = 0.5f,
         .BevelIntensityLight = 0.3f,
@@ -6808,8 +6860,10 @@ static inline void Rr_UIConsumeNextFontSize(void)
     gUIContext->NextFontSize = INFINITY;
     gUIContext->FontSize = FontSize;
     gUIContext->LineHeight = FontSize * 1.2f;
-    gUIContext->ContentsPadding =
-        Rr_MulV2F(gUIContext->Style.ContentsPadding, FontSize);
+    gUIContext->WindowPadding =
+        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.WindowPadding, FontSize));
+    gUIContext->ContentsMargin =
+        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ContentsMargin, FontSize));
     gUIContext->ComponentMargin =
         RR_UI_ROUND(Style->ComponentMargin * FontSize);
     gUIContext->FlexibleTitleMargin =
@@ -6834,7 +6888,7 @@ static inline void Rr_UIConsumeNextFontSize(void)
     gUIContext->TitlePadding =
         Rr_MulV2F(gUIContext->Style.TitlePadding, FontSize);
     gUIContext->MinWindowSizeNoTitle =
-        Rr_MulV2F(gUIContext->ContentsPadding, 2.0f);
+        Rr_MulV2F(gUIContext->WindowPadding, 2.0f);
     gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
     gUIContext->MinWindowSizeNoTitle.X += FontSize * 2.0f;
     gUIContext->MinWindowSizeNoTitle.Y += FontSize * 2.0f;
@@ -6845,8 +6899,8 @@ static inline void Rr_UIConsumeNextFontSize(void)
     gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
 
     gUIContext->TopLevelTreeOffset =
-        gUIContext->ContentsPadding.X * 2.0f + gUIContext->ButtonPadding.X;
-    gUIContext->TreeOffset = gUIContext->ContentsPadding.X * 2.0f;
+        gUIContext->WindowPadding.X * 2.0f + gUIContext->ButtonPadding.X;
+    gUIContext->TreeOffset = gUIContext->WindowPadding.X * 2.0f;
 }
 
 void Rr_NewUIFrame(void)
@@ -7071,6 +7125,11 @@ void Rr_EndUI(void)
     }
 
     gUIContext->LayoutStack = NULL;
+    RR_ZERO(gUIContext->HashStack);
+    RR_ZERO(gUIContext->WindowPaddingStack);
+    RR_ZERO(gUIContext->ContentsMarginStack);
+    RR_ZERO(gUIContext->WidgetExtentStack);
+    RR_ZERO(gUIContext->FormatFloatDecimalPlacesStack);
     gUIContext->ClickConsumed = false;
     gUIContext->DragConsumed = false;
     if (gUIContext->LeftMouseButton.Up)
