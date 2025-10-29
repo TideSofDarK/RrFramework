@@ -585,7 +585,7 @@ void Rr_SetCursor(Rr_CursorType Type)
 {
     switch (Type)
     {
-        case RR_UI_CURSOR_TYPE_NORMAL:
+        case RR_CURSOR_TYPE_NORMAL:
         {
             static GLFWcursor *GLFWCursor;
             if (GLFWCursor == NULL)
@@ -595,7 +595,17 @@ void Rr_SetCursor(Rr_CursorType Type)
             glfwSetCursor(gPlatform->Window, GLFWCursor);
             return;
         }
-        case RR_UI_CURSOR_TYPE_TEXT:
+        case RR_CURSOR_TYPE_RESIZE_NWSE:
+        {
+            static GLFWcursor *GLFWCursor;
+            if (GLFWCursor == NULL)
+            {
+                GLFWCursor = glfwCreateStandardCursor(GLFW_RESIZE_NWSE_CURSOR);
+            }
+            glfwSetCursor(gPlatform->Window, GLFWCursor);
+            return;
+        }
+        case RR_CURSOR_TYPE_TEXT:
         {
             static GLFWcursor *GLFWCursor;
             if (GLFWCursor == NULL)

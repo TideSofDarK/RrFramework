@@ -316,7 +316,7 @@ void Rr_SetCursor(Rr_CursorType Type)
 {
     switch (Type)
     {
-        case RR_UI_CURSOR_TYPE_NORMAL:
+        case RR_CURSOR_TYPE_NORMAL:
         {
             static SDL_Cursor *SDLCursor;
             if (SDLCursor == NULL)
@@ -326,7 +326,17 @@ void Rr_SetCursor(Rr_CursorType Type)
             SDL_SetCursor(SDLCursor);
             return;
         }
-        case RR_UI_CURSOR_TYPE_TEXT:
+        case RR_CURSOR_TYPE_RESIZE_NWSE:
+        {
+            static SDL_Cursor *SDLCursor;
+            if (SDLCursor == NULL)
+            {
+                SDLCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
+            }
+            SDL_SetCursor(SDLCursor);
+            return;
+        }
+        case RR_CURSOR_TYPE_TEXT:
         {
             static SDL_Cursor *SDLCursor;
             if (SDLCursor == NULL)

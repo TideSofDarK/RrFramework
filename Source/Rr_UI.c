@@ -84,8 +84,7 @@ struct Rr_UIWindow
     Rr_UIWindowFlags Flags;
     Rr_Rect Rect;
     Rr_Rect VisibleRect;
-    Rr_Vec2 ContentsStart;
-    Rr_Vec2 ContentsEnd;
+    Rr_Rect ContentsRect;
     float VScroll;
     float VScrollTarget;
     float HScroll;
@@ -133,9 +132,9 @@ struct Rr_UILayout
 {
     Rr_UIWindow *Window;
 
+    /* TODO: Seems useless. */
     Rr_Rect Rect;
 
-    Rr_Vec2 CursorStart;
     Rr_Vec2 Cursor;
     float TotalAvailableContentsWidth;
     float HorizontalX;
@@ -157,6 +156,7 @@ struct Rr_UILayout
     Rr_Vec2 TabCursor;
     Rr_UIHash *SelectedTabHash;
 
+    Rr_Rect DeferredContentsRect;
     Rr_Vec2 DeferredWindowOffset;
     Rr_Vec2 DeferredWindowExtent;
     Rr_Vec4 DeferredResizeHandleColor;
@@ -241,10 +241,12 @@ struct Rr_UIContext
     size_t TextInputCursorMaxCol;
     uint64_t TextInputCursorBlinkTime;
     uint32_t TextInputClickId;
-    bool MouseOverTextInput;
     RR_ARRAY(const char *) TextInputEvents;
     RR_ARRAY(char) TextInputBuffer;
     bool DeferTextInputBufferCopy;
+
+    bool MouseOverResize;
+    bool MouseOverTextInput;
 
     RR_ARRAY(Rr_KeyEvent) KeyboardInputEvents;
 
@@ -729,7 +731,7 @@ static inline Rr_UIWindow *Rr_UICurrentWindow(void)
 static inline float Rr_UIGetAvailableContentsWidth(Rr_UILayout *Layout)
 {
     return Layout->TotalAvailableContentsWidth -
-           (Layout->Cursor.X - Layout->CursorStart.X);
+           (Layout->Cursor.X - Layout->DeferredContentsRect.Offset.X);
 }
 
 static inline bool Rr_UIIsHorizontal(void)
@@ -2302,35 +2304,28 @@ void Rr_UIAdvance(Rr_Vec2 Size)
 
     /* TODO: Can contents be updated later when ending the window? */
 
+    Rr_Rect *ContentsRect = &Layout->DeferredContentsRect;
+
     if (Rr_UIIsHorizontal())
     {
         Layout->HorizontalMaxExtent.Y =
-            RR_MAX(Layout->HorizontalMaxExtent.Y, Size.Height);
+            RR_MAX(Layout->HorizontalMaxExtent.Y, Size.Y);
         Layout->HorizontalMaxExtent.X = RR_MAX(
             Layout->HorizontalMaxExtent.X,
             Layout->Cursor.X + Size.X - Layout->HorizontalX);
 
-        Layout->Cursor.X += Size.Width + Layout->ContentsPadding.Width;
-
-        /* Horizontal mode is expected to be disabled when ending a window so
-         * these seem unimportant?
-         * Basically I have to decide whether ContentsStart/End can be used
-         * directly when calculating something.*/
-
-        Window->ContentsEnd.X = RR_MAX(
-            Window->ContentsEnd.X,
-            Layout->HorizontalX + Layout->HorizontalMaxExtent.X);
-        Window->ContentsEnd.Y = RR_MAX(
-            Window->ContentsEnd.Y,
-            Layout->Cursor.Y + Layout->HorizontalMaxExtent.Y);
+        Layout->Cursor.X += Size.X + Layout->ContentsPadding.X;
     }
     else
     {
-        Layout->Cursor.Y += Size.Height + Layout->ContentsPadding.Height;
+        Layout->Cursor.Y += Size.Y + Layout->ContentsPadding.Y;
 
-        Window->ContentsEnd.Y = RR_MAX(Window->ContentsEnd.Y, Layout->Cursor.Y);
-        Window->ContentsEnd.X =
-            RR_MAX(Window->ContentsEnd.X, Layout->Cursor.X + Size.X);
+        ContentsRect->Extent.Y = RR_MAX(
+            ContentsRect->Extent.Y,
+            Layout->Cursor.Y - ContentsRect->Offset.Y);
+
+        float TotalWidth = (Layout->Cursor.X - ContentsRect->Offset.X) + Size.X;
+        ContentsRect->Extent.X = RR_MAX(ContentsRect->Extent.X, TotalWidth);
 
         if (!Layout->NextAdvanceFlexible)
         {
@@ -2541,6 +2536,11 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         ResizeHash,
         Layout->Rect.Extent);
 
+    if (ClickResult.Hovered || ClickResult.Held)
+    {
+        gUIContext->MouseOverResize = true;
+    }
+
     if (ClickResult.ClickCount == 2)
     {
         Layout->DeferredAutoResize = true;
@@ -2584,7 +2584,7 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
 
     if (!Layout->DeferredAutoResize)
     {
-        float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
+        float ContentsHeight = Window->ContentsRect.Extent.Y;
         ContentsHeight += gUIContext->ContentsPadding.Height;
         if (ContentsHeight == 0.0f)
         {
@@ -2611,7 +2611,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
     bool HasResize = Rr_UIWindowHasResizeHandle(Window);
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
-    float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
+    float ContentsHeight = Window->ContentsRect.Extent.Y;
     if (ContentsHeight == 0.0f)
     {
         return false;
@@ -2993,17 +2993,6 @@ static inline bool Rr_UIBeginWindowEx(
             {
                 Layout->DeferredAutoResize = true;
             }
-
-            /* NOTE: Consider title width when in auto resize mode. This will be
-             * the baseline width (e.g. when window only has wrapped text). */
-
-            if (HasTitle && Layout->DeferredAutoResize)
-            {
-                Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Window);
-                Layout->Rect.Extent.X =
-                    RR_MAX(Layout->Rect.Extent.X, TitleSize.X);
-                Window->Rect.Extent.X = Layout->Rect.Extent.X;
-            }
         }
     }
 
@@ -3113,9 +3102,7 @@ static inline bool Rr_UIBeginWindowEx(
                                    : &gUIContext->Colors.Background;
     Rr_UIDrawSolidQuad(&ContentsAreaRect, BackgroundColor);
 
-    Window->ContentsStart = Layout->Cursor;
-    Window->ContentsEnd = Layout->Cursor;
-    Layout->CursorStart = Layout->Cursor;
+    Layout->DeferredContentsRect.Offset = Layout->Cursor;
 
     return true;
 }
@@ -3204,11 +3191,21 @@ void Rr_UIEndWindow(void)
 
     Rr_UIAssertNoHorizontal(Layout);
 
+    /* Apply deferred layout properties. */
+
+    Window->MaxFlexibleWidgetTitleWidth =
+        Layout->DeferredMaxFlexibleWidgetTitleWidth;
+    Window->MaxFlexibleWidgetWidth = Layout->DeferredMaxFlexibleWidgetWidth;
+    Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
+    Window->ContentsRect = Layout->DeferredContentsRect;
+
     Rr_UIEndClipRect();
 
     /* Begin overlay clip rect for stuff such as borders, resize handle and
      * scroll area darkeners. */
 
+    /* Rr_Rect TotalClipRectWithBorders = */
+    /*     Rr_ResizeRect(&Layout->Rect, gUIContext->FrameThickness); */
     Rr_UIBeginVisibleClipRect(&Layout->Rect);
 
     if (!Window->Collapsed)
@@ -3217,10 +3214,10 @@ void Rr_UIEndWindow(void)
          * If the bug ever returns it probably means the fix should be applied
          * somewhere else. */
 
-        Window->ContentsStart = Rr_FloorV2(Window->ContentsStart);
-        Window->ContentsEnd = Rr_FloorV2(Window->ContentsEnd);
+        Window->ContentsRect.Offset = Rr_FloorV2(Window->ContentsRect.Offset);
+        Window->ContentsRect.Extent = Rr_FloorV2(Window->ContentsRect.Extent);
 
-        float ContentsHeight = Window->ContentsEnd.Y - Window->ContentsStart.Y;
+        float ContentsHeight = Window->ContentsRect.Extent.Y;
 
         float FillRatio = 0.0f;
         Rr_Rect CurrentRect = Rr_UIGetWindowContentsArea(Layout, &FillRatio);
@@ -3318,9 +3315,8 @@ void Rr_UIEndWindow(void)
         }
         else if (Window->Child)
         {
-            Window->Rect.Extent.Y = Window->ContentsEnd.Y -
-                                    Window->ContentsStart.Y +
-                                    Layout->ContentsPadding.Y;
+            Window->Rect.Extent.Y =
+                Window->ContentsRect.Extent.Y + Layout->ContentsPadding.Y;
 
             /* NOTE: Select between widths occupied by rigid widgets such as
              * buttons and flexible widgets such as input fields. */
@@ -3345,18 +3341,27 @@ void Rr_UIEndWindow(void)
         }
         else if (Layout->DeferredAutoResize)
         {
-            Window->Rect.Extent =
-                Rr_SubV2(Window->ContentsEnd, Window->ContentsStart);
-            Window->Rect.Extent.X += Layout->ContentsPadding.X * 2.0f;
-            Window->Rect.Extent.Y += Layout->ContentsPadding.Y;
+            Rr_Vec2 Extent = { 0 };
+
+            Extent.X += Layout->ContentsPadding.X * 2.0f;
+            Extent.Y += Layout->ContentsPadding.Y;
+
+            Extent = Rr_AddV2(Extent, Window->ContentsRect.Extent);
+            Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
 
             if (Rr_UIWindowHasTitle(Window))
             {
-                Window->Rect.Extent.Y += gUIContext->TitleHeight;
+                Extent.Y += gUIContext->TitleHeight;
+
+                /* NOTE: Consider title width when in auto resize mode. This
+                 * will be the baseline width (e.g. when window only has wrapped
+                 * text). */
+
+                Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Window);
+                Extent.X = RR_MAX(Extent.X, TitleSize.X);
             }
 
-            Window->Rect.Extent =
-                Rr_AddV2(Window->Rect.Extent, Layout->ReservedExtent);
+            Window->Rect.Extent = Extent;
         }
     }
 
@@ -3422,13 +3427,6 @@ void Rr_UIEndWindow(void)
             }
         }
     }
-
-    /* Apply deferred layout properties. */
-
-    Window->MaxFlexibleWidgetTitleWidth =
-        Layout->DeferredMaxFlexibleWidgetTitleWidth;
-    Window->MaxFlexibleWidgetWidth = Layout->DeferredMaxFlexibleWidgetWidth;
-    Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
 
     /* Pop whatever was pushed in Rr_UIBeginWindowEx(). */
 
@@ -3544,6 +3542,12 @@ void Rr_UIEndHorizontal(void)
     Rr_UIAdvance(Layout->HorizontalMaxExtent);
 }
 
+static inline float Rr_UIGetOffsetForTreeDepth(int32_t Depth)
+{
+    return gUIContext->TopLevelTreeOffset +
+           (float)(Depth - 1) * gUIContext->TreeOffset;
+}
+
 static inline float Rr_UISetupFlexibleWidget(
     Rr_UILayout *Layout,
     size_t TitleLength,
@@ -3564,7 +3568,7 @@ static inline float Rr_UISetupFlexibleWidget(
         DesiredWidgetWidth = RR_MAX(
             Window->MaxRigidWidth - Window->MaxFlexibleWidgetTitleWidth -
                 gUIContext->FlexibleTitleMargin,
-            RR_MAX(DesiredWidgetWidth, Layout->Window->MaxFlexibleWidgetWidth));
+            RR_MAX(DesiredWidgetWidth, Window->MaxFlexibleWidgetWidth));
     }
     else
     {
@@ -3715,8 +3719,9 @@ void Rr_UIEndTabs(void)
         "Did you forget to call Rr_UIBeginTabs()?");
 
     Layout->SelectedTabHash = NULL;
-    Layout->Window->ContentsEnd.X =
-        RR_MAX(Layout->Window->ContentsEnd.X, Layout->TabCursor.X);
+    Layout->DeferredContentsRect.Extent.X = RR_MAX(
+        Layout->DeferredContentsRect.Extent.X,
+        Layout->TabCursor.X - Layout->DeferredContentsRect.Offset.X);
 }
 
 void Rr_UISetNextTreeExpanded(void)
@@ -3729,12 +3734,6 @@ void Rr_UISetNextTreeCollapsed(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Layout->TreeExpandCollapseDepth = INT32_MIN + 1;
-}
-
-static inline float Rr_UIGetOffsetForTreeDepth(int32_t Depth)
-{
-    return gUIContext->TopLevelTreeOffset +
-           (float)(Depth - 1) * gUIContext->TreeOffset;
 }
 
 bool Rr_UIBeginTree(const char *Title)
@@ -3875,6 +3874,8 @@ bool Rr_UIBeginTree(const char *Title)
             ClickResult.Held);
     }
 
+    TotalExtent.X += gUIContext->ButtonPadding.X;
+
     Rr_UIAdvance(TotalExtent);
 
     if (Layout->TreeExpandCollapseDepth > 0 &&
@@ -3892,7 +3893,7 @@ bool Rr_UIBeginTree(const char *Title)
     if (WasExpanded || *Expanded)
     {
         Layout->TreeDepth++;
-        Layout->Cursor.X = Layout->CursorStart.X +
+        Layout->Cursor.X = Layout->DeferredContentsRect.Offset.X +
                            Rr_UIGetOffsetForTreeDepth(Layout->TreeDepth);
 
         Rr_UIPushIDHash(TitleHash);
@@ -3915,13 +3916,13 @@ void Rr_UIEndTree(void)
 
     float TreeOffset = gUIContext->LineHeight;
     Layout->TreeDepth--;
-    Layout->Cursor.X =
-        Layout->CursorStart.X + Rr_UIGetOffsetForTreeDepth(Layout->TreeDepth);
+    Layout->Cursor.X = Layout->DeferredContentsRect.Offset.X +
+                       Rr_UIGetOffsetForTreeDepth(Layout->TreeDepth);
 
     if (Layout->TreeDepth == 0)
     {
         Layout->TreeExpandCollapseDepth = 0;
-        Layout->Cursor.X = Layout->CursorStart.X;
+        Layout->Cursor.X = Layout->DeferredContentsRect.Offset.X;
     }
 
     Rr_UIPopID();
@@ -3935,7 +3936,7 @@ void Rr_UISeparator(void)
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_Vec2 Size = {
-        Layout->TotalAvailableContentsWidth,
+        Rr_UIGetAvailableContentsWidth(Layout),
         gUIContext->FrameThickness,
     };
     Rr_Vec2 Position = {
@@ -7082,14 +7083,19 @@ void Rr_EndUI(void)
     gUIContext->LeftMouseButton.Up = false;
     gUIContext->MouseMoved = false;
     gUIContext->MouseWheelDelta = Rr_V2F(0.0f);
-    if (gUIContext->MouseOverTextInput)
+    if (gUIContext->MouseOverResize)
     {
-        Rr_SetCursor(RR_UI_CURSOR_TYPE_TEXT);
+        Rr_SetCursor(RR_CURSOR_TYPE_RESIZE_NWSE);
+    }
+    else if (gUIContext->MouseOverTextInput)
+    {
+        Rr_SetCursor(RR_CURSOR_TYPE_TEXT);
     }
     else
     {
-        Rr_SetCursor(RR_UI_CURSOR_TYPE_NORMAL);
+        Rr_SetCursor(RR_CURSOR_TYPE_NORMAL);
     }
+    gUIContext->MouseOverResize = false;
     gUIContext->MouseOverTextInput = false;
     RR_ZERO(gUIContext->TextInputEvents);
     RR_ZERO(gUIContext->KeyboardInputEvents);

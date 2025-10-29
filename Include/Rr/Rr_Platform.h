@@ -197,8 +197,9 @@ extern void Rr_SetRelativeMouseMode(bool Relative);
 
 typedef enum Rr_CursorType
 {
-    RR_UI_CURSOR_TYPE_NORMAL,
-    RR_UI_CURSOR_TYPE_TEXT,
+    RR_CURSOR_TYPE_NORMAL,
+    RR_CURSOR_TYPE_RESIZE_NWSE,
+    RR_CURSOR_TYPE_TEXT,
 } Rr_CursorType;
 
 extern void Rr_SetCursor(Rr_CursorType Type);

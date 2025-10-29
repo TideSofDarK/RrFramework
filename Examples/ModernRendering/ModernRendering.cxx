@@ -863,6 +863,8 @@ struct SLighting
                 Rr_UIEndTree();
             }
 
+            Rr_UIText("sadfsdfsdfsd");
+
             if (Rr_UIBeginTree("Spot Lights"))
             {
                 for (std::uint32_t Index = 0; Index < SpotLights.size();
@@ -1767,6 +1769,7 @@ struct SModernRenderingApp
 
     void UI()
     {
+        // Rr_UIBeginWindow("ModernRendering.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIBeginWindow("ModernRendering.cxx", NULL, 0);
         if (Rr_UIBeginTree("General"))
         {
@@ -1797,7 +1800,7 @@ struct SModernRenderingApp
     {
         Rr_Graph *Graph = Rr_GetGraph();
 
-        Rr_UIDebugOverlay();
+        // Rr_UIDebugOverlay();
 
         UI();
 
