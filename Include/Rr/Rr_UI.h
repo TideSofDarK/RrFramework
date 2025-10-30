@@ -101,9 +101,13 @@ struct Rr_UIColors
     Rr_Vec4 InputFieldNormal;
     Rr_Vec4 InputFieldActive;
     Rr_Vec4 SelectedTextBackground;
+    Rr_Vec4 SelectedTextForeground;
 };
 
-extern Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize);
+extern Rr_UIFont *Rr_UICreateFont(
+    size_t TTFSize,
+    void const *TTFData,
+    float FontSize);
 
 typedef enum
 {

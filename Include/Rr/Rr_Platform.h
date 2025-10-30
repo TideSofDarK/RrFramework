@@ -191,6 +191,8 @@ extern void Rr_SetWindowTitle(const char *Title);
 
 extern Rr_IntVec2 Rr_GetDisplaySize(void);
 
+extern float Rr_GetWindowContentsScale(void);
+
 extern void Rr_SetWindowSize(Rr_IntVec2 Size);
 
 extern void Rr_SetRelativeMouseMode(bool Relative);

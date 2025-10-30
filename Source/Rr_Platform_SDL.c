@@ -303,6 +303,12 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
     };
 }
 
+float Rr_GetWindowContentsScale(void)
+{
+    float Density = SDL_GetWindowPixelDensity(gPlatform->Window);
+    return Density;
+}
+
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
     float Scale = SDL_GetWindowDisplayScale(gPlatform->Window);

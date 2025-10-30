@@ -131,8 +131,11 @@ static void StyleEditorWindow()
             "Input Field Active",
             Colors->InputFieldActive.Elements);
         Rr_UIInputColor4(
-            "Selected Text",
+            "Selected Text BG",
             Colors->SelectedTextBackground.Elements);
+        Rr_UIInputColor4(
+            "Selected Text FG",
+            Colors->SelectedTextForeground.Elements);
 
         Rr_UISeparator();
 
@@ -321,7 +324,7 @@ static void Iterate(void)
 
             Rr_UIBeginHorizontal();
             Rr_UIPushContentsMargin(Rr_V2F(0.0f));
-            Rr_UIPushWidgetExtent(Rr_V2F(30.0f));
+            Rr_UIPushWidgetExtent(Rr_V2F(48.0f));
             Rr_UIButton("X");
             Rr_UIButton("Y");
             Rr_UIButton("Z");

@@ -35,6 +35,7 @@
 #include "Rr_Renderer.h"
 
 #include <Rr/Rr_Graph.h>
+#include <Rr/Rr_Platform.h>
 #include <Rr/Rr_Utility.h>
 
 #include <xxHash/xxhash.h>
@@ -206,6 +207,7 @@ struct Rr_UIContext
 
     Rr_UILayout *LayoutStack;
     RR_ARRAY(Rr_UIHash) HashStack;
+    RR_ARRAY(Rr_UIFont *) FontStack;
     RR_ARRAY(Rr_Vec2) WindowPaddingStack;
     RR_ARRAY(Rr_Vec2) ContentsMarginStack;
     RR_ARRAY(Rr_Vec2) WidgetExtentStack;
@@ -256,11 +258,10 @@ struct Rr_UIContext
     Rr_Vec2 ScreenSize;
 
     RR_FREE_LIST(Rr_UIFont) Fonts;
-    Rr_UIFont *Font;
-    float FontSize;
+    Rr_UIFont *DefaultFont;
     float NextFontSize;
 
-    float LineHeight;
+    /* float LineHeight; */
     Rr_Vec2 WindowPadding;
     Rr_Vec2 ContentsMargin;
     float ComponentMargin;
@@ -327,7 +328,7 @@ typedef struct Rr_UIGlyph Rr_UIGlyph;
 struct Rr_UIGlyph
 {
     Rr_Vec2 Offset;
-    Rr_Vec2 Size;
+    Rr_Vec2 Extent;
     Rr_Vec2 UVMin;
     Rr_Vec2 UVMax;
     float XAdvance;
@@ -343,13 +344,16 @@ struct Rr_UIFontRange
 
 struct Rr_UIFont
 {
+    size_t AllocationSize;
     /* TODO: Handle swapchains recreated with different color space. */
     bool CreatedForSRGBSwapchain;
     Rr_Image2D *Image;
-    size_t RangeCount;
-    Rr_UIFontRange *Ranges;
+    float Size;
+    float LineHeight;
     float Ascent;
     float Descent;
+    size_t RangeCount;
+    Rr_UIFontRange *Ranges;
 };
 
 static inline Rr_UIGlyph *Rr_UIGetGlyphForCodepoint(
@@ -372,10 +376,11 @@ static inline Rr_UIGlyph *Rr_UIGetGlyphForCodepoint(
     return NULL;
 }
 
-Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
+static inline Rr_UIFont *Rr_UICreateFontEx(
+    size_t TTFSize,
+    void const *TTFData,
+    float FontSize)
 {
-    FontSize *= 1.25f;
-
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     static int FontIndex = -1;
@@ -387,14 +392,46 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     unsigned char *GrayscaleBuffer =
         RR_ALLOC_NO_ZERO(Scratch.Arena, (size_t)(ATLAS_SIZE * ATLAS_SIZE));
 
-    Rr_Asset FontAsset = Rr_LoadAsset(AssetRef);
     stbtt_fontinfo FontInfo;
-    if (!stbtt_InitFont(&FontInfo, (unsigned char *)FontAsset.Pointer, 0))
+    if (!stbtt_InitFont(&FontInfo, (unsigned char *)TTFData, 0))
     {
         RR_LOG("Failed to parse .ttf file!");
         Rr_DestroyScratch(Scratch);
         return NULL;
     }
+
+    float BakeScale;
+    {
+        float FontScale = stbtt_ScaleForPixelHeight(&FontInfo, FontSize);
+
+        int UnscaledAscent, UnscaledDescent, UnscaledLineGap;
+        stbtt_GetFontVMetrics(
+            &FontInfo,
+            &UnscaledAscent,
+            &UnscaledDescent,
+            &UnscaledLineGap);
+
+        float Ascent = (float)UnscaledAscent * FontScale;
+        float Descent = (float)UnscaledDescent * FontScale;
+        float LineGap = (float)UnscaledLineGap * FontScale;
+
+        BakeScale = FontSize / (Ascent + Descent);
+    }
+
+    float FontScale = stbtt_ScaleForMappingEmToPixels(&FontInfo, FontSize);
+
+    int UnscaledAscent, UnscaledDescent, UnscaledLineGap;
+    stbtt_GetFontVMetrics(
+        &FontInfo,
+        &UnscaledAscent,
+        &UnscaledDescent,
+        &UnscaledLineGap);
+
+    float Ascent = (float)UnscaledAscent * FontScale;
+    float Descent = (float)UnscaledDescent * FontScale;
+    float LineGap = (float)UnscaledLineGap * FontScale;
+
+    float LineHeight = (Ascent - Descent) / FontSize;
 
     stbtt_pack_context PackContext;
     if (!stbtt_PackBegin(
@@ -411,16 +448,32 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
         return NULL;
     }
 
-    stbtt_PackSetOversampling(&PackContext, 2, 2);
-
-    size_t RangeCount = RR_ARRAY_COUNT(CodepointRanges);
+    stbtt_PackSetOversampling(&PackContext, 3, 3);
 
     bool IsSRGBSwapchain =
         Rr_IsSRGBFormat(Rr_GetImageFormat(Rr_GetSwapchainImage()));
     Rr_ImageFormat ImageFormat = RR_IMAGE_FORMAT_R8G8B8A8_SRGB;
 
-    Rr_UIFont *Font = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIFont);
+    size_t RangeCount = RR_ARRAY_COUNT(CodepointRanges);
+
+    /* Pack everything into single allocation. */
+
+    size_t GlyphsOffset =
+        sizeof(Rr_UIFont) + sizeof(Rr_UIFontRange) * RangeCount;
+    size_t AllocationSize = GlyphsOffset;
+    for (size_t Index = 0; Index < RangeCount; ++Index)
+    {
+        const Rr_UIRange *CodepointRange = &CodepointRanges[Index];
+        size_t GlyphCount =
+            (size_t)(CodepointRange->Last - CodepointRange->First);
+        AllocationSize += GlyphCount * sizeof(Rr_UIGlyph);
+    }
+
+    Rr_UIFont *Font = RR_ALLOC_NO_ZERO(gUIContext->Arena, AllocationSize);
+    Font->AllocationSize = AllocationSize;
     Font->CreatedForSRGBSwapchain = IsSRGBSwapchain;
+    Font->RangeCount = RangeCount;
+    Font->Ranges = (Rr_UIFontRange *)(((char *)Font) + sizeof(Rr_UIFont));
     char FontNameBuffer[64];
     snprintf(
         FontNameBuffer,
@@ -432,10 +485,10 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
         ATLAS_EXTENT,
         ImageFormat,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
-    Font->RangeCount = RangeCount;
-    /* TODO: Could be single allocation. */
-    Font->Ranges =
-        RR_ALLOC_TYPE_COUNT(gUIContext->Arena, Rr_UIFontRange, RangeCount);
+    Font->Size = FontSize;
+    Font->LineHeight = FontSize * BakeScale;
+    Font->Ascent = Ascent;
+    Font->Descent = Descent;
 
     stbtt_pack_range *PackRanges =
         RR_ALLOC_NO_ZERO(Scratch.Arena, RangeCount * sizeof(stbtt_pack_range));
@@ -443,25 +496,26 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     size_t TotalCharCount = 0;
     for (size_t Index = 0; Index < RangeCount; ++Index)
     {
-        int32_t NumChars =
-            CodepointRanges[Index].Last - CodepointRanges[Index].First;
+        const Rr_UIRange *CodepointRange = &CodepointRanges[Index];
+        Rr_UIFontRange *FontRange = &Font->Ranges[Index];
 
-        Font->Ranges[Index].First = (uint32_t)CodepointRanges[Index].First;
-        Font->Ranges[Index].Last = (uint32_t)CodepointRanges[Index].Last;
-        Font->Ranges[Index].Glyphs = RR_ALLOC_NO_ZERO(
-            gUIContext->Arena,
-            (size_t)NumChars * sizeof(Rr_UIGlyph));
+        int32_t NumChars = CodepointRange->Last - CodepointRange->First;
+
+        FontRange->First = (uint32_t)CodepointRange->First;
+        FontRange->Last = (uint32_t)CodepointRange->Last;
+        FontRange->Glyphs = (Rr_UIGlyph *)(((char *)Font) + GlyphsOffset);
 
         PackRanges[Index] = (stbtt_pack_range){
-            .first_unicode_codepoint_in_range = CodepointRanges[Index].First,
+            .first_unicode_codepoint_in_range = CodepointRange->First,
             .num_chars = NumChars,
-            .font_size = FontSize,
+            .font_size = FontSize * BakeScale,
             .chardata_for_range = RR_ALLOC_NO_ZERO(
                 Scratch.Arena,
                 (size_t)NumChars * sizeof(stbtt_packedchar)),
         };
 
         TotalCharCount += (size_t)NumChars;
+        GlyphsOffset += sizeof(Rr_UIGlyph) * (size_t)NumChars;
     }
 
     stbrp_rect *Rects =
@@ -483,22 +537,6 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     stbtt_PackEnd(&PackContext);
 
     /* Create glyph data. */
-
-    float FontScale = stbtt_ScaleForPixelHeight(&FontInfo, FontSize);
-
-    int UnscaledAscent, UnscaledDescent, UnscaledLineGap;
-    stbtt_GetFontVMetrics(
-        &FontInfo,
-        &UnscaledAscent,
-        &UnscaledDescent,
-        &UnscaledLineGap);
-
-    float Ascent = (float)UnscaledAscent * FontScale;
-    float Descent = (float)UnscaledDescent * FontScale;
-    float LineGap = (float)UnscaledLineGap * FontScale;
-
-    Font->Ascent = Ascent;
-    Font->Descent = Descent;
 
     for (size_t Index = 0; Index < RangeCount; ++Index)
     {
@@ -523,8 +561,9 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
                 &Y,
                 &Quad,
                 0);
-            Glyph->Size = (Rr_Vec2){ Quad.x1 - Quad.x0, Quad.y1 - Quad.y0 };
-            Glyph->Offset = (Rr_Vec2){ Quad.x0, Quad.y0 + Ascent };
+
+            Glyph->Extent = (Rr_Vec2){ Quad.x1 - Quad.x0, Quad.y1 - Quad.y0 };
+            Glyph->Offset = (Rr_Vec2){ Quad.x0, Quad.y0 + (Ascent - Descent) };
             Glyph->UVMin = (Rr_Vec2){ Quad.s0, Quad.t0 };
             Glyph->UVMax = (Rr_Vec2){ Quad.s1, Quad.t1 };
             Glyph->XAdvance = PackedChar->xadvance;
@@ -544,12 +583,13 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
         for (int32_t X = 0; X < ATLAS_SIZE; ++X)
         {
             uint8_t Grayscale = GrayscaleBuffer[Y * ATLAS_SIZE + X];
-            if (IsSRGBSwapchain)
-            {
-                Grayscale =
-                    (uint8_t)(Rr_ToSRGBChannel((float)Grayscale / 255.0f) *
-                              255.0f);
-            }
+            /* if (IsSRGBSwapchain) */
+            /* { */
+            /*     Grayscale = */
+            /*         (uint8_t)(Rr_ToSRGBChannel((float)Grayscale / 255.0f) *
+             */
+            /*                   255.0f); */
+            /* } */
             StagingData[Y * ATLAS_SIZE + X] =
                 ((uint32_t)Grayscale << 24) | 0x00FFFFFF;
         }
@@ -571,9 +611,39 @@ Rr_UIFont *Rr_UICreateFont(Rr_AssetRef AssetRef, float FontSize)
     return Font;
 }
 
+Rr_UIFont *Rr_UICreateFont(size_t TTFSize, void const *TTFData, float FontSize)
+{
+    return Rr_UICreateFontEx(TTFSize, TTFData, FontSize);
+}
+
 static inline void Rr_UIReleaseFont(Rr_UIFont *Font)
 {
-    Rr_ReleaseImage(Font->Image);
+    if (Font)
+    {
+        Rr_ReleaseImage(Font->Image);
+    }
+}
+
+static inline Rr_UIFont *Rr_UICurrentFont(void)
+{
+    if (gUIContext->FontStack.Count)
+    {
+        return RR_LAST_ARRAY_ELEMENT(&gUIContext->FontStack);
+    }
+    return gUIContext->DefaultFont;
+}
+
+void Rr_UIPushFont(Rr_UIFont *Font)
+{
+    *RR_PUSH_INTO_ARRAY(&gUIContext->FontStack, gUIContext->FrameArena) = Font;
+}
+
+void Rr_UIPopFont(void)
+{
+    assert(
+        gUIContext->FontStack.Count &&
+        "Did you forget to call Rr_UIPushFont()?");
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->FontStack));
 }
 
 static inline bool Rr_UIWindowNoTitle(Rr_UIWindow *Window)
@@ -1615,15 +1685,37 @@ static inline void Rr_UIDrawGlyph(
     Rr_UIDrawTexturedQuad(
         &(Rr_Rect){
             Rr_AddV2(Position, Glyph->Offset),
-            Glyph->Size,
+            Glyph->Extent,
         },
         Color,
         UVs);
+
+    /* Rr_UIDrawSolidQuad( */
+    /*     &(Rr_Rect){ */
+    /*         Position, */
+    /*         Rr_V2(Glyph->Extent.X, gUIContext->DefaultFont->Size), */
+    /*     }, */
+    /*     &(Rr_Vec4){ 0.0, 1.0, 0.0, 0.3f }); */
+
+    /* Rr_UIDrawSolidQuad( */
+    /*     &(Rr_Rect){ */
+    /*         Position, */
+    /*         Rr_V2(Glyph->Extent.X, gUIContext->DefaultFont->LineHeight), */
+    /*     }, */
+    /*     &(Rr_Vec4){ 0.0, 1.0, 0.0, 0.3f }); */
+
+    /* Rr_UIDrawSolidQuad( */
+    /*     &(Rr_Rect){ */
+    /*         Rr_AddV2(Position, Glyph->Offset), */
+    /*         Glyph->Extent, */
+    /*     }, */
+    /*     &(Rr_Vec4){ 1.0, 0.0, 0.0, 0.3f }); */
 }
 
 static inline void Rr_UIDrawInteractiveTextCursor(
     Rr_Vec2 Position,
-    Rr_Vec4 *Color)
+    Rr_Vec4 *Color,
+    Rr_UIFont *Font)
 {
     uint64_t TimeDelta = Rr_GetTimeMS() - gUIContext->TextInputCursorBlinkTime;
     if ((TimeDelta / 500) % 2 == 0)
@@ -1631,9 +1723,7 @@ static inline void Rr_UIDrawInteractiveTextCursor(
         Rr_UIDrawRect(
             &(Rr_Rect){
                 Position,
-                Rr_V2(
-                    gUIContext->FrameThickness * 2.0f,
-                    gUIContext->LineHeight),
+                Rr_V2(gUIContext->FrameThickness * 2.0f, Font->LineHeight),
             },
             Color);
     }
@@ -1650,9 +1740,9 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
 {
     RR_BEGIN_FRAME_SECTION("Rr.UI.DrawInputText");
 
-    Rr_UIFont *Font = gUIContext->Font;
-    float FontSize = gUIContext->FontSize;
-    float LineHeight = gUIContext->LineHeight;
+    Rr_UIFont *Font = Rr_UICurrentFont();
+    float FontSize = Font->Size;
+    float LineHeight = Font->LineHeight;
     float MaxX = 0.0f;
     float CurrentX = 0.0f;
     float CurrentY = 0.0f;
@@ -1700,23 +1790,25 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
 
         Rr_UIGlyph *Glyph = Rr_UIGetGlyphForCodepoint(Font, Codepoint);
 
+        bool GlyphSelected = false;
         if (Active)
         {
             if ((OldCursorMin != OldCursorMax) &&
                 (CodepointIndex >= OldCursorMin &&
                  CodepointIndex < OldCursorMax))
             {
+                GlyphSelected = true;
                 Rr_UIDrawRect(
                     &(Rr_Rect){
                         GlyphPosition,
-                        Rr_V2(Glyph->XAdvance, gUIContext->LineHeight),
+                        Rr_V2(Glyph->XAdvance, Font->LineHeight),
                     },
                     &gUIContext->Colors.SelectedTextBackground);
             }
 
             if (*CursorEnd == CStringIndex)
             {
-                Rr_UIDrawInteractiveTextCursor(GlyphPosition, Color);
+                Rr_UIDrawInteractiveTextCursor(GlyphPosition, Color, Font);
             }
         }
 
@@ -1725,6 +1817,8 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
             break;
         }
 
+        Rr_Vec4 *GlyphColor =
+            GlyphSelected ? &gUIContext->Colors.SelectedTextForeground : Color;
         if (!Glyph)
         {
             /* TODO: Proper missing glyph handling! */
@@ -1735,13 +1829,13 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
             Rr_Rect MissingGlyphRect = { GlyphPosition,
                                          Rr_V2(FontSize, LineHeight) };
             MissingGlyphRect = Rr_ResizeRect(&MissingGlyphRect, 1.0f);
-            Rr_UIDrawInnerFrame(&MissingGlyphRect, 1.0f, Color);
+            Rr_UIDrawInnerFrame(&MissingGlyphRect, 1.0f, GlyphColor);
         }
         else
         {
             if (Codepoint != ' ')
             {
-                Rr_UIDrawGlyph(Glyph, GlyphPosition, Color);
+                Rr_UIDrawGlyph(Glyph, GlyphPosition, GlyphColor);
             }
 
             CurrentX += Glyph->XAdvance;
@@ -1785,9 +1879,9 @@ static inline Rr_Vec2 Rr_UIDrawText(
         NullTerminated = true;
     }
 
-    Rr_UIFont *Font = gUIContext->Font;
-    float FontSize = gUIContext->FontSize;
-    float LineHeight = gUIContext->LineHeight;
+    Rr_UIFont *Font = Rr_UICurrentFont();
+    float FontSize = Font->Size;
+    float LineHeight = Font->LineHeight;
     float MaxX = 0.0f;
     float CurrentX = 0.0f;
     float CurrentY = 0.0f;
@@ -2231,8 +2325,8 @@ static inline bool Rr_UIScrollBehavior(
         if (gUIContext->MouseWheelDelta.Y != 0.0f)
         {
             Rr_UIResetClickAndDrag();
-            *YScroll = *YScroll +
-                       gUIContext->MouseWheelDelta.Y * gUIContext->LineHeight;
+            *YScroll = *YScroll + gUIContext->MouseWheelDelta.Y *
+                                      gUIContext->DefaultFont->LineHeight;
 
             return true;
         }
@@ -3183,7 +3277,8 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
     {
         Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
         Window->Z = gUIContext->TotalWindowCount++;
-        Window->Rect.Offset = Rr_FloorV2(Rr_V2F(gUIContext->FontSize));
+        Window->Rect.Offset =
+            Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
         *WindowRef = Window;
     }
     else
@@ -3204,6 +3299,7 @@ void Rr_UIEndWindow(void)
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     Rr_UIAssertNoHorizontal(Layout);
 
@@ -3242,8 +3338,7 @@ void Rr_UIEndWindow(void)
 
         if (FillRatio > 1.0f)
         {
-            float DarkenSize =
-                RR_MIN(gUIContext->FontSize / 2.0f, ContentsHeight);
+            float DarkenSize = RR_MIN(Font->LineHeight / 2.0f, ContentsHeight);
             float DarkenColor = 0.005f;
 
             Rr_Rect DarkenRect = CurrentRect;
@@ -3606,6 +3701,7 @@ void Rr_UIBeginTabs(const char *Title)
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, NULL);
 
@@ -3624,7 +3720,7 @@ void Rr_UIBeginTabs(const char *Title)
     };
     Rr_Vec2 SeparatorPosition = {
         Layout->Cursor.X,
-        Layout->Cursor.Y + gUIContext->LineHeight,
+        Layout->Cursor.Y + Font->LineHeight,
     };
     Rr_UIDrawSolidQuad(
         &(Rr_Rect){
@@ -3634,7 +3730,7 @@ void Rr_UIBeginTabs(const char *Title)
         &gUIContext->Colors.Foreground);
 
     /* TODO: Use window padding instead? */
-    Rr_UIAdvance(Rr_V2(0.0f, gUIContext->LineHeight));
+    Rr_UIAdvance(Rr_V2(0.0f, Font->LineHeight));
 }
 
 bool Rr_UITab(const char *Title)
@@ -3761,6 +3857,7 @@ bool Rr_UIBeginTree(const char *Title)
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     int32_t CurrentDepth = Layout->TreeDepth;
     bool TopLevel = CurrentDepth == 0;
@@ -3785,7 +3882,7 @@ bool Rr_UIBeginTree(const char *Title)
     bool WasExpanded = *Expanded;
 
     float TreeButtonHeight =
-        TopLevel ? gUIContext->TitleHeight : gUIContext->LineHeight;
+        TopLevel ? gUIContext->TitleHeight : Font->LineHeight;
 
     float TreeOffset =
         TopLevel ? gUIContext->TopLevelTreeOffset : gUIContext->TreeOffset;
@@ -3928,10 +4025,11 @@ void Rr_UIEndTree(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     assert(Layout->TreeDepth > 0 && "Did you forget to call Rr_BeginTree()?");
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     RR_UNUSED(RR_POP_FROM_ARRAY(&Layout->TreeStack));
 
-    float TreeOffset = gUIContext->LineHeight;
+    float TreeOffset = Font->LineHeight;
     Layout->TreeDepth--;
     Layout->Cursor.X = Layout->DeferredContentsRect.Offset.X +
                        Rr_UIGetOffsetForTreeDepth(Layout->TreeDepth);
@@ -4114,12 +4212,12 @@ bool Rr_UIButton(const char *Text)
     Rr_Vec2 ButtonPosition = Layout->Cursor;
     Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
 
-    Rr_Vec2 TextPosition = Rr_AddV2(
+    Rr_Vec2 TitlePosition = Rr_AddV2(
         ButtonPosition,
         Rr_SubV2(Rr_MulV2F(ButtonSize, 0.5f), Rr_MulV2F(TitleSize, 0.5f)));
     Rr_UIDrawText(
         false,
-        TextPosition,
+        TitlePosition,
         TitleLength,
         Text,
         0.0f,
@@ -4146,6 +4244,9 @@ bool Rr_UIButton(const char *Text)
                          : &gUIContext->Colors.ButtonNormal,
         ClickResult.Held);
 
+    /* Rr_UIDrawSolidQuad(&(Rr_Rect){TitlePosition, TitleSize}, &(Rr_Vec4){1.0f,
+     * 0.5f, 0.5f, 0.5f}); */
+
     Rr_UIAdvance(ButtonSize);
 
     return ClickResult.ClickCount;
@@ -4161,15 +4262,16 @@ bool Rr_UIRadioButton(
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    float ButtonSize = gUIContext->LineHeight;
+    float ButtonSize = Font->LineHeight;
     float OuterRadius = ButtonSize * 0.4f;
     float InnerRadius = OuterRadius * 0.6f;
     float InnerRadiusHeld = OuterRadius * 0.8f;
-    float OutlineThickness = gUIContext->FontSize / 24.0f * 0.5f;
+    float OutlineThickness = Font->LineHeight / 24.0f * 0.5f;
 
     Rr_Vec2 Cursor = Layout->Cursor;
 
@@ -4246,11 +4348,12 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    Rr_Vec2 CheckboxSize = { gUIContext->LineHeight, gUIContext->LineHeight };
+    Rr_Vec2 CheckboxSize = { Font->LineHeight, Font->LineHeight };
 
     Rr_Vec2 FramePosition = Layout->Cursor;
 
@@ -4268,8 +4371,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_Rect ButtonRect = {
         FramePosition,
         Rr_V2(
-            TitleSize.X + gUIContext->FlexibleTitleMargin +
-                gUIContext->LineHeight,
+            TitleSize.X + gUIContext->FlexibleTitleMargin + Font->LineHeight,
             TitleSize.Y),
     };
 
@@ -4947,7 +5049,8 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         }
         else
         {
-            const float MIN_FIELD_WIDTH = gUIContext->FontSize / 2.0f;
+            Rr_UIFont *Font = Rr_UICurrentFont();
+            const float MIN_FIELD_WIDTH = Font->LineHeight / 2.0f;
             if (BufferSize.Width < MIN_FIELD_WIDTH)
             {
                 BufferSize.Width = MIN_FIELD_WIDTH;
@@ -5731,7 +5834,7 @@ static inline void Rr_UIColorPickerPopup(
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
         RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 
-    float TargetSize = gUIContext->FontSize * 15.0f;
+    float TargetSize = gUIContext->DefaultFont->LineHeight * 15.0f;
     float Step = TargetSize / 6.0f;
 
     Rr_Vec2 WindowPadding = Rr_UICurrentWindowPadding();
@@ -6018,9 +6121,10 @@ static inline bool Rr_UIInputColorEx(
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     Rr_Vec2 ColorBoxExtent =
-        Rr_V2F(gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f);
+        Rr_V2F(Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f);
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
@@ -6092,7 +6196,7 @@ static inline bool Rr_UIInputColorEx(
     {
         Rr_Rect InnerRect =
             Rr_ResizeRect(&ColorBoxRect, -gUIContext->BevelThickness);
-        Rr_UIDrawCheckerQuad(&InnerRect, gUIContext->FontSize * 0.5f);
+        Rr_UIDrawCheckerQuad(&InnerRect, Font->LineHeight * 0.5f);
         Rr_UIDrawVerticalGradientQuad(
             &InnerRect,
             (Rr_Vec4 *)Channels,
@@ -6149,6 +6253,7 @@ bool Rr_UICombobox(
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
@@ -6173,7 +6278,7 @@ bool Rr_UICombobox(
         TitleLength,
         Title,
         SelectedTextSize.X + gUIContext->InputFieldPadding.X * 2.0f +
-            gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f);
+            Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f);
     float ButtonHeight =
         SelectedTextSize.Height + gUIContext->InputFieldPadding.Y * 2.0f;
 
@@ -6212,6 +6317,7 @@ bool Rr_UICombobox(
         PopupPosition.Y += ButtonExtent.Height + gUIContext->FrameThickness;
         PopupPosition.X += gUIContext->FrameThickness;
         Rr_UIPushWindowPadding(Rr_V2(gUIContext->InputFieldPadding.X, 0.0f));
+        Rr_UIPushContentsMargin(Rr_V2F(0.0f));
         Rr_UISetNextWindowOffset(PopupPosition);
         Rr_UIBeginPopupWindow(TitleHash, POPUP_WINDOW_FLAGS);
         Rr_UILayout *PopupLayout = Rr_UICurrentLayout();
@@ -6235,7 +6341,7 @@ bool Rr_UICombobox(
                 PopupLayout->Cursor.X - gUIContext->InputFieldPadding.Width;
             OptionButtonRect.Extent.Width =
                 gUIContext->PopupWindow.Rect.Extent.Width;
-            OptionButtonRect.Extent.Height = gUIContext->LineHeight;
+            OptionButtonRect.Extent.Height = Font->LineHeight;
             Rr_UIClickResult OptionClickResult =
                 Rr_UIClickSimple(PopupLayout, &OptionButtonRect, OptionHash);
             if (OptionClickResult.ClickCount)
@@ -6268,6 +6374,7 @@ bool Rr_UICombobox(
             Rr_UIAdvance(OptionSize);
         }
         Rr_UIEndWindow();
+        Rr_UIPopContentsMargin();
         Rr_UIPopWindowPadding();
     }
 
@@ -6329,7 +6436,7 @@ bool Rr_UICombobox(
 
     Rr_Vec2 TotalExtent = {
         ButtonExtent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
-        gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
+        Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
     };
 
     Rr_UIAdvance(TotalExtent);
@@ -6347,13 +6454,14 @@ static inline float Rr_UISlider(
     assert(Title != NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIFont *Font = Rr_UICurrentFont();
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     /* NOTE: Reserve three handles worth of width just in case. Probably could
      * also use value text width. */
-    float MinSliderWidth = gUIContext->FontSize * 10.0f;
+    float MinSliderWidth = Font->LineHeight * 10.0f;
 
     float SliderWidth =
         Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, MinSliderWidth);
@@ -6362,13 +6470,13 @@ static inline float Rr_UISlider(
         Layout->Cursor,
         {
             SliderWidth,
-            gUIContext->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
+            Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
         },
     };
 
     Rr_UIPrimitive BackgroundBevel = Rr_UIReserveBevel();
 
-    float HandleWidth = gUIContext->FontSize;
+    float HandleWidth = Font->LineHeight;
     Rr_Rect HandleRect = { Layout->Cursor,
                            Rr_V2(HandleWidth, SliderRect.Extent.Y) };
     HandleRect.Offset.X += Normalized * (SliderWidth - HandleWidth);
@@ -6581,6 +6689,9 @@ void Rr_UIPrintColors(void)
     Rr_UIPrintColor(
         "SelectedTextBackground",
         &gUIContext->Colors.SelectedTextBackground);
+    Rr_UIPrintColor(
+        "SelectedTextBackground",
+        &gUIContext->Colors.SelectedTextForeground);
 }
 
 void Rr_InitUI(void)
@@ -6597,20 +6708,19 @@ void Rr_InitUI(void)
     gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
 
-    Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
-    float DefaultFontSize = (float)DisplaySize.Width / 112.0f;
+    float DefaultFontSize = 12.0f * Rr_GetWindowContentsScale();
     Rr_UISetFontSize(DefaultFontSize);
 
     gUIContext->Style = (Rr_UIStyle){
-        .TitlePadding = { 0.5f, 0.03f },
+        .TitlePadding = { 0.25f, 0.025f },
         .WindowPadding = { 0.5f, 0.5f },
         .ContentsMargin = { 0.25f, 0.25f },
         .ComponentMargin = 0.2f,
         .FlexibleTitleMargin = 0.5f,
         .BevelIntensityLight = 0.3f,
         .BevelIntensityDark = 0.7f,
-        .ButtonPadding = { 0.25f, 0.03f },
-        .InputFieldPadding = { 0.2f, 0.05f },
+        .ButtonPadding = { 0.25f, 0.025f },
+        .InputFieldPadding = { 0.25f, 0.025f },
     };
 
     gUIContext->Colors = (Rr_UIColors){
@@ -6642,6 +6752,7 @@ void Rr_InitUI(void)
                                     0.652866f,
                                     0.996207f,
                                     1.000000f },
+        .SelectedTextForeground = { 0.03f, 0.03f, 0.03f, 1.000000f },
     };
 
     Rr_Binding Bindings[] = {
@@ -6750,9 +6861,6 @@ void Rr_InitUI(void)
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
     gUIContext->SRGBSwapchain =
         Rr_IsSRGBFormat(Rr_GetImageFormat(SwapchainImage));
-
-    gUIContext->Font =
-        Rr_UICreateFont(RR_BUILTIN_SOURCESERIF4_TTF, DefaultFontSize);
 }
 
 void Rr_CleanupUI(void)
@@ -6767,7 +6875,7 @@ void Rr_CleanupUI(void)
     Rr_ReleaseGraphicsPipeline(gUIContext->LinearPipeline);
     Rr_ReleaseGraphicsPipeline(gUIContext->SRGBPipeline);
 
-    Rr_UIReleaseFont(gUIContext->Font);
+    Rr_UIReleaseFont(gUIContext->DefaultFont);
 
     Rr_DestroyArena(gUIContext->Arena);
 
@@ -6854,44 +6962,50 @@ static inline void Rr_UIConsumeNextFontSize(void)
         return;
     }
 
-    Rr_UIStyle *Style = &gUIContext->Style;
-    float FontSize = gUIContext->NextFontSize;
+    Rr_UIReleaseFont(gUIContext->DefaultFont);
 
+    Rr_Asset FontAsset = Rr_LoadAsset(RR_BUILTIN_SOURCESERIF4_TTF);
+    gUIContext->DefaultFont = Rr_UICreateFont(
+        FontAsset.Size,
+        FontAsset.Pointer,
+        gUIContext->NextFontSize);
     gUIContext->NextFontSize = INFINITY;
-    gUIContext->FontSize = FontSize;
-    gUIContext->LineHeight = FontSize * 1.2f;
-    gUIContext->WindowPadding =
-        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.WindowPadding, FontSize));
-    gUIContext->ContentsMargin =
-        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ContentsMargin, FontSize));
-    gUIContext->ComponentMargin =
-        RR_UI_ROUND(Style->ComponentMargin * FontSize);
-    gUIContext->FlexibleTitleMargin =
-        RR_UI_ROUND(Style->FlexibleTitleMargin * FontSize);
 
-    gUIContext->FrameThickness = floorf(RR_MAX(1.0f, FontSize * 0.075f));
-    gUIContext->ResizeHandleSize = RR_UI_ROUND(FontSize);
+    Rr_UIStyle *Style = &gUIContext->Style;
+    float FontSize = gUIContext->DefaultFont->Size;
+    float LineHeight = gUIContext->DefaultFont->LineHeight;
+
+    gUIContext->WindowPadding =
+        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.WindowPadding, LineHeight));
+    gUIContext->ContentsMargin =
+        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ContentsMargin, LineHeight));
+    gUIContext->ComponentMargin =
+        RR_UI_ROUND(Style->ComponentMargin * LineHeight);
+    gUIContext->FlexibleTitleMargin =
+        RR_UI_ROUND(Style->FlexibleTitleMargin * LineHeight);
+
+    gUIContext->FrameThickness = floorf(RR_MAX(1.0f, LineHeight * 0.075f));
+    gUIContext->ResizeHandleSize = RR_UI_ROUND(LineHeight);
     gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
     gUIContext->ScrollbarHandleWidth =
         RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
-    gUIContext->SeparatorLineHeight = gUIContext->LineHeight * 0.5f;
-    gUIContext->ButtonPadding = RR_UI_ROUND_V2(
-        Rr_MulV2F(gUIContext->Style.ButtonPadding, gUIContext->LineHeight));
-    gUIContext->BevelThickness = ceilf(FontSize * 0.1f);
+    gUIContext->SeparatorLineHeight = LineHeight * 0.5f;
+    gUIContext->ButtonPadding =
+        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ButtonPadding, LineHeight));
+    gUIContext->BevelThickness = ceilf(LineHeight * 0.1f);
     gUIContext->InputFieldPadding = RR_UI_ROUND_V2(
-        Rr_MulV2F(gUIContext->Style.InputFieldPadding, gUIContext->LineHeight));
+        Rr_MulV2F(gUIContext->Style.InputFieldPadding, LineHeight));
 
-    gUIContext->TitleHeight = RR_UI_ROUND(
-        gUIContext->Style.TitlePadding.Height * 2.0f * FontSize +
-        gUIContext->LineHeight);
-    gUIContext->TitleButtonSize = RR_UI_ROUND(gUIContext->TitleHeight);
     gUIContext->TitlePadding =
-        Rr_MulV2F(gUIContext->Style.TitlePadding, FontSize);
+        Rr_MulV2F(gUIContext->Style.TitlePadding, LineHeight);
+    gUIContext->TitleHeight =
+        RR_UI_ROUND(gUIContext->TitlePadding.Y * 2.0f + LineHeight);
+    gUIContext->TitleButtonSize = RR_UI_ROUND(gUIContext->TitleHeight);
     gUIContext->MinWindowSizeNoTitle =
         Rr_MulV2F(gUIContext->WindowPadding, 2.0f);
     gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
-    gUIContext->MinWindowSizeNoTitle.X += FontSize * 2.0f;
-    gUIContext->MinWindowSizeNoTitle.Y += FontSize * 2.0f;
+    gUIContext->MinWindowSizeNoTitle.X += LineHeight * 2.0f;
+    gUIContext->MinWindowSizeNoTitle.Y += LineHeight * 2.0f;
     gUIContext->MinWindowSizeNoTitle =
         RR_UI_ROUND_V2(gUIContext->MinWindowSizeNoTitle);
     gUIContext->MinWindowSize = gUIContext->MinWindowSizeNoTitle;
@@ -7086,7 +7200,7 @@ void Rr_EndUI(void)
             sizeof(Rr_UIUniformData));
         Rr_BindCombinedImage2DSampler(
             GraphicsNode,
-            gUIContext->Font->Image,
+            gUIContext->DefaultFont->Image,
             gUIContext->Sampler,
             0,
             1);
@@ -7126,6 +7240,7 @@ void Rr_EndUI(void)
 
     gUIContext->LayoutStack = NULL;
     RR_ZERO(gUIContext->HashStack);
+    RR_ZERO(gUIContext->FontStack);
     RR_ZERO(gUIContext->WindowPaddingStack);
     RR_ZERO(gUIContext->ContentsMarginStack);
     RR_ZERO(gUIContext->WidgetExtentStack);
@@ -7162,7 +7277,7 @@ void Rr_EndUI(void)
 
 float Rr_UIGetFontSize(void)
 {
-    return gUIContext->FontSize;
+    return gUIContext->DefaultFont->Size;
 }
 
 void Rr_UISetFontSize(float Size)
@@ -7282,10 +7397,8 @@ void Rr_UIDebugOverlay(void)
         if (Rr_UITab("UI"))
         {
             Rr_UITextF(
-                "UI Font Size: %.2f\n"
                 "Vertices Capacity: %zu\n"
                 "Indices Capacity: %zu",
-                gUIContext->FontSize,
                 gUIContext->Vertices.Capacity,
                 gUIContext->Indices.Capacity);
 

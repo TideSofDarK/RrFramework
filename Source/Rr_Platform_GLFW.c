@@ -338,11 +338,11 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
 #ifdef __linux__
     int32_t GLFWPlatform;
-    // if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
-    // {
-    //     GLFWPlatform = GLFW_PLATFORM_WAYLAND;
-    // }
-    // else
+    /* if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND)) */
+    /* { */
+    /*     GLFWPlatform = GLFW_PLATFORM_WAYLAND; */
+    /* } */
+    /* else */
     {
         GLFWPlatform = GLFW_PLATFORM_X11;
     }
@@ -564,6 +564,14 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
     Result.Height = Mode->height;
 
     return Result;
+}
+
+float Rr_GetWindowContentsScale(void)
+{
+    float XScale, YScale;
+    glfwGetWindowContentScale(gPlatform->Window, &XScale, &YScale);
+
+    return XScale;
 }
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
