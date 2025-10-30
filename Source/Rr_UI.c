@@ -576,9 +576,9 @@ static inline void Rr_UIReleaseFont(Rr_UIFont *Font)
     Rr_ReleaseImage(Font->Image);
 }
 
-static inline bool Rr_UIWindowHasTitle(Rr_UIWindow *Window)
+static inline bool Rr_UIWindowNoTitle(Rr_UIWindow *Window)
 {
-    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
 }
 
 static inline bool Rr_UIWindowHasCloseButton(Rr_UIWindow *Window)
@@ -586,14 +586,14 @@ static inline bool Rr_UIWindowHasCloseButton(Rr_UIWindow *Window)
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
 }
 
-static inline bool Rr_UIWindowHasCollapseButton(Rr_UIWindow *Window)
+static inline bool Rr_UIWindowNoCollapse(Rr_UIWindow *Window)
 {
-    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT);
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT);
 }
 
-static inline bool Rr_UIWindowHasResizeHandle(Rr_UIWindow *Window)
+static inline bool Rr_UIWindowNoResize(Rr_UIWindow *Window)
 {
-    return !RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
 }
 
 static inline bool Rr_UIWindowAutoResize(Rr_UIWindow *Window)
@@ -2472,12 +2472,12 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
 
 static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UIWindow *Window)
 {
-    if (!Rr_UIWindowHasTitle(Window))
+    if (Rr_UIWindowNoTitle(Window))
     {
         return Rr_V2F(0.0f);
     }
 
-    bool HasCollapse = Rr_UIWindowHasCollapseButton(Window);
+    bool HasCollapse = !Rr_UIWindowNoCollapse(Window);
     bool HasClose = Rr_UIWindowHasCloseButton(Window);
 
     return Rr_V2(
@@ -2500,7 +2500,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
     Rr_Vec2 TitlePosition =
         Rr_AddV2(Layout->Rect.Offset, gUIContext->TitlePadding);
 
-    bool HasCollapse = Rr_UIWindowHasCollapseButton(Window);
+    bool HasCollapse = !Rr_UIWindowNoCollapse(Window);
     bool CollapseButtonClicked = false;
     if (HasCollapse)
     {
@@ -2616,7 +2616,7 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
 
     Rr_Rect Rect = Layout->Rect;
 
-    if (Rr_UIWindowHasTitle(Window))
+    if (!Rr_UIWindowNoTitle(Window))
     {
         Rect.Offset.Y += gUIContext->TitleHeight;
         Rect.Extent.Y -= gUIContext->TitleHeight;
@@ -2648,7 +2648,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
 {
     Rr_UIWindow *Window = Layout->Window;
 
-    bool HasResize = Rr_UIWindowHasResizeHandle(Window);
+    bool HasResize = !Rr_UIWindowNoResize(Window);
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
     float ContentsHeight = Window->ContentsRect.Extent.Y;
@@ -2949,7 +2949,7 @@ static inline bool Rr_UIBeginWindowEx(
      * preventing that which is not currently implemented. */
 
     bool NoBorders = Rr_UIWindowNoBorders(Window);
-    bool HasTitle = Rr_UIWindowHasTitle(Window);
+    bool HasTitle = !Rr_UIWindowNoTitle(Window);
 
     bool WasClosed = Window->Open == false;
     Window->Open = (Open == NULL || *Open == true);
@@ -3285,7 +3285,7 @@ void Rr_UIEndWindow(void)
 
         /* Add resize handle if necessary. */
 
-        if (Rr_UIWindowHasResizeHandle(Window))
+        if (!Rr_UIWindowNoResize(Window))
         {
             Rr_Vec2 BottomRight =
                 Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
@@ -3348,7 +3348,7 @@ void Rr_UIEndWindow(void)
             Window->Rect.Extent.X += Layout->WindowPadding.X * 2.0f;
             Window->Rect.Extent.X = RR_MAX(Window->Rect.Extent.X, TitleSize.X);
 
-            if (Rr_UIWindowHasTitle(Window))
+            if (!Rr_UIWindowNoTitle(Window))
             {
                 Window->Rect.Extent.Y += gUIContext->TitleHeight;
             }
@@ -3366,7 +3366,7 @@ void Rr_UIEndWindow(void)
             Extent = Rr_AddV2(Extent, Window->ContentsRect.Extent);
             Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
 
-            if (Rr_UIWindowHasTitle(Window))
+            if (!Rr_UIWindowNoTitle(Window))
             {
                 Extent.Y += gUIContext->TitleHeight;
 
