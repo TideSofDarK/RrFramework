@@ -4289,7 +4289,7 @@ bool Rr_UIRadioButton(
     Rr_Rect ButtonRect = {
         Cursor,
         Rr_V2(
-            TitleSize.X + gUIContext->FlexibleTitleMargin + OuterRadius * 2.0f,
+            TitleSize.X + gUIContext->FlexibleTitleMargin + gUIContext->ButtonPadding.X + OuterRadius * 2.0f,
             TitleSize.Y),
     };
 
@@ -4310,14 +4310,6 @@ bool Rr_UIRadioButton(
                                          : gUIContext->Colors.ButtonNormal;
 
     Rr_UIDrawCircleFilled(CircleOffset, OuterRadius, &BaseColor);
-    /* if (ClickResult.Held) */
-    /* { */
-    /*     Rr_UIDrawCircleFilled( */
-    /*         CircleOffset, */
-    /*         InnerRadiusHeld, */
-    /*         &gUIContext->Colors.Foreground); */
-    /* } */
-    /* else */
     if (Selected)
     {
         Rr_UIDrawCircleFilled(
@@ -6708,7 +6700,7 @@ void Rr_InitUI(void)
     gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
 
-    float DefaultFontSize = 12.0f * Rr_GetWindowContentsScale();
+    float DefaultFontSize = 10.0f * Rr_GetWindowContentsScale();
     Rr_UISetFontSize(DefaultFontSize);
 
     gUIContext->Style = (Rr_UIStyle){
