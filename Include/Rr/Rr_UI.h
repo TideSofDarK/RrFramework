@@ -42,7 +42,7 @@ typedef struct Rr_UIContext Rr_UIContext;
 
 typedef struct Rr_UIFont Rr_UIFont;
 
-#define RR_UI_MIN_FONT_SIZE (12.0f)
+#define RR_UI_MIN_FONT_SIZE (6.0f)
 #define RR_UI_MAX_FONT_SIZE (48.0f)
 
 typedef struct Rr_UIVertex Rr_UIVertex;
@@ -108,6 +108,12 @@ extern Rr_UIFont *Rr_UICreateFont(
     size_t TTFSize,
     void const *TTFData,
     float FontSize);
+
+extern void Rr_UIReleaseFont(Rr_UIFont *Font);
+
+extern void Rr_UIPushFont(Rr_UIFont *Font);
+
+extern void Rr_UIPopFont(void);
 
 typedef enum
 {
@@ -319,9 +325,9 @@ extern bool Rr_UIWantMouseCapture(void);
 
 extern bool Rr_UIWantKeyboardCapture(void);
 
-extern float Rr_UIGetFontSize(void);
+extern float Rr_UICurrentFontSize(void);
 
-extern void Rr_UISetFontSize(float Size);
+extern float Rr_UICurrentLineHeight(void);
 
 extern void Rr_UIPrintColors(void);
 

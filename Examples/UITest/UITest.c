@@ -1,3 +1,5 @@
+#include "ExampleAssets.inc"
+
 #include <Rr/Rr.h>
 
 #include <stdio.h>
@@ -5,6 +7,8 @@
 static bool FixedSizeWindowOpen = false;
 static bool StyleEditorWindowOpen = false;
 static bool TextInputWindowOpen = false;
+
+static Rr_UIFont *CustomFont = NULL;
 
 static void TextInputWindow()
 {
@@ -52,25 +56,16 @@ static void StyleEditorWindow()
     {
         Rr_UIStyle *Style = Rr_UIGetStyle();
         Rr_UIColors *Colors = Rr_UIGetColors();
-        float FontSize = Rr_UIGetFontSize();
-        bool UpdateFontSize = false;
-        UpdateFontSize |= Rr_UIInputFloat("Font Size", &FontSize);
+
+        /* Rr_UIInputFloat("Font Size", &FontSize); */
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
-        UpdateFontSize |=
-            Rr_UIInputFloat2("Title Padding", Style->TitlePadding.Elements);
-        UpdateFontSize |=
-            Rr_UIInputFloat2("Window Padding", Style->WindowPadding.Elements);
-        UpdateFontSize |= Rr_UIInputFloat2(
-            "Contents Margin",
-            Style->ContentsMargin.Elements);
-        UpdateFontSize |=
-            Rr_UIInputFloat("Component Margin", &Style->ComponentMargin);
-        UpdateFontSize |= Rr_UIInputFloat(
-            "Bevel Intensity Light",
-            &Style->BevelIntensityLight);
-        UpdateFontSize |=
-            Rr_UIInputFloat("Bevel Intensity Dark", &Style->BevelIntensityDark);
+        Rr_UIInputFloat2("Title Padding", Style->TitlePadding.Elements);
+        Rr_UIInputFloat2("Window Padding", Style->WindowPadding.Elements);
+        Rr_UIInputFloat2("Contents Margin", Style->ContentsMargin.Elements);
+        Rr_UIInputFloat("Component Margin", &Style->ComponentMargin);
+        Rr_UIInputFloat("Bevel Intensity Light", &Style->BevelIntensityLight);
+        Rr_UIInputFloat("Bevel Intensity Dark", &Style->BevelIntensityDark);
         Rr_UIPopFormatFloatDecimalPlaces();
 
         Rr_UISeparator();
@@ -107,8 +102,7 @@ static void StyleEditorWindow()
         Rr_UISeparator();
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
-        UpdateFontSize |=
-            Rr_UIInputFloat2("Button Padding", Style->ButtonPadding.Elements);
+        Rr_UIInputFloat2("Button Padding", Style->ButtonPadding.Elements);
         Rr_UIPopFormatFloatDecimalPlaces();
 
         Rr_UIInputColor4("Button Normal", Colors->ButtonNormal.Elements);
@@ -119,7 +113,7 @@ static void StyleEditorWindow()
         Rr_UISeparator();
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
-        UpdateFontSize |= Rr_UIInputFloat2(
+        Rr_UIInputFloat2(
             "Input Field Padding",
             Style->InputFieldPadding.Elements);
         Rr_UIPopFormatFloatDecimalPlaces();
@@ -150,13 +144,15 @@ static void StyleEditorWindow()
         }
         Rr_UIEndHorizontal();
 
-        if (UpdateFontSize)
-        {
-            Rr_UISetFontSize(FontSize);
-        }
-
         Rr_UIEndWindow();
     }
+}
+
+static void Init(void)
+{
+    Rr_Asset FontAsset = Rr_LoadAsset(EXAMPLE_ASSET_STONETOMB_TTF);
+
+    CustomFont = Rr_UICreateFont(FontAsset.Size, FontAsset.Pointer, 18.0f);
 }
 
 static void Iterate(void)
@@ -247,7 +243,7 @@ static void Iterate(void)
 
             if (Rr_UIBeginTree("Tree #1"))
             {
-                Rr_Vec2 Vec2 = {-75.0f, 125.0f};
+                Rr_Vec2 Vec2 = { -75.0f, 125.0f };
                 Rr_UIInputFloat2("Float2 Input", Vec2.Elements);
 
                 if (Rr_UIBeginTree("Tree #2###0"))
@@ -304,15 +300,23 @@ static void Iterate(void)
                 "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
                 "laboris nisi ut aliquip ex ea commodo consequat.",
                 RR_UI_TEXT_FLAGS_WRAPPED_BIT);
+
+            Rr_UIPushFont(CustomFont);
+            Rr_UIText("Different font, boo!");
+            Rr_UIPopFont();
+
             Rr_UIEndChild();
         }
 
         if (Rr_UIBeginChild("Button"))
         {
+            Rr_UIPushFont(CustomFont);
             if (Rr_UIButton("Show Style Editor"))
             {
                 StyleEditorWindowOpen = true;
             }
+            Rr_UIPopFont();
+
             if (Rr_UIButton("Show Fixed Size Window"))
             {
                 FixedSizeWindowOpen = true;
@@ -324,7 +328,7 @@ static void Iterate(void)
 
             Rr_UIBeginHorizontal();
             Rr_UIPushContentsMargin(Rr_V2F(0.0f));
-            Rr_UIPushWidgetExtent(Rr_V2F(48.0f));
+            Rr_UIPushWidgetExtent(Rr_V2F(Rr_UICurrentLineHeight() * 1.25f));
             Rr_UIButton("X");
             Rr_UIButton("Y");
             Rr_UIButton("Z");
@@ -531,11 +535,18 @@ static void Iterate(void)
     }
 }
 
+static void Cleanup(void)
+{
+    Rr_UIReleaseFont(CustomFont);
+}
+
 int main(int ArgC, char **ArgV)
 {
     Rr_AppConfig Config = {
         .Title = "UITest",
+        .InitFunc = Init,
         .IterateFunc = Iterate,
+        .CleanupFunc = Cleanup,
     };
     Rr_Run(&Config);
 

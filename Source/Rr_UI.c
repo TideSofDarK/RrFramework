@@ -74,6 +74,7 @@ struct Rr_UIClipRect
     uint32_t IndexCount;
     uint32_t FirstIndex;
     Rr_Rect Rect;
+    Rr_Image2D *Image;
 };
 
 typedef RR_ARRAY(Rr_UIClipRect) Rr_UIClipRectArray;
@@ -259,7 +260,6 @@ struct Rr_UIContext
 
     RR_FREE_LIST(Rr_UIFont) Fonts;
     Rr_UIFont *DefaultFont;
-    float NextFontSize;
 
     /* float LineHeight; */
     Rr_Vec2 WindowPadding;
@@ -381,6 +381,8 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     void const *TTFData,
     float FontSize)
 {
+    assert(FontSize > RR_UI_MIN_FONT_SIZE && FontSize < RR_UI_MAX_FONT_SIZE);
+
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     static int FontIndex = -1;
@@ -616,7 +618,7 @@ Rr_UIFont *Rr_UICreateFont(size_t TTFSize, void const *TTFData, float FontSize)
     return Rr_UICreateFontEx(TTFSize, TTFData, FontSize);
 }
 
-static inline void Rr_UIReleaseFont(Rr_UIFont *Font)
+void Rr_UIReleaseFont(Rr_UIFont *Font)
 {
     if (Font)
     {
@@ -631,19 +633,6 @@ static inline Rr_UIFont *Rr_UICurrentFont(void)
         return RR_LAST_ARRAY_ELEMENT(&gUIContext->FontStack);
     }
     return gUIContext->DefaultFont;
-}
-
-void Rr_UIPushFont(Rr_UIFont *Font)
-{
-    *RR_PUSH_INTO_ARRAY(&gUIContext->FontStack, gUIContext->FrameArena) = Font;
-}
-
-void Rr_UIPopFont(void)
-{
-    assert(
-        gUIContext->FontStack.Count &&
-        "Did you forget to call Rr_UIPushFont()?");
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->FontStack));
 }
 
 static inline bool Rr_UIWindowNoTitle(Rr_UIWindow *Window)
@@ -1887,9 +1876,10 @@ static inline Rr_Vec2 Rr_UIDrawText(
     float CurrentY = 0.0f;
 
     bool Wrapped = RR_HAS_BIT(Flags, RR_UI_TEXT_FLAGS_WRAPPED_BIT);
-    assert(
-        (!Wrapped || AvailableWidth >= FontSize) &&
-        "Available width must be larger than font size!");
+    if (Wrapped)
+    {
+        AvailableWidth = RR_MAX(AvailableWidth, LineHeight);
+    }
 
     Rr_Vec2 ResultSize = { 0 };
 
@@ -2360,6 +2350,7 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
         RR_PUSH_INTO_ARRAY(Window->TopLevelClipRects, gUIContext->FrameArena);
     ClipRect->FirstIndex = (uint32_t)gUIContext->Indices.Count;
     ClipRect->Rect = *Rect;
+    ClipRect->Image = Rr_UICurrentFont()->Image;
 
     Window->CurrentClipRect = ClipRect;
     Layout->MouseInsideClipRect =
@@ -2378,7 +2369,7 @@ static inline void Rr_UIBeginVisibleClipRect(Rr_Rect *Rect)
     Rr_UIBeginClipRect(&VisibleRect);
 }
 
-static inline void Rr_UIEndClipRect(void)
+static inline Rr_UIClipRect *Rr_UIEndClipRect(void)
 {
     Rr_UIWindow *Window = Rr_UICurrentWindow();
     if (Window)
@@ -2389,7 +2380,89 @@ static inline void Rr_UIEndClipRect(void)
                 &RR_LAST_ARRAY_ELEMENT(Window->TopLevelClipRects);
             Last->IndexCount =
                 (uint32_t)gUIContext->Indices.Count - Last->FirstIndex;
+            return Last;
         }
+    }
+    return NULL;
+}
+
+static inline void Rr_UIRecalculateStyle(void)
+{
+    Rr_UIStyle *Style = &gUIContext->Style;
+    Rr_UIFont *Font = Rr_UICurrentFont();
+    float FontSize = Font->Size;
+    float LineHeight = Font->LineHeight;
+
+    gUIContext->WindowPadding =
+        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.WindowPadding, LineHeight));
+    gUIContext->ContentsMargin =
+        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ContentsMargin, LineHeight));
+    gUIContext->ComponentMargin =
+        RR_UI_ROUND(Style->ComponentMargin * LineHeight);
+    gUIContext->FlexibleTitleMargin =
+        RR_UI_ROUND(Style->FlexibleTitleMargin * LineHeight);
+
+    gUIContext->FrameThickness = floorf(RR_MAX(1.0f, LineHeight * 0.075f));
+    gUIContext->ResizeHandleSize = RR_UI_ROUND(LineHeight);
+    gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
+    gUIContext->ScrollbarHandleWidth =
+        RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
+    gUIContext->SeparatorLineHeight = LineHeight * 0.5f;
+    gUIContext->ButtonPadding =
+        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ButtonPadding, LineHeight));
+    gUIContext->BevelThickness = ceilf(LineHeight * 0.1f);
+    gUIContext->InputFieldPadding = RR_UI_ROUND_V2(
+        Rr_MulV2F(gUIContext->Style.InputFieldPadding, LineHeight));
+
+    gUIContext->TitlePadding =
+        Rr_MulV2F(gUIContext->Style.TitlePadding, LineHeight);
+    gUIContext->TitleHeight =
+        RR_UI_ROUND(gUIContext->TitlePadding.Y * 2.0f + LineHeight);
+    gUIContext->TitleButtonSize = RR_UI_ROUND(gUIContext->TitleHeight);
+    gUIContext->MinWindowSizeNoTitle =
+        Rr_MulV2F(gUIContext->WindowPadding, 2.0f);
+    gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
+    gUIContext->MinWindowSizeNoTitle.X += LineHeight * 2.0f;
+    gUIContext->MinWindowSizeNoTitle.Y += LineHeight * 2.0f;
+    gUIContext->MinWindowSizeNoTitle =
+        RR_UI_ROUND_V2(gUIContext->MinWindowSizeNoTitle);
+    gUIContext->MinWindowSize = gUIContext->MinWindowSizeNoTitle;
+    gUIContext->MinWindowSize.Y += gUIContext->TitleHeight;
+    gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
+
+    gUIContext->TopLevelTreeOffset =
+        gUIContext->WindowPadding.X * 2.0f + gUIContext->ButtonPadding.X;
+    gUIContext->TreeOffset = gUIContext->WindowPadding.X * 2.0f;
+}
+
+void Rr_UIPushFont(Rr_UIFont *Font)
+{
+    assert(Font);
+
+    *RR_PUSH_INTO_ARRAY(&gUIContext->FontStack, gUIContext->FrameArena) = Font;
+
+    Rr_UIRecalculateStyle();
+
+    Rr_UIClipRect *Old = Rr_UIEndClipRect();
+    if (Old)
+    {
+        Rr_UIBeginClipRect(&Old->Rect);
+    }
+}
+
+void Rr_UIPopFont(void)
+{
+    assert(
+        gUIContext->FontStack.Count &&
+        "Did you forget to call Rr_UIPushFont()?");
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->FontStack));
+
+    Rr_UIRecalculateStyle();
+
+    Rr_UIClipRect *Old = Rr_UIEndClipRect();
+    if (Old)
+    {
+        Rr_UIBeginClipRect(&Old->Rect);
     }
 }
 
@@ -4289,7 +4362,8 @@ bool Rr_UIRadioButton(
     Rr_Rect ButtonRect = {
         Cursor,
         Rr_V2(
-            TitleSize.X + gUIContext->FlexibleTitleMargin + gUIContext->ButtonPadding.X + OuterRadius * 2.0f,
+            TitleSize.X + gUIContext->FlexibleTitleMargin +
+                gUIContext->ButtonPadding.X + OuterRadius * 2.0f,
             TitleSize.Y),
     };
 
@@ -6701,7 +6775,9 @@ void Rr_InitUI(void)
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
 
     float DefaultFontSize = 10.0f * Rr_GetWindowContentsScale();
-    Rr_UISetFontSize(DefaultFontSize);
+    Rr_Asset FontAsset = Rr_LoadAsset(RR_BUILTIN_SOURCESERIF4_TTF);
+    gUIContext->DefaultFont =
+        Rr_UICreateFont(FontAsset.Size, FontAsset.Pointer, DefaultFontSize);
 
     gUIContext->Style = (Rr_UIStyle){
         .TitlePadding = { 0.25f, 0.025f },
@@ -6947,68 +7023,6 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
     }
 }
 
-static inline void Rr_UIConsumeNextFontSize(void)
-{
-    if (gUIContext->NextFontSize == INFINITY)
-    {
-        return;
-    }
-
-    Rr_UIReleaseFont(gUIContext->DefaultFont);
-
-    Rr_Asset FontAsset = Rr_LoadAsset(RR_BUILTIN_SOURCESERIF4_TTF);
-    gUIContext->DefaultFont = Rr_UICreateFont(
-        FontAsset.Size,
-        FontAsset.Pointer,
-        gUIContext->NextFontSize);
-    gUIContext->NextFontSize = INFINITY;
-
-    Rr_UIStyle *Style = &gUIContext->Style;
-    float FontSize = gUIContext->DefaultFont->Size;
-    float LineHeight = gUIContext->DefaultFont->LineHeight;
-
-    gUIContext->WindowPadding =
-        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.WindowPadding, LineHeight));
-    gUIContext->ContentsMargin =
-        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ContentsMargin, LineHeight));
-    gUIContext->ComponentMargin =
-        RR_UI_ROUND(Style->ComponentMargin * LineHeight);
-    gUIContext->FlexibleTitleMargin =
-        RR_UI_ROUND(Style->FlexibleTitleMargin * LineHeight);
-
-    gUIContext->FrameThickness = floorf(RR_MAX(1.0f, LineHeight * 0.075f));
-    gUIContext->ResizeHandleSize = RR_UI_ROUND(LineHeight);
-    gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
-    gUIContext->ScrollbarHandleWidth =
-        RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
-    gUIContext->SeparatorLineHeight = LineHeight * 0.5f;
-    gUIContext->ButtonPadding =
-        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ButtonPadding, LineHeight));
-    gUIContext->BevelThickness = ceilf(LineHeight * 0.1f);
-    gUIContext->InputFieldPadding = RR_UI_ROUND_V2(
-        Rr_MulV2F(gUIContext->Style.InputFieldPadding, LineHeight));
-
-    gUIContext->TitlePadding =
-        Rr_MulV2F(gUIContext->Style.TitlePadding, LineHeight);
-    gUIContext->TitleHeight =
-        RR_UI_ROUND(gUIContext->TitlePadding.Y * 2.0f + LineHeight);
-    gUIContext->TitleButtonSize = RR_UI_ROUND(gUIContext->TitleHeight);
-    gUIContext->MinWindowSizeNoTitle =
-        Rr_MulV2F(gUIContext->WindowPadding, 2.0f);
-    gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
-    gUIContext->MinWindowSizeNoTitle.X += LineHeight * 2.0f;
-    gUIContext->MinWindowSizeNoTitle.Y += LineHeight * 2.0f;
-    gUIContext->MinWindowSizeNoTitle =
-        RR_UI_ROUND_V2(gUIContext->MinWindowSizeNoTitle);
-    gUIContext->MinWindowSize = gUIContext->MinWindowSizeNoTitle;
-    gUIContext->MinWindowSize.Y += gUIContext->TitleHeight;
-    gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
-
-    gUIContext->TopLevelTreeOffset =
-        gUIContext->WindowPadding.X * 2.0f + gUIContext->ButtonPadding.X;
-    gUIContext->TreeOffset = gUIContext->WindowPadding.X * 2.0f;
-}
-
 void Rr_NewUIFrame(void)
 {
     gUIContext->FrameArena = gRenderer->Frames[gRenderer->FrameIndex].Arena;
@@ -7023,8 +7037,6 @@ void Rr_NewUIFrame(void)
 
 void Rr_BeginUI(void)
 {
-    Rr_UIConsumeNextFontSize();
-
     gUIContext->HoveredWindow = NULL;
     if (Rr_UIPopupWindowActive())
     {
@@ -7087,7 +7099,8 @@ static inline int Rr_UIWindowSort(const void *A, const void *B)
 
 static inline void Rr_UIDrawWindow(
     Rr_UIWindow *Window,
-    Rr_GraphNode *GraphicsNode)
+    Rr_GraphNode *GraphicsNode,
+    Rr_Image **BoundImage)
 {
     size_t ClipRectCount = Window->TopLevelClipRects->Count;
     for (size_t ClipRectIndex = 0; ClipRectIndex < ClipRectCount;
@@ -7116,6 +7129,18 @@ static inline void Rr_UIDrawWindow(
         {
             continue;
         }
+
+        if (ClipRect->Image != *BoundImage)
+        {
+            Rr_BindCombinedImage2DSampler(
+                GraphicsNode,
+                ClipRect->Image,
+                gUIContext->Sampler,
+                0,
+                1);
+            *BoundImage = ClipRect->Image;
+        }
+
         Rr_SetScissor(GraphicsNode, &IntRect);
 
         Rr_DrawIndexed(
@@ -7190,12 +7215,6 @@ void Rr_EndUI(void)
             0,
             0,
             sizeof(Rr_UIUniformData));
-        Rr_BindCombinedImage2DSampler(
-            GraphicsNode,
-            gUIContext->DefaultFont->Image,
-            gUIContext->Sampler,
-            0,
-            1);
 
         qsort(
             gUIContext->ActiveWindows.Data,
@@ -7205,6 +7224,8 @@ void Rr_EndUI(void)
 
         gUIContext->HighestWindow =
             RR_LAST_ARRAY_ELEMENT(&gUIContext->ActiveWindows);
+
+        Rr_Image2D *BoundImage = NULL;
 
         for (size_t Index = 0; Index < gUIContext->ActiveWindows.Count; ++Index)
         {
@@ -7220,7 +7241,7 @@ void Rr_EndUI(void)
             }
             if (Window->TopLevelParent == Window)
             {
-                Rr_UIDrawWindow(Window, GraphicsNode);
+                Rr_UIDrawWindow(Window, GraphicsNode, &BoundImage);
                 Window->ShownAtLeastOnce = true;
             }
         }
@@ -7267,15 +7288,14 @@ void Rr_EndUI(void)
     RR_ZERO(gUIContext->KeyboardInputEvents);
 }
 
-float Rr_UIGetFontSize(void)
+float Rr_UICurrentFontSize(void)
 {
-    return gUIContext->DefaultFont->Size;
+    return Rr_UICurrentFont()->Size;
 }
 
-void Rr_UISetFontSize(float Size)
+float Rr_UICurrentLineHeight(void)
 {
-    gUIContext->NextFontSize =
-        RR_CLAMP(RR_UI_MIN_FONT_SIZE, RR_UI_ROUND(Size), RR_UI_MAX_FONT_SIZE);
+    return Rr_UICurrentFont()->LineHeight;
 }
 
 static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, const char *Comment)
