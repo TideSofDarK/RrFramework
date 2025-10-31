@@ -402,38 +402,33 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         return NULL;
     }
 
-    float BakeScale;
-    {
-        float FontScale = stbtt_ScaleForPixelHeight(&FontInfo, FontSize);
-
-        int UnscaledAscent, UnscaledDescent, UnscaledLineGap;
-        stbtt_GetFontVMetrics(
-            &FontInfo,
-            &UnscaledAscent,
-            &UnscaledDescent,
-            &UnscaledLineGap);
-
-        float Ascent = (float)UnscaledAscent * FontScale;
-        float Descent = (float)UnscaledDescent * FontScale;
-        float LineGap = (float)UnscaledLineGap * FontScale;
-
-        BakeScale = FontSize / (Ascent + Descent);
-    }
-
-    float FontScale = stbtt_ScaleForMappingEmToPixels(&FontInfo, FontSize);
-
     int UnscaledAscent, UnscaledDescent, UnscaledLineGap;
+
+    float PixelHeightScale = stbtt_ScaleForPixelHeight(&FontInfo, FontSize);
     stbtt_GetFontVMetrics(
         &FontInfo,
         &UnscaledAscent,
         &UnscaledDescent,
         &UnscaledLineGap);
 
-    float Ascent = (float)UnscaledAscent * FontScale;
-    float Descent = (float)UnscaledDescent * FontScale;
-    float LineGap = (float)UnscaledLineGap * FontScale;
+    float PixelAscent = (float)UnscaledAscent * PixelHeightScale;
+    float PixelDescent = (float)UnscaledDescent * PixelHeightScale;
+    float PixelLineGap = (float)UnscaledLineGap * PixelHeightScale;
 
-    float LineHeight = (Ascent - Descent) / FontSize;
+    float BakeScale = FontSize / (PixelAscent + PixelDescent);
+
+    float EmScale = stbtt_ScaleForMappingEmToPixels(&FontInfo, FontSize);
+    stbtt_GetFontVMetrics(
+        &FontInfo,
+        &UnscaledAscent,
+        &UnscaledDescent,
+        &UnscaledLineGap);
+
+    float EmAscent = (float)UnscaledAscent * EmScale;
+    float EmDescent = (float)UnscaledDescent * EmScale;
+    float EmLineGap = (float)UnscaledLineGap * EmScale;
+
+    assert(PixelLineGap == 0.0f && EmLineGap == 0.0f);
 
     stbtt_pack_context PackContext;
     if (!stbtt_PackBegin(
@@ -488,9 +483,9 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         ImageFormat,
         RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     Font->Size = FontSize;
-    Font->LineHeight = FontSize * BakeScale;
-    Font->Ascent = Ascent;
-    Font->Descent = Descent;
+    Font->LineHeight = (PixelAscent - PixelDescent) * BakeScale;
+    Font->Ascent = PixelAscent * BakeScale;
+    Font->Descent = PixelDescent * BakeScale;
 
     stbtt_pack_range *PackRanges =
         RR_ALLOC_NO_ZERO(Scratch.Arena, RangeCount * sizeof(stbtt_pack_range));
@@ -565,7 +560,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
                 0);
 
             Glyph->Extent = (Rr_Vec2){ Quad.x1 - Quad.x0, Quad.y1 - Quad.y0 };
-            Glyph->Offset = (Rr_Vec2){ Quad.x0, Quad.y0 + (Ascent - Descent) };
+            Glyph->Offset = (Rr_Vec2){ Quad.x0, Quad.y0 + PixelAscent * BakeScale };
             Glyph->UVMin = (Rr_Vec2){ Quad.s0, Quad.t0 };
             Glyph->UVMax = (Rr_Vec2){ Quad.s1, Quad.t1 };
             Glyph->XAdvance = PackedChar->xadvance;

@@ -8,7 +8,8 @@ static bool FixedSizeWindowOpen = false;
 static bool StyleEditorWindowOpen = false;
 static bool TextInputWindowOpen = false;
 
-static Rr_UIFont *CustomFont = NULL;
+static Rr_UIFont *StoneTombFont = NULL;
+static Rr_UIFont *ProggyCleanFont = NULL;
 
 static void TextInputWindow()
 {
@@ -150,9 +151,13 @@ static void StyleEditorWindow()
 
 static void Init(void)
 {
-    Rr_Asset FontAsset = Rr_LoadAsset(EXAMPLE_ASSET_STONETOMB_TTF);
+    Rr_Asset StoneTombAsset = Rr_LoadAsset(EXAMPLE_ASSET_STONETOMB_TTF);
+    StoneTombFont =
+        Rr_UICreateFont(StoneTombAsset.Size, StoneTombAsset.Pointer, 18.0f);
 
-    CustomFont = Rr_UICreateFont(FontAsset.Size, FontAsset.Pointer, 18.0f);
+    Rr_Asset ProggyCleanAsset = Rr_LoadAsset(EXAMPLE_ASSET_PROGGYCLEAN_TTF);
+    ProggyCleanFont =
+        Rr_UICreateFont(ProggyCleanAsset.Size, ProggyCleanAsset.Pointer, 14.0f);
 }
 
 static void Iterate(void)
@@ -301,7 +306,7 @@ static void Iterate(void)
                 "laboris nisi ut aliquip ex ea commodo consequat.",
                 RR_UI_TEXT_FLAGS_WRAPPED_BIT);
 
-            Rr_UIPushFont(CustomFont);
+            Rr_UIPushFont(StoneTombFont);
             Rr_UIText("Different font, boo!");
             Rr_UIPopFont();
 
@@ -310,17 +315,20 @@ static void Iterate(void)
 
         if (Rr_UIBeginChild("Button"))
         {
-            Rr_UIPushFont(CustomFont);
+            Rr_UIPushFont(StoneTombFont);
             if (Rr_UIButton("Show Style Editor"))
             {
                 StyleEditorWindowOpen = true;
             }
             Rr_UIPopFont();
 
+            Rr_UIPushFont(ProggyCleanFont);
             if (Rr_UIButton("Show Fixed Size Window"))
             {
                 FixedSizeWindowOpen = true;
             }
+            Rr_UIPopFont();
+
             if (Rr_UIButton("Show Text Input Window"))
             {
                 TextInputWindowOpen = true;
@@ -410,6 +418,7 @@ static void Iterate(void)
 
         if (Rr_UIBeginChild("Input Fields"))
         {
+            Rr_UIPushFont(ProggyCleanFont);
             static char StringBuffer[16] = "Hello, World!";
             Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
             static char MultilineBuffer[128] =
@@ -421,6 +430,7 @@ static void Iterate(void)
             Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
             static float TestFloat = 123.456f;
             Rr_UIInputFloat("Float Input", &TestFloat);
+            Rr_UIPopFont();
 
             Rr_UISetNextWindowCreateCollapsed(false);
             if (Rr_UIBeginChild("Vectors and Matrices"))
@@ -537,7 +547,8 @@ static void Iterate(void)
 
 static void Cleanup(void)
 {
-    Rr_UIReleaseFont(CustomFont);
+    Rr_UIReleaseFont(StoneTombFont);
+    Rr_UIReleaseFont(ProggyCleanFont);
 }
 
 int main(int ArgC, char **ArgV)
