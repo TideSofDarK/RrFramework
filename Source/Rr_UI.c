@@ -206,7 +206,7 @@ struct Rr_UIContext
 
     /* TODO: We need nice stack data structure for these. */
 
-    Rr_UILayout *LayoutStack;
+    RR_ARRAY(Rr_UILayout *) LayoutStack;
     RR_ARRAY(Rr_UIHash) HashStack;
     RR_ARRAY(Rr_UIFont *) FontStack;
     RR_ARRAY(Rr_Vec2) WindowPaddingStack;
@@ -769,12 +769,17 @@ void Rr_UIPopContentsMargin(void)
 
 static inline Rr_UILayout *Rr_UICurrentLayout(void)
 {
-    return gUIContext->LayoutStack;
+    if (gUIContext->LayoutStack.Count == 0)
+    {
+        return NULL;
+    }
+    return RR_LAST_ARRAY_ELEMENT(&gUIContext->LayoutStack);
 }
 
 static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
 {
-    Rr_UILayout *Layout = RR_ALLOC(gUIContext->FrameArena, sizeof(Rr_UILayout));
+    Rr_UILayout *Layout =
+        RR_ALLOC_NO_ZERO(gUIContext->FrameArena, sizeof(Rr_UILayout));
     *Layout = (Rr_UILayout){
         .Window = Window,
         .WindowPadding = Rr_UICurrentWindowPadding(),
@@ -787,10 +792,9 @@ static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
         .DeferredWindowExtent = Rr_V2F(INFINITY),
         .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
         .TopLevelParent =
-            Window->Child ? gUIContext->LayoutStack->TopLevelParent : Layout,
-        .Previous = gUIContext->LayoutStack,
+            Window->Child ? Rr_UICurrentLayout()->TopLevelParent : Layout,
     };
-    gUIContext->LayoutStack = Layout;
+    *RR_PUSH_INTO_ARRAY(&gUIContext->LayoutStack, gUIContext->FrameArena) = Layout;
     Rr_UIPushIDHash(Hash);
     return Layout;
 }
@@ -798,8 +802,8 @@ static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
 static inline void Rr_UIPopLayout(void)
 {
     Rr_UIPopID();
-    assert(gUIContext->LayoutStack);
-    gUIContext->LayoutStack = gUIContext->LayoutStack->Previous;
+    assert(gUIContext->LayoutStack.Count);
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->LayoutStack));
 }
 
 static inline Rr_UIWindow *Rr_UICurrentWindow(void)
@@ -2383,7 +2387,8 @@ static inline void Rr_UIRecalculateStyle(void)
         RR_UI_ROUND(Style->ComponentMargin * LineHeight);
 
     gUIContext->FrameThickness = floorf(RR_MAX(1.0f, LineHeight * 0.075f));
-    gUIContext->ResizeHandleSize = RR_UI_ROUND(LineHeight * Style->ScrollbarAreaWidth);
+    gUIContext->ResizeHandleSize =
+        RR_UI_ROUND(LineHeight * Style->ScrollbarAreaWidth);
     gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
     gUIContext->ScrollbarHandleWidth =
         RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
@@ -7006,10 +7011,18 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
 
 void Rr_NewUIFrame(void)
 {
-    gUIContext->FrameArena = gRenderer->Frames[gRenderer->FrameIndex].Arena;
+    Rr_Arena *FrameArena = gRenderer->Frames[gRenderer->FrameIndex].Arena;
+    gUIContext->FrameArena = FrameArena;
 
-    RR_RESET_ARRAY(&gUIContext->Vertices, gUIContext->FrameArena);
-    RR_RESET_ARRAY(&gUIContext->Indices, gUIContext->FrameArena);
+    RR_RESET_ARRAY(&gUIContext->LayoutStack, FrameArena);
+    RR_RESET_ARRAY(&gUIContext->HashStack, FrameArena);
+    RR_RESET_ARRAY(&gUIContext->FontStack, FrameArena);
+    RR_RESET_ARRAY(&gUIContext->WindowPaddingStack, FrameArena);
+    RR_RESET_ARRAY(&gUIContext->ContentsMarginStack, FrameArena);
+    RR_RESET_ARRAY(&gUIContext->WidgetExtentStack, FrameArena);
+    RR_RESET_ARRAY(&gUIContext->FormatFloatDecimalPlacesStack, FrameArena);
+    RR_RESET_ARRAY(&gUIContext->Vertices, FrameArena);
+    RR_RESET_ARRAY(&gUIContext->Indices, FrameArena);
 
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
     gUIContext->ScreenSize.Width = (float)SwapchainSize.Width;
@@ -7232,13 +7245,6 @@ void Rr_EndUI(void)
         RR_END_FRAME_SECTION("Rr.UI.DrawWindows");
     }
 
-    gUIContext->LayoutStack = NULL;
-    RR_ZERO(gUIContext->HashStack);
-    RR_ZERO(gUIContext->FontStack);
-    RR_ZERO(gUIContext->WindowPaddingStack);
-    RR_ZERO(gUIContext->ContentsMarginStack);
-    RR_ZERO(gUIContext->WidgetExtentStack);
-    RR_ZERO(gUIContext->FormatFloatDecimalPlacesStack);
     gUIContext->ClickConsumed = false;
     gUIContext->DragConsumed = false;
     if (gUIContext->LeftMouseButton.Up)
