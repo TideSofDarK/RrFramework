@@ -547,7 +547,8 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
                 0);
 
             Glyph->Extent = (Rr_Vec2){ Quad.x1 - Quad.x0, Quad.y1 - Quad.y0 };
-            Glyph->Offset = (Rr_Vec2){ Quad.x0, Quad.y0 + PixelAscent * BakeScale };
+            Glyph->Offset =
+                (Rr_Vec2){ Quad.x0, Quad.y0 + PixelAscent * BakeScale };
             Glyph->UVMin = (Rr_Vec2){ Quad.s0, Quad.t0 };
             Glyph->UVMax = (Rr_Vec2){ Quad.s1, Quad.t1 };
             Glyph->XAdvance = PackedChar->xadvance;
@@ -2380,11 +2381,9 @@ static inline void Rr_UIRecalculateStyle(void)
         RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ContentsMargin, LineHeight));
     gUIContext->ComponentMargin =
         RR_UI_ROUND(Style->ComponentMargin * LineHeight);
-    gUIContext->FlexibleTitleMargin =
-        RR_UI_ROUND(Style->FlexibleTitleMargin * LineHeight);
 
     gUIContext->FrameThickness = floorf(RR_MAX(1.0f, LineHeight * 0.075f));
-    gUIContext->ResizeHandleSize = RR_UI_ROUND(LineHeight);
+    gUIContext->ResizeHandleSize = RR_UI_ROUND(LineHeight * Style->ScrollbarAreaWidth);
     gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
     gUIContext->ScrollbarHandleWidth =
         RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
@@ -2394,6 +2393,7 @@ static inline void Rr_UIRecalculateStyle(void)
     gUIContext->BevelThickness = ceilf(LineHeight * 0.1f);
     gUIContext->InputFieldPadding = RR_UI_ROUND_V2(
         Rr_MulV2F(gUIContext->Style.InputFieldPadding, LineHeight));
+    gUIContext->FlexibleTitleMargin = gUIContext->ButtonPadding.X;
 
     gUIContext->TitlePadding =
         Rr_MulV2F(gUIContext->Style.TitlePadding, LineHeight);
@@ -4330,7 +4330,7 @@ bool Rr_UIRadioButton(
     Rr_Vec2 Cursor = Layout->Cursor;
 
     Rr_Vec2 TitlePosition = Cursor;
-    TitlePosition.X += OuterRadius * 2.0f + gUIContext->FlexibleTitleMargin;
+    TitlePosition.X += OuterRadius * 2.0f + gUIContext->ButtonPadding.X;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
         TitlePosition,
@@ -4343,7 +4343,7 @@ bool Rr_UIRadioButton(
     Rr_Rect ButtonRect = {
         Cursor,
         Rr_V2(
-            TitleSize.X + gUIContext->FlexibleTitleMargin +
+            TitleSize.X + gUIContext->ButtonPadding.X +
                 gUIContext->ButtonPadding.X + OuterRadius * 2.0f,
             TitleSize.Y),
     };
@@ -4405,7 +4405,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_Vec2 FramePosition = Layout->Cursor;
 
     Rr_Vec2 TitlePosition = FramePosition;
-    TitlePosition.X += CheckboxSize.X + gUIContext->FlexibleTitleMargin;
+    TitlePosition.X += CheckboxSize.X + gUIContext->ButtonPadding.X;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
         TitlePosition,
@@ -4418,7 +4418,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     Rr_Rect ButtonRect = {
         FramePosition,
         Rr_V2(
-            TitleSize.X + gUIContext->FlexibleTitleMargin + Font->LineHeight,
+            TitleSize.X + gUIContext->ButtonPadding.X * 2.0f + Font->LineHeight,
             TitleSize.Y),
     };
 
@@ -6765,7 +6765,7 @@ void Rr_InitUI(void)
         .WindowPadding = { 0.5f, 0.5f },
         .ContentsMargin = { 0.25f, 0.25f },
         .ComponentMargin = 0.2f,
-        .FlexibleTitleMargin = 0.5f,
+        .ScrollbarAreaWidth = 0.85f,
         .BevelIntensityLight = 0.3f,
         .BevelIntensityDark = 0.7f,
         .ButtonPadding = { 0.25f, 0.025f },

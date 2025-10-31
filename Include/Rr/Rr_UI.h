@@ -68,7 +68,7 @@ struct Rr_UIStyle
     Rr_Vec2 WindowPadding;
     Rr_Vec2 ContentsMargin;
     float ComponentMargin;
-    float FlexibleTitleMargin;
+    float ScrollbarAreaWidth;
     float BevelIntensityLight;
     float BevelIntensityDark;
     Rr_Vec2 ButtonPadding;

@@ -65,6 +65,7 @@ static void StyleEditorWindow()
         Rr_UIInputFloat2("Window Padding", Style->WindowPadding.Elements);
         Rr_UIInputFloat2("Contents Margin", Style->ContentsMargin.Elements);
         Rr_UIInputFloat("Component Margin", &Style->ComponentMargin);
+        Rr_UIInputFloat("Scrollbar Area Width", &Style->ScrollbarAreaWidth);
         Rr_UIInputFloat("Bevel Intensity Light", &Style->BevelIntensityLight);
         Rr_UIInputFloat("Bevel Intensity Dark", &Style->BevelIntensityDark);
         Rr_UIPopFormatFloatDecimalPlaces();
