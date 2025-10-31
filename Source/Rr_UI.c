@@ -417,19 +417,6 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
 
     float BakeScale = FontSize / (PixelAscent + PixelDescent);
 
-    float EmScale = stbtt_ScaleForMappingEmToPixels(&FontInfo, FontSize);
-    stbtt_GetFontVMetrics(
-        &FontInfo,
-        &UnscaledAscent,
-        &UnscaledDescent,
-        &UnscaledLineGap);
-
-    float EmAscent = (float)UnscaledAscent * EmScale;
-    float EmDescent = (float)UnscaledDescent * EmScale;
-    float EmLineGap = (float)UnscaledLineGap * EmScale;
-
-    assert(PixelLineGap == 0.0f && EmLineGap == 0.0f);
-
     stbtt_pack_context PackContext;
     if (!stbtt_PackBegin(
             &PackContext,
@@ -580,13 +567,12 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         for (int32_t X = 0; X < ATLAS_SIZE; ++X)
         {
             uint8_t Grayscale = GrayscaleBuffer[Y * ATLAS_SIZE + X];
-            /* if (IsSRGBSwapchain) */
-            /* { */
-            /*     Grayscale = */
-            /*         (uint8_t)(Rr_ToSRGBChannel((float)Grayscale / 255.0f) *
-             */
-            /*                   255.0f); */
-            /* } */
+            if (IsSRGBSwapchain)
+            {
+                Grayscale =
+                    (uint8_t)(Rr_ToSRGBChannel((float)Grayscale / 255.0f) *
+                              255.0f);
+            }
             StagingData[Y * ATLAS_SIZE + X] =
                 ((uint32_t)Grayscale << 24) | 0x00FFFFFF;
         }
