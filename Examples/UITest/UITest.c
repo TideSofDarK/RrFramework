@@ -227,17 +227,23 @@ static void Iterate(void)
             Rr_UIPushFont(StoneTombFont);
 
             Rr_UIText("Different font, boo!");
+
+            static float ScaryFloat = 0.45f;
+            Rr_UISliderFloat("Scary Slider", &ScaryFloat, -1024.0f, 1024.0f);
+
+            Rr_UIBeginHorizontal();
             static int Radio = -1;
             Rr_UIRadioButton("Radio A", &Radio, 0);
             Rr_UIRadioButton("Radio B", &Radio, 1);
             Rr_UIRadioButton("Radio C", &Radio, 2);
+            Rr_UIEndHorizontal();
 
             Rr_UIPopFont();
 
             Rr_UIEndChild();
         }
 
-        if (Rr_UIBeginChild("Tree"))
+        if (Rr_UIBeginChild("Trees"))
         {
             Rr_UIBeginHorizontal();
             if (Rr_UIButton("Expand All"))
@@ -416,7 +422,7 @@ static void Iterate(void)
         }
 
         Rr_UISetNextWindowCreateCollapsed(false);
-        if (Rr_UIBeginChild("Button"))
+        if (Rr_UIBeginChild("Buttons"))
         {
             if (Rr_UIButton("Show Style Editor"))
             {
@@ -458,7 +464,7 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
-        if (Rr_UIBeginChild("Combobox"))
+        if (Rr_UIBeginChild("Comboboxes"))
         {
             const char *ComboboxOptions[5] = {
                 "Option A", "Option B",        "Option C",
@@ -479,7 +485,7 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
-        if (Rr_UIBeginChild("Checkbox"))
+        if (Rr_UIBeginChild("Checkboxes"))
         {
             Rr_UICheckbox("Close Button", &CloseButton);
             Rr_UIBeginHorizontal();
@@ -493,19 +499,21 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
-        if (Rr_UIBeginChild("Slider"))
+        if (Rr_UIBeginChild("Sliders"))
         {
-            static float Float01 = 0.5f;
-            Rr_UISliderFloat("Float 0 to 1", &Float01, 0.0f, 1.0f);
-            static float Float22 = -0.5f;
-            Rr_UISliderFloat("Float -2 to 2", &Float22, -2.0f, 2.0f);
-            static int32_t Int18 = 0;
-            Rr_UISliderInt("Int -1 to 8", &Int18, -1, 8);
+            static float FloatA = 0.45f;
+            Rr_UISliderFloat("Float 0 to 1", &FloatA, 0.0f, 1.0f);
+            static float FloatB = -16.0f;
+            Rr_UISliderFloat("Float -32 to 32", &FloatB, -32.0f, 32.0f);
+            static int32_t Int = 0;
+            Rr_UISliderInt("Int -2 to 2", &Int, -2, 2);
+            static uint32_t UnsignedInt = 0;
+            Rr_UISliderUnsignedInt("Unsigned 2 to 8", &UnsignedInt, 2, 8);
 
             Rr_UIEndChild();
         }
 
-        if (Rr_UIBeginChild("Color Input"))
+        if (Rr_UIBeginChild("Colors"))
         {
             static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
             Rr_UIInputColor3("Color RBA", ColorRGB.Elements);

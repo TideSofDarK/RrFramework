@@ -306,6 +306,12 @@ extern bool Rr_UISliderInt(
     int32_t Min,
     int32_t Max);
 
+extern bool Rr_UISliderUnsignedInt(
+    const char *Title,
+    uint32_t *Value,
+    uint32_t Min,
+    uint32_t Max);
+
 extern bool Rr_UISliderFloat(
     const char *Title,
     float *Value,
