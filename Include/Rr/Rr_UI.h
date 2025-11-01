@@ -142,6 +142,7 @@ typedef enum
     RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT = (1 << 2),
     RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT = (1 << 3),
     RR_UI_INPUT_FIELD_FLAGS_DRAG_BIT = (1 << 4),
+    RR_UI_INPUT_FIELD_FLAGS_NO_BACKGROUND_BIT = (1 << 5),
 } Rr_UIInputFieldFlagsBits;
 typedef uint32_t Rr_UIInputFieldFlags;
 
@@ -268,11 +269,29 @@ extern bool Rr_UIInputText(
 
 extern bool Rr_UIInputFloat(const char *Title, float *Value);
 
+extern bool Rr_UIInputFloatRange(
+    const char *Title,
+    float *Value,
+    float Min,
+    float Max);
+
 extern bool Rr_UIInputFloat2(const char *Title, float *Values);
 
 extern bool Rr_UIInputFloat3(const char *Title, float *Values);
 
+extern bool Rr_UIInputFloat3Range(
+    const char *Title,
+    float *Values,
+    float const *MinValues,
+    float const *MaxValues);
+
 extern bool Rr_UIInputFloat4(const char *Title, float *Values);
+
+extern bool Rr_UIInputFloat4Range(
+    const char *Title,
+    float *Values,
+    float const *MinValues,
+    float const *MaxValues);
 
 extern bool Rr_UIInputFloat2x2(const char *Title, float *Values);
 
@@ -282,6 +301,12 @@ extern bool Rr_UIInputFloat4x4(const char *Title, float *Values);
 
 extern bool Rr_UIInputInt(const char *Title, int32_t *Value);
 
+extern bool Rr_UIInputIntRange(
+    const char *Title,
+    int32_t *Value,
+    int32_t Min,
+    int32_t Max);
+
 extern bool Rr_UIInputInt2(const char *Title, int32_t *Values);
 
 extern bool Rr_UIInputInt3(const char *Title, int32_t *Values);
@@ -289,6 +314,12 @@ extern bool Rr_UIInputInt3(const char *Title, int32_t *Values);
 extern bool Rr_UIInputInt4(const char *Title, int32_t *Values);
 
 extern bool Rr_UIInputUnsignedInt(const char *Title, uint32_t *Value);
+
+extern bool Rr_UIInputUnsignedIntRange(
+    const char *Title,
+    uint32_t *Value,
+    uint32_t Min,
+    uint32_t Max);
 
 extern bool Rr_UIInputColor3(const char *Title, float *Channels);
 

@@ -527,17 +527,37 @@ static void Iterate(void)
         {
             static char StringBuffer[16] = "Hello, World!";
             Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
+
             static char MultilineBuffer[128] =
                 "Line A\nLine B <- Delete this!\nLine C!";
             Rr_UIInputText("String (128 bytes)", 128, MultilineBuffer);
+
             static int32_t TestInt = 1337;
             Rr_UIInputInt("Integer Input", &TestInt);
+
+            static int32_t TestIntRange = 5;
+            Rr_UIInputIntRange("Integer Input (2-8)", &TestIntRange, 2, 8);
+
             static uint32_t TestUnsignedInt = 348579;
             Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
+
+            static uint32_t TestUnsignedIntRange = 6;
+            Rr_UIInputUnsignedIntRange(
+                "Unsigned Input (3-9)",
+                &TestUnsignedIntRange,
+                3,
+                9);
+
             static float TestFloat = 123.456f;
             Rr_UIInputFloat("Float Input", &TestFloat);
 
-            Rr_UISetNextWindowCreateCollapsed(false);
+            static float TestFloatRange = 0.25f;
+            Rr_UIInputFloatRange(
+                "Float Input (0-1)",
+                &TestFloatRange,
+                0.0f,
+                1.0f);
+
             if (Rr_UIBeginChild("Vectors and Matrices"))
             {
                 static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };

@@ -64,6 +64,9 @@
 
 #define RR_UI_SCALAR_BUFFER_SIZE 32
 
+static const Rr_Vec4 RR_UI_VEC4_ZERO = { 0.0f, 0.0f, 0.0f, 0.0f };
+static const Rr_Vec4 RR_UI_VEC4_ONE = { 1.0f, 1.0f, 1.0f, 1.0f };
+
 #define RR_UI_ROUND(Value) (ceilf((Value) / 2.0f) * 2.0f)
 #define RR_UI_ROUND_V2(Value) \
     (Rr_V2(RR_UI_ROUND((Value).X), RR_UI_ROUND((Value).Y)))
@@ -5105,12 +5108,13 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     const char *PlaceholderString,
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags,
-    float FixedWidth,
-    bool DrawBackground)
+    float FixedWidth)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
+    bool DrawBackground =
+        !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_NO_BACKGROUND_BIT);
     Rr_UIPrimitive BackgroundBevelPrimitive;
     if (DrawBackground)
     {
@@ -5205,11 +5209,6 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
                 gUIContext->MousePosition.X - gUIContext->DragMouseStart.X;
         }
 
-        if (ClickResult.Hovered)
-        {
-            gUIContext->CursorType = RR_CURSOR_TYPE_RESIZE_EW;
-        }
-
         if (ClickResult.ClickCount == 1)
         {
             Rr_UISetFocus(Window, Hash);
@@ -5235,6 +5234,11 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         }
 
         Focused = ClickResult.ClickCount || ClickResult.Held;
+
+        if (ClickResult.Hovered || Focused)
+        {
+            gUIContext->CursorType = RR_CURSOR_TYPE_RESIZE_EW;
+        }
     }
     else
     {
@@ -5645,6 +5649,35 @@ static inline void Rr_UIRecordDragScalar(void *Data, Rr_UIScalarType Type)
     }
 }
 
+static inline void Rr_UIModifyUnsignedInt(
+    uint32_t *UnsignedInt,
+    uint32_t Min,
+    uint32_t Max,
+    float Amount)
+{
+    uint32_t Abs = (uint32_t)fabsf(Amount);
+    uint32_t Old = gUIContext->DragScalarValue.UnsignedInt32;
+    if (Amount > 0.0f)
+    {
+        if (Old + Abs < Old)
+        {
+            *UnsignedInt = UINT32_MAX;
+            return;
+        }
+        *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt32 + Abs;
+    }
+    if (Amount < 0.0f)
+    {
+        if (Old - Abs > Old)
+        {
+            *UnsignedInt = Min;
+            return;
+        }
+        *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt32 - Abs;
+    }
+    *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
+}
+
 static inline void Rr_UIModifyDragScalar(
     void *Data,
     Rr_UIScalarType Type,
@@ -5660,28 +5693,8 @@ static inline void Rr_UIModifyDragScalar(
         break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
-            uint32_t Abs = (uint32_t)fabsf(Amount);
-            uint32_t Old = gUIContext->DragScalarValue.UnsignedInt32;
-            if (Amount > 0.0f)
-            {
-                if (Old + Abs < Old)
-                {
-                    *(uint32_t *)Data = UINT32_MAX;
-                    return;
-                }
-                *(uint32_t *)Data =
-                    gUIContext->DragScalarValue.UnsignedInt32 + Abs;
-            }
-            if (Amount < 0.0f)
-            {
-                if (Old - Abs > Old)
-                {
-                    *(uint32_t *)Data = 0;
-                    return;
-                }
-                *(uint32_t *)Data =
-                    gUIContext->DragScalarValue.UnsignedInt32 - Abs;
-            }
+            uint32_t *UnsignedInt = (uint32_t *)Data;
+            Rr_UIModifyUnsignedInt(UnsignedInt, 0, UINT32_MAX, Amount);
         }
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
@@ -5691,7 +5704,120 @@ static inline void Rr_UIModifyDragScalar(
         break;
         case RR_UI_SCALAR_TYPE_DOUBLE:
         {
-            *(double *)Data = gUIContext->DragScalarValue.Float + Amount;
+            *(double *)Data = gUIContext->DragScalarValue.Double + Amount;
+        }
+        break;
+        default:
+        {
+            RR_ABORT("Unsupported format type!");
+        }
+        break;
+    }
+}
+
+static inline void Rr_UIModifyDragScalarRange(
+    void *Data,
+    void const *DataMin,
+    void const *DataMax,
+    Rr_UIScalarType Type,
+    float Amount)
+{
+    switch (Type)
+    {
+        case RR_UI_SCALAR_TYPE_INT:
+        {
+            int32_t Min = *(int32_t *)DataMin;
+            int32_t Max = *(int32_t *)DataMax;
+            int32_t Range = Max - Min;
+            int32_t *Int = (int32_t *)Data;
+            *Int = gUIContext->DragScalarValue.Int32 +
+                   (int32_t)(Amount * (float)Range);
+            *Int = RR_CLAMP(Min, *Int, Max);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT:
+        {
+            uint32_t Min = *(uint32_t *)DataMin;
+            uint32_t Max = *(uint32_t *)DataMax;
+            uint32_t Range = Max - Min;
+            uint32_t *UnsignedInt = (uint32_t *)Data;
+            Rr_UIModifyUnsignedInt(
+                UnsignedInt,
+                Min,
+                Max,
+                Amount * (float)Range);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_FLOAT:
+        {
+            float Min = *(float *)DataMin;
+            float Max = *(float *)DataMax;
+            float Range = Max - Min;
+            float *Float = (float *)Data;
+            *Float = gUIContext->DragScalarValue.Float + Amount * Range;
+            *Float = RR_CLAMP(Min, *Float, Max);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_DOUBLE:
+        {
+            double Min = *(double *)DataMin;
+            double Max = *(double *)DataMax;
+            double Range = Max - Min;
+            double *Double = (double *)Data;
+            *Double = gUIContext->DragScalarValue.Double + Amount * Range;
+            *Double = RR_CLAMP(Min, *Double, Max);
+        }
+        break;
+        default:
+        {
+            RR_ABORT("Unsupported format type!");
+        }
+        break;
+    }
+}
+
+static inline void Rr_UIClampScalarRange(
+    void *Data,
+    void const *DataMin,
+    void const *DataMax,
+    Rr_UIScalarType Type)
+{
+    switch (Type)
+    {
+        case RR_UI_SCALAR_TYPE_INT:
+        {
+            int32_t Min = *(int32_t *)DataMin;
+            int32_t Max = *(int32_t *)DataMax;
+            int32_t Range = Max - Min;
+            int32_t *Int = (int32_t *)Data;
+            *Int = RR_CLAMP(Min, *Int, Max);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT:
+        {
+            uint32_t Min = *(uint32_t *)DataMin;
+            uint32_t Max = *(uint32_t *)DataMax;
+            uint32_t Range = Max - Min;
+            uint32_t *UnsignedInt = (uint32_t *)Data;
+            *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_FLOAT:
+        {
+            float Min = *(float *)DataMin;
+            float Max = *(float *)DataMax;
+            float Range = Max - Min;
+            float *Float = (float *)Data;
+            *Float = RR_CLAMP(Min, *Float, Max);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_DOUBLE:
+        {
+            double Min = *(double *)DataMin;
+            double Max = *(double *)DataMax;
+            double Range = Max - Min;
+            double *Double = (double *)Data;
+            *Double = RR_CLAMP(Min, *Double, Max);
         }
         break;
         default:
@@ -5705,10 +5831,12 @@ static inline void Rr_UIModifyDragScalar(
 static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
     Rr_UIHash Hash,
     Rr_Vec2 Offset,
+    void *Data,
+    void const *DataMin,
+    void const *DataMax,
+    Rr_UIScalarType ScalarType,
     int Cols,
     int Rows,
-    void *Data,
-    Rr_UIScalarType ScalarType,
     Rr_UIInputFieldFlags Flags,
     float FixedTotalWidth,
     bool DrawBackground)
@@ -5716,9 +5844,11 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
     assert(Cols > 0 && Cols <= 4);
     assert(Rows > 0 && Rows <= 4);
 
+    bool Range = DataMin && DataMax;
+
     Rr_UIInputFieldFilterFunc FilterFunc;
     size_t ComponentSize;
-    const char *ScanString;
+    char const *ScanString;
     switch (ScalarType)
     {
         case RR_UI_SCALAR_TYPE_INT:
@@ -5781,6 +5911,13 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
         {
             size_t Index = (size_t)(Col * Rows + Row);
             char *ComponentData = (char *)Data + Index * ComponentSize;
+            char const *ComponentMin = NULL;
+            char const *ComponentMax = NULL;
+            if (Range)
+            {
+                ComponentMin = (char const *)DataMin + Index * ComponentSize;
+                ComponentMax = (char const *)DataMax + Index * ComponentSize;
+            }
             char ComponentBuffer[RR_UI_SCALAR_BUFFER_SIZE];
 
             Rr_UIFormatScalar(
@@ -5800,19 +5937,38 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
                 NULL,
                 FilterFunc,
                 Flags,
-                SingleFieldWidth,
-                true);
+                SingleFieldWidth);
 
             if (ComponentResult.BeganDragging)
             {
                 Rr_UIRecordDragScalar(ComponentData, ScalarType);
+                if (Range)
+                {
+                    Rr_UIClampScalarRange(
+                        ComponentData,
+                        ComponentMin,
+                        ComponentMax,
+                        ScalarType);
+                }
             }
             else if (ComponentResult.Dragged != 0.0f)
             {
-                Rr_UIModifyDragScalar(
-                    ComponentData,
-                    ScalarType,
-                    ComponentResult.Dragged);
+                if (Range)
+                {
+                    Rr_UIModifyDragScalarRange(
+                        ComponentData,
+                        ComponentMin,
+                        ComponentMax,
+                        ScalarType,
+                        ComponentResult.Dragged / SingleFieldWidth);
+                }
+                else
+                {
+                    Rr_UIModifyDragScalar(
+                        ComponentData,
+                        ScalarType,
+                        ComponentResult.Dragged);
+                }
 
                 Result.Edited = true;
             }
@@ -5823,6 +5979,14 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
                 if (Result.Edited)
                 {
                     sscanf(ComponentBuffer, ScanString, (void *)ComponentData);
+                    if (Range)
+                    {
+                        Rr_UIClampScalarRange(
+                            ComponentData,
+                            ComponentMin,
+                            ComponentMax,
+                            ScalarType);
+                    }
                 }
             }
 
@@ -5846,6 +6010,8 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
 static inline bool Rr_UIInputScalarMulti(
     const char *Title,
     void *Data,
+    void const *DataMin,
+    void const *DataMax,
     int Cols,
     int Rows,
     Rr_UIScalarType ScalarType)
@@ -5868,10 +6034,12 @@ static inline bool Rr_UIInputScalarMulti(
     Rr_UIInputFieldResult InputResult = Rr_UIGenericInputScalarMulti(
         TitleHash,
         Layout->Cursor,
+        Data,
+        DataMin,
+        DataMax,
+        ScalarType,
         Cols,
         Rows,
-        Data,
-        ScalarType,
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT |
@@ -5943,8 +6111,7 @@ bool Rr_UIInputField(
         Placeholder,
         FilterFunc,
         Flags,
-        FieldWidth,
-        true);
+        FieldWidth);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += Result.Extent.X + gUIContext->FlexibleTitleMargin;
@@ -5983,62 +6150,222 @@ bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
 
 bool Rr_UIInputFloat(const char *Title, float *Value)
 {
-    return Rr_UIInputScalarMulti(Title, Value, 1, 1, RR_UI_SCALAR_TYPE_FLOAT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        NULL,
+        NULL,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
+bool Rr_UIInputFloatRange(const char *Title, float *Value, float Min, float Max)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        &Min,
+        &Max,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat2(const char *Title, float *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 2, 1, RR_UI_SCALAR_TYPE_FLOAT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        2,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat3(const char *Title, float *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 3, 1, RR_UI_SCALAR_TYPE_FLOAT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        3,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
+bool Rr_UIInputFloat3Range(
+    const char *Title,
+    float *Values,
+    float const *MinValues,
+    float const *MaxValues)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        MinValues,
+        MaxValues,
+        3,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat4(const char *Title, float *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 4, 1, RR_UI_SCALAR_TYPE_FLOAT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        4,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
+bool Rr_UIInputFloat4Range(
+    const char *Title,
+    float *Values,
+    float const *MinValues,
+    float const *MaxValues)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        MinValues,
+        MaxValues,
+        4,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat2x2(const char *Title, float *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 2, 2, RR_UI_SCALAR_TYPE_FLOAT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        2,
+        2,
+        RR_UI_SCALAR_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat3x3(const char *Title, float *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 3, 3, RR_UI_SCALAR_TYPE_FLOAT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        3,
+        3,
+        RR_UI_SCALAR_TYPE_FLOAT);
 }
 
 bool Rr_UIInputFloat4x4(const char *Title, float *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 4, 4, RR_UI_SCALAR_TYPE_FLOAT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        4,
+        4,
+        RR_UI_SCALAR_TYPE_FLOAT);
 }
 
 bool Rr_UIInputInt(const char *Title, int32_t *Value)
 {
-    return Rr_UIInputScalarMulti(Title, Value, 1, 1, RR_UI_SCALAR_TYPE_INT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        NULL,
+        NULL,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_INT);
+}
+
+bool Rr_UIInputIntRange(
+    const char *Title,
+    int32_t *Value,
+    int32_t Min,
+    int32_t Max)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        &Min,
+        &Max,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_INT);
 }
 
 bool Rr_UIInputInt2(const char *Title, int32_t *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 2, 1, RR_UI_SCALAR_TYPE_INT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        2,
+        1,
+        RR_UI_SCALAR_TYPE_INT);
 }
 
 bool Rr_UIInputInt3(const char *Title, int32_t *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 3, 1, RR_UI_SCALAR_TYPE_INT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        3,
+        1,
+        RR_UI_SCALAR_TYPE_INT);
 }
 
 bool Rr_UIInputInt4(const char *Title, int32_t *Values)
 {
-    return Rr_UIInputScalarMulti(Title, Values, 4, 1, RR_UI_SCALAR_TYPE_INT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        NULL,
+        NULL,
+        4,
+        1,
+        RR_UI_SCALAR_TYPE_INT);
 }
 
 bool Rr_UIInputUnsignedInt(const char *Title, uint32_t *Value)
 {
-    return Rr_UIInputScalarMulti(Title, Value, 1, 1, RR_UI_SCALAR_TYPE_UINT);
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        NULL,
+        NULL,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_UINT);
+}
+
+bool Rr_UIInputUnsignedIntRange(
+    const char *Title,
+    uint32_t *Value,
+    uint32_t Min,
+    uint32_t Max)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        &Min,
+        &Max,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_UINT);
 }
 
 static inline void Rr_UIRGBAToHexString(
@@ -6338,9 +6665,16 @@ static inline void Rr_UIColorPickerPopup(
 
     /* Various input fields. */
 
-    bool RGBChanged = ChannelCount == 3
-                          ? Rr_UIInputFloat3("RGB###RGB32", Channels)
-                          : Rr_UIInputFloat4("RGBA###RGBA32", Channels);
+    bool RGBChanged = ChannelCount == 3 ? Rr_UIInputFloat3Range(
+                                              "RGB###RGB32",
+                                              Channels,
+                                              RR_UI_VEC4_ZERO.Elements,
+                                              RR_UI_VEC4_ONE.Elements)
+                                        : Rr_UIInputFloat4Range(
+                                              "RGBA###RGBA32",
+                                              Channels,
+                                              RR_UI_VEC4_ZERO.Elements,
+                                              RR_UI_VEC4_ONE.Elements);
 
     if (RGBChanged)
     {
@@ -6348,7 +6682,11 @@ static inline void Rr_UIColorPickerPopup(
         StaticHSV = Rr_UIRGBToHSV((Rr_Vec3 *)Channels);
     }
 
-    if (Rr_UIInputFloat3("HSV###HSV32", StaticHSV.Elements))
+    if (Rr_UIInputFloat3Range(
+            "HSV###HSV32",
+            StaticHSV.Elements,
+            RR_UI_VEC4_ZERO.Elements,
+            RR_UI_VEC4_ONE.Elements))
     {
         HSVChanged = true;
     }
@@ -6424,10 +6762,12 @@ static inline bool Rr_UIInputColorEx(
     Rr_UIInputFieldResult InputResult = Rr_UIGenericInputScalarMulti(
         TitleHash,
         Layout->Cursor,
+        Channels,
+        RR_UI_VEC4_ZERO.Elements,
+        RR_UI_VEC4_ONE.Elements,
+        RR_UI_SCALAR_TYPE_FLOAT,
         ChannelCount,
         1,
-        Channels,
-        RR_UI_SCALAR_TYPE_FLOAT,
         RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT |
@@ -6778,15 +7118,15 @@ static inline float Rr_UISlider(
 
         float ValueMargin = RR_UI_ROUND(Font->LineHeight * 0.2f);
         Rr_Vec2 ValuePosition = Layout->Cursor;
-        ValuePosition.X = HandleRect.Offset.X + HandleRect.Extent.X +
-                          ValueMargin;
+        ValuePosition.X =
+            HandleRect.Offset.X + HandleRect.Extent.X + ValueMargin;
         bool ShowValue = true;
         if (ValuePosition.X + ValueSize.Width > SliderRect.Offset.X +
                                                     SliderRect.Extent.Width -
                                                     gUIContext->BevelThickness)
         {
-            ValuePosition.X = HandleRect.Offset.X - ValueSize.Width -
-                              ValueMargin;
+            ValuePosition.X =
+                HandleRect.Offset.X - ValueSize.Width - ValueMargin;
             if (ValuePosition.X < SliderRect.Offset.X)
             {
                 ShowValue = false;
