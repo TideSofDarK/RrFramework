@@ -332,6 +332,16 @@ void Rr_SetCursor(Rr_CursorType Type)
             SDL_SetCursor(SDLCursor);
             return;
         }
+        case RR_CURSOR_TYPE_RESIZE_EW:
+        {
+            static SDL_Cursor *SDLCursor;
+            if (SDLCursor == NULL)
+            {
+                SDLCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
+            }
+            SDL_SetCursor(SDLCursor);
+            return;
+        }
         case RR_CURSOR_TYPE_RESIZE_NWSE:
         {
             static SDL_Cursor *SDLCursor;

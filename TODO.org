@@ -49,6 +49,7 @@
 
 ** User Interface
 
+- [ ] Clamps/ratios for draggable scalars.
 - [X] Separate window/contens padding.
 - [X] Auto resize ignores title width.
 - [ ] Input fields with custom clip rects happen to ignore parent bounds.
@@ -61,7 +62,7 @@
 - [X] Make drag behavior properly handle buttons and support double clicks.
 - [X] Support for linear color space swapchains.
       Put colors into an array for easier conversion. 
-- [ ] Draggable scalars.
+- [X] Draggable scalars.
 - [ ] Some options for horizontal child layouts + asserts.
 - [X] Combobox.
 - [X] Auto-resizing windows.

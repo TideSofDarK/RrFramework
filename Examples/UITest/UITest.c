@@ -156,9 +156,12 @@ static void Init(void)
     StoneTombFont =
         Rr_UICreateFont(StoneTombAsset.Size, StoneTombAsset.Pointer, 18.0f);
 
-    Rr_Asset MozillaHeadlineCleanAsset = Rr_LoadAsset(EXAMPLE_ASSET_MOZILLAHEADLINE_TTF);
-    MozillaHeadlineFont =
-        Rr_UICreateFont(MozillaHeadlineCleanAsset.Size, MozillaHeadlineCleanAsset.Pointer, 14.0f);
+    Rr_Asset MozillaHeadlineCleanAsset =
+        Rr_LoadAsset(EXAMPLE_ASSET_MOZILLAHEADLINE_TTF);
+    MozillaHeadlineFont = Rr_UICreateFont(
+        MozillaHeadlineCleanAsset.Size,
+        MozillaHeadlineCleanAsset.Pointer,
+        14.0f);
 }
 
 static void Iterate(void)
@@ -202,37 +205,37 @@ static void Iterate(void)
     StyleEditorWindow();
     TextInputWindow();
 
-    if (Rr_UIBeginWindow("Rr_UI.h", &Open, Flags))
+    if (Rr_UIBeginWindow("Rr_UI.h - General", &Open, Flags))
     {
-        /* if (Rr_UIBeginChild("Child Windows")) */
-        /* { */
-        /*     Rr_UIBeginHorizontal(); */
-        /*     if (Rr_UIBeginChild("Child Window A")) */
-        /*     { */
-        /*         Rr_UIButton("Click Me!"); */
-        /*         Rr_UIEndChild(); */
-        /*     } */
-        /*     if (Rr_UIBeginChild("Child Window B")) */
-        /*     { */
-        /*         static char Buffer[8] = { 0 }; */
-        /*         Rr_UIInputField( */
-        /*             "Tiny Buffer (8 bytes)", */
-        /*             8, */
-        /*             Buffer, */
-        /*             "Type here...", */
-        /*             NULL, */
-        /*             0); */
-        /*         Rr_UIEndChild(); */
-        /*     } */
-        /*     Rr_UIEndHorizontal(); */
-        /*     if (Rr_UIBeginChild("Child Window C")) */
-        /*     { */
-        /*         Rr_UILabel("Label A"); */
-        /*         Rr_UILabel("Label B"); */
-        /*         Rr_UIEndChild(); */
-        /*     } */
-        /*     Rr_UIEndChild(); */
-        /* } */
+        Rr_UISetNextWindowCreateCollapsed(false);
+        if (Rr_UIBeginChild("Fonts"))
+        {
+            Rr_UIPushFont(MozillaHeadlineFont);
+
+            Rr_UIText(
+                "Fonts can be dynamically pushed onto the stack. All paddings\n"
+                "and margins are dependent on current fonts line height but\n"
+                "could be overriden with absolute values.");
+
+            Rr_UIButton("Button With This Font");
+
+            static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
+            Rr_UIInputColor3("Color RBA", ColorRGB.Elements);
+
+            Rr_UIPopFont();
+
+            Rr_UIPushFont(StoneTombFont);
+
+            Rr_UIText("Different font, boo!");
+            static int Radio = -1;
+            Rr_UIRadioButton("Radio A", &Radio, 0);
+            Rr_UIRadioButton("Radio B", &Radio, 1);
+            Rr_UIRadioButton("Radio C", &Radio, 2);
+
+            Rr_UIPopFont();
+
+            Rr_UIEndChild();
+        }
 
         if (Rr_UIBeginChild("Tree"))
         {
@@ -249,7 +252,7 @@ static void Iterate(void)
 
             if (Rr_UIBeginTree("Tree #1"))
             {
-                Rr_Vec2 Vec2 = { -75.0f, 125.0f };
+                static Rr_Vec2 Vec2 = { -75.0f, 125.0f };
                 Rr_UIInputFloat2("Float2 Input", Vec2.Elements);
 
                 if (Rr_UIBeginTree("Tree #2###0"))
@@ -291,6 +294,108 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
+        /* if (Rr_UIBeginChild("Child Windows")) */
+        /* { */
+        /*     Rr_UIBeginHorizontal(); */
+        /*     if (Rr_UIBeginChild("Child Window A")) */
+        /*     { */
+        /*         Rr_UIButton("Click Me!"); */
+        /*         Rr_UIEndChild(); */
+        /*     } */
+        /*     if (Rr_UIBeginChild("Child Window B")) */
+        /*     { */
+        /*         static char Buffer[8] = { 0 }; */
+        /*         Rr_UIInputField( */
+        /*             "Tiny Buffer (8 bytes)", */
+        /*             8, */
+        /*             Buffer, */
+        /*             "Type here...", */
+        /*             NULL, */
+        /*             0); */
+        /*         Rr_UIEndChild(); */
+        /*     } */
+        /*     Rr_UIEndHorizontal(); */
+        /*     if (Rr_UIBeginChild("Child Window C")) */
+        /*     { */
+        /*         Rr_UILabel("Label A"); */
+        /*         Rr_UILabel("Label B"); */
+        /*         Rr_UIEndChild(); */
+        /*     } */
+        /*     Rr_UIEndChild(); */
+        /* } */
+
+        if (Rr_UIBeginChild("Custom Draw"))
+        {
+            Rr_Vec2 Cursor = Rr_UIGetCursor();
+
+            const Rr_Vec2 AREA = Rr_V2(300.0f, 200.0f);
+
+            Rr_UIDrawCircleFilled(
+                Rr_AddV2(Cursor, Rr_V2(AREA.X * 0.25f, AREA.Y * 0.5f)),
+                AREA.X * 0.25f,
+                &Rr_UIGetColors()->Foreground);
+
+            Rr_UIDrawEquilateralTriangleFilled(
+                Rr_AddV2(
+                    Cursor,
+                    Rr_V2(AREA.X * 0.75f, AREA.Y - AREA.X * 0.4f * 0.5f)),
+                AREA.X * 0.4f,
+                RR_ANGLE_DEG(-90.0f),
+                &Rr_UIGetColors()->Foreground);
+
+            float PhaseA = 1.0f + cosf(Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseB =
+                1.0f + cosf(RR_PI * 0.25f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseC =
+                1.0f + cosf(RR_PI * 0.5f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseD =
+                1.0f + cosf(RR_PI * 0.75f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            Rr_UIVertex QuadVertices[4] = {
+                {
+                    .Position = Rr_AddV2(
+                        Cursor,
+                        Rr_V2(
+                            AREA.X * 0.25f * PhaseA,
+                            AREA.Y * 0.25f * PhaseB)),
+                    .Color = Rr_V4(1.0f, 0.0f, 0.0f, 1.0f),
+                },
+                {
+                    .Position = Rr_AddV2(
+                        Cursor,
+                        Rr_V2(
+                            AREA.X * 0.75f * PhaseB,
+                            AREA.Y * 0.25f * PhaseA)),
+                    .Color = Rr_V4(0.0f, 1.0f, 0.0f, 1.0f),
+                },
+                {
+                    .Position = Rr_AddV2(
+                        Cursor,
+                        Rr_V2(
+                            AREA.X * 0.75f * PhaseC,
+                            AREA.Y * 0.75f * PhaseD)),
+                    .Color = Rr_V4(0.0f, 1.0f, 1.0f, 1.0f),
+                },
+                {
+                    .Position = Rr_AddV2(
+                        Cursor,
+                        Rr_V2(
+                            AREA.X * 0.25f + PhaseD,
+                            AREA.Y * 0.75f * PhaseC)),
+                    .Color = Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
+                },
+            };
+            Rr_UIDrawQuadVertices(QuadVertices);
+
+            Rr_UIAdvance(AREA);
+
+            Rr_UIEndChild();
+        }
+
+        Rr_UIEndWindow();
+    }
+
+    if (Rr_UIBeginWindow("Rr_UI.h - Widgets", &Open, Flags))
+    {
         Rr_UISetNextWindowCreateCollapsed(false);
         if (Rr_UIBeginChild("Text"))
         {
@@ -307,28 +412,21 @@ static void Iterate(void)
                 "laboris nisi ut aliquip ex ea commodo consequat.",
                 RR_UI_TEXT_FLAGS_WRAPPED_BIT);
 
-            Rr_UIPushFont(StoneTombFont);
-            Rr_UIText("Different font, boo!");
-            Rr_UIPopFont();
-
             Rr_UIEndChild();
         }
 
+        Rr_UISetNextWindowCreateCollapsed(false);
         if (Rr_UIBeginChild("Button"))
         {
-            Rr_UIPushFont(StoneTombFont);
             if (Rr_UIButton("Show Style Editor"))
             {
                 StyleEditorWindowOpen = true;
             }
-            Rr_UIPopFont();
 
-            Rr_UIPushFont(MozillaHeadlineFont);
             if (Rr_UIButton("Show Fixed Size Window"))
             {
                 FixedSizeWindowOpen = true;
             }
-            Rr_UIPopFont();
 
             if (Rr_UIButton("Show Text Input Window"))
             {
@@ -419,7 +517,6 @@ static void Iterate(void)
 
         if (Rr_UIBeginChild("Input Fields"))
         {
-            Rr_UIPushFont(MozillaHeadlineFont);
             static char StringBuffer[16] = "Hello, World!";
             Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
             static char MultilineBuffer[128] =
@@ -431,7 +528,6 @@ static void Iterate(void)
             Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
             static float TestFloat = 123.456f;
             Rr_UIInputFloat("Float Input", &TestFloat);
-            Rr_UIPopFont();
 
             Rr_UISetNextWindowCreateCollapsed(false);
             if (Rr_UIBeginChild("Vectors and Matrices"))
@@ -471,73 +567,6 @@ static void Iterate(void)
 
                 Rr_UIEndChild();
             }
-
-            Rr_UIEndChild();
-        }
-
-        if (Rr_UIBeginChild("Custom Draw"))
-        {
-            Rr_Vec2 Cursor = Rr_UIGetCursor();
-
-            const Rr_Vec2 AREA = Rr_V2(300.0f, 200.0f);
-
-            Rr_UIDrawCircleFilled(
-                Rr_AddV2(Cursor, Rr_V2(AREA.X * 0.25f, AREA.Y * 0.5f)),
-                AREA.X * 0.25f,
-                &Rr_UIGetColors()->Foreground);
-
-            Rr_UIDrawEquilateralTriangleFilled(
-                Rr_AddV2(
-                    Cursor,
-                    Rr_V2(AREA.X * 0.75f, AREA.Y - AREA.X * 0.4f * 0.5f)),
-                AREA.X * 0.4f,
-                RR_ANGLE_DEG(-90.0f),
-                &Rr_UIGetColors()->Foreground);
-
-            float PhaseA = 1.0f + cosf(Rr_GetTimeSeconds() * 5.0f) * 0.25f;
-            float PhaseB =
-                1.0f + cosf(RR_PI * 0.25f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
-            float PhaseC =
-                1.0f + cosf(RR_PI * 0.5f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
-            float PhaseD =
-                1.0f + cosf(RR_PI * 0.75f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
-            Rr_UIVertex QuadVertices[4] = {
-                {
-                    .Position = Rr_AddV2(
-                        Cursor,
-                        Rr_V2(
-                            AREA.X * 0.25f * PhaseA,
-                            AREA.Y * 0.25f * PhaseB)),
-                    .Color = Rr_V4(1.0f, 0.0f, 0.0f, 1.0f),
-                },
-                {
-                    .Position = Rr_AddV2(
-                        Cursor,
-                        Rr_V2(
-                            AREA.X * 0.75f * PhaseB,
-                            AREA.Y * 0.25f * PhaseA)),
-                    .Color = Rr_V4(0.0f, 1.0f, 0.0f, 1.0f),
-                },
-                {
-                    .Position = Rr_AddV2(
-                        Cursor,
-                        Rr_V2(
-                            AREA.X * 0.75f * PhaseC,
-                            AREA.Y * 0.75f * PhaseD)),
-                    .Color = Rr_V4(0.0f, 1.0f, 1.0f, 1.0f),
-                },
-                {
-                    .Position = Rr_AddV2(
-                        Cursor,
-                        Rr_V2(
-                            AREA.X * 0.25f + PhaseD,
-                            AREA.Y * 0.75f * PhaseC)),
-                    .Color = Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
-                },
-            };
-            Rr_UIDrawQuadVertices(QuadVertices);
-
-            Rr_UIAdvance(AREA);
 
             Rr_UIEndChild();
         }

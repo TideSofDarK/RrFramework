@@ -603,6 +603,16 @@ void Rr_SetCursor(Rr_CursorType Type)
             glfwSetCursor(gPlatform->Window, GLFWCursor);
             return;
         }
+        case RR_CURSOR_TYPE_RESIZE_EW:
+        {
+            static GLFWcursor *GLFWCursor;
+            if (GLFWCursor == NULL)
+            {
+                GLFWCursor = glfwCreateStandardCursor(GLFW_RESIZE_EW_CURSOR);
+            }
+            glfwSetCursor(gPlatform->Window, GLFWCursor);
+            return;
+        }
         case RR_CURSOR_TYPE_RESIZE_NWSE:
         {
             static GLFWcursor *GLFWCursor;

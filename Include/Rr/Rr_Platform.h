@@ -200,6 +200,7 @@ extern void Rr_SetRelativeMouseMode(bool Relative);
 typedef enum Rr_CursorType
 {
     RR_CURSOR_TYPE_NORMAL,
+    RR_CURSOR_TYPE_RESIZE_EW,
     RR_CURSOR_TYPE_RESIZE_NWSE,
     RR_CURSOR_TYPE_TEXT,
 } Rr_CursorType;
