@@ -2477,8 +2477,8 @@ static inline void Rr_UIRecalculateStyle(void)
     gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
 
     gUIContext->TopLevelTreeOffset =
-        gUIContext->WindowPadding.X * 2.0f + gUIContext->ButtonPadding.X;
-    gUIContext->TreeOffset = gUIContext->WindowPadding.X * 2.0f;
+        LineHeight * 0.75f + gUIContext->ButtonPadding.X;
+    gUIContext->TreeOffset = LineHeight * 0.75f;
 }
 
 void Rr_UIPushFont(Rr_UIFont *Font)
@@ -4007,7 +4007,7 @@ bool Rr_UIBeginTree(const char *Title)
         TopLevel ? gUIContext->TopLevelTreeOffset : gUIContext->TreeOffset;
 
     float TriangleSize =
-        (gUIContext->TreeOffset - gUIContext->ButtonPadding.X) * 0.6f;
+        gUIContext->TitleHeight * 0.3f;
     float TriangleOffset = TopLevel ? gUIContext->ButtonPadding.X : 0.0f;
     Rr_Vec2 TriangleCenter = Rr_V2(
         Layout->Cursor.X + TriangleOffset + TriangleSize,
@@ -4031,7 +4031,7 @@ bool Rr_UIBeginTree(const char *Title)
         }
         else
         {
-            RectOffset.Y += TriangleSize;
+            RectOffset.Y += TriangleSize * 1.25f;
         }
         Rr_Vec2 RectExtent = { gUIContext->FrameThickness,
                                TriangleCenter.Y - ParentTree->ParentPoint.Y };
@@ -4063,7 +4063,7 @@ bool Rr_UIBeginTree(const char *Title)
         Rr_V2(Layout->Cursor.X + TreeOffset, Layout->Cursor.Y);
     if (TopLevel)
     {
-        TitlePosition.Y += gUIContext->ButtonPadding.Y;
+        TitlePosition.Y += gUIContext->TitlePadding.Y;
     }
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
