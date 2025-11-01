@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static bool FixedSizeWindowOpen = false;
-static bool StyleEditorWindowOpen = false;
+static bool ThemeEditorWindowOpen = false;
 static bool TextInputWindowOpen = false;
 
 static Rr_UIFont *StoneTombFont = NULL;
@@ -48,11 +48,11 @@ static void FixedSizeWindow()
     }
 }
 
-static void StyleEditorWindow()
+static void ThemeEditorWindow()
 {
     if (Rr_UIBeginWindow(
-            "Style Editor",
-            &StyleEditorWindowOpen,
+            "Theme Editor",
+            &ThemeEditorWindowOpen,
             RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
     {
         Rr_UIStyle *Style = Rr_UIGetStyle();
@@ -79,6 +79,7 @@ static void StyleEditorWindow()
         Rr_UIInputColor4("Background", Colors->Background.Elements);
         Rr_UIInputColor4("Child Background", Colors->ChildBackground.Elements);
         Rr_UIInputColor4("Outline", Colors->Outline.Elements);
+        Rr_UIInputColor4("Selected Outline", Colors->SelectedOutline.Elements);
 
         Rr_UISeparator();
 
@@ -150,6 +151,46 @@ static void StyleEditorWindow()
     }
 }
 
+static void SetPinkTheme()
+{
+    Rr_UIColors *Colors = Rr_UIGetColors();
+    *Colors = (Rr_UIColors){
+        .Foreground = { 0.940547f, 0.899630f, 0.970019f, 1.000000f },
+        .ForegroundDimmed = { 0.634900f, 0.617390f, 0.660727f, 1.000000f },
+        .Background = { 0.153051f, 0.142532f, 0.186284f, 1.000000f },
+        .ChildBackground = { 0.115195f, 0.100193f, 0.136111f, 1.000000f },
+        .Outline = { 0.542000f, 0.495298f, 0.579593f, 1.000000f },
+        .SelectedOutline = { 0.511727f, 0.396375f, 0.627315f, 1.000000f },
+        .TitleBackground = { 0.472738f, 0.325686f, 0.538689f, 1.000000f },
+        .TitleCloseButtonBackground = { 0.839551f,
+                                        0.250613f,
+                                        0.313724f,
+                                        1.000000f },
+        .TitleCollapseButtonBackground = { 0.470588f,
+                                           0.325490f,
+                                           0.537255f,
+                                           1.000000f },
+        .ScrollbarBackground = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
+        .ScrollbarNormal = { 0.322105f, 0.261189f, 0.365981f, 1.000000f },
+        .ScrollbarHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
+        .ScrollbarHeld = { 0.254856f, 0.342832f, 0.400486f, 1.000000f },
+        .ButtonNormal = { 0.334322f, 0.277384f, 0.413703f, 1.000000f },
+        .ButtonHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
+        .ButtonHeld = { 0.463433f, 0.343573f, 0.643222f, 1.000000f },
+        .ButtonDisabled = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
+        .InputFieldNormal = { 0.199295f, 0.134664f, 0.234178f, 1.000000f },
+        .InputFieldActive = { 0.334506f, 0.193713f, 0.413703f, 1.000000f },
+        .SelectedTextBackground = { 0.793058f,
+                                    0.188728f,
+                                    1.000000f,
+                                    1.000000f },
+        .SelectedTextForeground = { 1.000000f,
+                                    1.000000f,
+                                    1.000000f,
+                                    1.000000f },
+    };
+}
+
 static void Init(void)
 {
     Rr_Asset StoneTombAsset = Rr_LoadAsset(EXAMPLE_ASSET_STONETOMB_TTF);
@@ -202,20 +243,42 @@ static void Iterate(void)
     }
 
     FixedSizeWindow();
-    StyleEditorWindow();
+    ThemeEditorWindow();
     TextInputWindow();
 
     if (Rr_UIBeginWindow("Rr_UI.h - General", &Open, Flags))
     {
         Rr_UISetNextWindowCreateCollapsed(false);
+        if (Rr_UIBeginChild("Style and Colors"))
+        {
+            Rr_UIText("Colors set in Theme Editor can be printed to stdout.");
+
+            if (Rr_UIButton("Show Theme Editor"))
+            {
+                ThemeEditorWindowOpen = true;
+            }
+
+            if (Rr_UIButton("Set Pink Theme"))
+            {
+                SetPinkTheme();
+            }
+
+            Rr_UIEndChild();
+        }
+
+        Rr_UISetNextWindowCreateCollapsed(false);
         if (Rr_UIBeginChild("Fonts"))
         {
-            Rr_UIPushFont(MozillaHeadlineFont);
-
             Rr_UIText(
                 "Fonts can be dynamically pushed onto the stack. All paddings\n"
                 "and margins are dependent on current fonts line height but\n"
                 "could be overriden with absolute values.");
+
+            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f });
+
+            Rr_UIPushFont(MozillaHeadlineFont);
+
+            Rr_UIText("Switching to Mozilla Headline now.");
 
             Rr_UIButton("Button With This Font");
 
@@ -223,6 +286,8 @@ static void Iterate(void)
             Rr_UIInputColor3("Color RBA", ColorRGB.Elements);
 
             Rr_UIPopFont();
+
+            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f });
 
             Rr_UIPushFont(StoneTombFont);
 
@@ -424,11 +489,6 @@ static void Iterate(void)
         Rr_UISetNextWindowCreateCollapsed(false);
         if (Rr_UIBeginChild("Buttons"))
         {
-            if (Rr_UIButton("Show Style Editor"))
-            {
-                StyleEditorWindowOpen = true;
-            }
-
             if (Rr_UIButton("Show Fixed Size Window"))
             {
                 FixedSizeWindowOpen = true;

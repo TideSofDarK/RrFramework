@@ -3416,6 +3416,17 @@ bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
     return Rr_UIBeginWindowEx(Window, TitleHash, Open);
 }
 
+static inline bool Rr_UIShouldHightlightWindow(Rr_UIWindow *Window)
+{
+    bool ClickParent = gUIContext->ClickParent;
+    if (ClickParent)
+    {
+        ClickParent = gUIContext->ClickParent == Window ||
+                      gUIContext->ClickParent->TopLevelParent == Window;
+    }
+    return ClickParent;
+}
+
 void Rr_UIEndWindow(void)
 {
     Rr_UIAssertWindow();
@@ -3522,10 +3533,13 @@ void Rr_UIEndWindow(void)
 
     if (!Rr_UIWindowNoBorders(Window))
     {
+        Rr_Vec4 *BorderColor = Rr_UIShouldHightlightWindow(Window)
+                                   ? &gUIContext->Colors.SelectedOutline
+                                   : &gUIContext->Colors.Outline;
         Rr_UIDrawInnerFrame(
             &Layout->Rect,
             gUIContext->FrameThickness,
-            &gUIContext->Colors.Outline);
+            BorderColor);
     }
 
     Rr_UIEndClipRect();
@@ -4204,7 +4218,9 @@ void Rr_UISeparator(void)
     };
     Rr_UIDrawSolidQuad(
         &(Rr_Rect){ Position, Size },
-        &gUIContext->Colors.Outline);
+        Rr_UIShouldHightlightWindow(Window)
+            ? &gUIContext->Colors.SelectedOutline
+            : &gUIContext->Colors.Outline);
 
     Layout->Cursor.Y += gUIContext->SeparatorLineHeight;
 }
@@ -6515,7 +6531,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIDrawInnerFrame(
         &(Rr_Rect){ Layout->Cursor, Rr_V2F(TargetSize) },
         gUIContext->FrameThickness,
-        &gUIContext->Colors.Outline);
+        &gUIContext->Colors.SelectedOutline);
 
     float SVSelectorCircleSize = TargetSize * 0.035f;
 
@@ -6589,7 +6605,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIDrawInnerFrame(
         &HSelectorRect,
         gUIContext->FrameThickness,
-        &gUIContext->Colors.Outline);
+        &gUIContext->Colors.SelectedOutline);
 
     /* Draw hue handles. */
 
@@ -7329,6 +7345,7 @@ void Rr_UIPrintColors(void)
     Rr_UIPrintColor("Background", &gUIContext->Colors.Background);
     Rr_UIPrintColor("ChildBackground", &gUIContext->Colors.ChildBackground);
     Rr_UIPrintColor("Outline", &gUIContext->Colors.Outline);
+    Rr_UIPrintColor("SelectedOutline", &gUIContext->Colors.SelectedOutline);
 
     Rr_UIPrintColor("TitleBackground", &gUIContext->Colors.TitleBackground);
     Rr_UIPrintColor(
@@ -7356,7 +7373,7 @@ void Rr_UIPrintColors(void)
         "SelectedTextBackground",
         &gUIContext->Colors.SelectedTextBackground);
     Rr_UIPrintColor(
-        "SelectedTextBackground",
+        "SelectedTextForeground",
         &gUIContext->Colors.SelectedTextForeground);
 }
 
@@ -7396,7 +7413,8 @@ void Rr_InitUI(void)
         .ForegroundDimmed = { 0.617390f, 0.649893f, 0.660727f, 1.000000f },
         .Background = { 0.142532f, 0.168879f, 0.186284f, 1.000000f },
         .ChildBackground = { 0.100193f, 0.121744f, 0.136111f, 1.000000f },
-        .Outline = { 0.556805f, 0.571476f, 0.586111f, 1.000000f },
+        .Outline = { 0.603737f, 0.614403f, 0.625043f, 1.000000f },
+        .SelectedOutline = { 0.680653f, 0.751365f, 0.827292f, 1.000000f },
         .TitleBackground = { 0.123951f, 0.467914f, 0.697222f, 1.000000f },
         .TitleCloseButtonBackground = { 0.839551f,
                                         0.250613f,
@@ -7420,7 +7438,10 @@ void Rr_InitUI(void)
                                     0.652866f,
                                     0.996207f,
                                     1.000000f },
-        .SelectedTextForeground = { 0.03f, 0.03f, 0.03f, 1.000000f },
+        .SelectedTextForeground = { 0.030000f,
+                                    0.030000f,
+                                    0.030000f,
+                                    1.000000f },
     };
 
     Rr_Binding Bindings[] = {
