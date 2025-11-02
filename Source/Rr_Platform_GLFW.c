@@ -54,7 +54,7 @@ static inline Rr_Vec2 Rr_GetGLFWCursorPos(void)
 {
     double MouseX, MouseY;
     glfwGetCursorPos(gPlatform->Window, &MouseX, &MouseY);
-    if (gPlatform->WaylandScaling)
+    if (gPlatform->WindowScaled)
     {
         return (Rr_Vec2){ (float)MouseX * gPlatform->WindowScale.X,
                           (float)MouseY * gPlatform->WindowScale.Y };
@@ -67,7 +67,7 @@ static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
     Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
     Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-    if (gPlatform->WaylandScaling)
+    if (gPlatform->WindowScaled)
     {
         Event->MouseMotion.Position =
             (Rr_Vec2){ (float)X * gPlatform->WindowScale.X,
@@ -340,18 +340,20 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     gPlatform->EventScratch =
         (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
 
-#ifdef __linux__
+#if defined(__linux__)
     int32_t GLFWPlatform;
-    /* if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND)) */
-    /* { */
-    /*     GLFWPlatform = GLFW_PLATFORM_WAYLAND; */
-    /*     gPlatform->WaylandScaling = true; */
-    /* } */
-    /* else */
+    if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
+    {
+        GLFWPlatform = GLFW_PLATFORM_WAYLAND;
+        gPlatform->WindowScaled = true;
+    }
+    else
     {
         GLFWPlatform = GLFW_PLATFORM_X11;
     }
     glfwInitHint(GLFW_PLATFORM, GLFWPlatform);
+#elif defined(__APPLE__)
+    gPlatform->WindowScaled = true;
 #endif
 
     glfwInit();
@@ -389,7 +391,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         gPlatform->Window,
         &Rr_GLFWWindowContentScaleCallback);
 
-    if (gPlatform->WaylandScaling)
+    if (gPlatform->WindowScaled)
     {
         Rr_SetWindowSize(WindowSize);
     }
@@ -573,7 +575,7 @@ float Rr_GetWindowContentsScale(void)
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
-    if (gPlatform->WaylandScaling)
+    if (gPlatform->WindowScaled)
     {
         glfwSetWindowSize(
             gPlatform->Window,
