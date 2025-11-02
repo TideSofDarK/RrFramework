@@ -328,13 +328,12 @@ static void Rr_GLFWWindowContentScaleCallback(
 {
     gPlatform->WindowScale.X = X;
     gPlatform->WindowScale.Y = Y;
+    gPlatform->WindowScaled = X != 1.0f || Y != 1.0f;
 }
 
 bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
     assert(gPlatform == NULL);
-
-    bool WindowScaled = false;
 
 #ifdef __linux__
     int32_t GLFWPlatform;
@@ -346,7 +345,6 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     {
         GLFWPlatform = GLFW_PLATFORM_X11;
     }
-    WindowScaled = GLFWPlatform == GLFW_PLATFORM_WAYLAND;
     glfwInitHint(GLFW_PLATFORM, GLFWPlatform);
 #endif
 
@@ -373,11 +371,12 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         Config->Title,
         NULL,
         NULL);
-    gPlatform->WindowScaled = WindowScaled;
     glfwGetWindowContentScale(
         gPlatform->Window,
         &gPlatform->WindowScale.X,
         &gPlatform->WindowScale.Y);
+    gPlatform->WindowScaled =
+        gPlatform->WindowScale.X != 1.0f || gPlatform->WindowScale.Y != 1.0f;
 
     glfwSetWindowUserPointer(gPlatform->Window, gPlatform);
     glfwSetCursorPosCallback(gPlatform->Window, &Rr_GLFWCursorCallback);
@@ -392,10 +391,10 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         gPlatform->Window,
         &Rr_GLFWWindowContentScaleCallback);
 
-    if (gPlatform->WindowScaled)
-    {
-        Rr_SetWindowSize(WindowSize);
-    }
+    /* if (gPlatform->WindowScaled) */
+    /* { */
+    /*     Rr_SetWindowSize(WindowSize); */
+    /* } */
 
     RR_LOG("Using GLFW platform library");
 
