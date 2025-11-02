@@ -1767,31 +1767,32 @@ struct SModernRenderingApp
 
     void UI()
     {
-        // Rr_UIBeginWindow("ModernRendering.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-        Rr_UIBeginWindow("ModernRendering.cxx", NULL, 0);
-        if (Rr_UIBeginTree("General"))
+        if (Rr_UIBeginWindow("ModernRendering.cxx", NULL, 0))
         {
-            Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
-            Rr_Vec3 CameraForward = Camera.GetForwardVector();
-            Rr_UIInputFloat3("Camera Forward", CameraForward.Elements);
-            Rr_UISeparator();
-            Rr_UICheckbox("Draw Grid", &DrawGrid);
-            if (Rr_UICombobox(
-                    "MSAA",
-                    MSAA_OPTIONS.size(),
-                    MSAA_OPTIONS.data(),
-                    &MSAAOptionIndex))
+            if (Rr_UIBeginTree("General"))
             {
-                Skybox.RecreatePipeline(GetMSAASampleCount());
-                Grid.RecreatePipeline(GetMSAASampleCount());
-                InitAttachments();
-                InitPipelines();
+                Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
+                Rr_Vec3 CameraForward = Camera.GetForwardVector();
+                Rr_UIInputFloat3("Camera Forward", CameraForward.Elements);
+                Rr_UISeparator();
+                Rr_UICheckbox("Draw Grid", &DrawGrid);
+                if (Rr_UICombobox(
+                        "MSAA",
+                        MSAA_OPTIONS.size(),
+                        MSAA_OPTIONS.data(),
+                        &MSAAOptionIndex))
+                {
+                    Skybox.RecreatePipeline(GetMSAASampleCount());
+                    Grid.RecreatePipeline(GetMSAASampleCount());
+                    InitAttachments();
+                    InitPipelines();
+                }
+                SSAO.UI();
+                Rr_UIEndTree();
             }
-            SSAO.UI();
-            Rr_UIEndTree();
+            Lighting.UI();
+            Rr_UIEndWindow();
         }
-        Lighting.UI();
-        Rr_UIEndWindow();
     }
 
     void Iterate()
