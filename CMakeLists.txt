@@ -51,7 +51,7 @@ endfunction ()
 # Dependencies
 #
 
-find_package(Vulkan)
+find_package(Vulkan REQUIRED)
 
 set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either SDL or GLFW)")
 
@@ -203,8 +203,13 @@ target_sources(
     Include/Rr/Rr_Utility.h
 )
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_UNIX.c)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_MACOS)
+endif ()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Linux.c)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_UNIX.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_LINUX)
 endif ()
 
