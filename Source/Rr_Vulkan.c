@@ -495,7 +495,7 @@ void Rr_SelectPhysicalDevice(
             snprintf(
                 DstString,
                 sizeof(Rr_DeviceString),
-                "(\\) GPU #%d: %s, type: %s, total memory: %zu",
+                "(\\) GPU #%d: %s, type: %s, total memory: %lu",
                 Index,
                 Properties.deviceName,
                 TypeString,
