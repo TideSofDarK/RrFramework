@@ -2492,11 +2492,8 @@ static inline Rr_Rect Rr_UIRectIntersection(Rr_Rect *RectA, Rr_Rect *RectB)
     return Result;
 }
 
-static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
+static inline void Rr_UIBeginClipRect(Rr_UILayout *Layout, Rr_Rect *Rect)
 {
-    Rr_UIAssertWindow();
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_UIClipRect *ClipRect =
@@ -2510,33 +2507,57 @@ static inline void Rr_UIBeginClipRect(Rr_Rect *Rect)
         Rr_RectContains(&ClipRect->Rect, gUIContext->MousePosition);
 }
 
-static inline void Rr_UIBeginVisibleClipRect(Rr_Rect *Rect)
+static inline void Rr_UIBeginVisibleClipRect(Rr_UILayout *Layout, Rr_Rect *Rect)
 {
     Rr_UIAssertWindow();
 
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_Rect VisibleRect = Rr_UIRectIntersection(Rect, &Window->VisibleRect);
 
-    Rr_UIBeginClipRect(&VisibleRect);
+    Rr_UIBeginClipRect(Layout, &VisibleRect);
 }
 
-static inline Rr_UIClipRect *Rr_UIEndClipRect(void)
+static inline Rr_UIClipRect *Rr_UIEndClipRect(Rr_UILayout *Layout)
 {
-    Rr_UIWindow *Window = Rr_UICurrentWindow();
-    if (Window)
+    if (!Layout)
     {
-        if (Window->TopLevelClipRects->Count > 0)
-        {
-            Rr_UIClipRect *Last =
-                &RR_LAST_ARRAY_ELEMENT(Window->TopLevelClipRects);
-            Last->IndexCount =
-                (uint32_t)gUIContext->Indices.Count - Last->FirstIndex;
-            return Last;
-        }
+        return NULL;
+    }
+    Rr_UIWindow *Window = Layout->Window;
+    if (Window->TopLevelClipRects->Count > 0)
+    {
+        Rr_UIClipRect *Last = &RR_LAST_ARRAY_ELEMENT(Window->TopLevelClipRects);
+        Last->IndexCount =
+            (uint32_t)gUIContext->Indices.Count - Last->FirstIndex;
+        return Last;
     }
     return NULL;
+}
+
+static inline void Rr_UIPushSubClipRect(Rr_UILayout *Layout, Rr_Rect *Rect)
+{
+    Rr_UIEndClipRect(Layout);
+
+    Rr_UIWindow *Window = Layout->Window;
+
+    Rr_UIClipRect *Last = &RR_LAST_ARRAY_ELEMENT(Window->TopLevelClipRects);
+
+    Rr_Rect NewRect = Rr_UIRectIntersection(&Last->Rect, Rect);
+
+    Rr_UIBeginClipRect(Layout, &NewRect);
+}
+
+static inline void Rr_UIPopSubClipRect(Rr_UILayout *Layout)
+{
+    Rr_UIEndClipRect(Layout);
+
+    Rr_UIWindow *Window = Layout->Window;
+
+    Rr_UIClipRect *SecondToLast =
+        &Window->TopLevelClipRects->Data[Window->TopLevelClipRects->Count - 2];
+
+    Rr_UIBeginClipRect(Layout, &SecondToLast->Rect);
 }
 
 static inline void Rr_UIRecalculateStyle(void)
@@ -2596,10 +2617,11 @@ void Rr_UIPushFont(Rr_UIFont *Font)
 
     Rr_UIRecalculateStyle();
 
-    Rr_UIClipRect *Old = Rr_UIEndClipRect();
-    if (Old)
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIClipRect *CurrentClipRect = Rr_UIEndClipRect(Layout);
+    if (CurrentClipRect)
     {
-        Rr_UIBeginClipRect(&Old->Rect);
+        Rr_UIBeginClipRect(Layout, &CurrentClipRect->Rect);
     }
 }
 
@@ -2612,10 +2634,11 @@ void Rr_UIPopFont(void)
 
     Rr_UIRecalculateStyle();
 
-    Rr_UIClipRect *Old = Rr_UIEndClipRect();
-    if (Old)
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIClipRect *CurrentClipRect = Rr_UIEndClipRect(Layout);
+    if (CurrentClipRect)
     {
-        Rr_UIBeginClipRect(&Old->Rect);
+        Rr_UIBeginClipRect(Layout, &CurrentClipRect->Rect);
     }
 }
 
@@ -3279,13 +3302,13 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* NOTE: Have to access current window and finish its clip rect. */
 
-    Rr_UIEndClipRect();
+    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
+    Rr_UIWindow *ParentWindow = NULL;
+
+    Rr_UIEndClipRect(ParentLayout);
 
     *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveWindows, gUIContext->Arena) = Window;
     Window->Added = true;
-
-    Rr_UILayout *ParentLayout = NULL;
-    Rr_UIWindow *ParentWindow = NULL;
 
     if (Window->Child)
     {
@@ -3337,13 +3360,13 @@ static inline bool Rr_UIBeginWindowEx(
             &TotalClipRectWithBorders,
             &ParentWindow->ContentsClipRect->Rect);
 
-        Rr_UIBeginVisibleClipRect(&TotalClipRectWithBorders);
+        Rr_UIBeginVisibleClipRect(Layout, &TotalClipRectWithBorders);
     }
     else
     {
         Window->VisibleRect = TotalClipRectWithBorders;
 
-        Rr_UIBeginClipRect(&TotalClipRectWithBorders);
+        Rr_UIBeginClipRect(Layout, &TotalClipRectWithBorders);
     }
 
     /* Add window title if necessary. */
@@ -3407,14 +3430,14 @@ static inline bool Rr_UIBeginWindowEx(
     Layout->TotalAvailableContentsWidth -= Layout->WindowPadding.X * 2.0f;
     Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->WindowPadding);
 
-    Rr_UIEndClipRect();
+    Rr_UIEndClipRect(Layout);
 
     /* Clip to contents. */
 
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
     Rr_Rect VisibleContentsAreaRect =
         Rr_UIRectIntersection(&ContentsAreaRect, &Window->VisibleRect);
-    Rr_UIBeginVisibleClipRect(&VisibleContentsAreaRect);
+    Rr_UIBeginVisibleClipRect(Layout, &VisibleContentsAreaRect);
 
     Window->ContentsClipRect =
         &RR_LAST_ARRAY_ELEMENT(Window->TopLevelClipRects);
@@ -3538,14 +3561,17 @@ void Rr_UIEndWindow(void)
     Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
     Window->ContentsRect = Layout->DeferredContentsRect;
 
-    Rr_UIEndClipRect();
+    if (!Window->Collapsed)
+    {
+        Rr_UIEndClipRect(Layout);
 
-    /* Begin overlay clip rect for stuff such as borders, resize handle and
-     * scroll area darkeners. */
+        /* Begin overlay clip rect for stuff such as borders, resize handle and
+         * scroll area darkeners. */
 
-    /* Rr_Rect TotalClipRectWithBorders = */
-    /*     Rr_ResizeRect(&Layout->Rect, gUIContext->FrameThickness); */
-    Rr_UIBeginVisibleClipRect(&Layout->Rect);
+        /* Rr_Rect TotalClipRectWithBorders = */
+        /*     Rr_ResizeRect(&Layout->Rect, gUIContext->FrameThickness); */
+        Rr_UIBeginVisibleClipRect(Layout, &Layout->Rect);
+    }
 
     if (!Window->Collapsed)
     {
@@ -3633,7 +3659,7 @@ void Rr_UIEndWindow(void)
             BorderColor);
     }
 
-    Rr_UIEndClipRect();
+    Rr_UIEndClipRect(Layout);
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
 
@@ -3809,7 +3835,7 @@ void Rr_UIEndWindow(void)
 
         /* Resume clip rect. */
 
-        Rr_UIBeginClipRect(&ParentWindow->CurrentClipRect->Rect);
+        Rr_UIBeginClipRect(ParentLayout, &ParentWindow->CurrentClipRect->Rect);
     }
 }
 
@@ -5231,14 +5257,13 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     Rr_UIClipRect *RestoreClipRect = NULL;
     if (UseFixedWidth)
     {
-        RestoreClipRect = Window->CurrentClipRect;
-
-        Rr_UIEndClipRect();
-
-        Rr_Vec2 ClipRectExtent = { FixedWidth, RestoreClipRect->Rect.Extent.Y };
-
-        Rr_UIBeginVisibleClipRect(
-            &(Rr_Rect){ .Offset = Offset, .Extent = ClipRectExtent });
+        Rr_UIPushSubClipRect(
+            Layout,
+            &(Rr_Rect){
+                .Offset = Offset,
+                .Extent = { FixedWidth,
+                            Window->CurrentClipRect->Rect.Extent.Y, },
+            });
     }
 
     bool UsePersistentBuffer =
@@ -5520,9 +5545,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
     if (UseFixedWidth)
     {
-        Rr_UIEndClipRect();
-
-        Rr_UIBeginClipRect(&RestoreClipRect->Rect);
+        Rr_UIPopSubClipRect(Layout);
     }
 
     return (Rr_UIInputFieldResult){
@@ -7760,8 +7783,6 @@ void Rr_NewUIFrame(void)
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
     gUIContext->ScreenSize.Width = (float)SwapchainSize.Width;
     gUIContext->ScreenSize.Height = (float)SwapchainSize.Height;
-
-    gUIContext->MousePosition = Rr_GetMousePosition();
 }
 
 void Rr_BeginUI(void)
@@ -7857,6 +7878,10 @@ static inline void Rr_UIDrawWindow(
             IntRect.Offset.Y = 0;
         }
         if (IntRect.Extent.Width < 0 || IntRect.Extent.Height < 0)
+        {
+            continue;
+        }
+        if (ClipRect->IndexCount == 0)
         {
             continue;
         }
