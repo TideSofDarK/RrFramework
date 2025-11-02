@@ -44,23 +44,11 @@
 #define STBTT_STATIC
 #include <stb/stb_truetype.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_STATIC
-#define STBI_NO_STDIO
-#define STBI_NO_GIF
-#define STBI_NO_BMP
-#define STBI_NO_PSD
-#define STBI_NO_PIC
-#define STBI_NO_PNM
-#define STBI_NO_HDR
-#define STBI_NO_TGA
-#define STBI_NO_FAILURE_STRINGS
-#include <stb/stb_image.h>
-
 #include <assert.h>
 #include <float.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <limits.h>
 
 #define RR_UI_SCALAR_BUFFER_SIZE 32
 
