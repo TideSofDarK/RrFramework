@@ -392,7 +392,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         gPlatform->Window,
         &Rr_GLFWWindowContentScaleCallback);
 
-        if (gPlatform->Wayland)
+    if (gPlatform->Wayland)
     {
         Rr_SetWindowSize(WindowSize);
     }

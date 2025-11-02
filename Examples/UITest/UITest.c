@@ -88,6 +88,8 @@ static void PrintTheme(void)
     Rr_UIColors *Colors = Rr_UIGetColors();
     Rr_UIStyle *Style = Rr_UIGetStyle();
 
+    fprintf(stdout, "\n/* RR UI THEME EXPORT BEGIN */\n");
+
     PrintStyleVec2("TitlePadding", &Style->TitlePadding);
     PrintStyleVec2("WindowPadding", &Style->WindowPadding);
     PrintStyleVec2("ContentsMargin", &Style->ContentsMargin);
@@ -129,6 +131,8 @@ static void PrintTheme(void)
     PrintColor("InputFieldActive", &Colors->InputFieldActive);
     PrintColor("SelectedTextBackground", &Colors->SelectedTextBackground);
     PrintColor("SelectedTextForeground", &Colors->SelectedTextForeground);
+
+    fprintf(stdout, "/* RR UI THEME EXPORT END */\n\n");
 }
 
 static void ThemeEditorWindow()
