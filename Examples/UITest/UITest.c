@@ -270,7 +270,7 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
-        Rr_UISetNextWindowCreateCollapsed(false);
+        /* Rr_UISetNextWindowCreateCollapsed(false); */
         if (Rr_UIBeginChild("Fonts"))
         {
             Rr_UIText(

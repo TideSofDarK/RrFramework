@@ -182,7 +182,7 @@ target_sources(
     Source/Rr_UI.c
     Source/Rr_Vulkan.c
     Vendor/xxHash/xxhash.c
-    Vendor/xxHash/xxh_x86dispatch.c
+    # Vendor/xxHash/xxh_x86dispatch.c
     PUBLIC
     FILE_SET HEADERS
     BASE_DIRS Include
@@ -203,7 +203,22 @@ target_sources(
     Include/Rr/Rr_Utility.h
 )
 
+if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+    target_sources(${PROJECT_NAME} PRIVATE Vendor/xxHash/xxh_x86dispatch.c)
+endif ()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(
+        ${PROJECT_NAME}
+        PRIVATE
+        "-framework QuartzCore"
+        "-framework Metal"
+        "-framework Foundation"
+        "-framework IOSurface"
+        "-framework CoreGraphics"
+        "-framework IOKit"
+        "-framework AppKit"
+        "MoltenVK")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_UNIX.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_MACOS)
 endif ()

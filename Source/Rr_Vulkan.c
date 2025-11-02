@@ -78,7 +78,7 @@ void Rr_InitInstance(
     uint32_t ExtensionCount = PlatformExtensionCount + InstanceExtensionCount;
     const char **Extensions =
         RR_ALLOC_TYPE_COUNT(Scratch.Arena, const char *, ExtensionCount);
-    for (uint32_t Index = 0; Index < ExtensionCount; Index++)
+    for (uint32_t Index = 0; Index < PlatformExtensionCount; Index++)
     {
         Extensions[Index] = PlatformExtensions[Index];
     }
@@ -96,6 +96,10 @@ void Rr_InitInstance(
         .enabledExtensionCount = ExtensionCount,
         .ppEnabledExtensionNames = Extensions,
     };
+
+#ifdef __APPLE__
+    InstanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
 
     Loader->CreateInstance(&InstanceCreateInfo, NULL, &Instance->Handle);
 

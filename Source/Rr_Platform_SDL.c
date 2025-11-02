@@ -39,7 +39,10 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_CRITICAL);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
-    SDL_Vulkan_LoadLibrary(NULL);
+    if (!SDL_Vulkan_LoadLibrary(NULL))
+    {
+        RR_LOG("%s", SDL_GetError());
+    }
 
     SDL_WindowFlags SDLWindowFlags =
         SDL_WINDOW_HIDDEN | SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
@@ -53,6 +56,10 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     gPlatform->EventScratch =
         (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
     gPlatform->Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
+    if (!gPlatform->Window)
+    {
+        RR_LOG("%s", SDL_GetError());
+    }
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
     SDL_StartTextInput(gPlatform->Window);
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
@@ -347,7 +354,8 @@ void Rr_SetCursor(Rr_CursorType Type)
             static SDL_Cursor *SDLCursor;
             if (SDLCursor == NULL)
             {
-                SDLCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
+                SDLCursor =
+                    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
             }
             SDL_SetCursor(SDLCursor);
             return;
