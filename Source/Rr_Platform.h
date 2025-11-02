@@ -28,12 +28,10 @@
 
 #include "Rr_Arena.h"
 
-#ifdef __linux__
-#define RR_THREAD_LOCAL __thread
-#elif _WIN32
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(__INTEL_COMPILER)
 #define RR_THREAD_LOCAL __declspec(thread)
 #else
-#error Unsupported platform!
+#define RR_THREAD_LOCAL __thread
 #endif
 
 struct Rr_Platform

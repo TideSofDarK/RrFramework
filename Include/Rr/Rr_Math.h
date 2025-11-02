@@ -814,7 +814,7 @@ static inline Rr_Vec4 Rr_V4F(float X)
 #ifdef RR_MATH__USE_SSE
     Result.SSE = _mm_set1_ps(X);
 #elif defined(RR_MATH__USE_NEON)
-    Result.NEON = vdupq_n_f32(W);
+    Result.NEON = vdupq_n_f32(X);
 #else
     Result.X = X;
     Result.Y = X;

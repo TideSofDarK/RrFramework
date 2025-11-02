@@ -32,6 +32,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <stdlib.h>
+
 static Rr_PlatformInfo PlatformInfo;
 
 bool Rr_InitPlatform(void)
