@@ -3096,18 +3096,6 @@ Rr_UIColors *Rr_UIGetColors(void)
     return &gUIContext->Colors;
 }
 
-void Rr_UIRandomizeColors(void)
-{
-    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
-    Rr_Vec4 *Colors = (Rr_Vec4 *)Rr_UIGetColors();
-    for (size_t Index = 0; Index < ColorCount; ++Index)
-    {
-        Colors[Index].R = (float)rand() / (float)RAND_MAX;
-        Colors[Index].G = (float)rand() / (float)RAND_MAX;
-        Colors[Index].B = (float)rand() / (float)RAND_MAX;
-    }
-}
-
 void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places)
 {
     *RR_PUSH_INTO_ARRAY(
@@ -7481,55 +7469,52 @@ static void Rr_UIConvertColorsToLinear(void)
     }
 }
 
-static inline void Rr_UIPrintColor(const char *Name, Rr_Vec4 *Color)
+void Rr_UISetDefaultTheme(void)
 {
-    fprintf(
-        stdout,
-        ".%s = {%ff,%ff,%ff,%ff},\n",
-        Name,
-        Color->R,
-        Color->G,
-        Color->B,
-        Color->A);
-}
+    Rr_UIStyle *Style = Rr_UIGetStyle();
+    Rr_UIColors *Colors = Rr_UIGetColors();
 
-void Rr_UIPrintColors(void)
-{
-    Rr_UIPrintColor("Foreground", &gUIContext->Colors.Foreground);
-    Rr_UIPrintColor("ForegroundDimmed", &gUIContext->Colors.ForegroundDimmed);
-    Rr_UIPrintColor("Background", &gUIContext->Colors.Background);
-    Rr_UIPrintColor("ChildBackground", &gUIContext->Colors.ChildBackground);
-    Rr_UIPrintColor("Outline", &gUIContext->Colors.Outline);
-    Rr_UIPrintColor("SelectedOutline", &gUIContext->Colors.SelectedOutline);
-
-    Rr_UIPrintColor("TitleBackground", &gUIContext->Colors.TitleBackground);
-    Rr_UIPrintColor(
-        "TitleCloseButtonBackground",
-        &gUIContext->Colors.TitleCloseButtonBackground);
-    Rr_UIPrintColor(
-        "TitleCollapseButtonBackground",
-        &gUIContext->Colors.TitleCollapseButtonBackground);
-
-    Rr_UIPrintColor(
-        "ScrollbarBackground",
-        &gUIContext->Colors.ScrollbarBackground);
-    Rr_UIPrintColor("ScrollbarNormal", &gUIContext->Colors.ScrollbarNormal);
-    Rr_UIPrintColor("ScrollbarHovered", &gUIContext->Colors.ScrollbarHovered);
-    Rr_UIPrintColor("ScrollbarHeld", &gUIContext->Colors.ScrollbarHeld);
-
-    Rr_UIPrintColor("ButtonNormal", &gUIContext->Colors.ButtonNormal);
-    Rr_UIPrintColor("ButtonHovered", &gUIContext->Colors.ButtonHovered);
-    Rr_UIPrintColor("ButtonHeld", &gUIContext->Colors.ButtonHeld);
-    Rr_UIPrintColor("ButtonDisabled", &gUIContext->Colors.ButtonDisabled);
-
-    Rr_UIPrintColor("InputFieldNormal", &gUIContext->Colors.InputFieldNormal);
-    Rr_UIPrintColor("InputFieldActive", &gUIContext->Colors.InputFieldActive);
-    Rr_UIPrintColor(
-        "SelectedTextBackground",
-        &gUIContext->Colors.SelectedTextBackground);
-    Rr_UIPrintColor(
-        "SelectedTextForeground",
-        &gUIContext->Colors.SelectedTextForeground);
+    Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
+    Style->WindowPadding = Rr_V2(0.500000f, 0.500000f);
+    Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
+    Style->ComponentMargin = 0.200000f;
+    Style->ScrollbarAreaWidth = 0.850000f;
+    Style->BevelIntensityLight = 0.300000f;
+    Style->BevelIntensityDark = 0.700000f;
+    Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
+    Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
+    Style->CheckmarkRatios = Rr_V2(0.325000f, 0.300000f);
+    Style->CheckmarkSize = 0.725000f;
+    Colors->Foreground = Rr_V4(0.899630f, 0.924908f, 0.933333f, 1.000000f);
+    Colors->ForegroundDimmed =
+        Rr_V4(0.617390f, 0.649893f, 0.660727f, 1.000000f);
+    Colors->Background = Rr_V4(0.142532f, 0.168879f, 0.186284f, 1.000000f);
+    Colors->ChildBackground = Rr_V4(0.100193f, 0.121744f, 0.136111f, 1.000000f);
+    Colors->Outline = Rr_V4(0.603737f, 0.614403f, 0.625043f, 1.000000f);
+    Colors->SelectedOutline = Rr_V4(0.680653f, 0.751365f, 0.827292f, 1.000000f);
+    Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
+    Colors->TitleCloseButtonBackground =
+        Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
+    Colors->TitleCollapseButtonBackground =
+        Rr_V4(0.121569f, 0.466667f, 0.694118f, 1.000000f);
+    Colors->ScrollbarBackground =
+        Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
+    Colors->ScrollbarNormal = Rr_V4(0.292805f, 0.334535f, 0.363504f, 1.000000f);
+    Colors->ScrollbarHovered =
+        Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
+    Colors->ScrollbarHeld = Rr_V4(0.254856f, 0.342832f, 0.400486f, 1.000000f);
+    Colors->ButtonNormal = Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
+    Colors->ButtonHovered = Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
+    Colors->ButtonHeld = Rr_V4(0.168210f, 0.404396f, 0.555556f, 1.000000f);
+    Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
+    Colors->InputFieldNormal =
+        Rr_V4(0.089074f, 0.160347f, 0.216667f, 1.000000f);
+    Colors->InputFieldActive =
+        Rr_V4(0.070324f, 0.252329f, 0.408333f, 1.000000f);
+    Colors->SelectedTextBackground =
+        Rr_V4(0.433129f, 0.652866f, 0.996207f, 1.000000f);
+    Colors->SelectedTextForeground =
+        Rr_V4(0.030000f, 0.030000f, 0.030000f, 1.000000f);
 }
 
 void Rr_InitUI(void)
@@ -7551,55 +7536,7 @@ void Rr_InitUI(void)
     gUIContext->DefaultFont =
         Rr_UICreateFont(FontAsset.Size, FontAsset.Pointer, DefaultFontSize);
 
-    gUIContext->Style = (Rr_UIStyle){
-        .TitlePadding = { 0.25f, 0.025f },
-        .WindowPadding = { 0.5f, 0.5f },
-        .ContentsMargin = { 0.25f, 0.25f },
-        .ComponentMargin = 0.2f,
-        .ScrollbarAreaWidth = 0.85f,
-        .BevelIntensityLight = 0.3f,
-        .BevelIntensityDark = 0.7f,
-        .ButtonPadding = { 0.25f, 0.025f },
-        .InputFieldPadding = { 0.25f, 0.025f },
-        .CheckmarkRatios = { 0.325f, 0.3f },
-        .CheckmarkSize = 0.725f,
-    };
-
-    gUIContext->Colors = (Rr_UIColors){
-        .Foreground = { 0.899630f, 0.924908f, 0.933333f, 1.000000f },
-        .ForegroundDimmed = { 0.617390f, 0.649893f, 0.660727f, 1.000000f },
-        .Background = { 0.142532f, 0.168879f, 0.186284f, 1.000000f },
-        .ChildBackground = { 0.100193f, 0.121744f, 0.136111f, 1.000000f },
-        .Outline = { 0.603737f, 0.614403f, 0.625043f, 1.000000f },
-        .SelectedOutline = { 0.680653f, 0.751365f, 0.827292f, 1.000000f },
-        .TitleBackground = { 0.123951f, 0.467914f, 0.697222f, 1.000000f },
-        .TitleCloseButtonBackground = { 0.839551f,
-                                        0.250613f,
-                                        0.313724f,
-                                        1.000000f },
-        .TitleCollapseButtonBackground = { 0.121569f,
-                                           0.466667f,
-                                           0.694118f,
-                                           1.000000f },
-        .ScrollbarBackground = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
-        .ScrollbarNormal = { 0.292805f, 0.334535f, 0.363504f, 1.000000f },
-        .ScrollbarHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
-        .ScrollbarHeld = { 0.254856f, 0.342832f, 0.400486f, 1.000000f },
-        .ButtonNormal = { 0.182623f, 0.277109f, 0.338889f, 1.000000f },
-        .ButtonHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
-        .ButtonHeld = { 0.168210f, 0.404396f, 0.555556f, 1.000000f },
-        .ButtonDisabled = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
-        .InputFieldNormal = { 0.089074f, 0.160347f, 0.216667f, 1.000000f },
-        .InputFieldActive = { 0.070324f, 0.252329f, 0.408333f, 1.000000f },
-        .SelectedTextBackground = { 0.433129f,
-                                    0.652866f,
-                                    0.996207f,
-                                    1.000000f },
-        .SelectedTextForeground = { 0.030000f,
-                                    0.030000f,
-                                    0.030000f,
-                                    1.000000f },
-    };
+    Rr_UISetDefaultTheme();
 
     Rr_Binding Bindings[] = {
         {

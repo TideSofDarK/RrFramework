@@ -48,6 +48,88 @@ static void FixedSizeWindow()
     }
 }
 
+static void RandomizeColors(void)
+{
+    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
+    Rr_Vec4 *Colors = (Rr_Vec4 *)Rr_UIGetColors();
+    for (size_t Index = 0; Index < ColorCount; ++Index)
+    {
+        Colors[Index].R = (float)rand() / (float)RAND_MAX;
+        Colors[Index].G = (float)rand() / (float)RAND_MAX;
+        Colors[Index].B = (float)rand() / (float)RAND_MAX;
+    }
+}
+
+static inline void PrintStyle(const char *Name, float Style)
+{
+    fprintf(stdout, "Style->%s = %ff;\n", Name, Style);
+}
+
+static inline void PrintStyleVec2(const char *Name, Rr_Vec2 *Style)
+{
+    fprintf(stdout, "Style->%s = Rr_V2(%ff,%ff);\n", Name, Style->X, Style->Y);
+}
+
+static inline void PrintColor(const char *Name, Rr_Vec4 *Color)
+{
+    fprintf(
+        stdout,
+        "Colors->%s = Rr_V4(%ff,%ff,%ff,%ff);\n",
+        Name,
+        Color->R,
+        Color->G,
+        Color->B,
+        Color->A);
+}
+
+static void PrintTheme(void)
+{
+    Rr_UIColors *Colors = Rr_UIGetColors();
+    Rr_UIStyle *Style = Rr_UIGetStyle();
+
+    PrintStyleVec2("TitlePadding", &Style->TitlePadding);
+    PrintStyleVec2("WindowPadding", &Style->WindowPadding);
+    PrintStyleVec2("ContentsMargin", &Style->ContentsMargin);
+    PrintStyle("ComponentMargin", Style->ComponentMargin);
+    PrintStyle("ScrollbarAreaWidth", Style->ScrollbarAreaWidth);
+    PrintStyle("BevelIntensityLight", Style->BevelIntensityLight);
+    PrintStyle("BevelIntensityDark", Style->BevelIntensityDark);
+    PrintStyleVec2("ButtonPadding", &Style->ButtonPadding);
+    PrintStyleVec2("InputFieldPadding", &Style->InputFieldPadding);
+    PrintStyleVec2("CheckmarkRatios", &Style->CheckmarkRatios);
+    PrintStyle("CheckmarkSize", Style->CheckmarkSize);
+
+    PrintColor("Foreground", &Colors->Foreground);
+    PrintColor("ForegroundDimmed", &Colors->ForegroundDimmed);
+    PrintColor("Background", &Colors->Background);
+    PrintColor("ChildBackground", &Colors->ChildBackground);
+    PrintColor("Outline", &Colors->Outline);
+    PrintColor("SelectedOutline", &Colors->SelectedOutline);
+
+    PrintColor("TitleBackground", &Colors->TitleBackground);
+    PrintColor(
+        "TitleCloseButtonBackground",
+        &Colors->TitleCloseButtonBackground);
+    PrintColor(
+        "TitleCollapseButtonBackground",
+        &Colors->TitleCollapseButtonBackground);
+
+    PrintColor("ScrollbarBackground", &Colors->ScrollbarBackground);
+    PrintColor("ScrollbarNormal", &Colors->ScrollbarNormal);
+    PrintColor("ScrollbarHovered", &Colors->ScrollbarHovered);
+    PrintColor("ScrollbarHeld", &Colors->ScrollbarHeld);
+
+    PrintColor("ButtonNormal", &Colors->ButtonNormal);
+    PrintColor("ButtonHovered", &Colors->ButtonHovered);
+    PrintColor("ButtonHeld", &Colors->ButtonHeld);
+    PrintColor("ButtonDisabled", &Colors->ButtonDisabled);
+
+    PrintColor("InputFieldNormal", &Colors->InputFieldNormal);
+    PrintColor("InputFieldActive", &Colors->InputFieldActive);
+    PrintColor("SelectedTextBackground", &Colors->SelectedTextBackground);
+    PrintColor("SelectedTextForeground", &Colors->SelectedTextForeground);
+}
+
 static void ThemeEditorWindow()
 {
     if (Rr_UIBeginWindow(
@@ -58,8 +140,6 @@ static void ThemeEditorWindow()
         Rr_UIStyle *Style = Rr_UIGetStyle();
         Rr_UIColors *Colors = Rr_UIGetColors();
 
-        /* Rr_UIInputFloat("Font Size", &FontSize); */
-
         Rr_UIPushFormatFloatDecimalPlaces(4);
         Rr_UIInputFloat2ZO("Title Padding", Style->TitlePadding.Elements);
         Rr_UIInputFloat2ZO("Window Padding", Style->WindowPadding.Elements);
@@ -68,9 +148,7 @@ static void ThemeEditorWindow()
         Rr_UIInputFloatZO("Scrollbar Area Width", &Style->ScrollbarAreaWidth);
         Rr_UIInputFloatZO("Bevel Intensity Light", &Style->BevelIntensityLight);
         Rr_UIInputFloatZO("Bevel Intensity Dark", &Style->BevelIntensityDark);
-        Rr_UIInputFloat2ZO(
-            "Checkmark Ratios",
-            Style->CheckmarkRatios.Elements);
+        Rr_UIInputFloat2ZO("Checkmark Ratios", Style->CheckmarkRatios.Elements);
         Rr_UIInputFloatZO("Checkmark Size", &Style->CheckmarkSize);
         Rr_UIPopFormatFloatDecimalPlaces();
 
@@ -141,13 +219,13 @@ static void ThemeEditorWindow()
         Rr_UISeparator();
 
         Rr_UIBeginHorizontal();
-        if (Rr_UIButton("Print Colors"))
+        if (Rr_UIButton("Print Theme"))
         {
-            Rr_UIPrintColors();
+            PrintTheme();
         }
         if (Rr_UIButton("Randomize Colors"))
         {
-            Rr_UIRandomizeColors();
+            RandomizeColors();
         }
         Rr_UIEndHorizontal();
 
@@ -260,6 +338,11 @@ static void Iterate(void)
             if (Rr_UIButton("Show Theme Editor"))
             {
                 ThemeEditorWindowOpen = true;
+            }
+
+            if (Rr_UIButton("Set Default Theme"))
+            {
+                Rr_UISetDefaultTheme();
             }
 
             if (Rr_UIButton("Set Pink Theme"))

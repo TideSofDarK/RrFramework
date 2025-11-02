@@ -155,8 +155,6 @@ extern Rr_UIStyle *Rr_UIGetStyle(void);
 
 extern Rr_UIColors *Rr_UIGetColors(void);
 
-extern void Rr_UIRandomizeColors(void);
-
 extern Rr_UIPrimitive Rr_UIReservePrimitive(
     size_t VertexCount,
     size_t IndexCount);
@@ -384,7 +382,7 @@ extern float Rr_UICurrentFontSize(void);
 
 extern float Rr_UICurrentLineHeight(void);
 
-extern void Rr_UIPrintColors(void);
+extern void Rr_UISetDefaultTheme(void);
 
 extern void Rr_UIDebugOverlay(void);
 
