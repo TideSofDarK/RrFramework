@@ -460,7 +460,7 @@ void Rr_SelectPhysicalDevice(
                 PhysicalDeviceHandle,
                 &MemoryProperties);
 
-            VkDeviceSize Memory = 0;
+            unsigned long long Memory = 0;
             for (uint32_t MemoryHeapIndex = 0;
                  MemoryHeapIndex < MemoryProperties.memoryHeapCount;
                  ++MemoryHeapIndex)
@@ -495,7 +495,7 @@ void Rr_SelectPhysicalDevice(
             snprintf(
                 DstString,
                 sizeof(Rr_DeviceString),
-                "(\\) GPU #%d: %s, type: %s, total memory: %lu",
+                "(\\) GPU #%d: %s, type: %s, total memory: %llu",
                 Index,
                 Properties.deviceName,
                 TypeString,
