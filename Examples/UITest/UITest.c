@@ -3,6 +3,7 @@
 #include <Rr/Rr.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 
 static bool FixedSizeWindowOpen = false;
 static bool ThemeEditorWindowOpen = false;
