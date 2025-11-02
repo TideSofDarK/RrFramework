@@ -76,8 +76,9 @@ void Rr_InitInstance(
         Rr_GetVulkanExtensions(&PlatformExtensionCount);
 
     uint32_t ExtensionCount = PlatformExtensionCount + InstanceExtensionCount;
+
     const char **Extensions =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, const char *, ExtensionCount);
+        RR_ALLOC_TYPE_COUNT(Scratch.Arena, const char *, ExtensionCount + 1);
     for (uint32_t Index = 0; Index < PlatformExtensionCount; Index++)
     {
         Extensions[Index] = PlatformExtensions[Index];
@@ -98,6 +99,23 @@ void Rr_InitInstance(
     };
 
 #ifdef __APPLE__
+    bool PortabilityFound = false;
+    for (uint32_t Index = 0; Index < ExtensionCount; ++Index)
+    {
+        if (strcmp(
+                Extensions[Index],
+                VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0)
+        {
+            PortabilityFound = true;
+            break;
+        }
+    }
+    if (!PortabilityFound)
+    {
+        Extensions[ExtensionCount] =
+            VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
+        InstanceCreateInfo.enabledExtensionCount++;
+    }
     InstanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #endif
 
