@@ -123,7 +123,7 @@ int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
     return _InterlockedDecrement(&AtomicInt->Value);
 }
 
-static HANDLE SDL_GetWaitableEvent(void)
+static HANDLE Rr_GetWaitableEvent(void)
 {
     static RR_THREAD_LOCAL HANDLE Event = NULL;
     if (!Event)
@@ -173,7 +173,7 @@ void Rr_SleepNS(uint64_t Nanoseconds)
     }
     const DWORD Delay = (DWORD)(Nanoseconds / 1000000);
 
-    HANDLE Event = SDL_GetWaitableEvent();
+    HANDLE Event = Rr_GetWaitableEvent();
     if (Event)
     {
         WaitForSingleObjectEx(Event, Delay, FALSE);

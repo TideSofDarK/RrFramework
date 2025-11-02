@@ -140,7 +140,7 @@ static void ThemeEditorWindow()
     if (Rr_UIBeginWindow(
             "Theme Editor",
             &ThemeEditorWindowOpen,
-            RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+            RR_UI_WINDOW_FLAGS_CLOSE_BIT))
     {
         Rr_UIStyle *Style = Rr_UIGetStyle();
         Rr_UIColors *Colors = Rr_UIGetColors();

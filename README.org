@@ -31,11 +31,11 @@ Then simply link your application against it,
 * Acknowledgements
 
 + [[https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator][VulkanMemoryAllocator]]
-+ [[https://github.com/libsdl-org/SDL][SDL]]
 + [[https://github.com/glfw/glfw][GLFW]]
 + [[https://github.com/jkuhlmann/cgltf][cgltf]]
 + [[https://github.com/Cyan4973/xxHash][xxHash]]
 + [[https://github.com/nothings/stb][stb]]
++ [[https://github.com/EpicGamesExt/raddebugger][RAD Debugger]]
 + [[https://nullprogram.com/][Chris Wellons]]
 
 * License
