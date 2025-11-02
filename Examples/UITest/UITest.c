@@ -61,13 +61,17 @@ static void ThemeEditorWindow()
         /* Rr_UIInputFloat("Font Size", &FontSize); */
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
-        Rr_UIInputFloat2("Title Padding", Style->TitlePadding.Elements);
-        Rr_UIInputFloat2("Window Padding", Style->WindowPadding.Elements);
-        Rr_UIInputFloat2("Contents Margin", Style->ContentsMargin.Elements);
-        Rr_UIInputFloat("Component Margin", &Style->ComponentMargin);
-        Rr_UIInputFloat("Scrollbar Area Width", &Style->ScrollbarAreaWidth);
-        Rr_UIInputFloat("Bevel Intensity Light", &Style->BevelIntensityLight);
-        Rr_UIInputFloat("Bevel Intensity Dark", &Style->BevelIntensityDark);
+        Rr_UIInputFloat2ZO("Title Padding", Style->TitlePadding.Elements);
+        Rr_UIInputFloat2ZO("Window Padding", Style->WindowPadding.Elements);
+        Rr_UIInputFloat2ZO("Contents Margin", Style->ContentsMargin.Elements);
+        Rr_UIInputFloatZO("Component Margin", &Style->ComponentMargin);
+        Rr_UIInputFloatZO("Scrollbar Area Width", &Style->ScrollbarAreaWidth);
+        Rr_UIInputFloatZO("Bevel Intensity Light", &Style->BevelIntensityLight);
+        Rr_UIInputFloatZO("Bevel Intensity Dark", &Style->BevelIntensityDark);
+        Rr_UIInputFloat2ZO(
+            "Checkmark Ratios",
+            Style->CheckmarkRatios.Elements);
+        Rr_UIInputFloatZO("Checkmark Size", &Style->CheckmarkSize);
         Rr_UIPopFormatFloatDecimalPlaces();
 
         Rr_UISeparator();
@@ -105,7 +109,7 @@ static void ThemeEditorWindow()
         Rr_UISeparator();
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
-        Rr_UIInputFloat2("Button Padding", Style->ButtonPadding.Elements);
+        Rr_UIInputFloat2ZO("Button Padding", Style->ButtonPadding.Elements);
         Rr_UIPopFormatFloatDecimalPlaces();
 
         Rr_UIInputColor4("Button Normal", Colors->ButtonNormal.Elements);
@@ -116,7 +120,7 @@ static void ThemeEditorWindow()
         Rr_UISeparator();
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
-        Rr_UIInputFloat2(
+        Rr_UIInputFloat2ZO(
             "Input Field Padding",
             Style->InputFieldPadding.Elements);
         Rr_UIPopFormatFloatDecimalPlaces();

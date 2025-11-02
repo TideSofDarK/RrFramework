@@ -46,9 +46,9 @@
 
 #include <assert.h>
 #include <float.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <limits.h>
 
 #define RR_UI_SCALAR_BUFFER_SIZE 32
 
@@ -1644,6 +1644,73 @@ static inline void Rr_UIDrawCheckerQuad(Rr_Rect *Rect, float Size)
     CurrectRect.Extent.X = Size * XFrac;
     CurrectRect.Extent.Y = Size * YFrac;
     Rr_UIDrawSolidQuad(&CurrectRect, X % 2 != Y % 2 ? &WHITE : &GRAY);
+}
+
+static inline void Rr_UIDrawCheckmark(
+    Rr_Vec2 Offset,
+    float Size,
+    Rr_Vec4 *Color)
+{
+    float ShortX = Size * gUIContext->Style.CheckmarkRatios.X;
+    float LongX = Size - ShortX;
+
+    float ShortY = Size * gUIContext->Style.CheckmarkRatios.Y;
+    float LongY = Size - ShortY;
+
+    float TinyX = ShortY + LongX - Size;
+
+    {
+        Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(4, 6);
+        Rr_UIVertex *Vertices = Primitive.Vertices;
+        Rr_UIIndex *Indices = Primitive.Indices;
+
+        Vertices[0].Position =
+            Rr_AddV2(Offset, Rr_V2(0.0f, Size - ShortX - ShortY));
+        Vertices[1].Position = Rr_AddV2(Offset, Rr_V2(ShortX, LongY));
+        Vertices[2].Position = Rr_AddV2(Offset, Rr_V2(ShortX, Size));
+        Vertices[3].Position = Rr_AddV2(Offset, Rr_V2(0.0f, Size - ShortX));
+
+        for (size_t Index = 0; Index < 7; ++Index)
+        {
+            Vertices[Index].Color = *Color;
+            Vertices[Index].UV = Rr_V2F(0.0f);
+        }
+
+        Indices[0] = Primitive.BaseVertex + 0;
+        Indices[1] = Primitive.BaseVertex + 1;
+        Indices[2] = Primitive.BaseVertex + 2;
+        Indices[3] = Primitive.BaseVertex + 3;
+        Indices[4] = Primitive.BaseVertex + 0;
+        Indices[5] = Primitive.BaseVertex + 2;
+
+        /* Rr_UIFeatherConvexPrimitive(&Primitive, 4, 1.0f); */
+    }
+
+    {
+        Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(4, 6);
+        Rr_UIVertex *Vertices = Primitive.Vertices;
+        Rr_UIIndex *Indices = Primitive.Indices;
+
+        Vertices[0].Position = Rr_AddV2(Offset, Rr_V2(ShortX, LongY));
+        Vertices[1].Position = Rr_AddV2(Offset, Rr_V2(Size, -TinyX));
+        Vertices[2].Position = Rr_AddV2(Offset, Rr_V2(Size, Size - LongX));
+        Vertices[3].Position = Rr_AddV2(Offset, Rr_V2(ShortX, Size));
+
+        for (size_t Index = 0; Index < 7; ++Index)
+        {
+            Vertices[Index].Color = *Color;
+            Vertices[Index].UV = Rr_V2F(0.0f);
+        }
+
+        Indices[0] = Primitive.BaseVertex + 0;
+        Indices[1] = Primitive.BaseVertex + 1;
+        Indices[2] = Primitive.BaseVertex + 2;
+        Indices[3] = Primitive.BaseVertex + 3;
+        Indices[4] = Primitive.BaseVertex + 0;
+        Indices[5] = Primitive.BaseVertex + 2;
+
+        /* Rr_UIFeatherConvexPrimitive(&Primitive, 4, 1.0f); */
+    }
 }
 
 static inline void Rr_UIDrawGlyph(
@@ -4472,12 +4539,13 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    Rr_Vec2 CheckboxSize = { Font->LineHeight, Font->LineHeight };
+    Rr_Rect CheckboxRect = {
+        Layout->Cursor,
+        { Font->LineHeight, Font->LineHeight },
+    };
 
-    Rr_Vec2 FramePosition = Layout->Cursor;
-
-    Rr_Vec2 TitlePosition = FramePosition;
-    TitlePosition.X += CheckboxSize.X + gUIContext->ButtonPadding.X;
+    Rr_Vec2 TitlePosition = Layout->Cursor;
+    TitlePosition.X += CheckboxRect.Extent.X + gUIContext->ButtonPadding.X;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
         TitlePosition,
@@ -4488,7 +4556,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         0);
 
     Rr_Rect ButtonRect = {
-        FramePosition,
+        Layout->Cursor,
         Rr_V2(
             TitleSize.X + gUIContext->ButtonPadding.X * 2.0f + Font->LineHeight,
             TitleSize.Y),
@@ -4502,10 +4570,6 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
         *Checked = !*Checked;
     }
 
-    Rr_Rect CheckboxRect = {
-        FramePosition,
-        CheckboxSize,
-    };
     Rr_UIDrawBevel(
         &CheckboxRect,
         ClickResult.Held ? &gUIContext->Colors.ButtonHeld
@@ -4514,9 +4578,12 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 
     if (*Checked)
     {
-        Rr_UIDrawCircleFilled(
-            Rr_AddV2(CheckboxRect.Offset, Rr_DivV2F(CheckboxSize, 2.0f)),
-            CheckboxSize.Width * 0.15f,
+        CheckboxRect = Rr_ResizeRect(
+            &CheckboxRect,
+            -CheckboxRect.Extent.X * (1.0f - gUIContext->Style.CheckmarkSize));
+        Rr_UIDrawCheckmark(
+            CheckboxRect.Offset,
+            CheckboxRect.Extent.X,
             &gUIContext->Colors.Foreground);
     }
 
@@ -6176,6 +6243,18 @@ bool Rr_UIInputFloatRange(const char *Title, float *Value, float Min, float Max)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
+bool Rr_UIInputFloatZO(const char *Title, float *Value)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        RR_UI_VEC4_ZERO.Elements,
+        RR_UI_VEC4_ONE.Elements,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
 bool Rr_UIInputFloat2(const char *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
@@ -6183,6 +6262,34 @@ bool Rr_UIInputFloat2(const char *Title, float *Values)
         Values,
         NULL,
         NULL,
+        2,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
+bool Rr_UIInputFloat2Range(
+    const char *Title,
+    float *Values,
+    float const *ValuesMin,
+    float const *ValuesMax)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        ValuesMin,
+        ValuesMax,
+        2,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
+bool Rr_UIInputFloat2ZO(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        RR_UI_VEC4_ZERO.Elements,
+        RR_UI_VEC4_ONE.Elements,
         2,
         1,
         RR_UI_SCALAR_TYPE_FLOAT);
@@ -6216,6 +6323,18 @@ bool Rr_UIInputFloat3Range(
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
+bool Rr_UIInputFloat3ZO(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        RR_UI_VEC4_ZERO.Elements,
+        RR_UI_VEC4_ONE.Elements,
+        3,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
 bool Rr_UIInputFloat4(const char *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
@@ -6239,6 +6358,18 @@ bool Rr_UIInputFloat4Range(
         Values,
         MinValues,
         MaxValues,
+        4,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
+bool Rr_UIInputFloat4ZO(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        RR_UI_VEC4_ZERO.Elements,
+        RR_UI_VEC4_ONE.Elements,
         4,
         1,
         RR_UI_SCALAR_TYPE_FLOAT);
@@ -7394,6 +7525,8 @@ void Rr_InitUI(void)
         .BevelIntensityDark = 0.7f,
         .ButtonPadding = { 0.25f, 0.025f },
         .InputFieldPadding = { 0.25f, 0.025f },
+        .CheckmarkRatios = { 0.325f, 0.3f },
+        .CheckmarkSize = 0.725f,
     };
 
     gUIContext->Colors = (Rr_UIColors){

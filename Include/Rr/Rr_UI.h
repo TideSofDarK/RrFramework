@@ -73,6 +73,8 @@ struct Rr_UIStyle
     float BevelIntensityDark;
     Rr_Vec2 ButtonPadding;
     Rr_Vec2 InputFieldPadding;
+    Rr_Vec2 CheckmarkRatios;
+    float CheckmarkSize;
 };
 
 typedef struct Rr_UIColors Rr_UIColors;
@@ -276,7 +278,17 @@ extern bool Rr_UIInputFloatRange(
     float Min,
     float Max);
 
+extern bool Rr_UIInputFloatZO(const char *Title, float *Value);
+
 extern bool Rr_UIInputFloat2(const char *Title, float *Values);
+
+extern bool Rr_UIInputFloat2Range(
+    const char *Title,
+    float *Values,
+    float const *MinValues,
+    float const *MaxValues);
+
+extern bool Rr_UIInputFloat2ZO(const char *Title, float *Values);
 
 extern bool Rr_UIInputFloat3(const char *Title, float *Values);
 
@@ -286,6 +298,8 @@ extern bool Rr_UIInputFloat3Range(
     float const *MinValues,
     float const *MaxValues);
 
+extern bool Rr_UIInputFloat3ZO(const char *Title, float *Values);
+
 extern bool Rr_UIInputFloat4(const char *Title, float *Values);
 
 extern bool Rr_UIInputFloat4Range(
@@ -293,6 +307,8 @@ extern bool Rr_UIInputFloat4Range(
     float *Values,
     float const *MinValues,
     float const *MaxValues);
+
+extern bool Rr_UIInputFloat4ZO(const char *Title, float *Values);
 
 extern bool Rr_UIInputFloat2x2(const char *Title, float *Values);
 
