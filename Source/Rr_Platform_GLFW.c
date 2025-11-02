@@ -334,6 +334,8 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
     assert(gPlatform == NULL);
 
+    RR_LOG("Using GLFW platform library");
+
     Rr_Arena *Arena = Rr_CreateDefaultArena();
     gPlatform = RR_ALLOC_TYPE(Arena, Rr_Platform);
     gPlatform->Arena = Arena;
@@ -366,38 +368,66 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         GLFW_RESIZABLE,
         (int)RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT));
 
+    GLFWwindow *Window;
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
 
-    gPlatform->Window = glfwCreateWindow(
-        WindowSize.Width,
-        WindowSize.Height,
-        Config->Title,
-        NULL,
-        NULL);
+    bool CreateFullscreen =
+        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT);
+    if (CreateFullscreen)
+    {
+        Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
+        Window = glfwCreateWindow(
+            DisplaySize.X,
+            DisplaySize.Y,
+            Config->Title,
+            glfwGetPrimaryMonitor(),
+            NULL);
+    }
+    else
+    {
+        Window = glfwCreateWindow(
+            WindowSize.Width,
+            WindowSize.Height,
+            Config->Title,
+            NULL,
+            NULL);
+    }
+
+    gPlatform->Window = Window;
+
     glfwGetWindowContentScale(
-        gPlatform->Window,
+        Window,
         &gPlatform->WindowScale.X,
         &gPlatform->WindowScale.Y);
 
-    glfwSetWindowUserPointer(gPlatform->Window, gPlatform);
-    glfwSetCursorPosCallback(gPlatform->Window, &Rr_GLFWCursorCallback);
-    glfwSetKeyCallback(gPlatform->Window, &Rr_GLFWKeyCallback);
-    glfwSetScrollCallback(gPlatform->Window, &Rr_GLFWScrollCallback);
-    glfwSetDropCallback(gPlatform->Window, &Rr_GLFWDropCallback);
-    glfwSetWindowSizeCallback(gPlatform->Window, &Rr_GLFWWindowSizeCallback);
-    glfwSetMouseButtonCallback(gPlatform->Window, &Rr_GLFWMouseButtonCallback);
-    glfwSetCharCallback(gPlatform->Window, &Rr_GLFWCharCallback);
-    glfwSetWindowCloseCallback(gPlatform->Window, &Rr_GLFWWindowCloseCallback);
+    glfwSetWindowUserPointer(Window, gPlatform);
+    glfwSetCursorPosCallback(Window, &Rr_GLFWCursorCallback);
+    glfwSetKeyCallback(Window, &Rr_GLFWKeyCallback);
+    glfwSetScrollCallback(Window, &Rr_GLFWScrollCallback);
+    glfwSetDropCallback(Window, &Rr_GLFWDropCallback);
+    glfwSetWindowSizeCallback(Window, &Rr_GLFWWindowSizeCallback);
+    glfwSetMouseButtonCallback(Window, &Rr_GLFWMouseButtonCallback);
+    glfwSetCharCallback(Window, &Rr_GLFWCharCallback);
+    glfwSetWindowCloseCallback(Window, &Rr_GLFWWindowCloseCallback);
     glfwSetWindowContentScaleCallback(
-        gPlatform->Window,
+        Window,
         &Rr_GLFWWindowContentScaleCallback);
 
-    if (gPlatform->Wayland)
+    if (!CreateFullscreen)
     {
-        Rr_SetWindowSize(WindowSize);
-    }
+        if (gPlatform->Wayland)
+        {
+            Rr_SetWindowSize(WindowSize);
+        }
 
-    RR_LOG("Using GLFW platform library");
+        Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
+        int WindowWidth, WindowHeight;
+        glfwGetWindowSize(Window, &WindowWidth, &WindowHeight);
+        glfwSetWindowPos(
+            Window,
+            (DisplaySize.X / 2) - (WindowWidth / 2),
+            (DisplaySize.Y / 2) - (WindowHeight / 2));
+    }
 
     return true;
 }

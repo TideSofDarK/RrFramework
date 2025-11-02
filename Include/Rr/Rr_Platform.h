@@ -180,6 +180,7 @@ typedef struct Rr_Platform Rr_Platform;
 typedef enum
 {
     RR_WINDOW_FLAGS_RESIZE_BIT = (1 << 0),
+    RR_WINDOW_FLAGS_FULLSCREEN_BIT = (1 << 1),
 } Rr_WindowFlagsBits;
 typedef uint32_t Rr_WindowFlags;
 
