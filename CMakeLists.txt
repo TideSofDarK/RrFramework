@@ -53,7 +53,7 @@ endfunction ()
 
 find_package(Vulkan REQUIRED)
 
-set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either SDL or GLFW)")
+set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either GLFW or Native)")
 
 #
 # Pre-C23 asset embedding support
@@ -216,8 +216,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "-framework IOSurface"
         "-framework CoreGraphics"
         "-framework IOKit"
-        "-framework AppKit"
-        "MoltenVK")
+        "-framework AppKit")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_UNIX.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_MACOS)
 endif ()
@@ -230,26 +229,6 @@ endif ()
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Win32.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_WIN32)
-endif ()
-
-if (RR_PLATFORM_LIBRARY STREQUAL "SDL")
-    set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
-    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
-    set(SDL_MISC OFF CACHE BOOL "" FORCE)
-    set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
-    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-    set(SDL_GPU OFF CACHE BOOL "" FORCE)
-    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
-    set(SDL_POWER OFF CACHE BOOL "" FORCE)
-    set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
-    set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
-    CPMAddPackage("gh:libsdl-org/SDL#main")
-
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_SDL.c)
-    target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_SDL)
 endif ()
 
 if (RR_PLATFORM_LIBRARY STREQUAL "GLFW")

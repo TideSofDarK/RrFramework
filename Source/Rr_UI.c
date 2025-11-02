@@ -38,7 +38,11 @@
 #include <Rr/Rr_Platform.h>
 #include <Rr/Rr_Utility.h>
 
+#if defined(__x86_64__) && !defined(__APPLE__)
+#include <xxHash/xxh_x86dispatch.h>
+#else
 #include <xxHash/xxhash.h>
+#endif
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC

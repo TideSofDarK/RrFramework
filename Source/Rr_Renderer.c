@@ -34,7 +34,11 @@
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
 
+#if defined(__x86_64__) && !defined(__APPLE__)
+#include <xxHash/xxh_x86dispatch.h>
+#else
 #include <xxHash/xxhash.h>
+#endif
 
 #include <assert.h>
 

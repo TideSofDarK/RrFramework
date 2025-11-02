@@ -344,13 +344,13 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
 #if defined(__linux__)
     int32_t GLFWPlatform;
-    /* if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND)) */
-    /* { */
-    /*     GLFWPlatform = GLFW_PLATFORM_WAYLAND; */
-    /*     gPlatform->WindowScaled = true; */
-    /*     gPlatform->Wayland = true; */
-    /* } */
-    /* else */
+    if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
+    {
+        GLFWPlatform = GLFW_PLATFORM_WAYLAND;
+        gPlatform->WindowScaled = true;
+        gPlatform->Wayland = true;
+    }
+    else
     {
         GLFWPlatform = GLFW_PLATFORM_X11;
     }

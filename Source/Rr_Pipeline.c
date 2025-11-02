@@ -28,7 +28,11 @@
 
 #include <assert.h>
 
+#if defined(__x86_64__) && !defined(__APPLE__)
+#include <xxHash/xxh_x86dispatch.h>
+#else
 #include <xxHash/xxhash.h>
+#endif
 
 static VkRenderPass Rr_GetCompatibleRenderPass(
     uint32_t ColorTargetCount,

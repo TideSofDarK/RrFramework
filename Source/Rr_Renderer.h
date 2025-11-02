@@ -33,8 +33,6 @@
 #include "Rr_Profiler.h"
 #include "Rr_Vulkan.h"
 
-#include <xxHash/xxhash.h>
-
 typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
 {
