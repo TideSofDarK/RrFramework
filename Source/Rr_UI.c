@@ -7873,6 +7873,8 @@ void Rr_BeginUI(void)
     }
 
     RR_CLEAR_ARRAY(&gUIContext->ActiveWindows);
+
+    Rr_UIRecalculateStyle();
 }
 
 static inline int Rr_UIWindowSort(const void *A, const void *B)
