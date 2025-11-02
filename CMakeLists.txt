@@ -182,7 +182,6 @@ target_sources(
     Source/Rr_UI.c
     Source/Rr_Vulkan.c
     Vendor/xxHash/xxhash.c
-    # Vendor/xxHash/xxh_x86dispatch.c
     PUBLIC
     FILE_SET HEADERS
     BASE_DIRS Include
