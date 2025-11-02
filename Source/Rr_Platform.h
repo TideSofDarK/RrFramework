@@ -37,7 +37,7 @@
 struct Rr_Platform
 {
     void *Window;
-    bool WindowScaled;
+    bool WaylandScaling;
     Rr_Vec2 WindowScale;
     bool WindowedFullscreen;
     Rr_IntVec2 WindowedOffset;

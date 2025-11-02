@@ -54,7 +54,7 @@ static inline Rr_Vec2 Rr_GetGLFWCursorPos(void)
 {
     double MouseX, MouseY;
     glfwGetCursorPos(gPlatform->Window, &MouseX, &MouseY);
-    if (gPlatform->WindowScaled)
+    if (gPlatform->WaylandScaling)
     {
         return (Rr_Vec2){ (float)MouseX * gPlatform->WindowScale.X,
                           (float)MouseY * gPlatform->WindowScale.Y };
@@ -67,7 +67,7 @@ static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
     Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
     Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-    if (gPlatform->WindowScaled)
+    if (gPlatform->WaylandScaling)
     {
         Event->MouseMotion.Position =
             (Rr_Vec2){ (float)X * gPlatform->WindowScale.X,
@@ -328,18 +328,24 @@ static void Rr_GLFWWindowContentScaleCallback(
 {
     gPlatform->WindowScale.X = X;
     gPlatform->WindowScale.Y = Y;
-    gPlatform->WindowScaled = X != 1.0f || Y != 1.0f;
 }
 
 bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
     assert(gPlatform == NULL);
 
+    Rr_Arena *Arena = Rr_CreateDefaultArena();
+    gPlatform = RR_ALLOC_TYPE(Arena, Rr_Platform);
+    gPlatform->Arena = Arena;
+    gPlatform->EventScratch =
+        (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
+
 #ifdef __linux__
     int32_t GLFWPlatform;
     /* if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND)) */
     /* { */
     /*     GLFWPlatform = GLFW_PLATFORM_WAYLAND; */
+    /*     gPlatform->WaylandScaling = true; */
     /* } */
     /* else */
     {
@@ -349,22 +355,16 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 #endif
 
     glfwInit();
-
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     /* NOTE: glfwGetWindowContentScale wouldn't return correct value if
      * GLFW_VISIBLE is set to false. */
     /* glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); */
-    glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_TRUE);
     glfwWindowHint(
         GLFW_RESIZABLE,
         (int)RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT));
 
-    Rr_Arena *Arena = Rr_CreateDefaultArena();
-    gPlatform = RR_ALLOC_TYPE(Arena, Rr_Platform);
-    gPlatform->Arena = Arena;
-    gPlatform->EventScratch =
-        (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
+
     gPlatform->Window = glfwCreateWindow(
         WindowSize.Width,
         WindowSize.Height,
@@ -375,8 +375,6 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         gPlatform->Window,
         &gPlatform->WindowScale.X,
         &gPlatform->WindowScale.Y);
-    gPlatform->WindowScaled =
-        gPlatform->WindowScale.X != 1.0f || gPlatform->WindowScale.Y != 1.0f;
 
     glfwSetWindowUserPointer(gPlatform->Window, gPlatform);
     glfwSetCursorPosCallback(gPlatform->Window, &Rr_GLFWCursorCallback);
@@ -391,10 +389,10 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         gPlatform->Window,
         &Rr_GLFWWindowContentScaleCallback);
 
-    /* if (gPlatform->WindowScaled) */
-    /* { */
-    /*     Rr_SetWindowSize(WindowSize); */
-    /* } */
+    if (gPlatform->WaylandScaling)
+    {
+        Rr_SetWindowSize(WindowSize);
+    }
 
     RR_LOG("Using GLFW platform library");
 
@@ -575,7 +573,7 @@ float Rr_GetWindowContentsScale(void)
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
-    if (gPlatform->WindowScaled)
+    if (gPlatform->WaylandScaling)
     {
         glfwSetWindowSize(
             gPlatform->Window,
