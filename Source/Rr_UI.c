@@ -308,6 +308,50 @@ struct Rr_UIContext
 
 static Rr_UIContext *gUIContext;
 
+typedef enum
+{
+    RR_UI_STORAGE_TYPE_INVALID,
+    RR_UI_STORAGE_TYPE_TREE,
+    RR_UI_STORAGE_TYPE_TABS,
+} Rr_UIStorageType;
+
+typedef struct Rr_UIStorage Rr_UIStorage;
+struct Rr_UIStorage
+{
+    union
+    {
+        bool TreeExpanded;
+        Rr_UIHash SelectedTabHash;
+    } Union;
+    Rr_UIStorageType Type;
+};
+
+static inline Rr_UIStorage *Rr_UIGetStorage(
+    Rr_UIWindow *Window,
+    Rr_UIHash Hash,
+    Rr_UIStorageType Type)
+{
+    Rr_UIStorage **StorageRef =
+        RR_GET_MAP_VALUE(&Window->WidgetMap, Hash, gUIContext->Arena);
+    if (*StorageRef == NULL)
+    {
+        /* TODO: Storages could be allocated from a hive. */
+        *StorageRef = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIStorage);
+        Rr_UIStorage *Storage = *StorageRef;
+        Storage->Type = Type;
+        return *StorageRef;
+    }
+    Rr_UIStorage *Storage = *StorageRef;
+    if (Storage->Type != Type)
+    {
+        /* NOTE: Maybe report hash collision here? */
+        RR_ZERO_PTR(Storage);
+        Storage->Type = Type;
+        return Storage;
+    }
+    return Storage;
+}
+
 typedef struct Rr_UIRange Rr_UIRange;
 struct Rr_UIRange
 {
@@ -3897,13 +3941,10 @@ void Rr_UIBeginTabs(const char *Title)
 
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, NULL);
 
-    Rr_UIHash **SelectedTabHashRef =
-        RR_GET_MAP_VALUE(&Window->WidgetMap, TitleHash, gUIContext->Arena);
-    if (*SelectedTabHashRef == NULL)
-    {
-        *SelectedTabHashRef = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIHash);
-    }
-    Layout->SelectedTabHash = *SelectedTabHashRef;
+    Rr_UIHash *SelectedTabHash =
+        &Rr_UIGetStorage(Window, TitleHash, RR_UI_STORAGE_TYPE_TABS)
+             ->Union.SelectedTabHash;
+    Layout->SelectedTabHash = SelectedTabHash;
     Layout->TabCursor = Layout->Cursor;
 
     Rr_Vec2 SeparatorSize = {
@@ -4063,14 +4104,9 @@ bool Rr_UIBeginTree(const char *Title)
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    bool **ExpandedRef =
-        RR_GET_MAP_VALUE(&Window->WidgetMap, TitleHash, gUIContext->Arena);
-    bool *Expanded = *ExpandedRef;
-    if (*ExpandedRef == NULL)
-    {
-        Expanded = RR_ALLOC_TYPE(gUIContext->Arena, bool);
-        *ExpandedRef = Expanded;
-    }
+    bool *Expanded =
+        &Rr_UIGetStorage(Window, TitleHash, RR_UI_STORAGE_TYPE_TREE)
+             ->Union.TreeExpanded;
     bool WasExpanded = *Expanded;
 
     float TreeButtonHeight =
