@@ -835,6 +835,11 @@ void Rr_DrawFrame(void)
     uint32_t SwapchainImageIndex;
     while (true)
     {
+        if (!Rr_RecreateSwapchain())
+        {
+            Rr_DestroyScratch(Scratch);
+            return;
+        }
         Result = Device->AcquireNextImageKHR(
             Device->Handle,
             Swapchain->Handle,
@@ -848,12 +853,6 @@ void Rr_DrawFrame(void)
             break;
         }
         Rr_SetSwapchainDirty(true);
-        if (!Rr_RecreateSwapchain())
-        {
-            Rr_DestroyScratch(Scratch);
-
-            return;
-        }
     }
 
     Frame->SubmitFence = Rr_AcquireVulkanFence();
