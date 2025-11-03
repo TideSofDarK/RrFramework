@@ -9,13 +9,15 @@ Not yet suitable for anything remotely serious.
 
 * Requirements
 
-+ Windows or Linux computer
-+ CMake 3.28+
-+ C99/C++11 Compiler
++ Windows/Linux/macOS
+  - macOS support is still experimental until I figure out MoltenVK linking issues
++ Modern C/C++ Compiler
   - MSVC 17.8.4+
   - GCC 13+
   - Clang 17+
-+ Vulkan SDK 1.1+ (1.0 is still supported for release builds)
++ CMake 3.28+
++ Vulkan SDK 1.1+
+  - Vulkan 1.0 builds should be possible under Windows and Linux
 
 * Using RrFramework
 
@@ -34,9 +36,9 @@ Then simply link your application against it,
 + [[https://github.com/glfw/glfw][GLFW]]
 + [[https://github.com/jkuhlmann/cgltf][cgltf]]
 + [[https://github.com/Cyan4973/xxHash][xxHash]]
-+ [[https://github.com/nothings/stb][stb]]
-+ [[https://github.com/EpicGamesExt/raddebugger][RAD Debugger]]
-+ [[https://nullprogram.com/][Chris Wellons]]
++ [[https://github.com/nothings/stb][stb]] - TrueType and images
++ [[https://github.com/EpicGamesExt/raddebugger][RAD Debugger]] - Arena implementation
++ [[https://nullprogram.com/][Chris Wellons]] - Arena-friendly data structures
 
 * License
 
