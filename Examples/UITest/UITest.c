@@ -333,7 +333,7 @@ static void Iterate(void)
     ThemeEditorWindow();
     TextInputWindow();
 
-    if (Rr_UIBeginWindow("Rr_UI.h - General", &Open, Flags))
+    if (Rr_UIBeginWindow("Rr_UI.h - General", &Open, 0))
     {
         Rr_UISetNextWindowCreateCollapsed(false);
         if (Rr_UIBeginChild("Style and Colors"))

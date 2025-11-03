@@ -855,11 +855,6 @@ static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
         .DeferredWindowOffset = Rr_V2F(INFINITY),
         .DeferredWindowExtent = Rr_V2F(INFINITY),
         .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
-        .VisibleRect = Window->Child
-                           ? Rr_UIRectIntersection(
-                                 &Window->Rect,
-                                 &Rr_UICurrentLayout()->CurrentClipRect->Rect)
-                           : Window->Rect,
         .ParentClipRect =
             Window->Child ? Rr_UICurrentLayout()->CurrentClipRect : NULL,
         .ClipRects =
@@ -2860,7 +2855,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
 
         TitlePosition.X += gUIContext->TitleHeight;
         TitleRect.Offset.X += gUIContext->TitleHeight;
-        TitleRect.Extent.Width -= gUIContext->TitleHeight;
+        TitleRect.Extent.X -= gUIContext->TitleHeight;
     }
 
     Rr_UIDrawText(
@@ -3340,8 +3335,6 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Calculate total and visible extents. */
 
-    /* RR_RESET_ARRAY(Layout->TopLevelClipRects, gUIContext->FrameArena); */
-
     if (Window->Collapsed)
     {
         Layout->Rect.Extent.Y = gUIContext->TitleHeight;
@@ -3706,6 +3699,11 @@ void Rr_UIEndWindow(void)
         }
     }
 
+    Layout->VisibleRect = Window->Child ? Rr_UIRectIntersection(
+                                              &Layout->Rect,
+                                              &Layout->ParentClipRect->Rect)
+                                        : Window->Rect;
+
     /* Apply window offset.
      * NOTE: Forward drag-to-move behavior to the top-level parent.
      * NOTE: Rr_UIClickDrag() gets called even if the window is
@@ -3846,7 +3844,7 @@ bool Rr_UIBeginChild(const char *Title)
     }
 
     Window->Rect.Offset = ParentLayout->Cursor;
-    Window->Z = ParentWindow->TopLevelParent->Z;
+    Window->Z = ParentWindow->Z + 1;
     Window->TopLevelParent = ParentWindow->TopLevelParent;
 
     assert(
@@ -8151,7 +8149,7 @@ void Rr_UIDebugOverlay(void)
                 "Active Windows: %b\n"
                 "Popup Window Open: %b",
                 gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title
-                                          : "NULL",
+                                          : NULL,
                 gUIContext->ActiveLayouts.Count,
                 gUIContext->PopupWindowOpen);
 
