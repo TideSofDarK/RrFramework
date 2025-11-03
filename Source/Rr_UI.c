@@ -3635,7 +3635,7 @@ void Rr_UIEndWindow(void)
     {
         Rr_UIScrollBehavior(
             Window,
-            &Window->Rect,
+            &Layout->Rect,
             &Window->TopLevelParent->VScrollTarget);
     }
 
