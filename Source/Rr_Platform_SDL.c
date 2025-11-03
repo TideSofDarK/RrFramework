@@ -70,8 +70,10 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     WindowSize.X = (int32_t)((float)WindowSize.X * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)WindowSize.Y * RR_WINDOWED_RATIO);
 #ifdef __APPLE
-    WindowSize.X = (int32_t)((float)WindowSize.X / Rr_GetWindowContentsScale());
-    WindowSize.Y = (int32_t)((float)WindowSize.Y / Rr_GetWindowContentsScale());
+    SDL_Rect UsableBounds;
+    SDL_GetDisplayUsableBounds(SDL_GetDisplayForWindow(gPlatform->Window), &UsableBounds);
+    WindowSize.X = (int32_t)((float)UsableBounds.w * RR_WINDOWED_RATIO);
+    WindowSize.Y = (int32_t)((float)UsableBounds.h * RR_WINDOWED_RATIO);
 #endif
     SDL_SetWindowSize(gPlatform->Window, WindowSize.X, WindowSize.Y);
     SDL_SetWindowPosition(
