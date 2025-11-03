@@ -367,12 +367,13 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    /* NOTE: glfwGetWindowContentScale wouldn't return correct value if
-     * GLFW_VISIBLE is set to false. */
-    /* glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); */
     glfwWindowHint(
         GLFW_RESIZABLE,
         (int)RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT));
+
+    /* NOTE: glfwGetWindowContentScale wouldn't return correct value if
+     * GLFW_VISIBLE is set to false. */
+    /* glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); */
 
     GLFWwindow *Window;
     Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();

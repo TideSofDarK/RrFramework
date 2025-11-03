@@ -843,13 +843,15 @@ void Rr_DrawFrame(void)
             NULL,
             &SwapchainImageIndex);
         assert(Result != VK_TIMEOUT && "Swapchain image timeout!");
-        if (Result == VK_SUCCESS || Result == VK_SUBOPTIMAL_KHR)
+        if (Result == VK_SUCCESS)
         {
             break;
         }
         Rr_SetSwapchainDirty(true);
-        if (Rr_RecreateSwapchain() == false)
+        if (!Rr_RecreateSwapchain())
         {
+            Rr_DestroyScratch(Scratch);
+
             return;
         }
     }
