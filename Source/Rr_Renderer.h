@@ -80,7 +80,6 @@ struct Rr_Frame
     VkCommandBuffer EarlyCommandBuffer;
     VkCommandBuffer LateCommandBuffer;
     VkSemaphore AcquireSemaphore;
-    RR_ARRAY(VkSemaphore) FailedAcquireSemaphores;
     VkFence SubmitFence;
     VkQueryPool QueryPool;
 

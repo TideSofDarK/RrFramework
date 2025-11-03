@@ -392,6 +392,7 @@ static void Rr_InitFrames(void)
     {
         Rr_Frame *Frame = &Frames[Index];
         Frame->Arena = Rr_CreateDefaultArena();
+        Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
 
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -454,16 +455,6 @@ static void Rr_InitFrames(void)
     }
 }
 
-static inline void Rr_ReleaseFailedSemaphore(Rr_Frame *Frame)
-{
-    for (size_t Index = 0; Index < Frame->FailedAcquireSemaphores.Count;
-         ++Index)
-    {
-        Rr_ReleaseVulkanSemaphore(Frame->FailedAcquireSemaphores.Data[Index]);
-    }
-    RR_CLEAR_ARRAY(&Frame->FailedAcquireSemaphores);
-}
-
 static void Rr_CleanupFrames(void)
 {
     Rr_Device *Device = &gRenderer->Device;
@@ -473,7 +464,6 @@ static void Rr_CleanupFrames(void)
         Rr_Frame *Frame = &gRenderer->Frames[Index];
         Rr_ReleaseVulkanFence(Frame->SubmitFence);
         Rr_ReleaseVulkanSemaphore(Frame->AcquireSemaphore);
-        Rr_ReleaseFailedSemaphore(Frame);
         if (Frame->QueryPool)
         {
             Device->DestroyQueryPool(Device->Handle, Frame->QueryPool, NULL);
@@ -804,11 +794,6 @@ void Rr_NewFrame(void)
         Rr_ReleaseVulkanFence(Frame->SubmitFence);
         Frame->SubmitFence = VK_NULL_HANDLE;
 
-        Rr_ReleaseVulkanSemaphore(Frame->AcquireSemaphore);
-        Frame->AcquireSemaphore = VK_NULL_HANDLE;
-
-        Rr_ReleaseFailedSemaphore(Frame);
-
         Rr_FinalizeGraph(Frame->Graph);
     }
 
@@ -855,7 +840,6 @@ void Rr_DrawFrame(void)
             Rr_DestroyScratch(Scratch);
             return;
         }
-        Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
         Result = Device->AcquireNextImageKHR(
             Device->Handle,
             Swapchain->Handle,
@@ -868,11 +852,14 @@ void Rr_DrawFrame(void)
         {
             break;
         }
-
-        Rr_LockSpinlock(&gRenderer->Lock);
-        *RR_PUSH_INTO_ARRAY(&Frame->FailedAcquireSemaphores, gRenderer->Arena) =
-            Frame->AcquireSemaphore;
-        Rr_UnlockSpinlock(&gRenderer->Lock);
+        if (Result == VK_SUBOPTIMAL_KHR)
+        {
+            Device->DestroySemaphore(
+                Device->Handle,
+                Frame->AcquireSemaphore,
+                NULL);
+            Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
+        }
 
         Rr_SetSwapchainDirty(true);
     }
