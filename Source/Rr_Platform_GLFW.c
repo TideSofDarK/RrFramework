@@ -360,6 +360,12 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 #endif
 
     glfwInit();
+
+    if(!glfwVulkanSupported())
+    {
+        RR_ABORT("Vulkan is not supported!");
+    }
+
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     /* NOTE: glfwGetWindowContentScale wouldn't return correct value if
      * GLFW_VISIBLE is set to false. */
