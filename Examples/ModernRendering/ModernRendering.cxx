@@ -768,9 +768,9 @@ struct SLighting
             0,
             0,
             sizeof(SGPUPointLight) * PointLights.size());
-        for (std::uint32_t Index = 0; Index < MAX_POINT_LIGHTS; ++Index)
+        for (std::size_t Index = 0; Index < MAX_POINT_LIGHTS; ++Index)
         {
-            std::uint32_t ImageIndex = Index;
+            std::size_t ImageIndex = Index;
             if (ImageIndex >= PointLights.size())
             {
                 ImageIndex = PointLights.size() - 1;
@@ -1799,7 +1799,7 @@ struct SModernRenderingApp
     {
         Rr_Graph *Graph = Rr_GetGraph();
 
-        // Rr_UIDebugOverlay();
+        Rr_UIDebugOverlay();
 
         UI();
 
