@@ -848,17 +848,14 @@ void Rr_DrawFrame(void)
             NULL,
             &SwapchainImageIndex);
         assert(Result != VK_TIMEOUT && "Swapchain image timeout!");
+        if (Result == VK_SUBOPTIMAL_KHR)
+        {
+            Rr_SetSwapchainDirty(true);
+            break;
+        }
         if (Result == VK_SUCCESS)
         {
             break;
-        }
-        if (Result == VK_SUBOPTIMAL_KHR)
-        {
-            Device->DestroySemaphore(
-                Device->Handle,
-                Frame->AcquireSemaphore,
-                NULL);
-            Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
         }
 
         Rr_SetSwapchainDirty(true);
@@ -1039,8 +1036,6 @@ void Rr_DrawFrame(void)
         Device->QueuePresentKHR(gRenderer->GraphicsQueue.Handle, &PresentInfo);
 
     Rr_UnlockSpinlock(&gRenderer->GraphicsQueue.Lock);
-
-    Rr_RecreateSwapchain();
 
     Rr_DestroyScratch(Scratch);
 }
