@@ -392,7 +392,6 @@ static void Rr_InitFrames(void)
     {
         Rr_Frame *Frame = &Frames[Index];
         Frame->Arena = Rr_CreateDefaultArena();
-        Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
 
         VkCommandBufferAllocateInfo CommandBufferAllocateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -794,6 +793,9 @@ void Rr_NewFrame(void)
         Rr_ReleaseVulkanFence(Frame->SubmitFence);
         Frame->SubmitFence = VK_NULL_HANDLE;
 
+        Rr_ReleaseVulkanSemaphore(Frame->AcquireSemaphore);
+        Frame->AcquireSemaphore = VK_NULL_HANDLE;
+
         Rr_FinalizeGraph(Frame->Graph);
     }
 
@@ -840,6 +842,7 @@ void Rr_DrawFrame(void)
             Rr_DestroyScratch(Scratch);
             return;
         }
+        Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
         Result = Device->AcquireNextImageKHR(
             Device->Handle,
             Swapchain->Handle,
@@ -852,6 +855,7 @@ void Rr_DrawFrame(void)
         {
             break;
         }
+        Rr_ReleaseVulkanSemaphore(Frame->AcquireSemaphore);
         Rr_SetSwapchainDirty(true);
     }
 
