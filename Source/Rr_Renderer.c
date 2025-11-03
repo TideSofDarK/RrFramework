@@ -353,7 +353,7 @@ static bool Rr_InitSwapchain(void)
     return true;
 }
 
-static bool Rr_RecreateSwapchain(void)
+static bool Rr_RecreateSwapchainIfNeeded(void)
 {
     Rr_IntVec2 WindowSize = Rr_GetWindowSize();
 
@@ -805,6 +805,8 @@ void Rr_NewFrame(void)
 
     Frame->Profiler = Rr_CreateProfiler(Frame->Arena);
 
+    Rr_RecreateSwapchainIfNeeded();
+
     /* Swapchain might have been recreated so fill in updated settings. */
 
     Frame->VirtualSwapchainImage.Extent = gRenderer->Swapchain.Extent;
@@ -835,7 +837,7 @@ void Rr_DrawFrame(void)
     uint32_t SwapchainImageIndex;
     while (true)
     {
-        if (!Rr_RecreateSwapchain())
+        if (!Rr_RecreateSwapchainIfNeeded())
         {
             Rr_DestroyScratch(Scratch);
             return;
@@ -851,13 +853,16 @@ void Rr_DrawFrame(void)
         if (Result == VK_SUBOPTIMAL_KHR)
         {
             Rr_SetSwapchainDirty(true);
+#ifdef __APPLE__
+            continue;
+#else
             break;
+#endif
         }
         if (Result == VK_SUCCESS)
         {
             break;
         }
-
         Rr_SetSwapchainDirty(true);
     }
 
