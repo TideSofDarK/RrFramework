@@ -854,6 +854,9 @@ void Rr_DrawFrame(void)
         {
             Rr_SetSwapchainDirty(true);
 #ifdef __APPLE__
+            /* https://github.com/KhronosGroup/MoltenVK/issues/2542 */
+            Device->DestroySemaphore(Device->Handle, Frame->AcquireSemaphore, NULL);
+            Frame->AcquireSemaphore = Rr_AcquireVulkanSemaphore();
             continue;
 #else
             break;
