@@ -361,7 +361,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
     glfwInit();
 
-    if(!glfwVulkanSupported())
+    if (!glfwVulkanSupported())
     {
         RR_ABORT("Vulkan is not supported!");
     }
@@ -376,36 +376,82 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     /* glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); */
 
     GLFWwindow *Window;
-    Rr_IntVec2 WindowSize = Rr_GetDefaultWindowSize();
+    Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
+    float WINDOWED_RATIO = 0.85f;
 
     bool CreateFullscreen =
         RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT);
     if (CreateFullscreen)
     {
-        Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
         Window = glfwCreateWindow(
             DisplaySize.X,
             DisplaySize.Y,
             Config->Title,
             glfwGetPrimaryMonitor(),
             NULL);
+        glfwGetWindowContentScale(
+            Window,
+            &gPlatform->WindowScale.X,
+            &gPlatform->WindowScale.Y);
+        gPlatform->WindowedFullscreen = true;
+
+        glfwGetMonitorWorkarea(
+            glfwGetWindowMonitor(Window),
+            &gPlatform->WindowedOffset.X,
+            &gPlatform->WindowedOffset.Y,
+            &gPlatform->WindowedExtent.X,
+            &gPlatform->WindowedExtent.Y);
+        if (gPlatform->Wayland)
+        {
+            gPlatform->WindowedExtent.X =
+                (int32_t)((float)gPlatform->WindowedExtent.X /
+                          gPlatform->WindowScale.X);
+            gPlatform->WindowedExtent.Y =
+                (int32_t)((float)gPlatform->WindowedExtent.Y /
+                          gPlatform->WindowScale.Y);
+        }
+        gPlatform->WindowedExtent.X =
+            (int32_t)((float)gPlatform->WindowedExtent.X * WINDOWED_RATIO);
+        gPlatform->WindowedExtent.Y =
+            (int32_t)((float)gPlatform->WindowedExtent.Y * WINDOWED_RATIO);
     }
     else
     {
+        Rr_IntVec2 WindowSize = {
+            (int32_t)((float)DisplaySize.X * WINDOWED_RATIO),
+            (int32_t)((float)DisplaySize.Y * WINDOWED_RATIO)
+        };
         Window = glfwCreateWindow(
-            WindowSize.Width,
-            WindowSize.Height,
+            WindowSize.X,
+            WindowSize.Y,
             Config->Title,
             NULL,
             NULL);
+        glfwGetWindowContentScale(
+            Window,
+            &gPlatform->WindowScale.X,
+            &gPlatform->WindowScale.Y);
+
+        if (gPlatform->Wayland)
+        {
+            WindowSize.X =
+                (int32_t)((float)WindowSize.X / gPlatform->WindowScale.X);
+            WindowSize.Y =
+                (int32_t)((float)WindowSize.Y / gPlatform->WindowScale.Y);
+            glfwSetWindowSize(Window, WindowSize.X, WindowSize.Y);
+        }
+
+        glfwGetWindowSize(
+            Window,
+            &gPlatform->WindowedExtent.X,
+            &gPlatform->WindowedExtent.Y);
+        glfwGetWindowPos(
+            Window,
+            &gPlatform->WindowedOffset.X,
+            &gPlatform->WindowedOffset.Y);
     }
 
     gPlatform->Window = Window;
-
-    glfwGetWindowContentScale(
-        Window,
-        &gPlatform->WindowScale.X,
-        &gPlatform->WindowScale.Y);
 
     glfwSetWindowUserPointer(Window, gPlatform);
     glfwSetCursorPosCallback(Window, &Rr_GLFWCursorCallback);
@@ -419,22 +465,6 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     glfwSetWindowContentScaleCallback(
         Window,
         &Rr_GLFWWindowContentScaleCallback);
-
-    if (!CreateFullscreen)
-    {
-        if (gPlatform->Wayland)
-        {
-            Rr_SetWindowSize(WindowSize);
-        }
-
-        Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
-        int WindowWidth, WindowHeight;
-        glfwGetWindowSize(Window, &WindowWidth, &WindowHeight);
-        glfwSetWindowPos(
-            Window,
-            (DisplaySize.X / 2) - (WindowWidth / 2),
-            (DisplaySize.Y / 2) - (WindowHeight / 2));
-    }
 
     return true;
 }
@@ -615,15 +645,12 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
     if (gPlatform->WindowScaled)
     {
-        glfwSetWindowSize(
-            gPlatform->Window,
-            (int32_t)((float)Size.X / gPlatform->WindowScale.X),
-            (int32_t)((float)Size.Y / gPlatform->WindowScale.Y));
+        Size.X = (int32_t)((float)Size.X / gPlatform->WindowScale.X);
+        Size.Y = (int32_t)((float)Size.Y / gPlatform->WindowScale.Y);
     }
-    else
-    {
-        glfwSetWindowSize(gPlatform->Window, Size.X, Size.Y);
-    }
+    gPlatform->WindowedExtent.Width = Size.X;
+    gPlatform->WindowedExtent.Height = Size.Y;
+    glfwSetWindowSize(gPlatform->Window, Size.X, Size.Y);
 }
 
 void Rr_SetCursor(Rr_CursorType Type)

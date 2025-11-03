@@ -69,8 +69,6 @@ extern void Rr_AlignedFree(void *Ptr);
 
 extern bool Rr_PollPlatformEvent(Rr_Event *Event);
 
-extern Rr_IntVec2 Rr_GetDefaultWindowSize(void);
-
 extern void Rr_ShowWindow(void);
 
 extern bool Rr_IsWindowMinimized(void);

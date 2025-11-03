@@ -26,18 +26,6 @@
 
 Rr_Platform *gPlatform = NULL;
 
-Rr_IntVec2 Rr_GetDefaultWindowSize(void)
-{
-    Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
-
-    float ScaleFactor = 0.85f;
-
-    return (Rr_IntVec2){
-        .Width = (int32_t)((float)DisplaySize.Width * ScaleFactor),
-        .Height = (int32_t)((float)DisplaySize.Height * ScaleFactor),
-    };
-}
-
 Rr_Vec2 Rr_GetMousePositionDelta(void)
 {
     return gPlatform->MousePositionDelta;
