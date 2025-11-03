@@ -36,6 +36,10 @@
 
 bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
+    assert(gPlatform == NULL);
+
+    RR_LOG("Using SDL platform library");
+
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_CRITICAL);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -65,6 +69,10 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     Rr_IntVec2 WindowSize = Rr_GetDisplaySize();
     WindowSize.X = (int32_t)((float)WindowSize.X * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)WindowSize.Y * RR_WINDOWED_RATIO);
+#ifdef __APPLE
+    WindowSize.X = (int32_t)((float)WindowSize.X / Rr_GetWindowContentsScale());
+    WindowSize.Y = (int32_t)((float)WindowSize.Y / Rr_GetWindowContentsScale());
+#endif
     SDL_SetWindowSize(gPlatform->Window, WindowSize.X, WindowSize.Y);
     SDL_SetWindowPosition(
         gPlatform->Window,
@@ -74,8 +82,6 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     char DoubleClickTimeString[32];
     sprintf(DoubleClickTimeString, "%d", RR_DOUBLE_CLICK_TIME_MS);
     SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME, DoubleClickTimeString);
-
-    RR_LOG("Using SDL platform library");
 
     return true;
 }
@@ -314,8 +320,7 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
 
 float Rr_GetWindowContentsScale(void)
 {
-    float Density = SDL_GetWindowPixelDensity(gPlatform->Window);
-    return Density;
+    return SDL_GetWindowDisplayScale(gPlatform->Window);
 }
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
