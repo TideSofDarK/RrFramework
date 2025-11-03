@@ -393,7 +393,6 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
             Window,
             &gPlatform->WindowScale.X,
             &gPlatform->WindowScale.Y);
-        gPlatform->WindowedFullscreen = true;
 
         glfwGetMonitorWorkarea(
             glfwGetWindowMonitor(Window),
@@ -555,14 +554,14 @@ bool Rr_IsWindowMinimized(void)
 
 bool Rr_IsWindowFullscreen(void)
 {
-    return gPlatform->WindowedFullscreen;
+    return glfwGetWindowMonitor(gPlatform->Window);;
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
     if (Fullscreen)
     {
-        if (gPlatform->WindowedFullscreen == false)
+        if (!Rr_IsWindowFullscreen())
         {
             glfwGetWindowPos(
                 gPlatform->Window,
@@ -594,7 +593,6 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
             gPlatform->WindowedExtent.Height,
             GLFW_DONT_CARE);
     }
-    gPlatform->WindowedFullscreen = Fullscreen;
 }
 
 void Rr_SetRelativeMouseMode(bool Relative)

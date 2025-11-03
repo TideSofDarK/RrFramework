@@ -40,7 +40,6 @@ struct Rr_Platform
     bool WindowScaled;
     bool Wayland;
     Rr_Vec2 WindowScale;
-    bool WindowedFullscreen;
     Rr_IntVec2 WindowedOffset;
     Rr_IntVec2 WindowedExtent;
     Rr_Vec2 LastMousePosition;
