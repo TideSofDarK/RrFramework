@@ -34,6 +34,8 @@
 #define RR_THREAD_LOCAL __thread
 #endif
 
+#define RR_WINDOWED_RATIO 0.85f
+
 struct Rr_Platform
 {
     void *Window;

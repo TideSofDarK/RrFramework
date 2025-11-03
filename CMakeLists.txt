@@ -53,7 +53,7 @@ endfunction ()
 
 find_package(Vulkan REQUIRED)
 
-set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either GLFW or Native)")
+set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either SDL or GLFW)")
 
 #
 # Pre-C23 asset embedding support
@@ -239,6 +239,26 @@ if (RR_PLATFORM_LIBRARY STREQUAL "GLFW")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_GLFW.c)
     target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_GLFW)
+endif ()
+
+if (RR_PLATFORM_LIBRARY STREQUAL "SDL")
+    set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+    set(SDL_MISC OFF CACHE BOOL "" FORCE)
+    set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_GPU OFF CACHE BOOL "" FORCE)
+    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+    set(SDL_POWER OFF CACHE BOOL "" FORCE)
+    set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+    set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
+    CPMAddPackage("gh:libsdl-org/SDL#main")
+
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_SDL.c)
+    target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_SDL)
 endif ()
 
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE Vendor)

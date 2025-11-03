@@ -344,13 +344,13 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
 #if defined(__linux__)
     int32_t GLFWPlatform;
-    /* if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND)) */
-    /* { */
-    /*     GLFWPlatform = GLFW_PLATFORM_WAYLAND; */
-    /*     gPlatform->WindowScaled = true; */
-    /*     gPlatform->Wayland = true; */
-    /* } */
-    /* else */
+    if (glfwPlatformSupported(GLFW_PLATFORM_WAYLAND))
+    {
+        GLFWPlatform = GLFW_PLATFORM_WAYLAND;
+        gPlatform->WindowScaled = true;
+        gPlatform->Wayland = true;
+    }
+    else
     {
         GLFWPlatform = GLFW_PLATFORM_X11;
     }
@@ -377,7 +377,6 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
     GLFWwindow *Window;
     Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
-    float WINDOWED_RATIO = 0.85f;
 
     bool CreateFullscreen =
         RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT);
@@ -410,15 +409,15 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
                           gPlatform->WindowScale.Y);
         }
         gPlatform->WindowedExtent.X =
-            (int32_t)((float)gPlatform->WindowedExtent.X * WINDOWED_RATIO);
+            (int32_t)((float)gPlatform->WindowedExtent.X * RR_WINDOWED_RATIO);
         gPlatform->WindowedExtent.Y =
-            (int32_t)((float)gPlatform->WindowedExtent.Y * WINDOWED_RATIO);
+            (int32_t)((float)gPlatform->WindowedExtent.Y * RR_WINDOWED_RATIO);
     }
     else
     {
         Rr_IntVec2 WindowSize = {
-            (int32_t)((float)DisplaySize.X * WINDOWED_RATIO),
-            (int32_t)((float)DisplaySize.Y * WINDOWED_RATIO)
+            (int32_t)((float)DisplaySize.X * RR_WINDOWED_RATIO),
+            (int32_t)((float)DisplaySize.Y * RR_WINDOWED_RATIO)
         };
         Window = glfwCreateWindow(
             WindowSize.X,
@@ -554,7 +553,8 @@ bool Rr_IsWindowMinimized(void)
 
 bool Rr_IsWindowFullscreen(void)
 {
-    return glfwGetWindowMonitor(gPlatform->Window);;
+    return glfwGetWindowMonitor(gPlatform->Window);
+    ;
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
@@ -597,10 +597,16 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
 
 void Rr_SetRelativeMouseMode(bool Relative)
 {
-    glfwSetInputMode(
-        gPlatform->Window,
-        GLFW_CURSOR,
-        Relative ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    static bool Mode = false;
+    if (Mode != Relative)
+    {
+        glfwSetInputMode(
+            gPlatform->Window,
+            GLFW_CURSOR,
+            Relative ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+        Mode = Relative;
+        RR_LOG("Sdf");
+    }
 }
 
 float Rr_GetDisplayRefreshRate(void)
