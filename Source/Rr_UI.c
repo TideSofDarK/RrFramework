@@ -7838,7 +7838,7 @@ static inline int Rr_UIWindowSort(const void *A, const void *B)
     const Rr_UILayout *LayoutA = *(Rr_UILayout **)A;
     const Rr_UILayout *LayoutB = *(Rr_UILayout **)B;
 
-    return LayoutA->Window->Z > LayoutB->Window->Z;
+    return LayoutA->Window->Z - LayoutB->Window->Z;
 }
 
 static inline void Rr_UIDrawWindow(

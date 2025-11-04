@@ -49,6 +49,7 @@
 
 ** User Interface
 
+- [ ] Escape to close popup windows.
 - [X] Hex color copy/paste.
 - [X] Backspace in input fields.
 - [X] Separate window/contens padding.
