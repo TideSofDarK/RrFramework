@@ -7136,13 +7136,9 @@ bool Rr_UICombobox(
                 OptionChanged = true;
             }
             Rr_Vec4 OptionButtonColor;
-            if (OptionClickResult.Held)
+            if (OptionClickResult.Hovered)
             {
-                OptionButtonColor = gUIContext->Colors.ButtonHeld;
-            }
-            else if (OptionClickResult.Hovered)
-            {
-                OptionButtonColor = gUIContext->Colors.ButtonHovered;
+                OptionButtonColor = gUIContext->Colors.ListEntryHovered;
             }
             else
             {
@@ -7497,11 +7493,8 @@ void Rr_UISetDefaultTheme(void)
     Colors->SelectedOutline = Rr_V4(0.680653f, 0.751365f, 0.827292f, 1.000000f);
     Colors->ListEntryBackgroundA =
         Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
-    Colors->ListEntryBackgroundB = Rr_V4(
-        0.182623f * 0.85f,
-        0.277109f * 0.85f,
-        0.338889f * 0.85f,
-        1.000000f);
+    Colors->ListEntryBackgroundB =
+        Rr_V4(0.155230f, 0.235543f, 0.288056f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
     Colors->TitleBackground2 =
         Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);

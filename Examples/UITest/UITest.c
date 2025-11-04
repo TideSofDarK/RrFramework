@@ -176,6 +176,9 @@ static void ThemeEditorWindow()
         Rr_UIInputColor4(
             "List Entry Background B",
             Colors->ListEntryBackgroundB.Elements);
+        Rr_UIInputColor4(
+            "List Entry Hovered",
+            Colors->ListEntryHovered.Elements);
 
         Rr_UISeparator();
 
@@ -277,6 +280,8 @@ static void SetPinkTheme()
         Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
     Colors->ListEntryBackgroundB =
         Rr_V4(0.284174f, 0.235776f, 0.351648f, 1.000000f);
+    Colors->ListEntryHovered =
+        Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.472738f, 0.325686f, 0.538689f, 1.000000f);
     Colors->TitleBackground2 =
         Rr_V4(0.206105f, 0.148734f, 0.232465f, 1.000000f);
