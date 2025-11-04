@@ -187,6 +187,10 @@ static void Rr_GLFWKeyCallback(
     {
         Event->Key.Keymod |= RR_KEYMOD_ALT;
     }
+    if (Mods & GLFW_MOD_SUPER)
+    {
+        Event->Key.Keymod |= RR_KEYMOD_GUI;
+    }
 }
 
 static void Rr_GLFWScrollCallback(GLFWwindow *Window, double X, double Y)

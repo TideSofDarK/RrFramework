@@ -143,6 +143,7 @@ typedef enum Rr_KeymodFlagsBits
     RR_KEYMOD_CTRL = (1 << 0),
     RR_KEYMOD_SHIFT = (1 << 1),
     RR_KEYMOD_ALT = (1 << 2),
+    RR_KEYMOD_GUI = (1 << 3),
 } Rr_KeymodFlagsBits;
 typedef uint16_t Rr_KeymodFlags;
 

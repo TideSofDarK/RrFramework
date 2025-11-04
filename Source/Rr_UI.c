@@ -4735,6 +4735,12 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
     size_t CursorMin;
     size_t CursorMax;
 
+#if __APPLE__
+    const Rr_KeymodFlags DEFAULT_MOD = RR_KEYMOD_GUI;
+#else
+    const Rr_KeymodFlags DEFAULT_MOD = RR_KEYMOD_CTRL;
+#endif
+
     for (size_t Index = 0; Index < gUIContext->KeyboardInputEvents.Count;
          ++Index)
     {
@@ -4754,7 +4760,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         bool Edited = false;
         bool ResetCol = false;
 
-        if (Event->Scancode == RR_SCANCODE_A && Event->Keymod == RR_KEYMOD_CTRL)
+        if (Event->Scancode == RR_SCANCODE_A && Event->Keymod == DEFAULT_MOD)
         {
             NewCursorBegin = 0;
             NewCursorEnd = BufferLength;
@@ -4762,7 +4768,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             ResetCol = true;
         }
 
-        if (Event->Scancode == RR_SCANCODE_C && Event->Keymod == RR_KEYMOD_CTRL)
+        if (Event->Scancode == RR_SCANCODE_C && Event->Keymod == DEFAULT_MOD)
         {
             Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -4802,7 +4808,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
 
             Rr_DestroyScratch(Scratch);
         }
-        if (Event->Scancode == RR_SCANCODE_V && Event->Keymod == RR_KEYMOD_CTRL)
+        if (Event->Scancode == RR_SCANCODE_V && Event->Keymod == DEFAULT_MOD)
         {
             const char *ClipboardBuffer = Rr_GetClipboardText();
             if (ClipboardBuffer != NULL)
@@ -4821,7 +4827,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                 ResetCol = true;
             }
         }
-        if (Event->Scancode == RR_SCANCODE_X && Event->Keymod == RR_KEYMOD_CTRL)
+        if (Event->Scancode == RR_SCANCODE_X && Event->Keymod == DEFAULT_MOD)
         {
             Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -4977,7 +4983,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (NewCursorEnd > 0)
             {
-                if ((Event->Keymod & RR_KEYMOD_CTRL) == 0)
+                if ((Event->Keymod & DEFAULT_MOD) == 0)
                 {
                     NewCursorEnd =
                         Rr_PreviousUTF8CodepointOffset(Buffer, NewCursorEnd);
@@ -4999,7 +5005,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (NewCursorEnd < BufferLength)
             {
-                if ((Event->Keymod & RR_KEYMOD_CTRL) == 0)
+                if ((Event->Keymod & DEFAULT_MOD) == 0)
                 {
                     NewCursorEnd =
                         Rr_NextUTF8CodepointOffset(Buffer, NewCursorEnd);
@@ -5020,7 +5026,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         if (Event->Scancode == RR_SCANCODE_HOME ||
             Event->Scancode == RR_SCANCODE_KP_7)
         {
-            if (Event->Keymod & RR_KEYMOD_CTRL)
+            if (Event->Keymod & DEFAULT_MOD)
             {
                 NewCursorEnd = 0;
             }
@@ -5038,7 +5044,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         if (Event->Scancode == RR_SCANCODE_END ||
             Event->Scancode == RR_SCANCODE_KP_1)
         {
-            if (Event->Keymod & RR_KEYMOD_CTRL)
+            if (Event->Keymod & DEFAULT_MOD)
             {
                 NewCursorEnd = BufferLength;
             }
@@ -7492,7 +7498,8 @@ void Rr_UISetDefaultTheme(void)
     Colors->Outline = Rr_V4(0.603737f, 0.614403f, 0.625043f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.680653f, 0.751365f, 0.827292f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
-    Colors->TitleBackground2 = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
+    Colors->TitleBackground2 =
+        Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
     Colors->TitleCloseButtonBackground =
         Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
     Colors->TitleCollapseButtonBackground =

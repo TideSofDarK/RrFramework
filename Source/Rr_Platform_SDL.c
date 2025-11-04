@@ -69,7 +69,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     Rr_IntVec2 WindowSize = Rr_GetDisplaySize();
     WindowSize.X = (int32_t)((float)WindowSize.X * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)WindowSize.Y * RR_WINDOWED_RATIO);
-#ifdef __APPLE__
+#ifdef __APPLE
     SDL_Rect UsableBounds;
     SDL_GetDisplayUsableBounds(SDL_GetDisplayForWindow(gPlatform->Window), &UsableBounds);
     WindowSize.X = (int32_t)((float)UsableBounds.w * RR_WINDOWED_RATIO);
@@ -197,6 +197,12 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
                 (SDLEvent.key.mod & SDL_KMOD_ALT))
             {
                 Event->Key.Keymod |= RR_KEYMOD_ALT;
+            }
+            if ((SDLEvent.key.mod & SDL_KMOD_LGUI) ||
+                (SDLEvent.key.mod & SDL_KMOD_RGUI) ||
+                (SDLEvent.key.mod & SDL_KMOD_GUI))
+            {
+                Event->Key.Keymod |= RR_KEYMOD_GUI;
             }
             return true;
         }
