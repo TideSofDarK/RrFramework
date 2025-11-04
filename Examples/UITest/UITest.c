@@ -255,6 +255,48 @@ static void ThemeEditorWindow()
     }
 }
 
+static void SetOliveTheme()
+{
+    Rr_UIColors *Colors = Rr_UIGetColors();
+    Rr_UIStyle *Style = Rr_UIGetStyle();
+
+    Style->TitlePadding = Rr_V2(0.250000f,0.025000f);
+    Style->WindowPadding = Rr_V2(0.500000f,0.500000f);
+    Style->ContentsMargin = Rr_V2(0.250000f,0.250000f);
+    Style->ComponentMargin = 0.200000f;
+    Style->ScrollbarAreaWidth = 0.750000f;
+    Style->BevelIntensityLight = 0.350000f;
+    Style->BevelIntensityDark = 0.350000f;
+    Style->ButtonPadding = Rr_V2(0.250000f,0.025000f);
+    Style->InputFieldPadding = Rr_V2(0.250000f,0.025000f);
+    Style->CheckmarkRatios = Rr_V2(0.325000f,0.300000f);
+    Style->CheckmarkSize = 0.725000f;
+    Colors->Foreground = Rr_V4(0.000000f,0.000000f,0.000000f,1.000000f);
+    Colors->ForegroundDimmed = Rr_V4(0.170979f,0.170979f,0.170979f,1.000000f);
+    Colors->Background = Rr_V4(0.670588f,0.670588f,0.670588f,1.000000f);
+    Colors->ChildBackground = Rr_V4(0.753881f,0.753881f,0.753881f,1.000000f);
+    Colors->Outline = Rr_V4(0.627451f,0.627451f,0.627451f,1.000000f);
+    Colors->SelectedOutline = Rr_V4(0.568627f,0.592157f,0.521569f,1.000000f);
+    Colors->ListEntryBackgroundA = Rr_V4(0.666280f,0.666280f,0.666280f,1.000000f);
+    Colors->ListEntryBackgroundB = Rr_V4(0.650421f,0.650421f,0.650421f,1.000000f);
+    Colors->TitleBackground = Rr_V4(0.572549f,0.623529f,0.376471f,1.000000f);
+    Colors->TitleBackground2 = Rr_V4(0.388235f,0.431373f,0.231373f,1.000000f);
+    Colors->TitleCloseButtonBackground = Rr_V4(0.601035f,0.141315f,0.190579f,1.000000f);
+    Colors->TitleCollapseButtonBackground = Rr_V4(0.572549f,0.623529f,0.376471f,1.000000f);
+    Colors->ScrollbarBackground = Rr_V4(0.580392f,0.580392f,0.580392f,1.000000f);
+    Colors->ScrollbarNormal = Rr_V4(0.477631f,0.505911f,0.368860f,1.000000f);
+    Colors->ScrollbarHovered = Rr_V4(0.670588f,0.698039f,0.611765f,1.000000f);
+    Colors->ScrollbarHeld = Rr_V4(0.254856f,0.342832f,0.400486f,1.000000f);
+    Colors->ButtonNormal = Rr_V4(0.777635f,0.777635f,0.777635f,1.000000f);
+    Colors->ButtonHovered = Rr_V4(0.781696f,0.781696f,0.781696f,1.000000f);
+    Colors->ButtonHeld = Rr_V4(0.690196f,0.690196f,0.690196f,1.000000f);
+    Colors->ButtonDisabled = Rr_V4(0.070520f,0.093346f,0.111383f,1.000000f);
+    Colors->InputFieldNormal = Rr_V4(0.569318f,0.569318f,0.569318f,1.000000f);
+    Colors->InputFieldActive = Rr_V4(0.690673f,0.690673f,0.690673f,1.000000f);
+    Colors->SelectedTextBackground = Rr_V4(0.779960f,0.855343f,0.490026f,1.000000f);
+    Colors->SelectedTextForeground = Rr_V4(0.030000f,0.030000f,0.030000f,1.000000f);
+}
+
 static void SetPinkTheme()
 {
     Rr_UIColors *Colors = Rr_UIGetColors();
@@ -383,6 +425,11 @@ static void Iterate(void)
             if (Rr_UIButton("Set Default Theme"))
             {
                 Rr_UISetDefaultTheme();
+            }
+
+            if (Rr_UIButton("Set Olive Theme"))
+            {
+                SetOliveTheme();
             }
 
             if (Rr_UIButton("Set Pink Theme"))
