@@ -106,10 +106,12 @@ static void PrintTheme(void)
     PrintColor("ForegroundDimmed", &Colors->ForegroundDimmed);
     PrintColor("Background", &Colors->Background);
     PrintColor("ChildBackground", &Colors->ChildBackground);
+    PrintColor("ScrolloffBackground", &Colors->ScrolloffBackground);
     PrintColor("Outline", &Colors->Outline);
     PrintColor("SelectedOutline", &Colors->SelectedOutline);
     PrintColor("ListEntryBackgroundA", &Colors->ListEntryBackgroundA);
     PrintColor("ListEntryBackgroundB", &Colors->ListEntryBackgroundB);
+    PrintColor("ListEntryHovered", &Colors->ListEntryHovered);
 
     PrintColor("TitleBackground", &Colors->TitleBackground);
     PrintColor("TitleBackground2", &Colors->TitleBackground2);

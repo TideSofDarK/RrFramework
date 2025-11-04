@@ -7506,7 +7506,6 @@ void Rr_UISetDefaultTheme(void)
         Rr_V4(0.155230f, 0.235543f, 0.288056f, 1.000000f);
     Colors->ListEntryHovered =
         Rr_V4(0.168210f, 0.404396f, 0.555556f, 1.000000f);
-    Colors->TitleForeground = Rr_V4(0.899630f, 0.924908f, 0.933333f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
     Colors->TitleBackground2 =
         Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
