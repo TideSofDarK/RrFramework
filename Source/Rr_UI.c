@@ -7284,16 +7284,15 @@ static inline float Rr_UISlider(
 
         float ValueMargin = RR_UI_ROUND(Font->LineHeight * 0.2f);
         Rr_Vec2 ValuePosition = Layout->Cursor;
-        ValuePosition.X =
-            HandleRect.Offset.X + HandleRect.Extent.X + ValueMargin;
+        ValuePosition.X = HandleRect.Offset.X - ValueSize.Width - ValueMargin;
         bool ShowValue = true;
-        if (ValuePosition.X + ValueSize.Width > SliderRect.Offset.X +
-                                                    SliderRect.Extent.Width -
-                                                    gUIContext->BevelThickness)
+        if (ValuePosition.X < SliderRect.Offset.X + gUIContext->BevelThickness)
         {
             ValuePosition.X =
-                HandleRect.Offset.X - ValueSize.Width - ValueMargin;
-            if (ValuePosition.X < SliderRect.Offset.X)
+                HandleRect.Offset.X + HandleRect.Extent.X + ValueMargin;
+            if (ValuePosition.X + ValueSize.Width >
+                SliderRect.Offset.X + SliderRect.Extent.Width -
+                    gUIContext->BevelThickness)
             {
                 ShowValue = false;
             }
