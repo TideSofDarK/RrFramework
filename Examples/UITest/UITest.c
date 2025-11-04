@@ -110,6 +110,7 @@ static void PrintTheme(void)
     PrintColor("SelectedOutline", &Colors->SelectedOutline);
 
     PrintColor("TitleBackground", &Colors->TitleBackground);
+    PrintColor("TitleBackground2", &Colors->TitleBackground2);
     PrintColor(
         "TitleCloseButtonBackground",
         &Colors->TitleCloseButtonBackground);
@@ -171,6 +172,7 @@ static void ThemeEditorWindow()
         Rr_UISeparator();
 
         Rr_UIInputColor4("Title Background", Colors->TitleBackground.Elements);
+        Rr_UIInputColor4("Title Background 2", Colors->TitleBackground2.Elements);
         Rr_UIInputColor4(
             "Title Close Button",
             Colors->TitleCloseButtonBackground.Elements);

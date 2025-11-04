@@ -2891,12 +2891,10 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
         }
     }
 
-    Rr_Vec4 ColorB = gUIContext->Colors.TitleBackground;
-    ColorB.RGB = Rr_LerpV3(ColorB.RGB, 0.25f, (Rr_Vec3){ 0.0f, 0.0f, 0.0f });
-    Rr_Vec4 Colors[4] = { ColorB,
+    Rr_Vec4 Colors[4] = { gUIContext->Colors.TitleBackground,
+                          gUIContext->Colors.TitleBackground2,
                           gUIContext->Colors.TitleBackground,
-                          ColorB,
-                          gUIContext->Colors.TitleBackground };
+                          gUIContext->Colors.TitleBackground2 };
     Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
 }
 
@@ -5060,11 +5058,11 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (Event->Scancode == RR_SCANCODE_BACKSPACE && BufferLength > 0)
             {
-                if (CursorMin == 0 && CursorMax == BufferLength)
+                if (CursorMin == 0) // && CursorMax == BufferLength)
                 {
-                    Buffer[0] = '\0';
-                    NewCursorEnd = NewCursorBegin = 0;
-                    BufferLength = 0;
+                    /* Buffer[0] = '\0'; */
+                    /* NewCursorEnd = NewCursorBegin = 0; */
+                    /* BufferLength = 0; */
                 }
                 else if (CursorMin != CursorMax)
                 {
@@ -7494,6 +7492,7 @@ void Rr_UISetDefaultTheme(void)
     Colors->Outline = Rr_V4(0.603737f, 0.614403f, 0.625043f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.680653f, 0.751365f, 0.827292f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
+    Colors->TitleBackground2 = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
     Colors->TitleCloseButtonBackground =
         Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
     Colors->TitleCollapseButtonBackground =

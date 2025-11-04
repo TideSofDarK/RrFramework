@@ -49,6 +49,8 @@
 
 ** User Interface
 
+- [ ] Hex color copy/paste.
+- [ ] Backspace in input fields.
 - [X] Separate window/contens padding.
 - [X] Auto resize ignores title width.
 - [X] Input fields with custom clip rects happen to ignore parent bounds.

@@ -88,6 +88,7 @@ struct Rr_UIColors
     Rr_Vec4 SelectedOutline;
 
     Rr_Vec4 TitleBackground;
+    Rr_Vec4 TitleBackground2;
     Rr_Vec4 TitleCloseButtonBackground;
     Rr_Vec4 TitleCollapseButtonBackground;
 
