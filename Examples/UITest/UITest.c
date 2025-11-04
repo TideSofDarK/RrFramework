@@ -168,6 +168,7 @@ static void ThemeEditorWindow()
             Colors->ForegroundDimmed.Elements);
         Rr_UIInputColor4("Background", Colors->Background.Elements);
         Rr_UIInputColor4("Child Background", Colors->ChildBackground.Elements);
+        Rr_UIInputColor4("Scrolloff Background", Colors->ScrolloffBackground.Elements);
         Rr_UIInputColor4("Outline", Colors->Outline.Elements);
         Rr_UIInputColor4("Selected Outline", Colors->SelectedOutline.Elements);
         Rr_UIInputColor4(
@@ -182,6 +183,7 @@ static void ThemeEditorWindow()
 
         Rr_UISeparator();
 
+        Rr_UIInputColor4("Title Foreground", Colors->TitleForeground.Elements);
         Rr_UIInputColor4("Title Background", Colors->TitleBackground.Elements);
         Rr_UIInputColor4(
             "Title Background 2",
@@ -274,6 +276,7 @@ static void SetPinkTheme()
         Rr_V4(0.634900f, 0.617390f, 0.660727f, 1.000000f);
     Colors->Background = Rr_V4(0.153051f, 0.142532f, 0.186284f, 1.000000f);
     Colors->ChildBackground = Rr_V4(0.115195f, 0.100193f, 0.136111f, 1.000000f);
+    Colors->ScrolloffBackground = Rr_V4(0.115195f, 0.100193f, 0.136111f, 1.000000f);
     Colors->Outline = Rr_V4(0.542000f, 0.495298f, 0.579593f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.511727f, 0.396375f, 0.627315f, 1.000000f);
     Colors->ListEntryBackgroundA =
@@ -282,6 +285,7 @@ static void SetPinkTheme()
         Rr_V4(0.284174f, 0.235776f, 0.351648f, 1.000000f);
     Colors->ListEntryHovered =
         Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
+    Colors->TitleForeground = Rr_V4(0.940547f, 0.899630f, 0.970019f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.472738f, 0.325686f, 0.538689f, 1.000000f);
     Colors->TitleBackground2 =
         Rr_V4(0.206105f, 0.148734f, 0.232465f, 1.000000f);

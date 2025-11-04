@@ -2758,7 +2758,7 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
         TriangleCenter,
         TriangleSize,
         !Window->Collapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUIContext->Colors.TitleForeground);
 
     return ClickResult.ClickCount;
 }
@@ -2810,11 +2810,11 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
     Rr_UIDrawRotatedQuad(
         &BarRect,
         RR_ANGLE_DEG(45.0f),
-        &gUIContext->Colors.Foreground);
+        &gUIContext->Colors.TitleForeground);
     Rr_UIDrawRotatedQuad(
         &BarRect,
         RR_ANGLE_DEG(-45.0f),
-        &gUIContext->Colors.Foreground);
+        &gUIContext->Colors.TitleForeground);
 }
 
 static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UIWindow *Window)
@@ -2864,7 +2864,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
         SIZE_MAX,
         Window->Title,
         0.0f,
-        &gUIContext->Colors.Foreground,
+        &gUIContext->Colors.TitleForeground,
         0);
 
     bool HasClose = Rr_UIWindowHasCloseButton(Window);
@@ -3555,8 +3555,10 @@ void Rr_UIEndWindow(void)
 
         if (FillRatio > 1.0f)
         {
-            float DarkenSize = RR_MIN(Font->LineHeight / 2.0f, ContentsHeight);
-            float DarkenColor = 0.005f;
+            Rr_Vec4 *ScrolloffBackground =
+                &gUIContext->Colors.ScrolloffBackground;
+
+            float DarkenSize = RR_MIN(Font->LineHeight, ContentsHeight);
 
             Rr_Rect DarkenRect = CurrentRect;
             DarkenRect.Extent.Y = RR_MIN(CurrentRect.Extent.Y, DarkenSize);
@@ -3567,11 +3569,14 @@ void Rr_UIEndWindow(void)
             {
                 Rr_UIDrawVerticalGradientQuad(
                     &DarkenRect,
-                    &(Rr_Vec4){ DarkenColor,
-                                DarkenColor,
-                                DarkenColor,
+                    &(Rr_Vec4){ ScrolloffBackground->X,
+                                ScrolloffBackground->Y,
+                                ScrolloffBackground->Z,
                                 TopDarkenAlpha },
-                    &(Rr_Vec4){ DarkenColor, DarkenColor, DarkenColor, 0.0f });
+                    &(Rr_Vec4){ ScrolloffBackground->X,
+                                ScrolloffBackground->Y,
+                                ScrolloffBackground->Z,
+                                0.0f });
             }
 
             float BottomDarkenAlpha = RR_CLAMP(
@@ -3587,10 +3592,13 @@ void Rr_UIEndWindow(void)
 
                 Rr_UIDrawVerticalGradientQuad(
                     &DarkenRect,
-                    &(Rr_Vec4){ DarkenColor, DarkenColor, DarkenColor, 0.0f },
-                    &(Rr_Vec4){ DarkenColor,
-                                DarkenColor,
-                                DarkenColor,
+                    &(Rr_Vec4){ ScrolloffBackground->X,
+                                ScrolloffBackground->Y,
+                                ScrolloffBackground->Z,
+                                0.0f },
+                    &(Rr_Vec4){ ScrolloffBackground->X,
+                                ScrolloffBackground->Y,
+                                ScrolloffBackground->Z,
                                 BottomDarkenAlpha });
             }
         }
@@ -7489,12 +7497,17 @@ void Rr_UISetDefaultTheme(void)
         Rr_V4(0.617390f, 0.649893f, 0.660727f, 1.000000f);
     Colors->Background = Rr_V4(0.142532f, 0.168879f, 0.186284f, 1.000000f);
     Colors->ChildBackground = Rr_V4(0.100193f, 0.121744f, 0.136111f, 1.000000f);
+    Colors->ScrolloffBackground =
+        Rr_V4(0.100193f, 0.121744f, 0.136111f, 1.000000f);
     Colors->Outline = Rr_V4(0.603737f, 0.614403f, 0.625043f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.680653f, 0.751365f, 0.827292f, 1.000000f);
     Colors->ListEntryBackgroundA =
         Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
     Colors->ListEntryBackgroundB =
         Rr_V4(0.155230f, 0.235543f, 0.288056f, 1.000000f);
+    Colors->ListEntryHovered =
+        Rr_V4(0.168210f, 0.404396f, 0.555556f, 1.000000f);
+    Colors->TitleForeground = Rr_V4(0.899630f, 0.924908f, 0.933333f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
     Colors->TitleBackground2 =
         Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
