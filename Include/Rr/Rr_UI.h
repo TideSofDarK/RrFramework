@@ -86,6 +86,8 @@ struct Rr_UIColors
     Rr_Vec4 ChildBackground;
     Rr_Vec4 Outline;
     Rr_Vec4 SelectedOutline;
+    Rr_Vec4 ListEntryBackgroundA;
+    Rr_Vec4 ListEntryBackgroundB;
 
     Rr_Vec4 TitleBackground;
     Rr_Vec4 TitleBackground2;

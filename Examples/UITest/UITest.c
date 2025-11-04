@@ -108,6 +108,8 @@ static void PrintTheme(void)
     PrintColor("ChildBackground", &Colors->ChildBackground);
     PrintColor("Outline", &Colors->Outline);
     PrintColor("SelectedOutline", &Colors->SelectedOutline);
+    PrintColor("ListEntryBackgroundA", &Colors->ListEntryBackgroundA);
+    PrintColor("ListEntryBackgroundB", &Colors->ListEntryBackgroundB);
 
     PrintColor("TitleBackground", &Colors->TitleBackground);
     PrintColor("TitleBackground2", &Colors->TitleBackground2);
@@ -168,11 +170,19 @@ static void ThemeEditorWindow()
         Rr_UIInputColor4("Child Background", Colors->ChildBackground.Elements);
         Rr_UIInputColor4("Outline", Colors->Outline.Elements);
         Rr_UIInputColor4("Selected Outline", Colors->SelectedOutline.Elements);
+        Rr_UIInputColor4(
+            "List Entry Background A",
+            Colors->ListEntryBackgroundA.Elements);
+        Rr_UIInputColor4(
+            "List Entry Background B",
+            Colors->ListEntryBackgroundB.Elements);
 
         Rr_UISeparator();
 
         Rr_UIInputColor4("Title Background", Colors->TitleBackground.Elements);
-        Rr_UIInputColor4("Title Background 2", Colors->TitleBackground2.Elements);
+        Rr_UIInputColor4(
+            "Title Background 2",
+            Colors->TitleBackground2.Elements);
         Rr_UIInputColor4(
             "Title Close Button",
             Colors->TitleCloseButtonBackground.Elements);
@@ -243,41 +253,55 @@ static void ThemeEditorWindow()
 static void SetPinkTheme()
 {
     Rr_UIColors *Colors = Rr_UIGetColors();
-    *Colors = (Rr_UIColors){
-        .Foreground = { 0.940547f, 0.899630f, 0.970019f, 1.000000f },
-        .ForegroundDimmed = { 0.634900f, 0.617390f, 0.660727f, 1.000000f },
-        .Background = { 0.153051f, 0.142532f, 0.186284f, 1.000000f },
-        .ChildBackground = { 0.115195f, 0.100193f, 0.136111f, 1.000000f },
-        .Outline = { 0.542000f, 0.495298f, 0.579593f, 1.000000f },
-        .SelectedOutline = { 0.511727f, 0.396375f, 0.627315f, 1.000000f },
-        .TitleBackground = { 0.472738f, 0.325686f, 0.538689f, 1.000000f },
-        .TitleCloseButtonBackground = { 0.839551f,
-                                        0.250613f,
-                                        0.313724f,
-                                        1.000000f },
-        .TitleCollapseButtonBackground = { 0.470588f,
-                                           0.325490f,
-                                           0.537255f,
-                                           1.000000f },
-        .ScrollbarBackground = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
-        .ScrollbarNormal = { 0.322105f, 0.261189f, 0.365981f, 1.000000f },
-        .ScrollbarHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
-        .ScrollbarHeld = { 0.254856f, 0.342832f, 0.400486f, 1.000000f },
-        .ButtonNormal = { 0.334322f, 0.277384f, 0.413703f, 1.000000f },
-        .ButtonHovered = { 0.408665f, 0.497836f, 0.557879f, 1.000000f },
-        .ButtonHeld = { 0.463433f, 0.343573f, 0.643222f, 1.000000f },
-        .ButtonDisabled = { 0.070520f, 0.093346f, 0.111383f, 1.000000f },
-        .InputFieldNormal = { 0.199295f, 0.134664f, 0.234178f, 1.000000f },
-        .InputFieldActive = { 0.334506f, 0.193713f, 0.413703f, 1.000000f },
-        .SelectedTextBackground = { 0.793058f,
-                                    0.188728f,
-                                    1.000000f,
-                                    1.000000f },
-        .SelectedTextForeground = { 1.000000f,
-                                    1.000000f,
-                                    1.000000f,
-                                    1.000000f },
-    };
+    Rr_UIStyle *Style = Rr_UIGetStyle();
+
+    Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
+    Style->WindowPadding = Rr_V2(0.500000f, 0.500000f);
+    Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
+    Style->ComponentMargin = 0.200000f;
+    Style->ScrollbarAreaWidth = 0.850000f;
+    Style->BevelIntensityLight = 0.300000f;
+    Style->BevelIntensityDark = 0.700000f;
+    Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
+    Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
+    Style->CheckmarkRatios = Rr_V2(0.325000f, 0.300000f);
+    Style->CheckmarkSize = 0.725000f;
+    Colors->Foreground = Rr_V4(0.940547f, 0.899630f, 0.970019f, 1.000000f);
+    Colors->ForegroundDimmed =
+        Rr_V4(0.634900f, 0.617390f, 0.660727f, 1.000000f);
+    Colors->Background = Rr_V4(0.153051f, 0.142532f, 0.186284f, 1.000000f);
+    Colors->ChildBackground = Rr_V4(0.115195f, 0.100193f, 0.136111f, 1.000000f);
+    Colors->Outline = Rr_V4(0.542000f, 0.495298f, 0.579593f, 1.000000f);
+    Colors->SelectedOutline = Rr_V4(0.511727f, 0.396375f, 0.627315f, 1.000000f);
+    Colors->ListEntryBackgroundA =
+        Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
+    Colors->ListEntryBackgroundB =
+        Rr_V4(0.284174f, 0.235776f, 0.351648f, 1.000000f);
+    Colors->TitleBackground = Rr_V4(0.472738f, 0.325686f, 0.538689f, 1.000000f);
+    Colors->TitleBackground2 =
+        Rr_V4(0.206105f, 0.148734f, 0.232465f, 1.000000f);
+    Colors->TitleCloseButtonBackground =
+        Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
+    Colors->TitleCollapseButtonBackground =
+        Rr_V4(0.470588f, 0.325490f, 0.537255f, 1.000000f);
+    Colors->ScrollbarBackground =
+        Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
+    Colors->ScrollbarNormal = Rr_V4(0.322105f, 0.261189f, 0.365981f, 1.000000f);
+    Colors->ScrollbarHovered =
+        Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
+    Colors->ScrollbarHeld = Rr_V4(0.254856f, 0.342832f, 0.400486f, 1.000000f);
+    Colors->ButtonNormal = Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
+    Colors->ButtonHovered = Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
+    Colors->ButtonHeld = Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
+    Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
+    Colors->InputFieldNormal =
+        Rr_V4(0.199295f, 0.134664f, 0.234178f, 1.000000f);
+    Colors->InputFieldActive =
+        Rr_V4(0.334506f, 0.193713f, 0.413703f, 1.000000f);
+    Colors->SelectedTextBackground =
+        Rr_V4(0.793058f, 0.188728f, 1.000000f, 1.000000f);
+    Colors->SelectedTextForeground =
+        Rr_V4(1.000000f, 1.000000f, 1.000000f, 1.000000f);
 }
 
 static void Init(void)

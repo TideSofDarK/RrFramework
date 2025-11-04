@@ -7146,11 +7146,9 @@ bool Rr_UICombobox(
             }
             else
             {
-                OptionButtonColor = gUIContext->Colors.ButtonNormal;
-                if (Index % 2 == 0)
-                {
-                    OptionButtonColor = Rr_MulV4F(OptionButtonColor, 0.85f);
-                }
+                OptionButtonColor =
+                    Index % 2 == 0 ? gUIContext->Colors.ListEntryBackgroundA
+                                   : gUIContext->Colors.ListEntryBackgroundB;
             }
             Rr_UISolidQuad(
                 OptionButtonQuad.Vertices,
@@ -7497,6 +7495,13 @@ void Rr_UISetDefaultTheme(void)
     Colors->ChildBackground = Rr_V4(0.100193f, 0.121744f, 0.136111f, 1.000000f);
     Colors->Outline = Rr_V4(0.603737f, 0.614403f, 0.625043f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.680653f, 0.751365f, 0.827292f, 1.000000f);
+    Colors->ListEntryBackgroundA =
+        Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
+    Colors->ListEntryBackgroundB = Rr_V4(
+        0.182623f * 0.85f,
+        0.277109f * 0.85f,
+        0.338889f * 0.85f,
+        1.000000f);
     Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
     Colors->TitleBackground2 =
         Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
