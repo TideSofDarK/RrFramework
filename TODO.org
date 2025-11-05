@@ -49,10 +49,10 @@
 
 ** User Interface
 
-- [ ] Escape to close popup windows.
-- [ ] Allow having scroll area width larger than line height.
-- [ ] Separate colors for comboboxes.
-- [ ] Separate colors for radio buttons.
+- [X] Escape to close popup windows.
+- [X] Allow having scroll area width larger than line height.
+- [X] Separate colors for comboboxes.
+- [X] Separate colors for radio buttons.
 - [X] Hex color copy/paste.
 - [X] Backspace in input fields.
 - [X] Separate window/contens padding.

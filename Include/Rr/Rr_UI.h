@@ -64,17 +64,22 @@ struct Rr_UIPrimitive
 typedef struct Rr_UIStyle Rr_UIStyle;
 struct Rr_UIStyle
 {
+    float FrameThickness;
     Rr_Vec2 TitlePadding;
     Rr_Vec2 WindowPadding;
     Rr_Vec2 ContentsMargin;
     float ComponentMargin;
     float ScrollbarAreaWidth;
+    float BevelThickness;
     float BevelIntensityLight;
     float BevelIntensityDark;
+    float FlexibleTitleMargin;
     Rr_Vec2 ButtonPadding;
     Rr_Vec2 InputFieldPadding;
     Rr_Vec2 CheckmarkRatios;
     float CheckmarkSize;
+    float CrossWidth;
+    float CrossThickness;
 };
 
 typedef struct Rr_UIColors Rr_UIColors;
@@ -101,11 +106,22 @@ struct Rr_UIColors
     Rr_Vec4 ScrollbarNormal;
     Rr_Vec4 ScrollbarHovered;
     Rr_Vec4 ScrollbarHeld;
+    Rr_Vec4 ResizeHandleNormal;
+    Rr_Vec4 ResizeHandleHovered;
+    Rr_Vec4 ResizeHandleHeld;
 
     Rr_Vec4 ButtonNormal;
     Rr_Vec4 ButtonHovered;
     Rr_Vec4 ButtonHeld;
     Rr_Vec4 ButtonDisabled;
+
+    Rr_Vec4 ComboboxButtonNormal;
+    Rr_Vec4 ComboboxButtonHeld;
+    Rr_Vec4 ComboboxButtonActive;
+
+    Rr_Vec4 RadioButtonNormal;
+    Rr_Vec4 RadioButtonOutline;
+    Rr_Vec4 RadioButtonHeld;
 
     Rr_Vec4 InputFieldNormal;
     Rr_Vec4 InputFieldActive;
@@ -141,6 +157,7 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT = (1 << 6),
     RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 7),
     RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 8),
+    RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT = (1 << 9),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
@@ -165,9 +182,9 @@ extern Rr_UIPrimitive Rr_UIReservePrimitive(
     size_t VertexCount,
     size_t IndexCount);
 
-extern void Rr_UIDrawTriangleVertices(Rr_UIVertex *Vertices);
+extern void Rr_UIDrawTriangleVertices(Rr_UIVertex const *Vertices);
 
-extern void Rr_UIDrawTriangleFilled(Rr_Vec2 *Positions, Rr_Vec4 *Color);
+extern void Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color);
 
 extern void Rr_UIDrawFitTriangleFilled(
     Rr_Vec2 Offset,

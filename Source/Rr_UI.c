@@ -132,6 +132,8 @@ struct Rr_UILayout
 {
     Rr_UIWindow *Window;
 
+    bool *Open;
+
     Rr_Vec2 WindowPadding;
 
     /* TODO: Seems useless. */
@@ -159,7 +161,7 @@ struct Rr_UILayout
     Rr_Rect DeferredContentsRect;
     Rr_Vec2 DeferredWindowOffset;
     Rr_Vec2 DeferredWindowExtent;
-    Rr_Vec4 DeferredResizeHandleColor;
+    Rr_Vec4 const *DeferredResizeHandleColor;
     float DeferredMaxFlexibleWidgetTitleWidth;
     float DeferredMaxFlexibleWidgetWidth;
     float DeferredMaxRigidWidth;
@@ -228,6 +230,7 @@ struct Rr_UIContext
     bool MouseMoved;
     Rr_Vec2 MousePosition;
     Rr_Vec2 MouseWheelDelta;
+    Rr_CursorType CursorType;
 
     Rr_UIWindow *FocusedWidgetParent;
     Rr_UIHash FocusedWidgetHash;
@@ -262,8 +265,6 @@ struct Rr_UIContext
     RR_ARRAY(const char *) TextInputEvents;
     RR_ARRAY(char) TextInputBuffer;
     bool DeferTextInputBufferCopy;
-
-    Rr_CursorType CursorType;
 
     RR_ARRAY(Rr_KeyEvent) KeyboardInputEvents;
 
@@ -707,6 +708,11 @@ static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
     return RR_HAS_BIT(
         Window->Flags,
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT);
+}
+
+static inline bool Rr_UIWindowEscapeCloses(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT);
 }
 
 static inline Rr_UIHash Rr_UICurrentHash(void)
@@ -1168,7 +1174,7 @@ static inline void Rr_UIFeatherConvexPrimitive(
 #endif
 }
 
-void Rr_UIDrawTriangleVertices(Rr_UIVertex *Vertices)
+void Rr_UIDrawTriangleVertices(Rr_UIVertex const *Vertices)
 {
     Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
 
@@ -1181,7 +1187,7 @@ void Rr_UIDrawTriangleVertices(Rr_UIVertex *Vertices)
     Rr_UIFeatherConvexPrimitive(&Primitive, 3, 8.0f);
 }
 
-void Rr_UIDrawTriangleFilled(Rr_Vec2 *Positions, Rr_Vec4 *Color)
+void Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color)
 {
     Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
 
@@ -2518,11 +2524,6 @@ static inline Rr_UIClipRect *Rr_UIEndClipRect(Rr_UILayout *Layout)
 
 static inline void Rr_UIBeginClipRect(Rr_UILayout *Layout, Rr_Rect *Rect)
 {
-    if (Layout->ClipRects->Count)
-    {
-        Rr_UIEndClipRect(Layout);
-    }
-
     Rr_UIClipRect *ClipRect =
         RR_PUSH_INTO_ARRAY(Layout->ClipRects, gUIContext->FrameArena);
     ClipRect->FirstIndex = (uint32_t)gUIContext->Indices.Count;
@@ -2578,7 +2579,7 @@ static inline void Rr_UIRecalculateStyle(void)
     gUIContext->ComponentMargin =
         RR_UI_ROUND(Style->ComponentMargin * LineHeight);
 
-    gUIContext->FrameThickness = floorf(RR_MAX(1.0f, LineHeight * 0.075f));
+    gUIContext->FrameThickness = floorf(LineHeight * Style->FrameThickness);
     gUIContext->ResizeHandleSize =
         RR_UI_ROUND(LineHeight * Style->ScrollbarAreaWidth);
     gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
@@ -2587,10 +2588,11 @@ static inline void Rr_UIRecalculateStyle(void)
     gUIContext->SeparatorLineHeight = LineHeight * 0.5f;
     gUIContext->ButtonPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ButtonPadding, LineHeight));
-    gUIContext->BevelThickness = ceilf(LineHeight * 0.1f);
+    gUIContext->BevelThickness = ceilf(LineHeight * Style->BevelThickness);
     gUIContext->InputFieldPadding = RR_UI_ROUND_V2(
         Rr_MulV2F(gUIContext->Style.InputFieldPadding, LineHeight));
-    gUIContext->FlexibleTitleMargin = gUIContext->ButtonPadding.X;
+    gUIContext->FlexibleTitleMargin =
+        ceilf(Style->FlexibleTitleMargin * LineHeight);
 
     gUIContext->TitlePadding =
         Rr_MulV2F(gUIContext->Style.TitlePadding, LineHeight);
@@ -2769,8 +2771,9 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
 
     /* Assuming having a title bar. */
 
-    float Width = gUIContext->TitleButtonSize * 0.7f;
-    float Thickness = gUIContext->TitleButtonSize * 0.125f;
+    float Width = gUIContext->TitleButtonSize * gUIContext->Style.CrossWidth;
+    float Thickness =
+        gUIContext->TitleButtonSize * gUIContext->Style.CrossThickness;
     Rr_Rect TitleRect = Layout->Rect;
     TitleRect.Extent.Height = gUIContext->TitleHeight;
     Rr_Rect BarRect;
@@ -2943,11 +2946,20 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         Layout->DeferredWindowExtent = Rr_FloorV2(NewWindowSize);
     }
 
-    Layout->DeferredResizeHandleColor = gUIContext->Colors.Foreground;
-    if (ClickResult.Hovered || ClickResult.Moved)
+    if (ClickResult.Held)
     {
         Layout->DeferredResizeHandleColor =
-            Rr_MulV4F(Layout->DeferredResizeHandleColor, 0.75f);
+            &gUIContext->Colors.ResizeHandleHeld;
+    }
+    else if (ClickResult.Hovered)
+    {
+        Layout->DeferredResizeHandleColor =
+            &gUIContext->Colors.ResizeHandleHovered;
+    }
+    else
+    {
+        Layout->DeferredResizeHandleColor =
+            &gUIContext->Colors.ResizeHandleNormal;
     }
 
     return ClickResult.Moved;
@@ -3099,7 +3111,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
                 ScrollbarHandlePosition,
                 ScrollbarHandleSize,
             },
-            &gUIContext->Colors.ScrollbarNormal,
+            ClickResult.Held ? &gUIContext->Colors.ScrollbarHeld
+                             : &gUIContext->Colors.ScrollbarNormal,
             false);
     }
     else
@@ -3304,11 +3317,18 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* NOTE: Have to access current window and finish its clip rect. */
 
-    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
+    Rr_UIEndClipRect(Rr_UICurrentLayout());
+
+    Rr_UILayout *ParentLayout = NULL;
+    if (Window->Child)
+    {
+        ParentLayout = Rr_UICurrentLayout();
+    }
 
     Rr_UILayout *Layout = Rr_UIPushLayout(Hash, Window);
     Layout->LockOffset = WindowOffsetConsumed;
     Layout->LockExtent = WindowExtentConsumed;
+    Layout->Open = Open;
 
     *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveLayouts, gUIContext->Arena) = Layout;
     Window->Added = true;
@@ -3403,7 +3423,7 @@ static inline bool Rr_UIBeginWindowEx(
     Layout->TotalAvailableContentsWidth -= Layout->WindowPadding.X * 2.0f;
     Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->WindowPadding);
 
-    /* Rr_UIEndClipRect(Layout); */
+    Rr_UIEndClipRect(Layout);
 
     /* Clip to contents. */
 
@@ -3420,6 +3440,25 @@ static inline bool Rr_UIBeginWindowEx(
     return true;
 }
 
+static inline void Rr_UIShowPopupWindow(
+    Rr_UIWindow *ParentWindow,
+    Rr_UIHash Hash)
+{
+    gUIContext->PopupWindowParent = ParentWindow;
+    gUIContext->PopupWindowHash = Hash;
+    gUIContext->PopupWindowOpen = true;
+    /* gUIContext->PopupWindow.SkipThisFrame = true; */
+}
+
+static inline bool Rr_UIShouldShowPopupWindow(
+    Rr_UIWindow *ParentWindow,
+    Rr_UIHash Hash)
+{
+    return gUIContext->PopupWindowOpen &&
+           gUIContext->PopupWindowParent == ParentWindow &&
+           gUIContext->PopupWindowHash == Hash;
+}
+
 static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
 {
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
@@ -3433,15 +3472,15 @@ static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
 
 static inline void Rr_UIClosePopupWindow(void)
 {
-    assert(gUIContext->PopupWindowParent != NULL);
     gUIContext->PopupWindowParent = NULL;
     gUIContext->PopupWindowHash = 0;
+    gUIContext->PopupWindowOpen = false;
     gUIContext->PopupWindow.Open = false;
 }
 
 static bool Rr_UIPopupWindowActive(void)
 {
-    return gUIContext->PopupWindowParent;
+    return gUIContext->PopupWindowParent && gUIContext->PopupWindowOpen;
 }
 
 static inline Rr_UIWindow *Rr_UICreateWindow(
@@ -3529,14 +3568,15 @@ void Rr_UIEndWindow(void)
 
     if (!Window->Collapsed)
     {
-        /* Rr_UIEndClipRect(Layout); */
+        /* Since window wasn't collapsed, current clip rect refers to contents
+         * area. Begin new clip rect to draw borders, resize handle and
+         * scrolloffs. */
 
-        /* Begin overlay clip rect for stuff such as borders, resize handle and
-         * scroll area darkeners. */
+        Rr_UIEndClipRect(Layout);
 
-        /* Rr_Rect TotalClipRectWithBorders = */
-        /*     Rr_ResizeRect(&Layout->Rect, gUIContext->FrameThickness); */
-        Rr_UIBeginClipRect(Layout, &Layout->Rect);
+        Rr_Rect TotalClipRectWithBorders =
+            Rr_ResizeRect(&Layout->Rect, gUIContext->FrameThickness);
+        Rr_UIBeginClipRect(Layout, &TotalClipRectWithBorders);
     }
 
     if (!Window->Collapsed)
@@ -3614,9 +3654,13 @@ void Rr_UIEndWindow(void)
                 { BottomRight.X, BottomRight.Y - gUIContext->ResizeHandleSize },
                 { BottomRight.X, BottomRight.Y },
             };
-            Rr_UIDrawTriangleFilled(
-                Positions,
-                &Layout->DeferredResizeHandleColor);
+            if (Layout->DeferredResizeHandleColor)
+            {
+
+                Rr_UIDrawTriangleFilled(
+                    Positions,
+                    Layout->DeferredResizeHandleColor);
+            }
         }
     }
 
@@ -3627,7 +3671,7 @@ void Rr_UIEndWindow(void)
         Rr_Vec4 *BorderColor = Rr_UIShouldHightlightWindow(Window)
                                    ? &gUIContext->Colors.SelectedOutline
                                    : &gUIContext->Colors.Outline;
-        Rr_UIDrawInnerFrame(
+        Rr_UIDrawOuterFrame(
             &Layout->Rect,
             gUIContext->FrameThickness,
             BorderColor);
@@ -3769,6 +3813,34 @@ void Rr_UIEndWindow(void)
             {
                 TopLevelOffset->Y =
                     gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset;
+            }
+        }
+    }
+
+    /* Handle keyboard events. */
+
+    bool EscapeCloses = Rr_UIWindowEscapeCloses(Window);
+    if (EscapeCloses && gUIContext->KeyboardInputEvents.Count)
+    {
+        assert(!Window->Child);
+        for (size_t Index = 0; Index < gUIContext->KeyboardInputEvents.Count;
+             ++Index)
+        {
+            Rr_KeyEvent *Event = gUIContext->KeyboardInputEvents.Data + Index;
+            if (Event->Down && Event->Keymod == 0 &&
+                Event->Scancode == RR_SCANCODE_ESCAPE)
+            {
+                if (Window == &gUIContext->PopupWindow)
+                {
+                    Rr_UIClosePopupWindow();
+                }
+                else if (Layout->Open != NULL)
+                {
+                    *Layout->Open = false;
+                }
+                /* Window->Open = false; */
+                RR_ZERO_PTR(Event);
+                break;
             }
         }
     }
@@ -4533,8 +4605,8 @@ bool Rr_UIRadioButton(
     Rr_Vec2 CircleOffset =
         Rr_V2(Cursor.X + OuterRadius, Cursor.Y + ButtonSize * 0.5f);
 
-    Rr_Vec4 BaseColor = ClickResult.Held ? gUIContext->Colors.ButtonHeld
-                                         : gUIContext->Colors.ButtonNormal;
+    Rr_Vec4 BaseColor = ClickResult.Held ? gUIContext->Colors.RadioButtonHeld
+                                         : gUIContext->Colors.RadioButtonNormal;
 
     Rr_UIDrawCircleFilled(CircleOffset, OuterRadius, &BaseColor);
     if (Selected)
@@ -4545,15 +4617,11 @@ bool Rr_UIRadioButton(
             &gUIContext->Colors.Foreground);
     }
 
-    Rr_Vec4 OutlineColor;
-    OutlineColor.XYZ =
-        Rr_MulV3F(BaseColor.XYZ, 1.0f + gUIContext->Style.BevelIntensityLight);
-    OutlineColor.A = 1.0f;
     Rr_UIDrawCircle(
         CircleOffset,
         OuterRadius - OutlineThickness,
         OutlineThickness,
-        &OutlineColor);
+        &gUIContext->Colors.RadioButtonOutline);
 
     Rr_UIAdvance(ButtonRect.Extent);
 
@@ -6611,7 +6679,10 @@ static inline void Rr_UIColorPickerPopup(
         RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
-        RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+        RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT |
+        RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT;
 
     float TargetSize = gUIContext->DefaultFont->LineHeight * 15.0f;
     float Step = TargetSize / 6.0f;
@@ -6960,14 +7031,12 @@ static inline bool Rr_UIInputColorEx(
 
     if (ClickResult.ClickCount)
     {
-        gUIContext->PopupWindowParent = Window;
-        gUIContext->PopupWindowHash = TitleHash;
+        Rr_UIShowPopupWindow(Window, TitleHash);
     }
 
     bool ColorChanged = false;
 
-    if (gUIContext->PopupWindowParent == Window &&
-        gUIContext->PopupWindowHash == TitleHash)
+    if (Rr_UIShouldShowPopupWindow(Window, TitleHash))
     {
         Rr_Vec2 PopupCenter =
             Rr_AddV2(ColorBoxOffset, Rr_DivV2F(ColorBoxExtent, 2.0f));
@@ -7090,21 +7159,21 @@ bool Rr_UICombobox(
 
     if (ClickResult.ClickCount)
     {
-        gUIContext->PopupWindowParent = Window;
-        gUIContext->PopupWindowHash = TitleHash;
+        Rr_UIShowPopupWindow(Window, TitleHash);
     }
 
     bool OptionChanged = false;
-    bool PopupOpen = gUIContext->PopupWindowParent == Window &&
-                     gUIContext->PopupWindowHash == TitleHash;
+    bool ShouldShowPopupWindow = Rr_UIShouldShowPopupWindow(Window, TitleHash);
 
-    if (PopupOpen)
+    if (ShouldShowPopupWindow)
     {
         const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
             RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
             RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
             RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
-            RR_UI_WINDOW_FLAGS_NO_MOVE_BIT | RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+            RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
+            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
+            RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT;
 
         Rr_Vec2 PopupPosition = ButtonPosition;
         PopupPosition.Y += ButtonExtent.Height + gUIContext->FrameThickness;
@@ -7171,15 +7240,15 @@ bool Rr_UICombobox(
     };
 
     Rr_Vec4 *SelectedOptionBackground;
-    if (PopupOpen)
+    if (ShouldShowPopupWindow)
     {
-        SelectedOptionBackground = &gUIContext->Colors.InputFieldActive;
+        SelectedOptionBackground = &gUIContext->Colors.ComboboxButtonActive;
     }
     else
     {
-        SelectedOptionBackground = ClickResult.Held
-                                       ? &gUIContext->Colors.InputFieldActive
-                                       : &gUIContext->Colors.InputFieldNormal;
+        SelectedOptionBackground =
+            ClickResult.Held ? &gUIContext->Colors.ComboboxButtonHeld
+                             : &gUIContext->Colors.ComboboxButtonNormal;
     }
 
     Rr_UIBevel(
@@ -7284,16 +7353,15 @@ static inline float Rr_UISlider(
 
         float ValueMargin = RR_UI_ROUND(Font->LineHeight * 0.2f);
         Rr_Vec2 ValuePosition = Layout->Cursor;
-        ValuePosition.X =
-            HandleRect.Offset.X + HandleRect.Extent.X + ValueMargin;
+        ValuePosition.X = HandleRect.Offset.X - ValueSize.Width - ValueMargin;
         bool ShowValue = true;
-        if (ValuePosition.X + ValueSize.Width > SliderRect.Offset.X +
-                                                    SliderRect.Extent.Width -
-                                                    gUIContext->BevelThickness)
+        if (ValuePosition.X < SliderRect.Offset.X + gUIContext->BevelThickness)
         {
             ValuePosition.X =
-                HandleRect.Offset.X - ValueSize.Width - ValueMargin;
-            if (ValuePosition.X < SliderRect.Offset.X)
+                HandleRect.Offset.X + HandleRect.Extent.X + ValueMargin;
+            if (ValuePosition.X + ValueSize.Width >
+                SliderRect.Offset.X + SliderRect.Extent.Width -
+                    gUIContext->BevelThickness)
             {
                 ShowValue = false;
             }
@@ -7481,24 +7549,29 @@ void Rr_UISetDefaultTheme(void)
     Rr_UIStyle *Style = Rr_UIGetStyle();
     Rr_UIColors *Colors = Rr_UIGetColors();
 
+    Style->FrameThickness = 0.075f;
     Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
     Style->WindowPadding = Rr_V2(0.500000f, 0.500000f);
     Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
     Style->ComponentMargin = 0.200000f;
     Style->ScrollbarAreaWidth = 0.850000f;
+    Style->BevelThickness = 0.100000f;
     Style->BevelIntensityLight = 0.300000f;
-    Style->BevelIntensityDark = 0.700000f;
+    Style->BevelIntensityDark = 0.650000f;
+    Style->FlexibleTitleMargin = 0.250000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
     Style->CheckmarkRatios = Rr_V2(0.325000f, 0.300000f);
     Style->CheckmarkSize = 0.725000f;
+    Style->CrossWidth = 0.650000f;
+    Style->CrossThickness = 0.135000f;
     Colors->Foreground = Rr_V4(0.899630f, 0.924908f, 0.933333f, 1.000000f);
     Colors->ForegroundDimmed =
         Rr_V4(0.617390f, 0.649893f, 0.660727f, 1.000000f);
     Colors->Background = Rr_V4(0.142532f, 0.168879f, 0.186284f, 1.000000f);
-    Colors->ChildBackground = Rr_V4(0.100193f, 0.121744f, 0.136111f, 1.000000f);
+    Colors->ChildBackground = Rr_V4(0.098716f, 0.116952f, 0.127372f, 1.000000f);
     Colors->ScrolloffBackground =
-        Rr_V4(0.100193f, 0.121744f, 0.136111f, 1.000000f);
+        Rr_V4(0.141176f, 0.168627f, 0.184314f, 1.000000f);
     Colors->Outline = Rr_V4(0.603737f, 0.614403f, 0.625043f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.680653f, 0.751365f, 0.827292f, 1.000000f);
     Colors->ListEntryBackgroundA =
@@ -7507,10 +7580,10 @@ void Rr_UISetDefaultTheme(void)
         Rr_V4(0.155230f, 0.235543f, 0.288056f, 1.000000f);
     Colors->ListEntryHovered =
         Rr_V4(0.168210f, 0.404396f, 0.555556f, 1.000000f);
-    Colors->TitleForeground = Rr_V4(0.899630f, 0.924908f, 0.933333f, 1.000000f);
+    Colors->TitleForeground = Rr_V4(0.898039f, 0.921569f, 0.929412f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
     Colors->TitleBackground2 =
-        Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
+        Rr_V4(0.058434f, 0.237508f, 0.356891f, 1.000000f);
     Colors->TitleCloseButtonBackground =
         Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
     Colors->TitleCollapseButtonBackground =
@@ -7520,11 +7593,28 @@ void Rr_UISetDefaultTheme(void)
     Colors->ScrollbarNormal = Rr_V4(0.292805f, 0.334535f, 0.363504f, 1.000000f);
     Colors->ScrollbarHovered =
         Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
-    Colors->ScrollbarHeld = Rr_V4(0.254856f, 0.342832f, 0.400486f, 1.000000f);
+    Colors->ScrollbarHeld = Rr_V4(0.290196f, 0.333333f, 0.360784f, 1.000000f);
+    Colors->ResizeHandleNormal =
+        Rr_V4(0.121569f, 0.466667f, 0.694118f, 1.000000f);
+    Colors->ResizeHandleHovered =
+        Rr_V4(0.104553f, 0.367593f, 0.540961f, 1.000000f);
+    Colors->ResizeHandleHeld =
+        Rr_V4(0.101961f, 0.364706f, 0.537255f, 1.000000f);
     Colors->ButtonNormal = Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
     Colors->ButtonHovered = Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
     Colors->ButtonHeld = Rr_V4(0.168210f, 0.404396f, 0.555556f, 1.000000f);
     Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
+    Colors->ComboboxButtonNormal =
+        Rr_V4(0.086275f, 0.156863f, 0.215686f, 1.000000f);
+    Colors->ComboboxButtonHeld =
+        Rr_V4(0.164706f, 0.403922f, 0.552941f, 1.000000f);
+    Colors->ComboboxButtonActive =
+        Rr_V4(0.066667f, 0.250980f, 0.407843f, 1.000000f);
+    Colors->RadioButtonNormal =
+        Rr_V4(0.180392f, 0.274510f, 0.337255f, 1.000000f);
+    Colors->RadioButtonOutline =
+        Rr_V4(0.164706f, 0.403922f, 0.552941f, 1.000000f);
+    Colors->RadioButtonHeld = Rr_V4(0.164706f, 0.403922f, 0.552941f, 1.000000f);
     Colors->InputFieldNormal =
         Rr_V4(0.089074f, 0.160347f, 0.216667f, 1.000000f);
     Colors->InputFieldActive =
@@ -8168,7 +8258,7 @@ void Rr_UIDebugOverlay(void)
                 gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title
                                           : NULL,
                 gUIContext->ActiveLayouts.Count,
-                gUIContext->PopupWindowOpen);
+                gUIContext->PopupWindow.Open);
 
             Rr_UICheckbox("Visualize Advances", &gUIContext->VisualizeAdvances);
         }

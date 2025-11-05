@@ -90,27 +90,35 @@ static void PrintTheme(void)
 
     fprintf(stdout, "\n/* RR UI THEME EXPORT BEGIN */\n");
 
+    PrintStyle("FrameThickness", Style->FrameThickness);
     PrintStyleVec2("TitlePadding", &Style->TitlePadding);
     PrintStyleVec2("WindowPadding", &Style->WindowPadding);
     PrintStyleVec2("ContentsMargin", &Style->ContentsMargin);
     PrintStyle("ComponentMargin", Style->ComponentMargin);
     PrintStyle("ScrollbarAreaWidth", Style->ScrollbarAreaWidth);
+    PrintStyle("BevelThickness", Style->BevelThickness);
     PrintStyle("BevelIntensityLight", Style->BevelIntensityLight);
     PrintStyle("BevelIntensityDark", Style->BevelIntensityDark);
+    PrintStyle("FlexibleTitleMargin", Style->FlexibleTitleMargin);
     PrintStyleVec2("ButtonPadding", &Style->ButtonPadding);
     PrintStyleVec2("InputFieldPadding", &Style->InputFieldPadding);
     PrintStyleVec2("CheckmarkRatios", &Style->CheckmarkRatios);
     PrintStyle("CheckmarkSize", Style->CheckmarkSize);
+    PrintStyle("CrossWidth", Style->CrossWidth);
+    PrintStyle("CrossThickness", Style->CrossThickness);
 
     PrintColor("Foreground", &Colors->Foreground);
     PrintColor("ForegroundDimmed", &Colors->ForegroundDimmed);
     PrintColor("Background", &Colors->Background);
     PrintColor("ChildBackground", &Colors->ChildBackground);
+    PrintColor("ScrolloffBackground", &Colors->ScrolloffBackground);
     PrintColor("Outline", &Colors->Outline);
     PrintColor("SelectedOutline", &Colors->SelectedOutline);
     PrintColor("ListEntryBackgroundA", &Colors->ListEntryBackgroundA);
     PrintColor("ListEntryBackgroundB", &Colors->ListEntryBackgroundB);
+    PrintColor("ListEntryHovered", &Colors->ListEntryHovered);
 
+    PrintColor("TitleForeground", &Colors->TitleForeground);
     PrintColor("TitleBackground", &Colors->TitleBackground);
     PrintColor("TitleBackground2", &Colors->TitleBackground2);
     PrintColor(
@@ -124,11 +132,22 @@ static void PrintTheme(void)
     PrintColor("ScrollbarNormal", &Colors->ScrollbarNormal);
     PrintColor("ScrollbarHovered", &Colors->ScrollbarHovered);
     PrintColor("ScrollbarHeld", &Colors->ScrollbarHeld);
+    PrintColor("ResizeHandleNormal", &Colors->ResizeHandleNormal);
+    PrintColor("ResizeHandleHovered", &Colors->ResizeHandleHovered);
+    PrintColor("ResizeHandleHeld", &Colors->ResizeHandleHeld);
 
     PrintColor("ButtonNormal", &Colors->ButtonNormal);
     PrintColor("ButtonHovered", &Colors->ButtonHovered);
     PrintColor("ButtonHeld", &Colors->ButtonHeld);
     PrintColor("ButtonDisabled", &Colors->ButtonDisabled);
+
+    PrintColor("ComboboxButtonNormal", &Colors->ComboboxButtonNormal);
+    PrintColor("ComboboxButtonHeld", &Colors->ComboboxButtonHeld);
+    PrintColor("ComboboxButtonActive", &Colors->ComboboxButtonActive);
+
+    PrintColor("RadioButtonNormal", &Colors->RadioButtonNormal);
+    PrintColor("RadioButtonOutline", &Colors->RadioButtonOutline);
+    PrintColor("RadioButtonHeld", &Colors->RadioButtonHeld);
 
     PrintColor("InputFieldNormal", &Colors->InputFieldNormal);
     PrintColor("InputFieldActive", &Colors->InputFieldActive);
@@ -149,15 +168,23 @@ static void ThemeEditorWindow()
         Rr_UIColors *Colors = Rr_UIGetColors();
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
+        Rr_UIInputFloatRange(
+            "Frame Thickness",
+            &Style->FrameThickness,
+            0.0f,
+            0.125f);
         Rr_UIInputFloat2ZO("Title Padding", Style->TitlePadding.Elements);
         Rr_UIInputFloat2ZO("Window Padding", Style->WindowPadding.Elements);
         Rr_UIInputFloat2ZO("Contents Margin", Style->ContentsMargin.Elements);
         Rr_UIInputFloatZO("Component Margin", &Style->ComponentMargin);
-        Rr_UIInputFloatZO("Scrollbar Area Width", &Style->ScrollbarAreaWidth);
+        Rr_UIInputFloatZO("Bevel Thickness", &Style->BevelThickness);
         Rr_UIInputFloatZO("Bevel Intensity Light", &Style->BevelIntensityLight);
         Rr_UIInputFloatZO("Bevel Intensity Dark", &Style->BevelIntensityDark);
+        Rr_UIInputFloatZO("Flexible Title Margin", &Style->FlexibleTitleMargin);
         Rr_UIInputFloat2ZO("Checkmark Ratios", Style->CheckmarkRatios.Elements);
         Rr_UIInputFloatZO("Checkmark Size", &Style->CheckmarkSize);
+        Rr_UIInputFloatZO("Cross Width", &Style->CrossWidth);
+        Rr_UIInputFloatZO("Cross Thickness", &Style->CrossThickness);
         Rr_UIPopFormatFloatDecimalPlaces();
 
         Rr_UISeparator();
@@ -168,7 +195,9 @@ static void ThemeEditorWindow()
             Colors->ForegroundDimmed.Elements);
         Rr_UIInputColor4("Background", Colors->Background.Elements);
         Rr_UIInputColor4("Child Background", Colors->ChildBackground.Elements);
-        Rr_UIInputColor4("Scrolloff Background", Colors->ScrolloffBackground.Elements);
+        Rr_UIInputColor4(
+            "Scrolloff Background",
+            Colors->ScrolloffBackground.Elements);
         Rr_UIInputColor4("Outline", Colors->Outline.Elements);
         Rr_UIInputColor4("Selected Outline", Colors->SelectedOutline.Elements);
         Rr_UIInputColor4(
@@ -197,14 +226,24 @@ static void ThemeEditorWindow()
 
         Rr_UISeparator();
 
+        Rr_UIInputFloatRange(
+            "Scrollbar Area Width",
+            &Style->ScrollbarAreaWidth,
+            0.001f,
+            2.0f);
         Rr_UIInputColor4(
             "Scrollbar Background",
             Colors->ScrollbarBackground.Elements);
         Rr_UIInputColor4("Scrollbar Normal", Colors->ScrollbarNormal.Elements);
-        Rr_UIInputColor4(
-            "Scrollbar Hovered",
-            Colors->ScrollbarHovered.Elements);
+        /* Rr_UIInputColor4( */
+        /*     "Scrollbar Hovered", */
+        /*     Colors->ScrollbarHovered.Elements); */
         Rr_UIInputColor4("Scrollbar Held", Colors->ScrollbarHeld.Elements);
+        Rr_UIInputColor4("Resize Normal", Colors->ResizeHandleNormal.Elements);
+        Rr_UIInputColor4(
+            "Resize Hovered",
+            Colors->ResizeHandleHovered.Elements);
+        Rr_UIInputColor4("Resize Held", Colors->ResizeHandleHeld.Elements);
 
         Rr_UISeparator();
 
@@ -213,9 +252,23 @@ static void ThemeEditorWindow()
         Rr_UIPopFormatFloatDecimalPlaces();
 
         Rr_UIInputColor4("Button Normal", Colors->ButtonNormal.Elements);
-        Rr_UIInputColor4("Button Hovered", Colors->ButtonHovered.Elements);
+        /* Rr_UIInputColor4("Button Hovered", Colors->ButtonHovered.Elements);
+         */
         Rr_UIInputColor4("Button Held", Colors->ButtonHeld.Elements);
-        Rr_UIInputColor4("Button Disabled", Colors->ButtonDisabled.Elements);
+        /* Rr_UIInputColor4("Button Disabled", Colors->ButtonDisabled.Elements);
+         */
+
+        Rr_UIInputColor4(
+            "Combobox Normal",
+            Colors->ComboboxButtonNormal.Elements);
+        Rr_UIInputColor4("Combobox Held", Colors->ComboboxButtonHeld.Elements);
+        Rr_UIInputColor4(
+            "Combobox Active",
+            Colors->ComboboxButtonActive.Elements);
+
+        Rr_UIInputColor4("Radio Normal", Colors->RadioButtonNormal.Elements);
+        Rr_UIInputColor4("Radio Outline", Colors->RadioButtonOutline.Elements);
+        Rr_UIInputColor4("Radio Held", Colors->RadioButtonHeld.Elements);
 
         Rr_UISeparator();
 
@@ -302,23 +355,29 @@ static void SetPinkTheme()
     Rr_UIColors *Colors = Rr_UIGetColors();
     Rr_UIStyle *Style = Rr_UIGetStyle();
 
+    Style->FrameThickness = 0.075f;
     Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
     Style->WindowPadding = Rr_V2(0.500000f, 0.500000f);
     Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
     Style->ComponentMargin = 0.200000f;
     Style->ScrollbarAreaWidth = 0.850000f;
+    Style->BevelThickness = 0.1f;
     Style->BevelIntensityLight = 0.300000f;
     Style->BevelIntensityDark = 0.700000f;
+    Style->FlexibleTitleMargin = 0.250000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
     Style->CheckmarkRatios = Rr_V2(0.325000f, 0.300000f);
     Style->CheckmarkSize = 0.725000f;
+    Style->CrossWidth = 0.650000f;
+    Style->CrossThickness = 0.135000f;
     Colors->Foreground = Rr_V4(0.940547f, 0.899630f, 0.970019f, 1.000000f);
     Colors->ForegroundDimmed =
         Rr_V4(0.634900f, 0.617390f, 0.660727f, 1.000000f);
     Colors->Background = Rr_V4(0.153051f, 0.142532f, 0.186284f, 1.000000f);
     Colors->ChildBackground = Rr_V4(0.115195f, 0.100193f, 0.136111f, 1.000000f);
-    Colors->ScrolloffBackground = Rr_V4(0.115195f, 0.100193f, 0.136111f, 1.000000f);
+    Colors->ScrolloffBackground =
+        Rr_V4(0.096453f, 0.089119f, 0.116009f, 1.000000f);
     Colors->Outline = Rr_V4(0.542000f, 0.495298f, 0.579593f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.511727f, 0.396375f, 0.627315f, 1.000000f);
     Colors->ListEntryBackgroundA =
@@ -327,12 +386,12 @@ static void SetPinkTheme()
         Rr_V4(0.284174f, 0.235776f, 0.351648f, 1.000000f);
     Colors->ListEntryHovered =
         Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
-    Colors->TitleForeground = Rr_V4(0.940547f, 0.899630f, 0.970019f, 1.000000f);
+    Colors->TitleForeground = Rr_V4(0.937255f, 0.898039f, 0.968627f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.472738f, 0.325686f, 0.538689f, 1.000000f);
     Colors->TitleBackground2 =
-        Rr_V4(0.206105f, 0.148734f, 0.232465f, 1.000000f);
+        Rr_V4(0.203582f, 0.122154f, 0.240995f, 1.000000f);
     Colors->TitleCloseButtonBackground =
-        Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
+        Rr_V4(0.890921f, 0.129675f, 0.182090f, 1.000000f);
     Colors->TitleCollapseButtonBackground =
         Rr_V4(0.470588f, 0.325490f, 0.537255f, 1.000000f);
     Colors->ScrollbarBackground =
@@ -340,11 +399,28 @@ static void SetPinkTheme()
     Colors->ScrollbarNormal = Rr_V4(0.322105f, 0.261189f, 0.365981f, 1.000000f);
     Colors->ScrollbarHovered =
         Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
-    Colors->ScrollbarHeld = Rr_V4(0.254856f, 0.342832f, 0.400486f, 1.000000f);
+    Colors->ScrollbarHeld = Rr_V4(0.321569f, 0.258824f, 0.364706f, 1.000000f);
+    Colors->ResizeHandleNormal =
+        Rr_V4(0.937255f, 0.898039f, 0.968627f, 1.000000f);
+    Colors->ResizeHandleHovered =
+        Rr_V4(0.717092f, 0.636152f, 0.781843f, 1.000000f);
+    Colors->ResizeHandleHeld =
+        Rr_V4(0.713726f, 0.635294f, 0.780392f, 1.000000f);
     Colors->ButtonNormal = Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
     Colors->ButtonHovered = Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
     Colors->ButtonHeld = Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
     Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
+    Colors->ComboboxButtonNormal =
+        Rr_V4(0.196078f, 0.133333f, 0.231373f, 1.000000f);
+    Colors->ComboboxButtonHeld =
+        Rr_V4(0.462745f, 0.341176f, 0.643137f, 1.000000f);
+    Colors->ComboboxButtonActive =
+        Rr_V4(0.333333f, 0.192157f, 0.411765f, 1.000000f);
+    Colors->RadioButtonNormal =
+        Rr_V4(0.333333f, 0.274510f, 0.411765f, 1.000000f);
+    Colors->RadioButtonOutline =
+        Rr_V4(0.462745f, 0.341176f, 0.643137f, 1.000000f);
+    Colors->RadioButtonHeld = Rr_V4(0.462745f, 0.341176f, 0.643137f, 1.000000f);
     Colors->InputFieldNormal =
         Rr_V4(0.199295f, 0.134664f, 0.234178f, 1.000000f);
     Colors->InputFieldActive =
