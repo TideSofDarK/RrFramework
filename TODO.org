@@ -49,7 +49,7 @@
 
 ** User Interface
 
-- [ ] Escape to close popup windows.
+- [X] Escape to close popup windows.
 - [X] Allow having scroll area width larger than line height.
 - [X] Separate colors for comboboxes.
 - [X] Separate colors for radio buttons.
