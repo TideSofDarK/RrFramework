@@ -5140,11 +5140,15 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (Event->Scancode == RR_SCANCODE_BACKSPACE && BufferLength > 0)
             {
-                if (CursorMin == 0) // && CursorMax == BufferLength)
+                if(CursorMin == 0 && CursorMax == 0)
                 {
-                    /* Buffer[0] = '\0'; */
-                    /* NewCursorEnd = NewCursorBegin = 0; */
-                    /* BufferLength = 0; */
+
+                }
+                else if (CursorMin == 0 && CursorMax == BufferLength)
+                {
+                    Buffer[0] = '\0';
+                    NewCursorEnd = NewCursorBegin = 0;
+                    BufferLength = 0;
                 }
                 else if (CursorMin != CursorMax)
                 {
