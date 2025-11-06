@@ -49,6 +49,7 @@
 
 ** User Interface
 
+- [ ] Many newlines and scroll in text input bug.
 - [ ] Shift-Enter doesn't work.
 - [ ] Enter at cursor 0 doesn't work.
 - [X] Escape to close popup windows.
