@@ -45,6 +45,13 @@ typedef struct Rr_UIFont Rr_UIFont;
 #define RR_UI_MIN_FONT_SIZE (6.0f)
 #define RR_UI_MAX_FONT_SIZE (48.0f)
 
+typedef struct Rr_UIRange Rr_UIRange;
+struct Rr_UIRange
+{
+    int32_t First;
+    int32_t Last;
+};
+
 typedef struct Rr_UIVertex Rr_UIVertex;
 struct Rr_UIVertex
 {
@@ -134,6 +141,13 @@ extern Rr_UIFont *Rr_UICreateFont(
     void const *TTFData,
     float FontSize);
 
+extern Rr_UIFont *Rr_UICreateFontRanges(
+    size_t TTFSize,
+    void const *TTFData,
+    float FontSize,
+    size_t CodepointRangeCount,
+    Rr_UIRange const *CodepointRanges);
+
 extern void Rr_UIReleaseFont(Rr_UIFont *Font);
 
 extern void Rr_UIPushFont(Rr_UIFont *Font);
@@ -184,7 +198,9 @@ extern Rr_UIPrimitive Rr_UIReservePrimitive(
 
 extern void Rr_UIDrawTriangleVertices(Rr_UIVertex const *Vertices);
 
-extern void Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color);
+extern void Rr_UIDrawTriangleFilled(
+    Rr_Vec2 const *Positions,
+    Rr_Vec4 const *Color);
 
 extern void Rr_UIDrawFitTriangleFilled(
     Rr_Vec2 Offset,

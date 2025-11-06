@@ -359,14 +359,7 @@ static inline Rr_UIStorage *Rr_UIGetStorage(
     return Storage;
 }
 
-typedef struct Rr_UIRange Rr_UIRange;
-struct Rr_UIRange
-{
-    int32_t First;
-    int32_t Last;
-};
-
-static const Rr_UIRange CodepointRanges[] = {
+static const Rr_UIRange RR_UI_DEFAULT_RANGES[] = {
     { .First = 0x0020, .Last = 0x007F }, /* Basic Latin */
     { .First = 0x00A0, .Last = 0x00FF }, /* Latin-1 Supplement */
     { .First = 0x0100, .Last = 0x017F }, /* Latin Extended-A */
@@ -432,7 +425,9 @@ static inline Rr_UIGlyph *Rr_UIGetGlyphForCodepoint(
 static inline Rr_UIFont *Rr_UICreateFontEx(
     size_t TTFSize,
     void const *TTFData,
-    float FontSize)
+    float FontSize,
+    size_t CodepointRangeCount,
+    Rr_UIRange const *CodepointRanges)
 {
     assert(FontSize > RR_UI_MIN_FONT_SIZE && FontSize < RR_UI_MAX_FONT_SIZE);
 
@@ -494,14 +489,12 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         Rr_IsSRGBFormat(Rr_GetImageFormat(Rr_GetSwapchainImage()));
     Rr_ImageFormat ImageFormat = RR_IMAGE_FORMAT_R8G8B8A8_SRGB;
 
-    size_t RangeCount = RR_ARRAY_COUNT(CodepointRanges);
-
     /* Pack everything into single allocation. */
 
     size_t GlyphsOffset =
-        sizeof(Rr_UIFont) + sizeof(Rr_UIFontRange) * RangeCount;
+        sizeof(Rr_UIFont) + sizeof(Rr_UIFontRange) * CodepointRangeCount;
     size_t AllocationSize = GlyphsOffset;
-    for (size_t Index = 0; Index < RangeCount; ++Index)
+    for (size_t Index = 0; Index < CodepointRangeCount; ++Index)
     {
         const Rr_UIRange *CodepointRange = &CodepointRanges[Index];
         size_t GlyphCount =
@@ -512,7 +505,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     Rr_UIFont *Font = RR_ALLOC_NO_ZERO(gUIContext->Arena, AllocationSize);
     Font->AllocationSize = AllocationSize;
     Font->CreatedForSRGBSwapchain = IsSRGBSwapchain;
-    Font->RangeCount = RangeCount;
+    Font->RangeCount = CodepointRangeCount;
     Font->Ranges = (Rr_UIFontRange *)(((char *)Font) + sizeof(Rr_UIFont));
     char FontNameBuffer[64];
     snprintf(
@@ -530,11 +523,12 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     Font->Ascent = PixelAscent * BakeScale;
     Font->Descent = PixelDescent * BakeScale;
 
-    stbtt_pack_range *PackRanges =
-        RR_ALLOC_NO_ZERO(Scratch.Arena, RangeCount * sizeof(stbtt_pack_range));
+    stbtt_pack_range *PackRanges = RR_ALLOC_NO_ZERO(
+        Scratch.Arena,
+        CodepointRangeCount * sizeof(stbtt_pack_range));
 
     size_t TotalCharCount = 0;
-    for (size_t Index = 0; Index < RangeCount; ++Index)
+    for (size_t Index = 0; Index < CodepointRangeCount; ++Index)
     {
         const Rr_UIRange *CodepointRange = &CodepointRanges[Index];
         Rr_UIFontRange *FontRange = &Font->Ranges[Index];
@@ -565,20 +559,22 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         &PackContext,
         &FontInfo,
         PackRanges,
-        (int32_t)RangeCount,
+        (int32_t)CodepointRangeCount,
         Rects);
+    assert(NumRects);
     stbtt_PackFontRangesPackRects(&PackContext, Rects, NumRects);
-    stbtt_PackFontRangesRenderIntoRects(
+    int Result = stbtt_PackFontRangesRenderIntoRects(
         &PackContext,
         &FontInfo,
         PackRanges,
-        (int32_t)RangeCount,
+        (int32_t)CodepointRangeCount,
         Rects);
+    assert(Result);
     stbtt_PackEnd(&PackContext);
 
     /* Create glyph data. */
 
-    for (size_t Index = 0; Index < RangeCount; ++Index)
+    for (size_t Index = 0; Index < CodepointRangeCount; ++Index)
     {
         stbtt_pack_range *PackRange = PackRanges + Index;
         Rr_UIFontRange *FontRange = Font->Ranges + Index;
@@ -653,7 +649,27 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
 
 Rr_UIFont *Rr_UICreateFont(size_t TTFSize, void const *TTFData, float FontSize)
 {
-    return Rr_UICreateFontEx(TTFSize, TTFData, FontSize);
+    return Rr_UICreateFontEx(
+        TTFSize,
+        TTFData,
+        FontSize,
+        RR_ARRAY_COUNT(RR_UI_DEFAULT_RANGES),
+        RR_UI_DEFAULT_RANGES);
+}
+
+Rr_UIFont *Rr_UICreateFontRanges(
+    size_t TTFSize,
+    void const *TTFData,
+    float FontSize,
+    size_t CodepointRangeCount,
+    Rr_UIRange const *CodepointRanges)
+{
+    return Rr_UICreateFontEx(
+        TTFSize,
+        TTFData,
+        FontSize,
+        CodepointRangeCount,
+        CodepointRanges);
 }
 
 void Rr_UIReleaseFont(Rr_UIFont *Font)
@@ -4846,13 +4862,13 @@ static inline size_t Rr_UILineEnd(const char *Buffer, size_t Cursor)
 
 static inline void Rr_UISetTextInputMaxCol(char *Buffer, size_t Cursor)
 {
-    size_t CursorMaxCol = Rr_UIThisLineCol(Buffer, Cursor);
+    size_t ThisLine = Rr_UIThisLine(Buffer, Cursor);
+    size_t CursorMaxCol = Cursor - ThisLine;
     if (CursorMaxCol == 0)
     {
         gUIContext->TextInputCursorCodepointMaxCol = 0;
         return;
     }
-    size_t ThisLine = Cursor - CursorMaxCol;
     Rr_UTF8Decoder Decoder = {
         .CString = Buffer,
         .CStringParserIndex = ThisLine,
@@ -5098,21 +5114,31 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             if (NewCursorEnd > 0)
             {
                 size_t PreviousLine = Rr_UIPreviousLine(Buffer, NewCursorEnd);
-                Rr_UTF8Decoder Decoder = { .CString = Buffer,
-                                           .CStringParserIndex = PreviousLine };
-                while (true)
+                size_t ThisLine = Rr_UIThisLine(Buffer, NewCursorEnd);
+                if (PreviousLine == ThisLine)
                 {
-                    if (Decoder.CodepointCount ==
-                        gUIContext->TextInputCursorCodepointMaxCol)
+                    NewCursorEnd = 0;
+                }
+                else
+                {
+                    Rr_UTF8Decoder Decoder = {
+                        .CString = Buffer,
+                        .CStringParserIndex = PreviousLine,
+                    };
+                    while (true)
                     {
-                        NewCursorEnd = Decoder.CStringParserIndex;
-                        break;
-                    }
-                    Rr_UTF8Decode(&Decoder);
-                    if (Decoder.Codepoint == '\n')
-                    {
-                        NewCursorEnd = Decoder.CStringCodepointIndex;
-                        break;
+                        if (Decoder.CodepointCount ==
+                            gUIContext->TextInputCursorCodepointMaxCol)
+                        {
+                            NewCursorEnd = Decoder.CStringParserIndex;
+                            break;
+                        }
+                        Rr_UTF8Decode(&Decoder);
+                        if (Decoder.Codepoint == '\n')
+                        {
+                            NewCursorEnd = Decoder.CStringCodepointIndex;
+                            break;
+                        }
                     }
                 }
             }

@@ -21,7 +21,11 @@ static void TextInputWindow()
     {
         static char StringBuffer[2048] = "";
         char LabelBuffer[64];
-        snprintf(LabelBuffer, sizeof(LabelBuffer), "Length: %zu", strlen(StringBuffer));
+        snprintf(
+            LabelBuffer,
+            sizeof(LabelBuffer),
+            "Length: %zu",
+            strlen(StringBuffer));
         Rr_UILabelText("String Info", LabelBuffer);
         if (Rr_UIInputField(
                 "String (2048 bytes)",

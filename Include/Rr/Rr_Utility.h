@@ -127,6 +127,7 @@ static inline uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
 {
     static const uint8_t READY = 128;
     static const uint8_t TWO = 192;
+    static const uint8_t INV_TWO = 63;
     static const uint8_t THREE = 224;
     static const uint8_t FOUR = 240;
     static const uint8_t FIVE = 248;
@@ -136,14 +137,14 @@ static inline uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
         if (Decoder->Carry > 0)
         {
             Decoder->Carry--;
+            uint8_t Raw =
+                (uint8_t)Decoder->CString[Decoder->CStringParserIndex++];
             Decoder->Codepoint |=
-                (uint8_t)((~TWO & Decoder->CString[Decoder->CStringParserIndex])
-                          << (Decoder->Carry * 6));
+                ((uint32_t)(INV_TWO & Raw) << (Decoder->Carry * 6));
 
             if (Decoder->Carry == 0)
             {
                 Decoder->CodepointCount++;
-                Decoder->CStringParserIndex++;
                 return Decoder->Codepoint;
             }
         }
