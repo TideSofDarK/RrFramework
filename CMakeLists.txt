@@ -207,18 +207,13 @@ if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(
-        ${PROJECT_NAME}
-        PRIVATE
-        "-framework QuartzCore"
-        "-framework Metal"
-        "-framework Foundation"
-        "-framework IOSurface"
-        "-framework CoreGraphics"
-        "-framework IOKit"
-        "-framework AppKit")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_UNIX.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_MACOS)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan)
+    if(APPLE)
+        target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Metal" "-framework MetalKit" "-framework Cocoa")
+        target_link_libraries(${PROJECT_NAME} PRIVATE "${Vulkan_MoltenVK_LIBRARY}")
+    endif()
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
