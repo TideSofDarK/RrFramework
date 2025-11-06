@@ -49,8 +49,8 @@
 
 ** User Interface
 
-- [ ] Many newlines and scroll in text input bug.
-- [ ] Shift-Enter doesn't work.
+- [X] Many newlines and scroll in text input bug.
+- [X] Shift-Enter doesn't work.
 - [ ] Enter at cursor 0 doesn't work.
 - [X] Escape to close popup windows.
 - [X] Allow having scroll area width larger than line height.

@@ -4731,11 +4731,29 @@ static inline bool Rr_UIConsumeTextInput(
     return true;
 }
 
+/* static inline size_t Rr_UIPreviousLine(char *Buffer, size_t Cursor) */
+/* { */
+/*     if (Cursor == 0) */
+/*     { */
+/*         return 0; */
+/*     } */
+/*     while (true) */
+/*     { */
+/*         if (Buffer[Cursor] == '\0') */
+/*         { */
+/*         } */
+/*     } */
+/* } */
+
 static inline size_t Rr_UIThisLineCol(char *Buffer, size_t Cursor)
 {
+    if (Cursor == 0)
+    {
+        return 0;
+    }
+    size_t ThisLine = Rr_PreviousUTF8LFOffset(Buffer, Cursor);
     if (Buffer[Cursor] == '\n')
     {
-        size_t ThisLine = Rr_PreviousUTF8LFOffset(Buffer, Cursor);
         size_t Col = Cursor - Rr_PreviousUTF8LFOffset(Buffer, Cursor - 1);
         if (Col == ThisLine)
         {
@@ -4748,7 +4766,6 @@ static inline size_t Rr_UIThisLineCol(char *Buffer, size_t Cursor)
     }
     else
     {
-        size_t ThisLine = Rr_PreviousUTF8LFOffset(Buffer, Cursor);
         if (ThisLine != 0)
         {
             return Cursor - ThisLine - 1;
@@ -5005,11 +5022,12 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
 
         if (Event->Scancode == RR_SCANCODE_RETURN)
         {
-            if (EnterToConfirm)
+            bool NoAlt = (Event->Keymod & RR_KEYMOD_ALT) == 0;
+            if (EnterToConfirm && Event->Keymod == 0)
             {
                 Result.Confirmed |= true;
             }
-            else if (Event->Keymod == 0 && CursorMin > 0)
+            else if (NoAlt)
             {
                 if (Rr_UIConsumeTextInput(
                         1,
@@ -5042,6 +5060,9 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                     size_t PrevLineCol = Rr_UIThisLineCol(Buffer, ThisLine - 1);
                     size_t PrevLine = ThisLine - 1 - PrevLineCol;
 
+                    /* TODO: Two newlines at the start break 'up' behavior. */
+                    /* TODO: Newlines at zero also break max col. */
+
                     if (gUIContext->TextInputCursorCodepointMaxCol == 0)
                     {
                         NewCursorEnd = PrevLine;
@@ -5053,7 +5074,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                                                        PrevLine };
                         bool Fit = false;
                         while (Rr_UTF8Decode(&Decoder) &&
-                               Decoder.Codepoint != '\0' &&
+                               /* Decoder.Codepoint != '\0' && */
                                Decoder.Codepoint != '\n')
                         {
                             if (Decoder.CodepointCount ==
@@ -5242,6 +5263,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                     NewCursorEnd = NewCursorBegin = CursorMin;
                 }
                 Edited = true;
+                ResetCol = true;
             }
         }
 
@@ -5303,37 +5325,35 @@ static inline void Rr_UIApplyInputFieldPlaceholder(
     Rr_Vec2 *BufferPosition,
     Rr_Vec2 *BufferSize)
 {
-    if (BufferSize->X == 0.0f)
+    if (BufferSize->X > -0.0f)
     {
-        if (PlaceholderString != NULL && !Focused)
+        return;
+    }
+    if (PlaceholderString != NULL && !Focused)
+    {
+        if (AutoCenter)
         {
-            if (AutoCenter)
-            {
-                *BufferSize = Rr_UICalculateTextSize(
-                    SIZE_MAX,
-                    PlaceholderString,
-                    0.0f,
-                    0);
-                BufferPosition->X =
-                    Offset.X + FixedWidth * 0.5f - BufferSize->X * 0.5f;
-            }
-            *BufferSize = Rr_UIDrawText(
-                false,
-                *BufferPosition,
-                SIZE_MAX,
-                PlaceholderString,
-                0.0f,
-                &gUIContext->Colors.ForegroundDimmed,
-                0);
+            *BufferSize =
+                Rr_UICalculateTextSize(SIZE_MAX, PlaceholderString, 0.0f, 0);
+            BufferPosition->X =
+                Offset.X + FixedWidth * 0.5f - BufferSize->X * 0.5f;
         }
-        else
+        *BufferSize = Rr_UIDrawText(
+            false,
+            *BufferPosition,
+            SIZE_MAX,
+            PlaceholderString,
+            0.0f,
+            &gUIContext->Colors.ForegroundDimmed,
+            0);
+    }
+    else
+    {
+        Rr_UIFont *Font = Rr_UICurrentFont();
+        const float MIN_FIELD_WIDTH = Font->LineHeight / 2.0f;
+        if (BufferSize->Width < MIN_FIELD_WIDTH)
         {
-            Rr_UIFont *Font = Rr_UICurrentFont();
-            const float MIN_FIELD_WIDTH = Font->LineHeight / 2.0f;
-            if (BufferSize->Width < MIN_FIELD_WIDTH)
-            {
-                BufferSize->Width = MIN_FIELD_WIDTH;
-            }
+            BufferSize->Width = MIN_FIELD_WIDTH;
         }
     }
 }
@@ -5359,6 +5379,15 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     Rr_UIInputFieldFlags Flags,
     float FixedWidth)
 {
+    if (FixedWidth < 0.0f)
+    {
+        return (Rr_UIInputFieldResult){
+            .Extent = { 0.0f,
+                        Rr_UICurrentLineHeight() +
+                            gUIContext->InputFieldPadding.Y * 2.0f }
+        };
+    }
+
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
@@ -5378,18 +5407,6 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     bool AutoCenter =
         RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT) &&
         UseFixedWidth;
-    Rr_UIClipRect *RestoreClipRect = NULL;
-    if (UseFixedWidth)
-    {
-        Rr_UIClipRect *CurrentClipRect = Layout->CurrentClipRect;
-        Rr_UIPushSubClipRect(
-            Layout,
-            &(Rr_Rect){
-                .Offset = Offset,
-                .Extent = { FixedWidth,
-                            CurrentClipRect->Rect.Extent.Y, },
-            });
-    }
 
     bool UsePersistentBuffer =
         RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
@@ -5399,24 +5416,40 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
     bool BeganDragging = false;
     float Dragged = 0.0f;
-    Rr_Vec2 BufferSize;
-    Rr_Vec2 BufferPosition;
+    Rr_Vec2 BufferExtent;
+    Rr_Vec2 BufferOffset;
     Rr_Rect FieldRect;
     Rr_UIEditResult EditResult = { 0 };
 
     if (Drag && !Focused)
     {
         size_t BufferLength = strlen(Buffer);
-        BufferPosition = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
+        BufferOffset = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
+        BufferExtent = Rr_UICalculateTextSize(BufferLength, Buffer, 0.0f, 0);
+
+        FieldRect = (Rr_Rect){
+            Offset,
+            Rr_AddV2(
+                BufferExtent,
+                Rr_MulV2F(gUIContext->InputFieldPadding, 2.0f)),
+        };
+        if (UseFixedWidth)
+        {
+            FieldRect.Extent.X = FixedWidth;
+        }
+
+        Rr_Rect ClipRect =
+            Rr_ResizeRect(&FieldRect, gUIContext->BevelThickness * -2.0f);
+        Rr_UIPushSubClipRect(Layout, &ClipRect);
+
         if (AutoCenter)
         {
-            BufferSize = Rr_UICalculateTextSize(BufferLength, Buffer, 0.0f, 0);
-            BufferPosition.X =
-                Offset.X + FixedWidth * 0.5f - BufferSize.X * 0.5f;
+            BufferOffset.X =
+                Offset.X + FixedWidth * 0.5f - BufferExtent.X * 0.5f;
         }
-        BufferSize = Rr_UIDrawText(
+        Rr_UIDrawText(
             false,
-            BufferPosition,
+            BufferOffset,
             BufferLength,
             Buffer,
             0.0f,
@@ -5429,19 +5462,8 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             Focused,
             PlaceholderString,
             AutoCenter,
-            &BufferPosition,
-            &BufferSize);
-
-        FieldRect = (Rr_Rect){
-            Offset,
-            Rr_AddV2(
-                BufferSize,
-                Rr_MulV2F(gUIContext->InputFieldPadding, 2.0f)),
-        };
-        if (UseFixedWidth)
-        {
-            FieldRect.Extent.X = FixedWidth;
-        }
+            &BufferOffset,
+            &BufferExtent);
 
         Rr_UIClickResult ClickResult = Rr_UIClickEx(
             Layout,
@@ -5515,18 +5537,33 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             UsePersistentBuffer && (Focused || WasFocused)
                 ? gUIContext->TextInputBuffer.Data
                 : Buffer;
-        BufferPosition = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
+        BufferOffset = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
+        BufferExtent = Rr_UICalculateTextSize(SIZE_MAX, BufferString, 0.0f, 0);
+
+        FieldRect = (Rr_Rect){
+            Offset,
+            Rr_AddV2(
+                BufferExtent,
+                Rr_MulV2F(gUIContext->InputFieldPadding, 2.0f)),
+        };
+        if (UseFixedWidth)
+        {
+            FieldRect.Extent.X = FixedWidth;
+        }
+
+        Rr_Rect ClipRect =
+            Rr_ResizeRect(&FieldRect, gUIContext->BevelThickness * -2.0f);
+        Rr_UIPushSubClipRect(Layout, &ClipRect);
+
         if (AutoCenter)
         {
-            BufferSize =
-                Rr_UICalculateTextSize(SIZE_MAX, BufferString, 0.0f, 0);
-            BufferPosition.X =
-                Offset.X + FixedWidth * 0.5f - BufferSize.X * 0.5f;
+            BufferOffset.X =
+                Offset.X + FixedWidth * 0.5f - BufferExtent.X * 0.5f;
         }
-        BufferSize = Rr_UIDrawInputText(
+        BufferExtent = Rr_UIDrawInputText(
             BufferString,
             Focused,
-            BufferPosition,
+            BufferOffset,
             gUIContext->TextInputCursorBegin,
             &NewCursorEnd,
             0.0f,
@@ -5538,19 +5575,8 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             Focused,
             PlaceholderString,
             AutoCenter,
-            &BufferPosition,
-            &BufferSize);
-
-        FieldRect = (Rr_Rect){
-            Offset,
-            Rr_AddV2(
-                BufferSize,
-                Rr_MulV2F(gUIContext->InputFieldPadding, 2.0f)),
-        };
-        if (UseFixedWidth)
-        {
-            FieldRect.Extent.X = FixedWidth;
-        }
+            &BufferOffset,
+            &BufferExtent);
 
         Rr_UIClickResult ClickResult =
             Rr_UIClickDrag(Layout, &FieldRect, Hash, Rr_V2F(0.0f));
@@ -5666,10 +5692,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             true);
     }
 
-    if (UseFixedWidth)
-    {
-        Rr_UIPopSubClipRect(Layout);
-    }
+    Rr_UIPopSubClipRect(Layout);
 
     return (Rr_UIInputFieldResult){
         .Extent = FieldRect.Extent,
