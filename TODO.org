@@ -49,6 +49,8 @@
 
 ** User Interface
 
+- [ ] Shift-Enter doesn't work.
+- [ ] Enter at cursor 0 doesn't work.
 - [X] Escape to close popup windows.
 - [X] Allow having scroll area width larger than line height.
 - [X] Separate colors for comboboxes.
