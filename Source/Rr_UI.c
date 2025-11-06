@@ -427,6 +427,8 @@ static inline Rr_UIGlyph *Rr_UIGetGlyphForCodepoint(
     return NULL;
 }
 
+#define RR_UI_FONT_OVERSAMPLING 2
+
 static inline Rr_UIFont *Rr_UICreateFontEx(
     size_t TTFSize,
     void const *TTFData,
@@ -483,7 +485,10 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         return NULL;
     }
 
-    stbtt_PackSetOversampling(&PackContext, 3, 3);
+    stbtt_PackSetOversampling(
+        &PackContext,
+        RR_UI_FONT_OVERSAMPLING,
+        RR_UI_FONT_OVERSAMPLING);
 
     bool IsSRGBSwapchain =
         Rr_IsSRGBFormat(Rr_GetImageFormat(Rr_GetSwapchainImage()));
