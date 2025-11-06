@@ -16,8 +16,7 @@ Not yet suitable for anything remotely serious.
   - Clang 17+
 + CMake 3.28+
 + Vulkan SDK 1.1+
-  - Vulkan 1.0 builds should be possible under Windows and Linux
-  - On macOS it's up to the user to link to MoltenVK. As per documentation you may either add a Copy Phase with *.dylib files to your executable target or deal with MoltenVK.xcframework.
+  - Can be configured to use Vulkan 1.0 under Windows and Linux
 
 * Using RrFramework
 
