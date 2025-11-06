@@ -4731,19 +4731,62 @@ static inline bool Rr_UIConsumeTextInput(
     return true;
 }
 
-/* static inline size_t Rr_UIPreviousLine(char *Buffer, size_t Cursor) */
-/* { */
-/*     if (Cursor == 0) */
-/*     { */
-/*         return 0; */
-/*     } */
-/*     while (true) */
-/*     { */
-/*         if (Buffer[Cursor] == '\0') */
-/*         { */
-/*         } */
-/*     } */
-/* } */
+static inline size_t Rr_UIThisLine(char *Buffer, size_t Cursor)
+{
+    if (Cursor == 0)
+    {
+        return 0;
+    }
+    if (Buffer[Cursor - 1] == '\n')
+    {
+        return Cursor;
+    }
+    while (true)
+    {
+        Cursor--;
+        if (Cursor == 0)
+        {
+            return 0;
+        }
+        if (Buffer[Cursor - 1] == '\n')
+        {
+            return Cursor;
+        }
+    }
+    assert(false);
+}
+
+static inline size_t Rr_UIPreviousLine(char *Buffer, size_t Cursor)
+{
+    Cursor = Rr_UIThisLine(Buffer, Cursor);
+    if (Cursor == 0)
+    {
+        return 0;
+    }
+    Cursor--;
+    if (Buffer[Cursor - 1] == '\n')
+    {
+        return Cursor;
+    }
+    return Rr_UIThisLine(Buffer, Cursor);
+}
+
+static inline size_t Rr_UINextLine(char *Buffer, size_t Cursor)
+{
+    while (true)
+    {
+        if (Buffer[Cursor] == '\0')
+        {
+            return Cursor;
+        }
+        if (Buffer[Cursor] == '\n')
+        {
+            return Cursor + 1;
+        }
+        Cursor++;
+    }
+    assert(false);
+}
 
 static inline size_t Rr_UIThisLineCol(char *Buffer, size_t Cursor)
 {
@@ -5049,45 +5092,22 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (NewCursorEnd > 0)
             {
-                size_t ThisLineCol = Rr_UIThisLineCol(Buffer, NewCursorEnd);
-                size_t ThisLine = NewCursorEnd - ThisLineCol;
-                if (ThisLine == 0)
+                size_t PreviousLine = Rr_UIPreviousLine(Buffer, NewCursorEnd);
+                Rr_UTF8Decoder Decoder = { .CString = Buffer,
+                                           .CStringParserIndex = PreviousLine };
+                while (true)
                 {
-                    NewCursorEnd = 0;
-                }
-                else
-                {
-                    size_t PrevLineCol = Rr_UIThisLineCol(Buffer, ThisLine - 1);
-                    size_t PrevLine = ThisLine - 1 - PrevLineCol;
-
-                    /* TODO: Two newlines at the start break 'up' behavior. */
-                    /* TODO: Newlines at zero also break max col. */
-
-                    if (gUIContext->TextInputCursorCodepointMaxCol == 0)
+                    if (Decoder.CodepointCount ==
+                        gUIContext->TextInputCursorCodepointMaxCol)
                     {
-                        NewCursorEnd = PrevLine;
+                        NewCursorEnd = Decoder.CStringParserIndex;
+                        break;
                     }
-                    else
+                    Rr_UTF8Decode(&Decoder);
+                    if (Decoder.Codepoint == '\n')
                     {
-                        Rr_UTF8Decoder Decoder = { .CString = Buffer,
-                                                   .CStringParserIndex =
-                                                       PrevLine };
-                        bool Fit = false;
-                        while (Rr_UTF8Decode(&Decoder) &&
-                               /* Decoder.Codepoint != '\0' && */
-                               Decoder.Codepoint != '\n')
-                        {
-                            if (Decoder.CodepointCount ==
-                                gUIContext->TextInputCursorCodepointMaxCol)
-                            {
-                                Fit = true;
-                                break;
-                            }
-                        }
-                        NewCursorEnd =
-                            PrevLine +
-                            (Fit ? (Decoder.CStringParserIndex - PrevLine)
-                                 : PrevLineCol);
+                        NewCursorEnd = Decoder.CStringCodepointIndex;
+                        break;
                     }
                 }
             }
@@ -5101,41 +5121,22 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (NewCursorEnd < BufferLength)
             {
-                size_t NextLine = Rr_NextUTF8LFOffset(Buffer, NewCursorEnd);
-                if (NextLine == BufferLength)
+                size_t NextLine = Rr_UINextLine(Buffer, NewCursorEnd);
+                Rr_UTF8Decoder Decoder = { .CString = Buffer,
+                                           .CStringParserIndex = NextLine };
+                while (true)
                 {
-                    NewCursorEnd = BufferLength;
-                }
-                else
-                {
-                    NextLine++;
-                    size_t NextNextLine = Rr_NextUTF8LFOffset(Buffer, NextLine);
-                    size_t NextLineLength = NextNextLine - NextLine;
-                    if (gUIContext->TextInputCursorCodepointMaxCol == 0)
+                    if (Decoder.CodepointCount ==
+                        gUIContext->TextInputCursorCodepointMaxCol)
                     {
-                        NewCursorEnd = NextLine;
+                        NewCursorEnd = Decoder.CStringParserIndex;
+                        break;
                     }
-                    else
+                    Rr_UTF8Decode(&Decoder);
+                    if (Decoder.Codepoint == '\n' || Decoder.Codepoint == '\0')
                     {
-                        Rr_UTF8Decoder Decoder = { .CString = Buffer,
-                                                   .CStringParserIndex =
-                                                       NextLine };
-                        bool Fit = false;
-                        while (Rr_UTF8Decode(&Decoder) &&
-                               Decoder.Codepoint != '\0' &&
-                               Decoder.Codepoint != '\n')
-                        {
-                            if (Decoder.CodepointCount ==
-                                gUIContext->TextInputCursorCodepointMaxCol)
-                            {
-                                Fit = true;
-                                break;
-                            }
-                        }
-                        NewCursorEnd =
-                            NextLine +
-                            (Fit ? (Decoder.CStringParserIndex - NextLine)
-                                 : NextLineLength);
+                        NewCursorEnd = Decoder.CStringCodepointIndex;
+                        break;
                     }
                 }
             }
