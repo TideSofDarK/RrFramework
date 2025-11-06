@@ -4809,38 +4809,6 @@ static inline size_t Rr_UINextLine(char *Buffer, size_t Cursor)
     assert(false);
 }
 
-static inline size_t Rr_UIThisLineCol(char *Buffer, size_t Cursor)
-{
-    if (Cursor == 0)
-    {
-        return 0;
-    }
-    size_t ThisLine = Rr_PreviousUTF8LFOffset(Buffer, Cursor);
-    if (Buffer[Cursor] == '\n')
-    {
-        size_t Col = Cursor - Rr_PreviousUTF8LFOffset(Buffer, Cursor - 1);
-        if (Col == ThisLine)
-        {
-            return Col;
-        }
-        else
-        {
-            return Col - 1;
-        }
-    }
-    else
-    {
-        if (ThisLine != 0)
-        {
-            return Cursor - ThisLine - 1;
-        }
-        else
-        {
-            return Cursor - ThisLine;
-        }
-    }
-}
-
 static inline size_t Rr_UILineStart(const char *Buffer, size_t Cursor)
 {
     if (Buffer[Cursor] == '\n' && Cursor > 0)
