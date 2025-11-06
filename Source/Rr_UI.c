@@ -259,7 +259,7 @@ struct Rr_UIContext
 
     size_t TextInputCursorBegin;
     size_t TextInputCursorEnd;
-    size_t TextInputCursorMaxCol;
+    size_t TextInputCursorCodepointMaxCol;
     uint64_t TextInputCursorBlinkTime;
     uint32_t TextInputClickId;
     RR_ARRAY(const char *) TextInputEvents;
@@ -439,7 +439,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     static int FontIndex = -1;
     FontIndex++;
 
-    const int32_t ATLAS_SIZE = 1024;
+    const int32_t ATLAS_SIZE = 2048;
     const Rr_IntVec2 ATLAS_EXTENT = { ATLAS_SIZE, ATLAS_SIZE };
 
     unsigned char *GrayscaleBuffer =
@@ -1883,8 +1883,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
     {
         Rr_UTF8Decode(&Decoder);
         uint32_t Codepoint = Decoder.Codepoint;
-        size_t CodepointIndex = Decoder.CodepointIndex - 1;
-        size_t CStringIndex = Decoder.CStringIndex - 1;
+        size_t CStringIndex = Decoder.CStringCodepointIndex;
 
         bool LineBreak = false;
 
@@ -1913,8 +1912,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
         if (Active)
         {
             if ((OldCursorMin != OldCursorMax) &&
-                (CodepointIndex >= OldCursorMin &&
-                 CodepointIndex < OldCursorMax))
+                (CStringIndex >= OldCursorMin && CStringIndex < OldCursorMax))
             {
                 GlyphSelected = true;
                 Rr_UIDrawRect(
@@ -1924,7 +1922,6 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
                     },
                     &gUIContext->Colors.SelectedTextBackground);
             }
-
             if (*CursorEnd == CStringIndex)
             {
                 Rr_UIDrawInteractiveTextCursor(GlyphPosition, Color, Font);
@@ -2026,11 +2023,12 @@ static inline Rr_Vec2 Rr_UIDrawText(
         uint32_t *Decoded = RR_ALLOC_NO_ZERO(
             Scratch.Arena,
             sizeof(uint32_t) * UTF8StringLength);
-        while (Rr_UTF8Decode(&Decoder) != '\0' &&
-               (NullTerminated || Decoder.CStringIndex <= UTF8StringLength))
+        while (
+            Rr_UTF8Decode(&Decoder) != '\0' &&
+            (NullTerminated || Decoder.CStringParserIndex <= UTF8StringLength))
         {
             uint32_t Codepoint = Decoder.Codepoint;
-            size_t CodepointIndex = Decoder.CodepointIndex - 1;
+            size_t CodepointIndex = Decoder.CodepointCount - 1;
             Decoded[CodepointIndex] = Codepoint;
 
             if (Codepoint == '\n')
@@ -2125,11 +2123,12 @@ static inline Rr_Vec2 Rr_UIDrawText(
     else
     {
         Rr_UTF8Decoder Decoder = { .CString = UTF8String };
-        while (Rr_UTF8Decode(&Decoder) != '\0' &&
-               (NullTerminated || Decoder.CStringIndex <= UTF8StringLength))
+        while (
+            Rr_UTF8Decode(&Decoder) != '\0' &&
+            (NullTerminated || Decoder.CStringParserIndex <= UTF8StringLength))
         {
             uint32_t Codepoint = Decoder.Codepoint;
-            size_t CodepointIndex = Decoder.CodepointIndex - 1;
+            size_t CodepointIndex = Decoder.CodepointCount - 1;
 
             Rr_UIGlyph *Glyph = Rr_UIGetGlyphForCodepoint(Font, Codepoint);
 
@@ -4780,6 +4779,32 @@ static inline size_t Rr_UILineEnd(const char *Buffer, size_t Cursor)
     return Rr_NextUTF8LFOffset(Buffer, Cursor);
 }
 
+static inline void Rr_UISetTextInputMaxCol(char *Buffer, size_t Cursor)
+{
+    size_t CursorMaxCol = Rr_UIThisLineCol(Buffer, Cursor);
+    if (CursorMaxCol == 0)
+    {
+        gUIContext->TextInputCursorCodepointMaxCol = 0;
+        return;
+    }
+    size_t ThisLine = Cursor - CursorMaxCol;
+    Rr_UTF8Decoder Decoder = {
+        .CString = Buffer,
+        .CStringParserIndex = ThisLine,
+    };
+    while (true)
+    {
+        Rr_UTF8Decode(&Decoder);
+        if (Decoder.CStringCodepointIndex == Cursor)
+        {
+            gUIContext->TextInputCursorCodepointMaxCol =
+                Decoder.CodepointCount - 1;
+            return;
+        }
+    }
+    assert(false && "Couldn't find codepoint at given cursor!");
+}
+
 typedef struct Rr_UIEditResult Rr_UIEditResult;
 struct Rr_UIEditResult
 {
@@ -5006,7 +5031,6 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (NewCursorEnd > 0)
             {
-                size_t DesiredOffset = gUIContext->TextInputCursorMaxCol;
                 size_t ThisLineCol = Rr_UIThisLineCol(Buffer, NewCursorEnd);
                 size_t ThisLine = NewCursorEnd - ThisLineCol;
                 if (ThisLine == 0)
@@ -5017,9 +5041,33 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                 {
                     size_t PrevLineCol = Rr_UIThisLineCol(Buffer, ThisLine - 1);
                     size_t PrevLine = ThisLine - 1 - PrevLineCol;
-                    NewCursorEnd = PrevLine + (DesiredOffset > PrevLineCol
-                                                   ? PrevLineCol
-                                                   : DesiredOffset);
+
+                    if (gUIContext->TextInputCursorCodepointMaxCol == 0)
+                    {
+                        NewCursorEnd = PrevLine;
+                    }
+                    else
+                    {
+                        Rr_UTF8Decoder Decoder = { .CString = Buffer,
+                                                   .CStringParserIndex =
+                                                       PrevLine };
+                        bool Fit = false;
+                        while (Rr_UTF8Decode(&Decoder) &&
+                               Decoder.Codepoint != '\0' &&
+                               Decoder.Codepoint != '\n')
+                        {
+                            if (Decoder.CodepointCount ==
+                                gUIContext->TextInputCursorCodepointMaxCol)
+                            {
+                                Fit = true;
+                                break;
+                            }
+                        }
+                        NewCursorEnd =
+                            PrevLine +
+                            (Fit ? (Decoder.CStringParserIndex - PrevLine)
+                                 : PrevLineCol);
+                    }
                 }
             }
             if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
@@ -5032,7 +5080,6 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (NewCursorEnd < BufferLength)
             {
-                size_t DesiredOffset = gUIContext->TextInputCursorMaxCol;
                 size_t NextLine = Rr_NextUTF8LFOffset(Buffer, NewCursorEnd);
                 if (NextLine == BufferLength)
                 {
@@ -5043,9 +5090,32 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                     NextLine++;
                     size_t NextNextLine = Rr_NextUTF8LFOffset(Buffer, NextLine);
                     size_t NextLineLength = NextNextLine - NextLine;
-                    NewCursorEnd = NextLine + (DesiredOffset > NextLineLength
-                                                   ? NextLineLength
-                                                   : DesiredOffset);
+                    if (gUIContext->TextInputCursorCodepointMaxCol == 0)
+                    {
+                        NewCursorEnd = NextLine;
+                    }
+                    else
+                    {
+                        Rr_UTF8Decoder Decoder = { .CString = Buffer,
+                                                   .CStringParserIndex =
+                                                       NextLine };
+                        bool Fit = false;
+                        while (Rr_UTF8Decode(&Decoder) &&
+                               Decoder.Codepoint != '\0' &&
+                               Decoder.Codepoint != '\n')
+                        {
+                            if (Decoder.CodepointCount ==
+                                gUIContext->TextInputCursorCodepointMaxCol)
+                            {
+                                Fit = true;
+                                break;
+                            }
+                        }
+                        NewCursorEnd =
+                            NextLine +
+                            (Fit ? (Decoder.CStringParserIndex - NextLine)
+                                 : NextLineLength);
+                    }
                 }
             }
             if ((Event->Keymod & RR_KEYMOD_SHIFT) == 0)
@@ -5140,9 +5210,8 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             if (Event->Scancode == RR_SCANCODE_BACKSPACE && BufferLength > 0)
             {
-                if(CursorMin == 0 && CursorMax == 0)
+                if (CursorMin == 0 && CursorMax == 0)
                 {
-
                 }
                 else if (CursorMin == 0 && CursorMax == BufferLength)
                 {
@@ -5186,8 +5255,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
 
         if (ResetCol)
         {
-            gUIContext->TextInputCursorMaxCol =
-                Rr_UIThisLineCol(Buffer, NewCursorEnd);
+            Rr_UISetTextInputMaxCol(Buffer, NewCursorEnd);
         }
     }
 
@@ -5215,8 +5283,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             *CursorBegin = NewCursorBegin;
             *CursorEnd = NewCursorEnd;
             gUIContext->TextInputCursorBlinkTime = TimeMS;
-            gUIContext->TextInputCursorMaxCol =
-                Rr_UIThisLineCol(Buffer, NewCursorEnd);
+            Rr_UISetTextInputMaxCol(Buffer, NewCursorEnd);
             Result.Edited |= true;
         }
     }
@@ -5410,8 +5477,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
                 gUIContext->DeferTextInputBufferCopy = true;
             }
 
-            gUIContext->TextInputCursorMaxCol =
-                Rr_UIThisLineCol(Buffer, gUIContext->TextInputCursorEnd);
+            Rr_UISetTextInputMaxCol(Buffer, gUIContext->TextInputCursorEnd);
             gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
         }
 
@@ -5545,8 +5611,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
                 gUIContext->DeferTextInputBufferCopy = true;
             }
 
-            gUIContext->TextInputCursorMaxCol =
-                Rr_UIThisLineCol(Buffer, gUIContext->TextInputCursorEnd);
+            Rr_UISetTextInputMaxCol(Buffer, gUIContext->TextInputCursorEnd);
             gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
         }
         else if (Focused && ClickResult.Moved)
@@ -8254,6 +8319,14 @@ void Rr_UIDebugOverlay(void)
                 DrawWindowsMS,
                 DrawTextMS,
                 DrawInputTextMS);
+
+            Rr_UITextF(
+                "TextInputCursorBegin: %zu\n"
+                "TextInputCursorEnd: %zu\n"
+                "TextInputCodepointMaxCol: %zu",
+                gUIContext->TextInputCursorBegin,
+                gUIContext->TextInputCursorEnd,
+                gUIContext->TextInputCursorCodepointMaxCol);
 
             Rr_UITextF(
                 "Hovered Window: %s\n"

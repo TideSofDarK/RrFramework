@@ -115,8 +115,9 @@ static inline uint32_t Rr_RGBAToU32(Rr_Vec4 Color)
 typedef struct Rr_UTF8Decoder Rr_UTF8Decoder;
 struct Rr_UTF8Decoder
 {
-    size_t CodepointIndex;
-    size_t CStringIndex;
+    size_t CodepointCount;
+    size_t CStringCodepointIndex;
+    size_t CStringParserIndex;
     const char *CString;
     uint32_t Codepoint;
     uint8_t Carry;
@@ -136,52 +137,58 @@ static inline uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
         {
             Decoder->Carry--;
             Decoder->Codepoint |=
-                (uint8_t)((~TWO & Decoder->CString[Decoder->CStringIndex])
+                (uint8_t)((~TWO & Decoder->CString[Decoder->CStringParserIndex])
                           << (Decoder->Carry * 6));
 
             if (Decoder->Carry == 0)
             {
-                Decoder->CodepointIndex++;
-                Decoder->CStringIndex++;
+                Decoder->CodepointCount++;
+                Decoder->CStringParserIndex++;
                 return Decoder->Codepoint;
             }
         }
         else
         {
-            if ((Decoder->CString[Decoder->CStringIndex] & FOUR) == FOUR)
+            if ((Decoder->CString[Decoder->CStringParserIndex] & FOUR) == FOUR)
             {
                 Decoder->Codepoint =
-                    (uint8_t)(~FIVE & Decoder->CString[Decoder->CStringIndex]);
+                    (uint8_t)(~FIVE &
+                              Decoder->CString[Decoder->CStringParserIndex]);
                 Decoder->Codepoint <<= 3 * 6;
                 Decoder->Carry = 3;
-                Decoder->CStringIndex++;
+                Decoder->CStringCodepointIndex = Decoder->CStringParserIndex++;
                 continue;
             }
-            else if ((Decoder->CString[Decoder->CStringIndex] & THREE) == THREE)
+            else if (
+                (Decoder->CString[Decoder->CStringParserIndex] & THREE) ==
+                THREE)
             {
                 Decoder->Codepoint =
-                    (uint8_t)(~FOUR & Decoder->CString[Decoder->CStringIndex]);
+                    (uint8_t)(~FOUR &
+                              Decoder->CString[Decoder->CStringParserIndex]);
                 Decoder->Codepoint <<= 2 * 6;
                 Decoder->Carry = 2;
-                Decoder->CStringIndex++;
+                Decoder->CStringCodepointIndex = Decoder->CStringParserIndex++;
                 continue;
             }
-            else if ((Decoder->CString[Decoder->CStringIndex] & TWO) == TWO)
+            else if (
+                (Decoder->CString[Decoder->CStringParserIndex] & TWO) == TWO)
             {
                 Decoder->Codepoint =
-                    (uint8_t)(~THREE & Decoder->CString[Decoder->CStringIndex]);
+                    (uint8_t)(~THREE &
+                              Decoder->CString[Decoder->CStringParserIndex]);
                 Decoder->Codepoint <<= 1 * 6;
                 Decoder->Carry = 1;
-                Decoder->CStringIndex++;
+                Decoder->CStringCodepointIndex = Decoder->CStringParserIndex++;
                 continue;
             }
             else
             {
-                Decoder->CodepointIndex++;
+                Decoder->CodepointCount++;
                 Decoder->Codepoint =
-                    (uint32_t)(Decoder->CString[Decoder->CStringIndex] &
+                    (uint32_t)(Decoder->CString[Decoder->CStringParserIndex] &
                                ~READY);
-                Decoder->CStringIndex++;
+                Decoder->CStringCodepointIndex = Decoder->CStringParserIndex++;
                 return Decoder->Codepoint;
             }
         }
