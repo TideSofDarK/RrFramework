@@ -1748,24 +1748,31 @@ static inline void Rr_UIDrawCheckmark(
     float Size,
     Rr_Vec4 *Color)
 {
+    const Rr_Vec2 NE = { -cosf(RR_PI32 * 0.25f), sinf(RR_PI32 * 0.25f) };
+    const Rr_Vec2 NW = { cosf(RR_PI32 * 0.25f), sinf(RR_PI32 * 0.25f) };
+
     float ShortX = Size * gUIContext->Style.CheckmarkRatios.X;
     float LongX = Size - ShortX;
+    float Hypo = sqrtf(ShortX * ShortX + ShortX * ShortX);
+    float Thickness = Size * gUIContext->Style.CheckmarkRatios.Y;
+    float HypoY = sqrtf(Thickness * Thickness + Thickness * Thickness);
+    float ShortY = Thickness / sqrtf(2.0f);
 
-    float ShortY = Size * gUIContext->Style.CheckmarkRatios.Y;
-    float LongY = Size - ShortY;
+    Offset.Y -= (Size - LongX - ShortY) * 0.5f;
 
-    float TinyX = ShortY + LongX - Size;
+    Rr_Vec2 MiddleTop = Rr_AddV2(Offset, Rr_V2(ShortX, Size - HypoY));
+    Rr_Vec2 MiddleBottom = Rr_AddV2(Offset, Rr_V2(ShortX, Size));
 
     {
         Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(4, 6);
         Rr_UIVertex *Vertices = Primitive.Vertices;
         Rr_UIIndex *Indices = Primitive.Indices;
 
-        Vertices[0].Position =
-            Rr_AddV2(Offset, Rr_V2(0.0f, Size - ShortX - ShortY));
-        Vertices[1].Position = Rr_AddV2(Offset, Rr_V2(ShortX, LongY));
-        Vertices[2].Position = Rr_AddV2(Offset, Rr_V2(ShortX, Size));
+        Vertices[1].Position = MiddleTop;
+        Vertices[2].Position = MiddleBottom;
         Vertices[3].Position = Rr_AddV2(Offset, Rr_V2(0.0f, Size - ShortX));
+        Vertices[0].Position =
+            Rr_AddV2(Vertices[3].Position, Rr_MulV2F(NE, -Thickness));
 
         for (size_t Index = 0; Index < 7; ++Index)
         {
@@ -1780,7 +1787,7 @@ static inline void Rr_UIDrawCheckmark(
         Indices[4] = Primitive.BaseVertex + 0;
         Indices[5] = Primitive.BaseVertex + 2;
 
-        /* Rr_UIFeatherConvexPrimitive(&Primitive, 4, 1.0f); */
+        Rr_UIFeatherConvexPrimitive(&Primitive, 4, 2.0f);
     }
 
     {
@@ -1788,10 +1795,11 @@ static inline void Rr_UIDrawCheckmark(
         Rr_UIVertex *Vertices = Primitive.Vertices;
         Rr_UIIndex *Indices = Primitive.Indices;
 
-        Vertices[0].Position = Rr_AddV2(Offset, Rr_V2(ShortX, LongY));
-        Vertices[1].Position = Rr_AddV2(Offset, Rr_V2(Size, -TinyX));
+        Vertices[0].Position = MiddleTop;
         Vertices[2].Position = Rr_AddV2(Offset, Rr_V2(Size, Size - LongX));
-        Vertices[3].Position = Rr_AddV2(Offset, Rr_V2(ShortX, Size));
+        Vertices[1].Position =
+            Rr_AddV2(Vertices[2].Position, Rr_MulV2F(NW, -Thickness));
+        Vertices[3].Position = MiddleBottom;
 
         for (size_t Index = 0; Index < 7; ++Index)
         {
@@ -1806,7 +1814,7 @@ static inline void Rr_UIDrawCheckmark(
         Indices[4] = Primitive.BaseVertex + 0;
         Indices[5] = Primitive.BaseVertex + 2;
 
-        /* Rr_UIFeatherConvexPrimitive(&Primitive, 4, 1.0f); */
+        Rr_UIFeatherConvexPrimitive(&Primitive, 4, 2.0f);
     }
 }
 
@@ -1829,27 +1837,6 @@ static inline void Rr_UIDrawGlyph(
         },
         Color,
         UVs);
-
-    /* Rr_UIDrawSolidQuad( */
-    /*     &(Rr_Rect){ */
-    /*         Position, */
-    /*         Rr_V2(Glyph->Extent.X, gUIContext->DefaultFont->Size), */
-    /*     }, */
-    /*     &(Rr_Vec4){ 0.0, 1.0, 0.0, 0.3f }); */
-
-    /* Rr_UIDrawSolidQuad( */
-    /*     &(Rr_Rect){ */
-    /*         Position, */
-    /*         Rr_V2(Glyph->Extent.X, gUIContext->DefaultFont->LineHeight), */
-    /*     }, */
-    /*     &(Rr_Vec4){ 0.0, 1.0, 0.0, 0.3f }); */
-
-    /* Rr_UIDrawSolidQuad( */
-    /*     &(Rr_Rect){ */
-    /*         Rr_AddV2(Position, Glyph->Offset), */
-    /*         Glyph->Extent, */
-    /*     }, */
-    /*     &(Rr_Vec4){ 1.0, 0.0, 0.0, 0.3f }); */
 }
 
 static inline void Rr_UIDrawInteractiveTextCursor(
@@ -7653,8 +7640,8 @@ void Rr_UISetDefaultTheme(void)
     Style->FlexibleTitleMargin = 0.250000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
-    Style->CheckmarkRatios = Rr_V2(0.325000f, 0.300000f);
-    Style->CheckmarkSize = 0.725000f;
+    Style->CheckmarkRatios = Rr_V2(0.35000f, 0.200000f);
+    Style->CheckmarkSize = 0.75000f;
     Style->CrossWidth = 0.650000f;
     Style->CrossThickness = 0.135000f;
     Colors->Foreground = Rr_V4(0.899630f, 0.924908f, 0.933333f, 1.000000f);

@@ -331,8 +331,8 @@ static void SetOliveTheme()
     Style->FlexibleTitleMargin = 0.500000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
-    Style->CheckmarkRatios = Rr_V2(0.300000f, 0.300000f);
-    Style->CheckmarkSize = 0.750000f;
+    Style->CheckmarkRatios = Rr_V2(0.35000f, 0.200000f);
+    Style->CheckmarkSize = 0.75000f;
     Style->CrossWidth = 0.650000f;
     Style->CrossThickness = 0.035000f;
     Colors->Foreground = Rr_V4(0.000000f, 0.000000f, 0.000000f, 1.000000f);
@@ -412,8 +412,8 @@ static void SetPinkTheme()
     Style->FlexibleTitleMargin = 0.250000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
-    Style->CheckmarkRatios = Rr_V2(0.325000f, 0.300000f);
-    Style->CheckmarkSize = 0.725000f;
+    Style->CheckmarkRatios = Rr_V2(0.35000f, 0.200000f);
+    Style->CheckmarkSize = 0.75000f;
     Style->CrossWidth = 0.650000f;
     Style->CrossThickness = 0.135000f;
     Colors->Foreground = Rr_V4(0.940547f, 0.899630f, 0.970019f, 1.000000f);
