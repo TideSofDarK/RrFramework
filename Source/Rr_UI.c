@@ -1166,8 +1166,8 @@ static inline void Rr_UIFeatherConvexPrimitive(
         Rr_Vec2 N0 =
             Rr_UICalculateEdgeNormal(Previous.Position, Current.Position);
         Rr_Vec2 N1 = Rr_UICalculateEdgeNormal(Current.Position, Next.Position);
-
-        Rr_Vec2 N = Rr_MulV2F(Rr_AddV2(N0, N1), 0.5f * Amount);
+        Rr_Vec2 Norm = Rr_NormV2(Rr_AddV2(N0, N1));
+        Rr_Vec2 N = Rr_MulV2F(Norm, Amount);
         Rr_Vec2 Position = Rr_AddV2(Current.Position, N);
 
         Primitive.Vertices[Index] = (Rr_UIVertex){
@@ -1205,7 +1205,7 @@ void Rr_UIDrawTriangleVertices(Rr_UIVertex const *Vertices)
     Primitive.Indices[1] = Primitive.BaseVertex + 1;
     Primitive.Indices[2] = Primitive.BaseVertex + 2;
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 8.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 2.0f);
 }
 
 void Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color)
@@ -1229,14 +1229,14 @@ void Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color)
     Primitive.Indices[1] = Primitive.BaseVertex + 1;
     Primitive.Indices[2] = Primitive.BaseVertex + 2;
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 8.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 2.0f);
 }
 
 void Rr_UIDrawFitTriangleFilled(
     Rr_Vec2 Offset,
     float Size,
     float Angle,
-    Rr_Vec4 *Color)
+    Rr_Vec4 const *Color)
 {
     Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
 
@@ -1270,14 +1270,14 @@ void Rr_UIDrawFitTriangleFilled(
     Primitive.Indices[1] = Primitive.BaseVertex + 1;
     Primitive.Indices[2] = Primitive.BaseVertex + 2;
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 4.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 2.0f);
 }
 
 void Rr_UIDrawEquilateralTriangleFilled(
     Rr_Vec2 Offset,
     float Size,
     float Angle,
-    Rr_Vec4 *Color)
+    Rr_Vec4 const *Color)
 {
     Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(3, 3);
 
@@ -1318,14 +1318,14 @@ void Rr_UIDrawEquilateralTriangleFilled(
     Primitive.Indices[1] = Primitive.BaseVertex + 1;
     Primitive.Indices[2] = Primitive.BaseVertex + 2;
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 4.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 2.0f);
 }
 
 void Rr_UIDrawCircle(
     Rr_Vec2 Offset,
     float Radius,
     float Thickness,
-    Rr_Vec4 *Color)
+    Rr_Vec4 const *Color)
 {
     static const int SEGMENTS = 20;
 
@@ -1375,7 +1375,7 @@ void Rr_UIDrawCircle(
     Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, -1.0f);
 }
 
-void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 *Color)
+void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color)
 {
     static const size_t SEGMENTS = 20;
 
@@ -1407,7 +1407,7 @@ void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 *Color)
     Rr_UIFeatherConvexPrimitive(&Primitive, (int)SEGMENTS, 1.0f);
 }
 
-void Rr_UIDrawQuadVertices(Rr_UIVertex *Vertices)
+void Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices)
 {
     Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
     memcpy(Primitive.Vertices, Vertices, sizeof(Rr_UIVertex) * 4);
@@ -5492,7 +5492,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
         Focused = ClickResult.ClickCount || ClickResult.Held;
 
-        if (ClickResult.Hovered || Focused)
+        if ((ClickResult.Hovered && !gUIContext->DragParent) || Focused)
         {
             gUIContext->CursorType = RR_CURSOR_TYPE_RESIZE_EW;
         }
@@ -5637,7 +5637,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             }
         }
 
-        if (ClickResult.Hovered)
+        if (ClickResult.Hovered || ClickResult.Held)
         {
             gUIContext->CursorType = RR_CURSOR_TYPE_TEXT;
         }

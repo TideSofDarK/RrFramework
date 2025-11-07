@@ -206,23 +206,23 @@ extern void Rr_UIDrawFitTriangleFilled(
     Rr_Vec2 Offset,
     float Size,
     float Angle,
-    Rr_Vec4 *Color);
+    Rr_Vec4 const *Color);
 
 extern void Rr_UIDrawEquilateralTriangleFilled(
     Rr_Vec2 Offset,
     float Size,
     float Angle,
-    Rr_Vec4 *Color);
+    Rr_Vec4 const *Color);
 
 extern void Rr_UIDrawCircle(
     Rr_Vec2 Offset,
     float Radius,
     float Thickness,
-    Rr_Vec4 *Color);
+    Rr_Vec4 const *Color);
 
-extern void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 *Color);
+extern void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color);
 
-extern void Rr_UIDrawQuadVertices(Rr_UIVertex *Vertices);
+extern void Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices);
 
 extern Rr_Vec2 Rr_UIGetCursor(void);
 
