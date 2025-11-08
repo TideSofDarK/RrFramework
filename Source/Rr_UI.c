@@ -56,6 +56,7 @@
 
 #define RR_UI_SCALAR_BUFFER_SIZE 32
 
+static const Rr_Vec4 RR_UI_VEC4_NEG = { -1.0f, -1.0f, -1.0f, -1.0f };
 static const Rr_Vec4 RR_UI_VEC4_ZERO = { 0.0f, 0.0f, 0.0f, 0.0f };
 static const Rr_Vec4 RR_UI_VEC4_ONE = { 1.0f, 1.0f, 1.0f, 1.0f };
 
@@ -4017,9 +4018,9 @@ void Rr_UIBeginTabs(const char *Title)
 
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, NULL);
 
-    Rr_UIHash *SelectedTabHash =
-        &Rr_UIGetStorage(Window, TitleHash, RR_UI_STORAGE_TYPE_TABS)
-             ->Union.SelectedTabHash;
+    Rr_UIStorage *Storage =
+        Rr_UIGetStorage(Window, TitleHash, RR_UI_STORAGE_TYPE_TABS);
+    Rr_UIHash *SelectedTabHash = &Storage->Union.SelectedTabHash;
     Layout->SelectedTabHash = SelectedTabHash;
     Layout->TabCursor = Layout->Cursor;
 
@@ -4062,7 +4063,7 @@ bool Rr_UITab(const char *Title)
         Selected = true;
     }
 
-    Rr_UIPrimitive TabQuad = Rr_UIReserveQuad();
+    Rr_UIPrimitive TabBevel = Rr_UIReserveBevel();
 
     Rr_Vec2 TextPosition = Layout->TabCursor;
     TextPosition.X += gUIContext->ButtonPadding.X;
@@ -4113,13 +4114,14 @@ bool Rr_UITab(const char *Title)
         TabButtonColor = &gUIContext->Colors.Background;
     }
 
-    Rr_UISolidQuad(
-        TabQuad.Vertices,
+    Rr_UIBevel(
+        TabBevel,
         &(Rr_Rect){
             ButtonPosition,
             ButtonSize,
         },
-        TabButtonColor);
+        TabButtonColor,
+        false);
 
     if (ClickResult.ClickCount)
     {
@@ -5492,7 +5494,11 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
         Focused = ClickResult.ClickCount || ClickResult.Held;
 
-        if ((ClickResult.Hovered && !gUIContext->DragParent) || Focused)
+        bool ChangeCursor =
+            ClickResult.Hovered &&
+            (!gUIContext->DragParent || (gUIContext->DragHash == Hash));
+        ChangeCursor |= ClickResult.Held;
+        if (ChangeCursor)
         {
             gUIContext->CursorType = RR_CURSOR_TYPE_RESIZE_EW;
         }
@@ -5637,11 +5643,6 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             }
         }
 
-        if (ClickResult.Hovered || ClickResult.Held)
-        {
-            gUIContext->CursorType = RR_CURSOR_TYPE_TEXT;
-        }
-
         if (Focused)
         {
             bool EnterToConfirm =
@@ -5666,6 +5667,15 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         if (EditResult.Edited && UsePersistentBuffer)
         {
             memcpy(Buffer, gUIContext->TextInputBuffer.Data, BufferCapacity);
+        }
+
+        bool ChangeCursor =
+            ClickResult.Hovered &&
+            (!gUIContext->DragParent || (gUIContext->DragHash == Hash));
+        ChangeCursor |= ClickResult.Held;
+        if (ChangeCursor)
+        {
+            gUIContext->CursorType = RR_CURSOR_TYPE_TEXT;
         }
     }
 
@@ -6439,6 +6449,18 @@ bool Rr_UIInputFloatZO(const char *Title, float *Value)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
+bool Rr_UIInputFloatNO(const char *Title, float *Value)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        RR_UI_VEC4_NEG.Elements,
+        RR_UI_VEC4_ONE.Elements,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
 bool Rr_UIInputFloat2(const char *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
@@ -6473,6 +6495,18 @@ bool Rr_UIInputFloat2ZO(const char *Title, float *Values)
         Title,
         Values,
         RR_UI_VEC4_ZERO.Elements,
+        RR_UI_VEC4_ONE.Elements,
+        2,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
+bool Rr_UIInputFloat2NO(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        RR_UI_VEC4_NEG.Elements,
         RR_UI_VEC4_ONE.Elements,
         2,
         1,
@@ -6519,6 +6553,18 @@ bool Rr_UIInputFloat3ZO(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
+bool Rr_UIInputFloat3NO(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        RR_UI_VEC4_NEG.Elements,
+        RR_UI_VEC4_ONE.Elements,
+        3,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
 bool Rr_UIInputFloat4(const char *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
@@ -6553,6 +6599,18 @@ bool Rr_UIInputFloat4ZO(const char *Title, float *Values)
         Title,
         Values,
         RR_UI_VEC4_ZERO.Elements,
+        RR_UI_VEC4_ONE.Elements,
+        4,
+        1,
+        RR_UI_SCALAR_TYPE_FLOAT);
+}
+
+bool Rr_UIInputFloat4NO(const char *Title, float *Values)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        RR_UI_VEC4_NEG.Elements,
         RR_UI_VEC4_ONE.Elements,
         4,
         1,

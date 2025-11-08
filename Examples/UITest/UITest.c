@@ -603,6 +603,35 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
+        if (Rr_UIBeginChild("Tabs"))
+        {
+            Rr_UIBeginTabs("DebugOverlayTabs");
+            if (Rr_UITab("Text"))
+            {
+                Rr_UIText("Some text...");
+                Rr_UIText("Some text...");
+                Rr_UIText("Some text...");
+            }
+            if (Rr_UITab("Buttons"))
+            {
+                Rr_UIButton("Button A");
+                Rr_UIButton("Button B");
+                Rr_UIButton("Button C");
+            }
+            if (Rr_UITab("Input Fields"))
+            {
+                static Rr_Vec2 TestVec2 = { -0.5f, 0.5f };
+                Rr_UIInputFloat2NO("Float2 Input", TestVec2.Elements);
+                static Rr_Vec3 TestVec3 = { -0.5f, 0.5f };
+                Rr_UIInputFloat3NO("Float3 Input", TestVec3.Elements);
+                static Rr_Vec4 TestVec4 = { -0.5f, 0.5f };
+                Rr_UIInputFloat4NO("Float4 Input", TestVec4.Elements);
+            }
+            Rr_UIEndTabs();
+
+            Rr_UIEndChild();
+        }
+
         if (Rr_UIBeginChild("Trees"))
         {
             Rr_UIBeginHorizontal();

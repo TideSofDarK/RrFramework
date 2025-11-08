@@ -308,44 +308,40 @@ extern bool Rr_UIInputText(
     char *Buffer);
 
 extern bool Rr_UIInputFloat(const char *Title, float *Value);
-
 extern bool Rr_UIInputFloatRange(
     const char *Title,
     float *Value,
     float Min,
     float Max);
-
 extern bool Rr_UIInputFloatZO(const char *Title, float *Value);
+extern bool Rr_UIInputFloatNO(const char *Title, float *Value);
 
 extern bool Rr_UIInputFloat2(const char *Title, float *Values);
-
 extern bool Rr_UIInputFloat2Range(
     const char *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-
 extern bool Rr_UIInputFloat2ZO(const char *Title, float *Values);
+extern bool Rr_UIInputFloat2NO(const char *Title, float *Values);
 
 extern bool Rr_UIInputFloat3(const char *Title, float *Values);
-
 extern bool Rr_UIInputFloat3Range(
     const char *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-
 extern bool Rr_UIInputFloat3ZO(const char *Title, float *Values);
+extern bool Rr_UIInputFloat3NO(const char *Title, float *Values);
 
 extern bool Rr_UIInputFloat4(const char *Title, float *Values);
-
 extern bool Rr_UIInputFloat4Range(
     const char *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-
 extern bool Rr_UIInputFloat4ZO(const char *Title, float *Values);
+extern bool Rr_UIInputFloat4NO(const char *Title, float *Values);
 
 extern bool Rr_UIInputFloat2x2(const char *Title, float *Values);
 
