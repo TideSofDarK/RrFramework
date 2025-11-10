@@ -49,6 +49,7 @@
 
 ** User Interface
 
+- [ ] Hide flexible widgets properly when layout lacks available width.
 - [X] Many newlines and scroll in text input bug.
 - [X] Shift-Enter doesn't work.
 - [X] Enter at cursor 0 doesn't work.

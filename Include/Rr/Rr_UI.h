@@ -78,6 +78,7 @@ struct Rr_UIStyle
     float ComponentMargin;
     float ScrollbarAreaWidth;
     float BevelThickness;
+    float DoubleBevelThickness;
     float BevelIntensityLight;
     float BevelIntensityDark;
     float FlexibleTitleMargin;

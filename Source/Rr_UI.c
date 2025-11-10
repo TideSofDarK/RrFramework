@@ -60,6 +60,9 @@ static const Rr_Vec4 RR_UI_VEC4_NEG = { -1.0f, -1.0f, -1.0f, -1.0f };
 static const Rr_Vec4 RR_UI_VEC4_ZERO = { 0.0f, 0.0f, 0.0f, 0.0f };
 static const Rr_Vec4 RR_UI_VEC4_ONE = { 1.0f, 1.0f, 1.0f, 1.0f };
 
+static const Rr_Vec3 RR_UI_VEC3_ZERO = { 0.0f, 0.0f, 0.0f };
+static const Rr_Vec3 RR_UI_VEC3_ONE = { 1.0f, 1.0f, 1.0f };
+
 #define RR_UI_ROUND(Value) (ceilf((Value) / 2.0f) * 2.0f)
 #define RR_UI_ROUND_V2(Value) \
     (Rr_V2(RR_UI_ROUND((Value).X), RR_UI_ROUND((Value).Y)))
@@ -139,6 +142,8 @@ struct Rr_UILayout
 
     /* TODO: Seems useless. */
     Rr_Rect Rect;
+
+    float BorderThickness;
 
     Rr_Vec2 Cursor;
     float TotalAvailableContentsWidth;
@@ -274,7 +279,7 @@ struct Rr_UIContext
     RR_FREE_LIST(Rr_UIFont) Fonts;
     Rr_UIFont *DefaultFont;
 
-    /* float LineHeight; */
+    float BorderThickness;
     Rr_Vec2 WindowPadding;
     Rr_Vec2 ContentsMargin;
     float ComponentMargin;
@@ -291,6 +296,7 @@ struct Rr_UIContext
     float ScrollbarHandleWidth;
     Rr_Vec2 ButtonPadding;
     float BevelThickness;
+    float DoubleBevelThickness;
     Rr_Vec2 InputFieldPadding;
     float TopLevelTreeOffset;
     float TreeOffset;
@@ -984,160 +990,6 @@ static inline Rr_UIPrimitive Rr_UIReserveQuad(void)
     return Rr_UIReserveQuads(1);
 }
 
-#define RR_UI_BEVEL_VERTEX_COUNT (16)
-#define RR_UI_BEVEL_INDEX_COUNT  (30)
-
-static inline Rr_UIPrimitive Rr_UIReserveBevel(void)
-{
-    return Rr_UIReservePrimitive(
-        RR_UI_BEVEL_VERTEX_COUNT,
-        RR_UI_BEVEL_INDEX_COUNT);
-}
-
-static inline void Rr_UIBevelEx(
-    Rr_UIPrimitive Primitive,
-    Rr_Rect *Rect,
-    Rr_Vec4 *Colors,
-    bool Pressed)
-{
-    Rr_Vec4 BaseColor = Colors[0];
-
-    Rr_Vec4 TopLeftColor;
-    TopLeftColor.RGB = Rr_LerpV3(
-        BaseColor.RGB,
-        Pressed ? gUIContext->Style.BevelIntensityDark
-                : gUIContext->Style.BevelIntensityLight,
-        Rr_V3F(Pressed ? 0.0f : 1.0f));
-    TopLeftColor.A = 1.0f;
-    Rr_Vec4 BottomRightColor;
-
-    BottomRightColor.RGB = Rr_LerpV3(
-        BaseColor.RGB,
-        Pressed ? gUIContext->Style.BevelIntensityLight
-                : gUIContext->Style.BevelIntensityDark,
-        Rr_V3F(Pressed ? 1.0f : 0.0f));
-    BottomRightColor.A = 1.0f;
-
-    Rr_Vec4 BackgroundColor = BaseColor;
-    if (Pressed)
-    {
-        BackgroundColor.RGB =
-            Rr_LerpV3(BackgroundColor.RGB, 0.4f, Rr_V3F(0.0f));
-    }
-    BackgroundColor.A = 1.0f;
-
-    Rr_UIVertex *Vertices = Primitive.Vertices;
-    Rr_UIIndex *Indices = Primitive.Indices;
-
-    float Thickness = gUIContext->BevelThickness;
-
-    float Width = Rect->Extent.Width;
-    float Height = Rect->Extent.Height;
-    float TempWidth = Rect->Extent.Width - Thickness;
-    float TempHeight = Rect->Extent.Height - Thickness;
-
-    Vertices[0] = (Rr_UIVertex){
-        .Position = Rect->Offset,
-        .Color = TopLeftColor,
-    };
-    Vertices[1] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Width, 0.0f)),
-        .Color = TopLeftColor,
-    };
-    Vertices[2] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2F(Thickness)),
-        .Color = TopLeftColor,
-    };
-    Vertices[3] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(TempWidth, Thickness)),
-        .Color = TopLeftColor,
-    };
-    Vertices[4] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Height)),
-        .Color = TopLeftColor,
-    };
-    Vertices[5] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Thickness, TempHeight)),
-        .Color = TopLeftColor,
-    };
-
-    Vertices[6] = (Rr_UIVertex){
-        .Position = Vertices[3].Position,
-        .Color = BottomRightColor,
-    };
-    Vertices[7] = (Rr_UIVertex){
-        .Position = Vertices[1].Position,
-        .Color = BottomRightColor,
-    };
-    Vertices[8] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(TempWidth, TempHeight)),
-        .Color = BottomRightColor,
-    };
-    Vertices[9] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rect->Extent),
-        .Color = BottomRightColor,
-    };
-    Vertices[10] = (Rr_UIVertex){
-        .Position = Vertices[4].Position,
-        .Color = BottomRightColor,
-    };
-    Vertices[11] = (Rr_UIVertex){
-        .Position = Vertices[5].Position,
-        .Color = BottomRightColor,
-    };
-
-    Vertices[12] = (Rr_UIVertex){
-        .Position = Vertices[2].Position,
-        .Color = Colors[0],
-    };
-    Vertices[13] = (Rr_UIVertex){
-        .Position = Vertices[3].Position,
-        .Color = Colors[1],
-    };
-    Vertices[14] = (Rr_UIVertex){
-        .Position = Vertices[5].Position,
-        .Color = Colors[2],
-    };
-    Vertices[15] = (Rr_UIVertex){
-        .Position = Vertices[8].Position,
-        .Color = Colors[3],
-    };
-
-    static const Rr_UIIndex BEVEL_INDICES[] = {
-        0, 1, 2, 1,  3,  2, 0,  2, 4, 2,  5,  4,  6,  7,  8,
-        7, 9, 8, 10, 11, 9, 11, 8, 9, 12, 13, 14, 13, 15, 14,
-    };
-
-    for (size_t Index = 0; Index < RR_UI_BEVEL_INDEX_COUNT; ++Index)
-    {
-        Indices[Index] = Primitive.BaseVertex + BEVEL_INDICES[Index];
-    }
-}
-
-static inline void Rr_UIBevel(
-    Rr_UIPrimitive Primitive,
-    Rr_Rect *Rect,
-    Rr_Vec4 *BaseColor,
-    bool Pressed)
-{
-    Rr_Vec4 Colors[4] = { *BaseColor, *BaseColor, *BaseColor, *BaseColor };
-    Rr_UIBevelEx(Primitive, Rect, Colors, Pressed);
-}
-
-static inline void Rr_UIDrawBevel(
-    Rr_Rect *Rect,
-    Rr_Vec4 *BaseColor,
-    bool Pressed)
-{
-    Rr_UIBevel(
-        Rr_UIReservePrimitive(
-            RR_UI_BEVEL_VERTEX_COUNT,
-            RR_UI_BEVEL_INDEX_COUNT),
-        Rect,
-        BaseColor,
-        Pressed);
-}
-
 static inline Rr_Vec2 Rr_UICalculateEdgeNormal(Rr_Vec2 A, Rr_Vec2 B)
 {
     Rr_Vec2 C = Rr_NormV2(Rr_SubV2(B, A));
@@ -1817,6 +1669,292 @@ static inline void Rr_UIDrawCheckmark(
 
         Rr_UIFeatherConvexPrimitive(&Primitive, 4, 2.0f);
     }
+}
+
+#define RR_UI_BEVEL_FRAME_VERTEX_COUNT (12)
+#define RR_UI_BEVEL_FRAME_INDEX_COUNT  (24)
+
+static inline Rr_UIPrimitive Rr_UIReserveBevelFrame(void)
+{
+    return Rr_UIReservePrimitive(
+        RR_UI_BEVEL_FRAME_VERTEX_COUNT,
+        RR_UI_BEVEL_FRAME_INDEX_COUNT);
+}
+
+static inline void Rr_UIBevelFrame(
+    Rr_Rect *Rect,
+    Rr_UIPrimitive *Primitive,
+    Rr_Vec4 *ColorLight,
+    Rr_Vec4 *ColorDark,
+    float Thickness)
+{
+    Rr_UIVertex *Vertices = Primitive->Vertices;
+    Rr_UIIndex *Indices = Primitive->Indices;
+
+    float Width = Rect->Extent.Width;
+    float Height = Rect->Extent.Height;
+    float TempWidth = Rect->Extent.Width - Thickness;
+    float TempHeight = Rect->Extent.Height - Thickness;
+
+    Vertices[0] = (Rr_UIVertex){
+        .Position = Rect->Offset,
+        .Color = *ColorLight,
+    };
+    Vertices[1] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Width, 0.0f)),
+        .Color = *ColorLight,
+    };
+    Vertices[2] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2F(Thickness)),
+        .Color = *ColorLight,
+    };
+    Vertices[3] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(TempWidth, Thickness)),
+        .Color = *ColorLight,
+    };
+    Vertices[4] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Height)),
+        .Color = *ColorLight,
+    };
+    Vertices[5] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Thickness, TempHeight)),
+        .Color = *ColorLight,
+    };
+
+    Vertices[6] = (Rr_UIVertex){
+        .Position = Vertices[3].Position,
+        .Color = *ColorDark,
+    };
+    Vertices[7] = (Rr_UIVertex){
+        .Position = Vertices[1].Position,
+        .Color = *ColorDark,
+    };
+    Vertices[8] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(TempWidth, TempHeight)),
+        .Color = *ColorDark,
+    };
+    Vertices[9] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rect->Extent),
+        .Color = *ColorDark,
+    };
+    Vertices[10] = (Rr_UIVertex){
+        .Position = Vertices[4].Position,
+        .Color = *ColorDark,
+    };
+    Vertices[11] = (Rr_UIVertex){
+        .Position = Vertices[5].Position,
+        .Color = *ColorDark,
+    };
+
+    static const Rr_UIIndex BEVEL_FRAME_INDICES[] = {
+        0, 1, 2, 1, 3, 2, 0,  2,  4, 2,  5, 4,
+        6, 7, 8, 7, 9, 8, 10, 11, 9, 11, 8, 9,
+    };
+
+    for (size_t Index = 0; Index < RR_UI_BEVEL_FRAME_INDEX_COUNT; ++Index)
+    {
+        Indices[Index] = Primitive->BaseVertex + BEVEL_FRAME_INDICES[Index];
+    }
+}
+
+static inline void Rr_UIDrawDoubleBevel(
+    Rr_Rect *Rect,
+    Rr_Vec4 *Color,
+    float Thickness)
+{
+    Rr_Vec4 ColorLight;
+    ColorLight.RGB = Rr_LerpV3(
+        Color->RGB,
+        gUIContext->Style.BevelIntensityLight,
+        RR_UI_VEC3_ONE);
+    ColorLight.A = 1.0f;
+    Rr_Vec4 ColorDark;
+    ColorDark.RGB = Rr_LerpV3(
+        Color->RGB,
+        gUIContext->Style.BevelIntensityDark,
+        RR_UI_VEC3_ZERO);
+    ColorDark.A = 1.0f;
+
+    Rr_UIPrimitive BevelFramePrimitive = Rr_UIReserveBevelFrame();
+    Rr_UIBevelFrame(
+        Rect,
+        &BevelFramePrimitive,
+        &ColorLight,
+        &ColorDark,
+        Thickness * 0.5f);
+
+    BevelFramePrimitive = Rr_UIReserveBevelFrame();
+    Rr_Rect InnerRect = Rr_ResizeRect(Rect, -Thickness * 0.5f);
+    Rr_UIBevelFrame(
+        &InnerRect,
+        &BevelFramePrimitive,
+        &ColorDark,
+        &ColorLight,
+        Thickness * 0.5f);
+}
+
+static inline void Rr_UIDrawDoubleBevelFilled(
+    Rr_Rect *Rect,
+    Rr_Vec4 *Color,
+    float Thickness)
+{
+    Rr_UIDrawDoubleBevel(Rect, Color, Thickness);
+    Rr_Rect InnerRect = Rr_ResizeRect(Rect, -Thickness);
+    Rr_UIDrawRect(&InnerRect, Color);
+}
+
+#define RR_UI_BEVEL_VERTEX_COUNT (16)
+#define RR_UI_BEVEL_INDEX_COUNT  (30)
+
+static inline Rr_UIPrimitive Rr_UIReserveBevel(void)
+{
+    return Rr_UIReservePrimitive(
+        RR_UI_BEVEL_VERTEX_COUNT,
+        RR_UI_BEVEL_INDEX_COUNT);
+}
+
+static inline void Rr_UIBevelEx(
+    Rr_UIPrimitive Primitive,
+    Rr_Rect *Rect,
+    Rr_Vec4 *Colors,
+    bool Pressed)
+{
+    Rr_Vec4 BaseColor = Colors[0];
+
+    Rr_Vec4 TopLeftColor;
+    TopLeftColor.RGB = Rr_LerpV3(
+        BaseColor.RGB,
+        Pressed ? gUIContext->Style.BevelIntensityDark
+                : gUIContext->Style.BevelIntensityLight,
+        Rr_V3F(Pressed ? 0.0f : 1.0f));
+    TopLeftColor.A = 1.0f;
+    Rr_Vec4 BottomRightColor;
+
+    BottomRightColor.RGB = Rr_LerpV3(
+        BaseColor.RGB,
+        Pressed ? gUIContext->Style.BevelIntensityLight
+                : gUIContext->Style.BevelIntensityDark,
+        Rr_V3F(Pressed ? 1.0f : 0.0f));
+    BottomRightColor.A = 1.0f;
+
+    Rr_Vec4 BackgroundColor = BaseColor;
+    if (Pressed)
+    {
+        BackgroundColor.RGB =
+            Rr_LerpV3(BackgroundColor.RGB, 0.4f, Rr_V3F(0.0f));
+    }
+    BackgroundColor.A = 1.0f;
+
+    Rr_UIVertex *Vertices = Primitive.Vertices;
+    Rr_UIIndex *Indices = Primitive.Indices;
+
+    float Thickness = gUIContext->BevelThickness;
+
+    float Width = Rect->Extent.Width;
+    float Height = Rect->Extent.Height;
+    float TempWidth = Rect->Extent.Width - Thickness;
+    float TempHeight = Rect->Extent.Height - Thickness;
+
+    Vertices[0] = (Rr_UIVertex){
+        .Position = Rect->Offset,
+        .Color = TopLeftColor,
+    };
+    Vertices[1] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Width, 0.0f)),
+        .Color = TopLeftColor,
+    };
+    Vertices[2] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2F(Thickness)),
+        .Color = TopLeftColor,
+    };
+    Vertices[3] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(TempWidth, Thickness)),
+        .Color = TopLeftColor,
+    };
+    Vertices[4] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Height)),
+        .Color = TopLeftColor,
+    };
+    Vertices[5] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Thickness, TempHeight)),
+        .Color = TopLeftColor,
+    };
+
+    Vertices[6] = (Rr_UIVertex){
+        .Position = Vertices[3].Position,
+        .Color = BottomRightColor,
+    };
+    Vertices[7] = (Rr_UIVertex){
+        .Position = Vertices[1].Position,
+        .Color = BottomRightColor,
+    };
+    Vertices[8] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(TempWidth, TempHeight)),
+        .Color = BottomRightColor,
+    };
+    Vertices[9] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rect->Extent),
+        .Color = BottomRightColor,
+    };
+    Vertices[10] = (Rr_UIVertex){
+        .Position = Vertices[4].Position,
+        .Color = BottomRightColor,
+    };
+    Vertices[11] = (Rr_UIVertex){
+        .Position = Vertices[5].Position,
+        .Color = BottomRightColor,
+    };
+
+    Vertices[12] = (Rr_UIVertex){
+        .Position = Vertices[2].Position,
+        .Color = Colors[0],
+    };
+    Vertices[13] = (Rr_UIVertex){
+        .Position = Vertices[3].Position,
+        .Color = Colors[1],
+    };
+    Vertices[14] = (Rr_UIVertex){
+        .Position = Vertices[5].Position,
+        .Color = Colors[2],
+    };
+    Vertices[15] = (Rr_UIVertex){
+        .Position = Vertices[8].Position,
+        .Color = Colors[3],
+    };
+
+    static const Rr_UIIndex BEVEL_INDICES[] = {
+        0, 1, 2, 1,  3,  2, 0,  2, 4, 2,  5,  4,  6,  7,  8,
+        7, 9, 8, 10, 11, 9, 11, 8, 9, 12, 13, 14, 13, 15, 14,
+    };
+
+    for (size_t Index = 0; Index < RR_UI_BEVEL_INDEX_COUNT; ++Index)
+    {
+        Indices[Index] = Primitive.BaseVertex + BEVEL_INDICES[Index];
+    }
+}
+
+static inline void Rr_UIBevel(
+    Rr_UIPrimitive Primitive,
+    Rr_Rect *Rect,
+    Rr_Vec4 *BaseColor,
+    bool Pressed)
+{
+    Rr_Vec4 Colors[4] = { *BaseColor, *BaseColor, *BaseColor, *BaseColor };
+    Rr_UIBevelEx(Primitive, Rect, Colors, Pressed);
+}
+
+static inline void Rr_UIDrawBevel(
+    Rr_Rect *Rect,
+    Rr_Vec4 *BaseColor,
+    bool Pressed)
+{
+    Rr_UIBevel(
+        Rr_UIReservePrimitive(
+            RR_UI_BEVEL_VERTEX_COUNT,
+            RR_UI_BEVEL_INDEX_COUNT),
+        Rect,
+        BaseColor,
+        Pressed);
 }
 
 static inline void Rr_UIDrawGlyph(
@@ -2581,9 +2719,9 @@ static inline void Rr_UIRecalculateStyle(void)
     float LineHeight = Font->LineHeight;
 
     gUIContext->WindowPadding =
-        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.WindowPadding, LineHeight));
+        RR_UI_ROUND_V2(Rr_MulV2F(Style->WindowPadding, LineHeight));
     gUIContext->ContentsMargin =
-        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ContentsMargin, LineHeight));
+        RR_UI_ROUND_V2(Rr_MulV2F(Style->ContentsMargin, LineHeight));
     gUIContext->ComponentMargin =
         RR_UI_ROUND(Style->ComponentMargin * LineHeight);
 
@@ -2595,15 +2733,16 @@ static inline void Rr_UIRecalculateStyle(void)
         RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
     gUIContext->SeparatorLineHeight = LineHeight * 0.5f;
     gUIContext->ButtonPadding =
-        RR_UI_ROUND_V2(Rr_MulV2F(gUIContext->Style.ButtonPadding, LineHeight));
+        RR_UI_ROUND_V2(Rr_MulV2F(Style->ButtonPadding, LineHeight));
     gUIContext->BevelThickness = ceilf(LineHeight * Style->BevelThickness);
-    gUIContext->InputFieldPadding = RR_UI_ROUND_V2(
-        Rr_MulV2F(gUIContext->Style.InputFieldPadding, LineHeight));
+    gUIContext->DoubleBevelThickness =
+        RR_UI_ROUND(LineHeight * Style->DoubleBevelThickness);
+    gUIContext->InputFieldPadding =
+        RR_UI_ROUND_V2(Rr_MulV2F(Style->InputFieldPadding, LineHeight));
     gUIContext->FlexibleTitleMargin =
         ceilf(Style->FlexibleTitleMargin * LineHeight);
 
-    gUIContext->TitlePadding =
-        Rr_MulV2F(gUIContext->Style.TitlePadding, LineHeight);
+    gUIContext->TitlePadding = Rr_MulV2F(Style->TitlePadding, LineHeight);
     gUIContext->TitleHeight =
         RR_UI_ROUND(gUIContext->TitlePadding.Y * 2.0f + LineHeight);
     gUIContext->TitleButtonSize = RR_UI_ROUND(gUIContext->TitleHeight);
@@ -2839,23 +2978,24 @@ static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UIWindow *Window)
     bool HasClose = Rr_UIWindowHasCloseButton(Window);
 
     return Rr_V2(
-        Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f, 0).X +
-            gUIContext->TitlePadding.Width * 2 +
-            (HasClose ? gUIContext->TitleButtonSize : 0) +
-            (HasCollapse ? gUIContext->TitleButtonSize : 0),
+        Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f, 0.0f).X +
+            gUIContext->TitlePadding.Width * 2.0f +
+            (HasClose ? gUIContext->TitleButtonSize : 0.0f) +
+            (HasCollapse ? gUIContext->TitleButtonSize : 0.0f),
         gUIContext->TitleHeight);
 }
 
-static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
+static inline void Rr_UIAddWindowTitlebar(Rr_UILayout *Layout, bool *Open)
 {
     Rr_UIWindow *Window = Layout->Window;
     Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
 
-    Rr_Rect TitleRect = {
+    Rr_Rect TitlebarRect = {
         Layout->Rect.Offset,
         Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleHeight),
     };
-    Rr_Vec2 TitlePosition =
+
+    Rr_Vec2 TitleOffset =
         Rr_AddV2(Layout->Rect.Offset, gUIContext->TitlePadding);
 
     bool HasCollapse = !Rr_UIWindowNoCollapse(Window);
@@ -2864,14 +3004,14 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
     {
         CollapseButtonClicked = Rr_UIAddCollapseButton(Layout);
 
-        TitlePosition.X += gUIContext->TitleHeight;
-        TitleRect.Offset.X += gUIContext->TitleHeight;
-        TitleRect.Extent.X -= gUIContext->TitleHeight;
+        TitleOffset.X += gUIContext->TitleHeight;
+        TitlebarRect.Offset.X += gUIContext->TitleHeight;
+        TitlebarRect.Extent.X -= gUIContext->TitleHeight;
     }
 
     Rr_UIDrawText(
         false,
-        TitlePosition,
+        TitleOffset,
         SIZE_MAX,
         Window->Title,
         0.0f,
@@ -2883,7 +3023,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
     {
         Rr_UIAddCloseButton(Layout, Open);
 
-        TitleRect.Extent.Width -= gUIContext->TitleButtonSize;
+        TitlebarRect.Extent.Width -= gUIContext->TitleButtonSize;
     }
 
     /* Allow double clicking the title bevel to toggle collapse state. */
@@ -2895,7 +3035,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
             "Rr.CollapseTitle",
             Rr_UICurrentHash());
         Rr_UIClickResult ClickResult =
-            Rr_UIClickDouble(Layout, &TitleRect, Hash);
+            Rr_UIClickDouble(Layout, &TitlebarRect, Hash);
         if (ClickResult.ClickCount == 2)
         {
             Window->Collapsed = !Window->Collapsed;
@@ -2906,7 +3046,7 @@ static inline void Rr_UIAddWindowTitle(Rr_UILayout *Layout, bool *Open)
                           gUIContext->Colors.TitleBackground2,
                           gUIContext->Colors.TitleBackground,
                           gUIContext->Colors.TitleBackground2 };
-    Rr_UIBevelEx(BevelPrimitive, &TitleRect, Colors, false);
+    Rr_UIBevelEx(BevelPrimitive, &TitlebarRect, Colors, false);
 }
 
 static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
@@ -3357,24 +3497,44 @@ static inline bool Rr_UIBeginWindowEx(
         }
     }
 
-    Layout->TotalAvailableContentsWidth = Layout->Rect.Extent.X;
-
     /* Calculate total and visible extents. */
+
+    Rr_UIBeginClipRect(Layout, &Layout->Rect);
 
     if (Window->Collapsed)
     {
         Layout->Rect.Extent.Y = gUIContext->TitleHeight;
-    }
-    Rr_Rect TotalClipRectWithBorders =
-        Rr_ResizeRect(&Layout->Rect, gUIContext->FrameThickness);
 
-    Rr_UIBeginClipRect(Layout, &TotalClipRectWithBorders);
+        if (!Rr_UIWindowNoBorders(Window))
+        {
+            Layout->Rect.Extent.Y += gUIContext->DoubleBevelThickness * 2.0f;
+        }
+    }
+
+    /* Transform working area if using borders. */
+
+    if (!Rr_UIWindowNoBorders(Window))
+    {
+        Layout->Rect =
+            Rr_ResizeRect(&Layout->Rect, -gUIContext->DoubleBevelThickness);
+        Layout->Cursor =
+            Rr_AddV2F(Layout->Cursor, gUIContext->DoubleBevelThickness);
+    }
+
+    /* Draw appropriate background. */
+
+    Rr_UIDrawSolidQuad(
+        &Layout->Rect,
+        Window->Child ? &gUIContext->Colors.ChildBackground
+                      : &gUIContext->Colors.Background);
+
+    Layout->TotalAvailableContentsWidth = Layout->Rect.Extent.X;
 
     /* Add window title if necessary. */
 
     if (HasTitle)
     {
-        Rr_UIAddWindowTitle(Layout, Open);
+        Rr_UIAddWindowTitlebar(Layout, Open);
 
         Layout->Cursor.Y += gUIContext->TitleHeight;
     }
@@ -3438,10 +3598,9 @@ static inline bool Rr_UIBeginWindowEx(
     Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
     Rr_UIBeginClipRect(Layout, &ContentsAreaRect);
 
-    Rr_Vec4 *BackgroundColor = Window->Child
-                                   ? &gUIContext->Colors.ChildBackground
-                                   : &gUIContext->Colors.Background;
-    Rr_UIDrawSolidQuad(&ContentsAreaRect, BackgroundColor);
+    /* Rr_Vec4 *BackgroundColor = Window->Child */
+    /*                                ? &gUIContext->Colors.ChildBackground */
+    /*                                : &gUIContext->Colors.Background; */
 
     Layout->DeferredContentsRect.Offset = Layout->Cursor;
 
@@ -3583,7 +3742,7 @@ void Rr_UIEndWindow(void)
         Rr_UIEndClipRect(Layout);
 
         Rr_Rect TotalClipRectWithBorders =
-            Rr_ResizeRect(&Layout->Rect, gUIContext->FrameThickness);
+            Rr_ResizeRect(&Layout->Rect, gUIContext->DoubleBevelThickness);
         Rr_UIBeginClipRect(Layout, &TotalClipRectWithBorders);
     }
 
@@ -3672,20 +3831,17 @@ void Rr_UIEndWindow(void)
         }
     }
 
-    /* Add border if necessary. */
-
     if (!Rr_UIWindowNoBorders(Window))
     {
-        Rr_Vec4 *BorderColor = Rr_UIShouldHightlightWindow(Window)
-                                   ? &gUIContext->Colors.SelectedOutline
-                                   : &gUIContext->Colors.Outline;
-        Rr_UIDrawOuterFrame(
-            &Layout->Rect,
-            gUIContext->FrameThickness,
-            BorderColor);
+        Rr_Rect BordersRect =
+            Rr_ResizeRect(&Layout->Rect, gUIContext->DoubleBevelThickness);
+        Rr_UIDrawDoubleBevel(
+            &BordersRect,
+            Rr_UIShouldHightlightWindow(Window)
+                ? &gUIContext->Colors.SelectedOutline
+                : &gUIContext->Colors.Outline,
+            gUIContext->DoubleBevelThickness);
     }
-
-    Rr_UIEndClipRect(Layout);
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
 
@@ -3730,6 +3886,13 @@ void Rr_UIEndWindow(void)
 
             Window->Rect.Extent =
                 Rr_AddV2(Window->Rect.Extent, Layout->ReservedExtent);
+
+            if (!Rr_UIWindowNoBorders(Window))
+            {
+                Window->Rect.Extent = Rr_AddV2F(
+                    Window->Rect.Extent,
+                    gUIContext->DoubleBevelThickness * 2.0f);
+            }
         }
         else if (Layout->DeferredAutoResize)
         {
@@ -3754,6 +3917,13 @@ void Rr_UIEndWindow(void)
             }
 
             Window->Rect.Extent = Extent;
+
+            if (!Rr_UIWindowNoBorders(Window))
+            {
+                Window->Rect.Extent = Rr_AddV2F(
+                    Window->Rect.Extent,
+                    gUIContext->DoubleBevelThickness * 2.0f);
+            }
         }
     }
 
@@ -3853,6 +4023,8 @@ void Rr_UIEndWindow(void)
         }
     }
 
+    Rr_UIEndClipRect(Layout);
+
     /* Pop whatever was pushed in Rr_UIBeginWindowEx(). */
 
     Rr_UIPopLayout();
@@ -3865,6 +4037,12 @@ void Rr_UIEndWindow(void)
         if (Window->Child)
         {
             Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Window);
+            if (!Rr_UIWindowNoBorders(Window))
+            {
+                TitleSize = Rr_AddV2F(
+                    TitleSize,
+                    gUIContext->DoubleBevelThickness * 2.0f);
+            }
             Rr_Vec2 WindowExtent = Window->Rect.Extent;
             bool CollapsedThisFrame =
                 Window->Collapsed && !Layout->WasCollapsed;
@@ -4377,19 +4555,35 @@ void Rr_UISeparator(void)
     Rr_UIAssertNoHorizontal(Layout);
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_Vec2 Size = {
-        Rr_UIGetAvailableContentsWidth(Layout),
-        gUIContext->FrameThickness,
+    float AvailableWidth = Rr_UIGetAvailableContentsWidth(Layout);
+
+    Rr_Rect Rect;
+    Rect.Extent = (Rr_Vec2){
+        AvailableWidth * 0.75f,
+        gUIContext->DoubleBevelThickness * 0.5f,
     };
-    Rr_Vec2 Position = {
-        Layout->Cursor.X,
-        Layout->Cursor.Y + Size.Height,
+    Rect.Offset = (Rr_Vec2){
+        Layout->Cursor.X + AvailableWidth * 0.5f - Rect.Extent.X * 0.5f,
+        Layout->Cursor.Y,
     };
-    Rr_UIDrawSolidQuad(
-        &(Rr_Rect){ Position, Size },
-        Rr_UIShouldHightlightWindow(Window)
-            ? &gUIContext->Colors.SelectedOutline
-            : &gUIContext->Colors.Outline);
+    Rr_Vec4 *Color = Rr_UIShouldHightlightWindow(Window)
+                         ? &gUIContext->Colors.SelectedOutline
+                         : &gUIContext->Colors.Outline;
+    Rr_Vec4 ColorLight;
+    ColorLight.RGB = Rr_LerpV3(
+        Color->RGB,
+        gUIContext->Style.BevelIntensityLight,
+        RR_UI_VEC3_ONE);
+    ColorLight.A = 1.0f;
+    Rr_Vec4 ColorDark;
+    ColorDark.RGB = Rr_LerpV3(
+        Color->RGB,
+        gUIContext->Style.BevelIntensityDark,
+        RR_UI_VEC3_ZERO);
+    ColorDark.A = 1.0f;
+    Rr_UIDrawSolidQuad(&Rect, &ColorLight);
+    Rect.Offset.Y += Rect.Extent.Y;
+    Rr_UIDrawSolidQuad(&Rect, &ColorDark);
 
     Layout->Cursor.Y += gUIContext->SeparatorLineHeight;
 }
@@ -6892,10 +7086,10 @@ static inline void Rr_UIColorPickerPopup(
         Rr_UIDrawQuadVertices(Vertices);
     }
 
-    Rr_UIDrawInnerFrame(
+    Rr_UIDrawDoubleBevel(
         &(Rr_Rect){ Layout->Cursor, Rr_V2F(TargetSize) },
-        gUIContext->FrameThickness,
-        &gUIContext->Colors.SelectedOutline);
+        &gUIContext->Colors.SelectedOutline,
+        gUIContext->DoubleBevelThickness);
 
     float SVSelectorCircleSize = TargetSize * 0.035f;
 
@@ -6966,10 +7160,10 @@ static inline void Rr_UIColorPickerPopup(
             &HColors[(Index + 1) % 6]);
     }
 
-    Rr_UIDrawInnerFrame(
+    Rr_UIDrawDoubleBevel(
         &HSelectorRect,
-        gUIContext->FrameThickness,
-        &gUIContext->Colors.SelectedOutline);
+        &gUIContext->Colors.SelectedOutline,
+        gUIContext->DoubleBevelThickness);
 
     /* Draw hue handles. */
 
@@ -7686,47 +7880,48 @@ void Rr_UISetDefaultTheme(void)
     Rr_UIStyle *Style = Rr_UIGetStyle();
     Rr_UIColors *Colors = Rr_UIGetColors();
 
-    Style->FrameThickness = 0.075f;
+    Style->FrameThickness = 0.075000f;
     Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
-    Style->WindowPadding = Rr_V2(0.500000f, 0.500000f);
-    Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
+    Style->WindowPadding = Rr_V2(0.350000f, 0.350000f);
+    Style->ContentsMargin = Rr_V2(0.350000f, 0.350000f);
     Style->ComponentMargin = 0.200000f;
-    Style->ScrollbarAreaWidth = 0.850000f;
-    Style->BevelThickness = 0.100000f;
+    Style->ScrollbarAreaWidth = 0.750000f;
+    Style->BevelThickness = 0.050000f;
+    Style->DoubleBevelThickness = 0.100000f;
     Style->BevelIntensityLight = 0.300000f;
     Style->BevelIntensityDark = 0.650000f;
     Style->FlexibleTitleMargin = 0.250000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
-    Style->CheckmarkRatios = Rr_V2(0.35000f, 0.200000f);
-    Style->CheckmarkSize = 0.75000f;
+    Style->CheckmarkRatios = Rr_V2(0.350000f, 0.200000f);
+    Style->CheckmarkSize = 0.750000f;
     Style->CrossWidth = 0.650000f;
     Style->CrossThickness = 0.135000f;
     Colors->Foreground = Rr_V4(0.899630f, 0.924908f, 0.933333f, 1.000000f);
     Colors->ForegroundDimmed =
         Rr_V4(0.617390f, 0.649893f, 0.660727f, 1.000000f);
-    Colors->Background = Rr_V4(0.142532f, 0.168879f, 0.186284f, 1.000000f);
-    Colors->ChildBackground = Rr_V4(0.098716f, 0.116952f, 0.127372f, 1.000000f);
+    Colors->Background = Rr_V4(0.108806f, 0.145386f, 0.172821f, 1.000000f);
+    Colors->ChildBackground = Rr_V4(0.105882f, 0.145098f, 0.172549f, 1.000000f);
     Colors->ScrolloffBackground =
-        Rr_V4(0.141176f, 0.168627f, 0.184314f, 1.000000f);
-    Colors->Outline = Rr_V4(0.603737f, 0.614403f, 0.625043f, 1.000000f);
-    Colors->SelectedOutline = Rr_V4(0.680653f, 0.751365f, 0.827292f, 1.000000f);
+        Rr_V4(0.105882f, 0.145098f, 0.172549f, 1.000000f);
+    Colors->Outline = Rr_V4(0.105882f, 0.145098f, 0.172549f, 1.000000f);
+    Colors->SelectedOutline = Rr_V4(0.204012f, 0.283247f, 0.338711f, 1.000000f);
     Colors->ListEntryBackgroundA =
         Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
     Colors->ListEntryBackgroundB =
         Rr_V4(0.155230f, 0.235543f, 0.288056f, 1.000000f);
     Colors->ListEntryHovered =
         Rr_V4(0.168210f, 0.404396f, 0.555556f, 1.000000f);
-    Colors->TitleForeground = Rr_V4(0.898039f, 0.921569f, 0.929412f, 1.000000f);
+    Colors->TitleForeground = Rr_V4(0.928603f, 0.954881f, 0.963641f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.123951f, 0.467914f, 0.697222f, 1.000000f);
     Colors->TitleBackground2 =
-        Rr_V4(0.058434f, 0.237508f, 0.356891f, 1.000000f);
+        Rr_V4(0.034855f, 0.159902f, 0.243268f, 1.000000f);
     Colors->TitleCloseButtonBackground =
         Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
     Colors->TitleCollapseButtonBackground =
         Rr_V4(0.121569f, 0.466667f, 0.694118f, 1.000000f);
     Colors->ScrollbarBackground =
-        Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
+        Rr_V4(0.053773f, 0.070767f, 0.084195f, 1.000000f);
     Colors->ScrollbarNormal = Rr_V4(0.292805f, 0.334535f, 0.363504f, 1.000000f);
     Colors->ScrollbarHovered =
         Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);

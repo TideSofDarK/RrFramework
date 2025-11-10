@@ -103,6 +103,7 @@ static void PrintTheme(void)
     PrintStyle("ComponentMargin", Style->ComponentMargin);
     PrintStyle("ScrollbarAreaWidth", Style->ScrollbarAreaWidth);
     PrintStyle("BevelThickness", Style->BevelThickness);
+    PrintStyle("DoubleBevelThickness", Style->DoubleBevelThickness);
     PrintStyle("BevelIntensityLight", Style->BevelIntensityLight);
     PrintStyle("BevelIntensityDark", Style->BevelIntensityDark);
     PrintStyle("FlexibleTitleMargin", Style->FlexibleTitleMargin);
@@ -184,6 +185,9 @@ static void ThemeEditorWindow()
         Rr_UIInputFloat2ZO("Contents Margin", Style->ContentsMargin.Elements);
         Rr_UIInputFloatZO("Component Margin", &Style->ComponentMargin);
         Rr_UIInputFloatZO("Bevel Thickness", &Style->BevelThickness);
+        Rr_UIInputFloatZO(
+            "Double Bevel Thickness",
+            &Style->DoubleBevelThickness);
         Rr_UIInputFloatZO("Bevel Intensity Light", &Style->BevelIntensityLight);
         Rr_UIInputFloatZO("Bevel Intensity Dark", &Style->BevelIntensityDark);
         Rr_UIInputFloatZO("Flexible Title Margin", &Style->FlexibleTitleMargin);
@@ -400,31 +404,32 @@ static void SetPinkTheme()
     Rr_UIColors *Colors = Rr_UIGetColors();
     Rr_UIStyle *Style = Rr_UIGetStyle();
 
-    Style->FrameThickness = 0.075f;
+    Style->FrameThickness = 0.075000f;
     Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
-    Style->WindowPadding = Rr_V2(0.500000f, 0.500000f);
-    Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
+    Style->WindowPadding = Rr_V2(0.350000f, 0.350000f);
+    Style->ContentsMargin = Rr_V2(0.350000f, 0.350000f);
     Style->ComponentMargin = 0.200000f;
-    Style->ScrollbarAreaWidth = 0.850000f;
-    Style->BevelThickness = 0.1f;
+    Style->ScrollbarAreaWidth = 0.750000f;
+    Style->BevelThickness = 0.050000f;
+    Style->DoubleBevelThickness = 0.100000f;
     Style->BevelIntensityLight = 0.300000f;
-    Style->BevelIntensityDark = 0.700000f;
+    Style->BevelIntensityDark = 0.650000f;
     Style->FlexibleTitleMargin = 0.250000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
-    Style->CheckmarkRatios = Rr_V2(0.35000f, 0.200000f);
-    Style->CheckmarkSize = 0.75000f;
+    Style->CheckmarkRatios = Rr_V2(0.350000f, 0.200000f);
+    Style->CheckmarkSize = 0.750000f;
     Style->CrossWidth = 0.650000f;
     Style->CrossThickness = 0.135000f;
     Colors->Foreground = Rr_V4(0.940547f, 0.899630f, 0.970019f, 1.000000f);
     Colors->ForegroundDimmed =
         Rr_V4(0.634900f, 0.617390f, 0.660727f, 1.000000f);
     Colors->Background = Rr_V4(0.153051f, 0.142532f, 0.186284f, 1.000000f);
-    Colors->ChildBackground = Rr_V4(0.115195f, 0.100193f, 0.136111f, 1.000000f);
+    Colors->ChildBackground = Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
     Colors->ScrolloffBackground =
-        Rr_V4(0.096453f, 0.089119f, 0.116009f, 1.000000f);
-    Colors->Outline = Rr_V4(0.542000f, 0.495298f, 0.579593f, 1.000000f);
-    Colors->SelectedOutline = Rr_V4(0.511727f, 0.396375f, 0.627315f, 1.000000f);
+        Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
+    Colors->Outline = Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
+    Colors->SelectedOutline = Rr_V4(0.314730f, 0.286137f, 0.390978f, 1.000000f);
     Colors->ListEntryBackgroundA =
         Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
     Colors->ListEntryBackgroundB =
@@ -494,7 +499,10 @@ static void Iterate(void)
 {
     Rr_Graph *Graph = Rr_GetGraph();
 
-    Rr_ClearColorImage2D(Graph, (Rr_ColorClear){ 0 }, Rr_GetSwapchainImage());
+    Rr_ClearColorImage2D(
+        Graph,
+        (Rr_ColorClear){ .Vec4 = { 0.01f, 0.01f, 0.02f, 1.0f, }, },
+        Rr_GetSwapchainImage());
 
     Rr_UIDebugOverlay();
 
