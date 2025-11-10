@@ -406,8 +406,8 @@ static void SetPinkTheme()
 
     Style->FrameThickness = 0.075000f;
     Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
-    Style->WindowPadding = Rr_V2(0.350000f, 0.350000f);
-    Style->ContentsMargin = Rr_V2(0.350000f, 0.350000f);
+    Style->WindowPadding = Rr_V2(0.300000f, 0.300000f);
+    Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
     Style->ComponentMargin = 0.200000f;
     Style->ScrollbarAreaWidth = 0.750000f;
     Style->BevelThickness = 0.050000f;

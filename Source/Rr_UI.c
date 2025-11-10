@@ -2731,7 +2731,7 @@ static inline void Rr_UIRecalculateStyle(void)
     gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
     gUIContext->ScrollbarHandleWidth =
         RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
-    gUIContext->SeparatorLineHeight = LineHeight * 0.5f;
+    gUIContext->SeparatorLineHeight = RR_UI_ROUND(LineHeight * 0.5f);
     gUIContext->ButtonPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->ButtonPadding, LineHeight));
     gUIContext->BevelThickness = ceilf(LineHeight * Style->BevelThickness);
@@ -4559,12 +4559,12 @@ void Rr_UISeparator(void)
 
     Rr_Rect Rect;
     Rect.Extent = (Rr_Vec2){
-        AvailableWidth * 0.75f,
+        AvailableWidth,
         gUIContext->DoubleBevelThickness * 0.5f,
     };
     Rect.Offset = (Rr_Vec2){
         Layout->Cursor.X + AvailableWidth * 0.5f - Rect.Extent.X * 0.5f,
-        Layout->Cursor.Y,
+        Layout->Cursor.Y + gUIContext->SeparatorLineHeight * 0.5f - Rect.Extent.Y,
     };
     Rr_Vec4 *Color = Rr_UIShouldHightlightWindow(Window)
                          ? &gUIContext->Colors.SelectedOutline
@@ -4585,7 +4585,7 @@ void Rr_UISeparator(void)
     Rect.Offset.Y += Rect.Extent.Y;
     Rr_UIDrawSolidQuad(&Rect, &ColorDark);
 
-    Layout->Cursor.Y += gUIContext->SeparatorLineHeight;
+    Rr_UIAdvance(Rr_V2(AvailableWidth, gUIContext->SeparatorLineHeight));
 }
 
 void Rr_UITextEx(const char *Text, Rr_UITextFlags Flags)
@@ -7882,8 +7882,8 @@ void Rr_UISetDefaultTheme(void)
 
     Style->FrameThickness = 0.075000f;
     Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
-    Style->WindowPadding = Rr_V2(0.350000f, 0.350000f);
-    Style->ContentsMargin = Rr_V2(0.350000f, 0.350000f);
+    Style->WindowPadding = Rr_V2(0.300000f, 0.300000f);
+    Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
     Style->ComponentMargin = 0.200000f;
     Style->ScrollbarAreaWidth = 0.750000f;
     Style->BevelThickness = 0.050000f;
