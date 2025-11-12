@@ -72,7 +72,7 @@ typedef struct Rr_UIStyle Rr_UIStyle;
 struct Rr_UIStyle
 {
     float FrameThickness;
-    Rr_Vec2 TitlePadding;
+    Rr_Vec2 TitleBarPadding;
     Rr_Vec2 WindowPadding;
     Rr_Vec2 ContentsMargin;
     float ComponentMargin;
@@ -164,7 +164,7 @@ typedef uint32_t Rr_UITextFlags;
 typedef enum
 {
     RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT = (1 << 0),
-    RR_UI_WINDOW_FLAGS_NO_TITLE_BIT = (1 << 1),
+    RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT = (1 << 1),
     RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT = (1 << 2),
     RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT = (1 << 3),
     RR_UI_WINDOW_FLAGS_NO_MOVE_BIT = (1 << 4),

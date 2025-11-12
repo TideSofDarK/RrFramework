@@ -97,7 +97,7 @@ static void PrintTheme(void)
     fprintf(stdout, "\n/* RR UI THEME EXPORT BEGIN */\n");
 
     PrintStyle("FrameThickness", Style->FrameThickness);
-    PrintStyleVec2("TitlePadding", &Style->TitlePadding);
+    PrintStyleVec2("TitleBarPadding", &Style->TitleBarPadding);
     PrintStyleVec2("WindowPadding", &Style->WindowPadding);
     PrintStyleVec2("ContentsMargin", &Style->ContentsMargin);
     PrintStyle("ComponentMargin", Style->ComponentMargin);
@@ -180,7 +180,7 @@ static void ThemeEditorWindow()
             &Style->FrameThickness,
             0.0f,
             0.125f);
-        Rr_UIInputFloat2ZO("Title Padding", Style->TitlePadding.Elements);
+        Rr_UIInputFloat2ZO("Title Padding", Style->TitleBarPadding.Elements);
         Rr_UIInputFloat2ZO("Window Padding", Style->WindowPadding.Elements);
         Rr_UIInputFloat2ZO("Contents Margin", Style->ContentsMargin.Elements);
         Rr_UIInputFloatZO("Component Margin", &Style->ComponentMargin);
@@ -324,7 +324,7 @@ static void SetOliveTheme()
     Rr_UIStyle *Style = Rr_UIGetStyle();
 
     Style->FrameThickness = 0.026000f;
-    Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
+    Style->TitleBarPadding = Rr_V2(0.250000f, 0.025000f);
     Style->WindowPadding = Rr_V2(0.500000f, 0.500000f);
     Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
     Style->ComponentMargin = 0.200000f;
@@ -405,7 +405,7 @@ static void SetPinkTheme()
     Rr_UIStyle *Style = Rr_UIGetStyle();
 
     Style->FrameThickness = 0.075000f;
-    Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
+    Style->TitleBarPadding = Rr_V2(0.250000f, 0.025000f);
     Style->WindowPadding = Rr_V2(0.300000f, 0.300000f);
     Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
     Style->ComponentMargin = 0.200000f;
@@ -528,7 +528,7 @@ static void Iterate(void)
     }
     if (NoTitle)
     {
-        Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BIT;
+        Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
     }
     if (AutoResize)
     {

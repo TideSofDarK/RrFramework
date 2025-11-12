@@ -1238,6 +1238,72 @@ static inline Rr_Vec4 Rr_FloorV4(Rr_Vec4 A)
     return Result;
 }
 
+static inline Rr_Vec2 Rr_MinV2(Rr_Vec2 A, Rr_Vec2 B)
+{
+    Rr_Vec2 Result;
+
+    Result.X = RR_MIN(A.X, B.X);
+    Result.Y = RR_MIN(A.Y, B.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_MinV3(Rr_Vec3 A, Rr_Vec3 B)
+{
+    Rr_Vec3 Result;
+
+    Result.X = RR_MIN(A.X, B.X);
+    Result.Y = RR_MIN(A.Y, B.Y);
+    Result.Z = RR_MIN(A.Z, B.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_MinV4(Rr_Vec4 A, Rr_Vec4 B)
+{
+    Rr_Vec4 Result;
+
+    Result.X = RR_MIN(A.X, B.X);
+    Result.Y = RR_MIN(A.Y, B.Y);
+    Result.Z = RR_MIN(A.Z, B.Z);
+    Result.W = RR_MIN(A.W, B.W);
+
+    return Result;
+}
+
+static inline Rr_Vec2 Rr_MaxV2(Rr_Vec2 A, Rr_Vec2 B)
+{
+    Rr_Vec2 Result;
+
+    Result.X = RR_MAX(A.X, B.X);
+    Result.Y = RR_MAX(A.Y, B.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_MaxV3(Rr_Vec3 A, Rr_Vec3 B)
+{
+    Rr_Vec3 Result;
+
+    Result.X = RR_MAX(A.X, B.X);
+    Result.Y = RR_MAX(A.Y, B.Y);
+    Result.Z = RR_MAX(A.Z, B.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_MaxV4(Rr_Vec4 A, Rr_Vec4 B)
+{
+    Rr_Vec4 Result;
+
+    Result.X = RR_MAX(A.X, B.X);
+    Result.Y = RR_MAX(A.Y, B.Y);
+    Result.Z = RR_MAX(A.Z, B.Z);
+    Result.W = RR_MAX(A.W, B.W);
+
+    return Result;
+}
+
 /*
  * Unary vector operations
  */

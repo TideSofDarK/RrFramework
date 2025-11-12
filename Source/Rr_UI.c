@@ -165,6 +165,7 @@ struct Rr_UILayout
     Rr_UIHash *SelectedTabHash;
 
     Rr_Rect DeferredContentsRect;
+    /* TODO: In theory these can be applied to Window->Rect immediately... */
     Rr_Vec2 DeferredWindowOffset;
     Rr_Vec2 DeferredWindowExtent;
     Rr_Vec4 const *DeferredResizeHandleColor;
@@ -286,9 +287,9 @@ struct Rr_UIContext
     float FlexibleTitleMargin;
     Rr_Vec2 MinWindowSize;
     Rr_Vec2 MinWindowSizeNoTitle;
-    float TitleHeight;
-    Rr_Vec2 TitlePadding;
-    float TitleButtonSize;
+    float TitleBarHeight;
+    Rr_Vec2 TitleBarPadding;
+    float TitleBarButtonSize;
     float ResizeHandleSize;
     float FrameThickness;
     float SeparatorLineHeight;
@@ -696,9 +697,9 @@ static inline Rr_UIFont *Rr_UICurrentFont(void)
     return gUIContext->DefaultFont;
 }
 
-static inline bool Rr_UIWindowNoTitle(Rr_UIWindow *Window)
+static inline bool Rr_UIWindowNoTitleBar(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT);
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
 }
 
 static inline bool Rr_UIWindowHasCloseButton(Rr_UIWindow *Window)
@@ -2742,10 +2743,10 @@ static inline void Rr_UIRecalculateStyle(void)
     gUIContext->FlexibleTitleMargin =
         ceilf(Style->FlexibleTitleMargin * LineHeight);
 
-    gUIContext->TitlePadding = Rr_MulV2F(Style->TitlePadding, LineHeight);
-    gUIContext->TitleHeight =
-        RR_UI_ROUND(gUIContext->TitlePadding.Y * 2.0f + LineHeight);
-    gUIContext->TitleButtonSize = RR_UI_ROUND(gUIContext->TitleHeight);
+    gUIContext->TitleBarPadding = Rr_MulV2F(Style->TitleBarPadding, LineHeight);
+    gUIContext->TitleBarHeight =
+        RR_UI_ROUND(gUIContext->TitleBarPadding.Y * 2.0f + LineHeight);
+    gUIContext->TitleBarButtonSize = RR_UI_ROUND(gUIContext->TitleBarHeight);
     gUIContext->MinWindowSizeNoTitle =
         Rr_MulV2F(gUIContext->WindowPadding, 2.0f);
     gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
@@ -2754,7 +2755,7 @@ static inline void Rr_UIRecalculateStyle(void)
     gUIContext->MinWindowSizeNoTitle =
         RR_UI_ROUND_V2(gUIContext->MinWindowSizeNoTitle);
     gUIContext->MinWindowSize = gUIContext->MinWindowSizeNoTitle;
-    gUIContext->MinWindowSize.Y += gUIContext->TitleHeight;
+    gUIContext->MinWindowSize.Y += gUIContext->TitleBarHeight;
     gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
 
     gUIContext->TopLevelTreeOffset =
@@ -2797,7 +2798,7 @@ void Rr_UIPopFont(void)
 
 static inline Rr_Vec2 Rr_UIGetMinWindowSize(Rr_UIWindowFlags Flags)
 {
-    if (RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BIT))
+    if (RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
     {
         return gUIContext->MinWindowSizeNoTitle;
     }
@@ -2883,7 +2884,7 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 
     Rr_Rect ButtonRect;
     ButtonRect.Offset = Layout->Rect.Offset;
-    ButtonRect.Extent = Rr_V2F(gUIContext->TitleButtonSize);
+    ButtonRect.Extent = Rr_V2F(gUIContext->TitleBarButtonSize);
 
     Rr_UIHash Hash =
         Rr_UIGetHash(sizeof("Rr.Collapse"), "Rr.Collapse", Rr_UICurrentHash());
@@ -2901,8 +2902,8 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 
     Rr_Vec2 TriangleCenter = Rr_AddV2(
         ButtonRect.Offset,
-        Rr_MulV2F(Rr_V2F(gUIContext->TitleHeight), 0.5f));
-    float TriangleSize = gUIContext->TitleHeight * 0.3f;
+        Rr_MulV2F(Rr_V2F(gUIContext->TitleBarHeight), 0.5f));
+    float TriangleSize = gUIContext->TitleBarHeight * 0.3f;
     Rr_UIDrawFitTriangleFilled(
         TriangleCenter,
         TriangleSize,
@@ -2918,11 +2919,11 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
 
     /* Assuming having a title bar. */
 
-    float Width = gUIContext->TitleButtonSize * gUIContext->Style.CrossWidth;
+    float Width = gUIContext->TitleBarButtonSize * gUIContext->Style.CrossWidth;
     float Thickness =
-        gUIContext->TitleButtonSize * gUIContext->Style.CrossThickness;
+        gUIContext->TitleBarButtonSize * gUIContext->Style.CrossThickness;
     Rr_Rect TitleRect = Layout->Rect;
-    TitleRect.Extent.Height = gUIContext->TitleHeight;
+    TitleRect.Extent.Height = gUIContext->TitleBarHeight;
     Rr_Rect BarRect;
     Rr_Vec2 Margin = {
         TitleRect.Extent.Width - (TitleRect.Extent.Height + Width) * 0.5f,
@@ -2937,11 +2938,11 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
     Rr_Rect ButtonRect;
     ButtonRect.Offset.X =
         TitleRect.Offset.X + TitleRect.Extent.Width -
-        (TitleRect.Extent.Height + gUIContext->TitleButtonSize) * 0.5f,
+        (TitleRect.Extent.Height + gUIContext->TitleBarButtonSize) * 0.5f,
     ButtonRect.Offset.Y =
         TitleRect.Offset.Y +
-        (TitleRect.Extent.Height - gUIContext->TitleButtonSize) * 0.5f;
-    ButtonRect.Extent = Rr_V2F(gUIContext->TitleButtonSize);
+        (TitleRect.Extent.Height - gUIContext->TitleBarButtonSize) * 0.5f;
+    ButtonRect.Extent = Rr_V2F(gUIContext->TitleBarButtonSize);
 
     Rr_UIHash Hash =
         Rr_UIGetHash(sizeof("Rr.Close"), "Rr.Close", Rr_UICurrentHash());
@@ -2969,7 +2970,7 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
 
 static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UIWindow *Window)
 {
-    if (Rr_UIWindowNoTitle(Window))
+    if (Rr_UIWindowNoTitleBar(Window))
     {
         return Rr_V2F(0.0f);
     }
@@ -2979,24 +2980,24 @@ static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UIWindow *Window)
 
     return Rr_V2(
         Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f, 0.0f).X +
-            gUIContext->TitlePadding.Width * 2.0f +
-            (HasClose ? gUIContext->TitleButtonSize : 0.0f) +
-            (HasCollapse ? gUIContext->TitleButtonSize : 0.0f),
-        gUIContext->TitleHeight);
+            gUIContext->TitleBarPadding.Width * 2.0f +
+            (HasClose ? gUIContext->TitleBarButtonSize : 0.0f) +
+            (HasCollapse ? gUIContext->TitleBarButtonSize : 0.0f),
+        gUIContext->TitleBarHeight);
 }
 
-static inline void Rr_UIAddWindowTitlebar(Rr_UILayout *Layout, bool *Open)
+static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
 {
     Rr_UIWindow *Window = Layout->Window;
     Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel();
 
-    Rr_Rect TitlebarRect = {
+    Rr_Rect TitleBarRect = {
         Layout->Rect.Offset,
-        Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleHeight),
+        Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleBarHeight),
     };
 
     Rr_Vec2 TitleOffset =
-        Rr_AddV2(Layout->Rect.Offset, gUIContext->TitlePadding);
+        Rr_AddV2(Layout->Rect.Offset, gUIContext->TitleBarPadding);
 
     bool HasCollapse = !Rr_UIWindowNoCollapse(Window);
     bool CollapseButtonClicked = false;
@@ -3004,9 +3005,9 @@ static inline void Rr_UIAddWindowTitlebar(Rr_UILayout *Layout, bool *Open)
     {
         CollapseButtonClicked = Rr_UIAddCollapseButton(Layout);
 
-        TitleOffset.X += gUIContext->TitleHeight;
-        TitlebarRect.Offset.X += gUIContext->TitleHeight;
-        TitlebarRect.Extent.X -= gUIContext->TitleHeight;
+        TitleOffset.X += gUIContext->TitleBarHeight;
+        TitleBarRect.Offset.X += gUIContext->TitleBarHeight;
+        TitleBarRect.Extent.X -= gUIContext->TitleBarHeight;
     }
 
     Rr_UIDrawText(
@@ -3023,7 +3024,7 @@ static inline void Rr_UIAddWindowTitlebar(Rr_UILayout *Layout, bool *Open)
     {
         Rr_UIAddCloseButton(Layout, Open);
 
-        TitlebarRect.Extent.Width -= gUIContext->TitleButtonSize;
+        TitleBarRect.Extent.Width -= gUIContext->TitleBarButtonSize;
     }
 
     /* Allow double clicking the title bevel to toggle collapse state. */
@@ -3035,7 +3036,7 @@ static inline void Rr_UIAddWindowTitlebar(Rr_UILayout *Layout, bool *Open)
             "Rr.CollapseTitle",
             Rr_UICurrentHash());
         Rr_UIClickResult ClickResult =
-            Rr_UIClickDouble(Layout, &TitlebarRect, Hash);
+            Rr_UIClickDouble(Layout, &TitleBarRect, Hash);
         if (ClickResult.ClickCount == 2)
         {
             Window->Collapsed = !Window->Collapsed;
@@ -3046,11 +3047,13 @@ static inline void Rr_UIAddWindowTitlebar(Rr_UILayout *Layout, bool *Open)
                           gUIContext->Colors.TitleBackground2,
                           gUIContext->Colors.TitleBackground,
                           gUIContext->Colors.TitleBackground2 };
-    Rr_UIBevelEx(BevelPrimitive, &TitlebarRect, Colors, false);
+    Rr_UIBevelEx(BevelPrimitive, &TitleBarRect, Colors, false);
 }
 
 static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
 {
+    Rr_UIWindow *Window = Layout->Window;
+
     Rr_Vec2 BottomRight = Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
     Rr_Rect ResizeHandleRect = (Rr_Rect){
         {
@@ -3063,6 +3066,9 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         },
     };
 
+    /* NOTE: Work with Window->Rect directly since Layout->Rect is transformed
+     * to accomodate for borders. */
+
     Rr_UIHash ResizeHash =
         Rr_UIGetHash(sizeof("Rr.Resize"), "Rr.Resize", Rr_UICurrentHash());
     Rr_UIClickResult ClickResult = Rr_UIClickEx(
@@ -3070,7 +3076,9 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         &ResizeHandleRect,
         RR_UI_CLICK_TYPE_DRAG,
         ResizeHash,
-        Layout->Rect.Extent);
+        Rr_SubV2(
+            Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent),
+            gUIContext->MousePosition));
 
     if (ClickResult.Hovered || ClickResult.Held)
     {
@@ -3082,16 +3090,14 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         Layout->DeferredAutoResize = true;
         Rr_UIResetClickAndDrag();
     }
-
-    if (ClickResult.Moved)
+    else if (ClickResult.Moved)
     {
-        Rr_Vec2 Delta =
-            Rr_SubV2(gUIContext->MousePosition, gUIContext->DragMouseStart);
-        Rr_Vec2 NewWindowSize = Rr_AddV2(gUIContext->DragValueStart, Delta);
+        Rr_Vec2 NewWindowSize = Rr_AddV2(
+            Rr_SubV2(gUIContext->MousePosition, Window->Rect.Offset),
+            gUIContext->DragValueStart);
         Rr_Vec2 MinWindowSize = Rr_UIGetMinWindowSize(Layout->Window->Flags);
-        NewWindowSize.X = RR_MAX(NewWindowSize.X, MinWindowSize.X);
-        NewWindowSize.Y = RR_MAX(NewWindowSize.Y, MinWindowSize.Y);
-        Layout->DeferredWindowExtent = Rr_FloorV2(NewWindowSize);
+        Layout->DeferredWindowExtent =
+            Rr_FloorV2(Rr_MaxV2(NewWindowSize, MinWindowSize));
     }
 
     if (ClickResult.Held)
@@ -3121,10 +3127,10 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
 
     Rr_Rect Rect = Layout->Rect;
 
-    if (!Rr_UIWindowNoTitle(Window))
+    if (!Rr_UIWindowNoTitleBar(Window))
     {
-        Rect.Offset.Y += gUIContext->TitleHeight;
-        Rect.Extent.Y -= gUIContext->TitleHeight;
+        Rect.Offset.Y += gUIContext->TitleBarHeight;
+        Rect.Extent.Y -= gUIContext->TitleBarHeight;
     }
 
     if (!Layout->DeferredAutoResize)
@@ -3443,7 +3449,7 @@ static inline bool Rr_UIBeginWindowEx(
      * preventing that which is not currently implemented. */
 
     bool NoBorders = Rr_UIWindowNoBorders(Window);
-    bool HasTitle = !Rr_UIWindowNoTitle(Window);
+    bool HasTitleBar = !Rr_UIWindowNoTitleBar(Window);
 
     bool WasClosed = Window->Open == false;
     Window->Open = (Open == NULL || *Open == true);
@@ -3503,7 +3509,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     if (Window->Collapsed)
     {
-        Layout->Rect.Extent.Y = gUIContext->TitleHeight;
+        Layout->Rect.Extent.Y = gUIContext->TitleBarHeight;
 
         if (!Rr_UIWindowNoBorders(Window))
         {
@@ -3532,11 +3538,11 @@ static inline bool Rr_UIBeginWindowEx(
 
     /* Add window title if necessary. */
 
-    if (HasTitle)
+    if (HasTitleBar)
     {
-        Rr_UIAddWindowTitlebar(Layout, Open);
+        Rr_UIAddWindowTitleBar(Layout, Open);
 
-        Layout->Cursor.Y += gUIContext->TitleHeight;
+        Layout->Cursor.Y += gUIContext->TitleBarHeight;
     }
 
     /* NOTE: This allows calculating proper extents before showing the window
@@ -3879,9 +3885,9 @@ void Rr_UIEndWindow(void)
             Window->Rect.Extent.X += Layout->WindowPadding.X * 2.0f;
             Window->Rect.Extent.X = RR_MAX(Window->Rect.Extent.X, TitleSize.X);
 
-            if (!Rr_UIWindowNoTitle(Window))
+            if (!Rr_UIWindowNoTitleBar(Window))
             {
-                Window->Rect.Extent.Y += gUIContext->TitleHeight;
+                Window->Rect.Extent.Y += gUIContext->TitleBarHeight;
             }
 
             Window->Rect.Extent =
@@ -3904,9 +3910,9 @@ void Rr_UIEndWindow(void)
             Extent = Rr_AddV2(Extent, Window->ContentsRect.Extent);
             Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
 
-            if (!Rr_UIWindowNoTitle(Window))
+            if (!Rr_UIWindowNoTitleBar(Window))
             {
-                Extent.Y += gUIContext->TitleHeight;
+                Extent.Y += gUIContext->TitleBarHeight;
 
                 /* NOTE: Consider title width when in auto resize mode. This
                  * will be the baseline width (e.g. when window only has wrapped
@@ -4366,12 +4372,12 @@ bool Rr_UIBeginTree(const char *Title)
     bool WasExpanded = *Expanded;
 
     float TreeButtonHeight =
-        TopLevel ? gUIContext->TitleHeight : Font->LineHeight;
+        TopLevel ? gUIContext->TitleBarHeight : Font->LineHeight;
 
     float TreeOffset =
         TopLevel ? gUIContext->TopLevelTreeOffset : gUIContext->TreeOffset;
 
-    float TriangleSize = gUIContext->TitleHeight * 0.3f;
+    float TriangleSize = gUIContext->TitleBarHeight * 0.3f;
     float TriangleOffset = TopLevel ? gUIContext->ButtonPadding.X : 0.0f;
     Rr_Vec2 TriangleCenter = Rr_V2(
         Layout->Cursor.X + TriangleOffset + TriangleSize,
@@ -4391,7 +4397,7 @@ bool Rr_UIBeginTree(const char *Title)
         RectOffset.X -= gUIContext->FrameThickness;
         if (CurrentDepth == 1)
         {
-            RectOffset.Y += gUIContext->TitleHeight * 0.75f;
+            RectOffset.Y += gUIContext->TitleBarHeight * 0.75f;
         }
         else
         {
@@ -4401,7 +4407,7 @@ bool Rr_UIBeginTree(const char *Title)
                                TriangleCenter.Y - ParentTree->ParentPoint.Y };
         if (CurrentDepth == 1)
         {
-            RectExtent.Y -= gUIContext->TitleHeight * 0.75f;
+            RectExtent.Y -= gUIContext->TitleBarHeight * 0.75f;
         }
         else
         {
@@ -4427,7 +4433,7 @@ bool Rr_UIBeginTree(const char *Title)
         Rr_V2(Layout->Cursor.X + TreeOffset, Layout->Cursor.Y);
     if (TopLevel)
     {
-        TitlePosition.Y += gUIContext->TitlePadding.Y;
+        TitlePosition.Y += gUIContext->TitleBarPadding.Y;
     }
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
@@ -4564,7 +4570,8 @@ void Rr_UISeparator(void)
     };
     Rect.Offset = (Rr_Vec2){
         Layout->Cursor.X + AvailableWidth * 0.5f - Rect.Extent.X * 0.5f,
-        Layout->Cursor.Y + gUIContext->SeparatorLineHeight * 0.5f - Rect.Extent.Y,
+        Layout->Cursor.Y + gUIContext->SeparatorLineHeight * 0.5f -
+            Rect.Extent.Y,
     };
     Rr_Vec4 *Color = Rr_UIShouldHightlightWindow(Window)
                          ? &gUIContext->Colors.SelectedOutline
@@ -7007,7 +7014,7 @@ static inline void Rr_UIColorPickerPopup(
     float *Channels)
 {
     const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
-        RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
         RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
@@ -7499,7 +7506,8 @@ bool Rr_UICombobox(
     if (ShouldShowPopupWindow)
     {
         const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
-            RR_UI_WINDOW_FLAGS_NO_TITLE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
+            RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
             RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
             RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
             RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
@@ -7601,7 +7609,7 @@ bool Rr_UICombobox(
             ClickResult.Held);
 
         Rr_Vec2 TriangleCenter = Rr_RectCenter(&HandleRect);
-        float TriangleSize = gUIContext->TitleHeight * 0.3f;
+        float TriangleSize = gUIContext->TitleBarHeight * 0.3f;
         Rr_UIDrawFitTriangleFilled(
             TriangleCenter,
             TriangleSize,
@@ -7881,7 +7889,7 @@ void Rr_UISetDefaultTheme(void)
     Rr_UIColors *Colors = Rr_UIGetColors();
 
     Style->FrameThickness = 0.075000f;
-    Style->TitlePadding = Rr_V2(0.250000f, 0.025000f);
+    Style->TitleBarPadding = Rr_V2(0.250000f, 0.025000f);
     Style->WindowPadding = Rr_V2(0.300000f, 0.300000f);
     Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
     Style->ComponentMargin = 0.200000f;
@@ -8465,7 +8473,7 @@ void Rr_UIDebugOverlay(void)
     if (Rr_UIBeginWindow(
             "Rr.DebugOverlay",
             NULL,
-            RR_UI_WINDOW_FLAGS_NO_TITLE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
                 RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
                 RR_UI_WINDOW_FLAGS_NO_MOVE_BIT))
     {
