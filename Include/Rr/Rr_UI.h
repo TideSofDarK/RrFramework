@@ -164,6 +164,7 @@ typedef uint32_t Rr_UITextFlags;
 typedef enum
 {
     RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT = (1 << 0),
+    /* Cannot be collapsed. */
     RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT = (1 << 1),
     RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT = (1 << 2),
     RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT = (1 << 3),
@@ -173,6 +174,7 @@ typedef enum
     RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 7),
     RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 8),
     RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT = (1 << 9),
+    RR_UI_WINDOW_FLAGS_DOCKED_BIT = (1 << 10), /* Unimplemented! */
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
@@ -221,7 +223,10 @@ extern void Rr_UIDrawCircle(
     float Thickness,
     Rr_Vec4 const *Color);
 
-extern void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color);
+extern void Rr_UIDrawCircleFilled(
+    Rr_Vec2 Offset,
+    float Radius,
+    Rr_Vec4 const *Color);
 
 extern void Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices);
 
@@ -259,6 +264,8 @@ extern bool Rr_UIBeginWindow(
     Rr_UIWindowFlags Flags);
 
 extern void Rr_UIEndWindow(void);
+
+extern bool Rr_UIBeginChildEx(const char *Title, Rr_UIWindowFlags Flags);
 
 extern bool Rr_UIBeginChild(const char *Title);
 

@@ -744,6 +744,11 @@ static inline bool Rr_UIWindowEscapeCloses(Rr_UIWindow *Window)
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT);
 }
 
+static inline bool Rr_UIWindowCollapsed(Rr_UIWindow *Window)
+{
+    return Window->Collapsed && !Rr_UIWindowNoTitleBar(Window);
+}
+
 static inline Rr_UIHash Rr_UICurrentHash(void)
 {
     return gUIContext->HashStack.Count > 0
@@ -885,7 +890,7 @@ static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
         .Rect = Window->Rect,
         .Cursor = Window->Rect.Offset,
         .TotalAvailableContentsWidth = Window->Rect.Extent.Width,
-        .WasCollapsed = Window->Collapsed,
+        .WasCollapsed = Rr_UIWindowCollapsed(Window),
         .HorizontalX = INFINITY,
         .DeferredWindowOffset = Rr_V2F(INFINITY),
         .DeferredWindowExtent = Rr_V2F(INFINITY),
@@ -3088,7 +3093,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
     if (ClickResult.ClickCount == 2)
     {
         Layout->DeferredAutoResize = true;
-        Rr_UIResetClickAndDrag();
+        Rr_UIResetDrag();
     }
     else if (ClickResult.Moved)
     {
@@ -3507,7 +3512,7 @@ static inline bool Rr_UIBeginWindowEx(
 
     Rr_UIBeginClipRect(Layout, &Layout->Rect);
 
-    if (Window->Collapsed)
+    if (Rr_UIWindowCollapsed(Window))
     {
         Layout->Rect.Extent.Y = gUIContext->TitleBarHeight;
 
@@ -3548,7 +3553,7 @@ static inline bool Rr_UIBeginWindowEx(
     /* NOTE: This allows calculating proper extents before showing the window
      * next frame. */
 
-    if (Window->Collapsed && Layout->WasCollapsed)
+    if (Rr_UIWindowCollapsed(Window) && Layout->WasCollapsed)
     {
         if (Window->Child)
         {
@@ -3729,6 +3734,8 @@ void Rr_UIEndWindow(void)
 
     Rr_UIAssertNoHorizontal(Layout);
 
+    bool Collapsed = Rr_UIWindowCollapsed(Window);
+
     Layout->DeferredContentsRect.Extent.Y += Layout->WindowPadding.Y;
 
     /* Apply deferred layout properties. */
@@ -3739,7 +3746,7 @@ void Rr_UIEndWindow(void)
     Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
     Window->ContentsRect = Layout->DeferredContentsRect;
 
-    if (!Window->Collapsed)
+    if (!Collapsed)
     {
         /* Since window wasn't collapsed, current clip rect refers to contents
          * area. Begin new clip rect to draw borders, resize handle and
@@ -3752,7 +3759,7 @@ void Rr_UIEndWindow(void)
         Rr_UIBeginClipRect(Layout, &TotalClipRectWithBorders);
     }
 
-    if (!Window->Collapsed)
+    if (!Collapsed)
     {
         /* NOTE: Flooring these fixed imprecise FillRatio calculation.
          * If the bug ever returns it probably means the fix should be applied
@@ -3851,7 +3858,7 @@ void Rr_UIEndWindow(void)
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
 
-    if (!Window->Collapsed || Window->Child)
+    if (!Collapsed || Window->Child)
     {
         Rr_UIScrollBehavior(
             Window,
@@ -4050,10 +4057,8 @@ void Rr_UIEndWindow(void)
                     gUIContext->DoubleBevelThickness * 2.0f);
             }
             Rr_Vec2 WindowExtent = Window->Rect.Extent;
-            bool CollapsedThisFrame =
-                Window->Collapsed && !Layout->WasCollapsed;
-            bool UncollapsedThisFrame =
-                !Window->Collapsed && Layout->WasCollapsed;
+            bool CollapsedThisFrame = Collapsed && !Layout->WasCollapsed;
+            bool UncollapsedThisFrame = !Collapsed && Layout->WasCollapsed;
             if (CollapsedThisFrame)
             {
                 ParentLayout->ReservedExtent.Y -= WindowExtent.Y - TitleSize.Y;
@@ -4066,7 +4071,7 @@ void Rr_UIEndWindow(void)
                 WindowExtent.Y = TitleSize.Y;
                 Rr_UIAdvance(WindowExtent);
             }
-            else if (Window->Collapsed)
+            else if (Collapsed)
             {
                 Rr_UIAdvance(TitleSize);
             }
@@ -4074,6 +4079,10 @@ void Rr_UIEndWindow(void)
             {
                 Rr_UIAdvance(WindowExtent);
             }
+
+            /* Rr_Vec2 Advance = Window->Rect.Extent; */
+            /* Advance.Y -= Rr_UICurrentContentsMargin().Y; */
+            /* Rr_UIAdvance(Window->Rect.Extent); */
         }
 
         /* Resume clip rect. */
@@ -4082,9 +4091,15 @@ void Rr_UIEndWindow(void)
     }
 }
 
-bool Rr_UIBeginChild(const char *Title)
+bool Rr_UIBeginChildEx(const char *Title, Rr_UIWindowFlags Flags)
 {
     Rr_UIAssertWindow();
+
+    /* Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT; */
+    Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
+    Flags |= RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
+    Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
+    Flags |= RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT;
 
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     Rr_UIWindow *ParentWindow = ParentLayout->Window;
@@ -4098,19 +4113,15 @@ bool Rr_UIBeginChild(const char *Title)
         gUIContext->Arena);
     Rr_UIWindow *Window = *WindowRef;
 
-    const Rr_UIWindowFlags CHILD_FLAGS = // RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
-        RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
-        RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
-        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
     if (Window == NULL)
     {
-        Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, CHILD_FLAGS);
+        Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
         Window->Child = true;
         *WindowRef = Window;
     }
     else
     {
-        Window->Flags = CHILD_FLAGS;
+        Window->Flags = Flags;
     }
 
     Window->Rect.Offset = ParentLayout->Cursor;
@@ -4120,6 +4131,11 @@ bool Rr_UIBeginChild(const char *Title)
     assert(
         Window->Added == false && "There already is a window with this title!");
     return Rr_UIBeginWindowEx(Window, TitleHash, NULL);
+}
+
+bool Rr_UIBeginChild(const char *Title)
+{
+    return Rr_UIBeginChildEx(Title, 0);
 }
 
 void Rr_UIEndChild(void)
@@ -7613,7 +7629,7 @@ bool Rr_UICombobox(
         Rr_UIDrawFitTriangleFilled(
             TriangleCenter,
             TriangleSize,
-            !Window->Collapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
+            !Rr_UIWindowCollapsed(Window) ? RR_ANGLE_DEG(90.0f) : 0.0f,
             &gUIContext->Colors.Foreground);
     }
 

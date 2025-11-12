@@ -510,7 +510,7 @@ static void Iterate(void)
     static bool CloseButton = true;
     static bool NoResize = false;
     static bool NoScrollbar = false;
-    static bool NoTitle = false;
+    static bool NoTitleBar = false;
     static bool AutoResize = true;
 
     Rr_UIWindowFlags Flags = 0;
@@ -526,7 +526,7 @@ static void Iterate(void)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
     }
-    if (NoTitle)
+    if (NoTitleBar)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
     }
@@ -569,7 +569,32 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
-        /* Rr_UISetNextWindowCreateCollapsed(false); */
+        Rr_UISetNextWindowCreateCollapsed(false);
+        if (Rr_UIBeginChild("Child Windows"))
+        {
+            Rr_UIText(
+                "This is an example of a child window.\nUse child windows to "
+                "group your widgets.");
+
+            if (Rr_UIBeginChildEx("Dockable Child Window", 0))
+            {
+                Rr_UIText("This window can be docked/undocked (WIP).");
+
+                Rr_UIEndChild();
+            }
+
+            if (Rr_UIBeginChildEx(
+                    "Custom Child Window",
+                    RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
+            {
+                Rr_UIText("This child window has no title bar.");
+
+                Rr_UIEndChild();
+            }
+
+            Rr_UIEndChild();
+        }
+
         if (Rr_UIBeginChild("Fonts"))
         {
             Rr_UIText(
@@ -696,36 +721,6 @@ static void Iterate(void)
 
             Rr_UIEndChild();
         }
-
-        /* if (Rr_UIBeginChild("Child Windows")) */
-        /* { */
-        /*     Rr_UIBeginHorizontal(); */
-        /*     if (Rr_UIBeginChild("Child Window A")) */
-        /*     { */
-        /*         Rr_UIButton("Click Me!"); */
-        /*         Rr_UIEndChild(); */
-        /*     } */
-        /*     if (Rr_UIBeginChild("Child Window B")) */
-        /*     { */
-        /*         static char Buffer[8] = { 0 }; */
-        /*         Rr_UIInputField( */
-        /*             "Tiny Buffer (8 bytes)", */
-        /*             8, */
-        /*             Buffer, */
-        /*             "Type here...", */
-        /*             NULL, */
-        /*             0); */
-        /*         Rr_UIEndChild(); */
-        /*     } */
-        /*     Rr_UIEndHorizontal(); */
-        /*     if (Rr_UIBeginChild("Child Window C")) */
-        /*     { */
-        /*         Rr_UILabel("Label A"); */
-        /*         Rr_UILabel("Label B"); */
-        /*         Rr_UIEndChild(); */
-        /*     } */
-        /*     Rr_UIEndChild(); */
-        /* } */
 
         if (Rr_UIBeginChild("Custom Draw"))
         {
@@ -880,14 +875,10 @@ static void Iterate(void)
         if (Rr_UIBeginChild("Checkboxes"))
         {
             Rr_UICheckbox("Close Button", &CloseButton);
-            Rr_UIBeginHorizontal();
             Rr_UICheckbox("No Resize", &NoResize);
             Rr_UICheckbox("Auto Resize", &AutoResize);
-            Rr_UIEndHorizontal();
-            Rr_UIBeginHorizontal();
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
-            Rr_UICheckbox("No Title", &NoTitle);
-            Rr_UIEndHorizontal();
+            Rr_UICheckbox("No Title Bar", &NoTitleBar);
             Rr_UIEndChild();
         }
 
