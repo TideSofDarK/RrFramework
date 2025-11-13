@@ -501,7 +501,7 @@ static void Iterate(void)
 
     Rr_ClearColorImage2D(
         Graph,
-        (Rr_ColorClear){ .Vec4 = { 0.01f, 0.01f, 0.02f, 1.0f, }, },
+        (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f },
         Rr_GetSwapchainImage());
 
     Rr_UIDebugOverlay();
@@ -539,7 +539,7 @@ static void Iterate(void)
     ThemeEditorWindow();
     TextInputWindow();
 
-    if (Rr_UIBeginWindow("Rr_UI.h - General", &Open, 0))
+    if (Rr_UIBeginWindow("Rr_UI.h - General", NULL, 0))
     {
         Rr_UISetNextWindowCreateCollapsed(false);
         if (Rr_UIBeginChild("Style and Colors"))
@@ -999,6 +999,7 @@ int main(int ArgC, char **ArgV)
         .InitFunc = Init,
         .IterateFunc = Iterate,
         .CleanupFunc = Cleanup,
+        .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
     };
     Rr_Run(&Config);
 

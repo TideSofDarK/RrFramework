@@ -2984,7 +2984,7 @@ static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UIWindow *Window)
     bool HasClose = Rr_UIWindowHasCloseButton(Window);
 
     return Rr_V2(
-        Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f, 0.0f).X +
+        Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f, 0).X +
             gUIContext->TitleBarPadding.Width * 2.0f +
             (HasClose ? gUIContext->TitleBarButtonSize : 0.0f) +
             (HasCollapse ? gUIContext->TitleBarButtonSize : 0.0f),
